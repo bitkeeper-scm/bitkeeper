@@ -534,6 +534,16 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		}
 	}
 	if (streq(buf, "@PATCH@")) {
+		char	*nlid = 0;
+
+		if (opts.product) {
+			assert(!getenv("BK_NESTED_LOCK"));
+			unless (nlid = nested_wrlock(0)) {
+				fprintf(stderr, "%s\n", nested_errmsg(0));
+				return (1);
+			}
+			safe_putenv("BK_NESTED_LOCK=%s", nlid);
+		}
 		if (i = takepatch(r)) {
 			fprintf(stderr,
 			    "Pull failed: takepatch exited %d.\n", i);
@@ -559,8 +569,15 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			pclose(fout);
 		}
 		if (proj_isProduct(0)) {
+			assert(nlid);
 			if (rc = pull_ensemble(r, rmt_aliases)) {
+				if (nested_abort(nlid)) {
+					fprintf(stderr, "%s", nested_errmsg(0));
+				}
 				goto done;
+			}
+			if (nested_unlock(nlid)) {
+				fprintf(stderr, "%s", nested_errmsg(0));
 			}
 		}
 		putenv("BK_STATUS=OK");
@@ -600,12 +617,9 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	char	*url;
 	char	**vp;
 	sccs	*s = 0;
-	delta	*d;
 	char	**revs = 0;
-	char	*t;
 	nested	*n = 0;
 	comp	*c;
-	FILE	*f;
 	int	i, j, rc = 0, errs = 0;
 
 	/* allocate r->params for later */
@@ -613,13 +627,12 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	url = remote_unparse(r);
 	START_TRANSACTION();
 	s = sccs_init(ROOT2RESYNC "/" CHANGESET, INIT_NOCKSUM);
-	f = fopen(ROOT2RESYNC "/" CSETS_IN, "r");
-	while (t = fgetline(f)) {
-		d = sccs_findrev(s, t);
-		revs = addLine(revs, d->rev);
-	}
-	fclose(f);
+	revs = file2Lines(0, ROOT2RESYNC "/" CSETS_IN);
+	unless (revs) goto out;
 	n = nested_init(s, 0, revs, NESTED_PULL);
+	assert(n);
+	freeLines(revs, free);
+	unless (n->tip) goto out;	/* tags only */
 
 	/*
 	 * Now takepatch should have merged the aliases file in the RESYNC

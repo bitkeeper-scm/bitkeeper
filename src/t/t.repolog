@@ -1,0 +1,45 @@
+echo $N Create initial repository ...................................$NL
+commercial project
+echo bar > bar.c
+echo h > h.h
+bk new $Q bar.c h.h
+bk commit $Q -yCset
+echo OK
+
+echo $N Check that we recorded our path..............................$NL
+WHERE="`bk dotbk`/repos/`bk gethost -r`/path.log"
+test -f "$WHERE" || {
+	echo no "$WHERE"
+	find "`bk dotbk`" -type f -print
+	exit 1
+}
+pwd=`bk pwd`
+grep -q "$pwd" "$WHERE" || {
+	echo "Did not find path: $pwd"
+	cat "$WHERE"
+	exit 1
+}
+echo OK
+
+echo $N Check that we do not record it twice ........................$NL
+bk -r check -ac
+test `wc -l < "$WHERE"` -eq 1 || {
+	echo whoops
+	cat "$WHERE"
+	exit 1
+}
+echo OK
+
+echo $N Check that if we cannot make the dir, all is okay ...........$NL
+BLOCK="`bk dotbk`/repos/`bk gethost -r`"
+rm -fr "$BLOCK"
+touch "$BLOCK"
+bk -r check -ac || exit 1
+echo OK
+
+echo $N Check that if we cannot make the dir, all is okay ...........$NL
+BLOCK="`bk dotbk`/repos"
+rm -fr "$BLOCK"
+touch "$BLOCK"
+bk -r check -ac || exit 1
+echo OK

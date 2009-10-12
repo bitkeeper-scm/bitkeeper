@@ -683,3 +683,20 @@ bk commit $Q -f
 cd ../local
 bk pull $Q || exit 1
 echo OK
+
+echo $N Try a tag-only pull .........................................$NL
+cd ../remote
+bk tag $Q -r1.3 badbug || exit 1
+cd ../local
+bk pull $Q || exit 2
+echo OK
+
+echo $N Now pull tag along with another cset ........................$NL
+bk unpull -f $Q || exit 1
+cd ../remote
+touch tagf
+bk new $Q tagf || exit 2
+bk commit $Q -ytagf || exit 3
+cd ../local
+bk pull $Q || exit 4
+echo OK

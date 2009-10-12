@@ -88,6 +88,10 @@ trigger(char *cmd, char *when)
 		what = event = "lease-proxy";
 	} else if (streq(cmd, "undo")) {
 		what = event = cmd;
+	} else if (streq(cmd, "remote nested")) {
+		/* XXX: is this right?? */
+		what = "incoming";
+		event = "incoming push";
 	} else {
 		fprintf(stderr,
 		    "Warning: Unknown trigger event: %s, ignored\n", cmd);

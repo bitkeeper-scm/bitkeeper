@@ -116,4 +116,11 @@ void	aliasdb_free(hash *db);
 int	aliasdb_chkAliases(nested *n, hash *aliasdb,
 	    char ***paliases, char *cwd);
 
+/* locking.c */
+
+char	*nested_wrlock(project *p);
+int	nested_mine(char *t);
+int	nested_unlock(char *t);
+int	nested_abort(char *t);
+char	*nested_errmsg(int bkd);
 #endif	// _NESTED_H

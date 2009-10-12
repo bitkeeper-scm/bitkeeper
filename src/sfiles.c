@@ -20,7 +20,6 @@
 typedef struct winfo winfo;
 typedef	char	STATE[8];
 
-private	void	append_rev(MDBM *db, char *name, char *rev);
 private int	chk_diffs(sccs *s);
 private void	do_print(char state[6], char *gfile, char *rev);
 private void	file(char *f);
@@ -34,6 +33,7 @@ private	void	free_project(void);
 private void	load_ignore(project *p);
 private	void	ignore_file(char *file);
 private	void	print_components(char *frompath);
+private	void	walk_deepComponents(char *path, walkfn fn, void *data);
 
 typedef struct {
 	u32	Aflg:1;			/* -pA: show all pending deltas */
@@ -121,20 +121,8 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
 private int
 fastprint(char *file, struct stat *sb, void *data)
 {
-	int	len;
-
 	file += 2;
-	/* if (file =~ /\/SCCS\/s.ChangeSet$/) */
-	len = strlen(file);
-	if ((len > strlen(CHANGESET)) &&
-	    streq(file + len - strlen(CHANGESET) - 1, "/" CHANGESET)) {
-		/* pick out subcomponents */
-		file[len - strlen(CHANGESET) - 1] = 0;
-		assert(prodproj);
-		components = addLine(components, proj_relpath(prodproj, file));
-	} else {
-		puts(file);
-	}
+	puts(file);
 	return (0);
 }
 
@@ -155,9 +143,6 @@ sfiles_main(int ac, char **av)
 	if ((ac == 1) && !opts.prefix)  {
 		opts.sfiles = 1;
 		walksfiles(".", fastprint, 0);
-		load_project(".");
-		print_components(0);
-		free_project();
 		return (0);
 	}
 
@@ -308,7 +293,6 @@ usage:				system("bk help -s sfiles");
 		/* flag running at the root of repo */
 		opts.atRoot = isdir(BKROOT);
 		walk(path);
-		print_components(0);
 	} else if (streq("-", av[optind])) {
 		setmode(0, _O_TEXT); /* read file list in text mode */
 		while (fnext(buf, stdin)) {
@@ -317,7 +301,6 @@ usage:				system("bk help -s sfiles");
 			path = buf;
                         if (isdir(path)) {
 				walk(path);
-				print_components(path);
 			} else {
 				/*
 				 * Kind of hokey but we load the proj based on
@@ -338,7 +321,6 @@ usage:				system("bk help -s sfiles");
                         if (isdir(av[i])) {
                                 path = av[i];
                                 walk(path);
-				print_components(path);
                         } else {
                                 path = av[i];
 				unless (proj) {
@@ -695,36 +677,11 @@ struct winfo {
 private void
 add_to_winfo(winfo *wi, char *file, int sccs)
 {
-	char	*p;
-
 	unless (wi->sDB) wi->sDB = mdbm_mem();
 	unless (wi->gDB) wi->gDB = mdbm_mem();
 
-	if (sccs) {
-		if (pathneq("s.", file, 2)) {
-			wi->sfiles = addLine(wi->sfiles, strdup(file));
-		} else {
-			if (pathneq("c.", file, 2)) {
-				/*
-				 * If there is no @rev, make sure we
-				 * don't miss the case where we have
-				 * both a c.file and c.file@rev
-				 */
-				if (p = strrchr(file, '@')) {
-					*p++ = 0;
-				} else {
-					p = "";
-				}
-				/*
-				 * Special handling for c.file@rev entry
-				 * append the @rev part to the value field
-				 * so we can print the correct file
-				 * name if it turns out to be a junk file.
-				 */
-				append_rev(wi->sDB, file, p);
-				return;
-			}
-		}
+	if (sccs && pathneq("s.", file, 2)) {
+		wi->sfiles = addLine(wi->sfiles, strdup(file));
 	}
 	mdbm_store_str((sccs ? wi->sDB : wi->gDB), file, "", MDBM_INSERT);
 }
@@ -1002,6 +959,7 @@ walk(char *indir)
 	walkdir(dir, sfiles_walk, &wi);
 	if (wi.sccsdir) sccsdir(&wi);
 	if (proj) free(wi.proj_prefix);
+	unless (opts.onelevel) print_components(dir);
 	if (opts.timestamps && timestamps && proj) {
 		dumpTimestampDB(proj, timestamps);
 		hash_free(timestamps);
@@ -1237,22 +1195,6 @@ do_print(STATE buf, char *gfile, char *rev)
 	if (doit) print_it(state, gfile, rev);
 }
 
-private void
-append_rev(MDBM *db, char *name, char *rev)
-{
-	char	*buf = 0;
-	char	*t;
-
-	t = mdbm_fetch_str(db, name);
-	if (t) {
-		t = buf = aprintf("%s,%s", t, rev);
-	} else {
-		t = rev;
-	}
-	mdbm_store_str(db, name, t, MDBM_REPLACE);
-	if (buf) free(buf);
-}
-
 /*
  * Called for each directory traversed by sfiles_walk()
  */
@@ -1393,7 +1335,7 @@ sccsdir(winfo *wi)
 		concat_path(buf, dir, "SCCS");
 		EACH_KV (sDB) {
 			/*
-			 * Ignore x.files is the SCCS dir if the matching
+			 * Ignore x.files in the SCCS dir if the matching
 			 * s.file exists.
 			 * Ignore SCCS/c.JUNK if JUNK exists.
 			 * Ignore SCCS/c.JUNK if s.JUNK exists.
@@ -1411,44 +1353,18 @@ sccsdir(winfo *wi)
 				    case 'c':
 					strcpy(buf1, kv.key.dptr + 2);
 				    	if (mdbm_fetch_str(gDB, buf1)) {
-						/* We'll flag it below */
 						continue;
 					}
-					sprintf(buf1, "s.%s", kv.key.dptr + 2);
+					strcpy(buf1, kv.key.dptr);
+					buf1[0] = 's';
 				    	if (mdbm_fetch_str(sDB, buf1)) {
-						/* We caught it above */
 						continue;
 					}
 					break;
 				}
 			}
 			concat_path(buf1, buf, kv.key.dptr);
-			if (kv.val.dsize == 0) {
-				do_print("j      ", buf1, 0);
-			} else {
-				/*
-				 * We only get here when we get
-				 * c.file@rev entries. Extract the @rev part
-				 * from kv.val.ptr and append it to buf1 to
-				 * reconstruct the correct file name.
-				 * i.e c.file@rev
-				 */
-				p = kv.val.dptr;
-				while (p) {
-					char *q, *t, buf2[MAXPATH];
-
-					q = strchr(p, ',');
-					if (q) *q++ = 0;
-					if (*p) {
-						t = buf2;
-						sprintf(buf2, "%s@%s", buf1, p);
-					} else {
-						t = buf1;
-					}
-					do_print("j      ", t, 0);
-					p = q;
-				}
-			}
+			do_print("j      ", buf1, 0);
 		}
 	}
 
@@ -1516,12 +1432,23 @@ findsfiles(char *file, struct stat *sb, void *data)
 			 */
 			strcat(file, "/etc");
 			if (exists(file)) {
-				if (proj == prodproj) {  /* this is product */
-					*p = 0;
+				project	*tmp;
+
+				*p = 0;
+				tmp = proj_init(file);
+				if (!si->is_clone && (proj == prodproj) &&
+				    tmp && proj_isComponent(tmp)) {
+					/* this is a component */
 					sprintf(p, "/SCCS/s.ChangeSet");
 					si->fn(file, 0, si->data);
-					*p = '/';
+					*p = 0;
+
+					/* also list deep components here */
+					walk_deepComponents(file,
+					    si->fn, si->data);
 				}
+				if (tmp) proj_free(tmp);
+				strcpy(p, "/BitKeeper"); /* restore file */
 				return (-2);
 			}
 		}
@@ -1544,8 +1471,6 @@ findsfiles(char *file, struct stat *sb, void *data)
 			 * include from the BitKeeper/log dir
 			 */
 			p[4] = '/';
-			strcpy(p+5, "PRODUCT");
-			if (exists(file)) si->fn(file, sb, si->data);
 			strcpy(p+5, "COMPONENT");
 			if (exists(file)) si->fn(file, sb, si->data);
 			if (si->is_modes) {
@@ -1613,6 +1538,7 @@ walksfiles(char *dir, walkfn fn, void *data)
 	}
 	rc = walkdir(dir, findsfiles, &si);
 	if (proj) free(si.proj_prefix);
+	freeLines(components, free);	/* set by walk_deepComponents() */
 	free_project();
 	return (rc);
 }
@@ -1665,12 +1591,8 @@ print_components(char *path)
 	unless (proj && (proj == prodproj)) goto done;
 	unless (opts.out) opts.out = stdout;
 
-	if (path) {
-		fullname(path, frompath);
-		cwd = frompath;
-	} else {
-		cwd = proj_cwd();
-	}
+	fullname(path, frompath);
+	cwd = frompath;
 	cwd_len = strlen(cwd);
 	components = file2Lines(components,
 	    proj_fullpath(prodproj, "BitKeeper/log/deep-nests"));
@@ -1679,11 +1601,7 @@ print_components(char *path)
 		p = proj_fullpath(prodproj, components[i]);
 		unless (pathneq(p, cwd, cwd_len)) continue;
 		p += cwd_len + 1;
-		if (path) {
-			sprintf(gfile, "%s/%s", path, p);
-		} else {
-			strcpy(gfile, p);
-		}
+		sprintf(gfile, "%s/%s", path, p);
 		concat_path(buf, gfile, CHANGESET);
 		unless (exists(buf)) continue;
 		/*
@@ -1725,4 +1643,38 @@ print_components(char *path)
 done:
 	freeLines(components, free);
 	components = 0;
+}
+
+private void
+walk_deepComponents(char *path, walkfn fn, void *data)
+{
+	int	i, cwd_len;
+	char	*p, *cwd;
+	project	*comp;
+	char	buf[MAXPATH];
+	char	frompath[MAXPATH];
+	char	gfile[MAXPATH];
+
+	fullname(path, frompath);
+	cwd = frompath;
+	cwd_len = strlen(cwd);
+	unless (components) {
+		components = file2Lines(0,
+		    proj_fullpath(prodproj, "BitKeeper/log/deep-nests"));
+		uniqLines(components, free);
+	}
+	EACH(components) {
+		p = proj_fullpath(prodproj, components[i]);
+		unless ((strlen(p) > cwd_len) && pathneq(p, cwd, cwd_len)) {
+			continue; /* only look at components under path */
+		}
+		p += cwd_len + 1;
+		sprintf(gfile, "%s/%s", path, p);
+		concat_path(buf, gfile, CHANGESET);
+		unless (exists(buf)) continue;
+
+		comp = proj_init(gfile);
+		if (proj_isComponent(comp)) fn(buf, 0, data);
+		proj_free(comp);
+	}
 }

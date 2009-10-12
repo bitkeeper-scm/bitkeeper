@@ -1,11 +1,15 @@
-Release notes for BitKeeper version 4.4 (released 24-Aug-2009)
+Release notes for BitKeeper version 4.4 (released 23-Sep-2009)
 
-This release is mostly a bugfix release with the exception of slightly
+This release is primarily a bugfix release with the exception of slightly
 changing the bk repair interface, hence 4.4 instead of 4.3.2.
 
+64 bit Windows support
+----------------------
 This release enables BitKeeper (including the Explorer Shell extension)
 to work on 64-bit versions of Windows (XP/64, Vista/64, 2008 server).
 
+BitKeeper and virus scanners
+----------------------------
 BitKeeper is now tested, and works, in the presence of the following
 Windows anti-virus scanners:
 
@@ -13,8 +17,57 @@ Windows anti-virus scanners:
     - Kaspersky
     - Norton
 
-Bugfixes / polish
+Many of the fixes involved turning on a retry loop around certain file
+system APIs that get blocked by virus scanners.  It is possible to have
+legitimate blocking (sharing violations for example).  If you find 
+BitKeeper running much more slowly on Windows, (a) let us know so we
+can fix it and (b) you can set BK_WIN_NORETRY=1 to disable it.
 
+Note that Google desktop search is known not to work with BitKeeper
+(actually the msys/mingw subsystem) and is not supported.
+
+Batch installs
+--------------
+It is possible to script installs without accepting the license
+agreement for each new install.  You do have to accept it once but that
+acceptance can be copied to a different machine to prevent repeated
+license prompting.  The steps are:
+
+- Install the image on any machine interactively.  You'll need your license
+  keys which you can get with:
+
+        bk config | grep lic > KEYS
+
+- You can install your license keys in your downloaded image with the 
+  following command:
+
+        bk inskeys bk-4.4-x86-win32.exe KEYS
+
+- Once you have a licensed image, take that and the "accepted" file and
+  put those on a USB stick (or get them to the new machine via SMB or NFS,
+  etc).
+
+- Tell the installer to find your accepted file.  There is a BK_DOTBK
+  environment variable, set that to the full path to the location of
+  the accepted file.  I.e., if the USB stick was D: and the file is
+  D:/accepted then:
+
+        set BK_DOTBK=D:/
+
+  and then do the install:
+
+        D:/bk-4.4-x86-win32.exe -u
+  
+  The -u option is normally used for batch upgrades but if this is a 
+  first time install it will install in the default location (for windows
+  it is C:/Program Files, windows64 it is C:/Program Files (x86), and 
+  for Linux etc it is /usr/libexec/bitkeeper.
+
+  On windows the -l option enables the windows explorer plugin, and
+  -s enables the visual studio plugin.
+
+Bugfixes / polish
+-----------------
 - Fix a bug where BitKeeper would stop working on Windows machines with
   small stacks.
 - Handle a situation where making a symlink to another repository
@@ -22,6 +75,10 @@ Bugfixes / polish
 - Fix some usability bugs in the BitKeeper installer.
 - Various performance enhancements in partial_check mode.
 - Fix a bug where bk export would exit 0 after failing due to a full disk.
+- Fix a bug where bk bkd -lLOG would write a LOG file in subdirectories
+  instead of where the bkd was started.
+- Send partial check information across the wire with clones (perf fix).
+- Fix a performance bug in sfiles (called by citool).
 
 New / modified commands
 

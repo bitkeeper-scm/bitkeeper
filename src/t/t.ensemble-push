@@ -49,11 +49,18 @@ grep -q "Nothing to push." OUT || {
 	cat OUT
 	exit 1
 }
+test -f "$HERE/project/BitKeeper/writer/nested_lock" && {
+	echo failed
+	echo nested lock left
+	cat "$HERE/project/BitKeeper/writer/nested_lock"
+	exit 1
+}
 echo OK
 
 echo $N Try a simple push............................................$NL
 cd "$HERE"
 bk clone $Q project copy
+bk clone $Q project copy2
 # add some csets to gcc
 cd "$HERE/copy/gcc"
 for i in 1 2 3 4 5
@@ -80,6 +87,27 @@ cd "$HERE/project"
 bk -Ar check -av >OUT 2>&1 || {
 	echo failed
 	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try a push with conflicts....................................$NL
+cd "$HERE/copy2"
+echo "hi" > newfile
+bk new $Q newfile
+bk commit $Q -y"new file"
+bk push >OUT 2>&1 && {
+	echo failed
+	exit 1
+}
+grep -q "ahead of your repository" OUT || {
+	echo failed
+	exit 1
+}
+cd "$HERE"
+test -d project/RESYNC && {
+	echo failed
+	echo left remote locked
 	exit 1
 }
 echo OK
@@ -153,6 +181,53 @@ bk push bk://localhost:$P >OUT 2>&1 || {
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
+echo $N Try a push using HTTP........................................$NL
+cd "$HERE"
+rm -rf project
+bk clone $Q -l null-push project
+cd "$HERE/project"
+P=`port 50000`
+bk bkd -q -d -p$P -ikill
+cd "$HERE/copy"
+bk push http://localhost:$P >OUT 2>&1 || fail -f OUT
+bk _kill bk://localhost:$P || exit 1
+test -f "$HERE/project/BitKeeper/writer/nested_lock" && fail leaked lock
+echo OK
+
+echo $N Try a push with conflicts using HTTP.........................$NL
+cd "$HERE"
+rm -rf project
+bk clone $Q -l null-push project || fail
+cd "$HERE/project/gdb"
+bk edit $Q file1 || fail
+echo "conflicts" >> file1
+bk ci $Q -y"conflict" file1
+bk commit $Q -y"make a conflict" || fail
+cd "$HERE/project"
+bk commit $Q -y"make conflict" || fail
+P=`port 50000`
+bk bkd -q -d -p$P -ikill || fail
+cd "$HERE/copy"
+bk push http://localhost:$P >OUT 2>&1 && fail -f OUT
+RC=$?
+test $RC = 3 || fail -f OUT wrong exit code $RC
+bk _kill bk://localhost:$P || fail
+test -f "$HERE/project/BitKeeper/writer/nested_lock" && fail leaked lock
+echo OK
+
+echo $N Try a null-push using HTTP...................................$NL
+cd "$HERE"
+rm -rf project
+bk clone $Q -l null-push project
+cd "$HERE/null-push"
+P=`port 50000`
+bk bkd -q -d -p$P -ikill
+cd "$HERE/project"
+bk push http://localhost:$P >OUT 2>&1 || fail -f OUT
+bk _kill bk://localhost:$P || fail
+test -f "$HERE/null-push/BitKeeper/writer/nested_lock" && fail leaked lock
+echo OK
+
 echo $N Check to see that _BK_TRANSACTION is not set in a trigger ...$NL
 cd "$HERE"
 rm -rf project
@@ -170,13 +245,13 @@ bk commit $Q -y'trigger'
 cd ../..
 bk push $Q ../project || exit 1
 cd ../project
-grep -q '_BK_TRANSACTION=.' ENV || {
-	echo "fix test"
+grep -q '_BK_TRANSACTION=.' ENV && {
+	echo failed
 	cat ENV | grep BK_
 	exit 1
 }
 # _TRANSACTION shouldn't be defined at the top level of a trigger
-echo "failed (bug )"
+echo OK
 
 echo $N Make sure triggers are not being run twice...................$NL
 cd "$HERE"
@@ -240,7 +315,11 @@ echo OK
 echo $N Try a push from sparse to full ..............................$NL
 cd "$HERE"
 bk clone $Q project full
+test -d project/RESYNC && fail
+test -d full/RESYNC && fail
 bk clone $Q full sparse
+test -d sparse/RESYNC && fail
+test -d full/RESYNC && fail
 # Now make a cset that spans two components, remove one of them, and push.
 cd sparse
 for i in gdb libc
@@ -252,16 +331,35 @@ do	(cd $i
 done
 bk commit $Q -yNEW_FILE
 rm -rf libc
-bk push > OUT 2>&1 && {
-	echo should have failed
-	cat OUT
-	exit 1
-}
+bk push > OUT 2>&1 && fail -f OUT should have failed
 grep -q "libc is needed to push" OUT || {
 	echo bad message
 	cat OUT
 	exit 1
 }
+cd "$HERE"
+test -d project/RESYNC && fail
+test -d full/RESYNC || fail fix the test
+rm -rf full/RESYNC # remove me when you fix the test
+test -d sparse/RESYNC && fail
+echo failed \(bug nested abort not done\)
+
+echo $N Try a tag-only push .........................................$NL
+cd "$HERE/full"
+bk -r check -ac || fail
+bk tag $Q -r1.3 oldtag || fail
+bk push $Q || fail
+cd ../project
+test `bk prs -hnd:REV: -roldtag ChangeSet` = 1.3 || fail
+echo OK
+
+echo $N Now push tag along with another cset ........................$NL
+bk unpull -f $Q || exit 1
+cd ../full
+touch tagf
+bk new $Q tagf || exit 2
+bk commit $Q -ytagf || exit 3
+bk push $Q || exit 4
 echo OK
 
 echo $N Try same push through a BKD..................................$NL
@@ -313,3 +411,4 @@ grep -q "cannot cd to .*/copy/gcc4" ERR || {
 cd ..
 rm -fr project
 echo "failed (bug )"
+

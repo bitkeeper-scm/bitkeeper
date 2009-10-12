@@ -96,6 +96,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		if (first) printf("%s\n", first);
 		if (citool) printf(".\n");
 		n = nested_init(0, 0, 0, NESTED_PENDING);
+		assert(n);
 		nested_aliases(n, n->tip, &aliases, 0, n->pending);
 		EACH_STRUCT(n->comps, cp, i) {
 			if (cp->product) continue;

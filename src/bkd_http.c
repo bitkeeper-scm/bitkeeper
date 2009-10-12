@@ -1078,7 +1078,7 @@ http_stats(char *page)
 private void
 http_index(char *page)
 {
-	sccs	*s = sccs_init(CHANGESET, INIT_NOCKSUM|INIT_NOSTAT);
+	sccs	*s;
 	delta	*d;
 	time_t	now, t1h, t1d, t2d, t3d, t4d, t1w, t2w, t3w;
 	time_t	t4w, t8w, t12w, t6m, t9m, t1y, t2y, t3y;
@@ -1090,6 +1090,10 @@ http_index(char *page)
 	char	*bkweb=0, *master=0, *homepage=0;
 	MDBM	*m;
 
+	unless (s  = sccs_csetInit(INIT_NOCKSUM|INIT_NOSTAT|INIT_MUSTEXIST)) {
+		http_error(404, "Unable to find ChangeSet file");
+		return;
+	}
 	time(&now);
 	t1h = now - HOUR;
 	t1d = now - DAY;

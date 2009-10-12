@@ -25,7 +25,7 @@ cmd_pull_part1(int ac, char **av)
 	int	status;
 	int	rc = 1;
 	FILE	*f;
-	int	tid = 0;
+	int	nlid = 0;
 	int	port = 0;
 	int	c;
 
@@ -44,7 +44,7 @@ cmd_pull_part1(int ac, char **av)
 			    aprintf("-r%s", optarg));
 			break;
 		    case 'T':
-			tid = 1;	// On purpose, will go away w/ trans
+			nlid = 1; /* eventually getenv("BK_NESTED_LOCK") */
 			break;
 		    case 'd':
 		    case 'e':
@@ -57,7 +57,7 @@ cmd_pull_part1(int ac, char **av)
 		}
 	}
 
-	if (!tid && !port && proj_isComponent(0)) {
+	if (!nlid && !port && proj_isComponent(0)) {
 		out("ERROR-Not a product root\n");
 		return (1);
 	}
@@ -335,7 +335,6 @@ cmd_pull_part2(int ac, char **av)
 			rc = 1;
 		}
 	}
-	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 
 done:	fflush(stdout);
 	if (dont) {

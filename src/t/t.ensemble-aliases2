@@ -73,7 +73,7 @@ bk clone $Q -r1.7 -s./gcc/libiberty project proj-clone 2> ERR && {
 	cat ERR   
 	exit 1
 }
-grep -q "clone: bkd: component not present: gcc/libiberty" ERR || {
+grep -q "clone: remote clone: component not present: gcc/libiberty" ERR || {
 	echo failed
 	cat ERR
 	exit 1

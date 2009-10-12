@@ -106,3 +106,14 @@ bk -P commit $Q -f
 bk -P pull $Q || exit 1
 bk -qAr check -ac || exit 1
 echo OK
+
+echo $N Check that bk idcache does not break the repo ...............$NL
+cd "$HERE/project"
+# this used to break things because idcache walk didn't include deep nest
+bk idcache $Q
+bk changes -vr+ > GOT
+# this fixes things
+bk -r check -ac || exit 1
+bk changes -vr+ > WANT
+checkfiles WANT GOT
+echo OK

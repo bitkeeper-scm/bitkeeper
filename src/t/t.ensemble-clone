@@ -275,7 +275,7 @@ test -d mynewgcc4 && {
 	exit 1
 }
 # XXX weak message
-grep -q "clone: bkd: junk must be either a glob, key" ERR || {
+grep -q "clone: remote clone: junk must be either a glob, key" ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1
@@ -294,7 +294,7 @@ test -d mynewgcc4 && {
 	exit 1
 }
 # XXX weak message
-grep -q "clone: bkd: ./junk must be either a glob, key" ERR || {
+grep -q "clone: remote clone: ./junk must be either a glob, key" ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1

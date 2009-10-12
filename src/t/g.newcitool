@@ -374,7 +374,7 @@ EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
 
-echo $N Test weird filenaems with comments ..........................$NL
+echo $N Test weird filenames with comments ..........................$NL
 cd "$HERE/project"
 # clean up from previous tests
 bk sfiles -x | xargs rm -f
@@ -405,4 +405,5 @@ bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
 	test_fileHasIcon "t.rev@+" done
 	test_buttonPress "Quit" then "Quit without saving*"
 EOF
-test $? -ne 0 -o -s "$OUT" && { echo $N "failed (bug known) "$NL; cat "$OUT"; }
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK

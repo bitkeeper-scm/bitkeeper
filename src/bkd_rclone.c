@@ -192,6 +192,10 @@ cmd_rclone_part2(int ac, char **av)
 	}
 
 	sccs_mkroot(".");
+	if (opts.product) {
+		touch("BitKeeper/log/PRODUCT", 0644);
+		proj_reset(0);
+	}
 	putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) return (-1);
 	repository_wrlock();

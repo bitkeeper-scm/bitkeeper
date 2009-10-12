@@ -238,7 +238,7 @@ ls > D
 bk new $Q D
 bk commit $Q -ywhatever
 bk push -c0 $Q
-if [ $? != 1 ]; then echo push failed to exit with an error; exit 1; fi
+if [ $? != 2 ]; then echo push failed to exit with an error; exit 1; fi
 echo OK
 
 echo $N Make sure push fails with global read lock ..................$NL

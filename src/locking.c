@@ -5,6 +5,9 @@
  */
 #include "system.h"
 #include "sccs.h"
+#include "nested.h"
+#include "tomcrypt.h"
+#include "tomcrypt/randseed.h"
 
 /*
  * Return all the lock files which start with a digit, i.e.,
@@ -175,6 +178,7 @@ repository_locked(project *p)
 			TRACE("repository_locked(%s) = 0", root);
 			return (0);
 		}
+		if (nested_mine(getenv("BK_NESTED_LOCK"))) return (0);
 		ret = repository_hasLocks(root, WRITER_LOCK_DIR);
 		sprintf(path, "%s/%s", root, WRITER_LOCK);
 		unless (ret && exists(path)) {
@@ -350,7 +354,9 @@ wrlock(void)
 	}
 
 	sprintf(path, "%s/%s", root, ROOT2RESYNC);
-	if (exists(path) && !getenv("_BK_IGNORE_RESYNC_LOCK")) {
+	if (exists(path) &&
+	    !(getenv("_BK_IGNORE_RESYNC_LOCK") ||
+		nested_mine(getenv("BK_NESTED_LOCK")))) {
 		sccs_unlockfile(lock);
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		(void)rmdir(path);
@@ -527,4 +533,166 @@ repository_lockcleanup(void)
 	 * Unfortunately this is run in atexit() so we can't portably change
 	 * the exit status if an error occurs.
 	 */
+}
+
+/*
+ * Nested locking routines
+ */
+enum {
+	NL_OK,
+	NL_NOT_NESTED,
+	NL_NOT_PRODUCT,
+	NL_ALREADY_LOCKED,
+	NL_NO_NESTED_WRITER_LOCK,
+	NL_MISMATCH,
+	NL_COULD_NOT_LOCK_RESYNC,
+	NL_COULD_NOT_LOCK_NOT_MINE
+} nl_errno;
+
+private	char	*errMsgs[] = {
+	"ERROR-Everything is fine, go forth and multiply\n",
+	"ERROR-Not a nested collection\n",
+	"ERROR-Not a product\n",
+	"ERROR-Another operation is already in progress\n",
+	"ERROR-Could not find this nested lock\n",
+	"ERROR-Current lock does not match this lock\n",
+	"ERROR-Could not lock product, locked by RESYNC\n",
+	"ERROR-Could not lock product, repository not mine\n",
+	NULL
+};
+
+
+/*
+ * The idea behind nested locking is that we assign ownership of the
+ * RESYNC directory to whoever has the right NLID. Normally the RESYNC
+ * directory acts as a global lock, having a valid NLID allows us to
+ * ignore that lock.
+ */
+char *
+nested_wrlock(project *p)
+{
+	char	*t = 0, *root;
+	char	*user, *host;
+	u32	random;
+
+	unless (proj_isProduct(p) && isdir("BitKeeper")) {
+		nl_errno = NL_NOT_PRODUCT;
+		return (0);
+	}
+
+	unless (repository_mine('w')) {
+		nl_errno = NL_COULD_NOT_LOCK_NOT_MINE;
+		return (0);
+	}
+
+	rand_getBytes((void *)&random, 4);
+
+	if (getenv("_BK_IN_BKD")) {
+		user = getenv("BK_REALUSER");
+		host = getenv("BK_REALHOST");
+	} else {
+		user = sccs_user();
+		host = sccs_host();
+	}
+
+	t = aprintf("%s|%s|%s|%d|%u|%u", user, host, prog,
+	    time(0), getpid(), random);
+
+	if (exists(NESTED_WRITER_LOCK)) {
+		nl_errno = NL_ALREADY_LOCKED;
+err:		free(t);
+		return (0);
+	}
+
+	/* Now what we're done, lock the entire thing */
+	root = aprintf("%s/" ROOT2RESYNC , proj_root(proj_product(0)));
+	if (exists(root) || mkdirp(root)) {
+		nl_errno = NL_COULD_NOT_LOCK_RESYNC;
+		goto err;
+	}
+
+	/*
+	 * I'm assuming the repository is write-locked at this moment,
+	 * so just writing the file should be safe.
+	 */
+	Fprintf(NESTED_WRITER_LOCK, "%s\n", t);
+
+	/*
+	 * XXX: Probably worth saving the tip of the product here in
+	 * case we need to undo later on.
+	 */
+
+	proj_reset(p);
+	return (t);
+}
+
+/*
+ * Return true if the lock passed in is the one on disk,
+ * i.e., either I or someone in my ancestry locked it.
+ */
+int
+nested_mine(char *nested_lock)
+{
+	char	*t, *tfile, *prod_root;
+	int	rc = 0;
+
+	unless (nested_lock) return (0);
+
+	unless (proj_isEnsemble(0)) {
+		nl_errno = NL_NOT_NESTED;
+		return (0);
+	}
+
+	prod_root = proj_root(proj_product(0));
+
+	tfile = aprintf("%s/%s", prod_root, NESTED_WRITER_LOCK);
+	unless(exists(tfile)) {
+		nl_errno = NL_NO_NESTED_WRITER_LOCK;
+		goto out;
+	}
+
+	t = loadfile(tfile, 0);
+	chomp(t);
+	unless (rc = streq(nested_lock, t)) nl_errno = NL_MISMATCH;
+	free(t);
+out:	free(tfile);
+	return (rc);
+}
+
+/*
+ * This gives up ownership of the RESYNC directory.
+ */
+int
+nested_unlock(char *nlid)
+{
+	char	*tfile, *resync;
+	int	rc = 1;
+
+	unless (nested_mine(nlid)) return (1);
+
+	tfile = aprintf("%s/%s", proj_root(proj_product(0)), NESTED_WRITER_LOCK);
+	resync = aprintf("%s/" ROOT2RESYNC, proj_root(proj_product(0)));
+	if (unlink(tfile)) goto out;
+	rc = 0;
+
+out:	free(tfile);
+	free(resync);
+	return (rc);
+}
+
+int
+nested_abort(char *nlid)
+{
+	unless (nlid) return (1);
+
+	/*
+	 * XXX: run bk abort under the same NLID
+	 */
+	return (nested_unlock(nlid));
+}
+
+char *
+nested_errmsg(int bkd)
+{
+	return (errMsgs[nl_errno] + ((bkd) ? 0 : 6));
 }

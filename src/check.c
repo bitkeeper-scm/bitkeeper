@@ -212,6 +212,7 @@ check_main(int ac, char **av)
 		}
 		n = nested_init(proj_isProduct(0) ? cset : 0,
 		    0, 0, NESTED_PENDING);
+		assert(n);
 		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
 			if (!cp || strneq(c->path, cp, cplen)) {
@@ -440,6 +441,7 @@ check_main(int ac, char **av)
 			return (1);
 		}
 	}
+	repos_update(cset);
 	sccs_free(cset);
 	cset = 0;
 	if (errors && fix) {
@@ -1133,7 +1135,10 @@ fetch_changeset(void)
 	fgets(buf, sizeof(buf), f);
 	chomp(buf);
 	fclose(f);
-	s = sccs_init(CHANGESET, 0);
+	unless (s = sccs_init(CHANGESET, INIT_MUSTEXIST)) {
+		fprintf(stderr, "Can't initialize ChangeSet file\n");
+		exit(1);
+	}
 	unless (d = sccs_findrev(s, buf)) {
 		getMsg("chk5", buf, '=', stderr);
 		exit(1);

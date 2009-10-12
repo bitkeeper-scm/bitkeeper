@@ -6,14 +6,6 @@ private	int	mixed;		/* running in mixed long/short mode */
 private	void	rebuild(void);
 private	int	caches(char *filename, struct stat *sb, void *data);
 
-private inline sccs *
-init(char *name, int flags)
-{
-	sccs	*s = sccs_init(name, flags);
-
-	return (s);
-}
-
 int
 idcache_main(int ac, char **av)
 {
@@ -131,7 +123,7 @@ caches(char *file, struct stat *sb, void *data)
 
 	file += 2;
 	if (streq(file, CHANGESET)) return (0);
-	unless (sc = init(file, INIT_NOCKSUM)) return (0);
+	unless (sc = sccs_init(file, INIT_NOCKSUM)) return (0);
 	unless (HAS_SFILE(sc) && sc->cksumok) {
 		sccs_free(sc);
 		return (0);

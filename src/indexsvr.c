@@ -45,7 +45,9 @@ private	int	handle_cmd(opts *opts, int sock, u8 *buf, int len);
 private	int	mkstatus(int rc);
 private	int	getu16(u8 *p);
 private	void	putu16(u8 **t, u16 val);
+#if 0
 private	int	getu32(u8 *p);
+#endif
 private	void	putu32(u8 **t, u32 val);
 
 private	char	*remap_path(char *path);
@@ -427,11 +429,13 @@ getu16(u8 *p)
 	return (p[0] + (p[1] << 8));
 }
 
+#if 0
 private int
 getu32(u8 *p)
 {
 	return (p[0] + (p[1] << 8) + (p[2] << 16) + (p[3] << 24));
 }
+#endif
 
 private void
 putu16(u8 **p, u16 val)

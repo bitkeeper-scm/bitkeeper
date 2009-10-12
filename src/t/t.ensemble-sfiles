@@ -1,5 +1,8 @@
 echo $N Setup some nested repos .....................................$NL
+fresh_commercial standalone
+cd ..
 nested project
+mv ../standalone .
 bk lease renew -w  # hack!
 mkdir -p a/b
 touch c
@@ -34,9 +37,9 @@ BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 a/b/SCCS/s.f
-a/b/c1/SCCS/s.f
 a/b/c/SCCS/s.ChangeSet
 a/b/c/d/e/SCCS/s.ChangeSet
+a/b/c1/SCCS/s.f
 gcc/SCCS/s.ChangeSet
 gdb/SCCS/s.ChangeSet
 EOF
@@ -105,11 +108,8 @@ echo OK
 echo $N bk sfiles -1 ................................................$NL
 bk sfiles -1 > GOT
 echo SCCS/s.ChangeSet > WANT
-cmp -s GOT WANT && {
-	echo fix test
-	exit 1
-}
-echo "failed (bug )"
+cmpfiles GOT WANT
+echo OK
 
 echo $N bk sfiles -N in a nested collection .........................$NL
 bk sfiles -N > GOT
@@ -156,11 +156,13 @@ echo OK
 
 echo $N bk sfiles -N vs find in a nested collection .................$NL
 bk sfiles -N | sort > GOT
+mv standalone ..
 bk _find . -type f | grep SCCS/s | sort > WANT
+mv ../standalone .
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles -r in a nested collection .........................$NL
+echo $N bk sfiles -r in a nested collection includes extras .........$NL
 bk sfiles -r > GOT
 cat <<EOF > WANT
 SCCS/s.ChangeSet
@@ -193,6 +195,11 @@ gdb/BitKeeper/etc/SCCS/s.collapsed
 gdb/BitKeeper/etc/SCCS/s.config
 gdb/BitKeeper/etc/SCCS/s.gone
 gdb/BitKeeper/etc/SCCS/s.ignore
+standalone/SCCS/s.ChangeSet
+standalone/BitKeeper/etc/SCCS/s.collapsed
+standalone/BitKeeper/etc/SCCS/s.config
+standalone/BitKeeper/etc/SCCS/s.gone
+standalone/BitKeeper/etc/SCCS/s.ignore
 EOF
 cmpfiles GOT WANT
 echo OK
@@ -204,9 +211,9 @@ echo $N bk sfiles ...................................................$NL
 bk sfiles > GOT
 cat <<EOF > WANT
 b/SCCS/s.f
-b/c1/SCCS/s.f
 b/c/SCCS/s.ChangeSet
 b/c/d/e/SCCS/s.ChangeSet
+b/c1/SCCS/s.f
 EOF
 cmpfiles GOT WANT
 echo OK

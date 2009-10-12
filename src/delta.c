@@ -29,10 +29,7 @@ fix_gmode(sccs *s, int gflags)
 		s->mode &= ~0222;	/* turn off write mode */
 	}
 
-	if (chmod(s->gfile, s->mode)) {
-		perror(s->gfile);
-		return (1);
-	}
+	if (chmod(s->gfile, s->mode)) return (1);
 	return (0);
 }
 
@@ -405,7 +402,15 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			goto next;
 		}
 		if (df & DELTA_SAVEGFILE) {
-			if (fix_gmode(s, gf)) errors |= 16;
+			/*
+			 * fix_gmode() will fail if we don't own
+			 * the gfile, in that case set the stage
+			 * to re-get it
+			 */
+			if (fix_gmode(s, gf)) {
+				reget = 1;
+				gf &= ~GET_SKIPGET;
+			}
 		}
 		if (df & NEWFILE) {
 			/*

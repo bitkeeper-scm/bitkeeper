@@ -159,6 +159,14 @@ err:		if (undo_list[0]) unlink(undo_list);
 			fprintf(stderr, "undo: ensemble failed.\n");
 			goto err;
 		}
+		unless (n->oldtip) {	/* tag only undo */
+			unless (quiet) {
+				puts("#### Undo tags in Product ####");
+				fflush(stdout);
+			}
+			nested_free(n);
+			goto prod;
+		}
 		/* make sure we can explain the aliases at the new cset */
 		if (nested_aliases(n, n->oldtip, &n->here, 0, 0)) {
 			fprintf(stderr,
@@ -284,7 +292,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			fflush(stdout);
 		}
 	}
-
+ prod:
 	if (save) {
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
 		/* like bk makepatch but skips over missing files/keys */

@@ -28,3 +28,56 @@ grep -q "direct connection" ERR && {
 echo OK
 
 # XXX need to test proxy authentication (Oscar?)
+
+echo --- Test http conections via local proxy
+P=`port 50000`
+bk bkd -q -d -p$P -ikill
+trap "bk _kill bk://localhost:$P" 0
+commercial project
+cd ..
+http_proxy=http://localhost:3128
+export http_proxy
+HOST=`bk gethost -r`
+
+echo $N Test rclone .................................................$NL
+bk clone $Q project http://$HOST:$P/copy || exit 1
+echo OK
+
+echo $N Test clone ..................................................$NL
+bk clone $Q http://$HOST:$P/copy copy2 || exit 1
+echo OK
+
+echo $N Test pull ...................................................$NL
+cd project
+echo hi > file
+bk new -b $Q file || exit 1
+bk commit $Q -ybam || exit 2
+cd ../copy
+bk pull $Q http://$HOST:$P/project || exit 1
+bk lock -U ../project
+echo OK
+
+echo $N Test push ...................................................$NL
+bk push $Q http://$HOST:$P/copy2 || exit 1
+bk lock -U
+echo OK
+
+echo $N Test changes -L .............................................$NL
+cd ../project
+echo hi > bar
+bk new $Q bar || exit 1
+bk commit $Q -ybar || exit 2
+KEY1=`bk prs -hnd:KEY: -r+ ChangeSet`
+cd ../copy
+echo hi > baz
+bk new $Q baz || exit 3
+bk commit $Q -ybaz || exit 4
+KEY2=`bk prs -hnd:KEY: -r+ ChangeSet`
+KEY=`bk changes -qnd:KEY: -L http://$HOST:$P/project`
+test "$KEY" = "$KEY2" || exit 5
+echo OK
+
+echo $N Test changes -R .............................................$NL
+KEY=`bk changes -qnd:KEY: -R http://$HOST:$P/project`
+test "$KEY" = "$KEY1" || exit 1
+echo OK

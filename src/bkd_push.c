@@ -2,8 +2,6 @@
 #include "bam.h"
 #include "nested.h"
 
-private	int	do_resolve(char **av);
-
 /*
  * Important, if we have error, we must close fd1 or exit
  */
@@ -11,6 +9,7 @@ int
 cmd_push_part1(int ac, char **av)
 {
 	char	*p, **aliases;
+	char	*nlid;
 	int	i, c, n, status;
 	int	debug = 0, gzip = 0, product = 0;
 	MMAP    *m;
@@ -34,6 +33,28 @@ cmd_push_part1(int ac, char **av)
 
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
+
+	/*
+	 * Repository locking has already been taken care of by the
+	 * code in bk.c. Here we check nested locks before we do
+	 * anything else.
+	 */
+	if (nlid = getenv("BK_NESTED_LOCK")) {
+		/* we're part of a bigger piece, just check our nlid is valid */
+		unless (nested_mine(nlid)) {
+			out(nested_errmsg(1));
+			return (1);
+		}
+	} else if (product) {
+		/* First push of a product, we need a new nlid */
+		unless (nlid = nested_wrlock(0)) {
+			out(nested_errmsg(1));
+			return (1);
+		}
+		safe_putenv("BKD_NESTED_LOCK=%s", nlid);
+		free(nlid);
+	}
+
 	if (sendServerInfoBlock(0)) return (1);
 	if (getenv("BKD_LEVEL") && (atoi(getenv("BKD_LEVEL")) > getlevel())) {
 		/* they got sent the level so they are exiting already */
@@ -106,17 +127,10 @@ cmd_push_part1(int ac, char **av)
 	}
 	if (product) {
 		/*
-		 * Locking is kinda broken for an ensemble push.  This
-		 * is a push_part1 for the product and the client will
-		 * go ahead and do pushes for each component and the
-		 * product as separate connects after this, so we go
-		 * ahead and drop the write lock here.  The other
-		 * connections will reacquire locks.  We do this
-		 * before sending the listkey output to prevent races
-		 * from here to the start of the component push of the
-		 * product.
+		 * Okay to unlock, the nested locking code is keeping a
+		 * RESYNC around
 		 */
-		 repository_unlock(0);
+		repository_unlock(0);
 	}
 	if (debug) {
 		fprintf(stderr, "cmd_push_part1: sending key list\n");
@@ -139,7 +153,7 @@ cmd_push_part2(int ac, char **av)
 {
 	int	fd2, pfd, c, rc = 0;
 	int	gzip = 0;
-	int	status, debug = 0, nothing = 0, conflict = 0;
+	int	status, debug = 0, nothing = 0, conflict = 0, product = 0;
 	pid_t	pid;
 	char	*p;
 	char	bkd_nul = BKD_NUL;
@@ -148,7 +162,7 @@ cmd_push_part2(int ac, char **av)
 	char	*takepatch[] = { "bk", "takepatch", "-c", "-vv", 0};
 	char	buf[4096];
 
-	while ((c = getopt(ac, av, "dGnqz|")) != -1) {
+	while ((c = getopt(ac, av, "dGnPqz|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -157,6 +171,7 @@ cmd_push_part2(int ac, char **av)
 		    case 'd': debug = 1; break;
 		    case 'G': putenv("BK_NOTTY=1"); break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
+		    case 'P': product = 1;
 		    case 'q': takepatch[3] = 0; break; /* remove -vvv */
 		    default: break;
 		}
@@ -188,9 +203,22 @@ cmd_push_part2(int ac, char **av)
 		conflict = 1;
 		putenv("BK_STATUS=CONFLICTS");
 	}
-	if (nothing || conflict) {
+	if ((nothing || conflict) && product) {
+		char	*resync;
+
+		/*
+		 * Kludge: abort here.
+		 * XXX: should we abort on conflict too?
+		 */
+		resync = aprintf("%s/%s", proj_root(0), ROOT2RESYNC);
+		nested_abort(getenv("BK_NESTED_LOCK"));
+		if (rmtree(resync)) {
+			out("ERROR-could not unlock remote");
+		}
+		free(resync);
 		goto done;
 	}
+	if (nothing || conflict) goto done;
 	if (!streq(buf, "@PATCH@")) {
 		fprintf(stderr, "expect @PATCH@, got <%s>\n", buf);
 		rc = 1;
@@ -254,14 +282,16 @@ cmd_push_part2(int ac, char **av)
 		printf("@DATASIZE=%s@\n", psize(sfio));
 		fflush(stdout);
 		chdir(RESYNC2ROOT);
+	} else if (product) {
+		printf("@DELAYING RESOLVE@\n");
 	} else {
-		rc = do_resolve(av);
+		rc = bkd_doResolve(av);
 	}
 done:	return (rc);
 }
 
-private int
-do_resolve(char **av)
+int
+bkd_doResolve(char **av)
 {
 	int	fd2, pfd, c, rc = 0;
 	int	status, debug = 0;
@@ -285,7 +315,7 @@ do_resolve(char **av)
 	/*
 	 * Do resolve
 	 */
-	if (debug) fprintf(stderr, "cmd_push_part2: calling resolve\n");
+	if (debug) fprintf(stderr, "%s: calling resolve\n", av[0]);
 	printf("@RESOLVE INFO@\n");
 	fflush(stdout);
 	printf("Running resolve to apply new work...\n");
@@ -333,13 +363,13 @@ cmd_push_part3(int ac, char **av)
 	int	fd2, pfd, c, rc = 0;
 	int	status, debug = 0;
 	int	inbytes, outbytes;
-	int	gzip = 0;
+	int	gzip = 0, product = 0;
 	pid_t	pid;
 	FILE	*f;
 	char	*sfio[] = {"bk", "sfio", "-iqB", "-", 0};
 	char	buf[4096];
 
-	while ((c = getopt(ac, av, "dGqz|")) != -1) {
+	while ((c = getopt(ac, av, "dGPqz|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -347,6 +377,7 @@ cmd_push_part3(int ac, char **av)
 			break;
 		    case 'd': debug = 1; break;
 		    case 'G': putenv("BK_NOTTY=1"); break;
+		    case 'P': product = 1; break;
 		    case 'q': break;
 		    default: break;
 		}
@@ -416,6 +447,10 @@ cmd_push_part3(int ac, char **av)
 	fputs("@END@\n", stdout);
 	fflush(stdout);
 
-	if (isdir(ROOT2RESYNC)) rc = do_resolve(av);
+	if (product) {
+		printf("@DELAYING RESOLVE@\n");
+	} else if (isdir(ROOT2RESYNC)) {
+		rc = bkd_doResolve(av);
+	}
 done:	return (rc);
 }

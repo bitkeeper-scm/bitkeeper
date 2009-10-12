@@ -164,6 +164,7 @@ rclone_ensemble(remote *r)
 	unless (opts.aliases) opts.aliases = addLine(0, strdup("default"));
 	START_TRANSACTION();
 	n = nested_init(0, opts.rev, 0, flags);
+	assert(n);
 	if (nested_aliases(n, n->tip, &opts.aliases, proj_cwd(), n->pending)) {
 		fprintf(stderr, "%s: unable to expand aliases\n");
 		rc = 1;
@@ -475,6 +476,7 @@ send_sfio_msg(remote *r, char **envVar)
 	assert(f);
 	sendEnv(f, envVar, r, 0);
 	fprintf(f, "rclone_part2");
+	if (proj_isProduct(0)) fprintf(f, " -P");
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);

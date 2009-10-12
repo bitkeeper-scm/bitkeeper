@@ -17,6 +17,7 @@ private	struct {
 	u32	nocommit:1;		/* -C: do not commit (attach cmd) */
 	u32	attach:1;		/* is attach command? */
 	u32	detach:1;		/* is detach command? */
+	u32	product:1;		/* is product? */
 	int	delay;			/* wait for (ssh) to drain */
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
@@ -390,6 +391,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 			opts->aliases = addLine(opts->aliases, strdup(buf));
 		}
 		getline2(r, buf, sizeof (buf));
+		opts->product = 1;
 	}
 
 	// XXX - would be nice if we did this before bailing out on any of
@@ -455,6 +457,14 @@ done:	if (rc) {
 		trigger("clone", "post");
 	}
 
+	if (proj_isProduct(0) && getenv("BK_NESTED_LOCK")) {
+		if (nested_unlock(getenv("BK_NESTED_LOCK"))) {
+			fprintf(stderr, "%s", nested_errmsg(0));
+			rc = 1;
+		}
+		unless (rc) rmtree(ROOT2RESYNC);
+
+	}
 	repository_unlock(0);
 	return (rc);
 }
@@ -532,7 +542,7 @@ clone2(remote *r)
 		rc = spawnvp(_P_WAIT, "bk", cav + 1);
 		freeLines(cav, 0);
 		if (rc) {
-			fprintf(stderr, "clone: fetch to fetch components\n");
+			fprintf(stderr, "clone: failed to fetch components\n");
 			return (-1);
 		}
 	}
@@ -587,6 +597,18 @@ initProject(char *root, remote *r)
 	putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) return (-1);
 	repository_wrlock();
+	if (opts->product) {
+		char	*nlid = 0;
+		/* XXX: Remove all this crud and
+		 * assert(!getenv(BK_NESTED_LOCK)) in main */
+		touch("BitKeeper/log/PRODUCT", 0664);
+		proj_reset(0);
+		unless (getenv("BK_NESTED_LOCK") || (nlid = nested_wrlock(0))) {
+			fprintf(stderr, "%s", nested_errmsg(0));
+			return (1);
+		}
+		if (nlid) safe_putenv("BK_NESTED_LOCK=%s", nlid);
+	}
 	if (getenv("BKD_LEVEL")) {
 		setlevel(atoi(getenv("BKD_LEVEL")));
 	}
@@ -974,7 +996,6 @@ out:		chdir(frompath);
 	repository_rdunlock(0);
 	chdir(frompath);
 	repository_wrunlock(0);
-
 	/*
 	 * XXX - we could put in logic here that says if we relinked enough
 	 * (or were already relinked enough) to the parent the exit.
@@ -1087,17 +1108,29 @@ attach(void)
 		fprintf(stderr, "attach: failed to make new cset\n");
 		return (-1);
 	}
+	proj_reset(0);	/* to reset proj_isComponent() */
+	/* lock the product */
+	strcpy(buf, proj_cwd());
+	proj_cd2product();
+	rc = repository_wrlock();
+	chdir(buf);
+	if (rc) {
+		fprintf(stderr, "attach: failed to lock product, giving up\n");
+		return (-1);
+	}
 	concat_path(buf, proj_root(proj_product(0)), "BitKeeper/log/HERE");
 	if (f = fopen(buf, "a")) {
 		fprintf(f, "%s\n", proj_rootkey(0));
 	}
 	if (!f || fclose(f)) {
 		fprintf(stderr, "attach: failed to write HERE file\n");
-		return (-1);
+		rc = -1;
+		goto end;
 	}
-	proj_reset(0);	/* to reset proj_isComponent() */
 	nested_check();
 	unless (opts->nocommit) {
+		putenv("BK_NO_REPO_LOCK=YES");
+		putenv("BK_IGNORE_WRLOCK=YES");
 		proj_cd2product();
 		sprintf(buf,
 			"bk -P commit -y'attach %s' %s -",
@@ -1106,9 +1139,16 @@ attach(void)
 		if (f = popen(buf, "w")) {
 			fprintf(f, "%s/SCCS/s.ChangeSet|+\n", relpath);
 		}
-		return (!f || pclose(f));
+		putenv("BK_NO_REPO_LOCK=");
+		putenv("BK_IGNORE_WRLOCK=");
+		rc = (!f || pclose(f));
 	}
-	return (0);
+	/* unlock */
+end:	strcpy(buf, proj_cwd());
+	proj_cd2product();
+	repository_unlock(1);
+	chdir(buf);
+	return (rc);
 }
 
 int
