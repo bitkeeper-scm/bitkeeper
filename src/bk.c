@@ -246,7 +246,6 @@ main(int volatile ac, char **av, char **env)
 				usage();
 			}
 		}
-		if (streq(prog, "check") && getenv("_BK_NO_CHECK")) return (0);
 
 		/*
 		 * Make -A/-N be honored only in a nested collection.

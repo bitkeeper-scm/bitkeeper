@@ -1164,6 +1164,58 @@ fetch_changeset(void)
 	fprintf(stderr, "ChangeSet restoration complete.\n");
 }
 
+/*
+ * color a merge node so the merge is flagged RED/BLUE the parent side
+ * is RED and the merge side is BLUE.  The GCA has neither side.
+ * Returns the largest serial that is older than all colored nodes.
+ */
+private int
+color_merge(sccs *s, delta *d)
+{
+	delta	*p;
+	int	oldest = 0, cutoff, color;
+	const int	mask = (D_RED|D_BLUE);
+
+	assert(d->merge);	/* only works on merge */
+
+	d->flags |= mask;
+	p = d->parent;
+	cutoff = p->serial;
+	p->flags |= D_RED;
+
+	if (d->merge < cutoff) cutoff = d->merge;
+	p = sfind(s, d->merge);
+	p->flags |= D_BLUE;
+
+	for (d = d->next; d && (d->serial >= cutoff); d = d->next) {
+		if (TAG(d)) continue;
+		color = (d->flags & mask);
+		unless (color) continue;
+
+		/* color this node to its final value */
+		/* in gca, nothing set */
+		if (color == mask) {
+			d->flags &= ~mask;
+		} else {
+			oldest = d->serial;
+		}
+
+		/* Color parents */
+		if (p = d->parent) {
+			p->flags |= color;
+			if ((color != mask) && (p->serial < cutoff)) {
+				cutoff = p->serial;
+			}
+		}
+		if (d->merge && (p = sfind(s, d->merge))) {
+			p->flags |= color;
+			if ((color != mask) && (p->serial < cutoff)) {
+				cutoff = p->serial;
+			}
+		}
+	}
+	return (oldest);
+}
 
 /*
  * Open up the ChangeSet file and get every key ever added.  Build the
@@ -1174,22 +1226,75 @@ private void
 buildKeys(MDBM *idDB)
 {
 	char	*s, *t;
-	int	n = 0, e = 0;
+	int	e = 0;
 	delta	*d;
 	hash	*deltas;
+	ser_t	oldest = 0, ser;
+	struct	rkdata {
+		hash	*deltas;
+		u8	mask[0];
+	};
 	char	key[MAXKEY];
 
+	if ((d = sccs_top(cset))->merge) {
+		/* cset tip is a merge, do extra checks */
+		oldest = color_merge(cset, d);
+		assert(oldest > 0);
+	}
 	unless (r2deltas = hash_new(HASH_MEMHASH)) {
 		perror("buildkeys");
 		exit(1);
 	}
 	sccs_rdweaveInit(cset);
 	while (s = sccs_nextdata(cset)) {
-		if (*s == '\001') continue;
+		if (*s == '\001') {
+			if (s[1] != 'I') continue;
+			ser = atoi(s+3);
+			if (ser < oldest) {
+				/*
+				 * We have now processed the tip merge and
+				 * all deltas from both sides of merge
+				 * Look to see if any rootkeys were modifed
+				 * by both the left and the right, but
+				 * failed to include a merge delta.
+				 */
+				EACH_HASH(r2deltas) {
+					struct	rkdata *rk;
+
+					rk = r2deltas->vptr;
+					unless ((rk->mask[0] & 7) == 3) {
+						continue;
+					}
+					/* problem found */
+					fprintf(stderr,
+					    "check: ChangeSet %s is a merge "
+					    "but is missing a required merge "
+					    "delta for this rootkey\n",
+					    sccs_top(cset)->rev);
+					fprintf(stderr, "\t%s\n",
+					    (char *)r2deltas->kptr);
+					exit(1);
+				}
+				oldest = 0;
+			}
+			if (oldest) d = sfind(cset, ser);
+			continue;
+		}
 		t = separator(s);
 		*t++ = 0;
-		if (hash_insert(r2deltas, s, t-s, 0, sizeof(hash *))) {
-			*(hash **)r2deltas->vptr = hash_new(HASH_MEMHASH);
+		if (hash_insert(r2deltas, s, t-s, 0,
+			sizeof(struct rkdata) + (oldest ? 1 : 0))) {
+			((struct rkdata *)r2deltas->vptr)->deltas =
+			    hash_new(HASH_MEMHASH);
+		}
+		if (oldest) {
+			if ((d->flags & (D_RED|D_BLUE)) == (D_RED|D_BLUE)) {
+				((struct rkdata *)r2deltas->vptr)->mask[0] |= 4;
+			} else if (d->flags & D_RED) {
+				((struct rkdata *)r2deltas->vptr)->mask[0] |= 2;
+			} else if (d->flags & D_BLUE) {
+				((struct rkdata *)r2deltas->vptr)->mask[0] |= 1;
+			}
 		}
 		deltas = *(hash **)r2deltas->vptr;
 		assert(deltas);
@@ -1225,10 +1330,6 @@ buildKeys(MDBM *idDB)
 			fprintf(stderr,
 			    "check: key %s replicated in ChangeSet.\n", key);
 		}
-	}
-
-	if (verbose > 2) {
-		fprintf(stderr, "check: found %d keys in ChangeSet\n", n);
 	}
 	if (e) exit(1);
 }

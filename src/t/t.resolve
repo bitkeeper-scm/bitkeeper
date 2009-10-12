@@ -832,7 +832,7 @@ grep -q "VERSION 2" VL || {
 }
 echo OK
 
-echo $N Try autofixing a hosed RESYNC directory......................$NL
+echo $N Show you can\'t commit a partial merge in RESYNC .............$NL
 cd "$HERE"
 bk clone $Q proj copy4
 cd proj/dir2
@@ -878,26 +878,15 @@ bk _rm -f SCCS/r.ChangeSet
 # Fake some comments
 echo "comments" | bk cfile save 'dir2/space file'
 cd ..
-echo 'u' | bk resolve -t >OUT 2>ERR || {
+echo 'u' | bk resolve -t >OUT 2>ERR && {
 	echo failed
-	echo "Resolver failed"
+	echo "Resolver should have failed"
+	cat OUT
+	cat ERR
 	exit 1
 }
-grep -q 'Autofixing partial merge' ERR || {
-	echo failed
-	echo "Did not autofix"
-	exit 1
-}
-# now make sure the top cset in the real tree is the merge
-TIP=`bk changes -r+ -d'$if(:MERGE:){:KEY:}'`
-test "x$TIP" = "x" && {
-	echo failed
-	echo "Tip is not a merge"
-	exit 1
-}
-grep -q "$TIP" BitKeeper/etc/csets-in || {
-	echo failed
-	echo "Did not put TIP in csets-in"
+grep -q 'check: ChangeSet 1.17 is a merge but is missing a required merge delta' ERR || {
+	echo wrong error
 	exit 1
 }
 echo OK
