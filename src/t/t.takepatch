@@ -380,3 +380,25 @@ rm -fr PENDING RESYNC
 _BK_NO_PATCHSFIO=1 bk pull $Q 2> ERR && exit 1
 grep -q 'Please commit pending changes with "bk commit"' ERR || exit 1
 echo "failed (bug -- we just don't update danglers well)"
+
+echo $N Check takepatch checking checksum in sccs_delta .............$NL
+cd "$HERE"
+export BK_NO_REMAP=1
+fresh_commercial no-blob
+unset BK_NO_REMAP
+echo abcde > foo
+bk new $Q foo
+bk commit $Q -yfoo
+bk clone $Q . ../checksum
+bk edit $Q foo
+echo abbde > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+sed s/abbde/abcde/ < SCCS/s.foo > newfoo
+cp -f newfoo SCCS/s.foo
+chmod 444 SCCS/s.foo
+bk admin -z foo
+cd ../checksum
+bk pull $Q -R 2> ERR && exit 1
+grep -q "bad delta checksum: 505:504" ERR || exit 2
+echo OK
