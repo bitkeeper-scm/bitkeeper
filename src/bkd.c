@@ -451,14 +451,14 @@ static	int	content_len = -1;	/* content-length from http header */
 private char *
 nextbyte(char *buf, int size, void *unused)
 {
-        char    ret;
+	int	ret;
 	char	*h;
 
 	if (content_len == 0) return (0);
 	--content_len;
 	if ((ret = bkd_getc()) == EOF) return (0);
 	if (hmac.buf) {
-		hmac.buf[hmac.i++] = ret;
+		hmac.buf[hmac.i++] = (char)ret;
 		if (hmac.i == hmac.len) {
 			h = secure_hashstr(hmac.buf, hmac.len,
 			    makestring(KEY_BK_AUTH_HMAC));
@@ -470,7 +470,7 @@ nextbyte(char *buf, int size, void *unused)
 			memset(&hmac, 0, sizeof(hmac));
 		}
 	}
-	buf[0] = ret;
+	buf[0] = (char)ret;
 	buf[1] = 0;
 	return (buf);
 }

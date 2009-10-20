@@ -157,7 +157,7 @@ int
 getline(int in, char *buf, int size)
 {
 	int	i = 0;
-	char	c;
+	int	c;
 	static	int echo = -1;
 
 	if (echo == -1) {
@@ -170,7 +170,7 @@ getline(int in, char *buf, int size)
 	for (;;) {
 		if ((c = bkd_getc()) != EOF) {
 			if (echo == 2) fprintf(stderr, "[%c]\n", c);
-			if (((buf[i] = c) == '\n') || (c == '\r')) {
+			if (((buf[i] = (char)c) == '\n') || (c == '\r')) {
 				buf[i] = 0;
 				if (echo) {
 					fprintf(stderr,
