@@ -71,12 +71,15 @@ rdlockfile(char *root, char *path)
  * which don't have link(2).  See sccs_lockfile().
  */
 int
-repository_hasLocks(char *root, char *dir)
+repository_hasLocks(project *p, char *dir)
 {
 	char	**lines;
 	int	i, n = 0;
+	char	*root;
 	char	path[MAXPATH];
 
+	root = proj_root(p);
+	assert(root);
 	sprintf(path, "%s/%s", root ? root : ".", dir);
 	lines = lockers(path);
 	EACH(lines) {
@@ -95,13 +98,13 @@ repository_hasLocks(char *root, char *dir)
  * to return true but that's probably not so, see where this is used below.
  */
 int
-repository_mine(char type)
+repository_mine(project *p, char type)
 {
 	char path[MAXPATH];
 
 	HERE();
 	if (type == 'r') {
-		rdlockfile(".", path);
+		rdlockfile(proj_root(p), path);
 		return (exists(path));
 	}
 	return (sccs_mylock(WRITER_LOCK));
@@ -172,14 +175,14 @@ repository_locked(project *p)
 		ret = 1;
 		goto out;
 	}
-	ret = repository_hasLocks(root, READER_LOCK_DIR);
+	ret = repository_hasLocks(p, READER_LOCK_DIR);
 	unless (ret) {
 		if ((s = getenv("BK_IGNORE_WRLOCK")) && streq(s, "YES")) {
 			TRACE("repository_locked(%s) = 0", root);
 			return (0);
 		}
-		if (nested_mine(getenv("BK_NESTED_LOCK"))) return (0);
-		ret = repository_hasLocks(root, WRITER_LOCK_DIR);
+		if (nested_mine(p, getenv("BK_NESTED_LOCK"))) return (0);
+		ret = repository_hasLocks(p, WRITER_LOCK_DIR);
 		sprintf(path, "%s/%s", root, WRITER_LOCK);
 		unless (ret && exists(path)) {
 			sprintf(path, "%s/%s", root, ROOT2RESYNC);
@@ -274,12 +277,12 @@ repository_lockers(project *p)
  * Return -1 if failed, 0 if it worked.
  */
 private int
-rdlock(void)
+rdlock(project *p)
 {
 	char	path[MAXPATH];
 	char	*root;
 
-	unless (root = proj_root(0)) return (LOCKERR_NOREPO);
+	unless (root = proj_root(p)) return (LOCKERR_NOREPO);
 	TRACE("repository_rdlock(%s)", root);
 
 	/*
@@ -314,13 +317,13 @@ rdlock(void)
 }
 
 int
-repository_rdlock(void)
+repository_rdlock(project *p)
 {
 	int	i, ret;
 
 	if (global_wrlocked()) return (LOCKERR_LOST_RACE);
 	for (i = 0; i < 10; ++i) {
-		unless (ret = rdlock()) return (0);
+		unless (ret = rdlock(p)) return (0);
 		usleep(10000);
 	}
 	return (ret);
@@ -331,13 +334,13 @@ repository_rdlock(void)
  * Return -1 if failed, 0 if it worked.
  */
 private int
-wrlock(void)
+wrlock(project *p)
 {
 	char	path[MAXPATH];
 	char	lock[MAXPATH];
 	char	*root;
 
-	unless (root = proj_root(0)) return (LOCKERR_NOREPO);
+	unless (root = proj_root(p)) return (LOCKERR_NOREPO);
 	TRACE("repository_wrlock(%s)", root);
 
 	sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
@@ -356,7 +359,7 @@ wrlock(void)
 	sprintf(path, "%s/%s", root, ROOT2RESYNC);
 	if (exists(path) &&
 	    !(getenv("_BK_IGNORE_RESYNC_LOCK") ||
-		nested_mine(getenv("BK_NESTED_LOCK")))) {
+		nested_mine(p, getenv("BK_NESTED_LOCK")))) {
 		sccs_unlockfile(lock);
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		(void)rmdir(path);
@@ -367,7 +370,7 @@ wrlock(void)
 	/*
 	 * Make sure no readers sneaked in
 	 */
-	if (repository_hasLocks(root, READER_LOCK_DIR)) {
+	if (repository_hasLocks(p, READER_LOCK_DIR)) {
 	    	sccs_unlockfile(lock);
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		(void)rmdir(path);
@@ -384,13 +387,13 @@ wrlock(void)
 }
 
 int
-repository_wrlock(void)
+repository_wrlock(project *p)
 {
 	int	i, ret;
 
 	if (global_locked()) return (LOCKERR_LOST_RACE);
 	for (i = 0; i < 10; ++i) {
-		unless (ret = wrlock()) return (0);
+		unless (ret = wrlock(p)) return (0);
 		usleep(10000);
 	}
 	return (ret);
@@ -400,12 +403,12 @@ repository_wrlock(void)
  * If we have a write lock, downgrade it to a read lock.
  */
 int
-repository_downgrade(void)
+repository_downgrade(project *p)
 {
 	char	path[MAXPATH];
 	char	*root;
 
-	unless (root = proj_root(0)) return (0);
+	unless (root = proj_root(p)) return (0);
 	TRACE("repository_downgrade(%s)", root);
 
 	sprintf(path, "%s/%s", root, WRITER_LOCK);
@@ -422,21 +425,21 @@ repository_downgrade(void)
 	unless (exists(path)) {
 		return (-2); /* possible permission problem */
 	}
-	repository_wrunlock(0);
+	repository_wrunlock(p, 0);
 	write_log("cmd_log", 1, "downgrade write lock (%u)", getpid());
 	return (0);
 }
 
 void
-repository_unlock(int all)
+repository_unlock(project *p, int all)
 {
 	TRACE("repository_unlock(%d)", all);
-	repository_rdunlock(all);
-	repository_wrunlock(all);
+	repository_rdunlock(p, all);
+	repository_wrunlock(p, all);
 }
 
 int
-repository_rdunlock(int all)
+repository_rdunlock(project *p, int all)
 {
 	char	path[MAXPATH];
 	char	*didnt;
@@ -445,7 +448,7 @@ repository_rdunlock(int all)
 	if ((didnt = getenv("BK_NO_REPO_LOCK")) && streq(didnt, "DIDNT")) {
 		return (0);
 	}
-	unless (root = proj_root(0)) return (0);
+	unless (root = proj_root(p)) return (0);
 	TRACE("repository_rdunlock(%s)", root);
 	if (all) {
 		sprintf(path, "%s/%s", root, READER_LOCK_DIR);
@@ -466,7 +469,7 @@ repository_rdunlock(int all)
 }
 
 int
-repository_wrunlock(int all)
+repository_wrunlock(project *p, int all)
 {
 	char	path[MAXPATH];
 	char	*root;
@@ -476,7 +479,7 @@ repository_wrunlock(int all)
 	if ((didnt = getenv("BK_NO_REPO_LOCK")) && streq(didnt, "DIDNT")) {
 		return (0);
 	}
-	unless (root = proj_root(0)) return (0);
+	unless (root = proj_root(p)) return (0);
 	TRACE("repository_wrunlock(%s)", root);
 	if (all) {
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
@@ -504,22 +507,22 @@ repository_wrunlock(int all)
  * Any locks remaining (from this process) is an error.
  */
 void
-repository_lockcleanup(void)
+repository_lockcleanup(project *p)
 {
-	char	*root = proj_root(0);
+	char	*root = proj_root(p);
 
 	unless (root) return;
 	chdir(root);
 
-	if (repository_mine('r') && !getenv("BK_DIE_OFFSET")) {
+	if (repository_mine(p, 'r') && !getenv("BK_DIE_OFFSET")) {
 		char	*pid = aprintf("%u", getpid());
 		
 		getMsg2("read_locked", pid, root, '=', stderr);
 		free(pid);
-		repository_rdunlock(0);
+		repository_rdunlock(p, 0);
 	}
 
-	if (repository_mine('w') && !getenv("BK_DIE_OFFSET")) {
+	if (repository_mine(p, 'w') && !getenv("BK_DIE_OFFSET")) {
 		char	*pid = aprintf("%u", getpid());
 		
 		getMsg2("write_locked", pid, root, '=', stderr);
@@ -527,7 +530,7 @@ repository_lockcleanup(void)
 		/*
 		 * No need to keep the lock if we also have a RESYNC dir
 		 */
-		if (isdir(ROOT2RESYNC)) repository_wrunlock(0);
+		if (isdir(ROOT2RESYNC)) repository_wrunlock(p, 0);
 	}
 	/*
 	 * Unfortunately this is run in atexit() so we can't portably change
@@ -575,12 +578,12 @@ nested_wrlock(project *p)
 	char	*user, *host;
 	u32	random;
 
-	unless (proj_isProduct(p) && isdir("BitKeeper")) {
+	unless (proj_isProduct(p)) {
 		nl_errno = NL_NOT_PRODUCT;
 		return (0);
 	}
 
-	unless (repository_mine('w')) {
+	unless (repository_mine(p, 'w')) {
 		nl_errno = NL_COULD_NOT_LOCK_NOT_MINE;
 		return (0);
 	}
@@ -598,14 +601,14 @@ nested_wrlock(project *p)
 	t = aprintf("%s|%s|%s|%d|%u|%u", user, host, prog,
 	    time(0), getpid(), random);
 
-	if (exists(NESTED_WRITER_LOCK)) {
+	if (exists(proj_fullpath(p, NESTED_WRITER_LOCK))) {
 		nl_errno = NL_ALREADY_LOCKED;
 err:		free(t);
 		return (0);
 	}
 
 	/* Now what we're done, lock the entire thing */
-	root = aprintf("%s/" ROOT2RESYNC , proj_root(proj_product(0)));
+	root = aprintf("%s/" ROOT2RESYNC , proj_root(p));
 	if (exists(root) || mkdirp(root)) {
 		nl_errno = NL_COULD_NOT_LOCK_RESYNC;
 		goto err;
@@ -615,7 +618,7 @@ err:		free(t);
 	 * I'm assuming the repository is write-locked at this moment,
 	 * so just writing the file should be safe.
 	 */
-	Fprintf(NESTED_WRITER_LOCK, "%s\n", t);
+	Fprintf(proj_fullpath(p, NESTED_WRITER_LOCK), "%s\n", t);
 
 	/*
 	 * XXX: Probably worth saving the tip of the product here in
@@ -631,19 +634,19 @@ err:		free(t);
  * i.e., either I or someone in my ancestry locked it.
  */
 int
-nested_mine(char *nested_lock)
+nested_mine(project *p, char *nested_lock)
 {
 	char	*t, *tfile, *prod_root;
 	int	rc = 0;
 
 	unless (nested_lock) return (0);
 
-	unless (proj_isEnsemble(0)) {
+	unless (proj_isEnsemble(p)) {
 		nl_errno = NL_NOT_NESTED;
 		return (0);
 	}
 
-	prod_root = proj_root(proj_product(0));
+	prod_root = proj_root(proj_product(p));
 
 	tfile = aprintf("%s/%s", prod_root, NESTED_WRITER_LOCK);
 	unless(exists(tfile)) {
@@ -663,32 +666,31 @@ out:	free(tfile);
  * This gives up ownership of the RESYNC directory.
  */
 int
-nested_unlock(char *nlid)
+nested_unlock(project *p, char *nlid)
 {
 	char	*tfile, *resync;
 	int	rc = 1;
 
-	unless (nested_mine(nlid)) return (1);
+	unless (nested_mine(p, nlid)) return (1);
 
-	tfile = aprintf("%s/%s", proj_root(proj_product(0)), NESTED_WRITER_LOCK);
-	resync = aprintf("%s/" ROOT2RESYNC, proj_root(proj_product(0)));
+	tfile = proj_fullpath(proj_product(p), NESTED_WRITER_LOCK);
 	if (unlink(tfile)) goto out;
+	resync = proj_fullpath(proj_product(p), ROOT2RESYNC);
+	if (emptyDir(resync)) rmdir(resync);
 	rc = 0;
 
-out:	free(tfile);
-	free(resync);
-	return (rc);
+out:	return (rc);
 }
 
 int
-nested_abort(char *nlid)
+nested_abort(project *p, char *nlid)
 {
 	unless (nlid) return (1);
 
 	/*
 	 * XXX: run bk abort under the same NLID
 	 */
-	return (nested_unlock(nlid));
+	return (nested_unlock(p, nlid));
 }
 
 char *

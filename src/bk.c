@@ -324,9 +324,9 @@ bad_locking:				fprintf(stderr,
 			}
 			while (1) {
 				if (*locking == 'r') {
-					unless (repository_rdlock()) break;
+					unless (repository_rdlock(0)) break;
 				} else if (*locking == 'w') {
-					unless (repository_wrlock()) break;
+					unless (repository_wrlock(0)) break;
 				} else {
 					goto bad_locking;
 				}
@@ -405,8 +405,8 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 		open(buffer, O_RDONLY, 0);
 	}
 	ret = cmd_run(prog, is_bk, ac, av);
-	if (locking && streq(locking, "r")) repository_rdunlock(0);
-	if (locking && streq(locking, "w")) repository_wrunlock(0);
+	if (locking && streq(locking, "r")) repository_rdunlock(0, 0);
+	if (locking && streq(locking, "w")) repository_wrunlock(0, 0);
 out:
 	cmdlog_end(ret);
 	bk_cleanup(ret);
@@ -589,7 +589,7 @@ bk_cleanup(int ret)
 	 * the error log to via the serive log interface. (Service process
 	 * cannot send messages to tty/desktop without special configuration).
 	 */
-	repository_lockcleanup();
+	repository_lockcleanup(0);
 	proj_reset(0);		/* flush data cached in proj struct */
 	fslayer_enable(0);
 
@@ -750,7 +750,7 @@ cmdlog_start(char **av, int httpMode)
 		}
 	}
 	if (do_lock && (cmdlog_flags & CMD_WRLOCK)) {
-		if (i = repository_wrlock()) {
+		if (i = repository_wrlock(0)) {
 			unless (is_remote || !proj_root(0)) {
 				repository_lockers(0);
 			}
@@ -780,7 +780,7 @@ cmdlog_start(char **av, int httpMode)
 		cmdlog_locks |= CMD_WRLOCK;
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
-		if (i = repository_rdlock()) {
+		if (i = repository_rdlock(0)) {
 			unless (is_remote || !proj_root(0)) {
 				repository_lockers(0);
 			}
@@ -921,7 +921,7 @@ cmdlog_end(int ret)
 	free(log);
 	if (!strneq(cmdlog_buffer, "remote ", 7) &&
 	    (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK))) {
-		repository_unlock(0);
+		repository_unlock(0, 0);
 	}
 out:
 	cmdlog_buffer[0] = 0;

@@ -96,7 +96,7 @@ abort_patch(int leavepatch)
 	unlink(BACKUP_LIST);
 	unlink(PASS4_TODO);
 	unlink(APPLIED);
-	repository_wrunlock(1);
+	repository_wrunlock(0, 1);
 	repository_lockers(0);
 	exit(0);
 }

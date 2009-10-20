@@ -458,14 +458,14 @@ done:	if (rc) {
 	}
 
 	if (proj_isProduct(0) && getenv("BK_NESTED_LOCK")) {
-		if (nested_unlock(getenv("BK_NESTED_LOCK"))) {
+		if (nested_unlock(0, getenv("BK_NESTED_LOCK"))) {
 			fprintf(stderr, "%s", nested_errmsg(0));
 			rc = 1;
 		}
 		unless (rc) rmtree(ROOT2RESYNC);
 
 	}
-	repository_unlock(0);
+	repository_unlock(0, 0);
 	return (rc);
 }
 
@@ -596,7 +596,7 @@ initProject(char *root, remote *r)
 
 	putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) return (-1);
-	repository_wrlock();
+	repository_wrlock(0);
 	if (opts->product) {
 		char	*nlid = 0;
 		/* XXX: Remove all this crud and
@@ -956,7 +956,7 @@ do_relink(char *from, char *to, int quiet, char *here)
 		fprintf(stderr, "relink: %s is not a package root\n", from);
 		return (4);
 	}
-	if (repository_wrlock()) {
+	if (repository_wrlock(0)) {
 		fprintf(stderr, "relink: unable to write lock %s\n", from);
 		return (8);
 	}
@@ -966,7 +966,7 @@ do_relink(char *from, char *to, int quiet, char *here)
 	unless (chdir(to) == 0) {
 		fprintf(stderr, "relink: cannot chdir to %s\n", to);
 out:		chdir(frompath);
-		repository_wrunlock(0);
+		repository_wrunlock(0, 0);
 		pclose(f);
 		return (1);
 	}
@@ -974,7 +974,7 @@ out:		chdir(frompath);
 		fprintf(stderr, "relink: %s is not a package root\n", to);
 		goto out;
 	}
-	if (repository_rdlock()) {
+	if (repository_rdlock(0)) {
 		fprintf(stderr, "relink: unable to read lock %s\n", to);
 		goto out;
 	}
@@ -988,14 +988,14 @@ out:		chdir(frompath);
 		    case 1: n++; break;		/* relinked */
 		    case 2: linked++; break;	/* already linked */
 		    case -1:			/* error */
-		    	repository_rdunlock(0);
+			repository_rdunlock(0, 0);
 			goto out;
 		}
 	}
 	pclose(f);
-	repository_rdunlock(0);
+	repository_rdunlock(0, 0);
 	chdir(frompath);
-	repository_wrunlock(0);
+	repository_wrunlock(0, 0);
 	/*
 	 * XXX - we could put in logic here that says if we relinked enough
 	 * (or were already relinked enough) to the parent the exit.
@@ -1112,7 +1112,7 @@ attach(void)
 	/* lock the product */
 	strcpy(buf, proj_cwd());
 	proj_cd2product();
-	rc = repository_wrlock();
+	rc = repository_wrlock(0);
 	chdir(buf);
 	if (rc) {
 		fprintf(stderr, "attach: failed to lock product, giving up\n");
@@ -1146,7 +1146,7 @@ attach(void)
 	/* unlock */
 end:	strcpy(buf, proj_cwd());
 	proj_cd2product();
-	repository_unlock(1);
+	repository_unlock(0, 1);
 	chdir(buf);
 	return (rc);
 }

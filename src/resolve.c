@@ -2397,7 +2397,7 @@ pass4_apply(opts *opts)
 	chdir(RESYNC2ROOT);
 	putenv("_BK_IGNORE_RESYNC_LOCK=YES");
 	for ( ; !opts->from_pullpush; ) {
-		unless (ret = repository_wrlock()) break;
+		unless (ret = repository_wrlock(0)) break;
 		switch (ret) {
 		    case LOCKERR_LOST_RACE:
 			fprintf(stderr, "Waiting for write lock...\n");
@@ -2797,7 +2797,7 @@ resolve_cleanup(opts *opts, int what)
 		goto exit;
 	}
 
-	unless (opts->from_pullpush) repository_wrunlock(0);
+	unless (opts->from_pullpush) repository_wrunlock(0, 0);
 
 	/*
 	 * Get the patch file name from RESYNC before deleting RESYNC.

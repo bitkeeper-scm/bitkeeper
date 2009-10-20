@@ -41,7 +41,7 @@ cmd_push_part1(int ac, char **av)
 	 */
 	if (nlid = getenv("BK_NESTED_LOCK")) {
 		/* we're part of a bigger piece, just check our nlid is valid */
-		unless (nested_mine(nlid)) {
+		unless (nested_mine(0, nlid)) {
 			out(nested_errmsg(1));
 			return (1);
 		}
@@ -130,7 +130,7 @@ cmd_push_part1(int ac, char **av)
 		 * Okay to unlock, the nested locking code is keeping a
 		 * RESYNC around
 		 */
-		repository_unlock(0);
+		repository_unlock(0, 0);
 	}
 	if (debug) {
 		fprintf(stderr, "cmd_push_part1: sending key list\n");
@@ -211,7 +211,7 @@ cmd_push_part2(int ac, char **av)
 		 * XXX: should we abort on conflict too?
 		 */
 		resync = aprintf("%s/%s", proj_root(0), ROOT2RESYNC);
-		nested_abort(getenv("BK_NESTED_LOCK"));
+		nested_abort(0, getenv("BK_NESTED_LOCK"));
 		if (rmtree(resync)) {
 			out("ERROR-could not unlock remote");
 		}

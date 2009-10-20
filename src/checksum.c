@@ -38,7 +38,7 @@ checksum_main(int ac, char **av)
 
 	if (do_sccs) return (chksum_sccs(&av[optind], off));
 
-	if (fix ? repository_wrlock() : repository_rdlock()) {
+	if (fix ? repository_wrlock(0) : repository_rdlock(0)) {
 		repository_lockers(0);
 		return (1);
 	}
@@ -111,7 +111,7 @@ checksum_main(int ac, char **av)
 		sccs_free(s);
 	}
 	if (sfileDone() && !ret) ret = 1;
-	fix ? repository_wrunlock(0) : repository_rdunlock(0);
+	fix ? repository_wrunlock(0, 0) : repository_rdunlock(0, 0);
 	return (ret);
 }
 

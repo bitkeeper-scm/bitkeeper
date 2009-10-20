@@ -102,7 +102,7 @@ usage:			system("bk help -s lock");
 		exit(0);
 
 	    case 'r':	/* read lock the repository */
-		if (repository_rdlock()) {
+		if (repository_rdlock(0)) {
 			fprintf(stderr, "read lock failed.\n");
 			repository_lockers(0);
 			exit(1);
@@ -110,7 +110,7 @@ usage:			system("bk help -s lock");
 		/* make ourselves go when told */
 		if (tcp) {
 			nsock = tcp_accept(tcp);
-			repository_rdunlock(0);
+			repository_rdunlock(0, 0);
 			chdir("/");
 			write(nsock, &c, 1);
 			closesocket(nsock);
@@ -120,12 +120,12 @@ usage:			system("bk help -s lock");
 		/* make ourselves go away after the lock is gone */
 		do {
 			usleep(500000);
-		} while (repository_mine('r') && !caught);
-		if (caught) repository_rdunlock(0);
+		} while (repository_mine(0, 'r') && !caught);
+		if (caught) repository_rdunlock(0, 0);
 		exit(0);
 	    
 	    case 'w':	/* write lock the repository */
-		if (repository_wrlock()) {
+		if (repository_wrlock(0)) {
 			fprintf(stderr, "write lock failed.\n");
 			repository_lockers(0);
 			exit(1);
@@ -133,7 +133,7 @@ usage:			system("bk help -s lock");
 		/* make ourselves go when told */
 		if (tcp) {
 			nsock = tcp_accept(tcp);
-			repository_wrunlock(0);
+			repository_wrunlock(0, 0);
 			chdir("/");
 			write(nsock, &c, 1);
 			closesocket(nsock);
@@ -143,8 +143,8 @@ usage:			system("bk help -s lock");
 		/* make ourselves go away after the lock is gone */
 		do {
 			usleep(500000);
-		} while (repository_mine('w') && !caught);
-		repository_wrunlock(0);
+		} while (repository_mine(0, 'w') && !caught);
+		repository_wrunlock(0, 0);
 		exit(0);
 
 	    case 'l':	/* list lockers / exit status */

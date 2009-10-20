@@ -198,7 +198,7 @@ cmd_rclone_part2(int ac, char **av)
 	}
 	putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) return (-1);
-	repository_wrlock();
+	repository_wrlock(0);
 	if (getenv("BK_LEVEL")) {
 		setlevel(atoi(getenv("BK_LEVEL")));
 	}
@@ -271,7 +271,7 @@ done:
 	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
 	trigger(av[0], "post");
 	fputs("@END@\n", stdout);
-	repository_unlock(0);
+	repository_unlock(0, 0);
 	putenv("BK_CSETS=");
 	return (rc);
 }
@@ -361,7 +361,7 @@ done:
 	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
 	trigger(av[0], "post");
 	fputs("@END@\n", stdout);
-	repository_unlock(0);
+	repository_unlock(0, 0);
 	putenv("BK_CSETS=");
 	return (rc);
 }

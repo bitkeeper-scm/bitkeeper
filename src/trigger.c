@@ -99,7 +99,7 @@ trigger(char *cmd, char *when)
 	}
 
 	/* run post-triggers with a read lock */
-	if (streq(when, "post")) repository_downgrade();
+	if (streq(when, "post")) repository_downgrade(0);
 
 	/* post-resolve == post-incoming */
 	if (streq(when, "post") && streq(event, "resolve")) what = "incoming";

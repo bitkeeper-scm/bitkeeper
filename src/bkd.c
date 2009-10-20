@@ -280,7 +280,7 @@ do_cmds(void)
 			out("ERROR-Try help\n");
 		}
 	}
-	repository_unlock(0);
+	repository_unlock(0, 0);
 	drain();
 	return (ret);
 }

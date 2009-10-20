@@ -571,12 +571,12 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		if (proj_isProduct(0)) {
 			assert(nlid);
 			if (rc = pull_ensemble(r, rmt_aliases)) {
-				if (nested_abort(nlid)) {
+				if (nested_abort(0, nlid)) {
 					fprintf(stderr, "%s", nested_errmsg(0));
 				}
 				goto done;
 			}
-			if (nested_unlock(nlid)) {
+			if (nested_unlock(0, nlid)) {
 				fprintf(stderr, "%s", nested_errmsg(0));
 			}
 		}

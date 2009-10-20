@@ -1275,7 +1275,7 @@ pull(remote *r)
 		sccs_free(s_cset);	/* let go of changeset file */
 		s_cset = 0;
 	}
-	repository_rdunlock(0);
+	repository_rdunlock(0, 0);
 	cmd[i = 0] = "bk";
 	cmd[++i] = "pull";
 	unless (opts.verbose) cmd[++i] = "-q";

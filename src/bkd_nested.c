@@ -10,7 +10,7 @@ cmd_nested(int ac, char **av)
 		return (1);
 	}
 	if (streq(av[1], "unlock")) {
-		if (nested_unlock(getenv("BK_NESTED_LOCK"))) {
+		if (nested_unlock(0, getenv("BK_NESTED_LOCK"))) {
 			out(nested_errmsg(1));
 			return (1);
 		}
@@ -18,7 +18,7 @@ cmd_nested(int ac, char **av)
 		out("@OK@\n");
 		return (0);
 	} else if (streq(av[1], "abort")) {
-		if (nested_abort(getenv("BK_NESTED_LOCK"))) {
+		if (nested_abort(0, getenv("BK_NESTED_LOCK"))) {
 			out(nested_errmsg(1));
 			return (1);
 		}

@@ -57,7 +57,7 @@ usage:			system("bk help -s mv");
 	}
 	av[ac-1] = 0;
 
-        if (!skip_lock && repository_wrlock()) {
+	if (!skip_lock && repository_wrlock(0)) {
                 fprintf(stderr, "mv: unable to write-lock repository\n");
                 return (1);
         }
@@ -81,7 +81,7 @@ usage:			system("bk help -s mv");
 		}
 	}
 	if (dofree) free(dest);
-	unless (skip_lock) repository_wrunlock(0);
+	unless (skip_lock) repository_wrunlock(0, 0);
 	return (rc);
 }
 
@@ -129,7 +129,7 @@ usage:			system("bk help -s mvdir");
 		return (1);
 	}
 
-        if (!skip_lock && repository_wrlock()) {
+	if (!skip_lock && repository_wrlock(0)) {
                 fprintf(stderr, "mv: unable to write lock repository\n");
                 return (1);
         }
@@ -164,7 +164,7 @@ usage:			system("bk help -s mvdir");
 		fprintf(stderr,
 		    "Moving directories with BitKeeper files not allowed\n");
 		unlink(tempfile);
-err:		unless (skip_lock) repository_wrunlock(0);
+err:		unless (skip_lock) repository_wrunlock(0, 0);
 		if (s) sccs_free(s);
 		return (1);
 	}
@@ -237,6 +237,6 @@ err:		unless (skip_lock) repository_wrunlock(0);
 		fprintf(stderr, "mvdir: cannot update idcache\n");
 	}
 	if (sys("bk", "-r", "check", "-a", SYS)) return (1);
-	unless (skip_lock) repository_wrunlock(0);
+	unless (skip_lock) repository_wrunlock(0, 0);
 	return (0);
 }
