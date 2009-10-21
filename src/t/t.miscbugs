@@ -76,7 +76,3 @@ echo OK
 echon Test hash_toStr API .........................................
 bk _hashstr_test || exit 1
 echo OK
-
-echon Test hash_toFile API ........................................
-bk _hashfile_test XXX || exit 1
-echo OK

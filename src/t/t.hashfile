@@ -1,0 +1,387 @@
+echo ---- hash file read tests
+
+echon empty file ..................................................
+touch empty
+bk _hashfile_test r empty >got || exit 1
+test -z "`cat got`" || exit 2
+echo OK
+
+echon two null hashes .............................................
+cat <<EOF >in
+@
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+---
+EOF
+cmpfiles want got
+echo OK
+
+echon null hash followed by non-null hash .........................
+cat <<EOF >in
+@
+@key
+hash2
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+---
+key => hash2
+EOF
+cmpfiles want got
+echo OK
+
+echon two hashes ..................................................
+cat <<EOF >in
+@key1
+value1
+@
+@key2
+value2
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+key1 => value1
+---
+key2 => value2
+EOF
+cmpfiles want got
+echo OK
+
+echon one value, no key ...........................................
+cat <<EOF >in
+value1
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+__HEADER__ => value1
+EOF
+cmpfiles want got
+echo OK
+
+echon one value, no key, null 2nd record ..........................
+cat <<EOF >in
+value1
+@
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+__HEADER__ => value1
+---
+EOF
+cmpfiles want got
+echo OK
+
+echon one key,value no cr .........................................
+cat <<EOF >in
+@key1
+value1
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+key1 => value1
+EOF
+cmpfiles want got
+echo OK
+
+echon one key,value one cr ........................................
+cat <<EOF >in
+@key1
+value1
+
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+key1 => value1
+
+EOF
+cmpfiles want got
+echo OK
+
+echon one key,value two crs .......................................
+cat <<EOF >in
+@key1
+value1
+
+
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+key1 => value1
+
+
+EOF
+cmpfiles want got
+echo OK
+
+echon key with white space ........................................
+# Use a tab in the key since the hash reading code allows it.
+cat <<EOF >in
+@has	tab
+value
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+has	tab => value
+EOF
+cmpfiles want got
+echo OK
+
+echon key with unprintable character ..............................
+echo @has$'\001'ctrlA >in
+echo value >>in
+bk _hashfile_test r in >got || exit 1
+echo has$'\001'ctrlA =\> value >want
+cmpfiles want got
+echo OK
+
+echon value with leading @s .......................................
+cat <<EOF >in
+@key1
+@@line1
+@@@line2
+@@@@line3
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+key1 => @line1
+@@line2
+@@@line3
+EOF
+cmpfiles want got
+echo OK
+
+echon bad key of single space .....................................
+cat <<EOF >in
+@ 
+value
+EOF
+bk _hashfile_test r in >got 2>err || exit 1
+grep -q "bad line '@ '" err || exit 2
+echo OK
+
+echon bad key with space 1 ........................................
+cat <<EOF >in
+@ base6
+value
+EOF
+bk _hashfile_test r in >got 2>err || exit 1
+grep -q "bad line '@ base6'" err || exit 2
+echo OK
+
+echon bad key with space 2 ........................................
+cat <<EOF >in
+@ base64 is the best
+value
+EOF
+bk _hashfile_test r in >got 2>err || exit 1
+grep -q "bad line '@ base64 is the best'" err || exit 2
+echo OK
+
+echon single-line base64 value ....................................
+cat <<EOF >in
+@key1 base64
+`echo this is short | bk base64`
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+key1 => this is short
+
+EOF
+cmpfiles want got
+echo OK
+
+echon mult-line base64 value ......................................
+cat <<EOF >data
+this is a somewhat long line and it is line 1
+this is a somewhat long line and it is line 2
+this is a somewhat long line and it is line 3
+this is a somewhat long line and it is line 4
+this is a somewhat long line and it is line 5
+EOF
+cat <<EOF >in
+@key1 base64
+`bk base64 <data`
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+key1 => this is a somewhat long line and it is line 1
+this is a somewhat long line and it is line 2
+this is a somewhat long line and it is line 3
+this is a somewhat long line and it is line 4
+this is a somewhat long line and it is line 5
+
+EOF
+cmpfiles want got
+echo OK
+
+echon two key,values ..............................................
+cat <<EOF >in
+@key1
+value1
+@key2
+value2
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+key1 => value1
+key2 => value2
+EOF
+cmpfiles want got
+echo OK
+
+echo ---- hash file write tests
+
+echon key with white space error ..................................
+# Use a tab in the key since the hash reading code allows it.
+cat <<EOF >in
+@has	tab
+value
+EOF
+bk _hashfile_test w in >got 2>err || exit 1
+grep -q 'has	tab invalid' err || exit 2
+echo OK
+
+echon key with unprintable character error ........................
+echo @has$'\001'ctrlA >in
+echo value >>in
+bk _hashfile_test w in >got 2>err || exit 1
+grep -q 'invalid' err || exit 2
+echo OK
+
+echon key with null error .........................................
+bk _hashfile_test n out >got 2>err || exit 1
+grep -q 'no null' err || exit 2
+echo OK
+
+echon check that written hash is sorted ...........................
+cat <<EOF >in
+@key2
+value2
+@key1
+value1
+EOF
+bk _hashfile_test w in >got || exit 1
+cat <<EOF >want
+@key1
+value1
+@key2
+value2
+EOF
+cmpfiles want got
+echo OK
+
+echon ascii value with no cr.......................................
+cat <<EOF >in
+@key1
+value1
+EOF
+bk _hashfile_test w in >got || exit 1
+cmpfiles in got
+echo OK
+
+echon ascii value with cr .........................................
+cat <<EOF >in
+@key1
+value1
+
+EOF
+bk _hashfile_test w in >got || exit 1
+cmpfiles in got
+echo OK
+
+echon multi-line ascii value ......................................
+cat <<EOF >in
+@key1
+value1-1
+value2-2
+value3-3
+EOF
+bk _hashfile_test w in >got || exit 1
+cmpfiles in got
+echo OK
+
+echon single-line ascii value with escaped @ ......................
+cat <<EOF >in
+@key1
+@@value1-1
+EOF
+bk _hashfile_test w in >got || exit 1
+cmpfiles in got
+echo OK
+
+echon multi-line ascii value with escaped @ .......................
+cat <<EOF >in
+@key1
+@@value1-1
+@@value1-2
+EOF
+bk _hashfile_test w in >got || exit 1
+cmpfiles in got
+echo OK
+
+echon 256-character value with no cr gets ascii encoded ...........
+# this value is 256 characters and should not get base64 encoded
+cat <<EOF >in
+@key1
+1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456
+EOF
+bk _hashfile_test w in >got || exit 1
+cmpfiles in got
+echo OK
+
+echon 256-character line gets ascii encoded .......................
+# this value is 256 characters (including the cr) and should not
+# get base64 encoded
+cat <<EOF >in
+@key1
+1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456
+
+EOF
+bk _hashfile_test w in >got || exit 1
+cmpfiles in got
+echo OK
+
+echon 257-character value with no cr gets base64 encoded ..........
+# this value is 257 characters and should get base64 encoded
+cat <<EOF >in
+@key1
+12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567
+EOF
+bk _hashfile_test w in >got || exit 1
+grep -q 'base64' got || exit 2
+# now dump the base64-encoded file and check the value
+bk _hashfile_test r got >out || exit 3
+cat <<EOF >want
+key1 => 12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567
+EOF
+cmpfiles out want
+echo OK
+
+echon 257-character line gets base64 encoded ......................
+# this value has a 257-character line and should get base64 encoded
+cat <<EOF >in
+@key1
+12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567
+
+EOF
+bk _hashfile_test w in >got || exit 1
+grep -q 'base64' got || exit 2
+# now dump the base64-encoded file and check the value
+bk _hashfile_test r got >out || exit 3
+cat <<EOF >want
+key1 => 12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567
+
+EOF
+cmpfiles out want
+echo OK
+
+echon value with non-printables gets base64 encoded ...............
+echo @key1 >in
+echo has$'\001'ctrlA >>in
+bk _hashfile_test w in >got || exit 1
+grep -q 'base64' got || exit 2
+# now dump the base64-encoded file and check the value
+bk _hashfile_test r got >out || exit 3
+grep -q 'key1 => has.ctrlA' out || exit 4
+echo OK
