@@ -706,7 +706,7 @@ sfind(sccs *s, ser_t serial)
 
 	unless (serial) return (0);
 	assert(serial <= s->nextserial);
-	unless (s->ser2delta) sfindRealloc(s);
+	unless (s->ser2dsize) sfindRealloc(s);
 	if (serial < s->ser2dsize) {
 		return (s->ser2delta[serial]);
 	}
