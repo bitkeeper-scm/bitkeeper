@@ -246,6 +246,31 @@ typeck_decls(VarDecl *a, VarDecl *b)
 }
 
 /*
+ * Check that a variable type is compatible with the element type of
+ * an array type or a list type (which can be compatible with an array
+ * type).
+ */
+int
+L_typeck_arrElt(Type *var, Type *array)
+{
+	switch (array->kind) {
+	    case L_ARRAY:
+		// Var must be compat with array element type.
+		return (L_typeck_compat(var, array->base_type));
+	    case L_LIST:
+		// Var must be compat with all list elements.
+		for (; array; array = array->next) {
+			unless (L_typeck_compat(var, array->base_type)) {
+				return (0);
+			}
+		}
+		return (1);
+	    default:
+		return (0);
+	}
+}
+
+/*
  * Determine if something is structurally compatible with a list type.
  */
 private int
@@ -273,7 +298,7 @@ typeck_list(Type *a, Type *b)
 		 */
 		for (; l; l = l->next) {
 			ASSERT(l->kind == L_LIST);
-			unless (L_typeck_compat(l->base_type, t->base_type)) {
+			unless (L_typeck_compat(t->base_type, l->base_type)) {
 				return (0);
 			}
 		}

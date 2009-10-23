@@ -2730,6 +2730,7 @@ compile_foreach(ForEach *loop)
 
 	switch (loop->expr->type->kind) {
 	    case L_ARRAY:
+	    case L_LIST:
 		compile_foreachArray(loop);
 		break;
 	    case L_HASH:
@@ -2766,8 +2767,7 @@ compile_foreachArray(ForEach *loop)
 	 */
 	for (var = loop->key, num_vars = 0; var; var = var->next, ++num_vars) {
 		unless (sym_lookup(var, 0)) return;  // undeclared var
-		unless (L_typeck_compat(var->type,
-					loop->expr->type->base_type)) {
+		unless (L_typeck_arrElt(var->type, loop->expr->type)) {
 			L_errf(var, "loop index type incompatible with"
 				    " array element type");
 		}

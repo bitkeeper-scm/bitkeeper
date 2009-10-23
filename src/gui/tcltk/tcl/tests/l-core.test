@@ -4212,49 +4212,118 @@ loop_1_2_3()
 	}
 
 	/*
-	 * The current semantics is that extra vars get "", so test that.
-	 * This may eventually be changed to be a run-time error.
+	 * The following tests have a number of loop variables that
+	 * isn't divisible by the number of list elements.  On the
+	 * last iteration, the stragglers should get undef.
 	 */
 
 	printf("test 7\n");
 	foreach (s1,s2,s3,s4,s5 in a) {
 		printf("a has %s,%s,%s,%s,%s\n", s1, s2, s3, s4, s5);
+		if (s1 eq "k") {
+			unless (defined(s2)) puts("bad 1.1");
+			if (defined(s3)) puts("bad 1.2");
+			if (defined(s4)) puts("bad 1.3");
+			if (defined(s5)) puts("bad 1.4");
+		}
 	}
 
 	printf("test 8\n");
 	foreach (s1,s2,s3,s4,s5,s6,s7 in a) {
 		printf("a has %s,%s,%s,%s,%s,%s,%s\n",
 		       s1, s2, s3, s4, s5, s6, s7);
+		if (s1 eq "h") {
+			unless (defined(s2)) puts("bad 2.1");
+			unless (defined(s3)) puts("bad 2.2");
+			unless (defined(s4)) puts("bad 2.3");
+			unless (defined(s5)) puts("bad 2.4");
+			if (defined(s6)) puts("bad 2.5");
+			if (defined(s7)) puts("bad 2.6");
+		}
 	}
 
 	printf("test 9\n");
 	foreach (s1,s2,s3,s4,s5,s6,s7,s8 in a) {
 		printf("a has %s,%s,%s,%s,%s,%s,%s,%s\n",
 		       s1, s2, s3, s4, s5, s6, s7, s8);
+		if (s1 eq "i") {
+			unless (defined(s2)) puts("bad 3.1");
+			unless (defined(s3)) puts("bad 3.2");
+			unless (defined(s4)) puts("bad 3.3");
+			if (defined(s5)) puts("bad 3.4");
+			if (defined(s6)) puts("bad 3.5");
+			if (defined(s7)) puts("bad 3.6");
+			if (defined(s8)) puts("bad 3.7");
+		}
 	}
 
 	printf("test 10\n");
 	foreach (s1,s2,s3,s4,s5,s6,s7,s8,s9 in a) {
 		printf("a has %s,%s,%s,%s,%s,%s,%s,%s,%s\n",
 		       s1, s2, s3, s4, s5, s6, s7, s8, s9);
+		if (s1 eq "j") {
+			unless (defined(s2)) puts("bad 4.1");
+			unless (defined(s3)) puts("bad 4.2");
+			if (defined(s4)) puts("bad 4.3");
+			if (defined(s5)) puts("bad 4.4");
+			if (defined(s6)) puts("bad 4.5");
+			if (defined(s7)) puts("bad 4.6");
+			if (defined(s8)) puts("bad 4.7");
+			if (defined(s9)) puts("bad 4.8");
+		}
 	}
 
 	printf("test 11\n");
 	foreach (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10 in a) {
 		printf("a has %s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
 		       s1, s2, s3, s4, s5, s6, s7, s8, s9, s10);
+		if (s1 eq "k") {
+			unless (defined(s2)) puts("bad 4.1");
+			if (defined(s3)) puts("bad 4.2");
+			if (defined(s4)) puts("bad 4.3");
+			if (defined(s5)) puts("bad 4.4");
+			if (defined(s6)) puts("bad 4.5");
+			if (defined(s7)) puts("bad 4.6");
+			if (defined(s8)) puts("bad 4.7");
+			if (defined(s9)) puts("bad 4.8");
+			if (defined(s10)) puts("bad 4.9");
+		}
 	}
 
 	printf("test 12\n");
 	foreach (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11 in a) {
 		printf("a has %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
 		       s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11);
+		if (s1 eq "l") {
+			if (defined(s2)) puts("bad 5.1");
+			if (defined(s3)) puts("bad 5.2");
+			if (defined(s4)) puts("bad 5.3");
+			if (defined(s5)) puts("bad 5.4");
+			if (defined(s6)) puts("bad 5.5");
+			if (defined(s7)) puts("bad 5.6");
+			if (defined(s8)) puts("bad 5.7");
+			if (defined(s9)) puts("bad 5.8");
+			if (defined(s10)) puts("bad 5.9");
+			if (defined(s11)) puts("bad 5.10");
+		}
 	}
 
 	printf("test 13\n");
 	foreach (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13 in a) {
 		printf("a has %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
 		       s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13);
+		unless (defined(s2)) puts("bad 6.1");
+		unless (defined(s3)) puts("bad 6.2");
+		unless (defined(s4)) puts("bad 6.3");
+		unless (defined(s5)) puts("bad 6.4");
+		unless (defined(s6)) puts("bad 6.5");
+		unless (defined(s7)) puts("bad 6.6");
+		unless (defined(s8)) puts("bad 6.7");
+		unless (defined(s9)) puts("bad 6.8");
+		unless (defined(s10)) puts("bad 6.9");
+		unless (defined(s11)) puts("bad 6.10");
+		unless (defined(s12)) puts("bad 6.11");
+		if (defined(s13)) puts("bad 6.12");
 	}
 
 	printf("test 14\n");
@@ -4262,6 +4331,19 @@ loop_1_2_3()
 		printf("a has %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
 		       s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13,
 		       s14);
+		unless (defined(s2)) puts("bad 7.1");
+		unless (defined(s3)) puts("bad 7.2");
+		unless (defined(s4)) puts("bad 7.3");
+		unless (defined(s5)) puts("bad 7.4");
+		unless (defined(s6)) puts("bad 7.5");
+		unless (defined(s7)) puts("bad 7.6");
+		unless (defined(s8)) puts("bad 7.7");
+		unless (defined(s9)) puts("bad 7.8");
+		unless (defined(s10)) puts("bad 7.9");
+		unless (defined(s11)) puts("bad 7.10");
+		unless (defined(s12)) puts("bad 7.11");
+		if (defined(s13)) puts("bad 7.12");
+		if (defined(s14)) puts("bad 7.13");
 	}
 
 	printf("end\n");
@@ -4543,17 +4625,33 @@ test loop-1.2.8 {test foreach type errors} -body {
 #lang L -nowarn
 void loop_1_2_8()
 {
+	int	i;
+	float	f;
 	string	s;
 	poly	p;
 	struct { int i,j; } st;
 
 	foreach(s in p) ;
 	foreach(s in st) ;
-	foreach(s in {"a","b"}) ;
+	foreach(s in {1}) ;
+	foreach(s in {1,2}) ;
+	foreach(s in {"s",1}) ;
+	foreach(s in {1,"s"}) ;
+	foreach(i,f in {1.0,2.0});
+	foreach(f,i in {1.0,2.0});
+
+	/* This could be made to work, but at present it's a type error. */
+	foreach(i,s in {1,"a"});
 }
-} -returnCodes error -match regexp -result {.*7: L Error: foreach expression must be array, hash, or string
-.*8: L Error: foreach expression must be array, hash, or string
-.*9: L Error: foreach expression must be array, hash, or string
+} -returnCodes error -match regexp -result {.*9: L Error: foreach expression must be array, hash, or string
+.*10: L Error: foreach expression must be array, hash, or string
+.*11: L Error: loop index type incompatible with array element type
+.*12: L Error: loop index type incompatible with array element type
+.*13: L Error: loop index type incompatible with array element type
+.*14: L Error: loop index type incompatible with array element type
+.*15: L Error: loop index type incompatible with array element type
+.*16: L Error: loop index type incompatible with array element type
+.*19: L Error: loop index type incompatible with array element type
 }
 
 test loop-1.2.9 {test foreach syntax errors} -body {
@@ -4664,6 +4762,133 @@ void loop_1_2_12()
 	if (defined(k) || defined(v)) puts("bad 4.3");
 }
 loop_1_2_12();
+} -output {}
+
+test loop-1.2.13 {test foreach over a list type} -body {
+#lang L
+private int equals(poly a[], poly b[])
+{
+	unless (length(a) == length(b)) return (0);
+	while (defined(a[0])) {
+		unless (defined(a[0]) == defined(b[0])) return (0);
+		unless (a[0] == b[0]) return (0);
+		// shift
+		undef(a[0]);
+		undef(b[0]);
+	}
+	assert(!defined(b[0]));
+	return (1);
+}
+
+void loop_1_2_13()
+{
+	int	i, i2, i3, ai[];
+	string	s, s2, s3, as[];
+	float	f, f2, f3, af[];
+
+	/* First do a quick test of the equals() helper function. */
+	ai = {1,2,3};
+	unless (equals(ai, {1,2,3})) puts("bad 0.1");
+	if (equals(ai, {1,2})) puts("bad 0.2");
+	if (equals(ai, {1,2,3,4})) puts("bad 0.3");
+	if (equals(ai, {1,3,2})) puts("bad 0.4");
+	as = {"a","b","c"};
+	unless (equals(as, {"a","b","c"})) puts("bad 0.5");
+	if (equals(as, {"a","b"})) puts("bad 0.6");
+	if (equals(as, {"a","b","c","d"})) puts("bad 0.7");
+	if (equals(as, {"a","c","b"})) puts("bad 0.8");
+	af = {1, 2.2, 3};
+	unless (equals(af, {1,2.2,3})) puts("bad 0.9");
+	if (equals(af, {1,2.2})) puts("bad 0.10");
+	if (equals(af, {1,2.2,3,4})) puts("bad 0.11");
+	if (equals(af, {1,3,2.2})) puts("bad 0.12");
+
+	undef(ai);
+	foreach (i in {1}) push(&ai, i);
+	unless (equals(ai, {1})) puts("bad 1.1");
+
+	undef(ai);
+	foreach (i in {1,2}) push(&ai, i);
+	unless (equals(ai, {1,2})) puts("bad 2.1");
+
+	undef(ai);
+	foreach (i in {1,2,3}) push(&ai, i);
+	unless (equals(ai, {1,2,3})) puts("bad 3.1");
+
+	undef(ai);
+	foreach (i,i2 in {1,2,3}) {
+		push(&ai, i);
+		if (defined(i2)) push(&ai, i2);
+	}
+	unless (equals(ai, {1,2,3})) puts("bad 4.1");
+
+	undef(ai);
+	foreach (i,i2,i3 in {1,2,3}) {
+		push(&ai, i);
+		push(&ai, i2);
+		push(&ai, i3);
+	}
+	unless (equals(ai, {1,2,3})) puts("bad 5.1");
+
+	undef(as);
+	foreach (s in {"a"}) push(&as, s);
+	unless (equals(as, {"a"})) puts("bad 10.1");
+
+	undef(as);
+	foreach (s in {"a","b"}) push(&as, s);
+	unless (equals(as, {"a","b"})) puts("bad 10.2");
+
+	undef(as);
+	foreach (s in {"a","b","c"}) push(&as, s);
+	unless (equals(as, {"a","b","c"})) puts("bad 10.3");
+
+	undef(as);
+	foreach (s,s2 in {"a","b","c"}) {
+		push(&as, s);
+		if (defined(s2)) push(&as, s2);
+	}
+	unless (equals(as, {"a","b","c"})) puts("bad 10.4");
+
+	undef(as);
+	foreach (s,s2,s3 in {"a","b","c"}) {
+		push(&as, s);
+		push(&as, s2);
+		push(&as, s3);
+	}
+	unless (equals(as, {"a","b","c"})) puts("bad 10.5");
+
+	undef(af);
+	foreach (f in {1}) push(&af, f);
+	unless (equals(af, {1})) puts("bad 20.1");
+
+	undef(af);
+	foreach (f in {1.1}) push(&af, f);
+	unless (equals(af, {1.1})) puts("bad 20.2");
+
+	undef(af);
+	foreach (f in {1.1,2}) push(&af, f);
+	unless (equals(af, {1.1,2})) puts("bad 20.3");
+
+	undef(af);
+	foreach (f in {1.1,2,3.3}) push(&af, f);
+	unless (equals(af, {1.1,2,3.3})) puts("bad 20.4");
+
+	undef(af);
+	foreach (f,f2 in {1.1,2,3.3}) {
+		push(&af, f);
+		if (defined(f2)) push(&af, f2);
+	}
+	unless (equals(af, {1.1,2,3.3})) puts("bad 20.5");
+
+	undef(af);
+	foreach (f,f2,f3 in {1.1,2,3.3}) {
+		push(&af, f);
+		push(&af, f2);
+		push(&af, f3);
+	}
+	unless (equals(af, {1.1,2,3.3})) puts("bad 20.6");
+}
+loop_1_2_13();
 } -output {}
 
 test loop-1.3 {continue statements} -body {
@@ -11682,7 +11907,7 @@ void composite_2()
 composite_2
 } -output {}
 
-test composite-2.2 {check hash of array composite constants} -body {
+test composite-2.2 {check hash of array of composite constants} -body {
 #lang L
 void composite_2_2()
 {
@@ -11709,6 +11934,27 @@ void composite_2_2()
 composite_2_2();
 } -output {}
 
+test composite-2.3 {check list type compatibility in assignment} -body {
+#lang L
+void composite_2_3()
+{
+	float	af[];
+
+	/*
+	 * This verifies that the type checker gets the compatibility
+	 * test right when checking an array against a list type.  The
+	 * opposite, when you try to assign a list of ints and floats
+	 * to an int array, is an error and is checked in a test
+	 * below.
+	 */
+	af = { 1.1, 2.2 };
+	af = { 1, 2.2 };
+	af = { 1.1, 2 };
+	af = { 1, 2 };
+}
+composite_2_3();
+} -output {}
+
 test composite-3 {check type errors with composite values} -body {
 #lang L -nowarn
 void composite_3_as(string[] a) {}
@@ -11720,6 +11966,8 @@ void composite_3_hii(int{int} a) {}
 
 void composite_3()
 {
+	int	i[];
+
 	composite_3_as({1,2,3});
 	composite_3_ai({"a","b","c"});
 	composite_3_his({1,2,3});
@@ -11727,14 +11975,19 @@ void composite_3()
 	composite_3_hsi({1=>2,3=>4});
 	composite_3_hss({1=>2,3=>4});
 	composite_3_hii({"1"=>2,"3"=>4});
+
+	i = { 1.1 };
+	i = { 1, 2.2 };
 }
-} -returnCodes {error} -match regexp -result {.*10: L Error:.*incompatible type.*
-.*11: L Error:.*incompatible type.*
-.*12: L Error:.*incompatible type.*
+} -returnCodes {error} -match regexp -result {.*12: L Error:.*incompatible type.*
 .*13: L Error:.*incompatible type.*
 .*14: L Error:.*incompatible type.*
 .*15: L Error:.*incompatible type.*
 .*16: L Error:.*incompatible type.*
+.*17: L Error:.*incompatible type.*
+.*18: L Error:.*incompatible type.*
+.*20: L Error:.*incompatible type.*
+.*21: L Error:.*incompatible type.*
 }
 
 test composite-4 {check composite l-values} -body {

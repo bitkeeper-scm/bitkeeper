@@ -172,6 +172,7 @@ extern Type	*L_struct_store(char *tag, VarDecl *members);
 extern void	L_synerr(const char *s, ...);	// yyerror
 extern void	L_trace(const char *format, ...);
 extern void	L_typeck_init();
+extern int	L_typeck_arrElt(Type *var, Type *array);
 extern void	L_typeck_assign(Expr *lhs, Expr *rhs);
 extern int	L_typeck_compat(Type *lhs, Type *rhs);
 extern int	L_typeck_declType(VarDecl *decl);
