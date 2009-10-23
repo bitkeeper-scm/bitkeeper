@@ -5,7 +5,6 @@
 # to reset the baseline
 
 DO_CNT="`bk bin`"/t/strace-cnt.pl
-TESTDATA=/home/bk/test_data
 FILE="$HERE"/OUT
 
 echo $N Create initial repository ...................................$NL
@@ -117,10 +116,13 @@ echo OK
 echo $N Count the calls in a large sccs_init ........................$NL
 bk _cp "`bk bin`"/SCCS/s.slib.c SCCS/s.slib.c || exit 1
 # delta past the bk-4.1.1 version of slib.c
-bk prs  -r47bc54abHgFhmT32MELop4T29i8gOQ.. -hnd'slib.c|:REV:' > REVS
-bk stripdel -Cq - < REVS
+BK411=47bc54abUWkbJUWx3UjQ3LB-mJ6wtQ
+bk prs  -r$BK411.. -hnd'slib.c|:REV:' slib.c > REVS || exit 2
+bk stripdel -Cq - < REVS || exit 3
+bk _scompress -q slib.c || exit 4
 rm -f "$FILE"
 BK_STRACE="$FILE" bk prs slib.c > OUT || exit 1
+grep -q '^D 1.805.1.7 2008/02/20 11:26:19-05:00' OUT || exit 5
 "$DO_CNT" mkgraph "$FILE" || exit 1
 bk _rm -f SCCS/s.slib.c
 echo OK
