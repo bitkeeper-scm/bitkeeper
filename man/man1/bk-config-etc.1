@@ -310,6 +310,7 @@ for files that are updated.
 .LP
 We recommend that you start in full check mode and turn on partial
 check later if needed.
+.\" Doc writers note: replicate this in bk-triggers.1
 .SS TRIGGER PATHS
 .LP
 By default, triggers are stored in the repository under the
@@ -319,7 +320,9 @@ triggers.
 More than one triggers directory may be used by setting the
 .B triggers
 variable.
-The format is is one or more paths separated by a vertical bar.
+The format is one or more paths separated by a vertical bar,
+each path has "BitKeeper/triggers" appended to it and the resulting
+path is scanned for triggers.
 For example, if you wanted to run triggers from
 .B /etc/BitKeeper/triggers
 and from the repositories'
@@ -330,7 +333,29 @@ triggers:	/etc|.
 .DE
 The directories are processed in the order found in the variable.
 .LP
-If the variable contains the value "none" then no triggers are processed.
+There are several special values which are interpreted:
+.TP 
+.B .
+This is the default, it means `bk -R pwd`/BitKeeper/triggers is scanned
+for triggers.
+.TP
+.B $BK_DOTBK
+If present, `bk dotbk`/BitKeeper/triggers is scanned for triggers.
+.TP
+.B $BK_BIN
+If present, `bk bin`/BitKeeper/triggers is scanned for triggers.
+.TP
+.B $NONE
+If present, with no other values, then no triggers are processed.
+.TP
+.B $PRODUCT
+If present, `bk -P pwd`/BitKeeper/triggers is scanned for triggers.
+This only applies when in a component repository of a nested collection.
+It is a way to run product level triggers in each component.
+.TP
+.B $SOMETHING_ELSE
+All other paths starting with "$" are ignored, that character is
+reserved.
 .SS UPGRADE URL
 .LP
 The upgrade command normally looks for new versions of \*[BK] here:

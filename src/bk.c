@@ -393,7 +393,7 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 	/* This gets rid of an annoying message when sfiles is killed */
 	nt_loadWinSock();
 #endif
-	cmdlog_start(av, 0);
+	cmdlog_start(av);
 	if (buffer) {
 		unless (streq(buffer, "stdin")) {
 			fprintf(stderr, "bk: only -Bstdin\n");
@@ -677,11 +677,12 @@ private	struct {
 };
 
 void
-cmdlog_start(char **av, int httpMode)
+cmdlog_start(char **av)
 {
 	int	i, len, do_lock = 1;
 	int	is_remote = strneq("remote ", av[0], 7);
 	char	*repo1, *repo2;
+
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
@@ -703,12 +704,13 @@ cmdlog_start(char **av, int httpMode)
 	cmdlog_flags &= ~cmdlog_locks;
 
 	/*
-	 * When in http mode, since push/pull part 1 and part 2 run in
-	 * seperate process and the lock is tied to a process id, we must
-	 * complete the lock unlock cycle in part 1. Restart the lock when
-	 * we enter part 2, with the up-to-date pid.
+	 * When in http mode, each connection of push will be
+	 * obtaining a separate repository lock.  For a BAM push a
+	 * RESYNC dir is created in push_part2 and resolved at the end
+	 * of push_part3.  The lock created at the start of push_part3
+	 * needs to know that it is OK to ignore the existing RESYNC.
 	 */
-	if (httpMode) {
+	if (getenv("_BKD_HTTP")) {
 		if (streq(av[0], "remote push part3")) {
 			putenv("_BK_IGNORE_RESYNC_LOCK=YES");
 		}

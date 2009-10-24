@@ -8,7 +8,7 @@
 private	void	exclude(char *cmd, int verbose);
 private void	unexclude(char **list, char *cmd);
 private	int	findcmd(int ac, char **av);
-private	int	getav(int *acp, char ***avp, int *httpMode);
+private	int	getav(int *acp, char ***avp);
 private	void	log_cmd(char *peer, int ac, char **av);
 private	void	usage(void);
 private	int	do_cmds(void);
@@ -215,7 +215,7 @@ do_cmds(void)
 {
 	int	ac;
 	char	**av;
-	int	i, ret = 1, httpMode, log;
+	int	i, ret = 1, log;
 	int	debug = getenv("BK_DEBUG") != 0;
 	char	*peer = 0;
 	int	logged_peer = 0;
@@ -234,8 +234,20 @@ do_cmds(void)
 	putenv("BK_LICENSE=");
 	lease_inbkd();		/* enable bkd-mode in lease code */
 
-	httpMode = Opts.http_hdr_out;
-	while (getav(&ac, &av, &httpMode)) {
+	/*
+	 * The _BKD_HTTP varible indicates that the current bkd
+	 * connection was initiated by a http POST command and so the
+	 * client will be disconnecting after each response from the
+	 * bkd.  This is used to control some aspects of locking, but
+	 * should be used sparingly as it makes the logic harder to
+	 * follow than if the client just specified what to do in the
+	 * command stream.
+	 *
+	 * This varible is valid inside cmd_*() functions and in
+	 * subprocesses spawned from those functions.
+	 */
+	putenv("_BKD_HTTP=");
+	while (getav(&ac, &av)) {
 		if (debug) {
 			for (i = 0; av[i]; ++i) {
 				ttyprintf("[%2d] = %s\n", i, av[i]);
@@ -246,7 +258,7 @@ do_cmds(void)
 			if (Opts.logfile) log_cmd(peer, ac, av);
 			if (Opts.http_hdr_out) http_hdr();
 			log = !streq(av[0], "putenv");
-			if (log) cmdlog_start(av, httpMode);
+			if (log) cmdlog_start(av);
 
 			/*
 			 * Do the real work
@@ -476,7 +488,7 @@ nextbyte(char *buf, int size, void *unused)
 }
 
 private	int
-getav(int *acp, char ***avp, int *httpMode)
+getav(int *acp, char ***avp)
 {
 #define	MAX_AV	50
 #define	QUOTE(c)	(((c) == '\'') || ((c) == '"'))
@@ -536,7 +548,7 @@ nextline:
 		skip_http_hdr(&r);
 		content_len = r.contentlen;
 		http_hdr();
-		*httpMode = 1;
+		putenv("_BKD_HTTP=1");
 		inspace = 1;
 		goto nextline;
 	}

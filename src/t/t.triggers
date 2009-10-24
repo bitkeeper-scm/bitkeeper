@@ -43,6 +43,11 @@ grep -q BK_STATUS=OK "$HERE/post-commit" || {
 	cat "$HERE/post-commit"
 	exit 1
 }
+grep -q BK_REPO_TYPE=standalone "$HERE/post-commit" || {
+	echo no repo type
+	cat "$HERE/post-commit"
+	exit 1
+}
 grep -q "pre-commit returns 0" BitKeeper/log/cmd_log || {
 	echo should have logged trigger
 	exit 1
@@ -1974,4 +1979,28 @@ bk delta $Q -f -ybar foo 2>/dev/null && {
 	echo "failed (bug 2005-04-13-001)"
 	exit 1
 }
+echo OK
+
+echo $N Post resolve with BitKeeper/tmp/patch file left RESYNC ......$NL
+cd "$HERE/undo"
+cat << EOF > x
+#!/bin/sh
+exit 0
+EOF
+chmod +x x
+mv x BitKeeper/triggers/post-incoming.resolve
+bk new $Q BitKeeper/triggers/post-incoming.resolve
+bk commit $Q -ytrigger
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+bk makepatch -r+ > patch
+bk takepatch -af patch || exit 1
+# with no file, no problem
+test -d RESYNC && exit 2
+# play to the bug: stick a name in a file that goes into BK_PATCH
+echo patch > BitKeeper/tmp/patch
+# with file, there was problem
+bk takepatch -af patch || exit 3
+test -d RESYNC && exit 4
 echo OK
