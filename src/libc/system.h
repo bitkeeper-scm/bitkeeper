@@ -85,6 +85,14 @@ char	**_getdir(char *dir, struct stat *sb);
 typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
 int	walkdir(char *dir, walkfn fn, void *data);
 
+/* efopen.c */
+FILE	*efopen(char *env);
+int	 efprintf(char *env, char *fmt, ...)
+#ifdef __GNUC__
+     __attribute__((format (__printf__, 2, 3)))
+#endif
+;
+
 /* filecopy.c */
 int	fileCopy(char *from, char *to);
 
@@ -301,7 +309,6 @@ void	ttyprintf(char *fmt, ...)
 ;
 
 /* utils.c */
-FILE	*efopen(char *env);
 void	my_perror(char *, int, char *);
 #define	perror(msg)	my_perror(__FILE__, __LINE__, msg)
 int	chomp(char *str);

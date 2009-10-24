@@ -1,0 +1,402 @@
+
+# Originally by rob, with hacks from wayne and lm.
+
+# We send the trigger output to two files, a client one and a server
+# one and then compare them.  In the code below all the client stuff
+# is first and server second, please keep it that way, it's easier to
+# grok/review.
+
+# server side triggers are not order determinant as post-outgoing
+# triggers fire after the sfio is sent back.  For example, if a pull
+# includes a component clone, then the post outgoing trigger is racing
+# the clone's pre-outgoing trigger. Indeed, this race has been seen
+# on redhat71.  The fix is if the likely order doesn't happen, see
+# the sorted order matches.
+cmpsorted() {
+	cmp -s "$1" "$2" || {
+		bk _sort "$1" > "$1.sort"
+		bk _sort "$2" > "$2.sort"
+		cmpfiles "$1.sort" "$2.sort"
+		rm -f "$1.sort" "$2.sort"
+		# leave a marker?
+		# touch "$HERE/did-server-sort"
+	}
+}
+
+echo $N Setup .......................................................$NL
+TRIGS="$HERE/triggers"
+nested source
+cat <<EOF >trigger
+#!/bin/bash
+if [ \$BK_SIDE = client ]
+then
+	R=\`basename "\$BK_ROOT"\`
+	echo "\$R-\$BK_TRIGGER" >>"$TRIGS.client"
+	set | grep '^BK_' >> "$HERE/ENV.bk"
+else
+	R=\`basename "\$BKD_ROOT"\`
+	echo "\$R-\$BK_TRIGGER" >>"$TRIGS.server"
+	set | grep '^BKD_' >> "$HERE/ENV.bkd"
+fi
+exit 0
+EOF
+chmod +x trigger || exit 1
+mkdir -p BitKeeper/triggers gcc/BitKeeper/triggers gdb/BitKeeper/triggers
+for i in pre-apply pre-commit post-commit pre-incoming post-incoming \
+	 pre-resolve pre-undo post-undo pre-outgoing post-outgoing
+do
+	cp trigger BitKeeper/triggers/$i
+	bk new $Q BitKeeper/triggers/$i || exit 1
+done
+bk edit $Q BitKeeper/etc/config
+echo 'triggers: .|$PRODUCT' >> BitKeeper/etc/config
+bk delta $Q -y'Look in product' BitKeeper/etc/config
+bk commit $Q -ytriggers || exit 8
+cd "$HERE"
+bk clone $Q source pushdest || exit 9
+cd "$HERE"
+P=`port 50000`
+bk bkd -q -d -p$P -ikill || exit 1
+trap "bk _kill bk://localhost:$P" 0
+echo OK
+
+# It may seem like the server/client are backward because this is a file
+# based clone but it makes sense when you think 
+# bk clone bk://work/bk my-bk
+# In that case, obviously the source is the server and the dest is client.
+echo $N Triggers during clone .......................................$NL
+rm -f "$TRIGS.client" "$TRIGS.server" "$HERE/ENV.bk" "$HERE/ENV.bkd"
+cd "$HERE"
+bk clone $Q source pulldest || exit 1
+test -z "$DUMP" || {
+	echo 
+	cat "$TRIGS.client" "$TRIGS.server"
+}
+cat >WANT<<EOF
+gcc-post-incoming
+gdb-post-incoming
+pulldest-post-incoming
+EOF
+cmpfiles WANT "$TRIGS.client"
+
+egrep 'BK_REPO_TYPE=|BK_ROOT=' "$HERE/ENV.bk" | 
+    sed -e "s/'//g" -e 's/\$//' > GOT
+cat >WANT<<EOF
+BK_REPO_TYPE=component
+BK_ROOT=$HERE/pulldest/gcc
+BK_REPO_TYPE=component
+BK_ROOT=$HERE/pulldest/gdb
+BK_REPO_TYPE=product
+BK_ROOT=$HERE/pulldest
+EOF
+cmpfiles WANT GOT
+
+cat >WANT<<EOF
+source-pre-outgoing
+source-post-outgoing
+gcc-pre-outgoing
+gcc-post-outgoing
+gdb-pre-outgoing
+gdb-post-outgoing
+EOF
+cmpsorted WANT "$TRIGS.server"
+
+egrep 'BKD_REPO_TYPE=|BKD_ROOT=' "$HERE/ENV.bkd" | 
+    sed -e "s/'//g" -e 's/\$//' > GOT
+cat >WANT<<EOF
+BKD_REPO_TYPE=product
+BKD_ROOT=$HERE/source
+BKD_REPO_TYPE=product
+BKD_ROOT=$HERE/source
+BKD_REPO_TYPE=component
+BKD_ROOT=$HERE/source/gcc
+BKD_REPO_TYPE=component
+BKD_ROOT=$HERE/source/gcc
+BKD_REPO_TYPE=component
+BKD_ROOT=$HERE/source/gdb
+BKD_REPO_TYPE=component
+BKD_ROOT=$HERE/source/gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+# Here the server/client makes more sense.
+echo $N Triggers during rclone ......................................$NL
+rm -f "$TRIGS.client" "$TRIGS.server"
+cd "$HERE"
+bk clone $Q source bk://localhost:$P/rclone-dest || exit 1
+test -z "$DUMP" || {
+	echo 
+	cat "$TRIGS.client" "$TRIGS.server"
+}
+cat >WANT<<EOF
+source-pre-outgoing
+source-post-outgoing
+gcc-pre-outgoing
+gcc-post-outgoing
+gdb-pre-outgoing
+gdb-post-outgoing
+EOF
+cmpfiles WANT "$TRIGS.client"
+cat >WANT<<EOF
+rclone-dest-post-incoming
+gcc-post-incoming
+gdb-post-incoming
+EOF
+cmpsorted WANT "$TRIGS.server"
+echo OK
+
+echo $N Triggers during product-only pull ...........................$NL
+cd "$HERE/source"
+echo new >new
+bk new $Q new || exit 1
+bk commit $Q -y'add new' || exit 2
+rm -f "$TRIGS.client" "$TRIGS.server"
+cd "$HERE/pulldest"
+bk pull $Q "$HERE/source" || exit 3
+test -z "$DUMP" || {
+	echo 
+	cat "$TRIGS.client" "$TRIGS.server"
+}
+cat >WANT<<EOF
+pulldest-pre-incoming
+RESYNC-pre-resolve
+RESYNC-pre-apply
+pulldest-post-incoming
+EOF
+cmpfiles WANT "$TRIGS.client"
+cat >WANT<<EOF
+source-pre-outgoing
+source-post-outgoing
+EOF
+# only product, don't need the sorted test
+cmpfiles WANT "$TRIGS.server"
+echo OK
+
+echo $N Triggers during product-only push ...........................$NL
+rm -f "$TRIGS.client" "$TRIGS.server"
+cd "$HERE/pulldest"
+BK_SHOW_TRIGGERS="$PWD/XXX" bk push $Q ../pushdest || exit 1
+test -z "$DUMP" || {
+	echo 
+	cat "$TRIGS.client" "$TRIGS.server"
+}
+cat >WANT<<EOF
+pulldest-pre-outgoing
+pulldest-post-outgoing
+EOF
+cmpfiles WANT "$TRIGS.client"
+cat >WANT<<EOF
+pushdest-pre-incoming
+RESYNC-pre-resolve
+RESYNC-pre-apply
+pushdest-post-incoming
+EOF
+# only product, don't need the sorted test
+cmpfiles WANT "$TRIGS.server"
+echo OK
+
+echo $N Triggers during pull w/component cset .......................$NL
+cd "$HERE/source/gcc"
+echo new >new
+bk new $Q new || exit 1
+bk commit $Q -y'add new' || exit 2
+bk -P commit $Q -y'add gcc/new' || exit 3
+rm -f "$TRIGS.client" "$TRIGS.server"
+cd "$HERE/pulldest"
+bk pull $Q "$HERE/source" || exit 4
+test -z "$DUMP" || {
+	echo 
+	cat "$TRIGS.client" "$TRIGS.server"
+}
+cat >WANT<<EOF
+pulldest-pre-incoming
+gcc-pre-incoming
+RESYNC-pre-resolve
+RESYNC-pre-apply
+gcc-post-incoming
+RESYNC-pre-resolve
+RESYNC-pre-apply
+pulldest-post-incoming
+EOF
+cmpfiles WANT "$TRIGS.client"
+cat >WANT<<EOF
+source-pre-outgoing
+source-post-outgoing
+gcc-pre-outgoing
+gcc-post-outgoing
+EOF
+cmpsorted WANT "$TRIGS.server"
+echo OK
+
+echo $N Triggers during push w/component cset .......................$NL
+rm -f "$TRIGS.client" "$TRIGS.server"
+cd "$HERE/pulldest"
+bk push $Q ../pushdest || exit 1
+test -z "$DUMP" || {
+	echo 
+	cat "$TRIGS.client" "$TRIGS.server"
+}
+cat >WANT<<EOF
+pulldest-pre-outgoing
+gcc-pre-outgoing
+gcc-post-outgoing
+pulldest-post-outgoing
+EOF
+cmpfiles WANT "$TRIGS.client"
+cat >WANT<<EOF
+pushdest-pre-incoming
+gcc-pre-incoming
+RESYNC-pre-resolve
+RESYNC-pre-apply
+gcc-post-incoming
+RESYNC-pre-resolve
+RESYNC-pre-apply
+pushdest-post-incoming
+EOF
+cmpsorted WANT "$TRIGS.server"
+echo OK
+
+echo $N Triggers during pull w/cloned component cset ................$NL
+cd "$HERE/source"
+bk setup -af "new comp"
+rm -f "$TRIGS.client" "$TRIGS.server"
+cd "$HERE/pulldest"
+bk pull $Q "$HERE/source" || exit 4
+test -z "$DUMP" || {
+	echo 
+	cat "$TRIGS.client" "$TRIGS.server"
+}
+cat >WANT<<EOF
+pulldest-pre-incoming
+new comp-post-incoming
+RESYNC-pre-resolve
+RESYNC-pre-apply
+pulldest-post-incoming
+EOF
+cmpfiles WANT "$TRIGS.client"
+cat >WANT<<EOF
+source-pre-outgoing
+source-post-outgoing
+new comp-pre-outgoing
+new comp-post-outgoing
+EOF
+cmpsorted WANT "$TRIGS.server"
+echo OK
+
+echo $N Triggers during push w/cloned component cset ................$NL
+rm -f "$TRIGS.client" "$TRIGS.server"
+cd "$HERE/pulldest"
+bk push $Q ../pushdest || exit 1
+test -z "$DUMP" || {
+	echo 
+	cat "$TRIGS.client" "$TRIGS.server"
+}
+cat >WANT<<EOF
+pulldest-pre-outgoing
+new comp-post-incoming
+pulldest-post-outgoing
+EOF
+cmpfiles WANT "$TRIGS.client"
+cat >WANT<<EOF
+pushdest-pre-incoming
+new comp-pre-outgoing
+new comp-post-outgoing
+RESYNC-pre-resolve
+RESYNC-pre-apply
+pushdest-post-incoming
+EOF
+cmpsorted WANT "$TRIGS.server"
+echo OK
+
+echo $N Triggers during pull w/cloned component cset over bkd .......$NL
+cd "$HERE/source"
+bk setup -af "new remote comp"
+rm -f "$TRIGS.client" "$TRIGS.server"
+cd "$HERE/pulldest"
+bk pull $Q bk://localhost:$P/source || exit 4
+test -z "$DUMP" || {
+	echo 
+	cat "$TRIGS.client" "$TRIGS.server"
+}
+cat >WANT<<EOF
+pulldest-pre-incoming
+new remote comp-post-incoming
+RESYNC-pre-resolve
+RESYNC-pre-apply
+pulldest-post-incoming
+EOF
+cmpfiles WANT "$TRIGS.client"
+cat >WANT<<EOF
+source-pre-outgoing
+source-post-outgoing
+new remote comp-pre-outgoing
+new remote comp-post-outgoing
+EOF
+cmpsorted WANT "$TRIGS.server"
+echo OK
+
+echo $N Triggers during push w/cloned component cset over bkd .......$NL
+rm -f "$TRIGS.client" "$TRIGS.server"
+cd "$HERE/pulldest"
+bk push $Q bk://localhost:$P/pushdest || exit 1
+test -z "$DUMP" || {
+	echo 
+	cat "$TRIGS.client" "$TRIGS.server"
+}
+cat >WANT<<EOF
+pulldest-pre-outgoing
+new remote comp-pre-outgoing
+new remote comp-post-outgoing
+pulldest-post-outgoing
+EOF
+cmpfiles WANT "$TRIGS.client"
+cat >WANT<<EOF
+pushdest-pre-incoming
+new remote comp-post-incoming
+RESYNC-pre-resolve
+RESYNC-pre-apply
+pushdest-post-incoming
+EOF
+cmpsorted WANT "$TRIGS.server"
+echo OK
+
+echo $N Triggers during undo of product-only cset ...................$NL
+cd "$HERE/source"
+echo new >undo
+bk new $Q undo || exit 1
+bk commit $Q -y'add undo' || exit 2
+rm -f "$TRIGS.client" "$TRIGS.server"
+bk undo $Q -f -r+ || exit 3
+test -z "$DUMP" || {
+	echo 
+	cat "$TRIGS.client"
+}
+cat >WANT<<EOF
+source-pre-undo
+source-post-undo
+EOF
+cmpfiles WANT "$TRIGS.client"
+echo OK
+
+echo $N Triggers during undo w/component cset .......................$NL
+cd "$HERE/source/gcc"
+echo new >undo
+bk new $Q undo || exit 1
+bk commit $Q -y'add undo' || exit 2
+bk -P commit $Q -y'add gcc/undo' || exit 3
+cd ..
+rm -f "$TRIGS.client" "$TRIGS.server"
+bk undo $Q -f -r+ || exit 4
+test -z "$DUMP" || {
+	echo 
+	cat "$TRIGS.client"
+}
+cat >WANT<<EOF
+source-pre-undo
+gcc-pre-undo
+gcc-post-undo
+source-post-undo
+EOF
+cmpfiles WANT "$TRIGS.client"
+echo OK

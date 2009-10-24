@@ -21,3 +21,19 @@ efopen(char *env)
 	if (f) setvbuf(f, 0, _IONBF, 0);
 	return (f);
 }
+
+int
+efprintf(char *env, char *fmt, ...)
+{
+	va_list	ap;
+	int	ret = -1;
+	FILE	*f;
+
+	va_start(ap, fmt);
+	if (f = efopen(env)) {
+		ret = vfprintf(f, fmt, ap);
+		fclose(f);
+	}
+	va_end(ap);
+	return (ret);
+}

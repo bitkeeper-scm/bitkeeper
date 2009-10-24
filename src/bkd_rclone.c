@@ -172,6 +172,7 @@ cmd_rclone_part2(int ac, char **av)
 	char	buf[MAXPATH];
 	char	*path, *p;
 	int	fd2, rc = 0;
+	project	*proj;
 	u64	sfio;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
@@ -218,6 +219,14 @@ cmd_rclone_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	rc = getsfio();
+	/*
+	 * After unpacking sfio we need to reset proj because it might
+	 * have become a component.
+	 */
+	proj = proj_init(".");
+	proj_reset(proj);
+	proj_free(proj);
+
 	getline(0, buf, sizeof(buf));
 	if (!streq("@END@", buf)) {
 		fprintf(stderr, "cmd_rclone: warning: lost end marker\n");
