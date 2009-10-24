@@ -27,16 +27,10 @@ trigger(char *cmd, char *when)
 	char	*event = 0;
 	int	i;
 	int	use_enclosing = 0, rc = 0;
+	FILE	*f = 0;
 	char	buf[MAXPATH], triggerDir[MAXPATH];
 
 	if (getenv("BK_NO_TRIGGERS")) return (0);
-
-	unless (root = proj_root(0)) {
-		ttyprintf("No root for triggers!\n");
-		return (0);
-	}
-
-	unless (dirs = trigger_dirs()) return (0);
 
 	if (strneq(cmd, "remote pull", 11)) {
 		what = "outgoing";
@@ -98,13 +92,32 @@ trigger(char *cmd, char *when)
 		return (0);
 	}
 
-	/* run post-triggers with a read lock */
-	if (streq(when, "post")) repository_downgrade(0);
-
 	/* post-resolve == post-incoming */
 	if (streq(when, "post") && streq(event, "resolve")) what = "incoming";
 
+	if (streq(what, "resolve")) {
+		/*
+		 * Run the resolve triggers in the RESYNC dir if there is one.
+		 */
+		assert(isdir(ROOT2RESYNC) && !use_enclosing);
+		chdir(ROOT2RESYNC);
+		use_enclosing = 1;
+	}
+
+	unless (root = proj_root(0)) {
+		ttyprintf("No root for triggers!\n");
+		goto out;
+	}
+
+	unless (dirs = trigger_dirs()) goto out;
+
+	/* run post-triggers with a read lock */
+	if (streq(when, "post")) repository_downgrade(0);
+
+	f = efopen("BK_SHOW_TRIGGERS");
 	EACH (dirs) {
+		if (streq(dirs[i], "|skip|")) continue;
+
 		/* the use_enclosing ones must be called at project root */
 		unless (streq(dirs[i], ".")) {
 			sprintf(triggerDir, "%s/BitKeeper/triggers", dirs[i]);
@@ -115,16 +128,13 @@ trigger(char *cmd, char *when)
 			sprintf(triggerDir, "%s/BitKeeper/triggers", root);
 		}
 		unless (isdir(triggerDir)) {
-			if (getenv("BK_SHOW_TRIGGERS")) {
-				ttyprintf("No trigger dir %s\n", triggerDir);
-			}
 			continue;
-		} else if (getenv("BK_SHOW_TRIGGERS")) {
-			ttyprintf("TRIGGER cmd(%s) when(%s)", cmd, when);
+		} else if (f) {
+			fprintf(f, "TRIGGER what(%s) when(%s) where(%s)", what, when, proj_cwd());
 			unless (streq(dirs[i], ".")) {
-				ttyprintf(" dir(%s)", dirs[i]);
+				fprintf(f, " dir(%s)", dirs[i]);
 			}
-			ttyprintf("\n");
+			fprintf(f, "\n");
 		}
 
 		/*
@@ -134,28 +144,8 @@ trigger(char *cmd, char *when)
 		sys("bk", "get", "-Sq", triggerDir, SYS);
 		sprintf(buf, "%s-%s", when, what);
 
-		/* Run the resolve triggers in the RESYNC dir if there is one.
-		 * Find all the trigger scripts associated this dir/event.
-		 */
-		if (streq(what, "resolve") && streq(dirs[i], ".")) {
-			assert(isdir(ROOT2RESYNC));
-			chdir(ROOT2RESYNC);
-			triggers =
-			    getTriggers(RESYNC2ROOT "/BitKeeper/triggers", buf);
-		} else {
-			triggers = getTriggers(triggerDir, buf);
-		}
-
-		unless (triggers) {
-			if (streq(what, "resolve") && streq(dirs[i], ".")) {
-				chdir(RESYNC2ROOT);
-			}
-			if (getenv("BK_SHOW_TRIGGERS")) {
-				ttyprintf("No %s triggers in %s \n",
-				    buf, triggerDir);
-			}
-			continue;
-		}
+		/* Find all the trigger scripts associated this dir/event. */
+		unless (triggers = getTriggers(triggerDir, buf)) continue;
 
 		/*
 		 * Run the triggers, they are already sorted by getdir().
@@ -164,12 +154,11 @@ trigger(char *cmd, char *when)
 		rc = runTriggers(
 		    strneq(cmd, "remote ",7), event, what, when, triggers);
 		freeLines(triggers, free);
-		if (streq(what, "resolve") && streq(dirs[i], ".")) {
-			chdir(RESYNC2ROOT);
-		}
 		if (rc && streq(when, "pre")) goto out;
 	}
 out:	freeLines(dirs, free);
+	if (streq(what, "resolve") && use_enclosing) chdir(RESYNC2ROOT);
+	if (f) fclose(f);
 	return (rc);
 }
 
@@ -209,7 +198,6 @@ runit(char *file, char *what, char *output)
 	safe_putenv("BK_TRIGGER=%s", basenm(file));
 	safe_putenv("BK_TRIGGERPATH=%s", file);
 	write_log("cmd_log", 0, "Running trigger %s", file);
-	if (getenv("BK_SHOW_TRIGGERS")) ttyprintf("Running trigger %s\n", file);
 	safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
 
 	status = sysio(0, output, output, file, SYS);
@@ -222,8 +210,10 @@ runit(char *file, char *what, char *output)
 		rc = 100;
 	}
 	write_log("cmd_log", 0, "Trigger %s returns %d", file, rc);
-	if (getenv("BK_SHOWPROC") || getenv("BK_SHOW_TRIGGERS")) {
-		ttyprintf("TRIGGER %s => %d\n", basenm(file), rc);
+	if (getenv("BK_SHOW_TRIGGERS")) {
+		efprintf("BK_SHOW_TRIGGERS", "Trigger %s = %d\n", file, rc);
+	} else if (getenv("BK_SHOWPROC")) {
+		ttyprintf("TRIGGER %s => %d\n", file, rc);
 	}
 	return (rc);
 }
@@ -391,6 +381,7 @@ trigger_env(char *prefix, char *event, char *what)
 		trigger_putenv("BK", "HOST", getenv("_BK_HOST"));
 		trigger_putenv("BK", "USER", getenv("BK_USER"));
 	}
+	trigger_putenv(prefix, "ROOT", proj_root(0));
 	trigger_putenv(prefix, "HOST", sccs_gethost());
 	trigger_putenv(prefix, "USER", sccs_getuser());
 	trigger_putenv("BK", "EVENT", event);
@@ -402,10 +393,17 @@ trigger_env(char *prefix, char *event, char *what)
 	trigger_putenv(prefix, "LEVEL", buf);
 	repoid = proj_repoID(0);
 	if (repoid) trigger_putenv(prefix, "REPO_ID", repoid);
+	if (proj_isProduct(0)) {
+		trigger_putenv(prefix, "REPO_TYPE", "product");
+	} else if (proj_isComponent(0)) {
+		trigger_putenv(prefix, "REPO_TYPE", "component");
+	} else {
+		trigger_putenv(prefix, "REPO_TYPE", "standalone");
+	}
 	trigger_putenv(prefix, "REALUSER", sccs_realuser());
 	trigger_putenv(prefix, "REALHOST", sccs_realhost());
 	trigger_putenv(prefix, "PLATFORM", platform());
-	if (streq(event, "resolve")) {
+	if (streq(what, "resolve")) {
 		char    pwd[MAXPATH];
 		FILE    *f = fopen("BitKeeper/tmp/patch", "r");
 		char    *p;
@@ -473,22 +471,36 @@ trigger_dirs(void)
 {
 	char	*p, **dirs = 0;
 	int	i;
+	project	*proj;
 
 	p = proj_configval(0, "triggers");
 	if (!p || streq(p, "")) p = ".";
+	// old, remove in 6.0
 	if (streq(p, "none")) return (0);
+
+	// sanctioned way.
+	if (streq(p, "$NONE")) return (0);
 
 	dirs = splitLine(p, "|", 0);
 	EACH(dirs) {
 		unless (dirs[i][0] == '$') continue;
-		if (streq(&dirs[i][1], "BK_DOTBK")) {
+		if (streq(dirs[i], "$BK_DOTBK")) {
 			free(dirs[i]);
 			dirs[i] = strdup(getDotBk());
-		} else if (streq(&dirs[i][1], "BK_BIN")) {
+		} else if (streq(dirs[i], "$BK_BIN")) {
 			free(dirs[i]);
 			dirs[i] = strdup(bin);
+		} else if (streq(dirs[i], "$PRODUCT")) {
+			free(dirs[i]);
+			if (proj_isComponent(0) && (proj = proj_product(0))) {
+		    		dirs[i] = strdup(proj_root(proj));
+			} else {
+				dirs[i] = strdup("|skip|");
+			}
 		} else {
 			/* XXX: no habla this $var ? */
+			free(dirs[i]);
+			dirs[i] = strdup("|skip|");
 		}
 	}
 	return (dirs);

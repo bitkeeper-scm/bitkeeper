@@ -453,7 +453,8 @@ done:	if (rc) {
 	/*
 	 * Don't bother to fire trigger if we have no tree.
 	 */
-	if (!getenv("_BK_TRANSACTION") && proj_root(0) && (rc != 2)) {
+	if (proj_root(0) && (rc != 2)) {
+		proj_reset(0);
 		trigger("clone", "post");
 	}
 

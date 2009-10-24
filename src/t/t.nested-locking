@@ -52,10 +52,24 @@ mkdir -p "$TMP"
 cd "$HERE"
 commercial standalone
 cd "$HERE"
+bk pwd "$HERE" > HERE
+HERE="`cat HERE`"
+rm -f HERE
 nested product
 cat <<EOF >trigger
 #!/bin/bash
-I_AM=\`basename "\$BK_ROOT"\`-\$BK_TRIGGER
+
+# Uncomment for debugging.
+# exec >> C:/TRIGGERS 2>&1
+# exec >> /tmp/TRIGGERS 2>&1
+# set -x
+
+# Set I_AM like /build/.regression rob/sandbox/clone..gcc-pre-incoming
+I_AM="\`bk pwd\`..\$BK_TRIGGER"
+# Remove path prefix so it's now like clone/gcc..pre-incoming
+I_AM="\${I_AM#$HERE/}"
+# Substitute .. for / so it's now like clone..gcc..pre-incoming
+I_AM="\`echo \$I_AM | sed s,/,..,\`"
 echo "\${I_AM} being run"
 I_AM_HERE="$TMP/\$I_AM".here
 test -f "$TMP/\$I_AM" || exit 0
@@ -104,13 +118,13 @@ echo ---- While clone to destination in progress
 repo_setup csets-in-components
 # Clone clone1 to clone but cause the clone to spin in
 # the product's post-incoming trigger.
-test -f "$TMP/clone-post-incoming.here" && fail
-touch "$TMP/clone-post-incoming"
+test -f "$TMP/clone..post-incoming.here" && fail
+touch "$TMP/clone..post-incoming"
 cd "$HERE"
 bk clone $Q clone1 clone 2>OUT &
 PID=$!
-# Wait for the pull to be in progress.
-while ! test -f "$TMP/clone-post-incoming.here"
+# Wait for the clone to be in progress.
+while ! test -f "$TMP/clone..post-incoming.here"
 do	sleep 1
 done
 
@@ -183,34 +197,32 @@ echo OK
 echo $N Make sure original clone finished............................$NL
 # Let the clone complete.
 cd ..
-rm "$TMP/clone-post-incoming"
+rm "$TMP/clone..post-incoming"
 wait $PID
 STATUS=$?
 test $STATUS = 0 -o $STATUS = 127 || \
 	fail -f "$HERE/clone1/PUSH" push failed with status $STATUS
-test -f "$TMP/gcc-post-incoming.here" && fail
-# Verify that the push into clone worked.
+test -f "$TMP/clone..post-incoming.here" && fail
+# Verify that the clone worked.
 cd "$HERE/clone"
 test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
 echo OK
 
-echo ---- While local push to component in progress [pre-incoming]
+echo ---- While local push to component in progress \[pre-incoming]
 repo_setup csets-in-components
 # Push clone1 into clone but cause the gcc push to spin in
 # the pre-incoming trigger.
 bk clone $Q product clone || fail
-test -f "$TMP/gcc-pre-incoming.here" && fail
-touch "$TMP/gcc-pre-incoming"
+test -f "$TMP/clone..gcc..pre-incoming.here" && fail
+touch "$TMP/clone..gcc..pre-incoming"
 cd "$HERE/clone1"
-bk push $Q "$HERE/clone" >PUSH 2>&1 &
+bk push "$HERE/clone" >PUSH 2>&1 &
 PID=$!
 # Wait for the push to be in progress.
-while ! test -f "$TMP/gcc-pre-incoming.here"
+while ! test -f "$TMP/clone..gcc..pre-incoming.here"
 do	sleep 1
 done
 # Now try various operations.
-# NOTE: some of these are commented out because otherwise the push
-# fails or hangs.
 # Clone of product.
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
@@ -270,35 +282,32 @@ echo OK
 
 echo $N Make sure original push completed............................$NL
 # Let the push complete.
-rm "$TMP/gcc-pre-incoming"
+rm "$TMP/clone..gcc..pre-incoming"
 wait $PID
 STATUS=$?
 test $STATUS = 0 -o $STATUS = 127 || \
 	fail -f "$HERE/clone1/PUSH" push failed with status $STATUS
-test -f "$TMP/gcc-pre-incoming.here" && fail
+test -f "$TMP/clone..gcc..pre-incoming.here" && fail
 # Verify that the push into clone worked.
 cd "$HERE/clone"
 test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
 echo OK
 
-echo ---- While local push to component in progress [post-incoming]
+echo ---- While local push to component in progress \[post-incoming]
 repo_setup csets-in-components
 # Push clone1 into clone but cause the gcc push to spin in
 # the post-incoming trigger.
 bk clone $Q product clone || fail
-test -f "$TMP/gcc-post-incoming.here" && fail
-touch "$TMP/gcc-post-incoming"
+test -f "$TMP/clone..gcc..post-incoming.here" && fail
+touch "$TMP/clone..gcc..post-incoming"
 cd "$HERE/clone1"
 bk push $Q "$HERE/clone" >PUSH 2>&1 &
 PID=$!
-# Wait for the push to be in progress.
-while ! test -f "$TMP/gcc-post-incoming.here"
+# Wait for the clone to be in progress.
+while ! test -f "$TMP/clone..gcc..post-incoming.here"
 do	sleep 1
 done
 # Now try various operations.
-# Now try various operations.
-# NOTE: some of these are commented out because otherwise the push
-# fails or hangs.
 # Clone of product.
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
@@ -359,7 +368,7 @@ grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Make sure original push completed............................$NL
-rm "$TMP/gcc-post-incoming"
+rm "$TMP/clone..gcc..post-incoming"
 wait $PID
 STATUS=$?
 test $STATUS = 0 -o $STATUS = 127 || {
@@ -367,30 +376,28 @@ test $STATUS = 0 -o $STATUS = 127 || {
 	cat "$HERE/clone1/PUSH"
 	fail
 }
-test -f "$TMP/gcc-post-incoming.here" && fail
+test -f "$TMP/clone..gcc..post-incoming.here" && fail
 # Verify that the push into clone worked.
 cd "$HERE/clone"
 test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
 echo OK
 
-echo ---- While remote push to component in progress [pre-incoming]
+echo ---- While remote push to component in progress \[pre-incoming]
 repo_setup csets-in-components
 # Push clone1 into clone but cause the gcc push to spin in
 # the pre-incoming trigger.
 bk clone $Q product clone || fail
-test -f "$TMP/gcc-pre-incoming.here" && fail
-touch "$TMP/gcc-pre-incoming"
+test -f "$TMP/clone..gcc..pre-incoming.here" && fail
+touch "$TMP/clone..gcc..pre-incoming"
 cd "$HERE/clone1"
 bk push $Q bk://localhost:$P/clone >PUSH 2>&1 &
 PID=$!
 # Wait for the push to be in progress.
-while ! test -f "$TMP/gcc-pre-incoming.here"
+while ! test -f "$TMP/clone..gcc..pre-incoming.here"
 do	sleep 1
 done
 
 # Now try various operations.
-# NOTE: some of these are commented out because otherwise the push
-# fails or hangs.
 # Clone of product.
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
@@ -452,30 +459,30 @@ grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Make sure original push completed............................$NL
-rm "$TMP/gcc-pre-incoming"
+rm "$TMP/clone..gcc..pre-incoming"
 wait $PID
 STATUS=$?
 test $STATUS = 0 -o $STATUS = 127 || 
      fail -f "$HERE/clone1/PUSH" push failed with status $STATUS
-test -f "$TMP/gcc-pre-incoming.here" && fail
+test -f "$TMP/clone..gcc..pre-incoming.here" && fail
 # Verify that the push into clone worked.
 cd "$HERE/clone"
 test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
 cd "$HERE"
 echo OK
 
-echo ---- While remote push to component in progress [post-incoming]
+echo ---- While remote push to component in progress \[post-incoming]
 repo_setup csets-in-components
 # Push clone1 into clone but cause the gcc push to spin in
 # the post-incoming trigger.
 bk clone $Q product clone || fail
-test -f "$TMP/gcc-post-incoming.here" && fail
-touch "$TMP/gcc-post-incoming"
+test -f "$TMP/clone..gcc..post-incoming.here" && fail
+touch "$TMP/clone..gcc..post-incoming"
 cd "$HERE/clone1"
 bk push $Q bk://localhost:$P/clone >PUSH 2>&1 &
 PID=$!
 # Wait for the push to be in progress.
-while ! test -f "$TMP/gcc-post-incoming.here"
+while ! test -f "$TMP/clone..gcc..post-incoming.here"
 do	sleep 1
 done
 
@@ -543,28 +550,28 @@ grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Make sure original push completed............................$NL
-rm "$TMP/gcc-post-incoming"
+rm "$TMP/clone..gcc..post-incoming"
 wait $PID
 STATUS=$?
 test $STATUS = 0 -o $STATUS = 127 || fail
-test -f "$TMP/gcc-post-incoming.here" && fail
+test -f "$TMP/clone..gcc..post-incoming.here" && fail
 # Verify that the push into clone worked.
 cd "$HERE/clone"
 test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
 echo OK
 
-echo ---- While component pull in progress [pre-incoming]
+echo ---- While component pull in progress \[pre-incoming]
 repo_setup csets-in-components
 bk clone $Q product clone || fail
 # Pull clone1 into clone but cause the gcc pull to spin in
 # the pre-incoming trigger.
-test -f "$TMP/gcc-pre-incoming.here" && fail
-touch "$TMP/gcc-pre-incoming"
+test -f "$TMP/clone..gcc..pre-incoming.here" && fail
+touch "$TMP/clone..gcc..pre-incoming"
 cd "$HERE/clone" || fail
 bk pull $Q "$HERE/clone1" &
 PID=$!
 # Wait for the pull to be in progress.
-while ! test -f "$TMP/gcc-pre-incoming.here"
+while ! test -f "$TMP/clone..gcc..pre-incoming.here"
 do	sleep 1
 done
 
@@ -631,36 +638,34 @@ bk undo $Q for-undo >ERR 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
-echo $N Make sure original push completed............................$NL
+echo $N Make sure original pull completed............................$NL
 cd ..
-rm "$TMP/gcc-pre-incoming"
+rm "$TMP/clone..gcc..pre-incoming"
 wait $PID
 STATUS=$?
 test $STATUS = 0 -o $STATUS = 127 || fail
-test -f "$TMP/gcc-pre-incoming.here" && fail
+test -f "$TMP/clone..gcc..pre-incoming.here" && fail
 # Verify that the pull into clone worked.
 cd "$HERE/clone"
 test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
 echo OK
 
-echo ---- While component pull in progress [post-incoming]
+echo ---- While component pull in progress \[post-incoming]
 repo_setup csets-in-components
 bk clone $Q product clone || fail
 # Pull clone1 into clone but cause the gcc pull to spin in
 # the post-incoming trigger.
-test -f "$TMP/gcc-post-incoming.here" && fail
-touch "$TMP/gcc-post-incoming"
+test -f "$TMP/clone..gcc..post-incoming.here" && fail
+touch "$TMP/clone..gcc..post-incoming"
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone1" &
 PID=$!
 # Wait for the pull to be in progress.
-while ! test -f "$TMP/gcc-post-incoming.here"
+while ! test -f "$TMP/clone..gcc..post-incoming.here"
 do	sleep 1
 done
 
 # Now try various operations.
-# NOTE: some of these are commented out because otherwise the push
-# fails or hangs.
 # Clone of product.
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
@@ -721,36 +726,34 @@ bk undo $Q for-undo >ERR 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
-echo $N Make sure original push completed............................$NL
+echo $N Make sure original pull completed............................$NL
 cd ..
-rm "$TMP/gcc-post-incoming"
+rm "$TMP/clone..gcc..post-incoming"
 wait $PID
 STATUS=$?
 test $STATUS = 0 -o $STATUS = 127 || fail
-test -f "$TMP/gcc-post-incoming.here" && fail
+test -f "$TMP/clone..gcc..post-incoming.here" && fail
 # Verify that the pull into clone worked.
 cd "$HERE/clone"
 test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
 echo OK
 
-echo ---- While product-only pull in progress [pre-incoming]
+echo ---- While product-only pull in progress \[pre-incoming]
 repo_setup csets-in-products
 bk clone $Q product clone || fail
 # Pull clone1 into clone but cause the pull to spin in
 # the pre-incoming trigger.
-test -f "$TMP/clone-pre-incoming.here" && fail
-touch "$TMP/clone-pre-incoming"
+test -f "$TMP/clone..pre-incoming.here" && fail
+touch "$TMP/clone..pre-incoming"
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone1" &
 PID=$!
 # Wait for the pull to be in progress.
-while ! test -f "$TMP/clone-pre-incoming.here"
+while ! test -f "$TMP/clone..pre-incoming.here"
 do	sleep 1
 done
 
 # Now try various operations.
-# NOTE: some of these are commented out because otherwise the push
-# fails or hangs.
 # Clone of product.
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
@@ -803,36 +806,34 @@ bk undo $Q for-undo >ERR 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
-echo $N Make sure original push completed............................$NL
+echo $N Make sure original pull completed............................$NL
 cd ..
-rm "$TMP/clone-pre-incoming"
+rm "$TMP/clone..pre-incoming"
 wait $PID
 STATUS=$?
 test $STATUS = 0 -o $STATUS = 127 || fail
-test -f "$TMP/clone-pre-incoming.here" && fail
+test -f "$TMP/clone..pre-incoming.here" && fail
 # Verify that the pull into clone worked.
 cd "$HERE/clone"
 test "`bk changes -r+ -nd':C:'`" = "add new1" || fail
 echo OK
 
-echo ---- While product-only pull in progress [post-incoming]
+echo ---- While product-only pull in progress \[post-incoming]
 repo_setup csets-in-products
 bk clone $Q product clone || fail
 # Pull clone1 into clone but cause the pull to spin in
 # the post-incoming trigger.
-test -f "$TMP/clone-post-incoming.here" && fail
-touch "$TMP/clone-post-incoming"
+test -f "$TMP/clone..post-incoming.here" && fail
+touch "$TMP/clone..post-incoming"
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone1" &
 PID=$!
 # Wait for the pull to be in progress.
-while ! test -f "$TMP/clone-post-incoming.here"
+while ! test -f "$TMP/clone..post-incoming.here"
 do	sleep 1
 done
 
 # Now try various operations.
-# NOTE: some of these are commented out because otherwise the push
-# fails or hangs.
 # Clone of product.
 echo $N Cloning should work..........................................$NL
 cd "$HERE"
@@ -884,13 +885,13 @@ bk undo $Q for-undo >ERR 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
-echo $N Make sure original push completed............................$NL
+echo $N Make sure original pull completed............................$NL
 cd ..
-rm "$TMP/clone-post-incoming"
+rm "$TMP/clone..post-incoming"
 wait $PID
 STATUS=$?
 test $STATUS = 0 -o $STATUS = 127 || fail
-test -f "$TMP/clone-post-incoming.here" && fail
+test -f "$TMP/clone..post-incoming.here" && fail
 # Verify that the pull into clone worked.
 cd "$HERE/clone"
 test "`bk changes -r+ -nd':C:'`" = "add new1" || fail
