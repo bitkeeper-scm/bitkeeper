@@ -63,7 +63,7 @@ case "$1" in
 		cd $VAR || exit 1
 		echo Shutting down BitKeeper daemons
 		for i in pid.*
-		do	kill -HUP \`cat $i\`
+		do	kill -TERM \`cat $i\`
 			rm $i
 		done
 		;;
