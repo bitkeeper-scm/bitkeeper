@@ -207,23 +207,64 @@ update_rootlog(sccs *s, char *key, char *comments)
 	if (oldtext) freeLines(oldtext, 0);
 }
 
+/*
+ * Giving a sccs* for the repositories ChangeSet file, return the rootkey
+ * from the last transform operation.
+ * This means walking the ROOTLOG from newest to oldest and returning
+ * the first rootkey found that is not an attach or detach (or any later
+ * transform we do that is "invisible").
+ */
 void
-sccs_origRoot(sccs *s, char *key)
+sccs_syncRoot(sccs *s, char *key)
 {
-	int	i;
-	int	in_log = 0;
+	int	i, x, keepit = 0;
+	char	*p;
 
 	key[0] = 0;
+
+	/* find start of ROOTLOG */
 	EACH(s->text) {
-		unless (in_log) {
-			if (streq(s->text[i], "@ROOTLOG")) in_log = 1;
-			continue;
-		}
-		if (streq(s->text[i], "original")) {
-			strcpy(key, s->text[i+1]);
-			break;
-		}
-		if (s->text[i][0] == '@') break;
+		if (streq(s->text[i], "@ROOTLOG")) goto foundit;
 	}
-	unless (key[0]) sccs_sdelta(s, sccs_ino(s), key);
+	goto nolog;
+foundit:
+	x = 0;
+	EACH_START(i+1, s->text, i) {
+		/*
+		 * the rootlog consists of 3 line for each entry:
+		 *
+		 *  i   <user>@<host> <data>
+		 *  i+1 <comments>
+		 *  i+2 <rootkey>
+		 *
+		 * we want to find the first record where the comments
+		 * don't start with 'attach' or 'detach'
+		 * Note: add a (syncok) marker in case we need a backwards
+		 * compat way to newroot something that won't stop
+		 * using port.
+		 */
+		x++;
+		p = s->text[i];
+		switch(x) {
+		    case 1:
+			if (*p == '@') goto nolog;
+		    	break;
+		    case 2:
+			unless (strneq(p, "attach ", 7) ||
+			    streq(p, "detach") ||
+			    strstr(p, "(syncok)")) {
+			    	keepit = 1;
+			}
+		    	break;
+		    case 3:
+			x = 0;
+			if (keepit) {
+				strcpy(key, p);
+				return;
+			}
+		    	break;
+		}
+	}
+nolog:	/* no ROOTLOG, just return old rootkey */
+	sccs_sdelta(s, sccs_ino(s), key);
 }

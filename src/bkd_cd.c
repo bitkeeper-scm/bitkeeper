@@ -56,15 +56,15 @@ cmd_cd(int ac, char **av)
 	}
 	/*
 	 * av[1] = <path>[|<rootkey>]
-	 * If we find a rootkey it is supposed to be a component in this
-	 * ensemble.
+	 * The path part gets you to the product, the rootkey which is
+	 * postfixed, tells you to go to that component.
 	 */
 	if (rootkey = strchr(p, '|')) *rootkey++ = 0;
 	if (*p && unsafe_cd(p)) {
 		send_cderror(p);
 		return (1);
 	}
-	if (rootkey && !streq(rootkey, proj_rootkey(0))) {
+	if (rootkey && proj_isProduct(0) && !streq(rootkey, proj_rootkey(0))) {
 		unless ((idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) &&
 		    (t = mdbm_fetch_str(idDB, rootkey))) {
 			send_keyerror(rootkey, p);

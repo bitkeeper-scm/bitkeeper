@@ -809,6 +809,7 @@ applyCsetPatch(char *localPath, int nfound, sccs *perfile)
 	delta	*remote_tagtip = 0;
 	int	n = 0;
 	int	confThisFile;
+	int	port = 0;
 	FILE	*csets = 0, *f;
 	hash	*cdb;
 	int	flags = echo ? 0 : SILENT;
@@ -965,8 +966,14 @@ apply:
 		 */
 		if (!d && p->meta) continue;
 		assert(d);
-		if (p->remote) d->flags |= (D_REMOTE|D_SET);
+		if (p->remote) {
+			unless (TAG(d)) port = !(d->flags & D_CSET);
+			d->flags |= (D_REMOTE|D_SET);
+		}
 	}
+	/*
+	 * Make a new changeset node in resolve if no new node created
+	 */
 	s->state |= S_SET;
 	if (echo == 3) fprintf(stderr, "\b, ");
 	if (cset_resum(s, 0, 0, echo == 3, 1)) {
@@ -975,6 +982,10 @@ apply:
 	}
 
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) goto err;
+	/* Signal resolve to add a null cset for ChangeSet path fixup. */
+	if (port && exists(ROOT2RESYNC "/SCCS/m.ChangeSet")) {
+		touch(ROOT2RESYNC "/SCCS/n.ChangeSet", 0664);
+	}
 	if (!confThisFile && (s->state & S_CSET) && 
 	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
 	    	confThisFile++;

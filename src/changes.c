@@ -376,7 +376,7 @@ _doit_local(char **nav, char *url)
 	char	tmpf[MAXPATH];
 
 	/*
-	 * What we get here is: bk synckey -l url | bk changes opts -
+	 * What we get here is: bk synckey -l -S url | bk changes opts -
 	 */
 	if (opts.showdups) {
 		f = popenvp(nav, "w");
@@ -388,7 +388,7 @@ _doit_local(char **nav, char *url)
 
 	bktmp(tmpf, 0);
 	p = fopen(tmpf, "w");
-	rc = synckeys(r, s_cset, PK_LKEY, p);
+	rc = synckeys(r, s_cset, PK_LKEY|PK_SYNCROOT, p);
 	fclose(p);
 	remote_free(r);
 	p = fopen(tmpf, "r");
@@ -1240,7 +1240,7 @@ send_part1_msg(remote *r, char **av)
 	if (opts.remote) {
 		probef = bktmp(0, 0);
 		if (f = fopen(probef, "wb")) {
-			rc = probekey(s_cset, 0, 0, f);
+			rc = probekey(s_cset, 0, 1, f);
 			fclose(f);
 			extra = size(probef);
 		} else {
@@ -1381,7 +1381,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	 */
 	bktmp(key_list, "keylist");
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
-	flags = PK_REVPREFIX|PK_RKEY;
+	flags = PK_REVPREFIX|PK_RKEY|PK_SYNCROOT;
 	rc = prunekey(s_cset, r, seen, fd, flags, 0, NULL, &rcsets, &rtags);
 	if (rc < 0) {
 		switch (rc) {

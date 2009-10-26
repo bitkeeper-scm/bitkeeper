@@ -777,7 +777,11 @@ get_ok(remote *r, char *read_ahead, int verbose)
 			if (streq(buf, "@END@")) break;
 			p = buf;
 			if (p && *p && strneq(p, "ERROR-", 6)) p += 6;
-			if (p && *p) fprintf(stderr, "%s: %s\n", url, p);
+
+			// The exiting message just muddies the water.
+			if (p && *p && !streq(p, "exiting")) {
+				fprintf(stderr, "%s: %s\n", url, p);
+			}
 			/*
 			 * 20 lines of error message should be enough
 			 */

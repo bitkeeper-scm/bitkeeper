@@ -10,7 +10,7 @@
  * Design supports multiple LODs.
  */
 private void
-lod_probekey(sccs *s, delta *d, int origroot, FILE *f)
+lod_probekey(sccs *s, delta *d, int syncRoot, FILE *f)
 {
 	int	i, j;
 	char	key[MAXKEY];
@@ -32,12 +32,12 @@ lod_probekey(sccs *s, delta *d, int origroot, FILE *f)
 	 * Always send the root key because we want to force a match.
 	 * No match is a error condition.
 	 */
-	if (origroot) {
+	if (syncRoot) {
 		/*
-		 * We want to send the original rootkey instead of the
+		 * We want to send the sync rootkey instead of the
 		 * current rootkey.
 		 */
-		sccs_origRoot(s, key);
+		sccs_syncRoot(s, key);
 	} else {
 		sccs_sdelta(s, sccs_ino(s), key);
 	}
@@ -71,11 +71,11 @@ probekey_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*rev = 0;
-	int	rc, c, origroot = 0;
+	int	rc, c, syncRoot = 0;
 
-	while ((c = getopt(ac, av, "Ar;")) != -1) {
+	while ((c = getopt(ac, av, "Sr;")) != -1) {
 		switch (c) {
-		    case 'A': origroot = 1; break;
+		    case 'S': syncRoot = 1; break;
 		    case 'r': rev = optarg; break;
 		    default:
 			fprintf(stderr, "usage: probekey OPTS\n");
@@ -86,13 +86,13 @@ probekey_main(int ac, char **av)
 		out("ERROR-Can't init changeset\n@END@\n");
 		return (1);
 	}
-	rc = probekey(s, rev, origroot, stdout);
+	rc = probekey(s, rev, syncRoot, stdout);
 	sccs_free(s);
 	return (rc);
 }
 
 int
-probekey(sccs *s, char *rev, int origroot, FILE *f)
+probekey(sccs *s, char *rev, int syncRoot, FILE *f)
 {
 	delta	*d;
 
@@ -106,7 +106,7 @@ probekey(sccs *s, char *rev, int origroot, FILE *f)
 		d = sccs_top(s);
 	}
 	fputs("@LOD PROBE@\n", f);
-	lod_probekey(s, d, origroot, f);
+	lod_probekey(s, d, syncRoot, f);
 	tag_probekey(s, f);
 	fputs("@END PROBE@\n", f);
 
@@ -165,8 +165,8 @@ listkey_main(int ac, char **av)
 	int	i, c, debug = 0, quiet = 0, nomatch = 1;
 	int	sndRev = 0;
 	int	ForceFullPatch = 0; /* force a "makepatch -r.." */
-	int	origroot = 0;
-	char	key[MAXKEY], rootkey[MAXKEY], origkey[MAXKEY];
+	int	syncRoot = 0;
+	char	key[MAXKEY], rootkey[MAXKEY], synckey[MAXKEY];
 	char	s_cset[] = CHANGESET;
 	char	**lines = 0;
 	char	*tag;
@@ -175,13 +175,13 @@ listkey_main(int ac, char **av)
 
 #define OUT(s)  unless(ForceFullPatch) out(s)
 
-	while ((c = getopt(ac, av, "AdqrF")) != -1) {
+	while ((c = getopt(ac, av, "dqrFS")) != -1) {
 		switch (c) {
-		    case 'A':   origroot = 1; break;
 		    case 'd':	debug = 1; break;
 		    case 'q':	quiet = 1; break;
 		    case 'r':	sndRev = 1; break;
 		    case 'F':   ForceFullPatch = 1; break;
+		    case 'S':   syncRoot = 1; break;
 		    default:	fprintf(stderr,
 					"usage: bk _listkey [-d] [-q]\n");
 				return (5);
@@ -192,9 +192,9 @@ listkey_main(int ac, char **av)
 		return(3); /* cset error */
 	}
 	sccs_sdelta(s, sccs_ino(s), rootkey);
-	if (origroot) {
-		sccs_origRoot(s, origkey);
-		if (streq(rootkey, origkey)) origroot = 0;
+	if (syncRoot) {
+		sccs_syncRoot(s, synckey);
+		if (streq(rootkey, synckey)) syncRoot = 0;
 	}
 
 	/*
@@ -243,7 +243,7 @@ listkey_main(int ac, char **av)
 	 */
 	nomatch = 1;
 	EACH(lines) {
-		if (origroot && streq(lines[i], origkey)) {
+		if (syncRoot && streq(lines[i], synckey)) {
 			free(lines[i]);
 			lines[i] = strdup(rootkey);
 		}
@@ -285,8 +285,8 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 				if (tag = sccs_d2tag(s, d)) out(tag);
 				OUT("|");
 			}
-			if (origroot && (d == sccs_ino(s))) {
-				OUT(origkey);
+			if (syncRoot && (d == sccs_ino(s))) {
+				OUT(synckey);
 			} else {
 				OUT(lines[i]);
 			}
@@ -390,7 +390,7 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	int	rc = 0, rcsets = 0, rtags = 0, local = 0;
 	char	*k;
 	char	key[MAXKEY + 512] = ""; /* rev + tag + key */
-	char	origkey[MAXKEY];
+	char	synckey[MAXKEY];
 	/*
 	 * Reopen stdin with a stdio stream.  We will be reading a LOT of
 	 * data and it will all be processed with this process so it is
@@ -423,6 +423,8 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 		return (-1);
 	}
 
+	if (flags & PK_SYNCROOT) sccs_syncRoot(s, synckey);
+
 	/* Work through the LOD key matches and color the graph. */
 	for ( ;; ) {
 		unless (getline2(r, key, sizeof(key)) > 0) {
@@ -432,9 +434,8 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 		if (key[0] == '@') break;
 		k = get_key(key, flags);
 		d = sccs_findKey(s, k);
-		if (!d && (flags & PK_ORIGROOT)) {
-			sccs_origRoot(s, origkey);
-			if (streq(key, origkey)) d = sccs_ino(s);
+		if (!d && (flags & PK_SYNCROOT)) {
+			if (streq(k, synckey)) d = sccs_ino(s);
 		}
 		/*
 		 * If there is garbage on the wire,
@@ -554,7 +555,7 @@ prunekey_main(int ac, char **av)
 
 
 private int
-send_sync_msg(remote *r)
+send_sync_msg(remote *r, int flags)
 {
 	FILE 	*f;
 	int	rc, i;
@@ -566,11 +567,16 @@ send_sync_msg(remote *r)
 	assert(f);
 	sendEnv(f, NULL, r, 0);
 	add_cd_command(f, r);
-	fprintf(f, "synckeys\n");
+	fprintf(f, "synckeys %s\n", (flags & PK_SYNCROOT) ? "-S" : "");
 	fclose(f);
 
 	probef = bktmp(0, 0);
-	unless (rc = sysio(0, probef, 0, "bk", "_probekey", SYS)) {
+	if (flags & PK_SYNCROOT) {
+		rc = sysio(0, probef, 0, "bk", "_probekey", "-S", SYS);
+	} else {
+		rc = sysio(0, probef, 0, "bk", "_probekey", SYS);
+	}
+	unless (rc) {
 		rc = send_file(r, buf, size(probef));
 		unlink(buf);
 		f = fopen(probef, "rb");
@@ -599,7 +605,7 @@ synckeys(remote *r, sccs *s, int flags, FILE *fout)
 	char	buf[MAXPATH];
 
 	if (bkd_connect(r)) return (1);
-	if (send_sync_msg(r)) goto out;
+	if (send_sync_msg(r, flags)) goto out;
 	if (r->rfd < 0) goto out;
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
@@ -650,9 +656,10 @@ synckeys_main(int ac, char **av)
 	sccs	*s;
 	int	flags = 0;
 
-	while ((c = getopt(ac, av, "lr")) != -1) {
+	while ((c = getopt(ac, av, "lSr")) != -1) {
 		switch (c) {
 		    case 'l': flags |= PK_LKEY; break;
+		    case 'S': flags |= PK_SYNCROOT; break;
 		    case 'r': flags |= PK_RKEY; break;
 		    default:  fprintf(stderr, "bad option %c\n", c);
 			      exit(1);

@@ -9,7 +9,10 @@ cmd_chg_part1(int ac, char **av)
 	char	*new_av[100];
 	FILE 	*f;
 
-	if (ac == 2 && streq(av[1], "-K")) return (cmd_synckeys(ac, av));
+	if (ac == 2 && streq(av[1], "-K")) {
+		av[1][1] = 'S';
+		return (cmd_synckeys(ac, av));
+	}
 
 	setmode(0, _O_BINARY);
 	if (sendServerInfoBlock(0)) {

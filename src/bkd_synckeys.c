@@ -1,17 +1,27 @@
 #include "bkd.h"
 
 /*
- * Note: this finction is also called from bkd_changes.c
+ * Note: this function is also called from bkd_changes.c
  */
 int
 cmd_synckeys(int ac, char **av)
 {
 	char	*p, buf[MAXKEY], cmd[MAXPATH];
-	int	n, status;
+	int	c, n, status;
 	MMAP    *m;
 	FILE	*l;
 	char	*lktmp;
 	int	ret;
+	int	syncRoot = 0;
+
+	while ((c = getopt(ac, av, "S")) != -1) {
+	    switch (c) {
+		case 'S':	/* look through the root log for a match */
+		    syncRoot = 1;
+		    break;
+		default: break;
+	    }
+	}
 
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	if (sendServerInfoBlock(0)) return (1);
@@ -44,7 +54,7 @@ cmd_synckeys(int ac, char **av)
 	}
 
 	lktmp = bktmp(0, "synckey");
-	sprintf(cmd, "bk _listkey -r > '%s'", lktmp);
+	sprintf(cmd, "bk _listkey -r %s > '%s'", syncRoot?"-S":"", lktmp);
 	l = popen(cmd, "w");
 	while ((n = getline(0, buf, sizeof(buf))) > 0) {
 		fprintf(l, "%s\n", buf);

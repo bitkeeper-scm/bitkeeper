@@ -9267,8 +9267,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 				hostArg(d, sccs_host());
 			}
 		}
-		if (s && !d->pathname &&
-		    (!CSET(s) || proj_isComponent(s->proj))) {
+		if (s && !d->pathname) {
 			char *p, *q;
 			project	*proj = s->proj;
 

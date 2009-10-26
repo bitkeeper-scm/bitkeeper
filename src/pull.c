@@ -123,14 +123,15 @@ pull_main(int ac, char **av)
 	if (proj_isComponent(0)) {
 		unless (opts.transaction || opts.port) {
 			fprintf(stderr,
-			    "pull: component pulls are not allowed\n");
+			    "pull: component-only pulls are not allowed.\n");
 			return (1);
 		}
-	} else if (opts.port) {
-		fprintf(stderr,
-			"port: can only port to an ensemble component.\n");
-		return (1);
 	} else if (proj_isProduct(0)) {
+		if (opts.port) {
+			fprintf(stderr,
+			    "pull: port not allowed with product.\n");
+			return (1);
+		}
 		opts.product = 1;
 		unless (opts.transaction) opts.pass1 = 1;
 	}
@@ -171,7 +172,7 @@ err:		freeLines(envVar, free);
 		return (1);
 	}
 
-	if (opts.port) {
+	if (opts.port && proj_isComponent(0)) {
 		p = aprintf("%s/BitKeeper/log/PORTAL",
 		    proj_root(proj_product(0)));
 		unless (exists(p)) {
@@ -255,7 +256,7 @@ fromTo(char *op, remote *f, remote *t)
 }
 
 private int
-send_part1_msg(remote *r, char probe_list[], char **envVar)
+send_part1_msg(remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE    *f;
@@ -286,7 +287,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 	char	buf[MAXPATH];
 
 	if (bkd_connect(r)) return (-1);
-	if (send_part1_msg(r, probe_list, envVar)) return (-1);
+	if (send_part1_msg(r, envVar)) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
@@ -300,8 +301,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		disconnect(r, 2);
 		exit(1);
 	}
-	if (getenv("BKD_LEVEL") &&
-	    (atoi(getenv("BKD_LEVEL")) > getlevel())) {
+	if ((p = getenv("BKD_LEVEL")) && (atoi(p) > getlevel())) {
 	    	fprintf(stderr, "pull: cannot pull to lower level "
 		    "repository (remote level == %s)\n", getenv("BKD_LEVEL"));
 		disconnect(r, 2);
@@ -321,18 +321,38 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		disconnect(r, 2);
 		return (1);
 	}
-	if (opts.port && (p = getenv("BKD_PRODUCT_KEY")) &&
-	    streq(p, proj_rootkey(proj_product(0)))) {
-		fprintf(stderr,
-		    "port: may not port components with identical products\n");
-		disconnect(r, 2);
-		return (1);
-	}
-	if (opts.port && !bkd_hasFeature("SAMv1")) {
-		fprintf(stderr,
-		    "port: remote bkd too old to support 'bk port'\n");
-		disconnect(r, 2);
-		return (1);
+	if (opts.port) {
+		unless (bkd_hasFeature("SAMv1")) {
+			fprintf(stderr,
+			    "port: remote bkd too old to support 'bk port'\n");
+			disconnect(r, 2);
+			return (1);
+		}
+		if (proj_isComponent(0)) {
+			/* component -> component */
+			if ((p = getenv("BKD_PRODUCT_KEY")) &&
+			    streq(p, proj_rootkey(proj_product(0)))) {
+				fprintf(stderr,
+				    "port: may not port components "
+				    "with identical products\n");
+				disconnect(r, 2);
+				return (1);
+			} else {
+				/* standalone -> component */
+			}
+		} else if (!getenv("BKD_PRODUCT_KEY")) {
+			/* standalone -> standalone */
+			if ((p = getenv("BKD_ROOTKEY")) &&
+			    streq(p, proj_rootkey(0))) {
+				fprintf(stderr,
+				    "port: may not port between "
+				    "identical repositories\n");
+				disconnect(r, 2);
+				return (1);
+			}
+		} else {
+			/* component -> standalone */
+		}
 	}
 	if (get_ok(r, buf, 1)) {
 		disconnect(r, 2);
@@ -388,7 +408,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 
 	sprintf(buf, "bk _listkey %s %s -q < '%s' >> '%s'",
 	    opts.fullPatch ? "-F" : "",
-	    opts.port ? "-A" : "",
+	    opts.port ? "-S" : "",
 	    probe_list, msg_file);
 	status = system(buf);
 	rc = WEXITSTATUS(status);

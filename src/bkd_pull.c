@@ -37,7 +37,7 @@ cmd_pull_part1(int ac, char **av)
 		switch (c) {
 		    case 'P':
 			port = 1;
-			probekey_av = addLine(probekey_av, strdup("-A"));
+			probekey_av = addLine(probekey_av, strdup("-S"));
 			break;
 		    case 'r':
 			probekey_av = addLine(probekey_av,
@@ -58,7 +58,7 @@ cmd_pull_part1(int ac, char **av)
 	}
 
 	if (!nlid && !port && proj_isComponent(0)) {
-		out("ERROR-Not a product root\n");
+		out("ERROR-component-only pulls are not allowed.\n");
 		return (1);
 	}
 	unless (isdir("BitKeeper/etc")) {
@@ -141,7 +141,7 @@ cmd_pull_part2(int ac, char **av)
 		    case 'n': dont = 1; break;
 		    case 'P':
 			port = optarg;
-			pkflags |= PK_ORIGROOT;
+			pkflags |= PK_SYNCROOT;
 			break;
 		    case 'q': verbose = 0; break;
 		    case 'r': rev = optarg; break;

@@ -34,20 +34,6 @@ touch BitKeeper/etc/aliases
 bk new $Q BitKeeper/etc/aliases
 bk commit $Q -y"add aliases file"
 bk newroot -P $Q || exit 1
-
-# XXX hack around ensemble-add restrictions
-#cd ..
-#cp -R project/bash bash-sa
-#cd bash-sa
-#rm BitKeeper/log/COMPONENT
-#bk newroot -y'make standalone' $Q || exit 1
-## edit out pathname changes in cset file
-#perl -ne 'print unless (1../^.d D 1.0 /) && /^.cP/' \
-#     < SCCS/s.ChangeSet > SCCS/x.ChangeSet
-#mv -f SCCS/x.ChangeSet SCCS/s.ChangeSet
-#bk admin -z ChangeSet || exit 1
-#bk -r admin -C`bk id` || exit 1
-#bk -r check -a || exit 1
 cd ../project2
 bk attach $Q ../bash-sa mybash
 bk attach $Q ../standalone sa2
@@ -85,26 +71,47 @@ bk portal . > OUT || { echo failed; exit 1; }
 grep -q "This is already a portal" OUT || exit 1
 echo OK
 
-echo $N Port csets from standalone repo .............................$NL
+echo $N Port csets from standalone repo to component ................$NL
 cd "$HERE"/standalone
 echo hi > file1
 bk new $Q file1 || exit 1
 bk commit $Q -y'add file1' || exit 1
 cd ../project2/sa2
+bk portal $Q rm || exit 1
 bk pull $Q ../../standalone 2> ERR && {
 	echo this should fail
 	cat ERR
 	exit 1
 }
+bk portal $Q . || exit 1
+bk pull $Q ../../standalone 2> ERR && {
+	echo this should fail
+	cat ERR
+	exit 1
+}
+grep -q 'pull: component-only pulls are not allowed.' ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
 cd ..
-test "`bk prs -hnd:DPN: -r+ sa2/ChangeSet`" = ChangeSet || {
+# Check :SPN: because :DPN: doesn't really print the path for ChangeSet.
+test "`bk prs -hnd:SPN: -r+ sa2/ChangeSet`" = sa2/SCCS/s.ChangeSet || {
      echo wrong pathnname before port
      exit 1
 }
 cd sa2
+bk portal $Q rm || exit 1
+bk port $Q ../../standalone 2> ERR && exit 1
+grep -q 'port: destination is not a portal.' ERR || {
+	echo bad error message
+	cat ERR
+	exit 1
+}
+bk portal $Q . || exit 1
 bk port $Q ../../standalone || exit 1
 cd ..
-test "`bk prs -hnd:DPN: -r+ sa2/ChangeSet`" = ChangeSet || {
+test "`bk prs -hnd:SPN: -r+ sa2/ChangeSet`" = sa2/SCCS/s.ChangeSet || {
      echo wrong pathnname after port
      bk changes -r+
      exit 1
@@ -119,10 +126,272 @@ cmpfiles GOT WANT
 bk log -C1.3 -d:JOIN::I: sa2/ChangeSet > WANT
 printf "1.3,1.2,1.1,1.0" > GOT
 cmpfiles GOT WANT
+# Commit to product.
+bk commit $Q -y'port from standalone' || exit 1
+# Make sure another port comes back empty.
+cd sa2
+bk port $Q ../../standalone || exit 1
+test "`bk changes -r+ -nd':REV: :GFILE:'`" = "1.4 ChangeSet" || exit 1
+echo OK
+
+echo $N Port csets from component in portal to standalone repo ......$NL
+# We want to run this test twice, once where the source component is
+# in a portal and once when it is not, so save off the standalone repo
+# so we can restore it below.
+cd "$HERE"
+tar cf standalone.tar standalone
+cd standalone
+bk pull $Q ../project2/sa2 2> ERR 1>&2 && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q 'component-only pulls are not allowed.' ERR || {
+	echo bad error message
+	cat ERR
+	exit 1
+}
+test "`bk changes -r+ -nd:REV:`" = 1.3 || exit 1
+bk port $Q ../project2/sa2 || exit 1
+# We should get two csets from the component, and see a null cset
+# that sets the ChangeSet path.
+bk changes -e -d':JOIN::REV:' > GOT || exit 1
+grep -q '^1.5,1.4,1.2.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+# Check :SPN: because :DPN: doesn't really print the path for ChangeSet.
+test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || {
+	echo wrong pathnname after port
+	exit 1
+}
+bk port $Q ../project2/sa2 || exit 1
+test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 1
+echo OK
+
+echo $N Port csets from component not in portal to standalone repo ..$NL
+# Just like the above test but where the component is not in a portal.
+cd "$HERE"
+rm -rf standalone
+tar xf standalone.tar
+cd project2
+bk portal $Q rm || exit 1
+cd ../standalone
+bk pull $Q ../project2/sa2 2> ERR 1>&2 && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q 'component-only pulls are not allowed.' ERR || {
+	echo bad error message
+	cat ERR
+	exit 1
+}
+test "`bk changes -r+ -nd:REV:`" = 1.3 || exit 1
+bk port $Q ../project2/sa2 || exit 1
+# We should get two csets from the component, and see a null cset
+# that sets the ChangeSet path.
+bk changes -e -d':JOIN::REV:' > GOT || exit 1
+grep -q '^1.5,1.4,1.2.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+# Check :SPN: because :DPN: doesn't really print the path for ChangeSet.
+test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || {
+	echo wrong pathnname after port
+	exit 1
+}
+bk port $Q ../project2/sa2 || exit 1
+test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 1
+cd "$HERE/project2"
+bk portal $Q . || exit 1
+echo OK
+
+echo $N Port csets from component in portal to detached repo ........$NL
+# We want to run this test twice, once where the source component is
+# in a portal and once when it is not, so save off the detached repo
+# and the product it came from so we can restore them in the next test below.
+cd "$HERE/project2"
+bk detach $Q sa2 "$HERE/sa2-detached" || exit 1
+cd "$HERE"
+tar cf sa2-detached.tar sa2-detached || exit 1
+tar cf project2.tar project2 || exit 1
+cd "$HERE/sa2-detached"
+# Check :SPN: because :DPN: doesn't really print the path for ChangeSet.
+test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || {
+	echo wrong pathnname after detach
+	exit 1
+}
+bk pull $Q ../project2/sa2 2> ERR 1>&2 && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q 'component-only pulls are not allowed.' ERR || {
+	echo bad error message
+	cat ERR
+	exit 1
+}
+test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 11
+bk port $Q "$HERE/project2/sa2" || exit 12
+test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 13
+test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || exit 14
+# Add a cset to the component.
+cd "$HERE/project2/sa2"
+echo hi > sa2-new
+bk new $Q sa2-new || exit 15
+bk commit $Q -y'add sa2-new' || exit 16
+# Port to the detached repo.
+cd "$HERE/sa2-detached"
+bk port $Q "$HERE/project2/sa2" || exit 17
+bk changes -e -d':JOIN::REV:' > GOT || exit 18
+grep -q '^1.6,1.4.1.1,1.5,1.4,1.2.1.1,1.3,1.2,1.1,1.0$' GOT || exit 19
+bk port $Q "$HERE/project2/sa2" || exit 1
+test "`bk changes -r+ -nd:REV:`" = 1.6 || exit 1
+test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || exit 1
+echo OK
+
+echo $N Port csets from component not in portal to detached repo ....$NL
+# Like the above test but the portal is removed from project2.
+cd "$HERE"
+rm -rf sa2-detached project2
+tar xf sa2-detached.tar sa2-detached || exit 1
+tar xf project2.tar project2 || exit 1
+cd "$HERE/project2"
+bk portal $Q rm || exit 1
+cd "$HERE/sa2-detached"
+# Check :SPN: because :DPN: doesn't really print the path for ChangeSet.
+test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || {
+	echo wrong pathnname after detach
+	exit 1
+}
+bk pull $Q ../project2/sa2 2> ERR 1>&2 && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q 'component-only pulls are not allowed.' ERR || {
+	echo bad error message
+	cat ERR
+	exit 1
+}
+test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 11
+bk port $Q "$HERE/project2/sa2" || exit 12
+test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 13
+test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || exit 14
+# Add a cset to the component.
+cd "$HERE/project2/sa2"
+echo hi > sa2-new
+bk new $Q sa2-new || exit 15
+bk commit $Q -y'add sa2-new' || exit 16
+# Port to the detached repo.
+cd "$HERE/sa2-detached"
+bk port $Q "$HERE/project2/sa2" || exit 17
+bk changes -e -d':JOIN::REV:' > GOT || exit 18
+grep -q '^1.6,1.4.1.1,1.5,1.4,1.2.1.1,1.3,1.2,1.1,1.0$' GOT || exit 19
+bk port $Q "$HERE/project2/sa2" || exit 1
+test "`bk changes -r+ -nd:REV:`" = 1.6 || exit 1
+test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || exit 1
+cd "$HERE/project2"
+bk portal $Q . || exit 1
+echo OK
+
+echo $N Port csets from detached repo to component ..................$NL
+cd "$HERE/project2"
+test "`bk prs -hnd:SPN: -r+ sa2/ChangeSet`" = sa2/SCCS/s.ChangeSet || exit 1
+bk detach $Q sa2 ../sa2-detached-2
+cd "$HERE/sa2-detached-2"
+test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || exit 1
+cd "$HERE/project2/sa2"
+test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 1
+# We should get the detach cset and a merge cset.
+bk port $Q "$HERE/sa2-detached-2" || exit 1
+bk changes -e -d':JOIN::REV:' > GOT || exit 1
+grep -q '^1.7,1.6,1.5,1.4,1.2.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+# Add a cset to the detached repo.
+cd "$HERE/sa2-detached-2"
+echo hi > sa2-new-2
+bk new $Q sa2-new-2 || exit 1
+bk commit $Q -y'add sa2-new-2' || exit 1
+# Port to the component.
+cd "$HERE/project2/sa2"
+bk pull $Q ../project2/sa2 2> ERR 1>&2 && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q 'component-only pulls are not allowed.' ERR || {
+	echo bad error message
+	cat ERR
+	exit 1
+}
+test "`bk prs -hnd:SPN: -r+ ChangeSet`" = sa2/SCCS/s.ChangeSet || exit 1
+bk port $Q "$HERE/sa2-detached-2" || exit 1
+test "`bk prs -hnd:SPN: -r+ ChangeSet`" = sa2/SCCS/s.ChangeSet || exit 1
+bk changes -e -d':JOIN::REV:' > GOT || exit 1
+grep -q '^1.8,1.6.1.1,1.7,1.6,1.5,1.4,1.2.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+# Nothing else should come over.
+bk port $Q "$HERE/sa2-detached-2" || exit 1
+test "`bk prs -hnd:SPN: -r+ ChangeSet`" = sa2/SCCS/s.ChangeSet || exit 1
+test "`bk changes -r+ -nd:REV:`" = 1.8 || exit 1
+# Commit to the product.
+cd ..
+bk commit $Q -y'ports from sa2-detached-2' || exit 1
+echo OK
+
+echo $N Port csets from standalone repo to detached repo ............$NL
+# Create all new repos since re-using the ones used above gets
+# too complicated to easily follow.
+cd "$HERE"
+commercial standalone-3
+cd "$HERE/project2"
+bk attach $Q ../standalone-3 sa3 || exit 1
+bk detach $Q sa3 ../detached-3 || exit 1
+# Detached should have the attach and detach csets.
+cd ../detached-3
+bk changes -e -d':JOIN::REV:' > GOT || exit 1
+grep -q '^1.3,1.2,1.1,1.0$' GOT || exit 1
+# Add a cset to standalone-3 and port it to detached-3.
+cd "$HERE/standalone-3"
+echo hi > sa3-file
+bk new $Q sa3-file || exit 1
+bk commit $Q -y'add sa3-file' || exit 1
+cd ../detached-3
+bk pull $Q ../standalone-3 2> ERR 1>&2 && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q 'You are trying to pull from an unrelated package.' ERR || {
+	echo bad error message
+	cat ERR
+	exit 1
+}
+# This case shouldn't require a portal.
+bk port $Q ../standalone-3 2> ERR 1>&2 || {
+	echo should have worked
+	cat ERR
+	exit 1
+}
+bk changes -e -d':JOIN::REV:' > GOT || exit 1
+grep -q '^1.4,1.1.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+# Another immediate port shouldn't get anything new.
+bk port $Q ../standalone-3 || exit 1
+bk changes -e -d':JOIN::REV:' > GOT || exit 1
+grep -q '^1.4,1.1.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+echo OK
+
+echo $N Port csets from detached repo to standalone repo ............$NL
+cd "$HERE/standalone-3"
+bk pull $Q ../detached-3 2> ERR 1>&2 && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+# Should get the attach and detach csets, the sa3-file cset on a branch
+# with its merge cset, and that's it (no null cset on top for ChangeSet
+# file path fix-up).
+bk port $Q ../detached-3 || exit 1
+bk changes -e -d':JOIN::REV:' > GOT || exit 1
+grep -q '^1.4,1.1.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
 echo OK
 
 echo $N Test port of matching components in different products ......$NL
-cd ../project2
+cd "$HERE/project2"
 test "`bk prs -hnd:DPN: -r+ mybash/ChangeSet`" = ChangeSet || {
      echo wrong pathnname before port
      exit 1
@@ -189,4 +458,29 @@ cat <<EOF >WANT
 port: may not port components with identical products
 EOF
 cmpfiles WANT ERR
+echo OK
+
+echo $N Try to port a product .......................................$NL
+cd "$HERE"/project-copy
+bk port $Q ../project 2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+cat <<EOF >WANT
+pull: port not allowed with product.
+EOF
+cmpfiles WANT ERR
+echo OK
+
+echo $N Try to port csets between standalone repos ..................$NL
+cd "$HERE"
+bk clone $Q standalone standalone-clone || exit 1
+cd standalone-clone
+echo new >another
+bk new $Q another || exit 2
+bk commit $Q -yanother || exit 3
+cd ../standalone
+bk port $Q ../standalone-clone 2> ERR && exit 4
+grep -q 'may not port between identical repositories' ERR || exit 5
 echo OK

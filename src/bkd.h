@@ -34,7 +34,7 @@
 #define	PK_REVPREFIX	0x00001 /* input key has rev + tag prefix */
 #define	PK_LKEY		0x00008 /* want local cset in key format */
 #define	PK_RKEY		0x00040	/* want remote cset in key format */
-#define	PK_ORIGROOT	0x00080	/* matching original rootkey */
+#define	PK_SYNCROOT	0x00080	/* use sccs_syncRoot(), not newest */
 
 /*
  * Functions take (int ac, char **av)
@@ -142,7 +142,7 @@ char	**getClientInfoBlock(void);
 int	sendServerInfoBlock(int);
 int	bk_hasFeature(char *f);
 int	bkd_hasFeature(char *f);
-int	probekey(sccs *s, char *rev, int origroot, FILE *f);
+int	probekey(sccs *s, char *rev, int syncroot, FILE *f);
 int	synckeys(remote *r, sccs *s, int flags, FILE *fout);
 int	prunekey(sccs *, remote *, hash *, int, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);

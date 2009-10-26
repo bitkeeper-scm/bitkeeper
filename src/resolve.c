@@ -1705,6 +1705,11 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		 * about open logging and they aborted, got a key, and reran.
 		 */
 		mustCommit = 1;
+	} else if (exists("SCCS/n.ChangeSet")) {
+		system("bk edit -q ChangeSet");
+		system("echo Port command: restore path "
+		    "| bk cfile save ChangeSet");
+		mustCommit = 1;
 	}
 
 	/*

@@ -861,7 +861,7 @@ char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_md5delta(sccs *s, delta *d, char *b64);
 void	sccs_key2md5(char *rootkey, char *deltakey, char *b64);
-void	sccs_origRoot(sccs *s, char *key);
+void	sccs_syncRoot(sccs *s, char *key);
 delta	*sccs_csetBoundary(sccs *s, delta *);
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
