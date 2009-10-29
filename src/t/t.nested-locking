@@ -109,8 +109,8 @@ bk commit $Q -y'add to-undo' || fail
 bk -P commit $Q -y'add gcc/to-undo' || fail
 bk tag $Q for-undo || fail
 cd "$HERE"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill || fail
+bk bkd -q -d -aPORT -ikill || fail
+P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 echo OK
 

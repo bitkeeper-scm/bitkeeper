@@ -186,8 +186,8 @@ cd "$HERE"
 rm -rf project
 bk clone $Q -l null-push project
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 cd "$HERE/copy"
 bk push http://localhost:$P >OUT 2>&1 || fail -f OUT
 bk _kill bk://localhost:$P || exit 1
@@ -205,8 +205,8 @@ bk ci $Q -y"conflict" file1
 bk commit $Q -y"make a conflict" || fail
 cd "$HERE/project"
 bk commit $Q -y"make conflict" || fail
-P=`port 50000`
-bk bkd -q -d -p$P -ikill || fail
+bk bkd -q -d -aPORT -ikill || fail
+P=`cat PORT`
 cd "$HERE/copy"
 bk push http://localhost:$P >OUT 2>&1 && fail -f OUT
 RC=$?
@@ -220,8 +220,8 @@ cd "$HERE"
 rm -rf project
 bk clone $Q -l null-push project
 cd "$HERE/null-push"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 cd "$HERE/project"
 bk push http://localhost:$P >OUT 2>&1 || fail -f OUT
 bk _kill bk://localhost:$P || fail

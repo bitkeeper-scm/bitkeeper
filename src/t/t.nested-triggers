@@ -55,8 +55,8 @@ bk commit $Q -ytriggers || exit 8
 cd "$HERE"
 bk clone $Q source pushdest || exit 9
 cd "$HERE"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 echo OK
 
