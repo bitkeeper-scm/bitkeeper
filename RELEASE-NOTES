@@ -1,3 +1,9 @@
+Release notes for BitKeeper version 4.4a (released 14-Oct-2009)
+
+This release is a bugfix release related to slow renumber performance.
+This could impact the running time of pull or push.
+
+===============================================================================
 Release notes for BitKeeper version 4.4 (released 23-Sep-2009)
 
 This release is primarily a bugfix release with the exception of slightly
