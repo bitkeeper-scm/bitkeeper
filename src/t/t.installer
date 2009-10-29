@@ -244,7 +244,7 @@ grep -qi "DEAD BEEF" OUT || {
 	cat OUT
 	exit 1
 }
-grep -qi "docume~1" OUT && {
+grep -qi "^Installing.*docume~1" OUT && {
 	echo failed
 	echo Installer short path names e.g. docume~1
 	cat OUT

@@ -38,8 +38,8 @@ cores
 echo $N rcheck via bk:// ............................................$NL
 cd "$HERE"
 rm -rf copy copy2
-P=`port 50000`
-bk bkd -q -p$P -ikill
+bk bkd -q -aPORT -ikill || exit 1
+P=`cat PORT`
 bk clone $Q "$HERE/project" bk://localhost:$P/"$HERE/copy"
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 cd "$HERE/project"

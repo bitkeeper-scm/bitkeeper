@@ -94,10 +94,10 @@ echo "failed (bug -- should increase PATCH_VER?)"
 
 echo $N Start new and old bkds ......................................$NL
 cd "$HERE"
-OLDP=`port 50000`
-$OLDBK/bk bkd -d -p$OLDP -ikill 2> OLDERR
-NEWP=`port 50001`
-bk bkd -d -p$NEWP -ikill 2> NEWERR
+OLDP=`port 54500`
+$OLDBK/bk bkd -d -p$OLDP -ikill 2> OLDERR || exit 1
+bk bkd -d -aPORT -ikill 2> NEWERR || exit 1
+NEWP=`cat PORT`
 echo OK
 
 echo $N Push old server new client ..................................$NL
