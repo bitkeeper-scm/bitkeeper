@@ -422,7 +422,7 @@ bkver.c: FORCE
 	$(Q)echo "#include \"sccs.h\"" > bk.v
 	$(Q)bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet >> bk.v
 	@if [ ! -x utils/bk_version ]; then bk get -S utils/bk_version; fi
-	$(Q)echo "char *bk_platform = \""`./utils/bk-version`"\";" >> bk.v
+	$(Q)echo "char *bk_platform = \""`./utils/bk_version`"\";" >> bk.v
 	$(Q)echo "time_t build_timet = "`perl -e "print time"`";" >> bk.v
 	$(Q)echo "int test_release = "$(TRIAL)";" >> bk.v
 	$(Q)mv -f bk.v bkver.c

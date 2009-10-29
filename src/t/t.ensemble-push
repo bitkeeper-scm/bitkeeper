@@ -142,8 +142,8 @@ echo $N Try a push through the BKD...................................$NL
 cd "$HERE"
 bk clone $Q -l null-push project
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill 
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 cd "$HERE/copy"
 bk push bk://localhost:$P >OUT 2>&1 || {
 	echo failed
@@ -270,8 +270,8 @@ cd "$HERE"
 rm -rf project
 bk clone $Q null-push project
 cd "$HERE"/project
-P=`port 50000`
-bk bkd -q -d -p$P -ikill
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 cd "$HERE/copy"
 bk push bk://localhost:$P >OUT 2>&1 || {
 	echo failed

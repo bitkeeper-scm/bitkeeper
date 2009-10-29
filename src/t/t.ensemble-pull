@@ -144,8 +144,8 @@ echo OK
 
 echo $N Test rootkey urls, bk:// url above, component root key ......$NL
 cd "$HERE"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+P=`cat PORT`
 RK2=`bk changes -q -r1.0 -nd:KEY: bk://localhost:$P/project?ROOTKEY=$RK`
 test "$RK" = "$RK2" || {
 	echo failed
@@ -167,8 +167,8 @@ bk _kill bk://localhost:$P
 
 echo $N Test rootkey urls, bk:// url in repo, component root key ....$NL
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+P=`cat PORT`
 RK2=`bk changes -q -r1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$RK`
 test "$RK" = "$RK2" || {
 	echo failed

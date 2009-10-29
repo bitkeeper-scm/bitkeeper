@@ -381,10 +381,10 @@ echo OK
 
 echo $N Test clone through a bkd.....................................$NL
 cd "$HERE/project"
-P=`port 50000`
 # what is coming out stdout? and stderr?
 # bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
-bk bkd -q -d -p$P -ikill 
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 cd "$HERE"
 bk clone $Q bk://localhost:$P clone3 || {
 	echo failed
