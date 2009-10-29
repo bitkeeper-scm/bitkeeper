@@ -325,6 +325,7 @@ tagmerge
 takepatch
 _tclsh
 testdates
+time
 _touch
 _unbk
 undo

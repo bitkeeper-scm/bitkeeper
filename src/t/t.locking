@@ -148,8 +148,8 @@ echo OK
 
 echo $N Make sure clone fails with existing write lock in source \#2 .$NL
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -d -p$P -ikill 2>/dev/null
+bk bkd -d -aPORT -ikill 2>/dev/null || exit 1
+P=`cat PORT`
 cd "$HERE"
 bk clone bk://localhost:$P clone 2> clone.out
 echo "ERROR-Can't get read lock on the repository." > ref

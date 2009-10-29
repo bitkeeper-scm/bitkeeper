@@ -73,8 +73,8 @@ test "$PLATFORM" = "WIN32" || {
 
 echo $N Test clone from source which is a symlink ...................$NL
 ln -s project symlink
-P=`port 60000`
-bk bkd -q -p$P -ikill
+bk bkd -q -aPORT -ikill || exit 1
+P=`cat PORT`
 mkdir dest
 cd dest
 bk clone $Q bk://localhost:$P/symlink || {

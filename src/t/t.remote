@@ -108,8 +108,8 @@ echo OK
 
 echo $N Test that a long running bkd will not allow remote calls ....$NL
 cd "$HERE"/project
-P=`port 50000`
-bk bkd -q -d -p$P -ikill > "$HERE"/BKD 2>&1
+bk bkd -q -d -aPORT -ikill > "$HERE"/BKD 2>&1 || exit 1
+P=`cat PORT`
 cd "$HERE"/clone
 bk -@bk://localhost:$P pwd > OUT 2>&1
 grep -q "$HERE"/project OUT && {
@@ -139,8 +139,8 @@ bk _kill bk://localhost:$P || exit 1
 echo $N Test that we can enable remote calls with -U ................$NL
 cd "$HERE"/project
 bk pwd > "$HERE"/PWD
-P=`port 50000`
-bk bkd -U -q -d -p$P -ikill > "$HERE"/BKD 2>&1
+bk bkd -U -q -d -aPORT -ikill > "$HERE"/BKD 2>&1 || exit 1
+P=`cat PORT`
 cd "$HERE"/clone
 bk -q -@bk://localhost:$P pwd > OUT 2>&1
 cmpfiles "$HERE"/PWD OUT

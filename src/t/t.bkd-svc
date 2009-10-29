@@ -19,9 +19,9 @@ BKDNAME=BKD-`bk getuser`
 test X$_BK_REMOTEGZIP = X || GZIP=-E_BK_REMOTEGZIP=$_BK_REMOTEGZIP
 
 echo $N Test basic service install and status .......................$NL
-PORT=`port 6000`
-bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT
-bk service status $BKDNAME > GOT
+PORT=`port 52900`
+bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT || exit 1
+bk service status $BKDNAME > GOT || exit 2
 DIR="`bk pwd -s`"
 cat <<EOF >WANT1
 Service:   $BKDNAME
@@ -37,7 +37,7 @@ echo OK
 echo $N Make sure that we can install a second service ..............$NL
 mkdir "$HERE/bkd2"
 cd "$HERE/bkd2"
-PORT=`port 6100`
+PORT=`port 53000`
 bk service install ${BKDNAME}2 -EBK_REGRESSION=1 -p$PORT -xchg
 DIR="`bk pwd -s`"
 cat <<EOF >WANT2
@@ -113,8 +113,8 @@ echo $N Time differences between service and regular bkd ............$NL
 cd "$HERE"
 bk clone $Q project copy || exit 1
 test -d copy/BitKeeper/etc || { echo failed; exit 2; }
-PORT=`port 5000`
-bk bkd -d -p$PORT -ikill || exit 3
+PORT=`port 53100`
+bk bkd -d -p$PORT -ikill || exit 3 || exit 1
 perl -e '
 	$start = time;
 	system("bk clone -q bk://localhost:$ARGV[0]/copy junk") && die;
@@ -187,7 +187,7 @@ echo zoo > zoo.c
 bk ci $Q -i zoo.c
 bk commit $Q -ycset1
 cd "$HERE/project"
-PORT=`port 5100`
+PORT=`port 53200`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT 
 cd "$HERE/copy/src"
 bk pull -z0 bk://localhost:$PORT >OUT 2>&1
@@ -205,7 +205,7 @@ echo boo > boo.c
 bk ci $Q -i boo.c
 bk commit $Q -ycset1
 cd "$HERE/project"
-PORT=`port 5200`
+PORT=`port 53300`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT 
 cd "$HERE/copy/src"
 bk pull -t $Q bk://localhost:$PORT
@@ -215,7 +215,7 @@ echo OK
 
 echo $N "pull via bkd -xpull" .........................................$NL
 cd "$HERE/project"
-PORT=`port 5300`
+PORT=`port 53400`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT -xpull
 cd "$HERE/copy/src"
 bk pull -t bk://localhost:$PORT > pull.out 2>&1
@@ -226,7 +226,7 @@ echo OK
 
 echo $N "push a new changeset via bkd (with compression)" .............$NL
 cd "$HERE/copy"
-PORT=`port 5400`
+PORT=`port 53500`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT
 cd "$HERE/project/src"
 echo aoo > aoo.c
@@ -240,7 +240,7 @@ echo OK
 
 echo $N clone a tree via bkd ........................................$NL
 cd "$HERE/project"
-PORT=`port 5500`
+PORT=`port 53600`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT
 bk clone $Q bk://localhost:$PORT "$HERE/copy2" || {
 	echo clone failed
@@ -258,7 +258,7 @@ echo coo > coo.c
 bk ci $Q -i coo.c
 bk commit $Q -ycset1
 cd "$HERE/project"
-PORT=`port 5600`
+PORT=`port 53700`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT -xcd -xpush
 cd "$HERE/copy/src"
 bk pull -t $Q bk://localhost:$PORT
@@ -268,7 +268,7 @@ echo OK
 
 echo $N check a push to bkd with a gfile conflict ...................$NL
 cd "$HERE/project"
-PORT=`port 5700`
+PORT=`port 53800`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT 
 cd "$HERE/project"
 echo data1 > conflict.c
@@ -330,7 +330,7 @@ echo OK
 
 echo $N Make sure bkd -C disallows cd to parent dir .................$NL
 cd "$HERE/project/src"
-PORT=`port 5800`
+PORT=`port 53900`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -C -p$PORT
 cd "$HERE/copy"
 bk pull bk://localhost:$PORT/"$HERE/project" > pull.out 2>&1
@@ -348,7 +348,7 @@ echo OK
 echo $N Make sure bkd logs requests under the remote user name ......$NL
 cd "$HERE/project"
 cp /dev/null BitKeeper/log/repo_log
-PORT=`port 5900`
+PORT=`port 54000`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT -EBK_USER=garbage
 cd "$HERE/copy"
 for NAME in pull_USER USER_PULL CLONE PUSH

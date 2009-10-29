@@ -112,8 +112,8 @@ echo OK
 
 echo $N Check that rclone sends needed BAM data .....................$NL
 cd "$HERE"
-P=`port 50000`
-bk bkd -d -p$P -ikill -l"$HERE/XXX"
+bk bkd -d -aPORT -ikill -l"$HERE/XXX" || exit 1
+P=`cat PORT`
 bk clone $Q project bk://localhost:$P/rclone
 bk _kill bk://localhost:$P || exit 1
 cd rclone
@@ -281,8 +281,8 @@ echo OK
 
 echo $N Check rcloning a repo with a corrupt BAM file ...............$NL
 cd "$HERE"
-P=`port 50000`
-bk bkd -d -p$P -ikill -l"$HERE/XXX"
+bk bkd -d -aPORT -ikill -l"$HERE/XXX" || exit 1
+P=`cat PORT`
 bk clone $Q project2_corrupt bk://localhost:$P/rclone_corrupt 2> ERR
 RC=$?
 bk _kill bk://localhost:$P || exit 1
@@ -345,8 +345,8 @@ echo OK
 
 echo $N Check rcloning a repo with a missing BAM file ...............$NL
 cd "$HERE"
-P=`port 50000`
-bk bkd -d -p$P -ikill -l"$HERE/XXX"
+bk bkd -d -aPORT -ikill -l"$HERE/XXX" || exit 1
+P=`cat PORT`
 bk clone $Q project2_missing bk://localhost:$P/rclone_missing 2> ERR
 RC=$?
 bk _kill bk://localhost:$P || exit 1

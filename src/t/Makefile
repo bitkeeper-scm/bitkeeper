@@ -2,12 +2,54 @@
 # Makefile for the regression tests
 # Copyright (c) 1999 BitMover, Inc.
 # %K%
-all: 
-	-bk co -q
-	./doit
+
+ifeq "$(OSTYPE)" "msys"
+	EXE=.exe
+	TST_DIR:=$(shell if [ -d /r/build ]; then echo R:\\; else echo C:\\; fi)build\test-$(shell bk getuser)
+else
+	EXE=
+	TST_DIR:=/build/test-$(shell bk getuser)
+endif
+
+# The test t.bkd-svc cannot be run in parallel with any other
+# tests or it will fail
+TESTS = $(wildcard t.*)
+SERIAL_TESTS = t.bkd-svc t.installer t.proxy-win32
+PARALLEL_TESTS = $(filter-out $(SERIAL_TESTS),$(TESTS))
+
+all: doit $(TESTS:t.%=output/OUT.t.%)
 
 doit: doit.sh
 	cd .. && $(MAKE) t/doit
 
+# if we have more than one serial test then build a series of 
+# dependancies here
+output/OUT.t.proxy-win32: output/OUT.t.installer
+output/OUT.t.installer: output/OUT.t.bkd-svc
+output/OUT.t.bkd-svc: $(patsubst t.%,output/OUT.t.%,$(PARALLEL_TESTS))
+
+output/OUT.t.%: t.% ../bk$(EXE) doit
+	@mkdir -p output
+	@rm -f output/BAD.$<
+	@DIR="$(TST_DIR)/p$$$$"; \
+	rm -rf $$DIR; \
+	mkdir -p $$DIR; \
+	if ../bk time -f'Test $< (%e secs)\n' -c "./doit -t '$$DIR' $< > $@ 2>&1"; \
+	then	rm -rf $$DIR; \
+	else	echo failure of `pwd`/src/t/$< in $$DIR >> $@; \
+		cat $@; \
+		cp $@ $$DIR; \
+		mv $@ output/BAD.$<; \
+		false; \
+	fi
+
+# delete any stale regression areas
 clean:
+	@rm -rf output
+	@find $(TST_DIR)/p[0-9]*[0-9] \
+		-maxdepth 0  -type d -ctime +1 | \
+		xargs rm -rf
+
+clobber: clean
 	bk clean
+
