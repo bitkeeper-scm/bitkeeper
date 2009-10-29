@@ -361,6 +361,49 @@ grep -q "key.* not found in sfile RESYNC/SCCS/s.newfile" ERR || exit 1
 # still a failure
 echo "failed (bug -- when adding a change already there)"
 
+echo $N Create a hole in the serials in the table ...................$NL
+# 1.1 - 1.2 ------ 1.3 ---------- 1.4 -- 1.5 -- (1.6)
+#    \                                         /
+#     +--- 1.1.1.1 ----- (1.1.1.2) ---------- +
+#
+# The parens ones aren't there after the second pull (the -R one)
+# The unpull removes the lower line and 1.6, but leaves gaps in the table
+# Then a pull -r1.1.1.1(equiv) causes 1.5 to get renumbered out of the
+# ser2dsize range, and causes 1.4 to appear in the table twice.
+# If there were asserts/tests in place, it would have caught it.
+# 
+cd "$HERE"
+commercial branch
+bk clone $Q . ../trunk
+cd ../trunk
+# For my own
+touch 1
+bk new $Q 1
+bk commit $Q -y1.2
+cd ../branch
+touch 2 
+bk new $Q 2
+bk commit $Q -STAG -y1.1.1.1
+cd ../trunk
+touch 3 
+bk new $Q 3
+bk commit $Q -y1.3
+cd ../branch
+touch 4
+bk new $Q 4
+bk commit $Q -y1.1.1.2
+cd ../trunk
+touch 5
+bk new $Q 5
+bk commit $Q -y1.4
+touch 6
+bk new $Q 6
+bk commit $Q -y1.5
+bk pull $Q
+bk unpull $Q -fs
+bk pull -R -rTAG $Q || exit 1
+echo OK
+
 echo $N Fun with Monotonia ..........................................$NL
 cd "$HERE"
 rm -fr copy

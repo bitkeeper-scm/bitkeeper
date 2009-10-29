@@ -717,9 +717,16 @@ dinsert(sccs *s, delta *d, int fixDate)
 }
 
 void
-sfind_update(sccs *s, delta *d)
+sfind_update(sccs *s, delta *d, ser_t oldser)
 {
-	if (s->ser2delta && (d->serial < s->ser2dsize)) {
+	unless (s->ser2dsize) return;
+	assert (s->ser2delta);
+	if (oldser && (oldser < s->ser2dsize)) {
+		assert(s->ser2delta[oldser] == d);
+		s->ser2delta[oldser] = 0;
+	}
+	if (d->serial < s->ser2dsize) {
+		assert(s->ser2delta[d->serial] == 0);
 		s->ser2delta[d->serial] = d;
 	}
 }
