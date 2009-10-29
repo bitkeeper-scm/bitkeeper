@@ -334,8 +334,8 @@ echo OK
 
 echo $N Test noisy pre-trigger in pull via bkd ......................$NL
 cd "$HERE/project"
-PORT=`port 6000`
-bk bkd -dp$PORT -l"$HERE/BKD.log" -P"$HERE/BKD.pid" -ikill
+bk bkd -d -aPORT -l"$HERE/BKD.log" -P"$HERE/BKD.pid" -ikill
+PORT=`cat PORT`
 cd "$HERE/noise"
 bk unpull -fsq
 bk pull bk://localhost:$PORT > OUT 2>ERR || {

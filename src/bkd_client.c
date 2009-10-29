@@ -393,7 +393,7 @@ bkd_tcp_connect(remote *r)
 pid_t
 bkd(remote *r)
 {
-	char	*t, *freeme = 0;
+	char	*t, *freeme = 0, *freeme2 = 0;
 	char	*remsh;
 	char	*remopts;
 	char	**bkrsh = 0;
@@ -479,6 +479,16 @@ bkd(remote *r)
 				freeme = aprintf("'PATH=%s'", t);
 				cmd[++i] = "env";
 				cmd[++i] = freeme;
+
+				/*
+				 * If we have a local BK_DOTBK pass it to the
+				 * new subshell.  This is mostly so regressions
+				 * don't pollute ~/.bk/repos
+				 */
+				if (t = getenv("BK_DOTBK")) {
+					cmd[++i] = freeme2 =
+					    aprintf("BK_DOTBK='%s'", t);
+				}
 			}
 			/*
 			 * Allow passing of the path to the remote bk path
@@ -519,6 +529,7 @@ bkd(remote *r)
 		fprintf(stderr, "%s: Command not found\n", cmd[0]);
 	}
 err:	if (freeme) free(freeme);
+	if (freeme2) free(freeme2);
 	if (rpath) free(rpath);
 	if (bkrsh) freeLines(bkrsh, free);	/* if BK_RSH env var */
 	return (p);

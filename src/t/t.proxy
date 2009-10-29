@@ -30,8 +30,8 @@ echo OK
 # XXX need to test proxy authentication (Oscar?)
 
 echo --- Test http conections via local proxy
-P=`port 50000`
-bk bkd -q -d -p$P -ikill
+bk bkd -q -d -aPORT -ikill
+P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 commercial project
 cd ..

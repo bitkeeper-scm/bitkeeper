@@ -93,6 +93,7 @@ typedef struct {
 	u32	unsafe:1;		/* allow unsafe (aka remote) commands */
 	int	alarm;			/* exit after this many seconds */
 	char	*pidfile;		/* write the daemon pid here */
+	char	*portfile;		/* write the port number here */
 	char	*logfile;		/* if set, log commands to here */
 	char	*vhost_dirpath;		/* directory path to start from */
 } bkdopts;

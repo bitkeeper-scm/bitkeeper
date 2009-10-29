@@ -964,6 +964,7 @@ char	*eula_name(void);
 char	*eula_type(u32 bits);
 char	*mkline(char *mmap);
 char    *mode2FileType(mode_t m);
+#define	getline bk_getline
 int	getline(int in, char *buf, int size);
 void	explodeKey(char *key, char *parts[6]);
 void	free_pfile(pfile *pf);

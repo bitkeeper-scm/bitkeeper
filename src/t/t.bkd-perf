@@ -27,8 +27,8 @@ echo OK
 
 echo $N Time fetching slib.c fully annotated.........................$NL
 EXPECTED=96000.0
-P=`port 50000`
-bk bkd -d -D -l -p$P -ikill > STDOUT 2> STDERR &
+bk bkd -d -lBKD.LOG -aPORT -ikill > STDOUT 2> STDERR || exit 1
+P=`cat PORT`
 bk tclsh <<EOF >TIME
 	set times 5
 	set t [lindex [split [time {

@@ -3,8 +3,8 @@ echo ---- Server to client tests ...................................
 # any BAM data until the user requests a checkout.  And also that
 # only the checked out versions are sent.
 echo $N Set up a repo with some binary data .........................$NL
-P=`port 50000`
-bk bkd -d -p$P -ikill -l"$HERE/XXX"
+bk bkd -d -aPORT -ikill -l"$HERE/XXX" || exit 1
+P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 commercial project
 bk bam server $Q . || exit 1

@@ -23,6 +23,10 @@ win32_common_setup()
 	test -z "$TST_DIR" && {
 		TST_DIR=`mount | sed -n 's, on /tmp.*,,p' | tr A-Z a-z`
 	}
+	test -d "$TST_DIR" || {
+		echo bad testdir '$TST_DIR'
+		exit 1
+	}
 	BK_FS="|"
 	bk get -qS ${BK_BIN}/t/win32/win32_common
 	PATH=${PATH}:${BK_BIN}/t/win32
@@ -76,6 +80,10 @@ unix_common_setup()
 	DEV_NULL="/dev/null"
 	if [ -z "$TST_DIR" ]; then TST_DIR="/build"; fi
 	TST_DIR=`bk pwd "$TST_DIR"`       # if symlink, force to real path
+	test -d "$TST_DIR" || {
+		echo bad testdir '$TST_DIR'
+		exit 1
+	}
 	CWD="/bin/pwd"
 	BK_FS="|"
 
@@ -88,16 +96,13 @@ unix_common_setup()
 	if [ X$USER = Xroot ]; then USER=root-test; fi
 
 	# only a symlink to 'bk' appears on PATH
-	BK_BIN="/build/.bkbin $USER"
+	BK_BIN="$TST_DIR/.bkbin $USER"
 	rm -rf "$BK_BIN"
 	mkdir "$BK_BIN"
 	ln -s "`cd .. && pwd`/bk" "$BK_BIN/bk"
 	PATH=/bin:/usr/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	PATH=$BK_BIN:$PATH
-
-	# clear any stale uniq locks
-	rm -f /tmp/.bk_kl$USER
 
 	unset CDPATH PAGER
 
@@ -118,7 +123,7 @@ unix_common_setup()
 
 	test `uname` = SCO_SV && return
 
-	BK_LIMITPATH="/build/.bktools $USER"
+	BK_LIMITPATH="$TST_DIR/.bktools $USER"
 	rm -rf "$BK_LIMITPATH"
 	mkdir "$BK_LIMITPATH"
 	for f in awk expr sh ksh grep egrep sed env test [ sleep getopts \
@@ -267,11 +272,11 @@ setup_env()
 	unset _BK_GMODE_DEBUG
 	BK_REGRESSION="`cd "$TST_DIR"; bk pwd -s`/.regression $USER"
 	BK_CACHE="$BK_REGRESSION/cache"
-	HERE="`cd "$TST_DIR"; bk pwd -s`/.regression $USER/sandbox"
+	HERE="$BK_REGRESSION/sandbox"
 	BK_TMP="$HERE/.tmp"
 	BK_DOTBK="$HERE/.bk"
 	export BK_DOTBK
-	TMPDIR="/build/.tmp $USER"
+	TMPDIR="$TST_DIR/.tmp $USER"
 
 	# Valid bkcl (old style, pre eula bits) license
 	#BKL_BKCL=BKL643168ad03d719ed00001200ffffe000000000
@@ -380,6 +385,10 @@ setup_env()
 	_BK_DEVELOPER=YES
 	export _BK_DEVELOPER
 	unset BK_NO_TRIGGERS
+	unset BK_NO_REMAP
+
+	# clear OLDPATH in case bk ran doit
+	unset BK_OLDPATH
 }
 
 clean_up()
@@ -487,6 +496,8 @@ init_main_loop()
 # Options processing:
 # Usage: doit [-t] [-v] [-x] [test...]
 # -i	do not exit if a test fails, remember it and list it at the end
+# -g	run GUI regression
+# -j#	run regressions in parallel
 # -t	set Test Directory
 # -v 	turn on verbose mode
 # -x	trace command execution
@@ -501,11 +512,12 @@ get_options()
 	TESTS=0
 	PAUSE=NO
 	GUI_TEST=NO
+	PARALLEL=
+	dashx=
 	while true
 	do	case $1 in
 		    -g) GUI_TEST=YES;;
 		    -p) PAUSE=YES;;
-	            -f) FAIL_WARNING=YES;;
 		    -i) KEEP_GOING=YES;;
 		    -r) export PREFER_RSH=YES;;
 		    -t) if [ X$2 = X ]
@@ -514,6 +526,7 @@ get_options()
 			fi
 			TST_DIR=$2; 
 			shift;;
+		    -j*)PARALLEL=$1;;
 		    -v) Q=; S=;;
 		    -x) dashx=-x;;
 		    [0-9a-zA-Z]*) list="$list $1";;
@@ -521,12 +534,6 @@ get_options()
 		esac
 		shift;
 	done
-	if [ -z "$list" ]
-	then	if [ "$GUI_TEST" = YES ]
-		then	list=`ls -1 g.* | egrep -v '.swp|~'`
-		else	list=`ls -1 t.* | egrep -v '.swp|~'`
-		fi
-	fi
 	# check echo -n options
 	if [ '-n foo' = "`echo -n foo`" ]
 	then    NL='\c'
@@ -547,7 +554,46 @@ get_options()
 
 
 get_options $@
+
+# if -j then find default number of machines
+if [ X$PARALLEL = X-j ]
+then	PARALLEL=-j3	# default
+	test -s "$TST_DIR/PARALLEL" && PARALLEL=`cat "$TST_DIR/PARALLEL"`
+fi
+
+# allow $TST_DIR/PARALLEL to disable
+test "$PARALLEL" = -j0 && PARALLEL=
+
+# if -j# then run doit via make
+if [ X$PARALLEL != X ]
+then	test $MAKE || MAKE=make
+	$MAKE clean
+	MARGS=
+	test $KEEP_GOING = YES && MARGS=-k
+	test "$list" && {
+		for t in $list
+		do	MARGS="$MARGS output/OUT.$t"
+		done
+	}
+	#echo $MAKE $PARALLEL $MARGS
+	$MAKE $PARALLEL $MARGS
+	EXIT=$?
+	if [ $EXIT -eq 0 ]
+	then	echo All requested tests passed, must be my lucky day
+	else	echo Not your lucky day, some tests failed.
+	fi
+	exit $EXIT
+fi
+
+if [ -z "$list" ]
+then	if [ "$GUI_TEST" = YES ]
+	then	list=`ls -1 g.* | egrep -v '.swp|~'`
+	else	list=`ls -1 t.* | egrep -v '.swp|~'`
+	fi
+fi
+
 setup_env
+
 if [ "$GUI_TEST" = YES ]
 then	echo 'exit' | bk wish >OUT 2>&1
 	grep -q 'initialization failed' OUT && {
@@ -562,7 +608,6 @@ test $PLATFORM = WIN32 && bk bkd -R
 
 # Main Loop #
 FAILED=
-BADOUTPUT=
 for i in $list
 do
 	test -f /build/die && {
@@ -588,7 +633,9 @@ echo ''
 			;;
 	    /tmp/*)	;;
 	    /build/*)	;;
-	    *)		Really weird TMPDIR $tmpdir, I quit
+	    /space*/build/*) ;;
+	    *.tmp\ $USER) ;;
+	    *)		echo Really weird TMPDIR $TMPDIR, I quit
 			exit 1
 			;;
 	esac
@@ -627,27 +674,20 @@ echo ''
 	# output.
 	test $EXIT -eq 0 && {
 		egrep -v '^.*\.OK$|^---.*$|\.\.failed \(bug|^.*\.skipped$' \
-		    "$TMPDIR/OUT.$$" > $DEV_NULL && {
-			if [ "X$FAIL_WARNING" = "XYES" ]
-			then	BAD=1
-			else	echo
-				echo WARNING: unexpected output lines
-				BADOUTPUT="$i $BADOUTPUT"
-			fi
-		}
+		    "$TMPDIR/OUT.$$" > $DEV_NULL && BAD=1
 	}
 	
 	test -s "$_BK_LOG_WINDOWS_ERRORS" && {
 		echo
 		echo Unexpected stuck windows loops
 		cat "$_BK_LOG_WINDOWS_ERRORS"
-		BADOUTPUT="$i $BADOUTPUT"
+		BAD=1
 	}
 	test -s "$BK_TTYPRINTF" && {
 		echo
 		echo WARNING: unexpected ttyprintfs
 		cat "$BK_TTYPRINTF"
-		BADOUTPUT="$i $BADOUTPUT"
+		BAD=1
 	}
 
 	if [ "$PAUSE" = "YES" ]
@@ -712,13 +752,4 @@ else
 	EXIT=1
 fi
 echo ------------------------------------------------
-test "X$BADOUTPUT" != X && {
-	echo
-	echo ------------------------------------------------
-	echo The follow tests had unexpected output:
-	for i in $BADOUTPUT
-	do	echo "	$i"
-	done
-	echo ------------------------------------------------
-}
 exit $EXIT

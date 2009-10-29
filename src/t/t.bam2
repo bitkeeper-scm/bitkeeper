@@ -343,8 +343,8 @@ echo OK
 
 echo $N Try remote clone across zones................................$NL
 cd "$HERE"
-P=`port 50000`
-bk bkd -d -p$P -ikill
+bk bkd -d -aPORT -ikill || exit 1
+P=`cat PORT`
 bk clone $Q -Bnone cclone1 bk://localhost:$P/zclone2 || exit 1
 cd zclone2 || exit 1
 bk BAM check -Fq || exit 1
