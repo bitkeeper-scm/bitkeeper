@@ -89,9 +89,9 @@ case $CMD in
 	# run tests
 	./build test || failed
 
-	MSG="Not your lucky day, the following tests failed:"
-	GOT=`grep "$MSG" /build/$LOG | bk undos`
-	test "X$GOT" = "X$MSG" && exit 1
+	# this should never match because it will cause build to exit
+	# non-zero
+	grep "Not your lucky day, " /build/$LOG >/dev/null && exit 1
 
 	test -d /build/.images || mkdir /build/.images
 	cp utils/bk-* /build/.images
@@ -146,25 +146,20 @@ case $CMD in
 	;;
 
     status)
-	MSG="Not your lucky day, the following tests failed:"
-	GOT=`grep "$MSG" $LOG | bk undos`
-	test "X$GOT" = "X$MSG" && {
+	# grep -q is not portable so we use this
+	grep "Not your lucky day, " $LOG >/dev/null && {
 		echo regressions failed.
 		exit 1
 	}
-	# grep -q is not portable so we use this
-	GOT=`grep '!!!! Failed! !!!!' $LOG | bk undos`
-	test "X$GOT" = 'X!!!! Failed! !!!!' && {
+	grep '!!!! Failed! !!!!' $LOG >/dev/null && {
 		echo failed to build.
 		exit 1
 	}
-	MSG="All requested tests passed, must be my lucky day"
-	GOT=`grep "$MSG" $LOG | bk undos`
-	if [ "X$GOT" = "X$MSG" ]
-	then
+	grep "All requested tests passed, must be my lucky day" \
+	    $LOG >/dev/null && {
 		echo succeeded. \(GUI tests not run\)
 		exit 0
-	fi
+	}
 	echo is not done yet.
 	;;
 

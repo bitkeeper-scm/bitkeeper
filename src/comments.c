@@ -185,17 +185,17 @@ int
 comments_readcfile(sccs *s, int prompt, delta *d)
 {
 	char	*cfile = sccs_Xfile(s, 'c');
-	char	*p;
-	MMAP	*m;
+	FILE	*f;
+	char	buf[MAXPATH];
 
 	unless (access(cfile, R_OK) == 0) return (-1);
 	if (prompt && comments_prompt(cfile)) return (-2);
-	unless (m = mopen(cfile, "r")) return (-1);
+	unless (f = fopen(cfile, "r")) return (-1);
 	s->used_cfile = 1;
-	while (p = mnext(m)) {
-		comments_append(d, strnonldup(p));
+	while (fnext(buf, f)) {
+		comments_append(d, strnonldup(buf));
 	}
-	mclose(m);
+	fclose(f);
 	return (0);
 }
 

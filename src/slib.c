@@ -692,9 +692,16 @@ dinsert(sccs *s, delta *d, int fixDate)
 }
 
 void
-sfind_update(sccs *s, delta *d)
+sfind_update(sccs *s, delta *d, ser_t oldser)
 {
-	if (s->ser2delta && (d->serial < s->ser2dsize)) {
+	unless (s->ser2dsize) return;
+	assert (s->ser2delta);
+	if (oldser && (oldser < s->ser2dsize)) {
+		assert(s->ser2delta[oldser] == d);
+		s->ser2delta[oldser] = 0;
+	}
+	if (d->serial < s->ser2dsize) {
+		assert(s->ser2delta[d->serial] == 0);
 		s->ser2delta[d->serial] = d;
 	}
 }
@@ -13180,19 +13187,24 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	strcpy(buf+i, "\n");
 	fputmeta(s, buf, out);
 	if (BITKEEPER(s)) {
-		if ((add || del || same) && (n->flags & D_ICKSUM)) {
+		if (!BAM(s) && (add || del || same) && (n->flags & D_ICKSUM)) {
 			delta	*z = getCksumDelta(s, n);
 
-			/* we allow bad symlink chksums if they are zero;
-			 * it's a bug in old binaries.
-			 */
-			if ((S_ISLNK(n->mode) && n->sum) &&
-			    (!z || (s->dsum != z->sum))) {
-				fprintf(stderr,
-				    "%s: bad delta checksum: %u:%d for %s\n",
-				    s->sfile, s->dsum,
-				    z ? z->sum : -1, n->rev);
-				s->bad_dsum = 1;
+			assert(z);
+			/* they should match */
+			if (s->dsum != z->sum) {
+				/*
+				 * we allow bad symlink chksums if they are
+				 * zero; it's a bug in old binaries.
+				 */
+				unless (S_ISLNK(n->mode) && !n->sum) {
+					fprintf(stderr,
+					    "%s: bad delta checksum: "
+					    "%u:%d for %s\n",
+					    s->sfile, s->dsum,
+					    z ? z->sum : -1, n->rev);
+					s->bad_dsum = 1;
+				}
 			}
 		}
 		unless (n->flags & D_ICKSUM) {

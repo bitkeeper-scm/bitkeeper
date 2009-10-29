@@ -179,3 +179,10 @@ grep -q 'Use these comments:' OUT || {
 	exit 1
 }
 echo OK
+
+echo $N Check cfile with missing newline ............................$NL
+bk edit $Q blech
+echo more stuff >> blech
+echo $NX more stuff comment$NXL > SCCS/c.blech
+bk ci $Q -c blech || exit 1
+echo OK

@@ -933,7 +933,7 @@ int	sccs_findtips(sccs *s, delta **a, delta **b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
-void	sfind_update(sccs *s, delta *d);
+void	sfind_update(sccs *s, delta *d, ser_t oldser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
 
@@ -957,6 +957,7 @@ char	*eula_name(void);
 char	*eula_type(u32 bits);
 char	*mkline(char *mmap);
 char    *mode2FileType(mode_t m);
+#define	getline bk_getline
 int	getline(int in, char *buf, int size);
 void	explodeKey(char *key, char *parts[6]);
 void	free_pfile(pfile *pf);

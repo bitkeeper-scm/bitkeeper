@@ -50,8 +50,8 @@ echo OK
 
 echo $N rclone with checkout:get and BAM_checkout:none ..............$NL
 cd "$HERE"
-P=`port 50000`
-BK_CONFIG='BAM_checkout:none!;checkout:get!' bk bkd -d -p$P -ikill
+BK_CONFIG='BAM_checkout:none!;checkout:get!' bk bkd -d -aPORT -ikill || exit 1
+P=`cat PORT`
 rm -rf checkout
 bk clone $Q source bk://localhost:$P/checkout
 bk _kill bk://localhost:$P
@@ -117,8 +117,8 @@ echo OK
 
 echo $N rclone with checkout:get and BAM_checkout:last ..............$NL
 cd "$HERE"
-P=`port 50000`
-BK_CONFIG='BAM_checkout:last!;checkout:get!' bk bkd -d -p$P -ikill
+BK_CONFIG='BAM_checkout:last!;checkout:get!' bk bkd -d -aPORT -ikill || exit 1
+P=`cat PORT`
 rm -rf checkout
 bk clone $Q source bk://localhost:$P/checkout
 bk _kill bk://localhost:$P

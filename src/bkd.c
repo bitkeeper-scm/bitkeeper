@@ -14,7 +14,7 @@ private	void	usage(void);
 private	int	do_cmds(void);
 private int	svc_uninstall(void);
 
-char		*bkd_getopt = "cCdDeE:hi:l|p:P:qRSt:UV:x:";
+char		*bkd_getopt = "a:cCdDeE:hi:l|p:P:qRSt:UV:x:";
 private char	**exCmds;
 
 int
@@ -42,6 +42,7 @@ bkd_main(int ac, char **av)
 	while ((c = getopt(ac, av, bkd_getopt)) != -1) {
 		args = addLine(args, aprintf("-%c%s", c, optarg ? optarg : ""));
 		switch (c) {
+		    case 'a': Opts.portfile = strdup(optarg); break;
 		    case 'c': check = 1; break;
 		    case 'C': Opts.safe_cd = 1; break;		/* doc */
 		    case 'd': daemon = 1; break;		/* doc 2.0 */
@@ -86,6 +87,7 @@ bkd_main(int ac, char **av)
 	}
 	EACH(unenabled) exclude(unenabled[i], 0);
 	freeLines(unenabled, 0);
+	if ((port || check) && Opts.portfile) usage();
 	if (av[optind] && !getenv("BKD_SERVICE")) usage();
 
 	if (av[optind] && chdir(av[optind])) {
@@ -100,7 +102,7 @@ bkd_main(int ac, char **av)
 
 	unless (Opts.vhost_dirpath) Opts.vhost_dirpath = strdup(".");
 
-	if (port || addr) daemon = 1;
+	if (port || addr || Opts.portfile) daemon = 1;
 	if (daemon && (Opts.logfile == LOG_STDERR) && !Opts.foreground) {
 		fprintf(stderr, "bkd: Can't log to stderr in daemon mode\n");
 		return (1);
@@ -115,17 +117,19 @@ bkd_main(int ac, char **av)
 			    "bkd: daemon is not supported on Windows 2000\n");
 			return (1);
 		}
-		unless (port) port = BK_PORT;
-		if ((c = tcp_connect("127.0.0.1", port)) > 0) {
-			unless (Opts.quiet) {
-				fprintf(stderr,
-				    "bkd: localhost:%d is already in use.\n",
-				    port);
+		unless (Opts.portfile) {
+			unless (port) port = BK_PORT;
+			if ((c = tcp_connect("127.0.0.1", port)) > 0) {
+				unless (Opts.quiet) {
+					fprintf(stderr, "bkd: "
+					    "localhost:%d is already in use.\n",
+					    port);
+				}
+				closesocket(c);
+				return (2);	/* regressions count on 2 */
 			}
-			closesocket(c);
-			return (2);	/* regressions count on 2 */
+			if (check) return (0);
 		}
-		if (check) return (0);
 		safe_putenv("_BKD_PORT=%d", port);
 		safe_putenv("_BKD_ADDR=%s", addr ? addr : "0.0.0.0");
 		if (addr) free(addr);

@@ -150,8 +150,8 @@ echo OK
 
 echo $N Make sure clone fails with existing write lock in source \#2 .$NL
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -d -p$P -ikill 2>/dev/null
+bk bkd -d -aPORT -ikill 2>/dev/null || exit 1
+P=`cat PORT`
 cd "$HERE"
 bk clone bk://localhost:$P clone 2> clone.out
 echo "ERROR-Can't get read lock on the repository." > ref
@@ -417,7 +417,7 @@ test -d readers && {
 }
 echo OK
 
-echo $N Make sure stale locks clean lock and uniq file ..............$NL
+echo $N Stale chk: repository_lockers cleans lock and uniq file .....$NL
 cd "$HERE/project/BitKeeper"
 test -d "$HERE/project/BitKeeper/writer" && {
 	echo failed to clean up writer directory
@@ -439,33 +439,20 @@ if [ "$PLATFORM" = "WIN32" ]
 then	cp writer/"${PID}@${HOST}.lock" writer/lock
 else	ln writer/"${PID}@${HOST}.lock" writer/lock
 fi
-bk lock -wt > port &
-for i in 1 2 3 4 5
-do	test -f writer/"${PID}@${HOST}.lock" && bk _usleep 250000
-done
-test -f writer/"${PID}@${HOST}.lock" && {
-	echo failed to clean up stale uniq file
-	ls -l writer
-	cat writer/"${PID}@${HOST}.lock"
-	bk _kill `cat port`
-	exit 1
-}
-test -f writer/lock || {
-	echo failed to lock repo
-	ls -l writer
-	bk _kill `cat port`
-	exit 1
-}
-test "`cat writer/lock`" = "${PID} ${HOST} ${TIME}" && {
-	echo failed to replace lock contents with legit contents
-	bk _kill `cat port`
-	exit 1
-}
-bk _kill `cat port`
-test -d writer && {
-	echo failed to clean up writer directory
-	exit 1
-}
+tar cf ../writer.tar writer
+bk lock -l 2> OUT || exit 1
+grep -q "No active lock in repository" OUT || exit 2
+test -d writer && exit 3
+echo OK
+
+echo $N Stale chk: repository_locked cleans lock and uniq file ......$NL
+rm -fr writer
+tar xf ../writer.tar
+bk lock -lq || exit 1
+test -f writer/lock && exit 2
+test -d writer && exit 3
+# clean up
+rm -fr writer ../writer.tar
 echo OK
 
 echo $N Make sure sccs lock will fix directory permissions if it can.$NL

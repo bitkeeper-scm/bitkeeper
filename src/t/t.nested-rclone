@@ -30,8 +30,8 @@ echo OK
 
 echo $N Clone the product using rclone ..............................$NL
 cd "$HERE"
-PORT=`port 50000`
-bk bkd -d -p$PORT -ikill > "$HERE/BKD" 2>&1
+bk bkd -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+PORT=`cat PORT`
 bk clone $Q project bk://localhost:$PORT/copy || {
 	echo failed
 	cd copy 
@@ -153,8 +153,8 @@ done
 echo OK
 
 bk _kill bk://localhost:$PORT
-PORT=`port 50000`
-bk bkd -d -p$PORT -ikill
+bk bkd -d -aPORT -ikill || exit 1
+PORT=`cat PORT`
 echo $N Test that we can clone just that component with -s./gcc .....$NL
 rm -rf mynewgcc
 bk clone $Q -s./gcc project bk://localhost:$PORT/mynewgcc || {

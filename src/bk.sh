@@ -1655,9 +1655,6 @@ __install()
 		V=v
 		echo Installing data in "$DEST" ...
 	}
-	if [ "X$OSTYPE" = "Xmsys" ]
-	then 	find "$SRC" | xargs chmod +w	# for Win/Me
-	fi
 	(cd "$SRC"; tar cf - .) | (cd "$DEST"; tar x${V}f -)
 	
 	# binlinks

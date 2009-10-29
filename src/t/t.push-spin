@@ -1,12 +1,5 @@
-
-echo $N Setup bkd ...................................................$NL
-commercial project
-P=`port 50000`
-bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
-echo OK
-
-
 echo $N Push some data and check that BK_NOTTY works ................$NL
+commercial project
 cd "$HERE"
 bk clone $Q project copy || exit 1
 cd copy
@@ -25,5 +18,4 @@ bk unpull -fq
 cd ../copy
 BK_NOTTY=1 bk push > OUT2 2>&1 || exit 1
 grep -q '100%.*===' OUT2 && exit 1
-bk _kill bk://localhost:$P
 echo OK
