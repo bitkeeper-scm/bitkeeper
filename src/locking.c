@@ -7,12 +7,9 @@
 #include "sccs.h"
 #if 1
 #define	ldebug(x)	if (getenv("BK_DBGLOCKS")) {\
-				pwd(); \
-				ttyprintf("[%u]==> ", getpid()); \
+				ttyprintf("%s [%u]==> ",proj_cwd(),getpid());\
 			} \
 			if (getenv("BK_DBGLOCKS")) ttyprintf x
-private void
-pwd(void) { char p[MAXPATH]; getcwd(p, MAXPATH); ttyprintf("%s ",p); }
 #else
 #define	ldebug(x)
 #endif
@@ -83,16 +80,31 @@ repository_hasLocks(char *root, char *dir)
 {
 	char	**lines;
 	int	i, n = 0;
+	int	rm = 0;
 	char	path[MAXPATH];
 
-	sprintf(path, "%s/%s", root ? root : ".", dir);
+	unless (root) root = ".";
+	if (streq(dir, WRITER_LOCK_DIR)) {
+		/* look for a stale lock file first */
+		sprintf(path, "%s/%s", root, WRITER_LOCK);
+		rm = sccs_stalelock(path, 1);
+	}
+	sprintf(path, "%s/%s", root, dir);
 	lines = lockers(path);
 	EACH(lines) {
-		sprintf(path, "%s/%s/%s", root ? root : ".", dir, lines[i]);
-		unless (sccs_stalelock(path, 1)) n++;
+		sprintf(path, "%s/%s/%s", root, dir, lines[i]);
+		if (sccs_stalelock(path, 1)) {
+			rm = 1;
+			continue;
+		}
+		n++;
 	}
 	freeLines(lines, free);
-	ldebug(("repository_hasLocks(%s/%s) = %d\n", root ?root : ".", dir, n));
+	if (rm) {
+		sprintf(path, "%s/%s", root, dir);
+		(void)rmdir(path);
+	}
+	ldebug(("repository_hasLocks(%s/%s) = %d\n", root, dir, n));
 	return (n);
 }
 
@@ -228,20 +240,14 @@ repository_lockers(project *p)
 		n++;
 		fprintf(stderr, "\tRESYNC directory.\n");
 	}
-	sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
+	sprintf(path, "%s/%s", root, WRITER_LOCK);
+	rm = sccs_stalelock(path, 1);
+	(void)dirname(path);	/* strip /lock */
 	lines = lockers(path);
-	rm = 0;
 	EACH(lines) {
 		sprintf(path, "%s/%s/%s", root, WRITER_LOCK_DIR, lines[i]);
-		if (sccs_stalelock(path, 0)) {
-			char	lock[MAXPATH];
-
-			sprintf(lock, "%s/%s/lock", root, WRITER_LOCK_DIR);
-			if (sameFiles(path, lock)) {
-				unlink(lock);
-				rm = 1;
-			}
-			unlink(path);
+		if (sccs_stalelock(path, 1)) {
+			rm = 1;
 			continue;
 		}
 		unless (n) fprintf(stderr, "Entire repository is locked by:\n");

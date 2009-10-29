@@ -171,7 +171,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o startmenu.o \
 	stat.o stattest.o status.o stripdel.o synckeys.o \
-	tagmerge.o testcode.o tclsh.o takepatch.o testdates.o touch.o trigger.o \
+	tagmerge.o testcode.o tclsh.o takepatch.o \
+	testdates.o time.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
 	user.o utils.o uu.o version.o what.o which.o xflags.o \
@@ -320,12 +321,12 @@ realtest: $(ALL) t/doit
 	-cd gui/tcltk && $(MAKE) clobber
 	-./bk get -qS t/setup win32/t/win32_common t/x.chk_env
 	-./bk -rt get -qS 't.*'
-	cd t && ./doit -i -f
+	cd t && ./doit -i
 
 guitest: $(ALL) t/doit
 	-./bk get -qS t/SCCS/s.g.* t/setup win32/t/win32_common \
 	    t/x.chk_env t/guitest.tcl
-	cd t && ./doit -g -i -f
+	cd t && ./doit -g -i
 
 t/doit: t/doit.sh substvars
 	./substvars t/doit.sh > t/doit

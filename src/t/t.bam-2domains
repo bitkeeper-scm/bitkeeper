@@ -6,11 +6,9 @@ echo ---- Server S w/ client C1 to a serverless client C2 ..........
 # any BAM data until the user requests a checkout.  And also that
 # only the checked out versions are sent.
 echo $N Set up a repo with some binary data .........................$NL
-P=`port 50000`
-bk bkd -d -p$P -ikill 
-P2=`port 50001`
-bk bkd -d -p$P2 -ikill 
-trap "bk _kill bk://localhost:$P; bk _kill bk://localhost:$P2" 0
+bk bkd -d -aPORT -ikill  || exit 1
+P=`cat PORT`
+trap "bk _kill bk://localhost:$P" 0
 commercial S
 bk bam server $Q . || exit 1
 BK="`bk bin`/bk"
@@ -460,10 +458,11 @@ grep -q "BAM fetch failed, aborting pull" ERR || {
 	exit 2
 }
 # restart BKD
+# From here on out we need to reset the BAM server after each untar
 cd "$HERE"
-P=`port 50000`
-bk bkd -d -p$P -ikill 
-trap "bk _kill bk://localhost:$P; bk _kill bk://localhost:$P2" 0
+bk bkd -d -aPORT -ikill  || exit 1
+P=`cat PORT`
+trap "bk _kill bk://localhost:$P" 0
 echo "failed (bug should fetch BAM data)"
 
 echo $N Push C2 to C1, should send unique BAM data ..................$NL
@@ -665,6 +664,7 @@ echo $N Clone C1 to C2 with part in C1 and rest in S w/ S wlocked ...$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
+(cd C1 && bk bam server -q bk://localhost:$P/S)
 LOCK=foobar
 WriteLock S L
 test $LOCK = foobar || {
@@ -740,6 +740,7 @@ echo $N rClone C1 to C2 with part in C1 and rest in S w/ S wlocked ..$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
+(cd C1 && bk bam server -q bk://localhost:$P/S)
 WriteLock S L
 bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
 Unlock $L
@@ -780,6 +781,7 @@ echo $N rClone C1 to C2 with all in S with S wlocked ................$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
+(cd C1 && bk bam server -q bk://localhost:$P/S)
 cd C1
 bk bam push -aq
 rm -rf BitKeeper/BAM
@@ -816,6 +818,7 @@ echo $N Push C1 to C2 with part in C1 and rest in S w/ S wlocked ....$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
+(cd C1 && bk bam server -q bk://localhost:$P/S)
 bk clone -Bnone -r1.1 $Q C1 C2
 WriteLock S L
 cd C1
@@ -887,6 +890,7 @@ echo $N Pull C1 to C2 with part in C1 and rest in S w/ S wlocked ....$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
+(cd C1 && bk bam server -q bk://localhost:$P/S)
 bk clone -Bnone -r1.1 $Q C1 C2
 WriteLock S L
 cd C2

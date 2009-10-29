@@ -47,7 +47,7 @@ dotest()
 	bk "$@" -r+ > OUT 2>&1 < /dev/null
 	bk "$@" XYZ > OUT 2>&1 < /dev/null
 	bk "$@" "" > OUT 2>&1 < /dev/null
-	echo XYZ  | bk "$@" - > OUT 2>&1 < /dev/null
+	bk "$@" - < .STDIN > OUT 2>&1 < /dev/null
 	find . -type f -name 'core*' > XXX
 	test -s XXX && {
 		cat OUT
@@ -60,6 +60,7 @@ dotest()
 BK_EDITOR=cat
 EDITOR=$BK_EDITOR
 export BK_EDITOR EDITOR
+echo XYZ > .STDIN
 while read i
 do
 	dotest $i || break
