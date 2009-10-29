@@ -1369,7 +1369,7 @@ OS=`sh /tmp/gnu-os$$ |
 	-e s/hpux10.*/hpux10/ \
 	-e s/mips-irix6.5/mips-irix/ \
 	-e s/powerpc-aix.*/powerpc-aix/ \
-	-e s/x86-sco.*/sco/ \
+	-e s/x86-sco.*/x86-sco/ \
 	-e s/solaris2.*/solaris/ \
 	-e s/alphaev56/alpha/ \
 	-e s/osf5.1/tru64/ \
