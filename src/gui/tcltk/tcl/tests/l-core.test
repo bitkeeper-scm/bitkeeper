@@ -330,6 +330,79 @@ test parse-1.5 {test handling of illegal character} -body {
 } -returnCodes error -match regexp -result {.*1: L Error: illegal character '\@'
 }
 
+test parse-1.6 {test syntax error message 1} -body {
+#lang L
+void parse_1_6()
+{
+// Test that the err msg indenting is correct.
+// No tab.
+for()
+}
+} -returnCodes error -match glob -result {*5: L Error: syntax error, unexpected )
+for()
+    ^
+}
+
+test parse-1.7 {test syntax error message 2} -body {
+#lang L
+void parse_1_7()
+{
+	// Test that the err msg indenting is correct.
+	// 1 tab.
+	for()
+}
+} -returnCodes error -match glob -result {*5: L Error: syntax error, unexpected )
+	for()
+            ^
+}
+
+test parse-1.8 {test syntax error message 3} -body {
+#lang L
+void parse_1_8()
+{
+	// Test that the err msg indenting is correct.
+	// 1 tab and spaces.
+	    for()
+}
+} -returnCodes error -match glob -result {*5: L Error: syntax error, unexpected )
+	    for()
+                ^
+}
+
+test parse-1.9 {test syntax error message 4} -body {
+#lang L
+void parse_1_9()
+{
+	// Test that the err msg indenting is correct.
+	// 2 tabs.
+		for()
+}
+} -returnCodes error -match glob -result {*5: L Error: syntax error, unexpected )
+		for()
+                    ^
+}
+
+test parse-1.10 {test syntax error message 5} -body {
+#lang L
+void parse_1_10()
+{
+	// Test that the err msg indenting is correct.
+	// 2 tabs with spaces in between.
+		for()
+}
+} -returnCodes error -match glob -result {*5: L Error: syntax error, unexpected )
+		for()
+                    ^
+}
+
+test parse-1.11 {test syntax error message for error on line 1} -body {
+#lang L
+void parse_1_11() { for() }  // syntax error on line 1
+} -returnCodes error -match glob -result {*1: L Error: syntax error, unexpected )
+void parse_1_11() \{ for()
+                        ^
+}
+
 test scan-1.1 {test detection of run-away string 1} -body {
 #lang L
 void scan_1_1()
@@ -611,7 +684,8 @@ scan_1_9()
 END
 }
 scan_1_9();
-} -returnCodes {error} -match regexp -result ".*syntax error.*"
+} -returnCodes {error} -match regexp -result {.*8: L Error: illegal here-document delimeter
+}
 
 test scan-1.10 {test here document error 2} -body {
 #lang L
@@ -626,7 +700,8 @@ scan_1_10()
 END
 }
 scan_1_10();
-} -returnCodes {error} -match regexp -result ".*syntax error.*"
+} -returnCodes {error} -match regexp -result {.*8: L Error: illegal here-document delimeter
+}
 
 test scan-1.11 {test nested here documents error} -body {
 #lang L
@@ -1727,8 +1802,10 @@ void if_1_4(void)
 	if (0) puts("1 broken"); else puts("1 even more broken");
 }
 #lang tcl
-} -returnCodes error -match glob -result "*3: L Error: syntax error, unexpected else\n"
-
+} -returnCodes error -match glob -result {*3: L Error: syntax error, unexpected else
+	if (0) puts("1 broken"); else
+                                 ^
+}
 
 test unless-1.0 {unless statements} -body {
 #lang L
@@ -4670,7 +4747,9 @@ void loop_1_2_9()
 
 	foreach (k=>v bad h) ;
 }
-} -returnCodes error -match regexp -result {.*13: L Error: syntax error.*
+} -returnCodes error -match glob -result {*13: L Error: syntax error*
+	foreach (k=>v bad h) ;
+                      ^
 }
 
 test loop-1.2.10 {test foreach syntax errors} -body {
@@ -4687,7 +4766,9 @@ void loop_1_2_10()
 
 	foreach (k bad "xyz") ;
 }
-} -returnCodes error -match regexp -result {.*11: L Error: syntax error.*
+} -returnCodes error -match glob -result {*11: L Error: syntax error*
+	foreach (k bad "xyz") ;
+                   ^
 }
 
 test loop-1.2.11 {test that "in" is not reserved} -body {

@@ -169,7 +169,8 @@ extern Tcl_Obj	*L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *reobj,
 			 Tcl_Obj *limobj);
 extern Type	*L_struct_lookup(char *tag, int local);
 extern Type	*L_struct_store(char *tag, VarDecl *members);
-extern void	L_synerr(const char *s, ...);	// yyerror
+extern void	L_synerr(const char *s);	// yyerror
+extern void	L_synerr2(const char *s, int offset);
 extern void	L_trace(const char *format, ...);
 extern void	L_typeck_init();
 extern int	L_typeck_arrElt(Type *var, Type *array);
@@ -491,7 +492,7 @@ typedef struct {
 	int	end;
 } L_YYLTYPE;
 #define YYLTYPE L_YYLTYPE
-extern YYLTYPE yylloc;
+extern YYLTYPE L_lloc;
 #define YYLLOC_DEFAULT(c,r,n)				\
 	do {						\
 		if (n) {				\

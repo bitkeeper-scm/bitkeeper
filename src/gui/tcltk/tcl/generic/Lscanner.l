@@ -444,6 +444,13 @@ include_pop()
 		yy_push_state(here_doc_nointerp);
 		return T_EQUALS;
 	}
+	/* illegal here documents (white space after the end delim) */
+	"="[ \t\r\n]*"<<"[a-zA-Z_][a-zA-Z_0-9]*[^\n]		{
+		L_synerr("illegal here-document delimeter");
+	}
+	"="[ \t\r\n]*"<<\'"[a-zA-Z_][a-zA-Z_0-9]*\'[^\n]		{
+		L_synerr("illegal here-document delimeter");
+	}
 }
 
 <include>{

@@ -643,14 +643,16 @@ foreach_stmt:
 	{
 		$$ = ast_mkForeach($7, $3, $5, $9, @1.beg, @9.end);
 		unless (isid($6, "in")) {
-			L_synerr("syntax error -- expected 'in' in foreach");
+			L_synerr2("syntax error -- expected 'in' in foreach",
+				  @6.beg);
 		}
 	}
 	| T_FOREACH "(" id_list id expr ")" stmt
 	{
 		$$ = ast_mkForeach($5, $3, NULL, $7, @1.beg, @7.end);
 		unless (isid($4, "in")) {
-			L_synerr("syntax error -- expected 'in' in foreach");
+			L_synerr2("syntax error -- expected 'in' in foreach",
+				  @4.beg);
 		}
 	}
 	;

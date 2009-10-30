@@ -4169,27 +4169,51 @@ L_warnf(void *node, const char *format, ...)
  * the Bison-generated parser's own internal longjmp causes a crash.
  */
 void
-L_synerr(const char *format, ...)
+L_synerr(const char *s)
 {
-	va_list ap;
-	int	len = 64;
-	char	*buf;
-
-	va_start(ap, format);
-	while (!(buf = ckvsprintf(format, ap, len))) {
-		va_end(ap);
-		va_start(ap, format);
-		len *= 2;
-	}
-	va_end(ap);
+	int	i, off;
+	char	*beg = Tcl_GetString(L->script);
+	char	*end = beg + L->script_len;
+	char	*line;
 
 	unless (L->errs) {
 		L->errs = Tcl_NewObj();
 	}
 	Tcl_AppendPrintfToObj(L->errs, "%s:%d: L Error: %s\n",
-			      L->file, L->line, buf);
-	ckfree(buf);
+			      L->file, L->line, s);
+
+	/* Search backwards to find the start of the offending line. */
+	off = L_lloc.beg;
+	ASSERT(off > 0);
+	ASSERT(beg);
+	for (line = beg+off; (line[-1] != '\n') && (line > beg); --line) ;
+	off = beg+off - line;  // is now offset from start of offending line
+
+	/* Print the offending line with a ^ pointing to the current token. */
+	for (i = 1; (*line != '\n') && (line < end); ++i) {
+		if (*line == '\t') {  // adjust for tab printing >1 char
+			off += 8 - i%8;
+			i += 7;
+		}
+		Tcl_AppendToObj(L->errs, line++, 1);
+	}
+	Tcl_AppendToObj(L->errs, "\n", 1);
+	ASSERT(off >= 0);
+	while (off--) Tcl_AppendToObj(L->errs, " ", 1);
+	Tcl_AppendToObj(L->errs, "^\n", 2);
+
 	longjmp(L->jmp, 0);
+}
+
+/*
+ * Like L_synerr() above but take the offset of the offending token
+ * instead of using the current token.
+ */
+void
+L_synerr2(const char *s, int offset)
+{
+	L_lloc.beg = offset;
+	L_synerr(s);
 }
 
 void

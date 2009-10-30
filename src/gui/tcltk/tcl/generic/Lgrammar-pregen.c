@@ -376,23 +376,23 @@ static const unsigned short int yyrline[] =
      482,   488,   506,   512,   521,   527,   532,   536,   537,   541,
      546,   551,   556,   561,   565,   569,   573,   578,   583,   587,
      592,   596,   600,   608,   613,   618,   622,   627,   631,   635,
-     642,   649,   659,   660,   664,   665,   679,   696,   700,   701,
-     710,   715,   721,   728,   734,   743,   744,   749,   757,   763,
-     771,   783,   789,   794,   798,   809,   813,   817,   821,   825,
-     829,   833,   837,   841,   845,   852,   859,   863,   867,   871,
-     875,   879,   883,   887,   891,   895,   899,   903,   907,   911,
-     915,   919,   923,   927,   931,   935,   939,   943,   947,   951,
-     955,   956,   957,   958,   963,   968,   973,   977,   988,   987,
-     996,  1002,  1007,  1011,  1015,  1019,  1023,  1027,  1031,  1035,
-    1039,  1043,  1047,  1051,  1055,  1059,  1063,  1067,  1071,  1075,
-    1080,  1085,  1092,  1099,  1103,  1111,  1118,  1122,  1130,  1137,
-    1138,  1142,  1143,  1147,  1155,  1156,  1165,  1171,  1178,  1189,
-    1204,  1208,  1209,  1221,  1222,  1234,  1235,  1236,  1240,  1252,
-    1253,  1261,  1262,  1270,  1271,  1281,  1285,  1292,  1298,  1310,
-    1313,  1317,  1321,  1328,  1337,  1349,  1350,  1351,  1352,  1353,
-    1354,  1355,  1359,  1365,  1371,  1379,  1380,  1389,  1393,  1405,
-    1406,  1411,  1415,  1419,  1427,  1432,  1442,  1447,  1455,  1459,
-    1468,  1473,  1482,  1489,  1499,  1503,  1511,  1519
+     642,   650,   661,   662,   666,   667,   681,   698,   702,   703,
+     712,   717,   723,   730,   736,   745,   746,   751,   759,   765,
+     773,   785,   791,   796,   800,   811,   815,   819,   823,   827,
+     831,   835,   839,   843,   847,   854,   861,   865,   869,   873,
+     877,   881,   885,   889,   893,   897,   901,   905,   909,   913,
+     917,   921,   925,   929,   933,   937,   941,   945,   949,   953,
+     957,   958,   959,   960,   965,   970,   975,   979,   990,   989,
+     998,  1004,  1009,  1013,  1017,  1021,  1025,  1029,  1033,  1037,
+    1041,  1045,  1049,  1053,  1057,  1061,  1065,  1069,  1073,  1077,
+    1082,  1087,  1094,  1101,  1105,  1113,  1120,  1124,  1132,  1139,
+    1140,  1144,  1145,  1149,  1157,  1158,  1167,  1173,  1180,  1191,
+    1206,  1210,  1211,  1223,  1224,  1236,  1237,  1238,  1242,  1254,
+    1255,  1263,  1264,  1272,  1273,  1283,  1287,  1294,  1300,  1312,
+    1315,  1319,  1323,  1330,  1339,  1351,  1352,  1353,  1354,  1355,
+    1356,  1357,  1361,  1367,  1373,  1381,  1382,  1391,  1395,  1407,
+    1408,  1413,  1417,  1421,  1429,  1434,  1444,  1449,  1457,  1461,
+    1470,  1475,  1484,  1491,  1501,  1505,  1513,  1521
 };
 #endif
 
@@ -2954,28 +2954,30 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     {
 		((*yyvalp).ForEach) = ast_mkForeach((((yyGLRStackItem const *)yyvsp)[YYFILL ((7) - (9))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (9))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((5) - (9))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((9) - (9))].yystate.yysemantics.yysval.Stmt), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (9))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((9) - (9))].yystate.yyloc).end);
 		unless (isid((((yyGLRStackItem const *)yyvsp)[YYFILL ((6) - (9))].yystate.yysemantics.yysval.Expr), "in")) {
-			L_synerr("syntax error -- expected 'in' in foreach");
+			L_synerr2("syntax error -- expected 'in' in foreach",
+				  (((yyGLRStackItem const *)yyvsp)[YYFILL ((6) - (9))].yystate.yyloc).beg);
 		}
 	;}
     break;
 
   case 61:
-#line 650 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 651 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).ForEach) = ast_mkForeach((((yyGLRStackItem const *)yyvsp)[YYFILL ((5) - (7))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (7))].yystate.yysemantics.yysval.Expr), NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((7) - (7))].yystate.yysemantics.yysval.Stmt), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (7))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((7) - (7))].yystate.yyloc).end);
 		unless (isid((((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (7))].yystate.yysemantics.yysval.Expr), "in")) {
-			L_synerr("syntax error -- expected 'in' in foreach");
+			L_synerr2("syntax error -- expected 'in' in foreach",
+				  (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (7))].yystate.yyloc).beg);
 		}
 	;}
     break;
 
   case 62:
-#line 659 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 661 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).Expr) = NULL; ;}
     break;
 
   case 65:
-#line 666 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 668 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		if ((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Stmt)) {
 			REVERSE(Stmt, next, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Stmt));
@@ -2989,7 +2991,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 66:
-#line 680 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 682 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		VarDecl *v;
 		REVERSE(VarDecl, next, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.VarDecl));
@@ -3009,12 +3011,12 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 67:
-#line 696 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 698 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).VarDecl) = NULL; ;}
     break;
 
   case 69:
-#line 702 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 704 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		(((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.VarDecl)->next = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.VarDecl);
 		((*yyvalp).VarDecl) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.VarDecl);
@@ -3023,7 +3025,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 70:
-#line 711 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 713 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).VarDecl) = ast_mkVarDecl((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.Type), NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).end);
 		if (isnameoftype((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.Type))) ((*yyvalp).VarDecl)->flags |= DECL_REF;
@@ -3031,7 +3033,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 71:
-#line 716 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 718 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		L_set_declBaseType((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.VarDecl), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yysemantics.yysval.Type));
 		((*yyvalp).VarDecl) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.VarDecl);
@@ -3040,7 +3042,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 72:
-#line 722 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 724 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		L_set_declBaseType((((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.VarDecl), (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (3))].yystate.yysemantics.yysval.Type));
 		((*yyvalp).VarDecl) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.VarDecl);
@@ -3050,7 +3052,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 73:
-#line 729 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 731 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Type *t = type_mkArray(NULL, L_poly, PER_INTERP);
 		((*yyvalp).VarDecl) = ast_mkVarDecl(t, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
@@ -3059,7 +3061,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 74:
-#line 735 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 737 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Type *t = type_mkArray(NULL, L_poly, PER_INTERP);
 		((*yyvalp).VarDecl) = ast_mkVarDecl(t, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
@@ -3068,7 +3070,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 76:
-#line 745 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 747 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkConst(L_string, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).end);
 		((*yyvalp).Expr)->u.string = cksprintf("-%s", (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.s));
@@ -3076,7 +3078,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 77:
-#line 750 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 752 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *e = ast_mkConst(L_string, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).end);
 		e->u.string = cksprintf("-%s", (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yysemantics.yysval.s));
@@ -3087,7 +3089,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 78:
-#line 758 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 760 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		(((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr)->next = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr);
 		((*yyvalp).Expr) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr);
@@ -3096,7 +3098,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 79:
-#line 764 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 766 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *e = ast_mkConst(L_string, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 		e->u.string = cksprintf("-%s", (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.s));
@@ -3107,7 +3109,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 80:
-#line 772 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 774 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *e = ast_mkConst(L_string, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yyloc).end);
 		e->u.string = cksprintf("-%s", (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.s));
@@ -3119,7 +3121,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 81:
-#line 784 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 786 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (3))].yystate.yysemantics.yysval.Expr);
 		((*yyvalp).Expr)->node.beg = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg;
@@ -3128,7 +3130,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 82:
-#line 790 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 792 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		// This is a binop where an arg is a Type*.
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_CAST, (Expr *)(((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (4))].yystate.yysemantics.yysval.Type), (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yyloc).end);
@@ -3136,14 +3138,14 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 83:
-#line 795 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 797 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_EXPAND, (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yyloc).end);
 	;}
     break;
 
   case 84:
-#line 799 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 801 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		/*
 		 * This rule is for (expand all).  It's an error if id
@@ -3157,70 +3159,70 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 85:
-#line 810 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 812 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_BANG, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 	;}
     break;
 
   case 86:
-#line 814 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 816 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_BITNOT, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 	;}
     break;
 
   case 87:
-#line 818 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 820 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_ADDROF, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 	;}
     break;
 
   case 88:
-#line 822 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 824 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_UMINUS, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 	;}
     break;
 
   case 89:
-#line 826 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 828 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_UPLUS, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 	;}
     break;
 
   case 90:
-#line 830 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 832 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_PLUSPLUS_PRE, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 	;}
     break;
 
   case 91:
-#line 834 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 836 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_MINUSMINUS_PRE, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 	;}
     break;
 
   case 92:
-#line 838 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 840 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_PLUSPLUS_POST, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 	;}
     break;
 
   case 93:
-#line 842 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 844 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_MINUSMINUS_POST, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 	;}
     break;
 
   case 94:
-#line 846 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 848 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		if (strchr((((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yysemantics.yysval.s), 'i')) (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Expr)->flags |= L_EXPR_RE_I;
 		if (strchr((((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yysemantics.yysval.s), 'g')) (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Expr)->flags |= L_EXPR_RE_G;
@@ -3230,7 +3232,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 95:
-#line 853 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 855 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		if (strchr((((yyGLRStackItem const *)yyvsp)[YYFILL ((5) - (5))].yystate.yysemantics.yysval.s), 'i')) (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (5))].yystate.yysemantics.yysval.Expr)->flags |= L_EXPR_RE_I;
 		if (strchr((((yyGLRStackItem const *)yyvsp)[YYFILL ((5) - (5))].yystate.yysemantics.yysval.s), 'g')) (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (5))].yystate.yysemantics.yysval.Expr)->flags |= L_EXPR_RE_G;
@@ -3240,175 +3242,175 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 96:
-#line 860 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 862 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_STAR, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 97:
-#line 864 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 866 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_SLASH, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 98:
-#line 868 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 870 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_PERC, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 99:
-#line 872 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 874 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_PLUS, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 100:
-#line 876 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 878 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_MINUS, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 101:
-#line 880 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 882 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_STR_EQ, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 102:
-#line 884 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 886 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_STR_NE, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 103:
-#line 888 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 890 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_STR_LT, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 104:
-#line 892 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 894 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_STR_LE, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 105:
-#line 896 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 898 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_STR_GT, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 106:
-#line 900 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 902 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_STR_GE, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 107:
-#line 904 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 906 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQUALEQUAL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 108:
-#line 908 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 910 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_NOTEQUAL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 109:
-#line 912 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 914 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_GREATER, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 110:
-#line 916 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 918 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_GREATEREQ, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 111:
-#line 920 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 922 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_LESSTHAN, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 112:
-#line 924 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 926 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_LESSTHANEQ, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 113:
-#line 928 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 930 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_ANDAND, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 114:
-#line 932 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 934 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_OROR, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 115:
-#line 936 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 938 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_LSHIFT, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 116:
-#line 940 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 942 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_RSHIFT, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 117:
-#line 944 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 946 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_BITOR, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 118:
-#line 948 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 950 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_BITAND, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 119:
-#line 952 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 954 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_BITXOR, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 123:
-#line 959 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 961 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkConst(L_int, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).end);
 		((*yyvalp).Expr)->u.integer = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.i);
@@ -3416,7 +3418,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 124:
-#line 964 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 966 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkConst(L_float, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).end);
 		((*yyvalp).Expr)->u.flote = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.f);
@@ -3424,7 +3426,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 125:
-#line 969 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 971 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		REVERSE(Expr, next, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Expr));
 		((*yyvalp).Expr) = ast_mkFnCall((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yyloc).end);
@@ -3432,14 +3434,14 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 126:
-#line 974 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 976 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkFnCall((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 127:
-#line 978 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 980 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *id = ast_mkId("string", (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).end);
 		REVERSE(Expr, next, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Expr));
@@ -3448,12 +3450,12 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 128:
-#line 988 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 990 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { L_lex_endReArg(); ;}
     break;
 
   case 129:
-#line 990 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 992 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *id = ast_mkId("split", (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (9))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (9))].yystate.yyloc).end);
 		(((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (9))].yystate.yysemantics.yysval.Expr)->next = (((yyGLRStackItem const *)yyvsp)[YYFILL ((6) - (9))].yystate.yysemantics.yysval.Expr);
@@ -3463,7 +3465,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 130:
-#line 997 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 999 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *id = ast_mkId("split", (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).end);
 		((*yyvalp).Expr) = ast_mkFnCall(id, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yyloc).end);
@@ -3471,7 +3473,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 131:
-#line 1003 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1005 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		REVERSE(Expr, next, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Expr));
 		((*yyvalp).Expr) = ast_mkFnCall((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yyloc).end);
@@ -3479,126 +3481,126 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 132:
-#line 1008 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1010 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkFnCall((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 133:
-#line 1012 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1014 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQUALS, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 134:
-#line 1016 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1018 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQPLUS, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 135:
-#line 1020 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1022 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQMINUS, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 136:
-#line 1024 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1026 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQSTAR, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 137:
-#line 1028 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1030 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQSLASH, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 138:
-#line 1032 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1034 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQPERC, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 139:
-#line 1036 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1038 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQBITAND, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 140:
-#line 1040 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1042 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQBITOR, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 141:
-#line 1044 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1046 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQBITXOR, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 142:
-#line 1048 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1050 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQLSHIFT, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 143:
-#line 1052 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1054 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQRSHIFT, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 144:
-#line 1056 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1058 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_EQDOT, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 145:
-#line 1060 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1062 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_DEFINED, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yyloc).end);
 	;}
     break;
 
   case 146:
-#line 1064 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1066 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_ARRAY_INDEX, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yyloc).end);
 	;}
     break;
 
   case 147:
-#line 1068 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1070 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_HASH_INDEX, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yyloc).end);
 	;}
     break;
 
   case 148:
-#line 1072 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1074 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_CONCAT, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 149:
-#line 1076 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1078 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_DOT, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 		((*yyvalp).Expr)->u.string = (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.s);
@@ -3606,7 +3608,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 150:
-#line 1081 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1083 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_POINTS, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 		((*yyvalp).Expr)->u.string = (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.s);
@@ -3614,7 +3616,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 151:
-#line 1086 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1088 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		// This is a binop where an arg is a Type*.
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_CLASS_INDEX, (Expr *)(((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Typename).t, NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg,
@@ -3624,7 +3626,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 152:
-#line 1093 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1095 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		// This is a binop where an arg is a Type*.
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_CLASS_INDEX, (Expr *)(((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Typename).t, NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg,
@@ -3634,21 +3636,21 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 153:
-#line 1100 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1102 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_COMMA, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 	;}
     break;
 
   case 154:
-#line 1104 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1106 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkTrinOp(L_OP_ARRAY_SLICE, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (6))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (6))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((5) - (6))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (6))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (6))].yystate.yyloc).end);
 	;}
     break;
 
   case 155:
-#line 1112 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1114 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Expr);
 		((*yyvalp).Expr)->node.beg = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).beg;
@@ -3658,14 +3660,14 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 156:
-#line 1119 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1121 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_LIST, NULL, NULL, 0, 0);
 	;}
     break;
 
   case 157:
-#line 1123 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1125 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkTrinOp(L_OP_TERNARY_COND, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (5))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (5))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((5) - (5))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (5))].yystate.yyloc).beg,
 				  (((yyGLRStackItem const *)yyvsp)[YYFILL ((5) - (5))].yystate.yyloc).end);
@@ -3673,24 +3675,24 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 158:
-#line 1131 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1133 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		L_lex_begReArg();
 	;}
     break;
 
   case 159:
-#line 1137 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1139 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).Expr) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Expr); ((*yyvalp).Expr)->node.beg = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg; ;}
     break;
 
   case 160:
-#line 1138 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1140 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).Expr) = NULL; ;}
     break;
 
   case 163:
-#line 1148 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1150 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkId((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.s), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).end);
 		ckfree((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.s));
@@ -3698,7 +3700,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 165:
-#line 1157 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1159 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr);
 		((*yyvalp).Expr)->next = (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr);
@@ -3707,7 +3709,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 166:
-#line 1166 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1168 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Stmt) = ast_mkStmt(L_STMT_BLOCK, NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 		((*yyvalp).Stmt)->u.block = ast_mkBlock(NULL, NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
@@ -3716,7 +3718,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 167:
-#line 1172 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1174 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		REVERSE(Stmt, next, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.Stmt));
 		((*yyvalp).Stmt) = ast_mkStmt(L_STMT_BLOCK, NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yyloc).end);
@@ -3726,7 +3728,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 168:
-#line 1179 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1181 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		VarDecl	*v;
 		REVERSE(VarDecl, next, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.VarDecl));
@@ -3740,7 +3742,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 169:
-#line 1190 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1192 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		VarDecl	*v;
 		REVERSE(VarDecl, next, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (5))].yystate.yysemantics.yysval.VarDecl));
@@ -3755,12 +3757,12 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 170:
-#line 1204 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1206 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { L_scope_enter(); ;}
     break;
 
   case 172:
-#line 1210 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1212 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		/*
 		 * Each declaration is a list of declarators.  Here we
@@ -3772,7 +3774,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 174:
-#line 1223 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1225 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		VarDecl *v;
 		for (v = (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (3))].yystate.yysemantics.yysval.VarDecl); v; v = v->next) {
@@ -3784,22 +3786,22 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 175:
-#line 1234 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1236 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).i) = DECL_PRIVATE; ;}
     break;
 
   case 176:
-#line 1235 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1237 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).i) = DECL_PUBLIC; ;}
     break;
 
   case 177:
-#line 1236 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1238 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).i) = DECL_EXTERN; ;}
     break;
 
   case 178:
-#line 1241 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1243 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		/* Don't REVERSE $2; it's done as part of declaration_list. */
 		VarDecl *v;
@@ -3811,7 +3813,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 180:
-#line 1254 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1256 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		(((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.VarDecl)->next = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.VarDecl);
 		((*yyvalp).VarDecl) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.VarDecl);
@@ -3819,7 +3821,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 182:
-#line 1263 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1265 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		(((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.VarDecl)->next = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.VarDecl);
 		((*yyvalp).VarDecl) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.VarDecl);
@@ -3827,7 +3829,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 184:
-#line 1272 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1274 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		(((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.VarDecl)->initializer = ast_mkBinOp(L_OP_EQUALS, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.VarDecl)->id, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr),
 					      (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
@@ -3837,14 +3839,14 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 185:
-#line 1282 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1284 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).VarDecl) = ast_mkVarDecl((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Type), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 	;}
     break;
 
   case 186:
-#line 1286 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1288 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *id = ast_mkId((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yysemantics.yysval.Typename).s, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).end);
 		((*yyvalp).VarDecl) = ast_mkVarDecl((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Type), id, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
@@ -3854,7 +3856,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 187:
-#line 1293 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1295 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Type *t = type_mkNameOf((((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Type), PER_INTERP);
 		((*yyvalp).VarDecl) = ast_mkVarDecl(t, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
@@ -3863,7 +3865,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 188:
-#line 1299 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1301 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Type *tf = type_mkFunc(NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (5))].yystate.yysemantics.yysval.VarDecl), PER_INTERP);
 		Type *tn = type_mkNameOf(tf, PER_INTERP);
@@ -3873,35 +3875,35 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 189:
-#line 1310 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1312 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Type) = NULL;
 	;}
     break;
 
   case 190:
-#line 1314 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1316 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Type) = type_mkArray((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (4))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yysemantics.yysval.Type), PER_INTERP);
 	;}
     break;
 
   case 191:
-#line 1318 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1320 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Type) = type_mkArray(NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Type), PER_INTERP);
 	;}
     break;
 
   case 192:
-#line 1322 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1324 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Type) = type_mkHash((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (4))].yystate.yysemantics.yysval.Type), (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (4))].yystate.yysemantics.yysval.Type), PER_INTERP);
 	;}
     break;
 
   case 193:
-#line 1329 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1331 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		if ((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Type)) {
 			L_set_baseType((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Type), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yysemantics.yysval.Type));
@@ -3913,7 +3915,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 194:
-#line 1338 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1340 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		if ((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Type)) {
 			L_set_baseType((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.Type), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yysemantics.yysval.Type));
@@ -3925,42 +3927,42 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 195:
-#line 1349 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1351 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).Type) = L_string; ;}
     break;
 
   case 196:
-#line 1350 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1352 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).Type) = L_int; ;}
     break;
 
   case 197:
-#line 1351 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1353 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).Type) = L_float; ;}
     break;
 
   case 198:
-#line 1352 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1354 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).Type) = L_poly; ;}
     break;
 
   case 199:
-#line 1353 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1355 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).Type) = L_widget; ;}
     break;
 
   case 200:
-#line 1354 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1356 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).Type) = L_void; ;}
     break;
 
   case 201:
-#line 1355 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1357 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).Type) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.Typename).t; ckfree((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.Typename).s); ;}
     break;
 
   case 202:
-#line 1360 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1362 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		REVERSE(VarDecl, next, (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (5))].yystate.yysemantics.yysval.VarDecl));
 		((*yyvalp).Type) = L_struct_store((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (5))].yystate.yysemantics.yysval.s), (((yyGLRStackItem const *)yyvsp)[YYFILL ((4) - (5))].yystate.yysemantics.yysval.VarDecl));
@@ -3969,7 +3971,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 203:
-#line 1366 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1368 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		REVERSE(VarDecl, next, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.VarDecl));
 		(void)L_struct_store(NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (4))].yystate.yysemantics.yysval.VarDecl));  // to sanity check member types
@@ -3978,7 +3980,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 204:
-#line 1372 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1374 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Type) = L_struct_lookup((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.s), FALSE);
 		ckfree((((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.s));
@@ -3986,7 +3988,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 206:
-#line 1381 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1383 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		APPEND(VarDecl, next, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.VarDecl), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yysemantics.yysval.VarDecl));
 		((*yyvalp).VarDecl) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.VarDecl);
@@ -3995,12 +3997,12 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 207:
-#line 1389 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1391 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     { ((*yyvalp).VarDecl)->node.end = (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end; ;}
     break;
 
   case 208:
-#line 1394 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1396 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		VarDecl *v;
 		for (v = (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.VarDecl); v; v = v->next) {
@@ -4012,7 +4014,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 210:
-#line 1407 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1409 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		APPEND(Expr, b, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr));
 		((*yyvalp).Expr) = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr);
@@ -4020,14 +4022,14 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 212:
-#line 1416 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1418 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_LIST, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.Expr), NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).end);
 	;}
     break;
 
   case 213:
-#line 1420 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1422 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *kv = ast_mkBinOp(L_OP_KV, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
 		((*yyvalp).Expr) = ast_mkBinOp(L_OP_LIST, kv, NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yyloc).end);
@@ -4035,7 +4037,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 214:
-#line 1428 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1430 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkConst(L_string, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).end);
 		((*yyvalp).Expr)->u.string = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.s);
@@ -4043,7 +4045,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 215:
-#line 1433 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1435 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *right = ast_mkConst(L_string, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 		right->u.string = (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.s);
@@ -4053,7 +4055,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 216:
-#line 1443 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1445 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_CMDSUBST, NULL, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).end);
 		((*yyvalp).Expr)->u.string = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.s);
@@ -4061,7 +4063,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 217:
-#line 1448 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1450 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkUnOp(L_OP_CMDSUBST, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yysemantics.yysval.Expr), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 		((*yyvalp).Expr)->u.string = (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.s);
@@ -4069,14 +4071,14 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 218:
-#line 1456 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1458 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkRegexp((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.s), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).end);
 	;}
     break;
 
   case 219:
-#line 1460 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1462 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *right = ast_mkConst(L_string, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 		right->u.string = (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.s);
@@ -4085,7 +4087,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 220:
-#line 1469 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1471 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkConst(L_string, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).end);
 		((*yyvalp).Expr)->u.string = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.s);
@@ -4093,7 +4095,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 221:
-#line 1474 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1476 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *right = ast_mkConst(L_string, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yyloc).end);
 		right->u.string = (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (2))].yystate.yysemantics.yysval.s);
@@ -4102,7 +4104,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 222:
-#line 1483 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1485 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *left = ast_mkConst(L_string, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yyloc).end);
 		left->u.string = (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.s);
@@ -4112,7 +4114,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 223:
-#line 1490 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1492 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Expr *middle = ast_mkConst(L_string, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (4))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (4))].yystate.yyloc).end);
 		middle->u.string = (((yyGLRStackItem const *)yyvsp)[YYFILL ((2) - (4))].yystate.yysemantics.yysval.s);
@@ -4122,14 +4124,14 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 224:
-#line 1500 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1502 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkId(".", (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).end);
 	;}
     break;
 
   case 225:
-#line 1504 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1506 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).Expr) = ast_mkId(Tcl_GetString((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.obj)), (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).beg, (((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yyloc).end);
 		Tcl_DecrRefCount((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (1))].yystate.yysemantics.yysval.obj));
@@ -4137,7 +4139,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 226:
-#line 1512 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1514 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		((*yyvalp).obj) = Tcl_NewObj();
 		Tcl_IncrRefCount(((*yyvalp).obj));
@@ -4148,7 +4150,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
     break;
 
   case 227:
-#line 1520 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1522 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
     {
 		Tcl_AppendToObj((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.obj), ".", 1);
 		Tcl_AppendToObj((((yyGLRStackItem const *)yyvsp)[YYFILL ((1) - (3))].yystate.yysemantics.yysval.obj), (((yyGLRStackItem const *)yyvsp)[YYFILL ((3) - (3))].yystate.yysemantics.yysval.s), -1);
@@ -4159,7 +4161,7 @@ yyuserAction (yyRuleNum yyn, int yyrhslen, yyGLRStackItem* yyvsp,
 
 
 /* Line 930 of glr.c.  */
-#line 4163 "Lgrammar.c"
+#line 4165 "Lgrammar.c"
       default: break;
     }
 
@@ -5838,6 +5840,6 @@ yypdumpstack (yyGLRStack* yystackp)
 #endif
 
 
-#line 1527 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1529 "/Users/rob/bk/bk-L/src/gui/tcltk/tcl/generic/Lgrammar.y"
 
 
