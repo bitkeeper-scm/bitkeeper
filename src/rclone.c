@@ -312,7 +312,7 @@ rclone_part1(remote *r, char **envVar)
 		    "BAMv2 aware version (4.1.1 or later).\n");
 		return (-1);
 	}
-	if (getenv("_BK_TRANSACTION") && !bkd_hasFeature("SAMv1")) {
+	if (getenv("_BK_TRANSACTION") && !bkd_hasFeature("SAMv2")) {
 		fprintf(stderr,
 		    "clone: please upgrade the remote bkd to a "
 		    "NESTED aware version (5.0 or later).\n");

@@ -75,7 +75,7 @@ cmd_clone(int ac, char **av)
 		goto out;
 	}
 	if (proj_isProduct(0)) {
-		unless (bk_hasFeature("SAMv1")) {
+		unless (bk_hasFeature("SAMv2")) {
 			out("ERROR-please upgrade your BK to a NESTED "
 			    "aware version (5.0 or later)\n");
 			goto out;

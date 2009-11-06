@@ -332,7 +332,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		return (1);
 	}
 	if (opts.port) {
-		unless (bkd_hasFeature("SAMv1")) {
+		unless (bkd_hasFeature("SAMv2")) {
 			fprintf(stderr,
 			    "port: remote bkd too old to support 'bk port'\n");
 			disconnect(r, 2);
