@@ -1038,9 +1038,9 @@ int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int	cset_setup(int flags);
 char	*separator(char *);
 int	trigger(char *cmd, char *when);
-void	cmdlog_start(char **av);
+void	cmdlog_start(char **av, int bkd_mode);
 void	cmdlog_addnote(char *key, char *val);
-int	cmdlog_end(int ret);
+int	cmdlog_end(int ret, int bkd_mode);
 int	write_log(char *file, int rotate, char *format, ...)
 #ifdef __GNUC__
      __attribute__((format (__printf__, 3, 4)))

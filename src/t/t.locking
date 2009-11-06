@@ -237,7 +237,7 @@ cd "$HERE/clone"
 ls > D
 bk new $Q D
 bk commit $Q -ywhatever
-bk push -c0 $Q
+bk push -c0 $Q 2>ERR
 if [ $? != 2 ]; then echo push failed to exit with an error; exit 1; fi
 echo OK
 
@@ -314,7 +314,7 @@ date > D
 bk ci $Q -ynew_styff D
 BK_READ_LOCK="$HERE/read_lock" bk commit $Q -y"should-failed" > commit.out 2>&1
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
-grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
+grep -q 'Unable to lock repository for update.' commit.out || {
 	echo unexpected error message
 	cat commit.out
 	exit 1
@@ -333,7 +333,7 @@ date > D
 bk ci $Q -ynew_styff D
 BK_WRITE_LOCK="$HERE/write_lock" bk commit $Q -y"should-failed" > commit.out 2>&1
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
-grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
+grep -q 'Unable to lock repository for update.' commit.out || {
 	echo unexpected error message
 	cat commit.out
 	exit 1
@@ -356,7 +356,7 @@ bk commit $Q -y"should-failed" > commit.out 2>&1 && {
 	cat commit.out
 	exit 1
 }
-grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
+grep -q 'Unable to lock repository for update.' commit.out || {
 	echo unexpected error message
 	cat commit.out
 	exit 1

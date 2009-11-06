@@ -1345,7 +1345,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	if ((rc = remote_lock_fail(buf, 1))) {
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfoBlock(r)) {
+		if (getServerInfo(r)) {
 			fprintf(stderr, "changes: premature disconnect?\n");
 			return (-1);
 		}
@@ -1426,7 +1426,7 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 		rc = rc_lock;
 		goto done;
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfoBlock(r)) {
+		if (getServerInfo(r)) {
 			rc = -1; /* protocol error */
 			goto done;
 		}

@@ -24,7 +24,6 @@ cmd_synckeys(int ac, char **av)
 	}
 
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	if (sendServerInfoBlock(0)) return (1);
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");

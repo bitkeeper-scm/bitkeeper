@@ -340,7 +340,7 @@ grep -q "libc is needed to push" OUT || {
 cd "$HERE"
 test -d project/RESYNC && fail
 test -d full/RESYNC || fail fix the test
-rm -rf full/RESYNC # remove me when you fix the test
+(cd full && bk abort -f) # remove me when you fix the test
 test -d sparse/RESYNC && fail
 echo failed \(bug nested abort not done\)
 

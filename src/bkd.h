@@ -140,7 +140,7 @@ int	bkd_connect(remote *r);
 void	disconnect(remote *r, int how);
 void	drain(void);
 char	**getClientInfoBlock(void);
-int	sendServerInfoBlock(int);
+int	sendServerInfo(int no_repo);
 int	bk_hasFeature(char *f);
 int	bkd_hasFeature(char *f);
 int	probekey(sccs *s, char *rev, int syncroot, FILE *f);
@@ -149,7 +149,7 @@ int	prunekey(sccs *, remote *, hash *, int, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
-int	getServerInfoBlock(remote *r);
+int	getServerInfo(remote *r);
 char	*vpath_translate(char *path);
 
 #define	SENDENV_NOREPO	   1 /* don't assume we are called from a repo */

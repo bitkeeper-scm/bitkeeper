@@ -436,7 +436,10 @@ clean_up()
 	    egrep 'BitKeeper/readers/|BitKeeper/writer/' > "$BK_REGRESSION/junk"
 	test -s "$BK_REGRESSION/junk" && {
 		echo Stale lock files
-		cat "$BK_REGRESSION/junk"
+		cat "$BK_REGRESSION/junk" | while read x
+		do
+			echo "$x": `cat "$x"`
+		done
 		exit 12
 	}
 

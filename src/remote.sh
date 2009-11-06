@@ -56,7 +56,11 @@ case $CMD in
 		    exit 1
 		}
 		cd ..
-		rm -rf $DIR
+		# switch to the upgrades.cluster bkd
+		_BUILD_PORT=':14691'
+		export _BUILD_PORT
+		URL=`echo $URL | sed 's/^bk:\/\/work\//bk:\/\/work:14691\//'`
+		rm -rf $DIR $BKDIR
 	    	echo y | BK_NOTTY=YES BK_NO_REMAP=1 \
 		    bk clone -sdefault -z0 $URL $BKDIR || {
 			echo reclone failed

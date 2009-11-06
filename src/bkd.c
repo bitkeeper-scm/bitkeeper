@@ -251,6 +251,14 @@ do_cmds(void)
 	 * subprocesses spawned from those functions.
 	 */
 	putenv("_BKD_HTTP=");
+
+	/*
+	 * We only want locks from the protocol, not from process
+	 * inheritance
+	 */
+	putenv("_NESTED_LOCK=");
+	putenv("BKD_NESTED_LOCK=");
+
 	while (getav(&ac, &av)) {
 		if (debug) {
 			for (i = 0; av[i]; ++i) {
@@ -261,8 +269,8 @@ do_cmds(void)
 		if ((i = findcmd(ac, av)) != -1) {
 			if (Opts.logfile) log_cmd(peer, ac, av);
 			if (Opts.http_hdr_out) http_hdr();
-			log = !streq(av[0], "putenv");
-			if (log) cmdlog_start(av);
+			log = !streq(av[0], "putenv") && !streq(av[0], "cd");
+			if (log) cmdlog_start(av, 1);
 
 			/*
 			 * Do the real work
@@ -276,7 +284,7 @@ do_cmds(void)
 			}
 			if (debug) ttyprintf("cmds[%d] = %d\n", i, ret);
 
-			if (log && cmdlog_end(ret)) break;
+			if (log && cmdlog_end(ret, 1)) break;
 			if (ret != 0) {
 				out("ERROR-exiting\n");
 				break;

@@ -35,7 +35,7 @@ msys: ./msysver.sh FORCE
 	if [ -n "$$MSYSVER" -a -f "$$MSYSVER" ]; \
 	then	tar -C$(MSYSBIN) -xpzf $$MSYSVER; \
 	else	test -d msys || bk components add \
-		-@ -@bk://data.bitmover.com/bk \
+		-@ -@bk://data.bitmover.com$$_BUILD_PORT/bk \
 		MSYS; \
 		(cd msys && bk -Ugr bk get -S); \
 		(cd msys; bk sfiles -Ug) | \
@@ -53,14 +53,14 @@ msys: ./msysver.sh FORCE
 bkshellx: FORCE
 	[ -d dll ] || mkdir dll
 	test -d dll/shellx || bk components add \
-		-@ -@bk://data.bitmover.com/bk \
+		-@ -@bk://data.bitmover.com$$_BUILD_PORT/bk \
 		WIN32-DLL
 	cd dll/shellx; bk -Ur get -Sq
 
 bkscc: FORCE
 	[ -d dll ] || mkdir dll
 	test -d dll/scc || bk components add \
-		-@ -@bk://data.bitmover.com/bk \
+		-@ -@bk://data.bitmover.com$$_BUILD_PORT/bk \
 		WIN32-DLL
 	cd dll/scc; bk -Ur get -Sq
 

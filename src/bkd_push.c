@@ -9,7 +9,6 @@ int
 cmd_push_part1(int ac, char **av)
 {
 	char	*p, **aliases;
-	char	*nlid;
 	int	i, c, n, status;
 	int	debug = 0, gzip = 0, product = 0;
 	MMAP    *m;
@@ -30,32 +29,9 @@ cmd_push_part1(int ac, char **av)
 		    default: break;
 		}
 	}
-
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 
-	/*
-	 * Repository locking has already been taken care of by the
-	 * code in bk.c. Here we check nested locks before we do
-	 * anything else.
-	 */
-	if (nlid = getenv("BK_NESTED_LOCK")) {
-		/* we're part of a bigger piece, just check our nlid is valid */
-		unless (nested_mine(0, nlid)) {
-			out(nested_errmsg(1));
-			return (1);
-		}
-	} else if (product) {
-		/* First push of a product, we need a new nlid */
-		unless (nlid = nested_wrlock(0)) {
-			out(nested_errmsg(1));
-			return (1);
-		}
-		safe_putenv("BKD_NESTED_LOCK=%s", nlid);
-		free(nlid);
-	}
-
-	if (sendServerInfoBlock(0)) return (1);
 	if (getenv("BKD_LEVEL") && (atoi(getenv("BKD_LEVEL")) > getlevel())) {
 		/* they got sent the level so they are exiting already */
 		return (1);
@@ -125,13 +101,6 @@ cmd_push_part1(int ac, char **av)
 		out("ERROR-listkey empty\n");
 		return (1);
 	}
-	if (product) {
-		/*
-		 * Okay to unlock, the nested locking code is keeping a
-		 * RESYNC around
-		 */
-		repository_unlock(0, 0);
-	}
 	if (debug) {
 		fprintf(stderr, "cmd_push_part1: sending key list\n");
 		writen(2, m->where,  msize(m));
@@ -184,7 +153,6 @@ cmd_push_part2(int ac, char **av)
 		goto done;
 	}
 
-	if (sendServerInfoBlock(0)) return (1);
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
 	if (streq(buf, "@ABORT@")) {
@@ -204,14 +172,16 @@ cmd_push_part2(int ac, char **av)
 		putenv("BK_STATUS=CONFLICTS");
 	}
 	if ((nothing || conflict) && product) {
-		char	*resync;
+		char	*resync, *nlid;
 
 		/*
 		 * Kludge: abort here.
 		 * XXX: should we abort on conflict too?
 		 */
 		resync = aprintf("%s/%s", proj_root(0), ROOT2RESYNC);
-		nested_abort(0, getenv("BK_NESTED_LOCK"));
+		nlid = getenv("_NESTED_LOCK");
+		assert(nlid);
+		nested_abort(0, nlid);
 		if (rmtree(resync)) {
 			out("ERROR-could not unlock remote");
 		}
@@ -391,7 +361,6 @@ cmd_push_part3(int ac, char **av)
 		goto done;
 	}
 
-	if (sendServerInfoBlock(0)) return (1);
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
 	if (streq(buf, "@BAM@")) {

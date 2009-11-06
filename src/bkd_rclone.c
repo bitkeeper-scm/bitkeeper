@@ -86,7 +86,6 @@ cmd_rclone_part1(int ac, char **av)
 	char	buf[MAXPATH];
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
-	if (sendServerInfoBlock(1)) return (1);
 
 	/*
 	 * No check for NESTED here because the other side has to send -P
@@ -210,10 +209,6 @@ cmd_rclone_part2(int ac, char **av)
 	} else if (p = getenv("BK_BAM_SERVER_URL")) {
 		bp_setBAMserver(0, p, getenv("BK_BAM_SERVER_ID"));
 	}
-	if (sendServerInfoBlock(1)) {
-		rc = 1;
-		goto done;
-	}
 	printf("@SFIO INFO@\n");
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
@@ -311,11 +306,6 @@ cmd_rclone_part3(int ac, char **av)
 	}
 	free(path);
 
-	if (sendServerInfoBlock(1)) {
-		rc = 1;
-		goto done;
-	}
-
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
 	/* Arrange to have stderr go to stdout */
@@ -361,7 +351,6 @@ cmd_rclone_part3(int ac, char **av)
 	fputs("@END@\n", stdout);
 	fflush(stdout);
 
-done:
 	if (rc) {
 		putenv("BK_STATUS=FAILED");
 	} else {
