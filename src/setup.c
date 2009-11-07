@@ -338,8 +338,15 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 	int	first = 1;
 	char	*p, *val;
 	kvpair	kv;
+	char	*key;
+	u32	bits = 0;
 	char	buf[1000], pattern[200];
 
+	/* get a lease, but don't fail */
+	if (key = lease_bkl(0, 0)) {
+		bits = license_bklbits(key);
+		free(key);
+	}
 	if (in = config_template()) {
 		while (fnext(buf, in)) {
 			if (buf[0] == '#') continue;
@@ -382,13 +389,6 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 		return (-1);
 	}
 
-	val = flist ? mdbm_fetch_str(flist, "compression") : 0;
-	/* force compression to default on */
-	unless (val && *val) {
-		char fld[] =  "compression=gzip";
-		flist = addField(flist, fld);
-	}
-
 	val = flist ? mdbm_fetch_str(flist, "autofix") : 0;
 	/* force autofix to default on */
 	unless (val && *val) {
@@ -399,7 +399,37 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 	val = flist ? mdbm_fetch_str(flist, "BAM") : 0;
 	/* force BAM to default off, it's licensed */
 	unless (val && *val) {
-		char fld[] =  "BAM=no";
+		char	fld[100];
+
+		sprintf(fld, "%s", (bits & LIC_BAM) ? "BAM=on" : "BAM=off");
+		flist = addField(flist, fld);
+	}
+
+	val = flist ? mdbm_fetch_str(flist, "checkout") : 0;
+	/* force checkout to default edit */
+	unless (val && *val) {
+		char fld[] =  "checkout=edit";
+		flist = addField(flist, fld);
+	}
+
+	val = flist ? mdbm_fetch_str(flist, "clock_skew") : 0;
+	/* force checkout to default edit */
+	unless (val && *val) {
+		char fld[] =  "clock_skew=on";
+		flist = addField(flist, fld);
+	}
+
+	val = flist ? mdbm_fetch_str(flist, "compression") : 0;
+	/* force compression to default on */
+	unless (val && *val) {
+		char fld[] =  "compression=gzip";
+		flist = addField(flist, fld);
+	}
+
+	val = flist ? mdbm_fetch_str(flist, "partial_check") : 0;
+	/* force compression to default on */
+	unless (val && *val) {
+		char fld[] =  "partial_check=on";
 		flist = addField(flist, fld);
 	}
 
@@ -410,6 +440,17 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 		if (first && (buf[0] == '#')) continue;
 		first = 0;
 		if (streq("$\n", buf)) break;
+
+		/*
+		 * If we found a license somewhere just use that, it's
+		 * probably what they want.  If that is wrong they can
+		 * edit the config file later.
+		 *
+		 * Nota bene: we add some other config that starts w/ "lic"
+		 * and this is busted.
+		 */
+		if (bits && strneq(buf, "lic", 3)) continue;
+
 		chop(buf);
 		if (verbose) {
 			sprintf(pattern, "config_%s", buf);

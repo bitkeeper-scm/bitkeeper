@@ -28,7 +28,6 @@ do
 	bk commit -yfile$n $Q || exit 1
 	bk bam push $Q || exit 1
 	bk bam clean -a $Q || exit 1
-	bk get $Q file$n || exit 1
 	cd ..
 done
 echo OK

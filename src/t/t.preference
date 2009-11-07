@@ -176,7 +176,7 @@ echo OK
 echo $N checkout:GET w admin ........................................$NL
 cd "$HERE/project/src"
 bk edit $Q "$HERE/project/BitKeeper/etc/config"
-echo "checkout:GET" >> "$HERE/project/BitKeeper/etc/config"
+echo "checkout:GET!" >> "$HERE/project/BitKeeper/etc/config"
 bk get $Q foo.c
 bk admin -fRCS foo.c
 bk commit $Q -ynew_stuff
@@ -191,7 +191,7 @@ echo OK
 echo $N checkout:EDIT w admin .......................................$NL
 bk unedit "$HERE/project/BitKeeper/etc/config"
 bk edit $Q "$HERE/project/BitKeeper/etc/config"
-echo "checkout:EDIT" >> "$HERE/project/BitKeeper/etc/config"
+echo "checkout:EDIT!" >> "$HERE/project/BitKeeper/etc/config"
 bk edit $Q foo.c
 bk admin -FRCS foo.c
 bk commit $Q -ynew_stuff
@@ -232,10 +232,10 @@ bk edit $Q bam
 echo new >> foo.c
 echo new >> bam
 bk delta $Q -ynew foo.c 
-BK_CONFIG=BAM_checkout:get bk delta $Q -ynew bam
+BK_CONFIG='BAM_checkout:get!' bk delta $Q -ynew bam
 test -f bam || { echo failed bam; exit 1; }
 test -w bam && { echo failed bam ro; exit 1; }
-BK_CONFIG=BAM_checkout:get bk commit $Q -ynew_stuff
+BK_CONFIG='BAM_checkout:get!' bk commit $Q -ynew_stuff
 test -f bam || { echo failed bam; exit 1; }
 test -w bam && { echo failed bam ro; exit 1; }
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
@@ -260,7 +260,7 @@ echo OK
 echo $N checkout:GET w delta and keywords ...........................$NL
 bk unedit "$HERE/project/BitKeeper/etc/config"
 if [ ! -w "$HERE/project/BitKeeper/etc/config" ]; then echo failed; exit 1; fi
-echo "checkout:GET" >> "$HERE/project/BitKeeper/etc/config"
+echo "checkout:GET!" >> "$HERE/project/BitKeeper/etc/config"
 bk admin -FSCCS foo.c
 echo new2 >> foo.c
 bk delta $Q -ynew foo.c || exit 1
@@ -334,7 +334,7 @@ echo $N checkout:EDIT w clone .......................................$NL
 bk undo -sqfr+ || exit 1
 bk unedit "$HERE/project/BitKeeper/etc/config"
 bk edit $Q "$HERE/project/BitKeeper/etc/config"
-echo "checkout:EDIT" >> "$HERE/project/BitKeeper/etc/config"
+echo "checkout:EDIT!" >> "$HERE/project/BitKeeper/etc/config"
 bk -Ur edit $Q
 bk delta $Q -ycheckout_EDIT "$HERE/project/BitKeeper/etc/config"
 bk commit $Q -ycheckout_EDIT
@@ -392,7 +392,7 @@ echo $N checkout:EDIT w resolve simple content change ...............$NL
 cd "$HERE/project"
 bk unedit BitKeeper/etc/config
 bk edit $Q BitKeeper/etc/config
-echo "checkout:EDIT" >> BitKeeper/etc/config
+echo "checkout:EDIT!" >> BitKeeper/etc/config
 bk delta $Q -yEDIT BitKeeper/etc/config
 bk commit $Q -yEDIT 
 cd "$HERE"
@@ -648,7 +648,7 @@ fi
 echo OK
 
 echo $N verify BK_CONFIG overrides ..................................$NL
-BK_CONFIG='foo:bar; foo2  : bar2 ; checkout : delete '
+BK_CONFIG='foo:bar; foo2  : bar2 ; checkout : delete! '
 export BK_CONFIG
 test X`bk config foo`X != XbarX && {
 	echo override failed

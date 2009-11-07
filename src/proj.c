@@ -449,6 +449,8 @@ proj_configbool(project *p, char *key)
 		if (streq(key, "BAM_hardlinks")) {
 			val = mdbm_fetch_str(db, "binpool_hardlinks");
 		}
+		/* defaults */
+		if (streq(key, "partial_check")) return (1);;
 	}
 	unless (val) return (0);
 	switch(tolower(*val)) {
@@ -477,13 +479,14 @@ proj_checkout(project *p)
 {
 	MDBM	*db;
 	char	*s;
-	int	bits = CO_NONE|CO_BAM_NONE;
+	int	bits;
 
-	unless (p || (p = curr_proj())) return (bits);
-	if (proj_isResync(p)) return (bits);
+	unless (p || (p = curr_proj())) return (CO_NONE|CO_BAM_NONE);
+	if (proj_isResync(p)) return (CO_NONE|CO_BAM_NONE);
 	if (p->co) return (p->co);
 	db = proj_config(p);
 	assert(db);
+	bits = CO_EDIT|CO_BAM_EDIT; /* default */
 	if (s = mdbm_fetch_str(db, "checkout")) {
 		bits = 0;
 		if (strieq(s, "get")) bits = CO_GET|CO_BAM_GET;
@@ -493,8 +496,8 @@ proj_checkout(project *p)
 		unless (bits) {
 			fprintf(stderr,
 			    "WARNING: checkout: should be get|edit|last|none.\n"
-			    "Meaning of '%s' unknown. Assuming none.\n", s);
-			bits = CO_NONE;
+			    "Meaning of '%s' unknown. Assuming edit.\n", s);
+			bits = CO_EDIT|CO_BAM_EDIT;
 		}
 	}
 	if (s = mdbm_fetch_str(db, "BAM_checkout")) {
@@ -508,7 +511,7 @@ proj_checkout(project *p)
 			    "WARNING: BAM_checkout: "
 			    "should be get|edit|last|none.\n"
 			    "Meaning of '%s' unknown. Assuming none.\n", s);
-			bits |= CO_BAM_NONE;
+			bits |= CO_BAM_EDIT;
 		}
 	}
 	return (p->co = bits);
@@ -885,7 +888,10 @@ proj_bkl(project *p)
 	return (p->bkl);
 }
 
-/* return the decoded license/option bits (LIC_*) */
+/*
+ * return the decoded license/option bits (LIC_*)
+ * (like proj_bkl() above this function will exit without a valid license)
+ */
 u32
 proj_bklbits(project *p)
 {

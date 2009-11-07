@@ -608,7 +608,7 @@ ChangeSet@1.2, DATE, adam@bk_regression.bk
 ChangeSet@1.1, DATE, bk@bk_regression.bk
   BitKeeper/etc/collapsed@1.1 +1 -0
   BitKeeper/etc/collapsed@1.0 +0 -0
-  BitKeeper/etc/config@1.1 +11 -0
+  BitKeeper/etc/config@1.1 +13 -0
   BitKeeper/etc/config@1.0 +0 -0
   BitKeeper/etc/gone@1.1 +1 -0
   BitKeeper/etc/gone@1.0 +0 -0
@@ -779,7 +779,7 @@ cmpfiles OUT1 OUT2
 echo OK
 
 echo $N See that interleaved files do not interleave in output ......$NL
-BK_CONFIG="partial_check: on; checkout: edit"
+BK_CONFIG="partial_check: on!; checkout: edit!"
 export BK_CONFIG
 touch a
 bk new $Q a

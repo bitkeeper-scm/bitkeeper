@@ -82,6 +82,8 @@ echo OK
 echo $N Check that checkout:get works ...............................$NL
 cd "$HERE/project/BitKeeper/etc"
 bk edit $Q config
+grep -v checkout config > c
+cat c > config
 echo "checkout:get" >> config
 bk delta $Q -ycheckout config || exit 1
 bk commit $Q -ycheckout

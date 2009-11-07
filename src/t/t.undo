@@ -196,7 +196,7 @@ cd "$HERE"
 rm -rf project
 commercial project
 bk edit $Q BitKeeper/etc/config || exit 1
-echo "checkout: get" >> BitKeeper/etc/config
+echo "checkout: get!" >> BitKeeper/etc/config
 echo "partial_check: yes" >> BitKeeper/etc/config
 bk ci $Q -y'Added checkout:get' BitKeeper/etc/config
 bk commit $Q -y'Added checkout:get' || exit 1

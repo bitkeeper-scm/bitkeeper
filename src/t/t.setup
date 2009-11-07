@@ -32,3 +32,40 @@ BK_HOST=localhost bk setup -a -f -cc project 2>ERR && {
 echo 'invalid host: "localhost"' > WANT
 checkfiles WANT ERR
 echo OK
+
+echo $N Check defaults from setup -p ................................$NL
+bk setup -p >OUT || exit 1
+cat <<EOF > WANT
+description: 
+email: 
+license: 
+licsign1: 
+licsign2: 
+licsign3: 
+autofix: yes
+BAM: off
+checkout: edit
+clock_skew: on
+compression: gzip
+partial_check: on
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Check defaults from setup -p w valid license.................$NL
+BK_CONFIG=\
+"license:$BKL_PRO;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3" \
+	bk setup -p >OUT || exit 1
+cat <<EOF > WANT
+description: 
+email: 
+autofix: yes
+BAM: on
+checkout: edit
+clock_skew: on
+compression: gzip
+partial_check: on
+EOF
+cmpfiles OUT WANT
+echo OK
+

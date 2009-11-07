@@ -407,6 +407,7 @@ fresh_commercial no-blob
 unset BK_NO_REMAP
 echo abcde > foo
 bk new $Q foo
+bk admin -Znone foo
 bk commit $Q -yfoo
 bk clone $Q . ../checksum
 bk edit $Q foo

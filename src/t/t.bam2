@@ -210,7 +210,7 @@ echo OK
 
 echo $N Clone again in checkout:get mode ............................$NL
 cd ..
-BK_CONFIG=checkout:get bk clone $Q pcopy pclone4 || exit 1
+BK_CONFIG='checkout:get!' bk clone $Q pcopy pclone4 || exit 1
 cd pclone4
 checkfiles "$HERE"/F1 F1
 checkfiles "$HERE"/F2 F2
@@ -219,7 +219,7 @@ echo OK
 
 echo $N Clone again in checkout:get BAM_checkout:none mode ..........$NL
 cd ..
-BK_CONFIG='checkout:get; BAM_checkout:none' bk clone $Q pcopy checkout || exit 1
+BK_CONFIG='checkout:get!; BAM_checkout:none!' bk clone $Q pcopy checkout || exit 1
 cd checkout
 test -f text || {
 	echo did not checkout text
@@ -234,7 +234,7 @@ echo OK
 echo $N Clone again in checkout:none BAM_checkout:get mode ..........$NL
 cd ..
 rm -rf checkout
-BK_CONFIG='checkout:none; BAM_checkout:get' bk clone $Q pcopy checkout || exit 1
+BK_CONFIG='checkout:none!; BAM_checkout:get!' bk clone $Q pcopy checkout || exit 1
 cd checkout
 test -f text && {
 	echo should not checkout text

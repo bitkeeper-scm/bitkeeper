@@ -20,7 +20,8 @@ echo OK
 
 echo $N Create some data, setup checkout:edit .......................$NL
 bk edit $Q "$HERE/project/BitKeeper/etc/config"
-echo "checkout:edit" >> "$HERE/project/BitKeeper/etc/config"
+grep -v checkout <  BitKeeper/etc/config > c
+cat c > BitKeeper/etc/config
 mkdir src
 cd src
 echo foo > foo.c

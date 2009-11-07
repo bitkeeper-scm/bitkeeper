@@ -1176,10 +1176,10 @@ http_index(char *page)
 	if (category && strlen(category) < MAXPATH) {
 		sprintf(buf+strlen(buf), "(%s)<br>", category);
 	}
-	if (email && contact) {
+	if (email) {
 		sprintf(buf+strlen(buf),
 		    "<a href=\"mailto:%s\">%s</a>",
-		    email, contact);
+		    email, contact ? contact : email);
 	}
 
 	if (user) {
