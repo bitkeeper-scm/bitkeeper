@@ -13159,6 +13159,35 @@ class class_1_11_t;  // error -- not a class type
 .*4: L Error: class_1_11_t not a class type
 }
 
+test class-1.12 {check returns from class destructor} -body {
+#lang L
+/*
+ * Check that an explicit return from with the class destructor does
+ * not bypass the code to delete the namespace instance.
+ */
+class class_1_12 {
+	destructor class_1_12_delete(class_1_12 self)
+	{
+		return;
+	}
+}
+void class_1_12_main()
+{
+	string		parent;
+	class_1_12	obj;
+
+	/* Creating a new object creates a new namespace under ::L. */
+	obj = class_1_12_new();
+	if (catch("set parent [::namespace parent $obj]")) puts("bad 1");
+	unless (parent eq "::L") puts("bad 2");
+
+	/* After this delete, the namepsace should be gone. */
+	class_1_12_delete(obj);
+	unless (catch("set parent [::namespace parent $obj]")) puts("bad 3");
+}
+class_1_12_main();
+} -output {}
+
 test class-2.1 {check missing class constructor} -body {
 #lang L
 class class_2_1

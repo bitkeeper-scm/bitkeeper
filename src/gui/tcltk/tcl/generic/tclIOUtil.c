@@ -31,6 +31,7 @@
 #include "tclkey.h"
 #include "tomcrypt.h"
 #include "randseed.h"
+#include "Lcompile.h"
 
 extern	char *keydecode(char *key);
 int	enable_secure_bk_calls = -1;
@@ -2093,8 +2094,10 @@ FsMaybeWrapInLLang(
 	"^#lang\\s+L"))
     {
 	Tcl_Obj *newContents = Tcl_ObjPrintf(
-	      "#lang L\n%s\n#lang tcl\n%%%%call_main_if_defined",
-	  Tcl_GetString(fileContents));
+	      "#lang L\n%s\n#lang tcl", Tcl_GetString(fileContents));
+	if (!(L->options & L_OPT_NORUN)) {
+	    Tcl_AppendToObj(newContents, "\n%%call_main_if_defined", -1);
+	}
 	Tcl_DecrRefCount(fileContents);
 	Tcl_IncrRefCount(newContents);
 	fileContents = newContents;

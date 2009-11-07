@@ -603,8 +603,34 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 	}
 
 	L->enclosing_func = fun;
+	L->enclosing_func_frame = L->frame;
 	compile_block(fun->body);
 	L->enclosing_func = NULL;
+	L->enclosing_func_frame = NULL;
+
+	/*
+	 * Emit a "fall off the end" implicit return for void
+	 * functions.  Class constructors return the value of "self".
+	 * Non-void functions throw an exception if you fall
+	 * off the end.
+	 */
+	if (isClsConstructor(decl)) {
+		emit_load_scalar(self_sym->idx);
+	} else if (isvoidtype(decl->type->base_type)) {
+		push_str("");
+	} else {
+		push_str("::throw");
+		push_str("{FUNCTION NO-RETURN-VALUE "
+			 "{no value returned from function}}");
+		push_str("no value returned from function");
+		emit_invoke(3);
+	}
+
+	/*
+	 * Fix-up the return jmps so that all return stmts jump to here.
+	 * The return value will already be on the run-time stack.
+	 */
+	fixup_jmps(L->frame->ret_jmps);
 
 	/*
 	 * For class destructor, delete the instance namespace.
@@ -618,25 +644,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 		emit_pop();
 	}
 
-	/*
-	 * Emit a "fall off the end" implicit return for void
-	 * functions.  Class constructors return the value of "self".
-	 * Non-void functions throw an exception if you fall
-	 * off the end.
-	 */
-	if (isClsConstructor(decl)) {
-		emit_load_scalar(self_sym->idx);
-		TclEmitOpcode(INST_DONE, L->frame->envPtr);
-	} else if (isvoidtype(decl->type->base_type)) {
-		push_str("");
-		TclEmitOpcode(INST_DONE, L->frame->envPtr);
-	} else {
-		push_str("::throw");
-		push_str("{FUNCTION NO-RETURN-VALUE "
-			 "{no value returned from function}}");
-		push_str("no value returned from function");
-		emit_invoke(3);
-	}
+	TclEmitOpcode(INST_DONE, L->frame->envPtr);
 
 	frame_pop();
 }
@@ -979,6 +987,7 @@ compile_return(Stmt *stmt)
 {
 	VarDecl	*decl;
 	Type	*ret_type;
+	Jmp	*ret_jmp;
 
 	/* Handle return from the top level. */
 	unless (L->enclosing_func) {
@@ -1011,7 +1020,11 @@ compile_return(Stmt *stmt)
 		push_str("");  // no return value -- push a ""
 	}
 
-	TclEmitOpcode(INST_DONE, L->frame->envPtr);
+	/* Jmp to the function end where any necessary clean-up code is. */
+	ret_jmp = emit_jmp_fwd(INST_JUMP4);
+	ASSERT(L->enclosing_func_frame);
+	ret_jmp->next = L->enclosing_func_frame->ret_jmps;
+	L->enclosing_func_frame->ret_jmps = ret_jmp;
 }
 
 private void

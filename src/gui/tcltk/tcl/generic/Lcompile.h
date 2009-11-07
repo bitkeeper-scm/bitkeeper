@@ -75,6 +75,8 @@ typedef struct Frame {
 	// and the bytecode offset for the jump back.
 	Jmp		*end_jmp;
 	int		proc_top;
+	// Fix-ups for return stmts which all jmp to the end.
+	Jmp		*ret_jmps;
 	struct Frame	*prevFrame;
 } Frame;
 
@@ -116,6 +118,7 @@ typedef struct {
 	int	script_len;
 	Lopt_f	options;	// command-line options
 	FnDecl	*enclosing_func;
+	Frame	*enclosing_func_frame;
 	Ast	*mains_ast;	// root of AST when main() last seen
 	Tcl_HashTable	*include_table;
 	Tcl_Interp	*interp;
