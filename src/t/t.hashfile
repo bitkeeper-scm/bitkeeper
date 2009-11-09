@@ -128,10 +128,10 @@ cmpfiles want got
 echo OK
 
 echon key with unprintable character ..............................
-echo @has$'\001'ctrlA >in
+printf "@has\001ctrlA\n" >in
 echo value >>in
 bk _hashfile_test r in >got || exit 1
-echo has$'\001'ctrlA =\> value >want
+printf "has\001ctrlA => value\n" >want
 cmpfiles want got
 echo OK
 
@@ -243,7 +243,7 @@ grep -q 'has	tab invalid' err || exit 2
 echo OK
 
 echon key with unprintable character error ........................
-echo @has$'\001'ctrlA >in
+printf "@has\001ctrlA\n" >in
 echo value >>in
 bk _hashfile_test w in >got 2>err || exit 1
 grep -q 'invalid' err || exit 2
@@ -378,7 +378,7 @@ echo OK
 
 echon value with non-printables gets base64 encoded ...............
 echo @key1 >in
-echo has$'\001'ctrlA >>in
+printf "has\001ctrlA\n" >>in
 bk _hashfile_test w in >got || exit 1
 grep -q 'base64' got || exit 2
 # now dump the base64-encoded file and check the value
