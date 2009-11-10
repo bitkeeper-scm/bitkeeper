@@ -431,6 +431,8 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	set bkfile(right) 1
 	set text(left) ""
 	set text(right) ""
+	set fnames(left) "$lfile"
+	set fnames(right) "$rfile"
 
 	.diffs.left tag configure "select" -background $gc($app.infoColor)
 	.diffs.right tag configure "select" -background $gc($app.infoColor)
@@ -453,6 +455,7 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 			while { [gets $p line] >= 0 } {
 				if {$text($side) == ""} {
 					set text($side) "$line"
+					set fnames($side) $line
 				} else {
 					set text($side) "$text($side)\n$line"
 				}
@@ -483,7 +486,7 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 		.diffs.right insert end "$text(right)\n" select
 	}
 	# XXX: Check differences between the info lines
-	return
+	return [list $fnames(left) $fnames(right)]
 }
 
 # L and R: Names of the left and right files. Might be a temporary

@@ -18,7 +18,7 @@ OUT="$HERE/out"
 RC="`bk dotbk`/diff.rc"
 
 echo $N Simple startup with no args and nothing to diff..............$NL
-commercial project
+nested project
     bk guitest difftool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     test_die 99
@@ -70,6 +70,92 @@ if [ $? -ne 0 ]; then
     echo "  actual: '`cat "$OUT"`'" 
     exit 1 
 fi
+echo "OK"
+
+## Create two revisions for testing and make a local change to test out the
+## various command-line options for difftool.
+echo "foo" > foo
+echo "bar" > bar
+bk ci -a -y'checkin comment' foo bar 2> /dev/null
+bk commit -y'commit comment' 2> /dev/null
+
+bk edit foo bar 2> /dev/null
+echo "foo foo" > foo
+echo "bar bar" > bar
+bk ci -a -y'checkin comment' foo bar 2> /dev/null
+bk commit -y'commit comment' 2> /dev/null
+
+bk edit foo bar 2> /dev/null
+echo "foo" > foo
+
+echo $N "Testing command line (<file>) ...............................$NL"
+bk guitest difftool foo >"$OUT" 2>&1 <<'EOF'
+    test_buttonPress Quit
+    test_die 99
+EOF
+err=$?
+if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+echo "OK"
+
+echo $N "Testing command line (-r<rev> <file>) .......................$NL"
+bk guitest difftool -r1.1 foo >"$OUT" 2>&1 <<'EOF'
+    test_buttonPress Quit
+    test_die 99
+EOF
+err=$?
+if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+echo "OK"
+
+echo $N "Testing command line (-r<rev1> -r<rev2> <file>) .............$NL"
+bk guitest difftool -r1.1 -r1.2 foo >"$OUT" 2>&1 <<'EOF'
+    test_buttonPress Quit
+    test_die 99
+EOF
+err=$?
+if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+echo "OK"
+
+echo $N "Testing command line (<file1 <file2>) .......................$NL"
+bk guitest difftool foo bar >"$OUT" 2>&1 <<'EOF'
+    test_buttonPress Quit
+    test_die 99
+EOF
+err=$?
+if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+echo "OK"
+
+echo $N "Testing command line (<path/file1 <path/file2>) .............$NL"
+bk guitest difftool "$PWD/foo" "$PWD/bar" >"$OUT" 2>&1 <<'EOF'
+    test_buttonPress Quit
+    test_die 99
+EOF
+err=$?
+if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+echo "OK"
+
+echo $N "Testing command line (-r<rev1> -r<rev2>) ....................$NL"
+bk guitest difftool -r1.1 -r1.2 >"$OUT" 2>&1 <<'EOF'
+    test_buttonPress Quit
+    test_die 99
+EOF
+err=$?
+if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+echo "OK"
+
+echo $N "Testing command line (-r@<rev1>..@<rev2>) ...................$NL"
+bk guitest difftool -r@1.1..@1.2 >"$OUT" 2>&1 <<'EOF'
+    test_buttonPress Quit
+    test_die 99
+EOF
+err=$?
+if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
 echo "OK"
 
 if [ "$PLATFORM" = "WIN32" ]; then

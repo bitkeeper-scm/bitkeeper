@@ -8,24 +8,28 @@ bk difftool \- \*(BK graphical differences viewer
 .B bk difftool \-
 .br
 .B bk difftool
-.ARG file1
+.ARG file
 .br
 .B bk difftool 
 .OPTreq \-r rev
-.ARG file1
+.ARG file
 .br
 .B bk difftool
 .OPTreq \-r rev1
 .OPTreq \-r rev2
-.ARG file1
+.ARG file
 .br
 .B bk difftool
 .ARG file1
 .ARG file2
 .br
 .B bk difftool
-.ARG path/file1
-.ARG path/file2
+.ARG path/to/file1
+.ARG dir
+.br
+.B bk difftool
+.OPTreq \-r @cset1
+.OPTreq \-r @cset2
 .SH DESCRIPTION
 .LP
 The
@@ -83,6 +87,17 @@ The above command is equivalent to doing the following:
 .DS
 bk difftool src/filename.c ../../repo/src/filename.c
 .DE
+If two revs are specified in changeset format, i.e.,
+.BR \-r@cset ,
+then the set of files displayed is based on the two changesets;
+each file that is different as of the specified changesets
+is shown.
+This output format can be very useful for reviewing, see examples
+below.
+If a file has been renamed, difftool will show the difference in contents
+as well as the change in the name.
+Note that this format works in nested repositories as well as standalone
+repositories.
 .SH "DISCARDING FILES"
 When a file that is being viewed is in the checked out state, a button
 labelled
@@ -147,11 +162,20 @@ Go to then next file
 .tp
 .B Control-p
 Go to the previous file
+.SH EXAMPLES
+To see all the changes that are present in the local repository but
+not present in the parent:
+.DS
+bk difftool -r@`bk repogca` -r@+
+.DE
+That form can be useful to "collapse" multiple changesets that may have
+added and then deleted content to the same file[s].
 .SH SEE ALSO
 .LP
+.SA config-gui
 .SA diffs
 .SA fmtool
-.SA config-gui
+.SA range
 .SH CATEGORY
 .B Common
 .br

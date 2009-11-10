@@ -218,6 +218,45 @@ proc usage {} \
 	exit
 }
 
+proc readInput {in} \
+{
+	set files {}
+	while {[gets $in fname] >= 0} {
+		if {$fname eq ""} { continue }
+
+		# Handle rset input
+		set pattern {(.*)\|(.*)\.\.(.*)}
+		if {[regexp $pattern $fname -> fn rev1 rev2]} {
+			if {[string match {*ChangeSet} $fn]} {
+				# XXX: how do we handle ChangeSet files?
+				# normally we'd just skip them, but now
+				# they could be components...
+				continue
+			}
+			set fn [normalizePath $fn]
+			set lfile [getRev $fn $rev1 0]
+			set rfile [getRev $fn $rev2 0]
+			lappend tmps $lfile $rfile
+			if {[checkFiles $lfile $rfile]} {
+				set t "{$lfile} {$rfile} {$fn} $rev1 $rev2"
+				lappend files $t
+			}
+			continue; # done with this line
+		}
+		# not rset, must be just a modified file
+		set fname [normalizePath $fname]
+		set rfile $fname
+		set lfile [getRev $rfile "+" 1]
+		set rev1 "+"
+		lappend tmps $lfile
+		if {[checkFiles $lfile $rfile]} {
+			set t "{$lfile} {$rfile} {$fname} + checked_out"
+			lappend files $t
+		}
+	}
+	return $files
+}
+
 proc getFiles {} \
 {
 	global argv argc dev_null lfile rfile tmp_dir unique
@@ -252,19 +291,15 @@ proc getFiles {} \
 		close $fd
 	} elseif {$argc == 1} {
 		if {$argv == "-"} { ;# typically from sfiles pipe
-			while {[gets stdin fname] >= 0} {
-				if {$fname != ""} {
-				    	set fname [normalizePath $fname]
-					set rfile $fname
-					set lfile [getRev $rfile "+" 1]
-					set rev1 "+"
-					lappend tmps $lfile
-					if {[checkFiles $lfile $rfile]} {
-						set t "{$lfile} {$rfile} {$fname} + checked_out"
-						lappend files $t
-					}
+			set files [readInput stdin]
+		} elseif {[regexp -- {-r(@.*)..(@.*)} $argv - - -]} {
+			cd2root
+			set f [open "| bk rset -P $argv" r]
+			set files [readInput $f]
+				if {[catch {close $f} err]} {
+					puts $err
+					exit 1
 				}
-			}
 		} else { ;# bk difftool file
 			set rfile [normalizePath [lindex $argv 0]]
 			set lfile [getRev $rfile "+" 1]
@@ -278,23 +313,35 @@ proc getFiles {} \
 		}
 	} elseif {$argc == 2} { ;# bk difftool -r<rev> file
 		set a [lindex $argv 0]
+		set b [lindex $argv 1]
 		if {[regexp -- {-r(.*)} $a junk rev1]} {
-			set rfile [normalizePath [lindex $argv 1]]
-			set lfile [getRev $rfile $rev1 0]
-			# If bk file and not checked out, check it out ro
-			#displayMessage "lfile=($lfile) rfile=($rfile)"
-			if {[exec bk sfiles -g "$rfile"] != ""} {
-				if {![file exists $rfile]} {
-					#displayMessage "checking out $rfile"
-					catch {exec bk get "$rfile"} err
+			if {[regexp -- {-r(.*)} $b - rev2]} {
+				# rset mode
+				cd2root
+				set f [open "| bk rset -Pr$rev1..$rev2" r]
+				set files [readInput $f]
+				if {[catch {close $f} err]} {
+					puts $err
+					exit 1
 				}
+			} else {
+				set rfile [normalizePath [lindex $argv 1]]
+				set lfile [getRev $rfile $rev1 0]
+				# If bk file and not checked out, check it out ro
+				#displayMessage "lfile=($lfile) rfile=($rfile)"
+				if {[exec bk sfiles -g "$rfile"] != ""} {
+					if {![file exists $rfile]} {
+						#displayMessage "checking out $rfile"
+						catch {exec bk get "$rfile"} err
+					}
+				}
+				if {[checkFiles $lfile $rfile]} {
+					set t "{$lfile} {$rfile} {$rfile} $rev1"
+					lappend files $t
+				}
+				lappend tmps $lfile
+				if {[file exists $rfile] != 1} { usage }
 			}
-			if {[checkFiles $lfile $rfile]} {
-				set t "{$lfile} {$rfile} {$rfile} $rev1"
-				lappend files $t
-			}
-			lappend tmps $lfile
-			if {[file exists $rfile] != 1} { usage }
 		} else { ;# bk difftool file file2"
 			set lfile [normalizePath [lindex $argv 0]]
 			set rfile [normalizePath [lindex $argv 1]]
@@ -427,10 +474,10 @@ proc pickFile {lf rf fname item {lr {}} {rr {}}} \
 	# If we have a rev #, assume looking at non-bk files; otherwise
 	# assume that we aren't
 	if {$lr != ""} {
-		displayInfo $fname $fname $lr $rr
+		lassign [displayInfo $fname $fname $lr $rr] lfname rfname
 		#displayMessage "$lf $rf fname=($fname) lr=$lr rr=$rr"
-		set lname "$fname@$lr"
-		set rname "$fname@$rr"
+		set lname "$lfname|$lr"
+		set rname "$rfname|$rr"
 		readFiles $lf $rf
 		.menu.revtool configure -state normal
 		if {[string match $rr "checked_out"]} {
