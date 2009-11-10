@@ -65,15 +65,14 @@ out:	freeLines(fieldlist, 0);
 
 /*
  * Read a file written by the function above and add keys to 'h'
- * overwriting any existing keys.  If h==0 and path exists,
- * then a new hash is returned.
+ * overwriting any existing keys.
+ * If h==0 and path doesn't exist or is empty, then 0 is returned.
  */
 hash *
 hash_fromFile(hash *h, char *path)
 {
 	FILE	*f;
 
-	unless (h) h = hash_new(HASH_MEMHASH);
 	if (f = fopen(path, "r")) {
 		h = hash_fromStream(h, f);
 		fclose(f);
@@ -83,8 +82,10 @@ hash_fromFile(hash *h, char *path)
 
 /*
  * Read a stream written by the function above and add keys to 'h'
- * overwriting any existing keys.  If h==0, then a new hash is
- * returned.
+ * overwriting any existing keys.
+ * The function returns at EOF or when a line with just "@\n" is
+ * encountered.  (record separator to put multiple KV's in a file)
+ * If h==0, then a new hash is created if any data is found.
  */
 hash *
 hash_fromStream(hash *h, FILE *f)
@@ -98,12 +99,12 @@ hash_fromStream(hash *h, FILE *f)
 	char	data[256];
 
 	assert(f);
-	unless (h) h = hash_new(HASH_MEMHASH);
 	while (line = fgetline(f)) {
 		if ((line[0] == '@') && (line[1] != '@')) {
-			if (streq(line, "@END@")) break;
+			unless (line[1]) break; /* @ == end of record */
 			if (key || val) {
 				/* save old key */
+				unless (h) h = hash_new(HASH_MEMHASH);
 				savekey(h, base64, key, val);
 				key = 0;
 				val = 0;
@@ -131,7 +132,10 @@ hash_fromStream(hash *h, FILE *f)
 			}
 		}
 	}
-	if (key || val) savekey(h, base64, key, val);
+	if (key || val) {
+		unless (h) h = hash_new(HASH_MEMHASH);
+		savekey(h, base64, key, val);
+	}
 	return (h);
 }
 
@@ -159,6 +163,7 @@ goodkey(u8 *key, int len)
  * Currently check for:
  *    Contains non-printable characters
  *    Has a line longer that 256 characters
+ *    Is not null terminated
  */
 private int
 binaryField(u8 *data, int len)
@@ -170,11 +175,11 @@ binaryField(u8 *data, int len)
 		int	c = data[i];
 		unless (isprint(c) || isspace(c)) return (1);
 		if (c == '\n') {
-			if (i - lastret > 256) return (1);
+			if ((i - lastret) > 256) return (1);
 			lastret = i;
 		}
 	}
-	if (data[len-1] != 0) return (1);
+	if ((data[len-1] != 0) || ((i - lastret) > 256)) return (1);
 	return (0);
 }
 
@@ -236,85 +241,55 @@ savekey(hash *h, int base64, char *key, char **val)
 int
 hashfile_test_main(int ac, char **av)
 {
-	hash	*h;
+	int	i;
+	hash	*h = 0;
+	char	**keys = 0;
+	char	*key, *val;
 	FILE	*f;
-	int	rc = 0;
-	char	bdata[6] = {'a', 'b', 0, 'c', 'd', 0};
 
-	unless (av[1]) {
-		fprintf(stderr, "usage: %s <file>\n", av[0]);
+	unless (ac == 3) {
+usage:		fprintf(stderr, "usage: %s [r|w|n] <file>\n", av[0]);
 		return (1);
 	}
-	h = hash_new(HASH_MEMHASH);
-	/* create some hash values */
-	hash_insertStr(h, "simple", "simple hash_insertStr");
-	hash_insert(h, "binary", strlen("binary")+1, bdata, sizeof(bdata));
-	hash_insertStr(h, "end", "@END@\n");
-	hash_insertStr(h, "marker", "@@");
-	hash_insert(h, "strnonl", 8, "strnonl", 7);
-	hash_insertStr(h, "multiline", "a\nb\nc\nd\n");
-	unless (f = fopen(av[1], "w")) {
-		rc = 1;
-		goto out;
+	switch (av[1][0]) {
+	    case 'r':
+		// read all hashes from av[2], dump to stdout
+		unless (f = fopen(av[2], "r")) return (0);
+		while (!feof(f)) {
+			unless (h = hash_fromStream(0, f)) goto next;
+			EACH_HASH(h) keys = addLine(keys, h->kptr);
+			sortLines(keys, 0);
+			EACH(keys) {
+				val = hash_fetchStr(h, keys[i]);
+				if (val[h->vlen-1]) {
+					// val not null terminated
+					printf("%s => ", keys[i]);
+					fwrite(val, h->vlen, 1, stdout);
+					printf("\n");
+				} else {
+					printf("%s => %s\n", keys[i], val);
+				}
+			}
+			freeLines(keys, 0); keys = 0;
+			hash_free(h); h = 0;
+next:			unless (feof(f)) printf("---\n");
+		}
+		fclose(f);
+		break;
+	    case 'w':
+		// read hash from av[2], write back out to stdout
+		h = hash_fromFile(0, av[2]);
+		hash_toStream(h, stdout);
+		break;
+	    case 'n':
+		// create a hash with a non-null-terminated key, write to av[2]
+		key = "nonterm";
+		h = hash_new(HASH_MEMHASH);
+		hash_insert(h, key, 7, "value", 6);
+		hash_toFile(h, av[2]);
+		break;
+	    default: goto usage;
 	}
-	if (hash_toStream(h, f)) {
-		fprintf(stderr, "Failed to save hash\n");
-		rc = 1;
-		goto out;
-	}
-	fclose(f);
-	f = 0;
-	hash_free(h);
-	h = 0;
-	/* now print what we got from the file */
-	unless (f = fopen(av[1], "r")) {
-		rc = 1;
-		goto out;
-	}
-	unless (h = hash_fromStream(0, f)) {
-		fprintf(stderr, "Failed to load hash\n");
-		goto out;
-	}
-	fclose(f);
-	f = 0;
-	unless (hash_fetchStr(h, "simple") &&
-	    streq(h->vptr, "simple hash_insertStr")) {
-		fprintf(stderr, "simple failed\n");
-		rc = 1;
-		goto out;
-	}
-	unless (hash_fetchStr(h, "end") &&
-	    streq(h->vptr, "@END@\n")) {
-		fprintf(stderr, "end failed\n");
-		rc = 1;
-		goto out;
-	}
-	unless (hash_fetchStr(h, "marker") &&
-	    streq(h->vptr, "@@")) {
-		fprintf(stderr, "marker failed\n");
-		rc = 1;
-		goto out;
-	}
-	unless (hash_fetchStr(h, "strnonl") &&
-	    strneq(h->vptr, "strnonl", h->vlen)) {
-		fprintf(stderr, "strnonl failed\n");
-		rc = 1;
-		goto out;
-	}
-	unless (hash_fetchStr(h, "binary") &&
-	    (h->vlen == 6) &&
-	    !memcmp(bdata, h->vptr, 6)) {
-		fprintf(stderr, "binary failed\n");
-		rc = 1;
-		goto out;
-	}
-	unless (hash_fetchStr(h, "multiline") &&
-	    streq(h->vptr, "a\nb\nc\nd\n")) {
-		fprintf(stderr, "multiline failed\n");
-		rc = 1;
-		goto out;
-	}
-out:	if (f) fclose(f);
 	if (h) hash_free(h);
-	return (rc);
+	return (0);
 }
