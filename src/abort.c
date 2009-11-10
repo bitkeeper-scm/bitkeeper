@@ -133,6 +133,14 @@ remoteAbort(remote *r)
 
 	
 	getline2(r, buf, sizeof (buf));
+	if (streq("@SERVER INFO@", buf)) {
+		if (getServerInfo(r)) {
+			rc = 1;
+			goto out;
+		}
+		getline2(r, buf, sizeof (buf));
+	}
+
 	unless (streq("@ABORT INFO@", buf)) return (1); /* protocol error */
 
 	while (getline2(r, buf, sizeof (buf)) > 0) {
@@ -145,7 +153,7 @@ remoteAbort(remote *r)
 		getline2(r, buf, sizeof (buf));
 	}
 	unless (streq("@END@", buf)) return(1); /* protocol error */
-	disconnect(r, 1);
+out:	disconnect(r, 1);
 	wait_eof(r, 0);
 	disconnect(r, 2);
 	return (rc);

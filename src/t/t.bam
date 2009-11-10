@@ -426,8 +426,8 @@ echo OK
 
 echo $N Test remote push to remote server ...........................$NL
 cd "$HERE"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill > BKD 2>&1
+bk bkd -q -d -aPORT -ikill > BKD 2>&1 || exit 1
+P=`cat PORT`
 commercial servmaster
 bk bam server $Q ../project || exit 1
 bk commit $Q -ysetup

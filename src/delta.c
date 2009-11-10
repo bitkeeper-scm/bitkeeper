@@ -229,7 +229,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	}
 
 	def_compp  = proj_configval(0, "compression");
-	unless (def_compp && *def_compp) def_compp = NULL;
+	unless (def_compp && *def_compp) def_compp = "gzip";
 
 	if (encp || compp) {
 		unless (dflags & NEWFILE) {

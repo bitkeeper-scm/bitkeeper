@@ -176,8 +176,6 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 		fclose(f);
 		goto done;
 	}
-	fprintf(f, "rdunlock\n");
-	fprintf(f, "quit\n");
 	fclose(f);
 	if ((sfio > 0) && !quiet) {
 		p = remote_unparse(r);
@@ -189,6 +187,18 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	unless (r->rf) r->rf = fdopen(r->rfd, "r");
+
+	getline2(r, buf, sizeof (buf));
+	if (streq("@SERVER INFO@", buf)) {
+		if (getServerInfo(r)) {
+			rc = 1;
+			goto done;
+		}
+	} else {
+		/* Put it back */
+		ungetc('\n', r->rf);
+		for (i = strlen(buf)-1; i >= 0 ; i--) ungetc(buf[i], r->rf);
+	}
 
 	f = 0;
 	buf[0] = 0;
@@ -227,10 +237,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 	// XXX error handling
 
 	rc = 0;
-done:	disconnect(r, 1);
-	wait_eof(r, 0);
-	disconnect(r, 2);
-	unlink(cmd_file);
+done:	unlink(cmd_file);
 	return (rc);
 }
 

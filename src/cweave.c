@@ -152,11 +152,12 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 		 */
 		for (e = s->table; e; e = e->next) {
 			int	i;
+
 			if (e->serial < serial) break; /* optimization */
 
 			if (e->serial >= serial) {
 				e->serial++;
-				sfind_update(s, e);
+				sfind_update(s, e, e->serial - 1);
 			}
 			if (e->pserial >= serial) e->pserial++;
 			if (e->merge >= serial) e->merge++;
@@ -188,7 +189,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	 * Fix up d->serial
 	 */
 	d->serial = serial;
-	sfind_update(s, d);
+	sfind_update(s, d, 0);
 	assert((d->serial == 0) || (d->serial > d->pserial));
 
 	sccs_inherit(s, d);

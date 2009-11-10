@@ -2257,6 +2257,7 @@ commit(opts *opts)
 	char	*cmds[12], *cmt = 0;
 
 	cmds[i = 0] = "bk";
+	cmds[++i] = "-?BK_NO_REPO_LOCK=YES";
 	cmds[++i] = "commit";
 	cmds[++i] = "-R";
 	/* force a commit if we are a null merge */

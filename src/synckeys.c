@@ -614,7 +614,7 @@ synckeys(remote *r, sccs *s, int flags, FILE *fout)
 		rc = -i;		/* 2 means locked */
 		goto out;
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfoBlock(r)) goto out;
+		if (getServerInfo(r)) goto out;
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));

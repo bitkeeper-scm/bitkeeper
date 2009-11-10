@@ -350,6 +350,7 @@ takepatch
 _tclsh
 test
 testdates
+time
 _touch
 _unbk
 undo

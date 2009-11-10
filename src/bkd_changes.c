@@ -15,15 +15,6 @@ cmd_chg_part1(int ac, char **av)
 	}
 
 	setmode(0, _O_BINARY);
-	if (sendServerInfoBlock(0)) {
-		/* add delay for bkd-expired
-		 * "Test bk changes URL from outside a repo (w/o lease)..."
-		 * add a delay so "bk lock -lq" will run before this bkd lets
-		 * go of lock.  This exercises wait code in lock.c case 'l'.
-		 */
-		if (getenv("BK_REGRESSION")) usleep(1000); /* cause race */
-		return (1);
-	}
 	unless(isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
@@ -59,8 +50,6 @@ cmd_chg_part2(int ac, char **av)
 	FILE	*f;
 
 	setmode(0, _O_BINARY);
-	if (sendServerInfoBlock(0)) return (1);
-
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
 		out("ERROR-protocol version mismatch, want: ");

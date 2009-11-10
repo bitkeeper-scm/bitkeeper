@@ -109,8 +109,8 @@ bk commit $Q -y'add to-undo' || fail
 bk -P commit $Q -y'add gcc/to-undo' || fail
 bk tag $Q for-undo || fail
 cd "$HERE"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill || fail
+bk bkd -q -d -aPORT -ikill || fail
+P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 echo OK
 
@@ -129,19 +129,17 @@ do	sleep 1
 done
 
 # Now try various operations.
-# NOTE: some of these are commented out because otherwise the push
-# fails or hangs.
 # Clone of product.
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
-bk clone $Q clone clone4 2>ERR || fail you fixed a bug
-#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-echo failed \(bug clone does not take readlock\)
+bk clone $Q clone clone4 2>ERR && fail -f ERR
+grep -q "Another nested operation is already in progress" ERR || fail -f ERR wrong error
+echo OK
 
 # Pull into clone.
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
-bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
+bk pull  "$HERE/clone2" >ERR 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
@@ -149,15 +147,15 @@ echo OK
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
-grep -q "failed to lock product" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
 echo $N Pushing should fail..........................................$NL
 cd "$HERE/clone3"
 bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "ERROR-Unable to lock repository for update." ERR || fail -f ERR
+echo OK
 
 # Commit in the product.  This should fail.
 echo $N Commit in product should fail................................$NL
@@ -171,21 +169,19 @@ echo OK
 echo $N Commit in locked component should fail.......................$NL
 cd "$HERE/clone/gcc"
 echo new >new10
-bk new $Q new10 >ERR 2>&1 || fail you fixed a bug
-# grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-# BK_IGNORE_WRLOCK=YES bk new $Q new10 >ERR 2>&1 && fail fix test
-# bk commit $Q -ynew10 >ERR 2>&1 && fail
-# grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-echo failed \(bug clone trigger bug\)
+bk new $Q new10 >ERR 2>&1 || fail -f ERR
+bk commit $Q -ynew10 >ERR 2>&1 && fail -f ERR
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
 
 # Commit in the gdb component.
 echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
-#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-echo failed \(bug commit not done\)
+bk commit $Q -y'new file' >ERR 2>&1 && fail you fixed a bug
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
 
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
@@ -206,6 +202,9 @@ test -f "$TMP/clone..post-incoming.here" && fail
 # Verify that the clone worked.
 cd "$HERE/clone"
 test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
+# Verify no locks were leaked
+(cd "$HERE/clone" && bk lock -l 2> "$HERE/LOCKS") || fail -f "$HERE/LOCKS"
+(cd "$HERE/clone1" && bk lock -l 2> "$HERE/LOCKS") || fail -f "$HERE/LOCKS"
 echo OK
 
 echo ---- While local push to component in progress \[pre-incoming]
@@ -227,8 +226,8 @@ done
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
 bk clone $Q clone clone4 2>ERR && fail -f ERR
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "Can't get read lock" ERR || fail -f ERR wrong error
+echo OK
 # Pull into clone.
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
@@ -240,15 +239,16 @@ echo OK
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
-grep -q "failed to lock product" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
 echo $N Pushing should fail..........................................$NL
 cd "$HERE/clone3"
 bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "ERROR-Unable to lock repository for update." ERR || fail -f ERR
+echo OK
+
 # Commit in the product.  This should fail.
 echo $N Commit in product should fail................................$NL
 cd "$HERE/clone"
@@ -270,9 +270,10 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
-#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-echo failed \(bug commit not done\)
+bk commit $Q -y'new file' >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
@@ -308,12 +309,13 @@ while ! test -f "$TMP/clone..gcc..post-incoming.here"
 do	sleep 1
 done
 # Now try various operations.
+
 # Clone of product.
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
-bk clone $Q clone clone4 2>ERR || fail you fixed a bug
-#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-echo failed \(bug clone not done\)
+bk clone $Q clone clone4 2>ERR && fail -f ERR
+grep -q "Can't get read lock" ERR || fail -f ERR wrong error
+echo OK
 # Pull into clone.
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
@@ -325,15 +327,15 @@ echo OK
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
-grep -q "failed to lock product" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
 echo $N Pushing should fail..........................................$NL
 cd "$HERE/clone3"
 bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "ERROR-Unable to lock repository for update." ERR || fail -f ERR
+echo OK
 
 # Commit in the product.  This should fail.
 echo $N Commit in product should fail................................$NL
@@ -356,9 +358,9 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
-#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-echo failed \(bug commit not done\)
+bk commit $Q -y'new file' >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
 
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
@@ -398,12 +400,13 @@ do	sleep 1
 done
 
 # Now try various operations.
+
 # Clone of product.
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
 bk clone $Q clone clone4 2>ERR && fail -f ERR
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "Can't get read lock" ERR || fail -f ERR wrong error
+echo OK
 
 # Pull into clone.
 echo $N Pulling should fail..........................................$NL
@@ -416,15 +419,15 @@ echo OK
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
-grep -q "failed to lock product" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
 echo $N Pushing should fail..........................................$NL
 cd "$HERE/clone3"
 bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "ERROR-Unable to lock repository for update." ERR || fail -f ERR
+echo OK
 
 # Commit in the product.  This should fail.
 echo $N Commit in product should fail................................$NL
@@ -447,9 +450,9 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
-#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-echo failed \(bug commit not done\)
+bk commit $Q -y'new file' >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
 
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
@@ -487,14 +490,13 @@ do	sleep 1
 done
 
 # Now try various operations.
-# NOTE: some of these are commented out because otherwise the push
-# fails or hangs.
+
 # Clone of product.
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
-bk clone $Q clone clone4 2>ERR || fail you fixed a bug
-#grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug clone does not take realock\)
+bk clone $Q clone clone4 2>ERR && fail -f ERR
+grep -q "Can't get read lock" ERR || fail -f ERR wrong error
+echo OK
 
 # Pull into clone.
 echo $N Pulling should fail..........................................$NL
@@ -507,15 +509,15 @@ echo OK
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
-grep -q "failed to lock product" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
 echo $N Pushing should fail..........................................$NL
 cd "$HERE/clone3"
 bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "ERROR-Unable to lock repository for update." ERR || fail -f ERR
+echo OK
 
 # Commit in the product.  This should fail.
 echo $N Commit in product should fail................................$NL
@@ -538,9 +540,9 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
-#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-echo failed \(bug commit not done\)
+bk commit $Q -y'new file' >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
 
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
@@ -576,14 +578,12 @@ do	sleep 1
 done
 
 # Now try various operations.
-# NOTE: some of these are commented out because otherwise the push
-# fails or hangs.
 # Clone of product.
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
 bk clone $Q clone clone4 2>ERR && fail -f ERR
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "Can't get read lock" ERR || fail -f ERR wrong error
+echo OK
 
 # Pull into clone.
 echo $N Pulling should fail..........................................$NL
@@ -596,15 +596,15 @@ echo OK
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
-grep -q "failed to lock product" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
 echo $N Pushing should fail..........................................$NL
 cd "$HERE/clone3"
 bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "ERROR-Unable to lock repository for update." ERR || fail -f ERR
+echo OK
 
 # Commit in the product.  This should fail.
 echo $N Commit in product should fail................................$NL
@@ -627,9 +627,9 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
-#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-echo failed \(bug commit not done\)
+bk commit $Q -y'new file' >ERR 2>&1 && fail you fixed a bug
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
 
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
@@ -666,12 +666,13 @@ do	sleep 1
 done
 
 # Now try various operations.
+
 # Clone of product.
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
 bk clone $Q clone clone4 2>ERR && fail -f ERR
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "Can't get read lock" ERR || fail -f ERR wrong error
+echo OK
 
 # Pull into clone.
 echo $N Pulling should fail..........................................$NL
@@ -684,15 +685,15 @@ echo OK
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
-grep -q "failed to lock product" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
 echo $N Pushing should fail..........................................$NL
 cd "$HERE/clone3"
 bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "ERROR-Unable to lock repository for update." ERR || fail -f ERR
+echo OK
 
 # Commit in the product.  This should fail.
 echo $N Commit in product should fail................................$NL
@@ -715,9 +716,9 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
-#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-echo failed \(bug commit not done\)
+bk commit $Q -y'new file' >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
 
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
@@ -754,12 +755,13 @@ do	sleep 1
 done
 
 # Now try various operations.
+
 # Clone of product.
 echo $N Cloning should fail..........................................$NL
 cd "$HERE"
 bk clone $Q clone clone4 2>ERR && fail -f ERR
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "Can't get read lock" ERR || fail -f ERR wrong error
+echo OK
 
 # Pull into clone.
 echo $N Pulling should fail..........................................$NL
@@ -771,16 +773,16 @@ echo OK
 # Attach in clone.
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
-bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
-grep -q "failed to lock product" ERR || fail -f ERR wrong error
+bk attach "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
 echo $N Pushing should fail..........................................$NL
 cd "$HERE/clone3"
 bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "ERROR-Unable to lock repository for update." ERR || fail -f ERR
+echo OK
 
 # Commit in the product.  This should fail.
 echo $N Commit in product should fail................................$NL
@@ -791,13 +793,13 @@ grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gdb component.
-echo $N Commit in component should work..............................$NL
+echo $N Commit in component should fail..............................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
-#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-echo failed \(bug commit not done\)
+bk commit $Q -y'new file' >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
 
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
@@ -834,10 +836,12 @@ do	sleep 1
 done
 
 # Now try various operations.
+
 # Clone of product.
-echo $N Cloning should work..........................................$NL
+echo $N Cloning should fail..........................................$NL
 cd "$HERE"
-bk clone $Q clone clone4 2>ERR || fail -f ERR
+bk clone $Q clone clone4 2>ERR && fail -f ERR
+grep -q "Another nested operation is already in progress" ERR || fail -f ERR wrong error
 echo OK
 
 # Pull into clone.
@@ -851,15 +855,15 @@ echo OK
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
-grep -q "failed to lock product" ERR || fail -f ERR wrong error
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
 # Push into clone.
 echo $N Pushing should fail..........................................$NL
 cd "$HERE/clone3"
 bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR && fail you fixed a bug
-echo failed \(bug wrong error\)
+grep -q "ERROR-Unable to lock repository for update." ERR || fail -f ERR
+echo OK
 
 # Commit in the product.  This should fail.
 echo $N Commit in product should fail................................$NL
@@ -874,9 +878,9 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
-#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-echo failed \(bug commit not done\)
+bk commit $Q -y'new file' >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
 
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL

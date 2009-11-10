@@ -159,8 +159,8 @@ echo OK
 
 echo $N Alias clone through bk:// ...................................$NL
 cd "$HERE"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0 2
 bk clone $Q -sdev bk://localhost:$P/proj-clone clone1 || {
 	echo failed

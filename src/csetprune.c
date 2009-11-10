@@ -953,7 +953,10 @@ getKeys(void)
 
 	verbose((stderr, "Reading keys...\n"));
 	while (buf = fgetline(stdin)) {
-		assert(sccs_iskeylong(buf));
+		unless (sccs_iskeylong(buf)) {
+			fprintf(stderr, "csetprune: bad key '%s'\n", buf);
+			exit(1);
+		}
 		unless (hash_insertStr(prunekeys, buf, 0)) {
 			fprintf(stderr, "Duplicate key?\nKEY: %s\n", buf);
 			hash_free(prunekeys);

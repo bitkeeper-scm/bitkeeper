@@ -232,6 +232,11 @@ err:		freeLines(envVar, free);
 	freeLines(opts.av_push, free);
 	freeLines(opts.av_clone, free);
 	if (rc == NOTHING_TO_SEND) rc = PUSH_OK;
+	if (rc == REMOTE_LOCKED) {
+		/* Surely we can have better error messages... */
+		fprintf(stderr,
+		    "ERROR-Unable to lock repository for update.\n");
+	}
 	return (rc);
 }
 
@@ -477,7 +482,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		chdir(c->path);
 		vp = addLine(0, strdup("bk"));
 		if (c->new) {
-			vp = addLine(vp, strdup("clone"));
+			vp = addLine(vp, strdup("_rclone"));
 			EACH_INDEX(opts.av_clone, j) {
 				vp = addLine(vp, strdup(opts.av_clone[j]));
 			}
@@ -534,14 +539,23 @@ err:		return (PUSH_ERROR);
 	if ((ret = remote_lock_fail(buf, opts.verbose))) {
 		/* -2 means locked */
 		return ((ret == -2) ? REMOTE_LOCKED : PUSH_ERROR);
-	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfoBlock(r)) return (PUSH_ERROR);
+	}
+	if (streq(buf, "@SERVER INFO@")) {
+		if (getServerInfo(r)) {
+			return (PUSH_ERROR);
+		}
 		if (getenv("BKD_LEVEL") &&
 		    (atoi(getenv("BKD_LEVEL")) < getlevel())) {
 			fprintf(stderr,
 			    "push: cannot push to lower "
 			    "level repository (remote level == %s)\n",
 			    getenv("BKD_LEVEL"));
+			goto err;
+		}
+		if (proj_isProduct(0) && !bkd_hasFeature("SAMv2")) {
+			fprintf(stderr,
+			    "push: please upgrade the remote bkd to a "
+			    "SAMv2 aware version (5.0 or later).\n");
 			goto err;
 		}
 		if ((bp_hasBAM() ||
@@ -553,6 +567,9 @@ err:		return (PUSH_ERROR);
 			goto err;
 		}
 		getline2(r, buf, sizeof(buf));
+		if (ret = remote_lock_fail(buf, opts.verbose)) {
+			return ((ret == -2) ? REMOTE_LOCKED : PUSH_ERROR);
+		}
 	} else {
 		disconnect(r, 1);
 		drainErrorMsg(r, buf, sizeof(buf));
@@ -897,6 +914,10 @@ push_finish(remote *r, push_rc status, char **envVar)
 	unlink(buf);
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (PUSH_ERROR);
+	if (streq(buf, "@SERVER INFO@")) {
+		if (getServerInfo(r)) return (PUSH_ERROR);
+		getline2(r, buf, sizeof(buf));
+	}
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, opts.verbose)) {
 			return (PUSH_ERROR);
@@ -922,13 +943,13 @@ push_finish(remote *r, push_rc status, char **envVar)
 		unless (streq(buf, "@END@") && (rc == 0)) {
 			return (PUSH_ERROR);
 		}
+		getline2(r, buf, sizeof(buf));
 	}
-	if (getline2(r, buf, sizeof(buf)) <= 0) return (PUSH_ERROR);
 	unless (streq(buf, "@OK@")) {
 		drainErrorMsg(r, buf, sizeof(buf));
 		return (PUSH_ERROR);
 	}
-	return (PUSH_OK);
+	return (status);
 }
 
 private push_rc
@@ -942,7 +963,7 @@ receive_serverInfoBlock(remote *r)
 	if (remote_lock_fail(buf, opts.verbose)) {
 		return (REMOTE_LOCKED);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfoBlock(r)) {
+		if (getServerInfo(r)) {
 			return (PUSH_ERROR);
 		}
 	}

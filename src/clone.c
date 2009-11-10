@@ -37,6 +37,7 @@ private int	initProject(char *root, remote *r);
 private	void	lclone(char *from);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
+private int	clone_finish(remote *r, int status, char **envVar);
 
 private	char	*bam_url;
 private	char	*bam_repoid;
@@ -271,7 +272,7 @@ send_clone_msg(remote *r, char **envVar)
 	if (opts->attach) fprintf(f, " -A");
 	if (opts->detach) fprintf(f, " -D");
 	if (getenv("_BK_TRANSACTION")) {
-		fprintf(f, " -T");
+		fprintf(f, " -N");
 	} else {
 		EACH(opts->aliases) fprintf(f, " -s%s", opts->aliases[i]);
 	}
@@ -314,15 +315,21 @@ clone(char **av, remote *r, char *local, char **envVar)
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
-	if (remote_lock_fail(buf, !opts->quiet)) {
-		return (-1);
-	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfoBlock(r)) {
+	/*
+	 * For backward compat, old BK's used to send lock fail error
+	 * _before_ the serverInfo()
+	 */
+	if (remote_lock_fail(buf, 1)) {
+		return (-2);
+	}
+	if (streq(buf, "@SERVER INFO@")) {
+		if (getServerInfo(r)) {
 			fprintf(stderr, "clone: premature disconnect?\n");
 			disconnect(r, 2);
 			goto done;
 		}
 		getline2(r, buf, sizeof(buf));
+		if (remote_lock_fail(buf, 1)) return (-2);
 		/* use the basename of the src if no dest is specified */
 		if (!local && (local = getenv("BKD_ROOT"))) {
 			if (p = strrchr(local, '/')) local = ++p;
@@ -435,16 +442,26 @@ clone(char **av, remote *r, char *local, char **envVar)
 		    "need to update the bkd first.\n");
 		do_part2 = 0;
 	}
-	if ((r->type == ADDR_HTTP) || !do_part2) disconnect(r, 2);
+	if ((r->type == ADDR_HTTP) || (!do_part2 && !opts->product)) {
+		disconnect(r, 2);
+	}
 	if (do_part2) {
 		p = aprintf("-r..'%s'", opts->rev ? opts->rev : "");
 		rc = bkd_BAM_part3(r, envVar, opts->quiet, p);
 		free(p);
+		if ((r->type == ADDR_HTTP) && opts->product) {
+			disconnect(r, 2);
+		}
 		if (rc) goto done;
 	}
 	rc = clone2(r);
 
-done:	if (rc) {
+	if (opts->product) rc = clone_finish(r, rc, envVar);
+
+	disconnect(r, 1);
+	wait_eof(r, 0);
+done:	disconnect(r, 2);
+	if (rc) {
 		putenv("BK_STATUS=FAILED");
 		if (rc == 1) mkdir("RESYNC", 0777);
 	} else {
@@ -458,9 +475,16 @@ done:	if (rc) {
 		trigger("clone", "post");
 	}
 
-	if (proj_isProduct(0) && getenv("BK_NESTED_LOCK")) {
-		if (nested_unlock(0, getenv("BK_NESTED_LOCK"))) {
-			fprintf(stderr, "%s", nested_errmsg(0));
+	/*
+	 * Since we didn't take the lock via cmdlog_start() but via
+	 * initProject(), we need to do the unlocking here.
+	 */
+	if (opts->product && getenv("_NESTED_LOCK")) {
+		char	*nlid;
+
+		nlid = getenv("_NESTED_LOCK");
+		if (nested_unlock(0, nlid)) {
+			error("%s", nested_errmsg());
 			rc = 1;
 		}
 		unless (rc) rmtree(ROOT2RESYNC);
@@ -582,6 +606,35 @@ clone2(remote *r)
 }
 
 private int
+clone_finish(remote *r, int status, char **envVar)
+{
+	FILE	*f;
+	char	buf[MAXPATH];
+
+	if ((r->type == ADDR_HTTP) && bkd_connect(r)) return (1);
+	bktmp(buf, "clone_finish");
+	f = fopen(buf, "w");
+	assert(f);
+	sendEnv(f, envVar, r, 0);
+	if (r->type == ADDR_HTTP) add_cd_command(f, r);
+	fprintf(f, "nested %s\n", status ? "abort" : "unlock");
+	fclose(f);
+	if (send_file(r, buf, 0)) return (1);
+	unlink(buf);
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
+	if (getline2(r, buf, sizeof(buf)) <= 0) return (1);
+	if (streq(buf, "@SERVER INFO@")) {
+		if (getServerInfo(r)) return (1);
+		getline2(r, buf, sizeof(buf));
+	}
+	unless (streq(buf, "@OK@")) {
+		drainErrorMsg(r, buf, sizeof(buf));
+		return (1);
+	}
+	return (0);
+}
+
+private int
 initProject(char *root, remote *r)
 {
 	char	*p, *url, *repoid;
@@ -600,15 +653,15 @@ initProject(char *root, remote *r)
 	repository_wrlock(0);
 	if (opts->product) {
 		char	*nlid = 0;
-		/* XXX: Remove all this crud and
-		 * assert(!getenv(BK_NESTED_LOCK)) in main */
 		touch("BitKeeper/log/PRODUCT", 0664);
 		proj_reset(0);
-		unless (getenv("BK_NESTED_LOCK") || (nlid = nested_wrlock(0))) {
-			fprintf(stderr, "%s", nested_errmsg(0));
+		assert(!getenv("_NESTED_LOCK"));
+		unless (nlid = nested_wrlock(0)) {
+			error("%s", nested_errmsg());
 			return (1);
 		}
-		if (nlid) safe_putenv("BK_NESTED_LOCK=%s", nlid);
+		if (nlid) safe_putenv("_NESTED_LOCK=%s", nlid);
+		free(nlid);
 	}
 	if (getenv("BKD_LEVEL")) {
 		setlevel(atoi(getenv("BKD_LEVEL")));
@@ -776,13 +829,13 @@ after(int quiet, char *rev)
 		fprintf(stderr, "Removing revisions after %s ...\n", rev);
 	}
 	cmds[i = 0] = "bk";
+	cmds[++i] = "-?BK_NO_REPO_LOCK=YES"; /* so undo doesn't lock */
 	cmds[++i] = "undo";
 	cmds[++i] = "-fsC";
 	if (quiet) cmds[++i] = "-q";
 	cmds[++i] = p = malloc(strlen(rev) + 3);
 	sprintf(cmds[i], "-a%s", rev);
 	cmds[++i] = 0;
-	putenv("BK_NO_REPO_LOCK=YES");	/* so undo doesn't lock */
 	i = spawnvp(_P_WAIT, "bk", cmds);
 	free(p);
 	unless (WIFEXITED(i))  return (-1);
@@ -1075,6 +1128,7 @@ attach(void)
 {
 	int	rc;
 	char	*tmp;
+	char	*nlid = 0;
 	char	buf[MAXLINE];
 	char	relpath[MAXPATH];
 	FILE	*f;
@@ -1110,14 +1164,12 @@ attach(void)
 		return (-1);
 	}
 	proj_reset(0);	/* to reset proj_isComponent() */
-	/* lock the product */
-	strcpy(buf, proj_cwd());
-	proj_cd2product();
-	rc = repository_wrlock(0);
-	chdir(buf);
-	if (rc) {
-		fprintf(stderr, "attach: failed to lock product, giving up\n");
-		return (-1);
+	unless (nested_mine(0, getenv("_NESTED_LOCK"), 1)) {
+		unless (nlid = nested_wrlock(0)) {
+			fprintf(stderr, "%s\n", nested_errmsg());
+			return (-1);
+		}
+		safe_putenv("_NESTED_LOCK=%s", nlid);
 	}
 	concat_path(buf, proj_root(proj_product(0)), "BitKeeper/log/HERE");
 	if (f = fopen(buf, "a")) {
@@ -1130,9 +1182,6 @@ attach(void)
 	}
 	nested_check();
 	unless (opts->nocommit) {
-		putenv("BK_NO_REPO_LOCK=YES");
-		putenv("BK_IGNORE_WRLOCK=YES");
-		proj_cd2product();
 		sprintf(buf,
 			"bk -P commit -y'attach %s' %s -",
 			relpath,
@@ -1140,16 +1189,16 @@ attach(void)
 		if (f = popen(buf, "w")) {
 			fprintf(f, "%s/SCCS/s.ChangeSet|+\n", relpath);
 		}
-		putenv("BK_NO_REPO_LOCK=");
-		putenv("BK_IGNORE_WRLOCK=");
 		rc = (!f || pclose(f));
 	}
-	/* unlock */
-end:	strcpy(buf, proj_cwd());
-	proj_cd2product();
-	repository_unlock(0, 1);
-	chdir(buf);
-	return (rc);
+	if (nlid) {
+		if (nested_unlock(0, nlid)) {
+			fprintf(stderr, "%s\n", nested_errmsg());
+			rc = -1;
+		}
+		free(nlid);
+	}
+end:	return (rc);
 }
 
 int

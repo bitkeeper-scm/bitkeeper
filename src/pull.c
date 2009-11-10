@@ -34,6 +34,7 @@ private struct {
 
 private int	pull(char **av, remote *r, char **envVar);
 private int	pull_ensemble(remote *r, char **rmt_aliases);
+private int	pull_finish(remote *r, int status, char **envVar);
 private void	resolve_comments(remote *r);
 private	int	resolve(void);
 private	int	takepatch(remote *r);
@@ -57,7 +58,10 @@ pull_main(int ac, char **av)
 
 	bzero(&opts, sizeof(opts));
 	prog = basenm(av[0]);
-	if (streq(prog, "port")) opts.port = 1;
+	if (streq(prog, "port")) {
+		opts.port = 1;
+		safe_putenv("BK_PORT_ROOTKEY=%s", proj_rootkey(0));
+	}
 	opts.automerge = 1;
 	while ((c = getopt(ac, av, "c:DdE:GFilnqr;RstTuw|z|")) != -1) {
 		unless (c == 'r') {
@@ -187,6 +191,13 @@ err:		freeLines(envVar, free);
 	 * pull from each parent
 	 */
 	EACH (urls) {
+		/*
+		 * XXX What else needs to be reset?  Where can the reset
+		 * be put so that bugs don't need to be found one at a
+		 * time?
+		 */
+		putenv("BKD_NESTED_LOCK=");
+
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
@@ -269,8 +280,7 @@ send_part1_msg(remote *r, char **envVar)
 	add_cd_command(f, r);
 	fprintf(f, "pull_part1");
 	if (opts.rev) fprintf(f, " -r%s", opts.rev);
-	if (opts.port) fprintf(f, " -P");
-	if (opts.transaction) fprintf(f, " -T");
+	if (opts.transaction) fprintf(f, " -N");
 	fputs("\n", f);
 	fclose(f);
 	rc = send_file(r, buf, 0);
@@ -294,7 +304,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 	if ((rc = remote_lock_fail(buf, !opts.quiet))) {
 		return (rc); /* -2 means lock busy */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfoBlock(r)) return (-1);
+		if (getServerInfo(r)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
@@ -322,7 +332,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		return (1);
 	}
 	if (opts.port) {
-		unless (bkd_hasFeature("SAMv1")) {
+		unless (bkd_hasFeature("SAMv2")) {
 			fprintf(stderr,
 			    "port: remote bkd too old to support 'bk port'\n");
 			disconnect(r, 2);
@@ -330,7 +340,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		}
 		if (proj_isComponent(0)) {
 			/* component -> component */
-			if ((p = getenv("BKD_PRODUCT_KEY")) &&
+			if ((p = getenv("BKD_PRODUCT_ROOTKEY")) &&
 			    streq(p, proj_rootkey(proj_product(0)))) {
 				fprintf(stderr,
 				    "port: may not port components "
@@ -340,7 +350,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 			} else {
 				/* standalone -> component */
 			}
-		} else if (!getenv("BKD_PRODUCT_KEY")) {
+		} else if (!getenv("BKD_PRODUCT_ROOTKEY")) {
 			/* standalone -> standalone */
 			if ((p = getenv("BKD_ROOTKEY")) &&
 			    streq(p, proj_rootkey(0))) {
@@ -400,8 +410,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 	if (opts.rev) fprintf(f, " -r%s", opts.rev);
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (opts.debug) fprintf(f, " -d");
-	if (opts.port) fprintf(f, " '-P%s'", proj_rootkey(0));
-	if (opts.transaction) fprintf(f, " -T");
+	if (opts.transaction) fprintf(f, " -N");
 	if (opts.update_only) fprintf(f, " -u");
 	fputs("\n", f);
 	fclose(f);
@@ -455,7 +464,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 	if (remote_lock_fail(buf, !opts.quiet)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfoBlock(r)) goto err;
+		if (getServerInfo(r)) goto err;
 		getline2(r, buf, sizeof(buf));
 	}
 	if (get_ok(r, buf, 1)) {
@@ -554,16 +563,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		}
 	}
 	if (streq(buf, "@PATCH@")) {
-		char	*nlid = 0;
 
-		if (opts.product) {
-			assert(!getenv("BK_NESTED_LOCK"));
-			unless (nlid = nested_wrlock(0)) {
-				fprintf(stderr, "%s\n", nested_errmsg(0));
-				return (1);
-			}
-			safe_putenv("BK_NESTED_LOCK=%s", nlid);
-		}
 		if (i = takepatch(r)) {
 			fprintf(stderr,
 			    "Pull failed: takepatch exited %d.\n", i);
@@ -589,16 +589,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			pclose(fout);
 		}
 		if (proj_isProduct(0)) {
-			assert(nlid);
-			if (rc = pull_ensemble(r, rmt_aliases)) {
-				if (nested_abort(0, nlid)) {
-					fprintf(stderr, "%s", nested_errmsg(0));
-				}
-				goto done;
-			}
-			if (nested_unlock(0, nlid)) {
-				fprintf(stderr, "%s", nested_errmsg(0));
-			}
+			if (rc = pull_ensemble(r, rmt_aliases)) goto done;
 		}
 		putenv("BK_STATUS=OK");
 		rc = 0;
@@ -820,6 +811,9 @@ pull(char **av, remote *r, char **envVar)
 		chdir(ROOT2RESYNC);
 		rc = bkd_BAM_part3(r, envVar, opts.quiet,
 		    "- < " CSETS_IN);
+		if ((r->type == ADDR_HTTP) && proj_isProduct(0)) {
+			disconnect(r, 2);
+		}
 		chdir(RESYNC2ROOT);
 		if (rc) {
 			fprintf(stderr, "BAM fetch failed, aborting pull.\n");
@@ -827,6 +821,9 @@ pull(char **av, remote *r, char **envVar)
 			exit(1);
 		}
 	}
+
+	if (proj_isProduct(0)) rc = pull_finish(r, rc, envVar);
+
 	if (got_patch) {
 		/*
 		 * We are about to run resolve, fire pre trigger
@@ -871,6 +868,34 @@ done:	putenv("BK_RESYNC=FALSE");
 	wait_eof(r, opts.debug);
 	disconnect(r, 2);
 	return (rc);
+}
+
+private int
+pull_finish(remote *r, int status, char **envVar)
+{
+	FILE	*f;
+	char	buf[MAXPATH];
+
+	bktmp(buf, "pull_finish");
+	f = fopen(buf, "w");
+	assert(f);
+	sendEnv(f, envVar, r, 0);
+	if (r->type == ADDR_HTTP) add_cd_command(f, r);
+	fprintf(f, "nested %s\n", status ? "abort" : "unlock");
+	fclose(f);
+	if (send_file(r, buf, 0)) return (1);
+	unlink(buf);
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
+	if (getline2(r, buf, sizeof(buf)) <= 0) return (1);
+	if (streq(buf, "@SERVER INFO@")) {
+		if (getServerInfo(r)) return (1);
+		getline2(r, buf, sizeof(buf));
+	}
+	unless (streq(buf, "@OK@")) {
+		drainErrorMsg(r, buf, sizeof(buf));
+		return (1);
+	}
+	return (status);
 }
 
 private	int

@@ -28,3 +28,6 @@ bk pull $Q 2> ERR && {
 }
 # XXX the error report needs help
 echo OK
+
+cd ..
+bk lock -U project

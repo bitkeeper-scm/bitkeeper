@@ -164,6 +164,6 @@ test "X$MAKE" = X && {
 	esac
 }
 test "x$BK_VERBOSE_BUILD" != "x" && { V="V=1"; }
-PATH=$HERE:$PATH
-export PATH
+# If the current build process needs to use current bk, use "$HERE/bk"
+export PATH HERE
 make -e $V "MAKE=$MAKE" "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"

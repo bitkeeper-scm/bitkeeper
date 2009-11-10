@@ -50,8 +50,8 @@ echo OK
 echo $N rClone via bk:// ............................................$NL
 cd "$HERE"
 rm -rf copy copy2
-P=`port 50000`
-bk bkd -q -p$P -ikill
+bk bkd -q -aPORT -ikill || exit 1
+P=`cat PORT`
 bk clone $Q "$HERE/project" bk://localhost:$P/"$HERE/copy"
 bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
 cd "$HERE/copy"
@@ -90,8 +90,8 @@ echo OK
 echo $N rClone to bk://url without path should fail .................$NL
 mkdir EMPTY
 cd EMPTY
-P=`port 60000`
-bk bkd -q -p$P -ikill
+bk bkd -q -a"$HERE/PORT" -ikill || exit 1
+P=`cat "$HERE/PORT"`
 cd ..
 bk clone "$HERE/project" bk://localhost:$P 2> OUT && {
 	echo should have failed
@@ -153,7 +153,7 @@ bk _kill http://localhost:$P || exit 1
 echo $N Make sure rclone respect checkout preference ................$NL
 cd "$HERE/project/BitKeeper/etc"
 bk edit $Q config
-echo "checkout:get" >> config
+echo "checkout:get!" >> config
 bk delta $Q -ynew_preference config
 bk commit $Q -ynew_preference
 if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi

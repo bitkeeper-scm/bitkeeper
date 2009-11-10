@@ -49,7 +49,7 @@ bkd_server(int ac, char **av)
 		 * We do a few tries to see if we can get it and then give up.
 		 */
 		tries = getenv("BK_REGRESSION") ? 5 : 1;
-		while (tries) {
+		while (tries > 0) {
 			unless (pid) {
 				pid = spawnvp(_P_DETACH, nav[0], nav);
 				if (pid == (pid_t)-1) {
@@ -63,15 +63,14 @@ bkd_server(int ac, char **av)
 			delay.tv_sec = 10;
 			delay.tv_usec = 0;
 			if (select(startsock+1, &fds, 0, 0, &delay) < 0) {
-				continue;
+				goto next;
 			}
 			reap(0);
 			if (kill(pid, 0) != 0) {
-				tries--;
 				pid = 0;
-				continue;
+				goto next;
 			}
-			unless (FD_ISSET(startsock, &fds)) continue;
+			unless (FD_ISSET(startsock, &fds)) goto next;
 
 			/* should be started */
 			if ((nsock = tcp_accept(startsock)) >= 0) {
@@ -83,6 +82,8 @@ bkd_server(int ac, char **av)
 					break;
 				}
 			}
+next:			--tries;
+			usleep(10000);
 		}
 		fprintf(stderr, "Failed to start background BKD\n");
 		exit(1);
@@ -101,6 +102,7 @@ bkd_server(int ac, char **av)
 	if (sock < 0) exit(2);	/* regressions count on 2 */
 	assert(sock > 2);
 	make_fd_uninheritable(sock);
+	safe_putenv("_BKD_PORT=%d", sockport(sock));
 
 	i = 0;
 	nav[i++] = "bk";
@@ -114,6 +116,10 @@ bkd_server(int ac, char **av)
 	if (!getenv("BKD_SERVICE") &&
 	    Opts.pidfile && (f = fopen(Opts.pidfile, "w"))) {
 		fprintf(f, "%u\n", getpid());
+		fclose(f);
+	}
+	if (Opts.portfile && (f = fopen(Opts.portfile, "w"))) {
+		fprintf(f, "%d\n", sockport(sock));
 		fclose(f);
 	}
 	signal(SIGCHLD, reap);
@@ -211,7 +217,7 @@ argv_save(int ac, char **av, char **nav, int j)
 		/*
 		 * skip all options which don't make sense for a short lived bkd
 		 */
-		if (strchr("cdeEgpPRStu", c)) continue;
+		if (strchr("acdeEgpPRStu", c)) continue;
 		if (p = strchr(bkd_getopt, c)) {
 			if ((p[1] == ':') || (p[1] == '|')) {
 				p = optarg ? optarg : "";

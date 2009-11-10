@@ -157,17 +157,6 @@ If you create a new package rather than cloning a copy, you will not
 be able to exchange work between the two packages.
 
 $
-#setup_2
-Please create a description of this package.  A brief description is
-probably best. For example:
-
-    The Linux Kernel
-or
-    The GNU C compiler
-
-If you are using a word processor to edit the package description,
-please save the file as a plain text document.
-$
 #setup_3
 Please fill out the configuration template in your editor.
 This is used for support purposes as well as licensing.
@@ -568,7 +557,9 @@ $
 #config_preamble
 This is the BitKeeper configuration for this package.
 
-Please take a minute to fill it out carefully, it needs to be accurate.
+Please fill in the "description:" and "email:" fields, BK/Web needs those.
+For the rest of the fields you may use the defaults.
+
 $
 #config_setup
 The setup program is used when creating the initial package stored 
@@ -585,30 +576,26 @@ instead.
 $
 #config_description
 
-Name of the project, such as "BitKeeper" or "The GNU C compiler".
+Name of the project, such as "BitKeeper source management system",
+"Linux kernel" or "MySQL database system".  Used when listing 
+repositories.
 
-$
-#config_category
 $
 #config_license
 
-Enter the license information for BitKeeper here.
+Enter the license information for BitKeeper below.
 
-You can get a temporary license by sending a mail request to
-sales@bitmover.com
+If you do not have a license, please contact your company's system
+administrator for a copy.
 
-$
-#config_contact
-
-Contact person for this project.  This is whoever is the person that
-should be contacted with update information or contacted if BitKeeper
-discovers a problem which requires local intervention.  Please make the
-contact information accurate so we can support you.
+You may also contact sales@bitkeeper.com for information regarding your
+company's license, or to receive a temporary license.
 
 $
 #config_email
 
-It is very important that this email address is filled out and accurate.
+Email address of the person or alias that should get administrative 
+questions about this project.  Currently only used by BK/Web.
 
 $
 #config_compression
@@ -625,22 +612,53 @@ If you want to manually fix them, set this to "no".
 $
 #config_BAM
 
-Default is to enable BAM storage of binary deltas.
-When interacting with old versions of BitKeeper it may
-be better to set the field to "no".
+If setup found a BAM enabled BitKeeper license then the following will
+default to "on".  Otherwise it defaults to "off" because BAM is an
+optional feature.  If your license is BAM enabled then you want this
+feature to be "on".
+
+$
+#config_checkout
+
+Most users are least surprised by checkout:edit, it is what they expect.
+If this is a repository full of big binary files then checkout:none or
+checkout:last is better, especially when combined with BAM.
+
+$
+#config_clock_skew
+
+The clock skew field controls how recent a file has to be before
+BitKeeper will not trust the timestamp database.  It defaults to
+a week and that default was choosen to overcome clock drift problems
+on network file systems.  If you know your clocks are 100% accurate
+and your workflow is such that many of your files change all the 
+time, then setting the clock skew down to a day or two (172800)
+will improve performance.  For most people, the default is fine.
+
+$
+#config_partial_check
+
+With this field set to on, repositories are checked no more than once
+every 24 hours.  This is a performance win for large repositories.
+
+Customers who have reason to believe that their data may be corrupted
+by hardware or software problems (bad memory, bad disks, bugs in the
+file system, etc.) should set this field to "off".
 
 $
 #config_template
 description
+email
 license
 licsign1
 licsign2
 licsign3
-compression
 autofix
 BAM
-contact
-email
+checkout
+clock_skew
+compression
+partial_check
 $
 #warn_poly
 Warning: this repository has been found to have deltas which

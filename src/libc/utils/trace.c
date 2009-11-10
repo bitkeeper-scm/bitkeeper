@@ -41,8 +41,11 @@ trace_msg(char *format, char *file, int line, const char *function, ...)
 	va_list	ap;
 	char	extra[20];
 
-	if (files && !match_globs(file, files, 0)) return;
-	if (funcs && !match_globs((char*)function, funcs, 0)) return;
+	/* if either, then one must have pattern match */
+	unless ((!files && !funcs) ||
+	    (files && match_globs(file, files, 0)) ||
+	    (funcs && match_globs((char*)function, funcs, 0)))
+		return;
 	extra[0] = 0;
 	if (terse) {
 		f = efopen("BK_DTRACE");

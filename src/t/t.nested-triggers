@@ -55,8 +55,8 @@ bk commit $Q -ytriggers || exit 8
 cd "$HERE"
 bk clone $Q source pushdest || exit 9
 cd "$HERE"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill || exit 1
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 echo OK
 
@@ -117,7 +117,7 @@ BKD_ROOT=$HERE/source/gdb
 BKD_REPO_TYPE=component
 BKD_ROOT=$HERE/source/gdb
 EOF
-cmpfiles WANT GOT
+cmpsorted WANT GOT
 echo OK
 
 # Here the server/client makes more sense.
@@ -294,14 +294,14 @@ test -z "$DUMP" || {
 }
 cat >WANT<<EOF
 pulldest-pre-outgoing
-new comp-post-incoming
+new comp-pre-outgoing
+new comp-post-outgoing
 pulldest-post-outgoing
 EOF
 cmpfiles WANT "$TRIGS.client"
 cat >WANT<<EOF
 pushdest-pre-incoming
-new comp-pre-outgoing
-new comp-post-outgoing
+new comp-post-incoming
 RESYNC-pre-resolve
 RESYNC-pre-apply
 pushdest-post-incoming

@@ -323,6 +323,7 @@ echo "foobar" > ff
 bk new $Q ff
 bk edit $Q ff
 bk delta -yfoobar $Q ff
+bk admin -Znone ff || exit 1
 bk _mv SCCS/s.ff ff.tmp
 sed 's/foobar/foobaz/' < ff.tmp > ff.tmp2
 bk _mv ff.tmp2 SCCS/s.ff
@@ -439,7 +440,9 @@ echo OK
 echo $N bk check with partial_check should notice path conflicts ....$NL
 commercial proj3
 bk edit $Q BitKeeper/etc/config
-echo partial_check:yes >> BitKeeper/etc/config
+(grep -v partial_check BitKeeper/etc/config; echo partial_check:yes) > c
+cat c > BitKeeper/etc/config
+test Xyes = X"`bk config partial_check`" || exit 2
 echo hi > foo
 bk new $Q -ycomment foo || exit 1
 bk commit $Q -ycomment || exit 1

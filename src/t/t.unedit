@@ -29,7 +29,7 @@ echo OK
 echo $N  "checkout:edit with unedit" ...................................$NL
 cd "$HERE/project/BitKeeper/etc"
 bk edit $Q config
-echo "checkout:edit" >> config
+echo "checkout:edit!" >> config
 bk delta $Q -yedit config
 cd "$HERE/project/src"
 bk edit $Q foo.c

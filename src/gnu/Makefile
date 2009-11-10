@@ -36,8 +36,8 @@ install: all
 	cp -f $(DIFF_BINS) $(BINDIR)
 	cp -f $(PATCH_BIN) $(BINDIR)/mend$(EXE)
 
-os: ../utils/os ../utils/gnu-os
-	$(Q)(cd ../utils && ./os) > _os
+os: ../utils/bk_version
+	$(Q)(cd ../utils && ./bk_version) > _os
 	$(Q)echo BIN-`cat _os` > os
 	$(Q)rm -f _os
 

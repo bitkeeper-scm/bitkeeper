@@ -36,7 +36,7 @@ SYSTEM_OBJS=../libc/libc.a
 SFIO=sfio$(EXE)
 CPPFLAGS=-I../libc
 VERS	:= $(shell test -x vers || bk get vers; BINDIR=$(BINDIR) ./vers)
-IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`$(EXT) )
+IMAGE:= $(shell bk get -qS bk_version; echo $(VERS)-`./bk_version`$(EXT) )
 
 all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE)
 	strip $(IMAGE)

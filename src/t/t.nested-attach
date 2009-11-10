@@ -23,8 +23,8 @@ bk attach -q "$HERE/standalone1" component1 || exit 1
 cd "$HERE"
 nested nested2
 cd "$HERE"
-P=`port 50000`
-bk bkd -q -p$P -ikill || exit 1
+bk bkd -q -aPORT -ikill || exit 1
+P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 echo OK
 

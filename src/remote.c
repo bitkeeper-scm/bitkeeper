@@ -32,6 +32,8 @@ remote_bk(int quiet, int ac, char **av)
 	char	buf[63<<10];
 
 	setmode(0, _O_BINARY);	/* need to be able to read binary data */
+	putenv("BKD_NESTED_LOCK="); /* don't inherit nested lock */
+
 	/*
 	 * parse the options between 'bk' and the command to remove -@
 	 */
@@ -175,6 +177,14 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	line = (getline2(r, buf, sizeof(buf)) > 0) ? buf : 0;
+	if (streq("@SERVER INFO@", buf)) {
+		if (getServerInfo(r)) {
+			rc = 1;
+			goto out;
+		}
+		line = (getline2(r, buf, sizeof(buf)) > 0) ? buf : 0;
+	}
+
 	unless (line) {
 		i = 1<<5;
 		fprintf(stderr, "##### %s #####\n", u);

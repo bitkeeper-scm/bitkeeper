@@ -21,6 +21,7 @@ echo "licsign3: $BKL_P3" >> "$HERE/c"
 echo "description: BitKeeper Test repository" >> "$HERE/c"
 echo "email:		nobody@nowhere.bk" >> "$HERE/c"
 echo "keyword: rcs, expand1" >> "$HERE/c"
+echo "checkout: get" >> "$HERE/c"
 bk setup -a -f -c"$HERE/c" project
 cd project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -52,7 +53,6 @@ fi
 echo OK
 
 echo $N Check files get keywords expanded by \'bk new\' ...............$NL
-echo 'checkout:get' >> BitKeeper/etc/config
 echo %F% > fff
 bk new $Q fff || exit 1
 if [ `cat fff` != "SCCS/s.fff" ]; then

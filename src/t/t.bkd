@@ -42,8 +42,8 @@ echo $N clone the workspace .........................................$NL
 bk clone $Q "$HERE/project" "$HERE/copy" || exit 1
 cd "$HERE/copy"
 if bk _test ! -f "BitKeeper/etc/SCCS/x.dfile"; then echo failed; exit 1; fi
-P=`port 50000`
-bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+P=`cat PORT`
 echo OK
 
 echo $N die part way through a clone and make sure we clean locks ...$NL
@@ -67,8 +67,12 @@ echo OK
 
 echo $N Make sure bkd logs to stderr do not dump core ...............$NL
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -d -D -l -p$P -ikill 2> "$HERE/STDERR" &
+bk bkd -d -D -l -aPORT -ikill 2> "$HERE/STDERR" &
+for i in 1 2 3 4 5
+do  test -f PORT && break
+    sleep 1
+done
+P=`cat PORT`
 cd "$HERE/copy"
 for i in 1 2 3 4 5
 do	bk changes -r+ bk://localhost:$P/"$HERE/project" > changes.out 2>&1
@@ -91,9 +95,8 @@ echo OK
 echo $N Make sure that we leave the pid file there - background .....$NL
 cd "$HERE/project"
 rm -f "$HERE/LOG"
-P=`port 51000`
 # We want the pid of the process that is running, not the parent process
-bk bkd -dqp$P -l"$HERE/LOG" -P"$HERE/PID" -ikill &
+bk bkd -dq -aPORT -l"$HERE/LOG" -P"$HERE/PID" -ikill &
 PARENT=$!
 wait $PARENT
 bk _usleep 20000
@@ -110,6 +113,7 @@ test $PARENT = $PID && {
 	echo wrong pid in pid file
 	exit 1
 }
+P=`cat PORT`
 echo OK
 
 echo $N Make sure that commands leave the pid file alone ............$NL
@@ -150,7 +154,7 @@ cd "$HERE/project"
 rm -f "$HERE/PID" "$HERE/LOG" BitKeeper/log/*log
 # I know the "&" seems like it is background but what I mean is that it
 # is not a daemon, it's waiting around.  I have to do & to run the test.
-bk bkd -ikill -dDp$P -l"$HERE/LOG" -P"$HERE/PID" &
+bk bkd -ikill -dD -a"$HERE/PORT" -l"$HERE/LOG" -P"$HERE/PID" &
 WANT=$!
 sleep 2
 test -f "$HERE/PID" || {
@@ -167,6 +171,7 @@ kill -0 $WANT || {
 	unable to kill $PID
 	exit 1
 }
+P=`cat "$HERE/PORT"`
 # create log file
 bk changes -r+ bk://localhost:$P >/dev/null 2>&1
 echo OK
@@ -205,7 +210,8 @@ echo OK
 # before you run this test.
 echo $N "push a new changeset via bkd (no compression)" ...............$NL
 cd "$HERE/copy"
-bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+P=`cat PORT`
 cd "$HERE/project/src"
 echo woo > woo.c
 bk ci $Q -i woo.c || exit 1
@@ -223,8 +229,8 @@ echo zoo > zoo.c
 bk ci $Q -i zoo.c
 bk commit $Q -ycset1
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 bk lock -U "$HERE/copy"        # needed on Freebsd4
 cd "$HERE/copy/src"
 bk pull $Q -t -z0 bk://localhost:$P
@@ -239,8 +245,8 @@ echo boo > boo.c
 bk ci $Q -i boo.c
 bk commit $Q -ycset1
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 cd "$HERE/copy/src"
 bk pull -t $Q bk://localhost:$P
 if bk _test ! -f SCCS/s.boo.c; then echo failed; exit 1; fi
@@ -250,8 +256,8 @@ echo OK
 
 echo $N "pull via bkd -xpull" .........................................$NL
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -q -xpull -p$P -ikill
+bk bkd -q -xpull -aPORT -ikill || exit 1
+P=`cat PORT`
 cd "$HERE/copy/src"
 bk pull -t bk://localhost:$P > pull.out 2>&1
 grep -q "bkd has disabled" pull.out
@@ -262,8 +268,8 @@ echo OK
 
 echo $N "push a new changeset via bkd (with compression)" .............$NL
 cd "$HERE/copy"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill -l"$HERE/LOG"
+bk bkd -q -d -aPORT -ikill -l"$HERE/LOG" || exit 1
+P=`cat PORT`
 cd "$HERE/project/src"
 echo aoo > aoo.c
 bk ci $Q -i aoo.c
@@ -277,8 +283,8 @@ echo OK
 
 echo $N clone a tree via bkd ........................................$NL
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 bk clone $Q bk://localhost:$P "$HERE/copy2"
 if [ -f BitKeeper/tmp/clone.sfio ]; then echo failed; exit 1; fi
 cd "$HERE/copy2/src"
@@ -293,8 +299,8 @@ echo coo > coo.c
 bk ci $Q -i coo.c
 bk commit $Q -ycset1
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -q -d -p$P -xcd -xpush -ikill 
+bk bkd -q -d -aPORT -xcd -xpush -ikill || exit 1
+P=`cat PORT`
 cd "$HERE/copy/src"
 bk pull -t $Q bk://localhost:$P
 if bk _test ! -f SCCS/s.coo.c; then echo failed; exit 1; fi
@@ -303,9 +309,9 @@ bk _kill bk://localhost:$P || exit 1
 echo OK
 
 echo $N check a push to bkd with a gfile conflict ...................$NL
-P=`port 50000`
 cd "$HERE/project"
-bk bkd -q -d -p$P -ikill
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 cd "$HERE/project"
 echo data1 > conflict.c
 cd "$HERE/copy"
@@ -364,8 +370,8 @@ echo OK
 
 echo $N Make sure bkd -C disallows cd to parent dir .................$NL
 cd "$HERE/project/src"
-P=`port 50000`
-bk bkd -q -d -C -p$P -ikill
+bk bkd -q -d -C -aPORT -ikill || exit 1
+P=`cat PORT`
 cd "$HERE/copy"
 bk pull bk://localhost:$P/"$HERE/project" > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
@@ -383,8 +389,8 @@ echo OK
 echo $N Make sure bkd logs requests under the remote user name ......$NL
 cd "$HERE/project"
 cp /dev/null BitKeeper/log/repo_log
-P=`port 50000`
-BK_USER=garbage bk bkd -qdp$P -ikill
+BK_USER=garbage bk bkd -qd -aPORT -ikill || exit 1
+P=`cat PORT`
 cd "$HERE/copy"
 BK_USER=pull_USER bk pull bk://localhost:$P/"$HERE/project" > pull.out 2>&1
 bk _usleep 250000
@@ -421,8 +427,8 @@ echo OK
 
 echo $N make sure bkd with -phost:port option works..................$NL
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -q -p127.0.0.1:$P -d -ikill
+bk bkd -q -p127.0.0.1:0 -aPORT -d -ikill || exit 1
+P=`cat PORT`
 OPATH="$PATH"
 PATH="/bin:/usr/sbin:/usr/etc:$PATH"
 export PATH

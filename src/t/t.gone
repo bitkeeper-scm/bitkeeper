@@ -66,8 +66,8 @@ echo OK
 
 # bkd to test rclone
 cd ..
-P=`port 50000`
-bk bkd -q -p$P -d -ikill > BKD.OUT 2> BKD.ERR
+bk bkd -q -aPORT -d -ikill > BKD.OUT 2> BKD.ERR || exit 1
+P=`cat PORT`
 cd project
 
 echo $N Clone to child with gone as a gfile only, should fail .......$NL
