@@ -1,0 +1,21 @@
+echo $N Create initial repository....................................$NL
+commercial project
+echo "new file" > new_file
+bk new $Q -y. new_file
+bk commit $Q -y. new_file
+echo OK
+
+echo $N Make sure an http get sends no SIB...........................$NL
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || fail could not start bkd
+P=`cat PORT`
+bk tclsh >GOT <<EOF
+package require http
+set token [http::geturl "http://localhost:$P/" -channel stdout]
+upvar #0 \$token state
+parray state
+exit 0
+EOF
+test $? = 0 || fail -f ERR
+grep -q "@SERVER INFO@" GOT && fail -f GOT got Server info block on http get
+bk _kill bk://localhost:$P || fail
+echo OK

@@ -13,7 +13,7 @@
 private int	lockResync(project *p);
 private void	unlockResync(project *p);
 private time_t	nested_getTimeout(int created);
-private char	**nested_lockers(project *p, int stale);
+private char	**nested_lockers(project *p);
 
 /*
  * Return all the lock files which start with a digit, i.e.,
@@ -713,11 +713,20 @@ nested_isStale(char *file)
 		if ((now - sb.st_atime) > nested_getTimeout(0)) goto stale;
 	}
 	/* if we got here, we must be holding a valid lock */
-	free(nlid);
+out:	free(nlid);
 	freeNLID(nl);
 	return (0);
 
-stale:	if (unlink(file)) {
+stale:	if (nl->kind == 'w') {
+		/*
+		 * XXX: since we don't have a nested-aware abort right
+		 * now, we just punt on staling write locks, remove this
+		 * block when we can revert a write lock and replace it
+		 * with a call to abort.
+		 */
+		goto out;
+	}
+	if (unlink(file)) {
 		error("Could not unlink '%s', permission problem?\n", file);
 	}
 	if (nlid) free(nlid);
@@ -738,6 +747,42 @@ nested_getTimeout(int created)
 	 * 1/2 hour from last use and 2 hours from creation.
 	 */
 	return (created ? 7200 : 1800);
+}
+
+char *
+prettyNLID(char *nlid)
+{
+	struct nlid_s	*nl;
+	char		*ret, *spid;
+
+
+	unless (nl = explodeNLID(nlid)) {
+		return (aprintf("Invalid nested lock: %s", nlid));
+	}
+	spid = aprintf("%d", nl->pid);
+	ret = aprintf("\t%s locked by %s@%s (bk %s/%s) %s ago",
+	    (nl->kind == 'r') ? "Read" : "Write",
+	    nl->user, nl->host, nl->prog,
+	    (nl->http == 'h') ? "http" : spid,
+	    age(time(0) - nl->created, " "));
+	free(spid);
+	freeNLID(nl);
+	return (ret);
+}
+
+int
+cmpNLID(const void *a, const void *b)
+{
+	char	*p1, *p2;
+	int	ia, ib, i;
+
+	p1 = *((char **)a);
+	for (i = 0; i < 5; i++) p1 = strchr(p1, '|');
+	ia = strtol(p1, 0, 10);
+	p2 = *((char **)b);
+	for (i = 0; i < 5; i++) p2 = strchr(p2, '|');
+	ib = strtol(p2, 0, 10);
+	return (ia - ib);
 }
 
 /*
@@ -768,7 +813,7 @@ nested_wrlock(project *p)
 		unlock = 1;
 	}
 
-	lockers = nested_lockers(p, 0);
+	lockers = nested_lockers(p);
 	if (nLines(lockers)) {
 		nl_errno = NL_ALREADY_LOCKED;
 		goto out;
@@ -917,12 +962,10 @@ unlockResync(project *p)
 }
 
 /*
- * Get list of nested lockers. If stale is set, locks removed because
- * they were stale are still added but are tagged at the end with an
- * extra '|s'
+ * Get list of nested lockers. Stale locks are silently removed.
  */
 private char	**
-nested_lockers(project *p, int stale)
+nested_lockers(project *p)
 {
 	char	**files = 0, **lockers = 0;
 	char	*readers_dir, *writer;
@@ -944,15 +987,8 @@ nested_lockers(project *p, int stale)
 			p = loadfile(fn, 0);
 			chomp(p);
 			if (nested_isStale(fn)) {
-				if (stale) {
-					char	*tmp;
-					tmp = aprintf("%s|s", p);
-					free(p);
-					p = tmp;
-				} else {
-					free(fn);
-					continue;
-				}
+				free(fn);
+				continue;
 			}
 			n++;
 			lockers = addLine(lockers, p);
@@ -968,22 +1004,17 @@ nested_lockers(project *p, int stale)
 
 		p = loadfile(writer, 0);
 		chomp(p);
-		if (nested_isStale(writer) && stale) {
-			char	*tmp;
-
-			tmp = aprintf("%s|s", p);
-			free(p);
-			lockers = addLine(lockers, tmp);
-		} else {
+		unless (nested_isStale(writer)) {
 			n++;
 			lockers = addLine(lockers, p);
 		}
 	}
 	free(writer);
 	unless (n) unlockResync(p);
+	/* sort by time */
+	sortLines(lockers, cmpNLID);
 	return (lockers);
 }
-
 
 /*
  * Return true if the lock passed in is the one on disk,
@@ -1105,7 +1136,7 @@ nested_unlock(project *p, char *nlid)
 
 		/* Need to remove resync _only_ if we're the last
 		 * reader going out */
-		lockers = nested_lockers(p, 0);
+		lockers = nested_lockers(p);
 		unless (nLines(lockers)) {
 			/* RACE, but there is no repository_upgrade() */
 			TRACE("%s", "unlockResync");
@@ -1141,13 +1172,30 @@ nested_errmsg(void)
 {
 	static	char	*msg;
 	char	*lines;
+	char	**lockers;
 
 	assert(errMsgs[nl_errno]);
 	if (msg) free(msg);
+	lockers = nested_lockers(0);
 	msg = aprintf("%s\n%s\n",
 	    errMsgs[nl_errno],
-	    ((lines = joinLines("\n",nested_lockers(0, 0)))
+	    ((lines = joinLines("\n",
+		    mapLines(lockers, (void*)prettyNLID, free)))
 		? lines : "No lockers found"));
-
+	freeLines(lockers, free);
 	return (msg);
+}
+
+void
+nested_printLockers(project *p, FILE *out)
+{
+	char	**lockers;
+	int	i;
+
+	lockers = mapLines(nested_lockers(p), (void*)prettyNLID, free);
+	repository_lockers(p);
+	EACH (lockers) {
+		fprintf(out, "%s\n", lockers[i]);
+	}
+	freeLines(lockers, free);
 }

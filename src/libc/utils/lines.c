@@ -103,6 +103,20 @@ reverseLines(char **space)
 	}
 }
 
+char **
+mapLines(char **space, void *(*fn)(void *), void(*freep)(void *ptr))
+{
+	int	i;
+	char	*tmp;
+
+	EACH(space) {
+		tmp = space[i];
+		space[i] = (char *)fn(space[i]);
+		if (freep) freep(tmp);
+	}
+	return (space);
+}
+
 /*
  * Looking for a key_sort?  It's in check.c and sorts on the key starting
  * at the pathname part.

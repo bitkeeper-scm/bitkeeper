@@ -654,6 +654,7 @@ private	struct {
 	{"collapse", CMD_WRLOCK},
 	{"commit", CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{"fix", CMD_WRLOCK},
+	{"get", CMD_COMPAT_NOSI},
 	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},
 	{"license", CMD_NOREPO},
 	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK},
@@ -688,7 +689,7 @@ cmdlog_start(char **av, int bkd_cmd)
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
 	for (i = 0; repolog[i].name; i++) {
-		if (streq(repolog[i].name, av[0])) {
+		if (strieq(repolog[i].name, av[0])) {
 			cmdlog_flags = repolog[i].flags;
 			cmdlog_flags |= CMD_REPOLOG;
 			break;
@@ -758,6 +759,9 @@ cmdlog_start(char **av, int bkd_cmd)
 		if (i = repository_wrlock(0)) {
 			unless (bkd_cmd || !proj_root(0)) {
 				repository_lockers(0);
+				if (proj_isEnsemble(0)) {
+					nested_printLockers(0, stderr);
+				}
 			}
 			switch (i) {
 				/* Gross +6 is to skip ERROR- */
@@ -787,6 +791,9 @@ cmdlog_start(char **av, int bkd_cmd)
 		if (i = repository_rdlock(0)) {
 			unless (bkd_cmd || !proj_root(0)) {
 				repository_lockers(0);
+				if (proj_isEnsemble(0)) {
+					nested_printLockers(0, stderr);
+				}
 			}
 			switch (i) {
 			    case LOCKERR_LOST_RACE:

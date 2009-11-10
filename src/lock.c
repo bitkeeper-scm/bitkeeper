@@ -1,6 +1,7 @@
 /* Copyright (c) 2000 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "nested.h"
 
 #ifndef  WIN32
 #define	HANDLE	int
@@ -20,11 +21,11 @@ lock_main(int ac, char **av)
 {
 	int	nsock, c, uslp = 1000;
 	int	what = 0, silent = 0, keepOpen = 0, tcp = 0;
-	char	*file = 0;
+	char	*file = 0, *nlid;
 	HANDLE	h = 0;
 	pid_t	pid;
 
-	while ((c = getopt(ac, av, "f;klqrstwLU")) != -1) {
+	while ((c = getopt(ac, av, "f;klqRrstwWLU")) != -1) {
 		switch (c) {
 		    case 'q': /* fall thru */			/* doc 2.0 */
 		    case 's': silent = 1; break;		/* undoc 2.0 */
@@ -37,7 +38,9 @@ lock_main(int ac, char **av)
 		    /* One of .. or fall through to error */
 		    case 'l':					/* doc 2.0 */
 		    case 'r':					/* doc 2.0 */
+		    case 'R':					/* doc 2.0 */
 		    case 'w':					/* doc 2.0 */
+		    case 'W':					/* doc 2.0 */
 		    case 'L':
 		    case 'U':
 			unless (what) {
@@ -124,6 +127,33 @@ usage:			system("bk help -s lock");
 		if (caught) repository_rdunlock(0, 0);
 		exit(0);
 	    
+	    case 'R':	/* nested_rdlock() the repository */
+		unless (nlid = nested_rdlock(0)) {
+			fprintf(stderr, "nested read lock failed.\n%s\n", nested_errmsg());
+			exit (1);
+		}
+		if (tcp) {
+			nsock = tcp_accept(tcp);
+			if (nested_unlock(0, nlid)) {
+				fprintf(stderr, "nested unlock failed:\n%s\n", nested_errmsg());
+				exit (1);
+			}
+			chdir("/");
+			write(nsock, &c, 1);
+			closesocket(nsock);
+			closesocket(tcp);
+			exit(0);
+		}
+		do {
+			usleep(500000);
+		} while (nested_mine(0, nlid, 0) && !caught);
+		if (caught) {
+			if (nested_unlock(0, nlid)) {
+				fprintf(stderr, "nested unlock failed:\n%s\n", nested_errmsg());
+				exit (1);
+			}
+		}
+		exit (0);
 	    case 'w':	/* write lock the repository */
 		if (repository_wrlock(0)) {
 			fprintf(stderr, "write lock failed.\n");
@@ -147,8 +177,41 @@ usage:			system("bk help -s lock");
 		repository_wrunlock(0, 0);
 		exit(0);
 
+	    case 'W':	/* nested_wrlock() the repository */
+		unless (nlid = nested_wrlock(0)) {
+			fprintf(stderr, "nested write lock failed.\n%s\n", nested_errmsg());
+			exit (1);
+		}
+		if (tcp) {
+			nsock = tcp_accept(tcp);
+			if (nested_unlock(0, nlid)) {
+				fprintf(stderr, "nested unlock failed:\n%s\n", nested_errmsg());
+				exit (1);
+			}
+			chdir("/");
+			write(nsock, &c, 1);
+			closesocket(nsock);
+			closesocket(tcp);
+			exit(0);
+		}
+		do {
+			usleep(500000);
+		} while (nested_mine(0, nlid, 0) && !caught);
+		if (caught) {
+			if (nested_unlock(0, nlid)) {
+				fprintf(stderr, "nested unlock failed:\n%s\n", nested_errmsg());
+				exit (1);
+			}
+		}
+		exit (0);
 	    case 'l':	/* list lockers / exit status */
-		unless (silent) repository_lockers(0);
+		unless (silent) {
+			if (proj_isEnsemble(0)) {
+				nested_printLockers(0, stdout);
+			} else {
+				repository_lockers(0);
+			}
+		}
 		while (repository_locked(0)) {
 			/* if silent, delay at most one second (1/2 + 1/4...) */
 			if (!silent || (uslp > 500000)) exit (1);

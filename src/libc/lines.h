@@ -85,6 +85,7 @@ int	removeLine(char **space, char *s, void(*freep)(void *ptr));
 void	removeLineN(char **space, int rm, void(*freep)(void *ptr));
 void	reverseLines(char **space);
 void	sortLines(char **space, int (*compar)(const void *, const void *));
+char	**mapLines(char **space, void *(*fn)(void *), void(*freep)(void *ptr));
 int	string_sort(const void *a, const void *b);
 int	number_sort(const void *a, const void *b);
 char	**shellSplit(const char *line);
