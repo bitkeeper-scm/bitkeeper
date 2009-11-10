@@ -1,5 +1,5 @@
 CC=gcc
-CPPFLAGS=-Isrc/headers -I../tommath -I../libc -DLTC_SOURCE -DLTC_NO_ROLC
+CPPFLAGS=-Isrc/headers -I../tommath -DLTC_SOURCE -DLTC_NO_ROLC
 CFLAGS=-g -O3 -Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes
 AR=ar rc
 RANLIB=ranlib
