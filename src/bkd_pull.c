@@ -29,22 +29,16 @@ cmd_pull_part1(int ac, char **av)
 	int	port = 0;
 	int	c;
 
-	if (sendServerInfoBlock(0)) return (1);
-
 	probekey_av = addLine(probekey_av, strdup("bk"));
 	probekey_av = addLine(probekey_av, strdup("_probekey"));
-	while ((c = getopt(ac, av, "denlPqr;Tz|")) != -1) {
+	while ((c = getopt(ac, av, "denNlqr;z|")) != -1) {
 		switch (c) {
-		    case 'P':
-			port = 1;
-			probekey_av = addLine(probekey_av, strdup("-S"));
-			break;
 		    case 'r':
 			probekey_av = addLine(probekey_av,
 			    aprintf("-r%s", optarg));
 			break;
-		    case 'T':
-			nlid = 1; /* eventually getenv("BK_NESTED_LOCK") */
+		    case 'N':
+			nlid = 1;
 			break;
 		    case 'd':
 		    case 'e':
@@ -57,6 +51,10 @@ cmd_pull_part1(int ac, char **av)
 		}
 	}
 
+	if (getenv("BK_PORT_ROOTKEY")) {
+			port = 1;
+			probekey_av = addLine(probekey_av, strdup("-S"));
+	}
 	if (!nlid && !port && proj_isComponent(0)) {
 		out("ERROR-component-only pulls are not allowed.\n");
 		return (1);
@@ -76,7 +74,7 @@ cmd_pull_part1(int ac, char **av)
 		out("\n");
 		return (1);
 	}
-	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv1")) {
+	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv2")) {
 		out("ERROR-please upgrade your BK to a NESTED "
 		    "aware version (5.0 or later)\n");
 		return (1);
@@ -130,7 +128,7 @@ cmd_pull_part2(int ac, char **av)
 	pid_t	pid;
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "dlnP;qr|Tuw|z|")) != -1) {
+	while ((c = getopt(ac, av, "dlnNqr|uw|z|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -139,20 +137,16 @@ cmd_pull_part2(int ac, char **av)
 		    case 'd': debug = 1; break;
 		    case 'l': list++; break;
 		    case 'n': dont = 1; break;
-		    case 'P':
-			port = optarg;
-			pkflags |= PK_SYNCROOT;
-			break;
 		    case 'q': verbose = 0; break;
 		    case 'r': rev = optarg; break;
-		    case 'T': break;	// On purpose
+		    case 'N': break;	// On purpose
 		    case 'w': delay = atoi(optarg); break;
 		    case 'u': update_only = 1; break;
 		    default: break;
 		}
 	}
 
-	if (sendServerInfoBlock(0)) return (1);
+	if (port = getenv("BK_PORT_ROOTKEY")) pkflags |= PK_SYNCROOT;
 	if (hasLocalWork(GONE)) {
 		out("ERROR-must commit local changes to ");
 		out(GONE);

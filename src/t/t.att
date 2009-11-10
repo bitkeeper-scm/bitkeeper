@@ -14,8 +14,8 @@
 
 echo $N Setup license server for AT\&T files .........................$NL
 commercial license
-P=`port 50000`
-bk bkd -q -d -p$P -ikill
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 export BK_LICENSEURL=bk://localhost:$P/
 bk lease flush -a
 echo OK

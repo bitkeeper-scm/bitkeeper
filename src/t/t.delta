@@ -253,7 +253,7 @@ echo hi > hi.c
 bk ci $Q -i hi.c
 if bk _test -f SCCS/p.hi.c; then echo failed; exit 1; fi
 bk edit $Q BitKeeper/etc/config
-cp BitKeeper/etc/config config.sav
+grep -v checkout BitKeeper/etc/config > config.sav
 bk co $Q -l hi.c
 for i in "" "one" "one@$BK_HOST" "one@$BK_HOST:$HERE/project" \
 	"@$BK_HOST" "@$BK_HOST:$HERE/project" \
@@ -483,6 +483,7 @@ echo $N Check compresssion: gzip preference .........................$NL
 cd "$HERE/project/BitKeeper/etc"
 bk edit $Q config
 echo "compression: gzip" >> config
+echo checkout:none >> config
 cd "$HERE/project"
 echo hi > init2
 bk new $Q init2

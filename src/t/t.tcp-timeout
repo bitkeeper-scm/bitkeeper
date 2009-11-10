@@ -30,8 +30,8 @@ exit 0
 }
 
 # Run a bkd
-P=`port 50000`
-bk bkd -q -U -d -p$P -ikill
+bk bkd -q -U -d -aPORT -ikill || exit 1
+P=`cat PORT`
 
 echo $N Check the remote command ....................................$NL
 commercial project

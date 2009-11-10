@@ -113,8 +113,8 @@ echo OK
 
 echo $N Test upgrade using a license proxy ..........................$NL
 cd "$HERE/junk2"
-P=`port 5000`
-bk bkd -q -d -p$P -ikill
+bk bkd -q -d -aPORT -ikill || exit 1
+P=`cat PORT`
 
 cd "$HERE"
 bk lease flush -a

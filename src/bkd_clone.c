@@ -19,13 +19,12 @@ cmd_clone(int ac, char **av)
 	delta	*d;
 	char	buf[MAXLINE];
 
-	if (sendServerInfoBlock(0)) goto out;
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
 		goto out;
 	}
-	while ((c = getopt(ac, av, "ADlqr;s;Tw;z|")) != -1) {
+	while ((c = getopt(ac, av, "ADlNqr;s;w;z|")) != -1) {
 		switch (c) {
 		    case 'A':
 			attach = 1;
@@ -35,6 +34,9 @@ cmd_clone(int ac, char **av)
 			break;
 		    case 'l':
 			lclone = 1;
+			break;
+		    case 'N':
+			nlid = 1;
 			break;
 		    case 'w':
 			delay = atoi(optarg);
@@ -52,16 +54,10 @@ cmd_clone(int ac, char **av)
 		    case 's':
 			aliases = addLine(aliases, strdup(optarg));
 			break;
-		    case 'T':	/*
-				 * eventually, this will be
-				 * getenv("BK_NESTED_LOCK")
-				 */
-			nlid = 1;
-			break;
 		    default:
 			out("ERROR-unknown option\n");
 			exit(1);
-	    	}
+		}
 	}
 	/*
 	 * This is where we would put in an exception for bk port.
@@ -79,7 +75,7 @@ cmd_clone(int ac, char **av)
 		goto out;
 	}
 	if (proj_isProduct(0)) {
-		unless (bk_hasFeature("SAMv1")) {
+		unless (bk_hasFeature("SAMv2")) {
 			out("ERROR-please upgrade your BK to a NESTED "
 			    "aware version (5.0 or later)\n");
 			goto out;
@@ -138,6 +134,7 @@ cmd_clone(int ac, char **av)
 		    (rc == 2) ? "can't get lock" : "unknown reason");
 		goto out;
 	}
+	rc = 1;
 	p = getenv("BK_REMOTE_PROTOCOL");
 	if (p && streq(p, BKD_VERSION)) {
 		out("@OK@\n");
@@ -190,6 +187,7 @@ cmd_clone(int ac, char **av)
 	printf("@SFIO@\n");
 	rc = compressed(gzip, lclone);
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
+	rc = 1;
 	if (trigger(av[0], "post")) goto out;
 
 	rc = 0;

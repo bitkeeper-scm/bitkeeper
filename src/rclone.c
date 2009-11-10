@@ -90,6 +90,11 @@ rclone_main(int ac, char **av)
 		perror(av[optind]);
 		exit(1);
 	}
+	/*
+	 * XXX
+	 * rclone doesn't get a repository lock or a nested lock
+	 * on the source side of the transfer.
+	 */
 	unless (exists(BKROOT)) {
 		fprintf(stderr, "%s is not a BitKeeper root\n", av[optind]);
 		exit(1);
@@ -282,7 +287,7 @@ rclone_part1(remote *r, char **envVar)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 	if (streq(buf, "@SERVER INFO@"))  {
-		if (getServerInfoBlock(r)) return (-1);
+		if (getServerInfo(r)) return (-1);
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
 		exit(1);
@@ -307,7 +312,7 @@ rclone_part1(remote *r, char **envVar)
 		    "BAMv2 aware version (4.1.1 or later).\n");
 		return (-1);
 	}
-	if (getenv("_BK_TRANSACTION") && !bkd_hasFeature("SAMv1")) {
+	if (getenv("_BK_TRANSACTION") && !bkd_hasFeature("SAMv2")) {
 		fprintf(stderr,
 		    "clone: please upgrade the remote bkd to a "
 		    "NESTED aware version (5.0 or later).\n");
@@ -375,7 +380,7 @@ rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfoBlock(r)) {
+		if (getServerInfo(r)) {
 			rc = 1;
 			goto done;
 		}
@@ -615,7 +620,7 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 		rc = 1;
 		goto done;
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfoBlock(r)) {
+		if (getServerInfo(r)) {
 			rc = 1;
 			goto done;
 		}

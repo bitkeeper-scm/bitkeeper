@@ -645,7 +645,8 @@ import_text () {
 }
 
 mvup() {
-	bk _find . -type f | perl -w -e '
+	bk _find . -type f > ${TMP}mvlist$$
+	perl -w -e '
 		while (<STDIN>) {
 			next unless m|,v$|;
 			chop;
@@ -659,7 +660,8 @@ mvup() {
 				rename("$_", "../$_") || warn "rename of $_";
 			}
 		}
-		' $1
+		' $1 < ${TMP}mvlist$$
+	rm -f ${TMP}mvlist$$
 }
 
 import_RCS () {

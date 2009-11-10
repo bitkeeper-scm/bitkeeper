@@ -45,11 +45,18 @@ usage:		fprintf(stderr, "Usage: bk kill URL\n");
 	unless (rc) {
 		if (r->type == ADDR_HTTP) skip_http_hdr(r);
 		getline2(r, buf, sizeof (buf));
+		if (streq("@SERVER INFO@", buf)) {
+			if (getServerInfo(r)) {
+				rc = 1;
+				goto out;
+			}
+			getline2(r, buf, sizeof (buf));
+		}
 		unless (streq("@END@", buf)) {
 			printf("%s\n", buf);
 			rc = 1;
 		}
 	}
-	disconnect(r, 2);
+out:	disconnect(r, 2);
 	return (rc);
 }

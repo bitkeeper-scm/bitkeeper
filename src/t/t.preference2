@@ -3,7 +3,7 @@ echo $N checkout:EDIT w aborted simple content conflict on pull .....$NL
 commercial testparent
 cd BitKeeper/etc
 bk edit $Q config
-echo checkout:edit >> config
+echo 'checkout:edit!' >> config
 bk ci $Q -yco:edit config || exit 1
 bk commit $Q -yco:edit || exit !
 cd "$HERE"

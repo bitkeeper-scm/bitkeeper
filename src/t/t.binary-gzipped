@@ -15,6 +15,7 @@
 commercial proj
 bk edit $Q BitKeeper/etc/config
 cp BitKeeper/etc/config c
+echo compression:none >> c
 grep -v BAM c > BitKeeper/etc/config
 cp BitKeeper/etc/config c
 
@@ -30,7 +31,7 @@ cp $BIN1 uuencode1z
 # test old auto-binary
 bk new $Q uuencode1 || exit 1
 # test old auto-binary zipped
-echo compression:gzip >> BitKeeper/etc/config
+grep -v compression c > BitKeeper/etc/config
 bk new $Q uuencode1z || exit 1
 cp c BitKeeper/etc/config
 echo BAM:1 >> BitKeeper/etc/config

@@ -72,6 +72,10 @@ remoteCheck(remote *r)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 
 	getline2(r, buf, sizeof (buf));
+	if (streq("@SERVER INFO@", buf)) {
+		if (getServerInfo(r)) return (1);
+		getline2(r, buf, sizeof (buf));
+	}
 	unless (streq("@CHECK INFO@", buf)) return (1); /* protocol error */
 
 	while (getline2(r, buf, sizeof (buf)) > 0) {

@@ -3,6 +3,7 @@
 #include "range.h"
 #include "bkd.h"
 #include "cmd.h"
+#include "logging.h"
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 #include "nested.h"
@@ -148,17 +149,8 @@ main(int volatile ac, char **av, char **env)
 	if (bk_isSubCmd &&
 	    (p = getenv("_BK_VERSION")) && !streq(bk_vers, p) &&
 	    !getenv("_BK_NO_VERSION_CHECK")) {
-		FILE	*f;
-
-		if (getenv("_BK_IN_BKD")) {
-			f = stdout;
-			fprintf(f, "ERROR-");
-		} else {
-			f = stderr;
-		}
-		fprintf(f,
-		    "bk: %s being called by %s not supported.\n", bk_vers, p);
-		fflush(f);
+		error("bk: %s being called by %s not supported.\n",
+		    bk_vers, p);
 		if (getenv("_BK_IN_BKD")) drain();
 		exit(1);
 	}
@@ -393,7 +385,7 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 	/* This gets rid of an annoying message when sfiles is killed */
 	nt_loadWinSock();
 #endif
-	cmdlog_start(av);
+	cmdlog_start(av, 0);
 	if (buffer) {
 		unless (streq(buffer, "stdin")) {
 			fprintf(stderr, "bk: only -Bstdin\n");
@@ -408,7 +400,7 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 	if (locking && streq(locking, "r")) repository_rdunlock(0, 0);
 	if (locking && streq(locking, "w")) repository_wrunlock(0, 0);
 out:
-	cmdlog_end(ret);
+	cmdlog_end(ret, 0);
 	bk_cleanup(ret);
 	/* flush stdout/stderr, needed for bk-remote on windows */
 	fflush(stdout);
@@ -554,7 +546,7 @@ bk_atexit(void)
 	 * new connection. The child process do follow the the normal
 	 * exit path and process atexit().
 	 */
-	cmdlog_end(LOG_BADEXIT);
+	cmdlog_end(LOG_BADEXIT, 0);
 	bk_cleanup(LOG_BADEXIT);
 }
 
@@ -643,46 +635,55 @@ bk_cleanup(int ret)
 private	struct {
 	char	*name;
 	int	flags;
-#define	CMD_BYTES	0x00000001	/* log command byte count */
-#define	CMD_WRLOCK	0x00000002	/* write lock */
-#define	CMD_RDLOCK	0x00000004	/* read lock */
-#define	CMD_REPOLOG	0x00000008	/* log in repolog, all below */
-#define	CMD_QUIT	0x00000010	/* mark quit command */
+#define	CMD_BYTES		0x00000001	/* log command byte count */
+#define	CMD_WRLOCK		0x00000002	/* write lock */
+#define	CMD_RDLOCK		0x00000004	/* read lock */
+#define	CMD_REPOLOG		0x00000008	/* log in repolog, all below */
+#define	CMD_QUIT		0x00000010	/* mark quit command */
+#define	CMD_NOREPO		0x00000020	/* don't assume in repo */
+#define	CMD_NESTED_WRLOCK	0x00000040	/* nested write lock */
+#define	CMD_NESTED_RDLOCK	0x00000080	/* nested read lock */
+#define	CMD_SAMELOCK		0x00000100	/* reuse your lock */
+#define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
 } repolog[] = {
-	{"abort", 0},
-	{"check", 0},
+	{"abort", CMD_COMPAT_NOSI},
+	{"attach", 0},
+	{"bk", CMD_COMPAT_NOSI}, /* bk-remote */
+	{"check", CMD_COMPAT_NOSI},
+	{"clone", 0},		/* locking handled in clone.c */
 	{"collapse", CMD_WRLOCK},
-	{"commit", CMD_WRLOCK},
+	{"commit", CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{"fix", CMD_WRLOCK},
-	{"pull", CMD_BYTES|CMD_WRLOCK},
-	{"push", CMD_BYTES|CMD_RDLOCK},
+	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},
+	{"license", CMD_NOREPO},
+	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK},
+	{"push", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
 	{"remote changes part1", CMD_RDLOCK},
 	{"remote changes part2", CMD_RDLOCK},
-	{"remote clone", CMD_BYTES|CMD_RDLOCK},
-	{"remote pull part1", CMD_BYTES|CMD_RDLOCK},
+	{"remote clone", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
+	{"remote pull part1", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
 	{"remote pull part2", CMD_BYTES|CMD_RDLOCK},
-	{"remote push part1", CMD_BYTES|CMD_WRLOCK},
+	{"remote push part1", CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{"remote push part2", CMD_BYTES|CMD_WRLOCK},
 	{"remote push part3", CMD_BYTES|CMD_WRLOCK},
-	{"remote rclone part1", CMD_BYTES},
-	{"remote rclone part2", CMD_BYTES},
-	{"remote rclone part3", CMD_BYTES},
-	{"remote quit", CMD_QUIT},
+	{"remote rclone part1", CMD_NOREPO|CMD_BYTES},
+	{"remote rclone part2", CMD_NOREPO|CMD_BYTES},
+	{"remote rclone part3", CMD_NOREPO|CMD_BYTES},
+	{"remote quit", CMD_NOREPO|CMD_QUIT},
 	{"remote rdlock", CMD_RDLOCK},
-	{"remote nested", CMD_WRLOCK},
+	{"remote nested", CMD_WRLOCK|CMD_SAMELOCK},
 	{"remote wrlock", CMD_WRLOCK},
 	{"synckeys", CMD_RDLOCK},
-	{"undo", CMD_WRLOCK},
+	{"undo", CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{ 0, 0 },
 };
 
 void
-cmdlog_start(char **av)
+cmdlog_start(char **av, int bkd_cmd)
 {
 	int	i, len, do_lock = 1;
-	int	is_remote = strneq("remote ", av[0], 7);
-	char	*repo1, *repo2;
-
+	char	*repo1, *repo2, *nlid = 0;
+	char	*error_msg = 0;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
@@ -723,96 +724,164 @@ cmdlog_start(char **av)
 		strcat(cmdlog_buffer, av[i]);
 	}
 
-	unless (proj_root(0)) return;
+	unless (proj_root(0)) goto out;
 
 	/*
 	 * Provide a way to do nested repo operations.  Used by import
 	 * which calls commit.
 	 * Locking protocol is that BK_NO_REPO_LOCK=YES means we are already
-	 * locked, skip it, but change it to BK_NO_REPO_LOCK=DIDNT to make
-	 * sure we don't unlock either.
+	 * locked, skip it, but clear it to avoid inheritance.
 	 */
-	if (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) {
+	if (cmdlog_flags &
+	    (CMD_WRLOCK|CMD_RDLOCK|CMD_NESTED_WRLOCK|CMD_NESTED_RDLOCK)) {
 		char	*p = getenv("BK_NO_REPO_LOCK");
 
 		if (p && streq(p, "YES")) {
-			putenv("BK_NO_REPO_LOCK=DIDNT");
+			putenv("BK_NO_REPO_LOCK=");
 			do_lock = 0;
 		}
 	}
 
-	if (is_remote && (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) &&
+	if (bkd_cmd && (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) &&
 	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = proj_repoID(0))) {
 		i = streq(repo1, repo2);
 		if (i) {
-			out("ERROR-can't connect to same repo_id\n");
+			error_msg = strdup("can't connect to same repo_id\n");
 			if (getenv("BK_REGRESSION")) usleep(100000);
-			drain();
-			exit(1);
+			goto out;
 		}
 	}
+
+	if ((cmdlog_flags & CMD_SAMELOCK) && cmdlog_locks) do_lock = 0;
+
 	if (do_lock && (cmdlog_flags & CMD_WRLOCK)) {
 		if (i = repository_wrlock(0)) {
-			unless (is_remote || !proj_root(0)) {
+			unless (bkd_cmd || !proj_root(0)) {
 				repository_lockers(0);
 			}
 			switch (i) {
+				/* Gross +6 is to skip ERROR- */
 			    case LOCKERR_LOST_RACE:
 				/* It would be nice if these went to stderr
 				 * for local processes.
 				 */
-				out(LOCK_WR_BUSY);
+				error_msg = aprintf("%s\n", LOCK_WR_BUSY+6);
 				break;
 			    case LOCKERR_PERM:
-				out(LOCK_PERM);
+				error_msg = aprintf("%s\n", LOCK_PERM+6);
 				break;
 			    default:
-				out(LOCK_UNKNOWN);
+				error_msg = aprintf("%s\n", LOCK_UNKNOWN+6);
 				break;
 			}
-			out("\n");
 			/*
 			 * Eat message sent by bkd client. (e.g. push_part1) 
 			 * We need this to make the bkd error message show up
 			 * on the client side.
 			 */
-			if (is_remote) drain();
-			exit(1);
+			goto out;
 		}
 		cmdlog_locks |= CMD_WRLOCK;
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
 		if (i = repository_rdlock(0)) {
-			unless (is_remote || !proj_root(0)) {
+			unless (bkd_cmd || !proj_root(0)) {
 				repository_lockers(0);
 			}
 			switch (i) {
 			    case LOCKERR_LOST_RACE:
-				out(LOCK_RD_BUSY);
+				error_msg = aprintf("%s\n", LOCK_RD_BUSY+6);
 				break;
 			    case LOCKERR_PERM:
-				out(LOCK_PERM);
+				error_msg = aprintf("%s\n", LOCK_PERM+6);
 				break;
 			    default:
-				out(LOCK_UNKNOWN);
+				error_msg = aprintf("%s\n", LOCK_UNKNOWN+6);
 				break;
 			}
-			out("\n");
 			/*
 			 * Eat message sent by bkd client. (e.g. pull_part1) 
 			 * We need this to make the bkd error message show up
 			 * on the client side.
 			 */
-			if (is_remote) drain();
-			exit(1);
+			goto out;
 		}
 		cmdlog_locks |= CMD_RDLOCK;
 	}
+	if (do_lock &&
+	    (cmdlog_flags & (CMD_NESTED_RDLOCK | CMD_NESTED_WRLOCK)) &&
+	    proj_isEnsemble(0) &&
+	    /*
+	     * Remote clone from a component witout already having a
+	     * nested lock means we're doing a populate, so skip
+	     * nested locking. Note that repository locking has
+	     * already been handled above.
+	     */
+	    !(proj_isComponent(0) &&
+		strneq(cmdlog_buffer, "remote clone", 12)) &&
+	    /*
+	     * Port is another command that just works at a component
+	     * level, so we skip the nested locking.
+	     */
+	    !getenv("BK_PORT_ROOTKEY")) {
+		if (nlid = getenv("_NESTED_LOCK")) {
+			TRACE("checking: %s", nlid);
+			unless (nested_mine(0, nlid,
+				(cmdlog_flags & CMD_NESTED_WRLOCK))) {
+				error_msg = nested_errmsg();
+				goto out;
+			}
+		} else if (cmdlog_flags & CMD_NESTED_WRLOCK) {
+			unless (nlid = nested_wrlock(proj_product(0))) {
+				error_msg = nested_errmsg();
+				goto out;
+			}
+			safe_putenv("_NESTED_LOCK=%s", nlid);
+			free(nlid);
+			cmdlog_locks |= CMD_NESTED_WRLOCK;
+			TRACE("%s", "NESTED_WRLOCK");
+		} else if (cmdlog_flags & CMD_NESTED_RDLOCK) {
+			unless (nlid = nested_rdlock(proj_product(0))) {
+				error_msg = nested_errmsg();
+				goto out;
+			}
+			safe_putenv("_NESTED_LOCK=%s", nlid);
+			free(nlid);
+			cmdlog_locks |= CMD_NESTED_RDLOCK;
+			TRACE("%s", "NESTED_RDLOCK");
+		} else {
+			/* fail? */
+		}
+	}
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
-	if (is_remote) {
+	if (bkd_cmd) {
 		char	*repoID = getenv("BK_REPO_ID");
 		if (repoID) cmdlog_addnote("rmtc", repoID);
 	}
+out:
+	if (bkd_cmd &&
+	    (!(cmdlog_flags & CMD_COMPAT_NOSI) || bk_hasFeature("SAMv1"))) {
+		/*
+		 * COMPAT: Old bk's don't expect a serverInfo block
+		 * before the error, but since we have the environment
+		 * here, we can just check what version of bk we're
+		 * talking to and either send the error before or
+		 * after the serverInfo block
+		 */
+		if (sendServerInfo((cmdlog_flags & CMD_NOREPO) || error_msg)) {
+			exit(1);
+		}
+	}
+	if (error_msg) {
+		error("%s", error_msg);
+		free(error_msg);
+		if (bkd_cmd) {
+			drain();
+			repository_unlock(0, 0);
+		}
+		exit (1);
+	}
+
 }
 
 private	MDBM	*notes = 0;
@@ -872,7 +941,7 @@ write_log(char *file, int rotate, char *format, ...)
 }
 
 int
-cmdlog_end(int ret)
+cmdlog_end(int ret, int bkd_cmd)
 {
 	int	rc = cmdlog_flags & CMD_QUIT;
 	char	*log;
@@ -921,8 +990,26 @@ cmdlog_end(int ret)
 		write_log("repo_log", LOG_MAXSIZE, "%s", log);
 	}
 	free(log);
-	if (!strneq(cmdlog_buffer, "remote ", 7) &&
-	    (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK))) {
+	if ((!bkd_cmd || (bkd_cmd && ret )) &&
+	    (cmdlog_locks & (CMD_NESTED_WRLOCK|CMD_NESTED_RDLOCK))) {
+		char	*nlid;
+
+		nlid = getenv("_NESTED_LOCK");
+		assert(nlid);
+		if (ret) {
+			if (nested_abort(0, nlid)) {
+				error("%s", nested_errmsg());
+			}
+		} else {
+			if (nested_unlock(0, nlid)) {
+				error("%s", nested_errmsg());
+				// XXX we need to fail command here
+				//     *ret = 1;  ?
+			}
+		}
+	}
+
+	if (!bkd_cmd && (cmdlog_locks & (CMD_WRLOCK|CMD_RDLOCK))) {
 		repository_unlock(0, 0);
 	}
 out:

@@ -132,6 +132,8 @@ bk commit $Q -y'port from standalone' || exit 1
 cd sa2
 bk port $Q ../../standalone || exit 1
 test "`bk changes -r+ -nd':REV: :GFILE:'`" = "1.4 ChangeSet" || exit 1
+bk port $Q -r+ ../../standalone || exit 1
+test "`bk changes -r+ -nd':REV: :GFILE:'`" = "1.4 ChangeSet" || exit 1
 echo OK
 
 echo $N Port csets from component in portal to standalone repo ......$NL

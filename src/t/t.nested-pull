@@ -53,18 +53,27 @@ echo OK
 echo $N Try a simple pull............................................$NL
 cd "$HERE"
 bk clone $Q project copy
-# add some csets to gcc
-cd "$HERE/project/gcc"
-for i in 1 2 3 4 5
+bk clone $Q project twin
+cd "$HERE/project"
+bk parent $Q -a ../copy ../twin
+cd ..
+# multiple parents
+for proj in copy twin
 do
-	bk edit $Q file$i
-	echo "new stuff $i" >> file$i
-	bk delta $Q -y"modify" file$i
-	bk commit $Q -y"Add $i to file$i"
+	# add some csets to gcc
+	cd $proj/gcc || exit 2
+	for i in 1 2 3 4 5
+	do
+		bk edit $Q file$proj$i
+		echo "new stuff $i" >> file$proj$i
+		bk delta $Q -y"modify" file$proj$i
+		bk commit $Q -y"Add $i to file$proj$i"
+	done
+	cd ..
+	bk commit $Q -y"more stuff to gcc"
+	cd ..
 done
 cd "$HERE/project"
-bk commit $Q -y"more stuff to gcc"
-cd "$HERE/copy"
 bk pull $Q || {
 	echo failed
 	exit 1
@@ -143,8 +152,8 @@ echo OK
 
 echo $N Test rootkey urls, bk:// url above, component root key ......$NL
 cd "$HERE"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+P=`cat PORT`
 RK2=`bk changes -q -r1.0 -nd:KEY: bk://localhost:$P/project?ROOTKEY=$RK`
 test "$RK" = "$RK2" || {
 	echo failed
@@ -166,8 +175,8 @@ bk _kill bk://localhost:$P
 
 echo $N Test rootkey urls, bk:// url in repo, component root key ....$NL
 cd "$HERE/project"
-P=`port 50000`
-bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
+bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+P=`cat PORT`
 RK2=`bk changes -q -r1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$RK`
 test "$RK" = "$RK2" || {
 	echo failed

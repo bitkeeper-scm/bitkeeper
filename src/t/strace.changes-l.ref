@@ -10,5 +10,5 @@ open 63
 read 2296
 rmdir 2
 stat 7
-unlink 7
+unlink 6
 write 60

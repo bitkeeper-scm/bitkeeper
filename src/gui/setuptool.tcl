@@ -181,20 +181,13 @@ proc app_init {} \
 		autofix       "yes"
 		checkout      "edit"
 		clock_skew    "on"
-		partial_check "off"
+		partial_check "on"
 		closeOnCreate 1
 		compression   "gzip"
 		keyword,sccs  0
 		keyword,rcs   0
 		keyword,expand1 0
 		keyword       "none"
-		license       ""
-		licsign1      ""
-		licsign2      ""
-		licsign3      ""
-		name          ""
-		partial_check "off"
-		repository    ""
 	}
 
 	# Override those with the config.template
@@ -541,16 +534,13 @@ proc widgets {} \
 		trace variable wizData(repository) w {validate repoInfo}
 
 		label $w.repoPathLabel -text "Repository Path:"
-		label $w.descLabel     -text "Description:"
-		label $w.nameLabel     -text "Contact name:"
+		label $w.descLabel     -text "Repository description:"
 		label $w.emailLabel    -text "Contact email address:"
 		entry $w.repoPathEntry \
 		    -textvariable wizData(repository) \
 		    -background $gc(setup.mandatoryColor)
 		entry $w.descEntry     \
 		    -textvariable wizData(description)
-		entry $w.nameEntry     \
-		    -textvariable wizData(name)
 		entry $w.emailEntry    \
 		    -textvariable wizData(email)
 		button $w.moreInfoRepoInfo -bd 1 \
@@ -561,11 +551,9 @@ proc widgets {} \
 		grid $w.repoPathEntry -row 0 -column 1 -sticky ew -columnspan 2 
 		grid $w.descLabel     -row 1 -column 0 -sticky e
 		grid $w.descEntry     -row 1 -column 1 -sticky ew -columnspan 2 
-		grid $w.nameLabel     -row 2 -column 0 -sticky e
-		grid $w.nameEntry     -row 2 -column 1 -sticky ew -columnspan 2
-		grid $w.emailLabel    -row 3 -column 0 -sticky e
-		grid $w.emailEntry    -row 3 -column 1 -sticky ew -columnspan 2 
-		grid $w.moreInfoRepoInfo -row 4 -column 0 -sticky e -pady 8
+		grid $w.emailLabel    -row 2 -column 0 -sticky e
+		grid $w.emailEntry    -row 2 -column 1 -sticky ew -columnspan 2 
+		grid $w.moreInfoRepoInfo -row 3 -column 0 -sticky e -pady 8
 
 		grid columnconfigure $w 0 -weight 0
 		grid columnconfigure $w 1 -weight 1
@@ -578,8 +566,7 @@ proc widgets {} \
 		grid rowconfigure    $w 1 -weight 0
 		grid rowconfigure    $w 2 -weight 0
 		grid rowconfigure    $w 3 -weight 0
-		grid rowconfigure    $w 4 -weight 0
-		grid rowconfigure    $w 5 -weight 1
+		grid rowconfigure    $w 4 -weight 1
 
 		if {[info exists readonly(repository)]} {
 			$w.repoPathEntry configure -state disabled
@@ -944,7 +931,6 @@ proc createConfigData {} \
 
 	foreach key {
 		description email
-		name
 		keyword compression autofix checkout clock_skew partial_check
 	} {
 		append configData "$key: $wizData($key)\n"

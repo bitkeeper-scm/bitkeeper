@@ -426,7 +426,7 @@ echo $N Verify checkout:get with plain import .......................$NL
 cd "$HERE"
 commercial projc
 bk edit $Q BitKeeper/etc/config
-echo checkout:get >> BitKeeper/etc/config
+echo "checkout:get!" >> BitKeeper/etc/config
 cd "$HERE"
 mkdir -p import1/src
 echo foo > import1/src/foo.c
@@ -956,7 +956,7 @@ echo $N Make sure that import -tCVS works with checkout:get .........$NL
 cd "$HERE"
 commercial import-CVS.2
 bk edit $Q BitKeeper/etc/config
-echo checkout:get >> BitKeeper/etc/config
+echo "checkout:get!" >> BitKeeper/etc/config
 bk import -quftCVS $TESTDATA/import-CVS.1 . || exit 1
 test -f COPYING || {
 	echo failed to get COPYING after import

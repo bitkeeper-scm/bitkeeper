@@ -866,8 +866,21 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	fprintf(f, "putenv BK_REALHOST=%s\n", sccs_realhost());
 	fprintf(f, "putenv BK_PLATFORM=%s\n", platform());
 
+	/*
+	 * If we are saving a BKD_NESTED_LOCK from
+	 * getServerInfo() then send it back to the back here.
+	 * If we ever talk to two different bkd's from the same bk
+	 * process then we need to clear BKD_NESTED_LOCK so a new lock
+	 * can be acquired.
+	 */
 	if (t = getenv("BKD_NESTED_LOCK")) {
 		fprintf(f, "putenv 'BK_NESTED_LOCK=%s'\n", t);
+	}
+	/*
+	 * If we're doing a port, send the rootkey
+	 */
+	if (t = getenv("BK_PORT_ROOTKEY")) {
+		fprintf(f, "putenv 'BK_PORT_ROOTKEY=%s'\n", t);
 	}
 
 	unless (flags & SENDENV_NOREPO) {
@@ -938,7 +951,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	 *   pSFIO	send whole sfiles in SFIO attached to patches
 	 *   mSFIO	will accept modes with sfio.
 	 */
-	fprintf(f, "putenv BK_FEATURES=lkey:1,BAMv2,SAMv1,mSFIO");
+	fprintf(f, "putenv BK_FEATURES=lkey:1,BAMv2,SAMv2,mSFIO");
 	unless (getenv("_BK_NO_PATCHSFIO")) fputs(",pSFIO", f);
 	fputc('\n', f);
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
@@ -947,7 +960,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 }
 
 int
-getServerInfoBlock(remote *r)
+getServerInfo(remote *r)
 {
 	int	ret = 1; /* protocol error, never saw @END@ */
 	int	gotseed = 0;
@@ -958,7 +971,7 @@ getServerInfoBlock(remote *r)
 	/* clear previous values for stuff that is set conditionally */
 	putenv("BKD_BAM=");
 	putenv("BKD_BAM_SERVER_URL=");
-	putenv("BKD_PRODUCT_KEY=");
+	putenv("BKD_PRODUCT_ROOTKEY=");
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq(buf, "@END@")) {
 			ret = 0; /* ok */
@@ -993,18 +1006,21 @@ getServerInfoBlock(remote *r)
 	return (ret);
 }
 
+
 /*
  *  Send server env from bkd to client
  */
 int
-sendServerInfoBlock(int is_rclone)
+sendServerInfo(int no_repo)
 {
 	char	*repoid, *rootkey, *p, *errs = 0;
 	char	buf[MAXPATH];
 	char	bp[MAXLINE];
 
+	unless (no_repo || isdir(BKROOT)) no_repo = 1;
+
 	out("@SERVER INFO@\n");
-	unless (is_rclone) {
+	unless (no_repo) {
 		if (p = lease_bkl(0, &errs)) {
 			free(p);
 		} else {
@@ -1025,12 +1041,13 @@ sendServerInfoBlock(int is_rclone)
         sprintf(buf, "TIME_T=%s\n", bk_time);
 	out(buf);
 
-	/*
-	 * When we are doing a rclone, there is no tree on the bkd side yet
-	 * Do not try to get the level of the server tree.
-	 */
-	unless (is_rclone) {
-        	sprintf(buf, "LEVEL=%d\n", getlevel());
+	unless (no_repo) {
+		/*
+		 * Some comands don't have a tree on the remote
+		 * side. These include, but are not limited to:
+		 * rclone, license, kill, etc.
+		 */
+		sprintf(buf, "LEVEL=%d\n", getlevel());
 		out(buf);
 		out("LICTYPE=");
 		out(eula_name());
@@ -1038,6 +1055,22 @@ sendServerInfoBlock(int is_rclone)
 		if (bp_hasBAM()) out("BAM=YES\n");
 		if (p = bp_serverURL(bp)) {
 			sprintf(buf, "BAM_SERVER_URL=%s\n", p);
+			out(buf);
+		}
+		if (rootkey = proj_rootkey(0)) {
+			sprintf(buf, "ROOTKEY=%s\n", rootkey);
+			out(buf);
+		}
+		if (proj_isComponent(0)) {
+			sprintf(buf, "PRODUCT_ROOTKEY=%s\n",
+			    proj_rootkey(proj_product(0)));
+			out(buf);
+		}
+		if (repoid = proj_repoID(0)) {
+			sprintf(buf, "REPO_ID=%s\n", repoid);
+			out(buf);
+			unless (p = bp_serverID(bp, 0)) p = repoid;
+			sprintf(buf, "BAM_SERVER_ID=%s\n", p);
 			out(buf);
 		}
 	}
@@ -1060,32 +1093,19 @@ sendServerInfoBlock(int is_rclone)
 	 *   BAMv2	support BAM operations (4.1.1 and later)
 	 *   pSFIO	send whole sfiles in SFIO attached to patches
 	 */
-	out("\nFEATURES=pull-r,BAMv2,SAMv1");
+	out("\nFEATURES=pull-r,BAMv2,SAMv2");
 	unless (getenv("_BK_NO_PATCHSFIO")) out(",pSFIO");
 
-	if (repoid = proj_repoID(0)) {
-		sprintf(buf, "\nREPO_ID=%s", repoid);
-		out(buf);
-		unless (p = bp_serverID(bp, 0)) p = repoid;
-		sprintf(buf, "\nBAM_SERVER_ID=%s", p);
-		out(buf);
-	}
-	if (rootkey = proj_rootkey(0)) {
-		sprintf(buf, "\nROOTKEY=%s", rootkey);
-		out(buf);
-	}
 	/* only send back a seed if we received one */
 	if (p = getenv("BKD_SEED")) {
 		out("\nSEED=");
 		out(p);
 	}
-	if (p = getenv("BKD_NESTED_LOCK")) {
+
+	/* send local nested lock to BKD_NESTED_LOCK on client */
+	if (p = getenv("_NESTED_LOCK")) {
 		out("\nNESTED_LOCK=");
 		out(p);
-	}
-	if (proj_isComponent(0)) {
-		sprintf(buf, "\nPRODUCT_KEY=%s", proj_rootkey(proj_product(0)));
-		out(buf);
 	}
 	out("\n@END@\n");
 	return (0);
@@ -1278,6 +1298,8 @@ savefile(char *dir, char *prefix, char *pathname)
 		}
 	}
 	assert(0);
+	/* not reached */
+	return (0);
 }
 
 void

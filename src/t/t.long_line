@@ -130,7 +130,7 @@ cd "$HERE/copy2"
 bk cset $Q -m.. > ../PATCH
 mkdir "$HERE/copy3"
 cd "$HERE/copy3"
-bk takepatch -atif ../PATCH
+BK_CONFIG=checkout:none bk takepatch -atif ../PATCH
 cd "$HERE/copy2/src" || exit 1
 bk co $Q long1
 cmp -s long1 "$HERE/project/src/long1.ref"
