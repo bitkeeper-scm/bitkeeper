@@ -9,7 +9,7 @@ private	void	exclude(char *cmd, int verbose);
 private void	unexclude(char **list, char *cmd);
 private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp);
-private	void	log_cmd(char *peer, int ac, char **av);
+private	void	log_cmd(char *peer, int ac, char **av, int);
 private	void	usage(void);
 private	int	do_cmds(void);
 private int	svc_uninstall(void);
@@ -267,7 +267,7 @@ do_cmds(void)
 		}
 		getoptReset();
 		if ((i = findcmd(ac, av)) != -1) {
-			if (Opts.logfile) log_cmd(peer, ac, av);
+			if (Opts.logfile) log_cmd(peer, ac, av, 0);
 			if (Opts.http_hdr_out) http_hdr();
 			log = !streq(av[0], "putenv") && !streq(av[0], "cd");
 			if (log) cmdlog_start(av, 1);
@@ -293,6 +293,7 @@ do_cmds(void)
 			EACH(exCmds) {
 				if (streq(av[0], exCmds[i])) break;
 			}
+			if (Opts.logfile) log_cmd(peer, ac, av, 1);
 			out("ERROR-BAD CMD: ");
 			out(av[0]);
 			if (i < nLines(exCmds)) {
@@ -310,7 +311,7 @@ do_cmds(void)
 }
 
 private	void
-log_cmd(char *peer, int ac, char **av)
+log_cmd(char *peer, int ac, char **av, int badcmd)
 {
 	time_t	t;
 	struct	tm *tp;
@@ -344,6 +345,7 @@ log_cmd(char *peer, int ac, char **av)
 		putenv = 0;
 	}
 	fprintf(log, "%s %.24s ", peer, asctime(tp));
+	if (badcmd) fprintf(log, "BAD CMD: ");
 	for (i = 0; i < ac; ++i) {
 		fprintf(log, "%s ", av[i]);
 	}

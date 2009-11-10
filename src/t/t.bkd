@@ -256,7 +256,8 @@ echo OK
 
 echo $N "pull via bkd -xpull" .........................................$NL
 cd "$HERE/project"
-bk bkd -q -xpull -aPORT -ikill || exit 1
+rm -f "$HERE/LOG"
+bk bkd -q -l"$HERE/LOG" -xpull -aPORT -ikill || exit 1
 P=`cat PORT`
 cd "$HERE/copy/src"
 bk pull -t bk://localhost:$P > pull.out 2>&1
@@ -264,6 +265,14 @@ grep -q "bkd has disabled" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1; fi
 bk lock -U "$HERE/project"
 bk _kill bk://localhost:$P || exit 1
+echo OK
+
+echo $N Make sure that the bad pull attempt was logged ..............$NL
+grep -q "BAD CMD" "$HERE/LOG" || {
+	echo failed
+	cat "$HERE/LOG"
+	exit 1
+}
 echo OK
 
 echo $N "push a new changeset via bkd (with compression)" .............$NL
