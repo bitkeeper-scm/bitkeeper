@@ -1283,3 +1283,32 @@ printf "ml\nzoo\nq\n" | bk pull $Q 2> ERR || {
 	exit 1
 }
 echo OK
+
+echo $N Show that dlm will automerge if necessary ...................$NL
+cd "$HERE"
+commercial repo
+touch foo
+bk new $Q foo
+bk commit $Q -y'created foo'
+cd "$HERE"
+bk clone $Q repo repo-clone
+cd "$HERE/repo"
+bk edit $Q foo
+echo foo >> foo
+bk ci $Q -y'added foo' foo
+bk commit $Q -y'added foo'
+cd "$HERE/repo-clone"
+bk edit $Q foo
+echo bar >> foo
+bk ci $Q -y'added bar' foo
+bk commit $Q -y'added bar'
+bk pull $Q <<EOF >OUT 2>&1
+dlm
+q
+EOF
+grep -q "<<<< gca foo 1.1" OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK

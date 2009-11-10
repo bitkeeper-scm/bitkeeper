@@ -66,6 +66,8 @@ c_dlm(resolve *rs)
 {
 	names	*n = rs->tnames;
 
+	unless(exists(rs->s->gfile)) c_merge(rs);
+
 	do_diff(rs, n->local, rs->s->gfile, 1);
 	return (0);
 }
@@ -74,6 +76,8 @@ int
 c_drm(resolve *rs)
 {
 	names	*n = rs->tnames;
+
+	unless(exists(rs->s->gfile)) c_merge(rs);
 
 	do_diff(rs, n->remote, rs->s->gfile, 1);
 	return (0);
@@ -431,8 +435,12 @@ rfuncs	c_funcs[] = {
       "run side-by-side graphical difftool on local and remote", res_difftool },
     { "dl", "diff local", "diff the GCA vs. local file", c_dgl },
     { "dr", "diff remote", "diff the GCA vs. remote file", c_dgr },
-    { "dlm", "diff local merge", "diff the local file vs. merge file", c_dlm },
-    { "drm", "diff remote merge", "diff the remote file vs merge file", c_drm },
+    { "dlm", "diff local merge",
+      "automerge (if not yet merged) and diff the local file vs. merge file",
+      c_dlm },
+    { "drm", "diff remote merge",
+      "automerge (if not yet merged) and diff the remote file vs merge file",
+      c_drm },
     { "e", "edit merge",
       "automerge (if not yet merged) and then edit the merged file", c_em },
     { "f", "fm3tool", "merge with graphical three-way filemerge", c_fm3tool },
