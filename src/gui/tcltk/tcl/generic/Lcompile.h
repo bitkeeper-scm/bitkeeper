@@ -18,9 +18,10 @@
 
 /* L command-line options. */
 typedef enum {
-	L_OPT_NORUN	= 0x0001,
-	L_OPT_NOWARN	= 0x0002,
-	L_OPT_POLY	= 0x0004,
+	L_OPT_FNTRACE	= 0x0001,
+	L_OPT_NORUN	= 0x0002,
+	L_OPT_NOWARN	= 0x0004,
+	L_OPT_POLY	= 0x0008,
 } Lopt_f;
 
 /* For jump fix-ups. */
@@ -126,6 +127,7 @@ typedef struct {
 	int	tmpnum;		// for creating tmp variables
 	char	*toplev;	// name of toplevel proc
 	jmp_buf	jmp;		// for syntax error longjmp bail out
+	char	*fnhook;	// name of function-trace proc
 } Linterp;
 
 /*

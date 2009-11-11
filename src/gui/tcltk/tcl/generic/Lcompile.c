@@ -113,7 +113,8 @@ private int	compile_keys(Expr *expr);
 private void	compile_label(Stmt *stmt);
 private int	compile_length(Expr *expr);
 private void	compile_loop(Loop *loop);
-private void	compile_fnParms(VarDecl *decl);
+private int	compile_fnParms(VarDecl *decl);
+private void	compile_pragma(Stmt *stmt);
 private int	compile_push(Expr *expr);
 private int	compile_rename(Expr *expr);
 private void	compile_return(Stmt *stmt);
@@ -456,7 +457,7 @@ compile_fnDecls(FnDecl *fun, Decl_f flags)
 private void
 compile_fnDecl(FnDecl *fun, Decl_f flags)
 {
-	int	i, ismain;
+	int	i, ismain, num_parms;
 	Expr	*self_id;
 	VarDecl	*self_decl;
 	VarDecl	*decl = fun->decl;
@@ -531,7 +532,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 	sym->kind |= L_SYM_FNBODY;
 	L->frame->block = (Ast *)fun;
 
-	compile_fnParms(decl);
+	num_parms = compile_fnParms(decl);
 
 	/* Gather class decl and name, for class member functions. */
 	clsdecl = fun->decl->clsdecl;
@@ -604,6 +605,21 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 
 	L->enclosing_func = fun;
 	L->enclosing_func_frame = L->frame;
+	/* Emit function entry trace hook, if requested. */
+	if ((L->options & L_OPT_FNTRACE) &&
+	    strcmp(name, "L_fn_pre_hook") && strcmp(name, "L_fn_post_hook")) {
+		ASSERT(L->fnhook);
+		push_str("L_fn_pre_hook");
+		push_str(L->fnhook);
+		push_str("%d", num_parms+1);
+		push_str("::list");
+		push_str(name);
+		for (i = 0; i < num_parms; ++i) {
+			emit_load_scalar(i);
+		}
+		emit_invoke(num_parms+2);
+		emit_invoke(4);
+	}
 	compile_block(fun->body);
 	L->enclosing_func = NULL;
 	L->enclosing_func_frame = NULL;
@@ -631,6 +647,24 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 	 * The return value will already be on the run-time stack.
 	 */
 	fixup_jmps(L->frame->ret_jmps);
+
+	/* Emit function exit trace hook, if requested. */
+	if ((L->options & L_OPT_FNTRACE) &&
+	    strcmp(name, "L_fn_pre_hook") && strcmp(name, "L_fn_post_hook")) {
+		ASSERT(L->fnhook);
+		TclEmitOpcode(INST_DUP, L->frame->envPtr);  // dup fn ret value
+		push_str("L_fn_post_hook");
+		TclEmitInstInt4(INST_REVERSE, 2, L->frame->envPtr);
+		push_str(L->fnhook);
+		push_str("%d", num_parms+1);
+		push_str("::list");
+		push_str(name);
+		for (i = 0; i < num_parms; ++i) {
+			emit_load_scalar(i);
+		}
+		emit_invoke(num_parms+2);
+		emit_invoke(5);
+	}
 
 	/*
 	 * For class destructor, delete the instance namespace.
@@ -953,6 +987,9 @@ compile_stmt(Stmt *stmt)
 	    case L_STMT_GOTO:
 		compile_goto(stmt);
 		break;
+	    case L_STMT_PRAGMA:
+		compile_pragma(stmt);
+		break;
 	    default:
 		L_bomb("Malformed AST in compile_stmt");
 	}
@@ -1077,10 +1114,10 @@ iscallbyname(VarDecl *formal)
 	return (NULL);
 }
 
-private void
+private int
 compile_fnParms(VarDecl *decl)
 {
-	int	i;
+	int	i, n;
 	int	name_parms = 0;
 	char	*name;
 	Proc	*proc = L->frame->envPtr->procPtr;
@@ -1125,10 +1162,10 @@ compile_fnParms(VarDecl *decl)
 	 * type "name-of <t>" and the local gets type <t>.  This is
 	 * needed since Tcl requires the locals to follow the args.
 	 */
-	for (p = param, i = 0; p; p = p->next, i++) {
+	for (p = param, n = 0; p; p = p->next, n++) {
 		unless (p->id) {
-			L_errf(p, "formal parameter #%d lacks a name", i+1);
-			name = cksprintf("unnamed-arg-%d", i+1);
+			L_errf(p, "formal parameter #%d lacks a name", n+1);
+			name = cksprintf("unnamed-arg-%d", n+1);
 			p->id = ast_mkId(name, 0, 0);
 		}
 		name = p->id->u.string;
@@ -1149,7 +1186,7 @@ compile_fnParms(VarDecl *decl)
 		proc_mkArg(proc, p);
 		sym = sym_store(p);
 		unless (sym) continue;  // multiple declaration
-		sym->idx = i;
+		sym->idx = n;
 		/* Suppress unused warning for obj arg to class member fns. */
 		if ((p == param) &&
 		    isClsFnPublic(decl) && !isClsConstructor(decl)) {
@@ -1183,6 +1220,7 @@ compile_fnParms(VarDecl *decl)
 	}
 	/* Pop the 1 pushed for INST_UPVAR. */
 	if (name_parms) emit_pop();
+	return (n);
 }
 
 private int
@@ -3708,6 +3746,36 @@ compile_goto(Stmt *stmt)
 		jmp = emit_jmp_fwd(INST_JUMP4);
 		jmp->next = label->fixups;
 		label->fixups = jmp;
+	}
+}
+
+private void
+compile_pragma(Stmt *stmt)
+{
+	Pragma	*p   = stmt->u.pragma;
+	Pragma	*arg = p->next;
+
+	if (!strcmp(p->id, "fntrace")) {
+		ASSERT(arg);  // the grammar ensures this
+		while (arg) {
+			if (!strcmp(arg->id, "on")) {
+				L->options |= L_OPT_FNTRACE;
+			} else if (!strcmp(arg->id, "off")) {
+				L->options &= ~L_OPT_FNTRACE;
+			} else if (!strcmp(arg->id, "hook")) {
+				L->fnhook = arg->val;
+			} else if (!strcmp(arg->id, "defhook")) {
+				L->fnhook = NULL;
+			} else {
+				L_errf(stmt,
+				    "unknown #pragma fntrace parameter '%s'",
+				    arg->id);
+			}
+			arg = arg->next;
+		}
+		unless (L->fnhook) L->fnhook = strdup("L_def_fn_hook");
+	} else {
+		L_errf(stmt, "unknown pragma '%s'", p->id);
 	}
 }
 

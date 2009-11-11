@@ -242,6 +242,16 @@ ast_mkId(char *name, int beg, int end)
 	return (e);
 }
 
+Pragma *
+ast_mkPragma(char *id, char *val, int beg, int end)
+{
+	Pragma	*pragma = (Pragma *)ckalloc(sizeof(Pragma));
+	memset(pragma, 0, sizeof(Pragma));
+	pragma->id  = id;
+	pragma->val = val;
+	return (pragma);
+}
+
 private Type *
 type_alloc(Type_k kind, enum typemk_k disposition)
 {

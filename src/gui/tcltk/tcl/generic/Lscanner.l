@@ -13,6 +13,8 @@
 %x include
 %x here_doc_interp
 %x here_doc_nointerp
+%x hash
+%x hash2
 ID	([a-zA-Z_]|::)([0-9a-zA-Z_]|::)*
 %{
 /*
@@ -373,7 +375,9 @@ include_pop()
 				undo_yy_user_action();
 				BEGIN(include);
 			}
-	("//"|#).*("\r"|"\n"|"\r\n")
+	^#		BEGIN(hash);
+	[ \t]+#.*("\r"|"\n"|"\r\n")
+	"//".*("\r"|"\n"|"\r\n")
 	[ \t\n\r\f]+
 	\"		yy_push_state(str_double); STRBUF_START(L->token_off);
 	\'		yy_push_state(str_single); STRBUF_START(L->token_off);
@@ -731,6 +735,13 @@ include_pop()
 	<<EOF>>		{
 				unless (include_pop()) yyterminate();
 			}
+<hash>{
+	pragma[ \t]+	BEGIN(INITIAL); return T_PRAGMA;
+	.		BEGIN(hash2);
+}
+<hash2>{
+	.*("\r"|"\n"|"\r\n")	BEGIN(INITIAL);
+}
 %%
 void
 L_lex_begReArg()

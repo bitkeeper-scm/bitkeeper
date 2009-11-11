@@ -1361,6 +1361,13 @@ void lang_1_0(void)
 
 #lang tcl
 # More comments
+ # starting after first column (space)
+	# starting after first column (tab)
+	 # starting after first column (tab, space)
+#pragm -- not a pragma
+#pragmatic -- also not a pragma
+ #pragma -- yes, not a pragma
+# pragma -- not a pragma
 lang_1_0
 } -output "worked\n"
 
@@ -15006,6 +15013,184 @@ L6:
 .*: L Error: label L4 referenced but not defined
 .*: L Error: label L6 referenced but not defined
 .*: L Error: label L5 referenced but not defined
+}
+
+test fntrace-1 {check function tracing, pragma syntax} -body {
+#lang L
+// These are all legal syntax.
+#pragma fntrace(on)
+#pragma fntrace(on, hook=myhook)
+#pragma fntrace(on, defhook)
+#pragma fntrace(off)
+#pragma fntrace(off, hook=myhook)
+#pragma fntrace(off, defhook)
+} -output {}
+
+test fntrace-2 {check function trace, default hooks} -body {
+#lang L -nowarn
+#pragma fntrace(on, defhook)
+string fntrace_2_3(string a1, string a2)
+{
+	fprintf(stderr, "in fntrace_2_3\n");
+	return ("this is the ret value");
+}
+void fntrace_2_2(string a1)
+{
+	fprintf(stderr, "in fntrace_2_2 before\n");
+	fntrace_2_3(a1, "arg2");
+	fprintf(stderr, "in fntrace_2_2 after\n");
+}
+void fntrace_2_1()
+{
+	fprintf(stderr, "in fntrace_2_1 before\n");
+	fntrace_2_2("arg1");
+	fprintf(stderr, "in fntrace_2_1 after\n");
+}
+void fntrace_2()
+{
+	fprintf(stderr, "in fntrace_2 before\n");
+	fntrace_2_1();
+	fprintf(stderr, "in fntrace_2 after\n");
+}
+fntrace_2();
+} -errorOutput {enter fntrace_2
+in fntrace_2 before
+enter fntrace_2_1
+in fntrace_2_1 before
+enter fntrace_2_2 'arg1'
+in fntrace_2_2 before
+enter fntrace_2_3 'arg1' 'arg2'
+in fntrace_2_3
+exit fntrace_2_3 'arg1' 'arg2' ret 'this is the ret value'
+in fntrace_2_2 after
+exit fntrace_2_2 'arg1' ret ''
+in fntrace_2_1 after
+exit fntrace_2_1 ret ''
+in fntrace_2 after
+exit fntrace_2 ret ''
+}
+
+test fntrace-3 {check function trace, user hooks} -body {
+#lang L -nowarn
+#pragma fntrace(on, hook=myhook)
+private void myhook(int pre, int ac, string av[], string ret)
+{
+	int	i;
+
+	printf("%s: %s %d args:", pre?"pre":"post", av[0], ac-1);
+	for (i = 1; i < ac; ++i) {
+		printf(" '%s'", av[i]);
+	}
+	unless (pre) printf(" ret: '%s'", ret);
+	printf("\n");
+}
+string fntrace_3_3(string a1, string a2)
+{
+	printf("in fntrace_3_3\n");
+	return ("this is the ret value");
+}
+void fntrace_3_2(string a1)
+{
+	printf("in fntrace_3_2 before\n");
+	fntrace_3_3(a1, "arg2");
+	printf("in fntrace_3_2 after\n");
+}
+void fntrace_3_1()
+{
+	printf("in fntrace_3_1 before\n");
+	fntrace_3_2("arg1");
+	printf("in fntrace_3_1 after\n");
+}
+void fntrace_3()
+{
+	printf("in fntrace_3 before\n");
+	fntrace_3_1();
+	printf("in fntrace_3 after\n");
+}
+fntrace_3();
+} -output {pre: fntrace_3 0 args:
+in fntrace_3 before
+pre: fntrace_3_1 0 args:
+in fntrace_3_1 before
+pre: fntrace_3_2 1 args: 'arg1'
+in fntrace_3_2 before
+pre: fntrace_3_3 2 args: 'arg1' 'arg2'
+in fntrace_3_3
+post: fntrace_3_3 2 args: 'arg1' 'arg2' ret: 'this is the ret value'
+in fntrace_3_2 after
+post: fntrace_3_2 1 args: 'arg1' ret: ''
+in fntrace_3_1 after
+post: fntrace_3_1 0 args: ret: ''
+in fntrace_3 after
+post: fntrace_3 0 args: ret: ''
+}
+
+test fntrace-4 {check pragma errors} -body {
+#lang L
+#pragma fntrace (bad)
+#pragma unknown (on)
+} -returnCodes error -match regexp -result {.*1: L Error: unknown #pragma fntrace parameter 'bad'
+.*2: L Error: unknown pragma 'unknown'
+}
+
+test fntrace-5 {check switching hooks and enabling/disabling fntrace} -body {
+#lang L
+#pragma fntrace(off)
+void myhook5(int pre, int ac, string av[], string ret)
+{
+	int	i;
+
+	fprintf(stderr, "5: %s: %s %d args:", pre?"pre":"post", av[0], ac-1);
+	for (i = 1; i < ac; ++i) {
+		fprintf(stderr, " '%s'", av[i]);
+	}
+	unless (pre) fprintf(stderr, " ret: '%s'", ret);
+	fprintf(stderr, "\n");
+}
+#pragma fntrace(on, defhook)
+// default trace hooks in effect now
+void fntrace_5_def()
+{
+	fprintf(stderr, "in fntrace_5_def\n");
+}
+#pragma fntrace(on, hook=myhook5)
+// myhook in effect now
+void fntrace_5_myhook()
+{
+	fprintf(stderr, "in fntrace_5_myhook before\n");
+	fntrace_5_def();
+	fprintf(stderr, "in fntrace_5_myhook after\n");
+}
+#pragma fntrace(off)
+// function tracing disabled now
+void fntrace_5_off()
+{
+	fprintf(stderr, "in fntrace_5_off before\n");
+	fntrace_5_myhook();
+	fprintf(stderr, "in fntrace_5_off after\n");
+}
+#pragma fntrace(on, defhook)
+// back to default hooks
+void fntrace_5()
+{
+	fprintf(stderr, "in fntrace_5 before\n");
+	fntrace_5_off();
+	fprintf(stderr, "in fntrace_5 after\n");
+}
+fntrace_5();
+} -errorOutput {enter fntrace_5
+in fntrace_5 before
+in fntrace_5_off before
+5: pre: fntrace_5_myhook 0 args:
+in fntrace_5_myhook before
+enter fntrace_5_def
+in fntrace_5_def
+exit fntrace_5_def ret ''
+in fntrace_5_myhook after
+5: post: fntrace_5_myhook 0 args: ret: ''
+in fntrace_5_off after
+in fntrace_5 after
+exit fntrace_5 ret ''
 }
 
 ::tcltest::cleanupTests

@@ -29,6 +29,7 @@ typedef struct ForEach	ForEach;
 typedef struct Expr	Expr;
 typedef struct Type	Type;
 typedef struct Sym	Sym;
+typedef struct Pragma	Pragma;
 
 typedef enum {
 	L_LOOP_DO,
@@ -48,6 +49,7 @@ typedef enum {
 	L_STMT_RETURN,
 	L_STMT_GOTO,
 	L_STMT_LABEL,
+	L_STMT_PRAGMA,
 } Stmt_k;
 
 typedef enum {
@@ -307,6 +309,12 @@ struct Loop {
 	Stmt	*body;
 };
 
+struct Pragma {
+	char	*id;
+	char	*val;
+	Pragma	*next;
+};
+
 struct Stmt {
 	Ast	node;
 	Stmt	*next;
@@ -318,6 +326,7 @@ struct Stmt {
 		Cond	*cond;
 		Loop	*loop;
 		VarDecl	*decl;
+		Pragma	*pragma;
 		char	*label;
 	} u;
 };
@@ -391,6 +400,7 @@ extern Cond	*ast_mkIfUnless(Expr *expr, Stmt *if_body, Stmt *else_body,
 				int beg, int end);
 extern Loop	*ast_mkLoop(Loop_k kind, Expr *pre, Expr *cond, Expr *post,
 			    Stmt *body, int beg, int end);
+extern Pragma	*ast_mkPragma(char *id, char *val, int beg, int end);
 extern Expr	*ast_mkRegexp(char *re, int beg, int end);
 extern Stmt	*ast_mkStmt(Stmt_k kind, Stmt *next, int beg, int end);
 extern TopLev	*ast_mkTopLevel(Toplv_k kind, TopLev *next, int beg, int end);

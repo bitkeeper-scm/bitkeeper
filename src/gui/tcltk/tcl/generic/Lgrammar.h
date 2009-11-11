@@ -139,12 +139,13 @@
      T_VOID = 355,
      T_WIDGET = 356,
      T_WHILE = 357,
-     LOWEST = 358,
-     ADDRESS = 359,
-     UMINUS = 360,
-     UPLUS = 361,
-     PREFIX_INCDEC = 362,
-     HIGHEST = 363
+     T_PRAGMA = 358,
+     LOWEST = 359,
+     ADDRESS = 360,
+     UMINUS = 361,
+     UPLUS = 362,
+     PREFIX_INCDEC = 363,
+     HIGHEST = 364
    };
 #endif
 
@@ -184,13 +185,14 @@ typedef union YYSTYPE
 	TopLev	*TopLev;
 	VarDecl	*VarDecl;
 	ClsDecl	*ClsDecl;
+	Pragma	*Pragma;
 	struct {
 		Type	*t;
 		char	*s;
 	} Typename;
 }
 /* Line 2616 of glr.c.  */
-#line 194 "Lgrammar.h"
+#line 196 "Lgrammar.h"
 	YYSTYPE;
 # define YYSTYPE_IS_DECLARED 1
 # define YYSTYPE_IS_TRIVIAL 1

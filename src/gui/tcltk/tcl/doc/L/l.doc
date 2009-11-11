@@ -1905,6 +1905,64 @@ Once you free an object
 you must be careful to not use C<obj> again unless you assign a
 new object to it, or else a run-time error will result.
 
+=head1 DEBUGGING
+
+=head2 Function Tracing
+
+The entry and exit of each L function can be traced by using a pragma:
+
+    #pragma fntrace(on)
+    string myfunc(int arg)
+    {
+        return("return value");
+    }
+    void main()
+    {
+        myfunc(123);
+    }
+
+When the program runs, each function's entry and exit is traced to
+stderr with the parameter and return values:
+
+    enter main
+    enter myfunc: '123'
+    exit myfunc: '123' ret 'return value'
+    exit main
+
+To use your own tracing function, specify it in the pragma:
+
+    #pragma fntrace(on, hook=myhook)
+
+Your hook-function's prototype must look like this:
+
+    void myhook(int pre, int argc, poly argv[], poly ret)
+    {
+    }
+
+where pre is 1 when your hook is called upon function entry and 0 when
+called upon exit, argc and argv give you the number of parameters and
+their values (argv[0] is the function name; argv[1] is the first
+parameter), and ret is the return value (exit hook only; it is undef
+for entry).
+
+You turn off tracing like this:
+
+    #pragma fntrace(off)
+    void dont_want_to_trace_this(void) { ... }
+    #pragma fntrace(on)  // back on now
+
+When you say "#pragma fntrace(on)", you will get whatever hook was
+last specified, which is the default hook if none has yet been
+given (with the hook= parameter).  If you want to force the use of
+the default hook, do this:
+
+    #pragma fntrace(on, defhook)
+
+To avoid inifinite recursion, during the call of a hook, further calls
+into the hook are disabled.  Also, when the currently defined hook
+function is compiled, it is not instrumented.  The L library functions
+are never instrumented.
+
 =head1 EXAMPLE CODE
 
 =head2 pod2html.l
