@@ -11,7 +11,7 @@ endif
 
 REPO   := $(shell basename "`bk -P root`")
 LIBDIR	= lib
-GUIS	= revtool citool newcitool helptool difftool csettool fmtool fm3tool \
+GUIS	= revtool citool oldcitool helptool difftool csettool fmtool fm3tool \
 	  msgtool renametool setuptool bugform supportform newdifftool \
 	  showproc
 TCLWRAP	= ../tclwrap
@@ -98,17 +98,17 @@ bugform: $(COMMON) search.tcl appState.tcl buglib.tcl bugform.tcl
 supportform: $(COMMON) search.tcl appState.tcl supportlib.tcl supportform.tcl
 	@(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/supportform
 
-citool: $(COMMON) search.tcl appState.tcl progress.tcl ciedit.tcl citool.tcl
-	@(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > $(LIBDIR)/citool
+oldcitool: $(COMMON) search.tcl appState.tcl progress.tcl ciedit.tcl citool.tcl
+	@(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > $(LIBDIR)/oldcitool
 
-newcitool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) citool.l
+citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) citool.l
 	@(	echo 'wm withdraw .' ;		\
 		cat $(filter %.tcl,$^) ;	\
 		echo ; echo 'L {' ; echo ;	\
 		cat $(filter %.l,$^) ;		\
 		echo '}' ; 		\
 		echo 'main $$argc $$argv' ;	\
-	) | $(TCLWRAP) > $(LIBDIR)/newcitool
+	) | $(TCLWRAP) > $(LIBDIR)/citool
 
 csettool: $(COMMON) search.tcl appState.tcl difflib.tcl csettool.tcl
 	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/csettool

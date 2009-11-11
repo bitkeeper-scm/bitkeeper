@@ -1,8 +1,8 @@
 
-echo $N Run newcitool with a bad set of command line arguments ......$NL
+echo $N Run citool with a bad set of command line arguments ......$NL
 nested project
 # The only command line error at the moment is a dir if more than one arg
-bk newcitool gcc gdb 2> ERR && {
+bk citool gcc gdb 2> ERR && {
 	echo FAILED
 	exit 1
 }
@@ -25,32 +25,32 @@ bk edit $Q gcc/file gdb/file
 echo new > gcc/file
 echo new > gdb/file
 cd gdb
-bk newcitool . || exit 1
+bk citool . || exit 1
 echo OK
 
 echo $N Start in gdb, but show whole product - go ahead and commit ..$NL
-bk newcitool || exit 1
+bk citool || exit 1
 cd ..
 echo OK
 
 echo $N Run in product - checkin but don\'t commit ...................$NL
 echo data > file
-bk newcitool || exit 1
+bk citool || exit 1
 echo OK
 
 echo $N Run in product - now commit the cset ........................$NL
-bk newcitool || exit 1
+bk citool || exit 1
 echo OK
 
 echo $N Run in product with only a component diff - please commit ...$NL
 bk edit $Q gcc/file
 echo latest > gcc/file
-bk newcitool || exit 1
+bk citool || exit 1
 echo OK
 
 echo $N Run in product with only a component extra - please commit ..$NL
 echo check it in > gcc/comp-extra
-bk newcitool || exit 1
+bk citool || exit 1
 echo OK
 
 echo $N Run in component with a product and component diff ..........$NL
@@ -58,7 +58,7 @@ bk edit $Q extra
 echo more >> extra
 bk edit $Q gcc/file
 echo more >> gcc/file
-bk newcitool || exit 1
+bk citool || exit 1
 P=`bk -Acpqr | wc -l`
 if [ $P -ne 0 ]; then
 	echo "FAILED"
@@ -73,7 +73,7 @@ do
 	bk delta $Q -la -y"Comment $count" foo
 done
 echo "multiple deltas" | bk cfile save ChangeSet
-bk newcitool
+bk citool
 echo OK
 
 echo $N Run same in component, comment only component cset file .....$NL
@@ -84,7 +84,7 @@ do
 	bk delta $Q -la -y"Comment $count" foo
 done
 echo "multiple deltas" | bk cfile save ChangeSet
-bk newcitool
+bk citool
 echo OK
 
 echo $N Run in collapsed clone -- just commit .......................$NL
@@ -110,7 +110,7 @@ done
 touch newfile
 bk new $Q newfile
 bk collapse -eda`bk repogca`
-bk newcitool
+bk citool
 echo OK
 
 echo $N "Select 'bar', click 'Cut' twice, click 'Paste' - did it? ....$NL"
@@ -121,7 +121,7 @@ bk edit $Q bar
 echo "bar" >> bar
 echo "Added and changed bar" > c.bar
 bk _mv c.bar SCCS/c.bar
-bk newcitool
+bk citool
 echo OK
 
 echo $N "filename rev@+, check marks by all? .........................$NL"
@@ -134,5 +134,5 @@ bk _mv c.t.att SCCS/c.t.att
 echo 3 > t.rev@+
 echo 4 > c.t.rev@+
 bk _mv c.t.rev@+ SCCS/c.t.rev@+
-bk newcitool
+bk citool
 echo OK

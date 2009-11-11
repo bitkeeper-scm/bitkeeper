@@ -32,7 +32,7 @@ while {[string match {-*} [lindex $argv 0]]} {
 set test_tool [lindex $argv 0]
 set test_program [file join [exec bk bin] gui lib $test_tool]
 set test_toplevel .
-if {$test_tool eq "newcitool"} { set test_toplevel ".citool" }
+if {$test_tool eq "citool"} { set test_toplevel ".citool" }
 
 set test_timeout 15000
 
@@ -429,7 +429,7 @@ if {$test_tool eq "citool"} {
 set argv [lrange $argv 1 end]
 set argc [llength $argv]
 set test_err [catch {
-	if {$test_tool eq "citool"} {
+	if {$test_tool eq "oldcitool"} {
 		# this seems backwards, but citool does a vwait
 		# which will grigger the call to test_evalScript
 		# sometime after the source command happens..

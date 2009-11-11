@@ -520,13 +520,12 @@ echo OK
 
 echo $N bk ignore with bogus option and missing arg .................$NL
 bk ignore -z > /dev/null 2> ERR
-bk grep -iq usage ERR
-if [ $? -ne 0 ]
-then	echo 'failed (bug usage not implemented)'
-else	echo 'OK, fix test'
+bk grep -iq usage ERR || {
+	echo failed
 	exit 1
-fi
+}
 rm -f ERR
+echo OK
 
 echo $N bk import with bogus option and missing args ................$NL
 bk import -tplain -x > /dev/null 2> ERR && {

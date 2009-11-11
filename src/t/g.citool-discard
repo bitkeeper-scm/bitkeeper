@@ -31,7 +31,7 @@ echo OK
 echo $N discard button ..............................................$NL
 bk get $Q -e src/file1
 echo "# gratuitous change" >> src/file1
-bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	global w
 	# discard must be done twice to actually do discard
 	test_buttonPress "Discard"
@@ -54,7 +54,7 @@ echo $N aborted discard, transient message not saved ................$NL
 bk get $Q -e src/file1 src/file2
 echo "foo" >> src/file1
 echo "foo" >> src/file2
-bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_inputString "Comments for file1"
 	# press discard, then cancel by doing control-l
 	test_buttonPress "Discard"

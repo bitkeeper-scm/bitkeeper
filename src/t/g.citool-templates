@@ -31,7 +31,7 @@ echo "gratuitous change" >> file1
 echo OK
 
 echo $N no template means comments should be empty ..................$NL
-bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	test_inputString "comments for file1"
 	test_selectFile ChangeSet
 	test_fileHasIcon ChangeSet cset
@@ -55,7 +55,7 @@ echo $N commit template shows up in changeset comments...............$NL
 cd "`bk root`"
 mkdir BitKeeper/templates
 echo "Template..." > BitKeeper/templates/commit
-bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	test_inputString "comments for file1"
 	test_selectFile ChangeSet
 	test_fileHasIcon ChangeSet cset
@@ -81,7 +81,7 @@ bk _test -f "$CSETCMTS" && {
 echo OK
 
 echo $N editing changeset comments updates icon, saves comments......$NL
-bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_selectFile ChangeSet
 	test_inputString "foo"
 	set comments [test_getComments]
@@ -109,7 +109,7 @@ echo OK
 # this relies on the fact that the c. file exists from the previous
 # test run
 echo $N editing changeset which reverts to template..................$NL
-bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_selectFile ChangeSet
 	test_fileHasIcon ChangeSet done
 
@@ -139,7 +139,7 @@ echo OK
 
 echo $N comments==template, no cset created..........................$NL
 TIP=`bk changes -r+ -nd:REV:`
-bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_buttonPress Checkin
 	test_buttonPress Checkin
 EOF
@@ -160,7 +160,7 @@ echo OK
 
 echo $N comments!=template, cset created.............................$NL
 TIP=`bk changes -r+ -nd:REV:`
-bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_selectFile ChangeSet
 	test_inputString "\010foo";# delete trailing newline...
 	test_buttonPress Commit
@@ -186,7 +186,7 @@ echo $N comments==template, only pending.............................$NL
 TIP=`bk changes -r+ -nd:REV:`
 echo "hello world" > src/file3
 bk ci $Q -i -y'new file' src/file3
-bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_selectFile ChangeSet
 	test_buttonPress Checkin
 	test_buttonPress Checkin

@@ -1015,6 +1015,13 @@ _tag() {		# /* doc 2.0 */
 _ignore() {		# /* doc 2.0 */
 	if [ "X$1" = X"--help" ]; then bk help ignore; exit 1; fi
 	__cd2root
+	DO_DELTA=1
+	while getopts c: opt
+	do	case "$opt" in
+		c) DO_DELTA=0; shift ;;
+		*) bk help -s tag; exit 1;;
+		esac
+	done
 	if [ "x$1" = x ]
 	then	if [ -f BitKeeper/etc/ignore ]
 		then	cat BitKeeper/etc/ignore
@@ -1028,9 +1035,12 @@ _ignore() {		# /* doc 2.0 */
 	for i
 	do	echo "$i" >> BitKeeper/etc/ignore
 	done
-	if bk _test -f BitKeeper/etc/SCCS/s.ignore
-	then	bk delta -q -y"added $*" BitKeeper/etc/ignore
-	else	bk new -q BitKeeper/etc/ignore
+	if [ "X$DO_DELTA" = X"1" ]
+	then
+		if bk _test -f BitKeeper/etc/SCCS/s.ignore
+		then	bk delta -q -y"added $*" BitKeeper/etc/ignore
+		else	bk new -q BitKeeper/etc/ignore
+		fi
 	fi
 	exit 0
 }	

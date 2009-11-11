@@ -416,7 +416,7 @@ fmtool gui
 helptool gui
 installtool gui
 msgtool gui
-newcitool gui
+oldcitool gui
 newdifftool gui
 renametool gui
 revtool gui

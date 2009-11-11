@@ -32,7 +32,7 @@ echo $N Simple commit ...............................................$NL
 bk get $Q -e file1
 echo "this is the new file1" > file1
 OLD=`bk -R prs -hd:REV: -r+ ChangeSet`
-bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	# select first file, enter comments
 	# we click on line end to make sure we don't click on icon...
 	test_selectFile src/file1
@@ -63,7 +63,7 @@ cd "$HERE/project/src"
 bk get $Q -e file1
 echo "a gratuitous change" > file1
 OLD=`bk -R prs -hd:REV: -r+ ChangeSet`
-bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	global w
 	# select first file, enter comments
 	# we click on line end to make sure we don't click on icon...
@@ -96,7 +96,7 @@ cd "$HERE/project/src"
 bk get $Q -e file1
 echo "another gratuitous change" > file1
 OLD=`bk -R prs -hd:REV: -r+ ChangeSet`
-bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	global w
 	# select first file, enter comments
 	# we click on line end to make sure we don't click on icon...
@@ -114,7 +114,7 @@ test $files -ne 2 && {
 	echo "comments weren't saved. Weird."
 	exit 1
 }
-bk guitest newcitool  >"$OUT" 2>&1 <<'EOF'
+bk guitest citool  >"$OUT" 2>&1 <<'EOF'
 	test_buttonPress "Commit"
 	test_buttonPress "Commit"
 EOF
@@ -137,7 +137,7 @@ echo OK
 echo $N "Commit, after saving and restarting with new file............$NL"
 cd "$HERE/project/src"
 echo "this is a new file" > file6
-bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	test_selectFile src/file6
 	test_inputString "comments for file6"
 	test_selectFile ChangeSet
@@ -152,7 +152,7 @@ test $files -ne 2 && {
 	echo "comments weren't saved. Weird."
 	exit 1
 }
-bk guitest newcitool  >"$OUT" 2>&1 <<'EOF'
+bk guitest citool  >"$OUT" 2>&1 <<'EOF'
 	test_buttonPress "Commit"
 	test_buttonPress "Commit"
 EOF

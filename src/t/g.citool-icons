@@ -30,7 +30,7 @@ echo $N adding comments changes the icons for files..................$NL
 bk get $Q -e file1 file2
 echo "gratuitous change" >> file1
 echo "gratuitous change" >> file2
-bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_fileHasIcon ChangeSet cset
 	test_fileHasIcon src/file1 modified
 	test_fileHasIcon src/file2 modified
@@ -50,7 +50,7 @@ test $err -ne 0 -o -s "$OUT" && {
 echo OK
 
 echo $N adding comments changes the icons for ChangeSet file.........$NL
-bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_inputString "this should be for file1..."
 	test_selectFile ChangeSet
 	test_inputString "ChangeSet comment..."
@@ -69,7 +69,7 @@ test $err -ne 0 -o -s "$OUT" && {
 echo OK
 
 echo $N removing comments from a file changes the icon...............$NL
-bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	# this assumes the previous test added exactly 27 chars
 	test_inputString [string repeat \010 27]
 	test_fileHasIcon ChangeSet done
@@ -87,7 +87,7 @@ test $err -ne 0 -o -s "$OUT" && {
 echo OK
 
 echo $N removing comments from ChangeSet changes the icon............$NL
-bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_inputString "this should be for file1..."
 	test_selectFile ChangeSet
 	test_fileHasIcon ChangeSet done

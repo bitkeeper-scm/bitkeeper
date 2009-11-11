@@ -607,19 +607,15 @@ redrawFile(string node)
 	string	file = ListBox_itemcget(self.w_files, node, data:);
 	sfile	sf = self.files{file};
 
-	if (self.files{file}.excluded) {
-		ListBox_itemconfigure(self.w_files, node,
-		    image: img_exclude);
-	} else if (isUserComment(sf, self.files{file}.comments)) {
-		ListBox_itemconfigure(self.w_files, node,
-		    image: img_done);
+	if (sf.excluded || sf.ignored) {
+		ListBox_itemconfigure(self.w_files, node, image: img_exclude);
+	} else if (isUserComment(sf, sf.comments)) {
+		ListBox_itemconfigure(self.w_files, node, image: img_done);
 	} else {
-		ListBox_itemconfigure(self.w_files, node,
-		    image: self.files{file}.icon);
+		ListBox_itemconfigure(self.w_files, node, image: sf.icon);
 	}
-	if (self.files{file}.ignored) {
-		ListBox_itemconfigure(self.w_files, node,
-		    foreground: "gray");
+	if (sf.ignored) {
+		ListBox_itemconfigure(self.w_files, node, foreground: "gray");
 	}
 	updateStatus();
 	updateButtons();
@@ -631,6 +627,7 @@ toggleFile(string node)
 	string	file = ListBox_itemcget(self.w_files, node, data:);
 	sfile	sf = self.files{file};
 
+	if (self.resolve) return;
 	if (sf.type eq "cset") return;
 	if ((sf.type eq "new") && (sf.comments eq "")) {
 		writeComments(sf, "New BitKeeper file ``${sf.name}''");
@@ -685,6 +682,10 @@ updateButtons()
 
 	if (self.clipboard eq "") {
 		configureButton("paste", state: "disabled");
+	}
+
+	if (self.resolve) {
+		configureButton("discard", state: "disabled");
 	}
 
 	configureButton("checkin", text: "Checkin");
@@ -864,7 +865,8 @@ quit()
 	int	x, y;
 	widget	top = ".c";
 	string	bg = gc("ci.saveBG");
-	string	image;
+	string	file, image;
+	sfile	sf;
 
 	saveComments();
 	if (self.cnt_newC + self.cnt_modifiedC) {
@@ -915,6 +917,19 @@ quit()
 		}
 	}
 
+	// Add any ignored files to the ignore file but don't
+	// delta the changes.
+	foreach (file => sf in self.files) {
+		if (sf.ignored) {
+			string	comp, path;
+
+			comp = sf.component;
+			if (comp eq "") comp = self.root;
+			path = getRelativePath(sf.file, comp);
+			chdir(comp);
+			exec("bk", "ignore", "-c", path);
+		}
+	}
 	unlink(self.tmpsfile);
 	bk_exit();
 }
@@ -1176,6 +1191,19 @@ doCommit()
 		return;
 	}
 
+	if (self.resolve && !self.partial) {
+		// We're running from the resolver.  We want to make sure
+		// all files have been commented and that the changeset
+		// has a comment.
+		if ((self.cnt_commented < self.cnt_total)) {
+			bottomMessage(msgs{"resolveAllComments"}, "warning");
+			return;
+		} else if (!isUserComment(cset, cset.comments)) {
+			topMessage(msgs{"resolveCset"}, "message");
+			return;
+		}
+	}
+
 	unless (self.commitSwitch) {
 		self.commitSwitch = 1;
 		if (isUserComment(cset, cset.comments)) {
@@ -1409,6 +1437,7 @@ ignoreFile()
 
 	self.files{sf.name}.ignored = 1;
 	redrawFile(sf.node);
+	moveNext();
 }
 
 void
@@ -1418,6 +1447,7 @@ unignoreFile()
 
 	self.files{sf.name}.ignored = 0;
 	redrawFile(sf.node);
+	moveNext();
 }
 
 void
@@ -1536,6 +1566,9 @@ initMsgs()
 "This repository is locked.\n"
 "A checkin cannot be made at this time.\n"
 "Try again later.";
+	msgs{"resolveAllComments"} =
+"All files must have comments when merging.\n"
+"Type Control-l to go back and provide comments for all files.\n";
 }
 
 // Test functions.
