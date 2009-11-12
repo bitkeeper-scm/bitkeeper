@@ -822,7 +822,12 @@ pull(char **av, remote *r, char **envVar)
 		}
 	}
 
-	if (proj_isProduct(0)) rc = pull_finish(r, rc, envVar);
+	/*
+	 * 2 in pull_part2 means either local modifications or remote
+	 * trigger failure. In both cases the remote side (if nested)
+	 * has already unlocked, so no need for push_finish().
+	 */
+	if (proj_isProduct(0) && (rc != 2)) rc = pull_finish(r, rc, envVar);
 
 	if (got_patch) {
 		/*

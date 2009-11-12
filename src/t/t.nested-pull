@@ -709,3 +709,47 @@ bk commit $Q -ytagf || exit 3
 cd ../local
 bk pull $Q || exit 4
 echo OK
+
+# XXX - test in product and then test in component
+echo $N Test that bk pull -u shows local work and does not pull .....$NL
+cd "$HERE/remote"
+touch remote-file
+bk new $Q remote-file
+bk commit $Q -yremote || fail
+cd ../local
+touch local-file
+bk new $Q local-file
+bk commit $Q -ylocal || fail
+bk pull -u > OUT 2>&1 && fail -f OUT should have failed
+grep -q 'Not updating due to the following' OUT || fail -f OUT bad message
+echo OK
+
+echo $N Same thing with local work in the component only ............$NL
+cd "$HERE"
+rm -rf local
+bk clone -q -r1.8 -sHERE remote local
+cd remote/gcc
+touch gcc-file1
+bk new $Q gcc-file1
+bk commit $Q -ygcc || exit 3
+cd ..
+bk commit $Q -ygcc || exit 3
+cd ../local/gcc
+touch gcc-file
+bk new $Q gcc-file
+bk commit $Q -ygcc || exit 3
+cd ..
+bk pull -u > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q 'Not updating due to the following' OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+echo OK
+
+# # XXX - we should check that the repo is cleaned up but we need the nested
+# # abort/cleanup code first.
