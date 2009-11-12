@@ -68,7 +68,8 @@ case "X`uname -s`" in
 			X9.*)	CCXTRA="$CCXTRA -DMACOS_VER=1050"
 				XLIBS="-lresolv"
 				;;
-			X10.*)	CCXTRA="$CCXTRA -DMACOS_VER=1060"
+			X10.*)	CCXTRA="$CCXTRA -DMACOS_VER=1060 -m32"
+				LD="$LD -m32"
 				XLIBS="-lresolv"
 				;;
 			X11.*)	CCXTRA="$CCXTRA -DMACOS_VER=1070"

@@ -2,6 +2,11 @@ HERE	:= $(shell pwd)
 OSTYPE	:= $(shell bash -c 'echo $$OSTYPE')
 BKROOT	:= $(shell bk -P root)
 
+CC := gcc
+LD := gcc
+STRIP := strip
+export CC LD
+
 # The Tk version is tied to the Tcl version so you only need to change TCL
 TCLVERSION := 8.6
 
@@ -31,6 +36,11 @@ else
 		ENABLE_64BIT=
 		ifeq "$(shell uname -p)" "G5"
 			ENABLE_64BIT=--enable-64bit
+		endif
+		ifeq (,$(findstring "10.",$(shell uname -r)))
+			CC := cc -m32
+			LD := $(CC)
+			export CC LD
 		endif
 	else
 		ifeq "$(shell uname -m)" "x86_64"
@@ -85,11 +95,6 @@ endif
 LIBTOMCRYPT=$(BKROOT)/src/tomcrypt/libtomcrypt.a
 TOMMATH=$(BKROOT)/src/tommath
 LIBPCRE=$(BKROOT)/src/gui/tcltk/pcre/local/lib/libpcre.a
-
-CC := gcc
-LD := gcc
-STRIP := strip
-export CC LD
 
 all: version.sh ../../tclkey.h
 	$(if $(Q),@echo Building Tcl/Tk,)
