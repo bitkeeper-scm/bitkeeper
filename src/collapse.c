@@ -195,7 +195,7 @@ do_cset(char *rev, char **nav)
 	/* BK_CSETLIST=/file/of/cset/keys */
 	csetfile = bktmp(0, "collapse-csets");
 	f = fopen(csetfile, "w");
-	range_walkrevs(s, d, 0, walkrevs_printmd5key, f);
+	range_walkrevs(s, d, 0, 0, 0, walkrevs_printmd5key, f);
 	fclose(f);
 	safe_putenv("BK_CSETLIST=%s", csetfile);
 
@@ -371,7 +371,7 @@ do_file(char *file, char *tiprev)
 	}
 
 	/* save deltas to remove in rmdeltas */
-	if (range_walkrevs(s, tipd, d, savedeltas, &rmdeltas)) goto done;
+	if (range_walkrevs(s, tipd, 0, d, 0, savedeltas, &rmdeltas)) goto done;
 	reverseLines(rmdeltas);	/* oldest first (for comments) */
 
 	/*

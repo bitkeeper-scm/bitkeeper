@@ -11,6 +11,8 @@ struct	range {
 #define RANGE_ENDPOINTS	0x10	/* just return s->rstart s->rstop */
 #define	RANGE_SET	0x20	/* return S_SET */
 
+#define	WR_BOTH		0x01	/* keep RED and BLUE; callback on both */
+
 /*
  *  1.1 -- 1.2 -- 1.3 -- 1.4 -- 1.5
  *	\                      /
@@ -43,8 +45,8 @@ void	range_markMeta(sccs *s);
 int	range_gone(sccs *s, delta *d, u32 dflags);
 void	range_unrange(sccs *s, delta **left, delta **right, int all);
 
-int	range_walkrevs(sccs *s, delta *from, delta *to,
-    int (*fcn)(sccs *s, delta *d, void *token), void *token);
+int	range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to,
+    int flags, int (*fcn)(sccs *s, delta *d, void *token), void *token);
 int	walkrevs_setFlags(sccs *s, delta *d, void *token);
 int	walkrevs_printkey(sccs *s, delta *d, void *token);
 int	walkrevs_printmd5key(sccs *s, delta *d, void *token);

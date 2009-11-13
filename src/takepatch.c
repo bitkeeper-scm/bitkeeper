@@ -1675,7 +1675,8 @@ sfio(MMAP *m)
 			goto err;
 		}
 		/* mark remote-only deltas */
-		range_walkrevs(sr, d, 0, walkrevs_setFlags, (void*)D_REMOTE);
+		range_walkrevs(sr, d, 0, 0, 0,
+		    walkrevs_setFlags, (void*)D_REMOTE);
 		/*
 		 * techically, d->flags |= D_LOCAL, but D_LOCAL goes away
 		 * in /home/bk/bk and the way resolveFiles is written, it

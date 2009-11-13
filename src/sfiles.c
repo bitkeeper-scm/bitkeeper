@@ -487,7 +487,7 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 			if (d->flags & D_CSET) break;
 		}
 		/* and walk all revs not included in that... */
-		range_walkrevs(s, d, 0, pending_print, data);
+		range_walkrevs(s, d, 0, 0, 0, pending_print, data);
 		printed = 1;
 	} else if (opts.Cflg) {
 		do_print(state, gfile, d->rev);

@@ -54,6 +54,7 @@ private int	range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs);
  *   -r..r2	# the graph history of r2, including r2 and root
  *   -rr1..r2	# graph subtraction r2 - r1
  *		# r1 does not need to be in r2's history
+ *   -rr1a,rr1b,rr1c..r2 # rr1a-c form the gca set with a single tipped r2
  *   -rr1,r2,r3 # a list of separate revisions (cannot combine with ..)
  *
  */
@@ -196,7 +197,7 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 {
 	char	*rev;
 	delta	*d, *r1, *r2;
-	char	**revs;
+	char	**revs = 0, **dlist = 0;
 	int	i, restore = 0, rc = 1;
 	RANGE	save;
 
@@ -255,15 +256,18 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 				s->rstop = d;
 			}
 		}
-		freeLines(revs, free);
 	} else {
 		/* graph difference */
 
 		r1 = r2 = 0;
 		if (*rargs->rstart) {
-			unless ((r1 = getrev(me, s, flags, rargs->rstart))
-				|| (rargs->rstart[0] == '@')) {
-				goto out;
+			revs = splitLine(rargs->rstart, ",", 0);
+			EACH(revs) {
+				unless ((r1 = getrev(me, s, flags, revs[i])) ||
+				    (rargs->rstart[0] == '@')) {
+					goto out;
+				}
+				dlist = addLine(dlist, (char *)r1);
 			}
 		}
 		if (*rargs->rstop) {
@@ -271,16 +275,20 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 				goto out;
 			}
 		}
-		if (range_walkrevs(s, r1, r2, walkrevs_setFlags,(void*)D_SET)) {
+		if (range_walkrevs(
+		    s, 0, dlist, r2, 0, walkrevs_setFlags, (void*)D_SET)) {
 			verbose((stderr, "%s: unable to connect %s to %s\n",
-				    me,
-				    r1 ? r1->rev : "ROOT",
-				    r2 ? r2->rev : "TIP"));
+			    me,
+			    *rargs->rstart ? rargs->rstart : "ROOT",
+			    r2 ? r2->rev : "TIP"));
+			goto out;
 		}
 		/* s->rstart & s->rstop set by walkrevs */
 	}
 	rc = 0;
  out:	if (restore) memcpy(rargs, &save, sizeof(save));
+	freeLines(revs, free);
+	freeLines(dlist, 0);
 	return (rc);
 }
 
@@ -337,71 +345,90 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 /*
  * Walk the set of deltas that are included 'to', but are not included
  * in 'from'.  The deltas are walked in table order (newest to oldest)
- * and 'fcn' is called on each delta.  This function is careful to
- * only walk the minimal number of nodes required.  It does not use
- * the standard approach that walks the entire table multiple times.
+ * and 'fcn' is called on each delta if it is set.  This function is
+ * careful to only walk the minimal number of nodes required.  It does
+ * not use the standard approach that walks the entire table multiple times.
+ *
+ * Think of 'from..to' with from on the LEFT and to on the RIGHT.
+ * LEFT is colored D_BLUE and RIGHT is colored D_RED (RIGHT-RED)
  *
  * 'to' defaults to '+' if it is missing.
  * if 'from' is null, then all of ancestors of 'to' are walked.
+ * if 'fromlist' is set, then each works as a termination point.
  *
  * The walk stops the first time fcn returns a non-zero result and that
  * value is returned.
  *
- * D_RED and D_BLUE is assumed to be cleared on all nodes before this
+ * D_RED and D_BLUE is normally to be cleared on all nodes before this
  * function is called and are left cleared at the end.
+ * However, if the WR_BOTH flag is passed in, D_RED or D_BLUE are left
+ * on the single color nodes so the callback function can know which
+ * was which.  It is up to the callback function to clear them in that
+ * case.
  */
 int
-range_walkrevs(sccs *s, delta *from, delta *to,
+range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
     int (*fcn)(sccs *s, delta *d, void *token), void *token)
 {
 	delta	*d, *e;
-	int	ret = 0;
-	u32	color;
+	int	i = 0, ret = 0;
+	u32	color, before;
 	ser_t	last;		/* the last delta we marked (for cleanup) */
-	int	marked = 1;	/* number of RED nodes marked if all == 0 */
+	int	marked = 0;	/* number of BLUE or RED nodes */
 	int	all = 0;	/* set if all deltas in 'to' */
+	char	*fakelist[3] = {(char *)3, (char *)from, 0}; /* addLine */
+	const int	mask = (D_BLUE|D_RED);
 
+	/*
+	 * Nodes can have 0, 1, or 2 colors.
+	 * Consider changing the color, and look at before and after
+	 * states: we know change can't be 0, therefor after can't be 0.
+	 * if before was 0 colors and after is 1, then inc marked;
+	 * if before was 1 color and after is 2, dec marked.
+	 * When marked hits 0, no more single color nodes in graph: DONE!
+	 */
+#define	MARK(x, change)	do {					\
+	    before = (x)->flags & mask;				\
+	    (x)->flags |= change;	/* after */		\
+	    if (((x)->flags & mask) == mask) { /* after == 2 */ \
+		if (before && (before != mask)) marked--;	\
+	    } else {	/* after == 1 */ 			\
+		unless (before) marked++; 			\
+	    }							\
+	    if ((x)->serial < last) last = (x)->serial;		\
+	} while (0)
+
+	assert (!from || !fromlist);
+	s->rstop = 0;
 	unless (to) {		/* no upper bound - get all tips */
 		all = 1;
-		to = s->table;
-		s->rstop = 0;
+		to = s->table;	/* could be a tag; that's okay */
 	} else {
 		to->flags |= D_RED;
-		s->rstop = to;
+		marked++;
 	}
 	last = to->serial;
 	d = to;			/* start here in table */
-	if (from) {
-		if (to->serial <= from->serial) {
-			d = from; /* or start here if 'to' is way back */
-		} else {
-			last = from->serial;
-		}
-		from->flags |= D_BLUE;
+	if (from) fromlist = fakelist;
+	EACH(fromlist) {
+		from = (delta *)fromlist[i];
+		if (d->serial < from->serial) d = from;
+		MARK(from, D_BLUE);
 	}
 
 	/* compute RED - BLUE */
 	for (; d && (all || (marked > 0)); d = d->next) {
 		unless (d->type == 'D') continue;
 		if (all) d->flags |= D_RED;
-		unless (color = (d->flags & (D_RED|D_BLUE))) continue;
+		unless (color = (d->flags & mask)) continue;
 		d->flags &= ~color; /* clear bits */
-		if (color & D_RED) marked--;
-		/* stop coloring red when hit common boundary */
-		if (color == (D_RED|D_BLUE)) color = D_BLUE;
-		if (e = d->parent) {
-			if ((color & D_RED) && !(e->flags & D_RED)) marked++;
-			e->flags |= color;
-			if (e->serial < last) last = e->serial;
-		}
-		if (d->merge) {
-			e = sfind(s, d->merge);
-			if ((color & D_RED) && !(e->flags & D_RED)) marked++;
-			e->flags |= color;
-			if (e->serial < last) last = e->serial;
-		}
-		if (color == D_RED) {
-			if (ret = fcn(s, d, token)) break;
+		if (color != mask) marked--;
+		if (e = d->parent) MARK(e, color);
+		if (d->merge && (e = sfind(s, d->merge))) MARK(e, color);
+		if ((color == D_RED) ||
+		    ((flags & WR_BOTH) && (color != mask))) {
+			if (flags & WR_BOTH) d->flags |= color;
+			if (fcn && (ret = fcn(s, d, token))) break;
 			unless (s->rstop) s->rstop = d;
 			s->rstart = d;
 		}
@@ -409,7 +436,7 @@ range_walkrevs(sccs *s, delta *from, delta *to,
 
 	/* cleanup */
 	for (; d && (d->serial >= last); d = d->next) {
-		d->flags &= ~(D_RED|D_BLUE);
+		d->flags &= ~mask;
 	}
 	return (ret);
 }
@@ -525,7 +552,7 @@ range_gone(sccs *s, delta *d, u32 dflags)
 {
 	int	count = 0;
 
-	range_walkrevs(s, d, 0, walkrevs_setFlags, (void*)D_SET);
+	range_walkrevs(s, d, 0, 0, 0, walkrevs_setFlags, (void*)D_SET);
 	range_markMeta(s);
 	for (d = s->rstop; d; d = d->next) {
 		if (d->flags & D_SET) {

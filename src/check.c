@@ -1165,56 +1165,17 @@ fetch_changeset(void)
 }
 
 /*
- * color a merge node so the merge is flagged RED/BLUE the parent side
- * is RED and the merge side is BLUE.  The GCA has neither side.
+ * color a merge node so the merge is flagged RED/BLUE, the parent
+ * side is RED and the merge side is BLUE.  The GCA has neither side.
  * Returns the largest serial that is older than all colored nodes.
  */
 private int
 color_merge(sccs *s, delta *d)
 {
-	delta	*p;
-	int	oldest = 0, cutoff, color;
-	const int	mask = (D_RED|D_BLUE);
-
 	assert(d->merge);	/* only works on merge */
-
-	d->flags |= mask;
-	p = d->parent;
-	cutoff = p->serial;
-	p->flags |= D_RED;
-
-	if (d->merge < cutoff) cutoff = d->merge;
-	p = sfind(s, d->merge);
-	p->flags |= D_BLUE;
-
-	for (d = d->next; d && (d->serial >= cutoff); d = d->next) {
-		if (TAG(d)) continue;
-		color = (d->flags & mask);
-		unless (color) continue;
-
-		/* color this node to its final value */
-		/* in gca, nothing set */
-		if (color == mask) {
-			d->flags &= ~mask;
-		} else {
-			oldest = d->serial;
-		}
-
-		/* Color parents */
-		if (p = d->parent) {
-			p->flags |= color;
-			if ((color != mask) && (p->serial < cutoff)) {
-				cutoff = p->serial;
-			}
-		}
-		if (d->merge && (p = sfind(s, d->merge))) {
-			p->flags |= color;
-			if ((color != mask) && (p->serial < cutoff)) {
-				cutoff = p->serial;
-			}
-		}
-	}
-	return (oldest);
+	d->flags |= (D_BLUE|D_RED);
+	range_walkrevs(s, sfind(s, d->merge), 0, d->parent, WR_BOTH, 0, 0);
+	return (s->rstart->serial);
 }
 
 /*
