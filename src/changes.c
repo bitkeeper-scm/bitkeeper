@@ -1192,7 +1192,7 @@ want(sccs *s, delta *e)
 		if (p) *p = '/';
 		unless (match) return (0);
 	}
-	if (opts.nomerge && e->merge) return (0);
+	if (opts.nomerge && (e->merge || e->mtag)) return (0);
 	if (opts.noempty && e->merge && !e->added && !(e->flags & D_SYMBOLS)) {
 	    	return (0);
 	}

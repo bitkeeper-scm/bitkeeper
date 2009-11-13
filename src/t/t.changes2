@@ -202,6 +202,19 @@ cat WITHOUT MERGES | bk sort > SORT
 checkfiles WITH SORT
 echo OK
 
+echo $N Check that -ma removes all merges and tag merges ............$NL
+# handle for changes -mR to not show tag merges
+bk changes -a -nd:KEY: | bk sort > WITH
+bk changes -am -nd:KEY: > WITHOUT
+bk changes -a -d'$if(:MERGE:){:KEY:\n}' > MERGES
+bk changes -a -d'$if(:TAG_MSERIAL:){:KEY:\n}' > TAGMERGES
+test -s WITH -a -s WITHOUT -a -s MERGES -a -s TAGMERGES || fail
+cat WITHOUT MERGES | bk sort > SORT
+cmp -s WITH SORT && fail should not be the same
+cat WITHOUT MERGES TAGMERGES | bk sort > SORT
+checkfiles WITH SORT
+echo OK
+
 # -i/-x with file f -- see t.glob for full glob tests
 # note: 1.4 is in both of these lists because the cset includes
 # files that are both in the rule and outside the rule.
