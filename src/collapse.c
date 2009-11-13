@@ -2,6 +2,7 @@
 #include "resolve.h"
 #include "regex.h"
 #include "range.h"
+#include "nested.h"
 
 #define	COLLAPSE_BACKUP_SFIO "BitKeeper/tmp/collpase_backup_sfio"
 #define	COLLAPSE_BACKUP_PATCH "BitKeeper/tmp/collapse.patch"
@@ -19,8 +20,9 @@
 #define	COLLAPSE_NOSAVE	0x20000000 /* don't save backup patch */
 #define	COLLAPSE_LOG	0x40000000 /* Update BitKeeper/etc/collapsed */
 #define	COLLAPSE_DELTAS	0x80000000 /* -d save file deltas */
+#define	COLLAPSE_PONLY	0x01000000 /* only collapse product */
 
-private	int	do_cset(char *rev);
+private	int	do_cset(char *rev, char **nav);
 private	int	do_file(char *file, char *tiprev);
 private	int	savedeltas(sccs *s, delta *d, void *data);
 private	delta	*parent_of_tip(sccs *s);
@@ -35,40 +37,55 @@ private	char	*me;		/* name of command */
 int
 collapse_main(int ac, char **av)
 {
-	int	c;
+	int	c, rc = 1;
 	char	*after = 0;
 	char	*revlist = 0;
 	int	edit = 0, merge = 0;
+	char	**nav = 0;
 
 	me = "collapse";
 	flags = 0;
-	while ((c = getopt(ac, av, "a:delmr:qs")) != -1) {
+	while ((c = getopt(ac, av, "a:delmPr:qs")) != -1) {
+		/*
+		 * Collect options for running collapse in components.
+		 * lm sez: unless we are going to try and replay a
+		 * partially completed collapse there is no reason to
+		 * not respect -s (don't save a patch).
+		 */
+		unless ((c == 'a') || (c == 'r')) {
+			if (optarg) {
+				nav = addLine(nav, aprintf("-%c%s", c,optarg));
+			} else {
+				nav = addLine(nav, aprintf("-%c", c));
+			}
+		}
 		switch (c) {
 		    case 'a': after = optarg; break;
 		    case 'd': flags |= COLLAPSE_DELTAS; break;
 		    case 'e': edit = 1; break;
 		    case 'l': flags |= COLLAPSE_LOG; break;
 		    case 'm': merge = 1; break;
+		    case 'P': flags |= COLLAPSE_PONLY; break;
 		    case 'r': revlist = optarg; break;
 		    case 'q': flags |= SILENT; break;
 		    case 's': flags |= COLLAPSE_NOSAVE; break;
 		    default :
 usage:			system("bk help -s collapse");
-			return (1);
+			goto out;
 		}
 	}
 	if (av[optind]) goto usage;
 	if (merge && (after || revlist)) {
 		fprintf(stderr, "%s: cannot combine -m with -r or -a\n", me);
-		return (1);
+		goto out;
 	}
 	if (after && revlist) {
 		fprintf(stderr, "%s: -r or -a, but not both.\n", me);
-		return (1);
+		goto out;
 	}
 	if (merge && edit) {	/* XXX this test should be more generic */
 		fprintf(stderr, "%s: can't edit csets containing merges\n", me);
-		return (1);
+		goto out;
 	}
 
 	/* Modes we don't support yet */
@@ -77,48 +94,65 @@ usage:			system("bk help -s collapse");
 		assert(after == 0); /* we should be doing parent already */
 	} else if (revlist) {
 		fprintf(stderr, "%s: -r option not yet supported\n", me);
-		return (1);
+		goto out;
 	}
 	if (merge) {
 		fprintf(stderr, "%s: -m option not yet supported\n", me);
-		return (1);
+		goto out;
 	}
 	if (!edit) {
 		fprintf(stderr, "%s: -e option required\n", me);
-		return (1);
+		goto out;
 	}
-	return (do_cset(after));
+	rc = do_cset(after, nav);
+out:	freeLines(nav, free);
+	return (rc);
 }
 
 int
 fix_main(int ac,  char **av)
 {
 	int	c, i;
-	int	cset = 0, rc = 0;
+	int	cset = 0, rc = 1;
 	char	*after = 0;
+	char	**nav = 0;
 
 	me = "fix";
 	flags = COLLAPSE_FIX;
-	while ((c = getopt(ac, av, "a;cdqs")) != -1) {
+	while ((c = getopt(ac, av, "a;cdPqs")) != -1) {
+		/*
+		 * Collect options for running collapse in components.
+		 */
+		unless ((c == 'a') || (c == 'c')) {
+			if (optarg) {
+				nav = addLine(nav, aprintf("-%c%s", c,optarg));
+			} else {
+				nav = addLine(nav, aprintf("-%c", c));
+			}
+		}
 		switch (c) {
 		    case 'a': after = optarg; break;
 		    case 'c': cset = 1; flags &= ~COLLAPSE_FIX; break;
 		    case 'd': flags |= COLLAPSE_DELTAS; break;
+		    case 'P': flags |= COLLAPSE_PONLY; break;
 		    case 'q': flags |= SILENT; break;		/* undoc 2.0 */
 		    case 's': flags |= COLLAPSE_NOSAVE; break;
 		    default :
 usage:			system("bk help -s fix");
-			return (1);
+			goto out;
 		}
 	}
+	/* collapse needs -e */
+	nav = addLine(nav, strdup("-e"));
 	if (cset) {
 		if (after) goto usage; /* use collapse instead */
-		rc = do_cset(0);
+		rc = do_cset(0, nav);
 	} else {
 		for (i = optind; av[i]; i++) {
 			if (rc = do_file(av[i], after)) break;
 		}
 	}
+out:	freeLines(nav, free);
 	return (rc);
 }
 
@@ -128,7 +162,7 @@ usage:			system("bk help -s fix");
  * If 'rev' is null it defaults to the parent of the current TOT.
  */
 private int
-do_cset(char *rev)
+do_cset(char *rev, char **nav)
 {
 	sccs	*s = 0;
 	delta	*d;
@@ -138,6 +172,8 @@ do_cset(char *rev)
 	int	rc = 1;
 	char	*csetfile = "";
 	FILE	*f;
+	nested	*n = 0;
+	comp	*c;
 	char	buf[MD5LEN];
 
 	if (proj_cd2root()) {
@@ -162,6 +198,28 @@ do_cset(char *rev)
 	range_walkrevs(s, d, 0, walkrevs_printmd5key, f);
 	fclose(f);
 	safe_putenv("BK_CSETLIST=%s", csetfile);
+
+	if (proj_isProduct(0) && !(flags & COLLAPSE_PONLY)) {
+		char	**keys = file2Lines(0, csetfile);
+		int	err = 0;
+
+		unless (n = nested_init(0, 0, keys, 0)) {
+			fprintf(stderr, "%s: ensemble failed.\n", me);
+			exit (1);
+		}
+		sccs_close(n->cset);
+		freeLines(keys, free);
+		EACH_STRUCT(n->comps, c, i) {
+			if (c->included && !c->present) {
+				fprintf(stderr,
+				    "%s: component %s needed, "
+				    "but not populated.\n", me, c->path);
+				err = 1;
+			}
+		}
+		if (err) goto out;
+	}
+
 
 	/* run 'pre-fix' trigger for 'bk fix' */
 	if (streq(me, "fix") && trigger("fix", "pre")) goto out;
@@ -201,10 +259,67 @@ do_cset(char *rev)
 	if (flags & COLLAPSE_LOG) {
 		if (update_collapsed_file(csetfile)) goto out;
 	}
+	if (n) {
+		char	**vp;
+		int	i, j;
+
+		/*
+		 * The product has already been done, so just print
+		 * out the message.
+		 */
+		unless (flags & SILENT) {
+			printf("#### %c%s in Product ####\n",
+			    toupper(me[0]), me+1);
+			fflush(stdout);
+		}
+		START_TRANSACTION();
+		EACH_STRUCT(n->comps, c, i) {
+			if (c->product) continue;
+			unless (c->included) continue;
+			assert(c->present);
+			if (c->new) {
+				/*
+				 * We are rolling back to before the
+				 * component was created.  What to do?
+				 */
+				fprintf(stderr,
+				    "%s: cannot collapse to before %s "
+				    "was created.\n", me, c->path);
+				goto out;
+			}
+			vp = addLine(0, strdup("bk"));
+			vp = addLine(vp, strdup("collapse"));
+			EACH_INDEX(nav, j) vp = addLine(vp, strdup(nav[j]));
+			vp = addLine(vp, aprintf("-a%s", c->lowerkey));
+			vp = addLine(vp, 0);
+			unless (flags & SILENT) {
+				printf("#### %c%s in %s ####\n",
+				    toupper(me[0]), me+1, c->path);
+				fflush(stdout);
+			}
+			if (chdir(c->path)) {
+				perror(c->path);
+				freeLines(vp, free);
+				goto out;
+			}
+			rc = spawnvp(_P_WAIT, "bk", &vp[1]);
+			freeLines(vp, free);
+			proj_cd2product();
+			if (WIFEXITED(rc)) rc = WEXITSTATUS(rc);
+			if (rc) {
+				fprintf(stderr, "Could not %s to %s.\n",
+				    me, c->lowerkey);
+				goto out;
+			}
+			rc = 1;	/* restore default failure */
+		}
+		STOP_TRANSACTION();
+	}
 	unlink(COLLAPSE_BACKUP_SFIO);
 	update_log_markers(0);
 	rc = 0;
 out:
+	if (n) nested_free(n);
 	if (csetfile[0]) {
 		unlink(csetfile);
 		free(csetfile);
@@ -339,7 +454,7 @@ do_file(char *file, char *tiprev)
 			goto done;
 		}
 		/* branch might be tip */
-		sys("bk", "renumber", file, SYS);
+		sys("bk", "renumber", "-q", file, SYS);
 
 		/* restore mode, path, xflags */
 		tipd = sccs_findrev((s = sccs_reopen(s)), "+");

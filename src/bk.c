@@ -651,7 +651,7 @@ private	struct {
 	{"bk", CMD_COMPAT_NOSI}, /* bk-remote */
 	{"check", CMD_COMPAT_NOSI},
 	{"clone", 0},		/* locking handled in clone.c */
-	{"collapse", CMD_WRLOCK},
+	{"collapse", CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{"commit", CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{"fix", CMD_WRLOCK},
 	{"get", CMD_COMPAT_NOSI},

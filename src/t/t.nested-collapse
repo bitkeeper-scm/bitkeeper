@@ -23,7 +23,7 @@ echo OK
 
 echo $N Try to collapse top cset in product .........................$NL
 cd ..
-bk fix -c || exit 1
+bk fix $Q -Pc || exit 1
 bk -r check -a || exit 1
 bk sfiles -p > GOT
 echo gcc/SCCS/s.ChangeSet > WANT
@@ -45,3 +45,46 @@ bk _test -e SCCS/c.gcc_file || exit 1
 echo add > WANT
 cmpsfiles SCCS/c.ChangeSet WANT
 echo OK
+
+echo $N Test collapse in a nested repository.........................$NL
+nested nested
+echo "PRE-COLLAPSE" > prod_file
+bk new $Q -y'pre-collapse' prod_file
+for comp in gcc gdb
+do
+	cd $comp
+	echo "PRE-COLLAPSE $comp" > ${comp}_file
+	bk new $Q -y'pre-collapse' ${comp}_file
+	bk commit $Q -y"pre-collapse $comp"
+	cd ..
+done
+bk commit $Q -y"pre-collapse product"
+
+bk changes -kr+ > SAVED_TIP
+
+bk edit $Q prod_file
+echo "POST-COLLAPSE" > prod_file
+bk ci $Q -y'post-collapse' prod_file
+for comp in gcc gdb
+do
+	cd $comp
+	bk edit $Q ${comp}_file
+	echo "POST-COLLAPSE $comp" > ${comp}_file
+	bk ci $Q -y'post-collapse' ${comp}_file
+	bk commit $Q -y"post-collapse $comp"
+	cd ..
+done
+bk commit $Q -y"post-collapse product"
+
+bk collapse -qea`cat SAVED_TIP`
+bk sfiles -p > PENDING
+test -s PENDING && fail -f PENDING
+cat >WANT <<EOF
+prod_file
+gcc_file
+gdb_file
+EOF
+bk -qA sfiles -cg > GOT
+cmpfiles GOT WANT
+echo OK
+
