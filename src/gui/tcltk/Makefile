@@ -37,7 +37,7 @@ else
 		ifeq "$(shell uname -p)" "G5"
 			ENABLE_64BIT=--enable-64bit
 		endif
-		ifeq (,$(findstring "10.",$(shell uname -r)))
+		ifeq (10.,$(findstring 10.,$(shell uname -r)))
 			CC := cc -m32
 			LD := $(CC)
 			export CC LD
