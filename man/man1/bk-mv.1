@@ -50,6 +50,15 @@ command, except that it knows about the additional
 will refuse to move \*[BK] metafiles without the 
 .B \-f
 option (use of which is not recommended).
+.LP
+If both the
+.ARG A
+and
+.ARG B
+arguments are directories,
+.B bk mv
+will check the repository consistency.  If this check fails the move
+operation will not continue.
 .SH SEE ALSO
 .SA commit
 .SA names
