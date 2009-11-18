@@ -867,7 +867,7 @@ cmdlog_start(char **av, int bkd_cmd)
 	}
 out:
 	if (bkd_cmd &&
-	    (!(cmdlog_flags & CMD_COMPAT_NOSI) || bk_hasFeature("SAMv1"))) {
+	    (!(cmdlog_flags & CMD_COMPAT_NOSI) || bk_hasFeature("SAMv3"))) {
 		/*
 		 * COMPAT: Old bk's don't expect a serverInfo block
 		 * before the error, but since we have the environment

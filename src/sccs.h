@@ -324,6 +324,20 @@ int	checking_rmdir(char *dir);
 #define	UNDO_SKIP	2		// exitcode for early exit with no work
 
 /*
+ * exit status in the code, some of these values can also be the
+ * return code from push_main().
+ * Don't renumber these in the future, just add to them.
+ */
+typedef	enum {
+	CLONE_OK = 0,
+	CLONE_ERROR = 1,	/* other error */
+	CLONE_EXISTS = 2,	/* remote repo exists already */
+	CLONE_CONNECT = 5,	/* bkd_connect() failed */
+	CLONE_CHDIR = 6,	/* chdir failure */
+	CLONE_BADREV = 7,	/* rev not found */
+} clonerc;
+
+/*
  * Hash behaviour.  Bitmask.
  */
 #define	DB_NODUPS       0x01		/* keys must be unique */

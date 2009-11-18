@@ -33,7 +33,7 @@ private struct {
 } opts;
 
 private int	pull(char **av, remote *r, char **envVar);
-private int	pull_ensemble(remote *r, char **rmt_aliases);
+private int	pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist);
 private int	pull_finish(remote *r, int status, char **envVar);
 private void	resolve_comments(remote *r);
 private	int	resolve(void);
@@ -306,6 +306,12 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 	} else if (streq(buf, "@SERVER INFO@")) {
 		if (getServerInfo(r)) return (-1);
 		getline2(r, buf, sizeof(buf));
+	} else if (getenv("_BK_TRANSACTION") &&
+	    (strneq(buf, "ERROR-cannot use key", 20 ) ||
+	     strneq(buf, "ERROR-cannot cd to ", 19))) {
+		/* nested pull doesn't need to propagate error message */
+		// XXX fromTo() is still called
+		exit(1);
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
 		disconnect(r, 2);
@@ -332,7 +338,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		return (1);
 	}
 	if (opts.port) {
-		unless (bkd_hasFeature("SAMv2")) {
+		unless (bkd_hasFeature("SAMv3")) {
 			fprintf(stderr,
 			    "port: remote bkd too old to support 'bk port'\n");
 			disconnect(r, 2);
@@ -363,6 +369,11 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		} else {
 			/* component -> standalone */
 		}
+	}
+	if (getenv("_BK_TRANSACTION") &&
+	    strneq(buf, "ERROR-Can't find revision ", 26)) {
+		/* nested pull doesn't need to propagate error message */
+		exit(1);
 	}
 	if (get_ok(r, buf, 1)) {
 		disconnect(r, 2);
@@ -448,6 +459,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 	FILE	*info, *f, *fout;
 	char	*t, *p;
 	char	**rmt_aliases = 0;
+	hash	*rmt_urllist = 0;
 	char	buf[MAXPATH * 2];
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
@@ -562,6 +574,18 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			rmt_aliases = addLine(rmt_aliases, strdup(buf));
 		}
 	}
+	if (streq(buf, "@URLLIST@")) {
+		FILE	*fmem = fmem_open();
+		while (getline2(r, buf, sizeof(buf)) > 0) {
+			if (streq(buf, "@")) break;
+			fputs(buf, fmem);
+			fputc('\n', fmem);
+		}
+		rewind(fmem);
+		rmt_urllist = hash_fromStream(0, fmem);
+		fclose(fmem);
+		getline2(r, buf, sizeof(buf));
+	}
 	if (streq(buf, "@PATCH@")) {
 
 		if (i = takepatch(r)) {
@@ -589,7 +613,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			pclose(fout);
 		}
 		if (proj_isProduct(0)) {
-			if (rc = pull_ensemble(r, rmt_aliases)) goto done;
+			if (rc = pull_ensemble(r, rmt_aliases, rmt_urllist)) goto done;
 		}
 		putenv("BK_STATUS=OK");
 		rc = 0;
@@ -623,7 +647,7 @@ done:	unlink(probe_list);
 }
 
 private int
-pull_ensemble(remote *r, char **rmt_aliases)
+pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 {
 	char	*url;
 	char	**vp;
@@ -632,6 +656,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	nested	*n = 0;
 	comp	*c;
 	int	i, j, rc = 0, errs = 0;
+	hash	*urllist;
 
 	/* allocate r->params for later */
 	unless (r->params) r->params = hash_new(HASH_MEMHASH);
@@ -644,6 +669,11 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	assert(n);
 	freeLines(revs, free);
 	unless (n->tip) goto out;	/* tags only */
+	unless (urllist = hash_fromFile(0, NESTED_URLLIST)) {
+		urllist = hash_new(HASH_MEMHASH);
+	}
+	/* enable if we use rmt_urllist */
+	//urllist_normalize(rmt_urllist, url);
 
 	/*
 	 * Now takepatch should have merged the aliases file in the RESYNC
@@ -675,6 +705,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	 *  c->localchanges   comp has local csets
 	 */
 	EACH_STRUCT(n->comps, c, i) {
+		if (c->product) continue;
 		if (c->included) {
 			/* this component is included in pull */
 			if (c->alias) {
@@ -682,6 +713,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 				if (!c->remotePresent) {
 					/* they don't have the data to send */
 
+					// XXX we can fix this
 					fprintf(stderr,
 					    "pull: %s is missing in %s\n",
 					    c->path, url);
@@ -692,6 +724,19 @@ pull_ensemble(remote *r, char **rmt_aliases)
 					unless (c->new) c->new = 1;
 				} else if (c->localchanges) {
 					/* we will merge this component */
+
+					/* no one else can have the merge */
+					urllist_rmURL(urllist, c->rootkey, 0);
+				} else {
+					/*
+					 * remember where we fetched
+					 * this and invalidate any
+					 * other URLs saved for this
+					 * component.
+					 */
+					urllist_rmURL(urllist, c->rootkey, 0);
+					urllist_addURL(urllist,
+					    c->rootkey, url);
 				}
 			} else {
 				/* we don't want this component */
@@ -708,10 +753,32 @@ npmerge:				fprintf(stderr,
 					    "in non-present component '%s'.\n",
 					    prog, c->path);
 					++errs;
+				} else {
+					/*
+					 * remember where we fetched
+					 * this and invalidate any
+					 * other URLs saved for this
+					 * component.
+					 */
+					urllist_rmURL(urllist, c->rootkey, 0);
+					urllist_addURL(urllist,
+					    c->rootkey, url);
 				}
 			}
 		} else {
 			/* not included in pull */
+
+			/*
+			 * If the remote side has a component and we
+			 * don't have any local work in that
+			 * component, then they become a new source
+			 * for that componet.  Doesn't matter if we
+			 * have it populated or not.
+			 */
+			if (c->remotePresent && !c->localchanges) {
+				urllist_addURL(urllist, c->rootkey, url);
+			}
+
 			if (c->alias && !c->present) {
 				/* we don't have it, but need it */
 				if (c->remotePresent) {
@@ -721,6 +788,7 @@ npmerge:				fprintf(stderr,
 				} else {
 					/* need it */
 					/* can try populate */
+					// XXX we can fix this
 					fprintf(stderr,
 					    "pull: %s is missing in %s\n",
 					    c->path, url);
@@ -743,6 +811,8 @@ npmerge:				fprintf(stderr,
 		rc = 1;
 		goto out;
 	}
+
+	if (hash_toFile(urllist, NESTED_URLLIST)) perror(NESTED_URLLIST);
 	EACH_STRUCT(n->comps, c, j) {
 		proj_cd2product();
 		if (c->product || !c->included || !c->alias) continue;

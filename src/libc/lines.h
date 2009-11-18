@@ -99,4 +99,6 @@ char	**str_append(char **space, void *str, int gift);
 char	**data_append(char **space, void *str, int len, int gift);
 int	data_length(char **space);
 char	*_pullup(u32 *bytep, char **space, int null);
+
+void	lines_tests(void);
 #endif

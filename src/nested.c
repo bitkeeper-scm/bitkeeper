@@ -1,6 +1,7 @@
 #include "sccs.h"
 #include "nested.h"
 #include "range.h"
+#include "bkd.h"
 
 private	int	compSort(const void *a, const void *b);
 private	void	compFree(void *x);
@@ -915,4 +916,356 @@ isComponent(char *path)
 	ret = exists(buf) && (p = proj_init(buf)) && proj_isComponent(p);
 	if (p) proj_free(p);
 	return (ret);
+}
+
+/*
+ * accessor for urllist
+ */
+char **
+urllist_fetchURLs(hash *h, char *rk, char **space)
+{
+	if (hash_fetchStr(h, rk)) {
+		space = splitLine(h->vptr, "\n", space);
+	}
+	return (space);
+}
+
+/*
+ * h is a hash of rootkey to a newline separated list of url's
+ *
+ * add a new rk->url pair to the beginning of the list if it isn't
+ * already there
+ *
+ * returns non-zero if the hash was updated
+ */
+int
+urllist_addURL(hash *h, char *rk, char *url)
+{
+	char	**list;
+	char	*new;
+	int	updated = 1;
+
+	/*
+	 * We want to normalize the URL being saved.  The URLs either
+	 * come from parent_normalize() or remote_unparse().  They
+	 * might only differ on file:// so we remove it.
+	 */
+	if (strneq(url, "file://", 7)) url += 7;
+
+	unless (hash_insertStr(h, rk, url)) {
+		list = splitLine(h->vptr, "\n", 0);
+		removeLine(list, url, free); /* no dups */
+		list = unshiftLine(list, strdup(url));
+		new = joinLines("\n", list);
+		freeLines(list, free);
+
+		if (streq(new, h->vptr)) {
+			updated = 0;
+		} else {
+			hash_storeStr(h, rk, new);
+		}
+		free(new);
+	}
+	return (updated);
+}
+
+/*
+ * h is a hash of rootkey to a newline separated list of url's
+ *
+ * remove url from rk's list, if it is present
+ * if url==0, then remove all urls for that rk
+ *
+ * returns non-zero of the hash was updated.
+ */
+int
+urllist_rmURL(hash *h, char *rk, char *url)
+{
+	char	**list;
+	char	*new;
+	int	updated = 0;
+
+	if (list = urllist_fetchURLs(h, rk, 0)) {
+		if (url) {
+			if (removeLine(list, url, free)) {
+				if (new = joinLines("\n", list)) {
+					hash_storeStr(h, rk, new);
+					free(new);
+				} else {
+					hash_deleteStr(h, rk);
+				}
+				updated = 1;
+			}
+		} else {
+			hash_deleteStr(h, rk);
+			updated = 1;
+		}
+		freeLines(list, free);
+	}
+	return (updated);
+}
+
+
+/*
+ * Examine the urllists for the current nested collection and look for
+ * problems.
+ *
+ * Returns non-zero if sources cannot be found for any non present
+ * repositories.
+ *
+ * Assumes it is run from the product root.
+ * Frees 'urls' when finished.
+ */
+int
+urllist_check(nested *n, int quiet, int trim_noconnect, char **urls)
+{
+	comp	*c;
+	hash	*urllist;	/* $list{rootkey} = @URLS */
+	FILE	*f;
+	int	i, j, rc = 1;
+	char	*t, *p;
+	char	keylist[MAXPATH];
+	char	buf[MAXLINE];
+
+	urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
+
+	/* add existing URLs to urls */
+	EACH_HASH(urllist) {
+		urls = splitLine(urllist->vptr, "\n", urls);
+	}
+	uniqLines(urls, free);
+
+	/* generate a list of rootkey deltakey pairs */
+	bktmp(keylist, "urllist");
+	f = fopen(keylist, "w");
+	assert(f);
+	EACH_STRUCT(n->comps, c, i) {
+		if (c->product) continue;
+		fprintf(f, "%s %s\n", c->rootkey, c->deltakey);
+		assert(!c->data);
+	}
+	fclose(f);
+
+	/* foreach url see which components they have */
+	EACH(urls) {
+		/* find deltakeys found locally */
+		sprintf(buf, "bk -q@'%s' -Lr -Bstdin havekeys -FD - "
+		    "< '%s' 2> " DEVNULL_WR,
+		    urls[i], keylist);
+		f = popen(buf, "r");
+		assert(f);
+		while (t = fgetline(f)) {
+			if (p = separator(t)) *p = 0;
+			unless (c = nested_findKey(n, t)) {
+				if (p) p[-1] = ' ';
+				fprintf(stderr,
+				    "%s: bad data from '%s'\n-> %s\n",
+				    buf, t);
+				pclose(f);
+				goto out;
+			}
+			c->data = addLine(c->data, urls[i]);
+			c->remotePresent = 1;
+		}
+		/*
+		 * We have 4 possible exit status values to consider from
+		 * havekeys:
+		 *  0   the connection worked and we captured the data
+		 *  16  we connected to the bkd fine, but the repository
+		 *      is not there.  This URL is bogus and can be ignored.
+		 *  8   The bkd_connect() failed
+		 *  other  Another failure.
+		 *
+		 */
+		rc = pclose(f);
+		rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
+		if (rc == 16) rc = 0;		/* no repo at that pathname? */
+		if (rc == 8) {
+			unless (quiet) {
+				fprintf(stderr,
+				    "%s: unable to connect to saved URL: %s\n",
+				    prog, urls[i]);
+			}
+			if (trim_noconnect) rc = 0;
+		}
+		if (rc) {
+			/*
+			 * We encountered a problem running havekeys
+			 * on this URL so we need to save the existing
+			 * data.
+			 */
+			if (!quiet && (rc != 8)) {
+				fprintf(stderr,
+				    "%s: error contacting saved URL: %s\n",
+				    prog, urls[i]);
+			}
+			EACH_HASH(urllist) {
+				unless (c = nested_findKey(n, urllist->kptr)) {
+					continue;
+				}
+				if (strstr(urllist->vptr, urls[i])) {
+					c->data = addLine(c->data, urls[i]);
+				}
+			}
+		}
+	}
+
+	/* XXX
+	 * Might be nice to have a chuck of code here to remove URLs
+	 * that are not local and that don't contain any unique information.
+	 */
+
+
+	/* now create urllist from scratch */
+	hash_free(urllist);
+	urllist = hash_new(HASH_MEMHASH);
+	rc = 0;
+	EACH_STRUCT(n->comps, c, i) {
+		char	**list;
+		if (c->product) continue;
+
+		list = c->data;
+		uniqLines(list, 0);
+		// XXX sort local urls first
+		EACH_INDEX(list, j) {
+			urllist_addURL(urllist, c->rootkey, list[j]);
+		}
+		unless (c->present || c->remotePresent) {
+			rc = 1;
+
+			unless (quiet) {
+				fprintf(stderr,
+				    "%s: no valid urls found for "
+				    "missing component %s\n",
+				    prog, c->path);
+			}
+		}
+	}
+
+	/* write our new urllist */
+	if (hash_toFile(urllist, NESTED_URLLIST)) perror(NESTED_URLLIST);
+
+out:	unlink(keylist);
+	hash_free(urllist);
+	EACH_STRUCT(n->comps, c, i) {
+		if (c->data) {
+			freeLines(c->data, 0);
+			c->data = 0;
+		}
+	}
+	freeLines(urls, free);
+	return (rc);
+}
+
+/*
+ * For debugging right now.  Dump the urllist file, for just one
+ * component if a name is specified.  Must call from product root.
+ * Larry has talked about wanting a command that shows you where
+ * components can be found, so this may turn into that eventually.
+ */
+void
+urllist_dump(char *name)
+{
+	int	i;
+	char	**urls;
+	hash	*urllist;
+	comp	*c;
+	nested	*n;
+	char	*path;
+
+	urllist = hash_fromFile(0, NESTED_URLLIST);
+	n = nested_init(0, 0, 0, NESTED_PENDING);
+	unless (urllist && n) goto out;
+	EACH_HASH(urllist) {
+		if (c = nested_findKey(n, urllist->kptr)) {
+			path = c->path;
+		} else {
+			path = "?";
+		}
+		if (name && !streq(name, path)) continue;
+		urls = splitLine(urllist->vptr, "\n", 0);
+		EACH(urls) {
+			printf("%s\t%s\n", path, urls[i]);
+		}
+		freeLines(urls, free);
+	}
+ out:	nested_free(n);
+	if (urllist) hash_free(urllist);
+}
+
+/*
+ * Update a urllist after it is obtained from a remote machine.
+ *
+ * If using a network URL, then look at the remotes URLLIST and examine
+ * the file URLs.  Any pathnames that don't seem to exist locally are
+ * replaced with with bk://HOST/<fullpath>.  If the bkd is run above the
+ * pathname then the new URL will work.
+ */
+int
+urllist_normalize(hash *urllist, char *url)
+{
+	int	i;
+	char	*t;
+	char	*new;
+	char	**urls;
+	hash	*seen;
+	char	**updates = 0;
+	int	updated = 0;
+	remote	*r;
+	char	nurl[MAXPATH];
+	char	buf[MAXPATH];
+
+	TRACE("url=%s", url);
+	unless (r = remote_parse(url, 0)) return (0);
+	if (r->type == ADDR_FILE) {
+		remote_free(r);
+		return (0);
+	}
+	/* get just the basename for url without the pathname */
+	free(r->path);
+	r->path = 0;
+	t = remote_unparse(r);
+	remote_free(r);
+	strcpy(nurl, t);
+	free(t);
+	t = nurl + strlen(nurl);
+	*t++ = '/';
+
+	seen = hash_new(HASH_MEMHASH);
+	EACH_HASH(urllist) {
+		urls = splitLine(urllist->vptr, "\n", 0);
+		EACH(urls) {
+			unless (hash_fetchStr(seen, urls[i])) {
+				new = 0;
+				if (IsFullPath(urls[i])) {
+					concat_path(buf, urls[i], BKROOT);
+					unless (isdir(buf)) {
+						strcpy(t, urls[i]);
+						new = nurl;
+						updated = 1;
+						TRACE("replace %s with %s",
+						    urls[i], new);
+
+					}
+				}
+				hash_storeStr(seen, urls[i], new);
+			}
+			if ((new = seen->vptr) && *new) {
+				free(urls[i]);
+				urls[i] = strdup(new);
+			}
+		}
+		if (updated) {
+			urls = unshiftLine(urls, strdup(urllist->kptr));
+			updates = addLine(updates, joinLines("\n", urls));
+		}
+		freeLines(urls, free);
+	}
+	EACH(updates) {
+		t = strchr(updates[i], '\n');
+		*t++ = 0;
+		hash_storeStr(urllist, updates[i], t);
+	}
+	freeLines(updates, free);
+	hash_free(seen);
+	return (updated);
 }

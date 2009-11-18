@@ -1473,6 +1473,8 @@ findsfiles(char *file, struct stat *sb, void *data)
 			p[4] = '/';
 			strcpy(p+5, "COMPONENT");
 			if (exists(file)) si->fn(file, sb, si->data);
+			strcpy(p+5, "urllist");
+			if (exists(file)) si->fn(file, sb, si->data);
 			if (si->is_modes) {
 				strcpy(p+5, "CSETFILE");
 				if (exists(file)) si->fn(file, sb, si->data);
@@ -1483,6 +1485,8 @@ findsfiles(char *file, struct stat *sb, void *data)
 				strcpy(p+5, "TIP");
 				if (exists(file)) si->fn(file, sb, si->data);
 				strcpy(p+5, "checked");
+				if (exists(file)) si->fn(file, sb, si->data);
+				strcpy(p+5, "HERE");
 				if (exists(file)) si->fn(file, sb, si->data);
 			}
 		}

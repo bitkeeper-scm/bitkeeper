@@ -303,8 +303,7 @@ remote_unparse(remote *r)
 		strcpy(buf, r->path);
 	}
 out:
-	if (r->params) {
-		t = hash_toStr(r->params);
+	if (r->params && (t = hash_toStr(r->params))) {
 		ret = aprintf("%s?%s", buf, t);
 		free(t);
 	} else {

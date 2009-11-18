@@ -263,61 +263,50 @@ bk alias show here > GOT
 cmpfiles GOT WANT
 echo OK
 
-echo $N clone -sjunk when no such alias exists should fail ..........$NL
+echo $N clone -sjunk will only clone product ........................$NL
 cd "$HERE"
-bk clone -sjunk mynewgcc3 mynewgcc4 2> ERR && {
+bk clone $Q -sjunk mynewgcc3 mynewgcc4 2> ERR && {
 	echo should have failed and did not
 	cat ERR
 	exit 1
 }
-test -d mynewgcc4 && {
-	echo should not have created anything
-	exit 1
-}
-# XXX weak message
-grep -q "clone: remote clone: junk must be either a glob, key" ERR || {
+grep -q "clone: junk must be either a glob, key" ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1
 }
+grep -q "clone: component fetch failed, only product is populated" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+rm -rf mynewgcc4
 echo OK
 
 echo $N clone -s./junk when no such directory exists should fail ....$NL
 cd "$HERE"
-bk clone -s./junk mynewgcc3 mynewgcc4 2> ERR && {
+bk clone $Q -s./junk mynewgcc3 mynewgcc4 2> ERR && {
 	echo should have failed and did not
 	cat ERR
 	exit 1
 }
-test -d mynewgcc4 && {
-	echo should not have created anything
-	exit 1
-}
-# XXX weak message
-grep -q "clone: remote clone: ./junk must be either a glob, key" ERR || {
+grep -q "clone: ./junk must be either a glob, key" ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1
 }
+grep -q "clone: component fetch failed, only product is populated" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+rm -rf mynewgcc4
 echo OK
 
 echo $N clone -s./gdb when the parent only has gcc ..................$NL
 cd "$HERE"
-bk clone $Q -s./gdb mynewgcc3 mynewgcc4 2> ERR && {
-	echo should have failed
-	cat ERR
-	exit 1
-}
-# XXX weak message
-grep -q "clone: unable to expand aliases" ERR || {
-	echo diff msg
-	cat ERR
-	exit 1
-}
-test -d mynewgcc4 && {
-	echo should not have repo
-	exit 1
-}
+bk clone $Q -s./gdb mynewgcc3 mynewgcc4 || fail
+rm -rf mynewgcc4
 echo OK
 
 echo $N Check that we can populate gdb from elsewhere ...............$NL
@@ -576,15 +565,7 @@ echo OK
 echo $N Test populate with no parent ................................$NL
 bk parent -r $Q
 rm -rf gcc gdb
-bk components set $Q here 2>ERR && {
-	cat ERR
-	exit 1
-}
-grep -q 'components: neither parent nor url provided.' ERR || {
-	echo bad error message
-	cat ERR
-	exit 1
-}
+bk components set $Q here || fail
 echo OK
 
 echo $N Test populate -r with url ...................................$NL
@@ -609,19 +590,6 @@ gcc/deep
 gdb
 EOF
 cmpfiles WANT GOT
-echo OK
-
-echo $N Test unpopulate no parent ...................................$NL
-bk components rm $Q HERE 2>OUT && {
-	echo should have failed
-	cat OUT
-	exit 1
-}
-grep -q 'components: neither parent nor url provided.' OUT || {
-	echo bad error message
-	cat OUT
-	exit 1
-}
 echo OK
 
 echo $N Test unpopulate with local extras ...........................$NL
@@ -669,17 +637,18 @@ echo foo > foo
 bk new $Q foo
 bk commit $Q -yfoo
 )
+LIST=`bk components`
 bk components rm $Q all 2>ERR && {
 	echo unpopulate should have failed
 	cat ERR
 	exit 1
 }
-grep -q 'Local changes' ERR || {
-	echo bad error message
-	cat ERR
-	exit 1
-}
-for i in `bk components`
+cat <<EOF > WANT
+components: No other sources for gdb known
+components: unable to remove gdb
+EOF
+cmpfiles ERR WANT
+for i in $LIST
 do	test -d $i || {
 		echo should not have removed $i
 		exit 1

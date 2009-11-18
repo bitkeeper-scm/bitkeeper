@@ -29,24 +29,26 @@ bk attach $Q ../man man
 bk alias new nm ./gcc/nm
 echo OK
 
-echo $N Check cloning missing components ............................$NL
+echo $N Check cloning -sall of a partial project works ..............$NL
 cd "$HERE"
-bk clone $Q -snm project proj-nm
-bk clone $Q -sall proj-nm nm-clone 2> ERR
-grep -q 'unable to expand aliases. Missing: gcc' ERR || {
-	echo failed msg
-	cat ERR
-	exit 1
-}
-echo OK
-
-echo $N Another check cloning missing components ....................$NL
-bk clone $Q -snm -s./gcc proj-nm nm-clone 2> ERR && exit 1
-grep -q 'unable to expand aliases. Missing: gcc' ERR || {
-	echo failed msg
-	cat ERR
-	exit 1
-}
+bk clone $Q -snm project proj-nm || fail
+cd proj-nm
+bk components >GOT || fail
+cat <<EOF >WANT
+gcc/nm
+EOF
+cmpfiles GOT WANT
+cd ..
+bk clone $Q -sall proj-nm nm-clone || fail
+cd nm-clone
+bk components >GOT || fail
+cat <<EOF >WANT
+gcc
+gcc/nm
+gdb
+man
+EOF
+cmpfiles GOT WANT
 echo OK
 
 echo $N Check -rOLD does not pick up new components thru alias.......$NL
@@ -73,11 +75,11 @@ bk clone $Q -r1.7 -s./gcc/libiberty project proj-clone 2> ERR && {
 	cat ERR   
 	exit 1
 }
-grep -q "clone: remote clone: component not present: gcc/libiberty" ERR || {
-	echo failed
-	cat ERR
-	exit 1
-}
+cat <<EOF > WANT
+clone: ./gcc/libiberty must be either a glob, key, alias, or component.
+clone: component fetch failed, only product is populated
+EOF
+cmpfiles ERR WANT
 echo OK
 
 echo $N Move stuff and watch the fur fly ............................$NL
@@ -166,11 +168,20 @@ bk clone $Q -sdev bk://localhost:$P/proj-clone clone1 || {
 	echo failed
 	exit 1
 }
-bk clone $Q -sall bk://localhost:$P/clone1 clone2 2> ERR && {
-	echo failed
-	cat ERR
-	exit 1
-}
+bk clone $Q -sall bk://localhost:$P/clone1 clone1b || fail
+cd clone1b
+bk components >GOT || fail
+cat <<EOF >WANT
+gcc
+gcc/gcov
+gcc/libcpp
+gcc/libiberty
+gcc/nm
+gdb
+man
+EOF
+cmpfiles GOT WANT
+cd ..
 echo OK
 
 echo $N Glob clone through bk:// ....................................$NL
@@ -221,6 +232,14 @@ test -d glob3/gcc/libcpp/deep || {
 echo OK
 
 echo $N Remove component, clone previous glob .......................$NL
+# create cset in nm so it is unique and it won't get populated from
+# elsewhere
+cd "$HERE/glob3/gcc/nm"
+echo hi > hi
+bk new $Q hi || fail
+bk commit $Q -yhi || fail
+bk -P commit $Q -yhi || fail
+cd "$HERE"
 rm -rf glob3/gcc/nm
 bk clone $Q -s'./gcc/*' bk://localhost:$P/glob3 glob4 2> ERR && {
 	echo failed
@@ -235,11 +254,22 @@ bk clone $Q -sdev bk://localhost:$P/proj-clone glob5 || {
 	exit 1
 }
 rm -rf glob5/gcc/nm
-bk clone $Q -sdev bk://localhost:$P/glob5 glob6 2> ERR && {
+bk clone $Q -sdev bk://localhost:$P/glob5 glob6 || {
 	echo failed
 	cat ERR
 	exit 1
 }
+cd glob6
+bk components >GOT || fail
+cat <<EOF >WANT
+gcc
+gcc/gcov
+gcc/libcpp
+gcc/libiberty
+gcc/nm
+gdb
+EOF
+cmpfiles GOT WANT
 echo OK
 
 echo $N Test alias show here ........................................$NL

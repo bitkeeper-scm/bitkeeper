@@ -20,20 +20,21 @@ private FILE	*server(int recurse);
 int
 havekeys_main(int ac, char **av)
 {
-	char	*dfile, *key, *path;
+	char	*dfile, *key, *rootkey;
+	sccs	*s;
 	int	c;
-	int	rc = 0, BAM = 0, COMP = 0, ROOT = 0, recurse = 1;
+	int	rc = 0, BAM = 0, recurse = 1, DELTA = 0, found = 0;
 	FILE	*f = 0;
         MDBM	*idDB;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "BClqR")) != -1) {
+	while ((c = getopt(ac, av, "BDFlq")) != -1) {
 		switch (c) {
 		    case 'B': BAM = 1; break;
-		    case 'C': COMP = 1; break;
+		    case 'D': DELTA = 1; break;
+		    case 'F': found = 1; break;
 		    case 'l': recurse = 0; break;
 		    case 'q': break;	/* ignored for now */
-		    case 'R': ROOT = 1; break;
 		    default:
 usage:			fprintf(stderr, "usage: bk %s [-q] [-BR] -\n", av[0]);
 			return (1);
@@ -44,31 +45,34 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-BR] -\n", av[0]);
 		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
 		return (1);
 	}
-	if ((BAM+COMP+ROOT == 0) || (BAM+COMP+ROOT > 1)) {
-		fprintf(stderr, "%s: only -B | -C | -R supported.\n", av[0]);
+	if (BAM + DELTA != 1) {
+		fprintf(stderr, "%s: only -B or -D supported.\n", av[0]);
 		return (1);
 	}
 
-	/*
-	 * We do not lock ourselves, if the caller wants to lock they can
-	 * do so through bk -Lr -@ ....
-	 * This interface is used in ensemble pull/push so the other side
-	 * may already be locked.
-	 */
-	if (ROOT || COMP) {
+	if (DELTA) {
+		/*
+		 * read 'rootkey deltakey' on stdin and return the
+		 * list of keys that can't be found.
+		 */
         	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-		while (fnext(buf, stdin)) {
-			chomp(buf);
-			path = key2path(buf, idDB);
-			unless (path &&
-			    exists(path) && (!COMP || isComponent(path))) {
-				printf("%s\n", buf);
-				rc = 1;
+		while (rootkey = fgetline(stdin)) {
+			if (key = separator(rootkey)) *key++ = 0;
+			s = sccs_keyinit(0, rootkey, SILENT|INIT_NOCKSUM, idDB);
+
+			if (key && s && sccs_findKey(s, key)) {
+				c = 0; /* found the key */
+			} else {
+				/* didn't find deltakey locally */
+				c = 1;
 			}
-			if (path) free(path);
+			if (found) c = !c;
+			if (key) key[-1] = ' ';
+			if (c) printf("%s\n", rootkey);
+			if (s) sccs_free(s);
 		}
 		mdbm_close(idDB);
-		return (rc);
+		return (0);
 	}
 
 	/*
@@ -98,10 +102,16 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-BR] -\n", av[0]);
 		} else {
 			key = buf;
 		}
-		unless (dfile = bp_lookupkeys(0, key)) {
+		if (dfile = bp_lookupkeys(0, key)) {
+			c = 0;
+		} else {
+			c = 1;	/* not here */
+		}
+		if (found) c = !c;
+		if (c) {
 			unless (f) f = server(recurse);
 			// XXX - need to check error status.
-			fprintf(f, "%s\n", buf);	/* not here */
+			fprintf(f, "%s\n", buf);
 		}
 		free(dfile);
 	}
@@ -118,6 +128,7 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-BR] -\n", av[0]);
  * Figure out if we have a server and if we do go run a havekeys there.
  * XXX - this doesn't handle loops other than just failing miserably
  * if the server is locked.
+ * XXX - doesn't handle -F
  */
 private FILE *
 server(int recurse)

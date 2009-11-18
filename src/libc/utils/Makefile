@@ -8,7 +8,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	efopen.o \
 	filecopy.o fileutils.o findpid.o fmem.o fullname.o fileinfo.o \
 	getnull.o getopt.o glob.o \
-	lines.o \
+	lines.o lines_tests.o \
 	mkdir.o \
 	milli.o \
 	mmap.o \
@@ -18,7 +18,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	spawn.o spawnvpio.o spawn_filterpipeline.o \
 	str_subst.o \
 	stdioext.o sys.o system.o \
-	trace.o tty.o ttyprintf.o \
+	testcode.o trace.o tty.o ttyprintf.o \
 	utils.o \
 	webencode.o \
 	which.o \

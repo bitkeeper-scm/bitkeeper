@@ -214,6 +214,7 @@ repo_setup csets-in-components
 bk clone $Q product clone || fail
 test -f "$TMP/clone..gcc..pre-incoming.here" && fail
 touch "$TMP/clone..gcc..pre-incoming"
+rm clone/BitKeeper/log/urllist	# hide product as a source
 cd "$HERE/clone1"
 bk push "$HERE/clone" >PUSH 2>&1 &
 PID=$!
@@ -389,6 +390,7 @@ repo_setup csets-in-components
 # Push clone1 into clone but cause the gcc push to spin in
 # the pre-incoming trigger.
 bk clone $Q product clone || fail
+rm clone/BitKeeper/log/urllist	# hide product as a source
 test -f "$TMP/clone..gcc..pre-incoming.here" && fail
 touch "$TMP/clone..gcc..pre-incoming"
 cd "$HERE/clone1"

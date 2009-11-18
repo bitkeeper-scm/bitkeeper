@@ -154,16 +154,28 @@ sortLines(char **space, int (*compar)(const void *, const void *))
 void
 uniqLines(char **space, void(*freep)(void *ptr))
 {
-	int	i;
+	int	src, dst;
 
 	unless (space) return;
 	sortLines(space, 0);
-	EACH(space) {
-		if (i == 1) continue;
-		while (space[i] && streq(space[i-1], space[i])) {
-			removeLineN(space, i, freep);
+
+	/* skip up to the first dup */
+	EACH_INDEX(space, src) {
+		if ((src > 1) && streq(space[src-1], space[src])) goto dups;
+	}
+	return;			/* fast exit */
+
+ dups:	/* now copy non-duped items */
+	dst = src-1;		/* last valid item in output */
+	for (; (src < LSIZ(space)) && space[src]; src++) { /* EACH() */
+		if (streq(space[src], space[dst])) {
+			if (freep) freep(space[src]);
+		} else {
+			space[++dst] = space[src];
 		}
 	}
+	dst++;			/* one past last valid item */
+	if (dst < LSIZ(space)) space[dst] = 0;
 }
 
 /*

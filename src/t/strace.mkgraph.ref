@@ -5,5 +5,5 @@ close 4
 lseek 37
 lstat 20
 open 5
-read 160
-write 99
+read 146
+write 91

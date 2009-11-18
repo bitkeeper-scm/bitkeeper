@@ -10,13 +10,10 @@ private int	compressed(int level, int lclone);
 int
 cmd_clone(int ac, char **av)
 {
-	int	i, c, rc = 1;
+	int	c, rc = 1;
 	int	attach = 0, detach = 0, gzip = 0, delay = -1, lclone = 0;
 	int	nlid = 0;
 	char	*p, *rev = 0;
-	char	**aliases = 0;
-	sccs	*s = 0;
-	delta	*d;
 	char	buf[MAXLINE];
 
 	unless (isdir("BitKeeper/etc")) {
@@ -24,7 +21,7 @@ cmd_clone(int ac, char **av)
 		out("@END@\n");
 		goto out;
 	}
-	while ((c = getopt(ac, av, "ADlNqr;s;w;z|")) != -1) {
+	while ((c = getopt(ac, av, "ADlNqr;w;z|")) != -1) {
 		switch (c) {
 		    case 'A':
 			attach = 1;
@@ -51,9 +48,6 @@ cmd_clone(int ac, char **av)
 		    case 'r':
 			rev = optarg;
 			break;
-		    case 's':
-			aliases = addLine(aliases, strdup(optarg));
-			break;
 		    default:
 			out("ERROR-unknown option\n");
 			exit(1);
@@ -75,7 +69,7 @@ cmd_clone(int ac, char **av)
 		goto out;
 	}
 	if (proj_isProduct(0)) {
-		unless (bk_hasFeature("SAMv2")) {
+		unless (bk_hasFeature("SAMv3")) {
 			out("ERROR-please upgrade your BK to a NESTED "
 			    "aware version (5.0 or later)\n");
 			goto out;
@@ -83,14 +77,6 @@ cmd_clone(int ac, char **av)
 		if (attach) {
 			out("ERROR-cannot attach a product\n");
 			goto out;
-		}
-		/*
-		 * If we're an ensemble and they did not specify any aliases,
-		 * then imply the default set.
-		 * The nlid part is because we want to do this in pass1 only.
-		 */
-		unless (aliases || nlid) {
-			aliases = addLine(0, strdup("default"));
 		}
 	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
@@ -112,8 +98,10 @@ cmd_clone(int ac, char **av)
 	}
 
 	/* moved down here because we're caching the sccs* */
-	if (rev || aliases) {
-		s = sccs_csetInit(SILENT);
+	if (rev) {
+		sccs	*s = sccs_csetInit(SILENT);
+		delta	*d;
+
 		assert(s && HASGRAPH(s));
 		if (rev) {
 			d = sccs_findrev(s, rev);
@@ -124,6 +112,7 @@ cmd_clone(int ac, char **av)
 				goto out;
 			}
 		}
+		sccs_free(s);
 	}
 
 	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
@@ -147,43 +136,7 @@ cmd_clone(int ac, char **av)
 		goto out;
 	}
 	if (trigger(av[0], "pre")) goto out;
-	if (!nlid && proj_isProduct(0)) {
-		nested	*n;
-		comp	*cp;
-		int	errors = 0;
-
-		unless (n = nested_init(s, rev, 0, 0)) {
-			printf("ERROR-nested_init failed\n");
-			goto out;
-		}
-		assert(aliases);
-		if (nested_aliases(n, n->tip, &aliases, proj_cwd(), 0)) {
-			printf("ERROR-unable to expand aliases.\n");
-			nested_free(n);
-			goto out;
-		}
-		EACH_STRUCT(n->comps, cp, i) {
-			if (cp->alias && !cp->present) {
-				printf(
-				    "ERROR-unable to expand aliases. "
-				    "Missing: %s\n", cp->path);
-				errors++;
-			}
-		}
-		nested_free(n);
-		if (errors) {
-			freeLines(aliases, free);
-			goto out;
-		}
-		printf("@HERE@\n");
-		EACH(aliases) printf("%s\n", aliases[i]);
-		printf("@END@\n");
-		freeLines(aliases, free);
-	}
-	if (s) {
-		sccs_free(s);
-		s = 0;
-	}
+	if (proj_isProduct(0)) printf("@PRODUCT@\n");
 	printf("@SFIO@\n");
 	rc = compressed(gzip, lclone);
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
@@ -199,7 +152,6 @@ cmd_clone(int ac, char **av)
 out:	if (delay > 0) sleep(delay);
 
 	putenv("BK_CSETS=");
-	if (s) sccs_free(s);
 	return (rc);
 }
 

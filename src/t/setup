@@ -224,9 +224,10 @@ nested() {
 		_make_repo nested "$CF" ignored
 	}
 	(cd "$BK_CACHE"/nested; bk _eula -a)
-	bk clone -lq "$BK_CACHE/nested" "$1"
+	bk clone -lq "$BK_CACHE/nested" "$1" || exit 1
 	cd "$1" || exit 1
 	bk parent -qr || exit 1
+	rm BitKeeper/log/urllist
 }
 
 # move a nested component (helper)

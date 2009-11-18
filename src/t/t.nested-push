@@ -312,7 +312,20 @@ bk -r check -av >OUT 2>&1 || {
 }
 echo OK
 
-echo $N Try a push from sparse to full ..............................$NL
+echo $N Check that push updates urllist .............................$NL
+cd "$HERE"
+bk clone $Q project clone || fail
+cd clone
+bk setup -f newrepo || fail
+bk push $Q || fail
+# A successful push of newrepo should add newrepo's rootkey to the urllist.
+cd newrepo
+NEWREPO_ROOTKEY=`bk id`
+cd ..
+grep -q "$NEWREPO_ROOTKEY" BitKeeper/log/urllist || fail
+echo OK
+
+echo $N Try a push from sparse to full - not ever doable ............$NL
 cd "$HERE"
 bk clone $Q project full
 test -d project/RESYNC && fail
@@ -343,6 +356,62 @@ test -d full/RESYNC || fail fix the test
 (cd full && bk abort -f) # remove me when you fix the test
 test -d sparse/RESYNC && fail
 echo failed \(bug nested abort not done\)
+
+echo $N Try a push from sparse to full - remote should find .........$NL
+# This eventually will be 2 test cases: remote does find and remote
+# cannot find.  Currently remote does not look.
+cd "$HERE"
+bk clone $Q -s. project solo
+cd solo
+bk alias new STUFF gcc
+cd ..
+# URLLIST works its magic here, getting gcc from project
+bk clone $Q -sSTUFF solo stuff
+test -d stuff/gcc || fail
+cd solo
+bk alias add STUFF gdb || fail 3
+# URLLIST does not work magic here and proxy from project to stuff
+bk push $Q ../stuff 2> ERR && fail 5
+grep -q "push: component gdb needed at" ERR || fail 6
+cd "$HERE"
+test -d solo/RESYNC && fail
+test -d stuff/RESYNC || fail fix the test
+(cd stuff && bk abort -f) # remove me when you fix the test
+test -d stuff/RESYNC && fail
+echo "failed (bug remote should find)"
+
+echo $N Try a push from full to sparse - should fail ................$NL
+# remote can't know how to populate this
+# It could be solved by teaching remote how to populated (pass urllist)
+# or by proxying the answer.
+cd "$HERE"
+bk clone $Q project modified
+cd modified/gdb
+touch newfile
+bk new $Q newfile
+bk commit $Q -ynewfile
+cd ..
+bk commit $Q -ynewfile
+# XXX should fail, but better to fail with a message
+bk push $Q ../solo && fail
+# No lock left, so that's good
+test -d "$HERE/solo/RESYNC" && fail
+echo "failed (bug - better message)"
+
+echo $N Try a push from sparse to full - local proxy ................$NL
+# Start from above and do a pull to bring in the sparse.
+# It can be populated later by a populate (urllist checked)
+cd "$HERE/solo"
+bk pull $Q ../modified
+# stuff should have gdb by now, but can't find the patch to update
+bk push $Q ../stuff 2> ERR && fail 5
+grep -q "gdb is needed to push" ERR || fail 6
+cd "$HERE"
+test -d solo/RESYNC && fail
+test -d stuff/RESYNC || fail fix the test
+(cd stuff && bk abort -f) # remove me when you fix the test
+test -d stuff/RESYNC && fail
+echo "failed (bug no proxy or urllist)"
 
 echo $N Try a tag-only push .........................................$NL
 cd "$HERE/full"

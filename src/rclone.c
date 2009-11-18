@@ -163,11 +163,13 @@ rclone_ensemble(remote *r)
 	int	errs;
 	int	i, j, status, rc = 0;
 	u32	flags = NESTED_PRODUCTFIRST;
+	hash	*urllist;
 
 	url = remote_unparse(r);
 
 	unless (opts.aliases) opts.aliases = addLine(0, strdup("default"));
 	START_TRANSACTION();
+	urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
 	n = nested_init(0, opts.rev, 0, flags);
 	assert(n);
 	if (nested_aliases(n, n->tip, &opts.aliases, proj_cwd(), n->pending)) {
@@ -212,6 +214,9 @@ rclone_ensemble(remote *r)
 			vp = addLine(vp, aprintf("%s/%s", url,
 				dirname(dstpath)));
 			free(dstpath);
+
+			/* new place to find this component */
+			urllist_addURL(urllist, c->rootkey, url);
 		}
 		vp = addLine(vp, 0);
 		if (opts.verbose) printf("#### %s ####\n", name);
@@ -225,11 +230,17 @@ rclone_ensemble(remote *r)
 		}
 	}
 
+	unless (rc) {
+		if (hash_toFile(urllist, NESTED_URLLIST)) {
+			perror(NESTED_URLLIST);
+		}
+	}
 	/*
 	 * XXX - put code in here to finish the transaction.
 	 */
 
 out:	free(url);
+	hash_free(urllist);
 	nested_free(n);
 	STOP_TRANSACTION();
 	return (rc);
@@ -312,7 +323,7 @@ rclone_part1(remote *r, char **envVar)
 		    "BAMv2 aware version (4.1.1 or later).\n");
 		return (-1);
 	}
-	if (getenv("_BK_TRANSACTION") && !bkd_hasFeature("SAMv2")) {
+	if (getenv("_BK_TRANSACTION") && !bkd_hasFeature("SAMv3")) {
 		fprintf(stderr,
 		    "clone: please upgrade the remote bkd to a "
 		    "NESTED aware version (5.0 or later).\n");

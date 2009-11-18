@@ -49,6 +49,8 @@ extern	unsigned int turnTransOff;
 #define	NESTED_PRODUCTFIRST	0x40000000	/* c->p first in c->comps */
 #define	NESTED_DEEPFIRST	0x80000000	/* deeper comps first */
 
+#define	NESTED_URLLIST		"BitKeeper/log/urllist"
+
 typedef struct nested nested;
 
 typedef struct {
@@ -58,6 +60,8 @@ typedef struct {
 	char	*lowerkey;		// in pull, local tip
 					// otherwise, gca tip
 	char	*path;			// actual path: like GFILE, not DPN
+
+	void	*data;			// scratchpad for applications
 
 	// bits
 	u32	alias:1;		// in the latest alias
@@ -115,6 +119,14 @@ char	**aliasdb_expandOne(nested *n, hash *aliasdb, char *alias);
 void	aliasdb_free(hash *db);
 int	aliasdb_chkAliases(nested *n, hash *aliasdb,
 	    char ***paliases, char *cwd);
+
+
+char	**urllist_fetchURLs(hash *h, char *rk, char **space);
+int	urllist_addURL(hash *h, char *rk, char *url);
+int	urllist_rmURL(hash *h, char *rk, char *url);
+int	urllist_check(nested *n, int quiet, int trim_noconnect, char **urls);
+void	urllist_dump(char *name);
+int	urllist_normalize(hash *urllist, char *url);
 
 /* locking.c */
 

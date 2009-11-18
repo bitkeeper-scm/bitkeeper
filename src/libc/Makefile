@@ -33,7 +33,7 @@ AR=ar rc
 RANLIB=ranlib
 
 # no make depends
-$(OBJS): $(HDRS)
+$(OBJS) mdbm/mtst.o: $(HDRS)
 
 libc.a: $(OBJS)
 	$(if $(Q),@echo AR libc.a,)

@@ -1,6 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "logging.h"
+#include "nested.h"
 #include <time.h>
 
 /*
@@ -262,6 +263,21 @@ do_commit(char **av,
 
 	rc = csetCreate(cset, dflags, pendingFiles, syms);
 
+	if (!rc && proj_isComponent(0)) {
+		hash	*urllist;
+		char	*file = proj_fullpath(proj_product(0), NESTED_URLLIST);
+
+		/*
+		 * Created a new cset for this component, the saved URLs
+		 * for this component are now all invalid.
+		 */
+		if (urllist = hash_fromFile(0, file)) {
+			if (urllist_rmURL(urllist, proj_rootkey(0), 0)) {
+				if (hash_toFile(urllist, file)) perror(file);
+			}
+			hash_free(urllist);
+		}
+	}
 	putenv("BK_STATUS=OK");
 	if (rc) putenv("BK_STATUS=FAILED");
 	trigger(opts.resync ? "merge" : av[0], "post");

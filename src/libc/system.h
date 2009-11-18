@@ -274,6 +274,9 @@ int	tcp_pair(int fds[2]);
 char	*peeraddr(int s);
 int	issock(int);
 
+/* testcode.c */
+void	libc_tests(void);
+
 /* trace.c */
 extern	int bk_trace;
 void	trace_init(char *prog);

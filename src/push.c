@@ -452,8 +452,8 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 				} else {
 					/* remote needs to populate */
 					fprintf(stderr,
-					    "push: component %s needed at %s.",
-					    c->path, url);
+					    "push: component %s needed "
+					    "at %s.\n", c->path, url);
 					++errs;
 				}
 			} else if (!c->alias && c->remotePresent) {
@@ -467,18 +467,18 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	}
 	if (errs) {
 		fprintf(stderr,
-		    "push: transfer aborted due to erros with %d components.\n",
-		    errs);
+		    "push: transfer aborted due to errors with "
+		    "%d components.\n", errs);
 		rc = 1;
 		goto out;
 	}
 	START_TRANSACTION();
 	cwd = strdup(proj_cwd());
+	proj_cd2product();
 	EACH_STRUCT(n->comps, c, i) {
 		/* skip cases with nothing to do */
 		if (!c->included || !c->present || !c->alias) continue;
 		if (c->product) continue;
-		proj_cd2product();
 		chdir(c->path);
 		vp = addLine(0, strdup("bk"));
 		if (c->new) {
@@ -502,11 +502,36 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		status = spawnvp(_P_WAIT, "bk", &vp[1]);
 		rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
 		freeLines(vp, free);
+		proj_cd2product();
 		if (rc) {
 			fprintf(stderr, "Pushing %s failed\n", c->path);
 			break;
 		}
+		/* the clone succeeded so it is present now */
+		if (c->new) c->remotePresent = 1;
 	}
+        unless (rc || opts.rev) {
+                int     flush = 0;
+                hash    *urllist;
+
+                urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
+
+                /*
+                 * successful push so if we are pushing tip we
+                 * can save this URL
+                 * XXX pending csets in component
+                 */
+                EACH_STRUCT(n->comps, c, i) {
+                        if (c->product || !c->remotePresent) continue;
+                        flush |= urllist_addURL(urllist, c->rootkey, url);
+                }
+                if (flush) {
+                        if (hash_toFile(urllist, NESTED_URLLIST)) {
+                                perror(NESTED_URLLIST);
+                        }
+                }
+                hash_free(urllist);
+        }
 	STOP_TRANSACTION();
 out:
 	if (cwd) {
@@ -552,10 +577,10 @@ err:		return (PUSH_ERROR);
 			    getenv("BKD_LEVEL"));
 			goto err;
 		}
-		if (proj_isProduct(0) && !bkd_hasFeature("SAMv2")) {
+		if (proj_isProduct(0) && !bkd_hasFeature("SAMv3")) {
 			fprintf(stderr,
 			    "push: please upgrade the remote bkd to a "
-			    "SAMv2 aware version (5.0 or later).\n");
+			    "SAMv3 aware version (5.0 or later).\n");
 			goto err;
 		}
 		if ((bp_hasBAM() ||

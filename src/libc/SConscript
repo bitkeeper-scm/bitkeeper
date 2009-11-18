@@ -130,6 +130,7 @@ libc = Library("libc", stubs + Split('''
 	utils/getopt.c
 	utils/glob.c
 	utils/lines.c
+	utils/lines_tests.c
 	utils/milli.c
 	utils/mkdir.c
 	utils/mmap.c
@@ -147,6 +148,7 @@ libc = Library("libc", stubs + Split('''
 	utils/str_subst.c
 	utils/sys.c
 	utils/system.c
+	utils/testcode.c
 	utils/trace.c
 	utils/tty.c
 	utils/ttyprintf.c

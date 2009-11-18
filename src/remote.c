@@ -19,7 +19,20 @@ private	void	stream_stdin(remote *r, int gzip);
  * -@@filename gets the list of urls from filename.
  * -q turns off per repo headers.
  *
- * XXX - on multiple parents do we stop on first error?
+ * With multiple parents we don't stop on errors, but instead
+ * or the exit status' together.
+ *
+ * returns
+ *   if contact to bkd succeeds
+ *      returns exit status from remote command
+ *   else
+ *      1 argument parsing failure
+ *      4 can't parse url
+ *      8 bkd_connect failed
+ *     16 bkd returns chdir failure
+ *     32 protocol failure
+ *     63 bk-remote not supported
+ *     64 unexpected eof
  */
 int
 remote_bk(int quiet, int ac, char **av)
@@ -169,7 +182,10 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	rc = send_file(r, tmpf, dostream ? 1 : 0);
 	unlink(tmpf);
 	free(tmpf);
-	if (rc) goto out;
+	if (rc) {
+		i = 1<<5;
+		goto out;
+	}
 	if (dostream) {
 		stream_stdin(r, gzip);
 		send_file_extra_done(r);
@@ -189,6 +205,11 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 		i = 1<<5;
 		fprintf(stderr, "##### %s #####\n", u);
 		fprintf(stderr, "Protocol error, aborting.\n");
+		goto out;
+	}
+	if (strneq(buf, "ERROR-cannot use key", 20 ) ||
+	    strneq(buf, "ERROR-cannot cd to ", 19)) {
+		i = 1<<4;
 		goto out;
 	}
 	if (strneq("ERROR-BAD CMD: bk", line, 17)) {
@@ -248,7 +269,7 @@ err:		fprintf(stderr, "##### %s #####\n", u);
 		}
 	}
 	if (strneq("ERROR-", line, 6)) goto err;
-	unless (sscanf(line, "@EXIT=%d@", &i)) i = 100;
+	unless (sscanf(line, "@EXIT=%d@", &i)) i = 1<<5;
 out:	if (zin) zgets_done(zin);
 	disconnect(r, 1);
 	wait_eof(r, 0);

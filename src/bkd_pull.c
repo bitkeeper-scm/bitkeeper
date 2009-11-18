@@ -74,7 +74,7 @@ cmd_pull_part1(int ac, char **av)
 		out("\n");
 		return (1);
 	}
-	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv2")) {
+	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv3")) {
 		out("ERROR-please upgrade your BK to a NESTED "
 		    "aware version (5.0 or later)\n");
 		return (1);
@@ -261,10 +261,18 @@ cmd_pull_part2(int ac, char **av)
 	}
 	if (proj_isProduct(0)) {
 		char	**comps = nested_here(0);
+		char	**list;
 
 		printf("@HERE@\n");
 		EACH(comps) printf("%s\n", comps[i]);
 		freeLines(comps, free);
+		if (list = file2Lines(0, NESTED_URLLIST)) {
+			printf("@URLLIST@\n");
+			EACH(list) printf("%s\n", list[i]);
+			printf("@\n");
+			freeLines(list, free);
+		}
+
 	}
 	fputs("@PATCH@\n", stdout);
 
