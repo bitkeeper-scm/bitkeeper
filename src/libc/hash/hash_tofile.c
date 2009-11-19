@@ -127,7 +127,7 @@ hash_fromStream(hash *h, FILE *f)
 				base64_decode(line, strlen(line), data, &len);
 				val = data_append(val, data, len, 0);
 			} else {
-				if (val) str_append(val, "\n", 0);
+				if (val) val = str_append(val, "\n", 0);
 				val = str_append(val, line, 0);
 			}
 		}
