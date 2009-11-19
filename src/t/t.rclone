@@ -161,14 +161,42 @@ bk _rclone $Q "$HERE/project" file:$SLASH"$HERE/copy5" || { echo failed; exit 1;
 cd "$HERE/copy5"
 if [ ! -f src/bar.c ]; then echo failed; exit 1; fi
 echo OK
+
 #BUG: 2003-03-04-002
 echo $N Clone with bad rev means no litter ..........................$NL
 cd "$HERE"
-bk clone -rfoo project clone > OUT 2> ERR && {
+bk clone -rfoo $Q project clone  2> ERR && {
 	echo Fail
 	echo No foo -- clone should fail
 	exit 1
 }
+cat <<EOF > WANT
+remote: ERROR-rev foo doesn't exist
+EOF
+cmpfiles ERR WANT
+test -d clone && {
+	echo Fail
+	echo dir created
+	exit 1
+}
+test -d RESYNC && {
+	echo Fail
+	echo bogus RESYNC created
+	# exit 1
+}
+echo OK
+
+echo $N rClone with bad rev means no litter .........................$NL
+cd "$HERE"
+bk _rclone -rfoo $Q project clone  2> ERR && {
+	echo Fail
+	echo No foo -- clone should fail
+	exit 1
+}
+cat <<EOF > WANT
+clone: rev foo doesn't exist
+EOF
+cmpfiles ERR WANT
 test -d clone && {
 	echo Fail
 	echo dir created
