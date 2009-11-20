@@ -811,7 +811,7 @@ write_log(char *file, int rotate, char *format, ...)
 	FILE	*f;
 	char	*root;
 	char	path[MAXPATH];
-	off_t	logsize;
+	struct	stat	sb;
 	va_list	ap;
 
 	unless (root = proj_root(0)) return (1);
@@ -837,17 +837,20 @@ write_log(char *file, int rotate, char *format, ...)
 	vfprintf(f, format, ap);
 	va_end(ap);
 	fputc('\n', f);
-	logsize = fsize(fileno(f));
+	if (fstat(fileno(f), &sb)) {
+		/* ignore errors */
+		sb.st_size = 0;
+		sb.st_mode = 0666;
+	}
 	fclose(f);
 
+	if (sb.st_mode != 0666) chmod(path, 0666);
 #define	LOG_MAXSIZE	(1<<20)
-	if (rotate && logsize > LOG_MAXSIZE) {
+	if (rotate && (sb.st_size > LOG_MAXSIZE)) {
 		char	old[MAXPATH];
 
 		sprintf(old, "%s-older", path);
 		rename(path, old);
-	} else {
-		chmod(path, 0666);
 	}
 	return (0);
 }
@@ -897,8 +900,15 @@ cmdlog_end(int ret)
 	assert(len < savelen);
 	mdbm_close(notes);
 	notes = 0;
-	write_log("cmd_log", 0, "%s", log);
-	if (cmdlog_repo) write_log("repo_log", LOG_MAXSIZE, "%s", log);
+	write_log("cmd_log", 1, "%s", log);
+	if (cmdlog_repo) {
+		/*
+		 * commands in the repolog table above get written
+		 * to the repo_log in addition to the cmd_log and
+		 * the repo_log is never rotated.
+		 */
+		write_log("repo_log", 0, "%s", log);
+	}
 	free(log);
 
 	/*
