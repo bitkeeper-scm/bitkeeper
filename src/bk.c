@@ -996,7 +996,7 @@ cmdlog_end(int ret, int bkd_cmd)
 	mdbm_close(notes);
 	notes = 0;
 	write_log("cmd_log", 1, "%s", log);
-	if (cmdlog_flag & CMD_REPOLOG) {
+	if (cmdlog_flags & CMD_REPOLOG) {
 		/*
 		 * commands in the repolog table above get written
 		 * to the repo_log in addition to the cmd_log and

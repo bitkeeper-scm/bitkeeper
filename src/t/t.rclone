@@ -170,7 +170,7 @@ bk clone -rfoo $Q project clone  2> ERR && {
 	echo No foo -- clone should fail
 	exit 1
 }
-egrep -q "^file://.*/project: rev foo doesn't exist" ERR || exit 1
+grep -q "^file://.*/project: rev foo doesn't exist" ERR || exit 1
 test -d clone && {
 	echo Fail
 	echo dir created
