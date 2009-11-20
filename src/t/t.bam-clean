@@ -55,6 +55,7 @@ test -s OUT && {
 }
 grep -q "failed to fetch delta" ERR || {
 	echo wrong message
+	cat ERR
 	exit 1
 }
 mv ../BAM-hold ../pmaster/BitKeeper/BAM 

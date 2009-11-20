@@ -674,6 +674,7 @@ test $? -eq 0 || {
 	exit 1
 }
 echo OK
+
 echo $N Check binary file automerge with attribute conflict..........$NL
 cd "$HERE"
 rm -rf pclone[67]
@@ -698,3 +699,33 @@ test $? -eq 0 || {
 }
 echo "failed (bug - feature not implemented)"
 #exit 1
+
+echo $N bp_fetch from non existent bam server .......................$NL
+cd "$HERE"
+rm -rf project copy copy2
+commercial project
+echo bam > bam
+bk new $Q -b bam
+bk commit $Q -ybam
+bk bam server $Q .
+cd ..
+bk clone $Q project copy
+bk clone $Q project copy2
+mv project aside
+cd copy
+bk get $Q bam 2> ERR && exit 1
+grep -q 'cannot cd to .*/project' ERR || exit 2
+grep -q 'get: failed to fetch BAM data' ERR || exit 3
+echo OK
+
+echo $N get a file through bam server when pwd is outside a repo ....$NL
+cd ..
+bk get $Q copy/bam copy2/bam 2> ERR && exit 1
+grep -q 'cannot cd to .*/project' ERR || exit 2
+grep -q 'get: failed to fetch BAM data' ERR || exit 3
+echo OK
+
+echo $N Fetch from 2 different projects .............................$NL
+mv aside project
+bk get $Q copy/bam copy2/bam || exit 1
+echo OK

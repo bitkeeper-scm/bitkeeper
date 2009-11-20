@@ -1253,7 +1253,7 @@ char	*bp_lookup(sccs *s, delta *d);
 delta	*bp_fdelta(sccs *s, delta *d);
 int	bp_fetch(sccs *s, delta *din);
 int	bp_fetchData(void);
-int	bp_fetchkeys(char *me, int quiet, char **keys);
+int	bp_fetchkeys(char *me, project *p, int quiet, char **keys, u64 todo);
 int	bp_get(sccs *s, delta *d, u32 flags, char *out);
 int	bp_delta(sccs *s, delta *d);
 int	bp_diff(sccs *s, delta *d, char *gfile);

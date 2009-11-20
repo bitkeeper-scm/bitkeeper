@@ -443,33 +443,59 @@ hash2path(project *proj, char *hash)
 int
 bp_fetch(sccs *s, delta *din)
 {
-	FILE	*f;
-	char	*url, *cmd, *keys;
+	char	**keys;
+	int	rc;
 
 	unless (bp_serverID(1)) return (0);	/* no need to update myself */
-	url = bp_serverURL();
-	assert(url);
-
 	unless (din = bp_fdelta(s, din)) return (-1);
+	keys = addLine(0, sccs_prsbuf(s, din, PRS_FORCE, BAM_DSPEC));
 
-	/*
-	 * No recursion, we're already remoted.
-	 * No stdin buffering, it's just one key.
-	 */
-	cmd =
-	    aprintf("bk -q@'%s' -zo0 -Lr sfio -oqBl - |bk -R sfio -iqB -", url);
-	f = popen(cmd, "w");
-	free(cmd);
-	assert(f);
-	keys = sccs_prsbuf(s, din, PRS_FORCE, BAM_DSPEC);
-	fprintf(f, "%s\n", keys);
-	free(keys);
-	if (pclose(f)) {
+	if (rc = bp_fetchkeys("sccs_get", s->proj, SILENT, keys, din->added)) {
 		fprintf(stderr, "bp_fetch: failed to fetch delta for %s\n",
 		    s->gfile);
-		return (-1);
 	}
-	return (0);
+	freeLines(keys, free);
+	return (rc);
+}
+
+/*
+ * called from get.c when fetching multiple BAM files at once
+ */
+int
+bp_fetchkeys(char *me, project *proj, int quiet, char **keys, u64 todo)
+{
+	int	i;
+	int	rc = 1;
+	FILE	*f;
+	char	*server;
+	char	buf[MAXPATH];
+	char	cwd[MAXPATH];
+
+	strcpy(cwd, proj_cwd());
+	chdir(proj_root(proj));
+	unless (server = bp_serverURL()) {
+		fprintf(stderr, "%s: no server for BAM data.\n", me);
+		goto out;
+	}
+	unless (quiet) {
+		fprintf(stderr,
+		    "Fetching %u BAM files from %s...\n",
+		    nLines(keys), server);
+	}
+	/*
+	 * no recursion, I'm remoted to the server already
+	 * XXX run 'bk bam pull -' instead
+	 */
+	sprintf(buf,
+	    "bk -q@'%s' -zo0 -Lr -Bstdin sfio -qoBl - |"
+	    "bk -R sfio -%sriBb%s - 2> " DEVNULL_WR,
+	    server, quiet ? "q" : "", psize(todo));
+	f = popen(buf, "w");
+	EACH(keys) fprintf(f, "%s\n", keys[i]);
+	i = pclose(f);
+	rc = (i != 0);
+ out:	chdir(cwd);
+	return (rc);
 }
 
 /*
@@ -646,6 +672,7 @@ load_bamserver(void)
 		free(server_repoid);
 		server_repoid = 0;
 	}
+	assert(proj_root(0));
 	strcpy(cfile, proj_root(0));
 	if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
 	concat_path(cfile, cfile, BAM_SERVER);
