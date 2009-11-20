@@ -140,12 +140,15 @@
      T_WIDGET = 356,
      T_WHILE = 357,
      T_PRAGMA = 358,
-     LOWEST = 359,
-     ADDRESS = 360,
-     UMINUS = 361,
-     UPLUS = 362,
-     PREFIX_INCDEC = 363,
-     HIGHEST = 364
+     T_SWITCH = 359,
+     T_CASE = 360,
+     T_DEFAULT = 361,
+     LOWEST = 362,
+     ADDRESS = 363,
+     UMINUS = 364,
+     UPLUS = 365,
+     PREFIX_INCDEC = 366,
+     HIGHEST = 367
    };
 #endif
 
@@ -178,6 +181,8 @@ typedef union YYSTYPE
 	Expr	*Expr;
 	Block	*Block;
 	ForEach	*ForEach;
+	Switch	*Switch;
+	Case	*Case;
 	FnDecl	*FnDecl;
 	Cond	*Cond;
 	Loop	*Loop;
@@ -192,7 +197,7 @@ typedef union YYSTYPE
 	} Typename;
 }
 /* Line 2616 of glr.c.  */
-#line 196 "Lgrammar.h"
+#line 201 "Lgrammar.h"
 	YYSTYPE;
 # define YYSTYPE_IS_DECLARED 1
 # define YYSTYPE_IS_TRIVIAL 1

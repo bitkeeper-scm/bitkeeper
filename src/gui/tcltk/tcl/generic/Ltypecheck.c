@@ -222,7 +222,8 @@ typeck_declType(Type *type, VarDecl *decl, int nameof_ok)
 	}
 	if (s) {
 		if (decl->id) {
-			L_errf(decl, "type %s illegal in declaration of '%s'",
+			L_errf(decl->id,
+			       "type %s illegal in declaration of '%s'",
 			       s, decl->id->u.string);
 		} else {
 			L_errf(decl, "type %s illegal", s);

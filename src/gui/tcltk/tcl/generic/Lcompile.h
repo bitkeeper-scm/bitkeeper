@@ -42,9 +42,10 @@ typedef enum {
 	CLS_TOPLEV	= 0x0010,  // is for class top-levels
 	FUNC		= 0x0020,  // frame is at top level of a proc
 	LOOP		= 0x0040,  // frame is for a loop
-	SKIP		= 0x0080,  // skip frame when searching enclosing scopes
-	SEARCH		= 0x0100,  //   don't skip this frame
-	KEEPSYMS	= 0x0200,  // don't free symtab when scope is closed
+	SWITCH		= 0x0080,  // frame is for a switch stmt
+	SKIP		= 0x0100,  // skip frame when searching enclosing scopes
+	SEARCH		= 0x0200,  //   don't skip this frame
+	KEEPSYMS	= 0x0400,  // don't free symtab when scope is closed
 } Frame_f;
 typedef enum {
 	LABEL_USE	= 0x01,    // label is being referenced
@@ -112,6 +113,7 @@ typedef struct {
 	Tcl_Obj	*errs;
 	char	*file;
 	int	line;
+	int	line_adj;	// starting line# for included()'d code
 	int	prev_token_len;
 	int	token_off;	// offset of curr token from start of input
 	int	prev_token_off;	// offset of prev token from start of input
@@ -165,6 +167,7 @@ extern int	L_isUndef(Tcl_Obj *o);
 extern void	L_lex_begReArg();
 extern void	L_lex_endReArg();
 extern void	L_lex_start(void);
+extern int	L_offset_to_lineno(int off);
 extern int	L_parse(void);			// yyparse
 extern void	L_scope_enter();
 extern void	L_scope_leave();
@@ -264,6 +267,12 @@ static inline int
 isclass(Expr *expr)
 {
 	return (expr->type && (expr->type->kind == L_CLASS));
+}
+static inline int
+isregexp(Expr *expr)
+{
+	return ((expr->kind == L_EXPR_RE) ||
+		((expr->kind == L_EXPR_BINOP) && (expr->op == L_OP_INTERP_RE)));
 }
 static inline int
 ispolytype(Type *type)

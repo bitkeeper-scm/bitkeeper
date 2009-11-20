@@ -37,6 +37,7 @@ typedef struct {
 	FILE	*file;
 	char	*name;
 	int	line;
+	int	line_adj;
 	YY_BUFFER_STATE	buf;
 } Include;
 
@@ -216,9 +217,11 @@ include_push(FILE *f, char *name)
 		include_stk[include_top].file = f;
 		include_stk[include_top].name = L->file;
 		include_stk[include_top].line = L->line;
-		include_stk[include_top].buf  = YY_CURRENT_BUFFER;
+		include_stk[include_top].line_adj = L->line_adj;
+		include_stk[include_top].buf = YY_CURRENT_BUFFER;
 		yy_switch_to_buffer(buf);
 		L->file = name;
+		L->line_adj = L_offset_to_lineno(L_lloc.beg);
 		L->line = 1;
 		return (1);
 	}
@@ -230,6 +233,7 @@ include_pop()
 	if (include_top >= 0) {
 		L->file = include_stk[include_top].name;
 		L->line = include_stk[include_top].line;
+		L->line_adj = L_offset_to_lineno(L_lloc.beg) - (L->line - 1);
 		fclose(include_stk[include_top].file);
 		yy_delete_buffer(YY_CURRENT_BUFFER);
 		yy_switch_to_buffer(include_stk[include_top].buf);
@@ -312,6 +316,9 @@ include_pop()
 	"expand"	return T_EXPAND;
 	"_unused"	return T_UNUSED;
 	"goto"		return T_GOTO;
+	"switch"	return T_SWITCH;
+	"case"		return T_CASE;
+	"default:"	return T_DEFAULT;
 	"=>"		return T_ARROW;
 	"eq"		return T_EQ;
 	"ne"		return T_NE;
@@ -482,11 +489,13 @@ include_pop()
 	 * built-in).
 	 */
 	[ \t\r\n]*"/"	{
+		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
 		STRBUF_START(L_lloc.end - 1);	// next token starts at the "/"
 		re_quote_char = '/';
 	}
 	[ \t\r\n]*"m"[^a-zA-Z \t\r\n]	{
+		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
 		STRBUF_START(L_lloc.end - 1);	// next token starts at the "/"
 		re_quote_char = *(yytext + yyleng - 1);

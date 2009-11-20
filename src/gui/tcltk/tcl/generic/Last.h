@@ -26,6 +26,8 @@ typedef struct Class	Class;
 typedef struct Cond	Cond;
 typedef struct Loop	Loop;
 typedef struct ForEach	ForEach;
+typedef struct Switch	Switch;
+typedef struct Case	Case;
 typedef struct Expr	Expr;
 typedef struct Type	Type;
 typedef struct Sym	Sym;
@@ -45,6 +47,7 @@ typedef enum {
 	L_STMT_DECL,
 	L_STMT_EXPR,
 	L_STMT_FOREACH,
+	L_STMT_SWITCH,
 	L_STMT_LOOP,
 	L_STMT_RETURN,
 	L_STMT_GOTO,
@@ -65,6 +68,8 @@ typedef enum {
 	L_NODE_FOREACH_LOOP,
 	L_NODE_FUNCTION_DECL,
 	L_NODE_IF_UNLESS,
+	L_NODE_SWITCH,
+	L_NODE_CASE,
 	L_NODE_LOOP,
 	L_NODE_STMT,
 	L_NODE_TOPLEVEL,
@@ -134,6 +139,7 @@ struct Ast {
 	Ast	*next;	// links all nodes in an AST
 	char	*file;
 	int	line;
+	int	line_adj;  // starting line# of include()'d code
 	int	beg;
 	int	end;
 };
@@ -309,6 +315,19 @@ struct Loop {
 	Stmt	*body;
 };
 
+struct Switch {
+	Ast	node;
+	Expr	*expr;
+	Case	*cases;
+};
+
+struct Case {
+	Ast	node;
+	Expr	*expr;
+	Stmt	*body;
+	Case	*next;
+};
+
 struct Pragma {
 	char	*id;
 	char	*val;
@@ -325,6 +344,7 @@ struct Stmt {
 		ForEach	*foreach;
 		Cond	*cond;
 		Loop	*loop;
+		Switch	*swich;  // not a typo -- illegal to call it "switch"
 		VarDecl	*decl;
 		Pragma	*pragma;
 		char	*label;
@@ -385,6 +405,7 @@ struct VarDecl {
 
 extern Expr	*ast_mkBinOp(Op_k op, Expr *e1, Expr *e2, int beg, int end);
 extern Block	*ast_mkBlock(VarDecl *decls,Stmt *body, int beg, int end);
+extern Case	*ast_mkCase(Expr *expr, Stmt *body, int beg, int end);
 extern ClsDecl	*ast_mkClsDecl(VarDecl *decl, int beg, int end);
 extern Expr	*ast_mkConst(Type *type, int beg, int end);
 extern FnDecl	*ast_mkConstructor(ClsDecl *class);
@@ -403,6 +424,7 @@ extern Loop	*ast_mkLoop(Loop_k kind, Expr *pre, Expr *cond, Expr *post,
 extern Pragma	*ast_mkPragma(char *id, char *val, int beg, int end);
 extern Expr	*ast_mkRegexp(char *re, int beg, int end);
 extern Stmt	*ast_mkStmt(Stmt_k kind, Stmt *next, int beg, int end);
+extern Switch	*ast_mkSwitch(Expr *expr, Case *cases, int beg, int end);
 extern TopLev	*ast_mkTopLevel(Toplv_k kind, TopLev *next, int beg, int end);
 extern Expr	*ast_mkTrinOp(Op_k op, Expr *e1, Expr *e2, Expr *e3,
 			      int beg, int end);

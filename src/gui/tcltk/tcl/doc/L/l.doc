@@ -778,10 +778,30 @@ become undefined (they get the C<undef> value).  If the loop
 is prematurely ended with a C<break> or by jumping out of the
 loop with a C<goto>, the loop counters keep their values.
 
+=item switch
+
+The C<switch> statment is like C's except that regular expressions
+can be used as case expressions:
+
+    switch (string_var) {
+        case /[0-9]+/:
+            puts("numeric");
+            break;
+        case /[a-zA-Z][0-9a-zA-Z]*/:
+            puts("alphanumeric");
+            break;
+        default:
+            puts("neither");
+            break;
+    }
+
+The default case is optional.
+
 =item break and continue
 
 L has C<break> and C<continue> statements that behave like C's.
-They work in all L loops including C<foreach> loops.
+They work in all L loops including C<foreach> loops, and C<break> works
+in C<switch> case bodies.
 
 =item goto
 

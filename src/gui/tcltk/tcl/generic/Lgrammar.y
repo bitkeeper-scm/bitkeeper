@@ -59,6 +59,8 @@ extern int	L_lex (void);
 	Expr	*Expr;
 	Block	*Block;
 	ForEach	*ForEach;
+	Switch	*Switch;
+	Case	*Case;
 	FnDecl	*FnDecl;
 	Cond	*Cond;
 	Loop	*Loop;
@@ -174,6 +176,9 @@ extern int	L_lex (void);
 %token T_WIDGET "widget"
 %token T_WHILE "while"
 %token T_PRAGMA "#pragma"
+%token T_SWITCH "switch"
+%token T_CASE "case"
+%token T_DEFAULT "default"
 %token END 0 "end of file"
 
 /*
@@ -186,7 +191,7 @@ extern int	L_lex (void);
 %nonassoc T_IF T_UNLESS T_RETURN T_ID T_ID_COLON T_STR_LITERAL T_LEFT_INTERPOL
 %nonassoc T_STR_BACKTICK T_INT_LITERAL T_FLOAT_LITERAL T_TYPE T_WHILE
 %nonassoc T_FOR T_DO T_DEFINED T_STRING T_FOREACH T_BREAK T_CONTINUE
-%nonassoc T_SPLIT T_GOTO T_WIDGET T_PRAGMA
+%nonassoc T_SPLIT T_GOTO T_WIDGET T_PRAGMA T_SWITCH
 %left T_COMMA
 %nonassoc T_ELSE T_SEMI
 %right T_EQUALS T_EQPLUS T_EQMINUS T_EQSTAR T_EQSLASH T_EQPERC
@@ -209,16 +214,18 @@ extern int	L_lex (void);
 %type <TopLev> toplevel_code
 %type <ClsDecl> class_decl class_decl_tail
 %type <FnDecl> function_decl fundecl_tail fundecl_tail1
-%type <Stmt> stmt single_stmt compound_stmt stmt_list optional_else
-%type <Stmt> unlabeled_stmt
+%type <Stmt> stmt single_stmt compound_stmt stmt_list opt_stmt_list
+%type <Stmt> unlabeled_stmt optional_else
 %type <Cond> selection_stmt
 %type <Loop> iteration_stmt
 %type <ForEach> foreach_stmt
+%type <Switch> switch_stmt
+%type <Case> switch_cases switch_case
 %type <Pragma> pragma_arg_list
 %type <Expr> expr expression_stmt argument_expr_list opt_arg re_or_string
 %type <Expr> id id_list string_literal cmdsubst_literal dotted_id
-%type <Expr> regexp_literal subst_literal interpolated_expr
-%type <Expr> list list_element
+%type <Expr> regexp_literal regexp_literal_mod subst_literal interpolated_expr
+%type <Expr> list list_element case_expr
 %type <VarDecl> parameter_list parameter_decl_list parameter_decl
 %type <VarDecl> declaration_list declaration declaration2
 %type <VarDecl> init_declarator_list declarator_list init_declarator
@@ -581,6 +588,11 @@ single_stmt:
 		$$ = ast_mkStmt(L_STMT_LOOP, NULL, @1.beg, @1.end);
 		$$->u.loop = $1;
 	}
+	| switch_stmt
+	{
+		$$ = ast_mkStmt(L_STMT_SWITCH, NULL, @1.beg, @1.end);
+		$$->u.swich = $1;
+	}
 	| foreach_stmt
 	{
 		$$ = ast_mkStmt(L_STMT_FOREACH, NULL, @1.beg, @1.end);
@@ -634,6 +646,57 @@ selection_stmt:
 	{
 		$$ = ast_mkIfUnless($3, NULL, $5, @1.beg, @5.end);
 	}
+	;
+
+switch_stmt:
+	  T_SWITCH "(" expr ")" "{" switch_cases "}"
+	{
+		Case	*c, *def;
+
+		for (c = $6, def = NULL; c; c = c->next) {
+			if (c->expr) continue;
+			if (def) {
+				L_errf(c,
+				"multiple default cases in switch statement");
+			}
+			def = c;
+		}
+		$$ = ast_mkSwitch($3, $6, @1.beg, @7.end);
+	}
+	;
+
+switch_cases:
+	  switch_case
+	| switch_cases switch_case
+	{
+		APPEND(Case, next, $1, $2);
+		$$ = $1;
+	}
+	;
+
+switch_case:
+	  "case" { L_lex_begReArg(); } case_expr { L_lex_endReArg(); }
+	  ":" opt_stmt_list
+	{
+		REVERSE(Stmt, next, $6);
+		$$ = ast_mkCase($3, $6, @1.beg, @6.end);
+	}
+	| "default" opt_stmt_list
+	{
+		/* The default case is distinguished by a NULL expr. */
+		REVERSE(Stmt, next, $2);
+		$$ = ast_mkCase(NULL, $2, @1.beg, @2.end);
+	}
+	;
+
+case_expr:
+	  regexp_literal_mod
+	{
+		if ($1->flags & L_EXPR_RE_G) {
+			L_errf($1, "illegal regular expression modifier");
+		}
+	}
+	| expr
 	;
 
 optional_else:
@@ -693,6 +756,11 @@ foreach_stmt:
 expression_stmt:
 	  ";"		{ $$ = NULL; }
 	| expr ";"
+	;
+
+opt_stmt_list:
+	  stmt_list
+	| { $$ = NULL; }
 	;
 
 stmt_list:
@@ -1027,6 +1095,10 @@ expr:
 		$3->next = $6;
 		$6->next = $8;
 		$$ = ast_mkFnCall(id, $3, @1.beg, @9.end);
+		if (isregexp($6) && $6->flags) {
+			L_errf($6,
+			    "regular expression modifiers illegal in split");
+		}
 	}
 	| T_SPLIT "(" expr ")"
 	{
@@ -1174,7 +1246,7 @@ opt_arg:
 	;
 
 re_or_string:
-	  regexp_literal
+	  regexp_literal_mod
 	| string_literal
 	;
 
@@ -1496,6 +1568,16 @@ regexp_literal:
 		Expr *right = ast_mkConst(L_string, @2.beg, @2.end);
 		right->u.string = $2;
 		$$ = ast_mkBinOp(L_OP_INTERP_RE, $1, right, @1.beg, @2.end);
+	}
+	;
+
+regexp_literal_mod:
+	  regexp_literal T_RE_MODIFIER
+	{
+		if (strchr($2, 'i')) $1->flags |= L_EXPR_RE_I;
+		if (strchr($2, 'g')) $1->flags |= L_EXPR_RE_G;
+		ckfree($2);
+		$$ = $1;
 	}
 	;
 

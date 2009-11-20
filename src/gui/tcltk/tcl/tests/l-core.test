@@ -5480,6 +5480,48 @@ aiii has 133
 end
 "
 
+test loop-1.6.1 {test break and continue errors} -body {
+#lang L
+/*
+ * Try a break and continue in various (non-loop) constructs
+ * that open up a new scope in the compiler.  All of these
+ * should be errors.
+ */
+void loop_1_6_1()
+{
+	break;
+	continue;
+	{
+		break;
+		continue;
+	}
+	if (1) {
+		break;
+		continue;
+	} else {
+		break;
+		continue;
+	}
+	switch (1) {
+	    case 1:
+		continue;
+	}
+}
+break;
+continue;
+} -returnCodes error -match regexp -result {.*8: L Error: break allowed only inside switch and loop statements
+.*9: L Error: continue allowed only inside loops
+.*11: L Error: break allowed only inside switch and loop statements
+.*12: L Error: continue allowed only inside loops
+.*15: L Error: break allowed only inside switch and loop statements
+.*16: L Error: continue allowed only inside loops
+.*18: L Error: break allowed only inside switch and loop statements
+.*19: L Error: continue allowed only inside loops
+.*23: L Error: continue allowed only inside loops
+.*26: L Error: break allowed only inside switch and loop statements
+.*27: L Error: continue allowed only inside loops
+}
+
 test loop-1.7 {test loop condition with regexp captures} -body {
 #lang L
 void loop_1_7()
@@ -5515,6 +5557,415 @@ void loop_1_7()
 	unless (it == 1) puts("bad 2.2");
 }
 loop_1_7();
+} -output {}
+
+test switch-1 {check switch statement} -body {
+#lang L
+void switch_1()
+{
+	int	i;
+	int	ia[] = { 3, 1, 4, 1 };
+	string	s, s1, s2, s3, s4, s5;
+	string	sa[] = { "abc", "def", "ghi", "JkL" };
+
+	/* Test string and regexp matching. */
+	s = "";
+	for (i = 0; i < length(sa); ++i) {
+		switch (sa[i]) {
+		    case "abc":
+			unless (i == 0) puts("bad 1.1");
+			s .= "a";
+			break;
+		    case /de/:
+			unless (i == 1) puts("bad 1.2");
+			s .= "d";
+			break;
+		    case /a*c*f*g/:
+			unless (i == 2) puts("bad 1.3");
+			s .= "g";
+			break;
+		    case /jkl/:
+			puts("bad 1.4");
+			break;
+		    case /jkl/i:
+			unless (i == 3) puts("bad 1.5");
+			s .= "j";
+			break;
+		    case "bad":
+			puts("bad 1.6");
+			break;
+		    case /also bad/:
+			puts("bad 1.7");
+			break;
+		}
+	}
+	unless (s eq "adgj") puts("bad 1.9");
+
+	/* Test matching on ints. */
+	s = "";
+	for (i = 0; i < length(ia); ++i) {
+		switch (ia[i]) {
+		    case 0:
+			puts("bad 2.1");
+			break;
+		    case 1:
+			unless ((i == 1) || (i == 3)) puts("bad 2.2");
+			s .= "1";
+			break;
+		    case 2:
+			puts("bad 2.3");
+			break;
+		    case 3:
+			unless (i == 0) puts("bad 2.4");
+			s .= "3";
+			break;
+		    case 4:
+			unless (i == 2) puts("bad 2.5");
+			s .= "4";
+			break;
+		}
+	}
+	unless (s eq "3141") puts("bad 2.9");
+
+	/* Test case fall through. */
+	s = "";
+	switch (1) {
+	    case 1:
+		s .= "1";
+	    case 2:
+		s .= "2";
+		break;
+	    case 3:
+		s .= "3";
+	}
+	unless (s eq "12") puts("bad 3.1");
+
+	/* Test multiple cases per leg. */
+	s = "";
+	for (i = 0; i < 6; ++i) {
+		switch (i) {
+		    case 0:
+			s .= "0";
+			break;
+		    case 1:
+		    case 2:
+			s .= (string)i;
+			break;
+		    case 3:
+		    case 4:
+		    case 5:
+			s .= (string)i;
+			break;
+		}
+	}
+	unless (s eq "012345") puts("bad 4.1");
+
+	/* Test default case in the end, beginning, and middle of the cases. */
+
+	s = "";
+	switch (3) {
+	    case 0:
+		puts("bad 5.1");
+		break;
+	    default:
+		s .= "d";
+		break;
+	}
+	unless (s eq "d") puts("bad 5.2");
+
+	s = "";
+	switch (3) {
+	    default:
+		s .= "d";
+		break;
+	    case 0:
+		puts("bad 5.3");
+		break;
+	}
+	unless (s eq "d") puts("bad 5.4");
+
+	s = "";
+	switch (3) {
+	    case 1:
+		puts("bad 5.5");
+		break;
+	    default:
+		s .= "d";
+		break;
+	    case 0:
+		puts("bad 5.6");
+		break;
+	}
+	unless (s eq "d") puts("bad 5.7");
+
+	/* Test falling thru to and from the default case. */
+
+	s = "";
+	switch (3) {
+	    case 3:
+		s .= "3";
+	    default:
+		s .= "d";
+		break;
+	}
+	unless (s eq "3d") puts("bad 6.1");
+
+	s = "";
+	switch (3) {
+	    default:
+		s .= "d";
+	    case 0:
+		s .= "0";
+		break;
+	}
+	unless (s eq "d0") puts("bad 6.2");
+
+	s = "";
+	switch (3) {
+	    case 0:
+		s .= "0";
+		break;
+	    default:
+		s .= "d";
+	    case 1:
+		s .= "1";
+		break;
+	}
+	unless (s eq "d1") puts("bad 6.3");
+
+	s = "";
+	switch (3) {
+	    default:
+		s .= "d";
+	    case 1:
+		s .= "1";
+	    case 0:
+		s .= "0";
+	}
+	unless (s eq "d10") puts("bad 6.4");
+
+	s = "";
+	switch (3) {
+	    case 1:
+		s .= "1";
+	    default:
+		s .= "d";
+	    case 0:
+		s .= "0";
+	}
+	unless (s eq "d0") puts("bad 6.5");
+
+	/* Test empty case bodies. */
+
+	s = "";
+	for (i = 0; i < 4; ++i) {
+		switch (i) {
+		    case 0:
+		    case 1:
+		    case 3:
+			s .= (string)i;
+			break;
+		    case 2:
+		    default:
+		}
+	}
+	unless (s eq "013") puts("bad 7.2");
+
+	s = "";
+	switch (2) {
+	    case 2:
+	    default:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.3");
+
+	s = "";
+	switch (0) {
+	    case 2:
+	    default:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.4");
+
+	s = "";
+	switch (2) {
+	    default:
+	    case 2:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.5");
+
+	s = "";
+	switch (0) {
+	    default:
+	    case 2:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.6");
+
+	s = "";
+	switch (2) {
+	    case 2:
+	    default:
+	    case 1:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.7");
+
+	s = "";
+	switch (1) {
+	    case 2:
+	    default:
+	    case 1:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.8");
+
+	s = "";
+	switch (0) {
+	    case 2:
+	    default:
+	    case 1:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.9");
+
+	/* Test various whitespace around regexp, and regexp variations. */
+	s = "";
+	for (i = 0; i < length(sa); ++i) {
+		switch (sa[i]) {
+		    case	/abc/:  // tab between "case" and "/abc"
+			s .= "a";
+			break;
+		    case m|def|:
+			s .= "d";
+			break;
+		    case m#jkl#i:
+			s .= "j";
+			break;
+		}
+	}
+	unless (s eq "adj") puts("bad 8.1");
+
+	/* Test interpolations in regexp's. */
+	s = "";
+	s1 = "ab";
+	s2 = "ef";
+	s3 = "g";
+	s4 = "i";
+	s5 = "jkl";
+	for (i = 0; i < length(sa); ++i) {
+		switch (sa[i]) {
+		    case /${s1}c/:
+			s .= "a";
+			break;
+		    case /d${s2}/:
+			s .= "d";
+			break;
+		    case /${s3}h${s4}/:
+			s .= "g";
+			break;
+		    case /${s5}/i:
+			s .= "j";
+			break;
+		}
+	}
+	unless (s eq "adgj") puts("bad 9.1");
+}
+switch_1();
+} -output {}
+
+test switch-2 {test multiple-default-clause error in switch stmt} -body {
+#lang L
+void switch_2()
+{
+	switch (0) {
+	    default:
+		break;
+	    default:
+		break;
+	}
+	switch (0) {
+	    default:
+		break;
+	    default:
+		break;
+	    default:
+		break;
+	}
+	switch (0) {
+	    default:
+	    default:
+		break;
+	}
+	switch (0) {
+	    default:
+	    default:
+	}
+	switch (0) {
+	    default:
+	    case 0:
+		break;
+	    default:
+	}
+}
+} -returnCodes error -match regexp -result {.*6: L Error: multiple default cases in switch statement
+.*12: L Error: multiple default cases in switch statement
+.*14: L Error: multiple default cases in switch statement
+.*19: L Error: multiple default cases in switch statement
+.*24: L Error: multiple default cases in switch statement
+.*30: L Error: multiple default cases in switch statement
+}
+
+test switch-3.1 {test type errors in switch stmt} -body {
+#lang L
+void switch_3_1()
+{
+	switch (0) {
+		case /regexp/:	// type err
+	}
+	switch ("string") {
+		case 0:		// type err
+	}
+}
+} -returnCodes error -match regexp -result {.*4: L Error: case type incompatible with switch expression
+.*7: L Error: case type incompatible with switch expression
+}
+
+test switch-3.2 {test other errors in switch stmt} -body {
+#lang L
+void switch_3_2()
+{
+	switch ("string") {
+		case /re/g:	// bad regexp modifier
+		case /re/ig:	// bad regexp modifier
+	}
+}
+} -returnCodes error -match regexp -result {.*4: L Error: illegal regular expression modifier
+.*5: L Error: illegal regular expression modifier
+}
+
+test switch-4 {test legal types in switch stmt} -body {
+#lang L
+void switch_4()
+{
+	/* These are all legal. */
+	switch (0) {
+		case 0.0:
+		case 0:
+	}
+	switch (0.0) {
+		case 0.0:
+		case 0:
+	}
+}
 } -output {}
 
 test struct-1.0 {structs} -body {
@@ -6989,6 +7440,57 @@ void regexp_1_7()
 .*12: L Error: undeclared variable: \$2
 .*15: L Error: undeclared variable: \$3
 }
+
+test regexp-1.8 {check matching of different regexp kinds} -body {
+#lang L
+/*
+ * The compiler generates four different kinds of code for regexp
+ * matching.  This test checks each kind:
+ * re is a string constant - INST_STR_EQ
+ * re can be converted to a glob - INST_STR_MATCH
+ * re has no captures - INST_REGEXP
+ * re has captures - ::regexp cmd
+ */
+int regexp_1_8_streq()       { return("abc" =~ /^abc$/); }
+int regexp_1_8_strmatch()    { return("abc" =~ /abc/); }
+int regexp_1_8_simple_re()   { return("abc" =~ /a*bc/); }
+int regexp_1_8_complex_re()  { return("abc" =~ /a*(b)c/); }
+int regexp_1_8_complex_re2() { return("abc" =~ /^${""}abc$/); }
+int regexp_1_8_complex_re3() { return("abc" =~ /^abc${""}$/); }
+int regexp_1_8_complex_re4() { return("abc" =~ /^ab${""}c$/); }
+void regexp_1_8()
+{
+	string	dis;
+
+	unless (regexp_1_8_streq())       puts("bad 1.1");
+	unless (regexp_1_8_strmatch())    puts("bad 1.2");
+	unless (regexp_1_8_simple_re())   puts("bad 1.3");
+	unless (regexp_1_8_complex_re())  puts("bad 1.4");
+	unless (regexp_1_8_complex_re2()) puts("bad 1.5");
+	unless (regexp_1_8_complex_re3()) puts("bad 1.6");
+	unless (regexp_1_8_complex_re4()) puts("bad 1.7");
+
+	/*
+	 * Check the disassembly of the regexp matches to verify that
+	 * they are compiled as expected.
+	 */
+	dis = ::tcl::unsupported::disassemble("proc", "regexp_1_8_streq");
+	unless (dis =~ /streq/) puts("bad 2.1");
+	dis = ::tcl::unsupported::disassemble("proc", "regexp_1_8_strmatch");
+	unless (dis =~ /strmatch/) puts("bad 2.2");
+	dis = ::tcl::unsupported::disassemble("proc", "regexp_1_8_simple_re");
+	unless (dis =~ / regexp/) puts("bad 2.3");
+	dis = ::tcl::unsupported::disassemble("proc", "regexp_1_8_complex_re");
+	unless (dis =~ /::regexp/) puts("bad 2.4");
+	dis = ::tcl::unsupported::disassemble("proc", "regexp_1_8_complex_re2");
+	unless (dis =~ /::regexp/) puts("bad 2.5");
+	dis = ::tcl::unsupported::disassemble("proc", "regexp_1_8_complex_re3");
+	unless (dis =~ /::regexp/) puts("bad 2.6");
+	dis = ::tcl::unsupported::disassemble("proc", "regexp_1_8_complex_re4");
+	unless (dis =~ /::regexp/) puts("bad 2.7");
+}
+regexp_1_8();
+} -output {}
 
 test reference-1.1 {L references} -body {
 #lang L
@@ -10745,7 +11247,7 @@ split_1_0()
 
 	r = split("XaaXbXcX", "[abc]");
 	unless ((r[0] eq "X") && (r[1] eq "") && (r[2] eq "X") &&
-	        (r[3] eq "X") && (r[4] eq "X")) {
+		(r[3] eq "X") && (r[4] eq "X")) {
 		puts("bad 5.5");
 	}
 	if (defined(r[5])) puts("bad 5.6");
@@ -10776,14 +11278,14 @@ split_1_0()
 
 	r = split("1 2 3 4", " ", 5);
 	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
-	        (r[3] eq "4")) {
+		(r[3] eq "4")) {
 		puts("bad 7.1");
 	}
 	if (defined(r[4])) puts("bad 7.2");
 
 	r = split("1 2 3 4", " ", 4);
 	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
-	        (r[3] eq "4")) {
+		(r[3] eq "4")) {
 		puts("bad 7.3");
 	}
 	if (defined(r[4])) puts("bad 7.4");
@@ -10804,14 +11306,14 @@ split_1_0()
 
 	r = split("1 2 3 4", " ", 0);
 	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
-	        (r[3] eq "4")) {
+		(r[3] eq "4")) {
 		puts("bad 7.11");
 	}
 	if (defined(r[4])) puts("bad 7.12");
 
 	r = split("1 2 3 4", " ", -1);
 	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
-	        (r[3] eq "4")) {
+		(r[3] eq "4")) {
 		puts("bad 7.13");
 	}
 	if (defined(r[4])) puts("bad 7.14");
@@ -10860,6 +11362,19 @@ split_1_0()
 #lang tcl
 split_1_0
 } -output ""
+
+test split-2 {test split errors} -body {
+#lang L
+void split_2()
+{
+	split("bad", /re/i);
+	split("bad", /re/g);
+	split("bad", /re/ig);
+}
+} -returnCodes error -match regexp -result {.*3: L Error: regular expression modifiers illegal in split
+.*4: L Error: regular expression modifiers illegal in split
+.*5: L Error: regular expression modifiers illegal in split
+}
 
 test consts-1.0 {test constants function} -body {
 #lang L
