@@ -18,8 +18,10 @@
 
 /* L command-line options. */
 typedef enum {
-	L_OPT_POLY	= 0x0001,
-	L_OPT_NOWARN	= 0x0002,
+	L_OPT_FNTRACE	= 0x0001,
+	L_OPT_NORUN	= 0x0002,
+	L_OPT_NOWARN	= 0x0004,
+	L_OPT_POLY	= 0x0008,
 } Lopt_f;
 
 /* For jump fix-ups. */
@@ -40,9 +42,10 @@ typedef enum {
 	CLS_TOPLEV	= 0x0010,  // is for class top-levels
 	FUNC		= 0x0020,  // frame is at top level of a proc
 	LOOP		= 0x0040,  // frame is for a loop
-	SKIP		= 0x0080,  // skip frame when searching enclosing scopes
-	SEARCH		= 0x0100,  //   don't skip this frame
-	KEEPSYMS	= 0x0200,  // don't free symtab when scope is closed
+	SWITCH		= 0x0080,  // frame is for a switch stmt
+	SKIP		= 0x0100,  // skip frame when searching enclosing scopes
+	SEARCH		= 0x0200,  //   don't skip this frame
+	KEEPSYMS	= 0x0400,  // don't free symtab when scope is closed
 } Frame_f;
 typedef enum {
 	LABEL_USE	= 0x01,    // label is being referenced
@@ -74,6 +77,8 @@ typedef struct Frame {
 	// and the bytecode offset for the jump back.
 	Jmp		*end_jmp;
 	int		proc_top;
+	// Fix-ups for return stmts which all jmp to the end.
+	Jmp		*ret_jmps;
 	struct Frame	*prevFrame;
 } Frame;
 
@@ -108,6 +113,7 @@ typedef struct {
 	Tcl_Obj	*errs;
 	char	*file;
 	int	line;
+	int	line_adj;	// starting line# for included()'d code
 	int	prev_token_len;
 	int	token_off;	// offset of curr token from start of input
 	int	prev_token_off;	// offset of prev token from start of input
@@ -115,6 +121,7 @@ typedef struct {
 	int	script_len;
 	Lopt_f	options;	// command-line options
 	FnDecl	*enclosing_func;
+	Frame	*enclosing_func_frame;
 	Ast	*mains_ast;	// root of AST when main() last seen
 	Tcl_HashTable	*include_table;
 	Tcl_Interp	*interp;
@@ -122,6 +129,7 @@ typedef struct {
 	int	tmpnum;		// for creating tmp variables
 	char	*toplev;	// name of toplevel proc
 	jmp_buf	jmp;		// for syntax error longjmp bail out
+	char	*fnhook;	// name of function-trace proc
 } Linterp;
 
 /*
@@ -159,6 +167,7 @@ extern int	L_isUndef(Tcl_Obj *o);
 extern void	L_lex_begReArg();
 extern void	L_lex_endReArg();
 extern void	L_lex_start(void);
+extern int	L_offset_to_lineno(int off);
 extern int	L_parse(void);			// yyparse
 extern void	L_scope_enter();
 extern void	L_scope_leave();
@@ -168,9 +177,11 @@ extern Tcl_Obj	*L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *reobj,
 			 Tcl_Obj *limobj);
 extern Type	*L_struct_lookup(char *tag, int local);
 extern Type	*L_struct_store(char *tag, VarDecl *members);
-extern void	L_synerr(const char *s, ...);	// yyerror
+extern void	L_synerr(const char *s);	// yyerror
+extern void	L_synerr2(const char *s, int offset);
 extern void	L_trace(const char *format, ...);
 extern void	L_typeck_init();
+extern int	L_typeck_arrElt(Type *var, Type *array);
 extern void	L_typeck_assign(Expr *lhs, Expr *rhs);
 extern int	L_typeck_compat(Type *lhs, Type *rhs);
 extern int	L_typeck_declType(VarDecl *decl);
@@ -256,6 +267,12 @@ static inline int
 isclass(Expr *expr)
 {
 	return (expr->type && (expr->type->kind == L_CLASS));
+}
+static inline int
+isregexp(Expr *expr)
+{
+	return ((expr->kind == L_EXPR_RE) ||
+		((expr->kind == L_EXPR_BINOP) && (expr->op == L_OP_INTERP_RE)));
 }
 static inline int
 ispolytype(Type *type)
@@ -489,7 +506,7 @@ typedef struct {
 	int	end;
 } L_YYLTYPE;
 #define YYLTYPE L_YYLTYPE
-extern YYLTYPE yylloc;
+extern YYLTYPE L_lloc;
 #define YYLLOC_DEFAULT(c,r,n)				\
 	do {						\
 		if (n) {				\

@@ -13,6 +13,8 @@
 %x include
 %x here_doc_interp
 %x here_doc_nointerp
+%x hash
+%x hash2
 ID	([a-zA-Z_]|::)([0-9a-zA-Z_]|::)*
 %{
 /*
@@ -35,6 +37,7 @@ typedef struct {
 	FILE	*file;
 	char	*name;
 	int	line;
+	int	line_adj;
 	YY_BUFFER_STATE	buf;
 } Include;
 
@@ -214,9 +217,11 @@ include_push(FILE *f, char *name)
 		include_stk[include_top].file = f;
 		include_stk[include_top].name = L->file;
 		include_stk[include_top].line = L->line;
-		include_stk[include_top].buf  = YY_CURRENT_BUFFER;
+		include_stk[include_top].line_adj = L->line_adj;
+		include_stk[include_top].buf = YY_CURRENT_BUFFER;
 		yy_switch_to_buffer(buf);
 		L->file = name;
+		L->line_adj = L_offset_to_lineno(L_lloc.beg);
 		L->line = 1;
 		return (1);
 	}
@@ -228,6 +233,7 @@ include_pop()
 	if (include_top >= 0) {
 		L->file = include_stk[include_top].name;
 		L->line = include_stk[include_top].line;
+		L->line_adj = L_offset_to_lineno(L_lloc.beg) - (L->line - 1);
 		fclose(include_stk[include_top].file);
 		yy_delete_buffer(YY_CURRENT_BUFFER);
 		yy_switch_to_buffer(include_stk[include_top].buf);
@@ -310,6 +316,9 @@ include_pop()
 	"expand"	return T_EXPAND;
 	"_unused"	return T_UNUSED;
 	"goto"		return T_GOTO;
+	"switch"	return T_SWITCH;
+	"case"		return T_CASE;
+	"default:"	return T_DEFAULT;
 	"=>"		return T_ARROW;
 	"eq"		return T_EQ;
 	"ne"		return T_NE;
@@ -373,7 +382,9 @@ include_pop()
 				undo_yy_user_action();
 				BEGIN(include);
 			}
-	("//"|#).*("\r"|"\n"|"\r\n")
+	^#		BEGIN(hash);
+	[ \t]+#.*("\r"|"\n"|"\r\n")
+	"//".*("\r"|"\n"|"\r\n")
 	[ \t\n\r\f]+
 	\"		yy_push_state(str_double); STRBUF_START(L->token_off);
 	\'		yy_push_state(str_single); STRBUF_START(L->token_off);
@@ -444,6 +455,13 @@ include_pop()
 		yy_push_state(here_doc_nointerp);
 		return T_EQUALS;
 	}
+	/* illegal here documents (white space after the end delim) */
+	"="[ \t\r\n]*"<<"[a-zA-Z_][a-zA-Z_0-9]*[^\n]		{
+		L_synerr("illegal here-document delimeter");
+	}
+	"="[ \t\r\n]*"<<\'"[a-zA-Z_][a-zA-Z_0-9]*\'[^\n]		{
+		L_synerr("illegal here-document delimeter");
+	}
 }
 
 <include>{
@@ -471,11 +489,13 @@ include_pop()
 	 * built-in).
 	 */
 	[ \t\r\n]*"/"	{
+		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
 		STRBUF_START(L_lloc.end - 1);	// next token starts at the "/"
 		re_quote_char = '/';
 	}
 	[ \t\r\n]*"m"[^a-zA-Z \t\r\n]	{
+		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
 		STRBUF_START(L_lloc.end - 1);	// next token starts at the "/"
 		re_quote_char = *(yytext + yyleng - 1);
@@ -724,6 +744,13 @@ include_pop()
 	<<EOF>>		{
 				unless (include_pop()) yyterminate();
 			}
+<hash>{
+	pragma[ \t]+	BEGIN(INITIAL); return T_PRAGMA;
+	.		BEGIN(hash2);
+}
+<hash2>{
+	.*("\r"|"\n"|"\r\n")	BEGIN(INITIAL);
+}
 %%
 void
 L_lex_begReArg()

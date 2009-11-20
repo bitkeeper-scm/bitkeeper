@@ -10,13 +10,14 @@ ast_init(void *node, Node_k type, int beg, int end)
 {
 	Ast	*ast = (Ast *)node;
 
-	ast->file   = L->file;
-	ast->line   = L->line;
-	ast->type   = type;
-	ast->beg    = beg;
-	ast->end    = end;
-	ast->next   = L->ast_list;
-	L->ast_list = (void *)ast;
+	ast->file     = L->file;
+	ast->line     = L->line;
+	ast->line_adj = L->line_adj;
+	ast->type     = type;
+	ast->beg      = beg;
+	ast->end      = end;
+	ast->next     = L->ast_list;
+	L->ast_list   = (void *)ast;
 }
 
 Block *
@@ -94,6 +95,28 @@ ast_mkLoop(Loop_k kind, Expr *pre, Expr *cond, Expr *post, Stmt *body,
 	loop->body = body;
 	ast_init(loop, L_NODE_LOOP, beg, end);
 	return (loop);
+}
+
+Switch *
+ast_mkSwitch(Expr *expr, Case *cases, int beg, int end)
+{
+	Switch	*sw = (Switch *)ckalloc(sizeof(Switch));
+	memset(sw, 0, sizeof(Switch));
+	sw->expr  = expr;
+	sw->cases = cases;
+	ast_init(sw, L_NODE_SWITCH, beg, end);
+	return (sw);
+}
+
+Case *
+ast_mkCase(Expr *expr, Stmt *body, int beg, int end)
+{
+	Case	*c = (Case *)ckalloc(sizeof(Case));
+	memset(c, 0, sizeof(Case));
+	c->expr = expr;
+	c->body = body;
+	ast_init(c, L_NODE_CASE, beg, end);
+	return (c);
 }
 
 Stmt *
@@ -240,6 +263,16 @@ ast_mkId(char *name, int beg, int end)
 	Expr *e = ast_mkExpr(L_EXPR_ID, L_OP_NONE, NULL, NULL, NULL, beg, end);
 	e->u.string = ckstrdup(name);
 	return (e);
+}
+
+Pragma *
+ast_mkPragma(char *id, char *val, int beg, int end)
+{
+	Pragma	*pragma = (Pragma *)ckalloc(sizeof(Pragma));
+	memset(pragma, 0, sizeof(Pragma));
+	pragma->id  = id;
+	pragma->val = val;
+	return (pragma);
 }
 
 private Type *

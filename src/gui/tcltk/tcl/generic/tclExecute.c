@@ -7072,6 +7072,7 @@ TclExecuteByteCode(
 		for (j = 0;  j < numVars;  j++) {
 		    if (valIndex >= listLen) {
 			TclNewObj(valuePtr);
+			valuePtr->undef = 1;
 		    } else {
 			valuePtr = elements[valIndex];
 		    }

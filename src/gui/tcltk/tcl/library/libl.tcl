@@ -44,6 +44,7 @@ proc %%call_main_if_defined {} {
 }
 
 #lang L
+#pragma fntrace(off)
 /*
  * Types for compatibility with older versions of the compiler.
  * The tcl typedef lets the tcl cast work now that it's not
@@ -60,6 +61,7 @@ string	stdio_lasterr;
 
 extern	string errorCode[];
 
+typedef void &fnhook_t(int pre, int ac, poly av[], poly ret);
 
 struct	stat {
 	int	st_dev;
@@ -645,4 +647,39 @@ string
 winfo_containing(int x, int y)
 {
 	return (Winfo_containing(x, y));
+}
+
+/* Default function-trace hooks. */
+
+private int inhook = 0;
+
+void
+L_fn_pre_hook(fnhook_t fn, int ac, poly av[])
+{
+    if (inhook) return;
+    ++inhook;
+    fn(1, ac, av, undef);
+    --inhook;
+}
+
+void
+L_fn_post_hook(poly ret, fnhook_t fn, int ac, poly av[])
+{
+    if (inhook) return;
+    ++inhook;
+    fn(0, ac, av, ret);
+    --inhook;
+}
+
+void
+L_def_fn_hook(int pre, int ac, poly av[], poly ret)
+{
+	int	i;
+
+	fprintf(stderr, "%s %s%s", pre?"enter":"exit", av[0], i>1?":":"");
+	for (i = 1; i < ac; ++i) {
+		fprintf(stderr, " '%s'", av[i]);
+	}
+	unless (pre) fprintf(stderr, " ret '%s'", ret);
+	fprintf(stderr, "\n");
 }
