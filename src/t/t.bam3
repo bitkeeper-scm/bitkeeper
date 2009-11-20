@@ -217,4 +217,24 @@ test -s OUT && {
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
-exit 0
+echo $N Clone using bk:// of repo with file url bam server ..........$NL
+cd "$HERE"
+echo "binary data" > WANT
+# BAM server repo on work: /home/bk/test_data/bk-url-only
+# has 700 perms and is owned by user bkd (which owns the bkd process on work)
+# It can only be accessed through bkd even though it is NFS mounted.
+#
+# The /home/bk/test_data file-url* repos have file urls pointing to
+# bk-url-only since they were made with a file clone by user bkd.
+#
+# Different ways of cloning can leave different BAM server path formats
+# See the README files in the /home/bk/test_data/file-url* repos for
+# details.  Test all the permutations I saw: file:// file:/// and /...
+for f in 2-slash 3-slash abs-path; do
+	bk clone $Q bk://data.bitmover.com/test_data/file-url-$f || exit 1
+	cd file-url-$f || exit 2
+	bk get $Q bam || exit 3
+	cmpfiles ../WANT bam
+	cd ..
+done
+echo OK

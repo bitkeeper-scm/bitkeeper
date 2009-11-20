@@ -2,11 +2,9 @@
 #include "system.h"
 #include "sccs.h"
 
-#define	bp_fetchkeys	fetchkeys	
-
 private int	get_rollback(sccs *s, char *rev,
 		    char **iLst, char **xLst, char *prog);
-private int	bam(char *me, int, char **files, char **keys, u64 n, int ac, char **av);
+private	int	bam(char *me, int q, char **files, int ac, char **av);
 
 int
 get_main(int ac, char **av)
@@ -33,6 +31,7 @@ get_main(int ac, char **av)
 	char	*out = "-";
 	char	**bp_files = 0;
 	char	**bp_keys = 0;
+	project	*bp_proj = 0;
 	u64	bp_todo = 0;
 	char	realname[MAXPATH];
 
@@ -282,6 +281,24 @@ err:			sccs_free(s);
 		    ? sccs_getdiffs(s, rev, flags, out)
 		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
 			if (s->cachemiss && !recursed) {
+				if (bp_proj && (s->proj != bp_proj)) {
+					if (bp_fetchkeys(prog, bp_proj,
+						(flags & SILENT),
+						bp_keys, bp_todo)) {
+						fprintf(stderr,
+						    "%s: failed to fetch "
+						    "BAM data\n", prog);
+						return (1);
+					}
+					proj_free(bp_proj);
+					bp_proj = 0;
+					freeLines(bp_keys, free);
+					bp_keys = 0;
+					bp_todo = 0;
+				}
+				unless (bp_proj) {
+					bp_proj = proj_init(proj_root(s->proj));
+				}
 				d = bp_fdelta(s, sccs_findrev(s, rev));
 				bp_files = addLine(bp_files, strdup(name));
 				bp_keys = addLine(bp_keys,
@@ -308,12 +325,23 @@ next:		sccs_free(s);
 	}
 	if (sfileDone()) errors = 1;
 	if (realNameCache) mdbm_close(realNameCache);
+	if (bp_proj) {
+		if (bp_fetchkeys(prog, bp_proj,
+			(flags & SILENT), bp_keys, bp_todo)) {
+			fprintf(stderr, "%s: failed to fetch BAM data\n", prog);
+			return (1);
+		}
+		proj_free(bp_proj);
+		freeLines(bp_keys, free);
+		bp_keys = 0;
+		bp_todo = 0;
+	}
 	if (bp_files && !recursed) {
+
 		/* If we already had an error don't let this turn that
 		 * into a non-error.
 		 */
-		if (c = bam(prog, flags & SILENT,
-		    bp_files, bp_keys, bp_todo, ac_optend, av)) {
+		if (c = bam(prog, (flags & SILENT), bp_files, ac_optend, av)) {
 		    	errors = c;
 	    	}
 	}
@@ -322,20 +350,14 @@ next:		sccs_free(s);
 	return (errors);
 }
 
-extern int bp_fetchkeys(char *me, int quiet, char **keys, u64 todo);
-
 private int
-bam(char *me, int q, char **files, char **keys, u64 todo, int ac, char **av)
+bam(char *me, int q, char **files, int ac, char **av)
 {
 	char	*nav[100];
 	FILE	*f;
 	int	i;
 
 	unless (files) return (0);
-	if (bp_fetchkeys(me, q, keys, todo)) {
-		fprintf(stderr, "%s: failed to fetch BAM data\n", me);
-		return (1);
-	}
 	assert(ac < 90);
 	nav[0] = "bk";
 	for (i = 0; i < ac; i++) {
@@ -348,34 +370,6 @@ bam(char *me, int q, char **files, char **keys, u64 todo, int ac, char **av)
 	EACH(files) fprintf(f, "%s\n", files[i]);
 	if (pclose(f)) return (1);
 	return (0);
-}
-
-int
-bp_fetchkeys(char *me, int quiet, char **keys, u64 todo)
-{
-	int	i;
-	FILE	*f;
-	char	*server = bp_serverURL(0);
-	char	buf[MAXPATH];
-
-	unless (server) {
-		fprintf(stderr, "%s: no server for BAM data.\n", me);
-		return (1);
-	}
-	unless (quiet) {
-		fprintf(stderr,
-		    "Fetching %u BAM files from %s...\n",
-		    nLines(keys), server);
-	}
-	/* no recursion, I'm remoted to the server already */
-	sprintf(buf,
-	    "bk -q@'%s' -zo0 -Lr -Bstdin sfio -qoBl - |"
-	    "bk -R sfio -%sriBb%s -", server, quiet ? "q" : "", psize(todo));
-	f = popen(buf, "w");
-	EACH(keys) fprintf(f, "%s\n", keys[i]);
-	i = pclose(f);
-	free(server);
-	return (i != 0);
 }
 
 private int

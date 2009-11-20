@@ -263,6 +263,21 @@ rclone(char **av, remote *r, char **envVar)
 	char	*bp_keys = 0;
 	char	revs[MAXKEY];
 
+	if (opts.rev) {
+		sccs	*s;
+		delta	*d;
+
+		s = sccs_csetInit(SILENT);
+		d = sccs_findrev(s, opts.rev);
+		sccs_free(s);
+
+		unless (d) {
+			fprintf(stderr, "clone: rev %s doesn't exist\n",
+			    opts.rev);
+			rc = 1;
+			goto done;
+		}
+	}
 	sprintf(revs, "..%s", opts.rev ? opts.rev : "+");
 	safe_putenv("BK_CSETS=%s", revs);
 	if (rc = trigger(av[0], "pre"))  goto done;
