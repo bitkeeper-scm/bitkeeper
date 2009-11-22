@@ -294,7 +294,12 @@ findFiles()
 {
 	FILE	fd;
 	sfile	sf;
-	string	cmd = "bk sfiles -vgxcyp -o${self.tmpsfile} ";
+	string	cmd = "bk sfiles -vgcyp -o${self.tmpsfile} ";
+
+	unless (self.resolve) {
+		// Look for extra files when we're not in the resolver.
+		cmd .= "-x ";
+	}
 
 	unless (self.partial) {
 		sf.type = "cset";
@@ -1193,8 +1198,8 @@ doCommit()
 
 	if (self.resolve && !self.partial) {
 		// We're running from the resolver.  We want to make sure
-		// all files have been commented and that the changeset
-		// has a comment.
+		// all non-extra files have been commented and that the
+		// changeset has a comment.
 		if ((self.cnt_commented < self.cnt_total)) {
 			bottomMessage(msgs{"resolveAllComments"}, "warning");
 			return;
@@ -1738,6 +1743,11 @@ main(int argc, string argv[])
 		foreach (file in files) {
 			if (isdir(file)) bk_usage();
 		}
+	}
+
+	if (self.resolve) {
+		self.root = `bk pwd`;
+		self.nested = 0;
 	}
 
 	gui();
