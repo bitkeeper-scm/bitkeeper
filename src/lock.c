@@ -258,6 +258,15 @@ usage:			system("bk help -s lock");
 			usleep(uslp);
 			if (uslp < 1000000) uslp <<= 1;
 		}
+		if (!file && proj_isProduct(0)) {
+			char	**locks = 0;
+			/* wait for a nested lock */
+			while (!(locks = nested_lockers(0))) {
+				usleep(uslp);
+				if (uslp < 1000000) uslp <<= 1;
+			}
+			freeLines(locks, free);
+		}
 		exit(0);
 
 	    case 'U':	/* wait for the file|repository to become unlocked */

@@ -13,7 +13,6 @@
 private int	lockResync(project *p);
 private void	unlockResync(project *p);
 private time_t	nested_getTimeout(int created);
-private char	**nested_lockers(project *p);
 
 /*
  * Return all the lock files which start with a digit, i.e.,
@@ -717,7 +716,7 @@ out:	free(nlid);
 	freeNLID(nl);
 	return (0);
 
-stale:	if (nl->kind == 'w') {
+stale:	if (nl && (nl->kind == 'w')) {
 		/*
 		 * XXX: since we don't have a nested-aware abort right
 		 * now, we just punt on staling write locks, remove this
@@ -806,10 +805,13 @@ nested_wrlock(project *p)
 	if (proj_isResync(p)) p = proj_isResync(p);
 
 	unless (repository_mine(p, 'w')) {
+		putenv("_BK_IGNORE_RESYNC_LOCK=1");
 		if (repository_wrlock(p)) {
+			putenv("_BK_IGNORE_RESYNC_LOCK=");
 			nl_errno = NL_COULD_NOT_LOCK_NOT_MINE;
 			return (0);
 		}
+		putenv("_BK_IGNORE_RESYNC_LOCK=");
 		unlock = 1;
 	}
 
@@ -964,7 +966,7 @@ unlockResync(project *p)
 /*
  * Get list of nested lockers. Stale locks are silently removed.
  */
-private char	**
+char	**
 nested_lockers(project *p)
 {
 	char	**files = 0, **lockers = 0;
@@ -1095,10 +1097,13 @@ nested_unlock(project *p, char *nlid)
 		 * repository_mine() that should be fixed someday.
 		 */
 		unless (repository_mine(p, 'w') || repository_mine(p, 'r')) {
+			putenv("_BK_IGNORE_RESYNC_LOCK=1");
 			if (repository_wrlock(p)) {
+				putenv("_BK_IGNORE_RESYNC_LOCK=");
 				nl_errno = NL_COULD_NOT_LOCK_NOT_MINE;
 				return (1);
 			}
+			putenv("_BK_IGNORE_RESYNC_LOCK=");
 			unlock = 1;
 		}
 		tfile = proj_fullpath(p, NESTED_WRITER_LOCK);
