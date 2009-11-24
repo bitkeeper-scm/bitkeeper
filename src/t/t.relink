@@ -70,14 +70,14 @@ grep -q "relinked 0/$NFILE files, 0 different, $NFILE already linked." OUT || {
 echo OK
 
 echo $N Try to relink with read lock in the from repo, should fail ..$NL
-ReadLock clone L
+L=`cd clone ; bk lock -rt`
 bk relink clone project 2>OUT && {
-   	Unlock $L
+	bk _kill $L
 	echo Should have failed
 	cat OUT
 	exit 1
 }
-Unlock $L
+bk _kill $L
 grep -q "relink: unable to write lock clone" OUT || {
 	echo Bad status message
 	cat OUT
@@ -86,14 +86,14 @@ grep -q "relink: unable to write lock clone" OUT || {
 echo OK
 
 echo $N Try to relink with write lock in the from repo, should fail .$NL
-WriteLock clone L
+L=`cd clone ; bk lock -wt`
 bk relink clone project 2>OUT && {
-	Unlock $L
+	bk _kill $L
 	echo Should have failed
 	cat OUT
 	exit 1
 }
-Unlock $L
+bk _kill $L
 grep -q "relink: unable to write lock clone" OUT || {
 	echo Bad status message
 	cat OUT
@@ -103,13 +103,13 @@ echo OK
 
 echo $N Try to relink with read lock in the to repo, should work ....$NL
 cp -rp project relink
-ReadLock project L
+L=`cd project ; bk lock -rt`
 bk relink relink project 2>OUT || {
-	Unlock $L
+	bk _kill $L
 	cat OUT
 	exit 1
 }
-Unlock $L
+bk _kill $L
 grep -q "relinked $NFILE/$NFILE files, 0 different, 0 already linked." OUT || {
 	echo Bad status message
 	cat OUT

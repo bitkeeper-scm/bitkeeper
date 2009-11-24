@@ -169,10 +169,7 @@ import() {
 		}
 	fi
 	bk sane || Done 1	# verifiy hostname from -H is OK
-	bk lock -w -t > /tmp/lock$$ &
-	bk lock -L
-	LOCKURL=`cat /tmp/lock$$`
-	rm -f /tmp/lock$$
+	LOCKURL=`bk lock -wt`
 	export BK_IGNORE_WRLOCK=YES
 	trap 'Done 100' 1 2 3 15
 

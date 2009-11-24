@@ -12,6 +12,8 @@ private	void	closeIt(HANDLE h);
 
 private	int	caught;
 private	void	abort_lock(int dummy) { caught++; }
+private	int	do_async(int ac, char **av);
+private	void	tcpHandshake(int lockclient, int tcp);
 
 /*
  * lock - repository level locking
@@ -21,19 +23,20 @@ lock_main(int ac, char **av)
 {
 	int	nsock, c, uslp = 1000;
 	int	what = 0, silent = 0, keepOpen = 0, tcp = 0;
-	char	*file = 0, *nlid;
+	int	lockclient = -1;
+	char	*file = 0, *nlid = 0, *pidfile = 0;
 	HANDLE	h = 0;
-	pid_t	pid;
 
-	while ((c = getopt(ac, av, "f;klqRrstwWLU")) != -1) {
+	while ((c = getopt(ac, av, "f;klP;qRrstwWLU")) != -1) {
 		switch (c) {
+		    case 'P': pidfile = strdup(optarg);
 		    case 'q': /* fall thru */			/* doc 2.0 */
 		    case 's': silent = 1; break;		/* undoc 2.0 */
 		    case 't': tcp = 1; break;
 		    case 'k': keepOpen = 1; break;		/* undoc */
 		    case 'f':
 			if (file) goto usage;
-		    	file = optarg;
+			file = optarg;
 			break;
 		    /* One of .. or fall through to error */
 		    case 'l':					/* doc 2.0 */
@@ -64,12 +67,29 @@ usage:			system("bk help -s lock");
 			exit(2);
 		}
 	}
-	pid = getpid();
 	sig_catch(abort_lock);
 	if (tcp) {
-		tcp = tcp_server(0, 0, 1);
-		printf("127.0.0.1:%d\n", sockport(tcp));
-		fflush(stdout);
+		char	*clienturl;
+
+		unless (clienturl = getenv("_BK_LOCK_CLIENT")) {
+			return (do_async(ac, av));
+		}
+		fclose(stdout);	/* let foreground run stdout */
+		/* handle pidfile right away */
+		if (pidfile && !Fprintf(pidfile, "%d", getpid())) {
+			perror(pidfile);
+			exit(1);
+		}
+		if ((lockclient = tcp_connect(clienturl, 0)) < 0) {
+			fprintf(stderr,
+			    "Failed to connect to %s\n", clienturl);
+			exit(1);
+		}
+		if ((tcp = tcp_server(0, 0, 1)) < 0) {
+			perror("lock");
+			exit(1);
+		}
+		putenv("_BK_LOCK_CLIENT=");
 	}
 	switch (what) {
 	    case 'f':	/* lock using the specified file */
@@ -82,6 +102,7 @@ usage:			system("bk help -s lock");
 		}
 		/* make ourselves go when told */
 		if (tcp) {
+			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
 			if (keepOpen) {
 				closeIt(h);
@@ -112,6 +133,7 @@ usage:			system("bk help -s lock");
 		}
 		/* make ourselves go when told */
 		if (tcp) {
+			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
 			repository_rdunlock(0, 0);
 			chdir("/");
@@ -126,16 +148,18 @@ usage:			system("bk help -s lock");
 		} while (repository_mine(0, 'r') && !caught);
 		if (caught) repository_rdunlock(0, 0);
 		exit(0);
-	    
 	    case 'R':	/* nested_rdlock() the repository */
 		unless (nlid = nested_rdlock(0)) {
-			fprintf(stderr, "nested read lock failed.\n%s\n", nested_errmsg());
+			fprintf(stderr, "nested read lock failed.\n%s\n",
+			    nested_errmsg());
 			exit (1);
 		}
 		if (tcp) {
+			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
 			if (nested_unlock(0, nlid)) {
-				fprintf(stderr, "nested unlock failed:\n%s\n", nested_errmsg());
+				fprintf(stderr, "nested unlock failed:\n%s\n",
+				    nested_errmsg());
 				exit (1);
 			}
 			chdir("/");
@@ -149,7 +173,8 @@ usage:			system("bk help -s lock");
 		} while (nested_mine(0, nlid, 0) && !caught);
 		if (caught) {
 			if (nested_unlock(0, nlid)) {
-				fprintf(stderr, "nested unlock failed:\n%s\n", nested_errmsg());
+				fprintf(stderr, "nested unlock failed:\n%s\n",
+				    nested_errmsg());
 				exit (1);
 			}
 		}
@@ -162,6 +187,7 @@ usage:			system("bk help -s lock");
 		}
 		/* make ourselves go when told */
 		if (tcp) {
+			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
 			repository_wrunlock(0, 0);
 			chdir("/");
@@ -179,13 +205,16 @@ usage:			system("bk help -s lock");
 
 	    case 'W':	/* nested_wrlock() the repository */
 		unless (nlid = nested_wrlock(0)) {
-			fprintf(stderr, "nested write lock failed.\n%s\n", nested_errmsg());
+			fprintf(stderr, "nested write lock failed.\n%s\n",
+			    nested_errmsg());
 			exit (1);
 		}
 		if (tcp) {
+			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
 			if (nested_unlock(0, nlid)) {
-				fprintf(stderr, "nested unlock failed:\n%s\n", nested_errmsg());
+				fprintf(stderr, "nested unlock failed:\n%s\n",
+				    nested_errmsg());
 				exit (1);
 			}
 			chdir("/");
@@ -199,7 +228,8 @@ usage:			system("bk help -s lock");
 		} while (nested_mine(0, nlid, 0) && !caught);
 		if (caught) {
 			if (nested_unlock(0, nlid)) {
-				fprintf(stderr, "nested unlock failed:\n%s\n", nested_errmsg());
+				fprintf(stderr, "nested unlock failed:\n%s\n",
+				    nested_errmsg());
 				exit (1);
 			}
 		}
@@ -222,7 +252,6 @@ usage:			system("bk help -s lock");
 			fprintf(stderr, "No active lock in repository\n");
 		}
 		exit(0);
-	    
 	    case 'L':	/* wait for the file|repository to become locked */
 		while ((file && !exists(file)) ||
 		    (!file && !repository_locked(0)) && !caught) {
@@ -242,6 +271,66 @@ usage:			system("bk help -s lock");
 	    default: /* we should never get here */
 		goto usage;
 	}
+}
+
+#define	MSGSIZE	512
+/*
+ * Run the bk lock command in a background process, but hang on until
+ * after the lock has been grabbed.  Then return "host:port\n"
+ */
+
+private int
+do_async(int ac, char **av)
+{
+	int	sock1 = -1, sock2 = -1;
+	int	i;
+	int	rc = -1;
+	char	**nav;
+	char	buf[MSGSIZE];
+
+	nav = addLine(0, "bk");
+	for (i = 0; i < ac; i++) {
+		nav = addLine(nav, av[i]);
+	}
+	nav = addLine(nav, 0);
+
+	if ((sock1 = tcp_server(0, 0, 1)) < 0) goto err;
+	safe_putenv("_BK_LOCK_CLIENT=127.0.0.1:%d", sockport(sock1));
+
+	if (spawnvp(P_NOWAIT, "bk", &nav[1]) < 0) {
+		fprintf(stderr, "Cannot spawn bk\n");
+		goto err;
+	}
+
+	if ((sock2 = tcp_accept(sock1)) < 0) goto err;
+	if ((i = read(sock2, buf, sizeof(buf))) < 0) {
+		perror("readsock2");
+		goto err;
+	}
+	/*
+	 * if lock failed, the background will print out a message to
+	 * stderr and close the sock with no data written.  Take a 0 length
+	 * message as an error.
+	 */
+	unless (i) goto err;
+	printf("%s", buf);
+	fflush(stdout);
+	rc = 0;
+err:
+	freeLines(nav, 0);
+	unless (sock2 < 0) closesocket(sock2);
+	unless (sock1 < 0) closesocket(sock1);
+	return (rc);
+}
+
+private	void
+tcpHandshake(int lockclient, int tcp)
+{
+	char	buf[MSGSIZE];
+
+	sprintf(buf, "127.0.0.1:%d\n", sockport(tcp));
+	write(lockclient, buf, sizeof(buf));
+	closesocket(lockclient);
 }
 
 int
