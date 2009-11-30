@@ -7,7 +7,7 @@
 private void
 uniqLines_test(void)
 {
-	int	i;
+	int	i, n;
 	char	*t;
 	char	**lines;
 	struct {
@@ -44,8 +44,10 @@ uniqLines_test(void)
 	for (i = 0; tests[i].in; i++) {
 		lines = splitLine(tests[i].in, ",", 0);
 		uniqLines(lines, free);
+		n = nLines(lines);
 		t = joinLines(",", lines);
 		freeLines(lines, free);
+		assert(strcnt(t, ',')+1 == n);
 		unless (streq(t, tests[i].out)) {
 			fprintf(stderr, "uniqLine test failure:\n"
 			    "\t%s->%s (want %s)\n",

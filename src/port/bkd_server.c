@@ -194,6 +194,7 @@ next:			--tries;
 	/* confirm death */
 	chdir("/");
 	if ((nsock = tcp_accept(killsock)) >= 0) {
+		chdir("/");
 		buf[0] = 'K';
 		write(nsock, buf, 1);
 		closesocket(nsock);

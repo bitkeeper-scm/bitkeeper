@@ -53,7 +53,7 @@ echo OK
 echo $N Take a clone of clone and see that it has a server ..........$NL
 cd "$HERE"
 bk clone $Q clone copy
-ReadLock project L
+L=`cd project ; bk lock -rt`
 cd copy
 bk BAM server $Q bk://localhost:$P/project
 cp "$BK" a
@@ -62,10 +62,10 @@ bk commit $Q -ybig
 bk push $Q bk://localhost:$P/clone 2> ERR && {
 	echo should have failed
 	cat ERR
-	Unlock $L
+	bk _kill $L
 	exit 1
 }
-Unlock $L
+bk _kill $L
 grep -q "can't get lock" ERR || {
 	echo wrong msg
 	cat ERR

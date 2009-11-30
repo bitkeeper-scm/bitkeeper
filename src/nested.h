@@ -136,5 +136,6 @@ int	nested_mine(project *p, char *t, int write);
 int	nested_unlock(project *p, char *t);
 int	nested_abort(project *p, char *t);
 char	*nested_errmsg(void);
+char	**nested_lockers(project *p);
 void	nested_printLockers(project *p, FILE *out);
 #endif	// _NESTED_H

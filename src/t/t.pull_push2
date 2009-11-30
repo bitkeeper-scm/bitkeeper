@@ -112,7 +112,7 @@ if [ "$OS" = "Linux" ]
 then #-----------------------------------------------------------------
 echo $N Make sure pull via pipe does not leave zombie process .......$NL
 bk clone $Q "$HERE/project" "$HERE/copy2"
-WriteLock "$HERE/project" L
+L=`cd "$HERE/project" ; bk lock -wt`
 cd "$HERE/copy2"
 bk pull "$HERE/project" > /dev/null 2>&1 &
 PULL_PID=$!
@@ -122,10 +122,10 @@ sleep 1
 ps alxwwwww 2>/dev/null | grep ${PULL_PID} | grep -q "defunc" && {
 	echo failed
 	kill -9 ${PULL_PID}
-	Unlock $L
+	bk _kill $L
 	exit 1
 }
-Unlock $L
+bk _kill $L
 wait $PULL_PID	# wait for pull
 cd "$HERE"
 rm -rf copy2

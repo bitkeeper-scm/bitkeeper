@@ -139,7 +139,9 @@ nfs_parse(char *p)
 			remote_free(r);
 			return (0);
 		}
-		if (start_cwd && !IsFullPath(p)) {
+		if (IsFullPath(p)) {
+			r->path = strdup(p);
+		} else if (start_cwd) {
 			p = aprintf("%s/%s", start_cwd, p);
 			r->path = fullname(p, 0);
 			free(p);

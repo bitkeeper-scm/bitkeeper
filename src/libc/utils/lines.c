@@ -176,6 +176,7 @@ uniqLines(char **space, void(*freep)(void *ptr))
 	}
 	dst++;			/* one past last valid item */
 	if (dst < LSIZ(space)) space[dst] = 0;
+	addLine_lastp = INVALID;
 }
 
 /*

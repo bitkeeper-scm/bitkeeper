@@ -707,17 +707,17 @@ grep -q "illegal, nonexistent, or not package root" OUT || {
 echo OK
 
 echo $N Check exit status for changes -L repo/with/lock .............$NL
-WriteLock "$HERE"/project L
+L=`cd "$HERE"/project ; bk lock -wt`
 bk changes -qL "$HERE/project" > OUT 2>&1 && {
 	echo should not have exited 0
 	cat OUT
-	Unlock $L
+	bk _kill $L
 	exit 1
 }
 grep -q "Can't get read lock on the repository" OUT || {
 	echo Wrong message
 	cat OUT
-	Unlock $L
+	bk _kill $L
 	exit 1
 }
 # keep lock going for next one
@@ -727,16 +727,16 @@ echo $N Check exit status for changes -R repo/with/lock .............$NL
 bk changes -qR "$HERE/project" > OUT 2>&1 && {
 	echo should not have exited 0
 	cat OUT
-	Unlock $L
+	bk _kill $L
 	exit 1
 }
 grep -q "Can't get read lock on the repository" OUT || {
 	echo Wrong message
 	cat OUT
-	Unlock $L
+	bk _kill $L
 	exit 1
 }
-Unlock $L
+bk _kill $L
 echo OK
 
 echo $N Check exit status for changes -L different/package ..........$NL
