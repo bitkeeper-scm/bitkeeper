@@ -329,6 +329,7 @@ fopen(bad3, r) = couldn't open "bad3": no such file or directory
 } -output {}
 
 test freadn-1 {test freadn} -setup {
+	# Note: makeFile appends a newline.
 	set fname [makeFile "012345678901234567" freadn_test .]
 } -body {
 #lang L
@@ -351,7 +352,7 @@ void freadn1()
 	unless (buf eq "01234") puts("bad 2.6");
 	buf = freadn(f, 5);
 	unless (defined(buf)) puts("bad 2.7");
-	unless (buf eq "567") puts("bad 2.8");
+	unless (buf eq "567\n") puts("bad 2.8");
 
 	fclose(f);
 

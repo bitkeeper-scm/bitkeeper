@@ -3724,29 +3724,54 @@ emit_instrForLOp(Expr *expr)
 	int	op  = 0;
 
 	switch (expr->op) {
-	    case L_OP_STR_EQ:
 	    case L_OP_EQUALEQUAL:
 		op = INST_EQ;
 		break;
-	    case L_OP_STR_NE:
 	    case L_OP_NOTEQUAL:
 		op = INST_NEQ;
 		break;
-	    case L_OP_STR_GT:
 	    case L_OP_GREATER:
 		op = INST_GT;
 		break;
-	    case L_OP_STR_GE:
 	    case L_OP_GREATEREQ:
 		op = INST_GE;
 		break;
-	    case L_OP_STR_LT:
 	    case L_OP_LESSTHAN:
 		op = INST_LT;
 		break;
-	    case L_OP_STR_LE:
 	    case L_OP_LESSTHANEQ:
 		op = INST_LE;
+		break;
+	    case L_OP_STR_EQ:
+		op = INST_STR_EQ;
+		break;
+	    case L_OP_STR_NE:
+		op = INST_STR_NEQ;
+		break;
+	    case L_OP_STR_GT:
+	    case L_OP_STR_GE:
+	    case L_OP_STR_LT:
+	    case L_OP_STR_LE:
+		TclEmitOpcode(INST_STR_CMP, L->frame->envPtr);
+		switch (expr->op) {
+		    case L_OP_STR_GT:
+			push_str("1");
+			op = INST_EQ;
+			break;
+		    case L_OP_STR_LT:
+			push_str("-1");
+			op = INST_EQ;
+			break;
+		    case L_OP_STR_GE:
+			push_str("0");
+			op = INST_GE;
+			break;
+		    case L_OP_STR_LE:
+			push_str("0");
+			op = INST_LE;
+			break;
+		    default: ASSERT(0);
+		}
 		break;
 	    case L_OP_PLUS:
 	    case L_OP_EQPLUS:
