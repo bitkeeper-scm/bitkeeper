@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# Avoid 'dash' on Debian and Ubuntu until they support LINENO
+LN=`readlink /bin/sh 2>/dev/null`
+test X"$LN" = Xdash -a -x /bin/bash && {
+    sed -es,@TEST_SH@,/bin/bash,g "$@"
+}
+
 case "X`uname -s`" in
     XDarwin)
 	exec sed -es,@TEST_SH@,/bin/bash,g "$@"

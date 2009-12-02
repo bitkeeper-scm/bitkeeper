@@ -397,3 +397,73 @@ echo OK
 #  keep tag on old tip
 #  strip tags in middle of stripped csets (with warnings)
 #  recreate tag on tip of stripped csets
+
+
+echo $N Test collapse -e@ with no parent ............................$NL
+cd "$HERE"
+bk clone $Q -l project clone || fail
+cd clone
+echo hi > myfile
+bk new $Q myfile || fail
+bk commit -ynew $Q || fail
+bk parent $Q -r || fail
+bk collapse -e@ 2>ERR && fail -f ERR
+cat <<EOF > WANT
+collapse: no single parent to use for -@
+EOF
+cmpfiles ERR WANT
+echo OK
+
+echo $N Test collapse -e@bad.repo ...................................$NL
+bk collapse -e@bad.repo 2>ERR && fail -f ERR
+grep -q 'collapse: failed to contact bad.repo for -@.' ERR || fail -f ERR
+echo OK
+
+echo $N Test collapse -e@ when missing tip ..........................$NL
+bk parent $Q -s ../project || fail
+cd ../project
+echo kk > kk
+bk new $Q kk || fail
+bk commit -ykk $Q || fail
+cd ../clone
+bk collapse -e@ 2>ERR && fail -f ERR
+cat <<EOF > WANT
+collapse: current repo is behind $HERE/project, must pull before collapsing.
+EOF
+cmpfiles WANT ERR
+echo OK
+
+echo $N Test collapse -e@ ...........................................$NL
+bk pull $Q || fail
+bk collapse -e@ || fail
+touch GOT
+test "`bk sfiles -cp`" && fail
+bk sfiles -x > GOT
+cat <<EOF > WANT
+ERR
+GOT
+WANT
+myfile
+EOF
+cmpfiles GOT WANT
+bk _test -f SCCS/c.myfile || fail
+bk _cat SCCS/c.ChangeSet | grep -q '^new$' || fail
+echo OK
+
+echo $N Test collapse -e@url ........................................$NL
+bk new $Q -c myfile || fail
+bk commit $Q -yhi2 || fail
+bk collapse -e@../project || fail
+touch GOT
+test "`bk sfiles -cp`" && fail
+bk sfiles -x > GOT
+cat <<EOF > WANT
+ERR
+GOT
+WANT
+myfile
+EOF
+cmpfiles GOT WANT
+bk _test -f SCCS/c.myfile || fail
+bk _cat SCCS/c.ChangeSet | grep -q '^hi2' || fail
+echo OK

@@ -22,7 +22,7 @@
 #define	COLLAPSE_DELTAS	0x80000000 /* -d save file deltas */
 #define	COLLAPSE_PONLY	0x01000000 /* only collapse product */
 
-private	int	do_cset(char *rev, char **nav);
+private	int	do_cset(sccs *s, char *rev, char **nav);
 private	int	do_file(char *file, char *tiprev);
 private	int	savedeltas(sccs *s, delta *d, void *data);
 private	delta	*parent_of_tip(sccs *s);
@@ -37,22 +37,25 @@ private	char	*me;		/* name of command */
 int
 collapse_main(int ac, char **av)
 {
+	sccs	*s = 0;
 	int	c, rc = 1;
 	char	*after = 0;
 	char	*revlist = 0;
-	int	edit = 0, merge = 0;
+	int	edit = 0, merge = 0, fromurl = 0;
 	char	**nav = 0;
+	char	*url = 0;
+	char	buf[MAXLINE];
 
 	me = "collapse";
 	flags = 0;
-	while ((c = getopt(ac, av, "a:delmPr:qs")) != -1) {
+	while ((c = getopt(ac, av, "@|a:delmPr:qs")) != -1) {
 		/*
 		 * Collect options for running collapse in components.
 		 * lm sez: unless we are going to try and replay a
 		 * partially completed collapse there is no reason to
 		 * not respect -s (don't save a patch).
 		 */
-		unless ((c == 'a') || (c == 'r')) {
+		unless ((c == 'a') || (c == 'r') || (c == '@')) {
 			if (optarg) {
 				nav = addLine(nav, aprintf("-%c%s", c,optarg));
 			} else {
@@ -60,13 +63,20 @@ collapse_main(int ac, char **av)
 			}
 		}
 		switch (c) {
-		    case 'a': after = optarg; break;
+		    case '@':
+			if (url) goto usage;
+			url = optarg;
+			fromurl = 1;
+			break;
+		    case 'a':
+			if (after) goto usage; after = strdup(optarg); break;
 		    case 'd': flags |= COLLAPSE_DELTAS; break;
 		    case 'e': edit = 1; break;
 		    case 'l': flags |= COLLAPSE_LOG; break;
 		    case 'm': merge = 1; break;
 		    case 'P': flags |= COLLAPSE_PONLY; break;
-		    case 'r': revlist = optarg; break;
+		    case 'r':
+			if (revlist) goto usage; revlist = optarg; break;
 		    case 'q': flags |= SILENT; break;
 		    case 's': flags |= COLLAPSE_NOSAVE; break;
 		    default :
@@ -75,12 +85,12 @@ usage:			system("bk help -s collapse");
 		}
 	}
 	if (av[optind]) goto usage;
-	if (merge && (after || revlist)) {
+	if (merge && (after || revlist || fromurl)) {
 		fprintf(stderr, "%s: cannot combine -m with -r or -a\n", me);
 		goto out;
 	}
-	if (after && revlist) {
-		fprintf(stderr, "%s: -r or -a, but not both.\n", me);
+	if (!!after + !!revlist + !!fromurl > 1) {
+		fprintf(stderr, "%s: only one of -r, -a or -@.\n", me);
 		goto out;
 	}
 	if (merge && edit) {	/* XXX this test should be more generic */
@@ -104,14 +114,55 @@ usage:			system("bk help -s collapse");
 		fprintf(stderr, "%s: -e option required\n", me);
 		goto out;
 	}
-	rc = do_cset(after, nav);
+	s = sccs_csetInit(0);
+	if (after && strchr(after, ',')) {
+		fprintf(stderr, "%s: rev passed to -a (%s) is not singular\n");
+		goto out;
+	}
+	if (fromurl) {
+		FILE	*f;
+		char	**parents;
+
+		unless (url) {
+			parents = parent_pullp();
+			if (nLines(parents) != 1) {
+				fprintf(stderr,
+				    "%s: no single parent to use for -@\n",
+				    me);
+				freeLines(parents, free);
+				goto out;
+			}
+			url = parent_normalize(parents[1]);
+			freeLines(parents, free);
+		}
+		sprintf(buf, "bk changes -r+ -qnd:MD5KEY: '%s'", url);
+		f = popen(buf, "r");
+		after = fgetline(f);
+		if (after) after = strdup(after);
+		if (pclose(f) || !after) {
+			fprintf(stderr,
+			    "%s: failed to contact %s for -@.\n", me, url);
+			goto out;
+		}
+		unless (sccs_findKey(s, after)) {
+			fprintf(stderr,
+			    "%s: current repo is behind %s, must pull "
+			    "before collapsing.\n", me, url);
+			goto out;
+		}
+	}
+	rc = do_cset(s, after, nav);
+	s = 0;			/* do_cset frees s */
 out:	freeLines(nav, free);
+	if (s) sccs_free(s);
+	if (after) free(after);
 	return (rc);
 }
 
 int
 fix_main(int ac,  char **av)
 {
+	sccs	*s;
 	int	c, i;
 	int	cset = 0, rc = 1;
 	char	*after = 0;
@@ -146,7 +197,8 @@ usage:			system("bk help -s fix");
 	nav = addLine(nav, strdup("-e"));
 	if (cset) {
 		if (after) goto usage; /* use collapse instead */
-		rc = do_cset(0, nav);
+		s = sccs_csetInit(0);
+		rc = do_cset(s, 0, nav); /* this frees s */
 	} else {
 		for (i = optind; av[i]; i++) {
 			if (rc = do_file(av[i], after)) break;
@@ -162,9 +214,8 @@ out:	freeLines(nav, free);
  * If 'rev' is null it defaults to the parent of the current TOT.
  */
 private int
-do_cset(char *rev, char **nav)
+do_cset(sccs *s, char *rev, char **nav)
 {
-	sccs	*s = 0;
 	delta	*d;
 	int	i;
 	char	*csetrev = 0;
@@ -178,9 +229,8 @@ do_cset(char *rev, char **nav)
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "%s: can't find repository root\n", me);
-		return (1);
+		goto out;
 	}
-	s = sccs_csetInit(0);
 	unless (rev) {
 		unless (d = parent_of_tip(s)) goto out;
 		rev = d->rev;
@@ -197,6 +247,11 @@ do_cset(char *rev, char **nav)
 	f = fopen(csetfile, "w");
 	range_walkrevs(s, d, 0, 0, 0, walkrevs_printmd5key, f);
 	fclose(f);
+	if (size(csetfile) == 0) {
+		fprintf(stderr, "Nothing to collapse.\n", me);
+		rc = 0;
+		goto out;
+	}
 	safe_putenv("BK_CSETLIST=%s", csetfile);
 
 	if (proj_isProduct(0) && !(flags & COLLAPSE_PONLY)) {

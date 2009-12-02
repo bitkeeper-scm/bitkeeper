@@ -8,6 +8,14 @@ bk commit -yadd $Q || exit 1
 bk -P commit -yadd $Q || exit 1
 echo OK
 
+echo $N Try an empty collapse .......................................$NL
+bk collapse -ea+ 2>ERR || fail -f ERR
+cat <<EOF > WANT
+Nothing to collapse.
+EOF
+cmpfiles ERR WANT
+echo OK
+
 echo $N Try to collapse top cset in committed component .............$NL
 bk changes -r+ -v  > WANT
 bk fix -c 2>ERR && {

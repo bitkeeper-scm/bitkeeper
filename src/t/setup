@@ -273,19 +273,20 @@ cd "$HERE" || exit 1
 PATH="$BK_PATH"
 
 fail() {
-	__cmd="echo no output"
 	test x$1 = x-f && {
-		__cmd="cat $2"
+		__outfile=$2
 		shift;shift;
 	}
 	case "X$BASH_VERSION" in
-	    X[23]*) eval 'echo failed in line $((${BASH_LINENO[0]} - $BOS))';;
+	    X[234]*) eval 'echo failed in line $((${BASH_LINENO[0]} - $BOS))';;
 	    *) echo failed ;;
 	esac
-	echo $*
-	echo ----------
-	eval $__cmd
-	echo ----------
+	test "$*" && echo $*
+	test "$__outfile" && {
+		echo ----------
+		cat "$__outfile"
+		echo ----------
+	}			
 	exit 1
 }
 # this next line needs to be last, it's line zero of the script (see doit)
