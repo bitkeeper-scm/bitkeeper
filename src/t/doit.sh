@@ -291,6 +291,8 @@ setup_env()
 
 	### HOWTO update Airgap licenses that expire
 	#
+	# NOTE: do this work in the oldest repo (like bugfix).
+	#
 	# You'll know a license has failed because a regression fails having
 	# nothing to do with the code change just made.
 	# The first to fail is t.conflog, which does so one month before
@@ -303,6 +305,8 @@ setup_env()
 	# # get the magic passphrase into your cutn'paste buffer
 	#   ./genlic.pl < doit.sh > new.sh
 	# # paste the passphrase in once for each airgap license made
+	# # NOTE: it looks like the passphrase line doesn't change
+	# # as it remains after each entry -- it's working! Keep going.
 	#   cp new.sh doit.sh
 	# # build and test; ci and commit
 	#
