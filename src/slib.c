@@ -8372,6 +8372,8 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 			} else {
 				no_lf = 1;
 			}
+			/* now strip CR; if gline was "\n", glen now 0 */
+			if (glen && (gline[glen-1] == '\r')) glen--;
 			unless (((glen == strlen(fbuf)) &&
 				    strneq(gline, fbuf, glen)) ||
 			    expandeq(s, d, gline, glen, fbuf, &eflags)) {
@@ -15326,7 +15328,29 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		if (s->prs_indentC && proj_isComponent(s->proj)) fs("  ");
 		unless (CSET(s)) fs("  ");
 		return (strVal);
-
+	case KW_RM_NAME: /* RM_NAME */
+		p = sccs_rmName(s);
+		q = sccs2name(p);
+		free(p);
+		p = proj_relpath(s->proj, q);
+		free(q);
+		q = p + strlen(p) - 2;
+		if ((q > p) && streq(q, "~1")) *q = 0; /* if already deleted */
+		fs(p);
+		free(p);
+		return (strVal);
+	case KW_UNRM_NAME: /* UNRM_NAME */
+		/*
+		 * XXX: loose interpretation of history: while older, not
+		 * necessarily in the same ancestory.  Good enough for tip?!
+		 */
+		for (; d; d = d->next) {
+			unless (strneq(d->pathname, "BitKeeper/deleted/", 18)) {
+				fs(d->pathname);
+				return (strVal);
+			}
+		}
+		return (nullVal);
 	default:
 		return (notKeyword);
 	}
