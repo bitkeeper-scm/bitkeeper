@@ -12,12 +12,8 @@
 #Because some proxy disallow proxy to localhost
 unsetHttpProxy
 
-echo $N Create initial repository ...................................$NL
+echo $N Create initial repositories .................................$NL
 commercial project
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
-P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/sh
@@ -31,45 +27,166 @@ echo foo > 'F!O#O$ B%A^R&RR(R)RR'
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
-if bk _test ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR'; then echo failed to create history; exit 1; fi
+bk _test -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || fail failed to create history
 P=`bk pending | wc -l`
-if [ $P -ne 20 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+test "$P" -eq 20 || fail
 bk commit $S -yCset
 P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
+test "$P" -eq 0 || fail
 bk level 3
+cd ..
+bk clone $Q . ../copy
+bk edit $Q src/bar.c
+bk delta $Q -fynull src/bar.c
+bk commit $Q -f
+cd ../copy
+bk pull $Q -R
+cd ..
+tar cf copy.tar copy
+bk bkd -q -aPORT -ikill || exit 1
+P=`cat PORT`
+trap "bk _kill bk://localhost:$P" 0
+# random sanity check
+bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || fail
 echo OK
-cores
 
 # In this test we call the rclone code via the bk clone interface
 echo $N rabort via bk:// ............................................$NL
-cd "$HERE"
-rm -rf copy copy2
-bk bkd -q -aPORT -ikill || exit 1
-P=`cat PORT`
-bk clone $Q "$HERE/project" bk://localhost:$P/"$HERE/copy"
-bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
-cd "$HERE/copy"
-mkdir -p "$HERE/copy/RESYNC/src"
-mkdir -p "$HERE/copy/RESYNC/BitKeeper/tmp"
-echo "fake patch" > "$HERE/copy/RESYNC/BitKeeper/tmp/patch"
 cd "$HERE/project"
-bk abort bk://localhost:$P/"$HERE/copy"
+bk abort bk://localhost:$P/"$HERE/copy" || fail bk:// abort
 cd "$HERE/copy"
 bk lock -s || { echo failed; exit 1; }
 echo OK
+
 echo $N rabort via http:// ..........................................$NL
 cd "$HERE"
-bk clone $Q "$HERE/project" http://localhost:$P/"$HERE/copy2"
-bk _test -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
-cd "$HERE/copy2"
-mkdir -p "$HERE/copy2/RESYNC/src"
-mkdir -p "$HERE/copy2/RESYNC/BitKeeper/tmp"
-echo "fake patch" > "$HERE/copy2/RESYNC/BitKeeper/tmp/patch"
+rm -fr copy
+tar xf copy.tar
 cd "$HERE/project"
-bk abort bk://localhost:$P/"$HERE/copy2"
-cd "$HERE/copy2"
-bk lock -s || { echo failed; exit 1; }
-bk _kill bk://localhost:$P || exit 1
+bk abort http://localhost:$P/"$HERE/copy" || fail http:// abort
+cd "$HERE/copy"
+bk lock -s || fail
 echo OK
+
+echo $N rabort via file:// ..........................................$NL
+cd "$HERE"
+rm -fr copy
+tar xf copy.tar
+cd "$HERE/project"
+bk abort file://"$HERE/copy" || fail file:// abort
+cd "$HERE/copy"
+bk lock -s || fail
+echo OK
+
+echo $N rabort via file:// from same repo ...........................$NL
+cd "$HERE"
+rm -fr copy
+tar xf copy.tar
+cd "$HERE/copy"
+bk abort file://"$HERE/copy" || fail file:// abort
+bk lock -s || fail
+echo OK
+
+echo $N rabort via file:// from no repo .............................$NL
+cd "$HERE"
+rm -fr copy
+tar xf copy.tar
+bk abort file://"$HERE/copy" || fail file:// abort
+cd "$HERE/copy"
+bk lock -s || fail
+echo OK
+
+echo $N rabort via reponame that begins with - ......................$NL
+cd "$HERE"
+rm -fr copy
+tar xf copy.tar
+mv copy ./-copy
+bk abort -- -copy || fail with aborting -copy
+cd "$HERE/-copy"
+bk lock -s || fail
+cd ..
+mv ./-copy copy
+echo OK
+
+echo $N rabort via bk:// in a locked repo ...........................$NL
+cd "$HERE"
+rm -fr copy
+tar xf copy.tar
+cd copy
+LOCKURL=`bk lock -rt`
+trap "bk _kill bk://localhost:$P; bk _kill $LOCKURL" 0
+cd "$HERE/project"
+bk abort bk://localhost:$P/"$HERE/copy" 2> ERR && fail bk:// abort did not fail
+grep -q "Unable to lock repository for update" ERR || fail -f ERR
+cd "$HERE/copy"
+test -d RESYNC || fail
+bk lock -s && fail
+echo OK
+
+echo $N rabort via http:// in a locked repo .........................$NL
+cd "$HERE/project"
+bk abort http://localhost:$P/"$HERE/copy" 2> ERR && {
+	fail http:// abort did not fail
+}
+grep -q "Unable to lock repository for update" ERR || fail -f ERR
+cd "$HERE/copy"
+test -d RESYNC || fail
+bk lock -s && fail
+echo OK
+
+echo $N rabort via file:// in a locked repo .........................$NL
+cd "$HERE/project"
+bk abort file://"$HERE/copy" 2> ERR && fail file:// abort did not fail
+grep -q "Unable to lock repository for update" ERR || fail -f ERR
+cd "$HERE/copy"
+test -d RESYNC || fail
+bk lock -s && fail
+echo OK
+
+echo $N rabort via file:// in a locked repo from same repo ..........$NL
+bk abort file://"$HERE/copy" 2> ERR && fail file:// abort did not fail
+grep -q "Unable to lock repository for update" ERR || fail -f ERR
+test -d RESYNC || fail
+bk lock -s && fail
+echo OK
+
+echo $N rabort via file:// in a locked repo from no repo ............$NL
+cd "$HERE"
+bk abort file://"$HERE/copy" 2> ERR && fail file:// abort did not fail
+grep -q "Unable to lock repository for update" ERR || fail -f ERR
+cd "$HERE/copy"
+test -d RESYNC || fail
+bk lock -s && fail
+echo OK
+
+echo $N rabort via repo that begins with - inside a locked repo .....$NL
+cd "$HERE/copy"
+tar xf ../copy.tar
+mv copy ./-copy
+# I'm in a locked repo, but ./-copy is not locked, so it should work
+bk abort -- -copy || fail abort in a locked of an unlocked should work
+cd ./-copy
+bk lock -s || fail
+cd ..
+rm -fr ./-copy
+echo OK
+
+echo $N abort in a locked repo from same repo .......................$NL
+# throw in a -- with no later param to see that we get a lock
+bk abort -f -- 2> ERR && fail abort -f did not fail
+grep -q "Entire repository is locked by" ERR || fail -f ERR
+test -d RESYNC || fail
+bk lock -s && fail
+echo OK
+
+echo $N abort in an unlocked repo from same repo ....................$NL
+bk _kill $LOCKURL
+trap "bk _kill bk://localhost:$P" 0
+cd "$HERE/copy"
+bk abort -f || fail abort -f did not work
+cd "$HERE/copy"
+test -d RESYNC && fail
+bk lock -s || fail
+echo OK
+
 # TODO test virtual host/root support

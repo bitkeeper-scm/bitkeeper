@@ -32,6 +32,7 @@ private	int	cmdlog_flags;
 private	int	cmdlog_locks;
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private int	usage(void);
+private	int	hasArgs(char **av);
 private	void	showproc_start(char **av);
 private	void	showproc_end(char *cmdlog_buffer, int ret);
 
@@ -645,8 +646,10 @@ private	struct {
 #define	CMD_NESTED_RDLOCK	0x00000080	/* nested read lock */
 #define	CMD_SAMELOCK		0x00000100	/* reuse your lock */
 #define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
+#define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
 } repolog[] = {
-	{"abort", CMD_COMPAT_NOSI},
+	{"abort",
+	    CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
 	{"attach", 0},
 	{"bk", CMD_COMPAT_NOSI}, /* bk-remote */
 	{"check", CMD_COMPAT_NOSI},
@@ -659,6 +662,8 @@ private	struct {
 	{"license", CMD_NOREPO},
 	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{"push", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
+	{"remote abort",
+	     CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
 	{"remote changes part1", CMD_RDLOCK},
 	{"remote changes part2", CMD_RDLOCK},
 	{"remote clone", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
@@ -675,6 +680,7 @@ private	struct {
 	{"remote nested", CMD_WRLOCK|CMD_SAMELOCK},
 	{"remote wrlock", CMD_WRLOCK},
 	{"synckeys", CMD_RDLOCK},
+	{"tagmerge", CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{"undo", CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{ 0, 0 },
 };
@@ -755,8 +761,26 @@ cmdlog_start(char **av, int bkd_cmd)
 
 	if ((cmdlog_flags & CMD_SAMELOCK) && cmdlog_locks) do_lock = 0;
 
+	/*
+	 * Special case for abort, if it has args it is a remote cmd so
+	 * don't lock. If it is called from bk, the enclosing command is
+	 * supposed to do the locking so don't lock either.
+	 *
+	 * I'm sure there is a way to generalize this.
+	 */
+	if (streq("abort", av[0]) && (hasArgs(av) || bk_isSubCmd)) {
+		do_lock = 0;
+	}
+
 	if (do_lock && (cmdlog_flags & CMD_WRLOCK)) {
-		if (i = repository_wrlock(0)) {
+		if (cmdlog_flags & CMD_IGNORE_RESYNC) {
+			putenv("_BK_IGNORE_RESYNC_LOCK=1");
+		}
+		i = repository_wrlock(0);
+		if (cmdlog_flags & CMD_IGNORE_RESYNC) {
+			putenv("_BK_IGNORE_RESYNC_LOCK=");
+		}
+		if (i) {
 			unless (bkd_cmd || !proj_root(0)) {
 				repository_lockers(0);
 				if (proj_isEnsemble(0)) {
@@ -1229,6 +1253,23 @@ launch_wish(char *script, char **av)
 	} else {
 		return (WEXITSTATUS(ret));
 	}
+}
+
+/*
+ * It's an arg if it doesn't begin with '-' or is after '--'.
+ */
+private	int
+hasArgs(char **av)
+{
+	int	i;
+
+	for (i = 1; av[i]; i++) {
+		if ((av[i][0] != '-') ||
+		    ((av[i][1] == '-') && !av[i][2] && av[i+1])) {
+			return (1);
+		}
+	}
+	return (0);
 }
 
 static	char	*prefix;

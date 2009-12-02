@@ -1,8 +1,9 @@
 /* Copyright (c) 2000 L.W.McVoy */
 #include "bkd.h"
 #include "resolve.h"
+#include "nested.h"
 
-private	void	abort_patch(int leavepatch);
+private	int	abort_patch(int leavepatch);
 private int	send_abort_msg(remote *r);
 private int	remoteAbort(remote *r);
 
@@ -26,25 +27,22 @@ abort_main(int ac, char **av)
 		}
 	}
 	if (av[optind]) {
-		remote *r;
+		remote	*r;
+		int	ret;
 
 		r = remote_parse(av[optind], REMOTE_BKDURL);
 		unless (r) {
 			fprintf(stderr, "Cannot parse \"%s\"\n", av[optind]);
 			return (1);
 		}
-		if (r->host) {
-			int	ret = remoteAbort(r);
-			remote_free(r);
-			return (ret);
-		}
+		ret = remoteAbort(r);
 		remote_free(r);
-		chdir(av[optind]);
+		return (ret);
 	}
 	proj_cd2root();
 	unless (exists(ROOT2RESYNC)) {
-		fprintf(stderr, "No RESYNC dir, nothing to abort.\n");
-		exit(0);
+		fprintf(stderr, "abort: no RESYNC directory.\n");
+		return (0);
 	}
 	unless (force) {
 		prompt("Abort update? (y/n)", buf);
@@ -54,14 +52,14 @@ abort_main(int ac, char **av)
 			break;
 		    default:
 			fprintf(stderr, "Not aborting.\n");
-			exit(0);
+			return (0);
 		}
 	}
-	abort_patch(leavepatch);
-	exit(0);
+
+	return(abort_patch(leavepatch));
 }
 
-void
+private	int
 abort_patch(int leavepatch)
 {
 	char	buf[MAXPATH];
@@ -72,7 +70,7 @@ abort_patch(int leavepatch)
 	unless (exists(ROOT2RESYNC)) {
 		fprintf(stderr, "abort: can't find RESYNC dir\n");
 		fprintf(stderr, "abort: nothing removed.\n");
-		exit(1);
+		return (1);
 	}
 
 	/*
@@ -96,9 +94,7 @@ abort_patch(int leavepatch)
 	unlink(BACKUP_LIST);
 	unlink(PASS4_TODO);
 	unlink(APPLIED);
-	repository_wrunlock(0, 1);
-	repository_lockers(0);
-	exit(0);
+	return (0);
 }
 
 private int
@@ -131,8 +127,10 @@ remoteAbort(remote *r)
 	if (send_abort_msg(r)) return (1);
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 
-	
 	getline2(r, buf, sizeof (buf));
+	/*
+	 * only 5.0 and newer sends server info and error
+	 */
 	if (streq("@SERVER INFO@", buf)) {
 		if (getServerInfo(r)) {
 			rc = 1;
@@ -140,8 +138,22 @@ remoteAbort(remote *r)
 		}
 		getline2(r, buf, sizeof (buf));
 	}
-
-	unless (streq("@ABORT INFO@", buf)) return (1); /* protocol error */
+	if (strneq("ERROR-", buf, 6)) {
+		fprintf(stderr, "%s\n", &buf[6]);
+		rc = 1;
+		goto out;
+	}
+	/*
+	 * pre and post 5.0 send this stuff ...
+	 * pre responding a post ERROR-xx message just see that
+	 * it is not ABORT info and returns without printing msg.
+	 * see t.compat-3.2.8 in the new bkd section with locked
+	 * repo for example.
+	 */
+	unless (streq("@ABORT INFO@", buf)) { /* protocol error */
+		rc = 1;
+		goto out;
+	}
 
 	while (getline2(r, buf, sizeof (buf)) > 0) {
 		if (buf[0] == BKD_NUL) break;
@@ -152,7 +164,10 @@ remoteAbort(remote *r)
 		rc = atoi(&buf[1]);
 		getline2(r, buf, sizeof (buf));
 	}
-	unless (streq("@END@", buf)) return(1); /* protocol error */
+	unless (streq("@END@", buf)) { /* protocol error */
+		rc = 1;
+		goto out;
+	}
 out:	disconnect(r, 1);
 	wait_eof(r, 0);
 	disconnect(r, 2);

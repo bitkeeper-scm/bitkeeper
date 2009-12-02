@@ -45,12 +45,12 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Now abort and repull ........................................$NL
-bk abort -f || exit 1
-bk unedit gdb/BitKeeper/etc/config || exit 2
-bk pull $Q 2>ERR && exit 3
+bk abort -f || fail
+bk unedit gdb/BitKeeper/etc/config || fail
+bk pull $Q 2>ERR && fail -f ERR
 # the tree is really messed up here
-grep -q '1.4 is a merge but is missing a required' ERR || exit 4
-grep -q 'pending deltas but no d.file' ERR || exit 5
-grep -q 'marked delta 1.3 should be in ChangeSet but is not' ERR || exit 6
-grep -q 'RESYNC directory left intact' ERR || exit 7
+grep -q '1.4 is a merge but is missing a required' ERR || fail -f ERR
+grep -q 'pending deltas but no d.file' ERR || fail -f ERR
+grep -q 'marked delta 1.3 should be in ChangeSet but is not' ERR || fail -f ERR
+grep -q 'RESYNC directory left intact' ERR || fail -f ERR
 echo OK
