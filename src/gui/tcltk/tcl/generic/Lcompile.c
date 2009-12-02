@@ -2105,6 +2105,10 @@ compile_binOp(Expr *expr, Expr_f flags)
 	    case L_OP_STR_GE:
 	    case L_OP_STR_LT:
 	    case L_OP_STR_LE:
+		/* Warn on things like "s eq undef". */
+		if (isid(e=expr->a, "undef") || isid(e=expr->b, "undef")) {
+			L_errf(e, "undef illegal in compare; use defined()");
+		}
 		compile_expr(expr->a, L_PUSH_VAL);
 		compile_expr(expr->b, L_PUSH_VAL);
 		L_typeck_expect(L_STRING|L_WIDGET, expr->a,
@@ -2120,6 +2124,11 @@ compile_binOp(Expr *expr, Expr_f flags)
 	    case L_OP_GREATEREQ:
 	    case L_OP_LESSTHAN:
 	    case L_OP_LESSTHANEQ:
+		/* Warn on things like "i == undef". */
+		if (isid(e=expr->a, "undef") || isid(e=expr->b, "undef")) {
+			L_errf(e, "undef illegal in compare; use defined()");
+		}
+		/* FALLTHRU */
 	    case L_OP_PLUS:
 	    case L_OP_MINUS:
 	    case L_OP_STAR:

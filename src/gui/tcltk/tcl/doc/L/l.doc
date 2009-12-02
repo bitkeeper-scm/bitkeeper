@@ -146,8 +146,9 @@ variable and function cannot have identical names.  Struct tags
 have their own namespace, and type names have theirs.
 
 Inside a function, two locals cannot share the same name, even if they
-are in parallel scopes.  But a local can share the same name as a
-global, in which case the local is said to C<shadow> the global.
+are in parallel scopes.  This is different than C where this is
+allowed.  But a local can share the same name as a global, in which
+case the local is said to C<shadow> the global.
 
 Names declared inside of a class can be either local or global
 depending on how they are qualified.  Classes are discussed later.
@@ -932,6 +933,33 @@ the sequence of capitalized names after the underscore are converted
 to (lower case) arguments (although capitalizing the
 first name after the underscore is optional).
 This is called a C<pattern function> call.
+
+A pattern-function call often is used to call a Tcl proc, but you
+can call an L function just as easily, and L has a special case
+when the function is named like C<Myfunc_*>:
+
+    void Myfunc_*(...args)
+    {
+        poly p;
+
+        printf("Myfunc_%s called with:\n", $1);
+        foreach (p in args) printf("%s\n", p);
+    }
+    void main()
+    {
+        Myfunc_cmd1(1);
+        Myfunc_cmd2(3,4,5);
+    }
+
+If C<Myfunc_*> is declared, then any call like C<Myfunc_x> becomes a
+call to C<Myfunc_*> where the string C<x> is put into the local
+variable C<$1> inside C<Myfunc_*>.  The remaining parameters are
+handled normally.
+This gives you a way to handle a collection of sub-commands without
+having to declare each as a separate L function.
+Note that this use of C<$1> clashes with regular expression captures
+(described later), so if you use both, you should save off C<$1>
+before using any such regular expressions.
 
 If you need to execute arbitrary Tcl code rather than just call a proc,
 you pass it to Tcl's C<eval> command:

@@ -5894,6 +5894,20 @@ void switch_1()
 		}
 	}
 	unless (s eq "adgj") puts("bad 9.1");
+
+	/* Test $1 $2 etc available in cases. */
+
+	switch ("This is a test") {
+		case /(test)/:
+			unless ($1 eq "test") puts("bad 10.1");
+			break;
+	}
+	switch ("This is a test") {
+		case /(a) (test)/:
+			unless ($1 eq "a") puts("bad 10.2");
+			unless ($2 eq "test") puts("bad 10.3");
+			break;
+	}
 }
 switch_1();
 } -output {}
@@ -8695,6 +8709,90 @@ void undef_5()
 undef_5();
 } -output {}
 
+test undef-6 {check comparison errors against undef} -body {
+#lang L
+void undef_6()
+{
+	int	i;
+	string	s;
+
+	i == undef;  // line 6
+	i != undef;
+	i <= undef;
+	i <  undef;
+	i >= undef;
+	i >  undef;
+	undef == i;
+	undef != i;
+	undef <= i;
+	undef <  i;
+	undef >= i;
+	undef >  i;  // line 17
+
+	s eq undef;  // line 19
+	s ne undef;
+	s le undef;
+	s lt undef;
+	s ge undef;
+	s gt undef;
+	undef eq s;
+	undef ne s;
+	undef le s;
+	undef lt s;
+	undef ge s;
+	undef gt s;  // line 30
+
+	undef == undef;  // line 32
+	undef != undef;
+	undef <= undef;
+	undef <  undef;
+	undef >= undef;
+	undef >  undef;
+	undef eq undef;
+	undef ne undef;
+	undef le undef;
+	undef lt undef;
+	undef ge undef;
+	undef gt undef;  // line 43
+}
+} -returnCodes error -match regexp -result {.*6: L Error: undef illegal in compare; use defined\(\)
+.*7: L Error: undef illegal in compare; use defined\(\)
+.*8: L Error: undef illegal in compare; use defined\(\)
+.*9: L Error: undef illegal in compare; use defined\(\)
+.*10: L Error: undef illegal in compare; use defined\(\)
+.*11: L Error: undef illegal in compare; use defined\(\)
+.*12: L Error: undef illegal in compare; use defined\(\)
+.*13: L Error: undef illegal in compare; use defined\(\)
+.*14: L Error: undef illegal in compare; use defined\(\)
+.*15: L Error: undef illegal in compare; use defined\(\)
+.*16: L Error: undef illegal in compare; use defined\(\)
+.*17: L Error: undef illegal in compare; use defined\(\)
+.*19: L Error: undef illegal in compare; use defined\(\)
+.*20: L Error: undef illegal in compare; use defined\(\)
+.*21: L Error: undef illegal in compare; use defined\(\)
+.*22: L Error: undef illegal in compare; use defined\(\)
+.*23: L Error: undef illegal in compare; use defined\(\)
+.*24: L Error: undef illegal in compare; use defined\(\)
+.*25: L Error: undef illegal in compare; use defined\(\)
+.*26: L Error: undef illegal in compare; use defined\(\)
+.*27: L Error: undef illegal in compare; use defined\(\)
+.*28: L Error: undef illegal in compare; use defined\(\)
+.*29: L Error: undef illegal in compare; use defined\(\)
+.*30: L Error: undef illegal in compare; use defined\(\)
+.*32: L Error: undef illegal in compare; use defined\(\)
+.*33: L Error: undef illegal in compare; use defined\(\)
+.*34: L Error: undef illegal in compare; use defined\(\)
+.*35: L Error: undef illegal in compare; use defined\(\)
+.*36: L Error: undef illegal in compare; use defined\(\)
+.*37: L Error: undef illegal in compare; use defined\(\)
+.*38: L Error: undef illegal in compare; use defined\(\)
+.*39: L Error: undef illegal in compare; use defined\(\)
+.*40: L Error: undef illegal in compare; use defined\(\)
+.*41: L Error: undef illegal in compare; use defined\(\)
+.*42: L Error: undef illegal in compare; use defined\(\)
+.*43: L Error: undef illegal in compare; use defined\(\)
+}
+
 test toplevel-1.0 {Toplevel code in L} -body {
 #lang L
 int toplevel_1_0_i = 2;
@@ -10357,6 +10455,88 @@ void typecheck_10_1()
 .*25: L Error: expected type string but got int in .=
 .*26: L Error: assignment of incompatible types
 .*27: L Error: assignment of incompatible types
+}
+
+test typecheck-10.2 {check type errors in comparison operators} -body {
+#lang L
+void typecheck_10_2()
+{
+	int	i;
+	string	s;
+
+	s == i;  // line 6
+	i == s;
+	s == s;
+	s != i;
+	i != s;  // line 10
+	s != s;
+	s <= i;
+	i <= s;
+	s <= s;
+	s >= i;  // line 15
+	i >= s;
+	s >= s;
+	s <  i;
+	i <  s;
+	s <  s;  // line 20
+	s >  i;
+	i >  s;
+	s >  s;  // line 23
+
+	i eq s;  // line 25
+	s eq i;
+	i eq i;
+	i ne s;
+	s ne i;
+	i ne i;  // line 30
+	i le s;
+	s le i;
+	i le i;
+	i ge s;
+	s ge i;  // line 35
+	i ge i;
+	i lt s;
+	s lt i;
+	i lt i;
+	i gt s;  // line 40
+	s gt i;
+	i gt i;  // line 42
+}
+} -returnCodes error -match regexp -result {.*6: L Error: expected type int or float but got string in arithmetic operator
+.*7: L Error: expected type int or float but got string in arithmetic operator
+.*8: L Error: expected type int or float but got string in arithmetic operator
+.*9: L Error: expected type int or float but got string in arithmetic operator
+.*10: L Error: expected type int or float but got string in arithmetic operator
+.*11: L Error: expected type int or float but got string in arithmetic operator
+.*12: L Error: expected type int or float but got string in arithmetic operator
+.*13: L Error: expected type int or float but got string in arithmetic operator
+.*14: L Error: expected type int or float but got string in arithmetic operator
+.*15: L Error: expected type int or float but got string in arithmetic operator
+.*16: L Error: expected type int or float but got string in arithmetic operator
+.*17: L Error: expected type int or float but got string in arithmetic operator
+.*18: L Error: expected type int or float but got string in arithmetic operator
+.*19: L Error: expected type int or float but got string in arithmetic operator
+.*20: L Error: expected type int or float but got string in arithmetic operator
+.*21: L Error: expected type int or float but got string in arithmetic operator
+.*22: L Error: expected type int or float but got string in arithmetic operator
+.*23: L Error: expected type int or float but got string in arithmetic operator
+.*25: L Error: expected type string or widget but got int in string comparison
+.*26: L Error: expected type string or widget but got int in string comparison
+.*27: L Error: expected type string or widget but got int in string comparison
+.*28: L Error: expected type string or widget but got int in string comparison
+.*29: L Error: expected type string or widget but got int in string comparison
+.*30: L Error: expected type string or widget but got int in string comparison
+.*31: L Error: expected type string or widget but got int in string comparison
+.*32: L Error: expected type string or widget but got int in string comparison
+.*34: L Error: expected type string or widget but got int in string comparison
+.*35: L Error: expected type string or widget but got int in string comparison
+.*36: L Error: expected type string or widget but got int in string comparison
+.*37: L Error: expected type string or widget but got int in string comparison
+.*38: L Error: expected type string or widget but got int in string comparison
+.*39: L Error: expected type string or widget but got int in string comparison
+.*40: L Error: expected type string or widget but got int in string comparison
+.*41: L Error: expected type string or widget but got int in string comparison
+.*42: L Error: expected type string or widget but got int in string comparison
 }
 
 test fnptr-1 {function pointers 1} -body {
@@ -12778,9 +12958,8 @@ void lvalue_1()
 {
 	/*
 	 * This checks deep-dive of an expression rather than a
-	 * variable.  There are only two ways an expression can have
-	 * an array/struct/hash value: a function return value, and an
-	 * assignment.
+	 * variable.  Set up expressions that have array/struct/hash
+	 * values and then index into them.
 	 */
 	string	a1[] = { "1", "2", "3" };
 	string	a2[];
@@ -12797,6 +12976,10 @@ void lvalue_1()
 		puts("bad 8");
 	}
 	if (defined(a2[3])) puts("bad 9");
+
+	unless ((1 ? a1 : a2)[0] eq "1") puts("bad 10");
+	unless ((1 ? a1 : a2)[1] eq "2") puts("bad 11");
+	unless ((1 ? a1 : a2)[2] eq "3") puts("bad 12");
 }
 #lang tcl
 lvalue_1
@@ -13184,12 +13367,16 @@ void length() {}
 void push() {}
 void sort() {}
 void assert() {}
+void rename() {}
+void undef() {}
 } -returnCodes {error} -match regexp -result {.*1: L Error: function 'join' conflicts with built-in
 .*2: L Error: function 'keys' conflicts with built-in
 .*3: L Error: function 'length' conflicts with built-in
 .*4: L Error: function 'push' conflicts with built-in
 .*5: L Error: function 'sort' conflicts with built-in
 .*6: L Error: function 'assert' conflicts with built-in
+.*7: L Error: function 'rename' conflicts with built-in
+.*8: L Error: function 'undef' conflicts with built-in
 }
 
 test builtin-10 {check built-ins stack integrity} -body {
@@ -13290,6 +13477,17 @@ void builtin_13()
 }
 builtin_13();
 } -output {}
+
+test builtin-14 {check invalid l-value in push built-in} -body {
+#lang L
+int[] builtin_14_array() { return {1,2,3}; }
+void builtin_14()
+{
+	/* The first arg has array type, but it's not an l-value. */
+	push(&(builtin_14_array()), 0);
+}
+} -returnCodes {error} -match regexp -result {.*5: L Error: invalid l-value in push
+}
 
 test line-file-1 {test __LINE__ and __FILE__} -body {
 #lang L
