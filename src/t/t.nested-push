@@ -366,7 +366,7 @@ cd solo
 bk alias new STUFF gcc
 cd ..
 # URLLIST works its magic here, getting gcc from project
-bk clone $Q -sSTUFF solo stuff
+bk clone $Q -sSTUFF solo stuff || fail
 test -d stuff/gcc || fail
 cd solo
 bk alias add STUFF gdb || fail 3
@@ -381,27 +381,29 @@ test -d stuff/RESYNC && fail
 echo "failed (bug remote should find)"
 
 echo $N Try a push from full to sparse - should fail ................$NL
-# remote can't know how to populate this
-# It could be solved by teaching remote how to populated (pass urllist)
-# or by proxying the answer.
+# not legal to push updates to componets not present remotely
 cd "$HERE"
-bk clone $Q project modified
-cd modified/gdb
+bk clone $Q project modified || fail
+cd modified
+bk pull $Q ../solo || fail
+cd gdb
 touch newfile
 bk new $Q newfile
 bk commit $Q -ynewfile
 cd ..
 bk commit $Q -ynewfile
-# XXX should fail, but better to fail with a message
-bk push $Q ../solo && fail
+bk push $Q ../solo 2>ERR && fail -f ERR should fail
+grep -q "push: gdb must be populated at file://.*/solo" ERR || fail
+grep -q "push: transfer aborted due to errors with 1 components." ERR || fail
 # No lock left, so that's good
-test -d "$HERE/solo/RESYNC" && fail
-echo "failed (bug - better message)"
+cd "$HERE"/solo
+test -d RESYNC || fail fix test
+bk abort -f || fail
+echo "failed (bug - left RESYNC)"
 
 echo $N Try a push from sparse to full - local proxy ................$NL
 # Start from above and do a pull to bring in the sparse.
 # It can be populated later by a populate (urllist checked)
-cd "$HERE/solo"
 bk pull $Q ../modified
 # stuff should have gdb by now, but can't find the patch to update
 bk push $Q ../stuff 2> ERR && fail 5

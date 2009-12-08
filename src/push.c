@@ -387,10 +387,9 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	 */
 
 	/*
-	 * opts.aliases should always be set and is the contents of the
-	 * remote side's HERE file.
+	 * opts.aliases is the contents of the remote side's HERE file.
 	 */
-	assert(opts.aliases);
+	unless (opts.aliases) opts.aliases = allocLines(4);
 	assert(n->oldtip); /* XXX: works in push but not pull */
 	if (nested_aliases(n, n->oldtip, &opts.aliases, 0, 0)) {
 		rc = 1;
@@ -432,14 +431,11 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 					unless (c->new) c->new = 1;
 				}
 			} else {
-				/* the remote doesn't want this component */
-				if (c->remotePresent) {
-					/* but have it anyway */
-					fprintf(stderr,
-					    "push: %s shouldn't be at %s.\n",
-					    c->path, url);
-					++errs;
-				}
+				/* the remote doesn't have it in aliases */
+
+				fprintf(stderr, "push: %s must be populated "
+				    "at %s.\n", c->path, url);
+				++errs;
 			}
 		} else {
 			/* not included in push */
