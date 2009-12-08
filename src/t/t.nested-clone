@@ -12,6 +12,9 @@
 # Tests for product clone.
 
 echo $N Create initial ensemble......................................$NL
+bk bkd -q -aPORT -ikill
+M=localhost:`cat PORT`
+trap "bk _kill bk://$M" 0
 nested project
 test -d gcc/BitKeeper/tmp -a -d gdb/BitKeeper/tmp || exit 1
 # Now add some stuff
@@ -42,7 +45,36 @@ bk $Q -Ar check -a || {
 }
 echo OK
 
-echo $N Test the parent pointer......................................$NL
+echo $N Clone the product using a bk:// url .........................$NL
+cd "$HERE"
+bk clone $Q bk://$M/project bkurl || fail
+cd bkurl
+bk $Q -Ar check -a || fail
+echo OK
+
+echo $N Clone the product using an http:// url ......................$NL
+cd "$HERE"
+bk clone $Q http://$M/project httpurl || fail
+cd httpurl
+bk $Q -Ar check -a || fail
+echo OK
+
+echo $N Rclone the product using a bk:// url ........................$NL
+cd "$HERE"
+bk clone $Q project bk://$M/rbkurl || fail
+cd rbkurl
+bk $Q -Ar check -a || fail
+echo OK
+
+echo $N Rclone the product using an http:// url .....................$NL
+cd "$HERE"
+bk clone $Q project http://$M/rhttpurl || fail
+cd rhttpurl
+bk $Q -Ar check -a || fail
+echo OK
+
+echo $N Test the parent pointer in copy .............................$NL
+cd "$HERE"/copy
 P=`bk parent -l`
 EP=file://"$HERE"/project
 test "$P" = "$EP" || {

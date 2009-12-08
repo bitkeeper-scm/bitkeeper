@@ -951,6 +951,7 @@ pull_finish(remote *r, int status, char **envVar)
 	FILE	*f;
 	char	buf[MAXPATH];
 
+	if ((r->type == ADDR_HTTP) && bkd_connect(r)) return (1);
 	bktmp(buf, "pull_finish");
 	f = fopen(buf, "w");
 	assert(f);

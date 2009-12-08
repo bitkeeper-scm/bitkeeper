@@ -644,7 +644,8 @@ private	struct {
 #define	CMD_NOREPO		0x00000020	/* don't assume in repo */
 #define	CMD_NESTED_WRLOCK	0x00000040	/* nested write lock */
 #define	CMD_NESTED_RDLOCK	0x00000080	/* nested read lock */
-#define	CMD_SAMELOCK		0x00000100	/* reuse your lock */
+#define	CMD_SAMELOCK		0x00000100	/* grab a repolock that matches
+						 * the nested lock we have */
 #define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
 #define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
 } repolog[] = {
@@ -677,7 +678,7 @@ private	struct {
 	{"remote rclone part3", CMD_NOREPO|CMD_BYTES},
 	{"remote quit", CMD_NOREPO|CMD_QUIT},
 	{"remote rdlock", CMD_RDLOCK},
-	{"remote nested", CMD_WRLOCK|CMD_SAMELOCK},
+	{"remote nested", CMD_SAMELOCK},
 	{"remote wrlock", CMD_WRLOCK},
 	{"synckeys", CMD_RDLOCK},
 	{"tagmerge", CMD_WRLOCK|CMD_NESTED_WRLOCK},
@@ -701,15 +702,6 @@ cmdlog_start(char **av, int bkd_cmd)
 			break;
 		}
 	}
-	/*
-	 * cmdlog_locks remember all the repository locks obtained by
-	 * this process so if another command wants the same lock type
-	 * we won't try to get it again.  This is used for example in
-	 * pull part1,2,3 so with each http:// connection will
-	 * reaquire the lock, but a normal bk:// connection will only
-	 * get the lock once.
-	 */
-	cmdlog_flags &= ~cmdlog_locks;
 
 	/*
 	 * When in http mode, each connection of push will be
@@ -732,6 +724,39 @@ cmdlog_start(char **av, int bkd_cmd)
 	}
 
 	unless (proj_root(0)) goto out;
+
+	if (cmdlog_flags & CMD_SAMELOCK) {
+		if (nlid = getenv("_NESTED_LOCK")) {
+			if (nested_mine(0, nlid, 1)) {
+				cmdlog_flags |= CMD_WRLOCK;
+				TRACE("SAMELOCK: got a %s", "write lock");
+			} else if (nested_mine(0, nlid, 0)) {
+				cmdlog_flags |= CMD_RDLOCK;
+				TRACE("SAMELOCK: got a %s", "read lock");
+			} else {
+				TRACE("SAMELOCK: not mine: %s", nlid);
+				error_msg = aprintf("%s\n", LOCK_UNKNOWN+6);
+				goto out;
+			}
+		}
+		if (cmdlog_locks &&
+		    ((cmdlog_locks & (CMD_RDLOCK|CMD_WRLOCK)) != 
+		    (cmdlog_flags & (CMD_RDLOCK|CMD_WRLOCK)))) {
+			TRACE("SAMELOCK: locks=%x != flags=%x",
+			    cmdlog_locks, cmdlog_flags);
+			error_msg = aprintf("%s\n", LOCK_UNKNOWN+6);
+			goto out;
+		}
+	}
+	/*
+	 * cmdlog_locks remember all the repository locks obtained by
+	 * this process so if another command wants the same lock type
+	 * we won't try to get it again.  This is used for example in
+	 * pull part1,2,3 so with each http:// connection will
+	 * reaquire the lock, but a normal bk:// connection will only
+	 * get the lock once.
+	 */
+	cmdlog_flags &= ~cmdlog_locks;
 
 	/*
 	 * Provide a way to do nested repo operations.  Used by import
@@ -758,8 +783,6 @@ cmdlog_start(char **av, int bkd_cmd)
 			goto out;
 		}
 	}
-
-	if ((cmdlog_flags & CMD_SAMELOCK) && cmdlog_locks) do_lock = 0;
 
 	/*
 	 * Special case for abort, if it has args it is a remote cmd so
