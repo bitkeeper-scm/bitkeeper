@@ -648,6 +648,7 @@ private	struct {
 						 * the nested lock we have */
 #define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
 #define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
+#define	CMD_LOCK_PRODUCT	0x00000800	/* lock product, not comp */
 } repolog[] = {
 	{"abort",
 	    CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
@@ -661,8 +662,8 @@ private	struct {
 	{"get", CMD_COMPAT_NOSI},
 	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},
 	{"license", CMD_NOREPO},
-	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK},
-	{"push", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
+	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_LOCK_PRODUCT},
+	{"push", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK|CMD_LOCK_PRODUCT},
 	{"remote abort",
 	     CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
 	{"remote changes part1", CMD_RDLOCK},
@@ -692,6 +693,7 @@ cmdlog_start(char **av, int bkd_cmd)
 	int	i, len, do_lock = 1;
 	char	*repo1, *repo2, *nlid = 0;
 	char	*error_msg = 0;
+	project	*proj = 0;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
@@ -725,12 +727,22 @@ cmdlog_start(char **av, int bkd_cmd)
 
 	unless (proj_root(0)) goto out;
 
+	/*
+	 * If we want a product lock (push/pull) and we're in a component,
+	 * pop up and grab the product's proj so we lock that one.  But
+	 * only if we're not already in a nested op (_BK_TRANSACTION).
+	 */
+	if ((cmdlog_flags & CMD_LOCK_PRODUCT) && proj_isComponent(0) &&
+	    !getenv("_BK_TRANSACTION")) {
+		/* if in a product, act like a cd2product, as cmd will do it */
+		proj = proj_product(0);
+	}
 	if (cmdlog_flags & CMD_SAMELOCK) {
 		if (nlid = getenv("_NESTED_LOCK")) {
-			if (nested_mine(0, nlid, 1)) {
+			if (nested_mine(proj, nlid, 1)) {
 				cmdlog_flags |= CMD_WRLOCK;
 				TRACE("SAMELOCK: got a %s", "write lock");
-			} else if (nested_mine(0, nlid, 0)) {
+			} else if (nested_mine(proj, nlid, 0)) {
 				cmdlog_flags |= CMD_RDLOCK;
 				TRACE("SAMELOCK: got a %s", "read lock");
 			} else {
@@ -775,7 +787,7 @@ cmdlog_start(char **av, int bkd_cmd)
 	}
 
 	if (bkd_cmd && (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) &&
-	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = proj_repoID(0))) {
+	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = proj_repoID(proj))) {
 		i = streq(repo1, repo2);
 		if (i) {
 			error_msg = strdup("can't connect to same repo_id\n");
@@ -799,15 +811,15 @@ cmdlog_start(char **av, int bkd_cmd)
 		if (cmdlog_flags & CMD_IGNORE_RESYNC) {
 			putenv("_BK_IGNORE_RESYNC_LOCK=1");
 		}
-		i = repository_wrlock(0);
+		i = repository_wrlock(proj);
 		if (cmdlog_flags & CMD_IGNORE_RESYNC) {
 			putenv("_BK_IGNORE_RESYNC_LOCK=");
 		}
 		if (i) {
-			unless (bkd_cmd || !proj_root(0)) {
-				repository_lockers(0);
-				if (proj_isEnsemble(0)) {
-					nested_printLockers(0, stderr);
+			unless (bkd_cmd || !proj_root(proj)) {
+				repository_lockers(proj);
+				if (proj_isEnsemble(proj)) {
+					nested_printLockers(proj, stderr);
 				}
 			}
 			switch (i) {
@@ -835,11 +847,11 @@ cmdlog_start(char **av, int bkd_cmd)
 		cmdlog_locks |= CMD_WRLOCK;
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
-		if (i = repository_rdlock(0)) {
-			unless (bkd_cmd || !proj_root(0)) {
-				repository_lockers(0);
-				if (proj_isEnsemble(0)) {
-					nested_printLockers(0, stderr);
+		if (i = repository_rdlock(proj)) {
+			unless (bkd_cmd || !proj_root(proj)) {
+				repository_lockers(proj);
+				if (proj_isEnsemble(proj)) {
+					nested_printLockers(proj, stderr);
 				}
 			}
 			switch (i) {
@@ -864,14 +876,14 @@ cmdlog_start(char **av, int bkd_cmd)
 	}
 	if (do_lock &&
 	    (cmdlog_flags & (CMD_NESTED_RDLOCK | CMD_NESTED_WRLOCK)) &&
-	    proj_isEnsemble(0) &&
+	    proj_isEnsemble(proj) &&
 	    /*
-	     * Remote clone from a component witout already having a
+	     * Remote clone from a component without already having a
 	     * nested lock means we're doing a populate, so skip
 	     * nested locking. Note that repository locking has
 	     * already been handled above.
 	     */
-	    !(proj_isComponent(0) &&
+	    !(proj_isComponent(proj) &&
 		strneq(cmdlog_buffer, "remote clone", 12)) &&
 	    /*
 	     * Port is another command that just works at a component
@@ -880,13 +892,13 @@ cmdlog_start(char **av, int bkd_cmd)
 	    !getenv("BK_PORT_ROOTKEY")) {
 		if (nlid = getenv("_NESTED_LOCK")) {
 			TRACE("checking: %s", nlid);
-			unless (nested_mine(0, nlid,
+			unless (nested_mine(proj, nlid,
 				(cmdlog_flags & CMD_NESTED_WRLOCK))) {
 				error_msg = nested_errmsg();
 				goto out;
 			}
 		} else if (cmdlog_flags & CMD_NESTED_WRLOCK) {
-			unless (nlid = nested_wrlock(proj_product(0))) {
+			unless (nlid = nested_wrlock(proj_product(proj))) {
 				error_msg = nested_errmsg();
 				goto out;
 			}
@@ -895,7 +907,7 @@ cmdlog_start(char **av, int bkd_cmd)
 			cmdlog_locks |= CMD_NESTED_WRLOCK;
 			TRACE("%s", "NESTED_WRLOCK");
 		} else if (cmdlog_flags & CMD_NESTED_RDLOCK) {
-			unless (nlid = nested_rdlock(proj_product(0))) {
+			unless (nlid = nested_rdlock(proj_product(proj))) {
 				error_msg = nested_errmsg();
 				goto out;
 			}
@@ -931,7 +943,7 @@ out:
 		free(error_msg);
 		if (bkd_cmd) {
 			drain();
-			repository_unlock(0, 0);
+			repository_unlock(proj, 0);
 		}
 		exit (1);
 	}

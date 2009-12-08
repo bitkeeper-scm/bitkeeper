@@ -91,6 +91,19 @@ bk -Ar check -av >OUT 2>&1 || {
 }
 echo OK
 
+echo $N Try a push from a component..................................$NL
+cd "$HERE"
+bk clone $Q copy2 p1
+bk clone $Q copy p2
+cd p2
+bk parent $Q ../p1
+cd gcc
+bk push $Q 2>ERR || fail -f ERR should have worked
+cd ..
+test -z "`bk changes -qL`" || fail left changes
+echo OK
+
+
 echo $N Try a push with conflicts....................................$NL
 cd "$HERE/copy2"
 echo "hi" > newfile
@@ -483,3 +496,27 @@ cd ..
 rm -fr project
 echo "failed (bug )"
 
+echo $N Try pusing to unrelated repos................................$NL
+cd "$HERE"
+fresh_nested n1
+cd "$HERE"
+fresh_nested n2
+bk push $Q "$HERE/n1" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to synchronize with an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK
+
+echo $N Try pushing from non-nested to nested........................$NL
+cd "$HERE"
+fresh_commercial nn
+bk push $Q "$HERE/n1" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to synchronize with an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK
+
+echo $N Try pushing from nested to non-nested........................$NL
+cd "$HERE/n1"
+bk push $Q "$HERE/nn" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to synchronize with an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK

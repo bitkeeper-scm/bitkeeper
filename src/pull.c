@@ -20,8 +20,6 @@ private struct {
 	u32	update_only:1;		/* -u: pull iff no local csets */
 	u32	gotsome:1;		/* we got some csets */
 	u32	collapsedups:1;		/* -D: pass to takepatch (collapse dups) */
-	u32	product:1;		/* is this a product pull? */
-	u32	pass1:1;		/* set if we are driver pull */
 	u32	port:1;			/* is port command? */
 	u32	transaction:1;		/* is $_BK_TRANSACTION set? */
 	u32	local:1;		/* set if we find local work */
@@ -124,20 +122,12 @@ pull_main(int ac, char **av)
 		return (1);
 	}
 	if (getenv("_BK_TRANSACTION")) opts.transaction = 1;
-	if (proj_isComponent(0)) {
-		unless (opts.transaction || opts.port) {
-			fprintf(stderr,
-			    "pull: component-only pulls are not allowed.\n");
-			return (1);
-		}
-	} else if (proj_isProduct(0)) {
+	if (proj_isProduct(0)) {
 		if (opts.port) {
 			fprintf(stderr,
 			    "pull: port not allowed with product.\n");
 			return (1);
 		}
-		opts.product = 1;
-		unless (opts.transaction) opts.pass1 = 1;
 	}
 
 	/*
@@ -150,7 +140,12 @@ pull_main(int ac, char **av)
 		}
 	}
 
-	if (proj_cd2root()) {
+	if (proj_isComponent(0) && !opts.transaction && !opts.port) {
+		if (proj_cd2product()) {
+			fprintf(stderr, "pull: cannot find product root.\n");
+			exit(1);
+		}
+	} else if (proj_cd2root()) {
 		fprintf(stderr, "pull: cannot find package root.\n");
 		exit(1);
 	}
@@ -202,7 +197,7 @@ err:		freeLines(envVar, free);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
 		r->gzip_in = gzip;
-		unless (opts.quiet || opts.pass1) {
+		unless (opts.quiet) {
 			if (i > 1)  printf("\n");
 			fromTo(prog, r, 0);
 		}
@@ -401,6 +396,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 {
 	char	msg_file[MAXPATH], buf[MAXPATH * 2];
 	FILE	*f;
+	char	*t;
 	int	status, rc;
 
 	bktmp(msg_file, "pullmsg");
@@ -417,7 +413,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.dont) fprintf(f, " -n");
 	for (rc = opts.list; rc--; ) fprintf(f, " -l");
-	if (opts.quiet || opts.pass1) fprintf(f, " -q");
+	if (opts.quiet) fprintf(f, " -q");
 	if (opts.rev) fprintf(f, " -r%s", opts.rev);
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (opts.debug) fprintf(f, " -d");
@@ -440,10 +436,13 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 		fprintf(stderr,
 		    "You are trying to pull from an unrelated package.\n"
 		    "Please check the pathnames and try again.\n");
-		unlink(msg_file);
-		return (-1);
+		/*FALLTHROUGH*/
 	    default:
 		unlink(msg_file);
+		/* tell remote */
+		if ((t = getenv("BKD_REPOTYPE")) && streq(t, "prod")) {
+			rc = pull_finish(r, 1, envVar);
+		}
 		return (-1);
 	}
 

@@ -89,7 +89,7 @@ bk pull $Q ../../standalone 2> ERR && {
 	cat ERR
 	exit 1
 }
-grep -q 'pull: component-only pulls are not allowed.' ERR || {
+grep -q 'You are trying to pull from an unrelated package.' ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1
@@ -311,12 +311,12 @@ bk new $Q sa2-new-2 || exit 1
 bk commit $Q -y'add sa2-new-2' || exit 1
 # Port to the component.
 cd "$HERE/project2/sa2"
-bk pull $Q ../project2/sa2 2> ERR 1>&2 && {
+bk pull $Q "$HERE/sa2-detached-2" 2> ERR 1>&2 && {
 	echo should have failed
 	cat ERR
 	exit 1
 }
-grep -q 'component-only pulls are not allowed.' ERR || {
+grep -q 'You are trying to pull from an unrelated package.' ERR || {
 	echo bad error message
 	cat ERR
 	exit 1

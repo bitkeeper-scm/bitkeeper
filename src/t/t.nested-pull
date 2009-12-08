@@ -769,3 +769,36 @@ echo OK
 
 # # XXX - we should check that the repo is cleaned up but we need the nested
 # # abort/cleanup code first.
+
+echo $N Test pull in a component goes up to the product..............$NL
+cd "$HERE"
+rm -rf local
+bk clone -q -r1.8 -sHERE remote local
+cd local/gcc
+bk pull $Q 2>ERR || fail -f ERR pull should have worked
+echo OK
+
+echo $N Try pulling from unrelated product...........................$NL
+cd "$HERE"
+fresh_nested n1
+cd "$HERE"
+fresh_nested n2
+bk pull $Q "$HERE/n1" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to pull from an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK
+
+echo $N Try pulling from nested to non-nested........................$NL
+cd "$HERE"
+fresh_commercial nn
+bk pull $Q "$HERE/n1" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to pull from an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK
+
+echo $N Try pulling from non-nested to nested........................$NL
+cd "$HERE/n2"
+bk pull $Q "$HERE/nn" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to pull from an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK

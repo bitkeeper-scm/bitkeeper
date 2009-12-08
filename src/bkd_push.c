@@ -83,7 +83,7 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
-	if (product && (aliases = nested_here(0))) {
+	if (product && proj_isProduct(0) && (aliases = nested_here(0))) {
 		out("@HERE@\n");
 		EACH(aliases) {
 			out(aliases[i]);
@@ -161,6 +161,7 @@ cmd_push_part2(int ac, char **av)
 		 * This is a null event for us, do not goto done. 
 		 * Just return without firing the post trigger
 		 */
+		if (proj_isProduct(0)) goto abort;
 		return (0);
 	}
 	putenv("BK_STATUS=OK");
@@ -178,7 +179,7 @@ cmd_push_part2(int ac, char **av)
 		 * Kludge: abort here.
 		 * XXX: should we abort on conflict too?
 		 */
-		resync = aprintf("%s/%s", proj_root(0), ROOT2RESYNC);
+abort:		resync = aprintf("%s/%s", proj_root(0), ROOT2RESYNC);
 		nlid = getenv("_NESTED_LOCK");
 		assert(nlid);
 		nested_abort(0, nlid);
