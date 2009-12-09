@@ -43,7 +43,7 @@ proc widgets {} \
 	    button .menu.quit -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Quit" -command cleanup 
+		-text "Quit" -command exit 
 	    button .menu.reread -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
@@ -144,7 +144,7 @@ proc keyboard_bindings {} \
 		.diffs.left yview -pickplace end
 		.diffs.right yview -pickplace end
 	}
-	bind all	<$gc(diff.quit)>	cleanup
+	bind all	<$gc(diff.quit)>	exit
 	bind all	<N>			nextFile
 	bind all	<P>			prevFile
 	bind all	<Control-n>		nextFile
@@ -159,8 +159,8 @@ proc keyboard_bindings {} \
 		}
 	}
 	if {$gc(aqua)} {
-		bind all <Command-q> cleanup
-		bind all <Command-w> cleanup
+		bind all <Command-q> exit
+		bind all <Command-w> exit
 	}
 	if {$gc(x11)} {
 		bind all <Button-4>	prev
@@ -172,7 +172,7 @@ proc keyboard_bindings {} \
 
 proc getRev {file rev checkMods} \
 {
-	global	tmp_dir unique
+	global	unique
 
 	set gfile ""
 	set f [open "| bk sfiles -g \"$file\"" r]
@@ -189,10 +189,7 @@ proc getRev {file rev checkMods} \
 		}
 		catch {close $f}
 	}
-	set tmp [file join $tmp_dir [file tail $file]]
-	set pid [pid]
-	incr unique
-	set tmp "$tmp@$rev-$pid$unique"
+	set tmp [tmpfile difftool]
 	if {[catch {exec bk get -qkTp -r$rev $file > $tmp} msg]} {
 		puts "$msg"
 		exit 1
@@ -259,12 +256,11 @@ proc readInput {in} \
 
 proc getFiles {} \
 {
-	global argv argc dev_null lfile rfile tmp_dir unique
-	global gc tmps menu rev1 rev2 Diffs DiffsEnd
+	global argv argc dev_null lfile rfile unique
+	global gc menu rev1 rev2 Diffs DiffsEnd
 
 	if {$argc > 3} { usage }
 	set files [list]
-	set tmps [list]
 	set rev1 ""
 	set rev2 ""
 	set Diffs(0) 1.0
@@ -284,7 +280,6 @@ proc getFiles {} \
 			#puts "fname=($fname)"
 			set rfile $fname
 			set lfile [getRev $rfile "+" 1]
-			lappend tmps $lfile
 			set t "{$lfile} {$rfile} {$fname} + checked_out"
 			lappend files $t
 		}
@@ -296,10 +291,10 @@ proc getFiles {} \
 			cd2root
 			set f [open "| bk rset -P $argv" r]
 			set files [readInput $f]
-				if {[catch {close $f} err]} {
-					puts $err
-					exit 1
-				}
+			if {[catch {close $f} err]} {
+				puts $err
+				exit 1
+			}
 		} else { ;# bk difftool file
 			set rfile [normalizePath [lindex $argv 0]]
 			set lfile [getRev $rfile "+" 1]
@@ -309,7 +304,6 @@ proc getFiles {} \
 				set t "{$lfile} {$rfile} {$rfile} + checked_out"
 				lappend files $t
 			}
-			lappend tmps $lfile
 		}
 	} elseif {$argc == 2} { ;# bk difftool -r<rev> file
 		set a [lindex $argv 0]
@@ -365,11 +359,9 @@ proc getFiles {} \
 		set a [lindex $argv 0]
 		if {![regexp -- {-r(.*)} $a junk rev1]} { usage }
 		set lfile [getRev $file $rev1 0]
-		lappend tmps $lfile
 		set a [lindex $argv 1]
 		if {![regexp -- {-r(.*)} $a junk rev2]} { usage }
 		set rfile [getRev $file $rev2 0]
-		lappend tmps $rfile
 		if {[checkFiles $lfile $rfile]} {
 			set t "{$lfile} {$rfile} {$file} $rev1 $rev2"
 			lappend files $t
@@ -417,7 +409,7 @@ proc getFiles {} \
 	    	} else {
 			puts stderr "There were no files available to diff"
 		}
-		cleanup
+		exit
 	}
 }
 
@@ -438,14 +430,6 @@ proc checkFiles {lfile rfile} \
 	}
 	puts stderr "Shouldn't get here"
 	return 0
-}
-
-proc cleanup {} \
-{
-	global tmps
-
-	foreach tmp $tmps { catch {file delete $tmp} err }
-	exit
 }
 
 # Called from the menubutton -- updates the arrows and reads the correct file

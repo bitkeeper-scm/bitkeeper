@@ -951,7 +951,7 @@ proc createRepo {errorVar} \
 	upvar $errorVar message
 
 	set pid [pid]
-	set filename [file join $::tmp_dir "config.$pid"]
+	set filename [tmpfile setuptool]
 	set f [open $filename w]
 	puts -nonewline $f [createConfigData]
 	close $f

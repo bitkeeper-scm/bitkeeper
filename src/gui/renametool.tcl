@@ -236,7 +236,6 @@ proc clear {state} \
 proc diffFiles {L R} \
 {
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
-	global  tmp_dir
 
 	clear normal
 	.diffs.status.l configure -text "$L"
@@ -250,7 +249,7 @@ proc diffFiles {L R} \
 	set n 1
 	set l [open "| bk get -kqp \"$L\"" r]
 	set tail [file tail $L]
-	set tmp [file join $tmp_dir $tail-[pid]]
+	set tmp [tmpfile renametool]
 	set t [open $tmp w]
 	while {[gets $l buf] >= 0} {
 		puts $t "$buf"

@@ -449,7 +449,11 @@ clean_up()
 
 	# Make sure there are no stale files in $TMPDIR
 	ls -a "$TMPDIR" > "$TMPDIR/T.${USER} new"
-	( cd "$TMPDIR" && bk diff "T.${USER} new" "T.${USER}" )
+	bk diff "$TMPDIR/T.${USER}" "$TMPDIR/T.${USER} new" > /dev/null || {
+		echo "Test leaked the following temporary files:"
+		bk diff "$TMPDIR/T.${USER}" "$TMPDIR/T.${USER} new"
+		exit 1
+	}
 
 	for i in 1 2 3 4 5 6 7 8 9 0
 	do
