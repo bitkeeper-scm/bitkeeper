@@ -136,13 +136,13 @@ range_cset(sccs *s, delta *d)
 
 	/* walk back all children until all deltas in this cset are marked */
 	clean = last = d->serial;
-	for (; d; d = d->next) {
+	for (; d; d = NEXT(d)) {
 		unless (color = (d->flags & (D_SET|D_RED))) continue;
 		if (color & D_RED) {
 			d->flags &= ~color;
 			color = D_RED;
 		}
-		if (e = d->parent) {
+		if (e = PARENT(s, d)) {
 			if (e->flags & D_CSET) {
 				e->flags |= D_RED;
 			} else {
@@ -153,7 +153,7 @@ range_cset(sccs *s, delta *d)
 			}
 			if (e->serial < clean) clean = e->serial;
 		}
-		if (d->merge && (e = sfind(s, d->merge))) {
+		if (d->merge && (e = MERGE(s, d))) {
 			if (e->flags & D_CSET) {
 				e->flags |= D_RED;
 			} else {
@@ -166,10 +166,10 @@ range_cset(sccs *s, delta *d)
 		}
 		if (d->serial == last) break;
 	}
-	d = d->next;		/* boundary for diffs.c (sorta wrong..) */
+	d = NEXT(d);		/* boundary for diffs.c (sorta wrong..) */
 	s->rstart = d ? d : s->tree;
 	s->state |= S_SET;
-	for ( ; d; d = d->next) {
+	for ( ; d; d = NEXT(d)) {
 		if (d->serial < clean) break;
 		d->flags &= ~D_RED;
 	}
@@ -234,7 +234,7 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	s->state |= S_SET;
 	if (!rargs->rstart) {
 		/* select all */
-		for (d = s->table; d; d = d->next) {
+		for (d = s->table; d; d = NEXT(d)) {
 			if (d->type == 'D') d->flags |= D_SET;
 		}
 		s->rstart = s->tree;
@@ -335,7 +335,7 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 	}
 	if (flags & RANGE_SET) {
 		for (d = s->rstop;
-		    d && (d->serial >= s->rstart->serial); d = d->next) {
+		    d && (d->serial >= s->rstart->serial); d = NEXT(d)) {
 			unless (TAG(d)) d->flags |= D_SET;
 		}
 	}
@@ -417,14 +417,14 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 	}
 
 	/* compute RED - BLUE */
-	for (; d && (all || (marked > 0)); d = d->next) {
+	for (; d && (all || (marked > 0)); d = NEXT(d)) {
 		unless (d->type == 'D') continue;
 		if (all) d->flags |= D_RED;
 		unless (color = (d->flags & mask)) continue;
 		d->flags &= ~color; /* clear bits */
 		if (color != mask) marked--;
-		if (e = d->parent) MARK(e, color);
-		if (d->merge && (e = sfind(s, d->merge))) MARK(e, color);
+		if (e = PARENT(s, d)) MARK(e, color);
+		if (e = MERGE(s, d)) MARK(e, color);
 		if ((color == D_RED) ||
 		    ((flags & WR_BOTH) && (color != mask))) {
 			if (flags & WR_BOTH) d->flags |= color;
@@ -435,7 +435,7 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 	}
 
 	/* cleanup */
-	for (; d && (d->serial >= last); d = d->next) {
+	for (; d && (d->serial >= last); d = NEXT(d)) {
 		d->flags &= ~mask;
 	}
 	return (ret);
@@ -489,7 +489,7 @@ range_markMeta(sccs *s)
 	 *   Ancestor of D_SET - Inside the region. Mark D_RED, leave cleared
 	 *   What's left -- Outside the region.  Mark and leave D_BLUE
 	 */
-	for (d = s->table; d; d = d->next){
+	for (d = s->table; d; d = NEXT(d)){
 		unless (d->type == 'D') continue;
 		unless (d->flags & (D_SET|D_RED)) {
 			d->flags |= D_BLUE;
@@ -498,10 +498,10 @@ range_markMeta(sccs *s)
 			continue;
 		}
 		d->flags &= ~D_RED;
-		if ((e = d->parent) && !(e->flags & (D_SET|D_RED))) {
+		if ((e = PARENT(s, d)) && !(e->flags & (D_SET|D_RED))) {
 			e->flags |= D_RED;
 		}
-		if (d->merge && (e = sfind(s, d->merge))
+		if (d->merge && (e = MERGE(s, d))
 		    && !(e->flags & (D_SET|D_RED))) {
 			e->flags |= D_RED;
 		}
@@ -520,7 +520,7 @@ range_markMeta(sccs *s)
 		unless ((d = sfind(s, i)) && (d->type != 'D')) continue;
 		if (d->flags & D_SET) continue;
 		/* e = tagged real delta */
-		for (e = d->parent; e && (e->type != 'D'); e = e->parent);
+		for (e = PARENT(s, d); e && (e->type != 'D'); e = PARENT(s, e));
 		/* filter out meta attached to nodes outside the region */
 		if ((e->flags & D_BLUE) ||
 		    (d->ptag && (sfind(s, d->ptag)->flags & D_BLUE)) ||
@@ -541,7 +541,7 @@ range_markMeta(sccs *s)
 	}
 
 	/* cleanup */
-	for (d = upper; d; d = d->next) {
+	for (d = upper; d; d = NEXT(d)) {
 		d->flags &= ~D_BLUE;
 		if (d == lower) break;
 	}
@@ -554,7 +554,7 @@ range_gone(sccs *s, delta *d, u32 dflags)
 
 	range_walkrevs(s, d, 0, 0, 0, walkrevs_setFlags, (void*)D_SET);
 	range_markMeta(s);
-	for (d = s->rstop; d; d = d->next) {
+	for (d = s->rstop; d; d = NEXT(d)) {
 		if (d->flags & D_SET) {
 			count++;
 			d->flags &= ~D_SET;
@@ -596,7 +596,7 @@ range_unrange(sccs *s, delta **left, delta **right, int all)
 
 	assert(left && right);
 	*left = *right = 0;
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if (TAG(d)) continue;
 		color = (d->flags & (D_SET|D_RED|D_BLUE));
 		/* parent region of left does not intersect D_SET region */
@@ -627,10 +627,10 @@ range_unrange(sccs *s, delta **left, delta **right, int all)
 		color &= ~D_SET;
 
 		/* Color parents */
-		if (p = d->parent) {
+		if (p = PARENT(s, d)) {
 			p->flags |= color;
 		}
-		if (d->merge && (p = sfind(s, d->merge))) {
+		if (p = MERGE(s, d)) {
 			p->flags |= color;
 		}
 	}

@@ -402,14 +402,14 @@ markThisCset(cset_t *cs, sccs *s, delta *d)
 	do {
 		d->flags |= D_SET;
 		if (d->merge) {
-			delta	*e = sfind(s, d->merge);
+			delta	*e = MERGE(s, d);
 
 			assert(e);
 			unless (e->flags & (D_SET|D_CSET)) {
 				markThisCset(cs, s, e);
 			}
 		}
-		d = d->parent;
+		d = PARENT(s, d);
 	} while (d && !(d->flags & (D_SET|D_CSET)));
 }
 
@@ -796,23 +796,23 @@ doDiff(sccs *sc, char kind)
 	delta	*d, *e = 0;
 
 	if (CSET(sc)) return;		/* no changeset diffs */
-	for (d = sc->table; d; d = d->next) {
+	for (d = sc->table; d; d = NEXT(d)) {
 		if (d->flags & D_SET) {
 			e = d;
 		} else if (e) {
 			break;
 		}
 	}
-	for (d = sc->table; d && !(d->flags & D_SET); d = d->next);
+	for (d = sc->table; d && !(d->flags & D_SET); d = NEXT(d));
 	if (!d) return;
-	unless (e->parent) {
+	unless (PARENT(sc, e)) {
 		printf("--- New file ---\n+++ %s\t%s\n",
 		    sc->gfile, sccs_ino(sc)->sdate);
 		sccs_get(sc, 0, 0, 0, 0, PRINT|SILENT, "-");
 		printf("\n");
 		return;
 	}
-	e = e->parent;
+	e = PARENT(sc, e);
 	if (e == d) return;
 	sccs_diffs(sc, e->rev, d->rev, 0, kind, stdout);
 }
@@ -828,7 +828,7 @@ doEndpoints(cset_t *cs, sccs *sc)
 	delta	*d, *earlier = 0, *later = 0;
 
 	if (CSET(sc)) return;		
-	for (d = sc->table; d; d = d->next) {
+	for (d = sc->table; d; d = NEXT(d)) {
 		unless (d->flags & D_SET) continue;
 		unless (later) {
 			later = d;
@@ -854,7 +854,7 @@ doMarks(cset_t *cs, sccs *s)
 	 */
 	if (cs->remark) sccs_clearbits(s, D_CSET);
 
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if ((d->type == 'D') && (d->flags & D_SET)) {
 			if (cs->force || !(d->flags & D_CSET)) {
 				if (cs->verbose > 2) {
@@ -888,7 +888,7 @@ doSet(sccs *sc)
 	delta	*d;
 	char	key[MD5LEN];
 
-	for (d = sc->table; d; d = d->next) {
+	for (d = sc->table; d; d = NEXT(d)) {
 		if (d->flags & D_SET) {
 			printf("%s", sc->gfile);
 		    	if (copts.historic) printf("%c%s", BK_FS, d->pathname);
@@ -1145,7 +1145,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	newfile = s->tree->flags & D_SET;
 	hastip = s->table->flags & D_SET;
 	list = 0;
-	for (n = 0, d = s->table; d; d = d->next) {
+	for (n = 0, d = s->table; d; d = NEXT(d)) {
 		unless (d->flags & D_SET) continue;
 		unless (gfile) gfile = CSET(s) ? GCHANGESET : d->pathname;
 		n++;
@@ -1209,8 +1209,8 @@ sccs_patch(sccs *s, cset_t *cs)
 		/*
 		 * For each file, also eject the parent of the rev.
 		 */
-		if (d->parent) {
-			sccs_pdelta(s, d->parent, stdout);
+		if (d->pserial) {
+			sccs_pdelta(s, PARENT(s, d), stdout);
 			printf("\n");
 		}
 		if (copts.csetkey && CSET(s)) d->flags &= ~D_CSET;

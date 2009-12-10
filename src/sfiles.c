@@ -465,7 +465,7 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 	 * there is a problem or not.
 	 */
 	if (s->defbranch && streq(s->defbranch, "1.0")) {
-		for (d = s->table; d; d = d->next) {
+		for (d = s->table; d; d = NEXT(d)) {
 			unless ((d->type == 'D') && sccs_isleaf(s, d)) {
 				continue;
 			}
@@ -483,7 +483,7 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 		char	*data[2] = {state, gfile};
 
 		/* find latest cset mark */
-		for (d = s->table; d; d = d->next) {
+		for (d = s->table; d; d = NEXT(d)) {
 			if (d->flags & D_CSET) break;
 		}
 		/* and walk all revs not included in that... */

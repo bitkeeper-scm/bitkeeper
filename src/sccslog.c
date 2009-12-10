@@ -94,7 +94,7 @@ next:			sccs_free(s);
 				while (d) {
 					if (d->flags & D_CSET) break;
 					d->flags |= D_SET;
-					d = d->parent;
+					d = PARENT(s, d);
 				}
 				s->state |= S_SET;
 			} else if (rargs.rstart || sfileRev()) {

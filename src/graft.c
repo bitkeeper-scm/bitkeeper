@@ -121,8 +121,8 @@ _patch(sccs *s)
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, i)) continue;
-		if (d->parent) {
-			sccs_pdelta(s, d->parent, stdout);
+		if (d->pserial) {
+			sccs_pdelta(s, PARENT(s, d), stdout);
 			printf("\n");
 		} else {
 			flags |= PRS_GRAFT;

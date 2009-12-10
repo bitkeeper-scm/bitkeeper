@@ -1111,7 +1111,7 @@ http_index(char *page)
 	t1y = now - YEAR;
 	t2y = now - 2*YEAR;
 	t3y = now - 3*YEAR;
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if (user && !streq(user, d->user)) continue;
 		if (d->type == 'R') continue;
 		unless (d->added > 0) {

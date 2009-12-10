@@ -88,7 +88,7 @@ strip_danglers(char *name, u32 flags)
 
 	s = sccs_init(name, INIT_WACKGRAPH);
 	assert(s);
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if (d->dangling) revs = addLine(revs, strdup(d->rev));
 	}
 	sccs_free(s);
@@ -112,7 +112,7 @@ strip_danglers(char *name, u32 flags)
 	 * have it, make a note of that.
 	 */
 	d = sccs_top(s);
-	if ((d->xflags & X_MONOTONIC) && !(d->parent->xflags & X_MONOTONIC)) {
+	if ((d->xflags & X_MONOTONIC) && !(PARENT(s, d)->xflags & X_MONOTONIC)) {
 		comments_load(s, d);
 		comments_append(d, strdup("Turn on MONOTONIC flag"));
 	}

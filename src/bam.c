@@ -106,8 +106,8 @@ bp_diff(sccs *s, delta *d, char *gfile)
 delta *
 bp_fdelta(sccs *s, delta *d)
 {
-	while (d && !d->hash) d = d->parent;
-	unless (d && d->parent) {
+	while (d && !d->hash) d = PARENT(s, d);
+	unless (d && PARENT(s, d)) {
 		fprintf(stderr,
 		    "BAM: unable to find BAM delta in %s\n", s->gfile);
 		return (0);
@@ -2096,7 +2096,7 @@ uu2bp(sccs *s)
 
 	if ((s->encoding & E_COMP) == E_GZIP) sccs_unzip(s);
 	fprintf(stderr, "Converting %s ", s->gfile);
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		assert(d->type == 'D');
 		if (sccs_get(s, d->rev, 0, 0, 0, SILENT, "-")) return (8);
 

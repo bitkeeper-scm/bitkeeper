@@ -105,7 +105,7 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
 	 * then losing anything which is not marked.
 	 */
 	sccs_color(s, sccs_top(s));
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if (d->flags & D_RED) continue;
 		d->flags |= D_SET|D_GONE;
 	}
@@ -208,17 +208,17 @@ regen(sccs *s, int verbose, char *key)
 		d = table[i];
 		mkinit(s, d, 0, 0);
 		if (d->merge) {
-			delta	*m = sfind(s, d->merge);
+			delta	*m = MERGE(s, d);
 
 			assert(m);
-			a1 = aprintf("-egr%s", rev(revs, d->parent));
+			a1 = aprintf("-egr%s", rev(revs, PARENT(s, d)));
 			a2 = aprintf("-M%s", rev(revs, m));
 			sys("bk", "_get", "-q", a1, a2, gfile, SYS);
 			free(a1);
 			free(a2);
 		} else {
 			a1 = aprintf("-egr%s",
-				i ? rev(revs, d->parent) : "1.0");
+			    i ? rev(revs, PARENT(s, d)) : "1.0");
 			sys("bk", "_get", "-q", a1, gfile, SYS);
 			free(a1);
 		}
@@ -492,19 +492,20 @@ handleFake(sccs *s)
 private void
 collapse(sccs *s, int verbose, delta *d, delta *m)
 {
-	delta	*b, *p, *e, **ep;
+	delta	*b, *p, *e;
+	delta	**ep;
 
-	p = d->parent;
+	p = PARENT(s, d);
 	assert(m && p);
 
 	/*
 	 * See if merge ancestory contains parent.
 	 * b == base of merge ancestory whose parent is (possibly) p
 	 */
-	for (b = m; b && b->parent; b = b->parent) {
-		unless (b->parent->serial > p->serial) break;
+	for (b = m; b && b->pserial; b = PARENT(s, b)) {
+		unless (b->pserial > p->serial) break;
 	}
-	unless (b && b->parent == p) return;
+	unless (b && b->pserial == p->serial) return;
 	if (verbose > 1) {
 		fprintf(stderr,
 		    "Inlining graph: new parent of %s(%d) => %s(%d)\n",
@@ -516,16 +517,16 @@ collapse(sccs *s, int verbose, delta *d, delta *m)
 	 *   1. delete b from current location in list
 	 *   2. put b where ever d was, removing d from list
 	 */
-	for (ep = &p->kid; (e = *ep); ep = &e->siblings) {
+	for (ep = &p->kid; e = *ep; ep = &e->siblings) {
 		if (e == b) break;
 	}
 	assert(e);
 	*ep = b->siblings;	/* delete b */
-	for (ep = &p->kid; (e = *ep); ep = &e->siblings) {
+	for (ep = &p->kid; e = *ep; ep = &e->siblings) {
 		if (d == e) break;
 	}
 	assert(e);
-	*ep = b;		/* put b in place of p; deleting p */
+	*ep = b;	/* put b in place of p; deleting p */
 	b->siblings = d->siblings;
 
 	/* surgery at other end of graph: merge becomes parent of d */
@@ -568,7 +569,7 @@ makeMerge(sccs *s, int verbose)
 	int	i, empty;
 
 	/* table order, mark things to ignore, and find merge markers */
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if (d->type == 'R') {
 			d->flags |= D_GONE;
 			continue;
@@ -649,13 +650,13 @@ fixTable(sccs *s, int verbose)
 		 * on the trunk after import.
 		 */
 		unless (d && d->merge) continue;
-		m = sfind(s, d->merge);
+		m = MERGE(s, d);
 		assert(m);
-		if (sccs_needSwap(d->parent, m)) {
+		if (sccs_needSwap(s, PARENT(s, d), m)) {
 			if (verbose > 1) {
 				fprintf(stderr,
 				    "Need to swap in %s => %s & %s\n",
-				    d->rev, d->parent->rev, m->rev);
+				    d->rev, PARENT(s, d)->rev, m->rev);
 			}
 			/*
 			 * XXX: This is a hack of the graph optimized
@@ -663,8 +664,8 @@ fixTable(sccs *s, int verbose)
 			 * for a complete rewiring job.
 			 */
 			d->merge = d->pserial;
-			d->pserial = m->serial;
 			d->parent = m;
+			d->pserial = m->serial;
 		}
 	}
 	if (verbose > 2) ptable(s);

@@ -108,7 +108,7 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 				    "non-merge revision\n", s->gfile);
 				goto next;
 			}
-			unless (s->rstart = s->rstart->parent) {
+			unless (s->rstart = PARENT(s, s->rstart)) {
 				fprintf(stderr,
 				    "Warning: %s: %s has no parent\n",
 				    s->gfile, s->rstop->rev);
@@ -126,7 +126,7 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 				/* we don't want 1.0 by default */
 				s->tree->flags &= ~D_SET;
 				if (s->rstart == s->tree) {
-					s->rstart = s->tree->kid;
+					s->rstart = KID(s->tree);
 				}
 			}
 		}

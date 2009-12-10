@@ -78,7 +78,7 @@ checksum_main(int ac, char **av)
 					bad = c;
 				}
 			} else {
-				for (d = s->table; d; d = d->next) {
+				for (d = s->table; d; d = NEXT(d)) {
 					unless (d->type == 'D') continue;
 					c = sccs_resum(s, d, diags, fix);
 					if (c & 1) doit++;
@@ -426,7 +426,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 
 	/* foreach delta */
 	slist = 0;
-	for (d = s->table; d; d->flags &= ~D_SET, d = d->next) {
+	for (d = s->table; d; d->flags &= ~D_SET, d = NEXT(d)) {
 		unless (d->type == 'D') continue;
 		unless (d->added || d->include || d->exclude) continue;
 		if (SET(s) && !(d->flags & D_SET)) continue;

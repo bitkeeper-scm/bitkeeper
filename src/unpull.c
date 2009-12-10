@@ -97,7 +97,7 @@ err:			sccs_free(s);
 		}
 	}
 	if (tag) {
-		for (d = s->table; d && (d != tag); d = d->next) {
+		for (d = s->table; d && (d != tag); d = NEXT(d)) {
 			if (!d->symGraph || (d->flags & D_BLUE)) continue;
 			if (d->ptag) {
 				e = sfind(s, d->ptag);

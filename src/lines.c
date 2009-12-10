@@ -59,7 +59,7 @@ usage:			fprintf(stderr,
 	if (name && (s = sccs_init(name, INIT_NOCKSUM)) && HASGRAPH(s)) {
 		renumber(s);
 		if (n) {
-			for (c = n, e = sccs_top(s); e && c--; e = e->parent);
+			for (c = n, e = sccs_top(s); e && c--; e = PARENT(s, e));
 			if (e) e = ancestor(s, e);
 			prevs(e ? e : s->tree);
 		} else if (rargs.rstart) {
@@ -130,11 +130,11 @@ puser(char *u)
 private void
 prevs(delta *d)
 {
-	unless (d->kid) d = d->parent;
+	unless (d->kid) d = PARENT(s, d);
 	tree = d;
 	pd("", d);
-	_prevs(d->kid);
-	_prevs(d->siblings);
+	_prevs(KID(d));
+	_prevs(SIBLINGS(d));
 }
 
 private void
@@ -147,16 +147,16 @@ _prevs(delta *d)
 	 */
 	if ((d->r[3] == 1) ||
 	    ((d->r[0] > 1) && (d->r[1] == 1) && !d->r[2])) {
-	    	pd("", d->parent);
+	    	pd("", PARENT(s, d));
 	}
 
 	pd(" ", d);
-	if (d->kid && (d->kid->type == 'D')) {
-		_prevs(d->kid);
+	if (d->kid && (KID(d)->type == 'D')) {
+		_prevs(KID(d));
 	} else {
 		printf("\n");
 	}
-	for (d = d->siblings; d; d = d->siblings) {
+	for (d = SIBLINGS(d); d; d = SIBLINGS(d)) {
 		unless (d->flags & D_RED) _prevs(d);
 	}
 }
@@ -173,7 +173,7 @@ pd(char *prefix, delta *d)
 	if (tags && (d->flags & D_SYMBOLS)) putchar('*');
 	if (d->flags & D_BADREV) printf("-BAD");
 	if (d->merge) {
-		delta	*p = sfind(s, d->merge);
+		delta	*p = MERGE(s, d);
 
 		assert(p);
 		if (p->date > tree->date) {
@@ -198,10 +198,10 @@ t(delta *a, delta *d)
 {
 	delta	*p;
 
-	for (p = d; p->r[2]; p = p->parent);
+	for (p = d; p->r[2]; p = PARENT(s, p));
 	if ((p->type != 'R') && (p->date < a->date)) a = p;
-	if (d->kid) a = t(a, d->kid);
-	if (d->siblings) a = t(a, d->siblings);
+	if (d->kid) a = t(a, KID(d));
+	if (SIBLINGS(d)) a = t(a, SIBLINGS(d));
 	return (a);
 }
 
@@ -214,8 +214,8 @@ ancestor(sccs *s, delta *d)
 	delta	*a;
 
 	/* get back to the trunk */
-	for (a = d; a && a->r[2]; a = a->parent);
-	while (a->type == 'R') a = a->parent;
+	for (a = d; a && a->r[2]; a = PARENT(s, a));
+	while (a->type == 'R') a = PARENT(s, a);
 	a = t(a, a);
 	return (a);
 }

@@ -38,7 +38,7 @@ tagmerge(void)
 	/*
 	 * Find the two oldest tag tips, and count up all tips.
 	 */
-	for (d = s->table, i = 0; d; d = d->next) {
+	for (d = s->table, i = 0; d; d = NEXT(d)) {
 		unless (d->symGraph) continue;
 		if (d->ptag) sfind(s, d->ptag)->flags |= D_RED;
 		if (d->mtag) sfind(s, d->mtag)->flags |= D_RED;
@@ -101,7 +101,7 @@ m(sccs *s, delta *l, delta *r)
 	i = 1;
 	do {
 		tt = p->date + i++;
-		for (d = s->table; d; d = d->next) {
+		for (d = s->table; d; d = NEXT(d)) {
 			if (d->date < tt) {
 				d = 0;
 				break;
@@ -114,7 +114,7 @@ m(sccs *s, delta *l, delta *r)
 			}
 		}
 	} while (d);
-	while (p->parent && (p->type != 'D')) p = p->parent;
+	while (p->pserial && (p->type != 'D')) p = PARENT(s, p);
 	sprintf(buf, "# Patch vers:\t1.3\n# Patch type:\tREGULAR\n\n");
 	sum = doit(sum, buf);
 	sprintf(buf, "== %s ==\n", s->gfile);

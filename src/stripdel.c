@@ -105,7 +105,7 @@ doit(sccs *s, s_opts opts)
 	if (MONOTONIC(s) && !opts.forward) {
 		verbose((stderr, 
 		    "Not stripping deltas from MONOTONIC file %s\n", s->gfile));
-		for (e = s->table; e; e = e->next) {
+		for (e = s->table; e; e = NEXT(e)) {
 			if ((e->flags & D_SET) && (e->type == 'D')) {
 				e->dangling = 1;
 			}
@@ -172,7 +172,7 @@ stripdel_fixTable(sccs *s, int *pcnt)
 	int	leafset = 0;
 	int	count = 0, left = 0;
 
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if (d->flags & D_SET) {
 			MK_GONE(s, d);
 			d->symLeaf = 0;
@@ -250,9 +250,9 @@ checkCset(sccs *s)
 {
 	delta	*d, *e;
 
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		unless (d->flags & D_SET) continue;
-		for (e = d; e; e = e->kid) {
+		for (e = d; e; e = KID(e)) {
 			if (e->flags & D_CSET) {
 				return (e);
 			}

@@ -90,8 +90,8 @@ xflags(sccs *s, delta *d, int what)
 
 	unless (d) return (0);
 	ret = checkXflags(s, d, what);
-	ret |= xflags(s, d->kid, what);
-	ret |= xflags(s, d->siblings, what);
+	ret |= xflags(s, KID(d), what);
+	ret |= xflags(s, SIBLINGS(d), what);
 	return (ret);
 }
 
@@ -130,9 +130,9 @@ checkXflags(sccs *s, delta *d, int what)
 		unless (streq(t, " flag")) continue;
 		*t = 0; *p |= a2xflag(f); *t = ' ';
 	}
-	assert(d->parent);
-	old = sccs_xflags(d->parent);
-	new = sccs_xflags(d);
+	assert(d->pserial);
+	old = sccs_xflags(s, PARENT(s, d));
+	new = sccs_xflags(s, d);
 	want = old | added;
 	want &= ~deleted;
 	if (new == want) return (0);

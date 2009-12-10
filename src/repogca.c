@@ -68,7 +68,7 @@ repogca_main(int ac, char **av)
 	dspec = strdup(dspec);
 	dspec_collapse(&dspec, &begin, &end);
 	lastd = s->table;
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if ((d->type == 'D') && !(d->flags & (D_RED|D_BLUE))) {
 			if (begin) {
 				sccs_prsdelta(s, d, 0, begin, stdout);
@@ -82,10 +82,8 @@ repogca_main(int ac, char **av)
 			d->flags |= D_BLUE;
 		}
 		if (d->flags & D_BLUE) {
-			if (p = d->parent) p->flags |= D_BLUE;
-			if (d->merge && (p = sfind(s, d->merge))) {
-				p->flags |= D_BLUE;
-			}
+			if (p = PARENT(s, d)) p->flags |= D_BLUE;
+			if (p = MERGE(s, d)) p->flags |= D_BLUE;
 		}
 	}
 	if (end) {

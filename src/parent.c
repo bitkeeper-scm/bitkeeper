@@ -1,5 +1,6 @@
 #include "bkd.h"
 
+#undef	PARENT
 #define	PARENT		"BitKeeper/log/parent"
 #define	PUSH_PARENT	"BitKeeper/log/push-parent"
 #define	PULL_PARENT	"BitKeeper/log/pull-parent"

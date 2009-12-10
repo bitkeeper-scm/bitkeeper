@@ -803,8 +803,8 @@ isBaselineKey(sccs *s, char *key)
 	while ((d->added == 0) && (d->deleted == 0)) {
 		sccs_sdelta(s, d, baselineKey);
 		if (streq(key, baselineKey)) return (1);
-		if (d->parent == NULL) break;
-		d = d->parent;
+		unless (d->pserial) break;
+		d = PARENT(s, d);
 	}
 	sccs_sdelta(s, d, baselineKey);
 	if (streq(key, baselineKey)) return (1);

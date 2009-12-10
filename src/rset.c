@@ -410,14 +410,14 @@ sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 	/*
 	 * XXX TODO: Could we get meta delta in cset?, should we skip them?
 	 */
-	unless (p = d->parent) {
+	unless (p = PARENT(s, d)) {
 		fprintf(stderr, "diffs: rev %s has no parent\n", rev);
 		return (-1);
 	}
 	assert(p->type != 'R'); /* parent should not be a meta delta */
 	*revP = (p ? strdup(p->rev) : NULL);
 	if (d->merge) {
-		m = sfind(s, d->merge);
+		m = MERGE(s, d);
 		*revM = (m ? strdup(m->rev) : NULL);
 	}
 	return (0);

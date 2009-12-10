@@ -121,7 +121,7 @@ keycache_print(char *file, struct stat *sb, void *data)
 		sccs_free(s);
 		return (0);
 	}
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if (d->date < kc->cutoff) break;
 		unless (d->hostname) continue;
 		if (p = strchr(d->hostname, '/')) {
