@@ -217,7 +217,10 @@ clone_main(int ac, char **av)
 			}
 		}
 	} else {
-		if (r->path) opts->to = basenm(r->path);
+		if (r->path) {
+			cleanPath(r->path, r->path);
+			opts->to = basenm(r->path);
+		}
 	}
 
 	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {

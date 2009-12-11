@@ -231,3 +231,9 @@ grep -q 'Cannot resolve' ERR || {
 	exit 1
 }
 echo OK
+
+echo $N Test clone with 1 arg and trailing slash ....................$NL
+mkdir foo
+cd foo
+bk clone $Q "$HERE"/project/ || fail
+echo OK
