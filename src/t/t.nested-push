@@ -428,6 +428,30 @@ test -d stuff/RESYNC || fail fix the test
 test -d stuff/RESYNC && fail
 echo "failed (bug no proxy or urllist)"
 
+echo $N Try a push from sparse to sparse with unpopulated chg .......$NL
+cd "$HERE"
+bk clone $Q -s. project prod
+bk clone $Q -sTHERE prod prodclient1
+bk clone $Q -sTHERE prod prodclient2
+cd prodclient2
+bk setup -f newcomp
+cd ../prodclient1
+bk pull $Q ../prodclient2 || fail
+test -d newcomp && fail
+bk push $Q || fail
+cd ..
+rm -fr prodclient1 prodclient2
+cd prod
+# this can't work
+bk push $Q 2> ERR && fail
+grep -q 'push: newcomp is needed to push to .*/project' ERR || fail -f ERR
+cd ..
+test -d prod/RESYNC && fail
+test -d project/RESYNC || fail fix the test
+(cd project && bk abort -f) # remove me when you fix the test
+# Well, you're borked. Write support@bitmover.com .
+echo "failed (bug leads to lost data)"
+
 echo $N Try a tag-only push .........................................$NL
 cd "$HERE/full"
 bk -r check -ac || fail
@@ -496,7 +520,7 @@ cd ..
 rm -fr project
 echo "failed (bug )"
 
-echo $N Try pusing to unrelated repos................................$NL
+echo $N Try pushing to unrelated repos...............................$NL
 cd "$HERE"
 fresh_nested n1
 cd "$HERE"

@@ -428,9 +428,12 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 					/* they don't have it currently */
 					unless (c->new) c->new = 1;
 				}
-			} else {
-				/* the remote doesn't have it in aliases */
-
+			} else if (c->present) {
+				/*
+				 * Remote doesn't have it, we do, push
+				 * disallowed because a rm of the nested
+				 * collection may lose unique work.
+				 */
 				fprintf(stderr, "push: %s must be populated "
 				    "at %s.\n", c->path, url);
 				++errs;
