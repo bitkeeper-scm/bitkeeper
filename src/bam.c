@@ -810,17 +810,18 @@ char *
 bp_serverURL2ID(char *url)
 {
 	FILE	*f;
+	char	*ret = 0;
 	char	buf[MAXLINE];
 
 	sprintf(buf, "bk -q@'%s' id -r 2>%s", url, DEVNULL_WR);
-	unless (f = popen(buf, "r")) return (0);
-	unless (fnext(buf, f)) return (0);
-	chomp(buf);
-	if (pclose(f)) {
-		fprintf(stderr, "Failed to contact BAM server at '%s'\n", url);
-		return (0);
+	if (f = popen(buf, "r")) {
+		if (ret = fgetline(f)) ret = strdup(ret);
+		pclose(f);
 	}
-	return (strdup(buf));
+	unless (ret) {
+		fprintf(stderr, "Failed to contact BAM server at '%s'\n", url);
+	}
+	return (ret);
 }
 
 void
@@ -1979,6 +1980,7 @@ bam_convert_main(int ac, char **av)
 		errors |= uu2bp(s);
 		sccs_free(s);
 	}
+	pclose(sfiles);
 	if (sfileDone()) errors |= 2;
 	if (errors) goto out;
 	unless (in = fopen("SCCS/s.ChangeSet", "r")) {

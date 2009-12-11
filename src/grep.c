@@ -334,8 +334,8 @@ doit(FILE *f)
 		} else {
 			print--;
 		}
-		if (opts.quiet) exit(0);
 		opts.found = 1;
+		if (opts.quiet) return;
 		if (opts.list) {
 			unless (file) file = "(standard input)";
 			printf("%s\n", file);

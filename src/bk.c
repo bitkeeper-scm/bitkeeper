@@ -592,38 +592,40 @@ bk_cleanup(int ret)
 	rmdir_findprocs();
 #endif
 
+#if	defined(__linux__)
 	/*
 	 * Test for filehandles left open at the end of regressions
 	 * We only do with if bk exits successful as we can't fix
 	 * all error paths.
+	 * On linux if you comment out this section and run under
+	 * valgrind these problems are easier to find.
+	 * - put an abort() after the ttyprintf below
+	 * - use --track-fds=yes --trace-children=yes -q
+	 * 
+	 * or just run with strace and see what was opened
 	 */
-	if ((ret == 0) && getenv("BK_REGRESSION")
-#ifdef	MACOS_VER
-		/* XXX - someday maybe they'll fix this and we can
-		   enable this check */
-		&& (MACOS_VER < 1030)
-#endif
-	    ) {
-		int	i;
-		struct	stat sbuf;
+	if ((ret == 0) && getenv("BK_REGRESSION")) {
+		int	i, fd, len;
 		char	buf[100];
+		char	procf[100];
 
 		for (i = 3; i < 20; i++) {
-			buf[0] = i;	// so gcc doesn't warn us it's unused
-			if (fstat(i, &sbuf)) continue;
-#if	defined(F_GETFD) && defined(FD_CLOEXEC)
-			if (fcntl(i, F_GETFD) & FD_CLOEXEC) continue;
-#endif
-			ttyprintf(
-			    "%s: warning fh %d left open\n", prog, i);
-#ifndef	NOPROC
-			sprintf(buf,
-			    "/bin/ls -l /proc/%d/fd | grep '%d -> ' >/dev/tty",
-			    getpid(), i);
-			system(buf);
-#endif
+			/* if we can dup() it, then it is open */
+			if ((fd = dup(i)) < 0) continue;
+			close(fd);
+
+			/* look for info in /proc */
+			sprintf(procf, "/proc/%u/fd/%d", (u32)getpid(), i);
+			if ((len = readlink(procf, buf, sizeof(buf))) < 0) {
+				len = 0;
+			}
+			buf[len] = 0;
+			ttyprintf("%s: warning fh %d left open %s\n",
+			    prog, i, buf);
+			//abort();
 		}
 	}
+#endif
 	bktmpcleanup();
 	trace_free();
 }

@@ -105,7 +105,7 @@ trigger(char *cmd, char *when)
 	}
 
 	unless (root = proj_root(0)) {
-		ttyprintf("No root for triggers!\n");
+		//ttyprintf("No root for triggers!\n");
 		goto out;
 	}
 

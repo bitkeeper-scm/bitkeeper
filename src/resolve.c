@@ -1706,9 +1706,14 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		 */
 		mustCommit = 1;
 	} else if (exists("SCCS/n.ChangeSet")) {
+		FILE	*f;
+
 		system("bk edit -q ChangeSet");
-		system("echo Port command: restore path "
-		    "| bk cfile save ChangeSet");
+		if (f = popen("bk cfile save ChangeSet", "w")) {
+			fputs("Port command: restore path", f);
+			fputc('\n', f);
+			pclose(f);
+		}
 		mustCommit = 1;
 	}
 
