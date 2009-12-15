@@ -133,7 +133,7 @@ echo OK
 
 echo $N Try a pull, should add libc but not junk ....................$NL
 cd ../stuff
-bk abort -f || fail	# XXX this shouldn't be needed!
+test -d RESYNC && fail	# shouldn't have a RESYNC
 bk pull $Q || {
 	echo should not have failed
 	exit 1

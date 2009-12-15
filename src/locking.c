@@ -561,7 +561,8 @@ enum {
 	NL_COULD_NOT_LOCK_RESYNC,
 	NL_COULD_NOT_LOCK_NOT_MINE,
 	NL_COULD_NOT_UNLOCK,
-	NL_INVALID_LOCK_STRING
+	NL_INVALID_LOCK_STRING,
+	NL_ABORT_FAILED
 } nl_errno;
 
 /*
@@ -590,6 +591,7 @@ private	char	*errMsgs[] = {
 	"Could not lock product, repository not mine",
 	"Could not unlock product",
 	"Invalid nested lock string",
+	"Failed to abort nested operation.",
 	NULL
 };
 
@@ -1166,9 +1168,12 @@ nested_abort(project *p, char *nlid)
 	TRACE("nlid: %s", nlid);
 	unless (nlid) return (1);
 
-	/*
-	 * XXX: run bk abort under the same NLID
-	 */
+	if (nlid[0] == 'w') {
+		if (system("bk -P abort -qf")) {
+			nl_errno = NL_ABORT_FAILED;
+			return (1);
+		}
+	}
 	return (nested_unlock(p, nlid));
 }
 

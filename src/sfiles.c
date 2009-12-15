@@ -395,6 +395,12 @@ pending_print(sccs *s, delta *d, void *token)
 {
 	char	**data = token;
 
+	/*
+	 * XXX This assert should be true, but nested components
+	 *     are not always marked correctly.
+	 *
+	 * assert(!(d->flags & D_CSET));
+	 */
 	do_print(data[0], data[1], d->rev);
 	return (0);
 }

@@ -357,7 +357,7 @@ do	(cd $i
 done
 bk commit $Q -yNEW_FILE
 rm -rf libc
-bk push > OUT 2>&1 && fail -f OUT should have failed
+bk push $Q 2> OUT && fail -f OUT should have failed
 grep -q "libc is needed to push" OUT || {
 	echo bad message
 	cat OUT
@@ -365,10 +365,9 @@ grep -q "libc is needed to push" OUT || {
 }
 cd "$HERE"
 test -d project/RESYNC && fail
-test -d full/RESYNC || fail fix the test
-(cd full && bk abort -f) # remove me when you fix the test
+test -d full/RESYNC && fail
 test -d sparse/RESYNC && fail
-echo failed \(bug nested abort not done\)
+echo OK
 
 echo $N Try a push from sparse to full - remote should find .........$NL
 # This eventually will be 2 test cases: remote does find and remote
@@ -388,8 +387,6 @@ bk push $Q ../stuff 2> ERR && fail 5
 grep -q "push: component gdb needed at" ERR || fail 6
 cd "$HERE"
 test -d solo/RESYNC && fail
-test -d stuff/RESYNC || fail fix the test
-(cd stuff && bk abort -f) # remove me when you fix the test
 test -d stuff/RESYNC && fail
 echo "failed (bug remote should find)"
 
@@ -410,9 +407,8 @@ grep -q "push: gdb must be populated at file://.*/solo" ERR || fail
 grep -q "push: transfer aborted due to errors with 1 components." ERR || fail
 # No lock left, so that's good
 cd "$HERE"/solo
-test -d RESYNC || fail fix test
-bk abort -f || fail
-echo "failed (bug - left RESYNC)"
+test -d RESYNC && fail
+echo OK
 
 echo $N Try a push from sparse to full - local proxy ................$NL
 # Start from above and do a pull to bring in the sparse.
@@ -423,8 +419,6 @@ bk push $Q ../stuff 2> ERR && fail 5
 grep -q "gdb is needed to push" ERR || fail 6
 cd "$HERE"
 test -d solo/RESYNC && fail
-test -d stuff/RESYNC || fail fix the test
-(cd stuff && bk abort -f) # remove me when you fix the test
 test -d stuff/RESYNC && fail
 echo "failed (bug no proxy or urllist)"
 
@@ -447,10 +441,8 @@ bk push $Q 2> ERR && fail
 grep -q 'push: newcomp is needed to push to .*/project' ERR || fail -f ERR
 cd ..
 test -d prod/RESYNC && fail
-test -d project/RESYNC || fail fix the test
-(cd project && bk abort -f) # remove me when you fix the test
-# Well, you're borked. Write support@bitmover.com .
-echo "failed (bug leads to lost data)"
+test -d project/RESYNC && fail
+echo OK
 
 echo $N Try a tag-only push .........................................$NL
 cd "$HERE/full"
