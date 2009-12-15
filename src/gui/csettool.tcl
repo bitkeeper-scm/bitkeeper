@@ -175,7 +175,6 @@ proc dotFile {{line {}}} \
 		displayInfo $file $file $parent $rev 
 		readFiles $l $r
 	}
-	catch {file delete $l $r}
 
 	busy 0
 }

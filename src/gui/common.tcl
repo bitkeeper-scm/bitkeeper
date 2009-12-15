@@ -182,13 +182,12 @@ proc print_stacktrace {} \
 
 proc tmpfile {name} \
 {
-	global	tmp_dir tmp_files
+	global	tmp_dir tmp_files tmp_filecount
 
-	set count 0
 	set prefix [file join $tmp_dir "bk_${name}_[pid]"]
-	set filename "${prefix}_$count.tmp"
+	set filename "${prefix}_[incr tmp_filecount].tmp"
 	while {[file exists $filename]} {
-		set filename "${prefix}_[incr count].tmp"
+		set filename "${prefix}_[incr tmp_filecount].tmp"
 	}
 	lappend tmp_files $filename
 	return $filename
