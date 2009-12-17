@@ -182,16 +182,28 @@ proc print_stacktrace {} \
 
 proc tmpfile {name} \
 {
-	global tmp_dir
+	global	tmp_dir tmp_files tmp_filecount
 
-	set count 0
-	set prefix [file join $tmp_dir "$name-[pid]"]
-	set filename "$prefix-$count.tmp"
+	set prefix [file join $tmp_dir "bk_${name}_[pid]"]
+	set filename "${prefix}_[incr tmp_filecount].tmp"
 	while {[file exists $filename]} {
-		set filename "$prefix-[incr count].tmp"
+		set filename "${prefix}_[incr tmp_filecount].tmp"
 	}
+	lappend tmp_files $filename
 	return $filename
 }
+
+## Setup a trace to cleanup any temporary files as we exit.
+proc cleanupTmpfiles {args} \
+{
+	catch {
+		global	tmp_files
+		foreach file $tmp_files {
+			file delete -force $file
+		}
+	}
+}
+trace add exec exit enter cleanupTmpfiles
 
 proc loadState {appname} \
 {

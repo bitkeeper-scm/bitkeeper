@@ -1473,7 +1473,7 @@ proc csettool {} \
 
 proc diff2 {difftool {id {}} } \
 {
-	global file rev1 rev2 dev_null bk_cset tmp_dir w
+	global file rev1 rev2 dev_null bk_cset w
 
 	if {![info exists rev1] || ($rev1 == "")} { return }
 	if {$difftool == 0} { getRightRev $id }
@@ -1495,14 +1495,14 @@ proc diff2 {difftool {id {}} } \
 # Display the difference text between two revisions. 
 proc displayDiff {rev1 rev2} \
 {
-	global file w tmp_dir dev_null Opts ttype gc
+	global file w dev_null Opts ttype gc
 
 	# We get no rev1 when rev2 is 1.1
 	if {$rev1 == ""} { set rev1 "1.0" }
-	set r1 [file join $tmp_dir $rev1-[pid]]
+	set r1 [tmpfile revtool]
 	set Aur $gc(rev.annotate)
 	catch { exec bk get $Aur -kPr$rev1 $file >$r1}
-	set r2 [file join $tmp_dir $rev2-[pid]]
+	set r2 [tmpfile revtool]
 	catch {exec bk get $Aur -kPr$rev2 $file >$r2}
 	set diffs [open "| diff $Opts(diff) $r1 $r2"]
 	set l 3

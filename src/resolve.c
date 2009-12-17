@@ -1706,9 +1706,14 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		 */
 		mustCommit = 1;
 	} else if (exists("SCCS/n.ChangeSet")) {
+		FILE	*f;
+
 		system("bk edit -q ChangeSet");
-		system("echo Port command: restore path "
-		    "| bk cfile save ChangeSet");
+		if (f = popen("bk cfile save ChangeSet", "w")) {
+			fputs("Port command: restore path", f);
+			fputc('\n', f);
+			pclose(f);
+		}
 		mustCommit = 1;
 	}
 
@@ -1939,7 +1944,7 @@ conflict(opts *opts, char *sfile)
 	/*
 	 * Merge changes to the flags (RCS/SCCS/EXPAND1/etc).
 	 */
-	unless (sccs_xflags(d.local) == sccs_xflags(d.remote)) {
+	unless (sccs_xflags(s, d.local) == sccs_xflags(s, d.remote)) {
 		rs->opaque = (void*)&d;
 		resolve_flags(rs);
 		s = rs->s;
@@ -2437,6 +2442,14 @@ pass4_apply(opts *opts)
 		    case 2: flags = CLEAN_RESYNC; break;
 		    default: flags = CLEAN_RESYNC|CLEAN_PENDING; break;
 		}
+		if (proj_isProduct(0)) {
+			/*
+			 * bk abort in nested uses information in the
+			 * RESYNC directory to abort, so don't remove
+			 * it.
+			 */
+			flags &= ~CLEAN_RESYNC;
+		}
 		mdbm_close(permDB);
 		resolve_cleanup(opts, CLEAN_NOSHOUT|flags);
 	}
@@ -2753,39 +2766,11 @@ freeStuff(opts *opts)
 private void
 csets_in(opts *opts)
 {
-	sccs	*s;
-	delta	*d;
-	FILE	*in, *out;
-	char	s_cset[] = CHANGESET;
 	char	buf[MAXPATH];
 
-	if (opts->didCommit) {
-		chdir(ROOT2RESYNC);
-		s = sccs_init(s_cset, 0);
-		assert(s && HASGRAPH(s));
-		d = sccs_top(s);
-		assert(d);
-		in = fopen(CSETS_IN, "r");	/* RESYNC one */
-		assert(in);
-		sprintf(buf, "%s/%s", RESYNC2ROOT, CSETS_IN);
-		unlink(buf);
-		if (out = fopen(buf, "w")) {	/* real one */
-			while (fnext(buf, in)) {
-				unless (streq(buf, "\n")) fputs(buf, out);
-			}
-			sccs_sdelta(s, d, buf);
-			fprintf(out, "%s\n", buf);
-			fclose(out);
-		}
-		fclose(in);
-		sccs_free(s);
-		unlink(CSETS_IN);
-		chdir(RESYNC2ROOT);
-	} else {
-		sprintf(buf, "%s/%s", ROOT2RESYNC, CSETS_IN);
-		/* May not exist if we pulled in tags only */
-		if (exists(buf)) rename(buf, CSETS_IN);
-	}
+	sprintf(buf, "%s/%s", ROOT2RESYNC, CSETS_IN);
+	/* May not exist if we pulled in tags only */
+	if (exists(buf)) rename(buf, CSETS_IN);
 }
 
 void
@@ -2834,6 +2819,11 @@ resolve_cleanup(opts *opts, int what)
 		assert(exists("RESYNC"));
 		assert(dir);
 		unlink(dir);
+		/*
+		 * XXX: for nested we'll probably need to make 'bk
+		 * abort' do the rename as it needs the information in
+		 * the RESYNC directory to work
+		 */
 		rename("RESYNC", dir);
 	} else {
 		if (exists(ROOT2RESYNC "/SCCS/p.ChangeSet")) {
@@ -2842,8 +2832,10 @@ resolve_cleanup(opts *opts, int what)
 			rename(ROOT2RESYNC "/BitKeeper/tmp/r.ChangeSet",
 			    ROOT2RESYNC "/SCCS/r.ChangeSet");
 		}
-		fprintf(stderr,
-		    "resolve: RESYNC directory left intact.\n");
+		unless (what && CLEAN_NOSHOUT) {
+			fprintf(stderr,
+			    "resolve: RESYNC directory left intact.\n");
+		}
 	}
 
 	if (what & CLEAN_PENDING) {
@@ -3008,10 +3000,7 @@ moveupComponent(void)
 		    "'%s'\n", from, to);
 		rc = 1;
 	} else {
-		if (exists(dfile_from)) {
-			touch(dfile_to, 0644);
-			unlink(dfile_from);
-		}
+		if (exists(dfile_from)) touch(dfile_to, 0644);
 	}
 	free(dfile_from);
 	free(dfile_to);

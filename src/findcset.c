@@ -90,7 +90,7 @@ findcset_main(int ac, char **av)
 
 		s = sccs_init(CHANGESET, INIT_NOCKSUM|flags);
 		assert(s);
-		for (d = s->table; d; d = d->next) {
+		for (d = s->table; d; d = NEXT(d)) {
 			if (!streq(d->rev, "1.0") && !streq(d->rev, "1.1")) {
 				d->flags &= ~D_CSET;
 				d->flags |= D_SET|D_GONE;
@@ -245,7 +245,7 @@ dumpCsetMark(void)
 			/*
 			 * Clear all old cset marker.
 			 */
-			for (d = s->table; d; d = d->next) d->flags &= ~D_CSET;
+			for (d = s->table; d; d = NEXT(d)) d->flags &= ~D_CSET;
 		}
 
 		/*
@@ -532,7 +532,7 @@ sameStr(char *s1, char *s2)
  * Fix up date/timezone/user/hostname of delta 'd' to match 'template'
  */
 private  void
-fix_delta(delta *template, delta *d, int fudge)
+fix_delta(sccs *s, delta *template, delta *d, int fudge)
 {
 	delta *parent;
 
@@ -561,7 +561,7 @@ fix_delta(delta *template, delta *d, int fudge)
 	/*
 	 * Fix time zone and date
 	 */
-	parent = d->parent;
+	parent = PARENT(s, d);
 	if (template->zone) {
 		if (parent && sameStr(template->zone, parent->zone)) {
 			d->zone = parent->zone;
@@ -634,11 +634,11 @@ mkDeterministicKeys(void)
 	 */
 	assert(oldest);
 	d2 = cset->tree;
-	fix_delta(oldest, d2, 0);
+	fix_delta(cset, oldest, d2, 0);
 	d2->sum = oldest->sum;
-	d2 = d2->kid;
+	d2 = KID(d2);
 	assert(d2);
-	fix_delta(oldest, d2, 1);
+	fix_delta(cset, oldest, d2, 1);
 	sccs_newchksum(cset);
 	sccs_free(cset);
 	unlink("BitKeeper/log/ROOTKEY");
@@ -690,7 +690,7 @@ mkCset(mkcs_t *cur, delta *d)
 	 * The person who make the last delta is likely to be the person
 	 * making the cset.
 	 */
-	fix_delta(d, e, -1);
+	fix_delta(cur->cset, d, e, -1);
 
 	/* More into 'e' from sccs * and by hand. */
 	e = sccs_dInit(e, 'D', cur->cset, 1);
@@ -812,7 +812,7 @@ mkTag(mkcs_t *cur, char *tag)
 	 * making the cset.
 	 */
 	assert(cur->tip);	/* tagging something */
-	fix_delta(cur->tip, e, -1);
+	fix_delta(cur->cset, cur->tip, e, -1);
 
 	/* More into 'e' from sccs * and by hand. */
 	e = sccs_dInit(e, 'R', cur->cset, 1);
@@ -986,10 +986,10 @@ findcset(void)
 	 */
 	assert(oldest);
 	d2 = cur.cset->tree;
-	fix_delta(oldest, d2, 0);
-	d2 = d2->kid;
+	fix_delta(cur.cset, oldest, d2, 0);
+	d2 = KID(d2);
 	assert(d2);
-	fix_delta(oldest, d2, 1);
+	fix_delta(cur.cset, oldest, d2, 1);
 	sccs_newchksum(cur.cset);
 
 	fputs("\001 Patch start\n", cur.patch);
@@ -1096,7 +1096,7 @@ findFirstDelta(sccs *s, delta *first)
 	 * XXX - there can be more than one.
 	 */
 	if (streq(d->sdate, "70/01/01 00:00:00") && streq(d->user, "Fake")) {
-		d = d->kid;
+		d = KID(d);
 	}
 	unless (d) return (first);
 
@@ -1161,7 +1161,7 @@ mkList(sccs *s, int fileIdx)
 		 */
 		if (d == s->tree) break;
 		d->flags |= D_SET;
-		d  = d->parent;
+		d = PARENT(s, d);
 	}
 
 	for (d = s->table; d; ) {

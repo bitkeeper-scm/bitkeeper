@@ -110,3 +110,13 @@ EOF
 if [ $? -eq 0 ]; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 
+echo $N Test to make sure we have diffs .............................$NL
+bk guitest csettool -r1.1 >"$OUT" 2>&1 <<'EOF'
+	if {[.diffs.status.middle cget -text] eq "No differences"} {
+		exit 1
+	}
+	exit 0
+EOF
+if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1; fi
+echo OK

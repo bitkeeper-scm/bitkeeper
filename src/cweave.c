@@ -260,7 +260,7 @@ cset_write(sccs *s, int spinners)
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, i)) continue;
 		d->kid = d->siblings = 0;
-		sccs_kidlink(d);
+		sccs_kidlink(s, d);
 	}
 	sccs_renumber(s, SILENT, spinners);
 

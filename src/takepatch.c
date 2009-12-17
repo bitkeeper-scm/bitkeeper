@@ -1135,7 +1135,7 @@ applyPatch(char *localPath, sccs *perfile)
 	if (d = sccs_next(s, sccs_findrev(s, tableGCA->rev))) {
 		delta	*e;
 
-		for (e = s->table; e; e = e->next) {
+		for (e = s->table; e; e = NEXT(e)) {
 			e->flags |= D_SET|D_GONE;
 		    	if (echo>7) {
 				char	k[MAXKEY];
@@ -1341,7 +1341,7 @@ getLocals(sccs *s, delta *g, char *name)
 		fprintf(stderr, "getlocals(%s, %s, %s)\n",
 		    s->gfile, g->rev, name);
 	}
-	for (d = s->table; d != g; d = d->next) {
+	for (d = s->table; d != g; d = NEXT(d)) {
 		/*
 		 * Silently discard removed deltas, we don't support them.
 		 */
@@ -1402,7 +1402,7 @@ getLocals(sccs *s, delta *g, char *name)
 		unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
 			assert(d->date);
 		}
-		sccs_sdelta(s, d->parent, tmpf);
+		sccs_sdelta(s, PARENT(s, d), tmpf);
 		p->pid = strdup(tmpf);
 		sccs_sdelta(s, d, tmpf);
 		p->me = strdup(tmpf);

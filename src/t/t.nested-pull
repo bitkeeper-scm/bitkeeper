@@ -310,10 +310,15 @@ test -f BitKeeper/etc/gone && {
 exit 0
 EOF
 chmod +x BitKeeper/triggers/pre-resolve.bug
+
+cd ..
+tar cf local.tar local
+cd local
 bk pull $Q || {
 	echo failed
 	exit 1
 }
+bk lock -q || fail
 
 # check must pass
 bk $Q -Ar check -a || {
@@ -322,7 +327,7 @@ bk $Q -Ar check -a || {
 	exit 1
 }
 
-cat <<EOF > WANT
+cat <<EOF > ../WANT.commit.log
 ChangeSet@1.7
 amerge@1.3
 gcc/ChangeSet@1.9
@@ -332,22 +337,22 @@ fff@1.1
 fff@1.0
 EOF
 
-cmpfiles "$HERE"/commit.log WANT
+cmpfiles ../commit.log ../WANT.commit.log
 
 # gcc/ChangeSet is in product's changeset
 cd "$HERE"/local
-cat <<EOF > WANT
+cat <<EOF > ../WANT.changes
 ChangeSet
 amerge
 gcc/ChangeSet
 gcc/file1
 EOF
 bk changes -nd:GFILE: -vr+ > GOT
-cmpfiles WANT GOT
+cmpfiles ../WANT.changes GOT
 
 # Files were actually pulled
 cd "$HERE"/local/gcc
-cat <<EOF >WANT
+cat <<EOF > "$HERE/WANT.actual"
 SCCS/s.ChangeSet
 SCCS/s.bam
 SCCS/s.file1
@@ -365,7 +370,7 @@ BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 EOF
 bk sfiles > GOT
-cmpfiles WANT GOT
+cmpfiles "$HERE/WANT.actual" GOT
 
 bk _test -f SCCS/d.ChangeSet && {
 	echo failed
@@ -400,37 +405,48 @@ bk resolve $Q -a || {
 	echo failed
 	exit 1
 }
+bk lock -q || fail
 # gcc/ChangeSet is in product's changeset
 cd "$HERE"/local
-cat <<EOF > WANT
-ChangeSet
-amerge
-gcc/ChangeSet
-gcc/file1
-EOF
 bk changes -nd:GFILE: -vr+ > GOT
-cmpfiles WANT GOT
+cmpfiles ../WANT.changes GOT
 # Files were actually pulled
 cd "$HERE"/local/gcc
-cat <<EOF >WANT
-SCCS/s.ChangeSet
-SCCS/s.bam
-SCCS/s.file1
-SCCS/s.file2
-SCCS/s.file3
-SCCS/s.file4
-SCCS/s.file5
-SCCS/s.file6
-SCCS/s.file7
-SCCS/s.file8
-SCCS/s.file9
-BitKeeper/etc/SCCS/s.collapsed
-BitKeeper/etc/SCCS/s.config
-BitKeeper/etc/SCCS/s.gone
-BitKeeper/etc/SCCS/s.ignore
-EOF
 bk sfiles > GOT
-cmpfiles WANT GOT
+cmpfiles "$HERE/WANT.actual" GOT
+echo OK
+
+echo $N Do it again, bk:// url ......................................$NL
+cd "$HERE"
+bk bkd -q -aPORT -ikill
+M=localhost:`cat PORT`
+trap "bk _kill bk://$M" 0
+rm -fr local
+tar xf local.tar
+cd local
+bk pull $Q bk://$M/remote || fail
+bk lock -q || fail
+bk changes -nd:GFILE: -vr+ > GOT
+cmpfiles ../WANT.changes GOT
+# Files were actually pulled
+cd "$HERE"/local/gcc
+bk sfiles > GOT
+cmpfiles "$HERE/WANT.actual" GOT
+echo OK
+
+echo $N Do it again, http:// url ....................................$NL
+cd "$HERE"
+rm -fr local
+tar xf local.tar
+cd local
+bk pull $Q http://$M/remote || fail
+bk lock -q || fail
+bk changes -nd:GFILE: -vr+ > GOT
+cmpfiles ../WANT.changes GOT
+# Files were actually pulled
+cd "$HERE"/local/gcc
+bk sfiles > GOT
+cmpfiles "$HERE/WANT.actual" GOT
 echo OK
 
 echo $N Pull with committed new-file conflict in component...........$NL
@@ -753,3 +769,36 @@ echo OK
 
 # # XXX - we should check that the repo is cleaned up but we need the nested
 # # abort/cleanup code first.
+
+echo $N Test pull in a component goes up to the product..............$NL
+cd "$HERE"
+rm -rf local
+bk clone -q -r1.8 -sHERE remote local
+cd local/gcc
+bk pull $Q 2>ERR || fail -f ERR pull should have worked
+echo OK
+
+echo $N Try pulling from unrelated product...........................$NL
+cd "$HERE"
+fresh_nested n1
+cd "$HERE"
+fresh_nested n2
+bk pull $Q "$HERE/n1" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to pull from an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK
+
+echo $N Try pulling from nested to non-nested........................$NL
+cd "$HERE"
+fresh_commercial nn
+bk pull $Q "$HERE/n1" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to pull from an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK
+
+echo $N Try pulling from non-nested to nested........................$NL
+cd "$HERE/n2"
+bk pull $Q "$HERE/nn" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to pull from an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK

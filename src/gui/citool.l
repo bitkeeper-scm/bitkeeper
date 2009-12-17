@@ -294,7 +294,7 @@ findFiles()
 {
 	FILE	fd;
 	sfile	sf;
-	string	cmd = "bk sfiles -vgcyp -o${self.tmpsfile} ";
+	string	cmd = "bk sfiles -vgcyp {-o${self.tmpsfile}} ";
 
 	unless (self.resolve) {
 		// Look for extra files when we're not in the resolver.

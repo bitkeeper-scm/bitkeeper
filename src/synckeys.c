@@ -20,7 +20,7 @@ lod_probekey(sccs *s, delta *d, int syncRoot, FILE *f)
 	 * NB: must be in most recent to least recent order.
 	 */
 	for (i = 1; d && (d != s->tree); i *= 2) {
-		for (j = i; d && --j; d = d->parent);
+		for (j = i; d && --j; d = PARENT(s, d));
 		if (d) {
 			assert(d->type == 'D');
 			sccs_sdelta(s, d, key);
@@ -51,7 +51,7 @@ tag_probekey(sccs *s, FILE *f)
 	int	i, j;
 	char	key[MAXKEY];
 
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		/* Optimization: only tagprobe if tag with parent tag */
 		if (d->ptag && !(d->flags & D_GONE)) break;
 	}
@@ -322,7 +322,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 	 * Phase 2, send the non marked keys.
 	 */
 	sum = i = 0;
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if (d->flags & D_RED) continue;
 		if (sndRev) {
 			assert(d->rev);
@@ -490,7 +490,7 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	}
 
 
-empty:	for (d = s->table; d; d = d->next) {
+empty:	for (d = s->table; d; d = NEXT(d)) {
 		/* reset sccs_tagcolor D_BLUE markings*/
 		if (d->flags & D_BLUE) d->flags &= ~D_BLUE;
 		if (d->flags & D_RED) {
@@ -543,7 +543,7 @@ prunekey_main(int ac, char **av)
 	}
 	prunekey(s, &r, NULL, -1, 0, 0, 0, 0, 0);
 	s->state &= ~S_SET;
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if (d->flags & D_RED) continue;
 		s->rstart = s->rstop = d;
 		sccs_prs(s, PRS_ALL, 0, dspec, stdout);

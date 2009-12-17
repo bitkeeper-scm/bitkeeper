@@ -106,8 +106,8 @@ bp_diff(sccs *s, delta *d, char *gfile)
 delta *
 bp_fdelta(sccs *s, delta *d)
 {
-	while (d && !d->hash) d = d->parent;
-	unless (d && d->parent) {
+	while (d && !d->hash) d = PARENT(s, d);
+	unless (d && PARENT(s, d)) {
 		fprintf(stderr,
 		    "BAM: unable to find BAM delta in %s\n", s->gfile);
 		return (0);
@@ -810,17 +810,18 @@ char *
 bp_serverURL2ID(char *url)
 {
 	FILE	*f;
+	char	*ret = 0;
 	char	buf[MAXLINE];
 
 	sprintf(buf, "bk -q@'%s' id -r 2>%s", url, DEVNULL_WR);
-	unless (f = popen(buf, "r")) return (0);
-	unless (fnext(buf, f)) return (0);
-	chomp(buf);
-	if (pclose(f)) {
-		fprintf(stderr, "Failed to contact BAM server at '%s'\n", url);
-		return (0);
+	if (f = popen(buf, "r")) {
+		if (ret = fgetline(f)) ret = strdup(ret);
+		pclose(f);
 	}
-	return (strdup(buf));
+	unless (ret) {
+		fprintf(stderr, "Failed to contact BAM server at '%s'\n", url);
+	}
+	return (ret);
 }
 
 void
@@ -1979,6 +1980,7 @@ bam_convert_main(int ac, char **av)
 		errors |= uu2bp(s);
 		sccs_free(s);
 	}
+	pclose(sfiles);
 	if (sfileDone()) errors |= 2;
 	if (errors) goto out;
 	unless (in = fopen("SCCS/s.ChangeSet", "r")) {
@@ -2096,7 +2098,7 @@ uu2bp(sccs *s)
 
 	if ((s->encoding & E_COMP) == E_GZIP) sccs_unzip(s);
 	fprintf(stderr, "Converting %s ", s->gfile);
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		assert(d->type == 'D');
 		if (sccs_get(s, d->rev, 0, 0, 0, SILENT, "-")) return (8);
 

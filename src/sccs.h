@@ -472,6 +472,12 @@ typedef struct delta {
 			comments_load(s, d); \
 			EACH_INDEX(d->cmnts, i)
 
+#define	NEXT(d)		((d)->next)
+#define	PARENT(s, d)	((d)->parent)
+#define	MERGE(s, d)	sfind((s), (d)->merge)
+#define	KID(d)		((d)->kid)
+#define	SIBLINGS(d)	((d)->siblings)
+
 /*
  * Rap on lod/symbols wrt deltas.
  * Both symbols can occur exactly once per delta where delta is a node in
@@ -934,7 +940,7 @@ int	csetIds(sccs *cset, char *rev);
 int	csetIds_merge(sccs *cset, char *rev, char *merge);
 int	cset_inex(int flags, char *op, char *revs);
 void	sccs_fixDates(sccs *);
-int	sccs_xflags(delta *d);
+int	sccs_xflags(sccs *s, delta *d);
 char	*xflags2a(u32 flags);
 u32	a2xflag(char *str);
 void	sccs_mkroot(char *root);
@@ -960,7 +966,7 @@ int	sccs_readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp);
 sccs	*sccs_unzip(sccs *s);
 sccs	*sccs_gzip(sccs *s);
 char	*sccs_utctime(delta *d);
-void	sccs_kidlink(delta *d);
+void	sccs_kidlink(sccs *s, delta *d);
 void	sccs_renumber(sccs *s, u32 flags, int spinners);
 char 	*sccs_iskeylong(char *key);
 int	linelen(char *s);
@@ -1143,7 +1149,7 @@ void	putroot(char *where);
 int	uuencode(FILE *in, FILE *out);
 int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
-int	sccs_needSwap(delta *p, delta *m);
+int	sccs_needSwap(sccs *s, delta *p, delta *m);
 void	sccs_reDup(sccs *s);
 void	sccs_adjustSet(sccs *sc, sccs *scb, delta *d);
 int	chk_host(void);

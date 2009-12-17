@@ -91,6 +91,19 @@ bk -Ar check -av >OUT 2>&1 || {
 }
 echo OK
 
+echo $N Try a push from a component..................................$NL
+cd "$HERE"
+bk clone $Q copy2 p1
+bk clone $Q copy p2
+cd p2
+bk parent $Q ../p1
+cd gcc
+bk push $Q 2>ERR || fail -f ERR should have worked
+cd ..
+test -z "`bk changes -qL`" || fail left changes
+echo OK
+
+
 echo $N Try a push with conflicts....................................$NL
 cd "$HERE/copy2"
 echo "hi" > newfile
@@ -344,7 +357,7 @@ do	(cd $i
 done
 bk commit $Q -yNEW_FILE
 rm -rf libc
-bk push > OUT 2>&1 && fail -f OUT should have failed
+bk push $Q 2> OUT && fail -f OUT should have failed
 grep -q "libc is needed to push" OUT || {
 	echo bad message
 	cat OUT
@@ -352,10 +365,9 @@ grep -q "libc is needed to push" OUT || {
 }
 cd "$HERE"
 test -d project/RESYNC && fail
-test -d full/RESYNC || fail fix the test
-(cd full && bk abort -f) # remove me when you fix the test
+test -d full/RESYNC && fail
 test -d sparse/RESYNC && fail
-echo failed \(bug nested abort not done\)
+echo OK
 
 echo $N Try a push from sparse to full - remote should find .........$NL
 # This eventually will be 2 test cases: remote does find and remote
@@ -366,7 +378,7 @@ cd solo
 bk alias new STUFF gcc
 cd ..
 # URLLIST works its magic here, getting gcc from project
-bk clone $Q -sSTUFF solo stuff
+bk clone $Q -sSTUFF solo stuff || fail
 test -d stuff/gcc || fail
 cd solo
 bk alias add STUFF gdb || fail 3
@@ -375,43 +387,62 @@ bk push $Q ../stuff 2> ERR && fail 5
 grep -q "push: component gdb needed at" ERR || fail 6
 cd "$HERE"
 test -d solo/RESYNC && fail
-test -d stuff/RESYNC || fail fix the test
-(cd stuff && bk abort -f) # remove me when you fix the test
 test -d stuff/RESYNC && fail
 echo "failed (bug remote should find)"
 
 echo $N Try a push from full to sparse - should fail ................$NL
-# remote can't know how to populate this
-# It could be solved by teaching remote how to populated (pass urllist)
-# or by proxying the answer.
+# not legal to push updates to componets not present remotely
 cd "$HERE"
-bk clone $Q project modified
-cd modified/gdb
+bk clone $Q project modified || fail
+cd modified
+bk pull $Q ../solo || fail
+cd gdb
 touch newfile
 bk new $Q newfile
 bk commit $Q -ynewfile
 cd ..
 bk commit $Q -ynewfile
-# XXX should fail, but better to fail with a message
-bk push $Q ../solo && fail
+bk push $Q ../solo 2>ERR && fail -f ERR should fail
+grep -q "push: gdb must be populated at file://.*/solo" ERR || fail
+grep -q "push: transfer aborted due to errors with 1 components." ERR || fail
 # No lock left, so that's good
-test -d "$HERE/solo/RESYNC" && fail
-echo "failed (bug - better message)"
+cd "$HERE"/solo
+test -d RESYNC && fail
+echo OK
 
 echo $N Try a push from sparse to full - local proxy ................$NL
 # Start from above and do a pull to bring in the sparse.
 # It can be populated later by a populate (urllist checked)
-cd "$HERE/solo"
 bk pull $Q ../modified
 # stuff should have gdb by now, but can't find the patch to update
 bk push $Q ../stuff 2> ERR && fail 5
 grep -q "gdb is needed to push" ERR || fail 6
 cd "$HERE"
 test -d solo/RESYNC && fail
-test -d stuff/RESYNC || fail fix the test
-(cd stuff && bk abort -f) # remove me when you fix the test
 test -d stuff/RESYNC && fail
 echo "failed (bug no proxy or urllist)"
+
+echo $N Try a push from sparse to sparse with unpopulated chg .......$NL
+cd "$HERE"
+bk clone $Q -s. project prod
+bk clone $Q -sTHERE prod prodclient1
+bk clone $Q -sTHERE prod prodclient2
+cd prodclient2
+bk setup -f newcomp
+cd ../prodclient1
+bk pull $Q ../prodclient2 || fail
+test -d newcomp && fail
+bk push $Q || fail
+cd ..
+rm -fr prodclient1 prodclient2
+cd prod
+# this can't work
+bk push $Q 2> ERR && fail
+grep -q 'push: newcomp is needed to push to .*/project' ERR || fail -f ERR
+cd ..
+test -d prod/RESYNC && fail
+test -d project/RESYNC && fail
+echo OK
 
 echo $N Try a tag-only push .........................................$NL
 cd "$HERE/full"
@@ -481,3 +512,27 @@ cd ..
 rm -fr project
 echo "failed (bug )"
 
+echo $N Try pushing to unrelated repos...............................$NL
+cd "$HERE"
+fresh_nested n1
+cd "$HERE"
+fresh_nested n2
+bk push $Q "$HERE/n1" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to synchronize with an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK
+
+echo $N Try pushing from non-nested to nested........................$NL
+cd "$HERE"
+fresh_commercial nn
+bk push $Q "$HERE/n1" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to synchronize with an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK
+
+echo $N Try pushing from nested to non-nested........................$NL
+cd "$HERE/n1"
+bk push $Q "$HERE/nn" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to synchronize with an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK

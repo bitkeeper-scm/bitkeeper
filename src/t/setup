@@ -191,6 +191,15 @@ nested() {
 	rm BitKeeper/log/urllist
 }
 
+fresh_nested() {
+	_commercial_config > c
+	bk setup -P -a -f -cc "$1" || { echo "Setup failed!"; exit 1; }
+	cd "$1"
+	bk setup -C -a -f gcc
+	bk setup -C -a -f gdb
+	bk commit -q -y"attach gcc, gdb"
+}
+
 # move a nested component (helper)
 mvcomp() {
 	 mv "$1" "$2"

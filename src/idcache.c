@@ -145,7 +145,7 @@ caches(char *file, struct stat *sb, void *data)
 			*t = '|';
 		}
 		unless (sc->grafted) break;
-		while (ino = ino->next) {
+		while (ino = NEXT(ino)) {
 			if (ino->random) break;
 		}
 	} while (ino);

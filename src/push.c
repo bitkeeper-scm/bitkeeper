@@ -128,14 +128,6 @@ push_main(int ac, char **av)
 		optarg = 0;
 	}
 	unless (opts.verbose) putenv("BK_QUIET_TRIGGERS=YES");
-	if (proj_isComponent(0)) {
-		unless (getenv("_BK_TRANSACTION")) {
-			fprintf(stderr, "push: no push from component\n");
-			return (1);
-		}
-	} else if (proj_isProduct(0)) {
-		opts.product = 1;
-	}
 	if (getenv("BK_NOTTY")) opts.nospin = 1;
 
 	/*
@@ -148,7 +140,13 @@ push_main(int ac, char **av)
 		}
 	}
 
-	if (proj_cd2root()) {
+	if (proj_isEnsemble(0) && !getenv("_BK_TRANSACTION")) {
+		if (proj_cd2product()) {
+			fprintf(stderr, "push: cannot find product root.\n");
+			exit(1);
+		}
+		opts.product = 1;
+	} else if (proj_cd2root()) {
 		fprintf(stderr, "push: cannot find package root.\n");
 		exit(1);
 	}
@@ -387,10 +385,9 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	 */
 
 	/*
-	 * opts.aliases should always be set and is the contents of the
-	 * remote side's HERE file.
+	 * opts.aliases is the contents of the remote side's HERE file.
 	 */
-	assert(opts.aliases);
+	unless (opts.aliases) opts.aliases = allocLines(4);
 	assert(n->oldtip); /* XXX: works in push but not pull */
 	if (nested_aliases(n, n->oldtip, &opts.aliases, 0, 0)) {
 		rc = 1;
@@ -431,15 +428,15 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 					/* they don't have it currently */
 					unless (c->new) c->new = 1;
 				}
-			} else {
-				/* the remote doesn't want this component */
-				if (c->remotePresent) {
-					/* but have it anyway */
-					fprintf(stderr,
-					    "push: %s shouldn't be at %s.\n",
-					    c->path, url);
-					++errs;
-				}
+			} else if (c->present) {
+				/*
+				 * Remote doesn't have it, we do, push
+				 * disallowed because a rm of the nested
+				 * collection may lose unique work.
+				 */
+				fprintf(stderr, "push: %s must be populated "
+				    "at %s.\n", c->path, url);
+				++errs;
 			}
 		} else {
 			/* not included in push */

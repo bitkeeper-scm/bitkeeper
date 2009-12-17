@@ -1058,11 +1058,10 @@ proc smerge_highlight {t line off} \
 
 proc smerge {} \
 {
-	global  argc argv filename smerge tmps tmp_dir annotate force app gc
+	global  argc argv filename smerge annotate force app gc
 	global	nowrite outfile
 
-	set smerge [file join $tmp_dir bksmerge_[pid]]
-	set tmps [list $smerge]
+	set smerge [tmpfile fm3tool]
 
 	# only if user specifies -o will we define the variable 'outfile';
 	# save() depends on this. save() will only write to this file	
@@ -1438,7 +1437,7 @@ proc widgets {} \
 		$m add command -label "Help" -command { exec bk helptool fm3 & }
 		$m add separator
 		$m add command -label "Quit" \
-		    -command cleanup -accelerator $gc(fm3.quit)
+		    -command exit -accelerator $gc(fm3.quit)
 	    set m .menu.view.m
 	    menubutton .menu.view -font $gc(fm3.buttonFont) \
 		-bg $gc(fm3.buttonColor) \
@@ -1736,7 +1735,7 @@ proc keyboard_bindings {} \
 		.diffs.right yview -pickplace end
 		break
 	}
-	bind all	<$gc($app.quit)>		{ cleanup }
+	bind all	<$gc($app.quit)>		{ exit }
 	bind all	<$gc($app.nextDiff)>		{ next 0; break }
 	bind all	<$gc($app.prevDiff)>		{ prev 0; break }
 	bind all	<$gc($app.nextConflict)>	{ next 1; break }
@@ -1769,8 +1768,8 @@ proc keyboard_bindings {} \
 		}
 	}
 	if {$gc(aqua)} {
-		bind all <Command-q> cleanup
-		bind all <Command-w> cleanup
+		bind all <Command-q> exit
+		bind all <Command-w> exit
 	}
 	if {$gc(x11)} {
 		bind all <Button-4>			{ prev 0 }
@@ -1907,14 +1906,6 @@ proc edit_done {} \
 
 	dot
 	focus .
-}
-
-proc cleanup {} \
-{
-	global tmps
-
-	foreach tmp $tmps { catch {file delete $tmp} err }
-	exit
 }
 
 proc save {} \
@@ -2525,7 +2516,7 @@ proc fm3tool {} \
 	# the "gca" checkbutton
 	trace variable ::lastDiff w [list toggleGCA 0]
 
-	wm protocol . WM_DELETE_WINDOW cleanup
+	wm protocol . WM_DELETE_WINDOW exit
 	bind . <Destroy> {
 		if {[string match %W .]} {
 			saveState fm3

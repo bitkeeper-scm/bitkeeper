@@ -643,7 +643,7 @@ chk_BAM(sccs *s, char ***missing)
 	int	rc = 0;
 
 	unless (*missing) missing = 0;
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		unless (d->hash) continue;
 		key = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 		if (bp_check_hash(key, missing, !bp_fullcheck)) rc = 1;
@@ -1174,7 +1174,7 @@ color_merge(sccs *s, delta *d)
 {
 	assert(d->merge);	/* only works on merge */
 	d->flags |= (D_BLUE|D_RED);
-	range_walkrevs(s, sfind(s, d->merge), 0, d->parent, WR_BOTH, 0, 0);
+	range_walkrevs(s, MERGE(s, d), 0, PARENT(s, d), WR_BOTH, 0, 0);
 	return (s->rstart->serial);
 }
 
@@ -1284,7 +1284,7 @@ buildKeys(MDBM *idDB)
 	sccs_sdelta(cset, sccs_ino(cset), key);
 	deltas = hash_new(HASH_MEMHASH);
 	hash_store(r2deltas, key, strlen(key) + 1, &deltas, sizeof(hash *));
-	for (d = cset->table; d; d = d->next) {
+	for (d = cset->table; d; d = NEXT(d)) {
 		unless ((d->type == 'D') && (d->flags & D_CSET)) continue;
 		sccs_sdelta(cset, d, key);
 		unless (hash_insert(deltas, key, strlen(key)+1, 0, 0)) {
@@ -1384,12 +1384,12 @@ markCset(sccs *s, delta *d)
 		}
 		d->flags |= D_SET;
 		if (d->merge) {
-			delta	*e = sfind(s, d->merge);
+			delta	*e = MERGE(s, d);
 
 			assert(e);
 			unless (e->flags & D_CSET) markCset(s, e);
 		}
-		d = d->parent;
+		d = PARENT(s, d);
 	} while (d && !(d->flags & D_CSET));
 }
 
@@ -1435,7 +1435,7 @@ check(sccs *s, MDBM *idDB)
 	/*
 	 * Make sure that all marked deltas are found in the ChangeSet
 	 */
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if (verbose > 3) {
 			fprintf(stderr, "Check %s@%s\n", s->gfile, d->rev);
 		}
@@ -1572,7 +1572,7 @@ check(sccs *s, MDBM *idDB)
 				}
 			}
 			unless (s->grafted) break;
-			while (ino = ino->next) {
+			while (ino = NEXT(ino)) {
 				if (ino->random) break;
 			}
 		} while (ino);
@@ -1632,7 +1632,7 @@ check(sccs *s, MDBM *idDB)
 	if (haspoly == -1) haspoly = (exists(POLY) != 0);
 	if (!haspoly && CSETMARKED(s)) {
 		sccs_clearbits(s, D_SET);
-		for (d = s->table; d; d = d->next) {
+		for (d = s->table; d; d = NEXT(d)) {
 			if (d->flags & D_CSET) markCset(s, d);
 		}
 	}
@@ -1644,13 +1644,13 @@ chk_merges(sccs *s)
 {
 	delta	*p, *m, *d;
 
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		unless (d->merge) continue;
-		p = d->parent;
+		p = PARENT(s, d);
 		assert(p);
-		m = sfind(s, d->merge);
+		m = MERGE(s, d);
 		assert(m);
-		if (sccs_needSwap(p, m)) {
+		if (sccs_needSwap(s, p, m)) {
 			if (fix) return (1);
 			fprintf(stderr,
 			    "%s|%s: %s/%s need to be swapped, run with -f.\n",
@@ -1686,7 +1686,7 @@ checkKeys(sccs *s, char *root)
 	deltas = *(hash **)p;
 
 	findkey = hash_new(HASH_MEMHASH);
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		unless (d->flags & D_CSET) continue;
 		sccs_sdelta(s, d, key);
 		unless (hash_insert(findkey, key, strlen(key)+1, &d, sizeof(d))) {

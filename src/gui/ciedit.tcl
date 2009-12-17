@@ -15,7 +15,7 @@ proc eat {fd} \
 
 proc cmd_edit {which} \
 {
-	global	curLine edit_busy gc filename w tmp_dir env
+	global	curLine edit_busy gc filename w env
 
 	saveComments
 	if {$edit_busy == 1} { return }
@@ -25,7 +25,7 @@ proc cmd_edit {which} \
 			edit_widgets
 			edit_file
 		} elseif {$which == "fmtool"} {
-			set old [file join $tmp_dir old[pid]]
+			set old [tmpfile ciedit]
 			catch [list exec bk get -qkp $filename > $old] err
 			if {![file readable $old] || [file size $old] == 0} {
 				# XXX - replace with popup when I merge 
@@ -33,7 +33,7 @@ proc cmd_edit {which} \
 				set edit_busy 0
 				return
 			}
-			set merge [file join $tmp_dir merge[pid]]
+			set merge [tmpfile ciedit]
 			set cmd [list bk fmtool $old $filename $merge]
 			set fd [open "| $cmd" r]
 			fileevent $fd readable "eat $fd"
@@ -309,11 +309,11 @@ proc edit_highlight {start stop} {
 
 proc edit_file {} \
 {
-	global n filename sdiffw tmp_dir
+	global n filename sdiffw
 
 	.edit.t.t configure -state normal
 	.edit.t.t delete 1.0 end
-	set old [file join $tmp_dir old[pid]]
+	set old [tmpfile ciedit]
 	catch [list exec bk get -qkp $filename > $old] err
 	#displayMessage "$sdiffw ($old) ($filename) err=($err)"
 	set d [open "| $sdiffw \"$old\" \"$filename\"" "r"]

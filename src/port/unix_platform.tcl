@@ -17,6 +17,9 @@ proc bk_initPlatform {} \
 	set dev_null "/dev/null"
 	set wish "wish"
 	set tmp_dir  "/tmp"
+	if {[info exists env(TMPDIR)] && [file writable $env(TMPDIR)]} {
+		set tmp_dir $env(TMPDIR)
+	}
 	set keytmp "/var/bitkeeper"
 
 	# Stuff related to the bk field seperator: ^A

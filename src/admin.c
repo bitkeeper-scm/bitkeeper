@@ -218,8 +218,8 @@ admin_main(int ac, char **av)
 		if (dopath) {
 			delta	*d;
 
-			for (d = sc->table; (dopath == 2) && d; d = d->next) {
-				unless (d->next) break;
+			for (d = sc->table; (dopath == 2) && d; d = NEXT(d)) {
+				unless (NEXT(d)) break;
 				d->pathname = path;
 				d->flags |= D_DUPPATH;
 				d->flags |= D_NOPATH;
@@ -240,8 +240,8 @@ admin_main(int ac, char **av)
 		if (addCsets) {
 			delta	*d;
 
-			for (d = sc->table; d; d = d->next) {
-				unless (d->next) break;
+			for (d = sc->table; d; d = NEXT(d)) {
+				unless (NEXT(d)) break;
 				if (TAG(d)) continue;
 				d->flags |= D_CSET;
 			}

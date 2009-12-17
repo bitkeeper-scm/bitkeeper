@@ -319,7 +319,7 @@ set_list(sccs *s, char *rev, set_pfunc p)
 		sccs_free(s);
 		exit(1);
 	}
-	for (e = s->table; e; e = e->next) {
+	for (e = s->table; e; e = NEXT(e)) {
 		unless (e->type == 'D') continue;
 		if (e->flags & D_SET) continue;
 		if (opts.tags && !(e->flags & D_SYMBOLS)) continue;

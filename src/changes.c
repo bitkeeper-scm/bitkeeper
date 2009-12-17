@@ -509,7 +509,7 @@ doit(int dash)
 		if (range_process("changes", s, RANGE_SET, &opts.rargs)) {
 			goto next;
 		}
-		for (e = s->rstop; e; e = e->next) {
+		for (e = s->rstop; e; e = NEXT(e)) {
 			if ((e->flags & D_SET) && !want(s, e)) {
 				e->flags &= ~D_SET;
 			}
@@ -552,7 +552,7 @@ doit(int dash)
 		}
 	} else {
 		s->rstop = s->table;
-		for (e = s->table; e; e = e->next) {
+		for (e = s->table; e; e = NEXT(e)) {
 			if (want(s, e)) e->flags |= D_SET;
 		}
 	}
@@ -573,7 +573,7 @@ doit(int dash)
 	if (opts.doComp || opts.verbose) opts.fcset = fmem_open();
 	/* capture the comments, for the csets we care about */
 	dstart = dstop = 0;
-	for (e = s->rstop; e; e = e->next) {
+	for (e = s->rstop; e; e = NEXT(e)) {
 		if (e->flags & D_SET) {
 			unless (dstart) dstart = e;
 			dstop = e;
@@ -629,7 +629,7 @@ fileFilt(sccs *s, MDBM *csetDB)
 	datum	k, v;
 
 	/* Unset any csets that don't contain files from -i and -x */
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		unless (d->flags & D_SET) continue;
 		/* if cset changed nothing, keep it if not filtering by inc */
 		if (!(opts.inc || opts.BAM) && !d->added) continue;
@@ -767,7 +767,7 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 	}
 	if (s) {
 		/* capture the comments */
-		for (d = s->table; d; d = d->next) comments_load(s, d);
+		for (d = s->table; d; d = NEXT(d)) comments_load(s, d);
 		sccs_close(s); /* we don't need the delta body */
 		if (opts.doComp) s->prs_indentC = 1;
 	}
@@ -789,7 +789,7 @@ collectDelta(sccs *s, delta *d, char **list)
 	 * changes output.
 	 */
 	range_cset(s, d);
-	for (d = s->rstop; d; d = d->next) {
+	for (d = s->rstop; d; d = NEXT(d)) {
 		if (d->flags & D_SET) {
 			/* add delta to list */
 			ll = new(slog);
@@ -966,7 +966,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			 * cset && the component cset need to pass
 			 * the want() test.  Is anding useful?
 			 */
-			for (e = sc->table; e; e = e->next) {
+			for (e = sc->table; e; e = NEXT(e)) {
 				if (want(sc, e)) e->flags |= D_SET;
 			}
 		}
@@ -977,7 +977,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		rstate->csetDB = loadcset(sc);
 		assert(rstate->csetDB);
 		if (dkey) {
-			for (e = sc->table; e; e = e->next) {
+			for (e = sc->table; e; e = NEXT(e)) {
 				e->flags &= ~D_SET;
 			}
 		}
@@ -995,7 +995,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	 * repo the cset file is in. If the repo is the product repo,
 	 * these will be the same.
 	 */
-	for (e = sc->rstop; e; e = e->next) {
+	for (e = sc->rstop; e; e = NEXT(e)) {
 		if (e->flags & D_SET) {
 			if (!dkey || want(sc, e)) csets = addLine(csets, e);
 		}
@@ -1151,7 +1151,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	freeLines(csets, 0);
 
 	/* clear marks */
-	for (e = sc->rstop; e; e = e->next) e->flags &= ~D_SET;
+	for (e = sc->rstop; e; e = NEXT(e)) e->flags &= ~D_SET;
 
 	return (rc);
 }

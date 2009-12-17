@@ -31,7 +31,7 @@ private	int	filterWeave(sccs *cset, char **cweave, char ***delkeys,
 		    hash *prunekeys, char *comppath, char **complist);
 private	int	rmKeys(char **delkeys);
 private	int	found(delta *start, delta *stop);
-private	void	_pruneEmpty(delta *d);
+private	void	_pruneEmpty(sccs *s, delta *d);
 private	void	pruneEmpty(sccs *s, sccs *sb);
 private	hash	*getKeys(void);
 private	char	**goneKeys(void);
@@ -155,7 +155,7 @@ csetprune(hash *prunekeys, char *comppath, char **complist, char *ranbits)
 		fprintf(stderr, "csetinit failed\n");
 		goto err;
 	}
-	for (d = cset->table; d; d = d->next) d->flags |= D_SET;
+	for (d = cset->table; d; d = NEXT(d)) d->flags |= D_SET;
 	cset->state |= S_SET;
 	if ((cweave = cset_mkList(cset)) == (char **)-1) {
 		fprintf(stderr, "cset_mkList failed\n");
@@ -369,9 +369,8 @@ zero:				cweave[i][0] = 0;
 		for (j = d->serial + 1; j < cset->nextserial; j++) {
 			unless (d = sfind(cset, j)) continue;
 			if (d->flags & D_RED) continue;
-			if ((d->parent->flags & D_RED) ||
-			    (d->merge &&
-			    (sfind(cset, d->merge)->flags & D_RED))) {
+			if ((PARENT(cset, d)->flags & D_RED) ||
+			    (MERGE(cset, d)->flags & D_RED)) {
 			    	d->flags |= D_RED;
 			}
 		}
@@ -420,20 +419,20 @@ save:
 		}
 		if (oldser) {
 			d->added = cnt;
-			d = d->next;
+			d = NEXT(d);
 		}
 		oldser = ser;
 		cnt = 1;
 		while (d->serial > ser) {
 			if (d->added) empty++;
 			d->added = 0;
-			d = d->next;
+			d = NEXT(d);
 		}
 		assert(d->serial == ser);
 	}
 	assert(oldser);
 	d->added = cnt;
-	while (d = d->next) { 
+	while (d = NEXT(d)) { 
 		if (d->added) empty++;
 		d->added = 0;
 	}
@@ -516,14 +515,14 @@ found(delta *start, delta *stop)
 		stop = d;
 	}
 
-	for (d = start->next; d && d != stop; d = d->next) d->flags &= ~D_RED;
+	for (d = NEXT(start); d && d != stop; d = NEXT(d)) d->flags &= ~D_RED;
 	start->flags |= D_RED;
 	stop->flags &= ~D_RED;
 
-	for (d = start; d && d != stop; d = d->next) {
+	for (d = start; d && d != stop; d = NEXT(d)) {
 		unless (d->flags & D_RED) continue;
-		if (d->parent) d->parent->flags |= D_RED;
-		if (d->merge) sfind(sc, d->merge)->flags |= D_RED;
+		if (d->pserial) PARENT(sc, d)->flags |= D_RED;
+		if (d->merge) MERGE(sc, d)->flags |= D_RED;
 	}
 	return ((stop->flags & D_RED) != 0);
 }
@@ -554,15 +553,13 @@ mkTagGraph(sccs *s)
 		d->mtag = d->ptag = 0;
 
 		/* go from real parent to tag parent (and also for merge) */
-		if (p = d->parent) {
+		if (p = PARENT(s, d)) {
 			unless (p->symGraph) {
 				p = (p->ptag) ? sfind(s, p->ptag) : 0;
 			}
 		}
 		m = 0;
-		if (d->merge) {
-			m = sfind(s, d->merge);
-			assert(m);
+		if (m = MERGE(s, d)) {
 			unless (m->symGraph) {
 				m = (m->ptag) ? sfind(s, m->ptag) : 0;
 			}
@@ -628,7 +625,7 @@ rebuildTags(sccs *s)
 	/*
 	 * clean house
 	 */
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		d->ptag = d->mtag = 0;
 		d->symGraph = 0;
 		d->symLeaf = 0;
@@ -651,14 +648,14 @@ rebuildTags(sccs *s)
 		assert(md->type != 'D' || md == d);
 		/* If tag on a deleted node, (if parent) move tag to parent */
 		if (d->flags & D_GONE) {
-			unless (d->parent) {
+			unless (d->pserial) {
 				/* No where to move it: drop tag */
 				sym->metad = sym->d = 0;
 				continue;
 			}
 			/* Move Tag to Parent */
-			assert(!(d->parent->flags & D_GONE));
-			d = sym->d = d->parent;
+			assert(!(PARENT(s, d)->flags & D_GONE));
+			d = sym->d = PARENT(s, d);
 		}
 		/* Move all tags directly onto real delta */
 		if (md != d) {
@@ -672,7 +669,7 @@ rebuildTags(sccs *s)
 	 * Prepare structure for building symbol graph.
 	 * and D_GONE all 'R' nodes in graph.
 	 */
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		unless (d->type == 'R') continue;
 		assert(!(d->flags & D_SYMBOLS));
 		MK_GONE(s, d);
@@ -711,7 +708,7 @@ fixTags(sccs *s)
 		 * XXX: do this first, as md check can clear D_GONE flag.
 		 */
 		if (d->flags & D_GONE) {
-			unless (d->parent) {
+			unless (d->pserial) {
 				/* No where to move it: drop tag */
 				/* XXX: Can this ever happen?? */
 				fprintf(stderr,
@@ -726,8 +723,9 @@ fixTags(sccs *s)
 				continue;
 			}
 			/* Move Tag to Parent */
-			assert(!(d->parent->flags & D_GONE));
-			d = sym->d = d->parent;
+			assert(!(PARENT(s, d)->flags & D_GONE));
+			d = PARENT(s, d);
+			sym->d = d;
 			d->flags |= D_SYMBOLS;
 			md->parent = d;
 			md->pserial = d->serial;
@@ -760,10 +758,10 @@ fixTags(sccs *s)
 	 * This looks similar to the above but it is not the same.
 	 * the flow is the same, the data structure being tweaked is diff.
 	 */
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		unless (d->type == 'R') continue;
-		if ((p = d->parent) && (p->flags & D_GONE)) {
-			unless (p->parent) {
+		if ((p = PARENT(s, d)) && (p->flags & D_GONE)) {
+			unless (p->pserial) {
 				/* No where to move it: root it */
 				/* XXX: Can this ever happen?? */
 				fprintf(stderr,
@@ -780,8 +778,8 @@ fixTags(sccs *s)
 				continue;
 			}
 			/* Move Tag to Parent */
-			assert(!(p->parent->flags & D_GONE));
-			p = p->parent;
+			assert(!(PARENT(s, p)->flags & D_GONE));
+			p = PARENT(s, p);
 			d->parent = p;
 			d->pserial = p->serial;
 		}
@@ -811,7 +809,7 @@ fixTags(sccs *s)
  * written to disk!
  */
 private void
-_pruneEmpty(delta *d)
+_pruneEmpty(sccs *s, delta *d)
 {
 	delta	*m;
 
@@ -837,8 +835,8 @@ _pruneEmpty(delta *d)
 		 *
 		 * Then fix up those pesky include and exclude lists.
 		 */
-		m = sfind(sc, d->merge);
-		if (found(d->parent, m)) {	/* merge collapses */
+		m = MERGE(s, d);
+		if (found(PARENT(s, d), m)) {	/* merge collapses */
 			if (d->merge > d->pserial) {
 				d->parent = m;
 				d->pserial = d->merge;
@@ -846,10 +844,10 @@ _pruneEmpty(delta *d)
 			d->merge = 0;
 		}
 		/* else if merge .. (chk case d and e) */
-		else if (sccs_needSwap(d->parent, m)) {
-			d->parent = m;
+		else if (sccs_needSwap(s, PARENT(s, d), m)) {
 			d->merge = d->pserial;
-			d->pserial = d->parent->serial;
+			d->parent = m;
+			d->pserial = m->serial;
 		}
 		/* fix include and exclude lists */
 		sccs_adjustSet(sc, scb, d);
@@ -869,9 +867,9 @@ _pruneEmpty(delta *d)
 	/* Not a keeper, so re-wire around it */
 	debug((stderr, "RMDELTA(%s)\n", d->rev));
 	MK_GONE(sc, d);
-	assert(d->parent);	/* never get rid of root node */
+	assert(d->pserial);	/* never get rid of root node */
 	if (d->flags & D_MERGED) {
-		for (m = sc->table; m && m->serial > d->serial; m = m->next) {
+		for (m = sc->table; m && m->serial > d->serial; m = NEXT(m)) {
 			unless (m->merge == d->serial) continue;
 			debug((stderr,
 			    "%s gets new merge parent %s (was %s)\n",
@@ -879,7 +877,7 @@ _pruneEmpty(delta *d)
 			m->merge = d->pserial;
 		}
 	}
-	for (m = d->kid; m; m = m->siblings) {
+	for (m = KID(d); m; m = SIBLINGS(m)) {
 		unless (m->type == 'D') continue;
 		debug((stderr, "%s gets new parent %s (was %s)\n",
 			    m->rev, d->parent->rev, d->rev));
@@ -898,8 +896,8 @@ pruneEmpty(sccs *s, sccs *sb)
 	sc = s;
 	scb = sb;
 	for (i = 1; i < sc->nextserial; i++) {
-		unless ((n = sfind(sc, i)) && n->next && !TAG(n)) continue;
-		_pruneEmpty(n);
+		unless ((n = sfind(sc, i)) && NEXT(n) && !TAG(n)) continue;
+		_pruneEmpty(sc, n);
 	}
 
 	verbose((stderr, "Rebuilding Tag Graph...\n"));
@@ -1160,8 +1158,8 @@ do_file(sccs *s, char *comppath, char **deepnest)
 		 * inherit any name change that already went on
 		 */
 		if (d->flags & D_DUPPATH) {
-			assert(d->parent);
-			d->pathname = d->parent->pathname;
+			assert(d->pserial);
+			d->pathname = PARENT(s, d)->pathname;
 			goto cmark;
 		}
 		newpath = newname(delpath, comppath, d->pathname, deepnest);
@@ -1217,9 +1215,9 @@ cmark:
 		for (j = d->serial + 1; j < s->nextserial; j++) {
 			unless (d = sfind(s, j)) continue;
 			if (d->flags & D_RED) continue;
-			if ((d->parent->flags & D_RED) ||
+			if ((PARENT(s, d)->flags & D_RED) ||
 			    (d->merge &&
-			    (sfind(s, d->merge)->flags & D_RED))) {
+			    (MERGE(s, d)->flags & D_RED))) {
 			    	d->flags |= D_RED;
 			}
 		}

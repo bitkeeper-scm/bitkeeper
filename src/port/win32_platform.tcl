@@ -12,6 +12,9 @@ proc bk_initPlatform {} \
 	set sdiffw [list "diff" "-W" "1" "-y" "--" ]
 	set dev_null "nul"
 	set tmp_dir $env(TEMP)
+	if {[info exists env(TMPDIR)] && [file writable $env(TMPDIR)]} {
+		set tmp_dir $env(TMPDIR)
+	}
 	# XXX keytmp should match findTmp() in finddir.c
 	set keytmp "$tmp_dir"
 

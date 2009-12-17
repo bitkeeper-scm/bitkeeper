@@ -217,7 +217,10 @@ clone_main(int ac, char **av)
 			}
 		}
 	} else {
-		if (r->path) opts->to = basenm(r->path);
+		if (r->path) {
+			cleanPath(r->path, r->path);
+			opts->to = basenm(r->path);
+		}
 	}
 
 	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
@@ -437,7 +440,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		goto done;
 	}
 	if (proj_isProduct(0)) {
-		mv("BitKeeper/log/HERE", "BitKeeper/log/RMT_HERE");
+		rename("BitKeeper/log/HERE", "BitKeeper/log/RMT_HERE");
 	}
 	proj_reset(0);		/* reset proj_product() */
 	if (opts->link) lclone(getenv("BKD_ROOT"));

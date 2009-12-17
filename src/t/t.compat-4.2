@@ -124,7 +124,8 @@ echo "failed (bug -- should increase PATCH_VER?)"
 echo $N Start new and old bkds ......................................$NL
 cd "$HERE"
 OLDP=`port 54500`
-$OLDBK/bk bkd -d -p$OLDP -ikill 2> OLDERR || exit 1
+# old bkd will have "No root for triggers!" ttyprintf
+BK_TTYPRINTF= $OLDBK/bk bkd -d -p$OLDP -ikill 2> OLDERR || exit 1
 bk bkd -d -aPORT -ikill 2> NEWERR || exit 1
 NEWP=`cat PORT`
 trap "bk _kill bk://localhost:$OLDP; bk _kill bk://localhost:$NEWP" 0

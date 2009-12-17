@@ -244,9 +244,9 @@ out:		sccs_free(s);
 			t.mlocal = sfind(s, b);
 		}
 		assert(t.mlocal && t.mremote);
-		for (d = t.mlocal; d->type == 'R'; d = d->parent);
+		for (d = t.mlocal; d->type == 'R'; d = PARENT(s, d));
 		t.local = d;
-		for (d = t.mremote; d->type == 'R'; d = d->parent);
+		for (d = t.mremote; d->type == 'R'; d = PARENT(s, d));
 		t.remote = d;
 
 		if (rs->opts->debug) {

@@ -263,6 +263,17 @@ do_commit(char **av,
 
 	rc = csetCreate(cset, dflags, pendingFiles, syms);
 
+	if (opts.resync) {
+		char	key[MAXPATH];
+		FILE	*f;
+
+		sccs_sdelta(cset, sccs_top(cset), key);
+		if (f = fopen(CSETS_IN, "a")) {
+			fprintf(f, "%s\n", key);
+			fclose(f);
+		}
+	}
+
 	if (!rc && proj_isComponent(0)) {
 		hash	*urllist;
 		char	*file = proj_fullpath(proj_product(0), NESTED_URLLIST);

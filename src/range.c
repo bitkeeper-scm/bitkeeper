@@ -50,7 +50,7 @@ usage:			fprintf(stderr,
 		if (all) range_markMeta(s);
 		if (s->state & S_SET) {
 			printf("%s set:", s->gfile);
-			for (e = s->table; e; e = e->next) {
+			for (e = s->table; e; e = NEXT(e)) {
 				if (e->flags & D_SET) {
 					printf(" %s", e->rev);
 					if (e->type == 'R') printf("T");
@@ -59,7 +59,7 @@ usage:			fprintf(stderr,
 		} else {
 			printf("%s %s..%s:",
 			    s->gfile, s->rstop->rev, s->rstart->rev);
-			for (e = s->rstop; e; e = e->next) {
+			for (e = s->rstop; e; e = NEXT(e)) {
 				printf(" %s", e->rev);
 				if (e->type == 'R') printf("T");
 				if (e == s->rstart) break;

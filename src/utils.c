@@ -927,6 +927,14 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 				fprintf(f, "putenv BK_BAM_SERVER_ID=%s\n", bp);
 			}
 		}
+		fprintf(f, "putenv BK_REPOTYPE=");
+		if (proj_isProduct(0)) {
+			fprintf(f, "prod\n");
+		} else if (proj_isComponent(0)) {
+			fprintf(f, "comp\n");
+		} else {
+			fprintf(f, "stand\n");
+		}
 	}
 	unless (flags & SENDENV_NOLICENSE) {
 		if (flags & SENDENV_NOREPO) {
@@ -1062,9 +1070,13 @@ sendServerInfo(int no_repo)
 			out(buf);
 		}
 		if (proj_isComponent(0)) {
-			sprintf(buf, "PRODUCT_ROOTKEY=%s\n",
+			sprintf(buf, "REPOTYPE=comp\nPRODUCT_ROOTKEY=%s\n",
 			    proj_rootkey(proj_product(0)));
 			out(buf);
+		} else if (proj_isProduct(0)) {
+			out("REPOTYPE=prod\n");
+		} else {
+			out("REPOTYPE=stand\n");
 		}
 		if (repoid = proj_repoID(0)) {
 			sprintf(buf, "REPO_ID=%s\n", repoid);

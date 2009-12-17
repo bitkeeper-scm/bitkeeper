@@ -122,49 +122,18 @@ bk alias rm -C gcc
 bk alias rm samething
 echo OK
 
-echo $N Try a push, should add libc but not junk ....................$NL
+echo $N Try a push, should fail from missing comp ...................$NL
 bk parent $Q -ao ../stuff ../stuff2
-bk push > ../OUT 2>&1 || {
-	echo should not have failed
-	cat ../OUT
-	exit 1
-}
-cd ../stuff
-test -d path/to/libc || {
-	echo did not add libc
-	cat ../OUT
-	exit 1
-}
-test -d junk && {
-	echo should not have added junk
-	cat ../OUT
-	exit 1
-}
-cd ../stuff2
-test -d path/to/libc || {
-	echo did not add libc
-	cat ../OUT
-	exit 1
-}
-test -d junk && {
-	echo should not have added junk
-	cat ../OUT
-	exit 1
-}
-echo OK
-
-echo $N Try unpull and see if that works ............................$NL
-bk unpull -f > OUT 2>&1 || {
-	echo failed
-	exit 1
-}
-test -d path/to/libc && {
-	echo failed to remove libc
-	exit 1
+bk push $Q 2>ERR && fail -f ERR should have failed
+grep -q "push: junk must be populated at file://.*/stuff" ERR || fail -f ERR
+grep -q "push: transfer aborted due to errors with 1 components." ERR || {
+     fail -f ERR
 }
 echo OK
 
 echo $N Try a pull, should add libc but not junk ....................$NL
+cd ../stuff
+test -d RESYNC && fail	# shouldn't have a RESYNC
 bk pull $Q || {
 	echo should not have failed
 	exit 1

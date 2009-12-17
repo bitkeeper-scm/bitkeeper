@@ -211,7 +211,7 @@ taken(MDBM *db, delta *d)
  * then make a copy of this in sccs2bk.c first.
  */
 int
-sccs_needSwap(delta *p, delta *m)
+sccs_needSwap(sccs *s, delta *p, delta *m)
 {
 	int	pser, mser;
 
@@ -219,11 +219,11 @@ sccs_needSwap(delta *p, delta *m)
 	mser = m->pserial;
 	while (pser != mser) {
 		if (mser < pser) {
-			p = p->parent;
+			p = PARENT(s, p);
 			assert(p);
 			pser = p->pserial;
 		} else {
-			m = m->parent;
+			m = PARENT(s, m);
 			assert(m);
 			mser = m->pserial;
 		}
@@ -254,7 +254,7 @@ parentSwap(sccs *s, delta *d, delta **pp, delta **mp, int flags)
 	 */
 	d->parent = 0;
 	d->pserial = 0;
-	for (tp = &p->kid; (t = *tp) != 0; tp = &t->siblings) {
+	for (tp = &p->kid; t = *tp; tp = &t->siblings) {
 		if (t == d) break;
 	}
 	assert(t);
@@ -267,7 +267,7 @@ parentSwap(sccs *s, delta *d, delta **pp, delta **mp, int flags)
 	 */
 	d->merge = 0;
 	m->flags &= ~D_MERGED;
-	for (t = s->table; t; t = t->next) {
+	for (t = s->table; t; t = NEXT(t)) {
 		unless (t->merge == m->serial) continue;
 		assert(t->serial > m->serial);
 		m->flags |= D_MERGED;
@@ -288,12 +288,12 @@ parentSwap(sccs *s, delta *d, delta **pp, delta **mp, int flags)
 	serial = d->serial;
 
 	/* find oldest */
-	for (t = m->kid; t; t = t->siblings) {
+	for (t = KID(m); t; t = SIBLINGS(t)) {
 		unless (t->type == 'D' && (t->serial < serial)) continue;
 		serial = t->serial;
 	}
 	if (serial < d->serial) {	/* set oldest to be first */
-		for (tp = &m->kid; (t = *tp) != 0; tp = &t->siblings) {
+		for (tp = &m->kid; t = *tp; tp = &t->siblings) {
 			if (t->serial == serial) break;
 		}
 		assert(t);
@@ -321,14 +321,14 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 	delta	*m;
 
 	/* XXX hack because not all files have 1.0, special case 1.1 */
-	p = d->parent;
+	p = PARENT(s, d);
 	unless (p || streq(d->rev, "1.1")) {
 		remember(db, d);
 		return (release);
 	}
 
 	if (d->flags & D_META) {
-		for (p = d->parent; p->flags & D_META; p = p->parent);
+		for (p = PARENT(s, d); p->flags & D_META; p = PARENT(s, p));
 		memcpy(d->r, p->r, sizeof(d->r));
 		newRev(s, flags, db, d);
 		return (release);
@@ -338,10 +338,10 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 	 * If merge and it is on same lod as parent, and
 	 * If merge was on the trunk at time of merge, then swap
 	 */
-	m = (d->merge) ? sfind(s, d->merge) : 0;
+	m = MERGE(s, d);
 	if (m && m->r[0] == p->r[0]) {
 		assert(p != m);
-		if (sccs_needSwap(p, m)) {
+		if (sccs_needSwap(s, p, m)) {
 			unless (Fix_inex) {
 				Fix_inex = sccs_init(s->sfile, flags);
 				unless (Fix_inex) {

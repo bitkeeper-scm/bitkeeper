@@ -11,8 +11,10 @@ cmd_nested(int ac, char **av)
 		out("ERROR-invalid command");
 		return (1);
 	}
-	nlid = getenv("_NESTED_LOCK");
-	assert(nlid);
+	unless (nlid = getenv("_NESTED_LOCK")) {
+		out("@OK@\n");
+		return (0);
+	}
 	if (streq(av[1], "unlock")) {
 		if (av[2] && streq(av[2], "-R")) bkd_doResolve(av);
 		if (nested_unlock(0, nlid)) {
@@ -25,6 +27,7 @@ cmd_nested(int ac, char **av)
 			error("%s", nested_errmsg());
 			return (1);
 		}
+		system("bk abort -f 2>" DEVNULL_WR);
 		out("@OK@\n");
 	} else {
 		/* fail */

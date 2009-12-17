@@ -54,7 +54,7 @@ proc file_history {} \
 # Takes a line number as an arg when creating continuations for the file menu
 proc dotFile {{line {}}} \
 {
-	global	lastFile fileCount Files tmp_dir file_stop
+	global	lastFile fileCount Files file_stop
 	global	RealFiles file finfo currentCset dev_null
 	global gc
 
@@ -96,9 +96,8 @@ proc dotFile {{line {}}} \
 	if {$parent == ""} { set parent "1.0" }
 	set finfo(l) "$file@$parent"
 	set finfo(r) "$file@$rev"
-	set tmp [file tail "$file"]
-	set l [file join $tmp_dir $tmp-${parent}_[pid]]
-	set r [file join $tmp_dir $tmp-${rev}_[pid]]
+	set l [tmpfile csettool]
+	set r [tmpfile csettool]
 	if {$::showAnnotations} {
 		set annotate "$gc(cset.annotation)"
 		if {[string index $annotate 0] != "-"} {
@@ -176,7 +175,6 @@ proc dotFile {{line {}}} \
 		displayInfo $file $file $parent $rev 
 		readFiles $l $r
 	}
-	catch {file delete $l $r}
 
 	busy 0
 }

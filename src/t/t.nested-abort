@@ -1,56 +1,568 @@
-echo $N Setup a nested pull -R ......................................$NL
-nested project
-bk clone $Q . ../copy || exit 1
-for r in gcc gdb
+# return a uniq string
+CNT=0
+RAND()
+{
+	CNT=`expr $CNT + 1`
+	echo "junk.$CNT"
+}
+
+echo $N Setup testing scenarios......................................$NL
+# Set up the parent with gcc, gdb, and comp, all with a file called 'file'.
+cd "$HERE"
+nested parent
+RAND > file
+bk new $Q file || fail
+bk commit $Q -yfile || fail
+touch c
+bk setup -fcc comp || fail
+for r in gcc gdb comp
 do	cd $r
-	echo hi > file
-	bk new $Q file || exit 2
-	bk edit $Q BitKeeper/etc/config || exit 3
-	echo junk:1 >> BitKeeper/etc/config
-	bk ci -yjunk $Q BitKeeper/etc/config || exit 4
-	bk commit $Q -yhi || exit 5
+	RAND > file
+	bk new $Q file || fail
+	bk commit $Q -yfile || fail
 	cd ..
 done
-bk commit $Q -ytop || exit 6
-cd ../copy
+bk commit $Q -ygcc,gdb,comp || fail
+bk alias new MYALIAS gcc gdb comp || fail
+# Now add comp3 to the parent.  This is done before we do the clones
+# of parent below so that when comp3 is added to MYALIAS later, it
+# gets populated due to the aliases file being changed but the cset
+# which contains this alias file change does not include the component
+# itself.
+bk setup -fcc comp3 || fail
+# Create a component deep1 and a deep component deep1/deep2 under it.
+# deep2 will be added to MYALIAS and should exist in all the clones;
+# deep1 should not.
+bk setup -C -fcc deep1 || fail
+cd deep1
+RAND > file
+bk new $Q file || fail
+bk commit $Q -yfile || fail
+bk setup -C -fc../c deep2 || fail
+cd deep2
+RAND > file
+bk new $Q file || fail
+bk commit $Q -yfile || fail
+cd ../..
+bk alias add MYALIAS deep1/deep2 || fail
+bk commit $Q -ydeep1,deep1/deep2 || fail
+cd ..
+
+# Clone and set up the multiple scenarios (indentation added for clarity).
+# These are repos we will pull into (from parent) or push from (into parent)
+# and the operation will fail.
+bk clone $Q -sMYALIAS parent edit_in_product
+	cd edit_in_product
+	bk edit $Q file
+	RAND > file
+	cd ..
+tar cf edit_in_product.tar edit_in_product
+for i in gcc gdb comp
+do	bk clone $Q -sMYALIAS parent edit_in_$i
+	cd edit_in_$i/gcc
+	bk edit $Q file
+	RAND > file
+	cd ../..
+	tar cf edit_in_$i.tar edit_in_$i
+done
+
+bk clone $Q -sMYALIAS parent pending_in_product
+	cd pending_in_product
+	bk edit $Q file
+	RAND > file
+	bk delta $Q -yfile file
+	cd ..
+tar cf pending_in_product.tar pending_in_product
+for i in gcc gdb comp
+do	bk clone $Q -sMYALIAS parent pending_in_product_$i
+	cd pending_in_product_$i/$i
+	RAND > file2
+	bk new $Q file2
+	bk commit $Q -yfile2
+	cd ../..
+	tar cf pending_in_product_$i.tar pending_in_product_$i
+done
+for i in gcc gdb comp
+do	bk clone $Q -sMYALIAS parent pending_in_$i
+	cd pending_in_$i/$i
+	bk edit $Q file
+	RAND > file
+	bk delta $Q -yfile file
+	cd ../..
+	tar cf pending_in_$i.tar pending_in_$i
+done
+bk clone $Q -sMYALIAS parent newcomp_taken
+	cd newcomp_taken
+	mkdir newcomp
+	touch newcomp/must_exist
+	cd ..
+tar cf newcomp_taken.tar newcomp_taken
+
+# Add component newcomp for the new-component-name-taken test where the
+# pull fails b/c a directory named newcomp already exists.
+cd parent
+bk setup -C -fcc newcomp || fail
+bk alias add -C MYALIAS newcomp || fail
+cd newcomp
+RAND > file
+bk new $Q file || fail
+bk commit $Q -yfile || fail
+cd ..
+bk commit $Q -ynewcomp || fail
+# Touch files in the product, gcc, and gdb.
+bk edit $Q file || fail
+RAND > file
+bk delta $Q -yfile file || fail
 for r in gcc gdb
 do	cd $r
-	echo hi > file2
-	bk new $Q file2 || exit 7
-	bk commit $Q -yhi2 || exit 8
+	bk edit $Q file || fail
+	RAND > file
+	bk delta $Q -yfile file || fail
+	bk commit $Q -yfile || fail
 	cd ..
 done
-bk commit $Q -ytop2 || exit 9
+# Add components to MYALIAS so that pulls of MYALIAS will populate
+# them (some of them anyway, which they must then undo after they
+# fail).
+bk setup -C -fcc comp2 || fail
+bk alias add -C MYALIAS comp2 || fail
+bk alias add -C MYALIAS comp3 || fail
+bk alias add -C MYALIAS deep1 || fail
+bk commit $Q -yfile,gcc,gdb,comp2,comp3,deep1 || fail
 echo OK
 
-echo $N Pull with a conflict in second comp .........................$NL
-bk edit $Q gdb/BitKeeper/etc/config
-echo bad >> gdb/BitKeeper/etc/config
-bk pull $Q 2>ERR && exit 1
-cat <<EOF > WANT
+save_state()
+{
+	PROD=`bk log -r+ -d:REV: ChangeSet`
+	PEND=`bk sfiles -pA`
+	GDB=`bk log -r+ -d:REV: gdb/ChangeSet`
+	GCC=`bk log -r+ -d:REV: gcc/ChangeSet`
+	COMP=`bk log -r+ -d:REV: comp/ChangeSet`
+	COMPS=`bk components 2>/dev/null`
+	ALIASES=`bk alias show`
+	MYALIAS=`bk alias show MYALIAS`
+}
 
-=================================== ERROR ====================================
-The following files are modified locally and in the patch:
-	BitKeeper/etc/config
-For more information run "bk help tp1"
-==============================================================================
-Errors during update of the following files:
-BitKeeper/etc/SCCS/s.config
-==============================================================================
-Pull failed: takepatch exited 1.
-Pulling gdb failed
+check_state()
+{
+	err=""
+	test -d RESYNC && err="RESYNC $err"
+	test -d gdb/RESYNC && err="gdb/RESYNC $err"
+	test -d gcc/RESYNC && err="gcc/RESYNC $err"
+	test -d comp/RESYNC && err="comp/RESYNC $err"
+	test "$PROD" = "`bk log -r+ -d:REV: ChangeSet`" || err="prod $err"
+	test "$PEND" = "`bk sfiles -pA`" || err="pend $err"
+	test "$GDB" = "`bk log -r+ -d:REV: gdb/ChangeSet`" || err="gdb $err"
+	test "$GCC" = "`bk log -r+ -d:REV: gcc/ChangeSet`" || err="gcc $err"
+	test "$COMP" = "`bk log -r+ -d:REV: comp/ChangeSet`" || err="comp $err"
+	test "$COMPS" = "`bk components 2>/dev/null`" || err="comps $err"
+	test "$ALIASES" = "`bk alias show`" || err="aliases $err"
+	test "$MYALIAS" = "`bk alias show MYALIAS`" || err="MYALIAS $err"
+	test -d comp2 && err="comp2 $err"
+	test -d comp3 && err="comp3 $err"
+	# deep1/deep2/file should exist, deep1/file should not
+	bk log deep1/file >/dev/null && err="deep1 $err"
+	test "`bk log -r+ -nd:REV: deep1/deep2/file`" = "1.1" || err="deep2 $err"
+	test -z "$err"
+	return $?  # return status; $err holds errors
+}
+
+########## Pull tests
+echo $N Pull, edited file in product.................................$NL
+# Pull should fail in the product and leave all components unchanged,
+# no RESYNC dirs, and newcomp should not have come over.
+cd "$HERE/edit_in_product"
+save_state
+bk pull $Q 2>ERR && fail -f ERR
+grep -q "The following files are modified locally and in the patch" ERR || {
+     fail -f ERR
+}
+check_state || fail $err
+echo OK
+
+echo $N Pull, edited file in gcc.....................................$NL
+# Pull should fail in gcc and leave all components unchanged,
+# no RESYNC dirs, and newcomp should not have come over.
+cd "$HERE/edit_in_gcc"
+save_state
+bk pull >ERR 2>&1 && fail -f ERR
+check_state || fail -f ERR $err
+echo OK
+
+echo $N Pull, edited file in gdb.....................................$NL
+# Pull should fail in gdb and leave all components unchanged,
+# no RESYNC dirs, and newcomp should not have come over.
+cd "$HERE/edit_in_gdb"
+save_state
+bk pull $Q 2>ERR && fail
+check_state || fail $err
+echo OK
+
+echo $N Pull, pending cset in product................................$NL
+cd "$HERE/pending_in_product"
+save_state
+bk pull $Q 2>ERR && fail
+check_state || fail $err
+echo OK
+
+echo $N Pull, gcc cset pending in product............................$NL
+# Pull should fail due to the gcc cset still pending in the product.
+cd "$HERE/pending_in_product_gcc"
+save_state
+bk pull $Q 2>ERR || fail you fixed a bug
+check_state
+test $? = 0 && fail you fixed a bug \($?\)
+echo failed \(bug should not commit pending\)
+
+echo $N Pull, gdb cset pending in product............................$NL
+# Pull should fail due to the gdb cset still pending in the product.
+cd "$HERE/pending_in_product_gdb"
+save_state
+bk pull $Q 2>ERR
+check_state
+test $? = 0 && fail you fixed a bug \($?\)
+echo failed \(bug should not commit pending\)
+
+echo $N Pull, cset pending in gcc....................................$NL
+cd "$HERE/pending_in_gcc"
+save_state
+bk pull $Q 2>ERR && fail
+check_state || fail $err
+echo OK
+
+echo $N Pull, cset pending in gdb....................................$NL
+cd "$HERE/pending_in_gdb"
+save_state
+bk pull $Q 2>ERR && fail
+check_state || fail $err
+echo OK
+
+echo $N Pull, new component name taken...............................$NL
+cd "$HERE/newcomp_taken"
+save_state
+test -f newcomp/must_exist || fail
+bk pull $Q 2>ERR && fail
+check_state || fail $err
+# abort should only remove things brought by clone
+test -f newcomp/must_exist || fail
+echo OK
+
+########## Push tests
+echo $N Push, edited file in product.................................$NL
+cd "$HERE"
+rm -rf edit_in_product
+tar xf edit_in_product.tar
+cd edit_in_product
+save_state
+cd ../parent
+bk push $Q ../edit_in_product 2>ERR && fail
+cd ../edit_in_product
+check_state || fail $err
+echo OK
+
+echo $N Push, edited file in gcc.....................................$NL
+cd "$HERE"
+rm -rf edit_in_gcc
+tar xf edit_in_gcc.tar
+cd edit_in_gcc
+save_state
+cd ../parent
+bk push $Q ../edit_in_gcc 2>ERR && fail
+cd ../edit_in_gcc
+check_state || fail $err
+echo OK
+
+echo $N Push, edited file in gdb.....................................$NL
+cd "$HERE"
+rm -rf edit_in_gdb
+tar xf edit_in_gdb.tar
+cd edit_in_gdb
+save_state
+cd ../parent
+bk push $Q ../edit_in_gdb 2>ERR && fail
+cd ../edit_in_gdb
+check_state || fail $err
+echo OK
+
+echo $N Push, pending cset in product................................$NL
+cd "$HERE"
+rm -rf pending_in_product
+tar xf pending_in_product.tar
+cd pending_in_product
+save_state
+cd ../parent
+bk push $Q ../pending_in_product 2>ERR && fail
+cd ../pending_in_product
+check_state || fail $err
+echo OK
+
+echo $N Push, gcc cset pending in product............................$NL
+cd "$HERE"
+rm -rf pending_in_product_gcc
+tar xf pending_in_product_gcc.tar
+cd pending_in_product_gcc
+save_state
+cd ../parent
+bk push $Q ../pending_in_product 2>ERR && fail
+cd ../pending_in_product
+check_state
+test $? = 0 && fail you fixed a bug \($?\)
+echo failed \(bug should not commit pending\)
+
+echo $N Push, gdb cset pending in product............................$NL
+cd "$HERE"
+rm -rf pending_in_product_gdb
+tar xf pending_in_product_gdb.tar
+cd pending_in_product_gdb
+save_state
+cd ../parent
+bk push $Q ../pending_in_product_gdb 2>ERR
+cd ../pending_in_product_gdb
+check_state
+test $? = 0 && fail you fixed a bug \($?\)
+echo failed \(bug should not commit pending\)
+
+echo $N Push, cset pending in gcc....................................$NL
+cd "$HERE"
+rm -rf pending_in_gcc
+tar xf pending_in_gcc.tar
+cd pending_in_gcc
+save_state
+cd ../parent
+bk push $Q ../pending_in_gcc 2>ERR && fail
+cd ../pending_in_gcc
+check_state || fail $err
+echo OK
+
+echo $N Push, cset pending in gdb....................................$NL
+cd "$HERE"
+rm -rf pending_in_gdb
+tar xf pending_in_gdb.tar
+cd pending_in_gdb
+save_state
+cd ../parent
+bk push $Q ../pending_in_gdb 2>ERR && fail
+cd ../pending_in_gdb
+check_state || fail $err
+echo OK
+
+echo $N Push, new component name taken...............................$NL
+cd "$HERE"
+rm -rf newcomp_taken
+tar xf newcomp_taken.tar
+cd newcomp_taken
+save_state
+test -f newcomp/must_exist || fail
+cd ../parent
+bk push $Q ../newcomp_taken 2>ERR && fail
+cd ../newcomp_taken
+check_state || fail $err
+test -f newcomp/must_exist || fail
+echo OK
+
+########## Undo tests
+echo $N Undo, edited file in product.................................$NL
+cd "$HERE"
+rm -rf undo-clone
+bk clone $Q parent undo-clone || fail
+cd undo-clone
+bk edit $Q file || fail
+RAND > file
+save_state
+bk undo $Q -f -r+ 2>ERR && fail
+check_state && fail you fixed a bug
+echo failed \(bug failed undo does not undo undo\)
+
+echo $N Undo, edited file in gcc.....................................$NL
+cd "$HERE"
+rm -rf undo-clone
+bk clone $Q parent undo-clone || fail
+cd undo-clone/gcc
+bk edit $Q file || fail
+RAND > file
+cd ..
+save_state
+bk undo $Q -f -r+ 2>ERR && fail
+check_state && fail you fixed a bug
+echo failed \(bug failed undo does not undo undo\)
+
+echo $N Undo, edited file in gdb.....................................$NL
+cd "$HERE"
+rm -rf undo-clone
+bk clone $Q parent undo-clone || fail
+cd undo-clone/gdb
+bk edit $Q file || fail
+RAND > file
+cd ..
+save_state
+bk undo $Q -f -r+ 2>ERR && fail
+check_state && fail you fixed a bug
+echo failed \(bug failed undo does not undo undo\)
+
+echo $N Undo, pending cset in product................................$NL
+cd "$HERE"
+rm -rf undo-clone
+bk clone $Q parent undo-clone || fail
+cd undo-clone
+bk edit $Q file || fail
+RAND > file
+bk delta $Q -yfile file || fail
+save_state
+bk undo $Q -f -r+ 2>ERR && fail
+check_state && fail you fixed a bug
+echo failed \(bug failed undo does not undo undo\)
+
+echo $N Undo, gcc cset pending in product............................$NL
+cd "$HERE"
+rm -rf undo-clone
+bk clone $Q parent undo-clone || fail
+cd undo-clone/gcc
+bk edit $Q file || fail
+RAND > file
+bk delta $Q -yfile file || fail
+bk commit $Q -yfile
+cd ..
+save_state
+bk undo $Q -f -r+ 2>ERR || fail you fixed a bug
+#check_state || fail $err
+echo failed \(bug undo should fail\)
+
+echo $N Undo, gdb cset pending in product............................$NL
+cd "$HERE"
+rm -rf undo-clone
+bk clone $Q parent undo-clone || fail
+cd undo-clone/gdb
+bk edit $Q file || fail
+RAND > file
+bk delta $Q -yfile file || fail
+bk commit $Q -yfile
+cd ..
+save_state
+bk undo $Q -f -r+ 2>ERR || fail you fixed a bug
+#check_state || fail $err
+echo failed \(bug undo should fail\)
+
+echo $N Undo, cset pending in gcc....................................$NL
+cd "$HERE"
+rm -rf undo-clone
+bk clone $Q parent undo-clone || fail
+cd undo-clone/gcc
+bk edit $Q file || fail
+RAND > file
+bk delta $Q -yfile file || fail
+cd ..
+save_state
+bk undo $Q -f -r+ 2>ERR && fail
+check_state && fail you fixed a bug
+echo failed \(bug failed undo does not undo undo\)
+
+echo $N Undo, cset pending in gdb....................................$NL
+cd "$HERE"
+rm -rf undo-clone
+bk clone $Q parent undo-clone || fail
+cd undo-clone/gdb
+bk edit $Q file || fail
+RAND > file
+bk delta $Q -yfile file || fail
+cd ..
+save_state
+bk undo $Q -f -r+ 2>ERR && fail
+check_state && fail you fixed a bug
+echo failed \(bug failed undo does not undo undo\)
+
+##########
+
+echo $N Pull -R product only with old csets-in files in comps .......$NL
+cd "$HERE"
+bk clone $Q parent copy || fail
+cd parent
+TRIGRC=0
+export TRIGRC
+T=BitKeeper/triggers/pre-apply
+mkdir BitKeeper/triggers || fail 1
+cat <<'EOF' > $T
+#!/bin/sh
+#      =>  called in the RESYNC directory, not the enclosing repository.
+#      =>  exit 0 allows the pull/push.
+#      =>  exit 1 fails the entire pull/push.
+#      =>  exit 2 fails the pull/push but leaves the patch in PENDING.
+#      =>  exit 3 fails the pull/push but leaves the patch in PENDING and  the
+#          RESYNC tree in PENDING/RESYNC-date.
+exit $TRIGRC
 EOF
-sed -n '2,$p' ERR > GOT  # skip first line (patch name)
-cmpfiles WANT GOT
+chmod +x $T
+bk new $Q $T
+bk commit $Q -ytrigger
+cd ../copy
+bk pull $Q -R
+test -d RESYNC || fail no resync dir
+bk abort -qf || fail
+test -d RESYNC && fail resync dir not expected
+bk pull $Q || fail
 echo OK
 
-echo $N Now abort and repull ........................................$NL
-bk abort -f || exit 1
-bk unedit gdb/BitKeeper/etc/config || exit 2
-bk pull $Q 2>ERR && exit 3
-# the tree is really messed up here
-grep -q '1.4 is a merge but is missing a required' ERR || exit 4
-grep -q 'pending deltas but no d.file' ERR || exit 5
-grep -q 'marked delta 1.3 should be in ChangeSet but is not' ERR || exit 6
-grep -q 'RESYNC directory left intact' ERR || exit 7
-echo OK
+echo $N Test trigger and abort with component pull ..................$NL
+cd "$HERE"
+tar cf copy.tar copy
+cd parent/gdb
+touch remote
+bk new $Q remote
+bk commit $Q -yremote
+cd ..
+bk commit $Q -ygdb/remote
+cd ..
+MSG="failed (bug pre-apply rc="
+FAIL=
+OUT=OK
+for rc in 1 2 3; do
+	cd copy
+	TRIGRC=$rc bk pull $Q 2> ERR$rc
+	bk -r check -ac 2> CHK$rc || {
+		MSG="$MSG $rc"
+		FAIL=1
+	}
+	cd ..
+	rm -fr copy
+	tar xf copy.tar
+done
+test -z "$FAIL" || {
+	OUT="$MSG)"
+}
+cd copy
+bk pull $Q -R || fail 1
+bk abort -qf
+bk pull $Q || fail 1
+test -f gdb/BitKeeper/etc/csets-in || fail 2
+cd ..
+echo "$OUT"
+
+echo $N Test trigger and abort with new component ...................$NL
+cd "$HERE"
+tar cf copy.tar copy
+cd parent
+touch c
+bk setup -fcc newrepo
+cd ..
+MSG="failed (bug pre-apply rc="
+FAIL=
+OUT=OK
+for rc in 1 2 3; do
+	cd copy
+	TRIGRC=$rc bk pull $Q 2> ERR$rc
+	bk -r check -ac 2> CHK$rc || {
+		MSG="$MSG $rc"
+		FAIL=1
+	}
+	cd ..
+	rm -fr copy
+	tar xf copy.tar
+done
+test -z "$FAIL" || {
+	OUT="$MSG)"
+}
+cd copy
+bk pull $Q -R || fail 1
+bk abort -qf
+bk pull $Q || fail 1
+cd ..
+echo $OUT

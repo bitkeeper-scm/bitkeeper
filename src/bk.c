@@ -32,6 +32,7 @@ private	int	cmdlog_flags;
 private	int	cmdlog_locks;
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private int	usage(void);
+private	int	hasArgs(char **av);
 private	void	showproc_start(char **av);
 private	void	showproc_end(char *cmdlog_buffer, int ret);
 
@@ -591,38 +592,40 @@ bk_cleanup(int ret)
 	rmdir_findprocs();
 #endif
 
+#if	defined(__linux__)
 	/*
 	 * Test for filehandles left open at the end of regressions
 	 * We only do with if bk exits successful as we can't fix
 	 * all error paths.
+	 * On linux if you comment out this section and run under
+	 * valgrind these problems are easier to find.
+	 * - put an abort() after the ttyprintf below
+	 * - use --track-fds=yes --trace-children=yes -q
+	 * 
+	 * or just run with strace and see what was opened
 	 */
-	if ((ret == 0) && getenv("BK_REGRESSION")
-#ifdef	MACOS_VER
-		/* XXX - someday maybe they'll fix this and we can
-		   enable this check */
-		&& (MACOS_VER < 1030)
-#endif
-	    ) {
-		int	i;
-		struct	stat sbuf;
+	if ((ret == 0) && getenv("BK_REGRESSION")) {
+		int	i, fd, len;
 		char	buf[100];
+		char	procf[100];
 
 		for (i = 3; i < 20; i++) {
-			buf[0] = i;	// so gcc doesn't warn us it's unused
-			if (fstat(i, &sbuf)) continue;
-#if	defined(F_GETFD) && defined(FD_CLOEXEC)
-			if (fcntl(i, F_GETFD) & FD_CLOEXEC) continue;
-#endif
-			ttyprintf(
-			    "%s: warning fh %d left open\n", prog, i);
-#ifndef	NOPROC
-			sprintf(buf,
-			    "/bin/ls -l /proc/%d/fd | grep '%d -> ' >/dev/tty",
-			    getpid(), i);
-			system(buf);
-#endif
+			/* if we can dup() it, then it is open */
+			if ((fd = dup(i)) < 0) continue;
+			close(fd);
+
+			/* look for info in /proc */
+			sprintf(procf, "/proc/%u/fd/%d", (u32)getpid(), i);
+			if ((len = readlink(procf, buf, sizeof(buf))) < 0) {
+				len = 0;
+			}
+			buf[len] = 0;
+			ttyprintf("%s: warning fh %d left open %s\n",
+			    prog, i, buf);
+			//abort();
 		}
 	}
+#endif
 	bktmpcleanup();
 	trace_free();
 }
@@ -643,10 +646,14 @@ private	struct {
 #define	CMD_NOREPO		0x00000020	/* don't assume in repo */
 #define	CMD_NESTED_WRLOCK	0x00000040	/* nested write lock */
 #define	CMD_NESTED_RDLOCK	0x00000080	/* nested read lock */
-#define	CMD_SAMELOCK		0x00000100	/* reuse your lock */
+#define	CMD_SAMELOCK		0x00000100	/* grab a repolock that matches
+						 * the nested lock we have */
 #define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
+#define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
+#define	CMD_LOCK_PRODUCT	0x00000800	/* lock product, not comp */
 } repolog[] = {
-	{"abort", CMD_COMPAT_NOSI},
+	{"abort",
+	    CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
 	{"attach", 0},
 	{"bk", CMD_COMPAT_NOSI}, /* bk-remote */
 	{"check", CMD_COMPAT_NOSI},
@@ -657,8 +664,10 @@ private	struct {
 	{"get", CMD_COMPAT_NOSI},
 	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},
 	{"license", CMD_NOREPO},
-	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK},
-	{"push", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
+	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_LOCK_PRODUCT},
+	{"push", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK|CMD_LOCK_PRODUCT},
+	{"remote abort",
+	     CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
 	{"remote changes part1", CMD_RDLOCK},
 	{"remote changes part2", CMD_RDLOCK},
 	{"remote clone", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
@@ -672,9 +681,10 @@ private	struct {
 	{"remote rclone part3", CMD_NOREPO|CMD_BYTES},
 	{"remote quit", CMD_NOREPO|CMD_QUIT},
 	{"remote rdlock", CMD_RDLOCK},
-	{"remote nested", CMD_WRLOCK|CMD_SAMELOCK},
+	{"remote nested", CMD_SAMELOCK},
 	{"remote wrlock", CMD_WRLOCK},
 	{"synckeys", CMD_RDLOCK},
+	{"tagmerge", CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{"undo", CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{ 0, 0 },
 };
@@ -685,6 +695,7 @@ cmdlog_start(char **av, int bkd_cmd)
 	int	i, len, do_lock = 1;
 	char	*repo1, *repo2, *nlid = 0;
 	char	*error_msg = 0;
+	project	*proj = 0;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
@@ -695,15 +706,6 @@ cmdlog_start(char **av, int bkd_cmd)
 			break;
 		}
 	}
-	/*
-	 * cmdlog_locks remember all the repository locks obtained by
-	 * this process so if another command wants the same lock type
-	 * we won't try to get it again.  This is used for example in
-	 * pull part1,2,3 so with each http:// connection will
-	 * reaquire the lock, but a normal bk:// connection will only
-	 * get the lock once.
-	 */
-	cmdlog_flags &= ~cmdlog_locks;
 
 	/*
 	 * When in http mode, each connection of push will be
@@ -728,6 +730,49 @@ cmdlog_start(char **av, int bkd_cmd)
 	unless (proj_root(0)) goto out;
 
 	/*
+	 * If we want a product lock (push/pull) and we're in a component,
+	 * pop up and grab the product's proj so we lock that one.  But
+	 * only if we're not already in a nested op (_BK_TRANSACTION).
+	 */
+	if ((cmdlog_flags & CMD_LOCK_PRODUCT) && proj_isComponent(0) &&
+	    !getenv("_BK_TRANSACTION")) {
+		/* if in a product, act like a cd2product, as cmd will do it */
+		proj = proj_product(0);
+	}
+	if (cmdlog_flags & CMD_SAMELOCK) {
+		if (nlid = getenv("_NESTED_LOCK")) {
+			if (nested_mine(proj, nlid, 1)) {
+				cmdlog_flags |= CMD_WRLOCK;
+				TRACE("SAMELOCK: got a %s", "write lock");
+			} else if (nested_mine(proj, nlid, 0)) {
+				cmdlog_flags |= CMD_RDLOCK;
+				TRACE("SAMELOCK: got a %s", "read lock");
+			} else {
+				TRACE("SAMELOCK: not mine: %s", nlid);
+				error_msg = aprintf("%s\n", LOCK_UNKNOWN+6);
+				goto out;
+			}
+		}
+		if (cmdlog_locks &&
+		    ((cmdlog_locks & (CMD_RDLOCK|CMD_WRLOCK)) != 
+		    (cmdlog_flags & (CMD_RDLOCK|CMD_WRLOCK)))) {
+			TRACE("SAMELOCK: locks=%x != flags=%x",
+			    cmdlog_locks, cmdlog_flags);
+			error_msg = aprintf("%s\n", LOCK_UNKNOWN+6);
+			goto out;
+		}
+	}
+	/*
+	 * cmdlog_locks remember all the repository locks obtained by
+	 * this process so if another command wants the same lock type
+	 * we won't try to get it again.  This is used for example in
+	 * pull part1,2,3 so with each http:// connection will
+	 * reaquire the lock, but a normal bk:// connection will only
+	 * get the lock once.
+	 */
+	cmdlog_flags &= ~cmdlog_locks;
+
+	/*
 	 * Provide a way to do nested repo operations.  Used by import
 	 * which calls commit.
 	 * Locking protocol is that BK_NO_REPO_LOCK=YES means we are already
@@ -744,7 +789,7 @@ cmdlog_start(char **av, int bkd_cmd)
 	}
 
 	if (bkd_cmd && (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) &&
-	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = proj_repoID(0))) {
+	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = proj_repoID(proj))) {
 		i = streq(repo1, repo2);
 		if (i) {
 			error_msg = strdup("can't connect to same repo_id\n");
@@ -753,14 +798,30 @@ cmdlog_start(char **av, int bkd_cmd)
 		}
 	}
 
-	if ((cmdlog_flags & CMD_SAMELOCK) && cmdlog_locks) do_lock = 0;
+	/*
+	 * Special case for abort, if it has args it is a remote cmd so
+	 * don't lock. If it is called from bk, the enclosing command is
+	 * supposed to do the locking so don't lock either.
+	 *
+	 * I'm sure there is a way to generalize this.
+	 */
+	if (streq("abort", av[0]) && (hasArgs(av) || bk_isSubCmd)) {
+		do_lock = 0;
+	}
 
 	if (do_lock && (cmdlog_flags & CMD_WRLOCK)) {
-		if (i = repository_wrlock(0)) {
-			unless (bkd_cmd || !proj_root(0)) {
-				repository_lockers(0);
-				if (proj_isEnsemble(0)) {
-					nested_printLockers(0, stderr);
+		if (cmdlog_flags & CMD_IGNORE_RESYNC) {
+			putenv("_BK_IGNORE_RESYNC_LOCK=1");
+		}
+		i = repository_wrlock(proj);
+		if (cmdlog_flags & CMD_IGNORE_RESYNC) {
+			putenv("_BK_IGNORE_RESYNC_LOCK=");
+		}
+		if (i) {
+			unless (bkd_cmd || !proj_root(proj)) {
+				repository_lockers(proj);
+				if (proj_isEnsemble(proj)) {
+					nested_printLockers(proj, stderr);
 				}
 			}
 			switch (i) {
@@ -788,11 +849,11 @@ cmdlog_start(char **av, int bkd_cmd)
 		cmdlog_locks |= CMD_WRLOCK;
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
-		if (i = repository_rdlock(0)) {
-			unless (bkd_cmd || !proj_root(0)) {
-				repository_lockers(0);
-				if (proj_isEnsemble(0)) {
-					nested_printLockers(0, stderr);
+		if (i = repository_rdlock(proj)) {
+			unless (bkd_cmd || !proj_root(proj)) {
+				repository_lockers(proj);
+				if (proj_isEnsemble(proj)) {
+					nested_printLockers(proj, stderr);
 				}
 			}
 			switch (i) {
@@ -817,14 +878,14 @@ cmdlog_start(char **av, int bkd_cmd)
 	}
 	if (do_lock &&
 	    (cmdlog_flags & (CMD_NESTED_RDLOCK | CMD_NESTED_WRLOCK)) &&
-	    proj_isEnsemble(0) &&
+	    proj_isEnsemble(proj) &&
 	    /*
-	     * Remote clone from a component witout already having a
+	     * Remote clone from a component without already having a
 	     * nested lock means we're doing a populate, so skip
 	     * nested locking. Note that repository locking has
 	     * already been handled above.
 	     */
-	    !(proj_isComponent(0) &&
+	    !(proj_isComponent(proj) &&
 		strneq(cmdlog_buffer, "remote clone", 12)) &&
 	    /*
 	     * Port is another command that just works at a component
@@ -833,13 +894,13 @@ cmdlog_start(char **av, int bkd_cmd)
 	    !getenv("BK_PORT_ROOTKEY")) {
 		if (nlid = getenv("_NESTED_LOCK")) {
 			TRACE("checking: %s", nlid);
-			unless (nested_mine(0, nlid,
+			unless (nested_mine(proj, nlid,
 				(cmdlog_flags & CMD_NESTED_WRLOCK))) {
 				error_msg = nested_errmsg();
 				goto out;
 			}
 		} else if (cmdlog_flags & CMD_NESTED_WRLOCK) {
-			unless (nlid = nested_wrlock(proj_product(0))) {
+			unless (nlid = nested_wrlock(proj_product(proj))) {
 				error_msg = nested_errmsg();
 				goto out;
 			}
@@ -848,7 +909,7 @@ cmdlog_start(char **av, int bkd_cmd)
 			cmdlog_locks |= CMD_NESTED_WRLOCK;
 			TRACE("%s", "NESTED_WRLOCK");
 		} else if (cmdlog_flags & CMD_NESTED_RDLOCK) {
-			unless (nlid = nested_rdlock(proj_product(0))) {
+			unless (nlid = nested_rdlock(proj_product(proj))) {
 				error_msg = nested_errmsg();
 				goto out;
 			}
@@ -884,7 +945,7 @@ out:
 		free(error_msg);
 		if (bkd_cmd) {
 			drain();
-			repository_unlock(0, 0);
+			repository_unlock(proj, 0);
 		}
 		exit (1);
 	}
@@ -1229,6 +1290,23 @@ launch_wish(char *script, char **av)
 	} else {
 		return (WEXITSTATUS(ret));
 	}
+}
+
+/*
+ * It's an arg if it doesn't begin with '-' or is after '--'.
+ */
+private	int
+hasArgs(char **av)
+{
+	int	i;
+
+	for (i = 1; av[i]; i++) {
+		if ((av[i][0] != '-') ||
+		    ((av[i][1] == '-') && !av[i][2] && av[i+1])) {
+			return (1);
+		}
+	}
+	return (0);
 }
 
 static	char	*prefix;

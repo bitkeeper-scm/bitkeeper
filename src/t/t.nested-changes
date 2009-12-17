@@ -791,3 +791,28 @@ cat <<'EOF' > WANT
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N Try changes between unrelated products.......................$NL
+cd "$HERE"
+fresh_nested n1
+cd "$HERE"
+fresh_nested n2
+bk changes -qRL $Q "$HERE/n1" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to synchronize with an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK
+
+echo $N Try changes from non-nested to nested........................$NL
+cd "$HERE"
+fresh_commercial nn
+bk changes -qRL "$HERE/n1" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to synchronize with an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK
+
+echo $N Try changes from nested to non-nested........................$NL
+cd "$HERE/n1"
+bk changes -qRL "$HERE/nn" 2>ERR && fail -f ERR should have failed
+grep -q "You are trying to synchronize with an unrelated package." ERR \
+	|| fail -f ERR wrong error msg
+echo OK

@@ -482,7 +482,7 @@ do_file(char *file, char *tiprev)
 		/* remember mode, path, xflags */
 		mode = d->mode;
 		pathname = strdup(d->pathname);
-		xflags = sccs_xflags(d);
+		xflags = sccs_xflags(s, d);
 
 		if (CSET(s)) {
 			unlink(gfile);
@@ -532,7 +532,7 @@ do_file(char *file, char *tiprev)
 		free(pathname);
 
 		/* make xflags match */
-		while (flagdiffs = (xflags ^ sccs_xflags(tipd))) {
+		while (flagdiffs = (xflags ^ sccs_xflags(s, tipd))) {
 			/* pick right most bit */
 			flagdiffs &= -flagdiffs;
 
@@ -685,7 +685,7 @@ parent_of_tip(sccs *s)
 		    me, s->gfile, d->rev);
 		return(0);
 	}
-	return (d->parent);
+	return (PARENT(s, d));
 }
 
 /*
