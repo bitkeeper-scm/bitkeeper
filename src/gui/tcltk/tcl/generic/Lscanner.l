@@ -29,6 +29,7 @@ ID	([a-zA-Z_]|::)([0-9a-zA-Z_]|::)*
 private int	include_pop();
 private int	include_push(FILE *f, char *name);
 private FILE *	include_search(char *file);
+private void	put_back(char c);
 private void	tally_newlines(char *s, int len, int tally);
 
 // Stack for tracking include() statements.
@@ -318,7 +319,7 @@ include_pop()
 	"goto"		return T_GOTO;
 	"switch"	return T_SWITCH;
 	"case"		return T_CASE;
-	"default:"	return T_DEFAULT;
+	"default"	return T_DEFAULT;
 	"=>"		return T_ARROW;
 	"eq"		return T_EQ;
 	"ne"		return T_NE;
@@ -347,9 +348,18 @@ include_pop()
 				}
 			}
 	{ID}:		{
+				/*
+				 * Push back the : and return a T_ID
+				 * unless it's "default".  The grammar relies
+				 * on this to avoid a nasty conflict.
+				 */
+				put_back(':');
+				if (!strncmp(yytext, "default", 7)) {
+					return T_DEFAULT;
+				}
 				L_lval.s = ckstrdup(yytext);
-				L_lval.s[yyleng-1] = 0;  // strip the :
-				return T_ID_COLON;
+				L_lval.s[yyleng-1] = 0;
+				return T_ID;
 			}
 	([A-Z]|::)([0-9a-zA-Z]|::)*_\*	{
 				L_lval.s = ckstrdup(yytext);
@@ -593,7 +603,7 @@ include_pop()
 					STRBUF_ADD(yytext, yyleng);
 				} else {
 					yy_pop_state();
-					unput(';');
+					unput(';');  // inject ; for the parser
 					L_lval.s = ckstrdup(STRBUF_STRING());
 					STRBUF_STOP(L_lloc.end);
 					ckfree(here_delim);
@@ -645,7 +655,7 @@ include_pop()
 					STRBUF_ADD(yytext, yyleng);
 				} else {
 					yy_pop_state();
-					unput(';');
+					unput(';');  // inject ; for the parser
 					L_lval.s = ckstrdup(STRBUF_STRING());
 					STRBUF_STOP(L_lloc.end);
 					ckfree(here_delim);
@@ -762,4 +772,20 @@ void
 L_lex_endReArg()
 {
 	yy_pop_state();
+}
+
+/*
+ * Unput a single character.  This function is declared down here
+ * because it calls flex's unput() which is not declared before
+ * the prelogue code earlier.
+ */
+private void
+put_back(char c)
+{
+	unput(c);
+	--L_lloc.end;
+	--L->prev_token_len;
+	tally_newlines(&c, 1, -1);
+	--L->script_len;
+	Tcl_SetObjLength(L->script, L->script_len);
 }

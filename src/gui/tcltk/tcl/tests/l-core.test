@@ -2155,9 +2155,11 @@ void syntax_1_3()
 	unless (args(one:, two:, three:) eq "-one -two -three") puts("bad 11");
 
 	unless (args(break:) eq "-break") puts("bad 20");
+	unless (args(case:) eq "-case") puts("bad 20.2");
 	unless (args(class:) eq "-class") puts("bad 21");
 	unless (args(constructor:) eq "-constructor") puts("bad 22");
 	unless (args(continue:) eq "-continue") puts("bad 23");
+	unless (args(default:) eq "-default") puts("bad 23.2");
 	unless (args(destructor:) eq "-destructor") puts("bad 24");
 	unless (args(do:) eq "-do") puts("bad 25");
 	unless (args(else:) eq "-else") puts("bad 26");
@@ -2183,6 +2185,7 @@ void syntax_1_3()
 	unless (args(split:) eq "-split") puts("bad 46");
 	unless (args(string:) eq "-string") puts("bad 47");
 	unless (args(struct:) eq "-struct") puts("bad 48");
+	unless (args(switch:) eq "-switch") puts("bad 48.2");
 	unless (args(typedef:) eq "-typedef") puts("bad 49");
 	unless (args(unless:) eq "-unless") puts("bad 50");
 	unless (args(void:) eq "-void") puts("bad 51");
@@ -2800,6 +2803,11 @@ void op_1_16()
 	s = "bad";
 	1 ? (s = "good") : puts("bad 6.1");
 	unless (s eq "good") puts("bad 6.2");
+
+	/* Check that id: parses properly. */
+
+	i = 0;
+	unless ((1?i:1) == 0) puts("bad 6.3");
 
 	/* Exactly one of the expressions must ever be executed. */
 
@@ -5896,7 +5904,6 @@ void switch_1()
 	unless (s eq "adgj") puts("bad 9.1");
 
 	/* Test $1 $2 etc available in cases. */
-
 	switch ("This is a test") {
 		case /(test)/:
 			unless ($1 eq "test") puts("bad 10.1");
@@ -5908,6 +5915,54 @@ void switch_1()
 			unless ($2 eq "test") puts("bad 10.3");
 			break;
 	}
+
+	/* Test labeled statements in cases. */
+
+	i = 0;
+	switch (1) {
+	    case 1:
+		lab1: if (i++) break;
+		    goto lab1;
+	}
+	unless (i == 2) puts("bad 11.1");
+
+	i = 0;
+	switch (0) {
+	    case 1:
+		lab2: if (i++) break;
+		    goto lab2;
+	    default:
+		lab3: if (i++) break;
+		    goto lab3;
+	}
+	unless (i == 2) puts("bad 11.2");
+
+	/*
+	 * Test id: at end of case expression.  At one point this used
+	 * to cause a syntax error.
+	 */
+
+	i = 0;
+	switch (0) {
+	    case i:
+		++i;
+		break;
+	    default:
+		puts("bad 12.1");
+		break;
+	}
+	unless (i == 1) puts("bad 12.2");
+
+	i = 0;
+	switch (0) {
+	    case 1+i-1-i:
+		++i;
+		break;
+	    default:
+		puts("bad 12.3");
+		break;
+	}
+	unless (i == 1) puts("bad 12.4");
 }
 switch_1();
 } -output {}
@@ -11762,6 +11817,7 @@ test src-mappings-2 {test bytecode <-> source-file-offset mappings 2} -body {
 int f0() { return (0); }
 int f1(int i) { return (1); }
 int f2(int i, int j) { return (2); }
+int f3(string opt, int i) {}
 void
 src_mappings_2()
 {
@@ -11805,6 +11861,7 @@ src_mappings_2()
 	f1(i1);
 	f2(i1, i2);
 	f2(i1, i2 + f1(2));
+	f3(opt: i3);  // try this b/c at one point we were injecting an extra :
 
 	/* Check that each binary and unary operator gets a mapping. */
 	(tcl)i;
@@ -11864,6 +11921,9 @@ src_mappings_2()
 	s =~ s/x/y/g;
 	s =~ s/x/y/ig;
 
+	/* Check ?: operator. */
+	i = (i>j)?(i-1):(j-1);
+
 	/* Check interpolated strings. */
 	s = "abc${t}";
 	s = "${t}xyz";
@@ -11905,6 +11965,7 @@ src_mappings_2
 .*Command \d+: "f2\(i1, i2 \+ f1\(2\)\)"
 .*Command \d+: "i2 \+ f1\(2\)"
 .*Command \d+: "f1\(2\)"
+.*Command \d+: "f3\(opt: i3\)"
 .*Command \d+: "\(tcl\)i"
 .*Command \d+: "\(string\)i"
 .*Command \d+: "\(widget\)i"
@@ -11959,6 +12020,9 @@ src_mappings_2
 .*Command \d+: "s =~ s/x/y/i"
 .*Command \d+: "s =~ s/x/y/g"
 .*Command \d+: "s =~ s/x/y/ig"
+.*Command \d+: "\(i>j\)\?\(i-1\):\(j-1\)"
+.*Command \d+: "\(i-1\)"
+.*Command \d+: "\(j-1\)"
 .*Command \d+: "\\"abc\$\{t\}\\""
 .*Command \d+: "s = \\"abc\$\{t\}\\""
 .*Command \d+: "\\"\$\{t\}xyz\\""
@@ -11999,7 +12063,6 @@ src_mappings_3()
 {
 	/*
 	 * This test checks the mappings for statements.
-	 * Note: avoid tabs in the source to make the test regexp clearer.
 	 */
 
 	int i, j, k, v;
@@ -12017,6 +12080,10 @@ src_mappings_3()
 	for (i = 0; i < 10; ++i) f();
 	foreach (k => v in fh()) f();
 	foreach (i,j in fa()) f();
+	switch (0) {
+		case i: ++i; break;
+		default: break;
+	}
 	push (&a, f());
 	/* Check break and continue. */
 	do {
@@ -12048,6 +12115,9 @@ src_mappings_3
 .*Command \d+: "fa\(\)"
 .*Command \d+: "foreach \(i,j in fa\(\)\) f\(\);"
 .*Command \d+: "f\(\)"
+.*Command \d+: "switch \(0\) \{\\n\\t\\tcase i: \+\+i; break;\\n\\t\\tdefault: break;\\n\\t\}"
+.*Command \d+: "i"
+.*Command \d+: "default:"
 .*Command \d+: "push \(&a, f\(\)\)"
 .*Command \d+: "break"
 .*Command \d+: "continue"
@@ -15743,6 +15813,26 @@ L6:
 .*: L Error: label L6 referenced but not defined
 .*: L Error: label L5 referenced but not defined
 }
+
+test goto-4 {check goto with label on first statement in the scope} -body {
+#lang L
+void goto_4()
+{
+	int	i = 0;
+
+	/*
+	 * This is a regression test for a parser bug where a labeled
+	 * stmt that was first in the stmt list wasn't being reversed,
+	 * causing the label to get the wrong offset.  With that bug
+	 * this test would find i == 1.
+	 */
+	if (1) {
+		L: unless (i++) goto L;
+	}
+	unless (i == 2) puts("bad");
+}
+goto_4();
+} -output {}
 
 test fntrace-1 {check function tracing, pragma syntax} -body {
 #lang L

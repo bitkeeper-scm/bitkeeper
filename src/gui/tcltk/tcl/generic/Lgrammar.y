@@ -122,7 +122,6 @@ extern int	L_lex (void);
 %token T_GREATEREQ ">="
 %token T_GT "gt"
 %token <s> T_ID "id"
-%token <s> T_ID_COLON "id:"
 %token T_IF "if"
 %token T_INSTANCE "instance"
 %token T_INT "int"
@@ -188,7 +187,7 @@ extern int	L_lex (void);
 %left LOWEST
 // The next four %nonassoc lines are defined to resolve a conflict with
 // labeled statements (see the stmt nonterm).
-%nonassoc T_IF T_UNLESS T_RETURN T_ID T_ID_COLON T_STR_LITERAL T_LEFT_INTERPOL
+%nonassoc T_IF T_UNLESS T_RETURN T_ID T_STR_LITERAL T_LEFT_INTERPOL
 %nonassoc T_STR_BACKTICK T_INT_LITERAL T_FLOAT_LITERAL T_TYPE T_WHILE
 %nonassoc T_FOR T_DO T_DEFINED T_STRING T_FOREACH T_BREAK T_CONTINUE
 %nonassoc T_SPLIT T_GOTO T_WIDGET T_PRAGMA T_SWITCH
@@ -225,7 +224,7 @@ extern int	L_lex (void);
 %type <Expr> expr expression_stmt argument_expr_list opt_arg re_or_string
 %type <Expr> id id_list string_literal cmdsubst_literal dotted_id
 %type <Expr> regexp_literal regexp_literal_mod subst_literal interpolated_expr
-%type <Expr> list list_element case_expr
+%type <Expr> list list_element case_expr option_arg
 %type <VarDecl> parameter_list parameter_decl_list parameter_decl
 %type <VarDecl> declaration_list declaration declaration2
 %type <VarDecl> init_declarator_list declarator_list init_declarator
@@ -528,15 +527,15 @@ fundecl_tail1:
 	;
 
 stmt:
-	  T_ID_COLON stmt
+	  T_ID ":" stmt
+	{
+		$$ = ast_mkStmt(L_STMT_LABEL, NULL, @1.beg, @3.end);
+		$$->u.label = $1;
+		$$->next = $3;
+	}
+	| T_ID ":" %prec LOWEST
 	{
 		$$ = ast_mkStmt(L_STMT_LABEL, NULL, @1.beg, @2.end);
-		$$->u.label = $1;
-		$$->next = $2;
-	}
-	| T_ID_COLON %prec LOWEST
-	{
-		$$ = ast_mkStmt(L_STMT_LABEL, NULL, @1.beg, @1.end);
 		$$->u.label = $1;
 	}
 	| unlabeled_stmt
@@ -681,11 +680,11 @@ switch_case:
 		REVERSE(Stmt, next, $6);
 		$$ = ast_mkCase($3, $6, @1.beg, @6.end);
 	}
-	| "default" opt_stmt_list
+	| "default" ":" opt_stmt_list
 	{
 		/* The default case is distinguished by a NULL expr. */
-		REVERSE(Stmt, next, $2);
-		$$ = ast_mkCase(NULL, $2, @1.beg, @2.end);
+		REVERSE(Stmt, next, $3);
+		$$ = ast_mkCase(NULL, $3, @1.beg, @2.end);
 	}
 	;
 
@@ -765,6 +764,10 @@ opt_stmt_list:
 
 stmt_list:
 	  stmt
+	{
+		REVERSE(Stmt, next, $1);
+		$$ = $1;
+	}
 	| stmt_list stmt
 	{
 		if ($2) {
@@ -844,16 +847,10 @@ parameter_decl:
 
 argument_expr_list:
 	  expr %prec T_COMMA
-	| T_ID_COLON
+	| option_arg
+	| option_arg expr %prec T_COMMA
 	{
-		$$ = ast_mkConst(L_string, @1.beg, @1.end);
-		$$->u.string = cksprintf("-%s", $1);
-	}
-	| T_ID_COLON expr %prec T_COMMA
-	{
-		Expr *e = ast_mkConst(L_string, @1.beg, @1.end);
-		e->u.string = cksprintf("-%s", $1);
-		$2->next = e;
+		$2->next = $1;
 		$$ = $2;
 		$$->node.beg = @1.beg;
 	}
@@ -863,22 +860,38 @@ argument_expr_list:
 		$$ = $3;
 		$$->node.end = @3.end;
 	}
-	| argument_expr_list "," T_ID_COLON
+	| argument_expr_list "," option_arg
 	{
-		Expr *e = ast_mkConst(L_string, @3.beg, @3.end);
-		e->u.string = cksprintf("-%s", $3);
-		e->next = $1;
-		$$ = e;
+		$3->next = $1;
+		$$ = $3;
 		$$->node.end = @3.end;
 	}
-	| argument_expr_list "," T_ID_COLON expr %prec T_COMMA
+	| argument_expr_list "," option_arg expr %prec T_COMMA
 	{
-		Expr *e = ast_mkConst(L_string, @3.beg, @3.end);
-		e->u.string = cksprintf("-%s", $3);
-		$4->next = e;
-		e->next = $1;
+		$4->next = $3;
+		$3->next = $1;
 		$$ = $4;
 		$$->node.end = @4.end;
+	}
+	;
+
+/*
+ * option_arg is an actual parameter "arg:" that becomes "-arg".
+ * Allow both "T_ID:" and "default:" to overcome a nasty grammar
+ * conflict with statement labels that otherwise results.  The scanner
+ * returns T_DEFAULT T_COLON when it sees "default:" but returns T_ID
+ * T_COLON for the other cases even if they include a reserved word.
+ */
+option_arg:
+	  T_ID ":"
+	{
+		$$ = ast_mkConst(L_string, @1.beg, @2.end);
+		$$->u.string = cksprintf("-%s", $1);
+	}
+	| "default" ":"
+	{
+		$$ = ast_mkConst(L_string, @1.beg, @2.end);
+		$$->u.string = cksprintf("-default");
 	}
 	;
 

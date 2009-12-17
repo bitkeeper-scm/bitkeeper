@@ -2273,6 +2273,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 private int
 compile_trinOp(Expr *expr)
 {
+	int	start_off;
 	int	i = 0, n = 0, n2 = 0;
 	Jmp	*end_jmp, *false_jmp;
 
@@ -2334,10 +2335,14 @@ compile_trinOp(Expr *expr)
 	    case L_OP_TERNARY_COND:
 		compile_condition(expr->a);
 		false_jmp = emit_jmp_fwd(INST_JUMP_FALSE4, NULL);
+		start_off = currOffset(L->frame->envPtr);
 		n = compile_expr(expr->b, L_PUSH_VAL);
 		end_jmp = emit_jmp_fwd(INST_JUMP4, NULL);
+		track_cmd(start_off, expr->b);
 		fixup_jmps(&false_jmp);
+		start_off = currOffset(L->frame->envPtr);
 		n2 = compile_expr(expr->c, L_PUSH_VAL);
+		track_cmd(start_off, expr->c);
 		fixup_jmps(&end_jmp);
 		ASSERT(n == n2);
 		if (ispoly(expr->b) || ispoly(expr->c)) {
@@ -3129,7 +3134,8 @@ compile_foreachString(ForEach *loop)
 }
 
 /*
- * Generate code like the following for a switch statement:
+ * Generate code like the following for a switch statement.
+ * XXX TODO: generate a jump table when all cases are constant.
  *
  *	<switch expression>
  * # The following is generated for each case except the default case.
@@ -3161,6 +3167,7 @@ compile_switch(Switch *sw)
 	Expr	*e = sw->expr;
 	Case	*c;
 	int	def_off = -1;
+	int	start_off;
 	Jmp	*break_jmps;
 	Jmp	*next_body_jmp = NULL;
 	Jmp	*next_test_jmp = NULL;
@@ -3168,6 +3175,7 @@ compile_switch(Switch *sw)
 	frame_push(sw, NULL, SWITCH|SEARCH);
 	compile_expr(e, L_PUSH_VAL);
 	for (c = sw->cases; c; c = c->next) {
+		start_off = currOffset(L->frame->envPtr);
 		if (c->expr) {
 			fixup_jmps(&next_test_jmp);
 			TclEmitOpcode(INST_DUP, L->frame->envPtr);
@@ -3185,11 +3193,13 @@ compile_switch(Switch *sw)
 			}
 			next_test_jmp = emit_jmp_fwd(INST_JUMP_FALSE4,
 						     next_test_jmp);
+			track_cmd(start_off, c->expr);
 		} else {  // default case
 			next_test_jmp = emit_jmp_fwd(INST_JUMP4,
 						     next_test_jmp);
 			ASSERT(def_off == -1);
 			def_off = currOffset(L->frame->envPtr);
+			track_cmd(start_off, c);
 		}
 		fixup_jmps(&next_body_jmp);
 		compile_stmts(c->body);
