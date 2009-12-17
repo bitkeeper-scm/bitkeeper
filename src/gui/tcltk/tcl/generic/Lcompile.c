@@ -2876,6 +2876,11 @@ compile_foreachArray(ForEach *loop)
 	Jmp		*break_jumps, *continue_jumps, *false_jump;
 	int		jumpBackDist, jumpBackOffset, infoIndex;
 
+	/* The foreach(k=>v in expr) form is illegal in array iteration. */
+	if (loop->value) {
+		L_errf(loop, "=> illegal in foreach over arrays");
+	}
+
 	/*
 	 * Type-check the value variables.  In "foreach (v1,v2,v3 in
 	 * a)", v* are the value variables or variable list, and a is
@@ -3070,6 +3075,11 @@ compile_foreachString(ForEach *loop)
 	Jmp	*break_jmps, *continue_jmps;
 	Jmp	*cond_jmp = 0;
 	Expr	*id;
+
+	/* The foreach(k=>v in expr) form is illegal in string iteration. */
+	if (loop->value) {
+		L_errf(loop, "=> illegal in foreach over strings");
+	}
 
 	/* Temps for the loop index, string value, and string length. */
 	it_idx  = TclFindCompiledLocal(NULL, 0, 1, L->frame->envPtr);

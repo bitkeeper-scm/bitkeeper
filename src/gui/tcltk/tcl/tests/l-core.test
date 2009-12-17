@@ -4802,6 +4802,22 @@ void loop_1_2_10()
                    ^
 }
 
+test loop-1.2.10.1 {test foreach usage errors} -body {
+#lang L -nowarn
+void loop_1_2_10_1()
+{
+	string	k, s, v;
+	string	a[];
+
+	/* These are all errors. */
+
+	foreach (k=>v in a) {}
+	foreach (k=>v in s) {}
+}
+} -returnCodes error -match glob -result {*8: L Error: => illegal in foreach over arrays
+*9: L Error: => illegal in foreach over strings
+}
+
 test loop-1.2.11 {test that "in" is not reserved} -body {
 #lang L
 void loop_1_2_11()
