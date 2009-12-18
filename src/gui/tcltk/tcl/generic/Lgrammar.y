@@ -665,12 +665,16 @@ switch_stmt:
 	;
 
 switch_cases:
-	  switch_case
-	| switch_cases switch_case
+	  switch_cases switch_case
 	{
-		APPEND(Case, next, $1, $2);
-		$$ = $1;
+		if ($1) {
+			APPEND(Case, next, $1, $2);
+			$$ = $1;
+		} else {
+			$$ = $2;
+		}
 	}
+	| /* epsilon */		{ $$ = NULL; }
 	;
 
 switch_case:

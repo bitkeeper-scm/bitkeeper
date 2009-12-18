@@ -134,6 +134,8 @@ private int	compile_split(Expr *expr);
 private void	compile_stmt(Stmt *stmt);
 private void	compile_stmts(Stmt *stmt);
 private void	compile_switch(Switch *sw);
+private void	compile_switch_fast(Switch *sw);
+private void	compile_switch_slow(Switch *sw);
 private int	compile_trinOp(Expr *expr);
 private void	compile_twiddle(Expr *expr);
 private void	compile_twiddleSubst(Expr *expr);
@@ -3143,9 +3145,27 @@ compile_foreachString(ForEach *loop)
 	fixup_jmps(&break_jmps);
 }
 
+private void
+compile_switch(Switch *sw)
+{
+	Case	*c;
+
+	/*
+	 * If all cases are constant, compile a jump table (fast),
+	 * otherwise compile if-then-else code (slower).
+	 */
+	for (c = sw->cases; c; c = c->next) {
+		if (c->expr && (c->expr->kind != L_EXPR_CONST)) break;
+	}
+	if (c) {
+		compile_switch_slow(sw);
+	} else {
+		compile_switch_fast(sw);
+	}
+}
+
 /*
- * Generate code like the following for a switch statement.
- * XXX TODO: generate a jump table when all cases are constant.
+ * Generate if-then-else code like the following for a switch statement.
  *
  *	<switch expression>
  * # The following is generated for each case except the default case.
@@ -3172,7 +3192,7 @@ compile_foreachString(ForEach *loop)
  *	pop
  */
 private void
-compile_switch(Switch *sw)
+compile_switch_slow(Switch *sw)
 {
 	Expr	*e = sw->expr;
 	Case	*c;
@@ -3182,8 +3202,12 @@ compile_switch(Switch *sw)
 	Jmp	*next_body_jmp = NULL;
 	Jmp	*next_test_jmp = NULL;
 
-	frame_push(sw, NULL, SWITCH|SEARCH);
 	compile_expr(e, L_PUSH_VAL);
+	unless (isint(e) || isstring(e) || ispoly(e)) {
+		L_errf(e, "switch expression must be int or string");
+		return;
+	}
+	frame_push(sw, NULL, SWITCH|SEARCH);
 	for (c = sw->cases; c; c = c->next) {
 		start_off = currOffset(L->frame->envPtr);
 		if (c->expr) {
@@ -3195,16 +3219,14 @@ compile_switch(Switch *sw)
 				compile_expr(c->expr, L_PUSH_VAL);
 				TclEmitOpcode(INST_EQ, L->frame->envPtr);
 			}
-			/* Check both ways to ensure int/float compat. */
-			unless (L_typeck_compat(e->type, c->expr->type) ||
-				L_typeck_compat(c->expr->type, e->type)) {
+			unless (L_typeck_compat(e->type, c->expr->type)) {
 				L_errf(c,
 			      "case type incompatible with switch expression");
 			}
 			next_test_jmp = emit_jmp_fwd(INST_JUMP_FALSE4,
 						     next_test_jmp);
 			track_cmd(start_off, c->expr);
-		} else {  // default case
+		} else {  // default case (grammar ensures there's at most one)
 			next_test_jmp = emit_jmp_fwd(INST_JUMP4,
 						     next_test_jmp);
 			ASSERT(def_off == -1);
@@ -3224,6 +3246,88 @@ compile_switch(Switch *sw)
 	frame_pop();
 	fixup_jmps(&break_jmps);
 	emit_pop();
+}
+
+/*
+ * Generate jump-table code like the following for a switch statement.
+ *
+ *	<switch expression>
+ *      INST_JUMP_TABLE
+ *      jmp default
+ * # The following is generated for each case except the default case.
+ * # All jmps are forward jmps.
+ * next-body:
+ *      <case body>
+ *      jmp next-body
+ * # The following is the default case.
+ * default:
+ * next-body:
+ *      <case body>     (only if default case present)
+ *      jmp next-body   (only if default case present)
+ * # Statement prologue.
+ * next-body:
+ * break-label:  # where break stmts jmp to
+ */
+private void
+compile_switch_fast(Switch *sw)
+{
+	Expr		*e = sw->expr;
+	Case		*c;
+	char		*val;
+	int		jt_idx, new, start_off;
+	Jmp		*break_jmps;
+	Jmp		*default_jmp;
+	Jmp		*next_body_jmp = NULL;
+	Tcl_HashEntry	*hPtr;
+	JumptableInfo	*jt;
+
+	jt = (JumptableInfo *)ckalloc(sizeof(JumptableInfo));
+	Tcl_InitHashTable(&jt->hashTable, TCL_STRING_KEYS);
+	jt_idx = TclCreateAuxData(jt, &tclJumptableInfoType, L->frame->envPtr);
+
+	compile_expr(e, L_PUSH_VAL);
+	unless (isint(e) || isstring(e) || ispoly(e)) {
+		L_errf(e, "switch expression must be int or string");
+		return;
+	}
+
+	frame_push(sw, NULL, SWITCH|SEARCH);
+
+	start_off = currOffset(L->frame->envPtr);
+	TclEmitInstInt4(INST_JUMP_TABLE, jt_idx, L->frame->envPtr);
+	default_jmp = emit_jmp_fwd(INST_JUMP4, NULL);
+
+	for (c = sw->cases; c; c = c->next) {
+		if (c->expr) {
+			if (isint(c->expr)) {
+				val = cksprintf("%lu", c->expr->u.integer);
+			} else {
+				val = cksprintf("%s", c->expr->u.string);
+			}
+			hPtr = Tcl_CreateHashEntry(&jt->hashTable, val, &new);
+			if (new) {
+				Tcl_SetHashValue(hPtr,
+				    (ClientData)(currOffset(L->frame->envPtr) -
+						 start_off));
+			} else {
+				L_errf(c, "duplicate case value");
+			}
+			unless (L_typeck_compat(e->type, c->expr->type)) {
+				L_errf(c,
+			      "case type incompatible with switch expression");
+			}
+		} else {  // default case (grammar ensures there's at most one)
+			fixup_jmps(&default_jmp);
+		}
+		fixup_jmps(&next_body_jmp);
+		compile_stmts(c->body);
+		next_body_jmp = emit_jmp_fwd(INST_JUMP4, NULL);
+	}
+	fixup_jmps(&default_jmp); // no-op if default exists (already fixed up)
+	fixup_jmps(&next_body_jmp);
+	break_jmps = L->frame->break_jumps;
+	frame_pop();
+	fixup_jmps(&break_jmps);
 }
 
 private VarDecl *

@@ -5599,14 +5599,26 @@ void loop_1_7()
 loop_1_7();
 } -output {}
 
-test switch-1 {check switch statement} -body {
+test switch-1.1 {check switch statement, if-then-else code} -body {
 #lang L
-void switch_1()
+/*
+ * This test exercises the case of non-constant case expressions in
+ * switch statements, for which the compiler generates if-then-else
+ * style code.  Only one case value must be non-constant, which is why
+ * you see "0+zero" etc below.
+ */
+void switch_1_1()
 {
 	int	i;
+	int	zero = 0;
 	int	ia[] = { 3, 1, 4, 1 };
 	string	s, s1, s2, s3, s4, s5;
 	string	sa[] = { "abc", "def", "ghi", "JkL" };
+
+	/* Test empty switch statement. */
+	i = 0;
+	switch (++i) {}
+	unless (i == 1) puts("bad 0.1");
 
 	/* Test string and regexp matching. */
 	s = "";
@@ -5645,7 +5657,7 @@ void switch_1()
 	s = "";
 	for (i = 0; i < length(ia); ++i) {
 		switch (ia[i]) {
-		    case 0:
+		    case 0+zero:  // for a non-constant case value
 			puts("bad 2.1");
 			break;
 		    case 1:
@@ -5656,6 +5668,401 @@ void switch_1()
 			puts("bad 2.3");
 			break;
 		    case 3:
+			unless (i == 0) puts("bad 2.4");
+			s .= "3";
+			break;
+		    case 4:
+			unless (i == 2) puts("bad 2.5");
+			s .= "4";
+			break;
+		}
+	}
+	unless (s eq "3141") puts("bad 2.9");
+
+	/* Test case fall through. */
+	s = "";
+	switch (1) {
+	    case 1+zero:
+		s .= "1";
+	    case 2:
+		s .= "2";
+		break;
+	    case 3:
+		s .= "3";
+	}
+	unless (s eq "12") puts("bad 3.1");
+
+	/* Test multiple cases per leg. */
+	s = "";
+	for (i = 0; i < 6; ++i) {
+		switch (i) {
+		    case 0+zero:
+			s .= "0";
+			break;
+		    case 1:
+		    case 2:
+			s .= (string)i;
+			break;
+		    case 3:
+		    case 4:
+		    case 5:
+			s .= (string)i;
+			break;
+		}
+	}
+	unless (s eq "012345") puts("bad 4.1");
+
+	/* Test default case in the end, beginning, and middle of the cases. */
+
+	s = "";
+	switch (3) {
+	    case 0+zero:
+		puts("bad 5.1");
+		break;
+	    default:
+		s .= "d";
+		break;
+	}
+	unless (s eq "d") puts("bad 5.2");
+
+	s = "";
+	switch (3) {
+	    default:
+		s .= "d";
+		break;
+	    case 0+zero:
+		puts("bad 5.3");
+		break;
+	}
+	unless (s eq "d") puts("bad 5.4");
+
+	s = "";
+	switch (3) {
+	    case 1+zero:
+		puts("bad 5.5");
+		break;
+	    default:
+		s .= "d";
+		break;
+	    case 0:
+		puts("bad 5.6");
+		break;
+	}
+	unless (s eq "d") puts("bad 5.7");
+
+	/* Test falling thru to and from the default case. */
+
+	s = "";
+	switch (3) {
+	    case 3+zero:
+		s .= "3";
+	    default:
+		s .= "d";
+		break;
+	}
+	unless (s eq "3d") puts("bad 6.1");
+
+	s = "";
+	switch (3) {
+	    default:
+		s .= "d";
+	    case 0+zero:
+		s .= "0";
+		break;
+	}
+	unless (s eq "d0") puts("bad 6.2");
+
+	s = "";
+	switch (3) {
+	    case 0:
+		s .= "0";
+		break;
+	    default:
+		s .= "d";
+	    case 1+zero:
+		s .= "1";
+		break;
+	}
+	unless (s eq "d1") puts("bad 6.3");
+
+	s = "";
+	switch (3) {
+	    default:
+		s .= "d";
+	    case 1+zero:
+		s .= "1";
+	    case 0:
+		s .= "0";
+	}
+	unless (s eq "d10") puts("bad 6.4");
+
+	s = "";
+	switch (3) {
+	    case 1+zero:
+		s .= "1";
+	    default:
+		s .= "d";
+	    case 0:
+		s .= "0";
+	}
+	unless (s eq "d0") puts("bad 6.5");
+
+	/* Test empty case bodies. */
+
+	s = "";
+	for (i = 0; i < 4; ++i) {
+		switch (i) {
+		    case 0+zero:
+		    case 1:
+		    case 3:
+			s .= (string)i;
+			break;
+		    case 2:
+		    default:
+		}
+	}
+	unless (s eq "013") puts("bad 7.2");
+
+	s = "";
+	switch (2) {
+	    case 2+zero:
+	    default:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.3");
+
+	s = "";
+	switch (0) {
+	    case 2+zero:
+	    default:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.4");
+
+	s = "";
+	switch (2) {
+	    default:
+	    case 2+zero:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.5");
+
+	s = "";
+	switch (0) {
+	    default:
+	    case 2+zero:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.6");
+
+	s = "";
+	switch (2) {
+	    case 2+zero:
+	    default:
+	    case 1:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.7");
+
+	s = "";
+	switch (1) {
+	    case 2+zero:
+	    default:
+	    case 1:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.8");
+
+	s = "";
+	switch (0) {
+	    case 2+zero:
+	    default:
+	    case 1:
+		s .= "x";
+		break;
+	}
+	unless (s eq "x") puts("bad 7.9");
+
+	/* Test various whitespace around regexp, and regexp variations. */
+	s = "";
+	for (i = 0; i < length(sa); ++i) {
+		switch (sa[i]) {
+		    case	/abc/:  // tab between "case" and "/abc"
+			s .= "a";
+			break;
+		    case m|def|:
+			s .= "d";
+			break;
+		    case m#jkl#i:
+			s .= "j";
+			break;
+		}
+	}
+	unless (s eq "adj") puts("bad 8.1");
+
+	/* Test interpolations in regexp's. */
+	s = "";
+	s1 = "ab";
+	s2 = "ef";
+	s3 = "g";
+	s4 = "i";
+	s5 = "jkl";
+	for (i = 0; i < length(sa); ++i) {
+		switch (sa[i]) {
+		    case /${s1}c/:
+			s .= "a";
+			break;
+		    case /d${s2}/:
+			s .= "d";
+			break;
+		    case /${s3}h${s4}/:
+			s .= "g";
+			break;
+		    case /${s5}/i:
+			s .= "j";
+			break;
+		}
+	}
+	unless (s eq "adgj") puts("bad 9.1");
+
+	/* Test $1 $2 etc available in cases. */
+	switch ("This is a test") {
+		case /(test)/:
+			unless ($1 eq "test") puts("bad 10.1");
+			break;
+	}
+	switch ("This is a test") {
+		case /(a) (test)/:
+			unless ($1 eq "a") puts("bad 10.2");
+			unless ($2 eq "test") puts("bad 10.3");
+			break;
+	}
+
+	/* Test labeled statements in cases. */
+
+	i = 0;
+	switch (1) {
+	    case 1+zero:
+		lab1: if (i++) break;
+		    goto lab1;
+	}
+	unless (i == 2) puts("bad 11.1");
+
+	i = 0;
+	switch (0) {
+	    case 1+zero:
+		lab2: if (i++) break;
+		    goto lab2;
+	    default:
+		lab3: if (i++) break;
+		    goto lab3;
+	}
+	unless (i == 2) puts("bad 11.2");
+
+	/*
+	 * Test id: at end of case expression.  At one point this used
+	 * to cause a syntax error.
+	 */
+
+	i = 0;
+	switch (0) {
+	    case i:
+		++i;
+		break;
+	    default:
+		puts("bad 12.1");
+		break;
+	}
+	unless (i == 1) puts("bad 12.2");
+
+	i = 0;
+	switch (0) {
+	    case 1+i-1-i:
+		++i;
+		break;
+	    default:
+		puts("bad 12.3");
+		break;
+	}
+	unless (i == 1) puts("bad 12.4");
+}
+switch_1_1();
+} -output {}
+
+test switch-1.2 {check switch statement, if-then-else code} -body {
+#lang L
+/*
+ * This test exercises the case of constant case expressions in switch
+ * statements, for which the compiler generates a jump table.  This is
+ * basically the above test edited to have only constant case values.
+ */
+void switch_1_2()
+{
+	int	i;
+	int	ia[] = { 3, 1, 4, 1 };
+	string	s;
+	string	sa[] = { "abc", "def", "ghi", "JkL", "00" };
+
+	/* Test string matching. */
+	s = "";
+	for (i = 0; i < length(sa); ++i) {
+		switch (sa[i]) {
+		    case "abc":
+			unless (i == 0) puts("bad 1.1");
+			s .= "a";
+			break;
+		    case "def":
+			unless (i == 1) puts("bad 1.2");
+			s .= "d";
+			break;
+		    case "ghi":
+			unless (i == 2) puts("bad 1.3");
+			s .= "g";
+			break;
+		    case "jkl":
+			puts("bad 1.4");
+			break;
+		    case "JkL":
+			unless (i == 3) puts("bad 1.5");
+			s .= "j";
+			break;
+		    case "bad":
+			puts("bad 1.6");
+			break;
+		    case "also bad":
+			puts("bad 1.7");
+			break;
+		    case "0":  // should not match "00"
+			puts("bad 1.8");
+			break;
+		}
+	}
+	unless (s eq "adgj") {puts("bad 1.9"); puts(s); }
+
+	/*
+	 * Test matching on ints.  The leading zeros check that the
+	 * compiler isn't doing a pure string match.
+	 */
+	s = "";
+	for (i = 0; i < length(ia); ++i) {
+		switch (ia[i]) {
+		    case 0:
+			puts("bad 2.1");
+			break;
+		    case 01:
+			unless ((i == 1) || (i == 3)) puts("bad 2.2");
+			s .= "1";
+			break;
+		    case 2:
+			puts("bad 2.3");
+			break;
+		    case 003:
 			unless (i == 0) puts("bad 2.4");
 			s .= "3";
 			break;
@@ -5737,6 +6144,14 @@ void switch_1()
 		break;
 	}
 	unless (s eq "d") puts("bad 5.7");
+
+	/* Test lone default clause. */
+	s = "";
+	switch (3) {
+	    default:
+		s .= "d";
+	}
+	unless (s eq "d") puts("bad 5.8");
 
 	/* Test falling thru to and from the default case. */
 
@@ -5877,61 +6292,6 @@ void switch_1()
 	}
 	unless (s eq "x") puts("bad 7.9");
 
-	/* Test various whitespace around regexp, and regexp variations. */
-	s = "";
-	for (i = 0; i < length(sa); ++i) {
-		switch (sa[i]) {
-		    case	/abc/:  // tab between "case" and "/abc"
-			s .= "a";
-			break;
-		    case m|def|:
-			s .= "d";
-			break;
-		    case m#jkl#i:
-			s .= "j";
-			break;
-		}
-	}
-	unless (s eq "adj") puts("bad 8.1");
-
-	/* Test interpolations in regexp's. */
-	s = "";
-	s1 = "ab";
-	s2 = "ef";
-	s3 = "g";
-	s4 = "i";
-	s5 = "jkl";
-	for (i = 0; i < length(sa); ++i) {
-		switch (sa[i]) {
-		    case /${s1}c/:
-			s .= "a";
-			break;
-		    case /d${s2}/:
-			s .= "d";
-			break;
-		    case /${s3}h${s4}/:
-			s .= "g";
-			break;
-		    case /${s5}/i:
-			s .= "j";
-			break;
-		}
-	}
-	unless (s eq "adgj") puts("bad 9.1");
-
-	/* Test $1 $2 etc available in cases. */
-	switch ("This is a test") {
-		case /(test)/:
-			unless ($1 eq "test") puts("bad 10.1");
-			break;
-	}
-	switch ("This is a test") {
-		case /(a) (test)/:
-			unless ($1 eq "a") puts("bad 10.2");
-			unless ($2 eq "test") puts("bad 10.3");
-			break;
-	}
-
 	/* Test labeled statements in cases. */
 
 	i = 0;
@@ -5952,35 +6312,8 @@ void switch_1()
 		    goto lab3;
 	}
 	unless (i == 2) puts("bad 11.2");
-
-	/*
-	 * Test id: at end of case expression.  At one point this used
-	 * to cause a syntax error.
-	 */
-
-	i = 0;
-	switch (0) {
-	    case i:
-		++i;
-		break;
-	    default:
-		puts("bad 12.1");
-		break;
-	}
-	unless (i == 1) puts("bad 12.2");
-
-	i = 0;
-	switch (0) {
-	    case 1+i-1-i:
-		++i;
-		break;
-	    default:
-		puts("bad 12.3");
-		break;
-	}
-	unless (i == 1) puts("bad 12.4");
 }
-switch_1();
+switch_1_2();
 } -output {}
 
 test switch-2 {test multiple-default-clause error in switch stmt} -body {
@@ -6053,21 +6386,92 @@ void switch_3_2()
 .*5: L Error: illegal regular expression modifier
 }
 
-test switch-4 {test legal types in switch stmt} -body {
+test switch-3.3 {test duplicate case values in switch stmt} -body {
 #lang L
-void switch_4()
+void switch_3_3()
 {
-	/* These are all legal. */
-	switch (0) {
-		case 0.0:
+	switch ((poly)0) {
 		case 0:
-	}
-	switch (0.0) {
-		case 0.0:
 		case 0:
+		case 1:
+		case 1:
+		case 1:
+		case "s":
+		case "s":
 	}
 }
-} -output {}
+} -returnCodes error -match regexp -result {.*5: L Error: duplicate case value
+.*7: L Error: duplicate case value
+.*8: L Error: duplicate case value
+.*10: L Error: duplicate case value
+}
+
+test switch-4 {test illegal types in switch stmt} -body {
+#lang L
+void switch_4_v() {}
+class switch_4_c {}
+void switch_4()
+{
+	int		arr[];
+	string		hsh{int};
+	switch_4_c	obj;
+	struct { int i,j; } st;
+
+	/* These are all errors - only int, string, and poly are legal. */
+
+	/* constant case expressions */
+	switch (0.0) {
+		case 0:
+	}
+	switch(arr) {
+		case 0:
+	}
+	switch(hsh) {
+		case 0:
+	}
+	switch(obj) {
+		case 0:
+	}
+	switch(st) {
+		case 0:
+	}
+	switch(switch_4_v()) {
+		case 0:
+	}
+
+	/* non-constant case expressions */
+	switch (0.0) {
+		case 1+2:
+	}
+	switch(arr) {
+		case 1+2:
+	}
+	switch(hsh) {
+		case 1+2:
+	}
+	switch(obj) {
+		case 1+2:
+	}
+	switch(st) {
+		case 1+2:
+	}
+	switch(switch_4_v()) {
+		case 1+2:
+	}
+}
+} -returnCodes error -match regexp -result {.*13: L Error: switch expression must be int or string
+.*16: L Error: switch expression must be int or string
+.*19: L Error: switch expression must be int or string
+.*22: L Error: switch expression must be int or string
+.*25: L Error: switch expression must be int or string
+.*28: L Error: switch expression must be int or string
+.*33: L Error: switch expression must be int or string
+.*36: L Error: switch expression must be int or string
+.*39: L Error: switch expression must be int or string
+.*42: L Error: switch expression must be int or string
+.*45: L Error: switch expression must be int or string
+.*48: L Error: switch expression must be int or string
+}
 
 test struct-1.0 {structs} -body {
 #lang L

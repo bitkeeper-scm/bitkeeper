@@ -796,7 +796,8 @@ can be used as case expressions:
             break;
     }
 
-The default case is optional.
+The default case is optional.  The expression being switched on
+must be of type integer, string or poly.
 
 =item break and continue
 
