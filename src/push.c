@@ -394,6 +394,7 @@ genpatch(int level, FILE *wf, char *rev_list, int isLocal)
 	} else {
 		makepatch[n++] = "-C"; /* old-bk, compat mode */
 	}
+	if (bkd_hasFeature("fastpatch")) makepatch[n++] = "-F";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*

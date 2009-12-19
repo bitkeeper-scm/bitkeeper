@@ -253,6 +253,7 @@ cmd_pull_part2(int ac, char **av)
 	} else {
 		makepatch[n++] = "-C"; /* old-bk, use compat mode */
 	}
+	if (bk_hasFeature("fastpatch")) makepatch[n++] = "-F";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*

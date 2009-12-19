@@ -50,6 +50,8 @@
 #include "sccs.h"
 #include "range.h"
 
+private	int	fastWeave(sccs *s, FILE *out);
+
 /*
  * Initialize the structure used by cset_insert according to how
  * many csets are going to be added.
@@ -58,7 +60,7 @@ int
 cweave_init(sccs *s, int extras)
 {
 	assert(s);
-	assert(s->state & S_CSET);
+	// assert(s->state & S_CSET);
 	assert(!s->locs);
 	s->iloc = 1;
 	s->nloc = extras + 1;
@@ -95,13 +97,15 @@ earlier(sccs *s, delta *a, delta *b)
  * XXX Do we need any special processing for meta delta?
  */
 delta *
-cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
+cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 {
 	int	i, error, added = 0;
 	delta	*d, *e, *p;
 	ser_t	serial = 0; /* serial number for 'd' */ 
 	char	*t, *r;
 	char	**syms = 0;
+	char	key[MAXKEY];
+	int	keep;
 
 	assert(iF);
 
@@ -109,6 +113,26 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	 * Get the "new" delta from the mmaped patch file (iF)
 	 */
 	d = sccs_getInit(s, 0, iF, DELTA_PATCH, &error, 0, &syms);
+	if (fast) {
+		sccs_sdelta(s, d, key);
+		if (e = sccs_findKey(s, key)) {
+			keep = 0;
+			if (e->dangling) {
+				e->dangling = 0;
+				keep = 1;
+			}
+			if (!(e->flags & D_CSET) &&
+			   (d->flags & D_CSET)) {
+			   	e->flags |= D_CSET;
+				keep = 1;
+			}
+			sccs_freetree(d);
+			d = keep ? e : 0;
+			serial = e->serial;
+			goto done;
+		}
+	}
+	d->flags |= D_REMOTE;
 
 	/*
 	 * Insert new delta 'd' into s->table in time sorted order
@@ -178,11 +202,9 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	 * Note: this is just linked enough that we can finish takepatch,
 	 * it is NOT a fully linked tree.
 	 */
-	if (parentKey) {
-		p = sccs_findKey(s, parentKey);
-		assert(p);
-		d->pserial = p->serial;
-		d->parent = p;
+	if (parent) {
+		d->pserial = parent->serial;
+		d->parent = parent;
 	}
 
 	/*
@@ -193,29 +215,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	assert((d->serial == 0) || (d->serial > d->pserial));
 
 	sccs_inherit(s, d);
-	if ((d->type == 'D') && (s->tree != d)) d->same = 1;
-
-	/*
-	 * Save dF info, used by cset_write() later
-	 * Note: meta delta have NULL dF
-	 */
-	assert(s->iloc < s->nloc);
-	s->locs[s->iloc].p = NULL;
-	s->locs[s->iloc].len = 0;
-	s->locs[s->iloc].serial = serial;
-	if (dF && dF->where) {
-		s->locs[s->iloc].p = dF->where;
-		s->locs[s->iloc].len = dF->size;
-
-		/*
-		 * Fix up d->added
-		 */
-		t = dF->where;
-		r = t + dF->size - 1;
-		while ( t <= r) if (*t++ == '\n') added++;
-		d->added = added - 1;
-	}
-	s->iloc++;
+	if (!fast && (d->type == 'D') && (s->tree != d)) d->same = 1;
 
 	/*
 	 * Fix up tag/symbols
@@ -257,6 +257,30 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 			exit(1);
 		}
 	}
+done:
+	/*
+	 * Save dF info, used by cset_write() later
+	 * Note: meta delta have NULL dF
+	 */
+	assert(s->iloc < s->nloc);
+	s->locs[s->iloc].p = NULL;
+	s->locs[s->iloc].len = 0;
+	s->locs[s->iloc].serial = serial;
+	if (dF && dF->where) {
+		s->locs[s->iloc].p = dF->where;
+		s->locs[s->iloc].len = dF->size;
+
+		unless (fast) {
+			/*
+			 * Fix up d->added
+			 */
+			t = dF->where;
+			r = t + dF->size - 1;
+			while ( t <= r) if (*t++ == '\n') added++;
+			d->added = added - 1;
+		}
+	}
+	s->iloc++;
 
 	return (d);
 }
@@ -265,14 +289,14 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
  * Write out the new ChangeSet file.
  */
 int
-cset_write(sccs *s, int spinners)
+cset_write(sccs *s, int spinners, int fast)
 {
 	FILE	*f;
 	int	i;
 	delta	*d;
 
 	assert(s);
-	assert(s->state & S_CSET);
+	// assert(s->state & S_CSET);
 	assert(s->locs);
 
 	/*
@@ -281,15 +305,40 @@ cset_write(sccs *s, int spinners)
 	 * correctly we need to create them here. First we invalidate
 	 * the sfind() cache and then call the code used by dinsert()
 	 * to update d->kid and d->siblings.
+	 *
+	 * NOTE: kidlink uses samebranch, so needs renumber to be correct.
+	 * Conceptually, that's backwards, as kidlink should be graph
+	 * shape based and then renumber could go fast because it
+	 * could trust kid pointers.
 	 */
 	s->ser2dsize = 0;
+	sccs_renumber(s, SILENT, CSET(s) ? spinners : 0);
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, i)) continue;
 		d->kid = d->siblings = 0;
 		sccs_kidlink(d);
 	}
-	sccs_renumber(s, SILENT, spinners);
-
+	/*
+	 * update the title section with the time sorted newest
+	 * inner code lifted from sccs_delta in the PATCH part
+	 * XXX can't we just look at s->tree and be done?
+	 */
+	if (fast) {
+		for (d = s->table; d; d = d->next) {
+			if (d->flags & D_TEXT) {
+				unless (d->flags & D_REMOTE) break;
+				if (s->text) {
+					freeLines(s->text, free);
+					s->text = 0;
+				}
+				EACH(d->text) {
+					s->text = addLine(
+					    s->text, strnonldup(d->text[i]));
+				}
+				break;
+			}
+		}
+	}
 	unless (f = fopen(sccs_Xfile(s, 'x'), "w")) {
 		perror(sccs_Xfile(s, 'x'));
 		return (-1);
@@ -300,7 +349,11 @@ cset_write(sccs *s, int spinners)
 		fclose(f);
 		return (-1);
 	}
-	if (sccs_csetPatchWeave(s, f)) return (-1);
+	if (fast) {
+		if (fastWeave(s, f)) return (-1);
+	} else {
+		if (sccs_csetPatchWeave(s, f)) return (-1);
+	}
 	fseek(f, 0L, SEEK_SET);
 	fprintf(f, "\001H%05u\n", s->cksum);
 	if (fclose(f)) perror(sccs_Xfile(s, 'x'));
@@ -311,4 +364,79 @@ cset_write(sccs *s, int spinners)
 		return (-1);
 	}
 	return (0);
+}
+
+/*
+ * This is an interface glue piece to take the legacy iloc stuff
+ * and connect it to the new interface way
+ */
+private	int
+fastWeave(sccs *s, FILE *out)
+{
+	u32	i, base, index, offset;
+	delta	*d;
+	loc	*lp;
+	ser_t	*weavemap = 0;
+	char	**patchmap = 0;
+	MMAP	*fastpatch = 0;
+	int	rc = 0;
+
+	assert(s);
+	// assert(s->state & S_CSET);
+	assert(s->locs);
+	lp = s->locs;
+
+	/*
+	 * weavemap is used to renumber serials in the weave
+	 * map(A) -> B, where map(A) is weavemap[A - map[0]],
+	 * meaning weavemap[0] is A; ie, A maps to itself.
+	 * And serials > A map to a big number to create the
+	 * holes filled in by the new data coming in.
+	 *
+	 * patchmap is addLines mapping patch serial number (1..n) to
+	 * serial to use in the weave.  It does this by being an addLines
+	 * of pointers to d, then uses d->serial to write the weave.
+	 * Note: patchmap could be empty if say, if we are updating
+	 * a dangling delta pointer or cset mark.
+	 */
+	d = sfind(s, lp[1].serial);
+	assert(d);
+	base = d->serial - 1;
+	/* allocating more than needed (by at the end, "offset" are wasted) */
+	weavemap = (ser_t *)calloc((s->nextserial - base), sizeof(ser_t));
+	assert(weavemap);
+	index = base;
+	offset = 0;
+	for (i = 1; i < s->iloc; i++) {
+		d = sfind(s, lp[i].serial);
+		assert(d);
+		patchmap = addLine(patchmap, d);
+		unless (d->flags & D_REMOTE) continue;
+		while (index + offset < d->serial) {
+			weavemap[index - base] = index + offset;
+			index++;
+		}
+		offset++;
+	}
+	while (index + offset < s->nextserial) {
+		weavemap[index - base] = index + offset;
+		index++;
+	}
+
+	/*
+	 * XXX: mrange (in extractDelta) to p,len (above in cset_insert)
+	 * and now back to mrange to give to the diff reader. Wacky.
+	 * None of it is needed -- just weave in the stream and
+	 * terminate if a blank line.
+	 */
+	i = s->iloc - 1; /* set index to final element in array */
+	assert(i > 0); /* base 1 data structure */
+	fastpatch = lp[i].len ? mrange(lp[i].p, lp[i].p + lp[i].len, "b") : 0;
+
+	/* doit */
+	rc = sccs_fastWeave(s, weavemap, patchmap, fastpatch, out);
+	mclose(fastpatch);
+	freeLines(patchmap, 0);
+	free(weavemap);
+	return (rc);
 }

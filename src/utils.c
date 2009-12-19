@@ -836,6 +836,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	 */
 	fprintf(f, "putenv BK_FEATURES=lkey:1,BAMv2,mSFIO");
 	unless (getenv("_BK_NO_PATCHSFIO")) fputs(",pSFIO", f);
+	unless (getenv("_BK_NO_FASTPATCH")) fputs(",fastpatch", f);
 	fputc('\n', f);
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
@@ -965,6 +966,7 @@ sendServerInfoBlock(int is_rclone)
 	 */
 	out("\nFEATURES=pull-r,BAMv2");
 	unless (getenv("_BK_NO_PATCHSFIO")) out(",pSFIO");
+	unless (getenv("_BK_NO_FASTPATCH")) out(",fastpatch");
 
 	if (repoid = proj_repoID(0)) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);

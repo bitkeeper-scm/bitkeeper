@@ -21,6 +21,7 @@ typedef	struct cset {
 	int	md5out;		/* the revs printed are as md5keys */
 	int	doBAM;		/* send BAM data */
 	int	compat;		/* do not send new sfiles in sfio */
+	int	fastpatch;	/* enable fast patch mode */
 
 	/* numbers */
 	int	tooMany;	/* send whole sfiles if # deltas > tooMany */
@@ -60,13 +61,16 @@ makepatch_main(int ac, char **av)
 
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
-	while ((c = getopt(ac, av, "BCdM;r|sqv")) != -1) {
+	while ((c = getopt(ac, av, "BCdFM;r|sqv")) != -1) {
 		if (i == 14) goto usage;
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
 		    case 'C': copts.compat = 1; break;
 		    case 'd':					/* doc 2.0 */
 			nav[++i] = "-d";
+			break;
+		    case 'F':					/* undoc */
+			nav[++i] = "-F";
 			break;
 		    case 'M': copts.tooMany = atoi(optarg); break;
 		    case 'r':					/* doc 2.0 */
@@ -129,11 +133,12 @@ cset_main(int ac, char **av)
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
 
-	while ((c = getopt(ac, av, "5BCd|DfHhi;lm|M|qr|svx;")) != -1) {
+	while ((c = getopt(ac, av, "5BCd|DFfHhi;lm|M|qr|svx;")) != -1) {
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
+		    case 'F': copts.fastpatch++; break;		/* undoc */
 		    case 'h': copts.historic++; break;		/* undoc? 2.0 */
 		    case 'H': copts.hide_cset++; break;		/* undoc 2.0 */
 		    case 'i':					/* doc 2.0 */
@@ -227,6 +232,11 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 		fprintf(stderr, "cset: cannot find package root.\n");
 		return (1);
 	}
+	if (getenv("_BK_NO_FASTPATCH")) {
+		copts.fastpatch = 0;
+	}
+	/* with a onepass patch, nothing is too much */
+	if (copts.fastpatch) copts.tooMany = 0;
 
 	/*
 	 * If doing include/exclude, go do it.
@@ -539,6 +549,7 @@ marklist(char *file)
 
 	bzero(&cs, sizeof(cs));
 	cs.mark++;
+	cs.fastpatch = copts.fastpatch;	/* sccs_patch */
 
 	unless (list = fopen(file, "r")) {
 		perror(file);
@@ -668,7 +679,7 @@ again:	/* doDiffs can make it two pass */
 	if (!cs->doDiffs && cs->makepatch) {
 		fputs("\n", stdout);
 		fputs(PATCH_PATCH, stdout);
-		fputs(PATCH_CURRENT, stdout);
+		fputs(cs->fastpatch ? PATCH_FAST : PATCH_CURRENT, stdout);
 		fputs(PATCH_REGULAR, stdout);
 		fputs("\n", stdout);
 	}
@@ -1094,7 +1105,10 @@ private	void
 sccs_patch(sccs *s, cset_t *cs)
 {
 	delta	*d;
-	int	deltas = 0, csets = 0;
+	ser_t	*patchmap = 0;	/* patch map */
+	int	rc = 0;
+	int	deltas = 0, csets = 0, last = 0;
+	int	outdiffs = 0;
 	int	prs_flags = (PRS_PATCH|SILENT);
 	int	i, n, newfile, hastip;
 	delta	**list;
@@ -1121,6 +1135,7 @@ sccs_patch(sccs *s, cset_t *cs)
 		unless (d->flags & D_SET) continue;
 		unless (gfile) gfile = d->pathname;
 		n++;
+		unless (last) last = n;
 		list = (delta **)addLine((char **)list, d);
 		if (d->hash && BAM(s) && copts.doBAM) {
 			cs->BAM = addLine(cs->BAM,
@@ -1151,8 +1166,13 @@ sccs_patch(sccs *s, cset_t *cs)
 	 * changes.
 	 * Spit out the root rev so we can find if it has moved.
 	 */
+	if (cs->fastpatch) {
+		prs_flags |= PRS_FASTPATCH;
+		patchmap = calloc(s->nextserial, sizeof(ser_t));
+	}
 	for (i = n; i > 0; i--) {
 		d = list[i];
+		if (patchmap) patchmap[d->serial] = n - i + 1;
 		assert(d);
 		if (cs->verbose > 2) fprintf(stderr, "%s ", d->rev);
 		if ((cs->verbose == 2) && !cs->notty) {
@@ -1186,23 +1206,35 @@ sccs_patch(sccs *s, cset_t *cs)
 		printf("\n");
 		/* takepatch lists tags+commits so we do too */
 		if (CSET(s)) csets++;
-		if (d->type == 'D') {
-			int	rc = 0;
-
+		if (cs->fastpatch) {
+			/*
+			 * put a multi-delta patch on the newest delta
+			 * pedantically, put out a patch for I1-E1
+			 * can make for better diff -r results.
+			 */
+			outdiffs += d->added + d->deleted + (d->serial == 1);
+			if ((i == last) && outdiffs) {
+				rc = sccs_patchDiffs(s, patchmap, "-");
+			}
+		} else unless (TAG(d)) {
 			if (CSET(s)) {
 				if (d->added) rc = cset_diffs(cs, d->serial);
 			} else if (!BAM(s)) {
 				rc = sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
 			}
-			if (rc) { /* sccs_getdiffs errored */
-				fprintf(stderr,
-				    "Patch aborted, sccs_getdiffs %s failed\n",
-				    s->sfile);
-				cset_exit(1);
-			}
+		}
+		if (rc) { /* sccs_getdiffs errored */
+			fprintf(stderr,
+			    "Patch aborted, sccs_getdiffs %s failed\n",
+			    s->sfile);
+			cset_exit(1);
 		}
 		printf("\n");
 		deltas++;
+	}
+	if (patchmap) {
+		free(patchmap);
+		patchmap = 0;
 	}
 	if ((cs->verbose == 2) && !cs->notty) {
 		fprintf(stderr, "%d revisions\r", deltas);

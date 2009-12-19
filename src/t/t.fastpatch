@@ -1,0 +1,190 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# makepatch new files as deltas
+_BK_NO_PATCHSFIO=1
+export _BK_NO_PATCHSFIO
+
+# count how many fastpatchs in a patch file
+# patchcount file want-count
+patchcount() {
+	test -n "$_BK_NO_PATCHSFIO" || return 0
+	X=`grep '^F$' "$1" | wc -l`
+	test $X -eq $2 || {
+		echo failed
+		echo "wanted $2 and got $X"
+		exit 1
+	}
+}
+
+# use this to make an sfile shorter
+# chopfile template sfile lines-in-file
+chopfile() {
+	rm -f $2
+	head -$3 $1 | bk undos > $2
+	chmod 444 $2
+	# XXX: this is not needed?  It should be:
+	# bk admin -z $2
+}
+
+set -e
+
+echo -------------- makepatch -F tests
+echo $N Tags only - no patch ........................................$NL
+commercial project
+bk tag $Q BASE
+bk changes -nd'$if(:DT:=T){:KEY:}' | bk makepatch -F - > patch
+patchcount patch 0
+echo OK
+
+echo $N New file - cset patch and file patch ........................$NL
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+bk makepatch -F -r+ > patch
+patchcount patch 2
+echo OK
+
+echo $N Null delta - cset patch and no file patch ...................$NL
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -ynull
+bk makepatch -F -r+ > patch
+patchcount patch 1
+echo OK
+
+echo $N Whole repo to this point in time -- cset and file ...........$NL
+bk makepatch -F -r.. > patch
+patchcount patch 6
+echo OK
+
+echo -------------- takepatch tests
+echo $N Whole repo to this point in time -- cset and file ...........$NL
+cd ..
+mkdir empty
+cd empty
+bk takepatch -i < ../project/patch || exit 1
+# XXX: Note: the resolver doesn't work in this repo, and it is not
+# because of fastpatch -- note there are no takepatch -i tests in
+# t.takepatch -- bk sane fails when resolver starts because there is
+# no config or ChangeSet file in the main repo.
+# For here, just compare with the RESYNC dir and call it good enough.
+cd RESYNC || exit 2
+bk -r | while read file; do
+	cmp $file ../../project/$file || echo failed $file
+done
+echo OK
+
+echo $N sfiles end early ............................................$NL
+# XXX not comprehensive, but give some testing to the EOF handling
+cd "$HERE"
+cd project || exit 1
+bk edit $Q foo
+cat <<EOF > foo
+one
+two
+three
+EOF
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+bk clone $Q . ../bork
+bk edit $Q foo
+echo zero | cat - foo > x
+mv x foo
+bk delta $Q -yinsert foo
+bk commit $Q -yfoo
+bk makepatch -F -r+ > ../bork/insert
+bk undo $Q -sfr+
+bk edit $Q foo
+echo four >> foo
+bk delta $Q -yinsert foo
+bk commit $Q -yfoo
+bk makepatch -F -r+ > ../bork/append
+cd ../bork || exit 1
+mv SCCS/s.foo sfile
+# chop at ^AT -- no weave body
+chopfile sfile SCCS/s.foo 40 
+# This puts a patch at the head of the weave, so we notice a problem
+# because the checksum
+bk takepatch < insert 2> ERR && exit 1
+grep -q "computed sum 458 and patch sum 1692" ERR || exit 2
+# test -d RESYNC && exit 10
+# This one goes to move in the weave but it is not there, so notices EOF
+bk takepatch < append 2> ERR && exit 3
+grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || exit 4
+test -d RESYNC && exit 10
+# chop off after the two:
+chopfile sfile SCCS/s.foo 43 
+test `tail -1 SCCS/s.foo` = two || exit 5
+bk takepatch < insert 2> ERR && exit 6
+grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || exit 7
+test -d RESYNC && exit 10
+# file ends before we get to the line we want
+bk takepatch < append 2> ERR && exit 6
+grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || exit 7
+test -d RESYNC && exit 10
+echo OK
+
+echo -------------- pull tests
+echo $N Works with control A data lines .............................$NL
+cd "$HERE/project"
+bk clone $Q . ../copy
+bk edit $Q foo
+printf "\001control that data\n" > foo
+bk delta $Q -y^A foo
+bk commit $Q -y^A
+cd ../copy
+bk pull $Q || exit 1
+echo OK
+
+echo $N Corrupt source sfile with no data in patch triggers err .....$NL
+cd "$HERE"
+bk clone $Q project corrupt
+cd corrupt || exit 1
+bk edit $Q foo
+echo delete all > foo
+bk delta $Q -yone-liner foo
+bk commit $Q -yone-liner
+# now mess up a line that is not part of the patch, nor part of the delta
+# checksum, as it is from a deleted line in the delta
+perl -pe 's/control/tame/' SCCS/s.foo | bk undos > newfoo
+rm -f SCCS/s.foo
+mv newfoo SCCS/s.foo
+chmod 444 SCCS/s.foo
+bk admin -z foo
+cd ../copy
+bk pull $Q ../corrupt 2> ERR && exit 2
+grep -q "computed sum 4357 and patch sum 4011" ERR || exit 3
+test -d RESYNC && exit 10
+echo OK
+
+echo $N Corrupt source sfile with data in the patch triggers err ....$NL
+# take out the control A stuff locally,
+# a pull will now include the corrupted data
+bk undo $Q -sfr+
+bk pull $Q ../corrupt 2> ERR && exit 2
+grep -q "Bad checksum 1687:1341 in RESYNC/foo" ERR || exit 3
+test -d RESYNC && exit 10
+echo OK
+
+echo $N Corrupt dest sfile with data in the patch triggers err ......$NL
+# take out the control A stuff locally,
+# a pull will now include the corrupted data
+cd ../project
+bk edit $Q foo
+echo at end >> foo
+bk delta $Q -ystuff foo
+bk commit $Q -ystuff
+bk makepatch -F -r+ > ../control.bkp
+cd ../corrupt
+bk takepatch < ../control.bkp 2> ERR && exit 2
+grep -q 'computed sum 3595 and patch sum 3941' ERR || exit 3
+echo OK
