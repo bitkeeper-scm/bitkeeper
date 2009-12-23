@@ -886,7 +886,17 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
 		    p->localFile, p->resyncFile, p->pid, p->me);
 	}
-
+	/*
+	 * XXX: could this be done in cset_write()? As in, do not create
+	 * until it is needed?  This seems to work but may be excess
+	 */
+	if (mkdirf(p->resyncFile) == -1) {
+		if (errno == EINVAL) {
+			getMsg("reserved_name",
+			    p->resyncFile, '=', stderr);
+			return (-1);
+		}
+	}
 	if (s) {
 		/* arrange for this sccs* to write into RESYNC */
 		free(s->sfile);
@@ -901,82 +911,60 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		/* NOTE: we leave S_SFILE set, but no sfile there */
 
 		unless (CSET(s)) top = sccs_top(s);
-	}
-	if (mkdirf(p->resyncFile) == -1) {
-		if (errno == EINVAL) {
-			getMsg("reserved_name",
-			    p->resyncFile, '=', stderr);
-			return (-1);
+	} else {
+		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
+			SHOUT();
+			fprintf(stderr,
+			    "takepatch: can't create %s\n", p->resyncFile);
+			goto err;
 		}
+		s->bitkeeper = 1;
+		if (perfile) sccscopy(s, perfile);
+		sccs_findKeyDB(s, 0);
 	}
-	/* test was p->pid instead of s, but cunning plan needed an init */
-	if (p && s) cweave_init(s, psize);
+	assert(s);
+	cweave_init(s, psize);
 	*nfound = 0;
 	while (p) {
 		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
 		n++;
-		if (p->pid) {
-			assert(s);
-			if (echo>9) {
-				fprintf(stderr,
-				    "PID: %s\nME:  %s\n", p->pid, p->me);
-			}
-			unless (iF = p->initMmap) {
-				d = 0;
-			} else unless (d = sccs_findKey(s, p->pid)) {
+		if (echo>9) {
+			fprintf(stderr, "PID: %s\nME:  %s\n",
+			    p->pid ? p->pid : "none", p->me);
+		}
+		/*
+		 * iF = 0 if skipkey found it; so its parent may have also
+		 * been skipkey'd and so not here; don't look up parent
+		 * without iF being set (as well as parent pointer p->pid).
+		 * p->pid won't be set for 1.0 delta.
+		 */
+		dF = p->diffMmap;
+		iF = p->initMmap;
+		d = 0;	/* in this case, parent */
+		if (iF && p->pid) {
+			unless (d = sccs_findKey(s, p->pid)) {
 				if ((echo == 2) || (echo == 3)) {
 					fprintf(stderr, " \n");
 				}
 				errorMsg("tp_ahead", p->pid, s->sfile);
 				/*NOTREACHED*/
 			}
-			if (echo>9) {
-				fprintf(stderr, "Child of %s", d->rev);
-				if (p->meta) {
-					fprintf(stderr, " meta\n");
-				} else {
-					fprintf(stderr, " data\n");
-				}
+		}
+		if (echo>9) {
+			fprintf(stderr, "Child of %s", d ? d->rev : "none");
+			if (p->meta) {
+				fprintf(stderr, " meta\n");
+			} else {
+				fprintf(stderr, " data\n");
 			}
-			dF = p->diffMmap;
-			if (d = cset_insert(s, iF, dF, d, Fast)) (*nfound)++;
+		}
+		/* passing in d = parent, setting d = new or existing */
+		if (d = cset_insert(s, iF, dF, d, Fast)) {
+			(*nfound)++;
 			p->d = d;
-			if (d && (d->flags & D_REMOTE) && d->symGraph) {
-				remote_tagtip = d;
+			if (d->flags & D_REMOTE) {
+				if (d->symGraph) remote_tagtip = d;
 			}
-		} else if (s) {
-			/*
-			 * more cunning plan -- this is a 1.0 delta that
-			 * the sfile already has, but so does the patch.
-			 * We need to eat the header, yet count it in
-			 * for the weave data structures
-			 */
-			iF = p->initMmap;
-			dF = p->diffMmap;
-			if (d = cset_insert(s, iF, dF, 0, Fast)) {
-				fprintf(stderr, "Cunning plan failed\n");
-				goto err;
-			}
-		} else {
-			assert(s == 0);
-			unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
-				SHOUT();
-				fprintf(stderr,
-				    "takepatch: can't create %s\n",
-				    p->resyncFile);
-				goto err;
-			}
-			if (perfile) sccscopy(s, perfile);
-			iF = p->initMmap;
-			dF = p->diffMmap;
-			cweave_init(s, psize);
-			sccs_findKeyDB(s, 0);
-			if (d = cset_insert(s, iF, dF, d, Fast)) (*nfound)++;
-			p->d = d;
-			if (d && (d->flags & D_REMOTE) && d->symGraph) {
-				remote_tagtip = d;
-			}
-			s->bitkeeper = 1;
 		}
 		p = p->next;
 	}
@@ -1046,10 +1034,9 @@ markup:
 	 */
 	for (d = s->table; d; d = d->next) d->flags |= D_LOCAL;
 	for (d = 0, p = patchList; p; p = p->next) {
-		unless (p->initMmap) continue;
 		/*
-		 * XXX: mclose take a null arg?
-		 * meta doesn't have a diff block
+		 * In fastpatch, diffMmap is not related to initMmap, so
+		 * just clear all of them.  And mclose works if 0 passed in.
 		 */
 		mclose(p->diffMmap); /* win32: must mclose after cset_write */
 		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
