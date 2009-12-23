@@ -246,7 +246,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 			mdbm_close(s->findkeydb);
 			exit(1);
 		}
-		if (LONGKEY(s)) return (d);
+		if (LONGKEY(s)) goto done;
 
 		*strrchr(key, '|') = 0;
 		k.dsize = strlen(key) + 1;

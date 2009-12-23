@@ -498,7 +498,12 @@ retry:	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_IDCACHE))) {
 	} else {
 		sc = sccs_keyinit(lastkey, INIT_NOWARN, idDB);
 	}
-	unless (sc) {
+	if (sc) {
+		unless (sc->cksumok) {
+			sccs_free(sc);
+			return (-1);
+		}
+	} else {
 		if (gone(lastkey, goneDB)) {
 			free(lastkey);
 			lastkey = 0;

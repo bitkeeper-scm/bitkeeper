@@ -31,8 +31,7 @@ chopfile() {
 	rm -f $2
 	head -$3 $1 | bk undos > $2
 	chmod 444 $2
-	# XXX: this is not needed?  It should be:
-	# bk admin -z $2
+	bk admin -z $2
 }
 
 set -e
@@ -62,16 +61,42 @@ patchcount patch 1
 echo OK
 
 echo $N Whole repo to this point in time -- cset and file ...........$NL
-bk makepatch -F -r.. > patch
-patchcount patch 6
+bk makepatch -F -r.. > fullpatch
+patchcount fullpatch 6
+echo OK
+
+echo $N Corrupted file checksum and makepatch does not core dump ....$NL
+bk makepatch -F -r+ > patch || exit 1
+# put in something greater than 16 bit so it will never collide
+perl -pe 's/^\001H...../\001H83452/' SCCS/s.foo > x
+mv SCCS/s.foo save
+mv x SCCS/s.foo
+chmod 444 SCCS/s.foo
+bk makepatch -r+ > junk 2> ERR && exit 1
+grep -q "Bad old style checksum" ERR || exit 2
+# Now test fast checksum
+bk makepatch -F -r+ > junk 2> ERR && exit 3
+grep -q "Bad old style checksum" ERR || exit 4
+# Leave set up for takepatch to test and then fix..
 echo OK
 
 echo -------------- takepatch tests
+echo $N Corrupted file checksum and takepatch notices ...............$NL
+bk takepatch < patch 2> ERR && exit 1
+test -d RESYNC && exit 2
+grep -q "Bad checksum for SCCS/s.foo" ERR || exit 3
+rm SCCS/s.foo
+# See that it works again
+mv save SCCS/s.foo
+bk makepatch -F -r+ > patch || exit 5
+patchcount patch 1
+echo OK
+
 echo $N Whole repo to this point in time -- cset and file ...........$NL
 cd ..
 mkdir empty
 cd empty
-bk takepatch -i < ../project/patch || exit 1
+bk takepatch -i < ../project/fullpatch || exit 1
 # XXX: Note: the resolver doesn't work in this repo, and it is not
 # because of fastpatch -- note there are no takepatch -i tests in
 # t.takepatch -- bk sane fails when resolver starts because there is

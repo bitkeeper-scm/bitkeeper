@@ -40,7 +40,7 @@ private void	errorMsg(char *msg, char *arg1, char *arg2);
 private	int	extractPatch(char *name, MMAP *p);
 private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int*);
 private	int	applyPatch(char *local, sccs *perfile);
-private	int	applyCsetPatch(char *localPath, int *nfound, sccs *perfile);
+private	int	applyCsetPatch(sccs *s, int *nfound, sccs *perfile);
 private	int	getLocals(sccs *s, delta *d, char *name);
 private	void	insertPatch(patch *p);
 private	void	reversePatch(void);
@@ -374,6 +374,7 @@ extractPatch(char *name, MMAP *p)
 	sccs	*perfile = 0;
 	int	newFile = 0;
 	int	reallyNew = 0;
+	int	cset;
 	char	*gfile = 0;
 	int	nfound = 0, rc;
 	static	int rebuilt = 0;	/* static - do it once only */
@@ -417,7 +418,8 @@ extractPatch(char *name, MMAP *p)
 	if (newProject && !newFile) errorMsg("tp_notfirst", 0, 0);
 
 	if (echo>4) fprintf(stderr, "%s\n", t);
-again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM, idDB);
+again:	s = sccs_keyinit(t, SILENT, idDB);
+	if (s && !s->cksumok) goto error;
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
@@ -545,11 +547,11 @@ error:		if (perfile) sccs_free(perfile);
 		fprintf(stderr, "Updating %s", gfile);
 		if (echo == 3) fputc(' ', stderr);
 	}
-	if (Fast || (s && CSET(s)) || (!s && streq(name, CHANGESET))) {
-		rc = applyCsetPatch(s ? s->sfile : 0 , &nfound, perfile);
-		unless ((s && CSET(s)) || (!s && streq(name, CHANGESET))) {
-			nfound = 0;	/* only count csets */
-		}
+	cset = s ? CSET(s) : streq(name, CHANGESET);
+	if (Fast || cset) {
+		rc = applyCsetPatch(s, &nfound, perfile);
+		s = 0;		/* applyCsetPatch calls sccs_free */
+		unless (cset) nfound = 0;	/* only count csets */
 	} else {
 		if (s && s->findkeydb) {
 			mdbm_close(s->findkeydb);
@@ -841,7 +843,7 @@ badXsum(int a, int b)
 /*
  * Most of the code in this function is copied from applyPatch
  * We may want to merge the two function later.
- * 
+ *
  * This tries within a reasonable amount of effort to write the
  * SCCS file only once.  This can be done because the sccs struct
  * is in memory and can be fiddled with carefully.  The weaving
@@ -855,12 +857,11 @@ badXsum(int a, int b)
  * is possible to only write the file once.
  */
 private	int
-applyCsetPatch(char *localPath, int *nfound, sccs *perfile)
+applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 {
 	patch	*p;
 	MMAP	*iF;
 	MMAP	*dF;
-	sccs	*s = 0;
 	delta	*d = 0;
 	delta	*top = 0;
 	delta	*remote_tagtip = 0;
@@ -870,7 +871,6 @@ applyCsetPatch(char *localPath, int *nfound, sccs *perfile)
 	int	confThisFile;
 	FILE	*csets = 0, *f;
 	hash	*cdb;
-	int	flags = echo ? 0 : SILENT;
 	char	csets_in[MAXPATH];
 	char	buf[MAXKEY];
 
@@ -882,38 +882,29 @@ applyCsetPatch(char *localPath, int *nfound, sccs *perfile)
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
 		    p->localFile, p->resyncFile, p->pid, p->me);
 	}
-	unless (localPath) {
-		if (mkdirf(p->resyncFile) == -1) {
-			if (errno == EINVAL) {
-				getMsg("reserved_name",
-				    p->resyncFile, '=', stderr);
-				return (-1);
-			}
-		}
-		goto apply;
-	}
-	/* NOTE: the "goto" above .. skip the next block if no ChangeSet */
 
-	fileCopy2(localPath, p->resyncFile);
-	/* Open up the cset file */
-	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags)) {
-		SHOUT();
-		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
-		goto err;
+	if (s) {
+		/* arrange for this sccs* to write into RESYNC */
+		free(s->sfile);
+		s->sfile = strdup(p->resyncFile);
+		free(s->gfile);
+		s->gfile = sccs2name(s->sfile);
+		free(s->pfile);
+		s->pfile = strdup(sccs_Xfile(s, 'p'));
+		free(s->zfile);
+		s->zfile = strdup(sccs_Xfile(s, 'z'));
+		s->state &= ~(S_PFILE|S_ZFILE|S_GFILE);
+		/* NOTE: we leave S_SFILE set, but no sfile there */
+
+		unless (CSET(s)) top = sccs_top(s);
 	}
-	unless (HASGRAPH(s)) {
-		SHOUT();
-		if (!(s->state & S_SFILE)) {
-			fprintf(stderr,
-			    "takepatch: no s.file %s\n", p->resyncFile);
-		} else {
-			perror(s->sfile);
+	if (mkdirf(p->resyncFile) == -1) {
+		if (errno == EINVAL) {
+			getMsg("reserved_name",
+			    p->resyncFile, '=', stderr);
+			return (-1);
 		}
-		goto err;
 	}
-	unless (CSET(s)) top = sccs_top(s);
-apply:
-	p = patchList;
 	/* test was p->pid instead of s, but cunning plan needed an init */
 	if (p && s) cweave_init(s, psize);
 	*nfound = 0;
@@ -1082,7 +1073,7 @@ markup:
 		if (!(top->flags & D_CSET) && sccs_isleaf(s, top)) {
 			/* uncommitted error for dangling is backward compat */
 			SHOUT();
-			getMsg("tp_uncommitted", localPath, 0, stderr);
+			getMsg("tp_uncommitted", s->gfile, 0, stderr);
 			goto err;
 		}
 	}

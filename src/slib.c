@@ -7830,9 +7830,9 @@ badcksum(sccs *s, int flags)
 		s->cksumok = 1;
 	} else {
 		if (signed_badcksum(s, flags)) {
-			verbose((stderr,
+			fprintf(stderr,
 			    "Bad checksum for %s, got %d, wanted %d\n",
-			    s->sfile, (sum_t)sum, filesum));
+			    s->sfile, (sum_t)sum, filesum);
 		} else {
 			return (0);
 		}
@@ -16939,6 +16939,7 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 	s = sccs_init(p, flags|INIT_MUSTEXIST);
 	free(p);
 	unless (s && HAS_SFILE(s))  goto out;
+	unless (s->cksumok) return (s);
 	localp = proj_init(".");
 	proj_free(localp);
 	if (s->proj != localp) goto out; /* use after free OK */
