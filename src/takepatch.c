@@ -940,6 +940,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			}
 			dF = p->diffMmap;
 			if (d = cset_insert(s, iF, dF, d, Fast)) (*nfound)++;
+			p->d = d;
 			if (d && (d->flags & D_REMOTE) && d->symGraph) {
 				remote_tagtip = d;
 			}
@@ -971,6 +972,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			cweave_init(s, psize);
 			sccs_findKeyDB(s, 0);
 			if (d = cset_insert(s, iF, dF, d, Fast)) (*nfound)++;
+			p->d = d;
 			if (d && (d->flags & D_REMOTE) && d->symGraph) {
 				remote_tagtip = d;
 			}
@@ -1011,8 +1013,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 
 	if (cdb = loadCollapsed()) {
 		for (p = patchList; p; p = p->next) {
-			unless (p->initMmap) continue;
-			d = sccs_findKey(s, p->me);
+			unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
 			sccs_md5delta(s, d, buf);
 			if (hash_fetchStr(cdb, buf)) {
 				/* find cset that added that entry */
@@ -1033,7 +1034,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	csets = fopen(csets_in, "w");
 	assert(csets);
 	for (p = patchList; p; p = p->next) {
-		unless (p->initMmap) continue;
+		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
 		fprintf(csets, "%s\n", p->me);
 	}
 	fclose(csets);
@@ -1051,24 +1052,9 @@ markup:
 		 * meta doesn't have a diff block
 		 */
 		mclose(p->diffMmap); /* win32: must mclose after cset_write */
-		assert(p->me);
-		d = sccs_findKey(s, p->me);
-		/*
-		 * XXX - this is probably an incomplete fix.
-		 * The problem was that we got a patch with a meta delta
-		 * with no content in it and delta_table() tossed it out.
-		 * So when we go looking for it, we don't find it.
-		 * What is not being checked here is if the delta was
-		 * indeed empty.
-		 */
-		if (!d && p->meta) continue;
-		assert(d);
-		assert(!p->local);
-		if (d->flags & D_REMOTE) {
-			d->flags &= ~D_LOCAL;
-			d->flags |= D_SET; /* for resum() */
-		}
-		if (CSET(s)) continue;
+		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
+		d->flags &= ~D_LOCAL;
+		d->flags |= D_SET; /* for resum() */
 	}
 	if (top && (top->dangling || !(top->flags & D_CSET))) {
 		delta	*a, *b;

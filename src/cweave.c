@@ -122,6 +122,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	if (fast) {
 		sccs_sdelta(s, d, key);
 		if (e = sccs_findKey(s, key)) {
+			/* We already have this delta... */
 			keep = 0;
 			if (e->dangling) {
 				e->dangling = 0;

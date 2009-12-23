@@ -160,6 +160,23 @@ grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || exit 7
 test -d RESYNC && exit 10
 echo OK
 
+echo $N See that csets-in is set correctly when some new, some old ..$NL
+cd "$HERE/project"
+bk clone $Q . ../csets-in
+cd ../csets-in
+REV=`bk changes -r+ -nd:I:`
+test "$REV" = 1.5 || exit 1
+bk changes -r1.5 -nd:KEY: > WANT
+bk makepatch -r1.3.. > slow
+bk makepatch -F -r1.3.. > fast
+bk undo $Q -sfr+
+bk takepatch < slow
+cmpfiles WANT RESYNC/BitKeeper/etc/csets-in
+rm -fr RESYNC
+bk takepatch < fast
+cmpfiles WANT RESYNC/BitKeeper/etc/csets-in
+echo OK
+
 echo -------------- pull tests
 echo $N Works with control A data lines .............................$NL
 cd "$HERE/project"

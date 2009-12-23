@@ -705,6 +705,7 @@ typedef struct patch {
 	MMAP	*initMmap;	/* points into mmapped patch */
 	char	*diffFile;	/* RESYNC/BitKeeper/diff-1, only if !diffMmap */
 	MMAP	*diffMmap;	/* points into mmapped patch */
+	delta	*d;		/* in cset path, save the corresponding d */
 	time_t	order;		/* ordering over the whole list, oldest first */
 	u32	local:1;	/* patch is from local file */
 	u32	remote:1;	/* patch is from remote file */
