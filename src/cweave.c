@@ -107,7 +107,13 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	char	key[MAXKEY];
 	int	keep;
 
-	assert(iF);
+	unless (iF) {	
+		/* ignore in patch: like if in skipkeys */
+		assert(fast);
+		d = 0;
+		serial = 0;
+		goto done;
+	}
 
 	/*
 	 * Get the "new" delta from the mmaped patch file (iF)
@@ -291,8 +297,8 @@ done:
 int
 cset_write(sccs *s, int spinners, int fast)
 {
-	FILE	*f;
-	int	i;
+	FILE	*f = 0;
+	int	i, rc = -1;
 	delta	*d;
 
 	assert(s);
@@ -341,29 +347,35 @@ cset_write(sccs *s, int spinners, int fast)
 	}
 	unless (f = fopen(sccs_Xfile(s, 'x'), "w")) {
 		perror(sccs_Xfile(s, 'x'));
-		return (-1);
+		goto err;
 	}
 	s->state |= S_ZFILE|S_PFILE;
 	if (delta_table(s, f, 0)) {
 		perror("table");
-		fclose(f);
-		return (-1);
+		goto err;
 	}
 	if (fast) {
-		if (fastWeave(s, f)) return (-1);
+		if (fastWeave(s, f)) goto err;
 	} else {
-		if (sccs_csetPatchWeave(s, f)) return (-1);
+		if (sccs_csetPatchWeave(s, f)) goto err;
 	}
 	fseek(f, 0L, SEEK_SET);
 	fprintf(f, "\001H%05u\n", s->cksum);
-	if (fclose(f)) perror(sccs_Xfile(s, 'x'));
-
-	sccs_close(s);
-	if (rename(sccs_Xfile(s, 'x'), s->sfile)) {
-		perror(s->sfile);
-		return (-1);
+	rc = 0;
+err:	if (fclose(f)) {
+		perror(sccs_Xfile(s, 'x'));
+		rc = -1;
 	}
-	return (0);
+	sccs_close(s);
+	if (rc) {
+		unlink(sccs_Xfile(s, 'x'));
+	} else {
+		if (rename(sccs_Xfile(s, 'x'), s->sfile)) {
+			perror(s->sfile);
+			rc = -1;
+		}
+	}
+	return (rc);
 }
 
 /*
@@ -399,28 +411,38 @@ fastWeave(sccs *s, FILE *out)
 	 * Note: patchmap could be empty if say, if we are updating
 	 * a dangling delta pointer or cset mark.
 	 */
-	d = sfind(s, lp[1].serial);
-	assert(d);
-	base = d->serial - 1;
-	/* allocating more than needed (by at the end, "offset" are wasted) */
-	weavemap = (ser_t *)calloc((s->nextserial - base), sizeof(ser_t));
-	assert(weavemap);
-	index = base;
-	offset = 0;
 	for (i = 1; i < s->iloc; i++) {
+		unless (lp[i].serial) {
+			patchmap = addLine(patchmap, INVALID);
+			continue;
+		}
 		d = sfind(s, lp[i].serial);
 		assert(d);
 		patchmap = addLine(patchmap, d);
 		unless (d->flags & D_REMOTE) continue;
+		unless (weavemap) {
+			/*
+			 * allocating more than needed.  We don't know until
+			 * the end how many are wasted: it's in 'offset'.
+			 */
+			base = d->serial - 1;
+			weavemap = (ser_t *)calloc(
+			    (s->nextserial - base), sizeof(ser_t));
+			assert(weavemap);
+			index = base;
+			offset = 0;
+		}
 		while (index + offset < d->serial) {
 			weavemap[index - base] = index + offset;
 			index++;
 		}
 		offset++;
 	}
-	while (index + offset < s->nextserial) {
-		weavemap[index - base] = index + offset;
-		index++;
+	if (weavemap) {
+		while (index + offset < s->nextserial) {
+			weavemap[index - base] = index + offset;
+			index++;
+		}
 	}
 
 	/*

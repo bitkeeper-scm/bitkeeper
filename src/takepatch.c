@@ -675,6 +675,7 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int *np)
 	long	off;
 	int	c;
 	int	skip = 0;
+	int	ignore = 0;
 	patch	*p;
 
 	if (newFile == 1) goto delta1;
@@ -697,7 +698,10 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int *np)
 delta1:	off = mtell(f);
 	d = getRecord(f);
 	sccs_sdelta(s, d, buf);
-	if (Fast) goto save;
+	if (Fast) {
+		if (skipkey(s, buf)) ignore = 1;
+		goto save;
+	}
 	/*
 	 * 11/29/02 - we fill in dangling deltas by pretending they are
 	 * incoming deltas which we do not already have.  In the patch
@@ -747,7 +751,7 @@ save:	mseekto(f, off);
 		p->pid = pid;
 		sccs_sdelta(s, d, buf);
 		p->me = strdup(buf);
-		p->initMmap = mrange(start, stop, "b");
+		p->initMmap = ignore ? 0 : mrange(start, stop, "b");
 		p->localFile = s ? strdup(s->sfile) : 0;
 		sprintf(buf, "RESYNC/%s", name);
 		p->resyncFile = strdup(buf);
@@ -917,7 +921,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 				fprintf(stderr,
 				    "PID: %s\nME:  %s\n", p->pid, p->me);
 			}
-			unless (d = sccs_findKey(s, p->pid)) {
+			unless (iF = p->initMmap) {
+				d = 0;
+			} else unless (d = sccs_findKey(s, p->pid)) {
 				if ((echo == 2) || (echo == 3)) {
 					fprintf(stderr, " \n");
 				}
@@ -932,7 +938,6 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 					fprintf(stderr, " data\n");
 				}
 			}
-			iF = p->initMmap;
 			dF = p->diffMmap;
 			if (d = cset_insert(s, iF, dF, d, Fast)) (*nfound)++;
 			if (d && (d->flags & D_REMOTE) && d->symGraph) {
@@ -1006,6 +1011,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 
 	if (cdb = loadCollapsed()) {
 		for (p = patchList; p; p = p->next) {
+			unless (p->initMmap) continue;
 			d = sccs_findKey(s, p->me);
 			sccs_md5delta(s, d, buf);
 			if (hash_fetchStr(cdb, buf)) {
@@ -1027,6 +1033,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	csets = fopen(csets_in, "w");
 	assert(csets);
 	for (p = patchList; p; p = p->next) {
+		unless (p->initMmap) continue;
 		fprintf(csets, "%s\n", p->me);
 	}
 	fclose(csets);
@@ -1038,6 +1045,7 @@ markup:
 	 */
 	for (d = s->table; d; d = d->next) d->flags |= D_LOCAL;
 	for (d = 0, p = patchList; p; p = p->next) {
+		unless (p->initMmap) continue;
 		/*
 		 * XXX: mclose take a null arg?
 		 * meta doesn't have a diff block

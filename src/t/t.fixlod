@@ -41,7 +41,11 @@ if [ ! -f d2/SCCS/s.b ]; then echo failed to create files; exit 1; fi
 echo OK
 
 echo $N Commit the data .............................................$NL
-bk commit $S -yCset
+bk commit $S -SBASE -yCset
+bk edit $Q d1/a || exit 1
+echo foo >> d1/a
+bk delta $Q -fy'new lod' d1/a || exit 1
+bk commit $S -yCset || exit 1
 test `bk sfiles -pC | wc -l` -eq 0 || {
 	echo failed to commit all files
 	exit 1
@@ -49,9 +53,12 @@ test `bk sfiles -pC | wc -l` -eq 0 || {
 echo OK
 
 echo $N Make version 1 LOD structures ...............................$NL
+bk clone $Q . ../lod
+cd ../lod
 bk edit $Q d1/a || exit 1
+echo bar >> d1/a
 bk delta $Q -fy'new lod' d1/a || exit 1
-bk commit $S -yCset || exit 1
+bk commit $S -ynew-lod || exit 1
 rev=`bk prs -r+ -hnd:I: ChangeSet`
 perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" SCCS/s.ChangeSet > tmp
 mv SCCS/s.ChangeSet old-s.ChangeSet
@@ -71,12 +78,14 @@ test `bk prs -r2 -hd:I: ChangeSet` = 2.1 || {
 echo OK
 
 # use tar because clone will not work since it has illegal structures
-cd "$HERE/project"
 rm BitKeeper/log/repo_id
 tar cf ../save.tar .
 
 echo $N Fix version 1 LOD structures ................................$NL
-#cd "$HERE/project"
+cd "$HERE"
+mkdir fix1
+cd fix1
+tar xmf ../save.tar
 bk _fix_lod1 > out1 2> err1 || {
 	echo Failed fix
 	echo STDOUT:
@@ -96,11 +105,16 @@ test `wc -l < results` -eq 0 || {
 echo OK
 
 echo $N Converge to repos which each fixed lod ......................$NL
-mkdir "$HERE/clone"
-cd "$HERE/clone"
+cd "$HERE"
+mkdir fix2
+cd fix2
 tar xmf ../save.tar
 bk _fix_lod1 > out1 2> err1 || {
 	echo Failed fix
+	echo STDOUT:
+	cat out1
+	echo
+	echo STDERR:
 	cat err1
 	exit 1
 }
@@ -111,7 +125,7 @@ test `wc -l < results` -eq 0 || {
 	cat results
 	exit 1
 }
-bk pull $Q ../project > pull.out 2> pull.err || {
+bk pull $Q ../fix1 > pull.out 2> pull.err || {
 	echo Pull failed.
 	echo STDOUT
 	cat pull.out
@@ -123,4 +137,26 @@ ls BitKeeper/deleted/SCCS | grep -q skipkeys || {
 	echo Failed: no skipkeys in deleted
 	exit 1
 }
+echo OK
+
+echo $N Pull bad into fixed repo to see that skipping works .........$NL
+cd "$HERE/fix1"
+# old way passes
+_BK_NO_FASTPATCH=1 bk pull $Q -R ../lod || exit 1
+test -d RESYNC && exit 2
+# and so does fast
+bk pull $Q -R ../lod || exit 3
+test -d RESYNC && exit 4
+echo OK
+
+echo $N Pull bad into fixed repo that has been rolled back ..........$NL
+bk admin -fMONOTONIC BitKeeper/etc/skipkeys
+bk commit $S -yMONOTONIC-skipkeys
+bk undo $Q -fsaBASE
+_BK_NO_FASTPATCH=1 bk pull $Q -R ../lod || exit 1
+test -d RESYNC || exit 2
+bk abort -f || exit 3
+bk pull $Q -R ../lod || exit 4
+test -d RESYNC || exit 5
+bk abort -f || exit 6
 echo OK

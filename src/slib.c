@@ -11752,7 +11752,7 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, char **patchmap,
 	/* compute an serialmap view which matches sccs_patchDiffs() */
 	w->slist = calloc(s->nextserial, sizeof(ser_t));
 	EACH(patchmap) {
-		d = (delta *)patchmap[i];
+		if ((d = (delta *)patchmap[i]) == INVALID) continue;
 		w->slist[d->serial] = 1;
 	}
 	unless (CSET(s)) {
@@ -11794,9 +11794,10 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, char **patchmap,
 private int
 doFast(weave *w, char **patchmap, MMAP *diffs)
 {
-	int	lineno, lcount = 0;
+	int	lineno, lcount = 0, serial, pmapsize;
 	int	gotK = 0;
 	int	inpatch = 0;
+	int	ignore = 0;
 	char	*p, *b;
 	char	type;
 	delta	*d;
@@ -11805,6 +11806,8 @@ doFast(weave *w, char **patchmap, MMAP *diffs)
 	char	cmdline[MAXCMD];
 
 	unless (diffs) goto done;
+	assert(patchmap);	/* if diffs, then there's a map */
+	pmapsize = nLines(patchmap);
 
 	while (b = mnext(diffs)) {
 		p = &b[1];
@@ -11817,7 +11820,13 @@ doFast(weave *w, char **patchmap, MMAP *diffs)
 			break;
 		}
 		if (*b == '>') {
-			if (inpatch) {
+			if (ignore) {
+				while (*p) {
+					w->sum += *p;
+					if (*p++ == '\n') break;
+				}
+				w->line++;
+			} else if (inpatch) {
 				fix_cntl_a(w->s, p, w->out);
 				w->sum += fputdata(w->s, p, w->out);
 				w->line++;
@@ -11825,8 +11834,19 @@ doFast(weave *w, char **patchmap, MMAP *diffs)
 			continue;
 		}
 		type = (*b == 'N') ? 'E' : *b;
-		/* XXX range check? it is from a patch which user could edit */
-		d = (delta *)patchmap[atoi_p(&p)];
+		serial = atoi_p(&p);
+		assert((serial > 0) && (serial <= pmapsize));
+		d = (delta *)patchmap[serial];
+		if (d == INVALID) {
+			unless (ignore) {
+				if (type == 'I') ignore = serial;
+			} else if (ignore == serial) {
+				assert(type == 'E');
+				ignore = 0;
+			}
+			continue;
+		}
+		assert(!ignore);
 		assert(d);
 		unless (d->flags & D_REMOTE) continue;
 		unless (inpatch) {
@@ -11836,10 +11856,9 @@ doFast(weave *w, char **patchmap, MMAP *diffs)
 			if (weaveMove(w, lineno, (type == 'D'), d->serial)) {
 				goto err;
 			}
-		}
-		if (type == 'I') {
-			unless (inpatch) inpatch = d->serial;
-		} else if ((type == 'E') && (inpatch == d->serial)) {
+			if (type == 'I') inpatch = d->serial;
+		} else if (inpatch == d->serial) {
+			assert(type == 'E');
 			inpatch = 0;
 		}
 		if (*b == 'N') {
@@ -11852,7 +11871,7 @@ doFast(weave *w, char **patchmap, MMAP *diffs)
 			unless (w->slist[w->print]) w->print = 0;
 		}
 	}
-	assert(!inpatch);
+	assert(!inpatch && !ignore);
 done:
 	if (weaveMove(w, -1, 0, 0)) goto err;
 	if (gotK && ((w->sum != sum) || (lcount != w->line))) {
@@ -11967,10 +11986,11 @@ after:	skipblock = 0;
 		if (serial < patchserial) goto end;
 		sprintf(cmdline, "\001%c %u%s\n", type, serial, mkline(n));
 		fputdata(s, cmdline, w->out);
-		if ((type == 'E') && (skipblock == serial)) {
+		unless (skipblock) {
+			if (type == 'I') skipblock = serial;
+		} else if (skipblock == serial) {
+			assert(type == 'E');
 			skipblock = 0;
-		} else if (!skipblock && (type == 'I')) {
-			skipblock = serial;
 		}
 		if (print = changestate(w->state, type, serial)) {
 			unless (w->slist[print]) print = 0;

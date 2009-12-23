@@ -26,10 +26,12 @@ patchcount() {
 }
 
 # use this to make an sfile shorter
-# chopfile template sfile lines-in-file
+# Usage: chopfile template sfile lines-in-sfile-after-^AT
 chopfile() {
 	rm -f $2
-	head -$3 $1 | bk undos > $2
+	perl -e \
+	    "while(<>){print;last if /^.T/}for(1..$3){print scalar(<>)}" \
+	    $1 | bk undos > $2
 	chmod 444 $2
 	bk admin -z $2
 }
@@ -136,18 +138,18 @@ bk makepatch -F -r+ > ../bork/append
 cd ../bork || exit 1
 mv SCCS/s.foo sfile
 # chop at ^AT -- no weave body
-chopfile sfile SCCS/s.foo 40 
+chopfile sfile SCCS/s.foo 0
 # This puts a patch at the head of the weave, so we notice a problem
 # because the checksum
 bk takepatch < insert 2> ERR && exit 1
 grep -q "computed sum 458 and patch sum 1692" ERR || exit 2
-# test -d RESYNC && exit 10
+test -d RESYNC && exit 10
 # This one goes to move in the weave but it is not there, so notices EOF
 bk takepatch < append 2> ERR && exit 3
 grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || exit 4
 test -d RESYNC && exit 10
 # chop off after the two:
-chopfile sfile SCCS/s.foo 43 
+chopfile sfile SCCS/s.foo 3 
 test `tail -1 SCCS/s.foo` = two || exit 5
 bk takepatch < insert 2> ERR && exit 6
 grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || exit 7
