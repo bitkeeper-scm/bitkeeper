@@ -9,6 +9,8 @@
 # do some moves between src and doc and src and repo root.
 # Then make src and doc a component.
 
+set -e
+
 echo $N Create initial repository ...................................$NL
 commercial project
 mkdir src doc
@@ -187,4 +189,29 @@ test -d empty/empty && {
 	echo failed
 	exit 1
 }
+echo OK
+
+echo $N Make a diamond graph moving a file into comp on trunk .......$NL
+# This core dumped without accompanying fix
+# The trick is to have a file born out of the component (in root)
+# then move to the component, then have a newer cset change the
+# file in its original out of component place.  In filterWeave()
+# this will test parent and merge and both will be false.
+cd "$HERE"
+commercial trunk
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+bk clone $Q . ../branch
+mkdir src
+bk mv foo src
+bk commit $Q -yfoo
+cd ../branch
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -yfoo
+bk pull $Q
+cd ..
+echo src > map
+bk partition $Q -X -Cmap branch parted
 echo OK

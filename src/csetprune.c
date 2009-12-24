@@ -370,7 +370,8 @@ zero:				cweave[i][0] = 0;
 			unless (d = sfind(cset, j)) continue;
 			if (d->flags & D_RED) continue;
 			if ((PARENT(cset, d)->flags & D_RED) ||
-			    (MERGE(cset, d)->flags & D_RED)) {
+			    (d->merge &&
+			    (MERGE(cset, d)->flags & D_RED))) {
 			    	d->flags |= D_RED;
 			}
 		}
