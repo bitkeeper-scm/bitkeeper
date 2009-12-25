@@ -1283,6 +1283,10 @@ compile_push(Expr *expr)
 		L_errf(expr, "first arg to push not an array reference (&)");
 		goto done;
 	}
+	if (array->flags & L_EXPR_DEEP) {
+		L_errf(expr, "push onto indexed variables unimplemented");
+		goto done;
+	}
 	unless (array->sym) {
 		L_errf(expr, "invalid l-value in push");
 		goto done;

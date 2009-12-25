@@ -13929,6 +13929,27 @@ void builtin_11_main()
 builtin_11_main();
 } -output {}
 
+test builtin-11.2 {check push built-in errors} -body {
+#lang L
+void builtin_11_2()
+{
+	string	aa[][];
+	string	ha{string}[];
+	struct {
+		string	a[];
+	} st;
+
+	/* These are currently errors but will be implemented some day. */
+
+	push(&aa[0], "bad");
+	push(&ha{"new"}, "bad");
+	push(&st.a, "bad");
+}
+} -returnCodes {error} -match regexp -result {.*11: L Error: push onto indexed variables unimplemented
+.*12: L Error: push onto indexed variables unimplemented
+.*13: L Error: push onto indexed variables unimplemented
+}
+
 test builtin-12 {check assert built-in errors} -body {
 #lang L
 void builtin_12_foo();
