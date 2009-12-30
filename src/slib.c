@@ -11899,13 +11899,18 @@ weaveMove(weave *w, int line, int before, ser_t patchserial)
 {
 	sccs	*s = w->s;
 	int	finish = (line < 0);
-	int	stop, skipblock;
+	int	skipblock;
 	int	print;
 	char	*n;
 	char	type;
 	ser_t	serial;
 	char	*buf;
 	char	cmdline[MAXCMD];
+
+	if (before) {
+		/* first move after the previous line, then upto this line */
+		if (weaveMove(w, line - 1, 0, patchserial)) return (1);
+	}
 
 	unless (buf = w->buf) {	/* note: want assignment, not == */
 		if (before ||
@@ -11914,13 +11919,12 @@ weaveMove(weave *w, int line, int before, ser_t patchserial)
 		}
 		return (0);
 	}
-	stop = before ? line - 1 : 0;
 	print = w->print;
 	do {
 		unless (finish || (w->line < line)) goto after;
 		if (isData(buf)) {
 			if (print) {
-				if (before && (stop == w->line)) goto end;
+				if (before) goto end;
 				w->line++;
 				w->sum += fputdata(s, buf, w->out);
 				if (buf[0] == CNTLA_ESCAPE) {
@@ -11939,7 +11943,7 @@ weaveMove(weave *w, int line, int before, ser_t patchserial)
 			serial = w->wmap[serial - w->wmap[0]];
 		}
 		assert(patchserial != serial);
-		if (before && (stop == w->line) && (type == 'D')) {
+		if (before && print && (type == 'D')) {
 			if (patchserial < serial) goto end;
 		}
 		sprintf(cmdline, "\001%c %u%s\n", type, serial, mkline(n));
@@ -11959,11 +11963,13 @@ eof:		fprintf(stderr, "Unexpected EOF in %s\n", s->sfile);
 	 * We are positioned in the weave after the desired data line.
 	 * If we are the newest delta in the weave, we are done.  However,
 	 * since we could be an older delta, we need to skip over I-E
-	 * blocks from newer deltas.  Stopping conditions:
-	 * I or E with a smaller serial.
-	 * Any D, as we are into the region of the next data line.
-	 * Any data line (not in a skipped I-E block).
-	 * EOF - (but constrained -- we are weaving serial 1).
+	 * blocks from newer deltas.  Stopping conditions in order of
+	 * appearance in code (first 3 with goto end, and 4th with loop exit):
+	 * 1. Any data line not found inside a skipped I-E block.
+	 * 2. Any D not in skipped IE block, as we are into the region
+	 * of the next data line.
+	 * 3. I or E with a smaller serial.
+	 * 4. EOF - (but constrained -- we are weaving serial 1).
 	 */
 after:	skipblock = 0;
 	assert(!before);

@@ -36,11 +36,27 @@ chopfile() {
 	bk admin -z $2
 }
 
-set -e
+patchdump() {
+	perl -e \
+	    "while(<>){last if /== $2/}
+	    while(<>){last if /^F$/}print;
+	    while(<>){print;last if /^K/}" $1
+}
+
+weavedump() {
+	perl -e 'while(<>){last if /^.T/}while(<>){s/\001//;print}' $1
+}
+
 
 echo -------------- makepatch -F tests
 echo $N Tags only - no patch ........................................$NL
 commercial project
+# freebsd3 is uppity about 'commercial' because of the line
+# "test -d $REPO && rm -fr $REPO" under set -e operation.
+# Try running "./doit t.rename" and you will see.  Then try running
+# with another test first: ./doit t.att t.rename
+# That works.  Also works to put the set -e after the commercial project.
+set -e
 bk tag $Q BASE
 bk changes -nd'$if(:DT:=T){:KEY:}' | bk makepatch -F - > patch
 patchcount patch 0
@@ -98,15 +114,9 @@ echo $N Whole repo to this point in time -- cset and file ...........$NL
 cd ..
 mkdir empty
 cd empty
-bk takepatch -i < ../project/fullpatch || exit 1
-# XXX: Note: the resolver doesn't work in this repo, and it is not
-# because of fastpatch -- note there are no takepatch -i tests in
-# t.takepatch -- bk sane fails when resolver starts because there is
-# no config or ChangeSet file in the main repo.
-# For here, just compare with the RESYNC dir and call it good enough.
-cd RESYNC || exit 2
+bk takepatch -ia < ../project/fullpatch || exit 1
 bk -r | while read file; do
-	cmp $file ../../project/$file || echo failed $file
+	cmp $file ../project/$file || echo failed $file
 done
 echo OK
 
@@ -231,4 +241,348 @@ bk makepatch -F -r+ > ../control.bkp
 cd ../corrupt
 bk takepatch < ../control.bkp 2> ERR && exit 2
 grep -q 'computed sum 3595 and patch sum 3941' ERR || exit 3
+echo OK
+
+echo $N Test all stopping conditions in a fastpatch weave ...........$NL
+# "After" - This involves any commands in the patch that are
+# I<serial> <line> that are anchored on a token in the weave,
+# and E<serial> <line> that marks the end of a delete of a line in
+# the weave (as opposed to a line in the patch).  The movement will
+# find the line to go after, then look at the next token and decide
+# whether to stop or not.  Stopping if:
+#  1. a data token not in a skip block (can only be active)
+#  2. a D token not in a skip block
+#  3. a I or E token with a smaller serial number
+#     (impossible to have smaller serial number in a skip block)
+#
+# "Before" - This involves any commands in the patch that are
+# D<serial> <line> that marks the start of a delete of a line in
+# the weave (as opposed to a line in the patch).  The movement will
+# go to "after" the line-1, stopping at the conditions above, then
+# move on to stop either at :
+#  1. a active data (print != 0).
+#  2. a D token in active region with larger serial
+#
+cd "$HERE"
+commercial chicago
+cat <<EOF > file
+base 1
+base 2
+base 3
+base 4
+EOF
+bk new $Q -l file
+bk commit $Q -SBASE -yfile
+bk clone $Q . ../boston
+cat <<EOF > file
+chicago 1
+base 1
+chicago 2
+chicago 3
+base 2
+base 3
+base 4
+EOF
+bk delta $Q -lyedits file
+cd ../boston
+bk edit $Q file
+cat <<EOF > file
+boston 1
+base 1
+base 3
+base 4
+EOF
+bk delta $Q -lyedits file
+cd ../chicago
+cat <<EOF > file
+base 1
+chicago 3
+base 3
+base 4
+EOF
+bk delta $Q -lyedits file
+cd ../boston
+cat <<EOF > file
+base 1
+base 4
+EOF
+bk delta $Q -lyedits file
+cd ../chicago
+cat <<EOF > file
+base 1
+chicago 3
+base 4
+EOF
+bk delta $Q -lyedits file
+# Now make a patch and verify our understanding:
+bk commit $Q -ychicago
+weavedump SCCS/s.file > WEAVE.got
+cat <<EOF > WEAVE.want
+I 3
+D 4
+chicago 1
+E 4
+E 3
+I 2
+base 1
+I 3
+D 4
+chicago 2
+E 4
+chicago 3
+E 3
+D 4
+base 2
+E 4
+D 5
+base 3
+E 5
+base 4
+E 2
+I 1
+E 1
+EOF
+cmpfiles WEAVE.got WEAVE.want
+bk makepatch -Fr+ > ../chicago.bkp
+patchdump ../chicago.bkp file > PATCH.got
+cat <<EOF > PATCH.want
+F
+I1 0
+D2 1
+>chicago 1
+E2 1
+E1 1
+I1 2
+D2 3
+>chicago 2
+E2 3
+>chicago 3
+E1 4
+D2 5
+E2 5
+D3 6
+E3 6
+K4444 7
+EOF
+cmpfiles PATCH.got PATCH.want
+# Switch to boston...
+cd ../boston
+bk commit $Q -SBOSTON -yboston
+weavedump SCCS/s.file > WEAVE.got
+cat <<EOF > WEAVE.want
+I 3
+D 4
+boston 1
+E 4
+E 3
+I 2
+base 1
+D 3
+base 2
+E 3
+D 4
+base 3
+E 4
+base 4
+E 2
+I 1
+E 1
+EOF
+cmpfiles WEAVE.got WEAVE.want
+bk makepatch -Fr+ > ../boston.bkp
+patchdump ../boston.bkp file > PATCH.got
+cat <<EOF | sed 's/	.*//' > PATCH.want
+F		# start of patch
+I1 0		# move to line 0 of weave and switch to patch
+D2 1		# delete line not in weave, but of next line in patch
+>boston 1	# data line in patch
+E2 1		# end of delete
+E1 1		# of of block, now we are out of patch and into weave
+D1 3		# Move from before I2 to before 'base 2', and put a D
+E1 3		# Move after 'base 2' and put the E
+D2 4		# move to before 'base 3'
+E2 4		# E marker after 'base 3'
+K2766 5
+EOF
+cmpfiles PATCH.got PATCH.want
+# okay, now to import each other's patches.  First chicago > boston
+bk takepatch < ../chicago.bkp
+weavedump RESYNC/SCCS/s.file > PATCHWEAVE.got
+cat <<EOF | sed 's/	.*//' > ../PATCHWEAVE.want
+I 4		# in boston -> chicago, this will stop at the I3
+D 6
+boston 1
+E 6
+E 4
+I 3		# in the chicago -> boston, this skips the I4-E4 block
+D 5
+chicago 1
+E 5
+E 3
+I 2
+base 1
+I 3		# In chicago->boston, stop at the D4 and put I3-E3 block
+D 5
+chicago 2
+E 5
+chicago 3
+E 3
+D 4		# This starts before I2, calls after, stops at I3, then here
+D 5
+base 2
+E 5		# in chicago -> boston, stops at E4 bacause smaller
+E 4		# in boston-> chicago, this is E-from-D and stops at D7
+D 6		#  ... setting up the D6 to be put in before D7
+D 7
+base 3
+E 7		# in chicago -> boston, this stops at the I6 smaller serial
+E 6		# in boston -> chicago, this skips the E7 and stops at data
+base 4
+E 2
+I 1
+E 1
+EOF
+cmpfiles PATCHWEAVE.got ../PATCHWEAVE.want
+# reverse
+cd ../chicago
+bk takepatch < ../boston.bkp
+weavedump RESYNC/SCCS/s.file > PATCHWEAVE.got
+# same as other side
+cmpfiles PATCHWEAVE.got ../PATCHWEAVE.want
+# in fact, files are the same
+cmpfiles RESYNC/SCCS/s.file ../boston/RESYNC/SCCS/s.file
+echo OK
+
+echo $N Test patching in data that is already there .................$NL
+# we are in chicago - just sccs merge the results
+printf "s\nC\nu\n" | bk resolve -at 2> ERR > OUT
+# both patchs are now integrated -- retake and see no RESYNC dir
+bk takepatch < ../chicago.bkp
+test -d RESYNC && exit 2
+bk takepatch < ../boston.bkp
+test -d RESYNC && exit 3
+# make a patch with new and old data
+cat <<EOF > file
+base 1
+base 2
+base 3
+base 4
+EOF
+bk delta $Q -lyorig file
+bk commit $Q -yorig
+bk makepatch -FrBASE.. > ../composite.bkp
+# now take in the composite patch...
+cd ../boston
+printf "s\nC\nu\n" | bk resolve -at > OUT 2> ERR
+bk takepatch < ../composite.bkp
+printf "u\n" | bk resolve -at > OUT 2> ERR
+# Respond in kind with new and old
+cat <<EOF > file
+new 1
+new 2
+new 3
+new 4
+EOF
+bk delta $Q -lyorig file
+bk commit $Q -ynew
+bk makepatch -FrBASE.. > ../merge.bkp
+cd ../chicago
+bk takepatch -a < ../merge.bkp
+# Now each side has the same thing as the other
+cmpfiles SCCS/s.file ../boston/SCCS/s.file
+echo OK
+
+echo $N Test serial compression .....................................$NL
+cd ../boston
+bk undo $Q -sfaBOSTON
+weavedump SCCS/s.file > BASELINE.got
+cat <<EOF > BASELINE.want
+I 4
+D 6
+boston 1
+E 6
+E 4
+I 2
+base 1
+D 4
+base 2
+E 4
+D 6
+base 3
+E 6
+base 4
+E 2
+I 1
+E 1
+EOF
+cmpfiles BASELINE.want BASELINE.got
+for i in 1 2
+do	bk takepatch < ../composite.bkp
+	printf "u\n" | bk resolve -at > OUT 2> ERR
+	bk undo $Q -sfaBOSTON
+done
+weavedump SCCS/s.file > FINAL.got
+cmpfiles BASELINE.got FINAL.got
+echo OK
+
+echo $N ChangeSet test for serial compression .......................$NL
+# test the remapping of 
+# parent tag, merge tag, include, exclude, merge
+# Note: tags don't play nice with time interleaving -- make csets
+#
+# at this point, project is a copy of csets ahead of copy.
+cd "$HERE"/copy
+bk clone $Q . ../helper
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -Scopy -yfoo
+bk tag $Q start
+cd ../helper
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -Shelper -yfoo
+bk tag $Q here
+cd ../project
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -Sproject -yfoo
+bk tag $Q -rBASE there
+bk tag $Q top
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -Sprojectagain -yfoo
+bk tag $Q -rtop topper
+cd ../copy
+bk pull $Q ../helper
+bk cset $Q -xstart
+bk tag $Q DOIT
+# see how we are doing
+bk pull $Q ../project
+# save old style and new style patches
+bk makepatch -rDOIT.. > old.bkp
+bk makepatch -F -rDOIT.. > new.bkp
+# save baseline and verify it is compressed
+cp SCCS/s.ChangeSet reference
+bk _scompress ChangeSet
+cmpfiles SCCS/s.ChangeSet reference
+# takeout patch and verify it is not compressed
+bk unpull $Q -sf
+# show old style patch inflates things
+bk takepatch -a < old.bkp
+cmp -s SCCS/s.ChangeSet reference && exit 2
+# "for i in 1 2; do ..." unwound because freebsd3 and set -e pickiness
+cp -f SCCS/s.ChangeSet oldref
+bk unpull $Q -sf
+bk takepatch -a < old.bkp
+cmp -s SCCS/s.ChangeSet oldref && exit 4
+# again
+cp -f SCCS/s.ChangeSet oldref
+bk unpull $Q -sf
+bk takepatch -a < old.bkp
+cmp -s SCCS/s.ChangeSet oldref && exit 5
+# put an exit 1 here and go look at the file -- it's quite inflated.
+bk unpull $Q -sf
+# Now, in one swoop, compress
+bk takepatch -a < new.bkp
+cmpfiles SCCS/s.ChangeSet reference
 echo OK

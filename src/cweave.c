@@ -51,6 +51,7 @@
 #include "range.h"
 
 private	int	fastWeave(sccs *s, FILE *out);
+private	void	scompress(sccs *s, int serial);
 
 /*
  * Initialize the structure used by cset_insert according to how
@@ -351,13 +352,13 @@ cset_write(sccs *s, int spinners, int fast)
 		goto err;
 	}
 	s->state |= S_ZFILE|S_PFILE;
-	if (delta_table(s, f, 0)) {
-		perror("table");
-		goto err;
-	}
 	if (fast) {
 		if (fastWeave(s, f)) goto err;
 	} else {
+		if (delta_table(s, f, 0)) {
+			perror("table");
+			goto err;
+		}
 		if (sccs_csetPatchWeave(s, f)) goto err;
 	}
 	fseek(f, 0L, SEEK_SET);
@@ -386,13 +387,13 @@ err:	if (fclose(f)) {
 private	int
 fastWeave(sccs *s, FILE *out)
 {
-	u32	i, base, index, offset;
-	delta	*d;
+	u32	i, serial, base, index, offset;
+	delta	*d, *e;
 	loc	*lp;
 	ser_t	*weavemap = 0;
 	char	**patchmap = 0;
 	MMAP	*fastpatch = 0;
-	int	rc = 0;
+	int	fix = 0, rc = 1;
 
 	assert(s);
 	// assert(s->state & S_CSET);
@@ -430,20 +431,48 @@ fastWeave(sccs *s, FILE *out)
 			weavemap = (ser_t *)calloc(
 			    (s->nextserial - base), sizeof(ser_t));
 			assert(weavemap);
-			index = base;
+			index = d->serial;
+			weavemap[0] = base;
 			offset = 0;
 		}
 		while (index + offset < d->serial) {
-			weavemap[index - base] = index + offset;
+			if (e = sfind(s, index + offset)) {
+				serial = e->next ? e->next->serial + 1 : 1;
+				if (serial != e->serial) {
+					e->serial = serial;
+					fix = 1;
+				}
+				weavemap[index - base] = e->serial;
+			}
 			index++;
+		}
+		serial = d->next ? d->next->serial + 1 : 1;
+		if (serial != d->serial) {
+			d->serial = serial;
+			fix = 1;
 		}
 		offset++;
 	}
 	if (weavemap) {
 		while (index + offset < s->nextserial) {
-			weavemap[index - base] = index + offset;
+			if (e = sfind(s, index + offset)) {
+				serial = e->next ? e->next->serial + 1 : 1;
+				if (serial != e->serial) {
+					e->serial = serial;
+					fix = 1;
+				}
+				weavemap[index - base] = e->serial;
+			}
 			index++;
 		}
+		if (fix) {
+			scompress(s, weavemap[0]+1);
+			s->ser2dsize = 0;
+		}
+	}
+	if (delta_table(s, out, 0)) {
+		perror("table");
+		goto err;
 	}
 
 	/*
@@ -458,8 +487,31 @@ fastWeave(sccs *s, FILE *out)
 
 	/* doit */
 	rc = sccs_fastWeave(s, weavemap, patchmap, fastpatch, out);
-	mclose(fastpatch);
+err:	mclose(fastpatch);
 	freeLines(patchmap, 0);
-	free(weavemap);
+	if (weavemap) free(weavemap);
 	return (rc);
+}
+
+/* XXX: this relies on sfind table not being updated */
+private	void
+scompress(sccs *s, int serial)
+{
+	delta	*d;
+	int	i;
+
+	while (serial < s->nextserial) {
+		unless (d = sfind(s, serial++)) continue;
+
+		if (d->pserial) d->pserial = d->parent->serial;
+		if (d->ptag) d->ptag = sfind(s, d->ptag)->serial;
+		if (d->mtag) d->mtag = sfind(s, d->mtag)->serial;
+		if (d->merge) d->merge = sfind(s, d->merge)->serial;
+		EACH(d->include) {
+			d->include[i] = sfind(s, d->include[i])->serial;
+		}
+		EACH(d->exclude) {
+			d->exclude[i] = sfind(s, d->exclude[i])->serial;
+		}
+	}
 }
