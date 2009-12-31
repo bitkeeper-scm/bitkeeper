@@ -8217,7 +8217,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 {
 	FILE	*gfile = 0;
 	char	*gline;
-	size_t	glen;
+	size_t	flen, glen;
 	MDBM	*ghash = 0;
 	MDBM	*shash = 0;
 	serlist *state = 0;
@@ -8371,8 +8371,13 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 			}
 			/* now strip CR; if gline was "\n", glen now 0 */
 			if (glen && (gline[glen-1] == '\r')) glen--;
-			unless (((glen == strlen(fbuf)) &&
-				    strneq(gline, fbuf, glen)) ||
+
+			/* now strip CR in weave if old broken sfile */
+			flen = strlen(fbuf);
+			if (flen && (fbuf[flen-1] == '\r')) flen--;
+
+			unless (((flen == glen) &&
+				strneq(gline, fbuf, flen)) ||
 			    expandeq(s, d, gline, glen, fbuf, &eflags)) {
 				debug((stderr, "diff because diff data\n"));
 				RET(1);

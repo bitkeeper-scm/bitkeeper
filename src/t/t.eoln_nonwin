@@ -90,6 +90,13 @@ checkfiles testfile WANT
 bk -r check -ac || exit 1
 echo OK
 
+echo $N Test hasDiffs with CRLF in weave ............................$NL
+bk clean testfile
+bk edit $Q testfile || fail
+bk sfiles -c > OUT || fail -f OUT
+test -s OUT && fail -f OUT should not have modified files
+echo OK
+
 echo $N Pull cset with CRLF in weave ................................$NL
 bk clone $Q . ../copy || exit 1
 bk commit $Q -yjunk || exit 1
