@@ -300,7 +300,7 @@ int
 cset_write(sccs *s, int spinners, int fast)
 {
 	FILE	*f = 0;
-	int	i, rc = -1;
+	int	i;
 	delta	*d;
 
 	assert(s);
@@ -347,7 +347,7 @@ cset_write(sccs *s, int spinners, int fast)
 			}
 		}
 	}
-	unless (f = sccs_startWrite(s)) return (-1);
+	unless (f = sccs_startWrite(s)) goto err;
 	s->state |= S_ZFILE|S_PFILE;
 	if (fast) {
 		if (fastWeave(s, f)) goto err;
@@ -362,6 +362,9 @@ cset_write(sccs *s, int spinners, int fast)
 	fprintf(f, "\001H%05u\n", s->cksum);
 	if (sccs_finishWrite(s, &f)) return (-1);
 	return (0);
+
+err:	sccs_abortWrite(s, &f);
+	return (-1);
 }
 
 /*

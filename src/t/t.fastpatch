@@ -91,10 +91,10 @@ mv SCCS/s.foo save
 mv x SCCS/s.foo
 chmod 444 SCCS/s.foo
 bk makepatch -r+ > junk 2> ERR && exit 1
-grep -q "Bad old style checksum" ERR || exit 2
+grep -q "Bad checksum" ERR || exit 2
 # Now test fast checksum
 bk makepatch -F -r+ > junk 2> ERR && exit 3
-grep -q "Bad old style checksum" ERR || exit 4
+grep -q "Bad checksum" ERR || exit 4
 # Leave set up for takepatch to test and then fix..
 echo OK
 

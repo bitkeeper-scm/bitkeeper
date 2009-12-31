@@ -989,6 +989,7 @@ void	parse_url(char *url, char *host, char *path);
 char	*sccs_Xfile(sccs *s, char type);
 FILE	*sccs_startWrite(sccs *s);
 int	sccs_finishWrite(sccs *s, FILE **f);
+void	sccs_abortWrite(sccs *s, FILE **f);
 int	unique(char *key);
 char	*uniq_keysHome(void);
 int	uniq_lock(void);

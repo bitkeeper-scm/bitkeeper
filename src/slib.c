@@ -2156,6 +2156,27 @@ sccs_startWrite(sccs *s)
 }
 
 /*
+ * Bail, but clean up first.
+ */
+void
+sccs_abortWrite(sccs *s, FILE **f)
+{
+	if (*f) fclose(*f);	/* before the unlink */
+	if (s->mem_out) {
+		s->mem_in = 0;
+		if (s->outfh) {
+			if (*f != s->outfh) fclose(s->outfh);
+			s->outfh = 0;
+		}
+		s->mem_out = 0;
+	} else {
+		unlink(sccsXfile(s, 'x'));
+	}
+	*f = 0;
+	sccs_close(s);
+}
+
+/*
  * We have finished writing a new x.file and now it is time to update
  * the sfile.
  */
@@ -7684,7 +7705,7 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 	sccs_rdweaveInit(s);
 
 	fputs("F\n", out);
-	while (buf = nextdata(s)) {
+	while (buf = sccs_nextdata(s)) {
 		unless (isData(buf)) {
 			debug2((stderr, "%s", buf));
 			type = buf[1];
@@ -7765,7 +7786,13 @@ badcksum(sccs *s, int flags)
 		while (i--) sum += *t++;
 	}
 	debug((stderr, "Calculated sum is %d\n", (sum_t)sum));
-	if ((sum_t)sum == filesum) s->cksumok = 1;
+	if ((sum_t)sum == filesum) {
+		s->cksumok = 1;
+	} else {
+		fprintf(stderr,
+		    "Bad checksum for %s, got %d, wanted %d\n",
+		    s->sfile, (sum_t)sum, filesum);
+	}
 	debug((stderr,
 	    "%s has %s cksum\n", s->sfile, s->cksumok ? "OK" : "BAD"));
 	return ((sum_t)sum != filesum);
@@ -11650,7 +11677,7 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, char **patchmap,
 
 	assert(s);
 
-	new(w);
+	w = new(weave);
 	w->s = s;
 	w->state = allocstate(0, s->nextserial);
 	w->out = out;
@@ -11675,21 +11702,15 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, char **patchmap,
 		}
 	}
 	if (HAS_SFILE(s)) {
-		seekto(s, s->data);
-		if (s->encoding & E_GZIP) {
-			s->zin = zgets_init(s->where, s->size - s->data);
-		}
-		w->buf = nextdata(s);	/* prime the data flow */
+		sccs_rdweaveInit(s);
+		w->buf = sccs_nextdata(s);	/* prime the data flow */
 	}
 	if (s->encoding & E_GZIP) sccs_zputs_init(s, out);
 
 	rc = doFast(w, patchmap, fastpatch);
 
 	if (HAS_SFILE(s)) {
-		if (s->encoding & E_GZIP) {
-			zgets_done(s->zin);
-			s->zin = 0;
-		}
+		if (sccs_rdweaveDone(s)) rc = 1;	/* no EOF */
 	}
 	if (fflushdata(s, out)) rc = 1;
 	if (w->slist) free(w->slist);
@@ -11834,11 +11855,13 @@ weaveMove(weave *w, int line, int before, ser_t patchserial)
 				if (before) goto end;
 				w->line++;
 				w->sum += fputdata(s, buf, w->out);
+				w->sum += fputdata(s, "\n", w->out);
 				if (buf[0] == CNTLA_ESCAPE) {
 					w->sum -= CNTLA_ESCAPE;
 				}
 			} else {
 				fputdata(s, buf, w->out);
+				fputdata(s, "\n", w->out);
 			}
 			continue;
 		}
@@ -11853,12 +11876,12 @@ weaveMove(weave *w, int line, int before, ser_t patchserial)
 		if (before && print && (type == 'D')) {
 			if (patchserial < serial) goto end;
 		}
-		sprintf(cmdline, "\001%c %u%s\n", type, serial, mkline(n));
+		sprintf(cmdline, "\001%c %u%s\n", type, serial, n);
 		fputdata(s, cmdline, w->out);
 		if (print = changestate(w->state, type, serial)) {
 			unless (w->slist[print]) print = 0;
 		}
-	} while (buf = nextdata(s));
+	} while (buf = sccs_nextdata(s));
 	assert(!buf);
 	unless (finish && !whatstate(w->state)) {
 eof:		fprintf(stderr, "Unexpected EOF in %s\n", s->sfile);
@@ -11885,6 +11908,7 @@ after:	skipblock = 0;
 			unless (skipblock) goto end;
 			assert(!print);
 			fputdata(s, buf, w->out);
+			fputdata(s, "\n", w->out);
 			continue;
 		}
 		type = buf[1];
@@ -11897,7 +11921,7 @@ after:	skipblock = 0;
 		}
 		assert(patchserial != serial);
 		if (serial < patchserial) goto end;
-		sprintf(cmdline, "\001%c %u%s\n", type, serial, mkline(n));
+		sprintf(cmdline, "\001%c %u%s\n", type, serial, n);
 		fputdata(s, cmdline, w->out);
 		unless (skipblock) {
 			if (type == 'I') skipblock = serial;
@@ -11908,7 +11932,7 @@ after:	skipblock = 0;
 		if (print = changestate(w->state, type, serial)) {
 			unless (w->slist[print]) print = 0;
 		}
-	} while (buf = nextdata(s));
+	} while (buf = sccs_nextdata(s));
 	assert(!buf);
 	/* assert(patchserial == 1); kind of strong, but should be true */
 	if (whatstate(w->state)) goto eof;
