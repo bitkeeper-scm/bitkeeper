@@ -562,7 +562,11 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			pclose(f);
 			pclose(fout);
 		}
-		putenv("BK_STATUS=OK");
+		if (exists(ROOT2RESYNC)){
+			putenv("BK_STATUS=OK");
+		} else {
+			putenv("BK_STATUS=REDUNDANT");
+		}
 		rc = 0;
 	}  else if (strneq(buf, "@UNABLE TO UPDATE BAM SERVER", 28)) {
 		unless (opts.quiet) {

@@ -133,6 +133,7 @@ int	checking_rmdir(char *dir);
 #define PRS_ALL		0x80000000	/* scan all revs, not just type D */
 #define	PRS_GRAFT	0x01000000	/* put the perfile in the patch */
 #define	PRS_LF		0x02000000	/* terminate non-empty output with LF */
+#define	PRS_FASTPATCH	0x04000000	/* print in fast patch format */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -708,6 +709,7 @@ typedef struct patch {
 	MMAP	*initMmap;	/* points into mmapped patch */
 	char	*diffFile;	/* RESYNC/BitKeeper/diff-1, only if !diffMmap */
 	MMAP	*diffMmap;	/* points into mmapped patch */
+	delta	*d;		/* in cset path, save the corresponding d */
 	time_t	order;		/* ordering over the whole list, oldest first */
 	u32	local:1;	/* patch is from local file */
 	u32	remote:1;	/* patch is from remote file */
@@ -735,8 +737,10 @@ typedef struct patch {
  * 1.2 = Changed random bits to be per delta;
  *	 Add grafted file support.
  * 1.3 = add logging patch type and tag graph.
+ * 1.4 = one interleaved diff per file in the patch
  */
 #define PATCH_CURRENT	"# Patch vers:\t1.3\n"
+#define PATCH_FAST	"# Patch vers:\t1.4\n"
 
 #define PATCH_REGULAR	"# Patch type:\tREGULAR\n"
 
@@ -862,6 +866,7 @@ int	sccs_rmdel(sccs *s, delta *d, u32 flags);
 int	sccs_stripdel(sccs *s, char *who);
 int	stripdel_fixTable(sccs *s, int *pcnt);
 int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
+int	sccs_patchDiffs(sccs *s, ser_t *patchmap, char *printOut);
 void	sccs_pdelta(sccs *s, delta *d, FILE *out);
 delta	*sccs_key2delta(sccs *sc, char *key);
 int	sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs, u32 flags);
@@ -1113,8 +1118,8 @@ int	check_rsh(char *remsh);
 void	sccs_color(sccs *s, delta *d);
 int	out(char *buf);
 int	getlevel(void);
-delta	*cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
-int	cset_write(sccs *s, int spinners);
+delta	*cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast);
+int	cset_write(sccs *s, int spinners, int fast);
 sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);
 int	isNullFile(char *rev, char *file);
@@ -1220,6 +1225,8 @@ u32	crc(char *s);
 int	annotate_args(int flags, char *args);
 void	platformInit(char **av);
 int	sccs_csetPatchWeave(sccs *s, FILE *f);
+int	sccs_fastWeave(sccs *s, ser_t *weavemap, char **patchmap,
+	    MMAP *fastpatch, FILE *out);
 void	sccs_clearbits(sccs *s, u32 flags);
 MDBM	*loadkv(char *file);
 char	**getParkComment(int *err);

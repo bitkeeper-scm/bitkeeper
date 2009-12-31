@@ -40,7 +40,7 @@ private void	errorMsg(char *msg, char *arg1, char *arg2);
 private	int	extractPatch(char *name, MMAP *p);
 private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int*);
 private	int	applyPatch(char *local, sccs *perfile);
-private	int	applyCsetPatch(char *localPath, int nfound, sccs *perfile);
+private	int	applyCsetPatch(sccs *s, int *nfound, sccs *perfile);
 private	int	getLocals(sccs *s, delta *d, char *name);
 private	void	insertPatch(patch *p);
 private	void	reversePatch(void);
@@ -78,6 +78,7 @@ private	char	*comments;	/* -y'comments', pass to resolve. */
 private	char	**errfiles;	/* files had errors during apply */
 private	char	**edited;	/* files that were in modified state */
 private	int	collapsedups;	/* allow csets in BitKeeper/etc/collapsed */
+private	int	Fast;		/* Fast patch mode */
 
 extern	char	*prog;
 
@@ -372,6 +373,7 @@ extractPatch(char *name, MMAP *p)
 	sccs	*perfile = 0;
 	int	newFile = 0;
 	int	reallyNew = 0;
+	int	cset;
 	char	*gfile = 0;
 	int	nfound = 0, rc;
 	char	*t;
@@ -414,7 +416,8 @@ extractPatch(char *name, MMAP *p)
 	if (newProject && !newFile) errorMsg("tp_notfirst", 0, 0);
 
 	if (echo>4) fprintf(stderr, "%s\n", t);
-	s = sccs_keyinit(0, t, SILENT|INIT_NOCKSUM, idDB);
+	s = sccs_keyinit(0, t, SILENT, idDB);
+	if (s && !s->cksumok) goto error;
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
@@ -487,6 +490,7 @@ error:		if (perfile) sccs_free(perfile);
 				goto error;
 			}
 		}
+		sccs_findKeyDB(s, 0);
 		unless (tmp = sccs_findKey(s, t)) {
 			shout();
 			fprintf(stderr,
@@ -522,7 +526,6 @@ error:		if (perfile) sccs_free(perfile);
 	tableGCA = 0;
 	if (s) {
 		encoding = s->encoding;
-		sccs_findKeyDB(s, 0);
 	}
 	while (extractDelta(name, s, newFile, p, &nfound)) {
 		if (newFile) newFile = 2;
@@ -532,8 +535,11 @@ error:		if (perfile) sccs_free(perfile);
 		fprintf(stderr, "Updating %s", gfile);
 		if (echo == 3) fputc(' ', stderr);
 	}
-	if ((s && CSET(s)) || (!s && streq(name, CHANGESET))) {
-		rc = applyCsetPatch(s ? s->sfile : 0 , nfound, perfile);
+	cset = s ? CSET(s) : streq(name, CHANGESET);
+	if (Fast || cset) {
+		rc = applyCsetPatch(s, &nfound, perfile);
+		s = 0;		/* applyCsetPatch calls sccs_free */
+		unless (cset) nfound = 0;	/* only count csets */
 	} else {
 		if (s && s->findkeydb) {
 			mdbm_close(s->findkeydb);
@@ -657,6 +663,7 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int *np)
 	long	off;
 	int	c;
 	int	skip = 0;
+	int	ignore = 0;
 	patch	*p;
 
 	if (newFile == 1) goto delta1;
@@ -679,6 +686,10 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int *np)
 delta1:	off = mtell(f);
 	d = getRecord(f);
 	sccs_sdelta(s, d, buf);
+	if (Fast) {
+		if (skipkey(s, buf)) ignore = 1;
+		goto save;
+	}
 	/*
 	 * 11/29/02 - we fill in dangling deltas by pretending they are
 	 * incoming deltas which we do not already have.  In the patch
@@ -703,7 +714,7 @@ delta1:	off = mtell(f);
 	} else {
 		fileNum++;
 	}
-	mseekto(f, off);
+save:	mseekto(f, off);
 	if (skip) {
 		free(pid);
 		/* Eat metadata */
@@ -728,7 +739,7 @@ delta1:	off = mtell(f);
 		p->pid = pid;
 		sccs_sdelta(s, d, buf);
 		p->me = strdup(buf);
-		p->initMmap = mrange(start, stop, "b");
+		p->initMmap = ignore ? 0 : mrange(start, stop, "b");
 		p->localFile = s ? strdup(s->sfile) : 0;
 		sprintf(buf, "RESYNC/%s", name);
 		p->resyncFile = strdup(buf);
@@ -742,7 +753,13 @@ delta1:	off = mtell(f);
 			line++;
 			if (echo>5) fprintf(stderr, "%.*s", linelen(b), b);
 		}
-		if (d->flags & D_META) {
+		if (Fast) {
+			/* header and diff are not connected */
+			if (d->flags & D_META) p->meta = 1;
+			if (start != stop) {
+				p->diffMmap = mrange(start, stop, "b");
+			}
+		} else if (d->flags & D_META) {
 			p->meta = 1;
 			assert(c == line);
 		} else {
@@ -827,7 +844,7 @@ walkrevs_list(sccs *s, delta *d, void *token)
 /*
  * Most of the code in this function is copied from applyPatch
  * We may want to merge the two function later.
- * 
+ *
  * This tries within a reasonable amount of effort to write the
  * SCCS file only once.  This can be done because the sccs struct
  * is in memory and can be fiddled with carefully.  The weaving
@@ -841,19 +858,20 @@ walkrevs_list(sccs *s, delta *d, void *token)
  * is possible to only write the file once.
  */
 private	int
-applyCsetPatch(char *localPath, int nfound, sccs *perfile)
+applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 {
 	patch	*p;
 	MMAP	*iF;
 	MMAP	*dF;
-	sccs	*s = 0;
 	delta	*d = 0;
+	delta	*top = 0;
 	delta	*remote_tagtip = 0;
 	int	n = 0;
+	int	c;
+	int	psize = *nfound;
 	int	confThisFile;
 	FILE	*csets = 0, *f;
 	hash	*cdb;
-	int	flags = echo ? 0 : SILENT;
 	char	csets_in[MAXPATH];
 	char	buf[MAXKEY];
 
@@ -865,43 +883,62 @@ applyCsetPatch(char *localPath, int nfound, sccs *perfile)
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
 		    p->localFile, p->resyncFile, p->pid, p->me);
 	}
-	unless (localPath) {
-		if (mkdirf(p->resyncFile)) {
-			perror(p->resyncFile);
+	/*
+	 * XXX: could this be done in cset_write()? As in, do not create
+	 * until it is needed?  This seems to work but may be excess
+	 */
+	if (mkdirf(p->resyncFile) == -1) {
+		if (errno == EINVAL) {
+			getMsg("reserved_name",
+			    p->resyncFile, '=', stderr);
+			return (-1);
 		}
-		goto apply;
 	}
-	/* NOTE: the "goto" above .. skip the next block if no ChangeSet */
+	if (s) {
+		/* arrange for this sccs* to write into RESYNC */
+		free(s->sfile);
+		s->sfile = strdup(p->resyncFile);
+		free(s->gfile);
+		s->gfile = sccs2name(s->sfile);
+		free(s->pfile);
+		s->pfile = strdup(sccs_Xfile(s, 'p'));
+		free(s->zfile);
+		s->zfile = strdup(sccs_Xfile(s, 'z'));
+		s->state &= ~(S_PFILE|S_ZFILE|S_GFILE);
+		/* NOTE: we leave S_SFILE set, but no sfile there */
 
-	fileCopy2(localPath, p->resyncFile);
-	/* Open up the cset file */
-	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags)) {
-		SHOUT();
-		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
-		goto err;
-	}
-	unless (HASGRAPH(s)) {
-		SHOUT();
-		if (!(s->state & S_SFILE)) {
+		unless (CSET(s)) top = sccs_top(s);
+	} else {
+		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
+			SHOUT();
 			fprintf(stderr,
-			    "takepatch: no s.file %s\n", p->resyncFile);
-		} else {
-			perror(s->sfile);
+			    "takepatch: can't create %s\n", p->resyncFile);
+			goto err;
 		}
-		goto err;
+		s->bitkeeper = 1;
+		if (perfile) sccscopy(s, perfile);
+		sccs_findKeyDB(s, 0);
 	}
-apply:
-	p = patchList;
-	if (p && p->pid) cweave_init(s, nfound);
+	assert(s);
+	cweave_init(s, psize);
+	*nfound = 0;
 	while (p) {
 		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
 		n++;
-		if (p->pid) {
-			assert(s);
-			if (echo>9) {
-				fprintf(stderr,
-				    "PID: %s\nME:  %s\n", p->pid, p->me);
-			}
+		if (echo>9) {
+			fprintf(stderr, "PID: %s\nME:  %s\n",
+			    p->pid ? p->pid : "none", p->me);
+		}
+		/*
+		 * iF = 0 if skipkey found it; so its parent may have also
+		 * been skipkey'd and so not here; don't look up parent
+		 * without iF being set (as well as parent pointer p->pid).
+		 * p->pid won't be set for 1.0 delta.
+		 */
+		dF = p->diffMmap;
+		iF = p->initMmap;
+		d = 0;	/* in this case, parent */
+		if (iF && p->pid) {
 			unless (d = sccs_findKey(s, p->pid)) {
 				if ((echo == 2) || (echo == 3)) {
 					fprintf(stderr, " \n");
@@ -909,64 +946,59 @@ apply:
 				errorMsg("tp_ahead", p->pid, s->sfile);
 				/*NOTREACHED*/
 			}
-			if (echo>9) {
-				fprintf(stderr, "Child of %s", d->rev);
-				if (p->meta) {
-					fprintf(stderr, " meta\n");
-				} else {
-					fprintf(stderr, " data\n");
-				}
+		}
+		if (echo>9) {
+			fprintf(stderr, "Child of %s", d ? d->rev : "none");
+			if (p->meta) {
+				fprintf(stderr, " meta\n");
+			} else {
+				fprintf(stderr, " data\n");
 			}
-			iF = p->initMmap;
-			dF = p->diffMmap;
-			d = cset_insert(s, iF, dF, p->pid);
-			if (!p->local && d->symGraph) remote_tagtip = d;
-		} else {
-			assert(s == 0);
-			unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
-				SHOUT();
-				fprintf(stderr,
-				    "takepatch: can't create %s\n",
-				    p->resyncFile);
-				goto err;
+		}
+		/* passing in d = parent, setting d = new or existing */
+		if (d = cset_insert(s, iF, dF, d, Fast)) {
+			(*nfound)++;
+			p->d = d;
+			if (d->flags & D_REMOTE) {
+				if (d->symGraph) remote_tagtip = d;
 			}
-			if (perfile) sccscopy(s, perfile);
-			iF = p->initMmap;
-			dF = p->diffMmap;
-			cweave_init(s, nfound);
-			sccs_findKeyDB(s, 0);
-			d = cset_insert(s, iF, dF, p->pid);
-			if (!p->local && d->symGraph) remote_tagtip = d;
-			s->bitkeeper = 1;
 		}
 		p = p->next;
+	}
+	unless (*nfound) {
+		if (HAS_SFILE(s)) {
+			sccs_close(s);
+			unlink(s->sfile);
+			sccs_rmEmptyDirs(s->sfile);
+		}
+		goto done;
 	}
 	/*
 	 * pull -r can propagate a non-tip tag element as the tip.
 	 * We have to mark it here before writing the file out.
 	 */
 	if (remote_tagtip && !remote_tagtip->symLeaf) {
+		assert(CSET(s));
 		remote_tagtip->symLeaf = 1;
 		debug((stderr,
 		    "takepatch: adding leaf to tag delta %s (serial %d)\n",
 		    remote_tagtip->rev, remote_tagtip->serial));
 	}
-	if (echo == 3) fprintf(stderr, "\b, ");
-	if (cset_write(s, (echo == 3))) {
+	if (CSET(s) && (echo == 3)) fprintf(stderr, "\b, ");
+	if (cset_write(s, (echo == 3), Fast)) {
 		SHOUT();
-		fprintf(stderr, "takepatch: can't write %s\n", p->resyncFile);
+		fprintf(stderr, "takepatch: can't update %s\n", s->sfile);
 		goto err;
 	}
-	s = sccs_reopen(s);	/* I wish this could be sccs_restart() */
-	assert(s && s->tree);
 
-	unless (sccs_findKeyDB(s, 0)) {
-		assert("takepatch: could not build findKeyDB" == 0);
-	}
+	s = sccs_restart(s);
+	assert(s);
+
+	unless (CSET(s)) goto markup;
 
 	if (cdb = loadCollapsed()) {
 		for (p = patchList; p; p = p->next) {
-			d = sccs_findKey(s, p->me);
+			unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
 			sccs_md5delta(s, d, buf);
 			if (hash_fetchStr(cdb, buf)) {
 				/* find cset that added that entry */
@@ -987,39 +1019,55 @@ apply:
 	csets = fopen(csets_in, "w");
 	assert(csets);
 	for (p = patchList; p; p = p->next) {
+		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
 		fprintf(csets, "%s\n", p->me);
-		/*
-		 * XXX: mclose take a null arg?
-		 * meta doesn't have a diff block
-		 */
-		mclose(p->diffMmap); /* win32: must mclose after cset_write */
 	}
 	fclose(csets);
-
+markup:
 	/*
 	 * D_REMOTE used in sccs_resolveFiles()
 	 * D_SET used in cset_resum()
 	 */
 	for (d = 0, p = patchList; p; p = p->next) {
-		assert(p->me);
-		d = sccs_findKey(s, p->me);
 		/*
-		 * XXX - this is probably an incomplete fix.
-		 * The problem was that we got a patch with a meta delta
-		 * with no content in it and delta_table() tossed it out.
-		 * So when we go looking for it, we don't find it.
-		 * What is not being checked here is if the delta was
-		 * indeed empty.
+		 * In fastpatch, diffMmap is not related to initMmap, so
+		 * just clear all of them.  And mclose works if 0 passed in.
 		 */
-		if (!d && p->meta) continue;
-		assert(d);
-		if (p->remote) d->flags |= (D_REMOTE|D_SET);
+		mclose(p->diffMmap); /* win32: must mclose after cset_write */
+		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
+		d->flags |= D_SET; /* for resum() */
+	}
+	if (top && (top->dangling || !(top->flags & D_CSET))) {
+		delta	*a, *b;
+
+		if (top->dangling && sccs_findtips(s, &a, &b)) {
+			fprintf(stderr, "takepatch: monotonic file %s "
+			    "has dangling deltas\n", s->sfile);
+			goto err;
+		}
+		if (!(top->flags & D_CSET) && sccs_isleaf(s, top)) {
+			/* uncommitted error for dangling is backward compat */
+			SHOUT();
+			getMsg("tp_uncommitted", s->gfile, 0, stderr);
+			goto err;
+		}
 	}
 	s->state |= S_SET;
-	if (echo == 3) fprintf(stderr, "\b, ");
-	if (cset_resum(s, 0, 0, echo == 3, 1)) {
-		getMsg("takepatch-chksum", 0, '=', stderr);
-		goto err;
+	if (CSET(s)) {
+		if (echo == 3) fprintf(stderr, "\b, ");
+		if (cset_resum(s, 0, 0, echo == 3, 1)) {
+			getMsg("takepatch-chksum", 0, '=', stderr);
+			goto err;
+		}
+	} else if (!BAM(s)) {
+		for (d = s->table; d; d = d->next) {
+			unless ((d->flags & D_SET) && !TAG(d)) continue;
+			c = sccs_resum(s, d, 0, 0);
+			if (c & 2) {
+				getMsg("takepatch-chksum", 0, '=', stderr);
+				goto err;
+			}
+		}
 	}
 
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) goto err;
@@ -1071,7 +1119,11 @@ apply:
 		if (fail) goto err;
 	}
 	conflicts += confThisFile;
-	sccs_free(s);
+	if (BAM(s) && !bp_hasBAM()) {
+		/* this shouldn't be needed... */
+		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
+	}
+done:	sccs_free(s);
 	s = 0;
 	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
 	freePatchList();
@@ -1900,7 +1952,8 @@ init(char *inputFile)
 					st.preamble_nl = 1;
 				}
 				if (st.preamble_nl) {
-					if (streq(buf, PATCH_CURRENT)) {
+					if (streq(buf, PATCH_CURRENT) ||
+					    (Fast = streq(buf, PATCH_FAST))) {
 						st.type = 1;
 						st.preamble = 0;
 						st.preamble_nl = 0;
@@ -2091,7 +2144,8 @@ error:					fprintf(stderr, "GOT: %s", buf);
 
 		i = 0;
 		while (t = mnext(m)) {
-			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT))) {
+			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT)) ||
+			    (Fast = strneq(t, PATCH_FAST, strsz(PATCH_FAST)))) {
 				len = linelen(t);
 				sumC = adler32(sumC, t, len);
 				t = mnext(m);

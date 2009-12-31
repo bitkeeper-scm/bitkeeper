@@ -33,6 +33,12 @@ cd project
 bk makepatch $Q -d -r1.2..+ > "$HERE/patch" || exit 1
 cd "$HERE/clone1"
 bk lease flush -a
+bk takepatch $Q < "$HERE/patch" || exit 1
+test -d RESYNC -a -d PENDING || exit 1
+bk abort -f || exit 1
+echo OK
+
+echo $N Test basic takepatch -a .....................................$NL
 bk takepatch $Q -a < "$HERE/patch" || exit 1
 bk changes -aqL > c1 || exit 1
 test -s c1 && {
@@ -287,14 +293,14 @@ rm -fr copy
 tar xf copy.tar
 cd copy || exit 1
 bk pull $Q -rFIRST || exit 1
-BK_NOTTY= bk pull -R > OUT 2> SPINNERCHECK || exit 1
+_BK_NO_FASTPATCH=1 BK_NOTTY= bk pull -R > OUT 2> SPINNERCHECK || exit 1
 mv PENDING/* update.patch
 rm -fr PENDING RESYNC
 bk edit $Q newfile
 echo stuff > newfile
 bk delta $Q -ycontent newfile || exit 1
 bk commit $Q -ynewcontent || exit 1
-bk pull $Q -R || exit 1
+_BK_NO_FASTPATCH=1 bk pull $Q -R || exit 1
 mv PENDING/* merge.patch
 rm -fr PENDING RESYNC
 grep -q SFIO update.patch || exit 1
@@ -394,10 +400,9 @@ bk undo $Q -sfr+
 bk pull $Q 2> ERR && exit 1
 grep -q 'monotonic file .* has dangling' ERR || exit 1
 rm -fr PENDING RESYNC
-
-# the old takepatch fails differently
+# the new takepatch fails the same way
 _BK_NO_PATCHSFIO=1 bk pull $Q 2> ERR && exit 1
-grep -q 'Please commit pending changes with "bk commit"' ERR || exit 1
+grep -q 'monotonic file .* has dangling' ERR || exit 1
 echo "failed (bug -- we just don't update danglers well)"
 
 echo $N Check takepatch checking checksum in sccs_delta .............$NL
@@ -419,5 +424,5 @@ chmod 444 SCCS/s.foo
 bk admin -z foo
 cd ../checksum
 bk pull $Q -R 2> ERR && exit 1
-grep -q "bad delta checksum: 505:504" ERR || exit 2
+grep -q "Bad checksum 504:505 in" ERR || exit 2
 echo OK

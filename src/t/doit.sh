@@ -718,6 +718,7 @@ I hope your testing experience was positive! :-)
 		fi
 		test $KEEP_GOING = NO && {
 			test $PLATFORM = WIN32 && win32_regRestore
+			bk _find "$BK_REGRESSION" -name core			
 			exit $EXIT
 		}
 		FAILED="$i $FAILED"

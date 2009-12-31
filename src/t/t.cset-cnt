@@ -82,7 +82,7 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
-CNT=16
+CNT=14
 echo $N "Count the inits for a 'bk pull' ($CNT)........................."$NL
 bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore
@@ -114,7 +114,7 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
-CNT=7
+CNT=5
 echo $N "Count the inits for a 'bk pull -R' ($CNT)......................."$NL
 bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore
@@ -146,7 +146,7 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
-CNT=12
+CNT=10
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
 bk push $Q || exit 1

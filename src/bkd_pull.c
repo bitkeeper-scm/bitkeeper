@@ -340,6 +340,7 @@ err:			printf("ERROR-protocol error in aliases\n");
 	} else {
 		makepatch[n++] = "-C"; /* old-bk, use compat mode */
 	}
+	if (bk_hasFeature("fastpatch")) makepatch[n++] = "-F";
 	if (port) {
 		makepatch[n++] = "-P";
 		makepatch[n++] = port;

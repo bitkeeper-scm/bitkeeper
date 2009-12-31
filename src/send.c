@@ -125,15 +125,16 @@ int
 send_main(int ac,  char **av)
 {
 	int	c, rc = 0, force = 0;
-	char	*to, *out, *cmd, *dflag = "", *qflag = "-vv";
+	char	*to, *out, *cmd, *dflag = "", *Fflag = "", *qflag = "-vv";
 	char	*wrapper = 0,*patch = 0, *keysFile = 0, *revArgs = 0;
 	char	*wrapperArgs = "", *rev = "..", *subject = "BitKeeper patch";
 	char	*url = NULL;
 	FILE	*f;
 
-	while ((c = getopt(ac, av, "dfqr:s;u:w:")) != -1) {
+	while ((c = getopt(ac, av, "dFfqr:s;u:w:")) != -1) {
 		switch (c) {
 		    case 'd':	dflag = "-d"; break;		/* doc 2.0 */
+		    case 'F':	Fflag = "-F"; break;		/* undoc */
 		    case 'f':	force++; break;			/* doc 2.0 */
 		    case 'q':	qflag = ""; break;		/* doc 2.0 */
 		    case 'r': 	rev = optarg; break;		/* doc 2.0 */
@@ -206,8 +207,8 @@ send_main(int ac,  char **av)
 	/*
 	 * Now make the patch
 	 */
-	cmd = aprintf("bk makepatch -CB %s %s %s %s %s",
-				    dflag, qflag, revArgs, wrapperArgs, out);
+	cmd = aprintf("bk makepatch -CB %s %s %s %s %s %s",
+			    Fflag, dflag, qflag, revArgs, wrapperArgs, out);
 	if (rc = system(cmd) ? 1 : 0)  goto out;
 
 

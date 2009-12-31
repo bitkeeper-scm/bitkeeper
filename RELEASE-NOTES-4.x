@@ -1,3 +1,34 @@
+Release notes for BitKeeper version 4.5 (released XX-Jan-2010)
+
+This release includes a major performace improvement for pull and
+push.  Unlike the bk-4.3 performace fix, this version will improve the
+performace of pulls that do a merge.  Also in cases were file
+operations are expensive, like over NFS, the gains can be dramatic.
+
+This fix requires a new patch format created by makepatch and consumed
+by takepatch.  As a result only when both the bk and bkd are upgraded
+will the new faster patch code be enabled.
+
+Bugfixes/Notes
+--------------
+
+- The undocumented BK_PATCHDIR hack added in bk-4.2a for certain
+  customers has now be removed as it is no longer needed.
+
+- Fix several problems related to talking to a bkd using HTTP via a
+  HTTP proxy
+
+- Add a note to the 'bk mv' manpage that a mvdir will do a full
+  repository consistancy check first.  This can be confusing of the
+  check complains of something unrelated to the mvdir.
+
+- Fix some cases where fetching a BAM file from outside the repository
+  would fail.
+
+- Tweak BAM so a bkd clone of a repository with a file:// URL to the
+  BAM server will still work in common cases.
+
+===============================================================================
 Release notes for BitKeeper version 4.4a (released 14-Oct-2009)
 
 This release is a bugfix release related to slow renumber performance.
