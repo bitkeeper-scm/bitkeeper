@@ -7,7 +7,8 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	concat_path.o \
 	dirname.o dirs.o \
 	efopen.o \
-	filecopy.o fileutils.o findpid.o fullname.o fileinfo.o \
+	fileops.o \
+	fileutils.o findpid.o fullname.o fileinfo.o \
 	getnull.o getopt.o \
 	lines.o \
 	mkdir.o \

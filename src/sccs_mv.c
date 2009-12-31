@@ -116,7 +116,7 @@ err:		if (sname) free(sname);
 
 	/* close the file before we move it - win32 restriction */
 	sccs_close(s);
-	error = mv(s->sfile, sfile);
+	error = fileMove(s->sfile, sfile);
 
 	ogfile = strdup(s->gfile);
 	osfile = strdup(s->sfile);
@@ -133,7 +133,7 @@ err:		if (sname) free(sname);
 	sfile = name2sccs(destfile);
 	unless (s = sccs_init(sfile, 0)) { error++; goto out; }
 
-	if (exists(ogfile) && !(error = mv(ogfile, gfile))) {
+	if (exists(ogfile) && !(error = fileMove(ogfile, gfile))) {
 		ut.actime = ut.modtime = time(0);
 		utime(gfile, &ut);
 	}
@@ -174,7 +174,7 @@ err:		if (sname) free(sname);
 			if (prefix == 'c') rev = strrchr(obase, '@');
 			n_path = aprintf("%s/%c.%s%s",
 				ndir, prefix, &nbase[2], rev ? rev : "");
-			mv(xlist[i], n_path);
+			fileMove(xlist[i], n_path);
 			free(n_path);
 		}
 	}
@@ -288,28 +288,6 @@ getRelativeName(char *name, project *proj)
 	}
 	free(t);
 	return rpath;
-}
-
-/*
- * XXX TODO move this to the port directory
- */
-int
-mv(char *src, char *dest)
-{
-	debug((stderr, "moving %s -> %s\n", src, dest));
-	if (rename(src, dest)) {
-		/* try making the dir and see if that helps */
-		mkdirf(dest);
-		if (rename(src, dest)) {
-#ifndef WIN32
-			if (fileCopy(src, dest)) return (1);
-			if (unlink(src)) return (1);
-#else
-			return (1);
-#endif
-		}
-	}
-	return (0);
 }
 
 private	void

@@ -1095,7 +1095,6 @@ int	gui_useAqua(void);
 char	*gui_displayName(void);
 char	*savefile(char *dir, char *prefix, char *pathname);
 void	has_proj(char *who);
-int	mv(char*, char *);
 char	*globalroot(void);
 void	sccs_touch(sccs *s);
 int	setlevel(int);
