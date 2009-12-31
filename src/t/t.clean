@@ -132,15 +132,7 @@ bk ci $Q -i long
 bk get $Q -e long
 bk clean $Q long
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
-echo $N No change to a hash file ....................................$NL
-echo hash first > hash
-bk ci $Q -i -h hash
-bk get $Q -e hash
-echo hash second > hash
-bk delta $Q -yhash hash
-bk get $Q -e hash
-bk clean $Q hash
-if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
+
 echo $N No change to SCCS expand file .. check sfiles -c ............$NL
 echo %""K% > sccsexp
 bk ci $Q -i sccsexp
@@ -220,40 +212,6 @@ bk delta $Q -yinitdel initdel
 bk get $Q -e initdel
 bk clean $Q initdel
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
-echo $N Hash change new key in gfile ................................$NL
-echo newkey first > newkey
-bk ci $Q -i -h newkey
-bk get $Q -e newkey
-echo morenewkey second > newkey
-echo newkey first >> newkey
-bk clean $Q newkey
-if [ $? -eq 0 ] ; then echo failed; fail=yes; else echo OK; fi
-#NOTE: deleted keys not supported at this time
-#echo $N Hash change del key in gfile ................................$NL
-#echo delkey first > delkey
-#echo moredelkey second >> delkey
-#ci $Q -i -h delkey
-#get $Q -e delkey
-#echo moredelkey second > delkey
-#clean $Q delkey
-#if [ $? -eq 0 ] ; then echo failed; fail=yes; else echo OK; fi
-echo $N Hash change val in gfile ....................................$NL
-echo newval first > newval
-bk ci $Q -i -h newval
-bk get $Q -e newval
-echo newval last > newval
-bk clean $Q newval
-if [ $? -eq 0 ] ; then echo failed; fail=yes; else echo OK; fi
-echo $N Hash diff is order independent ..............................$NL
-echo orderind first > orderind
-echo morekey next >> orderind
-bk ci $Q -i -h orderind
-bk get $Q -e orderind
-echo morekey next > orderind
-echo orderind first >> orderind
-bk clean $Q orderind
-if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
-if [ $fail = yes ] ; then exit 1; fi
 
 echo $N Check cleaning of a chmod +w sccs keywords file .............$NL
 bk unedit sccsexp || exit 1

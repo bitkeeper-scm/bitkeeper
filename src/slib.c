@@ -9656,7 +9656,6 @@ out:		if (sfile) fclose(sfile);
 	}
 	if (BITKEEPER(s)) {
 		s->version = SCCS_VERSION;
-		if (flags & DELTA_HASH) s->xflags |= X_HASH;
 		unless (flags & DELTA_PATCH) {
 			first->flags |= D_XFLAGS;
 			first->xflags = s->xflags;
