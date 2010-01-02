@@ -272,6 +272,7 @@ ast_mkPragma(char *id, char *val, int beg, int end)
 	memset(pragma, 0, sizeof(Pragma));
 	pragma->id  = id;
 	pragma->val = val;
+	ast_init(pragma, L_NODE_PRAGMA, beg, end);
 	return (pragma);
 }
 

@@ -1183,6 +1183,7 @@ compile_fnParms(VarDecl *decl)
 			L_errf(p, "formal parameter #%d lacks a name", n+1);
 			name = cksprintf("unnamed-arg-%d", n+1);
 			p->id = ast_mkId(name, 0, 0);
+			ckfree(name);
 		}
 		name = p->id->u.string;
 		if (isClsConstructor(decl) && !strcmp(name, "self")) {
@@ -1216,7 +1217,7 @@ compile_fnParms(VarDecl *decl)
 		type = iscallbyname(p);
 		unless (type) continue;
 		ASSERT(p->id->u.string[0] == '&');
-		name = ckstrdup(p->id->u.string + 1);  // point past the &
+		name = p->id->u.string + 1;  // point past the &
 		new_id   = ast_mkId(name, p->id->node.beg, p->id->node.end);
 		new_decl = ast_mkVarDecl(type, new_id, p->node.beg,
 					 p->node.end);
@@ -4048,8 +4049,10 @@ compile_pragma(Stmt *stmt)
 			} else if (!strcmp(arg->id, "off")) {
 				L->options &= ~L_OPT_FNTRACE;
 			} else if (!strcmp(arg->id, "hook")) {
-				L->fnhook = arg->val;
+				ckfree(L->fnhook);
+				L->fnhook = ckstrdup(arg->val);
 			} else if (!strcmp(arg->id, "defhook")) {
+				ckfree(L->fnhook);
 				L->fnhook = NULL;
 			} else {
 				L_errf(stmt,
@@ -4058,7 +4061,7 @@ compile_pragma(Stmt *stmt)
 			}
 			arg = arg->next;
 		}
-		unless (L->fnhook) L->fnhook = strdup("L_def_fn_hook");
+		unless (L->fnhook) L->fnhook = ckstrdup("L_def_fn_hook");
 	} else {
 		L_errf(stmt, "unknown pragma '%s'", p->id);
 	}
@@ -4550,7 +4553,7 @@ L_synerr(const char *s)
 
 	/* Search backwards to find the start of the offending line. */
 	off = L_lloc.beg;
-	ASSERT(off > 0);
+	ASSERT(off >= 0);
 	ASSERT(beg);
 	for (line = beg+off; (line[-1] != '\n') && (line > beg); --line) ;
 	off = beg+off - line;  // is now offset from start of offending line
@@ -4692,6 +4695,12 @@ ast_free(Ast *ast_list)
 		    case L_NODE_VAR_DECL:
 			ckfree(((VarDecl *)node)->tclprefix);
 			break;
+		    case L_NODE_PRAGMA: {
+			Pragma *p = (Pragma *)node;
+			ckfree(p->id);
+			ckfree(p->val);
+			break;
+		    }
 		    default:
 			break;
 		}
@@ -4721,7 +4730,6 @@ track_cmd(int codeOffset, void *node)
 	Ast	*ast = (Ast *)node;
 	int	len = ast->end - ast->beg;
 	int	srcOffset = ast->beg;
-	int	*wwlines;
 	ECL	*ePtr;
 	CmdLocation *cmdLocPtr;
 	CompileEnv *envPtr = L->frame->envPtr;
@@ -4796,8 +4804,6 @@ track_cmd(int codeOffset, void *node)
 	ePtr->srcOffset = srcOffset;
 	ePtr->line = (int *) ckalloc(sizeof(int));
 	ePtr->nline = 1;
-	wwlines = (int *) ckalloc(sizeof(int));
-	wwlines[0] = ast->line;
 	eclPtr->nuloc ++;
 }
 
@@ -4944,8 +4950,10 @@ TclLCleanupCompiler(ClientData clientData, Tcl_Interp *interp)
 		Tcl_DeleteHashTable(L->include_table);
 		ckfree((char *)L->include_table);
 	}
+	ckfree(L->fnhook);
 	ckfree(L->file);
 	ckfree(L->toplev);
+	Tcl_DecrRefCount(L->script);
 	ckfree((char *)L);
 	L = NULL;
 

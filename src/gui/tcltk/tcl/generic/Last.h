@@ -76,6 +76,7 @@ typedef enum {
 	L_NODE_CLSLEVEL,
 	L_NODE_VAR_DECL,
 	L_NODE_CLASS_DECL,
+	L_NODE_PRAGMA,
 } Node_k;
 
 /*
@@ -329,6 +330,7 @@ struct Case {
 };
 
 struct Pragma {
+	Ast	node;
 	char	*id;
 	char	*val;
 	Pragma	*next;

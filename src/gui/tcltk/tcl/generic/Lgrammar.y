@@ -891,6 +891,7 @@ option_arg:
 	{
 		$$ = ast_mkConst(L_string, @1.beg, @2.end);
 		$$->u.string = cksprintf("-%s", $1);
+		ckfree($1);
 	}
 	| "default" ":"
 	{

@@ -632,6 +632,18 @@ void leak_8_2_main()
 leak_8_2_main();
 } -constraints memory -output "0\n"
 
+test leak-9 {per-interp L state leak} -body {
+    set end [getbytes]
+    for {set i 0} {$i < 5} {incr i} {
+	interp create slave
+	slave eval expr 1+2+3+4+5+6+7+8+9+10+11+12+13
+	interp delete slave
+	set tmp $end
+	set end [getbytes]
+    }
+    puts [expr {$end - $tmp}]
+} -constraints memory -output "0\n"
+
 # cleanup
 ::tcltest::cleanupTests
 return
