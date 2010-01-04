@@ -85,8 +85,10 @@ char	**_getdir(char *dir, struct stat *sb);
 typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
 int	walkdir(char *dir, walkfn fn, void *data);
 
-/* filecopy.c */
+/* fileops.c */
 int	fileCopy(char *from, char *to);
+int	fileLink(char *from, char *to);
+int	fileMove(char *from, char *to);
 
 /* fileinfo.c */
 time_t	mtime(char *s);
