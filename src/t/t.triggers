@@ -1984,3 +1984,97 @@ bk delta $Q -f -ybar foo 2>/dev/null && {
 	exit 1
 }
 echo OK
+
+echo $N Run all triggers with nonewline output and trigger path .....$NL
+(
+set -e
+cd "$HERE"
+commercial multitrig
+# set up a trigger path
+cd BitKeeper/etc
+bk edit $Q config
+echo 'triggers: $BK_DOTBK|.|.' >> config
+bk ci $Q -ytrigpatch config
+# make some triggers
+cd ..
+mkdir triggers
+cd triggers
+cat <<'EOF' > X
+#!/bin/sh
+pwd
+bk pwd -r
+# No newline
+printf "$0: trigger fired"
+exit 0
+EOF
+chmod +x X
+TRIGS="pre-apply pre-collapse pre-commit post-commit pre-delta pre-fix"
+TRIGS="$TRIGS pre-incoming post-incoming pre-lease-proxy post-lease-proxy"
+TRIGS="$TRIGS pre-outgoing post-outgoing pre-resolve pre-tag"
+TRIGS="$TRIGS pre-undo post-undo"
+for f in $TRIGS; do cp X $f; done
+cd ..
+rm -fr "$BK_DOTBK"/BitKeeper
+mkdir "$BK_DOTBK/BitKeeper" || exit 1
+cp -r triggers "$BK_DOTBK"/BitKeeper
+# Okay, triggers created and path set up.  Now fire pre-delta many times:
+cd triggers
+echo OK
+set -x
+bk new $TRIGS
+# fire pre and post commit
+bk commit -yall-trigs
+cd ..
+# clone, rclone, push, pull, undo, tags, collapse, lease renew
+bk clone .. ../../clone.mt
+touch ../foo
+bk new ../foo
+bk commit -yfoo
+bk push ../../clone.mt
+cd ../../clone.mt/BitKeeper
+bk undo -fr+
+bk tag TOP
+bk pull
+bk _rclone .. ../rclone.mt
+# pre and post lease proxy
+bk lease flush -a
+# BK_NO_TRIGGERS=1
+BK_CONFIG="licenseurl: $HERE/rclone.mt! " bk lease renew
+bk collapse -eaTOP
+rm -f ../foo
+) > "$HERE/TRIGOUT" 2>&1 || {
+	echo failed
+	cat "$HERE/TRIGOUT"
+	exit 1
+}
+echo OK
+
+echo $N More running of all triggers with http and bk urls ..........$NL
+(
+set -e -x
+cd "$HERE"
+bk bkd -d -aPORT -l"$HERE/BKD.log" -P"$HERE/BKD.pid" -ikill
+P=`cat PORT`
+trap "bk _kill bk://localhost:$P" 0
+cd clone.mt/BitKeeper
+bk pull bk://localhost:$P/multitrig
+bk fix -c
+rm ../foo
+bk pull http://localhost:$P/multitrig
+bk undo -faTOP
+bk clone .. bk://localhost:$P/rclone.bk.mt
+bk clone .. http://localhost:$P/rclone.http.mt
+bk takepatch < tmp/undo.patch
+bk resolve -a
+bk takepatch -a < tmp/undo.patch
+bk push bk://localhost:$P/rclone.bk.mt
+bk push http://localhost:$P/rclone.http.mt
+cd ../..
+bk clone bk://localhost:$P/multitrig multitrig.http
+bk clone http://localhost:$P/multitrig multitrig.bk
+) > "$HERE/TRIGOUT".bkd 2>&1 || {
+	echo failed
+	cat "$HERE/TRIGOUT".bkd
+	exit 1
+}
+echo OK

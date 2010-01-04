@@ -80,7 +80,7 @@ trigger(char *cmd, char *when)
 	} else if (strneq(cmd, "fix", 3)) {
 		what = event = "fix";
 	} else if (streq(cmd, "collapse")) {
-		what = event = "collapse ";
+		what = event = "collapse";
 	} else if (streq(cmd, "remote lease-proxy")) {
 		what = event = "lease-proxy";
 	} else if (streq(cmd, "undo")) {
@@ -96,6 +96,7 @@ trigger(char *cmd, char *when)
 
 	/* post-resolve == post-incoming */
 	if (streq(when, "post") && streq(event, "resolve")) what = "incoming";
+	sprintf(buf, "%s-%s", when, what);
 
 	EACH (dirs) {
 		/* the use_enclosing ones must be called at project root */
@@ -125,44 +126,32 @@ trigger(char *cmd, char *when)
 		 * doing so.  FIXME.
 		 */
 		sys("bk", "get", "-Sq", triggerDir, SYS);
-		sprintf(buf, "%s-%s", when, what);
-
-		/* Run the resolve triggers in the RESYNC dir if there is one.
-		 * Find all the trigger scripts associated this dir/event.
-		 */
-		if (streq(what, "resolve") && streq(dirs[i], ".")) {
-			assert(isdir(ROOT2RESYNC));
-			chdir(ROOT2RESYNC);
-			triggers =
-			    getTriggers(RESYNC2ROOT "/BitKeeper/triggers", buf);
-		} else {
-			triggers = getTriggers(triggerDir, buf);
-		}
-
-		unless (triggers) {
-			if (streq(what, "resolve") && streq(dirs[i], ".")) {
-				chdir(RESYNC2ROOT);
-			}
-			if (getenv("BK_SHOW_TRIGGERS")) {
-				ttyprintf("No %s triggers in %s \n",
-				    buf, triggerDir);
-			}
-			continue;
-		}
 
 		/*
+		 * Find all the trigger scripts associated this dir/event.
+		 */
+		triggers = getTriggers(triggers, triggerDir, buf);
+	}
+	if (triggers) {
+		/*
 		 * Run the triggers, they are already sorted by getdir().
+		 * Run the resolve triggers in the RESYNC dir if there is one.
 		 */
 		unless (getenv("BK_STATUS")) putenv("BK_STATUS=UNKNOWN");
+		if (streq(what, "resolve")) {
+			assert(isdir(ROOT2RESYNC));
+			chdir(ROOT2RESYNC);
+		}
 		rc = runTriggers(
 		    strneq(cmd, "remote ",7), event, what, when, triggers);
 		freeLines(triggers, free);
-		if (streq(what, "resolve") && streq(dirs[i], ".")) {
-			chdir(RESYNC2ROOT);
+		if (streq(what, "resolve")) chdir(RESYNC2ROOT);
+	} else {
+		if (getenv("BK_SHOW_TRIGGERS")) {
+			ttyprintf("No %s triggers found\n", buf);
 		}
-		if (rc && streq(when, "pre")) goto out;
 	}
-out:	freeLines(dirs, free);
+	freeLines(dirs, free);
 	return (rc);
 }
 
@@ -172,11 +161,10 @@ out:	freeLines(dirs, free);
  * The array is sorted.
  */
 char	**
-getTriggers(char *dir, char *prefix)
+getTriggers(char **lines, char *dir, char *prefix)
 {
 	int	len = strlen(prefix);
 	char	**files;
-	char	**lines = 0;
 	int	i;
 
 	files = getdir(dir);
@@ -268,7 +256,7 @@ out:	freeLines(lines, free);
 private int
 runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 {
-	int	i, quiet, proto;
+	int	i, quiet, proto, len;
 	int	rc = 0;
 	char	*bkd_data, *trigger, *h, *p;
 	FILE	*f, *out;
@@ -348,7 +336,12 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 		f = fopen(output, "rt");
 		assert(f);
 		while (fnext(buf, f)) {
-			fprintf(out, "%s%s", bkd_data, buf);
+			if ((len = strlen(buf)) && (buf[len-1] != '\n')) {
+				assert(len+1 < sizeof(buf));
+				buf[len] = '\n';
+				buf[len+1] = 0;
+			}
+			len = fprintf(out, "%s%s", bkd_data, buf);
 		}
 		fclose(f);
 
