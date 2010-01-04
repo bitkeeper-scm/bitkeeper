@@ -4953,7 +4953,7 @@ TclLCleanupCompiler(ClientData clientData, Tcl_Interp *interp)
 	ckfree(L->fnhook);
 	ckfree(L->file);
 	ckfree(L->toplev);
-	Tcl_DecrRefCount(L->script);
+	if (L->script) Tcl_DecrRefCount(L->script);
 	ckfree((char *)L);
 	L = NULL;
 
