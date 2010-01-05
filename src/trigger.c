@@ -77,7 +77,7 @@ trigger(char *cmd, char *when)
 	} else if (strneq(cmd, "fix", 3)) {
 		what = event = "fix";
 	} else if (streq(cmd, "collapse")) {
-		what = event = "collapse ";
+		what = event = "collapse";
 	} else if (streq(cmd, "remote lease-proxy")) {
 		what = event = "lease-proxy";
 	} else if (streq(cmd, "undo")) {
@@ -94,6 +94,7 @@ trigger(char *cmd, char *when)
 
 	/* post-resolve == post-incoming */
 	if (streq(when, "post") && streq(event, "resolve")) what = "incoming";
+	sprintf(buf, "%s-%s", when, what);
 
 	if (streq(what, "resolve")) {
 		/*
@@ -142,19 +143,25 @@ trigger(char *cmd, char *when)
 		 * doing so.  FIXME.
 		 */
 		sys("bk", "get", "-Sq", triggerDir, SYS);
-		sprintf(buf, "%s-%s", when, what);
-
-		/* Find all the trigger scripts associated this dir/event. */
-		unless (triggers = getTriggers(triggerDir, buf)) continue;
 
 		/*
+		 * Find all the trigger scripts associated this dir/event.
+		 */
+		triggers = getTriggers(triggers, triggerDir, buf);
+	}
+	if (triggers) {
+		/*
 		 * Run the triggers, they are already sorted by getdir().
+		 * Run the resolve triggers in the RESYNC dir if there is one.
 		 */
 		unless (getenv("BK_STATUS")) putenv("BK_STATUS=UNKNOWN");
 		rc = runTriggers(
 		    strneq(cmd, "remote ",7), event, what, when, triggers);
 		freeLines(triggers, free);
-		if (rc && streq(when, "pre")) goto out;
+	} else {
+		if (f) {
+			fprintf(f, "No %s triggers found\n", buf);
+		}
 	}
 out:	freeLines(dirs, free);
 	if (streq(what, "resolve") && use_enclosing) chdir(RESYNC2ROOT);
@@ -168,11 +175,10 @@ out:	freeLines(dirs, free);
  * The array is sorted.
  */
 char	**
-getTriggers(char *dir, char *prefix)
+getTriggers(char **lines, char *dir, char *prefix)
 {
 	int	len = strlen(prefix);
 	char	**files;
-	char	**lines = 0;
 	int	i;
 
 	files = getdir(dir);
@@ -262,7 +268,7 @@ out:	freeLines(lines, free);
 private int
 runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 {
-	int	i, quiet, proto;
+	int	i, quiet, proto, len;
 	int	rc = 0;
 	char	*bkd_data, *trigger, *h, *p;
 	FILE	*f, *out;
@@ -342,7 +348,12 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 		f = fopen(output, "rt");
 		assert(f);
 		while (fnext(buf, f)) {
-			fprintf(out, "%s%s", bkd_data, buf);
+			if ((len = strlen(buf)) && (buf[len-1] != '\n')) {
+				assert(len+1 < sizeof(buf));
+				buf[len] = '\n';
+				buf[len+1] = 0;
+			}
+			len = fprintf(out, "%s%s", bkd_data, buf);
 		}
 		fclose(f);
 

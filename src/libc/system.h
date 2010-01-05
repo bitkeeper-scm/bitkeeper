@@ -93,8 +93,10 @@ int	 efprintf(char *env, char *fmt, ...)
 #endif
 ;
 
-/* filecopy.c */
+/* fileops.c */
 int	fileCopy(char *from, char *to);
+int	fileLink(char *from, char *to);
+int	fileMove(char *from, char *to);
 
 /* fileinfo.c */
 time_t	mtime(char *s);

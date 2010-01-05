@@ -16,6 +16,7 @@
 #include "range.h"
 #include "bam.h"
 
+typedef struct weave weave;
 #define	WRITABLE_REG(s)	(WRITABLE(s) && isRegularFile((s)->mode))
 private delta	*rfind(sccs *s, char *rev);
 private void	dinsert(sccs *s, delta *d, int fixDate);
@@ -26,7 +27,7 @@ private int	printstate(const serlist *state, const ser_t *slist);
 private int	delstate(ser_t ser, const serlist *state, const ser_t *slist);
 private int	whatstate(const serlist *state);
 private int	visitedstate(const serlist *state, const ser_t *slist);
-private void	changestate(register serlist *state, char type, int serial);
+private int	changestate(register serlist *state, char type, int serial);
 private serlist *allocstate(serlist *old, int n);
 private int	end(sccs *, delta *, FILE *, int, int, int, int);
 private void	date(delta *d, time_t tt);
@@ -68,6 +69,8 @@ private int	compressmap(sccs *s, delta *d, ser_t *set, int useSer,
 			void **i, void **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
+private int	weaveMove(weave *w, int line, int before, ser_t patchserial);
+private int	doFast(weave *w, char **patchmap, MMAP *diffs);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private	void	parseConfig(char *buf, MDBM *db);
@@ -2164,6 +2167,27 @@ sccs_startWrite(sccs *s)
 		unless (sfile = fopen(xfile, "w")) perror(xfile);
 	}
 	return (sfile);
+}
+
+/*
+ * Bail, but clean up first.
+ */
+void
+sccs_abortWrite(sccs *s, FILE **f)
+{
+	if (*f) fclose(*f);	/* before the unlink */
+	if (s->mem_out) {
+		s->mem_in = 0;
+		if (s->outfh) {
+			if (*f != s->outfh) fclose(s->outfh);
+			s->outfh = 0;
+		}
+		s->mem_out = 0;
+	} else {
+		unlink(sccsXfile(s, 'x'));
+	}
+	*f = 0;
+	sccs_close(s);
 }
 
 /*
@@ -5488,7 +5512,17 @@ sccs_set(sccs *s, delta *d, char *iLst, char *xLst)
 	return (serialmap(s, d, iLst, xLst, &junk));
 }
 
-private void
+/*
+ * The weave is a pretty restrictive data structure.
+ * The I-E blocks nest, -- any new I will be the largest numbered I in the
+ * list.  D-E blocks span across, but are rooted in I blocks of smaller
+ * number.  You can see that in the assert in the first for loop: no I
+ * will be found while looping looking for the item of interest.
+ * This is also behind the last loop of the function: to find the first I
+ * start looking where we left off.  In the 'E' case, *pp will be the entry
+ * after the deleted entry.  In the D/I case, it will be the new entry.
+ */
+private	int
 changestate(register serlist *state, char type, int serial)
 {
 	register serlist *p, **pp;
@@ -5499,6 +5533,7 @@ changestate(register serlist *state, char type, int serial)
 	/* find place in linked list */
 	for (pp = &(state[SLIST].next), p = *pp; p; pp = &(p->next), p = *pp) {
 		if (p->serial <= serial) break;
+		assert (p->type != 'I');
 	}
 
 	/*
@@ -5509,7 +5544,7 @@ changestate(register serlist *state, char type, int serial)
 		*pp = p->next;
 		p->next = state[SFREE].next;
 		state[SFREE].next = p;
-		return;
+		goto done;
 	}
 
 	/*
@@ -5526,7 +5561,12 @@ changestate(register serlist *state, char type, int serial)
 	n->next = p;
 	n->serial = serial;
 	n->type = type;
+done:
 	verify(state);
+	for (p = *pp; p; p = p->next) {
+		if (p->type == 'I') break;
+	}
+	return ((p) ? p->serial : 0);
 }
 
 /*
@@ -7634,6 +7674,106 @@ done3:
 }
 
 /*
+ * Output a diff for a block of deltas.
+ * pmap - maps the serials in the table to serials in the patch
+ * only output those with a nonzero pmap[serial].
+ * When counting line numbers, include D_SET deltas.
+ */
+int
+sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
+{
+	serlist *state = 0;
+	delta	*d;
+	char	*n, type, patchcmd;
+	u8	*sump, *buf;
+	int	track = 0, print = 0, lineno = 0;
+	ser_t	serial;
+	int	ret = -1;
+	FILE	*out = 0;
+	sum_t	sum = 0;
+
+	unless (s->cksumok) {
+		fprintf(stderr, "getdiffs: bad chksum on %s\n", s->sfile);
+		s->state |= S_WARNED;
+		return (-1);
+	}
+	if (s->state & S_BADREVS) {
+		fprintf(stderr,
+		    "getdiffs: bad revisions, run renumber on %s\n", s->sfile);
+		s->state |= S_WARNED;
+		return (-1);
+	}
+	openOutput(s, E_ASCII, printOut, &out);
+	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
+
+	unless (CSET(s)) {
+		/*
+		 * transitive close by marking all 1s in the
+		 * history of non patch nodes
+		 */
+		for (d = s->table; d; d = d->next) {
+			unless (pmap[d->serial]) continue;
+			if (d->pserial && !pmap[d->pserial]) {
+				pmap[d->pserial] = ~0;
+			}
+			if (d->merge && !pmap[d->merge]) {
+				pmap[d->merge] = ~0;
+			}
+		}
+	}
+	state = allocstate(0, s->nextserial);
+	sccs_rdweaveInit(s);
+
+	fputs("F\n", out);
+	while (buf = sccs_nextdata(s)) {
+		unless (isData(buf)) {
+			debug2((stderr, "%s", buf));
+			type = buf[1];
+			n = &buf[3];
+			serial = atoi_p(&n);
+			d = sfind(s, serial);
+			assert(d);
+			if (pmap[d->serial] && (pmap[d->serial] != ~0)) {
+				patchcmd = type;
+				if (*n == 'N') {
+					assert(type == 'E');
+					patchcmd = 'N';
+				}
+				/* yes, I know ?: isn't needed */
+				fprintf(out, "%c%u %u\n",
+				    patchcmd,
+				    pmap[d->serial],
+				    (lineno + ((type == 'D') ? 1 : 0)));
+			}
+			if (track = changestate(state, type, serial)) {
+				d = sfind(s, track);
+				assert(d);
+				if (track = pmap[d->serial]) {
+					print = (track != ~0);
+				}
+			}
+			continue;
+		}
+		unless (track) continue;
+		if (*buf == CNTLA_ESCAPE) buf++;
+		sump = buf;
+		while (*sump && (*sump != '\n')) sum += *sump++;
+		sum += (u8) '\n';
+		lineno++;
+		if (print) fprintf(out, ">%.*s\n", (int)(sump-buf), buf);
+	}
+	fprintf(out, "K%u %u\n", sum, lineno);
+	ret = sccs_rdweaveDone(s);
+	if (flushFILE(out)) {
+		s->io_error = 1;
+		ret = -1; /* i/o error: no disk space ? */
+	}
+	unless (streq("-", printOut)) fclose(out);
+	if (state) free(state);
+	return (ret);
+}
+
+/*
  * Return true if bad cksum
  */
 private int
@@ -7666,7 +7806,13 @@ badcksum(sccs *s, int flags)
 		while (i--) sum += *t++;
 	}
 	debug((stderr, "Calculated sum is %d\n", (sum_t)sum));
-	if ((sum_t)sum == filesum) s->cksumok = 1;
+	if ((sum_t)sum == filesum) {
+		s->cksumok = 1;
+	} else {
+		fprintf(stderr,
+		    "Bad checksum for %s, got %d, wanted %d\n",
+		    s->sfile, (sum_t)sum, filesum);
+	}
 	debug((stderr,
 	    "%s has %s cksum\n", s->sfile, s->cksumok ? "OK" : "BAD"));
 	return ((sum_t)sum != filesum);
@@ -11524,7 +11670,7 @@ out:
 	sccs_rdweaveInit(s);
 	if (s->encoding & E_GZIP) sccs_zputs_init(s, sfile);
 	while (buf = sccs_nextdata(s)) {
-		if (buf[0] != '\001') {
+		if (isData(buf)) {
 			fputdata(s, buf, sfile);
 		} else {
 			ser = atoi(&buf[3]);
@@ -11544,6 +11690,295 @@ out:
 	if (sccs_finishWrite(s, &sfile)) OUT;
 	goto out;
 #undef	OUT
+}
+
+#define	MAXCMD	20
+struct weave {
+	sccs	*s;		// backpointer
+	char	*buf;		// current data line
+	ser_t	*wmap;		// weave map - renumber serials in weave
+	serlist *state;		// weave state
+	ser_t	*slist;		// weave set
+	FILE	*out;		// print here
+	sum_t	sum;		// checksum
+	int	print;		// active serial in weave
+	int	line;		// line number in weave
+};
+
+int
+sccs_fastWeave(sccs *s, ser_t *weavemap, char **patchmap,
+    MMAP *fastpatch, FILE *out)
+{
+	int	i;
+	delta	*d;
+	weave	*w = 0;
+	int	rc = 0;
+
+	assert(s);
+
+	w = new(weave);
+	w->s = s;
+	w->state = allocstate(0, s->nextserial);
+	w->out = out;
+	w->wmap = weavemap;
+
+	/* compute an serialmap view which matches sccs_patchDiffs() */
+	w->slist = calloc(s->nextserial, sizeof(ser_t));
+	EACH(patchmap) {
+		if ((d = (delta *)patchmap[i]) == INVALID) continue;
+		w->slist[d->serial] = 1;
+	}
+	unless (CSET(s)) {
+		/* transitive close if not the cset file */
+		for (d = s->table; d; d = d->next) {
+			unless (w->slist[d->serial]) continue;
+			if (d->pserial) {
+				w->slist[d->pserial] = 1;
+			}
+			if (d->merge) {
+				w->slist[d->merge] = 1;
+			}
+		}
+	}
+	if (HAS_SFILE(s)) {
+		sccs_rdweaveInit(s);
+		w->buf = sccs_nextdata(s);	/* prime the data flow */
+	}
+	if (s->encoding & E_GZIP) sccs_zputs_init(s, out);
+
+	rc = doFast(w, patchmap, fastpatch);
+
+	if (HAS_SFILE(s)) {
+		if (sccs_rdweaveDone(s)) rc = 1;	/* no EOF */
+	}
+	if (fflushdata(s, out)) rc = 1;
+	if (w->slist) free(w->slist);
+	if (w->state) free(w->state);
+	free(w);
+	return (rc);
+}
+
+private int
+doFast(weave *w, char **patchmap, MMAP *diffs)
+{
+	int	lineno, lcount = 0, serial, pmapsize;
+	int	gotK = 0;
+	int	inpatch = 0;
+	int	ignore = 0;
+	char	*p, *b;
+	char	type;
+	delta	*d;
+	int	rc = 1;
+	sum_t	sum = 0;
+	char	cmdline[MAXCMD];
+
+	unless (diffs) goto done;
+	assert(patchmap);	/* if diffs, then there's a map */
+	pmapsize = nLines(patchmap);
+
+	while (b = mnext(diffs)) {
+		p = &b[1];
+		if (*b == 'F') continue;
+		if (*b == 'K') {
+			gotK = 1;
+			sum = atoi_p(&p);
+			p++;
+			lcount = atoi_p(&p);
+			break;
+		}
+		if (*b == '>') {
+			if (ignore) {
+				while (*p) {
+					w->sum += *p;
+					if (*p++ == '\n') break;
+				}
+				w->line++;
+			} else if (inpatch) {
+				fix_cntl_a(w->s, p, w->out);
+				w->sum += fputdata(w->s, p, w->out);
+				w->line++;
+			}
+			continue;
+		}
+		type = (*b == 'N') ? 'E' : *b;
+		serial = atoi_p(&p);
+		assert((serial > 0) && (serial <= pmapsize));
+		d = (delta *)patchmap[serial];
+		if (d == INVALID) {
+			unless (ignore) {
+				if (type == 'I') ignore = serial;
+			} else if (ignore == serial) {
+				assert(type == 'E');
+				ignore = 0;
+			}
+			continue;
+		}
+		assert(!ignore);
+		assert(d);
+		unless (d->flags & D_REMOTE) continue;
+		unless (inpatch) {
+			assert(*p == ' ');
+			p++;
+			lineno = atoi_p(&p);
+			if (weaveMove(w, lineno, (type == 'D'), d->serial)) {
+				goto err;
+			}
+			if (type == 'I') inpatch = d->serial;
+		} else if (inpatch == d->serial) {
+			assert(type == 'E');
+			inpatch = 0;
+		}
+		if (*b == 'N') {
+			sprintf(cmdline, "\001E %uN\n", d->serial);
+		} else {
+			sprintf(cmdline, "\001%c %u\n", type, d->serial);
+		}
+		fputdata(w->s, cmdline, w->out);
+		if (w->print = changestate(w->state, type, d->serial)) {
+			unless (w->slist[w->print]) w->print = 0;
+		}
+	}
+	assert(!inpatch && !ignore);
+done:
+	if (weaveMove(w, -1, 0, 0)) goto err;
+	if (gotK && ((w->sum != sum) || (lcount != w->line))) {
+		fprintf(stderr,
+		    "computed sum %u and patch sum %u\n", w->sum, sum);
+		fprintf(stderr,
+		    "computed linecount %u and patch linecount %u\n",
+		    w->line, lcount);
+		goto err;
+	}
+	rc = 0;
+err:
+	return (rc);
+}
+
+/*
+ * Move in the weave
+ *
+ * line		stop at which line in weave
+ * before	stop before that line
+ * patchserial	current serial being processed
+ */
+private int
+weaveMove(weave *w, int line, int before, ser_t patchserial)
+{
+	sccs	*s = w->s;
+	int	finish = (line < 0);
+	int	skipblock;
+	int	print;
+	char	*n;
+	char	type;
+	ser_t	serial;
+	char	*buf;
+	char	cmdline[MAXCMD];
+
+	if (before) {
+		/* first move after the previous line, then upto this line */
+		if (weaveMove(w, line - 1, 0, patchserial)) return (1);
+	}
+
+	unless (buf = w->buf) {	/* note: want assignment, not == */
+		if (before ||
+		    (!finish && (line != w->line)) || whatstate(w->state)) {
+			goto eof;
+		}
+		return (0);
+	}
+	print = w->print;
+	do {
+		unless (finish || (w->line < line)) goto after;
+		if (isData(buf)) {
+			if (print) {
+				if (before) goto end;
+				w->line++;
+				w->sum += fputdata(s, buf, w->out);
+				w->sum += fputdata(s, "\n", w->out);
+				if (buf[0] == CNTLA_ESCAPE) {
+					w->sum -= CNTLA_ESCAPE;
+				}
+			} else {
+				fputdata(s, buf, w->out);
+				fputdata(s, "\n", w->out);
+			}
+			continue;
+		}
+		type = buf[1];
+		n = &buf[3];
+		serial = atoi_p(&n);
+		assert(serial);
+		if (w->wmap && (serial > w->wmap[0])) {
+			serial = w->wmap[serial - w->wmap[0]];
+		}
+		assert(patchserial != serial);
+		if (before && print && (type == 'D')) {
+			if (patchserial < serial) goto end;
+		}
+		sprintf(cmdline, "\001%c %u%s\n", type, serial, n);
+		fputdata(s, cmdline, w->out);
+		if (print = changestate(w->state, type, serial)) {
+			unless (w->slist[print]) print = 0;
+		}
+	} while (buf = sccs_nextdata(s));
+	assert(!buf);
+	unless (finish && !whatstate(w->state)) {
+eof:		fprintf(stderr, "Unexpected EOF in %s\n", s->sfile);
+		return (1);
+	}
+	goto end;
+
+	/*
+	 * We are positioned in the weave after the desired data line.
+	 * If we are the newest delta in the weave, we are done.  However,
+	 * since we could be an older delta, we need to skip over I-E
+	 * blocks from newer deltas.  Stopping conditions in order of
+	 * appearance in code (first 3 with goto end, and 4th with loop exit):
+	 * 1. Any data line not found inside a skipped I-E block.
+	 * 2. Any D not in skipped IE block, as we are into the region
+	 * of the next data line.
+	 * 3. I or E with a smaller serial.
+	 * 4. EOF - (but constrained -- we are weaving serial 1).
+	 */
+after:	skipblock = 0;
+	assert(!before);
+	do {
+		if (isData(buf)) {
+			unless (skipblock) goto end;
+			assert(!print);
+			fputdata(s, buf, w->out);
+			fputdata(s, "\n", w->out);
+			continue;
+		}
+		type = buf[1];
+		if (!skipblock && (type == 'D')) goto end;
+		n = &buf[3];
+		serial = atoi_p(&n);
+		assert(serial);
+		if (w->wmap && (serial > w->wmap[0])) {
+			serial = w->wmap[serial - w->wmap[0]];
+		}
+		assert(patchserial != serial);
+		if (serial < patchserial) goto end;
+		sprintf(cmdline, "\001%c %u%s\n", type, serial, n);
+		fputdata(s, cmdline, w->out);
+		unless (skipblock) {
+			if (type == 'I') skipblock = serial;
+		} else if (skipblock == serial) {
+			assert(type == 'E');
+			skipblock = 0;
+		}
+		if (print = changestate(w->state, type, serial)) {
+			unless (w->slist[print]) print = 0;
+		}
+	} while (buf = sccs_nextdata(s));
+	assert(!buf);
+	/* assert(patchserial == 1); kind of strong, but should be true */
+	if (whatstate(w->state)) goto eof;
+
+end:	w->buf = buf;
+	w->print = print;
+	return (0);
 }
 
 private void
@@ -12285,6 +12720,8 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp,
 			d->added = atoi(s+1);
 			while (*s && (*s++ != ' '));
 			if (*s == '-') d->deleted = atoi(s+1);
+			while (*s && (*s++ != ' '));
+			if (*s == '=') d->same = atoi(s+1);
 		}
 		goto skip;	/* skip the rest of this line */
 	}
@@ -15474,13 +15911,15 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	    	type = 'M';
 	}
 
-	fprintf(out, "%c %s %s%s %s%s%s +%u -%u\n",
+	fprintf(out, "%c %s %s%s %s%s%s +%u -%u",
 	    type, d->rev, d->sdate,
 	    d->zone ? d->zone : "",
 	    d->user,
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "",
 	    d->added, d->deleted);
+	if (flags & PRS_FASTPATCH) fprintf(out, " =%u", d->same);
+	fputs("\n", out);
 
 	/*
 	 * Order from here down is alphabetical.
@@ -16625,6 +17064,7 @@ sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB)
 	s = sccs_init(p, flags|INIT_MUSTEXIST);
 	free(p);
 	unless (s && HAS_SFILE(s))  goto out;
+	unless (s->cksumok) return (s);
 	if (proj) {
 		localp = proj;
 	} else {

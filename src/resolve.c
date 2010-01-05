@@ -43,7 +43,6 @@ private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
 private	int	rename_file(resolve *rs);
 private void	resolve_post(opts *o, int c);
 private void	unapply(FILE *f);
-private int	copyAndGet(opts *opts, char *from, char *to);
 private int	writeCheck(sccs *s, MDBM *db);
 private	void	listPendingRenames(void);
 private	int	noDiffs(void);
@@ -2590,8 +2589,7 @@ pass4_apply(opts *opts)
 		if (opts->log) {
 			fprintf(stdlog, "copy(%s, %s)\n", buf, &buf[offset]);
 		}
-		if (copyAndGet(opts, buf, &buf[offset])) {
-			perror("copy");
+		if (fileLink(buf, &buf[offset])) {
 			fprintf(stderr,
 			    "copy(%s, %s) failed\n", buf, &buf[offset]);
 err:			unapply(save);
@@ -2702,34 +2700,6 @@ writeCheck(sccs *s, MDBM *db)
 			if (streq(path, ".")) break;
 			strcpy(path, ".");
 		}
-	}
-	return (0);
-}
-
-/*
- * Do NOT assert in this function, return -1 instead so we clean up.
- */
-private int
-copyAndGet(opts *opts, char *from, char *to)
-{
-	if (link(from, to)) {
-		if (mkdirf(to)) {
-			fprintf(stderr,
-			    "mkdir: %s: %s\n",
-			    to, strerror(errno));
-			return (-1);
-		}
-		/*
-		 * We need to fall back to fileCopy() if:
-		 * a) The enclosing tree and the RESYNC tree are on
-		 *    different file system. 
-		 * b) it is Samba, which does not support hard link.
-		 * Note: It is alos reported that in AFS file system,
-		 *    the link() call return EXDEV when we try to
-		 *    create hard link across different
-		 *    directories, because AFS's ACL is per directory.
-		 */
-		if (link(from, to) && fileCopy(from, to)) return (-1);
 	}
 	return (0);
 }

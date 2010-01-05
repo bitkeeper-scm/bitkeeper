@@ -51,7 +51,7 @@ hasTriggers(void)
 	}
 	if (isdir(dir)) {
 		sys("bk", "get", "-Sq", dir, SYS);
-		lines = getTriggers(dir, "pre-delta");
+		lines = getTriggers(0, dir, "pre-delta");
 		ret = (lines != 0);
 		freeLines(lines, free);
 	} else {

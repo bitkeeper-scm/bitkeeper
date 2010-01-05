@@ -1339,8 +1339,11 @@ getFile(char *root, MDBM *idDB)
 	sccs	*s = sccs_keyinit(0, root, flags, idDB);
 	char	*t;
 
-	unless (s) return (strdup("[can not init]"));
-	t = strdup(s->sfile);
+	unless (s && s->cksumok) {
+		t = strdup("|can not init|");
+	} else {
+		t = strdup(s->sfile);
+	}
 	sccs_free(s);
 	return (t);
 }
@@ -1350,13 +1353,17 @@ getRev(char *root, char *key, MDBM *idDB)
 {
 	sccs	*s = sccs_keyinit(0, root, flags, idDB);
 	delta	*d;
+	char	*t;
 
-	unless (s) return (strdup("[can not init]"));
-	unless (d = sccs_findKey(s, key)) {
-		sccs_free(s);
-		return (strdup("[can not find key]"));
+	unless (s && s->cksumok) {
+		t = strdup("|can not init|");
+	} else unless (d = sccs_findKey(s, key)) {
+		t = strdup("|can not find key|");
+	} else {
+		t = strdup(d->rev);
 	}
-	return (strdup(d->rev));
+	sccs_free(s);
+	return (t);
 }
 
 /*
