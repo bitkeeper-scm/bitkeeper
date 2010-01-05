@@ -178,6 +178,8 @@ echo OK
 
 echo $N Clone to child with pending gone file, should fail ..........$NL
 cd "$HERE/project"
+# theory: wait for bkd to exit.  25 minutes of runs matches theory.
+bk lock -U
 bk delta $Q -y"gone the key" BitKeeper/etc/gone
 bk -r check -a || exit 1
 bk clone $Q . ../copy-clone 2>OUT && exit 1

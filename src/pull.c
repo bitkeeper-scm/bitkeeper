@@ -614,7 +614,11 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		if (proj_isProduct(0)) {
 			if (rc = pull_ensemble(r, rmt_aliases, rmt_urllist)) goto done;
 		}
-		putenv("BK_STATUS=OK");
+		if (exists(ROOT2RESYNC)){
+			putenv("BK_STATUS=OK");
+		} else {
+			putenv("BK_STATUS=REDUNDANT");
+		}
 		rc = 0;
 	}  else if (strneq(buf, "@UNABLE TO UPDATE BAM SERVER", 28)) {
 		unless (opts.quiet) {

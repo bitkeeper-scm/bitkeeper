@@ -699,13 +699,13 @@ moveAndSave(char **fileList)
 	EACH (fileList) {
 		sprintf(tmp, "RESYNC/%s", fileList[i]);
 		if (streq(fileList[i], CHANGESET)) {
-			if (link(fileList[i], tmp)) {
+			if (fileLink(fileList[i], tmp)) {
 				fprintf(stderr,
 				    "Cannot link %s to %s\n", fileList[i], tmp);
 				rc = -1;
 				break;
 			}
-		} else if (mv(fileList[i], tmp)) {
+		} else if (fileMove(fileList[i], tmp)) {
 			fprintf(stderr,
 			    "Cannot mv %s to %s\n", fileList[i], tmp);
 			rc = -1;
@@ -763,7 +763,7 @@ move_file(char *checkfiles)
 		fputs(from, chk);
 		chop(from);
 		sprintf(to, "%s/%s", RESYNC2ROOT, from);
-		if (mv(from, to)) {
+		if (fileMove(from, to)) {
 			fprintf(stderr,
 			    "Cannot move %s to %s\n", from, to);
 			rc = -1;
