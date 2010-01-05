@@ -276,7 +276,7 @@ converge(State *g, char *gfile, char *opts)
 	/* Add other files contents as branch of 1.0 */
 	rc = sys("bk", "_get", "-egqr1.0", gfile, SYS);
 	assert(!rc);
-	mv(tmp , gfile);		/* srm contents saved above */
+	fileMove(tmp , gfile);		/* srm contents saved above */
 	rc = sys("bk", "ci", "-qdPyconverge", gfile, SYS);
 	assert(!rc);
 
