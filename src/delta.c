@@ -154,7 +154,7 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "abcCdD:E|fGhI;ilm|M;npPqRsTuy|Y|Z|")) != -1) {
+	    getopt(ac, av, "abcCdD:E|fGI;ilm|M;npPqRsTuy|Y|Z|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -199,7 +199,6 @@ delta_main(int ac, char **av)
 		    case 'D': diffsFile = optarg;		 /* doc 2.0 */
 			      sflags = ~(SF_GFILE | SF_WRITE_OK);
 			      break;
-		    case 'h': dflags |= DELTA_HASH; break;	/* doc 2.0 */
 		    case 'I':
 			initFile = optarg;
 			dflags |= DELTA_FORCE;

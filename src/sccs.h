@@ -106,7 +106,7 @@ int	checking_rmdir(char *dir);
 #define	DELTA_PATCH	0x80000000	/* delta -R: respect rev */
 #define	DELTA_EMPTY	0x01000000	/* initialize with empty file */
 #define	DELTA_FORCE	0x02000000	/* delta -f: force a delta */
-#define	DELTA_HASH	0x04000000	/* treat as hash (MDBM) file */
+/* AVAILABLE		0x04000000	*/
 #define	DELTA_NOPENDING	0x08000000	/* don't create pending marker */
 #define	DELTA_CFILE	0x00100000	/* read cfile and do not prompt */
 #define	DELTA_MONOTONIC	0x00200000	/* preserve MONOTONIC flag */
