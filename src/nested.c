@@ -228,12 +228,12 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	cwd = strdup(proj_cwd());
 	proj = proj_product(0);
 	assert(proj);
-	chdir(proj_root(proj));
+	if (chdir(proj_root(proj))) assert(0);
 
 	n = new(nested);
 	unless (cset) {
-		concat_path(buf, proj_root(0), CHANGESET);
-		cset = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT|INIT_MUSTEXIST);
+		cset = sccs_init(CHANGESET,
+		    INIT_NOCKSUM|INIT_NOSTAT|INIT_MUSTEXIST);
 		n->freecset = 1;
 	}
 	n->cset = cset;
@@ -458,8 +458,17 @@ err:				if (revsDB) mdbm_close(revsDB);
 			}
 			if (c->deltakey) free(c->deltakey);
 			c->deltakey = strdup(v);
+			c->pending = 1;
 		}
 		pclose(pending);
+	} else if (flags & NESTED_MARKPENDING) {
+		EACH_STRUCT(n->comps, c, i) {
+			if (c->product) continue;
+			unless (c->present) continue;
+			concat_path(buf, c->path, CHANGESET);
+			unless (sccs_isPending(buf)) continue;
+			c->pending = 1;
+		}
 	}
 	mdbm_close(idDB);
 

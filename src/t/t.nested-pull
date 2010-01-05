@@ -755,16 +755,8 @@ touch gcc-file
 bk new $Q gcc-file
 bk commit $Q -ygcc || exit 3
 cd ..
-bk pull -u > OUT 2>&1 && {
-	echo should have failed
-	cat OUT
-	exit 1
-}
-grep -q 'Not updating due to the following' OUT || {
-	echo bad message
-	cat OUT
-	exit 1
-}
+bk pull -u > OUT 2>&1 && fail -f OUT should have failed
+grep -q 'gcc has uncommitted changes' OUT || fail -f OUT bad message
 echo OK
 
 # # XXX - we should check that the repo is cleaned up but we need the nested
@@ -801,4 +793,33 @@ cd "$HERE/n2"
 bk pull $Q "$HERE/nn" 2>ERR && fail -f ERR should have failed
 grep -q "You are trying to pull from an unrelated package." ERR \
 	|| fail -f ERR wrong error msg
+echo OK
+
+echo $N Update-only pull does not commit pending.....................$NL
+cd "$HERE"
+nested parent
+cd gcc
+echo `date` > afile
+bk new $Q afile
+bk commit $Q -yafile
+bk -P commit $Q -yafile
+cd "$HERE"
+bk clone $Q parent child
+# add cset to parent
+cd "$HERE/parent/gcc"
+bk edit $Q afile
+echo new stuff > afile
+bk delta $Q -yafile-parent
+bk commit $Q -yafile-parent
+bk -P commit $Q -yafile-parent
+# add pending to child (that does not conflict)
+cd "$HERE/child/gcc"
+echo `date` > bfile
+bk new $Q bfile
+bk commit $Q  -ybfile
+# pull should fail (we have a pending)
+bk -P pull $Q 2>ERR && fail should have failed
+grep -q "gcc has uncommitted changes" ERR || fail -f ERR
+# we should have no local changes
+test -n "`bk -P changes -qL`" && fail local changes found
 echo OK

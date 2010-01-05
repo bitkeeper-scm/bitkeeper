@@ -15,6 +15,10 @@ private int	move_file(char *checkfiles);
 private int	do_rename(char **, char *);
 private int	check_patch(char *patch);
 private int	doit(char **fileList, char *rev_list, char *qflag, char *);
+private	int	undo_ensemble1(nested *n, int quiet,
+    char **nav, char ***comp_list);
+private	int	undo_ensemble2(nested *n, int quiet);
+private	void	undo_ensemble_rollback(nested *n, int quiet, char **comp_list);
 
 private	int	fromclone;
 
@@ -25,10 +29,12 @@ undo_main(int ac,  char **av)
 	char	buf[MAXLINE];
 	char	rev_list[MAXPATH], undo_list[MAXPATH] = { 0 };
 	FILE	*f;
-	int	i, j, errs;
+	nested	*n = 0;
+	int	i;
 	int	status;
 	int	rmresync = 1;
 	char	**csetrev_list = 0;
+	char	**comp_list = 0; /* list of comp*'s we have rolled back */
 	char	*qflag = "";
 	char	*cmd = 0, *rev = 0;
 	int	aflg = 0, quiet = 0, verbose = 0;
@@ -37,7 +43,6 @@ undo_main(int ac,  char **av)
 	char	*patch = "BitKeeper/tmp/undo.patch";
 	char	*p;
 	char	**nav = 0;
-	project	*proj;
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "undo: cannot find package root.\n");
@@ -46,6 +51,7 @@ undo_main(int ac,  char **av)
 
 	fromclone = 0;
 	while ((c = getopt(ac, av, "a:Cfqp;r:sv")) != -1) {
+		/* We make sure component undo's always save a patch */
 		unless ((c == 'a') || (c == 'r') || (c == 's')) {
 			if (optarg) {
 				nav = addLine(nav,
@@ -103,6 +109,11 @@ err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);
 		unlink(UNDO_CSETS);
 		freeLines(fileList, free);
+		if (comp_list) {
+			undo_ensemble_rollback(n, quiet, comp_list);
+			freeLines(comp_list, 0);
+		}
+		if (n) nested_free(n);
 		if ((size(BACKUP_SFIO) > 0) && restore_backup(BACKUP_SFIO,0)) {
 			return (UNDO_ERR);
 		}
@@ -143,156 +154,25 @@ err:		if (undo_list[0]) unlink(undo_list);
 		putenv("BK_CSETLIST=" UNDO_CSETS);
 		if (trigger("undo", "pre")) goto err;
 	}
-
-	/*
-	 * If we are the product, then don't do the work here, call subprocesses
-	 * to do it here and in each component.  We know that it is OK to do it
-	 * here so unless the other guys are pending we should be cool.
-	 */
 	if (proj_isProduct(0)) {
-		nested	*n = 0;
-		comp	*c;
-		char	**vp;
-		int	i, num = 0, which = 1;
-
-		unless (n = nested_init(0, 0, csetrev_list, 0)) {
+		unless (n =
+		    nested_init(0, 0, csetrev_list, NESTED_MARKPENDING)) {
 			fprintf(stderr, "undo: ensemble failed.\n");
 			goto err;
 		}
+		sccs_close(n->cset); /* win32 */
 		unless (n->oldtip) {	/* tag only undo */
 			unless (quiet) {
 				puts("#### Undo tags in Product ####");
 				fflush(stdout);
 			}
 			nested_free(n);
+			n = 0;
 			goto prod;
 		}
-		/* make sure we can explain the aliases at the new cset */
-		if (nested_aliases(n, n->oldtip, &n->here, 0, 0)) {
-			fprintf(stderr,
-			    "%s: current aliases not valid after undo.\n",
-			    prog);
-			nested_free(n);
-			goto err;
-		}
-		assert(n->product->alias);
-		errs = 0;
-		EACH_STRUCT(n->comps, c, i) {
-			/* handle changing aliases */
-			if (c->present && !c->alias && !c->new) {
-				/*
-				 * a component that is currently present
-				 * but shouldn't be here after the undo.
-				 */
-				fprintf(stderr,
-				    "%s: The old aliases file doesn't include "
-				    "the %s component which is currently "
-				    "present.\n", prog, c->path);
-				++errs;
-			} else if (!c->present && c->alias) {
-				/*
-				 * a component that is missed but should
-				 * be present after the undo.  We need
-				 * to try and populate it.
-				 * Just generate an error for now.
-				 */
-				fprintf(stderr,
-				    "%s: The old aliases file requires the "
-				    "component %s which is not present.\n",
-				    prog, c->path);
-				++errs;
-			}
-
-			/* count number of calls to undo needed */
-			if (c->present && c->included && !c->new) num++;
-
-			unless (c->new && c->included) continue;
-
-			/* foreach repo to be deleted... */
-
-			proj = proj_init(c->path);
-			/* may fail */
-			removeLine(n->here, proj_rootkey(proj), free);
-			proj_free(proj);
-
-			sysio(0,
-			    SFILES, 0, "bk", "sfiles", "-gcxp", c->path, SYS);
-			if (size(SFILES) > 0) {
-				fprintf(stderr,
-				    "Changed/extra files in '%s'\n", c->path);
-				p = aprintf("/bin/cat < '%s' 1>&2", SFILES);
-				system(p);
-				free(p);
-				++errs;
-			}
-			unlink(SFILES);
-		}
-		if (errs) {
-			nested_free(n);
-			goto err;
-		}
-		START_TRANSACTION();
-		EACH_STRUCT(n->comps, c, j) {
-			if (c->product || c->new) continue;
-			unless (c->present && c->included) continue;
-			vp = addLine(0, strdup("bk"));
-			vp = addLine(vp, strdup("undo"));
-			EACH(nav) vp = addLine(vp, strdup(nav[i]));
-			cmd = aprintf("-fa%s", c->lowerkey);
-			vp = addLine(vp, cmd);
-			vp = addLine(vp, 0);
-			unless (quiet) {
-				printf("#### Undo in %s (%d of %d) ####\n",
-				    c->path, which++, num);
-				fflush(stdout);
-			}
-			if (chdir(c->path)) {
-				fprintf(stderr,
-				    "Could not chdir %s\n", c->path);
-				exit(199);
-			}
-			rc = spawnvp(_P_WAIT, "bk", &vp[1]);
-			if (WIFEXITED(rc)) rc = WEXITSTATUS(rc);
-			if (rc && !(fromclone && (rc == UNDO_SKIP))) {
-				fprintf(stderr, "Could not undo %s to %s.\n",
-				    c->path, c->lowerkey);
-
-				// XXX need to rollback
-				exit(199);
-			}
-			freeLines(vp, free);
-			proj_cd2product();
-		}
-		STOP_TRANSACTION();
-		EACH_STRUCT(n->comps, c, i) {
-			if (c->new && c->included && c->present) {
-				rmtree(c->path);
-			}
-		}
-
-		/*
-		 * We may have undone some renames so just call names on
-		 * the set of repos and see what happens.
-		 */
-		cmd = aprintf("bk names %s -", qflag);
-		f = popen(cmd, "w");
-		free(cmd);
-		EACH_STRUCT(n->comps, c, i) {
-			if (c->product) continue;
-			if (c->new || !c->included) continue;
-			fprintf(f, "%s/SCCS/s.ChangeSet\n", c->path);
-		}
-		pclose(f);
-
-		nested_writeHere(n);
-		nested_free(n);
-		unless (quiet) {
-			printf("#### Undo in Product (%d of %d) ####\n",
-			    which++, num);
-			fflush(stdout);
-		}
+		if (undo_ensemble1(n, quiet, nav, &comp_list)) goto err;
 	}
- prod:
+prod:
 	if (save) {
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
 		/* like bk makepatch but skips over missing files/keys */
@@ -336,6 +216,12 @@ err:		if (undo_list[0]) unlink(undo_list);
 	idcache_update(checkfiles);
 	proj_restoreAllCO(0, 0);
 
+	rmtree("RESYNC");
+	if (n) {
+		if (undo_ensemble2(n, quiet)) goto err;
+		nested_free(n);
+		n = 0;
+	}
 	if (fromclone) {
 		p = quiet ? "-fT" : "-fvT";
 	} else {
@@ -353,11 +239,11 @@ err:		if (undo_list[0]) unlink(undo_list);
 	freeLines(fileList, free);
 	unlink(rev_list);
 	unlink(undo_list);
+	freeLines(comp_list, 0);
 	unless (fromclone) unlink(UNDO_CSETS);
 	update_log_markers(!quiet);
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
-	rmtree("RESYNC");
 	unlink(CSETS_IN);	/* no longer valid */
 	unless (fromclone) {
 		putenv("BK_CSETLIST=");
@@ -365,6 +251,212 @@ err:		if (undo_list[0]) unlink(undo_list);
 		trigger("undo", "post");
 	}
 	return (rc);
+}
+
+/*
+ * do the first 1/2 of the undo work for components.
+ *
+ * Check for as many errors as we can ahead of time.
+ *
+ * Then, for each component that won't be deleted complete call undo
+ * and save the list of components in comp_list.
+ *
+ * Don't delete or rename components until part2
+ */
+private int
+undo_ensemble1(nested *n, int quiet, char **nav, char ***comp_list)
+{
+	comp	*c;
+	char	**vp;
+	char	*p, *cmd;
+	int	rc;
+	int	i, j, errs, num = 0, which = 1;
+	project	*proj;
+
+	/* make sure we can explain the aliases at the new cset */
+	if (nested_aliases(n, n->oldtip, &n->here, 0, 0)) {
+		fprintf(stderr, "%s: current aliases not valid after undo.\n",
+		    prog);
+		goto err;
+	}
+	assert(n->product->alias);
+
+	/*
+	 * If we are the product, then don't do the work here, call subprocesses
+	 * to do it here and in each component.  We know that it is OK to do it
+	 * here so unless the other guys are pending we should be cool.
+	 */
+	errs = 0;
+	EACH_STRUCT(n->comps, c, i) {
+		/* handle changing aliases */
+		if (c->present && !c->alias && !c->new) {
+			/*
+			 * a component that is currently present
+			 * but shouldn't be here after the undo.
+			 */
+			fprintf(stderr,
+			    "%s: The old aliases file doesn't include "
+			    "the %s component which is currently "
+			    "present.\n", prog, c->path);
+			++errs;
+		} else if (!c->present && c->alias) {
+			/*
+			 * a component that is missed but should be
+			 * present after the undo.  We need to try and
+			 * populate it.  Just generate an error for
+			 * now.
+			 */
+			fprintf(stderr,
+			    "%s: The old aliases file requires the "
+			    "component %s which is not present.\n",
+			    prog, c->path);
+			++errs;
+		}
+		if (c->included && c->pending) {
+			fprintf(stderr,
+			    "%s: The component %s includes pending "
+			    "csets that cannot be undone.\n",
+			    prog, c->path);
+			++errs;
+		}
+
+		/* count number of calls to undo needed */
+		if (c->present && c->included && !c->new) num++;
+
+		unless (c->new && c->included) continue;
+
+		/* foreach repo to be deleted... */
+
+		proj = proj_init(c->path);
+		/* may fail */
+		removeLine(n->here, proj_rootkey(proj), free);
+		proj_free(proj);
+
+		sysio(0, SFILES, 0, "bk", "sfiles", "-gcxp", c->path, SYS);
+		if (size(SFILES) > 0) {
+			fprintf(stderr,
+			    "Changed/extra files in '%s'\n", c->path);
+			p = aprintf("/bin/cat < '%s' 1>&2", SFILES);
+			system(p);
+			free(p);
+			++errs;
+		}
+		unlink(SFILES);
+	}
+	if (errs) goto err;
+	START_TRANSACTION();
+	errs = 0;
+	EACH_STRUCT(n->comps, c, j) {
+		if (c->product || c->new) continue;
+		unless (c->present && c->included) continue;
+		vp = addLine(0, strdup("bk"));
+		vp = addLine(vp, strdup("undo"));
+		EACH(nav) vp = addLine(vp, strdup(nav[i]));
+		cmd = aprintf("-fa%s", c->lowerkey);
+		vp = addLine(vp, cmd);
+		vp = addLine(vp, 0);
+		unless (quiet) {
+			printf("#### Undo in %s (%d of %d) ####\n",
+			    c->path, which++, num);
+			fflush(stdout);
+		}
+		if (chdir(c->path)) {
+			fprintf(stderr, "Could not chdir %s\n", c->path);
+			exit(199);
+		}
+		rc = spawnvp(_P_WAIT, "bk", &vp[1]);
+		if (WIFEXITED(rc)) rc = WEXITSTATUS(rc);
+		if (rc && !(fromclone && (rc == UNDO_SKIP))) {
+			fprintf(stderr, "Could not undo %s to %s.\n",
+			    c->path, c->lowerkey);
+
+			++errs;
+		} else {
+			*comp_list = addLine(*comp_list, c);
+		}
+		freeLines(vp, free);
+		proj_cd2product();
+		if (errs) break;
+	}
+	STOP_TRANSACTION();
+	if (errs) return (1);
+	unless (quiet) {
+		printf("#### Undo in Product (%d of %d) ####\n",
+		    which++, num);
+		fflush(stdout);
+	}
+	return (0);
+err:	return (1);
+}
+
+/*
+ * Now that undo has been successful in all components and the
+ * product we can delete components that are no longer needed.
+ * We also handle renames here.
+ */
+private int
+undo_ensemble2(nested *n, int quiet)
+{
+	int	i;
+	char	*cmd;
+	comp	*c;
+	FILE	*f;
+
+	EACH_STRUCT(n->comps, c, i) {
+		if (c->new && c->included && c->present) {
+			rmtree(c->path);
+		}
+	}
+
+	/*
+	 * We may have undone some renames so just call names on
+	 * the set of repos and see what happens.
+	 */
+	cmd = aprintf("bk names %s -", (quiet ? "-q" : ""));
+	f = popen(cmd, "w");
+	free(cmd);
+	EACH_STRUCT(n->comps, c, i) {
+		if (c->product) continue;
+		if (c->new || !c->included) continue;
+		fprintf(f, "%s/SCCS/s.ChangeSet\n", c->path);
+	}
+	pclose(f);
+
+	nested_writeHere(n);
+	return (0);
+}
+
+/*
+ * We have previously called 'undo' in several components and then hit
+ * a problem.  Now go back to those components and reapply the saved
+ * backup patch.
+ */
+private void
+undo_ensemble_rollback(nested *n, int quiet, char **comp_list)
+{
+	int	i, rc;
+	comp	*c;
+
+	START_TRANSACTION();
+	EACH(comp_list) {
+		c = (comp *)comp_list[i];
+
+		fprintf(stderr, "Reverting %s to original version\n",
+		    c->path);
+		if (chdir(c->path)) {
+			fprintf(stderr, "undo: unable to find %s to revert\n",
+			    c->path);
+			return;
+		}
+		if (rc = system("bk -?FROM_PULLPUSH=YES "
+		    "takepatch -avfBitKeeper/tmp/undo.patch")) {
+			fprintf(stderr, "undo: restoring backup patch in %s "
+			    "failed\n", c->path);
+		}
+		proj_cd2product();
+		if (rc) break;
+	}
+	STOP_TRANSACTION();
 }
 
 private int
@@ -606,7 +698,14 @@ moveAndSave(char **fileList)
 	}
 	EACH (fileList) {
 		sprintf(tmp, "RESYNC/%s", fileList[i]);
-		if (mv(fileList[i], tmp)) {
+		if (streq(fileList[i], CHANGESET)) {
+			if (link(fileList[i], tmp)) {
+				fprintf(stderr,
+				    "Cannot link %s to %s\n", fileList[i], tmp);
+				rc = -1;
+				break;
+			}
+		} else if (mv(fileList[i], tmp)) {
 			fprintf(stderr,
 			    "Cannot mv %s to %s\n", fileList[i], tmp);
 			rc = -1;
@@ -646,7 +745,7 @@ move_file(char *checkfiles)
 		/*
 		 * This should never happen if the repo is in a sane state
 		 */
-		if (exists(to)) {
+		if (exists(to) && !streq(from, CHANGESET)) {
 			fprintf(stderr, "%s: name conflict\n", to);
 			rc = -1;
 			break;

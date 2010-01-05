@@ -245,7 +245,7 @@ echo OK
 echo $N Take the patch and try to resolve it ........................$NL
 mkdir "$HERE"/new2
 cd "$HERE"/new2
-echo q | _BK_ALLOW_BAD_CRC=YES bk takepatch -ivva < "$HERE"/ALL > "$HERE"/OUT 2>&1 || {
+_BK_ALLOW_BAD_CRC=YES bk takepatch -ivva < "$HERE"/ALL > "$HERE"/OUT 2>&1 || {
 	cat "$HERE"/OUT
 	exit 1
 }

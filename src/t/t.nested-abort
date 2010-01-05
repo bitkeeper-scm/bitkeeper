@@ -141,6 +141,13 @@ save_state()
 	COMPS=`bk components 2>/dev/null`
 	ALIASES=`bk alias show`
 	MYALIAS=`bk alias show MYALIAS`
+	COMP2=NO
+	COMP3=NO
+	DEEP1=NO
+	test -d comp2 && COMP2=YES
+	test -d comp3 && COMP3=YES
+	bk log deep1/file >/dev/null && DEEP1=YES
+	DEEP2_FILE=`bk log -r+ -nd:REV: deep1/deep2/file`
 }
 
 check_state()
@@ -158,11 +165,11 @@ check_state()
 	test "$COMPS" = "`bk components 2>/dev/null`" || err="comps $err"
 	test "$ALIASES" = "`bk alias show`" || err="aliases $err"
 	test "$MYALIAS" = "`bk alias show MYALIAS`" || err="MYALIAS $err"
-	test -d comp2 && err="comp2 $err"
-	test -d comp3 && err="comp3 $err"
+	test $COMP2 = NO -a -d "$comp2" && err="comp2 $err"
+	test $COMP3 = NO -a -d "$comp3" && err="comp3 $err"
 	# deep1/deep2/file should exist, deep1/file should not
-	bk log deep1/file >/dev/null && err="deep1 $err"
-	test "`bk log -r+ -nd:REV: deep1/deep2/file`" = "1.1" || err="deep2 $err"
+	test $DEEP1 = NO && bk log deep1/file >/dev/null && err="deep1 $err"
+	test "`bk log -r+ -nd:REV: deep1/deep2/file`" = "$DEEP2_FILE" || err="deep2 $err"
 	test -z "$err"
 	return $?  # return status; $err holds errors
 }
@@ -209,19 +216,17 @@ echo $N Pull, gcc cset pending in product............................$NL
 # Pull should fail due to the gcc cset still pending in the product.
 cd "$HERE/pending_in_product_gcc"
 save_state
-bk pull $Q 2>ERR || fail you fixed a bug
-check_state
-test $? = 0 && fail you fixed a bug \($?\)
-echo failed \(bug should not commit pending\)
+bk pull $Q 2>ERR && fail should have failed
+check_state || fail $err
+echo OK
 
 echo $N Pull, gdb cset pending in product............................$NL
 # Pull should fail due to the gdb cset still pending in the product.
 cd "$HERE/pending_in_product_gdb"
 save_state
-bk pull $Q 2>ERR
-check_state
-test $? = 0 && fail you fixed a bug \($?\)
-echo failed \(bug should not commit pending\)
+bk pull $Q 2>ERR && fail should have failed
+check_state || fail $err
+echo OK
 
 echo $N Pull, cset pending in gcc....................................$NL
 cd "$HERE/pending_in_gcc"
@@ -304,10 +309,9 @@ cd pending_in_product_gcc
 save_state
 cd ../parent
 bk push $Q ../pending_in_product 2>ERR && fail
-cd ../pending_in_product
-check_state
-test $? = 0 && fail you fixed a bug \($?\)
-echo failed \(bug should not commit pending\)
+cd ../pending_in_product_gcc
+check_state || fail -f $err
+echo OK
 
 echo $N Push, gdb cset pending in product............................$NL
 cd "$HERE"
@@ -316,11 +320,10 @@ tar xf pending_in_product_gdb.tar
 cd pending_in_product_gdb
 save_state
 cd ../parent
-bk push $Q ../pending_in_product_gdb 2>ERR
+bk push $Q ../pending_in_product_gdb 2>ERR && fail
 cd ../pending_in_product_gdb
-check_state
-test $? = 0 && fail you fixed a bug \($?\)
-echo failed \(bug should not commit pending\)
+check_state || fail $err
+echo OK
 
 echo $N Push, cset pending in gcc....................................$NL
 cd "$HERE"
@@ -370,8 +373,8 @@ bk edit $Q file || fail
 RAND > file
 save_state
 bk undo $Q -f -r+ 2>ERR && fail
-check_state && fail you fixed a bug
-echo failed \(bug failed undo does not undo undo\)
+check_state || fail -f ERR $err
+echo OK
 
 echo $N Undo, edited file in gcc.....................................$NL
 cd "$HERE"
@@ -383,8 +386,8 @@ RAND > file
 cd ..
 save_state
 bk undo $Q -f -r+ 2>ERR && fail
-check_state && fail you fixed a bug
-echo failed \(bug failed undo does not undo undo\)
+check_state || fail -f ERR $err
+echo OK
 
 echo $N Undo, edited file in gdb.....................................$NL
 cd "$HERE"
@@ -395,9 +398,9 @@ bk edit $Q file || fail
 RAND > file
 cd ..
 save_state
-bk undo $Q -f -r+ 2>ERR && fail
-check_state && fail you fixed a bug
-echo failed \(bug failed undo does not undo undo\)
+bk undo $Q -f -r+ 2>ERR && fail -f ERR
+check_state || fail -f ERR
+echo OK
 
 echo $N Undo, pending cset in product................................$NL
 cd "$HERE"
@@ -409,8 +412,9 @@ RAND > file
 bk delta $Q -yfile file || fail
 save_state
 bk undo $Q -f -r+ 2>ERR && fail
-check_state && fail you fixed a bug
-echo failed \(bug failed undo does not undo undo\)
+check_state || fail -f ERR $err
+echo OK
+
 
 echo $N Undo, gcc cset pending in product............................$NL
 cd "$HERE"
@@ -423,9 +427,9 @@ bk delta $Q -yfile file || fail
 bk commit $Q -yfile
 cd ..
 save_state
-bk undo $Q -f -r+ 2>ERR || fail you fixed a bug
-#check_state || fail $err
-echo failed \(bug undo should fail\)
+bk undo $Q -f -r+ 2>ERR && fail
+check_state || fail $err
+echo OK
 
 echo $N Undo, gdb cset pending in product............................$NL
 cd "$HERE"
@@ -438,9 +442,9 @@ bk delta $Q -yfile file || fail
 bk commit $Q -yfile
 cd ..
 save_state
-bk undo $Q -f -r+ 2>ERR || fail you fixed a bug
-#check_state || fail $err
-echo failed \(bug undo should fail\)
+bk undo $Q -f -r+ 2>ERR && fail
+check_state || fail $err
+echo OK
 
 echo $N Undo, cset pending in gcc....................................$NL
 cd "$HERE"
@@ -453,8 +457,8 @@ bk delta $Q -yfile file || fail
 cd ..
 save_state
 bk undo $Q -f -r+ 2>ERR && fail
-check_state && fail you fixed a bug
-echo failed \(bug failed undo does not undo undo\)
+check_state || fail $err
+echo OK
 
 echo $N Undo, cset pending in gdb....................................$NL
 cd "$HERE"
@@ -466,9 +470,9 @@ RAND > file
 bk delta $Q -yfile file || fail
 cd ..
 save_state
-bk undo $Q -f -r+ 2>ERR && fail
-check_state && fail you fixed a bug
-echo failed \(bug failed undo does not undo undo\)
+bk undo $Q -f -r+ 2>ERR && fail -f ERR
+check_state || fail -f ERR
+echo OK
 
 ##########
 

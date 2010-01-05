@@ -405,6 +405,33 @@ pending_print(sccs *s, delta *d, void *token)
 	return (0);
 }
 
+/*
+ * return true if a sfile has pending deltas
+ *
+ * Not used by sfiles, but put here next to the other code that does
+ * something similar.
+ */
+int
+sccs_isPending(char *gfile)
+{
+	char	*sfile = name2sccs(gfile);
+	char	*t;
+	sccs	*s;
+	int	rc = 0;
+
+	t = strrchr(sfile, '/');
+	t[1] = 'd';
+	unless (exists(sfile)) goto out; /* look for dfile */
+	t[1] = 's';
+	unless (s = sccs_init(sfile, SILENT|INIT_NOCKSUM|INIT_MUSTEXIST)) {
+		goto out;
+	}
+	unless (sccs_top(s)->flags & D_CSET) rc = 1;
+	sccs_free(s);
+out:	free(sfile);
+	return (rc);
+}
+
 private void
 chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 {

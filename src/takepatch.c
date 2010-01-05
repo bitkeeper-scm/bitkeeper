@@ -936,6 +936,37 @@ apply:
 		}
 		hash_free(cdb);
 	}
+	/* examine incoming csets and looks for updates to components with
+	 * pending deltas
+	 */
+	if (proj_isProduct(0)) {
+		for (p = patchList; p; p = p->next) {
+			char	*t, *s;
+			char	key[MAXKEY];
+
+			unless (p->diffMmap) continue;
+			while (t = mnext(p->diffMmap)) {
+				unless (*t == '>') continue;
+				t += 2;
+				s = separator(t);
+				strncpy(key, t, s-t);
+				key[s-t] = 0;
+
+				unless (changesetKey(key)) continue;
+
+				t = key2path(key, idDB);
+				if (sccs_isPending(t)) {
+					dirname(t); /* strip /ChangeSet */
+					getMsg("tp_uncommitted",
+					    t, 0, stderr);
+					free(t);
+					goto err;
+				}
+				free(t);
+			}
+			mseekto(p->diffMmap, 0);
+		}
+	}
 	sprintf(csets_in, "%s/%s", ROOT2RESYNC, CSETS_IN);
 	csets = fopen(csets_in, "w");
 	assert(csets);

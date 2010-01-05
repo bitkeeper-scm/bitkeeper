@@ -717,7 +717,7 @@ private push_rc
 push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 {
 	zgetbuf	*zin;
-	FILE	*f;
+	FILE	*f = 0;
 	char	*line, *p;
 	u32	bytes;
 	int	i;
@@ -753,26 +753,28 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 	 */
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@TAKEPATCH INFO@")) {
+		/* with -q, save output in 'f' to print if error */
+		f = opts.verbose ? stderr : fmem_open();
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
-			if (opts.verbose) writen(2, buf, n);
+			fwrite(buf, 1, n, f);
 		}
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {
 			int	remote_rc = atoi(&buf[1]);
 
 			if (remote_rc) {
+				unless (opts.verbose) {
+					fputs(fmem_getbuf(f, 0), stderr);
+				}
 				fprintf(stderr,
 				    "Push failed: remote takepatch exited %d\n",
 				    remote_rc);
 			}
-			getline2(r, buf, sizeof(buf));
-			return(PUSH_ERROR);
-
 		}
-		unless (streq(buf, "@END@")) {
-			return(PUSH_ERROR);
-		}
+		unless (opts.verbose) fclose(f);
+		f = 0;
+		unless (streq(buf, "@END@")) return(PUSH_ERROR);
 		getline2(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@BAM@")) {

@@ -48,6 +48,7 @@ extern	unsigned int turnTransOff;
 #define	NESTED_PULL		0x20000000	/* This is a pull */
 #define	NESTED_PRODUCTFIRST	0x40000000	/* c->p first in c->comps */
 #define	NESTED_DEEPFIRST	0x80000000	/* deeper comps first */
+#define	NESTED_MARKPENDING	0x01000000	/* set c->pending */
 
 #define	NESTED_URLLIST		"BitKeeper/log/urllist"
 
@@ -71,6 +72,7 @@ typedef struct {
 	u32	present:1;		// if set, the repo is actually here
 	u32	product:1;		// this is the product
 	u32	remotePresent:1;	// scratch for remote present bit
+	u32	pending:1;		// has pending csets not in product
 } comp;
 
 struct nested {

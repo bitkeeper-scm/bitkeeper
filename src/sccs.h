@@ -1078,6 +1078,7 @@ int	sccs_tagMerge(sccs *s, delta *d, char *tag);
 int	sccs_tagleaves(sccs *, delta **, delta **);
 ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc);
+int	sccs_isPending(char *gfile);
 int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
 
 int     http_connect(remote *r);

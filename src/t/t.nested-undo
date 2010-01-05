@@ -97,3 +97,19 @@ grep -q "undo: The old aliases file requires the component gdb which is not pres
 }
 echo OK
 
+echo $N Undo should not allow deleting pending component csets ......$NL
+bk components set $Q all || exit 1
+cd gdb
+echo hi > file
+bk new $Q file || fail
+bk commit $Q -ynewfile || fail
+bk -P commit $Q -ygdb || fail
+bk edit $Q file || fail
+echo bye > file
+bk ci $Q -ybye file || fail
+bk commit $Q -yupdatefile || fail
+cd ..
+bk undo $Q -fsr+ 2>ERR && fail -f ERR should have failed
+grep -q 'undo: The component gdb includes pending csets that cannot be undone.' ERR || fail -f ERR
+test -d RESYNC && fail
+echo OK

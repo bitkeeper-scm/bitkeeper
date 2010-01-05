@@ -148,7 +148,8 @@ test $? -eq 1 || exit 1
 echo OK
 
 echo $N Test bk prompt when passed an invalid program ...............$NL
-echo n | bk prompt -pjunk 2> ERR
+echo n > n
+bk prompt -pjunk <n 2> ERR
 test $? -eq 2 || exit 1
 echo OK
 

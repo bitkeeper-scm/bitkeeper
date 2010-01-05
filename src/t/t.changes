@@ -293,23 +293,18 @@ echo OK
 
 echo $N Check bk changes - url is an error ..........................$NL
 # PWD=project
-echo + | bk changes - ../clone 2> ERR && {
+echo + > "$HERE"/IN
+bk changes - ../clone 2> ERR <"$HERE"/IN && {
 	echo "failed (it worked)"
 	exit 1
 }
-grep -q "either '-' or URL list" ERR || {
-	echo failed
-	exit 1
-}
+grep -q "either '-' or URL list" ERR || fail -f ERR
 cd "$HERE"
-echo + | bk changes - project 2> ERR && {
+bk changes - project 2> ERR <"$HERE"/IN && {
 	echo "failed (it worked)"
 	exit 1
 }
-grep -q "either '-' or URL list" ERR || {
-	echo failed
-	exit 1
-}
+grep -q "either '-' or URL list" ERR || fail -f ERR
 echo OK
 
 echo $N Check that changes -L/-R in a subdirectory works ............$NL

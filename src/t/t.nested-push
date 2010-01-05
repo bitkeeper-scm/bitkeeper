@@ -238,7 +238,12 @@ P=`cat PORT`
 cd "$HERE/project"
 bk push http://localhost:$P >OUT 2>&1 || fail -f OUT
 bk _kill bk://localhost:$P || fail
-test -f "$HERE/null-push/BitKeeper/writer/nested_lock" && fail leaked lock
+i=0
+while test -f "$HERE/null-push/BitKeeper/writer/nested_lock"; do
+      sleep 1
+      i=`expr $i + 1`
+      test $i -gt 5 && fail leaked lock
+done
 echo OK
 
 echo $N Check to see that _BK_TRANSACTION is not set in a trigger ...$NL
@@ -535,4 +540,37 @@ cd "$HERE/n1"
 bk push $Q "$HERE/nn" 2>ERR && fail -f ERR should have failed
 grep -q "You are trying to synchronize with an unrelated package." ERR \
 	|| fail -f ERR wrong error msg
+echo OK
+
+echo $N bk push does not commit pending..............................$NL
+cd "$HERE"
+nested parent
+cd gcc
+echo `date` > afile
+bk new $Q afile
+bk commit $Q -yafile
+bk -P commit $Q -yafile
+cd "$HERE"
+bk clone $Q parent child
+# add cset to parent
+cd "$HERE/parent/gcc"
+bk edit $Q afile
+echo new stuff > afile
+bk delta $Q -yafile-parent
+bk commit $Q -yafile-parent
+bk -P commit $Q -yafile-parent
+# add pending to child (that does not conflict)
+cd "$HERE/child/gcc"
+echo `date` > bfile
+bk new $Q bfile
+bk commit $Q  -ybfile
+# push should fail (we have a pending)
+cd "$HERE/parent"
+bk push $Q ../child 2>ERR && fail -f ERR should have failed
+grep -q "gcc has uncommitted changes" ERR || fail -f ERR wrong error
+# There should be no remote changes
+test -n "`bk -P changes -qR ../child`" && fail local changes found
+# destination repo should be fine
+cd "$HERE/child"
+bk -qAr check -ac >ERR 2>&1 || fail -f ERR
 echo OK
