@@ -43,6 +43,10 @@ test `bk prs -hr+ -nd:ENC: small` = uuencode || {
 }
 echo OK
 
+echo $N Try checksum on BAM file ....................................$NL
+bk checksum data || exit 1
+echo OK
+
 echo $N Create some different binary data and delta it ..............$NL
 bk edit $Q data || exit 1
 echo foo >> data
