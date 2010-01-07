@@ -983,7 +983,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			unless (p->diffMmap) continue;
 			while (t = mnext(p->diffMmap)) {
 				unless (*t == '>') continue;
-				t += 2;
+				++t;		      /* skip '>' */
+				unless (Fast) ++t;    /* skip space */
 				s = separator(t);
 				strncpy(key, t, s-t);
 				key[s-t] = 0;
