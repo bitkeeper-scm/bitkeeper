@@ -237,3 +237,14 @@ mkdir foo
 cd foo
 bk clone $Q "$HERE"/project/ || fail
 echo OK
+
+echo $N Test clone -r in partial_check / checkout:edit mode .........$NL
+cd project
+bk -r check -ac || fail
+cd ..
+BK_CONFIG='checkout:edit!;partial_check:yes!' \
+	bk clone -r1.5 $Q project checkout || fail
+cd checkout
+test -w src/bar.c || fail
+test -w src/h.h || fail
+echo OK

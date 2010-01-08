@@ -515,7 +515,9 @@ clone2(remote *r)
 	char	*p, *url;
 	char	*checkfiles;
 	FILE	*f;
-	int	i, undorc, rc, didcheck = 0;
+	int	i, undorc, rc;
+	int	didcheck = 0;		/* ran check in undo*/
+	int	partial = 1;		/* partial check needs checkout run */
 	char	buf[MAXLINE];
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
@@ -561,6 +563,7 @@ clone2(remote *r)
 		/* remove any later stuff */
 		unless (undorc = after(opts->quiet, opts->rev)) {
 			didcheck = 1;
+			partial = 1; /* can't know if it was full or not */
 		} else if (undorc == UNDO_SKIP) {
 			/* No error, but nothing done: still run check */
 		} else {
@@ -596,9 +599,9 @@ clone2(remote *r)
 		/* undo already runs check so we only need this case */
 		p = opts->quiet ? "-fT" : "-fvT";
 		if (proj_configbool(0, "partial_check")) {
-			rc = run_check(opts->quiet, checkfiles, p, &didcheck);
+			rc = run_check(opts->quiet, checkfiles, p, &partial);
 		} else {
-			rc = run_check(opts->quiet, 0, p, &didcheck);
+			rc = run_check(opts->quiet, 0, p, &partial);
 		}
 		if (rc) {
 			fprintf(stderr, "Consistency check failed, "
@@ -616,7 +619,7 @@ clone2(remote *r)
 	 * partial_check mode.  If we actually did a partial check,
 	 * get the rest of the files.
 	 */
-	if (!didcheck &&
+	if (partial &&
 	    (proj_checkout(0) & (CO_GET|CO_EDIT|CO_BAM_GET|CO_BAM_EDIT))) {
 		unless (opts->quiet) {
 			fprintf(stderr, "Checking out files...\n");
