@@ -36,9 +36,9 @@ bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	# select first file, enter comments
 	# we click on line end to make sure we don't click on icon...
 	test_selectFile src/file1
-	test_inputString "comments for file1"
+	test_inputComment "comments for file1"
 	test_selectFile ChangeSet
-	test_inputString "This is the cset comment"
+	test_inputComment "This is the cset comment"
 	test_buttonPress "Commit"
 	test_buttonPress "Commit"
 EOF
@@ -68,9 +68,9 @@ bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	# select first file, enter comments
 	# we click on line end to make sure we don't click on icon...
 	test_selectFile src/file1
-	test_inputString "comments for file1"
+	test_inputComment "comments for file1"
 	test_selectFile ChangeSet
-	test_inputString "New Cset"
+	test_inputComment "New Cset"
 	test_selectFile src/file1
 	test_buttonPress "Commit"
 	test_buttonPress "Commit"
@@ -101,9 +101,9 @@ bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	# select first file, enter comments
 	# we click on line end to make sure we don't click on icon...
 	test_selectFile src/file1
-	test_inputString "comments for file1"
+	test_inputComment "comments for file1"
 	test_selectFile ChangeSet
-	test_inputString "A Gratuitous Change"
+	test_inputComment "A Gratuitous Change"
 	test_buttonPress "Quit" then "Quit but save*"
 EOF
 test $? -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }
@@ -139,9 +139,9 @@ cd "$HERE/project/src"
 echo "this is a new file" > file6
 bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	test_selectFile src/file6
-	test_inputString "comments for file6"
+	test_inputComment "comments for file6"
 	test_selectFile ChangeSet
-	test_inputString "New file cset"
+	test_inputComment "New file cset"
 	test_buttonPress "Quit" then "Quit but save*"
 EOF
 test $? -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }

@@ -10,6 +10,9 @@ extern string filename;
 extern int edit_busy;
 edit_busy = 0;
 
+private int	_done = 0;
+private string	_quit = "";
+
 typedef	struct	sfile {
 	string	node;		// node ID within the listbox
 	string	file;		// full path to the file
@@ -44,12 +47,16 @@ struct {
 	int	sfiles_last;	    // last count of sfiles read
 	int	sfiles_done;	    // total count of sfiles read
 	int	sfiles_reading;	    // lock variable for reading sfiles output
+	int	sfiles_scanning;    // are we currently scanning for files?
 	string	sfiles_component;   // component currently being scanned
 	string  templates{string};  // template comments
 	sfile	files{string};	    // a hash of files by name
 	string	tmpsfile;	    // tmp sfiles output file
 	string	clipboard;	    // contents of the cut-and-paste clipboard
 	string	trigger_sock;	    // open socket to accept trigger output
+	int	insertOffset;       // The offset from the bottom of the listbox
+				    // to insert each item.  This can change
+				    // with each insert.
 	string	components[];	    // a list of components in a product
 	int	cnt_new;	    // Count of new files in tool
 	int	cnt_newC;	    // Count of commented new files
@@ -100,6 +107,7 @@ int
 getNumFiles()
 {
 	setStatus("Getting file count...");
+	update();
 	return ((int)bk("nfiles"));
 }
 
@@ -128,6 +136,7 @@ getSelectedFile()
 		file = ListBox_itemcget(self.w_files, node, data:);
 		return (self.files{file});
 	}
+	return (undef);
 }
 
 string
@@ -142,11 +151,7 @@ void
 insertFile(sfile sf)
 {
 	string	img = sf.icon;
-	string	idx = "end";
-
-	unless (self.partial) {
-		idx = "end-1";
-	}
+	string	idx = "end-${self.insertOffset}";
 
 	sf.component = self.sfiles_component;
 	if (sf.type eq "new") {
@@ -155,6 +160,12 @@ insertFile(sfile sf)
 	} else if (sf.type eq "pending") {
 		++self.cnt_pending;
 		++self.cnt_total;
+		++self.insertOffset;
+		if (self.partial) {
+			idx = "end";
+		} else {
+			idx = "end-1";
+		}
 	} else if (sf.type eq "modified") {
 		++self.cnt_modified;
 		++self.cnt_total;
@@ -166,7 +177,12 @@ insertFile(sfile sf)
 	sf.node = ListBox_insert(self.w_files, idx, "#auto",
 	    text: sf.name, image: img, data: sf.name);
 	self.files{sf.name} = sf;
-	if (self.cnt_total == 1) moveNext();
+	// Select the first modified, uncommented file we come across
+	// if the user hasn't selected something else already.
+	if ((sf.type eq "modified") && (img ne img_done)
+	    && (getSelectedNode() eq "")) {
+		selectFile(sf.node);
+	}
 }
 
 void
@@ -221,7 +237,7 @@ readSfilesProgress(FILE fd)
 		readSfilesOutput();
 		self.pos = 0;
 		self.sfiles_last = 0;
-		set("::done", 1);
+		_done = 1;
 	}
 }
 
@@ -312,6 +328,8 @@ findFiles()
 		insertFile(sf);
 	}
 
+	self.sfiles_scanning = 1;
+	updateButtons();
 	if (self.nested) {
 		string	comp;
 
@@ -322,7 +340,7 @@ findFiles()
 			fd = popen(cmd, "r");
 			fconfigure(fd, blocking: 0, buffering: "line");
 			fileevent(fd, "readable", "readSfilesProgress ${fd}");
-			vwait("::done");
+			vwait(&_done);
 			chdir(self.root);
 		}
 		self.sfiles_component = "";
@@ -332,12 +350,19 @@ findFiles()
 		fd = popen(cmd, "r");
 		fconfigure(fd, blocking: 0, buffering: "line");
 		fileevent(fd, "readable", "readSfilesProgress ${fd}");
-		vwait("::done");
+		vwait(&_done);
 	}
+	self.sfiles_scanning = 0;
 
 	if (self.cnt_total == 0) {
 		bk_error("No files found", "No files found to checkin");
 		exit();
+	}
+
+	// If nothing was selected by the scan or by the user, go ahead
+	// and select the ChangeSet now.
+	if (getSelectedNode() eq "") {
+		selectFile(self.files{"ChangeSet"}.node);
 	}
 
 	Progressbar_configure(self.w_progress, value: 100);
@@ -543,7 +568,7 @@ gui()
 	ttk::progressbar(self.w_progress);
 	StatusBar_add(self.w_statusF, self.w_progress,
 	    separator: 0, sticky: "e");
-	updateStatus();
+	setStatus("Initializing...");
 
 	bind("all", "<Control-l>", "refreshSelectedFile");
 	bind("all", "<Control-t>", "toggleSelectedFile");
@@ -556,6 +581,7 @@ gui()
 	bind("all", "<Control-Return>", "doCommit");
 
 	bk_initGui();
+	update();
 }
 
 void
@@ -594,6 +620,7 @@ commentChanged()
 	sfile	sf = getSelectedFile();
 	string	comments = getCurrentComments();
 
+	unless (defined(sf)) return;
 	if (sf.type eq "pending") return;
 	if ((comments eq "") && (isUserComment(sf, sf.comments))) {
 		self.files{sf.name}.comments = comments;
@@ -695,24 +722,32 @@ updateButtons()
 
 	configureButton("checkin", text: "Checkin");
 	configureButton("history", text: "History", command: "launchRevtool");
-	if (sf.type eq "pending") {
-		configureButton("edit", state: "disabled");
-		configureButton("difftool", state: "disabled");
-		configureButton("discard", state: "disabled");
-	} else if (sf.type eq "new") {
-		configureButton("difftool", state: "disabled");
-		configureButton("history", text: "Ignore",
-		    command: "ignoreFile");
+	if (defined(sf)) {
+		if (sf.type eq "pending") {
+			configureButton("edit", state: "disabled");
+			configureButton("difftool", state: "disabled");
+			configureButton("discard", state: "disabled");
+		} else if (sf.type eq "new") {
+			configureButton("difftool", state: "disabled");
+			configureButton("history", text: "Ignore",
+			    command: "ignoreFile");
+		}
+		if (sf.ignored) {
+			configureButton("history", text: "Unignore",
+			    command: "unignoreFile");
+		}
+		cset = self.files{"ChangeSet"};
+		if (self.cnt_commented &&
+		    (isUserComment(cset, cset.comments))) {
+			configureButton("checkin", text: "Commit");
+		} else if (sf.type eq "pending") {
+			configureButton("checkin", state: "disabled");
+		}
 	}
-	if (sf.ignored) {
-		configureButton("history", text: "Unignore",
-		    command: "unignoreFile");
-	}
-	cset = self.files{"ChangeSet"};
-	if (self.cnt_commented && (isUserComment(cset, cset.comments))) {
-		configureButton("checkin", text: "Commit");
-	} else if (sf.type eq "pending") {
-		configureButton("checkin", state: "disabled");
+
+	if (self.sfiles_scanning) {
+		configureButton("checkin", text: "Scanning",
+		    state: "disabled");
 	}
 }
 
@@ -808,6 +843,7 @@ saveComments()
 	string	comments;
 	sfile	sf = getSelectedFile();
 
+	unless (defined(sf)) return;
 	if (Text_cget(self.w_comments, state:) ne "normal") return;
 	comments = getCurrentComments();
 	if (comments eq "") {
@@ -862,8 +898,6 @@ movePrevious()
 	}
 }
 
-string _quit;
-
 void
 quit()
 {
@@ -891,18 +925,18 @@ quit()
 		    background: gc("ci.quitSaveBG"),
 		    activebackground: gc("ci.quitSaveActiveBG"),
 		    text: "Quit but save comments",
-		    command: "set ::_quit pending");
+		    command: "setQuit pending");
 		pack(".c.save", padx: 2, pady: 3, fill: "x");
 		button(".c.cancel", font: gc("ci.noticeFont"),
 		    text: "Do not exit citool",
-		    command: "set ::_quit cancel");
+		    command: "setQuit cancel");
 		pack(".c.cancel", padx: 2, pady: 3, fill: "x");
 		button(".c.quit", font: gc("ci.noticeFont"),
 		    background: gc("ci.quitNosaveBG"),
 		    activebackground: gc("ci.quitNosaveBG"),
 		    activeforeground: gc("ci.quitNosaveActiveBG"),
 		    text: "Quit without saving comments",
-		    command: "set ::_quit all");
+		    command: "setQuit all");
 		pack(".c.quit", padx: 2, pady: 3, fill: "x");
 
 		x = winfo("rootx", self.w_top)
@@ -911,7 +945,7 @@ quit()
 		wm("geometry", ".c", "+${x}+${y}");
 		wm("transient", ".c", self.w_top);
 		grab(".c");
-		vwait("::_quit");
+		vwait(&_quit);
 		destroy(".c");
 
 		if (_quit eq "cancel") return;
@@ -1519,6 +1553,12 @@ cmd_refresh(int restore)
 }
 
 void
+setQuit(string value)
+{
+	_quit = value;
+}
+
+void
 initMsgs()
 {
 // Don't make comments wider than 65 chars
@@ -1686,6 +1726,12 @@ test_fileHasIcon(string file, string want)
 }
 
 void
+test_inputComment(string comment)
+{
+	test_inputString(comment,  self.w_comments);
+}
+
+void
 main(int argc, string argv[])
 {
 	string	arg, files[];
@@ -1704,6 +1750,7 @@ main(int argc, string argv[])
 	self.sfiles_last = 0;
 	self.sfiles_done = 0;
 	self.sfiles_reading = 0;
+	self.sfiles_scanning = 0;
 	self.resolve = 0;
 	self.partial = 0;
 	self.commitSwitch = 0;
@@ -1717,12 +1764,14 @@ main(int argc, string argv[])
 	self.cnt_modified = 0;
 	self.cnt_modifiedC = 0;
 	self.cnt_commented = 0;
+	self.insertOffset = 1;
 
 	foreach (arg in argv) {
 		if (arg eq "-R") {
 			self.resolve = 1;
 		} else if (arg eq "-P") {
 			self.partial = 1;
+			self.insertOffset = 0;
 		} else {
 			push(&files, arg);
 			self.argv[END+1] = arg;

@@ -37,9 +37,9 @@ bk guitest >"`bk dotbk`/ci.rc" 2>&1 <<'EOF'
 	exit 0
 EOF
 bk guitest citool >OUT 2>&1 <<'EOF'
-	global	w
-	if {[test_isvisible $w(c_top) 1] != 1} {
-		puts "Window not fully visible [test_geometry $w(c_top)]"
+	set top .citool
+	if {[test_isvisible $top 1] != 1} {
+		puts "Window not fully visible [test_geometry $top]"
 		exit 1
 	}
 	exit 0

@@ -34,7 +34,7 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_fileHasIcon ChangeSet cset
 	test_fileHasIcon src/file1 modified
 	test_fileHasIcon src/file2 modified
-	test_inputString "testing..."
+	test_inputComment "testing..."
 	test_fileHasIcon ChangeSet cset
 	test_fileHasIcon src/file1 done
 	test_fileHasIcon src/file2 modified
@@ -51,9 +51,10 @@ echo OK
 
 echo $N adding comments changes the icons for ChangeSet file.........$NL
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	test_inputString "this should be for file1..."
+	test_selectFile src/file1
+	test_inputComment "this should be for file1..."
 	test_selectFile ChangeSet
-	test_inputString "ChangeSet comment..."
+	test_inputComment "ChangeSet comment..."
 	test_fileHasIcon ChangeSet done
 	test_fileHasIcon src/file1 done
 	test_fileHasIcon src/file2 modified
@@ -71,7 +72,8 @@ echo OK
 echo $N removing comments from a file changes the icon...............$NL
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	# this assumes the previous test added exactly 27 chars
-	test_inputString [string repeat \010 27]
+	test_selectFile src/file1
+	test_inputComment [string repeat \010 27]
 	test_fileHasIcon ChangeSet done
 	test_fileHasIcon src/file1 modified
 	test_fileHasIcon src/file2 modified
@@ -88,13 +90,13 @@ echo OK
 
 echo $N removing comments from ChangeSet changes the icon............$NL
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	test_inputString "this should be for file1..."
+	test_inputComment "this should be for file1..."
 	test_selectFile ChangeSet
 	test_fileHasIcon ChangeSet done
 	test_fileHasIcon src/file1 done
 	test_fileHasIcon src/file2 modified
 	# this assumes the previous test added exactly 20 chars
-	test_inputString [string repeat \010 20]
+	test_inputComment [string repeat \010 20]
 	test_fileHasIcon ChangeSet cset
 	test_fileHasIcon src/file1 done
 	test_fileHasIcon src/file2 modified

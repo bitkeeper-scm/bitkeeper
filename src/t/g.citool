@@ -174,9 +174,9 @@ bk _find . -name "c.*" | while read name; do bk _rm "$name"; done
 bk edit $Q src/file1
 echo "another new line" >> src/file1
 bk guitest citool >"$OUT" 2>&1 <<'EOF'
-	test_inputString "testing..."
+	test_inputComment "testing..."
 	test_selectFile ChangeSet
-	test_inputString "testing..."
+	test_inputComment "testing..."
 	test_buttonPress "Quit" then "Quit but save*"
 EOF
 test -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
@@ -192,7 +192,7 @@ echo "OK"
 echo $N "Quit Dialog - select 'Quit without saving'...................$NL"
 bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	test_selectFile ChangeSet
-	test_inputString  "testing..."
+	test_inputComment  "testing..."
 	test_buttonPress "Quit" then "Quit without saving*"
 EOF
 err=$?
@@ -288,9 +288,11 @@ echo foo > "spaces in dir name/~ spaces in file name"
 mkdir "./~src"
 echo foo > "./~src/file"
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	foreach i [list 1 2 3 4 5] {
-		test_inputString "This is a comment"
-		test_inputString "^n"
+	foreach file {./~foo src/~foo "./~ spaces in file name"
+	    "spaces in dir name/~ spaces in file name" "./~src/file"} {
+		test_selectFile $file
+		test_inputComment "This is a comment"
+		test_inputComment "^n"
 	}
 	test_buttonPress "Quit" then "Quit but save*"
 EOF
@@ -312,9 +314,11 @@ echo $N last test again but with absolute paths......................$NL
 rm -f WANT GOT
 bk _find . -name "c.*" | while read name; do bk _rm "$name"; done
 bk guitest citool "`pwd`" > "$OUT" 2>&1 <<'EOF'
-	foreach i [list 1 2 3 4 5] {
-	test_inputString "This is a comment"
-	test_inputString "^n"
+	foreach file {~foo src/~foo "~ spaces in file name"
+	    "spaces in dir name/~ spaces in file name" "~src/file"} {
+		test_selectFile $file
+		test_inputComment "This is a comment"
+		test_inputComment "^n"
 	}
 	test_buttonPress "Quit" then "Quit but save*"
 EOF
@@ -343,7 +347,7 @@ echo "hi there" > foo.c
 OUT=$HERE/OUT
 bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	test_selectFile foo.c
-	test_inputString "comments for foo.c"
+	test_inputComment "comments for foo.c"
 	test_buttonPress "Checkin"
 	test_buttonPress "Checkin"
 EOF
@@ -357,7 +361,7 @@ echo OK
 echo $N Check for cut twice bug .....................................$NL
 bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	test_selectFile "ChangeSet"
-	test_inputString "cset comments"
+	test_inputComment "cset comments"
 	test_buttonPress "Cut"
 	test_buttonPress "Cut"
 	test_buttonPress "Paste"

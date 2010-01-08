@@ -1,0 +1,27 @@
+
+doFiles() {
+	touch an_extra extra a_cmt cmt an_edit edit a_pending pending
+	bk new $Q a_cmt cmt an_edit edit a_pending pending
+	bk edit $Q a_cmt cmt an_edit edit
+	for x in a_cmt cmt an_edit edit; do
+		echo new content > $x
+	done
+	echo comment | bk cfile save a_cmt
+	echo comment | bk cfile save cmt
+}
+
+echo $N 'Show sort order - do you like it? Press quit (save) ......'$NL
+nested project
+doFiles
+cd gcc
+doFiles
+cd ../gdb
+doFiles
+cd ..
+bk citool
+echo OK
+
+echo $N 'Show sort order with gdb first. Press quit (save) ........'$NL
+cd gdb
+bk citool
+echo OK

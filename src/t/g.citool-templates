@@ -32,7 +32,7 @@ echo OK
 
 echo $N no template means comments should be empty ..................$NL
 bk guitest citool >"$OUT" 2>&1 <<'EOF'
-	test_inputString "comments for file1"
+	test_inputComment "comments for file1"
 	test_selectFile ChangeSet
 	test_fileHasIcon ChangeSet cset
 	set comments [test_getComments]
@@ -56,7 +56,7 @@ cd "`bk root`"
 mkdir BitKeeper/templates
 echo "Template..." > BitKeeper/templates/commit
 bk guitest citool >"$OUT" 2>&1 <<'EOF'
-	test_inputString "comments for file1"
+	test_inputComment "comments for file1"
 	test_selectFile ChangeSet
 	test_fileHasIcon ChangeSet cset
 	set comments [test_getComments]
@@ -83,7 +83,7 @@ echo OK
 echo $N editing changeset comments updates icon, saves comments......$NL
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_selectFile ChangeSet
-	test_inputString "foo"
+	test_inputComment "foo"
 	set comments [test_getComments]
 	if {$comments ne "Template...\nfoo"} {
 		puts "Template comments are not correct."
@@ -115,7 +115,7 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 
 	# delete the trailing foo, which makes the comments the same
 	# as the template.
-	test_inputString [string repeat \010 3]
+	test_inputComment [string repeat \010 3]
 	set comments [test_getComments]
 	if {$comments ne "Template...\n"} {
 		puts "bogus comments after edit: '$comments'"
@@ -162,7 +162,7 @@ echo $N comments!=template, cset created.............................$NL
 TIP=`bk changes -r+ -nd:REV:`
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_selectFile ChangeSet
-	test_inputString "\010foo";# delete trailing newline...
+	test_inputComment "\010foo";# delete trailing newline...
 	test_buttonPress Commit
 	test_buttonPress Commit
 EOF

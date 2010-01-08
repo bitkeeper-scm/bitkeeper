@@ -55,13 +55,13 @@ bk get $Q -e src/file1 src/file2
 echo "foo" >> src/file1
 echo "foo" >> src/file2
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	test_inputString "Comments for file1"
+	test_inputComment "Comments for file1"
 	# press discard, then cancel by doing control-l
 	test_buttonPress "Discard"
 	# at this point the comment window should say something like
 	# "Press discard again or press ^l to cancel..."
 	# do a ^n, which normally triggers the saveComments code
-	test_inputString "^n" ;# control-n to move to next file
+	test_inputComment "^n" ;# control-n to move to next file
 	test_buttonPress "Quit" then "Quit but save*"
 EOF
 cat "$OUT"

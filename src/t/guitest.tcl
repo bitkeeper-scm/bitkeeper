@@ -408,7 +408,7 @@ proc test_timeoutCancel {} \
 # Citool has a rather annoying design in that it calls
 # vwait for its main loop. By overriding that command we can catch
 # when that happens so the test script can be run
-if {$test_tool eq "citool"} {
+if {$test_tool eq "oldcitool"} {
 	rename vwait test_vwait
 	proc vwait {varname} \
 	{
