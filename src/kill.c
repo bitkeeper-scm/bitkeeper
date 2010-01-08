@@ -57,6 +57,8 @@ usage:		fprintf(stderr, "Usage: bk kill URL\n");
 			rc = 1;
 		}
 	}
-out:	disconnect(r, 2);
+out:	wait_eof(r, 0);
+	disconnect(r);
+	remote_free(r);
 	return (rc);
 }

@@ -335,7 +335,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	if (streq(buf, "@SERVER INFO@")) {
 		if (getServerInfo(r)) {
 			fprintf(stderr, "clone: premature disconnect?\n");
-			disconnect(r, 2);
+			disconnect(r);
 			goto done;
 		}
 		getline2(r, buf, sizeof(buf));
@@ -347,13 +347,13 @@ clone(char **av, remote *r, char *local, char **envVar)
 		unless (local) {
 			fprintf(stderr,
 			    "clone: cannot determine remote pathname\n");
-			disconnect(r, 2);
+			disconnect(r);
 			goto done;
 		}
 		if (exists(local) && !empty(local)) {
 			fprintf(stderr,
 			    "clone: %s exists and is not empty\n", local);
-			disconnect(r, 2);
+			disconnect(r);
 			goto done;
 		}
 	} else if (getenv("_BK_TRANSACTION") &&
@@ -370,7 +370,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		exit(CLONE_BADREV);
 	}
 	if (get_ok(r, buf, 1)) {
-		disconnect(r, 2);
+		disconnect(r);
 		goto done;
 	}
 
@@ -385,13 +385,13 @@ clone(char **av, remote *r, char *local, char **envVar)
 			    "clone: remote BK has a different license: %s\n"
 			    "You will need to upgrade in order to proceed.\n",
 			    lic);
-			disconnect(r, 2);
+			disconnect(r);
 			goto done;
 		}
 		unless (eula_accept(EULA_PROMPT, lic)) {
 			fprintf(stderr,
 			    "clone: failed to accept license '%s'\n", lic);
-			disconnect(r, 2);
+			disconnect(r);
 			goto done;
 		}
 	}
@@ -424,7 +424,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 
 	/* create the new package */
 	if (initProject(local, r) != 0) {
-		disconnect(r, 2);
+		disconnect(r);
 		goto done;
 	}
 
@@ -436,7 +436,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 	if (sfio(r, 0, p) != 0) {
 		fprintf(stderr, "sfio errored\n");
-		disconnect(r, 2);
+		disconnect(r);
 		goto done;
 	}
 	if (proj_isProduct(0)) {
@@ -455,14 +455,14 @@ clone(char **av, remote *r, char *local, char **envVar)
 		do_part2 = 0;
 	}
 	if ((r->type == ADDR_HTTP) || (!do_part2 && !opts->product)) {
-		disconnect(r, 2);
+		disconnect(r);
 	}
 	if (do_part2) {
 		p = aprintf("-r..'%s'", opts->rev ? opts->rev : "");
 		rc = bkd_BAM_part3(r, envVar, opts->quiet, p);
 		free(p);
 		if ((r->type == ADDR_HTTP) && opts->product) {
-			disconnect(r, 2);
+			disconnect(r);
 		}
 		if (rc) {
 			clonerc = CLONE_ERROR;
@@ -473,9 +473,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 
 	if (opts->product) clonerc = clone_finish(r, clonerc, envVar);
 
-	disconnect(r, 1);
 	wait_eof(r, 0);
-done:	disconnect(r, 2);
+done:	disconnect(r);
 	if (clonerc) {
 		putenv("BK_STATUS=FAILED");
 		if (clonerc == CLONE_ERROR) mkdir("RESYNC", 0777);

@@ -260,7 +260,7 @@ push(char **av, remote *r, char **envVar)
 		fprintf(stderr, "part1 returns %d\n", ret);
 	}
 
-	if (r->type == ADDR_HTTP) disconnect(r, 2);
+	if (r->type == ADDR_HTTP) disconnect(r);
 	abort = 0;
 	switch (ret) {
 	    case NOTHING_TO_SEND:	abort = "@NOTHING TO SEND@\n"; break;
@@ -275,7 +275,7 @@ push(char **av, remote *r, char **envVar)
 			goto err;
 		}
 		send_end_msg(r, abort, envVar);
-		if (r->type == ADDR_HTTP) disconnect(r, 2);
+		if (r->type == ADDR_HTTP) disconnect(r);
 		goto out;
 	}
 
@@ -291,7 +291,7 @@ push(char **av, remote *r, char **envVar)
 		assert((ret == PUSH_ERROR) || (ret == REMOTE_LOCKED));
 		goto out;
 	}
-	if (r->type == ADDR_HTTP) disconnect(r, 2);
+	if (r->type == ADDR_HTTP) disconnect(r);
 
 	if (bp_keys) {
 		if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
@@ -304,7 +304,7 @@ push(char **av, remote *r, char **envVar)
 			assert((ret == PUSH_ERROR) || (ret == REMOTE_LOCKED));
 			goto out;
 		}
-		if (r->type == ADDR_HTTP) disconnect(r, 2);
+		if (r->type == ADDR_HTTP) disconnect(r);
 	}
 	if (ret == DELAYED_RESOLVE) {
 		assert(opts.product);
@@ -318,17 +318,8 @@ push(char **av, remote *r, char **envVar)
 		}
 		ret = push_finish(r, ret, envVar);
 	}
-out:	/*
-	 * XXX This is a workaround for a csh fd leak: Force a
-	 * client side EOF before we wait for server side EOF.
-	 * Needed only if remote is running csh; csh has a fd
-	 * leak which causes it fail to send us EOF when we
-	 * close stdout and stderr.  Csh only sends us EOF and
-	 * the bkd exit, yuck !!
-	 */
-	disconnect(r, 1);
-	wait_eof(r, opts.debug); /* wait for remote to disconnect */
-	disconnect(r, 2);
+out:	wait_eof(r, opts.debug); /* wait for remote to disconnect */
+	disconnect(r);
 
 	/* handle triggers */
 	if ((ret == PUSH_ERROR) || (ret == CONNECTION_FAILED) ||
@@ -593,10 +584,9 @@ err:		return (PUSH_ERROR);
 			return ((ret == -2) ? REMOTE_LOCKED : PUSH_ERROR);
 		}
 	} else {
-		disconnect(r, 1);
 		drainErrorMsg(r, buf, sizeof(buf));
 		wait_eof(r, opts.debug); /* wait for remote to disconnect */
-		disconnect(r, 2);
+		disconnect(r);
 		exit(1);
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
@@ -1170,7 +1160,7 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 		fprintf(stderr,
 		    "Error: patch has changed size from %d to %d\n", m, n);
 		fclose(f);
-		disconnect(r, 2);
+		disconnect(r);
 		return (-1);
 	}
 	fprintf(f, "@END@\n");
@@ -1179,7 +1169,7 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 
 	if (unlink(msgfile)) perror(msgfile);
 	if (rc == -1) {
-		disconnect(r, 2);
+		disconnect(r);
 		return (-1);
 	}
 
@@ -1286,17 +1276,16 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 			    "Error: patch has changed size from %d to %d\n",
 			    m, n);
 			fclose(f);
-			disconnect(r, 2);
+			disconnect(r);
 			return (-1);
 		}
 		fprintf(f, "@END@\n");
 		fclose(f);
 		send_file_extra_done(r);
 	}
-
 	if (unlink(msgfile)) perror(msgfile);
 	if (send_failed) {
-		disconnect(r, 2);
+		disconnect(r);
 		return (-1);
 	}
 

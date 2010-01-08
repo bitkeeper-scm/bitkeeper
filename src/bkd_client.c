@@ -328,7 +328,7 @@ remote_free(remote *r)
 		fprintf(stderr,
 "remote_free(): freeing struct with open connection, disconnecting...\n");
 #endif
-		disconnect(r, 2);
+		disconnect(r);
 	}
 	if (r->user) free(r->user);
 	if (r->host) free(r->host);

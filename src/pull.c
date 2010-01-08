@@ -213,7 +213,7 @@ err:		freeLines(envVar, free);
 				fprintf(stderr,
 				    "pull: remote locked, trying again...\n");
 			}
-			disconnect(r, 2);
+			disconnect(r);
 			assert(r->pid == 0);
 			sleep(min((j++ * 2), 10));
 		}
@@ -309,18 +309,18 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		exit(1);
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
-		disconnect(r, 2);
+		disconnect(r);
 		exit(1);
 	}
 	if ((p = getenv("BKD_LEVEL")) && (atoi(p) > getlevel())) {
 	    	fprintf(stderr, "pull: cannot pull to lower level "
 		    "repository (remote level == %s)\n", getenv("BKD_LEVEL"));
-		disconnect(r, 2);
+		disconnect(r);
 		return (1);
 	}
 	if (opts.rev && !bkd_hasFeature("pull-r")) {
 		notice("no-pull-dash-r", 0, "-e");
-		disconnect(r, 2);
+		disconnect(r);
 		return (1);
 	}
 	if ((bp_hasBAM() ||
@@ -329,14 +329,14 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		fprintf(stderr,
 		    "pull: please upgrade the remote bkd to a "
 		    "BAMv2 aware version (4.1.1 or later).\n");
-		disconnect(r, 2);
+		disconnect(r);
 		return (1);
 	}
 	if (opts.port) {
 		unless (bkd_hasFeature("SAMv3")) {
 			fprintf(stderr,
 			    "port: remote bkd too old to support 'bk port'\n");
-			disconnect(r, 2);
+			disconnect(r);
 			return (1);
 		}
 		if (proj_isComponent(0)) {
@@ -346,7 +346,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 				fprintf(stderr,
 				    "port: may not port components "
 				    "with identical products\n");
-				disconnect(r, 2);
+				disconnect(r);
 				return (1);
 			} else {
 				/* standalone -> component */
@@ -358,7 +358,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 				fprintf(stderr,
 				    "port: may not port between "
 				    "identical repositories\n");
-				disconnect(r, 2);
+				disconnect(r);
 				return (1);
 			}
 		} else {
@@ -371,12 +371,12 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		exit(1);
 	}
 	if (get_ok(r, buf, 1)) {
-		disconnect(r, 2);
+		disconnect(r);
 		return (1);
 	}
 	if (opts.dont) putenv("BK_STATUS=DRYRUN");
 	if (trigger(av[0], "pre")) {
-		disconnect(r, 2);
+		disconnect(r);
 		return (1);
 	}
 	bktmp(probe_list, "pullprobe");
@@ -387,7 +387,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		if (streq("@END PROBE@", buf)) break;
 	}
 	fclose(f);
-	if (r->type == ADDR_HTTP) disconnect(r, 2);
+	if (r->type == ADDR_HTTP) disconnect(r);
 	return (0);
 }
 
@@ -645,7 +645,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 	}
 
 done:	unlink(probe_list);
-	if (r->type == ADDR_HTTP) disconnect(r, 2);
+	if (r->type == ADDR_HTTP) disconnect(r);
 	return (rc);
 }
 
@@ -885,7 +885,7 @@ pull(char **av, remote *r, char **envVar)
 		rc = bkd_BAM_part3(r, envVar, opts.quiet,
 		    "- < " CSETS_IN);
 		if ((r->type == ADDR_HTTP) && proj_isProduct(0)) {
-			disconnect(r, 2);
+			disconnect(r);
 		}
 		chdir(RESYNC2ROOT);
 		if (rc) {
@@ -929,14 +929,6 @@ pull(char **av, remote *r, char **envVar)
 	}
 done:	putenv("BK_RESYNC=FALSE");
 	unless (opts.noresolve) trigger(av[0], "post");
-	/*
-	 * XXX This is a workaround for a csh fd leak:
-	 * Force a client side EOF before we wait for server side EOF.
-	 * Needed only if remote is running csh; csh has a fd leak
-	 * which causes it fail to send us EOF when we close stdout
-	 * and stderr.  Csh only sends us EOF and the bkd exit, yuck !!
-	 */
-	disconnect(r, 1);
 
 	/*
 	 * Wait for remote to disconnect
@@ -944,7 +936,7 @@ done:	putenv("BK_RESYNC=FALSE");
 	 * short circuit the code path
 	 */
 	wait_eof(r, opts.debug);
-	disconnect(r, 2);
+	disconnect(r);
 	return (rc);
 }
 

@@ -1393,11 +1393,11 @@ changes_part1(remote *r, char **av, char *key_list)
 			break;
 		}
 		close(fd);
-		disconnect(r, 2);
+		disconnect(r);
 		return (-1);
 	}
 	close(fd);
-	if (r->type == ADDR_HTTP) disconnect(r, 2);
+	if (r->type == ADDR_HTTP) disconnect(r);
 	return (rcsets + rtags);
 }
 
@@ -1446,8 +1446,8 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 	}
 
 done:	unlink(key_list);
-	disconnect(r, 1);
 	wait_eof(r, 0);
+	disconnect(r);
 	return (rc);
 }
 
@@ -1476,7 +1476,7 @@ _doit_remote(char **av, char *url)
 	if (rc >= 0 && opts.remote) {
 		rc = changes_part2(r, av, key_list, rc);
 	}
-	disconnect(r, 2);
+	disconnect(r);
 	remote_free(r);
 	if (key_list[0]) unlink(key_list);
 	return (rc);

@@ -213,9 +213,8 @@ read_blk(remote *r, char *buf, int len)
  * been read.
  *
  * This function should appear in code like this:
- *     disconnect(r, 1);
  *     wait_eof(r, 0);
- *     disconnect(r, 2);
+ *     disconnect(r);
  *     remote_free(r);
  */
 void
@@ -225,6 +224,14 @@ wait_eof(remote *r, int verbose)
 	int	bytes = 0;
 	char	buf[MAXLINE];
 
+	if (r->wfd != -1) {
+		if (r->isSocket) {
+			shutdown(r->wfd, 1);
+		} else {
+			close(r->wfd);
+		}
+		r->wfd = -1;
+	}
 	if (verbose) fprintf(stderr, "Waiting for remote to disconnect\n");
 	while (bytes < 2 * 1024 * 1024) {
 		i = read_blk(r, buf, sizeof(buf) - 1);
@@ -693,42 +700,21 @@ skip_http_hdr(remote *r)
 }
 
 void
-disconnect(remote *r, int how)
+disconnect(remote *r)
 {
-	assert((how >= 0) && (how <= 2));
 	assert(!r->need_exdone);
-
-	switch (how) {
-	    case 0:	if (r->rfd == -1) break;
-			if (r->isSocket) {
-				assert(!r->rf);
-				shutdown(r->rfd, 0);
-			} else if (r->rf) {
-				fclose(r->rf);
-				r->rf = 0;
-			} else {
-				close(r->rfd);
-			}
-			r->rfd = -1;
-			break;
-	    case 1: 	if (r->wfd == -1) break;
-			if (r->isSocket) {
-				shutdown(r->wfd, 1);
-			} else {
-				close(r->wfd);
-			}
-			r->wfd = -1;
-			break;
-	    case 2:	if (r->rf) {
-				fclose(r->rf);
-				r->rf = 0;
-			} else if (r->rfd >= 0) {
-				close(r->rfd);
-			}
-			if ((r->wfd >= 0) && (r->wfd != r->rfd)) close(r->wfd);
-			r->rfd = r->wfd = -1;
-			break;
+	if (r->isSocket && (r->wfd != -1)) {
+		shutdown(r->wfd, 2);
 	}
+	if (r->rf) {
+		fclose(r->rf);
+		r->rf = 0;
+	} else if (r->rfd >= 0) {
+		close(r->rfd);
+	}
+	if ((r->wfd >= 0) && (r->wfd != r->rfd)) close(r->wfd);
+	r->rfd = r->wfd = -1;
+
 	if ((r->pid > 0) && (r->rfd == -1) && (r->wfd == -1)) {
 		/*
 		 * We spawned a bkd in the background to handle this

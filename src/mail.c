@@ -113,9 +113,8 @@ bkmail(char *url, char **to, char *subject, char *file)
 			printf("%s\n", buf);
 		}
 	}
-	disconnect(r, 1);
 	wait_eof(r, 0);
-	disconnect(r, 2);
+	disconnect(r);
 	remote_free(r);
 	return (rc);
 }

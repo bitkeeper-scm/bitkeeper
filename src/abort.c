@@ -186,9 +186,8 @@ remoteAbort(remote *r)
 		rc = 1;
 		goto out;
 	}
-out:	disconnect(r, 1);
-	wait_eof(r, 0);
-	disconnect(r, 2);
+out:	wait_eof(r, 0);
+	disconnect(r);
 	return (rc);
 }
 

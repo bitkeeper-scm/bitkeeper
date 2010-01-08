@@ -642,7 +642,7 @@ synckeys(remote *r, sccs *s, int flags, FILE *fout)
 		goto out;
 	}
 	rc = 0;
-out:	disconnect(r, 2);
+out:	disconnect(r);
 	return (rc);
 }
 

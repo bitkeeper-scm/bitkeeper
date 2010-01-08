@@ -271,9 +271,8 @@ err:		fprintf(stderr, "##### %s #####\n", u);
 	if (strneq("ERROR-", line, 6)) goto err;
 	unless (sscanf(line, "@EXIT=%d@", &i)) i = 1<<5;
 out:	if (zin) zgets_done(zin);
-	disconnect(r, 1);
 	wait_eof(r, 0);
-	disconnect(r, 2);
+	disconnect(r);
 	return (i);
 }
 private void

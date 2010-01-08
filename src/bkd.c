@@ -159,6 +159,12 @@ usage(void)
 	exit(1);
 }
 
+/*
+ * Shutdown the socket connection to the bk client when we decide to
+ * exit early without reading all stdin.  This implements Apache's
+ * "lingering close" to send an EOF to the client and avoid sending a
+ * RST from our kernel if we fail to consume all stdin.
+ */
 void
 drain(void)
 {
@@ -167,12 +173,14 @@ drain(void)
 
 	signal(SIGALRM, exit);
 	alarm(20);
-	shutdown(1, 1); /* We need this for local bkd */
+	shutdown(1, 1);		/* send an EOF to the client */
 	close(1); /* in case remote is waiting for input */
-	while (getline(0, buf, sizeof(buf)) >= 0) {
-		if (streq("@END@", buf)) break;
+	/* consume all stdin */
+	while (read(0, buf, sizeof(buf)) > 0) {
 		if (i++ > 200) break; /* just in case */
 	}
+	shutdown(0, 2);		/* now fully shutdown */
+	closesocket(0);
 }
 
 off_t

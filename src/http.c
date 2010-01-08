@@ -517,7 +517,7 @@ http_fetch(remote *r, char *file)
 		rc = 0;
 	}
  out:
-	disconnect(r, 2);
+	disconnect(r);
 	return (rc);
 }
 

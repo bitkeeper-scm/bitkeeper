@@ -137,7 +137,7 @@ int	send_file_extra_done(remote *r);
 int	skip_hdr(remote *r);
 int	getTriggerInfoBlock(remote *r, int verbose); 
 int	bkd_connect(remote *r);
-void	disconnect(remote *r, int how);
+void	disconnect(remote *r);
 void	drain(void);
 char	**getClientInfoBlock(void);
 int	sendServerInfo(int no_repo);

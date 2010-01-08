@@ -344,7 +344,7 @@ rclone_part1(remote *r, char **envVar)
 		    "NESTED aware version (5.0 or later).\n");
 		return (-1);
 	}
-	if (r->type == ADDR_HTTP) disconnect(r, 2);
+	if (r->type == ADDR_HTTP) disconnect(r);
 	if (rc = bp_updateServer(getenv("BK_CSETS"), 0, !opts.verbose)) {
 		fprintf(stderr, "Unable to update BAM server %s (%s)\n",
 		    bp_serverURL(buf),
@@ -474,7 +474,7 @@ rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 		p = strchr(buf, '=');
 		opts.bpsz = scansize(p+1);
 		fclose(f);
-		if (r->type == ADDR_HTTP) disconnect(r, 2);
+		if (r->type == ADDR_HTTP) disconnect(r);
 		return (0);
 	} else if (bp_keys) {
 		fprintf(stderr,
@@ -488,9 +488,8 @@ rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 			goto done;
 		}
 	}
-done:	disconnect(r, 1);
-	wait_eof(r, opts.debug); /* wait for remote to disconnect */
-	disconnect(r, 2);
+done:	wait_eof(r, opts.debug); /* wait for remote to disconnect */
+	disconnect(r);
 	return (rc);
 }
 
@@ -539,7 +538,7 @@ send_sfio_msg(remote *r, char **envVar)
 	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(stderr,
 		    "Error: sfio file changed size from %d to %d\n", m, n);
-		disconnect(r, 2);
+		disconnect(r);
 		return (-1);
 	}
 	writen(r->wfd, "@END@\n", 6);
@@ -606,17 +605,16 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 			fprintf(stderr,
 			    "Error: patch has changed size from %d to %d\n",
 			    m, n);
-			disconnect(r, 2);
+			disconnect(r);
 			return (-1);
 		}
 		fputs("@END@\n", f);
 		send_file_extra_done(r);
 		fclose(f);
 	}
-
 	if (unlink(msgfile)) perror(msgfile);
 	if (rc == -1) {
-		disconnect(r, 2);
+		disconnect(r);
 		return (-1);
 	}
 
@@ -668,9 +666,8 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 		fputc(buf[0], stderr);
 	}
 done:
-	disconnect(r, 1);
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
-	disconnect(r, 2);
+	disconnect(r);
 	return (rc);
 }
 
