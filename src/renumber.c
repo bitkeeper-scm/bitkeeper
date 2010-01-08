@@ -91,7 +91,6 @@ sccs_renumber(sccs *s, u32 flags, int spinners)
 	int	defisbranch = 1;
 	ser_t	maxrel = 0;
 	char	def[20];	/* X.Y.Z each 5 digit plus term = 18 */
-	char	*spin = "|/-\\";
 
 	Fix_inex = 0;
 
@@ -123,7 +122,6 @@ sccs_renumber(sccs *s, u32 flags, int spinners)
 			 */
 			continue;
 		}
-		if (spinners) fprintf(stderr, "%c\b", spin[i % 4]);
 		release = redo(s, d, db, flags, release, map);
 		if (maxrel < release) maxrel = release;
 		if (!defserial || defserial != i) continue;
