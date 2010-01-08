@@ -374,7 +374,8 @@ err:	sccs_abortWrite(s, &f);
 private	int
 fastWeave(sccs *s, FILE *out)
 {
-	u32	i, serial, base, index, offset;
+	u32	i, serial;
+	u32	base = 0, index = 0, offset = 0;
 	delta	*d, *e;
 	loc	*lp;
 	ser_t	*weavemap = 0;
