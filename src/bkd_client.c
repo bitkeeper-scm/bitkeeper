@@ -353,13 +353,13 @@ remote_print(remote *r, FILE *f)
 }
 
 void
-remote_perror(remote *r, char *msg)
+remote_error(remote *r, char *msg)
 {
 	char	*p;
 
 	unless (r) return;
 	p = remote_unparse(r);
-	fprintf(stderr, "%s: %s: %s\n", p, msg, strerror(errno));
+	fprintf(stderr, "%s: %s: %s\n", p, prog, msg);
 	free(p);
 }
 

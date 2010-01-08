@@ -586,7 +586,7 @@ send_msg(remote *r, char *msg, int mlen, int extra)
 		}
 	} else {
 		if (writen(r->wfd, msg, mlen) != mlen) {
-			remote_perror(r, "write");
+			remote_error(r, "write to remote failed");
 			return (-1);
 		}
 	}
@@ -623,7 +623,7 @@ send_file(remote *r, char *file, int extra)
 	free(hdr);
 	unless (rc) {
 		if (writen(r->wfd, m->mmap, len) != len) {
-			remote_perror(r, "write");
+			remote_error(r, "write to remote failed");
 			rc = -1;
 		}
 		if (r->trace) {
@@ -652,7 +652,7 @@ send_file_extra_done(remote *r)
 	r->need_exdone = 0;
 	if (r->type == ADDR_HTTP) {
 		if (writen(r->wfd, "quit\n", 5) != 5) {
-			remote_perror(r, "sf_extra");
+			remote_error(r, "write to remote failed");
 			rc = -1;
 		}
 		if (r->trace) {

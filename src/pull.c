@@ -295,7 +295,10 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 	if (send_part1_msg(r, envVar)) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
-	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
+	if (getline2(r, buf, sizeof (buf)) <= 0) {
+		fprintf(stderr, "pull: no data?\n");
+		return (-1);
+	}
 	if ((rc = remote_lock_fail(buf, !opts.quiet))) {
 		return (rc); /* -2 means lock busy */
 	} else if (streq(buf, "@SERVER INFO@")) {

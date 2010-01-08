@@ -547,7 +547,8 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) {
-err:		return (PUSH_ERROR);
+		fprintf(stderr, "push: no data?\n");
+		return (PUSH_ERROR);
 	}
 	if ((ret = remote_lock_fail(buf, opts.verbose))) {
 		/* -2 means locked */
@@ -563,13 +564,13 @@ err:		return (PUSH_ERROR);
 			    "push: cannot push to lower "
 			    "level repository (remote level == %s)\n",
 			    getenv("BKD_LEVEL"));
-			goto err;
+			return (PUSH_ERROR);
 		}
 		if (proj_isProduct(0) && !bkd_hasFeature("SAMv3")) {
 			fprintf(stderr,
 			    "push: please upgrade the remote bkd to a "
 			    "SAMv3 aware version (5.0 or later).\n");
-			goto err;
+			return (PUSH_ERROR);
 		}
 		if ((bp_hasBAM() ||
 		     ((p = getenv("BKD_BAM")) && streq(p, "YES"))) &&
@@ -577,7 +578,7 @@ err:		return (PUSH_ERROR);
 			fprintf(stderr,
 			    "push: please upgrade the remote bkd to a "
 			    "BAMv2 aware version (4.1.1 or later).\n");
-			goto err;
+			return (PUSH_ERROR);
 		}
 		getline2(r, buf, sizeof(buf));
 		if (ret = remote_lock_fail(buf, opts.verbose)) {
@@ -599,7 +600,7 @@ err:		return (PUSH_ERROR);
 			opts.aliases = addLine(opts.aliases, strdup(buf));
 		}
 	}
-	if (get_ok(r, buf, 1)) goto err;
+	if (get_ok(r, buf, 1)) return (PUSH_ERROR);
 
 	/*
 	 * What we want is: "remote => bk _prunekey => keys"
@@ -1013,7 +1014,7 @@ send_part1_msg(remote *r, char **envVar)
 		rc = 1;
 	}
 	unless (rc) {
-		rc = send_file(r, buf, size(probef));
+		if (rc = send_file(r, buf, size(probef))) return (rc);
 		unlink(buf);
 		f = fopen(probef, "rb");
 		while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
@@ -1069,6 +1070,7 @@ private void
 send_end_msg(remote *r, char *msg, char **envVar)
 {
 	char	msgfile[MAXPATH];
+	int	rc;
 	FILE	*f;
 
 	bktmp(msgfile, "push_send_end");
@@ -1087,9 +1089,10 @@ send_end_msg(remote *r, char *msg, char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	send_file(r, msgfile, strlen(msg));
+	rc = send_file(r, msgfile, strlen(msg));
 	writen(r->wfd, msg, strlen(msg));
 	unlink(msgfile);
+	if (rc) return;
 	send_file_extra_done(r);
 	receive_serverInfoBlock(r);
 }

@@ -465,6 +465,25 @@ grep -q "Cannot resolve host 'badhostname'." ERR || {
 }
 echo OK
 
+echo $N Push to something that is not there using BK_RSH ............$NL
+# run anything that doesn't work
+BK_RSH="bk _usleep 1000" \
+    bk push bkd@data.bitmover.com:no-such-repo 2>ERR && fail -f ERR
+# Test should have fixed this one
+grep -q "Assertion" ERR && fail -f ERR
+# two possible error messages
+grep -q "no-such-repo: push: write to remote failed" ERR || \
+	grep -q "push: no data?" ERR || fail -f ERR
+echo OK
+
+echo $N Pull from something that is not there using BK_RSH ..........$NL
+BK_RSH="bk _usleep 1000" \
+    bk pull $Q bkd@data.bitmover.com:no-such-repo 2>ERR && fail -f ERR
+
+# two possible error messages
+grep -q "no-such-repo: pull: write to remote failed" ERR || \
+	grep -q "pull: no data?" ERR || fail -f ERR
+echo OK
 
 # Set up next two tests
 cd "$HERE"
