@@ -49,6 +49,7 @@ extern	unsigned int turnTransOff;
 #define	NESTED_PRODUCTFIRST	0x40000000	/* c->p first in c->comps */
 #define	NESTED_DEEPFIRST	0x80000000	/* deeper comps first */
 #define	NESTED_MARKPENDING	0x01000000	/* set c->pending */
+#define	NESTED_FIXIDCACHE	0x02000000	/* no error for bad idDB */
 
 #define	NESTED_URLLIST		"BitKeeper/log/urllist"
 
@@ -91,6 +92,7 @@ struct nested {
 	u32	deepfirst:1;	// sort such that deeply nested comps are first
 	u32	pending:1;	// include pending component state
 	u32	freecset:1;	// do a sccs_free(cset) in nested_free()
+	u32	fix_idDB:1;	// don't complain about idDB problems
 };
 
 int	isComponent(char *path);
@@ -140,4 +142,5 @@ int	nested_abort(project *p, char *t);
 char	*nested_errmsg(void);
 char	**nested_lockers(project *p);
 void	nested_printLockers(project *p, FILE *out);
+void	nested_updateIdcache(project *comp);
 #endif	// _NESTED_H

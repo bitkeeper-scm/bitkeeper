@@ -267,6 +267,12 @@ do_commit(char **av,
 		char	key[MAXPATH];
 		FILE	*f;
 
+		/*
+		 * We created a commit in the RESYNC directory,
+		 * probably a merge cset closing the open tips of the
+		 * ChangeSet file. Log it in BitKeeper/etc/csets-in so
+		 * that 'bk abort' can pick it up if we fail.
+		 */
 		sccs_sdelta(cset, sccs_top(cset), key);
 		if (f = fopen(CSETS_IN, "a")) {
 			fprintf(f, "%s\n", key);

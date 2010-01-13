@@ -663,6 +663,7 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	comp	*c;
 	int	i, j, rc = 0, errs = 0;
 	hash	*urllist;
+	project	*proj;
 
 	/* allocate r->params for later */
 	unless (r->params) r->params = hash_new(HASH_MEMHASH);
@@ -819,6 +820,11 @@ npmerge:				fprintf(stderr,
 	}
 
 	if (hash_toFile(urllist, NESTED_URLLIST)) perror(NESTED_URLLIST);
+	/*
+	 * We are about to populate new components so clear all
+	 * mappings of directories to the product.
+	 */
+	proj_reset(0);
 	EACH_STRUCT(n->comps, c, j) {
 		proj_cd2product();
 		if (c->product || !c->included || !c->alias) continue;
@@ -856,6 +862,11 @@ npmerge:				fprintf(stderr,
 		if (spawnvp(_P_WAIT, "bk", &vp[1])) {
 			fprintf(stderr, "Pulling %s failed\n", c->path);
 			rc = 1;
+		} else {
+			if (opts.noresolve && (proj = proj_init(c->path))) {
+				nested_updateIdcache(proj);
+				proj_free(proj);
+			}
 		}
 		freeLines(vp, free);
 		if (rc) break;

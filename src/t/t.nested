@@ -1,3 +1,5 @@
+set -e
+
 echo $N Setup .......................................................$NL
 commercial project
 test -f BitKeeper/log/PRODUCT && {
@@ -490,7 +492,7 @@ cd ..
 echo OK
 
 echo $N Make sure changes -v is OK with moved components ............$NL
-bk changes -v > OUT
+bk changes -v > OUT || fail
 echo OK
 
 echo $N A rename delta in the ChangeSet file should fix things up ...$NL
@@ -521,8 +523,7 @@ grep -q gcc/SCCS/s.ChangeSet OUT || grep -q gcc OUT || {
 echo OK
 
 echo $N See if bk names will fix simple rename ......................$NL
-bk -r check -acf > OUT 2>&1
-test $? = 2 || {
+bk -r check -acf > OUT 2>&1 || test $? = 2 || {
 	bad exit
 	cat OUT
 	exit 1
@@ -537,8 +538,7 @@ echo $N See if bk names will fix circular rename ....................$NL
 mv gdb "$HERE/gdb.save"
 mv gcc4 gdb
 mv "$HERE/gdb.save" gcc4
-bk -r check -acf > OUT 2>&1
-test $? = 2 || {
+bk -r check -acf > OUT 2>&1 || test $? = 2 || {
 	echo failed
 	echo bad exit
 	cat OUT
@@ -1253,8 +1253,7 @@ echo @see_recursion
 echo recursion
 ) >> BitKeeper/etc/aliases
 bk delta $Q -ywhatever BitKeeper/etc/aliases
-bk alias show -p recursion > OUT 2>&1
-test $? = 1 || {
+bk alias show -p recursion > OUT 2>&1 || test $? = 1 || {
 	echo should have failed
 	cat OUT
 	exit 1
@@ -1601,4 +1600,56 @@ test "$R" = "$HERE/remote" || {
 	echo failed
 	exit 1
 }
+echo OK
+
+echo $N Components in idcache .......................................$NL
+cd "$HERE/remote" || exit 1
+mkdir -p a/b/c
+mvcomp gdb a/b/c/d
+# nested_init() with no PENDING - can't find gdb, but it is there somewhere
+bk _nested -lphm -r+ > OUT
+cat << EOF > WANTOUT
+gcc|(present)
+gdb|(missing)
+EOF
+cmpfiles WANTOUT OUT
+# nested_init() with PENDING - see gdb is wrong and fix it
+bk _nested -lphm > OUT 2> ERR
+cat << EOF > WANTOUT
+a/b/c/d|(present)
+gcc|(present)
+EOF
+cmpfiles WANTOUT OUT
+echo _nested: idcache missing component a/b/c/d, fixing > WANTERR
+cmpfiles WANTERR ERR
+# nested_init() with no PENDING - now works because cache is spiffy
+bk _nested -lphm -r+ > OUT
+cmpfiles WANTOUT OUT
+# Now move component so old location is within new location
+# First, put current location into bk _nested -r+ (prod cset file)
+bk commit $Q -ymoved
+# Now move in two steps because of limitation of mvcomp in setup.
+mvcomp a/b/c/d x
+rm -fr a/b
+mvcomp x a/b
+# Now nested_init() with no PENDING - 
+bk _nested -lphm -r+ > OUT
+cat << EOF > WANTOUT
+a/b/c/d|(missing)
+gcc|(present)
+EOF
+cmpfiles WANTOUT OUT
+test -d a/b/c/d && fail no dir present
+# fix it with PENDING path
+bk _nested -lphm > OUT 2> ERR
+cat << EOF > WANTOUT
+a/b|(present)
+gcc|(present)
+EOF
+cmpfiles WANTOUT OUT
+echo _nested: idcache missing component a/b, fixing > WANTERR
+cmpfiles WANTERR ERR
+# Cache is once again happy - all is good
+bk _nested -lphm -r+ > OUT
+cmpfiles WANTOUT OUT
 echo OK

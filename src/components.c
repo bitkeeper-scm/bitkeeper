@@ -384,6 +384,27 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 					}
 				}
 			}
+			/*
+			 * If populating this component made another
+			 * component deeply nested, then I need to update
+			 * deep-nests
+			 */
+			EACH_START(j+1, n->comps, i) {
+				comp	*t = (comp *)n->comps[i];
+				FILE	*dn;
+
+				unless (strneq(
+				    cp->path, t->path, strlen(cp->path))) {
+				    	break;
+				}
+				if (t->present && 
+				    t->path[strlen(cp->path)] == '/') {
+					dn = fopen("BitKeeper/log/deep-nests",
+					    "a");
+					fprintf(dn, "%s\n", t->path);
+					fclose(dn);
+				}
+			}
 			unless (cp->present) {
 				/* We tried all the urls and didn't break
 				 * early

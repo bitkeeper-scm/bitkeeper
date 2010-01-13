@@ -7,7 +7,7 @@ private	int	compSort(const void *a, const void *b);
 private	void	compFree(void *x);
 private	int	compRemove(char *path, struct stat *statbuf, void *data);
 private	int	empty(char *path, struct stat *statbuf, void *data);
-
+private void	compCheckPresent(nested *n, comp *c, int idcache_wrong);
 
 #define	L_ROOT		0x01
 #define	L_DELTA		0x02
@@ -207,6 +207,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	comp	*c = 0;
 	delta	*d, *left, *right;
 	int	i;
+	int	inCache;
 	char	*t, *v;
 	FILE	*pending;
 	MDBM	*idDB = 0, *revsDB = 0;
@@ -231,6 +232,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	if (chdir(proj_root(proj))) assert(0);
 
 	n = new(nested);
+	if (flags & NESTED_FIXIDCACHE) n->fix_idDB = 1;
 	unless (cset) {
 		cset = sccs_init(CHANGESET,
 		    INIT_NOCKSUM|INIT_NOSTAT|INIT_MUSTEXIST);
@@ -341,18 +343,15 @@ err:				if (revsDB) mdbm_close(revsDB);
 			 */
 			if (c->path = mdbm_fetch_str(idDB, c->rootkey)) {
 				c->path = strdup(c->path);
+				inCache = 1;
 			} else {
 				c->path = key2path(v, 0);
+				inCache = 0;
 			}
 			dirname(c->path); /* strip /ChangeSet */
 
 			/* mark present components */
-			if (proj = proj_init(c->path)) {
-				if (streq(proj_rootkey(proj), c->rootkey)) {
-					c->present = 1;
-				}
-				proj_free(proj);
-			}
+			compCheckPresent(n, c, !inCache);
 
 			/* add to list */
 			hash_store(n->compdb, c->rootkey, strlen(c->rootkey)+1,
@@ -361,7 +360,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 		}
 		/* RED or BLUE, but never both */
 		assert((d->flags & (D_RED|D_BLUE)) != (D_RED|D_BLUE));
-		
+
 		/*
 		 * The #define names only make sense when thinking about PULL
 		 *
@@ -422,7 +421,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 		 * get pending components and replace/add items
 		 * in db returned by sccs_get above.
 		 */
-#define	PNDCOMP	"bk -Ppr log -r+ -nd'$if(:COMPONENT:){:ROOTKEY: :KEY:}'"
+#define	PNDCOMP	"bk -Ppr log -r+ -nd'$if(:COMPONENT:){:ROOTKEY: :GFILE:}'"
 
 		n->pending = 1;
 		assert(n->tip);
@@ -440,15 +439,6 @@ err:				if (revsDB) mdbm_close(revsDB);
 				c->rootkey = strdup(t);
 				c->new = 1;
 				c->included = 1;
-				if (c->path =
-				    mdbm_fetch_str(idDB, c->rootkey)) {
-					c->path = strdup(c->path);
-				} else {
-					// assert("How can this happen?" == 0);
-					c->path = key2path(v, 0);
-				}
-				dirname(c->path); /* strip /ChangeSet */
-				c->present = 1;
 
 				/* add to list */
 				hash_store(n->compdb,
@@ -456,6 +446,21 @@ err:				if (revsDB) mdbm_close(revsDB);
 				    &c, sizeof(comp *));
 				n->comps = addLine(n->comps, c);
 			}
+			if (c->path) free(c->path);
+			if ((c->path = mdbm_fetch_str(idDB, c->rootkey)) &&
+			    streq(c->path, v)) {
+				inCache = 1;
+			} else {
+				// assert("How can this happen?" == 0);
+				inCache = 0;
+			}
+			c->path = strdup(v);
+			dirname(c->path); /* strip /ChangeSet */
+
+			/* mark present components */
+			compCheckPresent(n, c, !inCache);
+			assert(c->present = 1);
+
 			if (c->deltakey) free(c->deltakey);
 			c->deltakey = strdup(v);
 			c->pending = 1;
@@ -485,6 +490,29 @@ prod:
 	chdir(cwd);
 	free(cwd);
 	return (n);
+}
+
+private void
+compCheckPresent(nested *n, comp *c, int idcache_wrong)
+{
+	project	*proj;
+
+	/* mark present components */
+	if (exists(c->path) && (proj = proj_init(c->path))) {
+		if (samepath(proj_root(proj), c->path) &&
+		    streq(proj_rootkey(proj), c->rootkey)) {
+			c->present = 1;
+			if (idcache_wrong) {
+				unless (n->fix_idDB) {
+					fprintf(stderr,
+					    "%s: idcache missing component "
+					    "%s, fixing\n", prog, c->path);
+				}
+				nested_updateIdcache(proj);
+			}
+		}
+		proj_free(proj);
+	}
 }
 
 /*
@@ -897,7 +925,6 @@ nested_rmcomp(nested *n, comp *c)
 	int	ret;
 	char	buf[MAXPATH];
 
-	assert(c->present);
 	unless (ret = nestedWalkdir(n, c->path, compRemove)) {
 		c->present = 0;
 	}
@@ -1277,4 +1304,27 @@ urllist_normalize(hash *urllist, char *url)
 	freeLines(updates, free);
 	hash_free(seen);
 	return (updated);
+}
+
+/*
+ * update a component in the product's idcache
+ */
+void
+nested_updateIdcache(project *comp)
+{
+
+	MDBM	*idDB;
+	char	*p;
+	project	*prod = proj_product(comp);
+	char	buf[MAXPATH];
+
+	concat_path(buf, proj_root(prod), IDCACHE);
+	unless (idDB = loadDB(buf, 0, DB_IDCACHE)) return;
+
+	concat_path(buf, proj_root(comp),  GCHANGESET);
+	p = proj_relpath(prod, buf);
+	mdbm_store_str(idDB, proj_rootkey(comp), p, MDBM_REPLACE);
+	free(p);
+	idcache_write(prod, idDB);
+	mdbm_close(idDB);
 }

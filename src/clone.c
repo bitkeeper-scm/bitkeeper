@@ -557,6 +557,7 @@ clone2(remote *r)
 	if (opts->detach && detach(opts->quiet)) return (CLONE_ERROR);
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
+
 	if (opts->rev) {
 		/* only product in HERE */
 		/* remove any later stuff */
@@ -1245,6 +1246,7 @@ attach(void)
 		goto end;
 	}
 	nested_check();
+	nested_updateIdcache(0);
 	unless (opts->nocommit) {
 		sprintf(buf,
 			"bk -P commit -y'attach %s' %s -",

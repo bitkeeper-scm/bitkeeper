@@ -94,7 +94,12 @@ bk edit $Q gcc/ChangeSet gcc/nm/ChangeSet gcc/libiberty/ChangeSet gdb/ChangeSet
 mkdir src
 mv gcc gdb src
 bk ci $Q -y'Moved' src/gcc/ChangeSet src/gcc/*/ChangeSet src/gdb/ChangeSet
-bk alias rm -C dev './gcc/*'
+bk alias rm -C dev './gcc/*' 2> ERR
+cat <<EOF > WANTERR
+alias: idcache missing component src/gcc, fixing
+alias: idcache missing component src/gdb, fixing
+EOF
+cmpfiles WANTERR ERR
 # next line fails because glob doesn't match, this test won't really work.
 #bk alias add -C dev './src/gcc/*'
 bk commit $Q -y'Moved stuff' 2>ERR && exit 1

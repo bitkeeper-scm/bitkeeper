@@ -211,7 +211,7 @@ check_main(int ac, char **av)
 			cplen = strlen(cp);
 		}
 		n = nested_init(proj_isProduct(0) ? cset : 0,
-		    0, 0, NESTED_PENDING);
+		    0, 0, NESTED_PENDING|NESTED_FIXIDCACHE);
 		assert(n);
 		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
@@ -405,7 +405,7 @@ check_main(int ac, char **av)
 		 * check that whatever we have in log/HERE
 		 * is consistent with what's really here
 		 */
-		n = nested_init(0, 0, 0, NESTED_PENDING);
+		n = nested_init(0, 0, 0, NESTED_PENDING|NESTED_FIXIDCACHE);
 		assert(n);
 		EACH(n->here) {
 			unless (comps = aliasdb_expandOne(n, 0, n->here[i])) {
