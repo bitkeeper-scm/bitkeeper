@@ -97,6 +97,7 @@ check_main(int ac, char **av)
 	char	**bp_missing = 0;
 	int	BAM = 0;
 	int	doBAM = 0;
+	ticker	*tick = 0;
 
 	timestamps = 0;
 	while ((c = getopt(ac, av, "@;aBcdefgpRsTvw")) != -1) {
@@ -234,6 +235,7 @@ check_main(int ac, char **av)
 	unless (fix) fix = proj_configbool(0, "autofix");
 
 	want_dfile = exists(DFILE);
+	if (verbose == 1) tick = progress_start(PROGRESS_BAR, nfiles);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
 	    name; n++, name = sfileNext()) {
 		ferr = 0;
@@ -249,7 +251,7 @@ check_main(int ac, char **av)
 		}
 		if (all) {
 			actual++;
-			if (verbose == 1) progressbar(n, nfiles, 0);
+			if (tick) progress(tick, n);
 		}
 		unless (s->cksumok == 1) {
 			fprintf(stderr,
@@ -490,7 +492,7 @@ check_main(int ac, char **av)
 		if (sys("bk", "sane", SYS)) errors |= 0x80;
 	}
 out:
-	if (verbose == 1) progressbar(nfiles, nfiles, errors ? "FAILED":"OK");
+	if (tick) progress_done(tick, errors ? "FAILED":"OK");
 	if (!errors && bp_getFiles && !getenv("_BK_CHECK_NO_BAM_FETCH") &&
 	    (checkout & (CO_BAM_EDIT|CO_BAM_GET))) {
 		sprintf(buf, "bk checkout -q%s -", timestamps ? "T" : "");
@@ -514,7 +516,7 @@ fix_merges(sccs *s)
 {
 	sccs	*tmp;
 
-	sccs_renumber(s, 0, 0);
+	sccs_renumber(s, 0);
 	sccs_newchksum(s);
 	tmp = sccs_init(s->sfile, 0);
 	assert(tmp);

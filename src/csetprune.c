@@ -200,7 +200,7 @@ csetprune(hash *prunekeys, char *comppath, char **complist, char *ranbits)
 		goto err;	 /* leave it locked! */
 	}
 	verbose((stderr, "Renumbering ChangeSet file...\n"));
-	sccs_renumber(cset, SILENT, 0);
+	sccs_renumber(cset, SILENT);
 	sccs_newchksum(cset);
 	sccs_free(cset);
 	cset = 0;

@@ -43,7 +43,7 @@ private	int	applyPatch(char *local, sccs *perfile);
 private	int	applyCsetPatch(sccs *s, int *nfound, sccs *perfile);
 private	int	getLocals(sccs *s, delta *d, char *name);
 private	void	insertPatch(patch *p);
-private	void	reversePatch(void);
+private	int	reversePatch(void);
 private	void	initProject(void);
 private	MMAP	*init(char *file);
 private	void	cleanup(int what);
@@ -72,7 +72,6 @@ private	char	pendingFile[MAXPATH];
 private	char	*input;		/* input file name,
 				 * either "-" or a patch file */
 private	int	encoding;	/* encoding before we started */
-private	char	*spin = "|/-\\";
 private	char	*comments;	/* -y'comments', pass to resolve. */
 private	char	**errfiles;	/* files had errors during apply */
 private	char	**edited;	/* files that were in modified state */
@@ -502,10 +501,7 @@ error:		if (perfile) sccs_free(perfile);
 		if (newFile) newFile = 2;
 	}
 	gfile = sccs2name(name);
-	if (echo>1) {
-		fprintf(stderr, "Updating %s", gfile);
-		if (echo == 3) fputc(' ', stderr);
-	}
+	if (echo > 1) fprintf(stderr, "Updating %s", gfile);
 	cset = s ? CSET(s) : streq(name, CHANGESET);
 	if (Fast || cset) {
 		rc = applyCsetPatch(s, &nfound, perfile);
@@ -517,7 +513,6 @@ error:		if (perfile) sccs_free(perfile);
 		if (rc < 0) errfiles = addLine(errfiles, strdup(name));
 		nfound = 0;	/* only count csets */
 	}
-	if (echo == 3) fputc(' ', stderr);
 	if (echo > 1) fputc('\n', stderr);
 	if (perfile) sccs_free(perfile);
 	if (streq(gfile, "BitKeeper/etc/config")) {
@@ -837,7 +832,6 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	reversePatch();
 	unless (p = patchList) return (0);
 
-	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	if (echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
 		    p->localFile, p->resyncFile, p->pid, p->me);
@@ -881,7 +875,6 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	cweave_init(s, psize);
 	*nfound = 0;
 	while (p) {
-		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
 		n++;
 		if (echo>9) {
 			fprintf(stderr, "PID: %s\nME:  %s\n",
@@ -942,7 +935,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		    "takepatch: adding leaf to tag delta %s (serial %d)\n",
 		    remote_tagtip->rev, remote_tagtip->serial));
 	}
-	if (CSET(s) && (echo == 3)) fprintf(stderr, "\b, ");
+	if (CSET(s) && (echo == 3)) fputs(", ", stderr);
 	if (cset_write(s, (echo == 3), Fast)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't update %s\n", s->sfile);
@@ -1047,7 +1040,7 @@ markup:
 	 */
 	s->state |= S_SET;
 	if (CSET(s)) {
-		if (echo == 3) fprintf(stderr, "\b, ");
+		if (echo == 3) fputs(", ", stderr);
 		if (cset_resum(s, 0, 0, echo == 3, 1)) {
 			getMsg("takepatch-chksum", 0, '=', stderr);
 			goto err;
@@ -1166,14 +1159,16 @@ applyPatch(char *localPath, sccs *perfile)
 	int	newflags;
 	int	pending = 0;
 	int	n = 0;
+	int	nump;
 	int	confThisFile;
 	int	flags = echo ? 0 : SILENT;
+	ticker	*tick = 0;
 
-	reversePatch();
+	nump = reversePatch();
 	p = patchList;
 	if (!p && localPath) return (noupdates(localPath));
+	if (echo == 3) tick = progress_start(PROGRESS_MINI, nump);
 
-	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	if (echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
 		    p->localFile, p->resyncFile, p->pid, p->me);
@@ -1256,8 +1251,8 @@ apply:
 	p = patchList;
 	if (p && !p->pid) {
 		/* initial file create */
-		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
 		n++;
+		if (tick) progress(tick, n);
 		assert(s == 0);
 		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
 			SHOUT();
@@ -1310,8 +1305,8 @@ apply:
 	if (p && p->next) s->mem_out = 1;
 	while (p) {
 		assert(p->pid);
-		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
 		n++;
+		if (tick) progress(tick, n);
 		assert(s);
 		if (echo > 9) {
 			fprintf(stderr,
@@ -1404,6 +1399,7 @@ apply:
 		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
 	}
 	sccs_free(s);
+	if (tick) progress_done(tick, 0);
 	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
 	freePatchList();
 	patchList = 0;
@@ -1557,20 +1553,24 @@ insertPatch(patch *p)
  * Reverse order to optimize reading
  * patchList will be left pointing at the oldest delta in the patch
  */
-private	void
+private	int
 reversePatch(void)
 {
+	int	n = 0;
+
 	/* t - temp; f - forward; p - previous */
 	patch	*t, *f, *p;
 
-	if (!patchList) return;
+	if (!patchList) return (n);
 	for (p = 0, t = patchList; t; t = f) {
 		f = t->next;
 		t->next = p;
 		p = t;
+		++n;
 	}
 	assert(p);
 	patchList = p;
+	return (n);
 }
 
 private	void
@@ -1821,8 +1821,9 @@ init(char *inputFile)
 		u32	diffsblank:1;	/* previous line was \n after diffs */
 		u32	sfiopatch:1;	/* previous line was SFIO marker */
 	}	st;
-	int	line = 0, j = 0;
+	int	line = 0;
 	char	*note;
+	ticker	*tick = 0;
 	char	incoming[MAXPATH];
 
 	bzero(&st, sizeof(st));
@@ -1866,7 +1867,11 @@ init(char *inputFile)
 		}
 	}
 	if (streq(inputFile, "-")) {
-		if (echo && mkpatch) fprintf(stderr, "Receiving patch ... ");
+		if (echo && mkpatch) {
+			fprintf(stderr, "Receiving patch ...");
+			tick = progress_start(PROGRESS_SPIN, 0);
+		}
+
 		/*
 		 * Save the patch in the pending dir
 		 * and record we're working on it.  We use a .incoming
@@ -2036,20 +2041,17 @@ error:					fprintf(stderr, "GOT: %s", buf);
 					}
 				}
 			}
-
-			if (st.metablank && (echo == 3) && mkpatch) {
-				fprintf(stderr, "%c\b", spin[j % 4]);
-				j++;
-			}
 			unless (fnext(buf, stdin)) {
 				perror("fnext");
 				goto missing;
 			}
+			if (tick) progress(tick, 0);
 		}
 		if (st.preamble) errorMsg("tp_nothingtodo", 0, 0);
 		if (sfiopatch) {
 			while (len = fread(buf, 1, sizeof(buf), stdin)) {
 				fwrite(buf, 1, len, f);
+				if (tick) progress(tick, 0);
 			}
 		}
 		if (fclose(f)) {
@@ -2067,7 +2069,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		free(note);
 		rename(incoming, pendingFile);
 		if (echo) {
-			if (mkpatch) fprintf(stderr, "done.\n");
+			if (tick) progress_done(tick, " done.");
 			NOTICE();
 			fprintf(stderr,
 			    "takepatch: saved entire patch in %s\n",

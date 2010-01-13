@@ -25,7 +25,7 @@ private void	do_print(char state[6], char *gfile, char *rev);
 private void	file(char *f);
 private void	print_it(STATE state, char *file, char *rev);
 private	void	print_summary(void);
-private void	progress(int force);
+private void	uprogress(int force);
 private	void	sccsdir(winfo *wi);
 private void	walk(char *dir);
 private	void	load_project(char *dir);
@@ -333,7 +333,7 @@ usage:				system("bk help -s sfiles");
                 }
 	}
 	if (opts.out != stdout) fclose(opts.out);
-	if (opts.progress) progress(1);
+	if (opts.progress) uprogress(1);
 	free_project();
 	return (0);
 }
@@ -1009,7 +1009,7 @@ walk(char *indir)
 }
 
 private void
-progress(int force)
+uprogress(int force)
 {
 	char	buf[100];
 
@@ -1197,7 +1197,7 @@ do_print(STATE buf, char *gfile, char *rev)
 	}
 	if (opts.progress &&
 	    (((s_count - s_last) > 100) || ((x_count - x_last) > 100))) {
-		progress(1);
+		uprogress(1);
 	}
 	if (opts.summarize) return; /* skip the detail */
 
@@ -1247,7 +1247,7 @@ sccsdir(winfo *wi)
 	char	buf[MAXPATH];
 	char	buf1[MAXPATH];
 
-	if (opts.progress) progress(1);
+	if (opts.progress) uprogress(1);
 
 	/*
 	 * First eliminate as much as we can from SCCS dir;

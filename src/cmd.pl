@@ -290,6 +290,7 @@ _popensystem
 port => pull
 _probekey restricted
 product
+_progresstest
 prompt
 prs
 _prunekey restricted

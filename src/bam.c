@@ -1402,8 +1402,8 @@ bam_check_main(int ac, char **av)
 	u64	bytes = 0, done = 0;
 	FILE	*f;
 	char	*p;
+	ticker	*tick = 0;
 	char	**missing = 0, **lines = 0;
-	char	*spin = "|/-\\";
 	char	buf[MAXLINE];
 
 #undef	ERROR
@@ -1431,33 +1431,37 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 	f = popen("bk _sfiles_bam | bk prs -hnd"
 	    "'$if(:BAMHASH:){:BAMSIZE: :BAMHASH: :KEY: :MD5KEY|1.0:}' -", "r");
 	assert(f);
-	unless (quiet) fprintf(stderr, "Loading list of BAM deltas ");
 	i = 0;
+	unless (quiet) {
+		fprintf(stderr, "Loading list of BAM deltas");
+		tick = progress_start(PROGRESS_SPIN, 0);
+	}
 	while (fnext(buf, f)) {
-		unless (quiet) fprintf(stderr, "%c\b", spin[i++ % 4]);
+		if (tick) progress(tick, 1);
 		bytes += atoi(buf);
 		chomp(buf);
 		lines = addLine(lines, strdup(buf));
 	}
 	if (pclose(f)) return (1);
-	unless (quiet) {
+	if (tick) {
+		progress_done(tick, 0);
 		fprintf(stderr,
-		    "- done, %d found using %sB.\n", i, psize(bytes));
+		    ", %d found using %sB.\n", i, psize(bytes));
 	}
 	unless (lines) {	/* No BAM data in repo */
 		unlink(BAM_MARKER);
 		goto none;
 	}
 	done = 0;
-	unless (quiet) progressbar(done, bytes, 0);
+	unless (quiet) tick = progress_start(PROGRESS_BAR, bytes);
 	EACH(lines) {
 		done += atoi(lines[i]);
 		p = strchr(lines[i], ' ') + 1;
 		if (bp_check_hash(p, &missing, fast)) rc = 1;
-		unless (quiet) progressbar(done, bytes, 0);
+		unless (quiet) progress(tick, done);
 	}
 	freeLines(lines, free);
-	unless (quiet) progressbar(bytes, bytes, rc ? "FAILED" : "OK");
+	unless (quiet) progress_done(tick, rc ? "FAILED" : "OK");
 
 	/*
 	 * if we are missing some data make sure it is not covered by the
@@ -2030,7 +2034,7 @@ bam_convert_main(int ac, char **av)
 	rename("SCCS/s.ChangeSet", "BitKeeper/tmp/s.ChangeSet");
 	rename("SCCS/x.ChangeSet", "SCCS/s.ChangeSet");
 	system("bk admin -z ChangeSet");
-	system("bk checksum -f/ ChangeSet");
+	system("bk checksum -fp ChangeSet");
 	ERROR((stderr, "redoing ChangeSet ids ...\n"));
 	/* The proj_reset() is to close BAM_DB so newroot can rename dir */
 	proj_reset(0);
@@ -2063,7 +2067,7 @@ uu2bp(sccs *s)
 	int	n = 0;
 	off_t	sz;
 	char	*t;
-	char	*spin = "|/-\\";
+	ticker	*tick = 0;
 	char	oldroot[MAXKEY], newroot[MAXKEY];
 	char	key[MAXKEY];
 
@@ -2097,8 +2101,9 @@ uu2bp(sccs *s)
 	}
 
 	if ((s->encoding & E_COMP) == E_GZIP) sccs_unzip(s);
-	fprintf(stderr, "Converting %s ", s->gfile);
-	for (d = s->table; d; d = NEXT(d)) {
+	fprintf(stderr, "Converting %s", s->gfile);
+	tick = progress_start(PROGRESS_MINI, s->nextserial);
+	for (n = 0, d = s->table; d; d = NEXT(d)) {
 		assert(d->type == 'D');
 		if (sccs_get(s, d->rev, 0, 0, 0, SILENT, "-")) return (8);
 
@@ -2124,13 +2129,14 @@ uu2bp(sccs *s)
 			keys = addLine(keys, aprintf("%s %s\n", oldroot, key));
 		}
 		if (bp_delta(s, d)) return (16);
-		fprintf(stderr, "%c\b", spin[n++ % 4]);
+		progress(tick, ++n);
 		if (d->flags & D_CSET) {
 			sccs_sdelta(s, d, key);
 			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
 		}
 		unlink(s->gfile);
 	}
+	progress_done(tick, 0);
 	fprintf(stderr, "\n");
 	unless (out = sccs_startWrite(s)) {
 err:		sccs_unlock(s, 'z');

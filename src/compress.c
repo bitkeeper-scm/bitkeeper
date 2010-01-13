@@ -45,7 +45,7 @@ gzip_main(int ac, char **av)
 		    case 'z':	gzip_level = atoi(optarg); break;
 		    default:  
 			    	fprintf(stderr,
-					"usage bk _gzip [-z[n] | -u]\n");
+					"usage: bk _gzip [-z[n] | -u]\n");
 			   	return (1);
 		}
 	}
@@ -63,9 +63,9 @@ private	int	incnt, outcnt;
 int
 gzipAll2fh(int rfd, FILE *wf, int level, int *in, int *out, int verbose)
 {
-	int	n, i = 0;
-	char    *spin = "|/-\\";
+	int	n;
 	zputbuf	*zout;
+	ticker	*tick = 0;
 	char	buf[8<<10];
 
 	setmode(rfd, _O_BINARY);
@@ -76,12 +76,15 @@ gzipAll2fh(int rfd, FILE *wf, int level, int *in, int *out, int verbose)
 	 * must use readn() here, needed for consistant block sizes so
 	 * recompressing the stream for http push won't change.
 	 */
+	// XXX verbose is never set
+	if (verbose) tick = progress_start(PROGRESS_SPIN, 0);
 	while ((n = readn(rfd, buf, sizeof(buf))) > 0) {
 		incnt += n;
 		zputs(zout, buf, n);
-		if (verbose) fprintf(stderr, "%c\b", spin[i++ % 4]);
+		if (tick) progress(tick, 0);
 
 	}
+	if (tick) progress_done(tick, 0);
 	if (zputs_done(zout)) return (-1);
 	if (in) *in = incnt;
 	if (out) *out = outcnt;

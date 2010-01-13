@@ -426,12 +426,12 @@ int
 http_send(remote *r, char *msg, size_t mlen, size_t extra, char *user_agent)
 {
 	unsigned int start, len, l;
-	int	n = 0;
-	char	*spin = "|/-\\";
+	ticker	*tick = 0;
 
 	if (http_sendheader(r, user_agent, "POST", mlen + extra)) return (-1);
-	if (r->trace) fprintf(stderr, "Sending data file ");
+	if (r->trace) fprintf(stderr, "Sending data file");
 
+	if (r->trace) tick = progress_start(PROGRESS_SPIN, mlen);
 	for (start = 0; start < mlen; ) {
 		len = mlen - start;
 
@@ -443,9 +443,10 @@ http_send(remote *r, char *msg, size_t mlen, size_t extra, char *user_agent)
 			break;
 		}
 		start += l;
-		if (r->trace) fprintf(stderr, "%c\b", spin[n++ % 4]);
+		if (tick) progress(tick, start);
 	}
-	if (r->trace) fputs(" \n", stderr);
+	if (tick) progress_done(tick, 0);
+	if (r->trace) fputc('\n', stderr);
 	if (start < mlen)  {
 		if (r->trace) {
 			fprintf(stderr,
@@ -466,6 +467,7 @@ http_fetch(remote *r, char *file)
 	int	binary = 0;
 	char	*p;
 	FILE	*f;
+	ticker	*tick = 0;
 	char	buf[MAXLINE];
 
 	r->rf = fdopen(r->rfd, "r");
@@ -495,16 +497,19 @@ http_fetch(remote *r, char *file)
 	if (f = streq(file, "-") ? stdout : fopen(file, "w")) {
 		if (binary && len) {
 			got = 0;
+			if (r->progressbar) {
+				tick = progress_start(PROGRESS_BAR, len);
+			}
 			while (got < len) {
 				i = min(sizeof(buf), len);
 				i = read_blk(r, buf, sizeof(buf));
 				if (i <= 0) break;
 				fwrite(buf, 1, i, f);
 				got += i;
-				if (r->progressbar) progressbar(got, len, 0);
+				if (tick) progress(tick, got);
 			}
-			if (r->progressbar) {
-				progressbar(got, len,
+			if (tick) {
+				progress_done(tick,
 				    (got<len) ? "FAILED" : "OK");
 			}
 		} else {

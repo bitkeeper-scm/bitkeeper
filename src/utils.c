@@ -1533,64 +1533,169 @@ again:
 }
 
 
+struct ticker {
+	struct	timeval	start;	/* time at start */
+	u64	max;		/* n/max == percent done */
+	u32	interval;	/* count down to next update */
+	u32	total;		/* number of inters since setup */
+	float	rate;		/* update rate in seconds */
+	u8	i;		/* spin cycle */
+	u8	style;		/* output style */
+};
+
+ticker *
+progress_start(int style, u64 max)
+{
+	ticker	*t;
+
+	t = new(ticker);
+	t->style = style;
+	gettimeofday(&t->start, 0);
+	t->max = max;
+	t->interval = 3;
+	switch (t->style) {
+	    case PROGRESS_SPIN:
+		fputc(' ', stderr);
+		t->rate = 0.50;
+		break;
+	    case PROGRESS_MINI:
+		t->rate = 0.25;
+		break;
+	    case PROGRESS_BAR:
+		t->rate = 0.10;
+		break;
+	}
+	return (t);
+}
+
 /*
- * Print progress bar.
- *
- * Use 65 columns for the progress bar.
- * %3u% |================================ \r
+ * The code aims for a fixed rate of updates.
+ * The gettimeofday() syscall is also only once per spin so this has low
+ * overhead.
  */
 void
-progressbar(u64 n, u64 max, char *msg)
+progress(ticker *t, u64 n)
 {
-	static	int	last = 0;
-	static	struct	timeval start;
-	static	float	lastup = 0.0;
+	char	*spin = "|/-\\";
 	float	elapsed;
-	int	percent = max ? (n * 100) / max : 100;
+	int	percent;
 	int	i, want;
 	int	barlen = 65;
 	char	*p;
 	struct	timeval tv;
 
-	if (percent > 100) percent = 100;
-	if (percent < last) {		/* reset */
-		last = 0;
-		start.tv_sec = 0;
-		lastup = 0.0;
-	}
-	unless ((percent > last) || (n == 0) || msg) return;
+	t->total += 1;
+	if (--t->interval > 0) return;
+
 	gettimeofday(&tv, 0);
-	unless (start.tv_sec) start = tv;
-	elapsed =
-	    (tv.tv_sec - start.tv_sec) + (tv.tv_usec - start.tv_usec) / 1.0e6;
-	/* This wacky expression is to try and smooth the drawing */
-	if (n && !msg &&
-	    ((elapsed - lastup) < 0.25) && ((percent - last) <= 2)) {
+
+	/* time since start */
+	elapsed = (tv.tv_sec - t->start.tv_sec) +
+	    (tv.tv_usec - t->start.tv_usec) / 1.0e6;
+
+	if (elapsed < 0.05) {	/* too soon to make a good estimate */
+		t->interval = (t->rate - 0.05) * t->total / 0.05;
+		if (t->interval == 0) t->interval = 1;
 		return;
 	}
-	last = percent;
-	lastup = elapsed;
 
-	fprintf(stderr, "%3u%% ", percent);
-	if ((elapsed > 10.0) && (n < max)) {
-		int	remain = elapsed * (((float)max/n) - 1.0);
+	/* guess number of calls per interval */
+	t->interval = t->rate * ((float)t->total / elapsed);
+	/* sanity */
+	if (t->interval == 0) t->interval = 1;
+	else if (t->interval > 10000) t->interval = 10000;
 
-		p = aprintf("%dm%02ds ", remain/60, remain%60);
-		barlen -= strlen(p);
-		fputs(p, stderr);
-		free(p);
-	}
-	fputc('|', stderr);
-	want = (percent * barlen) / 100;
-	for (i = 1; i <= want; ++i) fputc('=', stderr);
-	if (i <= barlen) fprintf(stderr, "%*s", barlen - i + 1, "");
-	if (msg) {
-		fprintf(stderr, "| %s\n", msg);
-	} else {
+	switch (t->style) {
+	    case PROGRESS_SPIN:
+		fprintf(stderr, "%c\b", spin[t->i++ % 4]);
+		break;
+	    case PROGRESS_MINI:
+		percent = t->max ? 100 * n / t->max : 100;
+		if (percent > 100) percent = 100;
+		fprintf(stderr, "%3u%%\b\b\b\b", percent);
+		break;
+	    case PROGRESS_BAR:
+		percent = t->max ? 100 * n / t->max : 100;
+		if (percent > 100) percent = 100;
+		fprintf(stderr, "%3u%% ", percent);
+		if ((elapsed > 10.0) && (n < t->max)) {
+			int	remain = elapsed * (((float)t->max/n) - 1.0);
+
+			p = aprintf("%dm%02ds ", remain/60, remain%60);
+			barlen -= strlen(p);
+			fputs(p, stderr);
+			free(p);
+		}
+		fputc('|', stderr);
+		want = (percent * barlen) / 100;
+		for (i = 1; i <= want; ++i) fputc('=', stderr);
+		if (i <= barlen) fprintf(stderr, "%*s", barlen - i + 1, "");
 		fprintf(stderr, "|\r");
+		break;
 	}
 }
 
+void
+progress_done(ticker *t, char *msg)
+{
+	int	i;
+
+	/* clear output on screen */
+	switch (t->style) {
+	    case PROGRESS_SPIN:
+		fputs(" \b\b", stderr);
+		break;
+	    case PROGRESS_MINI:
+		fputs("    \b\b\b\b", stderr);
+		break;
+	    case PROGRESS_BAR:
+		fprintf(stderr, "100%% |");
+		for (i = 1; i <= 65; ++i) fputc('=', stderr);
+		fputc('|', stderr);
+		break;
+	}
+	if (msg) {
+		fputs(msg, stderr);
+		fputc('\n', stderr);
+	} else {
+		if (t->style == PROGRESS_BAR) fputc('\n', stderr);
+	}
+	free(t);
+}
+
+int
+progresstest_main(int ac, char **av)
+{
+	int	c;
+	int	n = 20000;	/* num iterations */
+	int	s = 200;	/* usleep per iteration */
+	int	r = 0;		/* rand sleep per iteration */
+	int	i;
+	int	style = 2;
+	ticker	*tick;
+
+	while ((c = getopt(ac, av, "n;r;s;t;")) != -1) {
+		switch (c) {
+		    case 'n': n = atoi(optarg); break;
+		    case 'r': r = atoi(optarg); break;
+		    case 's': s = atoi(optarg); break;
+		    case 't': style = atoi(optarg); break;
+		    default:
+			fprintf(stderr, "bad option\n");
+			exit(1);
+		}
+	}
+	if (style != 2) fprintf(stderr, "Do work");
+	tick = progress_start(style, n);
+	for (i = 0; i < n; i++) {
+		c = s;
+		if (r) c += (rand() % r);
+		usleep(c);
+		progress(tick, i);
+	}
+	progress_done(tick, (style != 2) ? ", done" : "OK");
+	return (0);
+}
 /*
  * Make sure stdin and stdout are both open to to file handles.
  * If not tie them to /dev/null to match assumption in the rest of bk.

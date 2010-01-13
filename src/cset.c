@@ -52,7 +52,6 @@ private	int	cset_diffs(cset_t *cs, ser_t ser);
 private	void	cset_exit(int n);
 private	char	csetFile[] = CHANGESET; /* for win32, need writable buffer */
 private	cset_t	copts;
-private char	*spin = "|/-\\";
 
 int
 makepatch_main(int ac, char **av)
@@ -1146,6 +1145,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	int	i, n, newfile, hastip;
 	delta	**list;
 	char	*gfile = 0;
+	ticker	*tick = 0;
 
         if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
 		fprintf(stderr, "Patch aborted, %s has errors\n", s->sfile);
@@ -1154,7 +1154,7 @@ sccs_patch(sccs *s, cset_t *cs)
 		cset_exit(1);
 	}
 
-	if (cs->verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
+	if (cs->verbose>1) fprintf(stderr, "makepatch: %s", s->gfile);
 
 	/*
 	 * Build a list of the deltas we're sending
@@ -1199,6 +1199,9 @@ sccs_patch(sccs *s, cset_t *cs)
 	 * changes.
 	 * Spit out the root rev so we can find if it has moved.
 	 */
+	if ((cs->verbose == 2) && !cs->notty) {
+		tick = progress_start(PROGRESS_SPIN, 0);
+	}
 	if (cs->fastpatch) {
 		prs_flags |= PRS_FASTPATCH;
 		patchmap = calloc(s->nextserial, sizeof(ser_t));
@@ -1207,10 +1210,8 @@ sccs_patch(sccs *s, cset_t *cs)
 		d = list[i];
 		if (patchmap) patchmap[d->serial] = n - i + 1;
 		assert(d);
-		if (cs->verbose > 2) fprintf(stderr, "%s ", d->rev);
-		if ((cs->verbose == 2) && !cs->notty) {
-			fprintf(stderr, "%c\b", spin[deltas % 4]);
-		}
+		if (cs->verbose > 2) fprintf(stderr, " %s", d->rev);
+		if (tick) progress(tick, 0);
 		if (i == n) {
 			unless (s->gfile) {
 				fprintf(stderr, "\n%s%c%s has no path\n",
@@ -1275,9 +1276,9 @@ sccs_patch(sccs *s, cset_t *cs)
 		free(patchmap);
 		patchmap = 0;
 	}
-	if ((cs->verbose == 2) && !cs->notty) {
-		fprintf(stderr, "%d revisions\r", deltas);
-		fprintf(stderr, "%79s\r", "");
+	if (tick) {
+		progress_done(tick, 0);
+		fprintf(stderr, " %d revisions\n", deltas);
 	} else if (cs->verbose > 1) {
 		fprintf(stderr, "\n");
 	}

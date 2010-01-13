@@ -33,15 +33,14 @@ renumber_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	char	*name;
-	int	spinners = 0, error = 0;
+	int	error = 0;
 	int	c, dont = 0, quiet = 0, flags = INIT_WACKGRAPH;
 
-	while ((c = getopt(ac, av, "nqs/")) != -1) {
+	while ((c = getopt(ac, av, "nqs")) != -1) {
 		switch (c) {
 		    case 'n': dont = 1; break;			/* doc 2.0 */
 		    case 's':					/* undoc? 2.0 */
 		    case 'q': quiet++; flags |= SILENT; break;	/* doc 2.0 */
-		    case '/': spinners = 1; break;
 		    default:
 			system("bk help -s renumber");
 			return (1);
@@ -57,7 +56,7 @@ renumber_main(int ac, char **av)
 			sfileDone();
 			return (1);
 		}
-		sccs_renumber(s, flags, spinners);
+		sccs_renumber(s, flags);
 		if (dont) {
 			unless (quiet) {
 				fprintf(stderr,
@@ -80,7 +79,7 @@ renumber_main(int ac, char **av)
  */
 
 void
-sccs_renumber(sccs *s, u32 flags, int spinners)
+sccs_renumber(sccs *s, u32 flags)
 {
 	delta	*d;
 	ser_t	i;
@@ -94,7 +93,6 @@ sccs_renumber(sccs *s, u32 flags, int spinners)
 
 	Fix_inex = 0;
 
-	if (spinners) fprintf(stderr, "renumbering ");
 	if (BITKEEPER(s)) {
 		assert(!s->defbranch);
 	} else {

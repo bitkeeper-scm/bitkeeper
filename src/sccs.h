@@ -972,7 +972,7 @@ sccs	*sccs_unzip(sccs *s);
 sccs	*sccs_gzip(sccs *s);
 char	*sccs_utctime(delta *d);
 void	sccs_kidlink(sccs *s, delta *d);
-void	sccs_renumber(sccs *s, u32 flags, int spinners);
+void	sccs_renumber(sccs *s, u32 flags);
 char 	*sccs_iskeylong(char *key);
 int	linelen(char *s);
 char	*licenses_accepted(void);
@@ -1205,7 +1205,13 @@ int	bkmail(char *url, char **to, char *subject, char *file);
 void	bkversion(FILE *f);
 int	sane(int, int);
 int	global_locked(void);
-void	progressbar(u64 n, u64 max, char *msg);
+typedef	struct ticker ticker;
+#define	PROGRESS_SPIN	0
+#define	PROGRESS_MINI	1
+#define	PROGRESS_BAR	2
+ticker	*progress_start(int style, u64 max);
+void	progress(ticker *t, u64 n);
+void	progress_done(ticker *t, char *msg);
 char	*signed_loadFile(char *filename);
 int	signed_saveFile(char *filename, char *data);
 void	bk_preSpawnHook(int flags, char *av[]);

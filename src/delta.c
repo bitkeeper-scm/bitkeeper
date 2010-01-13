@@ -106,7 +106,7 @@ strip_danglers(char *name, u32 flags)
 	free(p);
 	s = sccs_init(name, INIT_WACKGRAPH);
 	assert(s);
-	sccs_renumber(s, (flags&SILENT)|INIT_WACKGRAPH, 0);
+	sccs_renumber(s, (flags&SILENT)|INIT_WACKGRAPH);
 	/*
 	 * If we are preserving the monotonic flag but our parent didn't
 	 * have it, make a note of that.

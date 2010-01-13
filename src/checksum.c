@@ -19,17 +19,18 @@ checksum_main(int ac, char **av)
 	int	doit = 0;
 	char	*name;
 	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0, spin = 0;
-	int	c;
+	int	c, i;
 	char	*off = 0;
 	char	*rev = 0;
+	ticker	*tick = 0;
 
-	while ((c = getopt(ac, av, "cfr;s|v/")) != -1) {
+	while ((c = getopt(ac, av, "cfpr;s|v")) != -1) {
 		switch (c) {
 		    case 'c': break;	/* obsolete */
 		    case 'f': fix = 1; break;			/* doc 2.0 */
 		    case 'r': rev = optarg; break;
 		    case 's': do_sccs = 1; off = optarg; break;
-		    case '/': spin = 1; break;
+		    case 'p': spin = 1; break;
 		    case 'v': diags++; break;			/* doc 2.0 */
 		    default:  system("bk help -s checksum");
 			      return (1);
@@ -78,11 +79,22 @@ checksum_main(int ac, char **av)
 					bad = c;
 				}
 			} else {
-				for (d = s->table; d; d = NEXT(d)) {
+				if (spin) {
+					fputs(s->gfile, stderr);
+					tick = progress_start(PROGRESS_MINI,
+					    s->nextserial);
+				}
+				for (i = 0, d = s->table; d; d = NEXT(d)) {
 					unless (d->type == 'D') continue;
 					c = sccs_resum(s, d, diags, fix);
+					if (tick) progress(tick, ++i);
 					if (c & 1) doit++;
 					if (c & 2) bad++;
+				}
+				if (tick) {
+					progress_done(tick, 0);
+					tick = 0;
+					fputc('\n', stderr);
 				}
 			}
 		}
@@ -375,24 +387,25 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	char	*p, *q;
 	u8	*e;
 	u16	sum;
-	int	cnt, i, added, n = 0;
+	int	cnt, i, added;
 	serset	**map;
 	ser_t	*slist;
 	struct	_sse *sse;
 	delta	*d;
 	int	found = 0;
-	char	*spin = "|/-\\";
+	int	n = 0;
 	kvpair	kv;
+	ticker	*tick = 0;
 
 	mdbm_set_alignment(root2map,
 	    (sizeof(void *) == 8) ? _MDBM_ALGN64 : _MDBM_ALGN32);
 
 	if (spinners) {
 		if (takepatch) {
-			fprintf(stderr, "checking checksums ");
+			fprintf(stderr, "checking checksums");
 		} else {
 			fprintf(stderr, "%s", fix ? "Fixing" : "Checking");
-			fprintf(stderr, " ChangeSet checksums ");
+			fprintf(stderr, " ChangeSet checksums");
 		}
 	}
 
@@ -424,9 +437,20 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	}
 	/* the above is very fast, no need to optimize further */
 
+	/* count up the deltas.  XXX - is there a better way? */
+	if (spinners) {
+		for (d = s->table; d; d = d->next) {
+			unless (d->type == 'D') continue;
+			unless (d->added || d->include || d->exclude) continue;
+			if (SET(s) && !(d->flags & D_SET)) continue;
+			n++;
+		}
+		tick = progress_start(PROGRESS_MINI, n);
+	}
+
 	/* foreach delta */
 	slist = 0;
-	for (d = s->table; d; d->flags &= ~D_SET, d = NEXT(d)) {
+	for (n = 0, d = s->table; d; d->flags &= ~D_SET, d = NEXT(d)) {
 		unless (d->type == 'D') continue;
 		unless (d->added || d->include || d->exclude) continue;
 		if (SET(s) && !(d->flags & D_SET)) continue;
@@ -439,9 +463,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 			if (slist) free(slist);
 			slist = sccs_set(s, d, 0, 0); /* slow */
 		}
-		if (spinners && (((++n) & 0xf) == 0)) {
-			fprintf(stderr, "%c\b", spin[(n>>4) & 0x3]);
-		}
+		if (tick) progress(tick, ++n);
 		sum = 0;
 		added = 0;
 		for (i = 0; i < cnt; i++) {
@@ -500,6 +522,8 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		}
 	}
 	if (slist) free(slist);
+	if (tick) progress_done(tick, 0);
+	if (spinners && !takepatch) fputc('\n', stderr);
 	s->state &= ~S_SET;	/* if set, then done with it: clean up */
 	for (i = 0; i < cnt; i++) free(map[i]);
 	free(map);

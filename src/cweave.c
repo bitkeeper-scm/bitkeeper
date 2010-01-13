@@ -294,7 +294,8 @@ cset_write(sccs *s, int spinners, int fast)
 	 * could trust kid pointers.
 	 */
 	s->ser2dsize = 0;
-	sccs_renumber(s, SILENT, CSET(s) ? spinners : 0);
+	if (CSET(s) && spinners) fprintf(stderr, "renumbering");
+	sccs_renumber(s, SILENT);
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, i)) continue;
 		d->kid = d->siblings = 0;
