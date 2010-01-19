@@ -2,52 +2,42 @@
 .so ../bk-macros
 .TH "bk components" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk components \- list components in a product
+bk components \- list the components belonging to a product
 .SH SYNOPSIS
 .B bk components
-.[B] \-hmP
-.[OPTreq] -r rev
-.[OPTreq] -s component
+.[B] \-hm
+.[B] \-k
 .SH DESCRIPTION
 The 
 .B bk components
-command is used to list all or some of the repositories that make up a product.
-Strictly speaking, a product is different than a component, but in the context
-of this command the product is just another repository to be listed.
+command is used to list all repositories that are attached
+to the product.
 .LP
-With no options, this command lists all repositories that make up the product,
-regardless of whether the repositories are all present or not.  
-There are options to restrict the listing to the subset that is present
-in this product instance, and/or to restrict the listing to one or more
-aliases.
+The normal output is all components attached to the product, whether
+present or not.
+The options can be used to restrict the output depending on if the
+components are currently populated or not.
 .SH OPTIONS
-.TP \-s\*<comp\*>
+.TP
 .B \-h
-restrict the listing to those components which are present (here).
+Only list components currently populated, or "here".
+.tp
+.B \-k
+Instead of the default relative paths from the product root, list
+the root keys for each component.
 .tp
 .B \-m
-restrict the listing to those components which are not present (missing).
-.tp
-.B \-P
-include the product in the list as well.
-.tp
-.OPTreq \-r rev
-list the components as of the
-.ARG rev 
-version of the product.
-.tp
-.OPTreq \-s comp
-restrict the listing to the subset implied by
-.ARG comp .
-If this option is repeated the implied subset is the union of all
-specified components.
-.ARG comp
-may be a component or an alias for a set of components.
+Only list components not currently populated, or "missing".
+.SH "NOTE"
+.LP
+The components command is really an alias for 'bk alias OPTS -p HERE'
 .SH "SEE ALSO"
 .SA Howto-Product
 .SA alias
 .SA attach
+.SA populate
 .SA product
+.SA unpopulate
 .SH CATEGORY
 .B Product
 .SH AVAILABILITY
@@ -58,7 +48,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "product" or "product-line" listed then your
+If the options field has "nested" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
 .\}

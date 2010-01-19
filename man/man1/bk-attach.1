@@ -6,7 +6,6 @@ bk attach \- attach a component repository to a product repository
 .SH SYNOPSIS
 bk attach
 .[B] \-qlC
-.[OPTreq] \-B url
 .[OPTequal] \-E e v
 .[OPTreq] \-r rev
 .ARG from
@@ -21,10 +20,6 @@ The specified repository is cloned and becomes a component within
 the product. This command must be run from within the product.
 .SH OPTIONS
 .TP \-E\*<env\*>=\*<val\*>
-.OPTreq \-B url
-Set the BAM server url to 
-.ARG url
-in the destination repository.
 .tp
 .B \-C
 Do not commit the component to the product.
@@ -43,7 +38,7 @@ are allowed.
 .B \-l
 Clone using hard links instead of copying the data.  
 This is faster and saves disk space, but only works 
-within filesystems supporting hard links.
+within file systems supporting hard links.
 .tp
 .B \-q 
 Run quietly.
@@ -67,7 +62,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "product" or "product-line" listed then your
+If the options field has "nested" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
 .\}

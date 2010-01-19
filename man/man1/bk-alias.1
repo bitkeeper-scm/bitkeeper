@@ -2,17 +2,29 @@
 .so ../bk-macros
 .TH "bk alias" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk alias \- manage aliases for a list of components
+bk alias \- manage aliases for lists of components
 .SH SYNOPSIS
 .B bk alias 
-.B add|new|rm|set|show
-.[B] \-Cf
-.[B] name
-.[B] component \ ...
+.[B] add|rm|set
+.[B] \-Cehmk
+.[OPTreq] \-@ URL
+.ARG name
+.[ARG] component \ ...
 .br
 .SS CREATING AN ALIAS
-.B bk alias new
-.[B] \-Cf
+.B bk alias 
+.[B] \-C
+.ARG name
+.ARG component \ ...
+.br
+.B bk alias set
+.[B] \-C
+.ARG name
+.ARG component \ ...
+.br
+.SS ADDING COMPONENTS TO AN ALIAS
+.B bk alias add
+.[B] \-C
 .ARG name
 .ARG component \ ...
 .br
@@ -21,68 +33,64 @@ bk alias \- manage aliases for a list of components
 .[B] \-C
 .ARG name
 .br
-.SS ADDING COMPONENTS TO AN ALIAS
-.B bk alias add
-.[B] \-Cf
-.B -a
-.ARG name
-.ARG component \ ...
-.br
-.SS REMOVING COMPONENT[S] FROM AN ALIAS
+.SS REMOVING COMPONENTS FROM AN ALIAS
 .B bk alias rm
 .[B] \-C
 .ARG name
 .ARG component \ ...
 .br
+.SS REPLACING AN ALIAS
+.B bk alias set
+.[B] \-C
+.ARG name
+.ARG component \ ...
 .br
 .SS LIST ALL ALIASES
-.B bk alias show
+.B bk alias
+.[OPTreq] \-r rev
 .[B] \-hm
 .br
-.SS SHOW THE VALUE OF AN ALIAS
-.B bk alias show
+.SS SHOW AN ALIAS
+.B bk alias 
+.[OPTreq] \-r rev
+.[B] \-e
 .[B] \-hm
+.[B] \-k
 .ARG name
-.br
-.SS SHOW EXPANSION OF AN ALIAS
-.B bk alias show
-.[B] \-kp
-.[B] \-hm
-.ARG component \ ...
 .SH DESCRIPTION
 The 
 .B bk alias
 command is used to create, modify, remove, or list aliases.
-An alias is a symbolic name that resolves to one or more components (aka
-sub-repositories in a product).
+An alias is a symbolic name that resolves to a list of other aliases
+or root keys for one or more components (aka sub-repositories in a
+product).
 .SP
 Alias names are similar to C identifiers and must match this regular
 expression:
 .\" This is a lot more restrictive than we need to be
 .\" but I figure we can loosen it easier than we can tighten it.
 .DS
-[A-Za-z][A-Za-z0-9_+-=]*
+[A-Za-z][A-Za-z0-9_]*
 .DE
 When creating, or adding to, an alias, how the components are specified
 and expanded is as follows:
-.TP "./gcc/* "
-.B .
-Reserved name that means the product repository.
-.tp
+.TP "COMPILER"
 .B ./gcc
-A relative path from the root of the product that names a component
-means just that one component repository.
-The path is matched against the list of attached and committed components,
-i.e., specifying a path to a newly created but unattached component will
-result in an error.
+Any path that names a component means just that one component.
+The path is relative to the current working directory; if the
+current working directory is not at the root of the product then
+the sub-path to the current working directory is prefixed automatically.
+The prefixed path is matched against the list of attached and committed
+components, i.e., specifying a path to a newly created but unattached
+component will result in an error.
 .tp
 .ARG key
-A rootkey of a component is the same as specifying the path to that
+A root key of a component is the same as specifying the path to that
 component.
+.ig
 .tp
-.B ./gcc/*
-Another relative path form, with globbing support,
-that gets all components below 
+.B gcc/*
+This matches all components
 .BR gcc .
 As with paths, the glob, minus the leading 
 .BR \*[lq]./\*[rq] ,
@@ -95,117 +103,50 @@ gcc/B
 gcc/A/XYZ
 gcc/A/XYZ/sneaky
 .DE
+The glob is expanded into the full list of matching components.
+If other components are added later that would have matched that 
+glob, and you want those, you will need to run this:
+.DS
+bk populate 'gcc/*'
+.DE
+..
 .tp
 .B COMPILER
-When the component name does not match a component root, it is 
+Any name without a leading "./" is 
 taken as another alias to be expanded recursively.
-.tp
-.B -
-If a single trailing dash is the only component then the list of components
-are read from the standard input.
 .LP
-Note that there is an ambiguity when specifying an item that may be
-either an alias name or a component.
-If 
-.B gcc 
-is in the aliases database and you use that name as one of the components
-in an add/rm operation, then it means the list implied by the gcc alias.
-If there is a 
-.B gcc
-repository in root of the product and you meant that repository, you 
-need to specify that as 
-.B ./gcc
-to force it to resolve to the repository and not the alias entry.
-In general, unless you always use upper case for your aliases and
-lower case for your components, you should use the leading \*[lq]./\*[rq]
-for naming components.
 .LP
 When adding a component to an alias, if the alias does not exist
 it is automatically created in the aliases file.
 When removing a component from an alias, if there are no other components
 left in the alias it is automatically deleted from the aliases file.
-.SH OPTIONS
-.TP 
-.tp
-.B \-C
-Normally, modifying the aliases database results in a changeset committing that
-change.
-This option suppresses the commit.
-Use this option when you wish to combine the alias event with other
-changes to the product.
-.tp
-.B \-f
-When creating an alias, the operation will fail if there is a pre-existing
-alias of the same name unless this option is present.
-When appending to an alias, the operation will fail unless there is a
-pre-existing alias of the same name unless this option is present.
-.tp
-.B \-h
-Filter the output to only shows aliases or components that are here.
-For example, \*[lq]bk alias show -h\*[rq] lists all the aliases which
-have all their components present in this repository.
-.tp
-.B \-k
-Used when showing aliases; causes the expansion of the alias to be listed
-as rootkeys.
-.tp
-.B \-m
-Filter the output to only shows aliases or components that are missing.
-For example, \*[lq]bk alias show -m\*[rq] lists all the aliases which
-have at least one of their components missing in this repository.
-To see what components missing are missing in an alias called gcc,
-\*[lq]bk alias show -m -p gcc\*[rq].
-.tp
-.B \-p
-Used when showing aliases; causes the expansion of the alias to be listed
-as pathnames.
-.SH EXAMPLES
-To create an alias that points to a named list of components:
-.DS
-$ bk alias new COMPILER cmd/gcc cmd/as cmd/ld cmd/nm
-.DE
-To create a higher level alias that includes the debugger:
-.DS
-$ bk alias new DEV-TOOLS cmd/gdb COMPILER
-.DE
-List all aliases:
-.DS
-$ bk alias show
-COMPILER
-DEV-TOOLS
-.DE
-List alias path expansion:
-.DS
-$ bk alias show -p COMPILER
-\&./cmd/as
-\&./cmd/gcc
-\&./cmd/ld
-\&./cmd/nm
-.DE
-To remove a component from an alias:
-.DS
-$ bk alias rm COMPILER cmd/nm
-.DE
-.SH NOTES
-The aliases database is a flat text file stored in
-.IR BitKeeper/etc/aliases .
-Any components that are specified as a path are stored internally
-as their rootkeys so that the alias will expand correctly even if
-the specified component[s] is/are moved.
 .LP
-There are three pre-existing aliases:
+When modifying an alias the command line can include '-' instead of
+the arguments and the list of aliases to add or remove will be read
+from standard input instead.
+.SH PRE-DEFINED OR RESERVED ALIASES
 .TP "DEFAULT "
+.B .
+Reserved name that means the product repository.
+.tp
+.B \-
+If a single trailing dash is the only component then the list of components
+are read from the standard input.
+.tp
 ALL
-This alias means all components (as well as the product) and may not
-be modified.
-It is different than "./*" in that globs expand to whatever is present
-in the source repository (i.e., they are fine with missing components).
-If you try and expand all and there are missing components the expansion
-will fail.
+This predefined alias means all components (as well as the product) and
+may not be modified.
+.ig
+It is different than "./*" in that globs expand to
+whatever is present in the source repository (i.e., they are fine with
+missing components).  
+..
+If you try and expand ALL and there are missing
+components the expansion will fail.
 .tp
 DEFAULT
 This alias is what is cloned when no aliases or components are specified.
-It defaults to "all" but it may be changed to make the default set
+It defaults to "ALL" but it may be changed to make the default set
 of components to be less than all.
 .tp
 THERE
@@ -214,13 +155,110 @@ components present in the repository.
 If you do not care what the other side has, you just want to replicate
 it, then 
 .DS
-$ bk clone -sTHERE bk://good-stuff/I-trust-you 
+$ bk clone -sTHERE bk://good-stuff/some-repo
 .DE
-Note that the "there" alias is never found in the aliases file, it
+Note that the "THERE" alias is never found in the aliases file, it
 implied from the cached aliases list in BitKeeper/log.
+.tp
+HERE
+This is the same as THERE but it makes more sense for commands like so:
+.DS
+$ bk clone -sHERE . bk://good-stuff/have-mine
+.DE
+.tp
+add
+Reserved name, conflicts with the "bk alias add" command.
+.tp
+rm
+Reserved name, conflicts with the "bk alias rm" command.
+.tp
+set
+Reserved name, conflicts with the "bk alias set" command.
+.LP
+The predefined aliases ALL, DEFAULT, HERE, THERE, are case insensitive,
+i.e., "default" and
+"DEFAULT" mean the same thing.
+In all other cases the names are case sensitive.
+.LP
+.SH OPTIONS
+.TP \-r<rev>
+.tp
+.B \-C
+Normally, modifying the aliases database results in a changeset committing that
+change.
+This option suppresses the commit.
+Use this option when you wish to combine the alias event with other
+changes to the product.
+.tp
+.B \-e
+Used when showing aliases; causes all aliases to be fully expanded so
+the output is the list of components matching the alias.
+.tp
+.B \-h
+Used when showing aliases; causes only aliases that are fully present
+to be listed.
+.tp
+.B \-k
+Used when showing aliases; causes individual components to be listed
+by their rootkeys instead of the current pathname, which is the
+default output.
+.tp
+.B \-m
+Used when showing aliases; causes only aliases that are not fully
+present to be listed.
+.tp
+.OPTreq \-r rev
+Used when showing aliases; causes the aliases to be listed as of an
+older revision of the BitKeeper/etc/aliases file.
+.SH EXAMPLES
+To create an alias that points to a named list of components:
+.DS
+$ bk alias COMPILER ./cmd/gcc ./cmd/as ./cmd/ld ./cmd/nm
+.DE
+or, if you wish to type less:
+.DS
+$ cd cmd
+$ bk alias COMPILER ./gcc ./as ./ld ./nm
+.DE
+To create a higher level alias that includes the debugger:
+.DS
+$ bk alias DEV-TOOLS ./gdb COMPILER
+.DE
+List all aliases:
+.DS
+$ bk alias
+COMPILER
+DEV-TOOLS
+.DE
+Show an alias that contains another:
+.DS
+$ bk alias DEV-TOOLS
+COMPILER
+\&./cmd/gdb
+.DE
+Expand an alias into paths:
+.DS
+$ bk alias -e DEV-TOOLS
+\&./cmd/as
+\&./cmd/gcc
+\&./cmd/gdb
+\&./cmd/ld
+\&./cmd/nm
+.DE
+To remove a component from an alias:
+.DS
+$ bk alias rm COMPILER ./cmd/nm
+.DE
+.SH FILES
+The aliases database is a flat text file stored in
+.IR BitKeeper/etc/aliases .
+Any components that are specified as a path are stored internally
+as their root keys so that the alias will expand correctly even if
+the specified component[s] is/are moved.
 .SH "SEE ALSO"
 .SA Howto-Product
 .SA clone
+.SA components
 .SA glob
 .SA id
 .SA populate
@@ -234,8 +272,8 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "product" or "product-line" listed then your
-license has this feature enabled.
+If the options field has "nested" listed then your license has this
+feature enabled.
 If not, contact BitMover sales.
 .\" help://aliases
 .\}

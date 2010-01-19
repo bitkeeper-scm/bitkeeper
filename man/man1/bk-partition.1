@@ -2,7 +2,7 @@
 .so ../bk-macros
 .TH "bk partition" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk partition \- transform a single repository into a nested product
+bk partition \- transform a single repository into a nested collection
 .SH SYNOPSIS
 .B bk partition
 .[B] \-q
@@ -22,7 +22,7 @@ roots.
 Before the transform, it is possible to remove the record of some files
 that were accidentally added along the way, and or have since been
 removed and added to the gone file.
-A list of keys to be remove is stored in a gonelist file, one key per
+A list of keys to be removed is stored in a gonelist file, one key per
 line.
 .LP
 The resulting repository will not be able to communicate with the
@@ -37,15 +37,15 @@ and the result can communicate with the result of the original partition.
 .TP \-C\*<components\*>
 .OPTreq \-C components
 Specify a file containing the directories that will become
-component repository rooots.
+component repository roots.
 The directories are listed in the file, one per line.
 Lines starting with # will be ignored, as well as blank lines.
 .tp
 .OPTreq \-G gonelist
 Specify a file containing the keys to be removed before the partitioning
 begins.
-This is the same as running a csetprune before running this command.
-The difference is that the partition command will provide the stable
+This is similar to running a bk csetprune before running bk partition.
+The difference is that the bk partition command will provide the stable
 -k parameter to the csetprune enable the resulting repositories to
 communicate with repositories that have gone through the same partitioning.
 .tp
@@ -85,7 +85,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "product" or "product-line" listed then your
+If the options field has "nested" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
 .\}
