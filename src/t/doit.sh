@@ -328,11 +328,11 @@ setup_env()
 	BKL_B2=iGZv3GjL0smGyjqxe3bzT/T+/9XMitYbUtvihMOg1G7bbe8KqJkrCdWXI2rr79o7
 	BKL_B3=OZr4YcF3QabvdTT8nDnx7+Y2ooFn/t+SmqDfxG4UxF6nqLbp2sYHMhxFMzpzAQ==
 
-	# Valid PRO P --airgap --bkweb --bugdb --import --bam --eula=pro
-	BKL_PRO=BKL64d1f3c64368c8080000123dfffff42e572b43
-	BKL_P1=YgAAAo4AAAADgQAAAALJ8xPKWjnouoipgR/vn5Zi67rewNXWeShWqV2MCj2qCGIO
-	BKL_P2=AjJhBfryz8wjZ1krtBFUiR0rnBV71oaO+AwGNLT+FPIZO3SB5N6+vWVRuWp3JcWj
-	BKL_P3=BPWDdcygGICibELlvHf85izmEqbgZ0TAWBD+BRoi1fvtQHSQEkoeL22WIhqmGw==
+	# Valid PRO P --airgap --bkweb --bugdb --import --bam --eula=pro --nested
+	BKL_PRO=BKL64d1edf00368c8080000127dfffff42e572b43
+	BKL_P1=YgAAAo4AAAADgQAAAAIXmhOa3hEP1umce11FyLhoGRHf0XUuz8c8dbQkgycjLpre
+	BKL_P2=Cy/Lw8liyt/Ef235EE16CX2lRD1FcjCbWMcigUWohcfzHr5vF/yFfOjYaPTXsOOm
+	BKL_P3=RTko0bFuJBTwfXAjNluwWsMOOAowF4Ycty21TwSjk3GDNeEpbfo+WkE9Oojc0A==
 
 	# Valid pro p --airgap --bkweb --bugdb --import --eula=pro
 	BKL_pro=BKL64d1f3c65368c8080000121dfffff42e572b43

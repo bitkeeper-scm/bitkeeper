@@ -373,7 +373,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		}
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
-			if (BAM(s) && !(proj_bklbits(s->proj) & LIC_BAM)) {
+			if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM)) {
 				errors |= 4;
 				break;
 			}

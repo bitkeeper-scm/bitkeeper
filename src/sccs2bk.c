@@ -49,7 +49,7 @@ usage:			system("bk help -s sccs2bk");
 		}
 	}
 
-	unless (proj_bklbits(0) & LIC_IMPORT) {
+	if (bk_notLicensed(0, LIC_IMPORT)) {
 		if (verbose) {
 			// XXX - need a name
 			fputs("sccs2bk: operation requires "

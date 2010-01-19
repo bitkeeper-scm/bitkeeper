@@ -1335,6 +1335,7 @@ char	**doidx_getdir(project *proj, char *dir);
 char	*doidx_realBasename(project *proj, char *rel, char *realname);
 int	doidx_access(project *proj, char *file, int mode);
 int	bk_urlArg(char ***urls, char *arg);
+int	bk_notLicensed(project *p, u32 bits);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);

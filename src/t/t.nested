@@ -35,7 +35,7 @@ touch BitKeeper/etc/aliases
 bk new $Q BitKeeper/etc/aliases
 echo "default" > BitKeeper/log/HERE
 bk commit $Q -y"add aliases"
-bk newroot -P $Q
+bk newroot -P $Q || exit 1
 test "`bk product`" = "This is the product." || {
 	echo failed to make it a product
     	exit 1

@@ -1142,6 +1142,34 @@ bkd_hasFeature(char *f)
 }
 
 /*
+ * This function returns true if the requested features are not contained
+ * in the current lease.  It is assumed that an error will be printed
+ * when this function returns true.  If the bits are not found, this
+ * code will explicitly refetch the current lease and check again.
+ */
+int
+bk_notLicensed(project *p, u32 bits)
+{
+	int	rc;
+	char	here[MAXPATH];
+
+	if ((proj_bklbits(p) & bits) == bits) return (0);
+
+	/* try to refetch the current lease */
+	if (getenv("_BK_NOFEATURELOOP")) return (0);
+	strcpy(here, proj_cwd());
+	if (chdir(proj_root(p))) return (1);
+	rc = sys("bk", "-?_BK_NOFEATURELOOP=1", "lease", "renew", "-q", SYS);
+	chdir(here);
+	if (rc) return (1);
+	proj_reset(p);		/* flush old bklbits */
+	if ((proj_bklbits(p) & bits) == bits) return (0);
+	return (1);
+}
+
+
+
+/*
  * Generate a http response header from a bkd back to the client.
  */
 void
