@@ -1957,3 +1957,41 @@ bk_searchFile(char *base)
 	if (exists(buf)) return (strdup(buf));
 	return (0);
 }
+
+
+/*
+ * Parse a -@<url> argument in getopt() switch
+ *
+ * used with getopt(ac, av, "@|...")
+ *
+ * Behavior:
+ *	-@	# add my parents to list
+ *	-@URL	# add URL to list
+ *	-@@FILE	# add filename to list (1 url per line)
+ *
+ * Returns non-zero on error and prints message to stderr
+ */
+int
+bk_urlArg(char ***urls, char *arg)
+{
+	char	**list;
+
+	if (arg && (arg[0] == '@')) {
+		unless (list = file2Lines(0, arg+1)) {
+			perror(arg+1);
+			return (1);
+		}
+		*urls = catLines(*urls, list);
+	} else if (arg) {
+		*urls = addLine(*urls, strdup(arg));
+	} else {
+		unless (list = parent_allp()) {
+			fprintf(stderr, "%s: -@ failed as "
+			    "repository has no parent\n",
+			    prog);
+			return (1);
+		}
+		*urls = catLines(*urls, list);
+	}
+	return (0);
+}

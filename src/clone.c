@@ -30,7 +30,6 @@ private	struct {
 private	clonerc	attach(void);
 private	clonerc	clone(char **, remote *, char *, char **);
 private	clonerc	clone2(remote *r);
-private void	parent(remote *r);
 private int	sfio(remote *r, int BAM, char *prefix);
 private void	usage(char *name);
 private int	initProject(char *root, remote *r);
@@ -444,6 +443,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 	proj_reset(0);		/* reset proj_product() */
 	if (opts->link) lclone(getenv("BKD_ROOT"));
+	nested_check();
 
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
 	if (do_part2 && !bkd_hasFeature("BAMv2")) {
@@ -517,6 +517,7 @@ clone2(remote *r)
 	int	i, undorc, rc;
 	int	didcheck = 0;		/* ran check in undo*/
 	int	partial = 1;		/* partial check needs checkout run */
+	char	*parent;
 	char	buf[MAXLINE];
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
@@ -525,7 +526,11 @@ clone2(remote *r)
 		return (CLONE_ERROR);
 	}
 
-	parent(r);
+	unless (opts->no_parent) {
+		parent = remote_unparse(r);
+		sys("bk", "parent", "-q", parent, SYS);
+		free(parent);
+	}
 	(void)proj_repoID(0);		/* generate repoID */
 
 	/* validate bam server URL */
@@ -573,27 +578,85 @@ clone2(remote *r)
 		}
 	}
 	if (proj_isProduct(0)) {
-		char	**cav = 0;
+		nested	*n;
+		comp	*cp;
+		hash	*urllist;
 
-		cav = addLine(cav, "bk");
-		cav = addLine(cav, "components");
-		cav = addLine(cav, "set");
-		cav = addLine(cav, "-C"); /* special from_clone flag */
-		if (opts->quiet) cav = addLine(cav, "-q");
-		if (opts->link) cav = addLine(cav, "-l");
-		if (emptyLines(opts->aliases)) {
-			cav = addLine(cav, "default");
-		} else {
-			EACH(opts->aliases) cav = addLine(cav, opts->aliases[i]);
+		urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
+		assert(urllist);
+
+		/*
+		 * Special knowledge: at this time in a clone the parent
+		 * will only have one entry in it -- the clone source.
+		 *
+		 * XXX: parent.c defines PARENT -- could move to a .h
+		 * Could possibly make use of one of the interfaces in 
+		 * parent.c which returns an addLines? I didn't dig there.
+		 */
+		parent = loadfile("BitKeeper/log/parent", 0);
+		chomp(parent);
+
+		/* expand pathnames in the urllist with the parent URL */
+		urllist_normalize(urllist, parent);
+
+		unless (n = nested_init(0, "+", 0, 0)) {
+			fprintf(stderr, "%s: nested_init failed\n");
+			return (CLONE_ERROR);
 		}
-		cav = addLine(cav, 0);
-		rc = spawnvp(_P_WAIT, "bk", cav + 1);
-		freeLines(cav, 0);
-		if (rc) {
-			fprintf(stderr, "clone: component fetch failed, "
+
+		/*
+		 * find out which components are present remotely and
+		 * update URLLIST
+		 */
+		assert(!n->here);
+		n->here = file2Lines(0, "BitKeeper/log/RMT_HERE");
+		unlink("BitKeeper/log/RMT_HERE");
+		EACH(n->here) {
+			if (isKey(n->here[i]) &&
+			    !nested_findKey(n, n->here[i])) {
+				/* we can ignore extra rootkeys */
+				removeLineN(n->here, i, free);
+				i--;
+			}
+		}
+
+		// XXX wrong, for clone -r, the meaning of HERE may have changed
+		if (nested_aliases(n, n->tip, &n->here, 0, 0)) {
+			/* It is OK if this fails, just tag everything */
+			EACH_STRUCT(n->comps, cp, i) cp->alias = 1;
+		}
+		EACH_STRUCT(n->comps, cp, i) {
+			if (cp->product || !cp->alias) continue;
+
+			urllist_addURL(urllist, cp->rootkey, parent);
+			cp->alias = 0;
+		}
+		free(parent);
+
+
+		/* just in case we exit early */
+		if (hash_toFile(urllist, NESTED_URLLIST)) {
+			perror(NESTED_URLLIST);
+		}
+		if (emptyLines(opts->aliases)) {
+			opts->aliases =
+			    addLine(opts->aliases, strdup("default"));
+		}
+		if (nested_aliases(n, n->tip, &opts->aliases, ".", 0)) {
+			freeLines(opts->aliases, free);
+			opts->aliases = 0;
+			goto nested_err;
+		}
+		freeLines(n->here, free);
+		n->here = opts->aliases;
+		opts->aliases = 0;
+		nested_writeHere(n);
+		if (nested_populate(n, 0, 0, opts->quiet)) {
+nested_err:		fprintf(stderr, "clone: component fetch failed, "
 			    "only product is populated\n");
 			return (CLONE_ERROR);
 		}
+		nested_free(n);
 	}
 	if (!didcheck && (size(checkfiles) || full_check())) {
 		/* undo already runs check so we only need this case */
@@ -906,24 +969,6 @@ after(int quiet, char *rev)
 	return (WEXITSTATUS(i));
 }
 
-private void
-parent(remote *r)
-{
-	char	*cmds[20];
-	char	*p;
-	int	i;
-
-	if (opts->no_parent) return;
-	assert(r);
-	cmds[i = 0] = "bk";
-	cmds[++i] = "parent";
-	cmds[++i] = "-q";
-	cmds[++i] = p = remote_unparse(r);
-	cmds[++i] = 0;
-	spawnvp(_P_WAIT, "bk", cmds);
-	free(p);
-}
-
 void
 rmEmptyDirs(int quiet)
 {
@@ -998,7 +1043,6 @@ lclone(char *from)
 		tb.modtime = sb.st_mtime;
 		utime(CHECKED, &tb);
 	}
-	nested_check();
 }
 
 /*

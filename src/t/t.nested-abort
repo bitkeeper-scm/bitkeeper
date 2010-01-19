@@ -51,14 +51,14 @@ cd ..
 # Clone and set up the multiple scenarios (indentation added for clarity).
 # These are repos we will pull into (from parent) or push from (into parent)
 # and the operation will fail.
-bk clone $Q -sMYALIAS parent edit_in_product
+bk clone $Q -sMYALIAS parent edit_in_product || fail
 	cd edit_in_product
 	bk edit $Q file
 	RAND > file
 	cd ..
 tar cf edit_in_product.tar edit_in_product
 for i in gcc gdb comp
-do	bk clone $Q -sMYALIAS parent edit_in_$i
+do	bk clone $Q -sMYALIAS parent edit_in_$i || fail
 	cd edit_in_$i/gcc
 	bk edit $Q file
 	RAND > file
@@ -66,7 +66,7 @@ do	bk clone $Q -sMYALIAS parent edit_in_$i
 	tar cf edit_in_$i.tar edit_in_$i
 done
 
-bk clone $Q -sMYALIAS parent pending_in_product
+bk clone $Q -sMYALIAS parent pending_in_product || fail
 	cd pending_in_product
 	bk edit $Q file
 	RAND > file
@@ -74,7 +74,7 @@ bk clone $Q -sMYALIAS parent pending_in_product
 	cd ..
 tar cf pending_in_product.tar pending_in_product
 for i in gcc gdb comp
-do	bk clone $Q -sMYALIAS parent pending_in_product_$i
+do	bk clone $Q -sMYALIAS parent pending_in_product_$i || fail
 	cd pending_in_product_$i/$i
 	RAND > file2
 	bk new $Q file2
@@ -83,7 +83,7 @@ do	bk clone $Q -sMYALIAS parent pending_in_product_$i
 	tar cf pending_in_product_$i.tar pending_in_product_$i
 done
 for i in gcc gdb comp
-do	bk clone $Q -sMYALIAS parent pending_in_$i
+do	bk clone $Q -sMYALIAS parent pending_in_$i || fail
 	cd pending_in_$i/$i
 	bk edit $Q file
 	RAND > file
@@ -91,7 +91,7 @@ do	bk clone $Q -sMYALIAS parent pending_in_$i
 	cd ../..
 	tar cf pending_in_$i.tar pending_in_$i
 done
-bk clone $Q -sMYALIAS parent newcomp_taken
+bk clone $Q -sMYALIAS parent newcomp_taken || fail
 	cd newcomp_taken
 	mkdir newcomp
 	touch newcomp/must_exist
@@ -139,8 +139,8 @@ save_state()
 	GCC=`bk log -r+ -d:REV: gcc/ChangeSet`
 	COMP=`bk log -r+ -d:REV: comp/ChangeSet`
 	COMPS=`bk components 2>/dev/null`
-	ALIASES=`bk alias show`
-	MYALIAS=`bk alias show MYALIAS`
+	ALIASES=`bk alias`
+	MYALIAS=`bk alias MYALIAS`
 	COMP2=NO
 	COMP3=NO
 	DEEP1=NO
@@ -163,8 +163,8 @@ check_state()
 	test "$GCC" = "`bk log -r+ -d:REV: gcc/ChangeSet`" || err="gcc $err"
 	test "$COMP" = "`bk log -r+ -d:REV: comp/ChangeSet`" || err="comp $err"
 	test "$COMPS" = "`bk components 2>/dev/null`" || err="comps $err"
-	test "$ALIASES" = "`bk alias show`" || err="aliases $err"
-	test "$MYALIAS" = "`bk alias show MYALIAS`" || err="MYALIAS $err"
+	test "$ALIASES" = "`bk alias`" || err="aliases $err"
+	test "$MYALIAS" = "`bk alias MYALIAS`" || err="MYALIAS $err"
 	test $COMP2 = NO -a -d "$comp2" && err="comp2 $err"
 	test $COMP3 = NO -a -d "$comp3" && err="comp3 $err"
 	# deep1/deep2/file should exist, deep1/file should not

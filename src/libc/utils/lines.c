@@ -15,6 +15,7 @@ static	int	addLine_lasti;
 
 /*
  * pre allocate line space.
+ * room for n-1 lines
  */
 char	**
 allocLines(int n)
@@ -84,6 +85,31 @@ nLines(char **space)
               EACH(space);
       }
       return (i-1);
+}
+
+/*
+ * copy array to the end of space and then free array
+ */
+char **
+catLines(char **space, char **array)
+{
+	int	n1, n2;
+	char	**new;
+
+	unless (space) return (array); /* simple case */
+
+	n2 = nLines(array);
+	n1 = nLines(space);
+
+	if (n1+n2 >= LSIZ(space)) {
+		new = allocLines(n1+n2+1);
+		memcpy(new, &space[1], n1*sizeof(void *));
+		free(space);
+		space = new;
+	}
+	memcpy(&space[n1+1], &array[1], n2*sizeof(void *));
+	free(array);
+	return (space);
 }
 
 void

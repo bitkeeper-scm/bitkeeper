@@ -120,8 +120,8 @@ libc = Library("libc", stubs + Split('''
 	utils/dirname.c
 	utils/dirs.c
 	utils/efopen.c
-	utils/filecopy.c
 	utils/fileinfo.c
+	utils/fileops.c
 	utils/fileutils.c
 	utils/findpid.c
 	utils/fmem.c

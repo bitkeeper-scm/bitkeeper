@@ -4,20 +4,54 @@
 
 private	int	unpopulate_check(comp *c, char **urls);
 
-
+/*
+ * populate   => bk alias add OPTS HERE args
+ * unpopulate => bk alias rm  OPTS HERE args
+ */
 int
-components_main(int ac, char **av)
+populate_main(int ac, char **av)
 {
-	int	c, i, j, k;
+	int	c;
+	int	rc;
+	char	**nav = 0;
+
+	/* handle populate and unpopulate */
+	nav = addLine(nav,
+	    strdup(streq(av[0], "unpopulate") ? "rm" : "add"));
+	while ((c = getopt(ac, av, "f@|q")) != -1) {
+		if (c == GETOPT_ERR) {
+			sys("bk", "help", "-s", prog, SYS);
+			return (1);
+		}
+		nav = addLine(nav, aprintf("-%c%s", c, optarg ? optarg : ""));
+	}
+	nav = addLine(nav, strdup("HERE"));
+	if (av[optind]) {
+		while (av[optind]) {
+			nav = addLine(nav, strdup(av[optind++]));
+		}
+	} else {
+		nav = addLine(nav, strdup("."));
+	}
+	nav = addLine(nav, 0);
+
+	getoptReset();
+	rc = alias_main(nLines(nav), nav);
+	freeLines(nav, free);
+	return (rc);
+}
+
+/*
+ * called with cp->alias set to which components should be populated
+ * this function added or removes component such that the cp->present
+ * matches cp->alias
+ */
+int
+nested_populate(nested *n, char **urls, int force, int quiet)
+{
+	int	i, j;
 	clonerc	clonerc;
-	int	keys = 0, add = 0, rm = 0, here = 0, quiet = 0, force = 0;
-	int	set = 0;
-	int	citool = 0, trim_noconnect = 0;
-	int	from_clone = 0;
-	char	**urls = 0;
-	char	**aliases = 0;
 	char	**vp = 0;
-	char	**cav = 0;
 	char	*checkfiles;
 	char	**list;
 	remote	*r;
@@ -25,246 +59,9 @@ components_main(int ac, char **av)
 	FILE	*f;
 	hash	*urllist;
 	int	status, rc;
-	nested	*n;
-	char	*subcmd = 0;
-	project	*prod;
-	char	*first = 0;
 
-	unless (start_cwd) start_cwd = strdup(proj_cwd());
-
-	if (av[1]) {
-		subcmd = av[1];
-		++av;
-		--ac;
-	} else {
-		subcmd = "here";
-	}
-	while ((c = getopt(ac, av, "@|CcE;fklq")) != -1) {
-		switch(c) {
-		    case '@':
-			if (optarg && (optarg[0] == '@')) {
-				unless (urls = file2Lines(urls, optarg+1)) {
-					perror(optarg+1);
-					return (1);
-				}
-			} else if (optarg) {
-				urls = addLine(urls, strdup(optarg));
-			} else {
-				unless (list = parent_allp()) {
-					fprintf(stderr, "%s: -@ failed as "
-					    "repository has no parent\n",
-					    prog);
-					return (1);
-				}
-				EACH(list) urls = addLine(urls, list[i]);
-				freeLines(list, 0);
-			}
-			break;
-		    case 'C': from_clone = 1; break;
-		    case 'c':
-			if (streq(subcmd, "check")) {
-				trim_noconnect = 1;
-			} else {
-				citool = 1;
-			}
-			break;
-		    case 'E':
-			/* we just error check and pass through to clone */
-			unless (strneq("BKU_", optarg, 4)) {
-				fprintf(stderr,
-				    "%s: vars must start with BKU_\n", prog);
-				return (1);
-			}
-			cav = addLine(cav, aprintf("-E%s", optarg));
-			break;
-		    case 'f': force = 1; break;
-		    case 'k': keys = 1; break;
-		    case 'l': cav = addLine(cav, strdup("-l")); break;
-		    case 'q':
-			quiet = 1;
-			cav = addLine(cav, strdup("-q"));
-			break;
-		    default:
-usage:			sys("bk", "help", "-s", prog, SYS);
-			freeLines(aliases, free);
-			if (first) free(first);
-			return (1);
-		}
-	}
-	unless (prod = proj_product(0)) {
-		fprintf(stderr, "%s: must be in a nested collection.\n", prog);
-		return (1);
-	}
-	EACH(urls) {
-		char	*u = urls[i];
-
-		urls[i] = parent_normalize(u);
-		free(u);
-	}
-	if (citool && proj_isComponent(0)) {
-		first = strdup(proj_comppath(0));
-	}
-	(void)proj_cd2product();
-	if ((here = streq(subcmd, "here")) || streq(subcmd, "missing")) {
-		if (av[optind]) goto usage;
-		assert(!citool || (here && !keys));
-		if (first) printf("%s\n", first);
-		if (citool) printf(".\n");
-		n = nested_init(0, 0, 0, NESTED_PENDING);
-		assert(n);
-		aliases = nested_here(0);
-		nested_aliases(n, n->tip, &aliases, 0, n->pending);
-		EACH_STRUCT(n->comps, cp, i) {
-			if (cp->product) continue;
-			if (cp->present && !cp->alias) {
-			    	fprintf(stderr,
-				    "WARN: %s: %s is present but not in "
-				    "HERE alias\n", prog, cp->path);
-			} else if (!cp->present && cp->alias) {
-			    	fprintf(stderr,
-				    "WARN: %s: %s is not present but is in "
-				    "HERE alias\n", prog, cp->path);
-			}
-			if (here && !cp->present) continue;
-			if (!here && cp->present) continue;
-			if (first && streq(first, cp->path)) continue;
-			if (keys) {
-				printf("%s\n", cp->rootkey);
-			} else {
-				printf("%s\n", cp->path);
-			}
-		}
-		nested_free(n);
-		freeLines(aliases, free);
-		if (first) free(first);
-		return (0);
-	} else if (streq(subcmd, "check")) {
-		freeLines(cav, free);
-		if (av[optind] || from_clone || force || keys) goto usage;
-		n = nested_init(0, 0, 0, NESTED_PENDING);
-		assert(n);
-		rc = urllist_check(n, quiet, trim_noconnect, urls);
-		nested_free(n);
-		return (rc);
-	} else if (streq(subcmd, "add")) {
-		add = 1;
-	} else if (streq(subcmd, "rm")) {
-		rm = 1;
-	} else if (streq(subcmd, "set")) {
-		add = 1;
-		set = 1;
-	} else if (streq(subcmd, "where")) {
-		unless (av[optind]) {
-			urllist_dump(0);
-		} else if (streq(av[optind], "rm")) {
-			/* Perhaps _rm? or change the verb? */
-			unlink(NESTED_URLLIST);
-		} else {
-			for ( ; av[optind]; optind++) {
-				urllist_dump(av[optind]);
-			}
-		}
-		return (0);
-	} else {
-		goto usage;
-	}
-	if (first) free(first);
-	if (keys) goto usage;
-	unless (av[optind]) goto usage;
-	assert((add && !rm) || (rm && !add));
-	n = nested_init(0, 0, 0, NESTED_PENDING);
-	assert(n);
-	unless (set) aliases = nested_here(0);
 	urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
 	assert(urllist);
-	if (from_clone) {
-		char	*parent;
-
-		prog = "clone";
-
-		/*
-		 * Special knowledge: at this time in a clone the parent
-		 * will only have one entry in it -- the clone source.
-		 *
-		 * XXX: parent.c defines PARENT -- could move to a .h
-		 * Could possibly make use of one of the interfaces in 
-		 * parent.c which returns an addLines? I didn't dig there.
-		 */
-		parent = loadfile("BitKeeper/log/parent", 0);
-		chomp(parent);
-
-		/* expand pathnames in the urllist with the parent URL */
-		urllist_normalize(urllist, parent);
-
-		/*
-		 * find out which components are present remotely and
-		 * update URLLIST
-		 */
-		assert(!aliases);
-		aliases = file2Lines(0, "BitKeeper/log/RMT_HERE");
-		unlink("BitKeeper/log/RMT_HERE");
-		EACH(aliases) {
-			if (isKey(aliases[i]) &&
-			    !nested_findKey(n, aliases[i])) {
-				/* we can ignore extra rootkeys */
-				removeLineN(aliases, i, free);
-				i--;
-			}
-		}
-
-		// XXX wrong, for clone -r, the meaning of HERE may have changed
-		if (nested_aliases(n, n->tip, &aliases, 0, n->pending)) {
-			/* It is OK if this fails, just tag everything */
-			EACH_STRUCT(n->comps, cp, i) cp->alias = 1;
-		}
-		EACH_STRUCT(n->comps, cp, i) {
-			if (cp->product || !cp->alias) continue;
-
-			urllist_addURL(urllist, cp->rootkey, parent);
-		}
-		free(parent);
-
-		/* just in case we exit early */
-		if (hash_toFile(urllist, NESTED_URLLIST)) {
-			perror(NESTED_URLLIST);
-		}
-
-		/* keep RMT_HERE for -sHERE */
-		for (i = optind; av[i]; i++) {
-			if (strieq(av[i], "here") || strieq(av[i], "there")) {
-				break;
-			}
-		}
-		unless (av[i]) {
-			freeLines(aliases, free);
-			aliases = 0;
-		}
-	}
-	for ( ; av[optind]; optind++) {
-		list = addLine(0, strdup(av[optind]));
-		if (aliasdb_chkAliases(n, 0, &list, start_cwd)) return (1);
-		EACH(list) {
-			if (add) {
-				/* no duplicates */
-				removeLine(aliases, list[i], free);
-				aliases = addLine(aliases, strdup(list[i]));
-			} else {
-				unless (removeLine(aliases, list[i], free)) {
-					fprintf(stderr, "%s: can't remove "
-					    "'%s' as it is not currently "
-					    "populated.\n",
-					    prog, av[optind]);
-					return (1);
-				}
-			}
-		}
-		freeLines(list, free);
-	}
-	if (nested_aliases(n, n->tip, &aliases, 0, n->pending)) {
-		/* we tested them above */
-		assert("bad alias list" == 0);
-	}
-
 	/*
 	 * Look to see if removed any components will cause a problem
 	 * and fail early if we see any.
@@ -320,8 +117,8 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 
 				vp = addLine(0, strdup("bk"));
 				vp = addLine(vp, strdup("clone"));
-				EACH_INDEX(cav, k) {
-					vp = addLine(vp, strdup(cav[k]));
+				if (quiet) {
+					vp = addLine(vp, strdup("-q"));
 				}
 				vp = addLine(vp, strdup("-p"));
 				vp = addLine(vp, aprintf("-r%s", cp->deltakey));
@@ -464,7 +261,6 @@ conflict:
 		}
 	}
 	STOP_TRANSACTION();
-	freeLines(cav, free);
 	unless (rc) {
 		EACH_STRUCT(n->comps, cp, i) {
 			/* just check that the code above all worked */
@@ -475,16 +271,14 @@ conflict:
 			}
 		}
 	}
-	nested_free(n);
 
 	/* do consistency check at end */
-	unless (rc) lines2File(aliases, "BitKeeper/log/HERE");
+	unless (rc) nested_writeHere(n);
 	if (hash_toFile(urllist, NESTED_URLLIST)) perror(NESTED_URLLIST);
 	fclose(f);
 	rc |= run_check(quiet, checkfiles, quiet ? 0 : "-v", 0);
 	unlink(checkfiles);
 	free(checkfiles);
-	freeLines(aliases, free);
 	hash_free(urllist);
 	return (rc);
 }

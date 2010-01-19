@@ -143,4 +143,8 @@ char	*nested_errmsg(void);
 char	**nested_lockers(project *p);
 void	nested_printLockers(project *p, FILE *out);
 void	nested_updateIdcache(project *comp);
+
+/* populate.c */
+int	nested_populate(nested *n, char **urls, int force, int quiet);
+
 #endif	// _NESTED_H

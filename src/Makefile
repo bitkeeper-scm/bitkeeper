@@ -158,6 +158,7 @@ OBJ =	bkver.o cmd.o \
 	opark.o \
 	parent.o park.o partition.o \
 	pending.o preference.o product.o proj.o \
+	populate.o \
 	port/bkd_server.o \
 	port/check_rsh.o \
 	port/gethomedir.o \

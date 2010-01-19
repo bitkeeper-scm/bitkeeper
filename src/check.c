@@ -100,10 +100,10 @@ check_main(int ac, char **av)
 	ticker	*tick = 0;
 
 	timestamps = 0;
-	while ((c = getopt(ac, av, "@;aBcdefgpRsTvw")) != -1) {
+	while ((c = getopt(ac, av, "@|aBcdefgpRsTvw")) != -1) {
 		switch (c) {
 			/* XXX: leak - free parent freeLines(parent, 0) */
-		    case '@': parent = addLine(parent, optarg); break;
+		    case '@': if (bk_urlArg(&parent, optarg)) return (1);break;
 		    case 'a': all++; break;			/* doc 2.0 */
 		    case 'B': doBAM++; break;
 		    case 'c':					/* doc 2.0 */
@@ -1921,7 +1921,7 @@ repair_main(int ac, char **av)
 	nav[++i] = "-r";
 	nav[++i] = "check";
 	nav[++i] = "-acffv";
-	while ((c = getopt(ac, av, "@;")) != -1) {
+	while ((c = getopt(ac, av, "@|")) != -1) {
 		switch (c) {
 		    case '@':
 			nav[++i] = aprintf("-@%s", optarg);

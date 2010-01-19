@@ -73,6 +73,7 @@
 char	**addLine(char **space, void *line);
 char	**allocLines(int n);
 int	nLines(char **space);
+char	**catLines(char **space, char **array);
 char	**splitLine(char *line, char *delim, char **tokens);
 char	**splitLineToLines(char *line, char **tokens);
 char	*joinLines(char *sep, char **space);

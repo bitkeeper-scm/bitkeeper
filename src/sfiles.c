@@ -220,7 +220,7 @@ usage:				system("bk help -s sfiles");
 		if (opts.out) fclose(opts.out);
 		proj_cd2product();
 		comps = addLine(0, strdup("."));
-		comps = prog2Lines(comps, "bk components here");
+		comps = prog2Lines(comps, "bk components -h");
 		nav = addLine(0, "bk");
 		nav = addLine(nav, "sfiles");
 		nav = addLine(nav, "-h");

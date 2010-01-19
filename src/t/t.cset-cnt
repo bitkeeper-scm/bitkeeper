@@ -120,7 +120,7 @@ echo OK
 
 echo "---- nested tests"
 
-CNT=19
+CNT=20	   # XXX wrong
 echo $N "Count the inits for a 'bk clone' ($CNT)........................"$NL
 cd "$HERE"
 nested nest

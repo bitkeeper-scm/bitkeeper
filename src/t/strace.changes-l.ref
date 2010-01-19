@@ -2,7 +2,7 @@
 _getdir 15
 access 29
 chmod 12
-close 88
+close 89
 lseek 35
 lstat 163
 mkdir 4

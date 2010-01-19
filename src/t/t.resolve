@@ -875,7 +875,8 @@ bk _rm -f SCCS/r.ChangeSet
 # Fake some comments
 echo "comments" | bk cfile save 'dir2/space file'
 cd ..
-echo 'u' | bk resolve -t >OUT 2>ERR && {
+echo u > U
+bk resolve -t <U >OUT 2>ERR && {
 	echo failed
 	echo "Resolver should have failed"
 	cat OUT
