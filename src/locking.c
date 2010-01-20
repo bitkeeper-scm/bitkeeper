@@ -714,18 +714,17 @@ nested_isStale(char *file)
 		if ((now - sb.st_atime) > nested_getTimeout(0)) goto stale;
 	}
 	/* if we got here, we must be holding a valid lock */
-out:	free(nlid);
+	free(nlid);
 	freeNLID(nl);
 	return (0);
 
 stale:	if (nl && (nl->kind == 'w')) {
-		/*
-		 * XXX: since we don't have a nested-aware abort right
-		 * now, we just punt on staling write locks, remove this
-		 * block when we can revert a write lock and replace it
-		 * with a call to abort.
-		 */
-		goto out;
+		if (system("bk -P abort -qf")) {
+			nl_errno = NL_ABORT_FAILED;
+			free(nlid);
+			freeNLID(nl);
+			return (1);
+		}
 	}
 	if (unlink(file)) {
 		error("Could not unlink '%s', permission problem?\n", file);

@@ -157,7 +157,7 @@ usage:			system("bk help -s lock");
 		if (tcp) {
 			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
-			if (nested_unlock(0, nlid)) {
+			if ((getenv("_BK_LEAVE_LOCKED") == 0) && nested_unlock(0, nlid)) {
 				fprintf(stderr, "nested unlock failed:\n%s\n",
 				    nested_errmsg());
 				exit (1);
@@ -172,7 +172,7 @@ usage:			system("bk help -s lock");
 			usleep(500000);
 		} while (nested_mine(0, nlid, 0) && !caught);
 		if (caught) {
-			if (nested_unlock(0, nlid)) {
+			if ((getenv("_BK_LEAVE_LOCKED") == 0) && nested_unlock(0, nlid)) {
 				fprintf(stderr, "nested unlock failed:\n%s\n",
 				    nested_errmsg());
 				exit (1);
@@ -212,7 +212,7 @@ usage:			system("bk help -s lock");
 		if (tcp) {
 			tcpHandshake(lockclient, tcp);
 			nsock = tcp_accept(tcp);
-			if (nested_unlock(0, nlid)) {
+			if ((getenv("_BK_LEAVE_LOCKED") == 0) && nested_unlock(0, nlid)) {
 				fprintf(stderr, "nested unlock failed:\n%s\n",
 				    nested_errmsg());
 				exit (1);
@@ -227,7 +227,7 @@ usage:			system("bk help -s lock");
 			usleep(500000);
 		} while (nested_mine(0, nlid, 0) && !caught);
 		if (caught) {
-			if (nested_unlock(0, nlid)) {
+			if ((getenv("_BK_LEAVE_LOCKED") == 0) && nested_unlock(0, nlid)) {
 				fprintf(stderr, "nested unlock failed:\n%s\n",
 				    nested_errmsg());
 				exit (1);

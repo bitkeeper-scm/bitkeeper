@@ -45,3 +45,22 @@ bk _kill $NLOCK
 grep -q "lock does not match this lock" LOCKMSG || fail -f LOCKMSG
 bk _kill $NLOCK2
 echo OK
+
+echo $N Test stale write lock is cleared.............................$NL
+_BK_LEAVE_LOCKED=1
+export _BK_LEAVE_LOCKED
+NLOCK=`bk lock -Ppidfile -Wt 2> LOCKMSG`
+PID=`cat pidfile`
+bk lock -l 2>&1 | grep -q "$PID" || fail did not lock
+bk _kill $NLOCK
+c=0
+while bk _kill -0 $PID
+do	bk _usleep 1000
+	c=`expr $c + 1`
+	test $c = 10 && fail too many retries
+done
+test -f BitKeeper/writer/nested_lock || fail did not leave locked
+bk lock -l 2>&1 | grep -q "$PID" && fail did not clear stale lock
+_BK_LEAVE_LOCKED=
+export _BK_LEAVE_LOCKED
+echo OK
