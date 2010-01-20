@@ -158,7 +158,7 @@ process(char	*root,
 	s = sccs_keyinit(0, root, INIT_NOWARN|INIT_NOGCHK|INIT_NOCKSUM, idDB);
 	unless (s) {
 		unless (*goneDB) {
-			*goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+			*goneDB = loadDB(GONE, 0, DB_GONE);
 		}
 		if (gone(root, *goneDB)) return;
 		fprintf(stderr, "Cannot keyinit %s\n", root);

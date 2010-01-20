@@ -8436,7 +8436,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	} else if (HASH(s)) {
 		int	flags = CSET(s) ? DB_KEYFORMAT : 0;
 
-		ghash = loadDB(name, 0, flags|DB_USEFIRST);
+		ghash = loadDB(name, 0, flags);
 		shash = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	}
 	else unless (gfile = fopen(name, mode)) {
@@ -8696,8 +8696,8 @@ diffMDBM(sccs *s, char *old, char *new, char *tmpfile)
 {
 	FILE	*f = fopen(tmpfile, "w");
 	int	flags = CSET(s) ? DB_KEYFORMAT : 0;
-	MDBM	*o = loadDB(old, 0, flags|DB_USEFIRST);
-	MDBM	*n = loadDB(new, 0, flags|DB_USEFIRST);
+	MDBM	*o = loadDB(old, 0, flags);
+	MDBM	*n = loadDB(new, 0, flags);
 	/* 'p' is not used as hash, but has simple storage */
 	MDBM	*p = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	kvpair	kv;
@@ -16796,7 +16796,6 @@ loadDB(char *file, int (*want)(char *), int style)
 	char	*v;
 	int	idcache = 0, first = 1, quiet = 1;
 	char	*cwd = 0, *t;
-	int	flags;
 	char	buf[MAXLINE];
 	u32	sum = 0;
 
@@ -16847,14 +16846,6 @@ out:		if (f) fclose(f);
 	}
 	DB = mdbm_mem();
 	assert(DB);
-	switch (style & (DB_NODUPS|DB_USEFIRST|DB_USELAST)) {
-	    case DB_NODUPS:	flags = MDBM_INSERT; break;
-	    case DB_USEFIRST:	flags = MDBM_INSERT; break;
-	    case DB_USELAST:	flags = MDBM_REPLACE; break;
-	    default:
-		fprintf(stderr, "Bad option to loadDB: %x\n", style);
-		exit(1);
-	}
 	while (fnext(buf, f)) {
 		if (buf[0] == '#') {
 			if (strneq(buf, "#$sum$ ", 7)) {
@@ -16896,7 +16887,6 @@ out:		if (f) fclose(f);
 			} else {
 				v = strchr(buf, ' ');
 			}
-			if (!v && (style & DB_NOBLANKS)) continue;
 			unless (v) {
 				if (first && idcache) {
 					fprintf(stderr,
@@ -16910,7 +16900,7 @@ out:		if (f) fclose(f);
 			}
 			*v++ = 0;
 		}
-		switch (mdbm_store_str(DB, buf, v, flags)) {
+		switch (mdbm_store_str(DB, buf, v, MDBM_INSERT)) {
 		    case 0: break;
 		    case 1:
 		    	if ((style & DB_NODUPS)) {

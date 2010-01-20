@@ -1464,7 +1464,7 @@ slotTaken(opts *opts, char *slot)
 
 	/* load gone from RESYNC */
 	unless (opts->goneDB) {
-		opts->goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+		opts->goneDB = loadDB(GONE, 0, DB_GONE);
 	}
 
 	chdir(RESYNC2ROOT);

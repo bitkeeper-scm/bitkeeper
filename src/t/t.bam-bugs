@@ -135,6 +135,17 @@ bk bam check $Q || {
 }
 echo OK
 
+echo $N Again with dups in gone file.................................$NL
+bk edit $Q BitKeeper/etc/gone
+cat BitKeeper/etc/gone > GONE
+cat BitKeeper/etc/gone >> GONE
+mv GONE BitKeeper/etc/gone
+bk bam check $Q || fail
+bk -r check -ac || fail
+bk unedit BitKeeper/etc/gone
+echo OK
+
+
 echo $N Gamelogic - checkin repo1/foo from repo2 updates wrong log ..$NL
 cd "$HERE"
 bk clone $Q project gamelogic

@@ -250,6 +250,19 @@ grep -q 'Marked gone (bk help chk1): foo.c' MSGS || {
 }
 echo OK
 
+echo $N Test dups in gone file.......................................$NL
+cd "$HERE/project"
+bk edit $Q BitKeeper/etc/gone
+cat BitKeeper/etc/gone > GONE
+cat BitKeeper/etc/gone >> GONE
+mv GONE BitKeeper/etc/gone
+bk -r check -ac >ERR 2>&1 || fail -f ERR dups in gone make check fail
+bk changes > /dev/null 2>ERR || fail -f ERR dups in gone make changes fail
+test -s ERR && fail -f ERR dups in gone make changes fail
+bk delta $Q -ygone BitKeeper/etc/gone
+bk commit $Q -ygone 2>ERR
+echo OK
+
 echo $N Demo pushing new file that replaces a gone\'d file ...........$NL
 cd ../project
 bk -r check -ac || exit 1
@@ -299,7 +312,7 @@ bk -r check -agg | bk gone $Q -
 bk -r check -af || exit 1
 bk changes -v -r+ -nd:GFILE:@:REV: > OUT || exit 1
 cat <<EOF > WANT
-ChangeSet@1.7
+ChangeSet@1.8
 EOF
 cmpfiles OUT WANT
 echo OK
@@ -465,3 +478,4 @@ echo $N Pull from staging to contractor .............................$NL
 cd "$HERE/contractor"
 bk pull $Q || exit 1
 echo OK
+

@@ -146,7 +146,7 @@ usage:		system("bk help -s takepatch");
 	} else {
 
 		/* OK if this returns NULL */
-		goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+		goneDB = loadDB(GONE, 0, DB_GONE);
 
 		loadskips();
 

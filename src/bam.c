@@ -1673,7 +1673,7 @@ sfiles_bam_main(int ac, char **av)
 	fsfiles = popen("bk sfiles -gpA", "r");
 
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+	goneDB = loadDB(GONE, 0, DB_GONE);
 
 	/* find all BAM sfiles in committed csets */
 	if (f = popen("bk get -qkpr+ ChangeSet", "r")) {

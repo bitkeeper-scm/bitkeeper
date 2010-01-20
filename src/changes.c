@@ -954,7 +954,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			perror("idcache");
 			exit(1);
 		}
-		rstate->goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+		rstate->goneDB = loadDB(GONE, 0, DB_GONE);
 		chdir(buf);
 		rstate->graphDB = mdbm_mem();
 		if (dkey) {

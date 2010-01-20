@@ -227,7 +227,7 @@ check_main(int ac, char **av)
 
 	/* This can legitimately return NULL */
 	/* XXX - I don't know for sure I always need this */
-	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+	goneDB = loadDB(GONE, 0, DB_GONE);
 
 	if (check_eoln) {
 		eoln_native = !streq(proj_configval(0, "eoln"), "unix");

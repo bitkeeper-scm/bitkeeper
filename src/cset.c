@@ -688,7 +688,7 @@ csetlist(cset_t *cs, sccs *cset)
 		cs->makepatch = 0;
 		goto fail;
 	}
-	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+	goneDB = loadDB(GONE, 0, DB_GONE);
 
 	/* checksum the output */
 	if (cs->makepatch) {
