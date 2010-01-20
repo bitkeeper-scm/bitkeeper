@@ -5,14 +5,14 @@
 bk alias \- manage aliases for lists of components
 .SH SYNOPSIS
 .B bk alias 
-.[B] add|rm|set
+.[B] add|rm|set|new|list
 .[B] \-Cehmk
 .[OPTreq] \-@ URL
 .ARG name
 .[ARG] component \ ...
 .br
 .SS CREATING AN ALIAS
-.B bk alias 
+.B bk alias new
 .[B] \-C
 .ARG name
 .ARG component \ ...
@@ -46,12 +46,12 @@ bk alias \- manage aliases for lists of components
 .ARG component \ ...
 .br
 .SS LIST ALL ALIASES
-.B bk alias
+.B bk alias list
 .[OPTreq] \-r rev
 .[B] \-hm
 .br
 .SS SHOW AN ALIAS
-.B bk alias 
+.B bk alias list
 .[OPTreq] \-r rev
 .[B] \-e
 .[B] \-hm
@@ -174,6 +174,12 @@ Reserved name, conflicts with the "bk alias rm" command.
 .tp
 set
 Reserved name, conflicts with the "bk alias set" command.
+.tp
+new
+Reserved name, conflicts with the "bk alias new" command.
+.tp
+list
+Reserved name, conflicts with the "bk alias list" command.
 .LP
 The predefined aliases ALL, DEFAULT, HERE, THERE, are case insensitive,
 i.e., "default" and
@@ -213,32 +219,32 @@ older revision of the BitKeeper/etc/aliases file.
 .SH EXAMPLES
 To create an alias that points to a named list of components:
 .DS
-$ bk alias COMPILER ./cmd/gcc ./cmd/as ./cmd/ld ./cmd/nm
+$ bk alias new COMPILER ./cmd/gcc ./cmd/as ./cmd/ld ./cmd/nm
 .DE
 or, if you wish to type less:
 .DS
 $ cd cmd
-$ bk alias COMPILER ./gcc ./as ./ld ./nm
+$ bk alias new COMPILER ./gcc ./as ./ld ./nm
 .DE
 To create a higher level alias that includes the debugger:
 .DS
-$ bk alias DEV-TOOLS ./gdb COMPILER
+$ bk alias new DEV-TOOLS ./gdb COMPILER
 .DE
 List all aliases:
 .DS
-$ bk alias
+$ bk alias list
 COMPILER
 DEV-TOOLS
 .DE
 Show an alias that contains another:
 .DS
-$ bk alias DEV-TOOLS
+$ bk alias list DEV-TOOLS
 COMPILER
 \&./cmd/gdb
 .DE
 Expand an alias into paths:
 .DS
-$ bk alias -e DEV-TOOLS
+$ bk alias list -e DEV-TOOLS
 \&./cmd/as
 \&./cmd/gcc
 \&./cmd/gdb
