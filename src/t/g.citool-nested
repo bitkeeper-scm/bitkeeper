@@ -1,0 +1,46 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2005 Larry McVoy
+
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/ci.rc"
+
+doFiles() {
+	for f in file1 file2 file3 file4 file5 ; do
+		echo "this is $f" > $f
+		bk ci $Q -i -y'new file' $f || exit 1
+	done
+	bk commit $Q -y'initial checkin' || exit 1
+}
+
+echo $N Create some data ............................................$NL
+nested project
+doFiles
+cd gcc
+doFiles
+cd ../gdb
+doFiles
+cd ..
+echo OK
+
+echo $N change in product but no components shows up ................$NL
+bk edit $Q file1
+echo "# gratuitous change" >> file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_buttonPress "Quit"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK

@@ -307,6 +307,7 @@ unshiftLine(char **space, void *line)
 	n = nLines(space);
 	if (n > 0) memmove(&space[2], &space[1], n * sizeof(void *));
 	space[1] = line;
+	if (space == addLine_lastp) ++addLine_lasti;
 	return (space);
 }
 
@@ -323,6 +324,7 @@ shiftLine(char **space)
 	ret = space[1];
 	if (n > 1) memmove(&space[1], &space[2], (n-1)*sizeof(void *));
 	space[n] = 0;
+	if (space == addLine_lastp) --addLine_lasti;
 	return (ret);
 }
 

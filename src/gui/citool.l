@@ -1802,7 +1802,7 @@ main(int argc, string argv[])
 	gui();
 
 	if (self.nested) {
-		f = popen("bk components here -c", "r");
+		f = popen("bk components -ch", "r");
 		while (defined(arg = fgetline(f))) {
 			if (arg eq ".") {
 				arg = self.root;
