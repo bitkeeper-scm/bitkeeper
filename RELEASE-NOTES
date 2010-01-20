@@ -1,4 +1,14 @@
-Release notes for BitKeeper version XXX (released ##-XXX-2007)
+Release notes for BitKeeper pre 5.0
+
+This is a preview of a major release of BitKeeper
+
+BK-Nested - supports organizing a collection of repositories.
+This support scaling by linking many repositories together but
+not requiring all repositories be present.
+
+SCCS directories are no longer stored each directory in the repository.
+
+Command level changes:
 
 bk changes
     extended dspecs, search path, etc
@@ -49,8 +59,6 @@ Misc fixes
 - BitKeeper now always uses unique names in the BitKeeper/deleted
   directory and avoids lots of rename conflicts in some cases.
 
-- XXX tcl/tk was updated.  Don't know what that means.
-
 - BitKeeper will now refuse to run a different version of bk as a
   subprocess.  We have had cases where users have forgotten to restart
   their bkd's after upgrade BitKeeper and this cases bugs.  BitKeeper
@@ -60,10 +68,3 @@ Environment variables that are used to control BitKeeper's behavior
 can not longer be set to an empty string.  So for example:
   BK_NO_TRIGGERS="" bk push
 won't work.  Use BK_NO_TRIGGERS=1 instead.
-
------- 
-Bugs fixed
-
-    2007-12-10-001 'bk mv a/ b/' failed because of the extra slash
-    2008-07-16-001 'bk sfiles -U dir' didn't correctly skip bk files
-    2008-05-01-001 failed push to an unrelated package would exit 0
