@@ -819,7 +819,7 @@ npmerge:				fprintf(stderr,
 		goto out;
 	}
 
-	if (hash_toFile(urllist, NESTED_URLLIST)) perror(NESTED_URLLIST);
+	urllist_write(urllist);
 	/*
 	 * We are about to populate new components so clear all
 	 * mappings of directories to the product.

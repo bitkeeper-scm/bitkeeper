@@ -513,11 +513,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
                         if (c->product || !c->remotePresent) continue;
                         flush |= urllist_addURL(urllist, c->rootkey, url);
                 }
-                if (flush) {
-                        if (hash_toFile(urllist, NESTED_URLLIST)) {
-                                perror(NESTED_URLLIST);
-                        }
-                }
+                if (flush) urllist_write(urllist);
                 hash_free(urllist);
         }
 	STOP_TRANSACTION();

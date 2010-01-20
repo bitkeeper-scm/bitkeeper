@@ -131,6 +131,7 @@ int	urllist_rmURL(hash *h, char *rk, char *url);
 int	urllist_check(nested *n, int quiet, int trim_noconnect, char **urls);
 void	urllist_dump(char *name);
 int	urllist_normalize(hash *urllist, char *url);
+int	urllist_write(hash *urllist);
 
 /* locking.c */
 

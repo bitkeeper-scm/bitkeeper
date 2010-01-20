@@ -93,3 +93,10 @@ echo $N And show that this rewritten URL works ......................$NL
 mv ../project.save ../project
 bk nested check || fail
 echo OK
+
+echo $N Show that hardlinked urllist is not a problem ...............$NL
+cd "$HERE"
+cp pull-targ/BitKeeper/log/urllist OLD
+bk clone $Q -l pull-targ copy3 || fail
+cmp -s OLD pull-targ/BitKeeper/log/urllist || fail should not have changed
+echo OK

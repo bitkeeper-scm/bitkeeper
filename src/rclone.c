@@ -230,11 +230,7 @@ rclone_ensemble(remote *r)
 		}
 	}
 
-	unless (rc) {
-		if (hash_toFile(urllist, NESTED_URLLIST)) {
-			perror(NESTED_URLLIST);
-		}
-	}
+	unless (rc) urllist_write(urllist);
 	/*
 	 * XXX - put code in here to finish the transaction.
 	 */

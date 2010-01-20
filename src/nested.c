@@ -1257,7 +1257,7 @@ urllist_check(nested *n, int quiet, int trim_noconnect, char **urls)
 	}
 
 	/* write our new urllist */
-	if (hash_toFile(urllist, NESTED_URLLIST)) perror(NESTED_URLLIST);
+	urllist_write(urllist);
 
 out:	unlink(keylist);
 	hash_free(urllist);
@@ -1383,6 +1383,24 @@ urllist_normalize(hash *urllist, char *url)
 	freeLines(updates, free);
 	hash_free(seen);
 	return (updated);
+}
+
+int
+urllist_write(hash *urllist)
+{
+	unless (isdir(BKROOT)) {
+		fprintf(stderr, "urllist_write() not at root\n");
+		return (-1);
+	}
+	if (hash_toFile(urllist, "BitKeeper/log/x.urllist")) {
+		perror("BitKeeper/log/x.urllist");
+		return (-1);
+	}
+	if (fileMove("BitKeeper/log/x.urllist", NESTED_URLLIST)) {
+		perror(NESTED_URLLIST);
+		return (-1);
+	}
+	return (0);
 }
 
 /*

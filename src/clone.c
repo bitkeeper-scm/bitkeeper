@@ -635,9 +635,7 @@ clone2(remote *r)
 
 
 		/* just in case we exit early */
-		if (hash_toFile(urllist, NESTED_URLLIST)) {
-			perror(NESTED_URLLIST);
-		}
+		urllist_write(urllist);
 		if (emptyLines(opts->aliases)) {
 			opts->aliases =
 			    addLine(opts->aliases, strdup("default"));

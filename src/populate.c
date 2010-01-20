@@ -274,7 +274,7 @@ conflict:
 
 	/* do consistency check at end */
 	unless (rc) nested_writeHere(n);
-	if (hash_toFile(urllist, NESTED_URLLIST)) perror(NESTED_URLLIST);
+	urllist_write(urllist);
 	fclose(f);
 	rc |= run_check(quiet, checkfiles, quiet ? 0 : "-v", 0);
 	unlink(checkfiles);
