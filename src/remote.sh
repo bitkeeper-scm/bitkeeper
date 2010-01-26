@@ -106,7 +106,7 @@ case $CMD in
 			echo "Tip not tagged, not copying images"	
 			exit 1
 		}
-		ARCH=`utils/os`
+		ARCH=`utils/bk_version`
 		test x$ARCH = x && {
 			echo "Architecture unknown, not copying images"
 			exit 1
