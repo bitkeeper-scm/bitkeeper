@@ -93,7 +93,7 @@ changes_main(int ac, char **av)
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
-	while ((c = getopt(ac, av, "1aBc;Dd;efhi;kLmnPqRr;tTu;U;Vv/;x;")) != -1)
+	while ((c = getopt(ac, av, "1aBc;Dd;efhi;kLmnPqRr;tTu;U;Vv/;x;", 0)) != -1)
 	{
 		unless (c == 'L' || c == 'R' || c == 'D') {
 			if (optarg) {
@@ -111,7 +111,7 @@ changes_main(int ac, char **av)
 		    case 'a': opts.all = 1; opts.noempty = 0; break;
 		    case 'B': opts.BAM = 1; break;
 		    case 'c':
-			if (range_addArg(&opts.rargs, optarg, 1)) goto usage;
+			if (range_addArg(&opts.rargs, optarg, 1)) usage();
 			break;
 		    case 'D': opts.urls = opts.showdups = 0; break;
 		    case 'd': opts.dspec = strdup(optarg); break;
@@ -144,7 +144,7 @@ changes_main(int ac, char **av)
 			opts.verbose =1 ;
 			break;
 		    case 'r':
-			if (range_addArg(&opts.rargs, optarg, 0)) goto usage;
+			if (range_addArg(&opts.rargs, optarg, 0)) usage();
 			break;
 		    case 'x':
 			opts.exc = addLine(opts.exc, strdup(optarg));
@@ -152,9 +152,7 @@ changes_main(int ac, char **av)
 		    case '/': searchStr = optarg; break;
 		    case 'L': opts.local = 1; break;
 		    case 'R': opts.remote = 1; break;
-		    default:
-usage:			system("bk help -s changes");
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 		optarg = 0;
 	}
@@ -162,18 +160,17 @@ usage:			system("bk help -s changes");
 
 	/* ERROR check options */
 	/* XXX: could have rev range limit output -- whose name space? */
-	if ((opts.local || opts.remote) && opts.rargs.rstart) goto usage;
-
+	if ((opts.local || opts.remote) && opts.rargs.rstart) usage();
 	if (proj_isProduct(0)) {
 		if (opts.verbose && !opts.prodOnly) opts.doComp = 1;
 		if (opts.filt && !opts.doComp && !opts.BAM) {
 			opts.doComp = opts.prodOnly = 1;
 		}
 	}
-	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
-	if (opts.html && opts.dspec) goto usage;
-	if (opts.diffs && opts.dspec) goto usage;
-	if (opts.html && opts.diffs) goto usage;
+	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) usage();
+	if (opts.html && opts.dspec) usage();
+	if (opts.diffs && opts.dspec) usage();
+	if (opts.html && opts.diffs) usage();
 
 	if (opts.local || opts.remote || !av[optind] ||
 	    (streq(av[optind], "-") && !av[optind + 1])) {
@@ -186,7 +183,7 @@ usage:			system("bk help -s changes");
 		    "changes: either '-' or URL list, but not both\n");
 		return (1);
 	}
-	if (searchStr && prepSearch(searchStr)) goto usage;
+	if (searchStr && prepSearch(searchStr)) usage();
 	/* force a -a if -L or -R and no -a */
 	if ((opts.local || opts.remote) && !opts.all) {
 		nav[nac++] = strdup("-a");
@@ -253,10 +250,10 @@ usage:			system("bk help -s changes");
 			if (opts.remote) rurls = parent_pullp();
 			unless (lurls || rurls) {
 				getMsg("missing_parent", 0, 0, stderr);
-				goto usage;
+				usage();
 			}
 		}
-		unless (lurls || rurls) goto usage;
+		unless (lurls || rurls) usage();
 		unless (rurls) rurls = lurls;
 		seen = hash_new(HASH_MEMHASH);
 		pid = mkpager();
@@ -954,7 +951,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			perror("idcache");
 			exit(1);
 		}
-		rstate->goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+		rstate->goneDB = loadDB(GONE, 0, DB_GONE);
 		chdir(buf);
 		rstate->graphDB = mdbm_mem();
 		if (dkey) {

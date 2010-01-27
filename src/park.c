@@ -18,19 +18,6 @@ private int parkfile_header(sccs *, delta *, char *, FILE *);
 private	char *name2tname(char *);
 private char *tname2sname(char *);
 
-private void
-usage1(void)
-{
-	fprintf(stderr, "Usage: bk park [-a] [-f] [-l] [-q] [-u]"
-						    "[-p <num>] [-y<comment>]\n");
-}
-
-private void
-usage2(void)
-{
-	fprintf(stderr, "usage: bk unpark [-c] [-f] [-]\n");
-}
-
 /*
  * Park the un-delta'ed change in a parkfile, the basic steps are simple:
  * a) find all the file that needs to be park, store them in SCCS/t.file
@@ -53,7 +40,7 @@ park_main(int ac, char **av)
 	time_t	tt;
 	FILE	*f = 0, *f2 = 0;
 
-	while ((c = getopt(ac, av, "acflp:quy|")) != -1) {
+	while ((c = getopt(ac, av, "acflp:quy|", 0)) != -1) {
 		switch (c) {
 		    case 'a':	aflag = 1; break; /* all */
 		    case 'f':	force = 1; break;
@@ -67,8 +54,7 @@ park_main(int ac, char **av)
 				}
 				ask = 0;
 				break;
-		    default: 	usage1();
-				return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
@@ -1348,11 +1334,11 @@ unpark_main(int ac, char **av)
 	int	i, j, c;
 	int	top = 0, force = 0, clean = 0;
 
-	while ((c = getopt(ac, av, "cf")) != -1) {
+	while ((c = getopt(ac, av, "cf", 0)) != -1) {
 		switch (c) {
 		    case 'c':	clean = 1; break;
 		    case 'f':	force = 1; break;
-		    default: 	usage2(); return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 

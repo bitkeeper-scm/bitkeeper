@@ -17,7 +17,7 @@ cmd_push_part1(int ac, char **av)
 	int	ret;
 	char	buf[MAXKEY], cmd[MAXPATH];
 
-	while ((c = getopt(ac, av, "dnPz|")) != -1) {
+	while ((c = getopt(ac, av, "dnPz|", 0)) != -1) {
 		switch (c) {
 		    case 'z': break;
 			gzip = optarg ? atoi(optarg) : 6;
@@ -26,7 +26,7 @@ cmd_push_part1(int ac, char **av)
 		    case 'd': debug = 1; break;
 		    case 'P': product = 1; break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
-		    default: break;
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
@@ -131,7 +131,7 @@ cmd_push_part2(int ac, char **av)
 	char	*takepatch[] = { "bk", "takepatch", "-c", "-vv", 0};
 	char	buf[4096];
 
-	while ((c = getopt(ac, av, "dGnPqz|")) != -1) {
+	while ((c = getopt(ac, av, "dGnPqz|", 0)) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -142,7 +142,7 @@ cmd_push_part2(int ac, char **av)
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    case 'P': product = 1; break;
 		    case 'q': takepatch[3] = 0; break; /* remove -vvv */
-		    default: break;
+		    default: bk_badArg(c, av);
 		}
 	}
 
@@ -341,7 +341,7 @@ cmd_push_part3(int ac, char **av)
 	char	*sfio[] = {"bk", "sfio", "-iqB", "-", 0};
 	char	buf[4096];
 
-	while ((c = getopt(ac, av, "dGPqz|")) != -1) {
+	while ((c = getopt(ac, av, "dGPqz|", 0)) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -351,7 +351,7 @@ cmd_push_part3(int ac, char **av)
 		    case 'G': putenv("BK_NOTTY=1"); break;
 		    case 'P': product = 1; break;
 		    case 'q': break;
-		    default: break;
+		    default: bk_badArg(c, av);
 		}
 	}
 

@@ -27,14 +27,12 @@ cpartition_main(int ac, char **av)
 	char	*quiet = "";
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "G;m;q")) != -1) {
+	while ((c = getopt(ac, av, "G;m;q", 0)) != -1) {
 		switch (c) {
 		    case 'G': gonelist = optarg; break;
 		    case 'm': map = optarg; break;
 		    case 'q': flags |= SILENT; quiet = "-q"; break;
-		    default:
-usage:			system("bk help -s partition");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless (map) {
@@ -52,8 +50,7 @@ usage:			system("bk help -s partition");
 	}
 	from = av[optind];
 	to = av[optind+1];
-	unless (from && to && !av[optind+2]) goto usage;
-
+	unless (from && to && !av[optind+2]) usage();
 	if (exists(to)) {
 		fprintf(stderr, "%s: destination '%s' exists\n",
 		    prog, to);

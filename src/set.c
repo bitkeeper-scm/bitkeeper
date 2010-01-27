@@ -33,7 +33,6 @@
  *	-n	prefix output with the filename, i.e., ChangeSet|1.3
  */
 
-private void	usage(int op);
 private void	print(sccs *s, delta *d);
 
 enum {
@@ -69,15 +68,15 @@ set_main(int ac, char **av)
 
 	bzero(&opts, sizeof(opts));
 	opts.format = REV;
-	while ((c = getopt(ac, av, "adeklnor;st|x")) != -1) {
+	while ((c = getopt(ac, av, "adeklnor;st|x", 0)) != -1) {
 		switch (c) {
-		    case 'a': if (opts.op) usage(1); opts.op = AND; break;
-		    case 'd': if (opts.op) usage(1); opts.op = AND_NOT; break;
-		    case 'e': if (opts.op) usage(1); opts.op = ELEMENT; break;
-		    case 'l': if (opts.op) usage(1); opts.op = LIST; break;
-		    case 'o': if (opts.op) usage(1); opts.op = OR; break;
-		    case 's': if (opts.op) usage(1); opts.op = SET; break;
-		    case 'x': if (opts.op) usage(1); opts.op = XOR; break;
+		    case 'a': if (opts.op) usage(); opts.op = AND; break;
+		    case 'd': if (opts.op) usage(); opts.op = AND_NOT; break;
+		    case 'e': if (opts.op) usage(); opts.op = ELEMENT; break;
+		    case 'l': if (opts.op) usage(); opts.op = LIST; break;
+		    case 'o': if (opts.op) usage(); opts.op = OR; break;
+		    case 's': if (opts.op) usage(); opts.op = SET; break;
+		    case 'x': if (opts.op) usage(); opts.op = XOR; break;
 		    case 'k': opts.format = KEY; break;
 		    case 'n': opts.name = 1; break;
 		    case 'r':
@@ -86,7 +85,7 @@ set_main(int ac, char **av)
 			} else unless (r2) {
 				r2 = optarg;
 			} else {
-				usage(0);
+				usage();
 			}
 			break;
 		    case 't': 
@@ -98,15 +97,15 @@ set_main(int ac, char **av)
 			    case 'r': opts.tags = 1; opts.format = REV; break;
 			    case 'k': opts.tags = 1; opts.format = KEY; break;
 			    case 't': opts.tags = 1; opts.format = TAG; break;
-			    default: usage(0);
+			    default: usage();
 			}
 			break;
-		    default: usage(0);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (opts.name && (opts.format == TAG)) {
 		fprintf(stderr, "set: -n must be rev|key output, not tags.\n");
-		usage(0);
+		usage();
 	}
 	if (r2 && streq(r2, "-")) {
 		opts.read_stdin = 1;
@@ -148,14 +147,6 @@ set_main(int ac, char **av)
 	}
 	sccs_free(s);
 	exit(0);
-}
-
-private void
-usage(int op)
-{
-	if (op) fprintf(stderr, "set: only one operation allowed.\n");
-	system("bk help -s set");
-	exit(1);
 }
 
 private	ser_t*

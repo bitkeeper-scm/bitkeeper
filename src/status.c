@@ -8,12 +8,10 @@ status_main(int ac, char **av)
 	int verbose = 0;
 	char *package_path;
 
-	while ((c = getopt(ac, av, "v")) != -1) { 
+	while ((c = getopt(ac, av, "v", 0)) != -1) { 
 		switch (c) {
 		    case 'v': verbose++; break;			/* doc 2.0 */
-		    default:
-			system("bk help -s status");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (package_path = av[optind]) {

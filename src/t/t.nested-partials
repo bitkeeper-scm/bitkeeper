@@ -19,7 +19,7 @@ bk clone $Q -s./gcc bk://localhost:$P/project gcc-only || fail 3
 bk _kill bk://localhost:$P
 
 cd gcc-only
-bk components check 2>ERR && fail -f ERR should fail 4
+bk nested check 2>ERR && fail -f ERR should fail 4
 grep -q "unable to connect.*:$P" ERR || fail 5
 cd ..
 bk clone -sall $Q gcc-only copy-all 2>ERR && fail -f ERR should fail
@@ -30,16 +30,16 @@ grep -q 'clone: component fetch failed, only product is populated' ERR || fail
 cd gcc-only
 cp BitKeeper/log/urllist BACK
 grep -q :$P BitKeeper/log/urllist || fail 11
-bk components check $Q -c && fail should fail 12
+bk nested check $Q -c && fail should fail 12
 grep -q localhost:$P BitKeeper/log/urllist && fail bad url should be gone 13
-bk components check $Q -@../project || fail 14
+bk nested check $Q -@../project || fail 14
 cd ..
 bk clone -sall $Q gcc-only copy-all2 || fail 15
 rm -rf copy-all2
 mv project pp
 cd gcc-only
-bk components check 2>ERR && fail 16
-grep -q "components: no valid urls found for missing component gdb" ERR || fail
+bk nested check 2>ERR && fail 16
+grep -q "nested: no valid urls found for missing component gdb" ERR || fail
 grep -q project BitKeeper/log/urllist && fail 17
 cp BACK BitKeeper/log/urllist
 cd ..
@@ -48,7 +48,7 @@ echo OK
 
 echo $N Show that we can complete the clone in two steps ............$NL
 cd copy-all
-bk components set $Q -@../project all || fail
+bk alias set $Q -@../project here all || fail
 test -d gdb || fail
 echo OK
 
@@ -61,21 +61,21 @@ echo OK
 
 echo $N Show how an unpopulate might fail ...........................$NL
 cd ../gcc-only
-bk components rm $Q ./gcc 2>ERR && fail -f ERR should fail
-grep -q 'components: No other sources for gcc known' ERR || fail
+bk unpopulate $Q ./gcc 2>ERR && fail -f ERR should fail
+grep -q 'unpopulate: No other sources for gcc known' ERR || fail
 echo OK
 
 echo $N Providing a URL will work ...................................$NL
-bk components rm $Q -@../project ./gcc || fail
+bk unpopulate $Q -@../project ./gcc || fail
 echo OK
 
 echo $N And that URL is remembered ..................................$NL
-bk components add $Q ./gcc || fail
+bk populate $Q ./gcc || fail
 echo OK
 
 echo $N Show that a network clone will rewrite URLs .................$NL
 # strip out the invalid URL
-bk components check -c $Q || fail
+bk nested check -c $Q || fail
 cd ..
 bk bkd -q -aPORT -ikill || fail
 P=`cat PORT`
@@ -83,7 +83,7 @@ trap "bk _kill bk://localhost:$P >/dev/null 2>&1" 0
 mv project project.save
 bk clone $Q -s. bk://localhost:$P/gcc-only gcc-neturl || fail 2
 cd gcc-neturl
-bk components where gcc > OUT
+bk nested where gcc > OUT
 printf "gcc\t`bk parent -l`\n" > WANT
 printf "gcc\tbk://`bk gethost -r`:$P/$HERE/project\n" >> WANT
 cmpfiles WANT OUT
@@ -91,5 +91,12 @@ echo OK
 
 echo $N And show that this rewritten URL works ......................$NL
 mv ../project.save ../project
-bk components check || fail
+bk nested check || fail
+echo OK
+
+echo $N Show that hardlinked urllist is not a problem ...............$NL
+cd "$HERE"
+cp pull-targ/BitKeeper/log/urllist OLD
+bk clone $Q -l pull-targ copy3 || fail
+cmp -s OLD pull-targ/BitKeeper/log/urllist || fail should not have changed
 echo OK

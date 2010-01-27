@@ -27,7 +27,7 @@ log_main(int ac, char **av)
 	char	*dspec = 0;
 	RANGE	rargs = {0};
 
-	while ((c = getopt(ac, av, "1abc;C;d:DfhMnopr;Y")) != -1) {
+	while ((c = getopt(ac, av, "1abc;C;d:DfhMnopr;Y", 0)) != -1) {
 		switch (c) {
 		    case '1': one = 1; doheader = 0; break;
 		    case 'a':					/* doc 2.0 */
@@ -45,22 +45,20 @@ log_main(int ac, char **av)
 		    case 'o': 
 			 fprintf(stderr,
 			     "%s: the -o option has been removed\n", av[0]);
-			 goto usage;
+			 usage();
 		    case 'p': want_parent = 1; break;
 		    case 'x':
 			fprintf(stderr, "prs: -x support dropped\n");
-			goto usage;
+			usage();
 		    case 'Y': 	/* for backward compat, undoc 2.0 */
 			      break;
 		    case 'c':
-			if (range_addArg(&rargs, optarg, 1)) goto usage;
+			if (range_addArg(&rargs, optarg, 1)) usage();
 			break;
 		    case 'r':
-			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
-		    default:
-usage:			sys("bk", "help", "-s", av[0], SYS);
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	// XXX removed BK_LOG_DSPEC (ok?)

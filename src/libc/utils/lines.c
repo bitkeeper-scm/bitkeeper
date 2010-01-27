@@ -15,6 +15,7 @@ static	int	addLine_lasti;
 
 /*
  * pre allocate line space.
+ * room for n-1 lines
  */
 char	**
 allocLines(int n)
@@ -84,6 +85,31 @@ nLines(char **space)
               EACH(space);
       }
       return (i-1);
+}
+
+/*
+ * copy array to the end of space and then free array
+ */
+char **
+catLines(char **space, char **array)
+{
+	int	n1, n2;
+	char	**new;
+
+	unless (space) return (array); /* simple case */
+
+	n2 = nLines(array);
+	n1 = nLines(space);
+
+	if (n1+n2 >= LSIZ(space)) {
+		new = allocLines(n1+n2+1);
+		memcpy(new, &space[1], n1*sizeof(void *));
+		free(space);
+		space = new;
+	}
+	memcpy(&space[n1+1], &array[1], n2*sizeof(void *));
+	free(array);
+	return (space);
 }
 
 void
@@ -281,6 +307,7 @@ unshiftLine(char **space, void *line)
 	n = nLines(space);
 	if (n > 0) memmove(&space[2], &space[1], n * sizeof(void *));
 	space[1] = line;
+	if (space == addLine_lastp) ++addLine_lasti;
 	return (space);
 }
 
@@ -297,6 +324,7 @@ shiftLine(char **space)
 	ret = space[1];
 	if (n > 1) memmove(&space[1], &space[2], (n-1)*sizeof(void *));
 	space[n] = 0;
+	if (space == addLine_lastp) --addLine_lasti;
 	return (ret);
 }
 

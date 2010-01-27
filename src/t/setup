@@ -233,12 +233,14 @@ port() {
 
 # args: GOT WANT
 cmpfiles() {
-	OUTPUT=`bk diff -q --ignore-trailing-cr "$1" "$2"` || {
-		echo failed
-		echo $OUTPUT
-		bk diff -u "$1" "$2"
-		exit 1
-	}
+	OUTPUT=`bk diff -q --ignore-trailing-cr "$1" "$2"` && return
+	case "X$BASH_VERSION" in
+	    X[234]*) eval 'echo failed in line $((${BASH_LINENO[0]} - $BOS))';;
+	    *) echo failed ;;
+	esac
+	echo $OUTPUT
+	bk diff -u "$1" "$2"
+	exit 1
 }
 
 # args: GOT WANT

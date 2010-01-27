@@ -11,7 +11,6 @@ private char	*find_gca(char *file, char *left, char *right);
 private int	do_weave_merge(u32 start, u32 end);
 private conflct	*find_conflicts(void);
 private void	merge_conflicts(conflct *head);
-private void	usage(void);
 private int	resolve_conflict(conflct *curr);
 private diffln	*unidiff(conflct *curr, int left, int right);
 private int	sameline(ld_t *left, ld_t *right);
@@ -108,7 +107,7 @@ smerge_main(int ac, char **av)
 	if (getenv("BK_MERGE_DIFF3")) do_diff3 = 1;
 
 	mode = MODE_3WAY;
-	while ((c = getopt(ac, av, "234A;a;defghI;l;npr;R;s")) != -1) {
+	while ((c = getopt(ac, av, "234A;a;defghI;l;npr;R;s", 0)) != -1) {
 		switch (c) {
 		    case '2': /* 2 way format (like diff3) */
 			mode = MODE_2WAY;
@@ -159,13 +158,12 @@ smerge_main(int ac, char **av)
 			break;
 #endif
 		    case 'h': /* help */
-		    default:
-			usage();
-			return (2);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless (av[optind] && !av[optind+1] && revs[LEFT] && revs[RIGHT]) {
-		usage();
+		system("bk help -s smerge");
+		mergefcns_help();
 		return (2);
 	}
 	if (fdiff && mode == MODE_3WAY) mode = MODE_GCA;
@@ -380,13 +378,6 @@ find_gca(char *file, char *left, char *right)
 	}
 	sccs_free(s);
 	return (str_pullup(0, revlist));
-}
-
-private void
-usage(void)
-{
-	system("bk help -s smerge");
-	mergefcns_help();
 }
 
 /*

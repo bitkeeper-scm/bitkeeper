@@ -18,14 +18,12 @@ abort_main(int ac, char **av)
 	int	c, force = 0, leavepatch = 0, quiet = 0;
 	char	buf[MAXPATH];
 
-	while ((c = getopt(ac, av, "fpq")) != -1) {
+	while ((c = getopt(ac, av, "fpq", 0)) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break; 	/* doc 2.0 */
 		    case 'p': leavepatch = 1; break; 	/* undoc? 2.0 */
 		    case 'q': quiet = 1; break;
-		    default:
-			system("bk help -s abort");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind]) {
@@ -287,8 +285,8 @@ out:	if (n) nested_free(n);
 	 * components, removed some, etc. We restore sanity by
 	 * trusting the HERE file.
 	 */
-	if (system("bk components set -q here")) {
-		error("abort: bk components failed\n");
+	if (system("bk populate -q")) {
+		error("abort: bk populate failed\n");
 		errors++;
 	}
 	return (errors);

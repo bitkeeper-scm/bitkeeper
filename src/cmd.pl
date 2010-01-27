@@ -225,6 +225,7 @@ get
 gethelp
 gethost
 getmsg
+_getopt_test
 getuser
 glob
 gnupatch
@@ -276,7 +277,8 @@ mv
 mvdir
 mydiff
 names
-_nested
+nested
+_nested => nested
 newroot
 nfiles
 opark
@@ -287,6 +289,7 @@ path
 pending
 platform
 _popensystem
+populate
 port => pull
 _probekey restricted
 product
@@ -362,6 +365,7 @@ _unlink
 unlock
 uninstall
 unpark
+unpopulate => populate
 unpull
 unwrap
 upgrade

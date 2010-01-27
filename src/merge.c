@@ -28,20 +28,18 @@ merge_main(int ac, char **av)
 	char	*files[3];
 
 	opts = new(Opts);
-	while ((c = getopt(ac, av, "hs")) != -1) {
+	while ((c = getopt(ac, av, "hs", 0)) != -1) {
 		switch(c) {
 		    case 'h': opts->hashmerge = 1; break;
 		    case 's': opts->setmerge = 1; break;
-		    default:
-usage:			system("bk help -s merge");
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind] && !av[optind+1]) {
-		unless (sname = name2sccs(av[optind])) goto usage;
-		unless (s = sccs_init(sname, 0)) goto usage;
-		unless (sccs_findtips(s, &l, &r)) goto usage;
-		unless (g = sccs_gca(s, l, r, &inc, &exc)) goto usage;
+		unless (sname = name2sccs(av[optind])) usage();
+		unless (s = sccs_init(sname, 0)) usage();
+		unless (sccs_findtips(s, &l, &r)) usage();
+		unless (g = sccs_gca(s, l, r, &inc, &exc)) usage();
 		if (inc) free(inc);
 		if (exc) free(exc);
 		files[0] = getgfile(s, l->rev);
@@ -53,9 +51,9 @@ usage:			system("bk help -s merge");
 	} else {
 		for (i = 0; i < 3; i++) {
 			files[i] = av[optind + i];
-			unless (files[i]) goto usage;
+			unless (files[i]) usage();
 		}
-		unless (av[optind + 3] && !av[optind + 4]) goto usage;
+		unless (av[optind + 3] && !av[optind + 4]) usage();
 		/* redirect stdout to file */
 		freopen(av[optind + 3], "w", stdout);
 	}

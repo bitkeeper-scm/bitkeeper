@@ -2,10 +2,10 @@
 _getdir 12
 access 67
 chmod 35
-close 226
+close 227
 link 2
 lseek 125
-lstat 400
+lstat 376
 mkdir 19
 open 196
 read 4194

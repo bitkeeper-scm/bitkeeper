@@ -10,7 +10,6 @@ private void	unexclude(char **list, char *cmd);
 private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp);
 private	void	log_cmd(char *peer, int ac, char **av, int);
-private	void	usage(void);
 private	int	do_cmds(void);
 private int	svc_uninstall(void);
 
@@ -39,7 +38,7 @@ bkd_main(int ac, char **av)
 	 * -c now means check arguments and if they are OK echo the starting
 	 * dir and exit.  Used for service.
 	 */
-	while ((c = getopt(ac, av, bkd_getopt)) != -1) {
+	while ((c = getopt(ac, av, bkd_getopt, 0)) != -1) {
 		args = addLine(args, aprintf("-%c%s", c, optarg ? optarg : ""));
 		switch (c) {
 		    case 'a': Opts.portfile = strdup(optarg); break;
@@ -81,7 +80,7 @@ bkd_main(int ac, char **av)
 		    case 'q': Opts.quiet = 1; break; 		/* undoc */
 		    case 't': Opts.alarm = atoi(optarg); break;	/* undoc */
 		    case 'U': Opts.unsafe = 1; break;
-		    default: usage();
+		    default: bk_badArg(c, av);
 	    	}
 		optarg = 0;
 	}
@@ -149,13 +148,6 @@ unexclude(char **list, char *cmd)
 {
 	if (removeLine(list, cmd, 0) == 1) return;
 	fprintf(stderr, "bkd: %s was not excluded.\n", cmd);
-	exit(1);
-}
-
-private	void
-usage(void)
-{
-	system("bk help -s bkd");
 	exit(1);
 }
 

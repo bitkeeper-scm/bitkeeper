@@ -14,28 +14,26 @@ newroot_main(int ac, char **av)
 	char	*comments = 0;
 	u8	*p;
 
-	while ((c = getopt(ac, av, "k:Pqy:")) != -1) {
+	while ((c = getopt(ac, av, "k:Pqy:", 0)) != -1) {
 		switch (c) {
 		    case 'k': ranbits = optarg; break;
 		    case 'P': product = 1; break;
 		    case 'q': quiet = 1; break;
 		    case 'y': comments = optarg; break;
-		    default:
-usage:			sys("bk", "help", "-s", "newroot", SYS);
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless (comments) comments = "newroot command";
 	if (strchr(comments, '\n')) {
 		fprintf(stderr, "ERROR: -y comment must only be one line\n");
-		goto usage;
+		usage();
 	}
 	if (ranbits && !strneq("B:", ranbits, 2)) {
 		if (strlen(ranbits) > 16) {
 k_err:			fprintf(stderr,
 			    "ERROR: -k option can have at most 16 lower case "
 			    "hex digits\n");
-			goto usage;
+			usage();
 		}
 		for (p = ranbits; *p; p++) {
 			unless (isxdigit(*p)) break;

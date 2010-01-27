@@ -629,7 +629,7 @@ proj_csetFile(project *p)
 project *
 proj_product(project *p)
 {
-	char	*t, *tmp;
+	project	*proj, *prod;
 	char	buf[MAXPATH];
 
 	unless (p || (p = curr_proj())) return (0);
@@ -637,21 +637,26 @@ proj_product(project *p)
 		/* find product root */
 		p->product = 0;
 		concat_path(buf, p->root, "BitKeeper/log/PRODUCT");
-		if (exists(buf)) {	/* we're our own product */
-			p->product = p;
-		} else {		/* go look if we are in a product */
-			tmp = strdup(p->root);
-			while ((t = strrchr(tmp, '/')) && (t != tmp)) {
-				*t = 0;
-				concat_path(buf, tmp, "BitKeeper/log/PRODUCT");
-				unless (exists(buf)) continue;
-				*t = 0;
-				concat_path(buf, tmp, BKROOT);
-				unless (exists(buf)) continue;
-				p->product = proj_init(tmp);
-				break;
+		if (exists(buf)) {
+			p->product = p;	/* we're our own product */
+
+			/* enforce nested restrictions */
+			if (bk_notLicensed(p, LIC_NESTED)) {
+				fprintf(stderr,
+"%s: current license does not include support for nested\n",  prog);
+				exit(100);
 			}
-			free(tmp);
+		} else {
+			/* return proj_product of the repo above this one */
+			p->product = 0;
+			strcpy(buf, p->root);
+			if (proj = proj_init(dirname(buf))) {
+				assert(proj != p);
+				if (prod = proj_product(proj)) {
+					p->product = proj_init(proj_root(prod));
+				}
+				proj_free(proj);
+			}
 		}
 	}
 	return (p->product);

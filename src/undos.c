@@ -14,13 +14,11 @@ undos_main(int ac, char **av)
 	int	do_redos = 0;
 	int	rc = 0;
 
-	while ((c = getopt(ac, av, "nr")) != -1) {
+	while ((c = getopt(ac, av, "nr", 0)) != -1) {
 		switch (c) {
 		    case 'n': auto_new_line = 0; break;		/* doc 2.0 */
 		    case 'r': do_redos = 1; break;		/* doc */
-		    default:
-			system("bk help -s undos");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless (av[optind]) {

@@ -33,7 +33,7 @@ impdir="`cd "$impdir" && pwd`"
 
 # Expect impdir to have repos with same name as tcl/tk repos in bk product
 
-bk components add -@ -@bk://work/bk -q TCLTK || exit 1
+bk populate -@ -@bk://work/bk -q TCLTK || exit 1
 bk -P portal -q || bk -P portal .
 (cd "$impdir" && bk sfiles -R) | while read component; do
 	# weed out subdirectories, like old/*

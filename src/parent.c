@@ -63,7 +63,7 @@ parent_main(int ac,  char **av)
 			ac--;
 		}
 	}
-	while ((c = getopt(ac, av, "1ailnopqrs")) != -1) {
+	while ((c = getopt(ac, av, "1ailnopqrs", 0)) != -1) {
 		switch (c) {
 		    case '1': opts.one = 1; break;
 		    case 'a': opts.add = 1; break;
@@ -75,8 +75,7 @@ parent_main(int ac,  char **av)
 		    case 'q': opts.quiet = 1; break;
 		    case 'r': opts.rm = 1; break;
 		    case 's': opts.set = 1; break;
-		    default:
-usage:			system("bk help -s parent"); return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
@@ -114,9 +113,9 @@ usage:			system("bk help -s parent"); return (1);
 	if ((opts.rm + opts.print + opts.add + opts.set) > 1) {
 		ttyprintf("rm=%u print=%u add=%u set=%u\n",
 		    opts.rm, opts.print, opts.add, opts.set);
-		goto usage;
+		usage();
 	}
-	if (opts.print && av[optind]) goto usage;
+	if (opts.print && av[optind]) usage();
 
 	/* Print */
 	if (opts.print) {
@@ -153,7 +152,7 @@ usage:			system("bk help -s parent"); return (1);
 	}
 
 	/* set/add */
-	unless (av[optind]) goto usage;
+	unless (av[optind]) usage();
 	while (av[optind]) {
 		add(which, av[optind], &rc);
 		optind++;

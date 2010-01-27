@@ -5,8 +5,9 @@
 bk unpopulate \- remove components from a product
 .SH SYNOPSIS
 .B bk unpopulate
-.[B] \-flq
-.[OPTreq] \-s component \ ...
+.[B] \-fq
+.[OPTreq] \-@ url \ ...
+.APG alias \ ...
 .SH DESCRIPTION
 .LP
 The unpopulate command is used to remove unneeded components from a product.
@@ -15,7 +16,7 @@ If you no longer need one or more components, you may remove them like
 so:
 .DS
 $ cd big-product
-$ bk unpopulate -sDEV-TOOLS
+$ bk unpopulate DEV-TOOLS
 .DE
 In order to preserve any local work, unpopulate will run
 bk superset, which searches for local changesets, deltas, 
@@ -23,29 +24,29 @@ modifications, extra files, etc.
 See 
 .B \-f
 below for how to skip this check.
+.LP
+Only aliases or components explicitly listed by a previous clone or
+populate command can be removed.  The list of currently populated aliases
+and be fetched with the following command:
+.DS
+bk alias here
+.DE
 .SH OPTIONS
-.TP \-s\*<comp\*>
+.TP \-@\*<url\*>
+.tp
+.OPTreq \-@ url
+If BitKeeper cannot find another product that has the same versions of the
+components being removed, this option can provide one or more URLs to
+search.
+.tp
 .B \-f
 Force the unpopulate to work even if local work is present.
-.tp
-.B \-l
-List components and/or aliases that were specified to a previous
-clone and/or populate.
-This is list is what you may unpopulate.
+Or if a remote repository with the same component can't be found.
 .tp
 .B \-q
 Run quietly.
-.tp
-.OPTreq \-s comp
-Restrict the unpopulate to the subset implied by
-.ARG comp .
-If this option is repeated the implied subset is the union of all
-specified components.
-.ARG comp
-must be one of the same values as specified to a previous clone and/or
-populate; use the
-.B \-l
-option to see those values.
+.SH NOTE
+The unpopulate command is an alias for the command 'bk alias rm HERE args'
 .SH "SEE ALSO"
 .SA alias
 .SA clone
@@ -62,7 +63,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "product" or "product-line" listed then your
+If the options field has "nested" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
 .\}

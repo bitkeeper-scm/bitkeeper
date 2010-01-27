@@ -19,16 +19,14 @@ mail_main(int ac, char **av)
 	} else {
 		name = av[0];
 	}
-	while ((c = getopt(ac, av, "s:u:")) != -1) {
+	while ((c = getopt(ac, av, "s:u:", 0)) != -1) {
 		switch (c) {
 		    case 's': subject = optarg; break;
 		    case 'u': url = optarg; break;
-		    default:
- usage:			sys("bk", "help", "-s", name, SYS);
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
-	if (!av[optind]) goto usage;
+	unless (av[optind]) usage();
 	for (c = optind; av[c]; c++) to = addLine(to, strdup(av[c]));
 
 	unless (url) url = proj_configval(0, "mail-proxy");

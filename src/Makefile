@@ -158,6 +158,7 @@ OBJ =	bkver.o cmd.o \
 	opark.o \
 	parent.o park.o partition.o \
 	pending.o preference.o product.o proj.o \
+	populate.o \
 	port/bkd_server.o \
 	port/check_rsh.o \
 	port/gethomedir.o \
@@ -318,7 +319,8 @@ srcs: $(SRCS) $(HDRS) FORCE
 	$(Q)for sub in $(SUBDIRS); do bk -r$$sub co -q; done
 
 tags: $(patsubst %,%/tags.local, $(SUBDIRS)) tags.local
-	sort $^ > $@
+	@bk get -Sq tags.skippats
+	@sort $^ | grep -v -ftags.skippats > $@
 	@echo ctags completed
 
 tags.local: $(SRCS) $(HDRS)

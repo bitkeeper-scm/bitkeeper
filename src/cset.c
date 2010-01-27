@@ -62,8 +62,8 @@ makepatch_main(int ac, char **av)
 
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
-	while ((c = getopt(ac, av, "BCdFM;P:qr|sv")) != -1) {
-		if (i == 14) goto usage;
+	while ((c = getopt(ac, av, "BCdFM;P:qr|sv", 0)) != -1) {
+		if (i == 14) usage();
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
 		    case 'C': copts.compat = 1; break;
@@ -79,7 +79,7 @@ makepatch_main(int ac, char **av)
 			break;
 		    case 'r':					/* doc 2.0 */
 		    	c = 'm';
-			if (range) goto usage;
+			if (range) usage();
 			/* makepatch idiom: -r1.0.. means -r.. */
 			if (optarg && streq(optarg, "1.0..")) {
 				optarg = &optarg[3];
@@ -97,9 +97,7 @@ makepatch_main(int ac, char **av)
 		    case 'v':					/* doc 2.0 */
 			nav[++i] = "-v";
 			break;
-		    default:
-usage:			system("bk help -s makepatch");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (getenv("_BK_NO_PATCHSFIO")) {
@@ -137,7 +135,7 @@ cset_main(int ac, char **av)
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
 
-	while ((c = getopt(ac, av, "5BCd|DFfhi;lm|M|qr|svx;")) != -1) {
+	while ((c = getopt(ac, av, "5BCd|DFfhi;lm|M|qr|svx;", 0)) != -1) {
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
@@ -145,9 +143,9 @@ cset_main(int ac, char **av)
 		    case 'F': copts.fastpatch++; break;		/* undoc */
 		    case 'h': copts.historic++; break;		/* undoc? 2.0 */
 		    case 'i':					/* doc 2.0 */
-			if (copts.include || copts.exclude) goto usage;
+			if (copts.include || copts.exclude) usage();
 			copts.include++;
-			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
 		    case 'r':					/* doc 2.0 */
 			if (streq(av[0], "makepatch")) {
@@ -176,7 +174,7 @@ cset_main(int ac, char **av)
 			if (c == 'm') copts.makepatch = 1;
 		    	list |= 1;
 			if (optarg && range_addArg(&rargs, optarg, 0)) {
-				goto usage;
+				usage();
 			}
 			break;
 		    case 'C':					/* doc 2.0 */
@@ -193,13 +191,11 @@ cset_main(int ac, char **av)
 		    case '5': copts.md5out = 1; break;		/* undoc 4.0 */
 		    case 'v': copts.verbose++; break;		/* undoc? 2.0 */
 		    case 'x':					/* doc 2.0 */
-			if (copts.include || copts.exclude) goto usage;
+			if (copts.include || copts.exclude) usage();
 			copts.exclude++;
-			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
-		    default:
-usage:			sys("bk", "help", "-s", av[0], SYS);
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
@@ -207,14 +203,14 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 
 	if (rargs.rstop && (list != 1)) {
 		fprintf(stderr, "%s: only one rev allowed with -t\n", av[0]);
-		goto usage;
+		usage();
 	}
 	if ((copts.include || copts.exclude) &&
 	    (copts.doDiffs || copts.makepatch ||
 	    copts.listeach || copts.mark || copts.force || copts.remark ||
 	    copts.historic || av[optind])) {
 	    	fprintf(stderr, "cset -x|-i must be stand alone.\n");
-		goto usage;
+		usage();
 	}
 	if (av[optind] && streq(av[optind], "-")) {
 		optind++;
@@ -688,7 +684,7 @@ csetlist(cset_t *cs, sccs *cset)
 		cs->makepatch = 0;
 		goto fail;
 	}
-	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+	goneDB = loadDB(GONE, 0, DB_GONE);
 
 	/* checksum the output */
 	if (cs->makepatch) {

@@ -154,7 +154,7 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "abcCdD:E|fGI;ilm|M;npPqRsTuy|Y|Z|")) != -1) {
+	    getopt(ac, av, "abcCdD:E|fGI;ilm|M;npPqRsTuy|Y|Z|", 0)) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -189,7 +189,7 @@ delta_main(int ac, char **av)
 			if (streq(prog, "new")) {
 		    		encp = "binary";
 			} else {
-				goto usage;
+				usage();
 			}
 			break;
 		    case 'C': iflags |= INIT_NOCKSUM; break; 	/* undoc */
@@ -221,9 +221,7 @@ delta_main(int ac, char **av)
 			compp = optarg ? optarg : "gzip"; break;
 		    case 'E': encp = optarg; break; 		/* doc 2.0 */
 
-		    default:
-usage:			sys("bk", "help", "-s", prog, SYS);
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
@@ -234,10 +232,10 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		unless (dflags & NEWFILE) {
 			fprintf(stderr,
 			    "Encoding is allowed only when creating files\n");
-			goto usage;
+			usage();
 		}
 		/* check that they gave us something we can parse */
-		if (sccs_encoding(0, 0, encp, compp) == -1) goto usage;
+		if (sccs_encoding(0, 0, encp, compp) == -1) usage();
 	}
 
 	if (chk_host() || chk_user()) return (1);
@@ -251,7 +249,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	if ((initFile || diffsFile) && name && sfileNext()) {
 		fprintf(stderr,
 "%s: only one file may be specified with init or diffs file.\n", av[0]);
-		goto usage;
+		usage();
 	}
 
 	/* force them to do something sane */
@@ -259,17 +257,17 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	    dash && name && !(dflags & (NEWFILE|DELTA_CFILE)) && sfileNext()) {
 		fprintf(stderr,
 "%s: only one file may be specified without a checkin comment\n", av[0]);
-		goto usage;
+		usage();
 	}
 	if (initFile && (dflags & DELTA_DONTASK)) {
 		fprintf(stderr,
 		    "%s: only init file or comment, not both.\n", av[0]);
-		goto usage;
+		usage();
 	}
 	if ((gflags & GET_EXPAND) && (gflags & GET_EDIT)) {
 		fprintf(stderr, "%s: -l and -u are mutually exclusive.\n",
 			av[0]);
-		goto usage;
+		usage();
 	}
 	if (diffsFile && !(diffs = mopen(diffsFile, "b"))) {
 		fprintf(stderr, "%s: diffs file '%s': %s.\n",
@@ -292,7 +290,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		int	co;
 
 		if (df & DELTA_DONTASK) {
-			unless (d = comments_get(0)) goto usage;
+			unless (d = comments_get(0)) usage();
 		}
 		if (mode) d = sccs_parseArg(d, 'O', mode, 0);
 		unless (s = sccs_init(name, iflags)) {
@@ -373,7 +371,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		}
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
-			if (BAM(s) && !(proj_bklbits(s->proj) & LIC_BAM)) {
+			if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM)) {
 				errors |= 4;
 				break;
 			}

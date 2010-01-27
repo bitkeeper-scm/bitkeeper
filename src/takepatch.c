@@ -105,7 +105,7 @@ takepatch_main(int ac, char **av)
 
 	setmode(0, O_BINARY); /* for win32 */
 	input = "-";
-	while ((c = getopt(ac, av, "acDFf:iLmqsStTvy;")) != -1) {
+	while ((c = getopt(ac, av, "acDFf:iLmqsStTvy;", 0)) != -1) {
 		switch (c) {
 		    case 'q':					/* undoc 2.0 */
 		    case 's':					/* undoc 2.0 */
@@ -125,15 +125,12 @@ takepatch_main(int ac, char **av)
 		    case 't': textOnly++; break;		/* doc 2.0 */
 		    case 'v': echo++; break;			/* doc 2.0 */
 		    case 'y': comments = optarg; break;
-		    default: goto usage;
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (getenv("TAKEPATCH_SAVEDIRS")) saveDirs++;
 	if ((t = getenv("BK_NOTTY")) && *t && (echo == 3)) echo = 2;
-	if (av[optind]) {
-usage:		system("bk help -s takepatch");
-		return (1);
-	}
+	if (av[optind]) usage();
 	p = init(input);
 	if (newProject) putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) exit(1);
@@ -146,7 +143,7 @@ usage:		system("bk help -s takepatch");
 	} else {
 
 		/* OK if this returns NULL */
-		goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+		goneDB = loadDB(GONE, 0, DB_GONE);
 
 		loadskips();
 

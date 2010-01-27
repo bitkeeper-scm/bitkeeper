@@ -50,7 +50,7 @@ undo_main(int ac,  char **av)
 	}
 
 	fromclone = 0;
-	while ((c = getopt(ac, av, "a:Cfqp;r:sv")) != -1) {
+	while ((c = getopt(ac, av, "a:Cfqp;r:sv", 0)) != -1) {
 		/* We make sure component undo's always save a patch */
 		unless ((c == 'a') || (c == 'r') || (c == 's')) {
 			if (optarg) {
@@ -71,15 +71,13 @@ undo_main(int ac,  char **av)
 		    case 'p': save = 1; patch = optarg; break;
 		    case 's': save = 0; break;			/* doc 2.0 */
 		    case 'v': verbose = 1; break;
-		    default :
-usage:			system("bk help -s undo");
+		    default:
 			freeLines(nav, free);
-			return (UNDO_ERR);
+			bk_badArg(c, av);
 		}
 		optarg = 0;
 	}
-	unless (rev) goto usage;
-
+	unless (rev) usage();
 	save_log_markers();
 	// XXX - be nice to do this only if we actually are going to undo
 	unlink(BACKUP_SFIO); /* remove old backup file */

@@ -22,7 +22,7 @@ export_main(int ac,  char **av)
 	int	sysfiles = 0;
 	int	product;
 
-	while ((c = getopt(ac, av, "d|hkt:Twvi:x:r:S")) != -1) {
+	while ((c = getopt(ac, av, "d|hkt:Twvi:x:r:S", 0)) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;		/* doc 2.0 */
 		    case 'q':					/* undoc 2.0 */
@@ -38,14 +38,14 @@ export_main(int ac,  char **av)
 				} else {
 					fprintf(stderr,
 					    "bk export: only one -r allowed\n");
-					goto usage;
+					usage();
 				}
 				break;
-		    case 't':	if (type) goto usage;		/* doc 2.0 */
+		    case 't':	if (type) usage();		/* doc 2.0 */
 				type = optarg; 
 				unless (streq(type, "patch") ||
 				    streq(type, "plain")) {
-					goto usage;
+					usage();
 				}
 				break;
 		    case 'T':	tflag = 1; break;		/* doc 2.0 */
@@ -56,9 +56,7 @@ export_main(int ac,  char **av)
 		    case 'x':					/* doc 3.0 */
 			excludes = addLine(excludes, strdup(optarg));
 			break;
-		    default :
-usage:			system("bk help -s export");
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
@@ -76,7 +74,7 @@ usage:			system("bk help -s export");
 	switch (count) {
 	    case 1: src = "."; dst = av[optind]; break;
 	    case 2: src = av[optind++]; dst = av[optind]; break;
-	    default: goto usage;
+	    default: usage();
 	}
 
 	unless (isdir_follow(src)) {

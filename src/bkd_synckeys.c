@@ -14,12 +14,12 @@ cmd_synckeys(int ac, char **av)
 	int	ret;
 	int	syncRoot = 0;
 
-	while ((c = getopt(ac, av, "S")) != -1) {
+	while ((c = getopt(ac, av, "S", 0)) != -1) {
 	    switch (c) {
 		case 'S':	/* look through the root log for a match */
 		    syncRoot = 1;
 		    break;
-		default: break;
+		default: bk_badArg(c, av);
 	    }
 	}
 

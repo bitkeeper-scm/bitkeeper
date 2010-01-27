@@ -56,7 +56,7 @@ grep_main(int ac, char **av)
 	char	aopts[20];
 
 	opts.firstmatch = opts.name = 1;
-	while ((c = getopt(ac, av, "a;A:B:cC|d;hHilLnqr;R|vx")) != EOF) {
+	while ((c = getopt(ac, av, "a;A:B:cC|d;hHilLnqr;R|vx", 0)) != EOF) {
 		switch (c) {
 		    case 'A':				/* GNU -A %d */
 			if (optarg && isdigit(*optarg)) {
@@ -102,7 +102,7 @@ grep_main(int ac, char **av)
 		    case 'q': opts.quiet = 1; break;	/* GNU compat */
 		    case 'v': opts.invert = 1; break;	/* GNU compat */
 		    case 'x': opts.wholeline = 1; break;/* GNU compat */
-		    default: exit(2);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless (av[optind]) exit(2);

@@ -61,14 +61,14 @@ diffs_main(int ac, char **av)
 	char	*Rev = 0, *boundaries = 0;
 	RANGE	rargs = {0};
 
-	while ((c = getopt(ac, av, "a;A;bBcC|d;efhHIl|m|nNpr|R|suvw")) != -1) {
+	while ((c = getopt(ac, av, "a;A;bBcC|d;efhHIl|m|nNpr|R|suvw", 0)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
 			/*FALLTHROUGH*/
 		    case 'a':
 			flags = annotate_args(flags, optarg);
-			if (flags == -1) goto usage;
+			if (flags == -1) usage();
 			break;
 		    case 'b': kind |= DF_GNUb; break;		/* doc 2.0 */
 		    case 'B': kind |= DF_GNUB; break;		/* doc 2.0 */
@@ -99,14 +99,12 @@ diffs_main(int ac, char **av)
 		    case 'v': verbose = 1; break;		/* doc 2.0 */
 		    case 'w': kind |= DF_GNUw; break;		/* doc 2.0 */
 		    case 'd':
-			if (range_addArg(&rargs, optarg, 1)) goto usage;
+			if (range_addArg(&rargs, optarg, 1)) usage();
 			break;
 		    case 'r':
-			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
-		    default:
-usage:			system("bk help -s diffs");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 

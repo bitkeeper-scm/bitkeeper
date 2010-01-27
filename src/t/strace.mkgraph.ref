@@ -3,7 +3,7 @@ _getdir 1
 chmod 1
 close 4
 lseek 37
-lstat 20
+lstat 17
 open 5
 read 146
 write 91

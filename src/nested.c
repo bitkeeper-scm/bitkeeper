@@ -16,14 +16,90 @@ private void	compCheckPresent(nested *n, comp *c, int idcache_wrong);
 #define	L_PRESENT	0x10
 #define	L_MISSING	0x20
 
+
+private int	_nested_main(int ac, char **av);
+private	int	nested_check_main(int ac, char **av);
+private	int	nested_where_main(int ac, char **av);
+
+int
+nested_main(int ac, char **av)
+{
+	if (streq(av[0], "_nested")) {
+		return (_nested_main(ac, av));
+	} else if (!av[1]) {
+		/* 'bk nested' with no args */
+		usage();
+	} else if (streq(av[1], "check")) {
+		return (nested_check_main(ac-1, av+1));
+	} else if (streq(av[1], "where")) {
+		return (nested_where_main(ac-1, av+1));
+	} else {
+		usage();
+	}
+	return (0);
+}
+
+private int
+nested_check_main(int ac, char **av)
+{
+	int	i, c, rc;
+	int	quiet = 0;
+	int	trim_noconnect = 0;
+	nested	*n;
+	char	**urls = 0;
+
+	while ((c = getopt(ac, av, "@|cq", 0)) != -1) {
+		switch (c) {
+		    case '@': if (bk_urlArg(&urls, optarg)) return (1); break;
+		    case 'c': trim_noconnect = 1; break;
+		    case 'q': quiet = 1; break;
+		    default: bk_badArg(c, av);
+		}
+	}
+	unless (proj_isEnsemble(0)) {
+		fprintf(stderr, "%s: must be in a nested repo\n", prog);
+		return (1);
+	}
+	EACH(urls) {
+		char	*u = urls[i];
+
+		urls[i] = parent_normalize(u);
+		free(u);
+	}
+	n = nested_init(0, 0, 0, NESTED_PENDING);
+	assert(n);
+	rc = urllist_check(n, quiet, trim_noconnect, urls);
+	nested_free(n);
+	return (rc);
+}
+
+private int
+nested_where_main(int ac, char **av)
+{
+	int	i = 1;
+
+	unless (av[i]) {
+		urllist_dump(0);
+	} else if (streq(av[i], "rm")) {
+		/* Perhaps _rm? or change the verb? */
+		unlink(NESTED_URLLIST);
+	} else {
+		for ( ; av[i]; i++) {
+			urllist_dump(av[i]);
+		}
+	}
+	return (0);
+
+}
+
 /*
  * bk _nested
  *
  * This is mostly a debugging function used to test the nested_init()
  * function in regressions.
  */
-int
-nested_main(int ac, char **av)
+private int
+_nested_main(int ac, char **av)
 {
 	int	c, i;
 	int	rc = 0, want = 0, undo = 0;
@@ -44,7 +120,7 @@ nested_main(int ac, char **av)
 	cwd = strdup(proj_cwd());
 	flags |= NESTED_PRODUCTFIRST;
 
-	while ((c = getopt(ac, av, "ahHl;mpPr;s;u")) != -1) {
+	while ((c = getopt(ac, av, "ahHl;mpPr;s;u", 0)) != -1) {
 		switch (c) {
 		    case 'a':
 		    	all = 1;
@@ -85,9 +161,7 @@ nested_main(int ac, char **av)
 		    case 'u':	/* undoc */
 			undo = 1;
 			break;
-		    default:
-usage:			system("bk help -s here");
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind] && streq(av[optind], "-")) {
@@ -98,7 +172,8 @@ usage:			system("bk help -s here");
 	if (rev && revs) {
 		fprintf(stderr,
 		    "here: -r or list on stdin, but not both\n");
-		goto usage;
+		system("bk help -s here");
+		exit(1);
 	}
 	if (thiscset) {
 		unless (cset = sccs_csetInit(INIT_MUSTEXIST)) {
@@ -659,7 +734,7 @@ nested_each(int quiet, int ac, char **av)
 	flags |= NESTED_PRODUCTFIRST;
 	getoptReset();
 	// has to track bk.c's getopt string
-	while ((c = getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;")) != -1) {
+	while ((c = getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;", 0)) != -1) {
 		if (c == 'C') product = 0;
 		unless (c == 'M') continue; /* XXX: CONFLICT */
 		if (optarg[0] == '|') {
@@ -1178,7 +1253,7 @@ urllist_check(nested *n, int quiet, int trim_noconnect, char **urls)
 	}
 
 	/* write our new urllist */
-	if (hash_toFile(urllist, NESTED_URLLIST)) perror(NESTED_URLLIST);
+	urllist_write(urllist);
 
 out:	unlink(keylist);
 	hash_free(urllist);
@@ -1304,6 +1379,24 @@ urllist_normalize(hash *urllist, char *url)
 	freeLines(updates, free);
 	hash_free(seen);
 	return (updated);
+}
+
+int
+urllist_write(hash *urllist)
+{
+	unless (isdir(BKROOT)) {
+		fprintf(stderr, "urllist_write() not at root\n");
+		return (-1);
+	}
+	if (hash_toFile(urllist, "BitKeeper/log/x.urllist")) {
+		perror("BitKeeper/log/x.urllist");
+		return (-1);
+	}
+	if (fileMove("BitKeeper/log/x.urllist", NESTED_URLLIST)) {
+		perror(NESTED_URLLIST);
+		return (-1);
+	}
+	return (0);
 }
 
 /*

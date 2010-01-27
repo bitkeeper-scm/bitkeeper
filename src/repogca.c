@@ -14,13 +14,13 @@ repogca_main(int ac, char **av)
 	char	*begin = 0, *end = 0;
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "a5d;k")) != -1) {
+	while ((c = getopt(ac, av, "a5d;k", 0)) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
 		    case 'd': dspec = optarg; break;
 		    case 'k': dspec = ":KEY:\\n"; break;
 		    case '5': dspec = ":MD5KEY:\\n"; break;
-		    default:  system("bk help -s repogca"); return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless (proj_root(0)) {

@@ -42,7 +42,7 @@ admin_main(int ac, char **av)
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;AC|d;e;E;f;F;i|M;m;O;p|P|r;S;t|y|Z|0DhHnqsTuz"))
+	    getopt(ac, av, "a;AC|d;e;E;f;F;i|M;m;O;p|P|r;S;t|y|Z|0DhHnqsTuz", 0))
 	       != -1) {
 		switch (c) {
 		/* user|group */
@@ -116,32 +116,32 @@ admin_main(int ac, char **av)
 				touchGfile++;
 				break;
 		    case 'O':	obscure = optarg; break;
-		    default:	goto usage;
+		    default: bk_badArg(c, av);
 		}
 	}
 	if ((flags & ADMIN_FORMAT) && ((flags & ~(ADMIN_CHECKS|SILENT)) ||
 	    nextf || nextu || nexts || nextp || comment || path || newCset ||
 	    newfile || doDates || rev)) {
 		fprintf(stderr, "admin: -h option must be alone.\n");
-		goto usage;
+		usage();
 	}
 	if (merge && ((flags & ~(ADMIN_CHECKS|SILENT|NEWCKSUM)) ||
 	    nextf || nextu || nexts || nextp || comment || path || newCset ||
 	    newfile || doDates)) {
 		fprintf(stderr, "admin: -M option must be alone or with -r\n");
-		goto usage;
+		usage();
 	}
 	if ((flags & ADMIN_ADD1_0) &&
 	    ((flags & ~(ADMIN_CHECKS|ADMIN_ADD1_0|SILENT|NEWCKSUM)) ||
 	    nextf || nextu || nexts || nextp || comment || path || newCset ||
 	    newfile || doDates || rev)) {
 		fprintf(stderr, "admin: -0 option must be alone\n");
-		goto usage;
+		usage();
 	}
 	if (comment && !(flags & NEWFILE)) {
 		fprintf(stderr,
 		    "admin: comment may only be specified with -i and/or -n\n");
-		goto usage;
+		usage();
 	}
 	if (obscure) {
 		unless (getenv("BK_FORCE")) {
@@ -166,22 +166,22 @@ admin_main(int ac, char **av)
 		fprintf(stderr, "%s %s\n",
 		    "admin: revision may only be specified with",
 		    "-i and/or -n or -M or -m or -f or -F\n");
-		goto usage;
+		usage();
 	}
 	if ((flags & NEWFILE) && nextf) {
 		fprintf(stderr,
 		    "admin: cannot have -f with -i and/or -n\n");
-		goto usage;
+		usage();
 	}
 	if ((flags & NEWFILE) && text && !text[0]) {
 		fprintf(stderr,
 		    "admin: -t must have file arg with -i and/or -n\n");
-		goto usage;
+		usage();
 	}
 	name = sfileFirst("admin", &av[optind], 0);
 	if ((flags & NEWFILE) && sfileNext()) {
 		fprintf(stderr, "admin: Only one file with -i/-n\n");
-		goto usage;
+		usage();
 	}
 
 	while (name) {
@@ -292,8 +292,6 @@ next:		sccs_free(sc);
 	}
 	if (sfileDone()) error = 1;
 	return (error);
-usage:	system("bk help -s admin");
-	return (1);
 }
 
 /*

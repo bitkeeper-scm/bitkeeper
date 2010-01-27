@@ -131,6 +131,7 @@ int	urllist_rmURL(hash *h, char *rk, char *url);
 int	urllist_check(nested *n, int quiet, int trim_noconnect, char **urls);
 void	urllist_dump(char *name);
 int	urllist_normalize(hash *urllist, char *url);
+int	urllist_write(hash *urllist);
 
 /* locking.c */
 
@@ -143,4 +144,8 @@ char	*nested_errmsg(void);
 char	**nested_lockers(project *p);
 void	nested_printLockers(project *p, FILE *out);
 void	nested_updateIdcache(project *comp);
+
+/* populate.c */
+int	nested_populate(nested *n, char **urls, int force, int quiet);
+
 #endif	// _NESTED_H

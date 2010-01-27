@@ -374,7 +374,7 @@ prompt_main(int ac, char **av)
 	char	buf[1024];
 	char	**lines = 0;
 
-	while ((c = getopt(ac, av, "cegGiowxf:n:p:t:Ty:")) != -1) {
+	while ((c = getopt(ac, av, "cegGiowxf:n:p:t:Ty:", 0)) != -1) {
 		switch (c) {
 		    case 'c': ask = 0; break;
 		    case 'e': type = "-E"; break;
@@ -391,12 +391,14 @@ prompt_main(int ac, char **av)
 		    case 'g': /* old, do not doc */
 		    	nogui = 1; break;
 		    case 'y': yes = optarg; break;
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (((file || prog) && av[optind]) ||
 	    (!(file || prog) && !av[optind]) ||
 	    (av[optind] && av[optind+1]) || (file && prog)) {
-		system("bk help -s prompt");
+		if (file == msgtmp) unlink(msgtmp);
+		usage();
 err:		if (file == msgtmp) unlink(msgtmp);
 		if (lines) freeLines(lines, free);
 		exit(2);
@@ -1142,6 +1144,34 @@ bkd_hasFeature(char *f)
 }
 
 /*
+ * This function returns true if the requested features are not contained
+ * in the current lease.  It is assumed that an error will be printed
+ * when this function returns true.  If the bits are not found, this
+ * code will explicitly refetch the current lease and check again.
+ */
+int
+bk_notLicensed(project *p, u32 bits)
+{
+	int	rc;
+	char	here[MAXPATH];
+
+	if ((proj_bklbits(p) & bits) == bits) return (0);
+
+	/* try to refetch the current lease */
+	if (getenv("_BK_NOFEATURELOOP")) return (0);
+	strcpy(here, proj_cwd());
+	if (chdir(proj_root(p))) return (1);
+	rc = sys("bk", "-?_BK_NOFEATURELOOP=1", "lease", "renew", "-q", SYS);
+	chdir(here);
+	if (rc) return (1);
+	proj_reset(p);		/* flush old bklbits */
+	if ((proj_bklbits(p) & bits) == bits) return (0);
+	return (1);
+}
+
+
+
+/*
  * Generate a http response header from a bkd back to the client.
  */
 void
@@ -1674,15 +1704,13 @@ progresstest_main(int ac, char **av)
 	int	style = 2;
 	ticker	*tick;
 
-	while ((c = getopt(ac, av, "n;r;s;t;")) != -1) {
+	while ((c = getopt(ac, av, "n;r;s;t;", 0)) != -1) {
 		switch (c) {
 		    case 'n': n = atoi(optarg); break;
 		    case 'r': r = atoi(optarg); break;
 		    case 's': s = atoi(optarg); break;
 		    case 't': style = atoi(optarg); break;
-		    default:
-			fprintf(stderr, "bad option\n");
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (style != 2) fprintf(stderr, "Do work");
@@ -1956,4 +1984,92 @@ bk_searchFile(char *base)
 	concat_path(buf, bin, base);
 	if (exists(buf)) return (strdup(buf));
 	return (0);
+}
+
+
+/*
+ * Parse a -@<url> argument in getopt() switch
+ *
+ * used with getopt(ac, av, "@|...", 0)
+ *
+ * Behavior:
+ *	-@	# add my parents to list
+ *	-@URL	# add URL to list
+ *	-@@FILE	# add filename to list (1 url per line)
+ *
+ * Returns non-zero on error and prints message to stderr
+ */
+int
+bk_urlArg(char ***urls, char *arg)
+{
+	char	**list;
+
+	if (arg && (arg[0] == '@')) {
+		unless (list = file2Lines(0, arg+1)) {
+			perror(arg+1);
+			return (1);
+		}
+		*urls = catLines(*urls, list);
+	} else if (arg) {
+		*urls = addLine(*urls, strdup(arg));
+	} else {
+		unless (list = parent_allp()) {
+			fprintf(stderr, "%s: -@ failed as "
+			    "repository has no parent\n",
+			    prog);
+			return (1);
+		}
+		*urls = catLines(*urls, list);
+	}
+	return (0);
+}
+
+/*
+ * Add to getopt() lines in bk as:
+ *
+ * default: bk_badArg(c, av);
+ */
+void
+bk_badArg(int c, char **av)
+{
+	if (getenv("_BK_IN_BKD")) fprintf(stderr, "ERROR-");
+	if (c == GETOPT_ERR) {
+		if (optopt) {
+			fprintf(stderr, "bad option -%c\n", optopt);
+		} else {
+			/* unknown --long option */
+			fprintf(stderr, "bad option %s\n", av[optind-1]);
+		}
+	} else {
+		/* we shouldn't see these */
+		if (isprint(c)) {
+			fprintf(stderr, "bad option -%c\n", c);
+		} else {
+			fprintf(stderr, "bad option %d\n", c);
+		}
+	}
+	usage();
+}
+
+/*
+ * print usage message to stderr and exit.
+ * Use 3 since some command use 1 as a special meaning. ex: diff
+ *
+ * This assumes functions do option parsing.  They should at lease
+ * have done this:
+ *   while ((c = getopt(ac, av, "", 0)) != -1) bk_badArg(c, av);
+ *
+ */
+void
+usage(void)
+{
+	unless (prog) prog = "bk";
+	if (systemf("bk gethelp -s '%s' 1>&2", prog)) {
+		if (optind) {	/* only if getopt was used */
+			sys("bk", prog, "--usage", SYS);
+		} else {
+			fprintf(stderr, "usage: %s\n", prog);
+		}
+	}
+	exit(3);
 }

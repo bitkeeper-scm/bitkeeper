@@ -5,13 +5,13 @@
 bk populate \- fill in components in a sparse product repository
 .SH SYNOPSIS
 .B bk populate
-.[B] \-lqr
-.[OPTreq] \-s component \ ...
-.[ARG] from \ .\|.\|.
+.[B] \-q
+.[OPTreq] \-@ url \ ...
+.ARG alias \ ...
 .SH DESCRIPTION
 .LP
 The populate command is used to add components to a sparse product,
-or to repopulate any components previously populated and then 
+or to re-populate any components previously populated and then 
 manually removed.
 .LP
 When cloning a product, it is possible to clone a subset of it by 
@@ -21,45 +21,39 @@ can help:
 .DS
 $ bk clone -sDEV-TOOLS bk://server/big-product
 $ cd big-product
-$ bk populate -sDEBUGGER
+$ bk populate DEBUGGER
 .DE
 After running the above, the cached components list will be
-"DEV-TOOLS" and "DEBUGGER" (and may be named with the "THERE" alias).
-If you need to populate a component that is not present in your parent[s],
-add one or more trailing urls (populate will use each url in turn until
-all requested components are found):
+"DEV-TOOLS" and "DEBUGGER" (and may be named with the "HERE" alias).
+Normally BitKeeper tracks where components were populated from so
+it can find them later.
+However if the list of remembered URLs is no longer correct,
+and/or the URLs are behind a slow connection, one or
+more URLs can be passed with the
+.B \-@
+option and those locations will be tried first.
 .DS
-$ bk populate -sBLIMEY bk://uk-server/big-product
+$ bk populate -@bk://uk-server/big-product BLIMEY
 .DE
 .LP
-The set of components populate will consider are
-specified on the command line with
-.BR \-s ,
-or retrieved from the cached aliases list with
-.BR \-r ,
-or implied by the "DEFAULT" aliases database entry if neither of
-the former apply.
+Normally in addition to fetching the components implied by the aliases
+on the command line the populate command will also fetch any components
+that should have been present, but were missing for some reason.
+With no options, just those missing components will be restored.
 .SH OPTIONS
-.TP \-s\*<comp\*>
-.B \-l
-Populate using hard links instead of copying the data.  
-This is faster and saves disk space, but only works 
-within filesystems supporting hard links.
+.TP \-@\*<url\*>
 .tp
-.OPTreq \-s comp
-Populate the components implied implied by
-.ARG comp .
-If this option is repeated the implied subset is the union of all
-specified components.
-.ARG comp
-may be a component or an alias for a set of components.
+.OPTreq \-@ URL
+When fetching new components try fetching from this
+.B url
+first.  The
+.B URL
+is a BitKeeper URL to a nested product.
 .tp
 .B \-q
 Run quietly.
-.tp
-.B \-r
-Repair the product by replacing any components which are listed in
-the cached components list that have been manually removed.
+.SH "NOTE"
+The populate command is really an alias for 'bk alias add HERE ARGS'
 .SH "SEE ALSO"
 .SA alias
 .SA bkd
@@ -79,7 +73,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "product" or "product-line" listed then your
+If the options field has "nested" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
 .\}

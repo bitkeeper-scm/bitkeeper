@@ -15,16 +15,13 @@ opark_main(int ac, char **av)
 	int 	lflag  = 0, qflag = 0, purge = 0, c, status, try = 0;
 	FILE	*f;
 
-	while ((c = getopt(ac, av, "lp:qy:")) != -1) {
+	while ((c = getopt(ac, av, "lp:qy:", 0)) != -1) {
 		switch (c) {
 		    case 'l':	lflag = 1; break;		/* doc 2.0 */
 		    case 'p':	purge = atoi(optarg); break;	/* doc 2.0 */
 		    case 'q':	qflag = 1; break;		/* doc 2.0 */
 		    case 'y':	comment = optarg; break;	/* doc 2.0 */
-		    default:
-			fprintf(stderr,
-			   "Usage: bk park [-l] [-q] [-p num] [-y comment]\n");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 

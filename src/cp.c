@@ -15,17 +15,15 @@ cp_main(int ac, char **av)
 	int	force = 0;
 	int	c;
 
-	while ((c = getopt(ac, av, "f")) != -1) {
+	while ((c = getopt(ac, av, "f", 0)) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break;
-		    default:
-usage:			system("bk help -s cp");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless ((ac - optind) == 2) {
 		close(0);	/* XXX - what is this for? */
-		goto usage;
+		usage();
 	}
 	return (cp(av[optind], av[optind+1], force));
 }

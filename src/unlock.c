@@ -23,7 +23,7 @@ unlock_main(int ac, char **av)
 	int	c, force = 0, flags = 0;
 	sccs	*s = 0;
 
-	while ((c = getopt(ac, av, "fprswxz")) != -1) {
+	while ((c = getopt(ac, av, "fprswxz", 0)) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break;		/* doc 2.0 */
 		    case 'p': flags |= PLOCK; break;	/* doc 2.0 */
@@ -33,9 +33,7 @@ unlock_main(int ac, char **av)
 		    case 'x': flags |= XLOCK; break;	/* doc 2.0 */
 		    case 'z': flags |= ZLOCK; break;	/* doc 2.0 */
 			break;
-		    default:
-usage:			system("bk help -s unlock");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
@@ -44,9 +42,9 @@ usage:			system("bk help -s unlock");
 	if ((flags & REPO) && (flags & ~REPO)) {
 		fprintf(stderr,
 		    "unlock: may not mix file and repository unlocks.\n");
-		goto usage;
+		usage();
 	}
-	
+
 	if (flags & REPO) {
 		if (av[optind]) {
                         chdir(av[optind]);
@@ -65,8 +63,7 @@ usage:			system("bk help -s unlock");
 	unless (name = sfileFirst("unlock", &av[optind], SF_NODIREXPAND)) {
 		fprintf(stderr,
 		    "unlock: must have explicit list when discarding locks.\n");
-		goto usage;
-		return(1);
+		usage();
 	}
 	c = 0;
 	while (name) {

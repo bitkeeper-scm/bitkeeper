@@ -38,26 +38,27 @@ CPPFLAGS=-I../libc
 VERS	:= $(shell test -x vers || bk get vers; BINDIR=$(BINDIR) ./vers)
 IMAGE:= $(shell bk get -qS bk_version; echo $(VERS)-`./bk_version`$(EXT) )
 
-all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE)
+all image: $(BINDIR)/bk$(EXE) $(IMAGE)
 	strip $(IMAGE)
-
-sfioball: installtool $(BINDIR) $(BINDIR)/gui/bin/bkgui$(EXE)
-	@echo Creating sfioball from BK in $(BINDIR) ...
-	@cp installtool $(BINDIR)/gui/lib/installtool
-	@find $(BINDIR) -type f -name \*.$(SO) | while read x; \
-	    do strip $(STRIPOPTS) $$x ; done
-	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
-	    bk sfio -mqo) > sfioball
-
-_data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball
-	@echo Compressing data
-	@./zz sfio.zz < sfio$(EXE)
-	@./zz sfioball.zz < sfioball
-	@./munge sfio.zz sfioball.zz
 
 $(IMAGE): extractor.o $(SYSTEM_OBJS) _data.o $(RESOURCES)
 	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o $(LIBS) \
 	    $(RESOURCES) -o $@
+	@$(RM) -f _data.o
+
+_data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball.zz
+	@echo Compressing data
+	@./zz sfio.zz < sfio$(EXE)
+	@./munge sfio.zz sfioball.zz
+	@$(RM) -f sfio.zz sfioball.zz
+
+sfioball.zz: installtool $(BINDIR) $(BINDIR)/gui/bin/bkgui$(EXE) zz$(EXE)
+	@echo Creating sfioball.zz from BK in $(BINDIR) ...
+	@cp installtool $(BINDIR)/gui/lib/installtool
+	@find $(BINDIR) -type f -name \*.$(SO) | while read x; \
+	    do strip $(STRIPOPTS) $$x ; done
+	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
+	    bk sfio -mqo) | ./zz sfioball.zz
 
 resources.o: resources.rc ../win32/data/box_software.ico
 	windres -o $@ resources.rc
@@ -99,7 +100,7 @@ zz$(EXE): zz.o
 
 .PHONY: clean
 clean:
-	$(RM) _data _data.c _data.o a.out munge$(EXE) sfioball sfio zz \
+	$(RM) _data _data.c _data.o a.out munge$(EXE) zz \
 		core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio *.zz \
 		installtool inskeys
 

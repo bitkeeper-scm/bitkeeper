@@ -33,9 +33,9 @@ echo $N Check cloning -sall of a partial project works ..............$NL
 cd "$HERE"
 bk clone $Q -snm project proj-nm || fail
 cd proj-nm
-bk components >GOT || fail
+bk components -h >GOT || fail
 cat <<EOF >WANT
-gcc/nm
+./gcc/nm
 EOF
 cmpfiles GOT WANT
 cd ..
@@ -43,10 +43,10 @@ bk clone $Q -sall proj-nm nm-clone || fail
 cd nm-clone
 bk components >GOT || fail
 cat <<EOF >WANT
-gcc
-gcc/nm
-gdb
-man
+./gcc
+./gcc/nm
+./gdb
+./man
 EOF
 cmpfiles GOT WANT
 echo OK
@@ -70,7 +70,7 @@ echo OK
 echo $N Check -rOLD cannot pick up new components thru explicit ref .$NL
 cd "$HERE"
 rm -rf proj-clone
-bk clone $Q -r1.7 -s./gcc/libiberty project proj-clone 2> ERR && {
+bk clone -q -r1.7 -s./gcc/libiberty project proj-clone 2> ERR && {
 	echo should have failed
 	cat ERR   
 	exit 1
@@ -82,36 +82,36 @@ EOF
 cmpfiles ERR WANT
 echo OK
 
-echo $N Move stuff and watch the fur fly ............................$NL
-cd "$HERE"
-bk clone $Q -sthere project mangle || exit 1
-(cd project; bk alias show here) > here.project
-(cd mangle; bk alias show here) > here.mangle
-cmpfiles here.project here.mangle
-cd mangle
-bk alias new dev ./gcc './gcc/*' gdb || exit 1
-bk edit $Q gcc/ChangeSet gcc/nm/ChangeSet gcc/libiberty/ChangeSet gdb/ChangeSet
-mkdir src
-mv gcc gdb src
-bk ci $Q -y'Moved' src/gcc/ChangeSet src/gcc/*/ChangeSet src/gdb/ChangeSet
-bk alias rm -C dev './gcc/*' 2> ERR
-cat <<EOF > WANTERR
-alias: idcache missing component src/gcc, fixing
-alias: idcache missing component src/gdb, fixing
-EOF
-cmpfiles WANTERR ERR
-# next line fails because glob doesn't match, this test won't really work.
-#bk alias add -C dev './src/gcc/*'
-bk commit $Q -y'Moved stuff' 2>ERR && exit 1
-cat <<EOF | sort > BAD
-check: error expanding alias 'default' because 'gcc/nm' is not present
-check: error expanding alias 'default' because 'gcc/libiberty' is not present
-check: missing components!
-EOF
-sort ERR > sort_ERR
-# XXX almost...
-#cmpfiles BAD sort_ERR
-echo 'failed (bug: need rename)'
+#echo $N Move stuff and watch the fur fly ............................$NL
+#cd "$HERE"
+#bk clone $Q -sthere project mangle || exit 1
+#(cd project; bk alias here) > here.project
+#(cd mangle; bk alias here) > here.mangle
+#cmpfiles here.project here.mangle
+#cd mangle
+#bk alias new dev ./gcc './gcc/*' gdb || exit 1
+#bk edit $Q gcc/ChangeSet gcc/nm/ChangeSet gcc/libiberty/ChangeSet gdb/ChangeSet
+#mkdir src
+#mv gcc gdb src
+#bk ci $Q -y'Moved' src/gcc/ChangeSet src/gcc/*/ChangeSet src/gdb/ChangeSet
+#bk alias rm -C dev './gcc/*' 2> ERR
+#cat <<EOF > WANTERR
+#alias: idcache missing component src/gcc, fixing
+#alias: idcache missing component src/gdb, fixing
+#EOF
+#cmpfiles WANTERR ERR
+## next line fails because glob doesn't match, this test won't really work.
+##bk alias add -C dev './src/gcc/*'
+#bk commit $Q -y'Moved stuff' 2>ERR && exit 1
+#cat <<EOF | sort > BAD
+#check: error expanding alias 'default' because 'gcc/nm' is not present
+#check: error expanding alias 'default' because 'gcc/libiberty' is not present
+#check: missing components!
+#EOF
+#sort ERR > sort_ERR
+## XXX almost...
+##cmpfiles BAD sort_ERR
+#echo 'failed (bug: need rename)'
 
 # rest of test that should work someday
 #cd "$HERE"
@@ -129,8 +129,8 @@ bk alias add CONFLICT ./gcc/nm
 cd ../conflict-clone
 bk alias add CONFLICT ./gcc/libiberty
 bk pull $Q || exit 1
-bk alias show CONFLICT > GOT
-bk alias show -k ./gcc/nm ./gcc/libiberty | sort > WANT
+bk alias -k CONFLICT > GOT
+(echo ./gcc/nm; echo ./gcc/libiberty) | bk alias -ek - | sort > WANT
 echo gcc >> WANT
 cmpfiles GOT WANT
 echo OK
@@ -152,13 +152,19 @@ bk alias add dev ./gcc/gcov
 cd "$HERE"/proj-clone
 bk attach $Q ../libcpp gcc/libcpp
 bk alias add dev ./gcc/libcpp
-bk components add $Q dev || exit 1
+bk populate $Q dev || exit 1
 bk pull $Q ../project || exit 1
-bk alias show -k ./gcc ./gcc/gcov ./gcc/libcpp ./gcc/libiberty \
-	./gcc/nm ./gdb > WANT
-bk alias show dev > GOT
+bk alias -ek - <<EOF > WANT
+./gcc
+./gcc/gcov
+./gcc/libcpp
+./gcc/libiberty
+./gcc/nm
+./gdb
+EOF
+bk alias -k dev > GOT
 cmpfiles WANT GOT
-bk alias show here | grep -q dev || {
+bk alias here | grep -q dev || {
 	echo should have dev here
 	exit 1
 }
@@ -177,13 +183,13 @@ bk clone $Q -sall bk://localhost:$P/clone1 clone1b || fail
 cd clone1b
 bk components >GOT || fail
 cat <<EOF >WANT
-gcc
-gcc/gcov
-gcc/libcpp
-gcc/libiberty
-gcc/nm
-gdb
-man
+./gcc
+./gcc/gcov
+./gcc/libcpp
+./gcc/libiberty
+./gcc/nm
+./gdb
+./man
 EOF
 cmpfiles GOT WANT
 cd ..
@@ -265,66 +271,66 @@ bk clone $Q -sdev bk://localhost:$P/glob5 glob6 || {
 	exit 1
 }
 cd glob6
-bk components >GOT || fail
+bk components -h >GOT || fail
 cat <<EOF >WANT
-gcc
-gcc/gcov
-gcc/libcpp
-gcc/libiberty
-gcc/nm
-gdb
+./gcc
+./gcc/gcov
+./gcc/libcpp
+./gcc/libiberty
+./gcc/nm
+./gdb
 EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N Test alias show here ........................................$NL
+echo $N Test alias here .............................................$NL
 cd "$HERE"
 bk clone $Q bk://localhost:$P/proj-clone dash-h || {
 	echo failed
 	exit 1
 }
 cd dash-h
-bk alias show here > GOT
+bk alias here > GOT
 cat > WANT <<EOF
 default
 EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Test alias here -p gcc ......................................$NL
-bk alias here -p gcc > GOT || exit 1
+echo $N Test alias -he gcc ..........................................$NL
+bk alias -eh gcc  > GOT || exit 1
 cat > WANT <<EOF
-gcc
-gcc/libiberty
-gcc/nm
+./gcc
+./gcc/libiberty
+./gcc/nm
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N Test alias missing with missing components ..................$NL
 rm -rf gcc/libcpp
-bk alias missing -p all > GOT || exit 1
+bk alias -em all > GOT || exit 1
 cat > WANT <<EOF
-gcc/libcpp
-gcc/libcpp/deep
+./gcc/libcpp
+./gcc/libcpp/deep
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N Test alias missing foo with missing components ..............$NL
-bk alias missing -p dev > GOT || exit 1
+bk alias -em dev > GOT || exit 1
 cat > WANT <<EOF
-gcc/libcpp
+./gcc/libcpp
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N Test alias here foo with unrelated missing components .......$NL
-bk alias here -p gcc > GOT || exit 1
+bk alias -eh gcc > GOT || exit 1
 cat > WANT <<EOF
-gcc
-gcc/libiberty
-gcc/nm
+./gcc
+./gcc/libiberty
+./gcc/nm
 EOF
 echo OK
 
@@ -343,24 +349,24 @@ bk alias new -C nm ./gcc/nm
 bk alias new -C gcc ./gcc libcpp libiberty nm
 bk alias new -C dev gcc ./gdb
 bk alias new enchilada_grande dev ./man
-bk alias here -p enchilada_grande > GOT
+bk alias -eh enchilada_grande > GOT
 cat > WANT <<EOF
-gcc
-gcc/libcpp
-gcc/libcpp/deep
-gcc/libiberty
-gcc/nm
-gdb
-man
+./gcc
+./gcc/libcpp
+./gcc/libcpp/deep
+./gcc/libiberty
+./gcc/nm
+./gdb
+./man
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N Test alias here on recursive alias with a missing comp ......$NL
 rm -rf gcc/libcpp/deep
-bk alias missing -p enchilada_grande > GOT || exit 1
+bk alias -em enchilada_grande > GOT || exit 1
 cat > WANT <<EOF
-gcc/libcpp/deep
+./gcc/libcpp/deep
 EOF
 cmpfiles WANT GOT
 echo OK

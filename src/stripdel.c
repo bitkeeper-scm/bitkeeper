@@ -25,11 +25,11 @@ stripdel_main(int ac, char **av)
 	s_opts	opts = {1, 0, 0, 0, 0};
 	RANGE	rargs = {0};
 
-	while ((c = getopt(ac, av, "bcCdqr;")) != -1) {
+	while ((c = getopt(ac, av, "bcCdqr;", 0)) != -1) {
 		switch (c) {
 		    case 'b':
 			fprintf(stderr, "ERROR: stripdel -b obsolete\n");
-			goto usage;
+			usage();
 		    case 'c': opts.checkOnly = 1; break;	/* doc 2.0 */
 		    case 'C': opts.respectCset = 0; break;	/* doc 2.0 */
 		    case 'd':
@@ -38,11 +38,9 @@ stripdel_main(int ac, char **av)
 			break;
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r':
-			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
-		    default:
-usage:			system("bk help -s stripdel");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind] && streq(av[optind], "-")) {

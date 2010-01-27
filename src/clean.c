@@ -17,16 +17,14 @@ clean_main(int ac, char **av)
 	int	ret = 0;
 	char	*name;
 	
-	while ((c = getopt(ac, av, "pqv")) != -1) {
+	while ((c = getopt(ac, av, "pqv", 0)) != -1) {
 		switch (c) {
 		    case 'p': flags |= PRINT; break;		/* doc 2.0 */
 		    case 'q': 					/* doc 2.0 */
 			flags |= CLEAN_SHUTUP; sflags |= SF_SILENT; break;
 		    case 'v': flags &= ~SILENT; break;		/* doc 2.0 */
 			break;
-		    default:
-			system("bk help -s clean");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 

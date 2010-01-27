@@ -23,14 +23,14 @@ lines_main(int ac, char **av)
 	delta	*e;
 	RANGE	rargs = {0};
 
-	while ((c = getopt(ac, av, "c;n;ur;R;tT")) != -1) {
+	while ((c = getopt(ac, av, "c;n;ur;R;tT", 0)) != -1) {
 		switch (c) {
 		    case 'R':	/* old form, allows no .. */
 		    	unless (strstr(optarg, "..")) {
 				optarg = aprintf("%s..", optarg);
 			}
 		    case 'c':
-		    	if (range_addArg(&rargs, optarg, 1)) goto usage;
+		    	if (range_addArg(&rargs, optarg, 1)) usage();
 			break;
 		    case 'u':
 			flags |= GET_USER;
@@ -45,16 +45,13 @@ lines_main(int ac, char **av)
 		    case 'r':
 			rev = optarg; 
 			break;
-		    default:
-usage:			fprintf(stderr,
-			    "Usage: _lines [-utT] [-n<n>] [-r<r> | -c<r>] file.\n");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
-	unless (av[optind]) goto usage;
+	unless (av[optind]) usage();
 	name = sfileFirst("lines", &av[optind], 0);
-	if (sfileNext() || !name) goto usage;
+	if (sfileNext() || !name) usage();
 
 	if (name && (s = sccs_init(name, INIT_NOCKSUM)) && HASGRAPH(s)) {
 		renumber(s);

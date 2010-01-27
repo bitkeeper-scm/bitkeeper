@@ -35,7 +35,7 @@ touch BitKeeper/etc/aliases
 bk new $Q BitKeeper/etc/aliases
 echo "default" > BitKeeper/log/HERE
 bk commit $Q -y"add aliases"
-bk newroot -P $Q
+bk newroot -P $Q || exit 1
 test "`bk product`" = "This is the product." || {
 	echo failed to make it a product
     	exit 1
@@ -68,12 +68,12 @@ EOF
 cmpfiles WANT GOT
 bk commit $Q -y'gcc & gdb' || exit 1
 cd gcc
-test "`bk product`" = "This is a component." || {
+test "`bk product || true`" = "This is a component." || {
 	echo failed to make it a component
 	ls BitKeeper/log
 	exit 1
 }
-test -z "`bk pending`" || {
+test -z "`bk pending || true`" || {
 	echo did not clear pending marks
 	exit 1
 }
@@ -85,12 +85,12 @@ bk -R get $Q -S BitKeeper/etc/config
 bk setup -Cfc"`bk root`"/BitKeeper/etc/config new-comp
 cp -rp new-comp "$HERE/save"
 cd new-comp || exit 1
-test "`bk product`" = "This is a component." || {
+test "`bk product || true`" = "This is a component." || {
 	echo failed to make it a component
 	ls BitKeeper/log
 	exit 1
 }
-test -z "`bk pending`" || {
+test -z "`bk pending || true`" || {
 	echo did not clear pending marks
 	exit 1
 }
@@ -113,7 +113,7 @@ bk pending | grep -q "new-comp/ChangeSet@1.2" || {
 }
 echo OK
 
-bk components rm -q new-comp
+bk unpopulate $Q new-comp || fail
 # because default is still all, removing the component means it is
 # still there, so really remove it!
 rm -rf new-comp
@@ -183,7 +183,7 @@ cd ..
 # make sure the trailing ! gets stripped
 test X`bk config a` = X1p || exit 1
 test X`bk config b` = X2p || exit 1
-test X`bk config c` = X || exit 1
+test X`bk config c || true` = X || exit 1
 test X`bk config d` = X4p || exit 1
 cd gcc
 bk unedit $Q BitKeeper/etc/config ../BitKeeper/etc/config || exit 1
@@ -706,7 +706,7 @@ cmpfiles WANT GOT
 echo OK
 
 # Done with pending component
-bk components rm -q gdb/pendingdeepnest
+bk unpopulate $Q gdb/pendingdeepnest || fail
 rm -fr gdb/pendingdeepnest gdb/extradeepnest
 
 echo $N bk _nested for undo -r+ .....................................$NL
@@ -1054,7 +1054,7 @@ cd project
 
 echo $N Test simple alias addition ..................................$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias new dev gcc4 gdb
+bk alias dev gcc4 gdb
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo failed to commit change
 	bk cmdlog -a | tail -20
@@ -1073,27 +1073,27 @@ bk clean BitKeeper/etc/aliases
 echo OK
 
 echo $N Test simple alias expansion .................................$NL
-bk alias show -p dev > GOT
+bk alias -e dev > GOT
 cat > WANT <<EOF
-gcc4
-gdb
+./gcc4
+./gdb
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N Test simple directory expansion .............................$NL
-bk alias show -p ./gcc4 > GOT
+bk alias -e ./gcc4 > GOT
 cat > WANT <<EOF
-gcc4
+./gcc4
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N Combine the two .............................................$NL
-bk alias show -p dev ./gcc4 > GOT
+(echo dev; echo ./gcc4) | bk alias -e - > GOT
 cat > WANT <<EOF
-gcc4
-gdb
+./gcc4
+./gdb
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -1114,10 +1114,10 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test an alias that names another alias ......................$NL
-bk alias show -p mydev > GOT
+bk alias -e mydev > GOT
 cat > WANT <<EOF
-gcc4
-gdb
+./gcc4
+./gdb
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -1142,10 +1142,10 @@ test $REV = `bk changes -r+ -d:REV:` && {
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk alias show -p A > GOT
+bk alias -e A > GOT
 cat > WANT <<EOF
-gcc4
-gdb
+./gcc4
+./gdb
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -1163,8 +1163,8 @@ echo OK
 echo $N Make sure we can remove a component from an alias ...........$NL
 REV=`bk changes -r+ -d:REV:`
 bk alias rm A B
-echo gdb > WANT
-bk alias show -p A > GOT
+echo ./gdb > WANT
+bk alias -e A > GOT
 cmpfiles WANT GOT
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
@@ -1176,9 +1176,9 @@ echo OK
 echo $N Make sure we can add a component to an alias ................$NL
 REV=`bk changes -r+ -d:REV:`
 bk alias add A B
-echo gcc4 > WANT
-echo gdb >> WANT
-bk alias show -p A > GOT
+echo ./gcc4 > WANT
+echo ./gdb >> WANT
+bk alias -e A > GOT
 cmpfiles WANT GOT
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
@@ -1207,15 +1207,15 @@ echo OK
 
 echo $N List all alias names ........................................$NL
 bk grep '^@' BitKeeper/etc/aliases | sed 's/^@//' | bk _sort > WANT
-bk alias show > GOT
+bk alias > GOT
 cmpfiles WANT GOT
 echo OK
 
 echo $N List only present components ................................$NL
-bk components here > GOT
+bk components -h > GOT
 cat > WANT <<EOF
-gcc4
-gdb
+./gcc4
+./gdb
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -1253,7 +1253,7 @@ echo @see_recursion
 echo recursion
 ) >> BitKeeper/etc/aliases
 bk delta $Q -ywhatever BitKeeper/etc/aliases
-bk alias show -p recursion > OUT 2>&1 || test $? = 1 || {
+bk alias -e recursion > OUT 2>&1 || test $? = 1 || {
 	echo should have failed
 	cat OUT
 	exit 1

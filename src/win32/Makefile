@@ -54,14 +54,14 @@ bkshellx: FORCE
 	[ -d dll ] || mkdir dll
 	test -d dll/shellx || bk components add \
 		-@ -@bk://data.bitmover.com$$_BUILD_PORT/bk \
-		WIN32-DLL
+		WIN32_DLL
 	cd dll/shellx; bk -Ur get -Sq
 
 bkscc: FORCE
 	[ -d dll ] || mkdir dll
 	test -d dll/scc || bk components add \
 		-@ -@bk://data.bitmover.com$$_BUILD_PORT/bk \
-		WIN32-DLL
+		WIN32_DLL
 	cd dll/scc; bk -Ur get -Sq
 
 install: all blat data/bk.ico

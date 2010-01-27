@@ -24,8 +24,7 @@ r2c_main(int ac, char **av)
 
 	unless (av[1] && strneq(av[1], "-r", 2) && av[2] && !av[3]) { 
 		/* doc 2.0 */
-		system("bk help -s r2c");
-		exit(1);
+		usage();
 	}
 	name = name2sccs(av[2]);
 	unless (s = sccs_init(name, INIT_NOCKSUM)) {

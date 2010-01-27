@@ -36,20 +36,18 @@ sccs2bk_main(int ac, char **av)
 	char	*name;
 	int	licChk = 0;
 
-	while ((c = getopt(ac, av, "c|hLqv")) != -1) {
+	while ((c = getopt(ac, av, "c|hLqv", 0)) != -1) {
 		switch (c) {
 		    case 'c': csetkey = optarg; break;
 		    case 'h': verify = 0; break;
 		    case 'L': licChk = 1; break;
 		    case 'q': verbose = 0; break;
 		    case 'v': verbose++; break;
-		    default:
-usage:			system("bk help -s sccs2bk");
-			return(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
-	unless (proj_bklbits(0) & LIC_IMPORT) {
+	if (bk_notLicensed(0, LIC_IMPORT)) {
 		if (verbose) {
 			// XXX - need a name
 			fputs("sccs2bk: operation requires "
@@ -59,8 +57,7 @@ usage:			system("bk help -s sccs2bk");
 	}
 	if (licChk) return (0);
 
-	unless (csetkey) goto usage;
-
+	unless (csetkey) usage();
 	if (name = getenv("BK_CONFIG")) {
 		safe_putenv("BK_CONFIG=%s; checkout:none!", name);
 	} else {

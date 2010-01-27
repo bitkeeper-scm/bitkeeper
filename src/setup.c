@@ -3,7 +3,6 @@
 #include "logging.h"
 
 private int	mkconfig(FILE *out, MDBM *flist, int verbose);
-private void    usage(void);
 private void	defaultFiles(int);
 private void	printField(FILE *out, MDBM *flist, char *field);
 private MDBM	*addField(MDBM *flist, char *field);
@@ -27,7 +26,7 @@ setup_main(int ac, char **av)
 	int	product = 0;
 	int	noCommit = 0;
 
-	while ((c = getopt(ac, av, "aCc:ePfF:p")) != -1) {
+	while ((c = getopt(ac, av, "aCc:ePfF:p", 0)) != -1) {
 		switch (c) {
 		    case 'a': accept = 1; break;
 		    case 'C':
@@ -48,7 +47,7 @@ setup_main(int ac, char **av)
 		    case 'f': force = 1; break;
 		    case 'F': flist = addField(flist, optarg); break;
 		    case 'p': print = 1; break;
-		    default: usage();
+		    default: bk_badArg(c, av);
 		}
 	}
 
@@ -165,10 +164,11 @@ again:
 err:			unlink("BitKeeper/etc/config");
 			unlink("BitKeeper/log/cmd_log");
 			if (m) mdbm_close(m);
-			sccs_unmkroot("."); /* reverse  sccs_mkroot */
-			unless (allowNonEmptyDir) {
+			if (allowNonEmptyDir) {
+				sccs_unmkroot("."); /* reverse  sccs_mkroot */
+			} else {
 				chdir(here);
-				rmdir(package_path);
+				if (rmtree(package_path)) perror(package_path);
 			}
 			exit(1);
 		}
@@ -176,6 +176,12 @@ err:			unlink("BitKeeper/etc/config");
 	}
 	mdbm_close(m);
 	m = 0;
+
+	if (product && bk_notLicensed(0, LIC_NESTED)) {
+		fprintf(stderr,
+"%s: current license does not include support for nested\n",  prog);
+		goto err;
+	}
 
 	/*
 	 * When creating a new component we need a valid license, but
@@ -246,6 +252,7 @@ defaultFiles(int product)
 		fprintf(f, "default\n");
 		fclose(f);
 		touch("BitKeeper/log/PRODUCT", 0444);
+		proj_reset(0);		/* created product */
 	}
 	unless (getenv("_BK_SETUP_NOGONE")) {
 		f = fopen("BitKeeper/etc/gone", "w");
@@ -257,13 +264,6 @@ defaultFiles(int product)
 	fprintf(f, "\n");
 	fclose(f);
 	system("bk new -Pq " COLLAPSED);
-}
-
-private void
-usage(void)
-{
-	system("bk help -s setup");
-	exit(1);
 }
 
 private MDBM *

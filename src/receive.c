@@ -8,7 +8,7 @@ receive_main(int ac,  char **av)
 	char	buf[MAXLINE], opts[MAXLINE] = "";
 	char	*path;
 
-	while ((c = getopt(ac, av, "acFiStv")) != -1) {
+	while ((c = getopt(ac, av, "acFiStv", 0)) != -1) {
 		switch (c) { 
 		    case 'a': strcat(opts, " -a"); break;	/* doc 2.0 */
 		    case 'c': strcat(opts, " -c"); break;	/* doc 2.0 */
@@ -17,21 +17,15 @@ receive_main(int ac,  char **av)
 		    case 'S': strcat(opts, " -S"); break;	/* undoc? 2.0 */
 		    case 't': strcat(opts, " -t"); break;	/* undoc? 2.0 */
 		    case 'v': strcat(opts, " -v"); break;	/* doc 2.0 */
-		    default :
-			system("bk help -s receive");
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
 	unless (av[optind]) {
-		if (proj_cd2root()) {
-usage:			fprintf(stderr,
-			"usage: bk receive [takepatch options] [pathname]\n");
-			exit(1);
-		}
+		if (proj_cd2root()) usage();
 	} else {
 		path = av[optind++];
-		if ((path == NULL) || (av[optind] != NULL)) goto usage;
+		if ((path == NULL) || (av[optind] != NULL)) usage();
 		if (new && !isdir(path)) mkdirp(path);
 		if (chdir(path) != 0) {
 			perror(path);

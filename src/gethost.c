@@ -7,17 +7,14 @@ gethost_main(int ac, char **av)
 	char	*host, *address;
 	int	real = 0, ip = 0, c;
 
-	while ((c = getopt(ac, av, "nr")) != -1) {
+	while ((c = getopt(ac, av, "nr", 0)) != -1) {
 		switch (c) {
-			case 'n': ip = 1; break;
-			case 'r': real = 1; break;
-			default:
-error:				system("bk help -s gethost");
-				return (1);
+		    case 'n': ip = 1; break;
+		    case 'r': real = 1; break;
+		    default: bk_badArg(c, av);
 		}
 	}
-	if (av[optind]) goto error;
-
+	if (av[optind]) usage();
 	if (real) {
 		host = sccs_realhost();
 	} else {

@@ -36,13 +36,11 @@ reviewmerge_main(int ac, char **av)
 
 	reviews = hash_new(HASH_MEMHASH);
 
-	while ((c = getopt(ac, av, "ae:")) != -1) {
+	while ((c = getopt(ac, av, "ae:", 0)) != -1) {
 		switch (c) {
 		    case 'a': anno = 1; break;
 		    case 'e': exist = optarg; break;
-		    default:
-			fprintf(stderr, "bad args\n");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (exist) load_existing(exist);

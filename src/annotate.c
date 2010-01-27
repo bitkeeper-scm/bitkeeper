@@ -31,14 +31,14 @@ annotate_main(int ac, char **av)
 			return (1);
 		}
 	}
-	while ((c = getopt(ac, av, "A;a;Bc;hkr;R|")) != -1) {
+	while ((c = getopt(ac, av, "A;a;Bc;hkr;R|", 0)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
 			/*FALLTHROUGH*/
 		    case 'a':
 			flags = annotate_args(flags, optarg);
-			if (flags == -1) goto usage;
+			if (flags == -1) usage();
 			break;
 		    case 'B': break;		   /* skip binary, default */	
 		    case 'c': cdate = optarg; break;		/* doc 2.0 */
@@ -48,19 +48,17 @@ annotate_main(int ac, char **av)
 		    case 'R':
 			range = 1;
 			if (optarg && range_addArg(&rargs, optarg, 0)) {
-				goto usage;
+				usage();
 			}
 			flags &= ~GET_EXPAND;
 			break;
-		    default:
-usage:			system("bk help -s annotate");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
-	if (Rev && strstr(Rev, "..")) goto usage;
-	if (cdate && strstr(cdate, "..")) goto usage;
-	if (range && (Rev || cdate)) goto usage;
+	if (Rev && strstr(Rev, "..")) usage();
+	if (cdate && strstr(cdate, "..")) usage();
+	if (range && (Rev || cdate)) usage();
 
 	/* original annotate only, not -R sccscat replacement */
 	if (!range && (flags == BASE_FLAGS)) {

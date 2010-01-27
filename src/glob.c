@@ -1,4 +1,4 @@
-#include "system.h"
+#include "sccs.h"
 
 int
 glob_main(int ac, char **av)
@@ -6,10 +6,7 @@ glob_main(int ac, char **av)
 	char	*glob = av[1];
 	int	i, matched = 0;
 
-	unless (av[1] && av[2]) {
-		system("bk help -s glob");
-		return (1);
-	}
+	unless (av[1] && av[2]) usage();
 	for (i = 2; av[i]; i++) {
 		if (match_one(av[i], glob, 0)) {
 			printf("%s matches.\n", av[i]);

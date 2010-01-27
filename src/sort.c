@@ -63,14 +63,13 @@ sort_main(int ac, char **av)
 	mem_t	*mem;
 	FILE	*f;
 
-	while ((c = getopt(ac, av, "k:nru")) != -1) {
+	while ((c = getopt(ac, av, "k:nru", 0)) != -1) {
 		switch (c) {
 		    case 'k': sortfield = atoi(optarg); break;
 		    case 'n': nflag = 1; break;
 		    case 'r': rflag = 1; break;
 		    case 'u': uflag = 1; break;
-		    default:
-			system("bk help -s sort");
+		    default: bk_badArg(c, av);
 		}
 	}
 

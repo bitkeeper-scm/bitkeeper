@@ -21,7 +21,7 @@ cmd_clone(int ac, char **av)
 		out("@END@\n");
 		goto out;
 	}
-	while ((c = getopt(ac, av, "ADlNqr;w;z|")) != -1) {
+	while ((c = getopt(ac, av, "ADlNqr;w;z|", 0)) != -1) {
 		switch (c) {
 		    case 'A':
 			attach = 1;
@@ -48,9 +48,7 @@ cmd_clone(int ac, char **av)
 		    case 'r':
 			rev = optarg;
 			break;
-		    default:
-			out("ERROR-unknown option\n");
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	/*

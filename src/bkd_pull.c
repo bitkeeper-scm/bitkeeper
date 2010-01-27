@@ -31,7 +31,7 @@ cmd_pull_part1(int ac, char **av)
 
 	probekey_av = addLine(probekey_av, strdup("bk"));
 	probekey_av = addLine(probekey_av, strdup("_probekey"));
-	while ((c = getopt(ac, av, "denNlqr;z|")) != -1) {
+	while ((c = getopt(ac, av, "denNlqr;z|", 0)) != -1) {
 		switch (c) {
 		    case 'r':
 			probekey_av = addLine(probekey_av,
@@ -45,9 +45,7 @@ cmd_pull_part1(int ac, char **av)
 		    case 'l':
 		    case 'q':
 		    case 'z': /* ignore */ break;
-		    default:
-			system("bk help -s pull");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
@@ -128,7 +126,7 @@ cmd_pull_part2(int ac, char **av)
 	pid_t	pid;
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "dlnNqr|uw|z|")) != -1) {
+	while ((c = getopt(ac, av, "dlnNqr|uw|z|", 0)) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -142,7 +140,7 @@ cmd_pull_part2(int ac, char **av)
 		    case 'N': break;	// On purpose
 		    case 'w': delay = atoi(optarg); break;
 		    case 'u': update_only = 1; break;
-		    default: break;
+		    default: bk_badArg(c, av);
 		}
 	}
 

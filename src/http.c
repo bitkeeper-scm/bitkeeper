@@ -531,10 +531,7 @@ httpfetch_main(int ac, char **av)
 {
 	remote	*r;
 
-	unless (av[1] && !av[2]) {
-		fprintf(stderr, "usage: bk _httpfetch <url>\n");
-		return (1);
-	}
+	unless (av[1] && !av[2]) usage();
 	unless (r = remote_parse(av[1], 0)) {
 		fprintf(stderr, "httpfetch: can't parse url '%s'\n", av[1]);
 		return (1);

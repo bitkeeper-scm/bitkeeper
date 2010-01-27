@@ -32,7 +32,7 @@ rcs2bk_main(int ac, char **av)
 	verbose = 2;
 	co_prog = cutoff = 0;
 
-	while ((c = getopt(ac, av, "b;c;dhqu")) != -1) {
+	while ((c = getopt(ac, av, "b;c;dhqu", 0)) != -1) {
 		switch (c) {
 		    case 'b': cvsbranch = optarg; break;	/* undoc 3.0 */
 		    case 'c': cutoff = optarg; break;		/* doc 2.0 */
@@ -40,9 +40,7 @@ rcs2bk_main(int ac, char **av)
 		    case 'q': if (verbose) verbose--; break;	/* doc 2.0 */
 		    case 'h': verify++; break;			/* doc 2.0 */
 		    case 'u': undos++; break;			/* doc 2.0 */
-		    default:
-			    system("bk help -s rcs2bk");
-			    return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless (co_prog = getenv("BK_RCS_CO")) {

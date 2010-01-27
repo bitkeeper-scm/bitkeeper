@@ -33,15 +33,13 @@ rcsparse_main(int ac, char **av)
 	int	graph = 0;
 	void	(*work)(RCS *rcs);
 
-	while ((c = getopt(ac, av, "b;gdt")) != -1) {
+	while ((c = getopt(ac, av, "b;gdt", 0)) != -1) {
 		switch (c) {
 		    case 'b': cvsbranch = optarg; break;
 		    case 'd': debug = 1; break;
 		    case 'g': graph = 1; break;
 		    case 't': listtags = 1; break;
-		    default:
- usage:			system("bk help -s rcsparse");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	syms = mdbm_mem();
@@ -74,7 +72,7 @@ rcsparse_main(int ac, char **av)
 			}
 		}
 	} else {
-		goto usage;
+		usage();
 	}
 	if (listtags) {
 		kvpair	kv;

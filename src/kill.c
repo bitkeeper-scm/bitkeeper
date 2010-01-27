@@ -6,15 +6,33 @@ int
 kill_main(int ac, char **av)
 {
 	int	rc = 0;
+	int	sig, pid;
 	remote	*r;
 	char	*p, *tmpf;
 	FILE	*f;
 	char	buf[MAXLINE];
 
-	unless (av[1] && !av[2]) {
-usage:		fprintf(stderr, "Usage: bk kill URL\n");
+	unless (av[1]) {
+usage:		fprintf(stderr, "Usage: bk kill URL <or> bk kill -SIG PID\n");
 		return (1);
 	}
+	if (av[2]) {
+		/* kill -SIG PID */
+		unless (av[1][0] == '-') goto usage;
+		if (av[3]) goto usage;
+		sig = strtol(&av[1][1], 0, 10);
+		unless ((sig == 0) || (sig == 9)) {
+			fprintf(stderr, "only signals 0 and 9 are supported\n");
+			return (1);
+		}
+		unless (pid = strtol(av[2], 0, 10)) {
+			fprintf(stderr, "pid %s, not valid\n", av[2]);
+			return (1);
+		}
+		if (sig == 0) return(!findpid(pid));
+		return(kill(pid, sig));
+	}
+	/* kill URL */
 	if (strneq("127.0.0.1:", av[1], 10)) {
 		p = strchr(av[1], ':');
 		*p++ = 0;

@@ -8,16 +8,14 @@ version_main(int ac, char **av)
 	int	c;
 	char	*p;
 
-	while ((c = getopt(ac, av, "s")) != -1) {
+	while ((c = getopt(ac, av, "s", 0)) != -1) {
 		switch (c) {
 		    case 's':
 			p = bk_vers;
 			if (strneq(p, "bk-", 3)) p += 3;
 			puts(p);
 			return (0);
-		    default:
-			system("bk help -s version");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	bkversion(stdout);

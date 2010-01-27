@@ -18,7 +18,7 @@ sane_main(int ac, char **av)
 {
 	int	c, readonly = 0, resync = 0;
 
-	while ((c = getopt(ac, av, "rR")) != -1) {
+	while ((c = getopt(ac, av, "rR", 0)) != -1) {
 		switch (c) {
 		    case 'r':
 			readonly = 1; /* Do not check write access */
@@ -26,9 +26,7 @@ sane_main(int ac, char **av)
 		    case 'R':
 			resync = 1;	/* we're in the RESYNC dir */
 		    	break;
-		    default: 
-			system("bk help -s sane");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	return (sane(readonly, resync));

@@ -14,10 +14,7 @@ key2rev_main(int ac, char **av)
 	sccs	*s;
 	char	buf[MAXPATH];
 
-	unless (av[1]) {
-		system("bk help -s key2rev");
-		return (1);
-	}
+	unless (av[1]) usage();
 	name = name2sccs(av[1]);
 	unless (s = sccs_init(name, 0)) {
 		perror(name);

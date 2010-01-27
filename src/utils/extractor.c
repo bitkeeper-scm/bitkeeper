@@ -28,10 +28,21 @@ typedef struct opts {
 } opts;
 
 #ifdef WIN32
-char	*options = "slu";
+char	*options = "hslu";
 #else
-char	*options = "u";
+char	*options = "hu";
 #endif
+#define	EXP_OPT	"explorer-plugin"
+#define	VS_OPT	"visual-studio-plugin"
+#define	UP_OPT	"batch-upgrade"
+longopt	lopts[] = {
+#ifdef WIN32
+	{ EXP_OPT, 'l' },
+	{ VS_OPT, 's' },
+#endif
+	{ UP_OPT, 'u' },
+};
+
 char	*prog;
 char	*bindir;
 
@@ -111,17 +122,12 @@ main(int ac, char **av)
 	 * If they want to upgrade, go find that dir before we fix the path.
 	 */
 	bkpath = getbkpath();
-	while ((c = getopt(ac, av, options)) != -1) {
+	while ((c = getopt(ac, av, options, lopts)) != -1) {
 		switch (c) {
 		    case 'l': opts.shellx = 1; break;
 		    case 's': opts.scc = 1; break;
 		    case 'u': opts.upgrade = 1; break;
-		    case '?':
-			fprintf(stderr, "bad option %c\n", optopt);
-			usage();
-		    default:
-			fprintf(stderr, "unknown ret %d\n", c);
-			usage();
+		    default: usage();
 		}
 	}
 
@@ -331,12 +337,14 @@ void
 usage(void)
 {
 #ifdef WIN32
-	fprintf(stderr, "usage: %s [-l][-s][-u || <directory>]\n", prog);
+	fprintf(stderr,
+	    "usage: %s [--%s][--%s][--%s || <directory>]\n", 
+	    prog, EXP_OPT, VS_OPT, UP_OPT);
 #else
-	fprintf(stderr, "usage: %s [-u || <directory>]\n", prog);
+	fprintf(stderr, "usage: %s [--%s || <directory>]\n", prog, UP_OPT);
 #endif
 	fprintf(stderr,
-"Installs BitKeeper on the system.\n"
+"\nInstalls BitKeeper on the system.\n"
 "\n"
 "With no arguments this installer will unpack itself in a temp\n"
 "directory and then start a graphical installer to walk through the\n"
@@ -345,15 +353,21 @@ usage(void)
 "If a directory is provided on the command line then a default\n"
 "installation is written to that directory.\n"
 "\n"
-"The -u option is for batch upgrades.  The existing BitKeeper is\n"
-"found on your PATH and then this version is installed over the top\n"
-"of it.  If no existing version of BitKeeper can be found, then a\n"
-"new installation is written to %s\n"
-"\n"
+"The --"
+UP_OPT
+" option is for batch upgrades.\n"
+"The existing BitKeeper is found on your PATH and then this version\n"
+"is installed over the top of it.  If no existing version of BitKeeper\n"
+"is found, then a new installation is written to:\n"
+"%s\n\n"
 #ifdef WIN32
-"The -s option enables the bkscc dll for Visual Studio integration.\n"
+"The --"
+VS_OPT
+" option enables the bkscc dll for Visual Studio integration.\n"
 "\n"
-"The -l option enables the shell extension for Windows Explorer.\n"
+"The --"
+EXP_OPT
+" option enables the shell extension for Windows Explorer.\n"
 "\n"
 "Administrator privileges are required for a full installation.  If\n"
 "installing from a non-privileged account, then the installer will only\n"

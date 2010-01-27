@@ -36,9 +36,9 @@ cd "$HERE"
 # the minority.
 bk clone -shere $Q product clone
 cd clone
-bk components rm $Q comp0 comp1
+bk unpopulate $Q comp0 comp1
 rm -rf comp[01]
-bk components add $Q comp0 comp1
+bk populate $Q comp0 comp1
 test -d comp0/SCCS && {
 	echo failed
 	exit 1
@@ -55,9 +55,9 @@ cd "$HERE"
 # the minority.
 BK_NO_REMAP=1 bk clone -shere $Q product clone2
 cd clone2
-bk components rm $Q comp0 comp1
+bk unpopulate $Q comp0 comp1
 rm -rf comp[01]
-bk components add $Q comp0 comp1
+bk populate $Q comp0 comp1
 test ! -d comp0/SCCS && {
 	echo failed
 	exit 1

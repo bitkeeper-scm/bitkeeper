@@ -131,7 +131,7 @@ send_main(int ac,  char **av)
 	char	*url = NULL;
 	FILE	*f;
 
-	while ((c = getopt(ac, av, "dFfqr:s;u:w:")) != -1) {
+	while ((c = getopt(ac, av, "dFfqr:s;u:w:", 0)) != -1) {
 		switch (c) {
 		    case 'd':	dflag = "-d"; break;		/* doc 2.0 */
 		    case 'F':	Fflag = "-F"; break;		/* undoc */
@@ -141,18 +141,12 @@ send_main(int ac,  char **av)
 		    case 's': 	subject = optarg; break;
 		    case 'w': 	wrapper = optarg; break;	/* doc 2.0 */
 		    case 'u': 	url = optarg; break;
-		    default :
-			system("bk help -s send");
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	to = av[optind];
 
-	if ((to == NULL) || av[optind + 1]) {
-		system("bk help -s send");
-		exit(1);
-	}
-
+	if ((to == NULL) || av[optind + 1]) usage();
 	if (proj_cd2root()) {
 		fprintf(stderr, "send: cannot find package root.\n");
 		exit(1);

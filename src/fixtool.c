@@ -14,16 +14,14 @@ fixtool_main(int ac,  char **av)
 	char	buf[MAXPATH];
 
 	strcpy(diffopts, "-");
-	while ((c = getopt(ac, av, "fpsuw")) != -1) {
+	while ((c = getopt(ac, av, "fpsuw", 0)) != -1) {
 		switch (c) {
 		    case 'u': strcat(diffopts, "u"); break;
 		    case 'p': strcat(diffopts, "p"); break;
 		    case 's': strcat(diffopts, "s"); break;
 		    case 'w': strcat(diffopts, "w"); break;
 		    case 'f': ask = 0; break;
-		    default :
-			system("bk help -s fixtool");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind] == 0) {

@@ -165,13 +165,6 @@ private const u8	upgrade_secretkey[828] = {
  *    # load RSA key in old format
  */
 
-private void
-usage(void)
-{
-	system("bk help -s crypto");
-	exit(1);
-}
-
 int
 crypto_main(int ac, char **av)
 {
@@ -182,7 +175,7 @@ crypto_main(int ac, char **av)
 	char	*hash;
 	rsa_key	key;
 
-	while ((c = getopt(ac, av, "dDeEhiOsSvX")) != -1) {
+	while ((c = getopt(ac, av, "dDeEhiOsSvX", 0)) != -1) {
 		switch (c) {
 		    case 'h': case 'i': case 's': case 'v':
 		    case 'e': case 'd': case 'E': case 'D':
@@ -192,8 +185,7 @@ crypto_main(int ac, char **av)
 		    case 'S': use_sha1_hash = 1; break;
 		    case 'X': hex_output = 1; break;
 		    case 'O': rsakey_old = 1; break;
-		    default:
-			usage();
+		    default: bk_badArg(c, av);
 		}
 	}
 	optargs = 0;
@@ -426,12 +418,10 @@ base64_main(int ac, char **av)
 	long	len, outlen;
 	char	buf[4096], out[4096];
 
-	while ((c = getopt(ac, av, "d")) != -1) {
+	while ((c = getopt(ac, av, "d", 0)) != -1) {
 		switch (c) {
 		    case 'd': unpack = 1; break;
-		    default:
-			system("bk help -s base64");
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 

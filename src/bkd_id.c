@@ -7,17 +7,15 @@ id_main(int ac, char **av)
 	int	product = 0;
 	int	c;
 
-	while ((c = getopt(ac, av, "rp")) != -1) {
+	while ((c = getopt(ac, av, "rp", 0)) != -1) {
 		switch (c) {
 		    case 'p': product = 1; break;
 		    case 'r': repo = 1; break;
-		    default:
-usage:			sys("bk", "help", "-s", "id", SYS);
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
-	if (av[optind]) goto usage;
-	if (product && repo) goto usage;
+	if (av[optind]) usage();
+	if (product && repo) usage();
 	if (proj_cd2root()) {
 		fprintf(stderr, "id: not in a repository.\n");
 		return (1);

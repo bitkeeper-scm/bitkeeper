@@ -1,0 +1,5 @@
+^getopt.*d$
+^optind.*d$
+^optarg.*d$
+^opterr.*d$
+^optopt.*d$

@@ -12,18 +12,14 @@ gethelp_main(int ac, char **av)
 	int	c;
 	char	*file = 0;
 
-	while ((c = getopt(ac, av, "f:s")) != -1) {
+	while ((c = getopt(ac, av, "f:s", 0)) != -1) {
 		switch (c) {
 		    case 'f': file = optarg; break;
 		    case 's': synopsis = 1; break;
-		    default: goto usage;
+		    default: bk_badArg(c, av);
 	    	}
 	}
-	unless (av[optind]) {
-usage:		fprintf(stderr,
-		    "usage: gethelp [-f<helptxt>] topic[.section] bkarg\n");
-		exit(1);
-	}
+	unless (av[optind]) usage();
 	return (gethelp(file, av[optind], av[optind+1], 0, stdout));
 }
 
@@ -66,10 +62,15 @@ gethelp(char *helptxt, char *topic, char *bkarg, char *prefix, FILE *outf)
 	if (synopsis) {			/* print synopsis only */
 		int	first = 1;
 
+		found = 0;
 		while (fgets(buf, sizeof(buf), f)) {
-			if (strneq("SYNOPSIS", buf, 8)) break;
-			if (streq("$\n", buf)) goto done;
+			if (strneq("SYNOPSIS", buf, 8)) {
+				found = 1;
+				break;
+			}
+			if (streq("$\n", buf)) break;
 		}
+		unless (found) goto done;
 		fputs("usage:\t", outf);
 		while (fgets(buf, sizeof(buf), f)) {
 			if (streq("\n", buf)) break;
@@ -133,12 +134,11 @@ helptopics_main(int ac, char **av)
 	kvpair	kv;
 	char	*file = 0;
 
-	while ((c = getopt(ac, av, "f:")) != -1) {
+	while ((c = getopt(ac, av, "f:", 0)) != -1) {
 		switch (c) {
 		    case 'f':
 			file = optarg; break;
-		    default:
-			fprintf(stderr, "usage: %s [-f<helptxt>]\n", av[0]);
+		    default: bk_badArg(c, av);
 	    	}
 	}
 	unless (file) {
@@ -199,21 +199,16 @@ helpsearch_main(int ac, char **av)
 	char	*file = 0;
 	MDBM	*printed = mdbm_mem();
 
-	while ((c = getopt(ac, av, "adf:l")) != -1) {
+	while ((c = getopt(ac, av, "adf:l", 0)) != -1) {
 		switch (c) {
 		    case 'a': substrings++; break;
 		    case 'd': Debug++; break;
 		    case 'f': file = optarg; break;
 		    case 'l': Long++; break;
-		    default:
-			goto usage;
+		    default: bk_badArg(c, av);
 	    	}
 	}
-	unless (word = av[optind]) {
-usage:		fprintf(stderr,
-		    "usage: bk helpsearch [-al] [-f<helptxt>] keyword\n");
-		exit(1);
-	}
+	unless (word = av[optind]) usage();
 	len = strlen(word);
 	unless (file) {
 		sprintf(buf, "%s/bkhelp.txt", bin);
@@ -270,11 +265,7 @@ getmsg_main(int ac, char **av)
 	char	*tag;
 	char	**args = 0;
 
-	unless (av[1]) {
-		fprintf(stderr,
-		    "usage: getmsg [-=] msg_name bkarg [bkarg2 ...]\n");
-		exit(1);
-	}
+	unless (av[1]) usage();
 	if (av[1][0] && av[1][1] && !av[1][2]) {
 		b = av[1][1];
 		av++;

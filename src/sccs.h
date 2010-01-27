@@ -342,13 +342,13 @@ typedef	enum {
  * Hash behaviour.  Bitmask.
  */
 #define	DB_NODUPS       0x01		/* keys must be unique */
-#define	DB_USEFIRST     0x02		/* use the first key found */
-#define	DB_USELAST      0x04		/* use the last key found */
 #define	DB_KEYSONLY	0x08		/* boolean hashes */
-#define	DB_NOBLANKS	0x10		/* keys must have values or skip */
 #define	DB_KEYFORMAT	0x20		/* key/value are u@h|path|date|cksum */
 #define	DB_CONFIG	0x40		/* config file format */
+
+/* shortcuts for common formats */
 #define	DB_IDCACHE	(0x80|DB_KEYFORMAT|DB_NODUPS)
+#define	DB_GONE		(DB_KEYSONLY)
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 #define	MD5LEN	32	/* really 30: 8 hex time + 22 base-64 MD5 of key */
@@ -1334,6 +1334,18 @@ int	doidx_rmdir(project *proj, char *dir);
 char	**doidx_getdir(project *proj, char *dir);
 char	*doidx_realBasename(project *proj, char *rel, char *realname);
 int	doidx_access(project *proj, char *file, int mode);
+int	bk_urlArg(char ***urls, char *arg);
+void	bk_badArg(int c, char **av)
+#ifdef __GNUC__
+	__attribute__((noreturn))
+#endif
+;
+void	usage(void)
+#ifdef __GNUC__
+	__attribute__((noreturn))
+#endif
+;
+int	bk_notLicensed(project *p, u32 bits);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);

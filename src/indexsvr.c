@@ -68,7 +68,7 @@ indexsvr_main(int ac, char **av)
 	char	call[10];
 
 	memset(&opts, 0, sizeof(opts));
-	while ((c = getopt(ac, av, "Dks;")) != -1) {
+	while ((c = getopt(ac, av, "Dks;", 0)) != -1) {
 		switch (c) {
 		    case 'D': opts.foreground = 1; break;
 		    case 'k': kill = 1; break;

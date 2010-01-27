@@ -23,11 +23,10 @@ names_main(int ac, char **av)
 	int	c, todo = 0, error = 0;
 	u32	flags = 0;
 
-	while ((c = getopt(ac, av, "q")) != -1) {
+	while ((c = getopt(ac, av, "q", 0)) != -1) {
 		switch (c) {
 		    case 'q':	flags |= SILENT; break;		/* doc 2.0 */
-		    default:	system("bk help -s names");
-				return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (proj_cd2root()) {
