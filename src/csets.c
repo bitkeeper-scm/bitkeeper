@@ -18,10 +18,7 @@ f2csets_main(int argc, char **argv)
 	char	*p;
 	sccs	*s;
 
-	unless (argc == 2) {
-		fprintf(stderr, "usage: %s <file>\n", argv[0]);
-		return(1);
-	}
+	unless (argc == 2) usage();
 
 	/* build the SCCS file from the filename, then init it and get
 	 * the rootkey and the bk root out of that

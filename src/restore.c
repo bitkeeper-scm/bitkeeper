@@ -9,10 +9,7 @@ restore_main(int ac,  char **av)
 int
 restore_backup(char *backup, int overwrite)
 {
-	unless (backup) {
-		system("bk help -s restore");
-		return (1);
-	}
+	unless (backup) usage();
 	unless (access(backup, R_OK) == 0) {
 		fprintf(stderr, "restore: unable read backup %s\n", backup);
 		return (1);

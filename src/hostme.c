@@ -10,8 +10,6 @@ typedef	struct {
 	char	*repository;		/* -r<rname> repository name */
 } opts;
 
-private void usage(void);
-
 int
 hostme_main(int ac, char **av)
 {
@@ -30,7 +28,7 @@ hostme_main(int ac, char **av)
 
 	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
-	while ((c = getopt(ac, av, "s;r;p;h;dq")) != -1) {
+	while ((c = getopt(ac, av, "s;r;p;h;dq", 0)) != -1) {
 		switch (c) {
 		    case 'p': opts.project = strdup(optarg); break;
 		    case 'h': opts.host = strdup(optarg); break;
@@ -38,8 +36,7 @@ hostme_main(int ac, char **av)
 		    case 's': opts.keyfile = strdup(optarg); break;
 		    case 'd': opts.debug = 1; break;
 		    case 'q': opts.verbose = 0; break;
-		    default:
-			usage();
+		    default: bk_badArg(c, av);
 		}
 	}
 
@@ -101,13 +98,4 @@ hostme_main(int ac, char **av)
 		"Enjoy!\n\n", opts.project, host);
 	}
 	return (rc);
-}
-
-private void
-usage(void)
-{
-	fprintf(stderr,
-	    "Usage: bk hostme "
-	    "[-h<host>] -d -q -p<project> -r<repo> -s<identity.pub>>\n");
-	exit(1);
 }

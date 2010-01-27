@@ -16,11 +16,7 @@ cfile_main(int ac, char **av)
 	char	*cfile;
 
 	opts = new(struct opts);
-	unless (av[1]) {
-usage:		fprintf(stderr, "usage: bk cfile print|rm|save [file]\n");
-		return (1);
-	}
-
+	unless (av[1]) usage();
 	if (streq(av[1], "print") || streq(av[1], "show")) {
 		opts->print = 1;
 	} else if (streq(av[1], "rm")) {
@@ -28,15 +24,15 @@ usage:		fprintf(stderr, "usage: bk cfile print|rm|save [file]\n");
 	} else if (streq(av[1], "save")) {
 		opts->save = 1;
 	} else {
-		goto usage;
+		usage();
 	}
 
 	if ((opts->save + opts->rm + opts->print) > 1) {
 		fprintf(stderr, "Only one of print|rm|save allowed\n");
-		goto usage;
+		usage();
 	}
 
-	unless (av[2]) goto usage;
+	unless (av[2]) usage();
 
 	cfile = name2cfile(av[2]);
 

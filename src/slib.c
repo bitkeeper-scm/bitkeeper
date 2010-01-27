@@ -4106,23 +4106,21 @@ config_main(int ac, char **av)
 	int	merge = 0;
 	kvpair	kv;
 
-	while ((c = getopt(ac, av, "mv")) != -1) {
+	while ((c = getopt(ac, av, "mv", 0)) != -1) {
 		switch (c) {
 		    case 'm': merge = 1; break;
 		    case 'v': verbose = 1; break;
-		    default:
-usage:			sys("bk", "help", "-s", "config", SYS);
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (merge) {
-		unless ((ac - optind) == 2) goto usage;
-		if (verbose) goto usage;
+		unless ((ac - optind) == 2) usage();
+		if (verbose) usage();
 		return (config_merge(av[optind], av[optind+1]));
 	}
 	unless (verbose) {
 		if (av[optind]) {
-			if (av[optind+1]) goto usage;
+			if (av[optind+1]) usage();
 			if (v = mdbm_fetch_str(cfg, av[optind])) {
 				puts(v);
 				return (0);
@@ -4139,7 +4137,7 @@ usage:			sys("bk", "help", "-s", "config", SYS);
 		freeLines(values, free);
 		return (0);
 	}
-	if (av[optind]) goto usage;
+	if (av[optind]) usage();
 
 	/* repo config */
 	if (root = proj_root(0)) {

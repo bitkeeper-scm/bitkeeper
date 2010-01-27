@@ -28,14 +28,13 @@ nested_main(int ac, char **av)
 		return (_nested_main(ac, av));
 	} else if (!av[1]) {
 		/* 'bk nested' with no args */
-		goto usage;
+		usage();
 	} else if (streq(av[1], "check")) {
 		return (nested_check_main(ac-1, av+1));
 	} else if (streq(av[1], "where")) {
 		return (nested_where_main(ac-1, av+1));
 	} else {
-usage:		system("bk help -s nested");
-		return (1);
+		usage();
 	}
 	return (0);
 }
@@ -49,14 +48,12 @@ nested_check_main(int ac, char **av)
 	nested	*n;
 	char	**urls = 0;
 
-	while ((c = getopt(ac, av, "@|cq")) != -1) {
+	while ((c = getopt(ac, av, "@|cq", 0)) != -1) {
 		switch (c) {
 		    case '@': if (bk_urlArg(&urls, optarg)) return (1); break;
 		    case 'c': trim_noconnect = 1; break;
 		    case 'q': quiet = 1; break;
-		    default:
-			system("bk help -s nested");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless (proj_isEnsemble(0)) {
@@ -123,7 +120,7 @@ _nested_main(int ac, char **av)
 	cwd = strdup(proj_cwd());
 	flags |= NESTED_PRODUCTFIRST;
 
-	while ((c = getopt(ac, av, "ahHl;mpPr;s;u")) != -1) {
+	while ((c = getopt(ac, av, "ahHl;mpPr;s;u", 0)) != -1) {
 		switch (c) {
 		    case 'a':
 		    	all = 1;
@@ -164,9 +161,7 @@ _nested_main(int ac, char **av)
 		    case 'u':	/* undoc */
 			undo = 1;
 			break;
-		    default:
-usage:			system("bk help -s here");
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind] && streq(av[optind], "-")) {
@@ -177,7 +172,8 @@ usage:			system("bk help -s here");
 	if (rev && revs) {
 		fprintf(stderr,
 		    "here: -r or list on stdin, but not both\n");
-		goto usage;
+		system("bk help -s here");
+		exit(1);
 	}
 	if (thiscset) {
 		unless (cset = sccs_csetInit(INIT_MUSTEXIST)) {
@@ -738,7 +734,7 @@ nested_each(int quiet, int ac, char **av)
 	flags |= NESTED_PRODUCTFIRST;
 	getoptReset();
 	// has to track bk.c's getopt string
-	while ((c = getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;")) != -1) {
+	while ((c = getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;", 0)) != -1) {
 		if (c == 'C') product = 0;
 		unless (c == 'M') continue; /* XXX: CONFLICT */
 		if (optarg[0] == '|') {

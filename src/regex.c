@@ -13,10 +13,7 @@ regex_main(int ac, char **av)
 	char	*regex = av[1];
 	int	i, matched = 0;
 
-	unless (av[1] && av[2]) {
-		system("bk help -s regex");
-		return (2);
-	}
+	unless (av[1] && av[2]) usage();
 	if (re_comp(regex)) return (1);
 	for (i = 2; av[i]; i++) {
 		if (re_exec(av[i])) {

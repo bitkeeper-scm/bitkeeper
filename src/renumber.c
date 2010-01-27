@@ -36,14 +36,12 @@ renumber_main(int ac, char **av)
 	int	error = 0;
 	int	c, dont = 0, quiet = 0, flags = INIT_WACKGRAPH;
 
-	while ((c = getopt(ac, av, "nqs")) != -1) {
+	while ((c = getopt(ac, av, "nqs", 0)) != -1) {
 		switch (c) {
 		    case 'n': dont = 1; break;			/* doc 2.0 */
 		    case 's':					/* undoc? 2.0 */
 		    case 'q': quiet++; flags |= SILENT; break;	/* doc 2.0 */
-		    default:
-			system("bk help -s renumber");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	for (name = sfileFirst("renumber", &av[optind], 0);

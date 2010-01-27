@@ -14,7 +14,6 @@ private	struct {
 	char	**aliases;		/* ensemble aliases list */
 } opts;
 
-private void usage(void);
 private int rclone(char **av, remote *r, char **envVar);
 private int rclone_part1(remote *r, char **envVar);
 private int rclone_part2(char **av, remote *r, char **ev, char *bp);
@@ -40,7 +39,7 @@ rclone_main(int ac, char **av)
 		av[0] = "_rclone";
 	}
 	opts.verbose = 1;
-	while ((c = getopt(ac, av, "B;dE:pqr;s;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;dE:pqr;s;w|z|", 0)) != -1) {
 		unless ((c == 'r') || (c == 's')) {
 			if (optarg) {
 				opts.av = addLine(opts.av,
@@ -70,8 +69,7 @@ rclone_main(int ac, char **av)
 			if (optarg) gzip = atoi(optarg);
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
 			break;
-		    default:
-			usage();
+		    default: bk_badArg(c, av);
 		}
 		optarg = 0;
 	}
@@ -240,13 +238,6 @@ out:	free(url);
 	nested_free(n);
 	STOP_TRANSACTION();
 	return (rc);
-}
-
-private void
-usage(void)
-{
-	fprintf(stderr, "Usage: bk rclone local-tree new-remote-tree\n");
-	exit(1);
 }
 
 /*

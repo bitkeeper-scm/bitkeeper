@@ -10,12 +10,10 @@ pending_main(int ac, char **av)
 ":COMPONENT::DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\\n\
 $each(:C:){  (:C:)\\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n";
 
-	while ((c = getopt(ac, av, "q")) != -1) { 
+	while ((c = getopt(ac, av, "q", 0)) != -1) { 
 		switch (c) {
 		    case 'q': quiet = 1; break;
-		    default:
-			system("bk help -s pending");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind]) chdir(av[optind]);

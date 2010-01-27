@@ -45,14 +45,11 @@ usage:
 	}
 
 	optind = 2;
-	while ((c = getopt(ac, av, "i:u")) != -1) {
+	while ((c = getopt(ac, av, "i:u", 0)) != -1) {
 		switch (c) {
 		    case 'i': opts.icon = 1; opts.iconpath = optarg; break;
 		    case 'u': opts.user = 1; break;
-		    default:
-			fprintf(stderr,
-			    "_startmenu: -%c: invalid option\n", optopt);
-			goto usage;
+		    default: bk_badArg(c, av);
 		}
 	}
 

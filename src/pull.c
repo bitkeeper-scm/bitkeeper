@@ -37,12 +37,6 @@ private void	resolve_comments(remote *r);
 private	int	resolve(void);
 private	int	takepatch(remote *r);
 
-private void
-usage(char *prog)
-{
-	sys("bk", "help", "-s", prog, SYS);
-}
-
 int
 pull_main(int ac, char **av)
 {
@@ -61,7 +55,7 @@ pull_main(int ac, char **av)
 		safe_putenv("BK_PORT_ROOTKEY=%s", proj_rootkey(0));
 	}
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:DdE:GFilnqr;RstTuw|z|")) != -1) {
+	while ((c = getopt(ac, av, "c:DdE:GFilnqr;RstTuw|z|", 0)) != -1) {
 		unless (c == 'r') {
 			if (optarg) {
 				opts.av_pull = addLine(opts.av_pull,
@@ -109,16 +103,14 @@ pull_main(int ac, char **av)
 			if (optarg) gzip = atoi(optarg);
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
 			break;
-		    default:
-			usage(prog);
-			return(1);
+		    default: bk_badArg(c, av);
 		}
 		optarg = 0;
 	}
 	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	if (opts.autoOnly && !opts.automerge) {
 		fprintf(stderr, "pull: -s and -i cannot be used together\n");
-		usage(prog);
+		usage();
 		return (1);
 	}
 	if (getenv("_BK_TRANSACTION")) opts.transaction = 1;
@@ -167,7 +159,7 @@ pull_main(int ac, char **av)
 
 	unless (urls) {
 err:		freeLines(envVar, free);
-		usage(prog);
+		usage();
 		return (1);
 	}
 

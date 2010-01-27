@@ -7,13 +7,6 @@ private char	**getfiles(char *csetrev);
 private void	write_editfile(FILE *f, char **files, int to_stdout);
 private void	read_editfile(FILE *f);
 
-private void
-usage(void)
-{
-	system("bk help -s comment");
-	exit(1);
-}
-
 /*
  * comment - all the updating of checkin comments
  *
@@ -35,14 +28,14 @@ comments_main(int ac, char **av)
 	char	tmp[MAXPATH];
 	FILE	*tf;
 
-	while ((c = getopt(ac, av, "C|pr|y|Y|")) != -1) {
+	while ((c = getopt(ac, av, "C|pr|y|Y|", 0)) != -1) {
 		switch (c) {
 		    case 'C': csetrev = optarg; break;
 		    case 'p': to_stdout = 1; break;
 		    case 'y': comment = optarg; break;
 		    case 'Y': file = optarg; break;
 		    case 'r': rev = optarg; break;
-		    default: usage(); break;
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (comment) {

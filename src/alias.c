@@ -86,11 +86,11 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 			break;
 		}
 	}
-	while ((c = getopt(ac, av, "@|Cefkhmr;q")) != -1) {
+	while ((c = getopt(ac, av, "@|Cefkhmr;q", 0)) != -1) {
 		switch (c) {
 		    case '@':
 			isntlist = 1;
-			if (bk_urlArg(&opts.urls, optarg)) goto usage;
+			if (bk_urlArg(&opts.urls, optarg)) usage();
 			break;
 		    case 'C': isntlist = 1; opts.nocommit = 1; break;
 		    case 'f': isntlist = 1; opts.force = 1; break;
@@ -100,9 +100,7 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 		    case 'm': islist = 1; opts.missing = 1; break;
 		    case 'r': islist = 1; opts.rev = optarg; break;
 		    case 'q': opts.quiet = 1; break;
-		    default:
-usage:			system("bk help -s alias");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	/*
@@ -119,14 +117,14 @@ usage:			system("bk help -s alias");
 	 * then give a usage error.
 	 */
 	if (!cmds[cmdn].verb || streq(cmds[cmdn].verb, "list")) {
-		if (isntlist) goto usage;
+		if (isntlist) usage();
 	} else if (islist) {
-		goto usage;
+		usage();
 	}
 	
 	if (opts.here && opts.missing) {
 		error("%s: here or missing but not both\n", prog);
-		goto usage;
+		usage();
 	}
 
 	unless (start_cwd) start_cwd = strdup(proj_cwd());
@@ -161,18 +159,17 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	}
 	unless (alias = av[ac++]) {
 		error("%s: no alias specified.\n", prog);
-usage:		sys("bk", "help", "-s", "alias", SYS);
-		goto err;
+		usage();
 	}
 	rmAlias = (streq(cmd, "rm") && !av[ac]);
 	// downcast reserved keys if not removing an alias
 	unless (rmAlias) reserved = chkReserved(alias, 1);
 	assert(reserved >= 0);
-	unless (rmAlias || reserved || validName(alias)) goto usage;
+	unless (rmAlias || reserved || validName(alias)) usage();
 	if (reserved && !(streq(alias, "default") || streq(alias, "here"))) {
 		error("%s: reserved name \"%s\" may not be changed.\n",
 		    prog, alias);
-		goto usage;
+		usage();
 	}
 	/* get the nest */
 	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) goto err;

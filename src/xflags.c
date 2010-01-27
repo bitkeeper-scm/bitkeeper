@@ -18,13 +18,11 @@ xflags_main(int ac, char **av)
 	int	c, what = 0, ret = 0;
 	char	*name;
 
-	while ((c = getopt(ac, av, "ns")) != -1) {
+	while ((c = getopt(ac, av, "ns", 0)) != -1) {
 		switch (c) {
 		    case 'n': what = XF_DRYRUN; break;		/* doc 2.0 */
 		    case 's': what = XF_STATUS; break;		/* doc 2.0 */
-		    default:
-			fprintf(stderr, "usage: %s [-ns] [files...]\n", av[0]);
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	for (name = sfileFirst("xflags", &av[optind], 0);

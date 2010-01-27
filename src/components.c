@@ -13,18 +13,16 @@ components_main(int ac, char **av)
 	// XXX hack for compat with old 'bk components add'
 	if (av[1] && streq(av[1], "add")) return (populate_main(ac-1, av+1));
 
-	while ((c = getopt(ac, av, "chkm")) != -1) {
+	while ((c = getopt(ac, av, "chkm", 0)) != -1) {
 		switch (c) {
 		    case 'c': citool = 1; break;
 		    case 'h': nav = addLine(nav, "-h"); break;
 		    case 'k': nav = addLine(nav, "-k"); break;
 		    case 'm': nav = addLine(nav, "-m"); break;
-		    default:
-usage:			system("bk help -s components");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
-	if (av[optind]) goto usage;
+	if (av[optind]) usage();
 	if (citool) {
 		nav = unshiftLine(nav, "alias");
 		nav = unshiftLine(nav, "bk");

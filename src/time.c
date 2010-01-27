@@ -12,19 +12,16 @@ time_main(int ac, char **av)
 	int	rc;
 	struct	timeval tv1, tv2;
 
-	while ((c = getopt(ac, av, "c:f;")) != -1) {
+	while ((c = getopt(ac, av, "c:f;", 0)) != -1) {
 		switch (c) {
 		    case 'c': cmd = strdup(optarg); break;
 		    case 'f': freeme = format = strdup(optarg); break;
-		    default:
-usage:			sys("bk", "help", "-s", av[0], SYS);
-			rc = 1;
-			goto out;
+		    default: bk_badArg(c, av); rc = 1; goto out;
 		}
 	}
 	unless ((cmd && cmd[0] && !av[optind]) ||
 	    (!cmd && av[optind] && av[optind][0])) {
-		goto usage;
+		usage();
 	}
 	unless (cmd) {
 		char	**list = 0;

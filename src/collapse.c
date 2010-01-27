@@ -48,7 +48,7 @@ collapse_main(int ac, char **av)
 
 	me = "collapse";
 	flags = 0;
-	while ((c = getopt(ac, av, "@|a:delmPr:qs")) != -1) {
+	while ((c = getopt(ac, av, "@|a:delmPr:qs", 0)) != -1) {
 		/*
 		 * Collect options for running collapse in components.
 		 * lm sez: unless we are going to try and replay a
@@ -64,27 +64,25 @@ collapse_main(int ac, char **av)
 		}
 		switch (c) {
 		    case '@':
-			if (url) goto usage;
+			if (url) usage();
 			url = optarg;
 			fromurl = 1;
 			break;
 		    case 'a':
-			if (after) goto usage; after = strdup(optarg); break;
+			if (after) usage(); after = strdup(optarg); break;
 		    case 'd': flags |= COLLAPSE_DELTAS; break;
 		    case 'e': edit = 1; break;
 		    case 'l': flags |= COLLAPSE_LOG; break;
 		    case 'm': merge = 1; break;
 		    case 'P': flags |= COLLAPSE_PONLY; break;
 		    case 'r':
-			if (revlist) goto usage; revlist = optarg; break;
+			if (revlist) usage(); revlist = optarg; break;
 		    case 'q': flags |= SILENT; break;
 		    case 's': flags |= COLLAPSE_NOSAVE; break;
-		    default :
-usage:			system("bk help -s collapse");
-			goto out;
+		    default: bk_badArg(c, av);
 		}
 	}
-	if (av[optind]) goto usage;
+	if (av[optind]) usage();
 	if (merge && (after || revlist || fromurl)) {
 		fprintf(stderr, "%s: cannot combine -m with -r or -a\n", me);
 		goto out;
@@ -170,7 +168,7 @@ fix_main(int ac,  char **av)
 
 	me = "fix";
 	flags = COLLAPSE_FIX;
-	while ((c = getopt(ac, av, "a;cdPqs")) != -1) {
+	while ((c = getopt(ac, av, "a;cdPqs", 0)) != -1) {
 		/*
 		 * Collect options for running collapse in components.
 		 */
@@ -188,15 +186,13 @@ fix_main(int ac,  char **av)
 		    case 'P': flags |= COLLAPSE_PONLY; break;
 		    case 'q': flags |= SILENT; break;		/* undoc 2.0 */
 		    case 's': flags |= COLLAPSE_NOSAVE; break;
-		    default :
-usage:			system("bk help -s fix");
-			goto out;
+		    default: bk_badArg(c, av);
 		}
 	}
 	/* collapse needs -e */
 	nav = addLine(nav, strdup("-e"));
 	if (cset) {
-		if (after) goto usage; /* use collapse instead */
+		if (after) usage(); /* use collapse instead */
 		s = sccs_csetInit(0);
 		rc = do_cset(s, 0, nav); /* this frees s */
 	} else {
@@ -204,7 +200,7 @@ usage:			system("bk help -s fix");
 			if (rc = do_file(av[i], after)) break;
 		}
 	}
-out:	freeLines(nav, free);
+	freeLines(nav, free);
 	return (rc);
 }
 

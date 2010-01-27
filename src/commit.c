@@ -26,7 +26,7 @@ commit_main(int ac, char **av)
 	char	pendingFiles[MAXPATH] = "";
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "cdfFl:qRsS:y:Y:")) != -1) {
+	while ((c = getopt(ac, av, "cdfFl:qRsS:y:Y:", 0)) != -1) {
 		switch (c) {
 		    case 'c': dflags |= DELTA_CFILE; break;
 		    case 'd': 
@@ -56,8 +56,7 @@ commit_main(int ac, char **av)
 			}
 			dflags |= DELTA_DONTASK;
 			break;
-		    default:	system("bk help -s commit");
-				return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 

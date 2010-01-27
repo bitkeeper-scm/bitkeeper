@@ -100,7 +100,7 @@ check_main(int ac, char **av)
 	ticker	*tick = 0;
 
 	timestamps = 0;
-	while ((c = getopt(ac, av, "@|aBcdefgpRsTvw")) != -1) {
+	while ((c = getopt(ac, av, "@|aBcdefgpRsTvw", 0)) != -1) {
 		switch (c) {
 			/* XXX: leak - free parent freeLines(parent, 0) */
 		    case '@': if (bk_urlArg(&parent, optarg)) return (1);break;
@@ -120,9 +120,7 @@ check_main(int ac, char **av)
 		    case 'T': timestamps = GET_DTIME; break;
 		    case 'v': verbose++; break;			/* doc 2.0 */
 		    case 'w': badWritable++; break;		/* doc 2.0 */
-		    default:
-			system("bk help -s check");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (getenv("BK_NOTTY") && (verbose == 1)) verbose = 0;
@@ -1921,20 +1919,18 @@ repair_main(int ac, char **av)
 	nav[++i] = "-r";
 	nav[++i] = "check";
 	nav[++i] = "-acffv";
-	while ((c = getopt(ac, av, "@|")) != -1) {
+	while ((c = getopt(ac, av, "@|", 0)) != -1) {
 		switch (c) {
 		    case '@':
 			nav[++i] = aprintf("-@%s", optarg);
 			break;
-		    default:
-usage:			system("bk help -s repair");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	nav[++i] = 0;
 	assert(i < 20);
 
-	if (av[optind]) goto usage;
+	if (av[optind]) usage();
 	status = spawnvp(_P_WAIT, nav[0], nav);
 	if (WIFEXITED(status)) {
 		return (WEXITSTATUS(status));

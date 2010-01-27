@@ -23,7 +23,7 @@ rclone_common(int ac, char **av, opts *opts)
 	char	*p;
 
 	bzero(opts, sizeof(*opts));
-	while ((c = getopt(ac, av, "B;dDPr;s;Tvz|")) != -1) {
+	while ((c = getopt(ac, av, "B;dDPr;s;Tvz|", 0)) != -1) {
 		switch (c) {
 		    case 'B': opts->bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;
@@ -39,7 +39,7 @@ rclone_common(int ac, char **av, opts *opts)
 			opts->gzip = optarg ? atoi(optarg) : 6;
 			if (opts->gzip < 0 || opts->gzip > 9) opts->gzip = 6;
 			break;
-		    default: break;
+		    default: bk_badArg(c, av);
 		}
 	}
 

@@ -146,7 +146,7 @@ sfiles_main(int ac, char **av)
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "^01acCdDeEgGhijlnNo:p|P|rRsSuUvxy")) != -1)
+	while ((c = getopt(ac, av, "^01acCdDeEgGhijlnNo:p|P|rRsSuUvxy", 0)) != -1)
 	{
 		switch (c) {
 		    case '^':	opts.inverse = 1; break;
@@ -197,7 +197,7 @@ sfiles_main(int ac, char **av)
 					} else if (*s == 'C') {
 						opts.Cflg = 1;
 					} else {
-						goto usage;
+						usage();
 					}
 				}
 				break;
@@ -208,14 +208,12 @@ sfiles_main(int ac, char **av)
 		    case 'U':	opts.useronly = 1; break;	/* doc 2.0 */
 		    case 'x':	opts.extras = 1; break;		/* doc */
 		    case 'y':	opts.cfiles = 1; break;		/* doc */
-		    default:
-usage:				system("bk help -s sfiles");
-				return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
 	if (nested && proj_product(0) && !getenv("_BK_SFILES_N")) {
-		if (av[optind]) goto usage;
+		if (av[optind]) usage();
 		putenv("_BK_SFILES_N=1");
 		if (opts.out) fclose(opts.out);
 		proj_cd2product();
@@ -1590,16 +1588,14 @@ sfiles_clone_main(int ac, char **av)
 	int	rc = 2;
 	sinfo	si = {0};
 
-	while ((c = getopt(ac, av, "Lm")) != -1) {
+	while ((c = getopt(ac, av, "Lm", 0)) != -1) {
 		switch (c) {
 		    case 'L': lclone = 1; break;
 		    case 'm': modes = 1; break;
-		    default:
-usage:			fprintf(stderr, "usage: _sfiles_clone [-L]\n");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
-	if (av[optind]) goto usage;
+	if (av[optind]) usage();
 	load_project(".");
 	/* in lclone mode decsend into BAM */
 	if (lclone) removeLine(prunedirs, "/" BAM_ROOT, free);

@@ -15,14 +15,12 @@ filtertest1_main(int ac, char **av)
 	int	in = 0, out = 0;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "c:e:r:")) != -1) {
+	while ((c = getopt(ac, av, "c:e:r:", 0)) != -1) {
 		switch (c) {
 		    case 'c': cdump = atoi(optarg); break;
 		    case 'e': e = atoi(optarg); break;
 		    case 'r': rc = atoi(optarg); break;
-		    default:
-			fprintf(stderr, "error\n");
-			return (-1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless (av[optind]) return (-1);
@@ -90,5 +88,46 @@ unittests_main(int ac, char **av)
 
 	libc_tests();
 	getMsg_tests();
+	return (0);
+}
+
+int
+getopt_test_main(int ac, char **av)
+{
+	char	*comment = 0;
+	int	c;
+	longopt	lopts[] = {
+		{ "longf", 'f' },  /* alias for -f */
+		{ "longx:", 'x' }, /* alias for -x */
+		{ "longy;", 'y' }, /* alias for -y */
+		{ "longz|", 'z' }, /* alias for -z */
+		{ "unique", 400 },  /* unique option */
+		{ "unhandled", 401 },
+		{ 0, 0}
+	};
+
+	while ((c = getopt(ac, av, "fnpsx:y;z|Q", lopts)) != -1) {
+		switch (c) {
+		    case 'f':
+		    case 'n':
+		    case 'p':
+		    case 's':
+			printf("Got option %c\n", c);
+			break;
+		    case 'x':
+		    case 'y':
+		    case 'z':
+			comment = optarg ? optarg : "(none)";
+			printf("Got optarg %s with -%c\n", comment, c);
+			break;
+		    case 400:
+			printf("Got option --unique\n");
+			break;
+		    default: bk_badArg(c, av);
+		}
+	}
+	for (; av[optind]; optind++) {
+		printf("av[%d] = %s\n", optind, av[optind]);
+	}
 	return (0);
 }

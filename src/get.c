@@ -49,7 +49,7 @@ get_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|pPqr;RSstTx;")) != -1) {
+	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|pPqr;RSstTx;", 0)) != -1) {
 		if (checkout && !strchr("qRST", c)) {
 			fprintf(stderr, "checkout: no options allowed\n");
 			exit(1);
@@ -60,7 +60,7 @@ get_main(int ac, char **av)
 			/*FALLTHROUGH*/
 		    case 'a':
 			flags = annotate_args(flags, optarg);
-			if (flags == -1) goto usage;
+			if (flags == -1) usage();
 			break;
 		    case 'B': skip_bin = 1; break;
 		    case 'C': getMsg("get_C", 0, 0, stdout); return (1);
@@ -87,10 +87,7 @@ get_main(int ac, char **av)
 		    case 't': break;		/* compat, noop, undoc 2.0 */
 		    case 'T': flags |= GET_DTIME; break;	/* doc 2.0 */
 		    case 'x': xLst = optarg; break;		/* doc 2.0 */
-
-		    default:
-usage:			sys("bk", "help", "-s", prog, SYS);
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	ac_optend = optind;
@@ -110,23 +107,23 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	if (((Gname && !gdir) || iLst || xLst) && sfileNext()) {
 onefile:	fprintf(stderr,
 		    "%s: only one file name with -G/i/x.\n", av[0]);
-		goto usage;
+		usage();
 	}
 	if (av[optind] && av[optind+1] && strneq(av[optind+1], "-G", 2)) {
 		Gname = &av[optind+1][2];
 	}
 	if (Gname && (flags & GET_EDIT)) {
 		fprintf(stderr, "%s: can't use -G and -e/-l together.\n",av[0]);
-		goto usage;
+		usage();
 	}
 	if (Gname && (flags & PRINT)) {
 		fprintf(stderr, "%s: can't use -G and -p together,\n", av[0]);
-		goto usage;
+		usage();
 	}
 	if (rev && closetips) {
 		fprintf(stderr,
 		    "%s: -M can not be combined with rev.\n", av[0]);
-		goto usage;
+		usage();
 	}
 	switch (getdiff) {
 	    case 0: break;

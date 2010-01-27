@@ -18,7 +18,7 @@ sendbug_main(int ac,  char **av)
 	} else {
 		name = av[0];
 	}
-	while ((c = getopt(ac, av, "etTw")) != -1) {
+	while ((c = getopt(ac, av, "etTw", 0)) != -1) {
 		switch (c) {
 		    case 'w':
 			url = "http://bitmover.com/cgi-bin/bkdmail";
@@ -28,9 +28,7 @@ sendbug_main(int ac,  char **av)
 			break;
 		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't':   textmode = 1; break;
-		    default:
-			sys("bk", "help", "-s", name, SYS);
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (streq(name, "support")) {

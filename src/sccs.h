@@ -1335,6 +1335,16 @@ char	**doidx_getdir(project *proj, char *dir);
 char	*doidx_realBasename(project *proj, char *rel, char *realname);
 int	doidx_access(project *proj, char *file, int mode);
 int	bk_urlArg(char ***urls, char *arg);
+void	bk_badArg(int c, char **av)
+#ifdef __GNUC__
+	__attribute__((noreturn))
+#endif
+;
+void	usage(void)
+#ifdef __GNUC__
+	__attribute__((noreturn))
+#endif
+;
 int	bk_notLicensed(project *p, u32 bits);
 
 #ifdef	WIN32

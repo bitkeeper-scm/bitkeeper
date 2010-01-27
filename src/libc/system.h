@@ -144,8 +144,14 @@ extern	int	optind;
 extern	int	opterr;
 extern	int	optopt;
 extern	char	*optarg;
+
+typedef struct {
+	char	*name;		/* name w args ex: "url:" */
+	int	ret;		/* return value from getopt */
+} longopt;
+
 #define	GETOPT_ERR	256
-int	getopt(int ac, char **av, char *opts);
+int	getopt(int ac, char **av, char *opts, longopt *lopts);
 void	getoptReset(void);
 
 

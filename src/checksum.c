@@ -24,7 +24,7 @@ checksum_main(int ac, char **av)
 	char	*rev = 0;
 	ticker	*tick = 0;
 
-	while ((c = getopt(ac, av, "cfpr;s|v")) != -1) {
+	while ((c = getopt(ac, av, "cfpr;s|v", 0)) != -1) {
 		switch (c) {
 		    case 'c': break;	/* obsolete */
 		    case 'f': fix = 1; break;			/* doc 2.0 */
@@ -32,8 +32,7 @@ checksum_main(int ac, char **av)
 		    case 's': do_sccs = 1; off = optarg; break;
 		    case 'p': spin = 1; break;
 		    case 'v': diags++; break;			/* doc 2.0 */
-		    default:  system("bk help -s checksum");
-			      return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 

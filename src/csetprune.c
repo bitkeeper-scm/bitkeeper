@@ -67,7 +67,7 @@ csetprune_main(int ac, char **av)
 	int	i, c, ret = 1;
 
 	flags = PRUNE_NEW_TAG_GRAPH;
-	while ((c = getopt(ac, av, "ac:C:Egk:NqsSX")) != -1) {
+	while ((c = getopt(ac, av, "ac:C:Egk:NqsSX", 0)) != -1) {
 		switch (c) {
 		    case 'a': flags |= PRUNE_ALL; break;
 		    case 'c': comppath = optarg; break;
@@ -79,9 +79,7 @@ csetprune_main(int ac, char **av)
 		    case 'q': flags |= SILENT; break;
 		    case 'S': flags &= ~PRUNE_NEW_TAG_GRAPH; break;
 		    case 'X': flags |= PRUNE_XCOMP; break;
-		    default:
-usage:			system("bk help -s csetprune");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (ranbits) {
@@ -90,7 +88,7 @@ usage:			system("bk help -s csetprune");
 k_err:			fprintf(stderr,
 			    "ERROR: -k option '%s' must have 16 lower case "
 			    "hex digits\n", ranbits);
-			goto usage;
+			usage();
 		}
 		for (p = ranbits; *p; p++) {
 			if (!isxdigit(*p) || isupper(*p)) goto k_err;

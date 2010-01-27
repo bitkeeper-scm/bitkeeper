@@ -16,15 +16,13 @@ rm_main(int ac, char **av)
 	int	c, errors = 0;
 	int	force = 0;
 
-        while ((c = getopt(ac, av, "f")) != -1) {
+        while ((c = getopt(ac, av, "f", 0)) != -1) {
                 switch (c) {
 		    case 'f': force = 1; break;
-                    default:
-usage:			system("bk help -s rm");
-                        return (1);
+                    default: bk_badArg(c, av);
                 }
         }
-	if (ac < 2) goto usage;
+	if (ac < 2) usage();
 
 	for (name = sfileFirst("sccsrm",&av[optind], 0);
 	    name; name = sfileNext()) {
@@ -147,17 +145,18 @@ gone_main(int ac, char **av)
 	char	tmpfile[MAXPATH];
 	FILE	*f;
 
-	while ((c =  getopt(ac, av, "gqs")) != -1) { 
+	while ((c =  getopt(ac, av, "gqs", 0)) != -1) { 
 		switch (c) {
 		    case 'g': printf("%s\n", GONE); return (0);
 		    case 'q': quiet++; break;	/* doc 2.0 */
 		    case 's': printf("%s\n", SGONE); return (0);
-		    default: 
-usage:			      system("bk help -s gone");
-			      return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
-	unless (av[optind]) goto usage;
+	unless (av[optind]) {
+		system("bk help -s gone");
+		return (1);
+	}
 
 	if (streq("-", av[optind])) exit(sccs_gone(quiet, stdin));
 	unless (bktmp(tmpfile, "sccsrm")) exit(1);

@@ -14,13 +14,11 @@ svcinfo_main(int ac, char **av)
 	DWORD	blen;
 	char	buf[1024], cmdline[1024];
 
-	while ((c = getopt(ac, av, "i:l")) != -1) {
+	while ((c = getopt(ac, av, "i:l", 0)) != -1) {
 		switch(c) {
 		case 'i': info = optarg; break;
 		case 'l': list = 1; break;
-		default:
-			fprintf(stderr, "_svcinfo: bad options\n");
-			return (1);
+		default: bk_badArg(c, av); return (1);
 		}
 	}
 	if (info && list) {

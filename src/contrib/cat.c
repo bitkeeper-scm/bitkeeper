@@ -46,7 +46,7 @@ catfile_main(int argc, char *argv[])
 {
 	int ch;
 
-	while ((ch = getopt(argc, argv, "benstuv")) != -1)
+	while ((ch = getopt(argc, argv, "benstuv", 0)) != -1)
 		switch (ch) {
 		case 'b':
 			bflag = nflag = 1;	/* -b implies -n */

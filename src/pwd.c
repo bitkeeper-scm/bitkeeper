@@ -2,23 +2,19 @@
 #include "system.h"
 #include "sccs.h"
 
-
-
-private char *usage = "pwd [-sr] [path]\n";
-
 int
 pwd_main(int ac, char **av)
 {
 	char	buf[MAXPATH], *p;
 	int	c, shortname = 0, bk_rpath = 0, windows = 0;
 
-	while ((c = getopt(ac, av, "srRw")) != -1) {
+	while ((c = getopt(ac, av, "srRw", 0)) != -1) {
 		switch (c) {
 			case 's': shortname = 1; break;
 			case 'r': bk_rpath = 1; break; /* bk relative path */
 			case 'R': bk_rpath = 2; break; /* from product root */
 			case 'w': windows = 1; break;
-			default: fprintf(stderr, "%s", usage); exit(1);
+			default: bk_badArg(c, av);
 		}
 	}
 	

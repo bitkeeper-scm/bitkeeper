@@ -14,21 +14,18 @@ range_main(int ac, char **av)
 	int	c;
 	RANGE	rargs = {0};
 
-	while ((c = getopt(ac, av, "aec;qr;")) != -1) {
+	while ((c = getopt(ac, av, "aec;qr;", 0)) != -1) {
 		switch (c) {
 		    case 'a': all++; break;
 		    case 'e': expand++; break;
 		    case 'q': quiet++; break;
 		    case 'c':
-			if (range_addArg(&rargs, optarg, 1)) goto usage;
+			if (range_addArg(&rargs, optarg, 1)) usage();
 			break;
 		    case 'r':
-			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
-		    default:
-usage:			fprintf(stderr,
-			    "usage: %s [-q] [-r<rev>] [-c<date>]\n", av[0]);
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	for (name = sfileFirst("range", &av[optind], 0);

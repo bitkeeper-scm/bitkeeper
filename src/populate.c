@@ -18,11 +18,8 @@ populate_main(int ac, char **av)
 	/* handle populate and unpopulate */
 	nav = addLine(nav,
 	    strdup(streq(av[0], "unpopulate") ? "rm" : "add"));
-	while ((c = getopt(ac, av, "f@|q")) != -1) {
-		if (c == GETOPT_ERR) {
-			sys("bk", "help", "-s", prog, SYS);
-			return (1);
-		}
+	while ((c = getopt(ac, av, "f@|q", 0)) != -1) {
+		if (c == GETOPT_ERR) bk_badArg(c, av);
 		nav = addLine(nav, aprintf("-%c%s", c, optarg ? optarg : ""));
 	}
 	nav = addLine(nav, strdup("HERE"));

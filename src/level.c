@@ -6,15 +6,15 @@
 int
 level_main(int ac,  char **av)
 {
+	int	c;
+
+	while ((c = getopt(ac, av, "", 0)) != -1) bk_badArg(c, av);
 	unless (av[1]) {
 		printf("Repository level is %d\n", getlevel());
 		exit(0);
 	}
 
-	unless (isdigit(av[1][0])) {
-		system("bk help -s level");
-		return (1);
-	}
+	unless (isdigit(av[1][0])) usage();
 	exit(setlevel(atoi(av[1])));
 }
 

@@ -374,7 +374,7 @@ prompt_main(int ac, char **av)
 	char	buf[1024];
 	char	**lines = 0;
 
-	while ((c = getopt(ac, av, "cegGiowxf:n:p:t:Ty:")) != -1) {
+	while ((c = getopt(ac, av, "cegGiowxf:n:p:t:Ty:", 0)) != -1) {
 		switch (c) {
 		    case 'c': ask = 0; break;
 		    case 'e': type = "-E"; break;
@@ -391,12 +391,14 @@ prompt_main(int ac, char **av)
 		    case 'g': /* old, do not doc */
 		    	nogui = 1; break;
 		    case 'y': yes = optarg; break;
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (((file || prog) && av[optind]) ||
 	    (!(file || prog) && !av[optind]) ||
 	    (av[optind] && av[optind+1]) || (file && prog)) {
-		system("bk help -s prompt");
+		if (file == msgtmp) unlink(msgtmp);
+		usage();
 err:		if (file == msgtmp) unlink(msgtmp);
 		if (lines) freeLines(lines, free);
 		exit(2);
@@ -1702,15 +1704,13 @@ progresstest_main(int ac, char **av)
 	int	style = 2;
 	ticker	*tick;
 
-	while ((c = getopt(ac, av, "n;r;s;t;")) != -1) {
+	while ((c = getopt(ac, av, "n;r;s;t;", 0)) != -1) {
 		switch (c) {
 		    case 'n': n = atoi(optarg); break;
 		    case 'r': r = atoi(optarg); break;
 		    case 's': s = atoi(optarg); break;
 		    case 't': style = atoi(optarg); break;
-		    default:
-			fprintf(stderr, "bad option\n");
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (style != 2) fprintf(stderr, "Do work");
@@ -1990,7 +1990,7 @@ bk_searchFile(char *base)
 /*
  * Parse a -@<url> argument in getopt() switch
  *
- * used with getopt(ac, av, "@|...")
+ * used with getopt(ac, av, "@|...", 0)
  *
  * Behavior:
  *	-@	# add my parents to list
@@ -2022,4 +2022,54 @@ bk_urlArg(char ***urls, char *arg)
 		*urls = catLines(*urls, list);
 	}
 	return (0);
+}
+
+/*
+ * Add to getopt() lines in bk as:
+ *
+ * default: bk_badArg(c, av);
+ */
+void
+bk_badArg(int c, char **av)
+{
+	if (getenv("_BK_IN_BKD")) fprintf(stderr, "ERROR-");
+	if (c == GETOPT_ERR) {
+		if (optopt) {
+			fprintf(stderr, "bad option -%c\n", optopt);
+		} else {
+			/* unknown --long option */
+			fprintf(stderr, "bad option %s\n", av[optind-1]);
+		}
+	} else {
+		/* we shouldn't see these */
+		if (isprint(c)) {
+			fprintf(stderr, "bad option -%c\n", c);
+		} else {
+			fprintf(stderr, "bad option %d\n", c);
+		}
+	}
+	usage();
+}
+
+/*
+ * print usage message to stderr and exit.
+ * Use 3 since some command use 1 as a special meaning. ex: diff
+ *
+ * This assumes functions do option parsing.  They should at lease
+ * have done this:
+ *   while ((c = getopt(ac, av, "", 0)) != -1) bk_badArg(c, av);
+ *
+ */
+void
+usage(void)
+{
+	unless (prog) prog = "bk";
+	if (systemf("bk gethelp -s '%s' 1>&2", prog)) {
+		if (optind) {	/* only if getopt was used */
+			sys("bk", prog, "--usage", SYS);
+		} else {
+			fprintf(stderr, "usage: %s\n", prog);
+		}
+	}
+	exit(3);
 }

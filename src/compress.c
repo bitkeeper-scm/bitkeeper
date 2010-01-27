@@ -33,27 +33,21 @@
 int
 gzip_main(int ac, char **av)
 {
-	int c, rc, gzip_level = -1;
+	int c, rc, gzip_level = -2;
 
-	unless (av[1]) {
-		fprintf(stderr, "usage: %s -z|-u\n", av[0]);
-		exit(1);
-	}
-	while ((c = getopt(ac, av, "z:u")) != -1) { 
+	while ((c = getopt(ac, av, "z:u", 0)) != -1) {
 		switch (c) {
 		    case 'u':	gzip_level = -1; break;
 		    case 'z':	gzip_level = atoi(optarg); break;
-		    default:  
-			    	fprintf(stderr,
-					"usage: bk _gzip [-z[n] | -u]\n");
-			   	return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
-
 	if (gzip_level >= 0) {
 		rc = gzipAll2fh(0, stdout, gzip_level, 0, 0, 0);
-	} else {
+	} else if (gzip_level == -1) {
 		rc = gunzipAll2fh(0, stdout, 0, 0);
+	} else {
+		usage();
 	}
 	return (rc);
 }

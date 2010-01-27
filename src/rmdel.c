@@ -10,13 +10,11 @@ rmdel_main(int ac, char **av)
 	char	*name, *rev = 0;
 	delta	*d, *e;
 
-	while ((c = getopt(ac, av, "qr;")) != -1) {
+	while ((c = getopt(ac, av, "qr;", 0)) != -1) {
 		switch (c) {
 		    case 'q': flags |= SILENT; break;	/* doc 2.0 */
 		    case 'r': rev = optarg; break;	/* doc 2.0 */
-		    default:
-			system("bk help -s rmdel");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 

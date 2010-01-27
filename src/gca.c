@@ -15,7 +15,7 @@ gca_main(int ac, char **av)
 	int	c;
 	char	*inc = 0, *exc = 0;
 
-	while ((c = getopt(ac, av, "r|")) != -1) {
+	while ((c = getopt(ac, av, "r|", 0)) != -1) {
 		switch (c) {
 		    case 'r':					/* doc 2.0 */
 			unless (r1) {
@@ -23,18 +23,16 @@ gca_main(int ac, char **av)
 			} else unless (r2) {
 				r2 = optarg;
 			} else {
-				goto usage;
+				usage();
 			}
 			break;
-		    default:
-usage:			system("bk help -s gca");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
-	unless (r1 && r2) goto usage;
-	unless (name = sfileFirst("gca", &av[optind], 0)) goto usage;
-	if (sfileNext()) goto usage;
+	unless (r1 && r2) usage();
+	unless (name = sfileFirst("gca", &av[optind], 0)) usage();
+	if (sfileNext()) usage();
 	unless (s = sccs_init(name, INIT_NOCKSUM)) {
 		perror(name);
 		exit(1);

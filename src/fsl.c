@@ -44,7 +44,7 @@ fslrm_main(int ac, char **av)
 	int	c;
 	int	rc = 0, force = 0;
 
-	while ((c = getopt(ac, av, "f")) != -1) {
+	while ((c = getopt(ac, av, "f", 0)) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break;
 		    default: usage1(av[0]); break;

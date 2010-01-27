@@ -129,7 +129,7 @@ gnupatch_main(int ac, char **av)
 	FILE *pipe;
 	MDBM *db;
 
-	while ((c = getopt(ac, av, "ehTd|")) != -1) { 
+	while ((c = getopt(ac, av, "ehTd|", 0)) != -1) { 
 		switch (c) {
 		    case 'e':
 			expandkeywords = 1; break;		/* doc 2.1 */
@@ -138,8 +138,7 @@ gnupatch_main(int ac, char **av)
 		    case 'T':	fix_mod_time = 1; break;	/* doc 2.0 */
 		    case 'd':
 			diff_style = notnull(optarg); break;	/* doc 2.0 */
-		    default:	system("bk help -s gnupatch");
-				return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 

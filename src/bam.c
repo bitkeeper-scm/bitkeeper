@@ -975,13 +975,11 @@ bam_pull_main(int ac, char **av)
 #undef	ERROR
 #define	ERROR(x)	{ fprintf(stderr, "BAM pull: "); fprintf x ; }
 
-	while ((c = getopt(ac, av, "aq")) != -1) {
+	while ((c = getopt(ac, av, "aq", 0)) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
 		    case 'q': quiet = 1; break;
-		    default:
-			system("bk help -s BAM");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
@@ -1063,13 +1061,11 @@ bam_push_main(int ac, char **av)
 #undef	ERROR
 #define	ERROR(x)	{ fprintf(stderr, "BAM push: "); fprintf x ; }
 
-	while ((c = getopt(ac, av, "aq")) != -1) {
+	while ((c = getopt(ac, av, "aq", 0)) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
 		    case 'q': quiet = 1; break;
-		    default:
-			system("bk help -s BAM");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (proj_cd2root()) {
@@ -1111,15 +1107,13 @@ bam_clean_main(int ac, char **av)
 #undef	ERROR
 #define	ERROR(x)	{ fprintf(stderr, "BAM clean: "); fprintf x ; }
 
-	while ((c = getopt(ac, av, "anqv")) != -1) {
+	while ((c = getopt(ac, av, "anqv", 0)) != -1) {
 		switch (c) {
 		    case 'a': check_server = 1; break;
 		    case 'n': dryrun = 1; break;
 		    case 'q': quiet = 1; break;
 		    case 'v': verbose = 1; break;
-		    default:
-			system("bk help -s BAM");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (proj_cd2root()) {
@@ -1417,13 +1411,11 @@ bam_check_main(int ac, char **av)
 none:		ERROR((stderr, "no BAM data in this repository\n"));
 		return (0);
 	}
-	while ((i = getopt(ac, av, "Fq")) != -1) {
+	while ((i = getopt(ac, av, "Fq", 0)) != -1) {
 		switch (i) {
 		    case 'F': fast = 1; break;
 		    case 'q': quiet = 1; break;
-		    default:
-			system("bk help -s BAM");
-			return (1);
+		    default: bk_badArg(i, av);
 		}
 	}
 
@@ -1506,17 +1498,13 @@ bam_reattach_main(int ac, char **av)
 #undef	ERROR
 #define	ERROR(x)	{ fprintf(stderr, "BAM reattach: "); fprintf x ; }
 
-	while ((c = getopt(ac, av, "q")) != -1) {
+	while ((c = getopt(ac, av, "q", 0)) != -1) {
 		switch (c) {
 		    case 'q': quiet = 1; break;
-		    default:
-usage:			system("bk help -s BAM");
-			return (2);
+		    default: bk_badArg(c, av);
 		}
 	}
-	unless (av[optind] && streq(av[optind], "-") && !av[optind+1]) {
-		goto usage;
-	}
+	unless (av[optind] && streq(av[optind], "-") && !av[optind+1]) usage();
 	if (proj_cd2root()) {
 		ERROR((stderr, "not in a repository.\n"));
 		return (2);
@@ -1858,12 +1846,10 @@ bam_timestamps_main(int ac, char **av)
 #undef	ERROR
 #define	ERROR(x)	{ fprintf(stderr, "BAM timestamps: "); fprintf x ; }
 
-	while ((c = getopt(ac, av, "n")) != -1) {
+	while ((c = getopt(ac, av, "n", 0)) != -1) {
 		switch (c) {
 		    case 'n': dryrun = 1; break;
-		    default:
-			system("bk help -s BAM");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless (bp_hasBAM()) {
@@ -1945,11 +1931,9 @@ bam_convert_main(int ac, char **av)
 		    "this repository has already been converted.\n"));
 		exit(1);
 	}
-	while ((c = getopt(ac, av, "")) != -1) {
+	while ((c = getopt(ac, av, "", 0)) != -1) {
 		switch (c) {
-		    default:
-			system("bk help -s BAM");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless (proj_configsize(0, "BAM")) {
@@ -2253,20 +2237,18 @@ bam_server_main(int ac, char **av)
 		ERROR((stderr, "not in a repository.\n"));
 		return (1);
 	}
-	while ((c = getopt(ac, av, "flqrs")) != -1) {
+	while ((c = getopt(ac, av, "flqrs", 0)) != -1) {
 		switch (c) {
 		    case 'f': force++; break;
 		    case 'l': list++; break;
 		    case 'q': quiet++; break;
 		    case 'r': rm++; break;
 		    case 's': nosync++; break;
-		    default:
-usage:			system("bk help -s BAM");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (rm) {
-		if (av[optind]) goto usage;
+		if (av[optind]) usage();
 		if (!force && (server = bp_serverURL(buf)) &&
 		    streq(server, ".")) {
 			fputs("This repository is currently a BAM server.\n"
@@ -2283,7 +2265,7 @@ rm:
 		return (0);
 	}
 	if (av[optind]) {
-		if (av[optind+1]) goto usage;
+		if (av[optind+1]) usage();
 		if (!force && (server = bp_serverURL(buf)) && streq(server, ".")) {
 			fprintf(stderr,
 			    "This repository is currently a BAM server.\n"
@@ -2361,14 +2343,12 @@ bam_main(int ac, char **av)
 
 	if (license_binCheck(0)) exit(1);
 
-	while ((c = getopt(ac, av, "")) != -1) {
+	while ((c = getopt(ac, av, "", 0)) != -1) {
 		switch (c) {
-		    default:
-usage:			system("bk help -s BAM");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
-	unless (av[optind]) goto usage;
+	unless (av[optind]) usage();
 	for (i = 0; cmds[i].name; i++) {
 		if (streq(av[optind], cmds[i].name)) {
 			ac -= optind;
@@ -2377,5 +2357,5 @@ usage:			system("bk help -s BAM");
 			return (cmds[i].fcn(ac, av));
 		}
 	}
-	goto usage;
+	usage();
 }

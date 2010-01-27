@@ -214,7 +214,7 @@ argv_save(int ac, char **av, char **nav, int j)
 	 * Parse the av[] to decide which one we should pass down stream
 	 */
 	getoptReset();
-	while ((c = getopt(ac, av, bkd_getopt)) != -1) {
+	while ((c = getopt(ac, av, bkd_getopt, 0)) != -1) {
 		/*
 		 * skip all options which don't make sense for a short lived bkd
 		 */

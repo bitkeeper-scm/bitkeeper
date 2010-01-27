@@ -15,11 +15,9 @@ what_main(int ac, char **av)
 	char	*name, *gfile;
 	int	c, rc = 0;
 
-	while ((c = getopt(ac, av, "")) != -1) {
+	while ((c = getopt(ac, av, "", 0)) != -1) {
 		switch (c) {
-		    default:
-			system("bk help -s what");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 

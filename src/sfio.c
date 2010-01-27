@@ -121,7 +121,7 @@ sfio_main(int ac, char **av)
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefgHIiKLlmopP;qr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;b;BefgHIiKLlmopP;qr", 0)) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -161,8 +161,7 @@ sfio_main(int ac, char **av)
 		    case 'm': opts->doModes = 1; break; 	/* doc 2.0 */
 		    case 'q': opts->quiet = 1; break; 		/* doc 2.0 */
 		    case 'r': opts->newline = '\r'; break;
-		    default:
-			goto usage;
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (getenv("BK_NO_SFIO_PREFIX")) opts->prefix = "";	// just in case
@@ -197,9 +196,8 @@ sfio_main(int ac, char **av)
 	else if (opts->mode == M_IN)   return (sfio_in(1));
 	else if (opts->mode == M_LIST) return (sfio_in(0));
 
-usage:	system("bk help -s sfio");
-	free(opts);
-	return (1);
+usage:	free(opts);
+	usage();
 }
 
 private char *

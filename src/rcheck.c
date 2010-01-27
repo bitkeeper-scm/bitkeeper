@@ -13,11 +13,9 @@ rcheck_main(int ac, char **av)
 {
 
 #if 	0
-	while ((c = getopt(ac, av, "")) != -1) {
+	while ((c = getopt(ac, av, "", 0)) != -1) {
 		switch (c) {
-		    default:
-usage:			//system("bk help -s rcheck");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 #endif

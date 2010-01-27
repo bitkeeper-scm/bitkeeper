@@ -79,7 +79,7 @@ push_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.doit = opts.verbose = 1;
 
-	while ((c = getopt(ac, av, "ac:deE:Gilnqr;tTz|")) != -1) {
+	while ((c = getopt(ac, av, "ac:deE:Gilnqr;tTz|", 0)) != -1) {
 		unless (c == 'r') {
 			if (optarg) {
 				opts.av_push = addLine(opts.av_push,
@@ -121,9 +121,7 @@ push_main(int ac, char **av)
 			if (optarg) gzip = atoi(optarg);
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
 			break;
-		    default:
-			system("bk help -s push");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 		optarg = 0;
 	}
@@ -181,8 +179,7 @@ push_main(int ac, char **av)
 
 	unless (urls) {
 err:		freeLines(envVar, free);
-		system("bk help -s push");
-		return (1);
+		usage();
 	}
 	s_cset = sccs_csetInit(0);
 	if (opts.rev) {

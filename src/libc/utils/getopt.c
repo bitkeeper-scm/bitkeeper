@@ -4,6 +4,7 @@
  * This version handles
  *
  *	-	(leaves it and returns)
+ *	--	end of options
  *	-a
  *	-abcd
  *	-r <arg>
@@ -11,12 +12,23 @@
  *	-abcr <arg>
  *	-abcr<arg>
  *	-r<arg> -R<arg>, etc.
+ *	--long
+ *	--long=<arg>
+ *	--long <arg>
  *
  * Patterns in getopt string:
  *	d	boolean option		-d
  *	d:	required arg		-dARG or -d ARG
  *	d;	required arg no space   -dARG
  *	d|	optionial arg no space	-dARG or -d
+ *
+ * With long options:
+ *	long	boolean option		--long
+ *	long:	required arg		--long=ARG or --long ARG
+ *	long;	required arg no space   --long=ARG
+ *	long|	optionial arg no space	--long=ARG or --long
+ *
+ * Can be tested with 'bk _getopttest'
  */
 #include "system.h"
 
@@ -24,6 +36,9 @@ int	optopt;		/* option that is in error, if we return an error */
 int	optind;		/* next arg in argv we process */
 char	*optarg;	/* argument to an option */
 static int n;
+
+private	int	doLong(int ac, char **av, longopt *lopts);
+private	void	printUsage(char *prog, char *opts, longopt *lopts);
 
 void
 getoptReset(void)
@@ -39,7 +54,7 @@ getoptReset(void)
  *    - GETOPT_ERR(256) if unknown option found.
  */
 int
-getopt(int ac, char **av, char *opts)
+getopt(int ac, char **av, char *opts, longopt *lopts)
 {
 	char	*t;
 
@@ -59,6 +74,8 @@ getopt(int ac, char **av, char *opts)
 		n = 1;
 		return (EOF);
 	}
+	if (streq(av[optind], "--usage")) printUsage(av[0], opts, lopts);
+	if (strneq(av[optind], "--", 2)) return (doLong(ac, av, lopts));
 
 	assert(av[optind][n]);
 	for (t = (char *)opts; *t; t++) {
@@ -136,40 +153,122 @@ getopt(int ac, char **av, char *opts)
 	return (*t);
 }
 
-#ifdef	TEST
-
-/* XXX a.out -y file */
-main(int ac, char **av)
+private int
+doLong(int ac, char **av, longopt *lopts)
 {
-	extern	char *optarg;
-	extern	int optind;
-	char	*comment = 0;
-	int	c;
+	char	*s, *t;
+	int	len1, len2;
 
-	while ((c = getopt(ac, av, "fnpsx:y|")) != -1) {
-		switch (c) {
-		    case 'f':
-		    case 'n':
-		    case 'p':
-		    case 's':
-			printf("Got option %c\n", c);
-			break;
-		    case 'x':
-		    case 'y':
-			    comment = optarg;
-			    printf("Got optarg %s with -%c\n", comment, c);
-			    break;
-		    case GETOPT_ERR:
-			fprintf(stderr, "bad option %c\n", optopt);
-			break;
-		    default:
-			fprintf(stderr, "unknown ret %c\n", c);
-			break;
+	unless (lopts) {
+err:		n = 1;
+		optarg = 0;
+		optind++;
+		optopt = 0;
+		return (GETOPT_ERR);
+	}
+	/* len of option without =value part */
+	s = av[optind] + 2;
+	len1 = (t = strchr(s, '=')) ? (t - s) : strlen(s);
+	for (; t = lopts->name; lopts++) {
+		s = av[optind] + 2;
+		/* len of lopts array without suffix */
+		len2 = strlen(t);
+		if (strspn(t+len2-1, ":;|") == 1) --len2;
+
+		if ((len1 == len2) && strneq(s, t, len1)) {
+			s += len1;
+			t += len2;
+			break;	/* found a match */
 		}
 	}
-	while (av[optind]) {
-		printf("av[%d] = %s\n", optind, av[optind++]);
+	unless (t) goto err;
+
+	/* OK, we found a legit option, let's see what to do with it.
+	 * If it isn't one that takes an option, just advance and return.
+	 */
+	unless (*t) {
+		if (*s == '=') goto err; /* got option anyway */
+		optind++;
+		n = 1;
+		return (lopts->ret);
 	}
-	exit(0);
+
+	/* got one with an option, see if it is cozied up to the flag */
+	if (*s == '=') {
+		optarg = s + 1;
+		optind++;
+		n = 1;
+		return (lopts->ret);
+	}
+
+	/* If it was not there, and it is optional, OK */
+	if (*t == '|') {
+		optarg = 0;
+		optind++;
+		n = 1;
+		return (lopts->ret);
+	}
+
+	/* was it supposed to be there? */
+	if (*t == ';') goto err;
+
+	/* Nope, there had better be another word. */
+	if ((optind + 1 == ac) || (av[optind+1][0] == '-')) {
+		goto err;
+	}
+	optarg = av[optind+1];
+	optind += 2;
+	n = 1;
+	return (lopts->ret);
 }
-#endif
+
+/*
+ * look at the getopt() arguments and create a fake usage line.
+ * useful as a backup in case no other help is available
+ */
+private	void
+printUsage(char *prog, char *opts, longopt *lopts)
+{
+	int	len, first, i;
+	char	*p;
+	char	**extra = 0;
+
+	len = fprintf(stderr, "usage: %s", prog);
+
+	first = 0;
+	for (p = opts; *p; p++) {
+		if ((p[1] == ':') || (p[1] == ';') || (p[1] == '|')) {
+			extra = addLine(extra, aprintf(" [-%c<arg>]", *p));
+			++p;
+		} else {
+			unless (first) {
+				len += fprintf(stderr, " [-");
+				first = 1;
+			}
+			fputc(*p, stderr);
+			++len;
+		}
+	}
+	if (first) {
+		fputc(']', stderr);
+		++len;
+	}
+	while (lopts && (p = lopts->name)) {
+		i = strlen(p);
+		if (strspn(p+i-1, ":;|") == 1) --i;
+		extra = addLine(extra,
+		    aprintf(" [--%.*s%s]", i, p, p[i] ? "=<arg>" : ""));
+		++lopts;
+	}
+	extra = addLine(extra, strdup(" args..."));
+	EACH(extra) {
+		if (len + strlen(extra[i]) > 72) {
+			fputs("\n\t", stderr);
+			len = 8;
+		}
+		len += fprintf(stderr, "%s", extra[i]);
+	}
+	freeLines(extra, free);
+	fputc('\n', stderr);
+	exit(1);
+}

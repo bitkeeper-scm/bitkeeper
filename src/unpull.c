@@ -12,14 +12,12 @@ unpull_main(int ac, char **av)
 	int	c, force = 0, quiet = 0;
 	char	*patch = "-pBitKeeper/tmp/unpull.patch";
 
-	while ((c = getopt(ac, av, "fqs")) != -1) {
+	while ((c = getopt(ac, av, "fqs", 0)) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break;			/* doc 2.0 */
 		    case 'q': quiet = 1; break;			/* doc 2.0 */
 		    case 's': patch = 0; break;
-		    default:
-			system("bk help -s unpull");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	return (unpull(force, quiet, patch));

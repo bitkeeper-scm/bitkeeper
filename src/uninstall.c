@@ -11,13 +11,11 @@ uninstall_main(int ac, char **av)
 	int	c, prompt = 1, upgrade = 0;
 	char	*buf, *path;
 
-	while ((c = getopt(ac, av, "fu")) != -1) {
+	while ((c = getopt(ac, av, "fu", 0)) != -1) {
 		switch (c) {
 		    case 'u':	upgrade = 1;		/* fall trhough */
 		    case 'f':	prompt = 0; break;	/* force */
-		    default:
-			fprintf(stderr, "unknown option: %c\n", c);
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	path = av[optind];

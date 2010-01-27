@@ -481,7 +481,7 @@ rset_main(int ac, char **av)
 	s = sccs_init(s_cset, SILENT);
 	assert(s);
 
-	while ((c = getopt(ac, av, "5aBhHl;Pr;")) != -1) {
+	while ((c = getopt(ac, av, "5aBhHl;Pr;", 0)) != -1) {
 		unless (c == 'r' || c == 'P' || c == 'l') {
 			if (optarg) {
 				opts.nav = addLine(opts.nav,
@@ -515,14 +515,15 @@ rset_main(int ac, char **av)
 					return (1); /* parse failed */
 				}
 				break;
-		default:
-usage:				system("bk help -s rset");
-				if (s) sccs_free(s);
-				return (1);
+		default:	if (s) sccs_free(s);
+				bk_badArg(c, av);
 		}
 	}
 
-	unless (rev1) goto usage;
+	unless (rev1) {
+usage:		if (s) sccs_free(s);
+		usage();
+	}
 	if (opts.BAM && !opts.md5keys) goto usage;
 
 	/* Let them use -P by default but ignore it in non-products. */

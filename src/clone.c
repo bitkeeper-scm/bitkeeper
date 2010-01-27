@@ -31,7 +31,6 @@ private	clonerc	attach(void);
 private	clonerc	clone(char **, remote *, char *, char **);
 private	clonerc	clone2(remote *r);
 private int	sfio(remote *r, int BAM, char *prefix);
-private void	usage(char *name);
 private int	initProject(char *root, remote *r);
 private	void	lclone(char *from);
 private int	relink(char *a, char *b);
@@ -54,7 +53,7 @@ clone_main(int ac, char **av)
 	opts = calloc(1, sizeof(*opts));
 	if (streq(prog, "attach")) opts->attach = 1;
 	if (streq(prog, "detach")) opts->detach = 1;
-	while ((c = getopt(ac, av, "B;CdE:lNpqr;s;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;CdE:lNpqr;s;w|z|", 0)) != -1) {
 		unless ((c == 'r') || (c == 's')) {
 			if (optarg) {
 				opts->av = addLine(opts->av,
@@ -87,8 +86,7 @@ clone_main(int ac, char **av)
 			if (optarg) gzip = atoi(optarg);
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
 			break;
-		    default:
-			usage(av[0]);
+		    default: bk_badArg(c, av);
 	    	}
 		optarg = 0;
 	}
@@ -113,10 +111,10 @@ clone_main(int ac, char **av)
 	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	if (av[optind]) localName2bkName(av[optind], av[optind]);
 	if (av[optind+1]) localName2bkName(av[optind+1], av[optind+1]);
-	unless (av[optind]) usage(av[0]);
+	unless (av[optind]) usage();
 	opts->from = strdup(av[optind]);
 	if (av[optind + 1]) {
-		if (av[optind + 2]) usage(av[0]);
+		if (av[optind + 2]) usage();
 		opts->to = av[optind + 1];
 		l = remote_parse(opts->to, REMOTE_BKDURL);
 	}
@@ -129,7 +127,7 @@ clone_main(int ac, char **av)
 	 * Trigger note: it is meaningless to have a pre clone trigger
 	 * for the client side, since we have no tree yet
 	 */
-	unless (r = remote_parse(opts->from, REMOTE_BKDURL)) usage(av[0]);
+	unless (r = remote_parse(opts->from, REMOTE_BKDURL)) usage();
 	r->gzip_in = gzip;
 	if (r->host) {
 		if (opts->link) {
@@ -169,7 +167,7 @@ clone_main(int ac, char **av)
 		if (l->host && r->host) {
 			if (r) remote_free(r);
 			if (l) remote_free(l);
-			usage(av[0]);
+			usage();
 		}
 
 		/*
@@ -250,13 +248,6 @@ clone_main(int ac, char **av)
 	return (clonerc);
 }
 
-private void
-usage(char *name)
-{
-	sys("bk", "help", "-s", name, SYS);
-    	exit(CLONE_ERROR);
-}
-
 private int
 send_clone_msg(remote *r, char **envVar)
 {
@@ -311,7 +302,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		(!writable(".") || access(".", W_OK))) {
 		fprintf(stderr, "clone: %s: %s\n",
 			(local ? local : "current directory"), strerror(errno));
-		usage(av[0]);
+		usage();
 	}
 	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
 	if (getenv("_BK_TRANSACTION")) {
@@ -1083,10 +1074,7 @@ perr:			fprintf(stderr,
 		freeLines(parents, free);
 		return (errs);
 	}
-	unless (ac >= 3) {
-		system("bk help -s relink");
-		exit(1);
-	}
+	unless (ac >= 3) usage();
 	getcwd(here, MAXPATH);
 	for (i = 1; av[i] != to; ++i) {
 		if (streq(av[i], to)) continue;

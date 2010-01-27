@@ -59,7 +59,7 @@ findcset_main(int ac, char **av)
 	int	save, c, flags = SILENT;
 	int	fileIdx;
 
-	while ((c = getopt(ac, av, "b:kt:T:ivu")) != -1) {
+	while ((c = getopt(ac, av, "b:kt:T:ivu", 0)) != -1) {
 		switch (c)  {
 		    case 'b' : opts.blackOutTime = atoi(optarg); break;
 		    case 'k'  : opts.noSkip++; break;
@@ -68,9 +68,7 @@ findcset_main(int ac, char **av)
 		    case 'i' : opts.ignoreCsetMarker = 1; break; /* for debug */
 		    case 'u' : opts.singleUserCset = 1; break;
 		    case 'v' : opts.verbose++; flags &= ~SILENT; break;
-		    default:
-			//system("bk help findcset");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 

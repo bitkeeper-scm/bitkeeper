@@ -1232,13 +1232,7 @@ bk uninstall -z > /dev/null 2> ERR && {
 	echo "Should fail"
 	exit 1
 }
-bk grep -iq usage ERR
-if [ $? -ne 0 ]
-then	echo "failed (bug no usage)"
-else
-	echo "OK, fix test"
-	exit 1
-fi
+bk grep -iq usage ERR || fail -f ERR no usage
 rm -f ERR
 
 echo $N bk unlock with bogus option .................................$NL

@@ -3,7 +3,6 @@
 #include "logging.h"
 
 private int	mkconfig(FILE *out, MDBM *flist, int verbose);
-private void    usage(void);
 private void	defaultFiles(int);
 private void	printField(FILE *out, MDBM *flist, char *field);
 private MDBM	*addField(MDBM *flist, char *field);
@@ -27,7 +26,7 @@ setup_main(int ac, char **av)
 	int	product = 0;
 	int	noCommit = 0;
 
-	while ((c = getopt(ac, av, "aCc:ePfF:p")) != -1) {
+	while ((c = getopt(ac, av, "aCc:ePfF:p", 0)) != -1) {
 		switch (c) {
 		    case 'a': accept = 1; break;
 		    case 'C':
@@ -48,7 +47,7 @@ setup_main(int ac, char **av)
 		    case 'f': force = 1; break;
 		    case 'F': flist = addField(flist, optarg); break;
 		    case 'p': print = 1; break;
-		    default: usage();
+		    default: bk_badArg(c, av);
 		}
 	}
 
@@ -265,13 +264,6 @@ defaultFiles(int product)
 	fprintf(f, "\n");
 	fclose(f);
 	system("bk new -Pq " COLLAPSED);
-}
-
-private void
-usage(void)
-{
-	system("bk help -s setup");
-	exit(1);
 }
 
 private MDBM *

@@ -44,7 +44,7 @@ upgrade_main(int ac, char **av)
 	mode_t	myumask;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "a|cdfinq")) != -1) {
+	while ((c = getopt(ac, av, "a|cdfinq", 0)) != -1) {
 		switch (c) {
 		    case 'a':
 		    	unless (platform = optarg) {
@@ -60,13 +60,11 @@ upgrade_main(int ac, char **av)
 		    case 'n':				// obsolete, for compat
 			install = 0; fetchonly = 1; break;
 		    case 'q': flags |= SILENT; break;
-		    default:
-usage:			system("bk help -s upgrade");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind]) {
-		if (av[optind+1]) goto usage;
+		if (av[optind+1]) usage();
 		urlbase = av[optind];
 
 		if (platform && streq(platform, "?") && !strchr(urlbase,'/')) {

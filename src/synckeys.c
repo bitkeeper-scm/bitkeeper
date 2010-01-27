@@ -73,13 +73,11 @@ probekey_main(int ac, char **av)
 	char	*rev = 0;
 	int	rc, c, syncRoot = 0;
 
-	while ((c = getopt(ac, av, "Sr;")) != -1) {
+	while ((c = getopt(ac, av, "Sr;", 0)) != -1) {
 		switch (c) {
 		    case 'S': syncRoot = 1; break;
 		    case 'r': rev = optarg; break;
-		    default:
-			fprintf(stderr, "usage: probekey OPTS\n");
-			return (2);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
@@ -175,16 +173,14 @@ listkey_main(int ac, char **av)
 
 #define OUT(s)  unless(ForceFullPatch) out(s)
 
-	while ((c = getopt(ac, av, "dqrFS")) != -1) {
+	while ((c = getopt(ac, av, "dqrFS", 0)) != -1) {
 		switch (c) {
 		    case 'd':	debug = 1; break;
 		    case 'q':	quiet = 1; break;
 		    case 'r':	sndRev = 1; break;
 		    case 'F':   ForceFullPatch = 1; break;
 		    case 'S':   syncRoot = 1; break;
-		    default:	fprintf(stderr,
-					"usage: bk _listkey [-d] [-q]\n");
-				return (5);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless ((s = sccs_init(s_cset, 0)) && HASGRAPH(s)) {
@@ -656,13 +652,12 @@ synckeys_main(int ac, char **av)
 	sccs	*s;
 	int	flags = 0;
 
-	while ((c = getopt(ac, av, "lSr")) != -1) {
+	while ((c = getopt(ac, av, "lSr", 0)) != -1) {
 		switch (c) {
 		    case 'l': flags |= PK_LKEY; break;
 		    case 'S': flags |= PK_SYNCROOT; break;
 		    case 'r': flags |= PK_RKEY; break;
-		    default:  fprintf(stderr, "bad option %c\n", c);
-			      exit(1);
+		    default: bk_badArg(c, av);
 		}
 	}
 

@@ -20,20 +20,18 @@ touch_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.create = 1;
 
-	while ((c = getopt(ac, av, "acmr:t:")) != -1) {
+	while ((c = getopt(ac, av, "acmr:t:", 0)) != -1) {
 		switch (c) {
 			case 'a': opts.atime  = 1;	break;
 			case 'c': opts.create = 0;	break;
 			case 'm': opts.mtime  = 1;	break;
 			case 'r': opts.file   = optarg;	break;
 			case 't': opts.tspec  = optarg;	break;
-			default:
-usage:				system("bk help -s touch");
-				exit(1);
+			default: bk_badArg(c, av);
 		}
 	}
-	unless (av[optind]) goto usage;
-	if (opts.tspec && opts.file) goto usage;
+	unless (av[optind]) usage();
+	if (opts.tspec && opts.file) usage();
 	unless (opts.atime || opts.mtime) opts.atime = opts.mtime = 1;
 	if (opts.tspec) {
 		ut.actime = ut.modtime = strtoul(opts.tspec, 0, 10);

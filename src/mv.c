@@ -21,18 +21,16 @@ mv_main(int ac, char **av)
 	int	c;
 
 	has_proj("mv");
-	while ((c = getopt(ac, av, "ful")) != -1) {
+	while ((c = getopt(ac, av, "ful", 0)) != -1) {
 		switch (c) {
 		    case 'f':	force = 1; break;
 		    case 'l':	skip_lock = 1; break;
 		    case 'u':	isUnDelete = 1; break;
-		    default:
-usage:			system("bk help -s mv");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
-	if (ac < 3) goto usage;
+	if (ac < 3) usage();
 	dest = av[ac-1];
 	localName2bkName(dest, dest);
 	cleanPath(dest, dest);
@@ -88,7 +86,7 @@ usage:			system("bk help -s mv");
 int
 mvdir_main(int ac, char **av)
 {
-	int	rc = 0, skip_lock = 0;
+	int	skip_lock = 0;
 	int	c, fix_pfile;
 	char	*freeme = NULL;
 	char	*cmd, *p, *rev, *from, *to;
@@ -97,20 +95,14 @@ mvdir_main(int ac, char **av)
 	sccs	*s = NULL;
 	pfile   pf;
 
-	while ((c = getopt(ac, av, "l")) != -1) {
+	while ((c = getopt(ac, av, "l", 0)) != -1) {
 		switch (c) {
 		    case 'l':	skip_lock = 1; break; /* internal interface */
-		    default:
-usage:			system("bk help -s mvdir");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 
-	if ((ac - optind + 1) != 3) {
-		rc = 1;
-		goto usage;
-	}
-
+	if ((ac - optind + 1) != 3) usage();
 	from = av[optind];
 	to = av[optind + 1];
 

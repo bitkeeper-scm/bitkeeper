@@ -41,7 +41,7 @@ findkey_main(int ac, char **av)
 	 * Usage: findkey [opts | key] [files]
 	 */
 	bzero(&look, sizeof(look));
-	while ((c = getopt(ac, av, "b;c;e;h;kp;t;u;")) != -1) {
+	while ((c = getopt(ac, av, "b;c;e;h;kp;t;u;", 0)) != -1) {
 		switch (c) {
 		    case 'b': look.random = optarg; break;
 		    case 'c': look.cksum = atoi(optarg); break;
@@ -51,9 +51,7 @@ findkey_main(int ac, char **av)
 		    case 'p': look.path = optarg; break;
 		    case 't': look.utc = utc(optarg); break;
 		    case 'u': look.user = optarg; break;
-		    default:
-			system("bk help -s findkey");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	unless (look.random || look.cksum ||

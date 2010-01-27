@@ -31,17 +31,9 @@ private	char	cmdlog_buffer[MAXPATH*4];
 private	int	cmdlog_flags;
 private	int	cmdlog_locks;
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
-private int	usage(void);
 private	int	hasArgs(char **av);
 private	void	showproc_start(char **av);
 private	void	showproc_end(char *cmdlog_buffer, int ret);
-
-private int
-usage(void)
-{
-	system("bk help -s bk");
-	exit(1);
-}
 
 #define	MAXARGS	1024
 
@@ -189,7 +181,7 @@ main(int volatile ac, char **av, char **env)
 		}
 		is_bk = 1;
 		while ((c = getopt(ac, av,
-			"?;@|1aAB;cCdDgGhjL|lM;nNpPqr|RuUxz;")) != -1) {
+			"?;@|1aAB;cCdDgGhjL|lM;nNpPqr|RuUxz;", 0)) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
@@ -235,8 +227,7 @@ main(int volatile ac, char **av, char **env)
 				}
 				break;
 			    case 'z': break;	/* remote will eat it */
-			    default:
-				usage();
+			    default: bk_badArg(c, av);
 			}
 		}
 
@@ -1106,15 +1097,13 @@ cmdlog_main(int ac, char **av)
 	int	yelled = 0, c, all = 0;
 
 	unless (proj_root(0)) return (1);
-	while ((c = getopt(ac, av, "ac;")) != -1) {
+	while ((c = getopt(ac, av, "ac;", 0)) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
 		    case 'c':
 			cutoff = range_cutoff(optarg + 1);
 			break;
-		    default:
-			system("bk help -s cmdlog");
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
 	concat_path(buf, proj_root(0), "/BitKeeper/log/");

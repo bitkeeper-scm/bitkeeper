@@ -225,6 +225,7 @@ get
 gethelp
 gethost
 getmsg
+_getopt_test
 getuser
 glob
 gnupatch

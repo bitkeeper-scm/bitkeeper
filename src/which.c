@@ -11,17 +11,14 @@ which_main(int ac, char **av)
 	CMD	*cmd;
 	int	c, external = 1, internal = 1;
 
-	while ((c = getopt(ac, av, "ei")) != -1) {
+	while ((c = getopt(ac, av, "ei", 0)) != -1) {
 		switch (c) {
 		    case 'i': external = 0; break;
 		    case 'e': internal = 0; break;
-usage:		    default:
-			fprintf(stderr, "usage: bk which [-i] [-e] cmd\n");
-			return (2);
+		    default: bk_badArg(c, av);
 		}
 	}
-	unless (av[optind] && !av[optind+1]) goto usage;
-
+	unless (av[optind] && !av[optind+1]) usage();
 	exe = av[optind];
 	if (internal) {
 		assert(bin);

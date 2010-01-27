@@ -60,7 +60,7 @@ resolve_main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
-	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstTvx;1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstTvx;1234", 0)) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -98,10 +98,7 @@ resolve_main(int ac, char **av)
 		    case '2': opts.pass2 = 0; break;		/* doc 2.0 */
 		    case '3': opts.pass3 = 0; break;		/* doc 2.0 */
 		    case '4': opts.pass4 = 0; break;		/* doc 2.0 */
-		    default:
-		    	fprintf(stderr, "resolve: bad opt %c\n", optopt);
-			system("bk help -s resolve");
-			exit(1);
+		    default: bk_badArg(c, av);
 		}
     	}
 	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");

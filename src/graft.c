@@ -23,13 +23,10 @@ graft_main(int ac, char **av)
 		strcpy(name, s);
 		if (s = sfileNext()) {
 			strcpy(name2, s);
-			if (s = sfileNext()) goto usage;
+			if (s = sfileNext()) usage();
 		}
 	}
-	if (!name[0] || !name2[0]) {
-usage:		fprintf(stderr, "Usage: graft file file\n");
-		return (1);
-	}
+	if (!name[0] || !name2[0]) usage();
 	sfileDone();
 	unless ((s1 = sccs_init(name, 0)) && HASGRAPH(s1)) {
 		fprintf(stderr, "graft: can't init %s\n", name);

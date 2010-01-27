@@ -28,19 +28,17 @@ havekeys_main(int ac, char **av)
         MDBM	*idDB;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "BDFlq")) != -1) {
+	while ((c = getopt(ac, av, "BDFlq", 0)) != -1) {
 		switch (c) {
 		    case 'B': BAM = 1; break;
 		    case 'D': DELTA = 1; break;
 		    case 'F': found = 1; break;
 		    case 'l': recurse = 0; break;
 		    case 'q': break;	/* ignored for now */
-		    default:
-usage:			fprintf(stderr, "usage: bk %s [-q] [-BR] -\n", av[0]);
-			return (1);
+		    default: bk_badArg(c, av);
 		}
 	}
-	unless (av[optind] && streq(av[optind], "-")) goto usage;
+	unless (av[optind] && streq(av[optind], "-")) usage();
 	if (proj_cd2root()) {
 		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
 		return (1);
