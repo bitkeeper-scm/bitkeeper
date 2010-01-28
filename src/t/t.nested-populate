@@ -98,6 +98,12 @@ EOF
 cmpfiles GOT WANT
 echo OK
 
+echo $N Show -@url is used before urllist by populate ...............$NL
+bk unpopulate $Q odd || fail
+bk populate -@../odd odd >OUT 2>&1 || fail
+grep -q 'Clone.*/odd\?' OUT || fail
+echo OK
+
 echo $N Unpopulate odd...............................................$NL
 bk unpopulate $Q odd || {
 	echo failed
@@ -460,6 +466,17 @@ echo OK
 echo $N Remove the conflict, now it works............................$NL
 rmdir deep1/deep2/conflict || exit 1
 bk populate $Q ./deep1/deep2
+bk components -h > GOT
+cat > WANT <<EOF
+./deep1/deep2
+./deep1/deep2/deep3/deep4/deep5
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Run populate to repair a repo ...............................$NL
+rm -rf deep1/deep2/deep3/deep4/deep5
+bk populate $Q || fail
 bk components -h > GOT
 cat > WANT <<EOF
 ./deep1/deep2

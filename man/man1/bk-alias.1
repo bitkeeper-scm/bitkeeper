@@ -118,8 +118,6 @@ taken as another alias to be expanded recursively.
 .LP
 When adding a component to an alias, if the alias does not exist
 it is automatically created in the aliases file.
-When removing a component from an alias, if there are no other components
-left in the alias it is automatically deleted from the aliases file.
 .LP
 When modifying an alias the command line can include '-' instead of
 the arguments and the list of aliases to add or remove will be read
@@ -148,6 +146,8 @@ DEFAULT
 This alias is what is cloned when no aliases or components are specified.
 It defaults to "ALL" but it may be changed to make the default set
 of components to be less than all.
+The default can even be empty so only the product will get cloned by
+default.
 .tp
 THERE
 This is another alias which may not be modified and it means all the

@@ -74,3 +74,23 @@ test -d gcc || fail
 bk alias set $Q DEFAULT STUFF
 test -d gcc && fail
 echo OK
+
+echo $N Show that we can change set HERE to empty ...................$NL
+bk alias set $Q HERE || fail
+test `bk components -h | wc -l` -eq 0 || fail
+echo OK
+
+echo $N And show default can be empty ...............................$NL
+bk alias set $Q DEFAULT || fail
+bk clone $Q . ../copy4 || fail
+cd ../copy4
+test `bk alias list HERE` = "default" || fail
+test `bk components -h | wc -l` -eq 0 || fail
+echo OK
+
+echo $N And show empty default which fails leaves aliases edited ....$NL
+cd "$HERE/project"
+bk alias set $Q DEFAULT 2> ERR && fail -f ERR
+grep -q "No other sources for gcc known" ERR || fail -f ERR
+bk -r check -ac 2> ERR && fail fix test
+echo "failed (bug XXX alias.c line 253)"

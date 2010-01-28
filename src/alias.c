@@ -72,7 +72,7 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 		char	*verb;
 		int	(*fcn)(char *cmd, aopts *opts, char **av);
 	} cmds[] = {
-		{"new", aliasCreate },	/* not documented */
+		{"new", aliasCreate },
 		{"set", aliasCreate },
 		{"add", aliasCreate },
 		{"rm", aliasCreate },
@@ -121,7 +121,7 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 	} else if (islist) {
 		usage();
 	}
-	
+
 	if (opts.here && opts.missing) {
 		error("%s: here or missing but not both\n", prog);
 		usage();
@@ -415,11 +415,6 @@ dbAdd(hash *aliasdb, char *alias, char **aliases)
 		error("%s: invalid alias name: %s\n", prog, alias);
 		goto err;
 	}
-	unless (nLines(aliases)) {
-		// XXX normal and quiet mode coming...
-		// error("%s: nothing to add\n", prog);
-		goto err;
-	}
 	if (val = hash_fetchStr(aliasdb, alias)) {
 		list = splitLine(val, "\r\n", 0);
 	}
@@ -433,7 +428,7 @@ dbAdd(hash *aliasdb, char *alias, char **aliases)
 	}
 	uniqLines(list, free);
 	val = joinLines("\n", list);
-	unless (hash_storeStr(aliasdb, alias, val)) {
+	unless (hash_storeStr(aliasdb, alias, val ? val : "")) {
 		error("%s: failed to store aliases in %s: %s\n",
 		    prog, alias, val);
 		goto err;
@@ -471,15 +466,13 @@ dbRemove(hash *aliasdb, char *alias, char **aliases)
 				errors++;
 			}
 		}
-	}
-	if (errors) {
-		error("%s: %s not modified\n", prog, alias);
-		goto err;
-	}
-	if (nLines(list) > 0) {
+		if (errors) {
+			error("%s: %s not modified\n", prog, alias);
+			goto err;
+		}
 		p = joinLines("\n", list);
-		hash_storeStr(aliasdb, alias, p);
-		free(p);
+		hash_storeStr(aliasdb, alias, p ? p : "");
+		if (p) free(p);
 	} else {
 		hash_deleteStr(aliasdb, alias);
 	}
@@ -834,11 +827,7 @@ expand(nested *n, hash *aliasdb, hash *keys, hash *seen, char *alias)
 
 	inserted = 1;
 
-	unless (expansion = splitLine(mval, "\r\n", 0)) {
-		error("%s: no alias conent for '%s'.\n", prog, alias);
-		goto done;
-	}
-
+	expansion = splitLine(mval, "\r\n", 0);
 	EACH(expansion) { /* build up keys */
 		if (expand(n, aliasdb, keys, seen, expansion[i])) goto done;
 	}
@@ -1080,7 +1069,7 @@ chkReserved(char *alias, int fix)
 	char	**wp, *w;
 	char	*reserved[] = {
 		"all", "default", "here", "there",
-		"new", "add", "rm", "set", 0};
+		"new", "add", "rm", "set", "list", 0};
 
 	for (wp = reserved; (w = *wp); wp++) {
 		if (strieq(w, alias)) break;
@@ -1092,6 +1081,10 @@ chkReserved(char *alias, int fix)
 			debug((stderr, "downcasting alias: %s\n", alias));
 			assert(strlen(alias) == strlen(w));
 			strcpy(alias, w);
+
+			/* map there => here */
+			//XXX causes problems with error messages
+			//if (streq(alias, "there")) strcpy(alias, "here");
 			rc = 1;
 		} else {
 			error("%s: alias not downcasted: %s\n", prog, alias);

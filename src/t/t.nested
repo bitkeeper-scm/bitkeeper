@@ -1197,12 +1197,13 @@ test $REV = `bk changes -r+ -d:REV:` || {
 }
 echo OK
 
-echo $N If we modify remove all components it should be a delete ....$NL
+echo $N If we remove all components an alias should be empty ........$NL
 bk alias rm A B C
 bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
 echo Delete alias A > WANT
 cmpfiles WANT GOT
-bk alias new A B C
+bk alias list A
+bk alias set A B C
 echo OK
 
 echo $N List all alias names ........................................$NL

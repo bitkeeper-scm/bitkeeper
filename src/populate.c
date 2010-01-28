@@ -27,8 +27,6 @@ populate_main(int ac, char **av)
 		while (av[optind]) {
 			nav = addLine(nav, strdup(av[optind++]));
 		}
-	} else {
-		nav = addLine(nav, strdup("."));
 	}
 	nav = addLine(nav, 0);
 
