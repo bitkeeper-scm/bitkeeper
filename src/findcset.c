@@ -20,6 +20,7 @@ private	char *	readTag(time_t *tagDate);
 private	void	closeTags(void);
 private int	do_patch(sccs *s, delta *d, char *tag,
 		    char *tagparent, FILE *out);
+private	void	preloadView(sccs *s, MDBM *db, delta *d);
 
 private	delta	*list, *freeme, **sorted;
 private	char	**flist, **keylist;
@@ -31,6 +32,7 @@ typedef	struct {
 	u32	singleUserCset:1;	/* Force one user per cset */
 	u32	noSkip:1;		/* do not skip recent deltas */
 	u32	ensemble:1;		/* shorten comments */
+	u32	BKtree:1;		/* findset in existing bk tree */
 	u32	verbose;		/* 1: basic, 2:debug */
 	u32	ignoreCsetMarker:1;	/*
 					 * Strip/re-do existing
@@ -59,9 +61,10 @@ findcset_main(int ac, char **av)
 	int	save, c, flags = SILENT;
 	int	fileIdx;
 
-	while ((c = getopt(ac, av, "b:kt:T:ivu", 0)) != -1) {
+	while ((c = getopt(ac, av, "b:Bkt:T:ivu", 0)) != -1) {
 		switch (c)  {
 		    case 'b' : opts.blackOutTime = atoi(optarg); break;
+		    case 'B' : opts.BKtree = 1; break;
 		    case 'k'  : opts.noSkip++; break;
 		    case 't' : opts.timeGap = atoi(optarg); break;
 		    case 'T' : tagFile = optarg; break;
@@ -102,6 +105,8 @@ findcset_main(int ac, char **av)
 			}
 		}
 		sccs_free(s);
+		system("bk -r admin -D");
+		system("bk cset -C");
 	}
 
 	fileIdx = 0;
@@ -112,7 +117,8 @@ findcset_main(int ac, char **av)
 			continue;
 		}
 		unless (HASGRAPH(s)) continue;
-		unless (sccs_userfile(s)) {
+		unless (sccs_userfile(s) ||
+		    (opts.BKtree && !streq(name, CHANGESET))) {
 			sccs_free(s);
 			verbose((stderr, "Skipping non-user file %s.\n", name));
 			continue;
@@ -238,13 +244,6 @@ dumpCsetMark(void)
 
 		s = sccs_init(flist[findex], flags);
 		assert(s);
-
-		if (opts.ignoreCsetMarker) {
-			/*
-			 * Clear all old cset marker.
-			 */
-			for (d = s->table; d; d = NEXT(d)) d->flags &= ~D_CSET;
-		}
 
 		/*
 		 * Set new cset mark
@@ -852,6 +851,37 @@ mkTag(mkcs_t *cur, char *tag)
 	sccs_freetree(e);
 }
 
+private	void
+preloadView(sccs *s, MDBM *db, delta *d)
+{
+	kvpair	kv;
+	sum_t	linesum, sumch;
+	u8	*ch;
+
+	if (sccs_get(s, d->rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+		assert("cannot get hash" == 0);
+	}
+	EACH_KV(s->mdbm) {
+		/* sum up rootkey, deltakey, space and newline */
+		linesum = ' ' + '\n';	
+		for (ch = kv.key.dptr; *ch; ch++) {
+			sumch = *ch;
+			linesum += sumch;
+		}
+		for (ch = kv.val.dptr; *ch; ch++) {
+			sumch = *ch;
+			linesum += sumch;
+		}
+		kv.val.dptr = (void *)&linesum;
+		kv.val.dsize = sizeof(linesum);
+		if (mdbm_store(db, kv.key, kv.val, MDBM_INSERT)) {
+			assert("insert failed" == 0);
+		}
+	}
+	mdbm_close(s->mdbm);
+	s->mdbm = 0;
+}
+
 /*
  * We dump the comments into a mdbm to factor out repeated comments
  * that came from different files.
@@ -989,6 +1019,7 @@ findcset(void)
 	assert(d2);
 	fix_delta(cur.cset, oldest, d2, 1);
 	sccs_newchksum(cur.cset);
+	cur.cset = sccs_restart(cur.cset);
 
 	fputs("\001 Patch start\n", cur.patch);
 	fputs("# Patch vers:\t1.3\n# Patch type:\tREGULAR\n\n", cur.patch);
@@ -1000,6 +1031,7 @@ findcset(void)
 	sccs_sdelta(cur.cset, d2, cur.parent);
 	cur.sum = d2->sum;
 	cur.date = d2->date;
+	preloadView(cur.cset, cur.view, d2);
 
 	nextTag = readTag(&tagDate);
 
@@ -1072,6 +1104,7 @@ done:	freeComment(cur.csetComment);
 	mdbm_close(cur.view);
 	if (sys("bk", "takepatch", "-f", cur.patchFile, SYS)) {
 		sys("cat", cur.patchFile, SYS);
+		fileMove(cur.patchFile, "mypatch");
 		exit(1);
 	}
 	rename("RESYNC/SCCS/s.ChangeSet", "SCCS/s.ChangeSet");
@@ -1148,9 +1181,7 @@ mkList(sccs *s, int fileIdx)
 	d = sccs_top(s);
 	while (d) {
 		assert(!d->r[2]);
-		if (!opts.ignoreCsetMarker) {
-			if (d->flags & D_CSET) break;
-		}
+		if (d->flags & D_CSET) break;
 
 		/*
 		 * Skip 1.0 delta, we do not want a 1.0 delta
