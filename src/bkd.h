@@ -154,6 +154,8 @@ char	*vpath_translate(char *path);
 
 #define	SENDENV_NOREPO	   1 /* don't assume we are called from a repo */
 #define	SENDENV_NOLICENSE  2 /* don't send BK_LICENSE, in lease code */
+#define	SENDENV_FORCEREMAP 4 /* send BK_REMAP even if not true */
+#define	SENDENV_FORCENOREMAP 8 /* don't send BK_REMAP even if true */
 void	sendEnv(FILE *f, char **envVar, remote *r, u32 flags);
 
 void	setLocalEnv(int in_out);

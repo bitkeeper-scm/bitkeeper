@@ -522,8 +522,12 @@ fi
 
 echo ---- Test unmapped repos ......................................
 echo $N Create an not-remapped component ............................$NL
-cd "$HERE/copy"
-BK_NO_REMAP=1 bk setup -fc../empty not-remapped || exit 1
+# in a remapped product...
+cd "$HERE"
+bk setup --sccs-compat -fcempty not-remapped || exit 1
+mv not-remapped copy
+cd copy
+bk attach -N $Q not-remapped || fail
 test -d not-remapped/SCCS || exit 1
 test -d not-remapped/.bk && exit 1
 echo OK

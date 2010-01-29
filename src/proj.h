@@ -61,6 +61,7 @@ int		proj_sync(project *p);
 char*		proj_comppath(project *p);
 int		proj_idxsock(project *p);
 int		proj_hasOldSCCS(project *p);
+int		proj_remapDefault(int doremap);
 
 #define		chdir	proj_chdir
 

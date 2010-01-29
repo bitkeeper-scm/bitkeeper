@@ -398,9 +398,9 @@ echo "failed (bug -- we just don't update danglers well)"
 
 echo $N Check takepatch checking checksum in sccs_delta .............$NL
 cd "$HERE"
-export BK_NO_REMAP=1
-fresh_commercial no-blob
-unset BK_NO_REMAP
+_commercial_config > c
+bk setup -a -f --sccs-compat -cc no-blob || fail
+cd no-blob
 echo abcde > foo
 bk new $Q foo
 bk admin -Znone foo

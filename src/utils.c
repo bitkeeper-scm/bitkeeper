@@ -923,6 +923,10 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		} else {
 			fprintf(f, "stand\n");
 		}
+		if ((flags & SENDENV_FORCEREMAP) ||
+		    !(proj_hasOldSCCS(0) || (flags & SENDENV_FORCENOREMAP))) {
+			fprintf(f, "putenv BK_REMAP=1\n");
+		}
 	}
 	unless (flags & SENDENV_NOLICENSE) {
 		if (flags & SENDENV_NOREPO) {
@@ -969,6 +973,7 @@ getServerInfo(remote *r)
 	putenv("BKD_BAM=");
 	putenv("BKD_BAM_SERVER_URL=");
 	putenv("BKD_PRODUCT_ROOTKEY=");
+	putenv("BKD_REMAP=");
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq(buf, "@END@")) {
 			ret = 0; /* ok */
@@ -1074,6 +1079,7 @@ sendServerInfo(int no_repo)
 			sprintf(buf, "BAM_SERVER_ID=%s\n", p);
 			out(buf);
 		}
+		unless (proj_hasOldSCCS(0)) out("REMAP=1\n");
 	}
 	out("ROOT=");
 	getcwd(buf, sizeof(buf));

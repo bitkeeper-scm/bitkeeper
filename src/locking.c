@@ -519,14 +519,13 @@ repository_wrunlock(project *p, int all)
 void
 repository_lockcleanup(project *p)
 {
-	char	*root = proj_root(p);
+	char	*root;
 
-	unless (root) return;
-	if (chdir(root)) return;
+	unless (root = proj_root(p)) return;
 
 	if (repository_mine(p, 'r') && !getenv("BK_DIE_OFFSET")) {
 		char	*pid = aprintf("%u", getpid());
-		
+
 		getMsg2("read_locked", pid, root, '=', stderr);
 		free(pid);
 		repository_rdunlock(p, 0);
@@ -534,7 +533,7 @@ repository_lockcleanup(project *p)
 
 	if (repository_mine(p, 'w') && !getenv("BK_DIE_OFFSET")) {
 		char	*pid = aprintf("%u", getpid());
-		
+
 		getMsg2("write_locked", pid, root, '=', stderr);
 		free(pid);
 		/*

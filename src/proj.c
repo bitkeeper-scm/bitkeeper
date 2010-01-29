@@ -11,6 +11,8 @@
  * is passed to these functions.
  */
 
+private	int	noremap_default = 0;
+
 /*
  * Don't treat chdir() special here.
  */
@@ -1243,7 +1245,6 @@ again:		putenv("_BK_FSLAYER_SKIP=1");
  * Funky rules:
  *  root/SCCS exists -> non-remapped
  *  root/.bk/SCCS exists -> remapped
- *  BK_NO_REMAP set -> non-remapped
  *  is product remapped? -> do the same
  *
  * The rationale for the funk is to make new components (coming in via
@@ -1264,12 +1265,12 @@ proj_hasOldSCCS(project *p)
 
 	if (p->noremap != -1) return (p->noremap);
 
-	en = fslayer_enable(0);
 	if (p->rparent) {
 		p->noremap = proj_hasOldSCCS(p->rparent);
-		goto out;
+		return (p->noremap);
 	}
 
+	en = fslayer_enable(0);
 	/* See: Funky rules above */
 	concat_path(buf, p->root, "SCCS");
 	if (isdir(buf)) {
@@ -1282,16 +1283,21 @@ proj_hasOldSCCS(project *p)
 		p->noremap = 0;
 		goto out;
 	}
-	if (getenv("BK_NO_REMAP")) {
-		p->noremap = 1;
-		goto out;
-	}
 	if ((p2 = proj_product(p)) && (p != p2)) {
 		p->noremap = proj_hasOldSCCS(p2);
 		goto out;
 	}
 
-	p->noremap = 0;
+	p->noremap = noremap_default;
  out:	fslayer_enable(en);
 	return (p->noremap);
+}
+
+int
+proj_remapDefault(int doremap)
+{
+	int	ret = !noremap_default;
+
+	noremap_default = !doremap;
+	return (ret);
 }

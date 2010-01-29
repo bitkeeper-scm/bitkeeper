@@ -25,8 +25,13 @@ setup_main(int ac, char **av)
 	int	print = 0;
 	int	product = 0;
 	int	noCommit = 0;
+	int	sccs_compat = 0;
+	longopt	lopts[] = {
+		{ "sccs-compat", 300 },
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "aCc:ePfF:p", 0)) != -1) {
+	while ((c = getopt(ac, av, "aCc:ePfF:p", lopts)) != -1) {
 		switch (c) {
 		    case 'a': accept = 1; break;
 		    case 'C':
@@ -47,6 +52,7 @@ setup_main(int ac, char **av)
 		    case 'f': force = 1; break;
 		    case 'F': flist = addField(flist, optarg); break;
 		    case 'p': print = 1; break;
+		    case 300: sccs_compat = 1;  break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -54,6 +60,15 @@ setup_main(int ac, char **av)
 	if (noCommit && product) {
 		fprintf(stderr, "setup: can't use -C and -P together.\n");
 		exit(1);
+	}
+	if (sccs_compat) {
+		if (!product && proj_product(0)) {
+			fprintf(stderr,
+			    "%s: can't use --sccs-compat inside a product.\n",
+			    prog);
+			exit(1);
+		}
+		proj_remapDefault(0);
 	}
 	if (print) {
 		if (config_path) {

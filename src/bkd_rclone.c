@@ -191,6 +191,7 @@ cmd_rclone_part2(int ac, char **av)
 		goto done;
 	}
 
+	unless (getenv("BK_REMAP")) proj_remapDefault(0);
 	sccs_mkroot(".");
 	if (opts.product) {
 		touch("BitKeeper/log/PRODUCT", 0644);

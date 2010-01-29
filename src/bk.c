@@ -396,9 +396,20 @@ out:
 	bk_cleanup(ret);
 	/* flush stdout/stderr, needed for bk-remote on windows */
 	fflush(stdout);
-	close(1);
 	fflush(stderr);
-	close(2);
+#ifdef	WIN32
+	close(1);
+#endif
+	if (getenv("BK_CLOSEALL")) {
+		/*
+		 * The old code used to close stderr here.  Add check
+		 * so that can be added back if it is needed for some
+		 * odd reason.
+		 * --lm3di
+		 */
+		close(1);
+		close(2);
+	}
 
 	/* close stdin so that sfiles will bail out */
 	close(0);

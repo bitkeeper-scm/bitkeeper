@@ -6,6 +6,7 @@ private	struct {
 	u32	debug:1;		/* -d debug mode */
 	u32	verbose:1;		/* -q shut up */
 	u32	detach:1;		/* is detach command? */
+	u32	sendenv_flags;		/* flags for sendEnv(); */
 	char	*rev;
 	char	*bam_url;		/* -B URL */
 	u32	in, out;
@@ -32,6 +33,11 @@ rclone_main(int ac, char **av)
 	char    **envVar = 0;
 	remote	*l, *r;
 	char	buf[MAXLINE];
+	longopt	lopts[] = {
+		{ "sccs-compat", 300 }, /* old non-remapped repo */
+		{ "hide-sccs-dirs", 301 }, /* move sfiles to .bk */
+		{ 0, 0 }
+	};
 
 	bzero(&opts, sizeof(opts));
 	if (streq(av[0], "_rclone_detach")) {
@@ -39,8 +45,8 @@ rclone_main(int ac, char **av)
 		av[0] = "_rclone";
 	}
 	opts.verbose = 1;
-	while ((c = getopt(ac, av, "B;dE:pqr;s;w|z|", 0)) != -1) {
-		unless ((c == 'r') || (c == 's')) {
+	while ((c = getopt(ac, av, "B;dE:pqr;s;w|z|", lopts)) != -1) {
+		unless ((c == 'r') || (c == 's') || (c > 256)) {
 			if (optarg) {
 				opts.av = addLine(opts.av,
 				    aprintf("-%c%s", c, optarg));
@@ -68,6 +74,12 @@ rclone_main(int ac, char **av)
 		    case 'z':
 			if (optarg) gzip = atoi(optarg);
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
+			break;
+		    case 300:	/* --sccs-compat */
+			opts.sendenv_flags |= SENDENV_FORCENOREMAP;
+			break;
+		    case 301:	/* --hide-sccs-dirs */
+			opts.sendenv_flags |= SENDENV_FORCEREMAP;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -351,7 +363,7 @@ send_part1_msg(remote *r, char **envVar)
 	bktmp(buf, "rclone");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar, r, 0);
+	sendEnv(f, envVar, r, opts.sendenv_flags);
 	fprintf(f, "rclone_part1");
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
@@ -491,7 +503,7 @@ send_sfio_msg(remote *r, char **envVar)
 	bktmp(buf, "rclone");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar, r, 0);
+	sendEnv(f, envVar, r, opts.sendenv_flags);
 	fprintf(f, "rclone_part2");
 	if (proj_isProduct(0)) fprintf(f, " -P");
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 

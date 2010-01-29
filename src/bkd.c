@@ -236,6 +236,7 @@ do_cmds(void)
 	/* Don't allow existing env to be used */
 	putenv("BK_AUTH_HMAC=BAD");
 	putenv("BK_LICENSE=");
+	putenv("BK_REMAP=");
 	lease_inbkd();		/* enable bkd-mode in lease code */
 
 	/*

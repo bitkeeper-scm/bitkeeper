@@ -19,9 +19,9 @@ private	struct {
 	u32	detach:1;		/* is detach command? */
 	u32	product:1;		/* is product? */
 	int	delay;			/* wait for (ssh) to drain */
+	int	remap;			/* force remapping? */
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
-	char	**av;			/* saved opts for ensemble commands */
 	char	**aliases;		/* -s aliases list */
 	char	*from;			/* where to get stuff from */
 	char	*to;			/* where to put it */
@@ -49,19 +49,17 @@ clone_main(int ac, char **av)
 	int	attach_only = 0, gzip = 6;
 	char	**envVar = 0;
 	remote 	*r = 0, *l = 0;
+	longopt	lopts[] = {
+		{ "sccs-compat", 300 }, /* old non-remapped repo */
+		{ "hide-sccs-dirs", 301 }, /* move sfiles to .bk */
+		{ 0, 0 }
+	};
 
 	opts = calloc(1, sizeof(*opts));
+	opts->remap = -1;
 	if (streq(prog, "attach")) opts->attach = 1;
 	if (streq(prog, "detach")) opts->detach = 1;
-	while ((c = getopt(ac, av, "B;CdE:lNpqr;s;w|z|", 0)) != -1) {
-		unless ((c == 'r') || (c == 's')) {
-			if (optarg) {
-				opts->av = addLine(opts->av,
-				    aprintf("-%c%s", c, optarg));
-			} else {
-				opts->av = addLine(opts->av, aprintf("-%c",c));
-			}
-		}
+	while ((c = getopt(ac, av, "B;CdE:lNpqr;s;w|z|", lopts)) != -1) {
 		switch (c) {
 		    case 'B': bam_url = optarg; break;
 		    case 'C': opts->nocommit = 1; break;
@@ -86,6 +84,8 @@ clone_main(int ac, char **av)
 			if (optarg) gzip = atoi(optarg);
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
 			break;
+		    case 300: opts->remap = 0; break; /* --sccs-compat */
+		    case 301: opts->remap = 1; break; /* --hide-sccs-dirs */
 		    default: bk_badArg(c, av);
 	    	}
 		optarg = 0;
@@ -101,6 +101,11 @@ clone_main(int ac, char **av)
 	}
 	if (opts->nocommit && !opts->attach) {
 		fprintf(stderr, "clone: -C valid only in attach command\n");
+		exit(CLONE_ERROR);
+	}
+	if (opts->attach && (opts->remap != -1)) {
+		fprintf(stderr,
+		    "%s: SCCS-mode can't be overriden in a component\n", prog);
 		exit(CLONE_ERROR);
 	}
 	if (opts->link && bam_url) {
@@ -176,7 +181,6 @@ clone_main(int ac, char **av)
 		if (l->host) {
 			free(opts->from);
 			freeLines(envVar, free);
-			freeLines(opts->av, free);
 			freeLines(opts->aliases, free);
 			if (l) remote_free(l);
 			remote_free(r);
@@ -241,7 +245,6 @@ clone_main(int ac, char **av)
 	if (opts->attach && !clonerc) clonerc = attach();
 	free(opts->from);
 	freeLines(envVar, free);
-	freeLines(opts->av, free);
 	freeLines(opts->aliases, free);
 	if (l) remote_free(l);
 	remote_free(r);
@@ -768,6 +771,17 @@ initProject(char *root, remote *r)
 		return (-1);
 	}
 
+	/*
+	 * Determine if this repository should be remapped.
+	 * If the user didn't override then follow the mapping of the
+	 * source repository.
+	 *
+	 * This will be ignored for component which always follow the
+	 * product.
+	 */
+	if (((opts->remap == -1) ? !getenv("BKD_REMAP") : !opts->remap)) {
+		proj_remapDefault(0);
+	}
 	/* XXX - this function exits and that means the bkd is left hanging */
 	sccs_mkroot(root);
 	chdir(root);

@@ -18,13 +18,7 @@
 # LODs
 # per file information (flags, etc.)
 
-if [ "$BK_NO_REMAP" ]
-then
-	IDCACHE=BitKeeper/etc/SCCS/x.id_cache
-else
-	IDCACHE=BitKeeper/log/x.id_cache
-fi
-
+IDCACHE=BitKeeper/log/x.id_cache
 
 echo $N Create initial repository ...................................$NL
 commercial project

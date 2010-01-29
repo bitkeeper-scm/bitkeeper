@@ -55,9 +55,10 @@ rm -fr project copy
 # don't do "FOO=1 shell-function" but break out env setting and clearing
 # use uncached form of commercial since env is different
 _BK_BAM_V2=1
-BK_NO_REMAP=1
-export _BK_BAM_V2 BK_NO_REMAP
-fresh_commercial project.noremap
+export _BK_BAM_V2
+_commercial_config > c
+bk setup -a -f --sccs-compat -cc project.noremap || fail
+cd project.noremap
 echo BAMBAM > BAM
 bk new $Q -b BAM || exit 1
 bk commit $Q -ybamdata
@@ -66,8 +67,7 @@ test -f BitKeeper/BAM/index.db || exit 1
 cd ..
 bk clone $Q project.noremap copy.noremap || exit 1
 unset _BK_BAM_V2
-unset BK_NO_REMAP
-bk clone $Q project.noremap project
+bk clone --hide-sccs-dirs $Q project.noremap project
 bk clone $Q project copy
 cd copy.noremap
 bk parent $Q ../project
