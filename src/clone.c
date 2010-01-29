@@ -429,10 +429,20 @@ clone(char **av, remote *r, char *local, char **envVar)
 		disconnect(r);
 		goto done;
 	}
-	if (proj_isProduct(0)) {
+	if (opts->product) {
+		char	*nlid = 0;
+
 		rename("BitKeeper/log/HERE", "BitKeeper/log/RMT_HERE");
+		touch("BitKeeper/log/PRODUCT", 0664);
+		proj_reset(0);
+		assert(!getenv("_NESTED_LOCK"));
+		unless (nlid = nested_wrlock(0)) {
+			error("%s", nested_errmsg());
+			return (1);
+		}
+		if (nlid) safe_putenv("_NESTED_LOCK=%s", nlid);
+		free(nlid);
 	}
-	proj_reset(0);		/* reset proj_product() */
 	if (opts->link) lclone(getenv("BKD_ROOT"));
 	nested_check();
 
@@ -765,18 +775,6 @@ initProject(char *root, remote *r)
 	putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) return (-1);
 	repository_wrlock(0);
-	if (opts->product) {
-		char	*nlid = 0;
-		touch("BitKeeper/log/PRODUCT", 0664);
-		proj_reset(0);
-		assert(!getenv("_NESTED_LOCK"));
-		unless (nlid = nested_wrlock(0)) {
-			error("%s", nested_errmsg());
-			return (1);
-		}
-		if (nlid) safe_putenv("_NESTED_LOCK=%s", nlid);
-		free(nlid);
-	}
 	if (getenv("BKD_LEVEL")) {
 		setlevel(atoi(getenv("BKD_LEVEL")));
 	}
