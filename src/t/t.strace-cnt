@@ -19,7 +19,7 @@ bk version | grep -q " for x86-glibc23-linux" || {
 bk get -Sq "$DO_CNT" || exit 1
 BK_CONFIG="license:$BKL_PRO!;licsign1:$BKL_P1!;licsign2:$BKL_P2!;licsign3:$BKL_P3!"
 export BK_CONFIG
-echo y | bk clone $Q $TESTDATA/perf project > OUT 2>&1 || {
+echo y | bk clone --hide-sccs-dirs $Q $TESTDATA/perf project > OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
