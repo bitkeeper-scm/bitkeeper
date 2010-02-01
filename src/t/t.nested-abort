@@ -138,7 +138,7 @@ save_state()
 	GDB=`bk log -r+ -d:REV: gdb/ChangeSet`
 	GCC=`bk log -r+ -d:REV: gcc/ChangeSet`
 	COMP=`bk log -r+ -d:REV: comp/ChangeSet`
-	COMPS=`bk components 2>/dev/null`
+	COMPS=`bk comps 2>/dev/null`
 	ALIASES=`bk alias`
 	MYALIAS=`bk alias MYALIAS`
 	COMP2=NO
@@ -162,7 +162,7 @@ check_state()
 	test "$GDB" = "`bk log -r+ -d:REV: gdb/ChangeSet`" || err="gdb $err"
 	test "$GCC" = "`bk log -r+ -d:REV: gcc/ChangeSet`" || err="gcc $err"
 	test "$COMP" = "`bk log -r+ -d:REV: comp/ChangeSet`" || err="comp $err"
-	test "$COMPS" = "`bk components 2>/dev/null`" || err="comps $err"
+	test "$COMPS" = "`bk comps 2>/dev/null`" || err="comps $err"
 	test "$ALIASES" = "`bk alias`" || err="aliases $err"
 	test "$MYALIAS" = "`bk alias MYALIAS`" || err="MYALIAS $err"
 	test $COMP2 = NO -a -d "$comp2" && err="comp2 $err"

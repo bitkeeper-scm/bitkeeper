@@ -54,7 +54,7 @@ The unpopulate command is an alias for the command 'bk alias rm HERE args'
 .SA populate
 .SA superset
 .SH CATEGORY
-.B Product
+.B Nested
 .SH AVAILABILITY
 This command is an optional feature of \*[BK]
 and must be enabled in your license.

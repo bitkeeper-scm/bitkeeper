@@ -135,7 +135,7 @@ OBJ =	bkver.o cmd.o \
 	bkusers.o \
 	cat.o cfile.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
-	collapse.o comment.o comments.o commit.o components.o compress.o \
+	collapse.o comment.o comments.o commit.o comps.o compress.o \
 	contrib/cat.o \
 	contrib/test.o \
 	converge.o \
@@ -145,7 +145,8 @@ OBJ =	bkver.o cmd.o \
 	find.o findcset.o findkey.o fixlod.o fixtool.o fsl.o fslayer.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
-	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
+	gnupatch.o graft.o grep.o \
+	help.o here.o host.o hostme.o http.o \
 	idcache.o isascii.o inskeys.o \
 	key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \

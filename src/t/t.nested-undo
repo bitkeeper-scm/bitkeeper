@@ -41,7 +41,7 @@ bk new $Q gcc/new || exit 1
 (cd gcc; bk commit $Q -ynew)
 bk commit $Q -ynew
 bk alias new GCC ./gcc || exit 1
-bk populate $Q GCC || exit !
+bk here add $Q GCC || exit !
 bk undo -fsa1.2 2>ERR && {
 	echo should have failed
 	exit 1

@@ -399,9 +399,6 @@ prompt_main(int ac, char **av)
 	    (av[optind] && av[optind+1]) || (file && prog)) {
 		if (file == msgtmp) unlink(msgtmp);
 		usage();
-err:		if (file == msgtmp) unlink(msgtmp);
-		if (lines) freeLines(lines, free);
-		exit(2);
 	}
 	if (prog) {
 		assert(!file);
@@ -412,7 +409,11 @@ err:		if (file == msgtmp) unlink(msgtmp);
 		/* For caching of the real pager */
 		(void)pager();
 		putenv("PAGER=cat");
-		if (system(cmd)) goto err;
+		if (system(cmd)) {
+err:			if (file == msgtmp) unlink(msgtmp);
+			if (lines) freeLines(lines, free);
+			exit(2);
+		}
 		free(cmd);
 	}
 	if ((gui || gui_useDisplay()) && !nogui) {

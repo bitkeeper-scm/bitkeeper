@@ -104,15 +104,6 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 		}
 	}
 	/*
-	 * If there was no command verb, but we have more than one
-	 * argument remaining on the command line then this is
-	 * really a 'bk alias new' command.
-	 */
-	if (!cmds[cmdn].verb && av[optind] && av[optind+1]) {
-		cmdn = 0;	/* new alias command */
-	}
-
-	/*
 	 * if we have list options but are using one of the action verbs
 	 * then give a usage error.
 	 */

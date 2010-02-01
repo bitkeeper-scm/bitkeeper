@@ -182,7 +182,8 @@ cmdlog
 collapse
 comments
 commit
-components
+components	# old compat code
+comps
 config
 cp
 _cpartition
@@ -239,6 +240,7 @@ havekeys remote
 help
 helpsearch
 helptopics
+here
 _httpfetch
 hostme
 id remote
@@ -276,8 +278,7 @@ mv
 mvdir
 mydiff
 names
-nested
-_nested => nested
+_nested
 newroot
 nfiles
 opark
@@ -288,7 +289,6 @@ path
 pending
 platform
 _popensystem
-populate
 port => pull
 _probekey restricted
 product
@@ -364,7 +364,6 @@ _unlink
 unlock
 uninstall
 unpark
-unpopulate => populate
 unpull
 unwrap
 upgrade

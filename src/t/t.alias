@@ -69,23 +69,23 @@ echo $N Show that changing an alias in HERE will populate ...........$NL
 cd "$HERE"
 bk clone -l $Q project copy3
 cd copy3
-bk alias $Q STUFF gdb
+bk alias new $Q STUFF gdb
 test -d gcc || fail
 bk alias set $Q DEFAULT STUFF
 test -d gcc && fail
 echo OK
 
 echo $N Show that we can change set HERE to empty ...................$NL
-bk alias set $Q HERE || fail
-test `bk components -h | wc -l` -eq 0 || fail
+bk here set $Q || fail
+test `bk comps -h | wc -l` -eq 0 || fail
 echo OK
 
 echo $N And show default can be empty ...............................$NL
 bk alias set $Q DEFAULT || fail
 bk clone $Q . ../copy4 || fail
 cd ../copy4
-test `bk alias list HERE` = "default" || fail
-test `bk components -h | wc -l` -eq 0 || fail
+test `bk here` = "default" || fail
+test `bk comps -h | wc -l` -eq 0 || fail
 echo OK
 
 echo $N Show that a failed update to aliases reverts changes ........$NL

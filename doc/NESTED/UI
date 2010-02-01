@@ -1,0 +1,55 @@
+bk alias - manage aliases for lists of components
+	bk alias add [-C] <name> <alias | component> ...
+	bk alias [list] [-r<rev>] [-ehmk]<name>
+	bk alias [list] [-r<rev>] [-hm]
+	bk alias new [-C] <name> <alias | component> ...
+	bk alias rm [-C] <name>
+	bk alias rm [-C] <name> <alias | component> ...
+	bk alias set [-C] <name> <alias | component> ...
+	add -@<URL> -f -q options from populate.
+	/*
+	 * LM notes: I do not want to document these.  I feel they are
+	 * internal interfaces, necessary because we implement modifications
+	 * as "bk alias <verb> HERE ...", but there is no reason to expose
+	 * these to users, it's just more churn.  The first time that we
+	 * get a support issue based on this I will change bk alias to not
+	 * allow any write operations in anything but a fully populated
+	 * nested collection.
+	 *
+	 * If you see a flaw with that approach, now is the time to scream.
+	 *
+	 * Wayne notes: the backoff position on allowing 'bk alias' to
+	 * populate repositories is to make aliases in or implied by
+	 * HERE be read only.  I think when Larry says 'fully
+	 * populated' he is just observing that 'bk here set all' will
+	 * allow any alias to be edited, but this is overkill.
+	 */		
+	note that "bk alias FOO a b c" is an error, set or new is required.
+bk attach - attach a component repository to a product repository
+	bk attach [-qlC] [-E<e>=<v>] [-r<rev>] <from> [<component>]
+bk comps - list the components belonging to a product
+        bk comps [-hkm]
+	default: lists all components as paths (-k: keys)
+	-h: list only those here
+	-m: list only those present
+	Description on -h needs to make it clear that -h is the list
+	of *components* here, not the aliases you may have populated;
+	use "bk here" to get that.
+bk here - list or change the set of aliases/components are present
+        bk here [list]
+        bk here add <alias | component> [...]
+        bk here rm <alias | component> [...]
+        bk here set <alias | component> [...]
+        bk here check
+        bk here where [<alias | component>]
+	Description needs to say that the default is listing what you
+	populated here in the "names" you used to populate them.
+bk partition - transform a single repository into a nested collection
+	bk partition [-q] [-C<components>] [-G<gonelist>] <from> <to>
+bk port - pull changes from a different product's component
+	bk port [-iqRsTu] [-c<n>] [-E<env>=<var>] [-r<rev>] <from>
+bk portal - set or show the portal status of a repository
+	bk portal [-q] .
+	bk portal [-q] rm
+bk unattach - create a stand-alone clone of a component repository
+	bk unattach [-ql] [-B<url>] [-E<e>=<v>] [-r<rev>] <component> [<to>]

@@ -240,7 +240,7 @@ bk attach -q "$HERE/standalone1" component1 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk components | grep -q component1 || exit 1
+bk comps | grep -q component1 || exit 1
 cd component1 || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -266,7 +266,7 @@ bk attach -q dir1 component2 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk components | grep -q component2 || exit 1
+bk comps | grep -q component2 || exit 1
 cd component2 || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -282,7 +282,7 @@ bk attach -q dir1 a/b/component2b 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk components | grep -q component2b || exit 1
+bk comps | grep -q component2b || exit 1
 cd a/b/component2b || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -298,7 +298,7 @@ bk attach -q dir1 "$HERE/nested2/c/d/component2c" 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk components | grep -q component2c || exit 1
+bk comps | grep -q component2c || exit 1
 cd c/d/component2c || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -314,7 +314,7 @@ bk attach -q "$HERE/standalone1" component3 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk components | grep -q component3 || exit 1
+bk comps | grep -q component3 || exit 1
 cd component3 || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -330,7 +330,7 @@ bk attach -q "$HERE/standalone1" e/f/component3b 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk components | grep -q component3b || exit 1
+bk comps | grep -q component3b || exit 1
 cd e/f/component3b || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -346,7 +346,7 @@ bk attach -q "$HERE/standalone1" "$HERE/nested2/component4" 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk components | grep -q component4 || exit 1
+bk comps | grep -q component4 || exit 1
 cd component4 || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -362,7 +362,7 @@ bk attach -q "bk://localhost:$P/standalone1" 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk components | grep -q standalone1 || exit 1
+bk comps | grep -q standalone1 || exit 1
 cd standalone1 || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -378,7 +378,7 @@ bk attach -q "bk://localhost:$P/$HERE/standalone1" component5 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk components | grep -q component5 || exit 1
+bk comps | grep -q component5 || exit 1
 cd component5 || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -400,7 +400,7 @@ component6/SCCS/s.ChangeSet
 EOF
 cmpfiles GOT WANT
 bk commit -q -y'attach component6' || exit 1
-bk components | grep -q component6 || exit 1
+bk comps | grep -q component6 || exit 1
 echo OK
 
 echo $N Check attach -C and commit with others ......................$NL
@@ -427,8 +427,8 @@ component6b/SCCS/s.ChangeSet
 EOF
 cmpfiles GOT WANT
 bk commit -q -y'attach component6a and component6b' || exit 1
-bk components | grep -q component6a || exit 1
-bk components | grep -q component6b || exit 1
+bk comps | grep -q component6a || exit 1
+bk comps | grep -q component6b || exit 1
 echo OK
 
 echo $N Check attach -r .............................................$NL
@@ -438,7 +438,7 @@ bk attach -q -r1.1 "$HERE/standalone1" component7 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk components | grep -q component7 || exit 1
+bk comps | grep -q component7 || exit 1
 cd component7 || exit 1
 # It's 1.2 not 1.1 since the attach creates a cset.
 test "`bk log -d:REV: -r+ ChangeSet`" = "1.2" || {

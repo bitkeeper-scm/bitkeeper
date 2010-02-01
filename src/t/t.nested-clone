@@ -232,7 +232,7 @@ echo OK
 
 echo $N Add a component with components add ./gdb ...................$NL
 cd "$HERE/mynewgcc"
-bk populate $Q ./gdb || exit 1
+bk here add $Q ./gdb || exit 1
 test -d gdb || {
 	echo failed to get gdb
 	exit 1
@@ -247,7 +247,7 @@ echo OK
 
 echo $N Check that components is idempotent .........................$NL
 cd "$HERE/mynewgcc"
-bk populate $Q ./gdb || exit 1
+bk here add $Q ./gdb || exit 1
 test -d gdb || {
 	echo failed to get gdb
 	exit 1
@@ -272,7 +272,7 @@ echo $N Pull in new cset without component, then populate ...........$NL
 cd "$HERE/mynewgcc2"
 bk pull -q || exit 1
 BEFORE=`bk changes -r+ -nd:I:`
-bk populate $Q -@"$HERE/mynewgcc" ./gdb  || exit 1
+bk here add $Q -@"$HERE/mynewgcc" ./gdb  || exit 1
 AFTER=`bk changes -r+ -nd:I:`
 test "$BEFORE" != "$AFTER" && {
 	echo was $BEFORE and now $AFTER
@@ -345,7 +345,7 @@ echo $N Check that we can populate gdb from elsewhere ...............$NL
 bk clone -shere $Q mynewgcc3 mynewgcc4 || exit 1
 cd mynewgcc4 || exit 1
 rm -rf gdb
-bk populate $Q -@../mynewgcc ./gdb  || exit 1
+bk here add $Q -@../mynewgcc ./gdb  || exit 1
 bk _test -d gdb -a -f gdb/SCCS/s.ChangeSet || {
 	echo failed
 	cat OUT
@@ -490,17 +490,17 @@ bk sfiles -p
 bk _nested > LIST
 grep -q gcc/deep LIST || {
 	echo ensemble list did not list gcc/deep
-	bk components -h
+	bk comps -h
 	exit 1
 }
 cd ..
 bk clone $Q -s./gdb project deeppop
 cd deeppop
-bk populate $Q ./gcc/deep || {
+bk here add $Q ./gcc/deep || {
 	echo failed
 	exit 1
 }
-bk populate $Q ./gcc 2> ERR || {
+bk here add $Q ./gcc 2> ERR || {
 	echo failed
 	exit 1
 }
@@ -513,14 +513,14 @@ echo $N Test populate with no args ..................................$NL
 cd "$HERE"
 bk clone $Q -s. project product || exit 1
 cd product
-bk components -h > LIST
+bk comps -h > LIST
 test -s LIST && {
 	echo should not have any components yet
 	cat LIST
 	exit 1
 }
-bk populate $Q default || exit 1
-bk components -h > GOT
+bk here add $Q default || exit 1
+bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
 ./gcc/deep
@@ -530,13 +530,13 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test populate in repair mode with nothing to do .............$NL
-bk populate $Q || exit 1
+bk here add $Q || exit 1
 echo OK
 
 echo $N Test populate in repair mode with gdb missing ...............$NL
 rm -rf gdb
-bk populate $Q || exit 1
-bk components -h > GOT
+bk here add $Q || exit 1
+bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
 ./gcc/deep
@@ -547,8 +547,8 @@ echo OK
 
 echo $N Test populate in repair mode with gcc/deep missing ..........$NL
 rm -rf gcc/deep
-bk populate $Q || exit 1
-bk components -h > GOT
+bk here add $Q || exit 1
+bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
 ./gcc/deep
@@ -559,8 +559,8 @@ echo OK
 
 echo $N Test populate in repair mode with gcc/deep and gcc missing ..$NL
 rm -rf gcc
-bk populate $Q || exit 1
-bk components -h > GOT
+bk here add $Q || exit 1
+bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
 ./gcc/deep
@@ -570,11 +570,11 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Unpopulate all components ...................................$NL
-bk unpopulate $Q here || {
+bk here rm $Q here || {
 	echo unpopulate failed
 	exit 1
 }
-for i in `bk components -h`
+for i in `bk comps -h`
 do	test -d $i && {
 		echo failed to remove $i
 		exit 1
@@ -584,8 +584,8 @@ echo OK
 
 echo $N Test populate in repair mode with all components missing ....$NL
 echo default > BitKeeper/log/HERE
-bk populate $Q || exit 1
-bk components -h > GOT
+bk here add $Q || exit 1
+bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
 ./gcc/deep
@@ -597,13 +597,13 @@ echo OK
 echo $N Test populate with no parent ................................$NL
 bk parent -r $Q
 rm -rf gcc gdb
-bk populate $Q || fail
+bk here add $Q || fail
 echo OK
 
 echo $N Test populate -r with url ...................................$NL
 rm -rf gcc gdb
-bk populate $Q -@../project || exit 1
-bk components -h > GOT
+bk here add $Q -@../project || exit 1
+bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
 ./gcc/deep
@@ -614,8 +614,8 @@ echo OK
 
 echo $N Test populate with url ......................................$NL
 rm -rf gcc gdb
-bk populate $Q -@../project || exit 1
-bk components -h > GOT
+bk here add $Q -@../project || exit 1
+bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
 ./gcc/deep
@@ -627,7 +627,7 @@ echo OK
 echo $N Test unpopulate with local extras ...........................$NL
 bk parent $Q ../project
 touch gcc/extra gdb/extra
-bk unpopulate $Q HERE 2>OUT && {
+bk here rm $Q HERE 2>OUT && {
 	echo unpopulate should have failed
 	cat OUT
 	exit 1
@@ -637,7 +637,7 @@ grep -q 'Extra file' OUT || {
 	cat OUT
 	exit 1
 }
-for i in `bk components -h`
+for i in `bk comps -h`
 do	test -d $i || {
 		echo should not have removed $i
 		exit 1
@@ -648,11 +648,11 @@ echo OK
 echo $N Test unpopulate with local extras forcing it ................$NL
 bk parent $Q ../project
 touch gcc/extra gdb/extra
-bk unpopulate -f $Q here || {
+bk here rm -f $Q here || {
 	echo unpopulate should not have failed
 	exit 1
 }
-for i in `bk components -h`
+for i in `bk comps -h`
 do	test -d $i && {
 		echo should have removed $i
 		exit 1
@@ -662,22 +662,22 @@ echo OK
 
 echo $N Test unpopulate with local cset .............................$NL
 bk parent $Q ../project
-bk populate $Q all || exit 1
+bk here add $Q all || exit 1
 test -d gdb || exit 1
 (cd gdb
 echo foo > foo
 bk new $Q foo
 bk commit $Q -yfoo
 )
-LIST=`bk components -h`
-bk unpopulate $Q all 2>ERR && {
+LIST=`bk comps -h`
+bk here rm $Q all 2>ERR && {
 	echo unpopulate should have failed
 	cat ERR
 	exit 1
 }
 cat <<EOF > WANT
-unpopulate: No other sources for gdb known
-unpopulate: unable to remove gdb
+here: No other sources for gdb known
+here: unable to remove gdb
 EOF
 cmpfiles ERR WANT
 for i in $LIST
@@ -689,11 +689,11 @@ done
 echo OK
 
 echo $N Test unpopulate with local cset forcing it ..................$NL
-bk unpopulate -f $Q  all || {
+bk here rm -f $Q  all || {
 	echo unpopulate should not have failed
 	exit 1
 }
-for i in `bk components -h`
+for i in `bk comps -h`
 do	test -d $i && {
 		echo should have removed $i
 		exit 1

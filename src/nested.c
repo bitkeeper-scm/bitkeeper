@@ -17,89 +17,14 @@ private void	compCheckPresent(nested *n, comp *c, int idcache_wrong);
 #define	L_MISSING	0x20
 
 
-private int	_nested_main(int ac, char **av);
-private	int	nested_check_main(int ac, char **av);
-private	int	nested_where_main(int ac, char **av);
-
-int
-nested_main(int ac, char **av)
-{
-	if (streq(av[0], "_nested")) {
-		return (_nested_main(ac, av));
-	} else if (!av[1]) {
-		/* 'bk nested' with no args */
-		usage();
-	} else if (streq(av[1], "check")) {
-		return (nested_check_main(ac-1, av+1));
-	} else if (streq(av[1], "where")) {
-		return (nested_where_main(ac-1, av+1));
-	} else {
-		usage();
-	}
-	return (0);
-}
-
-private int
-nested_check_main(int ac, char **av)
-{
-	int	i, c, rc;
-	int	quiet = 0;
-	int	trim_noconnect = 0;
-	nested	*n;
-	char	**urls = 0;
-
-	while ((c = getopt(ac, av, "@|cq", 0)) != -1) {
-		switch (c) {
-		    case '@': if (bk_urlArg(&urls, optarg)) return (1); break;
-		    case 'c': trim_noconnect = 1; break;
-		    case 'q': quiet = 1; break;
-		    default: bk_badArg(c, av);
-		}
-	}
-	unless (proj_isEnsemble(0)) {
-		fprintf(stderr, "%s: must be in a nested repo\n", prog);
-		return (1);
-	}
-	EACH(urls) {
-		char	*u = urls[i];
-
-		urls[i] = parent_normalize(u);
-		free(u);
-	}
-	n = nested_init(0, 0, 0, NESTED_PENDING);
-	assert(n);
-	rc = urllist_check(n, quiet, trim_noconnect, urls);
-	nested_free(n);
-	return (rc);
-}
-
-private int
-nested_where_main(int ac, char **av)
-{
-	int	i = 1;
-
-	unless (av[i]) {
-		urllist_dump(0);
-	} else if (streq(av[i], "rm")) {
-		/* Perhaps _rm? or change the verb? */
-		unlink(NESTED_URLLIST);
-	} else {
-		for ( ; av[i]; i++) {
-			urllist_dump(av[i]);
-		}
-	}
-	return (0);
-
-}
-
 /*
- * bk _nested
+ * bk nested
  *
  * This is mostly a debugging function used to test the nested_init()
  * function in regressions.
  */
-private int
-_nested_main(int ac, char **av)
+int
+nested_main(int ac, char **av)
 {
 	int	c, i;
 	int	rc = 0, want = 0, undo = 0;
@@ -1299,7 +1224,7 @@ urllist_dump(char *name)
 		}
 		freeLines(urls, free);
 	}
- out:	nested_free(n);
+out:	nested_free(n);
 	if (urllist) hash_free(urllist);
 }
 

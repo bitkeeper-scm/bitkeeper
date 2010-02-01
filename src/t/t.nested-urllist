@@ -10,14 +10,14 @@ echo OK
 echo $N Check that component cset prunes urllist.....................$NL
 bk clone $Q product clone || fail
 cd clone
-bk nested where gcc | grep -q "$HERE/product" || fail 2
+bk here where gcc | grep -q "$HERE/product" || fail 2
 cd gcc
 echo new > new-file
 bk new $Q new-file || fail 3
 bk commit $Q -y'add new-file' || fail 4
 bk -P commit $Q -y'add new-file' || fail 5
 cd ..
-test -z "`bk nested where gcc`" || fail 6
+test -z "`bk here where gcc`" || fail 6
 cd ..
 rm -rf clone
 echo OK
@@ -25,33 +25,33 @@ echo OK
 echo $N Local clone propagates urllist for cloned components ........$NL
 cd "$HERE/product"
 # product urllist should be empty
-test -z "`bk nested where`" || fail
+test -z "`bk here where`" || fail
 cd ..
 bk clone $Q product clone1 || fail 2
 cd clone1
 # clone1 urllist should have product
-bk components -h | sort >GOT
+bk comps -h | sort >GOT
 cat <<EOF >WANT
 ./gcc
 ./gdb
 EOF
 cmpfiles GOT WANT
-bk nested where gcc | grep -q "$HERE/product" || fail 3
-bk nested where gdb | grep -q "$HERE/product" || fail 4
+bk here where gcc | grep -q "$HERE/product" || fail 3
+bk here where gdb | grep -q "$HERE/product" || fail 4
 cd ..
 bk clone $Q clone1 clone2 || fail 10
 cd clone2
 # clone2 urllist should have product and clone1
-bk components -h | sort >GOT
+bk comps -h | sort >GOT
 cat <<EOF >WANT
 ./gcc
 ./gdb
 EOF
 cmpfiles GOT WANT
-bk nested where gcc | grep -q "$HERE/product" || fail 11
-bk nested where gcc | grep -q "$HERE/clone1"  || fail 12
-bk nested where gdb | grep -q "$HERE/product" || fail 13
-bk nested where gdb | grep -q "$HERE/clone1"  || fail 14
+bk here where gcc | grep -q "$HERE/product" || fail 11
+bk here where gcc | grep -q "$HERE/clone1"  || fail 12
+bk here where gdb | grep -q "$HERE/product" || fail 13
+bk here where gdb | grep -q "$HERE/clone1"  || fail 14
 cd ..
 echo OK
 
@@ -63,22 +63,22 @@ echo new >new
 bk new $Q new || fail 2
 bk commit $Q -y'add new' || fail 3
 cd ..
-test -z "`bk nested where gcc`" || fail 4
+test -z "`bk here where gcc`" || fail 4
 cd "$HERE"
 # After this, for gcc only cloneA is in cloneB's urllist.
 bk clone $Q cloneA cloneB || fail 5
 cd cloneB
-bk nested where gcc | grep -q "$HERE/cloneA" || fail 6
-bk nested where gcc | grep -q "$HERE/clone1" && fail 65
+bk here where gcc | grep -q "$HERE/cloneA" || fail 6
+bk here where gcc | grep -q "$HERE/clone1" && fail 65
 cd ..
 # Remove cloneA/gcc and then try to remove cloneB/gcc (it should fail).
 rm -rf cloneA/gcc
 cd cloneB
-bk alias set $Q HERE `bk components -h` || fail 7
-bk unpopulate $Q gcc 2>ERR && fail 8
+bk alias set $Q HERE `bk comps -h` || fail 7
+bk here rm $Q gcc 2>ERR && fail 8
 cat <<EOF > WANT
-unpopulate: No other sources for gcc known
-unpopulate: unable to remove gcc
+here: No other sources for gcc known
+here: unable to remove gcc
 EOF
 cmpfiles ERR WANT
 cd ..
@@ -98,22 +98,22 @@ cd ../..
 bk clone $Q cloneA cloneB || fail 5
 # Remove gcc from cloneB.
 cd cloneB
-bk nested where gcc | grep -q "$HERE/cloneA" || fail 6
-bk alias set $Q HERE `bk components -h` || fail 7
-bk unpopulate $Q gcc || fail 8
-bk nested where gcc | grep -q "$HERE/cloneA" || fail 9
+bk here where gcc | grep -q "$HERE/cloneA" || fail 6
+bk alias set $Q HERE `bk comps -h` || fail 7
+bk here rm $Q gcc || fail 8
+bk here where gcc | grep -q "$HERE/cloneA" || fail 9
 cd ..
 # Force remove gcc from cloneA.
 cd cloneA
-bk alias set $Q HERE `bk components -h` || fail 10
-bk unpopulate $Q -f gcc || fail 11
+bk alias set $Q HERE `bk comps -h` || fail 10
+bk here rm $Q -f gcc || fail 11
 cd ..
 # An add of gcc to cloneB should fail and remove cloneA from cloneB's urllist.
 cd cloneB
-bk nested where gcc | grep -q "$HERE/cloneA" || fail 12
-bk populate $Q gcc 2>ERR && fail 13
+bk here where gcc | grep -q "$HERE/cloneA" || fail 12
+bk here add $Q gcc 2>ERR && fail 13
 grep -q 'component not present' ERR || fail 14
-bk nested where gcc | grep -q "$HERE/cloneA" && fail 15
+bk here where gcc | grep -q "$HERE/cloneA" && fail 15
 cd ..
 rm -rf cloneA cloneB
 echo OK
@@ -136,12 +136,12 @@ cd ..
 # Remove gcc from cloneB, then try to re-add which should fail and
 # remove cloneA from cloneB's urllist.
 cd cloneB
-bk alias set $Q HERE `bk components -h` || fail 8
-bk unpopulate $Q -f gcc || fail 9
-bk nested where gcc | grep -q "$HERE/cloneA" || fail 10
-bk populate $Q gcc 2>ERR && fail 11
+bk alias set $Q HERE `bk comps -h` || fail 8
+bk here rm $Q -f gcc || fail 9
+bk here where gcc | grep -q "$HERE/cloneA" || fail 10
+bk here add $Q gcc 2>ERR && fail 11
 grep -q 'component missing cset' ERR || fail 12
-bk nested where gcc | grep -q "$HERE/cloneA" && fail 13
+bk here where gcc | grep -q "$HERE/cloneA" && fail 13
 cd ..
 rm -rf cloneA cloneB
 echo OK
@@ -154,21 +154,21 @@ bk clone $Q bk://localhost:$P2/product cloneA || fail 2
 bk _kill bk://localhost:$P2
 # Force remove gcc from cloneA.
 cd cloneA
-bk nested where gcc | grep -q "bk://.*:$P2/product" || fail 3
-bk alias set $Q HERE `bk components -h` || fail 4
-bk unpopulate $Q -f gcc || fail 5
-bk nested where gcc | grep -q "bk://.*:$P2/product" || fail 6
+bk here where gcc | grep -q "bk://.*:$P2/product" || fail 3
+bk alias set $Q HERE `bk comps -h` || fail 4
+bk here rm $Q -f gcc || fail 5
+bk here where gcc | grep -q "bk://.*:$P2/product" || fail 6
 # Attempt to populate cloneA/gcc from the now-now-existent bkd.
 # This should fail and NOT prune cloneA's urllist.
-bk populate $Q gcc 2>ERR && fail 7
+bk here add $Q gcc 2>ERR && fail 7
 grep -q "cannot connect" ERR || fail 8
-bk nested where gcc | grep -q "bk://.*:$P2/product" || fail 9
+bk here where gcc | grep -q "bk://.*:$P2/product" || fail 9
 cd ..
 rm -rf cloneA
 echo OK
 
 echo $N Check component rm with -@ ..................................$NL
-# Like above but use -@ in the bk unpopulate to make it succeed.
+# Like above but use -@ in the bk here rm to make it succeed.
 cd "$HERE"
 bk clone $Q clone1 cloneA || fail
 cd cloneA/gcc
@@ -179,9 +179,9 @@ cd "$HERE"
 bk clone $Q cloneA cloneB || fail 4
 rm -rf cloneA/gcc
 cd cloneB
-bk alias set $Q HERE `bk components -h` || fail 5
-bk unpopulate $Q -@"$HERE/product" ./gcc || fail 6
-bk nested where gcc | grep -q "$HERE/product" || fail 7
+bk alias set $Q HERE `bk comps -h` || fail 5
+bk here rm $Q -@"$HERE/product" ./gcc || fail 6
+bk here where gcc | grep -q "$HERE/product" || fail 7
 cd ..
 rm -rf cloneA cloneB
 echo OK
@@ -194,17 +194,17 @@ bk clone $Q product2 cloneA || fail
 bk clone $Q product2 cloneB || fail 2
 # Remove gcc from cloneA.  This succeeds b/c product2 has it.
 cd cloneA
-bk alias set $Q HERE `bk components -h` || fail 3
-bk unpopulate $Q gcc || fail 4
-bk nested where gcc | grep -q "$HERE/product2" || fail 5
+bk alias set $Q HERE `bk comps -h` || fail 3
+bk here rm $Q gcc || fail 4
+bk here where gcc | grep -q "$HERE/product2" || fail 5
 # Remove product2 and try to add gcc (this should fail).
 rm -rf ../product2
-bk populate $Q gcc 2>ERR && fail 6
-grep -q 'populate: failed to fetch component gcc' ERR || fail 10
+bk here add $Q gcc 2>ERR && fail 6
+grep -q 'here: failed to fetch component gcc' ERR || fail 10
 grep -q 'product2: component not present' ERR || fail 11
 # Now try to add gcc with -@ from cloneB (this should work).
-bk populate $Q -@../cloneB gcc || fail 8
-bk nested where gcc | grep -q "$HERE/cloneB" || fail 9
+bk here add $Q -@../cloneB gcc || fail 8
+bk here where gcc | grep -q "$HERE/cloneB" || fail 9
 cd ..
 rm -rf cloneA cloneB
 echo OK
@@ -214,15 +214,15 @@ cd "$HERE"
 bk clone $Q -sgcc clone1 clone3 || fail
 cd clone3
 # clone3 urllist should have product and clone1
-bk components -h | sort >GOT
+bk comps -h | sort >GOT
 cat <<EOF >WANT
 ./gcc
 EOF
 cmpfiles GOT WANT
-bk nested where gcc | grep -q "$HERE/product" || fail 2
-bk nested where gcc | grep -q "$HERE/clone1"  || fail 3
-bk nested where gdb | grep -q "$HERE/product" || fail 4
-bk nested where gdb | grep -q "$HERE/clone1"  || fail 5
+bk here where gcc | grep -q "$HERE/product" || fail 2
+bk here where gcc | grep -q "$HERE/clone1"  || fail 3
+bk here where gdb | grep -q "$HERE/product" || fail 4
+bk here where gdb | grep -q "$HERE/clone1"  || fail 5
 cd ..
 echo OK
 
@@ -238,20 +238,20 @@ bk commit $Q -y'add new' || fail 4
 bk -P commit $Q -y'add new' || fail 5
 # This cset removes gcc from clone7's urllist.
 cd "$HERE/clone7"
-bk nested where gcc | grep -q "$HERE/clone1" && fail 6
-bk nested where gdb | grep -q "$HERE/clone1" || fail 7
+bk here where gcc | grep -q "$HERE/clone1" && fail 6
+bk here where gdb | grep -q "$HERE/clone1" || fail 7
 # clone8 should still have clone1 for gcc and gdb.
 cd "$HERE/clone8"
-bk nested where gcc | grep -q "$HERE/clone1" || fail 8
-bk nested where gdb | grep -q "$HERE/clone1" || fail 9
+bk here where gcc | grep -q "$HERE/clone1" || fail 8
+bk here where gdb | grep -q "$HERE/clone1" || fail 9
 # The clone7->clone8 push should add clone8 to clone7's urllist for
 # all components.
 cd "$HERE/clone7"
 bk push $Q "$HERE/clone8" || fail 10
-bk nested where gcc | grep -q "$HERE/clone1" && fail 11
-bk nested where gcc | grep -q "$HERE/clone8" || fail 12
-bk nested where gdb | grep -q "$HERE/clone1" || fail 13
-bk nested where gdb | grep -q "$HERE/clone8" || fail 14
+bk here where gcc | grep -q "$HERE/clone1" && fail 11
+bk here where gcc | grep -q "$HERE/clone8" || fail 12
+bk here where gdb | grep -q "$HERE/clone1" || fail 13
+bk here where gdb | grep -q "$HERE/clone8" || fail 14
 echo OK
 
 echo $N Push does not add dest for non-present components ...........$NL
@@ -265,16 +265,16 @@ bk commit $Q -y'add new' || fail 5
 bk -P commit $Q -y'add new' || fail 6
 # This cset removes gcc from clone9's urllist.
 cd ..
-bk nested where gcc | grep -q "$HERE/clone1" && fail 7
-bk nested where gdb | grep -q "$HERE/clone1" || fail 8
+bk here where gcc | grep -q "$HERE/clone1" && fail 7
+bk here where gdb | grep -q "$HERE/clone1" || fail 8
 # The clone9->cloneA push should add cloneA to clone9's urllist only for
 # the components present in cloneA, so gdb should not be added.
 cd "$HERE/clone9"
 bk push $Q "$HERE/cloneA" || fail 10
-bk nested where gcc | grep -q "$HERE/clone1" && fail 11
-bk nested where gcc | grep -q "$HERE/clone9" && fail 12
-bk nested where gdb | grep -q "$HERE/clone1" || fail 13
-bk nested where gdb | grep -q "$HERE/clone9" && fail 14
+bk here where gcc | grep -q "$HERE/clone1" && fail 11
+bk here where gcc | grep -q "$HERE/clone9" && fail 12
+bk here where gdb | grep -q "$HERE/clone1" || fail 13
+bk here where gdb | grep -q "$HERE/clone9" && fail 14
 echo OK
 
 echo $N Pull with merge does not add component to urllist ...........$NL
@@ -293,9 +293,9 @@ bk -P commit $Q -y'add new2' || fail 7
 # This pull has a merge in gcc so gcc should not be re-added to
 # cloneB's urllist.
 cd ..
-test -z "`bk nested where gcc`" || fail 8
+test -z "`bk here where gcc`" || fail 8
 bk pull $Q ../clone1 || fail 9
-test -z "`bk nested where gcc`" || fail 10
+test -z "`bk here where gcc`" || fail 10
 echo OK
 
 echo $N Pull without merge updates present component in urllist .....$NL
@@ -305,7 +305,7 @@ bk clone $Q clone1 cloneD || fail 2
 bk clone $Q clone1 cloneE || fail 3
 # Add cloneD to cloneC's urllist (gcc and gdb).
 cd cloneC
-bk nested check -@../cloneD
+bk here check -@../cloneD
 cd ..
 # Create a cset in cloneE/gcc.
 cd cloneE/gcc
@@ -316,12 +316,12 @@ bk -P commit $Q -y'add new2' || fail 6
 # Pull cloneE->cloneC.  The pull should remove all urls for gcc and add
 # cloneE (the pull parent).
 cd ../../cloneC
-bk nested where gcc | grep -q "$HERE/clone1" || fail 7
-bk nested where gcc | grep -q "$HERE/cloneD" || fail 8
+bk here where gcc | grep -q "$HERE/clone1" || fail 7
+bk here where gcc | grep -q "$HERE/cloneD" || fail 8
 bk pull $Q ../cloneE || fail 9
-bk nested where gcc | grep -q "$HERE/cloneE" || fail 10
-bk nested where gcc | grep -q "$HERE/cloneD" && fail 11
-bk nested where gcc | grep -q "$HERE/clone1" && fail 12
+bk here where gcc | grep -q "$HERE/cloneE" || fail 10
+bk here where gcc | grep -q "$HERE/cloneD" && fail 11
+bk here where gcc | grep -q "$HERE/clone1" && fail 12
 cd "$HERE"
 rm -rf cloneC cloneD cloneE
 echo OK
@@ -333,7 +333,7 @@ bk clone $Q clone1 cloneD || fail 2
 bk clone $Q clone1 cloneE || fail 3
 # Add cloneD to cloneC's urllist (gcc and gdb).
 cd cloneC
-bk nested check -@../cloneD
+bk here check -@../cloneD
 cd ..
 # Create a cset in cloneE/gcc.
 cd cloneE/gcc
@@ -344,12 +344,12 @@ bk -P commit $Q -y'add new2' || fail 6
 # Pull cloneE->cloneC.  The pull should add cloneE for gdb.
 # we don't have gdb.
 cd ../../cloneC
-bk nested where gdb | grep -q "$HERE/clone1" || fail 7
-bk nested where gdb | grep -q "$HERE/cloneD" || fail 8
+bk here where gdb | grep -q "$HERE/clone1" || fail 7
+bk here where gdb | grep -q "$HERE/cloneD" || fail 8
 bk pull $Q ../cloneE || fail 9
-bk nested where gdb | grep -q "$HERE/cloneE" || fail 10
-bk nested where gdb | grep -q "$HERE/cloneD" || fail 11
-bk nested where gdb | grep -q "$HERE/clone1" || fail 12
+bk here where gdb | grep -q "$HERE/cloneE" || fail 10
+bk here where gdb | grep -q "$HERE/cloneD" || fail 11
+bk here where gdb | grep -q "$HERE/clone1" || fail 12
 cd "$HERE"
 rm -rf cloneC cloneD cloneE
 echo OK
@@ -361,7 +361,7 @@ bk clone $Q clone1 cloneD || fail 2
 bk clone $Q clone1 cloneE || fail 3
 # Add cloneD to cloneC's urllist (gcc and gdb).
 cd cloneC
-bk nested check -@../cloneD
+bk here check -@../cloneD
 cd ..
 # Create a cset in cloneE/gcc.
 cd cloneE/gcc
@@ -372,12 +372,12 @@ bk -P commit $Q -y'add new2' || fail 6
 # Pull cloneE->cloneC.  The pull should add cloneE for gdb even though
 # we don't have gdb.
 cd ../../cloneC
-bk nested where gdb | grep -q "$HERE/clone1" || fail 7
-bk nested where gdb | grep -q "$HERE/cloneD" || fail 8
+bk here where gdb | grep -q "$HERE/clone1" || fail 7
+bk here where gdb | grep -q "$HERE/cloneD" || fail 8
 bk pull $Q ../cloneE || fail 9
-bk nested where gdb | grep -q "$HERE/cloneE" || fail 10
-bk nested where gdb | grep -q "$HERE/cloneD" || fail 11
-bk nested where gdb | grep -q "$HERE/clone1" || fail 12
+bk here where gdb | grep -q "$HERE/cloneE" || fail 10
+bk here where gdb | grep -q "$HERE/cloneD" || fail 11
+bk here where gdb | grep -q "$HERE/clone1" || fail 12
 cd "$HERE"
 rm -rf cloneC cloneD cloneE
 echo OK
@@ -389,7 +389,7 @@ bk clone $Q clone1 cloneD || fail 2
 bk clone $Q clone1 cloneE || fail 3
 # Add cloneD to cloneC's urllist (gcc and gdb).
 cd cloneC
-bk nested check -@../cloneD
+bk here check -@../cloneD
 cd ..
 # Create a cset in cloneE/gcc.
 cd "$HERE/cloneE/gcc"
@@ -406,12 +406,12 @@ bk -P commit $Q -y'add new' || fail 9
 # Pull cloneE->cloneC.  The pull should add nothing for gdb since
 # it has local changes.
 cd "$HERE/cloneC"
-test -z "`bk nested where gdb`" || fail 10
+test -z "`bk here where gdb`" || fail 10
 bk pull $Q ../cloneE || fail 11
 # This next line is a regression test for a bug where the product
 # rootkey got into the urllist.
-bk nested where | grep -q '^\.' && fail 12
-test -z "`bk nested where gdb`" || fail 13
+bk here where | grep -q '^\.' && fail 12
+test -z "`bk here where gdb`" || fail 13
 cd "$HERE"
 rm -rf cloneC cloneD cloneE
 echo OK
@@ -421,15 +421,15 @@ cd "$HERE"
 bk clone $Q product clone4 || fail
 bk clone $Q clone4 bk://localhost:$P/clone5 || fail 2
 cd clone5 || fail 3
-bk components -h | sort >GOT
+bk comps -h | sort >GOT
 cat <<EOF >WANT
 ./gcc
 ./gdb
 EOF
 cmpfiles GOT WANT
 # clone5 should inherit clone4's urllist.
-bk nested where gcc | grep -q "$HERE/product" || fail 4
-bk nested where gdb | grep -q "$HERE/product" || fail 5
+bk here where gcc | grep -q "$HERE/product" || fail 4
+bk here where gdb | grep -q "$HERE/product" || fail 5
 cd ..
 echo OK
 
@@ -437,21 +437,21 @@ echo $N Remote clone propagates urllist for unwanted components .....$NL
 cd "$HERE"
 bk clone $Q -sgcc clone4 bk://localhost:$P/clone6 || fail
 cd clone6
-bk components -h | sort >GOT
+bk comps -h | sort >GOT
 cat <<EOF >WANT
 ./gcc
 EOF
 cmpfiles GOT WANT
 # clone6 should inherit clone4's urllist.
-bk nested where gcc | grep -q "$HERE/product" || fail 2
-bk nested where gdb | grep -q "$HERE/product" || fail 3
+bk here where gcc | grep -q "$HERE/product" || fail 2
+bk here where gdb | grep -q "$HERE/product" || fail 3
 cd ..
 echo OK
 
 echo $N Urllist check: stand-alone repo .............................$NL
 cd "$HERE"
 commercial standalone
-bk nested check 2>ERR && fail
+bk here check 2>ERR && fail
 grep -q "must be in a nested" ERR || fail 2
 echo OK
 
@@ -459,7 +459,7 @@ echo $N Urllist check: repo with no components ......................$NL
 cd "$HERE"
 bk setup -P -fc"$BK_CACHE/commercial.config" prod-empty || fail
 cd prod-empty
-bk nested check || fail 2
+bk here check || fail 2
 cd ..
 echo OK
 
@@ -469,19 +469,19 @@ rm -rf clone clone2
 bk clone $Q product clone || fail
 # Clear out clone's urllist.
 cd clone
-bk nested where rm || fail 2
+bk here where rm || fail 2
 cd ..
 bk clone $Q clone clone2 || fail 3
 cd clone2
-bk nested where gcc | grep -q "$HERE/clone" || fail 4
-bk nested where gdb | grep -q "$HERE/clone" || fail 5
+bk here where gcc | grep -q "$HERE/clone" || fail 4
+bk here where gdb | grep -q "$HERE/clone" || fail 5
 cd ..
 # Delete clone, then check the urllist of clone2 and verify that
 # clone gets removed from clone2's urllist (leaving it empty).
 rm -rf clone
 cd clone2
-bk nested check || fail 6
-test -z "`bk nested where gcc`" || fail 7
+bk here check || fail 6
+test -z "`bk here where gcc`" || fail 7
 echo OK
 
 echo $N Urllist check: url of missing component .....................$NL
@@ -490,22 +490,22 @@ rm -rf clone clone2
 bk clone $Q product clone || fail
 # Clear out clone's urllist.
 cd clone
-bk nested where rm || fail 2
+bk here where rm || fail 2
 cd ..
 bk clone $Q clone clone2 || fail 3
 cd clone2
-bk nested where gcc | grep -q "$HERE/clone" || fail 4
-bk nested where gdb | grep -q "$HERE/clone" || fail 5
+bk here where gcc | grep -q "$HERE/clone" || fail 4
+bk here where gdb | grep -q "$HERE/clone" || fail 5
 cd ..
 # Remove clone/gcc, then check the urllist of clone2 and verify that
 # clone gets removed from clone2's urllist for gcc.
 cd clone
-bk alias set $Q HERE `bk components -h` || fail 6
-bk unpopulate $Q -f gcc || fail 7
+bk alias set $Q HERE `bk comps -h` || fail 6
+bk here rm $Q -f gcc || fail 7
 cd ../clone2
-bk nested check || fail 8
-test -z "`bk nested where gcc`" || fail 9
-bk nested where gdb | grep -q "$HERE/clone" || fail 10
+bk here check || fail 8
+test -z "`bk here where gcc`" || fail 9
+bk here where gdb | grep -q "$HERE/clone" || fail 10
 echo OK
 
 echo $N Urllist check: url of non-existent bkd ......................$NL
@@ -517,17 +517,17 @@ bk clone $Q bk://localhost:$P2/product clone || fail 2
 bk _kill bk://localhost:$P2
 # Force remove gcc from clone.
 cd clone
-bk nested where gcc | grep -q "bk://.*:$P2/product" || fail 3
-bk alias set $Q HERE `bk components -h` || fail 4
-bk unpopulate $Q -f gcc || fail 5
-bk nested where gcc | grep -q "bk://.*:$P2/product" || fail 6
+bk here where gcc | grep -q "bk://.*:$P2/product" || fail 3
+bk alias set $Q HERE `bk comps -h` || fail 4
+bk here rm $Q -f gcc || fail 5
+bk here where gcc | grep -q "bk://.*:$P2/product" || fail 6
 # Check clone's urllist.  Should get error msgs but urllist
 # should not be pruned.
-bk nested check 2>ERR && fail 7
+bk here check 2>ERR && fail 7
 grep -q "unable to connect" ERR || fail 8
 grep -q "no valid urls found" ERR || fail 9
-bk nested where gcc | grep -q "bk://.*:$P2/product" || fail 10
-bk nested where gdb | grep -q "bk://.*:$P2/product" || fail 11
+bk here where gcc | grep -q "bk://.*:$P2/product" || fail 10
+bk here where gdb | grep -q "bk://.*:$P2/product" || fail 11
 echo OK
 
 echo $N Urllist check -c: url of non-existent bkd ...................$NL
@@ -539,17 +539,17 @@ bk clone $Q bk://localhost:$P2/product clone || fail 2
 bk _kill bk://localhost:$P2
 # Force remove gcc from clone.
 cd clone
-bk nested where gcc | grep -q "bk://.*:$P2/product" || fail 3
-bk alias set $Q HERE `bk components -h` || fail 4
-bk unpopulate $Q -f gcc || fail 5
-bk nested where gcc | grep -q "bk://.*:$P2/product" || fail 6
+bk here where gcc | grep -q "bk://.*:$P2/product" || fail 3
+bk alias set $Q HERE `bk comps -h` || fail 4
+bk here rm $Q -f gcc || fail 5
+bk here where gcc | grep -q "bk://.*:$P2/product" || fail 6
 # Check -c clone's urllist.  Should get error msgs and urllist
 # should be pruned.
-bk nested check -c 2>ERR && fail 7
+bk here check -c 2>ERR && fail 7
 grep -q "unable to connect" ERR || fail 8
 grep -q "no valid urls found" ERR || fail 9
-test -z "`bk nested where`" || fail 10
-bk nested check 2>ERR && fail 11
+test -z "`bk here where`" || fail 10
+bk here check 2>ERR && fail 11
 grep -q "no valid urls found" ERR || fail 12
 echo OK
 
@@ -557,9 +557,9 @@ echo $N Demonstrate component named rm problem.......................$NL
 cd "$HERE"
 cd product
 bk setup -a -f rm || fail
-bk components -h | grep -q rm || fail
+bk comps -h | grep -q rm || fail
 cd "$HERE"
 bk clone $Q product clone-rm
 cd clone-rm
-bk nested where rm | grep -q "$HERE/product" && fail you fixed a bug
+bk here where rm | grep -q "$HERE/product" && fail you fixed a bug
 echo failed \(bug comp named rm\)

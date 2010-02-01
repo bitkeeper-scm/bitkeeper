@@ -1,0 +1,157 @@
+.if \n[NESTED] \{\
+.so ../bk-macros
+.TH "bk here" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk here \- list or change the set of populated repositories
+.SH SYNOPSIS
+.B bk here add|list|rm|set
+.[OPTreq] \-@ URL
+.[B] \-qf
+.[ARG] "alias | comp"
+.SS LISTING POPULATED ALIASES
+.B bk here [list]
+.SS POPULATING COMPONENTS AND/OR ALIASES
+.B bk here add
+.[OPTreq] \-@ URL
+.[B] \-fq
+.ARG "alias | component"
+.B ...
+.\" .SS CHECKING COMPONENT AVAILABILITY
+.\" .B bk here check
+.\" .[OPTreq] \-@ URL
+.SS DEPOPULATING COMPONENTS AND/OR ALIASES
+.B bk here rm
+.[OPTreq] \-@ URL
+.[B] \-fq
+.ARG "alias | component"
+.B ...
+.SS SETTING THE SET OF POPULATED COMPONENTS AND/OR ALIASES
+.B bk here set
+.[OPTreq] \-@ URL
+.[B] \-fq
+.ARG "alias | component"
+.B ...
+.\" .SS LIST LOCATION[S] OF MISSING COMPONENTS
+.\" .B bk here where
+.\" .[ARG] "component"
+.\" .B ...
+.SH DESCRIPTION
+The
+.B "bk here"
+command is used to manage the set of populated aliases and/or components
+in a nested collection.
+.LP
+The initial set of populated aliases are determined when a nested
+collection is cloned.  If no aliases are specified on the clone
+command line then the set is just the "DEFAULT" alias.
+The "DEFAULT" alias expands to all components unless it has be
+modified with the 
+.B "bk alias"
+command.
+If one or more aliases are
+specified, then only the repositories implied by those aliases 
+are populated.
+.LP
+The 
+.B "bk here"
+command can be used to list what is here,
+add to what is here,
+remove from what is here,
+or set what is here.
+.LP
+In order to preserve any local work, before removing any components
+.B "bk here"
+needs to be able to verify everything being removed exists elsewhere.
+The
+.B "bk superset"
+command will be run, which searches for local changesets, deltas,
+modifications, extra files, etc.
+See
+.B -f
+below for how to skip this check.
+.LP
+Note that it is not (currently) possible to remove part of an alias.
+If DEVTOOLS is populated and it implies "cmd/gcc" and "cmd/gdb",
+attempting to remove either component will result in an error.
+See examples below for how to work around this.
+.SH OPTIONS
+.TP
+.OPTreq \-@ URL
+When looking for components, include 
+.ARG URL
+in the list of places to look.
+.\" also  -@@filename   (but ok not to document)
+.tp
+.B \-f
+When removing repositories, do not check for local only work
+in the repositories to be removed.
+Using this option when there is local only work is dangerous
+unless you plan to undo all of that work.
+.tp
+.B \-q
+Run quietly.
+.SH EXAMPLES
+.LP
+When cloning a product, it is possible to clone a subset of it by
+specifying one or more component names or aliases.
+That will clone just that subset:
+.DS
+$ bk clone -sDEVTOOLS bk://server/big-product
+$ cd big-product
+$ bk here
+DEVTOOLS
+.DE
+Note that the list of what is "here" takes two forms, how you specified
+it (typically one or more aliases), and the set of components implied
+by those aliases.
+To get the second form:
+.DS
+$ bk comps -h
+\&./cmd/gcc
+\&./cmd/gas
+\&./cmd/ld
+.DE
+If you need to add something, you just tell 
+.B "bk here" 
+to do that:
+.DS
+$ bk here add DEBUGGER
+$ bk here
+DEBUGGER
+DEVTOOLS
+.DE
+If you need to remove something, you can only remove what you added, not
+individual components:
+.DS
+$ bk here rm ./cmd/gcc
+here: ./cmd/gcc is part of the DEVTOOLS alias, not removing.
+.DE
+If you absolutely must remove a subset, you can do so by exploding the
+alias in question into components:
+.DS
+$ bk here | grep -v DEVTOOLS > tmp
+$ bk alias list DEVTOOLS >> tmp
+$ bk here set - < tmp
+$ bk here rm ./cmd/gcc
+$ bk here
+DEBUGGER
+\&./cmd/gas
+\&./cmd/ld
+.DE
+.SH "SEE ALSO"
+.SA alias
+.SA comps
+.SH CATEGORY
+.B Nested
+.SH AVAILABILITY
+This command is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license has this enabled, run
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "nested" listed then your
+license has this feature enabled.
+If not, contact BitMover sales.
+.\}

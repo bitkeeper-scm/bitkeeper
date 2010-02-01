@@ -64,7 +64,7 @@ The populate command is really an alias for 'bk alias add HERE ARGS'
 .SA unpopulate
 .SA url
 .SH CATEGORY
-.B Product
+.B Nested
 .SH AVAILABILITY
 This command is an optional feature of \*[BK]
 and must be enabled in your license.

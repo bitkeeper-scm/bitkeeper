@@ -218,7 +218,7 @@ sfiles_main(int ac, char **av)
 		if (opts.out) fclose(opts.out);
 		proj_cd2product();
 		comps = addLine(0, strdup("."));
-		comps = prog2Lines(comps, "bk components -h");
+		comps = prog2Lines(comps, "bk comps -h");
 		nav = addLine(0, "bk");
 		nav = addLine(nav, "sfiles");
 		nav = addLine(nav, "-h");

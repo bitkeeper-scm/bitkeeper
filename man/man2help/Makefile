@@ -6,7 +6,7 @@ BK = bk
 	$(BK) get -q $@
 
 # Order is important, this is the order they will show up in helptool.
-SUM=All Overview Common Repository Product GUI-tools File Admin Compat Utility 
+SUM=All Overview Common Repository GUI-tools File Nested Admin Compat Utility 
 
 helptxt: summaries
 

@@ -5,38 +5,6 @@
 private	int	unpopulate_check(comp *c, char **urls);
 
 /*
- * populate   => bk alias add OPTS HERE args
- * unpopulate => bk alias rm  OPTS HERE args
- */
-int
-populate_main(int ac, char **av)
-{
-	int	c;
-	int	rc;
-	char	**nav = 0;
-
-	/* handle populate and unpopulate */
-	nav = addLine(nav,
-	    strdup(streq(av[0], "unpopulate") ? "rm" : "add"));
-	while ((c = getopt(ac, av, "f@|q", 0)) != -1) {
-		if (c == GETOPT_ERR) bk_badArg(c, av);
-		nav = addLine(nav, aprintf("-%c%s", c, optarg ? optarg : ""));
-	}
-	nav = addLine(nav, strdup("HERE"));
-	if (av[optind]) {
-		while (av[optind]) {
-			nav = addLine(nav, strdup(av[optind++]));
-		}
-	}
-	nav = addLine(nav, 0);
-
-	getoptReset();
-	rc = alias_main(nLines(nav), nav);
-	freeLines(nav, free);
-	return (rc);
-}
-
-/*
  * called with cp->alias set to which components should be populated
  * this function added or removes component such that the cp->present
  * matches cp->alias

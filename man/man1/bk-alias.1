@@ -46,12 +46,14 @@ bk alias \- manage aliases for lists of components
 .ARG component \ ...
 .br
 .SS LIST ALL ALIASES
-.B bk alias list
+.B bk alias
+.[B] list
 .[OPTreq] \-r rev
 .[B] \-hm
 .br
 .SS SHOW AN ALIAS
-.B bk alias list
+.B bk alias
+.[B] list
 .[OPTreq] \-r rev
 .[B] \-e
 .[B] \-hm
@@ -262,14 +264,13 @@ Any components that are specified as a path are stored internally
 as their root keys so that the alias will expand correctly even if
 the specified component[s] is/are moved.
 .SH "SEE ALSO"
-.SA Howto-Product
 .SA clone
 .SA components
 .SA glob
 .SA id
 .SA populate
 .SH CATEGORY
-.B Product
+.B Nested
 .SH AVAILABILITY
 This command is an optional feature of \*[BK]
 and must be enabled in your license.

@@ -9,7 +9,7 @@ bk clone \- create a new copy of a package
 .[OPTequal] \-E e v
 .[OPTreq] \-r rev
 .if \n[NESTED] \{\
-.[OPTreq] \-s comp
+.[OPTreq] \-s alias
 .\}
 .ARG from
 .[ARG] to
@@ -79,12 +79,12 @@ This is faster and saves disk space, but only works
 within filesystems supporting hard links.
 .tp
 .if \n[NESTED] \{\
-.OPTreq \-s comp
+.OPTreq \-s alias
 When cloning a product, limit the components to the subset implied by
-.ARG comp .
+.ARG alias .
 If this option is repeated the implied subset is the union of all
 specified components.
-.ARG comp
+.ARG alias
 may be a component or an alias for a set of components.
 .tp
 .\}

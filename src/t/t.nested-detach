@@ -93,7 +93,7 @@ bk detach -q component1 ../detached1 2>GOT 1>&2 || {
 	exit 1
 }
 # Check that component1 is still in the product.
-bk components | grep -q component1 || exit 1
+bk comps | grep -q component1 || exit 1
 cd component1 || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -157,7 +157,7 @@ bk detach -q "$HERE/nested1/component1" 2>GOT 1>&2 || {
 	exit 1
 }
 cd "$HERE/nested1"
-bk components | grep -q component1 || exit 1
+bk comps | grep -q component1 || exit 1
 cd component1 || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -185,7 +185,7 @@ bk detach -q "$HERE/nested1/component1" detached2 2>GOT 1>&2 || {
 	exit 1
 }
 cd "$HERE/nested1"
-bk components | grep -q component1 || exit 1
+bk comps | grep -q component1 || exit 1
 cd component1 || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -213,7 +213,7 @@ bk detach -q "$HERE/nested1/component1" "$HERE/detached3" 2>GOT 1>&2 || {
 	exit 1
 }
 cd "$HERE/nested1"
-bk components | grep -q component1 || exit 1
+bk comps | grep -q component1 || exit 1
 cd component1 || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -241,7 +241,7 @@ bk detach -q component1 bk://localhost:$P/detached4 2>GOT 1>&2 || {
 	exit 1
 }
 cd "$HERE/nested1"
-bk components | grep -q component1 || exit 1
+bk comps | grep -q component1 || exit 1
 cd component1 || exit 1
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
@@ -268,7 +268,7 @@ bk detach -q -r1.1 component1 ../standalone1-1.1 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk components | grep -q component1 || exit 1
+bk comps | grep -q component1 || exit 1
 cd "$HERE/standalone1-1.1" || exit 1
 test "`bk log -d:REV: -r+ ChangeSet`" = "1.1" || {
 	echo bad rev

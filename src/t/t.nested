@@ -113,7 +113,7 @@ bk pending | grep -q "new-comp/ChangeSet@1.2" || {
 }
 echo OK
 
-bk unpopulate $Q new-comp || fail
+bk here rm $Q new-comp || fail
 # because default is still all, removing the component means it is
 # still there, so really remove it!
 rm -rf new-comp
@@ -706,7 +706,7 @@ cmpfiles WANT GOT
 echo OK
 
 # Done with pending component
-bk unpopulate $Q gdb/pendingdeepnest || fail
+bk here rm $Q gdb/pendingdeepnest || fail
 rm -fr gdb/pendingdeepnest gdb/extradeepnest
 
 echo $N bk _nested for undo -r+ .....................................$NL
@@ -1039,7 +1039,7 @@ echo OK
 
 
 # XXX - write a test to make sure that we can list only the repos that are
-# present w/ bk components
+# present w/ bk comps
 
 # ditto for one that has been moved but does not yet have the rename delta
 
@@ -1054,7 +1054,7 @@ cd project
 
 echo $N Test simple alias addition ..................................$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias dev gcc4 gdb
+bk alias new dev gcc4 gdb
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo failed to commit change
 	bk cmdlog -a | tail -20
@@ -1213,7 +1213,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N List only present components ................................$NL
-bk components -h > GOT
+bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc4
 ./gdb
@@ -1653,4 +1653,18 @@ cmpfiles WANTERR ERR
 # Cache is once again happy - all is good
 bk _nested -lphm -r+ > OUT
 cmpfiles WANTOUT OUT
+echo OK
+
+echo $N Demonstrate citool-mode in bk comps .........................$NL
+cd "$HERE/project/gdb"
+bk comps -c > GOT || fail
+cat <<EOF > WANT
+gdb
+.
+gcc4
+gdb/A
+gdb/A/B
+liberty
+EOF
+cmpfiles GOT WANT
 echo OK

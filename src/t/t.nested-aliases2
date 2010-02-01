@@ -33,7 +33,7 @@ echo $N Check cloning -sall of a partial project works ..............$NL
 cd "$HERE"
 bk clone $Q -snm project proj-nm || fail
 cd proj-nm
-bk components -h >GOT || fail
+bk comps -h >GOT || fail
 cat <<EOF >WANT
 ./gcc/nm
 EOF
@@ -41,7 +41,7 @@ cmpfiles GOT WANT
 cd ..
 bk clone $Q -sall proj-nm nm-clone || fail
 cd nm-clone
-bk components >GOT || fail
+bk comps >GOT || fail
 cat <<EOF >WANT
 ./gcc
 ./gcc/nm
@@ -85,8 +85,8 @@ echo OK
 #echo $N Move stuff and watch the fur fly ............................$NL
 #cd "$HERE"
 #bk clone $Q -sthere project mangle || exit 1
-#(cd project; bk alias here) > here.project
-#(cd mangle; bk alias here) > here.mangle
+#(cd project; bk here) > here.project
+#(cd mangle; bk here) > here.mangle
 #cmpfiles here.project here.mangle
 #cd mangle
 #bk alias new dev ./gcc './gcc/*' gdb || exit 1
@@ -152,7 +152,7 @@ bk alias add dev ./gcc/gcov
 cd "$HERE"/proj-clone
 bk attach $Q ../libcpp gcc/libcpp
 bk alias add dev ./gcc/libcpp
-bk populate $Q dev || exit 1
+bk here add $Q dev || exit 1
 bk pull $Q ../project || exit 1
 bk alias -ek - <<EOF > WANT
 ./gcc
@@ -164,7 +164,7 @@ bk alias -ek - <<EOF > WANT
 EOF
 bk alias -k dev > GOT
 cmpfiles WANT GOT
-bk alias here | grep -q dev || {
+bk here | grep -q dev || {
 	echo should have dev here
 	exit 1
 }
@@ -181,7 +181,7 @@ bk clone $Q -sdev bk://localhost:$P/proj-clone clone1 || {
 }
 bk clone $Q -sall bk://localhost:$P/clone1 clone1b || fail
 cd clone1b
-bk components >GOT || fail
+bk comps >GOT || fail
 cat <<EOF >WANT
 ./gcc
 ./gcc/gcov
@@ -271,7 +271,7 @@ bk clone $Q -sdev bk://localhost:$P/glob5 glob6 || {
 	exit 1
 }
 cd glob6
-bk components -h >GOT || fail
+bk comps -h >GOT || fail
 cat <<EOF >WANT
 ./gcc
 ./gcc/gcov
@@ -290,7 +290,7 @@ bk clone $Q bk://localhost:$P/proj-clone dash-h || {
 	exit 1
 }
 cd dash-h
-bk alias here > GOT
+bk here > GOT
 cat > WANT <<EOF
 default
 EOF

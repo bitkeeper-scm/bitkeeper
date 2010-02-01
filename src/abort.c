@@ -285,8 +285,8 @@ out:	if (n) nested_free(n);
 	 * components, removed some, etc. We restore sanity by
 	 * trusting the HERE file.
 	 */
-	if (system("bk populate -q")) {
-		error("abort: bk populate failed\n");
+	if (system("bk here set -q here")) {
+		error("abort: bk here failed\n");
 		errors++;
 	}
 	return (errors);
