@@ -139,7 +139,7 @@ theTest() {
 	cd ..
 	rm -f SLOW RAN_CHECK
 	_BK_RAN_CHECK=../RAN_CHECK _BK_SLOW_WALK=../SLOW \
-	    bk clone $Q ${1+$1} project copy
+	    bk clone $Q ${1+$1} project copy || fail
 	rm -fr copy
 	cd project
 }

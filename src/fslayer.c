@@ -1,6 +1,5 @@
 #define	FSLAYER_NODEFINES
 #include "sccs.h"
-#include "blob.h"
 #include "libc/fslayer/win_remap.h"
 
 private	project	*findpathf(const char *file, char **rel);
@@ -38,25 +37,16 @@ fslayer_open(const char *path, int flags, mode_t mode)
 {
 	int	ret;
 	project	*proj;
-	char	*rel, *file;
+	char	*rel;
 
 	if (noloop) return (open(path, flags, mode));
 	noloop = 1;
-	/*
-	 * XXX not handled:
-	 *  ret == 1 (blob)
-	 *  ret == 2 (inline)
-	 *  file writes
-	 */
-	ret = -2;
 	if (proj = findpathf(path, &rel)) {
-		unless (doidx_remap(proj, rel, &file)) {
-			ret = open(file, flags, mode);
-		}
+		ret = remap_open(proj, rel, flags, mode);
 		proj_free(proj);
+	} else {
+		ret = open(path, flags, mode);
 	}
-	if (ret == -2) ret = open(path, flags, mode);
-
 	STRACE((strace, "open(%s, %d, %o) = %d\n",
 		path, flags, mode, ret));
 	noloop = 0;
@@ -72,9 +62,7 @@ fslayer_close(int fd)
 		ret = close(fd);
 	} else {
 		noloop = 1;
-		if (ret = blob_close(fd)) {
-			ret = close(fd);
-		}
+		ret = close(fd);
 		STRACE((strace, "close(%d) = %d\n", fd, ret));
 		noloop = 0;
 	}
@@ -90,9 +78,7 @@ fslayer_read(int fd, void *buf, size_t count)
 		ret = read(fd, buf, count);
 	} else {
 		noloop = 1;
-		if ((ret = blob_read(fd, buf, count)) < 0) {
-			ret = read(fd, buf, count);
-		}
+		ret = read(fd, buf, count);
 		STRACE((strace, "read(%d, buf, %d) = %d\n", fd, count, ret));
 		noloop = 0;
 	}
@@ -108,9 +94,7 @@ fslayer_write(int fd, const void *buf, size_t count)
 		ret = write(fd, buf, count);
 	} else {
 		noloop = 1;
-		if ((ret = blob_write(fd, buf, count)) < 0) {
-			ret = write(fd, buf, count);
-		}
+		ret = write(fd, buf, count);
 		STRACE((strace, "write(%d, buf, %d) = %d\n", fd, count, ret));
 		noloop = 0;
 	}
@@ -126,9 +110,7 @@ fslayer_lseek(int fildes, off_t offset, int whence)
 		ret = lseek(fildes, offset, whence);
 	} else {
 		noloop = 1;
-		if ((ret = blob_lseek(fildes, offset, whence)) < 0) {
-			ret = lseek(fildes, offset, whence);
-		}
+		ret = lseek(fildes, offset, whence);
 		STRACE((strace, "lseek(%d, %d, %d) = %d\n",
 		    fildes, offset, whence, ret));
 		noloop = 0;
@@ -148,7 +130,7 @@ fslayer_lstat(const char *path, struct stat *buf)
 	} else {
 		noloop = 1;
 		if (isSCCS(path) && (proj = findpath(path, &rel))) {
-			ret = doidx_lstat(proj, rel, buf);
+			ret = remap_lstat(proj, rel, buf);
 			proj_free(proj);
 		} else {
 			ret = lstat(path, buf);
@@ -181,13 +163,39 @@ fslayer_stat(const char *path, struct stat *buf)
 	} else {
 		noloop = 1;
 		if (proj = findpath(path, &rel)) {
-			ret = doidx_lstat(proj, rel, buf);
+			ret = remap_lstat(proj, rel, buf);
 			proj_free(proj);
 		} else {
 			ret = stat(path, buf);
 		}
 		if (strace) {
 			fprintf(strace, "stat(%s, {", path);
+			unless (ret) {
+				fprintf(strace, "mode=%o", buf->st_mode);
+				if (S_ISREG(buf->st_mode)) {
+					fprintf(strace, ", size=%d",
+					    buf->st_size);
+				}
+			}
+			fprintf(strace, "}) = %d\n", ret);
+		}
+		noloop = 0;
+	}
+	return (ret);
+}
+
+int
+fslayer_fstat(int fd, struct stat *buf)
+{
+	int	ret;
+
+	if (noloop) {
+		ret = fstat(fd, buf);
+	} else {
+		noloop = 1;
+		ret = fstat(fd, buf);
+		if (strace) {
+			fprintf(strace, "fstat(%d, {", fd);
 			unless (ret) {
 				fprintf(strace, "mode=%o", buf->st_mode);
 				if (S_ISREG(buf->st_mode)) {
@@ -214,7 +222,7 @@ fslayer_unlink(const char *path)
 	} else {
 		noloop = 1;
 		if (proj = findpathf(path, &rel)) {
-			ret = doidx_unlink(proj, rel);
+			ret = remap_unlink(proj, rel);
 			proj_free(proj);
 		} else {
 			ret = unlink(path);
@@ -241,7 +249,7 @@ fslayer_rename(const char *old, const char *new)
 		if (rel1) rel1 = strdup(rel1);
 		proj2 = findpath(new, &rel2);
 
-		ret = doidx_rename(proj1, rel1, proj2, rel2);
+		ret = remap_rename(proj1, rel1, proj2, rel2);
 		if (rel1) free(rel1);
 		if (proj1) proj_free(proj1);
 		if (proj2) proj_free(proj2);
@@ -263,7 +271,7 @@ fslayer_chmod(const char *path, mode_t mode)
 	} else {
 		noloop = 1;
 		if (proj = findpath(path, &rel)) {
-			ret = doidx_chmod(proj, rel, mode);
+			ret = remap_chmod(proj, rel, mode);
 			proj_free(proj);
 		} else {
 			ret = chmod(path, mode);
@@ -290,7 +298,7 @@ fslayer_link(const char *old, const char *new)
 		if (rel1) rel1 = strdup(rel1);
 		proj2 = findpath(new, &rel2);
 
-		ret = doidx_link(proj1, rel1, proj2, rel2);
+		ret = remap_link(proj1, rel1, proj2, rel2);
 		if (rel1) free(rel1);
 		if (proj1) proj_free(proj1);
 		if (proj2) proj_free(proj2);
@@ -329,7 +337,7 @@ fslayer__getdir(char *dir, struct stat *sb)
 	} else {
 		noloop = 1;
 		if (proj = findpathd(dir, &rel)) {
-			ret = doidx_getdir(proj, rel);
+			ret = remap_getdir(proj, rel);
 			proj_free(proj);
 		} else {
 			ret = _getdir(dir, sb);
@@ -351,7 +359,7 @@ fslayer_realBasename(const char *path, char *realname)
 	} else {
 		noloop = 1;
 		if (isSCCS(path) && (proj = findpath(path, &rel))) {
- 			ret = doidx_realBasename(proj, rel, realname);
+ 			ret = remap_realBasename(proj, rel, realname);
 			proj_free(proj);
 		} else {
 			ret = realBasename(path, realname);
@@ -374,7 +382,7 @@ fslayer_access(const char *path, int mode)
 		noloop = 1;
 
 		if (proj = findpathf(path, &rel)) {
-			ret = doidx_access(proj, rel, mode);
+			ret = remap_access(proj, rel, mode);
 			proj_free(proj);
 		} else {
 			ret = access(path, mode);
@@ -397,7 +405,7 @@ fslayer_utime(const char *path, const struct utimbuf *buf)
 	} else {
 		noloop = 1;
 		if (proj = findpathf(path, &rel)) {
-			ret = doidx_utime(proj, rel, buf);
+			ret = remap_utime(proj, rel, buf);
 			proj_free(proj);
 		} else {
 			ret = utime(path, buf);
@@ -420,7 +428,7 @@ fslayer_mkdir(const char *path, mode_t mode)
 	} else {
 		noloop = 1;
 		if (proj = findpathd(path, &rel)) {
-			ret = doidx_mkdir(proj, rel, mode);
+			ret = remap_mkdir(proj, rel, mode);
 			proj_free(proj);
 		} else {
 			ret = mkdir(path, mode);
@@ -444,7 +452,7 @@ fslayer_rmdir(const char *dir)
 		noloop = 1;
 
 		if (proj = findpathd(dir, &rel)) {
-			ret = doidx_rmdir(proj, rel);
+			ret = remap_rmdir(proj, rel);
 			proj_free(proj);
 		} else {
 #ifndef	NOPROC

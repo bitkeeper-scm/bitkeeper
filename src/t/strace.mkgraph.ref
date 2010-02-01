@@ -2,6 +2,7 @@
 _getdir 1
 chmod 1
 close 4
+fstat 7
 lseek 37
 lstat 17
 open 5

@@ -60,7 +60,7 @@ bk mv base copy
 touch new.copy
 bk new $Q new.copy
 bk commit $Q -STHREE -f
-{ echo m; echo merge; } | bk pull $Q 2> ERR || exit 1
+{ echo m; echo merge; } | bk pull $Q 2> ERR || fail -f ERR
 bk tag $Q FOUR
 echo OK
 

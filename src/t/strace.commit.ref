@@ -3,6 +3,7 @@ _getdir 15
 access 31
 chmod 15
 close 76
+fstat 75
 link 2
 lseek 66
 lstat 251

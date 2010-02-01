@@ -243,7 +243,6 @@ _httpfetch
 hostme
 id remote
 idcache
-indexsvr
 isascii
 inskeys
 key2rev

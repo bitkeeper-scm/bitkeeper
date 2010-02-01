@@ -132,7 +132,7 @@ OBJ =	bkver.o cmd.o \
 	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o bkd_nested.o \
 	bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
-	bkusers.o blob.o \
+	bkusers.o \
 	cat.o cfile.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	collapse.o comment.o comments.o commit.o components.o compress.o \
@@ -146,7 +146,7 @@ OBJ =	bkver.o cmd.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	idcache.o indexsvr.o isascii.o inskeys.o \
+	idcache.o isascii.o inskeys.o \
 	key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
 	libcommit.o libdiff.o librange.o \
@@ -176,6 +176,7 @@ OBJ =	bkver.o cmd.o \
 	rcs2bk.o rcsparse.o \
 	receive.o redblack.o regex.o registry.o renumber.o \
 	repo.o repos.o repogca.o resolve.o \
+	remap.o \
 	remote.o resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
@@ -190,7 +191,8 @@ OBJ =	bkver.o cmd.o \
 	testdates.o time.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
-	user.o utils.o uu.o version.o what.o which.o xflags.o \
+	user.o utils.o uu.o version.o what.o which.o \
+	xflags.o \
 	zone.o
 SCRIPTS	= applypatch bk.script import \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
@@ -219,7 +221,7 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bam.h bkd.h blob.h logging.h nested.h \
+HDRS	= bam.h bkd.h logging.h nested.h \
 	  purify.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h proj.h redblack.h inskeys.h libc/system.h \
 	  libc/fslayer/win_remap.h
