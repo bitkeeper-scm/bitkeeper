@@ -150,7 +150,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	char	*comment = 0;
 	char	**aliases = 0;
 	int	c, i;
-	int	reserved = 0, rc = 1;
+	int	reserved = 0, rc = 1, needunedit = 0;
 	int	ac = 0;
 
 	if (proj_cd2product()) {
@@ -173,7 +173,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	}
 	/* get the nest */
 	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) goto err;
-	unless (aliasdb = aliasdb_init(n, 0, n->tip, n->pending)) goto err;
+	unless (aliasdb = aliasdb_init(n, 0, n->tip, n->pending, 1)) goto err;
 
 	/* get the list of aliases to add or remove */
 	for (; (p = av[ac]); ++ac) {
@@ -246,13 +246,10 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	/*
 	 * Write aliases file now before we try populating so that
 	 * consistancy checks will work when reading the file.
-	 *
-	 * XXX If populate fails we need to revert these changes, but it
-	 *     is possible for the aliases file to have diffs in the gfile
-	 *     before we start so we can't just call 'bk unedit'
 	 */
 	(void)system("bk edit -q " ALIASES);
 	hash_toFile(aliasdb, ALIASES);
+	needunedit = 1;
 write:
 	/* see if the HERE still matches the present bits */
 	if (aliasdb_tag(n, aliasdb, n->here)) goto err;
@@ -272,6 +269,10 @@ write:
 	}
 	rc = 0;
 err:
+	if (rc && needunedit) {
+		/* revert any local edits to the aliases file */
+		system("bk unedit -q " ALIASES);
+	}
 	nested_free(n);
 	aliasdb_free(aliasdb);
 	freeLines(aliases, free);
@@ -301,7 +302,7 @@ aliasShow(char *cmd, aopts *opts, char **av)
 	/* get the nest */
 	nflags = (opts->rev ? 0 : NESTED_PENDING);
 	unless (n = nested_init(0, opts->rev, 0, nflags)) goto err;
-	unless (aliasdb = aliasdb_init(n, 0, n->tip, n->pending)) goto err;
+	unless (aliasdb = aliasdb_init(n, 0, n->tip, n->pending, 0)) goto err;
 
 	/* slurp in a list of aliases to list */
 	for (; (p = av[ac]); ++ac) {
@@ -325,7 +326,7 @@ err:
 }
 
 hash	*
-aliasdb_init(nested *n, project *p, char *rev, int pending)
+aliasdb_init(nested *n, project *p, char *rev, int pending, int no_diffs)
 {
 	hash	*aliasdb = 0;
 	project	*prodroot;
@@ -365,12 +366,19 @@ aliasdb_init(nested *n, project *p, char *rev, int pending)
 			csetrev = aprintf("@%s", rev ? rev : "+");
 		}
 		if (pending && HAS_GFILE(s)) {
+			if (no_diffs && sccs_hasDiffs(s, SILENT, 1)) {
+				error("%s: local edits in %s\n",
+				    prog, ALIASES);
+				sccs_free(s);
+				return (0);
+			}
 			aliasdb = hash_fromFile(0, s->gfile);
 		} else {
 			bktmp(tmp, "aliasdb");
 			if (sccs_get(s, csetrev, 0,0,0, SILENT|PRINT, tmp)) {
 				error("%s: aliases get failed: rev %s\n",
 				    prog, csetrev ? csetrev : "+");
+				sccs_free(s);
 				return (0);
 			}
 			aliasdb = hash_fromFile(0, tmp);
@@ -379,6 +387,10 @@ aliasdb_init(nested *n, project *p, char *rev, int pending)
 		if (csetrev) free(csetrev);
 		sccs_free(s);
 	} else if (pending) {
+		if (no_diffs && exists(buf)) {
+			error("%s: local edits in %s\n", prog, ALIASES);
+			return (0);
+		}
 		aliasdb = hash_fromFile(0, buf); /* may have gfile */
 	}
 
@@ -882,7 +894,7 @@ dbLoad(nested *n, hash *aliasdb)
 {
 	unless (aliasdb) {
 		unless (n->aliasdb ||
-		    (n->aliasdb = aliasdb_init(n, 0, n->tip, n->pending))) {
+		    (n->aliasdb = aliasdb_init(n, 0, n->tip, n->pending, 0))) {
 			return (0);
 		}
 		aliasdb = n->aliasdb;

@@ -88,9 +88,32 @@ test `bk alias list HERE` = "default" || fail
 test `bk components -h | wc -l` -eq 0 || fail
 echo OK
 
-echo $N And show empty default which fails leaves aliases edited ....$NL
+echo $N Show that a failed update to aliases reverts changes ........$NL
 cd "$HERE/project"
 bk alias set $Q DEFAULT 2> ERR && fail -f ERR
 grep -q "No other sources for gcc known" ERR || fail -f ERR
-bk -r check -ac 2> ERR && fail fix test
-echo "failed (bug XXX alias.c line 253)"
+bk -r check -ac || fail
+echo OK
+
+echo $N Local edits in alias file can be queried ....................$NL
+bk edit $Q BitKeeper/etc/aliases || fail
+(cd gcc; echo @FOO; bk id) >> BitKeeper/etc/aliases
+cp BitKeeper/etc/aliases SAVE
+bk alias FOO > GOT || fail
+cat <<EOF > WANT
+./gcc
+EOF
+cmpfiles GOT WANT
+test `bk sfiles -gc` = "BitKeeper/etc/aliases" || fail
+cmpfiles SAVE BitKeeper/etc/aliases
+echo OK
+
+echo $N New aliases are blocked with local edits ....................$NL
+bk alias new BAR ./gcc 2>ERR && fail -f ERR should have failed
+cat <<EOF > WANT
+alias: local edits in BitKeeper/etc/aliases
+EOF
+cmpfiles ERR WANT
+test `bk sfiles -gc` = "BitKeeper/etc/aliases" || fail
+cmpfiles SAVE BitKeeper/etc/aliases
+echo OK

@@ -627,7 +627,7 @@ nested_aliases(nested *n, char *rev, char ***aliases, char *cwd, int pending)
 	int	rc = -1;
 	hash	*aliasdb = 0;
 
-	if ((aliasdb = aliasdb_init(n, n->cset->proj, rev, pending)) &&
+	if ((aliasdb = aliasdb_init(n, n->cset->proj, rev, pending, 0)) &&
 	    !aliasdb_chkAliases(n, aliasdb, aliases, cwd) &&
 	    !aliasdb_tag(n, aliasdb, *aliases)) {
 		rc = 0;

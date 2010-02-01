@@ -117,7 +117,8 @@ void	nested_writeHere(nested *n);
 
 #define	ALIASES	"BitKeeper/etc/aliases"
 
-hash	*aliasdb_init(nested *n, project *p, char *rev, int pending);
+hash	*aliasdb_init(nested *n,
+    project *p, char *rev, int pending, int no_diffs);
 int	aliasdb_tag(nested *n, hash *aliasdb, char **aliases);
 char	**aliasdb_expandOne(nested *n, hash *aliasdb, char *alias);
 void	aliasdb_free(hash *db);

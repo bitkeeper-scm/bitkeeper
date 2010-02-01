@@ -412,6 +412,7 @@ check_main(int ac, char **av)
 				fprintf(stderr,
 				    "check: unable to expand %s from %s\n",
 				    n->here[i], "BitKeeper/log/HERE");
+				err = 1;
 			}
 			EACH_STRUCT(comps, c, j) {
 				c->alias = 1;
