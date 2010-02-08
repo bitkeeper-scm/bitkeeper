@@ -207,7 +207,7 @@ takepatch: saved entire patch in $PENDING
 ---------------------------------------------------------------------------
 EOF
 printf "Updating ChangeSet |\010/\010-\010\010, renumbering " >> WANT
-printf "/\010-\010%s\010|\010/\010\010, checking checksums  \n" "\\" >> WANT
+printf "\010, checking checksums  \n" >> WANT
 printf "Updating send-as-deltas |\010/\010-\010 \n" >> WANT
 cat <<EOF >> WANT
 Updating BAM
@@ -224,7 +224,7 @@ takepatch: saved entire patch in $PENDING
 ---------------------------------------------------------------------------
 EOF
 printf "Updating ChangeSet |\010/\010-\010\010, renumbering " >> WANT
-printf "/\010-\010%s\010|\010/\010\010, checking checksums  \n" "\\" >> WANT
+printf "\010, checking checksums  \n" >> WANT
 printf "Updating send-as-deltas |\010/\010-\010 \n" >> WANT
 cat <<EOF >> WANT
 Updating BAM
@@ -321,7 +321,7 @@ takepatch: saved entire patch in $PENDING
 ---------------------------------------------------------------------------
 EOF
 printf "Updating ChangeSet |\010/\010\010, renumbering " >> WANT
-printf "/\010-\010%s\010|\010/\010\010, checking checksums  \n" "\\" >> WANT
+printf "\010, checking checksums  \n" >> WANT
 printf "Updating send-as-deltas |\010/\010-\010 \n" >> WANT
 cat <<EOF >> WANT
 Updating send-as-sfile
