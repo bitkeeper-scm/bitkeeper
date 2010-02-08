@@ -14,6 +14,7 @@
  */
 
 #define	UPGRADEBASE	"http://upgrades.bitkeeper.com/upgrades"
+#define	UPGRADETRIAL	"http://upgrades.bitkeeper.com/upgrades.trial"
 
 private	int	noperms(char *target);
 private	int	upgrade_fetch(char *name, char *file);
@@ -76,6 +77,8 @@ usage:			system("bk help -s upgrade");
 		}
 	} else if ((p = proj_configval(0, "upgrade-url")) && *p) {
 		urlbase = p;
+	} else if (test_release) {
+		urlbase = UPGRADETRIAL;
 	} else {
 		urlbase = UPGRADEBASE;
 	}
