@@ -87,11 +87,15 @@ case $CMD in
 		test $CMD = trial && DEST="$DEST-trial"
 		if [ $OSTYPE = msys -o $OSTYPE = cygwin ] ; 
 		then	# we're on Windows
+			# We only want images done on WinXP
+			test $HOSTNAME = winxp || {
+				test $CMD = save || rm -rf /build/$BKDIR
+				rm -rf /build/.tmp-$BK_USER
+				exit 0
+			}
 			IMG=$TAG-${ARCH}-setup.exe
 			DEST="work:$DEST"
 			CP=rcp
-			# We only want images done on WinXP
-			test $HOSTNAME = winxp || exit 0
 		else
 			IMG=$TAG-$ARCH.bin
 			test -d $DEST || mkdir $DEST

@@ -2050,12 +2050,12 @@ rm -f ../foo
 echo OK
 
 echo $N More running of all triggers with http and bk urls ..........$NL
-(
-set -e -x
 cd "$HERE"
 bk bkd -d -aPORT -l"$HERE/BKD.log" -P"$HERE/BKD.pid" -ikill
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
+(
+set -e -x
 cd clone.mt/BitKeeper
 bk pull bk://localhost:$P/multitrig
 bk fix -c
