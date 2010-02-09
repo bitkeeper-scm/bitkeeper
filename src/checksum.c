@@ -136,6 +136,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 
 	unless (d) d = sccs_top(s);
 
+	if (BAM(s) && !d->hash) return (0);
+
 	if (S_ISLNK(d->mode)) {
 		u8	*t;
 		sum_t	sum = 0;

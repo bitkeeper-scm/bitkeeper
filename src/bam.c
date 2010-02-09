@@ -128,7 +128,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	MMAP	*m;
 	int	n, fd, ok;
 	int	rc = -1;
-	int	use_stdout = ((flags & PRINT) && streq(gfile, "-"));
+	int	use_stdout;
 	char	hash[10];
 
 	s->bamlink = 0;
@@ -166,6 +166,10 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		*p = '.';
 	}
 	unless (ok || (flags & GET_FORCE)) goto done;
+	if (flags & GET_SUM) {
+		rc = 0;
+		goto done;
+	}
 
 	/*
 	 * Hardlink if the conditions are right
@@ -224,6 +228,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 
 copy:	/* try copying the file */
 	assert(din->mode);
+	use_stdout = ((flags & PRINT) && streq(gfile, "-"));
 	if (use_stdout) {
 		fd = 1;
 	} else {

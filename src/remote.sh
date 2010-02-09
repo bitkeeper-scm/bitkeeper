@@ -26,7 +26,7 @@ failed() {
 }
 
 case $CMD in
-    build|save|release)
+    build|save|release|trial)
 	exec > /build/$LOG 2>&1
 	set -e
 	rm -rf /build/$BKDIR
@@ -88,6 +88,11 @@ case $CMD in
 	}
 	make build || failed
 	./build image install || failed
+	test $CMD = trial && {
+		# Note: install non-trial bits in case we
+		# don't crank for 2 weeks!  Then build the trial image:
+		./build trial-image || failed
+	}
 	# save some diskspace for tight machines
 	(cd gui/tcltk; ../../build clean)
 	# run tests
@@ -99,7 +104,7 @@ case $CMD in
 
 	test -d /build/.images || mkdir /build/.images
 	cp utils/bk-* /build/.images
-	test $CMD = release && {
+	test $CMD = release -o $CMD = trial && {
 		# Copy the image to /home/bk/<repo name>
 		TAG=`bk changes -r+ -d:TAG:`
 		test x$TAG = x && {
@@ -111,16 +116,21 @@ case $CMD in
 			echo "Architecture unknown, not copying images"
 			exit 1
 		}
+		DEST="/home/bk/images/$TAG"
+		test $CMD = trial && DEST="$DEST-trial"
 		if [ $OSTYPE = msys -o $OSTYPE = cygwin ] ; 
 		then	# we're on Windows
-			IMG=$TAG-${ARCH}-setup.exe
-			DEST="work:/home/bk/images/$TAG"
-			CP=rcp
 			# We only want images done on WinXP
-			test $HOSTNAME = winxp || exit 0
+			test $HOSTNAME = winxp || {
+				test $CMD = save || rm -rf /build/$BKDIR
+				rm -rf /build/.tmp-$BK_USER
+				exit 0
+			}
+			IMG=$TAG-${ARCH}-setup.exe
+			DEST="work:$DEST"
+			CP=rcp
 		else
 			IMG=$TAG-$ARCH.bin
-			DEST="/home/bk/images/$TAG"
 			test -d $DEST || mkdir $DEST
 			CP=cp
 		fi
