@@ -503,23 +503,30 @@ cranksave: crank.sh remote.sh
 crankstatus: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh status
 
-crankrelease: crank.sh remote.sh
+crankrelease cranktrial: crank.sh remote.sh
 	@(TAG=$(shell bk changes -r+ -d:TAG:) ; \
 	test x$$TAG = x && { \
 		echo Cannot crankrelease with a non-tagged tip ; \
 		exit 1 ; \
 	} ; \
-	test -d /home/bk/images/$$TAG || mkdir -p /home/bk/images/$$TAG ; \
+	if [ $@ = cranktrial ]; \
+	then	TYPE=trial; DIR=/home/bk/images/$$TAG-trial; \
+	else	TYPE=release; DIR=/home/bk/images/$$TAG; \
+	fi; \
+	test -d $$DIR || mkdir -p $$DIR ; \
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh \
-	    LOG=$(LOG) bash crank.sh release ; \
+	    LOG=$(LOG) bash crank.sh $$TYPE ; \
 	bk -R get -qS RELEASE-NOTES ; \
-	cp ../RELEASE-NOTES /home/bk/images/$$TAG ; \
-	cd /home/bk/images/$$TAG ; \
+	cp ../RELEASE-NOTES $$DIR ; \
+	cd $$DIR ; \
 	rm -f MD5SUMS ; \
 	md5sum bk-* >> MD5SUMS ; \
-	echo "Your images are in /home/bk/images/$$TAG" ; \
-	echo "Run './mkupgrades $$TAG' to create upgrade area."; \
-	echo "Run './mkrelease $$TAG' to release this version of bk.")
+	echo "Your images are in $$DIR" ; \
+	if [ $@ = cranktrial ]; \
+	then echo "Run './mkupgrades --trial $$TAG' to create upgrade area."; \
+	else echo "Run './mkupgrades $$TAG' to create upgrade area."; \
+	     echo "Run './mkrelease $$TAG' to release this version of bk."; \
+	fi)
 
 crankclean: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh clean

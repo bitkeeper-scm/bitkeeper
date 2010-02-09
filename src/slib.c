@@ -11750,7 +11750,7 @@ doFast(weave *w, char **patchmap, MMAP *diffs)
 		if (*b == '>') {
 			if (ignore) {
 				while (*p) {
-					w->sum += *p;
+					w->sum += *(u8 *)p;
 					if (*p++ == '\n') break;
 				}
 				w->line++;

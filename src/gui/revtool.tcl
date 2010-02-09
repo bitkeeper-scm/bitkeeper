@@ -1043,7 +1043,7 @@ proc listRevs {r file} \
 
 	# lines: no such delta ``1.6000'' in SCCS/s.ChangeSet
 	if {$err != ""} {
-		if {[string first "lines: no such delta ``$r''" $err]} {
+		if {[string first "lines: no such delta ``$r''" $err] == 0} {
 			set r [regsub -- "-R" $r ""]
 			puts stderr "revtool: no such delta ``$r'' in $file"
 		} else {

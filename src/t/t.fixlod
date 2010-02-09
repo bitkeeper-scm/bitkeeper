@@ -56,7 +56,11 @@ echo $N Make version 1 LOD structures ...............................$NL
 bk clone $Q . ../lod
 cd ../lod
 bk edit $Q d1/a || exit 1
-echo bar >> d1/a
+# redhat 62 wants a different form.
+if bk version | grep -q " for x86-glibc21-linux"
+then	printf "bar\0377\n" >> d1/a
+else	printf "bar\377\n" >> d1/a
+fi
 bk delta $Q -fy'new lod' d1/a || exit 1
 bk commit $S -ynew-lod || exit 1
 rev=`bk prs -r+ -hnd:I: ChangeSet`
