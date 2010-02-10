@@ -113,6 +113,7 @@ doit(sccs *s, s_opts opts)
 	}
 
 	if (opts.respectCset && (e = checkCset(s))) {
+		/* NOTE: if you change msg, also change SDMSG in undo.c */
 		fprintf(stderr,
     			"stripdel: can't remove committed delta %s@%s\n",
 		    s->gfile, e->rev);

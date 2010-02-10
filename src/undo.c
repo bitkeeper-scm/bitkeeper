@@ -6,6 +6,8 @@
 #define	BACKUP_SFIO "BitKeeper/tmp/undo_backup_sfio"
 #define	UNDO_CSETS  "BitKeeper/tmp/undo_csets"
 #define	SFILES	    "BitKeeper/tmp/sfiles"
+#define SDMSG	    "stripdel: can't remove committed delta ChangeSet@"
+#define SDMSGLEN    (sizeof(SDMSG) - 1)
 
 private char	**getrev(char *rev, int aflg);
 private char	**mk_list(char *, char **);
@@ -30,7 +32,7 @@ undo_main(int ac,  char **av)
 	char	rev_list[MAXPATH], undo_list[MAXPATH] = { 0 };
 	FILE	*f;
 	nested	*n = 0;
-	int	i;
+	int	i, match = 0, lines = 0;
 	int	status;
 	int	rmresync = 1;
 	char	**csetrev_list = 0;
@@ -125,7 +127,17 @@ err:		if (undo_list[0]) unlink(undo_list);
 	}
 	status = pclose(f);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-		getMsg("undo_error", bin, 0, stdout);
+		f = fopen(undo_list, "r");
+		while (fnext(buf, f)) {
+			if (strneq(buf, SDMSG, SDMSGLEN)) match = 1;
+			lines++;
+		}
+		fclose(f);
+		if ((lines == 1) && (match == 1)) {
+			getMsg("undo_error2", bin, 0, stdout);
+		} else {
+			getMsg("undo_error", bin, 0, stdout);
+		}
 		cat(undo_list);
 		goto err;
 	}
