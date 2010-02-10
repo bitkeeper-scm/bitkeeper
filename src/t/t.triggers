@@ -2006,8 +2006,6 @@ test -d RESYNC && exit 4
 echo OK
 
 echo $N Run all triggers with nonewline output and trigger path .....$NL
-(
-set -e
 cd "$HERE"
 commercial multitrig
 # set up a trigger path
@@ -2039,28 +2037,28 @@ mkdir "$BK_DOTBK/BitKeeper" || exit 1
 cp -r triggers "$BK_DOTBK"/BitKeeper
 # Okay, triggers created and path set up.  Now fire pre-delta many times:
 cd triggers
-echo OK
+(
 set -x
-bk new $TRIGS
+bk new $TRIGS || fail
 # fire pre and post commit
-bk commit -yall-trigs
+bk commit -yall-trigs || fail
 cd ..
 # clone, rclone, push, pull, undo, tags, collapse, lease renew
-bk clone .. ../../clone.mt
+bk clone .. ../../clone.mt || fail
 touch ../foo
-bk new ../foo
-bk commit -yfoo
-bk push ../../clone.mt
-cd ../../clone.mt/BitKeeper
-bk undo -fr+
-bk tag TOP
-bk pull
-bk _rclone .. ../rclone.mt
+bk new ../foo || fail
+bk commit -yfoo || fail
+bk push ../../clone.mt || fail
+cd ../../clone.mt/BitKeeper || fail
+bk undo -fr+ || fail
+bk tag TOP || fail
+bk pull || fail
+bk _rclone .. ../../rclone.mt || fail
 # pre and post lease proxy
-bk lease flush -a
+bk lease flush -a || fail
 # BK_NO_TRIGGERS=1
-BK_CONFIG="licenseurl: $HERE/rclone.mt! " bk lease renew
-bk collapse -eaTOP
+BK_CONFIG="licenseurl: $HERE/rclone.mt! " bk lease renew || fail
+bk collapse -eaTOP || fail
 rm -f ../foo
 ) > "$HERE/TRIGOUT" 2>&1 || {
 	echo failed
@@ -2075,23 +2073,23 @@ bk bkd -d -aPORT -l"$HERE/BKD.log" -P"$HERE/BKD.pid" -ikill
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 (
-set -e -x
-cd clone.mt/BitKeeper
-bk pull bk://localhost:$P/multitrig
-bk fix -c
-rm ../foo
-bk pull http://localhost:$P/multitrig
-bk undo -faTOP
-bk clone .. bk://localhost:$P/rclone.bk.mt
-bk clone .. http://localhost:$P/rclone.http.mt
-bk takepatch < tmp/undo.patch
-bk resolve -a
-bk takepatch -a < tmp/undo.patch
-bk push bk://localhost:$P/rclone.bk.mt
-bk push http://localhost:$P/rclone.http.mt
-cd ../..
-bk clone bk://localhost:$P/multitrig multitrig.http
-bk clone http://localhost:$P/multitrig multitrig.bk
+set -x
+cd clone.mt/BitKeeper || fail
+bk pull bk://localhost:$P/multitrig || fail
+bk fix -c || fail
+rm ../foo || fail
+bk pull http://localhost:$P/multitrig || fail
+bk undo -faTOP || fail
+bk clone .. bk://localhost:$P/rclone.bk.mt || fail
+bk clone .. http://localhost:$P/rclone.http.mt || fail
+bk takepatch < tmp/undo.patch || fail
+bk resolve -a || fail
+bk takepatch -a < tmp/undo.patch || fail
+bk push bk://localhost:$P/rclone.bk.mt || fail
+bk push http://localhost:$P/rclone.http.mt || fail
+cd ../.. || fail
+bk clone bk://localhost:$P/multitrig multitrig.http || fail
+bk clone http://localhost:$P/multitrig multitrig.bk || fail
 ) > "$HERE/TRIGOUT".bkd 2>&1 || {
 	echo failed
 	cat "$HERE/TRIGOUT".bkd

@@ -709,5 +709,5 @@ echo OK
 echo $N Show that relative paths from a subdirectory ................$NL
 cd src
 bk parent $Q -s ../../project || exit 1
-bk -R parent $Q -s ../../project || exit 1
+bk -R parent $Q -s ../project || exit 1
 echo OK

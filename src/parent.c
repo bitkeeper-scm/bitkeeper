@@ -35,7 +35,6 @@ parent_main(int ac,  char **av)
 	int	i;
 	char	**pull, **push, *which;
 
-	unless (start_cwd) start_cwd = strdup(proj_cwd());
 	if (proj_cd2product() && proj_cd2root()) {
 		fprintf(stderr, "parent: cannot find package root.\n");
 		return (1);

@@ -2237,7 +2237,6 @@ bam_server_main(int ac, char **av)
 #undef	ERROR
 #define	ERROR(x)	{ fprintf(stderr, "BAM server: "); fprintf x ; }
 
-	unless (start_cwd) start_cwd = strdup(proj_cwd());
 	if (proj_cd2product() && proj_cd2root()) {
 		ERROR((stderr, "not in a repository.\n"));
 		return (1);

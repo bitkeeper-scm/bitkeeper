@@ -202,7 +202,6 @@ main(int volatile ac, char **av, char **env)
 				dashr = nested = 1;
 				break;
 			    case 'P':				/* doc 2.0 */
-				start_cwd = strdup(proj_cwd());
 				if (proj_cd2product() && proj_cd2root()) {
 					fprintf(stderr, 
 					    "bk: Cannot find product root.\n");
@@ -219,7 +218,6 @@ main(int volatile ac, char **av, char **env)
 				dashr++;
 				break;
 			    case 'R':				/* doc 2.0 */
-				start_cwd = strdup(proj_cwd());
 				if (proj_cd2root()) {
 					fprintf(stderr, 
 					    "bk: Cannot find package root.\n");
@@ -262,6 +260,7 @@ main(int volatile ac, char **av, char **env)
 			putenv("BK_CHDIR=");
 		}
 		if (remote) {
+			start_cwd = strdup(proj_cwd());
 			ret = remote_bk(quiet, ac, av);
 			goto out;
 		}
@@ -288,6 +287,7 @@ main(int volatile ac, char **av, char **env)
 				}
 			}
 		}
+		start_cwd = strdup(proj_cwd());
 		if (locking) {
 			int	waitsecs;
 

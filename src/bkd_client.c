@@ -125,7 +125,7 @@ nfs_parse(char *p)
 {
 	remote	*r;
 	char	*s;
-	
+
 	unless (*p) return (0);
 	r = new(remote);
 	r->rfd = r->wfd = -1;
@@ -141,12 +141,10 @@ nfs_parse(char *p)
 		}
 		if (IsFullPath(p)) {
 			r->path = strdup(p);
-		} else if (start_cwd) {
+		} else {
 			p = aprintf("%s/%s", start_cwd, p);
 			r->path = fullname(p, 0);
 			free(p);
-		} else {
-			r->path = fullname(p, 0);
 		}
 		r->type = ADDR_FILE;
 		return (r);
