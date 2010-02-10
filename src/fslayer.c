@@ -2,9 +2,7 @@
 #include "sccs.h"
 #include "libc/fslayer/win_remap.h"
 
-private	project	*findpathf(const char *file, char **rel);
-private	project	*findpathd(const char *dir, char **rel);
-private	project	*findpath(const char *dir, char **rel);
+private	project	*findpath(const char *path, char **rel, int sccsonly);
 
 
 private	int	noloop = 1;
@@ -41,7 +39,7 @@ fslayer_open(const char *path, int flags, mode_t mode)
 
 	if (noloop) return (open(path, flags, mode));
 	noloop = 1;
-	if (proj = findpathf(path, &rel)) {
+	if (proj = findpath(path, &rel, 1)) {
 		ret = remap_open(proj, rel, flags, mode);
 		proj_free(proj);
 	} else {
@@ -129,7 +127,7 @@ fslayer_lstat(const char *path, struct stat *buf)
 		ret = lstat(path, buf);
 	} else {
 		noloop = 1;
-		if (isSCCS(path) && (proj = findpath(path, &rel))) {
+		if (proj = findpath(path, &rel, 1)) {
 			ret = remap_lstat(proj, rel, buf);
 			proj_free(proj);
 		} else {
@@ -162,7 +160,7 @@ fslayer_stat(const char *path, struct stat *buf)
 		ret = stat(path, buf);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel)) {
+		if (proj = findpath(path, &rel, 1)) {
 			ret = remap_lstat(proj, rel, buf);
 			proj_free(proj);
 		} else {
@@ -221,7 +219,7 @@ fslayer_unlink(const char *path)
 		ret = unlink(path);
 	} else {
 		noloop = 1;
-		if (proj = findpathf(path, &rel)) {
+		if (proj = findpath(path, &rel, 1)) {
 			ret = remap_unlink(proj, rel);
 			proj_free(proj);
 		} else {
@@ -245,9 +243,9 @@ fslayer_rename(const char *old, const char *new)
 		ret = rename(old, new);
 	} else {
 		noloop  = 1;
-		proj1 = findpath(old, &rel1);
+		proj1 = findpath(old, &rel1, 0);
 		if (rel1) rel1 = strdup(rel1);
-		proj2 = findpath(new, &rel2);
+		proj2 = findpath(new, &rel2, 0);
 
 		ret = remap_rename(proj1, rel1, proj2, rel2);
 		if (rel1) free(rel1);
@@ -270,7 +268,7 @@ fslayer_chmod(const char *path, mode_t mode)
 		ret = chmod(path, mode);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel)) {
+		if (proj = findpath(path, &rel, 1)) {
 			ret = remap_chmod(proj, rel, mode);
 			proj_free(proj);
 		} else {
@@ -294,9 +292,9 @@ fslayer_link(const char *old, const char *new)
 		ret = link(old, new);
 	} else {
 		noloop = 1;
-		proj1 = findpath(old, &rel1);
+		proj1 = findpath(old, &rel1, 0);
 		if (rel1) rel1 = strdup(rel1);
-		proj2 = findpath(new, &rel2);
+		proj2 = findpath(new, &rel2, 0);
 
 		ret = remap_link(proj1, rel1, proj2, rel2);
 		if (rel1) free(rel1);
@@ -336,7 +334,7 @@ fslayer__getdir(char *dir, struct stat *sb)
 		ret = _getdir(dir, sb);
 	} else {
 		noloop = 1;
-		if (proj = findpathd(dir, &rel)) {
+		if (proj = findpath(dir, &rel, 0)) {
 			ret = remap_getdir(proj, rel);
 			proj_free(proj);
 		} else {
@@ -353,12 +351,12 @@ fslayer_realBasename(const char *path, char *realname)
 {
 	char	*rel, *ret = 0;
 	project	*proj;
-	
+
 	if (noloop) {
 		ret = realBasename(path, realname);
 	} else {
 		noloop = 1;
-		if (isSCCS(path) && (proj = findpath(path, &rel))) {
+		if (proj = findpath(path, &rel, 1)) {
  			ret = remap_realBasename(proj, rel, realname);
 			proj_free(proj);
 		} else {
@@ -381,7 +379,7 @@ fslayer_access(const char *path, int mode)
 	} else {
 		noloop = 1;
 
-		if (proj = findpathf(path, &rel)) {
+		if (proj = findpath(path, &rel, 1)) {
 			ret = remap_access(proj, rel, mode);
 			proj_free(proj);
 		} else {
@@ -404,7 +402,7 @@ fslayer_utime(const char *path, const struct utimbuf *buf)
 		ret = utime(path, buf);
 	} else {
 		noloop = 1;
-		if (proj = findpathf(path, &rel)) {
+		if (proj = findpath(path, &rel, 1)) {
 			ret = remap_utime(proj, rel, buf);
 			proj_free(proj);
 		} else {
@@ -427,7 +425,7 @@ fslayer_mkdir(const char *path, mode_t mode)
 		ret = mkdir(path, mode);
 	} else {
 		noloop = 1;
-		if (proj = findpathd(path, &rel)) {
+		if (proj = findpath(path, &rel, 0)) {
 			ret = remap_mkdir(proj, rel, mode);
 			proj_free(proj);
 		} else {
@@ -451,7 +449,7 @@ fslayer_rmdir(const char *dir)
 	} else {
 		noloop = 1;
 
-		if (proj = findpathd(dir, &rel)) {
+		if (proj = findpath(dir, &rel, 0)) {
 			ret = remap_rmdir(proj, rel);
 			proj_free(proj);
 		} else {
@@ -513,115 +511,59 @@ isSCCS(const char *path)
 }
 
 /*
- * given a path to a file, return the proj where that file lives
- * and the relative path to that file from the proj root.
+ * Given a pathname return the project* containing that file
+ * and the relative path from the repo root to this file.
+ * Or return 0 (no proj) and the path name that was passed in unfiltered.
+ *
+ * sccsonly means don't bother if isn't inside a SCCS subdirectory.
+ * This acts like no proj for all non SCCS paths.
  */
 private project *
-findpathf(const char *file, char **relp)
+findpath(const char *path, char **relp, int sccsonly)
 {
 	static	char	buf[MAXPATH];
 
 	char	*rel;
 	project	*proj, *proot;
+	char	*dn;		/* directory to pass to proj_init() */
+	int	c = isSCCS(path);
 	char	pbuf[MAXPATH];
 
-	strcpy(pbuf, file);
-	unless (proj = proj_init(dirname(pbuf))) {
-noproj:		if (relp) {
-			strcpy(buf, file);
-			*relp = buf;
-		}
-		return (0);
-	}
-	if (proj_hasOldSCCS(proj)) {
-		proj_free(proj);
-		goto noproj;
-	}
-	if (proot = proj_isResync(proj)) {
-		/*
-		 * if in RESYNC, use the project root.
-		 * Next line is like a proj_dup() -- it incs refcnt
-		 */
-		proot = proj_init(proj_root(proot));
-		proj_free(proj);
-		proj = proot;
-	}
-	if (relp) {
-		rel = proj_relpath(proj, (char *)file);
-		unless (rel) {
-			ttyprintf("file %s proj %s\n", file, proj_root(proj));
-		}
-		assert(rel);
-		strcpy(buf, rel);
-		free(rel);
-		*relp = buf;
-	}
-	return (proj);
-}
-
-/*
- * given a path to a directory, return the proj where that file lives
- * and the relative path to that file from the proj root.
- */
-private project *
-findpathd(const char *dir, char **relp)
-{
-	static	char	buf[MAXPATH];
-
-	char	*rel;
-	project	*proj, *proot;
-
-	if (isSymlnk((char *)dir)) return (findpathf(dir, relp));
-	unless (proj = proj_init((char *)dir)) {
-noproj:		if (relp) {
-			strcpy(buf, dir);
-			*relp = buf;
-		}
-		return (0);
-	}
-	if (proj_hasOldSCCS(proj)) {
-		proj_free(proj);
-		goto noproj;
-	}
-	if (proot = proj_isResync(proj)) {
-		/*
-		 * if in RESYNC, use the project root.
-		 * Next line is like a proj_dup() -- it incs refcnt
-		 */
-		proot = proj_init(proj_root(proot));
-		proj_free(proj);
-		proj = proot;
-	}
-	if (relp) {
-		rel = proj_relpath(proj, (char *)dir);
-		unless (rel) {
-			ttyprintf("dir %s proj %s cwd %s\n",
-			    dir, proj_root(proj), proj_cwd());
-		}
-		assert(rel);
-		strcpy(buf, rel);
-		free(rel);
-		*relp = buf;
-	}
-	return (proj);
-}
-
-/*
- * give a path that could be a file or directory
- * call findpath[fd]()
- */
-private project *
-findpath(const char *obj, char **relp)
-{
-	int	c = isSCCS(obj);
-
+	strcpy(pbuf, path);
+	dn = dirname(pbuf);
 	if (c == 2) {
-		return (findpathd(obj, relp));
+		/* dir/SCCS dn=dir*/
 	} else if (c) {
-		return (findpathf(obj, relp));
-	} else if (isdir((char *)obj)) {
-		return (findpathd(obj, relp));
-	} else {
-		return (findpathf(obj, relp));
+		/* dir/SCCS/file	dn=dir */
+		dn = dirname(dn);
+	} else if (sccsonly) {
+noproj:		*relp = (char *)path;
+		return (0);
+	} else if (isdir((char *)path)) {
+		dn = (char *)path;
 	}
+	unless (proj = proj_init(dn)) goto noproj;
+	if (proj_hasOldSCCS(proj)) {
+		proj_free(proj);
+		goto noproj;
+	}
+	if (proot = proj_isResync(proj)) {
+		/*
+		 * if in RESYNC, use the project root.
+		 * Next line is like a proj_dup() -- it incs refcnt
+		 */
+		proot = proj_init(proj_root(proot));
+		proj_free(proj);
+		proj = proot;
+	}
+	rel = proj_relpath(proj, (char *)path);
+	unless (rel) {
+		ttyprintf("dir %s proj %s cwd %s\n",
+		    path, proj_root(proj), proj_cwd());
+	}
+	assert(rel);
+	strcpy(buf, rel);
+	*relp = buf;
+	free(rel);
+	return (proj);
 }

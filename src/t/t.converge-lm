@@ -156,13 +156,14 @@ bk clone $Q project copy
 cd project
 BK_USER=AAA
 bk gone $Q project33
-echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
+echo y > ../Y
+bk commit $Q -ywhatever2 >/dev/null 2>&1 < ../Y
 DATE=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/gone`
 UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/gone`
 cd ../copy
 BK_USER=BBB
 bk gone $Q copy55
-echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
+bk commit $Q -ywhatever2 >/dev/null 2>&1 < ../Y
 JUNK=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/gone`
 J_UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/gone`
 bk _mv BitKeeper/etc/SCCS/s.gone OLD
@@ -250,7 +251,7 @@ bk _mv X SCCS/s.gone
 bk admin -z gone
 bk stripdel $Q -r1.0.. gone
 bk gone $Q project44
-echo y | bk commit $Q -ywhatever >/dev/null 2>&1
+bk commit $Q -ywhatever >/dev/null 2>&1 < "$HERE"/Y
 KEY=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 cd "$HERE"
 bk clone $Q project copy
@@ -262,7 +263,7 @@ BK_USER=joe
 BK_HOST=blow.dork.bk_regression.bk
 export BK_USER BK_HOST
 bk gone $Q project34
-echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
+bk commit $Q -ywhatever2 >/dev/null 2>&1 < ../Y
 KEY2=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$KEY" != "$KEY2" ]
 then	echo failed to leave original gone file
@@ -274,7 +275,7 @@ BK_USER=jane
 BK_HOST=kick.dork.bk_regression.bk
 export BK_USER BK_HOST
 bk gone $Q copy34
-echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
+bk commit $Q -ywhatever2 >/dev/null 2>&1 < ../Y
 KEY2=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$KEY" != "$KEY2" ]
 then	echo failed to leave original gone file
@@ -313,7 +314,7 @@ cd project
 bk gone $Q project34
 BK_USER=jane
 BK_HOST=kick.dork.bk_regression.bk
-echo y | bk commit -yjane $Q > /dev/null 2>&1
+bk commit -yjane $Q > /dev/null 2>&1 < ../Y
 bk _test -f BitKeeper/etc/SCCS/s.gone || exit 1
 test `bk sfiles -p | wc -l` -eq 0 || {
 	echo failed to commit all files
@@ -324,7 +325,7 @@ cd "$HERE/copy"
 BK_USER=joe
 BK_HOST=blow.dork.bk_regression.bk
 bk gone $Q copy34
-echo y | bk commit -yjoe $Q > /dev/null 2>&1
+bk commit -yjoe $Q > /dev/null 2>&1 < ../Y
 bk _test -f BitKeeper/etc/SCCS/s.gone || exit 1
 test `bk sfiles -p | wc -l` -eq 0 || {
 	echo failed to commit all files
@@ -364,7 +365,7 @@ then	echo failed to move gone into deleted slot and create new one
 fi
 BK_USER=jerk
 BK_HOST=blow.dork.bk_regression.bk
-echo y | bk pull -t $Q ../project >/dev/null 2>&1
+bk pull -t $Q ../project >/dev/null 2>&1 < ../Y
 test -d RESYNC && {
 	echo failed, left RESYNC
 	exit 1
