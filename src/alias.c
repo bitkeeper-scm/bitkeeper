@@ -35,6 +35,7 @@ private	hash	*dbLoad(nested *n, hash *aliasdb);
 private	int	chkReserved(char *alias, int fix);
 private	int	validName(char *name);
 private	comp	*findDir(nested *n, char *cwd, char *dir);
+private	char	*relGlob(char *alias, char *pre, char *cwd);
 
 int	rmAlias = 0;
 
@@ -118,7 +119,6 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 		usage();
 	}
 
-	unless (start_cwd) start_cwd = strdup(proj_cwd());
 	EACH(opts.urls) {
 		char	*u = opts.urls[i];
 
@@ -907,7 +907,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 {
 	int	i, j, reserved, errors = 0, fix = (cwd != 0);
 	comp	*c;
-	char	*alias, **aliases;
+	char	*p, *alias, **aliases;
 	char	**addkeys = 0, **globkeys = 0;
 
 	unless (aliasdb || (aliasdb = dbLoad(n, 0))) {
@@ -1005,13 +1005,20 @@ root:			if (c->product) {
 		}
 
 		/* Is it a glob ? */
-		if (is_glob(alias)) {
+		if (p = is_glob(alias)) {
 #ifndef	CRAZY_GLOB
 			unless (fix) {
 				error( "%s: glob not allowed: %s\n",
 				    prog, alias);
+				errors++;
+				continue;
 			}
-			if (strneq(alias, "./", 2)) alias += 2;
+			unless (alias = relGlob(alias, p, cwd)) {
+				error( "%s: glob not in this repository: %s\n",
+				    prog, aliases[i]);
+				errors++;
+				continue;
+			}
 			assert(!globkeys);
 			EACH_STRUCT(n->comps, c, j) {
 				if (c->product) continue;
@@ -1020,10 +1027,13 @@ root:			if (c->product) {
 					    globkeys, c->rootkey);
 				}
 			}
+			free(alias);
+			alias = 0;
 			unless (globkeys) {
 				error("%s: %s does not match any components.\n",
-				    prog, alias);
+				    prog, aliases[i]);
 				errors++;
+				continue;
 			} else {
 				EACH_INDEX(globkeys, j) {
 					addkeys = addLine(
@@ -1035,7 +1045,6 @@ root:			if (c->product) {
 			removeLineN(aliases, i, free);
 			i--;
 #endif
-			/* XXX: remap a relative glob to repo relative? */
 			continue;
 		}
 
@@ -1137,4 +1146,43 @@ findDir(nested *n, char *cwd, char *dir)
 	c = nested_findDir(n, dir);
 	free(dir);
 	return (c);
+}
+
+/*
+ * compute a glob relative to repo root.  Example:
+ * alias = './path/to/FOO*'
+ * pre = "/FOO*"
+ * pre is points into alias to the last slash before the first glob char.
+ * If no slash, then just the first char:
+ * if alias is 'FOO*X/bar', then pre points to the F : "FOO*X/bar"
+ */
+
+private	char	*
+relGlob(char *alias, char *pre, char *cwd)
+{
+	char	*t1 = 0, *t2 = 0, *ret = 0;
+
+	assert(cwd);		/* proj_relpath will block cwd == "/" */
+	if (*pre == '/') {
+		/*
+		 * if cwd = "/foo/bar"; alias = "src/FOO*"
+		 * then make cwd = "/foo/bar/src"; alias = "FOO*"
+		 */
+		*pre = 0;
+		t1 = aprintf("%s/%s", cwd, alias);
+		cwd = t1;
+		alias = pre+1;
+		*pre = '/';
+	}
+	/* clean and make rel */
+	unless (t2 = proj_relpath(0, cwd)) goto err;
+	if (streq(t2, ".")) {
+		ret = strdup(alias);
+	} else {
+		ret = aprintf("%s/%s", t2, alias);
+	}
+err:
+	if (t1) free(t1);
+	if (t2) free(t2);
+	return (ret);
 }

@@ -29,14 +29,19 @@ glob_equals(void)
 	return (doit);
 }
 
-int
+char	*
 is_glob(char *glob)
 {
 	int	escape = 0;
+	char	*p = glob;
 
 	unless (glob && *glob) return (0);
 
 	for ( ; *glob; glob++) {
+		if (*glob == '/') {
+			p = glob;
+			continue;
+		}
 		if (*glob == '\\') {
 			escape = !escape;
 			continue;
@@ -49,7 +54,7 @@ is_glob(char *glob)
 		    case '=':	unless (glob_equals()) break;
 		    case '?':
 		    case '*':
-		    case '[':	return (1);
+		    case '[':	return (p);
 		}
 	}
 	return (0);

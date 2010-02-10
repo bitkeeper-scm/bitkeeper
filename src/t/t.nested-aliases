@@ -75,7 +75,7 @@ bk alias -e ./gccc\* 2>ERR && {
 	exit 1
 }
 cat <<EOF > WANT
-alias: gccc* does not match any components.
+alias: ./gccc* does not match any components.
 EOF
 checkfiles WANT ERR
 bk alias -e ./gc/\* 2>ERR && {
@@ -84,7 +84,7 @@ bk alias -e ./gc/\* 2>ERR && {
 	exit 1
 }
 cat <<EOF > WANT
-alias: gc/* does not match any components.
+alias: ./gc/* does not match any components.
 EOF
 checkfiles WANT ERR
 # globs that work

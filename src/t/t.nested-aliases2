@@ -242,6 +242,39 @@ test -d glob3/gcc/libcpp/deep || {
 }
 echo OK
 
+echo $N Check relative alias of globs ...............................$NL
+cd glob3/gcc || fail
+cat <<EOF > ../WANT
+./gcc/libcpp
+./gcc/libcpp/deep
+./gcc/libiberty
+EOF
+# simple glob in a subdir */
+bk alias list -e './lib*' > GOT
+cmpfiles ../WANT GOT
+# leading ./ is optional (currently)
+bk alias list -e 'lib*' > GOT
+cmpfiles ../WANT GOT
+# '..' before the globs get collapsed
+bk alias list -e './libcpp/../lib*' > GOT
+cmpfiles ../WANT GOT
+# too many .. put us out of the repo
+bk alias list -e '../../lib*' 2> ERR && fail
+grep -q 'alias: glob not in this repository: ../../lib\*' ERR || fail -f ERR
+# a command that works in repo root does not work in subdir
+bk -P alias list -e './gcc/lib*' > GOT
+cmpfiles ../WANT GOT
+# .. does not work in subdir
+bk alias list -e './gcc/lib*' 2> ERR && fail
+grep -q 'alias: ./gcc/lib\* does not match any components' ERR || fail -f ERR
+# relative works when based in another directory
+mkdir ../other
+cd ../other
+bk alias list -e '../gcc/lib*' > GOT
+cmpfiles ../WANT GOT
+cd ../..
+echo OK
+
 echo $N Remove component, clone previous glob .......................$NL
 # create cset in nm so it is unique and it won't get populated from
 # elsewhere
