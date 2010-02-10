@@ -1668,3 +1668,8 @@ liberty
 EOF
 cmpfiles GOT WANT
 echo OK
+
+echo $N Demonstrate that bk -N check is not allowed .................$NL
+bk -N check > OUT 2>&1 && fail
+grep -q "bk: -N option cannot be used with check" OUT || fail
+echo OK

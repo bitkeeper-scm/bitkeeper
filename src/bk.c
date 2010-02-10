@@ -350,6 +350,10 @@ bad_locking:				fprintf(stderr,
 			if (getenv("_BK_ITERATOR")) exit(0);
 			usage();
 		}
+		if (nested && streq(prog, "check")) {
+			fprintf(stderr, "bk: -N option cannot be used with check\n");
+			return (1);
+		}
 		for (ac = 0; av[ac] = av[optind++]; ac++);
 		if (dashr) {
 			unless (streq(prog, "sfiles") || streq(prog, "sfind")) {
