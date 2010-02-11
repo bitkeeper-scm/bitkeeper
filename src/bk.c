@@ -36,6 +36,7 @@ private	void	showproc_start(char **av);
 private	void	showproc_end(char *cmdlog_buffer, int ret);
 
 #define	MAXARGS	1024
+#define	MAXPROCDEPTH	30	/* fallsafe, don't recurse deeper than this */
 
 private void
 save_gmon(void)
@@ -54,7 +55,7 @@ main(int volatile ac, char **av, char **env)
 {
 	int	i, c, si, ret;
 	int	is_bk = 0, dashr = 0, remote = 0, quiet = 0, all = 0, nested= 0;
-	char	*p, *dir = 0, *locking = 0;
+	char	*csp, *p, *dir = 0, *locking = 0;
 	char	*envargs = 0;
 	char	sopts[30];
 
@@ -368,6 +369,20 @@ bad_locking:				fprintf(stderr,
 	}
 
 run:	trace_init(prog);	/* again 'cause we changed prog */
+
+	/*
+	 * Don't recurse too deep.
+	 */
+	if ((csp = getenv("_BK_CALLSTACK"))) {
+		if (strcnt(csp, ':') >= MAXPROCDEPTH) {
+			fprintf(stderr, "BK callstack: %s\n", csp);
+			fprintf(stderr, "BK callstack too deep, aborting.\n");
+			exit(1);
+		}
+		safe_putenv("_BK_CALLSTACK=%s:%s", csp, prog);
+	} else {
+		safe_putenv("_BK_CALLSTACK=%s", prog);
+	}
 
 	/*
 	 * XXX - we could check to see if we are licensed for SAM and make
@@ -805,13 +820,15 @@ cmdlog_start(char **av, int bkd_cmd)
 	}
 
 	/*
-	 * Special case for abort, if it has args it is a remote cmd so
+	 * Special case for abort: if it has args it is a remote cmd so
 	 * don't lock. If it is called from bk, the enclosing command is
 	 * supposed to do the locking so don't lock either.
 	 *
-	 * I'm sure there is a way to generalize this.
+	 * This latter case applies to undo as well since it's called
+	 * from bk abort.
 	 */
-	if (streq("abort", av[0]) && (hasArgs(av) || bk_isSubCmd)) {
+	if ((streq("abort", av[0]) && (hasArgs(av) || bk_isSubCmd)) ||
+	    (streq("undo", av[0]) && bk_isSubCmd)) {
 		do_lock = 0;
 	}
 

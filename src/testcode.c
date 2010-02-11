@@ -131,3 +131,13 @@ getopt_test_main(int ac, char **av)
 	}
 	return (0);
 }
+
+int
+recurse_main(int ac, char **av)
+{
+	if (av[1]) exit(1);
+
+	if (system("bk -R _recurse")) return (1);
+	return (0);
+}
+

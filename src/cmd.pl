@@ -306,6 +306,7 @@ _rclone
 rcs2bk
 rcsparse
 receive
+_recurse
 _realpath
 regex
 _registry
