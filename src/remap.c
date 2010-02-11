@@ -137,24 +137,10 @@ remap_rename(project *proj1, char *old, project *proj2, char *new)
 		concat_path(buf1, proj_root(proj1), ".bk");
 		concat_path(buf1, buf1, old);
 		if (isdir(buf1)) {
-			/*
-			 * support the magic: RESYNC is a repo with its .bk
-			 * in the product.  Renaming it to something else
-			 * means the .bk needs to be put back inside of the
-			 * new repo
-			 */
-			if (streq(old, "RESYNC") && !streq(new, "RESYNC")) {
-				concat_path(buf2, proj_root(proj2), new);
-				concat_path(buf2, buf2, ".bk");
-				assert(!exists(buf2));
-				mkdirf(buf2);
-				rename(buf1, buf2);
-			} else {
-				concat_path(buf2, proj_root(proj2), ".bk");
-				concat_path(buf2, buf2, new);
-				mkdirf(buf2);
-				rename(buf1, buf2);
-			}
+			concat_path(buf2, proj_root(proj2), ".bk");
+			concat_path(buf2, buf2, new);
+			mkdirf(buf2);
+			rename(buf1, buf2);
 		}
 	}
 	return (rc);

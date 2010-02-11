@@ -161,5 +161,17 @@ test -d remap2/SCCS && fail
 rm -rf remap2
 echo OK
 
+echo $N Verify that a RESYNC moved and moved back works .............$NL
+cd product || fail
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ../clone || fail
+bk pull $Q -R
+bk _mv RESYNC RESYNC.save
+bk _mv RESYNC.save RESYNC
+bk resolve $Q -a || fail
+echo OK
+
 bk _kill bk://localhost:$P
 trap "" 0

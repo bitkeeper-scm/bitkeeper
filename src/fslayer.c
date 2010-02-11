@@ -524,7 +524,7 @@ findpath(const char *path, char **relp, int sccsonly)
 	static	char	buf[MAXPATH];
 
 	char	*rel;
-	project	*proj, *proot;
+	project	*proj;
 	char	*dn;		/* directory to pass to proj_init() */
 	int	c = isSCCS(path);
 	char	pbuf[MAXPATH];
@@ -546,15 +546,6 @@ noproj:		*relp = (char *)path;
 	if (proj_hasOldSCCS(proj)) {
 		proj_free(proj);
 		goto noproj;
-	}
-	if (proot = proj_isResync(proj)) {
-		/*
-		 * if in RESYNC, use the project root.
-		 * Next line is like a proj_dup() -- it incs refcnt
-		 */
-		proot = proj_init(proj_root(proot));
-		proj_free(proj);
-		proj = proot;
 	}
 	rel = proj_relpath(proj, (char *)path);
 	unless (rel) {
