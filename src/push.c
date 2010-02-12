@@ -272,7 +272,6 @@ push(char **av, remote *r, char **envVar)
 			goto err;
 		}
 		send_end_msg(r, abort, envVar);
-		if (r->type == ADDR_HTTP) disconnect(r);
 		goto out;
 	}
 
