@@ -6,7 +6,7 @@ close 204
 fstat 183
 link 7
 lseek 152
-lstat 808
+lstat 711
 mkdir 3
 open 205
 read 224

@@ -220,7 +220,7 @@ char **
 remap_getdir(project *proj, char *dir)
 {
 	int	i, sccs;
-	char	**ret;
+	char	**ret, *t;
 	char	tmp[MAXPATH];
 	char	buf[MAXPATH];
 
@@ -233,7 +233,9 @@ remap_getdir(project *proj, char *dir)
 		concat_path(tmp, dir, "SCCS");
 		fullRemapPath(buf, proj, tmp);
 		if (isdir(buf)) {
-			ret = addLine(ret, strdup("SCCS"));
+			t = malloc(7);
+			memcpy(t, "SCCS\0d", 7);
+			ret = addLine(ret, t);
 			uniqLines(ret, free);
 		}
 	}

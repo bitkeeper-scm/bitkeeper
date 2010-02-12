@@ -8,8 +8,8 @@ lseek 18
 lstat 78
 mkdir 4
 open 74
-read 2818
+read 2854
 rmdir 1
 stat 9
 unlink 10
-write 117
+write 119

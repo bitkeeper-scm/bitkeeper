@@ -74,21 +74,17 @@ extsort(const void *a, const void *b)
 
 /*
  * This function includes an optimization to avoid calls to lstat().
- * If a file is a directory on a UNIX filesystem, then st_nlink equals
- * the number of subdirectories including '.' and '..'.  So after we have
- * found all the subdirectories, then stats are no longer needed.
- *
- * For Windows or windows filesystems, we count on lstat() not
- * returning st_nlink > 2.  That seems it hold is the cases tried.
+ * If the underlying FS and OS support readdir returning d_type, then
+ * the type will be stored after the name (f, d, s). If not, a '?' will
+ * be there.  This can be used to skip an lstat.
  */
 private int
 _walkdir(char *dir, struct stat *sbufp, walkfn fn, void *data)
 {
 	char	**lines;
 	int	i;
-	int	links;
-	int	files, dirs = 0;
 	int	len;
+	int	type;
 	int	ret = 0;
 	struct	dirlist {
 		char	*dir;
@@ -98,31 +94,18 @@ _walkdir(char *dir, struct stat *sbufp, walkfn fn, void *data)
 
 	lines = _getdir(dir, sbufp);
 	sortLines(lines, extsort);
-	files = nLines(lines);
-	/*
-	 * XXX
-	 * was: links = sbufp->st_nlink; // if >= 2, then == numdirs + 2
-	 *
-	 * Set links=0 below to effectively disable the optimizations
-	 * to stop calling lstat() on each directory entry after all
-	 * subdirectories have been found.  This is because with a
-	 * remapped repository st_nlink of a directory is wrong.  It
-	 * counts .bk which the code doesn't see and doesn't count
-	 * SCCS which the code does see.
-	 */
-	links = 0;
 	len = strlen(dir);
 	dir[len] = '/';
 	EACH (lines) {
 		strcpy(&dir[len+1], lines[i]);
 		if (ret == 0) {
-			if (links == 2 || lstat(dir, sbufp)) {
+			type = lines[i][strlen(lines[i]) + 1];
+			if ((type == 'f') ||
+			    (type == 's') || lstat(dir, sbufp)) {
 				sbufp->st_mode = 0;
 			}
 			ret = fn(dir, sbufp, data);
 			if (S_ISDIR(sbufp->st_mode)) {
-				++dirs;
-				if (links > 2) --links;
 				if (ret == 0) {
 					dl = malloc(sizeof(*dl));
 					dl->dir = lines[i];
@@ -136,23 +119,6 @@ _walkdir(char *dir, struct stat *sbufp, walkfn fn, void *data)
 		if (lines[i]) free(lines[i]);
 	}
 	freeLines(lines, 0);
-	/*
-	 * If the loop above didn't exit early one of the follow
-	 * should be true:
-	 *    - links == 0 or 1  because the filesystem didn't use them.
-	 *      (windows or samba)
-	 *    - links == 2 because we found all the subdirectories
-	 *      (unix)
-	 *    - the number of links originally matched the number of files
-	 *      (macos)
-	 */
-        unless (ret != 0 || links <= 2 || links >= files - dirs + 2) {
-		dir[len] = 0;
-		fprintf(stderr, "walkdir() hit unexpected condition:\n\
-\tdir=%s (links=%d files=%d dirs=%d)\n",
-		    dir, links, files, dirs);
-		exit(1);
-	}
 	EACH (dirlist) {
 		dl = (struct dirlist *)dirlist[i];
 		unless (ret) {
@@ -176,12 +142,20 @@ _walkdir(char *dir, struct stat *sbufp, walkfn fn, void *data)
  * even if the list is empty.  The NULL return value is reserved for errors.
  * This removes all duplicates, ".", and "..".
  * It also checks for updates to the dir and retries if it sees one.
+ *
+ * The type of each item is returned after the trailing null if it is
+ * known:  file\0<t>
+ *	f	file
+ *	d	dir
+ *	s	symlink
+ *	?	unknown
  */
 char	**
 _getdir(char *dir, struct stat *sb1)
 {
 	char	**lines = 0;
 	DIR	*d;
+	int	type;
 	struct	dirent   *e;
 	struct  stat	stmp, sb2;
 
@@ -199,9 +173,18 @@ again:
 	}
 	lines = allocLines(16);
 	while (e = readdir(d)) {
-		unless (streq(e->d_name, ".") || streq(e->d_name, "..")) {
-			lines = addLine(lines, strdup(e->d_name));
+		if (streq(e->d_name, ".") || streq(e->d_name, "..")) {
+			continue;
 		}
+		type = '?';
+#ifdef	DT_DIR
+		switch (e->d_type) {
+		    case DT_DIR: type = 'd'; break;
+		    case DT_REG: type = 'f'; break;
+		    case DT_LNK: type = 's'; break;
+		}
+#endif
+		lines = addLine(lines, aprintf("%s%c%c", e->d_name, 0, type));
 	}
 	closedir(d);
 	if (lstat(dir, &sb2)) {
@@ -228,6 +211,7 @@ _getdir(char *dir, struct stat *sb1)
 	char	**lines = 0;
 	char	buf[MAXPATH];
 	long	dh;
+	int	type;
 	int	retry = 5;
 
 	strcpy(buf, dir);
@@ -243,10 +227,16 @@ again:
 		return (0);
 	}
 	do {
-		unless (streq(file, ".") || streq(file, "..")) {
-			localName2bkName(file, file);
-			lines = addLine(lines, strdup(file));
+		if (streq(file, ".") || streq(file, "..")) {
+			continue;
 		}
+		localName2bkName(file, file);
+		if (found_file.attrib & _A_SUBDIR) {
+			type = 'd';
+		} else {
+			type = 'f';
+		}
+		lines = addLine(lines, aprintf("%s%c%c", file, 0, type));
 	} while (_findnext(dh, &found_file) == 0);
 	_findclose(dh);
 	sortLines(lines, 0);
