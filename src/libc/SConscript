@@ -1,5 +1,5 @@
 stubs = map(lambda x: "fslayer/fslayer_" + x + "_stub.c",
-      Split('''open close read write lseek lstat stat unlink rename chmod
+      Split('''open close read write lseek lstat stat fstat unlink rename chmod
       	       link symlink _getdir access utime mkdir rmdir realBasename'''))
 
 Command(stubs + ['fslayer/fslayer.h'],

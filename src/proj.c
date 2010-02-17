@@ -149,6 +149,7 @@ proj_init(char *dir)
 		fdir = dir;
 	} else {
 		unless (cwd = proj_cwd()) return (0);
+		if (strneq(dir, "./", 2)) dir += 2;
 		concat_path(buf, cwd, dir);
 		fdir = buf;
 	}
@@ -233,6 +234,7 @@ find_root(char *dir)
 {
 	int	i;
 	char	*p;
+	project	*proj;
 	char	buf[MAXPATH];
 	char	sym[MAXPATH];
 
@@ -262,8 +264,11 @@ find_root(char *dir)
 	 * Now work backwards up the tree until we find a root marker
 	 */
 	while (p >= buf) {
-		strcpy(++p, BKROOT);
-		if (exists(buf))  break;
+		strcpy(++p, "BitKeeper");
+		if (isdir(buf)) {
+			strcpy(p, BKROOT);
+			if (isdir(buf)) break;
+		}
 		if (--p <= buf) {
 			/*
 			 * if we get here, we hit the beginning
@@ -273,6 +278,13 @@ find_root(char *dir)
 		}
 		/* p -> / in .../foo/SCCS/s.foo.c */
 		for (--p; (*p != '/') && (p > buf); p--);
+		if (p > buf) {
+			*p = 0;
+			if (proj = projcache_lookup(buf)) {
+				return (strdup(proj->root));
+			}
+			*p = '/';
+		}
 	}
 	assert(p >= buf);
 	p--;
