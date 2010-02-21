@@ -1,4 +1,10 @@
-Release notes for BitKeeper pre 5.0
+Release notes for BitKeeper beta 2
+
+Minor bugfixes and polish.  Do fewer stats of the file system.
+
+===============================================================================
+
+Release notes for BitKeeper beta
 
 This is a preview of a major release of BitKeeper
 
