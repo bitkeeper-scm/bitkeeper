@@ -1,4 +1,4 @@
-Release notes for BitKeeper version 4.5 (released XX-Jan-2010)
+Release notes for BitKeeper version 4.5 (released 12-Feb-2010)
 
 This release includes a major performance improvement for pull and
 push.  Unlike the bk-4.3 performance fix, this version will improve the
@@ -6,7 +6,7 @@ performance of pulls that do a merge.  Also in cases were file
 operations are expensive, like over NFS, the gains can be dramatic.
 
 This fix requires a new patch format created by makepatch and consumed
-by takepatch.  As a result only when both the bk and bkd are upgraded
+by takepatch.  As a result, only when both the bk and bkd are upgraded
 will the new faster patch code be enabled.
 
 Bugfixes/Notes
