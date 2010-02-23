@@ -94,6 +94,7 @@ private	struct {
 	u32	sfile2gfile:1;	/* convert sfiles to gfiles when printing */
 	u32	lclone:1;	/* lclone-mode, hardlink everything */
 	u32	index:1;	/* -I generate index info sfio */
+	u32	mark_no_dfiles:1;
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	newline;	/* -r makes it \r instead of \n */
 	char	**more;		/* additional list of files to send */
@@ -114,14 +115,18 @@ private	struct {
 int
 sfio_main(int ac, char **av)
 {
-	int	c;
+	int	c, rc;
+	longopt	lopts[] = {
+		{ "mark-no-dfiles", 300 },
+		{ 0, 0 }
+	};
 
 	opts = (void*)calloc(1, sizeof(*opts));
 	opts->newline = '\n';
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefgHIiKLlmopP;qr", 0)) != -1) {
+	while ((c = getopt(ac, av, "a;A;b;BefgHIiKLlmopP;qr", lopts)) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -161,6 +166,9 @@ sfio_main(int ac, char **av)
 		    case 'm': opts->doModes = 1; break; 	/* doc 2.0 */
 		    case 'q': opts->quiet = 1; break; 		/* doc 2.0 */
 		    case 'r': opts->newline = '\r'; break;
+		    case 300:	/* --mark-no-dfiles */
+			opts->mark_no_dfiles = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -192,10 +200,13 @@ sfio_main(int ac, char **av)
 		return (1);
 	}
 #endif
-	if (opts->mode == M_OUT)       return (sfio_out());
-	else if (opts->mode == M_IN)   return (sfio_in(1));
-	else if (opts->mode == M_LIST) return (sfio_in(0));
+	if (opts->mode == M_OUT)       rc = sfio_out();
+	else if (opts->mode == M_IN)   rc = sfio_in(1);
+	else if (opts->mode == M_LIST) rc = sfio_in(0);
+	else goto usage;
 
+	if (opts->mark_no_dfiles) touch(NO_DFILE, 0666);
+	return (rc);
 usage:	free(opts);
 	usage();
 }
@@ -902,7 +913,7 @@ done:	if (fread(buf, 1, 10, stdin) != 10) {
 	print_status(file, sz);
 	return (0);
 
-err:	
+err:
 	if (extract) {
 		close(fd);
 		unlink(file);
@@ -915,6 +926,10 @@ print_status(char *file, u32 sz)
 {
 	int	n;
 
+	if (opts->mark_no_dfiles &&
+	    (strneq(file, "SCCS/d.", 7) || strstr(file, "/SCCS/d."))) {
+		opts->mark_no_dfiles = 0;
+	}
 	unless (opts->quiet) {
 		fputs(opts->prefix, stderr);
 		n = strlen(opts->prefix);

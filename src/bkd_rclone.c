@@ -395,7 +395,7 @@ getsfio(void)
 	int	status, pfd;
 	u32	in, out;
 	FILE	*f;
-	char	*cmds[10] = {"bk", "sfio", "-i", "-q", 0};
+	char	*cmds[10] = {"bk", "sfio", "-i", "-q", "--mark-no-dfiles", 0};
 	pid_t	pid;
 
 	pid = spawnvpio(&pfd, 0, 0, cmds);

@@ -88,7 +88,7 @@ check_main(int ac, char **av)
 	MDBM	*pathDB = mdbm_mem();
 	hash	*keys = hash_new(HASH_MEMHASH);
 	sccs	*s;
-	int	ferr, errors = 0, eoln_native = 1, want_dfile;
+	int	ferr, errors = 0, eoln_native = 1;
 	int	i, e;
 	char	*name;
 	char	buf[MAXKEY];
@@ -232,7 +232,6 @@ check_main(int ac, char **av)
 	}
 	unless (fix) fix = proj_configbool(0, "autofix");
 
-	want_dfile = exists(DFILE);
 	if (verbose == 1) tick = progress_start(PROGRESS_BAR, nfiles);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
 	    name; n++, name = sfileNext()) {
@@ -292,7 +291,7 @@ check_main(int ac, char **av)
 		if (readonly_gfile(s)) ferr++, errors |= 0x08;
 		if (writable_gfile(s)) ferr++, errors |= 0x08;
 		if (chk_csetpointer(s)) ferr++, errors |= 0x10;
-		if (want_dfile && chk_dfile(s)) ferr++, errors |= 0x10;
+		if (!resync && chk_dfile(s)) ferr++, errors |= 0x10;
 		if (check_eoln && chk_eoln(s, eoln_native)) {
 			ferr++, errors |= 0x10;
 		}
@@ -506,6 +505,10 @@ out:
 		unlink(CHECKED);
 		touch(CHECKED, 0666);
 	}
+	if (all && !errors) {
+		/* clean check so we can update dfile marker */
+		enableFastPendingScan();
+	}
 	if (t = getenv("_BK_RAN_CHECK")) touch(t, 0666);
 	return (errors);
 }
@@ -528,6 +531,7 @@ chk_dfile(sccs *s)
 {
 	delta	*d;
 	char	*p, *dfile;
+	int	hasdfile;
 	int	rc = 0;
 
 	if (CSET(s) && proj_isProduct(s->proj)) return (0);
@@ -546,14 +550,18 @@ chk_dfile(sccs *s)
 	dfile = s->sfile;
 	p = basenm(dfile);
 	*p = 'd';
+	hasdfile = exists(dfile);
 	if (d->flags & D_CSET) {
 		/* nothing pending, cleanup any extra dfiles */
-		unlink(dfile);
+		if (hasdfile) unlink(dfile);
 	} else {
 		/* pending */
-		unless (exists(dfile)) {
-			getMsg("missing_dfile", s->gfile, '=', stderr);
-			rc = 1;
+		unless (hasdfile) {
+			if (exists(DFILE)) {
+				getMsg("missing_dfile", s->gfile, '=', stderr);
+				rc = 1;
+			}
+			touch(dfile, 0666);
 		}
 	}
 	*p = 's';

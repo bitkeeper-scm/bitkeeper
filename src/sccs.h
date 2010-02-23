@@ -375,6 +375,7 @@ typedef	enum {
 				"BitKeeper/log/x.id_cache")
 #define	IDCACHE		getIDCACHE(0)
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
+#define	NO_DFILE	"BitKeeper/log/no_dfiles"
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	CHECKED		"BitKeeper/log/checked"
 #define	REPO_ID		"BitKeeper/log/repo_id"

@@ -163,13 +163,13 @@ for partial_check in off on; do
     BK_CONFIG="partial_check: $partial_check! "
     export BK_CONFIG
     for dfile in 0 1; do
-	if [ $dfile = 1 ]
-	then	bk _touch BitKeeper/etc/SCCS/x.dfile
-	else	bk _rm -f BitKeeper/etc/SCCS/x.dfile
-	fi
 	for rev in -r+ -rBASE "" -lrBASE -l; do
             for pending in 1 0; do
 		bk -r check -ac
+		if [ $dfile = 1 ]
+		then	bk _touch BitKeeper/etc/SCCS/x.dfile
+		else	bk _rm -f BitKeeper/etc/SCCS/x.dfile
+		fi
 	        test $pending = 1 && bk delta $Q -yboth foo bar
 		theTest $rev
 		printf "partial:$partial_check\t$rev\tD:$dfile P:$pending\t" \

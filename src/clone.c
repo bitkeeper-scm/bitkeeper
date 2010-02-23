@@ -30,7 +30,7 @@ private	struct {
 private	clonerc	attach(void);
 private	clonerc	clone(char **, remote *, char *, char **);
 private	clonerc	clone2(remote *r);
-private int	sfio(remote *r, int BAM, char *prefix);
+private int	sfio(remote *r, char *prefix);
 private int	initProject(char *root, remote *r);
 private	void	lclone(char *from);
 private int	relink(char *a, char *b);
@@ -427,7 +427,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	unless (p = getenv("_BK_REPO_PREFIX")) {
 		p = basenm(local);
 	}
-	if (sfio(r, 0, p) != 0) {
+	if (sfio(r, p) != 0) {
 		fprintf(stderr, "sfio errored\n");
 		disconnect(r);
 		goto done;
@@ -825,7 +825,7 @@ initProject(char *root, remote *r)
 
 
 private int
-sfio(remote *r, int BAM, char *prefix)
+sfio(remote *r, char *prefix)
 {
 	int	n, status;
 	pid_t	pid;
@@ -836,7 +836,7 @@ sfio(remote *r, int BAM, char *prefix)
 	cmds[n = 0] = "bk";
 	cmds[++n] = "sfio";
 	cmds[++n] = "-i";
-	if (BAM) cmds[++n] = "-B";
+	cmds[++n] = "--mark-no-dfiles";
 	if (opts->quiet) {
 		cmds[++n] = "-q";
 	} else {
@@ -879,6 +879,15 @@ sccs_rmUncommitted(int quiet, FILE *f)
 	int	i;
 	char	**files = 0;	/* uniq list of s.files */
 
+
+	/*
+	 * If sfio found no dfiles, but did transfer the dfile marker,
+	 * then there are not pending deltas to remove.
+	 */
+	if (exists(NO_DFILE) && exists(DFILE)) {
+		unlink(NO_DFILE);
+		return;
+	}
 	unless (quiet) {
 		fprintf(stderr,
 		    "Looking for, and removing, any uncommitted deltas...\n");

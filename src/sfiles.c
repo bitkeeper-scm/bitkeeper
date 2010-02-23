@@ -530,15 +530,14 @@ out:	unless (printed) do_print(state, gfile, 0);
 	 * Do not sccs_free() if it is passed in from outside
 	 */
 	if (local_s) sccs_free(s);
+	assert(dfile);
+	/* No pending delta, remove redundant d.file */
+	unless (state[PSTATE] == 'p') unlink(dfile);
 	if (opts.fixdfile) {
-		/* No pending delta, remove redundant d.file */
-		unless (state[PSTATE] == 'p') {
-			unlink(dfile);
-		} else {
-			touch(dfile, 0666);
-		}
+		/* add missing dfile */
+		if (state[PSTATE] == 'p') touch(dfile, 0666);
 	}
-	if (dfile) free(dfile);
+	free(dfile);
 }
 
 /*
@@ -1443,6 +1442,7 @@ struct sinfo {
 	void	*data;		/* pass this to the fn() */
 	int	rootlen;	/* the len of the dir passed to walksfiles() */
 	char	*proj_prefix;	/* the prefix needed to make a relpath */
+	hash	*dfiles;	/* remember dfiles seen in this dir */
 	u32	is_clone:1;	/* special clone walkfn */
 	u32	is_modes:1;	/* -m in clone walkfn */
 };
@@ -1456,6 +1456,10 @@ findsfiles(char *file, struct stat *sb, void *data)
 
 	unless (p) return (0);
 	if (S_ISDIR(sb->st_mode)) {
+		if (si->dfiles) {
+			hash_free(si->dfiles);
+			si->dfiles = 0;
+		}
 		if (p - file > si->rootlen && patheq(p+1, "BitKeeper")) {
 			/*
 			 * Do not cross into other package roots
@@ -1519,6 +1523,8 @@ findsfiles(char *file, struct stat *sb, void *data)
 				if (exists(file)) si->fn(file, sb, si->data);
 				strcpy(p+5, "HERE");
 				if (exists(file)) si->fn(file, sb, si->data);
+				strcpy(p+5, "x.id_cache");
+				if (exists(file)) si->fn(file, sb, si->data);
 			}
 		}
 		if (prunedirs) {
@@ -1528,11 +1534,21 @@ findsfiles(char *file, struct stat *sb, void *data)
 		}
 	} else {
 		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
+			if (si->dfiles && hash_fetchStr(si->dfiles, p+3)) {
+				/* clone includes d.files too */
+				p[1] = 'd';
+				si->fn(file, sb, si->data);
+				p[1] = 's';
+			}
 			return (si->fn(file, sb, si->data));
 		} else if (si->is_clone &&
 		    (p - file >= 6) && pathneq(p - 5, "/SCCS/d.", 8)) {
-			/* clone includes d.files too */
-			return (si->fn(file, sb, si->data));
+			/*
+			 * remember we saw this dfile, this trims
+			 * dangling dfiles without extra stats
+			 */
+			unless(si->dfiles) si->dfiles = hash_new(HASH_MEMHASH);
+			hash_storeStr(si->dfiles, p+3, 0);
 		} else if (patheq(p+1, BKSKIP)) {
 			/*
 			 * Skip directory containing a .bk_skip file

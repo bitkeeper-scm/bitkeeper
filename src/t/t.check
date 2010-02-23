@@ -339,7 +339,8 @@ echo $N Make sure check complains is cset marks are missing .........$NL
 cd "$HERE"
 bk clone $Q project bad || exit 1
 cd bad
-bk admin -D d1/a  || exit 1
+bk admin -FSCCS d1/a  || exit 1
+bk _rm d1/SCCS/d.a || fail
 bk -r check -a >OUT 2>ERRS && {
 	echo check should have failed
 	exit 1
@@ -349,6 +350,18 @@ grep -q 'has pending deltas but no d.file' ERRS || {
 	cat ERRS
 	exit 1
 }
+bk _test -f d1/SCCS/d.a || fail
+echo OK
+
+echo $N Show that check will repair dfile errors ....................$NL
+bk _rm d1/SCCS/d.a || fail
+bk _touch d1/SCCS/d.b || fail
+bk _rm BitKeeper/etc/SCCS/x.dfile || fail
+# no error because no marker
+bk -r check -a || fail
+bk _test -f d1/SCCS/d.a || fail		# add missing
+bk _test -f d1/SCCS/d.b && fail		# remove extra
+bk _test -f BitKeeper/etc/SCCS/x.dfile || fail	# restore marker
 cd "$HERE"
 rm -rf bad
 echo OK

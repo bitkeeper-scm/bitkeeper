@@ -54,7 +54,6 @@ if bk _test ! -f ../copy/src/SCCS/s.h.h; then echo failed to receive; exit 1; fi
 cd "$HERE/project"; bk -r clean; bk -r admin -Zgzip
 cd "$HERE/copy"; bk -r clean; bk -r admin -Zgzip
 cd "$HERE"
-bk _rm project/BitKeeper/etc/SCCS/x.dfile
 bk _rm project/$IDCACHE
 bk _rm copy/$IDCACHE
 rm -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
