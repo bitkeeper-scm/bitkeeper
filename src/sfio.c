@@ -205,7 +205,9 @@ sfio_main(int ac, char **av)
 	else if (opts->mode == M_LIST) rc = sfio_in(0);
 	else goto usage;
 
+#ifndef SFIO_STANDALONE
 	if (opts->mark_no_dfiles) touch(NO_DFILE, 0666);
+#endif
 	return (rc);
 usage:	free(opts);
 	usage();
