@@ -373,7 +373,7 @@ _usleep
 uuencode
 uudecode
 val
-version
+version remote
 what
 which
 xflags

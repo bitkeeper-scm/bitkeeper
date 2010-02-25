@@ -192,7 +192,7 @@ OBJ =	bkver.o cmd.o \
 	testdates.o time.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
-	user.o utils.o uu.o version.o what.o which.o \
+	user.o utils.o uu.o what.o which.o \
 	xflags.o \
 	zone.o
 SCRIPTS	= applypatch bk.script import \

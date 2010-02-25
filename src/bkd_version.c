@@ -1,23 +1,67 @@
-#include "system.h"
 #include "sccs.h"
+#include "bkd.h"
 #include "logging.h"
+
+/*
+ * Show bkd version
+ */
+int
+cmd_version(int ac, char **av)
+{
+	out("OK-");
+	out(BKD_VERSION1_2);
+	out("\n");
+	return (0);
+}
+
+/*
+ * remote enabled commands need to be in a bkd_*.c file
+ */
 
 int
 version_main(int ac, char **av)
 {
 	int	c;
 	char	*p;
+	char	**remcmd, *freeme;
+	int	i;
+	int	justver = 0;
+	int	rc;
 
 	while ((c = getopt(ac, av, "s", 0)) != -1) {
 		switch (c) {
 		    case 's':
-			p = bk_vers;
-			if (strneq(p, "bk-", 3)) p += 3;
-			puts(p);
-			return (0);
+			justver = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
+
+	if (av[optind] && av[optind+1]) {
+		fprintf(stderr,
+		    "%s: only one URL on the command line\n", prog);
+		return (1);
+	}
+	if (av[optind]) {
+		freeme = aprintf("-q@%s", av[optind]);
+		remcmd = addLine(0, "bk");
+		remcmd = addLine(remcmd, freeme);
+		for (i = 0; i < optind; i++) remcmd = addLine(remcmd, av[i]);
+		remcmd = addLine(remcmd, 0);
+		rc = spawnvp(_P_WAIT, "bk", &remcmd[1]);
+		rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 99;
+		freeLines(remcmd, 0);
+		free(freeme);
+		return (rc);
+	}
+
+	if (justver) {
+		p = bk_vers;
+		if (strneq(p, "bk-", 3)) p += 3;
+		puts(p);
+		return (0);
+	}
+
 	bkversion(stdout);
 	return (0);
 }

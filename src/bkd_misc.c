@@ -177,7 +177,7 @@ cmd_bk(int ac, char **av)
 	int	p[2];
 	pid_t	pid;
 	fd_set	rfds, wfds;
-	CMD     *cmd;
+	CMD     *cmd = 0;
 	zgetbuf *zin = 0;
 	zputbuf *zout = 0;
 	char    *line, *wnext;
@@ -234,7 +234,7 @@ err:			if (zout) {
 	 * XXX - probably don't need this and probably should remove
 	 * after review.
 	 */
-	unless (isdir(BKROOT)) {
+	unless (isdir(BKROOT) || (cmd && streq(cmd->name, "version"))) {
 		strcpy(buf, "ERROR-not at repository root\n");
 		goto err;
 	}

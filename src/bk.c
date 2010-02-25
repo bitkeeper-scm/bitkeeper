@@ -262,6 +262,7 @@ main(int volatile ac, char **av, char **env)
 		}
 		if (remote) {
 			start_cwd = strdup(proj_cwd());
+			cmdlog_start(av, 0);
 			ret = remote_bk(quiet, ac, av);
 			goto out;
 		}

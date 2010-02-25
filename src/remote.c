@@ -210,6 +210,8 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	if (strneq(buf, "ERROR-cannot use key", 20 ) ||
 	    strneq(buf, "ERROR-cannot cd to ", 19)) {
 		i = 1<<4;
+		fprintf(stderr, "##### %s #####\n", u);
+		fprintf(stderr, "Repository doesn\'t exist.\n");
 		goto out;
 	}
 	if (strneq("ERROR-BAD CMD: bk", line, 17)) {
