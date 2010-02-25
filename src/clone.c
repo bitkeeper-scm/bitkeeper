@@ -835,7 +835,7 @@ sfio(remote *r, char *prefix)
 
 	cmds[n = 0] = "bk";
 	cmds[++n] = "sfio";
-	cmds[++n] = "-i";
+	cmds[++n] = "-gi";
 	cmds[++n] = "--mark-no-dfiles";
 	if (opts->quiet) {
 		cmds[++n] = "-q";
