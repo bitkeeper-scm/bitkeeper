@@ -33,9 +33,12 @@ here_main(int ac, char **av)
 		nav = addLine(nav, strdup("alias"));
 		nav = addLine(nav, strdup(av[1])); /* add|rm|set */
 		/* copy options */
-		for (i = 2; av[i] && (av[i][0] == '-'); i++) {
+		for (i = 2; av[i] && (av[i][0] == '-') && av[i][1]; i++) {
+			if (streq(av[i], "--")) {
+				i++;
+				break;
+			}
 			nav = addLine(nav, strdup(av[i]));
-			if (streq(av[i], "--")) break;
 		}
 		nav = addLine(nav, strdup("here"));
 		/* copy args */

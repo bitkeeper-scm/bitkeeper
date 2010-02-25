@@ -55,10 +55,8 @@ echo OK
 
 echo $N Unpopulate even and primes...................................$NL
 cd "$HERE/copy"
-bk here rm $Q even primes || {
-	echo failed
-	exit 1
-}
+echo even | bk here rm $Q - || fail dash
+bk here rm $Q -- primes || fail dashdash
 bk comps -h > GOT
 cat <<EOF > WANT
 ./comp1
