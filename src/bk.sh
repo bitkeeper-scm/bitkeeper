@@ -39,7 +39,21 @@ __cd2product() {
 
 # faster way to get repository status
 _repocheck() {
-	bk -r check -acv
+	V=-v
+	Q=""
+	case "X$1" in
+	    X-q)	Q=-q; V="";;
+	    X-*)	echo "Invalid option: $1"
+	    		echo "Usage: bk repocheck [-q]"
+			printf "This checks repository integrity by running: "
+			echo "bk -Ar check -aBv"
+			echo Use -q to run quietly
+			exit 1;;
+	esac
+	CMD="bk -Ar $Q check -aB $V"
+	# check output goes to stderr, so put this to stderr too
+	test "X$Q" = X && echo running: $CMD 1>&2
+	$CMD
 }
 
 # shorthand to dig out renames

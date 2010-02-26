@@ -483,3 +483,21 @@ bk _test -f SCCS/d.foo && {
 	exit 1
 }
 echo OK
+
+echo $N Test repocheck in a standalone and nested repo ..............$NL
+bk repocheck -q || fail
+BK_NOTTY= bk repocheck 2> ERR || fail -f ERR
+grep -q '100%.*OK$' ERR || fail -f ERR
+cd "$HERE"
+nested nest
+bk repocheck -q || fail
+BK_NOTTY= bk repocheck > OUT 2> ERR || fail -f ERR
+# stdout has the component headings
+grep -q '#### gcc ####' OUT || fail -f OUT
+# stderr has the check output
+grep -q '100%.*OK$' ERR || fail -f ERR
+# Bork the repo and see that it says it is borked
+rm -fr gcc
+bk repocheck -q 2> ERR && fail -f ERR
+grep -q "check: error .* 'gcc' is not present" ERR || fail -f ERR
+echo OK
