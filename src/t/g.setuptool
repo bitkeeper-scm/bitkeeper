@@ -46,13 +46,13 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     focus -force .
     test_buttonPress "Next >"
     test_focus
-    test_inputString  [string trim "$BKL_ACADEMIC"]
+    test_inputString  [string trim [test_escapeInput "$BKL_ACADEMIC"]]
     test_inputString "\t\t"
-    test_inputString [string trim "$BKL_A1"]
+    test_inputString [string trim [test_escapeInput "$BKL_A1"]]
     test_inputString \t
-    test_inputString [string trim "$BKL_A2"]
+    test_inputString [string trim [test_escapeInput "$BKL_A2"]]
     test_inputString \t
-    test_inputString [string trim "$BKL_A3"]
+    test_inputString [string trim [test_escapeInput "$BKL_A3"]]
     test_buttonPress "Next >"
     test_focus
     test_buttonPress "I Agree"
@@ -114,13 +114,13 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     focus -force .
     test_buttonPress "Next >"
     test_focus
-    test_inputString  [string trim "$BKL_BASIC"]
+    test_inputString  [string trim [test_escapeInput "$BKL_BASIC"]]
     test_inputString "\t\t"
-    test_inputString [string trim "$BKL_B1"]
+    test_inputString [string trim [test_escapeInput "$BKL_B1"]]
     test_inputString \t
-    test_inputString [string trim "$BKL_B2"]
+    test_inputString [string trim [test_escapeInput "$BKL_B2"]]
     test_inputString \t
-    test_inputString [string trim "$BKL_B3"]
+    test_inputString [string trim [test_escapeInput "$BKL_B3"]]
     test_buttonPress "Next >"
     test_focus
     test_buttonPress "I Agree"
@@ -182,13 +182,13 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     focus -force .
     test_buttonPress "Next >"
     test_focus
-    test_inputString  [string trim "$BKL_PRO"]
+    test_inputString  [string trim [test_escapeInput "$BKL_PRO"]]
     test_inputString "\t\t"
-    test_inputString [string trim "$BKL_P1"]
+    test_inputString [string trim [test_escapeInput "$BKL_P1"]]
     test_inputString \t
-    test_inputString [string trim "$BKL_P2"]
+    test_inputString [string trim [test_escapeInput "$BKL_P2"]]
     test_inputString \t
-    test_inputString [string trim "$BKL_P3"]
+    test_inputString [string trim [test_escapeInput "$BKL_P3"]]
     test_buttonPress "Next >"
     test_focus
     test_buttonPress "I Agree"
@@ -250,13 +250,13 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     focus -force .
     test_buttonPress "Next >"
     test_focus
-    test_inputString  [string trim "$BKL_ENTERPRISE"]
+    test_inputString  [string trim [test_escapeInput "$BKL_ENTERPRISE"]]
     test_inputString "\t\t"
-    test_inputString [string trim "$BKL_E1"]
+    test_inputString [string trim [test_escapeInput "$BKL_E1"]]
     test_inputString \t
-    test_inputString [string trim "$BKL_E2"]
+    test_inputString [string trim [test_escapeInput "$BKL_E2"]]
     test_inputString \t
-    test_inputString [string trim "$BKL_E3"]
+    test_inputString [string trim [test_escapeInput "$BKL_E3"]]
     test_buttonPress "Next >"
     test_focus
     test_buttonPress "I Agree"

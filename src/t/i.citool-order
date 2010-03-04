@@ -10,7 +10,7 @@ doFiles() {
 	echo comment | bk cfile save cmt
 }
 
-echo $N 'Show sort order - do you like it? Press quit (save) ......'$NL
+echo $N 'Show sort order - do you like it? Press quit (save) .........'$NL
 nested project
 doFiles
 cd gcc
@@ -21,7 +21,15 @@ cd ..
 bk citool
 echo OK
 
-echo $N 'Show sort order with gdb first. Press quit (save) ........'$NL
+echo $N 'Show sort order with gdb first. Press quit (save) ...........'$NL
 cd gdb
+bk citool
+echo OK
+
+echo $N 'Show sort order with gdb unpopulated. Press quit (save) .....'$NL
+cd ..
+bk alias -e here | bk alias set here -
+bk here rm -qf gdb
+test -d gdb && fail
 bk citool
 echo OK

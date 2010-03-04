@@ -1,0 +1,204 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Larry McVoy
+# rick@lenox61.bitmover.com|g.citool|20090528163046|26168
+
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/ci.rc"
+
+echo $N Create some data ............................................$NL
+commercial project
+mkdir src
+cd src
+for f in file1 file2 file3 file4 file5 ; do
+	echo "this is $f" > $f
+	bk ci $Q -i -y'new file' $f || exit 1
+done
+bk commit $Q -y'initial checkin' || exit 1
+
+bk edit $Q file1
+echo FOO >> file1
+bk edit $Q file2
+echo FOO >> file2
+echo OK
+
+echo $N Test that Control-l refreshes the diffs .....................$NL
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
+	test_selectFile "src/file1"
+	test_inputComment "comment for src/file1"
+
+	exec bk echo "NEW DIFF" >> "src/file1"
+	test_inputString "^l"
+
+	if {![string match "*NEW DIFF*" [test_getDiffs]]} {
+		puts "Diff window does not contain new diffs after refresh"
+		exit 1
+	}
+
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Test that Control-n moves to the next file ..................$NL
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
+	test_selectFile "src/file1"
+	test_inputString "&n"
+	test_fileIsSelected "src/file2"
+	test_inputString "&n"
+	test_fileIsSelected "ChangeSet"
+
+	## We are on ChangeSet, so moving again should not
+	## move us anywhere.
+	test_inputString "&n"
+	test_fileIsSelected "ChangeSet"
+
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Test that Control-p moves to the previous file ..............$NL
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
+	test_selectFile "ChangeSet"
+	test_inputString "&p"
+	test_fileIsSelected "src/file2"
+	test_inputString "&p"
+	test_fileIsSelected "src/file1"
+
+	## We are at the top, so Control-p again should
+	## not move us anywhere.
+	test_inputString "&p"
+	test_fileIsSelected "src/file1"
+
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Test that Control-t toggles the selected file ...............$NL
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
+	test_selectFile "src/file1"
+	test_fileHasIcon "src/file1" modified
+	test_inputString "^t"
+	test_fileHasIcon "src/file1" excluded
+	test_inputString "^t"
+	test_fileHasIcon "src/file1" modified
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Test that Control-Shift-t toggles all new files .............$NL
+echo FOO >> "extra1"
+echo FOO >> "extra2"
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
+	test_fileHasIcon "src/extra1" extra
+	test_fileHasIcon "src/extra2" extra
+	test_inputString "^+t"
+	test_fileHasIcon "src/extra1" done
+	test_fileHasIcon "src/extra2" done
+	test_inputString "^+t"
+	test_fileHasIcon "src/extra1" excluded
+	test_fileHasIcon "src/extra2" excluded
+	test_inputString "^+t"
+	test_fileHasIcon "src/extra1" done
+	test_fileHasIcon "src/extra2" done
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Test that Control-Shift-x cuts into the paste buffer ........$NL
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
+	test_selectFile "src/file1"
+	test_inputComment "comment for src/file1"
+	test_inputString "^+x"
+
+	if {[test_getPasteBuffer] ne "comment for src/file1"} {
+		puts "Paste buffer does not contain cut comments"
+		puts "Buffer = [test_getPasteBuffer]"
+		exit 1
+	}
+
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Test that Control-Shift-v pastes into the comment window ....$NL
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
+	test_selectFile "src/file1"
+	test_inputComment "comment for src/file1"
+	test_inputString "^+x"
+
+	if {[test_getComments] ne ""} {
+		puts "Comment window not empty after cut"
+		exit 1
+	}
+
+	test_inputString "^+v"
+
+	## Our paste moves us to the next file, so let's make sure
+	## that's right first.
+	test_fileIsSelected "src/file2"
+
+	## Now let's select back and see if the comments are right.
+	test_selectFile "src/file1"
+	if {[test_getComments] ne "comment for src/file1"} {
+		puts "Comment window does not contain pasted comments"
+		puts "Comments = [test_getComments]"
+		exit 1
+	}
+
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Test that Control-Enter presses the Commit button ...........$NL
+bk guitest citool >"$OUT" 2>&1 <<'EOF'
+	test_selectFile "src/file1"
+	test_inputComment "comment"
+	test_selectFile "ChangeSet"
+	test_inputComment "comment"
+
+	test_inputString "^\n"
+
+	if {![string match "*Click \\\[Commit\\\] again*" [test_getComments]]} {
+		puts "Comment window does not have the correct message"
+		puts "Comments = [test_getComments]"
+		exit 1
+	}
+
+	test_buttonPress Quit then "Quit without saving*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK

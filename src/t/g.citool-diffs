@@ -1,0 +1,201 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2005 Larry McVoy
+
+
+## Test citool for the various conditions of the diffs window.
+## We want to see if the diffs or comments in the window match
+## what they should in each given situation.
+
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/ci.rc"
+
+doFiles() {
+	for f in file1 file2 file3 file4 file5 ; do
+		echo "this is $f" > $f
+		bk ci $Q -i -y'new file' $f || exit 1
+	done
+	bk commit $Q -y'initial checkin' || exit 1
+}
+
+echo $N Create some data ............................................$NL
+fresh_nested project
+cd "$HERE/project"
+doFiles
+cd "$HERE/project/gcc"
+doFiles
+cd "$HERE/project/gdb"
+doFiles
+cd "$HERE/project"
+bk commit $Q -y'commit components' || exit 1
+
+bk edit $Q file1
+echo "# gratuitous change" >> file1
+bk edit $Q gcc/file1
+echo "# gratuitous change" >> gcc/file1
+echo OK
+
+
+echo $N Diff window should show diffs of a file .....................$NL
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "file1"
+	set diffs [test_getDiffs]
+	if {![string match "*# gratuitous change*" $diffs]} {
+		puts "diff window does not contain diff output"
+		exit 1
+	}
+	test_buttonPress "Quit" then "Quit without*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Diff window should show file comments in component cset .....$NL
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "gcc/file1"
+	test_inputComment "comment for gcc/file1"
+	test_selectFile "gcc ChangeSet"
+	set diffs [test_getDiffs]
+	if {![string match "*comment for gcc/file1*" $diffs]} {
+		puts "diff window does not contain file comments for gcc/file1"
+		exit 1
+	}
+	test_buttonPress "Quit" then "Quit without*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Diff window should show cset comments in product cset .......$NL
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "file1"
+	test_inputComment "comment for file1"
+	test_selectFile "gcc/file1"
+	test_inputComment "comment for gcc/file1"
+	test_selectFile "ChangeSet"
+	set diffs [test_getDiffs]
+
+	## Product cset should show comments for any commented files
+	## in the product.
+	if {![string match "*comment for file1*" $diffs]} {
+		puts "diff window does not contain comments for file1"
+		exit 1
+	}
+
+	## Product cset should NOT show comments for any files that
+	## are in a component which has no cset comment, even if the
+	## file has been commented.
+	if {[string match "*gcc/file1*" $diffs]} {
+		puts "diff window contains file with no cset comments"
+		exit 1
+	}
+
+	test_selectFile "gcc ChangeSet"
+	test_inputComment "comment for gcc ChangeSet"
+	test_selectFile "ChangeSet"
+	set diffs [test_getDiffs]
+
+	## Product cset should still show comments for any commented
+	## files in the product.
+	if {![string match "*comment for file1*" $diffs]} {
+		puts "diff window does not contain comments for file1"
+		exit 1
+	}
+
+	## Product cset should now show comments for any files that
+	## are in a component with a commented cset.
+	if {![string match "*gcc/file1*" $diffs]} {
+		puts "diff window does not contain commented file in component"
+		exit 1
+	}
+
+	test_buttonPress "Quit" then "Quit without*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Test product cset comments propagating to components ........$NL
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "file1"
+	test_inputComment "comment for file1"
+	test_selectFile "gcc/file1"
+	test_inputComment "comment for gcc/file1"
+	test_selectFile "ChangeSet"
+	test_inputComment "comment for cset"
+	test_selectFile "gcc ChangeSet"
+	set comments [test_getComments]
+
+	## Component cset should now have the same comments as the
+	## product cset.
+	if {$comments ne "comment for cset"} {
+		puts "component cset does not have product cset comments"
+		exit 1
+	}
+
+	test_selectFile "ChangeSet"
+	set diffs [test_getDiffs]
+
+	## We should now see the same comment twice in the comments window.
+	## Once for the product and once for the component that inherited it.
+	if {![string match "*comment for cset*comment for cset*" $diffs]} {
+		puts "product cset does not contain comments for both"
+		exit 1
+	}
+
+	test_buttonPress "Quit" then "Quit without*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Test product cset comment refresh ...........................$NL
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "file1"
+	test_inputComment "comment for file1"
+	test_selectFile "gcc/file1"
+	test_inputComment "comment for gcc/file1"
+	test_selectFile "ChangeSet"
+	set diffs [test_getDiffs]
+
+	## Product cset should have no components showing because
+	## none have been commented yet.
+	if {[string match "*comment for gcc/file1*" $diffs]} {
+		puts "diff window does contains comments for gcc/file1"
+		exit 1
+	}
+
+	## Add a product comment and wait 2 seconds for the refresh.
+	test_inputComment "comment for cset"
+	after 2000 "set ::wait 1"
+	vwait ::wait
+
+	set diffs [test_getDiffs]
+	## Product cset should now show component and product having
+	## the same comment after the refresh.
+	if {![string match "*comment for cset*comment for cset*" $diffs]} {
+		puts "diff window does not contain comments after refresh"
+		exit 1
+	}
+
+	test_buttonPress "Quit" then "Quit without*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK

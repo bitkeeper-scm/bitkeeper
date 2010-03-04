@@ -259,6 +259,7 @@ bk edit $Q file1
 echo 'more stuff' >> file1
 cd ..
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_togglePending
 	set txt [test_getFiles]
 	set rc 0
 	if {![regexp -- {src/file1@1.3\n} $txt]} {
@@ -288,8 +289,8 @@ echo foo > "spaces in dir name/~ spaces in file name"
 mkdir "./~src"
 echo foo > "./~src/file"
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	foreach file {./~foo src/~foo "./~ spaces in file name"
-	    "spaces in dir name/~ spaces in file name" "./~src/file"} {
+	foreach file {~foo src/~foo "~ spaces in file name"
+	    "spaces in dir name/~ spaces in file name" "~src/file"} {
 		test_selectFile $file
 		test_inputComment "This is a comment"
 		test_inputComment "^n"
@@ -401,12 +402,135 @@ echo foo > "t.rev@+"
 echo "comment" | bk cfile save "t.rev@+"
 
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	test_fileHasIcon "./~foo" done
-	test_fileHasIcon "./~ spaces in file name" done
+	test_fileHasIcon "~foo" done
+	test_fileHasIcon "~ spaces in file name" done
 	test_fileHasIcon "spaces in dir name/~ spaces in file name" done
-	test_fileHasIcon "./~src/file" done
+	test_fileHasIcon "~src/file" done
 	test_fileHasIcon "t.att" done
 	test_fileHasIcon "t.rev@+" done
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK
+
+echo $N Test cset comment refresh by Commit button ..................$NL
+cd "$HERE/project"
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+bk edit $Q file1
+echo FOO >> file1
+
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "file1"
+	test_inputComment "This is a comment"
+	test_selectFile "ChangeSet"
+	test_inputComment "CSET COMMENT"
+	test_buttonPress "Commit"
+	after 2000 [list test_buttonPress "Commit"]
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+COMMENTS=`bk -R prs -hd:C: -r+ ChangeSet`
+test "$COMMENTS" = "CSET COMMENT" || {
+	echo failed
+	echo "unexpected comments: $COMMENTS"
+	exit 1
+}
+echo OK
+
+echo $N Test cset comment refresh by Control-Return .................$NL
+cd "$HERE/project"
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+bk edit $Q file1
+echo FOO >> file1
+
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "file1"
+	test_inputComment "This is a comment"
+	test_selectFile "ChangeSet"
+	test_inputComment "CSET COMMENT"
+	test_inputString "^\n"
+	after 2000 [list test_inputString "^\n"]
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+COMMENTS=`bk -R prs -hd:C: -r+ ChangeSet`
+test "$COMMENTS" = "CSET COMMENT" || {
+	echo failed
+	echo "unexpected comments: $COMMENTS"
+	exit 1
+}
+echo OK
+
+echo $N Test that focus is always in the comment window .............$NL
+cd "$HERE/project"
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+bk edit $Q file1
+echo FOO >> file1
+
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	## We make the assumption here that clicking on a file will
+	## at least get us to the comment window to start with.
+	## We record that window and then compare against the rest.
+	test_selectFile "file1"
+	set commentWindow [focus]
+
+	## Control-Tab within a text widget will normally move us
+	## to the next widget.
+	event generate $commentWindow <Control-Tab>
+	update
+	if {[focus] ne $commentWindow} {
+		puts "focus is not in the comment window"
+		puts "[focus] != $commentWindow"
+		exit 1
+	}
+
+	## Control-Shift-Tab within a text widget will normally
+	## move us to the previous widget.
+	event generate $commentWindow <Control-Shift-Tab>
+	update
+	if {[focus] ne $commentWindow} {
+		puts "focus is not in the comment window"
+		puts "[focus] != $commentWindow"
+		exit 1
+	}
+
+	## Even if the comments for a file aren't editable, we
+	## should still have focus in the comment window.
+	test_selectFile "ChangeSet"
+	update
+	if {[focus] ne $commentWindow} {
+		puts "focus is not in the comment window"
+		puts "[focus] != $commentWindow"
+		exit 1
+	}
+
+	test_buttonPress "Quit"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK
+
+echo $N Test for Control-Return line split bug in comments ..........$NL
+cd "$HERE/project"
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+bk edit $Q file1
+echo FOO >> file1
+
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "file1"
+	test_inputComment "This is a comment"
+	test_selectFile "ChangeSet"
+	test_inputComment "CSET COMMENT"
+	set commentWindow [focus]
+	$commentWindow mark set insert 1.4
+	test_inputString "^\n"
+	test_selectFile "ChangeSet"
+	if {[test_getComments] ne "CSET COMMENT"} {
+		puts "comments are split after Control-Return"
+		puts "comments: [test_getComments]"
+		exit 1
+	}
 	test_buttonPress "Quit" then "Quit without saving*"
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }

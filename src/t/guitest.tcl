@@ -144,6 +144,15 @@ proc test_focus {} \
 # which means ^C is different from ^c (the former being control-shift-c). 
 proc test_inputString {string {w ""}} \
 {
+	array set mods {
+	    "^"	"Control-"
+	    "&"	"Command-"
+	    "+"	"Shift-"
+	    "%" "Alt-"
+	}
+
+	if {[tk windowingsystem] ne "aqua"} { set mods(&) "Control-" }
+
 	set keysym(\n) Return
 	array set keysym \
 	    [list \
@@ -180,27 +189,35 @@ proc test_inputString {string {w ""}} \
 	}
 
 	set chars [split [subst -nocommands -novariables $string] {}]
-	set modifier ""
+	set mod  ""
+	set last ""
 	foreach char $chars {
-		if {$char eq "^"} {
-			if {$modifier eq ""} {
-				set modifier "Control-"
-				continue
+		set k $char
+		if {[info exists mods($char)]} {
+			if {$char eq $last} {
+				## Double character becomes a single.
+				## Remove the previously-set modifier.
+				set mod [string map [list $mods($char) ""] $mod]
 			} else {
-				# remove modifier; ^^ becomes ^
-				set modifier ""
+				if {![string match "*$mods($char)*" $mod]} {
+					append mod $mods($char)
+				}
+				set last $char
+				continue
 			}
 		}
-		if {[info exists keysym($char)]} {
-			set k $keysym($char)
-		} else {
-			set k $char
-		}
-		event generate $w <${modifier}KeyPress-$k>
-		event generate $w <${modifier}KeyRelease-$k>
-		set modifier ""
+		if {[info exists keysym($char)]} { set k $keysym($char) }
+		event generate $w <${mod}KeyPress-$k>
+		event generate $w <${mod}KeyRelease-$k>
+		set mod  ""
+		set last $char
 	}
 	update
+}
+
+proc test_escapeInput {string} \
+{
+	return [string map [list ^ ^^ & && + ++ % %%] $string]
 }
 
 # args are ignored but required; this may be called via a variable

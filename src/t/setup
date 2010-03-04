@@ -83,6 +83,7 @@ _make_repo() {
 	TYPE="$1"
 	CF="$2"
 	SFIO="$3"
+	DEEP="$4"
 	REPO="$BK_CACHE/${TYPE}"
 	DASH_P=
 
@@ -102,6 +103,23 @@ _make_repo() {
 		bk commit -q -y"attach gcc, gdb"
 		touch gcc/BitKeeper/tmp/saveme
 		touch gdb/BitKeeper/tmp/saveme
+
+		test "$DEEP" = deep && { (
+			## Make a deep-nested repo.
+			bk setup -C -a -f gui
+			cd gui || {
+			    echo failed to create gui repo
+			    exit 1
+			}
+			bk setup -C -a -f bin
+			bk setup -C -a -f lib
+			bk commit -q -y"create gui repo"
+			touch bin/BitKeeper/tmp/saveme
+			touch lib/BitKeeper/tmp/saveme
+			cd ..
+			bk commit -q -y"attach deep"
+		); }
+		true
 	); return; }
 
 	# Make a cached copy
@@ -182,7 +200,7 @@ nested() {
 	REPO="$BK_CACHE/nested"
 	test -d "$REPO" || {
 		_commercial_config > "$CF"
-		_make_repo nested "$CF" ignored
+		_make_repo nested "$CF" ignored "$2"
 	}
 	(cd "$BK_CACHE"/nested; bk _eula -a)
 	bk clone -lq "$BK_CACHE/nested" "$1" || exit 1

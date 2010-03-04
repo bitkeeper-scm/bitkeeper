@@ -25,13 +25,19 @@ doFiles() {
 }
 
 echo $N Create some data ............................................$NL
-nested project
+nested project deep
+cd "$HERE/project"
 doFiles
-cd gcc
+cd "$HERE/project/gcc"
 doFiles
-cd ../gdb
+cd "$HERE/project/gdb"
 doFiles
-cd ..
+cd "$HERE/project/gui/bin"
+doFiles
+cd "$HERE/project/gui/lib"
+doFiles
+cd "$HERE/project"
+bk commit $Q -y'commit components' || exit 1
 echo OK
 
 echo $N change in product but no components shows up ................$NL
@@ -39,6 +45,106 @@ bk edit $Q file1
 echo "# gratuitous change" >> file1
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_buttonPress "Quit"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N change in a component creates a component cset file .........$NL
+bk edit $Q gcc/file1
+echo "foo" >> gcc/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "gcc ChangeSet"
+	test_buttonPress "Quit"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N change in a deep component creates a component cset file ....$NL
+bk edit $Q gui/lib/file1
+echo "foo" >> gui/lib/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "gui/lib ChangeSet"
+	test_buttonPress "Quit"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N component changeset contains file comments ..................$NL
+bk edit $Q gui/lib/file1
+echo "foo" >> gui/lib/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "gui/lib/file1"
+	test_inputComment "Comments for file1"
+	test_selectFile "gui/lib ChangeSet"
+	set text [test_getDiffs]
+	if {![string match "*Comments for file1*" $text]} {
+	    puts "gui/lib ChangeSet does not have file comments for file1"
+	    exit 1
+	}
+	test_buttonPress "Quit" then "Quit without*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N product changeset contains file and component cset comments .$NL
+bk edit $Q gui/lib/file1
+echo "foo" >> gui/lib/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "gui/lib/file1"
+	test_inputComment "Comments for file1"
+	test_selectFile "gui/lib ChangeSet"
+	test_inputComment "Comment for gui/lib changeset"
+	test_selectFile "ChangeSet"
+	set text [test_getDiffs]
+	if {![string match "*Comments for file1*" $text]} {
+	    puts "gui/lib ChangeSet does not have file comments for file1"
+	    exit 1
+	}
+	if {![string match "*Comment for gui/lib changeset*" $text]} {
+	    puts "ChangeSet does not have gui/lib ChangeSet comments"
+	    exit 1
+	}
+	test_buttonPress "Quit" then "Quit without*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N sfiles failing on a component gives sensible error...........$NL
+chmod 0 gui/lib
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_buttonPress "Quit" then "Quit without*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT"; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+chmod 777 gui/lib
+echo OK
+
+echo $N component cset is marked done on startup if product is done .$NL
+bk edit $Q gcc/file1
+echo "foo" >> gcc/file1
+echo "comment for gcc/file1" | bk cfile save gcc/file1
+echo "comment for cset" | bk cfile save ChangeSet
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_fileHasIcon "gcc ChangeSet" done
+	test_selectFile "gcc ChangeSet"
+	set comments [test_getComments]
+
+	if {$comments ne "comment for cset"} {
+		puts "gcc ChangeSet does not have product cset comments"
+		exit 1
+	}
+	test_buttonPress "Quit" then "Quit without saving*"
 EOF
 err=$?
 test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }

@@ -73,21 +73,23 @@ bk_initBindings()
 		bindtags(w, "BK ${tags}");
 	}
 
-	bind("all", "<Control-p>", _bk.cmd_prev);
-	bind("all", "<Control-n>", _bk.cmd_next);
-	bind("all", "<Control-q>", _bk.cmd_quit);
 	if (_bk.wm eq "aqua") {
-		bind("all", "<Command-p>", _bk.cmd_prev);
-		bind("all", "<Command-n>", _bk.cmd_next);
-		bind("all", "<Command-q>", _bk.cmd_quit);
+		bind("BK", "<Command-p>", "${_bk.cmd_prev}; break");
+		bind("BK", "<Command-n>", "${_bk.cmd_next}; break");
+		bind("BK", "<Command-q>", "${_bk.cmd_quit}; break");
+	} else {
+		bind("BK", "<Control-p>", "${_bk.cmd_prev}; break");
+		bind("BK", "<Control-n>", "${_bk.cmd_next}; break");
+		bind("BK", "<Control-q>", "${_bk.cmd_quit}; break");
 	}
 
-	bind("all", "<Control-b>",  "${_bk.w_main} yview scroll -1 pages");
-	bind("all", "<Control-e>",  "${_bk.w_main} yview scroll  1 units");
-	bind("all", "<Control-f>",  "${_bk.w_main} yview scroll  1 pages");
-	bind("all", "<Control-y>",  "${_bk.w_main} yview scroll -1 units");
-	bind("all", "<Shift-Up>",   "${_bk.w_main} yview scroll -1 units");
-	bind("all", "<Shift-Down>", "${_bk.w_main} yview scroll  1 units");
+	w = _bk.w_main;
+	bind("BK", "<Control-b>",  "${w} yview scroll -1 pages; break");
+	bind("BK", "<Control-e>",  "${w} yview scroll  1 units; break");
+	bind("BK", "<Control-f>",  "${w} yview scroll  1 pages; break");
+	bind("BK", "<Control-y>",  "${w} yview scroll -1 units; break");
+	bind("BK", "<Shift-Up>",   "${w} yview scroll -1 units; break");
+	bind("BK", "<Shift-Down>", "${w} yview scroll  1 units; break");
 
 	// Mouse wheel bindings
 	if (_bk.wm eq "x11") {
