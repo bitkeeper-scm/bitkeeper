@@ -17,11 +17,30 @@ private	int	nfiles(void);
 int
 nfiles_main(int ac, char **av)
 {
-	if (proj_cd2product() && proj_cd2root()) {
+	int	c;
+	int	recurse = 0;
+
+	while ((c = getopt(ac, av, "r", 0)) != -1) {
+		switch (c) {
+		    case 'r':
+			recurse = 1;
+			break;
+		    default: bk_badArg(c, av);
+		}
+	}
+	if (av[optind]) usage();
+
+	if (proj_cd2root()) {
 		fprintf(stderr, "%s: not in a repo.\n", av[0]);
 		return (1);
 	}
-	printf("%u\n", nfiles());
+
+	if (recurse) {
+		proj_cd2product(); /* ignore error */
+		printf("%u\n", nfiles());
+	} else {
+		printf("%u\n", repo_nfiles(0));
+	}
 	return (0);
 }
 

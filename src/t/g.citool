@@ -535,3 +535,53 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
+
+echo $N Test that the ci.rescan config option works .................$NL
+cd "$HERE/project"
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+bk edit $Q file1
+echo FOO >> file1
+bk edit $Q file2
+echo FOO >> file2
+bk edit $Q file3
+echo FOO >> file3
+
+OLD=`bk -R prs -hd:N: -r+ ChangeSet`
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	set ::gc(ci.rescan) 1
+
+	test_selectFile "file1"
+	test_inputComment "This is a comment"
+	test_selectFile "ChangeSet"
+	test_inputComment "CSET COMMENT"
+
+	test_buttonPress "Commit"
+	test_buttonPress "Commit"
+
+	test_fileIsNotInList "file1"
+	test_fileIsInList "file2"
+
+	test_selectFile "file2"
+	test_inputComment "This is a comment"
+	test_selectFile "ChangeSet"
+	test_inputComment "CSET COMMENT"
+
+	test_buttonPress "Commit"
+	test_buttonPress "Commit"
+
+	test_fileIsNotInList "file2"
+
+	exit 100
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+test $err -ne 100 && { echo failed; echo "rescan never happened"; exit 1; }
+NEW=`bk -R prs -hd:N: -r+ ChangeSet`
+DIFF=`expr $NEW - $OLD`
+test $DIFF = 2 || {
+	echo failed
+	echo "should have created 2 changesets but got $DIFF instead"
+	exit 1
+}
+echo OK

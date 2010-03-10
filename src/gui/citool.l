@@ -27,7 +27,6 @@ typedef	struct	sfile {
 	int	inProduct;	// Is this file part of the product?
 } sfile;
 
-int	    _initialized;
 string  msgs{string};	    // standard messages
 string  img_new;	    // Tk image for new/extra files
 string  img_cset;	    // Tk image for the changeset file
@@ -38,18 +37,15 @@ string	img_checkon;	    // Tk image for included (checkmark)
 string	img_checkoff;	    // Tk image for not included (no checkmark)
 
 struct {
-	int	argc;		    // argc from the command line
 	string	argv[];		    // argv from the command line
 	string	cwd;		    // current directory
 	string	root;		    // root directory of the repo
 	int	resolve;	    // is this commit from the resolver
 	int	partial;	    // is this a partial commit from resolve
 	int	nfiles;		    // number of files in repo
-	int	pos;		    // current position in sfiles output file
 	int	nested;		    // are we dealing with a nested repo?
 	int	changed;	    // has anything changed where we need to
 				    // prompt the user on quit?
-	string	selected;	    // node currently selected in the list
 	int	sfiles_last;	    // last count of sfiles read
 	int	sfiles_done;	    // total count of sfiles read
 	int	sfiles_found;	    // track how many files we found while
@@ -58,7 +54,6 @@ struct {
 				    // while reading each component
 	int	sfiles_reading;	    // lock variable for reading sfiles output
 	int	sfiles_scanning;    // are we currently scanning for files?
-	int	last_redraw;	    // time in ms of last redraw.
 	string	sfiles_component;   // component currently being scanned
 	string  templates{string};  // template comments
 	sfile	files{string};	    // a hash of files by name
@@ -124,7 +119,7 @@ getNumFiles()
 {
 	setStatus("Getting file count...");
 	update();
-	return ((int)bk("nfiles"));
+	return ((int)bk("nfiles -r"));
 }
 
 int
@@ -400,7 +395,7 @@ findFiles()
 	self.sfiles_component = self.root;
 	updateButtons();
 
-	foreach (comp in keys(self.components)) {
+	foreach (comp in self.components) {
 		chdir(comp);
 		setenv("_BK_PREFIX", "${comp}/");
 		self.sfiles_found = 0;
@@ -729,7 +724,6 @@ selectFile(string node)
 	} else {
 		Tree_selectionSet(self.w_files, node);
 		Tree_see(self.w_files, node);
-		self.selected = file;
 		updateButtons();
 		showFile(self.files{file});
 	}
@@ -1675,7 +1669,7 @@ doCommit()
 
 	insertBottomText("Committing changes...\n", 1);
 	if (self.nested) {
-		foreach (comp in keys(self.components)) {
+		foreach (comp in self.components) {
 			if (comp eq self.root) continue;
 			cset = getCsetFile(comp);
 			if (cset.excluded) continue;
@@ -1685,7 +1679,13 @@ doCommit()
 
 	commitComponent(self.root);
 	deletePendingComments();
-	exit();
+	self.committing = 0;
+
+	if (String_isTrue(strict:, gc("ci.rescan"))) {
+		After_idle("rescan");
+	} else {
+		exit();
+	}
 }
 
 void
@@ -1996,6 +1996,29 @@ setQuit(string value)
 }
 
 void
+rescan()
+{
+	string	comp;
+
+	init();
+	self.files = undef;
+	foreach (comp in self.components) {
+		self.components{comp} = undef;
+		self.pendingNodes{comp} = undef;
+		chdir(comp);
+		self.nfiles += (int)`bk nfiles`;
+	}
+
+	ListBox_configure(self.w_files, state: "normal");
+	ListBox_delete(self.w_files, (expand)getAllNodes());
+	Progressbar_configure(self.w_progress, value: 0);
+	StatusBar_add(self.w_statusF, self.w_progress,
+	    separator: 0, sticky: "e");
+	update();
+	findFiles();
+}
+
+void
 initMsgs()
 {
 // Don't make comments wider than 65 chars
@@ -2198,29 +2221,16 @@ test_togglePending()
 }
 
 void
-main(int argc, string argv[])
+init()
 {
-	string	arg, files[];
-	FILE	f;
-
-	bk_init();
-
-	require("BWidget");
-
-	self.cwd = pwd();
-	self.argc = argc;
-	self.nested = 0;
-	self.changed = 0;
 	self.nfiles = 0;
+	self.changed = 0;
 	self.sfiles_last = 0;
 	self.sfiles_done = 0;
 	self.sfiles_found = 0;
 	self.sfiles_pending = 0;
 	self.sfiles_reading = 0;
 	self.sfiles_scanning = 0;
-	self.last_redraw = 0;
-	self.resolve = 0;
-	self.partial = 0;
 	self.commitSwitch = 0;
 	self.doDiscard = 0;
 	self.committing = 0;
@@ -2233,7 +2243,23 @@ main(int argc, string argv[])
 	self.cnt_modified = 0;
 	self.cnt_modifiedC = 0;
 	self.cnt_commented = 0;
+}
 
+void
+main(_unused int argc, string argv[])
+{
+	string	arg, files[];
+	FILE	f;
+
+	bk_init();
+
+	require("BWidget");
+
+	init();
+	self.cwd = pwd();
+
+	self.partial = 0;
+	self.resolve = 0;
 	foreach (arg in argv) {
 		if (arg eq "-R") {
 			self.resolve = 1;
@@ -2245,6 +2271,7 @@ main(int argc, string argv[])
 		}
 	}
 
+	self.nested = 0;
 	if (llength(files) == 0) {
 		// If no files or directory were passed on the command-line, we
 		// check to see if we're in a nested component or product and
@@ -2289,11 +2316,7 @@ main(int argc, string argv[])
 		self.templates{"ChangeSet"} .= "\n";
 	}
 
-	unless (defined(_initialized)) {
-		initMsgs();
-		createImages();
-		_initialized = 1;
-	}
-
+	initMsgs();
+	createImages();
 	findFiles();
 }
