@@ -423,11 +423,15 @@ findFiles()
 				string	fontName, font{string};
 
 				n = self.sfiles_pending;
-				txt = "Show (${n}) pending deltas in ";
-				if (comp eq self.root) {
-					txt .= "the Product";
-				} else {
-					txt .= getRelativePath(comp, "");
+				txt = "Show (${n}) pending delta";
+				if (n != 1) txt .= "s";
+				if (self.nested) {
+					txt .= " in ";
+					if (comp eq self.root) {
+						txt .= "the Product";
+					} else {
+						txt .= getRelativePath(comp,"");
+					}
 				}
 				if (defined(self.pendingNodes{comp})) {
 					ListBox_itemconfigure(
