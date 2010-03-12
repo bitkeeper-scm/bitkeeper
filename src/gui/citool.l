@@ -476,8 +476,7 @@ findFiles()
 	self.sfiles_scanning = 0;
 
 	if (self.cnt_total == 0) {
-		bk_error("No files found", "No files found to checkin");
-		exit();
+		bk_dieError("No files found to checkin", 0);
 	}
 
 	// If nothing was selected by the scan or by the user, go ahead
@@ -2250,6 +2249,9 @@ main(_unused int argc, string argv[])
 {
 	string	arg, files[];
 	FILE	f;
+
+	arg = bk("sane 2>@1");
+	if (arg ne "") bk_dieError(arg, 1);
 
 	bk_init();
 

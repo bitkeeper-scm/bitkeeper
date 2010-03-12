@@ -130,7 +130,8 @@ bk_exit(...args)
 void
 bk_message(string title, string message)
 {
-	if (tk_windowingsystem() eq "win32") {
+	if ((tk_windowingsystem() eq "win32")
+	    && (getenv("BK_REGRESSION") eq "")) {
 		tk_messageBox(title: title, message: message);
 	} else {
 		puts("stdout", message);
@@ -140,7 +141,8 @@ bk_message(string title, string message)
 void
 bk_error(string title, string message)
 {
-	if (tk_windowingsystem() eq "win32") {
+	if ((tk_windowingsystem() eq "win32")
+	    && (getenv("BK_REGRESSION") eq "")) {
 		tk_messageBox(title: title, message: message);
 	} else {
 		puts("stderr", message);

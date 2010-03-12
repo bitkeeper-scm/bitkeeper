@@ -34,14 +34,12 @@ bk guitest citool >"$OUT" 2>&1 <<'EOF'
 EOF
 err=$?
 test $err -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }
-test "X$PLATFORM" != XWIN32 && {
-	expected='No files found to checkin'
-	grep -q "$expected" "$OUT" || {
-		echo failed
-		echo "expected: '$expected'"
-		echo "  actual: '`cat "$OUT"`'"
-		exit 1
-	}
+expected='No files found to checkin'
+grep -q "$expected" "$OUT" || {
+	echo failed
+	echo "expected: '$expected'"
+	echo "  actual: '`cat "$OUT"`'"
+	exit 1
 }
 echo OK
 
@@ -582,6 +580,27 @@ DIFF=`expr $NEW - $OLD`
 test $DIFF = 2 || {
 	echo failed
 	echo "should have created 2 changesets but got $DIFF instead"
+	exit 1
+}
+echo OK
+
+echo $N Test that we get a sane error message outside a repo ........$NL
+cd "$HERE"
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	## Nothing to do.
+EOF
+err=$?
+test $err -ne 1 && { echo failed; echo "exited $err; expected 1"; exit 1; }
+MSG=`cat "$OUT"`
+test "$MSG" = "sane: not in a BitKeeper repository" || {
+	echo failed
+	echo "did not get a sane error message"
+	echo
+	echo "wanted:"
+	echo "sane: not in a BitKeeper repository"
+	echo
+	echo "got:"
+	cat "$OUT"
 	exit 1
 }
 echo OK
