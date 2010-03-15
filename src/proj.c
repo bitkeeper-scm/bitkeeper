@@ -27,7 +27,6 @@ struct project {
 	char	*root;		/* fullpath root of the project */
 	char	*rootkey;	/* Root key of ChangeSet file */
 	char	*md5rootkey;	/* MD5 root key of ChangeSet file */
-	char	*csetFile;	/* ChangeSet file we belong to (aka product) */
 	char	*repoID;	/* RepoID */
 	char	*comppath;	/* if component, path to root from product */
 	MDBM	*config;	/* config DB */
@@ -553,7 +552,6 @@ proj_rootkey(project *p)
 	/* clear existing values */
 	if (p->rootkey)    { free(p->rootkey);    p->rootkey = 0; }
 	if (p->md5rootkey) { free(p->md5rootkey); p->md5rootkey = 0; }
-	if (p->csetFile)   { free(p->csetFile);   p->csetFile = 0; }
 
 	/* load values from cache */
 	concat_path(file, p->root, "/BitKeeper/log/ROOTKEY");
@@ -563,13 +561,7 @@ proj_rootkey(project *p)
 		fclose(f);
 	}
 
-	concat_path(file, p->root, "/BitKeeper/log/CSETFILE");
-	if (f = fopen(file, "rt")) {
-		if (t = fgetline(f)) p->csetFile = strdup(t);
-		fclose(f);
-	}
-
-	if (p->rootkey && p->md5rootkey && p->csetFile) return (p->rootkey);
+	if (p->rootkey && p->md5rootkey) return (p->rootkey);
 
 	/* cache invalid, regenerate values */
 	concat_path(buf, p->root, CHANGESET);
@@ -582,20 +574,12 @@ proj_rootkey(project *p)
 		sccs_md5delta(sc, sc->tree, buf);
 		if (p->md5rootkey) free(p->md5rootkey);
 		p->md5rootkey = strdup(buf);
-		if (p->csetFile) free(p->csetFile);
-		p->csetFile = strdup(sc->tree->csetFile);
 		sccs_free(sc);
 		concat_path(file, p->root, "/BitKeeper/log/ROOTKEY");
 		if (f = fopen(file, "wt")) {
 			fputs(p->rootkey, f);
 			putc('\n', f);
 			fputs(p->md5rootkey, f);
-			putc('\n', f);
-			fclose(f);
-		}
-		concat_path(file, p->root, "/BitKeeper/log/CSETFILE");
-		if (f = fopen(file, "wt")) {
-			fputs(p->csetFile, f);
 			putc('\n', f);
 			fclose(f);
 		}
@@ -614,21 +598,6 @@ proj_md5rootkey(project *p)
 	if (p->rparent && (ret = proj_md5rootkey(p->rparent))) return (ret);
 	unless (p->md5rootkey) proj_rootkey(p);
 	return (p->md5rootkey);
-}
-
-/*
- * Return the cset backpointer.
- */
-char *
-proj_csetFile(project *p)
-{
-	char	*ret;
-
-	unless (p || (p = curr_proj())) p = proj_fakenew();
-
-	if (p->rparent && (ret = proj_csetFile(p->rparent))) return (ret);
-	unless (p->csetFile) proj_rootkey(p);
-	return (p->csetFile);
 }
 
 /*
@@ -748,10 +717,6 @@ proj_reset(project *p)
 		if (p->comppath) {
 			free(p->comppath);
 			p->comppath = 0;
-		}
-		if (p->csetFile) {
-			free(p->csetFile);
-			p->csetFile = 0;
 		}
 		if (p->repoID) {
 			free(p->repoID);

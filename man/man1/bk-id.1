@@ -5,7 +5,7 @@ bk id \- display the identity of a package or repository
 .\" help://identity
 .SH SYNOPSIS
 .B bk id
-.B [\-r]
+.B [\-5rp]
 .SH DESCRIPTION
 In \*[BK], each repository has two identities: a package
 identity and a repository identity.
@@ -20,6 +20,17 @@ The repository identity is different in each repository,
 regardless of the package.
 .Q bk id \-r
 displays the repository identity.
+.SH OPTIONS
+.TP \-r
+.B \-5
+Return package identity as an md5key
+.tp
+.B \-r
+displays the repository identity
+.tp
+.B \-p
+in a nested collection return the identity of the product
+(Same as 'bk -P id')
 .SH "SEE ALSO"
 .SA newroot
 .SA terms

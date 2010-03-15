@@ -134,7 +134,7 @@ newroot(char *ranbits, int quiet, int product, char *comments)
 	sccs_newchksum(s);
 	sccs_free(s);
 	unlink("BitKeeper/log/ROOTKEY");
-	unlink("BitKeeper/log/CSETFILE");
+	unlink("BitKeeper/log/CSETFILE"); /* bk before 5.0 used this */
 	proj_reset(0);
 	if (product) {
 		touch("BitKeeper/log/PRODUCT", 0664);

@@ -46,14 +46,13 @@ test -f BitKeeper/log/PRODUCT || {
 }
 echo OK
 
-echo $N id -p on a product should return not a component.............$NL
+# XXX: Why should id -p fail if in a product?
+# echo $N id -p on a product should return not a component.............$NL
+# 
+echo $N id -p on a product should return id of the product ..........$NL
 cd "$HERE/project"
-echo "Not a component." > WANT
-bk id -p >GOT 2>&1 && {
-	echo failed
-	cat GOT
-	exit 1
-}
+bk changes -r+ -nd:ROOTKEY: >WANT || fail
+bk id -p >GOT || fail
 cmpfiles WANT GOT
 echo OK
 

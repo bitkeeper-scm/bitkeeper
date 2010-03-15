@@ -89,3 +89,8 @@ bk _recurse 2> GOT && fail -f GOT should have failed
 grep -q "_recurse:_recurse:_recurse:_recurse:_recurse:_recurse" GOT || fail
 grep -q "BK callstack too deep, aborting." GOT || fail
 echo OK
+
+echon Test bk id -5 ...............................................
+ID=`bk changes -nd:MD5KEY: -r1.0`
+test `bk id -5` = $ID || fail
+echo OK
