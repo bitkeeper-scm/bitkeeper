@@ -88,8 +88,6 @@ bk_initBindings()
 	bind("BK", "<Control-e>",  "${w} yview scroll  1 units; break");
 	bind("BK", "<Control-f>",  "${w} yview scroll  1 pages; break");
 	bind("BK", "<Control-y>",  "${w} yview scroll -1 units; break");
-	bind("BK", "<Shift-Up>",   "${w} yview scroll -1 units; break");
-	bind("BK", "<Shift-Down>", "${w} yview scroll  1 units; break");
 
 	// Mouse wheel bindings
 	if (_bk.wm eq "x11") {

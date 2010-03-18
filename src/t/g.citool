@@ -626,3 +626,20 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
+
+echo $N Test that toggling a file does not corrupt the comments .....$NL
+cd "$HERE/project"
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+
+bk edit $Q src/file1
+echo "FOO" >> src/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "src/file1"
+	test_inputComment "comment for src/file1"
+	test_toggleFile "src/file1"
+	test_fileHasComments "src/file1" "comment for src/file1"
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK

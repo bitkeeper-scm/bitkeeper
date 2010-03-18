@@ -698,14 +698,14 @@ gui()
 	setStatus("Initializing...");
 
 	bind(top, "<FocusIn>", "focus ${self.w_comments}");
-	bind("all", "<Control-l>", "refreshSelectedFile");
-	bind("all", "<Control-t>", "toggleSelectedFile");
-	bind("all", "<Control-Shift-x>", "cutComments");
-	bind("all", "<Control-Shift-X>", "cutComments");
-	bind("all", "<Control-Shift-v>", "pasteComments");
-	bind("all", "<Control-Shift-V>", "pasteComments");
-	bind("all", "<Control-Shift-t>", "toggleAllNewFiles");
-	bind("all", "<Control-Shift-T>", "toggleAllNewFiles");
+	bind("BK", "<Control-l>", "refreshSelectedFile; break");
+	bind("BK", "<Control-t>", "toggleSelectedFile; break");
+	bind("BK", "<Control-Shift-x>", "cutComments; break");
+	bind("BK", "<Control-Shift-X>", "cutComments; break");
+	bind("BK", "<Control-Shift-v>", "pasteComments; break");
+	bind("BK", "<Control-Shift-V>", "pasteComments; break");
+	bind("BK", "<Control-Shift-t>", "toggleAllNewFiles; break");
+	bind("BK", "<Control-Shift-T>", "toggleAllNewFiles; break");
 	bind("BK", "<Control-Return>", "doCommit; break");
 
 	bk_initGui();
@@ -715,11 +715,9 @@ gui()
 void
 selectFile(string node)
 {
-	string	sel = getSelectedNode();
 	string	file = Tree_itemcget(self.w_files, node, data:);
 
-	if (sel ne "") saveComments();
-
+	saveComments();
 	filename = file;
 	self.commitSwitch = 0;
 	self.doDiscard = 0;
@@ -819,6 +817,7 @@ toggleFile(string node)
 	string	file = Tree_itemcget(self.w_files, node, data:);
 	sfile	sf, cset;
 
+	saveComments();
 	if (node =~ /pending/) {
 		// We are toggling one of the pending nodes.  We want
 		// to walk all of the pending deltas in this component
@@ -927,6 +926,7 @@ toggleAllNewFiles()
 	sfile	sf;
 	string	file;
 
+	saveComments();
 	foreach (file => sf in self.files) {
 		if (sf.type eq "new") {
 			toggleFile(sf.node);
@@ -1170,10 +1170,7 @@ saveComments()
 void
 selectPendingNode(string node)
 {
-	string	sel = getSelectedNode();
-
-	if (sel ne "") saveComments();
-
+	saveComments();
 	disableComments();
 	insertTopText("", 1);
 	insertBottomText("", 1);
@@ -2251,11 +2248,7 @@ test_toggleFile(string file)
 	sfile	sf;
 	string	node = test_findFileInList(file, &sf);
 
-	unless (defined(node)) {
-		test_fileIsInList(file);
-		return;
-	}
-
+	unless (defined(node)) test_fileIsInList(file);
 	toggleFile(node);
 }
 
