@@ -190,5 +190,17 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_buttonPress "Quit" then "Quit without saving*"
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK
 
+echo $N Test toggling a component ChangeSet .........................$NL
+bk edit $Q gcc/file1
+echo "foo" >> gcc/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_toggleFile "gcc ChangeSet"
+	test_fileHasIcon "gcc ChangeSet" excluded
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
 echo OK

@@ -876,12 +876,14 @@ toggleFile(string node)
 			}
 
 			node = self.pendingNodes{sf.component};
-			if (excluded) {
-				ListBox_itemconfigure(self.w_files, node,
-				    image: img_exclude);
-			} else {
-				ListBox_itemconfigure(self.w_files, node,
-				    image: img_done);
+			if (defined(node)) {
+				if (excluded) {
+					ListBox_itemconfigure(self.w_files,
+					    node, image: img_exclude);
+				} else {
+					ListBox_itemconfigure(self.w_files,
+					    node, image: img_done);
+				}
 			}
 		}
 		return;
@@ -2241,6 +2243,20 @@ test_togglePending()
 	foreach (comp in self.components) {
 		togglePending(self.pendingNodes{comp});
 	}
+}
+
+void
+test_toggleFile(string file)
+{
+	sfile	sf;
+	string	node = test_findFileInList(file, &sf);
+
+	unless (defined(node)) {
+		test_fileIsInList(file);
+		return;
+	}
+
+	toggleFile(node);
 }
 
 void
