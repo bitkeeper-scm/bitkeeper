@@ -388,7 +388,6 @@ void
 findFiles()
 {
 	FILE	fd;
-	sfile	sf;
 	string	comp, tmp, cmd;
 
 	self.sfiles_scanning = 1;
@@ -415,6 +414,7 @@ findFiles()
 
 		if (self.sfiles_found || (comp eq self.root)) {
 			int	n;
+			sfile	sf;
 			string	node;
 
 			if (self.sfiles_pending) {
@@ -467,6 +467,7 @@ findFiles()
 			sf.ignored = 0;
 			sf.excluded = 0;
 			sf.comments = getCommentsFromFile(sf);
+
 			insertFile(sf);
 		}
 
@@ -2208,6 +2209,25 @@ test_fileHasIcon(string file, string want)
 }
 
 void
+test_fileHasComments(string file, string comment)
+{
+	sfile	sf;
+	string	node = test_findFileInList(file, &sf);
+	string	comments;
+
+	unless (defined(node)) test_fileIsInList(file);
+	comments = getComments(sf);
+	if (comment ne comments) {
+		puts("${file} does not have the right comments");
+		puts("should be:");
+		puts(comment);
+		puts("but got:");
+		puts(comments);
+		exit(1);
+	}
+}
+
+void
 test_inputComment(string comment)
 {
 	test_inputString(comment,  self.w_comments);
@@ -2326,3 +2346,4 @@ main(_unused int argc, string argv[])
 	createImages();
 	findFiles();
 }
+

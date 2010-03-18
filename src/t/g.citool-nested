@@ -137,16 +137,58 @@ echo "comment for gcc/file1" | bk cfile save gcc/file1
 echo "comment for cset" | bk cfile save ChangeSet
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_fileHasIcon "gcc ChangeSet" done
-	test_selectFile "gcc ChangeSet"
-	set comments [test_getComments]
-
-	if {$comments ne "comment for cset"} {
-		puts "gcc ChangeSet does not have product cset comments"
-		exit 1
-	}
+	test_fileHasComments "gcc ChangeSet" "comment for cset"
 	test_buttonPress "Quit" then "Quit without saving*"
 EOF
 err=$?
 test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
 test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
+
+echo $N Test various paths for saving comments on quit ..............$NL
+cd "$HERE/project"
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+find . -name '*,c' | xargs rm -f
+
+bk edit $Q gcc/file1
+echo "FOO" >> gcc/file1
+bk edit $Q gdb/file1
+echo "FOO" >> gdb/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile gcc/file1
+	test_inputComment "comment for gcc/file1"
+	test_selectFile gdb/file1
+	test_inputComment "comment for gdb/file1"
+	test_buttonPress "Quit" then "Quit but save*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_fileHasComments "gcc/file1" "comment for gcc/file1"
+	test_fileHasComments "gdb/file1" "comment for gdb/file1"
+	test_fileHasComments "gcc ChangeSet" ""
+	test_fileHasComments "gdb ChangeSet" ""
+	test_fileHasComments "ChangeSet" ""
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "gcc ChangeSet"
+	test_inputComment "comment for gcc ChangeSet"
+	test_selectFile "gdb ChangeSet"
+	test_inputComment "comment for gdb ChangeSet"
+	test_buttonPress "Quit" then "Quit but save*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_fileHasComments "gcc ChangeSet" "comment for gcc ChangeSet"
+	test_fileHasComments "gdb ChangeSet" "comment for gdb ChangeSet"
+	test_fileHasComments "ChangeSet" ""
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+
 echo OK
