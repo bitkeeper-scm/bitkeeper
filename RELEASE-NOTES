@@ -1,3 +1,23 @@
+Release notes for BitKeeper beta 3
+
+Performance groundwork in clones, pushes and pulls.  We are working
+on more which builds on the changes in this release.
+
+bk version
+    Work on a remote repository: bk version <url>
+
+bk repocheck
+    a shorthand for running check in a standalone or nested collection.
+    Easier to remember than bk -Ar check -vac
+
+bk id
+    New option '-5' - return the repo rootkey as an md5key.
+
+bk citool
+    Significant changes for use in a nested collection.
+    Give it a try, please, and let us know what you think.
+
+===============================================================================
 Release notes for BitKeeper beta 2
 
 Minor bugfixes and polish.  Do fewer stats of the file system.
