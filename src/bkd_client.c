@@ -405,6 +405,10 @@ bkd(remote *r)
 	/* default to user's compress level, but override later */
 	r->gzip = r->gzip_in;
 
+	if ((r->port == 1) && getenv("BK_REGRESSION")) {
+		r->wfd = r->rfd = -1;
+		return (0);
+	}
 	if (r->port && (r->type != ADDR_SSH) && !r->loginshell) {
 		assert(r->host);
 		return (bkd_tcp_connect(r));

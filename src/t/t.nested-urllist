@@ -563,3 +563,35 @@ bk clone $Q product clone-rm
 cd clone-rm
 bk here where rm | grep -q "$HERE/product" && fail you fixed a bug
 echo failed \(bug comp named rm\)
+
+echo $N Test ordering of multiple URLS in populate ..................$NL
+cd "$HERE"/product
+RK=`(cd gdb; bk id)`
+bk here set -f $Q ./gcc || fail
+
+cat <<EOF > BitKeeper/log/urllist
+@$RK
+rsh://bad.example.com:1/
+ssh://localhost:1/
+http://localhost:1/
+bk://localhost:1/
+$HERE/junk
+bk://bad.example.com:1/
+http://bad.example.com:1/
+EOF
+bk here add -@ssh://bad2.example.com:1/ ./gdb 2> ERR && {
+   fail -f ERR should have failed
+}
+sed -ne 's/ cannot connect//;s/ unknown failure//;/^	/p' <ERR > LIST
+cat <<EOF > WANT
+	ssh://bad2.example.com:1/:
+	$HERE/junk: component not present
+	bk://localhost:1/:
+	http://localhost:1/:
+	bk://bad.example.com:1/:
+	http://bad.example.com:1/:
+	ssh://localhost:1/:
+	rsh://bad.example.com:1/:
+EOF
+cmpfiles WANT LIST
+echo OK

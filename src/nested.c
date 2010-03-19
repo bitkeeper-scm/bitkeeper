@@ -954,16 +954,68 @@ isComponent(char *path)
 	return (ret);
 }
 
+private	dev_t	local_dev;
+
+private int
+sortUrls(const void *a, const void *b)
+{
+	char	*url[2];
+	remote	*r;
+	int	val[2];
+	int	i;
+	struct	stat	sb;
+
+	url[0] = *(char **)a;
+	url[1] = *(char **)b;
+
+	/*
+	 * order:		FSLH	(not)File Ssh/rsh (not)Local Http
+	 *    file		0000	lclone works
+	 *    file other device 0001	clone other disk
+	 *    bk://localhost	1000
+	 *    http://localhost	1001
+	 *    bk://host		1010
+	 *    http://host	1011
+	 *    ssh://localhost	1100
+	 *    rsh://host	1110
+	 *    ssh://host	1110	tie with rsh and no tie breaker
+	 */
+	for (i = 0; i < 2; i++) {
+		val[i] = 0;
+		r = remote_parse(url[i], 0);
+		if (r->host) {
+			val[i] |= 8;
+			if (r->type & (ADDR_RSH|ADDR_SSH|ADDR_NFS)) val[i] |= 4;
+			unless (isLocalHost(r->host) ||
+			    streq(r->host, sccs_realhost())){
+				val[i] |= 2;
+			}
+			if (r->type & ADDR_HTTP) val[i] |= 1;
+		} else {
+			if (lstat(r->path, &sb) || (sb.st_dev != local_dev)) {
+				val[i] |= 1;
+			}
+		}
+		remote_free(r);
+	}
+	return (val[0] - val[1]);
+}
+
 /*
  * accessor for urllist
  */
 char **
 urllist_fetchURLs(hash *h, char *rk, char **space)
 {
+	char	**new = 0;
+	struct	stat	sb;
+
 	if (hash_fetchStr(h, rk)) {
-		space = splitLine(h->vptr, "\n", space);
+		new = splitLine(h->vptr, "\n", 0);
+		local_dev = lstat(".", &sb) ? 0 : sb.st_dev;
+		sortLines(new, sortUrls);
 	}
-	return (space);
+	return (catLines(space, new));
 }
 
 /*
