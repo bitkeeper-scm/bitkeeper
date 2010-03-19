@@ -223,7 +223,7 @@ RANLIB	= ranlib
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
 HDRS	= bam.h bkd.h logging.h nested.h \
-	  purify.h range.h rcs.h resolve.h sccs.h \
+	  progress.h purify.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h proj.h redblack.h inskeys.h libc/system.h \
 	  libc/fslayer/win_remap.h
 

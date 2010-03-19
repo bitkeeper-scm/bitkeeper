@@ -29,7 +29,10 @@ bk commit $S -y"This is \"Change Set\" A"
 bk clone $Q "$HERE/project" "$HERE/copy1"
 bk mv foo.c new_foo.c
 echo bar >> bar.c
-bk ci $Q -i bar.c
+# Add ChangeLog because it sorts before ChangeSet and I want to be sure
+# that we don't depend on the ChangeSet file being first.
+echo foo > ../ChangeLog
+bk ci $Q -i bar.c ../ChangeLog
 bk commit $S -y"This is a \"Change Set\" B"
 bk clone $Q "$HERE/project" "$HERE/copy2"
 cd "$HERE/copy2/src"

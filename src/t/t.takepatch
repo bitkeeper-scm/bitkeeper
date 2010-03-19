@@ -317,7 +317,6 @@ Updating ChangeSet, renumbering, checking checksums
 Updating send-as-deltas
 Updating send-as-sfile
 takepatch: 1 new changeset, 0 conflicts in 3 files
-
 EOF
 cmpfiles WANT GOT
 echo OK

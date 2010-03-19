@@ -17,6 +17,7 @@
  */
 #include "system.h"
 #include "sccs.h"
+#include "progress.h"
 
 private void	newRev(sccs *s, int flags, MDBM *db, delta *d);
 private void	remember(MDBM *db, delta *d);
@@ -33,19 +34,26 @@ renumber_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	char	*name;
-	int	error = 0;
+	int	error = 0, nfiles = 0, n = 0;
 	int	c, dont = 0, quiet = 0, flags = INIT_WACKGRAPH;
+	ticker	*tick = 0;
 
-	while ((c = getopt(ac, av, "nqs", 0)) != -1) {
+	quiet = 1;
+	while ((c = getopt(ac, av, "N;nqsv", 0)) != -1) {
 		switch (c) {
+		    case 'N': nfiles = atoi(optarg); break;
 		    case 'n': dont = 1; break;			/* doc 2.0 */
 		    case 's':					/* undoc? 2.0 */
-		    case 'q': quiet++; flags |= SILENT; break;	/* doc 2.0 */
+		    case 'q': break; // obsolete, now default.
+		    case 'v': quiet = 0; break;
 		    default: bk_badArg(c, av);
 		}
 	}
+	if (quiet) flags |= SILENT;
+	if (!quiet && nfiles) tick = progress_start(PROGRESS_BAR, nfiles);
 	for (name = sfileFirst("renumber", &av[optind], 0);
 	    name; name = sfileNext()) {
+		if (tick) progress(tick, ++n);
 		s = sccs_init(name, flags);
 		unless (s) continue;
 		unless (HASGRAPH(s)) {
@@ -69,6 +77,7 @@ renumber_main(int ac, char **av)
 		sccs_free(s);
 	}
 	if (sfileDone()) error = 1;
+	if (tick) progress_done(tick, error ? "FAILED" : "OK");
 	return (error);
 }
 

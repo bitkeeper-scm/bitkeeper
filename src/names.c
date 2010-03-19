@@ -9,6 +9,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "nested.h"
+#include "progress.h"
 
 private	 void	pass1(sccs *s);
 private	 void	pass2(u32 flags);
@@ -19,13 +20,17 @@ names_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*d;
-	char	*n;
+	char	*p;
+	int	nfiles = 0, n = 0;
 	int	c, todo = 0, error = 0;
-	u32	flags = 0;
+	u32	flags = SILENT;
+	ticker	*tick = 0;
 
-	while ((c = getopt(ac, av, "q", 0)) != -1) {
+	while ((c = getopt(ac, av, "N;qv", 0)) != -1) {
 		switch (c) {
-		    case 'q':	flags |= SILENT; break;		/* doc 2.0 */
+		    case 'N': nfiles = atoi(optarg); break;
+		    case 'q': break;	// default
+		    case 'v': flags = 0; break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -33,9 +38,11 @@ names_main(int ac, char **av)
 		fprintf(stderr, "names: cannot find project root.\n");
 		return (1);
 	}
-	for (n = sfileFirst("names", &av[optind], 0); n; n = sfileNext()) {
-		if (streq(n, CHANGESET)) continue;
-		unless (s = sccs_init(n, 0)) continue;
+	if (nfiles) tick = progress_start(PROGRESS_BAR, nfiles);
+	for (p = sfileFirst("names", &av[optind], 0); p; p = sfileNext()) {
+		if (tick) progress(tick, ++n);
+		if (streq(p, CHANGESET)) continue;
+		unless (s = sccs_init(p, 0)) continue;
 		unless (d = sccs_top(s)) {
 			sccs_free(s);
 			continue;
@@ -59,6 +66,7 @@ names_main(int ac, char **av)
 	if (sfileDone()) error |= 4;
 	if (todo) pass2(flags);
 	rmEmptyDirs(flags & SILENT);
+	if (tick) progress_done(tick, error ? "FAILED" : "OK");
 	return (error);
 }
 

@@ -10,18 +10,18 @@ private	int	unpopulate_check(comp *c, char **urls);
  * matches cp->alias
  */
 int
-nested_populate(nested *n, char **urls, int force, int quiet)
+nested_populate(nested *n, char **urls, int force, popts *ops)
 {
-	int	i, j;
+	int	i, j, status, rc;
+	int	done = 1, comps = 0;	
 	clonerc	clonerc;
 	char	**vp = 0;
 	char	*checkfiles;
 	char	**list;
 	remote	*r;
 	comp	*cp;
-	FILE	*f;
+	FILE	*f = 0;
 	hash	*urllist;
-	int	status, rc;
 
 	urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
 	assert(urllist);
@@ -31,8 +31,7 @@ nested_populate(nested *n, char **urls, int force, int quiet)
 	 */
 	rc = 0;
 	EACH_STRUCT(n->comps, cp, j) {
-		if (force) break; /* skip these checks */
-		if (cp->present && !cp->alias) {
+		if (!force && cp->present && !cp->alias) {
 			char	**lurls = 0;
 
 			/* try urls from cmd line first */
@@ -50,10 +49,13 @@ nested_populate(nested *n, char **urls, int force, int quiet)
 			}
 			freeLines(lurls, free);
 		}
+		if (!cp->present && cp->alias) comps++;
 	}
 	if (rc) return (1);
-	checkfiles = bktmp(0, 0);
-	f = fopen(checkfiles, "w");
+	if (ops->runcheck) {
+		checkfiles = bktmp(0, 0);
+		f = fopen(checkfiles, "w");
+	}
 	START_TRANSACTION();
 	/*
 	 * Now add all the new repos and keep a list of repos added
@@ -80,11 +82,21 @@ nested_populate(nested *n, char **urls, int force, int quiet)
 
 				vp = addLine(0, strdup("bk"));
 				vp = addLine(vp, strdup("clone"));
-				if (quiet) {
-					vp = addLine(vp, strdup("-q"));
+				if (ops->debug) vp = addLine(vp, strdup("-d"));
+				if (ops->link) vp = addLine(vp, strdup("-l"));
+				if (ops->quiet) vp = addLine(vp, strdup("-q"));
+				if (ops->remap) {
+					vp = addLine(vp,
+					    strdup("--hide-sccs-dirs"));
+				}
+				if (ops->verbose) {
+					vp = addLine(vp, strdup("-v"));
 				}
 				vp = addLine(vp, strdup("-p"));
 				vp = addLine(vp, aprintf("-r%s", cp->deltakey));
+				vp = addLine(vp,
+				    aprintf("-P%u/%u %s",
+				    done, comps, cp->path));
 				vp = addLine(vp, remote_unparse(r));
 				vp = addLine(vp, strdup(cp->path));
 				vp = addLine(vp, 0);
@@ -93,11 +105,15 @@ nested_populate(nested *n, char **urls, int force, int quiet)
 				clonerc =
 				    WIFEXITED(status) ? WEXITSTATUS(status) : 1;
 				if (clonerc == 0) {
+					done++;
 					list = addLine(list, cp);
 					cp->present = 1;
 					urllist_addURL(urllist,
 					    cp->rootkey, lurls[i]);
-					fprintf(f, "%s/ChangeSet\n", cp->path);
+					if (ops->runcheck) {
+						fprintf(f, "%s/ChangeSet\n",
+						    cp->path);
+					}
 					break;
 				} else if ((clonerc == CLONE_EXISTS) &&
 				    exists(cp->path)) {
@@ -238,10 +254,13 @@ conflict:
 	/* do consistency check at end */
 	unless (rc) nested_writeHere(n);
 	urllist_write(urllist);
-	fclose(f);
-	rc |= run_check(quiet, checkfiles, quiet ? 0 : "-v", 0);
-	unlink(checkfiles);
-	free(checkfiles);
+	if (ops->runcheck) {
+		fclose(f);
+		rc |= run_check(ops->verbose,
+		    checkfiles, ops->quiet ? 0 : "-v", 0);
+		unlink(checkfiles);
+		free(checkfiles);
+	}
 	hash_free(urllist);
 	return (rc);
 }

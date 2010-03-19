@@ -656,6 +656,7 @@ cat > BitKeeper/triggers/post-incoming <<EOF
 set | grep $DASHA ^BK | grep -v _BK_ | egrep -v '^[^=]+=$' |
     grep -v _SEED= |
     grep -v BK_REPO_ID= |
+    grep -v BKD_TIP |
     bk sort > "$HERE/post-incoming-clone"
 exit 0
 EOF
@@ -689,6 +690,7 @@ cat > BitKeeper/triggers/post-incoming <<EOF
 set | grep $DASHA ^BK | egrep -v '^[^=]+=$' |
     grep -v _SEED= |
     grep -v BK_REPO_ID= |
+    grep -v BKD_TIP |
     bk sort > "$HERE/post-incoming-clone-l"
 exit 0
 EOF

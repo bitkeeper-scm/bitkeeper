@@ -82,7 +82,7 @@ BK_CONFIG=partial_check:off! bk pull $Q || exit 1
 check_cnt
 echo OK
 
-CNT=11
+CNT=10
 echo $N "Count the inits for a 'bk unpull' ($CNT)......................."$NL
 rm "$FILE"
 bk unpull -f $Q || exit 1
@@ -120,7 +120,7 @@ echo OK
 
 echo "---- nested tests"
 
-CNT=20	   # XXX wrong
+CNT=12	   # XXX wrong - LMXXX - why?
 echo $N "Count the inits for a 'bk clone' ($CNT)........................"$NL
 cd "$HERE"
 nested nest
@@ -177,7 +177,7 @@ bk changes -Rv > /dev/null || exit 1
 check_cnt
 echo OK
 
-CNT=49
+CNT=47
 echo $N "Count the inits for a 'bk pull -u' ($CNT)......................"$NL
 rm "$FILE"
 bk pull -u $Q || exit 1
@@ -185,14 +185,14 @@ check_cnt
 echo OK
 
 
-CNT=42
+CNT=39
 echo $N "Count the inits for a 'bk unpull -fs' ($CNT)..................."$NL
 rm "$FILE"
 bk unpull -fs $Q || exit 1
 check_cnt
 echo OK
 
-CNT=64
+CNT=62
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 touch c
 bk setup -f -cc www || exit 1

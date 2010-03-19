@@ -20,6 +20,10 @@ echo $N Do a clone where we cannot read parents BAM server ..........$NL
 cd ../..
 bk clone $Q pmaster/pcopy newcopy 2> ERR || exit 1
 cd newcopy
+test -f BitKeeper/log/BAM || {
+	echo failed to leave BAM marker
+	exit 1
+}
 grep -q "is inaccessible from this repository" ../ERR || {
 	echo wrong error message
 	cat ../ERR
@@ -28,6 +32,7 @@ grep -q "is inaccessible from this repository" ../ERR || {
 bk -r check -a || exit 1
 bk bam check -F $Q 2> ERR && {
 	echo should have errors
+	cat ERR
 	exit 1
 }
 bk bam server $Q ../pmaster || exit 1

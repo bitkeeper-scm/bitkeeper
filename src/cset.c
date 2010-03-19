@@ -3,6 +3,7 @@
 #include "sccs.h"
 #include "range.h"
 #include "nested.h"
+#include "progress.h"
 
 typedef	struct cset {
 	/* bits */

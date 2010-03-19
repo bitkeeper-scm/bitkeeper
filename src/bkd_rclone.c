@@ -379,11 +379,11 @@ rclone_end(opts *opts)
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
 	if (opts->rev) {
-		rc = after(quiet, opts->rev);
+		rc = after(quiet, opts->verbose, opts->rev);
 		if (rc == UNDO_SKIP) goto docheck;
 	} else {
 docheck:	/* undo already runs check so we only need this case */
-		rc = run_check(quiet, 0, quiet ? "-fT" : "-fvT", 0);
+		rc = run_check(!quiet, 0, quiet ? "-fT" : "-fvT", 0);
 	}
 	return (rc);
 }

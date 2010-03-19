@@ -186,11 +186,6 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 		goto done;
 	}
 	fclose(f);
-	if ((sfio > 0) && !quiet) {
-		p = remote_unparse(r);
-		fprintf(stderr, "Fetching BAM files from %s...\n", p);
-		free(p);
-	}
 	rc = send_file(r, cmd_file, 0);
 	if (rc) goto done;
 
@@ -221,9 +216,9 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 			if  ((i = fread(buf, 1, i, r->rf)) <= 0) break;
 			if (err) {
 				fwrite(buf, 1, i, stderr);
-			} else {
+			} else if (sfio) {
 				unless (f) {
-					p = aprintf("bk sfio -ir%sBb%s -",
+					p = aprintf("bk sfio -i%sBb%s -",
 					    quiet ? "q":"", psize(sfio));
 					f = popen(p, "w");
 					free(p);

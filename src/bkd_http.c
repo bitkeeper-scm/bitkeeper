@@ -28,7 +28,7 @@ private void	http_related(char *page);
 private void	http_tags(char *page);
 private void	http_robots(void);
 private void	http_repos(char *page);
-private void	title(char *title, char *desc, char *color);
+private void	http_title(char *title, char *desc, char *color);
 private void	pwd_title(char *t, char *color);
 private void	header(char *color, char *title, char *header, ...);
 private void	printnavbar(void);
@@ -287,7 +287,7 @@ header(char *color, char *titlestr, char *headerstr, ...)
 
 	t = proj_configval(0, "description");
 	if (*t && (strlen(t) < 2000)) {
-		title(fmt, t, color);
+		http_title(fmt, t, color);
 	} else {
 		pwd_title(fmt, color);
 	}
@@ -483,7 +483,7 @@ http_cset(char *page)
 }
 
 private void
-title(char *title, char *desc, char *color)
+http_title(char *title, char *desc, char *color)
 {
 	unless (title) return;
 
@@ -504,7 +504,7 @@ pwd_title(char *t, char *color)
 
 	pwd[0] = 0;
 	getcwd(pwd, sizeof(pwd));
-	title(t, pwd, color);
+	http_title(t, pwd, color);
 }
 
 private void
@@ -1186,10 +1186,10 @@ http_index(char *page)
 		char	*titlebar;
 		titlebar = aprintf("ChangeSet activity for %s",
 		    user);
-		title(titlebar, buf, "#f0f0f0");
+		http_title(titlebar, buf, "#f0f0f0");
 		free(titlebar);
 	} else {
-		title("ChangeSet activity", buf, "#f0f0f0");
+		http_title("ChangeSet activity", buf, "#f0f0f0");
 	}
 	puts("</td></tr></table>");
 	puts("<!-- END INDEX -->\n");

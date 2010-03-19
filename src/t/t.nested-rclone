@@ -13,6 +13,7 @@
 
 echo $N Create initial ensemble......................................$NL
 nested project
+bk tag $Q TIP
 # Now add some stuff
 for r in gcc gdb
 do
@@ -25,6 +26,7 @@ do
 	bk commit $Q -y"add some files"
 	cd ..
 done
+bk setup -Cf "A new component"
 bk commit $Q -y"Added files to gcc & gdb"
 echo OK
 
@@ -32,17 +34,31 @@ echo $N Clone the product using rclone ..............................$NL
 cd "$HERE"
 bk bkd -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
 PORT=`cat PORT`
+trap "bk _kill bk://localhost:$PORT" 0
 bk clone $Q project bk://localhost:$PORT/copy || {
 	echo failed
 	cd copy 
 	bk cmdlog -a
-	bk _kill bk://localhost:$PORT
 	exit 1
 }
 cd copy || exit 1
 bk $Q -Ar check -a || {
 	echo failed
-	bk _kill bk://localhost:$PORT
+	exit 1
+}
+echo OK
+
+echo $N Clone the product using rclone -r ...........................$NL
+cd "$HERE"
+bk clone $Q -rTIP project bk://localhost:$PORT/rollback || {
+	echo failed
+	cd rollback 
+	bk cmdlog -a
+	exit 1
+}
+cd rollback || exit 1
+bk $Q -Ar check -a || {
+	echo failed
 	exit 1
 }
 echo OK
@@ -73,7 +89,6 @@ bk clone $Q project/gcc bk://localhost:$PORT/mynewgcc 2> ERR && {
 grep -q "clone of a component is not allowed" ERR || {
 	echo wrong msg
 	cat ERR
-	bk _kill bk://localhost:$PORT
 	exit 1
 }
 echo OK
@@ -85,13 +100,11 @@ bk clone $Q -sgdb copy bk://localhost:$PORT/copy2 || {
 	echo failed
 	cd copy2
 	bk cmdlog -a
-	bk _kill bk://localhost:$PORT
 	exit 1
 }
 cd copy2 || exit 1
 bk $Q -Ar check -a || {
 	echo failed
-	bk _kill bk://localhost:$PORT
 	exit 1
 }
 test -d gdb || exit 1
@@ -107,20 +120,17 @@ KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
 rm -rf mynewgcc
 bk clone $Q -s"$KEY" project bk://localhost:$PORT/mynewgcc || {
 	echo failed
-	bk _kill bk://localhost:$PORT
 	exit 1
 }
 test -d mynewgcc -a -d mynewgcc/gcc || {
 	echo did not bring gcc alias across
 	cat ERR
-	bk _kill bk://localhost:$PORT
 	exit 1
 }
 for i in `cat LIST`
 do	test -d mynewgcc/$i && {
 		echo should not have brought $i
 		cat ERR
-		bk _kill bk://localhost:$PORT
 		exit 1
 	}
 done
@@ -133,44 +143,35 @@ bk alias new justgcc gcc || exit 1
 cd ..
 bk clone $Q -sjustgcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed
-	bk _kill bk://localhost:$PORT
 	exit 1
 }
 test -d mynewgcc -a -d mynewgcc/gcc || {
 	echo did not bring gcc alias across
 	cat ERR
-	bk _kill bk://localhost:$PORT
 	exit 1
 }
 for i in `cat LIST`
 do	test -d mynewgcc/$i && {
 		echo should not have brought $i
 		cat ERR
-		bk _kill bk://localhost:$PORT
 		exit 1
 	}
 done
 echo OK
 
-bk _kill bk://localhost:$PORT
-bk bkd -d -aPORT -ikill || exit 1
-PORT=`cat PORT`
 echo $N Test that we can clone just that component with -s./gcc .....$NL
 rm -rf mynewgcc
 bk clone $Q -s./gcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed
-	bk _kill bk://localhost:$PORT
 	exit 1
 }
 test -d mynewgcc -a -d mynewgcc/gcc || {
 	echo did not bring gcc alias across
-	bk _kill bk://localhost:$PORT
 	exit 1
 }
 for i in `cat LIST`
 do	test -d mynewgcc/$i && {
 		echo should not have brought $i
-		bk _kill bk://localhost:$PORT
 		exit 1
 	}
 done
@@ -182,6 +183,3 @@ bk alias -k here > GOT
 (cd gcc; bk id) > WANT
 cmpfiles GOT WANT
 echo OK
-
-bk _kill bk://localhost:$PORT
-exit 0

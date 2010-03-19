@@ -5,14 +5,13 @@
 #include "logging.h"
 #include "bam.h"
 #include "nested.h"
+#include "progress.h"
 
-/*
- * Do not change this struct until we phase out bkd 1.2 support
- */
 private	struct {
 	u32	no_parent:1;		/* -p: do not set parent pointer */
 	u32	debug:1;		/* -d: debug mode */
-	u32	quiet:1;		/* -q: shut up */
+	u32	quiet:1;		/* -q: only errors */
+	u32	verbose:1;		/* -v: old default, list files */
 	u32	link:1;			/* -l: lclone-mode */
 	u32	nocommit:1;		/* -C: do not commit (attach cmd) */
 	u32	attach:1;		/* is attach command? */
@@ -21,10 +20,12 @@ private	struct {
 	int	delay;			/* wait for (ssh) to drain */
 	int	remap;			/* force remapping? */
 	char	*rev;			/* remove everything after this */
-	u32	in, out;		/* stats */
 	char	**aliases;		/* -s aliases list */
 	char	*from;			/* where to get stuff from */
 	char	*to;			/* where to put it */
+	char	*comppath;		/* for fromTo */
+	char	*sfiotitle;		/* pass down for title */
+	u32	in, out;		/* stats */
 } *opts;
 
 private	clonerc	attach(void);
@@ -50,8 +51,9 @@ clone_main(int ac, char **av)
 	char	**envVar = 0;
 	remote 	*r = 0, *l = 0;
 	longopt	lopts[] = {
-		{ "sccs-compat", 300 }, /* old non-remapped repo */
-		{ "hide-sccs-dirs", 301 }, /* move sfiles to .bk */
+		{ "sccs-compat", 300 },		/* old non-remapped repo */
+		{ "hide-sccs-dirs", 301 },	/* move sfiles to .bk */
+		{ "sfiotitle;", 302 },		/* title for sfio */
 		{ 0, 0 }
 	};
 
@@ -59,7 +61,7 @@ clone_main(int ac, char **av)
 	opts->remap = -1;
 	if (streq(prog, "attach")) opts->attach = 1;
 	if (streq(prog, "detach")) opts->detach = 1;
-	while ((c = getopt(ac, av, "B;CdE:lNpqr;s;w|z|", lopts)) != -1) {
+	while ((c = getopt(ac, av, "B;CdE:lNpP;qr;s;vw|z|", lopts)) != -1) {
 		switch (c) {
 		    case 'B': bam_url = optarg; break;
 		    case 'C': opts->nocommit = 1; break;
@@ -74,11 +76,13 @@ clone_main(int ac, char **av)
 		    case 'l': opts->link = 1; break;		/* doc 2.0 */
 		    case 'N': attach_only = 1; break;		/* undoc 2.0 */
 		    case 'p': opts->no_parent = 1; break;
+		    case 'P': opts->comppath = optarg; break;
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
 		    case 's':
 			opts->aliases = addLine(opts->aliases, strdup(optarg));
 			break;
+		    case 'v': opts->verbose = 1; break;
 		    case 'w': opts->delay = atoi(optarg); break; /* undoc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			if (optarg) gzip = atoi(optarg);
@@ -86,6 +90,7 @@ clone_main(int ac, char **av)
 			break;
 		    case 300: opts->remap = 0; break; /* --sccs-compat */
 		    case 301: opts->remap = 1; break; /* --hide-sccs-dirs */
+		    case 302: opts->sfiotitle = optarg; break;
 		    default: bk_badArg(c, av);
 	    	}
 		optarg = 0;
@@ -114,6 +119,7 @@ clone_main(int ac, char **av)
 		exit(CLONE_ERROR);
 	}
 	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	unless (opts->quiet || opts->verbose) putenv("_BK_PROGRESS_MULTI=YES");
 	if (av[optind]) localName2bkName(av[optind], av[optind]);
 	if (av[optind+1]) localName2bkName(av[optind+1], av[optind+1]);
 	unless (av[optind]) usage();
@@ -248,6 +254,12 @@ clone_main(int ac, char **av)
 	freeLines(opts->aliases, free);
 	if (l) remote_free(l);
 	remote_free(r);
+	unless (opts->quiet || opts->verbose) {
+		title = "clone";
+		if (opts->product) title = ".";
+		if (opts->comppath) title = opts->comppath;
+		progress_end(PROGRESS_BAR, clonerc ? "FAILED" : "OK");
+	}
 	return (clonerc);
 }
 
@@ -266,7 +278,6 @@ send_clone_msg(remote *r, char **envVar)
 	fprintf(f, "clone");
 	fprintf(f, " -z%d", r->gzip);
 	if (opts->rev) fprintf(f, " '-r%s'", opts->rev);
-	if (opts->quiet) fprintf(f, " -q");
 	if (opts->delay) fprintf(f, " -w%d", opts->delay);
 	if (opts->attach) fprintf(f, " -A");
 	if (opts->detach) fprintf(f, " -D");
@@ -409,7 +420,9 @@ clone(char **av, remote *r, char *local, char **envVar)
 	    (!getenv("_BK_TRANSACTION") || !opts->quiet)) {
 		remote	*l = remote_parse(local, REMOTE_BKDURL);
 
-		fromTo("Clone", r, l);
+		if (opts->verbose || !opts->comppath) {
+			fromTo("Clone", r, l);
+		}
 		remote_free(l);
 	}
 
@@ -521,7 +534,9 @@ clone2(remote *r)
 	int	i, undorc, rc;
 	int	didcheck = 0;		/* ran check in undo*/
 	int	partial = 1;		/* partial check needs checkout run */
+	int	do_after = 0;
 	char	*parent;
+	popts	ops;
 	char	buf[MAXLINE];
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
@@ -560,7 +575,7 @@ clone2(remote *r)
 	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
 	assert(f);
-	sccs_rmUncommitted(opts->quiet, f);
+	sccs_rmUncommitted(!opts->verbose, f);
 	fclose(f);
 
 	if (opts->detach && detach(opts->quiet)) return (CLONE_ERROR);
@@ -568,9 +583,18 @@ clone2(remote *r)
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 
 	if (opts->rev) {
+		do_after = 1;
+		p = getenv("BKD_TIP_REV");
+		if (p && streq(p, opts->rev)) do_after = 0;
+		p = getenv("BKD_TIP_KEY");
+		if (p && streq(p, opts->rev)) do_after = 0;
+		p = getenv("BKD_TIP_MD5");
+		if (p && streq(p, opts->rev)) do_after = 0;
+	}
+	if (do_after) {
 		/* only product in HERE */
 		/* remove any later stuff */
-		unless (undorc = after(opts->quiet, opts->rev)) {
+		unless (undorc = after(opts->quiet, opts->verbose, opts->rev)) {
 			didcheck = 1;
 			partial = 1; /* can't know if it was full or not */
 		} else if (undorc == UNDO_SKIP) {
@@ -586,6 +610,10 @@ clone2(remote *r)
 		comp	*cp;
 		hash	*urllist;
 
+		unless (opts->quiet || opts->verbose) {
+			title = ".";
+			progress_end(PROGRESS_BAR, "OK");
+		}
 		urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
 		assert(urllist);
 
@@ -653,20 +681,27 @@ clone2(remote *r)
 		n->here = opts->aliases;
 		opts->aliases = 0;
 		nested_writeHere(n);
-		if (nested_populate(n, 0, 0, opts->quiet)) {
+		bzero(&ops, sizeof(ops));
+		ops.debug = opts->debug;
+		ops.link = opts->link;
+		ops.quiet = opts->quiet;
+		ops.remap = opts->remap;
+		ops.verbose = opts->verbose;
+		if (nested_populate(n, 0, 0, &ops)) {
 nested_err:		fprintf(stderr, "clone: component fetch failed, "
 			    "only product is populated\n");
+			nested_free(n);
 			return (CLONE_ERROR);
 		}
 		nested_free(n);
 	}
 	if (!didcheck && (size(checkfiles) || full_check())) {
 		/* undo already runs check so we only need this case */
-		p = opts->quiet ? "-fT" : "-fvT";
+		p = opts->quiet ? "-fT" : "-vfT";
 		if (proj_configbool(0, "partial_check")) {
-			rc = run_check(opts->quiet, checkfiles, p, &partial);
+			rc = run_check(opts->verbose, checkfiles, p, &partial);
 		} else {
-			rc = run_check(opts->quiet, 0, p, &partial);
+			rc = run_check(opts->verbose, 0, p, &partial);
 		}
 		if (rc) {
 			fprintf(stderr, "Consistency check failed, "
@@ -686,10 +721,15 @@ nested_err:		fprintf(stderr, "clone: component fetch failed, "
 	 */
 	if (partial &&
 	    (proj_checkout(0) & (CO_GET|CO_EDIT|CO_BAM_GET|CO_BAM_EDIT))) {
-		unless (opts->quiet) {
+		if (opts->verbose) {
 			fprintf(stderr, "Checking out files...\n");
 		}
-		sys("bk", "-Ur", "checkout", "-TSq", SYS);
+		if (opts->verbose || opts->quiet) {
+			sys("bk", "-Ur", "checkout", "-TSq", SYS);
+		} else {
+			sprintf(buf, "-N%u", repo_nfiles(0));
+			sys("bk", "-Ur", "checkout", "-TSq", buf, SYS);
+		}
 	}
 	return (0);
 }
@@ -823,7 +863,6 @@ initProject(char *root, remote *r)
 	return (0);
 }
 
-
 private int
 sfio(remote *r, char *prefix)
 {
@@ -831,16 +870,30 @@ sfio(remote *r, char *prefix)
 	pid_t	pid;
 	int	pfd;
 	FILE	*f;
-	char	*cmds[10];
+	char	*p, *freeme = 0, *dashN = 0;
+	char	*cmds[12];
+	char	buf[MAXPATH];
 
 	cmds[n = 0] = "bk";
+	if (opts->product) {
+		cmds[++n] = "--title=.";
+	}
+	if (opts->comppath) {
+		sprintf(buf, "--title=%s", opts->comppath);
+		cmds[++n] = buf;
+	}
 	cmds[++n] = "sfio";
 	cmds[++n] = "-gi";
 	cmds[++n] = "--mark-no-dfiles";
 	if (opts->quiet) {
 		cmds[++n] = "-q";
 	} else {
-		cmds[++n] = aprintf("-P%s/", prefix);
+		unless (opts->verbose) {
+			if (p = getenv("BKD_NFILES")) {
+				cmds[++n] = dashN = aprintf("-N%u", atoi(p));
+			}
+		}
+		cmds[++n] = freeme = aprintf("-P%s/", prefix);
 	}
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);
@@ -848,11 +901,13 @@ sfio(remote *r, char *prefix)
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
 	}
+	if (freeme) free(freeme);
+	if (dashN) free(dashN);
 	f = fdopen(pfd, "wb");
 	gunzipAll2fh(r->rfd, f, &(opts->in), &(opts->out));
 	fclose(f);
 	waitpid(pid, &status, 0);
-	unless (opts->quiet) {
+	if (opts->verbose) {
 		if (r->gzip) {
 			fprintf(stderr, "%s uncompressed to %s, ",
 			    psize(opts->in), psize(opts->out));
@@ -945,7 +1000,7 @@ sccs_rmUncommitted(int quiet, FILE *f)
 }
 
 int
-after(int quiet, char *rev)
+after(int quiet, int verbose, char *rev)
 {
 	char	*cmds[10];
 	char	*p;
@@ -954,7 +1009,7 @@ after(int quiet, char *rev)
 	delta	*d;
 	char	revbuf[MAXREV];
 
-	unless (quiet) {
+	if (verbose) {
 		if (isKey(rev)) {
 			s = sccs_csetInit(SILENT|INIT_NOCKSUM);
 			if (d = sccs_findrev(s, rev)) {
@@ -970,6 +1025,7 @@ after(int quiet, char *rev)
 	cmds[++i] = "undo";
 	cmds[++i] = "-fsC";
 	if (quiet) cmds[++i] = "-q";
+	if (verbose) cmds[++i] = "-v";
 	cmds[++i] = p = malloc(strlen(rev) + 3);
 	sprintf(cmds[i], "-a%s", rev);
 	cmds[++i] = 0;

@@ -9,6 +9,7 @@
 #include "range.h"
 #include "bam.h"
 #include "nested.h"
+#include "progress.h"
 
 private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
@@ -181,8 +182,8 @@ check_main(int ac, char **av)
 		return (1);
 	}
 	mixed = (LONGKEY(cset) == 0);
-	if (verbose == 1) {
-		nfiles = repo_nfiles(cset);
+	nfiles = repo_nfiles(cset);
+	if (verbose > 1) {
 		fprintf(stderr, "Preparing to check %u files...\r", nfiles);
 	}
 	buildKeys(idDB);
@@ -232,7 +233,9 @@ check_main(int ac, char **av)
 	}
 	unless (fix) fix = proj_configbool(0, "autofix");
 
-	if (verbose == 1) tick = progress_start(PROGRESS_BAR, nfiles);
+	if (verbose == 1) {
+		tick = progress_start(PROGRESS_BAR, nfiles);
+	}
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
 	    name; n++, name = sfileNext()) {
 		ferr = 0;
@@ -246,9 +249,9 @@ check_main(int ac, char **av)
 			errors |= 1;
 			continue;
 		}
-		if (all) {
-			actual++;
-			if (tick) progress(tick, n);
+		if (all) actual++;
+		if (tick) {
+			progress(tick, n);
 		}
 		unless (s->cksumok == 1) {
 			fprintf(stderr,
@@ -494,7 +497,7 @@ out:
 	if (!errors && bp_getFiles && !getenv("_BK_CHECK_NO_BAM_FETCH") &&
 	    (checkout & (CO_BAM_EDIT|CO_BAM_GET))) {
 		sprintf(buf, "bk checkout -q%s -", timestamps ? "T" : "");
-		if (verbose) fprintf(stderr,
+		if (verbose > 1) fprintf(stderr,
 		    "check: fetching BAM data...\n");
 		f = popen(buf, "w");
 		EACH(bp_getFiles) fprintf(f, "%s\n", bp_getFiles[i]);

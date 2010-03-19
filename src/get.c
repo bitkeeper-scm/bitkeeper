@@ -1,6 +1,7 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "progress.h"
 
 private int	get_rollback(sccs *s, char *rev,
 		    char **iLst, char **xLst, char *prog);
@@ -25,6 +26,7 @@ get_main(int ac, char **av)
 	int	closetips = 0;
 	int	skip_bin = 0;
 	int	checkout = 0;
+	int	n = 0, nfiles = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	ac_optend;
 	MDBM	*realNameCache = 0;
@@ -33,6 +35,7 @@ get_main(int ac, char **av)
 	char	**bp_keys = 0;
 	project	*bp_proj = 0;
 	u64	bp_todo = 0;
+	ticker	*tick = 0;
 	char	realname[MAXPATH];
 
 	if (prog = strrchr(av[0], '/')) {
@@ -49,8 +52,8 @@ get_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|pPqr;RSstTx;", 0)) != -1) {
-		if (checkout && !strchr("qRST", c)) {
+	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|N;pPqr;RSstTx;", 0)) != -1) {
+		if (checkout && !strchr("NqRST", c)) {
 			fprintf(stderr, "checkout: no options allowed\n");
 			exit(1);
 		}
@@ -77,6 +80,7 @@ get_main(int ac, char **av)
 		    case 'i': iLst = optarg; break;		/* doc 2.0 */
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
 		    case 'M': mRev = optarg; closetips = !mRev; break;
+		    case 'N': nfiles = atoi(optarg); break;
 		    case 'p': flags |= PRINT; break;		/* doc 2.0 */
 		    case 'P': flags |= PRINT|GET_FORCE; break;	/* doc 2.0 */
 		    case 'q': flags |= SILENT; break;		/* doc 2.0 */
@@ -145,9 +149,11 @@ onefile:	fprintf(stderr,
 		assert(realNameCache);
 	}
 
+	if (nfiles) tick = progress_start(PROGRESS_BAR, nfiles);
 	for (; name; name = sfileNext()) {
 		d = 0;
 
+		if (tick) progress(tick, ++n);
 		if (caseFoldingFS) {
 			/*
 			 * For win32 FS and Samba.
@@ -333,6 +339,7 @@ next:		sccs_free(s);
 		bp_keys = 0;
 		bp_todo = 0;
 	}
+	if (tick) progress_done(tick, errors ? "errors" : "OK");
 	if (bp_files && !recursed) {
 
 		/* If we already had an error don't let this turn that

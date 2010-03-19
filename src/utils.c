@@ -1,5 +1,6 @@
 #include "bkd.h"
 #include "logging.h"
+#include "progress.h"
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
@@ -1017,6 +1018,7 @@ int
 sendServerInfo(int no_repo)
 {
 	char	*repoid, *rootkey, *p, *errs = 0;
+	char	**v;
 	char	buf[MAXPATH];
 	char	bp[MAXLINE];
 
@@ -1081,6 +1083,26 @@ sendServerInfo(int no_repo)
 			out(buf);
 		}
 		unless (proj_hasOldSCCS(0)) out("REMAP=1\n");
+		if (p = loadfile("BitKeeper/log/NFILES", 0)) {
+			sprintf(buf, "NFILES=%u\n", atoi(p));
+			out(buf);
+			free(p);
+		}
+		if (v = file2Lines(0, "BitKeeper/log/TIP")) {
+			/* old repos, compat. */
+			if (nLines(v) >= 1) {
+				sprintf(buf, "TIP_MD5=%s\n", v[1]);
+				out(buf);
+			}
+			/* new repos, md5, key, rev */
+			if (nLines(v) == 3) {
+				sprintf(buf, "TIP_KEY=%s\n", v[2]);
+				out(buf);
+				sprintf(buf, "TIP_REV=%s\n", v[3]);
+				out(buf);
+			}
+			freeLines(v, free);
+		}
 	}
 	out("ROOT=");
 	getcwd(buf, sizeof(buf));
@@ -1537,7 +1559,7 @@ full_check(void)
  * Otherwise do a full check.
  */
 int
-run_check(int quiet, char *flist, char *opts, int *did_partial)
+run_check(int verbose, char *flist, char *opts, int *did_partial)
 {
 	int	i, j, ret;
 	char	buf[20];
@@ -1546,7 +1568,7 @@ run_check(int quiet, char *flist, char *opts, int *did_partial)
 again:
 	assert(!opts || (strlen(opts) < sizeof(buf)));
 	unless (opts && *opts) opts = "--";
-	unless (quiet) {
+	if (verbose) {
 		getcwd(pwd, sizeof(pwd));
 		fprintf(stderr, "Running consistency check in %s ...\n", pwd);
 	}
@@ -1568,101 +1590,147 @@ again:
 	}
 	return (ret);
 }
+/*
+ * 123/123 1234567891234567890012345678901234 |=========================| OK
+ */
+#define	TLEN	34		// title part
+#define	BARLEN	(64-TLEN)	// progress bar part
 
+/*
+ * "12/23 src/gui" =>
+ * 	"12/23 src/gui"
+ * "12/23 src/diff and patch/utils" =>
+ * 	"12/23 src/diff and patch/utils"
+ * "12/23 src/diff and patch and more/utils" =>
+ * 	"12/23 .../utils"
+ * "program name that goes on and on and on" =>
+ * 	" [program name that goes on and o]"
+ * "program" =>
+ * 	" [program]"
+ * "12/23 a-very-long-file-name-that-has-no-end" =>
+ * 	"12/23 a-very-long-file-name-tha..."
+ * "12/23 dir/a-very-long-file-name-that-has-no-end" =>
+ * 	"12/23 .../a-very-long-file-name..."
+ * "12/23 a/file with spaces" =>
+ * 	"12/23 a/file with spaces"
+ * "12/23 a/long file with spaces in the name" =>
+ * 	"12/23 .../long file with spaces..."
+ */
+private char *
+progress_title(void)
+{
+	char	*space, *p;
+	int	i;
 
-struct ticker {
-	struct	timeval	start;	/* time at start */
-	u64	max;		/* n/max == percent done */
-	u32	interval;	/* count down to next update */
-	u32	total;		/* number of inters since setup */
-	float	rate;		/* update rate in seconds */
-	u8	i;		/* spin cycle */
-	u8	style;		/* output style */
-};
+	if (title) {
+		if (strlen(title) <= TLEN) {
+			return (strdup(title));
+		}
+
+		/*
+		 * We expect "1/123 src/sys"
+		 * and we want to make the src/sys part fit
+		 */
+		unless (space = strchr(title, ' ')) {
+			fputs(title, stderr);
+			assert("no space in title" == 0);
+		}
+		*space = 0;
+		i = strlen(title);	/* 1/123 */
+		i += 1;			/* " " */
+		assert(i + 8 <= TLEN);	/* sanity that there is room */
+		unless (p = strrchr(space+1, '/')) {
+			p = space+1;
+			i = TLEN - i - 3;
+			p = aprintf("%s %-*.*s...", title, i, i, p);
+			*space = ' ';
+			return (p);
+		}
+		p++;			 /* sys */
+		if (i + 4 + strlen(p) <= TLEN) {
+			p = aprintf("%s .../%s", title, p);
+			*space = ' ';
+			return (p);
+		}
+		i = TLEN - i - 7;	/* display first part of basename */
+		p = aprintf("%s .../%-*.*s...", title, i, i, p);
+		*space = ' ';
+		return (p);
+	}
+	return (aprintf(" [%.*s]", TLEN - 3, prog));
+}
 
 ticker *
 progress_start(int style, u64 max)
 {
 	ticker	*t;
+	struct	timeval tv;
 
 	t = new(ticker);
 	t->style = style;
-	gettimeofday(&t->start, 0);
+	t->name = progress_title();
+	gettimeofday(&tv, 0);
+	t->start = tv.tv_sec;
+	t->start *= 1000;
+	t->start += tv.tv_usec / 1000;
 	t->max = max;
-	t->interval = 3;
 	switch (t->style) {
 	    case PROGRESS_SPIN:
 		fputc(' ', stderr);
-		t->rate = 0.50;
 		break;
 	    case PROGRESS_MINI:
-		t->rate = 0.25;
 		break;
 	    case PROGRESS_BAR:
-		t->rate = 0.10;
 		break;
 	}
+	t->rate = 333;
+	progress(t, 0);
 	return (t);
 }
 
 /*
  * The code aims for a fixed rate of updates.
- * The gettimeofday() syscall is also only once per spin so this has low
- * overhead.
+ * I benchmarked and gettimeofday() is in 1-3 usec range.
  */
 void
 progress(ticker *t, u64 n)
 {
 	char	*spin = "|/-\\";
-	float	elapsed;
+	u64	now;
+	float	percentf;
 	int	percent;
 	int	i, want;
-	int	barlen = 65;
-	char	*p;
+	int	barlen = BARLEN;
 	struct	timeval tv;
 
-	t->total += 1;
-	if (--t->interval > 0) return;
 
-	gettimeofday(&tv, 0);
-
-	/* time since start */
-	elapsed = (tv.tv_sec - t->start.tv_sec) +
-	    (tv.tv_usec - t->start.tv_usec) / 1.0e6;
-
-	if (elapsed < 0.05) {	/* too soon to make a good estimate */
-		t->interval = (t->rate - 0.05) * t->total / 0.05;
-		if (t->interval == 0) t->interval = 1;
-		return;
+	if (t->style == PROGRESS_SPIN) {
+		gettimeofday(&tv, 0);
+		now = tv.tv_sec;
+		now *= 1000;
+		now += tv.tv_usec / 1000;
+	
+		if ((n > 1) && (now - t->start) < t->rate) return;
 	}
 
-	/* guess number of calls per interval */
-	t->interval = t->rate * ((float)t->total / elapsed);
-	/* sanity */
-	if (t->interval == 0) t->interval = 1;
-	else if (t->interval > 10000) t->interval = 10000;
+	if (t->max) {
+		percentf = 100.0 * (float)n / t->max;
+		percent = (percentf > 100) ? 100 : (int)percentf;
+	} else {
+		percent = 100;
+	}
+	if ((n > 1) && (percent <= t->percent)) return;
+	t->percent = percent;
 
 	switch (t->style) {
 	    case PROGRESS_SPIN:
 		fprintf(stderr, "%c\b", spin[t->i++ % 4]);
 		break;
 	    case PROGRESS_MINI:
-		percent = t->max ? 100 * n / t->max : 100;
-		if (percent > 100) percent = 100;
 		fprintf(stderr, "%3u%%\b\b\b\b", percent);
 		break;
 	    case PROGRESS_BAR:
-		percent = t->max ? 100 * n / t->max : 100;
-		if (percent > 100) percent = 100;
-		fprintf(stderr, "%3u%% ", percent);
-		if ((elapsed > 10.0) && (n < t->max)) {
-			int	remain = elapsed * (((float)t->max/n) - 1.0);
-
-			p = aprintf("%dm%02ds ", remain/60, remain%60);
-			barlen -= strlen(p);
-			fputs(p, stderr);
-			free(p);
-		}
+		fprintf(stderr, "\r%-*.*s %3u%% ", TLEN, TLEN, t->name, percent);
 		fputc('|', stderr);
 		want = (percent * barlen) / 100;
 		for (i = 1; i <= want; ++i) fputc('=', stderr);
@@ -1686,33 +1754,55 @@ progress_done(ticker *t, char *msg)
 		fputs("    \b\b\b\b", stderr);
 		break;
 	    case PROGRESS_BAR:
-		fprintf(stderr, "100%% |");
-		for (i = 1; i <= 65; ++i) fputc('=', stderr);
+		fprintf(stderr, "\r%-*.*s 100%% |", TLEN, TLEN, t->name);
+		for (i = 1; i <= BARLEN; ++i) fputc('=', stderr);
 		fputc('|', stderr);
 		break;
 	}
-	if (msg) {
-		fputs(msg, stderr);
-		fputc('\n', stderr);
-	} else {
-		if (t->style == PROGRESS_BAR) fputc('\n', stderr);
+	unless (getenv("_BK_PROGRESS_MULTI")) {
+		progress_end(t->style, msg);
 	}
+	free(t->name);
 	free(t);
+}
+
+void
+progress_end(u32 style, char *msg)
+{
+	char	*name;
+	int	i;
+
+	if (style == PROGRESS_BAR) {
+		name = progress_title();
+		fprintf(stderr, "\r%-*.*s 100%% |", TLEN, TLEN, name);
+		for (i = 1; i <= BARLEN; ++i) fputc('=', stderr);
+		fputc('|', stderr);
+		free(name);
+	}
+	if (msg) {
+		fprintf(stderr, " %s\n", msg);
+	} else {
+		if (style == PROGRESS_BAR) fputc('\n', stderr);
+	}
 }
 
 int
 progresstest_main(int ac, char **av)
 {
 	int	c;
-	int	n = 20000;	/* num iterations */
+	u64	n = 20000;	/* num iterations */
 	int	s = 200;	/* usleep per iteration */
 	int	r = 0;		/* rand sleep per iteration */
 	int	i;
-	int	style = 2;
+	int	style = PROGRESS_BAR;
+	u64	done = 0;
+	u32	milli;
 	ticker	*tick;
+	FILE	*data = 0;
 
-	while ((c = getopt(ac, av, "n;r;s;t;", 0)) != -1) {
+	while ((c = getopt(ac, av, "l;n;r;s;t;", 0)) != -1) {
 		switch (c) {
+		    case 'l': data = fopen(optarg, "r"); break;
 		    case 'n': n = atoi(optarg); break;
 		    case 'r': r = atoi(optarg); break;
 		    case 's': s = atoi(optarg); break;
@@ -1721,12 +1811,20 @@ progresstest_main(int ac, char **av)
 		}
 	}
 	if (style != 2) fprintf(stderr, "Do work");
+	if (data) fscanf(data, "%llu\n", &n);
 	tick = progress_start(style, n);
-	for (i = 0; i < n; i++) {
-		c = s;
-		if (r) c += (rand() % r);
-		usleep(c);
-		progress(tick, i);
+	if (data) {
+		while (fscanf(data, "%llu %u\n", &done, &milli) == 2) {
+			progress(tick, done);
+			usleep((int)(milli * 1000));
+		}
+	} else {
+		for (i = 0; i < n; i++) {
+			c = s;
+			if (r) c += (rand() % r);
+			usleep(c);
+			progress(tick, i);
+		}
 	}
 	progress_done(tick, (style != 2) ? ", done" : "OK");
 	return (0);

@@ -98,8 +98,11 @@ echo OK
 
 echo $N Show -@url is used before urllist by populate ...............$NL
 bk here rm $Q odd || fail
-bk here add -@../odd odd >OUT 2>&1 || fail
-grep -q 'Clone.*/odd\?' OUT || fail
+bk here add -v -@../odd odd >OUT 2>&1 || fail
+grep -q 'Clone.*/odd\?' OUT || {
+	cat OUT
+	fail
+}
 echo OK
 
 echo $N Unpopulate odd...............................................$NL

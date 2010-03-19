@@ -8315,15 +8315,19 @@ void
 cset_savetip(sccs *s, int force)
 {
 	FILE	*f;
-	char	buf[MAXPATH];
+	delta	*d;
+	char	md5[MAXPATH];
+	char	key[MAXPATH];
 
 	assert(s->proj);
-	sprintf(buf, "%s/BitKeeper/log/TIP", proj_root(s->proj));
-	if (!force && exists(buf)) return;
-	f = fopen(buf, "w");
+	sprintf(key, "%s/BitKeeper/log/TIP", proj_root(s->proj));
+	if (!force && exists(key)) return;
+	unlink(key);	// until Wayne doesn't hardlink log/*
+	f = fopen(key, "w");
 	assert(f);
-	sccs_md5delta(s, sccs_top(s), buf);
-	fprintf(f, "%s\n", buf);
+	sccs_md5delta(s, d = sccs_top(s), md5);
+	sccs_sdelta(s, d, key);
+	fprintf(f, "%s\n%s\n%s\n", md5, key, d->rev);
 	fclose(f);
 }
 

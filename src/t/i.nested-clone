@@ -1,0 +1,65 @@
+echodo() {
+	echo
+	echo + ${1+"$@"}
+	echo $N press return to do it "> "$NL
+	read ans < /dev/tty
+	${1+"$@"}
+}
+
+echo $N Watch clone and rclone work .................................$NL
+nested product
+bk tag $Q TIP
+bk setup -C -f "some  long component"
+bk setup -C -f "a/another  long component"
+bk setup -C -f "some  long component that is absurdly long"
+bk setup -C -f "a/still another  long component that is absurdly long"
+bk setup -C -f "some  long directory that is /followed  by a long component"
+bk setup -C -f "some  long directory/followed  by a component"
+cd gcc
+touch new
+bk new $Q new
+bk commit $Q -ynew
+bk -P commit $Q -ynew
+cd ../..
+bk bkd -d -aPORT -ikill
+P=`cat PORT`
+trap "bk _kill bk://localhost:$P" 0
+echo OK
+
+echodo bk clone "$HERE/product" work.clone
+echodo bk clone -rTIP "$HERE/product" work.clone.TIP
+
+echodo bk clone bk://localhost:$P/product work.bkclone
+echodo bk clone -rTIP bk://localhost:$P/product work.bkclone.TIP
+
+echodo bk clone "$HERE/product" bk://localhost:$P/work.bkrclone
+echodo bk clone -rTIP "$HERE/product" bk://localhost:$P/work.bkrclone.TIP
+
+echodo bk _rclone -B"$HERE/product" "$HERE/product" work.rclone
+echodo bk _rclone -rTIP -B"$HERE/product" "$HERE/product" work.rclone.TIP
+
+echodo bk _rclone -B"$HERE/product" \
+    "$HERE/product" bk://localhost:$P/work.bk_rclone
+echodo bk _rclone -rTIP -B"$HERE/product" \
+    "$HERE/product" bk://localhost:$P/work.bk_rclone.TIP
+
+echo $N Watch clone and rclone fail .................................$NL
+bk _rm product/gcc/SCCS/s.new
+echo OK
+
+echodo bk clone "$HERE/product" fail.clone
+echodo bk clone -rTIP "$HERE/product" fail.clone.TIP
+
+echodo bk clone bk://localhost:$P/product fail.bkclone
+echodo bk clone -rTIP bk://localhost:$P/product fail.bkclone.TIP
+
+echodo bk clone "$HERE/product" bk://localhost:$P/fail.bkrclone
+echodo bk clone -rTIP "$HERE/product" bk://localhost:$P/fail.bkrclone.TIP
+
+echodo bk _rclone -B"$HERE/product" "$HERE/product" fail.rclone
+echodo bk _rclone -rTIP -B"$HERE/product" "$HERE/product" fail.rclone.TIP
+
+echodo bk _rclone -B"$HERE/product" \
+    "$HERE/product" bk://localhost:$P/fail.bk_rclone
+echodo bk _rclone -rTIP -B"$HERE/product" \
+    "$HERE/product" bk://localhost:$P/fail.bk_rclone.TIP

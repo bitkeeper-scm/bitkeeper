@@ -29,7 +29,6 @@
  *		be hardlinked at dest
  * 	l - local - do not recurse to any BAM servers; typical usage is
  * 		when bk havekeys does -l then sfio wants -l
- * 	r - use \r to terminate output trace - XXX: no padding to erase
  *
  * When calling this for a remote BAM server, the command line should
  * look like this:
@@ -48,6 +47,7 @@
 #else
 #include "sccs.h"
 #include "bam.h"
+#include "progress.h"
 #endif
 
 #define	SFIO_BSIZ	4096
@@ -62,9 +62,7 @@
 #define	SFIO_LOOKUP	6
 #define	SFIO_MORE	7	/* another sfio follows */
 
-#define	NEWLINE()	if ((opts->newline == '\r') && !opts->quiet) \
-				fputc('\n', stderr)
-
+private	void	optsFree(void);
 private	int	sfio_out(void);
 private int	out_file(char *file, struct stat *, off_t *byte_count,
 		    int useDsum, u32 dsum);
@@ -96,7 +94,6 @@ private	struct {
 	u32	index:1;	/* -I generate index info sfio */
 	u32	mark_no_dfiles:1;
 	int	mode;		/* M_IN, M_OUT, M_LIST */
-	char	newline;	/* -r makes it \r instead of \n */
 	char	**more;		/* additional list of files to send */
 	char	*prefix;	/* dir prefix to put on the file listing */
 	hash	*sent;		/* list of d.files we have set, for dups */
@@ -105,7 +102,11 @@ private	struct {
 	char	*lastdir;	/* for -I, a place to remember dirs */
 	u64	todo;		/* -b`psize` - bytes we think we are moving */
 	u64	done;		/* file bytes we've moved so far */
+	u32	nfiles;		/* -N%d - number of files we'll move */
 	int	prevlen;	/* length of previously printed line */
+#ifndef SFIO_STANDALONE
+	ticker	*tick;		/* progress bar */
+#endif
 } *opts;
 
 #define M_IN	1
@@ -122,11 +123,10 @@ sfio_main(int ac, char **av)
 	};
 
 	opts = (void*)calloc(1, sizeof(*opts));
-	opts->newline = '\n';
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefgHIiKLlmopP;qr", lopts)) != -1) {
+	while ((c = getopt(ac, av, "a;A;b;BefgHIiKLlmN;opP;qr", lopts)) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -154,6 +154,7 @@ sfio_main(int ac, char **av)
 		    case 'K': opts->key2path = 1; break;
 		    case 'L': opts->lclone = 1; break;
 		    case 'l': opts->recurse = 0; break;
+		    case 'N': opts->nfiles = atoi(optarg); break;
 		    case 'o': 					/* doc 2.0 */
 			if (opts->mode) goto usage;
 			opts->mode = M_OUT;
@@ -165,7 +166,6 @@ sfio_main(int ac, char **av)
 		    case 'P': opts->prefix = optarg; break;
 		    case 'm': opts->doModes = 1; break; 	/* doc 2.0 */
 		    case 'q': opts->quiet = 1; break; 		/* doc 2.0 */
-		    case 'r': opts->newline = '\r'; break;
 		    case 300:	/* --mark-no-dfiles */
 			opts->mark_no_dfiles = 1;
 			break;
@@ -200,17 +200,53 @@ sfio_main(int ac, char **av)
 		return (1);
 	}
 #endif
-	if (opts->mode == M_OUT)       rc = sfio_out();
-	else if (opts->mode == M_IN)   rc = sfio_in(1);
-	else if (opts->mode == M_LIST) rc = sfio_in(0);
-	else goto usage;
 
-#ifndef SFIO_STANDALONE
+#ifndef	SFIO_STANDALONE
+	prog = opts->bp_tuple ? "BAM xfer" : "file xfer";
+	if (opts->quiet) {
+	} else if (opts->todo) {
+		opts->tick = progress_start(PROGRESS_BAR, opts->todo);
+	} else if (opts->nfiles) {
+		opts->tick = progress_start(PROGRESS_BAR, opts->nfiles);
+	}
+#endif
+
+	if (opts->mode == M_OUT) {
+		rc = sfio_out();
+	} else if (opts->mode == M_IN) {
+		rc = sfio_in(1);
+	} else if (opts->mode == M_LIST) {
+		rc = sfio_in(0);
+	} else {
+		goto usage;
+	}
+
+#ifndef	SFIO_STANDALONE
+	if (opts->tick) progress_done(opts->tick, rc ? "FAILED" : "OK");
 	if (opts->mark_no_dfiles) touch(NO_DFILE, 0666);
 #endif
+	optsFree();
 	return (rc);
-usage:	free(opts);
+
+usage:	optsFree();
 	usage();
+}
+
+private	void
+optsFree(void)
+{
+	unless (opts) return;
+
+	/*
+	 * XXX: maybe leaking opts->tick as it can be freed but not
+	 * cleared, and there's no interface to clear its internal
+	 * memory such as tick->name, so choosing to leave it alone.
+	 * Should only leak in the error case.
+	 */
+	if (opts->more) freeLines(opts->more, free);
+	if (opts->sent) hash_free(opts->sent);
+	if (opts->lastdir) free(opts->lastdir);
+	free(opts);
 }
 
 private char *
@@ -336,11 +372,7 @@ reg:			if (n = out_file(buf, &sb, &byte_count, 0, 0)) {
 		send_eof(0);
 	}
 	save_byte_count(byte_count);
-	if (opts->more) freeLines(opts->more, free);
-	if (opts->sent) hash_free(opts->sent);
 	if (opts->hardlinks) hash_free(links);
-	NEWLINE();
-	free(opts);
 #endif
 	return (0);
 }
@@ -583,7 +615,6 @@ sfio_in(int extract)
 				if (-len == SFIO_MORE) {
 					return (sfio_in(extract));
 				}
-				NEWLINE();
 				fprintf(stderr, "Incomplete archive: ");
 				switch (-len) {
 				    case SFIO_LSTAT:
@@ -607,7 +638,6 @@ sfio_in(int extract)
 				    	break;
 				}
 			}
-			NEWLINE();
 			return (-len); /* we got a EOF */
 		}
 		if (len >= MAXPATH) {
@@ -926,62 +956,39 @@ err:
 private void
 print_status(char *file, u32 sz)
 {
-	int	n;
+	static	int n;
+	char	line[MAXPATH];
 
 	if (opts->mark_no_dfiles &&
 	    (strneq(file, "SCCS/d.", 7) || strstr(file, "/SCCS/d."))) {
 		opts->mark_no_dfiles = 0;
 	}
-	unless (opts->quiet) {
-		fputs(opts->prefix, stderr);
-		n = strlen(opts->prefix);
 
-#ifndef	SFIO_STANDALONE
-		if (opts->sfile2gfile && (sccs_filetype(file) == 's')) {
-			char	*gfile;
+	if (opts->quiet) return;
 
-			gfile = sccs2name(file);
-			fputs(gfile, stderr);
-			n += strlen(gfile);
-			free(gfile);
-		}
-		else
-#endif
-		{
-			fputs(file, stderr);
-			n += strlen(file);
-		}
-#ifndef	SFIO_STANDALONE
-		if (sz && (opts->newline == '\r')) {
-			/*
-			 * NOTE: Why the STANDALONE ifdefs here?
-			 * The next block is not in STANDALONE because no
-			 * there is no psize() function.  However, the
-			 * rest of the function is needed outside the
-			 * ifdef because the windows installer runs with
-			 * sfio -im to list the files being unpacked as
-			 * sort of a progress bar.  If this block becomes
-			 * needed in STANDALONE, then add psize() to
-			 * utils/sfio_utils.c
-			 */
-			if (opts->todo) {
-				n += fprintf(stderr, " (%s of %s)",
-				    psize(opts->done), psize(opts->todo));
-			} else {
-				n += fprintf(stderr, " (+%s = %s)",
-				    psize(sz), psize(opts->done));
-			}
-		}
-#endif
-		if (opts->newline == '\r') {
-			if (opts->prevlen > n) {
-				/* overwrite previously printed line */
-				fprintf(stderr, "%*s", (opts->prevlen - n), "");
-			}
-			opts->prevlen = n;
-		}
-		fputc(opts->newline, stderr);
+#ifdef	SFIO_STANDALONE
+	/* just do a simple print in standalone mode */
+	fputs(file, stderr);
+	fputc('\n', stderr);
+#else
+	if (opts->todo) {
+// ttyprintf("todo=%llu done=%llu max=%llu\n", opts->todo, opts->done, opts->tick->max);
+		progress(opts->tick, opts->done);
+		return;
+	} else if (opts->nfiles) {
+		progress(opts->tick, ++n);
+		return;
 	}
+
+	if (opts->sfile2gfile && (sccs_filetype(file) == 's')) {
+		file = sccs2name(file);
+		sprintf(line, "%s%s", opts->prefix, file);
+		free(file);
+	} else {
+		sprintf(line, "%s%s", opts->prefix, file);
+	}
+	fprintf(stderr, "%s\n", line);
+#endif
 }
 
 int
@@ -1053,6 +1060,8 @@ where(char *path)
 		if (opts->lastdir) free(opts->lastdir);
 		opts->lastdir = dir;
 		printf("%s/\n", dir);
+	} else {
+		free(dir);
 	}
 	/* might be better to print size from last entry instead */
 	printf("%s|%lx\n", basenm(path), ftell(stdin));

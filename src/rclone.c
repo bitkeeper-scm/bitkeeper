@@ -1,10 +1,12 @@
 #include "bkd.h"
 #include "logging.h"
 #include "nested.h"
+#include "progress.h"
 
 private	struct {
 	u32	debug:1;		/* -d debug mode */
-	u32	verbose:1;		/* -q shut up */
+	u32	quiet:1;		/* -q shut up */
+	u32	verbose:1;		/* -v old style noise */
 	u32	detach:1;		/* is detach command? */
 	u32	sendenv_flags;		/* flags for sendEnv(); */
 	char	*rev;
@@ -13,6 +15,7 @@ private	struct {
 	u64	bpsz;
 	char	**av;			/* ensemble commands */
 	char	**aliases;		/* ensemble aliases list */
+	char	*sfiotitle;		/* pass this down */
 } opts;
 
 private int rclone(char **av, remote *r, char **envVar);
@@ -34,8 +37,9 @@ rclone_main(int ac, char **av)
 	remote	*l, *r;
 	char	buf[MAXLINE];
 	longopt	lopts[] = {
-		{ "sccs-compat", 300 }, /* old non-remapped repo */
-		{ "hide-sccs-dirs", 301 }, /* move sfiles to .bk */
+		{ "sccs-compat", 300 },		/* old non-remapped repo */
+		{ "hide-sccs-dirs", 301 },	/* move sfiles to .bk */
+		{ "sfiotitle;", 302 },		/* pass title for sfio */
 		{ 0, 0 }
 	};
 
@@ -44,8 +48,7 @@ rclone_main(int ac, char **av)
 		opts.detach = 1;
 		av[0] = "_rclone";
 	}
-	opts.verbose = 1;
-	while ((c = getopt(ac, av, "B;dE:pqr;s;w|z|", lopts)) != -1) {
+	while ((c = getopt(ac, av, "B;dE:pqr;s;vw|z|", lopts)) != -1) {
 		unless ((c == 'r') || (c == 's') || (c > 256)) {
 			if (optarg) {
 				opts.av = addLine(opts.av,
@@ -65,11 +68,12 @@ rclone_main(int ac, char **av)
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'p': break; /* ignore no parent */
-		    case 'q': opts.verbose = 0; break;
+		    case 'q': opts.quiet = 1; break;
 		    case 'r': opts.rev = optarg; break;
 		    case 's':
 			opts.aliases = addLine(opts.aliases, strdup(optarg));
 			break;
+		    case 'v': opts.verbose = 1; break;
 		    case 'w': /* ignored */ break;
 		    case 'z':
 			if (optarg) gzip = atoi(optarg);
@@ -81,6 +85,8 @@ rclone_main(int ac, char **av)
 		    case 301:	/* --hide-sccs-dirs */
 			opts.sendenv_flags |= SENDENV_FORCEREMAP;
 			break;
+		    case 302:
+			opts.sfiotitle = optarg; break;
 		    default: bk_badArg(c, av);
 		}
 		optarg = 0;
@@ -128,6 +134,7 @@ rclone_main(int ac, char **av)
 		    "clone: must commit local changes to %s\n", ALIASES);
 		exit(1);
 	}
+	unless (opts.quiet || opts.verbose) putenv("_BK_PROGRESS_MULTI=YES");
 	r = remote_parse(av[optind + 1], REMOTE_BKDURL);
 	unless (r) usage();
 	if (r->host && !r->path) {
@@ -171,9 +178,10 @@ rclone_ensemble(remote *r)
 	char	*name, *url;
 	char	*dstpath;
 	int	errs;
-	int	i, j, status, rc = 0;
+	int	i, j, status, which = 0, k = 0, rc = 0;
 	u32	flags = NESTED_PRODUCTFIRST;
 	hash	*urllist;
+	char	nfiles[MAXPATH];
 
 	url = remote_unparse(r);
 
@@ -196,6 +204,7 @@ rclone_ensemble(remote *r)
 			    prog, c->path);
 			++errs;
 		}
+		if (c->alias && !c->product) k++;
 	}
 	if (errs) {
 		fprintf(stderr, "%s: missing components\n", prog);
@@ -203,10 +212,17 @@ rclone_ensemble(remote *r)
 		goto out;
 	}
 	EACH_STRUCT(n->comps, c, j) {
-		unless (c->alias) continue;
+		unless (c->included && c->alias) continue;
 		proj_cd2product();
 		vp = addLine(0, strdup("bk"));
-		vp = addLine(vp, strdup("clone"));
+		vp = addLine(vp, strdup("_rclone"));
+		if (c->product) {
+			vp = addLine(vp, strdup("--sfiotitle=."));
+		} else {
+			vp = addLine(vp,
+			    aprintf("--sfiotitle=%d/%d %s",
+			    ++which, k, c->path));
+		}
 		EACH(opts.av) vp = addLine(vp, strdup(opts.av[i]));
 		vp = addLine(vp, aprintf("-r%s", c->deltakey));
 		if (c->product) {
@@ -234,7 +250,16 @@ rclone_ensemble(remote *r)
 		status = spawnvp(_P_WAIT, "bk", &vp[1]);
 		rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
 		freeLines(vp, free);
-		if (rc) {
+		unless (opts.quiet || opts.verbose) {
+			if (c->product) {
+				strcpy(nfiles, ".");
+			} else {
+				sprintf(nfiles, "%d/%d %s", which, k, c->path);
+			}
+			title = nfiles;
+			progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
+			if (rc) break;
+		} else if (rc) {
 			fprintf(stderr, "Rclone %s failed\n", name);
 			break;
 		}
@@ -678,23 +703,41 @@ private u32
 send_sfio(remote *r, int gzip)
 {
 	int	status;
-	char	*tmpf;
+	char	*b, *p, *tmpf;
 	FILE	*fh;
 	char	*sfiocmd;
 	FILE	*fout;
+	char	title[MAXPATH];
+	char	buf[200] = { "" };
 
 	tmpf = bktmp(0, "rclone_sfiles");
 	status = sysio(0, tmpf, 0, "bk", "_sfiles_clone", SYS);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
 
+	if (opts.quiet) {
+		sprintf(buf, "q");
+	} else {
+		unless (opts.verbose) {
+			if (p = loadfile("BitKeeper/log/NFILES", 0)) {
+				sprintf(buf, "N%u", atoi(p));
+				free(p);
+			}
+		}
+	}
+	if (opts.sfiotitle) {
+		sprintf(title, " --title='%s'", opts.sfiotitle);
+	} else {
+		title[0] = 0;
+	}
+
 	if (r && r->path) {
-		sfiocmd = aprintf("bk sfio -P'%s/' -o%s < '%s'", 
-		    basenm(r->path), (opts.verbose ? "" : "q"), tmpf);
+		b = basenm(r->path);
+		sfiocmd = aprintf(
+		    "bk%s sfio -P'%s/' -o%s < '%s'", title, b, buf, tmpf);
 		fout = fdopen(dup(r->wfd), "wb");
 	} else {
 		fout = fopen(DEVNULL_WR, "w");
-		sfiocmd = aprintf("bk sfio -o%s < '%s'", 
-		    (opts.verbose ? "" : "q"), tmpf);
+		sfiocmd = aprintf("bk%s sfio -o%s < '%s'", title, buf, tmpf);
 	}
 	assert(fout);
 	fh = popen(sfiocmd, "r");
@@ -705,7 +748,7 @@ send_sfio(remote *r, int gzip)
 	unlink(tmpf);
 	free(tmpf);
 	fclose(fout);
-unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
 	return (opts.out);
 
 }

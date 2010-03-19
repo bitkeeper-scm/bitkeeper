@@ -17,7 +17,8 @@ jmp_buf	exit_buf;
 int	bk_isSubCmd = 0;	/* if 1, BK called us and sent seed */
 int	spawn_tcl;		/* needed in crypto.c:bk_preSpawnHook() */
 ltc_math_descriptor	ltc_mp;
-char	*prog;
+char	*prog;			/* name of the bk command being run, like co */
+char	*title;			/* if set, use this instead of prog for pbars */
 char	*start_cwd;		/* if -R or -P, where did I start? */
 unsigned int turnTransOff;	/* for transactions, see nested.h */
 
@@ -58,6 +59,10 @@ main(int volatile ac, char **av, char **env)
 	char	*csp, *p, *dir = 0, *locking = 0;
 	char	*envargs = 0;
 	char	sopts[30];
+	longopt	lopts[] = {
+		{ "title;", 300 },	// title for progress bar
+		{ 0, 0 },
+	};
 
 	trace_init(av[0]);
 	ltc_mp = ltm_desc;
@@ -182,7 +187,7 @@ main(int volatile ac, char **av, char **env)
 		}
 		is_bk = 1;
 		while ((c = getopt(ac, av,
-			"?;@|1aAB;cCdDgGhjL|lM;nNpPqr|RuUxz;", 0)) != -1) {
+			"?;@|1aAB;cCdDgGhjL|lM;nNpPqr|RuUxz;", lopts)) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
@@ -226,6 +231,7 @@ main(int volatile ac, char **av, char **env)
 				}
 				break;
 			    case 'z': break;	/* remote will eat it */
+			    case 300: title = optarg; break;
 			    default: bk_badArg(c, av);
 			}
 		}

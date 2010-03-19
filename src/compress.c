@@ -3,6 +3,7 @@
  */
 
 #include "bkd.h"
+#include "progress.h"
 
 /*
  * Provide compress/uncompress streams using the zgets.c code.

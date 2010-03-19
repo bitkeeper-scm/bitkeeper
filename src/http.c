@@ -5,6 +5,7 @@
 #include "sccs.h"
 #include "bkd.h"
 #include "tomcrypt.h"
+#include "progress.h"
 
 #define	SEND_SUCCESS	0
 #define	SEND_FAILURE	1

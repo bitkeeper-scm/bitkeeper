@@ -72,7 +72,7 @@ echo OK
 
 echo $N Re-attaching the same component should fail..................$NL
 cd "$HERE"/product
-bk attach -N manual_component >GOT 2>&1 && {
+bk attach -q -N manual_component >GOT 2>&1 && {
 	echo failed
 	cat GOT
 	exit 1

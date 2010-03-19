@@ -2,6 +2,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "progress.h"
 
 typedef struct {
 	u32	respectCset:1;
@@ -9,6 +10,8 @@ typedef struct {
 	u32	quiet:1;
 	u32	forward:1;
 	u32	iflags;
+	u32	nfiles;
+	ticker	*tick;
 } s_opts;
 
 private	delta	*checkCset(sccs *s);
@@ -25,7 +28,7 @@ stripdel_main(int ac, char **av)
 	s_opts	opts = {1, 0, 0, 0, 0};
 	RANGE	rargs = {0};
 
-	while ((c = getopt(ac, av, "bcCdqr;", 0)) != -1) {
+	while ((c = getopt(ac, av, "bcCN;dqr;", 0)) != -1) {
 		switch (c) {
 		    case 'b':
 			fprintf(stderr, "ERROR: stripdel -b obsolete\n");
@@ -36,6 +39,7 @@ stripdel_main(int ac, char **av)
 			opts.forward = 1;
 			opts.iflags = INIT_WACKGRAPH;
 			break;
+		    case 'N': opts.quiet = 1; opts.nfiles = atoi(optarg); break;
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r':
 			if (range_addArg(&rargs, optarg, 0)) usage();
@@ -169,12 +173,13 @@ stripdel_fixTable(sccs *s, int *pcnt)
 {
 	delta	*d;
 	int	leafset = 0;
-	int	count = 0, left = 0;
+	int	count = 0, left = 0, run_names = 0;
 
 	for (d = s->table; d; d = NEXT(d)) {
 		if (d->flags & D_SET) {
 			MK_GONE(s, d);
 			d->symLeaf = 0;
+			unless (d->flags & D_DUPPATH) run_names++;
 			count++;
 			continue;
 		}
@@ -185,6 +190,9 @@ stripdel_fixTable(sccs *s, int *pcnt)
 		}
 	}
 	if (pcnt) *pcnt = count;
+	if (run_names && !exists("BitKeeper/tmp/run_names")) {
+		close(creat("BitKeeper/tmp/run_names", 0666));
+	}
 	return (left);
 }
 
@@ -205,11 +213,13 @@ strip_list(s_opts opts)
 	char	*av[2] = {"-", 0};
 	sccs	*s = 0;
 	delta	*d;
-	int 	rc = 1;
+	int 	n = 0, rc = 1;
 	int	iflags = opts.iflags|SILENT;
 
+	if (opts.nfiles) opts.tick = progress_start(PROGRESS_BAR, opts.nfiles);
 	for (name = sfileFirst("stripdel", av, 0);
 	    name; name = sfileNext()) {
+		if (opts.tick) progress(opts.tick, ++n);
 		if (!s || !streq(s->sfile, name)) {
 			if (s && doit(s, opts)) goto fail;
 			if (s) sccs_free(s);
@@ -241,6 +251,7 @@ strip_list(s_opts opts)
 	rc = 0;
 fail:	if (s) sccs_free(s);
 	sfileDone();
+	if (opts.tick) progress_done(opts.tick, "OK");
 	return (rc);
 }
 

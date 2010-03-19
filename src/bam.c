@@ -5,6 +5,7 @@
 #include "range.h"
 #include "bam.h"
 #include "logging.h"
+#include "progress.h"
 
 /*
  * TODO:
@@ -558,10 +559,12 @@ bp_fetchkeys(char *me, project *proj, int quiet, char **keys, u64 todo)
 	/*
 	 * no recursion, I'm remoted to the server already
 	 * XXX run 'bk bam pull -' instead
+	 * LM sez: this one has a byte sized progress bar, bam pull is # files,
+	 * so this is better.
 	 */
 	sprintf(buf,
 	    "bk -q@'%s' -zo0 -Lr -Bstdin sfio -qoBl - |"
-	    "bk -R sfio -%sriBb%s - 2> " DEVNULL_WR,
+	    "bk -R sfio -%siBb%s - ",
 	    server, quiet ? "q" : "", psize(todo));
 	free(server);
 	f = popen(buf, "w");
@@ -627,7 +630,6 @@ bp_updateServer(char *range, char *list, int quiet)
 	 */
 	p = getenv("_BK_IN_BKD");
 	p = (p && *p) ? getenv("BK_REPO_ID") : getenv("BKD_REPO_ID");
-// unless (p && *p) ttyprintf("No BK[D]_REPO_ID\n");
 	if (p && streq(repoID, p)) return (0);
 
 	tmpkeys = bktmp(0, 0);
@@ -677,7 +679,6 @@ bp_updateServer(char *range, char *list, int quiet)
 		free(tmpkeys);
 		return (0);
 	}
-// ttyprintf("sending %u bytes\n", (u32)size(tmpkeys));
 	tmpkeys2 = bktmp(0, 0);
 	/* For now, we are not recursing to a chained server */
 	url = bp_serverURL(0);
@@ -704,10 +705,9 @@ bp_updateServer(char *range, char *list, int quiet)
 		fclose(out);
 
 		/* No recursion, we're looking for our files */
-		cmd = aprintf("bk sfio -o%srBlb%s - < '%s' |"
+		cmd = aprintf("bk sfio -o%sBlb%s - < '%s' |"
 		    "bk -q@'%s' -z0 -Lw sfio -iqB -", 
 		    quiet ? "q" : "", psize(todo), tmpkeys, url);
-// ttyprintf("CMD=%s\n", cmd);
 		rc = system(cmd);
 		free(cmd);
 	}
@@ -972,10 +972,13 @@ bam_pull_main(int ac, char **av)
 {
 	int	rc, c, i;
 	char	*url, *id;
-	char	**cmds = 0;
+	char	**list = 0;
 	int	all = 0;	/* don't check server */
 	int	quiet = 0;
 	int	dash = 0;	/* read keys to fetch from stdin */
+	FILE	*f;
+	char	*tmp;
+	char	buf[MAXKEY];
 
 #undef	ERROR
 #define	ERROR(x)	{ fprintf(stderr, "BAM pull: "); fprintf x ; }
@@ -1026,32 +1029,52 @@ bam_pull_main(int ac, char **av)
 		}
 	}
 
-	unless (dash) {
+	if (dash) {
+		while (fnext(buf, stdin)) {
+			list = addLine(list, strdup(buf));
+		}
+	} else {
 		/* find all BAM files */
-		cmds = addLine(cmds, strdup("bk _sfiles_bam"));
+		sprintf(buf, "bk _sfiles_bam | ");
 
 		/* list of all BAM deltas */
-		cmds = addLine(cmds,
-		    aprintf("bk prs -hnd'" BAM_DSPEC "' -"));
+		strcat(buf, "bk prs -hnd'" BAM_DSPEC "' - | ");
 
 		/* reduce to list of deltas missing. */
-		cmds = addLine(cmds,
-		    aprintf("bk havekeys -%sB -", all ? "l" : ""));
+		tmp = aprintf("bk havekeys -%sB -", all ? "l" : "");
+		strcat(buf, tmp);
+		free(tmp);
+		unless (f = popen(buf, "r")) {
+			perror(buf);
+			return (255);
+		}
+		while (fnext(buf, f)) {
+			list = addLine(list, strdup(buf));
+		}
+		pclose(f);
 	}
 
-	/* request deltas from server */
-	cmds = addLine(cmds,
-	    aprintf("bk -q@'%s' -zo0 -Lr -Bstdin sfio -oqB -", url));
+	if (emptyLines(list)) return (0);
 
-	/* unpack locally */
-	if (quiet) {
-		cmds = addLine(cmds, strdup("bk sfio -qirB -"));
-	} else {
-		cmds = addLine(cmds, strdup("bk sfio -irB -"));
+	/*
+	 * request deltas from server and unpack locally.
+	 * LMXXX - we could have put the BAMSIZE in the data we fed to
+	 * havekeys and had it spit out, maybe to a tmpfile, maybe as
+	 * the last line, the total bytes being fetched so we get a
+	 * byte sized progress bar rather than N files.  This is a
+	 * utility routine so we're punting.
+	 */
+	sprintf(buf,
+	    "bk -q@'%s' -zo0 -Lr -Bstdin sfio -oqB - | bk sfio -%siBN%u -",
+	    url, quiet ? "q" : "", nLines(list));
+
+	unless (f = popen(buf, "w")) {
+		perror(buf);
+		return (255);
 	}
-	free(url);
-	rc = spawn_filterPipeline(cmds);
-	freeLines(cmds, free);
+	EACH(list) fprintf(f, "%s", list[i]);
+	rc = pclose(f);
+	freeLines(list, free);
 	return (rc);
 }
 
@@ -1398,7 +1421,7 @@ private int
 bam_check_main(int ac, char **av)
 {
 	int	rc = 0, quiet = 0, fast = 0, i;
-	u64	bytes = 0, done = 0;
+	u64	bytes = 0, missing_bytes = 0, done = 0;
 	FILE	*f;
 	char	*p;
 	ticker	*tick = 0;
@@ -1435,9 +1458,16 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 	}
 	while (fnext(buf, f)) {
 		if (tick) progress(tick, 1);
-		bytes += atoi(buf);
 		chomp(buf);
-		lines = addLine(lines, strdup(buf));
+		p = strchr(buf, ' ') + 1;
+		if (bp_lookupkeys(0, p)) {
+			lines = addLine(lines, strdup(buf));
+			bytes += atoi(buf);
+			i++;
+		} else {
+			missing = addLine(missing, strdup(p));
+			missing_bytes += atoi(buf);
+		}
 	}
 	if (pclose(f)) return (1);
 	if (tick) {
@@ -1445,7 +1475,7 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 		fprintf(stderr,
 		    ", %d found using %sB.\n", i, psize(bytes));
 	}
-	unless (lines) {	/* No BAM data in repo */
+	unless (lines || missing) {	/* No BAM data in repo */
 		unlink(BAM_MARKER);
 		goto none;
 	}
@@ -1454,7 +1484,7 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 	EACH(lines) {
 		done += atoi(lines[i]);
 		p = strchr(lines[i], ' ') + 1;
-		if (bp_check_hash(p, &missing, fast)) rc = 1;
+		if (bp_check_hash(p, 0, fast)) rc = 1;
 		unless (quiet) progress(tick, done);
 	}
 	freeLines(lines, free);
@@ -2151,7 +2181,9 @@ bam_server_switch(int quiet, char *newurl)
 {
 	char	**cmds = 0;
 	char	*t;
+	u32	n = 0;
 	int	rc, fd, fd1;
+	FILE	*f;
 	char	cmd[MAXLINE];
 	char	keyf[MAXPATH];
 	char	buf[MAXLINE];
@@ -2202,7 +2234,12 @@ bam_server_switch(int quiet, char *newurl)
 		unlink(keyf);
 		return (0);
 	}
-	unless (quiet) printf("Fetching BAM data from old server\n");
+	f = fopen(keyf, "r");
+	while (fnext(buf, f)) n++;
+	fclose(f);
+	unless (quiet) {
+		printf("Fetching %u BAM data files from old server\n", n);
+	}
 
 	t = cmd;
 	/* read BAM data from remote server */
@@ -2212,8 +2249,12 @@ bam_server_switch(int quiet, char *newurl)
 	t += sprintf(t, "bk ");
 	/* that may be remote */
 	if (newurl) t += sprintf(t, "-q@'%s' -z0 -Lw ", newurl);
-	t += sprintf(t, "sfio -iqB -");
 
+	if (newurl || quiet) {
+		t += sprintf(t, "sfio -iqB -");
+	} else {
+		t += sprintf(t, "sfio -iBN%u -", n);
+	}
 	rc = system(cmd);
 	unlink(keyf);
 	if (rc) {

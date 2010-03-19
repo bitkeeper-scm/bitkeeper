@@ -153,9 +153,10 @@ cd "$HERE/project"
 bk bkd -d -aPORT -ikill 2>/dev/null || exit 1
 P=`cat PORT`
 cd "$HERE"
-bk clone bk://localhost:$P clone 2> clone.out
+bk clone -q bk://localhost:$P clone 2> clone.out
 echo "ERROR-Can't get read lock on the repository." > ref
 cmp -s clone.out ref || {
+	bk _kill bk://localhost:$P || exit 1
 	echo Failed
 	diff clone.out ref
 	exit 1

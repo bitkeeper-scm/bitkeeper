@@ -1110,7 +1110,7 @@ void	sccs_touch(sccs *s);
 int	setlevel(int);
 void	sccs_rmUncommitted(int quiet, FILE *chkfiles);
 void	rmEmptyDirs(int quiet);    
-int	after(int quiet, char *rev);
+int	after(int quiet, int verbose, char *rev);
 int	consistency(int quiet);
 int	diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile);
 char	*getCSetFile(project *p);
@@ -1206,13 +1206,6 @@ int	bkmail(char *url, char **to, char *subject, char *file);
 void	bkversion(FILE *f);
 int	sane(int, int);
 int	global_locked(void);
-typedef	struct ticker ticker;
-#define	PROGRESS_SPIN	0
-#define	PROGRESS_MINI	1
-#define	PROGRESS_BAR	2
-ticker	*progress_start(int style, u64 max);
-void	progress(ticker *t, u64 n);
-void	progress_done(ticker *t, char *msg);
 char	*signed_loadFile(char *filename);
 int	signed_saveFile(char *filename, char *data);
 void	bk_preSpawnHook(int flags, char *av[]);
@@ -1371,6 +1364,7 @@ extern	char	*bk_build_user;
 extern	char	*bk_build_dir;
 extern	int	test_release;
 extern	char	*prog;
+extern	char	*title;
 
 #define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)
 #define	changesetKey(k) (strstr(k, "|ChangeSet|") != (char*)0)

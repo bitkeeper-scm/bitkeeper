@@ -18,6 +18,7 @@ typedef struct {
 	u32	missing:1;	/* -m: only aliases not present */
 	u32	expand:1;	/* -e: expand list of aliases */
 	u32	force:1;	/* -f: force remove components */
+	u32	verbose:1;	/* -v: be verbose */
 } aopts;
 
 private	int	aliasCreate(char *cmd, aopts *opts, char **av);
@@ -87,7 +88,7 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 			break;
 		}
 	}
-	while ((c = getopt(ac, av, "@|Cefkhmr;q", 0)) != -1) {
+	while ((c = getopt(ac, av, "@|Cefkhmr;qv", 0)) != -1) {
 		switch (c) {
 		    case '@':
 			isntlist = 1;
@@ -101,6 +102,7 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 		    case 'm': islist = 1; opts.missing = 1; break;
 		    case 'r': islist = 1; opts.rev = optarg; break;
 		    case 'q': opts.quiet = 1; break;
+		    case 'v': opts.verbose = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -143,6 +145,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	int	c, i;
 	int	reserved = 0, rc = 1, needunedit = 0;
 	int	ac = 0;
+	popts	ops;
 
 	if (proj_cd2product()) {
 		error("%s: called in a non-product.\n", prog);
@@ -162,6 +165,10 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 		    prog, alias);
 		usage();
 	}
+	bzero(&ops, sizeof(ops));
+	ops.quiet = opts->quiet;
+	ops.verbose = opts->verbose;
+
 	/* get the nest */
 	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) goto err;
 	unless (aliasdb = aliasdb_init(n, 0, n->tip, n->pending, 1)) goto err;
@@ -246,8 +253,8 @@ write:
 	if (aliasdb_tag(n, aliasdb, n->here)) goto err;
 	EACH_STRUCT(n->comps, cp, i) {
 		if (cp->present != cp->alias) {
-			if (nested_populate(n,
-			    opts->urls, opts->force, opts->quiet)) {
+			ops.runcheck = 1;
+			if (nested_populate(n, opts->urls, opts->force, &ops)) {
 				goto err;
 			}
 			break;

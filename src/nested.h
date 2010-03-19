@@ -95,6 +95,18 @@ struct nested {
 	u32	fix_idDB:1;	// don't complain about idDB problems
 };
 
+/*
+ * This is the subset of the clone opts we pass down to nested_populate.
+ */
+typedef struct {
+	u32	debug:1;	// -d: debug mode
+	u32	link:1;		// -l: hard link the files
+	u32	quiet:1;	// -q: quiet
+	u32	remap:1;	// --hide-sccs-dirs
+	u32	verbose:1;	// -v: verbose
+	u32	runcheck:1;	// follow up with a partial check of prod
+} popts;
+
 int	isComponent(char *path);
 
 nested	*nested_init(sccs *cset, char *rev, char **revs, u32 flags);
@@ -147,6 +159,6 @@ void	nested_printLockers(project *p, FILE *out);
 void	nested_updateIdcache(project *comp);
 
 /* populate.c */
-int	nested_populate(nested *n, char **urls, int force, int quiet);
+int	nested_populate(nested *n, char **urls, int force, popts *ops);
 
 #endif	// _NESTED_H

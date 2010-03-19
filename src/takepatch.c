@@ -5,6 +5,7 @@
 #include "nested.h"
 #include <time.h>
 #include "range.h"
+#include "progress.h"
 
 /*
  * takepatch - apply a BitKeeper patch file
@@ -2066,7 +2067,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		free(note);
 		rename(incoming, pendingFile);
 		if (echo) {
-			if (tick) progress_done(tick, " done.");
+			if (tick) progress_done(tick, "done.");
 			NOTICE();
 			fprintf(stderr,
 			    "takepatch: saved entire patch in %s\n",

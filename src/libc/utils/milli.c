@@ -24,3 +24,42 @@ milli(void)
 	return (time);
 }
 
+/*
+ * Return the usecs since the last call
+ */
+char *
+milli_gap(void)
+{
+	struct	timeval	tv;
+	u64	now, start;
+	static	char time[20];	
+	static	u32 SECOND, MSECOND;
+
+	gettimeofday(&tv, 0);
+
+	/*
+	 * First call, set the values to now
+	 */
+	unless (SECOND) {
+		SECOND = (u32)tv.tv_sec;
+		MSECOND = (u32)(tv.tv_usec / 1000);
+	}
+
+	/*
+	 * start is the previous time in milliseconds,
+	 * now is the current time in milliseconds.
+	 */
+	start = SECOND * 1000;
+	start += MSECOND;
+	now = (u64)tv.tv_sec * (u64)1000;
+	now += (u64)(tv.tv_usec / 1000);
+
+	/*
+	 * Save now.
+	 */
+	SECOND = (u32)tv.tv_sec;
+	MSECOND = (u32)tv.tv_usec / 1000;
+
+	sprintf(time, "%u", (u32)(now - start));
+	return (time);
+}

@@ -10,17 +10,16 @@
 #define SDMSGLEN    (sizeof(SDMSG) - 1)
 
 private char	**getrev(char *rev, int aflg);
-private char	**mk_list(char *, char **);
 private int	clean_file(char **);
 private	int	moveAndSave(char **fileList);
 private int	move_file(char *checkfiles);
-private int	do_rename(char **, char *);
+private int	renumber_rename(char **sfiles, int quiet);
 private int	check_patch(char *patch);
-private int	doit(char **fileList, char *rev_list, char *qflag, char *);
-private	int	undo_ensemble1(nested *n, int quiet,
-    char **nav, char ***comp_list);
-private	int	undo_ensemble2(nested *n, int quiet);
-private	void	undo_ensemble_rollback(nested *n, int quiet, char **comp_list);
+private int	doit(char **filesNrevs, char **sfiles, int v, int q, char *);
+private	int	undo_ensemble1(nested *n, int verbose,
+		    char **nav, char ***comp_list);
+private	int	undo_ensemble2(nested *n, int verbose);
+private	void	undo_ensemble_rollback(nested *n, int v, char **comp_list);
 
 private	int	fromclone;
 
@@ -29,18 +28,18 @@ undo_main(int ac,  char **av)
 {
 	int	c, rc, 	force = 0, save = 1;
 	char	buf[MAXLINE];
-	char	rev_list[MAXPATH], undo_list[MAXPATH] = { 0 };
+	char	undo_list[MAXPATH] = { 0 };
 	FILE	*f;
 	nested	*n = 0;
 	int	i, match = 0, lines = 0;
 	int	status;
 	int	rmresync = 1;
-	char	**csetrev_list = 0;
+	char	**sfiles = 0;		// sfiles to undo
+	char	**filesNrevs = 0;	// sfile|key to undo
+	char	**csetrevs = 0;		// revs as keys of csets to undo
 	char	**comp_list = 0; /* list of comp*'s we have rolled back */
-	char	*qflag = "";
 	char	*cmd = 0, *rev = 0;
 	int	aflg = 0, quiet = 0, verbose = 0;
-	char	**fileList = 0;
 	char	*checkfiles;	/* filename of list of files to check */
 	char	*patch = "BitKeeper/tmp/undo.patch";
 	char	*p;
@@ -68,9 +67,8 @@ undo_main(int ac,  char **av)
 		    case 'r': rev = optarg; break;		/* doc 2.0 */
 		    case 'C': fromclone = 1; break;
 		    case 'f': force  =  1; break;		/* doc 2.0 */
-		    case 'q':					/* doc 2.0 */
-		    	quiet = 1; qflag = "-q"; break;
-		    case 'p': save = 1; patch = optarg; break;
+		    case 'q': quiet = 1; break;			/* doc 2.0 */
+		    case 'p': patch = optarg; break;
 		    case 's': save = 0; break;			/* doc 2.0 */
 		    case 'v': verbose = 1; break;
 		    default:
@@ -83,20 +81,27 @@ undo_main(int ac,  char **av)
 	save_log_markers();
 	// XXX - be nice to do this only if we actually are going to undo
 	unlink(BACKUP_SFIO); /* remove old backup file */
-	unless (csetrev_list = getrev(rev, aflg)) {
-		/* No revs we are done. */
-		return (fromclone ? UNDO_SKIP : 0);
-	}
-	bktmp(rev_list, "rev_list");
 
 	/*
-	 * The fileList addlines returned is each file which needs one or
-	 * more deltas removed.
-	 * The rev_list tmpfile contains <file>|<md5sum> entries, one per
-	 * delta, so it may have multiple entries for the same file.
+	 * Get a list of <file>|<key> entries, one per delta,
+	 * so it may have multiple entries for the same file.
 	 */
-	fileList = mk_list(rev_list, csetrev_list);
-	unless (fileList) goto err;
+	unless (filesNrevs = getrev(rev, aflg)) {
+		/* No revs we are done. */
+		freeLines(nav, free);
+		return (fromclone ? UNDO_SKIP : 0);
+	}
+	EACH (filesNrevs) {
+		p = strchr(filesNrevs[i], '|');
+		assert(p);
+		*p = 0;
+		if (streq("SCCS/s.ChangeSet", filesNrevs[i])) {
+			csetrevs = addLine(csetrevs, p+1);
+		}
+		sfiles = addLine(sfiles, strdup(filesNrevs[i]));
+		*p = '|';
+	}
+	uniqLines(sfiles, free);
 
 	bktmp(undo_list, "undo_list");
 	cmd = aprintf("bk stripdel -%sc - 2> '%s'",
@@ -106,11 +111,9 @@ undo_main(int ac,  char **av)
 	free(cmd);
 	unless (f) {
 err:		if (undo_list[0]) unlink(undo_list);
-		unlink(rev_list);
 		unlink(UNDO_CSETS);
-		freeLines(fileList, free);
 		if (comp_list) {
-			undo_ensemble_rollback(n, quiet, comp_list);
+			undo_ensemble_rollback(n, verbose, comp_list);
 			freeLines(comp_list, 0);
 		}
 		if (n) nested_free(n);
@@ -120,11 +123,12 @@ err:		if (undo_list[0]) unlink(undo_list);
 		unlink(BACKUP_SFIO);
 		if (rmresync && exists("RESYNC")) rmtree("RESYNC");
 		freeLines(nav, free);
+		freeLines(filesNrevs, free);
+		freeLines(sfiles, free);
+		freeLines(csetrevs, 0);
 		return (UNDO_ERR);
 	}
-	EACH (csetrev_list) {
-		fprintf(f, "ChangeSet%c%s\n", BK_FS, csetrev_list[i]);
-	}
+	EACH (csetrevs) fprintf(f, "ChangeSet|%s\n", csetrevs[i]);
 	status = pclose(f);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 		f = fopen(undo_list, "r");
@@ -144,35 +148,33 @@ err:		if (undo_list[0]) unlink(undo_list);
 	unless (force) {
 		for (i = 0; i<79; ++i) putchar('-'); putchar('\n');
 		fflush(stdout);
-		f = popen(verbose? "bk changes -Pav -" : "bk changes -Pa -", "w");
-		EACH (csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
+		f = popen(verbose ?
+		    "bk changes -Pav -" : "bk changes -Pa -", "w");
+		EACH (csetrevs) fprintf(f, "%s\n", csetrevs[i]);
 		pclose(f);
 		printf("Remove these [y/n]? ");
 		unless (fgets(buf, sizeof(buf), stdin)) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) {
-			unlink(rev_list);
 			unlink(undo_list);
-			freeLines(fileList, free);
 			return (UNDO_ERR);
 		}
 	}
 
 	unless (fromclone) {
 		f = fopen(UNDO_CSETS, "w");
-		EACH (csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
+		EACH (csetrevs) fprintf(f, "%s\n", csetrevs[i]);
 		fclose(f);
 		putenv("BK_CSETLIST=" UNDO_CSETS);
 		if (trigger("undo", "pre")) goto err;
 	}
 	if (proj_isProduct(0)) {
-		unless (n =
-		    nested_init(0, 0, csetrev_list, NESTED_MARKPENDING)) {
+		unless (n = nested_init(0, 0, csetrevs, NESTED_MARKPENDING)) {
 			fprintf(stderr, "undo: ensemble failed.\n");
 			goto err;
 		}
 		sccs_close(n->cset); /* win32 */
 		unless (n->oldtip) {	/* tag only undo */
-			unless (quiet) {
+			if (verbose) {
 				puts("#### Undo tags in Product ####");
 				fflush(stdout);
 			}
@@ -180,7 +182,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			n = 0;
 			goto prod;
 		}
-		if (undo_ensemble1(n, quiet, nav, &comp_list)) goto err;
+		if (undo_ensemble1(n, verbose, nav, &comp_list)) goto err;
 	}
 prod:
 	if (save) {
@@ -190,7 +192,7 @@ prod:
 		f = popen(cmd, "w");
 		free(cmd);
 		if (f) {
-			EACH(csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
+			EACH(csetrevs) fprintf(f, "%s\n", csetrevs[i]);
 			pclose(f);
 		}
 		if (check_patch(patch)) {
@@ -198,21 +200,20 @@ prod:
 			goto err;
 		}
 	}
-	freeLines(csetrev_list, free);
-	if (clean_file(fileList)) goto err;
+	if (clean_file(sfiles)) goto err;
 	sig_ignore();
 
 	/*
 	 * Move file to RESYNC and save a copy in a sfio backup file
 	 */
-	switch (moveAndSave(fileList)) {
+	switch (moveAndSave(sfiles)) {
 	    case -2: rmresync = 0; goto err;
 	    case -1: goto err;
 	}
 
 	checkfiles = bktmp(0, "undo_ck");
 	chdir(ROOT2RESYNC);
-	if (doit(fileList, rev_list, qflag, checkfiles)) {
+	if (doit(filesNrevs, sfiles, verbose, quiet, checkfiles)) {
 		chdir(RESYNC2ROOT);
 		unlink(checkfiles);
 		free(checkfiles);
@@ -220,15 +221,15 @@ prod:
 	}
 	chdir(RESYNC2ROOT);
 
-	rmEmptyDirs(quiet);
-	if (!quiet && save) printf("Backup patch left in \"%s\".\n", patch);
+	rmEmptyDirs(!verbose);
+	if (verbose && save) printf("Backup patch left in \"%s\".\n", patch);
 
 	idcache_update(checkfiles);
 	proj_restoreAllCO(0, 0);
 
 	rmtree("RESYNC");
 	if (n) {
-		if (undo_ensemble2(n, quiet)) goto err;
+		if (undo_ensemble2(n, verbose)) goto err;
 		nested_free(n);
 		n = 0;
 	}
@@ -238,20 +239,22 @@ prod:
 		p = quiet ? "-f" : "-fv";
 	}
 	if (proj_configbool(0, "partial_check")) {
-		rc = run_check(quiet, checkfiles, p, 0);
+		rc = run_check(verbose, checkfiles, p, 0);
 	} else {
-		rc = run_check(quiet, 0, p, 0);
+		rc = run_check(verbose, 0, p, 0);
 	}
 	unlink(checkfiles);
 	free(checkfiles);
 	sig_default();
 
-	freeLines(fileList, free);
-	unlink(rev_list);
 	unlink(undo_list);
 	freeLines(comp_list, 0);
+	freeLines(nav, free);
+	freeLines(filesNrevs, free);
+	freeLines(sfiles, free);
+	freeLines(csetrevs, 0);
 	unless (fromclone) unlink(UNDO_CSETS);
-	update_log_markers(!quiet);
+	update_log_markers(verbose);
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
 	unlink(CSETS_IN);	/* no longer valid */
@@ -274,7 +277,7 @@ prod:
  * Don't delete or rename components until part2
  */
 private int
-undo_ensemble1(nested *n, int quiet, char **nav, char ***comp_list)
+undo_ensemble1(nested *n, int verbose, char **nav, char ***comp_list)
 {
 	comp	*c;
 	char	**vp;
@@ -365,7 +368,7 @@ undo_ensemble1(nested *n, int quiet, char **nav, char ***comp_list)
 		cmd = aprintf("-fa%s", c->lowerkey);
 		vp = addLine(vp, cmd);
 		vp = addLine(vp, 0);
-		unless (quiet) {
+		if (verbose) {
 			printf("#### Undo in %s (%d of %d) ####\n",
 			    c->path, which++, num);
 			fflush(stdout);
@@ -390,7 +393,7 @@ undo_ensemble1(nested *n, int quiet, char **nav, char ***comp_list)
 	}
 	STOP_TRANSACTION();
 	if (errs) return (1);
-	unless (quiet) {
+	if (verbose) {
 		printf("#### Undo in Product (%d of %d) ####\n",
 		    which++, num);
 		fflush(stdout);
@@ -405,7 +408,7 @@ err:	return (1);
  * We also handle renames here.
  */
 private int
-undo_ensemble2(nested *n, int quiet)
+undo_ensemble2(nested *n, int verbose)
 {
 	int	i;
 	char	*cmd;
@@ -422,7 +425,7 @@ undo_ensemble2(nested *n, int quiet)
 	 * We may have undone some renames so just call names on
 	 * the set of repos and see what happens.
 	 */
-	cmd = aprintf("bk names %s -", (quiet ? "-q" : ""));
+	cmd = aprintf("bk names %s -", (verbose ? "" : "-q"));
 	f = popen(cmd, "w");
 	free(cmd);
 	EACH_STRUCT(n->comps, c, i) {
@@ -442,7 +445,7 @@ undo_ensemble2(nested *n, int quiet)
  * backup patch.
  */
 private void
-undo_ensemble_rollback(nested *n, int quiet, char **comp_list)
+undo_ensemble_rollback(nested *n, int verbose, char **comp_list)
 {
 	int	i, rc;
 	comp	*c;
@@ -470,12 +473,23 @@ undo_ensemble_rollback(nested *n, int quiet, char **comp_list)
 }
 
 private int
-doit(char **fileList, char *rev_list, char *qflag, char *checkfiles)
+doit(char **filesNrevs, char **sfiles, int verbose, int quiet, char *checkfiles)
 {
+	int	i, rc;
+	FILE	*f;
 	char	buf[MAXLINE];
 
-	sprintf(buf, "bk stripdel %s -C - < '%s'", qflag, rev_list);
-	if (system(buf) != 0) {
+	unlink("BitKeeper/tmp/run_names");
+
+	if (quiet) {
+		sprintf(buf, "bk stripdel -q -C -");
+	} else {
+		sprintf(buf, "bk stripdel -C -N%u -", nLines(sfiles));
+	}
+	f = popen(buf, "w");
+	EACH(filesNrevs) fprintf(f, "%s\n", filesNrevs[i]);
+	rc = pclose(f);
+	if (!f || (rc != 0)) {
 		fprintf(stderr, "Undo failed\n");
 		return (-1);
 	}
@@ -489,10 +503,10 @@ doit(char **fileList, char *rev_list, char *qflag, char *checkfiles)
 	/*
 	 * Handle any renames.  Done outside of stripdel because names only
 	 * make sense at cset boundries.
-	 * Also, run all files through renumber.
+	 * Also, run all sfiles through renumber.
 	 */
 	putenv("BK_IGNORE_WRLOCK=YES");
-	if (do_rename(fileList, qflag)) {
+	if (renumber_rename(sfiles, quiet)) {
 		putenv("BK_IGNORE_WRLOCK=NO");
 		return (-1);
 	}
@@ -532,7 +546,13 @@ getrev(char *top_rev, int aflg)
 	} else {
 		rev = aprintf("-r'%s'", top_rev);
 	}
-	cmd = aprintf("bk changes -Pafnd:KEY: %s 2>" DEVNULL_WR, rev);
+	/*
+	 * XXX - this could do an annotate on the set of revs in question,
+	 * read the results, do the idcache translation, and build the
+	 * output itself but that's a lot of work to save some sfile inits.
+	 */
+	cmd = aprintf(
+	    "bk changes -Pafvnd':SFILE:|:KEY:' %s 2>" DEVNULL_WR, rev);
 	free(rev);
 	f = popen(cmd, "r");
 	free(cmd);
@@ -545,92 +565,46 @@ getrev(char *top_rev, int aflg)
 		fprintf(stderr, "No such rev '%s' in ChangeSet\n", top_rev);
 		exit(UNDO_ERR);
 	}
+	sortLines(list, 0);
 	return (list);
 }
 
-private char **
-mk_list(char *rev_list, char **csetrev_list)
-{
-	char	*p, *cmd, buf[MAXLINE];
-	char	**flist = 0;
-	FILE	*f;
-	int	i;
-	int	status;
-	MDBM	*db;
-	kvpair	kv;
-
-	assert(csetrev_list);
-	cmd = aprintf("bk cset -fl5 - > '%s'", rev_list);
-	f = popen(cmd, "w");
-	EACH(csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
-	status = pclose(f);
-	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-		printf("undo: %s\n", cmd);
-		printf("undo: cannot extract revision list\n");
-		return (NULL);
-	}
-	free(cmd);
-	if (size(rev_list) == 0) {
-		printf("undo: nothing to undo in \"");
-		EACH(csetrev_list) printf("%s,", csetrev_list[i]);
-		printf("\"\n");
-		exit(fromclone ? UNDO_SKIP : 0);
-	}
-	f = fopen(rev_list, "rt");
-	db = mdbm_open(NULL, 0, 0, MAXPATH);
-	assert(db);
-	while (fgets(buf, sizeof(buf), f)) {
-		p = strchr(buf, BK_FS);
-		assert(p);
-		*p = 0; /* remove rev part */
-
-		p = name2sccs(buf);
-		mdbm_store_str(db, p, "", MDBM_REPLACE); /* remove dup */
-		free(p);
-	}
-	fclose(f);
-
-	for (kv = mdbm_first(db); kv.key.dsize; kv = mdbm_next(db)) {
-		flist = addLine(flist, strdup(kv.key.dptr));
-	}
-	mdbm_close(db);
-	return (flist);
-}
-
 private int
-do_rename(char **fileList, char *qflag)
+renumber_rename(char **sfiles, int quiet)
 {
 	FILE	*f;
-	int 	i, rc, status;
-	char	*flist;
-	char	*quiet;
+	int 	i, rc = 0, status;
+	u32	nfiles = 0;
+	char	*flist, *flag = "--";
 
 	flist = bktmp(0, "undorename");
 	assert(flist);
 	f = fopen(flist, "w");
 	assert(f);
-	EACH (fileList) {
-		char	*sfile = fileList[i];
-
-		unless (exists(sfile)) continue;
-		fprintf(f, "%s\n", sfile);
+	EACH (sfiles) {
+		if (exists(sfiles[i])) {
+			fprintf(f, "%s\n", sfiles[i]);
+			nfiles++;
+		}
 	}
 	fclose(f);
+	unless (nfiles) goto out;
 
-	quiet = streq(qflag, "") ? "--" : qflag;
-	status = sysio(flist, 0, 0, "bk", "renumber", quiet, "-", SYS);
+	flag = quiet ? "-q" : aprintf("-N%u", nfiles);
+	status = sysio(flist, 0, 0, "bk", "renumber", flag, "-", SYS);
 	rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-	unless (rc) {
-		status = sysio(flist, 0, 0, "bk", "names", quiet, "-", SYS);
+	if ((rc == 0) && exists("BitKeeper/tmp/run_names")) {
+		status = sysio(flist, 0, 0, "bk", "names", flag, "-", SYS);
 		rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 	}
-	unlink(flist);
+
+out:	unlink(flist);
 	free(flist);
 	return (rc);
 }
 
 private int
-clean_file(char **fileList)
+clean_file(char **sfiles)
 {
 	sccs	*s;
 	char	*name;
@@ -641,9 +615,9 @@ clean_file(char **fileList)
 	 * second loop actually cleans.  Done this way so that we don't
 	 * clean partway and then exit, that will leave files not checked out.
 	 */
-	EACH(fileList) {
-		if (streq(fileList[i], CHANGESET)) continue;
-		s = sccs_init(fileList[i], INIT_NOCKSUM);
+	EACH(sfiles) {
+		if (streq(sfiles[i], CHANGESET)) continue;
+		s = sccs_init(sfiles[i], INIT_NOCKSUM);
 		assert(s && HASGRAPH(s));
 		if (sccs_hasDiffs(s, SILENT, 1)) {
 			fprintf(stderr,
@@ -654,14 +628,14 @@ clean_file(char **fileList)
 		proj_saveCO(s);
 		sccs_free(s);
 	}
-	EACH(fileList) {
-		name = sccs2name(fileList[i]);
+	EACH(sfiles) {
+		name = sccs2name(sfiles[i]);
 		if (!writable(name) && (unlink(name) == 0)) {
 			free(name);
 			continue;
 		} /* else let clean try and sort it out */
 		free(name);
-		s = sccs_init(fileList[i], INIT_NOCKSUM);
+		s = sccs_init(sfiles[i], INIT_NOCKSUM);
 		assert(s && HASGRAPH(s));
 		if (sccs_clean(s, SILENT)) {
 			fprintf(stderr,
@@ -680,7 +654,7 @@ clean_file(char **fileList)
  * Return: 0 on success; -2 if RESYNC directory already exists; -1 on err
  */
 private int
-moveAndSave(char **fileList)
+moveAndSave(char **sfiles)
 {
 	FILE	*f;
 	char	tmp[MAXPATH];
@@ -706,23 +680,23 @@ moveAndSave(char **fileList)
 		perror("sfio");
 		return (-1);
 	}
-	EACH (fileList) {
-		sprintf(tmp, "RESYNC/%s", fileList[i]);
-		if (streq(fileList[i], CHANGESET)) {
-			if (fileLink(fileList[i], tmp)) {
+	EACH (sfiles) {
+		sprintf(tmp, "RESYNC/%s", sfiles[i]);
+		if (streq(sfiles[i], CHANGESET)) {
+			if (fileLink(sfiles[i], tmp)) {
 				fprintf(stderr,
-				    "Cannot link %s to %s\n", fileList[i], tmp);
+				    "Cannot link %s to %s\n", sfiles[i], tmp);
 				rc = -1;
 				break;
 			}
-		} else if (fileMove(fileList[i], tmp)) {
+		} else if (fileMove(sfiles[i], tmp)) {
 			fprintf(stderr,
-			    "Cannot mv %s to %s\n", fileList[i], tmp);
+			    "Cannot mv %s to %s\n", sfiles[i], tmp);
 			rc = -1;
 			break;
 		} else {
 			/* Important: save a copy only if mv is successful */
-			fprintf(f, "%s\n", fileList[i]);
+			fprintf(f, "%s\n", sfiles[i]);
 		}
 	}
 	pclose(f);
