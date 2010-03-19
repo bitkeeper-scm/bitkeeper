@@ -372,11 +372,11 @@ class_decl_tail:
 		$$->node.end       = @2.end;
 		$$->decl->node.end = @2.end;
 		/* If constructor or destructor were omitted, make defaults. */
-		unless ($$->constructor) {
-			$$->constructor = ast_mkConstructor($$);
+		unless ($$->constructors) {
+			$$->constructors = ast_mkConstructor($$);
 		}
-		unless ($$->destructor) {
-			$$->destructor = ast_mkDestructor($$);
+		unless ($$->destructors) {
+			$$->destructors = ast_mkDestructor($$);
 		}
 	}
 	;
@@ -444,11 +444,7 @@ class_code:
 		$3->decl->clsdecl = clsdecl;
 		$3->decl->flags  |= SCOPE_GLOBAL | DECL_CLASS_FN | DECL_PUBLIC |
 			DECL_CLASS_CONST;
-		if (clsdecl->constructor) {
-			L_errf($3, "class constructor already declared");
-		} else {
-			clsdecl->constructor = $3;
-		}
+		APPEND_OR_SET(FnDecl, next, clsdecl->constructors, $3);
 	}
 	| class_code T_DESTRUCTOR fundecl_tail
 	{
@@ -457,11 +453,7 @@ class_code:
 		$3->decl->clsdecl = clsdecl;
 		$3->decl->flags  |= SCOPE_GLOBAL | DECL_CLASS_FN | DECL_PUBLIC |
 			DECL_CLASS_DESTR;
-		if (clsdecl->destructor) {
-			L_errf($3, "class destructor already declared");
-		} else {
-			clsdecl->destructor = $3;
-		}
+		APPEND_OR_SET(FnDecl, next, clsdecl->destructors, $3);
 	}
 	| /* epsilon */
 	;

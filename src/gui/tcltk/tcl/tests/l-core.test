@@ -14493,25 +14493,50 @@ void class_2_2_1_main()
 class_2_2_1_main();
 } -output {}
 
-test class-2.3 {check duplicate class constructor} -body {
+test class-2.3 {check multiple class constructors and destructors} -body {
 #lang L
 class class_2_3
 {
-	constructor class_2_3_init1() {}
-	constructor class_2_3_init2() {}
+	public	int n = 0;
+	instance {
+		public	int inst = n + 100;
+	}
+	constructor class_2_3_new1()
+	{
+		++n;
+		return (self);
+	}
+	constructor class_2_3_new2(int i)
+	{
+		n += i;
+		return (self);
+	}
+	destructor class_2_3_delete1(class_2_3 self)
+	{
+		--n;
+	}
+	destructor class_2_3_delete2(class_2_3 self, int i)
+	{
+		n -= i;
+	}
 }
-} -returnCodes {error} -match regexp -result {.*4: L Error: class constructor already declared
-}
-
-test class-2.4 {check duplicate class destructor} -body {
-#lang L
-class class_2_4
+void class_2_3_main()
 {
-	destructor class_2_3_free1(class_2_4 self) {}
-	destructor class_2_3_free2(class_2_4 self) {}
+	class_2_3	o1, o2;
+
+	o1 = class_2_3_new1();
+	unless (class_2_3->n == 1) puts("bad 1.1");
+	unless (o1->inst == 100) puts("bad 1.2");
+	o2 = class_2_3_new2(10);
+	unless (class_2_3->n == 11) puts("bad 2.1");
+	unless (o2->inst == 101) puts("bad 2.2");
+	class_2_3_delete1(o2);
+	unless (class_2_3->n == 10) puts("bad 3.1");
+	class_2_3_delete2(o1, 10);
+	unless (class_2_3->n == 0) puts("bad 4.1");
 }
-} -returnCodes {error} -match regexp -result {.*4: L Error: class destructor already declared
-}
+class_2_3_main();
+} -output {}
 
 test class-2.5 {check missing self argument in class destructor 1} -body {
 #lang L
@@ -14717,24 +14742,6 @@ class class_2_18
 	constructor class_2_18_new(int a, class_2_17 self) {}
 }
 } -returnCodes {error} -match regexp -result {.*3: L Error: 'self' parameter illegal in class constructor
-}
-
-test class-2.19 {check class constructor not returning self} -body {
-#lang L
-class class_2_19
-{
-	/*
-	 * Previous tests checked returning something other than
-	 * the class type.  This checks when you return the right
-	 * type but it's not literally the "self" variable.
-	 */
-	constructor class_2_19_new()
-	{
-		class_2_19 o;
-		return (o);  // err
-	}
-}
-} -returnCodes {error} -match regexp -result {.*11: L Error: class constructor must return 'self'
 }
 
 test class-2.20 {check class public member fn with arg without name} -body {

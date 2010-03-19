@@ -295,8 +295,8 @@ struct ClsDecl {
 	VarDecl	*clsvars;
 	VarDecl	*instvars;
 	FnDecl	*fns;
-	FnDecl	*constructor;
-	FnDecl	*destructor;
+	FnDecl	*constructors;
+	FnDecl	*destructors;
 	Tcl_HashTable *symtab;
 };
 
@@ -390,8 +390,9 @@ typedef enum {
 	DECL_REF		= 0x020000, // decl has & qualifier
 	DECL_UNUSED		= 0x040000, // decl has _unused qualifier
 	DECL_FORWARD		= 0x080000, // a forward decl
-	FN_PROTO_ONLY		= 0x100000, // compile fn proto only
-	FN_PROTO_AND_BODY	= 0x200000, // compile entire fn decl
+	DECL_DONE		= 0x100000, // decl already processed
+	FN_PROTO_ONLY		= 0x200000, // compile fn proto only
+	FN_PROTO_AND_BODY	= 0x400000, // compile entire fn decl
 } Decl_f;
 
 struct VarDecl {
