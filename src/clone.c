@@ -52,6 +52,7 @@ clone_main(int ac, char **av)
 	remote 	*r = 0, *l = 0;
 	longopt	lopts[] = {
 		{ "sccs-compat", 300 },		/* old non-remapped repo */
+		{ "no-sccs-compat", 301 },	/* move sfiles to .bk */
 		{ "hide-sccs-dirs", 301 },	/* move sfiles to .bk */
 		{ "sfiotitle;", 302 },		/* title for sfio */
 		{ 0, 0 }
@@ -444,6 +445,14 @@ clone(char **av, remote *r, char *local, char **envVar)
 		fprintf(stderr, "sfio errored\n");
 		disconnect(r);
 		goto done;
+	}
+	unless (exists(IDCACHE)) {
+		if (exists("BitKeeper/log/x.id_cache")) {
+			rename("BitKeeper/log/x.id_cache", IDCACHE);
+		}
+		if (exists("BitKeeper/etc/SCCS/x.id_cache")) {
+			rename("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
+		}
 	}
 	if (opts->product) {
 		char	*nlid = 0;

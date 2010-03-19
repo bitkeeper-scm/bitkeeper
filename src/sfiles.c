@@ -928,7 +928,9 @@ load_project(char *dir)
 		prodproj = proj_product(proj);
 		load_ignore(proj);
 		unless (opts.fixdfile) {
-			concat_path(tmp, proj_root(proj), DFILE);
+			/* use parent if RESYNC */
+			unless (newproj = proj_isResync(proj)) newproj = proj;
+			concat_path(tmp, proj_root(newproj), DFILE);
 			unless (opts.dfile = exists(tmp)) {
 				if (p = getenv("_BK_SLOW_WALK")) touch(p, 0666);
 			}

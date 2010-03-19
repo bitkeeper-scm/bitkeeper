@@ -248,3 +248,17 @@ cd checkout
 test -w src/bar.c || fail
 test -w src/h.h || fail
 echo OK
+
+echo $N Show that a partial_check clone transfers id_cache ..........$NL
+cd "$HERE"
+test -f "project/BitKeeper/log/x.id_cache" || fail no id_cache
+BK_CONFIG='partial_check:yes!' bk clone $Q --sccs-compat project noremap || fail
+
+# not bk _test
+test -f "noremap/BitKeeper/etc/SCCS/x.id_cache" || fail no id_cache
+
+BK_CONFIG='partial_check:yes!' \
+	bk clone $Q --no-sccs-compat noremap remap || fail
+# not bk _test
+test -f "remap/BitKeeper/log/x.id_cache" || fail no id_cache
+echo OK

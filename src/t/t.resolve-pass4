@@ -1,0 +1,45 @@
+echo $N See that a file edit in the last round is caught ............$NL
+commercial project
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+bk clone $Q . ../copy
+touch bar
+bk new $Q bar
+bk edit $Q foo
+echo local > foo
+bk delta $Q -fyfoo foo
+bk commit $Q -yfoo
+cd ../copy
+bk pull $Q -R
+bk resolve $Q -4 -a
+bk edit $Q foo
+echo toast > foo
+bk resolve $Q -123 2> ERR && fail -f ERR
+grep -q 'foo has been modified, needs delta' ERR || fail -f ERR
+echo OK
+
+echo $N See that a new writable gfile is is not altered by pull .....$NL
+bk abort -fq
+bk unedit foo
+bk pull $Q -R
+bk resolve $Q -4 -a
+# This simulates having a content conflict in some file, like foo
+# and during the manual content conflict resolve (pass3), a new file
+# get created in the workspace which would conflict during pass4.
+# Too bad - it gets deleted, not in the first round, but by the restore
+# cleanup which calls rm_sfiles on the destination list.
+echo toast > bar
+bk resolve $Q -123 2> ERR && fail -f ERR
+grep -q "writable but not locked" ERR || fail -f ERR
+test -f bar && fail fix test as file is still there
+# The decision made was to lose the file and keep the stat count down.
+echo "failed (bug - file is gone)"
+
+echo $N See that a new readonly gfile is is not altered by pull .....$NL
+echo toast > bar
+chmod 444 bar
+bk resolve $Q -123 || fail
+test -f bar || fail bar is gone
+grep -q toast bar || fail -f bar
+echo OK

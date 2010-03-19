@@ -2318,11 +2318,15 @@ rm_sfile(char *sfile, int leavedirs)
 	char	*p;
 
 	assert(!IsFullPath(sfile));
-	sys("bk", "clean", sfile, SYS);
 	if (unlink(sfile)) {
 		perror(sfile);
 		return (-1);
 	}
+	/* remove gfile too */
+	p = sccs2name(sfile);
+	unlink(p);
+	free(p);
+
 	p = strrchr(sfile, '/');
 	unless (p) {
 		/* This should never happen, we at least have SCCS/ */

@@ -173,7 +173,7 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 		assert(!rc);
 		rc = sysio(0, s->gfile, 0, "bk", "merge", opts, s->gfile, SYS);
 		assert(!rc);
-		rc = sys("bk", "ci", "-qdPyauto-union", s->gfile, SYS);
+		rc = sys("bk", "ci", "-qPyauto-union", s->gfile, SYS);
 		assert(!rc);
 
 		/* delete rfile */
@@ -290,7 +290,7 @@ converge(State *g, char *gfile, char *opts)
 	if (!sys("bk", "get", "-qeM", gfile, SYS)) {
 		rc = sysio(0, gfile, 0, "bk", "merge", opts, gfile, SYS);
 		assert(!rc);
-		rc = sys("bk", "ci", "-qdPyauto-union", gfile, SYS);
+		rc = sys("bk", "ci", "-qPyauto-union-files", gfile, SYS);
 		assert(!rc);
 	}
 	free(sfile);
