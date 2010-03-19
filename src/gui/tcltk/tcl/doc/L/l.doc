@@ -1883,15 +1883,15 @@ copy of each.  Instance variables get attached to each object.
         ...
     }
 
-All declarations (except the constructor and destructor) must be
+All declarations (except the constructors and destructors) must be
 qualified with either C<public> or C<private> to say whether the name
 is visible at the global scope or only inside the class.
 
-A class can have a constructor and a destructor but they are optional.
-Inside the constructor, the variable C<self> is automatically declared
-as the object being constructed.  The constructor should return
-C<self>.  The destructor must be declared with C<self> as the first
-parameter.
+A class can have one or more constructors and destructors but they are optional.
+Inside a constructor, the variable C<self> is automatically declared
+as the object being constructed.  A constructor should return
+C<self>, although it also could return C<undef> to signal an error.
+A destructor must be declared with C<self> as the first parameter.
 
     constructor myclass_new()
     {
@@ -1924,7 +1924,7 @@ compiler.
         return (n);
     }
 
-To create an object, you must call the constructor, because just
+To create an object, you must call a constructor, because just
 declaring the variable does not allocate anything:
 
     myclass obj;

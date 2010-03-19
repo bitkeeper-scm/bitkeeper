@@ -425,8 +425,8 @@ L_CompileScript(void *ast)
 private void
 compile_clsDecl(ClsDecl *clsdecl)
 {
-	ASSERT(clsdecl->constructor);
-	ASSERT(clsdecl->destructor);
+	ASSERT(clsdecl->constructors);
+	ASSERT(clsdecl->destructors);
 
 	/*
 	 * A class creates two scopes, one for the class symbols and
@@ -451,10 +451,10 @@ compile_clsDecl(ClsDecl *clsdecl)
 	compile_varDecls(clsdecl->clsvars);
 	/* Process function decls first, then compile the bodies. */
 	compile_fnDecls(clsdecl->fns, FN_PROTO_ONLY);
-	compile_fnDecl(clsdecl->constructor, FN_PROTO_ONLY);
-	compile_fnDecl(clsdecl->destructor, FN_PROTO_ONLY);
-	compile_fnDecl(clsdecl->constructor, FN_PROTO_AND_BODY);
-	compile_fnDecl(clsdecl->destructor, FN_PROTO_AND_BODY);
+	compile_fnDecls(clsdecl->constructors, FN_PROTO_ONLY);
+	compile_fnDecls(clsdecl->destructors, FN_PROTO_ONLY);
+	compile_fnDecls(clsdecl->constructors, FN_PROTO_AND_BODY);
+	compile_fnDecls(clsdecl->destructors, FN_PROTO_AND_BODY);
 	compile_fnDecls(clsdecl->fns, FN_PROTO_AND_BODY);
 
 	frame_pop();
@@ -572,7 +572,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 	}
 
 	/*
-	 * For the constructor, before compiling the user's
+	 * For a constructor, before compiling the user's
 	 * constructor body, emit code to increment the class instance
 	 * #, set "self" to the namespace name of the class instance,
 	 * create the namespace, then compile the instance-variable
@@ -892,11 +892,39 @@ frame_find(Frame_f flags)
 }
 
 private void
-compile_varDecl(VarDecl *decl)
+compile_varInitializer(VarDecl *decl)
 {
 	int	start_off = currOffset(L->frame->envPtr);
+
+	unless (decl->initializer) {
+		decl->initializer = ast_mkBinOp(L_OP_EQUALS,
+						decl->id,
+						ast_mkId("undef",0,0),
+						decl->node.beg,
+						decl->node.end);
+	}
+	compile_expr(decl->initializer, L_DISCARD);
+	track_cmd(start_off, decl);
+}
+
+private void
+compile_varDecl(VarDecl *decl)
+{
 	char	*name;
 	Sym	*sym;
+
+
+	/*
+	 * Process any declaration only once, but generate code for
+	 * its initializers each time through here.  This is for class
+	 * constructors where the class instance variables get
+	 * compiled once for each constructor.
+	 */
+	if (decl->flags & DECL_DONE) {
+		compile_varInitializer(decl);
+		return;
+	}
+	decl->flags |= DECL_DONE;
 
 	ASSERT(decl->id && decl->type);
 
@@ -941,18 +969,10 @@ compile_varDecl(VarDecl *decl)
 		return;
 	}
 
-	unless (decl->initializer) {
-		decl->initializer = ast_mkBinOp(L_OP_EQUALS,
-						decl->id,
-						ast_mkId("undef",0,0),
-						decl->node.beg,
-						decl->node.end);
-	}
-	compile_expr(decl->initializer, L_DISCARD);
+	compile_varInitializer(decl);
+
 	/* Mark var as unused even though it was just initialized. */
 	sym->used_p = FALSE;
-
-	track_cmd(start_off, decl);
 }
 
 private void
@@ -1064,9 +1084,6 @@ compile_return(Stmt *stmt)
 		compile_expr(stmt->u.expr, L_PUSH_VAL);  // return value
 		unless (L_typeck_compat(ret_type, stmt->u.expr->type)) {
 			L_errf(stmt, "incompatible return type");
-		} else if (isClsConstructor(decl) &&
-			   !isid(stmt->u.expr, "self")) {
-			L_errf(stmt, "class constructor must return 'self'");
 		}
 	} else unless (isvoidtype(ret_type)) {
 		L_errf(stmt, "must specify return value");
