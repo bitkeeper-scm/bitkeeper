@@ -575,6 +575,7 @@ rsh://bad.example.com:1/
 ssh://localhost:1/
 http://localhost:1/
 bk://localhost:1/
+bk://!junkurl:1/
 $HERE/junk
 bk://bad.example.com:1/
 http://bad.example.com:1/
@@ -592,6 +593,7 @@ cat <<EOF > WANT
 	http://bad.example.com:1/:
 	ssh://localhost:1/:
 	rsh://bad.example.com:1/:
+	bk://!junkurl:1/: bad url
 EOF
 cmpfiles WANT LIST
 echo OK

@@ -979,10 +979,14 @@ sortUrls(const void *a, const void *b)
 	 *    ssh://localhost	1100
 	 *    rsh://host	1110
 	 *    ssh://host	1110	tie with rsh and no tie breaker
+	 *    badurl           10000
 	 */
 	for (i = 0; i < 2; i++) {
 		val[i] = 0;
-		r = remote_parse(url[i], 0);
+		unless (r = remote_parse(url[i], 0)) {
+			val[i] |= 0x10;
+			continue;
+		}
 		if (r->host) {
 			val[i] |= 8;
 			if (r->type & (ADDR_RSH|ADDR_SSH|ADDR_NFS)) val[i] |= 4;

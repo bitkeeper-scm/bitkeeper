@@ -663,6 +663,8 @@ EOF
 chmod +x BitKeeper/triggers/post-incoming
 bk new $Q BitKeeper/triggers/post-incoming
 bk commit $Q -ypost-incoming
+# kill time based race in repo_nfiles() by recomputing NFILES
+bk -r check -a
 cd "$HERE"
 bk clone $Q parent clone2
 test -f "$HERE/post-incoming-clone" || {
@@ -694,9 +696,10 @@ set | grep $DASHA ^BK | egrep -v '^[^=]+=$' |
     bk sort > "$HERE/post-incoming-clone-l"
 exit 0
 EOF
-chmod +x BitKeeper/triggers/post-incoming
 bk delta -y-l $Q BitKeeper/triggers/post-incoming
 bk commit $Q -ypost-incoming-l
+# kill time based race in repo_nfiles() by recomputing NFILES
+bk -r check -a
 cd "$HERE"
 rm -rf clone2
 bk clone -l $Q parent clone2

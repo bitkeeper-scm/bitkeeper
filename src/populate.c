@@ -73,7 +73,10 @@ nested_populate(nested *n, char **urls, int force, popts *ops)
 			/* then ones remembered for this component */
 			lurls = urllist_fetchURLs(urllist, cp->rootkey, lurls);
 			EACH(lurls) {
-				unless (r = remote_parse(lurls[i], 0)) continue;
+				unless (r = remote_parse(lurls[i], 0)) {
+					reasons = addLine(reasons, "bad url");
+					continue;
+				}
 				unless (r->params) {
 					r->params = hash_new(HASH_MEMHASH);
 				}
