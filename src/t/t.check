@@ -454,3 +454,126 @@ grep -q "File/directory conflict: foo" ERR || {
 	exit 1
 }
 echo OK
+
+echo $N bk check with errors should not update checked file .........$NL
+cd "$HERE"
+commercial proj4
+bk edit $Q BitKeeper/etc/config
+echo partial_check:yes >> BitKeeper/etc/config
+echo hi > foo
+bk new $Q -ycomment foo || exit 1
+bk commit $Q -ycomment || exit 1
+touch BitKeeper/log/checked
+perl -e 'utime 1, 1, "BitKeeper/log/checked";'
+ls -l BitKeeper/log/checked > WANT
+bk admin -Cbusted foo
+bk -r check -ac 2>ERR && {
+	echo check should have failed
+	cat ERR
+	exit 1
+}
+ls -l BitKeeper/log/checked > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Ancient check file should be needs check ....................$NL
+perl -e 'utime 1, 1, "BitKeeper/log/checked";'
+bk needscheck || {
+	echo failed, WTF
+	ls -l BitKeeper/log/checked
+	exit 1
+}
+echo OK
+
+echo $N No check file should be needs check .........................$NL
+rm BitKeeper/log/checked
+bk needscheck || {
+	echo failed, WTF
+	exit 1
+}
+echo OK
+
+echo $N Up to date check file should be no check ....................$NL
+touch BitKeeper/log/checked
+bk needscheck && {
+	echo failed, WTF
+	ls -l BitKeeper/log/checked
+	exit 1
+}
+echo OK
+
+echo $N Check in a subdir because I forgot that one .................$NL
+mkdir subdir
+cd subdir
+bk needscheck && {
+	echo failed, WTF
+	exit 1
+}
+rm ../BitKeeper/log/checked
+bk needscheck || {
+	echo failed, WTF2
+	exit 1
+}
+echo OK
+
+echo $N bk check with no errors should update checked file ..........$NL
+cd "$HERE/proj4"
+touch BitKeeper/log/checked
+perl -e 'utime 1, 1, "BitKeeper/log/checked";'
+ls -l BitKeeper/log/checked > WANT
+bk admin -C`bk id` foo
+bk -r check -ac 2>ERR || {
+	echo check should not have failed
+	cat ERR
+	exit 1
+}
+ls -l BitKeeper/log/checked > GOT
+cmp -s WANT GOT && {
+	echo should have updated the file
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Try our pre-outgoing trigger that auto checks ...............$NL
+cd "$HERE/proj4"
+test -d  BitKeeper/triggers || mkdir  BitKeeper/triggers
+cat > BitKeeper/triggers/pre-outgoing.check <<EOF
+#!/bin/sh
+
+# only if we need a check
+bk needscheck || exit 0
+
+# and not when another one of these triggers are running
+test -f BitKeeper/tmp/autocheck.lock && exit 0
+
+# and not when we can't tell ourselves that another is running
+test -w BitKeeper/tmp || exit 0
+
+touch BitKeeper/tmp/autocheck.lock
+
+# Run full check in background
+(
+# Uncomment if you want to prove to yourself the locking works
+# sleep 1
+bk -r check -ac > /dev/null 2>&1
+rm -f BitKeeper/tmp/autocheck.lock
+) &
+
+# now return to user and run in parallel with clone
+exit 0
+EOF
+chmod +x BitKeeper/triggers/pre-outgoing.check
+rm BitKeeper/log/checked
+cd ..
+bk clone $Q proj4 proj4.clone
+cd proj4
+while test -f BitKeeper/tmp/autocheck.lock
+do	# echo waiting
+	bk _usleep 100000
+done
+bk needscheck && {
+	echo failed to run check
+	exit 1
+}
+echo OK
