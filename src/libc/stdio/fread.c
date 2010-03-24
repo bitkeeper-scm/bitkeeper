@@ -54,8 +54,8 @@ fread(buf, size, count, fp)
 	FILE *fp;
 {
 	size_t resid;
-	char *p;
-	int r;
+	unsigned char *p;
+	int r, eof;
 	size_t total;
 
 	assert(fp != NULL);
@@ -75,20 +75,45 @@ fread(buf, size, count, fp)
 	total = resid;
 	p = buf;
 	while (resid > (r = fp->_r)) {
-		(void)memcpy((void *)p, (void *)fp->_p, (size_t)r);
-		fp->_p += r;
+		if (p != fp->_p) {
+			memcpy((void *)p, (void *)fp->_p, (size_t)r);
+			fp->_p += r;
+		}
 		/* fp->_r = 0 ... done in __srefill */
 		p += r;
 		resid -= r;
-		if (__srefill(fp)) {
+		/*
+		 * If the user is requesting enough data that we will
+		 * consume the entire buffer, then just write to the
+		 * destination buffer directly.
+		 */
+		if (!HASUB(fp) &&
+		    (fp->_bf._size > 0) && (resid >= fp->_bf._size)) {
+			char *obuf = fp->_bf._base;
+			size_t osize = fp->_bf._size;
+			fp->_bf._base = p;
+			/* keep reads aligned by bufsize */
+			fp->_bf._size = osize * (resid / osize);
+			eof = __srefill(fp);
+			fp->_bf._base = obuf;
+			fp->_bf._size = osize;
+		} else {
+			eof = __srefill(fp);
+		}
+		if (eof) {
 			/* no more input: return partial result */
+			fp->_p = fp->_bf._base;
 			FUNLOCKFILE(fp);
 			return ((total - resid) / size);
 		}
 	}
-	(void)memcpy((void *)p, (void *)fp->_p, resid);
+	if (p != fp->_p) {
+		memcpy((void *)p, (void *)fp->_p, resid);
+		fp->_p += resid;
+	} else {
+		fp->_p = fp->_bf._base;
+	}
 	fp->_r -= resid;
-	fp->_p += resid;
 	FUNLOCKFILE(fp);
 	return (count);
 }
