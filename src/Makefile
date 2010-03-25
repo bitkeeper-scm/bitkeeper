@@ -149,7 +149,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	port/gethost.o port/getinput.o \
 	port/getrealname.o port/globalroot.o port/gui.o \
 	port/hostColonPath.o port/http_proxy.o \
-	port/lock_dir.o port/mail.o port/mnext.o \
+	port/lock_dir.o port/mail.o port/mnext.o port/networkfs.o \
 	port/notifier.o port/ns_sock_host2ip.o port/platforminit.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o \

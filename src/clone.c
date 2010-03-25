@@ -13,6 +13,7 @@ struct {
 	u32	quiet:1;		/* -q: shut up */
 	int	delay;			/* wait for (ssh) to drain */
 	int	gzip;			/* -z[level] compression */
+	int	parallel;		/* -j%d: for NFS */
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
 } *opts;
@@ -29,6 +30,7 @@ private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private int	out_trigger(char *status, char *rev, char *when);
 private int	in_trigger(char *status, char *rev, char *root, char *repoID);
+private	void	checkout(int quiet, int parallel);
 
 private	char	*bam_url;
 private	char	*bam_repoid;
@@ -43,7 +45,7 @@ clone_main(int ac, char **av)
 
 	opts = calloc(1, sizeof(*opts));
 	opts->gzip = 6;
-	while ((c = getopt(ac, av, "B;dE:lqr;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;dE:j;lqr;w|z|")) != -1) {
 		switch (c) {
 		    case 'B': bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;		/* undoc 2.0 */
@@ -54,6 +56,14 @@ clone_main(int ac, char **av)
 				return (1);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'j':
+			if ((opts->parallel = atoi(optarg)) <= 0) {
+				/* if they set it to 0 then disable */
+				opts->parallel = -1;
+			} else if (opts->parallel > PARALLEL_MAX) {
+				opts->parallel = PARALLEL_MAX;	/* cap it */
+			}
+			break;
 		    case 'l': link = 1; break;			/* doc 2.0 */
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
@@ -235,6 +245,19 @@ clone(char **av, remote *r, char *local, char **envVar)
 		drainErrorMsg(r, buf, sizeof(buf));
 		exit(1);
 	}
+
+	/*
+	 * Now that we know where we are going, go see if it is a network
+	 * fs and if so, go parallel for better perf.
+	 * abcdefghijklmtZ 6 is the knee of the curve and I tend to agree.
+	 * I suspect you can do better with more but only slightly.
+	 */
+	if ((opts->parallel == 0) && isNetworkFS(local)) {
+		p = getenv("BK_PARALLEL");
+		opts->parallel =
+		    p ? min(atoi(p), PARALLEL_MAX) : PARALLEL_DEFAULT;
+	}
+
 	if (get_ok(r, buf, 1)) {
 		disconnect(r, 2);
 		goto done;
@@ -418,12 +441,41 @@ clone2(remote *r)
 	 */
 	if (proj_configbool(0, "partial_check") &&
 	    proj_checkout(0) & (CO_GET|CO_EDIT|CO_BAM_GET|CO_BAM_EDIT)) {
-		unless (opts->quiet) {
-			fprintf(stderr, "Checking out files...\n");
-		}
-		sys("bk", "-Ur", "checkout", "-TSq", SYS);
+		checkout(opts->quiet, opts->parallel);
 	}
 	return (0);
+}
+
+/*
+ * We may make this public for rclone.
+ */
+private void
+checkout(int quiet, int parallel)
+{
+	FILE	*in;
+	FILE	**f;
+	int	i;
+	char	buf[MAXPATH];
+
+	unless (quiet) fprintf(stderr, "Checking out files...\n");
+	if (parallel <= 0) {
+		sys("bk", "-Ur", "checkout", "-TSq", SYS);
+		return;
+	}
+	f = calloc(parallel, sizeof(FILE *));
+	for (i = 0; i < parallel; i++) {
+		f[i] = popen("bk checkout -TSq -", "w");
+	}
+	in = popen("bk -Ur", "r");
+	i = 0;
+	while (fnext(buf, in)) {
+		fputs(buf, f[i]);
+		if (++i == parallel) i = 0;
+	}
+	for (i = 0; i < parallel; i++) {
+		pclose(f[i]);
+	}
+	pclose(in);
 }
 
 /*
@@ -518,11 +570,16 @@ sfio(int gzip, remote *r, int BAM, char *prefix)
 	int	pfd;
 	FILE	*f;
 	char	*cmds[10];
+	char	tmp[100];
 
 	cmds[n = 0] = "bk";
 	cmds[++n] = "sfio";
 	cmds[++n] = "-i";
 	if (BAM) cmds[++n] = "-B";
+	if (opts->parallel > 0) {
+		sprintf(tmp, "-j%d", opts->parallel);
+		cmds[++n] = tmp;
+	}
 	if (opts->quiet) {
 		cmds[++n] = "-q";
 	} else {
