@@ -711,3 +711,7 @@ cd src
 bk parent $Q -s ../../project || exit 1
 bk -R parent $Q -s ../project || exit 1
 echo OK
+
+echo $N Verify that -n is legal only from product root...............$NL
+bk parent $Q -n ../../project 2>/dev/null && exit 1
+echo OK

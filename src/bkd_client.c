@@ -1,7 +1,7 @@
 #include "bkd.h"
 
 private remote	*file_parse(char *p);
-private	remote	*nfs_parse(char *p);
+private	remote	*nfs_parse(char *p, int flags);
 private	remote	*url_parse(char *p, int default_port);
 
 /*
@@ -53,7 +53,7 @@ remote_parse(const char *url, u32 flags)
 			    "Did you mean \"file://path\"?\n");
 			r = NULL;
 		} else {
-			r = nfs_parse(p);
+			r = nfs_parse(p, flags);
 		}
 	}
 	if (r) {
@@ -121,7 +121,7 @@ file_parse(char *p)
 
 /* [[user@]host:]path */
 private	remote *
-nfs_parse(char *p)
+nfs_parse(char *p, int flags)
 {
 	remote	*r;
 	char	*s;
@@ -141,12 +141,15 @@ nfs_parse(char *p)
 		}
 		if (IsFullPath(p)) {
 			r->path = strdup(p);
+		} else if (flags & REMOTE_ROOTREL){
+			r->path = strdup(proj_fullpath(0, p));
 		} else {
 			p = aprintf("%s/%s", start_cwd, p);
 			r->path = fullname(p, 0);
 			free(p);
 		}
 		r->type = ADDR_FILE;
+		r->notUrl = 1;
 		return (r);
 	}
 	r->type = ADDR_NFS;

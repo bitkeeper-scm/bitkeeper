@@ -125,6 +125,29 @@ revs=`bk prs -hd':I:\n' 'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
 
+echo $N Pull from subdirectory of repository w/relative parent path..$NL
+cd "$HERE/copy"
+bk unpull -f $Q || fail 1
+bk parent $Q -sn ../project || fail 2
+cd src
+bk pull -t $Q || fail 3
+revs=`bk prs -hd':I:\n' 'F!O#O$ B%A^R&RR(R)RR' | wc -l`
+[ $revs -eq 2 ] || fail 4
+bk parent $Q -s "$HERE/project" || fail 5
+echo OK
+
+echo $N Push from subdirectory of repository w/relative parent path..$NL
+bk unpull -f $Q || fail 1
+cd "$HERE/project"
+bk parent $Q -sn ../copy || fail 2
+cd src
+bk push $Q || fail 3
+bk parent $Q -r || fail 4
+cd "$HERE/copy/src"
+revs=`bk prs -hd':I:\n' 'F!O#O$ B%A^R&RR(R)RR' | wc -l`
+[ $revs -eq 2 ] || fail 5
+echo OK
+
 echo $N Pull with mergeable changes in child ........................$NL
 bk get $Q -e bar.c
 echo line three >>bar.c

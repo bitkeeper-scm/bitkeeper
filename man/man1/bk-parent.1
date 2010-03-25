@@ -15,13 +15,13 @@ bk parent \- manage repository parent pointer[s]
 .[ARG] repository
 .SS SETTING PARENT POINTERS
 .B bk parent \-s 
-.[B] \-inoq
+.[B] \-ioq
 .ARG repository
 .[ARG] repository
 .br
 .SS ADDING PARENT POINTERS
 .B bk parent \-a 
-.[B] \-inoq
+.[B] \-ioq
 .ARG repository
 .[ARG] repository
 .br
@@ -85,13 +85,6 @@ May be combined with
 or
 .Q \-o
 to list just the incoming or outgoing parents respectively.
-.tp
-.B \-n
-Do not \*(lqnormalize\*(rq the specified parent pointer, use it literally.
-Without this option, the pointer is normalized, i.e.,
-\*(lqlocalhost\*(rq is changed to the real hostname, relative paths are
-changed to absolute paths, etc.  Forcing a relative path can sometimes
-be useful.
 .tp
 .B \-o
 Operate only on outgoing (push) parent pointers.  May be used when

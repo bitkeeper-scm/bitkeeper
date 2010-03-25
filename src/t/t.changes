@@ -318,6 +318,17 @@ bk changes -r+ -k > WANT
 checkfiles WANT GOT
 echo OK
 
+echo $N Check that changes -L/-R in a subdir work w/rel parent path..$NL
+cd "$HERE/clone"
+bk parent $Q -sn ../project || fail 1
+mkdir subdir
+cd subdir
+bk changes -L -k > GOT
+bk changes -r+ -k > WANT
+checkfiles WANT GOT
+bk parent $Q -s "$HERE/project" || fail 1
+echo OK
+
 echo $N Demonstrate out of order changesets .........................$NL
 commercial p
 touch foo

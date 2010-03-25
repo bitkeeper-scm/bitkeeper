@@ -9,6 +9,8 @@ private	void	add(char *which, char *url, int *rc);
 private	void	rm(char *which, char *url, int *rc);
 private	char	**readf(char *file);
 private	int	record(void);
+private char	**parent_pullp_keep_rel(void);
+private char	**parent_pushp_keep_rel(void);
 private	int	print(void);
 private	char	*normalize(char *url, int check);
 
@@ -31,14 +33,16 @@ private	struct {
 int
 parent_main(int ac,  char **av)
 {
-	int	c, rc = 0;
+	int	c, changed_dir, rc = 0;
 	int	i;
-	char	**pull, **push, *which;
+	char	*rootdir, **pull, **push, *which;
 
 	if (proj_cd2product() && proj_cd2root()) {
 		fprintf(stderr, "parent: cannot find package root.\n");
 		return (1);
 	}
+	rootdir = proj_cwd();
+	changed_dir = strcmp(start_cwd, rootdir);
 
 	opts.normalize = 1;
 	opts.annotate = 1;
@@ -78,10 +82,15 @@ parent_main(int ac,  char **av)
 		}
 	}
 
+	if (!opts.normalize && changed_dir) {
+		fprintf(stderr, "parent: -n legal only from package root\n");
+		return (1);
+	}
+
 	opts.parents = mdbm_mem();
-	pull = parent_pullp();
+	pull = parent_pullp_keep_rel();
 	EACH(pull) mdbm_store_str(opts.parents, pull[i], "i", MDBM_INSERT);
-	push = parent_pushp();
+	push = parent_pushp_keep_rel();
 	EACH(push) {
 		if (mdbm_fetch_str(opts.parents, push[i])) {
 			mdbm_store_str(opts.parents, push[i], "b",MDBM_REPLACE);
@@ -390,11 +399,47 @@ record(void)
 char	**
 parent_pullp(void)
 {
-	return (readf(PULL_PARENT));
+	int	i;
+	remote	*r = 0;
+	char	**p = readf(PULL_PARENT);
+
+	EACH(p) {
+		if ((r = remote_parse(p[i], REMOTE_ROOTREL)) &&
+		    (r->type == ADDR_FILE) && r->notUrl) {
+			free(p[i]);
+			p[i] = strdup(r->path);
+		}
+		if (r) remote_free(r);
+	}
+	return (p);
 }
 
 char	**
 parent_pushp(void)
+{
+	int	i;
+	remote	*r = 0;
+	char	**p = readf(PUSH_PARENT);
+
+	EACH(p) {
+		if ((r = remote_parse(p[i], REMOTE_ROOTREL)) &&
+		    (r->type == ADDR_FILE) && r->notUrl) {
+			free(p[i]);
+			p[i] = strdup(r->path);
+		}
+		if (r) remote_free(r);
+	}
+	return (p);
+}
+
+private char	**
+parent_pullp_keep_rel(void)
+{
+	return (readf(PULL_PARENT));
+}
+
+private char	**
+parent_pushp_keep_rel(void)
 {
 	return (readf(PUSH_PARENT));
 }
