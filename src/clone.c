@@ -132,7 +132,9 @@ err:			if (r) remote_free(r);
 		}
 		remote_free(l);
 	} else {
-		if (r->path) dest = basenm(r->path);
+		if (r->path && !getenv("BK_CLONE_FOLLOW_LINK")) {
+			dest = basenm(r->path);
+		}
 	}
 
 	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
