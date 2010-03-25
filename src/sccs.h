@@ -1296,6 +1296,8 @@ int	startmenu_get(u32, char *path);
 int	startmenu_set(u32, char *, char *, char *, char *);
 char	*bkmenupath(int, int);
 void	repos_update(sccs *cset);
+void	features_repoChk(project *p);
+void	features_repoSet(project *p, char *feature);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);
