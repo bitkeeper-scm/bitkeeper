@@ -18,6 +18,29 @@ while read file; do
 	bk merge -s "$file" > "$file" || exit 1
 	bk ci -q -yauto-merge "$file" || exit 1
 done
+
+# converge all files ending in .uniq with 'sort -u'
+
+bk sfiles '*.uniq' |
+    bk prs -r+ -hnd'$if(:LREV:){$if(:LPN:=:RPN:){:GFILE:|:LREV:|:GREV:|:RREV:}}' - |
+while IFS=\| read file l g r
+do
+	L="$BK_TMP"/uniq.local
+	G="$BK_TMP"/uniq.gca
+	R="$BK_TMP"/uniq.remote	
+	bk get -qkpr$l "$file" > "$L"
+	bk get -qkpr$g "$file" > "$G"
+	bk get -qkpr$r "$file" > "$R"
+
+	cmp -s "$L" "$G" || cmp -s "$R" "$G" || cmp -s "$L" "$R" || {
+	        echo "my merge on $file"
+		sort -u "$L" "$R" > "$file" && {
+			bk get -qge -M "$file" 2> /dev/null && 
+				bk ci -q -yauto-merge "$file"
+		}
+	}	
+	rm -f "$L" "$G" "$R"
+done
 END
 chmod +x BitKeeper/triggers/pre-resolve.automerge
 bk new $Q BitKeeper/triggers/pre-resolve.automerge
@@ -64,4 +87,46 @@ b2
 c
 END
 checkfiles foo want
+echo OK
+
+echo $N merge .uniq files ...........................................$NL
+cd ../project
+for f in a.uniq b.uniq c.uniq
+do
+	echo 1 > $f
+	bk new $Q $f || exit 1
+done
+bk commit -yinit $Q || exit 2
+cd ../copy
+bk pull $Q || exit 3
+bk edit $Q b.uniq c.uniq
+echo 2 > b.uniq
+echo 3 >> c.uniq
+bk ci $Q -y2 b.uniq c.uniq || exit 4
+bk commit $Q -y2 || exit 5
+cd ../project
+bk edit $Q a.uniq b.uniq || exit 6
+echo 4 > a.uniq
+echo 4 >> b.uniq
+bk ci $Q -y4 a.uniq b.uniq || exit 7
+bk commit $Q -y4 || exit 8
+cd ../copy
+echo q | bk pull $Q || exit 9
+
+bk get $Q || fail
+cat <<EOF > WANT
+4
+EOF
+cmpfiles a.uniq WANT
+cat <<EOF > WANT
+1
+2
+4
+EOF
+cmpfiles b.uniq WANT
+cat <<EOF > WANT
+1
+3
+EOF
+cmpfiles c.uniq WANT
 echo OK
