@@ -15,6 +15,8 @@ basenm(char *s)
 
 /*
  * clean up "..", "." and "//" in a path name
+ * path and cleanPath are allowed to be identical and cleanPath
+ * will never be longer than path.
  */
 void
 cleanPath(char *path, char cleanPath[])

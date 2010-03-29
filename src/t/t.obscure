@@ -33,7 +33,7 @@ This is a multiline comment, with the next line blank
 And then a final line after the blank line.
 EOF
 bk edit $Q foo
-bk delta $Q -f -Ycomment foo
+_BK_MV_OK=1 bk delta $Q -f -Ycomment foo
 test 'This is revision 1.1' = "`bk prs -hr1.1 -nd:C: foo`" || {
 	echo bad comment message
 	exit 1

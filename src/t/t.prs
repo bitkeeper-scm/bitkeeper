@@ -609,7 +609,7 @@ echo OK
 echo $N another test for nested conditional..........................$NL
 bk co $Q -l FILE
 echo "new data" > FILE
-bk ci $Q -y FILE
+_BK_MV_OK=1 bk ci $Q -y FILE
 bk prs -r1.4..1.6 -hd':I: Comments:\n$if(:C:){$each(:C:){  (:C:)\n}}------------\n'  FILE > CMP2
 bk undos > CMP1 <<EOF
 1.6 Comments:
