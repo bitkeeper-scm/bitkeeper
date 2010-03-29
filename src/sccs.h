@@ -378,7 +378,7 @@ int	checking_rmdir(char *dir);
  * Constants for running some parallel processes, sfio, checkout,
  * to overcome NFS latency.
  */
-#define	PARALLEL_DEFAULT	6
+#define	PARALLEL_DEFAULT	8
 #define	PARALLEL_MAX		20
 
 #define	MINUTE	(60)
