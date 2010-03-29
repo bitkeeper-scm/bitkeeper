@@ -1,0 +1,17 @@
+echo $N Verify that clone fails with unknown feature ................$NL
+commercial project
+echo wizbang >> BitKeeper/log/features
+cd ..
+bk clone $Q project copy 2>ERR && exit 1
+bk getmsg -= repo_feature wizbang > WANT
+cmpfiles ERR WANT
+echo OK
+
+echo $N Try to commit changes to repo ...............................$NL
+cd project
+echo whoopee >> BitKeeper/log/features
+bk getmsg -= repo_feature wizbang,whoopee > WANT
+echo hi > data
+bk new $Q data 2>ERR && exit 1
+cmpfiles ERR WANT
+echo OK

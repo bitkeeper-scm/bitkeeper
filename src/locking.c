@@ -331,6 +331,7 @@ repository_rdlock(void)
 {
 	int	i, ret;
 
+	features_repoChk(0);
 	if (global_wrlocked()) return (LOCKERR_LOST_RACE);
 	for (i = 0; i < 10; ++i) {
 		unless (ret = rdlock()) return (0);
@@ -399,6 +400,7 @@ repository_wrlock(void)
 {
 	int	i, ret;
 
+	features_repoChk(0);
 	if (global_locked()) return (LOCKERR_LOST_RACE);
 	for (i = 0; i < 10; ++i) {
 		unless (ret = wrlock()) return (0);

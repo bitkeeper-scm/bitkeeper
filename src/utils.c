@@ -1019,6 +1019,80 @@ bkd_hasFeature(char *f)
 }
 
 /*
+ * per repo features
+ */
+static char *features[] = {
+	0
+};
+
+/*
+ * Verify that all the feature codes in BitKeeper/log/features
+ * are understood by the current bk binary.
+ * Doesn't return on failure.
+ */
+void
+features_repoChk(project *p)
+{
+	int	i;
+	char	**t;
+	char	**local = 0;
+	char	**missing = 0;
+	char	*list;
+	static	int done = 0;
+
+	if (done) return;
+
+	local = file2Lines(local, proj_fullpath(p, "BitKeeper/log/features"));
+	EACH(local) {
+		for (t = features; *t; ++t) {
+			if (streq(local[i], *t)) break;
+		}
+		unless (*t) missing = addLine(missing, local[i]);
+	}
+	if (missing) {
+		list = joinLines(",", missing);
+		getMsg("repo_feature", list, '=', stderr);
+		exit(101);
+	}
+	freeLines(local, free);
+	done++;
+}
+
+/*
+ * Add a new feature code to the current repository, so
+ * that older bk's that don't understand it will refuse to operate
+ * on the repo.
+ */
+void
+features_repoSet(project *p, char *feature)
+{
+	char	**t;
+	char	**local;
+	char	*ffile;
+	int	i;
+
+	/* we better have this feature defined above */
+	for (t = features; *t; ++t) {
+		if (streq(feature, *t)) break;
+	}
+	assert(*t);
+
+	ffile = proj_fullpath(p, "BitKeeper/log/features");
+	local = file2Lines(0, ffile);
+
+	/* avoid needless rewrites, they mess up NFS */
+	EACH(local) {
+		if (streq(local[i], feature)) {
+			goto out;
+		}
+	}
+	local = addLine(local, strdup(feature));
+	uniqLines(local, free);
+	if (lines2File(local, ffile)) perror(ffile);
+out:	freeLines(local, free);
+}
+
+/*
  * Generate a http response header from a bkd back to the client.
  */
 void

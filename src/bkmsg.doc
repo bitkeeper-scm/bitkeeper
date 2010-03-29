@@ -1403,3 +1403,14 @@ remote version of BitKeeper, or use:
   bk clone -r<rev> <remote-URL> <local-temp-repo>
   bk pull <local-temp-repo>
 $
+#repo_feature
+The current repository relies on a feature that is not supported by
+this BitKeeper release.  This repository requires:
+
+	#BKARG#
+
+and you will need to upgrade to a BitKeeper version which supports
+the '#BKARG#' feature[s].
+
+In general, a "bk upgrade" should be sufficient.
+$
