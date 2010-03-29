@@ -112,8 +112,16 @@ int
 c_quit(resolve *rs)
 {
 	if (LOCKED(rs->s)) {
-		rs->s = sccs_restart(rs->s);
-		sccs_unedit(rs->s, SILENT);
+		/*
+		 * Mark to be able to find it next time, since
+		 * conflict() will skip it because of a pfile.
+		 */
+		unless (exists(rs->s->gfile)) {
+			rs->s = sccs_restart(rs->s);
+			sccs_unedit(rs->s, SILENT);
+		} else {
+			touch(sccs_Xfile(rs->s, 'a'), 0666);
+		}
 	}
 	assert(exists(RESYNC2ROOT "/" ROOT2RESYNC));
 	chdir(RESYNC2ROOT);
@@ -413,8 +421,16 @@ c_skip(resolve *rs)
 	if (LOCKED(rs->s) && !sccs_hasDiffs(rs->s, 0, 1)) {
 		rs->s = sccs_restart(rs->s);
 		sccs_unedit(rs->s, SILENT);
+	} else {
+		/*
+		 * Mark to be able to find it next time, since
+		 * conflict() will skip it because of a pfile.
+		 */
+		touch(sccs_Xfile(rs->s, 'a'), 0666);
 	}
 	++rs->opts->hadConflicts;
+	rs->opts->notmerged =
+	    addLine(rs->opts->notmerged,strdup(rs->s->gfile));
 	return (1);
 }
 
