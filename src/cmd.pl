@@ -227,6 +227,7 @@ hostme
 id remote
 idcache
 isascii
+_isnetwork
 inskeys
 key2rev
 key2path

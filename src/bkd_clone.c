@@ -137,6 +137,7 @@ compressed(int level, char *rev)
 	tmpf2 = bktmp(0, "clone2");
 	fh = fopen(tmpf1, "w");
 	if (exists(CMARK)) fprintf(fh, CMARK "\n");
+	if (exists(IDCACHE)) fprintf(fh, IDCACHE "\n");
 	if (exists(DFILE)) {
 		/*
 		 * If we're here, then let's send the d.files so that
