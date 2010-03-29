@@ -1941,6 +1941,7 @@ conflict(opts *opts, char *sfile)
 	sccs	*s;
 	resolve	*rs;
 	deltas	d;
+	char	*p;
 	
 	s = sccs_init(sfile, INIT_NOCKSUM);
 
@@ -2039,6 +2040,16 @@ err:		resolve_free(rs);
 		resolve_free(rs);
 		return;
 	}
+	
+	/*
+	 * If the a.file (a for again) was created, delete here as
+	 * we have reached the point where we are doing it again.
+	 */
+	p = strrchr(sfile, '/');
+	assert(p);
+	p[1] = 'a';
+	unlink(sfile);
+	p[1] = 's';
 
 	if (opts->automerge) {
 		automerge(rs, 0, 0);
@@ -2934,7 +2945,10 @@ resolvewalk(char *file, struct stat *sb, void *data)
 	p[1] = 'p';
 	e = exists(file);
 	if (ci->pfiles_only && !e) goto out;
-	if (!ci->pfiles_only && !opts->remerge && e) goto out;
+	if (!ci->pfiles_only && !opts->remerge && e) {
+		p[1] = 'a';	/* Skip makes an a.file (a for again) */
+		unless (exists(file)) goto out;
+	}
 	p[1] = 's';
 	q = sccs2name(file);
 

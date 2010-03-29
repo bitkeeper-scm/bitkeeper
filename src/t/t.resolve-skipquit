@@ -1,0 +1,176 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2010 BitMover
+# %K%
+
+# _do_res "a,b,c" "-r"
+# where first param is a comma separated list of command to feed
+# the resolver.  And the second parameter is options to bk resolve.
+_dores() {
+	PROG='@_=split(/,/, $ARGV[0]); print join("\n", @_), "\nq\n";'
+	perl -e "$PROG" $1 | bk resolve ${2+$2} 2> "$HERE/GOT"
+}
+
+# Careful -- gui environment enabled for testing!
+BK_NO_GUI_PROMPT=""
+DISPLAY=foobar:0
+export BK_NO_GUI_PROMPT DISPLAY
+
+list="1 2 3 4"
+
+echo $N Create 4 files with conflict ................................$NL
+commercial proj
+for x in $list; do
+	echo base > $x
+done
+bk new $Q $list || exit 1
+bk commit $Q -ystart || exit 1
+cd "$HERE"
+bk clone $Q proj copy
+cd proj
+bk edit $Q $list
+for x in $list; do
+	echo project >> $x
+done
+bk delta $Q -ywhatever $list || exit 1
+bk commit $Q -ynew_remote || exit 1
+cd "$HERE/copy"
+bk edit $Q $list
+for x in $list; do
+	echo copy >> $x
+done
+# Set up '3' to auto resolve
+bk unedit $Q 3
+bk edit $Q 3
+printf "copy\nbase\n" > 3
+#
+bk delta $Q -ywhatever $list || exit 1
+bk commit $Q -ynew_local || exit 1
+echo OK
+
+echo $N Skip 5 files and resolve one -- file 2 -- text env ..........$NL
+# don't need to abort because this is first pull
+bk pull -R $Q || exit 2
+# This should loop through all once, and then sccs resolve file 2
+_dores "S,S,S,S,S,s" "-t"
+cd RESYNC
+test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || exit 1
+cd SCCS
+# no a.files, because no edited files are created.
+test ! -f a.1 -a -f a.2 -a ! -f a.3 -a ! -f a.4 || exit 2
+cd ../..
+printf "base\ncopy\nproject\n" > WANT
+cmpfiles WANT RESYNC/2
+# go ahead and check in 2 - no comment because no merge diffs with 's'
+_dores "S,C" "-t"
+cd RESYNC
+test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || exit 3
+cd SCCS
+test ! -f a.1 -a ! -f a.2 -a ! -f a.3 -a ! -f a.4 || exit 4
+cd ../..
+echo OK
+
+echo $N Skip 5 files and resolve one -- file 2 -- gui env ...........$NL
+bk abort -f
+bk pull $Q -R
+# This should loop through all once, and then sccs resolve file 2
+_dores "S,S,S,S,S,s"
+cd RESYNC
+test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || exit 1
+cd SCCS
+# no a.files, because no edited files are created.
+test ! -f a.1 -a -f a.2 -a ! -f a.3 -a ! -f a.4 || exit 2
+cd ../..
+cmpfiles WANT RESYNC/2
+# go ahead and check in 2
+_dores "S,C"
+cd RESYNC
+# In this case, the '2' is still there because checkin delayed
+test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || exit 3
+cd SCCS
+test ! -f a.1 -a ! -f a.2 -a ! -f a.3 -a ! -f a.4 || exit 4
+cd ../..
+echo OK
+
+echo $N Merge/Skip 5 files and resolve one -- file 2 -- text env ....$NL
+bk abort -f
+bk pull $Q -R
+# This should loop through all once, and then sccs resolve file 2
+_dores "m,S,m,S,m,S,m,S,m,S,s" "-t"
+cd RESYNC
+test -f 1 -a -f 2 -a -f 3 -a -f 4 || exit 1
+cd SCCS
+# no a.files, because no edited files are created.
+test -f a.1 -a -f a.2 -a -f a.3 -a -f a.4 || exit 2
+cd ../..
+cmpfiles WANT RESYNC/2
+# go ahead and check in 2
+_dores "S,C" "-t"
+cd RESYNC
+test -f 1 -a ! -f 2 -a -f 3 -a -f 4 || exit 3
+cd SCCS
+test -f a.1 -a ! -f a.2 -a -f a.3 -a -f a.4 || exit 4
+cd ../..
+echo OK
+
+echo $N Merge/Skip 5 files and resolve one -- file 2 -- gui env .....$NL
+bk abort -f
+bk pull $Q -R
+# This should loop through all once, and then sccs resolve file 2
+_dores "m,S,m,S,m,S,m,S,m,S,s"
+cd RESYNC
+test -f 1 -a -f 2 -a -f 3 -a -f 4 || exit 1
+cd SCCS
+# no a.files, because no edited files are created.
+test -f a.1 -a -f a.2 -a -f a.3 -a -f a.4 || exit 2
+cd ../..
+cmpfiles WANT RESYNC/2
+# go ahead and check in 2
+_dores "S,C"
+cd RESYNC
+test -f 1 -a -f 2 -a -f 3 -a -f 4 || exit 3
+cd SCCS
+test -f a.1 -a ! -f a.2 -a -f a.3 -a -f a.4 || exit 4
+cd ../..
+echo OK
+
+echo $N Automerge 3 and use local on 4 -- text env ..................$NL
+bk abort -f
+bk pull $Q -R
+# This should loop through all once, and then sccs resolve file 2
+_dores "S,S,ul,comment,." "-ta"
+cd RESYNC
+test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || exit 1
+cd SCCS
+# no a.files, because no edited files are created.
+test ! -f a.1 -a ! -f a.2 -a ! -f a.3 -a ! -f a.4 || exit 2
+cd ../..
+printf "base\ncopy\n" > WANT
+bk get $Q -p RESYNC/4 > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Automerge 3 and use local on 4 -- gui env ...................$NL
+bk abort -f
+bk pull $Q -R
+# This should loop through all once, and then sccs resolve file 2
+# XXX: even though this is a gui environment, ul still checks in the file
+_dores "S,S,ul,comment,." "-a"
+cd RESYNC
+test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || exit 1
+cd SCCS
+# no a.files, because no edited files are created.
+test ! -f a.1 -a ! -f a.2 -a ! -f a.3 -a ! -f a.4 || exit 2
+cd ../..
+bk get $Q -p RESYNC/4 > GOT
+cmpfiles WANT GOT
+echo OK
