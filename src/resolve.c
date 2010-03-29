@@ -159,6 +159,7 @@ resolve_main(int ac, char **av)
 		localDB = mdbm_mem();
 		resyncDB = mdbm_mem();
 	}
+	putenv("_BK_MV_OK=1");
 	c = passes(&opts);
 	if (localDB) mdbm_close(localDB);
 	if (resyncDB) mdbm_close(resyncDB);
