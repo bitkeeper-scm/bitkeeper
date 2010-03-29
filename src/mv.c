@@ -70,6 +70,7 @@ usage:			system("bk help -s mv");
 	 * 4) Dir -> non-Existing Dir
 	 * 5) Dir -> Existing Dir
 	 */
+	putenv("_BK_MV_OK=1");
 	for (i = optind; i < (ac - 1); i++) {
 		localName2bkName(av[i], av[i]);
 		if (isdir(av[i])) {

@@ -13494,7 +13494,15 @@ out:
 			goto out;
 		}
 	}
+
 	dinsert(s, n, !(flags & DELTA_PATCH));
+	unless (init || !n->pathname || !d->pathname ||
+	    streq(d->pathname, n->pathname) || getenv("_BK_MV_OK")) {
+	    	fprintf(stderr,
+		    "delta: must use bk mv to rename %s to %s\n",
+		    d->pathname, n->pathname);
+		OUT;
+	}
 	s->numdeltas++;
 
 	/* Uses n->parent, has to be after dinsert() */
