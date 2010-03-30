@@ -596,6 +596,7 @@ clone2(remote *r)
 }
 
 /*
+/*
  * We may make this public for rclone.
  */
 private void
@@ -625,6 +626,43 @@ checkout(int quiet, int parallel)
 		pclose(f[i]);
 	}
 	pclose(in);
+}
+
+ * When given a url from a remote machine via a remote*, return a
+ * "normalized" version of that url.
+ * Mainly if we are talking to a bkd with remote* and get a file:// url
+ * in url, we return a return a bk:// url to the same filename and
+ * as long as the bkd is running above that directory it will work.
+ *
+ * ex: if the bam server url is file://home/bk/wscott/bk-foo when
+ *     we clone from bk://work/rick/bk-bar we will return this
+ *     url:
+ *          bk://work//home/bk/wscott/bk-foo
+ */
+private char *
+remoteurl_normalize(remote *r, char *url)
+{
+	remote	*rurl = 0;
+	char	*savepath, *base;
+	char	buf[MAXPATH];
+
+	if (r->type == ADDR_FILE) goto out; /* only if r is to a bkd */
+	unless (rurl = remote_parse(url, 0)) goto out;
+	if (rurl->type != ADDR_FILE) goto out; /* and url is file:// */
+	concat_path(buf, rurl->path, BKROOT);
+	if (exists(buf)) goto out; /* and the path doesn't exist */
+
+	savepath = r->path;
+	r->path = 0;
+
+	base = remote_unparse(r); /* get 'bk://host:port' */
+	r->path = savepath;
+
+	sprintf(buf, "%s/%s", base, rurl->path); /* add path */
+	free(base);
+	url = buf;
+ out:	if (rurl) remote_free(rurl);
+	return (strdup(url));
 }
 
 private int
