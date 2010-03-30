@@ -901,7 +901,9 @@ usage:		    	system("bk help -s attach");
 			goto err;
 		}
 		system("bk edit -q ChangeSet");
-		sprintf(buf, "bk delta -f -q -y'attach %s' ChangeSet", relpath);
+		sprintf(buf,
+		    "bk -?_BK_MV_OK=1 delta -f -q -y'attach %s' ChangeSet",
+		    relpath);
 		system(buf);
 		proj_reset(0);
 		ensemble_nestedCheck();

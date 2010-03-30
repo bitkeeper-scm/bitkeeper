@@ -472,7 +472,7 @@ echo OK
 echo $N A rename delta in the ChangeSet file should fix things up ...$NL
 cd gcc4
 bk edit $Q ChangeSet
-bk delta -f $Q -y'Rename gcc -> gcc4'
+_BK_MV_OK=1 bk delta -f $Q -y'Rename gcc -> gcc4'
 cd ..
 bk -r check -ac || {
 	echo failed
@@ -526,7 +526,7 @@ echo OK
 echo $N See if sfiles working with deep nested ......................$NL
 mv gcc4 gdb
 bk edit $Q gdb/gcc4/ChangeSet
-bk delta $Q -yrename gdb/gcc4/ChangeSet
+_BK_MV_OK=1 bk delta $Q -yrename gdb/gcc4/ChangeSet
 # should work but doesn't at the moment
 bk sfiles | grep -q gdb/gcc4 && {
 	echo fix test

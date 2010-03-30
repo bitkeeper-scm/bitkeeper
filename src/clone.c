@@ -43,7 +43,7 @@ clone_main(int ac, char **av)
 {
 	int	c, rc;
 	int	gzip = 6;
-	char	*dest = 0, **envVar = 0;
+	char	**envVar = 0;
 	remote 	*r = 0, *l = 0;
 
 	opts = calloc(1, sizeof(*opts));
@@ -596,7 +596,6 @@ clone2(remote *r)
 }
 
 /*
-/*
  * We may make this public for rclone.
  */
 private void
@@ -628,6 +627,7 @@ checkout(int quiet, int parallel)
 	pclose(in);
 }
 
+/*
  * When given a url from a remote machine via a remote*, return a
  * "normalized" version of that url.
  * Mainly if we are talking to a bkd with remote* and get a file:// url

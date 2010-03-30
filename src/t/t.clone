@@ -250,9 +250,14 @@ echo OK
 
 echo $N Test clone will emit cannot resolve message even with -q ....$NL
 cd "$HERE"
-bk clone -q bk://doesntexist/foo 2> ERR
+rm -rf foo
+bk clone -q bk://doesntexist/foo 2> ERR && {
+	echo should have failed
+	exit 1
+}
 grep -q 'Cannot resolve' ERR || {
 	echo failed
+	cat ERR
 	exit 1
 }
 echo OK

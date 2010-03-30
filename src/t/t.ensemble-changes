@@ -686,7 +686,7 @@ bk mv file1 moveit
 cd ..
 mv gcc newcc
 bk edit $Q newcc/ChangeSet
-bk ci $Q -ymoved newcc/ChangeSet
+_BK_MV_OK=1 bk ci $Q -ymoved newcc/ChangeSet
 cd newcc
 bk commit $Q -ymvfiles
 cd ..
