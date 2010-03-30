@@ -148,7 +148,7 @@ safe_system(char *cmd)
 	return (status);
 }
 
-#define	MAX_POPEN	20
+#define	MAX_POPEN	40
 
 static struct {
 	FILE	*pf;

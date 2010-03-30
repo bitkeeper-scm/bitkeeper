@@ -333,15 +333,26 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 		    	}
 		}
 		fprintf(out, "\n");
+		/*
+		 * Caution: tricky stuff: if newline is output fputs style
+		 * instead of in buf, regressions can fail because of
+		 * bkd trigger stuff interleaved with takepatch output.
+		 * See XXX in t.triggers / Pull w/trivial triggers
+		 * More caution: receiving side has a 4096 line, and
+		 * so we need a newline for each one of those.  So break
+		 * up long lines with newlines if going over the wire.
+		 */
 		f = fopen(output, "rt");
 		assert(f);
-		while (fnext(buf, f)) {
-			if ((len = strlen(buf)) && (buf[len-1] != '\n')) {
-				assert(len+1 < sizeof(buf));
-				buf[len] = '\n';
-				buf[len+1] = 0;
+		while (fgets(buf, (sizeof(buf)-1), f)) {
+			if (proto) {
+				len = strlen(buf);
+				if (buf[len-1] != '\n') {
+					buf[len] = '\n';
+					buf[len+1] = 0;
+				}
 			}
-			len = fprintf(out, "%s%s", bkd_data, buf);
+			fprintf(out, "%s%s", bkd_data, buf);
 		}
 		fclose(f);
 

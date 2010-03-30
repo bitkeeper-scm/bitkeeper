@@ -1824,3 +1824,23 @@ usage:			system("bk help -s repair");
 		return (66);
 	}
 }
+
+/*
+ * bk needscheck && bk -r check -acv
+ */
+int
+needscheck_main(int ac, char **av)
+{
+	int	verbose = av[1] && streq(av[1], "-v");
+
+	if (proj_cd2root()) {
+		if (verbose) printf("no repo, no check needed.\n");
+		return (1);
+	}
+	if (proj_configbool(0, "partial_check") && full_check()) {
+		if (verbose) printf("needs check.\n");
+		return (0);
+	}
+	if (verbose) printf("no check needed.\n");
+	return (1);
+}

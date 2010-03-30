@@ -11,7 +11,7 @@ typedef	struct {
 	char	**aliases;
 } opts;
 
-private int	getsfio(void);
+private int	getsfio(int parallel);
 private int	rclone_end(opts *opts);
 
 private char *
@@ -166,10 +166,14 @@ cmd_rclone_part2(int ac, char **av)
 	opts	opts;
 	char	buf[MAXPATH];
 	char	*path, *p;
-	int	fd2, rc = 0;
+	int	fd2, parallel = 0, rc = 0;
 	u64	sfio;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
+	if (isNetworkFS(path)) {
+		p = getenv("BK_PARALLEL");
+		parallel = p ? min(atoi(p), PARALLEL_MAX) : PARALLEL_DEFAULT;
+	}
 	if (unsafe_cd(path)) {
 		p = aprintf("ERROR-cannot chdir to \"%s\"\n", path);
 		out(p);
@@ -208,7 +212,7 @@ cmd_rclone_part2(int ac, char **av)
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
-	rc = getsfio();
+	rc = getsfio(parallel);
 	getline(0, buf, sizeof(buf));
 	if (!streq("@END@", buf)) {
 		fprintf(stderr, "cmd_rclone: warning: lost end marker\n");
@@ -377,14 +381,21 @@ docheck:	/* undo already runs check so we only need this case */
 
 
 private int
-getsfio(void)
+getsfio(int parallel)
 {
 	int	status, pfd;
 	u32	in, out;
 	FILE	*f;
 	char	*cmds[10] = {"bk", "sfio", "-i", "-q", 0};
+	char	j[20];
 	pid_t	pid;
 
+	if (parallel) {
+		sprintf(j, "-j%d", parallel);
+		assert(cmds[4] == 0);
+		cmds[4] = j;
+		cmds[5] = 0;
+	}
 	pid = spawnvpio(&pfd, 0, 0, cmds);
 	if (pid == -1) {
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);

@@ -15,6 +15,7 @@ struct {
 	u32	quiet:1;		/* -q: shut up */
 	u32	link:1;			/* -l: lclone-mode */
 	int	delay;			/* wait for (ssh) to drain */
+	int	parallel;		/* -j%d: for NFS */
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
 	char	**av;			/* saved opts for ensemble commands */
@@ -32,6 +33,7 @@ private int	initProject(char *root, remote *r);
 private	void	lclone(char *from);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
+private	void	checkout(int quiet, int parallel);
 
 private	char	*bam_url;
 private	char	*bam_repoid;
@@ -45,7 +47,7 @@ clone_main(int ac, char **av)
 	remote 	*r = 0, *l = 0;
 
 	opts = calloc(1, sizeof(*opts));
-	while ((c = getopt(ac, av, "B;dE:lpqr;s;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;dE:j;lpqr;s;w|z|")) != -1) {
 		unless ((c == 'r') || (c == 's')) {
 			if (optarg) {
 				opts->av = addLine(opts->av,
@@ -64,6 +66,14 @@ clone_main(int ac, char **av)
 				return (1);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'j':
+			if ((opts->parallel = atoi(optarg)) <= 0) {
+				/* if they set it to 0 then disable */
+				opts->parallel = -1;
+			} else if (opts->parallel > PARALLEL_MAX) {
+				opts->parallel = PARALLEL_MAX;	/* cap it */
+			}
+			break;
 		    case 'l': opts->link = 1; break;		/* doc 2.0 */
 		    case 'p': opts->no_parent = 1; break;
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
@@ -154,7 +164,9 @@ clone_main(int ac, char **av)
 			return (rclone_main(ac, av));
 		}
 	} else {
-		if (r->path) opts->to = basenm(r->path);
+		if (r->path && !getenv("BK_CLONE_FOLLOW_LINK")) {
+			opts->to = basenm(r->path);
+		}
 	}
 
 	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
@@ -336,6 +348,19 @@ clone(char **av, remote *r, char *local, char **envVar)
 		drainErrorMsg(r, buf, sizeof(buf));
 		exit(1);
 	}
+
+	/*
+	 * Now that we know where we are going, go see if it is a network
+	 * fs and if so, go parallel for better perf.
+	 * abcdefghijklmtZ 6 is the knee of the curve and I tend to agree.
+	 * I suspect you can do better with more but only slightly.
+	 */
+	if ((opts->parallel == 0) && isNetworkFS(local)) {
+		p = getenv("BK_PARALLEL");
+		opts->parallel =
+		    p ? min(atoi(p), PARALLEL_MAX) : PARALLEL_DEFAULT;
+	}
+
 	if (get_ok(r, buf, 1)) {
 		disconnect(r, 2);
 		goto done;
@@ -565,50 +590,41 @@ clone2(remote *r)
 	 */
 	if (!didcheck &&
 	    (proj_checkout(0) & (CO_GET|CO_EDIT|CO_BAM_GET|CO_BAM_EDIT))) {
-		unless (opts->quiet) {
-			fprintf(stderr, "Checking out files...\n");
-		}
-		sys("bk", "-Ur", "checkout", "-TSq", SYS);
+		checkout(opts->quiet, opts->parallel);
 	}
 	return (0);
 }
 
 /*
- * When given a url from a remote machine via a remote*, return a
- * "normalized" version of that url.
- * Mainly if we are talking to a bkd with remote* and get a file:// url
- * in url, we return a return a bk:// url to the same filename and
- * as long as the bkd is running above that directory it will work.
- *
- * ex: if the bam server url is file://home/bk/wscott/bk-foo when
- *     we clone from bk://work/rick/bk-bar we will return this
- *     url:
- *          bk://work//home/bk/wscott/bk-foo
+ * We may make this public for rclone.
  */
-private char *
-remoteurl_normalize(remote *r, char *url)
+private void
+checkout(int quiet, int parallel)
 {
-	remote	*rurl = 0;
-	char	*savepath, *base;
+	FILE	*in;
+	FILE	**f;
+	int	i;
 	char	buf[MAXPATH];
 
-	if (r->type == ADDR_FILE) goto out; /* only if r is to a bkd */
-	unless (rurl = remote_parse(url, 0)) goto out;
-	if (rurl->type != ADDR_FILE) goto out; /* and url is file:// */
-	concat_path(buf, rurl->path, BKROOT);
-	if (exists(buf)) goto out; /* and the path doesn't exist */
-
-	savepath = r->path;
-	r->path = 0;
-
-	base = remote_unparse(r); /* get 'bk://host:port' */
-	r->path = savepath;
-
-	sprintf(buf, "%s/%s", base, rurl->path); /* add path */
-	free(base);
-	url = buf;
- out:	if (rurl) remote_free(rurl);
-	return (strdup(url));
+	unless (quiet) fprintf(stderr, "Checking out files...\n");
+	if (parallel <= 0) {
+		sys("bk", "-Ur", "checkout", "-TSq", SYS);
+		return;
+	}
+	f = calloc(parallel, sizeof(FILE *));
+	for (i = 0; i < parallel; i++) {
+		f[i] = popen("bk checkout -TSq -", "w");
+	}
+	in = popen("bk -Ur", "r");
+	i = 0;
+	while (fnext(buf, in)) {
+		fputs(buf, f[i]);
+		if (++i == parallel) i = 0;
+	}
+	for (i = 0; i < parallel; i++) {
+		pclose(f[i]);
+	}
+	pclose(in);
 }
 
 private int
@@ -669,11 +685,16 @@ sfio(remote *r, int BAM, char *prefix)
 	int	pfd;
 	FILE	*f;
 	char	*cmds[10];
+	char	tmp[100];
 
 	cmds[n = 0] = "bk";
 	cmds[++n] = "sfio";
 	cmds[++n] = "-i";
 	if (BAM) cmds[++n] = "-B";
+	if (opts->parallel > 0) {
+		sprintf(tmp, "-j%d", opts->parallel);
+		cmds[++n] = tmp;
+	}
 	if (opts->quiet) {
 		cmds[++n] = "-q";
 	} else {

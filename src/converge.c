@@ -118,7 +118,9 @@ resync_list(char *gfile)
 		sprintf(cmd, "%s/%s", RESYNC2ROOT, kv.val.dptr);
 		fileCopy(cmd, t);
 		sys("bk", "get", "-qe", t, SYS);
+		putenv("_BK_MV_OK=1");
 		sys("bk", "delta", "-fdqy'Auto converge rename'", t, SYS);
+		putenv("_BK_MV_OK=");
 		mdbm_store_str(vals, kv.key.dptr, t, 0);
 		free(t);
 	}
@@ -232,6 +234,7 @@ done:		mdbm_close(vals);
 		 * Update the winner with the saved content, or
 		 * create a new file with the saved content.
 		 */
+		putenv("_BK_MV_OK=1");
 		if (winner) {
 			sccs_free(winner);
 			winner = 0;

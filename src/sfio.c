@@ -81,6 +81,7 @@ private	int	mkfile(char *file);
 private	void	send_eof(int status);
 private void	missing(off_t *byte_count);
 private	void	print_status(char *file, u32 sz);
+private int	sfio_in_Nway(int n);
 
 struct {
 	u32	quiet:1;	/* suppress normal verbose output */
@@ -112,13 +113,14 @@ int
 sfio_main(int ac, char **av)
 {
 	int	c;
+	int	parallel = 0;
 
 	opts = (void*)calloc(1, sizeof(*opts));
 	opts->newline = '\n';
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefgHiKLlmopP;qr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;b;BefgHij;KLlmopP;qr")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -137,6 +139,15 @@ sfio_main(int ac, char **av)
 		    case 'i': 					/* doc 2.0 */
 			if (opts->mode) goto usage;
 			opts->mode = M_IN;
+			break;
+		    case 'j':
+#ifdef	PARALLEL_MAX
+			if ((parallel = atoi(optarg)) <= 0) {
+				parallel = -1;
+			} else if (parallel > PARALLEL_MAX) {
+				parallel = PARALLEL_MAX;	/* cap it */
+			}
+#endif
 			break;
 		    case 'K': opts->key2path = 1; break;
 		    case 'L': opts->lclone = 1; break;
@@ -185,9 +196,13 @@ sfio_main(int ac, char **av)
 		return (1);
 	}
 #endif
-	if (opts->mode == M_OUT)       return (sfio_out());
-	else if (opts->mode == M_IN)   return (sfio_in(1));
-	else if (opts->mode == M_LIST) return (sfio_in(0));
+	if (opts->mode == M_OUT) {
+		return (sfio_out());
+	} else if (opts->mode == M_IN) {
+		return ((parallel > 0) ? sfio_in_Nway(parallel) : sfio_in(1));
+	} else if (opts->mode == M_LIST) {
+		return (sfio_in(0));
+	}
 
 usage:	system("bk help -s sfio");
 	free(opts);
@@ -518,6 +533,8 @@ send_eof(int error)
 /*
  * sfio -i - produce a tree from an sfio on stdin
  * sfio -p - produce a listing of the files in the sfio and verify checksums
+ *
+ * Nota bene: changes to here should do the same change in sfio_in_Nway().
  */
 int
 sfio_in(int extract)
@@ -1017,4 +1034,161 @@ again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 		goto again;
 	}
 	return (-1);
+}
+
+private int
+sfio_in_Nway(int n)
+{
+	int	i, rc = 1;
+	int	cur = 0;
+	FILE	**f;
+	int	*sent;
+	int	len;
+	off_t	byte_count = 0;
+	char	*cmd;
+	char	datalen[11];
+	char	buf[MAXPATH];
+	char	data[BUFSIZ];
+
+	f = calloc(n, sizeof(FILE *));
+	sent = calloc(n, sizeof(int));
+	cmd = aprintf("bk sfio -i%s", opts->quiet ? "q" : "");
+	for (i = 0; i < n; i++) {
+		f[i] = popen(cmd, "w");
+	}
+	free(cmd);
+
+header:
+	bzero(buf, sizeof(buf));
+	if (fread(buf, 1, 10, stdin) != 10) {
+		perror("fread");
+		goto out;
+	}
+	if (strneq(buf, SFIO_NOMODE, 10)) {
+		if (opts->doModes) {
+			fprintf(stderr,
+			    "sfio: modes requested but not sent.\n");
+			goto out;
+		}
+	} else if (strneq(buf, SFIO_MODE, 10)) {
+		opts->doModes = 1;
+	} else {
+		fprintf(stderr,
+		    "Version mismatch [%s]<>[%s]\n", buf, SFIO_VERS);
+		goto out;
+	}
+	for (i = 0; i < n; i++) {
+		sent[i] += fwrite(buf, 1, 10, f[i]);
+	}
+	for (;;) {
+		i = fread(buf, 1, 4, stdin);
+		if (i== 0) {
+			rc = 0;
+			goto out;
+		}
+		if (i != 4) {
+			perror("fread");
+			goto out;
+		}
+		byte_count += i;
+		buf[4] = 0;
+		len = 0;
+		sscanf(buf, "%04d", &len);
+		if (len <= 0) {
+			if (len < 0) {
+				if (-len == SFIO_MORE) {
+					for (i = 0; i < n; i++) {
+						fwrite(buf, 1, 4, f[i]);
+					}
+					goto header;
+				}
+				NEWLINE();
+				fprintf(stderr, "Incomplete archive: ");
+				switch (-len) {
+				    case SFIO_LSTAT:
+					fprintf(stderr, "lstat failed\n");
+					break;
+				    case SFIO_READLINK:
+					fprintf(stderr, "readlink failed\n");
+					break;
+				    case SFIO_OPEN:
+					fprintf(stderr, "open failed\n");
+					break;
+				    case SFIO_SIZE:
+					fprintf(stderr, "file changed size\n");
+					break;
+				    case SFIO_LOOKUP:
+					fprintf(stderr, "BAM lookup failed\n");
+					break;
+				    default:
+					fprintf(stderr,
+					    "unknown error %d\n", -len);
+				    	break;
+				}
+			}
+			NEWLINE();
+			strcpy(buf, "0000");
+			for (i = 0; i < n; i++) {
+				fwrite(buf, 1, 4, f[i]);
+			}
+			rc = -len;
+			goto out;
+		}
+		if (len >= MAXPATH) {
+			fprintf(stderr, "Bad length in sfio\n");
+			goto out;
+		}
+		sent[cur] += fwrite(buf, 1, 4, f[cur]);
+		if (fread(buf, 1, len, stdin) != len) {
+			perror("fread");
+			goto out;
+		}
+		byte_count += len;
+		buf[len] = 0;
+		sent[cur] += fwrite(buf, 1, len, f[cur]);
+		if (fread(datalen, 1, 10, stdin) != 10) {
+			perror("fread");
+			goto out;
+		}
+		datalen[10] = 0;
+		sent[cur] += fwrite(datalen, 1, 10, f[cur]);
+		len = strtoul(datalen, 0, 10) + 10;
+		if (opts->doModes) len += 3;
+                /*
+                 * Stdio will bypass buffering if the data to be
+                 * written after the current buffer is empty is >= the
+                 * size of a buffer.  We make that happen more often
+                 * by flushing when a big file is about to be
+                 * transferred.
+                 */
+		if (len >= 2*sizeof(data)) fflush(f[cur]);
+		while (len > 0) {
+			i = fread(data, 1, min(len, sizeof(data)), stdin);
+			if (i <= 0) {
+				perror("fread");
+				goto out;
+			}
+			sent[cur] += fwrite(data, 1, i, f[cur]);
+			len -= i;
+		}
+		len = 0;
+		/* select next subprocess to use */
+		for (i = 0; i < n; i++) {
+			if (sent[i] < sent[cur]) cur = i;
+		}
+		if (opts->echo) printf("%s\n", buf);
+	}
+#ifndef SFIO_STANDALONE
+	save_byte_count(byte_count);
+#endif
+out:
+	for (i = 0; i < n; i++) {
+		if (cur = pclose(f[i])) {
+			fprintf(stderr, "process %d exited %d\n",
+			    i, WEXITSTATUS(cur));
+		}
+	}
+	free(f);
+	free(sent);
+	return (rc);
 }

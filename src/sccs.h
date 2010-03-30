@@ -379,6 +379,13 @@ int	checking_rmdir(char *dir);
 #define	GROUP_MODE	0664
 #define	BAM_DSPEC	"$if(:BAMHASH:){:BAMHASH: :KEY: :MD5KEY|1.0:}"
 
+/*
+ * Constants for running some parallel processes, sfio, checkout,
+ * to overcome NFS latency.
+ */
+#define	PARALLEL_DEFAULT	8
+#define	PARALLEL_MAX		20
+
 #define	MINUTE	(60)
 #define	HOUR	(60*MINUTE)
 #define	DAY	(24*HOUR)
@@ -1163,6 +1170,7 @@ int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);
 char	*hashstream(int fd);
 char	*secure_hashstr(char *str, int len, char *key);
+int	isNetworkFS(char *path);
 
 #define	KEY_LEASE		0
 #define	KEY_BK_AUTH_HMAC	1
@@ -1293,6 +1301,8 @@ int	startmenu_get(u32, char *path);
 int	startmenu_set(u32, char *, char *, char *, char *);
 char	*bkmenupath(int, int);
 void	repos_update(sccs *cset);
+void	features_repoChk(project *p);
+void	features_repoSet(project *p, char *feature);
 char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);
 void	fslayer_cleanup(void);
