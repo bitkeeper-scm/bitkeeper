@@ -209,16 +209,31 @@ err:			unlink("BitKeeper/etc/config");
 	 * disconnected with a valid write lease already.
 	 */
 	if (in_prod) {
+		char	*tmp;
+		char	relpath[MAXPATH];
+
 		chdir(proj_root(in_prod));
 		sys("bk", "lease", "renew", "-qw", SYS);
 		chdir(here);
 		chdir(package_path);
+
+		/*
+		 * make this appear to be a component from the start
+		 * so the initial ChangeSet path will be correct
+		 */
+		tmp = proj_relpath(in_prod, ".");
+		getRealName(tmp, 0, relpath);
+		free(tmp);
+		unless (Fprintf("BitKeeper/log/COMPONENT", "%s\n", relpath)) {
+			perror("BitKeeper/log/COMPONENT");
+		}
 	}
 
 	if (cset_setup(SILENT)) goto err;
 	unless (eula_accept(accept ? EULA_ACCEPT : EULA_PROMPT, 0)) exit(1);
 	s = sccs_init(s_config, SILENT);
 	assert(s);
+	putenv("_BK_MV_OK=1");
 	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
 	s = sccs_restart(s);
 	assert(s);
@@ -238,6 +253,7 @@ err:			unlink("BitKeeper/etc/config");
 	enableFastPendingScan();
 	logChangeSet();
 	if (in_prod) {		/* we are a new component, attach ourself */
+		unlink("BitKeeper/log/COMPONENT");
 		status = sys("bk", "attach",
 		    noCommit ? "-qC" : "-q", "-N", ".", SYS);
 		unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {

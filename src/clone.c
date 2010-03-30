@@ -773,7 +773,7 @@ checkout(int quiet, int parallel)
 		if (quiet) {
 			sys("bk", "-Ur", "checkout", "-TSq", SYS);
 		} else {
-			sprintf(buf, "-N%u", repo_nfile(0));
+			sprintf(buf, "-N%u", repo_nfiles(0));
 			sys("bk", "-Ur", "checkout", "-TSq", buf, SYS);
 		}
 		return;
@@ -944,7 +944,8 @@ sfio(remote *r, char *prefix)
 		cmds[++n] = buf;
 	}
 	cmds[++n] = "sfio";
-	cmds[++n] = "-gi";
+	cmds[++n] = "-i";
+	cmds[++n] = "-g";
 	if (opts->parallel > 0) {
 		sprintf(tmp, "-j%d", opts->parallel);
 		cmds[++n] = tmp;
@@ -1396,7 +1397,8 @@ attach(void)
 		return (CLONE_ERROR);
 	}
 	if (system("bk edit -q ChangeSet") ||
-	    systemf("bk delta -f -q -y'attach %s' ChangeSet", relpath)) {
+	    systemf("bk -?_BK_MV_OK=1 delta -f -q -y'attach %s' ChangeSet",
+		relpath)) {
 		fprintf(stderr, "attach: failed to make new cset\n");
 		return (CLONE_ERROR);
 	}
@@ -1452,7 +1454,7 @@ detach(int quiet)
 		return (-1);
 	}
 	if (system("bk edit -q ChangeSet") ||
-	    system("bk delta -f -q -ydetach ChangeSet")) {
+	    system("bk -?_BK_MV_OK=1 delta -f -q -ydetach ChangeSet")) {
 		fprintf(stderr, "detach: failed to make a new cset\n");
 		return (-1);
 	}

@@ -140,7 +140,7 @@ nfs_parse(char *p, int flags)
 			return (0);
 		}
 		if (IsFullPath(p)) {
-			r->path = strdup(p);
+			r->path = fullname(p, 0);
 		} else if (flags & REMOTE_ROOTREL){
 			r->path = strdup(proj_fullpath(0, p));
 		} else {

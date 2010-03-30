@@ -60,7 +60,7 @@ isNetworkFS(char *path)
 	}
 	unless (p) return (0);
 	unless (f = popen(p, "r")) return (0);
-	path = fullname(path);
+	path = fullname(path, 0);
 	while (fnext(buf, f)) {
 		v = splitLine(buf, " \t\r\n", 0);
 		mountpoint = 0;
@@ -85,6 +85,7 @@ isNetworkFS(char *path)
 		freeLines(v, free);
 		if (rc) break;
 	}
+	free(path);
 	pclose(f);
 	return (rc);
 }

@@ -222,7 +222,7 @@ fresh_nested() {
 mvcomp() {
 	 mv "$1" "$2"
 	 bk edit $Q "$2"/ChangeSet || exit 1
-	 bk delta -f $Q -y"Rename $1 -> $2" "$2"/ChangeSet || exit 1
+	 _BK_MV_OK=1 bk delta -f $Q -y"Rename $1 -> $2" "$2"/ChangeSet || exit 1
 	 echo "$2" > "$2"/BitKeeper/log/COMPONENT
 }
 

@@ -1130,7 +1130,6 @@ header:
 					}
 					goto header;
 				}
-				NEWLINE();
 				fprintf(stderr, "Incomplete archive: ");
 				switch (-len) {
 				    case SFIO_LSTAT:
@@ -1154,7 +1153,6 @@ header:
 				    	break;
 				}
 			}
-			NEWLINE();
 			strcpy(buf, "0000");
 			for (i = 0; i < n; i++) {
 				fwrite(buf, 1, 4, f[i]);
@@ -1174,6 +1172,7 @@ header:
 		byte_count += len;
 		buf[len] = 0;
 		sent[cur] += fwrite(buf, 1, len, f[cur]);
+		if (opts->index) where(buf);
 		if (fread(datalen, 1, 10, stdin) != 10) {
 			perror("fread");
 			goto out;

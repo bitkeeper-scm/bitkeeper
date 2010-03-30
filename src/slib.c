@@ -9437,7 +9437,9 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			 * win32 case-folding file system.
 			 */
 			if (CSET(s)) {
-				proj = proj_product(proj);
+				if (proj_isComponent(proj)) {
+					proj = proj_product(proj);
+				}
 				p = _relativeName(s->sfile, 1, 1, 1, proj);
 				/* strip out RESYNC */
 				str_subst(p, "/RESYNC/", "/", p);

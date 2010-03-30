@@ -62,7 +62,7 @@ echo OK
 echo $N Make sure delta does not rename, must use bk mv .............$NL
 cd "$HERE/project"
 cd src
-mv SCCS/s.zoo.c SCCS/s.animal.c
+bk _mv SCCS/s.zoo.c SCCS/s.animal.c
 bk edit $Q animal.c
 bk delta $Q -yrename animal.c 2>ERR && {
 	echo failed

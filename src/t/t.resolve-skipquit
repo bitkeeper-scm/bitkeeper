@@ -64,19 +64,17 @@ bk pull -R $Q || exit 2
 _dores "S,S,S,S,S,s" "-t"
 cd RESYNC
 test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || exit 1
-cd SCCS
 # no a.files, because no edited files are created.
-test ! -f a.1 -a -f a.2 -a ! -f a.3 -a ! -f a.4 || exit 2
-cd ../..
+bk _test ! -f SCCS/a.1 -a -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 2
+cd ..
 printf "base\ncopy\nproject\n" > WANT
 cmpfiles WANT RESYNC/2
 # go ahead and check in 2 - no comment because no merge diffs with 's'
 _dores "S,C" "-t"
 cd RESYNC
 test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || exit 3
-cd SCCS
-test ! -f a.1 -a ! -f a.2 -a ! -f a.3 -a ! -f a.4 || exit 4
-cd ../..
+bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 4
+cd ..
 echo OK
 
 echo $N Skip 5 files and resolve one -- file 2 -- gui env ...........$NL
@@ -86,19 +84,17 @@ bk pull $Q -R
 _dores "S,S,S,S,S,s"
 cd RESYNC
 test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || exit 1
-cd SCCS
 # no a.files, because no edited files are created.
-test ! -f a.1 -a -f a.2 -a ! -f a.3 -a ! -f a.4 || exit 2
-cd ../..
+bk _test ! -f SCCS/a.1 -a -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 2
+cd ..
 cmpfiles WANT RESYNC/2
 # go ahead and check in 2
 _dores "S,C"
 cd RESYNC
 # In this case, the '2' is still there because checkin delayed
 test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || exit 3
-cd SCCS
-test ! -f a.1 -a ! -f a.2 -a ! -f a.3 -a ! -f a.4 || exit 4
-cd ../..
+bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 4
+cd ..
 echo OK
 
 echo $N Merge/Skip 5 files and resolve one -- file 2 -- text env ....$NL
@@ -108,18 +104,16 @@ bk pull $Q -R
 _dores "m,S,m,S,m,S,m,S,m,S,s" "-t"
 cd RESYNC
 test -f 1 -a -f 2 -a -f 3 -a -f 4 || exit 1
-cd SCCS
 # no a.files, because no edited files are created.
-test -f a.1 -a -f a.2 -a -f a.3 -a -f a.4 || exit 2
-cd ../..
+bk _test -f SCCS/a.1 -a -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || exit 2
+cd ..
 cmpfiles WANT RESYNC/2
 # go ahead and check in 2
 _dores "S,C" "-t"
 cd RESYNC
 test -f 1 -a ! -f 2 -a -f 3 -a -f 4 || exit 3
-cd SCCS
-test -f a.1 -a ! -f a.2 -a -f a.3 -a -f a.4 || exit 4
-cd ../..
+bk _test -f SCCS/a.1 -a ! -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || exit 4
+cd ..
 echo OK
 
 echo $N Merge/Skip 5 files and resolve one -- file 2 -- gui env .....$NL
@@ -129,18 +123,16 @@ bk pull $Q -R
 _dores "m,S,m,S,m,S,m,S,m,S,s"
 cd RESYNC
 test -f 1 -a -f 2 -a -f 3 -a -f 4 || exit 1
-cd SCCS
 # no a.files, because no edited files are created.
-test -f a.1 -a -f a.2 -a -f a.3 -a -f a.4 || exit 2
-cd ../..
+bk _test -f SCCS/a.1 -a -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || exit 2
+cd ..
 cmpfiles WANT RESYNC/2
 # go ahead and check in 2
 _dores "S,C"
 cd RESYNC
 test -f 1 -a -f 2 -a -f 3 -a -f 4 || exit 3
-cd SCCS
-test -f a.1 -a ! -f a.2 -a -f a.3 -a -f a.4 || exit 4
-cd ../..
+bk _test -f SCCS/a.1 -a ! -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || exit 4
+cd ..
 echo OK
 
 echo $N Automerge 3 and use local on 4 -- text env ..................$NL
@@ -150,10 +142,9 @@ bk pull $Q -R
 _dores "S,S,ul,comment,." "-ta"
 cd RESYNC
 test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || exit 1
-cd SCCS
 # no a.files, because no edited files are created.
-test ! -f a.1 -a ! -f a.2 -a ! -f a.3 -a ! -f a.4 || exit 2
-cd ../..
+bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 2
+cd ..
 printf "base\ncopy\n" > WANT
 bk get $Q -p RESYNC/4 > GOT
 cmpfiles WANT GOT
@@ -167,10 +158,9 @@ bk pull $Q -R
 _dores "S,S,ul,comment,." "-a"
 cd RESYNC
 test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || exit 1
-cd SCCS
 # no a.files, because no edited files are created.
-test ! -f a.1 -a ! -f a.2 -a ! -f a.3 -a ! -f a.4 || exit 2
-cd ../..
+bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 2
+cd ..
 bk get $Q -p RESYNC/4 > GOT
 cmpfiles WANT GOT
 echo OK

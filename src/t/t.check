@@ -477,7 +477,7 @@ echo $N bk check with errors should not update checked file .........$NL
 cd "$HERE"
 commercial proj4
 bk edit $Q BitKeeper/etc/config
-echo partial_check:yes >> BitKeeper/etc/config
+echo partial_check:yes! >> BitKeeper/etc/config
 echo hi > foo
 bk new $Q -ycomment foo || exit 1
 bk commit $Q -ycomment || exit 1
