@@ -156,7 +156,7 @@ echo OK
 echo $N Check paths in moved file ...................................$NL
 bk _cp SCCS/s.date SCCS/s.moved
 bk get $Q -e moved
-bk delta $Q -y moved
+_BK_MV_OK=1 bk delta $Q -y moved
 bk _cat SCCS/s.moved | grep -q '^.cP.*date$'
 if [ $? -ne 0 ]; then echo Lost old path.; exit 1; fi
 bk _cat SCCS/s.moved | grep -q '^.cP.*moved$'

@@ -19,6 +19,7 @@ private	struct {
 	u32	product:1;		/* is product? */
 	int	delay;			/* wait for (ssh) to drain */
 	int	remap;			/* force remapping? */
+	int	parallel;		/* -j%d: for NFS */
 	char	*rev;			/* remove everything after this */
 	char	**aliases;		/* -s aliases list */
 	char	*from;			/* where to get stuff from */
@@ -37,6 +38,7 @@ private	void	lclone(char *from);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private clonerc	clone_finish(remote *r, clonerc status, char **envVar);
+private	void	checkout(int quiet, int parallel);
 
 private	char	*bam_url;
 private	char	*bam_repoid;
@@ -62,7 +64,7 @@ clone_main(int ac, char **av)
 	opts->remap = -1;
 	if (streq(prog, "attach")) opts->attach = 1;
 	if (streq(prog, "detach")) opts->detach = 1;
-	while ((c = getopt(ac, av, "B;CdE:lNpP;qr;s;vw|z|", lopts)) != -1) {
+	while ((c = getopt(ac, av, "B;CdE:j;lNpP;qr;s;vw|z|", lopts)) != -1) {
 		switch (c) {
 		    case 'B': bam_url = optarg; break;
 		    case 'C': opts->nocommit = 1; break;
@@ -74,6 +76,14 @@ clone_main(int ac, char **av)
 				return (CLONE_ERROR);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'j':
+			if ((opts->parallel = atoi(optarg)) <= 0) {
+				/* if they set it to 0 then disable */
+				opts->parallel = -1;
+			} else if (opts->parallel > PARALLEL_MAX) {
+				opts->parallel = PARALLEL_MAX;	/* cap it */
+			}
+			break;
 		    case 'l': opts->link = 1; break;		/* doc 2.0 */
 		    case 'N': attach_only = 1; break;		/* undoc 2.0 */
 		    case 'p': opts->no_parent = 1; break;
@@ -225,8 +235,7 @@ clone_main(int ac, char **av)
 			}
 		}
 	} else {
-		if (r->path) {
-			cleanPath(r->path, r->path);
+		if (r->path && !getenv("BK_CLONE_FOLLOW_LINK")) {
 			opts->to = basenm(r->path);
 		}
 	}
@@ -374,6 +383,19 @@ clone(char **av, remote *r, char *local, char **envVar)
 		/* populate doesn't need to propagate error message */
 		exit(CLONE_BADREV);
 	}
+
+	/*
+	 * Now that we know where we are going, go see if it is a network
+	 * fs and if so, go parallel for better perf.
+	 * abcdefghijklmtZ 6 is the knee of the curve and I tend to agree.
+	 * I suspect you can do better with more but only slightly.
+	 */
+	if ((opts->parallel == 0) && isNetworkFS(local)) {
+		p = getenv("BK_PARALLEL");
+		opts->parallel =
+		    p ? min(atoi(p), PARALLEL_MAX) : PARALLEL_DEFAULT;
+	}
+
 	if (get_ok(r, buf, 1)) {
 		disconnect(r);
 		goto done;
@@ -730,17 +752,46 @@ nested_err:		fprintf(stderr, "clone: component fetch failed, "
 	 */
 	if (partial &&
 	    (proj_checkout(0) & (CO_GET|CO_EDIT|CO_BAM_GET|CO_BAM_EDIT))) {
-		if (opts->verbose) {
-			fprintf(stderr, "Checking out files...\n");
-		}
-		if (opts->verbose || opts->quiet) {
-			sys("bk", "-Ur", "checkout", "-TSq", SYS);
-		} else {
-			sprintf(buf, "-N%u", repo_nfiles(0));
-			sys("bk", "-Ur", "checkout", "-TSq", buf, SYS);
-		}
+		checkout(opts->quiet || opts->verbose, opts->parallel);
 	}
 	return (0);
+}
+
+/*
+ * We may make this public for rclone.
+ */
+private void
+checkout(int quiet, int parallel)
+{
+	FILE	*in;
+	FILE	**f;
+	int	i;
+	char	buf[MAXPATH];
+
+	unless (quiet) fprintf(stderr, "Checking out files...\n");
+	if (parallel <= 0) {
+		if (quiet) {
+			sys("bk", "-Ur", "checkout", "-TSq", SYS);
+		} else {
+			sprintf(buf, "-N%u", repo_nfile(0));
+			sys("bk", "-Ur", "checkout", "-TSq", buf, SYS);
+		}
+		return;
+	}
+	f = calloc(parallel, sizeof(FILE *));
+	for (i = 0; i < parallel; i++) {
+		f[i] = popen("bk checkout -TSq -", "w");
+	}
+	in = popen("bk -Ur", "r");
+	i = 0;
+	while (fnext(buf, in)) {
+		fputs(buf, f[i]);
+		if (++i == parallel) i = 0;
+	}
+	for (i = 0; i < parallel; i++) {
+		pclose(f[i]);
+	}
+	pclose(in);
 }
 
 /*
@@ -879,6 +930,7 @@ sfio(remote *r, char *prefix)
 	pid_t	pid;
 	int	pfd;
 	FILE	*f;
+	char	tmp[100];
 	char	*p, *freeme = 0, *dashN = 0;
 	char	*cmds[12];
 	char	buf[MAXPATH];
@@ -893,6 +945,10 @@ sfio(remote *r, char *prefix)
 	}
 	cmds[++n] = "sfio";
 	cmds[++n] = "-gi";
+	if (opts->parallel > 0) {
+		sprintf(tmp, "-j%d", opts->parallel);
+		cmds[++n] = tmp;
+	}
 	cmds[++n] = "--mark-no-dfiles";
 	if (opts->quiet) {
 		cmds[++n] = "-q";

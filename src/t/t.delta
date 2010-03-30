@@ -49,7 +49,7 @@ bk _cp SCCS/s.init SCCS/s.T
 X=`bk _cat SCCS/s.T | wc -c`
 bk get $S -e T
 if writable T; then :; else echo Get failed to get file writeable; exit 1; fi
-bk delta $S -fly T
+_BK_MV_OK=1 bk delta $S -fly T
 if [ "`bk _cat SCCS/s.T | wc -c`" = "$X" ]; then echo Failed to create delta; exit 1; fi
 if bk _test ! -f SCCS/p.T; then echo Failed to leave file locked; exit 1; fi
 if [ ! -f T ]; then echo Failed to get file; exit 1; fi

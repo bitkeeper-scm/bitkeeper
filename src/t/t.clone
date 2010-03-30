@@ -82,7 +82,6 @@ bk clone $Q bk://localhost:$P/symlink || {
 	bk _kill http://localhost:$P
 	exit 1
 }
-bk _kill http://localhost:$P
 test -d project && {
 	echo failed, I wanted symlink not project
 	exit 1
@@ -94,6 +93,26 @@ test -d symlink || {
 }
 echo OK
 
+echo $N Test clone from symlink source w/BK_CLONE_FOLLOW_LINK .......$NL
+rm -fr symlink
+BK_CLONE_FOLLOW_LINK=1 bk clone $Q bk://localhost:$P/symlink || {
+	echo clone should have worked
+	bk _kill http://localhost:$P
+	exit 1
+}
+bk _kill http://localhost:$P
+test -d project || {
+	echo failed, I wanted symlink not project
+	exit 1
+}
+test -d symlink && {
+	echo failed, I dunno what I got but it is not symlink
+	ls
+	exit 1
+}
+echo OK
+
+# End of "not windows" tests
 }
 
 echo $N Test null clonemod ..........................................$NL
@@ -199,6 +218,12 @@ test -s CHANGES && exit 1
 cd ..
 echo OK
 
+echo $N Test clone with 1 arg and trailing slash ....................$NL
+mkdir foo
+cd foo
+bk clone $Q "$HERE"/project/ || exit 1
+echo OK
+
 echo $N Test clone into an existing directory........................$NL
 cd "$HERE"
 mkdir existing || exit 1
@@ -225,9 +250,14 @@ echo OK
 
 echo $N Test clone will emit cannot resolve message even with -q ....$NL
 cd "$HERE"
-bk clone -q bk://doesntexist/foo 2> ERR
+rm -rf foo
+bk clone -q bk://doesntexist/foo 2> ERR && {
+	echo should have failed
+	exit 1
+}
 grep -q 'Cannot resolve' ERR || {
 	echo failed
+	cat ERR
 	exit 1
 }
 echo OK

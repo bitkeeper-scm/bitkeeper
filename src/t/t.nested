@@ -498,7 +498,7 @@ echo $N A rename delta in the ChangeSet file should fix things up ...$NL
 mv "$HERE/gdb.save" gdb
 cd gcc4
 bk edit $Q ChangeSet
-bk delta -f $Q -y'Rename gcc -> gcc4'
+_BK_MV_OK=1 bk delta -f $Q -y'Rename gcc -> gcc4'
 cd ..
 bk -r check -ac || {
 	echo failed

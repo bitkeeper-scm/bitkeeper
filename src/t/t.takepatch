@@ -145,6 +145,19 @@ cd ..
 tar cf copy.tar copy
 echo OK
 
+echo $N Make sure that a patch containing rename works ..............$NL
+bk clone $Q -r1.3 project clone-rename
+cd project
+bk makepatch -r1.3.. > ../PATCH
+cd ../clone-rename
+bk takepatch -f../PATCH || {
+	echo takepatch failed
+	exit 1
+}
+cd ..
+rm -rf clone-rename
+echo OK
+
 echo $N Takepatch with varying number of -vvv gives known response ..$NL
 cd copy
 for m in "" -m; do

@@ -17,6 +17,7 @@ echo $N Create initial repository ...................................$NL
 commercial project
 bk clone $Q "$HERE/project" "$HERE/copy"
 echo OK
+
 echo $N test rename conflict w unchecked file .......................$NL
 mkdir src
 cd src
@@ -39,6 +40,7 @@ bk push "$HERE/copy" > push.out 2>&1
 grep -q "pathname is used" push.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N test rename of file into directory of same name..............$NL
 cd "$HERE"
 rm -rf copy
@@ -52,6 +54,30 @@ cd "$HERE/copy/src"
 bk get $Q bar.c
 bk pull $Q || exit 1
 echo OK
+
 echo $N test undoing file to directory rename .......................$NL
 bk undo $Q -arename -f || exit 1
+echo OK
+
+echo $N Make sure delta does not rename, must use bk mv .............$NL
+cd "$HERE/project"
+cd src
+mv SCCS/s.zoo.c SCCS/s.animal.c
+bk edit $Q animal.c
+bk delta $Q -yrename animal.c 2>ERR && {
+	echo failed
+	exit 1
+}
+grep -q 'must use bk mv to rename src/zoo.c to src/animal.c' ERR || {
+	echo wrong error 
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can force it with _BK_MV_OK ....................$NL
+_BK_MV_OK=1 bk delta $Q -yrename animal.c 2>ERR || {
+	echo should not have failed
+	exit 1
+}
 echo OK

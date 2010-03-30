@@ -165,7 +165,7 @@ safe_systemf(char *fmt, ...)
 	return (rc);
 }
 
-#define	MAX_POPEN	20
+#define	MAX_POPEN	40
 
 static struct {
 	FILE	*pf;

@@ -549,7 +549,7 @@ echo OK
 cores
 echo $N Merge back up should have no conflicts ......................$NL
 cd "$HERE"
-bk ci $Q -yrename project/src/f.c
+_BK_MV_OK=1 bk ci $Q -yrename project/src/f.c
 cd "$HERE/project"
 bk pull $Q -R "$HERE/copy"
 cd "$HERE"

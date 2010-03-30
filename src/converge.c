@@ -125,7 +125,7 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 		unless (g->idDB) g->idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 
 		if (streq(rs->gnames->remote, pathname)) {
-			/* must keep remote copy in place */
+			/* must keep remote copy in place */ 
 			t = name2sccs(pathname);
 			if (!streq(gfile, pathname) &&
 			    (s = sccs_init(t, g->iflags))) {
