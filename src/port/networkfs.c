@@ -2,22 +2,14 @@
 
 /*
  * Try and figure out if the path we have is a network file system.
+ * We tried parsing mount output but that didn't work (and it isn't
+ * exactly cheap).
+ * So this code parses mtab (and friends) directly.  If no file is found,
+ * or if we don't have perms, we just assume a local fs.  That means
+ * macos is always going to be slower on NFS.
  *
- * linux:
- * automount(pid9794) on /fs1 type autofs (rw,fd=4,...)
- * freebsd7:/build on /freebsd7-build type nfs (rw,addr=10.3.1.50)
- * abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLRXYZ on abcdefghijklmnopqrstuvAY 
- *
- * sun:
- * /home on work:/home remote/read/write/setuid/xattr/dev=3b40001 ...
- *
- * macos:
- * 10.3.9.1:/home on /home
- *
- * Note that all of them match the pattern of either
- *	/mount/point on
- * or
- *	on /mount/point
+ * abcdefghijklmnopqrstuvwxyzABCDS abcdefghijkoZ nfs ro,tcp,hard,intr...
+ * work:/home      /home   nfs     rw,dev=2b40001  1268318052
  *
  * XXX - I think this might get confused if someone mounted a local disk
  * on an NFS dir but it's hard to imagine someone doing that.  If they
@@ -30,62 +22,42 @@ isNetworkFS(char *path)
 	FILE	*f;
 	char	**v = 0;
 	char	*mountpoint;
-	int	i;
 	int	rc = 0;
-	char	*p;
-	char	*paths[] = {
-		"/bin/mount",
-		"/sbin/mount",
-		"/etc/mount",
-		"/usr/sbin/mount",
-		"/usr/etc/mount",
-		"/usr/bin/mount",
-		0
-		};
+	char	fullpath[MAXPATH];
 	char	buf[MAXPATH*2];
 
 	/* For regression tests */
 	if (getenv("_BK_FORCE_NETFS")) return (1);
+	if (getenv("_BK_FORCE_LOCALFS")) return (0);
 
 #ifdef	WIN32
 	return (0);
 #endif
-	unless (p = which("mount")) {
-		for (i = 0; paths[i]; i++) {
-			if (executable(paths[i])) {
-				p = paths[i];
-				break;
-			}
-		}
-	}
-	unless (p) return (0);
-	unless (f = popen(p, "r")) return (0);
-	path = fullname(path);
+	strcpy(buf, proj_cwd());
+	if (chdir(path)) return (0);
+	strcpy(fullpath, proj_cwd());
+	chdir(buf);
+
+	f = fopen("/etc/mtab", "r");
+	unless (f) f = fopen("/etc/mnttab", "r");
+	unless (f) f = fopen("/var/log/mount.today", "r");
+	unless (f) return (0);
+
 	while (fnext(buf, f)) {
 		v = splitLine(buf, " \t\r\n", 0);
 		mountpoint = 0;
-		EACH(v) {
-			unless (streq(v[i], "on")) continue;
-			/* backwards case */
-			if ((i >= 2) && (v[i-1][0] == '/')) {
-				mountpoint = v[i-1];
-				break;
-			}
-			/* forwards case */
-			if ((nLines(v) > i) && (v[i+1][0] == '/')) {
-				mountpoint = v[i+1];
-				break;
-			}
+		if ((nLines(v) >= 3) && streq(v[3], "nfs")) {
+			mountpoint = v[2];
 		}
-		if (mountpoint) {
+		if (mountpoint && (mountpoint[0] == '/')) {
 			sprintf(buf, "%s/", mountpoint);
-			if (strneq(buf, path, strlen(buf))) rc = 1;
-			if (streq(mountpoint, path)) rc = 1;
+			if (strneq(buf, fullpath, strlen(buf))) rc = 1;
+			if (streq(mountpoint, fullpath)) rc = 1;
 		}
 		freeLines(v, free);
 		if (rc) break;
 	}
-	pclose(f);
+	fclose(f);
 	return (rc);
 }
 
@@ -95,8 +67,9 @@ isnetwork_main(int ac, char **av)
 	unless (av[1]) return (1);
 	if (isNetworkFS(av[1])) {
 		printf("%s: network\n", av[1]);
+		return (0);
 	} else {
 		printf("%s: not network\n", av[1]);
+		return (1);
 	}
-	return (0);
 }

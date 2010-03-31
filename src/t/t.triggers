@@ -2089,3 +2089,8 @@ bk clone http://localhost:$P/multitrig multitrig.bk
 	exit 1
 }
 echo OK
+cd "$HERE"
+for i in *
+do	test -d $i/BitKeeper || continue
+	(cd $i; bk lock -U)
+done

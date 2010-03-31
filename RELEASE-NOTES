@@ -1,18 +1,19 @@
 Release notes for BitKeeper version 4.6 (released 29-Mar-2010)
 
-This release improves clone performance on NFS.  Customers using
-NFS filers are encouraged to upgrade.
+This release improves clone performance on NFS.  Customers using NFS
+filers with Linux, Solaris, and/or HP-UX clients are encouraged to
+upgrade.
 
 Bugfixes/Notes
 --------------
 - Add a "bk needscheck" command which will return true if a repo is in
   partial_check mode and the next major command would cause a full check.
 - Add an env var, BK_CLONE_FOLLOW_LINK, which restores the bk-4.4 and
-  earlier behaviour when cloning a symlink (with the variable set it
+  earlier behavior when cloning a symlink (with the variable set it
   uses the basename of the directory pointed to rather than the symlink).
 - Insist that users move files with bk mv/mvdir.  This prevents problems
   when users copy a subtree and then check in changes in the copy.  There
-  is a _BK_MV_OK variable that can be set to restore old behaviour.
+  is a _BK_MV_OK variable that can be set to restore old behavior.
 - Prune expired lease files from `bk dotbk`/lease
 - Fix a bug in the lease code that gave an unhelpful error at the end
   of the grace period.
@@ -26,7 +27,7 @@ Release notes for BitKeeper version 4.5 (released 12-Feb-2010)
 
 This release includes a major performance improvement for pull and
 push.  Unlike the bk-4.3 performance fix, this version will improve the
-performance of pulls that do a merge.  Also in cases were file
+performance of pulls that do a merge.  Also in cases where file
 operations are expensive, like over NFS, the gains can be dramatic.
 
 This fix requires a new patch format created by makepatch and consumed
