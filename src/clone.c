@@ -236,6 +236,7 @@ clone_main(int ac, char **av)
 		}
 	} else {
 		if (r->path && !getenv("BK_CLONE_FOLLOW_LINK")) {
+			cleanPath(r->path, r->path);
 			opts->to = basenm(r->path);
 		}
 	}
@@ -390,11 +391,12 @@ clone(char **av, remote *r, char *local, char **envVar)
 	 * abcdefghijklmtZ 6 is the knee of the curve and I tend to agree.
 	 * I suspect you can do better with more but only slightly.
 	 */
-	if ((opts->parallel == 0) && isNetworkFS(local)) {
+	if ((opts->parallel == 0) && !opts->link && isNetworkFS(local)) {
 		p = getenv("BK_PARALLEL");
 		opts->parallel =
 		    p ? min(atoi(p), PARALLEL_MAX) : PARALLEL_DEFAULT;
 	}
+	if (opts->link) opts->parallel = 0;
 
 	if (get_ok(r, buf, 1)) {
 		disconnect(r);

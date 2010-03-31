@@ -60,8 +60,10 @@
 #define	EFTYPE ENOSYS
 #endif
 
+/* attempt to find the alignment of the FILE struct */
 #ifndef	ALIGNBYTES
-#define	ALIGNBYTES	(sizeof(void *) - 1)
+#define	ALIGNBYTES	(((sizeof(off_t) > sizeof(void *)) ? \
+			 sizeof(off_t) : sizeof(void *)) - 1)
 #endif
 #ifndef	ALIGN
 #define	ALIGN(p)	(((unsigned long)(p) + ALIGNBYTES) &~ ALIGNBYTES)
