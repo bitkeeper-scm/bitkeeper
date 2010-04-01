@@ -53,6 +53,7 @@ images: FORCE
 	@cd .. && $(MAKE) tclwrap
 
 tcltk: FORCE
+	test -f tcltk/Makefile || bk co -q tcltk
 	cd tcltk && $(MAKE)
 
 test: lib $(GUIS) $(DOIT) $(GUITEST) ../t/setup

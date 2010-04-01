@@ -1,4 +1,34 @@
+# No NFS stuff for windows
+test "$PLATFORM" = "WIN32" && exit 0
+
+# Remote people don't have this mounted but may have a local cache
+# Assume that it is not NFS for them.
+test -f /home/.NFS || exit 0
+
+# And if no test data then skip it
 test -d $TESTDATA/bitcluster || exit 0
+
+echo $N Make sure that /build is local ..............................$NL
+bk _isnetwork /build > /dev/null 2>&1 && {
+	echo failed
+	bk _isnetwork /build
+	exit 1
+}
+echo OK
+
+# these unix hosts don't get this right.
+# work is here because /home is local on work.
+case `bk gethost -r` in
+    *bsd*|macos*|aix*|sco*|work*) exit 0;;
+esac
+
+echo $N Make sure that test data is remote ..........................$NL
+bk _isnetwork $TESTDATA > /dev/null 2>&1 || {
+	echo failed
+	bk _isnetwork $TESTDATA
+	exit 1
+}
+echo OK
 
 echo $N Clone repo, should run in parallel ..........................$NL
 BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1$BKL_P2$BKL_P3;checkout:none!"
