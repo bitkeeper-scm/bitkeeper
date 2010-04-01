@@ -6,13 +6,13 @@ close 76
 fstat 75
 link 2
 lseek 66
-lstat 230
+lstat 232
 mkdir 3
-open 84
-read 91
+open 88
+read 92
 rename 3
 rmdir 2
 stat 5
-unlink 25
+unlink 27
 utime 3
 write 40
