@@ -2012,8 +2012,6 @@ bk pwd -r
     done
     echo
 }
-printf "$0: trigger fired"
-
 # No newline
 printf "$0: trigger fired"
 exit 0
