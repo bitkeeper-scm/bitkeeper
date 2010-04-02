@@ -23,6 +23,7 @@ isNetworkFS(char *path)
 	char	**v = 0;
 	char	*mountpoint;
 	int	rc = 0;
+	char	*p;
 	char	fullpath[MAXPATH];
 	char	buf[MAXPATH*2];
 
@@ -33,9 +34,29 @@ isNetworkFS(char *path)
 #ifdef	WIN32
 	return (0);
 #endif
+	unless (path && *path) return (0);
+
+	/*
+	 * This lovely little song and dance is because used to call
+	 * us before it made the destination.  I fixed clone but also
+	 * am fixing it here.  Belt & suspenders.
+	 */
 	strcpy(buf, proj_cwd());
-	if (chdir(path)) return (0);
-	strcpy(fullpath, proj_cwd());
+	if (chdir(path)) {
+		strcpy(fullpath, path);
+		if ((p = strrchr(fullpath, '/')) && (p > fullpath)) {
+			*p = 0;
+		}
+		assert(fullpath[0]);
+		if (chdir(fullpath)) {
+			strcpy(fullpath, path);
+		} else {
+			strcpy(fullpath, proj_cwd());
+		}
+	} else {
+		strcpy(fullpath, proj_cwd());
+	}
+		
 	chdir(buf);
 
 	f = fopen("/etc/mtab", "r");
