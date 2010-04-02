@@ -385,19 +385,6 @@ clone(char **av, remote *r, char *local, char **envVar)
 		exit(CLONE_BADREV);
 	}
 
-	/*
-	 * Now that we know where we are going, go see if it is a network
-	 * fs and if so, go parallel for better perf.
-	 * abcdefghijklmtZ 6 is the knee of the curve and I tend to agree.
-	 * I suspect you can do better with more but only slightly.
-	 */
-	if ((opts->parallel == 0) && !opts->link && isNetworkFS(local)) {
-		p = getenv("BK_PARALLEL");
-		opts->parallel =
-		    p ? min(atoi(p), PARALLEL_MAX) : PARALLEL_DEFAULT;
-	}
-	if (opts->link) opts->parallel = 0;
-
 	if (get_ok(r, buf, 1)) {
 		disconnect(r);
 		goto done;
@@ -458,6 +445,19 @@ clone(char **av, remote *r, char *local, char **envVar)
 		disconnect(r);
 		goto done;
 	}
+
+	/*
+	 * Now that we know where we are going, go see if it is a network
+	 * fs and if so, go parallel for better perf.
+	 * abcdefghijklmtZ 6 is the knee of the curve and I tend to agree.
+	 * I suspect you can do better with more but only slightly.
+	 */
+	if ((opts->parallel == 0) && !opts->link && isNetworkFS(".")) {
+		p = getenv("BK_PARALLEL");
+		opts->parallel =
+		    p ? min(atoi(p), PARALLEL_MAX) : PARALLEL_DEFAULT;
+	}
+	if (opts->link) opts->parallel = 0;
 
 	clonerc = CLONE_ERROR;
 
@@ -866,7 +866,7 @@ clone_finish(remote *r, clonerc status, char **envVar)
 private int
 initProject(char *root, remote *r)
 {
-	char	*p, *url, *repoid;
+	char	*p, *url, *repoid = 0;
 
 	if (mkdirp(root)) {
 		perror(root);

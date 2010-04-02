@@ -20,9 +20,10 @@ Bugfixes/Notes
 - Fix a bug where a clone of a location with a trailing / dumped core.
 - Fix a bug where skipping a file in the resolver with "S" after partially
   merging a file wrapped around and checked in the unfinished file.
-- Fix a bug where triggers that had lines longer than 2048 characters
+- Fix a bug where triggers that output lines longer than 2048 characters
   could cause BK to crash.
 
+===============================================================================
 Release notes for BitKeeper version 4.5 (released 12-Feb-2010)
 
 This release includes a major performance improvement for pull and
