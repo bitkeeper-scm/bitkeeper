@@ -1672,3 +1672,72 @@ echo $N Demonstrate that bk -N check is not allowed .................$NL
 bk -N check > OUT 2>&1 && fail
 grep -q "bk: -N option cannot be used with check" OUT || fail
 echo OK
+
+echo $N Make sure cset -x is disabled for products...................$NL
+cd "$HERE/project"
+# make a couple of csets in components
+echo "aline" > afile
+bk new $Q afile
+cd gdb
+echo "aline" > afile
+bk new $Q afile
+bk commit $Q -y"add afile"
+cd ../liberty
+echo "aline" > afile
+bk new $Q afile
+bk commit $Q -y"add afile"
+cd ..
+bk commit $Q -y"added afile to gdb and liberty"
+# add a content cset since cset -x doesn't support removing new files
+bk edit $Q afile
+echo "lineb" >> afile
+bk delta $Q -y"add lineb" afile
+cd gdb
+bk edit $Q afile
+echo "lineb" >> afile
+bk delta $Q -y"add lineb" afile
+bk commit $Q -y"add lineb"
+cd ../liberty
+bk edit $Q afile
+echo "lineb" >> afile
+bk delta $Q -y"add lineb" afile
+bk commit $Q -y"add lineb"
+cd ..
+bk commit $Q -y"add lineb"
+CSET=`bk changes -nd:KEY: -r+`
+# add another cset on top
+bk edit $Q afile
+echo "linec" >> afile
+bk delta $Q -y"add linec"
+cd gdb
+bk edit $Q afile
+echo "linec" >> afile
+bk delta $Q -y"add linec" afile
+bk commit $Q -y"add linec"
+cd ../liberty
+bk edit $Q afile
+echo "linec" >> afile
+bk delta $Q -y"add linec" afile
+bk commit $Q -y"add linec"
+cd ..
+bk commit $Q -y"add linec"
+# okay, now test the cset -x
+# in the component, it should work
+cd gdb
+bk cset -qx+ >OUT 2>&1 || fail -f OUT
+# clean it up
+bk undo -qsfr+ >OUT 2>&1 || fail -f OUT
+# in the product it should fail
+cd ..
+bk cset -qx"$CSET" 2>&1 | grep -q "Operation not supported" || fail
+# # Uncomment these once it's fixed
+# cd ..
+# bk -qAr check -ac || fail
+# # product
+# bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
+# cd gdb
+# bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
+# cd ../liberty
+# bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
+# bk -AUr. grep -n lineb > OUT || fail -f OUT exclude did not work
+echo OK

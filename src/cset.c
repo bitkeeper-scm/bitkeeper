@@ -243,6 +243,11 @@ cset_main(int ac, char **av)
 	/*
 	 * If doing include/exclude, go do it.
 	 */
+	if (proj_isProduct(0) &&
+	    (copts.include || copts.exclude) && !getenv("_BK_TRANSACTION")) {
+		fprintf(stderr, "cset: Operation not supported in Product.\n");
+		return (1);
+	}
 	if (copts.include) return (cset_inex(flags, "-i", rargs.rstart));
 	if (copts.exclude) return (cset_inex(flags, "-x", rargs.rstart));
 
