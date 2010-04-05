@@ -688,7 +688,7 @@ private	struct {
 	{"clone", 0},		/* locking handled in clone.c */
 	{"collapse", CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{"commit", CMD_WRLOCK|CMD_NESTED_WRLOCK},
-	{"fix", CMD_WRLOCK},
+	{"fix", CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{"get", CMD_COMPAT_NOSI},
 	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},
 	{"license", CMD_NOREPO},

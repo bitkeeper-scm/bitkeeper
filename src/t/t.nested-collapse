@@ -54,6 +54,32 @@ echo add > WANT
 cmpsfiles SCCS/c.ChangeSet WANT
 echo OK
 
+echo $N Now run fix -c in product ...................................$NL
+# redo collapse
+bk ci $Q -i -c gcc_file
+bk commit $Q -YSCCS/c.ChangeSet || faile
+bk _rm SCCS/c.ChangeSet
+cd ..
+bk commit $Q -YSCCS/c.ChangeSet || faile
+bk _rm SCCS/c.ChangeSet
+
+bk fix -c $Q || fail
+bk sfiles -p > GOT
+test -s GOT && fail
+cd gcc
+bk sfiles -x > GOT
+cat <<EOF > WANT
+ERR
+GOT
+WANT
+gcc_file
+EOF
+cmpfiles GOT WANT
+bk _test -e SCCS/c.gcc_file || exit 1
+echo add > WANT
+cmpsfiles SCCS/c.ChangeSet WANT
+echo OK
+
 echo $N Test collapse in a nested repository.........................$NL
 nested nested
 echo "PRE-COLLAPSE" > prod_file
