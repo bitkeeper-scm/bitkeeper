@@ -61,9 +61,6 @@ smartRename(char *old, char *new)
 		fullname(old, old1);
 		fullname(new, new1);
 		if (streq(old1, new1)) return (0);
-		fprintf(stderr,
-		    "rename: cannot rename from %s to %s, errno=%d\n",
-		    old, new, errno);
 	}
 	errno = save;
 	return (rc);

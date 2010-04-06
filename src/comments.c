@@ -186,14 +186,18 @@ comments_readcfile(sccs *s, int prompt, delta *d)
 {
 	char	*cfile = sccs_Xfile(s, 'c');
 	FILE	*f;
-	char	buf[MAXPATH];
+	char	*p;
+	char	tmp[MAXPATH];
 
-	unless (access(cfile, R_OK) == 0) return (-1);
-	if (prompt && comments_prompt(cfile)) return (-2);
+	unless (access(cfile, W_OK) == 0) return (-1);
+	bktmp(tmp, "cfile");
+	if (fileCopy(cfile, tmp)) perror(tmp);
+	if (prompt && comments_prompt(tmp)) return (-2);
+	if (fileMove(tmp, cfile)) perror(tmp);
 	unless (f = fopen(cfile, "r")) return (-1);
 	s->used_cfile = 1;
-	while (fnext(buf, f)) {
-		comments_append(d, strnonldup(buf));
+	while (p = fgetline(f)) {
+		comments_append(d, strdup(p));
 	}
 	fclose(f);
 	return (0);

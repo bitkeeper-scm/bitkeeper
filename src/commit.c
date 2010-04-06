@@ -129,10 +129,13 @@ commit_main(int ac, char **av)
 	 */
 	unless (dflags & (DELTA_DONTASK|DELTA_CFILE)) {
 		if (size("SCCS/c.ChangeSet") > 0) {
-			if (comments_prompt("SCCS/c.ChangeSet")) {
+			bktmp_local(buf, "cfile");
+			fileCopy("SCCS/c.ChangeSet", buf);
+			if (comments_prompt(buf)) {
 				fprintf(stderr, "Commit aborted.\n");
 				return (1);
 			}
+			rename(buf, "SCCS/c.ChangeSet");
 			dflags |= DELTA_CFILE;
 		}
 	}

@@ -82,3 +82,31 @@ checkfiles FILE CSET
 test `bk log -r+ -d'$each(:C:){\n}' foo | wc -l` -eq 2 || exit 1
 test `bk changes -r+ -d'$each(:C:){\n}' | wc -l` -eq 2 || exit 1
 echo OK
+
+echo $N Test editing c.file in remmapped tree .......................$NL
+cat <<EOF > "$HERE"/myvi.sh
+#!/bin/sh
+
+cat "\$1" > "$HERE"/file
+
+echo myedit > "\$1"
+exit 0
+EOF
+chmod +x "$HERE"/myvi.sh
+
+bk edit $Q foo || fail
+echo junk > foo
+echo before > c
+bk _cp c SCCS/c.foo
+(echo e; echo u) | EDITOR=../myvi.sh bk ci $Q foo >OUT || fail
+test "`bk prs -r+ -hnd:C: foo`" = "myedit" || fail
+cmpfiles "$HERE"/file c
+echo OK
+
+echo $N Now edit from commit ........................................$NL
+rm ../file
+bk _cp c SCCS/c.ChangeSet
+(echo e; echo u) | EDITOR=../myvi.sh bk commit $Q >OUT || fail -f OUT
+test "`bk prs -r+ -hnd:C: foo`" = "myedit" || fail
+cmpfiles "$HERE"/file c
+echo OK
