@@ -568,7 +568,7 @@ echo OK
 
 echo $N Setup for pulling conflict into missing component ...........$NL
 cd "$HERE"
-rm -fr project copy sparse
+bk _rm -fr project copy sparse
 nested project
 cd ..
 bk clone $Q project copy
@@ -655,7 +655,7 @@ echo OK
 
 echo $N Try a pull with a moved component............................$NL
 cd "$HERE"
-rm -rf remote local
+bk _rm -rf remote local
 bk clone $Q null-pull remote
 bk clone $Q remote local
 cd "$HERE"/local

@@ -1350,7 +1350,7 @@ grep -q ChangeSet@1.6 "$HERE/changes" || {
 echo OK
 
 cd "$HERE"
-rm -rf *
+bk _rm -rf *
 
 echo $N Create initial repository ...................................$NL
 commercial project

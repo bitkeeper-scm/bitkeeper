@@ -43,19 +43,39 @@ fslrm_main(int ac, char **av)
 {
 	int	c;
 	int	rc = 0, force = 0;
+	int	recurse = 0;
 
-	while ((c = getopt(ac, av, "f", 0)) != -1) {
+	while ((c = getopt(ac, av, "fr", 0)) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break;
+		    case 'r': recurse = 1; break;
 		    default: usage1(av[0]); break;
 		}
 	}
 
 	unless (av[optind]) usage1(av[0]);
 	while (--ac >= optind) {
-		if (unlink(av[ac]) && !force) {
-			perror(av[ac]);
+		if (isdir(av[ac])) {
+			if (recurse) {
+				if (rmtree(av[ac])) {
+					rc = 1;
+					unless (force) {
+						perror(av[ac]);
+						break;
+					}
+				}
+			} else {
+				fprintf(stderr, "%s: is a directory\n",
+				    av[ac]);
+				rc = 1;
+				unless (force) break;
+			}
+		} else if (unlink(av[ac])) {
 			rc = 1;
+			unless (force) {
+				perror(av[ac]);
+				break;
+			}
 		}
 	}
 	return (rc);
