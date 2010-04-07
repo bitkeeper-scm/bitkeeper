@@ -64,6 +64,17 @@ cd ..
 bk clone $Q clone clone3 || exit 1
 echo OK
 
+echo $N Switching server will populate bam data in component ........$NL
+cd "$HERE"
+commercial junk
+cd ..
+bk clone $Q clone clone-bam-switch || fail
+cd clone-bam-switch
+bk bam server $Q ../junk || fail
+bk repocheck $Q || fail
+cd ..
+echo OK
+
 echo $N Pushing a updates to non-BAM components with a BAM product ..$NL
 cd clone3
 echo hi > prod_bam

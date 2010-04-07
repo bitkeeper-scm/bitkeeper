@@ -153,7 +153,7 @@ bk bam server $Q ../pjunk 2>ERR && {
 	cat ERR
 	exit 1
 }
-grep -q "unable to fetch data from old server" ERR || {
+grep -q "unable to pull from bk://badhost.example.com/dev" ERR || {
 	echo wrong error
 	cat ERR
 	exit 1
