@@ -1310,3 +1310,27 @@ grep -q "<<<< gca foo 1.1" OUT || {
 	exit 1
 }
 echo OK
+
+echo $N Show that failed resolve will not mangle repo ...............$NL
+cd "$HERE"
+_commercial_config > c
+bk setup --sccs-compat -a -f -cc repo2
+cd repo2
+test -d .bk && fail
+mkdir dir
+touch dir/foo
+bk new $Q dir/foo
+bk commit $Q -y'added foo'
+cd ..
+bk clone $Q repo2 repo2-clone
+cd repo2-clone
+touch dir/bar
+bk new $Q dir/bar
+bk commit $Q -y'added bar'
+cd ../repo2
+bk -Ur get $Q
+chmod 644 dir/foo
+echo foo >> dir/foo
+BK_CONFIG='checkout:get!;partial_check:off!' bk pull $Q ../repo2-clone 2>ERR
+test -d .bk && fail
+echo OK

@@ -2347,7 +2347,7 @@ rm_sfile(char *sfile, int leavedirs)
 	}
 	while (p > sfile) {
 		*p-- = 0;
-		if (isdir(sfile)) {
+		if (!streq(sfile, "SCCS") && isdir(sfile)) {
 			char	rdir[MAXPATH];
 
 			if (leavedirs) {
