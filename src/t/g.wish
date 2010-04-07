@@ -1,0 +1,7 @@
+echo $N bk wish should not crash on an L file .......................$NL
+cat - >test.l <<'END'
+exit(0);
+END
+bk wish test.l || exit 1
+rm -f test.l
+echo OK
