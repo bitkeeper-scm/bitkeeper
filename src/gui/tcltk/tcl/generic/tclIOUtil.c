@@ -2088,6 +2088,7 @@ FsMaybeWrapInLLang(
     const char *path)
 {
     int len = strlen(path);
+    Linterp *myL = NULL;
 
     if ((len >= 2) && (path[len-2] == '.') && (path[len-1] == 'l') &&
       !Tcl_RegExpMatch(interp, Tcl_GetString(fileContents),
@@ -2095,7 +2096,10 @@ FsMaybeWrapInLLang(
     {
 	Tcl_Obj *newContents = Tcl_ObjPrintf(
 	      "#lang L\n%s\n#lang tcl", Tcl_GetString(fileContents));
-	if (!(L->options & L_OPT_NORUN)) {
+	if (interp) {
+	    myL = Tcl_GetAssocData(interp, "L", NULL);
+	}
+	if (!myL || !(myL->options & L_OPT_NORUN)) {
 	    Tcl_AppendToObj(newContents, "\n%%call_main_if_defined", -1);
 	}
 	Tcl_DecrRefCount(fileContents);
