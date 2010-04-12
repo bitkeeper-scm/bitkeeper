@@ -20,6 +20,7 @@ private	struct {
 	int	delay;			/* wait for (ssh) to drain */
 	int	remap;			/* force remapping? */
 	int	parallel;		/* -j%d: for NFS */
+	int	comps;			/* remember how many for progress */
 	char	*rev;			/* remove everything after this */
 	char	**aliases;		/* -s aliases list */
 	char	*from;			/* where to get stuff from */
@@ -38,7 +39,7 @@ private	void	lclone(char *from);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private clonerc	clone_finish(remote *r, clonerc status, char **envVar);
-private	void	checkout(int quiet, int parallel);
+private	void	checkout(int quiet, int verbose, int parallel);
 
 private	char	*bam_url;
 private	char	*bam_repoid;
@@ -267,9 +268,17 @@ clone_main(int ac, char **av)
 	remote_free(r);
 	unless (opts->quiet || opts->verbose) {
 		title = "clone";
-		if (opts->product) title = ".";
+		if (opts->attach) title = "attach";
+		if (opts->detach) title = "detach";
+		if (opts->product) {
+			title = aprintf("%u/%u .", opts->comps, opts->comps);
+		}
 		if (opts->comppath) title = opts->comppath;
 		progress_end(PROGRESS_BAR, clonerc ? "FAILED" : "OK");
+		if (opts->product) {
+			free(title);
+			title = "";
+		}
 	}
 	return (clonerc);
 }
@@ -572,6 +581,7 @@ clone2(remote *r)
 	popts	ops;
 	char	buf[MAXLINE];
 
+
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "clone failed license accept check\n");
 		unlink("SCCS/s.ChangeSet");
@@ -611,7 +621,9 @@ clone2(remote *r)
 	sccs_rmUncommitted(!opts->verbose, f);
 	fclose(f);
 
-	if (opts->detach && detach(opts->quiet)) return (CLONE_ERROR);
+	if (opts->detach && detach(opts->quiet, opts->verbose)) {
+		return (CLONE_ERROR);
+	}
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 
@@ -720,12 +732,14 @@ clone2(remote *r)
 		ops.quiet = opts->quiet;
 		ops.remap = opts->remap;
 		ops.verbose = opts->verbose;
+		ops.comps = 1; // product
 		if (nested_populate(n, 0, 0, &ops)) {
 nested_err:		fprintf(stderr, "clone: component fetch failed, "
 			    "only product is populated\n");
 			nested_free(n);
 			return (CLONE_ERROR);
 		}
+		opts->comps = ops.comps;
 		nested_free(n);
 	}
 	if (!didcheck && (size(checkfiles) || full_check())) {
@@ -754,7 +768,7 @@ nested_err:		fprintf(stderr, "clone: component fetch failed, "
 	 */
 	if (partial &&
 	    (proj_checkout(0) & (CO_GET|CO_EDIT|CO_BAM_GET|CO_BAM_EDIT))) {
-		checkout(opts->quiet || opts->verbose, opts->parallel);
+		checkout(opts->quiet, opts->verbose, opts->parallel);
 	}
 	return (0);
 }
@@ -763,20 +777,21 @@ nested_err:		fprintf(stderr, "clone: component fetch failed, "
  * We may make this public for rclone.
  */
 private void
-checkout(int quiet, int parallel)
+checkout(int quiet, int verbose, int parallel)
 {
 	FILE	*in;
 	FILE	**f;
 	int	i;
+	int	progress = !(quiet || verbose);
 	char	buf[MAXPATH];
 
-	unless (quiet) fprintf(stderr, "Checking out files...\n");
+	unless (quiet || progress) fprintf(stderr, "Checking out files...\n");
 	if (parallel <= 0) {
-		if (quiet) {
-			sys("bk", "-Ur", "checkout", "-TSq", SYS);
-		} else {
+		if (progress) {
 			sprintf(buf, "-N%u", repo_nfiles(0));
 			sys("bk", "-Ur", "checkout", "-TSq", buf, SYS);
+		} else {
+			sys("bk", "-Ur", "checkout", "-TSq", SYS);
 		}
 		return;
 	}
@@ -1386,8 +1401,10 @@ attach(void)
 	}
 	/* remove any existing parent */
 	system("bk parent -qr");
-	rc = systemf("bk newroot %s -y'attach %s'",
-		     opts->quiet?"-q":"", relpath);
+	rc = systemf("bk newroot %s %s -y'attach %s'",
+		     opts->quiet ? "-q":"",
+		     opts->verbose ? "-v":"",
+		     relpath);
 	rc = rc || systemf("bk admin -D -C'%s' ChangeSet",
 			   proj_rootkey(proj_product(0)));
 	if (rc) {
@@ -1427,7 +1444,7 @@ attach(void)
 		sprintf(buf,
 			"bk -P commit -y'attach %s' %s -",
 			relpath,
-			opts->quiet? "-q" : "");
+			opts->verbose ? "" : "-q");
 		if (f = popen(buf, "w")) {
 			fprintf(f, "%s/SCCS/s.ChangeSet|+\n", relpath);
 		}
@@ -1444,14 +1461,15 @@ end:	return (rc);
 }
 
 int
-detach(int quiet)
+detach(int quiet, int verbose)
 {
 	assert(isdir(BKROOT));
 	if (unlink("BitKeeper/log/COMPONENT")) {
 		fprintf(stderr, "detach: failed to unlink COMPONENT\n");
 		return (-1);
 	}
-	if (systemf("bk newroot %s -y'detach'", quiet ? "-q" : "")) {
+	if (systemf("bk newroot %s %s -y'detach'",
+	    verbose ? "-v" : "", quiet ? "-q" : "")) {
 		fprintf(stderr, "detach: failed to newroot\n");
 		return (-1);
 	}

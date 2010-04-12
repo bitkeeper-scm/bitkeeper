@@ -378,7 +378,7 @@ rclone_end(opts *opts)
 	/* remove any uncommited stuff */
 	sccs_rmUncommitted(quiet, 0);
 
-	if (opts->detach && detach(quiet)) return (-1);
+	if (opts->detach && detach(quiet, 0)) return (-1);
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */

@@ -2,23 +2,25 @@
 #include "system.h"
 #include "sccs.h"
 #include "bam.h"
+#include "progress.h"
 
-private int	newroot(char *ranbits, int quiet, int product, char *comment);
+private int	newroot(char *ranbits, int q, int v, int prod, char *comment);
 private void	update_rootlog(sccs *s, char *key, char *comment);
 
 int
 newroot_main(int ac, char **av)
 {
-	int	c, quiet = 0, product = 0;
+	int	c, quiet = 0, verbose = 0, product = 0;
 	char	*ranbits = 0;
 	char	*comments = 0;
 	u8	*p;
 
-	while ((c = getopt(ac, av, "k:Pqy:", 0)) != -1) {
+	while ((c = getopt(ac, av, "k:Pqvy:", 0)) != -1) {
 		switch (c) {
 		    case 'k': ranbits = optarg; break;
 		    case 'P': product = 1; break;
 		    case 'q': quiet = 1; break;
+		    case 'v': verbose = 1; break;
 		    case 'y': comments = optarg; break;
 		    default: bk_badArg(c, av);
 		}
@@ -41,7 +43,7 @@ k_err:			fprintf(stderr,
 		}
 		if (*p) goto k_err;
 	}
-	return (newroot(ranbits, quiet, product, comments));
+	return (newroot(ranbits, quiet, verbose, product, comments));
 }
 
 /*
@@ -51,15 +53,16 @@ k_err:			fprintf(stderr,
  * Prolly not.
  */
 private int
-newroot(char *ranbits, int quiet, int product, char *comments)
+newroot(char *ranbits, int quiet, int verbose, int product, char *comments)
 {
 	sccs	*s;
-	int	rc = 0, i;
+	int	rc = 0, n = 0, i;
 	char	*p, *oldbamdir;
+	FILE	*f;
+	ticker	*tick = 0;
 	char	cset[] = CHANGESET;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
-	FILE	*f;
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "Cannot find package root.\n");
@@ -146,7 +149,10 @@ newroot(char *ranbits, int quiet, int product, char *comments)
 		}
 	}
 	f = popen("bk sfiles", "r");
-	unless (quiet) {
+	unless (quiet || verbose) {
+		tick = progress_start(PROGRESS_BAR, repo_nfiles(0));
+	}
+	if (verbose) {
 		fprintf(stderr, "Pointing files at new changeset id...\n");
 	}
 	while (fnext(buf, f)) {
@@ -157,7 +163,8 @@ newroot(char *ranbits, int quiet, int product, char *comments)
 			if (s) sccs_free(s);
 			continue;
 		}
-		unless (quiet) fprintf(stderr, "%-78s\r", s->gfile);
+		if (tick) progress(tick, ++n);
+		if (verbose) fprintf(stderr, "%s\n", s->gfile);
 		free(s->tree->csetFile);
 		s->tree->csetFile = strdup(key);
 		if (sccs_newchksum(s)) rc = 1;
@@ -173,7 +180,7 @@ newroot(char *ranbits, int quiet, int product, char *comments)
 	}
 	free(oldbamdir);
 
-	unless (quiet) fprintf(stderr, "\n");
+	if (tick) progress_done(tick, rc ? "FAILED" : "OK");
 	return (rc);
 }
 

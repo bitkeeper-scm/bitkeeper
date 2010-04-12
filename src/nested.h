@@ -105,6 +105,7 @@ typedef struct {
 	u32	remap:1;	// --hide-sccs-dirs
 	u32	verbose:1;	// -v: verbose
 	u32	runcheck:1;	// follow up with a partial check of prod
+	int	comps;		// number of comps we worked on
 } popts;
 
 int	isComponent(char *path);

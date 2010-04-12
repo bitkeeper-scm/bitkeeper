@@ -2,6 +2,7 @@
 #include "sccs.h"
 #include "logging.h"
 #include "nested.h"
+#include "progress.h"
 
 #define	BACKUP_SFIO "BitKeeper/tmp/undo_backup_sfio"
 #define	UNDO_CSETS  "BitKeeper/tmp/undo_csets"
@@ -16,7 +17,7 @@ private int	move_file(char *checkfiles);
 private int	renumber_rename(char **sfiles, int quiet);
 private int	check_patch(char *patch);
 private int	doit(char **filesNrevs, char **sfiles, int v, int q, char *);
-private	int	undo_ensemble1(nested *n, int verbose,
+private	int	undo_ensemble1(nested *n, int verbose, int quiet,
 		    char **nav, char ***comp_list);
 private	int	undo_ensemble2(nested *n, int verbose);
 private	void	undo_ensemble_rollback(nested *n, int v, char **comp_list);
@@ -78,6 +79,9 @@ undo_main(int ac,  char **av)
 		optarg = 0;
 	}
 	unless (rev) usage();
+	unless (quiet || verbose) {
+		putenv("_BK_PROGRESS_MULTI=YES");
+	}
 	save_log_markers();
 	// XXX - be nice to do this only if we actually are going to undo
 	unlink(BACKUP_SFIO); /* remove old backup file */
@@ -182,7 +186,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			n = 0;
 			goto prod;
 		}
-		if (undo_ensemble1(n, verbose, nav, &comp_list)) goto err;
+		if (undo_ensemble1(n, verbose, quiet, nav, &comp_list))goto err;
 	}
 prod:
 	if (save) {
@@ -255,6 +259,9 @@ prod:
 	freeLines(csetrevs, 0);
 	unless (fromclone) unlink(UNDO_CSETS);
 	update_log_markers(verbose);
+	unless (fromclone || verbose || quiet) {
+		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
+	}
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
 	unlink(CSETS_IN);	/* no longer valid */
@@ -277,7 +284,7 @@ prod:
  * Don't delete or rename components until part2
  */
 private int
-undo_ensemble1(nested *n, int verbose, char **nav, char ***comp_list)
+undo_ensemble1(nested *n, int verbose, int quiet, char **nav, char ***comp_list)
 {
 	comp	*c;
 	char	**vp;
@@ -363,6 +370,10 @@ undo_ensemble1(nested *n, int verbose, char **nav, char ***comp_list)
 		if (c->product || c->new) continue;
 		unless (c->present && c->included) continue;
 		vp = addLine(0, strdup("bk"));
+		unless (quiet || verbose) {
+			vp = addLine(vp, aprintf("--title=%u/%u %s",
+				which++, num, c->path));
+		}
 		vp = addLine(vp, strdup("undo"));
 		EACH(nav) vp = addLine(vp, strdup(nav[i]));
 		cmd = aprintf("-fa%s", c->lowerkey);
@@ -397,6 +408,8 @@ undo_ensemble1(nested *n, int verbose, char **nav, char ***comp_list)
 		printf("#### Undo in Product (%d of %d) ####\n",
 		    which++, num);
 		fflush(stdout);
+	} else unless (quiet) {
+		title = aprintf("%u/%u .", num, num);
 	}
 	return (0);
 err:	return (1);

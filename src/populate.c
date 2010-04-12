@@ -13,10 +13,10 @@ int
 nested_populate(nested *n, char **urls, int force, popts *ops)
 {
 	int	i, j, status, rc;
-	int	done = 1, comps = 0;	
+	int	done = 1;
 	clonerc	clonerc;
 	char	**vp = 0;
-	char	*checkfiles;
+	char	*checkfiles = 0;
 	char	**list;
 	remote	*r;
 	comp	*cp;
@@ -49,7 +49,7 @@ nested_populate(nested *n, char **urls, int force, popts *ops)
 			}
 			freeLines(lurls, free);
 		}
-		if (!cp->present && cp->alias) comps++;
+		if (!cp->present && cp->alias) ops->comps++;
 	}
 	if (rc) return (1);
 	if (ops->runcheck) {
@@ -99,7 +99,7 @@ nested_populate(nested *n, char **urls, int force, popts *ops)
 				vp = addLine(vp, aprintf("-r%s", cp->deltakey));
 				vp = addLine(vp,
 				    aprintf("-P%u/%u %s",
-				    done, comps, cp->path));
+				    done, ops->comps, cp->path));
 				vp = addLine(vp, remote_unparse(r));
 				vp = addLine(vp, strdup(cp->path));
 				vp = addLine(vp, 0);
