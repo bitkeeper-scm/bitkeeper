@@ -1952,7 +1952,11 @@ removeFile(sfile sf)
 
 	undef(self.files{sf.name});
 	if (!sf.inProduct && length(self.components{component}) <= 1) {
+		sfile	cset = getCsetFile(component);
+
 		undef(self.components{component});
+		ListBox_delete(self.w_files, cset.node);
+		moveNext();
 	}
 }
 

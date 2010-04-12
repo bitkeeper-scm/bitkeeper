@@ -204,3 +204,19 @@ err=$?
 test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
 test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
 echo OK
+
+echo $N Test discarding the last file removes a component cset ......$NL
+bk edit $Q gdb/file1
+echo "foo" >> gdb/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "gdb ChangeSet"
+	test_selectFile "gdb/file1"
+	test_buttonPress "Discard"
+	test_buttonPress "Discard"
+	test_fileIsNotInList "gdb ChangeSet"
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+echo OK
