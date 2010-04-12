@@ -624,3 +624,12 @@ rm -fr gcc
 bk repocheck -q 2> ERR && fail -f ERR
 grep -q "check: error .* 'gcc' is not present" ERR || fail -f ERR
 echo OK
+
+echo $N Test check fixes missing directories in remapped repo .......$NL
+cd "$HERE"
+bk clone $Q --hide-sccs-dirs project proj-remapped
+cd proj-remapped
+bk -r clean
+rmdir d1/sub1
+bk -r check -acf || fail
+echo OK

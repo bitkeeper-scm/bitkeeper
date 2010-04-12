@@ -221,6 +221,7 @@ remap_getdir(project *proj, char *dir)
 {
 	int	i, sccs;
 	char	**ret, *t;
+	char	**mapdir;
 	char	tmp[MAXPATH];
 	char	buf[MAXPATH];
 
@@ -230,13 +231,29 @@ remap_getdir(project *proj, char *dir)
 		EACH(ret) unremap_name(ret[i]);
 	} else {
 		if (streq(dir, ".")) removeLine(ret, ".bk", free);
-		concat_path(tmp, dir, "SCCS");
-		fullRemapPath(buf, proj, tmp);
-		if (isdir(buf)) {
-			t = malloc(7);
-			memcpy(t, "SCCS\0d", 7);
-			ret = addLine(ret, t);
+		if (proj && getenv("BK_CREATE_MISSING_DIRS")) {
+			sprintf(tmp, "%s/.bk/%s", proj_root(proj), dir);
+			mapdir = getdir(tmp);
+			/* remove items from mapdir already in 'ret' */
+			pruneLines(mapdir, ret, 0, free);
+			EACH(mapdir) {
+				unless (streq(mapdir[i], "SCCS")) {
+					concat_path(tmp, buf, mapdir[i]);
+					mkdir(tmp, 0777);
+				}
+				ret = addLine(ret, mapdir[i]);
+			}
+			freeLines(mapdir, 0); /* copied all to ret */
 			uniqLines(ret, free);
+		} else {
+			concat_path(tmp, dir, "SCCS");
+			fullRemapPath(buf, proj, tmp);
+			if (isdir(buf)) {
+				t = malloc(7);
+				memcpy(t, "SCCS\0d", 7);
+				ret = addLine(ret, t);
+				uniqLines(ret, free);
+			}
 		}
 	}
 	return (ret);

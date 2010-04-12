@@ -359,13 +359,20 @@ bad_locking:				fprintf(stderr,
 			usage();
 		}
 		if (nested && streq(prog, "check")) {
-			fprintf(stderr, "bk: -N option cannot be used with check\n");
+			fprintf(stderr,
+			    "bk: -N option cannot be used with check\n");
 			return (1);
 		}
 		for (ac = 0; av[ac] = av[optind++]; ac++);
 		if (dashr) {
 			unless (streq(prog, "sfiles") || streq(prog, "sfind")) {
+				if (streq(prog, "check")) {
+					putenv("BK_CREATE_MISSING_DIRS=1");
+				}
 				if (sfiles(si > 1 ? sopts : 0)) return (1);
+				if (streq(prog, "check")) {
+					putenv("BK_CREATE_MISSING_DIRS=");
+				}
 				/* we have bk [-r...] cmd [opts] ... */
 				/* we want cmd [opts] ... - */
 				av[ac++] = "-";

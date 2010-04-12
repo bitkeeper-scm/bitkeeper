@@ -94,6 +94,8 @@ char	**prog2Lines(char **space, char *file);
 char	**file2Lines(char **space, char *file);
 int	lines2File(char **space, char *file);
 void	uniqLines(char **space, void(*freep)(void *ptr));
+int	pruneLines(char **space, char **remove,
+    int (*compar)(const void *, const void *), void(*freep)(void *ptr));
 int	sameLines(char **p, char **p2);
 char	*shellquote(char *in);
 char	**str_append(char **space, void *str, int gift);

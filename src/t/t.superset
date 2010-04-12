@@ -194,7 +194,7 @@ grep -q '=== Pending files ===' ../GOT || {
 	echo superset failed to flag it as a pending file
 	exit 1
 }
-rm -rf pending
+bk _rm -rf pending
 echo OK
 
 echo $N Check superset with a clean subrepo .........................$NL
