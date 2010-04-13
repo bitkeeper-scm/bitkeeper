@@ -411,54 +411,6 @@ EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
 
-echo $N Test cset comment refresh by Commit button ..................$NL
-cd "$HERE/project"
-# clean up from previous tests
-bk sfiles -x | xargs rm -f
-bk edit $Q file1
-echo FOO >> file1
-
-bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	test_selectFile "file1"
-	test_inputComment "This is a comment"
-	test_selectFile "ChangeSet"
-	test_inputComment "CSET COMMENT"
-	test_buttonPress "Commit"
-	after 2000 [list test_buttonPress "Commit"]
-EOF
-test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
-COMMENTS=`bk -R prs -hd:C: -r+ ChangeSet`
-test "$COMMENTS" = "CSET COMMENT" || {
-	echo failed
-	echo "unexpected comments: $COMMENTS"
-	exit 1
-}
-echo OK
-
-echo $N Test cset comment refresh by Control-Return .................$NL
-cd "$HERE/project"
-# clean up from previous tests
-bk sfiles -x | xargs rm -f
-bk edit $Q file1
-echo FOO >> file1
-
-bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	test_selectFile "file1"
-	test_inputComment "This is a comment"
-	test_selectFile "ChangeSet"
-	test_inputComment "CSET COMMENT"
-	test_inputString "^\n"
-	after 2000 [list test_inputString "^\n"]
-EOF
-test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
-COMMENTS=`bk -R prs -hd:C: -r+ ChangeSet`
-test "$COMMENTS" = "CSET COMMENT" || {
-	echo failed
-	echo "unexpected comments: $COMMENTS"
-	exit 1
-}
-echo OK
-
 echo $N Test that focus is always in the comment window .............$NL
 cd "$HERE/project"
 # clean up from previous tests

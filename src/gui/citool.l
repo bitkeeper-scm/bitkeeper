@@ -768,23 +768,6 @@ commentChanged()
 	}
 
 	if (modified) configureCsetNodes();
-
-	// If we're changing the product cset, we want to set an after
-	// event to refresh the diffs window after a certain time has
-	// passed.
-	if (sf.type eq "cset" && sf.inProduct) {
-		self.files{sf.name}.comments = comments;
-		self.afterId = after(1000, "refreshProductCset");
-	}
-}
-
-void
-refreshProductCset()
-{
-	sfile	sf = getSelectedFile();
-
-	if (self.commitSwitch) return;
-	if (sf.type eq "cset" && sf.inProduct) showCsetContents(sf);
 }
 
 void
@@ -1430,27 +1413,22 @@ showCsetContents(sfile sf)
 		string	sp2 = "  ";
 
 		if (sf.inProduct) {
+			sp1 = "  ";
+			sp2 = "    ";
 			cset = getCsetFile(comp);
 			if (cset.excluded) continue;
 
+			Text_insert(textBox, "end", "${cset.name}\n");
 			comments = getComments(cset);
 			if (comments ne ""
 			    && !isTemplateComment(cset, comments)) {
-				Text_insert(textBox, "end", "${cset.name}\n");
 				lines = split(comments, "\n");
 				foreach (line in lines) {
 					Text_insert(textBox, "end",
 					    "  ${line}\n");
 				}
-				Text_insert(textBox, "end", "\n");
-				sp1 = "  ";
-				sp2 = "    ";
-			} else unless (cset.inProduct) {
-				// Don't show any file comments if the
-				// cset for this component isn't commented
-				// unless we're in the product cset.
-				continue;
 			}
+			Text_insert(textBox, "end", "\n");
 		}
 
 		foreach (file in self.components{comp}) {
@@ -1654,7 +1632,6 @@ doCommit()
 	}
 
 	unless (self.commitSwitch) {
-		refreshProductCset();
 		self.commitSwitch = 1;
 		if (isUserComment(cset, cset.comments)) {
 			topMessage(msgs{"gotCset"}, "message");
@@ -2069,7 +2046,7 @@ initMsgs()
 "other people to decide to use or not to use this changeset.\n\n"
 "If you provide a description, the deltas will be grouped into a ChangeSet,\n"
 "making them available to others.  If you do not want to do that yet, just\n"
-"click Commit without typing in comments here and no ChangeSet will be"
+"click Checkin without typing in comments here, and no ChangeSet will be "
 "made.\n\n"
 "NOTE: Any component ChangeSet that is not commented will receive the same\n"
 "comment as the product ChangeSet.\n";
