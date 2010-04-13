@@ -880,6 +880,7 @@ pull(char **av, remote *r, char **envVar)
 	char	key_list[MAXPATH];
 
 	assert(r);
+	putenv("BK_STATUS=");
 	if (rc = pull_part1(av, r, key_list, envVar)) return (rc);
 	rc = pull_part2(av, r, key_list, envVar);
 	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));

@@ -614,6 +614,22 @@ grep -q "Unable to resolve conflict in non-present component 'gdb'." OUT || {
 }
 echo OK
 
+echo $N Setup N-way pull where a later pull fails ...................$NL
+cd "$HERE"
+bk clone $Q -s. sparse ponly || fail
+cd ponly
+echo junk > junk
+bk new $Q junk
+bk commit $Q -yjunk || fail
+cd ../sparse
+bk pull -q ../ponly ../copy 2>ERR && fail
+cat <<EOF > WANT
+pull: Unable to resolve conflict in non-present component 'gdb'.
+pull: update aborted due to errs with 1 components.
+EOF
+cmpfiles ERR WANT
+echo OK
+
 echo $N Try a pull where source did rm -rf component ................$NL
 cd "$HERE"
 bk clone $Q project clone
