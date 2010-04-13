@@ -12,6 +12,10 @@
 # Copyright (c) 1999 Andrew Chang
 # %K%
 
+OUT="$HERE/out"
+DOTBK=`bk dotbk`
+CONFIG="$DOTBK/config-gui"
+
 # Things that need to be added
 # 
 
@@ -19,9 +23,10 @@ echo $N Create some data ............................................$NL
 commercial project
 mkdir src
 cd src || exit 1
+echo new > "foo"
 echo foo > 'foo bar'
 echo baz > baz
-bk new $Q 'foo bar' baz
+bk new $Q 'foo bar' baz foo
 bk commit $Q -ybaseline
 echo OK
 
@@ -53,4 +58,34 @@ echo resolve > 'foo bar'
 echo resolve > baz
 cd ../..
 bk resolve $Q
+echo OK
+
+echo
+echo Just comment the one file and then commit.
+echo $N Make sure ci.rescan is ignored in the resolver ..............$NL
+test -f "$DOTBK" || mkdir -p "$DOTBK"
+echo "set gc(ci.rescan) 1" >> "$CONFIG"
+cd "$HERE"
+bk clone $Q project copy2 || exit 1
+cd "$HERE/project/src"
+bk edit $Q foo
+echo foo > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+cd "$HERE/copy2/src"
+bk edit $Q foo
+echo bar > foo
+bk delta $Q -ybar foo
+bk commit $Q -ybar
+cd ..
+bk pull $Q -R
+cd RESYNC/src
+bk edit $Q -M foo
+echo resolve > foo
+cd ../..
+bk resolve $Q >"$OUT" 2>&1
+grep -q "No files found to checkin" "$OUT" && {
+    echo failed
+    exit 1
+}
 echo OK

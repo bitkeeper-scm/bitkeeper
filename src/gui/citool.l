@@ -1661,7 +1661,7 @@ doCommit()
 	deletePendingComments();
 	self.committing = 0;
 
-	if (String_isTrue(strict:, gc("ci.rescan"))) {
+	if (String_isTrue(strict:, gc("ci.rescan")) && !self.resolve) {
 		After_idle("rescan");
 	} else {
 		exit();
