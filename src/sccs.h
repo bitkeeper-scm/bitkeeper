@@ -1320,6 +1320,7 @@ char	*bkmenupath(int, int);
 void	repos_update(sccs *cset);
 void	features_repoChk(project *p);
 void	features_repoSet(project *p, char *feature);
+void	features_repoClear(project *p, char *feature);
 char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);
 void	fslayer_cleanup(void);

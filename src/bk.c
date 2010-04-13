@@ -367,11 +367,11 @@ bad_locking:				fprintf(stderr,
 		if (dashr) {
 			unless (streq(prog, "sfiles") || streq(prog, "sfind")) {
 				if (streq(prog, "check")) {
-					putenv("BK_CREATE_MISSING_DIRS=1");
+					putenv("_BK_CREATE_MISSING_DIRS=1");
 				}
 				if (sfiles(si > 1 ? sopts : 0)) return (1);
 				if (streq(prog, "check")) {
-					putenv("BK_CREATE_MISSING_DIRS=");
+					putenv("_BK_CREATE_MISSING_DIRS=");
 				}
 				/* we have bk [-r...] cmd [opts] ... */
 				/* we want cmd [opts] ... - */

@@ -487,6 +487,11 @@ clone(char **av, remote *r, char *local, char **envVar)
 			rename("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
 		}
 	}
+	if (proj_hasOldSCCS(0)) {
+		features_repoClear(0, "remap");
+	} else {
+		features_repoSet(0, "remap");
+	}
 	if (opts->product) {
 		char	*nlid = 0;
 

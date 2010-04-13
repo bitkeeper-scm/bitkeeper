@@ -252,6 +252,7 @@ err:			unlink("BitKeeper/etc/config");
         }
 	enableFastPendingScan();
 	logChangeSet();
+	unless (proj_hasOldSCCS(0)) features_repoSet(0, "remap");
 	if (in_prod) {		/* we are a new component, attach ourself */
 		unlink("BitKeeper/log/COMPONENT");
 		status = sys("bk", "attach",

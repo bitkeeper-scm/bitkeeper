@@ -338,7 +338,7 @@ sfio_out(void)
 				continue;
 			}
 		}
-		if (opts->lclone) {
+		if (opts->lclone && !strneq(buf, "BitKeeper/log/", 14)) {
 			/*
 			 * In lclone-mode every file is a "hardlink" to
 			 * the absolute path of the file in the original

@@ -231,7 +231,7 @@ remap_getdir(project *proj, char *dir)
 		EACH(ret) unremap_name(ret[i]);
 	} else {
 		if (streq(dir, ".")) removeLine(ret, ".bk", free);
-		if (proj && getenv("BK_CREATE_MISSING_DIRS")) {
+		if (proj && getenv("_BK_CREATE_MISSING_DIRS")) {
 			sprintf(tmp, "%s/.bk/%s", proj_root(proj), dir);
 			mapdir = getdir(tmp);
 			/* remove items from mapdir already in 'ret' */

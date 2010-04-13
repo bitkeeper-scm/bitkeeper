@@ -1176,6 +1176,7 @@ bkd_hasFeature(char *f)
  * per repo features
  */
 static char *features[] = {
+	"remap",	/* remapped repository */
 	0
 };
 
@@ -1244,6 +1245,33 @@ features_repoSet(project *p, char *feature)
 	uniqLines(local, free);
 	if (lines2File(local, ffile)) perror(ffile);
 out:	freeLines(local, free);
+}
+
+/*
+ * Remove a feature code from the current repository
+ */
+void
+features_repoClear(project *p, char *feature)
+{
+	char	**t;
+	char	**local;
+	char	*ffile;
+	int	i;
+
+	/* we better have this feature defined above */
+	for (t = features; *t; ++t) {
+		if (streq(feature, *t)) break;
+	}
+	assert(*t);
+
+	ffile = proj_fullpath(p, "BitKeeper/log/features");
+	local = file2Lines(0, ffile);
+
+	/* avoid needless rewrites, they mess up NFS */
+	if (removeLine(local, feature, free)) {
+		if (lines2File(local, ffile)) perror(ffile);
+	}
+	freeLines(local, free);
 }
 
 /*

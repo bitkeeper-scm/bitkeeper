@@ -231,6 +231,19 @@ cmd_rclone_part2(int ac, char **av)
 	if (!streq("@END@", buf)) {
 		fprintf(stderr, "cmd_rclone: warning: lost end marker\n");
 	}
+	unless (exists(IDCACHE)) {
+		if (exists("BitKeeper/log/x.id_cache")) {
+			rename("BitKeeper/log/x.id_cache", IDCACHE);
+		}
+		if (exists("BitKeeper/etc/SCCS/x.id_cache")) {
+			rename("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
+		}
+	}
+	if (proj_hasOldSCCS(0)) {
+		features_repoClear(0, "remap");
+	} else {
+		features_repoSet(0, "remap");
+	}
 	unless (rc || getenv("BK_BAM")) {
 		rc = rclone_end(&opts);
 	}

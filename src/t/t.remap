@@ -1,3 +1,5 @@
+FEATURES=BitKeeper/log/features
+
 echo $N Check that setup --sccs-compat works ........................$NL
 _commercial_config > c
 bk setup -a -f -cc --sccs-compat noremap || fail
@@ -39,7 +41,7 @@ cd "$HERE"
 bk clone -shere $Q product clone
 cd clone
 bk here rm $Q comp0 comp1
-rm -rf comp[01]
+test -d comp0 -o -d comp1 || fail look at $PWD for comp0 and comp1
 bk here add $Q comp0 comp1
 test -d comp0/SCCS && {
 	echo failed
@@ -58,7 +60,7 @@ cd "$HERE"
 bk clone --sccs-compat -shere $Q product clone2
 cd clone2
 bk here rm $Q comp0 comp1
-rm -rf comp[01]
+test -d comp0 -o -d comp1 || fail look at $PWD for comp0 and comp1
 bk here add $Q comp0 comp1
 test ! -d comp0/SCCS && {
 	echo failed
@@ -82,30 +84,39 @@ echo OK
 echo $N Verify that a clone of noremap stays not remapped ...........$NL
 bk clone $Q noremap noremap2 || fail
 test -d noremap2/SCCS || fail
+test -f noremap2/$FEATURES && {
+	grep -q remap noremap2/$FEATURES && fail remap feature
+}
 rm -rf noremap2
 echo OK
 
 echo $N Verify that a clone from remap to noremap works .............$NL
+test -f remap/$FEATURES || fail no feature file
+grep -q remap remap/$FEATURES || fail no remap feature
 bk clone --sccs-compat $Q remap noremap2 || exit 1
 test -d noremap2/SCCS || {
 	echo failed
 	exit 1
+}
+test -f noremap2/$FEATURES && {
+	grep -q remap noremap2/$FEATURES && fail remap feature
 }
 echo OK
 
 echo $N Verify that a clone of remap stays remapped .........,.......$NL
 bk clone $Q remap remap2 || fail
 test -d remap2/SCCS && fail
+test -f remap2/$FEATURES || fail no feature file
+grep -q remap remap2/$FEATURES || fail no remap feature
 rm -rf remap2
 echo OK
 
 rm -rf remap noremap2
 echo $N Verify that a lclone from noremap to remap works ............$NL
 bk clone $Q -l --hide-sccs-dirs noremap remap || exit 1
-test -d remap/SCCS && {
-	echo failed
-	exit 1
-}
+test -d remap/SCCS && fail
+test -f remap/$FEATURES || fail no feature file
+grep -q remap remap/$FEATURES || fail no remap feature
 echo OK
 
 echo $N Verify that a lclone of noremap stays not remapped ..........$NL
@@ -116,15 +127,17 @@ echo OK
 
 echo $N Verify that a lclone from remap to noremap works ............$NL
 bk clone --sccs-compat -l $Q remap noremap2 || exit 1
-test -d noremap2/SCCS || {
-	echo failed
-	exit 1
+test -d noremap2/SCCS || fail
+test -f noremap2/$FEATURES && {
+	grep -q remap noremap2/$FEATURES && fail remap feature
 }
 echo OK
 
 echo $N Verify that a lclone of remap stays remapped ................$NL
 bk clone $Q -l remap remap2 || fail
 test -d remap2/SCCS && fail
+test -f remap2/$FEATURES || fail no feature file
+grep -q remap remap2/$FEATURES || fail no remap feature
 rm -rf remap2
 echo OK
 
@@ -135,29 +148,33 @@ trap "bk _kill bk://localhost:$P" 0
 rm -rf remap noremap2
 echo $N Verify that a rclone from noremap to remap works ............$NL
 bk clone $Q --hide-sccs-dirs noremap bk://localhost:$P/remap || exit 1
-test -d remap/SCCS && {
-	echo failed
-	exit 1
-}
+test -d remap/SCCS && fail
+test -f remap/$FEATURES || fail no feature file
+grep -q remap remap/$FEATURES || fail no remap feature
 echo OK
 
 echo $N Verify that a rclone of noremap stays not remapped ..........$NL
 bk clone $Q noremap bk://localhost:$P/noremap2 || fail
 test -d noremap2/SCCS || fail
+test -f noremap2/$FEATURES && {
+	grep -q remap noremap2/$FEATURES && fail remap feature
+}
 rm -rf noremap2
 echo OK
 
 echo $N Verify that a rclone from remap to noremap works ............$NL
 bk clone --sccs-compat  $Q remap bk://localhost:$P/noremap2 || exit 1
-test -d noremap2/SCCS || {
-	echo failed
-	exit 1
+test -d noremap2/SCCS || fail
+test -f noremap2/$FEATURES && {
+	grep -q remap noremap2/$FEATURES && fail remap feature
 }
 echo OK
 
 echo $N Verify that a rclone of remap stays remapped ................$NL
 bk clone $Q remap bk://localhost:$P/remap2 || fail
 test -d remap2/SCCS && fail
+test -f remap2/$FEATURES || fail no feature file
+grep -q remap remap2/$FEATURES || fail no remap feature
 rm -rf remap2
 echo OK
 
