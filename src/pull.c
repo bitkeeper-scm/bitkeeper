@@ -764,6 +764,18 @@ npmerge:				fprintf(stderr,
 					    c->rootkey, url);
 				}
 			}
+			if (c->new) {
+				/*
+				 * Since we will clone, make sure the
+				 * destination namespace is not taken.
+				 */
+				if (exists(c->path) &&
+				    !nested_emptyDir(n, c->path)) {
+					fprintf(stderr, "pull: %s not empty, "
+					    "clone failed", c->path);
+					++errs;
+				}
+			}
 		} else {
 			/* not included in pull */
 

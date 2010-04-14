@@ -321,14 +321,16 @@ clone(char **av, remote *r, char *local, char **envVar)
 	char	*lic;
 	int	rc, do_part2;
 	clonerc	clonerc = CLONE_EXISTS;
-	int	(*empty)(char*);
+	char	*trans;
 
-	if (getenv("_BK_TRANSACTION")) {
-		empty = nested_emptyDir;
-	} else {
-		empty = emptyDir;
-	}
-	if (local && exists(local) && !empty(local)) {
+	/*
+	 * Whoever called us should have checked that the
+	 * destination is empty. Remember, in the nested case
+	 * and empty namespace doesn't necessarily imply an
+	 * empty directory. Think deep nests.
+	 */
+	trans = getenv("_BK_TRANSACTION");
+	if (local && exists(local) && !trans && !emptyDir(local)) {
 		fprintf(stderr, "clone: %s exists and is not empty\n", local);
 		exit(CLONE_EXISTS);
 	}
@@ -374,7 +376,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 			disconnect(r);
 			goto done;
 		}
-		if (exists(local) && !empty(local)) {
+		if (exists(local) && !trans && !emptyDir(local)) {
 			fprintf(stderr,
 			    "clone: %s exists and is not empty\n", local);
 			disconnect(r);

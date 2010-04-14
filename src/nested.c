@@ -910,9 +910,9 @@ nestedWalkdir(nested *n, char *dir, walkfn fn)
  * ASSERT - a cd2product was run before calling this
  */
 int
-nested_emptyDir(char *dir)
+nested_emptyDir(nested *n, char *dir)
 {
-	return (!nestedWalkdir(0, dir, empty));
+	return (!nestedWalkdir(n, dir, empty));
 }
 
 /*

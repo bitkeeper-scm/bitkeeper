@@ -366,7 +366,7 @@ bk here add $Q primes 2> ERR && {
 	cat ERR
 	exit 1
 }
-grep -q "comp2 exists and is not empty" ERR || fail -f ERR wrong error message
+grep -q "comp2 not empty" ERR || fail -f ERR wrong error message
 bk alias -k here > GOT
 echo subprimes > WANT
 cmpfiles GOT WANT
@@ -379,6 +379,21 @@ cat > WANT <<EOF
 EOF
 cmpfiles GOT WANT
 rm -f comp2/sub23
+echo OK
+
+echo $N Multiple conflicts should be reported at the same time.......$NL
+bk here rm $Q subprimes || fail
+for i in 2 3 5 7
+do
+	touch ./comp${i}/sub${i}
+done
+bk here add $Q subprimes 2> ERR && fail -f ERR should have failed
+for i in 2 3 5 7
+do
+	grep -q "comp${i}/sub${i} not empty" ERR || fail -f ERR sub${i} not in error
+	rm -f ./comp${i}/sub${i}
+done
+bk here add $Q subprimes || fail now it should have worked
 echo OK
 
 echo ---- Test very deeply nested deep nests........................

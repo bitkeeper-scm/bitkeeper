@@ -49,7 +49,15 @@ nested_populate(nested *n, char **urls, int force, popts *ops)
 			}
 			freeLines(lurls, free);
 		}
-		if (!cp->present && cp->alias) ops->comps++;
+		if (!cp->present && cp->alias) {
+			/* see if the namespace is not taken */
+			if (exists(cp->path) && !nested_emptyDir(n, cp->path)){
+				fprintf(stderr, "%s: %s not empty\n",
+				    prog, cp->path);
+				++rc;
+			}
+			ops->comps++;
+		}
 	}
 	if (rc) return (1);
 	if (ops->runcheck) {
