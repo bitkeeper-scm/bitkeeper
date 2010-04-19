@@ -173,8 +173,8 @@ extern void	L_scope_enter();
 extern void	L_scope_leave();
 extern void	L_set_baseType(Type *type, Type *base_type);
 extern void	L_set_declBaseType(VarDecl *decl, Type *base_type);
-extern Tcl_Obj	*L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *reobj,
-			 Tcl_Obj *limobj);
+extern Tcl_Obj	*L_split(Tcl_Interp *interp, Tcl_Obj *strobj,
+			 Tcl_Obj *delimobj, Tcl_Obj *limobj, Expr_f flags);
 extern Type	*L_struct_lookup(char *tag, int local);
 extern Type	*L_struct_store(char *tag, VarDecl *members);
 extern void	L_synerr(const char *s);	// yyerror

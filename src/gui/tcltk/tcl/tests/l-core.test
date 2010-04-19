@@ -11878,62 +11878,100 @@ split_1_0()
 
 	r = split("has none", " ");
 	unless ((r[0] eq "has") && (r[1] eq "none")) puts("bad 3.1");
-	if (defined(r[2])) puts("bad 3.2");
+	unless (length(r) == 2) puts("bad 3.2");
 
 	r = split(" has one", " ");
 	unless ((r[0] eq "has") && (r[1] eq "one")) puts("bad 3.3");
-	if (defined(r[2])) puts("bad 3.4");
+	unless (length(r) == 2) puts("bad 3.4");
 
 	r = split(" has one");
 	unless ((r[0] eq "") && (r[1] eq "has") && (r[2] eq "one")) {
 		puts("bad 3.5");
 	}
-	if (defined(r[3])) puts("bad 3.6");
+	unless (length(r) == 3) puts("bad 3.6");
 
 	/* Trailing white space never produces a null field. */
 
 	r = split("trail ");
 	unless (r[0] eq "trail") puts("bad 4.1");
-	if (defined(r[1])) puts("bad 4.2");
+	unless (length(r) == 1) puts("bad 4.2");
 
 	r = split("trail ", " ");
 	unless (r[0] eq "trail") puts("bad 4.3");
-	if (defined(r[1])) puts("bad 4.4");
+	unless (length(r) == 1) puts("bad 4.4");
+
+	r = split("trail ", / /);
+	unless (r[0] eq "trail") puts("bad 4.5");
+	unless (length(r) == 1) puts("bad 4.6");
+
+	/*
+	 * If all result fields are null, they are considered to be
+	 * trailing and should not be returned.
+	 */
+
+	r = split("xxx", "x");
+	unless (length(r) == 0) puts("bad 4.7");
+
+	r = split("xxx", /x/);
+	unless (length(r) == 0) puts("bad 4.8");
+
+	r = split("xxxxxx", "xx");
+	unless (length(r) == 0) puts("bad 4.9");
+
+	r = split("xxxxxx", /xx/);
+	unless (length(r) == 0) puts("bad 4.10");
+
+	r = split("twotwotwo", "two");
+	unless (length(r) == 0) puts("bad 4.11");
+
+	r = split("twotwotwo", /two/);
+	unless (length(r) == 0) puts("bad 4.12");
 
 	/* Check split on a regexp. */
-
-	r = split("XaXbXcX", "[abc]");
-	unless ((r[0] eq "X") && (r[1] eq "X") && (r[2] eq "X") &&
-		(r[3] eq "X")) {
-		puts("bad 5.1");
-	}
-	if (defined(r[4])) puts("bad 5.2");
 
 	r = split("XaXbXcX", /[abc]/);
 	unless ((r[0] eq "X") && (r[1] eq "X") && (r[2] eq "X") &&
 		(r[3] eq "X")) {
 		puts("bad 5.3");
 	}
-	if (defined(r[4])) puts("bad 5.4");
+	unless (length(r) == 4) puts("bad 5.4");
 
-	r = split("XaaXbXcX", "[abc]");
+	r = split("XaaXbXcX", /[abc]/);
 	unless ((r[0] eq "X") && (r[1] eq "") && (r[2] eq "X") &&
 		(r[3] eq "X") && (r[4] eq "X")) {
 		puts("bad 5.5");
 	}
-	if (defined(r[5])) puts("bad 5.6");
+	unless (length(r) == 5) puts("bad 5.6");
 
-	/* A regexp match on the last char never produces a null field. */
+	r = split("xxxyxx", /xx/);
+	unless ((r[0] eq "") && (r[1] eq "xy")) {
+		puts("bad 5.11");
+	}
+	unless (length(r) == 2) puts("bad 5.12");
+
+	/* A match at the end never produces a trailing null field. */
 
 	r = split("abcd", /[d]/);
-	unless (r[0] eq "abc") puts("bad 5.7");
-	if (defined(r[1])) puts("bad 5.8");
+	unless (r[0] eq "abc") puts("bad 5.13");
+	unless (length(r) == 1) puts("bad 5.14");
 
-	/* A regexp match on the first char produces a  null field. */
+	r = split("abcd", "d");
+	unless (r[0] eq "abc") puts("bad 5.15");
+	unless (length(r) == 1) puts("bad 5.16");
+
+	r = split("abcdef", "def");
+	unless (r[0] eq "abc") puts("bad 5.17");
+	unless (length(r) == 1) puts("bad 5.18");
+
+	/* A match on the first char always produces a null field. */
 
 	r = split("abcd", /[a]/);
-	unless ((r[0] eq "") && (r[1] eq "bcd")) puts("bad 5.9");
-	if (defined(r[2])) puts("bad 5.10");
+	unless ((r[0] eq "") && (r[1] eq "bcd")) puts("bad 5.19");
+	unless (length(r) == 2) puts("bad 5.20");
+
+	r = split("abcd", "a");
+	unless ((r[0] eq "") && (r[1] eq "bcd")) puts("bad 5.21");
+	unless (length(r) == 2) puts("bad 5.22");
 
 	/* Test interpolated regexp. */
 
@@ -11943,51 +11981,139 @@ split_1_0()
 		(r[3] eq "X")) {
 		puts("bad 6.1");
 	}
-	if (defined(r[4])) puts("bad 6.2");
+	unless (length(r) == 4) puts("bad 6.2");
 
-	/* Test limits. */
+	/* Test limits, single-char match. */
 
 	r = split("1 2 3 4", " ", 5);
 	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
 		(r[3] eq "4")) {
 		puts("bad 7.1");
 	}
-	if (defined(r[4])) puts("bad 7.2");
+	unless (length(r) == 4) puts("bad 7.2");
 
 	r = split("1 2 3 4", " ", 4);
 	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
 		(r[3] eq "4")) {
 		puts("bad 7.3");
 	}
-	if (defined(r[4])) puts("bad 7.4");
+	unless (length(r) == 4) puts("bad 7.4");
 
 	r = split("1 2 3 4", " ", 3);
 	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3 4")) {
 		puts("bad 7.5");
 	}
-	if (defined(r[3])) puts("bad 7.6");
+	unless (length(r) == 3) puts("bad 7.6");
 
 	r = split("1 2 3 4", " ", 2);
 	unless ((r[0] eq "1") && (r[1] eq "2 3 4")) puts("bad 7.7");
-	if (defined(r[2])) puts("bad 7.8");
+	unless (length(r) == 2) puts("bad 7.8");
 
 	r = split("1 2 3 4", " ", 1);
 	unless (r[0] eq "1 2 3 4") puts("bad 7.9");
-	if (defined(r[1])) puts("bad 7.10");
+	unless (length(r) == 1) puts("bad 7.9");
 
 	r = split("1 2 3 4", " ", 0);
 	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
 		(r[3] eq "4")) {
 		puts("bad 7.11");
 	}
-	if (defined(r[4])) puts("bad 7.12");
+	unless (length(r) == 4) puts("bad 7.12");
 
 	r = split("1 2 3 4", " ", -1);
 	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
 		(r[3] eq "4")) {
 		puts("bad 7.13");
 	}
-	if (defined(r[4])) puts("bad 7.14");
+	unless (length(r) == 4) puts("bad 7.14");
+
+	r = split("1 2 3 4", / /, 5);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
+		(r[3] eq "4")) {
+		puts("bad 7.15");
+	}
+	unless (length(r) == 4) puts("bad 7.16");
+
+	/* Test limits, regexp match. */
+
+	r = split("1 2 3 4", / /, 4);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
+		(r[3] eq "4")) {
+		puts("bad 7.17");
+	}
+	unless (length(r) == 4) puts("bad 7.18");
+
+	r = split("1 2 3 4", / /, 3);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3 4")) {
+		puts("bad 7.19");
+	}
+	unless (length(r) == 3) puts("bad 7.20");
+
+	r = split("1 2 3 4", / /, 2);
+	unless ((r[0] eq "1") && (r[1] eq "2 3 4")) puts("bad 7.21");
+	unless (length(r) == 2) puts("bad 7.22");
+
+	r = split("1 2 3 4", / /, 1);
+	unless (r[0] eq "1 2 3 4") puts("bad 7.23");
+	unless (length(r) == 1) puts("bad 7.24");
+
+	r = split("1 2 3 4", / /, 0);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
+		(r[3] eq "4")) {
+		puts("bad 7.25");
+	}
+	unless (length(r) == 4) puts("bad 7.26");
+
+	r = split("1 2 3 4", / /, -1);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
+		(r[3] eq "4")) {
+		puts("bad 7.27");
+	}
+	unless (length(r) == 4) puts("bad 7.28");
+
+	/* Test limits, string match match. */
+
+	r = split("1aa2aa3aa4", "aa", 5);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
+		(r[3] eq "4")) {
+		puts("bad 7.30");
+	}
+	unless (length(r) == 4) puts("bad 7.31");
+
+	r = split("1aa2aa3aa4", "aa", 4);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
+		(r[3] eq "4")) {
+		puts("bad 7.32");
+	}
+	unless (length(r) == 4) puts("bad 7.33");
+
+	r = split("1aa2aa3aa4", "aa", 3);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3aa4")) {
+		puts("bad 7.34");
+	}
+	unless (length(r) == 3) puts("bad 7.35");
+
+	r = split("1aa2aa3aa4", "aa", 2);
+	unless ((r[0] eq "1") && (r[1] eq "2aa3aa4")) puts("bad 7.36");
+	unless (length(r) == 2) puts("bad 7.37");
+
+	r = split("1aa2aa3aa4", "aa", 1);
+	unless (r[0] eq "1aa2aa3aa4") puts("bad 7.38");
+	unless (length(r) == 1) puts("bad 7.39");
+
+	r = split("1aa2aa3aa4", "aa", 0);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
+		(r[3] eq "4")) {
+		puts("bad 7.40");
+	}
+	unless (length(r) == 4) puts("bad 7.41");
+
+	r = split("1aa2aa3aa4", "aa", -1);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
+		(r[3] eq "4")) {
+		puts("bad 7.42");
+	}
+	unless (length(r) == 4) puts("bad 7.43");
 
 	/* Test that an escape of the regexp delimeter works. */
 
@@ -11996,7 +12122,7 @@ split_1_0()
 		(r[3] eq "a") && (r[4] eq "pathname")) {
 		puts("bad 8.1");
 	}
-	if (defined(r[5])) puts("bad 8.2");
+	unless (length(r) == 5) puts("bad 8.2");
 
 	/* Test alternate form of regexp. */
 
@@ -12005,7 +12131,7 @@ split_1_0()
 		(r[3] eq "a") && (r[4] eq "pathname")) {
 		puts("bad 9.1");
 	}
-	if (defined(r[5])) puts("bad 9.2");
+	unless (length(r) == 5) puts("bad 9.2");
 
 	s = "abc";
 	r = split("XaXbXcX", m|[${s}]|);
@@ -12013,13 +12139,13 @@ split_1_0()
 		(r[3] eq "X")) {
 		puts("bad 9.3");
 	}
-	if (defined(r[4])) puts("bad 9.4");
+	unless (length(r) == 4) puts("bad 9.4");
 
 	r = split("1 2 3 4", m| |, 3);
 	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3 4")) {
 		puts("bad 9.5");
 	}
-	if (defined(r[3])) puts("bad 9.6");
+	unless (length(r) == 3) puts("bad 9.6");
 
 	/* Ensure third arg is not parsed as a regexp. */
 
@@ -12028,7 +12154,83 @@ split_1_0()
 	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3 4")) {
 		puts("bad 9.7");
 	}
-	if (defined(r[3])) puts("bad 9.8");
+	unless (length(r) == 3) puts("bad 9.8");
+
+	/* Split on a single-character string delimeter. */
+
+	r = split("1x22x3x4", "x");
+	unless ((r[0] eq "1") && (r[1] eq "22") && (r[2] eq "3") &&
+		(r[3] eq "4")) {
+		puts("bad 10.1");
+	}
+	unless (length(r) == 4) puts("bad 10.2");
+
+	r = split("x22x3x4", "x");
+	unless ((r[0] eq "") && (r[1] eq "22") && (r[2] eq "3") &&
+		(r[3] eq "4")) {
+		puts("bad 10.3");
+	}
+	unless (length(r) == 4) puts("bad 10.4");
+
+	r = split("x22x3x", "x");
+	unless ((r[0] eq "") && (r[1] eq "22") && (r[2] eq "3")) {
+		puts("bad 10.5");
+	}
+	unless (length(r) == 3) puts("bad 10.6");
+
+	/* Split on a multi-character string delimeter. */
+
+	r = split("onetwothreetwofourtwo", "two");
+	unless ((r[0] eq "one") && (r[1] eq "three") && (r[2] eq "four")) {
+		puts("bad 10.7");
+	}
+	unless (length(r) == 3) puts("bad 10.8");
+
+	r = split("twoonetwo", "two");
+	unless ((r[0] eq "") && (r[1] eq "one")) {
+		puts("bad 10.9");
+	}
+	unless (length(r) == 2) puts("bad 10.10");
+
+	r = split("nomatches", "two");
+	unless (r[0] eq "nomatches") {
+		puts("bad 10.11");
+	}
+	unless (length(r) == 1) puts("bad 10.12");
+
+	/* Ensure a string delim is not interpreted as a regexp. */
+
+	r = split("we.are.dots", ".");
+	unless ((r[0] eq "we") && (r[1] eq "are") && (r[2] eq "dots")) {
+		puts("bad 11.1");
+	}
+	unless (length(r) == 3) puts("bad 11.2");
+
+	r = split("we*are*stars", "*");
+	unless ((r[0] eq "we") && (r[1] eq "are") && (r[2] eq "stars")) {
+		puts("bad 11.3");
+	}
+	unless (length(r) == 3) puts("bad 11.4");
+
+	r = split("we..**are..**stars", "..**");
+	unless ((r[0] eq "we") && (r[1] eq "are") && (r[2] eq "stars")) {
+		puts("bad 11.5");
+	}
+	unless (length(r) == 3) puts("bad 11.6");
+
+	/* Split on an empty regexp and empty string. */
+
+	r = split("abc", //);
+	unless ((r[0] eq "a") && (r[1] eq "b") && (r[2] eq "c")) {
+		puts("bad 12.1");
+	}
+	unless (length(r) == 3) puts("bad 12.2");
+
+	r = split("abc", "");
+	unless ((r[0] eq "a") && (r[1] eq "b") && (r[2] eq "c")) {
+		puts("bad 12.3");
+	}
+	unless (length(r) == 3) puts("bad 12.4");
 }
 #lang tcl
 split_1_0
@@ -12046,6 +12248,59 @@ void split_2()
 .*4: L Error: regular expression modifiers illegal in split
 .*5: L Error: regular expression modifiers illegal in split
 }
+
+test split-3 {test split errors 2} -body {
+#lang L
+void split_3()
+{
+	/*
+	 * This is a syntax error because the grammar special-cases
+	 * split() because the 2nd arg can be a regexp or a string,
+	 * and does not allow no args.
+	 */
+	split();
+}
+} -returnCodes error -match regexp -result {.*8: L Error: syntax error, unexpected \)
+}
+
+test split-4 {test split errors 3} -body {
+#lang L
+void split_4()
+{
+	split("str", "delim", 0, 0);
+	split(0);
+	split("str", "delim", "bad");
+}
+} -returnCodes error -match regexp -result {.*3: L Error: too many args to split
+.*4: L Error: first arg to split must be string
+.*5: L Error: third arg to split must be integer
+}
+
+test split-5 {test split errors 4 -- bad regexp} -body {
+#lang L
+void split_5()
+{
+	split("str", /+/);
+}
+split_5();
+} -returnCodes error -result {couldn't compile pcre pattern: nothing to repeat}
+#'
+
+test split-6 {test split works with comma expression} -body {
+#lang L
+void split_6()
+{
+	int x = (0, 2);
+
+	unless((string)split("foo.bar.baz", ".", x) eq "foo bar.baz") {
+		puts("bad 1");
+	}
+	unless((string)split("foo.bar.baz", ".", (0, 2)) eq "foo bar.baz") {
+		puts("bad 2");
+	}
+}
+split_6();
+} -output {}
 
 test consts-1.0 {test constants function} -body {
 #lang L
@@ -13454,9 +13709,9 @@ void lvalue_1()
 	string	a1[] = { "1", "2", "3" };
 	string	a2[];
 
-	unless (split("a b c")[0] eq "a") puts("bad 1");
-	unless (split("a b c")[1] eq "b") puts("bad 2");
-	unless (split("a b c")[2] eq "c") puts("bad 3");
+	unless (split("a x c")[0] eq "a") puts("bad 1");
+	unless (split("y b c")[1] eq "b") puts("bad 2");
+	unless (split("z b c")[2] eq "c") puts("bad 3");
 
 	if (defined(a2[0])) puts("bad 4");
 	unless ((a2 = a1)[0] eq "1") puts("bad 5");

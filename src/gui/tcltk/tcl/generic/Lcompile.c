@@ -1275,11 +1275,37 @@ compile_rename(Expr *expr)
 private int
 compile_split(Expr *expr)
 {
-	int n = compile_exprs(expr->b, L_PUSH_VAL);
-	if ((n < 1) || (n > 3)) {
-		L_errf(expr, "incorrect # args for split");
+	int	n;
+	Expr	*arg = expr->b;
+	Expr	*lim = NULL, *sep = NULL;
+	Expr_f	flags = 0;
+
+	n = compile_exprs(expr->b, L_PUSH_VAL);
+	ASSERT(n > 0);  // grammar ensures this
+	if (n > 3) {
+		L_errf(expr, "too many args to split");
 	}
-	TclEmitInstInt1(INST_L_SPLIT, n, L->frame->envPtr);
+	unless (isstring(arg) && !isregexp(arg)) {
+		L_errf(expr, "first arg to split must be string");
+	}
+	if (arg && arg->next) {
+		sep = arg->next;
+		ASSERT(isstring(sep));  // grammar ensures this
+		if (isregexp(sep)) {
+			flags |= L_SPLIT_RE;
+		} else {
+			flags |= L_SPLIT_STR;
+		}
+	}
+	if (sep && sep->next) {
+		lim = sep->next;
+		flags |= L_SPLIT_LIM;
+		unless (isint(lim)) {
+			L_errf(expr, "third arg to split must be integer");
+		}
+	}
+	TclEmitInstInt4(INST_L_SPLIT, flags, L->frame->envPtr);
+	TclAdjustStackDepth(n-1, L->frame->envPtr);
 	expr->type = type_mkArray(0, L_string, PER_INTERP);
 	return (1);  // stack effect
 }
@@ -5117,21 +5143,28 @@ L_typedef_store(VarDecl *decl)
  *
  * - A limit <= 0 means no limit.
  *
- * - If the regexp is ' ', we split on white space but leading
+ * - If the delim is / / or ' ', split on white space but leading
  *   white space does not produce a null first field.
  *
- * - No regexp means split on white space.
+ * - No regexp means split on white space (and can return a null first
+ *   field).
+ *
+ * - Trailing null fields in the result are suppressed.
+ *
+ * - If all result fields are null, they are considered to be trailing
+ *   and are all suppressed.
  */
 Tcl_Obj *
-L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *reobj, Tcl_Obj *limobj)
+L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
+	Tcl_Obj *limobj, Expr_f flags)
 {
-	int		end, lim, matches, off, ret, start;
-	int		ondefault=0, onspace=0;
-	Tcl_RegExp	regExpr;
+	int		ondefault=0, onre=(flags & L_SPLIT_RE), onspace=0;
+	int		delimlen=0, i, len, lim, matches, off, ret;
+	int		start = 0, end = 0;
+	Tcl_RegExp	regExpr = NULL;
 	Tcl_RegExpInfo	info;
-	Tcl_Obj		*resultPtr, *objPtr, *listPtr;
-	char		*str;
-	int		len;
+	Tcl_Obj		**elems, *resultPtr, *objPtr, *listPtr;
+	char		*delimstr = NULL, *p, *str;
 
 	if (limobj) {
 		Tcl_GetIntFromObj(interp, limobj, &lim);
@@ -5148,12 +5181,13 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *reobj, Tcl_Obj *limobj)
 	}
 
 	/*
-	 * Check for the cases of no regexpr (split on white space) or
+	 * Check for the cases of no delimeter (split on white space) or
 	 * splitting on ' ' (split on white space but don't return a
 	 * null field for any leading white space).
 	 */
-	if (reobj) {
-		unless (strcmp(" ", Tcl_GetString(reobj))) onspace = 1;
+	if (delimobj) {
+		delimstr = TclGetStringFromObj(delimobj, &delimlen);
+		unless (strcmp(" ", delimstr)) onspace = 1;
 	} else {
 		ondefault = 1;
 	}
@@ -5163,7 +5197,7 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *reobj, Tcl_Obj *limobj)
 	 * cause RegExpObj <> UnicodeObj shimmering that causes data corruption.
 	 * [Bug #461322]
 	 */
-	if (strobj == reobj) {
+	if (strobj == delimobj) {
 		objPtr = Tcl_DuplicateObj(strobj);
 	} else {
 		objPtr = strobj;
@@ -5175,8 +5209,7 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *reobj, Tcl_Obj *limobj)
 	off     = 0;
 
 	/*
-	 * Split on white space if no regexp or ' ' was specified.  No
-	 * need for the regexp engine here.
+	 * Split on white space if no delim or ' ' or / / was specified.
 	 */
 	if (ondefault || onspace) {
 		int letters = 0, skip = 0;
@@ -5190,7 +5223,7 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *reobj, Tcl_Obj *limobj)
 				}
 			} else {
 				if (isspace(str[off])) {
-					/* When regexp is ' ', create no null
+					/* When delim is ' ', create no null
 					 * field for leading white space. */
 					unless (onspace && !off && !start) {
 						resultPtr = Tcl_NewStringObj(
@@ -5208,32 +5241,45 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *reobj, Tcl_Obj *limobj)
 			resultPtr = Tcl_NewStringObj(str+start, len-start);
 			Tcl_ListObjAppendElement(NULL, listPtr, resultPtr);
 		}
-		/* If input was all whitespace, return empty list. */
-		unless (letters || !lim) listPtr = Tcl_NewObj();
 		goto done;
 	}
 
 	/*
-	 * Split on the specified regular expression.
+	 * Split on a string or regular expression.
 	 */
-	regExpr = Tcl_GetRegExpFromObj(interp, reobj,
-				       TCL_REG_ADVANCED | TCL_REG_PCRE);
-	unless (regExpr) {
-		listPtr = Tcl_NewObj();
-		goto done;
+	if (delimlen == 0) onre = 1;  // handle "" like the regexp //
+	if (onre) {
+		regExpr = Tcl_GetRegExpFromObj(interp, delimobj,
+					       TCL_REG_ADVANCED | TCL_REG_PCRE);
+		unless (regExpr) {  // bad regexp
+			listPtr = NULL;
+			goto done;
+		}
 	}
 	while ((off < len) && (matches < lim)) {
-		ret = Tcl_RegExpExecObj(interp, regExpr, objPtr, off,
-				10 /* matches */,
-				((off > 0 && (str[off-1] != '\n'))
-				? TCL_REG_NOTBOL : 0));
-		if (ret < 0) goto done;
-		if (ret == 0) break;
-
-		Tcl_RegExpGetInfo(regExpr, &info);
-		start = info.matches[0].start;
-		end   = info.matches[0].end;
-		matches++;
+		if (onre) {
+			ret = Tcl_RegExpExecObj(interp, regExpr, objPtr, off,
+						10 /* matches */,
+						((off>0 && (str[off-1]!='\n'))
+						 ? TCL_REG_NOTBOL : 0));
+			if (ret < 0) goto done;
+			if (ret == 0) break;
+			Tcl_RegExpGetInfo(regExpr, &info);
+			start = info.matches[0].start;
+			end   = info.matches[0].end;
+			matches++;
+		} else {
+			for (p = str+off; (p-str) < len; ++p) {
+				if ((*p == *delimstr) &&
+				    !strncmp(p, delimstr, delimlen)) {
+					start = p - (str+off);
+					end   = start + delimlen;
+					matches++;
+					break;
+				}
+			}
+			if ((p-str) == len) break;
+		}
 
 		/*
 		 * Copy to the result list the portion of the source
@@ -5260,8 +5306,19 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *reobj, Tcl_Obj *limobj)
 	}
 
  done:
-	if (objPtr && (strobj == reobj)) {
+	if (objPtr && (strobj == delimobj)) {
 		Tcl_DecrRefCount(objPtr);
+	}
+	unless (listPtr) return (NULL);
+
+	/*
+	 * Strip any trailing empty fields in the result.  This is
+	 * to be consistent with Perl's split semantics.
+	 */
+	TclListObjGetElements(NULL, listPtr, &len, &elems);
+	for (i = len-1; i >= 0; --i) {
+		if (elems[i]->length) break;
+		Tcl_ListObjReplace(interp, listPtr, i, 1, 0, NULL);
 	}
 	return (listPtr);
 }

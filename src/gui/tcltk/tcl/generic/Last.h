@@ -236,24 +236,27 @@ typedef enum {
  * the Expr AST node.
  */
 typedef enum {
-	L_EXPR_RE_I   = 0x00001, // expr is an re with "i" qualifier
-	L_EXPR_RE_G   = 0x00002, // expr is an re with "g" qualifier
-	L_EXPR_DEEP   = 0x00004, // expr is the result of a deep dive
-	L_IDX_ARRAY   = 0x00008, // what kind of thing we're indexing
-	L_IDX_HASH    = 0x00010,
-	L_IDX_STRING  = 0x00020,
-	L_LVALUE      = 0x00040, // if we will be writing the obj
-	L_DELETE      = 0x00080, // delete the obj from its parent hash/array
-	L_PUSH_VAL    = 0x00100, // what we want INST_L_INDEX to leave on
-	L_PUSH_PTR    = 0x00200, //   the stack
-	L_PUSH_VALPTR = 0x00400,
-	L_PUSH_PTRVAL = 0x00800,
-	L_DISCARD     = 0x01000, // have compile_expr discard the val, not push
-	L_PUSH_NAME   = 0x02000, // have compile_expr push the name not the val
-	L_PUSH_NEW    = 0x04000, // whether INST_L_DEEP_WRITE should push the
-	L_PUSH_OLD    = 0x08000, //   new or old value
-	L_NOTUSED     = 0x10000, // do not update used_p boolean in symtab entry
-	L_NOWARN      = 0x20000, // issue no err if symbol undefined
+	L_EXPR_RE_I   = 0x00000001, // expr is an re with "i" qualifier
+	L_EXPR_RE_G   = 0x00000002, // expr is an re with "g" qualifier
+	L_EXPR_DEEP   = 0x00000004, // expr is the result of a deep dive
+	L_IDX_ARRAY   = 0x00000008, // what kind of thing we're indexing
+	L_IDX_HASH    = 0x00000010,
+	L_IDX_STRING  = 0x00000020,
+	L_LVALUE      = 0x00000040, // if we will be writing the obj
+	L_DELETE      = 0x00000080, // delete obj from its parent hash/array
+	L_PUSH_VAL    = 0x00000100, // what we want INST_L_INDEX to leave on
+	L_PUSH_PTR    = 0x00000200, //   the stack
+	L_PUSH_VALPTR = 0x00000400,
+	L_PUSH_PTRVAL = 0x00000800,
+	L_DISCARD     = 0x00001000, // have compile_expr push nothing
+	L_PUSH_NAME   = 0x00002000, // have compile_expr push name not val
+	L_PUSH_NEW    = 0x00004000, // whether INST_L_DEEP_WRITE should push
+	L_PUSH_OLD    = 0x00008000, //   the new or old value
+	L_NOTUSED     = 0x00010000, // do not update used_p in symtab entry
+	L_NOWARN      = 0x00020000, // issue no err if symbol undefined
+	L_SPLIT_RE    = 0x00040000, // split on a regexp
+	L_SPLIT_STR   = 0x00080000, // split on a string
+	L_SPLIT_LIM   = 0x00100000, // enforce split limit
 } Expr_f;
 
 struct Expr {

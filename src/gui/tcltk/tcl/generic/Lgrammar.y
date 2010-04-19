@@ -221,7 +221,7 @@ extern int	L_lex (void);
 %type <Switch> switch_stmt
 %type <Case> switch_cases switch_case
 %type <Pragma> pragma_arg_list
-%type <Expr> expr expression_stmt argument_expr_list opt_arg re_or_string
+%type <Expr> expr expression_stmt argument_expr_list opt_arg_list re_or_string
 %type <Expr> id id_list string_literal cmdsubst_literal dotted_id
 %type <Expr> regexp_literal regexp_literal_mod subst_literal interpolated_expr
 %type <Expr> list list_element case_expr option_arg
@@ -1099,7 +1099,7 @@ expr:
 	 */
 	| T_SPLIT "(" expr begin_re_arg
 	  "," re_or_string { L_lex_endReArg(); }
-	  opt_arg ")"
+	  opt_arg_list ")"
 	{
 		Expr *id = ast_mkId("split", @1.beg, @1.end);
 		$3->next = $6;
@@ -1250,9 +1250,9 @@ begin_re_arg:
 	}
 	;
 
-opt_arg:
-	  "," expr	{ $$ = $2; $$->node.beg = @1.beg; }
-	|		{ $$ = NULL; }
+opt_arg_list:
+	  "," argument_expr_list	{ $$ = $2; $$->node.beg = @1.beg; }
+	|				{ $$ = NULL; }
 	;
 
 re_or_string:

@@ -8059,31 +8059,33 @@ TclExecuteByteCode(
     }
 
     case INST_L_SPLIT: {
+	int n;
 	Tcl_Obj *strObj = NULL;
-	Tcl_Obj *regexpObj = NULL;
+	Tcl_Obj *delimObj = NULL;
 	Tcl_Obj *limitObj = NULL;
-	unsigned int opnd = TclGetUInt1AtPtr(pc+1);
+	unsigned int opnd = TclGetUInt4AtPtr(pc+1);
 
-	switch (opnd) {
-	    case 1:
-		strObj = OBJ_AT_DEPTH(0);
-		break;
-	    case 2:
-		strObj = OBJ_AT_DEPTH(1);
-		regexpObj = OBJ_AT_DEPTH(0);
-		break;
-	    case 3:
-		strObj = OBJ_AT_DEPTH(2);
-		regexpObj = OBJ_AT_DEPTH(1);
-		limitObj = OBJ_AT_DEPTH(0);
-		break;
-	    default:
-		Tcl_Panic("illegal operand to INST_L_SPLIT");
-		break;
+	if (opnd & L_SPLIT_LIM) {
+	    ASSERT(opnd & (L_SPLIT_RE | L_SPLIT_STR));
+	    strObj   = OBJ_AT_DEPTH(2);
+	    delimObj = OBJ_AT_DEPTH(1);
+	    limitObj = OBJ_AT_DEPTH(0);
+	    n = 3;
+	} else if (opnd & (L_SPLIT_RE | L_SPLIT_STR)) {
+	    strObj   = OBJ_AT_DEPTH(1);
+	    delimObj = OBJ_AT_DEPTH(0);
+	    n = 2;
+	} else {
+	    strObj   = OBJ_AT_DEPTH(0);
+	    n = 1;
 	}
-	objResultPtr = L_split(interp, strObj, regexpObj, limitObj);
-	TRACE_WITH_OBJ(("%u => ", opnd), objResultPtr);
-	NEXT_INST_V(2, opnd, 1);
+	objResultPtr = L_split(interp, strObj, delimObj, limitObj, opnd);
+	if (!objResultPtr) {
+	    result = TCL_ERROR;
+	    goto checkForCatch;
+	}
+	TRACE_WITH_OBJ(("0x%x => ", opnd), objResultPtr);
+	NEXT_INST_V(5, n, 1);
     }
 
     case INST_L_DEFINED: {

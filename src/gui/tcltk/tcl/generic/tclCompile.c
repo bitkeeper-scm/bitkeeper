@@ -411,9 +411,9 @@ InstructionDesc const tclInstructionTable[] = {
 	 * copied by l-index for copy-on-write.  opnd2 contains flags
 	 * indicating whether to leave old or new value on stack top.
 	 * stktop is the L deep pointer, stknext is the value to write. */
-    {"lsplit",		 2,    INT_MIN,   1,    {OPERAND_UINT1}},
-	/* Perl-like string split. op1 is the number of arguments;
-	 * stack contains the limit (optional), then the regexp
+    {"lsplit",		 2,    0,         1,    {OPERAND_UINT4}},
+	/* Perl-like string split. opnd is a flags word (see Expr_f),
+	 * stack contains the limit (optional), then the delimeter
 	 * (optional) then the string to split. */
     {"l-defined",	 1,    0,         0,	{OPERAND_NONE}},
 	/* Test whether value at stackTop is the L undefined value. */

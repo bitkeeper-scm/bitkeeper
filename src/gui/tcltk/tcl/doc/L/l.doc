@@ -1564,6 +1564,52 @@ of type T as arguments and return -1 if the first comes before the
 second in the sort order, +1 if the first comes after the second, and
 0 if the two are equal.
 
+=proto string[] split(string s)
+
+=proto string[] split(string s, /regexp/)
+
+=proto string[] split(string s, string sep)
+
+=proto string[] split(string s, /regexp/, int limit)
+
+=proto string[] split(string s, string sep, int limit)
+
+Split a string into substrings.
+In the first variation, the string is split on whitespace, and any
+leading or trailing white space does not produce a null field in the result.
+This is useful when you just want to get at the things delimited
+by the white space:
+
+    split("a b c");    // returns {"a", "b", "c"}
+    split(" x y z ");  // returns {"x", "y", "z"}
+
+In the second variation, the string is split on a given delimeter
+which can be of any length:
+
+    split("we.are.dots", ".");  // returns {"we", "are", "dots"}
+    split("AxxxBxxxC", "xxx");  // returns {"A", "B", "C"}
+
+The delimeter must be a constant and not a variable or expression (but
+you can work around that by putting variables in a string
+interpolation).
+
+In the third variation, the delimeter is a regular expression:
+
+    split("1;10,20", /[;,]/);  // returns {"1", "10", "20"}
+
+When a delimeter is used (whether a string or a regular expression),
+split returns a null first field if the
+string begins with the delimeter, but if the string ends with the
+delimeter no trailing null field is returned.
+This provides compatibility with Perl's split:
+
+    split("xxAxxBxxCxx", "xx");  // returns {"", "A", "B", "C"}
+
+In the last two variations, at most C<limit> fields are split off
+(limit <= 0 means no limit):
+
+    split("a b c d e f", " ", 3);  // returns {"a", "b", "c", "d e f"}
+
 =proto string sprintf(string fmt, ...args)
 
 Format arguments and return a formatted string like sprintf(3).
@@ -1586,24 +1632,6 @@ Return the first index of c into s, or -1 if c is not found.
 =proto int streq(string a, string b)
 
 Return 1 if the two strings are equal, else return 0.
-
-=proto string[] split(string s)
-
-=proto string[] split(string s, /regexp/)
-
-=proto string[] split(string s, /regexp/, int limit)
-
-=proto string[] split(string s, string sep)
-
-=proto string[] split(string s, string sep, int limit)
-
-Split a string into substrings.
-In the first variation, the string is split on whitespace.
-In the second and third variations, the string is split on the given regular
-expression, with at most C<limit> fields being split off (a limit less than
-0 means no limit).
-The last two variations split, where no regexp or separator is specified, split
-on white space but any leading white space does not produce a null first field.
 
 =proto int strlen(string s)
 
