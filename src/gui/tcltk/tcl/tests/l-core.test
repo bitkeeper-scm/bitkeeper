@@ -10360,9 +10360,10 @@ typecheck_6_1()
 	push(p, i);
 	push(w, i);
 
-	/* Error -- too few arguments. */
+	/* Error -- too few or too many arguments. */
 	push(&a);
 	push();
+	push(&a, 1, 2);
 
 	/* Error -- first arg not an array reference. */
 	push(&i, i);
@@ -10387,7 +10388,7 @@ typecheck_6_1
 .*:22: L Error: first arg to push not an array reference.*
 .*:25: L Error: incorrect # arguments to push
 .*:26: L Error: incorrect # arguments to push
-.*:29: L Error: first arg to push not an array reference.*
+.*:27: L Error: incorrect # arguments to push
 .*:30: L Error: first arg to push not an array reference.*
 .*:31: L Error: first arg to push not an array reference.*
 .*:32: L Error: first arg to push not an array reference.*
@@ -10396,6 +10397,7 @@ typecheck_6_1
 .*:35: L Error: first arg to push not an array reference.*
 .*:36: L Error: first arg to push not an array reference.*
 .*:37: L Error: first arg to push not an array reference.*
+.*:38: L Error: first arg to push not an array reference.*
 }
 
 test typecheck-6.2 {type check errors with push built-in 2} -body {
@@ -10433,29 +10435,45 @@ typecheck_6_2()
 	push(&ai, w);
 	push(&ai, aw);
 
-	push(&ai, 1, f);
-	push(&ai, s, f);
-	push(&ai, 1, 1, 1, f);
+	push(&aa[0], f);
+	push(&aa[0], s);
+	push(&aa[0], a);
+	push(&aa[0], aa);
+	push(&aa[0], as);
+	push(&aa[0], af);
+	push(&aa[0], h);
+	push(&aa[0], ah);
+	push(&aa[0], st);
+	push(&aa[0], ast);
+	push(&aa[0], w);
+	push(&aa[0], aw);
 }
-#lang tcl
-typecheck_6_2
-} -returnCodes {error} -match regexp -result {.*:19: L Error: arg #2 to push has type incompatible with array
-.*:21: L Error: arg #2 to push has type incompatible with array
-.*:22: L Error: arg #2 to push has type incompatible with array
-.*:23: L Error: arg #2 to push has type incompatible with array
-.*:24: L Error: arg #2 to push has type incompatible with array
-.*:25: L Error: arg #2 to push has type incompatible with array
-.*:26: L Error: arg #2 to push has type incompatible with array
-.*:27: L Error: arg #2 to push has type incompatible with array
-.*:28: L Error: arg #2 to push has type incompatible with array
-.*:29: L Error: arg #2 to push has type incompatible with array
-.*:30: L Error: arg #2 to push has type incompatible with array
-.*:31: L Error: arg #2 to push has type incompatible with array
-.*:32: L Error: arg #2 to push has type incompatible with array
-.*:34: L Error: arg #3 to push has type incompatible with array
-.*:35: L Error: arg #2 to push has type incompatible with array
-.*:35: L Error: arg #3 to push has type incompatible with array
-.*:36: L Error: arg #5 to push has type incompatible with array
+typecheck_6_2();
+} -returnCodes {error} -match regexp -result {.*:19: L Error: arg to push has type incompatible with array
+.*:21: L Error: arg to push has type incompatible with array
+.*:22: L Error: arg to push has type incompatible with array
+.*:23: L Error: arg to push has type incompatible with array
+.*:24: L Error: arg to push has type incompatible with array
+.*:25: L Error: arg to push has type incompatible with array
+.*:26: L Error: arg to push has type incompatible with array
+.*:27: L Error: arg to push has type incompatible with array
+.*:28: L Error: arg to push has type incompatible with array
+.*:29: L Error: arg to push has type incompatible with array
+.*:30: L Error: arg to push has type incompatible with array
+.*:31: L Error: arg to push has type incompatible with array
+.*:32: L Error: arg to push has type incompatible with array
+.*:34: L Error: arg to push has type incompatible with array
+.*:35: L Error: arg to push has type incompatible with array
+.*:36: L Error: arg to push has type incompatible with array
+.*:37: L Error: arg to push has type incompatible with array
+.*:38: L Error: arg to push has type incompatible with array
+.*:39: L Error: arg to push has type incompatible with array
+.*:40: L Error: arg to push has type incompatible with array
+.*:41: L Error: arg to push has type incompatible with array
+.*:42: L Error: arg to push has type incompatible with array
+.*:43: L Error: arg to push has type incompatible with array
+.*:44: L Error: arg to push has type incompatible with array
+.*:45: L Error: arg to push has type incompatible with array
 }
 
 test typecheck-6.3 {type check push built-in} -body {
@@ -14106,22 +14124,24 @@ void builtin_8()
 
 test builtin-9 {check re-declaration of built-ins} -body {
 #lang L
+void assert() {}
 void join() {}
 void keys() {}
 void length() {}
+void pop() {}
 void push() {}
-void sort() {}
-void assert() {}
 void rename() {}
+void sort() {}
 void undef() {}
-} -returnCodes {error} -match regexp -result {.*1: L Error: function 'join' conflicts with built-in
-.*2: L Error: function 'keys' conflicts with built-in
-.*3: L Error: function 'length' conflicts with built-in
-.*4: L Error: function 'push' conflicts with built-in
-.*5: L Error: function 'sort' conflicts with built-in
-.*6: L Error: function 'assert' conflicts with built-in
+} -returnCodes {error} -match regexp -result {.*1: L Error: function 'assert' conflicts with built-in
+.*2: L Error: function 'join' conflicts with built-in
+.*3: L Error: function 'keys' conflicts with built-in
+.*4: L Error: function 'length' conflicts with built-in
+.*5: L Error: function 'pop' conflicts with built-in
+.*6: L Error: function 'push' conflicts with built-in
 .*7: L Error: function 'rename' conflicts with built-in
-.*8: L Error: function 'undef' conflicts with built-in
+.*8: L Error: function 'sort' conflicts with built-in
+.*9: L Error: function 'undef' conflicts with built-in
 }
 
 test builtin-10 {check built-ins stack integrity} -body {
@@ -14142,6 +14162,8 @@ void builtin_10()
 		keys(h);
 		length(h);
 		split("x y z");
+		pop(&a);
+		push(&a, i);
 		sort({3,2,1});
 		join(" ", {"a","b"});
 	}
@@ -14184,26 +14206,148 @@ void builtin_11_main()
 builtin_11_main();
 } -output {}
 
-test builtin-11.2 {check push built-in errors} -body {
+test builtin-11.2 {check push and pop built-in} -body {
 #lang L
 void builtin_11_2()
 {
-	string	aa[][];
+	string	aa[][], s;
 	string	ha{string}[];
 	struct {
 		string	a[];
+		string	aaaa[][][][];
 	} st;
 
-	/* These are currently errors but will be implemented some day. */
+	aa = undef;
+	push(&aa[0], "a");
+	unless ((tcl)aa[0] eq "a") puts("bad 1.1");
+	unless (defined(aa[0])) puts("bad 1.2");
+	push(&aa[0], "b");
+	unless ((tcl)aa[0] eq "a b") puts("bad 1.3");
+	push(&aa[0], "c");
+	unless ((tcl)aa[0] eq "a b c") puts("bad 1.4");
+	s = pop(&aa[0]);
+	unless (defined(s) && (s eq "c")) puts("bad 1.5");
+	s = pop(&aa[0]);
+	unless (s eq "b") puts("bad 1.6");
+	s = pop(&aa[0]);
+	unless (s eq "a") puts("bad 1.7");
+	s = pop(&aa[0]);
+	if (defined(s)) puts("bad 1.8");
+	s = pop(&aa[0]);
+	if (defined(s)) puts("bad 1.9");
 
-	push(&aa[0], "bad");
-	push(&ha{"new"}, "bad");
-	push(&st.a, "bad");
+	aa[0] = {"x","y"};
+	push(&aa[0], "a");
+	unless ((tcl)aa[0] eq "x y a") puts("bad 2.1");
+	push(&aa[0], "b");
+	unless ((tcl)aa[0] eq "x y a b") puts("bad 2.2");
+	s = pop(&aa[0]);
+	unless (defined(s) && (s eq "b")) puts("bad 2.3");
+	s = pop(&aa[0]);
+	unless (s eq "a") puts("bad 2.4");
+	s = pop(&aa[0]);
+	unless (s eq "y") puts("bad 2.5");
+	s = pop(&aa[0]);
+	unless (s eq "x") puts("bad 2.6");
+	s = pop(&aa[0]);
+	if (defined(s)) puts("bad 2.7");
+	s = pop(&aa[0]);
+	if (defined(s)) puts("bad 2.8");
+
+	ha = undef;
+	push(&ha{"new"}, "a");
+	unless ((tcl)ha{"new"} eq "a") puts("bad 5.1");
+	unless (defined(ha{"new"})) puts("bad 5.2");
+	push(&ha{"new"}, "b");
+	unless ((tcl)ha{"new"} eq "a b") puts("bad 5.3");
+	push(&ha{"new"}, "c");
+	unless ((tcl)ha{"new"} eq "a b c") puts("bad 5.4");
+	s = pop(&ha{"new"});
+	unless (defined(s) && (s eq "c")) puts("bad 5.5");
+	s = pop(&ha{"new"});
+	unless (s eq "b") puts("bad 5.6");
+	s = pop(&ha{"new"});
+	unless (s eq "a") puts("bad 5.7");
+	s = pop(&ha{"new"});
+	if (defined(s)) puts("bad 5.8");
+	s = pop(&ha{"new"});
+	if (defined(s)) puts("bad 5.9");
+
+	ha{"new"} = {"p","q"};
+	push(&ha{"new"}, "a");
+	unless ((tcl)ha{"new"} eq "p q a") puts("bad 6.1");
+	push(&ha{"new"}, "b");
+	unless ((tcl)ha{"new"} eq "p q a b") puts("bad 6.2");
+	s = pop(&ha{"new"});
+	unless (defined(s) && (s eq "b")) puts("bad 6.3");
+	s = pop(&ha{"new"});
+	unless (s eq "a") puts("bad 6.4");
+	s = pop(&ha{"new"});
+	unless (s eq "q") puts("bad 6.5");
+	s = pop(&ha{"new"});
+	unless (s eq "p") puts("bad 6.6");
+	s = pop(&ha{"new"});
+	if (defined(s)) puts("bad 6.7");
+	s = pop(&ha{"new"});
+	if (defined(s)) puts("bad 6.8");
+
+	st.a = undef;
+	push(&st.a, "a");
+	unless ((tcl)st.a eq "a") puts("bad 10.1");
+	unless (defined(st.a)) puts("bad 10.2");
+	push(&st.a, "b");
+	unless ((tcl)st.a eq "a b") puts("bad 10.3");
+	push(&st.a, "c");
+	unless ((tcl)st.a eq "a b c") puts("bad 10.4");
+	s = pop(&st.a);
+	unless (defined(s) && (s eq "c")) puts("bad 10.5");
+	s = pop(&st.a);
+	unless (s eq "b") puts("bad 10.6");
+	s = pop(&st.a);
+	unless (s eq "a") puts("bad 10.7");
+	s = pop(&st.a);
+	if (defined(s)) puts("bad 10.8");
+	s = pop(&st.a);
+	if (defined(s)) puts("bad 10.9");
+
+	st.a = {"r","s"};
+	push(&st.a, "a");
+	unless ((tcl)st.a eq "r s a") puts("bad 11.1");
+	push(&st.a, "b");
+	unless ((tcl)st.a eq "r s a b") puts("bad 11.2");
+	s = pop(&st.a);
+	unless (defined(s) && (s eq "b")) puts("bad 11.3");
+	s = pop(&st.a);
+	unless (s eq "a") puts("bad 11.4");
+	s = pop(&st.a);
+	unless (s eq "s") puts("bad 11.5");
+	s = pop(&st.a);
+	unless (s eq "r") puts("bad 11.6");
+	s = pop(&st.a);
+	if (defined(s)) puts("bad 11.7");
+	s = pop(&st.a);
+	if (defined(s)) puts("bad 11.8");
+
+	push(&st.aaaa[0][1][2], "a");
+	unless ((tcl)st.aaaa[0][1][2] eq "a") puts("bad 15.1");
+	unless (defined(st.aaaa[0][1][2])) puts("bad 15.2");
+	push(&st.aaaa[0][1][2], "b");
+	unless ((tcl)st.aaaa[0][1][2] eq "a b") puts("bad 15.2");
+	push(&st.aaaa[0][1][2], "c");
+	unless ((tcl)st.aaaa[0][1][2] eq "a b c") puts("bad 15.3");
+	s = pop(&st.aaaa[0][1][2]);
+	unless (defined(s) && (s eq "c")) puts("bad 15.4");
+	s = pop(&st.aaaa[0][1][2]);
+	unless (s eq "b") puts("bad 15.5");
+	s = pop(&st.aaaa[0][1][2]);
+	unless (s eq "a") puts("bad 15.6");
+	s = pop(&st.aaaa[0][1][2]);
+	if (defined(s)) puts("bad 15.7");
+	s = pop(&st.aaaa[0][1][2]);
+	if (defined(s)) puts("bad 15.8");
 }
-} -returnCodes {error} -match regexp -result {.*11: L Error: push onto indexed variables unimplemented
-.*12: L Error: push onto indexed variables unimplemented
-.*13: L Error: push onto indexed variables unimplemented
-}
+builtin_11_2();
+} -output {}
 
 test builtin-12 {check assert built-in errors} -body {
 #lang L
@@ -14223,36 +14367,36 @@ void builtin_12()
 .*9: L Error: type void illegal
 }
 
-test builtin-13 {check multiple values to push built-in} -body {
-#lang L
-void builtin_13()
-{
-	int	a[];
-
-	push(&a, 1);
-	unless (length(a) == 1) puts("bad 1.1");
-	unless (a[0] == 1) puts("bad 1.2");
-
-	push(&a, 2, 3);
-	unless (length(a) == 3) puts("bad 2.1");
-	unless ((a[1] == 2) && (a[2] == 3)) puts("bad 2.2");
-
-	push(&a, 4, 5, 6);
-	unless (length(a) == 6) puts("bad 3.1");
-	unless ((a[3] == 4) && (a[4] == 5) && (a[5] == 6)) puts("bad 3.2");
-}
-builtin_13();
-} -output {}
-
-test builtin-14 {check invalid l-value in push built-in} -body {
+test builtin-14 {check errors in push and pop built-ins} -body {
 #lang L
 int[] builtin_14_array() { return {1,2,3}; }
 void builtin_14()
 {
+	int	i;
+	string	s;
+
 	/* The first arg has array type, but it's not an l-value. */
 	push(&(builtin_14_array()), 0);
+	pop(&(builtin_14_array()));
+
+	pop(&3) + 1;	// not an array reference
+	pop(&i) + 1;	// not an array reference
+	pop(&s) + 1;	// not an array reference
+	pop() + 1;	// bad # args
+	pop(1,2) + 1;	// bad # args
+	/*
+	 * We add 1 above to test that the compiler does not assert
+	 * due to pop() not getting a type even though there is an
+	 * error.
+	 */
 }
-} -returnCodes {error} -match regexp -result {.*5: L Error: invalid l-value in push
+} -returnCodes {error} -match regexp -result {.*8: L Error: invalid l-value in push
+.*9: L Error: invalid l-value in pop
+.*11: L Error: arg to pop not an array reference.*
+.*12: L Error: arg to pop not an array reference.*
+.*13: L Error: arg to pop not an array reference.*
+.*14: L Error: incorrect # arguments to pop
+.*15: L Error: incorrect # arguments to pop
 }
 
 test line-file-1 {test __LINE__ and __FILE__} -body {

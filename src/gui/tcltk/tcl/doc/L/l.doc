@@ -310,10 +310,7 @@ it already has:
     push(&animals, "tiger");
 
 The & means that animals is passed by reference, because it will
-be changed.  This is discussed more later.  You also can push
-more than one element at a time:
-
-    push(&animals, "bear", "mouse", "lemur");
+be changed.  This is discussed more later.
 
 Another way to append:
 
@@ -1495,7 +1492,7 @@ Return 0 on success, -1 on error.
 =proto type pop(type &array[])
 
 Remove an element from the end of C<array>.
-Return undef if the array is empty.
+Return undef if the array is already empty.
 
 =proto FILE popen(string cmd, string mode)
 
@@ -1513,10 +1510,10 @@ command.  Return the FILE handle on success, or undef on error.
 Format arguments and print to stdout, as in printf(3).
 Return 0 on success, -1 on error.
 
-=proto void push(type &array[], type element1, type element2, ...)
+=proto void push(type &array[], type element)
 
-Push one or more elements onto the end of C<array>.  Equivalent to
-saying array[END+1] = element1, array[END+1] = element2, ...
+Push an element onto the end of C<array>.  Equivalent to
+saying array[END+1] = element.
 
 =proto int rename(string oldpath, string newpath)
 

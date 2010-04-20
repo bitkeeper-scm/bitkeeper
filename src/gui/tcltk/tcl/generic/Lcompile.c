@@ -124,6 +124,7 @@ private int	compile_length(Expr *expr);
 private void	compile_loop(Loop *loop);
 private int	compile_fnParms(VarDecl *decl);
 private void	compile_pragma(Stmt *stmt);
+private int	compile_pop(Expr *expr);
 private int	compile_push(Expr *expr);
 private void	compile_reMatch(Expr *re);
 private int	compile_rename(Expr *expr);
@@ -197,6 +198,7 @@ static struct {
 	{ "join",	compile_join },
 	{ "keys",	compile_keys },
 	{ "length",	compile_length },
+	{ "pop",	compile_pop },
 	{ "push",	compile_push },
 	{ "rename",	compile_rename },
 	{ "sort",	compile_sort },
@@ -1313,35 +1315,40 @@ compile_split(Expr *expr)
 private int
 compile_push(Expr *expr)
 {
-	int	i, idx;
+	int	idx;
 	Expr	*arg, *array;
 
-	unless (expr->b && expr->b->next) {
+	expr->type = L_void;
+	unless (expr->b && expr->b->next && !expr->b->next->next) {
 		L_errf(expr, "incorrect # arguments to push");
-		goto done;
+		return (0);
 	}
+	unless (isaddrof(expr->b)) {
+		L_errf(expr, "first arg to push not an array reference (&)");
+		return (0);
+	}
+	ASSERT(expr->b->a);
 	array = expr->b->a;
 	arg   = expr->b->next;
-	compile_expr(array, L_DISCARD);
-	unless (isaddrof(expr->b) && array && (isarray(array)||ispoly(array))) {
+	compile_expr(array, L_PUSH_PTR | L_LVALUE);
+	unless (isarray(array) || ispoly(array)) {
 		L_errf(expr, "first arg to push not an array reference (&)");
-		goto done;
-	}
-	if (array->flags & L_EXPR_DEEP) {
-		L_errf(expr, "push onto indexed variables unimplemented");
-		goto done;
+		return (0);
 	}
 	unless (array->sym) {
 		L_errf(expr, "invalid l-value in push");
-		goto done;
+		return (0);
 	}
 	idx = array->sym->idx;  // local slot # for array
-	for (i = 2; arg; arg = arg->next, ++i) {
-		compile_expr(arg, L_PUSH_VAL);
-		unless (L_typeck_compat(array->type->base_type, arg->type)) {
-			L_errf(expr,
-			 "arg #%d to push has type incompatible with array", i);
-		}
+	compile_expr(arg, L_PUSH_VAL);
+	unless (L_typeck_compat(array->type->base_type, arg->type)) {
+		L_errf(expr, "arg to push has type incompatible with array");
+	}
+	if (array->flags & L_EXPR_DEEP) {
+		TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
+		TclEmitInstInt4(INST_L_DEEP_WRITE, idx, L->frame->envPtr);
+		TclEmitInt4(L_APPEND | L_PUSH_NEW, L->frame->envPtr);
+	} else {
 		if (idx <= 255) {
 			TclEmitInstInt1(INST_LAPPEND_SCALAR1, idx,
 					L->frame->envPtr);
@@ -1349,11 +1356,50 @@ compile_push(Expr *expr)
 			TclEmitInstInt4(INST_LAPPEND_SCALAR4, idx,
 					L->frame->envPtr);
 		}
-		emit_pop();
 	}
- done:
-	expr->type = L_void;
+	emit_pop();
 	return (0);  // stack effect
+}
+
+private int
+compile_pop(Expr *expr)
+{
+	int	idx;
+	Expr	*arg = NULL;
+
+	expr->type = L_poly;
+	unless (expr->b && !expr->b->next) {
+		L_errf(expr, "incorrect # arguments to pop");
+		return (0);
+	}
+	unless (isaddrof(expr->b)) {
+		L_errf(expr, "arg to pop not an array reference (&)");
+		return (0);
+	}
+	/* Change arg from &arr to &arr[END] and then delete that element. */
+	ASSERT(expr->b->a);
+	arg = ast_mkBinOp(L_OP_ARRAY_INDEX,
+			  expr->b->a,
+			  ast_mkId("END", 0, 0),
+			  expr->b->a->node.beg,
+			  expr->b->a->node.end);
+	expr->b->a = arg;
+	/* L_DELETE here permits indexing element -1 (array already empty). */
+	compile_expr(arg, L_PUSH_PTR | L_DELETE | L_LVALUE);
+	unless (isarray(arg->a) || ispoly(arg->a)) {
+		L_errf(expr, "arg to pop not an array reference (&)");
+		return (0);
+	}
+	unless (arg->sym) {
+		L_errf(expr, "invalid l-value in pop");
+		return (0);
+	}
+	idx = arg->sym->idx;  // local slot # for array
+	TclEmitInstInt4(INST_L_DEEP_WRITE, idx, L->frame->envPtr);
+	TclEmitInt4(L_DELETE | L_PUSH_OLD, L->frame->envPtr);
+	TclAdjustStackDepth(1, L->frame->envPtr);
+	expr->type = arg->type;
+	return (1);  // stack effect
 }
 
 private int
@@ -1551,7 +1597,7 @@ compile_undef(Expr *expr)
 		TclEmitInstInt4(INST_L_DEEP_WRITE,
 				arg->sym->idx,
 				L->frame->envPtr);
-		TclEmitInt4(L_DELETE, L->frame->envPtr);
+		TclEmitInt4(L_DELETE | L_DISCARD, L->frame->envPtr);
 	} else {
 		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
 		emit_store_scalar(arg->sym->idx);

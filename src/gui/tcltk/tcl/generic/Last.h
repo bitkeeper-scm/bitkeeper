@@ -257,6 +257,7 @@ typedef enum {
 	L_SPLIT_RE    = 0x00040000, // split on a regexp
 	L_SPLIT_STR   = 0x00080000, // split on a string
 	L_SPLIT_LIM   = 0x00100000, // enforce split limit
+	L_APPEND      = 0x00200000, // append to deep list obj
 } Expr_f;
 
 struct Expr {

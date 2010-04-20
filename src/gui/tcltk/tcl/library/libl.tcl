@@ -399,29 +399,6 @@ platform()
 	return (p);
 }
 
-/*
- * If performance becomes a problem, this can be done with a bytecode
- * instead.
- */
-poly
-pop(poly &array[])
-{
-	poly	ret;
-	int	len = length(array);
-
-	if (len == 0) {
-		return (undef);
-	} else if (len == 1) {
-		ret = array[END];
-		array = {};
-		return (ret);
-	} else {
-		ret = array[END];
-		array = array[0..END-1];
-		return (ret);
-	}
-}
-
 FILE
 popen(_unused string cmd, _unused string mode)
 {

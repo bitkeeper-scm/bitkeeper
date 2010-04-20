@@ -712,7 +712,7 @@ static Tcl_ObjType L_deepPtrType = {
 
 /* Internal representation of an object of L_deepPtrType. */
 typedef struct {
-    Tcl_Obj	**elemPtrPtr;	// ptr to the object being pointed to, except
+    Tcl_Obj	**elemPtrPtr;	// ptr to the object being pointed to
     Tcl_Obj	*topLevObj;	// outer-most enclosing object
     Tcl_Obj	*parentObj;	// enclosing object
     Tcl_Obj	*idxObj;	// index of array/hash/string
@@ -7834,27 +7834,27 @@ TclExecuteByteCode(
 		(L_PUSH_VAL|L_PUSH_PTR|L_PUSH_PTRVAL|L_PUSH_VALPTR|L_DISCARD)) {
 	    case L_PUSH_VAL:
 		PUSH_OBJECT(*elemPtrPtr);
-		TRACE_WITH_OBJ(("0x%x => ", flags), OBJ_AT_TOS);
+		TRACE_WITH_OBJ(("L_PUSH_VAL => "), OBJ_AT_TOS);
 		break;
 	    case L_PUSH_PTR:
 		PUSH_OBJECT(deepPtrObj);
-		TRACE_WITH_OBJ(("0x%x => ", flags), OBJ_AT_TOS);
+		TRACE_WITH_OBJ(("L_PUSH_PTR => "), OBJ_AT_TOS);
 		break;
 	    case L_PUSH_PTRVAL:
 		PUSH_OBJECT(deepPtrObj);
 		PUSH_OBJECT(*elemPtrPtr);
-		TRACE(("0x%x => \"%.30s\" \"%.30s\"", flags,
+		TRACE(("L_PUSH_PTRVAL => \"%.30s\" \"%.30s\"",
 		       O2S(OBJ_UNDER_TOS), O2S(OBJ_AT_TOS)));
 		break;
 	    case L_PUSH_VALPTR:
 		PUSH_OBJECT(*elemPtrPtr);
 		PUSH_OBJECT(deepPtrObj);
-		TRACE(("0x%x => \"%.30s\" \"%.30s\"", flags,
+		TRACE(("L_PUSH_VALPTR => \"%.30s\" \"%.30s\"",
 		       O2S(OBJ_UNDER_TOS), O2S(OBJ_AT_TOS)));
 		break;
 	    case L_DISCARD:
 		PUSH_OBJECT(Tcl_NewObj());  // just push junk
-		TRACE(("0x%x => junk", flags));
+		TRACE(("L_DISCARD => junk\n"));
 		break;
 	    default:
 		Tcl_Panic("illegal operand to INST_L_INDEX");
@@ -7960,8 +7960,20 @@ TclExecuteByteCode(
 	    tmp = TclGetStringFromObj(newStr, &len);
 	    Tcl_SetStringObj(target, tmp, len);
 	    Tcl_DecrRefCount(newStr);
+	} else if (flags & L_APPEND) {
+	    /*
+	     * The deep ptr has a ref to oldvalObj, so drop that ref so we can
+	     * append to it, then restore that ref (it's dropped later).  And
+	     * since we're not trashing oldvalObj in this case, add another
+	     * ref since the code below assumes we're deleting.
+	     */
+	    Tcl_DecrRefCount(oldvalObj);
+	    Tcl_ListObjAppendElement(interp, oldvalObj, rvalObj);
+	    Tcl_IncrRefCount(oldvalObj);
+	    Tcl_IncrRefCount(oldvalObj);
 	} else {
 	    if (flags & L_DELETE) {
+		if (flags & L_PUSH_OLD) PUSH_OBJECT(oldvalObj);
 		if (deepPtr->flags & L_IDX_HASH) {
 		    ret = Tcl_DictObjRemove(interp, deepPtr->parentObj,
 					    deepPtr->idxObj);
@@ -8014,7 +8026,7 @@ TclExecuteByteCode(
 	}
 #endif
 
-	switch (flags & (L_PUSH_OLD|L_PUSH_NEW|L_DELETE)) {
+	switch (flags & (L_PUSH_OLD|L_PUSH_NEW|L_DISCARD)) {
 	    case L_PUSH_OLD:
 		/*
 		 * Push the old element value. Refcounts:
@@ -8022,6 +8034,7 @@ TclExecuteByteCode(
 		 *   - rvalObj: lose one at tos, gain as struct elem
 		 */
 		OBJ_AT_TOS = oldvalObj;
+		TRACE_WITH_OBJ(("L_PUSH_OLD => "), OBJ_AT_TOS);
 		break;
 	    case L_PUSH_NEW:
 		/*
@@ -8033,8 +8046,10 @@ TclExecuteByteCode(
 		OBJ_AT_TOS = rvalObj;
 		Tcl_IncrRefCount(rvalObj);
 		Tcl_DecrRefCount(oldvalObj);
+		TRACE_WITH_OBJ(("L_PUSH_NEW => "), OBJ_AT_TOS);
 		break;
-	    case L_DELETE:
+	    case L_DISCARD:
+		TRACE(("L_DISCARD =>\n"));
 		break;
 	    default:
 		Tcl_Panic("Bad flags to INST_L_DEEP_WRITE");
@@ -8054,7 +8069,6 @@ TclExecuteByteCode(
 	    NEXT_INST_F(10, 0, 0);
 	}
 #endif
-	TRACE_WITH_OBJ(("0x%x => ", flags), OBJ_AT_TOS);
 	NEXT_INST_F(9, 0, 0);
     }
 
@@ -9590,10 +9604,14 @@ L_deepDiveArray(
 
     if (lvalue) {
 	if (idx < 0) {
-	    Tcl_ResetResult(interp);
-	    Tcl_AppendResult(interp, "cannot write to negative array index",
-			     NULL);
-	    return (NULL);
+	    if (flags & L_DELETE) {
+		return (L_undefObjPtrPtr());
+	    } else {
+		Tcl_ResetResult(interp);
+		Tcl_AppendResult(interp, "cannot write to negative array index",
+				 NULL);
+		return (NULL);
+	    }
 	} else if (idx >= len) {
 	    /* Auto extend the array. */
 	    int n = idx - len + 1;
