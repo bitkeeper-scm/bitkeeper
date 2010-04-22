@@ -171,5 +171,5 @@ int	bkd_seed(char *oldseed, char *newval, char **newout);
 void	bkd_saveSeed(char *repoid, char *seed);
 char	*bkd_restoreSeed(char *repoid);
 
-int	bkd_doResolve(char **av);
+int	bkd_doResolve(char *me, int verbose);
 #endif

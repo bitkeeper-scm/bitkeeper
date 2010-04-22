@@ -56,11 +56,12 @@ int
 resolve_main(int ac, char **av)
 {
 	int	c;
-	static	opts opts;	/* so it is zero */
+	opts	opts;
 
+	bzero(&opts, sizeof(opts));
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
-	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstTvx;1234", 0)) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstTx;1234", 0)) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -81,8 +82,7 @@ resolve_main(int ac, char **av)
 		    case 's':					/* doc */
 			opts.automerge = opts.autoOnly = 1;
 			break;
-		    case 'T': /* -T is preferred, remove -t in 5.0 */
-		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
+		    case 'T': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'i':
 			opts.partial = 1;
 			opts.includes = addLine(opts.includes, strdup(optarg));
@@ -1660,7 +1660,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 			nav[++i] = aprintf("-m%s", opts->mergeprog);
 		}
 		if (opts->quiet) nav[++i] = "-q";
-		if (opts->textOnly) nav[++i] = "-t";
+		if (opts->textOnly) nav[++i] = "-T";
 		if (opts->comment) nav[++i] = aprintf("-y%s", opts->comment);
 		nav[++i] = 0;
 		fprintf(stderr,
@@ -2854,10 +2854,6 @@ resolve_cleanup(opts *opts, int what)
 	logChangeSet();
 
 	/* Only get here from pass4_apply() */
-	unless (opts->quiet) {
-		fprintf(stderr,
-		    "Consistency check passed, resolve complete.\n");
-	}
 	rc = 0;
 exit:
 	sccs_unlockfile(RESOLVE_LOCK);

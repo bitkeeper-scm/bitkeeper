@@ -43,7 +43,7 @@ bk _test -f SCCS/s.date && {
 	echo should not have data file
 	exit 1
 }
-echo q | bk pull -t $Q > OUT 2>&1
+echo q | bk pull $Q > OUT 2>&1
 test -s OUT && { 
 	echo Resolve should not produce any output 
 	cat OUT

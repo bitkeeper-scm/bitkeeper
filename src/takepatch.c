@@ -56,6 +56,8 @@ private	void	getChangeSet(void);
 private	void	loadskips(void);
 private int	sfio(MMAP *m);
 
+private	int	pbars = 0;	/* progress bars, default is off */
+private	u64	N;		/* number of ticks */
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
 private	int	mkpatch = 0;	/* act like makepatch verbose */
 private	int	line;		/* line number in the patch file */
@@ -103,14 +105,19 @@ takepatch_main(int ac, char **av)
 	int	remote = 0;	/* remote csets */
 	int	resolve = 0;
 	int	textOnly = 0;
+	ticker	*tick = 0;
+	longopt	lopts[] = {
+		{ "progress", 300, },
+		{ 0, 0 },
+	};
 
 	setmode(0, O_BINARY); /* for win32 */
 	input = "-";
-	while ((c = getopt(ac, av, "acDFf:iLmqsStTvy;", 0)) != -1) {
+	while ((c = getopt(ac, av, "acDFf:iLmqsStTvy;", lopts)) != -1) {
 		switch (c) {
 		    case 'q':					/* undoc 2.0 */
 		    case 's':					/* undoc 2.0 */
-			/* undoc, Ignored for option consistency.  */
+			echo = pbars = 0;
 			break;
 		    case 'a': resolve++; break;			/* doc 2.0 */
 		    case 'c': noConflicts++; break;		/* doc 2.0 */
@@ -122,10 +129,10 @@ takepatch_main(int ac, char **av)
 		    case 'i': newProject++; break;		/* doc 2.0 */
 		    case 'm': mkpatch++; break;			/* doc 2.0 */
 		    case 'S': saveDirs++; break;		/* doc 2.0 */
-		    case 'T': /* -T is preferred, remove -t in 5.0 */
-		    case 't': textOnly++; break;		/* doc 2.0 */
-		    case 'v': echo++; break;			/* doc 2.0 */
+		    case 'T': textOnly++; break;		/* doc 2.0 */
+		    case 'v': pbars = 0; echo++; break;		/* doc 2.0 */
 		    case 'y': comments = optarg; break;
+		    case 300: pbars = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -157,6 +164,7 @@ takepatch_main(int ac, char **av)
 	/*
 	 * Find a file and go do it.
 	 */
+	if (pbars) tick = progress_start(PROGRESS_BAR, N);
 	while (buf = mnext(p)) {
 		char	*b;
 		int	rc;
@@ -189,6 +197,7 @@ takepatch_main(int ac, char **av)
 		*t = 0;
 		files++;
 		rc = extractPatch(&b[3], p);
+		if (tick) progress(tick, files);
 		free(b);
 		if (rc < 0) {
 			error = rc;
@@ -199,6 +208,7 @@ takepatch_main(int ac, char **av)
 	mclose(p);
 	if (idDB) { mdbm_close(idDB); idDB = 0; }
 	if (goneDB) { mdbm_close(goneDB); goneDB = 0; }
+	if (tick) progress_done(tick, error < 0 ? "FAILED" : "OK");
 	if (error < 0) {
 		/* XXX: Save?  Purge? */
 		cleanup(CLEAN_RESYNC);
@@ -261,7 +271,7 @@ takepatch_main(int ac, char **av)
 		}
 		i = 1;
 		unless (echo) resolve[++i] = "-q";
-		if (textOnly) resolve[++i] = "-t";
+		if (textOnly) resolve[++i] = "-T";
 		if (noConflicts) resolve[++i] = "-c";
 		if (comments) resolve[++i] = aprintf("-y%s", comments);
 		i = spawnvp(_P_WAIT, resolve[0], resolve);
@@ -1945,6 +1955,8 @@ error:					fprintf(stderr, "GOT: %s", buf);
 					cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 				}
 			} else if (st.filename) {
+				if (tick) progress(tick, 0);
+				N++;
 				if (st.newline) {
 					fprintf(stderr, "Expected metadata\n");
 					goto error;
@@ -2043,7 +2055,6 @@ error:					fprintf(stderr, "GOT: %s", buf);
 				perror("fnext");
 				goto missing;
 			}
-			if (tick) progress(tick, 0);
 		}
 		if (st.preamble) errorMsg("tp_nothingtodo", 0, 0);
 		if (sfiopatch) {

@@ -41,7 +41,7 @@ echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -y2 'F!O#O$ B%A^R&RR(R)RR'
 bk commit $Q -y2
 cd "$HERE/copy"
-bk pull -t $Q || { echo failed; exit 1; }
+bk pull $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
@@ -49,14 +49,14 @@ echo OK
 if [ $DO_REMOTE = YES ]; then
  cd "$HERE/copy"
  echo $N Pull with explicit remote parent ............................$NL
- bk pull -t $Q localhost:"$HERE/project" || { echo failed; exit 1; }
+ bk pull $Q localhost:"$HERE/project" || { echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
  echo OK
  echo $N Pull with explicit remote parent and username ...............$NL
  cd "$HERE/copy"
- bk pull -t $Q $USER@localhost:"$HERE/project" || { echo failed; exit 1; }
+ bk pull $Q $USER@localhost:"$HERE/project" || { echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
@@ -64,13 +64,13 @@ if [ $DO_REMOTE = YES ]; then
  echo $N Pull with explicit local parent .............................$NL
  cd "$HERE/copy"
  URL="$HERE/project"
- bk pull -t $Q "$URL" || { echo failed; exit 1; }
+ bk pull $Q "$URL" || { echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
  echo OK
  echo $N Pull with explicit local parent and username ................$NL
- bk pull -t $Q $USER@$HOSTNAME:"$HERE/project" || { echo failed; exit 1; }
+ bk pull $Q $USER@$HOSTNAME:"$HERE/project" || { echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  echo OK
@@ -83,7 +83,7 @@ fi
 
 echo $N Pull from subdirectory of repository ........................$NL
 cd src
-bk pull -t $Q || { echo failed; exit 1; }
+bk pull $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' 'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
@@ -102,7 +102,7 @@ rm -f bar.x
 bk delta $Q -yzero
 bk commit $Q -y0
 cd "$HERE/copy"
-bk pull -t $Q || { echo failed; exit 1; }
+bk pull $Q || { echo failed; exit 1; }
 cd src
 cat > X <<EOF
 line zero
@@ -139,7 +139,7 @@ mv h.x h.h
 bk delta $Q -ydvorak h.h
 cd ..
 bk commit $Q -yzxcvbnm
-bk push -t -a $Q || { echo push w/ autopull failed; exit 1; }
+bk push -a $Q 2> ERR || { echo push w/ autopull failed; exit 1; }
 cd "$HERE/project"
 KEY2="`bk prs -hd:KEY: -r+ ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
@@ -157,7 +157,7 @@ KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 cd "$HERE"
 tar cf PUSH.tar project copy
 cd "$HERE/copy"
-_BK_PREVENT_RESOLVE_RERUN=1 bk push -t -a $Q 2> resolve.out
+_BK_PREVENT_RESOLVE_RERUN=1 bk push -a $Q 2> resolve.out
 test $? -ne 0 || { echo failed; cat resolve.out; exit 1; }
 grep -q 'unresolved conflicts, nothing is applied' resolve.out || {
 	echo should have had conflicts, but did not
@@ -193,3 +193,45 @@ echo OK
 # XXX TODO need test case for push/pull -n
 # XXX TODO need test case for push/pull to unrelated project
 # XXX TODO need test case for pull/pull/clone to/from space in pathname
+
+echo $N Create a bunch of output using nested .......................$NL
+cd "$HERE"
+nested nested
+bk tag $Q RB
+echo OK
+for x in 1 2 3 4; do
+	if [ "$x" = 1 ]; then
+		echo "+ BK_CONFIG=\"checkout: none! \" bk clone -l .  pull$x"
+		BK_CONFIG="checkout: none! " bk clone -l . pull$x
+	elif [ "$x" = 2 ]; then
+		echo "+ BK_CONFIG=\"checkout: get! \" bk clone -l .  pull$x"
+		BK_CONFIG="checkout: get! " bk clone -l . pull$x
+	else
+		bk clone $Q -l . pull$x
+	fi
+	bk parent $Q -ai pull$x
+	cd pull$x
+	touch $x gcc/$x gdb/$x
+	bk new $Q $x gcc/$x gdb/$x
+	if [ "$x" != 1 ]; then
+		cd gcc
+		bk commit $Q -y$x
+		cd ..
+	fi
+	cd gdb
+	bk commit $Q -y$x
+	cd ..
+	bk commit $Q -y$x
+	cd ..
+	bk clone $Q -l . push$x
+	bk parent $Q -ao push$x
+done
+set -x
+bk pull
+bk push
+bk undo -fsaRB
+BK_CONFIG="checkout: get! " bk pull
+bk undo -fsaRB
+bk comps -h | bk here set -
+bk here rm -f ./gcc
+bk pull

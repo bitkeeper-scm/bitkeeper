@@ -1564,9 +1564,7 @@ fi
 
 echo $N Pull w/trivial triggers .....................................$NL
 cd "$HERE/copy"
-bk pull -t >pull.out 2>&1 || { echo failed; exit 1; }
-grep -q "1.3" pull.out
-if [ $? -ne 0 ]; then echo failed 2; cat pull.out; exit 1; fi
+bk pull >pull.out 2>&1 || { echo failed; exit 1; }
 grep -q "project/.*BitKeeper/triggers/pre-outgoing: trigger fired" pull.out
 if [ $? -ne 0 ]; then echo failed 3; cat pull.out; exit 1; fi
 # XXX - There can be spurious errors here depending on how the output gets
@@ -1591,40 +1589,6 @@ echo 4 >> foo.c
 bk delta $Q -y2 foo.c
 bk commit $Q -y"cset comment for 1.4" > /dev/null 2>&1
 bk push >push.out 2>&1 || { echo failed; cat push.out; exit 1; }
-echo OK
-
-echo $N Check BK_STATUS in push and push -n and pull -n .............$NL
-cd "$HERE/project/BitKeeper/triggers"
-rm -f *
-bk undos > pre-incoming <<EOF
-#!/bin/bash
-set | grep $DASHA BK_STATUS
-EOF
-cp pre-incoming pre-outgoing
-
-chmod +x pre*
-cd "$HERE/copy"
-rm -f BitKeeper/triggers/*
-bk push -n >push.out 2>&1 || { echo failed; cat push.out; exit 1; }
-grep -q BK_STATUS=DRYRUN push.out || {
-	echo Failed
-	cat push.out
-	exit 1
-}
-bk push >push.out 2>&1 || { echo failed; cat push.out; exit 1; }
-grep -q BK_STATUS=DRYRUN push.out && {
-	echo Failed
-	cat push.out
-	exit 1
-}
-bk pull -n >pull.out 2>&1 || { echo failed; cat pull.out; exit 1; }
-grep -q BK_STATUS=DRYRUN pull.out || {
-	echo Failed
-	cat push.out
-	exit 1
-}
-cd "$HERE/project/BitKeeper/triggers"
-rm -f *
 echo OK
 
 cd "$HERE/project/BitKeeper/triggers"
@@ -1711,7 +1675,7 @@ bk delta $Q -y2 foo.c
 bk commit $Q -y2 
 
 cd "$HERE/copy"
-bk pull -t -c0 $Q 2>ERR && {
+bk pull -c0 $Q 2>ERR && {
 	echo failed
 	cat ERR
 	exit 1

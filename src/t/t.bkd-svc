@@ -208,7 +208,7 @@ cd "$HERE/project"
 PORT=`port 53300`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT 
 cd "$HERE/copy/src"
-bk pull -t $Q bk://localhost:$PORT
+bk pull $Q bk://localhost:$PORT
 if bk _test ! -f SCCS/s.boo.c; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
 echo OK
@@ -218,7 +218,7 @@ cd "$HERE/project"
 PORT=`port 53400`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT -xpull
 cd "$HERE/copy/src"
-bk pull -t bk://localhost:$PORT > pull.out 2>&1
+bk pull bk://localhost:$PORT > pull.out 2>&1
 grep -q "bkd has disabled" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1; fi
 bk service uninstall $BKDNAME
@@ -261,7 +261,7 @@ cd "$HERE/project"
 PORT=`port 53700`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT -xcd -xpush
 cd "$HERE/copy/src"
-bk pull -t $Q bk://localhost:$PORT
+bk pull $Q bk://localhost:$PORT
 if bk _test ! -f SCCS/s.coo.c; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
 echo OK
@@ -281,7 +281,7 @@ bk lock -U "$HERE/project"
 cd "$HERE/copy"
 bk mv old.c conflict.c
 bk commit $Q -ygconflict
-echo "" | bk push -c1 bk://localhost:$PORT > bk.out 2>&1
+echo "" | bk push -v -c1 bk://localhost:$PORT > bk.out 2>&1
 grep -q "Did not resolve 1 renames, no conflicts causing abort." bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 rm -f  "$HERE/project/conflict.c"

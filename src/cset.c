@@ -746,7 +746,7 @@ next:		t[-1] = ' ';
 	freeLines(cs->cweave, free);
 	if (cs->verbose && cs->makepatch) {
 		fprintf(stderr,
-		    "makepatch: patch contains %d changesets from %d files\n",
+		    "makepatch: patch contains %d changesets / %d files\n",
 		    cs->ncsets, cs->nfiles);
 	} else if (cs->verbose && cs->mark && cs->ndeltas) {
 		fprintf(stderr,

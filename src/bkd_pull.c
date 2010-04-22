@@ -2,21 +2,6 @@
 #include "range.h"
 #include "nested.h"
 
-private void
-listIt(char *keys, int list)
-{
-	FILE	*f;
-	char	buf[MAXPATH + 20];
-
-	sprintf(buf, "bk changes -e %s - < '%s'",
-	    list > 1 ? "-v" : "", keys);
-	f = popen(buf, "r");
-	while (fnext(buf, f)) {
-		printf("%c%s", BKD_DATA, buf);
-	}
-	pclose(f);
-}
-
 int
 cmd_pull_part1(int ac, char **av)
 {
@@ -40,18 +25,13 @@ cmd_pull_part1(int ac, char **av)
 		    case 'N':
 			nlid = 1;
 			break;
-		    case 'd':
-		    case 'e':
-		    case 'l':
-		    case 'q':
-		    case 'z': /* ignore */ break;
-		    default: bk_badArg(c, av);
+		    default:  /* ignore and pray */ break;
 		}
 	}
 
 	if (getenv("BK_PORT_ROOTKEY")) {
-			port = 1;
-			probekey_av = addLine(probekey_av, strdup("-S"));
+		port = 1;
+		probekey_av = addLine(probekey_av, strdup("-S"));
 	}
 	if (!nlid && !port && proj_isComponent(0)) {
 		out("ERROR-component-only pulls are not allowed.\n");
@@ -110,7 +90,7 @@ int
 cmd_pull_part2(int ac, char **av)
 {
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
-	int	gzip = 0, dont = 0, verbose = 1, list = 0, triggers_failed = 0;
+	int	gzip = 0, verbose = 1, triggers_failed = 0;
 	int	rtags, update_only = 0, delay = -1;
 	char	*port = 0;
 	char	*keys = bktmp(0, "pullkey");
@@ -133,14 +113,12 @@ cmd_pull_part2(int ac, char **av)
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'd': debug = 1; break;
-		    case 'l': list++; break;
-		    case 'n': dont = 1; break;
 		    case 'q': verbose = 0; break;
 		    case 'r': rev = optarg; break;
 		    case 'N': break;	// On purpose
 		    case 'w': delay = atoi(optarg); break;
 		    case 'u': update_only = 1; break;
-		    default: bk_badArg(c, av);
+		    default:  /* ignore and pray */ break;
 		}
 	}
 
@@ -194,22 +172,16 @@ cmd_pull_part2(int ac, char **av)
 	if (fputs("@OK@\n", stdout) < 0) {
 		perror("fputs ok");
 	}
-	if (local && (verbose || list)) {
+	if (local && verbose) {
 		printf("@REV LIST@\n");
-		if (list) {
-			listIt(keys, list);
-		} else {
-			f = fopen(keys, "r");
-			assert(f);
-			while (fnext(buf, f)) {
-				chomp(buf);
-				d = sccs_findKey(cset, buf);
-				if (d->type == 'D') {
-					printf("%c%s\n", BKD_DATA, d->rev);
-				}
-			}
-			fclose(f);
+		f = fopen(keys, "r");
+		assert(f);
+		while (fnext(buf, f)) {
+			chomp(buf);
+			d = sccs_findKey(cset, buf);
+			if (d->type == 'D') printf("%c%s\n", BKD_DATA, d->rev);
 		}
+		fclose(f);
 		printf("@END@\n");
 	}
 	fflush(stdout);
@@ -225,11 +197,7 @@ cmd_pull_part2(int ac, char **av)
 	 * Fire up the pre-trigger
 	 */
 	safe_putenv("BK_CSETLIST=%s", keys);
-	if (dont) {
-		putenv("BK_STATUS=DRYRUN");
-	} else unless (local) {
-		putenv("BK_STATUS=NOTHING");
-	}
+	unless (local) putenv("BK_STATUS=NOTHING");
 
 	if (trigger(av[0],  "pre")) {
 		triggers_failed = rc = 1;
@@ -238,13 +206,6 @@ cmd_pull_part2(int ac, char **av)
 
 	unless (local) {
 		fputs("@NOTHING TO SEND@\n", stdout);
-		fflush(stdout);
-		rc = 0;
-		goto done;
-	}
-
-	if (dont) {
-		fputs("@END@\n", stdout);
 		fflush(stdout);
 		rc = 0;
 		goto done;
@@ -340,10 +301,7 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 done:	fflush(stdout);
-	if (dont) {
-		unlink(keys);
-		putenv("BK_STATUS=DRYRUN");
-	} else if (local == 0) {
+	if (local == 0) {
 		unlink(keys);
 		putenv("BK_STATUS=NOTHING");
 	} else {
@@ -352,7 +310,7 @@ done:	fflush(stdout);
 	if (rc) {
 		unlink(keys);
 		safe_putenv("BK_STATUS=%d", rc);
-	} else unless (dont || (local == 0)) {
+	} else unless (local == 0) {
 		/*
 		 * Pull is ok:
 		 * a) rename revs to CSETS_OUT

@@ -94,7 +94,7 @@ echo "No conflicts" > no_conflicts
 bk new $Q no_conflicts
 bk commit $Q -ywhatever
 cd "$HERE/copy"
-bk pull -t $Q ../project
+bk pull $Q ../project
 if bk _test ! -f SCCS/s.no_conflicts
 then	echo failed to propogate no_conflicts; exit 1
 fi
@@ -110,7 +110,7 @@ echo foo > no_conflicts
 bk new $Q no_conflicts
 bk commit $Q -ywhatever2
 cd "$HERE/copy"
-bk pull -t $Q ../project
+bk pull $Q ../project
 # Rename the case orientation only, this test correctness on win32
 cd "$HERE/project"
 bk clean $Q no_conflicts
@@ -118,7 +118,7 @@ bk _mv SCCS/s.no_conflicts SCCS/s.tmp
 bk mv tmp no_Conflicts
 bk commit $Q -ywhatever2
 cd "$HERE/copy"
-bk pull -t $Q ../project
+bk pull $Q ../project
 bk sfiles -g | grep -q "no_Conflicts"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 DPATH=`bk prs -hnr+ -d':DPN:' no_Conflicts`
@@ -138,12 +138,12 @@ bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd "$HERE/copy"
 echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
-bk pull -R -t $Q ../project 
+bk pull -R $Q ../project 
 cd "$HERE"
 tar cf SAVE.copy copy 2> /dev/null
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
-bk resolve -t $L copy >OUT 2>&1 <<EOF
+bk resolve $L copy >OUT 2>&1 <<EOF
 rl
 y
 EOF
@@ -164,7 +164,7 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >XXX 2>&1 <<EOF
+bk resolve $L copy >XXX 2>&1 <<EOF
 ml
 LOCAL
 EOF
@@ -190,7 +190,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t -d -l $L copy >ERRORS 2>&1 <<EOF
+bk resolve -d -l $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
 q
@@ -210,7 +210,7 @@ echo $N '  try to rename local to existing gfile in repository .......'$NL
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 ml
 GFILE
 q
@@ -227,7 +227,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
@@ -245,7 +245,7 @@ echo OK
 echo $N '  resolve by renaming remote file but abort commit ..........'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t -y $L copy >LOG 2>&1 <<EOF
+bk resolve -y $L copy >LOG 2>&1 <<EOF
 mr
 REMOTE
 a
@@ -272,7 +272,7 @@ echo OK
 echo $N '  resolve by renaming remote file using default comments ....'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve $L -t copy >OUT 2>&1 <<EOF
+bk resolve $L copy >OUT 2>&1 <<EOF
 mr
 REMOTE
 u
@@ -308,7 +308,7 @@ echo OK
 echo $N '  resolve by renaming remote file passing in comments .......'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve $L -t -yYO_BABY_YO_BABY copy >OUT 2>&1 <<EOF
+bk resolve $L -yYO_BABY_YO_BABY copy >OUT 2>&1 <<EOF
 mr
 REMOTE
 EOF
@@ -342,7 +342,7 @@ echo OK
 echo $N '  try to rename remote to existing local sfile ..............'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy 2>ERRORS >/dev/null <<EOF
+bk resolve $L copy 2>ERRORS >/dev/null <<EOF
 mr
 c C#
 q
@@ -359,7 +359,7 @@ echo OK
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy 2>ERRORS >/dev/null <<EOF
+bk resolve $L copy 2>ERRORS >/dev/null <<EOF
 mr
 ChangeSet
 q
@@ -377,7 +377,7 @@ echo $N '  try to rename remote to existing local gfile ..............'$NL
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
-bk resolve -t $L copy 2>ERRORS >/dev/null <<EOF
+bk resolve $L copy 2>ERRORS >/dev/null <<EOF
 mr
 GFILE
 q
@@ -407,12 +407,12 @@ bk mv OLDNAME 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
 cd "$HERE/copy"
 echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
-bk pull -R -t $Q "$HERE/project"
+bk pull -R $Q "$HERE/project"
 cd "$HERE"
 tar cf SAVE.copy copy 2> /dev/null
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
-bk resolve -t $L copy >OUT 2>&1 <<EOF
+bk resolve $L copy >OUT 2>&1 <<EOF
 rl
 y
 EOF
@@ -435,7 +435,7 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >XXX 2>&1 <<EOF
+bk resolve $L copy >XXX 2>&1 <<EOF
 ml
 LOCAL
 EOF
@@ -463,7 +463,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
 q
@@ -481,7 +481,7 @@ echo $N '  try to rename local to existing gfile in repository .......'$NL
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 ml
 GFILE
 q
@@ -498,7 +498,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
@@ -516,7 +516,7 @@ echo OK
 echo $N '  resolve by renaming remote file ...........................'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
+bk resolve $L -yMerge copy >OUT 2>&1 <<EOF
 mr
 REMOTE
 EOF
@@ -545,7 +545,7 @@ echo OK
 echo $N '  try to rename remote to existing local sfile ..............'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 c C#
 q
@@ -562,7 +562,7 @@ echo OK
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
@@ -580,7 +580,7 @@ echo $N '  try to rename remote to existing local gfile ..............'$NL
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 GFILE
 q
@@ -613,14 +613,14 @@ bk new $Q 'B%A!#$%^&)(-_+=];,'
 # Remote this to make it the pending deltas case
 bk commit $Q -ywhatever
 cd "$HERE/copy"
-bk pull -R -t $Q ../project
+bk pull -R $Q ../project
 cd "$HERE"
 tar cf SAVE.copy copy 2> /dev/null
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
 cd "$HERE"
-bk resolve -t $L -t -yMerge copy >OUT 2>&1 <<EOF
+bk resolve $L -yMerge copy >OUT 2>&1 <<EOF
 rl
 y
 q
@@ -657,7 +657,7 @@ echo $N '  resolve by removing remote file ...........................'$NL
 cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L -t -yMerge copy >OUT 2>&1 <<EOF
+bk resolve $L -yMerge copy >OUT 2>&1 <<EOF
 rr
 y
 EOF
@@ -695,7 +695,7 @@ cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 cd copy
-bk resolve $L -t -yMerge >XXX 2>&1 <<EOF
+bk resolve $L -yMerge >XXX 2>&1 <<EOF
 ml
 LOCAL
 q
@@ -726,7 +726,7 @@ echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
 q
@@ -745,7 +745,7 @@ cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 ml
 GFILE
 q
@@ -763,7 +763,7 @@ echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
@@ -782,7 +782,7 @@ cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk get -q copy/'B%A!#$%^&)(-_+=];,'
-bk resolve -t $L -t -yMerge copy >OUT 2>&1 <<EOF
+bk resolve $L -yMerge copy >OUT 2>&1 <<EOF
 mr
 REMOTE
 EOF
@@ -812,7 +812,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t -l copy >ERRORS 2>&1 <<EOF
+bk resolve -l copy >ERRORS 2>&1 <<EOF
 mr
 c C#
 q
@@ -831,7 +831,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t -l copy >ERRORS 2>&1 <<EOF
+bk resolve -l copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
@@ -851,7 +851,7 @@ echo $N '  try to rename to an existing gfile in local repository ....'$NL
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 GFILE
 q
@@ -879,14 +879,14 @@ bk commit $Q -ywhatever
 cd "$HERE/copy"
 echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
-bk pull -R -t $Q "$HERE/project"
+bk pull -R $Q "$HERE/project"
 cd "$HERE"
 tar cf SAVE.copy copy 2> /dev/null
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
 cd "$HERE"
-bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
+bk resolve $L -yMerge copy >OUT 2>&1 <<EOF
 rl
 y
 q
@@ -921,7 +921,7 @@ cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 cd copy
-bk resolve -t $L >ERRORS 2>&1 <<EOF
+bk resolve $L >ERRORS 2>&1 <<EOF
 ml
 LOCAL
 q
@@ -953,14 +953,14 @@ cd "$HERE/copy"
 echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
-bk pull -R -t $Q "$HERE/project"
+bk pull -R $Q "$HERE/project"
 cd "$HERE"
 tar cf SAVE.copy copy 2> /dev/null
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
 cd "$HERE"
-bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
+bk resolve $L -yMerge copy >OUT 2>&1 <<EOF
 rl
 y
 q
@@ -995,7 +995,7 @@ cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 cd copy
-bk resolve $L -t -yMerge >XXX 2>&1 <<EOF
+bk resolve $L -yMerge >XXX 2>&1 <<EOF
 ml
 LOCAL
 q
@@ -1023,7 +1023,7 @@ echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
 q
@@ -1042,7 +1042,7 @@ cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 ml
 GFILE
 q
@@ -1060,7 +1060,7 @@ echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
@@ -1079,7 +1079,7 @@ cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk get -q copy/'B%A!#$%^&)(-_+=];,'
-bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
+bk resolve $L -yMerge copy >OUT 2>&1 <<EOF
 mr
 REMOTE
 EOF
@@ -1106,7 +1106,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 c C#
 q
@@ -1123,7 +1123,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t -l copy >ERRORS 2>&1 <<EOF
+bk resolve -l copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
@@ -1143,7 +1143,7 @@ echo $N '  try to rename to an existing gfile in local repository ....'$NL
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 GFILE
 q
@@ -1170,7 +1170,7 @@ touch "A A"
 bk new $Q "A A"
 bk commit $Q -ywhatever
 cd "$HERE/copy"
-_BK_NO_PATCHSFIO=1 bk pull -R -t $Q "$HERE/project"
+_BK_NO_PATCHSFIO=1 bk pull -R $Q "$HERE/project"
 # Rework the patch to be in the order we want.  We want A first and MOVED 2nd.
 cd PENDING
 FILE=`echo *`
@@ -1202,7 +1202,7 @@ then	echo takepatch failed;
 	exit 1
 fi
 cd "$HERE"
-bk resolve -t $Q copy
+bk resolve $Q copy
 if [ $? != 0 ]
 then	echo resolved did not exit 0; exit 1
 fi
@@ -1235,7 +1235,7 @@ cd "$HERE/copy"
 echo Hi there, I am a conflict file > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
-bk pull -R -t $Q "$HERE/project"
+bk pull -R $Q "$HERE/project"
 cd "$HERE"
 tar cf SAVE.copy copy 2> /dev/null
 if [ ! -d copy/RESYNC ]
@@ -1249,7 +1249,7 @@ cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 cd copy
-bk resolve $L -t -yMerge 2>XXX >/dev/null <<EOF
+bk resolve $L -yMerge 2>XXX >/dev/null <<EOF
 ml
 LOCAL
 q
@@ -1271,7 +1271,7 @@ echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
 q
@@ -1290,7 +1290,7 @@ cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 ml
 GFILE
 q
@@ -1308,7 +1308,7 @@ echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
@@ -1327,7 +1327,7 @@ cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk get -q copy/'B%A!#$%^&)(-_+=];,'
-bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
+bk resolve $L -yMerge copy >OUT 2>&1 <<EOF
 mr
 REMOTE
 EOF
@@ -1348,7 +1348,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 c C#
 q
@@ -1365,7 +1365,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 rm -rf copy
 tar xmf SAVE.copy
-bk resolve -t -l copy >ERRORS 2>&1 <<EOF
+bk resolve -l copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
@@ -1385,7 +1385,7 @@ echo $N '  try to rename to an existing gfile in local repository ....'$NL
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
-bk resolve -t $L copy >ERRORS 2>&1 <<EOF
+bk resolve $L copy >ERRORS 2>&1 <<EOF
 mr
 GFILE
 q
@@ -1411,10 +1411,10 @@ bk mv "A A" Z
 bk commit $S -y'A A->Z'
 cd ..
 cd "$HERE/copy"
-bk pull -R -t $Q "$HERE/project"
+bk pull -R $Q "$HERE/project"
 BK_IGNORE_WRLOCK=YES bk get -e $Q "A A"
 echo modified >> "A A"
-bk resolve -t -q >../ERR 2>&1  
+bk resolve -q >../ERR 2>&1  
 if [ $? != 1 ]
 then	echo Resolve did not exit 1; exit 1
 fi
@@ -1445,7 +1445,7 @@ echo OK
 echo $N Clean the edit and try the first pass of resolve ............$NL
 bk unedit "A A"
 bk takepatch $Q -f PENDING/*
-bk resolve -t $Q -234
+bk resolve $Q -234
 if bk _test -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1
 then	echo Failed to move renamed s.file to RENAMES; exit 1
 fi
@@ -1454,7 +1454,7 @@ then	echo Failed to move renamed m.file to RENAMES; exit 1
 fi
 echo OK
 echo $N Run resolve to completion and make sure it moves A A to Z ...$NL
-bk resolve -t $Q
+bk resolve $Q
 if bk _test -f SCCS/s."A A"
 then	echo failed to move "A A"; exit 1
 fi
@@ -1485,14 +1485,14 @@ bk get $Q -e "A A"
 echo same data >> "A A"
 bk ci $Q -y'change as A'
 bk commit $S -y'change as A'
-bk pull -R -t $Q "$HERE/project"
+bk pull -R $Q "$HERE/project"
 if bk _test ! -f RESYNC/SCCS/r.Z
 then	echo failed to create conflict for Z; exit 1
 fi
 echo OK
 
 echo $N Run pass 1 of resolve and make sure m/r files move ..........$NL
-bk resolve -t $Q -234 
+bk resolve $Q -234 
 if bk _test -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1
 then	echo Failed to move renamed s.file to RENAMES; exit 1
 fi
@@ -1504,7 +1504,7 @@ then	echo Failed to move renamed r.file to RENAMES; exit 1
 fi
 echo OK
 echo $N Run pass 2 of resolve and make sure r file moves back .......$NL
-bk resolve -t $Q -134 
+bk resolve $Q -134 
 if bk _test ! -f RESYNC/SCCS/s.Z
 then	echo Failed to move renamed s.file from RENAMES; exit 1
 fi
@@ -1513,7 +1513,7 @@ then	echo Failed to move renamed r.file from RENAMES; exit 1
 fi
 echo OK
 echo $N Run resolve in no conflict mode and make sure it fails ......$NL
-bk resolve -t $Q -c >ERR 2>&1  
+bk resolve $Q -c >ERR 2>&1  
 if [ $? = 0 ]
 then	echo Failed to return an error
 fi
@@ -1523,7 +1523,7 @@ echo OK
 
 # Start testing conflicts.
 echo $N Run resolve in automerge mode and make sure it merges .......$NL
-bk resolve -t $Q -a
+bk resolve $Q -a
 if [ $? != 0 ]
 then	echo failed; exit 1
 fi

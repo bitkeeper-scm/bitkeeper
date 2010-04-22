@@ -61,7 +61,7 @@ echo $N Skip 5 files and resolve one -- file 2 -- text env ..........$NL
 # don't need to abort because this is first pull
 bk pull -R $Q || exit 2
 # This should loop through all once, and then sccs resolve file 2
-_dores "S,S,S,S,S,s" "-t"
+_dores "S,S,S,S,S,s" "-T"
 cd RESYNC
 test ! -f 1 -a -f 2 -a ! -f 3 -a ! -f 4 || exit 1
 # no a.files, because no edited files are created.
@@ -70,7 +70,7 @@ cd ..
 printf "base\ncopy\nproject\n" > WANT
 cmpfiles WANT RESYNC/2
 # go ahead and check in 2 - no comment because no merge diffs with 's'
-_dores "S,C" "-t"
+_dores "S,C" "-T"
 cd RESYNC
 test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || exit 3
 bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 4
@@ -101,7 +101,7 @@ echo $N Merge/Skip 5 files and resolve one -- file 2 -- text env ....$NL
 bk abort -f
 bk pull $Q -R
 # This should loop through all once, and then sccs resolve file 2
-_dores "m,S,m,S,m,S,m,S,m,S,s" "-t"
+_dores "m,S,m,S,m,S,m,S,m,S,s" "-T"
 cd RESYNC
 test -f 1 -a -f 2 -a -f 3 -a -f 4 || exit 1
 # no a.files, because no edited files are created.
@@ -109,7 +109,7 @@ bk _test -f SCCS/a.1 -a -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || exit 2
 cd ..
 cmpfiles WANT RESYNC/2
 # go ahead and check in 2
-_dores "S,C" "-t"
+_dores "S,C" "-T"
 cd RESYNC
 test -f 1 -a ! -f 2 -a -f 3 -a -f 4 || exit 3
 bk _test -f SCCS/a.1 -a ! -f SCCS/a.2 -a -f SCCS/a.3 -a -f SCCS/a.4 || exit 4
@@ -139,7 +139,7 @@ echo $N Automerge 3 and use local on 4 -- text env ..................$NL
 bk abort -f
 bk pull $Q -R
 # This should loop through all once, and then sccs resolve file 2
-_dores "S,S,ul,comment,." "-ta"
+_dores "S,S,ul,comment,." "-Ta"
 cd RESYNC
 test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || exit 1
 # no a.files, because no edited files are created.

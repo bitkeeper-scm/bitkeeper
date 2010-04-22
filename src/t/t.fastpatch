@@ -458,7 +458,7 @@ echo OK
 
 echo $N Test patching in data that is already there .................$NL
 # we are in chicago - just sccs merge the results
-printf "s\nC\nu\n" | bk resolve -at 2> ERR > OUT
+printf "s\nC\nu\n" | bk resolve -a 2> ERR > OUT
 # both patchs are now integrated -- retake and see no RESYNC dir
 bk takepatch < ../chicago.bkp
 test -d RESYNC && exit 2
@@ -476,9 +476,9 @@ bk commit $Q -yorig
 bk makepatch -FrBASE.. > ../composite.bkp
 # now take in the composite patch...
 cd ../boston
-printf "s\nC\nu\n" | bk resolve -at > OUT 2> ERR
+printf "s\nC\nu\n" | bk resolve -a > OUT 2> ERR
 bk takepatch < ../composite.bkp
-printf "u\n" | bk resolve -at > OUT 2> ERR
+printf "u\n" | bk resolve -a > OUT 2> ERR
 # Respond in kind with new and old
 cat <<EOF > file
 new 1
@@ -521,7 +521,7 @@ EOF
 cmpfiles BASELINE.want BASELINE.got
 for i in 1 2
 do	bk takepatch < ../composite.bkp
-	printf "u\n" | bk resolve -at > OUT 2> ERR
+	printf "u\n" | bk resolve -a > OUT 2> ERR
 	bk undo $Q -sfaBOSTON
 done
 weavedump SCCS/s.file > FINAL.got

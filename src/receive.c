@@ -8,14 +8,14 @@ receive_main(int ac,  char **av)
 	char	buf[MAXLINE], opts[MAXLINE] = "";
 	char	*path;
 
-	while ((c = getopt(ac, av, "acFiStv", 0)) != -1) {
+	while ((c = getopt(ac, av, "acFiSTv", 0)) != -1) {
 		switch (c) { 
 		    case 'a': strcat(opts, " -a"); break;	/* doc 2.0 */
 		    case 'c': strcat(opts, " -c"); break;	/* doc 2.0 */
 		    case 'F': strcat(opts, " -F"); break;	/* undoc? 2.0 */
 		    case 'i': strcat(opts, " -i"); new =1; break; /* doc 2.0 */
 		    case 'S': strcat(opts, " -S"); break;	/* undoc? 2.0 */
-		    case 't': strcat(opts, " -t"); break;	/* undoc? 2.0 */
+		    case 'T': strcat(opts, " -T"); break;	/* undoc? 2.0 */
 		    case 'v': strcat(opts, " -v"); break;	/* doc 2.0 */
 		    default: bk_badArg(c, av);
 		}

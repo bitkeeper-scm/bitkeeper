@@ -79,7 +79,7 @@ do	cd "$HERE"/$i
 	bk commit -y$i $Q
 done
 cd "$HERE/copy"
-bk pull -R -t $Q
+bk pull -R $Q
 cd ..
 tar cf TAR copy
 cd copy
@@ -136,7 +136,7 @@ do	cd "$HERE"/$i
 	bk commit -y$i $Q
 done
 cd "$HERE/copy"
-bk pull -t -R $Q
+bk pull -R $Q
 cd ..
 tar cf TAR copy
 cd copy
@@ -155,7 +155,7 @@ cd copy
   echo ul
   echo Use local file
   echo .
-  echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
+  echo q ) | bk resolve $Q -ywhatever > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
 	cat OUT
@@ -187,7 +187,7 @@ cd copy
   echo ur
   echo Use remote file
   echo .
-  echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
+  echo q ) | bk resolve $Q -ywhatever > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
 	cat OUT
@@ -219,7 +219,7 @@ cd copy
   echo C
   echo Use local file
   echo .
-  echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
+  echo q ) | bk resolve $Q -ywhatever > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
 	exit 1
@@ -250,7 +250,7 @@ cd copy
   echo C
   echo Use remote file
   echo .
-  echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
+  echo q ) | bk resolve $Q -ywhatever > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
 	exit 1
@@ -281,7 +281,7 @@ cd copy
   echo ur
   echo use remote
   echo .
-  echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
+  echo q ) | bk resolve $Q -ywhatever > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
 	cat OUT

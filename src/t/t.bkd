@@ -233,7 +233,7 @@ bk bkd -q -d -aPORT -ikill || exit 1
 P=`cat PORT`
 bk lock -U "$HERE/copy"        # needed on Freebsd4
 cd "$HERE/copy/src"
-bk pull $Q -t -z0 bk://localhost:$P
+bk pull $Q -z0 bk://localhost:$P
 if bk _test ! -f SCCS/s.zoo.c; then echo failed; exit 1; fi
 bk lock -U "$HERE/project"
 bk _kill bk://localhost:$P || exit 1
@@ -248,7 +248,7 @@ cd "$HERE/project"
 bk bkd -q -d -aPORT -ikill || exit 1
 P=`cat PORT`
 cd "$HERE/copy/src"
-bk pull -t $Q bk://localhost:$P
+bk pull $Q bk://localhost:$P
 if bk _test ! -f SCCS/s.boo.c; then echo failed; exit 1; fi
 bk lock -U "$HERE/project"
 bk _kill bk://localhost:$P || exit 1
@@ -260,7 +260,7 @@ rm -f "$HERE/LOG"
 bk bkd -q -l"$HERE/LOG" -xpull -aPORT -ikill || exit 1
 P=`cat PORT`
 cd "$HERE/copy/src"
-bk pull -t bk://localhost:$P > pull.out 2>&1
+bk pull bk://localhost:$P > pull.out 2>&1
 grep -q "bkd has disabled" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1; fi
 bk lock -U "$HERE/project"
@@ -311,7 +311,7 @@ cd "$HERE/project"
 bk bkd -q -d -aPORT -xcd -xpush -ikill || exit 1
 P=`cat PORT`
 cd "$HERE/copy/src"
-bk pull -t $Q bk://localhost:$P
+bk pull $Q bk://localhost:$P
 if bk _test ! -f SCCS/s.coo.c; then echo failed; exit 1; fi
 bk lock -U "$HERE/project"
 bk _kill bk://localhost:$P || exit 1
@@ -332,7 +332,7 @@ bk lock -U "$HERE/project"
 cd "$HERE/copy"
 bk mv old.c conflict.c || exit 1
 bk commit $Q -ygconflict
-echo "" | bk push -c1 bk://localhost:$P > bk.out 2>&1
+echo "" | bk push -v -c1 bk://localhost:$P > bk.out 2>&1
 grep -q "Did not resolve 1 renames, no conflicts causing abort." bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 rm -f  "$HERE/project/conflict.c"

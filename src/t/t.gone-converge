@@ -48,7 +48,7 @@ tar cf TAR project copy
 
 echo $N Pull, should union the data and leave one file ..............$NL
 cd "$HERE/copy"
-bk pull -t $Q
+bk pull $Q
 bk get $Q BitKeeper/etc/gone
 if [ ! -f BitKeeper/etc/gone ]
 then	echo 'Where oh where did my little file go?'
@@ -75,7 +75,7 @@ cd "$HERE"
 rm -rf project copy
 tar xmf TAR
 cd "$HERE/project"
-bk pull -t $Q ../copy
+bk pull $Q ../copy
 bk get $Q BitKeeper/etc/gone
 if [ ! -f BitKeeper/etc/gone ]
 then	echo 'Where oh where did my little file go?'
@@ -98,7 +98,7 @@ echo OK
 
 echo $N Paranoid - make sure the push works .........................$NL
 cd "$HERE/project"
-bk push -t $Q ../copy
+bk push $Q ../copy
 cd "$HERE/copy"
 bk get $Q BitKeeper/etc/gone
 if [ ! -f BitKeeper/etc/gone ]
@@ -132,7 +132,7 @@ echo "copy@foo.com" >> gone
 bk delta $Q -ycopy
 bk commit -ywhatever $Q
 cd "$HERE/copy"
-echo q | bk pull -t $Q
+echo q | bk pull $Q
 if [ -f RESYNC ]
 then	echo failed to complete resync
 	exit 1

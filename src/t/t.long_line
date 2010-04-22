@@ -118,7 +118,7 @@ if [ $? -ne 0 ]; then echo failed; diff long1 long1.ref; exit 1; fi
 bk commit $S -yCset
 bk send $Q -r1.3 - | (cd "$HERE/copy"; bk takepatch) 
 cd "$HERE/copy/src"
-bk resolve -t $Q
+bk resolve $Q
 bk co $Q long1
 cmp -s long1 "$HERE/project/src/long1.ref"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -130,7 +130,7 @@ cd "$HERE/copy2"
 bk cset $Q -m.. > ../PATCH
 mkdir "$HERE/copy3"
 cd "$HERE/copy3"
-BK_CONFIG=checkout:none bk takepatch -atif ../PATCH
+BK_CONFIG=checkout:none bk takepatch -aTif ../PATCH
 cd "$HERE/copy2/src" || exit 1
 bk co $Q long1
 cmp -s long1 "$HERE/project/src/long1.ref"

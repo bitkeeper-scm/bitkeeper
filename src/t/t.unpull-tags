@@ -93,7 +93,7 @@ bk commit $Q -yfoo -SSECOND
 cd ../resolve-tag
 ORIG=`_tagkeys SECOND | head -1`
 bk pull $Q -R
-{ echo l; echo l; } | bk resolve $Q -t 2> ERR || exit 1
+{ echo l; echo l; } | bk resolve $Q 2> ERR || exit 1
 cp BitKeeper/etc/csets-in save-csets-in
 bk _cp SCCS/s.ChangeSet cs
 chmod +w cs

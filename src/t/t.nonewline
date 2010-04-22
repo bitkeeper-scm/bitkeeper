@@ -97,7 +97,7 @@ echo OK
 bk commit $S -ywhatever
 echo $N Check for no newline changes back to project ................$NL
 cd "$HERE/project"
-bk pull -t $Q ../copy
+bk pull $Q ../copy
 cd "$HERE"
 cp copy/X project/SAVEfoo.c
 cp copy/Y project/SAVEbar.c

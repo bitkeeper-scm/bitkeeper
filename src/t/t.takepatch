@@ -301,7 +301,7 @@ rm -fr copy
 tar xf copy.tar
 cd copy || exit 1
 bk pull $Q -rFIRST || exit 1
-_BK_NO_FASTPATCH=1 BK_NOTTY= bk pull -R > OUT 2> SPINNERCHECK || exit 1
+_BK_NO_FASTPATCH=1 BK_NOTTY= bk pull -R -v > OUT 2> SPINNERCHECK || exit 1
 mv PENDING/* update.patch
 rm -fr PENDING RESYNC
 bk edit $Q newfile
@@ -319,14 +319,10 @@ echo $N Test the details of the spinner check .......................$NL
 grep -v 'uncompressed to' SPINNERCHECK |
      perl -pe '1 while s/[^\010]\010//g' > GOT
 cat <<EOF > WANT
----------------------- Receiving the following csets -----------------------
-1.4 
----------------------------------------------------------------------------
-Receiving patch ... done.
 ---------------------------------------------------------------------------
 takepatch: saved entire patch in $PENDING
 ---------------------------------------------------------------------------
-Updating ChangeSet, renumbering, checking checksums
+Updating ChangeSet
 Updating send-as-deltas
 Updating send-as-sfile
 takepatch: 1 new changeset, 0 conflicts in 3 files

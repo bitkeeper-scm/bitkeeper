@@ -1,21 +1,21 @@
 /*
- * Copyright (c) 2000-2001, Andrew Chang & Larry McVoy
+ * Copyright (c) 2000-2010 BitMover, Inc.
  */
 #include "bkd.h"
 #include "logging.h"
 #include "range.h"
 #include "nested.h"
+#include "progress.h"
 
 private	struct {
-	u32	doit:1;			/* -n show what would push */
-	u32	verbose:1;		/* -q */
-	u32	nospin:1;		/* -G */
+	u32	quiet:1;		/* -q */
+	u32	verbose:1;		/* -v (old default) */
 	u32	textOnly:1;		/* -T */
 	u32	autopull:1;		/* -a */
 	u32	forceInit:1;		/* -i pull to empty dir OK */
 	u32	debug:1;		/* -d */
 	u32	product:1;		/* set in nested product */
-	int	list;			/* -l */
+	int	n;			/* # of comps, including product */
 	u32	inBytes, outBytes;	/* stats */
 	u64	bpsz;			/* size of BAM data */
 	delta	*d;			/* -r tip delta to push */
@@ -58,7 +58,6 @@ private	int	send_BAM_msg(remote *r, char *bp_keys, char **envVar,u64 bpsz);
 private push_rc	receive_serverInfoBlock(remote *r);
 
 private u32	genpatch(FILE *wf, char *rev_list, int gzip, int isLocal);
-private	void	listIt(char *keys, int list);
 private int	maybe_trigger(remote *r);
 private char *	push2txt(push_rc rc);
 
@@ -77,9 +76,8 @@ push_main(int ac, char **av)
 	int	gzip = 6;
 
 	bzero(&opts, sizeof(opts));
-	opts.doit = opts.verbose = 1;
 
-	while ((c = getopt(ac, av, "ac:deE:Gilnqr;tTz|", 0)) != -1) {
+	while ((c = getopt(ac, av, "ac:deE:iqr;Tvz|", 0)) != -1) {
 		unless (c == 'r') {
 			if (optarg) {
 				opts.av_push = addLine(opts.av_push,
@@ -109,14 +107,13 @@ push_main(int ac, char **av)
 				return (1);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
-		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.forceInit = 1; break;	/* undoc? 2.0*/
-		    case 'l': opts.list++; break;		/* doc 2.0 */
-		    case 'n': opts.doit = 0; break;		/* doc 2.0 */
-		    case 'q': opts.verbose = 0; break;		/* doc 2.0 */
+		    case 'q': opts.quiet = 1; opts.verbose = 0;	/* doc */
+		    	break;
 		    case 'r': opts.rev = optarg; break;
-		    case 't': /* -T is preferred, remove -t in 5.0 */
 		    case 'T': opts.textOnly = 1; break;		/* doc 2.0 */
+		    case 'v': opts.verbose = 1; opts.quiet = 0;	/* doc */
+		    	break;
 		    case 'z':					/* doc 2.0 */
 			if (optarg) gzip = atoi(optarg);
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
@@ -125,8 +122,12 @@ push_main(int ac, char **av)
 		}
 		optarg = 0;
 	}
-	unless (opts.verbose) putenv("BK_QUIET_TRIGGERS=YES");
-	if (getenv("BK_NOTTY")) opts.nospin = 1;
+	if (getenv("BK_NOTTY")) {
+		opts.quiet = 1;
+		opts.verbose = 0;
+	}
+	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	unless (opts.quiet || opts.verbose) putenv("_BK_PROGRESS_MULTI=YES");
 
 	/*
 	 * Get push parent(s)
@@ -173,8 +174,12 @@ push_main(int ac, char **av)
 			getMsg("missing_parent", 0, 0, stderr);
 			return (1);
 		}
+	}
 
-		if (opts.verbose) print_title = 1;
+	if (opts.verbose) {
+		print_title = 1;
+	} else if (!opts.quiet && proj_isProduct(0)) {
+		print_title = 1;
 	}
 
 	unless (urls) {
@@ -196,6 +201,7 @@ err:		freeLines(envVar, free);
 			opts.aliases = 0;
 			putenv("BKD_NESTED_LOCK=");
 		}
+		if (opts.product) opts.n = 1;
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
@@ -209,7 +215,7 @@ err:		freeLines(envVar, free);
 			if (rc != REMOTE_LOCKED) break;
 			if (try == 0) break;
 			if (try != -1) --try;
-			if (opts.verbose) {
+			unless (opts.quiet) {
 				fprintf(stderr,
 				    "push: remote locked, trying again...\n");
 			}
@@ -244,6 +250,7 @@ push(char **av, remote *r, char **envVar)
 	push_rc	ret;
 	char	*p, *abort;
 	char	*bp_keys = 0;
+	char	*freeme = 0;
 	char	rev_list[MAXPATH] = "";
 
 	if (opts.debug) {
@@ -317,6 +324,20 @@ push(char **av, remote *r, char **envVar)
 out:	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r);
 
+	unless (opts.quiet || opts.verbose || ret) {
+		unless (title) {
+			if (opts.product) {
+				freeme = title =
+				    aprintf("%d/%d .", opts.n, opts.n);
+			} else {
+				freeme = title = strdup("push");
+			}
+		}
+		progress_end(PROGRESS_BAR, "OK");
+		if (freeme) free(freeme);
+		title = 0;
+	}
+
 	/* handle triggers */
 	if ((ret == PUSH_ERROR) || (ret == CONNECTION_FAILED) ||
 	    (ret == REMOTE_LOCKED) || (ret == PUSH_NO_REPO)) {
@@ -352,6 +373,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	char	*url, *cwd = 0;
 	int	errs = 0;
 	int	status, i, j, rc = 0;
+	int	which = 0;
 
 	url = remote_unparse(r);
 
@@ -463,8 +485,16 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		/* skip cases with nothing to do */
 		if (!c->included || !c->present || !c->alias) continue;
 		if (c->product) continue;
+		opts.n++;
+	}
+	EACH_STRUCT(n->comps, c, i) {
+		/* skip cases with nothing to do */
+		if (!c->included || !c->present || !c->alias) continue;
+		if (c->product) continue;
 		chdir(c->path);
 		vp = addLine(0, strdup("bk"));
+		vp = addLine(vp,
+		    aprintf("--title=%d/%d %s", ++which, opts.n, c->path));
 		if (c->new) {
 			vp = addLine(vp, strdup("_rclone"));
 			EACH_INDEX(opts.av_clone, j) {
@@ -492,7 +522,16 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 			break;
 		}
 		/* the clone succeeded so it is present now */
-		if (c->new) c->remotePresent = 1;
+		if (c->new) {
+			c->remotePresent = 1;
+			unless (opts.quiet || opts.verbose) {
+				title =
+				    aprintf("%d/%d %s", which, opts.n, c->path);
+				progress_end(PROGRESS_BAR, "OK");
+				free(title);
+				title = 0;
+			}
+		}
 	}
         unless (rc || opts.rev) {
                 int     flush = 0;
@@ -526,10 +565,9 @@ out:
 private push_rc
 push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 {
-	int	fd, n, ret;
-	delta	*d;
+	int	fd, ret;
 	char	*p;
-	FILE	*f;
+	char	*url = 0;
 	u32	lcsets = 0;		/* local csets */
 	u32	rcsets = 0;		/* remote csets */
 	u32	rtags = 0;		/* remote tags */
@@ -602,7 +640,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
 	ret = prunekey(s_cset, r, NULL, fd, PK_LKEY,
-		!opts.verbose, &lcsets, &rcsets, &rtags);
+		opts.quiet, &lcsets, &rcsets, &rtags);
 	close(fd);
 	if (ret < 0) {
 		push_rc	rc = PUSH_ERROR;
@@ -626,72 +664,20 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 	/*
 	 * Spit out the set of keys we would send.
 	 */
-	if (opts.verbose || opts.list) {
-		char	*url = remote_unparse(r);
+	url = remote_unparse(r);
 
-		if (rcsets && opts.doit) {
-			fprintf(stderr,
-			    "Unable to push to %s\nThe", url);
-csets:			fprintf(stderr,
-			    " repository that you are pushing "
-			    "to is %d changesets\n"
-			    "ahead of your repository. "
-			    "Please do a \"bk pull\" to get \n"
-			    "these changes or do a \"bk changes -R\" to"
-			    " see what they are.\n", rcsets);
-		} else if (rtags && opts.doit) {
-tags:			fprintf(stderr,
-			    "Not pushing because of %d tags only in %s\n",
-			    rtags, url);
-		} else if (lcsets > 0) {
-			fprintf(stderr, opts.doit ?
-			    "----------------------- "
-			    "Sending the following csets "
-			    "---------------------------\n":
-			    "----------------------- "
-			    "Would send the following csets "
-			    "------------------------\n");
-			if (opts.list) {
-				listIt(rev_list, opts.list);
-			} else {
-				f = fopen(rev_list, "r");
-				assert(f);
-				n = 0;
-				while (fnext(buf, f)) {
-					chomp(buf);
-					d = sccs_findKey(s_cset, buf);
-					unless (d->type == 'D') continue;
-					n += strlen(d->rev) + 1;
-					fprintf(stderr, "%s", d->rev);
-					if (n > 72) {
-						n = 0;
-						fputs("\n", stderr);
-					} else {
-						fputs(" ", stderr);
-					}
-				}
-				fclose(f);
-				if (n) fputs("\n", stderr);
-			}
-			fprintf(stderr,
-			    "------------------------------------------"
-			    "-------------------------------------\n");
-			if (rcsets) {
-				fprintf(stderr, "except that the");
-				goto csets;
-			}
-			if (rtags) goto tags;
-		} else if (lcsets == 0) {
-			fprintf(stderr, "Nothing to push.\n");
-			if (rcsets) {
-				fprintf(stderr, "but the");
-				goto csets;
-			}
-			if (rtags) goto tags;
-		}
-		free(url);
+	if (rcsets || rtags) {
+		fprintf(stderr,
+		    "Unable to push to %s\n"
+		    "The repository you are pushing to is %d csets/tags "
+		    "ahead of your repository.\n"
+		    "You will need to pull first.\n",
+		    url, rcsets+rtags);
+	} else if (!opts.quiet && (lcsets == 0)) {
+		fprintf(stderr, "Nothing to push.\n");
 	}
-	if ((lcsets == 0) || !opts.doit) return (NOTHING_TO_SEND);
+	free(url);
+	if (lcsets == 0) return (NOTHING_TO_SEND);
 	if (rcsets || rtags) return (CONFLICTS);
 	return (PUSH_OK);
 }
@@ -717,7 +703,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 	if (trigger(av[0], "pre")) {
 		send_end_msg(r, "@ABORT@\n", envVar);
 		return(PUSH_ERROR);
-	} else if (i = bp_updateServer(0, rev_list, !opts.verbose)) {
+	} else if (i = bp_updateServer(0, rev_list, opts.quiet)) {
 		/* push BAM data to server */
 		fprintf(stderr,
 		    "push: unable to update BAM server %s (%s)\n",
@@ -737,7 +723,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@TAKEPATCH INFO@")) {
 		/* with -q, save output in 'f' to print if error */
-		f = opts.verbose ? stderr : fmem_open();
+		f = opts.quiet ? fmem_open() : stderr;
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
 			fwrite(buf, 1, n, f);
@@ -747,7 +733,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 			int	remote_rc = atoi(&buf[1]);
 
 			if (remote_rc) {
-				unless (opts.verbose) {
+				if (opts.quiet) {
 					fputs(fmem_getbuf(f, 0), stderr);
 				}
 				fprintf(stderr,
@@ -755,7 +741,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 				    remote_rc);
 			}
 		}
-		unless (opts.verbose) fclose(f);
+		if (opts.quiet) fclose(f);
 		f = 0;
 		unless (streq(buf, "@END@")) return(PUSH_ERROR);
 		getline2(r, buf, sizeof(buf));
@@ -811,7 +797,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 				if (maybe_trigger(r)) {
 					return(PUSH_ERROR);
 				}
-			} else if (opts.verbose) {
+			} else unless (opts.quiet) {
 				writen(2, buf, n);
 			}
 		}
@@ -915,7 +901,9 @@ push_finish(remote *r, push_rc status, char **envVar)
 	assert(f);
 	sendEnv(f, envVar, r, 0);
 	if (r->type == ADDR_HTTP) add_cd_command(f, r);
-	fprintf(f, "nested %s -R\n", status ? "abort" : "unlock");
+	fprintf(f, "nested %s -R %s\n",
+	    status ? "abort" : "unlock",
+	    opts.verbose ? "-v" : (opts.quiet ? "-q" : ""));
 	fclose(f);
 	if (send_file(r, buf, 0)) return (PUSH_ERROR);
 	unlink(buf);
@@ -994,7 +982,11 @@ send_part1_msg(remote *r, char **envVar)
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.debug) fprintf(f, " -d");
 	if (opts.product) fprintf(f, " -P");
-	unless (opts.doit) fprintf(f, " -n");
+	if (opts.verbose) {
+		fprintf(f, " -v");
+	} else if (opts.quiet) {
+		fprintf(f, " -q");
+	}
 	fputs("\n", f);
 	fclose(f);
 
@@ -1076,7 +1068,6 @@ send_end_msg(remote *r, char *msg, char **envVar)
 	 */
 	if (r->type == ADDR_HTTP) add_cd_command(f, r);
 	fprintf(f, "push_part2");
-	unless (opts.doit) fprintf(f, " -n");
 	if (opts.product) fprintf(f, " -P");
 	fputs("\n", f);
 	fclose(f);
@@ -1110,21 +1101,12 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 	fprintf(f, "push_part2");
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.debug) fprintf(f, " -d");
-	if (!opts.verbose) fprintf(f, " -q");
-	if (opts.product) fprintf(f, " -P");
-	if (opts.nospin) {
-		char	*tt = getenv("BKD_TIME_T");
-
-		/* Test for versions before this feature went in */
-		unless (tt && (atoi(tt) >= 985648694)) {
-			fprintf(stderr,
-			    "Remote BKD does not support -G, "
-			    "continuing without -G.\n");
-		} else {
-			fprintf(f, " -G");
-		}
+	if (opts.verbose) {
+		fprintf(f, " -v");
+	} else if (opts.quiet) {
+		fprintf(f, " -q");
 	}
-	unless (opts.doit) fprintf(f, " -n");
+	if (opts.product) fprintf(f, " -P");
 	fputs("\n", f);
 	fclose(f);
 
@@ -1188,10 +1170,14 @@ send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip)
 	char	*sfio[10] = {"bk", "sfio", "-oB", 0, "-", 0};
 	char	buf[64];
 
+	/*
+	 * Bogus alert.  This is called from other places that seem to
+	 * want it to be quiet.  Since opts is unset it "works".
+	 */
 	if (opts.verbose) {
-		sprintf(buf, "-rb%s", psize(bpsz));
+		sprintf(buf, "-b%s", psize(bpsz));
 	} else {
-		sprintf(buf, "-q");
+		strcpy(buf, "-q");
 	}
 	sfio[3] = buf;
 
@@ -1233,7 +1219,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	fprintf(f, "push_part3");
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.debug) fprintf(f, " -d");
-	if (!opts.verbose) fprintf(f, " -q");
+	if (opts.quiet) fprintf(f, " -q");
 	if (opts.product) fprintf(f, " -P");
 	fputs("\n", f);
 
@@ -1308,8 +1294,8 @@ pull(remote *r)
 	repository_rdunlock(0, 0);
 	cmd[i = 0] = "bk";
 	cmd[++i] = "pull";
-	unless (opts.verbose) cmd[++i] = "-q";
-	if (opts.textOnly) cmd[++i] = "-t";
+	if (opts.quiet) cmd[++i] = "-q";
+	if (opts.textOnly) cmd[++i] = "-T";
 	cmd[++i] = url;
 	cmd[++i] = 0;
 	if (opts.verbose) {
@@ -1365,21 +1351,4 @@ push2txt(push_rc rc)
 	    default:
 		return ("UNKNOWN");
 	}
-}
-
-private	void
-listIt(char *keys, int list)
-{
-	FILE	*f;
-	char	*cmd;
-	char	buf[BUFSIZ];
-
-	cmd = aprintf("bk changes -P %s - < '%s'", list > 1 ? "-v" : "", keys);
-	f = popen(cmd, "r");
-	assert(f);
-	while (fnext(buf, f)) {
-		fputs(buf, stderr);
-	}
-	pclose(f);
-	free(cmd);
 }

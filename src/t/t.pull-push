@@ -66,22 +66,22 @@ echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -y2 'F!O#O$ B%A^R&RR(R)RR' || exit 1
 bk commit $Q -y2 || exit 1
 cd "$HERE/copy"
-bk pull -t >OUT 2>ERR || { echo failed; exit 1; }
-revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
-SEND=`perl -ne 'next unless /^---.*Receiving/.../---/; print if /^\d/' ERR`
-test "$SEND" = "1.3 " || {
+bk pull -u -q || exit 1
+WANT=`bk changes -qd:MD5KEY: -r+ "$HERE/project"`
+GOT=`bk changes -qd:MD5KEY: -r+`
+test "$WANT" = "$GOT" || {
 	echo transfered the wrong csets
-	cat ERR
+	echo $WANT
+	echo $GOT
 	exit 1
 }
-[ $revs -eq 2 ] || { echo failed; exit 1; }
 cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
 echo OK
 if [ $DO_REMOTE = YES ]; then
  cd "$HERE/copy"
 
  echo $N Pull with explicit remote parent ............................$NL
- bk pull -t $Q localhost:"$HERE/project" || { echo failed; exit 1; }
+ bk pull $Q localhost:"$HERE/project" || { echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
@@ -89,7 +89,7 @@ if [ $DO_REMOTE = YES ]; then
 
  echo $N Pull with explicit remote parent and username ...............$NL
  cd "$HERE/copy"
- bk pull -t $Q $USER@localhost:"$HERE/project" > /dev/null 2>& 1 ||
+ bk pull $Q $USER@localhost:"$HERE/project" > /dev/null 2>& 1 ||
 							{ echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
@@ -99,14 +99,14 @@ if [ $DO_REMOTE = YES ]; then
  echo $N Pull with explicit local parent .............................$NL
  cd "$HERE/copy"
  HOSTNAME=`bk gethost -r`
- bk pull -t $Q $HOSTNAME:"$HERE/project" > /dev/null 2>&1 || 
+ bk pull $Q $HOSTNAME:"$HERE/project" > /dev/null 2>&1 || 
 							{ echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
  echo OK
  echo $N Pull with explicit local parent and username ................$NL
- bk pull -t $Q $USER@$HOSTNAME:"$HERE/project" > /dev/null 2>&1 ||
+ bk pull $Q $USER@$HOSTNAME:"$HERE/project" > /dev/null 2>&1 ||
 							{ echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
@@ -120,7 +120,7 @@ fi
 
 echo $N Pull from subdirectory of repository ........................$NL
 cd src
-bk pull -t $Q || { echo failed; exit 1; }
+bk pull $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' 'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
@@ -130,7 +130,7 @@ cd "$HERE/copy"
 bk unpull -f $Q || fail 1
 bk parent $Q -sn ../project || fail 2
 cd src
-bk pull -t $Q || fail 3
+bk pull $Q || fail 3
 revs=`bk prs -hd':I:\n' 'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || fail 4
 bk parent $Q -s "$HERE/project" || fail 5
@@ -162,7 +162,7 @@ rm -f bar.x
 bk delta $Q -yzero
 bk commit $Q -y0
 cd "$HERE/copy"
-bk pull -t $Q || { echo failed; exit 1; }
+bk pull $Q || { echo failed; exit 1; }
 cd src
 cat > X <<EOF
 line zero
@@ -202,7 +202,15 @@ bk delta $Q -ydvorak h.h
 cd ..
 bk commit $Q -yzxcvbnm
 bk parent $Q "$HERE/copy" || exit 1
-bk push $Q -t -a "$HERE/project" || { echo push w/ autopull failed; exit 1; }
+bk push $Q -a "$HERE/project" 2>ERR || {
+	echo push w/ autopull failed
+	exit 1
+}
+grep -q "The repository you are pushing to is 1 csets/tags" ERR || {
+	echo wrong message
+	cat ERR
+	exit 1
+}
 bk parent $Q "$HERE/project" || exit 1
 bk findkey $KEY > foo
 if [ ! -s foo ]; then echo bad push; exit 1; fi
@@ -221,7 +229,7 @@ KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 cd "$HERE"
 tar cf PUSH.tar project copy
 cd "$HERE/copy"
-_BK_PREVENT_RESOLVE_RERUN=1 bk push -t -a $Q 2> resolve.out
+_BK_PREVENT_RESOLVE_RERUN=1 bk push -a $Q 2> resolve.out
 test $? -ne 0 || { echo failed; cat resolve.out; exit 1; }
 grep -q 'unresolved conflicts, nothing is applied' resolve.out || {
 	echo should have had conflicts, but did not
@@ -237,7 +245,7 @@ bk _test -f RESYNC/SCCS/c.ChangeSet || exit 1
 echo OK
 
 echo $N Resolve by hand and push again ..............................$NL
-bk resolve $Q -F -t <<EOF >resolve.out 2>&1
+bk resolve $Q -F <<EOF >resolve.out 2>&1
 m
 C
 whatever
@@ -258,12 +266,6 @@ cp -rp project project3
 cd copy
 KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 bk push >OUT 2>ERR || { echo failed; exit 1; }
-SEND=`perl -ne 'next unless /^---.*Sending/.../---/; print if /^\d/' ERR`
-test "$SEND" = "1.8 1.7 1.5.1.1 " || {
-	echo transfered the wrong csets
-	cat ERR
-	exit 1
-}
 KEY2="`cd "$HERE/project" && bk prs -hd:KEY: -r+ ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
 cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
@@ -321,7 +323,7 @@ bk commit $Q -ydelete
 cd "$HERE/copy2/src"
 bk rm 'F!O#O$ B%A^R&RR(R)RR'
 bk commit $Q -ydelete2
-bk pull $Q -t "$HERE/project" || { echo failed; exit 1; }
+bk pull $Q "$HERE/project" || { echo failed; exit 1; }
 echo OK
 
 echo $N pull with a mvdir event .....................................$NL
@@ -329,7 +331,7 @@ cd "$HERE/project"
 bk mvdir src src2/src3
 bk commit $Q -ymvdir
 cd "$HERE/copy2"
-bk pull $Q -t "$HERE/project"
+bk pull $Q "$HERE/project"
 if bk _test ! -f src2/src3/SCCS/s.bar.c; then echo failed; exit 1; fi
 if bk _test ! -f src2/src3/SCCS/s.h.h; then echo failed; exit 1; fi
 echo OK
@@ -435,7 +437,7 @@ grep -q "checksum in the patch for the ChangeSet" ERR || {
 echo OK
 
 echo $N make sure pull normalize file url ...........................$NL
-bk pull ../././project > "$HERE/pull.out" 2> /dev/null
+bk pull -v ../././project > "$HERE/pull.out" 2> /dev/null
 grep -q "$PREFIX/project" "$HERE/pull.out" 
 STATUS=$?
 test $STATUS = 0 || {

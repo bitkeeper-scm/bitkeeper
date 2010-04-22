@@ -44,7 +44,7 @@ cat $BIN2 > uuencode
 bk delta $Q -yreplace uuencode
 bk commit $Q -yreplace
 bk pull $Q -R
-echo q | bk resolve -a -t > OUT 2>&1
+echo q | bk resolve -a -T > OUT 2>&1
 grep -q "Not automerging binary 'uuencode'" OUT || {
 	echo failed to fail the automerge
 	cat OUT
@@ -53,7 +53,7 @@ grep -q "Not automerging binary 'uuencode'" OUT || {
 echo OK
 
 echo $N Make sure we get to the binary menu .........................$NL
-(echo ''; echo q) | bk resolve -t > OUT 2>&1
+(echo ''; echo q) | bk resolve > OUT 2>&1
 grep -q "binary conflict" OUT || {
 	echo failed to get to binary menu
 	cat OUT
@@ -95,7 +95,7 @@ echo foobar >> ascii
 bk delta -ywhatever $Q ascii
 bk commit $Q -yconflict
 bk pull -R $Q
-(echo ''; echo q) | bk resolve -t > OUT 2>&1
+(echo ''; echo q) | bk resolve > OUT 2>&1
 grep -q "binary conflict" OUT || {
 	echo failed to get to binary menu
 	cat OUT
@@ -104,7 +104,7 @@ grep -q "binary conflict" OUT || {
 echo OK
 
 echo $N Use the remote version, verify that it worked ...............$NL
-(echo 'ur'; echo q) | bk resolve -t > OUT 2>&1
+(echo 'ur'; echo q) | bk resolve > OUT 2>&1
 test -d RESYNC && {
 	cat OUT
 	exit 1
@@ -132,7 +132,7 @@ cp uuencode "$HERE/cmp"
 bk delta $Q -yreplace uuencode
 bk commit $Q -yreplace
 bk pull $Q -R
-echo q | bk resolve -l -d -a -t > OUT 2>&1
+echo q | bk resolve -l -d -a > OUT 2>&1
 grep -q "Not automerging binary 'uuencode'" OUT && {
 	echo failed to automerge
 	cat OUT

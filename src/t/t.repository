@@ -133,7 +133,7 @@ echo OK
 #bk makepatch $Q -e.. > "$HERE/patch"
 #cd "$HERE/proj_log"
 #bk takepatch $Q < "$HERE/patch"
-#bk resolve -d -t -c
+#bk resolve -d -c
 #echo SKIPPED
 
 echo $N Try to resolve into a tree with no write permission .........$NL

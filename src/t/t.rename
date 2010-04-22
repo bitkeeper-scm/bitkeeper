@@ -99,7 +99,7 @@ tar cf chkpt.tar a b
 echo $N resync a to b ...............................................$NL
 cd b
 bk pull -R $Q "$HERE/a"
-bk resolve $Q -t >resolve.out 2>&1 <<EOF
+bk resolve $Q >resolve.out 2>&1 <<EOF
 m
 C
 u

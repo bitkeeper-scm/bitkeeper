@@ -129,7 +129,7 @@ fi
 echo OK
 # Note that we are in the repository with the newer key in the slot.
 echo $N Pull them, should not ask, should union, oldest in slot .....$NL
-bk pull -t $Q ../project || exit 1
+bk pull $Q ../project || exit 1
 test -d RESYNC && {
 	echo failed to use existing gone, left RESYNC
 	cat OUT
@@ -190,7 +190,7 @@ echo $N Pull them, should not ask, should union, oldest in slot .....$NL
 cd "$HERE"
 tar cf SAVE project copy
 cd copy
-bk pull $Q -t ../project || exit 1
+bk pull $Q ../project || exit 1
 test -d RESYNC && {
 	echo failed to use existing gone, left RESYNC
 	exit 1
@@ -213,7 +213,7 @@ cd "$HERE"
 rm -rf project copy
 tar xmf SAVE 
 cd project
-bk pull $Q -t ../copy || exit 1
+bk pull $Q ../copy || exit 1
 test -d RESYNC && {
 	echo failed to use existing gone, left RESYNC
 	exit 1
@@ -284,7 +284,7 @@ fi
 echo OK
 
 echo $N Pull, make sure it deletes the OK file and creates new one ..$NL
-bk pull -t $Q ../project
+bk pull $Q ../project
 KEY2=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$KEY" != "$KEY2" ]
 then	echo failed to keep original gone file
@@ -365,7 +365,7 @@ then	echo failed to move gone into deleted slot and create new one
 fi
 BK_USER=jerk
 BK_HOST=blow.dork.bk_regression.bk
-bk pull -t $Q ../project >/dev/null 2>&1 < ../Y
+bk pull $Q ../project >/dev/null 2>&1 < ../Y
 test -d RESYNC && {
 	echo failed, left RESYNC
 	exit 1

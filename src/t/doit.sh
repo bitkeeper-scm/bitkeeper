@@ -395,6 +395,7 @@ setup_env()
 	export _BK_DEVELOPER
 	unset BK_NO_TRIGGERS
 	unset BK_NO_REMAP
+	unset BK_NOTTY
 
 	# clear OLDPATH in case bk ran doit
 	unset BK_OLDPATH

@@ -156,11 +156,11 @@ cd "$HERE/tag_c"
 bk edit $Q b
 bk delta $Q -fy1.2 b
 bk commit $Q -STAG_C2 -y"Tagged node on branch of branch (again)"
-bk pull $Q -t "$HERE/tag_a"
+bk pull $Q "$HERE/tag_a"
 bk edit $Q b
 bk delta $Q -fy1.2 b
 bk commit $Q -STAG_C3 -y"Tagged node on branch after merge"
-bk pull $Q -t "$HERE/tag_b"
+bk pull $Q "$HERE/tag_b"
 bk edit $Q a
 bk delta $Q -fy1.2 a
 bk commit $Q -y"tip to be deleted"

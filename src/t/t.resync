@@ -95,7 +95,7 @@ bk ci $Q -i a.c b.c c.c
 rm -f a.c b.c c.c
 bk commit $S -yabc
 cd "$HERE/copy"
-bk pull -t $Q "$HERE/project"
+bk pull $Q "$HERE/project"
 cd "$HERE"
 tar cf chkpoint.tar copy
 cd "$HERE/project/src"
@@ -109,7 +109,7 @@ bk mv SCCS/s.a.c SCCS/s.b.c
 bk mv SCCS/s.d.c SCCS/s.a.c
 bk commit $S -yclockwise
 cd "$HERE/copy"
-bk pull -t $Q "$HERE/project"
+bk pull $Q "$HERE/project"
 cd "$HERE/copy/src"
 bk get $Q a.c b.c c.c
 echo "File 3" > X
@@ -135,7 +135,7 @@ echo "File 4" > c.c
 bk ci $Q -i c.c
 bk commit $S -y'Add d.c'
 cd  "$HERE/copy/src"
-bk pull -t $Q "$HERE/project"
+bk pull $Q "$HERE/project"
 if [ $? -ne 0 ]; then	echo pull failed; exit 1; fi
 bk get $Q a.c b.c c.c d.c
 echo "File 3" > X
@@ -163,7 +163,7 @@ rm -rf "$HERE/copy"
 tar xmf chkpoint.tar
 cd  "$HERE/copy/src"
 bk pull $Q -R "$HERE/project"
-bk resolve -t $L $Q
+bk resolve $L $Q
 bk get $Q a.c b.c c.c d.c
 echo "File 3" > X
 bk undos X > ref.c
@@ -231,7 +231,7 @@ cp -rp "$HERE/copy" "$HERE/SAVE"
 # This is completely dependent on the ordering of file processing in resolve.
 # So what we do is run the first step of the rename processing and then
 # go move them into the order we want: File 1, File 2, File 3, File 4
-bk resolve $L $Q -234 -t
+bk resolve $L $Q -234
 cd RESYNC/BitKeeper/RENAMES
 bk co $Q
 for n in 1 2 3 4
@@ -251,7 +251,7 @@ cd  "$HERE/copy"
 # This is completely dependent on the ordering of file processing in resolve
 # If this doesn't work, check that the files are processed in this order:
 # File 1, File 2, File 3, File 4
-bk resolve $L $Q -t -yMerge << EOF 2> resolve.out
+bk resolve $L $Q -yMerge << EOF 2> resolve.out
 r
 r
 r
@@ -309,7 +309,7 @@ cp -rp "$HERE/copy" "$HERE/SAVE"
 # This is completely dependent on the ordering of file processing in resolve.
 # So what we do is run the first step of the rename processing and then
 # go move them into the order we want: File 1, File 2, File 3, File 4
-bk resolve $L $Q -234 -t
+bk resolve $L $Q -234 
 cd RESYNC/BitKeeper/RENAMES
 bk co $Q
 for n in 1 2 3 4
@@ -327,7 +327,7 @@ do	bk _mv SCCS/s.FILE$n SCCS/s.$n
 done
 
 cd  "$HERE/copy"
-bk resolve -1 $L $Q -t -yMerge << EOF > resolve.out 2>&1
+bk resolve -1 $L $Q -yMerge << EOF > resolve.out 2>&1
 ?
 m
 src/junk
@@ -364,7 +364,7 @@ rm -rf "$HERE/copy"
 tar xmf chkpoint.tar
 cd "$HERE/copy"
 bk pull $Q -R "$HERE/project"
-bk resolve -t $L $Q "$HERE/copy"
+bk resolve $L $Q "$HERE/copy"
 cd "$HERE/copy/src"
 if bk _test ! -f SCCS/s.g.c; then echo failed, no g.c; exit 1; fi
 cd "$HERE/project/src"
@@ -377,7 +377,7 @@ bk ci $Q -i p.c
 bk mv p.c r.c
 bk commit $S -yrename
 bk pull $Q -R "$HERE/project"
-bk resolve $L $Q -t -yMerge << EOF 2> resolve.out
+bk resolve $L $Q -yMerge << EOF 2> resolve.out
 r
 EOF
 if [ $? -eq 0 ]; then echo failed; cat resolve.out; exit 1; fi
@@ -408,7 +408,7 @@ tar xmf chkpoint.tar
 bk clean "$HERE/copy/src"
 cd "$HERE/copy/src"
 bk pull $Q -R "$HERE/project" || exit 1
-bk resolve -t $L $Q $L || exit 1
+bk resolve $L $Q $L || exit 1
 KDST=`bk prs -r+ -hnd:MD5KEY: a.c`
 test $KSRC = $KDST || {
      echo failed to restore pre-moved delta
@@ -471,7 +471,7 @@ bk ci $Q -y bdata
 bk commit $S -Sbinary2 -ybinary2
 cd  "$HERE/copy/src"
 bk pull $Q -R "$HERE/project" || exit 1
-bk resolve -t $L $Q
+bk resolve $L $Q
 test -d RESYNC && {
 	echo failed to finish resolve
 	exit 1
@@ -489,7 +489,7 @@ bk get $Q bdata
 cmp -s bdata $BIN1
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 (cd "$HERE/copy" && bk cset -B -mbinary2) | (cd "$HERE/copy2" && bk takepatch)
-bk resolve -t $L $Q "$HERE/copy2"
+bk resolve $L $Q "$HERE/copy2"
 bk get $Q bdata
 cmp -s bdata $BIN2
 if [ $? -ne 0 ]; then echo failed test 4; cmp bdata $BIN2; exit 1; fi
@@ -508,7 +508,7 @@ bk ci $Q -i merge.c sub/delete.c
 bk commit $S -y"abc"
 cd "$HERE/copy"
 bk pull $Q -R "$HERE/project"
-bk resolve -t $L $Q "$HERE/copy"
+bk resolve $L $Q "$HERE/copy"
 cd "$HERE/project/src"
 if bk _test ! -f "$HERE/copy/src/sub/SCCS/s.delete.c"; then echo failed; exit 1; fi
 bk rm sub/delete.c
@@ -527,7 +527,7 @@ mv merge.tmp merge.c
 bk ci $Q -y merge.c
 bk commit $S -y"abc"
 bk pull $Q -R "$HERE/project"
-bk resolve $L $Q -a -t "$HERE/copy"
+bk resolve $L $Q -a "$HERE/copy"
 bk sfiles "$HERE/copy/BitKeeper/deleted" | grep -q "s..del-delete.c~"
 if [ $? -ne 0 ]
 then	echo failed to delete delete.c;
@@ -553,7 +553,7 @@ _BK_MV_OK=1 bk ci $Q -yrename project/src/f.c
 cd "$HERE/project"
 bk pull $Q -R "$HERE/copy"
 cd "$HERE"
-bk resolve -t project >resolve.out 2>&1
+bk resolve project >resolve.out 2>&1
 if [ $? -ne 0 ]
 then echo failed
      cat resolve.out
@@ -568,7 +568,7 @@ date > symbol_test
 bk new $Q symbol_test
 bk commit $S -y"symbol test" -S'symbol test'
 cd "$HERE/copy"
-bk pull $Q -t "$HERE/project"
+bk pull $Q "$HERE/project"
 if bk _test ! -f src/SCCS/s.symbol_test; then echo failed to send file; exit 1; fi
 bk _cat SCCS/s.ChangeSet | grep -q 'Ssymbol test'
 if [ $? != 0 ]; then echo failed; exit 1; fi
@@ -582,14 +582,14 @@ bk new $Q dummy
 bk commit $S -y"symbol test2"
 bk admin $Q -S'later symbol' SCCS/s.ChangeSet
 cd "$HERE/copy"
-bk pull $Q -R -t "$HERE/project"
+bk pull $Q -R "$HERE/project"
 grep -q 'S later symbol' "$HERE/copy/PENDING/"* || {
 	echo symbol not part of the patch
 	cat "$HERE/copy/PENDING/"*
 	exit 1
 }
 cp "$HERE/copy/PENDING/"* "$HERE"
-bk resolve -t -a $Q "$HERE/copy"
+bk resolve -a $Q "$HERE/copy"
 cd "$HERE/copy"
 bk _cat SCCS/s.ChangeSet | grep -q 'Slater symbol'
 if [ $? != 0 ]; then echo failed to send symbol; exit 1; fi
@@ -603,7 +603,7 @@ date > dummy
 bk ci $Q -m'additional' dummy
 bk commit $S -y'additional symbol test 2'
 cd "$HERE/copy"
-bk pull $Q -t "$HERE/project"
+bk pull $Q "$HERE/project"
 bk _cat SCCS/s.ChangeSet | grep -q 'Sadditional symbol'
 if [ $? != 0 ]; then echo failed; exit 1; else echo OK; fi
 
@@ -611,7 +611,7 @@ echo $N Test propagation of a symbol added later by itself ..........$NL
 cd "$HERE/project"
 bk admin $Q -S'YAsymbol:1.5' ChangeSet
 cd "$HERE/copy"
-bk pull $Q -t "$HERE/project"
+bk pull $Q "$HERE/project"
 bk _cat SCCS/s.ChangeSet | grep -q 'YAsymbol'
 if [ $? != 0 ]; then echo failed; exit 1; else echo OK; fi
 cores
@@ -665,7 +665,7 @@ echo OK
 echo $N Resync project to copy, check for file presence in cset .....$NL
 cd "$HERE/copy"
 bk pull $Q -R "$HERE/project"
-bk resolve $L $Q -t << EOF > resolve.out 2>&1
+bk resolve $L $Q << EOF > resolve.out 2>&1
 m
 C
 comment for merge
@@ -690,7 +690,7 @@ bk ci -q -yaaa.c aaa.c
 bk commit -q -yaaa.c
 cd "$HERE"
 cd copy/src
-bk pull $Q -t "$HERE/project"
+bk pull $Q "$HERE/project"
 if [ ! -f aaa.c ]; then echo Failed to get aaa.c; exit 1; fi
 bk co -qp aaa.c > aaa.p
 diff aaa.p aaa.c
@@ -719,7 +719,7 @@ bk pull $Q -R "$HERE/project" || {
 }
 bk parent $Q "$HERE/project"
 cd "$HERE"; tar cf copy.tar copy; cd "$HERE/project/src"
-bk resolve -t $L $Q "$HERE/copy"
+bk resolve $L $Q "$HERE/copy"
 bk co $Q -l overlap.c
 sed -e"s/222/222-left/" overlap.c > overlap.tmp
 mv overlap.tmp overlap.c
@@ -735,7 +735,7 @@ bk commit $S -y"abc"
 cd "$HERE/copy"
 bk pull $Q -R "$HERE/project"
 cd "$HERE"; tar cf copy.tar copy; cd "$HERE/project/src"
-bk resolve -t $L $Q -a "$HERE/copy" 2> resolve.out
+bk resolve $L $Q -a "$HERE/copy" 2> resolve.out
 grep -q "unresolved conflicts, nothing is applied" resolve.out
 if [ $? -ne 0 ]; then echo failed; cat resolve.out; exit 1; fi
 echo OK

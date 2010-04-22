@@ -50,7 +50,7 @@ cd "$HERE/project"
 bk mv src/foo.c CONFLICT
 bk commit $Q -ywhatever 
 cd "$HERE/copy"
-bk pull -t -R $Q
+bk pull -R $Q
 cd "$HERE"
 tar cf TAR copy 2> /dev/null
 echo OK
@@ -241,8 +241,9 @@ tail ERR | grep -q '^(create/dir conflict) src' || {
 	cat ERR
 	exit 1
 }
-grep -q "Consistency check passed, resolve complete." ERR || {
+grep -q "100% |==============================| OK" ERR || {
 	echo failed: resolve msg
+	cat ERR
 	exit 1
 }
 cd ..
@@ -267,7 +268,7 @@ tail ERR | grep -q '^(create/dir conflict) src' || {
 	cat ERR
 	exit 1
 }
-grep -q "Consistency check passed, resolve complete." ERR || {
+grep -q "100% |==============================| OK" ERR || {
 	echo failed: resolve msg
 	exit 1
 }
@@ -294,7 +295,7 @@ grep -q "Local directory has version controlled files" ERR || {
 	echo failed: resolve msg
 	exit 1
 }
-grep -q "Consistency check passed, resolve complete." ERR || {
+grep -q "100% |==============================| OK" ERR || {
 	echo failed: resolve msg
 	exit 1
 }
@@ -322,7 +323,7 @@ tail ERR | grep -q '^(create/dir conflict) src' || {
 	cat ERR
 	exit 1
 }
-grep -q "Consistency check passed, resolve complete." ERR || {
+grep -q "100% |==============================| OK" ERR || {
 	echo failed: resolve msg
 	exit 1
 }
@@ -353,7 +354,7 @@ echo r | bk resolve -a 2> ERR || {
 	cat ERR
 	exit 1
 }
-grep -q "Consistency check passed, resolve complete." ERR || {
+grep -q "100% |==============================| OK" ERR || {
 	echo failed: resolve msg
 	exit 1
 }

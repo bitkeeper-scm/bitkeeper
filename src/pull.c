@@ -5,24 +5,24 @@
 #include "bam.h"
 #include "logging.h"
 #include "nested.h"
+#include "progress.h"
 
 private struct {
-	int	list;			/* -l: long listing */
 	u32	automerge:1;		/* -i: turn off automerge */
-	u32	dont:1;			/* -n: do not actually do it */
 	u32	quiet:1;		/* -q: shut up */
-	u32	nospin:1;		/* -Q: no spin for the GUI */
 	u32	fullPatch:1;		/* -F force fullpatch */
 	u32	noresolve:1;		/* -R: don't run resolve at all */
 	u32	textOnly:1;		/* -T: pass -T to resolve */
 	u32	autoOnly:1;		/* -s: pass -s to resolve */
 	u32	debug:1;		/* -d: debug */
 	u32	update_only:1;		/* -u: pull iff no local csets */
+	u32	verbose:1;		/* -v: old verbose output */
 	u32	gotsome:1;		/* we got some csets */
 	u32	collapsedups:1;		/* -D: pass to takepatch (collapse dups) */
 	u32	port:1;			/* is port command? */
 	u32	transaction:1;		/* is $_BK_TRANSACTION set? */
 	u32	local:1;		/* set if we find local work */
+	int	n;			/* number of components */
 	int	delay;			/* -w<delay> */
 	char	*rev;			/* -r<rev> - no revs after this */
 	u32	in, out;		/* stats */
@@ -44,6 +44,7 @@ pull_main(int ac, char **av)
 	int	try = -1; /* retry forever */
 	int	rc = 0;
 	int	gzip = 6;
+	int	print_title = 0;
 	remote	*r;
 	char	*p, *prog;
 	char	**envVar = 0, **urls = 0;
@@ -55,7 +56,7 @@ pull_main(int ac, char **av)
 		safe_putenv("BK_PORT_ROOTKEY=%s", proj_rootkey(0));
 	}
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:DdE:GFilnqr;RstTuw|z|", 0)) != -1) {
+	while ((c = getopt(ac, av, "c:DdE:Fiqr;RstTuvw|z|", 0)) != -1) {
 		unless (c == 'r') {
 			if (optarg) {
 				opts.av_pull = addLine(opts.av_pull,
@@ -66,7 +67,7 @@ pull_main(int ac, char **av)
 			}
 		}
 		if ((c == 'd') || (c == 'E') || (c == 'q') ||
-		    (c == 'w') || (c == 'z')) {
+		    (c == 'v') || (c == 'w') || (c == 'z')) {
 			if (optarg) {
 				opts.av_clone = addLine(opts.av_clone,
 				    aprintf("-%c%s", c, optarg));
@@ -76,17 +77,13 @@ pull_main(int ac, char **av)
 			}
 		}
 		switch (c) {
-		    case 'D': opts.collapsedups = 1;
-		    case 'G': opts.nospin = 1; break;
+		    case 'D': opts.collapsedups = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
-		    case 'l': opts.list++; break;		/* doc 2.0 */
-		    case 'n': opts.dont = 1; break;		/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.rev = optarg; break;
 		    case 'R': opts.noresolve = 1; break;	/* doc 2.0 */
 		    case 's': opts.autoOnly = 1; break;
-		    case 'T': /* -T is preferred, remove -t in 5.0 */
-		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
+		    case 'T': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'F': opts.fullPatch = 1; break;	/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
@@ -98,6 +95,7 @@ pull_main(int ac, char **av)
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
 		    case 'u': opts.update_only = 1; break;
+		    case 'v': opts.verbose = 1; break;
 		    case 'w': opts.delay = atoi(optarg); break;	/* undoc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			if (optarg) gzip = atoi(optarg);
@@ -107,7 +105,12 @@ pull_main(int ac, char **av)
 		}
 		optarg = 0;
 	}
+	if (getenv("BK_NOTTY")) {
+		opts.quiet = 1;
+		opts.verbose = 0;
+	}
 	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	unless (opts.quiet || opts.verbose) putenv("_BK_PROGRESS_MULTI=YES");
 	if (opts.autoOnly && !opts.automerge) {
 		fprintf(stderr, "pull: -s and -i cannot be used together\n");
 		usage();
@@ -174,6 +177,12 @@ err:		freeLines(envVar, free);
 		free(p);
 	}
 
+	if (opts.verbose) {
+		print_title = 1;
+	} else if (!opts.quiet && proj_isProduct(0)) {
+		print_title = 1;
+	}
+
 	/*
 	 * pull from each parent
 	 */
@@ -189,7 +198,7 @@ err:		freeLines(envVar, free);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
 		r->gzip_in = gzip;
-		unless (opts.quiet) {
+		if (print_title) {
 			if (i > 1)  printf("\n");
 			fromTo(prog, r, 0);
 		}
@@ -201,7 +210,7 @@ err:		freeLines(envVar, free);
 			if (rc != -2) break;
 			if (try == 0) break;
 			if (try != -1) --try;
-			unless(opts.quiet) {
+			unless (opts.quiet) {
 				fprintf(stderr,
 				    "pull: remote locked, trying again...\n");
 			}
@@ -291,7 +300,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		fprintf(stderr, "pull: no data?\n");
 		return (-1);
 	}
-	if ((rc = remote_lock_fail(buf, !opts.quiet))) {
+	if ((rc = remote_lock_fail(buf, opts.verbose))) {
 		return (rc); /* -2 means lock busy */
 	} else if (streq(buf, "@SERVER INFO@")) {
 		if (getServerInfo(r)) return (-1);
@@ -369,7 +378,6 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		disconnect(r);
 		return (1);
 	}
-	if (opts.dont) putenv("BK_STATUS=DRYRUN");
 	if (trigger(av[0], "pre")) {
 		disconnect(r);
 		return (1);
@@ -406,8 +414,6 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 	if (r->type == ADDR_HTTP) add_cd_command(f, r);
 	fprintf(f, "pull_part2");
 	fprintf(f, " -z%d", r->gzip);
-	if (opts.dont) fprintf(f, " -n");
-	for (rc = opts.list; rc--; ) fprintf(f, " -l");
 	if (opts.quiet) fprintf(f, " -q");
 	if (opts.rev) fprintf(f, " -r%s", opts.rev);
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
@@ -449,7 +455,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 private int
 pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 {
-	int	rc = 0, n, i;
+	int	rc = 0, i;
 	FILE	*info, *f, *fout;
 	char	*t, *p;
 	char	**rmt_aliases = 0;
@@ -467,7 +473,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof (buf));
-	if (remote_lock_fail(buf, !opts.quiet)) {
+	if (remote_lock_fail(buf, opts.verbose)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
 		if (getServerInfo(r)) goto err;
@@ -483,46 +489,14 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 	 * Read the verbose status if we asked for it
 	 */
 	getline2(r, buf, sizeof(buf));
-	i = n = 0;
 	info = fmem_open();
 	if (streq(buf, "@REV LIST@")) {
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (streq(buf, "@END@")) break;
-			unless (i++) {
-				if (opts.dont) {
-					fprintf(info, "%s\n",
-					    "---------------------- "
-					    "Would receive the following csets "
-					    "----------------------");
-				} else {
-					fprintf(info, "%s\n",
-					    "---------------------- "
-					    "Receiving the following csets "
-					    "-----------------------");
-					opts.gotsome = 1;
-				}
-			}
-			fprintf(info, "%s", &buf[1]);
-			if (!isdigit(buf[1]) || (strlen(&buf[1]) > MAXREV)) {
-				fprintf(info, "\n");
-				continue;
-			}
-			n += strlen(&buf[1]) + 1;
-			if (n >= (80 - MAXREV)) {
-				fprintf(info, "\n");
-				n = 0;
-			} else {
-				fprintf(info, " ");
-			}
 		}
-		if (n) fprintf(info, "\n");
+
 		/* load up the next line */
 		getline2(r, buf, sizeof(buf));
-		if (i) {
-			fprintf(info, "%s\n",
-			    "--------------------------------------"
-			    "-------------------------------------");
-		}
 	}
 
 	/*
@@ -554,14 +528,6 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		getline2(r, buf, sizeof (buf));
 	}
 
-	if (opts.dont) {
-		rc = 0;
-		if (!opts.quiet && streq(buf, "@NOTHING TO SEND@")) {
-			fprintf(stderr, "Nothing to pull.\n");
-		}
-		putenv("BK_STATUS=DRYRUN");
-		goto done;
-	}
 	if (streq(buf, "@HERE@")) {
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (buf[0] == '@') break;
@@ -616,12 +582,10 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		}
 		rc = 0;
 	}  else if (strneq(buf, "@UNABLE TO UPDATE BAM SERVER", 28)) {
-		unless (opts.quiet) {
-			chop(buf);
-			fprintf(stderr,
-			    "Unable to update remote BAM server %s.\n",
-			    &buf[29]);	/* it's "SERVER $URL */
-		}
+		chop(buf);
+		fprintf(stderr,
+		    /* it's "SERVER $URL */
+		    "Unable to update remote BAM server %s.\n", &buf[29]);
 		putenv("BK_STATUS=FAILED");
 		rc = 1;
 	}  else if (streq(buf, "@NOTHING TO SEND@")) {
@@ -654,6 +618,7 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	nested	*n = 0;
 	comp	*c;
 	int	i, j, rc = 0, errs = 0;
+	int	which = 0;
 	hash	*urllist;
 	project	*proj;
 
@@ -703,7 +668,11 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	 *  c->new	   comp created in this range of csets (do clone)
 	 *  c->localchanges   comp has local csets
 	 */
+	opts.n = 0;
 	EACH_STRUCT(n->comps, c, i) {
+		if ((c->product || c->included) && c->alias) {
+			opts.n++;
+		}
 		if (c->product) continue;
 		if (c->included) {
 			/* this component is included in pull */
@@ -832,18 +801,26 @@ npmerge:				fprintf(stderr,
 	EACH_STRUCT(n->comps, c, j) {
 		proj_cd2product();
 		if (c->product || !c->included || !c->alias) continue;
-		unless (opts.quiet) {
+		if (opts.verbose) {
 			printf("#### %s ####\n", c->path);
 			fflush(stdout);
 		}
 		vp = addLine(0, strdup("bk"));
 		if (c->new) {
 			vp = addLine(vp, strdup("clone"));
+			vp = addLine(vp,
+			    aprintf("--sfiotitle=%d/%d %s",
+			    ++which, opts.n, c->path));
 			EACH(opts.av_clone) {
 				vp = addLine(vp, strdup(opts.av_clone[i]));
 			}
 			vp = addLine(vp, strdup("-p"));
+			vp = addLine(vp,
+			    aprintf("-P%d/%d %s", which, opts.n, c->path));
 		} else {
+			vp = addLine(vp,
+			    aprintf("--title=%d/%d %s",
+			    ++which, opts.n, c->path));
 			if (chdir(c->path)) {
 				fprintf(stderr, "Could not chdir to "
 				    " component '%s'\n", c->path);
@@ -863,8 +840,8 @@ npmerge:				fprintf(stderr,
 		vp = addLine(vp, remote_unparse(r));
 		if (c->new) vp = addLine(vp, strdup(c->path));
 		vp = addLine(vp, 0);
-		if (spawnvp(_P_WAIT, "bk", &vp[1])) {
-			fprintf(stderr, "Pulling %s failed\n", c->path);
+		if (rc = spawnvp(_P_WAIT, "bk", &vp[1])) {
+			fprintf(stderr, "Pulling %s failed %x\n", c->path, rc);
 			rc = 1;
 		} else {
 			if (opts.noresolve && (proj = proj_init(c->path))) {
@@ -888,6 +865,7 @@ pull(char **av, remote *r, char **envVar)
 {
 	int	rc, i, marker;
 	char	*p;
+	char	*freeme = 0;
 	int	got_patch;
 	char	key_list[MAXPATH];
 
@@ -947,6 +925,20 @@ pull(char **av, remote *r, char **envVar)
 		}
 	}
 done:	putenv("BK_RESYNC=FALSE");
+	unless (opts.quiet || opts.verbose || rc ||
+	    ((p = getenv("BK_STATUS")) && streq(p, "NOTHING"))) {
+		unless (title) {
+			if (proj_isProduct(0)) {
+				freeme = title =
+				    aprintf("%d/%d .", opts.n, opts.n);
+			} else {
+				freeme = title = strdup("pull");
+			}
+		}
+		progress_end(PROGRESS_BAR, "OK");
+		if (freeme) free(freeme);
+		title = 0;
+	}
 	unless (opts.noresolve) trigger(av[0], "post");
 
 	/*
@@ -998,14 +990,14 @@ takepatch(remote *r)
 
 	cmds[n = 0] = "bk";
 	cmds[++n] = "takepatch";
-	if (opts.quiet) {
-		;
-	} else if (opts.nospin) {
-		cmds[++n] = "-mvv";
-	} else {
-		cmds[++n] = "-mvvv";
-	}
 	if (opts.collapsedups) cmds[++n] = "-D";
+	if (opts.quiet) {
+		cmds[++n] = "-q";
+	} else if (opts.verbose) {
+		cmds[++n] = "-vv";
+	} else {
+		cmds[++n] = "--progress";
+	}
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);
 	f = fdopen(pfd, "wb");
@@ -1018,7 +1010,7 @@ takepatch(remote *r)
 		fprintf(stderr, "Waiting for %d\n", pid);
 	}
 
-	unless (opts.quiet) {
+	if (opts.verbose) {
 		if (r->gzip) {
 			fprintf(stderr, "%s uncompressed to %s, ",
 			    psize(opts.in), psize(opts.out));
@@ -1071,13 +1063,13 @@ resolve(void)
 
 	cmd[i = 0] = "bk";
 	cmd[++i] = "resolve";
-	if (opts.quiet) cmd[++i] = "-q";
-	if (opts.textOnly) cmd[++i] = "-t";
+	unless (opts.verbose) cmd[++i] = "-q";
+	if (opts.textOnly) cmd[++i] = "-T";
 	if (opts.autoOnly) cmd[++i] = "-s";
 	if (opts.automerge) cmd[++i] = "-a";
 	if (opts.debug) cmd[++i] = "-d";
 	cmd[++i] = 0;
-	unless (opts.quiet) {
+	if (opts.verbose) {
 		fprintf(stderr, "Running resolve to apply new work ...\n");
 	}
 	/*

@@ -60,13 +60,13 @@ bk _cat SCCS/s.file | grep -q 'SCCS merge' || {
 	exit 1
 }
 echo OK
-echo $N Resolve -t should also autocomment ..........................$NL
+echo $N Resolve -T should also autocomment ..........................$NL
 cd ..
 rm -rf copy
 tar xmf TAR
 cd copy
 ( echo s
-  echo C ) | bk resolve -t $Q 2>resolve.out
+  echo C ) | bk resolve -T $Q 2>resolve.out
 bk _cat SCCS/s.file | grep -q 'SCCS merge' || {
 	echo failed to detect a no diffs and autocheckin
 	cat resolve.out

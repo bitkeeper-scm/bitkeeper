@@ -141,7 +141,7 @@ cd "$HERE"
 bk clone $Q project copy
 cd copy
 bk undo $Q -fr+ || exit 1
-bk pull -G > /dev/null 2>OUT || {
+bk pull -v > /dev/null 2>OUT || {
 	echo pull should have worked
 	exit 1
 }

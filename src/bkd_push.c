@@ -26,7 +26,7 @@ cmd_push_part1(int ac, char **av)
 		    case 'd': debug = 1; break;
 		    case 'P': product = 1; break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
-		    default: bk_badArg(c, av);
+		    default: break;	/* ignore and pray */
 		}
 	}
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
@@ -123,15 +123,17 @@ cmd_push_part2(int ac, char **av)
 	int	fd2, pfd, c, rc = 0;
 	int	gzip = 0;
 	int	status, debug = 0, nothing = 0, conflict = 0, product = 0;
+	int	quiet = 0, verbose = 0;
 	pid_t	pid;
 	char	*p;
 	char	bkd_nul = BKD_NUL;
 	u64	sfio;
 	FILE	*f;
-	char	*takepatch[] = { "bk", "takepatch", "-c", "-vv", 0};
+	char	*takepatch[] = { "bk", "takepatch", "-c", 0, 0};
+	int	tp_opt = 3;	/* index of first 0 */
 	char	buf[4096];
 
-	while ((c = getopt(ac, av, "dGnPqz|", 0)) != -1) {
+	while ((c = getopt(ac, av, "dGnPqvz|", 0)) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -141,10 +143,12 @@ cmd_push_part2(int ac, char **av)
 		    case 'G': putenv("BK_NOTTY=1"); break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    case 'P': product = 1; break;
-		    case 'q': takepatch[3] = 0; break; /* remove -vvv */
-		    default: bk_badArg(c, av);
+		    case 'q': quiet = 1; takepatch[tp_opt] = "-q"; break;
+		    case 'v': verbose = 1; takepatch[tp_opt] = "-vv"; break;
+		    default: break;	/* ignore and pray */
 		}
 	}
+	unless (quiet || verbose) takepatch[tp_opt] = "--progress";
 
 	if (debug) fprintf(stderr, "cmd_push_part2: checking package root\n");
 	unless (isdir("BitKeeper")) {
@@ -257,19 +261,20 @@ abort:		resync = aprintf("%s/%s", proj_root(0), ROOT2RESYNC);
 	} else if (product) {
 		printf("@DELAYING RESOLVE@\n");
 	} else {
-		rc = bkd_doResolve(av);
+		rc = bkd_doResolve(av[0], verbose);
 	}
 done:	return (rc);
 }
 
 int
-bkd_doResolve(char **av)
+bkd_doResolve(char *me, int verbose)
 {
 	int	fd2, pfd, c, rc = 0;
 	int	status, debug = 0;
 	pid_t	pid;
 	char	bkd_nul = BKD_NUL;
-	char	*resolve[] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
+	char	*resolve[] = { "bk", "resolve", "-T", "-c", 0, 0};
+	int	resolve_opt = 4; /* index of 0 after "-c" above */
 
 	/*
 	 * Fire up the pre-trigger
@@ -287,10 +292,14 @@ bkd_doResolve(char **av)
 	/*
 	 * Do resolve
 	 */
-	if (debug) fprintf(stderr, "%s: calling resolve\n", av[0]);
+	if (debug) fprintf(stderr, "%s: calling resolve\n", me);
 	printf("@RESOLVE INFO@\n");
 	fflush(stdout);
-	printf("Running resolve to apply new work...\n");
+	if (verbose) {
+		printf("Running resolve to apply new work...\n");
+	} else {
+		resolve[resolve_opt] = "-q";
+	}
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
@@ -322,7 +331,7 @@ done:	/*
 	 * Fire up the post-trigger
 	 */
 	putenv("BK_RESYNC=FALSE");
-	trigger(av[0],  "post");
+	trigger(me,  "post");
 	return (rc);
 }
 
@@ -335,13 +344,13 @@ cmd_push_part3(int ac, char **av)
 	int	fd2, pfd, c, rc = 0;
 	int	status, debug = 0;
 	int	inbytes, outbytes;
-	int	gzip = 0, product = 0;
+	int	gzip = 0, product = 0, verbose = 0;
 	pid_t	pid;
 	FILE	*f;
 	char	*sfio[] = {"bk", "sfio", "-iqB", "-", 0};
 	char	buf[4096];
 
-	while ((c = getopt(ac, av, "dGPqz|", 0)) != -1) {
+	while ((c = getopt(ac, av, "dGPqvz|", 0)) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -351,7 +360,8 @@ cmd_push_part3(int ac, char **av)
 		    case 'G': putenv("BK_NOTTY=1"); break;
 		    case 'P': product = 1; break;
 		    case 'q': break;
-		    default: bk_badArg(c, av);
+		    case 'v': verbose++; break;
+		    default: break;	/* ignore and pray */
 		}
 	}
 
@@ -422,7 +432,7 @@ cmd_push_part3(int ac, char **av)
 	if (product) {
 		printf("@DELAYING RESOLVE@\n");
 	} else if (isdir(ROOT2RESYNC)) {
-		rc = bkd_doResolve(av);
+		rc = bkd_doResolve(av[0], verbose);
 	}
 done:	return (rc);
 }

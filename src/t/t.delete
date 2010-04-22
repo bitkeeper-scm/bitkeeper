@@ -89,7 +89,7 @@ _BK_PREVENT_RESOLVE_RERUN=1 bk pull $Q >resync.log 2>&1
 if [ $? -ne 1 ]; then echo failed; cat resync.log; exit 1; fi
 #cd clone
 if [ ! -d RESYNC ]; then echo failed: resolved already; exit 1; fi
-bk resolve -l -F -t <<EOF >resolve.out 2>&1
+bk resolve -l -F <<EOF >resolve.out 2>&1
 m
 Whatever dude.
 .

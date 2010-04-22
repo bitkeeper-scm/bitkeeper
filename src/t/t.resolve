@@ -42,7 +42,7 @@ grep -q 'Conflicts during automerge of file' OUT || {
 	cat OUT
 	exit 1
 }
-echo ur | bk resolve $Q -t 2>OUT || {
+echo ur | bk resolve $Q 2>OUT || {
 	echo resolve should work
 	cat OUT
 	exit 1
@@ -83,7 +83,7 @@ grep -q 'Conflicts during automerge of file' OUT || {
 	echo pull should have had conflict
 	exit 1
 }
-echo q | bk resolve $Q -t 2>OUT && {
+echo q | bk resolve $Q 2>OUT && {
 	echo resolve should have failed
 	exit 1
 }
@@ -463,7 +463,7 @@ bk delta $Q -y2 foo
 bk commit $Q -yfoo
 cd ../proj
 bk pull $Q -R ../vrcopy
-bk resolve -t <<EOF > VR 2>&1
+bk resolve <<EOF > VR 2>&1
 vr
 q
 EOF
@@ -544,7 +544,7 @@ export BK_DEBUG_CMD
 echo rl
 echo y
 echo q
-) | bk resolve -t >OUT 2>&1 || exit 1
+) | bk resolve >OUT 2>&1 || exit 1
 unset BK_DEBUG_CMD
 test -d RESYNC && {
 	echo failed to complete resolve
@@ -730,7 +730,7 @@ echo $N Make sure we can finish the resolve .........................$NL
 grep -q 'The file has conflicting changes to the modes.' OUT &&
 grep -q 'changed mode to -rwx--x---' OUT &&
 grep -q 'changed mode to -rwxrwxrwx' OUT &&
-grep -q 'resolve complete.' OUT || {
+grep -q '100% |==============================| OK' OUT || {
 	echo failed
 	cat OUT
 	exit 1
@@ -773,7 +773,7 @@ echo copy >> foo
 bk delta $Q -yfoo foo
 bk commit $Q -yfoo
 bk pull $Q -R
-bk resolve -t << EOF > OUT 2> ERR
+bk resolve << EOF > OUT 2> ERR
 s
 C
 .
@@ -807,7 +807,7 @@ bk delta $Q -y2 'foo bar'
 bk commit $Q -yfoo
 cd ../proj1
 bk pull $Q -R ../copy1
-bk resolve -t <<EOF > VR 2>&1
+bk resolve <<EOF > VR 2>&1
 vr
 q
 EOF
@@ -817,7 +817,7 @@ grep -q "VERSION 3" VR || {
 	cat VR
 	exit 1
 }
-bk resolve -t <<EOF > VL 2>&1
+bk resolve <<EOF > VL 2>&1
 vl
 q
 EOF
@@ -876,7 +876,7 @@ bk _rm -f SCCS/r.ChangeSet
 echo "comments" | bk cfile save 'dir2/space file'
 cd ..
 echo u > U
-bk resolve -t <U >OUT 2>ERR && {
+bk resolve <U >OUT 2>ERR && {
 	echo failed
 	echo "Resolver should have failed"
 	cat OUT
@@ -997,7 +997,7 @@ EOF
 chmod +x myedit
 bk pull $Q -R
 EDITOR="myedit -x" BK_LIMITPATH="$PWD:${LIMITPATH-$PATH}" \
-    bk resolve -t > OUT 2>&1 <<'EOF'
+    bk resolve > OUT 2>&1 <<'EOF'
 m
 e
 C
@@ -1156,7 +1156,7 @@ bk delta $Q -yfoo foo
 bk mv foo bar
 bk commit $Q -f
 cd ../local
-{ echo vl; echo vr; echo d; echo q; } | bk pull -qt 2> ERR > GOT && {
+{ echo vl; echo vr; echo d; echo q; } | bk pull -q 2> ERR > GOT && {
 	echo pull passed -- fix test
 	exit 1
 }
@@ -1199,7 +1199,7 @@ bk commit $Q -f
 cd ..
 tar cf TAR local
 cd local || exit 1
-{ echo rl; echo y; } | bk pull -qt 2> ERR || {
+{ echo rl; echo y; } | bk pull -q 2> ERR || {
 	echo failed
 	cat ERR
 	exit 1
@@ -1214,7 +1214,7 @@ cd ..
 rm -fr local
 tar xf TAR || exit 1
 cd local || exit 1
-{ echo ml; echo zoo; } | bk pull -qt 2> ERR || {
+{ echo ml; echo zoo; } | bk pull -q 2> ERR || {
 	echo failed
 	cat ERR
 	exit 1

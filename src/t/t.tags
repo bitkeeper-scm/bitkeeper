@@ -201,7 +201,7 @@ echo OK
 
 echo $N Pull a new changeset with an old tag using pull .............$NL
 cd "$HERE/copy2"
-bk pull -t $Q || { echo failed; exit 1; }
+bk pull $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 bk _cat SCCS/s.ChangeSet | grep -q 'NOT IN TAG' || { echo did not propogate tag; exit 1; }
@@ -233,7 +233,7 @@ bk pull $Q -R
 echo ""
 echo "x"
 echo r
-) | bk resolve -l -t $Q 2>OUT
+) | bk resolve -l $Q 2>OUT
 test -d RESYNC && {
 	echo resolve failed
 	cat OUT
@@ -272,7 +272,7 @@ echo OK
 
 echo $N Pull again, choose local, see if it sticks ..................$NL
 bk pull $Q -R
-bk resolve -t $Q 2>OUT 1>&2 <<EOF
+bk resolve $Q 2>OUT 1>&2 <<EOF
 l
 EOF
 KEY=`bk prs -hrTAG -d:KEY: ChangeSet`
@@ -317,7 +317,7 @@ then	echo failed to exit non zero;
 	cat OUT
 	exit 1
 fi
-grep -q '1 tags only in' OUT || {
+grep -q 'The repository you are pushing to is 1 csets/tags ahead' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1

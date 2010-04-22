@@ -199,7 +199,7 @@ bk new $Q C
 bk commit $Q -ywhatever
 touch "$HERE/write_lock"
 cd "$HERE/clone"
-BK_WRITE_LOCK="$HERE/write_lock" bk pull -t -c0 $Q >/dev/null 2>&1
+BK_WRITE_LOCK="$HERE/write_lock" bk pull -c0 $Q >/dev/null 2>&1
 if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
 echo OK
 
@@ -210,7 +210,7 @@ bk new $Q CC
 bk commit $Q -ywhatever
 L=`bk lock -wt`
 cd "$HERE/clone"
-bk pull -t -c0 $Q 2>/dev/null
+bk pull -c0 $Q 2>/dev/null
 if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
 echo OK
 
@@ -221,16 +221,16 @@ bk lock -U
 L=`bk lock -rt`
 mv BitKeeper/readers/* BitKeeper/readers/1234@DO_NOT_USE_THIS_NAME.lock
 cd "$HERE/clone"
-bk pull -t $Q -R 2>/dev/null
+bk pull $Q -R 2>/dev/null
 if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi
-bk resolve -t $Q || exit 1
+bk resolve $Q || exit 1
 echo OK
 
 echo $N Make sure pull works with existing read lock in source \#2 ...$NL
 cd "$HERE/clone2"
-bk pull -t -R  > XXX 2>&1
+bk pull -R  > XXX 2>&1
 if [ ! -d RESYNC ]; then echo pull failed; cat XXX; exit 1; fi
-bk resolve -t $Q
+bk resolve $Q
 echo OK
 
 echo $N Make sure push fails with existing read lock in dest ........$NL
@@ -301,7 +301,7 @@ cd "$HERE/clone"
 bk push $Q
 if [ $? != 0 ]; then echo push exited with an error; exit 1; fi
 cd "$HERE/project"
-bk pull -t "$HERE/clone" > OUT 2>&1
+bk pull "$HERE/clone" > OUT 2>&1
 grep -q 'Nothing to pull' OUT || {
 	echo failed - bad status message
 	cat OUT
