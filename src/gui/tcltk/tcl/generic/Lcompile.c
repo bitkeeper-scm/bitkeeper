@@ -2338,19 +2338,25 @@ compile_binOp(Expr *expr, Expr_f flags)
 		return (1);
 	    case L_OP_CAST:
 		type = (Type *)expr->a;
-		if (type == L_int) {
-			push_str("::tcl::mathfunc::int");
-			compile_expr(expr->b, L_PUSH_VAL);
-			emit_invoke(2);
-		} else if (type == L_float) {
-			push_str("::tcl::mathfunc::double");
-			compile_expr(expr->b, L_PUSH_VAL);
-			emit_invoke(2);
+		if (flags & L_LVALUE) {
+			compile_expr(expr->b, flags);
 		} else {
-			compile_expr(expr->b, L_PUSH_VAL);
+			if (type == L_int) {
+				push_str("::tcl::mathfunc::int");
+				compile_expr(expr->b, flags);
+				emit_invoke(2);
+			} else if (type == L_float) {
+				push_str("::tcl::mathfunc::double");
+				compile_expr(expr->b, flags);
+				emit_invoke(2);
+			} else {
+				compile_expr(expr->b, flags);
+			}
 		}
 		L_typeck_deny(L_VOID|L_FUNCTION, expr->b);
-		expr->type = type;
+		expr->sym   = expr->b->sym;
+		expr->flags = expr->b->flags;
+		expr->type  = type;
 		return (1);
 	    case L_OP_CONCAT:
 		compile_expr(expr->a, L_PUSH_VAL);

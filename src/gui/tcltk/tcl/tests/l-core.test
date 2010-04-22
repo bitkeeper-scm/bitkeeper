@@ -3101,6 +3101,52 @@ void cast_1_6()
 cast_1_6
 } -output {}
 
+test cast-1.7 {cast an lvalue} -body {
+#lang L
+typedef struct {
+	string	type;
+	poly	val;
+} c17_Xml;
+void cast_1_7()
+{
+	int	i;
+	float	f;
+	c17_Xml	x;
+
+	/*
+	 * These used to be various bugs with casts.  There were
+	 * problems with casting an l-value.
+	 */
+
+	(int)i = 123;
+	unless(i == 123) puts("bad 1.1");
+	++(int)i;
+	unless(i == 124) puts("bad 1.2");
+
+	(float)f = 1.1;
+	unless (f == 1.1) puts("bad 2.1");
+
+	x.type = "dict";
+	((string{string})(x.val)){"key"} = "val";
+	unless (x.type eq "dict") puts("bad 3.1");
+	unless ((tcl)x eq "dict {key val}") puts("bad 3.2");
+
+	x.type = "type";
+	x.val  = {};
+	((string{string})(x.val)){"key"} = "val";
+	unless (x.type eq "type") puts("bad 4.1");
+	unless ((tcl)x eq "type {key val}") puts("bad 4.2");
+
+	x.type = "integer";
+	x.val  = 0;
+	++(int)x.val;
+	unless (x.type eq "integer") puts("bad 5.1");
+	unless (x.val == 1) puts("bad 5.2");
+	unless ((tcl)x eq "integer 1") puts("bad 5.3");
+}
+cast_1_7();
+} -output {}
+
 test array-1.0 { Single-dimensional array creation and indexing } -body {
 #lang L
 void array_1_0() {
