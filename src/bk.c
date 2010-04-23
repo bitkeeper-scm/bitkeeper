@@ -169,7 +169,9 @@ main(int volatile ac, char **av, char **env)
 	 * in 2 weeks.
 	 */
 	if (test_release && (time(0) > (time_t)bk_build_timet + 3600*24*14)) {
-		version_main(0, 0);
+		char	*nav[] = {"version", 0};
+
+		version_main(1, nav);
 		exit(1);
 	}
 

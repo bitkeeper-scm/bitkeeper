@@ -17,7 +17,6 @@
 # leave files 'b' and 'd' alone
 
 echo $N Setting up cset split testing respositories .................$NL
-rm -rf simple
 TZ=UTC+0 commercial simple
 touch a b c d
 bk new $Q a b c d
@@ -204,7 +203,6 @@ echo OK
 
 echo $N Merge: no change left on parent and branch ..................$NL
 cd "$HERE"
-rm -rf merge copy
 bk clone $Q simple merge
 bk clone $Q merge copy
 
@@ -485,3 +483,142 @@ test 2 -eq `diff BEFORE AFTER | wc -l` || {
 	exit 1
 }
 echo OK
+
+# This is an example of a activation set which does match the real,but
+# is not expected.
+
+_mkcset() {
+	bk edit $Q $1
+	test $# -gt 1 && echo "$2" > $1
+	bk delta $Q -fynull $1
+	bk commit $Q -ynull
+}
+
+set -e
+
+# Print out some table entry:
+#   d <ser> <par>
+#   i list-of-serials
+#   x list-of-serials
+PERLFILT='print if s/\001d D ([^ ]*).* (\d+ \d+$)/d $1 $2/ or s/\001([xi])/$1/' 
+
+echo $N Create a particular graph using csetprune ...................$NL
+cd "$HERE"
+commercial project
+touch del1 del2 keep
+bk new $Q del1 del2 keep
+bk admin $Q -Znone del1 del2 keep
+bk commit $Q -yfiles
+bk clone $Q . ../work
+bk clone $Q . ../native
+_mkcset del1
+bk cset $Q -i+
+cd ../work
+_mkcset del2
+cd ../project
+_mkcset keep
+cd ../native
+_mkcset keep
+cd ../work
+_mkcset keep
+bk cset $Q -i+
+bk tag $Q NODE
+cd ../project
+_mkcset keep
+cd ../native
+bk clone $Q . ../native2
+_mkcset keep
+cd ../work
+bk cset $Q -xNODE
+bk clone $Q . ../work2
+cd ../project
+bk pull $Q -rNODE ../work
+bk pull $Q ../work
+bk clone $Q . ../pruned
+cd ../pruned
+bk log -r+ -nd:ROOTKEY: del1 > list
+bk csetprune $Q -S < list
+bk changes -vrNODE -nd'NODE :GFILE: :I:' > ../PRUNE.GRAPH
+bk set -s ChangeSet >> ../PRUNE.SET
+bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../PRUNE.TABLE
+echo OK
+
+echo $N Create a particular graph natively ..........................$NL
+cd "$HERE/native"
+bk pull $Q -rNODE ../work
+bk pull $Q ../work
+bk changes -vrNODE -nd'NODE :GFILE: :I:' > ../NATIVE.GRAPH
+bk set -s ChangeSet >> ../NATIVE.SET
+bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../NATIVE.TABLE
+echo OK
+
+echo $N The graphs are the same .....................................$NL
+cmpfiles ../NATIVE.GRAPH ../PRUNE.GRAPH
+echo OK
+
+echo $N The sets that they expand to do not match ...................$NL
+# use diff -u to see more in context.  It included date which made
+# the regression more a pain to write.
+# This shows that the swap the occurs when 'del1' gets pruned
+# means an extra include is needed (that's the 5 in the 5 9 line)
+# and the missing i 4 is just to demonstrate compression going on
+# of an include that is already included.
+#
+# This also obliquely shows the fix done in cset.c to limit tags
+# processing.  Without that fix, this test will fail showing a dup:
+# +6c6
+# +< x 7 7
+# +---
+# +> x 7
+#
+set +e
+diff ../NATIVE.TABLE ../PRUNE.TABLE > GOT
+cat <<EOF > WANT
+2c2
+< i 11
+---
+> i 7 11
+9d8
+< i 6
+EOF
+cmpfiles WANT GOT
+# A different picture of the 5 in i 5 9:
+diff ../NATIVE.SET ../PRUNE.SET > GOT
+cat <<EOF > WANT
+6a7
+> 1.5
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Create an exclude delta in a merge node .....................$NL
+# The dual of above
+bk log -r+ -nd:ROOTKEY: del2 > ../list2
+bk csetprune $Q -S < ../list2
+bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../NATIVE.TABLE2
+cd ../pruned
+bk csetprune $Q -S < ../list2
+bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../PRUNE.TABLE2
+diff ../NATIVE.TABLE2 ../PRUNE.TABLE2 > GOT
+cat <<EOF > WANT
+3d2
+< x 6
+EOF
+cmpfiles WANT GOT
+echo OK
+
+# echo $N More things that can be done that were not completed ........$NL
+# cd ../work2
+# bk csetprune $Q -S -k123456789abcdef0 < ../list2
+# cd ../native2
+# bk csetprune $Q -S -k123456789abcdef0 < ../list2
+# bk pull $Q -rNODE ../work2
+# bk pull $Q ../work2
+# bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../NATIVE2.TABLE2
+# echo OK
+
+# Create a graph that has a unique file in every cset, then
+# make a binary counter out of the files to try removing every combination
+# of nodes from the graph and see what the surprises are -- mostly that
+# the old and new code will do the same thing.
+# Trick is to build a little graph with lots of properties.

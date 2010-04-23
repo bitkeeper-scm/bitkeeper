@@ -11,6 +11,25 @@
 
 set -e
 
+echo $N Try to partition a product ..................................$NL
+nested nest
+cd ..
+echo gdb > nest.map
+bk partition $Q -Cnest.map nest nest.part 2> ERR && fail -f ERR
+grep -q "partition: only works on standalone repositories" ERR || fail -f ERR
+# It would be nice if it cleaned up ...
+test -d nest.part || fail
+rm -fr nest.part
+echo OK
+
+echo $N Try to partition a component ................................$NL
+bk partition $Q -Cnest.map nest/gcc nest.comp 2> ERR && fail -f ERR
+grep -q "clone of a component is not allowed" ERR || fail -f ERR
+test -d nest.comp && fail
+# done with nest
+rm -fr nest
+echo OK
+
 echo $N Create initial repository ...................................$NL
 commercial project
 mkdir src doc

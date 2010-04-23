@@ -275,11 +275,12 @@ _partition() {
 	# XXX: when moving to C, don't overwrite all of CONFIG
 	# For now, this is a good enough / demo hack
 	_BK_OCONFIG="$BK_CONFIG"
-	BK_CONFIG="checkout: none!; partial_check: on! "
+	BK_CONFIG="nosync: on!; checkout: none!; partial_check: on! "
 	export BK_CONFIG
 
 	verbose "### Cloning product"
-	bk clone -ql "$from" "$to" || bk clone -q "$from" "$to" || exit 1
+	bk clone $QUIET -l "$from" "$to" \
+	    || bk clone $QUIET "$from" "$to" || exit 1
 
 	# Make a work area
 	WA=BitKeeper/tmp/partition.d
@@ -302,6 +303,12 @@ _partition() {
 
 	HERE="`pwd`"
 	cd "$to" || exit 1
+
+	bk product -q
+	test "$?" -eq 2 || {
+		echo "partition: only works on standalone repositories" 1>&2
+		exit 1
+	}
 
 	# Note; gone list could vary over time if the gone file
 	# were consulted, or missing files ignores.
@@ -342,6 +349,7 @@ _partition() {
 		    >> $WA/allkeys
 	}
 	test "X$ADDONE" = "XYES" && {
+		verbose "Adding missing gone or ignore file..."
 		# Add in the rest of keys and slurp into cset body
 		bk annotate -aS -hR ChangeSet >> $WA/allkeys
 		bk surgery -W$WA/allkeys || exit 1
@@ -372,6 +380,7 @@ _partition() {
 	}
 	# add all config files - any rootkey or deltakey that has
 	# lived in the config file slot, prune the rootkey.
+	verbose "Adding any config to component prune list..."
 	bk annotate -hR ChangeSet | grep '[|]BitKeeper/etc/config[|]' \
 	    | sed 's/ .*//' >> ../compgonelist
 	bk _sort -u < ../compgonelist > ../cgl
@@ -383,7 +392,8 @@ _partition() {
 		bk csetprune $QUIET -aNSk"$RAND" - < ../compgonelist || exit 1
 	}
 
-	# If there is no config file, add one
+	# If there is no config file (which there shouldn't be), add one
+	verbose "Creating new config file for components..."
 	bk _test -f $WA/repo/BitKeeper/etc/SCCS/s.config || {
 		test -f BitKeeper/etc/config && rm -f BitKeeper/etc/config
 		__newFile BitKeeper/etc/config

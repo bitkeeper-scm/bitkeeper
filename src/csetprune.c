@@ -42,7 +42,7 @@ private	int	filterWeave(sccs *cset, char **cweave, char ***delkeys,
 private	goner	*filterGone( char **cweave, char *comppath, char **deepnest);
 private	int	rmKeys(char **delkeys);
 private	int	found(delta *start, delta *stop);
-private	void	_pruneEmpty(sccs *s, delta *d);
+private	void	_pruneEmpty(sccs *s, delta *d, u8 *slist);
 private	void	pruneEmpty(sccs *s, sccs *sb);
 private	hash	*getKeys(void);
 private	char	**goneKeys(void);
@@ -662,12 +662,12 @@ rmKeys(char **delkeys)
 	}
 	verbose((stderr, "Removing files...\n"));
 	EACH(delkeys) {
-		verbose((stderr, "%d removed\r", ++n));
+		++n;
 		/* XXX: if have a verbose mode, pass a flags & SILENT */
 		sccs_keyunlink(delkeys[i], idDB, dirs, SILENT);
 	}
 	mdbm_close(idDB);
-	verbose((stderr, "\n"));
+	verbose((stderr, "%d removed\n", n));
 
 	verbose((stderr, "Removing directories...\n"));
 	for (kv = mdbm_first(dirs); kv.key.dsize; kv = mdbm_next(dirs)) {
@@ -1008,7 +1008,7 @@ fixTags(sccs *s)
  * written to disk!
  */
 private void
-_pruneEmpty(sccs *s, delta *d)
+_pruneEmpty(sccs *s, delta *d, u8 *slist)
 {
 	delta	*m;
 
@@ -1049,14 +1049,14 @@ _pruneEmpty(sccs *s, delta *d)
 			d->pserial = m->serial;
 		}
 		/* fix include and exclude lists */
-		sccs_adjustSet(sc, scb, d);
+		sccs_adjustSet(sc, scb, d, slist);
 		/* for now ... remove later if cset -i allowed in merge */
 		assert((d->merge && d->include) || (!d->merge && !d->include));
-		assert(!d->exclude);
+		// assert(!d->exclude); -- we can have excludes (see test)
 	}
 	/* Else this never was a merge node, so just adjust inc and exc */
 	else if (d->include || d->exclude) {
-		sccs_adjustSet(sc, scb, d);
+		sccs_adjustSet(sc, scb, d, slist);
 	}
 	/*
 	 * See if node is a keeper ...
@@ -1091,13 +1091,17 @@ pruneEmpty(sccs *s, sccs *sb)
 {
 	int	i;
 	delta	*n;
+	u8	*slist;
 
 	sc = s;
 	scb = sb;
+	slist = (u8 *)calloc(sc->nextserial, sizeof(u8));
+	assert(slist);
 	for (i = 1; i < sc->nextserial; i++) {
 		unless ((n = sfind(sc, i)) && NEXT(n) && !TAG(n)) continue;
-		_pruneEmpty(sc, n);
+		_pruneEmpty(sc, n, slist);
 	}
+	free(slist);
 
 	verbose((stderr, "Rebuilding Tag Graph...\n"));
 	(flags & PRUNE_NEW_TAG_GRAPH) ? rebuildTags(sc) : fixTags(sc);

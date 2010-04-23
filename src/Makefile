@@ -150,7 +150,7 @@ OBJ =	bkver.o cmd.o \
 	idcache.o isascii.o inskeys.o \
 	key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
-	libcommit.o libdiff.o librange.o \
+	libcommit.o libdiff.o libgraph.o librange.o \
 	libsfiles.o libusers.o lines.o \
 	localtm.o lock.o locking.o \
 	logging.o mail.o mdiff.o merge.o mklock.o \
@@ -222,7 +222,7 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bam.h bkd.h logging.h nested.h \
+HDRS	= bam.h bkd.h graph.h logging.h nested.h \
 	  progress.h purify.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h proj.h redblack.h inskeys.h libc/system.h \
 	  libc/fslayer/win_remap.h

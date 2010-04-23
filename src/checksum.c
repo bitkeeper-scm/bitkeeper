@@ -2,6 +2,7 @@
 #include "sccs.h"
 #include "logging.h"
 #include "progress.h"
+#include "graph.h"
 
 private	int	do_chksum(int fd, int off, int *sump);
 private	int	chksum_sccs(char **files, char *offset);
@@ -380,6 +381,21 @@ add_ins(MDBM *h, char *root, int len, ser_t ser, u16 sum)
 	ss->data[ss->num].ser = 0;
 }
 
+private	int
+setOrder(sccs *s, delta *d, void *token)
+{
+	char	***order = (char ***)token;
+
+	if (SET(s) && !(d->flags & D_SET)) return (0);
+	d->flags &= ~D_SET;
+
+	if (TAG(d)) return (0);
+	unless (d->added || d->include || d->exclude) return (0);
+
+	*order = addLine(*order, d);
+	return (0);
+}
+
 /* same semantics as sccs_resum() except one call for all deltas */
 int
 cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
@@ -389,11 +405,12 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	char	*p, *q;
 	u8	*e;
 	u16	sum;
-	int	cnt, i, added;
+	int	cnt, i, added, orderIndex;
 	serset	**map;
-	ser_t	*slist;
+	u8	*slist = 0;
+	char	**order = 0;
 	struct	_sse *sse;
-	delta	*d;
+	delta	*d, *prev;
 	int	found = 0;
 	int	n = 0;
 	kvpair	kv;
@@ -439,55 +456,35 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	}
 	/* the above is very fast, no need to optimize further */
 
-	/* count up the deltas.  XXX - is there a better way? */
+	/* foreach delta in an optimized order */
+	graph_kidwalk(s, setOrder, 0, &order);
+
 	if (spinners) {
-		for (d = s->table; d; d = d->next) {
-			unless (d->type == 'D') continue;
-			unless (d->added || d->include || d->exclude) continue;
-			if (SET(s) && !(d->flags & D_SET)) continue;
-			n++;
-		}
-		tick = progress_start(PROGRESS_MINI, n);
+		tick = progress_start(PROGRESS_MINI, nLines(order));
 	}
 
-	/* foreach delta */
-	slist = 0;
-	for (n = 0, d = s->table; d; d->flags &= ~D_SET, d = NEXT(d)) {
-		unless (d->type == 'D') continue;
-		unless (d->added || d->include || d->exclude) continue;
-		if (SET(s) && !(d->flags & D_SET)) continue;
+	slist = (u8 *)calloc(s->nextserial, sizeof(u8));
+	prev = 0;
+	n = 0;
+	EACH_INDEX(order, orderIndex) {
+		d = (delta *)order[orderIndex];
 
-		/* Is this serialmap a simple extension of the last one? */
-		if (slist && (slist[0] == d->serial+1)) {
-			slist[0] = d->serial;
-			slist[d->serial+1] = 0;
-		} else {
-			if (slist) free(slist);
-			slist = sccs_set(s, d, 0, 0); /* slow */
-		}
+		graph_symdiff(d, prev, slist, -1);  /* incremental serialmap */
+		prev = d;
+
 		if (tick) progress(tick, ++n);
 		sum = 0;
 		added = 0;
 		for (i = 0; i < cnt; i++) {
 			ser_t	ser;
 
-			sse = map[i]->data;
-			ser = sse->ser;
-			while (ser) {
+			for (sse = map[i]->data; (ser = sse->ser); ++sse) {
 				if ((ser <= d->serial) && slist[ser]) {
 					sum += sse->sum;
 					if (ser == d->serial) ++added;
 					break;
 				}
-				++sse;
-				ser = sse->ser;
 			}
-		}
-		/* save serialmap if parent is easy to compute from it */
-		if (d->merge || d->include || d->exclude ||
-		    (d->pserial+1 != d->serial)) {
-			free(slist);
-			slist = 0;
 		}
 
 		if ((d->added != added) || d->deleted || (d->same != 1)) {
@@ -524,6 +521,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		}
 	}
 	if (slist) free(slist);
+	if (order) free(order);
 	if (tick) progress_done(tick, 0);
 	if (spinners && !takepatch) fputc('\n', stderr);
 	s->state &= ~S_SET;	/* if set, then done with it: clean up */

@@ -360,7 +360,11 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 
 	/* Once Fix_inex set, fix all suspects: merge and any inc/exc */
 	if (Fix_inex && (d->merge || d->include || d->exclude)) {
-		sccs_adjustSet(s, Fix_inex, d);
+		u8	*slist = (u8 *)calloc(s->nextserial, sizeof(u8));
+
+		assert(slist);
+		sccs_adjustSet(s, Fix_inex, d, slist);
+		free(slist);
 	}
 
 	/*

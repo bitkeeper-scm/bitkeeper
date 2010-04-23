@@ -267,7 +267,8 @@ cset_main(int ac, char **av)
 		    if (range_process("cset", cset, RANGE_SET, &rargs)) {
 			    goto err;
 		    }
-		    range_markMeta(cset);	/* all ranges include tags */
+		    /* include tags in a patch */
+		    if (copts.makepatch) range_markMeta(cset);
 		}
 		sig_default();
 		csetlist(&copts, cset);
