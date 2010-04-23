@@ -7928,7 +7928,7 @@ regexp_1_5()
 	s =~ s/\$//g;  // should match a dollar sign
 	unless (s eq "ab") puts("bad 5");
 
- 	r = "\\s+";
+	r = "\\s+";
 	s = '${r} ${r}';
 	s =~ s/\${r}//g;  // should match '${r}' literally
 	unless (s eq " ") puts("bad 6");
@@ -7938,6 +7938,133 @@ regexp_1_5()
 	unless (s eq "in parens)") puts("bad 7");
 	s =~ s/(in)//;
 	unless (s eq " parens)") puts("bad 8");
+
+	/*
+	 * Check escapes in the substitution part:
+	 *   & \0 \1 ... \9 get substituted with the re matches
+	 *   \a \e \f \n \r \t get expanded to control chars
+	 *   \x for anything else gets expanded to "x"
+	 */
+
+	/* Check & and \0. */
+	s = "abc";
+	s =~ s/b/x&y/;
+	unless (s eq "axbyc") puts("bad 9.1");
+	s = "abc";
+	s =~ s/b/x\0y/;
+	unless (s eq "axbyc") puts("bad 9.2");
+
+	/* Check \1 through \9. */
+	s = "123456789abc";
+	s =~ s/123456789a(b)c/123456789c\1a/;
+	unless (s eq "123456789cba") puts("bad 9.3");
+	s = "123456789abc";
+	s =~ s/12345678(9)a(b)c/123456789c\2a/;
+	unless (s eq "123456789cba") puts("bad 9.4");
+	s = "123456789abc";
+	s =~ s/1234567(8)(9)a(b)c/123456789c\3a/;
+	unless (s eq "123456789cba") puts("bad 9.5");
+	s = "123456789abc";
+	s =~ s/123456(7)(8)(9)a(b)c/123456789c\4a/;
+	unless (s eq "123456789cba") puts("bad 9.6");
+	s = "123456789abc";
+	s =~ s/12345(6)(7)(8)(9)a(b)c/123456789c\5a/;
+	unless (s eq "123456789cba") puts("bad 9.7");
+	s = "123456789abc";
+	s =~ s/1234(5)(6)(7)(8)(9)a(b)c/123456789c\6a/;
+	unless (s eq "123456789cba") puts("bad 9.8");
+	s = "123456789abc";
+	s =~ s/123(4)(5)(6)(7)(8)(9)a(b)c/123456789c\7a/;
+	unless (s eq "123456789cba") puts("bad 9.9");
+	s = "123456789abc";
+	s =~ s/12(3)(4)(5)(6)(7)(8)(9)a(b)c/123456789c\8a/;
+	unless (s eq "123456789cba") puts("bad 9.10");
+	s = "123456789abc";
+	s =~ s/1(2)(3)(4)(5)(6)(7)(8)(9)a(b)c/123456789c\9a/;
+	unless (s eq "123456789cba") puts("bad 9.11");
+
+	/* Check \a \e \f \n \r \t. */
+	s = "a\nb\n\nc\n\nd\n";
+	s =~ s/\n\n/\n/g;
+	unless (s eq "a\nb\nc\nd\n") puts("bad 9.20");
+
+	/* Check \x for x being anything else. */
+	s = "abc";
+	s =~ s/b/a\bc/;
+	unless (s eq "aabcc") puts("bad 9.30");
+	s = "abc";
+	s =~ s/b/a\&c/;
+	unless (s eq "aa&cc") puts("bad 9.31");
+
+	/*
+	 * Re-do the above checks but put the escapes in an
+	 * interpolated part of the substituted string.  This checks
+	 * that they are properly processed at run time.
+	 */
+
+	/* Check & and \0. */
+	s = "abc";
+	r = "x&y";
+	s =~ s/b/${r}/;
+	unless (s eq "axbyc") puts("bad 10.1");
+	s = "abc";
+	r = "x\\0y";
+	s =~ s/b/${r}/;
+	unless (s eq "axbyc") puts("bad 10.2");
+
+	/* Check \1 through \9. */
+	s = "123456789abc";
+	r = "123456789c\\1a";
+	s =~ s/123456789a(b)c/${r}/;
+	unless (s eq "123456789cba") puts("bad 10.3");
+	s = "123456789abc";
+	r = "123456789c\\2a";
+	s =~ s/12345678(9)a(b)c/${r}/;
+	unless (s eq "123456789cba") puts("bad 10.4");
+	s = "123456789abc";
+	r = "123456789c\\3a";
+	s =~ s/1234567(8)(9)a(b)c/${r}/;
+	unless (s eq "123456789cba") puts("bad 10.5");
+	s = "123456789abc";
+	r = "123456789c\\4a";
+	s =~ s/123456(7)(8)(9)a(b)c/${r}/;
+	unless (s eq "123456789cba") puts("bad 10.6");
+	s = "123456789abc";
+	r = "123456789c\\5a";
+	s =~ s/12345(6)(7)(8)(9)a(b)c/${r}/;
+	unless (s eq "123456789cba") puts("bad 10.7");
+	s = "123456789abc";
+	r = "123456789c\\6a";
+	s =~ s/1234(5)(6)(7)(8)(9)a(b)c/${r}/;
+	unless (s eq "123456789cba") puts("bad 10.8");
+	s = "123456789abc";
+	r = "123456789c\\7a";
+	s =~ s/123(4)(5)(6)(7)(8)(9)a(b)c/${r}/;
+	unless (s eq "123456789cba") puts("bad 10.9");
+	s = "123456789abc";
+	r = "123456789c\\8a";
+	s =~ s/12(3)(4)(5)(6)(7)(8)(9)a(b)c/${r}/;
+	unless (s eq "123456789cba") puts("bad 10.10");
+	s = "123456789abc";
+	r = "123456789c\\9a";
+	s =~ s/1(2)(3)(4)(5)(6)(7)(8)(9)a(b)c/${r}/;
+	unless (s eq "123456789cba") puts("bad 10.11");
+
+	/* Check \a \e \f \n \r \t. */
+	s = "a\nb\n\nc\n\nd\n";
+	r = "\\n";
+	s =~ s/\n\n/${r}/g;
+	unless (s eq "a\nb\nc\nd\n") puts("bad 10.20");
+
+	/* Check \x for x being anything else. */
+	s = "abc";
+	r = "a\\bc";
+	s =~ s/b/${r}/;
+	unless (s eq "aabcc") puts("bad 10.30");
+	s = "abc";
+	r = "a\\&c";
+	s =~ s/b/${r}/;
+	unless (s eq "aa&cc") puts("bad 10.31");
 }
 #lang tcl
 regexp_1_5

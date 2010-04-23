@@ -632,6 +632,22 @@ Tcl_RegsubObjCmd(
 		    wfirstChar = wsrc + 2;
 		    wsrc++;
 		    continue;
+		} else if (re_type == RETYPE_PCRE) {
+		    switch (ch) {
+			case 'a': *wsrc = '\a'; break;
+			case 'e': *wsrc = '\e'; break;
+			case 'f': *wsrc = '\f'; break;
+			case 'n': *wsrc = '\n'; break;
+			case 'r': *wsrc = '\r'; break;
+			case 't': *wsrc = '\t'; break;
+			default: *wsrc = ch; break;
+		    }
+		    Tcl_AppendUnicodeToObj(resultPtr, wfirstChar,
+			    wsrc - wfirstChar + 1);
+		    *wsrc = '\\';
+		    wfirstChar = wsrc + 2;
+		    wsrc++;
+		    continue;
 		} else {
 		    continue;
 		}
