@@ -1,3 +1,49 @@
+Release notes for BitKeeper beta 4
+
+bk bam server <NEWURL>
+    This now works in a nested repository.
+
+bk checksum ChangeSet
+    Performance is enhanced.  Verifying checksum integrity
+    for all csets in a ChangeSet file requires many passes over the
+    data.  Checksums are now calculated more efficiently.
+    This will help bk partition.
+
+bk csetprune
+    Performance is enhanced.  Running csetprune can remove
+    csets from the history, leading to re-structuring of the graph.
+    Previous, that was done in a straight forward, but inefficient
+    manner, which was fine since csetprune wasn't used often.  With
+    partition, csetprune performance is critical, and the graph
+    restructuring computation is now more efficient.
+
+bk fix -c
+    This now works in a nested repository.
+
+bk needscheck [-v]
+    Returns true if the repository is configured for partial_check and
+    would run a full check.
+
+bk partition
+    Besides running faster (see bk checksum and bk csetprune),
+    partition now transforms the gone file.  Previous versions required
+    pruning out missing files.  This version still allows pruning,
+    but doesn't require it. 
+
+Other changes
+
+bk-4.6 was released, and those changes have been integrated into this
+release.
+
+progress bars
+    The push, pull, clone, and undo commands have been reworked
+    to have progress bars instead of listing out files being worked on.
+    The previous behavior is still available by using the -v option.
+
+triggers
+    The exit codes from post-commit triggers are ignored.
+
+===============================================================================
 Release notes for BitKeeper beta 3
 
 Performance groundwork in clones, pushes and pulls.  We are working
