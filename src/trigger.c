@@ -328,6 +328,9 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 		if (gui) fprintf(gui, "Running trigger \"%s\"\n", trigger);
 		rc = runit(triggers[i], what, output);
 
+		/* ignore exit status from 'post' triggers */
+		if (rc && streq(when, "post")) rc = 0;
+
 		unless (rc || size(output)) continue;
 
 		/* allow people to surpress noise (like getTriggerInfobLock) */

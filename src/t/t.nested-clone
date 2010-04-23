@@ -100,6 +100,24 @@ do
 done
 echo OK
 
+echo $N Try clone with a failing outgoing trigger ...................$NL
+cd "$HERE"/project
+# need BAM for failure
+echo 1 > bin
+bk new -b $Q bin || fail
+bk commit -ybam $Q || fail
+mkdir BitKeeper/triggers
+cat <<EOF > BitKeeper/triggers/post-outgoing.fail
+#!/bin/sh
+
+exit 1
+EOF
+chmod +x BitKeeper/triggers/post-outgoing.fail
+cd ..
+bk clone $Q project badcopy || fail
+rm project/BitKeeper/triggers/post-outgoing.fail
+echo OK
+
 echo $N Test that clone on a component fails ........................$NL
 cd "$HERE"
 bk clone $Q project/gcc mynewgcc 2>ERR && {
