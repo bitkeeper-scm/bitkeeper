@@ -1327,7 +1327,7 @@ urllist_normalize(hash *urllist, char *url)
 		urls = splitLine(urllist->vptr, "\n", 0);
 		EACH(urls) {
 			unless (hash_fetchStr(seen, urls[i])) {
-				new = 0;
+				new = "";
 				if (IsFullPath(urls[i])) {
 					concat_path(buf, urls[i], BKROOT);
 					unless (isdir(buf)) {
@@ -1365,15 +1365,18 @@ urllist_normalize(hash *urllist, char *url)
 int
 urllist_write(hash *urllist)
 {
+	char	tmpf[MAXPATH];
+
 	unless (isdir(BKROOT)) {
 		fprintf(stderr, "urllist_write() not at root\n");
 		return (-1);
 	}
-	if (hash_toFile(urllist, "BitKeeper/log/x.urllist")) {
-		perror("BitKeeper/log/x.urllist");
+	bktmp_local(tmpf, "urllist");
+	if (hash_toFile(urllist, tmpf)) {
+		perror(tmpf);
 		return (-1);
 	}
-	if (fileMove("BitKeeper/log/x.urllist", NESTED_URLLIST)) {
+	if (fileMove(tmpf, NESTED_URLLIST)) {
 		perror(NESTED_URLLIST);
 		return (-1);
 	}

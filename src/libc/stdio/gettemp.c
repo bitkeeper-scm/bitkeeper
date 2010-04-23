@@ -136,12 +136,12 @@ GETTEMP(path, doopen, domkdir)
 	for (;;) {
 		if (doopen) {
 			if ((*doopen =
-			    open(path, O_CREAT | O_EXCL | O_RDWR, 0600)) >= 0)
+			    open(path, O_CREAT | O_EXCL | O_RDWR, 0666)) >= 0)
 				return (1);
 			if (errno != EEXIST)
 				return (0);
 		} else if (domkdir) {
-			if (mkdir(path, 0700) >= 0)
+			if (mkdir(path, 0777) >= 0)
 				return (1);
 			if (errno != EEXIST)
 				return (0);

@@ -1259,7 +1259,6 @@ features_repoClear(project *p, char *feature)
 	char	**t;
 	char	**local;
 	char	*ffile;
-	int	i;
 
 	/* we better have this feature defined above */
 	for (t = features; *t; ++t) {
