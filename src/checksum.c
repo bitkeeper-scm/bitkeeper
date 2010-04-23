@@ -336,7 +336,7 @@ do_chksum(int fd, int off, int *sump)
 }
 
 typedef struct serset {
-	int	num, size;
+	ser_t	num, size, last;
 	struct _sse {
 		ser_t	ser;
 		u16	sum;
@@ -361,6 +361,7 @@ add_ins(MDBM *h, char *root, int len, ser_t ser, u16 sum)
 		ss = malloc(SS_SIZE + 4*SSE_SIZE);
 		ss->num = 0;
 		ss->size = 4;
+		ss->last = 0;
 		v.dptr = (void *)&ss;
 		v.dsize = sizeof(serset *);
 		mdbm_store(h, k, v, MDBM_INSERT);
@@ -394,6 +395,18 @@ setOrder(sccs *s, delta *d, void *token)
 
 	*order = addLine(*order, d);
 	return (0);
+}
+
+private int
+sortSets(const void *a, const void *b)
+{
+	serset *sa = *(serset **)a;
+	serset *sb = *(serset **)b;
+	int	na, nb;
+
+	na = (sa->num > 0) ? sa->data[0].ser : 0;
+	nb = (sb->num > 0) ? sb->data[0].ser : 0;
+	return (nb - na);
 }
 
 /* same semantics as sccs_resum() except one call for all deltas */
@@ -454,6 +467,9 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		map[cnt] = *(serset **)kv.val.dptr;
 		++cnt;
 	}
+	/* order array for better cache footprint */
+	qsort(map, cnt, sizeof(serset *), sortSets);
+
 	/* the above is very fast, no need to optimize further */
 
 	/* foreach delta in an optimized order */
@@ -477,14 +493,20 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		added = 0;
 		for (i = 0; i < cnt; i++) {
 			ser_t	ser;
+			ser_t	want = d->serial;
 
-			for (sse = map[i]->data; (ser = sse->ser); ++sse) {
-				if ((ser <= d->serial) && slist[ser]) {
+			sse = map[i]->data + map[i]->last;
+			while ((sse > map[i]->data) && (sse[-1].ser <= want)) {
+				--sse;
+			}
+			for (; (ser = sse->ser); ++sse) {
+				if ((ser <= want) && slist[ser]) {
 					sum += sse->sum;
-					if (ser == d->serial) ++added;
+					if (ser == want) ++added;
 					break;
 				}
 			}
+			map[i]->last = (sse - map[i]->data);
 		}
 
 		if ((d->added != added) || d->deleted || (d->same != 1)) {
