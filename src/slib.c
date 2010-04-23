@@ -33,8 +33,6 @@ private int	end(sccs *, delta *, FILE *, int, int, int, int);
 private void	date(delta *d, time_t tt);
 private int	getflags(sccs *s, char *buf);
 private sum_t	fputmeta(sccs *s, u8 *buf, FILE *out);
-private sum_t	fputdata(sccs *s, u8 *buf, FILE *out);
-private int	fflushdata(sccs *s, FILE *out);
 private void	putserlist(sccs *sc, ser_t *s, FILE *out);
 private ser_t*	getserlist(sccs *sc, int isSer, char *s, int *ep);
 private int	checkRev(sccs *s, char *file, delta *d, int flags);
@@ -5727,7 +5725,7 @@ gzip_sum(void *data, u8 *buf, int len)
 	}
 }
 
-private void
+void
 sccs_zputs_init(sccs *s, FILE *fout)
 {
 	void	**data = malloc(2 * sizeof(void *));
@@ -5771,7 +5769,7 @@ fputbumpserial(sccs *s, u8 *buf, int inc, FILE *out)
  * Like fputmeta, but optionally compresses the data stream.
  * This is used for the data section exclusively.
  */
-private sum_t
+sum_t
 fputdata(sccs *s, u8 *buf, FILE *out)
 {
 	u32	sum = 0;
@@ -5791,7 +5789,7 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 }
 
 /* Flush out data buffered by fputdata.  */
-private int
+int
 fflushdata(sccs *s, FILE *out)
 {
 	if (s->encoding & E_GZIP) {

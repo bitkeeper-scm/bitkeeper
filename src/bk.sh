@@ -351,13 +351,13 @@ _partition() {
 	}
 
 	# Save a backup copy of the repo
-	bk clone -ql . $WA/repo
+	bk clone -ql . $WA/repo || exit 1
 
 	# Clean out the product
 
 	RAND=`echo "The Big Cheese" | cat - BitKeeper/log/ROOTKEY \
 		    | bk undos -n | bk crypto -hX - | cut -c1-16`
-	bk csetprune $QUIET -NSE $XCOMPS -C$WA/map "-k$RAND"
+	bk csetprune $QUIET -GNSE $XCOMPS -C$WA/map "-k$RAND" || exit 1
 
 	# Prepare the component.  Need insane in case config is stripped.
 	_BK_INSANE=1
@@ -407,7 +407,7 @@ _partition() {
 			echo fix rename bugs
 			rm -fr "$comp"
 		}
-		bk clone -ql $WA/repo $WA/new
+		bk clone -ql $WA/repo $WA/new || exit 1
 		(
 			cd $WA/new || exit 1
 			test -f BitKeeper/log/ROOTKEY || {
@@ -421,7 +421,8 @@ _partition() {
 			RAND=`echo "$comp" | cat - BitKeeper/log/ROOTKEY \
 			    | bk undos -n | bk crypto -hX - | cut -c1-16`
 			_BK_STRIPTAGS=1 bk csetprune \
-			    $QUIET -NS $XCOMPS -C ../map -c"$comp" "-k$RAND"
+			    $QUIET -GNS $XCOMPS -C ../map -c"$comp" "-k$RAND" \
+			    || exit 1
 		) || exit 1
 		# XXX: this does not set exit code:
 		# bk changes -er1.2 -ndx $WA/new

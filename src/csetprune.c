@@ -21,14 +21,25 @@
  * Reinit the file into cset2, scompress it, write it, reinit again.
  * Walk the graph recursively and apply from root forward.
  * Create a new root key.
- * 
+ *
  * Copyright (c) 2001 Larry McVoy & Rick Smith
  */
+
+/*
+ * replace delta keys for the gone file in the changeset file because
+ * the keys will have new checksums.
+ */
+typedef struct {
+	hash	*db;	// old delta key -> new delta key
+	char	*rk;	// rootkey for the gone file
+} goner;
 
 private	int	csetprune(hash *prunekeys,
 		    char *comppath, char **complist, char *ranbits);
 private	int	filterWeave(sccs *cset, char **cweave, char ***delkeys,
-		    hash *prunekeys, char *comppath, char **complist);
+		    hash *prunekeys, char *comppath, char **complist,
+		    goner *gonemap);
+private	goner	*filterGone( char **cweave, char *comppath, char **deepnest);
 private	int	rmKeys(char **delkeys);
 private	int	found(delta *start, delta *stop);
 private	void	_pruneEmpty(sccs *s, delta *d);
@@ -36,6 +47,7 @@ private	void	pruneEmpty(sccs *s, sccs *sb);
 private	hash	*getKeys(void);
 private	char	**goneKeys(void);
 private	int	keeper(char *rk);
+private	void	freeGone(goner *gonemap);
 
 private	int	do_file(sccs *s, char *path, char **deep);
 private	char	**deepPrune(char **map, char *path);
@@ -44,6 +56,8 @@ private	char	*s2delpath(sccs *s);
 private	char	*rootkey2delpath(char *key);
 private	char	*getPath(char *key, char **term);
 private	int	do_files(char *comppath, char **deepnest);
+private	int	isRootKey(char *key);
+private	hash	*mklookup(char **cweave);
 
 private	int	flags;
 
@@ -54,6 +68,7 @@ private	int	flags;
 #define	PRUNE_XCOMP		0x80000000	/* prune cross comp moves */
 #define	PRUNE_LVEMPTY		0x01000000	/* leave empty nodes in graph */
 #define	PRUNE_ALL		0x02000000	/* prune all user says to */
+#define	PRUNE_FIXGONE		0x04000000	/* Redo the keys in the gone */
 
 int
 csetprune_main(int ac, char **av)
@@ -67,13 +82,14 @@ csetprune_main(int ac, char **av)
 	int	i, c, ret = 1;
 
 	flags = PRUNE_NEW_TAG_GRAPH;
-	while ((c = getopt(ac, av, "ac:C:Egk:NqsSX", 0)) != -1) {
+	while ((c = getopt(ac, av, "ac:C:EgGk:NqsSX", 0)) != -1) {
 		switch (c) {
 		    case 'a': flags |= PRUNE_ALL; break;
 		    case 'c': comppath = optarg; break;
 		    case 'C': compfile = optarg; break;
 		    case 'E': flags |= PRUNE_LVEMPTY; break;
 		    case 'g': flags |= PRUNE_GONE; break;
+		    case 'G': flags |= PRUNE_FIXGONE; break;
 		    case 'k': ranbits = optarg; break;
 		    case 'N': flags |= PRUNE_NO_SCOMPRESS; break;
 		    case 'q': flags |= SILENT; break;
@@ -81,6 +97,10 @@ csetprune_main(int ac, char **av)
 		    case 'X': flags |= PRUNE_XCOMP; break;
 		    default: bk_badArg(c, av);
 		}
+	}
+	if ((flags & PRUNE_GONE) && (flags & PRUNE_FIXGONE)) {
+		fprintf(stderr, "%s: -g or -G but not both\n", prog);
+		goto err;
 	}
 	if (ranbits) {
 		u8	*p;
@@ -142,6 +162,7 @@ csetprune(hash *prunekeys, char *comppath, char **complist, char *ranbits)
 	sccs	*cset = 0, *csetb = 0;
 	char	**cweave = 0;
 	char	**deepnest = 0;
+	goner	*gonemap = 0;
 	char	buf[MAXPATH];
 
 	unless (ranbits) {
@@ -160,8 +181,17 @@ csetprune(hash *prunekeys, char *comppath, char **complist, char *ranbits)
 		goto err;
 	}
 	deepnest = deepPrune(complist, comppath);
+
+	if (flags & PRUNE_FIXGONE) {
+		gonemap = filterGone(cweave, comppath, deepnest);
+		if (gonemap == INVALID) {
+			fprintf(stderr, "filterGone failed\n");
+			goto err;
+		}
+	}
+
 	empty_nodes = filterWeave(
-	    cset, cweave, &delkeys, prunekeys, comppath, deepnest);
+	    cset, cweave, &delkeys, prunekeys, comppath, deepnest, gonemap);
 	if (empty_nodes == -1) {
 		fprintf(stderr, "filterWeave failed\n");
 		goto err;
@@ -225,6 +255,7 @@ finish:
 	ret = 0;
 
 err:	if (cset) sccs_free(cset);
+	freeGone(gonemap);
 	if (csetb) sccs_free(csetb);
 	if (delkeys) freeLines(delkeys, free);
 	/* ptrs into complist, don't free */
@@ -260,12 +291,172 @@ sortByKeySer(const void *a, const void *b)
 	return (rc);
 }
 
+private	void
+freeGone(goner *gonemap)
+{
+	unless (gonemap && (gonemap != INVALID)) return;
+	if (gonemap->db) hash_free(gonemap->db);
+	if (gonemap->rk) free(gonemap->rk);
+	free(gonemap);
+}
+/*
+ * This is a hard problem.  There could be many gone files.  If we
+ * want a clone -r to work, then all gone files would need to be
+ * fixed.  Let's at least flush out the mechanics by working on the
+ * current gone file...
+ */
+private	goner	*
+filterGone(char **cweave, char *comppath, char **deepnest)
+{
+	int	iflags = INIT_MUSTEXIST|INIT_NOCKSUM|SILENT;
+	int	i;
+	goner	*gonemap = 0;
+	FILE	*out = 0;
+	sccs	*s = 0;
+	delta	*d;
+	char	*buf, *p, *e, *newpath, *delpath, *rootkey;
+	char	*freeme = 0;
+	hash	*lookup = 0;
+	char	oldkey[MAXKEY], newkey[MAXKEY];
+
+	/*
+	 * Name the repo's gone instead of SGONE which could be an env var
+	 */
+	unless (s = sccs_init("BitKeeper/etc/SCCS/s.gone", iflags)) goto err;
+	if ((d = sccs_top(s)) && d->dangling) {
+		fprintf(stderr,
+		    "%s: dangling deltas in gone need to be removed\n", prog);
+		sccs_free(s);
+		return (INVALID);
+	}
+	unless (sccs_lock(s, 'z')) {
+		fprintf(stderr, "can't zlock %s\n", s->gfile);
+		goto err;
+	}
+	unless (out = sccs_startWrite(s)) goto err;
+	if (delta_table(s, out, 0)) goto err;
+	if (s->encoding & E_GZIP) sccs_zputs_init(s, out);
+	sccs_rdweaveInit(s);
+	while (buf = sccs_nextdata(s)) {
+		/* do a remap of path only in keys with path in them */
+		if ((i = strcnt(buf, '|')) == 4) {	/* new style rootkey */
+			rootkey = buf;
+		} else if (i == 3) {	/* deltakey or short rootkey */
+			unless (lookup) lookup = mklookup(cweave);
+			unless (rootkey = hash_fetchStr(lookup, buf)) {
+				/*
+				 * Gone file could be MONOTONIC and this 'buf'
+				 * be a valid key in another repo.
+				 * So ignore it.
+				 */
+				i = 0;
+			}
+		} else {
+			i = 0;
+			/* Comment out non keys */
+			unless (strchr("\001#\n", *buf)) {
+				fputdata(s, "# csetpruned: ", out);
+			}
+		}
+		if (i) {
+			unless (delpath = rootkey2delpath(rootkey)) goto err;
+			p = strchr(buf, '|');
+			assert(p);
+			e = strchr(p+1, '|');
+			assert(e);
+			*p = *e = 0;
+			newpath = newname(delpath, comppath, p+1, deepnest);
+			freeme = aprintf("%s|%s|%s", buf, newpath, e+1);
+			free(delpath);
+			*p = *e = '|';
+			buf = freeme;
+		}
+
+		fputdata(s, buf, out);
+		fputdata(s, "\n", out);
+		if (freeme) {
+			free(freeme);
+			freeme = 0;
+		}
+	}
+	sccs_rdweaveDone(s);
+	if (lookup) {
+		hash_free(lookup);
+		lookup = 0;
+	}
+	if (fflushdata(s, out)) goto err;
+	fseek(out, 0L, SEEK_SET);
+	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
+	if (sccs_finishWrite(s, &out)) goto err;
+	sccs_restart(s);	/* delta checksums are wrong */
+	for (d = s->table; d; d = d->next) {
+		if (TAG(d)) continue;	// assert?
+		unless (d->flags & D_CSET) {
+			sccs_resum(s, d, 0, 1);
+			continue;
+		}
+
+		sccs_sdelta(s, d, oldkey);
+		sccs_resum(s, d, 0, 1);
+		sccs_sdelta(s, d, newkey);
+		if (streq(oldkey, newkey)) continue;
+
+		unless (gonemap) {
+			gonemap = new(goner);
+			gonemap->db = hash_new(HASH_MEMHASH);
+		}
+		unless (hash_insertStr(gonemap->db, oldkey, newkey)) {
+			fprintf(stderr,
+			    "Duplicate gone delta?\nKEY: %s\n", oldkey);
+			goto err;
+		}
+	}
+	if (gonemap && !gonemap->rk) {
+		sccs_sdelta(s, sccs_ino(s), newkey);
+		gonemap->rk = strdup(newkey);
+	}
+	sccs_unlock(s, 'z');
+	sccs_newchksum(s);	/* new checksums (XXX: could track if new) */
+	return (gonemap);
+err:
+	if (gonemap) freeGone(gonemap);
+	if (s) {
+		sccs_abortWrite(s, &out);
+		sccs_unlock(s, 'z');
+		sccs_free(s);
+	}
+	return (INVALID);
+}
+
+private	hash	*
+mklookup(char **cweave)
+{
+	int	i;
+	char	*rk, *dk, *p;
+	hash	*lookup = hash_new(HASH_MEMHASH);
+
+	EACH(cweave) {
+		rk = strchr(cweave[i], '\t');
+		assert(rk);
+		rk++;
+		dk = separator(rk);
+		assert(dk);
+		*dk++ = 0;
+		unless (hash_insertStr(lookup, dk, rk)) {
+			p = hash_fetchStr(lookup, dk);
+			assert(p && streq(p, rk));
+		}
+		dk[-1] = ' ';
+	}
+	return (lookup);
+}
+
 /*
  * filterWeave - skip pruned, rename renames, add deleted
  */
 private	int
 filterWeave(sccs *cset, char **cweave, char ***delkeys,
-    hash *prunekeys, char *comppath, char **deepnest)
+    hash *prunekeys, char *comppath, char **deepnest, goner *gonemap)
 {
 	delta	*d;
 	char	*rk, *dk;
@@ -342,6 +533,11 @@ zero:				cweave[i][0] = 0;
 		 * User may want to exclude specific deltas
 		 */
 		if (prunekeys && hash_fetchStr(prunekeys, dk)) goto zero;
+		if (gonemap && streq(rk, gonemap->rk)) {
+			if (hash_fetchStr(gonemap->db, dk)) {
+				dk = gonemap->db->vptr;
+			}
+		}
 		path = getPath(dk, &p);
 		*p = 0;
 		path[-1] = 0;
@@ -378,6 +574,10 @@ save:
 		free(cweave[i]);
 		cweave[i] = aprintf("%u\t%s %s", ser, new_rk, new_dk);
 		assert(cweave[i]);
+	}
+	if (delpath) {
+		free(delpath);
+		delpath = 0;
 	}
 	if (cnt && del && last_rk[0] && (flags & PRUNE_XCOMP)) {
 		/*
@@ -932,7 +1132,7 @@ keeper(char *rk)
 	return (ret);
 }
 
-int
+private	int
 isRootKey(char *key)
 {
 	int	i = 0;

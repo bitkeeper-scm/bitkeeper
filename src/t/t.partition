@@ -215,3 +215,32 @@ cd ..
 echo src > map
 bk partition $Q -X -Cmap branch parted
 echo OK
+
+echo $N Test remapping of the contents of the gone file .............$NL
+cd "$HERE/project"
+RANDBITS=`bk log -r+ -nd:RANDOM: doc/was-src-b`
+bk rm doc/was-src-b
+bk commit $Q -y'make a deltakey'
+bk stripdel $Q -Cr+ "BitKeeper/deleted/.del-b~$RANDBITS"
+bk -r names $Q
+bk _rm src/SCCS/s.c
+bk admin $Q -fMONOTONIC BitKeeper/etc/gone
+bk -r check -ag | bk gone - 2> ERR || fail -f ERR
+bk -r check -agg | bk gone - 2> ERR || fail -f ERR
+bk edit $Q BitKeeper/etc/gone
+echo "this is junk|1.2" >> BitKeeper/etc/gone
+bk delta $Q -yappendjunk BitKeeper/etc/gone
+bk commit $Q -ygoned
+cd ..
+bk partition $Q -Cmapfile project gone || fail
+bk get -qpk gone/BitKeeper/etc/gone | tail -1 > OUT
+grep -q '^# csetpruned: this is junk|1.2$' OUT || fail -f OUT
+echo OK
+
+echo $N Test partition failing if dangling deltas in gone ...........$NL
+cd "$HERE/project"
+bk undo $Q -sfr+
+cd ..
+bk partition $Q -Cmapfile project dangling 2>ERR && fail -f ERR
+grep -q "dangling deltas in gone need to be removed" ERR || fail -f ERR
+echo OK
