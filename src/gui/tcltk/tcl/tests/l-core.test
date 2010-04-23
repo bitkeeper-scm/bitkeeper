@@ -7801,6 +7801,27 @@ deep_3_4()
 deep_3_4();
 } -returnCodes error -match regexp -result {cannot write to undefined string index}
 
+test deep-4.0 {check hash and array indexing of a poly} -body {
+#lang L
+void deep_4_0()
+{
+	poly	p;
+
+	p = {};
+	p{"key1"} = "val";
+	p{"key2"} = 123;
+	unless(p{"key1"} eq "val") puts("bad 1.1");
+	unless(p{"key2"} == 123) puts("bad 1.2");
+
+	p = {};
+	p[0] = "val";
+	p[1] = 123;
+	unless(p[0] eq "val") puts("bad 2.1");
+	unless(p[1] == 123) puts("bad 2.2");
+}
+deep_4_0();
+} -output {}
+
 test regexp-1.0 {regular expression support} -body {
 #lang L
 void regexp_1_0() {

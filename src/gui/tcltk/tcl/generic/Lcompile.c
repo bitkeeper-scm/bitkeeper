@@ -3511,6 +3511,8 @@ push_index(Expr *expr)
 					expr->b,
 					"in hash index");
 			type = expr->a->type->base_type;
+		} else if (ispoly(expr->a)) {
+			type = L_poly;
 		} else {
 			L_errf(expr, "not a hash");
 		}
