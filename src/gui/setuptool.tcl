@@ -262,6 +262,7 @@ proc app_init {} \
 	}
 
 	computeSize width height
+	wm geometry  . ${width}x${height}
 	centerWindow . $width $height
 
 }

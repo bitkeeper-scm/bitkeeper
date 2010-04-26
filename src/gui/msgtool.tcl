@@ -1,4 +1,5 @@
-set usage "Usage: bk msgtool ?-T title? ?-Y YES-label? ?-N NO-label? message"
+set usage "Usage: bk msgtool ?-E | -I | -W? ?-F file? ?-P pager?\
+		?-T title? ?-Y YES-label? ?-N NO-label? message"
 
 proc main {} \
 {
@@ -120,6 +121,8 @@ proc widgets {} \
 	set widgets(toplevel) .
 	set w ""
 
+	wm withdraw $widgets(toplevel)
+
 	# If the user closes the window via the window manager, treat
 	# that as if they pressed no even if no "no" button is
 	# displayed. This way, the calling program can still distinguish
@@ -131,13 +134,6 @@ proc widgets {} \
 	wm title $widgets(toplevel) $options(-title)
 
 	$widgets(toplevel) configure -borderwidth 4 -relief flat 
-	if  {[info exists env(BK_MSG_GEOM)]} {
-		wm geometry $widgets(toplevel) $env(BK_MSG_GEOM)
-	} elseif {[info exists env(_BK_GEOM)]} {
-		wm geometry $widgets(toplevel) $env(_BK_GEOM)
-	} else {
-		centerWindow $widgets(toplevel)
-	}
 
 	# Any widgets that get referenced outside of this
 	# proc need to be defined here, so that if the layout
@@ -306,6 +302,15 @@ proc widgets {} \
 	pack $w.spacer2 -side bottom -fill x -padx 1 -pady 1
 	pack $widgets(message) -side top -fill both -expand y
 	update
+
+	if  {[info exists env(BK_MSG_GEOM)]} {
+		wm geometry $widgets(toplevel) $env(BK_MSG_GEOM)
+	} elseif {[info exists env(_BK_GEOM)]} {
+		wm geometry $widgets(toplevel) $env(_BK_GEOM)
+	} else {
+		centerWindow $widgets(toplevel)
+	}
+
 	if {![info exists env(BK_FORCE_TOPMOST)]} { return }
 	if {$env(BK_FORCE_TOPMOST) != "YES"} { return }
 	set widgets(xid) [scan [wm frame .] %x]

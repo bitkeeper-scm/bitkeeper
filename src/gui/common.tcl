@@ -120,19 +120,7 @@ proc balloon_aux {w msg} \
 proc centerWindow {w args} \
 {
 
-	# if this proc has never been called, we'll add a bindtag
-	# to the named window, set a binding on that bindtag, and
-	# exit. When the binding fires we'll do the real work.
 	set w [winfo toplevel $w]
-	set bindtags [bindtags $w]
-	set tag "Center-$w"
-	set i [lsearch -exact $bindtags $tag]
-	if {$i == -1} {
-		set bindtags [linsert $bindtags 0 $tag]
-		bindtags $w $bindtags
-		bind $tag <Configure> [concat centerWindow $w $args]
-		return
-	}
 
 	if {[llength $args] > 0} {
 		set width [lindex $args 0]
@@ -144,12 +132,7 @@ proc centerWindow {w args} \
 	set x [expr {round(([winfo vrootwidth $w] - $width) /2)}]
 	set y [expr {round(([winfo vrootheight $w] - $height) /2)}]
 
-	wm geometry $w ${width}x${height}+${x}+${y}
-
-	# remove the bindtag so we don't end up back here again
-	bind $tag <Configure> {}
-	set bindtags [lreplace $bindtags $i $i]
-	bindtags $w $bindtags
+	wm geometry $w +${x}+${y}
 }
 
 # this proc attempts to center a given line number in a text widget;
