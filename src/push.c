@@ -39,7 +39,8 @@ typedef	enum {
 	PUSH_NO_REPO = 5,	/* remote it empty dir */
 	/* the following should never return from push_main() */
 	NOTHING_TO_SEND,
-	DELAYED_RESOLVE		/* nested push_ensemble() needed */
+	DELAYED_RESOLVE,	/* nested push_ensemble() needed */
+	PUSH_ABORT,		/* error that needs abort msg */
 } push_rc;
 
 private	void	pull(remote *r);
@@ -269,7 +270,11 @@ push(char **av, remote *r, char **envVar)
 	switch (ret) {
 	    case NOTHING_TO_SEND:	abort = "@NOTHING TO SEND@\n"; break;
 	    case CONFLICTS:		abort = "@CONFLICT@\n"; break;
-	    case PUSH_ERROR:		abort = "@ABORT@\n"; break;
+	    case PUSH_ABORT:
+		abort = "@ABORT@\n";
+		ret = PUSH_ERROR;
+		break;
+	    case PUSH_ERROR:
 	    case REMOTE_LOCKED:		goto out;
 	    default:			assert(ret == PUSH_OK);	break;
 	}
@@ -594,13 +599,13 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 			    "push: cannot push to lower "
 			    "level repository (remote level == %s)\n",
 			    getenv("BKD_LEVEL"));
-			return (PUSH_ERROR);
+			return (PUSH_ABORT);
 		}
 		if (proj_isProduct(0) && !bkd_hasFeature("SAMv3")) {
 			fprintf(stderr,
 			    "push: please upgrade the remote bkd to a "
-			    "SAMv3 aware version (5.0 or later).\n");
-			return (PUSH_ERROR);
+			    "NESTED aware version (5.0 or later).\n");
+			return (PUSH_ABORT);
 		}
 		if ((bp_hasBAM() ||
 		     ((p = getenv("BKD_BAM")) && streq(p, "YES"))) &&
@@ -608,7 +613,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 			fprintf(stderr,
 			    "push: please upgrade the remote bkd to a "
 			    "BAMv2 aware version (4.1.1 or later).\n");
-			return (PUSH_ERROR);
+			return (PUSH_ABORT);
 		}
 		getline2(r, buf, sizeof(buf));
 		if (ret = remote_lock_fail(buf, opts.verbose)) {
@@ -643,7 +648,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 		opts.quiet, &lcsets, &rcsets, &rtags);
 	close(fd);
 	if (ret < 0) {
-		push_rc	rc = PUSH_ERROR;
+		push_rc	rc = PUSH_ABORT;
 
 		switch (ret) {
 		    case -2:
@@ -677,8 +682,8 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 		fprintf(stderr, "Nothing to push.\n");
 	}
 	free(url);
-	if (lcsets == 0) return (NOTHING_TO_SEND);
 	if (rcsets || rtags) return (CONFLICTS);
+	if (lcsets == 0) return (NOTHING_TO_SEND);
 	return (PUSH_OK);
 }
 
@@ -1003,6 +1008,7 @@ send_part1_msg(remote *r, char **envVar)
 		f = fopen(probef, "rb");
 		while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
 			writen(r->wfd, buf, i);
+			if (r->trace) fwrite(buf, 1, i, stderr);
 		}
 		fclose(f);
 		send_file_extra_done(r);

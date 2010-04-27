@@ -36,7 +36,6 @@ cmd_push_part1(int ac, char **av)
 		/* they got sent the level so they are exiting already */
 		return (1);
 	}
-
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
 		out("ERROR-protocol version mismatch, want: ");
@@ -47,6 +46,11 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
+	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv3")) {
+		out("ERROR-please upgrade your BK to a NESTED "
+		    "aware version (5.0 or later)\n");
+		return (1);
+	}
 	if ((bp_hasBAM() || ((p = getenv("BK_BAM")) && streq(p, "YES"))) &&
 	    !bk_hasFeature("BAMv2")) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
@@ -208,7 +212,6 @@ abort:		resync = aprintf("%s/%s", proj_root(0), ROOT2RESYNC);
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
-	putenv("BK_REMOTE=YES");
 	pid = spawnvpio(&pfd, 0, 0, takepatch);
 	f = fdopen(pfd, "wb");
 	dup2(fd2, 2); close(fd2);
@@ -294,7 +297,6 @@ bkd_doResolve(char *me, int verbose)
 	 */
 	if (debug) fprintf(stderr, "%s: calling resolve\n", me);
 	printf("@RESOLVE INFO@\n");
-	fflush(stdout);
 	if (verbose) {
 		printf("Running resolve to apply new work...\n");
 	} else {

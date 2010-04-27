@@ -2407,7 +2407,7 @@ pass4_apply(opts *opts)
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
 	MDBM	*permDB = mdbm_mem();
-	char	*cmd = "apply";
+	char	*cmd;
 	char	*p;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
@@ -2445,8 +2445,10 @@ pass4_apply(opts *opts)
 	 * one last chance to bail out.
 	 */
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
-	if (getenv("BK_REMOTE") && streq(getenv("BK_REMOTE"), "YES")) {
+	if (getenv("_BK_IN_BKD")) {
 		cmd = "remote apply";
+	} else {
+		cmd = "apply";
 	}
 	if (ret = trigger(cmd,  "pre")) {
 		switch (ret) {
