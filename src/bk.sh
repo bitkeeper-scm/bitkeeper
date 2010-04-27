@@ -219,13 +219,15 @@ _partition() {
 	XCOMPS=
 	GONELIST=
 	COMPGONELIST=
-	while getopts C:G:g:m:qX opt
+	PARALLEL=
+	while getopts C:G:g:j:m:qX opt
 	do
 		case "$opt" in
 		q) QUIET=-q;;
 		C) COMPS="$OPTARG";;
 		G) GONELIST="$OPTARG";;
 		g) COMPGONELIST="$OPTARG";;
+		j) PARALLEL="-j$OPTARG";;
 		m) COMPS="$OPTARG";;	# for any old scripts
 		X) XCOMPS="-X";;
 		*) bk help -s partition; exit 1;;
@@ -272,10 +274,8 @@ _partition() {
 		exit 1
 	}
 
-	# XXX: when moving to C, don't overwrite all of CONFIG
-	# For now, this is a good enough / demo hack
 	_BK_OCONFIG="$BK_CONFIG"
-	BK_CONFIG="nosync: on!; checkout: none!; partial_check: on! "
+	BK_CONFIG="$BK_CONFIG; nosync: no!; checkout: none!; partial_check: on!"
 	export BK_CONFIG
 
 	verbose "### Cloning product"
@@ -407,42 +407,54 @@ _partition() {
 		bk -r check -ac || exit 1
 		rm -f ../allkeys
 	}
-	cd ../$WA2PROD || exit 1
+	# back to $WA
+	cd .. || exit 1
 	_BK_INSANE=
 
-	# Fill in the components
-	cat $WA/map | while read comp; do
-		verbose "### Cloning component $comp"
-		test -d "$comp" && {
-			echo fix rename bugs
-			rm -fr "$comp"
+	if [ "$PARALLEL" ]
+	then	# if 'make' is not found or not GNU Make, then ignore -j
+		make --version > OUT 2>&1
+		head -1 OUT | grep "GNU Make" >/dev/null || {
+			echo partiton: no GNU make found, $PARALLEL ignored 1>&2
+			PARALLEL=
 		}
-		bk clone -ql $WA/repo $WA/new || exit 1
-		(
-			cd $WA/new || exit 1
-			test -f BitKeeper/log/ROOTKEY || {
-				bk id > /dev/null
-				test -f BitKeeper/log/ROOTKEY || {
-					echo "No BitKeeper/log/ROOTKEY file" \
-					    1>&2
-					exit 1
-				}
+	fi
+	# Fill in the components
+	if [ "$PARALLEL" ]
+	then
+		N=0
+		cat map | while read comp; do
+			N=`expr $N + 1`
+			echo repo$N.out: >> Makefile
+			echo "	bk _partition_one $QUIET $XCOMPS repo$N \"$comp\"" >> Makefile
+			echo >> Makefile
+			echo repo$N.out >> ALL
+		done || exit 1
+		echo all: `cat ALL` >> Makefile
+		make -s $PARALLEL all || exit 1
+	else
+		N=0
+		cat map | while read comp; do
+			N=`expr $N + 1`
+			bk _partition_one $QUIET $XCOMPS repo$N "$comp" || {
+				exit 1
 			}
-			RAND=`echo "$comp" | cat - BitKeeper/log/ROOTKEY \
-			    | bk undos -n | bk crypto -hX - | cut -c1-16`
-			_BK_STRIPTAGS=1 bk csetprune \
-			    $QUIET -GNS $XCOMPS -C ../map -c"$comp" "-k$RAND" \
-			    || exit 1
-		) || exit 1
+		done || exit 1
+	fi
+	cd $WA2PROD || exit 1
+
+	N=0
+	cat $WA/map | while read comp; do
+		N=`expr $N + 1`
 		# XXX: this does not set exit code:
 		# bk changes -er1.2 -ndx $WA/new
-		(cd $WA/new && bk changes -qer1.2 -ndx > /dev/null 2>&1 ) || {
+		(cd $WA/repo$N && bk changes -qer1.2 -ndx > /dev/null 2>&1 ) || {
 			verbose "### $comp is empty: removed" 
-			rm -fr $WA/new
+			rm -fr $WA/repo$N
 			continue
 		}
 		mkdir -p "`dirname "$comp"`"
-		mv $WA/new "$comp" || exit 1
+		mv $WA/repo$N "$comp" || exit 1
 	done || exit 1
 
 	# We now have a bunch of separate repos laid out like a product
@@ -487,7 +499,7 @@ _partition() {
 	test -z "$QUIET" && VERBOSE=-v
 	BK_CONFIG="$_BK_OCONFIG"
 	export BK_CONFIG
-	bk $QUIET -Ar check $VERBOSE -acfT || exit 1
+	_BK_DEVELOPER= bk $QUIET -Ar check $VERBOSE -acfT || exit 1
 
 	verbose "### Compressing serials"
 	bk $QUIET -A _scompress -q ChangeSet
@@ -495,6 +507,44 @@ _partition() {
 	rm -fr $WA
 	verbose partioning complete
 	exit 0
+}
+
+__partition_one()
+{
+	QUIET=
+	XCOMPS=
+	while getopts qX opt
+	do
+		case "$opt" in
+		q) QUIET=-q;;
+		X) XCOMPS="-X";;
+		*) bk help -s partition; exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	dest="$1"
+	comp="$2"
+	test "$dest" -a "$comp" || exit 1
+
+	verbose "### Cloning component $comp"
+	bk clone -ql repo "$dest" || exit 1
+	(
+		cd "$dest" || exit 1
+		test -f BitKeeper/log/ROOTKEY || {
+			bk id > /dev/null
+			test -f BitKeeper/log/ROOTKEY || {
+				echo "No BitKeeper/log/ROOTKEY file" \
+				    1>&2
+				exit 1
+			}
+		}
+		RAND=`echo "$comp" | cat - BitKeeper/log/ROOTKEY \
+		    | bk undos -n | bk crypto -hX - | cut -c1-16`
+		_BK_STRIPTAGS=1 bk csetprune \
+		    $QUIET -GNS $XCOMPS -C ../map -c"$comp" "-k$RAND" \
+		    || exit 1
+	) || exit 1
+	return 0
 }
 
 # superset - see if the parent is ahead

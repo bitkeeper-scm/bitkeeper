@@ -200,6 +200,19 @@ bk push $Q ../copy || {
 }
 echo OK
 
+echo $N Do partiton with -j4 ........................................$NL
+cd ../copy
+bk unpull -f $Q || fail
+cd ..
+BK_LIMITPATH= bk partition $Q -j4 -Cmapfile project copymv2 2>ERR || exit 1
+cat ERR | grep -v 'partiton: no GNU make found, -j4 ignored' || true
+cd copymv2
+bk push $Q ../copy || {
+	echo failed
+	exit 1
+}
+echo OK
+
 echo $N Remove empty components .....................................$NL
 cd "$HERE"
 echo empty/repo > emptymap

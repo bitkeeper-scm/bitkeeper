@@ -6,6 +6,7 @@ bk partition \- transform a single repository into a nested collection
 .SH SYNOPSIS
 .B bk partition
 .[B] \-q
+.[OPTreq] \-j N
 .[OPTreq] \-C components
 .[OPTreq] \-G gonelist
 .ARG from
@@ -48,6 +49,10 @@ This is similar to running a bk csetprune before running bk partition.
 The difference is that the bk partition command will provide the stable
 -k parameter to the csetprune enable the resulting repositories to
 communicate with repositories that have gone through the same partitioning.
+.tp
+.OPTreq \-j N
+Run the per-component portions of the partition in parallel using N
+processes.  Useful for partitioning on multi-core machines.
 .tp
 .B \-q
 Run quietly.
