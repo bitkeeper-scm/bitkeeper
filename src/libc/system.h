@@ -116,6 +116,7 @@ int	onelink(char *s);
 int	cat(char *file);
 char	*loadfile(char *file, int *size);
 int	touch(char *file, int mode);
+int	hide(char *file, int on_off);
 
 /* findpid.c */
 pid_t	findpid(pid_t pid);

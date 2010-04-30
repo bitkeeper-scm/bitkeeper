@@ -66,3 +66,11 @@ ps | grep -q " $PID " && {
 	exit 1
 }
 echo OK
+
+echo $N See that the .bk tree is hidden .............................$NL
+cd "$HERE"
+bk clone $Q --hide-sccs-dirs project clone
+cd clone
+attrib .bk > OUT
+grep -q "    H   [ I] " OUT || fail -f OUT
+echo OK

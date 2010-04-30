@@ -1402,6 +1402,10 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
+	sprintf(buf, "%s/.bk", path);
+	if (isdir(buf)) {
+		hide(buf, 1);
+	}
 }
 
 /*

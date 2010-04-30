@@ -2,6 +2,12 @@
 
 #ifndef WIN32
 int
+hide(char *file, int on_off)
+{
+	return (0);
+}
+
+int
 cat(char *file)
 {
 	MMAP	*m = mopen(file, "r");
@@ -16,6 +22,27 @@ cat(char *file)
 	return (0);
 }
 #else
+int
+hide(char *file, int on_off)
+{
+	DWORD attr;
+
+	attr = GetFileAttributes(file);
+	if (attr == INVALID_FILE_ATTRIBUTES) return (-1);
+	if (on_off) {
+		unless (attr & FILE_ATTRIBUTE_HIDDEN) {
+			attr |= FILE_ATTRIBUTE_HIDDEN;
+			SetFileAttributes(file, attr);
+		}
+	} else {
+		if (attr & FILE_ATTRIBUTE_HIDDEN) {
+			attr &= ~FILE_ATTRIBUTE_HIDDEN;
+			SetFileAttributes(file, attr);
+		}
+	}
+	return (0);
+}
+
 /*
  * We need a win32 version beacuse win32 write interface cannot
  * handle large buffer, do _not_ change this code unless you tested it 

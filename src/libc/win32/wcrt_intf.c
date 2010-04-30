@@ -246,7 +246,7 @@ nt_mkdir (char *dirname)
 		p = dirname;
 	}
 	if (strcasecmp(p, "SCCS") == 0) {
-		SetFileAttributes(dirname, FILE_ATTRIBUTE_HIDDEN);
+		hide(dirname, 1);
 	}
 	return (0);
 }
