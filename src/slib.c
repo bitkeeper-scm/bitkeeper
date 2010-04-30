@@ -24,10 +24,10 @@ private void	dinsert(sccs *s, delta *d, int fixDate);
 private int	samebranch(delta *a, delta *b);
 private char	*sccsXfile(sccs *sccs, char type);
 private int	badcksum(sccs *s, int flags);
-private int	printstate(const serlist *state, const ser_t *slist);
-private int	delstate(ser_t ser, const serlist *state, const ser_t *slist);
+private int	printstate(const serlist *state, u8 *slist);
+private int	delstate(ser_t ser, const serlist *state, u8 *slist);
 private int	whatstate(const serlist *state);
-private int	visitedstate(const serlist *state, const ser_t *slist);
+private int	visitedstate(const serlist *state, u8 *slist);
 private int	changestate(register serlist *state, char type, int serial);
 private serlist *allocstate(serlist *old, int n);
 private int	end(sccs *, delta *, FILE *, int, int, int, int);
@@ -64,7 +64,7 @@ private	delta*	getCksumDelta(sccs *s, delta *d);
 private delta	*gca(sccs *, delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
-private int	compressmap(sccs *s, delta *d, ser_t *set, int useSer,
+private int	compressmap(sccs *s, delta *d, u8 *set, int useSer,
 			void **i, void **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
@@ -5243,13 +5243,13 @@ putserlist(sccs *sc, ser_t *s, FILE *out)
 /*
  * Generate a list of serials marked with D_SET tag
  */
-private ser_t *
+private u8 *
 setmap(sccs *s, int bit, int all)
 {
-	ser_t	*slist;
+	u8	*slist;
 	delta	*t;
 
-	slist = calloc(s->nextserial, sizeof(ser_t));
+	slist = calloc(s->nextserial, sizeof(u8));
 	assert(slist);
 
 	for (t = s->table; t; t = NEXT(t)) {
@@ -5312,11 +5312,11 @@ freestr(struct liststr *list)
  */
 
 private int
-compressmap(sccs *s, delta *d, ser_t *set, int useSer, void **inc, void **exc)
+compressmap(sccs *s, delta *d, u8 *set, int useSer, void **inc, void **exc)
 {
 	struct	liststr	*inclist = 0, *exclist = 0;
 	int	inclen = 0, exclen = 0;
-	ser_t	*slist;
+	u8	*slist;
 	delta	*t;
 	int	i;
 	int	active;
@@ -5327,7 +5327,7 @@ compressmap(sccs *s, delta *d, ser_t *set, int useSer, void **inc, void **exc)
 
 	*exc = *inc = 0;
 
-	slist = calloc(s->nextserial, sizeof(ser_t));
+	slist = calloc(s->nextserial, sizeof(u8));
 	assert(slist);
 
 	slist[d->serial] = S_PAR;	/* seed the ancestor thread */
@@ -5400,16 +5400,16 @@ compressmap(sccs *s, delta *d, ser_t *set, int useSer, void **inc, void **exc)
  * Note we don't have to worry about growing tables here, the list isn't saved
  * across calls.
  */
-private ser_t *
+private u8 *
 serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 {
-	ser_t	*slist;
+	u8	*slist;
 	delta	*t, *start = d;
 	int	i;
 
 	assert(d);
 
-	slist = calloc(s->nextserial, sizeof(ser_t));
+	slist = calloc(s->nextserial, sizeof(u8));
 	assert(slist);
 
 	/* initialize with iLst and xLst */
@@ -5448,9 +5448,8 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 	/* slist is used as temp storage for S_INC and S_EXCL then
 	 * replaced with either a 0 or a 1 depending on if in view
 	 * XXX clean up use of enum values mixed with 0 and 1
-	 * XXX The slist[0] has a ser_t entry ... is it needed?
-	 * XXX slist has (besides slist[0]) only one of 5 values:
-	 *     0, 1, S_INC, S_EXCL, S_PAR so it doesn't need to be ser_t?
+	 * XXX slist has only one of 5 values:
+	 *     0, 1, S_INC, S_EXCL, S_PAR
 	 */
 
 	/* Seed the graph thread */
@@ -5473,9 +5472,6 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 		if ( ((slist[t->serial] & (S_PAR|S_EXCL)) == S_PAR)
 		     || slist[t->serial] & S_INC) {
 
-			/* slist [0] = Max serial that is in slist */
-			unless (slist[0])  slist[0] = t->serial;
-
 			slist[t->serial] = 1;
 			/* alter only if item hasn't been set yet */
 			EACH(t->include) {
@@ -5496,12 +5492,12 @@ bad:	free(slist);
 }
 
 int
-sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc)
+sccs_graph(sccs *s, delta *d, u8 *map, char **inc, char **exc)
 {
 	return (compressmap(s, d, map, 0, (void **)inc, (void **)exc));
 }
 
-ser_t *
+u8 *
 sccs_set(sccs *s, delta *d, char *iLst, char *xLst)
 {
 	int	junk;
@@ -5600,7 +5596,7 @@ allocstate(serlist *old, int n)
 }
 
 private int
-delstate(ser_t ser, const serlist *state, const ser_t *slist)
+delstate(ser_t ser, const serlist *state, u8 *slist)
 {
 	register serlist *s;
 	register	 int ok = 0;
@@ -5626,7 +5622,7 @@ delstate(ser_t ser, const serlist *state, const ser_t *slist)
 }
 
 private int
-visitedstate(const serlist *state, const ser_t *slist)
+visitedstate(const serlist *state, u8 *slist)
 {
 	register serlist *s;
 
@@ -5659,7 +5655,7 @@ whatstate(const serlist *state)
  */
 
 private int
-printstate(const serlist *state, const ser_t *slist)
+printstate(const serlist *state, u8 *slist)
 {
 	register serlist *s;
 
@@ -5979,7 +5975,7 @@ sccs_impliedList(sccs *s, char *who, char *base, char *rev)
 	delta	*baseRev, *t, *mRev;
 	int	active;
 	void	*inc = 0, *exc = 0;
-	ser_t	*slist = 0;
+	u8	*slist = 0;
 	int	i;
 
 	/* XXX: This can go away when serialmap does this directly
@@ -6002,7 +5998,7 @@ err:		s->state |= S_WARNED;
 		goto err;
 	}
 
-	slist = calloc(s->nextserial, sizeof(ser_t));
+	slist = calloc(s->nextserial, sizeof(u8));
 
 	slist[baseRev->serial] = S_PAR;
 	slist[mRev->serial] = S_PAR;
@@ -6400,7 +6396,7 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 		int *ln, char *iLst, char *xLst)
 {
 	serlist *state = 0;
-	ser_t	*slist = 0;
+	u8	*slist = 0;
 	int	lines = 0, print = 0, error = 0;
 	int	seq;
 	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding;
@@ -6715,8 +6711,7 @@ write:
 		}
 		changestate(state, buf[1], serial);
 		if (d) {
-			print = printstate((const serlist*)state,
-					(const ser_t*)slist);
+			print = printstate((const serlist*)state, slist);
 			unless (flags & NEWCKSUM) {
 				/* don't recalc add/del/same unless CKSUM */
 			}
@@ -6727,7 +6722,7 @@ write:
 				counter = &same;
 			}
 			else if (delstate(d->serial, (const serlist*)state,
-					(const ser_t*)slist))
+				slist))
 			{
 				counter = &deleted;
 			}
@@ -6736,8 +6731,7 @@ write:
 			}
 		}
 		else {
-			print = visitedstate((const serlist*)state,
-					(const ser_t*)slist);
+			print = visitedstate((const serlist*)state, slist);
 		}
 	}
 	if (BITKEEPER(s) &&
@@ -7479,7 +7473,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 {
 	int	type = flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS);
 	serlist *state = 0;
-	ser_t	*slist = 0;
+	u8	*slist = 0;
 	ser_t	old = 0;
 	delta	*d;
 	int	with = 0, without = 0;
@@ -7583,12 +7577,10 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 				if (*n == 'N') no_lf = 1;
 			}
 			changestate(state, buf[1], serial);
-			with = printstate((const serlist*)state,
-					(const ser_t*)slist);
+			with = printstate((const serlist*)state, slist);
 			old = slist[d->serial];
 			slist[d->serial] = 0;
-			without = printstate((const serlist*)state,
-				    	(const ser_t*)slist);
+			without = printstate((const serlist*)state, slist);
 			slist[d->serial] = old;
 
 			nextside = with ? (without ? BOTH : RIGHT)
@@ -8356,7 +8348,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	MDBM	*ghash = 0;
 	MDBM	*shash = 0;
 	serlist *state = 0;
-	ser_t	*slist = 0;
+	u8	*slist = 0;
 	int	print = 0, different;
 	char	sbuf[MAXLINE];
 	char	*name = 0, *mode = "rb";
@@ -8538,7 +8530,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 		}
 		changestate(state, fbuf[1], serial);
 		debug2((stderr, "%s\n", fbuf));
-		print = printstate((const serlist*)state, (const ser_t*)slist);
+		print = printstate((const serlist*)state, slist);
 	}
 	if (HASH(s)) {
 		kvpair	kv;
@@ -10100,7 +10092,7 @@ checkInvariants(sccs *s, int flags)
 private int
 checkGone(sccs *s, int bit, char *who)
 {
-	ser_t	*slist = setmap(s, bit, 1);
+	u8	*slist = setmap(s, bit, 1);
 	delta	*d;
 	int	i, error = 0;
 
@@ -11703,7 +11695,7 @@ struct weave {
 	char	*buf;		// current data line
 	ser_t	*wmap;		// weave map - renumber serials in weave
 	serlist *state;		// weave state
-	ser_t	*slist;		// weave set
+	u8	*slist;		// weave set
 	FILE	*out;		// print here
 	sum_t	sum;		// checksum
 	int	print;		// active serial in weave
@@ -11728,7 +11720,7 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, char **patchmap,
 	w->wmap = weavemap;
 
 	/* compute an serialmap view which matches sccs_patchDiffs() */
-	w->slist = calloc(s->nextserial, sizeof(ser_t));
+	w->slist = calloc(s->nextserial, sizeof(u8));
 	EACH(patchmap) {
 		if ((d = (delta *)patchmap[i]) == INVALID) continue;
 		w->slist[d->serial] = 1;
@@ -12000,7 +11992,7 @@ doctrl(sccs *s, char *pre, int val, char *post, FILE *out)
 
 private void
 finish(sccs *s, int *ip, int *pp, int *last, FILE *out, register serlist *state,
-	ser_t *slist)
+    u8 *slist)
 {
 	int	print = *pp, incr = *ip;
 	sum_t	sum;
@@ -12049,7 +12041,7 @@ finish(sccs *s, int *ip, int *pp, int *last, FILE *out, register serlist *state,
 			}
 		}
 		changestate(state, buf[1], serial);
-		print = printstate((const serlist*)state, (const ser_t*)slist);
+		print = printstate((const serlist*)state, slist);
 	}
 	unless (lf_pend) *last = 0;
 	*ip = incr;
@@ -12064,7 +12056,7 @@ finish(sccs *s, int *ip, int *pp, int *last, FILE *out, register serlist *state,
 
 private void
 nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
-	register serlist *state, ser_t *slist, char ***savenext)
+	register serlist *state, u8 *slist, char ***savenext)
 {
 	int	print = *pp, incr = *ip, lines = *lp;
 	int	serial;
@@ -12112,7 +12104,7 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
 			*last = 0;
 		}
 		changestate(state, buf[1], serial);
-		print = printstate((const serlist*)state, (const ser_t*)slist);
+		print = printstate((const serlist*)state, slist);
 	}
 	*ip = incr;
 	*lp = lines;
@@ -12226,7 +12218,7 @@ private int
 delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 {
 	serlist *state;
-	ser_t	*slist;
+	u8	*slist;
 	int	print;
 	int	lines;
 	int	last;
@@ -16160,12 +16152,12 @@ private delta *
 gca2(sccs *s, delta *left, delta *right)
 {
 	delta	*d;
-	char	*slist;
+	u8	*slist;
 	int	value;
 
 	unless (s && s->nextserial && left && right) return (0);
 
-	slist = calloc(s->nextserial, sizeof(char));
+	slist = calloc(s->nextserial, sizeof(u8));
 	slist[left->serial] |= 1;
 	slist[right->serial] |= 2;
 	d = (left->serial > right->serial) ? left : right;
@@ -16198,7 +16190,7 @@ gca3(sccs *s, delta *left, delta *right, char **inc, char **exc)
 {
 	delta	*ret = 0;
 	delta	*gca;
-	ser_t	*lmap, *rmap, *gmap;
+	u8	*lmap, *rmap, *gmap;
 	ser_t	serial;
 	int	errp;
 
@@ -17119,7 +17111,7 @@ int
 stripDeltas(sccs *s, FILE *out)
 {
 	serlist *state = 0;
-	ser_t	*slist = 0;
+	u8	*slist = 0;
 	int	print = 0;
 	char	*buf;
 	int	ser;
@@ -17147,7 +17139,7 @@ stripDeltas(sccs *s, FILE *out)
 		}
 		changestate(state, buf[1], ser);
 		print =
-		    visitedstate((const serlist*)state, (const ser_t*)slist);
+		    visitedstate((const serlist*)state, slist);
 	}
 	free(state);
 	free(slist);

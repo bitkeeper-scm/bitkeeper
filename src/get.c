@@ -380,7 +380,7 @@ private int
 get_rollback(sccs *s, char *rev, char **iLst, char **xLst, char *me)
 {
 	char	*inc = *iLst, *exc = *xLst;
-	ser_t   *map;
+	u8	*map;
 	delta	*d;
 
 	unless (d = sccs_findrev(s, rev)) {

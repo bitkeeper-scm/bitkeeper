@@ -149,14 +149,14 @@ set_main(int ac, char **av)
 	exit(0);
 }
 
-private	ser_t*
+private	u8 *
 stdin_set(sccs *s)
 {
 	delta	*d;
-	ser_t	*map;
+	u8	*map;
 	char	buf[MAXKEY];
 
-	map = calloc(s->nextserial, sizeof(ser_t));
+	map = calloc(s->nextserial, sizeof(u8));
 	while (fnext(buf, stdin)) {
 		chop(buf);
 		unless (d = sccs_findrev(s, buf)) {
@@ -170,11 +170,11 @@ stdin_set(sccs *s)
 	return (map);
 }
 
-ser_t*
+u8 *
 set_get(sccs *s, char *rev)
 {
 	delta	*d;
-	ser_t	*map;
+	u8	*map;
 	int	i;
 
 	unless (rev) return (stdin_set(s));
@@ -195,7 +195,7 @@ set_get(sccs *s, char *rev)
  * List elements in A but not in B.
  */
 void
-set_diff(sccs *s, ser_t *a, ser_t *b, set_pfunc p)
+set_diff(sccs *s, u8 *a, u8 *b, set_pfunc p)
 {
 	int	i;
 	delta	*d;
@@ -216,7 +216,7 @@ set_diff(sccs *s, ser_t *a, ser_t *b, set_pfunc p)
  * List elements in A and B.
  */
 void
-set_and(sccs *s, ser_t *a, ser_t *b, set_pfunc p)
+set_and(sccs *s, u8 *a, u8 *b, set_pfunc p)
 {
 	int	i;
 	delta	*d;
@@ -237,7 +237,7 @@ set_and(sccs *s, ser_t *a, ser_t *b, set_pfunc p)
  * List elements in A or B.
  */
 void
-set_or(sccs *s, ser_t *a, ser_t *b, set_pfunc p)
+set_or(sccs *s, u8 *a, u8 *b, set_pfunc p)
 {
 	int	i;
 	delta	*d;
@@ -258,7 +258,7 @@ set_or(sccs *s, ser_t *a, ser_t *b, set_pfunc p)
  * List A xor B.
  */
 void
-set_xor(sccs *s, ser_t *a, ser_t *b, set_pfunc p)
+set_xor(sccs *s, u8 *a, u8 *b, set_pfunc p)
 {
 	int	i;
 	delta	*d;
@@ -280,7 +280,7 @@ set_xor(sccs *s, ser_t *a, ser_t *b, set_pfunc p)
  * If rev is a member of the set, print it.
  */
 void
-set_member(sccs *s, char *rev, ser_t *map, set_pfunc p)
+set_member(sccs *s, char *rev, u8 *map, set_pfunc p)
 {
 	delta	*d;
 
@@ -303,7 +303,7 @@ void
 set_list(sccs *s, char *rev, set_pfunc p)
 {
 	delta	*d, *e;
-	ser_t	*map;
+	u8	*map;
 
 	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "set: cannot find %s in %s\n", rev, s->gfile);
@@ -333,7 +333,7 @@ void
 set_set(sccs *s, char *rev, set_pfunc p)
 {
 	delta	*d;
-	ser_t	*map;
+	u8	*map;
 	int	i;
 
 	unless (d = sccs_findrev(s, rev)) {
