@@ -13,16 +13,15 @@ echo $N Create some ensembles sharing components ....................$NL
 fresh_commercial bash-sa
 echo hi > foo
 bk new $Q foo || exit 1
-bk commit $Q -y'add foo' || exit 1
+bk commit $Q -SBASE -y'add foo' || exit 1
+# Make another cset now, so it will be old.  Used in sccslog test later.
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -yfoo
 cd ..
 nested project
-bk attach $Q ../bash-sa bash
-cd bash
-bk edit $Q foo || exit 1
-echo stuff in project >> foo || exit 1
-bk commit -y'update foo in project/bash' $Q || exit 1
-bk -P commit -y'update foo in project' $Q || exit 1
-cd ../..
+bk attach $Q -rBASE ../bash-sa bash
+cd ..
 commercial standalone
 echo sa1 > sa_file
 bk new $Q sa_file || exit 1
@@ -35,7 +34,7 @@ bk new $Q BitKeeper/etc/aliases
 bk commit $Q -y"add aliases file"
 bk newroot -P $Q || exit 1
 cd ../project2
-bk attach $Q ../bash-sa mybash
+bk attach $Q -rBASE ../bash-sa mybash
 bk attach $Q ../standalone sa2
 cd ../project
 bk attach $Q ../standalone sa1
@@ -485,4 +484,23 @@ bk commit $Q -yanother || exit 3
 cd ../standalone
 bk port $Q ../standalone-clone 2> ERR && exit 4
 grep -q 'may not port between identical repositories' ERR || exit 5
+echo OK
+
+echo $N Test out sccslog on a ported ChangeSet file .................$NL
+# Make use of the old cset left in bash-sa -- as we need a pending
+# cset that is older than the committed cset.  This also has the
+# only commited cset on the branch, which really shows the bug well.
+cd "$HERE"/project/bash
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -SBRANCHTIP -yfoo
+bk portal $Q .
+bk port $Q ../../bash-sa
+bk sccslog -A -nd:I: > GOT
+printf "1.4\n1.2.1.2\n1.3\n" > WANT
+cmpfiles GOT WANT
+# test fix for CSETREV when non-cset tagged entry is tip of branch
+# the code couldn't find the tagged cset; now it can.
+bk -P commit $Q -yprod
+test "`bk changes -rBRANCHTIP -nd:CSETREV:`" = "1.4" || fail
 echo OK

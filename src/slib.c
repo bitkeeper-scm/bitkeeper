@@ -14979,8 +14979,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	/* print the first rev at/below this which is in a cset */
 	case KW_CSETREV: /* CSETREV */ {
-		while (d && !(d->flags & D_CSET)) d = KID(d);
-		unless (d) return (nullVal);
+		unless (d = sccs_csetBoundary(s, d)) return (nullVal);
 		fs(d->rev);
 		return (strVal);
 	}

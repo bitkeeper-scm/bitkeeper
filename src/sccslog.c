@@ -87,13 +87,15 @@ next:			sccs_free(s);
 		}
 		do {
 			if (opts.uncommitted) {
-				delta *d = sccs_top(s);
+				delta	*d;
 
-				while (d) {
+				/* find latest cset mark */
+				for (d = s->table; d; d = NEXT(d)) {
 					if (d->flags & D_CSET) break;
-					d->flags |= D_SET;
-					d = PARENT(s, d);
 				}
+				/* and walk all revs not included in that... */
+				range_walkrevs(s, d, 0, 0, 0,
+				    walkrevs_setFlags, (void *)D_SET);
 				s->state |= S_SET;
 			} else if (rargs.rstart || sfileRev()) {
 				if (range_process("sccslog", s,
