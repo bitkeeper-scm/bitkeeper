@@ -120,11 +120,16 @@ pull_main(int ac, char **av)
 	if (proj_isProduct(0)) {
 		if (opts.port) {
 			fprintf(stderr,
-			    "pull: port not allowed with product.\n");
+			    "%s: port not allowed with product.\n", prog);
 			return (1);
 		}
 	}
 
+	if (opts.port && bk_notLicensed(0, LIC_PL, 1)) {
+		fprintf(stderr,
+		    "%s: port is not enabled by the current license.\n", prog);
+		return (1);
+	}
 	/*
 	 * Get pull parent(s)
 	 * Must do this before we chdir()

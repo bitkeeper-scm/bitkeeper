@@ -371,7 +371,7 @@ delta_main(int ac, char **av)
 		}
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
-			if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM)) {
+			if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM, 0)) {
 				errors |= 4;
 				break;
 			}

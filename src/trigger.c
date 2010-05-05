@@ -2,6 +2,8 @@
  * Copyright (c) 2001-2006 BitMover, Inc.
  */
 #include "bkd.h"
+#include "logging.h"
+
 private int	runTriggers(int rem, char *ev, char *what, char *when,
 		    char **trs);
 private void	trigger_env(char *prefix, char *event, char *what);
@@ -31,6 +33,7 @@ trigger(char *cmd, char *when)
 	char	buf[MAXPATH], triggerDir[MAXPATH];
 
 	if (getenv("BK_NO_TRIGGERS")) return (0);
+
 
 	if (strneq(cmd, "remote pull", 11)) {
 		what = "outgoing";
@@ -91,6 +94,16 @@ trigger(char *cmd, char *when)
 		    "Warning: Unknown trigger event: %s, ignored\n", cmd);
 		return (0);
 	}
+	/*
+	 * If the current license doesn't have triggers enabled then
+	 * don't run them.  Unlike other places I don't want to use
+	 * bk_notLicensed() here because for people without this bit set
+	 * having this return false is not an error condition.
+	 */
+	unless (streq(what, "lease-proxy") || (proj_bklbits(0) & LIC_ET)) {
+		return (0);
+	}
+
 
 	/* post-resolve == post-incoming */
 	if (streq(when, "post") && streq(event, "resolve")) what = "incoming";

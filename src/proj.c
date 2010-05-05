@@ -624,9 +624,7 @@ proj_product(project *p)
 			p->product = p;	/* we're our own product */
 
 			/* enforce nested restrictions */
-			if (bk_notLicensed(p, LIC_NESTED)) {
-				fprintf(stderr,
-"%s: current license does not include support for nested\n",  prog);
+			if (bk_notLicensed(p, LIC_SAM, 0)) {
 				exit(100);
 			}
 		} else {

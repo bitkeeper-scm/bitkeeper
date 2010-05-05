@@ -156,6 +156,10 @@ _portal() {
 	ECHO=echo
 	RC=0
 	REMOVE=""
+	bk lease show | grep '^options:.*PL' >/dev/null || {
+		echo "portal: not enabled by the current license." 1>&2
+		exit 1
+	}
 	test "X$1" = "X-q" && {
 		ECHO='#'
 		shift
@@ -431,6 +435,7 @@ _partition() {
 			echo repo$N.out >> ALL
 		done || exit 1
 		echo all: `cat ALL` >> Makefile
+		MAKEFLAGS=
 		make -s $PARALLEL all || exit 1
 	else
 		N=0

@@ -2298,7 +2298,11 @@ bam_main(int ac, char **av)
 		{0, 0}
 	};
 
-	if (license_binCheck(0)) exit(1);
+	if (proj_cd2root()) {
+		fprintf(stderr, "%s: must be run in a repository\n", prog);
+		return (1);
+	}
+	if (bk_notLicensed(0, LIC_BAM, 0)) exit(1);
 
 	while ((c = getopt(ac, av, "", 0)) != -1) {
 		switch (c) {

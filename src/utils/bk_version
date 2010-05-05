@@ -1390,39 +1390,11 @@ case $OS in
 	then	LIBC=`echo /lib64/libc-*`
 	else	LIBC=`echo /lib/libc-*`
 	fi
+	LIBC=`echo $LIBC | \
+	    sed -n 's/.*\/libc-\([2-9]\)\.\([0-9][0-9]*\)\..*/glibc\1\2/p' -`
 	case "$LIBC" in
-	    *libc-3.4.*)
-		echo $OS | sed s/linux/glibc34-linux/;;
-	    *libc-3.3.*)
-		echo $OS | sed s/linux/glibc33-linux/;;
-	    *libc-3.2.*)
-		echo $OS | sed s/linux/glibc32-linux/;;
-	    *libc-3.1.*)
-		echo $OS | sed s/linux/glibc31-linux/;;
-	    *libc-3.0.*)
-		echo $OS | sed s/linux/glibc30-linux/;;
-	    *libc-2.10.*)
-		echo $OS | sed s/linux/glibc210-linux/;;
-	    *libc-2.9.*)
-		echo $OS | sed s/linux/glibc29-linux/;;
-	    *libc-2.8.*)
-		echo $OS | sed s/linux/glibc28-linux/;;
-	    *libc-2.7.*)
-		echo $OS | sed s/linux/glibc27-linux/;;
-	    *libc-2.6.*)
-		echo $OS | sed s/linux/glibc26-linux/;;
-	    *libc-2.5.*)
-		echo $OS | sed s/linux/glibc25-linux/;;
-	    *libc-2.4.*)
-		echo $OS | sed s/linux/glibc24-linux/;;
-	    *libc-2.3.*)
-		echo $OS | sed s/linux/glibc23-linux/;;
-	    *libc-2.2.*)
-		echo $OS | sed s/linux/glibc22-linux/;;
-	    *libc-2.1.*)
-		echo $OS | sed s/linux/glibc21-linux/;;
-	    *libc-2.0.*)
-		echo $OS | sed s/linux/glibc20-linux/;;
+	    glibc*)
+		echo $OS | sed s/linux/$LIBC-linux/;;
 	    *)
 		echo $OS | sed s/linux/unknown-linux/;;
 	esac

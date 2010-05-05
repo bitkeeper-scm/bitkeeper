@@ -1354,7 +1354,7 @@ void	usage(void)
 	__attribute__((noreturn))
 #endif
 ;
-int	bk_notLicensed(project *p, u32 bits);
+int	bk_notLicensed(project *p, u32 bits, int quiet);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);

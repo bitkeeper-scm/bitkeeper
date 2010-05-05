@@ -4455,6 +4455,23 @@ sccs_init(char *name, u32 flags)
 
 	if (sig_ignore() == 0) s->unblock = 1;
 	lease_check(s->proj, O_RDONLY, s);
+
+	if (CSET(s)) {
+		int i, in_log = 0;
+
+		EACH(s->text) {
+			if (s->text[i][0] == '\001') continue;
+			unless (in_log) {
+				if (streq(s->text[i], "@ROOTLOG")) in_log = 1;
+				continue;
+			}
+			if (streq(s->text[i], "detach") &&
+			    bk_notLicensed(s->proj, LIC_PL, 0)) {
+				exit(101);
+			}
+			if (s->text[i][0] == '@') break;
+		}
+	}
  out:
 	if (fixstime) sccs_setStime(s, s->stime); /* only make older */
 	return (s);
@@ -7115,7 +7132,7 @@ err:		if (i2) free(i2);
 		goto err;
 	}
 
-	if (BINARY(s) && license_binCheck(s)) {
+	if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM, 0)) {
 		s->state |= S_WARNED;
 		goto err;
 	}
@@ -9600,7 +9617,7 @@ out:		if (sfile) fclose(sfile);
 		}
 	} else if (isRegularFile(s->mode)) {
 		openInput(s, flags, &gfile);
-		if (BINARY(s) && license_binCheck(s)) goto out;
+		if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM, 1)) goto out;
 		unless (gfile || BAM(s)) {
 			perror(s->gfile);
 			goto out;
@@ -13315,7 +13332,7 @@ out:
 		return rc;
 	}
 
-	if (BINARY(s) && license_binCheck(s)) OUT;
+	if (BAM(s) && bk_notLicensed(s->proj, LIC_BAM, 1)) OUT;
 	if (toobig(s)) OUT;
 
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {

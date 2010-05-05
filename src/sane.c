@@ -86,7 +86,8 @@ sane(int readonly, int resync)
 				    "sane: no BitKeeper/etc/config file.\n");
 				errors++;
 			}
-			if (proj_configsize(0, "BAM") && license_binCheck(0)) {
+			if (proj_configsize(0, "BAM") &&
+			    bk_notLicensed(0, LIC_BAM, 1)) {
 				fprintf(stderr,
 				    "BAM is enabled in config "
 				    "but not found in license.\n");

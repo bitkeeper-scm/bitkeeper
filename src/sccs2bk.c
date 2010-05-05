@@ -47,7 +47,7 @@ sccs2bk_main(int ac, char **av)
 		}
 	}
 
-	if (bk_notLicensed(0, LIC_IMPORT)) {
+	if (bk_notLicensed(0, LIC_IMPORT, 1)) {
 		if (verbose) {
 			// XXX - need a name
 			fputs("sccs2bk: operation requires "

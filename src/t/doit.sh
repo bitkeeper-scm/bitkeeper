@@ -316,23 +316,23 @@ setup_env()
 	# as you can see below.  Follow your comment line with 4 blank
 	# lines. They will be replace by licenses.
 
-	# Valid ACADEMIC A --airgap --eula=academic
-	BKL_ACADEMIC=BKL64d1f3c62368c8080000121cfffff42e572b41
-	BKL_A1=YgAAAo4AAAADgQAAAABbd0D+2uP8yf007g+qlcULUEOnfJPxqP7uYly/shbobRat
-	BKL_A2=sqiPrbF3j2bUB1ZKjpdZBG7eOCpSxIf7ift6bYwCO4BAIVT1uTeeXwNBWuWNM0FC
-	BKL_A3=2D3uHFQ11PDzz2F8zRPGRKEUwI0mgZUaBSrpYUR2HcYwsZQsVxpW2Km7C5PYNw==
+	# Remote ACADEMIC
+	BKL_ACADEMIC=BKL6000000004bd93c800000200fffff000000000
+	BKL_A1=YgAAAo4AAAADgQAAAAHv+CVIL9EFOfYApYBc1wR4ifW9cjSeS5HoNIh1KY/ZwJuB
+	BKL_A2=yZrmd+K83685os7aQ3DnFyQPAutW8x5lS/G0l0AZQUcKM7yDv+dlG5cj8xt3gbk+
+	BKL_A3=HNKDc5of+H3efyF7n91sLemAKEY3Kqe/2Av1ELMBtaodBaCSnZX1UysShfXu9A==
 
-	# Valid BASIC B --airgap --eula=basic
-	BKL_BASIC=BKL64d1f3c63368c8080000121cfffff42e572b42
-	BKL_B1=YgAAAo4AAAADgQAAAAHeLjA0KJJZbbv2BvrjZ6wQIDqNfj6/XRsnTPGnFzDY3jsB
-	BKL_B2=iGZv3GjL0smGyjqxe3bzT/T+/9XMitYbUtvihMOg1G7bbe8KqJkrCdWXI2rr79o7
-	BKL_B3=OZr4YcF3QabvdTT8nDnx7+Y2ooFn/t+SmqDfxG4UxF6nqLbp2sYHMhxFMzpzAQ==
+	# Remote Essentials
+	BKL_BASIC=BKL6000000004bd93c800001200fffff000000000
+	BKL_B1=YgAAAo4AAAADgQAAAAEDUzJrLDjPdNdTnhY9LuICggSKnJu7+42BPE3SD/O8GpiP
+	BKL_B2=c4/kCkWeg7ZH59QIQNskFKtSITiME3iTBFfhXD+yC+Q5Gie9Kix8WA9mtuSF3J9k
+	BKL_B3=vcWU9Dw3Bbqq23kmNIbfb/nmsmkzwi5Z8nBoCqfX4/f/R/LPixkwO0ZUfQRmhQ==
 
-	# Valid PRO P --airgap --bkweb --bugdb --import --bam --eula=pro --nested
-	BKL_PRO=BKL64d1edf00368c8080000127dfffff42e572b43
-	BKL_P1=YgAAAo4AAAADgQAAAAIXmhOa3hEP1umce11FyLhoGRHf0XUuz8c8dbQkgycjLpre
-	BKL_P2=Cy/Lw8liyt/Ef235EE16CX2lRD1FcjCbWMcigUWohcfzHr5vF/yFfOjYaPTXsOOm
-	BKL_P3=RTko0bFuJBTwfXAjNluwWsMOOAowF4Ycty21TwSjk3GDNeEpbfo+WkE9Oojc0A==
+	# Valid PRO P --airgap --bkweb --bugdb --import --bam --eula=pro --nested --nested2
+	BKL_PRO=BKL64de0731e368c808000012fdfffff42e572b43
+	BKL_P1=YgAAAo4AAAADgQAAAAKpToHPdfNR3Y3vksU1+/Q+gC/OFmTCmUVwAt09QRpklfnk
+	BKL_P2=2Tk6qJ8BQ44H/QfJQa/6MwwfVIoleegASCeP7yFibHm+ch49VxorqbvDjA1lhkod
+	BKL_P3=22nWY2QZOXPwL+/wTDxAFM7heFtTDrzitx3B8RRshJiW+IIWpn3zARs3lzgWPA==
 
 	# Valid pro p --airgap --bkweb --bugdb --import --eula=pro
 	BKL_pro=BKL64d1f3c65368c8080000121dfffff42e572b43

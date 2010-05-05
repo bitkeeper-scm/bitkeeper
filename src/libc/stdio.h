@@ -214,7 +214,11 @@ int	 fputs(const char * __restrict, FILE * __restrict);
 size_t	 fread(void * __restrict, size_t, size_t, FILE * __restrict);
 FILE	*freopen(const char * __restrict, const char * __restrict,
 	    FILE * __restrict);
-int	 fscanf(FILE * __restrict, const char * __restrict, ...);
+int	 fscanf(FILE * __restrict, const char * __restrict, ...)
+#ifdef __GNUC__
+	__attribute__((format (__scanf__, 2, 3)))
+#endif
+;
 int	 fseek(FILE *, long, int);
 int	 fsetpos(FILE *, const fpos_t *);
 long	 ftell(FILE *);
@@ -227,10 +231,18 @@ int	 putc(int, FILE *);
 int	 puts(const char *);
 int	 remove(const char *);
 void	 rewind(FILE *);
-int	 scanf(const char * __restrict, ...);
+int	 scanf(const char * __restrict, ...)
+#ifdef __GNUC__
+	__attribute__((format (__scanf__, 1, 2)))
+#endif
+;
 void	 setbuf(FILE * __restrict, char * __restrict);
 int	 setvbuf(FILE * __restrict, char * __restrict, int, size_t);
-int	 sscanf(const char * __restrict, const char * __restrict, ...);
+int	 sscanf(const char * __restrict, const char * __restrict, ...)
+#ifdef __GNUC__
+	__attribute__((format (__scanf__, 2, 3)))
+#endif
+	;
 FILE	*tmpfile(void);
 int	 ungetc(int, FILE *);
 int	 vfprintf(FILE * __restrict, const char * __restrict, va_list);

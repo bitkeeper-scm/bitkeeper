@@ -85,8 +85,16 @@ grep -q 'standalone1 exists and is not empty' GOT || {
 }
 echo OK
 
-echo $N Basic detach functionality ..................................$NL
+echo $N Test detach without license .................................$NL
 cd "$HERE/nested1"
+_BK_CLEAR_LICOPTS=0x80 bk detach -q component1 ../detached1 2>GOT && fail -f GOT
+cat <<EOF > WANT
+detach: detach is not enabled by the current license.
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Basic detach functionality ..................................$NL
 bk detach -q component1 ../detached1 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
@@ -113,6 +121,16 @@ test -f BitKeeper/log/COMPONENT && {
 bk cat file1 >GOT || exit 1
 cat <<EOF >WANT
 file1
+EOF
+cmpfiles GOT WANT
+cd ..
+echo OK
+
+echo $N Not operations on detached repo without license .............$NL
+cd detached1
+_BK_CLEAR_LICOPTS=0x80 bk changes -r+ 2> GOT && fail -f GOT
+cat <<EOF > WANT
+changes: this operation requires the 'Product Line Asset Management' feature
 EOF
 cmpfiles GOT WANT
 cd ..

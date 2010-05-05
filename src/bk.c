@@ -480,6 +480,16 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 		return (1);
 	}
 	if (cmd) {
+		/* handle pro only commands */
+		if (cmd->pro) {
+			unless (proj_root(0)) {
+				fprintf(stderr,
+				    "%s: cannot find package root\n", prog);
+				return (1);
+			}
+			if (bk_notLicensed(0, LIC_ADM, 0)) return (1);
+		}
+
 		/* Handle restricted commands */
 		if (cmd->restricted && !bk_isSubCmd) {
 			/* error message matches shell message */

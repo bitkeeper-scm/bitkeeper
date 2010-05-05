@@ -1,6 +1,7 @@
 /* Copyright (c) 1998 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "logging.h"
 
 #define	OP(W, V, F) if (next##W < A_SZ-1) { \
 			W[next##W].thing = V; \
@@ -228,10 +229,14 @@ admin_main(int ac, char **av)
 			sccs_parseArg(d, 'P', path ? path : sc->gfile, 0); 
 		}
 		if (newCset) {
+			if (bk_notLicensed(sc->proj, LIC_ADM, 0)) exit(1);
 			sccs_parseArg(sc->tree, 'B', csetFile, 0);
 			flags |= NEWCKSUM;
 		}
-		if (rmCsets) sccs_clearbits(sc, D_CSET);
+		if (rmCsets) {
+			if (bk_notLicensed(sc->proj, LIC_ADM, 0)) exit(1);
+			sccs_clearbits(sc, D_CSET);
+		}
 		/*
 		 * Put cset marks in ALL deltas.  Probably only useful
 		 * for restoring the ChangeSet file's marks after

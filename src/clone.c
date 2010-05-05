@@ -177,6 +177,12 @@ clone_main(int ac, char **av)
 		}
 		chdir(here);
 	}
+	if (opts->detach && bk_notLicensed(0, LIC_PL, 1)) {
+		fprintf(stderr,
+		    "%s: detach is not enabled by the current license.\n",
+		    prog);
+		return (1);
+	}
 	if (opts->to) {
 		if (attach_only) {
 			fprintf(stderr,

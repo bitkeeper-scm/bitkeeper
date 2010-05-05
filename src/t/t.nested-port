@@ -469,7 +469,7 @@ bk port $Q ../project 2>ERR && {
 	exit 1
 }
 cat <<EOF >WANT
-pull: port not allowed with product.
+port: port not allowed with product.
 EOF
 cmpfiles WANT ERR
 echo OK

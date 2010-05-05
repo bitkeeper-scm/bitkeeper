@@ -190,7 +190,7 @@ _cpartition
 create
 crypto
 cset
-csetprune
+csetprune pro
 _debugargs remote
 deledit
 delget
@@ -230,7 +230,7 @@ _getopt_test
 getuser
 glob
 gnupatch
-gone
+gone pro
 graft
 grep
 _gzip
@@ -281,7 +281,7 @@ mydiff
 names
 needscheck
 _nested
-newroot
+newroot pro
 nfiles
 opark
 ounpark
@@ -307,7 +307,7 @@ rcheck
 _rclone
 rcs2bk
 rcsparse
-receive
+receive pro
 _recurse
 _realpath
 regex
@@ -329,7 +329,7 @@ sane
 sccs2bk
 sccslog
 _scompress
-send
+send pro
 sendbug
 set
 setup

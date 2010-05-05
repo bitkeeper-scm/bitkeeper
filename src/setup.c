@@ -192,11 +192,7 @@ err:			unlink("BitKeeper/etc/config");
 	mdbm_close(m);
 	m = 0;
 
-	if (product && bk_notLicensed(0, LIC_NESTED)) {
-		fprintf(stderr,
-"%s: current license does not include support for nested\n",  prog);
-		goto err;
-	}
+	if (product && bk_notLicensed(0, LIC_SAM, 0)) goto err;
 
 	/*
 	 * When creating a new component we need a valid license, but
