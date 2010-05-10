@@ -103,7 +103,7 @@ catLines(char **space, char **array)
 
 	if (n1+n2 >= LSIZ(space)) {
 		new = allocLines(n1+n2+1);
-		memcpy(new, &space[1], n1*sizeof(void *));
+		memcpy(&new[1], &space[1], n1*sizeof(void *));
 		free(space);
 		space = new;
 	}
