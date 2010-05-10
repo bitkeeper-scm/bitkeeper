@@ -1,3 +1,24 @@
+Release notes for BitKeeper beta 5
+
+This is a bugfix and partition performance release.
+
+bk partition
+    Add a -j<parallel-processes> option to help partition run faster.
+    If the user has GNU make installed, then partition can create
+    components in parallel.  This helps when using a multi core processor.
+
+bk prompt (GUI version)
+    Fix a window geometry problem.
+
+bk commit - fix how pending comments are accumulated, which in certain
+cases after using attach, would be wrong.
+
+MS Windows - when working in a repository where the SCCS directories
+have been hidden in the .bk directory, mark the .bk directory as hidden,
+in the same way that SCCS directories were marked hidden in an existing
+bk repository.
+
+===============================================================================
 Release notes for BitKeeper beta 4
 
 bk bam server <NEWURL>
