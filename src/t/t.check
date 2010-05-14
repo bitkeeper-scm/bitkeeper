@@ -633,3 +633,47 @@ bk -r clean
 rmdir d1/sub1
 bk -r check -acf || fail
 echo OK
+
+echo $N Try to create a cset with a path conflict ...................$NL
+cd ../project
+bk mv d2/a foo2 || fail
+bk mv d2/b d2/a || fail
+# it would be nice if this failed...
+echo 'd2/SCCS/s.a|+' | bk commit $Q -ybad - || fail
+
+# but this does
+bk check 2>ERR && fail -f ERR should fail
+grep -v '|d2/.|' ERR > ERR2
+cat <<EOF > WANT
+check: two files are committed at the same pathname. (d2/a)
+rootkeys:
+EOF
+cmpfiles ERR2 WANT
+echo OK
+
+echo $N Setup what looks like a path conflict but is a gone delta ...$NL
+bk edit $Q BitKeeper/etc/gone
+bk log -r+ -nd:KEY: d2/a >> BitKeeper/etc/gone
+bk stripdel $Q -Cr+ d2/a
+bk stripdel $Q -r+ foo2
+bk names d2/a foo2
+bk check || fail
+bk unedit BitKeeper/etc/gone
+bk undo $Q -fsr+ || fail
+echo OK
+
+echo $N Setup a path conflict in resolve ............................$NL
+cd ..
+bk clone $Q project copy || fail
+cd copy
+bk mv d2/b foobar || fail		# commit this move
+bk commit $Q -ymv1 || fail
+bk mv foobar something_else || fail	# leave this move pending
+cd ../project
+echo hi > foobar
+bk new $Q foobar || fail		# create a new foobar
+bk commit $Q -ynew || fail
+cd ../copy
+bk pull $Q 2>ERR && fail -f ERR should fail
+grep -q "check: two files are committed at the same pathname" ERR || fail
+echo OK

@@ -205,6 +205,7 @@ int	rmtree(char *dir);
 /* samepath.c */
 int	samepath(char *a, char *b);
 int	patheq(char *a, char *b);
+int	paths_overlap(char *a, char *b);
 
 /* sig.c */
 #define	SIG_IGNORE	0x0001		/* ignore the specified signal */

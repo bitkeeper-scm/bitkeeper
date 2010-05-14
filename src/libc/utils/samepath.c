@@ -10,6 +10,19 @@ samepath(char *a, char *b)
 	return (patheq(a1, b1));
 }
 
+
+/*
+ * Check whether two paths "overlap".
+ */
+int
+paths_overlap(char *a, char *b)
+{
+	while (*a && (*a == *b)) ++a, ++b;
+
+	return (((*a == 0) || (*a == '/')) &&
+	    ((*b == 0) || (*b == '/')));
+}
+
 #ifdef WIN32
 
 /* make comparisons case insensitive and forward slash vs backslash agnostic */

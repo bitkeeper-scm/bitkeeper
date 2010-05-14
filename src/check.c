@@ -186,12 +186,6 @@ check_main(int ac, char **av)
 	if (verbose > 1) {
 		fprintf(stderr, "Preparing to check %u files...\r", nfiles);
 	}
-	buildKeys(idDB);
-	if (all) {
-		mdbm_close(idDB);
-		idDB = mdbm_mem();
-		unlink(BAM_MARKER); /* recreate BAM_MARKER */
-	}
 	/*
 	 * Get the list of components that exist under this
 	 * component.
@@ -217,17 +211,21 @@ check_main(int ac, char **av)
 			if (c->product) continue;
 			if (!cp || strneq(c->path, cp, cplen)) {
 				subrepos = addLine(subrepos,
-				    strdup(c->path + cplen));
+				    aprintf("%s%c%s",
+					(c->path + cplen), 0, c->rootkey));
 			}
 		}
 		if (cp) free(cp);
 		nested_free(n);
 	}
-
 	/* This can legitimately return NULL */
-	/* XXX - I don't know for sure I always need this */
 	goneDB = loadDB(GONE, 0, DB_GONE);
-
+	buildKeys(idDB);
+	if (all) {
+		mdbm_close(idDB);
+		idDB = mdbm_mem();
+		unlink(BAM_MARKER); /* recreate BAM_MARKER */
+	}
 	if (check_eoln) {
 		eoln_native = !streq(proj_configval(0, "eoln"), "unix");
 	}
@@ -1202,11 +1200,22 @@ buildKeys(MDBM *idDB)
 	int	e = 0;
 	delta	*d;
 	hash	*deltas;
+	char	**pathnames = 0; /* lines array of "path\0rootkey\0" */
+	int	i, len1, len2;
+	char	*rk1, *rk2;
+	u8	*smap;
 	ser_t	oldest = 0, ser;
 	struct	rkdata {
 		hash	*deltas;
-		u8	mask[0];
-	};
+		u8	mask;
+		/*
+		 * Stuff to remember for each rootkey:
+		 *  0x1 parent side of merge changes this rk
+		 *  0x2 merge side of merge changes this rk
+		 *  0x4 merge cset changes this rk
+		 *  0x8 the delta in tip cset seen for this rk
+		 */
+	} *rkd;
 	char	key[MAXKEY];
 
 	if ((d = sccs_top(cset))->merge) {
@@ -1218,6 +1227,7 @@ buildKeys(MDBM *idDB)
 		perror("buildkeys");
 		exit(1);
 	}
+	smap = sccs_set(cset, d, 0, 0); /* serial in tip cset */
 	sccs_rdweaveInit(cset);
 	while (s = sccs_nextdata(cset)) {
 		if (*s == '\001') {
@@ -1235,7 +1245,7 @@ buildKeys(MDBM *idDB)
 					struct	rkdata *rk;
 
 					rk = r2deltas->vptr;
-					unless ((rk->mask[0] & 7) == 3) {
+					unless ((rk->mask & 7) == 3) {
 						continue;
 					}
 					/* problem found */
@@ -1255,18 +1265,38 @@ buildKeys(MDBM *idDB)
 		}
 		t = separator(s);
 		*t++ = 0;
-		if (hash_insert(r2deltas, s, t-s, 0,
-			sizeof(struct rkdata) + (oldest ? 1 : 0))) {
-			((struct rkdata *)r2deltas->vptr)->deltas =
-			    hash_new(HASH_MEMHASH);
-		}
+		hash_insert(r2deltas, s, t-s, 0, sizeof(struct rkdata));
+		rkd = (struct rkdata *)r2deltas->vptr;
+		unless (rkd->deltas) rkd->deltas = hash_new(HASH_MEMHASH);
 		if (oldest) {
 			if ((d->flags & (D_RED|D_BLUE)) == (D_RED|D_BLUE)) {
-				((struct rkdata *)r2deltas->vptr)->mask[0] |= 4;
+				rkd->mask |= 4;
 			} else if (d->flags & D_RED) {
-				((struct rkdata *)r2deltas->vptr)->mask[0] |= 2;
+				rkd->mask |= 2;
 			} else if (d->flags & D_BLUE) {
-				((struct rkdata *)r2deltas->vptr)->mask[0] |= 1;
+				rkd->mask |= 1;
+			}
+		}
+
+		/*
+		 * For each serial in the tip cset remember the pathname
+		 * where each rootkey should live on the disk.
+		 * Later we will check for conflicts.
+		 */
+		if (!(rkd->mask & 8) &&
+		    smap[ser] && !mdbm_fetch_str(goneDB, t)) {
+			rkd->mask |= 8;
+			unless (mdbm_fetch_str(goneDB, s)) {
+				char	*path = key2path(t, 0);
+
+				/* strip /ChangeSet from components */
+				if (streq(basenm(path), "ChangeSet")) {
+					dirname(path);
+				}
+
+				pathnames = addLine(pathnames,
+				    aprintf("%s%c%s", path, 0, s));
+				free(path);
 			}
 		}
 		deltas = *(hash **)r2deltas->vptr;
@@ -1291,6 +1321,59 @@ buildKeys(MDBM *idDB)
 		fprintf(stderr, "check: failed to read cset weave\n");
 		exit(1);
 	}
+	free(smap);
+
+	if (proj_isComponent(cset->proj)) {
+		/*
+		 * add deeply nested pathnames
+		 * At product they are all present already.
+		 */
+		EACH(subrepos) {
+			/* This is:  s = strdup("path\0rootkey\0) */
+			len1 = strlen(subrepos[i]) + 1;
+			len1 += strlen(subrepos[i]+len1) + 1;
+			s = malloc(len1);
+			memcpy(s, subrepos[i], len1);
+
+			pathnames = addLine(pathnames, s);
+		}
+	}
+	sortLines(pathnames, 0);
+	EACH(pathnames) {
+		if (i == 1) continue;
+		if (paths_overlap(pathnames[i-1], pathnames[i])) {
+			/* find both rootkeys */
+			len1 = strlen(pathnames[i-1]) + 1;
+			len2 = strlen(pathnames[i]) + 1;
+			rk1 = pathnames[i-1] + len1;
+			rk2 = pathnames[i]   + len2;
+			if (len1 == len2) {
+				fprintf(stderr,
+				    "check: two files are committed "
+				    "at the same pathname. (%s)\n",
+				    pathnames[i]);
+				fprintf(stderr, "rootkeys:\n"
+				    "\t%s\n\t%s\n", rk1, rk2);
+				exit(1);
+			} else if (pathnames[i][len1-1] == '/') {
+				/* subrepos can overlap each other*/
+				unless (changesetKey(rk1) &&
+				    changesetKey(rk2)) {
+					fprintf(stderr,
+					    "check: two files are committed at "
+					    "overlapping pathnames.\n"
+					    "\t\%s\t%s\n"
+					    "\t%s\t%s\n",
+					    pathnames[i-1], rk1,
+					    pathnames[i], rk2);
+					exit(1);
+				}
+			} else {
+				assert(0);
+			}
+		}
+	}
+	freeLines(pathnames, free);
 
 	/* Add in ChangeSet keys */
 	sccs_sdelta(cset, sccs_ino(cset), key);
@@ -1555,20 +1638,16 @@ check(sccs *s, MDBM *idDB)
 		names = 1;
 	}
 
-	unless (CSET(s)) {
+	unless (CSET(s) || (d->flags & D_CSET)) {
 		EACH(subrepos) {
-			char	*p = subrepos[i];
-			char	*q = d->pathname;
-
-			/* yes rick, I inlined a strcmp again... */
-			while (*p && (*p == *q)) ++p, ++q;
-			if (*p || (*q && (*q != '/'))) continue;
-
-			/* pathname conflict */
-			fprintf(stderr,
-			    "check: %s conflicts with component at %s\n",
-			    d->pathname, subrepos[i]);
-			errors++;
+			if (paths_overlap(subrepos[i], d->pathname)) {
+				/* pathname conflict */
+				fprintf(stderr,
+				    "check: %s "
+				    "conflicts with component at %s\n",
+				    d->pathname, subrepos[i]);
+				errors++;
+			}
 		}
 	}
 	sccs_sdelta(s, ino = sccs_ino(s), buf);

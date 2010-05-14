@@ -1,0 +1,135 @@
+#
+# Tests involving collisions in a name space using new and setup
+#
+
+echo $N Setup the repo...............................................$NL
+nested parent
+# prep here file to not be all
+bk alias set $Q default ./gcc ./gdb
+# Assertions
+test "`bk config checkout`" = none || fail checkout assumption failed
+# Set up a non-deep repo that has some path
+bk setup -f path/to/comp || fail
+bk setup -f shallow || fail
+bk setup -f shallow/deep || fail
+cd "$HERE"
+bk clone $Q parent project || fail
+echo OK
+
+echo $N Make a file that is in the path before an unpopulated comp ..$NL
+cd "$HERE/project"
+# make sure it's not here
+bk here | grep -q ./path/to/comp && fail should not be here
+# XXX: should clean up empty dirs; until then...
+test -d path && fail
+touch path
+bk new $Q path || fail
+bk commit $Q -yblock 2>ERR && fail -f ERR
+grep -q "conflicts with component at path/to/comp" ERR || fail -f ERR
+bk _rm SCCS/s.path
+bk _rm SCCS/d.path
+test -d path && fail
+echo OK
+
+echo $N Again but with exact path....................................$NL
+cd "$HERE/project"
+bk here | grep -q path/to/comp && fail
+mkdir -p path/to
+touch path/to/comp
+bk new $Q path/to/comp || fail
+bk commit $Q -yblock 2>ERR && fail -f ERR
+grep -q "conflicts with component at path/to/comp" ERR || fail -f ERR
+bk _rm path/to/SCCS/s.comp
+bk _rm path/to/SCCS/d.comp
+rm -rf path .bk/path
+echo OK
+
+echo $N Make a file that is in the unpopulated comp .................$NL
+cd "$HERE/project"
+bk here | grep -q path/to/comp && fail
+mkdir -p path/to/comp/subdir
+touch path/to/comp/subdir/foo
+bk new $Q path/to/comp/subdir/foo || fail
+bk commit $Q -yblock 2> ERR && fail
+grep -q "conflicts with component at path/to/comp" ERR || fail -f ERR
+# How to clean up quickly?
+bk _rm path/to/comp/subdir/SCCS/s.foo
+bk _rm path/to/comp/subdir/SCCS/d.foo
+# This should have been done?
+rmdir .bk/path/to/comp/subdir/SCCS .bk/path/to/comp/subdir
+rmdir .bk/path/to/comp .bk/path/to .bk/path
+rm -fr path
+test -d path -o -d .bk/path && fail
+echo OK
+
+echo $N Make a file in one component that overlaps with a deep nest..$NL
+cd "$HERE/project"
+bk here | grep -q ./shallow/deep && fail should not be here
+bk here add $Q ./shallow || fail could not add shallow
+cd ./shallow
+mkdir deep
+touch deep/foobar.c
+bk new $Q deep/foobar.c || fail
+bk commit -y"add foobar.c" 2> ERR && fail
+grep -q "conflicts with component at deep" ERR || fail -f ERR
+bk _rm deep/SCCS/s.foobar.c
+bk _rm deep/SCCS/d.foobar.c
+echo OK
+
+echo $N Make a file that is legal off the path of unpoulated ........$NL
+cd "$HERE/project"
+mkdir -p path/to
+touch path/to/foo
+bk new $Q path/to/foo
+bk commit $Q -yblock path || fail
+bk -r check -ac || fail
+echo OK
+
+echo $N Attach in parent, block path in child........................$NL
+cd "$HERE/parent"
+bk setup -f block || fail
+cd "$HERE/project"
+touch block
+bk new $Q block
+bk commit $Q -yblock || fail
+bk pull $Q 2>ERR && fail -f ERR pull should have failed
+grep -q "check: two files are committed at the same pathname. (block)" ERR || {
+     fail -f ERR wrong err message
+}
+echo OK
+
+echo $N Pull in the other direction..................................$NL
+cd "$HERE/parent"
+# this currently gives a file/directory conflict in the resolver
+(echo h; echo q) | bk pull $Q ../project >OUT 2>&1 && fail
+# it'd be better to check for the right error
+grep -q "1 unresolved conflicts" OUT || {
+	fail -f OUT wrong error
+}
+echo OK
+
+echo $N attach/attach conflict w/pending component...................$NL
+cd "$HERE/project"
+# cleanup block
+bk undo -qsfr+
+# turn it into a component
+bk setup -Cf block
+bk sfiles -pC | grep -q block || fail
+bk pull $Q >OUT 2>ERR && fail should have failed
+grep -q "not a component rootkey" ERR || fail you fixed the error message
+echo failed \(bug wrong error\)
+
+echo $N attach/attach conflict w/committed component.................$NL
+bk commit $Q -y.
+bk pull $Q >OUT 2>ERR && fail should have failed
+grep -q "block not empty" ERR || fail -f ERR wrong error
+echo OK
+
+echo $N attach/attach conflict w/unpopulated component...............$NL
+bk here rm -q -f ./block
+bk pull $Q >OUT 2>ERR && fail should have failed
+grep -q "check: two files are committed at the same pathname. (block)" ERR || {
+	fail -f ERR wrong error
+}
+echo OK
+
