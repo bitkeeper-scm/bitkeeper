@@ -17,13 +17,12 @@ spawn_filterPipeline(char **cmds)
 	fd1 = dup(1);
 
 	i = 1;
-#define	NEXT(s) ((i < LSIZ(s)) ? (s)[i++] : 0)
 
-	cmd = NEXT(cmds);
+	cmd = LNEXT(cmds);
 	while (cmd) {
 		tokens = shellSplit(cmd);
 		tokens = addLine(tokens, 0); /* force trailing null */
-		if (cmd = NEXT(cmds)) {
+		if (cmd = LNEXT(cmds)) {
 #ifdef	WIN32
 			mkpipe(p, BIG_PIPE);
 #else

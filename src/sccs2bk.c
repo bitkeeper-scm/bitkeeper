@@ -17,7 +17,6 @@ private void regen(sccs *s, int verbose, char *key);
 private int verify = 1;
 private	int mkinit(sccs *s, delta *d, char *file, char *key);
 private int makeMerge(sccs *s, int verbose);
-private void removeSerN(ser_t *space, int rm);
 private void collapse(sccs *s, int verbose, delta *d, delta *m);
 private void fixTable(sccs *s, int verbose);
 private void handleFake(sccs *s);
@@ -538,24 +537,6 @@ collapse(sccs *s, int verbose, delta *d, delta *m)
 }
 
 /*
- * removeSerN()
- * chop a serial out of the list
- */
-private void
-removeSerN(ser_t *space, int rm)
-{
-	int	i;
-
-	assert(rm < space[0]);
-	assert(rm > 0);
-	space[rm] = 0;
-	for (i = rm; (++i < space[0]) && space[i]; ) {
-		space[i-1] = space[i];
-		space[i] = 0;
-	}
-}
-
-/*
  * makeMerge - when seeing a list of includes, make it a merge pointer.
  * teamware does a -i on the tip of a merge
  */
@@ -563,7 +544,8 @@ private int
 makeMerge(sccs *s, int verbose)
 {
 	delta	*d, *m;
-	int	i, empty;
+	int	i, j;
+	ser_t	mser;
 
 	/* table order, mark things to ignore, and find merge markers */
 	for (d = s->table; d; d = NEXT(d)) {
@@ -574,25 +556,24 @@ makeMerge(sccs *s, int verbose)
 		unless (d->include) continue;
 		assert(!d->merge);
 
+		j = 0;
 		EACH(d->include) {
 			if ((m = sfind(s, d->include[i])) && (m->type == 'D')) {
-				continue;
+				if (j) d->include[j++] = d->include[i];
+			} else {	/* delete it */
+				unless (j) j = i;
 			}
-			removeSerN(d->include, i);
-			i--;	/* we shifted, so repeat this index */
 		}
-		empty = 1;
-		EACH(d->include) empty = 0;	/* go to end of list */
-		if (empty) {
+		if (j) d->include[0] = (d->include[0] & ~LMASK) | (j-1);
+		if (emptyLines(d->include)) {
 			free(d->include);
 			d->include = 0;
 			continue;
 		}
-		assert(!d->include[i]);
-		assert(d->include[i-1]);
-		m = sfind(s, d->include[i-1]);
+		mser = d->include[d->include[0] & LMASK];
+		m = sfind(s, mser);
 		assert(m && m->type == 'D');
-		d->merge = d->include[i-1];
+		d->merge = mser;
 		collapse(s, verbose, d, m);
 	}
 	return (0);

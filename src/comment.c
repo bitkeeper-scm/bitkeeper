@@ -280,13 +280,13 @@ change_comments(char *file, char *rev, char **comments)
 		    file, rev);
 		goto err;
 	}
-	EACH(comments);
-	for (i--; i > 0; i--) {
+	for (i = nLines(comments); i > 0; i--) {
 		unless (streq(comments[i], "")) break;
 		free(comments[i]);
 		comments[i] = 0;
 	}
-	unless (comments && comments[1]) goto err;
+	if (i < nLines(comments)) truncLines(comments, i);
+	if (emptyLines(comments)) goto err;
 	comments_free(d);
 	EACH(comments) comments_append(d, comments[i]);
 	freeLines(comments, 0);

@@ -643,7 +643,7 @@ fix_setupcomments(sccs *s, char **rmdeltas)
 		 * pattern, then ignore these comments.
 		 */
 		comments_load(s, d);
-		if (!d->cmnts[2] && re_exec(d->cmnts[1])) continue;
+		if ((nLines(d->cmnts) == 1) && re_exec(d->cmnts[1])) continue;
 
 		comments = addLine(comments, joinLines("\n", d->cmnts));
 	}

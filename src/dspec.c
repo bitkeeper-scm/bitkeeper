@@ -593,8 +593,7 @@ again:
 	if (strneq(kw.dptr, "C", kw.dsize)) {
 		comments_load(g.s, g.d);
 		unless (g.d && g.d->cmnts &&
-		    (state->i < LSIZ(g.d->cmnts)) &&
-		    g.d->cmnts[state->i]) {
+		    (state->i <= nLines(g.d->cmnts))) {
 			return (0);
 		}
 		if (g.d->cmnts[state->i][0] == '\001') goto again;
@@ -604,7 +603,7 @@ again:
 	/* XXX FD depracated */
 	if (strneq(kw.dptr, "FD", kw.dsize)) {
 		unless (g.s && g.s->text &&
-		    (state->i < LSIZ(g.s->text)) && g.s->text[state->i]) {
+		    (state->i <= nLines(g.s->text))) {
 			return (0);
 		}
 		/* XXX Is this needed for title, or only comments? */

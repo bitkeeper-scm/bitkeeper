@@ -30,6 +30,12 @@ typedef signed short		i16;
 typedef signed int		i32;
 typedef	signed long long	i64;
 
+/* cast int's to and from pointers */
+#define	int2p(i)			((void *)(long)(i))
+#define	uint2p(i)			((void *)(unsigned long)(i))
+#define	p2int(p)			((int)(long)(p))
+#define	p2uint(p)			((unsigned int)(unsigned long)(p))
+
 #ifdef	DEBUG
 #	define	debug(x)	fprintf x
 #else

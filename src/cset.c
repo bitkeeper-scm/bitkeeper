@@ -716,7 +716,7 @@ again:	/* doDiffs can make it two pass */
 	 * Do the ChangeSet deltas first, takepatch needs it to be so.
 	 */
 	sortLines(cs->cweave, number_sort); /* sort by serials */
-	cs->lasti = 0;
+	cs->lasti = 1;
 	doit(cs, cset);
 
 	/*

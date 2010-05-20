@@ -427,12 +427,11 @@ sortKids(delta *start, int (*compar)(const void *, const void *),
 	/* bail if nothing to sort */
 	unless ((d = start->kid) && !TAG(d) && d->siblings) return;
 
-	i = 1;
+	truncLines(list, 0);
 	for (d = start->kid; d; d = d->siblings) {
-		if (i >= LSIZ(list)) list = *karr = addLine(list, 0);
-		list[i++] = (char *)d;
+		list = addLine(list, d);
 	}
-	if (i < LSIZ(list)) list[i] = 0;	/* truncate array */
+	*karr = list;
 	sortLines(list, compar);
 
 	dp = &start->kid;

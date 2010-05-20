@@ -224,8 +224,7 @@ SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
 HDRS	= bam.h bkd.h graph.h logging.h nested.h \
 	  progress.h purify.h range.h rcs.h resolve.h sccs.h \
-	  cmd.h proj.h redblack.h inskeys.h libc/system.h \
-	  libc/fslayer/win_remap.h
+	  cmd.h proj.h redblack.h inskeys.h libc/system.h
 
 # list of non-C sources in bk
 SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
@@ -540,8 +539,6 @@ depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends
 
 $(OBJ) bk.o: $(HDRS)
-
-sccs.h: libc/system.h
 
 tclkey.h: genkeys.pl
 	$(Q)bk _test ! -f tclkey.h -o ../SCCS/s.ChangeSet -nt tclkey.h && \

@@ -1269,7 +1269,7 @@ bam_clean_main(int ac, char **av)
 		for (j = 1; ; j++) {
 			sprintf(p1, "%d", c + j);
 
-			unless (i+1 < LSIZ(fnames) && fnames[i+1]) break;
+			unless (i+1 <= nLines(fnames)) break;
 			unless (streq(buf, fnames[i+1])) break;
 
 			unless ((p2 = hash_fetchStr(dfiles, buf)) && *p2) {
@@ -1388,6 +1388,7 @@ bp_check_findMissing(int quiet, char **missing)
 				free(missing[i]);
 				missing[i] = 0;
 			}
+			truncLines(missing, 0);
 			f = fopen(tmp, "r");
 			while (fnext(buf, f)) {
 				chomp(buf);

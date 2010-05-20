@@ -26,8 +26,9 @@ lockers(char *path)
 
 	EACH(lines) {
 		TRACE("DIR=%s/%s", path, lines[i]);
-		while (lines[i] && !isdigit(lines[i][0])) {
+		unless (isdigit(lines[i][0])) {
 			removeLineN(lines, i, free);
+			--i;	/* do this line again */
 		}
 	}
 	return (lines);

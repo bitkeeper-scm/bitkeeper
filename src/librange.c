@@ -376,7 +376,7 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 	ser_t	last;		/* the last delta we marked (for cleanup) */
 	int	marked = 0;	/* number of BLUE or RED nodes */
 	int	all = 0;	/* set if all deltas in 'to' */
-	char	*fakelist[3] = {(char *)3, (char *)from, 0}; /* addLine */
+	char	**freelist = 0;
 	const int	mask = (D_BLUE|D_RED);
 
 	/*
@@ -409,12 +409,13 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 	}
 	last = to->serial;
 	d = to;			/* start here in table */
-	if (from) fromlist = fakelist;
+	if (from) fromlist = freelist = addLine(0, from);
 	EACH(fromlist) {
 		from = (delta *)fromlist[i];
 		if (d->serial < from->serial) d = from;
 		MARK(from, D_BLUE);
 	}
+	if (freelist) freeLines(fromlist, 0);
 
 	/* compute RED - BLUE */
 	for (; d && (all || (marked > 0)); d = NEXT(d)) {

@@ -602,13 +602,14 @@ save:
 	d = cset->table;
 	empty = 0;
 	oldser = 0;
+	lasti = 0;
 	EACH(cweave) {
 		unless (cweave[i][0]) {
 			/*
 			 * all the deleted nodes are at the end: okay to free
 			 */
 			free(cweave[i]);
-			cweave[i] = 0;
+			unless (lasti) lasti = i;
 			continue;
 		}
 		ser = atoi(cweave[i]);
@@ -629,6 +630,7 @@ save:
 		}
 		assert(d->serial == ser);
 	}
+	if (lasti) truncLines(cweave, lasti-1);
 	assert(oldser);
 	d->added = cnt;
 	while (d = NEXT(d)) { 

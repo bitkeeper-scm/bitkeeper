@@ -54,25 +54,35 @@
 #ifndef	_LIB_LINES_H
 #define	_LIB_LINES_H
 
-#define	str_nappend(s, str, len, gift)	data_append(s, str, len, gift)
-#define	data_pullup(p, s)		_pullup(p, s, 0)
-#define	str_pullup(p, s)		_pullup(p, s, 1)
-#define	int2p(i)			((void *)(long)(i))
-#define	p2int(p)			((int)(long)(p))
-#define	LSIZ(s)				p2int(s[0])
-#define	EACH_INDEX(s, i)	for (i=1; (s) && (i < LSIZ(s)) && (s)[i]; i++)
-#define	EACH_START(x, s, i)	\
-    for (i = ((x) < 1) ? 1 : (x); (s) && (i < LSIZ(s)) && (s)[i]; i++)
-#define	EACH(s)				EACH_INDEX(s, i)
-#define	EACH_STRUCT(s, c, i) \
-    for (i=1; (s) && (i < LSIZ(s)) && ((c) = (void *)(s)[i]); i++)
-#define	emptyLines(s)			(!s || !s[1])
-#define	str_empty(s)			(!s || !s[2])
-#define	data_empty(s)			(!s || !s[2])
+/* lines are limited to 2^27 entries ~134 million */
+#define	LBITS				(32 - 5)
+#define	LMASK				0x07ffffff
+
+/* sub-macro for EACH */
+#define	_TESTLEN_(s, i)			(i <= (p2uint(s[0]) & LMASK))
+
+#define	EACH_START(x, s, i)				\
+	if ((i = (x)), (s)) for (; _TESTLEN_(s, i); i++)
+#define	EACH_INDEX(s, i)		EACH_START(1, s, i)
+#define	EACH(s)				EACH_START(1, s, i)
+
+#define	EACH_STRUCT(s, c, i)				\
+	if (((c) = 0), (i = 1), (s))			\
+		for (((c) = (void *)(s)[i]);		\
+		     _TESTLEN_(s, i);			\
+		     (c) = (void *)(s)[++i])
+
+#define	LNEXT(s)					\
+	((s) && _TESTLEN_(s, i) ? (s)[i++] : 0)
+
+
+/* return number of lines in array */
+#define	nLines(s)			((s) ? (p2uint(s[0]) & LMASK) : 0)
+#define	emptyLines(s)			(nLines(s) == 0)
 
 char	**addLine(char **space, void *line);
 char	**allocLines(int n);
-int	nLines(char **space);
+void	truncLines(char **space, int len);
 char	**catLines(char **space, char **array);
 char	**splitLine(char *line, char *delim, char **tokens);
 char	**splitLineToLines(char *line, char **tokens);
@@ -98,10 +108,19 @@ int	pruneLines(char **space, char **remove,
     int (*compar)(const void *, const void *), void(*freep)(void *ptr));
 int	sameLines(char **p, char **p2);
 char	*shellquote(char *in);
+
+/* Arbitrarily long buffer interfaces */
+
+int	data_length(char **space);
+#define	str_nappend(s, str, len, gift)	data_append(s, str, len, gift)
+#define	data_pullup(p, s)		_pullup(p, s, 0)
+#define	str_pullup(p, s)		_pullup(p, s, 1)
 char	**str_append(char **space, void *str, int gift);
 char	**data_append(char **space, void *str, int len, int gift);
-int	data_length(char **space);
 char	*_pullup(u32 *bytep, char **space, int null);
+#define	str_empty(s)			(!s || !s[2])
+#define	data_empty(s)			(!s || !s[2])
 
 void	lines_tests(void);
+
 #endif

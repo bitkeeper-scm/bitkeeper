@@ -119,7 +119,7 @@ getMsg(char *msg_name, char *bkarg, char b, FILE *outf)
 {
 	char	**args;
 	int	rc;
-	
+
 	unless (bkarg) bkarg = "";
 	args = addLine(0, bkarg);
 	rc = getMsgv(msg_name, args, 0, b, outf);
@@ -132,7 +132,7 @@ getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf)
 {
 	char	**args;
 	int	rc;
-	
+
 	unless (bkarg) bkarg = "";
 	args = addLine(0, bkarg);
 	rc = getMsgv(msg_name, args, prefix, b, outf);
@@ -143,9 +143,14 @@ getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf)
 int
 getMsg2(char *msg_name, char *arg1, char *arg2, char b, FILE *outf)
 {
-	char	*args[3] = { int2p(3), arg1, arg2 };
-	
-	return (getMsgv(msg_name, args, 0, b, outf));
+	char	**args;
+	int	rc;
+
+	args = addLine(0, arg1);
+	args = addLine(args, arg2);
+	rc = getMsgv(msg_name, args, 0, b, outf);
+	freeLines(args, 0);
+	return (rc);
 }
 
 int

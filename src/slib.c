@@ -5076,51 +5076,51 @@ time2date(time_t tt)
  * Save a serial in an array.  If the array is out of space, reallocate it.
  * The size of the array is in array[0].
  * The serial number is stored in ascending order.
+ *
+ * XXX Much of this code is copied from addLine()
  */
 ser_t *
 addSerial(ser_t *space, ser_t s)
 {
-	int	i, j, size;
-	ser_t	*tmp;
+	int	size, len;	/* len and size of array */
+	int	l2sz;		/* ln2(size), encoded in space[0] */
+	int	i;
 
-	if (!space) {
-		space = calloc(16, sizeof(ser_t));
-		assert(space);
-		space[0] = (ser_t)16;
-		space[1] = s;
-		return (space);
-	}
+	if (space) {
+		len = space[0] & LMASK;
+		l2sz = space[0] >> LBITS;
+		assert(l2sz > 0);
+		size = 1u << l2sz;
 
-	size = (int) space[0];
-	if (space[size -1]) {	/* full up, dude */
-		tmp = calloc(size*2, sizeof(ser_t));
-		assert(tmp);
-		if (space[size - 1] < s)  {
-			/* s is the largest, stick it at the end */
-			memcpy(tmp, space, size * sizeof(ser_t));
-			tmp[size] = s;
-		} else {
-			/* s is not the largest, insert it while we copy */
-			for (i = j = 1; i < size;) {
-				if (space[i] > s)  { tmp[j++] = s; break; }
-				tmp[j++] = space[i++];
-			}
-			memcpy(&tmp[j], &space[i], (size - i) * sizeof(ser_t));
+		if ((len + 1) == size) {	/* full up, dude */
+			ser_t	*tmp = malloc(2*size*sizeof(ser_t));
+
+			assert(tmp);
+			memcpy(&tmp[1], &space[1], (size-1)*sizeof(ser_t));
+			free(space);
+			space = tmp;
+			l2sz += 1;
+			space[0] = (l2sz << LBITS) | len;
 		}
-		tmp[0] = (ser_t)(size * 2);
-		free(space);
-		return (tmp);
+	} else {
+		len = 0;
+		l2sz = 4;	/* default size == 16 */
+		size = 1u << l2sz;
+		space = malloc(size*sizeof(ser_t));
+		space[0] = (l2sz << LBITS) | len;
 	}
-
-	EACH(space) if (space[i] > s) break;
-	if (space[i] > s) {
-		/* we have a "insert", move stuff up one slot */
-		for (j = i; space[j]; j++);
-		assert(j <= (size - 1));
-		tmp = &space[i + 1];
-		memmove(tmp, &tmp[-1], (j - i) * sizeof(ser_t));
+	len++;
+	EACH(space) {
+		if (space[i] > s) {
+			/* we need to insert into the middle of the array */
+			memmove(&space[i+1], &space[i],
+			    (len-i)*sizeof(ser_t));
+			break;
+		}
 	}
+	/* we can add to end of array */
 	space[i] = s;
+	space[0] = (l2sz << LBITS) | len;
 	return (space);
 }
 

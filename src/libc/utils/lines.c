@@ -10,9 +10,12 @@
 #undef	calloc
 #endif
 
-static	char	**addLine_lastp = INVALID;
-static	int	addLine_lasti;
+/* length of array (use nLines() in code) */
+#define	LLEN(s)				(p2uint(s[0]) & LMASK)
+#define	setLLEN(s, len)	(s[0] = uint2p((p2uint(s[0]) & ~LMASK) | len))
 
+/* size of array (saves LSIZ-1 items) */
+#define	LSIZ(s)				(1u << (p2uint(s[0]) >> LBITS))
 /*
  * pre allocate line space.
  * room for n-1 lines
@@ -21,17 +24,19 @@ char	**
 allocLines(int n)
 {
 	char	**space;
+	u32	sz = 2;
+	u32	c = 1;
 
 	assert(n > 1);
-	space = calloc(n, sizeof(char *));
+	/* round up two the next power of 2 */
+	while (sz < n) {
+		sz <<= 1;
+		c++;
+	}
+	space = malloc(sz * sizeof(char *));
 	assert(space);
-	space[0] = int2p(n);
+	space[0] = uint2p(c << LBITS);
 
-	/*
-	 * We might be reusing an old lines buffer, so we must stomp
-	 * the cache.
-	 */
-	addLine_lastp = INVALID;
 	return (space);
 }
 
@@ -45,46 +50,41 @@ allocLines(int n)
 char	**
 addLine(char **space, void *line)
 {
-	int	i;
+	u32	size, len;	/* len and size of array */
 
-	unless (space) {
-		space = allocLines(16);
-	} else if (space[LSIZ(space)-1]) {	/* full up, dude */
-		int	size = LSIZ(space);
-		char	**tmp = allocLines(size*2);
+	if (space) {
+		len = LLEN(space);
+		size = LSIZ(space);
 
-		assert(tmp);
-		memcpy(tmp, space, size*sizeof(char*));
-		tmp[0] = (char *)(long)(size * 2);
-		free(space);
-		space = tmp;
-	}
-	unless (line) return (space);
-	if (addLine_lastp == space) {
-		i = ++addLine_lasti;	/* big perf win */
+		assert(size > 0);	 /* size==0 is read-only array */
+		if ((len + 1) == size) {	/* full up, dude */
+			char	**tmp = allocLines(2*size);
+
+			assert(tmp);
+			memcpy(&tmp[1], &space[1], len * sizeof(char*));
+			free(space);
+			space = tmp;
+		}
 	} else {
-		EACH(space); 		/* I want to get to the end */
-		addLine_lastp = space;
-		addLine_lasti = i;
+		space = allocLines(8);
+		len = 0;
 	}
-	assert(i < LSIZ(space));
-	assert(space[i] == 0);
-	space[i] = line;
+	space[len+1] = line;
+	if (line) len++;	/* adding 0 doesn't grow array */
+	assert(len <= LMASK);
+	setLLEN(space, len);
 	return (space);
 }
 
-/* return number of lines in array */
-int
-nLines(char **space)
+/*
+ * set the length of a lines array to a new value.
+ */
+void
+truncLines(char **space, int len)
 {
-      int     i;
-
-      if (addLine_lastp == space) {
-              i = addLine_lasti + 1;
-      } else {
-              EACH(space);
-      }
-      return (i-1);
+	assert(space);
+	assert(len <= LSIZ(space)); /* no growing the array at the moment */
+	setLLEN(space, len);
 }
 
 /*
@@ -109,6 +109,7 @@ catLines(char **space, char **array)
 	}
 	memcpy(&space[n1+1], &array[1], n2*sizeof(void *));
 	free(array);
+	setLLEN(space, n1+n2);
 	return (space);
 }
 
@@ -193,16 +194,14 @@ uniqLines(char **space, void(*freep)(void *ptr))
 
  dups:	/* now copy non-duped items */
 	dst = src-1;		/* last valid item in output */
-	for (; (src < LSIZ(space)) && space[src]; src++) { /* EACH() */
+	for (; src <= LLEN(space); src++) { /* EACH() */
 		if (streq(space[src], space[dst])) {
 			if (freep) freep(space[src]);
 		} else {
 			space[++dst] = space[src];
 		}
 	}
-	dst++;			/* one past last valid item */
-	if (dst < LSIZ(space)) space[dst] = 0;
-	addLine_lastp = INVALID;
+	truncLines(space, dst);
 }
 
 /*
@@ -231,31 +230,31 @@ freeLines(char **space, void(*freep)(void *ptr))
 	}
 	space[0] = 0;
 	free(space);
-	addLine_lastp = INVALID;
 }
 
+/* same non O(n^2) idiom as uniqLines() */
 int
 removeLine(char **space, char *s, void(*freep)(void *ptr))
 {
-	int	i, found, n = 0;
+	int	src, dst, n = 0;
 
-	do {
-		found = 0;
-		EACH(space) {
-			if (streq(space[i], s)) {
-				if (freep) freep(space[i]);
-				space[i] = 0;
-				while ((++i< (int)(long)space[0]) && space[i]) {
-					space[i-1] = space[i];
-				}
-				space[i-1] = 0;
-				n++;
-				found = 1;
-				addLine_lastp = INVALID;
-				break;
-			}
+	/* skip up to the first match */
+	EACH_INDEX(space, src) {
+		if (streq(space[src], s)) goto match;
+	}
+	return (0);			/* fast exit */
+
+ match:	/* now copy non-matched items */
+	dst = src-1;		/* last non-matched item in output */
+	for (; src <= LLEN(space); src++) { /* EACH() */
+		if (streq(space[src], s)) {
+			n++;
+			if (freep) freep(space[src]);
+		} else {
+			space[++dst] = space[src];
 		}
-	} while (found);
+	}
+	truncLines(space, dst);
 	return (n);
 }
 
@@ -264,34 +263,24 @@ removeLineN(char **space, int rm, void(*freep)(void *ptr))
 {
 	int	i;
 
-	assert(rm < (int)(long)space[0]);
+	assert(rm <= LLEN(space));
 	assert(rm > 0);
 	if (freep) freep(space[rm]);
-	for (i = rm; (++i < (int)(long)space[0]) && space[i]; ) {
+	EACH_START(rm+1, space, i) {
 		space[i-1] = space[i];
 	}
-	space[i-1] = 0;
-	addLine_lastp = INVALID;
+	truncLines(space, i-2);
 }
 
 void	*
 popLine(char **space)
 {
 	int	i;
-	void	*data;
 
-	unless (addLine_lastp == space) {
-		EACH(space); 		/* I want to get to the end */
-		addLine_lastp = space;
-		addLine_lasti = i - 1;
-	}
-	unless (addLine_lasti > 0) return (0);
-	i = addLine_lasti--;
-	assert(i < LSIZ(space));
-	assert(space[i]);
-	data = space[i];
-	space[i] = 0;
-	return (data);
+	i = nLines(space);
+	unless (i > 0) return (0);
+	truncLines(space, i-1);
+	return (space[i]);
 }
 
 /*
@@ -300,14 +289,13 @@ popLine(char **space)
 char **
 unshiftLine(char **space, void *line)
 {
-	int	n;
+	int	n = nLines(space);
 
-	/* make sure we have at least one null at end */
-	space = addLine(space, 0);
-	n = nLines(space);
-	if (n > 0) memmove(&space[2], &space[1], n * sizeof(void *));
-	space[1] = line;
-	if (space == addLine_lastp) ++addLine_lasti;
+	space = addLine(space, line); /* allocate room; done if n was 0 */
+	if (n) {
+		memmove(&space[2], &space[1], n * sizeof(void *));
+		space[1] = line;
+	}
 	return (space);
 }
 
@@ -323,8 +311,7 @@ shiftLine(char **space)
 	if (n < 1) return (0);
 	ret = space[1];
 	if (n > 1) memmove(&space[1], &space[2], (n-1)*sizeof(void *));
-	space[n] = 0;
-	if (space == addLine_lastp) --addLine_lasti;
+	truncLines(space, n-1);
 	return (ret);
 }
 
@@ -399,7 +386,7 @@ joinLines(char *sep, char **space)
 	int	i, slen, len = 0;
 	char	*buf, *p;
 
-	unless (space && space[1]) return (0);
+	if (emptyLines(space)) return (0);
 	slen = sep ? strlen(sep) : 0;
 	EACH(space) {
 		len += strlen(space[i]);
@@ -694,7 +681,7 @@ pruneLines(char **space, char **remove,
 				if (j > newj) space[newj] = space[j];
 				newj++;
 				j++;
-				unless ((j < LSIZ(space)) && space[j]) {
+				unless (j <= LLEN(space)) {
 					/* done with space */
 					goto out;
 				}
@@ -705,17 +692,17 @@ pruneLines(char **space, char **remove,
 			if (freep) freep(space[j]);
 			j++;
 			removed++;
-			unless ((j < LSIZ(space)) && space[j]) {
+			unless (j <= LLEN(space)) {
 				/* done with space */
 				goto out;
 			}
 		}
 	}
 out:	if (removed) {
-		while ((j < LSIZ(space)) && space[j]) {
+		while (j <= LLEN(space)) {
 			space[newj++] = space[j++];
 		}
-		space[newj] = 0;
+		truncLines(space, newj-1);
 	}
 	return (removed);
 }
@@ -781,7 +768,9 @@ data_append(char **space, void *str, int len, int gift)
 		s->left = 0;
 		space = addLine(space, str);
 	} else {
-		if (len < 1000) {
+		if (len < 64) {
+			s->buflen = 128;
+		} else if (len < 1024) {
 			s->buflen = len * 4;
 		} else {
 			s->buflen = len;
@@ -795,7 +784,7 @@ data_append(char **space, void *str, int len, int gift)
 	if (s->len[0] != LSIZ(space)) {
 		dinfo	*ns;
 		int	i;
-		
+
 		ns = calloc(1, sizeof(*s) + (LSIZ(space) * sizeof(u16)));
 		*ns = *s;
 		for (i = 1; i < s->len[0]; ns->len[i] = s->len[i], i++);

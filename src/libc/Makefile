@@ -56,6 +56,11 @@ clobber: clean
 .PHONY: srcs
 srcs: $(SRCS) $(HDRS)
 
+# touch system.h when any other headers change
+# a fake way to make bk's Makefile have the right dependancies
+system.h: $(filter-out system.h,$(HDRS))
+	touch $@
+
 tags.local: $(SRCS) $(HDRS)
 	cd ..;\
 	ctags -f libc/$@ --file-tags=yes --c-types=d+f+s+t \
