@@ -1,6 +1,7 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "nested.h"
 
 /*
  * Emulate mv(1)
@@ -114,6 +115,13 @@ mvdir_main(int ac, char **av)
 
 	unless (isdir(from)) {
 		fprintf(stderr, "%s is not a directory\n", from);
+		return (1);
+	}
+
+	if (isComponent(from)) {
+		fprintf(stderr, "mvdir: %s is a component\n"
+		    "Component renaming is unsupported in this release\n",
+		    from);
 		return (1);
 	}
 

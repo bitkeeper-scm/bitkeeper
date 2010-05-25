@@ -1,0 +1,10 @@
+echo $N Check that component rename is blocked ......................$NL
+nested product
+cd "$HERE/product"
+bk mv gcc gccN 2>ERR && fail -f ERR
+cat <<EOF >WANT
+mvdir: gcc is a component
+Component renaming is unsupported in this release
+EOF
+cmpfiles WANT ERR
+echo OK
