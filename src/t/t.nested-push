@@ -303,6 +303,7 @@ bk clone $Q project copy
 cd "$HERE"
 commercial libc
 cd "$HERE"/copy
+bk portal $Q . || fail
 BEFORE=`bk parent -l`
 bk attach $Q ../libc libc
 AFTER=`bk parent -l`
@@ -334,6 +335,7 @@ echo $N Check that push updates urllist .............................$NL
 cd "$HERE"
 bk clone $Q project clone || fail
 cd clone
+bk portal $Q . || fail
 bk setup -f newrepo || fail
 bk push $Q || fail
 # A successful push of newrepo should add newrepo's rootkey to the urllist.
@@ -433,6 +435,7 @@ bk clone $Q -s. project prod
 bk clone $Q -sTHERE prod prodclient1
 bk clone $Q -sTHERE prod prodclient2
 cd prodclient2
+bk portal $Q . || fail
 bk setup -f newcomp
 cd ../prodclient1
 bk pull $Q ../prodclient2 || fail

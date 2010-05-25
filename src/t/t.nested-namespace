@@ -72,8 +72,7 @@ touch deep/foobar.c
 bk new $Q deep/foobar.c || fail
 bk commit -y"add foobar.c" 2> ERR && fail
 grep -q "conflicts with component at deep" ERR || fail -f ERR
-bk _rm deep/SCCS/s.foobar.c
-bk _rm deep/SCCS/d.foobar.c
+bk _rm -r deep || fail
 echo OK
 
 echo $N Make a file that is legal off the path of unpoulated ........$NL
@@ -110,10 +109,11 @@ echo OK
 
 echo $N attach/attach conflict w/pending component...................$NL
 cd "$HERE/project"
+bk portal $Q . || fail
 # cleanup block
 bk undo -qsfr+
 # turn it into a component
-bk setup -Cf block
+bk setup -Cf block || fail
 bk sfiles -pC | grep -q block || fail
 bk pull $Q >OUT 2>ERR && fail should have failed
 grep -q "not a component rootkey" ERR || fail you fixed the error message
@@ -126,7 +126,9 @@ grep -q "block not empty" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N attach/attach conflict w/unpopulated component...............$NL
-bk here rm -q -f ./block
+bk portal $Q -r || fail
+bk comps | bk here set $Q - || fail
+bk here rm -q -f ./block || fail
 bk pull $Q >OUT 2>ERR && fail should have failed
 grep -q "check: two files are committed at the same pathname. (block)" ERR || {
 	fail -f ERR wrong error

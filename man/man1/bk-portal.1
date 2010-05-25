@@ -10,7 +10,7 @@ bk portal \- set or show the portal status of a repository
 .br
 .B bk portal
 .[B] \-q
-.B rm
+.B \-r
 .SH DESCRIPTION
 .LP
 The
@@ -32,13 +32,15 @@ For any given collection of repositories forming a product, only
 one instance should be a portal.
 .LP
 With an argument of ".", it marks the product as a portal.
-With an argument of "rm", it unmarks the product as a portal.
 With no argument, the command prints the repository portal status.
 With 
 .BR \-q ,
 the exit status indicates portal status; 0 means it is, 1 means it is not.
 .SH OPTIONS
 .TP
+.B \-r
+Unmark the current product as a portal.
+.tp
 .B \-q
 Run silently.
 .SH "SEE ALSO"
@@ -55,7 +57,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "nested-lines" listed then your license has
+If the options field has "SAM" listed then your license has
 this feature enabled.
 If not, contact BitMover sales.
 .\}

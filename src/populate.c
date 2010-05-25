@@ -281,7 +281,7 @@ conflict:
  * one of these urls.  Also verify that the local copy doesn't have any local
  * work.
  *
- * Returns -1 one failure or index of url used as a backup if this
+ * Returns -1 on failure or index of url used as a backup if this
  * component can be deleted.
  */
 private int
@@ -293,6 +293,10 @@ unpopulate_check(comp *c, char **urls)
 	char	**av;
 	char	out[MAXPATH];
 
+	if (nested_isPortal(0)) {
+		fprintf(stderr, "Cannot remove components in a portal.\n");
+		return (-1);
+	}
 	if (chdir(c->path)) {
 		perror(c->path);
 		return (-1);

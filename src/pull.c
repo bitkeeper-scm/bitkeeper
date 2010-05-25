@@ -746,7 +746,7 @@ npmerge:				fprintf(stderr,
 				if (exists(c->path) &&
 				    !nested_emptyDir(n, c->path)) {
 					fprintf(stderr, "pull: %s not empty, "
-					    "clone failed", c->path);
+					    "clone failed\n", c->path);
 					++errs;
 				}
 			}

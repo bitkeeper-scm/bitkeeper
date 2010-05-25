@@ -152,36 +152,35 @@ _prefixed_sfiles() {
 }
 
 _portal() {
-	__cd2product
-	ECHO=echo
+	Q=""
 	RC=0
 	REMOVE=""
-	bk lease show | grep '^options:.*PL' >/dev/null || {
-		echo "portal: not enabled by the current license." 1>&2
-		exit 1
-	}
-	test "X$1" = "X-q" && {
-		ECHO='#'
-		shift
-	}
-	test "X$1" = "Xrm" && {
-		REMOVE=1
-		shift
+	while getopts rq opt
+	do
+		case "$opt" in
+		r) REMOVE=1;;
+		q) Q='-q';;
+		*) bk help -s portal; exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	__cd2product
+	test "$REMOVE" && {
 		test "X$1" = X || {
 			bk help -s portal
 			exit 1
 		}
 		if [ -f BitKeeper/log/PORTAL ]
 		then	rm -f BitKeeper/log/PORTAL
-			eval "$ECHO This is no longer a portal"
-		else	eval "$ECHO This is not a portal"
+			qecho "This is no longer a portal"
+		else	qecho "This is not a portal"
 		fi
 		exit 0
 	}
 	test "X$1" = X && {
 		if [ -f BitKeeper/log/PORTAL ]
-		then	eval "$ECHO This is a portal"
-		else	eval "$ECHO This is not a portal"
+		then	qecho "This is a portal"
+		else	qecho "This is not a portal"
 			RC=1
 		fi
 		exit $RC
@@ -191,10 +190,15 @@ _portal() {
 		exit 1
 	}
 	if [ -f BitKeeper/log/PORTAL ]
-	then	eval "$ECHO This is already a portal"
-	else	touch BitKeeper/log/PORTAL
-		eval "$ECHO This is now a portal"
+	then	qecho "This is already a portal"
+	else	bk here set $Q all || {
+			echo "portal: could not fully populate."
+			exit 1
+		}
+		touch BitKeeper/log/PORTAL
+		qecho "This is now a portal"
 	fi
+	exit 0
 }
 
 __newFile() {

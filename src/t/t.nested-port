@@ -33,6 +33,7 @@ touch BitKeeper/etc/aliases
 bk new $Q BitKeeper/etc/aliases
 bk commit $Q -y"add aliases file"
 bk newroot -P $Q || exit 1
+bk portal $Q . || fail
 cd ../project2
 bk attach $Q -rBASE ../bash-sa mybash
 bk attach $Q ../standalone sa2
@@ -51,18 +52,13 @@ bk portal . 2> ERR && { echo failed; exit 1; }
 grep -q "bk: Cannot find product root" ERR || { echo wrong msg; exit 1; }
 # In a product
 cd project2
-bk portal > OUT && { echo failed; exit 1; }
-grep -q "This is not a portal" OUT || { echo wrong msg; exit 1; }
-bk portal -q && { echo failed; exit 1; }
-# Now a portal
-bk portal $Q . || { echo failed; exit 1; }
 bk portal > OUT || { echo failed; exit 1; }
 grep -q "This is a portal" OUT || { echo wrong msg; exit 1; }
 bk portal -q || { echo failed; exit 1; }
 # remove it
-bk portal rm > OUT || exit 1
+bk portal -r > OUT || exit 1
 grep -q "This is no longer a portal" OUT || exit 1
-bk portal rm > OUT || exit 1
+bk portal -r > OUT || exit 1
 grep -q "This is not a portal" OUT || exit 1
 bk portal . > OUT || { echo failed; exit 1; }
 grep -q "This is now a portal" OUT || exit 1
@@ -76,7 +72,7 @@ echo hi > file1
 bk new $Q file1 || exit 1
 bk commit $Q -y'add file1' || exit 1
 cd ../project2/sa2
-bk portal $Q rm || exit 1
+bk portal $Q -r || exit 1
 bk pull $Q ../../standalone 2> ERR && {
 	echo this should fail
 	cat ERR
@@ -100,7 +96,7 @@ test "`bk prs -hnd:SPN: -r+ sa2/ChangeSet`" = sa2/SCCS/s.ChangeSet || {
      exit 1
 }
 cd sa2
-bk portal $Q rm || exit 1
+bk portal $Q -r || exit 1
 bk port $Q ../../standalone 2> ERR && exit 1
 grep -q 'port: destination is not a portal.' ERR || {
 	echo bad error message
@@ -173,7 +169,7 @@ cd "$HERE"
 rm -rf standalone
 tar xf standalone.tar
 cd project2
-bk portal $Q rm || exit 1
+bk portal $Q -r || exit 1
 cd ../standalone
 bk pull $Q ../project2/sa2 2> ERR 1>&2 && {
 	echo should have failed
@@ -253,7 +249,7 @@ rm -rf sa2-detached project2
 tar xf sa2-detached.tar sa2-detached || exit 1
 tar xf project2.tar project2 || exit 1
 cd "$HERE/project2"
-bk portal $Q rm || exit 1
+bk portal $Q -r || exit 1
 cd "$HERE/sa2-detached"
 # Check :SPN: because :DPN: doesn't really print the path for ChangeSet.
 test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || {

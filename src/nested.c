@@ -1405,3 +1405,13 @@ nested_updateIdcache(project *comp)
 	idcache_write(prod, idDB);
 	mdbm_close(idDB);
 }
+
+int
+nested_isPortal(project *comp)
+{
+	project	*prod = proj_product(comp);
+	char	buf[MAXPATH];
+
+	concat_path(buf, proj_root(prod), "BitKeeper/log/PORTAL");
+	return (exists(buf));
+}

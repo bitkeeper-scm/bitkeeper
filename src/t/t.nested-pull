@@ -245,6 +245,7 @@ echo $N Try a pull with conflicts that can be automerged.............$NL
 cd "$HERE"
 bk clone $Q null-pull remote
 cd remote
+bk portal $Q . || fail
 bk setup -f x/y/z/comp || exit 1
 bk clone $Q ../remote ../local
 cd x/y/z/comp

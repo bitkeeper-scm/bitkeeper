@@ -52,6 +52,7 @@ bk clone $Q -sstuff project stuff
 bk clone $Q -sstuff project stuff2
 commercial libc
 cd "$HERE/project"
+bk portal $Q .
 bk attach $Q ../libc path/to/libc
 bk attach $Q ../libc junk
 bk alias add stuff path/to/libc
@@ -429,6 +430,7 @@ cd "$HERE"
 printf "" > empty
 bk setup -fcempty -P p2
 cd p2
+bk portal $Q .
 bk setup -fc"$HERE/empty" gcc
 cd "$HERE"/project
 mv "$HERE"/p2 .

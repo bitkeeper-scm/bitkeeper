@@ -38,6 +38,7 @@ test -d BitKeeper/BAM && {
 echo OK
 
 echo $N Create a new component with BAM data ........................$NL
+bk portal $Q .
 bk setup -f bam_comp || exit 1
 cd bam_comp
 RK=`bk id | sed 's/|/-/g'`

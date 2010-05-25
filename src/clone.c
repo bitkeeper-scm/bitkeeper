@@ -257,6 +257,36 @@ clone_main(int ac, char **av)
 		}
 	}
 	if (opts->debug) r->trace = 1;
+
+	if (opts->attach) {
+		nested	*n;
+		comp	*cp;
+		int	i, errors = 0;
+
+		// lm3di: attach only works in a portal that is fully populated
+		unless (nested_isPortal(0)) {
+			fprintf(stderr, "Attach can only run in a portal. "
+			    "See 'bk help portal'.\n");
+			return (CLONE_ERROR);
+		}
+		// see that it's fully populated
+		unless (n = nested_init(0, 0, 0, NESTED_PENDING)) {
+			fprintf(stderr, "%s: nested_init failed\n");
+			return (CLONE_ERROR);
+		}
+		EACH_STRUCT(n->comps, cp, i) {
+			unless (cp->present) {
+				fprintf(stderr,
+				    "Product needs to be fully "
+				    "populated. Run 'bk here set all' to fix."
+				    "\n");
+				errors++;
+				break;
+			}
+		}
+		nested_free(n);
+		if (errors) return (CLONE_ERROR);
+	}
 	if (attach_only) {
 		assert(r->path);
 		if (chdir(r->path)) {

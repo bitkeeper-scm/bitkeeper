@@ -58,6 +58,7 @@ commercial manual_component
 cd "$HERE"
 mv manual_component product
 cd product
+bk portal $Q . || fail
 bk attach -N manual_component >OUT 2>&1 || {
 	echo failed
 	cat OUT
@@ -140,9 +141,10 @@ echo $N Attach in a nested product...................................$NL
 cd "$HERE"
 printf "" > empty
 nested p1
-bk setup -fc"$HERE/empty" -P p2
+bk setup -fc"$HERE/empty" -P p2 || fail
 cd p2
-bk setup -fc"$HERE/empty" gcc
+bk portal $Q . || fail
+bk setup -fc"$HERE/empty" gcc || fail
 # pending should be empty
 bk pending
 echo 'gcc' > WANT

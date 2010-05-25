@@ -533,6 +533,7 @@ cat > WANT <<EOF
 ./deep1/deep2/deep3
 EOF
 cmpfiles GOT WANT
+rm deep1/deep2/deep3/deep4/deep5
 echo OK
 fi
 
@@ -543,13 +544,16 @@ cd "$HERE"
 bk setup --sccs-compat -fcempty not-remapped || exit 1
 mv not-remapped copy
 cd copy
+bk portal $Q . || fail
 bk attach -N $Q not-remapped || fail
 test -d not-remapped/SCCS || exit 1
 test -d not-remapped/.bk && exit 1
 echo OK
 
 echo $N Try to unpopulate it -- should fail because no parent .......$NL
-bk here rm $Q not-remapped > GOT 2>&1 && exit 1
+bk portal $Q -r || fail
+bk comps | bk here set $Q -
+bk here rm $Q not-remapped > GOT 2>&1 && fail -f GOT
 cat <<'EOF' > WANT
 here: No other sources for not-remapped known
 here: unable to remove not-remapped

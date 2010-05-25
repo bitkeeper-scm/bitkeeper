@@ -632,7 +632,9 @@ do
 		test $PLATFORM = WIN32 && bk bkd -R
 		exit 1
 	}
-echo ''
+	# skip emacs backup files
+	test -n "${i##*~}" || continue
+	echo ''
 	LEN=`echo ${i#t.} | wc -c`
 	LEN=`expr 40 - $LEN`
 	printf "================="

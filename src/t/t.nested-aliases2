@@ -24,6 +24,7 @@ commercial nm
 cd "$HERE"
 commercial man
 cd "$HERE/project"
+bk portal $Q .
 bk attach $Q ../nm gcc/nm
 bk attach $Q ../man man
 bk alias new nm ./gcc/nm
@@ -147,9 +148,11 @@ bk alias new dev ./gcc './gcc/*' gdb
 cd ..
 bk clone $Q project proj-clone
 cd "$HERE"/project
+bk portal $Q .
 bk attach $Q ../gcov gcc/gcov
 bk alias add dev ./gcc/gcov
 cd "$HERE"/proj-clone
+bk portal $Q .
 bk attach $Q ../libcpp gcc/libcpp
 bk alias add dev ./gcc/libcpp
 bk here add $Q dev || exit 1

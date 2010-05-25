@@ -33,9 +33,9 @@ echo $N Convert to product ..........................................$NL
 cd "$HERE/project"
 touch BitKeeper/etc/aliases
 bk new $Q BitKeeper/etc/aliases
-echo "default" > BitKeeper/log/HERE
 bk commit $Q -y"add aliases"
 bk newroot -P $Q || exit 1
+bk here set $Q default || fail
 test "`bk product`" = "This is the product." || {
 	echo failed to make it a product
     	exit 1
@@ -44,6 +44,7 @@ test -f BitKeeper/log/PRODUCT || {
 	echo failed to touch product turd
     	exit 1
 }
+bk portal $Q . || fail
 echo OK
 
 # XXX: Why should id -p fail if in a product?
@@ -150,6 +151,7 @@ touch c
 bk setup -P -f -cc subproduct || exit 1
 rm c
 cd subproduct
+bk portal $Q . || fail
 commercial comp
 cd ..
 bk attach $Q -N comp || exit 1

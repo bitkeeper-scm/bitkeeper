@@ -172,6 +172,7 @@ echo OK
 CNT=6
 echo $N "Count the inits for a 'bk changes -Rv' ($CNT)..................."$NL
 cd "$HERE"/nest2
+bk portal $Q .
 rm "$FILE"
 bk changes -Rv > /dev/null || exit 1
 check_cnt
