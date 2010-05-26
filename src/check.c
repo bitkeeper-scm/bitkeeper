@@ -1299,10 +1299,7 @@ buildKeys(MDBM *idDB)
 				free(path);
 			}
 		}
-		deltas = *(hash **)r2deltas->vptr;
-		assert(deltas);
-
-		unless (hash_insertStr(deltas, t, 0)) {
+		unless (hash_insertStr(rkd->deltas, t, 0)) {
 			char	*a;
 
 			fprintf(stderr,
@@ -1339,7 +1336,8 @@ buildKeys(MDBM *idDB)
 		}
 	}
 	sortLines(pathnames, 0);
-	EACH(pathnames) {
+	/* this test doesn't work in a shortkey repo, ie bk-bugfix */
+	unless (mixed) EACH(pathnames) {
 		if (i == 1) continue;
 		if (paths_overlap(pathnames[i-1], pathnames[i])) {
 			/* find both rootkeys */
@@ -1504,7 +1502,7 @@ markCset(sccs *s, delta *d)
 
 	3) for each tip, all but one need to be marked as in the ChangeSet
 	   file and that one - if it exists - must be top of trunk.
-	
+
 	4) check that the file is in the recorded location
 
 	5) rebuild the idcache if in -a mode.

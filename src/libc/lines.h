@@ -69,8 +69,8 @@
 #define	EACH_STRUCT(s, c, i)				\
 	if (((c) = 0), (i = 1), (s))			\
 		for (((c) = (void *)(s)[i]);		\
-		     _TESTLEN_(s, i);			\
-		     (c) = (void *)(s)[++i])
+		     _TESTLEN_(s, i) && ((c) = (void *)(s)[i]); \
+		     ++i)
 
 #define	LNEXT(s)					\
 	((s) && _TESTLEN_(s, i) ? (s)[i++] : 0)
