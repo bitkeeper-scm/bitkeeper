@@ -1355,6 +1355,7 @@ void	usage(void)
 #endif
 ;
 int	bk_notLicensed(project *p, u32 bits, int quiet);
+char	*file_fanout(char *file);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);

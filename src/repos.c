@@ -1,8 +1,9 @@
 #include "sccs.h"
 
 /*
- * Update the list at `bk dotbk`/repos/`bk gethost -r`/path.log
- * with pathname to the current repository.
+ * Update the list at `bk dotbk`/repos/hh/`bk gethost -r`/path.log
+ * with pathname to the current repository where hh is the first
+ * two chars of the hash of the hostname so we spread out the files.
  *
  * Just skip it if there are problems updating the file.
  */
@@ -15,7 +16,14 @@ repos_update(sccs *cset)
 	char	buf[MAXPATH];
 	char	path[MAXPATH];
 
-	sprintf(rfile, "%s/repos/%s/path.log", getDotBk(), sccs_realhost());
+	/*
+	 * Don't bother for RESYNC or components, that's just noise.
+	 */
+	if (proj_isResync(cset->proj) || proj_isComponent(cset->proj)) return;
+
+	p = file_fanout(sccs_realhost());
+	sprintf(rfile, "%s/repos/%s/path.log", getDotBk(), p);
+	free(p);
 	unless (exists(rfile)) {
 		if (mkdirf(rfile)) return;
 	}

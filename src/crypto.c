@@ -881,3 +881,25 @@ findhashdup_main(int ac, char **av)
 	}
 	return (0);
 }
+
+/*
+ * given a filename return
+ * HASH/base
+ */
+char *
+file_fanout(char *base)
+{
+	int	hash = register_hash(&md5_desc);
+	unsigned long md5len;
+	char	md5[32];
+
+	/* make sure it really is a basename */
+	assert(!strchr(base, '/'));
+
+	md5len = sizeof(md5);
+	hash_memory(hash, base, strlen(base), md5, &md5len);
+
+	return (aprintf("%1x%1x/%s",
+		((md5[0] >> 4) & 0xf), (md5[0] & 0xf),
+		base));
+}

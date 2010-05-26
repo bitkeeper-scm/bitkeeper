@@ -7,7 +7,10 @@ bk commit $Q -yCset
 echo OK
 
 echo $N Check that we recorded our path..............................$NL
-WHERE="`bk dotbk`/repos/`bk gethost -r`/path.log"
+HOST=`bk gethost -r`
+TMP=`bk crypto -hX $HOST`
+HASH=`printf '%.2s' $TMP`
+WHERE="`bk dotbk`/repos/$HASH/$HOST/path.log"
 test -f "$WHERE" || {
 	echo no "$WHERE"
 	find "`bk dotbk`" -type f -print
@@ -31,7 +34,7 @@ test `wc -l < "$WHERE"` -eq 1 || {
 echo OK
 
 echo $N Check that if we cannot make the dir, all is okay ...........$NL
-BLOCK="`bk dotbk`/repos/`bk gethost -r`"
+BLOCK="`bk dotbk`/repos/$HASH/$HOST"
 rm -fr "$BLOCK"
 touch "$BLOCK"
 bk -r check -ac || exit 1

@@ -1204,7 +1204,7 @@ buildKeys(MDBM *idDB)
 	int	i, len1, len2;
 	char	*rk1, *rk2;
 	u8	*smap;
-	ser_t	oldest = 0, ser;
+	ser_t	oldest = 0, ser = 0;
 	struct	rkdata {
 		hash	*deltas;
 		u8	mask;
