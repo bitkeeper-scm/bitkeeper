@@ -1300,7 +1300,7 @@ echo OK
 
 echo $N Look for mislocated files in argv ...........................$NL
 test X`bk sfiles -n DIR_WITH_SCCS/SCCS/s.WRONG_NAME` = XDIR_WITH_SCCS/SCCS/s.WRONG_NAME || exit 1
-test X`bk sfiles -n DIR_WITH_SCCS/WRONG_NAME` = XDIR_WITH_SCCS/SCCS/s.WRONG_NAME || exit 1
+test X"`bk sfiles -n DIR_WITH_SCCS/GOTTEN DIR_WITH_SCCS/WRONG_NAME`" = XDIR_WITH_SCCS/SCCS/s.WRONG_NAME || exit 1
 echo OK
 
 echo $N Look for mislocated files in stdin ..........................$NL

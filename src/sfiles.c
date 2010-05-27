@@ -340,7 +340,7 @@ sfiles_main(int ac, char **av)
 private sccs *
 chk_sfile(char *name, STATE state)
 {
-	char	*s, *relp;
+	char	*s, *relp, *gname;
 	delta	*d;
 	sccs	*sc = 0;
 
@@ -378,7 +378,9 @@ chk_sfile(char *name, STATE state)
 		s[1] = 's';
 		if (DOIT && sc) {
 			d = sccs_top(sc);
-			relp = proj_relpath(proj, name);
+			gname = sccs2name(name);
+			relp = proj_relpath(proj, gname);
+			free(gname);
 			unless (d->pathname && patheq(relp, d->pathname)) {
 				state[NSTATE] = 'n';
 			}
