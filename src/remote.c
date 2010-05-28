@@ -258,7 +258,8 @@ err:		fprintf(stderr, "##### %s #####\n", u);
 			bytes -= i;
 		} else {
 			perror("read/recv in bk -@");
-			break;
+			i = 1<<5;
+			goto out;
 		}
 		if (zin) {
 			line = zgets(zin);

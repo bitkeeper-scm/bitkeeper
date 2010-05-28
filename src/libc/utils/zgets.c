@@ -205,8 +205,8 @@ zseek(zgetbuf *in, int len)
 }
 
 /*
- * Return one line of text from the compressed stream.  The line ends
- * with a newline and is NOT null terminated.
+ * Return one line of text from the compressed stream.  The line is
+ * null terminated with any newlines stripped.
  */
 char	*
 zgets(zgetbuf *in)
@@ -215,6 +215,7 @@ zgets(zgetbuf *in)
 	char	**data = 0;
 	int	didfill = 0;
 	int	i;
+	u32	nl;
 
 	if (in->line) {
 		free(in->line);
@@ -233,6 +234,7 @@ again:
 	if (zeof(in)) return (0);
 	while(i < in->left) if (in->next[i++] == '\n') break;
 	if ((i > 0) && (in->next[i-1] == '\n')) {
+		in->next[i-1] = 0; /* chop newline */
 		ret = in->next;
 		in->next += i;
 		in->left -= i;
@@ -249,16 +251,20 @@ again:
 	 */
 	data = data_append(data, in->next, in->left, 0);
 	in->left = 0;
-
-	while (zfill(in)) {
+	nl = 0;
+	while (!nl && zfill(in)) {
 		i = 0;
-		while (i < in->left) if (in->next[i++] == '\n') break;
-		data = data_append(data, in->next, i, 0);
+		while (i < in->left) {
+			if (in->next[i++] == '\n') {
+				nl = 1;
+				break;
+			}
+		}
+		data = data_append(data, in->next, i-nl, 0); /* chop newline */
 		in->next += i;
 		in->left -= i;
-		if (in->next[-1] == '\n') break;
 	}
-	return (in->line = data_pullup(0, data));
+	return (in->line = str_pullup(0, data));
 }
 
 /*
