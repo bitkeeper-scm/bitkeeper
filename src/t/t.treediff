@@ -1,0 +1,21 @@
+echo $N Test treediff properly ignores remapped .bk tree ............$NL
+commercial project
+cd ..
+bk clone $Q --hide-sccs-dirs project clone1
+bk clone $Q --hide-sccs-dirs project clone2
+cd clone1
+echo A > foo
+bk new $Q foo
+bk commit $Q -y'added foo'
+bk clean
+touch .bk/bar
+cd ../clone2
+echo B > foo
+bk new $Q foo
+bk commit $Q -y'added foo'
+bk clean
+cd ..
+bk treediff clone1 clone2 >OUT 2>&1
+test -s OUT && fail -f OUT
+cat OUT
+echo OK

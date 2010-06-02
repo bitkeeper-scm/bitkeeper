@@ -1223,6 +1223,7 @@ __init() {
 	fi
 }
 
+### REMOVE IN BK6.0
 # usage: treediff tree1 tree2
 _treediff() {
 	if [ $# -ne 2 ]
@@ -1242,11 +1243,11 @@ _treediff() {
 	fi
 	if [ "$errflg" = "1" ]
 	then
-		bk help -s treediff
+		echo "uasge: bk treediff DIR1 DIR2" 1>&2
 		exit 1
 	fi
 	bk diff -Nur \
-	    --exclude=RCS --exclude=CVS --exclude=SCCS \
+	    --exclude=RCS --exclude=CVS --exclude=SCCS --exclude=.bk \
 	    --exclude=BitKeeper --exclude=ChangeSet "$1" "$2"
 }
 
