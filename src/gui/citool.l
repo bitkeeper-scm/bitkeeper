@@ -21,7 +21,6 @@ typedef	struct	sfile {
 	string	icon;		// new, modified, excluded, done
 	string	rev;		// rev of a pending file
 	string	component;	// component this file belongs to
-	string	comments;	// file comments
 	int	ignored;	// file is ignored or not?
 	int	excluded;	// file is excluded or not?
 	int	inProduct;	// Is this file part of the product?
@@ -46,6 +45,9 @@ struct {
 	int	nested;		    // are we dealing with a nested repo?
 	int	changed;	    // has anything changed where we need to
 				    // prompt the user on quit?
+	string	comments;	    // file comments before changes
+	int	commented;	    // do we have comments in the text widget
+	int	last_update;	    // time of last GUI update
 	int	sfiles_last;	    // last count of sfiles read
 	int	sfiles_done;	    // total count of sfiles read
 	int	sfiles_found;	    // track how many files we found while
@@ -59,6 +61,7 @@ struct {
 	sfile	files{string};	    // a hash of files by name
 	string	clipboard;	    // contents of the cut-and-paste clipboard
 	string	trigger_sock;	    // open socket to accept trigger output
+	string[] allComponents;	    // a list of all components in the repo
 	string[] components{string}; // a hash indexed by component path of
 				     // components in a product
 	string[] cset_commit;	    // A list of extra files to commit in the
@@ -71,8 +74,6 @@ struct {
 	int	cnt_newC;	    // Count of commented new files
 	int	cnt_total;	    // Count of total files in tool
 	int	cnt_excluded;	    // Count of files excluded in tool
-	int	cnt_pending;	    // Count of pending files in tool
-	int	cnt_pendingC;	    // Count of commented pending files
 	int	cnt_modified;	    // Count of modified files in tool
 	int	cnt_modifiedC;	    // Count of commented modified files
 	int	cnt_commented;	    // Count of total commented files
@@ -185,8 +186,7 @@ componentHasComments(string component)
 	foreach (file in self.components{component}) {
 		sf = self.files{file};
 		if (sf.type eq "cset") continue;
-		if (sf.type eq "pending") return (1);
-		if (isUserComment(sf, sf.comments)) return (1);
+		if (isCommented(sf)) return (1);
 	}
 	return (0);
 }
@@ -196,30 +196,82 @@ insertFile(sfile sf)
 {
 	sf.component = self.sfiles_component;
 	sf.inProduct = (sf.component eq self.root);
+
+	// Increment the total counts for the various file
+	// types to initialize the values.  The count of
+	// commented files is not modified here because it
+	// changes throughout the use of the tool.
 	if (sf.type eq "new") {
 		++self.cnt_new;
 		++self.cnt_total;
 	} else if (sf.type eq "pending") {
-		++self.cnt_pending;
 		++self.cnt_total;
+		++self.cnt_commented;
 	} else if (sf.type eq "modified") {
 		++self.cnt_modified;
 		++self.cnt_total;
 	}
-	if (isUserComment(sf, sf.comments) || (sf.type eq "pending")) {
-		updateCommentCount(sf, 1);
-	}
+
 	unless (sf.type eq "pending") {
 		sf.node = ListBox_insert(self.w_files, "end", "#auto",
 		    text: sf.name, data: sf.name);
 		configureFile(sf);
 	}
+
 	++self.sfiles_found;
 	self.files{sf.name} = sf;
 	self.components{sf.component}[END+1] = sf.name;
+
 	if (!defined(getSelectedNode())
-	    && sf.type eq "modified" && !isUserComment(sf, sf.comments)) {
+	    && (sf.type eq "modified") && !isCommented(sf)) {
 		selectFile(sf.node);
+	}
+	updateGUI();
+}
+
+void
+removeFile(sfile sf)
+{
+	int	i = 0;
+	string	file, component;
+	sfile	sel = getSelectedFile();
+
+	component = sf.component;
+	if (sf.type eq "new") {
+		unlink(sf.file);
+	} else {
+		exec("bk", "unedit", sf.file);
+	}
+
+	--self.cnt_total;
+	if (sf.type eq "new") {
+		--self.cnt_new;
+	} else if (sf.type eq "modified") {
+		--self.cnt_modified;
+	}
+	if (sf.file eq sel.file) {
+		moveNext();
+		updateStatus();
+	}
+	deleteCommentFile(sf.file);
+	foreach (file in self.components{component}) {
+		if (file eq sf.name) {
+			undef(self.components{component}[i]);
+			break;
+		}
+		++i;
+	}
+
+	ListBox_delete(self.w_files, sf.node);
+
+	undef(self.files{sf.name});
+	if (!sf.inProduct && length(self.components{component}) <= 1) {
+		sfile	cset = getCsetFile(component);
+
+		undef(self.files{cset.name});
+		undef(self.components{component});
+		ListBox_delete(self.w_files, cset.node);
+		moveNext();
 	}
 }
 
@@ -229,22 +281,11 @@ insertPending(sfile sf)
 	FILE	fd = popen("bk sfiles -gpA \"${sf.file}\"", "r");
 	string	line;
 	string	name = sf.name;
-	string	comments;
 
 	while (defined(line = fgetline(fd))) {
-		FILE	cfd;
-
 		line =~ /(.*)\|(.*)/;
-		comments = "";
 		sf.rev = $2;
 		sf.name = "${name}@${sf.rev}";
-		cfd = popen("bk prs -hd:COMMENTS: -r${sf.rev} \"${sf.file}\"",
-		    "r");
-		while (defined(line = fgetline(cfd))) {
-			append(&comments, line[2..END], "\n");
-		}
-		fclose(cfd);
-		sf.comments = comments;
 		++self.sfiles_pending;
 		insertFile(sf);
 	}
@@ -256,31 +297,49 @@ void
 configureFile(sfile sf)
 {
 	sfile	cset;
-	string	img, node, comments;
+	string	img, old, node;
 
 	unless (defined(sf)) return;
 
 	img = sf.icon;
 	node = sf.node;
-	comments = sf.comments;
-
 	if (!defined(node) || node eq "") return;
+
+	old = ListBox_itemcget(self.w_files, node, image:);
+	if (old eq img_done) {
+		if (sf.type eq "new") {
+			--self.cnt_newC;
+			--self.cnt_commented;
+		} else if (sf.type eq "modified") {
+			--self.cnt_modifiedC;
+			--self.cnt_commented;
+		}
+	} else if (old eq img_exclude) {
+		--self.cnt_excluded;
+	}
+
+	if (sf.ignored) {
+		Tree_itemconfigure(self.w_files, node, foreground: "gray");
+	}
 
 	cset = getCsetFile(sf.component);
 	unless (defined(cset)) cset.excluded = 0;
 	if (sf.excluded || sf.ignored || cset.excluded) {
 		img = img_exclude;
-	} else if ((sf.type eq "pending") || isUserComment(sf, comments)
-	    || ((sf.type eq "cset") && componentHasComments(sf.component)
-		&& (getComments(sf) ne "")
-		    && !isTemplateComment(sf, comments))) {
+		++self.cnt_excluded;
+	} else if (isCommented(sf) && ((sf.type ne "cset")
+	    || sf.inProduct || componentHasComments(sf.component))) {
 		img = img_done;
+		if (sf.type eq "new") {
+			++self.cnt_newC;
+			++self.cnt_commented;
+		} else if (sf.type eq "modified") {
+			++self.cnt_modifiedC;
+			++self.cnt_commented;
+		}
 	}
 
 	Tree_itemconfigure(self.w_files, node, image: img);
-	if (sf.ignored) {
-		Tree_itemconfigure(self.w_files, node, foreground: "gray");
-	}
 }
 
 void
@@ -300,7 +359,14 @@ readSfilesProgress(FILE fd, string file, int pos)
 				    (100 * self.sfiles_done) / self.nfiles);
 			}
 			if (!self.sfiles_reading && (size(file) > pos)) {
+				// Kill the read event before we read the
+				// output file so that we don't accidentally
+				// get another event from the progress output
+				// while we're reading.
+				fileevent(fd, "readable", "");
 				pos = readSfilesOutput(file, pos);
+				// Re-establish the read event with the new
+				// position in the output file.
 				fileevent(fd, "readable",
 				    {"readSfilesProgress", fd, file, pos});
 			}
@@ -310,6 +376,19 @@ readSfilesProgress(FILE fd, string file, int pos)
 		readSfilesOutput(file, pos);
 		self.sfiles_last = 0;
 		_done = 1;
+	}
+
+	updateGUI();
+}
+
+void
+updateGUI()
+{
+	int	now = Clock_milliseconds();
+
+	if ((now - self.last_update) >= 250) {
+		self.last_update = now;
+		update();
 	}
 }
 
@@ -354,7 +433,6 @@ readSfilesOutput(string file, int pos)
 		sf.name = getRelativePath(file, self.root);
 		sf.ignored = 0;
 		sf.excluded = 0;
-		sf.comments = "";
 		sf.inProduct = 0;
 
 		if (pending) {
@@ -371,10 +449,6 @@ readSfilesOutput(string file, int pos)
 		if (extra) {
 			sf.type = "new";
 			sf.icon = img_new;
-		}
-
-		if (hasComments) {
-			sf.comments = getCommentsFromFile(sf);
 		}
 
 		insertFile(sf);
@@ -394,7 +468,7 @@ findFiles()
 	self.sfiles_component = self.root;
 	updateButtons();
 
-	foreach (comp in self.components) {
+	foreach (comp in self.allComponents) {
 		chdir(comp);
 		setenv("_BK_PREFIX", "${comp}/");
 		self.sfiles_found = 0;
@@ -466,7 +540,6 @@ findFiles()
 			sf.icon = img_cset;
 			sf.ignored = 0;
 			sf.excluded = 0;
-			sf.comments = getCommentsFromFile(sf);
 
 			insertFile(sf);
 		}
@@ -579,6 +652,7 @@ void
 gui()
 {
 	widget	top = ".citool";
+	string	tags[];
 
 	self.w_top      = top;
 	self.w_upperF   = "${top}.upper";
@@ -628,7 +702,10 @@ gui()
 	    background: gc("ci.textBG"), foreground: gc("ci.textFG"),
 	    width: 70, height: gc("ci.commentsHeight"), state: "disabled");
 	ScrolledWindow_setwidget(self.w_commentF, self.w_comments);
-	bind(self.w_comments, "<KeyRelease>", "commentChanged");
+	tags = bindtags(self.w_comments);
+	tags[END+1] = "Comments";
+	bindtags(self.w_comments, tags);
+	bind("Comments", "<KeyRelease>", "commentChanged");
 	Text_tag(self.w_comments, "configure", "message",
 	    background: gc("ci.noticeColor"));
 	Text_tag(self.w_comments, "configure", "warning",
@@ -640,6 +717,7 @@ gui()
 	addButton("cut", "Cut", "cutComments");
 	addButton("paste", "Paste", "pasteComments");
 	configureButton("paste", state: "disabled");
+	addButton("rescan", "Rescan", "rescan");
 	addButton("checkin", "Checkin", "doCommit");
 	menubutton("${self.w_buttons}.edit",
 	    background: gc("ci.buttonColor"), highlightthickness: 1,
@@ -709,6 +787,7 @@ gui()
 	bind("BK", "<Control-Return>", "doCommit; break");
 
 	bk_initGui();
+	updateButtons();
 	update();
 }
 
@@ -721,13 +800,22 @@ selectFile(string node)
 	filename = file;
 	self.commitSwitch = 0;
 	self.doDiscard = 0;
+	ListBox_selectionClear(self.w_files);
 	if (node =~ /pending/) {
 		togglePending(node);
 	} else {
+		sfile	sf = self.files{file};
+
+		self.comments = getComments(sf);
+		self.commented = 0;
+		if ((self.comments ne "")
+		    && !isTemplateComment(sf, self.comments)) {
+			self.commented = 1;
+		}
 		Tree_selectionSet(self.w_files, node);
 		Tree_see(self.w_files, node);
 		updateButtons();
-		showFile(self.files{file});
+		showFile(sf);
 	}
 }
 
@@ -747,27 +835,27 @@ commentChanged()
 {
 	int	modified = 0;
 	sfile	sf = getSelectedFile();
-	string	comments = getCurrentComments();
+	string	comments;
 
 	After_cancel(self.afterId);
 	unless (defined(sf)) return;
 	if (self.commitSwitch) return;
 	if (sf.type eq "pending") return;
-	self.changed = 1;
-	if ((comments eq "") && (isUserComment(sf, sf.comments))) {
+
+	comments = getCurrentComments();
+	if ((comments eq "") && self.commented) {
 		modified = 1;
-		self.files{sf.name}.comments = comments;
-		updateCommentCount(sf, -1);
+		self.commented = 0;
 		deleteCommentFile(sf.file);
-		redrawFile(sf.node);
-	} else if ((comments ne "") && (!isUserComment(sf, sf.comments))) {
+	} else if ((comments ne "") && !self.commented) {
 		modified = 1;
-		self.files{sf.name}.comments = comments;
-		updateCommentCount(sf, 1);
-		redrawFile(sf.node);
+		self.commented = 1;
 	}
 
-	if (modified) configureCsetNodes();
+	if (modified) {
+		redrawFile(sf.node);
+		configureCsetNodes();
+	}
 }
 
 void
@@ -875,20 +963,13 @@ toggleFile(string node)
 	cset = getCsetFile(sf.component);
 	if (cset.excluded) return;
 
-	if ((sf.type eq "new") && (sf.comments eq "")) {
+	if ((sf.type eq "new") && (getComments(sf) eq "")) {
 		writeComments(sf, "New BitKeeper file ``${sf.name}''");
-		updateCommentCount(sf, 1);
 	} else {
-		if (sf.excluded) {
-			self.files{file}.excluded = 0;
-			--self.cnt_excluded;
-		} else {
-			self.files{file}.excluded = 1;
-			++self.cnt_excluded;
-		}
+		self.files{file}.excluded = !sf.excluded;
 	}
 
-	redrawFile(node);
+	redrawFile(node); // this will call configureFile to update the counts.
 	if (node eq getSelectedNode()) {
 		Tree_selectionClear(self.w_files);
 		selectFile(node);
@@ -983,6 +1064,7 @@ updateButtons()
 		configureButton("discard", state: "disabled");
 	}
 
+	configureButton("rescan", text: "Rescan");
 	configureButton("checkin", text: "Checkin");
 	configureButton("history", text: "History", command: "launchRevtool");
 	if (defined(sf)) {
@@ -1000,8 +1082,7 @@ updateButtons()
 			    command: "unignoreFile");
 		}
 		cset = self.files{"ChangeSet"};
-		if (self.cnt_commented &&
-		    (isUserComment(cset, cset.comments))) {
+		if (self.cnt_commented && isCommented(cset)) {
 			configureButton("checkin", text: "Commit");
 		} else if (sf.type eq "pending") {
 			configureButton("checkin", state: "disabled");
@@ -1010,6 +1091,7 @@ updateButtons()
 		configureButton("cut", state: "disabled");
 		configureButton("edit", state: "disabled");
 		configureButton("paste", state: "disabled");
+		configureButton("rescan", state: "disabled");
 		configureButton("checkin", state: "disabled");
 		configureButton("history", state: "disabled");
 		configureButton("difftool", state: "disabled");
@@ -1017,8 +1099,8 @@ updateButtons()
 	}
 
 	if (self.sfiles_scanning) {
-		configureButton("checkin", text: "Scanning",
-		    state: "disabled");
+		configureButton("checkin", state: "disabled");
+		configureButton("rescan", text: "Scanning", state: "disabled");
 	}
 }
 
@@ -1034,34 +1116,34 @@ updateStatus()
 {
 	string	status;
 
-	if (self.sfiles_component ne "") {
+	unless (self.sfiles_component eq "") {
 		string	comp;
 
 		comp = getRelativePath(self.sfiles_component, self.root);
-		status = "Scanning ${comp}...";
-	} else {
-		append(&status, "${self.cnt_newC}/${self.cnt_new} "
-		    "new files selected, ");
-		append(&status, "${self.cnt_modifiedC}/${self.cnt_modified} "
-		    "modified files selected");
-		if (self.cnt_excluded) {
-			append(&status, ", ${self.cnt_excluded} excluded");
-		}
+		setStatus("Scanning ${comp}...");
+		return;
+	}
+
+	append(&status, "${self.cnt_newC}/${self.cnt_new} "
+	    "new files selected, ");
+	append(&status, "${self.cnt_modifiedC}/${self.cnt_modified} "
+	    "modified files selected");
+	if (self.cnt_excluded) {
+		append(&status, ", ${self.cnt_excluded} excluded");
 	}
 	setStatus(status);
 }
 
 int
-isUserComment(sfile sf, string comments)
+isProductCsetComment(sfile sf, string comment)
 {
-	if (comments eq "") return (0);
-	if (sf.type eq "pending") return (0);
-	if (sf.type eq "cset" && !sf.inProduct) {
-		sfile	cset = self.files{"ChangeSet"};
-		if (comments eq cset.comments) return (0);
+	if (comment eq "") return (0);
+	if (!sf.inProduct && (sf.type eq "cset")) {
+		sfile   cset = self.files{"ChangeSet"};
+		return (comment eq getComments(cset));
 	}
-	return (!isTemplateComment(sf, comments));
-}
+	return (0);                                           
+}                                                             
 
 int
 isTemplateComment(sfile sf, string comment)
@@ -1094,57 +1176,32 @@ writeComments(sfile sf, string comments)
 {
 	FILE	fd;
 
-	if (isUserComment(sf, comments)) {
-		self.files{sf.name}.comments = comments;
-		fd = popen("bk cfile save \"${sf.file}\"", "w");
-		puts(fd, comments);
-		fclose(fd);
-	}
-}
-
-void
-updateCommentCount(sfile sf, int n)
-{
-	if (sf.type eq "new") {
-		self.cnt_newC += n;
-	} else if (sf.type eq "pending") {
-		self.cnt_pendingC += n;
-	} else if (sf.type eq "modified") {
-		self.cnt_modifiedC += n;
-	} else {
-		return;
-	}
-	self.cnt_commented += n;
-	updateStatus();
+	self.changed = 1;
+	fd = popen("bk cfile save \"${sf.file}\"", "w");
+	puts(fd, comments);
+	fclose(fd);
 }
 
 void
 saveComments()
 {
-	string	key, msg;
-	string	comments;
+	string	key, msg, comments;
 	sfile	sf = getSelectedFile();
 
 	unless (defined(sf)) return;
 	if (Text_cget(self.w_comments, state:) ne "normal") return;
+
 	comments = getCurrentComments();
-	if (comments eq "") {
-		if (isUserComment(sf, sf.comments)) {
-			updateCommentCount(sf, -1);
-		}
-		self.files{sf.name}.comments = comments;
+	if (comments eq ""
+	    || isTemplateComment(sf, comments)
+	    || isProductCsetComment(sf, comments)) {
 		deleteCommentFile(sf.file);
 	} else {
 		foreach (key => msg in msgs) {
 			if (comments eq msg) return;
 		}
-		if (isUserComment(sf, comments)) {
-			unless (isUserComment(sf, sf.comments)) {
-				updateCommentCount(sf, 1);
-			}
+		if (comments ne self.comments) {
 			writeComments(sf, comments);
-		} else {
-			deleteCommentFile(sf.file);
 		}
 	}
 	redrawFile(sf.node);
@@ -1286,30 +1343,50 @@ createImages()
 string
 getComments(sfile sf)
 {
-	string	comments = sf.comments;
+	string	comments;
 
-	if ((comments eq "")) {
+	if (sf.type eq "pending") {
+		FILE	fd;
+		string	line;
+
+		fd = popen("bk prs -hd:COMMENTS: -r${sf.rev} \"${sf.file}\"",
+		    "r");
+		while (defined(line = fgetline(fd))) {
+			append(&comments, line[2..END], "\n");
+		}
+		fclose(fd);
+		return (comments);
+	}
+
+	if (sf.node eq getSelectedNode()) {
+		comments = getCurrentComments();
+	} else {
+		comments = bk("cfile print \"${sf.file}\"");
+	}
+
+	if (comments eq "") {
 		if (defined(self.templates{sf.name})) {
 			comments = self.templates{sf.name};
 		}
+
 		if ((sf.type eq "cset") && !sf.inProduct
 		    && componentHasComments(sf.component)) {
-			comments = self.files{"ChangeSet"}.comments;
+			comments = getComments(self.files{"ChangeSet"});
 		}
 	}
 	return (comments);
 }
 
-string
-getCommentsFromFile(sfile sf)
+int
+isCommented(sfile sf)
 {
-	string	comments = sf.comments;
+	string	comments;
 
-	unless (sf.type eq "pending") {
-		comments = bk("cfile print \"${sf.file}\"");
-	}
-	if ((comments eq "")) comments = getComments(sf);
-	return (comments);
+	if (sf.type eq "pending") return (1);
+	comments = getComments(sf);
+	if (sf.node eq getSelectedNode()) comments = getCurrentComments();
+	if ((comments ne "") && !isTemplateComment(sf, comments)) return (1);
+	return (0);
 }
 
 void
@@ -1389,8 +1466,7 @@ showCsetContents(sfile sf)
 
 	comments = getComments(sf);
 	Text_configure(textBox, state: "normal");
-	if ((comments ne "") && !isUserComment(sf, comments)
-	    && !isTemplateComment(sf, comments)) {
+	if (isProductCsetComment(sf, comments)) {
 		// If this is a cset comment inherited from the
 		// product, select the whole thing within the
 		// comment window.
@@ -1435,11 +1511,12 @@ showCsetContents(sfile sf)
 			s = self.files{file};
 			if (s.excluded) continue;
 			if (s.type eq "cset") continue;
-			if (s.comments eq "") continue;
+			comments = getComments(s);
+			if (comments eq "") continue;
 			Text_insert(textBox, "end", sp1);
 			Text_insert(textBox, "end", s.name);
 			Text_insert(textBox, "end", "\n");
-			lines = split(s.comments, "\n");
+			lines = split(comments, "\n");
 			foreach (line in lines) {
 				Text_insert(textBox, "end", sp2);
 				Text_insert(textBox, "end", line);
@@ -1461,7 +1538,7 @@ showFile(sfile sf)
 
 	// Insert comments into the comment box.
 	enableComments();
-	comments = getComments(sf);
+	comments = self.comments;
 	insertTopText(comments, 1);
 	Text_configure(self.w_diffs, state: "normal");
 	Text_delete(self.w_diffs, 1.0, "end");
@@ -1554,8 +1631,7 @@ pasteComments()
 		unless (Tree_exists(self.w_files, node)) return;
 		file = Listbox_itemcget(self.w_files, node, data:);
 		sf = self.files{file};
-		if (sf.type eq "pending"
-		    || isUserComment(sf, sf.comments)) continue;
+		if (isCommented(sf)) continue;
 		break;
 	}
 	selectFile(node);
@@ -1622,10 +1698,10 @@ doCommit()
 		// We're running from the resolver.  We want to make sure
 		// all non-extra files have been commented and that the
 		// changeset has a comment.
-		if ((self.cnt_commented < self.cnt_total)) {
+		if (self.cnt_commented < self.cnt_total) {
 			bottomMessage(msgs{"resolveAllComments"}, "warning");
 			return;
-		} else if (!isUserComment(cset, cset.comments)) {
+		} else if (!isCommented(cset)) {
 			topMessage(msgs{"resolveCset"}, "message");
 			return;
 		}
@@ -1633,7 +1709,7 @@ doCommit()
 
 	unless (self.commitSwitch) {
 		self.commitSwitch = 1;
-		if (isUserComment(cset, cset.comments)) {
+		if (isCommented(cset)) {
 			topMessage(msgs{"gotCset"}, "message");
 		} else {
 			topMessage(msgs{"noCset"}, "message");
@@ -1642,6 +1718,7 @@ doCommit()
 	}
 
 	self.committing = 1;
+	ListBox_selectionClear(self.w_files);
 	ListBox_configure(self.w_files, state: "disabled");
 	disableComments();
 	updateButtons();
@@ -1672,12 +1749,21 @@ void
 commitComponent(string comp)
 {
 	sfile	sf, cset;
+	int	csetCommented;
 	string	file, comments;
 	string	ignore[], checkin[], commit[];
 
 	if (comp eq self.root) commit = self.cset_commit;
 
 	chdir(comp);
+
+	// Check the cset settings now before we do the checkin
+	// because the checkin will delete the c.files and make
+	// it appear as though files aren't commented.
+	cset = getCsetFile(comp);
+	comments = getComments(cset);
+	csetCommented = isCommented(cset);
+
 	foreach (file in self.components{comp}) {
 		sf = self.files{file};
 		if (sf.ignored) {
@@ -1686,7 +1772,7 @@ commitComponent(string comp)
 		}
 		if (sf.excluded) continue;
 		if (sf.type eq "cset") continue;
-		if (isUserComment(sf, sf.comments) || (sf.type eq "pending")) {
+		if (isCommented(sf)) {
 			commit[END+1] = sf.file;
 			if (sf.type ne "pending") checkin[END+1] = sf.file;
 		}
@@ -1731,10 +1817,7 @@ commitComponent(string comp)
 		}
 	}
 
-	cset = getCsetFile(comp);
-	comments = getComments(cset);
-	if ((comments ne "") && !isTemplateComment(cset, comments)
-	    && (length(commit) || cset.inProduct)) {
+	if (csetCommented && (length(commit) || cset.inProduct)) {
 		FILE	fd;
 		string	err;
 		string	line;
@@ -1892,52 +1975,6 @@ unignoreFile()
 }
 
 void
-removeFile(sfile sf)
-{
-	int	i = 0;
-	string	file, component;
-	sfile	sel = getSelectedFile();
-
-	component = sf.component;
-	if (sf.type eq "new") {
-		unlink(sf.file);
-	} else {
-		exec("bk", "unedit", sf.file);
-	}
-
-	--self.cnt_total;
-	if (sf.type eq "new") {
-		--self.cnt_new;
-	} else if (sf.type eq "modified") {
-		--self.cnt_modified;
-	}
-	if (isUserComment(sf, sf.comments)) updateCommentCount(sf, -1);
-	if (sf.file eq sel.file) {
-		moveNext();
-		updateStatus();
-	}
-	deleteCommentFile(sf.file);
-	foreach (file in self.components{component}) {
-		if (file eq sf.name) {
-			undef(self.components{component}[i]);
-			break;
-		}
-		++i;
-	}
-
-	ListBox_delete(self.w_files, sf.node);
-
-	undef(self.files{sf.name});
-	if (!sf.inProduct && length(self.components{component}) <= 1) {
-		sfile	cset = getCsetFile(component);
-
-		undef(self.components{component});
-		ListBox_delete(self.w_files, cset.node);
-		moveNext();
-	}
-}
-
-void
 discardChanges()
 {
 	sfile	sf = getSelectedFile();
@@ -1986,9 +2023,11 @@ rescan()
 
 	init();
 	self.files = undef;
-	foreach (comp in self.components) {
-		self.components{comp} = undef;
-		self.pendingNodes{comp} = undef;
+	self.components = undef;
+	self.pendingNodes = undef;
+	foreach (comp in self.allComponents) {
+		// self.components{comp} = undef;
+		// self.pendingNodes{comp} = undef;
 		chdir(comp);
 		self.nfiles += (int)`bk nfiles`;
 	}
@@ -2238,6 +2277,8 @@ init()
 {
 	self.nfiles = 0;
 	self.changed = 0;
+	self.commented = 0;
+	self.last_update = 0;
 	self.sfiles_last = 0;
 	self.sfiles_done = 0;
 	self.sfiles_found = 0;
@@ -2251,8 +2292,6 @@ init()
 	self.cnt_newC = 0;
 	self.cnt_total = 0;
 	self.cnt_excluded = 0;
-	self.cnt_pending = 0;
-	self.cnt_pendingC = 0;
 	self.cnt_modified = 0;
 	self.cnt_modifiedC = 0;
 	self.cnt_commented = 0;
@@ -2316,11 +2355,11 @@ main(_unused int argc, string argv[])
 		while (defined(arg = fgetline(f))) {
 			if (arg eq ".") continue;
 			arg = joinpath(self.root, arg);
-			self.components{arg} = undef;
+			self.allComponents[END+1] = arg;
 		}
 		pclose(f);
 	}
-	self.components{self.root} = undef;
+	self.allComponents[END+1] = self.root;
 
 	if (isdir(self.root)) chdir(self.root);
 

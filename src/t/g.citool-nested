@@ -40,6 +40,103 @@ cd "$HERE/project"
 bk commit $Q -y'commit components' || exit 1
 echo OK
 
+echo $N committing a single component ...............................$NL
+bk edit $Q gcc/file1
+echo "foo" >> gcc/file1
+OLD=`bk -R prs -hd:REV: -r+ ChangeSet`
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "gcc/file1"
+	test_inputComment "gcc/file1 comment"
+	test_selectFile "ChangeSet"
+	test_inputComment "ChangeSet comment"
+	test_buttonPress "Commit"
+	test_buttonPress "Commit"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+NEW=`bk -R prs -hd:REV: -r+ ChangeSet`
+test "$NEW" = "$OLD" && {
+	echo failed
+	echo "No ChangeSet created"
+	exit 1
+}
+CMTS=`bk -R prs -hd:C: -r+ ChangeSet`
+test "$CMTS" = "ChangeSet comment" || {
+	echo failed
+	echo "unexpected comments: $CMTS"
+	exit 1
+}
+echo OK
+
+echo $N committing a component and product ..........................$NL
+bk edit $Q file1
+echo "foo" >> file1
+bk edit $Q gcc/file1
+echo "foo" >> gcc/file1
+OLD=`bk -R prs -hd:REV: -r+ ChangeSet`
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "file1"
+	test_inputComment "file1 comment"
+
+	test_selectFile "gcc/file1"
+	test_inputComment "gcc/file1 comment"
+
+	test_selectFile "ChangeSet"
+	test_inputComment "ChangeSet comment"
+
+	test_buttonPress "Commit"
+	test_buttonPress "Commit"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+NEW=`bk -R prs -hd:REV: -r+ ChangeSet`
+test "$NEW" = "$OLD" && {
+	echo failed
+	echo "No ChangeSet created"
+	exit 1
+}
+CMTS=`bk -R prs -hd:C: -r+ ChangeSet`
+test "$CMTS" = "ChangeSet comment" || {
+	echo failed
+	echo "unexpected comments: $CMTS"
+	exit 1
+}
+echo OK
+
+echo $N committing some pending deltas ..............................$NL
+bk edit $Q file1
+echo "foo" >> file1
+bk ci $Q -y'comment' file1
+bk edit $Q gcc/file1
+echo "foo" >> gcc/file1
+bk ci $Q -y'comment' gcc/file1
+OLD=`bk -R prs -hd:REV: -r+ ChangeSet`
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "ChangeSet"
+	test_inputComment "ChangeSet comment"
+
+	test_buttonPress "Commit"
+	test_buttonPress "Commit"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+NEW=`bk -R prs -hd:REV: -r+ ChangeSet`
+test "$NEW" = "$OLD" && {
+	echo failed
+	echo "No ChangeSet created"
+	exit 1
+}
+CMTS=`bk -R prs -hd:C: -r+ ChangeSet`
+test "$CMTS" = "ChangeSet comment" || {
+	echo failed
+	echo "unexpected comments: $CMTS"
+	exit 1
+}
+echo OK
+
 echo $N change in product but no components shows up ................$NL
 bk edit $Q file1
 echo "# gratuitous change" >> file1

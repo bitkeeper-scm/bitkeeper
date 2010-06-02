@@ -83,8 +83,6 @@ echo $N Diff window should show cset comments in product cset .......$NL
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_selectFile "file1"
 	test_inputComment "comment for file1"
-	test_selectFile "gcc/file1"
-	test_inputComment "comment for gcc/file1"
 	test_selectFile "ChangeSet"
 	set diffs [test_getDiffs]
 
@@ -103,6 +101,8 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 		exit 1
 	}
 
+	test_selectFile "gcc/file1"
+	test_inputComment "comment for gcc/file1"
 	test_selectFile "gcc ChangeSet"
 	test_inputComment "comment for gcc ChangeSet"
 	test_selectFile "ChangeSet"
@@ -115,10 +115,16 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 		exit 1
 	}
 
-	## Product cset should now show comments for any files that
+	## Product cset should show comments for any files that
 	## are in a component with a commented cset.
 	if {![string match "*gcc/file1*" $diffs]} {
 		puts "diff window does not contain commented file in component"
+		exit 1
+	}
+
+	## Product cset should show comments for a component cset
+	if {![string match "*comment for gcc ChangeSet*" $diffs]} {
+		puts "diff window does not contain commented component cset"
 		exit 1
 	}
 
@@ -154,42 +160,6 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	## Once for the product and once for the component that inherited it.
 	if {![string match "*comment for cset*comment for cset*" $diffs]} {
 		puts "product cset does not contain comments for both"
-		exit 1
-	}
-
-	test_buttonPress "Quit" then "Quit without*"
-EOF
-err=$?
-test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
-test $err -ne 0 && { echo "failed (exit $err)" ; exit 1 ; }
-echo OK
-
-echo $N Test product cset comment refresh ...........................$NL
-bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	test_selectFile "file1"
-	test_inputComment "comment for file1"
-	test_selectFile "gcc/file1"
-	test_inputComment "comment for gcc/file1"
-	test_selectFile "ChangeSet"
-	set diffs [test_getDiffs]
-
-	## Product cset should have no components showing because
-	## none have been commented yet.
-	if {[string match "*comment for gcc/file1*" $diffs]} {
-		puts "diff window does contains comments for gcc/file1"
-		exit 1
-	}
-
-	## Add a product comment and wait 2 seconds for the refresh.
-	test_inputComment "comment for cset"
-	after 2000 "set ::wait 1"
-	vwait ::wait
-
-	set diffs [test_getDiffs]
-	## Product cset should now show component and product having
-	## the same comment after the refresh.
-	if {![string match "*comment for cset*comment for cset*" $diffs]} {
-		puts "diff window does not contain comments after refresh"
 		exit 1
 	}
 
