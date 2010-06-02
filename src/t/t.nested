@@ -922,7 +922,9 @@ grep -q 'P gcc4/ChangeSet' PATCH && {
 }
 echo OK
 
-cd "$HERE"
+cd "$HERE"/project
+bk portal -r $Q || fail
+cd ..
 tar cf TAR project
 cd project
 
@@ -1352,6 +1354,7 @@ echo $N Test prefix in the iterator with rev ........................$NL
 cd ..
 bk clone $Q gcc liberty
 cd project
+bk portal $Q . || fail
 REV=`bk changes -r+ -d:REV:`
 bk attach $Q ../liberty liberty
 bk -qA -M"|$REV" prefixed_sfiles -h > GOT

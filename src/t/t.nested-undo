@@ -28,6 +28,16 @@ grep -q "can.t remove committed delta ChangeSet@1.3" ERR || {
 }
 echo OK
 
+echo $N Demonstrate that undo is not allowed in a portal ............$NL
+bk portal $Q || fail
+bk -P undo $Q -fsr+ 2>ERR && fail -f ERR should have failed
+cat <<EOF > WANT
+undo: not allowed in a portal.
+EOF
+cmpfiles ERR WANT
+bk portal $Q -r || fail
+echo OK
+
 echo $N Test product undo of a committed component cset .............$NL
 test `bk changes -r+ -nd:REV:` = 1.3 || exit 1
 bk -P undo $Q -fsr+ || exit 1
@@ -51,8 +61,10 @@ echo OK
 
 echo $N Test undo after adding a new component ......................$NL
 touch c
+bk portal $Q . || fail
 bk alias -k here > OLDHERE
 bk setup -fcc comp1 || exit 1
+bk portal $Q -r || fail
 bk undo $Q -fsr+ || exit 1
 test -d comp1 && {
 	echo should have delted comp1

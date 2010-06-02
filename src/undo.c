@@ -172,6 +172,10 @@ err:		if (undo_list[0]) unlink(undo_list);
 		if (trigger("undo", "pre")) goto err;
 	}
 	if (proj_isProduct(0)) {
+		if (nested_isPortal(0)) {
+			fprintf(stderr, "undo: not allowed in a portal.\n");
+			goto err;
+		}
 		unless (n = nested_init(0, 0, csetrevs, NESTED_MARKPENDING)) {
 			fprintf(stderr, "undo: ensemble failed.\n");
 			goto err;

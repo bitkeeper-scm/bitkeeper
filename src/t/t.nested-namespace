@@ -109,9 +109,9 @@ echo OK
 
 echo $N attach/attach conflict w/pending component...................$NL
 cd "$HERE/project"
-bk portal $Q . || fail
 # cleanup block
 bk undo -qsfr+
+bk portal $Q . || fail
 # turn it into a component
 bk setup -Cf block || fail
 bk sfiles -pC | grep -q block || fail

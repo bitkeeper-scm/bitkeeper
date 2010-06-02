@@ -363,6 +363,7 @@ echo OK
 
 echo $N Triggers during undo of product-only cset ...................$NL
 cd "$HERE/source"
+bk portal -r $Q || fail
 echo new >undo
 bk new $Q undo || exit 1
 bk commit $Q -y'add undo' || exit 2
