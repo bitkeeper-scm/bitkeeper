@@ -125,6 +125,14 @@ clone_main(int ac, char **av)
 		    "%s: SCCS-mode can't be overriden in a component\n", prog);
 		exit(CLONE_ERROR);
 	}
+	if (opts->attach) {
+		if (bam_url) {
+			fprintf(stderr, "%s: -Bnone is implied by attach\n",
+			    prog);
+			return (CLONE_ERROR);
+		}
+		bam_url = "none";
+	}
 	if (opts->link && bam_url) {
 		fprintf(stderr,
 		    "clone: -l and -B are not supported together.\n");
@@ -167,7 +175,7 @@ clone_main(int ac, char **av)
 		/*
 		 * Go prompt with the remotes license, it makes cleanup nicer.
 		 */
-		getcwd(here, sizeof(here));
+		strcpy(here, proj_cwd());
 		assert(r->path);
 		chdir(r->path);
 		unless (eula_accept(EULA_PROMPT, 0)) {
@@ -1256,7 +1264,7 @@ relink_main(int ac, char **av)
 			fprintf(stderr, "relink: cannot find package root.\n");
 			exit(1);
 		}
-		getcwd(here, MAXPATH);
+		strcpy(here, proj_cwd());
 		unless (parents = parent_allp()) {
 perr:			fprintf(stderr,
 			    "relink: unable to find package parent[s].\n");
@@ -1278,7 +1286,7 @@ perr:			fprintf(stderr,
 		return (errs);
 	}
 	unless (ac >= 3) usage();
-	getcwd(here, MAXPATH);
+	strcpy(here, proj_cwd());
 	for (i = 1; av[i] != to; ++i) {
 		if (streq(av[i], to)) continue;
 		errs |= do_relink(av[i], to, quiet, here);
@@ -1311,7 +1319,7 @@ do_relink(char *from, char *to, int quiet, char *here)
 		fprintf(stderr, "relink: unable to write lock %s\n", from);
 		return (8);
 	}
-	getcwd(frompath, MAXPATH);
+	strcpy(frompath, proj_cwd());
 	f = popen("bk sfiles -N", "r");
 	chdir(here);
 	unless (chdir(to) == 0) {
@@ -1448,6 +1456,23 @@ attach(void)
 		     opts->quiet ? "-q":"",
 		     opts->verbose ? "-v":"",
 		     relpath);
+
+	/* move BAM data out of repo to product */
+	proj_reset(0);		/* because of the newroot */
+	tmp = bp_dataroot(0, 0);
+	if (!rc && (isdir(tmp))) {
+		concat_path(buf, proj_root(proj_product(0)), "BitKeeper/BAM");
+		concat_path(buf, buf, basenm(tmp));
+		if (rc = rename(tmp, buf)) {
+			mkdirf(buf);
+			if (rc = rename(tmp, buf)) {
+				fprintf(stderr, "attach: BAM move failed\n");
+			}
+		}
+		unless (rc) rmdir("BitKeeper/BAM");
+	}
+	free(tmp);
+
 	rc = rc || systemf("bk admin -D -C'%s' ChangeSet",
 			   proj_rootkey(proj_product(0)));
 	if (rc) {

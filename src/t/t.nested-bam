@@ -27,8 +27,23 @@ cd ..
 bk clone $Q server clone2 || exit 1
 echo OK
 
+echo $N Show that BAM clean works in a component ....................$NL
+cd clone2/gdb
+bk bam server -rq || fail
+echo foo > foo
+bk new $Q -b foo || fail
+FILE1=`bk prs -r+ -hnd:BAMFILE: foo`
+FILE2=`bk prs -r+ -hnd:BAMFILE: data`
+bk stripdel $Q -r.. foo || fail
+test -f ../$FILE1 -a -f ../$FILE2 || fail
+bk bam clean $Q || fail
+test ! -f ../$FILE1 || fail
+test -f ../$FILE2 || fail
+echo OK
+
+
 echo $N Create some binary data and check BAM .......................$NL
-cd clone
+cd "$HERE"/clone
 bk pull $Q || exit 1
 test -d BitKeeper/BAM && {
 	echo should not have bam dir

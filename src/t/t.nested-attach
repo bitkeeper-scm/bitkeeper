@@ -11,15 +11,28 @@
 
 echo $N Setup .......................................................$NL
 cd "$HERE"
+commercial bam_server
+cd ..
 commercial standalone1
+bk bam server $Q ../bam_server
+echo bam > bam
+bk new $Q -b bam
 echo file1 >file1
 bk new -q file1 || exit 1
 bk commit -q -y'add file1' || exit 1
+bk bam push $Q || fail
+bk bam clean -a $Q || fail
 cd "$HERE"
 commercial standalone2
 cd "$HERE"
 nested nested1
+# test attach where product has no BAM dir initially
+test -d BitKeeper/BAM && fail product BAM directory there
 bk attach -q "$HERE/standalone1" component1 || exit 1
+bk -qAr check -ac || fail
+test -d component1/BitKeeper/BAM && fail BAM directory still there
+cd component1
+bk bam check $Q || fail
 cd "$HERE"
 nested nested2
 cd "$HERE"
@@ -235,11 +248,18 @@ echo OK
 
 echo $N Basic attach functionality ..................................$NL
 cd "$HERE/nested2"
+echo bam > bam
+bk new $Q -b bam
+test -d BitKeeper/BAM || fail product BAM directory not there
+bk commit $Q -ybam
+# test attach where product has BAM dir initially
 bk attach -q "$HERE/standalone1" component1 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
 }
+bk -qAr check -ac || fail
+test -d component1/BitKeeper/BAM && fail BAM directory still there
 bk comps | grep -q component1 || exit 1
 cd component1 || exit 1
 bk cat file1 >GOT || exit 1

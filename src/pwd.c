@@ -119,7 +119,7 @@ realpath_main(int ac, char **av)
 	if (av[1]) {
 		strcpy(buf, av[1]);
 	} else {
-		getcwd(buf, sizeof(buf));
+		strcpy(buf, proj_cwd());
 	}
 	getRealName(buf, NULL, real);
 	printf("%s => %s\n", buf, real);

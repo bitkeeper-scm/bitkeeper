@@ -94,10 +94,7 @@ setup_main(int ac, char **av)
 		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
 	}
-	unless (getcwd(here, sizeof here)) {
-		perror("getcwd");
-		exit(1);
-	}
+	strcpy(here, proj_cwd());
 	if (mkdirp(package_path)) {
 		perror(package_path);
 		exit(1);

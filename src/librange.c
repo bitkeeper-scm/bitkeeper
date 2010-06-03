@@ -199,7 +199,7 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	delta	*d, *r1, *r2;
 	char	**revs = 0, **dlist = 0;
 	int	i, restore = 0, rc = 1;
-	RANGE	save;
+	RANGE	save = {0};
 
 	rangeReset(s);
 

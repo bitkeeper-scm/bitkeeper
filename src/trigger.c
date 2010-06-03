@@ -453,7 +453,7 @@ trigger_env(char *prefix, char *event, char *what)
 			assert(buf[0]);
 			chomp(buf);
 			chdir(RESYNC2ROOT);
-			getcwd(pwd, sizeof(pwd));
+			strcpy(pwd, proj_cwd());
 			chdir(ROOT2RESYNC);
 			p = aprintf("%s/%s", pwd, buf);
 			trigger_putenv("BK", "PATCH", p);

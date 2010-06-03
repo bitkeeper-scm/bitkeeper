@@ -31,10 +31,10 @@ unsafe_cd(char *path)
 	char	a[MAXPATH];
 	char	b[MAXPATH];
 
-	getcwd(a, MAXPATH);
+	strcpy(a, proj_cwd());
 	if (chdir(path)) return (1);
 	unless (Opts.safe_cd || ((p = getenv("BKD_DAEMON")) && *p)) return (0);
-	getcwd(b, MAXPATH);
+	strcpy(b, proj_cwd());
 	unless ((strlen(b) >= strlen(a)) && pathneq(a, b, strlen(a))) {
 		send_cderror(path);
 		return (1);

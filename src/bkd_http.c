@@ -502,8 +502,7 @@ pwd_title(char *t, char *color)
 {
 	char	pwd[MAXPATH];
 
-	pwd[0] = 0;
-	getcwd(pwd, sizeof(pwd));
+	strcpy(pwd, proj_cwd());
 	http_title(t, pwd, color);
 }
 
@@ -1170,7 +1169,7 @@ http_index(char *page)
 	if (desc && strlen(desc) < MAXPATH) {
 		sprintf(buf, "%s<br>", desc);
 	} else {
-		getcwd(buf, sizeof buf);
+		strcpy(buf, proj_cwd());
 		strcat(buf, "<br>");
 	}
 	if (category && strlen(category) < MAXPATH) {

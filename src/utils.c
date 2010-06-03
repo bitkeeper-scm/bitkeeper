@@ -808,7 +808,7 @@ putroot(char *where)
 		if (streq(root, ".")) {
 			char	pwd[MAXPATH];
 
-			getcwd(pwd, MAXPATH);
+			strcpy(pwd, proj_cwd());
 			safe_putenv("%s_ROOT=%s", where, pwd);
 		} else {
 			safe_putenv("%s_ROOT=%s", where, root);
@@ -1108,7 +1108,7 @@ sendServerInfo(int no_repo)
 		}
 	}
 	out("ROOT=");
-	getcwd(buf, sizeof(buf));
+	strcpy(buf, proj_cwd());
 	out(buf);
 	out("\nUSER=");
 	out(sccs_getuser());
@@ -1646,7 +1646,7 @@ again:
 	assert(!opts || (strlen(opts) < sizeof(buf)));
 	unless (opts && *opts) opts = "--";
 	if (verbose) {
-		getcwd(pwd, sizeof(pwd));
+		strcpy(pwd, proj_cwd());
 		fprintf(stderr, "Running consistency check in %s ...\n", pwd);
 	}
 	if (!flist || full_check()) {

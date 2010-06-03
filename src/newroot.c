@@ -82,6 +82,18 @@ newroot(char *ranbits, int quiet, int verbose, int product, char *comments)
 	}
 
 	oldbamdir = bp_dataroot(0, 0);
+	if (bp_hasBAM()) {
+		/*
+		 * If we change the repository rootkey will be invaliding
+		 * bam data on any remote BAM server.  So all BAM data needs
+		 * to be made local.
+		 */
+		if (system("bk bam server -rq")) {
+			fprintf(stderr, "%s: failed to make BAM data local\n",
+			    prog);
+			return (1);
+		}
+	}
 
 	/* create initial ROOTLOG, if needed. */
 	EACH (s->text) {

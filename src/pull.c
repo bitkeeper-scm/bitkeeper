@@ -1039,7 +1039,7 @@ resolve_comments(remote *r)
 	char	*h = sccs_gethost();
 	char	buf[MAXPATH];
 
-	getcwd(buf, sizeof(buf));
+	strcpy(buf, proj_cwd());
 	if (r->host) {
 		u = remote_unparse(r);
 	} else {

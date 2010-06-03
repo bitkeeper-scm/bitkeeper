@@ -1129,6 +1129,7 @@ bam_clean_main(int ac, char **av)
 	char	*root;
 	char	*cmd;
 	int	check_server = 0, dryrun = 0, quiet = 0, verbose = 0;
+	project	*proj;
 	kvpair	kv;
 	char	buf[MAXLINE];
 
@@ -1188,7 +1189,7 @@ bam_clean_main(int ac, char **av)
 		ERROR((stderr, "failed to contact server\n"));
 		return (1);
 	}
-
+	proj = proj_init(proj_root(0)); /* save this repo */
 	chdir(root);
 	free(root);
 
@@ -1204,7 +1205,7 @@ bam_clean_main(int ac, char **av)
 	if (pclose(f)) assert(0); /* shouldn't happen */
 
 	/* walk all bp deltas */
-	db = proj_BAMindex(0, 0); /* ok if db==0 */
+	db = proj_BAMindex(proj, 0); /* ok if db==0 */
 	fnames = 0;
 	EACH_KV(db) {
 		/* keep keys we still need */
@@ -1228,10 +1229,10 @@ bam_clean_main(int ac, char **av)
 		fnames = addLine(fnames, strdup(kv.key.dptr));
 	}
 	unless (dryrun) {
-		if (fnames) db = proj_BAMindex(0, 1);
+		if (fnames) db = proj_BAMindex(proj, 1);
 		EACH(fnames) {
 			mdbm_delete_str(db, fnames[i]);
-			bp_logUpdate(0, fnames[i], 0);
+			bp_logUpdate(proj, fnames[i], 0);
 		}
 	}
 	freeLines(fnames, free);
@@ -1295,7 +1296,7 @@ bam_clean_main(int ac, char **av)
 			if (p1 = hash_fetchStr(renames, kv.val.dptr)) {
 				/* data will always fit */
 				strcpy(kv.val.dptr, p1);
-				bp_logUpdate(0, kv.key.dptr, p1);
+				bp_logUpdate(proj, kv.key.dptr, p1);
 			}
 		}
 
@@ -1310,6 +1311,7 @@ bam_clean_main(int ac, char **av)
 		freeLines(fnames, 0);
 		hash_free(renames);
 	}
+	proj_free(proj);
 	return (0);
 }
 

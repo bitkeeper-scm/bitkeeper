@@ -245,7 +245,7 @@ main(int volatile ac, char **av, char **env)
 		 * bk -Ar co => bk -r co
 		 * bk -N co => bk -r co
 		 */
-		if ((nested || all) && !proj_product(0)) {
+		if ((nested || all) && !proj_isEnsemble(0)) {
 			nested = all = 0;
 		}
 		if (nested) putenv("_BK_FIX_NESTED_PATH=YES");

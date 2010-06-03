@@ -104,7 +104,7 @@ cmd_rclone_part1(int ac, char **av)
 
 		fullname(path, new);
 		localName2bkName(new, new);
-		getcwd(cwd, sizeof(cwd));
+		strcpy(cwd, proj_cwd());
 		unless ((strlen(new) >= strlen(cwd)) &&
 		    pathneq(cwd, new, strlen(cwd))) {
 			out("ERROR-illegal cd command\n");
