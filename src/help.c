@@ -55,6 +55,7 @@ help_main(int ac,  char **av)
 		}
 		goto print;
 	}
+	upgrade_maybeNag(out);
 	for (i = optind; av[i]; i++) {
 		if (file) {
 			sprintf(buf,

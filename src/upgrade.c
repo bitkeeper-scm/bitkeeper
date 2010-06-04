@@ -368,3 +368,100 @@ out:
 	remote_free(r);
 	return (rc);
 }
+
+/*
+ * Tell the user about new versions of bk.
+ */
+void
+upgrade_maybeNag(char *out)
+{
+	FILE	*f;
+	char	*t, *key, *new_utc, *new_age, *bk_age;
+	int	same, i;
+	time_t	now = time(0);
+	char	*av[] = {
+		"bk", "prompt", "-io", 0, 0
+	};
+	int	ac = 3;	/* first 0 above */
+	char	new_vers[MAXLINE];
+	char	buf[MAXLINE];
+
+	/*
+	 * bk help may go through here twice, if we are in a GUI, skip
+	 * this the first time.
+	 */
+	if (out && getenv("BK_GUI")) return;
+
+	/*
+	 * Undocumented way to give customers to disable this
+	 * but use the noNAG bit in the leaseDB first
+	 */
+	if (getenv("BK_NEVER_NAG")) return;
+
+	/* a new bk is out */
+	concat_path(buf, getDotBk(), "latest-bkver");
+	unless (f = fopen(buf, "r")) return;
+	fnext(new_vers, f);
+	chomp(new_vers);
+	fclose(f);
+	if (new_utc = strchr(new_vers, ',')) *new_utc++ = 0;
+	if (getenv("_BK_ALWAYS_NAG")) goto donag;
+	if (strcmp(new_utc, bk_utc) <= 0) return;
+
+	/* wait for the new bk to be out for a while */
+	if (((now - sccs_date2time(bk_utc, 0)) > MONTH) &&
+	    ((now - sccs_date2time(new_utc, 0)) < MONTH)) {
+		return;
+	}
+
+	/* We can only nag once a month */
+	concat_path(buf, getDotBk(), "latest-bkver.nag");
+	if ((now - mtime(buf)) < MONTH) {
+		/* make sure we nagged for the same thing */
+		t = loadfile(buf, 0);
+		sprintf(buf, "%s,%s\n", bk_utc, new_utc);
+		same = streq(buf, t);
+		free(t);
+		if (same) return;
+	}
+
+	/* looks like we need to nag */
+
+	/* remember that we did */
+	concat_path(buf, getDotBk(), "latest-bkver.nag");
+	Fprintf(buf, "%s,%s\n", bk_utc, new_utc);
+
+	/* But don't do anything if noNAG is set */
+	if (key = lease_bkl(0, 0)) {	/* get a lease, but don't fail */
+		license_info(key, buf, 0);
+		free(key);
+
+		if (strstr(buf, "noNAG")) return;
+	}
+
+donag:	/* okay, nag */
+
+	/* age uses a staic buffer */
+	new_age = strdup(age(now - sccs_date2time(new_utc, 0), " "));
+	bk_age = strdup(age(now - sccs_date2time(bk_utc, 0), " "));
+	av[ac] = aprintf("BitKeeper %s (%s) is out, it was released %s ago.\n"
+	    "You are running version %s (%s) released %s ago.\n\n"
+	    "If you want to upgrade, please run bk upgrade.",
+	    new_vers, new_utc, new_age,
+	    bk_vers, bk_utc, bk_age);
+	if (out) {
+		if (f = fopen(out, "w")) {
+			fprintf(f, "%s\n", av[ac]);
+			for (i = 0; i < 79; ++i) fputc('=', f);
+			fputc('\n', f);
+			fclose(f);
+		}
+	} else {
+		putenv("BK_NEVER_NAG=1");
+		spawnvp(_P_DETACH, av[0], av);
+	}
+	free(av[ac]);
+	free(new_age);
+	free(bk_age);
+	return;
+}

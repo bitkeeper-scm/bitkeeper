@@ -1222,7 +1222,7 @@ int
 launch_wish(char *script, char **av)
 {
 	char	*path;
-	int	i, j, ac, ret;
+	int	i, j, ac, ret, wret;
 	pid_t	pid;
 	struct	{
 		char	*name;	/* -colormap */
@@ -1330,7 +1330,9 @@ launch_wish(char *script, char **av)
 	 */
 	FreeConsole();
 #endif
-	if (waitpid(pid, &ret, 0) < 0) {
+	wret = waitpid(pid, &ret, 0);
+	upgrade_maybeNag(0);
+	if (wret < 0) {
 		return (126);
 	} else if (!WIFEXITED(ret)) {
 		return (127);

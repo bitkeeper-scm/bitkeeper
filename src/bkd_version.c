@@ -114,7 +114,7 @@ bkversion(FILE *f)
 	}
 
 	if (test_release) {
-		exp = ((time_t)bk_build_timet - time(0)) / (24*3600.0) + 14;
+		exp = ((time_t)bk_build_timet - now) / (24*3600.0) + 14;
 		if (exp > 0) {
 			fprintf(f, "Expires in: %.1f days (test release).\n",
 			    exp);
