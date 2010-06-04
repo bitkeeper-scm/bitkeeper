@@ -146,8 +146,16 @@ echo OK
 # Attach in clone.
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
-bk portal $Q .
+# achtung! don't use bk portal, see delta comments
+touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Here in clone.
+echo $N Here should fail.............................................$NL
+cd "$HERE/clone"
+bk here set all >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -240,8 +248,15 @@ echo OK
 # Attach in clone.
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
-bk portal $Q .
+touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Here in clone.
+echo $N Here should fail.............................................$NL
+cd "$HERE/clone"
+bk here set all >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -329,8 +344,15 @@ echo OK
 # Attach in clone.
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
-bk portal $Q .
+touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Here in clone.
+echo $N Here should fail.............................................$NL
+cd "$HERE/clone"
+bk here set all >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -423,8 +445,15 @@ echo OK
 # Attach in clone.
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
-bk portal $Q .
+touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Here in clone.
+echo $N Here should fail.............................................$NL
+cd "$HERE/clone"
+bk here set all >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -514,8 +543,15 @@ echo OK
 # Attach in clone.
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
-bk portal $Q .
+touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Here in clone.
+echo $N Here should fail.............................................$NL
+cd "$HERE/clone"
+bk here set all >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -602,8 +638,15 @@ echo OK
 # Attach in clone.
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
-bk portal $Q .
+touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Here in clone.
+echo $N Here should fail.............................................$NL
+cd "$HERE/clone"
+bk here set all >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -692,8 +735,15 @@ echo OK
 # Attach in clone.
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
-bk portal $Q .
+touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Here in clone.
+echo $N Here should fail.............................................$NL
+cd "$HERE/clone"
+bk here set all >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -782,8 +832,15 @@ echo OK
 # Attach in clone.
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
-bk portal $Q .
+touch BitKeeper/log/PORTAL
 bk attach "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Here in clone.
+echo $N Here should fail.............................................$NL
+cd "$HERE/clone"
+bk here set all >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -864,8 +921,15 @@ echo OK
 # Attach in clone.
 echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
-bk portal $Q .
+touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "Could not lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Here in clone.
+echo $N Here should fail.............................................$NL
+cd "$HERE/clone"
+bk here set all >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 

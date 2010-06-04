@@ -141,7 +141,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	hash	*aliasdb = 0;
 	char	*p, *alias = 0;
 	char	*comment = 0;
-	char	**aliases = 0;
+	char	**aliases = 0, *nlid = 0;
 	int	c, i;
 	int	reserved = 0, rc = 1, needunedit = 0;
 	int	ac = 0;
@@ -168,6 +168,15 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	bzero(&ops, sizeof(ops));
 	ops.quiet = opts->quiet;
 	ops.verbose = opts->verbose;
+
+	/* lock */
+	unless (nested_mine(0, getenv("_NESTED_LOCK"), 1)) {
+		unless (nlid = nested_wrlock(0)) {
+			error("%s", nested_errmsg());
+			return (1);
+		}
+		safe_putenv("_NESTED_LOCK=%s", nlid);
+	}
 
 	/* get the nest */
 	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) goto err;
@@ -267,6 +276,14 @@ write:
 	}
 	rc = 0;
 err:
+	if (nlid) {
+		if (nested_unlock(0, nlid)) {
+			error("%s", nested_errmsg());
+			rc = 1;
+		}
+		free(nlid);
+		putenv("_NESTED_LOCK=");
+	}
 	if (rc && needunedit) {
 		/* revert any local edits to the aliases file */
 		system("bk unedit -q " ALIASES);
