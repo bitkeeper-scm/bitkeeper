@@ -1243,7 +1243,7 @@ _treediff() {
 	fi
 	if [ "$errflg" = "1" ]
 	then
-		echo "uasge: bk treediff DIR1 DIR2" 1>&2
+		echo "usage: bk treediff DIR1 DIR2" 1>&2
 		exit 1
 	fi
 	bk diff -Nur \

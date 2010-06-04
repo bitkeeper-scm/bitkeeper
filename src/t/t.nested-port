@@ -27,14 +27,10 @@ echo sa1 > sa_file
 bk new $Q sa_file || exit 1
 bk commit -y'add sa_file' $Q || exit 1
 cd ..
-fresh_commercial project2
-echo default > BitKeeper/log/HERE
-touch BitKeeper/etc/aliases
-bk new $Q BitKeeper/etc/aliases
-bk commit $Q -y"add aliases file"
-bk newroot -P $Q || exit 1
+bk cat standalone/BitKeeper/etc/config > c
+bk setup -P -fcc project2 || fail
+cd project2
 bk portal $Q . || fail
-cd ../project2
 bk attach $Q -rBASE ../bash-sa mybash
 bk attach $Q ../standalone sa2
 cd ../project

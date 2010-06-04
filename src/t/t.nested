@@ -1,49 +1,33 @@
 set -e
 
 echo $N Setup .......................................................$NL
-commercial project
+commercial standalone
+bk cat BitKeeper/etc/config > ../config
+cd ..
+bk setup -fcconfig -P project || fail
 test -f BitKeeper/log/PRODUCT && {
 	echo should not be a product
 	exit 1
 }
-cd "$HERE"
-bk clone $Q project gcc
+bk clone $Q standalone gcc
 cd gcc
 echo gcc > name
 bk new $Q name
 bk commit $Q -y'Create gcc repo'
 cd "$HERE"
-bk clone $Q project gdb
+bk clone $Q standalone gdb
 cd gdb
 echo gdb > name
 bk new $Q name
 bk commit $Q -y'Create gdb repo'
 echo OK
 
-echo $N id -p when not on a product should fail......................$NL
-cd "$HERE/project"
-bk id -p >GOT 2>&1 && {
-	echo failed
-	cat GOT
-	exit 1
-}
-echo OK
-
 echo $N Convert to product ..........................................$NL
 cd "$HERE/project"
-touch BitKeeper/etc/aliases
-bk new $Q BitKeeper/etc/aliases
-bk commit $Q -y"add aliases"
-bk newroot -P $Q || exit 1
-bk here set $Q default || fail
-test "`bk product`" = "This is the product." || {
-	echo failed to make it a product
-    	exit 1
-}
-test -f BitKeeper/log/PRODUCT || {
-	echo failed to touch product turd
-    	exit 1
-}
+bk edit $Q BitKeeper/etc/aliases
+echo > BitKeeper/etc/aliases
+bk ci $Q -yempty BitKeeper/etc/aliases || fail
+bk commit -yempty $Q || fail
 bk portal $Q . || fail
 echo OK
 

@@ -4,21 +4,20 @@
 #include "bam.h"
 #include "progress.h"
 
-private int	newroot(char *ranbits, int q, int v, int prod, char *comment);
+private int	newroot(char *ranbits, int q, int v, char *comment);
 private void	update_rootlog(sccs *s, char *key, char *comment);
 
 int
 newroot_main(int ac, char **av)
 {
-	int	c, quiet = 0, verbose = 0, product = 0;
+	int	c, quiet = 0, verbose = 0;
 	char	*ranbits = 0;
 	char	*comments = 0;
 	u8	*p;
 
-	while ((c = getopt(ac, av, "k:Pqvy:", 0)) != -1) {
+	while ((c = getopt(ac, av, "k:qvy:", 0)) != -1) {
 		switch (c) {
 		    case 'k': ranbits = optarg; break;
-		    case 'P': product = 1; break;
 		    case 'q': quiet = 1; break;
 		    case 'v': verbose = 1; break;
 		    case 'y': comments = optarg; break;
@@ -43,7 +42,7 @@ k_err:			fprintf(stderr,
 		}
 		if (*p) goto k_err;
 	}
-	return (newroot(ranbits, quiet, verbose, product, comments));
+	return (newroot(ranbits, quiet, verbose, comments));
 }
 
 /*
@@ -53,7 +52,7 @@ k_err:			fprintf(stderr,
  * Prolly not.
  */
 private int
-newroot(char *ranbits, int quiet, int verbose, int product, char *comments)
+newroot(char *ranbits, int quiet, int verbose, char *comments)
 {
 	sccs	*s;
 	int	rc = 0, n = 0, i;
@@ -70,10 +69,6 @@ newroot(char *ranbits, int quiet, int verbose, int product, char *comments)
 	}
 	if (proj_isComponent(0)) {
 		fprintf(stderr, "May not newroot components.\n");
-		exit(1);
-	}
-	if (product && proj_isProduct(0)) {
-		fprintf(stderr, "Repository is already a product.\n");
 		exit(1);
 	}
 	unless ((s = sccs_init(cset, 0)) && HASGRAPH(s)) {
@@ -151,15 +146,6 @@ newroot(char *ranbits, int quiet, int verbose, int product, char *comments)
 	unlink("BitKeeper/log/ROOTKEY");
 	unlink("BitKeeper/log/CSETFILE"); /* bk before 5.0 used this */
 	proj_reset(0);
-	if (product) {
-		touch("BitKeeper/log/PRODUCT", 0664);
-		unless (exists("BitKeeper/etc/SCCS/s.aliases")) {
-			touch("BitKeeper/etc/aliases", 0664);
-			system("bk new -q BitKeeper/etc/aliases");
-			system("bk sfiles -pC BitKeeper/etc/aliases |"
-			    "bk commit -q -y'Add aliases db' -");
-		}
-	}
 	f = popen("bk sfiles", "r");
 	unless (quiet || verbose) {
 		tick = progress_start(PROGRESS_BAR, repo_nfiles(0));

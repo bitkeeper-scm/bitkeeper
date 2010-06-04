@@ -59,8 +59,3 @@ nested product
 bk newroot $Q -y"newly minted product"
 bk -r check -ac || exit 1
 echo OK
-
-echo $N Test newroot -P on a product - should fail ..................$NL
-bk newroot $Q -P -y"newly minted product" 2> ERR && exit 1
-grep -q 'Repository is already a product\.' ERR || exit 1
-echo OK
