@@ -87,6 +87,7 @@ cp(char *from, char *to, int force)
 	sccs_free(s);
 	err = sys("bk", "edit", "-q", to, SYS);
 	unless (WIFEXITED(err) && WEXITSTATUS(err) == 0) return (1);
+	putenv("_BK_MV_OK=1");
 	tmp = aprintf("-ybk cp %s %s", from, to);
 	err = sys("bk", "delta", "-f", tmp, to, SYS);
 	free(tmp);

@@ -111,3 +111,16 @@ test -f ../copy/SCCS/s.file2 || {
 	exit 1
 }
 echo OK
+
+echo $N Test copy after rename ......................................$NL
+commercial proj2
+touch A
+bk new $Q A
+bk commit $Q -y'added A' A
+bk mv A B
+bk cp B C 2>ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
