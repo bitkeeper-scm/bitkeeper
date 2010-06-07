@@ -10,13 +10,19 @@ hide(char *file, int on_off)
 int
 cat(char *file)
 {
+	int	len, left;
 	MMAP	*m = mopen(file, "r");
 
 	unless (m) return (-1);
 	fflush(stdout);
-	unless (write(1, m->mmap, m->size) == m->size) {
-		mclose(m);
-		return (-1);
+	for (left = m->size; left; left -= len) {
+		/* <= 0 instead of < 0 is paranoia of infinite loop */
+		if ((len = write(1, m->mmap + (m->size-left), left)) <= 0) {
+			if (errno == EPIPE) break;
+			if (errno == EINTR) continue;
+			mclose(m);
+			return (-1);
+		}
 	}
 	mclose(m);
 	return (0);

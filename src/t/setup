@@ -319,7 +319,12 @@ fail() {
 		echo ----------
 		cat "$__outfile"
 		echo ----------
-	}			
+	}
+	test x$BK_REGRESSION_WAIT != x && {
+		echo "pausing -- type ctrl-C to exit"
+		echo "pwd is `pwd`"
+		sleep 100000
+	}
 	exit 1
 }
 # this next line needs to be last, it's line zero of the script (see doit)

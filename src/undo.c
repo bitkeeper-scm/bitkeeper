@@ -81,9 +81,7 @@ undo_main(int ac,  char **av)
 		optarg = 0;
 	}
 	unless (rev) usage();
-	unless (quiet || verbose) {
-		putenv("_BK_PROGRESS_MULTI=YES");
-	}
+	unless (quiet || verbose) progress_startMulti();
 	if (undoLimit(&must_have)) limitwarning = 1;
 	save_log_markers();
 	// XXX - be nice to do this only if we actually are going to undo
@@ -482,24 +480,39 @@ undo_ensemble2(nested *n, int verbose)
 private void
 undo_ensemble_rollback(nested *n, int verbose, char **comp_list)
 {
-	int	i, rc;
+	int	i, ncomps=0, rc;
 	comp	*c;
+
+	unless (verbose) {
+		fprintf(stderr, "Reverting components to original version\n");
+	}
+	EACH(comp_list) ++ncomps;
 
 	START_TRANSACTION();
 	EACH(comp_list) {
+		char	*opt = "--progress";
+
 		c = (comp *)comp_list[i];
 
-		fprintf(stderr, "Reverting %s to original version\n",
-		    c->path);
+		if (verbose) {
+			fprintf(stderr, "Reverting %s to original version\n",
+				c->path);
+			opt = "-v";
+		}
 		if (chdir(c->path)) {
 			fprintf(stderr, "undo: unable to find %s to revert\n",
 			    c->path);
 			return;
 		}
-		if (rc = system("bk -?FROM_PULLPUSH=YES "
-		    "takepatch -avfBitKeeper/tmp/undo.patch")) {
+		unless (verbose) progress_nlneeded();
+		if (rc = systemf("bk -?FROM_PULLPUSH=YES "
+		    "takepatch %s -afBitKeeper/tmp/undo.patch", opt)) {
 			fprintf(stderr, "undo: restoring backup patch in %s "
 			    "failed\n", c->path);
+		}
+		unless (verbose) {
+			title = aprintf("%u/%u %s", i, ncomps, c->path);
+			progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
 		}
 		proj_cd2product();
 		if (rc) break;
@@ -520,6 +533,7 @@ doit(char **filesNrevs, char **sfiles, int verbose, int quiet, char *checkfiles)
 		sprintf(buf, "bk stripdel -q -C -");
 	} else {
 		sprintf(buf, "bk stripdel -C -N%u -", nLines(sfiles));
+		progress_nlneeded();
 	}
 	f = popen(buf, "w");
 	EACH(filesNrevs) fprintf(f, "%s\n", filesNrevs[i]);

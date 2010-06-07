@@ -239,7 +239,11 @@ sfio_main(int ac, char **av)
 	optsFree();
 	return (rc);
 
-usage:	optsFree();
+usage:
+#ifndef SFIO_STANDALONE
+	prog = 0;
+#endif
+	optsFree();
 	usage();
 }
 
@@ -1069,7 +1073,7 @@ again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 private int
 sfio_in_Nway(int n)
 {
-	int	i, rc = 1;
+	int	i, nticks = 0, rc = 1;
 	int	cur = 0;
 	FILE	**f;
 	int	*sent;
@@ -1082,7 +1086,8 @@ sfio_in_Nway(int n)
 
 	f = calloc(n, sizeof(FILE *));
 	sent = calloc(n, sizeof(int));
-	cmd = aprintf("bk sfio -i%s", opts->quiet ? "q" : "");
+	cmd = aprintf("bk sfio -i%s",
+		(opts->quiet || opts->todo || opts->nfiles)? "q" : "");
 	for (i = 0; i < n; i++) {
 		f[i] = popen(cmd, "w");
 	}
@@ -1200,6 +1205,13 @@ header:
 			sent[cur] += fwrite(data, 1, i, f[cur]);
 			len -= i;
 		}
+#ifndef SFIO_STANDALONE
+		if (opts->todo) {
+			progress(opts->tick, opts->done);
+		} else if (opts->nfiles) {
+			progress(opts->tick, ++nticks);
+		}
+#endif
 		len = 0;
 		/* select next subprocess to use */
 		for (i = 0; i < n; i++) {

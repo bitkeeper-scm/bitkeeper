@@ -1053,6 +1053,7 @@ markup:
 			getMsg("takepatch-chksum", 0, '=', stderr);
 			goto err;
 		}
+		if (echo == 3) progress_nldone();
 	} else if (!BAM(s)) {
 		for (d = s->table; d; d = d->next) {
 			unless ((d->flags & D_SET) && !TAG(d)) continue;
@@ -1407,7 +1408,10 @@ apply:
 		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
 	}
 	sccs_free(s);
-	if (tick) progress_done(tick, 0);
+	if (tick) {
+		progress_done(tick, 0);
+		progress_nldone();  /* don't inject \n later */
+	}
 	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
 	freePatchList();
 	patchList = 0;
@@ -1702,6 +1706,7 @@ sfio(MMAP *m)
 		left -= n;
 		t += n;
 	} while (left);
+	if (echo > 1) progress_nldone();
 	if (pclose(f)) {
 		fprintf(stderr, "takepatch: BAM sfio -i failed.\n");
 		f = 0;

@@ -423,3 +423,15 @@ echo $N grep file without a trailing newline ........................$NL
 echo $NX line without newline$NXL > f3
 bk grep line f3 > /dev/null || exit 1
 echo OK
+
+# This used to fail on some but not all platforms.
+echo $N grep -q with match near 4k boundary .........................$NL
+# Print 4000 bytes.
+perl -e '$i=102;print("123456789012345678901234567890123456789\n")while($i--)' >x
+# Now one to grep for, before 4k.
+echo 'This is test line number 1' >>x
+# Now 4k+ more.
+perl -e '$i=104;print("123456789012345678901234567890123456789\n")while($i--)' >>x
+bk grep 'This is test line number 1' >/dev/null x || fail 1
+bk grep -q 'This is test line number 1' x || fail 2
+echo OK

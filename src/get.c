@@ -26,6 +26,7 @@ get_main(int ac, char **av)
 	int	closetips = 0;
 	int	skip_bin = 0;
 	int	checkout = 0;
+	int	tickout = 0;
 	int	n = 0, nfiles = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	ac_optend;
@@ -52,8 +53,8 @@ get_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|N;pPqr;RSstTx;", 0)) != -1) {
-		if (checkout && !strchr("NqRST", c)) {
+	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|N;pPqr;RSstTUx;", 0)) != -1) {
+		if (checkout && !strchr("NqRSTU", c)) {
 			fprintf(stderr, "checkout: no options allowed\n");
 			exit(1);
 		}
@@ -90,6 +91,7 @@ get_main(int ac, char **av)
 		    case 'S': flags |= GET_NOREGET; break;	/* doc 2.0 */
 		    case 't': break;		/* compat, noop, undoc 2.0 */
 		    case 'T': flags |= GET_DTIME; break;	/* doc 2.0 */
+		    case 'U': tickout = 1; break;
 		    case 'x': xLst = optarg; break;		/* doc 2.0 */
 		    default: bk_badArg(c, av);
 		}
@@ -154,6 +156,10 @@ onefile:	fprintf(stderr,
 		d = 0;
 
 		if (tick) progress(tick, ++n);
+		if (tickout) {
+			putchar('.');
+			fflush(stdout);
+		}
 		if (caseFoldingFS) {
 			/*
 			 * For win32 FS and Samba.
@@ -339,7 +345,6 @@ next:		sccs_free(s);
 		bp_keys = 0;
 		bp_todo = 0;
 	}
-	if (tick) progress_done(tick, errors ? "errors" : "OK");
 	if (bp_files && !recursed) {
 
 		/* If we already had an error don't let this turn that
@@ -349,6 +354,7 @@ next:		sccs_free(s);
 		    	errors = c;
 	    	}
 	}
+	if (tick) progress_done(tick, errors ? "errors" : "OK");
 	freeLines(bp_files, free);
 	freeLines(bp_keys, free);
 	return (errors);

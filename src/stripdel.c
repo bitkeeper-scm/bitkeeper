@@ -216,7 +216,10 @@ strip_list(s_opts opts)
 	int 	n = 0, rc = 1;
 	int	iflags = opts.iflags|SILENT;
 
-	if (opts.nfiles) opts.tick = progress_start(PROGRESS_BAR, opts.nfiles);
+	if (opts.nfiles) {
+		progress_delayStderr();
+		opts.tick = progress_start(PROGRESS_BAR, opts.nfiles);
+	}
 	for (name = sfileFirst("stripdel", av, 0);
 	    name; name = sfileNext()) {
 		if (opts.tick) progress(opts.tick, ++n);
@@ -251,7 +254,10 @@ strip_list(s_opts opts)
 	rc = 0;
 fail:	if (s) sccs_free(s);
 	sfileDone();
-	if (opts.tick) progress_done(opts.tick, "OK");
+	if (opts.tick) {
+		progress_done(opts.tick, rc ? "FAILED" : "OK");
+		progress_restoreStderr();
+	}
 	return (rc);
 }
 

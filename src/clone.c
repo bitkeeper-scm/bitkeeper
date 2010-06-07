@@ -139,7 +139,7 @@ clone_main(int ac, char **av)
 		exit(CLONE_ERROR);
 	}
 	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
-	unless (opts->quiet || opts->verbose) putenv("_BK_PROGRESS_MULTI=YES");
+	unless (opts->quiet) progress_startMulti();
 	if (av[optind]) localName2bkName(av[optind], av[optind]);
 	if (av[optind+1]) localName2bkName(av[optind+1], av[optind+1]);
 	unless (av[optind]) usage();
@@ -310,7 +310,9 @@ clone_main(int ac, char **av)
 	freeLines(opts->aliases, free);
 	if (l) remote_free(l);
 	remote_free(r);
-	unless (opts->quiet || opts->verbose) {
+	if (opts->verbose) {
+		progress_end(PROGRESS_BAR, clonerc ? "FAILED" : "OK");
+	} else unless (opts->quiet) {
 		title = "clone";
 		if (opts->attach) title = "attach";
 		if (opts->detach) title = "detach";
@@ -570,6 +572,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	if (do_part2) {
 		p = aprintf("-r..'%s'", opts->rev ? opts->rev : "");
 		rc = bkd_BAM_part3(r, envVar, opts->quiet, p);
+		unless (opts->quiet) progress_nlneeded();
 		free(p);
 		if ((r->type == ADDR_HTTP) && opts->product) {
 			disconnect(r);
@@ -706,7 +709,7 @@ clone2(remote *r)
 		comp	*cp;
 		hash	*urllist;
 
-		unless (opts->quiet || opts->verbose) {
+		unless (opts->quiet) {
 			title = ".";
 			progress_end(PROGRESS_BAR, "OK");
 		}
@@ -801,6 +804,13 @@ nested_err:		fprintf(stderr, "clone: component fetch failed, "
 		} else {
 			rc = run_check(opts->verbose, 0, p, &partial);
 		}
+		unless (opts->quiet) {
+			if (rc) {
+				progress_nldone();
+			} else {
+				progress_nlneeded();
+			}
+		}
 		if (rc) {
 			fprintf(stderr, "Consistency check failed, "
 			    "repository left locked.\n");
@@ -831,33 +841,72 @@ private void
 checkout(int quiet, int verbose, int parallel)
 {
 	FILE	*in;
-	FILE	**f;
-	int	i;
-	int	progress = !(quiet || verbose);
+	int	fdin[PARALLEL_MAX], fdout[PARALLEL_MAX], pid[PARALLEL_MAX];
+	int	i, nfds, ret, ndone = 0, ntodo = 0;
 	char	buf[MAXPATH];
+	char	*cmd[] = { "bk", "checkout", "-TSUq", "-", 0 };
+	fd_set	rfds, wfds;
+	ticker	*tick = 0;
 
-	unless (quiet || progress) fprintf(stderr, "Checking out files...\n");
+	if (verbose) fprintf(stderr, "Checking out files...\n");
 	if (parallel <= 0) {
-		if (progress) {
+		unless (quiet || verbose) {
 			sprintf(buf, "-N%u", repo_nfiles(0));
 			sys("bk", "-Ur", "checkout", "-TSq", buf, SYS);
+			progress_nlneeded();
 		} else {
 			sys("bk", "-Ur", "checkout", "-TSq", SYS);
 		}
 		return;
 	}
-	f = calloc(parallel, sizeof(FILE *));
+	/*
+	 * The parallel case follows.  Feed kids work as their stdins
+	 * have buffer space to accept it, and collect progress status
+	 * from their stdouts by passing -U to have them output only a
+	 * "." after processing each file.
+	 */
+	assert(parallel <= PARALLEL_MAX);
+	unless (quiet || verbose) {
+		title = " [checkout]";
+		tick = progress_start(PROGRESS_BAR, repo_nfiles(0));
+	}
 	for (i = 0; i < parallel; i++) {
-		f[i] = popen("bk checkout -TSq -", "w");
+		pid[i] = spawnvpio(&fdin[i], &fdout[i], 0, cmd);
 	}
 	in = popen("bk -Ur", "r");
-	i = 0;
-	while (fnext(buf, in)) {
-		fputs(buf, f[i]);
-		if (++i == parallel) i = 0;
+	while (!feof(in) || (ndone < ntodo)) {
+		FD_ZERO(&rfds);
+		FD_ZERO(&wfds);
+		nfds = 0;
+		for (i = 0; i < parallel; ++i) {
+			unless (feof(in)) {
+				FD_SET(fdin[i], &wfds);
+				nfds = max(nfds, fdin[i]) + 1;
+			}
+			FD_SET(fdout[i], &rfds);
+			nfds = max(nfds, fdout[i]) + 1;
+		}
+		if ((ret = select(nfds, &rfds, &wfds, 0, 0)) < 0) {
+			if (errno == EINTR) continue;
+			break;
+		}
+		for (i = 0; i < parallel; ++i) {
+			if (FD_ISSET(fdin[i], &wfds) && fnext(buf, in)) {
+				write(fdin[i], buf, strlen(buf));
+				++ntodo;
+			}
+			if (FD_ISSET(fdout[i], &rfds)) {
+				read(fdout[i], &buf, 1);
+				++ndone;
+				unless (quiet || verbose) progress(tick, ndone);
+			}
+		}
 	}
+	unless (quiet || verbose) progress_done(tick, ret?"FAILED":"OK");
 	for (i = 0; i < parallel; i++) {
-		pclose(f[i]);
+		close(fdin[i]);
+		close(fdout[i]);
+		waitpid(pid[i], &ret, 0);
 	}
 	pclose(in);
 }
@@ -1025,6 +1074,7 @@ sfio(remote *r, char *prefix)
 		unless (opts->verbose) {
 			if (p = getenv("BKD_NFILES")) {
 				cmds[++n] = dashN = aprintf("-N%u", atoi(p));
+				progress_nlneeded();
 			}
 		}
 		cmds[++n] = freeme = aprintf("-P%s/", prefix);
@@ -1165,6 +1215,7 @@ after(int quiet, int verbose, char *rev)
 	cmds[++i] = 0;
 	i = spawnvp(_P_WAIT, "bk", cmds);
 	free(p);
+	unless (quiet) progress_nlneeded();
 	unless (WIFEXITED(i))  return (-1);
 	return (WEXITSTATUS(i));
 }

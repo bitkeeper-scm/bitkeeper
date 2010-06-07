@@ -172,6 +172,7 @@ OBJ =	bkver.o cmd.o \
 	port/startmenu.o \
 	port/svcinfo.o \
 	port/uninstall.o \
+	progress.o \
 	prs.o pull.o purify.o push.o pwd.o \
 	r2c.o randombits.o range.o rcheck.o rclone.o \
 	rcs2bk.o rcsparse.o \

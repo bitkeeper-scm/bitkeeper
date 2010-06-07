@@ -315,21 +315,6 @@ grep -q SFIO update.patch || exit 1
 grep -q SFIO merge.patch && exit 1
 echo OK
 
-echo $N Test the details of the spinner check .......................$NL
-grep -v 'uncompressed to' SPINNERCHECK |
-     perl -pe '1 while s/[^\010]\010//g' > GOT
-cat <<EOF > WANT
----------------------------------------------------------------------------
-takepatch: saved entire patch in $PENDING
----------------------------------------------------------------------------
-Updating ChangeSet
-Updating send-as-deltas
-Updating send-as-sfile
-takepatch: 1 new changeset, 0 conflicts in 3 files
-EOF
-cmpfiles WANT GOT
-echo OK
-
 echo $N Resolve SFIO content when it seems the file rolled back .....$NL
 # The patch has 2 csets, the repo has the first one already
 # The local repo adds content to 'newfile' so the RESYNC will

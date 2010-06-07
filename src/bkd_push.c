@@ -276,7 +276,7 @@ bkd_doResolve(char *me, int verbose)
 	int	status, debug = 0;
 	pid_t	pid;
 	char	bkd_nul = BKD_NUL;
-	char	*resolve[] = { "bk", "resolve", "-T", "-c", 0, 0};
+	char	*resolve[] = { "bk", "resolve", "-T", "-c", 0, 0, 0};
 	int	resolve_opt = 4; /* index of 0 after "-c" above */
 
 	/*
@@ -300,7 +300,8 @@ bkd_doResolve(char *me, int verbose)
 	if (verbose) {
 		printf("Running resolve to apply new work...\n");
 	} else {
-		resolve[resolve_opt] = "-q";
+		resolve[resolve_opt++] = "-q";
+		resolve[resolve_opt] = "--progress";
 	}
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */

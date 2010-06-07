@@ -110,7 +110,7 @@ pull_main(int ac, char **av)
 		opts.verbose = 0;
 	}
 	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
-	unless (opts.quiet || opts.verbose) putenv("_BK_PROGRESS_MULTI=YES");
+	unless (opts.quiet || opts.verbose) progress_startMulti();
 	if (opts.autoOnly && !opts.automerge) {
 		fprintf(stderr, "pull: -s and -i cannot be used together\n");
 		usage();
@@ -578,6 +578,12 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			pclose(fout);
 		}
 		if (proj_isProduct(0)) {
+			unless (opts.verbose || opts.quiet || title) {
+				/* Finish the takepatch progress bar. */
+				title = ".";
+				progress_end(PROGRESS_BAR, "OK");
+				title = 0;
+			}
 			if (rc = pull_ensemble(r, rmt_aliases, rmt_urllist)) goto done;
 		}
 		if (exists(ROOT2RESYNC)){
@@ -855,6 +861,7 @@ npmerge:				fprintf(stderr,
 			}
 		}
 		freeLines(vp, free);
+		progress_nldone();
 		if (rc) break;
 	}
 	proj_cd2product();
@@ -930,7 +937,7 @@ pull(char **av, remote *r, char **envVar)
 		}
 	}
 done:	putenv("BK_RESYNC=FALSE");
-	unless (opts.quiet || opts.verbose || rc ||
+	unless (opts.quiet || rc ||
 	    ((p = getenv("BK_STATUS")) && streq(p, "NOTHING"))) {
 		unless (title) {
 			if (proj_isProduct(0)) {
@@ -1002,6 +1009,7 @@ takepatch(remote *r)
 		cmds[++n] = "-vv";
 	} else {
 		cmds[++n] = "--progress";
+		progress_nlneeded();
 	}
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);
@@ -1073,6 +1081,10 @@ resolve(void)
 	if (opts.autoOnly) cmd[++i] = "-s";
 	if (opts.automerge) cmd[++i] = "-a";
 	if (opts.debug) cmd[++i] = "-d";
+	unless (opts.quiet) {
+		cmd[++i] = "--progress";
+		progress_nlneeded();
+	}
 	cmd[++i] = 0;
 	if (opts.verbose) {
 		fprintf(stderr, "Running resolve to apply new work ...\n");

@@ -549,8 +549,10 @@ noproj:		*relp = (char *)path;
 	}
 	rel = proj_relpath(proj, (char *)path);
 	unless (rel) {
-		ttyprintf("dir %s proj %s cwd %s\n",
+		fprintf(stderr, "error with file mapping\n"
+		    "dir %s proj %s cwd %s\n",
 		    path, proj_root(proj), proj_cwd());
+		exit(103);
 	}
 	assert(rel);
 	strcpy(buf, rel);

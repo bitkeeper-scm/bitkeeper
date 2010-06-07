@@ -7,6 +7,7 @@
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 #include "nested.h"
+#include "progress.h"
 
 #define	BK "bk"
 
@@ -174,6 +175,9 @@ main(int volatile ac, char **av, char **env)
 		version_main(1, nav);
 		exit(1);
 	}
+
+	/* stderr write(2) wrapper for progress bars */
+	stderr->_write = progress_syswrite;
 
 	/*
 	 * Parse our options if called as "bk".
@@ -427,6 +431,7 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 	if (locking && streq(locking, "r")) repository_rdunlock(0, 0);
 	if (locking && streq(locking, "w")) repository_wrunlock(0, 0);
 out:
+	progress_restoreStderr();
 	cmdlog_end(ret, 0);
 	bk_cleanup(ret);
 	/* flush stdout/stderr, needed for bk-remote on windows */
@@ -585,6 +590,7 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 private void
 bk_atexit(void)
 {
+	progress_restoreStderr();
 	/*
 	 * XXX While almost all bkd commands call this function on
 	 * exit. (via the atexit() interface), there is one exception:

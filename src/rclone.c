@@ -134,7 +134,7 @@ rclone_main(int ac, char **av)
 		    "clone: must commit local changes to %s\n", ALIASES);
 		exit(1);
 	}
-	unless (opts.quiet || opts.verbose) putenv("_BK_PROGRESS_MULTI=YES");
+	unless (opts.quiet) progress_startMulti();
 	r = remote_parse(av[optind + 1], REMOTE_BKDURL);
 	unless (r) usage();
 	if (r->host && !r->path) {
@@ -181,7 +181,6 @@ rclone_ensemble(remote *r)
 	int	i, j, status, which = 0, k = 0, rc = 0;
 	u32	flags = NESTED_PRODUCTFIRST;
 	hash	*urllist;
-	char	nfiles[MAXPATH];
 
 	url = remote_unparse(r);
 
@@ -215,13 +214,19 @@ rclone_ensemble(remote *r)
 		unless (c->included && c->alias) continue;
 		proj_cd2product();
 		vp = addLine(0, strdup("bk"));
+		if (c->product) {
+			vp = addLine(vp, strdup("--title=."));
+		} else {
+			vp = addLine(vp, aprintf("--title=%d/%d %s", which,
+						 k, c->path));
+		}
 		vp = addLine(vp, strdup("_rclone"));
 		if (c->product) {
 			vp = addLine(vp, strdup("--sfiotitle=."));
 		} else {
 			vp = addLine(vp,
 			    aprintf("--sfiotitle=%d/%d %s",
-			    ++which, k, c->path));
+			    which, k, c->path));
 		}
 		EACH(opts.av) vp = addLine(vp, strdup(opts.av[i]));
 		vp = addLine(vp, aprintf("-r%s", c->deltakey));
@@ -250,19 +255,15 @@ rclone_ensemble(remote *r)
 		status = spawnvp(_P_WAIT, "bk", &vp[1]);
 		rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
 		freeLines(vp, free);
-		unless (opts.quiet || opts.verbose) {
-			if (c->product) {
-				strcpy(nfiles, ".");
-			} else {
-				sprintf(nfiles, "%d/%d %s", which, k, c->path);
-			}
-			title = nfiles;
-			progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
-			if (rc) break;
-		} else if (rc) {
+		if (rc) {
 			fprintf(stderr, "Rclone %s failed\n", name);
 			break;
 		}
+		++which;
+	}
+	unless (opts.quiet || opts.verbose) {
+		title = aprintf("%d/%d .", which, which);
+		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
 	}
 
 	unless (rc) urllist_write(urllist);
@@ -318,6 +319,9 @@ rclone(char **av, remote *r, char **envVar)
 		putenv("BK_STATUS=FAILED");
 	} else {
 		putenv("BK_STATUS=OK");
+	}
+	unless (opts.quiet) {
+		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
 	}
 	trigger(av[0], "post");
 
@@ -426,6 +430,7 @@ rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 	}
 
 	send_sfio_msg(r, envVar);
+	unless (opts.quiet || opts.verbose) progress_nlneeded();
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
@@ -450,7 +455,7 @@ rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 	/* Spit out anything we see until a null. */
 	while ((n = read_blk(r, buf, 1)) > 0) {
 		if (buf[0] == BKD_NUL) break;
-		if (opts.verbose) writen(2, buf, n);
+		unless (opts.quiet) writen(2, buf, n);
 	}
 	getline2(r, buf, sizeof(buf));
 
@@ -532,7 +537,7 @@ send_sfio_msg(remote *r, char **envVar)
 	fprintf(f, "rclone_part2");
 	if (proj_isProduct(0)) fprintf(f, " -P");
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
-	if (opts.verbose) fprintf(f, " -v");
+	unless (opts.quiet) fprintf(f, " -v");
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
 	if (opts.detach) fprintf(f, " -D");
 	EACH(opts.aliases) fprintf(f, " '-s%s'", opts.aliases[i]);
@@ -592,7 +597,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.debug) fprintf(f, " -d");
-	if (opts.verbose) fprintf(f, " -v");
+	unless (opts.quiet) fprintf(f, " -v");
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
 	fputs("\n", f);
 
@@ -609,7 +614,8 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 		if (r->type == ADDR_HTTP) {
 			fnull = fopen(DEVNULL_WR, "w");
 			assert(fnull);
-			m = send_BAM_sfio(fnull, bp_keys, bpsz, r->gzip);
+			m = send_BAM_sfio(fnull, bp_keys, bpsz, r->gzip,
+				opts.quiet);
 			fclose(fnull);
 			assert(m > 0);
 			extra = m + 6 + 6;
@@ -624,7 +630,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	if (extra > 0) {
 		f = fdopen(dup(r->wfd), "wb");
 		writen(r->wfd, "@BAM@\n", 6);
-		n = send_BAM_sfio(f, bp_keys, bpsz, r->gzip);
+		n = send_BAM_sfio(f, bp_keys, bpsz, r->gzip, opts.quiet);
 		if ((r->type == ADDR_HTTP) && (m != n)) {
 			fprintf(stderr,
 			    "Error: patch has changed size from %d to %d\n",
@@ -674,11 +680,13 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 		}
 	}
 	/* Spit out anything we see until a null. */
+	unless (opts.quiet) progress_nldone();
 	while (read_blk(r, buf, 1) > 0) {
 		if (buf[0] == BKD_NUL) {
 			/* now back in protocol - look for end or RC */
 			n = getline2(r, buf, sizeof(buf));
 			if ((n > 0) && streq(buf, "@END@")) break;
+			unless (opts.quiet) progress_nlneeded();
 			fprintf(stderr,
 			    "rclone: bkd failed to apply BAM data %s\n", buf);
 			rc = 1;
@@ -689,6 +697,7 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 		}
 		fputc(buf[0], stderr);
 	}
+	unless (opts.quiet) progress_nlneeded();
 done:
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r);

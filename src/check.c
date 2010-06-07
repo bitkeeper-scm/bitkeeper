@@ -184,7 +184,7 @@ check_main(int ac, char **av)
 	mixed = (LONGKEY(cset) == 0);
 	nfiles = repo_nfiles(cset);
 	if (verbose > 1) {
-		fprintf(stderr, "Preparing to check %u files...\r", nfiles);
+		fprintf(stderr, "Preparing to check %u files...\n", nfiles);
 	}
 	/*
 	 * Get the list of components that exist under this
@@ -232,6 +232,7 @@ check_main(int ac, char **av)
 	unless (fix) fix = proj_configbool(0, "autofix");
 
 	if (verbose == 1) {
+		progress_delayStderr();
 		tick = progress_start(PROGRESS_BAR, nfiles);
 	}
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
@@ -491,16 +492,26 @@ check_main(int ac, char **av)
 		if (sys("bk", "sane", SYS)) errors |= 0x80;
 	}
 out:
-	if (tick) progress_done(tick, errors ? "FAILED":"OK");
 	if (!errors && bp_getFiles && !getenv("_BK_CHECK_NO_BAM_FETCH") &&
 	    (checkout & (CO_BAM_EDIT|CO_BAM_GET))) {
-		sprintf(buf, "bk checkout -q%s -", timestamps ? "T" : "");
+		if (tick) {
+			sprintf(buf, "bk checkout -q%s -N%u -",
+				timestamps ? "T" : "", nLines(bp_getFiles));
+			progress_pauseDelayed();
+		} else {
+			sprintf(buf, "bk checkout -q%s -",
+				timestamps ? "T" : "");
+		}
 		if (verbose > 1) fprintf(stderr,
 		    "check: fetching BAM data...\n");
 		f = popen(buf, "w");
 		EACH(bp_getFiles) fprintf(f, "%s\n", bp_getFiles[i]);
 		if (pclose(f)) errors = 1;
 		freeLines(bp_getFiles, free);
+	}
+	if (tick) {
+		progress_done(tick, errors ? "FAILED":"OK");
+		progress_restoreStderr();
 	}
 	if (all && !errors && !(flags & INIT_NOCKSUM)) {
 		unlink(CHECKED);

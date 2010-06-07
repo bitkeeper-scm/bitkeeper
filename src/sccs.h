@@ -1290,7 +1290,7 @@ char	*bp_serverID(char *out, int notme);
 char	*bp_serverURL2ID(char *url);
 void	bp_setBAMserver(char *path, char *url, char *repoid);
 int	bp_hasBAM(void);
-u32	send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip);
+u32	send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip, int quiet);
 int	bkd_BAM_part3(remote *r, char **env, int quiet, char *range);
 int	bp_sendkeys(FILE *f, char *range, u64 *bytes, int gzip);
 int	detach(int quiet, int verbose);

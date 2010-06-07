@@ -128,7 +128,7 @@ push_main(int ac, char **av)
 		opts.verbose = 0;
 	}
 	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
-	unless (opts.quiet || opts.verbose) putenv("_BK_PROGRESS_MULTI=YES");
+	unless (opts.quiet || opts.verbose) progress_startMulti();
 
 	/*
 	 * Get push parent(s)
@@ -537,6 +537,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 				title = 0;
 			}
 		}
+		progress_nldone();
 	}
         unless (rc || opts.rev) {
                 int     flush = 0;
@@ -729,10 +730,12 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 	if (streq(buf, "@TAKEPATCH INFO@")) {
 		/* with -q, save output in 'f' to print if error */
 		f = opts.quiet ? fmem_open() : stderr;
+		unless (opts.quiet || opts.verbose) progress_active();
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
 			fwrite(buf, 1, n, f);
 		}
+		unless (opts.quiet || opts.verbose) progress_nlneeded();
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {
 			int	remote_rc = atoi(&buf[1]);
@@ -874,7 +877,7 @@ push_part3(char **av, remote *r, char **envVar, char *bp_keys)
 				if (maybe_trigger(r)) {
 					return(PUSH_ERROR);
 				}
-			} else if (opts.verbose) {
+			} else unless (opts.quiet) {
 				writen(2, buf, n);
 			}
 		}
@@ -931,7 +934,7 @@ push_finish(remote *r, push_rc status, char **envVar)
 				if (maybe_trigger(r)) {
 					return (PUSH_ERROR);
 				}
-			} else if (opts.verbose) {
+			} else unless (opts.quiet) {
 				writen(2, buf, n);
 			}
 		}
@@ -1168,7 +1171,7 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 // XXX - always recurses even when it shouldn't
 // XXX - needs to be u64
 u32
-send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip)
+send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip, int quiet)
 {
 	u32	n;
 	int	fd0, fd, rfd, status;
@@ -1176,14 +1179,10 @@ send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip)
 	char	*sfio[10] = {"bk", "sfio", "-oB", 0, "-", 0};
 	char	buf[64];
 
-	/*
-	 * Bogus alert.  This is called from other places that seem to
-	 * want it to be quiet.  Since opts is unset it "works".
-	 */
-	if (opts.verbose) {
-		sprintf(buf, "-b%s", psize(bpsz));
-	} else {
+	if (quiet) {
 		strcpy(buf, "-q");
+	} else {
+		snprintf(buf, sizeof(buf), "-b%s", psize(bpsz));
 	}
 	sfio[3] = buf;
 
@@ -1242,7 +1241,8 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 		if (r->type == ADDR_HTTP) {
 			fnull = fopen(DEVNULL_WR, "w");
 			assert(fnull);
-			m = send_BAM_sfio(fnull, bp_keys, bpsz, r->gzip);
+			m = send_BAM_sfio(fnull, bp_keys, bpsz, r->gzip,
+					  opts.quiet);
 			fclose(fnull);
 			assert(m > 0);
 			extra = m + 6 + 6;
@@ -1257,7 +1257,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	if (extra > 0) {
 		f = fdopen(dup(r->wfd), "wb");
 		fprintf(f, "@BAM@\n");
-		n = send_BAM_sfio(f, bp_keys, bpsz, r->gzip);
+		n = send_BAM_sfio(f, bp_keys, bpsz, r->gzip, opts.quiet);
 		if ((r->type == ADDR_HTTP) && (m != n)) {
 			fprintf(stderr,
 			    "Error: patch has changed size from %d to %d\n",

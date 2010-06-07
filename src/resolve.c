@@ -23,6 +23,7 @@
  */
 #include "resolve.h"
 #include "logging.h"
+#include "progress.h"
 
 private	void	commit(opts *opts);
 private	void	conflict(opts *opts, char *rfile);
@@ -51,17 +52,24 @@ private	int	moveupComponent(void);
 
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
+private int	nfiles;		/* # files in RESYNC */
+private ticker	*tick;		/* progress-bar ticker state */
+private float	nticks = 0.0;	/* current progress-bar tick count */
 
 int
 resolve_main(int ac, char **av)
 {
 	int	c;
 	opts	opts;
+	longopt	lopts[] = {
+		{ "progress", 300 },
+		{ 0, 0 }
+	};
 
 	bzero(&opts, sizeof(opts));
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
-	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstTx;1234", 0)) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstTx;1234", lopts)) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -98,6 +106,7 @@ resolve_main(int ac, char **av)
 		    case '2': opts.pass2 = 0; break;		/* doc 2.0 */
 		    case '3': opts.pass3 = 0; break;		/* doc 2.0 */
 		    case '4': opts.pass4 = 0; break;		/* doc 2.0 */
+		    case 300: opts.progress = 1; break;
 		    default: bk_badArg(c, av);
 		}
     	}
@@ -294,7 +303,23 @@ err:		if (p) fclose(p);
 		    "==== Pass 1%s ====\n",
 		    opts->pass1 ? "" : ": build DB for later passes");
 	}
+	if (opts->progress) {
+		/*
+		 * Resolve loops seven times (over sfiles, renames,
+		 * conflicts, etc) and we tick the progress bar during
+		 * each.  We don't know yet the # iterations of each
+		 * loop, but we do know that each is bounded by the #
+		 * sfiles.  So assume the max here, then scale each
+		 * tick accordingly once we know the real loop counts
+		 * (which we always know right before each loop runs).
+		 */
+		for (nfiles = 0; fnext(buf, p); ++nfiles) ;
+		rewind(p);
+		progress_delayStderr();
+		tick = progress_start(PROGRESS_BAR, 7*nfiles);
+	}
 	while (fnext(buf, p)) {
+		if (opts->progress) progress(tick, (u64)++nticks);
 		chop(buf);
 		unless (s = sccs_init(buf, INIT_NOCKSUM)) continue;
 
@@ -435,6 +460,10 @@ pass3:	if (opts->pass3) pass3_resolve(opts);
 	/*
 	 * Whoohooo...
 	 */
+	if (opts->progress) {
+		progress_done(tick, "OK");
+		progress_restoreStderr();
+	}
 	return (0);
 }
 
@@ -619,7 +648,7 @@ private	int
 pass2_renames(opts *opts)
 {
 	sccs	*s = 0;
-	int	n = 0;
+	int	n = 0, nnames = 0;
 	int	i;
 	resolve	*rs;
 	char	*t;
@@ -636,7 +665,12 @@ pass2_renames(opts *opts)
 	 * files (think hashed directories.
 	 */
 	names = getdir("BitKeeper/RENAMES/SCCS");
+	nnames = nLines(names);
 	EACH(names) {
+		if (opts->progress) {
+			nticks += nfiles/(float)nnames;
+			progress(tick, (u64)nticks);
+		}
 		sprintf(path, "BitKeeper/RENAMES/SCCS/%s", names[i]);
 
 		/* may have just been deleted it but be in readdir cache */
@@ -1571,7 +1605,7 @@ private	int
 pass3_resolve(opts *opts)
 {
 	char	buf[MAXPATH], **conflicts, s_cset[] = CHANGESET;
-	int	n = 0, i;
+	int	n = 0, nconflicts = 0, i;
 	int	mustCommit = 0, pc, pe;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
@@ -1606,7 +1640,12 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	 * reconstruct the r.file if necessary.  XXX - not done.
 	 */
 	conflicts = find_files(opts, 0);
+	nconflicts = nLines(conflicts);
 	EACH(conflicts) {
+		if (opts->progress) {
+			nticks += nfiles/(float)nconflicts;
+			progress(tick, (u64)nticks);
+		}
 		if (opts->debug) fprintf(stderr, "pass3: %s\n", conflicts[i]);
 		if (streq(conflicts[i], "SCCS/s.ChangeSet")) continue;
 
@@ -1654,12 +1693,19 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 			exit(1);	/* Shouldn't get here */
 	    	}
 
+		if (opts->progress) {
+			progress_done(tick, "OK");
+			progress_restoreStderr();
+		}
+
 		nav[i=0] = "bk";
 		nav[++i] = "resolve";
 		if (opts->mergeprog) {
 			nav[++i] = aprintf("-m%s", opts->mergeprog);
 		}
-		if (opts->quiet) nav[++i] = "-q";
+		if (opts->quiet) {
+			nav[++i] = "-q";
+		}
 		if (opts->textOnly) nav[++i] = "-T";
 		if (opts->comment) nav[++i] = aprintf("-y%s", opts->comment);
 		nav[++i] = 0;
@@ -2401,7 +2447,7 @@ pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
-	int	eperm = 0, flags, ret;
+	int	eperm = 0, flags, nold = 0, ret;
 	FILE	*f = 0;
 	FILE	*save = 0;
 	char	buf[MAXPATH];
@@ -2485,6 +2531,7 @@ pass4_apply(opts *opts)
 	}
 	chmod(PASS4_TODO, 0666);
 	while (fnext(buf, f)) {
+		if (opts->progress) progress(tick, (u64)++nticks);
 		chop(buf);
 		/*
 		 * We want to check the checksum here and here only
@@ -2530,6 +2577,7 @@ pass4_apply(opts *opts)
 			sccs_free(l);
 			/* buf+7 == skip RESYNC/ */
 			mdbm_store_str(opts->idDB, key, buf + 7, MDBM_REPLACE);
+			++nold;
 		} else {
 			/*
 			 * handle new files.
@@ -2567,6 +2615,10 @@ pass4_apply(opts *opts)
 		save = fopen(BACKUP_LIST, "rt");
 		assert(save);
 		while (fnext(buf, save)) {
+			if (opts->progress) {
+				nticks += nfiles/(float)nold;
+				progress(tick, (u64)nticks);
+			}
 			chop(buf);
 			if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
 			if (rm_sfile(buf, 1)) {
@@ -2589,6 +2641,10 @@ pass4_apply(opts *opts)
 	rewind(f);
 
 	while (fnext(buf, f)) {
+		if (opts->progress) {
+			nticks += nfiles/(float)nold;
+			progress(tick, (u64)nticks);
+		}
 		chop(buf);
 		/*
 		 * We want to get the part of the path without the RESYNC.
@@ -2667,6 +2723,7 @@ err:			unapply(save);
 	unlink(APPLIED);
 	unlink(PASS4_TODO);
 
+	if (opts->progress) progress_done(tick, "OK");
 
 	flags = CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING;
 	resolve_cleanup(opts, flags);
@@ -2766,6 +2823,8 @@ resolve_cleanup(opts *opts, int what)
 	char	pendingFile[MAXPATH];
 	FILE	*f;
 	int	rc = 1;
+
+	if (opts->progress) progress_restoreStderr();
 
 	unless (exists(ROOT2RESYNC)) chdir(RESYNC2ROOT);
 	unless (exists(ROOT2RESYNC)) {
