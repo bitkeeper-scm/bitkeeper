@@ -34,15 +34,8 @@ int
 parent_main(int ac,  char **av)
 {
 	int	c, changed_dir, rc = 0;
-	int	i;
-	char	*rootdir, **pull, **push, *which;
-
-	if (proj_cd2product() && proj_cd2root()) {
-		fprintf(stderr, "parent: cannot find package root.\n");
-		return (1);
-	}
-	rootdir = proj_cwd();
-	changed_dir = strcmp(start_cwd, rootdir);
+	int	i, printnormal = 0;
+	char	*rootdir, **pull, **push, *which, *p;
 
 	opts.normalize = 1;
 	opts.annotate = 1;
@@ -66,13 +59,14 @@ parent_main(int ac,  char **av)
 			ac--;
 		}
 	}
-	while ((c = getopt(ac, av, "1ailnopqrs", 0)) != -1) {
+	while ((c = getopt(ac, av, "1ailNnopqrs", 0)) != -1) {
 		switch (c) {
 		    case '1': opts.one = 1; break;
 		    case 'a': opts.add = 1; break;
 		    case 'i': opts.pushonly = 0; opts.pullonly = 1; break;
 		    case 'p': /* compat, fall through, don't doc */
 		    case 'l': opts.annotate = 0; break;
+		    case 'N': printnormal = 1; break;
 		    case 'n': opts.normalize = 0; break;
 		    case 'o': opts.pushonly = 1; opts.pullonly = 0; break;
 		    case 'q': opts.quiet = 1; break;
@@ -81,6 +75,32 @@ parent_main(int ac,  char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
+	if (printnormal) {
+		for (i = optind; i < ac; i++) {
+			if (streq(av[i], "-")) {
+				unless (i == (ac - 1)) {
+					fprintf(stderr,
+					    "parent: '-' must be last\n");
+					exit (1);
+				}
+			}
+		}
+		i = optind;
+		while (which =
+		    (av[i] && streq(av[i], "-")) ? fgetline(stdin) : av[i++]) {
+			unless (p = normalize(which, 1)) return (1);
+			puts(p);
+			free(p);
+		}
+		return (0);
+	}
+
+	if (proj_cd2product() && proj_cd2root()) {
+		fprintf(stderr, "parent: cannot find package root.\n");
+		return (1);
+	}
+	rootdir = proj_cwd();
+	changed_dir = strcmp(start_cwd, rootdir);
 
 	if (!opts.normalize && changed_dir) {
 		fprintf(stderr, "parent: -n legal only from package root\n");

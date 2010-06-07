@@ -17,9 +17,6 @@ cd ..
 echo gdb > nest.map
 bk partition $Q -Cnest.map nest nest.part 2> ERR && fail -f ERR
 grep -q "partition: only works on standalone repositories" ERR || fail -f ERR
-# It would be nice if it cleaned up ...
-test -d nest.part || fail
-rm -fr nest.part
 echo OK
 
 echo $N Try to partition a component ................................$NL
@@ -38,8 +35,10 @@ mkdir -p deep/prune/path/starts/here
 touch a b c deep/prune/path/starts/here/a
 bk new $Q a b c deep/prune/path/starts/here/a
 cd ../doc
-touch a b c
-bk new $Q a b c
+touch a c
+bk new $Q a c
+echo bam > b
+bk new $Q -b b
 cd ..
 bk commit $Q -SROOT -ybaseline
 bk mv src/a a
@@ -49,6 +48,10 @@ touch doc/tip
 bk new $Q doc/tip
 bk commit $Q -ydoc-tip
 bk tag $Q TIP
+cd ..
+fresh_commercial comp1
+cd ..
+fresh_commercial comp2
 cd ..
 cat <<EOF > mapfile
 # The source component
@@ -60,6 +63,10 @@ doc
 # The deep component
 src/deep/prune/path
 src/deep/prune/path/starts/here
+
+# Attach these when done
+path/to/attachfoo|$HERE/comp1
+path/to/newbar|$HERE/comp2
 EOF
 cat <<"EOF" > badmap
 $HERE/project/src
@@ -69,15 +76,15 @@ echo OK
 
 echo $N Test out command line .......................................$NL
 bk partition 2> ERR && exit 1
-grep -q "partition: must specify a -C<file> list" ERR || exit 1
+grep -q "partition: must list source and destination" ERR || fail -f ERR
 bk partition a b 2> ERR && exit 1
-grep -q "partition: must specify a -C<file> list" ERR || exit 1
+grep -q "partition: must specify a -C<file> list" ERR || fail -f ERR
 bk partition -Cnotthere a b 2> ERR && exit 1
-grep -q "partition: component list 'notthere' does not exist" ERR || exit 1
-bk partition -Cmapfile notthere b 2> ERR && exit 1
-grep -q "partition: source 'notthere' does not exist" ERR || exit 1
+grep -q "partition: component list 'notthere' does not exist" ERR || fail -f ERR
+bk partition -q -Cmapfile notthere b 2> ERR && exit 1
+grep -q "illegal, nonexistent, or not package root" ERR || fail -f ERR
 bk partition -Cmapfile project project 2> ERR && exit 1
-grep -q "partition: destination 'project' exists" ERR || exit 1
+grep -q "partition: destination 'project' exists" ERR || fail -f ERR
 echo OK
 
 echo $N Run a simple test ...........................................$NL
@@ -101,6 +108,18 @@ cd "$HERE"/copy
 cat ../dnrk | bk key2path > GOT
 echo src/deep/prune/path/starts/here/ChangeSet > WANT
 checkfiles WANT GOT
+bk comps -h > GOT
+cat <<'EOF' > WANT
+./doc
+./path/to/attachfoo
+./path/to/newbar
+./src
+./src/deep/prune/path/starts/here
+EOF
+checkfiles WANT GOT
+DBKPART="`tail -1 "$HERE/project/BitKeeper/log/ROOTKEY"`"
+DBKPART="$BK_DOTBK/partition/$DBKPART/`tail -1 BitKeeper/log/ROOTKEY`"
+test -f "$DBKPART" || fail no dotbk partition "$DBKPART"
 cd "$HERE"
 echo OK
 
@@ -124,7 +143,7 @@ test 0 -eq `bk changes -r+ -nd'$if(:TAG:){tagged}' | wc -l` || {
 	exit 1
 }
 cd ..
-test 1 -eq `bk changes -r+ -nd'$if(:TAG:){tagged}' | wc -l` || {
+test 2 -eq `bk changes -nd'$if(:TAG:){tagged}' | wc -l` || {
 	echo failed wrong number of tags in product
 	exit 1
 }
@@ -138,8 +157,8 @@ test -f copy/src/b && {
 	exit 1
 }
 rm -fr copy
-_BK_DEVELOPER="" BK_CONFIG="checkout: get! " \
-    bk partition $Q -Cmapfile project copy || exit 1
+BK_CONFIG="checkout: get! " \
+    bk partition $Q -Cmapfile -X project copy || exit 1
 test -f copy/src/b || {
 	echo failed
 	echo no file checked out when one expected
@@ -149,22 +168,24 @@ echo OK
 
 echo $N Test rollback without -X means src/a is there ...............$NL
 cd copy
-bk undo $Q -sfaROOT || exit 1
+bk undo $Q -sfaROOT 2> WARN || exit 1
 bk _test -f src/SCCS/s.a || {
 	echo not there
 	exit 1
 }
+grep -q "undo is rolling back before the partition" WARN || fail -f WARN
 cd ..
 echo OK
 
-echo $N Test rollback with -X means src/a is not there ..............$NL
-bk partition $Q -X -Cmapfile project xcomps || exit 1
+echo $N Test rollback without -X means src/a is not there ...........$NL
+bk partition $Q -Cmapfile project xcomps || exit 1
 cd xcomps
-bk undo $Q -sfaROOT || exit 1
+bk undo $Q -sfaROOT 2> WARN || exit 1
 bk _test -f src/SCCS/s.a && {
 	echo there
 	exit 1
 }
+grep -q "undo is rolling back before the partition" WARN || fail -f WARN
 cd ..
 echo OK
 
@@ -174,7 +195,7 @@ bk edit $Q a
 bk delta $Q -fynull a
 bk commit $Q -ya
 cd ..
-bk partition $Q -Cmapfile project copy2 || exit 1
+bk partition $Q -Cmapfile -X project copy2 || exit 1
 cd copy2
 bk push $Q ../copy 2> ERR || {
    echo push failed
@@ -192,7 +213,7 @@ cd "$HERE/project"
 bk mv src/b doc/was-src-b
 bk commit $Q -ya
 cd ..
-bk partition $Q -Cmapfile project copymv || exit 1
+bk partition $Q -Cmapfile -X project copymv || exit 1
 cd copymv
 bk push $Q ../copy || {
 	echo failed
@@ -200,11 +221,13 @@ bk push $Q ../copy || {
 }
 echo OK
 
+test "$HOSTNAME" != netbsd.bitmover.com && {
 echo $N Do partiton with -j4 ........................................$NL
 cd ../copy
 bk unpull -f $Q || fail
 cd ..
-BK_LIMITPATH= bk partition $Q -j4 -Cmapfile project copymv2 2>ERR || exit 1
+BK_LIMITPATH= bk partition $Q -j4 -X -Cmapfile project copymv2 2>ERR \
+    || fail -f ERR
 cat ERR | grep -v 'partiton: no GNU make found, -j4 ignored' || true
 cd copymv2
 bk push $Q ../copy || {
@@ -212,6 +235,7 @@ bk push $Q ../copy || {
 	exit 1
 }
 echo OK
+}
 
 echo $N Remove empty components .....................................$NL
 cd "$HERE"
@@ -245,7 +269,7 @@ bk commit $Q -yfoo
 bk pull $Q
 cd ..
 echo src > map
-bk partition $Q -X -Cmap branch parted
+bk partition $Q -Cmap branch parted
 echo OK
 
 echo $N Test remapping of the contents of the gone file .............$NL
@@ -257,14 +281,13 @@ bk stripdel $Q -Cr+ "BitKeeper/deleted/.del-b~$RANDBITS"
 bk -r names $Q
 bk _rm src/SCCS/s.c
 bk admin $Q -fMONOTONIC BitKeeper/etc/gone
-bk -r check -ag | bk gone - 2> ERR || fail -f ERR
-bk -r check -agg | bk gone - 2> ERR || fail -f ERR
+bk -r check -aggg | bk gone - 2> ERR || fail -f ERR
 bk edit $Q BitKeeper/etc/gone
 echo "this is junk|1.2" >> BitKeeper/etc/gone
 bk delta $Q -yappendjunk BitKeeper/etc/gone
 bk commit $Q -ygoned
 cd ..
-bk partition $Q -Cmapfile project gone || fail
+bk partition $Q -Cmapfile -X project gone || fail
 bk get -qpk gone/BitKeeper/etc/gone | tail -1 > OUT
 grep -q '^# csetpruned: this is junk|1.2$' OUT || fail -f OUT
 echo OK
@@ -273,6 +296,105 @@ echo $N Test partition failing if dangling deltas in gone ...........$NL
 cd "$HERE/project"
 bk undo $Q -sfr+
 cd ..
-bk partition $Q -Cmapfile project dangling 2>ERR && fail -f ERR
+bk partition $Q -Cmapfile -X project dangling 2>ERR && fail -f ERR
 grep -q "dangling deltas in gone need to be removed" ERR || fail -f ERR
+echo OK
+
+echo $N Verify different command line map and gone lead to diff .....$NL
+cd "$HERE"
+rm -fr project
+commercial project
+cat <<EOF > x
+#!/bin/sh
+exit 0
+EOF
+chmod +x x
+mkdir -p BitKeeper/triggers
+mv x BitKeeper/triggers/post-incoming
+bk new $Q BitKeeper/triggers/post-incoming
+mkdir src doc
+cd src
+touch newfile mvfile
+bk new $Q newfile mvfile
+cd ../doc
+touch newfile
+bk new $Q newfile
+cd ..
+bk commit $Q -ynewfiles
+bk mv src/mvfile mvfile
+bk commit $Q -ymvfile
+cd ..
+echo src > map
+bk partition $Q -Cmap project one
+bk partition $Q -X -Cmap project one.x
+echo doc >> map
+bk partition $Q -Cmap project two
+bk partition $Q -X -Cmap project two.x
+cd one
+test -d BitKeeper/triggers \
+    -a -d src/BitKeeper -a ! -d src/BitKeeper/triggers || fail triggers
+bk changes -qL -ndx ../one.x 2> ERR && echo fail -f ERR
+grep -q "trying to synchronize with an unrelated package" ERR || fail -f ERR
+bk changes -qL -ndx ../two 2> ERR && fail -f ERR
+grep -q "trying to synchronize with an unrelated package" ERR || fail -f ERR
+cd src
+bk changes -qL -ndx ../../one.x 2> ERR && echo fail -f ERR
+grep -q "cannot use key" ERR || fail -f ERR
+bk changes -qL -ndx ../../one.x/src 2> ERR && echo fail -f ERR
+grep -q "trying to synchronize with an unrelated package" ERR || fail -f ERR
+echo OK
+
+echo $N Verify partition state sticks and does not propagate -X .....$NL
+cd "$HERE"
+bk clone $Q one.x refer.x
+bk partition $Q -@refer.x project one.x.ref 2>ERR && fail
+grep -q "refer.x - no partition information found" ERR || fail -f ERR
+cp one.x/BitKeeper/log/partition refer.x/BitKeeper/log/partition
+bk partition $Q -@refer.x project one.x.ref
+cd one.x.ref
+bk pull $Q ../one.x
+echo OK
+
+echo $N Verify partition state sticks and does not propagate ........$NL
+cd "$HERE"
+bk clone $Q one refer
+bk partition $Q -@refer project one.ref 2>ERR && fail
+grep -q "refer - no partition information found" ERR || fail -f ERR
+cp one/BitKeeper/log/partition refer/BitKeeper/log/partition
+bk partition $Q -@refer project one.ref
+cd one.ref
+bk pull $Q ../one
+echo OK
+
+echo $N Verify new gone with reference makes new cset ...............$NL
+cd "$HERE"
+bk clone $Q project missing
+cd missing
+bk _cp SCCS/s.mvfile save
+bk edit $Q mvfile
+echo new content > mvfile
+bk delta $Q -ynew-stuff mvfile
+bk commit $Q -ymvfile
+bk _rm src/SCCS/s.newfile
+bk _cp save SCCS/s.mvfile
+bk -r check -aggg | bk gone -q -
+bk commit $Q -ygone
+cd ..
+BK_USER=wallawalla BK_HOST=zippy.moc \
+    bk partition $Q -@refer missing missing.ref || fail
+cd missing.ref
+DATA=`bk changes -r+ -nd':USER:@:HOST:'`
+test "wallawalla@zippy.moc" = "$DATA" || fail Got "$DATA"
+bk push $Q ../one || fail
+bk parent -l > GOT
+echo "file://$HERE/refer" > WANT
+checkfiles WANT GOT
+bk pull $Q || fail
+echo OK
+
+echo $N Verify partition without -X must contain baseline cset ......$NL
+cd "$HERE"
+bk clone $Q -r1.2 project small
+bk partition $Q -@one small borker 2> ERR && fail -f ERR
+grep -q "It must be present for partition to work" ERR || fail -f ERR
 echo OK

@@ -6,6 +6,71 @@
 private	void	createInitialAliases(void);
 private	void	push_hash2lines(hash *h, char *key, char *line);
 
+typedef struct {
+	char	*prunefile;
+	char	*compsfile;
+	char	*referenceurl;
+	char	*parallel;
+	char	*from;
+	char	*to;
+	u32	xcomp:1;
+} opts;
+
+private	int	doReference(opts *opts);
+
+int
+ncpartition_main(int ac, char **av)
+{
+	int	c, flags;
+	opts	opts;
+
+	bzero(&opts, sizeof(opts));
+	while ((c = getopt(ac, av, "@;C;j;P;Xq", 0)) != -1) {
+		switch (c) {
+		    case '@': opts.referenceurl = optarg; break;
+		    case 'C': opts.compsfile = optarg; break;
+		    case 'j': opts.parallel = optarg; break;
+		    case 'P': opts.prunefile = optarg; break;
+		    case 'q': flags |= SILENT; break;
+		    case 'X': opts.xcomp = 1; break;
+		    default: bk_badArg(c, av);
+		}
+	}
+	unless ((opts.from = av[optind]) &&
+	    (opts.to = av[optind+1]) && !av[optind+2]) {
+	    	fprintf(stderr,
+		    "%s: Need 2 arguments: from-repo to-repo\n", prog);
+		usage();
+	}
+	if (opts.referenceurl &&
+	    (opts.compsfile || opts.prunefile || opts.xcomp)) {
+	    	fprintf(stderr, "%s: -@ reference url "
+		    "must be used without -C, -P, and -X\n", prog);
+		return (1);
+	}
+	if (opts.referenceurl) {
+		/* load parameters from a reference repo */
+		doReference(&opts);
+	}
+	/*
+	 * Check parameters.. then
+	 * clone - get BAM data too
+	 * setup work area
+	 * parallel components work, using main repo as reference.
+	 * 	Need to take BAM data there too
+	 * product prune
+	 * stitch together.
+	 */
+
+	return (0);
+}
+
+private	int
+doReference(opts *opts)
+{
+	return (0);
+}
+
 int
 cpartition_main(int ac, char **av)
 {

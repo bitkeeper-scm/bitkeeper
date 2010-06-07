@@ -18,6 +18,26 @@ bk clone $Q . ../clone
 echo OK
 cores
 
+echo $N See if we can compute normalized url from outside a repo ....$NL
+cd "$HERE"
+bk parent -N project clone > GOT
+cat <<EOF > WANT
+file://$HERE/project
+file://$HERE/clone
+EOF
+checkfiles WANT GOT
+printf "project\nclone\n" | bk parent -N - > GOT
+checkfiles WANT GOT
+cd project
+printf ".\n../clone\n" | bk parent -N - > ../GOT
+cd ..
+checkfiles WANT GOT
+bk parent -N badrepo 2> ERR && fail
+grep -q "Not a repository: 'badrepo'" ERR || fail -f ERR
+bk parent -N - repoafterdash 2> ERR && fail
+grep -q "parent: '-' must be last" ERR || fail -f ERR
+echo OK
+
 echo $N Make sure that we have incoming, outgoing parent set ........$NL
 # Make sure we don't have to be at the root.
 cd "$HERE/clone"

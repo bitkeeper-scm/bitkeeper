@@ -308,13 +308,15 @@ sfio_out(void)
 			continue;
 		}
 		if (opts->key2path) {
-			unless (gfile = key2path(buf, idDB)) {
-				continue;
+			unless (streq("BitKeeper/log/partition", buf)) {
+				unless (gfile = key2path(buf, idDB)) {
+					continue;
+				}
+				sfile = name2sccs(gfile);
+				strcpy(buf, sfile);
+				free(sfile);
+				free(gfile);
 			}
-			sfile = name2sccs(gfile);
-			strcpy(buf, sfile);
-			free(gfile);
-			free(sfile);
 			if (lstat(buf, &sb)) continue;
 		} else {
 			if (lstat(buf, &sb)) {

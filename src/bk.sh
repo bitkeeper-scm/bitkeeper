@@ -201,47 +201,109 @@ _portal() {
 	exit 0
 }
 
-__newFile() {
-	# repeatable file if you run from repeatable relative path
-	test "X$BK_DATE_TIME_ZONE" = X && {
-		DSPEC=':D: :T::TZ:'
-		DT=`BK_PAGER=cat BK_YEAR2=1 bk changes -r1.1 -nd"$DSPEC"`
-		BK_DATE_TIME_ZONE="$DT"
-		BK_USER=`BK_PAGER=cat bk changes -r1.1 -nd":P:"`
-		BK_HOST=`BK_PAGER=cat bk changes -r1.1 -nd":HOST:"`
-		export BK_USER BK_HOST BK_DATE_TIME_ZONE
-	}
-
-	F="$1"
-	R=`echo "$F $BK_DATE_TIME_ZONE $BK_USER $BK_HOST" \
-	    | bk undos -n | bk crypto -hX - | cut -c1-16`
-	mkdir -p `dirname "$F"`
-	test -f "$F" || touch "$F"
-	chmod 666 "$F"
-	_BK_NO_UNIQ=1 BK_RANDOM="$R" bk new -y"New $F" -qP "$F"
-}
-
 _partition() {
+	CURVER=1.0beta1
 	COMPS=
-	QUIET=
-	XCOMPS=
-	GONELIST=
-	COMPGONELIST=
+	FIXGONE=
+	GONE=
+	NEWRAND=
+	PRUNE=
 	PARALLEL=
-	while getopts C:G:g:j:m:qX opt
+	QUIET=
+	RAND=
+	REFERENCE=
+	ROOTLOG=
+	TIP=
+	VERSION="$CURVER"
+	XCOMP=
+	while getopts @:C:G:P:j:qT:X opt
 	do
 		case "$opt" in
-		q) QUIET=-q;;
+		@) REFERENCE="$OPTARG";;
 		C) COMPS="$OPTARG";;
-		G) GONELIST="$OPTARG";;
-		g) COMPGONELIST="$OPTARG";;
 		j) PARALLEL="-j$OPTARG";;
-		m) COMPS="$OPTARG";;	# for any old scripts
-		X) XCOMPS="-X";;
+		G) GONE="$OPTARG";;
+		P) PRUNE="$OPTARG";;
+		q) QUIET=-q;;
+		T) TIP="$OPTARG";;
+		X) XCOMP=1;;
 		*) bk help -s partition; exit 1;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
+	test "$#" -eq 2 || {
+		echo "partition: must list source and destination" 1>&2
+		bk help -s partition
+		exit 1
+	}
+	from="$1"
+	to="$2"
+
+	# Did the user pass in command line configuration
+	# This doesn't include -j or -q
+	CL_OPTS=
+	test -z "$COMPS" -a -z "$PRUNE" -a -z "$XCOMP" -a -z "$TIP" \
+	    || CL_OPTS=YES
+
+	test -n "$REFERENCE" && {
+		test -z "$CL_OPTS" || {
+			echo "partition:" \
+			    "-@ cannot be used with -C, -P, or -X" 1>&1
+			exit 1
+		}
+		# Normalize it before doing any 'cd'
+		REF="`bk parent -N "$REFERENCE"`"
+		test $? = 0 || exit 1
+		REFERENCE="$REF"
+		bk changes -qer+ -ndx "$REFERENCE" > /dev/null 2>&1 || {
+			echo "partition:" \
+			    "repository '$REFERENCE' not found." 1>&2
+			exit 1
+		}
+		PTMP=$BK_TMP/bkpart$$
+		mkdir "$PTMP" || exit 1
+		trap "rm -fr '$PTMP'" 0
+		echo BitKeeper/log/partition \
+		    | bk -q -Bstdin -@"$REFERENCE" sfio -qKo - \
+		    | (cd "$PTMP" && bk sfio -qi) || {
+			exit 1
+		}
+		test -f "$PTMP/BitKeeper/log/partition" || {
+			echo "$REFERENCE - no partition information found" 1>&2
+			exit 1
+		}
+		mv "$PTMP"/BitKeeper/log/partition "$PTMP/partition"
+		rm -fr "$PTMP/BitKeeper"
+		for k in ATTACH COMPS \
+		    GONE PRUNE RAND ROOTLOG ROOTKEY TIP VERSION XCOMP
+		do	bk _getkv "$PTMP/partition" $k > "$PTMP/$k" || {
+				test $? = 2 || {
+					echo getkv failed 1>&2
+					exit 1
+				}
+				rm "$PTMP/$k"	# key not found
+			}
+		done
+		if [ -f "$PTMP/VERSION" ]
+		then	VERSION="`cat "$PTMP/VERSION"`"
+			test "$VERSION" = "$CURVER" || {
+				echo "partition: mismatch version $VERSION" \
+				    1>&2
+				exit 1
+			}
+		else
+			echo "partition: mismatch version: none " 1>&2
+			exit 1
+		fi
+		test -f "$PTMP/ATTACH" && ATTACH="$PTMP/ATTACH"
+		test -f "$PTMP/COMPS" && COMPS="$PTMP/COMPS"
+		test -f "$PTMP/GONE" && GONE="$PTMP/GONE"
+		test -f "$PTMP/PRUNE" && PRUNE="$PTMP/PRUNE"
+		test -f "$PTMP/RAND" && RAND="`cat "$PTMP/RAND"`"
+		test -f "$PTMP/ROOTLOG" && ROOTLOG="`cat "$PTMP/ROOTLOG"`"
+		test -f "$PTMP/TIP" && TIP="`cat "$PTMP/TIP"`"
+		test -f "$PTMP/XCOMP" && XCOMP=1
+	}
 
 	# XXX: like clone, shouldn't need a second param, but
 	# if no second param, would need a way to know what the
@@ -256,73 +318,99 @@ _partition() {
 		bk help -s partition
 		exit 1
 	}
-	test -z "$GONELIST" -o -f "$GONELIST" || {
-		echo "partition: -G $GONELIST is not a file"
+	test -z "$PRUNE" -o -f "$PRUNE" || {
+		echo "partition: -P $PRUNE is not a file"
 		exit 1
 	}
-	test -z "$COMPGONELIST" -o -f "$COMPGONELIST" || {
-		echo "partition: -G $COMPGONELIST is not a file"
-		exit 1
-	}
-	test "$#" -eq 2 || {
-		echo "partition: must list source and destination" 1>&2
-		bk help -s partition
-		exit 1
-	}
-	from="$1"
-	to="$2"
 	test -d "$to" && {
 		echo "partition: destination '$to' exists" 1>&2
 		bk help -s partition
 		exit 1
 	}
-	test -d "$from" || {
-		echo "partition: source '$from' does not exist" 1>&2
-		bk help -s partition
-		exit 1
-	}
 
 	_BK_OCONFIG="$BK_CONFIG"
-	BK_CONFIG="$BK_CONFIG; nosync: no!; checkout: none!; partial_check: on!"
+	BK_CONFIG="$BK_CONFIG; nosync: yes!; checkout: none!; partial_check: on!"
 	export BK_CONFIG
+	BK_NO_TRIGGERS=1
+	export BK_NO_TRIGGERS
 
 	verbose "### Cloning product"
-	bk clone $QUIET -l "$from" "$to" \
-	    || bk clone $QUIET "$from" "$to" || exit 1
+	bk clone $QUIET -Bnone "$from" "$to" || exit 1
 
 	# Make a work area
 	WA=BitKeeper/tmp/partition.d
 	WA2PROD=../../..
 
 	mkdir "$to/$WA" || exit 1
+	echo "$VERSION" > "$to/$WA/VERSION"
 
-	# Get a local copy of gone and component list files
+	# Get a local copy of prune and component list files
 	# For component file, pull out comments and blank lines
-	grep -v "^[ 	]*#" "$COMPS" | grep -v "^[ 	]*$" \
-	    | bk sort -u > "$to/$WA/map"
+	# and leading ./
+	if [ -z "$REFERENCE" ]
+	then	grep -v '^[ 	]*#' "$COMPS" | grep -v '^[ 	]*$' \
+		    | sed 's?^\./??' | bk sort -u > "$to/$WA/tmp"
+		grep '[|]' "$to/$WA/tmp" > "$to/$WA/ATTACH"
+		test -s "$to/$WA/ATTACH" || rm "$to/$WA/ATTACH"
+		grep -v '[|]' "$to/$WA/tmp" > "$to/$WA/comps"
+		grep -q "^/" "$to/$WA/comps" && {
+			echo "partition: no absolute paths in comps" 1>&2
+			exit 1
+		}
+	else
+		cat "$COMPS" > "$to/$WA/comps" || exit 1
+	fi
 	# XXX not complete for windows: fix when moving to C
-	grep -q "^/" "$to/$WA/map" && {
-		echo "partition: no absolute paths in map" 1>&2
-		exit 1
-	}
-	test -z "$GONELIST" || cp "$GONELIST" "$to/$WA/gonelist" || exit 1
-	test -z "$COMPGONELIST" \
-	    || cp "$COMPGONELIST" "$to/$WA/compgonelist" || exit 1
+	# cat instead of copy: no permission problems.
+	test -z "$PRUNE" || cat "$PRUNE" > "$to/$WA/prune" || exit 1
+	test -z "$ATTACH" || cat "$ATTACH" > "$to/$WA/ATTACH" || exit 1
+
+	# Done with reference tmp area.
+	test -n "$REFERENCE" && rm -fr "$PTMP"
 
 	HERE="`pwd`"
 	cd "$to" || exit 1
+	bk parent -qr
+
+	bk lease show | grep '^options:.*SAM' >/dev/null || {
+		echo "partition: not enabled by the current license." 1>&2
+		exit 1
+	}
 
 	bk product -q
 	test "$?" -eq 2 || {
 		echo "partition: only works on standalone repositories" 1>&2
+		# careful: cleanup
+		cd "$HERE" && rm -fr "$to"
 		exit 1
 	}
 
-	# Note; gone list could vary over time if the gone file
-	# were consulted, or missing files ignores.
-	# Since we want to be able to run partition on many repos
-	# and have them communicate, pass in a gonelist.
+	test -z "$XCOMP" -a -n "$TIP" && {
+		bk changes -r"$TIP" -dx > /dev/null 2>&1 || {
+			(	echo "partition: baseline revision:"
+				echo "	$TIP"
+				echo "is not in repository.  It must be" \
+				    "present for partition to work."
+				echo "Please pull in a repository with" \
+				    "that cset and run again."
+			) 1>&2
+			exit 1
+		}
+	}
 
+	echo "$VERSION" > $WA/VERSION
+
+	test -z "$TIP" && {
+		test -f BitKeeper/log/TIP && {
+			TIP="`grep '[|]' BitKeeper/log/TIP`"
+		}
+		test -z "$TIP" && TIP="`bk changes -er+ -nd:KEY:`"
+	}
+	echo "$TIP" > $WA/TIP
+
+	test -n "$XCOMP" && touch $WA/XCOMP
+
+	# safety - in case it doesn't have a rootkey.
 	test -f BitKeeper/log/ROOTKEY || {
 		bk id > /dev/null
 		test -f BitKeeper/log/ROOTKEY || {
@@ -330,95 +418,64 @@ _partition() {
 			exit 1
 		}
 	}
-	if [ -f $WA/gonelist ]
-	then	RAND=`bk _sort < $WA/gonelist | cat BitKeeper/log/ROOTKEY - \
-		    | bk undos -n | bk crypto -hX - | cut -c1-16`
-		verbose "### Removing unwanted files"
-		bk csetprune $QUIET -aSk"$RAND" - < $WA/gonelist || exit 1
-	fi
+	cp BitKeeper/log/ROOTKEY $WA
 
-	# If there is no gone or ignore file, add one
-	ADDONE=
-	rm -f $WA/allkeys
-	bk _test -f BitKeeper/etc/SCCS/s.gone || {
-		ADDONE=YES
-		test -f BitKeeper/etc/gone && rm -f BitKeeper/etc/gone
-		__newFile BitKeeper/etc/gone
-		SERIAL=`bk changes -r1.1 -nd:DS:`
-		bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/gone \
-		    >> $WA/allkeys
-	}
-	bk _test -f BitKeeper/etc/SCCS/s.ignore || {
-		ADDONE=YES
-		test -f BitKeeper/etc/ignore && rm -f BitKeeper/etc/ignore
-		__newFile BitKeeper/etc/ignore
-		SERIAL=`bk changes -r1.1 -nd:DS:`
-		bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/ignore \
-		    >> $WA/allkeys
-	}
-	test "X$ADDONE" = "XYES" && {
-		verbose "Adding missing gone or ignore file..."
-		# Add in the rest of keys and slurp into cset body
-		bk annotate -aS -hR ChangeSet >> $WA/allkeys
-		bk surgery -W$WA/allkeys || exit 1
-		bk cset -M1.1
-		bk -r check -ac || exit 1
-		rm -f $WA/allkeys
+	# If not allowing cross component moves, purge gone
+	test -z "$REFERENCE" -a -z "$XCOMP" && {
+		echo 'BitKeeper/etc/gone' >> $WA/prune
+		bk edit -q BitKeeper/etc/gone
+		cat /dev/null > BitKeeper/etc/gone
+		# Num of g's is a bitmask: 0x1 is rootkey and 0x2 is deltakey
+		bk -r check -aggg >> $WA/prune
+		bk unedit -q BitKeeper/etc/gone
 	}
 
-	# Save a backup copy of the repo
-	bk clone -ql . $WA/repo || exit 1
-
-	# Clean out the product
-
-	RAND=`echo "The Big Cheese" | cat - BitKeeper/log/ROOTKEY \
-		    | bk undos -n | bk crypto -hX - | cut -c1-16`
-	bk csetprune $QUIET -GNSE $XCOMPS -C$WA/map "-k$RAND" || exit 1
-
-	# Prepare the component.  Need insane in case config is stripped.
-	_BK_INSANE=1
-	export _BK_INSANE
-	cd $WA/repo || exit 1
-	test -f BitKeeper/log/ROOTKEY || {
-		bk id > /dev/null
-		test -f BitKeeper/log/ROOTKEY || {
-			echo "No BitKeeper/log/ROOTKEY file" 1>&2
-			exit 1
-		}
+	touch $WA/xcomptip
+	test -z "$XCOMP" && {
+		bk csetprune $QUIET -X -C $WA/comps -r"$TIP" - \
+		    < $WA/prune > $WA/prunecomps
+		cat $WA/TIP > $WA/xcomptip
 	}
-	# add all config files - any rootkey or deltakey that has
-	# lived in the config file slot, prune the rootkey.
-	verbose "Adding any config to component prune list..."
-	bk annotate -hR ChangeSet | grep '[|]BitKeeper/etc/config[|]' \
-	    | sed 's/ .*//' >> ../compgonelist
-	bk _sort -u < ../compgonelist > ../cgl
-	mv ../cgl ../compgonelist
-	test -f ../compgonelist && {
-		RAND=`cat BitKeeper/log/ROOTKEY ../compgonelist \
-		    | bk undos -n | bk crypto -hX - | cut -c1-16`
-		verbose "### Removing unwanted files"
-		bk csetprune $QUIET -aNSk"$RAND" - < ../compgonelist || exit 1
+	test -n "$XCOMP" && FIXGONE=-G
+
+	test -z "$REFERENCE" && {
+		# things to remove from every component
+		echo '||BitKeeper/etc/config' >> $WA/prune
+		echo '||BitKeeper/etc/ignore' >> $WA/prune
+		echo '||BitKeeper/triggers/' >> $WA/prune
 	}
 
-	# If there is no config file (which there shouldn't be), add one
-	verbose "Creating new config file for components..."
-	bk _test -f $WA/repo/BitKeeper/etc/SCCS/s.config || {
-		test -f BitKeeper/etc/config && rm -f BitKeeper/etc/config
-		__newFile BitKeeper/etc/config
-		bk annotate -aS -hR ChangeSet > ../allkeys
-		SERIAL=`bk changes -r1.1 -nd:DS:`
-		bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/config \
-		    >> ../allkeys
-		# Add in the rest of keys and slurp into cset body
-		bk surgery -W../allkeys || exit 1
-		bk cset -M1.1
-		bk -r check -ac || exit 1
-		rm -f ../allkeys
-	}
-	# back to $WA
-	cd .. || exit 1
-	_BK_INSANE=
+	# New random must be stable -- the same if things are the
+	# same and different if they are different.
+	# RAND = sorted prune, sorted comps list, tip if pruning xcomp,
+	# and current rootkey.
+	touch $WA/prune
+	cat $WA/prune | bk _sort -u > $WA/prune.tmp
+	mv $WA/prune.tmp $WA/prune || exit 1
 
+	NEWRAND=`cat BitKeeper/log/ROOTKEY $WA/comps $WA/prune $WA/xcomptip \
+	    | bk undos -n | bk crypto -hX - | cut -c1-16`
+
+	test -n "$RAND" -a "$RAND" != "$NEWRAND" && {
+		echo "partition: random bits do not match" 1>&2
+		echo "want	$RAND" 1>&2
+		echo "got	$NEWRAND" 1>&2
+		exit 1
+	}
+	RAND="$NEWRAND"
+	echo "$RAND" > $WA/RAND
+
+	# global prune - things which get removed from all
+	# Note: no newroot here, for perf and entry in rootlog.
+	cp $WA/prune $WA/prunereal
+	test -s $WA/prunecomps && cat $WA/prunecomps >> $WA/prunereal
+	test -s $WA/prunereal && {
+		verbose "### Pruning baseline repository"
+		bk csetprune $QUIET -aSK - < $WA/prunereal || exit 1
+	}
+
+	cd $WA
+	# Prepare the components.
 	if [ "$PARALLEL" ]
 	then	# if 'make' is not found or not GNU Make, then ignore -j
 		make --version > OUT 2>&1
@@ -431,10 +488,11 @@ _partition() {
 	if [ "$PARALLEL" ]
 	then
 		N=0
-		cat map | while read comp; do
+		cat comps | while read comp; do
 			N=`expr $N + 1`
 			echo repo$N.out: >> Makefile
-			echo "	bk _partition_one $QUIET $XCOMPS repo$N \"$comp\"" >> Makefile
+			echo "	bk _partition_one" $FIXGONE \
+			    $QUIET repo$N \"$comp\" $RAND >> Makefile
 			echo >> Makefile
 			echo repo$N.out >> ALL
 		done || exit 1
@@ -443,66 +501,113 @@ _partition() {
 		make -s $PARALLEL all || exit 1
 	else
 		N=0
-		cat map | while read comp; do
+		cat comps | while read comp; do
 			N=`expr $N + 1`
-			bk _partition_one $QUIET $XCOMPS repo$N "$comp" || {
-				exit 1
-			}
+			bk _partition_one \
+			    $QUIET $FIXGONE repo$N "$comp" $RAND || exit 1
 		done || exit 1
 	fi
-	cd $WA2PROD || exit 1
 
+	cd $WA2PROD || exit 1
+	# cset prune the main repo
+	verbose "### Pruning product repository"
+	bk csetprune $QUIET -aENS $FIXGONE -C $WA/comps -k$RAND - \
+	    < $WA/prunereal || exit 1
+
+	# Now stitch it all together
+	touch BitKeeper/log/PRODUCT
+	chmod 444 BitKeeper/log/PRODUCT
+	BACKPTR=`bk id`
+	BAM_ROOT=BitKeeper/BAM
+	test -d "$BAM_ROOT" || mkdir -p "$BAM_ROOT"
+	test -d "$BAM_ROOT" || exit 1
 	N=0
-	cat $WA/map | while read comp; do
+	cat $WA/comps | while read comp; do
 		N=`expr $N + 1`
 		# XXX: this does not set exit code:
-		# bk changes -er1.2 -ndx $WA/new
-		(cd $WA/repo$N && bk changes -qer1.2 -ndx > /dev/null 2>&1 ) || {
-			verbose "### $comp is empty: removed" 
+		# bk changes -er1.2 -ndx new
+		cd $WA/repo$N || {
+			echo "failed to cd to component $comp in" 1>&2
+			pwd 1>&2
+			exit 1
+		}
+		bk changes -qer1.2 -ndx > /dev/null 2>&1 || {
+			verbose "$comp is empty: removed" 
+			cd ../$WA2PROD
 			rm -fr $WA/repo$N
 			continue
 		}
+		cd ../$WA2PROD
+		test -d $WA/repo$N/$BAM_ROOT && {
+			mv $WA/repo$N/$BAM_ROOT/* $BAM_ROOT
+			rmdir $WA/repo$N/$BAM_ROOT
+		}
 		mkdir -p "`dirname "$comp"`"
 		mv $WA/repo$N "$comp" || exit 1
-	done || exit 1
-
-	# We now have a bunch of separate repos laid out like a product
-	# stitch them together
-	touch BitKeeper/log/PRODUCT
-	chmod 444 BitKeeper/log/PRODUCT
-
-	BP=`bk changes -r+ -nd:ROOTKEY:`
-	cat $WA/map | while read comp; do
-		test -d "$comp/BitKeeper/etc" || continue
-		verbose "### Fixing component $comp"
 		(
 			cd "$comp" || exit 1
-			bk surgery $QUIET -p"$comp" -B"$BP" || exit 1
+			bk surgery -p"$comp" -B"$BACKPTR" || exit 1
 			# the 1.1.. is a simpler way of the same thing
 			# bk changes -nd'$if(:CSETKEY:){:DS:\t:ROOTKEY: :KEY:}'
 			bk changes -er1.1.. -nd':DS:\t:ROOTKEY: :KEY:'
-			# bk scompress -- okay to do it here
-			# but means we can't recover, so do later.
-		) || exit 1
+		)
 	done > $WA/allkeys || exit 1
-
-	# Add in the existing keys
 	bk annotate -aS -hR ChangeSet >> $WA/allkeys
+	if [ -n "$ROOTLOG" ]
+	then	OPT="-L$ROOTLOG"
+	else	OPT=""
+	fi
+	DOTBKPARTITION=
+	verbose "### Stitching together"
+	bk surgery $OPT -R$WA/ROOTKEY -W$WA/allkeys > $WA/postsurgery || exit 1
+	. $WA/postsurgery
+	echo "$ROOTLOG" > $WA/ROOTLOG
+	test -n "$DOTBKPARTITION" || {
+		echo "partition; no DOTBKPARTITION" 1>&2
+		exit 1
+	}
 
-	# Setting up aliases and HERE taken from 'bk setup'
-	echo default > BitKeeper/log/HERE
-	echo @default > BitKeeper/etc/aliases
-	echo all >> BitKeeper/etc/aliases
-	__newFile BitKeeper/etc/aliases
-	SERIAL=`bk changes -r1.1 -nd:DS:`
-	bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/aliases \
-	    >> $WA/allkeys
+	# everything is here
+	bk here set default || exit 1
 
-	# sort and roll that into a cset weave body
-	bk surgery -W$WA/allkeys || exit 1
+	# Now that it's a product, make a cset for new gone work
+	bk -Np > $WA/newgone
+	test -s $WA/newgone && {
+		verbose "Commit extra gone"
+		bk -qC commit $QUIET -y'partition gone'
+		bk commit $QUIET -y'partition gone'
+	}
+	rm $WA/newgone
 
-	# HACK: Give the aliases file a cset mark
-	bk cset -M1.1
+	test -z "$REFERENCE" -a -z "$XCOMP" -a -s $WA/ATTACH && {
+		verbose "Attaching components"
+		bk portal -q .
+		IFS='|'
+		cat $WA/ATTACH | while read path url; do
+			bk attach $QUIET -C "$url" "$path" || exit 1
+		done || exit 1
+		bk commit $QUIET -y'attaching new components'
+		bk portal -q -r
+	}
+
+	# Update the partition reference kv file
+	rm -fr BitKeeper/log/partition
+	(	cd $WA
+		test -s comps && mv comps COMPS
+		test -s gone && mv gone GONE
+		test -s prune && mv prune PRUNE
+	)
+	for f in ATTACH COMPS \
+	    GONE PRUNE RAND ROOTLOG ROOTKEY TIP VERSION XCOMP
+	do	test -f $WA/$f && {
+			bk _setkv BitKeeper/log/partition $f < $WA/$f
+		}
+	done
+	test -f "$DOTBKPARTITION" || {
+		mkdir -p "`dirname "$DOTBKPARTITION"`" || exit 1
+		cp BitKeeper/log/partition "$DOTBKPARTITION"
+		cp $WA/prunereal "$DOTBKPARTITION.prune"
+	}
 
 	# That's it!  Do the big check.. and restore files to proper state
 	test -z "$QUIET" && VERBOSE=-v
@@ -510,8 +615,12 @@ _partition() {
 	export BK_CONFIG
 	_BK_DEVELOPER= bk $QUIET -Ar check $VERBOSE -acfT || exit 1
 
+	# Destroy the magic serials which let us line everything up.
 	verbose "### Compressing serials"
 	bk $QUIET -A _scompress -q ChangeSet
+
+	# Leave it to the user to do the pull
+	test -n "$REFERENCE" && bk parent $QUIET "$REFERENCE"
 
 	rm -fr $WA
 	verbose partioning complete
@@ -521,37 +630,29 @@ _partition() {
 __partition_one()
 {
 	QUIET=
-	XCOMPS=
-	while getopts qX opt
+	FIXGONE=
+	while getopts GqX opt
 	do
 		case "$opt" in
+		G) FIXGONE=-G;;
 		q) QUIET=-q;;
-		X) XCOMPS="-X";;
 		*) bk help -s partition; exit 1;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
+	test $# = 3 || exit 1
 	dest="$1"
 	comp="$2"
-	test "$dest" -a "$comp" || exit 1
+	seed="$3"
+	WA2PROD=../../..
 
 	verbose "### Cloning component $comp"
-	bk clone -ql repo "$dest" || exit 1
+	bk clone $QUIET -l $WA2PROD "$dest" || exit 1
 	(
 		cd "$dest" || exit 1
-		test -f BitKeeper/log/ROOTKEY || {
-			bk id > /dev/null
-			test -f BitKeeper/log/ROOTKEY || {
-				echo "No BitKeeper/log/ROOTKEY file" \
-				    1>&2
-				exit 1
-			}
-		}
-		RAND=`echo "$comp" | cat - BitKeeper/log/ROOTKEY \
-		    | bk undos -n | bk crypto -hX - | cut -c1-16`
-		_BK_STRIPTAGS=1 bk csetprune \
-		    $QUIET -GNS $XCOMPS -C ../map -c"$comp" "-k$RAND" \
-		    || exit 1
+		_BK_STRIPTAGS=1 bk csetprune $FIXGONE \
+		    $QUIET -aNS -C ../comps -c"$comp" "-k$seed" - \
+		    < ../prunereal || exit 1
 	) || exit 1
 	return 0
 }

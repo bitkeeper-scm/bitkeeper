@@ -1320,6 +1320,8 @@ buildKeys(MDBM *idDB)
 	}
 	free(smap);
 
+	if (goneKey) goto finish; /* skip name collision */
+
 	if (proj_isComponent(cset->proj)) {
 		/*
 		 * add deeply nested pathnames
@@ -1371,8 +1373,8 @@ buildKeys(MDBM *idDB)
 			}
 		}
 	}
+finish:
 	freeLines(pathnames, free);
-
 	/* Add in ChangeSet keys */
 	sccs_sdelta(cset, sccs_ino(cset), key);
 	deltas = hash_new(HASH_MEMHASH);

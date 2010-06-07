@@ -148,7 +148,7 @@ OBJ =	bkver.o cmd.o \
 	gnupatch.o graft.o grep.o \
 	help.o here.o host.o hostme.o http.o \
 	idcache.o isascii.o inskeys.o \
-	key2rev.o key2path.o kill.o kvfile.o \
+	key2rev.o key2path.o kill.o kv.o kvfile.o \
 	lease.o level.o \
 	libcommit.o libdiff.o libgraph.o librange.o \
 	libsfiles.o libusers.o lines.o \

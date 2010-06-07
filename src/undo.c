@@ -21,6 +21,7 @@ private	int	undo_ensemble1(nested *n, int verbose, int quiet,
 		    char **nav, char ***comp_list);
 private	int	undo_ensemble2(nested *n, int verbose);
 private	void	undo_ensemble_rollback(nested *n, int v, char **comp_list);
+private	int	undoLimit(char **limit);
 
 private	int	fromclone;
 
@@ -32,7 +33,7 @@ undo_main(int ac,  char **av)
 	char	undo_list[MAXPATH] = { 0 };
 	FILE	*f;
 	nested	*n = 0;
-	int	i, match = 0, lines = 0;
+	int	i, match = 0, lines = 0, limitwarning = 0;
 	int	status;
 	int	rmresync = 1;
 	char	**sfiles = 0;		// sfiles to undo
@@ -44,6 +45,7 @@ undo_main(int ac,  char **av)
 	char	*checkfiles;	/* filename of list of files to check */
 	char	*patch = "BitKeeper/tmp/undo.patch";
 	char	*p;
+	char	*must_have = 0;
 	char	**nav = 0;
 
 	if (proj_cd2root()) {
@@ -82,6 +84,7 @@ undo_main(int ac,  char **av)
 	unless (quiet || verbose) {
 		putenv("_BK_PROGRESS_MULTI=YES");
 	}
+	if (undoLimit(&must_have)) limitwarning = 1;
 	save_log_markers();
 	// XXX - be nice to do this only if we actually are going to undo
 	unlink(BACKUP_SFIO); /* remove old backup file */
@@ -93,6 +96,7 @@ undo_main(int ac,  char **av)
 	unless (filesNrevs = getrev(rev, aflg)) {
 		/* No revs we are done. */
 		freeLines(nav, free);
+		if (must_have) free(must_have);
 		return (fromclone ? UNDO_SKIP : 0);
 	}
 	EACH (filesNrevs) {
@@ -101,9 +105,23 @@ undo_main(int ac,  char **av)
 		*p = 0;
 		if (streq("SCCS/s.ChangeSet", filesNrevs[i])) {
 			csetrevs = addLine(csetrevs, p+1);
+			if (must_have && streq(must_have, p+1)) {
+				limitwarning = 1;
+			}
 		}
 		sfiles = addLine(sfiles, strdup(filesNrevs[i]));
 		*p = '|';
+	}
+	if (limitwarning) {
+		fprintf(stderr,
+		    "%s: Warning: undo is rolling back before the partition\n"
+		    "tip, and may be missing some files that were moved or\n"
+		    "deleted at the time of the partition, but present now.\n"
+		    "The partition tip\n\t%s\n", prog, must_have);
+	}
+	if (must_have) {
+		free(must_have);
+		must_have = 0;
 	}
 	uniqLines(sfiles, free);
 
@@ -779,6 +797,34 @@ move_file(char *checkfiles)
 	pclose(f);
 	fclose(chk);
 	return (rc);
+}
+
+private	int
+undoLimit(char **limit)
+{
+	sccs	*s = sccs_csetInit(0);
+	int	i, ret = 0, in_log = 0;
+	char	*p;
+
+	unless (s) return (0);
+	EACH(s->text) {
+		if (s->text[i][0] == '\001') continue;
+		unless (in_log) {
+			if (streq(s->text[i], "@ROOTLOG")) in_log = 1;
+			continue;
+		}
+		if (s->text[i][0] == '@') break;
+		unless (p = strchr(s->text[i], ':')) continue;
+
+		if (strneq(s->text[i], "partition command", p - s->text[i])) {
+			assert(p[1] == ' ');
+			*limit = strdup(p+2);
+			unless (sccs_findKey(s, p+2)) ret = 1;
+			break;
+		}
+	}
+	sccs_free(s);
+	return (ret);
 }
 
 private	int	valid_marker;

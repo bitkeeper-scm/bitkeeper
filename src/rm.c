@@ -189,7 +189,12 @@ sccs_gone(int quiet, FILE *f)
 
 
 	/* eat the keys first because check will complain if we edit the file */
-	while (fnext(key, f)) mdbm_store_str(db, key, "", MDBM_INSERT);
+	i = 0;
+	while (fnext(key, f)) {
+		mdbm_store_str(db, key, "", MDBM_INSERT);
+		i++;
+	}
+	unless (i) return (0);
 
 	unless (root = proj_root(0)) {
 		fprintf(stderr, "Can't find package root\n");

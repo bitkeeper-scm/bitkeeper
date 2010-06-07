@@ -1,9 +1,37 @@
-On Sat, Sep 06, 2008 at 05:05:44PM -0700, Larry McVoy wrote:
-> That's an impressive chunk of work, I still don't completely
-> understand it but it is cool.  Some neat math in there.
+Partition - split up a standalone repo into a nested collection
+
+Partition is a multi-tenacled problem.  This document is an
+effort to comb through the tentacles and contain the ways it
+is used to inrease likelihood of working.
+
+Parts
+-----
+
+1. Partitioning the first repo - how partition is put together
+2. Partitioning plus clean up - using partition to get rid of crud
+3. Partitioning many repositories and having them communicate.
+
+History
+-------
+
+This document replaces the original src/Notes/PARTITION document.
+Look through history if interested in the original.  See delta key:
+rick@work.bitmover.com|src/Notes/PARTITION|20080912203423|13232
+
+Partitioning the first repo
+---------------------------
+
+At the core, partition is an collection of csetprunes.
+Each component is created by making a clone of the original repository,
+then deleting everything that is not in this component and remapping
+the names of everything that is to now be rooted in this component.
+
+After all the components and product repositories have been created,
+they are then stitched together.
 
 The secret sauce is keeping the serial numbers the same for
-all the cset files.
+all the cset files, and not collapsing empty nodes during the
+product csetprune.
 
 Since the same changeset file is being transformed into many
 components and products changeset files, that by keeping the
@@ -13,10 +41,6 @@ the final product cset file can be built up using a union of:
 on top of the existing weave in the post csetprune product cset
 file.
 
-The other magic is to not collapse out empty nodes in the product
-csetprune, as we know they will get filled back in using the above
-component content.
-
 There's some more magic down in the details, but at a high level
 it's pretty simple:
   clone product
@@ -25,6 +49,7 @@ it's pretty simple:
   for each component
     clone a repo
     csetprune it to have the files it should with paths remapped
+    put an empty config file back in which was csetpruned out
   done
 
   # At this point, there is no product /component stuf.
@@ -47,23 +72,59 @@ it's pretty simple:
   sort list
   make new weave
 
-This is currently done in shell script in bk.sh:partition()
-and will be moved to partition.c 
+This is done in shell script in bk.sh:_partition().
+There's a helper file, surgery.c, which is used to rewrite the
+weave section of the changeset file.
 
-There's a helper file, surgery.c, which will go away as stuff moves
-to partition.c .
+Issues that are or could be handled:
+* remap the gone file so that keys that are gone are protected.(mostly done)
+* Handle cross component moves by having multiple copies of an
+sfile which moves from the deleted directory. (done)
+* Have the ignore system work. (not done)
 
-== TODO
+Partitioning plus clean up
+--------------------------
+
+Partitioning can be used as an event to clean out crud that
+has accumulated in a repository.  Using it this way trades off
+being able to roll back with having a new baseline which includes
+history, but is missing files no longer used.
+
+In that sense there are three major modes to partitioning:
+
+1. Make it work like it was a standalone repo -- rollback works.
+2. New baseline - clean out gone and deleted -- rollback fails.
+3. Expert mode - exposing knobs to tune to a specific need.
+
+The previous section was about #1.  This section is about #2.
+
+* BitKeeper/deleted is pruned.
+* Cross component moves disabled - only the latest component instance is kept.
+* Gone file is replaced with a 0 length MONOTONIC file.
+* All missing sfiles and delta would have reference removed from the 
+ChangeSet file.
+* XXX Triggers cleaned out of component?
+
+Partitioning many repositories
+------------------------------
+And having them communicate.
+
+The first partition creates a record of what went on.
+The next partitions can reference that record and limit operations
+taken to be compatible.
+
+And print out a log of actions taken which show what to do next.
+The biggest problem is managing
+
+== Other possibilities
 
 Move to C again.  Thanks to Wayne for setting this up.
+There is a cpartition.c file which had an earlier version of
+partition sketched out in C.  It wasn't completed, and would
+need to be updated.  The benefit is access to data structures
+and C APIs
 
-+ Managing the gone and ignore files.
-Currently looking to avoid the problem, but may be good to also
-solve the problem in the meantime.
-
-The gone file is made up of keys, which have been changed.
-So the history of the gone file will need to be whacked
-
++ Managing the ignore file.  Nothing done here.
 The ignore file is made up of paths, some of which are not in this
 repository and some are in this repo with a truncated path.
 

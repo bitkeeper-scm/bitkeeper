@@ -5,10 +5,8 @@
 bk partition \- transform a single repository into a nested collection
 .SH SYNOPSIS
 .B bk partition
-.[B] \-q
-.[OPTreq] \-j N
-.[OPTreq] \-C components
-.[OPTreq] \-G gonelist
+.[ARG] options
+.[OPTreq] \-C components " | \-@<url>"
 .ARG from
 .ARG to
 .SH DESCRIPTION
@@ -16,33 +14,45 @@ The
 .B partition
 command is used to transform a single large repository to product
 composed of a collection of component repositories.
-The collection of component files is determined by the map file,
-which is a list of directories which will become component repository
-roots.
+The collection of component files is determined by the component
+list file, which is a list of directories which will become component
+repository roots.
 .LP
-Before the transform, it is possible to remove the record of some files
+To get the most flexibility out of using a partitioned repository, the
+partition should be done such that few, if any, files remain in
+the top level product.  Best is if the top level product repository
+is only a collection of component repositories.
+.LP
+Partition will prune all deleted and missing
+files, and create an empty gone file.  Any file that used to be in one
+component and was moved to another component will only appear in the
+most recent component. 
+.LP
+As part of partition, it is possible to remove the record of some files
 that were accidentally added along the way, and or have since been
 removed and added to the gone file.
-A list of keys to be removed is stored in a gonelist file, one key per
+A list of keys to be removed is stored in a prunelist file, one key per
 line.
 .LP
-The resulting repository will not be able to communicate with the
-original repository.
-This command can be run with the same 
-.ARG components
-and
-.ARG gonelist
-over any repository that could communicate with the original repository
-and the result can communicate with the result of the original partition.
+To transform many repositories, first transform one into a layout you
+like.  Then transform the others, using the -@url option naming the
+first post-partition repository.  Each respository partitioned after
+the first must contain all of the csets of the first repository.
 .SH OPTIONS 
 .TP \-C\*<components\*>
+.OPTreq \-@ url
+Instead of specifying components list and prune list, specify a url
+to a repository that has been partitioned.  The result will be a repository
+that can communicate with that url, or partition will fail with messages
+about why it can't do that.
+.tp
 .OPTreq \-C components
 Specify a file containing the directories that will become
 component repository roots.
 The directories are listed in the file, one per line.
 Lines starting with # will be ignored, as well as blank lines.
 .tp
-.OPTreq \-G gonelist
+.OPTreq \-P prunelist
 Specify a file containing the keys to be removed before the partitioning
 begins.
 This is similar to running a bk csetprune before running bk partition.
@@ -64,20 +74,34 @@ and
 .B src
 respectively.  The repository has grown to be too large and people
 working on one part may not need the other part. The following steps
-would convert it to a product comprising two components,
-namely 'doc' and 'src'.
+would convert it to a product comprising many components,
+such as 'doc' and 'src'.
 .LP
 Create a file which defines the partition boundaries.  Call it components:
 .DS
 $ cat components
-# These are the partition boundaries
+# These directory paths are the partition boundaries
+# Note that one can be under another: src and src/gnu
+# src would get everything under src that is not under src/gnu
 doc
 src
+src/gnu
+lib/graph
+lib/print
+# and the list could go on for hundreds of lines
 $
 .DE
-Then run the command to transform the partition.
+Then run the command to transform the original repo, called standalone
+in this example, into a nested collection of repositories, called nested.
 .DS
-$ bk partition -Ccomponents
+$ bk partition -Ccomponents standalone nested
+.DE
+To partition another repository, you can reference the first partition
+you did instead of passing in the component list.  Standalone2 must
+be a superset of standalone for the partition to work.
+.DS
+$ bk partition -@nested standalone2 nested2
+.DE
 .SH CATEGORY
 .B Nested
 .SH AVAILABILITY

@@ -468,22 +468,6 @@ test "$rbits" = "$RDOM" || {
 }
 echo OK
 
-echo $N Use the gone file to specify what to remove .................$NL
-cd "$HERE"
-bk clone $Q simple usegone
-cd usegone
-bk _rm -f SCCS/s.a a
-bk -r check -ag | bk gone - 2> ERR
-bk commit $Q -ygone
-bk get $Q -kprBASETAG ChangeSet | bk _sort > BEFORE
-bk csetprune $Q -g
-bk get $Q -kprBASETAG ChangeSet | bk _sort> AFTER
-test 2 -eq `diff BEFORE AFTER | wc -l` || {
-	echo failed
-	exit 1
-}
-echo OK
-
 # This is an example of a activation set which does match the real,but
 # is not expected.
 

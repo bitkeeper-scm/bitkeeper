@@ -225,6 +225,7 @@ gca
 get
 gethelp
 gethost
+_getkv
 getmsg
 _getopt_test
 getuser
@@ -332,6 +333,7 @@ _scompress
 send pro
 sendbug
 set
+_setkv
 setup
 sfiles
 _sfiles_bam
