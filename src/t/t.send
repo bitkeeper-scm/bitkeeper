@@ -48,9 +48,11 @@ echo OK
 
 echo $N Create a copy of the project using send / receive ...........$NL
 cd "$HERE/project"
-bk send $Q -  | bk receive -iaT ../copy
-if [ ! -d ../copy/BitKeeper ]; then echo failed to receive; exit 1; fi
-if bk _test ! -f ../copy/src/SCCS/s.h.h; then echo failed to receive; exit 1; fi
+bk send $Q -  > ../bkpatch
+cd ..
+bk receive -iaT copy < bkpatch
+if [ ! -d copy/BitKeeper ]; then echo failed to receive; exit 1; fi
+if bk _test ! -f copy/src/SCCS/s.h.h; then echo failed to receive; exit 1; fi
 cd "$HERE/project"; bk -r clean; bk -r admin -Zgzip
 cd "$HERE/copy"; bk -r clean; bk -r admin -Zgzip
 cd "$HERE"

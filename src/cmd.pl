@@ -307,7 +307,7 @@ rcheck
 _rclone
 rcs2bk
 rcsparse
-receive pro
+receive
 _recurse
 _realpath
 regex
