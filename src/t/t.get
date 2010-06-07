@@ -655,3 +655,21 @@ test "`cat XXX`" = "4" || {
 	exit 1
 }
 echo OK
+
+echo $N Check that edit -S does not complain about writable files ...$NL
+bk clean bar.c
+bk edit $Q bar.c
+bk edit -S bar.c 2>ERR
+test -s ERR && fail -f ERR
+echo OK
+
+echo $N Check that -S is not allowed with -M/-i/-x ..................$NL
+bk edit -S -x1.1 bar.c 2>ERR && fail -f ERR
+grep -q ": -S cannot be used with -r/-M/-i/-x" ERR || fail -f ERR
+bk edit -S -i1.1 bar.c 2>ERR && fail -f ERR
+grep -q ": -S cannot be used with -r/-M/-i/-x" ERR || fail -f ERR
+bk edit -S -M1.2 bar.c 2>ERR && fail -f ERR
+grep -q ": -S cannot be used with -r/-M/-i/-x" ERR || fail -f ERR
+bk edit -S -r1.2 bar.c 2>ERR && fail -f ERR
+grep -q ": -S cannot be used with -r/-M/-i/-x" ERR || fail -f ERR
+echo OK
