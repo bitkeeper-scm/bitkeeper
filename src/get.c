@@ -13,6 +13,7 @@ get_main(int ac, char **av)
 	sccs	*s;
 	int	iflags = 0, flags = GET_EXPAND|GET_NOREMOTE, c, errors = 0;
 	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *Gname = 0;
+	char	*gfile = 0, *pfile = 0, *p;
 	char	*prog;
 	char	*mRev = 0, *Rev = 0;
 	delta	*d;
@@ -131,6 +132,11 @@ onefile:	fprintf(stderr,
 		    "%s: -M can not be combined with rev.\n", av[0]);
 		usage();
 	}
+	if ((Rev || mRev || iLst || xLst) && (flags & GET_NOREGET)) {
+		fprintf(stderr,
+		    "%s: -S cannot be used with -r/-M/-i/-x.\n", av[0]);
+		usage();
+	}
 	switch (getdiff) {
 	    case 0: break;
 	    case 1: flags |= GET_DIFFS; break;
@@ -171,10 +177,17 @@ onefile:	fprintf(stderr,
 			getRealName(name, realNameCache, realname);
 			name = realname;
 		}
-		if (checkout && (flags && GET_NOREGET)) {
-			char   *gfile = sccs2name(name);
-
-			c = exists(gfile);
+		if (flags & GET_NOREGET) {
+			gfile = sccs2name(name);
+			if (flags & GET_EDIT) {
+				pfile = strdup(name);
+				p = strrchr(pfile, '/');
+				p[1] = 'p';
+				c = (writable(gfile) && exists(pfile));
+				free(pfile);
+			} else {
+				c = exists(gfile);
+			}
 			free(gfile);
 			if (c) continue;
 		}
