@@ -20,7 +20,7 @@ product_main(int ac, char **av)
 		return (3);
 	}
 	if (proj_cd2root()) {
-		verbose((stderr, "product: not in a compsitory.\n"));
+		verbose((stderr, "product: not in a repository.\n"));
 		return (3);
 	}
 	if (proj_isComponent(0)) {
