@@ -692,7 +692,7 @@ print_summary(void)
 
 /*
  * This struct contains the information that is passed sfiles_walk() by
- * walkdir() as it is traversing the respository.  Information from the
+ * walkdir() as it is traversing the repository.  Information from the
  * walkdir() is collected here and then processed once per directory with
  * a call to sccsdir().
  */

@@ -5,7 +5,7 @@ clone - clone the current repository
     You must have used "root" to set a root repository.
 
     This command just runs bk -r sfio -o which will produce an sfio
-    file of the entire respository on stdout.  It's up to the calling
+    file of the entire repository on stdout.  It's up to the calling
     client to take that and apply it.
 
     EXIT: exits on command completion

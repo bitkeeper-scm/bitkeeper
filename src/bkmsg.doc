@@ -556,7 +556,7 @@ The error caused by this undo is:
 $
 #undo_error2
 BitKeeper is unable to undo the requested changeset[s] because they
-are already committed in the product respository.
+are already committed in the product repository.
 
 The error caused by this undo is:
 $
@@ -635,7 +635,7 @@ $
 
 The clock skew field controls how recent a file has to be before
 BitKeeper will not trust the timestamp database.  It defaults to
-a week and that default was choosen to overcome clock drift problems
+a week and that default was chosen to overcome clock drift problems
 on network file systems.  If you know your clocks are 100% accurate
 and your workflow is such that many of your files change all the 
 time, then setting the clock skew down to a day or two (172800)

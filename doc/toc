@@ -22,7 +22,7 @@ bk
 	etc.
 Creating a repository
 	Who should create a repository?
-	bk setup - creates a respository
+	bk setup - creates a repository
 	bk import - one time import of data into a repository
 Repository basics
 	Creating files

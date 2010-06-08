@@ -18,7 +18,7 @@ clone
   URL and repo_id from the source repository.  If the URL was ".",
   then the URL from the clone command line is used instead.
 
-- Since clone doesn't change the server URL, only a respository with
+- Since clone doesn't change the server URL, only a repository with
   no BAM server will transfer any BAM data as part of the clone.
   (but see -B below)
 
