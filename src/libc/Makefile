@@ -59,6 +59,7 @@ srcs: $(SRCS) $(HDRS)
 # touch system.h when any other headers change
 # a fake way to make bk's Makefile have the right dependancies
 system.h: $(filter-out system.h,$(HDRS))
+	bk get -qS $@
 	touch $@
 
 tags.local: $(SRCS) $(HDRS)
