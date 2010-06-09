@@ -79,12 +79,15 @@ bkversion(FILE *f)
 	/* get a lease, but don't fail */
 	if (key = lease_bkl(0, 0)) {
 		license_info(key, buf, 0);
-		free(key);
 	}
 	fprintf(f, "BitKeeper version is ");
 	if (*bk_tag) fprintf(f, "%s ", bk_tag);
 	fprintf(f, "%s for %s\n", bk_utc, bk_platform);
 	fprintf(f, "Options: %s\n", buf);
+	if (key) {
+		fprintf(f, "cust_id: %.12s\n", key + 12);
+		free(key);
+	}
 	fprintf(f, "Built by: %s in %s\n", bk_build_user, bk_build_dir);
 
 	strftime(buf, sizeof(buf), "%a %b %d %Y %H:%M:%S %Z",

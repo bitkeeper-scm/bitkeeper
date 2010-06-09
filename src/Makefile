@@ -209,7 +209,8 @@ PROGS	= hidestring libc/mtst$(EXE)
 LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
-	Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic \
+	Academic.lic Essentials.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic \
+	Premier.lic \
 	dspec-changes dspec-changes-vv dspec-changes-h dspec-changes-hv \
 	dspec-changes-3.2 dspec-changes-4.0 dspec-prs dspec-log
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \

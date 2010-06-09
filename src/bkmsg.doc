@@ -328,21 +328,6 @@ $
 #no_accept_no_cset
 Changeset not created due to license rejection.
 $
-#config_pending
-Warning:  You have unsent config logs which are more than 2 weeks old.
-
-bk commit will try to send the pending logs automatically before it exits.
-Please verify the pending count is zero after bk commit is done.  To get
-a count of the pending logs: use the following command:
-
-	bk _lconfig -p
-
-If the pending count is still non-zero after bk commit is done, please run
-the following command and include its output in an email to
-support@bitmover.com.
-
-	bk _lconfig -d
-$
 #config_max
 Error: Max pending config messages exceeded, commit aborted.
 
