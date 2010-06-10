@@ -160,13 +160,17 @@ $unless (:CHANGESET:) {
 ---\n
 ' | perl -pe 's/^([-+]{3} \S+).*/$1/; s/([-l][-rwx]{3})[-rwx]{6}/$1/' > GOT
 
-CREATE_DELETE=`bk get -q -S BitKeeper/deleted; bk gfiles BitKeeper/deleted/.del-create_delete*`
-DELETED=`bk get -q -S BitKeeper/deleted; bk gfiles BitKeeper/deleted/.del-deleted*`
+bk -rBitKeeper/deleted get -qS
+CREATE_DELETE=`bk gfiles BitKeeper/deleted/*/create_delete*`
+DELETED=`bk gfiles BitKeeper/deleted/*/deleted~*`
 cat <<EOF > WANT
 ChangeSet 1.4 u3
 BITKEEPER,CSETMARKED,HASH,LONGKEY,EOLN_UNIX
 C collapse
 ---
+EOF
+
+cat <<EOF > cd
 $CREATE_DELETE 1.1 1/0/0 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 -rw-
@@ -180,11 +184,25 @@ C BitKeeper file $HERE/project/create_delete
 $CREATE_DELETE 1.0 0/0/0 u2
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 ---
+EOF
+
+cat <<EOF > d
 $DELETED 1.2 0/0/1 u1
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 -rw-
 C Rename: deleted -> $DELETED
 ---
+EOF
+
+# adjust for the sort order of the deleted dir
+( echo $CREATE_DELETE
+  echo $DELETED ) | bk sort | head -1 > .tmp
+if [ `cat .tmp` = $CREATE_DELETE ]
+then	cat cd d >> WANT
+else	cat d cd >> WANT
+fi
+
+cat <<EOF >>WANT
 BitKeeper/etc/collapsed 1.2 1/1/0 u1
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 -rw-

@@ -412,7 +412,7 @@ if bk _test -f src/SCCS/s.foo
 then	echo Failed to remove file
 	exit 1
 fi
-bk sfiles BitKeeper/deleted/SCCS | grep -q "s..del-foo.c"
+bk sfiles BitKeeper/deleted | grep -q "s.foo.c~"
 if [ $? -ne 0 ]
 then	echo Can not find deleted file
 	exit 1
@@ -925,7 +925,7 @@ cd "$HERE"
 commercial import-CVS.1
 bk import -quftCVS $TESTDATA/import-CVS.1 . || exit 1
 bk get -q
-P1=`bk sfiles BitKeeper/deleted/SCCS | grep "s..del-pkginfo"`
+P1=`bk sfiles BitKeeper/deleted | grep "s.pkginfo~"`
 bk _test -f "$P1" || {
 	echo failed to get pkginfo from the Attic
 	exit 1

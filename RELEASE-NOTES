@@ -1,3 +1,21 @@
+Release notes for BitKeeper beta 6
+
+This version of bk stores deleted files in subdirectories under
+BitKeeper/deleted to avoid problems with filesystems that have
+problems with large numbers of files in a single directory.  An
+example filename is like this:
+	BitKeeper/deleted/07/slib.c~f3733b2c327712e5
+	2 hex digits, the basename of the 1.1 delta, and the random
+	bits for this file
+
+While not required, if you are experiencing performance problems in
+your deleted directory you can try this:
+    bk -rBitKeeper/deleted rm -f
+    bk commit -y'mv deleted files'
+
+Create one cset like this and allow it to propagate around.
+
+===============================================================================
 Release notes for BitKeeper beta 5
 
 This is a bugfix and partition performance release.

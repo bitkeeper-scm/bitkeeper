@@ -124,9 +124,10 @@ echo OK
 
 echo $N Test bk rm w/ p locked file .................................$NL
 bk get $Q -e B/file1
-RAND=`bk prs -hr1.0 -nd:RANDOM: B/file1`
+RMNAME=`bk prs -hr1.0 -nd:RM_NAME: B/file1`
 bk rm B/file1
-bk _test -f BitKeeper/deleted/SCCS/s..del-file1~$RAND || {
+SRMNAME=`bk prs -hr+ -nd:SFILE: "$RMNAME"`
+bk _test -f "$SRMNAME" || {
 	echo failed to move file to deleted
 	find . -type f
 	exit 1
@@ -135,11 +136,12 @@ bk _test -f B/SCCS/p.file1 && {
 	echo failed to clean up old p.file
 	exit 1
 }
-bk _test -f BitKeeper/deleted/SCCS/p..del-file1~$RAND && {
+PRMNAME=`echo $SRMNAME | sed -e 's/s\./p\./'`
+bk _test -f "$PRMNAME" && {
 	echo failed to toss p..del
 	exit 1
 }
-REV=`bk prs -hr+ -nd:I: BitKeeper/deleted/SCCS/s..del-file1~$RAND`
+REV=`bk prs -hr+ -nd:I: "$RMNAME"`
 if [ ${REV}X != "1.10"X ]; then echo failed 3 $REV; exit 1; fi
 echo OK
 
@@ -162,7 +164,7 @@ bk rm -f foo || {
 	echo rm -f should have worked
 	exit 1
 }
-delfile=`bk sfiles -p BitKeeper/deleted | grep 's..del-foo~'`
+delfile=`bk sfiles -p BitKeeper/deleted | grep 's.foo~'`
 bk _test -f "$delfile" || {
 	echo failed to move file to deleted
 	exit 1
@@ -171,7 +173,7 @@ bk _test -f SCCS/p.foo && {
 	echo failed to clean up old p.file
 	exit 1
 }
-delpfile=`echo $delfil | sed 's:SCCS/s..del:SCCS/p..del:'`
+delpfile=`echo $delfil | sed 's:SCCS/s.:SCCS/p.:'`
 bk _test -f "$delpfile" && {
 	echo failed to clean deleted p.file
 	exit 1
@@ -181,7 +183,7 @@ echo OK
 
 echo $N Test bk rm w non p-locked file ..............................$NL
 bk rm C/file3
-delfile=`bk sfiles -p BitKeeper/deleted | grep s..del-file2`
+delfile=`bk sfiles -p BitKeeper/deleted | grep s.file2`
 bk _test -f $delfile || {
 	echo failed to move file to deleted
 	exit 1
@@ -266,7 +268,7 @@ bk _cp SCCS/s.G S.G
 bk edit $Q G
 rm -f G
 bk rm G 2> $DEV_NULL
-bk _cp `bk sfiles -p BitKeeper/deleted | grep 's..del-G~'` S..del-G
+bk _cp `bk sfiles -p BitKeeper/deleted | grep 's.G~'` S..del-G
 cmp -s S.G S..del-G
 if [ $? = 0 ]; then echo Failed to add rm delta; exit 1; fi
 if [ -f p.G ]; then echo Failed to rm p.G; exit 1; fi

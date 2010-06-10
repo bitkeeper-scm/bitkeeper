@@ -33,67 +33,93 @@ rm_main(int ac, char **av)
 }
 
 /*
- * If the desired basename is available in BitKeeper/deleted, then
- * return a strdup'ed full path that filename.
- * (Checks RESYNC2ROOT if run in RESYNC)
+ * Returns the delete pathname for this file relative to the repository
+ * root.
+ *    ex:  BitKeeper/deleted/4c/basename~randbits
  */
-private char *
-slotfree(project *p, char *base)
-{
-	char	path[MAXPATH];
-
-	if (proj_isResync(p)) {
-		sprintf(path, "%s/%s/BitKeeper/deleted/SCCS/%s",
-		    proj_root(p), RESYNC2ROOT, base);
-		if (exists(path)) return (0);
-	}
-	sprintf(path, "%s/BitKeeper/deleted/SCCS/%s",
-	    proj_root(p), base);
-	if (exists(path)) return (0);
-	return (strdup(path));
-}
-
 char *
-sccs_rmName(sccs *s)
+key2rmName(char *rootkey)
 {
-	char	path[MAXPATH];
-	char	*t, *b;
-	int	try = 0;
-	delta	*d;
-	char	*suffix;
+	int	lendiff;
+	char	*path, *rand, *t, *bn;
+	char	key[MAXKEY];
+	char	buf[MAXPATH];
 
-	d = sccs_ino(s);
-	assert(d->pathname);
-	b = strdup(basenm(d->pathname));
-	if (strneq(b, ".del-", 5)) {
+	strcpy(key, rootkey);
+	path = strchr(key, '|') + 1;
+	rand = strchr(path, '|');
+	*rand++ = 0;			/* at utc */
+	rand = strchr(rand, '|') + 1;	/* at sum (shortkeys stay here) */
+	if (t = strchr(rand, '|')) {
+		rand = t + 1;		/* at rand */
+	}
+	bn = basenm(path);
+	if (strneq(path, "BitKeeper/deleted/", 18)) {
 		/*
 		 * handle files created in BitKeeper/deleted
 		 * nested partition can do this
-		 * b =~ s/^\.del-([^~]*)~.+/$1/
+		 * b =~ s/^\.del-//
+		 * b =~ s/~${rand}$//	(really, just count rand chars)
 		 */
-		t = strdup(b+5);
-		free(b);
-		b = t;
-		if (t = strchr(b, '~')) *t = 0;
+		if (strneq(bn, ".del-", 5)) bn += 5;
+		lendiff = strlen(bn) - strlen(rand);
+		if ((lendiff > 0) && (bn[lendiff-1] == '~')) bn[lendiff-1] = 0;
 	}
-	if (d->random) {
-		/* random =~ s/:/-/g;  fix win32 BAM keys with : in them */
-		suffix = strdup(d->random);
-		while (t = strchr(suffix, ':')) *t = '-';
-	} else {
-		suffix = aprintf("%05u", d->sum);
-	}
+	/* random =~ s/:/-/g;  fix win32 BAM keys with : in them */
+	t = rand;
+	while (t = strchr(t, ':')) *t++ = '-';
+
+	sprintf(buf, "%s~%s", bn, rand);
+	path = file_fanout(buf);
+	concat_path(buf, "BitKeeper/deleted", path);
+	free(path);
+	return (strdup(buf));
+}
+
+/* returns malloced absolute pathname to deleted sfile */
+char *
+sccs_rmName(sccs *s)
+{
+	char	*rmname, *sfile;
+	int	try;
+	project	*parent;
+	sccs	*s2;
+	char	suffix[16];
+	char	rootkey[MAXKEY], newkey[MAXKEY];
+	char	path[MAXPATH];
+
+	sccs_sdelta(s, sccs_ino(s), rootkey);
+	rmname = key2rmName(rootkey);
+	sfile = name2sccs(rmname);
+	free(rmname);
+	parent = proj_isResync(s->proj);
 	for (try = 0; ; try++) {
 		if (try) {
-			sprintf(path, "s..del-%s~%s~%d", b, suffix, try);
+			sprintf(suffix, "~%d", try);
 		} else {
-			sprintf(path, "s..del-%s~%s", b, suffix);
+			suffix[0] = 0;
 		}
-		if (t = slotfree(s->proj, path)) break;
+		if (parent) {
+			sprintf(path, "%s/%s%s",
+			    proj_root(parent), sfile, suffix);
+			if (s2 = sccs_init(path, INIT_MUSTEXIST|INIT_NOCKSUM)) {
+				sccs_sdelta(s2, sccs_ino(s2), newkey);
+				sccs_free(s2);
+				unless (streq(rootkey, newkey)) continue;
+			}
+		}
+		sprintf(path, "%s/%s%s", proj_root(s->proj), sfile, suffix);
+		if (s2 = sccs_init(path, INIT_MUSTEXIST|INIT_NOCKSUM)) {
+			sccs_sdelta(s2, sccs_ino(s2), newkey);
+			sccs_free(s2);
+			unless (streq(rootkey, newkey)) continue;
+		}
+
+		/* found good name */
+		break;
 	}
-	free(b);
-	free(suffix);
-	return (t);
+	free(sfile);
+	return (strdup(path));
 }
 
 int
@@ -130,7 +156,9 @@ sccs_rm(char *name, int force)
 	}
 	sccs_close(s);
 	rmName = sccs_rmName(s);
-	error |= sccs_mv(sfile, rmName, 0, 1, 0, force);
+	unless (samepath(rmName, sfile)) {
+		error |= sccs_mv(sfile, rmName, 0, 1, 0, force);
+	}
 	sccs_free(s);
 	free(rmName);
 	free(sfile);

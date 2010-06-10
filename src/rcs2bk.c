@@ -134,7 +134,7 @@ doit(char *file, char *cvsbranch)
 			}
 			sccs_close(s);
 			q = name2sccs(d->pathname);
-			ret = rename(sfile, q);
+			ret = fileMove(sfile, q);
 			assert(ret == 0);
 			/*
 			 * move the d.file

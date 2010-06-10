@@ -55,11 +55,8 @@ converge_hash_files(void)
 	while (gfile = fgetline(f))  {
 		/* find basename of file with deleted stuff stripped */
 		bn = basenm(gfile);
-		t = 0;
-		if (strneq(bn, ".del-", 5)) {
-			bn += 5;
-			if (t = strchr(bn, '~')) *t = 0;
-		}
+		if (strneq(bn, ".del-", 5)) bn += 5;
+		if (t = strchr(bn, '~')) *t = 0;
 		for (i = 0; files[i].file; i++) {
 			if (streq(bn, basenm(files[i].file))) {
 				if (t) *t = '~'; /* restore gfile */

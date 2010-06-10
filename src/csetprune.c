@@ -56,8 +56,6 @@ private	void	freeGone(goner *gonemap);
 private	int	do_file(sccs *s, char *path, char **deep);
 private	char	**deepPrune(char **map, char *path);
 private	char	*newname( char *delpath, char *comp, char *path, char **deep);
-private	char	*s2delpath(sccs *s);
-private	char	*rootkey2delpath(char *key);
 private	char	*getPath(char *key, char **term);
 private	int	do_files(char *comppath, char **deepnest);
 private	hash	*mklookup(char **cweave);
@@ -442,7 +440,7 @@ filterGone(char **cweave, char *comppath, char **deepnest)
 			}
 		}
 		if (i) {
-			unless (delpath = rootkey2delpath(rootkey)) goto err;
+			unless (delpath = key2rmName(rootkey)) goto err;
 			p = strchr(buf, '|');
 			assert(p);
 			e = strchr(p+1, '|');
@@ -620,7 +618,9 @@ printXcomp(char **cweave, char **complist, hash *prunekeys)
 			}
 			comppath = whichComp(path, reverseComps);
 			deepnest = deepPrune(complist, comppath);
-			continue;
+			/* filter rootkey path too */
+			path = getPath(rk, &p);
+			*p = 0;
 		}
 		if (skip) continue;
 		delcomp = newname(0, comppath, path, deepnest);
@@ -629,6 +629,7 @@ printXcomp(char **cweave, char **complist, hash *prunekeys)
 		unless (delcomp = whichComp(path, reverseComps)) {
 			delcomp = ".";
 		}
+		*p = '|';	/* restore key (matters if rootkey) */
 		delcomp = aprintf("%s||%s", delcomp, rk);
 		if (hash_insertStr(delcomps, delcomp, 0)) {
 			puts(delcomp);
@@ -857,7 +858,7 @@ zero:				cweave[i][0] = 0;
 				marked = 0;
 			}
 			if (delpath) free(delpath);
-			unless (delpath = rootkey2delpath(rk)) goto err;
+			unless (delpath = key2rmName(rk)) goto err;
 			path = getPath(rk, &p);
 			*p = 0;
 			path[-1] = 0;
@@ -1667,48 +1668,6 @@ newname(char *delpath, char *comp, char *path, char **deep)
 	return (newpath);
 }
 
-
-#define	DELPATH(name, rand) \
-    aprintf("BitKeeper/deleted/.del-%s~%s", (name), (rand))
-
-private	char	*
-s2delpath(sccs *s)
-{
-	char	rand[MAXPATH];
-
-	if (s->tree->random) {
-		strcpy(rand, s->tree->random);
-	} else {
-		sprintf(rand, "%05u", s->tree->sum);
-	}
-	return (DELPATH(basenm(s->tree->pathname), rand));
-}
-
-private	char	*
-rootkey2delpath(char *key)
-{
-	char	*p, *q, *path, *rand;
-
-	path = strchr(key, '|');
-	path++;
-	p = strchr(path, '|');
-	*p++ = 0;
-	unless (q = strchr(p, '|')) {
-		p[-1] = '|';
-		fprintf(stderr, "Must use long keys: %s\n", key);
-		return (0);
-	}
-	q++;
-	if (rand = strchr(q, '|')) {
-		rand++;
-	} else {
-		rand = q;
-	}
-	path = DELPATH(basenm(path), rand);
-	p[-1] = '|';
-	return (path);
-}
-
 /*
  * Assert in sorted order, so src is before src/libc
  * We want this list as small as possible because we cycle
@@ -1768,8 +1727,10 @@ do_file(sccs *s, char *comppath, char **deepnest)
 	char	*newpath;
 	char	*delpath;
 	char	*bam_new;
+	char	rk[MAXKEY];
 
-	delpath = s2delpath(s);
+	sccs_sdelta(s, sccs_ino(s), rk);
+	delpath = key2rmName(rk);
 	/*
 	 * Save all the old bam dspecs before we start mucking with anything.
 	 */

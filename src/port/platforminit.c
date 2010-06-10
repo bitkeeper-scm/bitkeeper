@@ -4,15 +4,6 @@
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
  */
 
-#ifdef	WIN32
-/*
- * For better performance, do not use getRealCwd(), use the
- * raw nt_getcwd() interface instead
- */
-#undef getcwd
-#define getcwd(a, b)	nt_getcwd(a, b)
-#endif	/* WIN32 */
-
 void
 platformInit(char **av)
 {
@@ -161,7 +152,7 @@ platformInit(char **av)
 		}
 		unless (IsFullPath(buf)) {
 			strcpy(buf2, buf);
-			getcwd(buf, sizeof(buf));
+			strcpy(buf, proj_cwd());
 			strcat(buf, "/");
 			strcat(buf, buf2);
 		}

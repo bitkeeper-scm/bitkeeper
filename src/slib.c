@@ -15788,17 +15788,15 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		if (s->prs_indentC && proj_isComponent(s->proj)) fs("  ");
 		unless (CSET(s)) fs("  ");
 		return (strVal);
-	case KW_RM_NAME: /* RM_NAME */
-		p = sccs_rmName(s);
-		q = sccs2name(p);
-		free(p);
-		p = proj_relpath(s->proj, q);
-		free(q);
-		q = p + strlen(p) - 2;
-		if ((q > p) && streq(q, "~1")) *q = 0; /* if already deleted */
+	case KW_RM_NAME: /* RM_NAME */ {
+		char	key[MAXKEY];
+
+		sccs_sdelta(s, sccs_ino(s), key);
+		p = key2rmName(key);
 		fs(p);
 		free(p);
 		return (strVal);
+	}
 	case KW_UNRM_NAME: /* UNRM_NAME */
 		/*
 		 * XXX: loose interpretation of history: while older, not

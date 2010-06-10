@@ -274,10 +274,10 @@ echo OK
 
 echo $N Test remapping of the contents of the gone file .............$NL
 cd "$HERE/project"
-RANDBITS=`bk log -r+ -nd:RANDOM: doc/was-src-b`
+RMNAME=`bk log -r+ -nd:RM_NAME: doc/was-src-b`
 bk rm doc/was-src-b
 bk commit $Q -y'make a deltakey'
-bk stripdel $Q -Cr+ "BitKeeper/deleted/.del-b~$RANDBITS"
+bk stripdel $Q -Cr+ "$RMNAME"
 bk -r names $Q
 bk _rm src/SCCS/s.c
 bk admin $Q -fMONOTONIC BitKeeper/etc/gone
@@ -397,4 +397,25 @@ cd "$HERE"
 bk clone $Q -r1.2 project small
 bk partition $Q -@one small borker 2> ERR && fail -f ERR
 grep -q "It must be present for partition to work" ERR || fail -f ERR
+echo OK
+
+echo $N Test name mapping of deleted files ..........................$NL
+cd "$HERE"
+commercial normal 
+touch foo~bar
+bk new $Q foo~bar
+bk mv foo~bar src/file
+bk commit $Q -yfile
+echo src > comps
+bk partition $Q -Ccomps . ../nested-deltest
+cd ../nested-deltest/src
+bk rm -f file
+# write a test and run it
+bk -rBitKeeper/deleted \
+    log -r1.0 -nd'test ":DPN:" = "BitKeeper/deleted/:GFILE:" || fail -f X' > X
+. ./X
+cd ..
+bk -rBitKeeper/deleted \
+    log -r1.0 -nd'test ":DPN:" = "BitKeeper/deleted/:GFILE:" || fail -f X' > X
+test -s X && fail -f X
 echo OK

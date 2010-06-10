@@ -1065,6 +1065,7 @@ void	error(const char *fmt, ...);
 MDBM	*loadConfig(project *p, int forcelocal);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s);
+char	*key2rmName(char *rootkey);
 int	sccs_rm(char *name, int force);
 void	sccs_rmEmptyDirs(char *path);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);

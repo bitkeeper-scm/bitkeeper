@@ -49,6 +49,67 @@ test X$VER = X$OLDVER || {
 }
 echo OK
 
+echo -------------- gone file automerge tests
+echo $N Test auto-merge on gone files works with new del format .....$NL
+commercial project
+bk clone $Q --sccs-compat . ../copy
+bk edit $Q BitKeeper/etc/gone
+echo "a@b.c|d|20001010101010|63920|1fea66be52324149" >> BitKeeper/etc/gone
+bk delta $Q -yfakegone BitKeeper/etc/gone
+bk commit $Q -yfakegone
+cd ../copy
+GONENAME="`bk log -r1.0 -nd:RM_NAME: BitKeeper/etc/gone`"
+$OLDBK/bk rm -f BitKeeper/etc/gone
+bk commit $Q -yfakenewgone
+echo "a@b.c|d|20000101010101|63320|1fea36b352324149" > BitKeeper/etc/gone
+bk new $Q BitKeeper/etc/gone
+bk commit $Q -yfakenewgone
+cd ../project
+bk pull $Q ../copy
+test "`bk cat BitKeeper/etc/gone | wc -l`" -eq 3 || fail
+echo OK
+
+echo $N Test auto-merge on gone files uses existing deleted name ....$NL
+cd ../copy
+$OLDBK/bk rm -f BitKeeper/etc/gone
+bk sfiles | grep '~.$' > ERR && fail -f ERR
+bk commit $Q -ygone
+cd ../project
+bk rm -f BitKeeper/etc/gone
+bk sfiles | grep '~.$' > ERR && fail -f ERR
+bk commit $Q -ygone
+bk pull $Q ../copy
+bk sfiles | grep '~.$' > ERR && fail -f ERR
+echo OK
+
+echo $N Test delete of delete either renaming or doing nop ..........$NL
+cd ../copy
+touch foo
+bk new $Q foo
+RMNAME="`bk log -r1.0 -nd:RM_NAME: foo`"
+bk rm foo
+OLDGONENAME=`bk sfiles -g BitKeeper/deleted | grep gone~`
+NRMNAME=`bk prs -r1.0 -hnd:RM_NAME: $OLDGONENAME`
+bk sfiles -g BitKeeper/deleted | bk _sort > GOT
+cat <<EOF | bk _sort > WANT
+BitKeeper/deleted/.del-gone
+$OLDGONENAME
+$RMNAME
+EOF
+cmpfiles WANT GOT
+# layout in new deleted anything that is not already there
+bk -rBitKeeper/deleted rm -f
+# check it out
+bk sfiles -g BitKeeper/deleted | bk _sort > GOT
+cat <<EOF | bk _sort > WANT
+$RMNAME
+$NRMNAME
+$GONENAME
+EOF
+cmpfiles WANT GOT
+cd ..
+echo OK
+
 echo -------------- fast pull tests
 echo $N Set up a patch new, BAM and many deltas .....................$NL
 rm -fr project copy

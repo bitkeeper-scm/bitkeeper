@@ -40,8 +40,7 @@ bk new -b $Q bam
 touch deleted base
 bk new $Q deleted base BitKeeper/triggers/pre-delta
 bk admin $Q -fEOLN_UNIX BitKeeper/triggers/pre-delta
-RAND=`bk log -r1.0 -nd:RANDOM: deleted`
-export RAND
+RMNAME=`bk log -r1.0 -nd:RM_NAME: deleted`
 bk commit $Q -SONE -f
 cd ..
 bk clone $Q project copy
@@ -83,13 +82,13 @@ done > GOT
 # :g/d\~[^|]*/s//d\~${RAND}/g - works on itself
 cat << EOF > WANT
 # bk rset -rONE
-BitKeeper/deleted/.del-deleted~${RAND}|1.0..1.1
+${RMNAME}|1.0..1.1
 BitKeeper/triggers/pre-delta|1.0..1.2
 ChangeSet|1.1..1.2
 bam|1.0..1.1
 merge|1.0..1.1
 # bk rset -lONE
-BitKeeper/deleted/.del-deleted~${RAND}|1.1
+${RMNAME}|1.1
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
@@ -99,12 +98,12 @@ ChangeSet|ONE
 bam|1.1
 merge|1.1
 # bk rset -HrONE
-BitKeeper/deleted/.del-deleted~${RAND}|1.0..1.1
+${RMNAME}|1.0..1.1
 BitKeeper/triggers/pre-delta|1.0..1.2
 bam|1.0..1.1
 merge|1.0..1.1
 # bk rset -HlONE
-BitKeeper/deleted/.del-deleted~${RAND}|1.1
+${RMNAME}|1.1
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
@@ -113,13 +112,13 @@ BitKeeper/triggers/pre-delta|1.2
 bam|1.1
 merge|1.1
 # bk rset -hrONE
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.0|deleted|1.1
+${RMNAME}|deleted|1.0|deleted|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.0|BitKeeper/triggers/pre-delta|1.2
 ChangeSet|ChangeSet|1.1|ChangeSet|1.2
 bam|bam|1.0|bam|1.1
 merge|base|1.0|base|1.1
 # bk rset -hlONE
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+${RMNAME}|deleted|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
@@ -129,12 +128,12 @@ ChangeSet|ChangeSet|ONE
 bam|bam|1.1
 merge|base|1.1
 # bk rset -hHrONE
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.0|deleted|1.1
+${RMNAME}|deleted|1.0|deleted|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.0|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.0|bam|1.1
 merge|base|1.0|base|1.1
 # bk rset -hHlONE
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+${RMNAME}|deleted|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
@@ -143,13 +142,13 @@ BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.1
 merge|base|1.1
 # bk rset -arONE
-BitKeeper/deleted/.del-deleted~${RAND}|1.0..1.1
+${RMNAME}|1.0..1.1
 BitKeeper/triggers/pre-delta|1.0..1.2
 ChangeSet|1.1..1.2
 bam|1.0..1.1
 merge|1.0..1.1
 # bk rset -alONE
-BitKeeper/deleted/.del-deleted~${RAND}|1.1
+${RMNAME}|1.1
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
@@ -159,12 +158,12 @@ ChangeSet|ONE
 bam|1.1
 merge|1.1
 # bk rset -aHrONE
-BitKeeper/deleted/.del-deleted~${RAND}|1.0..1.1
+${RMNAME}|1.0..1.1
 BitKeeper/triggers/pre-delta|1.0..1.2
 bam|1.0..1.1
 merge|1.0..1.1
 # bk rset -aHlONE
-BitKeeper/deleted/.del-deleted~${RAND}|1.1
+${RMNAME}|1.1
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
@@ -173,13 +172,13 @@ BitKeeper/triggers/pre-delta|1.2
 bam|1.1
 merge|1.1
 # bk rset -ahrONE
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.0|deleted|1.1
+${RMNAME}|deleted|1.0|deleted|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.0|BitKeeper/triggers/pre-delta|1.2
 ChangeSet|ChangeSet|1.1|ChangeSet|1.2
 bam|bam|1.0|bam|1.1
 merge|base|1.0|base|1.1
 # bk rset -ahlONE
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+${RMNAME}|deleted|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
@@ -189,12 +188,12 @@ ChangeSet|ChangeSet|ONE
 bam|bam|1.1
 merge|base|1.1
 # bk rset -ahHrONE
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.0|deleted|1.1
+${RMNAME}|deleted|1.0|deleted|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.0|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.0|bam|1.1
 merge|base|1.0|base|1.1
 # bk rset -ahHlONE
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+${RMNAME}|deleted|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
@@ -203,7 +202,7 @@ BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.1
 merge|base|1.1
 # bk rset -rTWO
-BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+${RMNAME}|1.1..1.2
 ChangeSet|1.2..1.3
 merge|1.1..1.3
 new.project|1.0..1.1
@@ -218,7 +217,7 @@ bam|1.1
 merge|1.3
 new.project|1.1
 # bk rset -HrTWO
-BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -HlTWO
@@ -231,7 +230,7 @@ bam|1.1
 merge|1.3
 new.project|1.1
 # bk rset -hrTWO
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 ChangeSet|ChangeSet|1.2|ChangeSet|1.3
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
@@ -246,7 +245,7 @@ bam|bam|1.1
 merge|project|1.3
 new.project|new.project|1.1
 # bk rset -hHrTWO
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -hHlTWO
@@ -259,12 +258,12 @@ bam|bam|1.1
 merge|project|1.3
 new.project|new.project|1.1
 # bk rset -arTWO
-BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+${RMNAME}|1.1..1.2
 ChangeSet|1.2..1.3
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -alTWO
-BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|1.2
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
@@ -275,11 +274,11 @@ bam|1.1
 merge|1.3
 new.project|1.1
 # bk rset -aHrTWO
-BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -aHlTWO
-BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|1.2
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
@@ -289,12 +288,12 @@ bam|1.1
 merge|1.3
 new.project|1.1
 # bk rset -ahrTWO
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 ChangeSet|ChangeSet|1.2|ChangeSet|1.3
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -ahlTWO
-BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|${RMNAME}|1.2
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
@@ -305,11 +304,11 @@ bam|bam|1.1
 merge|project|1.3
 new.project|new.project|1.1
 # bk rset -ahHrTWO
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -ahHlTWO
-BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|${RMNAME}|1.2
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
@@ -323,7 +322,7 @@ ChangeSet|1.2..1.2.1.1
 merge|1.1..1.1.1.2
 new.copy|1.0..1.1
 # bk rset -lTHREE
-BitKeeper/deleted/.del-deleted~${RAND}|1.1
+${RMNAME}|1.1
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
@@ -337,7 +336,7 @@ new.copy|1.1
 merge|1.1..1.1.1.2
 new.copy|1.0..1.1
 # bk rset -HlTHREE
-BitKeeper/deleted/.del-deleted~${RAND}|1.1
+${RMNAME}|1.1
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
@@ -351,7 +350,7 @@ ChangeSet|ChangeSet|1.2|ChangeSet|1.2.1.1
 merge|base|1.1|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 # bk rset -hlTHREE
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+${RMNAME}|deleted|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
@@ -365,7 +364,7 @@ new.copy|new.copy|1.1
 merge|base|1.1|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 # bk rset -hHlTHREE
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+${RMNAME}|deleted|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
@@ -379,7 +378,7 @@ ChangeSet|1.2..1.2.1.1
 merge|1.1..1.1.1.2
 new.copy|1.0..1.1
 # bk rset -alTHREE
-BitKeeper/deleted/.del-deleted~${RAND}|1.1
+${RMNAME}|1.1
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
@@ -393,7 +392,7 @@ new.copy|1.1
 merge|1.1..1.1.1.2
 new.copy|1.0..1.1
 # bk rset -aHlTHREE
-BitKeeper/deleted/.del-deleted~${RAND}|1.1
+${RMNAME}|1.1
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
@@ -407,7 +406,7 @@ ChangeSet|ChangeSet|1.2|ChangeSet|1.2.1.1
 merge|base|1.1|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 # bk rset -ahlTHREE
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+${RMNAME}|deleted|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
@@ -421,7 +420,7 @@ new.copy|new.copy|1.1
 merge|base|1.1|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 # bk rset -ahHlTHREE
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+${RMNAME}|deleted|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
@@ -486,7 +485,7 @@ new.project|new.project|1.1
 ChangeSet|1.3+1.2.1.1..1.4
 merge|1.1.1.2..1.5
 # bk rset -alFOUR
-BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|1.2
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
@@ -500,7 +499,7 @@ new.project|1.1
 # bk rset -aHrFOUR
 merge|1.1.1.2..1.5
 # bk rset -aHlFOUR
-BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|1.2
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
@@ -514,7 +513,7 @@ new.project|1.1
 ChangeSet|ChangeSet|1.3+1.2.1.1|ChangeSet|1.4
 merge|copy|1.1.1.2|merge|1.5
 # bk rset -ahlFOUR
-BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|${RMNAME}|1.2
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
@@ -528,7 +527,7 @@ new.project|new.project|1.1
 # bk rset -ahHrFOUR
 merge|copy|1.1.1.2|merge|1.5
 # bk rset -ahHlFOUR
-BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|${RMNAME}|1.2
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
@@ -556,119 +555,119 @@ for v in ONE,TWO TWO,THREE THREE,FOUR; do
 done > GOT1
 cat << EOF > WANT
 # bk rset -rONE,TWO
-BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+${RMNAME}|1.1..1.2
 ChangeSet|1.2..1.3
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -HrONE,TWO
-BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -hrONE,TWO
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 ChangeSet|ChangeSet|1.2|ChangeSet|1.3
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -hHrONE,TWO
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -arONE,TWO
-BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+${RMNAME}|1.1..1.2
 ChangeSet|1.2..1.3
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -aHrONE,TWO
-BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -ahrONE,TWO
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 ChangeSet|ChangeSet|1.2|ChangeSet|1.3
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -ahHrONE,TWO
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -rTWO,THREE
-BitKeeper/deleted/.del-deleted~${RAND}|1.2..1.1
+${RMNAME}|1.2..1.1
 ChangeSet|1.3..1.2.1.1
 merge|1.3..1.1.1.2
 new.copy|1.0..1.1
 new.project|1.1..1.0
 # bk rset -HrTWO,THREE
-BitKeeper/deleted/.del-deleted~${RAND}|1.2..1.1
+${RMNAME}|1.2..1.1
 merge|1.3..1.1.1.2
 new.copy|1.0..1.1
 new.project|1.1..1.0
 # bk rset -hrTWO,THREE
-BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2|deleted|1.1
+${RMNAME}|${RMNAME}|1.2|deleted|1.1
 ChangeSet|ChangeSet|1.3|ChangeSet|1.2.1.1
 merge|project|1.3|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 new.project|new.project|1.1|new.project|1.0
 # bk rset -hHrTWO,THREE
-BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2|deleted|1.1
+${RMNAME}|${RMNAME}|1.2|deleted|1.1
 merge|project|1.3|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 new.project|new.project|1.1|new.project|1.0
 # bk rset -arTWO,THREE
-BitKeeper/deleted/.del-deleted~${RAND}|1.2..1.1
+${RMNAME}|1.2..1.1
 ChangeSet|1.3..1.2.1.1
 merge|1.3..1.1.1.2
 new.copy|1.0..1.1
 new.project|1.1..1.0
 # bk rset -aHrTWO,THREE
-BitKeeper/deleted/.del-deleted~${RAND}|1.2..1.1
+${RMNAME}|1.2..1.1
 merge|1.3..1.1.1.2
 new.copy|1.0..1.1
 new.project|1.1..1.0
 # bk rset -ahrTWO,THREE
-BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2|deleted|1.1
+${RMNAME}|${RMNAME}|1.2|deleted|1.1
 ChangeSet|ChangeSet|1.3|ChangeSet|1.2.1.1
 merge|project|1.3|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 new.project|new.project|1.1|new.project|1.0
 # bk rset -ahHrTWO,THREE
-BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2|deleted|1.1
+${RMNAME}|${RMNAME}|1.2|deleted|1.1
 merge|project|1.3|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 new.project|new.project|1.1|new.project|1.0
 # bk rset -rTHREE,FOUR
-BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+${RMNAME}|1.1..1.2
 ChangeSet|1.2.1.1..1.4
 merge|1.1.1.2..1.5
 new.project|1.0..1.1
 # bk rset -HrTHREE,FOUR
-BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
 new.project|1.0..1.1
 # bk rset -hrTHREE,FOUR
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.4
 merge|copy|1.1.1.2|merge|1.5
 new.project|new.project|1.0|new.project|1.1
 # bk rset -hHrTHREE,FOUR
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
 new.project|new.project|1.0|new.project|1.1
 # bk rset -arTHREE,FOUR
-BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+${RMNAME}|1.1..1.2
 ChangeSet|1.2.1.1..1.4
 merge|1.1.1.2..1.5
 new.project|1.0..1.1
 # bk rset -aHrTHREE,FOUR
-BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
 new.project|1.0..1.1
 # bk rset -ahrTHREE,FOUR
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.4
 merge|copy|1.1.1.2|merge|1.5
 new.project|new.project|1.0|new.project|1.1
 # bk rset -ahHrTHREE,FOUR
-BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
 new.project|new.project|1.0|new.project|1.1
 EOF

@@ -102,7 +102,7 @@ find_key(MDBM *db, char *rootkey, MDBM **s2l)
 int
 isNullFile(char *rev, char *file)
 {
-	if ((strlen(basenm(file)) >= 6) && strneq(basenm(file), ".del-", 5)) {
+	if (strneq(file, "BitKeeper/deleted/", strlen("BitKeeper/deleted/"))) {
 		return (1);
 	}
 	if (streq(rev, "1.0")) return (1);
