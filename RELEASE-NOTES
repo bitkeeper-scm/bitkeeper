@@ -1,5 +1,9 @@
 Release notes for BitKeeper beta 6
 
+Big overhaul of progress bars used in clone, undo, push, pull,
+renumber, takepatch, check and more.  Please watch those operations
+and let us know if it is too much or too little or just right.
+
 This version of bk stores deleted files in subdirectories under
 BitKeeper/deleted to avoid problems with filesystems that have
 problems with large numbers of files in a single directory.  An
@@ -13,7 +17,54 @@ your deleted directory you can try this:
     bk -rBitKeeper/deleted rm -f
     bk commit -y'mv deleted files'
 
-Create one cset like this and allow it to propagate around.
+Tell users about new versions of BitKeeper when they quit out
+of the GUIs or when they run 'bk help'. In the former case, a
+"bk prompt" is launched, and in the latter case the upgrade info
+is inserted into the help text.
+
+The conditions for prompting are as follows:
+    - There is a new bk out (duh!).
+    - The current bk is older than the new bk.
+    - The new bk has been out for at least a month and the
+      current bk has been installed for at least a month.
+    - We haven't prompted in at least a month.
+
+This version integrates bk-4.6b which has a bugfix for 2010-04-30-001
+
+bk alias
+    Add locking to avoid collision
+
+bk attach
+    Only works in portals (and checks they are still fully populated).
+
+bk check
+    check if the tip cset has a pathname conflict where two different
+    rootkeys are stored at the same pathname.
+
+bk mv/mvdir
+    Prevent component renames
+
+bk portal
+    Portals are fully populated before becoming portals.
+    You can't remove comps from a portal (bk here rm), nor run undo.
+    The intention of a portal is to limit information entering a
+    product to happen once.  That way, a given component cset can be
+    traced to one product cset.  To support this, portals are fully
+    populated and can only move forward.
+
+bk get/edit
+    Make get -S incompatible with -M/-i/-x/-r options.
+    Edit -S / get -e -S now will no longer complain about files already
+    checked out.
+
+bk partition
+    Incompatible with previous beta and intending to be stable.
+    New default behavior - prune out deleted and gone, and only
+    have sfiles reside in the most recent component (if a file
+    in its life moved between components).
+
+bk undo
+    No undo in a portal.  See bk portal above.
 
 ===============================================================================
 Release notes for BitKeeper beta 5
@@ -67,7 +118,7 @@ bk partition
     Besides running faster (see bk checksum and bk csetprune),
     partition now transforms the gone file.  Previous versions required
     pruning out missing files.  This version still allows pruning,
-    but doesn't require it. 
+    but doesn't require it.
 
 Other changes
 
