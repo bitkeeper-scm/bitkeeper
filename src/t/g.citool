@@ -694,3 +694,31 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
+
+echo $N Test that cut/paste does not leave an empty comment .........$NL
+cd "$HERE/project"
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+
+bk edit $Q src/file1
+echo "FOO" >> src/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "src/file1"
+	test_inputComment "comment to cut"
+	test_selectFile "ChangeSet"
+	test_inputComment "ChangeSet comment"
+	test_selectFile "src/file1"
+	test_buttonPress "Cut"
+	test_buttonPress "Paste"
+	test_selectFile "ChangeSet"
+	test_selectFile "src/file1"
+
+	if {[test_getComments] eq ""} {
+		puts "comments are empty after cut and paste"
+		exit 1
+	}
+
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK

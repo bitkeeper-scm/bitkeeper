@@ -1395,6 +1395,8 @@ clearComments()
 	string	state = Text_cget(self.w_comments, state:);
 
 	enableComments();
+	self.commented = 0;
+	self.comments = undef;
 	Text_delete(self.w_comments, 1.0, "end");
 	Text_configure(self.w_comments, state: state);
 }
