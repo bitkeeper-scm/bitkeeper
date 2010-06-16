@@ -844,7 +844,7 @@ checkout(int quiet, int verbose, int parallel)
 	int	fdin[PARALLEL_MAX], fdout[PARALLEL_MAX], pid[PARALLEL_MAX];
 	int	i, nfds, ret, ndone = 0, ntodo = 0;
 	char	buf[MAXPATH];
-	char	*cmd[] = { "bk", "checkout", "-TSUq", "-", 0 };
+	char	*cmd[] = { "bk", "checkout", "-TUq", "-", 0 };
 	fd_set	rfds, wfds;
 	ticker	*tick = 0;
 
@@ -852,10 +852,10 @@ checkout(int quiet, int verbose, int parallel)
 	if (parallel <= 0) {
 		unless (quiet || verbose) {
 			sprintf(buf, "-N%u", repo_nfiles(0));
-			sys("bk", "-Ur", "checkout", "-TSq", buf, SYS);
+			sys("bk", "-U^Gr", "checkout", "-Tq", buf, SYS);
 			progress_nlneeded();
 		} else {
-			sys("bk", "-Ur", "checkout", "-TSq", SYS);
+			sys("bk", "-U^Gr", "checkout", "-Tq", SYS);
 		}
 		return;
 	}
@@ -873,7 +873,7 @@ checkout(int quiet, int verbose, int parallel)
 	for (i = 0; i < parallel; i++) {
 		pid[i] = spawnvpio(&fdin[i], &fdout[i], 0, cmd);
 	}
-	in = popen("bk -Ur", "r");
+	in = popen("bk -R sfiles -U^G", "r");
 	while (!feof(in) || (ndone < ntodo)) {
 		FD_ZERO(&rfds);
 		FD_ZERO(&wfds);

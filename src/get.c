@@ -55,7 +55,7 @@ get_main(int ac, char **av)
 
 	while ((c =
 	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|N;pPqr;RSstTUx;", 0)) != -1) {
-		if (checkout && !strchr("NqRSTU", c)) {
+		if (checkout && !strchr("NqRTU", c)) {
 			fprintf(stderr, "checkout: no options allowed\n");
 			exit(1);
 		}

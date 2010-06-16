@@ -193,17 +193,17 @@ main(int volatile ac, char **av, char **env)
 		}
 		is_bk = 1;
 		while ((c = getopt(ac, av,
-			"?;@|1aAB;cCdDgGhjL|lM;nNpPqr|RuUxz;", lopts)) != -1) {
+			"?;^@|1aAB;cCdDgGhjL|lM;nNpPqr|RuUxz;", lopts)) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
 			    case 'n': case 'p': case 'u': case 'U': case 'x':
-			    case 'h':
+			    case 'h': case '^':
 				sopts[++si] = c;
 				break;
 			    case '?': envargs = optarg; break;
 			    case '@': remote = 1; break;
-			    case 'A': 
+			    case 'A':
 			    case 'C': all = 1; break;
 			    case 'M': break;	// for nested_each XXX:CONFLICT
 			    case 'B': buffer = optarg; break;

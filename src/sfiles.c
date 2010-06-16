@@ -47,6 +47,7 @@ typedef struct {
 	u32	fixdfile:1;		/* -P: fix up the dfile tag */
 	u32	gfile:1;		/* -g: print gfile name */
 	u32	gotten:1;		/* -G: list checked out files */
+	u32	notgotten:1;		/* -^G: only non-checked out sfiles */
 	u32	ignored:1;		/* -i: list ignored (extra) files */
 	u32	junk:1;			/* -j: list junk in SCCS dirs */
 	u32	locked:1;		/* -l: list locked files */
@@ -64,7 +65,6 @@ typedef struct {
 	u32	unlocked:1;		/* -u: list unlocked files */
 	u32	useronly:1;		/* -U: list user files only */
 	u32	xdirs:1;		/* -D: list directories w/ no BK */
-	u32	inverse:1;		/* -!: list the opposite */
 	u32	skip_comps:1;		/* -h: list only files really "here" */
 	u32	atRoot:1;		/* running at root of repo? */
 
@@ -131,6 +131,7 @@ sfiles_main(int ac, char **av)
 {
         int     c, i, nested = 0;
 	char	**nav, **comps;
+	int	not = 0;
 	char	*path, *s, buf[MAXPATH];
 
 	if (setjmp(output_closed)) {
@@ -149,7 +150,7 @@ sfiles_main(int ac, char **av)
 	while ((c = getopt(ac, av, "^01acCdDeEgGhijlnNo:p|P|rRsSuUvxy", 0)) != -1)
 	{
 		switch (c) {
-		    case '^':	opts.inverse = 1; break;
+		    case '^':	not = 1; break;
 		    case '0':	opts.null = 1; break;		/* doc */
 		    case '1':	opts.onelevel = 1; break;
 		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
@@ -171,7 +172,14 @@ sfiles_main(int ac, char **av)
 				/* fall through */
 		    case 'v':	opts.verbose = 1; break;
 		    case 'g':	opts.gfile = 1; break;		/* doc 2.0 */
-		    case 'G':	opts.gotten = 1; break;		/* doc */
+		    case 'G':					/* doc */
+			if (not) {
+				not = 0;
+				opts.notgotten = 1;
+			} else {
+				opts.gotten = 1;
+			}
+			break;
 		    case 'h':	opts.skip_comps = 1; break;
 		    case 'i':	opts.ignored = 1; break;
 		    case 'j':	opts.junk = 1; break;		/* doc 2.0 */
@@ -209,6 +217,10 @@ sfiles_main(int ac, char **av)
 		    case 'x':	opts.extras = 1; break;		/* doc */
 		    case 'y':	opts.cfiles = 1; break;		/* doc */
 		    default: bk_badArg(c, av);
+		}
+		if (not && (c != '^')) {
+			fprintf(stderr, "%s: no ^ form of -%c\n", prog, c);
+			usage();
 		}
 	}
 
@@ -265,12 +277,11 @@ sfiles_main(int ac, char **av)
 	 * If user did not select any option,
 	 * setup a default mode for them
 	 */
-#define	attributes	\
-		(opts.cfiles || opts.changed || opts.gotten || opts.ignored || \
-		opts.locked || opts.names || opts.pending || opts.unlocked)
-
-	unless (attributes || opts.dirs ||
-	    opts.extras || opts.junk || opts.subrepos || opts.xdirs) {
+	unless (opts.cfiles || opts.changed ||
+	    opts.gotten || opts.notgotten ||opts.ignored ||
+	    opts.locked || opts.names || opts.pending || opts.unlocked ||
+	    opts.dirs || opts.extras || opts.junk || opts.subrepos ||
+	    opts.xdirs) {
 		opts.sfiles = 1;
 	}
 
@@ -1223,9 +1234,10 @@ do_print(STATE buf, char *gfile, char *rev)
 	    ((state[CSTATE] == 'c') && opts.changed) ||
 	    ((state[PSTATE] == 'p') && opts.pending) ||
 	    ((state[GSTATE] == 'G') && opts.gotten) ||
+	    (opts.notgotten &&
+		(state[TSTATE] == 's') && (state[GSTATE] != 'G')) ||
 	    ((state[NSTATE] == 'n') && opts.names) ||
 	    ((state[YSTATE] == 'y') && opts.cfiles);
-	if (opts.inverse) doit = !doit;
 	if (doit) print_it(state, gfile, rev);
 }
 
