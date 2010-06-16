@@ -395,7 +395,7 @@ filterGone(char **cweave, char *comppath, char **deepnest)
 	FILE	*out = 0;
 	sccs	*s = 0;
 	delta	*d;
-	char	*buf, *p, *e, *newpath, *delpath, *rootkey;
+	char	*buf, *p, *e, *newpath, *delpath, *rootkey = 0;
 	char	*freeme = 0;
 	hash	*lookup = 0;
 	char	oldkey[MAXKEY], newkey[MAXKEY];

@@ -791,8 +791,9 @@ parse_pattern_letter (s, c, t)
 	  return 0;
 	if (negative)
 	  n = -n;
-	while (!ISALNUM ((unsigned char) *s))
+	while (*s && !ISALNUM ((unsigned char) *s)) {
 	  s++;
+	}
 	i = lookup (s, relative_units);
 	if (!TM_DEFINED (i))
 	  return 0;

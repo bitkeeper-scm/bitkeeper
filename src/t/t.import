@@ -826,11 +826,14 @@ bk diff -Nru a/data b/data
  D
 EOF
 bk import -tpatch "$HERE/patch" . < /dev/null > "$HERE/OUT" 2>&1
-bk cat data | grep -q XYZ || {
-	echo failed to apply patch
-	cat "$HERE/OUT"
-	exit 1
-}
+cat > WANT <<EOF
+A
+B
+XYZ
+D
+EOF
+bk co $Q data
+cmpfiles WANT data
 echo OK
 
 echo $N Make sure that patch rejects are still caught ...............$NL

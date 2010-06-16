@@ -1071,6 +1071,8 @@ keycmp(const void *k1, const void *k2)
 	}
 	/* if we get here then one of the keys are malformed */
 	assert(0);
+	/* NOTREACHED, but openbsd compiler complains */
+	exit (-1);
 }
 
 /*

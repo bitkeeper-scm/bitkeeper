@@ -1001,7 +1001,7 @@ http_stats(char *page)
 	int	recent_cs, all_cs;
 	char	c_user[80];
 	int	ct;
-	char	units[80];
+	char	units[200];
 	char	buf[200];
 	FILE	*p;
 

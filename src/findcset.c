@@ -427,11 +427,13 @@ line2str(char **comments)
 private int
 bylen(const void *a, const void *b)
 {
-	int	alen = strlen((char *)a);
-	int	blen = strlen((char *)b);
+	char	*achar = *(char **)a;
+	char	*bchar = *(char **)b;
+	int	alen = strlen(achar);
+	int	blen = strlen(bchar);
 
 	if (alen != blen) return (alen - blen);
-	return (strcmp((char *)a, (char *)b));
+	return (strcmp(achar, bchar));
 }
 
 /*
