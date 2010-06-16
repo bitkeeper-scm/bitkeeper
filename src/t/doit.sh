@@ -519,6 +519,7 @@ init_main_loop()
 #
 # Options processing:
 # Usage: doit [-t] [-v] [-x] [test...]
+# -b	only list bugs
 # -i	do not exit if a test fails, remember it and list it at the end
 # -g	run GUI regression
 # -j#	run regressions in parallel
@@ -530,6 +531,7 @@ init_main_loop()
 #
 get_options()
 {
+	BUGSONLY=cat
 	Q=-q
 	S=-s;
 	KEEP_GOING=NO
@@ -540,6 +542,7 @@ get_options()
 	dashx=
 	while true
 	do	case $1 in
+		    -b) BUGSONLY="bk tclsh failed.l";;
 		    -g) GUI_TEST=YES;;
 		    -p) PAUSE=YES;;
 		    -i) KEEP_GOING=YES;;
@@ -748,7 +751,7 @@ I hope your testing experience was positive! :-)
 		FAILED="$i $FAILED"
 	fi
 	clean_up
-done
+done | $BUGSONLY
 rm -rf "$BK_REGRESSION"
 rm -f "$TMPDIR/T.${USER}" "$TMPDIR/T.${USER} new"
 test "$BK_LIMITPATH" && rm -rf "$BK_LIMITPATH"
