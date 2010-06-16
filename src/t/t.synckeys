@@ -28,7 +28,7 @@ bk tag $Q copy1
 echo OK
 
 echo $N List keys which are local only, changes -Lk .................$NL
-bk changes -Lk "$HERE/project" | bk sort > GOT
+bk changes -qaLk "$HERE/project" | bk sort > GOT
 bk -R prs -hand:KEY: ChangeSet | head -2 | bk sort > WANT
 cmp -s WANT GOT || { echo failed; diff -u WANT GOT; exit 1; }
 echo OK
@@ -40,7 +40,7 @@ cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
 
 echo $N List keys which are remote only, changes -Rk ................$NL
-bk changes -Rk "$HERE/project" | bk sort > GOT
+bk changes -qaRk "$HERE/project" | bk sort > GOT
 ( cd "$HERE/project" && 
   bk -R prs -hand:KEY: ChangeSet | head -2 | bk sort ) > WANT
 cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }

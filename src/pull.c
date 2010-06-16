@@ -225,7 +225,7 @@ err:		freeLines(envVar, free);
 		}
 		remote_free(r);
 		if ((rc == 2) && opts.local && !opts.quiet) {
-			sys("bk", "changes", "-L", urls[i], SYS);
+			sys("bk", "changes", "-aL", urls[i], SYS);
 		}
 		if (rc == -2) rc = 1; /* if retry failed, set exit code to 1 */
 		if (rc) break;

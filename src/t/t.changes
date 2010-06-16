@@ -389,7 +389,7 @@ EOF
 checkfiles ref changes.out
 echo OK
 
-echo $N Verify changes -L works with tags ...........................$NL
+echo $N Verify changes -aL works with tags ..........................$NL
 cd "$HERE/clone"
 bk tag $Q -r1.2 bar
 bk changes -aL -qnd':REV: :COMMENTS: :SYMBOL:' > chgs
@@ -402,6 +402,39 @@ bk diff -u expect chgs || {
 	echo changes returned wrong data
 	exit 1
 }
+echo OK
+
+echo $N Verify changes -a works with tags ...........................$NL
+# I think the same outout should be had with 'bk changes -ar1.2' but it
+# is not, because the tag on 1.2 is not connected to the range 1.2 .
+# I could hack range_markMeta to know about rev ranges and rev lists and
+# just mark corresponding tags, but we don't care that much about it.
+# I played with it and undo breaks. So I stopped.
+bk changes -ar1.2 -nd:DT:-:GFILE:-:I: > GOT
+cat <<'EOF' > WANT
+D-ChangeSet-1.2
+EOF
+checkfiles WANT GOT
+bk changes -and'$if(:I:=1.2){:KEY:}' > LIST
+bk changes -and:DT:-:GFILE:-:I: - < LIST > GOT
+cat <<'EOF' > WANT
+T-ChangeSet-1.2
+D-ChangeSet-1.2
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N Verify changes -av works with tags ..........................$NL
+# This uses the shift from rev to ser in changes MDBM to distinguish
+# between a tag and a real delta in a -av setup
+bk changes -avnd:DT:-:GFILE:-:I: - < LIST > GOT
+cat <<'EOF' > WANT
+T-ChangeSet-1.2
+D-ChangeSet-1.2
+D-f-1.1
+D-f-1.0
+EOF
+checkfiles WANT GOT
 echo OK
 
 echo $N Change changes on a remote repository .......................$NL

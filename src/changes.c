@@ -123,7 +123,7 @@ changes_main(int ac, char **av)
 			break;
 		    /* case 'K': reserved */
 		    case 'k':
-		    	opts.keys = opts.all = 1; opts.noempty = 0; /* -a */
+		    	opts.keys = 1;
 			opts.urls = opts.showdups = 0;		    /* -D */
 			break;
 		    case 'm': opts.nomerge = 1; break;
@@ -184,12 +184,6 @@ changes_main(int ac, char **av)
 		return (1);
 	}
 	if (searchStr && prepSearch(searchStr)) usage();
-	/* force a -a if -L or -R and no -a */
-	if ((opts.local || opts.remote) && !opts.all) {
-		nav[nac++] = strdup("-a");
-		opts.all = 1;
-		opts.noempty = 0;
-	}
 	nav[nac] = 0;	/* terminate list of args with -L and -R removed */
 
 #if 0
@@ -630,8 +624,8 @@ fileFilt(sccs *s, MDBM *csetDB)
 		unless (d->flags & D_SET) continue;
 		/* if cset changed nothing, keep it if not filtering by inc */
 		if (!(opts.inc || opts.BAM) && !d->added) continue;
-		k.dptr = d->rev;
-		k.dsize = strlen(d->rev);
+		k.dptr = (char *)&(d->serial);
+		k.dsize = sizeof(d->serial);
 		v = mdbm_fetch(csetDB, k);
 		unless (v.dptr) d->flags &= ~D_SET;
 	}
@@ -803,12 +797,12 @@ collectDelta(sccs *s, delta *d, char **list)
 }
 
 private void
-saveKey(MDBM *db, char *rev, char **keylist)
+saveKey(MDBM *db, ser_t ser, char **keylist)
 {
 	datum	k, v;
 
-	k.dptr = rev;
-	k.dsize = strlen(rev);
+	k.dptr = (char *) &ser;
+	k.dsize = sizeof (ser);
 	v.dptr = (char *) &keylist;
 	v.dsize = sizeof (keylist);
 	if (mdbm_store(db, k, v, MDBM_INSERT)) perror("savekey");
@@ -822,14 +816,12 @@ saveKey(MDBM *db, char *rev, char **keylist)
 private MDBM *
 loadcset(sccs *cset)
 {
-	char	*rev = NULL;
 	char	**keylist = 0, **cweave;
 	char	*keypath, *pipe;
 	char	*p, *t;
-	delta	*d;
 	MDBM	*db;
 	int	i;
-	ser_t	ser;
+	ser_t	ser, cur_ser = 0;
 	char	*pathp;
 	char	path[MAXPATH];
 
@@ -884,25 +876,18 @@ loadcset(sccs *cset)
 			}
 		}
 		ser = atoi(cweave[i]);
-		d = sfind(cset, ser);
-		assert(d);
-		if (!rev) {
-			rev = strdup(d->rev);
+		unless (cur_ser) {
+			cur_ser = ser;
 			assert(keylist == NULL);
-		} else if (rev && !streq(rev, d->rev)) {
-			saveKey(db, rev, keylist);
-			free(rev);
-			rev = strdup(d->rev);
+		} else if (ser != cur_ser) {
+			saveKey(db, cur_ser, keylist);
+			cur_ser = ser;
 			keylist = 0;
 		}
 		keylist = addLine(keylist, strdup(p));
 	}
 	freeLines(cweave, free);
-
-	if (rev) {
-		saveKey(db, rev, keylist);
-		free(rev);
-	}
+	if (cur_ser) saveKey(db, cur_ser, keylist); /* save last entry */
 	if (opts.filt) fileFilt(cset, db);
 	return (db);
 }
@@ -1027,8 +1012,8 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		}
 
 		/* get key list */
-		k.dptr = e->rev;
-		k.dsize = strlen(e->rev);
+		k.dptr = (char *)&(e->serial);
+		k.dsize = sizeof(e->serial);
 		v = mdbm_fetch(rstate->csetDB, k);
 		keys = 0;
 		if (v.dptr) memcpy(&keys, v.dptr, v.dsize);

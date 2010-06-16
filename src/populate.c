@@ -324,7 +324,7 @@ unpopulate_check(comp *c, char **urls)
 	av = addLine(av, "-LD");
 	EACH(urls) {
 		unless (sysio(0, out, DEVNULL_WR,
-			"bk", "changes", "-qLnd:REV:", urls[i], SYS)) {
+			"bk", "changes", "-qaLnd:REV:", urls[i], SYS)) {
 			if (size(out) == 0) {
 				/* found no diffs? */
 				good = i;

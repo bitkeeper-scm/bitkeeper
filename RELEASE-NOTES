@@ -1,3 +1,12 @@
+Release notes for BitKeeper beta XX
+
+bk changes
+    XXX The -a changes need to be explained here.
+    In bold letters, post the changes needed to be done to scripts
+    which will insure working with 4.x and 5.x (and 3.x):
+    include -a anywhere -k, -L or -R is used.
+
+===============================================================================
 Release notes for BitKeeper beta 6
 
 Big overhaul of progress bars used in clone, undo, push, pull,

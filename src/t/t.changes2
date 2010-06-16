@@ -186,10 +186,17 @@ cat WITHOUT EMPTY TAG | bk sort > SORT
 checkfiles WITH SORT
 echo OK
 
-echo $N Check that -k implies -a ....................................$NL
+echo $N Check that -ka includes all .................................$NL
+# continuation from above / check -k implies -D later down
+bk changes -ka | bk sort > WITH
+cat WITHOUT EMPTY TAG | bk sort > SORT
+checkfiles WITH SORT
+echo OK
+
+echo $N Check that -k no longer implies -a ..........................$NL
 # continuation from above / check -k implies -D later down
 bk changes -k | bk sort > WITH
-cat WITHOUT EMPTY TAG | bk sort > SORT
+cat WITHOUT | bk sort > SORT
 checkfiles WITH SORT
 echo OK
 
@@ -526,17 +533,7 @@ checkfiles LOCAL REMOTE
 test "`wc -l < LOCAL`" -eq 1 || fail
 echo OK
 
-echo $N Check out a tag difference using -L and -R = -a activated ...$NL
-cd "$HERE/clone"
-bk changes -L -qnd:I: ../simple > ../REMOTE
-cd ../simple
-bk changes -R -qnd:I: ../clone > ../LOCAL
-cd ..
-checkfiles LOCAL REMOTE
-test "`wc -l < LOCAL`" -eq 1 || fail
-echo OK
-
-echo $N Check out a tag difference using -aL and -aR ................$NL
+echo $N Check out a tag difference using -aL and -aR = -a here ......$NL
 cd "$HERE/clone"
 bk changes -aL -qnd:I: ../simple > ../REMOTE
 cd ../simple
@@ -544,6 +541,16 @@ bk changes -aR -qnd:I: ../clone > ../LOCAL
 cd ..
 checkfiles LOCAL REMOTE
 test "`wc -l < LOCAL`" -eq 1 || fail
+echo OK
+
+echo $N Check out a tag difference using -L and -R - no tags ........$NL
+cd "$HERE/clone"
+bk changes -L -qnd:I: ../simple > ../REMOTE
+cd ../simple
+bk changes -R -qnd:I: ../clone > ../LOCAL
+cd ..
+checkfiles LOCAL REMOTE
+test "`wc -l < LOCAL`" -eq 0 || fail
 echo OK
 
 echo $N Check out an empty merge difference using -L, -R ............$NL
@@ -557,12 +564,12 @@ cd clone2
 bk pull $Q ../simple
 cd ../clone
 bk pull $Q ../simple
-bk changes -L -qnd:KEY: ../clone2 > LOCAL
-bk changes -R -qnd:KEY: ../clone2 > REMOTE
+bk changes -eL -qnd:KEY: ../clone2 > LOCAL
+bk changes -eR -qnd:KEY: ../clone2 > REMOTE
 cmp -s LOCAL REMOTE && fail
 cd ../clone2
-bk changes -L -qnd:KEY: ../clone > LOCAL
-bk changes -R -qnd:KEY: ../clone > REMOTE
+bk changes -eL -qnd:KEY: ../clone > LOCAL
+bk changes -eR -qnd:KEY: ../clone > REMOTE
 cmp -s LOCAL REMOTE && fail
 checkfiles LOCAL ../clone/REMOTE
 checkfiles REMOTE ../clone/LOCAL

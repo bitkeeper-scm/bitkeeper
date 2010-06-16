@@ -31,8 +31,8 @@ bk tag $Q T1
 bk edit $Q foo
 bk delta $Q -fyfoo foo
 bk commit $Q -yfoo
-bk changes -fk -rTRUNK..T1 > ../COPY_KEYS
-bk changes -fk -rBRANCH..T1 > ../COPY2_KEYS
+bk changes -afk -rTRUNK..T1 > ../COPY_KEYS
+bk changes -afk -rBRANCH..T1 > ../COPY2_KEYS
 bk push $Q -rT1 ../copy ../copy2 || {
 	echo failed
 	exit 1
@@ -46,7 +46,7 @@ echo OK
 echo $N Simple tag graph push -r test ....,..........................$NL
 cd "$HERE/project"
 bk tag $Q -rT1 T1_PULL_THIS_TO_TEST_LEAF_MARKED
-bk changes -krT1 > ../KEY
+bk changes -akrT1 > ../KEY
 bk tag $Q T2
 bk tag $Q -rT1 NOT_THIS
 bk push $Q -rT1 ../copy ../copy2 || {
@@ -54,7 +54,7 @@ bk push $Q -rT1 ../copy ../copy2 || {
 	exit 1
 }
 cd ../copy
-bk changes -kr+ > KEY
+bk changes -akr+ > KEY
 checkfiles ../KEY KEY
 bk changes -rNOT_THIS -ndx 2> ERR && {
 	echo failed: NOT_THIS tag sent
@@ -66,7 +66,7 @@ grep -q "no such delta.*NOT_THIS" ERR || {
 	exit 1
 }
 cd ../copy2
-bk changes -kr+ > KEY2
+bk changes -akr+ > KEY2
 checkfiles ../KEY KEY2
 bk changes -rNOT_THIS -ndx 2> ERR && {
 	echo failed: NOT_THIS tag sent
