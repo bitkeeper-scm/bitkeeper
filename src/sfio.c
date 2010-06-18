@@ -80,7 +80,7 @@ private	void	send_eof(int status);
 private void	missing(off_t *byte_count);
 private	void	print_status(char *file, u32 sz);
 private int	sfio_in_Nway(int n);
-private	void	where(char *path);
+private	void	perfile(char *path);
 
 private	struct {
 	u32	quiet:1;	/* suppress normal verbose output */
@@ -669,7 +669,7 @@ sfio_in(int extract)
 		}
 		byte_count += len;
 		buf[len] = 0;
-		if (opts->index) where(buf);
+		perfile(buf);
 		if (fread(datalen, 1, 10, stdin) != 10) {
 			perror("fread");
 			return (1);
@@ -978,11 +978,6 @@ print_status(char *file, u32 sz)
 	static	int n;
 	char	line[MAXPATH];
 
-	if (opts->mark_no_dfiles &&
-	    (strneq(file, "SCCS/d.", 7) || strstr(file, "/SCCS/d."))) {
-		opts->mark_no_dfiles = 0;
-	}
-
 	if (opts->quiet) return;
 
 #ifdef	SFIO_STANDALONE
@@ -1179,7 +1174,7 @@ header:
 		byte_count += len;
 		buf[len] = 0;
 		sent[cur] += fwrite(buf, 1, len, f[cur]);
-		if (opts->index) where(buf);
+		perfile(buf);
 		if (fread(datalen, 1, 10, stdin) != 10) {
 			perror("fread");
 			goto out;
@@ -1249,3 +1244,17 @@ where(char *path)
 	/* might be better to print size from last entry instead */
 	printf("%s|%lx\n", basenm(path), ftell(stdin));
 }
+
+/*
+ * Called as each filename is seen reading a sfio.
+ */
+private void
+perfile(char *file)
+{
+	if (opts->mark_no_dfiles &&
+	    (strneq(file, "SCCS/d.", 7) || strstr(file, "/SCCS/d."))) {
+		opts->mark_no_dfiles = 0;
+	}
+	if (opts->index) where(file);
+}
+

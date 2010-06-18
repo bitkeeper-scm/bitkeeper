@@ -185,3 +185,23 @@ test -s D && {
 	exit 1
 }
 echo OK
+
+echo $N Check that pending files are stripped in a parallel clone ...$NL
+cd bitcluster
+echo hi > extra
+bk new $Q extra || fail
+bk edit $Q STATE || fail
+echo junk >> STATE
+bk ci -yjunk $Q STATE || file
+cd ..
+_BK_FORCE_NETFS=YES bk clone $Q bitcluster no-pending || fail
+cd no-pending
+bk sfiles -p > OUT
+test -s OUT && fail -f OUT should have nothing pending after clone
+SFIO=`grep 'sfio -i' BitKeeper/log/cmd_log|wc -l`
+test $SFIO = 9 || {
+	echo wrong number $SFIO
+	exit 1
+}
+cd ..
+echo OK
