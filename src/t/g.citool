@@ -722,3 +722,20 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
+
+echo $N Test that a ^ in a repo name is ok ..........................$NL
+commercial ^foo
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+
+echo FOO > foo
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "foo"
+	test_inputComment "foo comment"
+	test_selectFile "ChangeSet"
+	test_inputComment "ChangeSet comment"
+	test_buttonPress "Commit"
+	test_buttonPress "Commit"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK

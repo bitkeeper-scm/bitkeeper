@@ -172,8 +172,15 @@ getCsetFile(string comp)
 string
 getRelativePath(string path, string root)
 {
+	int	len;
+
 	if (root eq "") root = self.root;
-	path =~ s|^${root}/||;
+	if (root[END] ne "/") root .= "/";
+
+	len = length(root);
+	if (strneq(root, path, len)) {
+		path = path[len..END];
+	}
 	return (path);
 }
 
@@ -791,10 +798,13 @@ gui()
 	update();
 }
 
-void
+int
 selectFile(string node)
 {
-	string	file = Tree_itemcget(self.w_files, node, data:);
+	string	file;
+
+	unless (ListBox_exists(self.w_files, node)) return (0);
+	file = Tree_itemcget(self.w_files, node, data:);
 
 	saveComments();
 	filename = file;
@@ -817,6 +827,8 @@ selectFile(string node)
 		updateButtons();
 		showFile(sf);
 	}
+
+	return (1);
 }
 
 void
@@ -2144,7 +2156,10 @@ test_getPasteBuffer()
 void
 test_selectFile(string file)
 {
-	selectFile(self.files{file}.node);
+	unless (selectFile(self.files{file}.node)) {
+		puts("${file} is not in the file list, but it should be");
+		exit(1);
+	}
 }
 
 void
@@ -2343,6 +2358,7 @@ main(_unused int argc, string argv[])
 		foreach (file in files) {
 			if (isdir(file)) bk_usage();
 		}
+		self.root = `bk root`;
 	}
 
 	if (self.resolve) {
