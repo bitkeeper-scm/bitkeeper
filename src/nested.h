@@ -142,10 +142,13 @@ int	aliasdb_chkAliases(nested *n, hash *aliasdb,
 char	**urllist_fetchURLs(hash *h, char *rk, char **space);
 int	urllist_addURL(hash *h, char *rk, char *url);
 int	urllist_rmURL(hash *h, char *rk, char *url);
-int	urllist_check(nested *n, int quiet, int trim_noconnect, char **urls);
 void	urllist_dump(char *name);
 int	urllist_normalize(hash *urllist, char *url);
 int	urllist_write(hash *urllist);
+
+#define URLLIST_TRIM_NOCONNECT  0x10
+#define	URLLIST_SUPERSET	0x20
+int	urllist_check(nested *n, u32 flags, char **urls);
 
 /* locking.c */
 

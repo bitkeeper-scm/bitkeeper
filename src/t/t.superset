@@ -215,7 +215,22 @@ test -s ../GOT && {
 }
 echo OK
 
-echo $N Check superset with a dirty subrepo .........................$NL
+echo $N Check superset with a dirty subrepo -- new cset .............$NL
+cd subrepo
+touch anewfile
+bk new $Q anewfile
+bk commit $Q -f
+cd ..
+bk superset > ../GOT 2>&1
+test $? -eq 1 || fail superset with dirty subrepo should exit 1
+grep -q '=== Subrepository subrepo ===' ../GOT || fail -f ../GOT
+grep -q '=== Local changesets ===' ../GOT || fail -f ../GOT
+cd subrepo
+bk undo -qsfr+ || fail
+cd ..
+echo OK
+
+echo $N Check superset with a dirty subrepo -- extra file ...........$NL
 echo foo > subrepo/bar
 bk superset > ../GOT
 test $? -ne 1 && {
@@ -223,8 +238,7 @@ test $? -ne 1 && {
 	exit 1
 }
 grep -q '=== Subrepository subrepo ===' ../GOT || {
-	echo superset with dirty subrepo should flag it as a subrepo
-	exit 1
+     	fail -f ../GOT superset with dirty subrepo should flag it as a subrepo
 }
 grep -q '    === Extra files ===' ../GOT || {
 	echo superset with dirty subrepo should have extra files title
@@ -332,4 +346,149 @@ grep -q '=== Local changesets ===' ../GOT || {
 	echo superset should mark local changesets
 	exit 1
 }
+echo OK
+
+echo $N Check nested - parentless ...................................$NL
+cd "$HERE"
+fresh_nested prod
+bk superset > ../GOT 2>&1
+test $? -ne 1 && fail -f ../GOT "superset with no parent should exit 1"
+grep -q 'has no pull parent.' ../GOT || \
+	fail -f ../GOT "superset with no parent should tell you that"
+grep -q 'Components with no known source' ../GOT || \
+	fail -f ../GOT \
+	"superset should complain about components with no known clones"
+echo OK
+
+echo $N Check nested - extra file in a component ....................$NL
+cd "$HERE"
+bk clone $Q prod prod-clone
+cd prod-clone/gcc
+echo FOO > FOO
+cd ..
+bk superset > ../GOT 2>&1
+test $? -ne 1 && fail -f ../GOT "superset with changes should exit 1"
+grep -q FOO ../GOT || fail -f ../GOT "superset missed an extra file"
+grep -q '=== Extra files ===' ../GOT || \
+	fail -f ../GOT "superset failed to flag the file as an extra"
+echo OK
+
+echo $N Check nested - pending file in a component ..................$NL
+cd "$HERE"/prod-clone/gcc
+bk new $Q FOO
+cd ..
+bk superset > ../GOT 2>&1
+test $? -ne 1 && fail -f ../GOT "superset with pending should exit 1"
+grep -q FOO ../GOT || fail -f ../GOT "superset missed a pending file"
+grep -q '=== Pending files ===' ../GOT || \
+	fail -f ../GOT "superset failed to flag the file as pending"
+echo OK
+
+echo $N Check nested - pending changeSet in a component .............$NL
+cd "$HERE"/prod-clone/gcc
+bk commit $Q -y'added FOO'
+cd ..
+bk superset > ../GOT 2>&1
+test $? -ne 1 && fail -f ../GOT "superset with pending cset should exit 1"
+grep -q ChangeSet@1.3 ../GOT || fail -f ../GOT "superset missed a pending file"
+grep -q '=== Pending files ===' ../GOT || \
+	fail -f ../GOT "superset failed to flag the file as pending"
+echo OK
+
+echo $N Check inside component - pending changeSet in a component ...$NL
+cd "$HERE"/prod-clone/gcc
+bk superset > ../../GOT2 2>&1 && fail -f ../../GOT2
+cmpfiles ../../GOT ../../GOT2
+# Commit and push the stuff to the parent to get ready for the next tests
+bk commit $Q -y'stuff'
+bk push $Q
+echo OK
+
+echo $N Check nested - parentless standalone repo in a product ......$NL
+cd "$HERE"
+fresh_commercial repo
+cd ..
+mv repo prod-clone
+cd prod-clone
+bk superset > ../GOT 2>&1
+test $? -ne 1 && fail -f ../GOT "superset with a parentless subrepo should exit 1"
+grep -q 'repo/SCCS/s.ChangeSet' ../GOT || \
+	fail -f ../GOT "superset failed to spot subrepo"
+grep -q '=== Extra files ===' ../GOT || \
+	fail -f ../GOT "superset failed to flag the repo as an extra"
+echo OK
+
+echo $N Check nested - standalone repo in a product .................$NL
+cd "$HERE/prod-clone"
+rm -rf repo
+cd "$HERE"
+fresh_commercial repo
+cd ..
+bk clone $Q repo prod-clone/repo
+cd prod-clone
+bk superset > ../GOT 2>&1
+test $? -ne 1 && fail -f ../GOT "superset with a subrepo should exit 1"
+grep -q '=== Extra files ===' ../GOT || \
+	fail -f ../GOT "superset failed to flag the repo as an extra"
+echo OK
+
+echo $N Check nested - standalone repo in a component ...............$NL
+cd "$HERE"
+bk clone $Q repo prod-clone/gdb/repo
+cd prod-clone
+bk superset > ../GOT 2>&1
+test $? -ne 1 && fail -f ../GOT "superset with a sub-subrepo should exit 1"
+grep -q 'gdb/repo/SCCS/s.ChangeSet' ../GOT || \
+	fail -f ../GOT "superset failed to spot subrepo"
+grep -q '=== Extra files ===' ../GOT || \
+	fail -f ../GOT "superset failed to flag the repo as an extra"
+echo OK
+
+echo $N Check nested - standalone repo deeply nested ................$NL
+cd "$HERE"
+bk clone $Q repo prod-clone/gdb/repo/repo
+cd prod-clone
+bk superset > ../GOT 2>&1
+test $? -ne 1 && \
+	fail -f ../GOT "superset with deeply nested subrepos should exit 1"
+grep -q 'gdb/repo/repo/SCCS/s.ChangeSet' ../GOT || \
+	fail -f ../GOT "superset failed to spot subrepo"
+grep -q '=== Extra files ===' ../GOT || \
+	fail -f ../GOT "superset failed to flag the repo as an extra"
+echo OK
+
+echo $N Check nested - extra files in subrepo .......................$NL
+cd "$HERE/prod-clone"
+echo FOO > repo/FOO
+bk superset > ../GOT 2>&1
+test $? -ne 1 && \
+	fail -f ../GOT "superset with extra files in subrepos should exit 1"
+grep -q '          FOO' ../GOT || \
+	fail -f ../GOT "superset failed to spot extra files in subrepo"
+grep -q '      === Extra files ===' ../GOT || \
+	fail -f ../GOT "superset failed to flag the file as an extra"
+echo OK
+
+echo $N Check nested - extra files in subsubrepo ....................$NL
+cd "$HERE/prod-clone"
+echo BAR > gdb/repo/BAR
+bk superset > ../GOT 2>&1
+test $? -ne 1 && \
+	fail -f ../GOT "superset with extra files in subrepos should exit 1"
+grep -q '                BAR' ../GOT || \
+	fail -f ../GOT "superset failed to spot extra files in subrepo"
+grep -q '            === Extra files ===' ../GOT || \
+	fail -f ../GOT "superset failed to flag the file as an extra"
+echo OK
+
+echo $N Check nested - extra files in deeply nested subrepo .........$NL
+cd "$HERE/prod-clone"
+echo BAR > gdb/repo/repo/BAZ
+bk superset > ../GOT 2>&1
+test $? -ne 1 && \
+	fail -f ../GOT "superset with extra files in subrepos should exit 1"
+grep -q '                      BAZ' ../GOT || \
+	fail -f ../GOT "superset failed to spot extra files in subrepo"
+grep -q '                  === Extra files ===' ../GOT || \
+	fail -f ../GOT "superset failed to flag the file as an extra"
 echo OK

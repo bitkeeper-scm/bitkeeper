@@ -1108,7 +1108,7 @@ urllist_rmURL(hash *h, char *rk, char *url)
  * Frees 'urls' when finished.
  */
 int
-urllist_check(nested *n, int quiet, int trim_noconnect, char **urls)
+urllist_check(nested *n, u32 flags, char **urls)
 {
 	comp	*c;
 	hash	*urllist;	/* $list{rootkey} = @URLS */
@@ -1172,12 +1172,12 @@ urllist_check(nested *n, int quiet, int trim_noconnect, char **urls)
 		rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
 		if (rc == 16) rc = 0;		/* no repo at that pathname? */
 		if (rc == 8) {
-			unless (quiet) {
+			unless (flags & SILENT) {
 				fprintf(stderr,
 				    "%s: unable to connect to saved URL: %s\n",
 				    prog, urls[i]);
 			}
-			if (trim_noconnect) rc = 0;
+			if (flags & URLLIST_TRIM_NOCONNECT) rc = 0;
 		}
 		if (rc) {
 			/*
@@ -1185,7 +1185,7 @@ urllist_check(nested *n, int quiet, int trim_noconnect, char **urls)
 			 * on this URL so we need to save the existing
 			 * data.
 			 */
-			if (!quiet && (rc != 8)) {
+			if (!(flags & SILENT) && (rc != 8)) {
 				fprintf(stderr,
 				    "%s: error contacting saved URL: %s\n",
 				    prog, urls[i]);
@@ -1221,14 +1221,30 @@ urllist_check(nested *n, int quiet, int trim_noconnect, char **urls)
 		EACH_INDEX(list, j) {
 			urllist_addURL(urllist, c->rootkey, list[j]);
 		}
-		unless (c->present || c->remotePresent) {
-			rc = 1;
 
-			unless (quiet) {
-				fprintf(stderr,
-				    "%s: no valid urls found for "
-				    "missing component %s\n",
-				    prog, c->path);
+		/* it is elsewhere, no problem */
+		if (c->remotePresent) continue;
+
+		if (flags & URLLIST_SUPERSET) {
+			if (c->present) {
+				/*
+				 * We are running superset and a
+				 * component that we have populated
+				 * can't be found anywhere else.
+				 */
+				printf("%s\n", c->path);
+				rc = 1;
+			}
+		} else {
+			unless (c->present) {
+				rc = 1;
+
+				unless (flags & SILENT) {
+					fprintf(stderr,
+					    "%s: no valid urls found for "
+					    "missing component %s\n",
+					    prog, c->path);
+				}
 			}
 		}
 	}

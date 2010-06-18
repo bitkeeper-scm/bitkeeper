@@ -663,16 +663,18 @@ _superset() {
 	LIST=YES
 	QUIET=
 	CHANGES=-v
-	EXIT=0
-	NOPARENT=NO
+	NOPARENT=NO		# if YES, then no URL or parent
+	PRODUCT=NO		# STANDALONE, COMPONENT or PRODUCT
+	RECURSED=NO		# superset called itself
 	TMP1=${TMP}/bksup$$
 	TMP2=${TMP}/bksup2$$
 	TMP3=${TMP}/bksup3$$
-	while getopts dq opt
+	while getopts Rdq opt
 	do
 		case "$opt" in
 		d) set -x;;
 		q) QUIET=-q; CHANGES=; LIST=NO;;
+		R) RECURSED=YES;;
 		*) bk help -s superset
 		   exit 1;;
 		esac
@@ -680,13 +682,26 @@ _superset() {
 	shift `expr $OPTIND - 1`
 	export PAGER=cat
 
+	bk product -q
+	case $? in
+	    3)	PRODUCT=STANDALONE;;
+	    1)	PRODUCT=COMPONENT;;
+	    0)	PRODUCT=PRODUCT;;
+	esac
+
+	# running superset in a component tests the whole product
+	test $PRODUCT = COMPONENT -a $RECURSED = NO && {
+		__cd2product
+		PRODUCT=PRODUCT
+	}
+
 	# No parent[s] means we're dirty by definition
 	test "X$@" = X && {
 		bk parent -qi || NOPARENT=YES
 	}
 
 	# Don't run changes if we have no parent (specified or implied)
-	test "X$@" != X -o $NOPARENT != YES && {
+	test $NOPARENT != YES -a $PRODUCT != COMPONENT && {
 		bk changes -Laq $CHANGES "$@" > $TMP2 || {
 			rm -f $TMP1 $TMP2
 			exit 1
@@ -697,8 +712,18 @@ _superset() {
 				exit 1
 			}
 			echo === Local changesets === >> $TMP1
-			grep -ve --------------------- $TMP2 |
-			sed 's/^/    /'  >> $TMP1
+			sed 's/^/    /' < $TMP2 >> $TMP1
+		}
+	}
+
+	test X$PRODUCT = XPRODUCT && {
+		bk here check --superset > $TMP2 || {
+			test $LIST = NO && {
+				rm -f $TMP1 $TMP2
+				exit 1
+			}
+			echo === Components with no known sources === >> $TMP1
+			sed 's/^/    /' < $TMP2 >> $TMP1
 		}
 	}
 	bk pending $QUIET > $TMP2 2>&1 && {
@@ -773,42 +798,48 @@ _superset() {
 	done
 	bk sfiles -R > $TMP2
 	test -s $TMP2 && {
-		# If they didn't give us a parent then we can use the
-		# the subrepos parent
-		test "X$@" = X && {
-			EXIT=${TMP}/bkexit$$
-			rm -f $EXIT
-			HERE=`bk pwd`
-			while read repo
-			do	cd "$HERE/$repo"
-				bk superset $QUIET > $TMP3 2>&1 || touch $EXIT
-				test -s $TMP3 -o -f $EXIT || continue
-				test $LIST = NO && break
-				(
-				echo "    === Subrepository $repo ==="
-				sed -e 's/^/    /' < $TMP3
-				) >> $TMP1
-			done < $TMP2
-			cd "$HERE"
-			test $LIST = NO -a -f $EXIT && {
-				rm -f $TMP1 $TMP2 $TMP3 $EXIT
-				exit 1
-			}
-			rm -f $EXIT
+		EXIT=${TMP}/bkexit$$
+		rm -f $EXIT
+		HERE=`bk pwd`
+		while read repo
+		do	cd "$HERE/$repo"
+			bk product -q
+			TMP_PROD=$?
+			bk superset -R $QUIET > $TMP3 2>&1 || touch $EXIT
+			test -s $TMP3 -o -f $EXIT || continue
+			test $LIST = NO && break
+			(
+				if [ X$TMP_PROD = X1 ]
+				then
+					echo "    === Component $repo ==="
+				else
+					echo "    === Subrepository $repo ==="
+				fi
+				sed -e 's/^/      /' < $TMP3
+			) >> $TMP1
+		done < $TMP2
+		cd "$HERE"
+		test $LIST = NO -a -f $EXIT && {
+			rm -f $TMP1 $TMP2 $TMP3 $EXIT
+			exit 1
 		}
+		rm -f $EXIT
 	}
 	test -s $TMP1 -o $NOPARENT = YES || {
 		rm -f $TMP1 $TMP2 $TMP3
 		exit 0
 	}
-	echo "Repo:   `bk gethost`:`pwd`"
-	if [ $# -eq 0 ]
-	then	bk parent -li | while read i
-		do	echo "Parent: $i"
-		done
-	else	echo "Parent: $@"
+	if [ X$PRODUCT != XCOMPONENT ]
+	then
+		echo "Repo:   `bk gethost`:`pwd`"
+		if [ $# -eq 0 ]
+		then	bk parent -li | while read i
+			do	echo "Parent: $i"
+			done
+		else	echo "Parent: $@"
+		fi
 	fi
-	cat $TMP1
+	test -f $TMP1 && cat $TMP1
 	rm -f $TMP1 $TMP2 $TMP3
 	exit 1
 }

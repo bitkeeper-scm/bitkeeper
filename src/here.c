@@ -78,16 +78,20 @@ private int
 here_check_main(int ac, char **av)
 {
 	int	i, c, rc;
-	int	quiet = 0;
-	int	trim_noconnect = 0;
+	u32	flags = 0;
 	nested	*n;
 	char	**urls = 0;
+	longopt	lopts[] = {
+		{ "superset", 300 },
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "@|cq", 0)) != -1) {
+	while ((c = getopt(ac, av, "@|cq", lopts)) != -1) {
 		switch (c) {
 		    case '@': if (bk_urlArg(&urls, optarg)) return (1); break;
-		    case 'c': trim_noconnect = 1; break;
-		    case 'q': quiet = 1; break;
+		    case 'c': flags |= URLLIST_TRIM_NOCONNECT; break;
+		    case 'q': flags |= SILENT; break;
+		    case 300: flags |= URLLIST_SUPERSET; break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -101,7 +105,7 @@ here_check_main(int ac, char **av)
 	proj_cd2product();
 	n = nested_init(0, 0, 0, NESTED_PENDING);
 	assert(n);
-	rc = urllist_check(n, quiet, trim_noconnect, urls);
+	rc = urllist_check(n, flags, urls);
 	nested_free(n);
 	return (rc);
 }
