@@ -45,7 +45,8 @@ test -d "$HERE/tst/project/BitKeeper/writer" && {
 	exit 1
 }
 # If triggers then it's a read lock
-test -d "$HERE/tst/project/BitKeeper/readers" && {
+R=`ls "$HERE/tst/project/BitKeeper/readers" | wc -l`
+test $R = 0 || {
 	echo failed to clean up reader lock
 	exit 1
 }
@@ -124,7 +125,8 @@ test -f post-incoming || {
 	echo failed to run post-incoming trigger
 	exit 1
 }
-test -d trigger/BitKeeper/readers && {
+R=`ls "$HERE/tst/project/BitKeeper/readers" | wc -l`
+test $R = 0 || {
 	echo failed to clean up read lock after clone
 	exit 1
 }

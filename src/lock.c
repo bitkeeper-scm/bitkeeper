@@ -259,7 +259,7 @@ lock_main(int ac, char **av)
 		if (!file && proj_isProduct(0)) {
 			char	**locks = 0;
 			/* wait for a nested lock */
-			while (!(locks = nested_lockers(0))) {
+			while (!(locks = nested_lockers(0, 0, 0))) {
 				usleep(uslp);
 				if (uslp < 1000000) uslp <<= 1;
 			}

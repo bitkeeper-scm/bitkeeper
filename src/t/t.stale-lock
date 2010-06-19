@@ -61,7 +61,8 @@ echo C) | bk pull $Q ../clone >OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
-test -d  BitKeeper/readers && {
+C=`ls BitKeeper/readers | wc -l`
+test $C = 0 || {
 	echo failed to remove read lock
 	exit 1
 }

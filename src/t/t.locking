@@ -54,7 +54,8 @@ bk edit $Q A 2> /dev/null
 if [ ! -w A ]; then echo failed to get writable file; exit 1; fi
 bk clean A
 bk _kill $L
-if [ -d BitKeeper/readers ]
+R=`ls BitKeeper/readers | wc -l`
+if [ -d BitKeeper/readers -a $R -gt 0 ]
 then	echo failed to clean up read lock; ls -l BitKeeper/readers; exit 1
 fi
 echo OK
@@ -66,7 +67,6 @@ then	PID=32767	# SCO wraps at 30000, use 2^15-1 to avoid sign bit
 else	PID=2147483647
 fi
 HOST=`bk gethost -r`
-mkdir BitKeeper/readers
 touch BitKeeper/readers/"${PID}@${HOST}.lock"
 bk lock -l > LOCKERS 2>&1
 grep -q 'No active lock in repository' LOCKERS || {
@@ -75,7 +75,9 @@ grep -q 'No active lock in repository' LOCKERS || {
 	ls -l BitKeeper/readers
 	exit 1
 }
-if [ -d BitKeeper/readers ]
+mkdir -p BitKeeper/readers
+R=`ls BitKeeper/readers | wc -l`
+if [ -d BitKeeper/readers -a $R -gt 0 ]
 then	echo failed to clean up read lock; ls -l BitKeeper/readers; exit 1
 fi
 echo OK
@@ -394,13 +396,14 @@ echo OK
 
 echo $N Make sure repo read lock will fix dir permissions if it can..$NL
 cd "$HERE/project/BitKeeper"
-test -d "$HERE/project/BitKeeper/readers" && {
+R=`ls "$HERE/project/BitKeeper/readers" | wc -l`
+test $R = 0 || {
 	echo failed to clean up readers directory
 	ps -xf
 	ls -l readers
 	exit 1
 }
-mkdir readers
+mkdir -p readers
 chmod 0555 readers
 test -w readers && {
 	echo chmod failed
@@ -412,8 +415,9 @@ test -w readers || {
 	exit 1
 }
 bk _kill $L
-test -d readers && {
-	echo failed to clean up writer directory
+R=`ls readers | wc -l`
+test $R = 0 || {
+	echo failed to clean up readers directory
 	exit 1
 }
 echo OK

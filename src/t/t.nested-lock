@@ -26,7 +26,6 @@ bk _kill $NLOCK2
 test 1 = `ls BitKeeper/readers | wc -l` || fail
 bk lock -l 2>&1 | tee X | grep -q "$PID2" && fail -f X
 bk _kill $NLOCK
-test -d BitKeeper/readers && fail
 test -d RESYNC && fail
 bk lock -l 2>&1 | tee X | grep -q "No active lock in repository" || fail -f X
 echo OK
@@ -46,7 +45,7 @@ grep -q "lock does not match this lock" LOCKMSG || fail -f LOCKMSG
 bk _kill $NLOCK2
 echo OK
 
-echo $N Test stale write lock is cleared.............................$NL
+echo $N Test stale write lock is not cleared.........................$NL
 _BK_LEAVE_LOCKED=1
 export _BK_LEAVE_LOCKED
 NLOCK=`bk lock -Ppidfile -Wt 2> LOCKMSG`
@@ -60,7 +59,9 @@ do	bk _usleep 1000
 	test $c = 10 && fail too many retries
 done
 test -f BitKeeper/writer/nested_lock || fail did not leave locked
-bk lock -l 2>&1 | grep -q "$PID" && fail did not clear stale lock
+bk lock -l 2>&1 | grep -q "$PID" || fail cleared stale write lock
+bk unlock -w
+bk lock -l 2>&1 | grep -q "$PID" && fail abort did not clear stale write lock
 _BK_LEAVE_LOCKED=
 export _BK_LEAVE_LOCKED
 echo OK
@@ -94,9 +95,25 @@ do	bk _usleep 1000
 	test $c = 10 && fail too many retries
 done
 test -f BitKeeper/writer/nested_lock || fail did not leave locked
-bk lock -l 2>&1 | tee LOUT | grep -q "$PID" && fail did not clear stale lock
+bk unlock -w
+bk -P abort -qf 2>&1 | tee LOUT | grep -q "$PID" && fail did not clear stale lock
 grep -q "Forced Shutdown. Recursed too deep." LOUT && \
 	fail -f LOUT infinite loop killed bk
 _BK_LEAVE_LOCKED=
 export _BK_LEAVE_LOCKED
+echo OK
+
+echo $N Test for stale mutex lock blocking things ...................$NL
+# Stale mutex will block for 2 minutes .. we cut that short here
+# just show that it is working.
+cd "$HERE"
+touch product/BitKeeper/tmp/nl_mutex
+bk clone $Q product mutuxer 2> ERR &
+PID=$!
+bk _usleep 100000
+test -d mutuxer && fail
+# windows - use bk's rm to support interacting with contention
+bk _rm product/BitKeeper/tmp/nl_mutex
+wait $PID
+test -d mutuxer || fail
 echo OK

@@ -863,6 +863,12 @@ load_ignore(project *p)
 	prunedirs = addLine(prunedirs, strdup("/BitKeeper/readers"));
 	prunedirs = addLine(prunedirs, strdup("/PENDING"));
 
+	/*
+	 * Normally RESYNC is ignored anyway because it is a new repo, but
+	 * when it just contains .bk_nl then it needs to be skipped.
+	 */
+	prunedirs = addLine(prunedirs, strdup("/RESYNC"));
+
 	/* add default ignore patterns */
 	ignore = addLine(ignore, strdup("/BitKeeper/etc/level"));
 	ignore = addLine(ignore, strdup("/BitKeeper/etc/csets-out"));

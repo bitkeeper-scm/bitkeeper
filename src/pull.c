@@ -197,7 +197,7 @@ err:		freeLines(envVar, free);
 		 * be put so that bugs don't need to be found one at a
 		 * time?
 		 */
-		putenv("BKD_NESTED_LOCK=");
+		unless (opts.transaction) putenv("BKD_NESTED_LOCK=");
 
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;

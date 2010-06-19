@@ -547,6 +547,7 @@ extern	char *upgrade_msg;
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
 #define	WRITER_LOCK	"BitKeeper/writer/lock"
 #define	NESTED_WRITER_LOCK "BitKeeper/writer/nested_lock"
+#define	NESTED_MUTEX	"BitKeeper/tmp/nl_mutex"
 
 #define	LOCK_WR_BUSY	"ERROR-Unable to lock repository for update."
 #define	LOCK_RD_BUSY	"ERROR-Can't get read lock on the repository."

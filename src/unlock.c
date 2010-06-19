@@ -1,6 +1,7 @@
 /* Copyright (c) 1997-2000 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "nested.h"
 
 #undef	PLOCK
 #define	PLOCK	0x0002
@@ -123,6 +124,13 @@ repo(u32 flags)
 			repository_lockers(0);
 			error = 1;
 		}
+		if (proj_isEnsemble(0)) {
+			if (nested_forceUnlock(0, 1)) {
+				fprintf(stderr, "nested read unlock failed\n");
+				nested_printLockers(0, stderr);
+				error = 1;
+			}
+		}
 	}
 
 	if (flags & WLOCK) {
@@ -132,8 +140,14 @@ repo(u32 flags)
 			repository_lockers(0);
 			error = 1;
 		}
+		if (proj_isEnsemble(0)) {
+			if (nested_forceUnlock(0, 2)) {
+				fprintf(stderr,"nested write unlock failed\n");
+				nested_printLockers(0, stderr);
+				error = 1;
+			}
+		}
 	}
-
 	if (flags & STALE) {
 		/* these remove stale locks */
 		(void)repository_hasLocks(0, WRITER_LOCK_DIR);

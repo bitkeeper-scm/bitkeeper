@@ -13,6 +13,8 @@
 private int	lockResync(project *p);
 private void	unlockResync(project *p);
 private time_t	nested_getTimeout(int created);
+private	int	nlock_acquire(project *p);
+private	int	nlock_release(project *p);
 
 /*
  * Return all the lock files which start with a digit, i.e.,
@@ -479,9 +481,6 @@ repository_rdunlock(project *p, int all)
 		write_log("cmd_log", 0, "read unlock (%u)", getpid());
 		TRACE("RDUNLOCK %u", getpid());
 	}
-	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
-	rmdir(path);
-
 	return (0);
 }
 
@@ -564,8 +563,38 @@ enum {
 	NL_COULD_NOT_LOCK_NOT_MINE,
 	NL_COULD_NOT_UNLOCK,
 	NL_INVALID_LOCK_STRING,
-	NL_ABORT_FAILED
+	NL_ABORT_FAILED,
+	NL_COULD_NOT_GET_MUTEX
 } nl_errno;
+
+private	char	*errMsgs[] = {
+	/* NL_OK */
+		"Unexpected error (code 0)",
+	/* NL_NOT_NESTED */
+		"Not a nested collection",
+	/* NL_NOT_PRODUCT */
+		"Not a product",
+	/* NL_ALREADY_LOCKED */
+		"Another nested operation is already in progress",
+	/* NL_LOCK_FILE_NOT_FOUND */
+		"Could not find this nested lock",
+	/* NL_MISMATCH */
+		"Current nested lock does not match this lock",
+	/* NL_COULD_NOT_LOCK_RESYNC */
+		"Could not lock product, locked by RESYNC",
+	/* NL_COULD_NOT_LOCK_NOT_MINE */
+		"Could not lock product, repository not mine",
+	/* NL_COULD_NOT_UNLOCK */
+		"Could not unlock product",
+	/* NL_INVALID_LOCK_STRING */
+		"Invalid nested lock string",
+	/* NL_ABORT_FAILED */
+		"Failed to abort nested operation.",
+	/* NL_COULD_NOT_GET_MUTEX */
+		"Could not lock product, mutex failed.",
+0
+};
+
 
 /*
  * an nlid - Nested Lock ID
@@ -575,6 +604,8 @@ struct nlid_s {
 	int	http;		/* 'h' for http, 'n' for network (bkd) */
 	char	*user;		/* user that has the lock (e.g. 'ob') */
 	char	*host;		/* host where we got the lock (e.g. 'work') */
+	char	*ruser;		/* user of locking process (e.g. 'ob') */
+	char	*rhost;		/* host of locking process */
 	char	*prog;		/* av[0] of prog that got the lock
 				 * (e.g. 'remote clone') */
 	time_t	created;	/* time at which the nlid was created */
@@ -582,20 +613,6 @@ struct nlid_s {
 	u32	random;		/* random bytes */
 };
 
-private	char	*errMsgs[] = {
-	"Unexpected error (code 0)",
-	"Not a nested collection",
-	"Not a product",
-	"Another nested operation is already in progress",
-	"Could not find this nested lock",
-	"Current nested lock does not match this lock",
-	"Could not lock product, locked by RESYNC",
-	"Could not lock product, repository not mine",
-	"Could not unlock product",
-	"Invalid nested lock string",
-	"Failed to abort nested operation.",
-	NULL
-};
 
 private void
 freeNLID(struct nlid_s *nl)
@@ -604,6 +621,8 @@ freeNLID(struct nlid_s *nl)
 		if (nl->user) free(nl->user);
 		if (nl->host) free(nl->host);
 		if (nl->prog) free(nl->prog);
+		if (nl->ruser) free(nl->ruser);
+		if (nl->rhost) free(nl->rhost);
 		free(nl);
 	}
 }
@@ -646,6 +665,16 @@ err:		if (freeme) free(freeme);
 	unless (p = strchr(p, '|')) goto err;
 	/* random could be zero... fat chance! */
 	nl->random = strtol(++p, 0, 10);
+	if (p = strchr(p, '|')) {
+		nl->ruser = strdup(++p);
+		unless (p = strchr(p, '|')) goto err;
+		*p++ = 0;
+		nl->rhost = strdup(p);
+	} else {
+		/* bk-5.0-beta6 or before, don't stale locks */
+		nl->ruser = strdup("");
+		nl->rhost = strdup("");
+	}
 	free(freeme);
 	return (nl);
 }
@@ -660,27 +689,28 @@ err:		if (freeme) free(freeme);
  * prog - av[0] of the lock creator (e.g. remote push part2)
  * created - timestamp of when the lock was created
  * pid - process id of lock creator
+ * ruser - real user (locking side)
+ * rhost - real host (locking side)
  */
 private char *
 getLID(char kind)
 {
-	char	*user, *host, http;
+	char	*user, *host, *ruser, *rhost, http;
 	u32	random;
 
 	rand_getBytes((void *)&random, 4);
 
+	user = ruser = sccs_realuser();
+	host = rhost = sccs_realhost();
 	if (getenv("_BK_IN_BKD")) {
 		user = getenv("BK_REALUSER");
 		host = getenv("BK_REALHOST");
-	} else {
-		user = sccs_user();
-		host = sccs_host();
 	}
 
 	http = getenv("_BKD_HTTP") ? 'h' : 'n';
-	return(aprintf("%c|%c|%s|%s|%s|%d|%u|%u",
+	return(aprintf("%c|%c|%s|%s|%s|%d|%u|%u|%s|%s",
 		kind, http, user, host, prog,
-		time(0), getpid(), random));
+		time(0), getpid(), random, ruser, rhost));
 }
 
 /*
@@ -690,50 +720,52 @@ getLID(char kind)
 int
 nested_isStale(char *file)
 {
-	struct	nlid_s	*nl;
+	struct	nlid_s	*nl = 0;
 	struct	stat	sb;
 	time_t	now;
-	char	*nlid;
+	char	*nlid = 0;
+	int	stale = 1;
 
-	if (stat(file, &sb)) return (1);
+	if (stat(file, &sb)) {
+		TRACE("stat(%s) failed", file);
+		return (stale);
+	}
 	nlid = loadfile(file, 0);
 	chomp(nlid);
 	/* garbage == stale lock */
-	unless (nl = explodeNLID(nlid)) goto stale;
+	unless (nl = explodeNLID(nlid)) {
+		TRACE("%s", "garbage");
+		goto out;
+	}
 	if (nl->http == 'n') {
-		/*
-		 * XXX: This breaks for NFS mounted filesystems
-		 * with BKD's on different machines sharing the same
-		 * file system.
-		 */
-		unless (findpid(nl->pid)) goto stale;
+		if (streq(nl->rhost, sccs_realhost())) {
+			/* find the process */
+			unless (findpid(nl->pid)) {
+				TRACE("%s", "pid not found");
+				goto out;
+			}
+		}
 	} else if (nl->http == 'h') {
 		/* Http locks expire after a timeout */
 		now = time(0);
 		/* created too long ago? */
-		if ((now - nl->created) > nested_getTimeout(1)) goto stale;
+		if ((now - nl->created) > nested_getTimeout(1)) {
+			TRACE("%s", "too old");
+			goto out;
+		}
 		/* not used for a while? */
-		if ((now - sb.st_atime) > nested_getTimeout(0)) goto stale;
-	}
-	/* if we got here, we must be holding a valid lock */
-	free(nlid);
-	freeNLID(nl);
-	return (0);
-
-stale:	if (nl && (nl->kind == 'w')) {
-		if (system("bk -P abort -qf")) {
-			nl_errno = NL_ABORT_FAILED;
-			free(nlid);
-			freeNLID(nl);
-			return (1);
+		if ((now - sb.st_atime) > nested_getTimeout(0)) {
+			TRACE("%s", "unused");
+			goto out;
 		}
 	}
-	if (unlink(file)) {
-		error("Could not unlink '%s', permission problem?\n", file);
-	}
-	if (nlid) free(nlid);
+	/* if we got here, we must be holding a valid lock */
+	TRACE("%s", "not stale");
+	stale = 0;
+
+out:	if (nlid) free(nlid);
 	if (nl) freeNLID(nl);
-	return (1);
+	return (stale);
 }
 
 /*
@@ -787,6 +819,24 @@ cmpNLID(const void *a, const void *b)
 	return (ia - ib);
 }
 
+private	int
+nlock_acquire(project *p)
+{
+	char	lfile[MAXPATH];
+
+	concat_path(lfile, proj_root(proj_product(p)), NESTED_MUTEX);
+	return (sccs_lockfile(lfile, 120, 1));
+}
+
+private int
+nlock_release(project *p)
+{
+	char	lfile[MAXPATH];
+
+	concat_path(lfile, proj_root(proj_product(p)), NESTED_MUTEX);
+	return (sccs_unlockfile(lfile));
+}
+
 /*
  * The idea behind nested locking is that we assign ownership of the
  * RESYNC directory to whoever has the right NLID. Normally the RESYNC
@@ -818,25 +868,33 @@ nested_wrlock(project *p)
 		unlock = 1;
 	}
 
-	lockers = nested_lockers(p);
-	if (nLines(lockers)) {
-		nl_errno = NL_ALREADY_LOCKED;
+	/* not really needed, but here for symmetry */
+	if (nlock_acquire(p)) {
+		fprintf(stderr, "%s: nested_wrlock() failed to get mutex\n",
+		    prog);
+		nl_errno = NL_COULD_NOT_GET_MUTEX;
 		goto out;
 	}
 
-	if (lockResync(p)) {
-		nl_errno = NL_COULD_NOT_LOCK_RESYNC;
+	if (lockers = nested_lockers(p, 0, 1)) {
+		nl_errno = NL_ALREADY_LOCKED;
+		freeLines(lockers, free);
 		goto out;
 	}
 
 	t = getLID('w');
 	lockfile = proj_fullpath(p, NESTED_WRITER_LOCK);
-	/*
-	 * The repository is write-locked at this moment, so just
-	 * writing the lockfile should be safe.
-	 */
+
 	unless (Fprintf(lockfile, "%s\n", t)) {
 		perror(lockfile);
+		free(t);
+		t = 0;
+		goto out;
+	}
+
+	if (lockResync(p)) {
+		nl_errno = NL_COULD_NOT_LOCK_RESYNC;
+		unlink(proj_fullpath(p, NESTED_WRITER_LOCK));
 		free(t);
 		t = 0;
 		goto out;
@@ -849,7 +907,7 @@ nested_wrlock(project *p)
 
 	proj_reset(p);		/* Since we might have created a RESYNC */
 out:	if (unlock) repository_wrunlock(p, 0);
-	if (lockers) freeLines(lockers, free);
+	(void)nlock_release(p);
 	TRACE("nested_wrlock: %s", t);
 	return (t);
 }
@@ -857,7 +915,7 @@ out:	if (unlock) repository_wrunlock(p, 0);
 char *
 nested_rdlock(project *p)
 {
-	int	unlock = 0;
+	int	unlock = 0, release = 0;
 	char	*t = 0, *file = 0, *lockfile = 0;
 
 	unless (proj_isEnsemble(p) && (p = proj_product(p))) {
@@ -875,21 +933,22 @@ nested_rdlock(project *p)
 		unlock = 1;
 	}
 
-	if (exists(proj_fullpath(p, NESTED_WRITER_LOCK))) {
-		unless (nested_isStale(proj_fullpath(p, NESTED_WRITER_LOCK))) {
-			nl_errno = NL_ALREADY_LOCKED;
-			goto out;
-		}
+	if (nlock_acquire(p)) {
+		nl_errno = NL_COULD_NOT_GET_MUTEX;
+		goto out;
+	}
+	release = 1;
+
+	if (exists(proj_fullpath(p, NESTED_WRITER_LOCK)) &&
+	    !nested_isStale(proj_fullpath(p, NESTED_WRITER_LOCK))) {
+		nl_errno = NL_ALREADY_LOCKED;
+		goto out;
 	}
 
 	t = getLID('r');
 
-	/* Now what we're done, lock the entire thing */
-	if (lockResync(p)) {
-		nl_errno = NL_COULD_NOT_LOCK_RESYNC;
-		goto out;
-	}
 
+	/* Now what we're done, lock the entire thing */
 	file = hashstr(t, strlen(t));
 	lockfile = aprintf("%s/%s/NL%s", proj_root(p), READER_LOCK_DIR, file);
 	free(file);
@@ -902,12 +961,22 @@ nested_rdlock(project *p)
 	}
 
 	/*
+	 * It's okay to fail on a read lock, we only want the RESYNC
+	 * dir to be there, not necessarily to own it
+	 */
+	lockResync(p);
+
+	/*
 	 * XXX: Probably worth saving the tip of the product here in
 	 * case we need to undo later on.
 	 */
 
 	proj_reset(p);
+	TRACE("nested_rdlock: %s", lockfile);
 out:	if (lockfile)	free(lockfile);
+	if (release) {
+		if (nlock_release(p)) TRACE("%s", "nlock_release failed");
+	}
 	if (unlock) repository_rdunlock(p, 0);
 	TRACE("nested_rdlock: %s", t);
 	return (t);
@@ -935,46 +1004,20 @@ out:	free(file);
 private void
 unlockResync(project *p)
 {
-	char	*resync;
-	char	**files;
-	int	n;
-
-	resync = proj_fullpath(p, ROOT2RESYNC);
-	TRACE("resync == %s", resync);
-	files = getdir(resync);
-	n = nLines(files);
-	if ((n == 0) ||
-	    ((n == 1) && streq(files[1], ".bk_nl"))) {
-		rmtree(resync);
-		TRACE("REMOVED RESYNC: %s", resync);
-	} else {
-		int	i;
-		TRACE("NOT REMOVED RESYNC: %d - %s", n, n ? files[1]:"(none)");
-		EACH(files) {
-			TRACE("%s", files[i]);
-			if (isdir(files[i])) {
-				char	**in;
-				int	j;
-
-				in =getdir(aprintf("%s/%s", resync, files[i]));
-				EACH_INDEX(in, j) {
-					TRACE("  %s/%s", files[i], in[j]);
-				}
-			}
-		}
-	}
-	freeLines(files, free);
+	unlink(proj_fullpath(p, "RESYNC/.bk_nl"));
+	rmdir(proj_fullpath(p, "RESYNC")); /* this may fail */
 }
 
 /*
  * Get list of nested lockers. Stale locks are silently removed.
+ * If removeStale is set we should be inside a nlock_acquire() region.
  */
 char	**
-nested_lockers(project *p)
+nested_lockers(project *p, int listStale, int removeStale)
 {
-	char	**files = 0, **lockers = 0;
+	char	**files, **lockers = 0;
 	char	*readers_dir, *writer;
-	int	i, n = 0;
+	int	i;
 
 	unless (proj_isEnsemble(p) && (p = proj_product(p))) {
 		return (0);
@@ -989,13 +1032,26 @@ nested_lockers(project *p)
 			char	*fn, *p;
 
 			fn = aprintf("%s/%s", readers_dir, files[i]);
-			p = loadfile(fn, 0);
-			chomp(p);
 			if (nested_isStale(fn)) {
+				if (listStale) {
+					p = loadfile(fn, 0);
+					chomp(p);
+					lockers = addLine(lockers, p);
+				}
+				if (removeStale) {
+					if (unlink(fn)) {
+						error("Could not unlink '%s', "
+						    "permission problem?\n",
+						    fn);
+						TRACE("%s", "permission problem");
+					}
+					TRACE("removed stale lock: %s", fn);
+				}
 				free(fn);
 				continue;
 			}
-			n++;
+			p = loadfile(fn, 0);
+			chomp(p);
 			lockers = addLine(lockers, p);
 			free(fn);
 		}
@@ -1005,17 +1061,15 @@ nested_lockers(project *p)
 	/* now check for a writer */
 	writer = aprintf("%s/" NESTED_WRITER_LOCK, proj_root(p));
 	if (exists(writer)) {
-		char	*p;
+		unless (nested_isStale(writer) && !listStale) {
+			char	*p;
 
-		p = loadfile(writer, 0);
-		chomp(p);
-		unless (nested_isStale(writer)) {
-			n++;
+			p = loadfile(writer, 0);
+			chomp(p);
 			lockers = addLine(lockers, p);
 		}
 	}
 	free(writer);
-	unless (n) unlockResync(p);
 	/* sort by time */
 	sortLines(lockers, cmpNLID);
 	return (lockers);
@@ -1069,6 +1123,7 @@ nested_mine(project *p, char *nested_lock, int write)
 	} else {
 		nl_errno = NL_INVALID_LOCK_STRING;
 	}
+	TRACE("nested_mine = %d", rc);
 out:	return (rc);
 }
 
@@ -1079,7 +1134,8 @@ int
 nested_unlock(project *p, char *nlid)
 {
 	char	*tfile;
-	int	unlock = 0;
+	char	**lockers;
+	int	unlock = 0, rc = 1;
 
 	unless (nested_mine(p, nlid, 0)) return (1);
 
@@ -1104,29 +1160,19 @@ nested_unlock(project *p, char *nlid)
 			if (repository_wrlock(p)) {
 				putenv("_BK_IGNORE_RESYNC_LOCK=");
 				nl_errno = NL_COULD_NOT_LOCK_NOT_MINE;
-				return (1);
+				goto out;
 			}
 			putenv("_BK_IGNORE_RESYNC_LOCK=");
 			unlock = 1;
 		}
-		tfile = proj_fullpath(p, NESTED_WRITER_LOCK);
-		if (unlink(tfile)) {
-			nl_errno = NL_COULD_NOT_UNLOCK;
-			return (1);
-		}
-		TRACE("nested_unlocked: %s", tfile);
-
-		unlockResync(p);
-
-		if (unlock) repository_wrunlock(p, 0);
+		tfile = strdup(proj_fullpath(p, NESTED_WRITER_LOCK));
 	} else {
 		char	*fn;
-		char	**lockers;
 
 		unless (repository_mine(p, 'r')) {
 			if (repository_rdlock(p)) {
 				nl_errno = NL_COULD_NOT_LOCK_NOT_MINE;
-				return (1);
+				goto out;
 			}
 			unlock = 1;
 		}
@@ -1134,33 +1180,84 @@ nested_unlock(project *p, char *nlid)
 		tfile = aprintf("%s/" READER_LOCK_DIR "/NL%s",
 		    proj_root(p), fn);
 		free(fn);
-		if (unlink(tfile)) {
-			nl_errno = NL_COULD_NOT_UNLOCK;
-			free(tfile);
-			return (1);
-		}
-		TRACE("nested_unlocked: %s", tfile);
-		free(tfile);
+	}
 
-		/* Need to remove resync _only_ if we're the last
-		 * reader going out */
-		lockers = nested_lockers(p);
-		unless (nLines(lockers)) {
-			/* RACE, but there is no repository_upgrade() */
-			TRACE("%s", "unlockResync");
-			unlockResync(p);
+	if (nlock_acquire(p)) {
+		nl_errno = NL_COULD_NOT_GET_MUTEX;
+		goto out;
+	}
+	if (unlink(tfile)) {
+		nl_errno = NL_COULD_NOT_UNLOCK;
+		free(tfile);
+		goto out;
+	}
+	TRACE("nested_unlocked: %s '%s'", tfile, nlid);
+	free(tfile);
+	if (lockers = nested_lockers(p, 0, 1)) {
+		freeLines(lockers, free);
+	} else {
+		/* no lockers, remove RESYNC */
+		unlockResync(p);
+		TRACE("%s", "nested_unlock: unlockResync()");
+	}
+	if (nlock_release(p)) TRACE("%s", "nlock_release failed");
+	rc = 0;
+
+out:	if (unlock) {
+		if (nlid[0] == 'w') {
+			repository_wrunlock(p, 0);
 		} else {
-			int	i;
-			TRACE("%s","Lockers");
-			EACH(lockers) {
-				TRACE("LOCKER: %s", lockers[i]);
+			repository_rdunlock(p, 0);
+		}
+	}
+	return (rc);
+}
+
+/*
+ * remove all locks from a nested repo
+ * kind - 1 = readers, 2 = writer, 3 = both
+ */
+int
+nested_forceUnlock(project *p, int kind)
+{
+	char	**lockers = 0;
+	char	*tfile, *tpath;
+	int	errors = 0;
+	int	i;
+
+	unless (proj_isEnsemble(p) && (p = proj_product(p))) {
+		nl_errno = NL_NOT_NESTED;
+		return (1);
+	}
+
+	if (proj_isResync(p)) p = proj_isResync(p);
+
+	if (nlock_acquire(p)) {
+		nl_errno = NL_COULD_NOT_GET_MUTEX;
+		return (1);
+	}
+
+	if (kind & 0x1) {
+		/* remove readers */
+		lockers = nested_lockers(p, 0, 1);
+		EACH(lockers) {
+			if (lockers[i][0] == 'r') {
+				tfile = hashstr(lockers[i], strlen(lockers[i]));
+				tpath = aprintf("%s/" READER_LOCK_DIR "/NL%s",
+				    proj_root(p), tfile);
+				if (unlink(tpath)) errors++;
+				free(tpath);
+				free(tfile);
 			}
 		}
 		freeLines(lockers, free);
-
-		if (unlock) repository_rdunlock(p, 0);
 	}
-	return (0);
+	if (kind & 0x2) {
+		tpath = proj_fullpath(p, NESTED_WRITER_LOCK);
+		if (exists(tpath) && unlink(tpath)) errors++;
+	}
+	if (nlock_release(p)) TRACE("%s", "nlock_release failed");
+	return (errors);
 }
 
 int
@@ -1187,7 +1284,7 @@ nested_errmsg(void)
 
 	assert(errMsgs[nl_errno]);
 	if (msg) free(msg);
-	lockers = nested_lockers(0);
+	lockers = nested_lockers(0, 1, 0);
 	msg = aprintf("%s\n%s\n",
 	    errMsgs[nl_errno],
 	    ((lines = joinLines("\n",
@@ -1203,7 +1300,7 @@ nested_printLockers(project *p, FILE *out)
 	char	**lockers;
 	int	i;
 
-	lockers = mapLines(nested_lockers(p), (void*)prettyNLID, free);
+	lockers = mapLines(nested_lockers(p, 1, 0), (void*)prettyNLID, free);
 	repository_lockers(p);
 	EACH (lockers) {
 		fprintf(out, "%s\n", lockers[i]);
