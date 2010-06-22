@@ -1,3 +1,6 @@
+BK_NO_HARDLINK_CLONE=1
+export BK_NO_HARDLINK_CLONE
+
 echo ---- Server to client tests ...................................
 # These tests are to see that all the basic operations do not move
 # any BAM data until the user requests a checkout.  And also that
@@ -75,7 +78,7 @@ echo OK
 
 echo $N lclone should replicate the BAM data ........................$NL
 cd "$HERE"
-bk clone $Q -l project lclone
+BK_NO_HARDLINK_CLONE= bk clone $Q -l project lclone
 cd lclone
 RK=`bk id | sed 's/|/-/g'`
 (cd ../project && find BitKeeper/BAM -type f -print ) |

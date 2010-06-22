@@ -203,7 +203,18 @@ size(char *s)
 int
 onelink(char *s)
 {
-	return (1); /* win32 has no hard links */
+	HANDLE	f;
+	BY_HANDLE_FILE_INFORMATION	inf;
+	int	rc = 0;
+
+	f = CreateFile(s, 0, FILE_SHARE_READ, 0,
+	    OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+	if (f == INVALID_HANDLE_VALUE) goto END;
+	unless (GetFileInformationByHandle(f, &inf)) goto END;
+
+	if (inf.nNumberOfLinks == 1) rc = 1;
+END:	if (f) CloseHandle(f);
+	return (rc);
 }
 #else
 int

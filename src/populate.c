@@ -94,14 +94,13 @@ nested_populate(nested *n, char **urls, int force, popts *ops)
 				vp = addLine(0, strdup("bk"));
 				vp = addLine(vp, strdup("clone"));
 				if (ops->debug) vp = addLine(vp, strdup("-d"));
-				if (ops->link) vp = addLine(vp, strdup("-l"));
 				if (ops->quiet) vp = addLine(vp, strdup("-q"));
-				if (ops->remap) {
-					vp = addLine(vp,
-					    strdup("--hide-sccs-dirs"));
-				}
 				if (ops->verbose) {
 					vp = addLine(vp, strdup("-v"));
+				}
+				if (ops->no_lclone) {
+					vp = addLine(vp,
+					    strdup("--no-hardlink"));
 				}
 				vp = addLine(vp, strdup("-p"));
 				vp = addLine(vp, aprintf("-r%s", cp->deltakey));

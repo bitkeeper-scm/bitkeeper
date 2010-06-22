@@ -6,6 +6,9 @@ chkoutput() {
 	msg=`bk tclsh "$HERE/chkoutput.l" $*`
 }
 
+BK_NO_HARDLINK_CLONE=1
+export BK_NO_HARDLINK_CLONE
+
 # Grep the progress-bar output for the given pass names.
 # E.g., call as "chkpasses 'file xfer' 'BAM xfer' 'check'.
 # Don't pass in '[file xfer]' or else the shell and grep

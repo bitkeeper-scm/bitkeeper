@@ -12,10 +12,11 @@ private	struct {
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: only errors */
 	u32	verbose:1;		/* -v: old default, list files */
-	u32	link:1;			/* -l: lclone-mode */
+	u32	no_lclone:1;		/* --no-hardlink */
 	u32	nocommit:1;		/* -C: do not commit (attach cmd) */
 	u32	attach:1;		/* is attach command? */
 	u32	detach:1;		/* is detach command? */
+	u32	link:1;			/* lclone-mode */
 	u32	product:1;		/* is product? */
 	int	delay;			/* wait for (ssh) to drain */
 	int	remap;			/* force remapping? */
@@ -58,6 +59,7 @@ clone_main(int ac, char **av)
 		{ "no-sccs-compat", 301 },	/* move sfiles to .bk */
 		{ "hide-sccs-dirs", 301 },	/* move sfiles to .bk */
 		{ "sfiotitle;", 302 },		/* title for sfio */
+		{ "no-hardlink", 303 },		/* never hardlink repo */
 		{ 0, 0 }
 	};
 
@@ -65,6 +67,7 @@ clone_main(int ac, char **av)
 	opts->remap = -1;
 	if (streq(prog, "attach")) opts->attach = 1;
 	if (streq(prog, "detach")) opts->detach = 1;
+	unless (win32()) opts->link = 1;		/* try lclone by default */
 	while ((c = getopt(ac, av, "B;CdE:j;lNpP;qr;s;vw|z|", lopts)) != -1) {
 		switch (c) {
 		    case 'B': bam_url = optarg; break;
@@ -85,7 +88,7 @@ clone_main(int ac, char **av)
 				opts->parallel = PARALLEL_MAX;	/* cap it */
 			}
 			break;
-		    case 'l': opts->link = 1; break;		/* doc 2.0 */
+		    case 'l': opts->link = 1; break;	      /* still works on win32 */
 		    case 'N': attach_only = 1; break;		/* undoc 2.0 */
 		    case 'p': opts->no_parent = 1; break;
 		    case 'P': opts->comppath = optarg; break;
@@ -100,18 +103,28 @@ clone_main(int ac, char **av)
 			if (optarg) gzip = atoi(optarg);
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
 			break;
-		    case 300: opts->remap = 0; break; /* --sccs-compat */
-		    case 301: opts->remap = 1; break; /* --hide-sccs-dirs */
-		    case 302: opts->sfiotitle = optarg; break;
+		    case 300: /* --sccs-compat */
+			opts->link = 0;
+			opts->remap = 0;
+			break;
+		    case 301: /* --hide-sccs-dirs */
+			opts->link = 0;
+			opts->remap = 1;
+			break;
+		    case 302: /* --sfiotitle=title */
+			opts->sfiotitle = optarg;
+			break;
+		    case 303: /* --no-hardlink */
+			opts->no_lclone = 1;
+			break;
 		    default: bk_badArg(c, av);
 	    	}
-		optarg = 0;
 	}
 	if (attach_only && !opts->attach) {
 		fprintf(stderr, "%s: -N valid only in attach command\n", av[0]);
 		exit(CLONE_ERROR);
 	}
-	if (attach_only && (bam_url || opts->link || opts->no_parent ||
+	if (attach_only && (bam_url || opts->no_parent ||
 			    opts->rev || opts->aliases)) {
 		fprintf(stderr, "attach: -N illegal with other options\n");
 		exit(CLONE_ERROR);
@@ -132,11 +145,6 @@ clone_main(int ac, char **av)
 			return (CLONE_ERROR);
 		}
 		bam_url = "none";
-	}
-	if (opts->link && bam_url) {
-		fprintf(stderr,
-		    "clone: -l and -B are not supported together.\n");
-		exit(CLONE_ERROR);
 	}
 	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	unless (opts->quiet) progress_startMulti();
@@ -161,10 +169,6 @@ clone_main(int ac, char **av)
 	unless (r = remote_parse(opts->from, REMOTE_BKDURL)) usage();
 	r->gzip_in = gzip;
 	if (r->host) {
-		if (opts->link) {
-			fprintf(stderr, "clone: no -l for remote sources.\n");
-			return (CLONE_ERROR);
-		}
 		if (opts->detach || attach_only) {
 			fprintf(stderr, "%s: source must be local\n", av[0]);
 			return (CLONE_ERROR);
@@ -216,11 +220,6 @@ clone_main(int ac, char **av)
 			freeLines(opts->aliases, free);
 			if (l) remote_free(l);
 			remote_free(r);
-			if (opts->link) {
-				fprintf(stderr,
-				    "clone: no -l for remote targets.\n");
-				return (CLONE_ERROR);
-			}
 			if (opts->attach) {
 				fprintf(stderr,
 				    "attach: destination must be local\n");
@@ -385,6 +384,22 @@ clone(char **av, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: %s: %s\n",
 			(local ? local : "current directory"), strerror(errno));
 		usage();
+	}
+	if (opts->link) {
+		if (r->host || opts->no_lclone ||
+		    getenv("BK_NO_HARDLINK_CLONE")) {
+			opts->link = 0;
+		} else {
+			/* test for lclone */
+			p = local ? dirname_alloc(local) : strdup(".");
+			sprintf(buf, "%s/lclone-test.%u", p, getpid());
+			free(p);
+
+			p = aprintf("%s/" CHANGESET, r->path);
+			if (exists(p) && link(p, buf)) opts->link = 0;
+			unlink(buf);
+			free(p);
+		}
 	}
 	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
 	if (getenv("_BK_TRANSACTION")) {
@@ -782,9 +797,8 @@ clone2(remote *r)
 		nested_writeHere(n);
 		bzero(&ops, sizeof(ops));
 		ops.debug = opts->debug;
-		ops.link = opts->link;
+		ops.no_lclone = opts->no_lclone;
 		ops.quiet = opts->quiet;
-		ops.remap = opts->remap;
 		ops.verbose = opts->verbose;
 		ops.comps = 1; // product
 		if (nested_populate(n, 0, 0, &ops)) {

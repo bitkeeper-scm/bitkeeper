@@ -8,6 +8,10 @@ test -f /home/.NFS || exit 0
 # And if no test data then skip it
 test -d $TESTDATA/bitcluster || exit 0
 
+# no auto-lclone
+BK_NO_HARDLINK_CLONE=1
+export BK_NO_HARDLINK_CLONE=1
+
 echo $N Make sure that /build is local ..............................$NL
 bk _isnetwork /build > /dev/null 2>&1 && {
 	echo failed

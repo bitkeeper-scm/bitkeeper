@@ -868,6 +868,17 @@ in_hardlink(char *file, int pathlen, int extract)
 			perror("mode read");
 			goto err;
 		}
+#ifdef	WIN32
+		{		/* mode not with inode on windows */
+			u32	imode;
+
+			buf[3] = 0;
+			sscanf(buf, "%03o", &imode);
+			chmod(file, imode & 0777);
+		}
+	} else {
+		chmod(file, 0444);
+#endif
 	}
 	print_status(file, 0);
 	return (0);

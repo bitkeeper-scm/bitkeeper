@@ -677,7 +677,7 @@ do
 	
 	# capture all ttyprintf output
 	BK_TTYPRINTF="$TMPDIR/TTY.$$"
-	export BK_TTYPRINTF    # uncomment to enable
+	export BK_TTYPRINTF    # comment to disable
 	rm -rf "$BK_TTYPRINTF"
 	touch "$BK_TTYPRINTF"
 

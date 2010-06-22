@@ -9,6 +9,9 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+BK_NO_HARDLINK_CLONE=1
+export BK_NO_HARDLINK_CLONE
+
 echo $N Create initial repository ...................................$NL
 commercial project
 echo OK
@@ -161,7 +164,7 @@ echo OK
 echo $N Show that an lclone of an old BAM dir works .................$NL
 cd "$HERE"
 _BK_BAM_V2=1 bk clone $Q project project.old || exit 1
-bk clone $Q -l project.old copy.new || exit 1
+BK_NO_HARDLINK_CLONE= bk clone $Q -l project.old copy.new || exit 1
 cd copy.new
 bk bam check $Q || exit 1
 test -f BitKeeper/BAM/index.db || exit 1

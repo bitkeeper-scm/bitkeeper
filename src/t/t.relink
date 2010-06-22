@@ -13,6 +13,9 @@
 # Copyright (c) 2002 Larry McVoy
 # %K%
 
+BK_NO_HARDLINK_CLONE=1
+export BK_NO_HARDLINK_CLONE
+
 echo $N Create initial repositories .................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi

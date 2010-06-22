@@ -4,13 +4,12 @@
 bk clone \- create a new copy of a package
 .SH SYNOPSIS
 .B bk clone
-.[B] \-ql 
-.[OPTreq] \-B url
-.[OPTequal] \-E e v
+.[B] \-q 
 .[OPTreq] \-r rev
 .if \n[NESTED] \{\
 .[OPTreq] \-s alias
 .\}
+.[ARG] "more opts"
 .ARG from
 .[ARG] to
 .SH DESCRIPTION
@@ -73,10 +72,10 @@ Only variables with the prefix
 .V BKU_
 are allowed.
 .tp
-.B \-l
-Clone using hard links instead of copying the data.  
-This is faster and saves disk space, but only works 
-within filesystems supporting hard links.
+.B \--no-hardlink
+Clone nomally uses hard links whenever it can.  This option will
+prevent this and is useful to create an archive of a repository that
+copies every file.
 .tp
 .if \n[NESTED] \{\
 .OPTreq \-s alias

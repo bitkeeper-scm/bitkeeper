@@ -218,8 +218,6 @@ bk detach -N component1 ../bad 2>GOT && exit 1
 grep -q "\-N valid only in attach command" GOT || exit 1
 bk attach -N -Burl ../standalone1 2>GOT && exit 1
 grep -q "\-N illegal with other options" GOT || exit 1
-bk attach -N -l ../standalone1 2>GOT && exit 1
-grep -q "\-N illegal with other options" GOT || exit 1
 bk attach -N -p ../standalone1 2>GOT && exit 1
 grep -q "\-N illegal with other options" GOT || exit 1
 bk attach -N -r1.1 ../standalone1 2>GOT && exit 1

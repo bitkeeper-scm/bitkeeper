@@ -1,3 +1,5 @@
+BK_NO_HARDLINK_CLONE=1
+export BK_NO_HARDLINK_CLONE
 
 echo ---- Server S w/ client C1 to a serverless client C2 ..........
 # S and C1 are the server and client, C2 is the serverless client.
@@ -83,7 +85,7 @@ echo OK
 echo $N lclone should replicate the BAM data ........................$NL
 cd "$HERE"
 rm -rf C2
-bk clone $Q -l S C2
+BK_NO_HARDLINK_CLONE= bk clone $Q -l S C2
 cd C2
 (cd ../S && find BitKeeper/BAM -type f -print ) |
 while read x

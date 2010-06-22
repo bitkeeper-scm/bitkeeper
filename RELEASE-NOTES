@@ -189,10 +189,10 @@ bk clean
     The clean code is now smarter about handling files that were
     edited without being locked properly.
 
-bk clone -l
-    The hardlink clone code now behaves much more like the normal
-    clone in subtle ways.  For example differences in triggers are
-    gone, and files are listed instead of directories.
+bk clone
+    The clone code now automatically uses hardlinks whenever possible.
+    The option --no-hardlink can be used to disable this.
+    The -l option is now ignored.
 
 bk takepatch
     Addressed a performance issue on large pulls over NFS or in other

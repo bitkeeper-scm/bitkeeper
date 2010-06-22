@@ -1,3 +1,6 @@
+BK_NO_HARDLINK_CLONE=1
+export BK_NO_HARDLINK_CLONE
+
 echo $N Set up a repo with some binary data .........................$NL
 commercial project
 BK="`bk bin`/bk"

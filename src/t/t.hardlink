@@ -1,0 +1,95 @@
+# Copyright (c) 2010 BitMover
+# %K%
+
+# We need a file system that supports hard links and another file
+# system (which doesn't need to be able to support hard links)
+
+nlink() {
+	bk _stat $1 | awk -F\| '{print $4}'
+}
+
+OTHERFS=
+LINKTEST="$TESTDATA"/hardlink/linktest
+if [ -f "$LINKTEST" ]
+then	ln "$LINKTEST" link 2> link.err || {
+		OTHERFS="$TESTDATA"/hardlink
+	}
+	rm -f link*
+fi
+
+# F: on the cluster is supposed to be fat file system mount point
+LINKTEST=/f/test_data/hardlink/linktest
+if [ "X$OTHERFS" = "X" -a -f "$LINKTEST" ]
+then	ln /f/test_data/bam_lclone_test/file link 2> link.err && {
+		echo FAT File system allows hard links - please investigate
+		exit 1
+	}
+	OTHERFS=/f/test_data/hardlink
+	rm -f link*
+fi
+
+if [ "X$OTHERFS" = "X" ]
+then	
+	echo $N Hard link tests skipped because no other fs .................$NL
+	echo skipped
+	exit 0
+fi
+
+echo $N Clone remote copies of repos to have a local copy ...........$NL
+# accept the legal agreement and get a license outside of a repo
+commercial project
+test -f "$BK_DOTBK/config" && fail did not expect config file
+bk config | grep lic > "$BK_DOTBK/config"
+# Grab all the remote repos
+cd ..
+for r in "$OTHERFS"/repo*
+do	bk clone $Q $r || fail clone of $r failed
+	lrepo=`basename $r`
+	dest=$lrepo
+	NLINK=`nlink $dest/SCCS/s.ChangeSet`
+	test "$NLINK" = 1 || fail wrong link count want 1 got $NLINK
+	test -d $dest/BitKeeper/BAM && {
+		NLINK=`nlink $dest/BitKeeper/BAM/*/0b/0b20028f.d1`
+		test "$NLINK" = 1 || fail wrong link count want 1 got $NLINK
+	}
+done
+# Clear all the local server bits
+for r in repo.*S*
+do	cd $r
+	bk bam server -qr || fail bam server -qr of $r failed
+	cd ..
+done
+echo OK
+
+# Point to remote as BAM server
+echo $N Clone local copies of repos with remote BAM server ..........$NL
+for r in "$OTHERFS"/repo*
+do	lrepo=`basename $r`
+	dest=rembam.$lrepo
+	bk clone $Q -B$r $lrepo $dest || fail clone of $r failed
+	NLINK=`nlink $dest/SCCS/s.ChangeSet`
+	test "$NLINK" = 2 || fail wrong link count want 2 got $NLINK
+	# Even if we have a BAM server, and no files fetched
+	# All BAM files will be fetched hardlinked.
+	test -d $dest/BitKeeper/BAM || fail no bam in $dest
+	NLINK=`nlink $dest/BitKeeper/BAM/*/0b/0b20028f.d1`
+	test "$NLINK" = 2 || fail wrong link count want 2 got $NLINK
+done
+echo OK
+
+# Point to local as BAM server
+echo $N Clone remote copies of repos with local BAM server ..........$NL
+for r in "$OTHERFS"/repo*
+do	lrepo=`basename $r`
+	dest=locbam.$lrepo
+	bk clone $Q -B"$HERE"/$lrepo $r $dest || fail clone of $r failed
+	NLINK=`nlink $dest/SCCS/s.ChangeSet`
+	test "$NLINK" = 1 || fail wrong link count want 1 got $NLINK
+	# XXX: Theoretically, these should be two, coming from same FS
+	# Only will be there in the checkout edit repos
+	test -d $dest/BitKeeper/BAM && {
+		NLINK=`nlink $dest/BitKeeper/BAM/*/0b/0b20028f.d1`
+		test "$NLINK" = 1 || fail wrong link count want 1 got $NLINK
+	}
+done
+echo OK

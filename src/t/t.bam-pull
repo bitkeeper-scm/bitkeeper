@@ -1,3 +1,5 @@
+BK_NO_HARDLINK_CLONE=1
+export BK_NO_HARDLINK_CLONE
 
 echo $N Setup master and clone ......................................$NL
 commercial pmaster

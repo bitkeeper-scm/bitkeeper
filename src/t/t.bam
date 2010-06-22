@@ -13,6 +13,9 @@ linkcount() {
 	bk _stat $1 | awk -F\| '{print $4}'
 }
 
+BK_NO_HARDLINK_CLONE=1
+export BK_NO_HARDLINK_CLONE
+
 echo $N Create initial repository ...................................$NL
 commercial project
 echo OK

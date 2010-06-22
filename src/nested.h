@@ -100,9 +100,8 @@ struct nested {
  */
 typedef struct {
 	u32	debug:1;	// -d: debug mode
-	u32	link:1;		// -l: hard link the files
+	u32	no_lclone:1;	// --no-hardlink: don't hard link the files
 	u32	quiet:1;	// -q: quiet
-	u32	remap:1;	// --hide-sccs-dirs
 	u32	verbose:1;	// -v: verbose
 	u32	runcheck:1;	// follow up with a partial check of prod
 	int	comps;		// number of comps we worked on
