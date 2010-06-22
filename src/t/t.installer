@@ -75,7 +75,7 @@ test -f relative/config && {
 	cat OUT
 	exit 1
 }
-rm -rf relative
+bk _rm -rf relative
 echo OK
 
 echo $N Absolute path installation, no config file...................$NL
@@ -132,7 +132,7 @@ test -d use_repo || {
 	exit 1
 }
 echo OK
-rm -rf use_repo
+bk _rm -rf use_repo
 
 echo $N Upgrade with installed config, leave it and it should work ..$NL
 rm -f "$DOTBK"/accepted
@@ -163,7 +163,7 @@ grep -q "foo: bar" absolute/config || {
 	exit 1
 }
 echo OK
-rm -rf absolute
+bk _rm -rf absolute
 
 echo $N Embedded license, should leave config file...................$NL
 rm -f "$DOTBK"/accepted "$DOTBK"/config
@@ -208,7 +208,7 @@ echo "licsign2: $BKL_P2" >> c
 echo "licsign3: $BKL_P3" >> c
 cp "$BK_INSTALLER" bk-pro
 bk inskeys bk-pro c > OUT 2>&1
-rm -rf "$DOTBK"/*
+bk _rm -rf "$DOTBK"/*
 cp accepted.saved "$DOTBK"/accepted
 ./bk-pro-licensed "$HERE/DEAD4" > OUT 2>&1 || {
 	echo failed $?
@@ -217,12 +217,12 @@ cp accepted.saved "$DOTBK"/accepted
 	exit 1
 }
 echo OK
-rm -rf embedded
+bk _rm -rf embedded
 
 if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
 echo $N Make sure we preserve registry settings and use long paths...$NL
-rm -rf "$DOTBK"/*
+bk _rm -rf "$DOTBK"/*
 cp accepted.academic.saved "$DOTBK"/accepted
 ./bk-academic-licensed "$HERE/DEAD BEEF" > OUT 2>&1 || {
 	echo failed $?
@@ -525,4 +525,4 @@ fi
 #####################################################################
 cd "$HERE" || exit 1
 chmod -R +w * >/dev/null 2>&1	# SCO's chmod barfs
-rm -rf *
+bk _rm -rf *

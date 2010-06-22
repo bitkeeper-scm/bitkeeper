@@ -1954,6 +1954,12 @@ init(char *inputFile)
 					st.versionblank = 0;
 					st.filename = 1;
 					st.first = 1;
+				} else if (strneq(buf,
+				    "# Patch checksum=", 17)) {
+					sumR = strtoul(buf+17, 0, 16);
+					assert(sumR != 0);
+					fputs(buf, f);
+					break;
 				} else {
 					fprintf(stderr, "Expected '== f =='\n");
 error:					fprintf(stderr, "GOT: %s", buf);

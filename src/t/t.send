@@ -200,3 +200,49 @@ rm -f csets/BitKeeper/log/*
 bk diff -r project csets > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
+
+echo $N Send a patch using a key in a range .........................$NL
+cd "$HERE/project"
+KEY="`bk changes -kr1.5`"
+bk send -qr"$KEY".. - > KEYS
+bk send -qr1.6,1.7 - > LIST
+bk diff KEYS LIST > GOT
+cat <<EOF > WANT
+2c2
+< $KEY..
+---
+> 1.6,1.7
+EOF
+cmpfiles WANT GOT
+cd ../csets
+bk undo -qsfa1.5
+cd ../project
+bk receive -aT ../csets < KEYS
+rm GOT WANT KEYS LIST
+cd "$HERE"
+mkdir -p project/BitKeeper/readers
+mkdir -p csets/BitKeeper/readers
+bk _rm project/$IDCACHE
+bk _rm csets/$IDCACHE
+rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
+rm -f csets/BitKeeper/etc/csets-in
+rm -f project/BitKeeper/log/*
+rm -f csets/BitKeeper/log/*
+bk diff -r project csets > diff$$
+if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
+echo OK
+
+echo $N Send and receive an empty patch .............................$NL
+# customer backing up from last known point and range was empty
+cd "$HERE/project"
+bk send -qr+..+ - > ../empty.bkp || fail
+bk receive -aT ../csets < ../empty.bkp || fail
+cd "$HERE"
+bk _rm csets/$IDCACHE
+rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
+rm -f csets/BitKeeper/etc/csets-in
+rm -f project/BitKeeper/log/*
+rm -f csets/BitKeeper/log/*
+bk diff -r project csets > diff$$
+if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
+echo OK

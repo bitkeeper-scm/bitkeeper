@@ -84,10 +84,8 @@ fix_header(char *buf, MDBM *db)
 	fputs(buf, stdout); fputs(" ", stdout);
 	*p = 0;
 	unless (mdbm_fetch_str(db, line)) {
-		/* /dev/null must be printed with EPOC time */
-		fputs("/dev/null\t", stdout);
-		memmove(++p,"Wed Dec 31 16:00:00 1969", 24);
-		fputs(p, stdout);
+		/* /dev/null must be printed with EPOCH time */
+		fputs("/dev/null\tThu Jan  1 00:00:00 1970 -00:00\n", stdout);
 	} else {
 		*p = '\t';
 		fputs(line, stdout);

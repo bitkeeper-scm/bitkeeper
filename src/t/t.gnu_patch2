@@ -62,6 +62,11 @@ bk commit $S -y"This is a \"Change Set\" C" -SCSET_C
 cd "$HERE/project"
 bk export -T -k -r1.3 "$HERE/a"
 bk export -hT -tpatch -r1.3,1.4 > patch
+grep -q "Wed Dec 31 16:00:00 196900" patch && {
+	echo fix the awc /dev/null bug
+	grep /dev/null patch
+	exit 1
+}
 bk patch -sp 1 -d "$HERE/a" < patch
 bk export -T -k -r1.4 "$HERE/b"
 bk diff -r "$HERE/a" "$HERE/b"

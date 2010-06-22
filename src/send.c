@@ -168,7 +168,7 @@ send_main(int ac,  char **av)
 		}
 		revArgs = aprintf("-r - < '%s'", keysFile);
 	} else {
-		revArgs = aprintf("-r%s", rev);
+		revArgs = aprintf("-r'%s'", rev);
 	}
 
 	/*

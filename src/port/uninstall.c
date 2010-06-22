@@ -349,6 +349,7 @@ uninstall(char *path, int upgrade)
 	char	*cmd;
 	int	rc = 1;
 	int	dobk = 0;
+	int	bgrmdir = 1;
 	int	i, j;
 
 	/* set up logging */
@@ -402,13 +403,20 @@ uninstall(char *path, int upgrade)
 			    "rm -f \"%s\"; cd ..; rmdir \"%s\" ) "
 			    " > /dev/null 2> /dev/null &",
 			    (long)getpid(), me, path);
+			bgrmdir = 0;
 			(system)(cmd);
 			free(cmd);
 		}
 	}
 	chdir("..");
-	rmdir(path);	/* okay if it fails */
-
+	if (rmdir(path) && bgrmdir) {
+		cmd = aprintf("( while kill -0 %lu; do sleep 1; done; "
+		    "rmdir \"%s\" ) "
+		    " > /dev/null 2> /dev/null &",
+		    (long)getpid(), path);
+		(system)(cmd);
+		free(cmd);
+	}
 	if (upgrade) {
 		/* preserve user's symlinks as they might be in a
 		 * different path than /usr/bin
