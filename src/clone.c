@@ -402,7 +402,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		}
 	}
 	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
-	if (getenv("_BK_TRANSACTION")) {
+	if (trans) {
 		r->pid = bkd(r);
 		if (r->wfd < 0) exit(CLONE_CONNECT);
 	} else {
@@ -443,7 +443,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 			disconnect(r);
 			goto done;
 		}
-	} else if (getenv("_BK_TRANSACTION") &&
+	} else if (trans &&
 	    (strneq(buf, "ERROR-cannot use key", 20 ) ||
 	     strneq(buf, "ERROR-cannot cd to ", 19))) {
 		/* populate doesn't need to propagate error message */
@@ -452,7 +452,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		drainErrorMsg(r, buf, sizeof(buf));
 		exit(CLONE_ERROR);
 	}
-	if (getenv("_BK_TRANSACTION") && strneq(buf, "ERROR-rev ", 10)) {
+	if (trans && strneq(buf, "ERROR-rev ", 10)) {
 		/* populate doesn't need to propagate error message */
 		exit(CLONE_BADREV);
 	}
@@ -500,8 +500,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 
 	// XXX - would be nice if we did this before bailing out on any of
 	// the error/license conditions above but not when we have an ensemble.
-	if (!opts->quiet &&
-	    (!getenv("_BK_TRANSACTION") || !opts->quiet)) {
+	if (!opts->quiet && (!trans || !opts->quiet)) {
 		remote	*l = remote_parse(local, REMOTE_BKDURL);
 
 		if (opts->verbose || !opts->comppath) {
@@ -524,13 +523,11 @@ clone(char **av, remote *r, char *local, char **envVar)
 	 * abcdefghijklmtZ 6 is the knee of the curve and I tend to agree.
 	 * I suspect you can do better with more but only slightly.
 	 */
-	if ((opts->parallel == 0) && !opts->link && isNetworkFS(".")) {
+	if ((opts->parallel == 0) && isNetworkFS(".")) {
 		p = getenv("BK_PARALLEL");
 		opts->parallel =
 		    p ? min(atoi(p), PARALLEL_MAX) : PARALLEL_DEFAULT;
 	}
-	if (opts->link) opts->parallel = 0;
-
 	clonerc = CLONE_ERROR;
 
 	/* eat the data */

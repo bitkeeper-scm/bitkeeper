@@ -1487,7 +1487,7 @@ _clonemod() {
 		exit 1
 	fi
 
-	bk clone -lq "$2" "$3" || exit 1
+	bk clone -q "$2" "$3" || exit 1
 	cd "$3" || exit 1
 	bk parent -sq "$1" || exit 1
 	bk undo -q -fa`bk repogca` || exit 1

@@ -149,14 +149,6 @@ check_main(int ac, char **av)
 		    "Insufficient repository permissions.\n");
 		return (1);
 	}
-	if (all && bp_index_check(!verbose)) return (1);
-
-	checkout = proj_checkout(0);
-	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
-		perror("idcache");
-		return (1);
-	}
-
 	/* Go get the ChangeSet file if it is missing */
 	if (!exists(CHANGESET) && (fix > 1)) {
 		fetch_changeset();
@@ -175,6 +167,14 @@ check_main(int ac, char **av)
 
 	/* Make sure we're sane or bail. */
 	if (sane(0, resync)) return (1);
+
+	if (all && bp_index_check(!verbose)) return (1);
+
+	checkout = proj_checkout(0);
+	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
+		perror("idcache");
+		return (1);
+	}
 
 	/* revtool: the code below is restored from a previous version */
 	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {

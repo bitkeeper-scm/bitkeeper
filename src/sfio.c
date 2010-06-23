@@ -1192,7 +1192,13 @@ header:
 		}
 		datalen[10] = 0;
 		sent[cur] += fwrite(datalen, 1, 10, f[cur]);
-		len = strtoul(datalen, 0, 10) + 10;
+		if (strneq("LNK00", datalen + 1, 5)) {
+			/* match HLNK00 && SLNK00 */
+			len = strtoul(datalen + 6, 0, 10);
+		} else {
+			len = strtoul(datalen, 0, 10);
+		}
+		len += 10;	/* checksum */
 		if (opts->doModes) len += 3;
                 /*
                  * Stdio will bypass buffering if the data to be
@@ -1231,8 +1237,8 @@ header:
 out:
 	for (i = 0; i < n; i++) {
 		if (cur = pclose(f[i])) {
-			fprintf(stderr, "process %d exited %d\n",
-			    i, WEXITSTATUS(cur));
+			rc = WIFEXITED(cur) ? WEXITSTATUS(cur) : 17;
+			fprintf(stderr, "process %d exited %d\n", i, rc);
 		}
 	}
 	free(f);
