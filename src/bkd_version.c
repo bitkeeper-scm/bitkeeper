@@ -85,7 +85,7 @@ bkversion(FILE *f)
 	fprintf(f, "%s for %s\n", bk_utc, bk_platform);
 	fprintf(f, "Options: %s\n", buf);
 	if (key) {
-		fprintf(f, "cust_id: %.12s\n", key + 12);
+		fprintf(f, "Customer ID: %.12s\n", key + 12);
 		free(key);
 	}
 	fprintf(f, "Built by: %s in %s\n", bk_build_user, bk_build_dir);
