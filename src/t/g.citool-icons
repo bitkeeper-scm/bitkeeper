@@ -15,29 +15,39 @@ test -d "$HERE/home" || mkdir "$HERE/home"
 export BK_TEST_HOME="$HERE/home"
 OUT="$HERE/out"
 
+doFiles() {
+	for f in file1 file2 file3 file4 file5 ; do
+		echo "this is $f" > $f
+		bk ci $Q -i -y'new file' $f || exit 1
+	done
+	bk commit $Q -y'initial checkin' || exit 1
+}
+
 echo $N Create some data ............................................$NL
-commercial project
-mkdir src
-cd src
-for f in file1 file2 file3 ; do
-	echo "this is $f" > $f
-	bk ci $Q -i -y'new file' $f || exit 1
-done
-bk commit $Q -y'initial checkin'
+fresh_nested project
+cd "$HERE/project"
+doFiles
+cd "$HERE/project/gcc"
+doFiles
+cd "$HERE/project/gdb"
+doFiles
+cd "$HERE/project"
+bk commit $Q -y'commit components' || exit 1
 echo OK
 
 echo $N adding comments changes the icons for files..................$NL
+cd "$HERE/project"
 bk get $Q -e file1 file2
 echo "gratuitous change" >> file1
 echo "gratuitous change" >> file2
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_fileHasIcon ChangeSet cset
-	test_fileHasIcon src/file1 modified
-	test_fileHasIcon src/file2 modified
+	test_fileHasIcon file1 modified
+	test_fileHasIcon file2 modified
 	test_inputComment "testing..."
 	test_fileHasIcon ChangeSet cset
-	test_fileHasIcon src/file1 done
-	test_fileHasIcon src/file2 modified
+	test_fileHasIcon file1 done
+	test_fileHasIcon file2 modified
 	test_buttonPress "Quit" then "Quit without saving*"
 EOF
 err=$?
@@ -50,14 +60,15 @@ test $err -ne 0 -o -s "$OUT" && {
 echo OK
 
 echo $N adding comments changes the icons for ChangeSet file.........$NL
+cd "$HERE/project"
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	test_selectFile src/file1
+	test_selectFile file1
 	test_inputComment "this should be for file1..."
 	test_selectFile ChangeSet
 	test_inputComment "ChangeSet comment..."
 	test_fileHasIcon ChangeSet done
-	test_fileHasIcon src/file1 done
-	test_fileHasIcon src/file2 modified
+	test_fileHasIcon file1 done
+	test_fileHasIcon file2 modified
 	test_buttonPress Quit then "Quit but save*"
 EOF
 err=$?
@@ -70,13 +81,14 @@ test $err -ne 0 -o -s "$OUT" && {
 echo OK
 
 echo $N removing comments from a file changes the icon...............$NL
+cd "$HERE/project"
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	# this assumes the previous test added exactly 27 chars
-	test_selectFile src/file1
+	test_selectFile file1
 	test_inputComment [string repeat \010 27]
-	test_fileHasIcon ChangeSet done
-	test_fileHasIcon src/file1 modified
-	test_fileHasIcon src/file2 modified
+	test_fileHasIcon ChangeSet notincluded
+	test_fileHasIcon file1 modified
+	test_fileHasIcon file2 modified
 	test_buttonPress Quit then "Quit but save*"
 EOF
 err=$?
@@ -89,18 +101,64 @@ test $err -ne 0 -o -s "$OUT" && {
 echo OK
 
 echo $N removing comments from ChangeSet changes the icon............$NL
+cd "$HERE/project"
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	test_inputComment "this should be for file1..."
 	test_selectFile ChangeSet
 	test_fileHasIcon ChangeSet done
-	test_fileHasIcon src/file1 done
-	test_fileHasIcon src/file2 modified
+	test_fileHasIcon file1 done
+	test_fileHasIcon file2 modified
 	# this assumes the previous test added exactly 20 chars
 	test_inputComment [string repeat \010 20]
 	test_fileHasIcon ChangeSet cset
-	test_fileHasIcon src/file1 done
-	test_fileHasIcon src/file2 modified
+	test_fileHasIcon file1 done
+	test_fileHasIcon file2 modified
 	test_buttonPress Quit then "Quit but save*"
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo failed
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+echo OK
+
+echo $N toggling off all components disables product cset ...........$NL
+cd "$HERE/project"
+## Cleanup previous saved comments
+bk _find . -name "c.*" | xargs bk _rm
+
+bk edit $Q gcc/file1
+echo FOO >> gcc/file1
+bk edit $Q gdb/file1
+echo FOO >> gdb/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "gcc/file1"
+	test_inputComment "comment for gcc/file1"
+	test_selectFile "gcc ChangeSet"
+	test_inputComment "comment for gcc ChangeSet"
+	test_fileHasIcon "gcc ChangeSet" done
+
+	test_selectFile "gdb/file1"
+	test_inputComment "comment for gdb/file1"
+	test_selectFile "gdb ChangeSet"
+	test_inputComment "comment for gdb ChangeSet"
+	test_fileHasIcon "gdb ChangeSet" done
+
+	test_selectFile ChangeSet
+	test_inputComment "ChangeSet comment"
+	test_fileHasIcon ChangeSet done
+
+	test_toggleFile "gcc ChangeSet"
+	test_fileHasIcon "gcc ChangeSet" excluded
+
+	test_toggleFile "gdb ChangeSet"
+	test_fileHasIcon "gdb ChangeSet" excluded
+
+	test_fileHasIcon "ChangeSet" notincluded
+
+	test_buttonPress Quit then "Quit without saving*"
 EOF
 err=$?
 test $err -ne 0 -o -s "$OUT" && {

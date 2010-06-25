@@ -22,7 +22,7 @@ typedef	struct	sfile {
 	string	rev;		// rev of a pending file
 	string	component;	// component this file belongs to
 	int	ignored;	// file is ignored or not?
-	int	excluded;	// file is excluded or not?
+	int	excluded;	// file is hard excluded by the user or not?
 	int	inProduct;	// Is this file part of the product?
 } sfile;
 
@@ -34,6 +34,7 @@ string  img_exclude;	    // Tk image for files to exclude from cset
 string  img_modified;	    // Tk image for modified but not commented
 string	img_checkon;	    // Tk image for included (checkmark)
 string	img_checkoff;	    // Tk image for not included (no checkmark)
+string	img_notincluded;    // Tk image for files soft-excluded
 
 struct {
 	string	argv[];		    // argv from the command line
@@ -95,6 +96,9 @@ struct {
 	widget	w_statusF;	    // status bar frame
 	widget	w_status;	    // status label on the bottom of the window
 	widget	w_progress;	    // progress bar on the status bar
+	string	font_normal;	    // Normal font for the file list
+	string{string} font_underline;  // An underlined font for the file list
+	string{string} font_overstrike; // A striked-out  font for the file list
 } self;
 
 string
@@ -304,11 +308,10 @@ void
 configureFile(sfile sf)
 {
 	sfile	cset;
-	string	img, old, node;
+	string	img, old, node, comp, file;
 
 	unless (defined(sf)) return;
 
-	img = sf.icon;
 	node = sf.node;
 	if (!defined(node) || node eq "") return;
 
@@ -325,18 +328,33 @@ configureFile(sfile sf)
 		--self.cnt_excluded;
 	}
 
-	if (sf.ignored) {
-		Tree_itemconfigure(self.w_files, node, foreground: "gray");
+	// Clear the item back to a normal state.
+	Tree_itemconfigure(self.w_files, node, foreground: "black",
+	    font: self.font_normal);
+
+	if (sf.excluded || sf.ignored) {
+		// Excluded or ignored.  Mark it with a red X.
+		++self.cnt_excluded;
+		Tree_itemconfigure(self.w_files, node, image: img_exclude);
+		if (sf.ignored) {
+			Tree_itemconfigure(self.w_files, node,
+			    foreground: "gray");
+		} else {
+			Tree_itemconfigure(self.w_files, node,
+			    font: self.font_overstrike);
+		}
+		return;
 	}
 
-	cset = getCsetFile(sf.component);
-	unless (defined(cset)) cset.excluded = 0;
-	if (sf.excluded || sf.ignored || cset.excluded) {
-		img = img_exclude;
-		++self.cnt_excluded;
-	} else if (isCommented(sf) && ((sf.type ne "cset")
-	    || sf.inProduct || componentHasComments(sf.component))) {
-		img = img_done;
+	unless (isCommented(sf)) {
+		// No comment, so just draw its original icon.
+		Tree_itemconfigure(self.w_files, node, image: sf.icon);
+		return;
+	}
+
+	unless (sf.type eq "cset") {
+		// Commented but not a cset file.  Mark it ready.
+		// Increment the proper counts for the file type.
 		if (sf.type eq "new") {
 			++self.cnt_newC;
 			++self.cnt_commented;
@@ -344,9 +362,45 @@ configureFile(sfile sf)
 			++self.cnt_modifiedC;
 			++self.cnt_commented;
 		}
+		Tree_itemconfigure(self.w_files, node, image: img_done);
+		return;
+	}
+
+	// Now we're talking about a ChangeSet with comments.
+	// We need to figure out how best to draw this.
+	img = img_notincluded;
+	if (sf.inProduct) {
+		// Product ChangeSet
+		// Check all components to see if any are ready to
+		// commit.  If so, we can mark the product cset as ready.
+		foreach (comp in self.components) {
+			cset = getCsetFile(comp);
+			if (comp eq sf.component) continue;
+			if (isExcluded(cset)) continue;
+			unless (componentHasComments(comp)) continue;
+			img = img_done;
+			break;
+		}
+	}
+
+	// Check all files in the component (or product) and see
+	// if there are any ready to commit.  If so, mark the cset ready.
+	if (img eq img_notincluded) {
+		foreach (file in self.components{sf.component}) {
+			sf = self.files{file};
+			if (sf.excluded) continue;
+			if (sf.type eq "cset") continue;
+			unless (isCommented(sf)) continue;
+			img = img_done;
+			break;
+		}
 	}
 
 	Tree_itemconfigure(self.w_files, node, image: img);
+
+	if (img eq img_notincluded) {
+		Tree_itemconfigure(self.w_files, node, foreground: "gray");
+	}
 }
 
 void
@@ -501,7 +555,6 @@ findFiles()
 			if (self.sfiles_pending) {
 				string	txt;
 				string	img = img_done;
-				string	fontName, font{string};
 
 				n = self.sfiles_pending;
 				txt = "Show (${n}) pending delta";
@@ -518,17 +571,12 @@ findFiles()
 					ListBox_itemconfigure(
 					    self.w_files, text: txt);
 				} else {
-					fontName = ListBox_cget(
-					    self.w_files, font:);
-					font = Font_configure(fontName);
-					font{"-underline"} = "1";
-
 					node = ListBox_insert(
 					    self.w_files,
 					    "end", "pending#auto",
 					    image: img, data: comp,
-					    font: font, fill: "blue",
-					    text: txt);
+					    font: self.font_underline,
+					    fill: "blue", text: txt);
 					self.pendingNodes{comp} = node;
 				}
 			}
@@ -658,6 +706,7 @@ bottomMessage(string message, string tag)
 void
 gui()
 {
+	string	f;
 	widget	top = ".citool";
 	string	tags[];
 
@@ -700,6 +749,13 @@ gui()
 	::ListBox::bindText(self.w_files, "<1>", "selectFile");
 	::ListBox::bindImage(self.w_files, "<1>", "toggleFile");
 	bind("all", "<Return>", "togglePending {}");
+
+	f = ListBox_cget(self.w_files, font:);
+	self.font_normal = f;
+	self.font_underline = Font_configure(f);
+	self.font_overstrike = Font_configure(f);
+	self.font_underline{"-underline"} = "1";
+	self.font_overstrike{"-overstrike"} = "1";
 
 	ScrolledWindow(self.w_commentF, background: gc("BG"), auto: "none");
 	grid(self.w_commentF, row: 1, column: 0, sticky: "nesw");
@@ -801,6 +857,7 @@ gui()
 int
 selectFile(string node)
 {
+	sfile	sel = getSelectedFile();
 	string	file;
 
 	unless (ListBox_exists(self.w_files, node)) return (0);
@@ -824,6 +881,7 @@ selectFile(string node)
 		}
 		Tree_selectionSet(self.w_files, node);
 		Tree_see(self.w_files, node);
+		configureFile(sel); // redraw the previous file's icon
 		updateButtons();
 		showFile(sf);
 	}
@@ -880,6 +938,7 @@ configureCsetNodes()
 		cset = getCsetFile(comp);
 		configureFile(cset);
 	}
+	updateButtons();
 }
 
 void
@@ -897,8 +956,8 @@ redrawFile(string node)
 void
 toggleFile(string node)
 {
+	sfile	sf;
 	string	file = Tree_itemcget(self.w_files, node, data:);
-	sfile	sf, cset;
 
 	saveComments();
 	if (node =~ /pending/) {
@@ -912,10 +971,6 @@ toggleFile(string node)
 		string	comp = file;
 		string	img = Tree_itemcget(self.w_files, node, image:);
 		string	pending[];
-
-		// If the cset has already been excluded, we can't toggle.
-		cset = getCsetFile(comp);
-		if (cset.excluded) return;
 
 		foreach (file in self.components{comp}) {
 			sf = self.files{file};
@@ -946,35 +1001,9 @@ toggleFile(string node)
 		return;
 	}
 	
-	sf = self.files{file};
 	if (self.resolve) return;
-	if (sf.type eq "cset") {
-		int	excluded = !sf.excluded;
 
-		unless (sf.inProduct) {
-			self.files{file}.excluded = excluded;
-			foreach (file in self.components{sf.component}) {
-				redrawFile(self.files{file}.node);
-			}
-
-			node = self.pendingNodes{sf.component};
-			if (defined(node)) {
-				if (excluded) {
-					ListBox_itemconfigure(self.w_files,
-					    node, image: img_exclude);
-				} else {
-					ListBox_itemconfigure(self.w_files,
-					    node, image: img_done);
-				}
-			}
-		}
-		return;
-	}
-
-	// If the cset has already been excluded, we can't toggle.
-	cset = getCsetFile(sf.component);
-	if (cset.excluded) return;
-
+	sf = self.files{file};
 	if ((sf.type eq "new") && (getComments(sf) eq "")) {
 		writeComments(sf, "New BitKeeper file ``${sf.name}''");
 	} else {
@@ -982,9 +1011,13 @@ toggleFile(string node)
 	}
 
 	redrawFile(node); // this will call configureFile to update the counts.
+	configureCsetNodes();
 	if (node eq getSelectedNode()) {
 		Tree_selectionClear(self.w_files);
 		selectFile(node);
+	} else {
+		sf = getSelectedFile();
+		if (sf.type eq "cset") showCsetContents(sf);
 	}
 }
 
@@ -1094,7 +1127,8 @@ updateButtons()
 			    command: "unignoreFile");
 		}
 		cset = self.files{"ChangeSet"};
-		if (self.cnt_commented && isCommented(cset)) {
+		if (self.cnt_commented && isCommented(cset)
+		    && !isExcluded(cset)) {
 			configureButton("checkin", text: "Commit");
 		} else if (sf.type eq "pending") {
 			configureButton("checkin", state: "disabled");
@@ -1348,6 +1382,8 @@ createImages()
 	img_exclude = img_create(file: joinpath(path, "ci-exclude.gif"));
 	img_modified = 
 	    img_create(file: joinpath(path, "ci-modified.gif"));
+	img_notincluded
+	    = img_create(file: joinpath(path, "ci-notincluded.gif"));
 	img_checkon = img_create(file: joinpath(path, "check_on.gif"));
 	img_checkoff = img_create(file: joinpath(path, "check_off.gif"));
 }
@@ -1398,6 +1434,15 @@ isCommented(sfile sf)
 	comments = getComments(sf);
 	if (sf.node eq getSelectedNode()) comments = getCurrentComments();
 	if ((comments ne "") && !isTemplateComment(sf, comments)) return (1);
+	return (0);
+}
+
+int
+isExcluded(sfile sf)
+{
+	if (sf.excluded) return (1);
+	if (ListBox_itemcget(self.w_files, sf.node, image:)
+	    eq img_notincluded) return (1);
 	return (0);
 }
 
@@ -1506,7 +1551,7 @@ showCsetContents(sfile sf)
 			sp1 = "  ";
 			sp2 = "    ";
 			cset = getCsetFile(comp);
-			if (cset.excluded) continue;
+			if (isExcluded(cset)) continue;
 
 			Text_insert(textBox, "end", "${cset.name}\n");
 			comments = getComments(cset);
@@ -1742,8 +1787,6 @@ doCommit()
 	if (self.nested) {
 		foreach (comp in self.components) {
 			if (comp eq self.root) continue;
-			cset = getCsetFile(comp);
-			if (cset.excluded) continue;
 			commitComponent(comp);
 		}
 	}
@@ -1763,7 +1806,7 @@ void
 commitComponent(string comp)
 {
 	sfile	sf, cset;
-	int	csetCommented;
+	int	csetExcluded, csetCommented;
 	string	file, comments;
 	string	ignore[], checkin[], commit[];
 
@@ -1776,18 +1819,19 @@ commitComponent(string comp)
 	// it appear as though files aren't commented.
 	cset = getCsetFile(comp);
 	comments = getComments(cset);
+	csetExcluded = isExcluded(cset);
 	csetCommented = isCommented(cset);
 
 	foreach (file in self.components{comp}) {
 		sf = self.files{file};
+		if (sf.excluded) continue;
+		if (sf.type eq "cset") continue;
 		if (sf.ignored) {
 			ignore[END+1] = getRelativePath(sf.file, comp);
 			continue;
 		}
-		if (sf.excluded) continue;
-		if (sf.type eq "cset") continue;
 		if (isCommented(sf)) {
-			commit[END+1] = sf.file;
+			unless (csetExcluded) commit[END+1] = sf.file;
 			if (sf.type ne "pending") checkin[END+1] = sf.file;
 		}
 	}
@@ -1798,7 +1842,6 @@ commitComponent(string comp)
 		}
 		commit[END+1] = "BitKeeper/etc/ignore";
 	}
-
 
 	if (length(checkin)) {
 		FILE	fd;
@@ -1831,7 +1874,7 @@ commitComponent(string comp)
 		}
 	}
 
-	if (csetCommented && (length(commit) || cset.inProduct)) {
+	if (csetCommented && !csetExcluded && length(commit)) {
 		FILE	fd;
 		string	err;
 		string	line;
@@ -1914,10 +1957,8 @@ commitComponent(string comp)
 			unlink(out);
 		}
 
-		unlink(tmp1);
-		unlink(tmp2);
+		deleteCommentFile(cset.file);
 	}
-	deleteCommentFile(cset.file);
 	chdir(self.root);
 }
 
@@ -2222,6 +2263,11 @@ test_fileHasIcon(string file, string want)
 	string	icon = "unknown";
 	string	node = test_findFileInList(file, &sf);
 
+	unless (defined(node)) {
+		puts("${file} is not in the file list, but it should be");
+		exit(1);
+	}
+
 	if (defined(node)) {
 		string	img = Tree_itemcget(self.w_files, node, image:);
 
@@ -2235,6 +2281,8 @@ test_fileHasIcon(string file, string want)
 			icon = "excluded";
 		} else if (img eq img_modified) {
 			icon = "modified";
+		} else if (img eq img_notincluded) {
+			icon = "notincluded";
 		}
 	}
 
