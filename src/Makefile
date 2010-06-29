@@ -449,6 +449,7 @@ installdir: utils/registry.tcl
 	rm -rf $(IMGDIR) || exit 1
 	mkdir -p $(IMGDIR)/contrib
 	bk get -S www
+	bk get -S $(CONTRIB)
 	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib gui/images \
 		www/*.gif www/*.png | (cd $(IMGDIR) && tar xf -)
 	cp -f $(DATA) $(IMGDIR)
