@@ -43,7 +43,7 @@ private void	checkins(opts *opts, char *comment);
 private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
 private	int	rename_file(resolve *rs);
 private void	resolve_post(opts *o, int c);
-private void	unapply(FILE *f);
+private void	unapply(char **applied);
 private int	writeCheck(sccs *s, MDBM *db);
 private	void	listPendingRenames(void);
 private	int	noDiffs(void);
@@ -54,7 +54,7 @@ private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
 private int	nfiles;		/* # files in RESYNC */
 private ticker	*tick;		/* progress-bar ticker state */
-private float	nticks = 0.0;	/* current progress-bar tick count */
+private u64	nticks = 0;	/* current progress-bar tick count */
 
 int
 resolve_main(int ac, char **av)
@@ -316,10 +316,10 @@ err:		if (p) fclose(p);
 		for (nfiles = 0; fnext(buf, p); ++nfiles) ;
 		rewind(p);
 		progress_delayStderr();
-		tick = progress_start(PROGRESS_BAR, 7*nfiles);
+		tick = progress_start(PROGRESS_BAR, 8*nfiles);
 	}
 	while (fnext(buf, p)) {
-		if (opts->progress) progress(tick, (u64)++nticks);
+		if (opts->progress) progress(tick, ++nticks);
 		chop(buf);
 		unless (s = sccs_init(buf, INIT_NOCKSUM)) continue;
 
@@ -648,7 +648,7 @@ private	int
 pass2_renames(opts *opts)
 {
 	sccs	*s = 0;
-	int	n = 0, nnames = 0;
+	int	n = 0;
 	int	i;
 	resolve	*rs;
 	char	*t;
@@ -665,12 +665,9 @@ pass2_renames(opts *opts)
 	 * files (think hashed directories.
 	 */
 	names = getdir("BitKeeper/RENAMES/SCCS");
-	nnames = nLines(names);
+	progress_adjustMax(tick, nfiles - nLines(names));
 	EACH(names) {
-		if (opts->progress) {
-			nticks += nfiles/(float)nnames;
-			progress(tick, (u64)nticks);
-		}
+		if (opts->progress) progress(tick, ++nticks);
 		sprintf(path, "BitKeeper/RENAMES/SCCS/%s", names[i]);
 
 		/* may have just been deleted it but be in readdir cache */
@@ -1605,7 +1602,7 @@ private	int
 pass3_resolve(opts *opts)
 {
 	char	buf[MAXPATH], **conflicts, s_cset[] = CHANGESET;
-	int	n = 0, nconflicts = 0, i;
+	int	n = 0, i;
 	int	mustCommit = 0, pc, pe;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
@@ -1640,12 +1637,9 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	 * reconstruct the r.file if necessary.  XXX - not done.
 	 */
 	conflicts = find_files(opts, 0);
-	nconflicts = nLines(conflicts);
+	progress_adjustMax(tick, nfiles - nLines(conflicts));
 	EACH(conflicts) {
-		if (opts->progress) {
-			nticks += nfiles/(float)nconflicts;
-			progress(tick, (u64)nticks);
-		}
+		if (opts->progress) progress(tick, ++nticks);
 		if (opts->debug) fprintf(stderr, "pass3: %s\n", conflicts[i]);
 		if (streq(conflicts[i], "SCCS/s.ChangeSet")) continue;
 
@@ -1721,7 +1715,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		chdir(RESYNC2ROOT);
 		sccs_unlockfile(RESOLVE_LOCK);
 		i = spawnvp(P_WAIT, "bk", nav);
-		proj_restoreAllCO(0, opts->idDB);
+		proj_restoreAllCO(0, opts->idDB, 0);
 		exit(WIFEXITED(i) ? WEXITSTATUS(i) : 1);
 	}
 
@@ -2415,20 +2409,18 @@ rm_sfile(char *sfile, int leavedirs)
  * Make sure the file name did not change case orientation after we copied it
  */
 private int
-chkCaseChg(FILE *f)
+chkCaseChg(char **applied)
 {
-	char	buf[MAXPATH], realname[MAXPATH];
+	int	i;
+	char	realname[MAXPATH];
 
-	fflush(f);
-	rewind(f);
 	assert(localDB);
-	while (fnext(buf, f)) {
-		chomp(buf);
-		getRealName(buf, localDB, realname);
-		unless (streq(buf, realname)) {
-			if (strcasecmp(buf, realname) == 0) {
+	EACH(applied) {
+		getRealName(applied[i], localDB, realname);
+		unless (streq(applied[i], realname)) {
+			if (strcasecmp(applied[i], realname) == 0) {
 				getMsg2("case_folding",
-				    buf, realname, '=', stderr);
+				    applied[i], realname, '=', stderr);
 			} else {
 				assert("Unknown error" == 0);
 			}
@@ -2450,6 +2442,7 @@ pass4_apply(opts *opts)
 	int	eperm = 0, flags, nold = 0, ret;
 	FILE	*f = 0;
 	FILE	*save = 0;
+	char	**applied = 0;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
 	MDBM	*permDB = mdbm_mem();
@@ -2531,7 +2524,7 @@ pass4_apply(opts *opts)
 	}
 	chmod(PASS4_TODO, 0666);
 	while (fnext(buf, f)) {
-		if (opts->progress) progress(tick, (u64)++nticks);
+		if (opts->progress) progress(tick, ++nticks);
 		chop(buf);
 		/*
 		 * We want to check the checksum here and here only
@@ -2614,11 +2607,9 @@ pass4_apply(opts *opts)
 		}
 		save = fopen(BACKUP_LIST, "rt");
 		assert(save);
+		progress_adjustMax(tick, nfiles - nold);
 		while (fnext(buf, save)) {
-			if (opts->progress) {
-				nticks += nfiles/(float)nold;
-				progress(tick, (u64)nticks);
-			}
+			if (opts->progress) progress(tick, ++nticks);
 			chop(buf);
 			if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
 			if (rm_sfile(buf, 1)) {
@@ -2633,18 +2624,11 @@ pass4_apply(opts *opts)
 	/*
 	 * Pass 4c - apply the files.
 	 */
-	unless (save = fopen(APPLIED, "w+")) {
-		restore_backup(BACKUP_SFIO, 0);
-		resolve_cleanup(opts, 0);
-	}
 	fflush(f);
 	rewind(f);
-
+	progress_adjustMax(tick, nfiles - nold);
 	while (fnext(buf, f)) {
-		if (opts->progress) {
-			nticks += nfiles/(float)nold;
-			progress(tick, (u64)nticks);
-		}
+		if (opts->progress) progress(tick, ++nticks);
 		chop(buf);
 		/*
 		 * We want to get the part of the path without the RESYNC.
@@ -2653,7 +2637,7 @@ pass4_apply(opts *opts)
 			fprintf(stderr,
 			    "resolve: failed to remove conflict %s\n",
 			    &buf[offset]);
-			unapply(save);
+			unapply(applied);
 			restore_backup(BACKUP_SFIO, 0);
 			resolve_cleanup(opts, 0);
 		}
@@ -2663,13 +2647,13 @@ pass4_apply(opts *opts)
 		if (fileLink(buf, &buf[offset])) {
 			fprintf(stderr,
 			    "copy(%s, %s) failed\n", buf, &buf[offset]);
-err:			unapply(save);
+err:			unapply(applied);
 			restore_backup(BACKUP_SFIO, 0);
 			resolve_cleanup(opts, 0);
 		} else {
 			opts->applied++;
 		}
-		fprintf(save, "%s\n", &buf[offset]);
+		applied = addLine(applied, strdup(buf + offset));
 	}
 	fclose(f);
 
@@ -2682,13 +2666,13 @@ err:			unapply(save);
 	 * If case folding file system , make sure file name
 	 * did not change case after we copied it
 	 */
-	if (localDB && chkCaseChg(save)) goto err;
+	if (localDB && chkCaseChg(applied)) goto err;
 
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "resolve: applied %d files in pass 4\n", opts->applied);
 	}
-	proj_restoreAllCO(0, opts->idDB);
+	proj_restoreAllCO(0, opts->idDB, tick);
 	if (proj_sync(0)) {
 		/*
 		 * It's worth pointing out that we still call this when we
@@ -2699,14 +2683,8 @@ err:			unapply(save);
 		 */
 		sync();
 	}
-	if (proj_configbool(0, "partial_check")) {
-		fflush(save); /*  important */
-		ret = run_check(!opts->quiet,
-		    APPLIED, opts->quiet ? 0 : "-v", 0);
-	} else {
-		ret = run_check(!opts->quiet, 0, opts->quiet ? 0 : "-v", 0);
-	}
-	if (ret) {
+	if (run_check(!opts->quiet, applied,
+		(opts->quiet && !opts->progress) ? 0 : "-v", 0)) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
 		/*
 		 * Clean up any gfiles we may have pulled out to run check.
@@ -2717,10 +2695,9 @@ err:			unapply(save);
 	if (opts->didCommit && proj_isComponent(0)) {
 		if (moveupComponent()) goto err;
 	}
-	fclose(save);
 	unlink(BACKUP_LIST);
 	unlink(BACKUP_SFIO);
-	unlink(APPLIED);
+	freeLines(applied, free);
 	unlink(PASS4_TODO);
 
 	if (opts->progress) progress_done(tick, "OK");
@@ -2781,17 +2758,11 @@ writeCheck(sccs *s, MDBM *db)
  * Unlink all the things we successfully applied.
  */
 private void
-unapply(FILE *f)
+unapply(char **applied)
 {
-	char	buf[MAXPATH];
+	int	i;
 
-	fflush(f);
-	rewind(f);
-	while (fnext(buf, f)) {
-		chop(buf);
-		rm_sfile(buf, 0);
-	}
-	fclose(f);
+	EACH(applied) rm_sfile(applied[i], 0);
 }
 
 private	void
@@ -2893,7 +2864,7 @@ resolve_cleanup(opts *opts, int what)
 	/* XXX - shouldn't this be below the CLEAN_OK?
 	 * And maybe claused on opts->pass4?
 	 */
-	proj_restoreAllCO(0, opts->idDB);
+	proj_restoreAllCO(0, opts->idDB, 0);
 
 	freeStuff(opts);
 	unless (what & CLEAN_OK) {

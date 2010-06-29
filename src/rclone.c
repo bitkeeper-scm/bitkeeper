@@ -712,7 +712,7 @@ private u32
 send_sfio(remote *r, int gzip)
 {
 	int	status;
-	char	*b, *p, *tmpf;
+	char	*b, *tmpf;
 	FILE	*fh;
 	char	*sfiocmd;
 	FILE	*fout;
@@ -725,13 +725,8 @@ send_sfio(remote *r, int gzip)
 
 	if (opts.quiet) {
 		sprintf(buf, "q");
-	} else {
-		unless (opts.verbose) {
-			if (p = loadfile("BitKeeper/log/NFILES", 0)) {
-				sprintf(buf, "N%u", atoi(p));
-				free(p);
-			}
-		}
+	} else unless (opts.verbose) {
+		sprintf(buf, "N%u", repo_nfiles(0,0));
 	}
 	if (opts.sfiotitle) {
 		sprintf(title, " --title='%s'", opts.sfiotitle);

@@ -1086,11 +1086,8 @@ sendServerInfo(int no_repo)
 			out(buf);
 		}
 		unless (proj_hasOldSCCS(0)) out("REMAP=1\n");
-		if (p = loadfile("BitKeeper/log/NFILES", 0)) {
-			sprintf(buf, "NFILES=%u\n", atoi(p));
-			out(buf);
-			free(p);
-		}
+		sprintf(buf, "NFILES=%u\n", repo_nfiles(0,0));
+		out(buf);
 		if (v = file2Lines(0, "BitKeeper/log/TIP")) {
 			/* old repos, compat. */
 			if (nLines(v) >= 1) {
@@ -1636,11 +1633,13 @@ full_check(void)
  * Otherwise do a full check.
  */
 int
-run_check(int verbose, char *flist, char *opts, int *did_partial)
+run_check(int verbose, char **flist, char *opts, int *did_partial)
 {
 	int	i, j, ret;
+	char	*cmd;
 	char	buf[20];
 	char	pwd[MAXPATH];
+	FILE	*p;
 
 again:
 	assert(!opts || (strlen(opts) < sizeof(buf)));
@@ -1649,15 +1648,20 @@ again:
 		strcpy(pwd, proj_cwd());
 		fprintf(stderr, "Running consistency check in %s ...\n", pwd);
 	}
+	progress_pauseDelayed();
 	if (!flist || full_check()) {
-		progress_pauseDelayed();
 		ret = sys("bk", "-r", "check", "-ac", opts, SYS);
-		progress_resumeDelayed();
 		if (did_partial) *did_partial = 0;
 	} else {
-		ret = sysio(flist, 0, 0, "bk", "check", "-c", opts, "-", SYS);
+		/* For possible progress bar, pass in # files. */
+		cmd = aprintf("bk check -c -N%d '%s' -", nLines(flist), opts);
+		p = popen(cmd, "w");
+		free(cmd);
+		EACH(flist) fprintf(p, "%s\n", flist[i]);
+		ret = pclose(p);
 		if (did_partial) *did_partial = 1;
 	}
+	progress_resumeDelayed();
 	ret = WIFEXITED(ret) ? WEXITSTATUS(ret) : 1;
 	if (strchr(opts, 'f') && (ret == 2)) {
 		for (i = j = 0; opts[i]; i++) {

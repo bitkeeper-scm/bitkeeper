@@ -2132,6 +2132,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		}
 		unless (i) errorMsg("tp_noversline", input, 0);
 		do {
+			if (strneq("== ", t, 3)) ++N;
 			len = linelen(t);
 			sumC = adler32(sumC, t, len);
 			unless (t = mnext(m)) break;

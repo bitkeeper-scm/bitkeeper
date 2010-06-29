@@ -309,9 +309,7 @@ clone_main(int ac, char **av)
 	freeLines(opts->aliases, free);
 	if (l) remote_free(l);
 	remote_free(r);
-	if (opts->verbose) {
-		progress_end(PROGRESS_BAR, clonerc ? "FAILED" : "OK");
-	} else unless (opts->quiet) {
+	unless (opts->quiet) {
 		title = "clone";
 		if (opts->attach) title = "attach";
 		if (opts->detach) title = "detach";
@@ -584,7 +582,6 @@ clone(char **av, remote *r, char *local, char **envVar)
 	if (do_part2) {
 		p = aprintf("-r..'%s'", opts->rev ? opts->rev : "");
 		rc = bkd_BAM_part3(r, envVar, opts->quiet, p);
-		unless (opts->quiet) progress_nlneeded();
 		free(p);
 		if ((r->type == ADDR_HTTP) && opts->product) {
 			disconnect(r);
@@ -637,8 +634,7 @@ private	clonerc
 clone2(remote *r)
 {
 	char	*p, *url;
-	char	*checkfiles;
-	FILE	*f;
+	char	**checkfiles = 0;
 	int	i, undorc, rc;
 	int	didcheck = 0;		/* ran check in undo*/
 	int	partial = 1;		/* partial check needs checkout run */
@@ -681,11 +677,7 @@ clone2(remote *r)
 		if (p) free(p);
 	}
 
-	checkfiles = bktmp(0, "clonechk");
-	f = fopen(checkfiles, "w");
-	assert(f);
-	sccs_rmUncommitted(!opts->verbose, f);
-	fclose(f);
+	sccs_rmUncommitted(!opts->verbose, &checkfiles);
 
 	if (opts->detach && detach(opts->quiet, opts->verbose)) {
 		return (CLONE_ERROR);
@@ -807,14 +799,10 @@ nested_err:		fprintf(stderr, "clone: component fetch failed, "
 		opts->comps = ops.comps;
 		nested_free(n);
 	}
-	if (!didcheck && (size(checkfiles) || full_check())) {
+	if (!didcheck && (checkfiles || full_check())) {
 		/* undo already runs check so we only need this case */
 		p = opts->quiet ? "-fT" : "-vfT";
-		if (proj_configbool(0, "partial_check")) {
-			rc = run_check(opts->verbose, checkfiles, p, &partial);
-		} else {
-			rc = run_check(opts->verbose, 0, p, &partial);
-		}
+		rc = run_check(opts->verbose, checkfiles, p, &partial);
 		unless (opts->quiet) {
 			if (rc) {
 				progress_nldone();
@@ -828,8 +816,7 @@ nested_err:		fprintf(stderr, "clone: component fetch failed, "
 			return (CLONE_ERROR);
 		}
 	}
-	unlink(checkfiles);
-	free(checkfiles);
+	freeLines(checkfiles, free);
 
 	/*
 	 * clone brings the CHECKED file over, meaning a partial_check
@@ -858,11 +845,13 @@ checkout(int quiet, int verbose, int parallel)
 	char	*cmd[] = { "bk", "checkout", "-TUq", "-", 0 };
 	fd_set	rfds, wfds;
 	ticker	*tick = 0;
+	filecnt	nf;
 
+	repo_nfiles(0, &nf);
 	if (verbose) fprintf(stderr, "Checking out files...\n");
 	if (parallel <= 0) {
 		unless (quiet || verbose) {
-			sprintf(buf, "-N%u", repo_nfiles(0));
+			sprintf(buf, "-N%u", nf.usr);
 			sys("bk", "-U^Gr", "checkout", "-Tq", buf, SYS);
 			progress_nlneeded();
 		} else {
@@ -879,7 +868,7 @@ checkout(int quiet, int verbose, int parallel)
 	assert(parallel <= PARALLEL_MAX);
 	unless (quiet || verbose) {
 		title = " [checkout]";
-		tick = progress_start(PROGRESS_BAR, repo_nfiles(0));
+		tick = progress_start(PROGRESS_BAR, nf.usr);
 	}
 	for (i = 0; i < parallel; i++) {
 		pid[i] = spawnvpio(&fdin[i], &fdout[i], 0, cmd);
@@ -1119,7 +1108,7 @@ sfio(remote *r, char *prefix)
 }
 
 void
-sccs_rmUncommitted(int quiet, FILE *f)
+sccs_rmUncommitted(int quiet, char ***stripped)
 {
 	FILE	*in;
 	FILE	*out;
@@ -1172,7 +1161,9 @@ sccs_rmUncommitted(int quiet, FILE *f)
 		fprintf(stderr, "clone: stripdel failed, continuing...\n");
 	}
 	EACH (files) {
-		if (f && exists(files[i])) fprintf(f, "%s\n", files[i]);
+		if (stripped && exists(files[i])) {
+			*stripped = addLine(*stripped, strdup(files[i]));
+		}
 		/*
 		 * remove d.file.  If is there is a clone or lclone
 		 * Note: stripdel removes dfile only if sfiles was removed.

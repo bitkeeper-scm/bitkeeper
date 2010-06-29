@@ -128,7 +128,7 @@ do	cd "$HERE"/$i
 done
 cd "$HERE/merge-clone"
 bk pull $Q || exit 1
-bk undo -sfr+ > OUT && {
+bk undo -sfr+ > OUT 2>&1 && {
 	echo undo should have failed
 	cat OUT
 	exit 1

@@ -1081,10 +1081,7 @@ resolve(void)
 	if (opts.autoOnly) cmd[++i] = "-s";
 	if (opts.automerge) cmd[++i] = "-a";
 	if (opts.debug) cmd[++i] = "-d";
-	unless (opts.quiet) {
-		cmd[++i] = "--progress";
-		progress_nlneeded();
-	}
+	unless (opts.quiet) cmd[++i] = "--progress";
 	cmd[++i] = 0;
 	if (opts.verbose) {
 		fprintf(stderr, "Running resolve to apply new work ...\n");
@@ -1097,6 +1094,7 @@ resolve(void)
 	sig_ignore();
 	status = spawnvp(_P_WAIT, "bk", cmd);
 	sig_default();
+	unless (opts.quiet) progress_nlneeded();
 	unless (WIFEXITED(status)) return (100);
 	return (WEXITSTATUS(status));
 	return (0);

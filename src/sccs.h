@@ -845,6 +845,12 @@ typedef struct {
 				 * rsh:[user@]host:/path
 				 */
 
+/* For repo_nfiles() et al. */
+typedef struct {
+	u32	tot;	/* tot # files in repo */
+	u32	usr;	/* # user files (not under BitKeeper/) */
+} filecnt;
+
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
@@ -1047,7 +1053,8 @@ int	repository_wrlock(project *p);
 int	repository_wrunlock(project *p, int all);
 int	repository_hasLocks(project *p, char *dir);
 void	repository_lockcleanup(project *p);
-int	repo_nfiles(sccs *cset);
+int	repo_nfiles(project *proj, filecnt *nf);
+void	repo_nfilesUpdate(filecnt *nf);
 int	comments_save(char *s);
 int	comments_savefile(char *s);
 int	comments_got(void);
@@ -1119,8 +1126,8 @@ void	has_proj(char *who);
 char	*globalroot(void);
 void	sccs_touch(sccs *s);
 int	setlevel(int);
-void	sccs_rmUncommitted(int quiet, FILE *chkfiles);
-void	rmEmptyDirs(int quiet);    
+void	sccs_rmUncommitted(int quiet, char ***chkfiles);
+void	rmEmptyDirs(int quiet);
 int	after(int quiet, int verbose, char *rev);
 int	consistency(int quiet);
 int	diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile);
@@ -1183,7 +1190,7 @@ int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
-int	run_check(int quiet, char *partial, char *opts, int *did_partial);
+int	run_check(int quiet, char **flist, char *opts, int *did_partial);
 int	full_check(void);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign, int version);
@@ -1304,7 +1311,7 @@ int	fflushdata(sccs *s, FILE *out);
 sum_t	fputdata(sccs *s, u8 *buf, FILE *out);
 char	*psize(u64 bytes);
 u64	scansize(char *bytes);
-void	idcache_update(char *filelist);
+void	idcache_update(char **files);
 int	idcache_write(project *p, MDBM *idDB);
 void	cset_savetip(sccs *s, int force);
 void	symGraph(sccs *s, delta *d);

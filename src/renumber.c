@@ -50,7 +50,7 @@ renumber_main(int ac, char **av)
 		}
 	}
 	if (quiet) flags |= SILENT;
-	if (!quiet && nfiles) tick = progress_start(PROGRESS_BAR, nfiles);
+	if (nfiles) tick = progress_start(PROGRESS_BAR, nfiles);
 	for (name = sfileFirst("renumber", &av[optind], 0);
 	    name; name = sfileNext()) {
 		if (tick) progress(tick, ++n);

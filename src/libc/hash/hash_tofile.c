@@ -46,10 +46,22 @@ hash_toStream(hash *h, FILE *f)
 
 	assert(h && f);
 
+	/* The empty key goes first without a header or encoding */
+	if (hash_fetchStr(h, "")) {
+		i = h->vlen;
+		if ((i > 0) &&
+		    (((u8 *)h->vptr)[i-1] == 0)) {
+			--i; /* no trailing null */
+		}
+		fwrite(h->vptr, 1, i, f);
+		fputc('\n', f);
+	}
+
 	/*
 	 * Sort the fields and print them
 	 */
 	EACH_HASH(h) {
+		if ((h->klen == 1) && (*(u8*)h->kptr == 0)) continue;
 		unless (goodkey(h->kptr, h->klen)) goto out;
 		fieldlist = addLine(fieldlist, h->kptr);
 	}
@@ -226,7 +238,7 @@ savekey(hash *h, int base64, char *key, char **val)
 	u8	*data;
 	int	len;
 
-	unless (key) key = strdup("__HEADER__");
+	unless (key) key = strdup("");
 	if (base64) {
 		data = data_pullup(&len, val);
 	} else {

@@ -31,6 +31,30 @@ EOF
 cmpfiles want got
 echo OK
 
+echon non-hash followed by hash with header .......................
+cat <<EOF >in
+old file
+@
+hybrid file
+@key
+hash2
+@
+@key
+hash3
+EOF
+bk _hashfile_test r in >got || exit 1
+cat <<EOF >want
+ => old file
+---
+ => hybrid file
+key => hash2
+---
+key => hash3
+EOF
+cmpfiles want got
+echo OK
+
+
 echon two hashes ..................................................
 cat <<EOF >in
 @key1
@@ -54,7 +78,7 @@ value1
 EOF
 bk _hashfile_test r in >got || exit 1
 cat <<EOF >want
-__HEADER__ => value1
+ => value1
 EOF
 cmpfiles want got
 echo OK
@@ -66,7 +90,7 @@ value1
 EOF
 bk _hashfile_test r in >got || exit 1
 cat <<EOF >want
-__HEADER__ => value1
+ => value1
 ---
 EOF
 cmpfiles want got

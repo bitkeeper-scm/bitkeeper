@@ -28,6 +28,7 @@ typedef	struct cset {
 	/* numbers */
 	int	tooMany;	/* send whole sfiles if # deltas > tooMany */
 	int	verbose;
+	int	progress;	/* progress bar max */
 	int	notty;
 	int	fromStart;	/* if we did -R1.1..1.2 */
 	int	ndeltas;
@@ -136,7 +137,7 @@ cset_main(int ac, char **av)
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
 
-	while ((c = getopt(ac, av, "5BCd|DFfhi;lm|M|qr|svx;", 0)) != -1) {
+	while ((c = getopt(ac, av, "5BCd|DFfhi;lm|M;N;|qr|svx;", 0)) != -1) {
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
@@ -177,6 +178,9 @@ cset_main(int ac, char **av)
 			if (optarg && range_addArg(&rargs, optarg, 0)) {
 				usage();
 			}
+			break;
+		    case 'N':
+			copts.progress = atoi(optarg);
 			break;
 		    case 'C':					/* doc 2.0 */
 			unless (streq(av[0], "makepatch")) {
@@ -647,9 +651,10 @@ csetlist(cset_t *cs, sccs *cset)
 	char	*rk, *t;
 	char	buf[MAXPATH*2];
 	char	*csetid;
-	int	status, i;
+	int	status, i, n;
 	delta	*d;
 	MDBM	*goneDB = 0;
+	ticker	*tick = 0;
 
 	if (cs->dash) {
 		while(fgets(buf, sizeof(buf), stdin)) {
@@ -722,8 +727,15 @@ again:	/* doDiffs can make it two pass */
 	/*
 	 * Now do the real data.
 	 */
+	if (cs->progress) {
+		tick = progress_startScaled(PROGRESS_BAR,
+					    nLines(cs->cweave),
+					    cs->progress);
+	}
+	n = 0;
 	sortLines(cs->cweave, cset_bykeys); /* sort by rootkeys */
 	EACH (cs->cweave) {
+		if (tick) progress(tick, ++n);
 		rk = strchr(cs->cweave[i], '\t');
 		++rk;
 		t = separator(rk); *t++ = 0;
@@ -791,6 +803,7 @@ next:		t[-1] = ' ';
 	}
 	free(csetid);
 	if (goneDB) mdbm_close(goneDB);
+	if (tick) progress_done(tick, "OK");
 	return;
 
 fail:

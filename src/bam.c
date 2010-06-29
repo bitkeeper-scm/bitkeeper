@@ -1475,6 +1475,7 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 	if (pclose(f)) return (1);
 	if (tick) {
 		progress_done(tick, 0);
+		progress_nldone();  /* don't inject a newline */
 		fprintf(stderr,
 		    ", %d found using %sB.\n", i, psize(bytes));
 	}

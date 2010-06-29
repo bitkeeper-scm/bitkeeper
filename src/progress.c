@@ -79,20 +79,32 @@ progress_title(void)
 	return (aprintf(" [%.*s]", TLEN - 3, prog));
 }
 
-ticker *
-progress_start(int style, u64 max)
+private ticker *
+progress_startCommon(ticker *t, int style, u64 max)
 {
-	ticker	*t;
+	char	*s, *q;
 	struct	timeval tv;
 
-	t = new(ticker);
+	t->max = max ? max : 1;
+	t->always = (getenv("_BK_PROGRESS_ALWAYS") != 0);
+	t->debug  = (getenv("_BK_PROGRESS_DEBUG") != 0);
+	if (s = getenv("_BK_PROGRESS_INHERIT")) {
+		t->style = PROGRESS_BAR;
+		q = strchr(s, ',');
+		if (t->name) free(t->name);
+		t->name = strndup(s, q-s);
+		sscanf(q+1, "%llu,%llu,%f,%f",
+		    &t->base, &t->max, &t->m, &t->b);
+		t->multi = 0;
+		t->inherited = 1;
+		return (t);
+	}
 	t->style = style;
 	t->name = progress_title();
 	gettimeofday(&tv, 0);
 	t->start = tv.tv_sec;
 	t->start *= 1000;
 	t->start += tv.tv_usec / 1000;
-	t->max = max;
 	switch (t->style) {
 	    case PROGRESS_SPIN:
 		fputc(' ', stderr);
@@ -103,17 +115,45 @@ progress_start(int style, u64 max)
 		break;
 	}
 	t->rate = 333;
+	t->m = 100.0/max;	// slope
+	t->b = 0.0;		// y intercept
 	t->multi = (getenv("_BK_PROGRESS_MULTI") != 0);
 	progress_startMulti();
 	progress(t, 0);
 	return (t);
 }
 
+ticker *
+progress_start(int style, u64 max)
+{
+	ticker	*t = new(ticker);
+	t->scale = 1.0;
+	return (progress_startCommon(t, style, max));
+}
+
+/*
+ * Like progress_start() but use a tick scale factor.  This is useful
+ * if you're told to tick "told" times but you really want to tick
+ * "want" times.
+ */
+ticker *
+progress_startScaled(int style, u64 want, u64 told)
+{
+	ticker	*t = new(ticker);
+	t->scale = told/(float)want;
+	return (progress_startCommon(t, style, told));
+}
 
 void
 progress_startMulti()
 {
 	putenv("_BK_PROGRESS_MULTI=YES");
+}
+
+int
+progress_isMulti()
+{
+	return (getenv("_BK_PROGRESS_MULTI") != 0);
 }
 
 /*
@@ -125,13 +165,13 @@ progress(ticker *t, u64 n)
 {
 	char	*spin = "|/-\\";
 	u64	now;
-	float	percentf;
 	int	percent;
 	int	i, want;
 	int	barlen = BARLEN;
 	struct	timeval tv;
 
 	unless (t) return;
+	t->cur = t->base + n*t->scale;
 
 	if (t->style == PROGRESS_SPIN) {
 		gettimeofday(&tv, 0);
@@ -142,17 +182,8 @@ progress(ticker *t, u64 n)
 		if ((n > 1) && (now - t->start) < t->rate) return;
 	}
 
-	if (t->max) {
-		percentf = 100.0 * (float)n / t->max;
-		percent = (percentf > 100) ? 100 : (int)percentf;
-	} else {
-		percent = 100;
-	}
-	/* This is for testing; always update the progress. */
-	unless (getenv("_BK_PROGRESS_ALWAYS")) {
-		if ((n > 1) && (percent <= t->percent)) return;
-	}
-	t->percent = percent;
+	percent = t->m*t->cur + t->b;
+	if (percent > 100) percent = 100;
 
 	progress_active();
 	progress_pauseDelayed();
@@ -164,23 +195,61 @@ progress(ticker *t, u64 n)
 		fprintf(stderr, "%3u%%\b\b\b\b", percent);
 		break;
 	    case PROGRESS_BAR:
+		if ((n > 1) && (percent <= t->percent) && !t->always) return;
 		fprintf(stderr, "\r%-*.*s %3u%% ", TLEN, TLEN, t->name, percent);
 		fputc('|', stderr);
 		want = (percent * barlen) / 100;
 		for (i = 1; i <= want; ++i) fputc('=', stderr);
 		if (i <= barlen) fprintf(stderr, "%*s", barlen - i + 1, "");
-#if 0
-		/*
-		 * This can be incredibly useful for debugging.  Leaving
-		 * it commented out here to tell future generations.
-		 */
-		fprintf(stderr, "<%d>", getpid());
-#endif
+		/* This can be incredibly useful for debugging. */
+		if (t->debug) {
+			fprintf(stderr, "<%d><%qu*%.3f=%qu+%qu=%qu/%qu>",
+				getpid(), n, t->scale, (u64)(n*t->scale),
+				t->base, t->cur, t->max);
+		}
 		fprintf(stderr, "|\r");
 		break;
 	}
+	t->percent = percent;
 	progress_resumeDelayed();
 	progress_nlneeded();
+}
+
+/*
+ * Adjust the equation of the progress-bar line to reflect a new
+ * maximum tick value.  Keep the current % value the same in the old
+ * and new lines, but change the slope.
+ */
+void
+progress_adjustMax(ticker *t, i64 adj)
+{
+	float	percent;
+
+	unless (t) return;
+	t->max -= adj;
+	if (t->max <= 0) t->max = 1;
+	percent = t->m*t->cur + t->b;
+	t->m = (100.0 - percent) / (t->max - t->cur);
+	t->b = 100.0 - (t->m * t->max);
+}
+
+/*
+ * Arrange for child processes to inherit the current progress-bar
+ * state so they will add to the current progress bar instead of
+ * starting their own.
+ */
+void
+progress_inherit(ticker *t)
+{
+	safe_putenv("_BK_PROGRESS_INHERIT=%s,%llu,%llu,%f,%f",
+	    t->name, t->cur, t->max, t->m, t->b);
+}
+
+void
+progress_inheritEnd(ticker *t, u64 n)
+{
+	t->cur += n;
+	safe_putenv("_BK_PROGRESS_INHERIT=");
 }
 
 void
@@ -188,6 +257,11 @@ progress_done(ticker *t, char *msg)
 {
 	int	i;
 
+	unless (t) return;
+	if (t->inherited) {
+		free(t);
+		return;
+	}
 	progress_active();
 	progress_pauseDelayed();
 	/* clear output on screen */
@@ -436,5 +510,3 @@ progress_syswrite(void *cookie, const char *buf, int n)
 	}
 	return (write(fileno(f), buf, (size_t)n));
 }
-
-

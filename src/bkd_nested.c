@@ -32,7 +32,7 @@ cmd_nested(int ac, char **av)
 			error("%s", nested_errmsg());
 			return (1);
 		}
-		system("bk abort -f 2>" DEVNULL_WR);
+		system("bk abort -qf 2>" DEVNULL_WR);
 		out("@OK@\n");
 	} else {
 		/* fail */

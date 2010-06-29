@@ -1043,7 +1043,7 @@ restoreCO(sccs *s, int co)
  * we might have touched and restore the gfile if needed.
  */
 int
-proj_restoreAllCO(project *p, MDBM *idDB)
+proj_restoreAllCO(project *p, MDBM *idDB, ticker *tick)
 {
 	sccs	*s;
 	kvpair	kv;
@@ -1066,6 +1066,7 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 
 	}
 	EACH_KV(p->coDB) {
+		if (tick) progress(tick, tick->cur+1);
 		co = (kv.val.dptr[0] - '0');
 		assert(!(co & (CO_BAM_GET|CO_BAM_EDIT)));
 		if (co & (CO_GET|CO_EDIT)) {

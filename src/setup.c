@@ -264,14 +264,6 @@ defaultFiles(int product)
 {
 	FILE	*f;
 
-	if (f = fopen("BitKeeper/log/NFILES", "w")) {
-		/*
-		 * XXX: HACK - hard code repo size
-		 * product has alias file extra
-		 */
-		fputs(product ? "6\n" : "5\n", f);
-		fclose(f);
-	}
 	f = fopen("BitKeeper/etc/ignore", "w");
 	fprintf(f, "\n");
 	fclose(f);
