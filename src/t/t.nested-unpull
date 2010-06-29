@@ -1,0 +1,31 @@
+echo $N Unpull on a component should cd to product...................$NL
+nested parent
+cd "$HERE"
+bk clone $Q parent child
+cd "$HERE"/parent
+touch afile gcc/afile gdb/afile
+bk new $Q -y. afile gcc/afile gdb/afile
+(cd gcc && bk commit $Q -y.)
+(cd gdb && bk commit $Q -y.)
+bk commit $Q -y.
+cd "$HERE"/child
+bk pull $Q || fail  first pull failed
+bk unpull -f $Q || fail should have worked
+bk pull $Q  || fail second pull failed
+cd "$HERE"/child/gdb
+bk unpull -f $Q || fail should have worked
+echo OK
+
+echo $N Test unpulling a port........................................$NL
+# detach so we can port later
+cd "$HERE"/parent
+bk detach $Q gcc "$HERE"/gcc-detached || fail
+# now port
+cd "$HERE"/child
+bk portal $Q .
+cd gcc
+bk port $Q "$HERE"/gcc-detached || fail
+# now unpull
+bk unpull $Q -f . || fail unpull should have worked
+test -z "`bk changes  -qaL`" || fail
+echo OK

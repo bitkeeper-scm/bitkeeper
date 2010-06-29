@@ -20,6 +20,12 @@ unpull_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
+	if (proj_isComponent(0) && (!av[optind] || !streq(av[optind], "."))) {
+		if (proj_cd2product()) {
+			fprintf(stderr,"unpull: can not find product root.\n");
+			return (1);
+		}
+	}
 	return (unpull(force, quiet, patch));
 }
 
