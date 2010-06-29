@@ -144,12 +144,11 @@ cat - <<'EOF' >chkoutput.l
 void
 main(_unused int ac, string av[])
 {
-	int	ncomps = 0;
 	int	comps{string};
 	string	comp, s;
 	FILE	f;
 
-	foreach (comp in av[2..END]) comps{comp} = 0;
+	foreach (comp in av[2..END]) comps{comp} = -1;
 
 	// Convert \r's to # since otherwise tcl will treat
 	// them like newlines when reading the file.
@@ -176,16 +175,11 @@ main(_unused int ac, string av[])
 				puts("unexpected component ${$3}");
 				exit(2);
 			}
-			ncomps = (int)$2;
 		}
 	}
 	fclose(f);
-	unless (ncomps == length(comps)) {
-		puts("wrong # components ${ncomps}");
-		exit(3);
-	}
 	foreach (comp in comps) {
-		unless (comps{comp} > 0) {
+		unless (comps{comp} >= 0) {
 			puts("no progress bar for component ${comp}");
 			exit(4);
 		}
@@ -295,7 +289,7 @@ echo $N rclone -r ...................................................$NL
 cd "$HERE"
 bk clone -r1.1 clone bk://localhost:$P/rclone-1.1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'file xfer' 'stripdel' 'names' 'check' || fail $msg
+chkpasses OUT 'file xfer' 'undo' || fail $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone-1.1
@@ -305,7 +299,7 @@ echo $N clone -r ....................................................$NL
 cd "$HERE"
 bk clone -r1.1 clone clone-1.1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'file xfer' 'stripdel' 'names' 'check' || fail $msg
+chkpasses OUT 'file xfer' 'undo' || fail $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone-1.1
@@ -324,7 +318,7 @@ echo OK
 echo $N unpull ......................................................$NL
 bk unpull -f >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'stripdel' 'names' 'check' 'undo' || fail $msg
+chkpasses OUT 'undo' || fail $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -335,7 +329,7 @@ add undo2 || fail
 add undo3 || fail
 bk undo -a1.2 -f >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'stripdel' 'names' 'check' 'undo' || fail $msg
+chkpasses OUT 'undo' || fail $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -621,6 +615,20 @@ if [ $SKIP_BAM = NO ]; then
 	bk clone bam bam-clone >OUT 2>&1 || fail -f OUT
 	chkoutput OUT || fail $msg
 	chkpasses OUT 'file xfer' 'check' || fail $msg
+	chknumbars OUT 1 || fail $msg
+	chkblanks OUT 0 || fail $msg
+	echo OK
+else
+	echo skipped
+fi
+
+echo $N BAM check ...................................................$NL
+if [ $SKIP_BAM = NO ]; then
+	cd "$HERE/bam"
+	bk bam check >OUT 2>&1 || fail -f OUT
+	bk grep -q "^Loading list of BAM deltas.*, 4 found" OUT || fail
+	chkoutput OUT || fail $msg
+	chkpasses OUT bam || fail $msg
 	chknumbars OUT 1 || fail $msg
 	chkblanks OUT 0 || fail $msg
 	echo OK
@@ -988,6 +996,16 @@ else
 	echo skipped
 fi
 
+echo $N BAM check ...................................................$NL
+if [ $SKIP_BAM = NO ]; then
+	cd "$HERE/bam"
+	bk bam check -q >OUT 2>&1 || fail -f OUT
+	[ -s OUT ] && fail -f OUT
+	echo OK
+else
+	echo skipped
+fi
+
 echo $N BAM checkout ................................................$NL
 if [ $SKIP_BAM = NO ]; then
 	cd "$HERE/bam-clone"
@@ -1098,8 +1116,8 @@ echo $N clone -r ....................................................$NL
 cd "$HERE"
 bk clone -v -r1.1 clone clone-1.1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT stripdel names check || fail $msg
-chknumbars OUT 2 || fail $msg
+chkpasses OUT check || fail $msg
+chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone-1.1
 echo OK
@@ -1109,6 +1127,7 @@ cd "$HERE/clone"
 bk unpull $Q -f || fail
 bk pull -v ../standalone >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N undo ........................................................$NL
@@ -1117,6 +1136,7 @@ add undo2 || fail
 add undo3 || fail
 bk undo -v -a1.2 -f >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N pull w/name conflicts .......................................$NL
@@ -1143,6 +1163,7 @@ bk grep -q '(create/sfile conflict) for-name-conflict-v-1' OUT || fail -f OUT
 bk grep -q '(create/sfile conflict) for-name-conflict-v-2' OUT || fail -f OUT
 bk grep -q '(create/sfile conflict) for-name-conflict-v-3' OUT || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 cd ..
 bk _rm -rf clone
 echo OK
@@ -1174,6 +1195,7 @@ bk pull -v -s ../standalone >OUT 2>&1 && fail -f OUT
 bk grep -q 'edited-modif-v-1-renamed is modified' OUT || fail -f OUT
 bk grep -q 'edited-modif-v-2-renamed is modified' OUT || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 cd "$HERE"
 bk _rm -rf clone
 echo OK
@@ -1218,6 +1240,7 @@ bk grep -q '	for-content-conflict-v-1' OUT || fail -f OUT
 bk grep -q '	for-content-conflict-v-2' OUT || fail -f OUT
 bk grep -q '	for-content-conflict-v-3' OUT || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 cd ..
 bk _rm -rf clone
 echo OK
@@ -1236,6 +1259,7 @@ echo edit2 >for-edit-v || fail
 bk pull -v ../standalone >OUT 2>&1 && fail -f OUT
 chkoutput OUT || fail $msg
 chknumbars OUT 0 || fail $msg
+chkblanks OUT 1 || fail $msg
 cd ..
 bk _rm -rf clone
 echo OK
@@ -1245,6 +1269,7 @@ cd "$HERE"
 bk clone -v standalone clone >OUT 2>&1 || fail -f OUT
 bk grep -q pre-outgoing OUT || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N rclone w/pre triggers .......................................$NL
@@ -1252,6 +1277,7 @@ cd "$HERE"
 bk clone -v standalone bk://localhost:$P/rclone >OUT 2>&1 || fail -f OUT
 bk grep -q pre-outgoing OUT || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone
 echo OK
 
@@ -1260,6 +1286,7 @@ cd "$HERE/standalone"
 add push-new-v || fail
 bk push -v ../clone >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N pull w/pre triggers .........................................$NL
@@ -1268,6 +1295,7 @@ add pull-new-v || fail
 cd "$HERE/clone"
 bk pull -v ../standalone >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N clone w/check failure .......................................$NL
@@ -1280,6 +1308,7 @@ cd ..
 bk clone -v bad-clone bad-clone2 >OUT 2>&1 && fail -f OUT
 bk grep -q 'check failed' OUT || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N BAM clone, no BAM server ....................................$NL
@@ -1289,6 +1318,7 @@ if [ $SKIP_BAM = NO ]; then
 	cd ..
 	bk clone -v bam bam-clone >OUT 2>&1 || fail -f OUT
 	chkoutput OUT || fail $msg
+	chkblanks OUT 0 || fail $msg
 	bk _rm -rf bam-clone
 	echo OK
 else
@@ -1300,6 +1330,7 @@ if [ $SKIP_BAM = NO ]; then
 	cd "$HERE"
 	bk clone -v bam bk://localhost:$P/bam-clone >OUT 2>&1 || fail -f OUT
 	chkoutput OUT || fail $msg
+	chkblanks OUT 0 || fail $msg
 	echo OK
 else
 	echo skipped
@@ -1312,6 +1343,7 @@ if [ $SKIP_BAM = NO ]; then
 	add data6 || fail
 	bk push -v ../bam-clone >OUT 2>&1 || fail -f OUT
 	chkoutput OUT || fail $msg
+	chkblanks OUT 0 || fail $msg
 	echo OK
 else
 	echo skipped
@@ -1324,6 +1356,7 @@ if [ $SKIP_BAM = NO ]; then
 	bk bam clean $Q data6 || fail
 	bk pull -v ../bam >OUT 2>&1 || fail -f OUT
 	chkoutput OUT || fail $msg
+	chkblanks OUT 0 || fail $msg
 	cd ..
 	bk _rm -rf bam-clone
 	echo OK
@@ -1338,6 +1371,7 @@ if [ $SKIP_BAM = NO ]; then
 	cd ..
 	bk clone -v bam bam-clone >OUT 2>&1 || fail -f OUT
 	chkoutput OUT || fail $msg
+	chkblanks OUT 0 || fail $msg
 	echo OK
 else
 	echo skipped
@@ -1422,7 +1456,7 @@ echo $N rclone -r, product only .....................................$NL
 cd "$HERE"
 bk clone -r1.1 clone0 bk://localhost:$P/rclone0-1.1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT '.' || fail $msg
-chkpasses OUT stripdel check || fail $msg
+chkpasses OUT undo check || fail $msg
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone0-1.1
@@ -1432,7 +1466,7 @@ echo $N clone -r product only .......................................$NL
 cd "$HERE"
 bk clone -r1.1 clone0 clone0-1.1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT '.' || fail $msg
-chkpasses OUT stripdel check || fail $msg
+chkpasses OUT undo check || fail $msg
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone0-1.1
@@ -1442,7 +1476,7 @@ echo $N unpull product only .........................................$NL
 cd "$HERE/clone0"
 bk unpull -f >OUT 2>&1 || fail
 chkoutput OUT '.' || fail $msg
-chkpasses OUT stripdel names check || fail $msg
+chkpasses OUT undo check || fail $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1461,7 +1495,7 @@ add undo2 || fail
 add undo3 || fail
 bk undo -a1.2 -f >OUT 2>&1 || fail -f OUT
 chkoutput OUT '.' || fail $msg
-chkpasses OUT stripdel names check || fail $msg
+chkpasses OUT undo check || fail $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1490,7 +1524,7 @@ echo $N rclone -r, 1 component ......................................$NL
 cd "$HERE"
 bk clone -r1.2 clone1 bk://localhost:$P/rclone1-1.2 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 '.' || fail $msg
-chkpasses OUT stripdel check || fail $msg
+chkpasses OUT undo check || fail $msg
 chknumbars OUT 3 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone1-1.2
@@ -1500,7 +1534,7 @@ echo $N clone -r component only .....................................$NL
 cd "$HERE"
 bk clone -r1.2 clone1 clone1-1.2 >OUT 2>&1 || fail -f OUT
 chkoutput OUT '.' comp1 || fail $msg
-chkpasses OUT stripdel check || fail $msg
+chkpasses OUT undo check || fail $msg
 chknumbars OUT 3 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone1-1.2
@@ -1510,7 +1544,7 @@ echo $N unpull component only .......................................$NL
 cd "$HERE/clone1"
 bk unpull -f >OUT 2>&1 || fail
 chkoutput OUT '.' comp1 || fail $msg
-chkpasses OUT stripdel names check || fail $msg
+chkpasses OUT undo || fail $msg
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1531,7 +1565,7 @@ add undo3 || fail
 cd ..
 bk undo -a1.2 -f >OUT 2>&1 || fail -f OUT
 chkoutput OUT '.' comp1 || fail $msg
-chkpasses OUT stripdel names check || fail $msg
+chkpasses OUT undo || fail $msg
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1552,7 +1586,7 @@ echo $N unpull product and component ................................$NL
 cd "$HERE/clone1"
 bk unpull -f >OUT 2>&1 || fail
 chkoutput OUT '.' comp1 || fail $msg
-chkpasses OUT stripdel names check || fail $msg
+chkpasses OUT undo || fail $msg
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1581,7 +1615,7 @@ cd ..
 add undo3 || fail
 bk undo -a1.2 -f >OUT 2>&1 || fail -f OUT
 chkoutput OUT '.' comp1 || fail $msg
-chkpasses OUT stripdel names check || fail $msg
+chkpasses OUT undo || fail $msg
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1614,7 +1648,7 @@ echo $N rclone -r, 3 components .....................................$NL
 cd "$HERE"
 bk clone -r1.4 clone3 bk://localhost:$P/rclone3-1.4 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 comp2 comp3 '.' || fail $msg
-chkpasses OUT stripdel check || fail $msg
+chkpasses OUT undo check || fail $msg
 chknumbars OUT 5 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone3-1.4
@@ -1624,7 +1658,7 @@ echo $N clone -r three components ...................................$NL
 cd "$HERE"
 bk clone -r1.4 clone3 clone3-1.4 >OUT 2>&1 || fail -f OUT
 chkoutput OUT '.' comp1 comp2 comp3 || fail $msg
-chkpasses OUT stripdel check || fail $msg
+chkpasses OUT undo check || fail $msg
 chknumbars OUT 5 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone3-1.4
@@ -1634,7 +1668,7 @@ echo $N unpull 3 components .........................................$NL
 cd "$HERE/clone3"
 bk unpull -f >OUT 2>&1 || fail
 chkoutput OUT '.' comp1 comp2 comp3 || fail $msg
-chkpasses OUT stripdel names check || fail $msg
+chkpasses OUT undo check || fail $msg
 chknumbars OUT 4 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1708,7 +1742,7 @@ cd ..
 add undo3 || fail
 bk undo -a1.7 -f >OUT 2>&1 || fail -f OUT
 chkoutput OUT '.' comp1 comp2 comp3 || fail $msg
-chkpasses OUT stripdel names check || fail $msg
+chkpasses OUT undo check || fail $msg
 chknumbars OUT 4 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1744,9 +1778,9 @@ bk edit $Q undo1-fail
 echo new-work >undo1-fail
 cd ..
 bk undo -a1.7 -f >OUT 2>&1 && fail -f OUT
-chkoutput OUT comp1 comp2 || fail $msg
-chkpasses OUT stripdel names check takepatch || fail $msg
-chknumbars OUT 4 || fail $msg
+chkoutput OUT comp1 comp2 comp3 || fail $msg
+chkpasses OUT undo check takepatch || fail $msg
+chknumbars OUT 5 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
@@ -1881,9 +1915,9 @@ bk clone clone3 clone3-clone >OUT 2>&1 && fail -f OUT
 grep -q 'failed to fetch component comp1' OUT || fail
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
-chkoutput OUT '.' || echo "failed (bug $msg)"
+chkoutput OUT '.' || fail $msg
 mv product3-renamed product3 || fail
-#echo OK
+echo OK
 
 echo $N clone w/pre triggers ........................................$NL
 cd "$HERE/product3/BitKeeper"
@@ -2024,9 +2058,9 @@ grep -q 'check failed' OUT || fail
 chkpasses OUT 'check' || fail $msg
 chknumbars OUT 5 || fail $msg
 chkblanks OUT 0 || fail $msg
-chkoutput OUT '.' comp1 comp2 || echo "failed (bug $msg)"
+chkoutput OUT '.' comp1 comp2 || fail $msg
 bk _rm -rf bad-product3 bad-product3-2
-#echo OK
+echo OK
 
 echo "----- Nested repo tests, -q"
 
@@ -2528,35 +2562,41 @@ echo "----- Nested repo tests, -v"
 echo $N "clone, 0 components (checkout:none) .........................$NL"
 cd "$HERE"
 bk clone -v product0 clone0 >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N "clone, 0 components (checkout:edit) .........................$NL"
 cd "$HERE"
 BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -v product0 clone0-edit >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf clone0-edit
 echo OK
 
 echo $N "clone, 1 component (checkout:none) ..........................$NL"
 bk clone -v product1 clone1 >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' comp1 || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N "clone, 1 component (checkout:edit) ..........................$NL"
 BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -v product1 clone1-edit >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' comp1 || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf clone1-edit
 echo OK
 
 echo $N "clone, 3 components (checkout:none) .........................$NL"
 bk clone -v product3 clone3 >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' comp1 comp2 comp3 || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N "clone, 3 components (checkout:edit) .........................$NL"
 BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -v product3 clone3-edit >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' comp1 comp2 comp3 || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf clone3-edit
 echo OK
 
@@ -2564,13 +2604,15 @@ echo $N push product only ...........................................$NL
 cd "$HERE/product0"
 add push-new-v || fail
 bk push -v ../clone0 >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N rclone, product only ........................................$NL
 cd "$HERE"
 bk clone -v product0 bk://localhost:$P/rclone0 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone0
 echo OK
 
@@ -2578,13 +2620,15 @@ echo $N rclone -r, product only .....................................$NL
 cd "$HERE"
 bk clone -v -r1.1 clone0 bk://localhost:$P/rclone0-1.1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone0-1.1
 echo OK
 
 echo $N clone -r product only .......................................$NL
 cd "$HERE"
 bk clone -v -r1.1 clone0 clone0-1.1 >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf clone0-1.1
 echo OK
 
@@ -2593,6 +2637,7 @@ cd "$HERE/clone0"
 bk unpull -q -f >OUT 2>&1 || fail
 bk pull -v ../product0 >OUT 2>&1 || fail -f OUT
 chkoutput OUT '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N undo product only ...........................................$NL
@@ -2601,19 +2646,22 @@ add undo2-v || fail
 add undo3-v || fail
 bk undo -a1.2 -v -f >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N push component only .........................................$NL
 cd "$HERE/product1/comp1"
 add push-new-v || fail
 bk push -v ../../clone1 >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' comp1 || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N rclone, 1 component .........................................$NL
 cd "$HERE"
 bk clone -v clone1 bk://localhost:$P/rclone1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone1
 echo OK
 
@@ -2621,13 +2669,15 @@ echo $N rclone -r, 1 component ......................................$NL
 cd "$HERE"
 bk clone -v -r1.2 clone1 bk://localhost:$P/rclone1-1.2 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone1-1.2
 echo OK
 
 echo $N clone -r component only .....................................$NL
 cd "$HERE"
 bk clone -v -r1.2 clone1 clone1-1.2 >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' comp1 || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf clone1-1.2
 echo OK
 
@@ -2636,6 +2686,7 @@ cd "$HERE/clone1"
 bk unpull -q -f || fail
 bk pull -v ../product1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N undo component only .........................................$NL
@@ -2646,6 +2697,7 @@ add undo3 || fail
 cd ..
 bk undo -a1.2 -v -f >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N push product and component ..................................$NL
@@ -2654,7 +2706,8 @@ add push-new2-v || fail
 cd "$HERE/product1/comp1"
 add push-new2-v || fail
 bk push -v ../../clone1 >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' comp1 || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N pull product and component ..................................$NL
@@ -2662,6 +2715,7 @@ cd "$HERE/clone1"
 bk unpull -qf >OUT 2>&1 || fail
 bk pull -v ../product1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N undo product and component ..................................$NL
@@ -2680,6 +2734,7 @@ cd ..
 add undo3 || fail
 bk undo -a1.2 -v -f >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N push 3 components ...........................................$NL
@@ -2690,13 +2745,15 @@ add push-new-v || fail
 cd "$HERE/product3/comp3"
 add push-new-v || fail
 bk push -v ../../clone3 >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' comp1 comp2 comp3 || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N rclone, 3 components ........................................$NL
 cd "$HERE"
 bk clone -v clone3 bk://localhost:$P/rclone3 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 comp2 comp3 || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone3
 echo OK
 
@@ -2704,13 +2761,15 @@ echo $N rclone -r, 3 components .....................................$NL
 cd "$HERE"
 bk clone -v -r1.4 clone3 bk://localhost:$P/rclone3-1.4 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 comp2 comp3 || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf rclone3-1.4
 echo OK
 
 echo $N clone -r three components ...................................$NL
 cd "$HERE"
 bk clone -v -r1.4 clone3 clone3-1.4 >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' comp1 comp2 comp3 || fail $msg
+chkblanks OUT 0 || fail $msg
 bk _rm -rf clone3-1.4
 echo OK
 
@@ -2719,27 +2778,32 @@ cd "$HERE/clone3"
 bk unpull -q -f >OUT 2>&1 || fail
 bk pull -v ../product3 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 comp2 comp3 '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N unpopulate 1 component ......................................$NL
 bk comps -h | bk here set - || fail
 bk here rm -v comp3 >OUT 2>&1 || fail
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N populate 1 component ........................................$NL
 bk here add -v comp3 >OUT 2>&1 || fail
-chkoutput OUT || fail $msg
+chkoutput OUT comp3 || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N unpopulate 3 components .....................................$NL
 bk here rm -v comp1 comp2 comp3 >OUT 2>&1 || fail
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N populate 3 components .......................................$NL
 bk here add -v comp1 comp2 comp3 >OUT 2>&1 || fail
-chkoutput OUT || fail $msg
+chkoutput OUT comp1 comp2 comp3 || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N undo 3 components ...........................................$NL
@@ -2770,6 +2834,7 @@ cd ..
 add undo3 || fail
 bk undo -a1.7 -v -f >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N undo failure, 3 components ..................................$NL
@@ -2807,6 +2872,7 @@ grep -q 'Cannot clean undo1-fail' OUT || fail -f OUT
 grep -q 'Could not undo comp3' OUT || fail -f OUT
 grep -q 'Reverting' OUT || fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N pull w/product conflict .....................................$NL
@@ -2821,6 +2887,7 @@ EOF
 bk pull -v -T ../product0 <resolve >OUT 2>&1 || fail -f OUT
 grep -q for-conflict-v OUT || fail
 chkoutput OUT '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 cd ..
 bk _rm -rf clone0
 echo OK
@@ -2838,6 +2905,7 @@ bk edit $Q for-edit-v
 echo edit2 >for-edit-q || fail
 bk pull -v ../product0 >OUT 2>&1 && fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 1 || fail $msg
 cd ..
 bk _rm -rf clone0
 echo OK
@@ -2854,6 +2922,7 @@ EOF
 bk pull -v -T "$HERE/product1" <resolve >OUT 2>&1 || fail -f OUT
 grep -q for-conflict-q OUT || fail
 chkoutput OUT comp1 '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 cd "$HERE"
 bk _rm -rf clone1
 echo OK
@@ -2874,6 +2943,7 @@ bk edit $Q for-edit-v
 echo edit2 >for-edit-v || fail
 bk pull -v "$HERE/product1" >OUT 2>&1 && fail -f OUT
 chkoutput OUT || fail $msg
+chkblanks OUT 1 || fail $msg
 cd ../..
 bk _rm -rf clone1
 echo OK
@@ -2889,7 +2959,8 @@ cd ..
 mv product3 product3-renamed
 bk clone -v clone3 clone3-clone >OUT 2>&1 && fail -f OUT
 grep -q 'failed to fetch component comp1' OUT || fail
-chkoutput OUT || fail $msg
+chkoutput OUT '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 mv product3-renamed product3 || fail
 echo OK
 
@@ -2897,13 +2968,15 @@ echo $N clone w/pre triggers ........................................$NL
 cd "$HERE"
 bk _rm -rf clone3
 bk clone -v product3 clone3 >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' comp1 comp2 comp3 || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N rclone w/pre triggers .......................................$NL
 cd "$HERE"
 bk clone -v product3 bk://localhost:$P/rclone >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 comp2 comp3 || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N push w/pre triggers .........................................$NL
@@ -2917,7 +2990,8 @@ cd ../comp3
 add push-trigger-new-v || fail
 cd ..
 bk push -v ../clone3 >OUT 2>&1 || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT '.' comp1 comp2 comp3 || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N pull w/pre triggers .........................................$NL
@@ -2925,6 +2999,7 @@ cd "$HERE/clone3"
 bk unpull $Q -f || fail
 bk pull -v ../product3 >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 comp2 comp3 '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N clone w/check failure in product ............................$NL
@@ -2937,7 +3012,8 @@ cd ..
 bk clone -v bad-product0 bad-product0-2 >OUT 2>&1 && fail -f OUT
 grep -q 'Missing file' OUT || fail
 grep -q 'check failed' OUT || fail
-chkoutput OUT || fail $msg
+chkoutput OUT '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N clone w/check failure in component ..........................$NL
@@ -2950,7 +3026,8 @@ cd ../..
 bk clone -v bad-product3 bad-product3-2 >OUT 2>&1 && fail -f OUT
 grep -q 'Missing file' OUT || fail
 grep -q 'check failed' OUT || fail
-chkoutput OUT || fail $msg
+chkoutput OUT '.' comp1 comp2 || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N pull w/product and component conflicts ......................$NL
@@ -2983,6 +3060,7 @@ EOF
 bk pull -v -T "$HERE/product3" <resolve >OUT 2>&1 || fail -f OUT
 # Should have three lines for each of the four conflicting files.
 chkoutput OUT comp1 comp2 comp3 '.' || fail $msg
+chkblanks OUT 0 || fail $msg
 grep -q for-prod-conflict-v OUT || fail
 grep -q for-comp1-conflict-v OUT || fail
 grep -q for-comp2-conflict-v OUT || fail

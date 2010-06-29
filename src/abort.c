@@ -3,10 +3,10 @@
 #include "resolve.h"
 #include "nested.h"
 
-private	int	abort_patch(int leavepatch);
+private	int	abort_patch(int leavepatch, int quiet);
 private int	send_abort_msg(remote *r);
 private int	remoteAbort(remote *r);
-private int	abortComponents(int leavepatch);
+private int	abortComponents(int leavepatch, int quiet);
 
 /*
  * Abort a pull/resync by deleting the RESYNC dir and the patch file in
@@ -63,11 +63,11 @@ abort_main(int ac, char **av)
 		}
 	}
 
-	return(abort_patch(leavepatch));
+	return(abort_patch(leavepatch, quiet));
 }
 
 private	int
-abort_patch(int leavepatch)
+abort_patch(int leavepatch, int quiet)
 {
 	char	buf[MAXPATH];
 	char	pendingFile[MAXPATH];
@@ -87,7 +87,7 @@ abort_patch(int leavepatch)
 	}
 
 	if (proj_isProduct(0)) {
-		if (rc = abortComponents(leavepatch)) return (rc);
+		if (rc = abortComponents(leavepatch, quiet)) return (rc);
 	}
 	/*
 	 * Get the patch file name from RESYNC before deleting RESYNC.
@@ -108,7 +108,6 @@ abort_patch(int leavepatch)
 		rmdir(ROOT2PENDING);
 		unlink(BACKUP_LIST);
 		unlink(PASS4_TODO);
-		unlink(APPLIED);
 	}
 	return (rc);
 }
@@ -190,7 +189,7 @@ out:	wait_eof(r, 0);
 }
 
 private int
-abortComponents(int leavepatch)
+abortComponents(int leavepatch, int quiet)
 {
 	nested	*n = 0;
 	sccs	*s = 0;
@@ -258,7 +257,8 @@ abortComponents(int leavepatch)
 		}
 		/* not new */
 		if (isdir(ROOT2RESYNC)) {
-			if (systemf("bk abort -f%s", leavepatch ? "p" : "")) {
+			if (systemf("bk abort -f%s%s", leavepatch ? "p" : "",
+				    quiet ? "q" : "")) {
 				error("abort: component %s failed\n", c->path);
 				errors++;
 				goto out;
@@ -268,7 +268,8 @@ abortComponents(int leavepatch)
 			 * XXX what makes sure the user hasn't added new
 			 * csets after the pull that failed?
 			 */
-			if (systemf("bk undo -sfa'%s'", c->lowerkey)) {
+			if (systemf("bk undo -%ssfa'%s'", quiet ? "q" : "",
+				    c->lowerkey)) {
 				error("abort: failed to revert %s\n", c->path);
 				errors++;
 			}

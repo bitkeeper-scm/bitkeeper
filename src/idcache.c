@@ -60,22 +60,20 @@ rebuild(void)
  * sure how to avoid it.
  */
 void
-idcache_update(char *filelist)
+idcache_update(char **files)
 {
 	MDBM	*idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-	FILE	*in = fopen(filelist, "r");
 	sccs	*s;
 	u8	*u;
+	int	i;
 	int	n = 0;
-	char	buf[MAXKEY + MAXPATH];
 	char	key[MAXPATH];
 
-	while (fnext(buf, in)) {
-		chomp(buf);
-		if (streq(buf, CHANGESET)) continue; /* cset can't move */
-		unless (s = sccs_init(buf, INIT_NOCKSUM)) continue;
+	EACH(files) {
+		if (streq(files[i], CHANGESET)) continue; /* cset can't move */
+		unless (s = sccs_init(files[i], INIT_NOCKSUM)) continue;
 		unless (HASGRAPH(s)) {
-			fprintf(stderr, "No graph in %s?\n", buf);
+			fprintf(stderr, "No graph in %s?\n", files[i]);
 			sccs_free(s);
 			continue;
 		}
@@ -87,7 +85,6 @@ idcache_update(char *filelist)
 		}
 		sccs_free(s);
 	}
-	fclose(in);
 	unless (n) return;
 	idcache_write(0, idDB);
 	mdbm_close(idDB);

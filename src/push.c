@@ -128,7 +128,7 @@ push_main(int ac, char **av)
 		opts.verbose = 0;
 	}
 	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
-	unless (opts.quiet || opts.verbose) progress_startMulti();
+	unless (opts.quiet) progress_startMulti();
 
 	/*
 	 * Get push parent(s)
@@ -329,7 +329,7 @@ push(char **av, remote *r, char **envVar)
 out:	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r);
 
-	unless (opts.quiet || opts.verbose || ret) {
+	unless (opts.quiet || ret) {
 		unless (title) {
 			if (opts.product) {
 				freeme = title =

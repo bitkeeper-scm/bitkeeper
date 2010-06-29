@@ -28,7 +28,7 @@ get_main(int ac, char **av)
 	int	skip_bin = 0;
 	int	checkout = 0;
 	int	tickout = 0;
-	int	n = 0, nfiles = 0;
+	int	n = 0, nfiles = -1;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	ac_optend;
 	MDBM	*realNameCache = 0;
@@ -157,7 +157,7 @@ onefile:	fprintf(stderr,
 		assert(realNameCache);
 	}
 
-	if (nfiles) tick = progress_start(PROGRESS_BAR, nfiles);
+	if (nfiles > -1) tick = progress_start(PROGRESS_BAR, nfiles);
 	for (; name; name = sfileNext()) {
 		d = 0;
 

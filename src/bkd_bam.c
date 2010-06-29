@@ -220,6 +220,9 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 				unless (f) {
 					p = aprintf("bk sfio -i%sBb%s -",
 					    quiet ? "q":"", psize(sfio));
+					unless (quiet || !progress_isMulti()) {
+						progress_nlneeded();
+					}
 					f = popen(p, "w");
 					free(p);
 					assert(f);

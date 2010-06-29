@@ -1,6 +1,8 @@
 #ifndef	_PROJ_H_
 #define	_PROJ_H_
 
+#include "progress.h"
+
 typedef struct	project project;
 
 char*		proj_bkl(project *p);
@@ -55,7 +57,7 @@ project*	proj_fakenew(void);
 void		proj_saveCO(sccs *s);
 void		proj_saveCOkey(project *p, char *key, int co);
 int		proj_restoreCO(sccs *s);
-int		proj_restoreAllCO(project *p, MDBM *idDB);
+int		proj_restoreAllCO(project *p, MDBM *idDB, ticker *tick);
 MDBM*		proj_BAMindex(project *p, int write);
 int		proj_sync(project *p);
 char*		proj_comppath(project *p);

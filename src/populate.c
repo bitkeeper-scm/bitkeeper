@@ -16,11 +16,10 @@ nested_populate(nested *n, char **urls, int force, popts *ops)
 	int	done = 1;
 	clonerc	clonerc;
 	char	**vp = 0;
-	char	*checkfiles = 0;
+	char	**checkfiles = 0;
 	char	**list;
 	remote	*r;
 	comp	*cp;
-	FILE	*f = 0;
 	hash	*urllist;
 
 	urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
@@ -60,10 +59,6 @@ nested_populate(nested *n, char **urls, int force, popts *ops)
 		}
 	}
 	if (rc) return (1);
-	if (ops->runcheck) {
-		checkfiles = bktmp(0, 0);
-		f = fopen(checkfiles, "w");
-	}
 	START_TRANSACTION();
 	/*
 	 * Now add all the new repos and keep a list of repos added
@@ -121,8 +116,9 @@ nested_populate(nested *n, char **urls, int force, popts *ops)
 					urllist_addURL(urllist,
 					    cp->rootkey, lurls[i]);
 					if (ops->runcheck) {
-						fprintf(f, "%s/ChangeSet\n",
-						    cp->path);
+						checkfiles = addLine(checkfiles,
+						    aprintf("%s/ChangeSet",
+							cp->path));
 					}
 					break;
 				} else if ((clonerc == CLONE_EXISTS) &&
@@ -265,11 +261,9 @@ conflict:
 	unless (rc) nested_writeHere(n);
 	urllist_write(urllist);
 	if (ops->runcheck) {
-		fclose(f);
 		rc |= run_check(ops->verbose,
 		    checkfiles, ops->quiet ? 0 : "-v", 0);
-		unlink(checkfiles);
-		free(checkfiles);
+		freeLines(checkfiles, free);
 	}
 	hash_free(urllist);
 	return (rc);

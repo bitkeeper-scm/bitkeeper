@@ -21,7 +21,6 @@
 #define	BACKUP_LIST		"BitKeeper/tmp/resolve_backup_list"
 #define	BACKUP_SFIO		"BitKeeper/tmp/resolve_backup_sfio"
 #define	PASS4_TODO		"BitKeeper/tmp/resolve_sfiles"
-#define	APPLIED			"BitKeeper/tmp/resolve_applied"
 #define	RESOLVE_LOCK		(ROOT2RESYNC "/BitKeeper/tmp/resolve_lock")
 #define	AUTO_MERGE		"Auto merged"
 #define	SCCS_MERGE		"SCCS merged"

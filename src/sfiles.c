@@ -121,7 +121,13 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
 private int
 fastprint(char *file, struct stat *sb, void *data)
 {
+	filecnt	*fc = data;
+
 	file += 2;
+	if (fc) {
+		++fc->tot;
+		unless (strneq(file, "BitKeeper/", 10)) ++fc->usr;
+	}
 	puts(file);
 	return (0);
 }
@@ -132,6 +138,7 @@ sfiles_main(int ac, char **av)
         int     c, i, nested = 0;
 	char	**nav, **comps;
 	int	not = 0;
+	filecnt	fc;
 	char	*path, *s, buf[MAXPATH];
 
 	if (setjmp(output_closed)) {
@@ -143,7 +150,9 @@ sfiles_main(int ac, char **av)
 
 	if ((ac == 1) && !opts.prefix)  {
 		opts.sfiles = 1;
-		walksfiles(".", fastprint, 0);
+		memset(&fc, 0, sizeof(fc));
+		walksfiles(".", fastprint, &fc);
+		if (isdir(BKROOT)) repo_nfilesUpdate(&fc);
 		return (0);
 	}
 

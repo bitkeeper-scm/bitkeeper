@@ -148,7 +148,7 @@ newroot(char *ranbits, int quiet, int verbose, char *comments)
 	proj_reset(0);
 	f = popen("bk sfiles", "r");
 	unless (quiet || verbose) {
-		tick = progress_start(PROGRESS_BAR, repo_nfiles(0));
+		tick = progress_start(PROGRESS_BAR, repo_nfiles(0,0));
 	}
 	if (verbose) {
 		fprintf(stderr, "Pointing files at new changeset id...\n");

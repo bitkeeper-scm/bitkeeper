@@ -35,8 +35,6 @@ private	int	update_idcache(MDBM *idDB, hash *keys);
 private	void	fetch_changeset(void);
 private	int	repair(hash *db);
 
-private	int	nfiles;		/* for progress bar */
-private	int	actual;		/* for progress bar cache */
 private	int	verbose;
 private	int	details;	/* if set, show more information */
 private	int	all;		/* if set, check every entry in the ChangeSet */
@@ -82,7 +80,7 @@ private	hash	*r2deltas;
 int
 check_main(int ac, char **av)
 {
-	int	c;
+	int	c, nfiles = -1;
 	u64	n;
 	FILE	*f;
 	MDBM	*idDB;
@@ -101,7 +99,7 @@ check_main(int ac, char **av)
 	ticker	*tick = 0;
 
 	timestamps = 0;
-	while ((c = getopt(ac, av, "@|aBcdefgpRsTvw", 0)) != -1) {
+	while ((c = getopt(ac, av, "@|aBcdefgpN;RsTvw", 0)) != -1) {
 		switch (c) {
 			/* XXX: leak - free parent freeLines(parent, 0) */
 		    case '@': if (bk_urlArg(&parent, optarg)) return (1);break;
@@ -116,6 +114,7 @@ check_main(int ac, char **av)
 		    case 'f': fix++; break;			/* doc 2.0 */
 		    case 'g': goneKey++; break;			/* doc 2.0 */
 		    case 'p': polyList++; break;		/* doc 2.0 */
+		    case 'N': nfiles = atoi(optarg); break;
 		    case 'R': resync++; break;			/* doc 2.0 */
 		    case 's': stripdel++; break;
 		    case 'T': timestamps = GET_DTIME; break;
@@ -182,7 +181,7 @@ check_main(int ac, char **av)
 		return (1);
 	}
 	mixed = (LONGKEY(cset) == 0);
-	nfiles = repo_nfiles(cset);
+	if (all || (nfiles == -1)) nfiles = repo_nfiles(0, 0);
 	if (verbose > 1) {
 		fprintf(stderr, "Preparing to check %u files...\n", nfiles);
 	}
@@ -248,7 +247,6 @@ check_main(int ac, char **av)
 			errors |= 1;
 			continue;
 		}
-		if (all) actual++;
 		if (tick) {
 			progress(tick, n);
 		}
@@ -370,19 +368,6 @@ check_main(int ac, char **av)
 		mdbm_close(idDB);
 	}
 	freeLines(subrepos, free);
-	/*
-	 * Note: we may update NFILES more than needed when not in verbose mode.
-	 */
-	if (all &&
-	    ((actual != nfiles) || !exists("BitKeeper/log/NFILES"))) {
-		FILE	*f;
-
-		unlink("BitKeeper/log/NFILES");
-		if (f = fopen("BitKeeper/log/NFILES", "w")) {
-			fprintf(f, "%u\n", actual);
-			fclose(f);
-		}
-	}
 	/* note: checkAll can mangle r2deltas */
 	if ((all || resync) && checkAll(keys)) errors |= 0x40;
 	mdbm_close(pathDB);

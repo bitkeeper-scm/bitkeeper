@@ -39,52 +39,112 @@ nfiles_main(int ac, char **av)
 		proj_cd2product(); /* ignore error */
 		printf("%u\n", nfiles());
 	} else {
-		printf("%u\n", repo_nfiles(0));
+		printf("%u\n", repo_nfiles(0,0));
 	}
 	return (0);
 }
 
 /*
- * Return the approximate number of files in a repository.
- * It may be less than this if they have goned files, check will update.
+ * Some better variation of the following two functions eventually
+ * will become part of libc/hash.h.
+ */
+private inline char *
+hash_storeSN(hash *h, char *key, int val)
+{
+	int	vlen;
+	char	buf[64];
+
+	vlen = snprintf(buf, sizeof(buf), "%d", val) + 1;
+	assert(vlen < sizeof(buf));
+	return (hash_store(h, key, strlen(key)+1, buf, vlen));
+}
+
+private inline int
+hash_fetchSN(hash *h, char *key)
+{
+	if (hash_fetch(h, key, strlen(key) + 1)) {
+		return (strtol(h->vptr, 0, 10));
+	} else {
+		/*
+		 * Return 0 when the key isn't found.  The user can
+		 * test h->kptr to distingush from a real 0 stored in
+		 * the hash.
+		 */
+		return (0);
+	}
+}
+
+/* key names for NFILES kv file */
+#define TOTFILES	""
+#define USRFILES	"usrfiles"
+
+/*
+ * Return the approximate number of files in a repository, both the
+ * total number and the number not under BitKeeper/.
+ * The counts are updated whenever 'bk -R sfiles' is run.
  */
 int
-repo_nfiles(sccs *s)
+repo_nfiles(project *p, filecnt *fc)
 {
+	hash	*h;
 	FILE	*f;
-	u32     i = 0;
-	char	*root = proj_root(s ? s->proj : 0);
-	char	*c = aprintf("%s/%s", root, CHANGESET);
-	char	*n = aprintf("%s/BitKeeper/log/NFILES", root);
+	filecnt	junk;
+	char	*cmd, *t;
 
-	if (mtime(c) <= mtime(n)) {
-		if (f = fopen(n, "r")) {
-			fscanf(f, "%u\n", &i);
-			fclose(f);
+	unless (fc) fc = &junk;
+	fc->tot = -1;
+	fc->usr = -1;
+	if (h = hash_fromFile(0, proj_fullpath(p, "BitKeeper/log/NFILES"))) {
+		unless ((fc->tot = hash_fetchSN(h, TOTFILES)) || h->kptr) {
+			fc->tot = -1;
 		}
-	}
-	unless (i) {
-		int     free = (s == 0);
-
-		unless(s) s = sccs_init(c, INIT_NOCKSUM);
-
-		// XXX - this doesn't take into account goned files
-		// we should probably have BitKeeper/log/GONE that is
-		// a count of files that are actually gone (in gone file
-		// and not in repo).
-		i = sccs_hashcount(s);
-		if (free) sccs_free(s);
-
-		/* Might as well update it if we calculated it */
-		(void)unlink(n);
-		if (f = fopen(n, "w")) {
-			fprintf(f, "%u\n", i);
-			fclose(f);
+		unless ((fc->usr = hash_fetchSN(h, USRFILES)) || h->kptr) {
+			fc->usr = -1;
 		}
+		hash_free(h);
 	}
-	free(n);
-	free(c);
-	return (i);
+	if ((fc->tot == -1) || (fc->usr == -1)) {
+		/*
+		 * The NFILES file is missing one or both fields.  We
+		 * will run 'bk sfiles' to regenerate the file and
+		 * count the data ourselves in case some permissions
+		 * problem prevents sfiles from updating the cache.
+		 */
+		fc->tot = fc->usr = 0;
+		h = hash_new(HASH_MEMHASH);
+		hash_storeStr(h, "BK_CHDIR", proj_root(p));
+		t = hash_toStr(h);
+		hash_free(h);
+		cmd = aprintf("bk -?'%s' sfiles 2> " DEVNULL_WR, t);
+		free(t);
+		f = popen(cmd, "r");
+		free(cmd);
+		while (t = fgetline(f)) {
+			++fc->tot;
+			unless (strneq(t, "BitKeeper/", 10)) ++fc->usr;
+		}
+		pclose(f);
+	}
+	return (fc->tot);
+}
+
+/*
+ * Write a new NFILES file, if it changed.
+ */
+void
+repo_nfilesUpdate(filecnt *nf)
+{
+	char	*n = proj_fullpath(0, "BitKeeper/log/NFILES");
+	hash	*h;
+
+	h = hash_fromFile(hash_new(HASH_MEMHASH), n);
+	if ((nf->tot != hash_fetchSN(h, TOTFILES)) ||
+	    (nf->usr != hash_fetchSN(h, USRFILES))) {
+		hash_storeSN(h, TOTFILES, nf->tot);
+		hash_storeSN(h, USRFILES, nf->usr);
+		hash_toFile(h, n);
+	}
+	hash_free(h);
 }
 
 /*
@@ -98,7 +158,7 @@ nfiles(void)
 	int	i;
 	u32	nfiles = 0;
 
-	unless (proj_product(0)) return (repo_nfiles(0));
+	unless (proj_product(0)) return (repo_nfiles(0,0));
 	if (proj_cd2product()) return (0);
 
 	n = nested_init(0, 0, 0, NESTED_PENDING);
@@ -106,7 +166,7 @@ nfiles(void)
 	EACH_STRUCT(n->comps, c, i) {
 		unless (c->present) continue;
 		if (chdir(c->path)) assert(0);
-		nfiles += repo_nfiles(0);
+		nfiles += repo_nfiles(0,0);
 		proj_cd2product();
 	}
 	nested_free(n);
