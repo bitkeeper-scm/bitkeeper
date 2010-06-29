@@ -499,6 +499,11 @@ proj_checkout(project *p)
 	if (p->co) return (p->co);
 	db = proj_config(p);
 	assert(db);
+	/*
+	 * If this default changes, then src/gui/ide/emacs/vc-bk.el
+	 * will need to be changed as well (specifically, the
+	 * vc-bk-checkout-model function).
+	 */
 	bits = CO_EDIT|CO_BAM_EDIT; /* default */
 	if (s = mdbm_fetch_str(db, "checkout")) {
 		bits = 0;

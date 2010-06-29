@@ -6,6 +6,18 @@ bk changes
     which will insure working with 4.x and 5.x (and 3.x):
     include -a anywhere -k, -L or -R is used.
 
+Experimental backend for Emacs VC users
+
+    With the hiding of the SCCS files, the traditional trick of
+    Emacs users relying on VC's SCCS support no longer works.
+
+    In this version, we are shipping an experimental version
+    of a BK backend for VC that is known to work with Emacs
+    versions 22 and 23.
+
+    See `bk bin`/contrib/vc-bk.el for source and install
+    instructions.
+
 ===============================================================================
 Release notes for BitKeeper beta 6
 

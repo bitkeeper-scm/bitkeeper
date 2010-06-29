@@ -213,6 +213,7 @@ DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	Premier.lic \
 	dspec-changes dspec-changes-vv dspec-changes-h dspec-changes-hv \
 	dspec-changes-3.2 dspec-changes-4.0 dspec-prs dspec-log
+CONTRIB = gui/ide/emacs/vc-bk.el
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
 	$(PROGS) GUI
 
@@ -446,11 +447,12 @@ install: installdir
 
 installdir: utils/registry.tcl
 	rm -rf $(IMGDIR) || exit 1
-	mkdir -p $(IMGDIR)
+	mkdir -p $(IMGDIR)/contrib
 	bk get -S www
 	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib gui/images \
 		www/*.gif www/*.png | (cd $(IMGDIR) && tar xf -)
 	cp -f $(DATA) $(IMGDIR)
+	cp -f $(CONTRIB) $(IMGDIR)/contrib
 	if [ $(SYS) = unix ]; \
 	then	(cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
 		bk get -S ../man/Makefile; \
