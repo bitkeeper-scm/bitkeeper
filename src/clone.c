@@ -12,7 +12,7 @@ private	struct {
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: only errors */
 	u32	verbose:1;		/* -v: old default, list files */
-	u32	no_lclone:1;		/* --no-hardlink */
+	u32	no_lclone:1;		/* --no-hardlinks */
 	u32	nocommit:1;		/* -C: do not commit (attach cmd) */
 	u32	attach:1;		/* is attach command? */
 	u32	detach:1;		/* is detach command? */
@@ -59,7 +59,7 @@ clone_main(int ac, char **av)
 		{ "no-sccs-compat", 301 },	/* move sfiles to .bk */
 		{ "hide-sccs-dirs", 301 },	/* move sfiles to .bk */
 		{ "sfiotitle;", 302 },		/* title for sfio */
-		{ "no-hardlink", 303 },		/* never hardlink repo */
+		{ "no-hardlinks", 303 },	/* never hardlink repo */
 		{ 0, 0 }
 	};
 
@@ -114,7 +114,7 @@ clone_main(int ac, char **av)
 		    case 302: /* --sfiotitle=title */
 			opts->sfiotitle = optarg;
 			break;
-		    case 303: /* --no-hardlink */
+		    case 303: /* --no-hardlinks */
 			opts->no_lclone = 1;
 			break;
 		    default: bk_badArg(c, av);

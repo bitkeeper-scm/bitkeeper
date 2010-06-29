@@ -1,10 +1,53 @@
-Release notes for BitKeeper beta XX
+Release notes for BitKeeper beta 7
+
+READ THIS PART -- YOU MAY NEED TO CHANGE EXISTING SCRIPTS
+
+This is a change from how bk-4 work.  This could impact scripts
+you have.  Included is how to modify the script to work both
+for bk-4 and bk-5 .
 
 bk changes
-    XXX The -a changes need to be explained here.
-    In bold letters, post the changes needed to be done to scripts
-    which will insure working with 4.x and 5.x (and 3.x):
-    include -a anywhere -k, -L or -R is used.
+    The -L, -R and -k options no longer include -a option.
+    If you have scripts which use 'bk changes' with -L, -R, or -k,
+    please alter them to include -a:
+    	bk changes -L => bk changes -aL (or bk changes -La)
+    The reason -L used to include -a is that a 'bk changes -L'
+    showed everything that would be pushed.  The reason it was
+    removed was users trying to write scripts that didn't include
+    tags or empty csets.
+
+bk clone
+    Now will make hardlinked clones by default if it can. 
+    Before, a user needed to run 'bk clone -l <url>' to get a hardlinked
+    clone, and that would fail if the file system didn't support it.
+    A new option, '--no-hardlinks', has been added to prevent hardlinks.
+    If you are running clones in a script and require the repositories
+    not to be hardlinked, then set BK_NO_HARDLINK_CLONE=YES in your
+    environment.
+    On Windows, hardlinks are not enabled by default.
+
+END of compatibility changes.
+
+This release contains more work to progress bars displayed
+during push, pull and clone.  Improvements were specifically
+on NFS where pauses would been seen in the progress bars.
+
+bk superset
+    This command now works in a nested repository.
+    In a nested repository, these are the same:
+    	bk superset
+	bk -P superset
+    That is, the command is run only in the product, even if started
+    in a component.
+
+Bugfixes
+    2010-05-19-001 - fix changes -av listing files details under
+    a tag instead of under the real cset.
+
+    Fix NFS clone -- it didn't correctly strip pending deltas.
+
+    Fix NFS locking -- it now works when accessing a nested repository from
+    different machines.
 
 Experimental backend for Emacs VC users
 
@@ -203,7 +246,7 @@ bk clean
 
 bk clone
     The clone code now automatically uses hardlinks whenever possible.
-    The option --no-hardlink can be used to disable this.
+    The option --no-hardlinks can be used to disable this.
     The -l option is now ignored.
 
 bk takepatch

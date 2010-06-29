@@ -95,7 +95,7 @@ nested_populate(nested *n, char **urls, int force, popts *ops)
 				}
 				if (ops->no_lclone) {
 					vp = addLine(vp,
-					    strdup("--no-hardlink"));
+					    strdup("--no-hardlinks"));
 				}
 				vp = addLine(vp, strdup("-p"));
 				vp = addLine(vp, aprintf("-r%s", cp->deltakey));

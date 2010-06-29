@@ -60,7 +60,7 @@ only pull.
 
 When to not hardlink?
 ---------------------
-* When user disables. Current means passing --no-hardlink to clone or
+* When user disables. Current means passing --no-hardlinks to clone or
   setting BK_NO_HARDLINK_CLONE in the environment.
 
 * When user is crossing storage formats - old style SCCS to new style.
