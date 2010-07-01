@@ -52,6 +52,7 @@ struct project {
 
 	/* internal state */
 	int	refcnt;
+	int	preDelta;	/* pre-delta trigger state */
 	char	**dirs;		/* list of dirs that map to this project */
 };
 
@@ -739,6 +740,7 @@ proj_reset(project *p)
 		p->co = 0;
 		p->sync = -1;
 		p->noremap = -1;
+		p->preDelta = -1;
 		if (p->BAM_idx) {
 			mdbm_close(p->BAM_idx);
 			p->BAM_idx = 0;
@@ -1281,4 +1283,34 @@ proj_remapDefault(int doremap)
 
 	noremap_default = !doremap;
 	return (ret);
+}
+
+/*
+ * Are there any pre-delta triggers associated with this project?
+ * This is a cached response to that question, since delta can be
+ * run on many files.
+ */
+int
+proj_hasDeltaTriggers(project *p)
+{
+	char	here[MAXPATH];
+
+	unless (p || (p = curr_proj())) return (0);
+
+	if (p->preDelta == -1) {
+		/* we never run pre-delta triggers in RESYNC */
+		if (proj_isResync(p)) return (p->preDelta = 0);
+
+		strcpy(here, proj_cwd());
+		if (chdir(p->root)) {
+			perror("to trigger check");
+			exit (1);
+		}
+		p->preDelta = hasTriggers("delta", "pre");
+		if (chdir(here)) {
+			perror("from trigger check");
+			exit (1);
+		}
+	}
+	return (p->preDelta);
 }

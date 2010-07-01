@@ -10,6 +10,9 @@ private void	trigger_env(char *prefix, char *event, char *what);
 private void	trigger_putenv(char *prefix, char *v, char *value);
 private void	trigger_restoreEnv(void);
 private char	**trigger_dirs(void);
+private	char	**getTriggers(char **lines, char *dir, char *prefix);
+
+private	int	dryrun;	/* see if there are triggers to run */
 
 /*
  * trigger:  Fire triggers before and/or after repository level commands.
@@ -162,7 +165,9 @@ trigger(char *cmd, char *when)
 		 */
 		triggers = getTriggers(triggers, triggerDir, buf);
 	}
-	if (triggers) {
+	if (dryrun) {
+		rc = (triggers != 0);
+	} else if (triggers) {
 		/*
 		 * Run the triggers, they are already sorted by getdir().
 		 * Run the resolve triggers in the RESYNC dir if there is one.
@@ -182,12 +187,24 @@ out:	freeLines(dirs, free);
 	return (rc);
 }
 
+int
+hasTriggers(char *cmd, char *when)
+{
+	int	rc;
+
+	unless (proj_root(0)) return (0);
+	dryrun = 1;
+	rc = trigger(cmd, when);
+	dryrun = 0;
+	return (rc);
+}
+
 /*
  * returns lines array of all filenames in directory that start with
  * the given prefix.
  * The array is sorted.
  */
-char	**
+private	char	**
 getTriggers(char **lines, char *dir, char *prefix)
 {
 	int	len = strlen(prefix);

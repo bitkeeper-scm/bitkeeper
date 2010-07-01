@@ -34,44 +34,34 @@ fix_gmode(sccs *s, int gflags)
 }
 
 private int
-hasTriggers(void)
-{
-	char	*t, **lines;
-	int	ret;
-	char	dir[MAXPATH];
-
-	if (getenv("_IN_DELTA")) return (0);
-	unless (t = proj_root(0)) {
-		return (0);
-	}
-	unless (streq(t, ".")) {
-		concat_path(dir, t, "/BitKeeper/triggers");
-	} else {
-		strcpy(dir, "BitKeeper/triggers");
-	}
-	if (isdir(dir)) {
-		sys("bk", "get", "-Sq", dir, SYS);
-		lines = getTriggers(0, dir, "pre-delta");
-		ret = (lines != 0);
-		freeLines(lines, free);
-	} else {
-		ret = 0;
-	}
-	return (ret);
-}
-
-private int
 delta_trigger(sccs *s)
 {
-	char	*e = aprintf("BK_FILE=%s", s->gfile);
-	int	i;
+	char	*p;
+	int	ret;
+	char	here[MAXPATH];
 
-	putenv(e);
+	/* set up enviroment before the cd2root */
+	p = proj_relpath(s->proj, s->gfile);
+	safe_putenv("BK_FILE=%s", p);
+	free(p);
 	putenv("BK_EVENT=delta");
-	i = trigger("delta", "pre");
+
+	/* pushd repo root */
+	strcpy(here, proj_cwd());
+	if (chdir(proj_root(s->proj))) {
+		perror("to pre-delta trigger");
+		exit (1);
+	}
+
+	ret = trigger("delta", "pre");
+
+	/* popd */
+	if (chdir(here)) {
+		perror("from pre-delta trigger");
+		exit (1);
+	}
 	putenv("BK_FILE=");
-	free(e);
-	return (i);
+	return (ret);
 }
 
 /*
@@ -279,7 +269,7 @@ delta_main(int ac, char **av)
 			av[0], initFile, strerror(errno));
 		return (1);
 	}
-	if (fire = hasTriggers()) putenv("_IN_DELTA=YES");
+	if (fire = (getenv("_IN_DELTA") == 0)) putenv("_IN_DELTA=YES");
 
 	while (name) {
 		delta	*d = 0;
@@ -343,7 +333,7 @@ delta_main(int ac, char **av)
 			nrev = pf.newrev;
 		}
 
-		if (fire) {
+		if (fire && proj_hasDeltaTriggers(s->proj)) {
 			win32_close(s);
 			switch (delta_trigger(s)) {
 			    case 0:

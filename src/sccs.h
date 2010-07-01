@@ -1184,7 +1184,7 @@ int	chk_permissions(void);
 int	fix_gmode(sccs *s, int gflags);
 int	do_checkout(sccs *s);
 int	unsafe_path(char *s);
-char	**getTriggers(char **lines, char *dir, char *prefix);
+int	hasTriggers(char *cmd, char *when);
 void	comments_cleancfile(sccs *s);
 int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);

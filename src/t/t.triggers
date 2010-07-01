@@ -523,7 +523,7 @@ EOF
 chmod +x BitKeeper/triggers/*
 project_repoid=`bk identity -r`
 cd "$HERE"
-bk clone $Q project clone 2>/dev/null && {
+bk clone -q project clone 2>/dev/null && {
 	echo failed to exit with an error status
 	exit 1
 }
@@ -531,7 +531,7 @@ test -d clone && {
 	echo should not have created repository
 	exit 1
 }
-bk clone $Q -r1.1 project clone 2>/dev/null
+bk clone -q -r1.1 project clone 2>/dev/null
 grep -q BK_CSETS=..1.1 "$HERE/pre-outgoing" || {
 	echo failed to put cset list in the env
 	exit 1
@@ -541,7 +541,7 @@ bk clone $Q -r1.1 project clone || {
 	echo should have succeeded and did not
 	exit 1
 }
-bk clone $Q -r1.1 project apply || {
+bk clone -q -r1.1 project apply || {
 	echo should have succeeded and did not
 	exit 1
 }
@@ -584,7 +584,7 @@ set | grep $DASHA ^BK | grep -v _BK_ |
 EOF
 chmod +x BitKeeper/triggers/*
 cd "$HERE"
-bk clone -l $Q project lclone 2>GOT && {
+bk clone -l -q project lclone 2>GOT && {
 	echo failed to exit with an error status
 	exit 1
 }
@@ -598,13 +598,14 @@ cat <<EOF > WANT
 ---------------------------------------------------------------------------
 EOF
 cmpfiles WANT GOT
-bk clone $Q -l -r1.1 project lclone 2> /dev/null
+bk clone -q -l -r1.1 project lclone 2> GOT
+cmpfiles WANT GOT
 grep -q BK_CSETS=..1.1 "$HERE/pre-outgoing" || {
 	echo failed to put cset list in the env
 	exit 1
 }
 rm project/BitKeeper/triggers/pre-outgoing
-bk clone $Q -l -r1.1 project lclone || {
+bk clone -q -l -r1.1 project lclone || {
 	echo should have succeeded and did not
 	exit 1
 }
@@ -797,7 +798,7 @@ pwd > "$HERE/PWD"
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
-bk pull $Q 2>ERR && {
+bk pull -q 2>ERR && {
 	echo failed to exit non zero with failed pre-resolve trigger
 	exit 1
 }
@@ -830,7 +831,7 @@ pwd > "$HERE/resolve-pwd"
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
-bk pull $Q 2>ERR && {
+bk pull -q 2>ERR && {
 	echo failed to exit non zero with failed pre-incoming trigger
 	exit 1
 }
@@ -899,7 +900,7 @@ pwd > "$HERE/apply-pwd"
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
-bk pull $Q 2>ERR && {
+bk pull -q 2>ERR && {
 	echo failed to exit non zero with failed pre-apply trigger
 	exit 1
 }
@@ -935,7 +936,7 @@ cat > BitKeeper/triggers/pre-apply <<EOF
 exit 2
 EOF
 chmod +x BitKeeper/triggers/*
-bk pull $Q 2>ERR && {
+bk pull -q 2>ERR && {
 	echo failed to exit non zero with failed pre-apply trigger
 	exit 1
 }
@@ -959,7 +960,7 @@ cat > BitKeeper/triggers/pre-apply <<EOF
 exit 3
 EOF
 chmod +x BitKeeper/triggers/*
-bk pull $Q 2>ERR && {
+bk pull -q 2>ERR && {
 	echo failed to exit non zero with failed pre-apply trigger
 	exit 1
 }
@@ -981,7 +982,7 @@ test -d RESYNC-*/.bk || {
 echo OK
 
 echo $N Do it again to see that it can rename RESYNC twice ..........$NL
-bk pull $Q 2>ERR && {
+bk pull -q 2>ERR && {
 	echo failed to exit non zero with failed pre-apply trigger
 	exit 1
 }
@@ -1445,7 +1446,7 @@ bk _test -f SCCS/p.foo.c || {
 	echo delta should have failed
 	exit 1
 }
-grep -q 'you forgot to cstyle foo.c' OUT || {
+grep -q 'you forgot to cstyle src/foo.c' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -1509,7 +1510,7 @@ cd "$HERE/delta/BitKeeper/triggers"
 cat > pre-delta <<EOF
 #!/bin/bash
 
-bk delta -y'I am the trigger' $BK_FILE
+bk delta -y'I am the trigger' \$BK_FILE
 exit 2
 EOF
 chmod +x pre-delta
@@ -1587,7 +1588,7 @@ chmod +x pre-outgoing.quiet
 
 echo $N Clone w/quiet failure, should report exit status ............$NL
 cd "$HERE"
-bk clone $Q "$HERE/project" "$HERE/dontcopy" 2>ERR && {
+bk clone -q "$HERE/project" "$HERE/dontcopy" 2>ERR && {
 	echo failed
 	cat ERR
 	exit 1
@@ -1615,7 +1616,7 @@ done
 
 echo $N Clone w/failure triggers ....................................$NL
 cd "$HERE"
-bk clone $Q "$HERE/project" "$HERE/dontcopy" 2>ERR && {
+bk clone -q "$HERE/project" "$HERE/dontcopy" 2>ERR && {
 	echo failed
 	cat ERR
 	exit 1
@@ -2022,19 +2023,19 @@ cd triggers
 set -x
 bk new $TRIGS || fail
 # fire pre and post commit
-bk commit -yall-trigs || fail
+bk commit -STRIGBASE -yall-trigs || fail
 cd ..
 # clone, rclone, push, pull, undo, tags, collapse, lease renew
-bk clone .. ../../clone.mt || fail
+bk clone -v .. ../../clone.mt || fail
 touch ../foo
 bk new ../foo || fail
 bk commit -yfoo || fail
-bk push ../../clone.mt || fail
+bk push -v ../../clone.mt || fail
 cd ../../clone.mt/BitKeeper || fail
-bk undo -fr+ || fail
+bk undo -v -fr+ || fail
 bk tag TOP || fail
-bk pull || fail
-bk _rclone .. ../../rclone.mt || fail
+bk pull -v || fail
+bk _rclone -v .. ../../rclone.mt || fail
 # pre and post lease proxy
 bk lease flush -a || fail
 # BK_NO_TRIGGERS=1
@@ -2046,39 +2047,132 @@ rm -f ../foo
 	cat "$HERE/TRIGOUT"
 	exit 1
 }
+cd "$HERE"
+sed -n 's/.* Trigger "\([^"]*\).*/\1/p' TRIGOUT | bk _sort -u > GOT
+cat <<EOF > WANT
+post-commit
+post-incoming
+post-outgoing
+post-undo
+pre-apply
+pre-collapse
+pre-commit
+pre-delta
+pre-incoming
+pre-outgoing
+pre-resolve
+pre-tag
+pre-undo
+EOF
+cmpfiles WANT GOT
 echo OK
 
 echo $N More running of all triggers with http and bk urls ..........$NL
-cd "$HERE"
 bk bkd -d -aPORT -l"$HERE/BKD.log" -P"$HERE/BKD.pid" -ikill
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 (
 set -x
 cd clone.mt/BitKeeper || fail
-bk pull bk://localhost:$P/multitrig || fail
+bk pull -v bk://localhost:$P/multitrig || fail
 bk fix -c || fail
 rm ../foo || fail
-bk pull http://localhost:$P/multitrig || fail
-bk undo -faTOP || fail
-bk clone .. bk://localhost:$P/rclone.bk.mt || fail
-bk clone .. http://localhost:$P/rclone.http.mt || fail
+bk pull -v http://localhost:$P/multitrig || fail
+bk undo -v -faTOP || fail
+bk clone -v .. bk://localhost:$P/rclone.bk.mt || fail
+bk clone -v .. http://localhost:$P/rclone.http.mt || fail
 bk takepatch < tmp/undo.patch || fail
 bk resolve -a || fail
 bk takepatch -a < tmp/undo.patch || fail
-bk push bk://localhost:$P/rclone.bk.mt || fail
-bk push http://localhost:$P/rclone.http.mt || fail
+bk push -v bk://localhost:$P/rclone.bk.mt || fail
+bk push -v http://localhost:$P/rclone.http.mt || fail
 cd ../.. || fail
-bk clone bk://localhost:$P/multitrig multitrig.http || fail
-bk clone http://localhost:$P/multitrig multitrig.bk || fail
+bk clone -v bk://localhost:$P/multitrig multitrig.http || fail
+bk clone -v http://localhost:$P/multitrig multitrig.bk || fail
 ) > "$HERE/TRIGOUT".bkd 2>&1 || {
 	echo failed
 	cat "$HERE/TRIGOUT".bkd
 	exit 1
 }
+sed -n 's/.* Trigger "\([^"]*\).*/\1/p' TRIGOUT.bkd | bk _sort -u > GOT
+cat <<EOF > WANT.bkd
+post-incoming
+post-outgoing
+post-undo
+pre-apply
+pre-collapse
+pre-fix
+pre-incoming
+pre-outgoing
+pre-resolve
+pre-undo
+EOF
+cmpfiles WANT.bkd GOT
 echo OK
-cd "$HERE"
+
+echo $N Run only trigger path triggers ..............................$NL
+(
+set -e -x
+cd "$HERE"/multitrig
+bk lock -U
+bk undo -qsfaTRIGBASE
+cd BitKeeper/triggers
+bk rm -f
+bk commit -yall-trigs-deleted
+cd ..
+# clone, rclone, push, pull, undo, tags, collapse, lease renew
+bk clone -v .. ../../clone.no-local.mt
+touch ../foo
+bk new ../foo
+bk commit -yfoo
+bk push -v ../../clone.no-local.mt
+cd ../../clone.no-local.mt/BitKeeper
+bk undo -v -fr+
+bk tag TOP
+bk pull -v
+bk _rclone -v .. ../../rclone.no-local.mt
+# pre and post lease proxy
+bk lease flush -a
+# BK_NO_TRIGGERS=1
+BK_CONFIG="licenseurl: $HERE/rclone.no-local.mt! " bk lease renew || fail
+bk collapse -eaTOP
+rm -f ../foo
+) > "$HERE/TRIGOUT.no-local" 2>&1 || {
+	echo failed
+	cat "$HERE/TRIGOUT.no-local"
+	exit 1
+}
+sed -n 's/.* Trigger "\([^"]*\).*/\1/p' TRIGOUT.no-local | bk _sort -u > GOT
+cmpfiles WANT GOT
+echo OK
+
 for i in *
 do	test -d $i/BitKeeper || continue
 	(cd $i; bk lock -U)
 done
+
+TRIG=BitKeeper/triggers
+echo $N Pre-delta trigger on file when delta run outside of repo ....$NL
+cd "$HERE"
+commercial proj4
+mkdir -p $TRIG
+#
+cat - <<"EOF" > $TRIG/pre-delta
+#!/bin/sh
+cd "$HERE"
+echo fired > OUT
+exit 0
+EOF
+#
+chmod +x $TRIG/pre-delta
+rm -f "$HERE/OUT"
+touch foo
+bk new $Q foo
+# should exist since trigger should fire with 'bk new'
+test -f "$HERE/OUT" || fail
+cd "$HERE"
+rm -fr OUT
+bk edit $Q proj4/foo
+bk delta $Q -yfoo proj4/foo
+test -f "$HERE/OUT" || fail
+echo OK
