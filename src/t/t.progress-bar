@@ -334,6 +334,43 @@ chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
+echo $N pull w/automerge conflicts ..................................$NL
+cd "$HERE/standalone"
+echo orig >for-automerge-conflict
+add for-automerge-conflict-1 || fail
+add for-automerge-conflict-2 || fail
+cd "$HERE/clone"
+bk pull $Q ../standalone || fail
+cd "$HERE/standalone"
+bk edit $Q for-automerge-conflict-1 || fail
+bk edit $Q for-automerge-conflict-2 || fail
+echo branch1 >for-automerge-conflict-1
+echo branch1 >for-automerge-conflict-2
+bk delta $Q -yautomerge-conflict for-automerge-conflict-[12] || fail
+bk commit $Q -yautomerge-conflict || fail
+cd "$HERE/clone"
+bk edit $Q for-automerge-conflict-1 || fail
+bk edit $Q for-automerge-conflict-2 || fail
+echo branch2 >for-automerge-conflict-1
+echo branch2 >for-automerge-conflict-2
+bk delta $Q -yautomerge-conflict for-automerge-conflict-[12] || fail
+bk commit $Q -yfor-automerge-conflict || fail
+cat <<EOF >resolve
+ul
+.
+ul
+.
+EOF
+bk pull -T ../standalone <resolve >OUT 2>&1 || fail -f OUT
+bk grep -q 'resolve: 2 unresolved conflicts, starting manual' OUT || fail -f OUT
+bk grep -q '(content conflict) for-automerge-conflict-1' OUT || fail -f OUT
+bk grep -q '(content conflict) for-automerge-conflict-2' OUT || fail -f OUT
+chkoutput OUT || fail $msg
+chkpasses OUT 'takepatch' 'pull' 'resolve' || fail $msg
+chknumbars OUT 2 || fail $msg
+chkblanks OUT 0 || fail $msg
+echo OK
+
 echo $N pull w/name conflicts .......................................$NL
 cd "$HERE/standalone"
 add for-name-conflict-1 || fail
@@ -760,6 +797,35 @@ add undo2-q || fail
 add undo3-q || fail
 bk undo -a1.2 -qf >OUT 2>&1 || fail -f OUT
 [ -s OUT ] && fail -f OUT
+echo OK
+
+echo $N pull w/automerge conflicts ..................................$NL
+cd "$HERE/clone"
+bk pull $Q ../standalone || fail
+cd "$HERE/standalone"
+bk edit $Q for-automerge-conflict-1 || fail
+bk edit $Q for-automerge-conflict-2 || fail
+echo branch1 >for-automerge-conflict-1
+echo branch1 >for-automerge-conflict-2
+bk delta $Q -yautomerge-conflict for-automerge-conflict-[12] || fail
+bk commit $Q -yautomerge-conflict || fail
+cd "$HERE/clone"
+bk edit $Q for-automerge-conflict-1 || fail
+bk edit $Q for-automerge-conflict-2 || fail
+echo branch2 >for-automerge-conflict-1
+echo branch2 >for-automerge-conflict-2
+bk delta $Q -yautomerge-conflict for-automerge-conflict-[12] || fail
+bk commit $Q -yfor-automerge-conflict || fail
+cat <<EOF >resolve
+ul
+.
+ul
+.
+EOF
+bk pull -q -T ../standalone <resolve >OUT 2>&1 || fail -f OUT
+chkoutput OUT || fail $msg
+chknumbars OUT 0 || fail $msg
+chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N pull w/name conflicts .......................................$NL

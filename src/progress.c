@@ -195,7 +195,7 @@ progress(ticker *t, u64 n)
 		fprintf(stderr, "%3u%%\b\b\b\b", percent);
 		break;
 	    case PROGRESS_BAR:
-		if ((n > 1) && (percent <= t->percent) && !t->always) return;
+		if ((n > 1) && (percent <= t->percent) && !t->always) goto out;
 		fprintf(stderr, "\r%-*.*s %3u%% ", TLEN, TLEN, t->name, percent);
 		fputc('|', stderr);
 		want = (percent * barlen) / 100;
@@ -211,7 +211,7 @@ progress(ticker *t, u64 n)
 		break;
 	}
 	t->percent = percent;
-	progress_resumeDelayed();
+out:	progress_resumeDelayed();
 	progress_nlneeded();
 }
 
