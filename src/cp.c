@@ -75,7 +75,7 @@ cp(char *from, char *to, int force)
 	 * Only necessary in long/short key trees like BitKeeper.
 	 */
 	if (s->tree->pathname) free(s->tree->pathname);
-	s->tree->pathname = strdup(_relativeName(gfile, 0, 0, 0, 0));
+	s->tree->pathname = PATH_BUILD(_relativeName(gfile, 0, 0, 0, 0), "");
 	sccs_clearbits(s, D_CSET);
 	free(s->sfile);
 	s->sfile = sfile;

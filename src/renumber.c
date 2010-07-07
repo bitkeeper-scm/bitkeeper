@@ -39,8 +39,9 @@ renumber_main(int ac, char **av)
 	ticker	*tick = 0;
 
 	quiet = 1;
-	while ((c = getopt(ac, av, "N;nqsv", 0)) != -1) {
+	while ((c = getopt(ac, av, "fN;nqsv", 0)) != -1) {
 		switch (c) {
+		    case 'f': Fix_inex = INVALID; break;	/* undoc 5.0 */
 		    case 'N': nfiles = atoi(optarg); break;
 		    case 'n': dont = 1; break;			/* doc 2.0 */
 		    case 's':					/* undoc? 2.0 */
@@ -342,15 +343,16 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 	 * If merge was on the trunk at time of merge, then swap
 	 */
 	m = MERGE(s, d);
-	if (m && m->r[0] == p->r[0]) {
+	if (m && (m->r[0] == p->r[0]) && Fix_inex) {
 		assert(p != m);
 		if (sccs_needSwap(s, p, m)) {
-			unless (Fix_inex) {
+			if (Fix_inex == INVALID) {
 				Fix_inex = sccs_init(s->sfile, flags);
 				unless (Fix_inex) {
 					fprintf(stderr, "Renumber: Error: "
 					    "Init %s failed in redo()\n",
 					    s->sfile);
+					exit (1);
 				}
 				sccs_close(Fix_inex);
 			}

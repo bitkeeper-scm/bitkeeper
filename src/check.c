@@ -210,8 +210,7 @@ check_main(int ac, char **av)
 			if (c->product) continue;
 			if (!cp || strneq(c->path, cp, cplen)) {
 				subrepos = addLine(subrepos,
-				    aprintf("%s%c%s",
-					(c->path + cplen), 0, c->rootkey));
+				    PATH_BUILD(c->path+cplen, c->rootkey));
 			}
 		}
 		if (cp) free(cp);
@@ -515,7 +514,7 @@ fix_merges(sccs *s)
 {
 	sccs	*tmp;
 
-	sccs_renumber(s, 0);
+	sccs_renumber(s, 0);	/* XXX: need Fix_inex for this to work */
 	sccs_newchksum(s);
 	tmp = sccs_init(s->sfile, 0);
 	assert(tmp);
@@ -1293,7 +1292,7 @@ buildKeys(MDBM *idDB)
 				}
 
 				pathnames = addLine(pathnames,
-				    aprintf("%s%c%s", path, 0, s));
+				    PATH_BUILD(path, s));
 				free(path);
 			}
 		}
@@ -1326,13 +1325,7 @@ buildKeys(MDBM *idDB)
 		 * At product they are all present already.
 		 */
 		EACH(subrepos) {
-			/* This is:  s = strdup("path\0rootkey\0) */
-			len1 = strlen(subrepos[i]) + 1;
-			len1 += strlen(subrepos[i]+len1) + 1;
-			s = malloc(len1);
-			memcpy(s, subrepos[i], len1);
-
-			pathnames = addLine(pathnames, s);
+			pathnames = addLine(pathnames, PATH_DUP(subrepos[i]));
 		}
 	}
 	sortLines(pathnames, 0);
@@ -1340,27 +1333,29 @@ buildKeys(MDBM *idDB)
 	unless (mixed) EACH(pathnames) {
 		if (i == 1) continue;
 		if (paths_overlap(pathnames[i-1], pathnames[i])) {
-			/* find both rootkeys */
-			len1 = strlen(pathnames[i-1]) + 1;
-			len2 = strlen(pathnames[i]) + 1;
-			rk1 = pathnames[i-1] + len1;
-			rk2 = pathnames[i]   + len2;
+			len1 = strlen(pathnames[i-1]);
+			len2 = strlen(pathnames[i]);
 			if (len1 == len2) {
+				rk1 = PATH_SORTPATH(pathnames[i-1]);
+				rk2 = PATH_SORTPATH(pathnames[i]);
 				fprintf(stderr,
 				    "check: two files are committed "
 				    "at the same pathname. (%s)\n",
 				    pathnames[i]);
 				fprintf(stderr, "rootkeys:\n"
-				    "\t%s\n\t%s\n", rk1, rk2);
+				    "\t%s\n"
+				    "\t%s\n", rk1, rk2);
 				exit(1);
-			} else if (pathnames[i][len1-1] == '/') {
+			} else if (pathnames[i][len1] == '/') {
 				/* subrepos can overlap each other*/
+				rk1 = PATH_SORTPATH(pathnames[i-1]);
+				rk2 = PATH_SORTPATH(pathnames[i]);
 				unless (changesetKey(rk1) &&
 				    changesetKey(rk2)) {
 					fprintf(stderr,
 					    "check: two files are committed at "
 					    "overlapping pathnames.\n"
-					    "\t\%s\t%s\n"
+					    "\t%s\t%s\n"
 					    "\t%s\t%s\n",
 					    pathnames[i-1], rk1,
 					    pathnames[i], rk2);

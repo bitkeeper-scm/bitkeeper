@@ -1,0 +1,78 @@
+
+# Some randomish stuff which helps things to be predictable and fail
+BK_RANDOM=1000197497459702
+BK_DATE_TIME_ZONE="98/09/22 16:23:31+00:00"
+_BK_NO_UNIQ=1
+export BK_DATE_TIME_ZONE _BK_NO_UNIQ BK_RANDOM
+
+echo $N Order check in cset checksum and file path ..................$NL
+# do not use cache, as we want predictable repo
+fresh_commercial project
+# two files, one 'del' will get move to a component and partitioned.
+# from the product, it will look deleted.  The keep file is kept.
+echo line > keep
+touch del
+bk new $Q keep del
+bk commit $Q -ybase
+bk clone $Q . ../copy
+# make a diamon cset graph - here's the trunk - edit both
+bk edit $Q keep del
+echo 1 > del
+cat > keep <<EOF
+line
+EOF
+# this is branch on del, because of path sorting
+bk delta $Q -ytrunk keep
+bk delta $Q -ybranch del
+bk commit $Q -ytrunk
+# ... here's the branch - move del to component anno (anno sorts before del)
+cd ../copy
+bk mv del anno/del
+bk edit $Q keep
+echo 1 >> keep
+bk delta $Q -ybranch keep
+bk commit $Q -ybranch
+# make the merge
+bk pull $Q
+# partition it up, which will remove 'del' from product and 'keep' from comp
+echo anno > comps
+bk partition $Q -C comps . ../partition
+cd ../partition
+# Sanity check that test case does indeed not work
+bk -r check || fail
+_BK_NO_SORTKEY=1 bk -r check 2> GOT && fail
+cat > WANT <<EOF
+SCCS/s.ChangeSet: 1.3 is not earlier than 1.2.1.1
+SCCS/s.ChangeSet: 1.3 is not earlier than 1.2.1.1
+EOF
+cmpfiles WANT GOT
+# And that file sorting works too
+cd anno
+bk -r check || fail
+_BK_NO_SORTKEY=1 bk -r check 2> GOT && fail
+cat > WANT <<EOF
+SCCS/s.del: 1.2 is not earlier than 1.1.1.1
+SCCS/s.del: 1.2 is not earlier than 1.1.1.1
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Sortkeys in a partition are the same as original keys .......$NL
+cd "$HERE"
+# rootkeys do not match - sortkeys does not track random bits
+# XXX for grafting, should it?
+bk changes -qr1.0.. -and:KEY: copy > WANT
+bk changes -qr1.0.. -and:SORTKEY: partition > GOT
+bk changes -qr1.0.. -and:KEY partition > GOT-key
+cmpfiles WANT GOT
+cmp -s WANT GOT-key && fail
+# check file keys
+cd copy/anno
+bk prs -hnd:KEY: del > ../../WANT-del
+cd ../../partition/anno
+bk prs -hnd:SORTKEY: del > ../../GOT-del
+bk prs -hnd:KEY: del > ../../GOT-del-key
+cd ../..
+cmpfiles WANT-del GOT-del
+cmp -s WANT-del GOT-del-key && fail
+echo OK

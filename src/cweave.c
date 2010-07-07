@@ -72,23 +72,23 @@ cweave_init(sccs *s, int extras)
 /*
  * Return true if 'a' is earlier than 'b'
  */
-private int
+int
 earlier(sccs *s, delta *a, delta *b)
 {
         int ret;
 	char	keya[MAXKEY], keyb[MAXKEY];
- 
+
         if (a->date < b->date) return 1;
         if (a->date > b->date) return 0;
-	
-	sccs_sdelta(s, a, keya);
-	sccs_sdelta(s, b, keyb);
+
+	sccs_sortkey(s, a, keya);
+	sccs_sortkey(s, b, keyb);
         ret = strcmp(keya, keyb);
         if (ret < 0)   return 1;
         if (ret > 0)   return 0;
         assert("Can't figure out the order of deltas\n" == 0);
         return (-1); /* shut off VC++ comipler warning */
-}     
+}
 
 /*
  * Insert the delta into the table.

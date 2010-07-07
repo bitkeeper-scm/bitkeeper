@@ -347,7 +347,9 @@ sccslog(sccs *s)
 		for (d = s->table, n++; d; n++, d = d->next) {
 			comments_load(s, d);
 			if (opts.dspec) do_dspec(s, d);
-			unless (d->pathname) d->pathname = strdup(s->gfile);
+			unless (d->pathname) {
+				d->pathname = PATH_BUILD(s->gfile, "");
+			}
 			unless (d->next) break;
 		}
 		if (list) {
@@ -394,9 +396,9 @@ reallocDelta(sccs *s, delta *d)
 	}
 	if (d->flags & D_DUPPATH) {
 		d->flags &= ~D_DUPPATH;
-		d->pathname = strdup(d->pathname);
+		d->pathname = PATH_DUP(d->pathname);
 	}
-	unless (d->pathname) d->pathname = strdup(s->gfile);
+	unless (d->pathname) d->pathname = PATH_BUILD(s->gfile, "");
 	if (d->flags & D_DUPHOST) {
 		d->flags &= ~D_DUPHOST;
 		d->hostname = strdup(d->hostname);

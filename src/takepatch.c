@@ -43,7 +43,7 @@ private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int*);
 private	int	applyPatch(char *local, sccs *perfile);
 private	int	applyCsetPatch(sccs *s, int *nfound, sccs *perfile);
 private	int	getLocals(sccs *s, delta *d, char *name);
-private	void	insertPatch(patch *p);
+private	void	insertPatch(patch *p, int strictOrder);
 private	int	reversePatch(void);
 private	void	initProject(void);
 private	MMAP	*init(char *file);
@@ -709,6 +709,8 @@ save:	mseekto(f, off);
 		p->pid = pid;
 		sccs_sdelta(s, d, buf);
 		p->me = strdup(buf);
+		sccs_sortkey(s, d, buf);
+		p->sortkey = strdup(buf);
 		p->initMmap = ignore ? 0 : mrange(start, stop, "b");
 		p->localFile = s ? strdup(s->sfile) : 0;
 		sprintf(buf, "RESYNC/%s", name);
@@ -738,7 +740,7 @@ save:	mseekto(f, off);
 		line++;
 		if (echo>5) fprintf(stderr, "\n");
 		(*np)++;
-		insertPatch(p);
+		insertPatch(p, 1);
 	}
 	sccs_freetree(d);
 	if ((c = mpeekc(f)) != EOF) {
@@ -1500,12 +1502,14 @@ getLocals(sccs *s, delta *g, char *name)
 		p->pid = strdup(tmpf);
 		sccs_sdelta(s, d, tmpf);
 		p->me = strdup(tmpf);
+		sccs_sortkey(s, d, tmpf);
+		p->sortkey = strdup(tmpf);
 		p->order = d->date;
 		if (echo>6) {
 			fprintf(stderr,
 			    "LOCAL: %s %s %lu\n", d->rev, p->me, p->order);
 		}
-		insertPatch(p);
+		insertPatch(p, 0);
 		n++;
 	}
 	return (n);
@@ -1516,13 +1520,13 @@ getLocals(sccs *s, delta *g, char *name)
  * Return true if 'a' is earlier than 'b'
  */
 private	int
-earlier(patch *a, patch *b)
+earlierPatch(patch *a, patch *b)
 {
 	int ret;
 
 	if (a->order < b->order) return 1;
 	if (a->order > b->order) return 0;
-	ret = strcmp(a->me, b->me);
+	ret = strcmp(a->sortkey, b->sortkey);
 	if (ret < 0)   return 1;
 	if (ret > 0)   return 0;
 	assert("Can't figure out the order of deltas\n" == 0);
@@ -1534,20 +1538,25 @@ earlier(patch *a, patch *b)
  * The global patchList points at the newest/youngest.
  */
 private	void
-insertPatch(patch *p)
+insertPatch(patch *p, int strictOrder)
 {
 	patch	*t;
 
-	if (!patchList || earlier(patchList, p)) {
+	if (!patchList || earlierPatch(patchList, p)) {
 		p->next = patchList;
 		patchList = p;
 		return;
+	} else if (strictOrder) {
+		fprintf(stderr,
+		    "%s: patch not in old to new order:\n%s\n%s\n",
+		    prog, patchList->me, p->me);
+		cleanup(CLEAN_RESYNC);
 	}
 	/*
 	 * We know that t is pointing to a node that is younger than us.
 	 */
 	for (t = patchList; t->next; t = t->next) {
-		if (earlier(t->next, p)) {
+		if (earlierPatch(t->next, p)) {
 			p->next = t->next;
 			t->next = p;
 			return;
@@ -1557,7 +1566,7 @@ insertPatch(patch *p)
 	/*
 	 * There is no next field and we know that t->order is > date.
 	 */
-	assert(earlier(p, t));
+	assert(earlierPatch(p, t));
 	t->next = p;
 }
 
@@ -1606,6 +1615,7 @@ freePatchList(void)
 		free(p->resyncFile);
 		if (p->pid) free(p->pid);
 		if (p->me) free(p->me);
+		if (p->sortkey) free(p->sortkey);
 		free(p);
 		p = next;
 	}

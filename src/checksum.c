@@ -160,6 +160,10 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 				fprintf(stderr, "Corrected %s:%s %d->%d\n",
 				    s->sfile, d->rev, d->sum, sum);
 			}
+			unless (d->flags & D_SORTSUM) {
+				d->sortSum = d->sum;
+				d->flags |= D_SORTSUM;
+			}
 			d->sum = sum;
 			d->flags |= D_CKSUM;
 			return (1);
@@ -250,6 +254,10 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 			fprintf(stderr, "Derived %s:%s -> %d\n",
 			    s->sfile, d->rev, (sum_t)new);
 		}
+		unless (d->flags & D_SORTSUM) {
+			d->sortSum = d->sum;
+			d->flags |= D_SORTSUM;
+		}
 		d->sum = (sum_t)new;
 		d->flags |= D_CKSUM;
 		return (1);
@@ -265,6 +273,10 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	if (diags > 1) {
 		fprintf(stderr, "Corrected %s:%s %d->%d\n",
 		    s->sfile, d->rev, d->sum, s->dsum);
+	}
+	unless (d->flags & D_SORTSUM) {
+		d->sortSum = d->sum;
+		d->flags |= D_SORTSUM;
 	}
 	d->sum = s->dsum;
 	d->flags |= D_CKSUM;
@@ -536,6 +548,10 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 				    d->sum, sum, s->gfile, d->rev);
 			}
 			if (fix) {
+				unless (d->flags & D_SORTSUM) {
+					d->sortSum = d->sum;
+					d->flags |= D_SORTSUM;
+				}
 				d->sum = sum;
 				d->flags |= D_CKSUM;
 			}

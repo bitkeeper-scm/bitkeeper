@@ -1727,6 +1727,7 @@ do_file(sccs *s, char *comppath, char **deepnest)
 	char	*newpath;
 	char	*delpath;
 	char	*bam_new;
+	char	*sortpath;
 	char	rk[MAXKEY];
 
 	sccs_sdelta(s, sccs_ino(s), rk);
@@ -1767,7 +1768,12 @@ do_file(sccs *s, char *comppath, char **deepnest)
 		 * point to inside pathname, so grab a copy of
 		 * it before freeing
 		 */
-		newpath = strdup(newpath);
+		sortpath = PATH_SORTPATH(d->pathname);
+		if (*sortpath) {
+			newpath = PATH_BUILD(newpath, sortpath);
+		} else {
+			newpath = PATH_BUILD(newpath, d->pathname);
+		}
 		free(d->pathname);
 		d->pathname = newpath;
 

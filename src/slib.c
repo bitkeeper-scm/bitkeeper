@@ -536,7 +536,18 @@ sccs_inherit(sccs *s, delta *d)
 		d->field = p->field; \
 		d->flags |= flag; \
 	}
-	CHK_DUP(pathname, D_DUPPATH, "path");
+	if (d->pathname) {
+		unless (d->flags & D_DUPPATH) {
+			if (p->pathname && PATH_EQ(d->pathname, p->pathname)) {
+				free(d->pathname);
+				d->pathname = p->pathname;
+				d->flags |= D_DUPPATH;
+			}
+		}
+	} else if (p->pathname) {
+		d->pathname = p->pathname;
+		d->flags |= D_DUPPATH;
+	}
 	CHK_DUP(hostname, D_DUPHOST, "host");
 	CHK_DUP(zone, D_DUPZONE, "zone");
 	CHK_DUP(csetFile, D_DUPCSETFILE, "csetFile");
@@ -578,7 +589,10 @@ sccs_reDup(sccs *s)
 
 	/* undup in forward table order */
 	for (d = s->table; d; d = NEXT(d)) {
-		UNDUP(pathname, D_DUPPATH, "path");
+		if (d->pathname && (d->flags & D_DUPPATH)) {
+			d->pathname = PATH_DUP(d->pathname);
+			d->flags &= ~D_DUPPATH;
+		}
 		UNDUP(hostname, D_DUPHOST, "host");
 		UNDUP(zone, D_DUPZONE, "zone");
 		UNDUP(csetFile, D_DUPCSETFILE, "csetFile");
@@ -607,7 +621,12 @@ sccs_reDup(sccs *s)
 				p->rev, d->rev);
 			exit (1);
 		}
-		REDUP(pathname, D_DUPPATH, "path");
+		if (p->pathname && d->pathname &&
+		    PATH_EQ(p->pathname, d->pathname)) {
+			free(d->pathname);
+			d->pathname = p->pathname;
+			d->flags |= D_DUPPATH;
+		}
 		REDUP(hostname, D_DUPHOST, "host");
 		REDUP(zone, D_DUPZONE, "zone");
 		REDUP(csetFile, D_DUPCSETFILE, "csetFile");
@@ -7950,8 +7969,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 	int	i;	/* used by EACH */
 	int	first = willfix;
 	int	firstadded = 1;
-	char	buf[MAXLINE];
-	char	*p;
+	char	buf[2*MAXPATH + 10];	/* ^AcP pathname|sortpath\n\0 */
+	char	*p, *sortpath;
 	int	bits = 0;
 	int	gonechkd = 0;
 	int	strip_tags = CSET(s) && getenv("_BK_STRIPTAGS");
@@ -8152,7 +8171,12 @@ delta_table(sccs *s, FILE *out, int willfix)
 			 * Leaving this fixed means we can diff the
 			 * s.files easily.
 			 */
-			sprintf(buf, "\001cK%05u\n", d->sum);
+			if (d->flags & D_SORTSUM) {
+				sprintf(buf,
+				    "\001cK%05u|%05u\n", d->sum, d->sortSum);
+			} else {
+				sprintf(buf, "\001cK%05u\n", d->sum);
+			}
 			fputmeta(s, buf, out);
 		}
 		if (d->merge) {
@@ -8162,9 +8186,15 @@ delta_table(sccs *s, FILE *out, int willfix)
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
+		/* XXX: O follows P */
 		if (d->pathname && !(d->flags & D_DUPPATH)) {
 			p = fmts(buf, "\001cP");
 			p = fmts(p, d->pathname);
+			sortpath = PATH_SORTPATH(d->pathname);
+			if (*sortpath) {
+				p = fmts(p, "|");
+				p = fmts(p, sortpath);
+			}
 			*p++ = '\n';
 			*p   = '\0';
 			fputmeta(s, buf, out);
@@ -10183,11 +10213,19 @@ checkMisc(sccs *s, int flags)
 private int
 checkrevs(sccs *s, int flags)
 {
+	delta	*prev;
 	delta	*d;
 	int	e;
 
+	prev = 0;
 	for (e = 0, d = s->table; d; d = NEXT(d)) {
 		e |= checkRev(s, s->sfile, d, flags);
+		if ((flags & ADMIN_TIME) && prev && !earlier(s, d, prev)) {
+			fprintf(stderr, "%s: %s is not earlier than %s\n",
+			    s->sfile, d->rev, prev->rev);
+			e |= 2;
+		}
+		prev = d;
 	}
 	return (e);
 }
@@ -10536,10 +10574,34 @@ private delta *
 hostArg(delta *d, char *arg) { ARG(hostname, D_NOHOST, D_DUPHOST); }
 
 private delta *
-pathArg(delta *d, char *arg) { ARG(pathname, D_NOPATH, D_DUPPATH); }
-
-private delta *
 randomArg(delta *d, char *arg) { ARG(random, 0, 0); }
+
+/*
+ * arg may have optional sortpath: "pathname[|sortpath]"
+ * d->pathname stores 2 strings: the sortpath is in the hidden string
+ */
+private delta *
+pathArg(delta *d, char *arg) {
+	char	*p;
+
+	if (!d) d = new(delta);
+	unless (!arg || !*arg) {
+		if (d->pathname && !(d->flags & D_DUPPATH)) free(d->pathname);
+		if (p = strchr(arg, '|')) {
+			/*
+			 * NOTE: arg might be a mem-mapped patch, so can't
+			 * modify it to be able to use interfaces such as:
+			 *     *p = 0; PATH_BUILD(arg, p+1); *p = '|';
+			 */
+			d->pathname = strdup(arg);
+			d->pathname[p-arg] = 0;
+		} else {
+			d->pathname = PATH_BUILD(arg, "");
+		}
+	}
+	d->flags &= ~D_DUPPATH;
+	return (d);
+}
 
 /*
  * Handle either 0664 style or -rw-rw-r-- style.
@@ -10567,7 +10629,11 @@ sumArg(delta *d, char *arg)
 {
 	if (!d) d = new(delta);
 	d->flags |= D_CKSUM;
-	d->sum = atoi(arg);
+	d->sum = atoi_p(&arg);
+	if (*arg++ == '|') {
+		d->sortSum = atoi_p(&arg);
+		d->flags |= D_SORTSUM;
+	}
 	return (d);
 }
 
@@ -12976,7 +13042,6 @@ skip:
 
 out:	if (d) {
 		unless (COMMENTS(d)) d->flags |= D_NOCOMMENTS;
-		unless (d->pathname) d->flags |= D_NOPATH;
 		if (type == 'M') {
 			d->flags |= D_META;
 			type = 'R';
@@ -15033,6 +15098,14 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		return (strVal);
 	}
 
+	case KW_SORTKEY: /* SORTKEY */ {
+		char	key[MAXKEY];
+
+		sccs_sortkey(s, d, key);
+		fs(key);
+		return (strVal);
+	}
+
 	case KW_ROOTKEY: /* ROOTKEY */ {
 		char key[MAXKEY];
 
@@ -15927,6 +16000,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	int	i;	/* used by EACH */
 	symbol	*sym;
 	char	type;
+	char	*sortpath;
 
 	if (!d) return (0);
 	type = d->type;
@@ -15961,7 +16035,11 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 		fprintf(out, "\n");
 	}
 	if (d->flags & D_CKSUM) {
-		fprintf(out, "K %u\n", d->sum);
+		fprintf(out, "K %u", d->sum);
+		if (d->flags & D_SORTSUM) {
+			fprintf(out, "|%u", d->sortSum);
+		}
+		fputc('\n', out);
 	}
 	if (d->merge) {
 		delta	*e = MERGE(s, d);
@@ -15980,7 +16058,14 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 		}
 	}
 	if (s->tree->pathname) assert(d->pathname);
-	if (d->pathname) fprintf(out, "P %s\n", d->pathname);
+	if (d->pathname) {
+		sortpath = PATH_SORTPATH(d->pathname);
+		if (*sortpath) {
+			fprintf(out, "P %s|%s\n", d->pathname, sortpath);
+		} else {
+			fprintf(out, "P %s\n", d->pathname);
+		}
+	}
 	if (d->random) fprintf(out, "R %s\n", d->random);
 	if ((d->flags & D_SYMBOLS) || d->symGraph) {
 		for (sym = s->symbols; sym; sym = sym->next) {
@@ -16575,6 +16660,28 @@ sccs_sdelta(sccs *s, delta *d, char *buf)
 	for (tail = buf; *tail; tail++);
 	len += sprintf(tail, "|%s", d->random);
 	return (len);
+}
+
+void
+sccs_sortkey(sccs *s, delta *d, char *buf)
+{
+	sum_t	origsum;
+	char	*origpath, *sortpath;
+
+	origpath = d->pathname;
+	origsum = d->sum;
+
+	unless (getenv("_BK_NO_SORTKEY")) {
+		if (origpath) {
+			sortpath = PATH_SORTPATH(origpath);
+			if (*sortpath) d->pathname = sortpath;
+		}
+		if (d->flags & D_SORTSUM) d->sum = d->sortSum;
+	}
+	sccs_sdelta(s, d, buf);
+
+	d->pathname = origpath;
+	d->sum = origsum;
 }
 
 /*

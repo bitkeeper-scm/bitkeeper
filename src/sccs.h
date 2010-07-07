@@ -291,7 +291,7 @@ int	checking_rmdir(char *dir);
  */
 #define	D_ERROR		0x00000001	/* from parseArg() */
 #define	D_NOHOST	0x00000002	/* don't generate a hostname */
-#define	D_NOPATH	0x00000004	/* don't generate a pathname */
+#define	D_SORTSUM	0x00000004	/* generate a sortSum */
 #define	D_NOZONE	0x00000008	/* don't generate a time zone */
 #define	D_NOCOMMENTS	0x00000010	/* don't generate comments */
 #define	D_DUPHOST	0x00000020	/* this host pointer is shared */
@@ -454,6 +454,7 @@ typedef struct delta {
 	char	*random;		/* random bits for file ID */
 	ser_t	merge;			/* serial number merged into here */
 	sum_t	sum;			/* checksum of gfile */
+	sum_t	sortSum;		/* sum from sortkey */
 	time_t	dateFudge;		/* make dates go forward */
 	mode_t	mode;			/* 0777 style modes */
 	char 	*symlink;		/* sym link target */
@@ -486,6 +487,16 @@ typedef struct delta {
 #define	MERGE(s, d)	sfind((s), (d)->merge)
 #define	KID(d)		((d)->kid)
 #define	SIBLINGS(d)	((d)->siblings)
+
+/*
+ * Macros to get at an optional hidden original path.
+ * See src/Notes/SORTKEYS for more info.
+ */
+#define	PATH_SORTPATH(p)	((p) + strlen(p) + 1)
+#define	PATH_BUILD(a, b)	aprintf("%s%c%s", (a), 0, (b))
+#define	PATH_DUP(p)		PATH_BUILD(p, PATH_SORTPATH(p))
+#define	PATH_EQ(a, b)	\
+    (streq((a), (b)) && streq(PATH_SORTPATH(a), PATH_SORTPATH(b)))
 
 /*
  * Rap on lod/symbols wrt deltas.
@@ -726,6 +737,7 @@ typedef struct patch {
 	char	*pid;		/* unique key of parent */
 				/* NULL if the new delta is the root. */
 	char	*me;		/* unique key of this delta */
+	char	*sortkey;	/* sortable key of this delta, if different */
 	char	*initFile;	/* RESYNC/BitKeeper/init-1, only if !initMmap */
 	MMAP	*initMmap;	/* points into mmapped patch */
 	char	*diffFile;	/* RESYNC/BitKeeper/diff-1, only if !diffMmap */
@@ -901,6 +913,7 @@ int	sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs, u32 flags);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_md5delta(sccs *s, delta *d, char *b64);
+void	sccs_sortkey(sccs *s, delta *d, char *buf);
 void	sccs_key2md5(char *rootkey, char *deltakey, char *b64);
 void	sccs_syncRoot(sccs *s, char *key);
 delta	*sccs_csetBoundary(sccs *s, delta *);
@@ -1325,6 +1338,7 @@ char	*goneFile(void);
 char	*sgoneFile(void);
 int	keycmp(const void *k1, const void *k2);
 int	key_sort(const void *a, const void *b);
+int	earlier(sccs *s, delta *a, delta *b);
 int	startmenu_list(u32, char *);
 int	startmenu_rm(u32, char *);
 int	startmenu_get(u32, char *path);
