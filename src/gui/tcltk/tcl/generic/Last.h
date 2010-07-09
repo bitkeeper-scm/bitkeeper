@@ -406,6 +406,7 @@ struct VarDecl {
 	Expr	*initializer;
 	Type	*type;
 	ClsDecl	*clsdecl;	// for class member fns, class & instance vars
+	Sym	*refsym;	// for a call-by-ref parm x, ptr to &x sym
 	VarDecl	*next;
 	Decl_f	flags;
 };

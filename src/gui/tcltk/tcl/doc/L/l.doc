@@ -589,13 +589,30 @@ you use a C<&> in the declaration and in the function call:
         ++arg;
     }
 
-    inc(&x);
+    inc(&x);  // inc() can change x
 
-The C<&> only tells L to pass by reference; it is not a pointer and
-cannot be used in any other context.
+The C<&> only tells L to pass by reference.  It is not a pointer.
+You use a reference to give the called function the ability to change
+the caller's variable.
 
 Only variables can be passed by reference, not elements of arrays,
 hashes, or structs.  This is one significant difference from C.
+
+Instead of passing a reference, you can pass C<undef> like you would a
+NULL pointer in C.
+You test for this with the C<defined()> operator:
+
+    void inc(int &arg)
+    {
+        if (defined(&arg)) ++arg;
+    }
+
+    inc(undef);   // does nothing
+    inc(&x);      // increments x
+
+If you pass C<undef> as a reference and then attempt to access
+the parameter, a run-time error results similar to derefencing
+a NULL pointer in C.
 
 When accessing a struct argument inside a function, if the struct was
 passed by reference, the "->" operator must be used instead of ".".
