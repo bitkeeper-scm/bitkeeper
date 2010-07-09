@@ -171,6 +171,7 @@ private int	push_regexpModifiers(Expr *regexp);
 private ReKind	re_kind(Expr *re, Tcl_DString *ds);
 private int	re_submatchCnt(Expr *re);
 private VarDecl	*struct_lookupMember(Type *t, Expr *idx, int *offset);
+private Sym	*sym_mk(char *name, Type *t, Expr_f flags);
 private Sym	*sym_lookup(Expr *id, Expr_f flags);
 private Sym	*sym_store(VarDecl *decl);
 private int	tmp_getFree(char **s);
@@ -475,8 +476,6 @@ private void
 compile_fnDecl(FnDecl *fun, Decl_f flags)
 {
 	int	i, ismain, num_parms;
-	Expr	*self_id;
-	VarDecl	*self_decl;
 	VarDecl	*decl = fun->decl;
 	char	*name = decl->id->u.string;
 	char	*clsname = NULL;
@@ -562,10 +561,9 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 	 * added by compile_fnParms if not present).
 	 */
 	if (isClsConstructor(decl) || isClsFnPrivate(decl)) {
-		self_id   = ast_mkId("self", 0, 0);
-		self_decl = ast_mkVarDecl(clsdecl->decl->type, self_id, 0, 0);
-		self_decl->flags = SCOPE_LOCAL | DECL_LOCAL_VAR;
-		self_sym  = sym_store(self_decl);
+		self_sym = sym_mk("self",
+				  clsdecl->decl->type,
+				  SCOPE_LOCAL | DECL_LOCAL_VAR);
 		ASSERT(self_sym && self_sym->idx >= 0);
 		self_sym->used_p = TRUE;
 	} else if (isClsFnPublic(decl)) {
@@ -1152,14 +1150,13 @@ iscallbyname(VarDecl *formal)
 private int
 compile_fnParms(VarDecl *decl)
 {
-	int	i, n;
+	int	n;
 	int	name_parms = 0;
 	char	*name;
 	Proc	*proc = L->frame->envPtr->procPtr;
-	VarDecl	*p;
-	VarDecl	*new_decl = NULL;
-	Sym	*new_sym, *sym;
-	Expr	*new_id;
+	Expr	*varId;
+	VarDecl	*p, *varDecl;
+	Sym	*parmSym, *varSym;
 	Type	*type;
 	VarDecl	*param = decl->type->u.func.formals;
 
@@ -1220,39 +1217,41 @@ compile_fnParms(VarDecl *decl)
 			++name_parms;
 		}
 		proc_mkArg(proc, p);
-		sym = sym_store(p);
-		unless (sym) continue;  // multiple declaration
-		sym->idx = n;
+		parmSym = sym_store(p);
+		unless (parmSym) continue;  // multiple declaration
+		parmSym->idx = n;
 		/* Suppress unused warning for obj arg to class member fns. */
 		if ((p == param) &&
 		    isClsFnPublic(decl) && !isClsConstructor(decl)) {
-			sym->used_p = TRUE;
+			parmSym->used_p = TRUE;
 		}
 	}
 	/* For call by name, push a 1 the first time (arg to INST_UPVAR). */
 	if (name_parms) push_str("1");
+	/*
+	 * For each call-by-reference formal, we have
+	 * "&var" - a fn parm that gets the name of the caller's actual parm
+	 * "var" - a local upvar'd to this name, becomes alias for the actual
+	 * The first was created above.  Create the second one now.
+	 */
 	for (p = param; p; p = p->next) {
-		/* If the formal is &p, type gets the type of p. */
-		type = iscallbyname(p);
-		unless (type) continue;
-		ASSERT(p->id->u.string[0] == '&');
-		name = p->id->u.string + 1;  // point past the &
-		new_id   = ast_mkId(name, p->id->node.beg, p->id->node.end);
-		new_decl = ast_mkVarDecl(type, new_id, p->node.beg,
-					 p->node.end);
-		new_decl->flags = SCOPE_LOCAL | DECL_LOCAL_VAR | p->flags;
-		new_decl->node.line = p->node.line;
+		unless (type = iscallbyname(p)) continue;
 
-		sym = sym_lookup(p->id, L_NOWARN);
-		ASSERT(sym);
+		/* Lookup "&var". */
+		parmSym = sym_lookup(p->id, L_NOWARN);
+		ASSERT(parmSym && (p->id->u.string[0] == '&'));
 
-		new_sym = sym_store(new_decl);
-		unless (new_sym) continue;  // multiple declaration
-
-		i = TclFindCompiledLocal(name, strlen(name), 1,
-					 L->frame->envPtr);
-		emit_load_scalar(sym->idx);
-		TclEmitInstInt4(INST_UPVAR, i, L->frame->envPtr);
+		/* Create "var". */
+		varId   = ast_mkId(p->id->u.string + 1,  // point past the &
+				   p->id->node.beg,
+				   p->id->node.end);
+		varDecl = ast_mkVarDecl(type, varId, p->node.beg, p->node.end);
+		varDecl->flags = SCOPE_LOCAL | DECL_LOCAL_VAR | p->flags;
+		varDecl->node.line = p->node.line;
+		unless (varSym = sym_store(varDecl)) continue; // multiple decl
+		varSym->decl->refsym = parmSym;
+		emit_load_scalar(parmSym->idx);
+		TclEmitInstInt4(INST_UPVAR, varSym->idx, L->frame->envPtr);
 	}
 	/* Pop the 1 pushed for INST_UPVAR. */
 	if (name_parms) emit_pop();
@@ -1905,6 +1904,7 @@ private int
 compile_var(Expr *expr, Expr_f flags)
 {
 	Sym	*self, *sym;
+	Jmp	*jmp1, *jmp2;
 
 	ASSERT(expr->op == L_EXPR_ID);
 
@@ -1951,6 +1951,33 @@ compile_var(Expr *expr, Expr_f flags)
 			}
 			break;
 		    case DECL_LOCAL_VAR:
+			if (sym->decl->flags & DECL_REF) {
+				/*
+				 * To pass a call-by-ref parameter as a
+				 * reference, must check to see if it is
+				 * defined:
+				 *    load_scalar &var
+				 *    l_defined
+				 *    jmpFalse 1
+				 *    push "var"
+				 *    jmp 2
+				 * 1: push undef
+				 * 2:
+				 */
+				emit_load_scalar(sym->decl->refsym->idx);
+				TclEmitOpcode(INST_L_DEFINED,
+					      L->frame->envPtr);
+				jmp1 = emit_jmp_fwd(INST_JUMP_FALSE1, NULL);
+				push_str(sym->tclname);
+				jmp2 = emit_jmp_fwd(INST_JUMP1, NULL);
+				fixup_jmps(&jmp1);
+				TclEmitOpcode(INST_L_PUSH_UNDEF,
+					      L->frame->envPtr);
+				fixup_jmps(&jmp2);
+			} else {
+				push_str(sym->tclname);
+			}
+			break;
 		    case DECL_FN:
 			push_str(sym->tclname);
 			break;
@@ -1995,7 +2022,8 @@ compile_exprs(Expr *expr, Expr_f flags)
  * # pushed.  Rules:
  *
  * - For two consecutive parms like "-foovariable, &foo", push "-foovariable"
- *   and then an L pointer.
+ *   and then the name of "foo".  This is legal only for globals, class
+ *   variables, and class instance variables.
  *
  * - For everything else, push the value or name as indicated by whether
  *   the parm has the & operator; compile_expr() handles that.  The type
@@ -2035,7 +2063,7 @@ push_pointer(Expr *expr)
 	Expr	*e = expr->a;
 
 	/*
-	 * Only the following are legal for an L pointer:
+	 * Only the following are legal:
 	 *
 	 * &global_var
 	 * &classname->var
@@ -2076,6 +2104,9 @@ push_lit(Expr *expr)
 private int
 compile_unOp(Expr *expr)
 {
+	Expr	*var;
+	Sym	*sym;
+
 	switch (expr->op) {
 	    case L_OP_BANG:
 	    case L_OP_BITNOT:
@@ -2092,10 +2123,33 @@ compile_unOp(Expr *expr)
 		expr->type = expr->a->type;
 		break;
 	    case L_OP_DEFINED:
-		compile_expr(expr->a, L_PUSH_VAL);
-		L_typeck_deny(L_VOID, expr->a);
-		TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
+		/*
+		 * There are two kinds of defined():
+		 *   defined(&var) - var is a call-by-reference formal
+		 *   defined(expr) - otherwise
+		 */
 		expr->type = L_int;
+		if (isaddrof(expr->a)) {
+			unless (expr->a->a->kind == L_EXPR_ID) {
+				L_errf(expr, "%s not a call-by-reference parm",
+				       expr->a->a->u.string);
+				break;
+			}
+			var = ast_mkId(cksprintf("&%s", expr->a->a->u.string),
+				       0, 0);
+			sym = sym_lookup(var, L_NOWARN);
+			unless (sym && (sym->decl->flags & DECL_REF)) {
+				L_errf(expr, "%s undeclared or not a "
+				       "call-by-reference parm",
+				       expr->a->a->u.string);
+				break;
+			}
+			emit_load_scalar(sym->idx);
+		} else {
+			compile_expr(expr->a, L_PUSH_VAL);
+			L_typeck_deny(L_VOID, expr->a);
+		}
+		TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
 		break;
 	    case L_OP_ADDROF:
 		/*
@@ -2541,7 +2595,6 @@ compile_reMatch(Expr *re)
 	int		nocase = (re->flags & L_EXPR_RE_I);
 	Sym		*s;
 	Expr		*id;
-	VarDecl		*v;
 	ReKind		kind;
 	Tcl_DString	ds;
 
@@ -2589,12 +2642,11 @@ compile_reMatch(Expr *re)
 		submatch_cnt = re_submatchCnt(re);
 		for (i = 0; i <= submatch_cnt; i++) {
 			char	buf[32];
-			snprintf(buf, 32, "$%d", i);
+			snprintf(buf, sizeof(buf), "$%d", i);
 			id = ast_mkId(buf, 0, 0);
 			unless (sym_lookup(id, L_NOWARN)) {
-				v = ast_mkVarDecl(L_string, id, 0, 0);
-				v->flags = SCOPE_LOCAL | DECL_LOCAL_VAR;
-				s = sym_store(v);
+				s = sym_mk(buf, L_string,
+					   SCOPE_LOCAL | DECL_LOCAL_VAR);
 				s->used_p = TRUE; // suppress unused var warning
 			}
 			push_str(buf);
@@ -3634,9 +3686,7 @@ compile_clsDeref(Expr *expr, Expr_f flags)
 	int	in_class = 0;
 	int	tmpidx;
 	char	*clsnm, *tmpnm, *varnm;
-	Expr	*tmpid;
 	Sym	*sym, *tmpsym;
-	VarDecl	*tmpdecl;
 	Type	*type    = (Type *)expr->a;
 	ClsDecl	*clsdecl = type->u.class.clsdecl;
 	Tcl_HashEntry *hPtr;
@@ -3672,11 +3722,10 @@ compile_clsDeref(Expr *expr, Expr_f flags)
 		return (1);  // stack effect
 	}
 
-	tmpidx  = tmp_getFree(&tmpnm);
-	tmpid   = ast_mkId(tmpnm, 0, 0);
-	tmpdecl = ast_mkVarDecl(sym->type, tmpid, 0, 0);
-	tmpdecl->flags = SCOPE_LOCAL | DECL_LOCAL_VAR | DECL_TEMP;
-	tmpsym  = sym_store(tmpdecl);
+	tmpidx = tmp_getFree(&tmpnm);
+	tmpsym = sym_mk(tmpnm,
+			sym->type,
+			SCOPE_LOCAL | DECL_LOCAL_VAR | DECL_TEMP);
 	ASSERT(tmpsym);  // cannot be multiply declared
 	tmpsym->used_p = TRUE;
 
@@ -3706,9 +3755,7 @@ compile_clsInstDeref(Expr *expr, Expr_f flags)
 	int	in_class = 0;
 	int	tmpidx;
 	char	*clsnm, *tmpnm, *varnm;
-	Expr	*tmpid;
 	Sym	*sym, *tmpsym;
-	VarDecl	*tmpdecl;
 	ClsDecl	*clsdecl = expr->a->type->u.class.clsdecl;
 	Tcl_HashEntry *hPtr;
 
@@ -3746,11 +3793,10 @@ compile_clsInstDeref(Expr *expr, Expr_f flags)
 		return (1);  // stack effect
 	}
 
-	tmpidx  = tmp_getFree(&tmpnm);
-	tmpid   = ast_mkId(tmpnm, 0, 0);
-	tmpdecl = ast_mkVarDecl(sym->type, tmpid, 0, 0);
-	tmpdecl->flags = SCOPE_LOCAL | DECL_LOCAL_VAR | DECL_TEMP;
-	tmpsym  = sym_store(tmpdecl);
+	tmpidx = tmp_getFree(&tmpnm);
+	tmpsym = sym_mk(tmpnm,
+			sym->type,
+			SCOPE_LOCAL | DECL_LOCAL_VAR | DECL_TEMP);
 	ASSERT(tmpsym);  // cannot be multiply declared
 	tmpsym->used_p = TRUE;
 
@@ -4552,6 +4598,16 @@ sym_lookup(Expr *id, Expr_f flags)
 		id->type = L_poly;  // to minimize cascading errors
 		return (NULL);
 	}
+}
+
+private Sym *
+sym_mk(char *name, Type *t, Expr_f flags)
+{
+	Expr	*id = ast_mkId(name, 0, 0);
+	VarDecl	*decl = ast_mkVarDecl(t, id, 0, 0);
+
+	decl->flags = flags;
+	return (sym_store(decl));
 }
 
 /*

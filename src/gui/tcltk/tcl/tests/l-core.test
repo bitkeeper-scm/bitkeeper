@@ -9124,6 +9124,87 @@ void defined_1_11()
 defined_1_11();
 } -output {}
 
+test defined-1.12 {check defined(&var)} -body {
+#lang L -nowarn
+string def1_12_f1(string &a)
+{
+	return ((string)defined(&a));
+}
+string def1_12_f2(string &a, string &b)
+{
+	return ((string)defined(&a) . (string)defined(&b));
+}
+string def1_12_f3(string &a, string &b, string &c)
+{
+	return ((string)defined(&a) . (string)defined(&b) . (string)defined(&c));
+}
+string def1_12_ff(string &a, string &b)
+{
+	return (def1_12_f1(&a) . def1_12_f1(&b));
+}
+void defined_1_12()
+{
+	string	a, b, c;
+
+	unless (def1_12_f1(&a) eq "1") puts("bad 1.1");
+	unless (def1_12_f1(undef) eq "0") puts("bad 1.2");
+
+	unless (def1_12_f2(&a, &b) eq "11") puts("bad 2.1");
+	unless (def1_12_f2(undef, &b) eq "01") puts("bad 2.2");
+	unless (def1_12_f2(&a, undef) eq "10") puts("bad 2.3");
+	unless (def1_12_f2(undef, undef) eq "00") puts("bad 2.4");
+
+	unless (def1_12_f3(&a, &b, &c) eq "111") puts("bad 3.1");
+	unless (def1_12_f3(undef, &b, &c) eq "011") puts("bad 3.2");
+	unless (def1_12_f3(&a, undef, &c) eq "101") puts("bad 3.3");
+	unless (def1_12_f3(&a, &b, undef) eq "110") puts("bad 3.4");
+	unless (def1_12_f3(undef, &b, undef) eq "010") puts("bad 3.5");
+	unless (def1_12_f3(undef, undef, &a) eq "001") puts("bad 3.6");
+	unless (def1_12_f3(&a, undef, undef) eq "100") puts("bad 3.7");
+	unless (def1_12_f3(undef, undef, undef) eq "000") puts("bad 3.8");
+
+	unless (def1_12_ff(&a, &b) eq "11") puts("bad 4.1");
+	unless (def1_12_ff(undef, &b) eq "01") puts("bad 4.2");
+	unless (def1_12_ff(&a, undef) eq "10") puts("bad 4.3");
+	unless (def1_12_ff(undef, undef) eq "00") puts("bad 4.4");
+}
+defined_1_12();
+} -output {}
+
+test defined-1.13 {check errors with defined(&var)} -body {
+#lang L -nowarn
+private string not_a_ref_parm1;
+string not_a_ref_parm2;
+class def_1_13_cls
+{
+	public string	not_a_ref_parm3;
+	instance {
+		public string	not_a_ref_parm4;
+	}
+}
+void defined_1_13()
+{
+	string	not_a_ref_parm5;
+	def_1_13_cls obj = def_1_13_cls_new();
+
+	defined(&not_declared);
+	defined(&not_a_ref_parm1);
+	defined(&not_a_ref_parm2);
+	defined(&def_1_13_cls->not_a_ref_parm3);
+	defined(&obj->not_a_ref_parm4);
+	defined(&not_a_ref_parm5);
+	defined(&defined_1_13);  // fn ptr
+}
+defined_1_13();
+} -returnCodes error -match regexp -result {.*15: L Error:.*not a call-by-reference parm
+.*16: L Error:.*not a call-by-reference parm
+.*17: L Error:.*not a call-by-reference parm
+.*18: L Error:.*not a call-by-reference parm
+.*19: L Error:.*not a call-by-reference parm
+.*20: L Error:.*not a call-by-reference parm
+.*21: L Error:.*not a call-by-reference parm
+}
+
 test undef-1 {check undef built-in} -body {
 #lang L
 void undef_1()
