@@ -435,7 +435,7 @@ _partition() {
 	touch $WA/xcomptip
 	test -z "$XCOMP" && {
 		bk csetprune $QUIET -X -C $WA/comps -r"$TIP" - \
-		    < $WA/prune > $WA/prunecomps
+		    < $WA/prune > $WA/prunecomps || exit 1
 		# Weed out duplicates
 		bk surgery -K$WA/prunecomps < $WA/prune > $WA/prune.tmp
 		mv $WA/prune.tmp $WA/prune

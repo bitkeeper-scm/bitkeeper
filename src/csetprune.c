@@ -83,7 +83,7 @@ csetprune_main(int ac, char **av)
 	char	**addweave = 0;
 	char	*rev = 0;
 	char	*p;
-	int	c, ret = 1;
+	int	i, c, ret = 1;
 
 	flags = PRUNE_NEW_TAG_GRAPH;
 	while ((c = getopt(ac, av, "ac:C:EGk:KNqr:sSXW:", 0)) != -1) {
@@ -134,7 +134,26 @@ k_err:			fprintf(stderr,
 			fprintf(stderr, "%s: missing complist file\n", prog);
 			goto err;
 		}
-		sortLines(complist, string_sort);
+		uniqLines(complist, free);
+		c = (comppath == 0);	/* no comppath if product */
+		EACH(complist) {
+			unless (c) c = streq(complist[i], comppath);
+			if (strneq(complist[i], "BitKeeper", 9) &&
+			    (!complist[i][9] || (complist[i][9] == '/'))) {
+				fprintf(stderr, "%s: no component allowed "
+				    "in the BitKeeper directory\n", prog);
+				goto err;
+			}
+		}
+		unless (c) {
+			fprintf(stderr, "%s: the -c component %s is not "
+			    "in the -C component list\n", prog, comppath);
+			goto err;
+		}
+	} else if (comppath) {
+		fprintf(stderr, "%s: component (-c) "
+		    "can only be used with component list (-C)\n", prog);
+		goto err;
 	}
 	if (weavefile) {
 		unless (addweave = file2Lines(0, weavefile)) {
@@ -212,7 +231,7 @@ csetprune(hash *prunekeys, char *comppath, char **complist, char ***addweave,
 	empty_nodes = filterWeave(cset, &cweave, addweave,
 	    &delkeys, prunekeys, comppath, deepnest, gonemap);
 	if (empty_nodes == -1) {
-		fprintf(stderr, "filterWeave failed\n");
+		fprintf(stderr, "Filtering failed\n");
 		goto err;
 	}
 	if (comppath) {
@@ -537,19 +556,14 @@ private	char	*
 whichComp(char *path, char **reverseComps)
 {
 	int	i, len;
-	char	*p, *ret = 0;
+	char	*ret = 0;
 
-	unless (p = strrchr(path, '/')) return (0);	/* file in product */
-	*p = 0;	/* just look at the dir */
-	len = strlen(path);
 	EACH(reverseComps) {
-		if ((len >= strlen(reverseComps[i])) &&
-		    paths_overlap(path, reverseComps[i])) {
-			ret = reverseComps[i];
+		if (len = paths_overlap(path, reverseComps[i])) {
+			ret = path[len] ? reverseComps[i] : INVALID;
 			break;
 		}
 	}
-	*p = '/';
 	return (ret);
 }
 
@@ -567,12 +581,12 @@ printXcomp(char **cweave, char **complist, hash *prunekeys)
 	char	*rk, *dk, *path, *p, *comppath = 0, *delcomp;
 	char	**reverseComps = 0;
 	char	**deepnest = 0;
-	hash	*delcomps = hash_new(HASH_MEMHASH);
-	hash	*seen = hash_new(HASH_MEMHASH);
+	hash	*uniq = hash_new(HASH_MEMHASH);
+	hash	*seenpath = 0;	/* optimize: limit calls to whichComp() */
 	int	i, skip, ret = 1;
 	char	last_rk[MAXKEY];
 
-	assert(delcomps && seen);
+	assert(uniq);
 	verbose((stderr, "Extracting cross component prune list..\n"));
 
 	EACH(complist) reverseComps = addLine(reverseComps, complist[i]);
@@ -598,6 +612,10 @@ printXcomp(char **cweave, char **complist, hash *prunekeys)
 			}
 			strcpy(last_rk, rk);
 			skip = 0;
+			if (seenpath) {
+				hash_free(seenpath);
+				seenpath = 0;
+			}
 			if (deepnest) {
 				freeLines(deepnest, 0);
 				deepnest = 0;
@@ -617,7 +635,21 @@ printXcomp(char **cweave, char **complist, hash *prunekeys)
 			    	skip = 1;
 				continue;
 			}
+			seenpath = hash_new(HASH_MEMHASH);
+			hash_insertStr(seenpath, path, 0);
 			comppath = whichComp(path, reverseComps);
+			if (comppath == INVALID) {
+				fprintf(stderr,
+				    "%s: tipkey path matches "
+				    "a component path '%s'.\n",
+				    prog, path);
+				*p = '|';
+				fprintf(stderr,
+				    "Rootkey and deltakey are:\n%s\n%s\n",
+				    prog, rk, dk);
+				goto err;
+			}
+			*p = '|';
 			deepnest = deepPrune(complist, comppath);
 			/* filter rootkey path too */
 			path = getPath(rk, &p);
@@ -625,14 +657,23 @@ printXcomp(char **cweave, char **complist, hash *prunekeys)
 		}
 		if (skip) continue;
 		delcomp = newname(0, comppath, path, deepnest);
+		if (delcomp == INVALID) {
+			fprintf(stderr,
+			    "%s: key path matches a component path %s.\n",
+			    prog, path);
+			*p = '|';
+			fprintf(stderr,
+			    "Rootkey and deltakey are:\n%s\n%s\n", rk, dk);
+			goto err;
+		}
 		if (delcomp) continue;
-		unless (hash_insertStr(seen, path, 0)) continue;
+		unless (hash_insertStr(seenpath, path, 0)) continue;
 		unless (delcomp = whichComp(path, reverseComps)) {
 			delcomp = ".";
 		}
 		*p = '|';	/* restore key (matters if rootkey) */
 		delcomp = aprintf("%s||%s", delcomp, rk);
-		if (hash_insertStr(delcomps, delcomp, 0)) {
+		if (hash_insertStr(uniq, delcomp, 0)) {
 			puts(delcomp);
 		}
 		free(delcomp);
@@ -641,8 +682,8 @@ printXcomp(char **cweave, char **complist, hash *prunekeys)
 err:
 	if (deepnest) freeLines(deepnest, 0);
 	if (reverseComps) freeLines(reverseComps, 0);
-	if (delcomps) hash_free(delcomps);
-	if (seen) hash_free(seen);
+	if (uniq) hash_free(uniq);
+	if (seenpath) hash_free(seenpath);
 	return (ret);
 }
 
@@ -864,6 +905,13 @@ zero:				cweave[i][0] = 0;
 			*p = 0;
 			path[-1] = 0;
 			newpath = newname(delpath, comppath, path, deepnest);
+			if (newpath == INVALID) {
+				*p = path[-1] = '|';
+				fprintf(stderr,
+				    "%s: rootkey path matches "
+				    "component path.  Rootkey:\n%s", prog, rk);
+				goto err;
+			}
 			del_rk = strneq(newpath, "BitKeeper/deleted/", 18);
 			sprintf(new_rk, "%s|%s|%s", rk, newpath, &p[1]);
 			if ((prunekeys && hash_fetchStr(prunekeys, path)) ||
@@ -886,6 +934,14 @@ zero:				cweave[i][0] = 0;
 		*p = 0;
 		path[-1] = 0;
 		newpath = newname(delpath, comppath, path, deepnest);
+		if (newpath == INVALID) {
+			*p = path[-1] = '|';
+			fprintf(stderr, "%s: deltakey path matches "
+			    "component path.\n"
+			    "The rootkey and deltakey:\n"
+			    "%s\n%s\n", prog, rk, dk);
+			goto err;
+		}
 		del_dk = strneq(newpath, "BitKeeper/deleted/", 18);
 		del = (newpath == delpath);	/* other component */
 		sprintf(new_dk, "%s|%s|%s", dk, newpath, &p[1]);
@@ -1638,10 +1694,20 @@ getKeys(char *comppath)
 	return (prunekeys);
 }
 
+/*
+ * Given a pathname and a component path where this file will live
+ * eventually return the path from the component root where
+ * this file should be stored.
+ *
+ *  1) if it is in comp, then return shortened path
+ *  2) if not in comp, then return deleted path
+ *  3) if in deep nest, then return deleted path
+ *  4) if conflicting with deep nest, then return INVALID
+ */
 private	char	*
 newname(char *delpath, char *comp, char *path, char **deep)
 {
-	char	*newpath, *p;
+	char	*newpath;
 	int	len, i;
 
 	len = comp ? strlen(comp) : 0;
@@ -1651,15 +1717,14 @@ newname(char *delpath, char *comp, char *path, char **deep)
 	} else if (!len || (strneq(path, comp, len) && (path[len] == '/'))) {
 		/* for component 'src', src/get.c => get.c */
 		newpath = &path[len ? len+1 : 0];
-		if (p = strchr(newpath, '/')) {
-			/* if in deep nest -> deleted */
-			EACH(deep) {
-				p = deep[i];
-				if (strneq(newpath, p, strlen(p)) &&
-				    (newpath[strlen(p)] == '/')) {
-					newpath = delpath;
-					break;
-				}
+		/*
+		 * if deep contains file, error;
+		 * else if file contains deep, deleted (in other comp)
+		 */
+		EACH(deep) {
+			if (len = paths_overlap(newpath, deep[i])) {
+				newpath = newpath[len] ? delpath : INVALID;
+				break;
 			}
 		}
 	} else {
@@ -1725,6 +1790,7 @@ do_file(sccs *s, char *comppath, char **deepnest)
 {
 	delta	*d;
 	int	i, j, keep = 0;
+	int	rc = 1;
 	char	*newpath;
 	char	*delpath;
 	char	*bam_new;
@@ -1759,6 +1825,12 @@ do_file(sccs *s, char *comppath, char **deepnest)
 			goto cmark;
 		}
 		newpath = newname(delpath, comppath, d->pathname, deepnest);
+		if (newpath == INVALID) {
+			fprintf(stderr, "%s: file %s delta %s "
+			    "matches a component path '%s'.\n",
+			    prog, s->gfile, d->rev, d->pathname);
+			goto err;
+		}
 		if (newpath == d->pathname) goto cmark;	/* no change */
 
 		/* too noisy */
@@ -1831,9 +1903,10 @@ cmark:
 			d->bam_old = 0;
 		}
 	}
+	rc = sccs_newchksum(s);
+err:
 	free(delpath);
-	sccs_newchksum(s);
-	return (0);
+	return (rc);
 }
 
 private	int

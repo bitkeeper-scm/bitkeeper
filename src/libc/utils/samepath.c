@@ -13,14 +13,32 @@ samepath(char *a, char *b)
 
 /*
  * Check whether two paths "overlap".
+ * Do any of the leading path components match?
+ *
+ * Returns 0 if paths are non-overlapping, or
+ * Returns index of first unmatching point if
+ * one of the paths passed in is a complete subpath of the other.
+ *    abase[ret] == 0, if abase is a subset of bbase (includes matching)
+ *    abase[ret] == '/', if bbase is a subset of abase (not matching)
+ *    bbase[ret] == 0, if bbase is a subset of abase (includes matching)
+ *    bbase[ret] == '/', if abase is a subset of bbase (not matching)
+ * Note: if streq(abase, "/") || streq(bbase, "/"), then ret could be
+ * 0 and still a match.  However, shouldn't happen so we don't put an assert
+ * for that.  Could avoid the problem of 0 index being a valid return by
+ * returning "char *a", which is what we want on the returning side anyway.
+ * But then the returning index is symmetrical -- applies both to abase
+ * and bbase.
  */
 int
-paths_overlap(char *a, char *b)
+paths_overlap(char *abase, char *bbase)
 {
+	char	*a = abase, *b = bbase;
+
+	assert(*a && *b);
 	while (*a && (*a == *b)) ++a, ++b;
 
-	return (((*a == 0) || (*a == '/')) &&
-	    ((*b == 0) || (*b == '/')));
+	return ((((*a == 0) || (*a == '/')) &&
+	    ((*b == 0) || (*b == '/'))) ? (a - abase) : 0);
 }
 
 #ifdef WIN32

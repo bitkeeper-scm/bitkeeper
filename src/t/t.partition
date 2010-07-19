@@ -35,14 +35,22 @@ mkdir -p deep/prune/path/starts/here
 touch a b c deep/prune/path/starts/here/a
 bk new $Q a b c deep/prune/path/starts/here/a
 cd ../doc
+# file path name that collides, but not listed in cset
 touch a c
 bk new $Q a c
+bk mv c collide
+bk mv collide c
 echo bam > b
 bk new $Q -b b
 cd ..
 bk commit $Q -SROOT -ybaseline
 bk mv src/a a
+touch src/a
+bk new $Q src/a
 bk commit $Q -ymoveit
+# two files each originally src/a, each moved out of component
+# should be no deleted in simple
+bk mv src/a doc/fromsrc
 # use for scompress verification
 touch doc/tip
 bk new $Q doc/tip
@@ -68,9 +76,18 @@ src/deep/prune/path/starts/here
 path/to/attachfoo|$HERE/comp1
 path/to/newbar|$HERE/comp2
 EOF
-cat <<"EOF" > badmap
-$HERE/project/src
-$HERE/project/doc
+# collide with file paths in cset file
+cat <<EOF > badmap.cset
+src/a
+EOF
+# collide with file paths in cset file in a tipkey
+cat <<EOF > badmap.tip
+a/b/c
+EOF
+# collide with file paths inbetween csets, so only in file.
+cat <<EOF > badmap.file
+doc
+doc/collide/on/down/the/road
 EOF
 echo OK
 
@@ -85,6 +102,20 @@ bk partition -q -Cmapfile notthere b 2> ERR && exit 1
 grep -q "illegal, nonexistent, or not package root" ERR || fail -f ERR
 bk partition -Cmapfile project project 2> ERR && exit 1
 grep -q "partition: destination 'project' exists" ERR || fail -f ERR
+# collide file namespace with component namespace in different ways
+bk partition $Q -Cbadmap.cset project copy-bad.cset 2> ERR && fail -f ERR
+grep -q "csetprune: key path matches a component path src/a" ERR || fail -f ERR
+bk partition $Q -Cbadmap.tip project copy-bad.tip 2> ERR && fail -f ERR
+grep -q "tipkey path matches a component path 'a'" ERR || fail -f ERR
+bk partition $Q -Cbadmap.file project copy-bad.file 2> ERR && fail -f ERR
+grep -q "delta 1.2 matches a component path 'doc/collide'" ERR || fail -f ERR
+# do it again with -X, as it catches the error in a different spot
+bk partition $Q -X -Cbadmap.cset project copy-bad.csetX 2> ERR && fail -f ERR
+grep -q "rootkey path matches component path" ERR || fail -f ERR
+bk partition $Q -X -Cbadmap.tip project copy-bad.tipX 2> ERR && fail -f ERR
+grep -q "deltakey path matches component path" ERR || fail -f ERR
+bk partition $Q -X -Cbadmap.file project copy-bad.fileX 2> ERR && fail -f ERR
+grep -q "delta 1.2 matches a component path 'doc/collide'" ERR || fail -f ERR
 echo OK
 
 echo $N Run a simple test ...........................................$NL
@@ -104,6 +135,10 @@ test -s config && echo non-empty config
 # Check idache
 cd "$HERE"/copy/src/deep/prune/path/starts/here
 bk log -r+ -nd:ROOTKEY: ChangeSet > "$HERE"/dnrk
+# See that there are no deleted, because all moved were pruned
+cd "$HERE"/copy/src
+bk sfiles BitKeeper/deleted > deleted
+test -s deleted && fail -f deleted "no files should be deleted"
 cd "$HERE"/copy
 cat ../dnrk | bk key2path > GOT
 echo src/deep/prune/path/starts/here/ChangeSet > WANT
