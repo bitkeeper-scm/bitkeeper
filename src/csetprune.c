@@ -602,18 +602,19 @@ printXcomp(char **cweave, char **complist, hash *prunekeys)
 				freeLines(deepnest, 0);
 				deepnest = 0;
 			}
-			if (prunekeys && hash_fetchStr(prunekeys, rk)) {
-			    	skip = 1;
-				continue;
-			}
 			if (strneq(path, "BitKeeper/deleted/", 18)) {
 				/* delete this rk in all */
 				puts(rk);
 				skip = 1;
 				continue;
-			} else if (strneq(path, "BitKeeper/", 10)) {
+			}
+			if (strneq(path, "BitKeeper/", 10)) {
 				/* keep - it is in all components */
 				skip = 1;
+				continue;
+			}
+			if (prunekeys && hash_fetchStr(prunekeys, rk)) {
+			    	skip = 1;
 				continue;
 			}
 			comppath = whichComp(path, reverseComps);

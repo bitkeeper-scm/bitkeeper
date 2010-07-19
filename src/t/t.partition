@@ -272,21 +272,31 @@ echo src > map
 bk partition $Q -Cmap branch parted
 echo OK
 
-echo $N Test remapping of the contents of the gone file .............$NL
+echo $N Test the filtering of gone information when files are rm ....$NL
 cd "$HERE/project"
 RMNAME=`bk log -r+ -nd:RM_NAME: doc/was-src-b`
-bk rm doc/was-src-b
+bk rm doc/was-src-b src/c
 bk commit $Q -y'make a deltakey'
+TIP=`bk prs -r+ -hnd:KEY: "$RMNAME"`
 bk stripdel $Q -Cr+ "$RMNAME"
 bk -r names $Q
-bk _rm src/SCCS/s.c
 bk admin $Q -fMONOTONIC BitKeeper/etc/gone
+bk _rm -fr BitKeeper/deleted
 bk -r check -aggg | bk gone - 2> ERR || fail -f ERR
 bk edit $Q BitKeeper/etc/gone
 echo "this is junk|1.2" >> BitKeeper/etc/gone
 bk delta $Q -yappendjunk BitKeeper/etc/gone
+bk rm doc/was-src-b
 bk commit $Q -ygoned
 cd ..
+bk partition $Q -Cmapfile project gone.regular || fail
+bk _getkv gone.regular/BitKeeper/log/partition PRUNE > plist
+grep -q src/c plist && fail
+grep -q "$TIP" plist && fail
+echo OK
+
+echo $N Test remapping of the contents of the gone file .............$NL
+cd "$HERE"
 bk partition $Q -Cmapfile -X project gone || fail
 bk get -qpk gone/BitKeeper/etc/gone | tail -1 > OUT
 grep -q '^# csetpruned: this is junk|1.2$' OUT || fail -f OUT
@@ -414,8 +424,4 @@ bk rm -f file
 bk -rBitKeeper/deleted \
     log -r1.0 -nd'test ":DPN:" = "BitKeeper/deleted/:GFILE:" || fail -f X' > X
 . ./X
-cd ..
-bk -rBitKeeper/deleted \
-    log -r1.0 -nd'test ":DPN:" = "BitKeeper/deleted/:GFILE:" || fail -f X' > X
-test -s X && fail -f X
 echo OK

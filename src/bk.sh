@@ -202,7 +202,7 @@ _portal() {
 }
 
 _partition() {
-	CURVER=1.0beta1
+	CURVER=1.0
 	COMPS=
 	FIXGONE=
 	GONE=
@@ -423,6 +423,8 @@ _partition() {
 	# If not allowing cross component moves, purge gone
 	test -z "$REFERENCE" -a -z "$XCOMP" && {
 		echo 'BitKeeper/etc/gone' >> $WA/prune
+		# purge deleted now to remove missing delta keys in deleted
+		bk _rm -fr BitKeeper/deleted
 		bk edit -q BitKeeper/etc/gone
 		cat /dev/null > BitKeeper/etc/gone
 		# Num of g's is a bitmask: 0x1 is rootkey and 0x2 is deltakey
@@ -434,6 +436,9 @@ _partition() {
 	test -z "$XCOMP" && {
 		bk csetprune $QUIET -X -C $WA/comps -r"$TIP" - \
 		    < $WA/prune > $WA/prunecomps
+		# Weed out duplicates
+		bk surgery -K$WA/prunecomps < $WA/prune > $WA/prune.tmp
+		mv $WA/prune.tmp $WA/prune
 		cat $WA/TIP > $WA/xcomptip
 	}
 	test -n "$XCOMP" && FIXGONE=-G
