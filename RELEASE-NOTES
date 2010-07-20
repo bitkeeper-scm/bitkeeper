@@ -2,9 +2,31 @@ Release notes for BitKeeper beta 8
 
 bk gone
     This now sets MONOTONIC on the gone file if it wasn't set.
-    Also fixes a bug where it didn't work if there were dangling
-    deltas in the gone file.
+    Also fixes a bug where the delta done to the gone file didn't
+    work if there were dangling deltas in the gone file.
 
+bk partition
+    Improve stability of partitions going forward, while breaking backward
+    compatibility.
+    Remove possibility of ChangeSet order change when metadata changes
+    during a partition.
+    Protect against file and component namespace clash.
+
+pre-delta triggers
+    Fixes BUGID 2008-04-02-002 (set $BK_FILE relative from repo root)
+    Fixes BUGID 2005-03-31-001 (running pre-delta from outside a repo)
+    Fixes running a pre-delta specified by trigger path to be outside
+    of a repository when no pre-delta triggers are in the repository.
+
+Performance
+    Fix some perf issues in bk-5.0 by turning off compression
+    for local connections. Bk-4.6b did this and it really helps.
+
+Progress bar
+    Fix small bug in progress bars that could cause delayed stderr output
+    to not get delayed and thereby stomp on a progress bar.
+
+===============================================================================
 Release notes for BitKeeper beta 7
 
 READ THIS PART -- YOU MAY NEED TO CHANGE EXISTING SCRIPTS
