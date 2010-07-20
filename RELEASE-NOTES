@@ -1,3 +1,10 @@
+Release notes for BitKeeper beta 8
+
+bk gone
+    This now sets MONOTONIC on the gone file if it wasn't set.
+    Also fixes a bug where it didn't work if there were dangling
+    deltas in the gone file.
+
 Release notes for BitKeeper beta 7
 
 READ THIS PART -- YOU MAY NEED TO CHANGE EXISTING SCRIPTS
