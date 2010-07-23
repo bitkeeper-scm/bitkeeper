@@ -1,6 +1,7 @@
 #include "sccs.h"
 
 /* bk _getkv <kvfile> <key> > DATA */
+/* bk _getkv <kvfile> | while read key; do bk _getkv <kvfile> $key > x; done */
 int
 getkv_main(int ac, char **av)
 {
@@ -9,7 +10,7 @@ getkv_main(int ac, char **av)
 	hash	*h;
 	int	ret = 2;
 
-	unless (av[1] && av[2] && !av[3]) {
+	unless (av[1] && (!av[2] || !av[3])) {
 		fprintf(stderr, "usage: %s <kvfile> <key>\n", prog);
 		return (1);
 	}
@@ -17,7 +18,10 @@ getkv_main(int ac, char **av)
 	key = av[2];
 
 	if (h = hash_fromFile(0, file)) {
-		if (hash_fetchStr(h, key)) {
+		unless (key) {
+			EACH_HASH(h) puts(h->kptr);
+			ret = 0;
+		} else if (hash_fetchStr(h, key)) {
 			write(1, h->vptr, h->vlen-1);
 			ret = 0;
 		}

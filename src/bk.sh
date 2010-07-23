@@ -274,16 +274,28 @@ _partition() {
 		}
 		mv "$PTMP"/BitKeeper/log/partition "$PTMP/partition"
 		rm -fr "$PTMP/BitKeeper"
-		for k in ATTACH COMPS \
-		    GONE PRUNE RAND ROOTLOG ROOTKEY TIP VERSION XCOMP
-		do	bk _getkv "$PTMP/partition" $k > "$PTMP/$k" || {
+		bk _getkv "$PTMP/partition" | while read k
+		do	case "$k" in
+				ATTACH) ;;
+				COMPS) ;;
+				GONE) ;;
+				PRUNE) ;;
+				RAND) ;;
+				ROOTLOG) ;;
+				ROOTKEY) ;;
+				TIP) ;;
+				VERSION) ;;
+				XCOMP) ;;
+				*) echo Unknown feature "'$k'" 1>&2; exit 1;;
+			esac
+			bk _getkv "$PTMP/partition" $k > "$PTMP/$k" || {
 				test $? = 2 || {
 					echo getkv failed 1>&2
 					exit 1
 				}
 				rm "$PTMP/$k"	# key not found
 			}
-		done
+		done || exit 1
 		if [ -f "$PTMP/VERSION" ]
 		then	VERSION="`cat "$PTMP/VERSION"`"
 			test "$VERSION" = "$CURVER" || {

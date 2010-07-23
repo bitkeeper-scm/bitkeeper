@@ -389,6 +389,16 @@ bk changes -qL -ndx ../../one.x/src 2> ERR && echo fail -f ERR
 grep -q "trying to synchronize with an unrelated package" ERR || fail -f ERR
 echo OK
 
+echo $N Verify partition -@ fails if something unknown in kv ........$NL
+cd "$HERE"
+cp one.x/BitKeeper/log/partition backup
+echo foo | bk _setkv one.x/BitKeeper/log/partition WACKO
+bk partition -q -@one.x project one.x.ref 2> GOT && fail
+echo "Unknown feature 'WACKO'" > WANT
+cmpfiles WANT GOT
+cp backup one.x/BitKeeper/log/partition
+echo OK
+
 echo $N Verify partition state sticks and does not propagate -X .....$NL
 cd "$HERE"
 bk clone $Q one.x refer.x
