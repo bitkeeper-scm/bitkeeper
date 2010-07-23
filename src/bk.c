@@ -992,6 +992,8 @@ out:
 		 * after the serverInfo block
 		 */
 		if (sendServerInfo((cmdlog_flags & CMD_NOREPO) || error_msg)) {
+			drain();
+			repository_unlock(proj, 0);
 			exit(1);
 		}
 	}

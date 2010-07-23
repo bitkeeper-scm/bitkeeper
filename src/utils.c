@@ -1211,6 +1211,11 @@ features_repoChk(project *p)
 	}
 	freeLines(local, free);
 	done++;
+
+	/* enforce nested restrictions */
+	if (proj_isEnsemble(p) && bk_notLicensed(p, LIC_SAM, 0)) {
+		exit(100);
+	}
 }
 
 /*

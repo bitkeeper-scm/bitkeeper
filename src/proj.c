@@ -628,11 +628,6 @@ proj_product(project *p)
 		concat_path(buf, p->root, "BitKeeper/log/PRODUCT");
 		if (exists(buf)) {
 			p->product = p;	/* we're our own product */
-
-			/* enforce nested restrictions */
-			if (bk_notLicensed(p, LIC_SAM, 0)) {
-				exit(100);
-			}
 		} else {
 			/* return proj_product of the repo above this one */
 			p->product = 0;

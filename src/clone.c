@@ -563,6 +563,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 		}
 		if (nlid) safe_putenv("_NESTED_LOCK=%s", nlid);
 		free(nlid);
+	} else {
+		proj_reset(0);
 	}
 	if (opts->link) lclone(getenv("BKD_ROOT"));
 	nested_check();
