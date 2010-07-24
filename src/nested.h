@@ -103,6 +103,7 @@ typedef struct {
 	u32	no_lclone:1;	// --no-hardlinks: don't hard link the files
 	u32	quiet:1;	// -q: quiet
 	u32	verbose:1;	// -v: verbose
+	u32	force:1;	// -f: force unpopulate with local diffs
 	u32	runcheck:1;	// follow up with a partial check of prod
 	int	comps;		// number of comps we worked on
 } popts;
@@ -164,6 +165,6 @@ void	nested_updateIdcache(project *comp);
 int	nested_isPortal(project *comp);
 
 /* populate.c */
-int	nested_populate(nested *n, char **urls, int force, popts *ops);
+int	nested_populate(nested *n, char **urls, popts *ops);
 
 #endif	// _NESTED_H

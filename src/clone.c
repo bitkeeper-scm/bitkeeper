@@ -792,7 +792,7 @@ clone2(remote *r)
 		ops.quiet = opts->quiet;
 		ops.verbose = opts->verbose;
 		ops.comps = 1; // product
-		if (nested_populate(n, 0, 0, &ops)) {
+		if (nested_populate(n, 0, &ops)) {
 nested_err:		fprintf(stderr, "clone: component fetch failed, "
 			    "only product is populated\n");
 			nested_free(n);

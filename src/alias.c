@@ -263,7 +263,8 @@ write:
 	EACH_STRUCT(n->comps, cp, i) {
 		if (cp->present != cp->alias) {
 			ops.runcheck = 1;
-			if (nested_populate(n, opts->urls, opts->force, &ops)) {
+			ops.force = opts->force;
+			if (nested_populate(n, opts->urls, &ops)) {
 				goto err;
 			}
 			break;

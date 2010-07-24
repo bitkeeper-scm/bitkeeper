@@ -72,7 +72,7 @@ bk new $Q personality
 bk commit $Q -ynasty
 cd "$HERE/clone"
 bk abort -f
-BK_CONFIG=partial_check:off! bk pull > OUT 2>&1
+BK_CONFIG=partial_check:off! bk pull -q > OUT 2>&1
 if [ $? -eq 0 ]
 then	echo failed to exit non-zero
 	exit 1
