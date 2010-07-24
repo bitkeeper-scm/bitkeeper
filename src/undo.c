@@ -133,6 +133,7 @@ undo_main(int ac,  char **av)
 		    "tip, and may be missing some files that were moved or\n"
 		    "deleted at the time of the partition, but present now.\n"
 		    "The partition tip\n\t%s\n", prog, must_have);
+		unless (getenv("_BK_UNDO_OK")) goto err;
 	}
 	if (must_have) {
 		free(must_have);

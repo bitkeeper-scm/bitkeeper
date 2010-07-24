@@ -34,6 +34,8 @@ cd src
 mkdir -p deep/prune/path/starts/here
 touch a b c deep/prune/path/starts/here/a
 bk new $Q a b c deep/prune/path/starts/here/a
+bk mv a ../a
+bk mv ../a a
 cd ../doc
 # file path name that collides, but not listed in cset
 touch a c
@@ -201,9 +203,9 @@ test -f copy/src/b || {
 }
 echo OK
 
-echo $N Test rollback without -X means src/a is there ...............$NL
+echo $N Test rollback with -X means src/a is there ..................$NL
 cd copy
-bk undo $Q -sfaROOT 2> WARN || exit 1
+_BK_UNDO_OK=1 bk undo $Q -sfaROOT 2> WARN || exit 1
 bk _test -f src/SCCS/s.a || {
 	echo not there
 	exit 1
@@ -212,10 +214,15 @@ grep -q "undo is rolling back before the partition" WARN || fail -f WARN
 cd ..
 echo OK
 
-echo $N Test rollback without -X means src/a is not there ...........$NL
+echo $N Test rollback without -X means error ........................$NL
 bk partition $Q -Cmapfile project xcomps || exit 1
 cd xcomps
-bk undo $Q -sfaROOT 2> WARN || exit 1
+bk undo $Q -sfaROOT 2> WARN && fail -f WARN
+grep -q "undo is rolling back before the partition" WARN || fail -f WARN
+echo OK
+
+echo $N Test again with override and see src/a is not there .........$NL
+_BK_UNDO_OK=1 bk undo $Q -sfaROOT 2> WARN || exit 1
 bk _test -f src/SCCS/s.a && {
 	echo there
 	exit 1

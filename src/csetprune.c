@@ -1876,6 +1876,7 @@ cmark:
 			free(bam_new);
 		}
 		if (keep || (d->flags & D_RED)) continue;
+		unless (d->flags & D_CSET) continue;
 		if (strneq(d->pathname, "BitKeeper/deleted/", 18)) {
 			d->flags &= ~D_CSET;
 			continue;
