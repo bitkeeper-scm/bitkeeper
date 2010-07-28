@@ -69,6 +69,7 @@ cmd_putenv(int ac, char **av)
 	char	*p;
 	char	*oldenv;
 	char	*var;
+	int	ret = 1;
 
 	unless (av[1]) return (1);
 	unless (p = strchr(av[1], '=')) return (1);
@@ -79,12 +80,12 @@ cmd_putenv(int ac, char **av)
 	 * _BK_, BK_, or BKD_.  Not sure we need the BKD_, but hey.
 	 * Also disable BK_HOST, this screws up the locks.
 	 */
-	if (streq("BK_SEED_OK", var)) return (1);
-	if (streq("BK_NO_TRIGGERS", var)) return (1);
-	if (streq("BK_HOST", var)) return (1);
+	if (streq("BK_SEED_OK", var)) goto out;
+	if (streq("BK_NO_TRIGGERS", var)) goto out;
+	if (streq("BK_HOST", var)) goto out;
 	unless (strneq("BK_", var, 3) || strneq("BKU_", var, 4) ||
 	    strneq("BKD_", var, 4) || strneq("_BK_", var, 4)) {
-	    	return (1);
+	    	goto out;
 	}
 	oldenv = getenv(var);
 	unless (oldenv && streq(oldenv, p+1)) {
@@ -128,9 +129,9 @@ cmd_putenv(int ac, char **av)
 		}
 		safe_putenv("BKD_SEED=%s", newseed);
 	}
-	free(var);
-
-	return (0);
+	ret = 0;
+out:	free(var);
+	return (ret);
 }
 
 int
@@ -153,7 +154,7 @@ int
 cmd_check(int ac, char **av)
 {
 	int	status, rc;
-
+	
 	out("@CHECK INFO@\n");
 	status = system("bk -r check -a 2>&1");
 	rc = WEXITSTATUS(status); 

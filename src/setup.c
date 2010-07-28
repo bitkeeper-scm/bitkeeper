@@ -1,6 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "logging.h"
+#include "features.h"
 
 private int	mkconfig(FILE *out, MDBM *flist, int verbose);
 private void	defaultFiles(int);
@@ -245,7 +246,7 @@ err:			unlink("BitKeeper/etc/config");
         }
 	enableFastPendingScan();
 	logChangeSet();
-	unless (proj_hasOldSCCS(0)) features_repoSet(0, "remap");
+	bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 	if (in_prod) {		/* we are a new component, attach ourself */
 		unlink("BitKeeper/log/COMPONENT");
 		status = sys("bk", "attach",

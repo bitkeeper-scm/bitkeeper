@@ -8,6 +8,7 @@
 #include "nested.h"
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
+#include "features.h"
 
 
 private int	lockResync(project *p);
@@ -342,7 +343,7 @@ repository_rdlock(project *p)
 {
 	int	i, ret;
 
-	features_repoChk(0);
+	bk_featureRepoChk(0);
 	if (global_wrlocked()) return (LOCKERR_LOST_RACE);
 	for (i = 0; i < 10; ++i) {
 		unless (ret = rdlock(p)) return (0);
@@ -413,7 +414,7 @@ repository_wrlock(project *p)
 {
 	int	i, ret;
 
-	features_repoChk(0);
+	bk_featureRepoChk(0);
 	if (global_locked()) return (LOCKERR_LOST_RACE);
 	for (i = 0; i < 10; ++i) {
 		unless (ret = wrlock(p)) return (0);

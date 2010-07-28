@@ -6,6 +6,7 @@
 #include "logging.h"
 #include "nested.h"
 #include "progress.h"
+#include "features.h"
 
 private struct {
 	u32	automerge:1;		/* -i: turn off automerge */
@@ -327,14 +328,14 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		disconnect(r);
 		return (1);
 	}
-	if (opts.rev && !bkd_hasFeature("pull-r")) {
+	if (opts.rev && !bkd_hasFeature(FEAT_pull_r)) {
 		notice("no-pull-dash-r", 0, "-e");
 		disconnect(r);
 		return (1);
 	}
 	if ((bp_hasBAM() ||
 	    ((p = getenv("BKD_BAM")) && streq(p, "YES"))) &&
-	    !bkd_hasFeature("BAMv2")) {
+	    !bkd_hasFeature(FEAT_BAMv2)) {
 		fprintf(stderr,
 		    "pull: please upgrade the remote bkd to a "
 		    "BAMv2 aware version (4.1.1 or later).\n");
@@ -342,7 +343,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 		return (1);
 	}
 	if (opts.port) {
-		unless (bkd_hasFeature("SAMv3")) {
+		unless (bkd_hasFeature(FEAT_SAMv3)) {
 			fprintf(stderr,
 			    "port: remote bkd too old to support 'bk port'\n");
 			disconnect(r);

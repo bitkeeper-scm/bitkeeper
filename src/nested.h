@@ -128,7 +128,8 @@ void	nested_writeHere(nested *n);
 
 /* alias.h */
 
-#define	ALIASES	"BitKeeper/etc/aliases"
+#define	ALIASES		"BitKeeper/etc/aliases"
+#define	SALIASES	"BitKeeper/etc/SCCS/s.aliases"
 
 hash	*aliasdb_init(nested *n,
     project *p, char *rev, int pending, int no_diffs);

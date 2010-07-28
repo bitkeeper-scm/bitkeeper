@@ -2,7 +2,7 @@ echo $N Verify that clone fails with unknown feature ................$NL
 commercial project
 echo wizbang >> BitKeeper/log/features
 cd ..
-bk clone $Q project copy 2>ERR && exit 1
+bk clone -q project copy 2>ERR && exit 1
 bk getmsg -= repo_feature wizbang > WANT
 cmpfiles ERR WANT
 echo OK
@@ -12,6 +12,51 @@ cd project
 echo whoopee >> BitKeeper/log/features
 bk getmsg -= repo_feature wizbang,whoopee > WANT
 echo hi > data
-bk new $Q data 2>ERR && exit 1
+bk new $Q data 2>ERR && fail -f ERR
 cmpfiles ERR WANT
+echo OK
+
+echo $N Send messages back from bkd .................................$NL
+cd "$HERE"
+nested nest
+bk clone $Q . ../nestcopy
+cd ../nestcopy
+_BK_TESTFEAT='HORSE' bk pull $Q 2>ERR && fail -f ERR
+bk getmsg -= bk_missing_feature SAMv3 > WANT
+cmpfiles ERR WANT
+_BK_TEST_REQUIRED='HORSE' bk pull $Q 2>ERR && fail -f ERR
+bk getmsg -= bkd_missing_feature HORSE > WANT
+cmpfiles ERR WANT
+echo OK
+
+echo $N Last set of pull commands left no remote read locks .........$NL
+cd ../nest
+bk lock -ql || fail
+echo OK
+
+echo $N Here what bkd has and output message ........................$NL
+cd ../nestcopy
+_BKD_TESTFEAT='HORSE' bk pull $Q 2>ERR && fail -f ERR
+bk getmsg -= bkd_missing_feature SAMv3 > WANT
+cmpfiles ERR WANT
+_BKD_TEST_REQUIRED='HORSE' bk pull $Q 2>ERR && fail -f ERR
+bk getmsg -= bk_missing_feature HORSE > WANT
+cmpfiles ERR WANT
+echo OK
+
+echo $N Last set of pull commands left remote read locks ............$NL
+cd ../nest
+bk lock -lq || fail
+echo OK
+
+echo $N Test clone with illegal features ............................$NL
+cd ..
+_BKD_TEST_REQUIRED=HORSE bk clone $Q 2>ERR nest junk && fail -f ERR
+
+# the bkd can get a perror(EPIPE) when the client fails to read the SFIO
+grep -v 'Broken pipe' ERR > ERR2
+
+bk getmsg -= bk_missing_feature HORSE > WANT
+cmpfiles ERR2 WANT
+bk lock -lq nest || fail
 echo OK

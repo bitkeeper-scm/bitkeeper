@@ -143,7 +143,7 @@ bk bam push $Q || exit 1      # push data to sever
 bk bam clean $Q -a || exit 1     # remove it locally
 # break server link (manually, bam server won't let you)
 cat <<EOF > BitKeeper/log/BAM_SERVER
-bk://badhost.example.com/dev
+bk://badhost.bitkeeper.com/dev
 20080718141848-07:00|work.bitmover.com|/home/bk/projects/dev/newdev|rick|ob0p
 EOF
 bk bam check -F $Q 2>ERR && {
@@ -156,7 +156,7 @@ bk bam server $Q ../pjunk 2>ERR && {
 	cat ERR
 	exit 1
 }
-grep -q "unable to pull from bk://badhost.example.com/dev" ERR || {
+grep -q "unable to pull from bk://badhost.bitkeeper.com/dev" ERR || {
 	echo wrong error
 	cat ERR
 	exit 1

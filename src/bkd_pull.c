@@ -1,6 +1,7 @@
 #include "bkd.h"
 #include "range.h"
 #include "nested.h"
+#include "features.h"
 
 int
 cmd_pull_part1(int ac, char **av)
@@ -52,12 +53,7 @@ cmd_pull_part1(int ac, char **av)
 		out("\n");
 		return (1);
 	}
-	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv3")) {
-		out("ERROR-please upgrade your BK to a NESTED "
-		    "aware version (5.0 or later)\n");
-		return (1);
-	}
-	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
+	if (bp_hasBAM() && !bk_hasFeature(FEAT_BAMv2)) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
 		    "(4.1.1 or later)\n");
 		return (1);
@@ -236,7 +232,7 @@ cmd_pull_part2(int ac, char **av)
 	fputs("@PATCH@\n", stdout);
 
 	n = 2;
-	if (bk_hasFeature("pSFIO")) {
+	if (bk_hasFeature(FEAT_pSFIO)) {
 		if (rem) {
 			/* A pull that will create a merge */
 
@@ -266,7 +262,7 @@ cmd_pull_part2(int ac, char **av)
 	} else {
 		makepatch[n++] = "-C"; /* old-bk, use compat mode */
 	}
-	if (bk_hasFeature("fastpatch")) makepatch[n++] = "-F";
+	if (bk_hasFeature(FEAT_FAST)) makepatch[n++] = "-F";
 	if (port) {
 		makepatch[n++] = "-P";
 		makepatch[n++] = port;

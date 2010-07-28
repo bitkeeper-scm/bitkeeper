@@ -8,6 +8,7 @@
 #include "tomcrypt/randseed.h"
 #include "nested.h"
 #include "progress.h"
+#include "features.h"
 
 #define	BK "bk"
 
@@ -983,7 +984,7 @@ cmdlog_start(char **av, int bkd_cmd)
 	}
 out:
 	if (bkd_cmd &&
-	    (!(cmdlog_flags & CMD_COMPAT_NOSI) || bk_hasFeature("SAMv3"))) {
+	    (!(cmdlog_flags & CMD_COMPAT_NOSI) || bk_hasFeature(FEAT_SAMv3))) {
 		/*
 		 * COMPAT: Old bk's don't expect a serverInfo block
 		 * before the error, but since we have the environment

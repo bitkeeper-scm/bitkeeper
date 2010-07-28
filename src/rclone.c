@@ -2,6 +2,7 @@
 #include "logging.h"
 #include "nested.h"
 #include "progress.h"
+#include "features.h"
 
 private	struct {
 	u32	debug:1;		/* -d debug mode */
@@ -360,16 +361,10 @@ rclone_part1(remote *r, char **envVar)
 		return (-1);
 	}
 	if (get_ok(r, buf, 1)) return (-1);
-	if (bp_hasBAM() && !bkd_hasFeature("BAMv2")) {
+	if (bp_hasBAM() && !bkd_hasFeature(FEAT_BAMv2)) {
 		fprintf(stderr,
 		    "clone: please upgrade the remote bkd to a "
 		    "BAMv2 aware version (4.1.1 or later).\n");
-		return (-1);
-	}
-	if (getenv("_BK_TRANSACTION") && !bkd_hasFeature("SAMv3")) {
-		fprintf(stderr,
-		    "clone: please upgrade the remote bkd to a "
-		    "NESTED aware version (5.0 or later).\n");
 		return (-1);
 	}
 	if (r->type == ADDR_HTTP) disconnect(r);

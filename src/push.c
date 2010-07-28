@@ -6,6 +6,7 @@
 #include "range.h"
 #include "nested.h"
 #include "progress.h"
+#include "features.h"
 
 private	struct {
 	u32	quiet:1;		/* -q */
@@ -602,15 +603,9 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 			    getenv("BKD_LEVEL"));
 			return (PUSH_ABORT);
 		}
-		if (proj_isProduct(0) && !bkd_hasFeature("SAMv3")) {
-			fprintf(stderr,
-			    "push: please upgrade the remote bkd to a "
-			    "NESTED aware version (5.0 or later).\n");
-			return (PUSH_ABORT);
-		}
 		if ((bp_hasBAM() ||
 		     ((p = getenv("BKD_BAM")) && streq(p, "YES"))) &&
-		     !bkd_hasFeature("BAMv2")) {
+		     !bkd_hasFeature(FEAT_BAMv2)) {
 			fprintf(stderr,
 			    "push: please upgrade the remote bkd to a "
 			    "BAMv2 aware version (4.1.1 or later).\n");
@@ -1031,7 +1026,7 @@ genpatch(FILE *wf, char *rev_list, int gzip, int isLocal)
 	opts.inBytes = opts.outBytes = 0;
 	n = 2;
 	if (opts.verbose) makepatch[n++] = "-v";
-	if (bkd_hasFeature("pSFIO")) {
+	if (bkd_hasFeature(FEAT_pSFIO)) {
 		if (isLocal) {
 			makepatch[n++] = "-M3";
 		} else {
@@ -1040,7 +1035,7 @@ genpatch(FILE *wf, char *rev_list, int gzip, int isLocal)
 	} else {
 		makepatch[n++] = "-C"; /* old-bk, compat mode */
 	}
-	if (bkd_hasFeature("fastpatch")) makepatch[n++] = "-F";
+	if (bkd_hasFeature(FEAT_FAST)) makepatch[n++] = "-F";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*

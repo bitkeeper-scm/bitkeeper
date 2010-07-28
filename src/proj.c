@@ -1223,6 +1223,7 @@ again:		putenv("_BK_FSLAYER_SKIP=1");
  * Funky rules:
  *  root/SCCS exists -> non-remapped
  *  root/.bk/SCCS exists -> remapped
+ *  both exists? -> try to fix problem
  *  is product remapped? -> do the same
  *
  * The rationale for the funk is to make new components (coming in via
@@ -1237,6 +1238,7 @@ proj_hasOldSCCS(project *p)
 {
 	project	*p2;
 	int	en;
+	int	oldsccs, newsccs;
 	char	buf[MAXPATH];
 
 	unless (p || (p = curr_proj())) return (1);
@@ -1250,24 +1252,38 @@ proj_hasOldSCCS(project *p)
 
 	en = fslayer_enable(0);
 	/* See: Funky rules above */
-	concat_path(buf, p->root, "SCCS");
-	if (isdir(buf)) {
-		p->noremap = 1;
-		goto out;
-	}
-
 	concat_path(buf, p->root, ".bk/SCCS");
-	if (isdir(buf)) {
-		p->noremap = 0;
-		goto out;
-	}
-	if ((p2 = proj_product(p)) && (p != p2)) {
-		p->noremap = proj_hasOldSCCS(p2);
-		goto out;
-	}
+	newsccs = isdir(buf);
+	concat_path(buf, p->root, "SCCS");
+	oldsccs = isdir(buf);
 
-	p->noremap = noremap_default;
- out:	fslayer_enable(en);
+	if (oldsccs) {
+		if (newsccs) {
+			/* both exist? */
+			if (!rmdir(buf)) {
+				/* empty from 4.6, no problem */
+				p->noremap = 0;
+			} else {
+				fprintf(stderr, "error: both %s/SCCS "
+				    "and .../.bk/SCCS exist\n", p->root);
+				exit(1);
+			}
+		} else {
+			p->noremap = 1;
+		}
+	} else {
+		if (newsccs) {
+			p->noremap = 0;
+		} else {
+			/* neither exist, find default */
+			if ((p2 = proj_product(p)) && (p != p2)) {
+				p->noremap = proj_hasOldSCCS(p2);
+			} else {
+				p->noremap = noremap_default;
+			}
+		}
+	}
+	fslayer_enable(en);
 	return (p->noremap);
 }
 

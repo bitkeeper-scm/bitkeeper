@@ -1,0 +1,31 @@
+Protocol level features:
+   lkey:1	use leasekey #1 to sign lease requests
+   BAMv2	support BAM operations (4.1.1 and later)
+   SAMv3	nested support
+   mSFIO	will accept modes with sfio.
+   pull-r	pull -r is parsed correctly
+   pSFIO	send whole sfiles in SFIO attached to patches
+   fastpatch	support fastpatch mode
+
+
+Repository level features: in BitKeeper/log/features and currently
+enabled list passed in BK_FEATURES_REQUIRED & BKD_FEATURES_REQUIRED.
+
+   remap	remapped tree (also BK_REMAP & BKD_REMAP)
+   sortkey(*)	needs sortkey metadata in sfiles
+
+*) these features require bk-filerev5 in sfiles
+
+
+All supported features are passed in BK_FEATURES & BKD_FEATURES.
+The BitKeeper/log/features list will be verified 
+    - when we get a lease
+    - when we get a repo lock
+    - in sane()
+    - right before we parse an sfile
+
+If FEATURES_REQUIRED & FEATURES don't match the connection will
+automatically be rejected with an upgrade required message.
+(features.c:bk_featuresChk())
+
+See features.h for a complete list of interfaces

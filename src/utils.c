@@ -1,6 +1,7 @@
 #include "bkd.h"
 #include "logging.h"
 #include "progress.h"
+#include "features.h"
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
@@ -25,26 +26,16 @@ saveStdin(char *tmpfile)
 	return (0);
 }
 
-
-/*
- * Write the data to either the gzip channel or to 1.
- */
 int
 out(char *buf)
 {
-	return (outfd(1, buf));
+	return (writen(1, buf, strlen(buf)));
 }
 
 int
 outc(char c)
 {
 	return (writen(1, &c, 1));
-}
-
-int
-outfd(int to, char *buf)
-{
-	return (writen(to, buf, strlen(buf)));
 }
 
 /*
@@ -876,7 +867,10 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		fprintf(f, "putenv _BK_PROGRESS_MULTI=YES");
 	}
 
-	unless (flags & SENDENV_NOREPO) {
+	if (flags & SENDENV_NOREPO) {
+		/* remember the local repo wasnt part of the connection */
+		r->noLocalRepo = 1;
+	} else {
 		/*
 		 * This network connection is not necessarily run from
 		 * a repository, so don't send information about the
@@ -948,23 +942,31 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			fprintf(f, "putenv BK_LICENSE=%s\n", proj_bkl(0));
 		}
 	}
-	/*
-	 * Send comma separated list of client features so the bkd
-	 * knows which outputs are supported.
-	 *   lkey:1	use leasekey #1 to sign lease requests
-	 *   BAM
-	 *   pSFIO	send whole sfiles in SFIO attached to patches
-	 *   mSFIO	will accept modes with sfio.
-	 */
-	fprintf(f, "putenv BK_FEATURES=lkey:1,BAMv2,SAMv3,mSFIO");
-	unless (getenv("_BK_NO_PATCHSFIO")) fputs(",pSFIO", f);
-	unless (getenv("_BK_NO_FASTPATCH")) fputs(",fastpatch", f);
-	fputc('\n', f);
+	if (t = getenv("_BK_TESTFEAT")) {
+		t = strdup(t);
+	} else {
+		t = bk_featureList(0, 1); /* all supported features */
+	}
+	fprintf(f, "putenv BK_FEATURES=%s\n", t);
+	free(t);
+	unless (flags & SENDENV_NOREPO) {
+		if (t = getenv("_BK_TEST_REQUIRED")) {
+			t = strdup(t);
+		} else {
+			t = bk_featureList(0, 0); /* only required features */
+		}
+		fprintf(f, "putenv BK_FEATURES_REQUIRED=%s\n", t);
+		free(t);
+	}
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
 	if (p) proj_free(p);
 }
 
+/*
+ * Process the @SERVER INFO@ block from the bkd which may contain an
+ * ERROR- message that should be expanded for the user.
+ */
 int
 getServerInfo(remote *r)
 {
@@ -986,7 +988,13 @@ getServerInfo(remote *r)
 		}
 		if (r->trace) fprintf(stderr, "Server info:%s\n", buf);
 
-		if (strneq(buf, "ERROR-", 6)) {
+		if (strneq(buf, "ERROR-bk_missing_feature ", 25)) {
+			getMsg("bk_missing_feature", buf+25, '=', stderr);
+			return (1);
+		} else if (strneq(buf, "ERROR-bkd_missing_feature ", 26)) {
+			getMsg("bkd_missing_feature", buf+26, '=', stderr);
+			return (1);
+		} else if (strneq(buf, "ERROR-", 6)) {
 			lease_printerr(buf+6);
 			return (1);
 		}
@@ -1010,6 +1018,33 @@ getServerInfo(remote *r)
 	safe_putenv("BKD_SEED_OK=%d", i);
 	if (r->seed) free(r->seed);
 	r->seed = newseed;
+	if (ret) {
+		fprintf(stderr, "%s: premature disconnect\n", prog);
+	} else if (bk_featureChk(0, r->noLocalRepo)) {
+		/* cleanup stale nested lock */
+		if (getenv("BKD_NESTED_LOCK")) {
+			FILE	*f;
+			char	buf[MAXPATH];
+
+			if (r->type == ADDR_HTTP) {
+				disconnect(r);
+				bkd_connect(r);
+			}
+			bktmp(buf, "abort");
+			f = fopen(buf, "w");
+			assert(f);
+			sendEnv(f, 0, r, SENDENV_NOREPO);
+			if (r->type == ADDR_HTTP) add_cd_command(f, r);
+			fprintf(f, "nested abort\n");
+			fclose(f);
+			if (send_file(r, buf, 0)) return (1);
+			unlink(buf);
+			while (getline2(r, buf, sizeof(buf)) > 0) {
+				if (streq(buf, "@OK@")) break;
+			}
+		}
+		ret = 1;
+	}
 	return (ret);
 }
 
@@ -1028,6 +1063,7 @@ sendServerInfo(int no_repo)
 	unless (no_repo || isdir(BKROOT)) no_repo = 1;
 
 	out("@SERVER INFO@\n");
+	if (bk_featureChk(1, no_repo)) return (1);
 	unless (no_repo) {
 		if (p = lease_bkl(0, &errs)) {
 			free(p);
@@ -1117,15 +1153,22 @@ sendServerInfo(int no_repo)
 	out(sccs_realhost());
 	out("\nPLATFORM=");
 	out(platform());
-	/*
-	 * Return a comma seperated list of features supported by the bkd.
-	 *   pull-r	pull -r is parsed correctly
-	 *   BAMv2	support BAM operations (4.1.1 and later)
-	 *   pSFIO	send whole sfiles in SFIO attached to patches
-	 */
-	out("\nFEATURES=pull-r,BAMv2,SAMv3");
-	unless (getenv("_BK_NO_PATCHSFIO")) out(",pSFIO");
-	unless (getenv("_BK_NO_FASTPATCH")) out(",fastpatch");
+	if (p = getenv("_BKD_TESTFEAT")) {
+		p = strdup(p);
+	} else {
+		p = bk_featureList(0, 1); /* all supported features */
+	}
+	out("\nFEATURES=");
+	out(p);
+	free(p);
+	if (p = getenv("_BKD_TEST_REQUIRED")) {
+		p = strdup(p);
+	} else {
+		p = bk_featureList(0, 0); /* only required features */
+	}
+	out("\nFEATURES_REQUIRED=");
+	out(p);
+	free(p);
 
 	/* only send back a seed if we received one */
 	if (p = getenv("BKD_SEED")) {
@@ -1141,143 +1184,6 @@ sendServerInfo(int no_repo)
 	out("\n@END@\n");
 	return (0);
 }
-
-private int
-has_feature(char *bk, char *f)
-{
-	int	len;
-	char	var[20];
-
-	sprintf(var, "%s_FEATURES", bk);
-	bk = getenv(var);
-	len = strlen(f);
-	while (bk) {
-		if (strneq(bk, f, len)) {
-			if (bk[len] == ',' || !bk[len]) return (1);
-		}
-		if (bk = strchr(bk, ',')) ++bk;
-	}
-	return (0);
-}
-
-int
-bk_hasFeature(char *f)
-{
-	return (has_feature("BK", f));
-}
-
-int
-bkd_hasFeature(char *f)
-{
-	return (has_feature("BKD", f));
-}
-
-/*
- * per repo features
- */
-static char *features[] = {
-	"remap",	/* remapped repository */
-	0
-};
-
-/*
- * Verify that all the feature codes in BitKeeper/log/features
- * are understood by the current bk binary.
- * Doesn't return on failure.
- */
-void
-features_repoChk(project *p)
-{
-	int	i;
-	char	**t;
-	char	**local = 0;
-	char	**missing = 0;
-	char	*list;
-	static	int done = 0;
-
-	if (done) return;
-
-	local = file2Lines(local, proj_fullpath(p, "BitKeeper/log/features"));
-	EACH(local) {
-		for (t = features; *t; ++t) {
-			if (streq(local[i], *t)) break;
-		}
-		unless (*t) missing = addLine(missing, local[i]);
-	}
-	if (missing) {
-		list = joinLines(",", missing);
-		getMsg("repo_feature", list, '=', stderr);
-		exit(101);
-	}
-	freeLines(local, free);
-	done++;
-
-	/* enforce nested restrictions */
-	if (proj_isEnsemble(p) && bk_notLicensed(p, LIC_SAM, 0)) {
-		exit(100);
-	}
-}
-
-/*
- * Add a new feature code to the current repository, so
- * that older bk's that don't understand it will refuse to operate
- * on the repo.
- */
-void
-features_repoSet(project *p, char *feature)
-{
-	char	**t;
-	char	**local;
-	char	*ffile;
-	int	i;
-
-	/* we better have this feature defined above */
-	for (t = features; *t; ++t) {
-		if (streq(feature, *t)) break;
-	}
-	assert(*t);
-
-	ffile = proj_fullpath(p, "BitKeeper/log/features");
-	local = file2Lines(0, ffile);
-
-	/* avoid needless rewrites, they mess up NFS */
-	EACH(local) {
-		if (streq(local[i], feature)) {
-			goto out;
-		}
-	}
-	local = addLine(local, strdup(feature));
-	uniqLines(local, free);
-	if (lines2File(local, ffile)) perror(ffile);
-out:	freeLines(local, free);
-}
-
-/*
- * Remove a feature code from the current repository
- */
-void
-features_repoClear(project *p, char *feature)
-{
-	char	**t;
-	char	**local;
-	char	*ffile;
-
-	/* we better have this feature defined above */
-	for (t = features; *t; ++t) {
-		if (streq(feature, *t)) break;
-	}
-	assert(*t);
-
-	ffile = proj_fullpath(p, "BitKeeper/log/features");
-	local = file2Lines(0, ffile);
-
-	/* avoid needless rewrites, they mess up NFS */
-	if (removeLine(local, feature, free)) {
-		if (lines2File(local, ffile)) perror(ffile);
-	}
-	freeLines(local, free);
-}
-
 
 /*
  * Generate a http response header from a bkd back to the client.

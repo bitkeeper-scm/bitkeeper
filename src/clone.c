@@ -6,6 +6,7 @@
 #include "bam.h"
 #include "nested.h"
 #include "progress.h"
+#include "features.h"
 
 private	struct {
 	u32	no_parent:1;		/* -p: do not set parent pointer */
@@ -418,11 +419,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		return (CLONE_ERROR);	// XXX: return a lock failed rc?
 	}
 	if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) {
-			fprintf(stderr, "clone: premature disconnect?\n");
-			disconnect(r);
-			goto done;
-		}
+		if (getServerInfo(r)) goto done;
 		getline2(r, buf, sizeof(buf));
 		if (remote_lock_fail(buf, 1)) return (CLONE_ERROR);
 		/* use the basename of the src if no dest is specified */
@@ -537,6 +534,14 @@ clone(char **av, remote *r, char *local, char **envVar)
 		disconnect(r);
 		goto done;
 	}
+	if (!exists(CHANGESET) && !bkd_hasFeature(FEAT_REMAP)) {
+		getMsg("bkd_missing_feature", "REMAP", '=', stderr);
+		goto done;
+	}
+	if (exists(SALIASES) && !bkd_hasFeature(FEAT_SAMv3)) {
+		getMsg("bkd_missing_feature", "SAMv3", '=', stderr);
+		goto done;
+	}
 	unless (exists(IDCACHE)) {
 		if (exists("BitKeeper/log/x.id_cache")) {
 			rename("BitKeeper/log/x.id_cache", IDCACHE);
@@ -545,11 +550,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 			rename("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
 		}
 	}
-	if (proj_hasOldSCCS(0)) {
-		features_repoClear(0, "remap");
-	} else {
-		features_repoSet(0, "remap");
-	}
+	bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 	if (opts->product) {
 		char	*nlid = 0;
 
@@ -570,7 +571,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	nested_check();
 
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
-	if (do_part2 && !bkd_hasFeature("BAMv2")) {
+	if (do_part2 && !bkd_hasFeature(FEAT_BAMv2)) {
 		fprintf(stderr,
 		    "clone: please upgrade the remote bkd to a "
 		    "BAMv2 aware version (4.1.1 or later).\n"

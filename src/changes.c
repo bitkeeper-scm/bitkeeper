@@ -1327,10 +1327,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	if ((rc = remote_lock_fail(buf, 1))) {
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) {
-			fprintf(stderr, "changes: premature disconnect?\n");
-			return (-1);
-		}
+		if (getServerInfo(r)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));

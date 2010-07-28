@@ -16,6 +16,7 @@
 #include "range.h"
 #include "graph.h"
 #include "bam.h"
+#include "features.h"
 
 typedef struct weave weave;
 #define	WRITABLE_REG(s)	(WRITABLE(s) && isRegularFile((s)->mode))
@@ -3271,6 +3272,10 @@ mkgraph(sccs *s, int flags)
 	sccs_nextdata(s);		/* checksum */
 	line++;
 	debug((stderr, "mkgraph(%s)\n", s->sfile));
+	unless (buf = sccs_nextdata(s)) goto bad;
+	/* skip version mark if it exists */
+	line++;
+	unless (streq(buf, BKID_STR)) goto first;
 	for (;;) {
 		unless (buf = sccs_nextdata(s)) {
 bad:
@@ -3288,7 +3293,7 @@ bad:
 			return;
 		}
 		line++;
-		if (streq(buf, "\001u")) break;
+first:		if (streq(buf, "\001u")) break;
 		t = new(delta);
 		assert(t);
 		s->numdeltas++;
@@ -4435,7 +4440,12 @@ sccs_init(char *name, u32 flags)
 	} else {
 		s->cksumok = 1;
 	}
+	bk_featureRepoChk(s->proj); /* check before we parse sfile */
 	mkgraph(s, flags);
+
+	/* test lease after we have s->table->pathname */
+	lease_check(s->proj, O_RDONLY, s);
+
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (HASGRAPH(s)) {
 		if (misc(s)) {
@@ -4473,7 +4483,6 @@ sccs_init(char *name, u32 flags)
 	if (_YEAR4 == 1) s->xflags |= X_YEAR4;
 
 	if (sig_ignore() == 0) s->unblock = 1;
-	lease_check(s->proj, O_RDONLY, s);
 
 	if (CSET(s)) {
 		int i, in_log = 0;
@@ -8008,7 +8017,13 @@ delta_table(sccs *s, FILE *out, int willfix)
 			s->tree->xflags &= ~(X_SCCS|X_RCS);
 			s->tree->xflags |= X_HASH;
 		}
+
+		/* add compat marker */
+		unless (bk_featureCompat(s->proj)) {
+			fputmeta(s, BKID_STR "\n", out);
+		}
 	}
+	s->adddelOff = ftell(out);
 
 	/*
 	 * determine if the s->symbols is in order.
@@ -10216,6 +10231,7 @@ checkrevs(sccs *s, int flags)
 	delta	*prev;
 	delta	*d;
 	int	e;
+	int	saw_sortkey = 0;
 
 	prev = 0;
 	for (e = 0, d = s->table; d; d = NEXT(d)) {
@@ -10226,6 +10242,16 @@ checkrevs(sccs *s, int flags)
 			e |= 2;
 		}
 		prev = d;
+		if (d->flags & D_SORTSUM) saw_sortkey = 1;
+	}
+	if (CSET(s) && saw_sortkey) {
+		/*
+		 * If the ChangeSet file has sortkey checksums then we
+		 * enable the sortkey repo feature.  We don't bother
+		 * looking for alternative pathnames for files because
+		 * those will already be convered by the cset file.
+		 */
+		bk_featureSet(s->proj, FEAT_SORTKEY, 1);
 	}
 	return (e);
 }
@@ -13709,7 +13735,7 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	/*
 	 * Now fix up the checksum and summary.
 	 */
-	fseek(out, 8L, SEEK_SET);
+	fseek(out, s->adddelOff, SEEK_SET);
 	sprintf(buf, "\001s %d/%d/%d", add, del, same);
 	for (i = strlen(buf); i < 43; i++) buf[i] = ' ';
 	strcpy(buf+i, "\n");

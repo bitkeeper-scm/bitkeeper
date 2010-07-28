@@ -3,6 +3,7 @@
 #include "logging.h"
 #include "progress.h"
 #include "graph.h"
+#include "features.h"
 
 private	int	do_chksum(int fd, int off, int *sump);
 private	int	chksum_sccs(char **files, char *offset);
@@ -119,6 +120,7 @@ checksum_main(int ac, char **av)
 					    s->sfile);
 				}
 			}
+			bk_featureSet(s->proj, FEAT_SORTKEY, 1);
 		}
 		if (bad && !ret) ret = 1;
 		sccs_free(s);

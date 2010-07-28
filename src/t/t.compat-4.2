@@ -246,11 +246,11 @@ echo OK
 echo $N Nested detached repo running behind old bkd .................$NL
 cd "$HERE"
 nested nest
-bk detach $Q gcc ../newgcc
+bk detach $Q --sccs-compat gcc ../newgcc || fail
 cd ../newgcc
-bk clone $Q . bk://localhost:$OLDP/oldgcc
-bk clone $Q bk://localhost:$OLDP/oldgcc ../cloned-gcc || exit 1
-bk parent $Q bk://localhost:$OLDP/oldgcc
+bk clone $Q . bk://localhost:$OLDP/oldgcc || fail
+bk clone $Q bk://localhost:$OLDP/oldgcc ../cloned-gcc || fail
+bk parent $Q bk://localhost:$OLDP/oldgcc || fail
 bk pull $Q || exit 2
 bk push $Q || exit 3
 # XXX Pause and agree -- okay to have changes fail here?
@@ -411,20 +411,17 @@ echo OK
 
 echo $N Show that an writing erases meta data .......................$NL
 cd ../diamond
-# Running old bk on new file strips metadata
 bk check ChangeSet || fail
-$OLDBK/bk admin -Zgzip ChangeSet
-$OLDBK/bk admin -Znone ChangeSet
-bk check ChangeSet 2> GOT && fail
-cat > WANT <<EOF
-SCCS/s.ChangeSet: 1.3 is not earlier than 1.2.1.1
-SCCS/s.ChangeSet: 1.3 is not earlier than 1.2.1.1
-EOF
-cmpfiles WANT GOT
-echo "failed (bug meta data stripped)"
+
+# show old bk can't read repo
+$OLDBK/bk changes 2>ERR && fail -f ERR
+grep -q bk-filever-5 ERR || fail
+echo OK
 
 echo $N Show a pull of bad data is caught in takepatch ..............$NL
-$OLDBK/bk undo $Q -sfa1.2
+cd ..
+bk clone $Q -r1.2 diamond-old diamond-test || fail
+cd diamond-test
 bk pull -q bk://localhost:$OLDP/diamond-old 2> ERR && fail
 grep -q "patch not in old to new order" ERR || fail -f ERR
 echo OK
