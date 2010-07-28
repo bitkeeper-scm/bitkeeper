@@ -826,10 +826,8 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	 */
 	EACH(envVar) fprintf(f, "putenv %s\n", envVar[i]);
 
-	if (r->host)
-		fprintf(f, "putenv BK_VHOST=%s\n", r->host);
+	if (r->host) fprintf(f, "putenv BK_VHOST=%s\n", r->host);
 	fprintf(f, "putenv BK_REMOTE_PROTOCOL=%s\n", BKD_VERSION);
-
 	fprintf(f, "putenv BK_VERSION=%s\n", bk_vers);
 	fprintf(f, "putenv BK_UTC=%s\n", bk_utc);
 	fprintf(f, "putenv BK_TIME_T=%s\n", bk_time);
@@ -863,7 +861,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		fprintf(f, "putenv 'BK_PORT_ROOTKEY=%s'\n", t);
 	}
 	if (getenv("_BK_PROGRESS_MULTI")) {
-		fprintf(f, "putenv _BK_PROGRESS_MULTI=YES");
+		fprintf(f, "putenv _BK_PROGRESS_MULTI=YES\n");
 	}
 
 	if (flags & SENDENV_NOREPO) {
@@ -913,7 +911,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 				fprintf(f, "putenv BK_BAM_SERVER_ID=%s\n", bp);
 			}
 		}
-		fprintf(f, "putenv BK_REPOTYPE=");
+		fprintf(f, "putenv BK_REPOTYPE=");	// no newline here
 		if (proj_isProduct(0)) {
 			fprintf(f, "prod\n");
 		} else if (proj_isComponent(0)) {
