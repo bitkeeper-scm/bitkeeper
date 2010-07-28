@@ -6,7 +6,6 @@
 #include "range.h"
 #include "nested.h"
 #include "progress.h"
-#include "features.h"
 
 private	struct {
 	u32	quiet:1;		/* -q */

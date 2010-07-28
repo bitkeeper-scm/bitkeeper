@@ -3,7 +3,6 @@
 #include "logging.h"
 #include "progress.h"
 #include "graph.h"
-#include "features.h"
 
 private	int	do_chksum(int fd, int off, int *sump);
 private	int	chksum_sccs(char **files, char *offset);

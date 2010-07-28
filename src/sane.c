@@ -11,7 +11,6 @@
 #include "logging.h"
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
-#include "features.h"
 
 int
 sane_main(int ac, char **av)

@@ -1,7 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "logging.h"
-#include "features.h"
 
 private int	mkconfig(FILE *out, MDBM *flist, int verbose);
 private void	defaultFiles(int);

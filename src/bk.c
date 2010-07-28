@@ -8,7 +8,6 @@
 #include "tomcrypt/randseed.h"
 #include "nested.h"
 #include "progress.h"
-#include "features.h"
 
 #define	BK "bk"
 

@@ -6,7 +6,6 @@
 #include "logging.h"
 #include "nested.h"
 #include "progress.h"
-#include "features.h"
 
 private struct {
 	u32	automerge:1;		/* -i: turn off automerge */

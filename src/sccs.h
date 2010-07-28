@@ -548,6 +548,7 @@ typedef struct serial {
 typedef	struct sccs sccs;
 
 #include "proj.h"
+#include "bk-features.h"
 
 extern	jmp_buf	exit_buf;
 extern	char *upgrade_msg;

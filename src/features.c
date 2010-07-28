@@ -1,6 +1,5 @@
 #include "sccs.h"
 #include "logging.h"
-#include "features.h"
 
 /* map feature enum, data about feature */
 static struct {

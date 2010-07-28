@@ -10,7 +10,6 @@
 #include "bam.h"
 #include "nested.h"
 #include "progress.h"
-#include "features.h"
 
 private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);

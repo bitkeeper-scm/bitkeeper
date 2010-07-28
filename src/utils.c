@@ -1,7 +1,6 @@
 #include "bkd.h"
 #include "logging.h"
 #include "progress.h"
-#include "features.h"
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 

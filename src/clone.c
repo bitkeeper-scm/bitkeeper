@@ -6,7 +6,6 @@
 #include "bam.h"
 #include "nested.h"
 #include "progress.h"
-#include "features.h"
 
 private	struct {
 	u32	no_parent:1;		/* -p: do not set parent pointer */

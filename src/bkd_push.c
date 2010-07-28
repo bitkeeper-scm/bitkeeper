@@ -1,7 +1,6 @@
 #include "bkd.h"
 #include "bam.h"
 #include "nested.h"
-#include "features.h"
 
 /*
  * Important, if we have error, we must close fd1 or exit

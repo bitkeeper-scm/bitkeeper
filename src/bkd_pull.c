@@ -1,7 +1,6 @@
 #include "bkd.h"
 #include "range.h"
 #include "nested.h"
-#include "features.h"
 
 int
 cmd_pull_part1(int ac, char **av)

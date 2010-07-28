@@ -8,7 +8,6 @@
 #include "nested.h"
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
-#include "features.h"
 
 
 private int	lockResync(project *p);

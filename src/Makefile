@@ -226,7 +226,7 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bam.h bkd.h features.h graph.h logging.h nested.h \
+HDRS	= bam.h bkd.h bk-features.h graph.h logging.h nested.h \
 	  progress.h purify.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h proj.h redblack.h inskeys.h libc/system.h
 

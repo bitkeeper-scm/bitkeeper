@@ -2,7 +2,6 @@
 #include "logging.h"
 #include "nested.h"
 #include "progress.h"
-#include "features.h"
 
 private	struct {
 	u32	debug:1;		/* -d debug mode */

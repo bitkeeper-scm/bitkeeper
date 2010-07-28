@@ -1,7 +1,6 @@
 #include "bkd.h"
 #include "bam.h"
 #include "nested.h"
-#include "features.h"
 
 typedef	struct {
 	u32	debug:1;

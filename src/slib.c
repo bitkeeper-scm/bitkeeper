@@ -16,7 +16,6 @@
 #include "range.h"
 #include "graph.h"
 #include "bam.h"
-#include "features.h"
 
 typedef struct weave weave;
 #define	WRITABLE_REG(s)	(WRITABLE(s) && isRegularFile((s)->mode))
