@@ -37,10 +37,10 @@ private	void	stream_stdin(remote *r, int gzip);
 int
 remote_bk(int quiet, int ac, char **av)
 {
-	int	i, j, ret = 0, gzip = GZ_TOBKD|GZ_FROMBKD;
+	int	i, ret = 0, gzip = GZ_TOBKD|GZ_FROMBKD;
 	u32	bytes = 0;
 	char	*p;
-	char	**l, **urls = 0, *input = 0;
+	char	**urls = 0, *input = 0;
 	char	**data = 0;
 	char	buf[63<<10];
 
@@ -55,28 +55,9 @@ remote_bk(int quiet, int ac, char **av)
 
 		/* find '@<opt>' argument, but don't look in -r<dir> */
 		if ((p = strchrs(av[i], "Lr@")) && (*p == '@')) {
-			if (streq(p, "@")) {
-				unless (l = parent_allp()) {
-					fprintf(stderr,
-					    "failed: repository "
-					    "has no default parent\n");
-					ret = 1;
-					goto out;
-				}
-				EACH_INDEX(l, j) urls = addLine(urls, l[j]);
-				freeLines(l, 0);
-				l = 0;
-			} else if (strneq(p, "@@", 2)) {
-				unless (l = file2Lines(0, p+2)) {
-					perror(p+2);
-					ret = 1;
-					goto out;
-				}
-				EACH_INDEX(l, j) urls = addLine(urls, l[j]);
-				freeLines(l, 0);
-				l = 0;
-			} else {
-				urls = addLine(urls, strdup(p+1));
+			if (bk_urlArg(&urls, p+1)) {
+				ret = 1;
+				goto out;
 			}
 			/* turn -@ into -q since that is harmless */
 			strcpy(p, "q");

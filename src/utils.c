@@ -1868,7 +1868,7 @@ bk_urlArg(char ***urls, char *arg)
 			return (1);
 		}
 		*urls = catLines(*urls, list);
-	} else if (arg) {
+	} else if (arg && *arg) {
 		*urls = addLine(*urls, strdup(arg));
 	} else {
 		unless (list = parent_allp()) {
