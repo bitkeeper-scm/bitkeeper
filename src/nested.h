@@ -82,6 +82,7 @@ struct nested {
 	char	*oldtip;	// tip before revs (new tip for undo)
 	char	*tip;		// newest cset in revs
 	sccs	*cset;		// cache of cset file
+	project	*proj;
 	hash	*aliasdb;	// lazy init'd aliasdb
 	hash	*compdb;	// lazy init rk lookup of &n->comp[i]
 	comp	*product;	// pointer into comps to the product

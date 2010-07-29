@@ -224,7 +224,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			fprintf(stderr, "undo: ensemble failed.\n");
 			goto err;
 		}
-		sccs_close(n->cset); /* win32 */
+		if (n->cset) sccs_close(n->cset); /* win32 */
 		unless (n->oldtip) {	/* tag only undo */
 			if (verbose) {
 				puts("#### Undo tags in Product ####");

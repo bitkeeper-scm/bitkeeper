@@ -863,7 +863,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		fprintf(f, "putenv 'BK_PORT_ROOTKEY=%s'\n", t);
 	}
 	if (getenv("_BK_PROGRESS_MULTI")) {
-		fprintf(f, "putenv _BK_PROGRESS_MULTI=YES");
+		fprintf(f, "putenv _BK_PROGRESS_MULTI=YES\n");
 	}
 
 	if (flags & SENDENV_NOREPO) {

@@ -224,10 +224,12 @@ fresh_nested() {
 
 # move a nested component (helper)
 mvcomp() {
+	 test "BitKeeper/log/PRODUCT" || exit 1
 	 mv "$1" "$2"
-	 bk edit $Q "$2"/ChangeSet || exit 1
-	 _BK_MV_OK=1 bk delta -f $Q -y"Rename $1 -> $2" "$2"/ChangeSet || exit 1
+	 bk edit $Q "$2"/ChangeSet || exit 2
+	 _BK_MV_OK=1 bk delta -f $Q -y"Rename $1 -> $2" "$2"/ChangeSet || exit 3
 	 echo "$2" > "$2"/BitKeeper/log/COMPONENT
+	 bk idcache -q
 }
 
 

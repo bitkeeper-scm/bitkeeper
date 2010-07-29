@@ -8,6 +8,10 @@ private	void	compFree(void *x);
 private	int	compRemove(char *path, struct stat *statbuf, void *data);
 private	int	empty(char *path, struct stat *statbuf, void *data);
 private void	compCheckPresent(nested *n, comp *c, int idcache_wrong);
+private	int	nestedLoadCache(nested *n, MDBM *idDB);
+private	void	nestedSaveCache(nested *n);
+
+#define	NESTED_CACHE	"BitKeeper/log/nested_init.cache"
 
 #define	L_ROOT		0x01
 #define	L_DELTA		0x02
@@ -209,7 +213,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	int	i;
 	int	inCache;
 	char	*t, *v;
-	FILE	*pending;
+	kvpair	kv;
 	MDBM	*idDB = 0, *revsDB = 0;
 	project	*proj;
 	char	*cwd;
@@ -220,42 +224,57 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	 * neither if pending is to be listed
 	 */
 	assert(!(rev && revs));
-	assert(!(flags & NESTED_PENDING) || !(rev || revs));
+	if (flags & NESTED_PENDING) assert(!(rev || revs));
 
 	/*
 	 * This code assumes it is run from the product root so,
 	 * make sure we are there.
 	 */
 	cwd = strdup(proj_cwd());
-	proj = proj_product(0);
+	proj = proj_product(cset ? cset->proj : 0);
 	assert(proj);
 	if (chdir(proj_root(proj))) assert(0);
+	proj = 0;
 
 	n = new(nested);
 	if (flags & NESTED_FIXIDCACHE) n->fix_idDB = 1;
-	unless (cset) {
-		cset = sccs_init(CHANGESET,
-		    INIT_NOCKSUM|INIT_NOSTAT|INIT_MUSTEXIST);
-		n->freecset = 1;
+	if (cset) {
+		n->cset = cset;
+		assert(CSET(cset) && proj_isProduct(cset->proj));
+		n->proj = proj_init(proj_root(cset->proj));
+	} else {
+		n->proj = proj_init(".");
 	}
-	n->cset = cset;
-	assert(CSET(cset) && proj_isProduct(cset->proj));
 	n->here = nested_here(0);	/* cd2product, so get our 'HERE' */
 
 	n->product = c = new(comp);
 	c->n = n;
 	c->product = 1;
-	c->rootkey = strdup(proj_rootkey(cset->proj));
+	c->rootkey = strdup(proj_rootkey(n->proj));
 	c->path = strdup(".");
 	c->present = 1;
 	c->included = 1;
 	// c->deltakey set below
+	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 
 	n->compdb = hash_new(HASH_MEMHASH);
 	hash_store(n->compdb, c->rootkey, strlen(c->rootkey)+1,
 	    &c, sizeof(comp *));
 
-	unless (n->freecset) sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
+	/*
+	 * If we are loading the tip cset and the data has already
+	 * been cached, then we can skip walking the cset weave again.
+	 */
+	unless (rev || revs || nestedLoadCache(n, idDB)) goto pending;
+
+	if (n->cset) {
+		sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
+	} else {
+		n->cset = cset = sccs_init(CHANGESET,
+		    INIT_NOCKSUM|INIT_NOSTAT|INIT_MUSTEXIST);
+		assert(cset);
+		n->freecset = 1;
+	}
 	if (revs) {
 		int	nontag = 0;
 
@@ -302,8 +321,8 @@ err:				if (revsDB) mdbm_close(revsDB);
 		goto err;
 	}
 
-	n->tip = strdup(right->rev);
 	sccs_sdelta(cset, right, buf);
+	n->tip = strdup(buf);
 	n->product->deltakey = strdup(buf);
 
 	if (left) {
@@ -316,7 +335,6 @@ err:				if (revsDB) mdbm_close(revsDB);
 	 * walk whole cset weave from newest to oldest and find all
 	 * components.
 	 */
-	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 
 	sccs_rdweaveInit(cset);
 	d = 0;
@@ -415,30 +433,52 @@ err:				if (revsDB) mdbm_close(revsDB);
 		v[-1] = ' ';	/* restore possibly in mem weave */
 	}
 	sccs_rdweaveDone(cset);
+	unless (rev || revs) nestedSaveCache(n);
 
+pending:
 	if (flags & NESTED_PENDING) {
 		/*
-		 * get pending components and replace/add items
-		 * in db returned by sccs_get above.
+		 * Now update the list of components above to include
+		 * info on any pending csets, or components that haven't
+		 * been attached yet.
+		 *
+		 * We assume we can find all of these using the idcache.
+		 *
+		 * Note: for a pending rename c->path was already set to
+		 *       the new pathname above.
 		 */
-#define	PNDCOMP	"bk -Ppr log -r+ -nd'$if(:COMPONENT:){:ROOTKEY: :GFILE:}'"
-
 		n->pending = 1;
 		assert(n->tip);
 		free(n->tip);
 		n->tip = 0;
-		unless (pending = popen(PNDCOMP, "r")) goto err;
-		while (t = fgetline(pending)) {
-			v = separator(t);
-			assert(v);
-			*v++ = 0;
+		EACH_KV(idDB) {
+			t = kv.key.dptr;	/* rootkey */
+			unless (changesetKey(t)) continue;
+			v = kv.val.dptr;	/* path/to/ChangeSet */
 
 			unless (c = nested_findKey(n, t)) {
+				/* non-attached component */
 				c = new(comp);
 				c->n = n;
 				c->rootkey = strdup(t);
 				c->new = 1;
 				c->included = 1;
+				c->pending = 1;
+
+				inCache = 1;	/* by def */
+				c->path = strdup(v);
+				dirname(c->path); /* strip /ChangeSet */
+
+				/* mark present components */
+				compCheckPresent(n, c, !inCache);
+
+				unless (c->present) {
+					/* extra crud in idcache */
+					free(c->rootkey);
+					free(c->path);
+					free(c);
+					continue;
+				}
 
 				/* add to list */
 				hash_store(n->compdb,
@@ -446,26 +486,25 @@ err:				if (revsDB) mdbm_close(revsDB);
 				    &c, sizeof(comp *));
 				n->comps = addLine(n->comps, c);
 			}
-			if (c->path) free(c->path);
-			if ((c->path = mdbm_fetch_str(idDB, c->rootkey)) &&
-			    streq(c->path, v)) {
-				inCache = 1;
-			} else {
-				// assert("How can this happen?" == 0);
-				inCache = 0;
+			if (c->product) continue;
+			/* check pending */
+			concat_path(buf, c->path, "SCCS/d.ChangeSet");
+			if (exists(buf)) {
+				sccs	*s;
+				delta	*d;
+
+				concat_path(buf, c->path, CHANGESET);
+				s = sccs_init(buf, SILENT|INIT_NOCKSUM);
+				d = sccs_top(s);
+				unless (d->flags & D_CSET) {
+					c->pending = 1;
+					if (c->deltakey) free(c->deltakey);
+					sccs_sdelta(s, d, buf);
+					c->deltakey = strdup(buf);
+				}
+				sccs_free(s);
 			}
-			c->path = strdup(v);
-			dirname(c->path); /* strip /ChangeSet */
-
-			/* mark present components */
-			compCheckPresent(n, c, !inCache);
-			assert(c->present = 1);
-
-			if (c->deltakey) free(c->deltakey);
-			c->deltakey = strdup(v);
-			c->pending = 1;
 		}
-		pclose(pending);
 	} else if (flags & NESTED_MARKPENDING) {
 		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
@@ -499,8 +538,15 @@ compCheckPresent(nested *n, comp *c, int idcache_wrong)
 
 	/* mark present components */
 	if (exists(c->path) && (proj = proj_init(c->path))) {
-		if (samepath(proj_root(proj), c->path) &&
-		    streq(proj_rootkey(proj), c->rootkey)) {
+		char	*path = proj_root(proj);
+		char	*rootkey = proj_rootkey(proj);
+
+		if (!path || !rootkey) {
+			/* rootkey can be null for an interrupted clone */
+			fprintf(stderr,
+			    "Ignoring corrupted component at %s\n", c->path);
+		} else if (samepath(path, c->path) &&
+		    streq(rootkey, c->rootkey)) {
 			c->present = 1;
 			if (idcache_wrong) {
 				unless (n->fix_idDB) {
@@ -512,6 +558,92 @@ compCheckPresent(nested *n, comp *c, int idcache_wrong)
 			}
 		}
 		proj_free(proj);
+	}
+}
+
+private int
+nestedLoadCache(nested *n, MDBM *idDB)
+{
+	comp	*c;
+	char	*s, *t;
+	int	inCache;
+	FILE	*f;
+	struct	stat	sb;
+	char	buf[256];
+
+	if (proj_isResync(n->proj)) return (1);
+	if (lstat(CHANGESET, &sb)) return (1);
+	sprintf(buf, "%x %x", (u32)sb.st_size, (u32)sb.st_mtime);
+	f = fopen(NESTED_CACHE, "r");
+	unless (f && (t = fgetline(f))) return (1);
+	unless (streq(t, buf)) {
+		fclose(f);
+		return (1);
+	}
+	while (t = fgetline(f)) {
+		s = separator(t);
+		*s++ = 0;
+
+		if (streq(t, n->product->rootkey)) {
+			n->product->deltakey = strdup(s);
+			n->tip = strdup(s);
+			continue;
+		}
+		c = new(comp);
+		c->n = n;
+		c->included = 1;
+		c->rootkey = strdup(t);
+		c->deltakey = strdup(s);
+
+		/* dup'ed code from above */
+		if (c->path = mdbm_fetch_str(idDB, c->rootkey)) {
+			c->path = strdup(c->path);
+			inCache = 1;
+		} else {
+			c->path = key2path(c->deltakey, 0);
+			inCache = 0;
+		}
+		dirname(c->path); /* strip /ChangeSet */
+
+		/* mark present components */
+		compCheckPresent(n, c, !inCache);
+
+		/* add to list */
+		hash_store(n->compdb, c->rootkey, strlen(c->rootkey)+1,
+		    &c, sizeof(comp *));
+		n->comps = addLine(n->comps, c);
+	}
+	fclose(f);
+	return (0);
+}
+
+/*
+ * For a nested_init() of the tip cset, save the list of components in
+ * a cache so we can recreate this data without initing the cset file
+ * in the future.
+ */
+private void
+nestedSaveCache(nested *n)
+{
+	comp	*c;
+	int	i;
+	FILE	*f;
+	struct	stat	sb;
+	char	tmp[MAXPATH];
+
+	if (proj_isResync(n->proj)) return;
+	if (lstat(CHANGESET, &sb)) return;
+
+	sprintf(tmp, NESTED_CACHE ".tmp.%u", getpid());
+	if (f = fopen(tmp, "w")) {
+		fprintf(f, "%x %x\n", (u32)sb.st_size, (u32)sb.st_mtime);
+		fprintf(f, "%s %s\n",
+		    n->product->rootkey, n->product->deltakey);
+		EACH_STRUCT(n->comps, c, i) {
+			fprintf(f, "%s %s\n", c->rootkey, c->deltakey);
+		}
+		fclose(f);
+		rename(tmp, NESTED_CACHE);
 	}
 }
 
@@ -552,7 +684,7 @@ nested_aliases(nested *n, char *rev, char ***aliases, char *cwd, int pending)
 	int	rc = -1;
 	hash	*aliasdb = 0;
 
-	if ((aliasdb = aliasdb_init(n, n->cset->proj, rev, pending, 0)) &&
+	if ((aliasdb = aliasdb_init(n, n->proj, rev, pending, 0)) &&
 	    !aliasdb_chkAliases(n, aliasdb, aliases, cwd) &&
 	    !aliasdb_tag(n, aliasdb, *aliases)) {
 		rc = 0;
@@ -626,6 +758,7 @@ nested_free(nested *n)
 {
 	unless (n) return;
 	freeLines(n->comps, compFree);
+	if (n->proj) proj_free(n->proj);
 	if (n->freecset) sccs_free(n->cset);
 	if (n->aliasdb) aliasdb_free(n->aliasdb);
 	if (n->tip) free(n->tip);
@@ -680,7 +813,7 @@ nested_each(int quiet, int ac, char **av)
 		fprintf(stderr, "No nested list?\n");
 		return (1);
 	}
-	sccs_close(n->cset);	/* win32 */
+	if (n->cset) sccs_close(n->cset);	/* win32 */
 	if (aliases) {
 		// XXX add error checking when the error paths get made
 		if (nested_aliases(

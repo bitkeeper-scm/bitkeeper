@@ -736,7 +736,7 @@ clone2(remote *r)
 		/* expand pathnames in the urllist with the parent URL */
 		urllist_normalize(urllist, parent);
 
-		unless (n = nested_init(0, "+", 0, 0)) {
+		unless (n = nested_init(0, 0, 0, 0)) {
 			fprintf(stderr, "%s: nested_init failed\n");
 			return (CLONE_ERROR);
 		}

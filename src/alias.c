@@ -356,7 +356,7 @@ aliasdb_init(nested *n, project *p, char *rev, int pending, int no_diffs)
 	 * XXX: if 'p' then assuming product -- error check it?
 	 */
 	assert(n);
-	unless (p || (p = n->cset->proj) || (p = proj_product(0))) {
+	unless (p || (p = n->proj) || (p = proj_product(0))) {
 		error("%s: aliasdb: not in a product\n", prog);
 		return (0);
 	}
