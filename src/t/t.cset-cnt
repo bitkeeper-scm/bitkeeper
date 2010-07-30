@@ -52,7 +52,7 @@ bk commit $Q -ycommit || exit 1
 check_cnt
 echo OK
 
-CNT=4
+CNT=3
 echo $N "Count the inits for a 'bk changes -L' ($CNT)...................."$NL
 cd ../copy
 rm "$FILE"
