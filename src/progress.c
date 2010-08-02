@@ -280,19 +280,35 @@ progress_done(ticker *t, char *msg)
 	}
 	progress_resumeDelayed();
 	progress_nlneeded();
-	unless (t->multi) progress_end(t->style, msg);
+	unless (t->multi) progress_end(t->style, msg, PROGRESS_MSG);
 	free(t->name);
 	free(t);
 }
 
 void
-progress_end(u32 style, char *msg)
+progress_end(u32 style, char *msg, u32 action)
 {
-	char	*name;
+	char	*m = 0, *name, *p;
 	int	i;
 
 	progress_active();
 	progress_pauseDelayed();
+	if (action == PROGRESS_SUM) {
+		p = aprintf("%s/BitKeeper/log/progress-sum", proj_root(0));
+		if (m = loadfile(p, 0)) {
+			chomp(m);
+			unlink(p);
+		}
+		free(p);
+	}
+	if (m) {
+		name = progress_title();
+		fprintf(stderr, "\r%-*.*s %s\n", TLEN, TLEN, name, m);
+		progress_nldone();
+		free(name);
+		free(m);
+		goto done;
+	}
 	if (style == PROGRESS_BAR) {
 		name = progress_title();
 		fprintf(stderr, "\r%-*.*s 100%% |", TLEN, TLEN, name);
@@ -311,6 +327,7 @@ progress_end(u32 style, char *msg)
 			progress_nlneeded();
 		}
 	}
+done:
 	progress_resumeDelayed();
 }
 

@@ -20,9 +20,15 @@ typedef struct {
 	u8	debug:1;	/* print progress-bar debug */
 } ticker;
 
+/* For style arg to progress_start() and progress_end(). */
 #define	PROGRESS_SPIN	0
 #define	PROGRESS_MINI	1
 #define	PROGRESS_BAR	2
+
+/* For action arg to progress_end(). */
+#define PROGRESS_MSG	0	/* append given msg arg to progress bar */
+#define PROGRESS_SUM	1	/* output BK/log/progress-sum over prog bar */
+
 
 /*
  * progress		- indicate one tick of progress
@@ -60,7 +66,7 @@ void	progress_active(void);
 void	progress_adjustMax(ticker *t, i64 adj);
 void	progress_delayStderr(void);
 void	progress_done(ticker *t, char *msg);
-void	progress_end(u32 style, char *msg);
+void	progress_end(u32 style, char *msg, u32 action);
 void	progress_inherit(ticker *t);
 void	progress_inheritEnd(ticker *t, u64 n);
 int	progress_isMulti(void);

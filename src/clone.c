@@ -317,7 +317,8 @@ clone_main(int ac, char **av)
 			title = aprintf("%u/%u .", opts->comps, opts->comps);
 		}
 		if (opts->comppath) title = opts->comppath;
-		progress_end(PROGRESS_BAR, clonerc ? "FAILED" : "OK");
+		progress_end(PROGRESS_BAR, clonerc ? "FAILED" : "OK",
+			     PROGRESS_MSG);
 		if (opts->product) {
 			free(title);
 			title = "";
@@ -717,7 +718,7 @@ clone2(remote *r)
 
 		unless (opts->quiet) {
 			title = ".";
-			progress_end(PROGRESS_BAR, "OK");
+			progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
 		}
 		urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
 		assert(urllist);

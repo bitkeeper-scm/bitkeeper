@@ -581,7 +581,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			unless (opts.verbose || opts.quiet || title) {
 				/* Finish the takepatch progress bar. */
 				title = ".";
-				progress_end(PROGRESS_BAR, "OK");
+				progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
 				title = 0;
 			}
 			if (rc = pull_ensemble(r, rmt_aliases, rmt_urllist)) goto done;
@@ -947,7 +947,7 @@ done:	putenv("BK_RESYNC=FALSE");
 				freeme = title = strdup("pull");
 			}
 		}
-		progress_end(PROGRESS_BAR, "OK");
+		progress_end(PROGRESS_BAR, "OK", PROGRESS_SUM);
 		if (freeme) free(freeme);
 		title = 0;
 	}

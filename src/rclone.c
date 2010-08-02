@@ -263,7 +263,7 @@ rclone_ensemble(remote *r)
 	}
 	unless (opts.quiet || opts.verbose) {
 		title = aprintf("%d/%d .", which, which);
-		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
+		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
 	}
 
 	unless (rc) urllist_write(urllist);
@@ -321,7 +321,7 @@ rclone(char **av, remote *r, char **envVar)
 		putenv("BK_STATUS=OK");
 	}
 	unless (opts.quiet) {
-		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
+		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
 	}
 	trigger(av[0], "post");
 

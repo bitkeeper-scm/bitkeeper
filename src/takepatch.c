@@ -213,16 +213,26 @@ takepatch_main(int ac, char **av)
 		/* XXX: Save?  Purge? */
 		cleanup(CLEAN_RESYNC);
 	}
-	if (echo) {
+	if (echo || pbars) {
 		files = 0;
 		if (f = popen("bk sfiles RESYNC", "r")) {
-			while ((c = getc(f)) > 0) if (c == '\n') ++files;
+			while (t = fgetline(f)) ++files;
 			pclose(f);
 		}
-
-		fprintf(stderr,
-		    "takepatch: %d new changeset%s, %d conflicts in %d files\n",
-		    remote, remote == 1 ? "" : "s", conflicts, files);
+		if (pbars) {
+			t = conflicts ?
+			    aprintf("%3d", conflicts) : strdup(" no");
+			Fprintf("BitKeeper/log/progress-sum",
+			    "%3d changeset%s %s merge%s in %3d file%s\n",
+			    remote, remote == 1 ? ", " : "s,",
+			    t, conflicts == 1 ? " " : "s",
+			    files, files == 1 ? "" : "s");
+		} else {
+			fprintf(stderr,
+			    "takepatch: "
+			    "%d new changeset%s, %d conflicts in %d files\n",
+			    remote, remote == 1 ? "" : "s", conflicts, files);
+		}
 	}
 
 	/* save byte count for logs */

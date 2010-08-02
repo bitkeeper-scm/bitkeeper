@@ -338,7 +338,7 @@ out:	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 				freeme = title = strdup("push");
 			}
 		}
-		progress_end(PROGRESS_BAR, "OK");
+		progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
 		if (freeme) free(freeme);
 		title = 0;
 	}
@@ -532,7 +532,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 			unless (opts.quiet || opts.verbose) {
 				title =
 				    aprintf("%d/%d %s", which, opts.n, c->path);
-				progress_end(PROGRESS_BAR, "OK");
+				progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
 				free(title);
 				title = 0;
 			}

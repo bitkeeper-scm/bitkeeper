@@ -312,7 +312,7 @@ prod:
 	unless (fromclone) unlink(UNDO_CSETS);
 	update_log_markers(verbose);
 	unless (fromclone || verbose || quiet) {
-		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
+		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
 	}
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
@@ -543,7 +543,8 @@ undo_ensemble_rollback(nested *n, int verbose, char **comp_list)
 		}
 		unless (verbose) {
 			title = aprintf("%u/%u %s", i, ncomps, c->path);
-			progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
+			progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK",
+				     PROGRESS_MSG);
 		}
 		proj_cd2product();
 		if (rc) break;

@@ -128,7 +128,11 @@ main(_unused int ac, string av[])
 
 	unless (defined(f = fopen("x", "r"))) die("fopen");
 	while (defined(s = fgetline(f))) {
-		if (s =~ /% \|/) ++n;
+		if (s =~ /% \|/) {
+			++n;
+		} else if (s =~ /\d+ changesets?,\s+\d+ merges?\s+in\s+\d+ files?/) {
+			++n;
+		}
 	}
 	fclose(f);
 	unless (n == (int)av[2]) {
