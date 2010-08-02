@@ -183,3 +183,42 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 bk pending > C
 grep 'foo@1.2' C > /dev/null || exit 1
 echo OK
+
+cleanf() {
+	cd F:/
+	rm -fr OUT ERR project SCCS BitKeeper
+	cd "$HERE"
+}
+
+echo $N Test for a repo in the root and at the root of a USB drive ..$NL
+if [ "X$PLATFORM" = "XWIN32" -a -d f:/tmp ]; then
+	cleanf
+	cd F:/
+	commercial project
+	bk root > OUT || {
+		echo failed good root
+		cleanf
+		exit 1
+	}
+	grep -q "F:/project" OUT || {
+		echo failed good grep
+		cleanf
+		exit 1
+	}
+	mv BitKeeper SCCS ..
+	cd ..
+	bk root 2> ERR && {
+		echo passed root at root
+		cleanf
+		exit 1
+	}
+	grep -q "cannot find package root" ERR || {
+		echo failed bad grep
+		cleanf
+		exit 1
+	}
+	cleanf
+	echo OK
+else
+	echo skipped
+fi

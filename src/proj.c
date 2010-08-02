@@ -233,7 +233,7 @@ private char *
 find_root(char *dir)
 {
 	int	i;
-	char	*p;
+	char	*p, *first;
 	project	*proj;
 	char	buf[MAXPATH];
 	char	sym[MAXPATH];
@@ -258,38 +258,47 @@ find_root(char *dir)
 
 	/* This code assumes dir is a full pathname with nothing funny */
 	p = buf + strlen(buf);
-	*p = '/';
+	if ((p > buf) && (p[-1] == '/')) *--p = 0;	/* D:// into D:/ */
+
+	/*
+	 * Find the last slash in pathname where we will look for a
+	 * repository. This means a repository cannot be at the root
+	 * of the filesystem, but it avoids problems with the NFS
+	 * automounter.
+	 *
+	 *   /nfs/repo
+	 *       ^
+	 *   f:/repo
+	 *     ^
+	 */
+	if (win32() && (buf[1] == ':')) {
+		unless (first = strchr(buf, '/')) return (0);
+	} else {
+		unless (*buf == '/') return (0);
+		if (getenv("BK_REPO_IN_ROOT")) {
+			/* hack to support repository at fs root */
+			first = buf;
+		} else {
+			unless (first = strchr(buf+1, '/')) return (0);
+		}
+	}
 
 	/*
 	 * Now work backwards up the tree until we find a root marker
 	 */
-	while (p >= buf) {
-		strcpy(++p, "BitKeeper");
+	while (1) {
+		strcpy(p, "/" BKROOT);
 		if (isdir(buf)) {
-			strcpy(p, BKROOT);
-			if (isdir(buf)) break;
-		}
-		if (--p <= buf) {
-			/*
-			 * if we get here, we hit the beginning
-			 * and did not find the root marker
-			 */
-			return (0);
-		}
-		/* p -> / in .../foo/SCCS/s.foo.c */
-		for (--p; (*p != '/') && (p > buf); p--);
-		if (p > buf) {
+			/* found repo */
 			*p = 0;
-			if (proj = projcache_lookup(buf)) {
-				return (strdup(proj->root));
-			}
-			*p = '/';
+			return (strdup(buf));
 		}
+		for (p--; *p != '/'; p--); /* previous / */
+		if (p == first) return (0);
+		*p = 0;
+		if (proj = projcache_lookup(buf)) return (strdup(proj->root));
 	}
-	assert(p >= buf);
-	p--;
-	*p = 0;
-	return (strdup(buf));
+	/* NOTREACHED */
 }
 
 private project *
