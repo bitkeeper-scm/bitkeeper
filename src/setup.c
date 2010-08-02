@@ -1,6 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "logging.h"
+#include "nested.h"
 
 private int	mkconfig(FILE *out, MDBM *flist, int verbose);
 private void	defaultFiles(int);
@@ -18,6 +19,7 @@ setup_main(int ac, char **av)
 	char 	s_config[] = "BitKeeper/etc/SCCS/s.config";
 	char 	config[] = "BitKeeper/etc/config";
 	project	*in_prod = 0;
+	project	*proj;
 	sccs	*s;
 	MDBM	*m = 0, *flist = 0;
 	FILE	*f, *f1;
@@ -61,15 +63,6 @@ setup_main(int ac, char **av)
 		fprintf(stderr, "setup: can't use -C and -P together.\n");
 		exit(1);
 	}
-	if (sccs_compat) {
-		if (!product && proj_product(0)) {
-			fprintf(stderr,
-			    "%s: can't use --sccs-compat inside a product.\n",
-			    prog);
-			exit(1);
-		}
-		proj_remapDefault(0);
-	}
 	if (print) {
 		if (config_path) {
 			fprintf(stderr, "setup: can't mix -c and -p.\n");
@@ -84,6 +77,17 @@ setup_main(int ac, char **av)
 		printf("Usage: bk setup [-c<config file>] directory\n");
 		exit (0);
 	}
+
+	proj = proj_init(package_path);
+	if (sccs_compat) {
+		if (!product && proj_product(proj)) {
+			fprintf(stderr,
+			    "%s: can't use --sccs-compat inside a product.\n",
+			    prog);
+			exit(1);
+		}
+		proj_remapDefault(0);
+	}
 	if (exists(package_path) && !allowNonEmptyDir) {
 		printf("bk: %s exists already, setup fails.\n", package_path);
 		exit (1);
@@ -93,6 +97,32 @@ setup_main(int ac, char **av)
 		printf("Create new package? [no] ");
 		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
+	}
+
+	unless (product) {
+		/*
+		 * in_prod will be used later - it is only set if
+		 * creating a component inside of a product.
+		 */
+		if (in_prod = proj_product(proj)) {
+			/*
+			 * null config file is okay if in product
+			 * as the component will use the product's config
+			 * Create an empty one instead of none, both for
+			 * sane, and for limiting converge operations.
+			 */
+			unless (config_path) config_path = strdup(DEVNULL_RD);
+			/*
+			 * attach will fail if not a portal, catch this early
+			 * and clean up
+			 */
+			unless(nested_isPortal(in_prod)) {
+				fprintf(stderr, "New components can only be "
+				    "created in a portal. "
+				    "See 'bk help portal'.\n");
+				return (1);
+			}
+		}
 	}
 	strcpy(here, proj_cwd());
 	if (mkdirp(package_path)) {
@@ -108,21 +138,7 @@ setup_main(int ac, char **av)
 		printf("bk: %s repository exists already, setup fails.\n",
 		package_path);
 	}
-	unless (product) {
-		/*
-		 * in_prod will be used later - it is only set if
-		 * creating a component inside of a product.
-		 */
-		if (in_prod = proj_product(0)) {
-			/*
-			 * null config file is okay if in product
-			 * as the component will use the product's config
-			 * Create an empty one instead of none, both for
-			 * sane, and for limiting converge operations.
-			 */
-			unless (config_path) config_path = strdup(DEVNULL_RD);
-		}
-	}
+
 	if (config_path == 0) {
 		getMsg("setup_3", 0, '-', stdout);
 		/* notepad.exe wants text mode */
@@ -277,6 +293,7 @@ defaultFiles(int product)
 		fprintf(f, "default\n");
 		fclose(f);
 		touch("BitKeeper/log/PRODUCT", 0444);
+		system("bk portal -q .");
 		proj_reset(0);		/* created product */
 	}
 	unless (getenv("_BK_SETUP_NOGONE")) {
