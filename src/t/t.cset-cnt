@@ -120,8 +120,8 @@ echo OK
 
 echo "---- nested tests"
 
-CNT=12	   # XXX wrong - LMXXX - why?
-echo $N "Count the inits for a 'bk clone' ($CNT)........................"$NL
+CNT=9
+echo $N "Count the inits for a 'bk clone' ($CNT)........................."$NL
 cd "$HERE"
 nested nest
 rm "$FILE"
@@ -129,7 +129,7 @@ bk clone $Q . ../nest2 || exit 1
 check_cnt
 echo OK
 
-CNT=4
+CNT=3
 echo $N "Count the inits for a 'bk commit' in comp ($CNT) ..............."$NL
 cd gcc
 echo hi > file1
@@ -139,8 +139,8 @@ bk commit $Q -ynew || exit 1
 check_cnt
 echo OK
 
-CNT=12
-echo $N "Count the inits for a 'bk -P commit' ($CNT) ..................."$NL
+CNT=9
+echo $N "Count the inits for a 'bk -P commit' ($CNT) ...................."$NL
 rm -f "$FILE"
 bk -P commit $Q -ynew || exit 1
 check_cnt
@@ -177,7 +177,7 @@ bk changes -Rv > /dev/null || exit 1
 check_cnt
 echo OK
 
-CNT=47
+CNT=43
 echo $N "Count the inits for a 'bk pull -u' ($CNT)......................"$NL
 rm "$FILE"
 bk pull -u $Q || exit 1
@@ -185,14 +185,14 @@ check_cnt
 echo OK
 
 
-CNT=42
+CNT=39
 echo $N "Count the inits for a 'bk unpull -fs' ($CNT)..................."$NL
 rm "$FILE"
 bk unpull -fs $Q || exit 1
 check_cnt
 echo OK
 
-CNT=62
+CNT=58
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 bk portal $Q .
 touch c
@@ -213,7 +213,7 @@ bk pull $Q || exit 1
 check_cnt
 echo OK
 
-CNT=38
+CNT=36
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
 bk push $Q || exit 1

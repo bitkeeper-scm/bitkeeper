@@ -30,7 +30,7 @@ echo OK
 
 echo $N Demonstrate that undo is not allowed in a portal ............$NL
 bk portal $Q || fail
-bk -P undo $Q -fsr+ 2>ERR && fail -f ERR should have failed
+bk -P undo -q -fsr+ 2>ERR && fail -f ERR should have failed
 cat <<EOF > WANT
 undo: not allowed in a portal.
 EOF
@@ -79,34 +79,29 @@ echo $N Undo changes alias needing to unpopulate ....................$NL
 bk alias new FOO ./gcc || exit 1
 bk alias set FOO all || exit 1
 bk alias set $Q HERE FOO || exit 1
-bk undo $Q -fsr+ 2>ERR && {
-	echo should have failed
-	cat ERR
-	exit 1
-}
-grep -q "undo: The old aliases file doesn't include the gdb component which is currently present." ERR || {
-	echo wrong error message
-	cat ERR
-	exit 1
-}
+bk undo -q -fsr+ 2>ERR && fail -f ERR
+cat <<EOF > WANT
+undo: No other sources for gdb known
+undo: unable to remove gdb
+EOF
+cmpfiles WANT ERR
+# XXX be nice if clone updated src repo urllist like _rclone does
+bk clone $Q . ../backup-attempt || fail
+bk undo -q -fsr+ 2>ERR && fail -f ERR
+cmpfiles WANT ERR
+# update src repo urllist, then undo works
+bk _rclone $Q . ../backup || fail
+bk undo $Q -fsr+ || fail
 echo OK
 
 echo $N Undo changes alias needing to populate ......................$NL
 cd ..
 bk clone $Q project copy || exit 1
 cd copy
+bk alias set FOO all || fail
 bk alias set FOO ./gcc || exit 1
 bk alias set $Q HERE FOO || exit 1
-bk undo $Q -fsr+ 2>ERR && {
-	echo should have failed
-	cat ERR
-	exit 1
-}
-grep -q "undo: The old aliases file requires the component gdb which is not present." ERR || {
-	echo wrong error message
-	cat ERR
-	exit 1
-}
+bk undo $Q -fsr+ || fail
 echo OK
 
 echo $N Undo should not allow deleting pending component csets ......$NL

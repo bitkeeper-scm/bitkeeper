@@ -983,7 +983,7 @@ cmdlog_start(char **av, int bkd_cmd)
 	}
 out:
 	if (bkd_cmd &&
-	    (!(cmdlog_flags & CMD_COMPAT_NOSI) || bk_hasFeature("SAMv3"))) {
+	    (!(cmdlog_flags & CMD_COMPAT_NOSI) || bk_hasFeature(FEAT_SAMv3))) {
 		/*
 		 * COMPAT: Old bk's don't expect a serverInfo block
 		 * before the error, but since we have the environment
@@ -992,6 +992,8 @@ out:
 		 * after the serverInfo block
 		 */
 		if (sendServerInfo((cmdlog_flags & CMD_NOREPO) || error_msg)) {
+			drain();
+			repository_unlock(proj, 0);
 			exit(1);
 		}
 	}

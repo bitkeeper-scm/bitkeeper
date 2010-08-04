@@ -10,7 +10,7 @@ private	int	unpopulate_check(comp *c, char **urls);
  * matches cp->alias
  */
 int
-nested_populate(nested *n, char **urls, int force, popts *ops)
+nested_populate(nested *n, char **urls, popts *ops)
 {
 	int	i, j, status, rc;
 	int	done = 1;
@@ -30,7 +30,7 @@ nested_populate(nested *n, char **urls, int force, popts *ops)
 	 */
 	rc = 0;
 	EACH_STRUCT(n->comps, cp, j) {
-		if (!force && cp->present && !cp->alias) {
+		if (!ops->force && cp->present && !cp->alias) {
 			char	**lurls = 0;
 
 			/* try urls from cmd line first */
@@ -244,6 +244,7 @@ conflict:
 				cp->present = 0;
 			}
 		}
+		reverseLines(n->comps);	/* restore order */
 	}
 	STOP_TRANSACTION();
 	unless (rc) {

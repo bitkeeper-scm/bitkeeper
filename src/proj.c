@@ -233,7 +233,7 @@ private char *
 find_root(char *dir)
 {
 	int	i;
-	char	*p;
+	char	*p, *first;
 	project	*proj;
 	char	buf[MAXPATH];
 	char	sym[MAXPATH];
@@ -258,38 +258,47 @@ find_root(char *dir)
 
 	/* This code assumes dir is a full pathname with nothing funny */
 	p = buf + strlen(buf);
-	*p = '/';
+	if ((p > buf) && (p[-1] == '/')) *--p = 0;	/* D:// into D:/ */
+
+	/*
+	 * Find the last slash in pathname where we will look for a
+	 * repository. This means a repository cannot be at the root
+	 * of the filesystem, but it avoids problems with the NFS
+	 * automounter.
+	 *
+	 *   /nfs/repo
+	 *       ^
+	 *   f:/repo
+	 *     ^
+	 */
+	if (win32() && (buf[1] == ':')) {
+		unless (first = strchr(buf, '/')) return (0);
+	} else {
+		unless (*buf == '/') return (0);
+		if (getenv("BK_REPO_IN_ROOT")) {
+			/* hack to support repository at fs root */
+			first = buf;
+		} else {
+			unless (first = strchr(buf+1, '/')) return (0);
+		}
+	}
 
 	/*
 	 * Now work backwards up the tree until we find a root marker
 	 */
-	while (p >= buf) {
-		strcpy(++p, "BitKeeper");
+	while (1) {
+		strcpy(p, "/" BKROOT);
 		if (isdir(buf)) {
-			strcpy(p, BKROOT);
-			if (isdir(buf)) break;
-		}
-		if (--p <= buf) {
-			/*
-			 * if we get here, we hit the beginning
-			 * and did not find the root marker
-			 */
-			return (0);
-		}
-		/* p -> / in .../foo/SCCS/s.foo.c */
-		for (--p; (*p != '/') && (p > buf); p--);
-		if (p > buf) {
+			/* found repo */
 			*p = 0;
-			if (proj = projcache_lookup(buf)) {
-				return (strdup(proj->root));
-			}
-			*p = '/';
+			return (strdup(buf));
 		}
+		for (p--; *p != '/'; p--); /* previous / */
+		if (p == first) return (0);
+		*p = 0;
+		if (proj = projcache_lookup(buf)) return (strdup(proj->root));
 	}
-	assert(p >= buf);
-	p--;
-	*p = 0;
-	return (strdup(buf));
+	/* NOTREACHED */
 }
 
 private project *
@@ -628,11 +637,6 @@ proj_product(project *p)
 		concat_path(buf, p->root, "BitKeeper/log/PRODUCT");
 		if (exists(buf)) {
 			p->product = p;	/* we're our own product */
-
-			/* enforce nested restrictions */
-			if (bk_notLicensed(p, LIC_SAM, 0)) {
-				exit(100);
-			}
 		} else {
 			/* return proj_product of the repo above this one */
 			p->product = 0;
@@ -1228,6 +1232,7 @@ again:		putenv("_BK_FSLAYER_SKIP=1");
  * Funky rules:
  *  root/SCCS exists -> non-remapped
  *  root/.bk/SCCS exists -> remapped
+ *  both exists? -> try to fix problem
  *  is product remapped? -> do the same
  *
  * The rationale for the funk is to make new components (coming in via
@@ -1242,6 +1247,7 @@ proj_hasOldSCCS(project *p)
 {
 	project	*p2;
 	int	en;
+	int	oldsccs, newsccs;
 	char	buf[MAXPATH];
 
 	unless (p || (p = curr_proj())) return (1);
@@ -1255,24 +1261,38 @@ proj_hasOldSCCS(project *p)
 
 	en = fslayer_enable(0);
 	/* See: Funky rules above */
-	concat_path(buf, p->root, "SCCS");
-	if (isdir(buf)) {
-		p->noremap = 1;
-		goto out;
-	}
-
 	concat_path(buf, p->root, ".bk/SCCS");
-	if (isdir(buf)) {
-		p->noremap = 0;
-		goto out;
-	}
-	if ((p2 = proj_product(p)) && (p != p2)) {
-		p->noremap = proj_hasOldSCCS(p2);
-		goto out;
-	}
+	newsccs = isdir(buf);
+	concat_path(buf, p->root, "SCCS");
+	oldsccs = isdir(buf);
 
-	p->noremap = noremap_default;
- out:	fslayer_enable(en);
+	if (oldsccs) {
+		if (newsccs) {
+			/* both exist? */
+			if (!rmdir(buf)) {
+				/* empty from 4.6, no problem */
+				p->noremap = 0;
+			} else {
+				fprintf(stderr, "error: both %s/SCCS "
+				    "and .../.bk/SCCS exist\n", p->root);
+				exit(1);
+			}
+		} else {
+			p->noremap = 1;
+		}
+	} else {
+		if (newsccs) {
+			p->noremap = 0;
+		} else {
+			/* neither exist, find default */
+			if ((p2 = proj_product(p)) && (p != p2)) {
+				p->noremap = proj_hasOldSCCS(p2);
+			} else {
+				p->noremap = noremap_default;
+			}
+		}
+	}
+	fslayer_enable(en);
 	return (p->noremap);
 }
 

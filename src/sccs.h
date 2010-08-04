@@ -548,6 +548,7 @@ typedef struct serial {
 typedef	struct sccs sccs;
 
 #include "proj.h"
+#include "bk-features.h"
 
 extern	jmp_buf	exit_buf;
 extern	char *upgrade_msg;
@@ -628,7 +629,8 @@ struct sccs {
 	u32	added;		/* lines added by this delta (u32!) */
 	u32	deleted;	/* and deleted */
 	u32	same;		/* and unchanged */
-	off_t	sumOff;		/* offset of the new delta cksum */
+	long	sumOff;		/* offset of the new delta cksum */
+	long	adddelOff;	/* offset to tip add/delete/unchanged */
 	time_t	gtime;		/* gfile modidification time */
 	time_t	stime;		/* sfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
@@ -827,6 +829,7 @@ typedef struct {
 	u16	remote_cmd:1;	/* client wants to run command via bkd */
 	u16	need_exdone:1;	/* need call to send_file_extra_done() */
 	u16	notUrl:1;	/* addr was a file path (had no URL scheme) */
+	u16	noLocalRepo:1;	/* local repo not related to connection */
 	int	rfd;		/* read fd for the remote channel */
 	FILE	*rf;		/* optional stream handle for remote channel */
 	int	wfd;		/* write fd for the remote channel */
@@ -1345,9 +1348,6 @@ int	startmenu_get(u32, char *path);
 int	startmenu_set(u32, char *, char *, char *, char *);
 char	*bkmenupath(int, int);
 void	repos_update(sccs *cset);
-void	features_repoChk(project *p);
-void	features_repoSet(project *p, char *feature);
-void	features_repoClear(project *p, char *feature);
 char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);
 void	fslayer_cleanup(void);

@@ -263,7 +263,7 @@ rclone_ensemble(remote *r)
 	}
 	unless (opts.quiet || opts.verbose) {
 		title = aprintf("%d/%d .", which, which);
-		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
+		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
 	}
 
 	unless (rc) urllist_write(urllist);
@@ -321,7 +321,7 @@ rclone(char **av, remote *r, char **envVar)
 		putenv("BK_STATUS=OK");
 	}
 	unless (opts.quiet) {
-		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
+		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
 	}
 	trigger(av[0], "post");
 
@@ -360,16 +360,10 @@ rclone_part1(remote *r, char **envVar)
 		return (-1);
 	}
 	if (get_ok(r, buf, 1)) return (-1);
-	if (bp_hasBAM() && !bkd_hasFeature("BAMv2")) {
+	if (bp_hasBAM() && !bkd_hasFeature(FEAT_BAMv2)) {
 		fprintf(stderr,
 		    "clone: please upgrade the remote bkd to a "
 		    "BAMv2 aware version (4.1.1 or later).\n");
-		return (-1);
-	}
-	if (getenv("_BK_TRANSACTION") && !bkd_hasFeature("SAMv3")) {
-		fprintf(stderr,
-		    "clone: please upgrade the remote bkd to a "
-		    "NESTED aware version (5.0 or later).\n");
 		return (-1);
 	}
 	if (r->type == ADDR_HTTP) disconnect(r);

@@ -133,6 +133,7 @@ undo_main(int ac,  char **av)
 		    "tip, and may be missing some files that were moved or\n"
 		    "deleted at the time of the partition, but present now.\n"
 		    "The partition tip\n\t%s\n", prog, must_have);
+		unless (getenv("_BK_UNDO_OK")) goto err;
 	}
 	if (must_have) {
 		free(must_have);
@@ -223,7 +224,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			fprintf(stderr, "undo: ensemble failed.\n");
 			goto err;
 		}
-		sccs_close(n->cset); /* win32 */
+		if (n->cset) sccs_close(n->cset); /* win32 */
 		unless (n->oldtip) {	/* tag only undo */
 			if (verbose) {
 				puts("#### Undo tags in Product ####");
@@ -311,7 +312,7 @@ prod:
 	unless (fromclone) unlink(UNDO_CSETS);
 	update_log_markers(verbose);
 	unless (fromclone || verbose || quiet) {
-		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
+		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
 	}
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
@@ -343,6 +344,7 @@ undo_ensemble1(nested *n, int verbose, int quiet, char **nav, char ***comp_list)
 	int	rc;
 	int	i, j, errs, num = 0, which = 1;
 	project	*proj;
+	popts	ops = {0};
 
 	/* make sure we can explain the aliases at the new cset */
 	if (nested_aliases(n, n->oldtip, &n->here, 0, 0)) {
@@ -356,33 +358,17 @@ undo_ensemble1(nested *n, int verbose, int quiet, char **nav, char ***comp_list)
 	 * If we are the product, then don't do the work here, call subprocesses
 	 * to do it here and in each component.  We know that it is OK to do it
 	 * here so unless the other guys are pending we should be cool.
+	 *
+	 * Meaning of comp fields in this context:
+	 *  c->included		modifed in csets being removed
+	 *  c->present		currently populated
+	 *  c->alias		in HERE at final rev (should be populated)
+	 *  c->new		created in csets being removed
+	 *  c->pending		has pending csets
 	 */
 	errs = 0;
 	EACH_STRUCT(n->comps, c, i) {
 		/* handle changing aliases */
-		if (c->present && !c->alias && !c->new) {
-			/*
-			 * a component that is currently present
-			 * but shouldn't be here after the undo.
-			 */
-			fprintf(stderr,
-			    "%s: The old aliases file doesn't include "
-			    "the %s component which is currently "
-			    "present.\n", prog, c->path);
-			++errs;
-		} else if (!c->present && c->alias) {
-			/*
-			 * a component that is missed but should be
-			 * present after the undo.  We need to try and
-			 * populate it.  Just generate an error for
-			 * now.
-			 */
-			fprintf(stderr,
-			    "%s: The old aliases file requires the "
-			    "component %s which is not present.\n",
-			    prog, c->path);
-			++errs;
-		}
 		if (c->included && c->pending) {
 			fprintf(stderr,
 			    "%s: The component %s includes pending "
@@ -394,7 +380,7 @@ undo_ensemble1(nested *n, int verbose, int quiet, char **nav, char ***comp_list)
 		/* count number of calls to undo needed */
 		if (c->present && c->included && !c->new) num++;
 
-		unless (c->new && c->included) continue;
+		unless (c->new && c->included && c->present) continue;
 
 		/* foreach repo to be deleted... */
 
@@ -413,8 +399,21 @@ undo_ensemble1(nested *n, int verbose, int quiet, char **nav, char ***comp_list)
 			++errs;
 		}
 		unlink(SFILES);
+
+		/*
+		 * We don't want nested_populate() to try and clean this
+		 * component because we don't care if it is unique or not.
+		 * Just set c->alias so nested_populate won't notice a
+		 * problem.
+		 */
+		c->alias = 1;
 	}
 	if (errs) goto err;
+	ops.quiet = quiet;
+	ops.verbose = verbose;
+	ops.comps = num;
+	if (errs = nested_populate(n, 0, &ops)) goto err;
+	num = ops.comps;
 	START_TRANSACTION();
 	errs = 0;
 	EACH_STRUCT(n->comps, c, j) {
@@ -544,7 +543,8 @@ undo_ensemble_rollback(nested *n, int verbose, char **comp_list)
 		}
 		unless (verbose) {
 			title = aprintf("%u/%u %s", i, ncomps, c->path);
-			progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK");
+			progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK",
+				     PROGRESS_MSG);
 		}
 		proj_cd2product();
 		if (rc) break;

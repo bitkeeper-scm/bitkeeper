@@ -352,6 +352,44 @@ bk push $Q 2> ERR || {
 }
 echo OK
 
+echo $N Run bk gone on top of a dangling delta ......................$NL
+# Next 2 not needed after this cset, but needed to show bug before cset
+bk admin $Q -fMONOTONIC BitKeeper/etc/gone
+bk commit $Q -ygonebar
+bk undo $Q -sfa1.3
+touch bar
+bk new $Q bar
+bk commit $Q -ybar
+bk _rm SCCS/s.bar
+bk -r check -ag | bk gone $Q - || fail
+bk commit $Q -ybar || fail
+echo OK
+
+echo $N Roll back a monotonic gone before it is created .............$NL
+cd "$HERE/project"
+bk commit $Q -ycleanup
+bk clone $Q . ../oldproject
+touch poof
+bk new $Q poof
+bk commit $Q -SNEW -y'now you see it'
+bk rm -f BitKeeper/etc/gone
+bk _rm SCCS/s.poof
+bk -r check -aggg | bk gone $Q -
+bk commit $Q -y'now you do not'
+cd ..
+bk clone $Q project a || fail
+bk clone $Q -rNEW project b || fail
+cd project
+# This goes back before the MONOTONIC was created
+bk undo $Q -sfaNEW || fail
+bk -r check -ac || fail
+cd ../oldproject
+bk pull -q ../b 2> ERR && fail
+grep -q 'Missing file .*poof' ERR || fail -f ERR
+bk abort -f
+bk pull $Q ../a
+echo OK
+
 echo $N Demonstrate users pushing deleted goned files ...............$NL
 cd "$HERE"
 rm -rf project copy1 copy2

@@ -127,7 +127,6 @@ int	gzipAll2fh(int rfd, FILE *wf, int level, int *in, int *out,
     int verbose);
 int	gunzipAll2fh(int rfd, FILE *wf, int *in, int *out);
 int	bkd_getc(void);
-int	outfd(int fd, char*buf);
 
 int	read_blk(remote *r, char *c, int len);
 sccs *	mk_probekey(FILE *f);
@@ -142,8 +141,6 @@ void	disconnect(remote *r);
 void	drain(void);
 char	**getClientInfoBlock(void);
 int	sendServerInfo(int no_repo);
-int	bk_hasFeature(char *f);
-int	bkd_hasFeature(char *f);
 int	probekey(sccs *s, char *rev, int syncroot, FILE *f);
 int	synckeys(remote *r, sccs *s, int flags, FILE *fout);
 int	prunekey(sccs *, remote *, hash *, int, int, int, int *, int *, int *);

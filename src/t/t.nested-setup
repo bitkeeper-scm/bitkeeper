@@ -143,7 +143,6 @@ printf "" > empty
 nested p1
 bk setup -fc"$HERE/empty" -P p2 || fail
 cd p2
-bk portal $Q . || fail
 bk setup -fc"$HERE/empty" gcc || fail
 # pending should be empty
 bk pending
@@ -196,4 +195,30 @@ gdb
 EOF
 bk _nested > GOT
 cmpfiles WANT GOT
+echo OK
+
+echo $N Check that component setup works from outside the product ...$NL
+cd "$HERE"
+bk setup -fc"$HERE/empty" p1/comp1 || fail
+echo OK
+
+echo $N Check that attach in a non-portal fails .....................$NL
+cd "$HERE/p1"
+bk portal $Q -r
+bk setup -fc"$HERE/empty" comp2 > GOT 2>&1 && fail -f GOT
+cat > WANT <<EOF
+New components can only be created in a portal. See 'bk help portal'.
+EOF
+cmpfiles WANT GOT
+test -d comp2 && fail
+echo OK
+
+echo $N Check that comp setup outside product fails in non-portal ...$NL
+cd "$HERE"
+bk setup -fc"$HERE/empty" p1/comp3 > GOT 2>&1 && fail -f GOT
+cat > WANT <<EOF
+New components can only be created in a portal. See 'bk help portal'.
+EOF
+cmpfiles WANT GOT
+test -d p1/comp3 && fail
 echo OK

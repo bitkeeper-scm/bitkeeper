@@ -67,17 +67,12 @@ cmd_clone(int ac, char **av)
 		goto out;
 	}
 	if (proj_isProduct(0)) {
-		unless (bk_hasFeature("SAMv3")) {
-			out("ERROR-please upgrade your BK to a NESTED "
-			    "aware version (5.0 or later)\n");
-			goto out;
-		}
 		if (attach) {
 			out("ERROR-cannot attach a product\n");
 			goto out;
 		}
 	}
-	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
+	if (bp_hasBAM() && !bk_hasFeature(FEAT_BAMv2)) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
 		    "(4.1.1 or later)\n");
 		goto out;
@@ -160,7 +155,7 @@ compressed(int level, int lclone)
 	FILE	*fh;
 	char	*sfiocmd;
 	char	*larg = (lclone ? "-L" : "");
-	char	*marg = (bk_hasFeature("mSFIO") ? "-m" : "");
+	char	*marg = (bk_hasFeature(FEAT_mSFIO) ? "-m" : "");
 
 	sfiocmd = aprintf("bk _sfiles_clone %s %s | bk sfio -oq %s %s",
 	    larg, marg, larg, marg);

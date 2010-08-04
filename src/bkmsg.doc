@@ -1415,6 +1415,28 @@ the '#BKARG#' feature[s].
 
 In general, a "bk upgrade" should be sufficient.
 $
+#bkd_missing_feature
+The current repository has a feature that is not supported by
+the remote bkd.  This repository requires:
+
+	#BKARG#
+
+and you will need to upgrade the remote BitKeeper to a version which
+supports the '#BKARG#' feature[s].
+
+In general, a "bk upgrade" should be sufficient.
+$
+#bk_missing_feature
+The remote repository has a feature that is not supported by this
+BitKeeper release.  That repository requires:
+
+	#BKARG#
+
+and you will need to upgrade to a BitKeeper version which supports
+the '#BKARG#' feature[s].
+
+In general, a "bk upgrade" should be sufficient.
+$
 #test-args
 lead:#BKARG##BKARG#1##BKARG#2# #BKARG#3#BKARG#2#BKARG#:trail
 $

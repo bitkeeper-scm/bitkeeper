@@ -12,7 +12,6 @@
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 
-
 int
 sane_main(int ac, char **av)
 {
@@ -94,7 +93,7 @@ sane(int readonly, int resync)
 				errors++;
 			}
 		}
-		features_repoChk(0);
+		bk_featureRepoChk(0);
 	} else {
 		fprintf(stderr, "sane: not in a BitKeeper repository\n");
 		errors++;

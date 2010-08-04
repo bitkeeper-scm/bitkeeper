@@ -119,6 +119,7 @@ checksum_main(int ac, char **av)
 					    s->sfile);
 				}
 			}
+			bk_featureSet(s->proj, FEAT_SORTKEY, 1);
 		}
 		if (bad && !ret) ret = 1;
 		sccs_free(s);

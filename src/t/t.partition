@@ -34,15 +34,25 @@ cd src
 mkdir -p deep/prune/path/starts/here
 touch a b c deep/prune/path/starts/here/a
 bk new $Q a b c deep/prune/path/starts/here/a
+bk mv a ../a
+bk mv ../a a
 cd ../doc
+# file path name that collides, but not listed in cset
 touch a c
 bk new $Q a c
+bk mv c collide
+bk mv collide c
 echo bam > b
 bk new $Q -b b
 cd ..
 bk commit $Q -SROOT -ybaseline
 bk mv src/a a
+touch src/a
+bk new $Q src/a
 bk commit $Q -ymoveit
+# two files each originally src/a, each moved out of component
+# should be no deleted in simple
+bk mv src/a doc/fromsrc
 # use for scompress verification
 touch doc/tip
 bk new $Q doc/tip
@@ -68,9 +78,18 @@ src/deep/prune/path/starts/here
 path/to/attachfoo|$HERE/comp1
 path/to/newbar|$HERE/comp2
 EOF
-cat <<"EOF" > badmap
-$HERE/project/src
-$HERE/project/doc
+# collide with file paths in cset file
+cat <<EOF > badmap.cset
+src/a
+EOF
+# collide with file paths in cset file in a tipkey
+cat <<EOF > badmap.tip
+a/b/c
+EOF
+# collide with file paths inbetween csets, so only in file.
+cat <<EOF > badmap.file
+doc
+doc/collide/on/down/the/road
 EOF
 echo OK
 
@@ -85,6 +104,20 @@ bk partition -q -Cmapfile notthere b 2> ERR && exit 1
 grep -q "illegal, nonexistent, or not package root" ERR || fail -f ERR
 bk partition -Cmapfile project project 2> ERR && exit 1
 grep -q "partition: destination 'project' exists" ERR || fail -f ERR
+# collide file namespace with component namespace in different ways
+bk partition $Q -Cbadmap.cset project copy-bad.cset 2> ERR && fail -f ERR
+grep -q "csetprune: key path matches a component path src/a" ERR || fail -f ERR
+bk partition $Q -Cbadmap.tip project copy-bad.tip 2> ERR && fail -f ERR
+grep -q "tipkey path matches a component path 'a'" ERR || fail -f ERR
+bk partition $Q -Cbadmap.file project copy-bad.file 2> ERR && fail -f ERR
+grep -q "delta 1.2 matches a component path 'doc/collide'" ERR || fail -f ERR
+# do it again with -X, as it catches the error in a different spot
+bk partition $Q -X -Cbadmap.cset project copy-bad.csetX 2> ERR && fail -f ERR
+grep -q "rootkey path matches component path" ERR || fail -f ERR
+bk partition $Q -X -Cbadmap.tip project copy-bad.tipX 2> ERR && fail -f ERR
+grep -q "deltakey path matches component path" ERR || fail -f ERR
+bk partition $Q -X -Cbadmap.file project copy-bad.fileX 2> ERR && fail -f ERR
+grep -q "delta 1.2 matches a component path 'doc/collide'" ERR || fail -f ERR
 echo OK
 
 echo $N Run a simple test ...........................................$NL
@@ -104,6 +137,10 @@ test -s config && echo non-empty config
 # Check idache
 cd "$HERE"/copy/src/deep/prune/path/starts/here
 bk log -r+ -nd:ROOTKEY: ChangeSet > "$HERE"/dnrk
+# See that there are no deleted, because all moved were pruned
+cd "$HERE"/copy/src
+bk sfiles BitKeeper/deleted > deleted
+test -s deleted && fail -f deleted "no files should be deleted"
 cd "$HERE"/copy
 cat ../dnrk | bk key2path > GOT
 echo src/deep/prune/path/starts/here/ChangeSet > WANT
@@ -166,9 +203,9 @@ test -f copy/src/b || {
 }
 echo OK
 
-echo $N Test rollback without -X means src/a is there ...............$NL
+echo $N Test rollback with -X means src/a is there ..................$NL
 cd copy
-bk undo $Q -sfaROOT 2> WARN || exit 1
+_BK_UNDO_OK=1 bk undo $Q -sfaROOT 2> WARN || exit 1
 bk _test -f src/SCCS/s.a || {
 	echo not there
 	exit 1
@@ -177,10 +214,15 @@ grep -q "undo is rolling back before the partition" WARN || fail -f WARN
 cd ..
 echo OK
 
-echo $N Test rollback without -X means src/a is not there ...........$NL
+echo $N Test rollback without -X means error ........................$NL
 bk partition $Q -Cmapfile project xcomps || exit 1
 cd xcomps
-bk undo $Q -sfaROOT 2> WARN || exit 1
+bk undo $Q -sfaROOT 2> WARN && fail -f WARN
+grep -q "undo is rolling back before the partition" WARN || fail -f WARN
+echo OK
+
+echo $N Test again with override and see src/a is not there .........$NL
+_BK_UNDO_OK=1 bk undo $Q -sfaROOT 2> WARN || exit 1
 bk _test -f src/SCCS/s.a && {
 	echo there
 	exit 1
@@ -272,21 +314,31 @@ echo src > map
 bk partition $Q -Cmap branch parted
 echo OK
 
-echo $N Test remapping of the contents of the gone file .............$NL
+echo $N Test the filtering of gone information when files are rm ....$NL
 cd "$HERE/project"
 RMNAME=`bk log -r+ -nd:RM_NAME: doc/was-src-b`
-bk rm doc/was-src-b
+bk rm doc/was-src-b src/c
 bk commit $Q -y'make a deltakey'
+TIP=`bk prs -r+ -hnd:KEY: "$RMNAME"`
 bk stripdel $Q -Cr+ "$RMNAME"
 bk -r names $Q
-bk _rm src/SCCS/s.c
 bk admin $Q -fMONOTONIC BitKeeper/etc/gone
+bk _rm -fr BitKeeper/deleted
 bk -r check -aggg | bk gone - 2> ERR || fail -f ERR
 bk edit $Q BitKeeper/etc/gone
 echo "this is junk|1.2" >> BitKeeper/etc/gone
 bk delta $Q -yappendjunk BitKeeper/etc/gone
+bk rm doc/was-src-b
 bk commit $Q -ygoned
 cd ..
+bk partition $Q -Cmapfile project gone.regular || fail
+bk _getkv gone.regular/BitKeeper/log/partition PRUNE > plist
+grep -q src/c plist && fail
+grep -q "$TIP" plist && fail
+echo OK
+
+echo $N Test remapping of the contents of the gone file .............$NL
+cd "$HERE"
 bk partition $Q -Cmapfile -X project gone || fail
 bk get -qpk gone/BitKeeper/etc/gone | tail -1 > OUT
 grep -q '^# csetpruned: this is junk|1.2$' OUT || fail -f OUT
@@ -342,6 +394,16 @@ bk changes -qL -ndx ../../one.x 2> ERR && echo fail -f ERR
 grep -q "cannot use key" ERR || fail -f ERR
 bk changes -qL -ndx ../../one.x/src 2> ERR && echo fail -f ERR
 grep -q "trying to synchronize with an unrelated package" ERR || fail -f ERR
+echo OK
+
+echo $N Verify partition -@ fails if something unknown in kv ........$NL
+cd "$HERE"
+cp one.x/BitKeeper/log/partition backup
+echo foo | bk _setkv one.x/BitKeeper/log/partition WACKO
+bk partition -q -@one.x project one.x.ref 2> GOT && fail
+echo "Unknown feature 'WACKO'" > WANT
+cmpfiles WANT GOT
+cp backup one.x/BitKeeper/log/partition
 echo OK
 
 echo $N Verify partition state sticks and does not propagate -X .....$NL
@@ -414,8 +476,4 @@ bk rm -f file
 bk -rBitKeeper/deleted \
     log -r1.0 -nd'test ":DPN:" = "BitKeeper/deleted/:GFILE:" || fail -f X' > X
 . ./X
-cd ..
-bk -rBitKeeper/deleted \
-    log -r1.0 -nd'test ":DPN:" = "BitKeeper/deleted/:GFILE:" || fail -f X' > X
-test -s X && fail -f X
 echo OK

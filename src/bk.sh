@@ -202,7 +202,7 @@ _portal() {
 }
 
 _partition() {
-	CURVER=1.0beta1
+	CURVER=1.0
 	COMPS=
 	FIXGONE=
 	GONE=
@@ -274,16 +274,28 @@ _partition() {
 		}
 		mv "$PTMP"/BitKeeper/log/partition "$PTMP/partition"
 		rm -fr "$PTMP/BitKeeper"
-		for k in ATTACH COMPS \
-		    GONE PRUNE RAND ROOTLOG ROOTKEY TIP VERSION XCOMP
-		do	bk _getkv "$PTMP/partition" $k > "$PTMP/$k" || {
+		bk _getkv "$PTMP/partition" | while read k
+		do	case "$k" in
+				ATTACH) ;;
+				COMPS) ;;
+				GONE) ;;
+				PRUNE) ;;
+				RAND) ;;
+				ROOTLOG) ;;
+				ROOTKEY) ;;
+				TIP) ;;
+				VERSION) ;;
+				XCOMP) ;;
+				*) echo Unknown feature "'$k'" 1>&2; exit 1;;
+			esac
+			bk _getkv "$PTMP/partition" $k > "$PTMP/$k" || {
 				test $? = 2 || {
 					echo getkv failed 1>&2
 					exit 1
 				}
 				rm "$PTMP/$k"	# key not found
 			}
-		done
+		done || exit 1
 		if [ -f "$PTMP/VERSION" ]
 		then	VERSION="`cat "$PTMP/VERSION"`"
 			test "$VERSION" = "$CURVER" || {
@@ -423,6 +435,8 @@ _partition() {
 	# If not allowing cross component moves, purge gone
 	test -z "$REFERENCE" -a -z "$XCOMP" && {
 		echo 'BitKeeper/etc/gone' >> $WA/prune
+		# purge deleted now to remove missing delta keys in deleted
+		bk _rm -fr BitKeeper/deleted
 		bk edit -q BitKeeper/etc/gone
 		cat /dev/null > BitKeeper/etc/gone
 		# Num of g's is a bitmask: 0x1 is rootkey and 0x2 is deltakey
@@ -433,7 +447,10 @@ _partition() {
 	touch $WA/xcomptip
 	test -z "$XCOMP" && {
 		bk csetprune $QUIET -X -C $WA/comps -r"$TIP" - \
-		    < $WA/prune > $WA/prunecomps
+		    < $WA/prune > $WA/prunecomps || exit 1
+		# Weed out duplicates
+		bk surgery -K$WA/prunecomps < $WA/prune > $WA/prune.tmp
+		mv $WA/prune.tmp $WA/prune
 		cat $WA/TIP > $WA/xcomptip
 	}
 	test -n "$XCOMP" && FIXGONE=-G

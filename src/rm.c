@@ -256,13 +256,13 @@ sccs_gone(int quiet, FILE *f)
 	EACH(lines) fputs(lines[i], g);
 	fclose(g);
 	mdbm_close(db);
-	comments_save("Be gone, sir, you annoy me.");
-	sccs_restart(s);
-	if (sccs_delta(s, dflags, 0, 0, 0, 0)) {
-		perror("delta on gone file");
-		exit(1);
-	}
 	sccs_free(s);
+	/* handle the collapse of dangling (see delta.c:strip_dangling() */
+	if (sys("bk", "delta", "-aqyAdd items with bk gone", s_gone, SYS)) {
+		return (1);
+	}
+	/* if MONOTONIC off, turn on; else nop */
+	if (sys("bk", "admin", "-qfMONOTONIC", s_gone, SYS)) return (1);
 	unless (quiet) {
 		fprintf(stderr,
 		    "Do not forget to commit the gone file "

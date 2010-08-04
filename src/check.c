@@ -138,10 +138,6 @@ check_main(int ac, char **av)
 		fprintf(stderr, "check: cannot find package root.\n");
 		return (1);
 	}
-	/* force -B if no BAM server */
-	if (doBAM || !bp_serverID(buf, 1)) {
-		bp_missing = allocLines(64);
-	}
 	/* We need write perm on the tmp dirs, etc. */
 	if (chk_permissions()) {
 		fprintf(stderr,
@@ -167,13 +163,7 @@ check_main(int ac, char **av)
 	/* Make sure we're sane or bail. */
 	if (sane(0, resync)) return (1);
 
-	if (all && bp_index_check(!verbose)) return (1);
-
 	checkout = proj_checkout(0);
-	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
-		perror("idcache");
-		return (1);
-	}
 
 	/* revtool: the code below is restored from a previous version */
 	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
@@ -185,6 +175,16 @@ check_main(int ac, char **av)
 	if (verbose > 1) {
 		fprintf(stderr, "Preparing to check %u files...\n", nfiles);
 	}
+	/* force -B if no BAM server */
+	if (doBAM || !bp_serverID(buf, 1)) {
+		bp_missing = allocLines(64);
+	}
+	if (all && bp_index_check(!verbose)) return (1);
+	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
+		perror("idcache");
+		return (1);
+	}
+
 	/*
 	 * Get the list of components that exist under this
 	 * component.
@@ -474,6 +474,12 @@ check_main(int ac, char **av)
 		chdir(ROOT2RESYNC);
 	} else {
 		if (sys("bk", "sane", SYS)) errors |= 0x80;
+	}
+
+	/* fix up repository features */
+	unless (errors) {
+		bk_featureSet(0, FEAT_SAMv3, proj_isEnsemble(0));
+		bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 	}
 out:
 	if (!errors && bp_getFiles && !getenv("_BK_CHECK_NO_BAM_FETCH") &&

@@ -93,7 +93,7 @@ cmd_rclone_part1(int ac, char **av)
 	 */
 
 	if (((p = getenv("BK_BAM")) && streq(p, "YES")) &&
-	    !bk_hasFeature("BAMv2")) {
+	    !bk_hasFeature(FEAT_BAMv2)) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
 		    "(4.1.1 or later)\n");
 		return (1);
@@ -239,11 +239,7 @@ cmd_rclone_part2(int ac, char **av)
 			rename("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
 		}
 	}
-	if (proj_hasOldSCCS(0)) {
-		features_repoClear(0, "remap");
-	} else {
-		features_repoSet(0, "remap");
-	}
+	bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 	unless (rc || getenv("BK_BAM")) {
 		rc = rclone_end(&opts);
 	}

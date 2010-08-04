@@ -45,14 +45,8 @@ cmd_push_part1(int ac, char **av)
 		out("\n");
 		return (1);
 	}
-
-	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv3")) {
-		out("ERROR-please upgrade your BK to a NESTED "
-		    "aware version (5.0 or later)\n");
-		return (1);
-	}
 	if ((bp_hasBAM() || ((p = getenv("BK_BAM")) && streq(p, "YES"))) &&
-	    !bk_hasFeature("BAMv2")) {
+	    !bk_hasFeature(FEAT_BAMv2)) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
 		    "(4.1.1 or later)\n");
 		return (1);

@@ -258,7 +258,7 @@ do_cset(sccs *s, char *rev, char **nav)
 			fprintf(stderr, "%s: ensemble failed.\n", me);
 			exit (1);
 		}
-		sccs_close(n->cset);
+		if (n->cset) sccs_close(n->cset);
 		freeLines(keys, free);
 		EACH_STRUCT(n->comps, c, i) {
 			if (c->included && !c->present) {

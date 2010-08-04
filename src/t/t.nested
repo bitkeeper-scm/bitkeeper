@@ -1593,53 +1593,48 @@ echo OK
 
 echo $N Components in idcache .......................................$NL
 cd "$HERE/remote" || exit 1
+GDBKEY=`bk prs -r+ -hnd:KEY: gdb/ChangeSet`
+GCCKEY=`bk prs -r+ -hnd:KEY: gcc/ChangeSet`
 mkdir -p a/b/c
 mvcomp gdb a/b/c/d
-# nested_init() with no PENDING - can't find gdb, but it is there somewhere
-bk _nested -lphm -r+ > OUT
+# nested_init() with no PENDING - sees gdb in a/b/c/d location
+bk _nested -ldphm -r+ > OUT
 cat << EOF > WANTOUT
-gcc|(present)
-gdb|(missing)
+a/b/c/d|$GDBKEY|(present)
+gcc|$GCCKEY|(present)
 EOF
 cmpfiles WANTOUT OUT
-# nested_init() with PENDING - see gdb is wrong and fix it
-bk _nested -lphm > OUT 2> ERR
+# nested_init() with PENDING - sees a/b/c/d in own right
+PENDKEY=`bk prs -r+ -hnd:KEY: a/b/c/d/ChangeSet`
+bk _nested -ldphm > OUT
 cat << EOF > WANTOUT
-a/b/c/d|(present)
-gcc|(present)
+a/b/c/d|$PENDKEY|(present)
+gcc|$GCCKEY|(present)
 EOF
-cmpfiles WANTOUT OUT
-echo _nested: idcache missing component a/b/c/d, fixing > WANTERR
-cmpfiles WANTERR ERR
-# nested_init() with no PENDING - now works because cache is spiffy
-bk _nested -lphm -r+ > OUT
 cmpfiles WANTOUT OUT
 # Now move component so old location is within new location
 # First, put current location into bk _nested -r+ (prod cset file)
 bk commit $Q -ymoved
+GDBKEY=`bk prs -r+ -hnd:KEY: a/b/c/d/ChangeSet`
 # Now move in two steps because of limitation of mvcomp in setup.
 mvcomp a/b/c/d x
 rm -fr a/b
 mvcomp x a/b
-# Now nested_init() with no PENDING - 
-bk _nested -lphm -r+ > OUT
+# Now nested_init() with no PENDING - all is fine
+bk _nested -ldphm -r+ > OUT
 cat << EOF > WANTOUT
-a/b/c/d|(missing)
-gcc|(present)
+a/b|$GDBKEY|(present)
+gcc|$GCCKEY|(present)
 EOF
 cmpfiles WANTOUT OUT
 test -d a/b/c/d && fail no dir present
-# fix it with PENDING path
-bk _nested -lphm > OUT 2> ERR
+# show same with pending
+PENDKEY=`bk prs -r+ -hnd:KEY: a/b/ChangeSet`
+bk _nested -ldphm > OUT
 cat << EOF > WANTOUT
-a/b|(present)
-gcc|(present)
+a/b|$PENDKEY|(present)
+gcc|$GCCKEY|(present)
 EOF
-cmpfiles WANTOUT OUT
-echo _nested: idcache missing component a/b, fixing > WANTERR
-cmpfiles WANTERR ERR
-# Cache is once again happy - all is good
-bk _nested -lphm -r+ > OUT
 cmpfiles WANTOUT OUT
 echo OK
 

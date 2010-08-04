@@ -417,6 +417,10 @@ bkd(remote *r)
 		return (bkd_tcp_connect(r));
 	}
 	if (r->host) {
+		/* note that we are local, gzip/fastpatch care */
+		if (isLocalHost(r->host) || streq(r->host, sccs_realhost())) {
+			putenv("_BK_BKD_IS_LOCAL=1");
+		}
 		if (t = getenv("BK_RSH")) {
 			/*
 			 * Parse the command into words.
@@ -526,6 +530,7 @@ bkd(remote *r)
 		if (r->remote_cmd) cmd[++i] = "-U";
 		cmd[++i] = 0;
     	}
+	if (getenv("_BK_BKD_IS_LOCAL")) r->gzip = 0;
 	if (getenv("BK_DEBUG")) {
 		for (i = 0; cmd[i]; i++) {
 			fprintf(stderr, "CMD[%d]=%s\n", i, cmd[i]);

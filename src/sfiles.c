@@ -1541,8 +1541,6 @@ findsfiles(char *file, struct stat *sb, void *data)
 			if (exists(file)) si->fn(file, sb, si->data);
 			strcpy(p+5, "urllist");
 			if (exists(file)) si->fn(file, sb, si->data);
-			strcpy(p+5, "features");
-			if (exists(file)) si->fn(file, sb, si->data);
 			if (si->is_modes) {
 				strcpy(p+5, "NFILES");
 				if (exists(file)) si->fn(file, sb, si->data);

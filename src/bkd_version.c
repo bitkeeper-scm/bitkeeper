@@ -76,15 +76,14 @@ bkversion(FILE *f)
 	char	buf[MAXLINE];
 
 	buf[0] = 0;
-	/* get a lease, but don't fail */
-	if (key = lease_bkl(0, 0)) {
-		license_info(key, buf, 0);
-	}
 	fprintf(f, "BitKeeper version is ");
 	if (*bk_tag) fprintf(f, "%s ", bk_tag);
 	fprintf(f, "%s for %s\n", bk_utc, bk_platform);
-	fprintf(f, "Options: %s\n", buf);
-	if (key) {
+	fflush(f);	/* put out ver info while waiting for lease */
+	/* get a lease, but don't fail */
+	if (key = lease_bkl(0, 0)) {
+		license_info(key, buf, 0);
+		fprintf(f, "Options: %s\n", buf);
 		fprintf(f, "Customer ID: %.12s\n", key + 12);
 		free(key);
 	}
