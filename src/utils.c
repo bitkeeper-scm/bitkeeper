@@ -826,10 +826,8 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	 */
 	EACH(envVar) fprintf(f, "putenv %s\n", envVar[i]);
 
-	if (r->host)
-		fprintf(f, "putenv BK_VHOST=%s\n", r->host);
+	if (r->host) fprintf(f, "putenv BK_VHOST=%s\n", r->host);
 	fprintf(f, "putenv BK_REMOTE_PROTOCOL=%s\n", BKD_VERSION);
-
 	fprintf(f, "putenv BK_VERSION=%s\n", bk_vers);
 	fprintf(f, "putenv BK_UTC=%s\n", bk_utc);
 	fprintf(f, "putenv BK_TIME_T=%s\n", bk_time);
@@ -913,7 +911,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 				fprintf(f, "putenv BK_BAM_SERVER_ID=%s\n", bp);
 			}
 		}
-		fprintf(f, "putenv BK_REPOTYPE=");
+		fprintf(f, "putenv BK_REPOTYPE=");	// no newline here
 		if (proj_isProduct(0)) {
 			fprintf(f, "prod\n");
 		} else if (proj_isComponent(0)) {
@@ -1870,7 +1868,7 @@ bk_urlArg(char ***urls, char *arg)
 			return (1);
 		}
 		*urls = catLines(*urls, list);
-	} else if (arg) {
+	} else if (arg && *arg) {
 		*urls = addLine(*urls, strdup(arg));
 	} else {
 		unless (list = parent_allp()) {

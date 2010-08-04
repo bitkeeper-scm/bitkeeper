@@ -551,11 +551,12 @@ prunekey_main(int ac, char **av)
 
 
 private int
-send_sync_msg(remote *r, int flags)
+send_sync_msg(remote *r, sccs *s, int flags)
 {
 	FILE 	*f;
-	int	rc, i;
-	char	*probef;
+	char	*probe;
+	size_t	probelen;
+	int	rc;
 	char	buf[MAXPATH];
 
 	bktmp(buf, "synccmds");
@@ -566,24 +567,16 @@ send_sync_msg(remote *r, int flags)
 	fprintf(f, "synckeys %s\n", (flags & PK_SYNCROOT) ? "-S" : "");
 	fclose(f);
 
-	probef = bktmp(0, 0);
-	if (flags & PK_SYNCROOT) {
-		rc = sysio(0, probef, 0, "bk", "_probekey", "-S", SYS);
-	} else {
-		rc = sysio(0, probef, 0, "bk", "_probekey", SYS);
-	}
+	f = fmem_open();
+	probekey(s, 0, (flags & PK_SYNCROOT), f);
+	probe = fmem_getbuf(f, &probelen);
+	rc = send_file(r, buf, probelen);
+	unlink(buf);
 	unless (rc) {
-		rc = send_file(r, buf, size(probef));
-		unlink(buf);
-		f = fopen(probef, "rb");
-		while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
-			writen(r->wfd, buf, i);
-		}
-		fclose(f);
-		send_file_extra_done(r);
+		writen(r->wfd, probe, probelen);
+		rc = send_file_extra_done(r);
 	}
-	unlink(probef);
-	free(probef);
+	fclose(f);
 	return (rc);
 }
 
@@ -601,7 +594,7 @@ synckeys(remote *r, sccs *s, int flags, FILE *fout)
 	char	buf[MAXPATH];
 
 	if (bkd_connect(r)) return (1);
-	if (send_sync_msg(r, flags)) goto out;
+	if (send_sync_msg(r, s, flags)) goto out;
 	if (r->rfd < 0) goto out;
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);

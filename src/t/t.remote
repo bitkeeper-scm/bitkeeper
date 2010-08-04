@@ -29,7 +29,7 @@ echo OK
 echo $N Test bk -@ with no parent ...................................$NL
 bk parent -rq
 bk -q -@ pwd 2> ERR && exit 1
-grep -q "repository has no default parent" ERR || exit 1
+grep -q "repository has no parent" ERR || exit 1
 echo OK
 
 echo $N Test bk -@ with specified parent ............................$NL
