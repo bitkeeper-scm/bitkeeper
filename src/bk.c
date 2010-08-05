@@ -1129,7 +1129,7 @@ cmdlog_end(int ret, int bkd_cmd)
 
 		nlid = getenv("_NESTED_LOCK");
 		assert(nlid);
-		if (ret) {
+		if (ret && !streq(prog, "abort")) {
 			if (nested_abort(0, nlid)) {
 				error("%s", nested_errmsg());
 			}

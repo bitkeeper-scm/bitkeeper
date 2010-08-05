@@ -570,3 +570,15 @@ bk abort -qf
 bk pull $Q || fail 1
 cd ..
 echo $OUT
+
+echo $N Test a failed abort..........................................$NL
+cd "$HERE"
+rm -rf edit_in_product
+tar xf edit_in_product.tar
+cd edit_in_product
+save_state
+mkdir -p RESYNC/BitKeeper
+touch RESYNC/.bk_nl
+bk abort -f >ERR 2>&1 && fail
+grep -q "Write locked" ERR && fail double abort... whooa... what does it mean?
+echo OK
