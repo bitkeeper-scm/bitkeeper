@@ -222,3 +222,11 @@ EOF
 cmpfiles WANT GOT
 test -d p1/comp3 && fail
 echo OK
+
+echo $N Check that standalone setup inside a product works ..........$NL
+cd product
+bk setup -fc"$HERE/empty" ../sa3 || fail
+cd ../sa3
+bk product -q
+test $? = 2 || fail
+echo OK

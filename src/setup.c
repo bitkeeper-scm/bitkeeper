@@ -104,7 +104,7 @@ setup_main(int ac, char **av)
 		 * in_prod will be used later - it is only set if
 		 * creating a component inside of a product.
 		 */
-		if (in_prod = proj_product(proj)) {
+		if (proj && (in_prod = proj_product(proj))) {
 			/*
 			 * null config file is okay if in product
 			 * as the component will use the product's config
