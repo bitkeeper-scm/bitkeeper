@@ -699,8 +699,7 @@ And the compare function looks like this:
 
 =head1 CONTROL TRANSFER STATEMENTS
 
-L has most of the usual conditional and looping constructs except for
-case/switch.
+L has most of the usual conditional and looping constructs.
 
 A conditional expression can be any L expression of type int or
 string.  Any non-zero int value is TRUE, and zero is FALSE.  Any
@@ -812,6 +811,23 @@ can be used as case expressions:
 
 The default case is optional.  The expression being switched on
 must be of type integer, string or poly.
+
+In addition to checking the value of the switch expression,
+you can test whether it is undefined.
+This is useful when switching on a function return value
+which could be C<undef> to signal an error condition.
+
+    switch (myfunc(arg)) {
+        case /OK/:
+            puts("all is A-OK");
+            break;
+        case undef:
+            puts("error");
+            break;
+        default:
+            puts("unknown return value");
+            break;
+    }
 
 =item break and continue
 

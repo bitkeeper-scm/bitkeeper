@@ -5725,6 +5725,80 @@ void switch_1_1()
 	}
 	unless (s eq "3141") puts("bad 2.9");
 
+	/* Test checking for undef. */
+
+	s = undef;
+	i = 0;
+	switch (s) {
+	    case undef:
+		++i;
+		break;
+	    default:
+		puts("bad 2.11");
+		break;
+	}
+	unless (i == 1) puts("bad 2.12");
+
+	s = "";
+	i = 0;
+	switch (s) {
+	    case undef:
+		puts("bad 2.13");
+		break;
+	    default:
+		++i;
+		break;
+	}
+	unless (i == 1) puts("bad 2.14");
+
+	s = s1 = undef;
+	i = 0;
+	switch (s) {
+	    case s1:
+		puts("bad 2.15");
+		break;
+	    case undef:
+		++i;
+	    case "fall through to this one":
+		++i;
+		break;
+	    default:
+		puts("bad 2.16");
+		break;
+	}
+	unless (i == 2) puts("bad 2.17");
+
+	s = s1 = undef;
+	i = 0;
+	switch (s) {
+	    case undef:
+		++i;
+		break;
+	    case s1:
+		puts("bad 2.18");
+		break;
+	    default:
+		puts("bad 2.19");
+		break;
+	}
+	unless (i == 1) puts("bad 2.20");
+
+	s = undef;
+	s1 = "";
+	i = 0;
+	switch (s) {
+	    case s1:
+		puts("bad 2.21");
+		break;
+	    case undef:
+		++i;
+		break;
+	    default:
+		puts("bad 2.22");
+		break;
+	}
+	unless (i == 1) puts("bad 2.23");
+
 	/* Test case fall through. */
 	s = "";
 	switch (1) {
