@@ -11,12 +11,21 @@ ast_init(void *node, Node_k type, int beg, int end)
 	Ast	*ast = (Ast *)node;
 
 	ast->file     = L->file;
-	ast->line     = L->line;
-	ast->line_adj = L->line_adj;
 	ast->type     = type;
 	ast->beg      = beg;
 	ast->end      = end;
 	ast->next     = L->ast_list;
+
+	/*
+	 * Adjust the line # to account for include()'d code.  This
+	 * acts like cpp's #line directive.
+	 */
+	if (beg) {
+		ast->line = L_offset_to_lineno(beg) - L->line_adj;
+	} else {
+		ast->line = L->line;
+	}
+
 	L->ast_list   = (void *)ast;
 }
 

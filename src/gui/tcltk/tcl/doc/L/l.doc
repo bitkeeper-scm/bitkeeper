@@ -127,6 +127,20 @@ single quote character (C<\'>), and the escape character (C<\\>).
 If you put a line break in the middle of a string but forget to escape
 it, L will complain.
 
+Adjacent string constants are automatically concatenated, like in C.
+
+    printf("This " "prints "
+           "the concatenation "
+           "of ""all"" strings\n");
+
+prints "This prints the concatenation of all strings".
+
+L requires that they be the same "type", all interpolated ("") or
+all not interpolated ('') but the dot operator comes the rescue
+in this contrived example:
+
+    'Hi there. ${USER} = ' . "$USER";
+
 =head1 NAME SCOPING
 
 Variables must be declared before use, or a compile-time error
@@ -1172,6 +1186,14 @@ Read only.
 An int containing the current line number within the script.
 Read only.
 
+=item __FUNC__
+
+A string containing the name of the enclosing function.
+At the top level, this will contain a unique name created internally
+by the compiler to uniquely identify the current file's top-level
+code.
+Read only.
+
 =item END
 
 An int containing the index of the last character of a non-empty
@@ -1781,8 +1803,29 @@ is
 Another example:
 
     string v[] = { "a b c", "d", "e" };
-
     string arg = (tcl)v;     // arg is "{a b c} d e"
+
+Sometimes you need to assign a group of variables all at once.
+You can do this by assigning a list of values to a list of variables:
+
+    {a, b, c} = {1, 2, 3};
+
+This is more than a short-cut for the three individual assignments.
+The entire right-hand side gets evaluated first, then the assignment
+occurs, so you can use this to swap the value of two variables:
+
+    {a, b} = {b, a};
+
+If you want to ignore one of the elements in the right-hand list, you
+can put C<undef> in the corresponding element of left-hand list
+instead of having to use a dummy variable:
+
+    {a, undef, b} = {1, 2, 3};  // a gets 1, b gets 3
+
+If the right-hand side list isn't as long as the left-hand list,
+the stragglers get C<undef>:
+
+    {a, b, c} = {1, 2};  // a gets 1, b gets 2, c gets undef
 
 =head1 REGULAR EXPRESSIONS
 

@@ -248,7 +248,7 @@ toplevel_code:
 	  toplevel_code class_decl
 	{
 		if ($2) {
-			$$ = ast_mkTopLevel(L_TOPLEVEL_CLASS, $1, @1.beg,
+			$$ = ast_mkTopLevel(L_TOPLEVEL_CLASS, $1, @2.beg,
 					    @2.end);
 			$$->u.class = $2;
 		} else {
@@ -258,7 +258,7 @@ toplevel_code:
 	}
 	| toplevel_code function_decl
 	{
-		$$ = ast_mkTopLevel(L_TOPLEVEL_FUN, $1, @1.beg, @2.end);
+		$$ = ast_mkTopLevel(L_TOPLEVEL_FUN, $1, @2.beg, @2.end);
 		$2->decl->flags |= DECL_FN;
 		if ($2->decl->flags & DECL_PRIVATE) {
 			$2->decl->flags |= SCOPE_SCRIPT;
@@ -281,7 +281,7 @@ toplevel_code:
 	{
 		// Global variable declaration.
 		VarDecl *v;
-		$$ = ast_mkTopLevel(L_TOPLEVEL_GLOBAL, $1, @1.beg, @2.end);
+		$$ = ast_mkTopLevel(L_TOPLEVEL_GLOBAL, $1, @2.beg, @2.end);
 		for (v = $2; v; v = v->next) {
 			v->flags |= DECL_GLOBAL_VAR;
 			if ($2->flags & DECL_PRIVATE) {
@@ -295,7 +295,7 @@ toplevel_code:
 	| toplevel_code stmt
 	{
 		// Top-level statement.
-		$$ = ast_mkTopLevel(L_TOPLEVEL_STMT, $1, @1.beg, @2.end);
+		$$ = ast_mkTopLevel(L_TOPLEVEL_STMT, $1, @2.beg, @2.end);
 		$$->u.stmt = $2;
 	}
 	| /* epsilon */		{ $$ = NULL; }

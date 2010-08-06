@@ -1930,6 +1930,14 @@ compile_var(Expr *expr, Expr_f flags)
 		push_str("%d", expr->node.line);
 		expr->type = L_int;
 		return (1);
+	} else if (!strcmp(expr->u.string, "__FUNC__")) {
+		if (L->enclosing_func) {
+			push_str(L->enclosing_func->decl->id->u.string);
+		} else {
+			push_str("%s", L->toplev);
+		}
+		expr->type = L_string;
+		return (1);
 	}
 
 	unless ((sym = sym_lookup(expr, flags))) {
@@ -3604,9 +3612,11 @@ compile_idxOp(Expr *expr, Expr_f flags)
 	 */
 	if (isclass(expr->a)) {
 		unless (expr->op == L_OP_POINTS) {
-			L_errf(expr, ". illegal on objects; use -> instead");
+			L_errf(expr, "must access object only with ->");
 		}
-	} else if (expr->a->sym && (expr->a->sym->decl->flags & DECL_REF)) {
+	} else if (expr->a->sym &&
+		   (expr->a->sym->decl->flags & DECL_REF) &&
+		   !(expr->a->flags & L_EXPR_DEEP)) {
 		if (expr->op == L_OP_DOT) {
 			L_errf(expr, ". illegal on call-by-reference "
 			       "parms; use -> instead");
@@ -4708,7 +4718,7 @@ L_synerr(const char *s)
 	off = L_lloc.beg;
 	ASSERT(off >= 0);
 	ASSERT(beg);
-	for (line = beg+off; (line[-1] != '\n') && (line > beg); --line) ;
+	for (line = beg+off; (line > beg) && (line[-1] != '\n'); --line) ;
 	off = beg+off - line;  // is now offset from start of offending line
 
 	/* Print the offending line with a ^ pointing to the current token. */
@@ -4766,7 +4776,6 @@ L_errf(void *node, const char *format, ...)
 {
 	va_list ap;
 	int	len = 64;
-	int	line;
 	char	*buf;
 
 	va_start(ap, format);
@@ -4781,22 +4790,9 @@ L_errf(void *node, const char *format, ...)
 		L->errs = Tcl_NewObj();
 	}
 	if (node) {
-		int	beg = ((Ast *)node)->beg;
-		int	adj = ((Ast *)node)->line_adj;
-
-		/*
-		 * Adjust the line # to account for include()'d code.
-		 * This acts like cpp's #line directive but it's in
-		 * the AST.
-		 */
-		if (beg) {
-			line = L_offset_to_lineno(beg) - adj;
-		} else {
-			line = ((Ast *)node)->line;
-		}
 		Tcl_AppendPrintfToObj(L->errs, "%s:%d: ",
 				      ((Ast *)node)->file,
-				      line);
+				      ((Ast *)node)->line);
 	}
 	Tcl_AppendPrintfToObj(L->errs, "L Error: %s\n", buf);
 	ckfree(buf);

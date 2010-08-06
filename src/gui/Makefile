@@ -106,7 +106,10 @@ citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) citool.l
 	@(	echo 'wm withdraw .' ;		\
 		cat $(filter %.tcl,$^) ;	\
 		echo ; echo 'L {' ; echo ;	\
-		cat $(filter %.l,$^) ;		\
+		for f in $(filter %.l,$^) ; do	\
+			echo "#file \"$$f\"" ;	\
+			cat $$f ;		\
+		done ;				\
 		echo '}' ; 		\
 		echo 'main $$argc $$argv' ;	\
 	) | $(TCLWRAP) > $(LIBDIR)/citool

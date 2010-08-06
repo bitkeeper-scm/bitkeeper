@@ -33,7 +33,7 @@ test lfile-1.1 {Test autowrapping of .l works} -setup {
 
 # main shouldn't be automatically called if within an .l file we find
 # the #lang L directive... right?
-test lfile-1.2 {Test autowrapping doesn't wrap twice} -setup {
+test lfile-1.2 {Test autowrapping does not wrap twice} -setup {
 	set fname [makeFile {#lang L -nowarn
 		void main() {
 			printf("hi dad\n");
@@ -59,7 +59,7 @@ test parse-1.0 {Test parsing an empty L script} -body {
 #lang L
 }
 
-test parse-1.1 {Test parsing an L script that's just white space} -body {
+test parse-1.1 {Test parsing an L script that is just white space} -body {
 #lang L
 	
 
@@ -793,6 +793,102 @@ void scan_1_16()
 	unless (s eq "def") puts("bad 4");
 }
 scan_1_16();
+} -output {}
+
+test scan-2.1 {test #file directive} -body {
+#lang L
+#file "scan2-1.l"
+void scan_2_a()
+{
+	bad1;
+}
+
+#file "scan2-2.l"
+void scan_2_b()
+{
+	bad2;
+}
+
+
+
+
+
+
+#file "scan2-3.l"
+void scan_2_c()
+{
+	bad3;
+}
+} -returnCodes {error} -match regexp -result {scan2-1.l:3: L Error: undeclared variable: bad1
+scan2-2.l:3: L Error: undeclared variable: bad2
+scan2-3.l:3: L Error: undeclared variable: bad3
+}
+
+# This is test include-1.0 with #file's thrown in.
+test scan-2.2 {test #file directive with include files} -setup {
+	set fname [makeFile {#file "foo.l"
+			++scan_2_2;
+			unless (basename(__FILE__) eq "foo.l") puts("bad 1");
+			unless (__LINE__ == 3) puts("bad 2");
+		   } scan-2.2.l ../tests]
+} -body {
+#lang L
+int scan_2_2 = 0;
+puts(scan_2_2);
+include("scan-2.2.l");
+puts(scan_2_2);
+// Check variations in spacing and punctation.
+// The compiler should include scan-2.2.l only once.
+include("scan-2.2.l") ;
+include ("scan-2.2.l");
+include ("scan-2.2.l") ;
+include ( "scan-2.2.l") ;
+include ( "scan-2.2.l" ) ;
+include("scan-2.2.l");;
+puts(scan_2_2);
+} -cleanup {
+	removeFile $fname
+} -output {0
+1
+1
+}
+
+# This is test include-1.1 with #file's thrown in.
+test scan-2.3 {test #file directive with nested include files} -setup {
+#
+# The code for these files isn't indented because L recognizes
+# include() only when it starts at the beginning of the line.
+#
+	set fname1 [makeFile {#file "foo1.l"
+include("scan-2.3-2.l");
+unless (basename(__FILE__) eq "foo1.l") puts("bad 1");
+unless (__LINE__ == 3) puts("bad 2");
+} scan-2.3-1.l ../tests]
+	set fname2 [makeFile {#file "foo2.l"
+int scan_2_3a = 3;
+unless (basename(__FILE__) eq "foo2.l") puts("bad 3");
+unless (__LINE__ == 3) puts("bad 4");
+include("scan-2.3-3.l");
+unless (basename(__FILE__) eq "foo2.l") puts("bad 5");
+unless (__LINE__ == 6) puts("bad 6 ${__LINE__}");
+} scan-2.3-2.l ../tests]
+	set fname3 [makeFile {#file "foo3.l"
+int scan_2_3b = 4;
+unless (basename(__FILE__) eq "foo3.l") puts("bad 7");
+unless (__LINE__ == 3) puts("bad 8");
+} scan-2.3-3.l ../tests]
+} -body {
+#lang L
+#file "foo4.l"
+unless (__FILE__ eq "foo4.l") puts("bad 10.1");
+include("scan-2.3-1.l");
+unless (__FILE__ eq "foo4.l") puts("bad 10.2");
+unless (scan_2_3a == 3) puts("bad 10.3");
+unless (scan_2_3b == 4) puts("bad 10.4");
+} -cleanup {
+	removeFile $fname1
+	removeFile $fname2
+	removeFile $fname3
 } -output {}
 
 test cmdsubst-1 {test command substitution} -body {
@@ -2719,28 +2815,35 @@ void op_1_13()
 test op-1.14 {test "." and "->" as struct selection operators} -body {
 #lang L
 struct op14 {
-       int	i, j;
+	int	i, j;
+	struct {
+		int	k;
+	} s;
 };
 void op_1_14_ref(struct op14 &st)
 {
 	st->i = 7;
+	st->s.k = 8;
 }
 void op_1_14_val(struct op14 st)
 {
 	st.i = 8;
+	st.s.k = 9;
 }
 void op_1_14()
 {
-	struct op14 st = { 5, 6 };
+	struct op14 st = { 5, 6, {7} };
 
 	unless (st.i  == 5) puts("bad 1.1");
 	unless (st.j  == 6) puts("bad 1.2");
 
 	op_1_14_ref(&st);
 	unless (st.i == 7) puts("bad 2.1");
+	unless (st.s.k == 8) puts("bad 2.2");
 
 	op_1_14_val(st);
 	unless (st.i == 7) puts("bad 3.1");
+	unless (st.s.k == 8) puts("bad 3.2");
 }
 op_1_14();
 } -output {}
@@ -2748,11 +2851,15 @@ op_1_14();
 test op-1.15 {check "." and "->" usage errors} -body {
 #lang L
 struct op15 {
-       int	i, j;
+	int	i, j;
+	struct {
+		int	k;
+	} s;
 };
 void op_1_15_ref(struct op14 &st)
 {
 	st.i = 7;  // err
+	st->s->k = 8;  // the ->k part is an err
 }
 void op_1_15_val(struct op14 st)
 {
@@ -2764,9 +2871,10 @@ void op_1_15()
 
 	st->i = st.j;  // st->i is an err
 }
-} -returnCodes {error} -match regexp -result {.*6: L Error: \. illegal on call-by-reference parms; use -> instead
+} -returnCodes {error} -match regexp -result {.*9: L Error: \. illegal on call-by-reference parms; use -> instead
 .*10: L Error: -> illegal except on call-by-reference parms; use \. instead
-.*16: L Error: -> illegal except on call-by-reference parms; use \. instead
+.*14: L Error: -> illegal except on call-by-reference parms; use \. instead
+.*20: L Error: -> illegal except on call-by-reference parms; use \. instead
 }
 
 test op-1.16 {check ? : operator} -body {
@@ -12096,6 +12204,67 @@ include("does-not-exist.l");
 # If the L global state is properly kept per-interp, there
 # should be no multiple-declaration errors.
 
+test include-2.1 {nested include files almost nested too deeply} -setup {
+	set fname1  [makeFile {include("f-1.2.l");}  f-1.1.l ../tests]
+	set fname2  [makeFile {include("f-1.3.l");}  f-1.2.l ../tests]
+	set fname3  [makeFile {include("f-1.4.l");}  f-1.3.l ../tests]
+	set fname4  [makeFile {include("f-1.5.l");}  f-1.4.l ../tests]
+	set fname5  [makeFile {include("f-1.6.l");}  f-1.5.l ../tests]
+	set fname6  [makeFile {include("f-1.7.l");}  f-1.6.l ../tests]
+	set fname7  [makeFile {include("f-1.8.l");}  f-1.7.l ../tests]
+	set fname8  [makeFile {include("f-1.9.l");}  f-1.8.l ../tests]
+	set fname9  [makeFile {include("f-1.10.l");} f-1.9.l ../tests]
+	set fname10 [makeFile {include("f-1.11.l");} f-1.10.l ../tests]
+	set fname11 [makeFile {printf("ok");}	     f-1.11.l ../tests]
+} -body {
+#lang L
+include("f-1.1.l");
+} -cleanup {
+	removeFile $fname1
+	removeFile $fname2
+	removeFile $fname3
+	removeFile $fname4
+	removeFile $fname5
+	removeFile $fname6
+	removeFile $fname7
+	removeFile $fname8
+	removeFile $fname9
+	removeFile $fname10
+	removeFile $fname11
+} -output {ok}
+
+test include-2.2 {nested include files nested too deeply} -setup {
+	set fname1  [makeFile {include("f-2.2.l");}  f-2.1.l ../tests]
+	set fname2  [makeFile {include("f-2.3.l");}  f-2.2.l ../tests]
+	set fname3  [makeFile {include("f-2.4.l");}  f-2.3.l ../tests]
+	set fname4  [makeFile {include("f-2.5.l");}  f-2.4.l ../tests]
+	set fname5  [makeFile {include("f-2.6.l");}  f-2.5.l ../tests]
+	set fname6  [makeFile {include("f-2.7.l");}  f-2.6.l ../tests]
+	set fname7  [makeFile {include("f-2.8.l");}  f-2.7.l ../tests]
+	set fname8  [makeFile {include("f-2.9.l");}  f-2.8.l ../tests]
+	set fname9  [makeFile {include("f-2.10.l");} f-2.9.l ../tests]
+	set fname10 [makeFile {include("f-2.11.l");} f-2.10.l ../tests]
+	set fname11 [makeFile {include("f-2.12.l");} f-2.11.l ../tests]
+	set fname12 [makeFile {printf("ok");}	     f-2.12.l ../tests]
+} -body {
+#lang L
+include("f-2.1.l");
+} -cleanup {
+	removeFile $fname1
+	removeFile $fname2
+	removeFile $fname3
+	removeFile $fname4
+	removeFile $fname5
+	removeFile $fname6
+	removeFile $fname7
+	removeFile $fname8
+	removeFile $fname9
+	removeFile $fname10
+	removeFile $fname11
+	removeFile $fname12
+} -returnCodes {error} -match regexp -result {f-2.11.l:1: L Error: include file nesting too deep -- aborting
+}
+
 test interp-1 {test per-interp global state} -body {
 #lang L
 int interp_1_g;
@@ -14682,11 +14851,12 @@ void line_file_1()
 	unless(__LINE__ == 4) puts("bad 1.2");
 	unless(__LINE__ == 5) puts("bad 1.3");
 	unless(__LINE__ == 6) puts("bad 1.4");
+	unless(__FUNC__ eq "line_file_1") puts("bad 1.5");
 }
 line_file_1();
 } -output {}
 
-test line-file-2 {test __LINE__ and __FILE__ errors} -body {
+test line-file-2 {test __LINE__, __FILE__, and __FUNC__ errors} -body {
 #lang L
 void line_file_2_s(string &s) { s = "bad"; }
 void line_file_2_i(int &i) { i = 1; }
@@ -14694,14 +14864,34 @@ void line_file_2()
 {
 	__FILE__ = "bad";
 	__LINE__ = 1;
+	__FUNC__ = "bad";
 	line_file_2_s(&__FILE__);
 	line_file_2_i(&__LINE__);
+	line_file_2_i(&__FUNC__);
 }
 } -returnCodes {error} -match regexp -result {.*5: L Error: invalid l-value in assignment
 .*6: L Error: invalid l-value in assignment
-.*7: L Error: illegal operand to &
+.*7: L Error: invalid l-value in assignment
 .*8: L Error: illegal operand to &
+.*9: L Error: illegal operand to &
+.*10: L Error: illegal operand to &
 }
+
+test line-file-3 {test __FUNC__} -body {
+#lang L
+unless (__FUNC__ =~ /\d+%l_toplevel/) puts("bad 10.1");
+void line_file_3b()
+{
+	unless (__FUNC__ eq "line_file_3b") puts("bad 1");
+}
+void line_file_3()
+{
+	unless (__FUNC__ eq "line_file_3") puts("bad 2");
+	line_file_3b();
+}
+unless (__FUNC__ =~ /\d+%l_toplevel/) puts("bad 10.2");
+line_file_3();
+} -output {}
 
 test lregex-1 {test a trivial regex} -body {
 #lang L
@@ -14950,7 +15140,7 @@ void class_1_6_main()
 class_1_6_main();
 } -output {}
 
-test class-1.7 {test "." error as member variable selection} -body {
+test class-1.7 {test indexing errors on class instance variables} -body {
 #lang L
 class class_1_7
 {
@@ -14961,13 +15151,17 @@ class class_1_7
 }
 void class_1_7_main()
 {
-	/* Check that . is caught as an error. */
+	/* Check that any index other than -> is caught as an error. */
 
 	class_1_7 o = class_1_7_new();
 
-	unless (o.ivar eq "ivar") puts("bad 2.1");
+	o.ivar;
+	o{"bad"};
+	o[0];
 }
-} -returnCodes {error} -match regexp -result {.*14: L Error: . illegal on objects; use -> instead
+} -returnCodes {error} -match regexp -result {.*14: L Error: must access object only with ->
+.*15: L Error: must access object only with ->
+.*16: L Error: must access object only with ->
 }
 
 test class-1.8 {check calling private member functions} -body {

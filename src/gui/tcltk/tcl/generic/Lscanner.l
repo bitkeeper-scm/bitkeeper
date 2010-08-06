@@ -47,7 +47,7 @@ private Tcl_Obj	*str;		// string collection buffer
 private int	str_beg;	// source offset of string
 private char	*here_delim = NULL;
 private int	include_top;
-private Include	include_stk[INCLUDE_STACK_SZ];
+private Include	include_stk[INCLUDE_STACK_SZ+1];
 private Tcl_HashTable *include_table = NULL;
 
 #define STRBUF_START(beg)			\
@@ -393,6 +393,18 @@ include_pop()
 				BEGIN(include);
 			}
 	^#		BEGIN(hash);
+	^#file\ \"[^\"\n]*\"\n {
+				char *name = ckstrndup(yytext + 7, yyleng - 9);
+				/*
+				 * Make like the #file wasn't there in the
+				 * input, and reset the line # to 1.
+				 */
+				undo_yy_user_action();
+				L->file = name;
+				L->line = 1;
+				L->line_adj = L_offset_to_lineno(L_lloc.end) - 1;
+				BEGIN(INITIAL);
+			}
 	[ \t]+#.*("\r"|"\n"|"\r\n")
 	"//".*("\r"|"\n"|"\r\n")
 	[ \t\n\r\f]+

@@ -140,7 +140,6 @@ struct Ast {
 	Ast	*next;	// links all nodes in an AST
 	char	*file;
 	int	line;
-	int	line_adj;  // starting line# of include()'d code
 	int	beg;
 	int	end;
 };
