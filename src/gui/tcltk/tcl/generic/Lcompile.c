@@ -3351,8 +3351,7 @@ compile_switch_slow(Switch *sw)
 	int	def_off = -1;
 	int	start_off;
 	Jmp	*break_jmps;
-	Jmp	*next_body_jmp = NULL;
-	Jmp	*next_test_jmp = NULL;
+	Jmp	*next_body_jmp = NULL, *next_test_jmp = NULL, *undef_jmp = NULL;
 
 	compile_expr(e, L_PUSH_VAL);
 	unless (isint(e) || isstring(e) || ispoly(e)) {
@@ -3360,9 +3359,27 @@ compile_switch_slow(Switch *sw)
 		return;
 	}
 	frame_push(sw, NULL, SWITCH|SEARCH);
+	/*
+	 * If there's a case undef, check that first, because if the
+	 * switch expr is undef, Tcl will still let us get its value
+	 * and it would match a "" case and we don't want that.
+	 */
+	for (c = sw->cases; c; c = c->next) {
+		if (c->expr && isid(c->expr, "undef")) {
+			start_off = currOffset(L->frame->envPtr);
+			TclEmitOpcode(INST_DUP, L->frame->envPtr);
+			TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
+			undef_jmp = emit_jmp_fwd(INST_JUMP_FALSE4, NULL);
+			track_cmd(start_off, c->expr);
+			break;
+		}
+	}
 	for (c = sw->cases; c; c = c->next) {
 		start_off = currOffset(L->frame->envPtr);
-		if (c->expr) {
+		if (c->expr && isid(c->expr, "undef")) {
+			next_test_jmp = emit_jmp_fwd(INST_JUMP4, next_test_jmp);
+			fixup_jmps(&undef_jmp);
+		} else if (c->expr) {
 			fixup_jmps(&next_test_jmp);
 			TclEmitOpcode(INST_DUP, L->frame->envPtr);
 			if (isregexp(c->expr)) {
@@ -3372,15 +3389,14 @@ compile_switch_slow(Switch *sw)
 				TclEmitOpcode(INST_EQ, L->frame->envPtr);
 			}
 			unless (L_typeck_compat(e->type, c->expr->type)) {
-				L_errf(c,
-			      "case type incompatible with switch expression");
+				L_errf(c, "case type incompatible"
+				       " with switch expression");
 			}
 			next_test_jmp = emit_jmp_fwd(INST_JUMP_FALSE4,
 						     next_test_jmp);
 			track_cmd(start_off, c->expr);
 		} else {  // default case (grammar ensures there's at most one)
-			next_test_jmp = emit_jmp_fwd(INST_JUMP4,
-						     next_test_jmp);
+			next_test_jmp = emit_jmp_fwd(INST_JUMP4, next_test_jmp);
 			ASSERT(def_off == -1);
 			def_off = currOffset(L->frame->envPtr);
 			track_cmd(start_off, c);
