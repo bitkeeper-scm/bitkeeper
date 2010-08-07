@@ -1580,43 +1580,6 @@ TclListObjSetElement(
 /*
  *----------------------------------------------------------------------
  *
- * TclListWalk --
- *
- *	Recursively walk a list depth-first and call a call-back function
- *	for each leaf element.  This function does *not* shimmer the object
- *	to a list if it isn't already of list type.
- *
- * Results:
- *	None, beyond the call-backs.
- *
- * Side effects:
- *	None.
- *
- *----------------------------------------------------------------------
- */
-
-void
-TclListWalk(
-    Tcl_Obj *objPtr,			/* Object to walk. */
-    void (*fn)(Tcl_Obj *, void *),	/* Call-back function. */
-    void *arg)				/* Call-back function argument. */
-{
-    int i, objc;
-    Tcl_Obj **objv;
-
-    if (objPtr->typePtr == &tclListType) {
-	TclListObjGetElements(NULL, objPtr, &objc, &objv);
-	for (i = 0; i < objc; ++i) {
-	    TclListWalk(objv[i], fn, arg);
-	}
-    } else {
-	fn(objPtr, arg);
-    }
-}
-
-/*
- *----------------------------------------------------------------------
- *
  * FreeListInternalRep --
  *
  *	Deallocate the storage associated with a list object's internal

@@ -1749,7 +1749,7 @@ newline, append " in <filename> at line <linenum>\n".
 =head1 MANIPULATING COMPLEX STRUCTURES
 
 L has built-in operators for turning complex data structures into
-something else: (expand), (expand all), and (tcl).
+something else: (expand) and (tcl).
 
 (expand) takes an array of things and pushes them all onto the
 run-time stack to call a function that expects such a list.
@@ -1765,9 +1765,7 @@ It expands only one level, so if the array contains three hashes
 instead of three strings, (expand)v passes three hashes to foo.
 (expand) works with structs too.
 
-Use (expand all) when you want to recursively expand a nested data
-structure to a list of its elemental scalars.  If you have this
-structure:
+If you have this structure:
 
     struct {
         int   i[];
@@ -1777,35 +1775,17 @@ structure:
         { "big" => 100, "medium" => 50, "small" => 10 }
     };
 
-And you use (expand) to expand only one level:
+And you use (expand) when passing these as arguments:
 
     func((expand)foo);
 
-You need a function definition like this:
+you need a function definition like this:
 
     void func(int nums[], int sizes{string})
     {
     }
 
-But if you use (expand all):
-
-    func((expand all)foo);
-
-You need this:
-
-    void func(
-        int      i,
-        int      j,
-        int      k,
-        int      l,
-        string   k1,
-        int      v1,
-        string   k2,
-        int      v2,
-        string   k3,
-        int      v3)
-    {
-    }
+There is no way to recursively expand at this time.
 
 (tcl) is used to pass a single string to a tcl proc for processing.
 It puts in the tcl quotes.  So

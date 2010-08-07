@@ -2188,13 +2188,6 @@ compile_unOp(Expr *expr)
 				L->frame->envPtr);
 		expr->type = L_poly;
 		break;
-	    case L_OP_EXPAND_ALL:
-		compile_expr(expr->a, L_PUSH_VAL);
-		TclEmitInstInt4(INST_EXPAND_STKTOP_RECURSE,
-				L->frame->envPtr->currStackDepth,
-				L->frame->envPtr);
-		expr->type = L_poly;
-		break;
 	    case L_OP_CMDSUBST:
 		push_str("::system");
 		if (expr->a) {

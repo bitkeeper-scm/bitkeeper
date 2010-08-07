@@ -429,9 +429,6 @@ InstructionDesc const tclInstructionTable[] = {
 	/* Pop the internal L sizes stack. */
     {"l-push-undef",	 1,    1,         0,	{OPERAND_NONE}},
 	/* Push the L undef object. */
-    {"expandStkTopRecurse", 5, 0,         1,	{OPERAND_UINT4}},
-	/* Recursively expand the list at stktop, pushing it
-	 * elements onto the stack. */
     {"expandRot",	 2,    0,	  1,    {OPERAND_UINT1}},
 	/* Rotate the top opnd1 stack elements with those after
 	 * the expand marker (see expandStart). */

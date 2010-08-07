@@ -1106,60 +1106,33 @@ void proc_1_8()
 	unless (proc_1_8_concat((expand){}) eq "") puts("bad 0.1");
 
 	unless (proc_1_8_concat((expand)sa) eq "abc") puts("bad 1.1");
-	unless (proc_1_8_concat((expand all)sa) eq "abc") puts("bad 1.2");
 	unless (proc_1_8_concat("x", (expand)sa) eq "xabc") puts("bad 2.1");
-	unless (proc_1_8_concat("x", (expand all)sa) eq "xabc") puts("bad 2.2");
 	unless (proc_1_8_concat((expand)sa, "y") eq "abcy") puts("bad 3.1");
-	unless (proc_1_8_concat((expand all)sa, "y") eq "abcy") puts("bad 3.2");
 	unless (proc_1_8_concat("x", (expand)sa, "y") eq "xabcy") {
 		puts("bad 4.1");
 	}
-	unless (proc_1_8_concat("x", (expand all)sa, "y") eq "xabcy") {
-		puts("bad 4.2");
-	}
 	unless (proc_1_8_concat("x", (expand)sa, (expand)sb, "y") eq "xabcdey") {
 		puts("bad 5.1");
-	}
-	unless (proc_1_8_concat("x", (expand all)sa, (expand all)sb, "y")
-			eq "xabcdey") {
-		puts("bad 5.2");
 	}
 	unless (proc_1_8_concat((expand)sa, (expand)sa, (expand)sa)
 			eq "abcabcabc") {
 		puts("bad 6.1");
 	}
-	unless (proc_1_8_concat((expand all)sa, (expand all)sa, (expand all)sa)
-			eq "abcabcabc") {
-		puts("bad 6.2");
-	}
 
 	unless (proc_1_8_sum((expand)i1, 2, 3) == 15) puts("bad 10.1");
-	unless (proc_1_8_sum((expand all)i1, 2, 3) == 15) puts("bad 10.2");
 	unless (proc_1_8_sum((expand)i2, 2) == 52) puts("bad 11.1");
-	unless (proc_1_8_sum((expand all)i2, 2) == 52) puts("bad 11.2");
 	unless (proc_1_8_sum((expand)i3) == 150) puts("bad 12.1");
-	unless (proc_1_8_sum((expand all)i3) == 150) puts("bad 12.2");
 
 	unless (proc_1_8_concat((expand)p) eq "abc") puts("bad 20.1");
-	unless (proc_1_8_concat((expand all)p) eq "abc") puts("bad 20.2");
 
 	unless (proc_1_8_concat((expand)proc_1_8_arr(1)) eq "1") {
 		puts("bad 30.1");
 	}
-	unless (proc_1_8_concat((expand all)proc_1_8_arr(1)) eq "1") {
-		puts("bad 30.2");
-	}
 	unless (proc_1_8_concat((expand)proc_1_8_arr(2)) eq "12") {
 		puts("bad 31.1");
 	}
-	unless (proc_1_8_concat((expand all)proc_1_8_arr(2)) eq "12") {
-		puts("bad 31.2");
-	}
 	unless (proc_1_8_concat((expand)proc_1_8_arr(3)) eq "123") {
 		puts("bad 32.1");
-	}
-	unless (proc_1_8_concat((expand all)proc_1_8_arr(3)) eq "123") {
-		puts("bad 32.2");
 	}
 
 	/* These test expand inside of a list {}. */
@@ -1167,20 +1140,11 @@ void proc_1_8()
 	unless (proc_1_8_concat((expand){(expand){1}}) eq "1") {
 		puts("bad 40.1");
 	}
-	unless (proc_1_8_concat((expand all){(expand all){1}}) eq "1") {
-		puts("bad 40.2");
-	}
 	unless (proc_1_8_concat((expand){(expand){1,2}}) eq "12") {
 		puts("bad 40.3");
 	}
-	unless (proc_1_8_concat((expand all){(expand all){1,2}}) eq "12") {
-		puts("bad 40.4");
-	}
 	unless (proc_1_8_concat((expand){(expand){1,2,3}}) eq "123") {
 		puts("bad 40.5");
-	}
-	unless (proc_1_8_concat((expand all){(expand all){1,2,3}}) eq "123") {
-		puts("bad 40.6");
 	}
 
 	sa = { (expand){"1","2"}, "3", (expand){"4"}, "5", (expand){"6","7","8"} };
@@ -1196,90 +1160,6 @@ void proc_1_8()
 }
 proc_1_8();
 } -output {}
-
-test proc-1.9 {test (expand all)} -body {
-#lang L
-string proc_1_9_concat(...args)
-{
-	poly	p;
-	string	s;
-
-	foreach (p in args) s = sprintf("%s%s", s, p);
-	return (s);
-}
-int proc_1_9_sum(int a, int b, int c, int d, int e, int f, int g, int h)
-{
-	return (a + b + c + d + e + f + g + h);
-}
-/* Return a string array of n elements, starting at "1" and counting up. */
-string[] proc_1_9_arr(int n)
-{
-	int	i;
-	string	s[];
-
-	for (i = 1; i <= n; ++i) push(&s, (string)i);
-	return (s);
-}
-void proc_1_9()
-{
-	int	ia0[] = {1};
-	int	ia1[][] = { {1}, {1}, {1,1} };
-	int	ia2[][][] = { { {1}, {1} }, {{1}}, { {1,1,1}, {1,1} } };
-	string	sa[];
-	string	saa[][] = { {"00","01"}, {"10"}, {"20"}, {"30","31","32"} };
-	string	sh{string} = { "k1"=>"v1", "k2"=>"v2" };
-	struct {
-		int	i, j;
-		string	sa[];
-		string	s;
-	} st = { 11, 22, { "s1","s2" }, "str" };
-
-	unless (proc_1_9_concat((expand all){}) eq "") puts("bad 0.1");
-
-	unless (proc_1_9_sum((expand all)ia0,1,1,1,1,1,1,1) == 8) {
-		puts("bad 0.2");
-	}
-	unless (proc_1_9_sum((expand all)ia1,3,3,3,3) == 16) {
-		puts("bad 0.3");
-	}
-	unless (proc_1_9_sum((expand all)ia2) == 8) {
-		puts("bad 0.4");
-	}
-
-	unless (proc_1_9_concat((expand all)saa) eq "00011020303132") {
-		puts("bad 1.1");
-	}
-
-	unless (proc_1_9_concat((expand all){1,2,{3,{4,5},6}}) eq "123456") {
-		puts("bad 2");
-	}
-
-	unless (proc_1_9_concat((expand all){{{{{{{{1}}}}}}}}) eq "1") {
-		puts("bad 3");
-	}
-
-	unless (proc_1_9_concat((expand all)sh) eq "k1v1k2v2") puts("bad 4");
-	unless (proc_1_9_concat((expand all)st) eq "1122s1s2str") puts("bad 5");
-
-	/* Try some nested lists with expands. */
-	sa = { (expand){"1","2","3"}, (expand all){"4", (expand){"5","6"}} };
-	unless (length(sa) == 6) puts("bad 10.1");
-	unless (proc_1_9_concat((expand)sa) eq "123456") puts("bad 10.2");
-	sa = { (expand){"1","2","3"}, (expand){"4", (expand){"5","6"}} };
-	unless (length(sa) == 6) puts("bad 10.3");
-	unless (proc_1_9_concat((expand)sa) eq "123456") puts("bad 10.4");
-}
-proc_1_9();
-} -output {}
-
-test proc-1.10 {check expand errors} -body {
-#lang L
-void proc_1_10()
-{
-	(expand bad){1,2,3};
-}
-} -returnCodes error -match regexp -result {.*3: L Error: only \(expand\) and \(expand all\) are legal
-}
 
 test var-1.0 {Test L variable assignment and reference} -body {
 #lang L

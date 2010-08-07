@@ -908,17 +908,6 @@ expr:
 	{
 		$$ = ast_mkUnOp(L_OP_EXPAND, $4, @1.beg, @4.end);
 	}
-	| "(" T_EXPAND id ")" expr %prec PREFIX_INCDEC
-	{
-		/*
-		 * This rule is for (expand all).  It's an error if id
-		 * is not "all".
-		 */
-		unless (!strcmp($3->u.string, "all")) {
-			L_errf($3, "only (expand) and (expand all) are legal");
-		}
-		$$ = ast_mkUnOp(L_OP_EXPAND_ALL, $5, @1.beg, @5.end);
-	}
 	| T_BANG expr
 	{
 		$$ = ast_mkUnOp(L_OP_BANG, $2, @1.beg, @2.end);

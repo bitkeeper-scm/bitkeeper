@@ -749,8 +749,6 @@ static int L_sizes_top();
 static void L_sizes_pop();
 static Tcl_Obj **L_deepDive(Tcl_Interp *interp, Tcl_Obj *obj, Tcl_Obj *idxObj,
 			    Expr_f flags);
-static void Incr(Tcl_Obj *objPtr, void *arg);
-static void PushObj(Tcl_Obj *objPtr, void *arg);
 
 /*
  *----------------------------------------------------------------------
@@ -2701,54 +2699,6 @@ TclExecuteByteCode(
 	for (i = 0; i < objc; i++) {
 	    PUSH_OBJECT(objv[i]);
 	}
-
-	Tcl_DecrRefCount(valuePtr);
-	NEXT_INST_F(5, 0, 0);
-    }
-
-    case INST_EXPAND_STKTOP_RECURSE: {
-	int length, tot_len = 0;
-	Tcl_Obj *valuePtr;
-	ptrdiff_t moved;
-	Tcl_Obj **myTosPtr;
-
-	valuePtr = POP_OBJECT();
-
-	/*
-	 * Make sure there is enough room in the stack to expand this list
-	 * *and* process the rest of the command (at least up to the next
-	 * argument expansion or command end). The operand is the current
-	 * stack depth, as seen by the compiler.
-	 */
-
-	TclListWalk(valuePtr, Incr, &tot_len);
-	length = tot_len + (codePtr->maxStackDepth - TclGetInt4AtPtr(pc+1));
-	DECACHE_STACK_INFO();
-	moved = GrowEvaluationStack(iPtr->execEnvPtr, length, 1)
-		- (Tcl_Obj **) bottomPtr;
-
-	if (moved) {
-	    /*
-	     * Change the global data to point to the new stack.
-	     */
-
-	    bottomPtr = (BottomData *) (((Tcl_Obj **)bottomPtr) + moved);
-	    initCatchTop += moved;
-	    catchTop += moved;
-	    initTosPtr += moved;
-	    tosPtr += moved;
-	    esPtr = iPtr->execEnvPtr->execStackPtr;
-	}
-
-	/*
-	 * Recursively expand the list at stacktop onto the stack.  We copy
-	 * tosPtr only for performance, so we can keep it declared as a
-	 * register variable (you can't get a pointer to a register var).
-	 */
-
-	myTosPtr = tosPtr;
-	TclListWalk(valuePtr, PushObj, &myTosPtr);
-	tosPtr = myTosPtr;
 
 	Tcl_DecrRefCount(valuePtr);
 	NEXT_INST_F(5, 0, 0);
@@ -9917,18 +9867,6 @@ static void L_sizes_pop()
 
     L_sizes_stktop = s->prev;
     ckfree((char *)s);
-}
-
-static void Incr(Tcl_Obj *objPtr, void *arg)
-{
-    ++*((int *)arg);
-}
-
-static void PushObj(Tcl_Obj *objPtr, void *arg)
-{
-    Tcl_Obj ***tosPtr = (Tcl_Obj ***)arg;
-    *(++(*tosPtr)) = objPtr;
-    Tcl_IncrRefCount(objPtr);
 }
 
 /*

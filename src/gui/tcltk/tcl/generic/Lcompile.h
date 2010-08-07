@@ -317,8 +317,7 @@ isaddrof(Expr *expr)
 static inline int
 isexpand(Expr *expr)
 {
-	return ((expr->kind == L_EXPR_UNOP) && ((expr->op == L_OP_EXPAND) ||
-						(expr->op == L_OP_EXPAND_ALL)));
+	return ((expr->kind == L_EXPR_UNOP) && (expr->op == L_OP_EXPAND));
 }
 static inline int
 iskv(Expr *expr)
