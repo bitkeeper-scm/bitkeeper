@@ -2057,7 +2057,6 @@ void syntax_1_0() {
         // single-line comments are 
         puts("working"); //see?
         //////cruftilioucious 
-	# this too
 # and this
 }
 # and this
@@ -2066,6 +2065,16 @@ void syntax_1_0() {
 syntax_1_0
 } -output "working\n" 
 
+test syntax-1.0.1 {hash-comment errors} -body {
+#lang L
+void syntax_1_0_1()
+{
+ # err -- starts on column 2
+	# err -- leading tab
+}
+} -returnCodes {error} -match regexp -result {.*3: L Error: # comment must start at first column
+.*4: L Error: # comment must start at first column
+}
 
 test syntax-1.1 {structure syntax} -body {
 #lang L -nowarn

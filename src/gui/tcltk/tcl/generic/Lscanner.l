@@ -393,21 +393,14 @@ include_pop()
 				BEGIN(include);
 			}
 	^#		BEGIN(hash);
-	^#file\ \"[^\"\n]*\"\n {
-				char *name = ckstrndup(yytext + 7, yyleng - 9);
-				/*
-				 * Make like the #file wasn't there in the
-				 * input, and reset the line # to 1.
-				 */
-				undo_yy_user_action();
-				L->file = name;
-				L->line = 1;
-				L->line_adj = L_offset_to_lineno(L_lloc.end) - 1;
-				BEGIN(INITIAL);
+	[ \t]+#.*("\r"|"\n"|"\r\n") {
+				--L->line;  // since we already scanned the \n
+				L_err("# comment must start at first column");
+				++L->line;
 			}
-	[ \t]+#.*("\r"|"\n"|"\r\n")
 	"//".*("\r"|"\n"|"\r\n")
-	[ \t\n\r\f]+
+	[ \t]+
+	\n|\r|\f
 	\"		yy_push_state(str_double); STRBUF_START(L->token_off);
 	\'		yy_push_state(str_single); STRBUF_START(L->token_off);
 	\`		yy_push_state(str_backtick); STRBUF_START(L->token_off);
@@ -768,6 +761,18 @@ include_pop()
 			}
 <hash>{
 	pragma[ \t]+	BEGIN(INITIAL); return T_PRAGMA;
+	file\ \"[^\"\n]*\"\n {
+				char *name = ckstrndup(yytext + 6, yyleng - 8);
+				/*
+				 * Make like the #file wasn't there in the
+				 * input, and reset the line # to 1.
+				 */
+				undo_yy_user_action();
+				L->file = name;
+				L->line = 1;
+				L->line_adj = L_offset_to_lineno(L_lloc.end) - 1;
+				BEGIN(INITIAL);
+			}
 	.		BEGIN(hash2);
 }
 <hash2>{

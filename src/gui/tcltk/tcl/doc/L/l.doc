@@ -88,12 +88,13 @@ L statements end in a semi-colon.
 
     printf("Hello, world\n");
 
-Comments start with a // or a hash symbol and run to the end of the line.
-C-style comments also are allowed.
+Both C style and hash style comments are allowed, but the hash
+style comments must start on column 1.
 
     # This is a comment
-    // So is this
+	// So is this
     /* And this too */
+        # But this is an error (does not start on column 1)
 
 Whitespace usually is irrelevant.
 
