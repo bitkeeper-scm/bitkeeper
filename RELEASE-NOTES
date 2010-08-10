@@ -1,3 +1,7 @@
+Config change:
+    nosync: yes is deprecated as it is now the default.  Use
+    sync: yes to force a sync.
+
 Release notes for BitKeeper beta 8
 
 bk gone

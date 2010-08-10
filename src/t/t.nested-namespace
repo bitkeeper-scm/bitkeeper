@@ -7,7 +7,7 @@ nested parent
 # prep here file to not be all
 bk alias set $Q default ./gcc ./gdb
 # Assertions
-test "`bk config checkout`" = none || fail checkout assumption failed
+test -z "`bk config checkout`" || fail checkout assumption failed
 # Set up a non-deep repo that has some path
 bk setup -f path/to/comp || fail
 bk setup -f shallow || fail

@@ -73,13 +73,11 @@ homepage: http://www.mysql.com
 .SS CHECKOUT MODE
 .br
 Specify checkout mode for a repository. 
-If the variable is unset, the default is to not show gfiles unless
-files are checked out.
-To override the default, to have gfiles checked out in read-only
-or read-write mode, a line must be added to your configuration
-as follows:
+If unset, the default is "none".
+To change the default, add or change the following line to/in
+your configuration:
 .DS
-checkout:option
+checkout:<option>
 .DE
 where option is one of:
 .TP \fBnone \fP
@@ -117,7 +115,7 @@ Clear the gfile after doing a bk ci
 (This is the default.)
 .LP
 For those repositories with BAM data, there is a checkout mode 
-specifically for those files:
+specifically for BAM files:
 .DS
 BAM_checkout:option
 .DE
@@ -126,12 +124,11 @@ where option is as above.
 BitMover recommends "BAM_checkout:last".
 .SS CLOCK_SKEW
 .br
-When using the 
-.Q \-c
-option to 
-.BR "bk sfiles" ,
-file time stamps may be compared to a cached list to determine when
-files are unmodified and don't need to be diff'ed again.  The
+When \*[BK] is looking for modified files,
+file time stamps can be compared to a per-repo database to determine when
+files are unmodified.
+This can be a substantial performance improvement in larger repositories.
+The
 .Q clock_skew
 parameter controls how old a file must be before file time stamps are to 
 be trusted.  
@@ -254,6 +251,12 @@ This means that files checked out on Windows will have
 the Windows eoln and files checked out on \*[UN] will have the \*[UN]
 eoln.
 .LP
+When a file is created, the line termination is taken from the 
+"eoln" configuration variable.
+It is a per-file flag that may be overridden with the 
+.B bk admin
+command.
+.LP
 Line-termination preference options are:
 .TP "\fBwindows\fP"
 .B native
@@ -280,14 +283,6 @@ In general, the default of native line terminations is the right answer and
 for exceptions the
 .B bk admin 
 command may be used to set this option on a per file basis.
-.SS NOSYNC
-By default, BitKeeper does an fsync(2) after each update of a history file.
-Some Linux file systems perform poorly because fsync(2) is implemented as
-a system wide sync().
-The syncs may be disabled by adding the following to your configuration:
-.DS
-nosync:on
-.DE
 .SS PARTIAL CHECK
 .LP
 By default, BitKeeper does a full repository integrity check after
@@ -297,19 +292,28 @@ file checksums.
 The integrity checks have been shown to catch hardware problems
 such as bad memory chips, bad disk drives, and software problems
 such as NFS inserting blocks of nulls in the middle of files.
-If you have a large repository (more than 5,000 files and/or more
+If you have a larger repository (more than 5,000 files and/or more
 than 100MB) then you might want to trade off safety for
 performance.
-There is a partial check mode in which BitKeeper only does full
-checks once every 24 hours.
+.LP
+The following will enable a partial check mode in which BitKeeper only
+does full checks once every 24 hours.
 .DS
 partial_check: on
 .DE
-Subsequent checks validate the metadata and file integrity only
-for files that are updated.
+Within the 24 hours from the last full check, BitKeeper
+will validate the metadata and file integrity only
+for the subset of files that were updated.
+.SS SYNC
+In some environments it may be safer to have
+BitKeeper do an fsync(2) after each update of a history file.
+Some Linux file systems perform poorly because fsync(2) is implemented as
+a system wide sync(2).
 .LP
-We recommend that you start in full check mode and turn on partial
-check later if needed.
+The default is not to flush but the default may be overridden with:
+.DS
+sync:on
+.DE
 .\" Doc writers note: replicate this in bk-triggers.1
 .SS TRIGGER PATHS
 .LP
