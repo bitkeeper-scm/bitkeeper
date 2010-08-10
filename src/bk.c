@@ -56,12 +56,14 @@ int
 main(int volatile ac, char **av, char **env)
 {
 	int	i, c, si, ret;
-	int	is_bk = 0, dashr = 0, remote = 0, quiet = 0, all = 0, nested= 0;
+	int	is_bk = 0, dashr = 0, remote = 0, quiet = 0;
+	int	iterator = 0, nested = 0;
 	char	*csp, *p, *dir = 0, *locking = 0;
 	char	*envargs = 0;
 	char	sopts[30];
 	longopt	lopts[] = {
 		{ "title;", 300 },	// title for progress bar
+		{ "cd;", 301 },		// cd to dir
 		{ 0, 0 },
 	};
 
@@ -193,7 +195,7 @@ main(int volatile ac, char **av, char **env)
 		}
 		is_bk = 1;
 		while ((c = getopt(ac, av,
-			"?;^@|1aAB;cCdDgGhjL|lM;nNpPqr|RuUxz;", lopts)) != -1) {
+			"?;^@|1aAB;cdDgGhjL|lnNpPqr|Rs;uUxz;", lopts)) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
@@ -203,9 +205,7 @@ main(int volatile ac, char **av, char **env)
 				break;
 			    case '?': envargs = optarg; break;
 			    case '@': remote = 1; break;
-			    case 'A':
-			    case 'C': all = 1; break;
-			    case 'M': break;	// for nested_each XXX:CONFLICT
+			    case 'A': iterator = 1; break;
 			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;
@@ -236,8 +236,16 @@ main(int volatile ac, char **av, char **env)
 					return(1);
 				}
 				break;
+			    case 's': iterator = 1; break;	/* nested_each */
 			    case 'z': break;	/* remote will eat it */
 			    case 300: title = optarg; break;
+			    case 301:
+				if (chdir(optarg)) {
+					fprintf(stderr,
+					    "bk: Cannot chdir to %s\n", p);
+					return (1);
+				}
+				break;
 			    default: bk_badArg(c, av);
 			}
 		}
@@ -249,12 +257,12 @@ main(int volatile ac, char **av, char **env)
 		 * bk -Ar co => bk -r co
 		 * bk -N co => bk -r co
 		 */
-		if ((nested || all) && !proj_isEnsemble(0)) {
-			nested = all = 0;
+		if ((nested || iterator) && !proj_isEnsemble(0)) {
+			nested = iterator = 0;
 		}
 		if (nested) putenv("_BK_FIX_NESTED_PATH=YES");
 
-		/* -'?VAR=val&BK_CHDIR=dir' */
+		/* -'?VAR=val&VAR2=val2' */
 		if (envargs) {
 			hash	*h = hash_new(HASH_MEMHASH);
 
@@ -265,13 +273,6 @@ main(int volatile ac, char **av, char **env)
 			}
 			hash_free(h);
 		}
-		if (p = getenv("BK_CHDIR")) {
-			if (chdir(p)) {
-				fprintf(stderr, "bk: Cannot chdir to %s\n", p);
-				return (1);
-			}
-			putenv("BK_CHDIR=");
-		}
 		if (remote) {
 			start_cwd = strdup(proj_cwd());
 			cmdlog_start(av, 0);
@@ -279,7 +280,7 @@ main(int volatile ac, char **av, char **env)
 			goto out;
 		}
 
-		if (all && !getenv("_BK_ITERATOR")) {
+		if (iterator && !getenv("_BK_ITERATOR")) {
 			putenv("_BK_ITERATOR=YES");
 			ret = nested_each(quiet, ac, av);
 			goto out;

@@ -114,9 +114,9 @@ bk collapse -qea`cat SAVED_TIP`
 bk sfiles -p > PENDING
 test -s PENDING && fail -f PENDING
 cat >WANT <<EOF
-prod_file
 gcc_file
 gdb_file
+prod_file
 EOF
 bk -qA sfiles -cg > GOT
 cmpfiles GOT WANT

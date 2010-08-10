@@ -1,8 +1,14 @@
 .if \n[NESTED] \{\
+.\" help://populate
+.\" help://unpopulate
 .so ../bk-macros
 .TH "bk here" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk here \- list or change the set of populated repositories
+.br
+bk populate - add one or more components to a nested collection
+.br
+bk unpopulate - remove one or more components to a nested collection
 .SH SYNOPSIS
 .B bk here add|list|rm|set
 .[OPTreq] \-@ URL
@@ -16,11 +22,24 @@ bk here \- list or change the set of populated repositories
 .[B] \-fq
 .ARG "alias | component"
 .B ...
-.\" .SS CHECKING COMPONENT AVAILABILITY
-.\" .B bk here check
-.\" .[OPTreq] \-@ URL
+.br
+.B bk populate
+.[OPTreq] \-@ URL
+.[B] \-fq
+.ARG "alias | component"
+.B ...
+.SS CHECKING COMPONENT AVAILABILITY
+.B bk here check
+.[OPTreq] \-@ URL
+.[B] \-cq
 .SS DEPOPULATING COMPONENTS AND/OR ALIASES
 .B bk here rm
+.[OPTreq] \-@ URL
+.[B] \-fq
+.ARG "alias | component"
+.B ...
+.br
+.B bk unpopulate
 .[OPTreq] \-@ URL
 .[B] \-fq
 .ARG "alias | component"
@@ -31,10 +50,10 @@ bk here \- list or change the set of populated repositories
 .[B] \-fq
 .ARG "alias | component"
 .B ...
-.\" .SS LIST LOCATION[S] OF MISSING COMPONENTS
-.\" .B bk here where
-.\" .[ARG] "component"
-.\" .B ...
+.SS LIST LOCATION[S] OF MISSING COMPONENTS
+.B bk here where
+.[ARG] "component"
+.B ...
 .SH DESCRIPTION
 The
 .B "bk here"

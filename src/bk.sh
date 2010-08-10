@@ -37,6 +37,15 @@ __cd2product() {
 	cd "$root"
 }
 
+# Back by popular demand
+_populate() {
+	bk here add "$@"
+}
+
+_unpopulate() {
+	bk here rm "$@"
+}
+
 # faster way to get repository status
 _repocheck() {
 	V=-v
@@ -602,8 +611,7 @@ _partition() {
 	bk -Np > $WA/newgone
 	test -s $WA/newgone && {
 		verbose "Commit extra gone"
-		bk -qC commit $QUIET -y'partition gone'
-		bk commit $QUIET -y'partition gone'
+		bk -qA commit $QUIET -y'partition gone'
 	}
 	rm $WA/newgone
 

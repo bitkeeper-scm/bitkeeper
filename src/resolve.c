@@ -157,8 +157,10 @@ resolve_main(int ac, char **av)
 		resolve_cleanup(&opts, 0);
 	}
 	unless (exists(ROOT2RESYNC)) {
-		fprintf(stderr,
-		    "resolve: can't find RESYNC dir, nothing to resolve?\n");
+		unless (opts.quiet) {
+			fprintf(stderr, "resolve: "
+			    "can't find RESYNC dir, nothing to resolve?\n");
+		}
 		freeStuff(&opts);
 		exit(0);
 	}

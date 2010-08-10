@@ -781,24 +781,26 @@ nested_each(int quiet, int ac, char **av)
 	int	flags = 0;
 	int	c, i;
 	int	errors = 0;
-	int	product = 1;
+	int	product = 1;		// -A means include product
 	int	status;
 	char	**aliases = 0;
+	longopt	lopts[] = {		// this is a copy of bk.c:lopts
+		{ "title;", 300 },	// title for progress bar
+		{ "cd;", 301 },		// --cd=dir, chdir
+		{ 0, 0 },
+	};
 
 	if (proj_cd2product()) {
 		fprintf(stderr, "Not in an Product.\n");
 		return (1);
 	}
-	flags |= NESTED_PRODUCTFIRST;
 	getoptReset();
-	// has to track bk.c's getopt string
-	while ((c = getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;", 0)) != -1) {
-		if (c == 'C') product = 0;
-		unless (c == 'M') continue; /* XXX: CONFLICT */
+	// has to track bk.c's getopt string and lopts
+	while ((c = getopt(ac, av,
+	    "?;^@|1aAB;cdDgGhjL|lnNpPqr|Rs;uUxz;", lopts)) != -1) {
+		unless (c == 's') continue;
 		if (optarg[0] == '|') {
 			rev = &optarg[1];
-		} else if (streq("!.", optarg)) {	// XXX -M!. == -C
-			product = 0;
 		} else {
 			aliases = addLine(aliases, strdup(optarg));
 		}
@@ -815,6 +817,14 @@ nested_each(int quiet, int ac, char **av)
 	}
 	if (n->cset) sccs_close(n->cset);	/* win32 */
 	if (aliases) {
+		/*
+		 * If we are here via -s<something> we default to no
+		 * product but let them add that back.
+		 * Open to debate whether -aall should include this.
+		 */
+		product = 0;
+		EACH(aliases) if (streq(aliases[i], ".")) product = 1;
+
 		// XXX add error checking when the error paths get made
 		if (nested_aliases(
 		    n, n->tip, &aliases, proj_cwd(), n->pending)) {
