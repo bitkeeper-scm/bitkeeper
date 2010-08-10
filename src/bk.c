@@ -55,12 +55,12 @@ save_gmon(void)
 int
 main(int volatile ac, char **av, char **env)
 {
-	int	i, c, si, ret;
+	int	i, c, ret;
 	int	is_bk = 0, dashr = 0, remote = 0, quiet = 0;
 	int	iterator = 0, nested = 0;
 	char	*csp, *p, *dir = 0, *locking = 0;
 	char	*envargs = 0;
-	char	sopts[30];
+	char	**sopts = 0;
 	longopt	lopts[] = {
 		{ "title;", 300 },	// title for progress bar
 		{ "cd;", 301 },		// cd to dir
@@ -137,8 +137,10 @@ main(int volatile ac, char **av, char **env)
 
 	i = rand_checkSeed();
 	if (getenv("_BK_DEBUG_CHECKSEED")) {
-		sprintf(sopts, "%d", i);
-		cmdlog_addnote("checkseed", sopts);
+		char	val[64];
+
+		sprintf(val, "%d", i);
+		cmdlog_addnote("checkseed", val);
 	}
 	bk_isSubCmd = !i;
 
@@ -185,7 +187,6 @@ main(int volatile ac, char **av, char **env)
 	 * Parse our options if called as "bk".
 	 * We support most of the sfiles options.
 	 */
-	sopts[si = 0] = '-';
 	prog = basenm(av[0]);
 	if (streq(prog, "sccs")) prog = "bk";
 	if (streq(prog, "bk")) {
@@ -195,13 +196,17 @@ main(int volatile ac, char **av, char **env)
 		}
 		is_bk = 1;
 		while ((c = getopt(ac, av,
-			"?;^@|1aAB;cdDgGhjL|lnNpPqr|Rs;uUxz;", lopts)) != -1) {
+			"?;^@|1aAB;cdDgGhjL|lnN|pPqr|Rs;uUxz;", lopts)) != -1) {
 			switch (c) {
+			    case 'N':
+				dashr = nested = 1;
+				/* FALLTHOUGH */
 			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
 			    case 'n': case 'p': case 'u': case 'U': case 'x':
 			    case 'h': case '^':
-				sopts[++si] = c;
+ 				sopts = addLine(sopts,
+ 				    aprintf("-%c%s", c, optarg ? optarg : ""));
 				break;
 			    case '?': envargs = optarg; break;
 			    case '@': remote = 1; break;
@@ -209,10 +214,6 @@ main(int volatile ac, char **av, char **env)
 			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;
-			    case 'N':
-				sopts[++si] = 'N';
-				dashr = nested = 1;
-				break;
 			    case 'P':				/* doc 2.0 */
 				if (proj_cd2product() && proj_cd2root()) {
 					fprintf(stderr, 
@@ -349,15 +350,12 @@ bad_locking:				fprintf(stderr,
 		 * cd2root
 		 * bk sfiles [-sfiles_opts]
 		 */
-		sopts[++si] = 0;
 		if (dashr && !av[optind]) {
-			prog = av[0] = "sfiles";
-			if (si > 1) {
-				av[1] = sopts;
-				av[ac = 2] = 0;
-			} else {
-				av[ac = 1] = 0;
-			}
+			sopts = unshiftLine(sopts, strdup("sfiles"));
+			sopts = addLine(sopts, 0);
+			av = &sopts[1];
+			ac = nLines(sopts);
+			prog = av[0];
 			goto run;
 		}
 
@@ -376,7 +374,8 @@ bad_locking:				fprintf(stderr,
 				if (streq(prog, "check")) {
 					putenv("_BK_CREATE_MISSING_DIRS=1");
 				}
-				if (sfiles(si > 1 ? sopts : 0)) return (1);
+				if (sfiles(sopts)) return (1);
+				sopts = 0; /* sfiles() free'd */
 				if (streq(prog, "check")) {
 					putenv("_BK_CREATE_MISSING_DIRS=");
 				}
@@ -438,6 +437,7 @@ out:
 	/* flush stdout/stderr, needed for bk-remote on windows */
 	fflush(stdout);
 	fflush(stderr);
+	freeLines(sopts, free);
 #ifdef	WIN32
 	close(1);
 #endif

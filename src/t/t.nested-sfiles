@@ -289,3 +289,43 @@ bk -N > A
 bk -r > B
 cmpfiles A B
 echo OK
+
+echo $N bk -Nalias in product .......................................$NL
+cd "$HERE"/project
+bk setup -f " a leading space"
+bk alias new $Q BEGINWITHA " a leading space" a/b/c a/b/c/d/e
+bk -Ngcc > OUT
+bk sfiles gcc > WANT
+cmpfiles OUT WANT
+# filter dups
+bk -Ngcc -Ngcc > OUT
+cmpfiles OUT WANT
+bk -Ngcc -Na/b/c > OUT
+bk sfiles a/b/c gcc > WANT
+cmpfiles OUT WANT
+bk -Nall > OUT
+bk sfiles " a leading space" a/b/c a/b/c/d/e gcc gdb > WANT
+cmpfiles OUT WANT
+# filter non-obvious dups
+bk -NBEGINWITHA -Nall > OUT
+cmpfiles OUT WANT
+# make sure product first, given that space sorts before '.'
+# filter product dups.
+bk -NBEGINWITHA -N. -N. > OUT
+bk sfiles -h > WANT
+bk sfiles " a leading space" a/b/c a/b/c/d/e >> WANT
+cmpfiles OUT WANT
+bk sfiles -Nbad 2> ERR && fail -f ERR
+# XXX error message is not ideal
+cat <<EOF > WANT
+alias: bad must be either a glob, key, alias, or component.
+EOF
+cmpfiles ERR WANT
+echo OK
+
+echo $N White box command parsing -- save output of catlines ........$NL
+bk -ccccccccccccccccccN > GOT || fail
+test -s GOT && fail -f GOT edited files unexpected
+bk -ccccccccccccccccccN log -r+ > GOT || fail
+test -s GOT && fail -f GOT edited files unexpected
+echo OK

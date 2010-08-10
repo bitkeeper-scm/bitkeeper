@@ -941,7 +941,7 @@ char	*sfileNext(void);
 char	*sfileRev(void);
 char	*sfileFirst(char *cmd, char **Av, int Flags);
 int	sfileDone(void);
-int	sfiles(char *opts);
+int	sfiles(char **opts);
 int	sfilesDied(int killit);
 delta	*sccs_findrev(sccs *, char *);
 delta	*sccs_top(sccs *);

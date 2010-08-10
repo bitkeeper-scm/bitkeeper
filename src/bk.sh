@@ -608,7 +608,7 @@ _partition() {
 	bk here set default || exit 1
 
 	# Now that it's a product, make a cset for new gone work
-	bk -Np > $WA/newgone
+	bk -pN > $WA/newgone
 	test -s $WA/newgone && {
 		verbose "Commit extra gone"
 		bk -qA commit $QUIET -y'partition gone'

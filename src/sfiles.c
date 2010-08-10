@@ -135,8 +135,8 @@ fastprint(char *file, struct stat *sb, void *data)
 int
 sfiles_main(int ac, char **av)
 {
-        int     c, i, nested = 0;
-	char	**nav, **comps;
+	int	c, i;
+	char	**nested = 0;
 	int	not = 0;
 	filecnt	fc;
 	char	*path, *s, buf[MAXPATH];
@@ -156,8 +156,8 @@ sfiles_main(int ac, char **av)
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "^01acCdDeEgGhijlnNo:p|P|rRsSuUvxy", 0)) != -1)
-	{
+	while ((c = getopt(ac, av,
+		    "^01acCdDeEgGhijlnN|o:p|P|rRsSuUvxy", 0)) != -1) {
 		switch (c) {
 		    case '^':	not = 1; break;
 		    case '0':	opts.null = 1; break;		/* doc */
@@ -194,7 +194,14 @@ sfiles_main(int ac, char **av)
 		    case 'j':	opts.junk = 1; break;		/* doc 2.0 */
 		    		/* XXX - should list BitKeeper/tmp stuff */
 		    case 'l':   opts.locked = 1; break;		/* doc 2.0 */
-		    case 'N':	nested = 1; break;
+		    case 'N':
+			if (optarg) {
+				nested = addLine(nested, optarg);
+			} else {
+				nested = addLine(nested, ".");
+				nested = addLine(nested, "ALL");
+			}
+			break;
 		    case 'n':   opts.names = 1; break;		/* doc 2.0 */
 		    case 'o':					/* doc 2.0 */
 				unless (opts.out = fopen(optarg, "w")) {
@@ -234,12 +241,38 @@ sfiles_main(int ac, char **av)
 	}
 
 	if (nested && proj_product(0) && !getenv("_BK_SFILES_N")) {
+		FILE	*f;
+		char	**nav = 0;
+		char	**comps = 0;
+
 		if (av[optind]) usage();
 		putenv("_BK_SFILES_N=1");
 		if (opts.out) fclose(opts.out);
 		proj_cd2product();
-		comps = addLine(0, strdup("."));
-		comps = prog2Lines(comps, "bk comps -h");
+		EACH(nested) {
+			if (streq(nested[i], ".")) {
+				/* no dups */
+				unless (comps) comps = addLine(0, strdup("."));
+			} else {
+				unless (nav) {
+					nav = addLine(0, "bk");
+					nav = addLine(nav, "alias");
+					nav = addLine(nav, "list");
+					nav = addLine(nav, "-eh");
+				}
+				nav = addLine(nav, nested[i]);
+			}
+		}
+		if (nav) {
+			nav = addLine(nav, 0);
+			f = popenvp(nav+1, "r");
+			while (s = fgetline(f)) {
+				comps = addLine(comps, strdup(s));
+			}
+			if (pclose(f)) return (1);
+			freeLines(nav, 0);
+			// nav = 0; - not needed because of next line
+		}
 		nav = addLine(0, "bk");
 		nav = addLine(nav, "sfiles");
 		nav = addLine(nav, "-h");
@@ -265,6 +298,7 @@ sfiles_main(int ac, char **av)
 			popLine(nav);
 		}
 		freeLines(comps, free);
+		freeLines(nested, 0);
 		freeLines(nav, 0);
 		putenv("_BK_SFILES_N=");
 		return (0);
