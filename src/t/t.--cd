@@ -1,0 +1,22 @@
+echo $N Create initial repository ...................................$NL
+commercial project
+mkdir src
+cd src
+echo foo > 'F!O#O$ B%A^R&RR(R)RR'
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
+bk commit $S -yCset
+echo OK
+
+echo $N Check that bk --cd=src works ................................$NL
+cd "$HERE/project"
+bk --cd=src pwd > "$HERE/GOT"
+cd src
+bk pwd > "$HERE/WANT"
+cd "$HERE"
+cmpfiles WANT GOT
+echo OK
+
+# XXX - I don't check that people aren't retarded.  They can combine
+# --cd=whatever and -P / -R / -r[<dir>]

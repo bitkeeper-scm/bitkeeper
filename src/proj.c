@@ -514,7 +514,7 @@ proj_checkout(project *p)
 	 * will need to be changed as well (specifically, the
 	 * vc-bk-checkout-model function).
 	 */
-	bits = CO_EDIT|CO_BAM_EDIT; /* default */
+	bits = CO_NONE|CO_BAM_NONE; /* default */
 	if (s = mdbm_fetch_str(db, "checkout")) {
 		bits = 0;
 		if (strieq(s, "get")) bits = CO_GET|CO_BAM_GET;
@@ -539,7 +539,7 @@ proj_checkout(project *p)
 			    "WARNING: BAM_checkout: "
 			    "should be get|edit|last|none.\n"
 			    "Meaning of '%s' unknown. Assuming none.\n", s);
-			bits |= CO_BAM_EDIT;
+			bits |= CO_BAM_NONE;
 		}
 	}
 	return (p->co = bits);
@@ -1139,6 +1139,14 @@ proj_BAMindex(project *p, int write)
 	return (p->BAM_idx);
 }
 
+/*
+ * Should bk call fsync() after writing sfiles and sync() after applying
+ * new changes in resolve?
+ *
+ * The default is 'no' unless 'sync:yes' is found in the config.
+ *
+ * The old 'nosync' config is ignored.
+ */
 int
 proj_sync(project *p)
 {
@@ -1146,13 +1154,7 @@ proj_sync(project *p)
 
 	if (p->rparent) return (0); /* no syncs in RESYNC */
 
-	if (p->sync == -1) {
-		if (getenv("BK_NO_FSYNC") || proj_configbool(p, "nosync")) {
-			p->sync = 0;
-		} else {
-			p->sync = 1;
-		}
-	}
+	if (p->sync == -1) p->sync = proj_configbool(p, "sync");
 	return (p->sync);
 }
 

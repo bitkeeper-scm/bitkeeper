@@ -71,10 +71,8 @@ email: nobody@nowhere.bk
 eoln: unix
 keyword: sccs
 BAM: 1
-nosync: on
 lockwait: 0
 partial_check: off
-checkout: none
 EOF
 }
 

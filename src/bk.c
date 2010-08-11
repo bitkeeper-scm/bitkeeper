@@ -55,13 +55,15 @@ save_gmon(void)
 int
 main(int volatile ac, char **av, char **env)
 {
-	int	i, c, si, ret;
-	int	is_bk = 0, dashr = 0, remote = 0, quiet = 0, all = 0, nested= 0;
+	int	i, c, ret;
+	int	is_bk = 0, dashr = 0, remote = 0, quiet = 0;
+	int	iterator = 0, nested = 0;
 	char	*csp, *p, *dir = 0, *locking = 0;
 	char	*envargs = 0;
-	char	sopts[30];
+	char	**sopts = 0;
 	longopt	lopts[] = {
 		{ "title;", 300 },	// title for progress bar
+		{ "cd;", 301 },		// cd to dir
 		{ 0, 0 },
 	};
 
@@ -135,8 +137,10 @@ main(int volatile ac, char **av, char **env)
 
 	i = rand_checkSeed();
 	if (getenv("_BK_DEBUG_CHECKSEED")) {
-		sprintf(sopts, "%d", i);
-		cmdlog_addnote("checkseed", sopts);
+		char	val[64];
+
+		sprintf(val, "%d", i);
+		cmdlog_addnote("checkseed", val);
 	}
 	bk_isSubCmd = !i;
 
@@ -183,7 +187,6 @@ main(int volatile ac, char **av, char **env)
 	 * Parse our options if called as "bk".
 	 * We support most of the sfiles options.
 	 */
-	sopts[si = 0] = '-';
 	prog = basenm(av[0]);
 	if (streq(prog, "sccs")) prog = "bk";
 	if (streq(prog, "bk")) {
@@ -193,26 +196,24 @@ main(int volatile ac, char **av, char **env)
 		}
 		is_bk = 1;
 		while ((c = getopt(ac, av,
-			"?;^@|1aAB;cCdDgGhjL|lM;nNpPqr|RuUxz;", lopts)) != -1) {
+			"?;^@|1aAB;cdDgGhjL|lnN|pPqr|Rs;uUxz;", lopts)) != -1) {
 			switch (c) {
+			    case 'N':
+				dashr = nested = 1;
+				/* FALLTHOUGH */
 			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
 			    case 'n': case 'p': case 'u': case 'U': case 'x':
 			    case 'h': case '^':
-				sopts[++si] = c;
+ 				sopts = addLine(sopts,
+ 				    aprintf("-%c%s", c, optarg ? optarg : ""));
 				break;
 			    case '?': envargs = optarg; break;
 			    case '@': remote = 1; break;
-			    case 'A':
-			    case 'C': all = 1; break;
-			    case 'M': break;	// for nested_each XXX:CONFLICT
+			    case 'A': iterator = 1; break;
 			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;
-			    case 'N':
-				sopts[++si] = 'N';
-				dashr = nested = 1;
-				break;
 			    case 'P':				/* doc 2.0 */
 				if (proj_cd2product() && proj_cd2root()) {
 					fprintf(stderr, 
@@ -236,8 +237,16 @@ main(int volatile ac, char **av, char **env)
 					return(1);
 				}
 				break;
+			    case 's': iterator = 1; break;	/* nested_each */
 			    case 'z': break;	/* remote will eat it */
 			    case 300: title = optarg; break;
+			    case 301:
+				if (chdir(optarg)) {
+					fprintf(stderr,
+					    "bk: Cannot chdir to %s\n", p);
+					return (1);
+				}
+				break;
 			    default: bk_badArg(c, av);
 			}
 		}
@@ -249,12 +258,12 @@ main(int volatile ac, char **av, char **env)
 		 * bk -Ar co => bk -r co
 		 * bk -N co => bk -r co
 		 */
-		if ((nested || all) && !proj_isEnsemble(0)) {
-			nested = all = 0;
+		if ((nested || iterator) && !proj_isEnsemble(0)) {
+			nested = iterator = 0;
 		}
 		if (nested) putenv("_BK_FIX_NESTED_PATH=YES");
 
-		/* -'?VAR=val&BK_CHDIR=dir' */
+		/* -'?VAR=val&VAR2=val2' */
 		if (envargs) {
 			hash	*h = hash_new(HASH_MEMHASH);
 
@@ -265,13 +274,6 @@ main(int volatile ac, char **av, char **env)
 			}
 			hash_free(h);
 		}
-		if (p = getenv("BK_CHDIR")) {
-			if (chdir(p)) {
-				fprintf(stderr, "bk: Cannot chdir to %s\n", p);
-				return (1);
-			}
-			putenv("BK_CHDIR=");
-		}
 		if (remote) {
 			start_cwd = strdup(proj_cwd());
 			cmdlog_start(av, 0);
@@ -279,7 +281,7 @@ main(int volatile ac, char **av, char **env)
 			goto out;
 		}
 
-		if (all && !getenv("_BK_ITERATOR")) {
+		if (iterator && !getenv("_BK_ITERATOR")) {
 			putenv("_BK_ITERATOR=YES");
 			ret = nested_each(quiet, ac, av);
 			goto out;
@@ -348,15 +350,12 @@ bad_locking:				fprintf(stderr,
 		 * cd2root
 		 * bk sfiles [-sfiles_opts]
 		 */
-		sopts[++si] = 0;
 		if (dashr && !av[optind]) {
-			prog = av[0] = "sfiles";
-			if (si > 1) {
-				av[1] = sopts;
-				av[ac = 2] = 0;
-			} else {
-				av[ac = 1] = 0;
-			}
+			sopts = unshiftLine(sopts, strdup("sfiles"));
+			sopts = addLine(sopts, 0);
+			av = &sopts[1];
+			ac = nLines(sopts);
+			prog = av[0];
 			goto run;
 		}
 
@@ -375,7 +374,8 @@ bad_locking:				fprintf(stderr,
 				if (streq(prog, "check")) {
 					putenv("_BK_CREATE_MISSING_DIRS=1");
 				}
-				if (sfiles(si > 1 ? sopts : 0)) return (1);
+				if (sfiles(sopts)) return (1);
+				sopts = 0; /* sfiles() free'd */
 				if (streq(prog, "check")) {
 					putenv("_BK_CREATE_MISSING_DIRS=");
 				}
@@ -437,6 +437,7 @@ out:
 	/* flush stdout/stderr, needed for bk-remote on windows */
 	fflush(stdout);
 	fflush(stderr);
+	freeLines(sopts, free);
 #ifdef	WIN32
 	close(1);
 #endif

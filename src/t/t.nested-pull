@@ -398,14 +398,7 @@ Missing:
 	x/y/z/comp/RESYNC
 EOF
 cmpfiles ERR WANT
-bk $Q -C resolve $Q -a 2>/dev/null || {
-	echo failed
-	exit 1
-}
-bk resolve $Q -a || {
-	echo failed
-	exit 1
-}
+bk $Q -A resolve $Q -a || fail
 bk lock -q || fail
 # gcc/ChangeSet is in product's changeset
 cd "$HERE"/local

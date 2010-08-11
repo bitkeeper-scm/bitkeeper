@@ -111,12 +111,8 @@ repo_nfiles(project *p, filecnt *fc)
 		 * problem prevents sfiles from updating the cache.
 		 */
 		fc->tot = fc->usr = 0;
-		h = hash_new(HASH_MEMHASH);
-		hash_storeStr(h, "BK_CHDIR", proj_root(p));
-		t = hash_toStr(h);
-		hash_free(h);
-		cmd = aprintf("bk -?'%s' sfiles 2> " DEVNULL_WR, t);
-		free(t);
+		cmd = aprintf("bk --cd='%s' sfiles 2> " DEVNULL_WR,
+		    proj_root(p));
 		f = popen(cmd, "r");
 		free(cmd);
 		while (t = fgetline(f)) {

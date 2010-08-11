@@ -4,11 +4,7 @@
 bk \- \*(BK configuration management system front end
 .SH SYNOPSIS
 .B bk 
-.[OPTopt] \-@ url
-.[B] \-q
-.ie \n[NESTED] .[B] \-ANPR
-.el .[B] \-R
-.[OPTopt] \-[1acpx]r dir
+.[ARG] options
 .ARG command 
 .[ARG] options
 .SH DESCRIPTION
@@ -26,6 +22,10 @@ If you are looking for instructions on how to get started, try running the
 test drive at
 .BR http://www.bitkeeper.com/Test.html .
 .SH OPTIONS
+Only the global options are documented here.
+To see command specific options consult the documentation for the command
+in question (bk help
+.ARG command ).
 .TP -r[\*<dir\*>]\ 
 .OPTopt \-@ url
 Run the command in the specified repository rather than locally.
@@ -55,16 +55,23 @@ Each remote command receives the same input.
 .if \n[NESTED] \{\
 .B \-A
 In a nested collection, this option will cause the command to be run 
-in the product and then in each of the components;
+in each of the components and then the product;
 in a standalone repository this option has no effect.
 The
 .B \-A
 is stripped from the options but all others are passed through.
-For example, to integrity check the product
-and all component repositories in succession:
+For example, to integrity check all the components and the product
+in succession:
 .DS
 $ bk -Ar check -acv
 .DE
+.\}
+.tp
+\fB--cd\fR=\*<dir\*>
+Change to
+.ARG dir
+before running the command.
+.if \n[NESTED] \{\
 .tp
 .B \-N
 In a nested collection,
@@ -78,9 +85,21 @@ For example, to check out all files in a nested collection:
 .DS
 $ bk -N co
 .DE
-The difference between this and the 
+.tp
+\fB-N\fR\*<alias\*>
+Limit the list of files to those found in
+.ARG alias .
+To get more than one alias, repeat with a different alias:
+.DS
+$ bk -Ndocs -Nwww grep whoops
+.DE
+The difference between 
+.B \-N
+and 
 .B \-A
-option is that this one runs from the root of the product for all files;
+is that 
+.B \-N
+runs from the root of the product for all files;
 .B \-A
 runs from the root of the product, then the root of each of the components
 in turn.  Certain commands, such as
@@ -97,7 +116,9 @@ in a non-nested collection.
 .tp
 .\}
 .B \-q
-For remote commands (\-@) or multi-repository commands (\-A), the output
+For remote commands (\-@)
+.if \n[NESTED] or multi-repository commands (\-A/\-s),
+the output
 from running the command in each repository is prefixed with a header:
 .DS
 #### \*<repo-url or location\*> ####
