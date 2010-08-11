@@ -259,6 +259,11 @@ isscalar(Expr *expr)
 						   L_POLY)));
 }
 static inline int
+isconst(Expr *expr)
+{
+	return (expr->kind == L_EXPR_CONST);
+}
+static inline int
 islist(Expr *expr)
 {
 	return (expr->type && (expr->type->kind == L_LIST));
@@ -327,7 +332,7 @@ iskv(Expr *expr)
 static inline int
 isid(Expr *expr, char *s)
 {
-	return ((expr->kind == L_EXPR_ID) && !strcmp(expr->u.string, s));
+	return ((expr->kind == L_EXPR_ID) && !strcmp(expr->str, s));
 }
 /*
  * Return the flags that match the kind of variable we can

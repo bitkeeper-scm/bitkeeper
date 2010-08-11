@@ -153,7 +153,7 @@
 
 
 /* Copy the first part of user declarations.  */
-#line 1 "/Users/rob/bk/bk-L-stage/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1 "/Users/rob/bk/bk-L-const-2/src/gui/tcltk/tcl/generic/Lgrammar.y"
 
 /*
  * Copyright (c) 2006-2008 BitMover, Inc.
@@ -170,10 +170,9 @@ extern int	L_lex (void);
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE 
-#line 53 "/Users/rob/bk/bk-L-stage/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 53 "/Users/rob/bk/bk-L-const-2/src/gui/tcltk/tcl/generic/Lgrammar.y"
 {
 	long	i;
-	double	f;
 	char	*s;
 	Tcl_Obj	*obj;
 	Type	*Type;
@@ -196,7 +195,7 @@ typedef union YYSTYPE
 	} Typename;
 }
 /* Line 2616 of glr.c.  */
-#line 200 "Lgrammar.h"
+#line 199 "Lgrammar.h"
 	YYSTYPE;
 # define YYSTYPE_IS_DECLARED 1
 # define YYSTYPE_IS_TRIVIAL 1

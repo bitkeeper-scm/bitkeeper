@@ -154,11 +154,11 @@ L_typeck_fncall(VarDecl *formals, Expr *call)
 	}
 	if (actuals && !rest_arg) {
 		L_errf(call, "too many arguments for function %s",
-		       call->a->u.string);
+		       call->a->str);
 	}
 	if (formals && !(formals->flags & DECL_REST_ARG)) {
 		L_errf(call, "not enough arguments for function %s",
-		       call->a->u.string);
+		       call->a->str);
 	}
 }
 
@@ -224,7 +224,7 @@ typeck_declType(Type *type, VarDecl *decl, int nameof_ok)
 		if (decl->id) {
 			L_errf(decl->id,
 			       "type %s illegal in declaration of '%s'",
-			       s, decl->id->u.string);
+			       s, decl->id->str);
 		} else {
 			L_errf(decl, "type %s illegal", s);
 		}

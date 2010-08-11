@@ -268,11 +268,7 @@ struct Expr {
 	Expr	*c;
 	Expr_f	flags;
 	Sym	*sym;  // for id, ptr to symbol table entry
-	union {
-		long	integer;
-		double	flote;
-		char	*string;  // for strlit/id/re/struct-index
-	} u;
+	char	*str;  // for constants/id/re/struct-index
 	Expr	*next;
 };
 
@@ -413,7 +409,7 @@ extern Expr	*ast_mkBinOp(Op_k op, Expr *e1, Expr *e2, int beg, int end);
 extern Block	*ast_mkBlock(VarDecl *decls,Stmt *body, int beg, int end);
 extern Case	*ast_mkCase(Expr *expr, Stmt *body, int beg, int end);
 extern ClsDecl	*ast_mkClsDecl(VarDecl *decl, int beg, int end);
-extern Expr	*ast_mkConst(Type *type, int beg, int end);
+extern Expr	*ast_mkConst(Type *type, char *str, int beg, int end);
 extern FnDecl	*ast_mkConstructor(ClsDecl *class);
 extern FnDecl	*ast_mkDestructor(ClsDecl *class);
 extern Expr	*ast_mkExpr(Expr_k kind, Op_k op, Expr *a, Expr *b, Expr *c,

@@ -52,7 +52,6 @@ extern int	L_lex (void);
 
 %union {
 	long	i;
-	double	f;
 	char	*s;
 	Tcl_Obj	*obj;
 	Type	*Type;
@@ -113,7 +112,7 @@ extern int	L_lex (void);
 %token T_EXPAND "(expand)"
 %token T_EXTERN "extern"
 %token T_FLOAT "float"
-%token <f> T_FLOAT_LITERAL "float constant"
+%token <s> T_FLOAT_LITERAL "float constant"
 %token T_FOR "for"
 %token T_FOREACH "foreach"
 %token T_GOTO "goto"
@@ -125,7 +124,7 @@ extern int	L_lex (void);
 %token T_IF "if"
 %token T_INSTANCE "instance"
 %token T_INT "int"
-%token <i> T_INT_LITERAL "integer constant"
+%token <s> T_INT_LITERAL "integer constant"
 %token T_LBRACE "{"
 %token T_LBRACKET "["
 %token T_LE "le"
@@ -314,7 +313,7 @@ class_decl:
 		VarDecl	*d = ast_mkVarDecl(t, $2, @1.beg, 0);
 		ClsDecl	*c = ast_mkClsDecl(d, @1.beg, 0);
 		t->u.class.clsdecl = c;
-		ASSERT(!L_typedef_lookup($2->u.string));
+		ASSERT(!L_typedef_lookup($2->str));
 		L_typedef_store(d);
 		$<ClsDecl>$ = c;
 	} class_decl_tail
@@ -349,7 +348,7 @@ class_decl:
 		Type	*t = type_mkClass(PER_INTERP);
 		VarDecl	*d = ast_mkVarDecl(t, $2, @1.beg, @3.end);
 		ClsDecl	*c = ast_mkClsDecl(d, @1.beg, @3.end);
-		ASSERT(!L_typedef_lookup($2->u.string));
+		ASSERT(!L_typedef_lookup($2->str));
 		t->u.class.clsdecl = c;
 		d->flags |= DECL_FORWARD;
 		L_typedef_store(d);
@@ -393,7 +392,7 @@ class_code:
 			unless (v->flags & (DECL_PUBLIC | DECL_PRIVATE)) {
 				L_errf(v, "class instance variable %s not "
 				       "declared public or private",
-				       v->id->u.string);
+				       v->id->str);
 				v->flags |= DECL_PUBLIC;
 			}
 		}
@@ -411,7 +410,7 @@ class_code:
 			unless (v->flags & (DECL_PUBLIC | DECL_PRIVATE)) {
 				L_errf(v, "class variable %s not "
 				       "declared public or private",
-				       v->id->u.string);
+				       v->id->str);
 				v->flags |= DECL_PUBLIC;
 			}
 		}
@@ -433,7 +432,7 @@ class_code:
 		} else {
 			$2->decl->flags |= SCOPE_CLASS;
 			$2->decl->tclprefix = cksprintf("_L_class_%s_",
-						clsdecl->decl->id->u.string);
+						clsdecl->decl->id->str);
 		}
 		APPEND_OR_SET(FnDecl, next, clsdecl->fns, $2);
 	}
@@ -881,14 +880,14 @@ argument_expr_list:
 option_arg:
 	  T_ID ":"
 	{
-		$$ = ast_mkConst(L_string, @1.beg, @2.end);
-		$$->u.string = cksprintf("-%s", $1);
+		char	*s = cksprintf("-%s", $1);
+		$$ = ast_mkConst(L_string, s, @1.beg, @2.end);
 		ckfree($1);
 	}
 	| "default" ":"
 	{
-		$$ = ast_mkConst(L_string, @1.beg, @2.end);
-		$$->u.string = cksprintf("-default");
+		char	*s = cksprintf("-default");
+		$$ = ast_mkConst(L_string, s, @1.beg, @2.end);
 	}
 	;
 
@@ -1059,13 +1058,11 @@ expr:
 	| cmdsubst_literal
 	| T_INT_LITERAL
 	{
-		$$ = ast_mkConst(L_int, @1.beg, @1.end);
-		$$->u.integer = $1;
+		$$ = ast_mkConst(L_int, $1, @1.beg, @1.end);
 	}
 	| T_FLOAT_LITERAL
 	{
-		$$ = ast_mkConst(L_float, @1.beg, @1.end);
-		$$->u.flote = $1;
+		$$ = ast_mkConst(L_float, $1, @1.beg, @1.end);
 	}
 	| id "(" argument_expr_list ")"
 	{
@@ -1181,26 +1178,26 @@ expr:
 	| expr "." T_ID
 	{
 		$$ = ast_mkBinOp(L_OP_DOT, $1, NULL, @1.beg, @3.end);
-		$$->u.string = $3;
+		$$->str = $3;
 	}
 	| expr "->" T_ID
 	{
 		$$ = ast_mkBinOp(L_OP_POINTS, $1, NULL, @1.beg, @3.end);
-		$$->u.string = $3;
+		$$->str = $3;
 	}
 	| T_TYPE "." T_ID
 	{
 		// This is a binop where an arg is a Type*.
 		$$ = ast_mkBinOp(L_OP_CLASS_INDEX, (Expr *)$1.t, NULL, @1.beg,
 				 @3.end);
-		$$->u.string = $3;
+		$$->str = $3;
 	}
 	| T_TYPE "->" T_ID
 	{
 		// This is a binop where an arg is a Type*.
 		$$ = ast_mkBinOp(L_OP_CLASS_INDEX, (Expr *)$1.t, NULL, @1.beg,
 				 @3.end);
-		$$->u.string = $3;
+		$$->str = $3;
 	}
 	| expr "," expr
 	{
@@ -1532,13 +1529,11 @@ list_element:
 string_literal:
 	  T_STR_LITERAL
 	{
-		$$ = ast_mkConst(L_string, @1.beg, @1.end);
-		$$->u.string = $1;
+		$$ = ast_mkConst(L_string, $1, @1.beg, @1.end);
 	}
 	| interpolated_expr T_STR_LITERAL
 	{
-		Expr *right = ast_mkConst(L_string, @2.beg, @2.end);
-		right->u.string = $2;
+		Expr *right = ast_mkConst(L_string, $2, @2.beg, @2.end);
 		$$ = ast_mkBinOp(L_OP_INTERP_STRING, $1, right,
 				 @1.beg, @2.end);
 	}
@@ -1548,12 +1543,12 @@ cmdsubst_literal:
 	  T_STR_BACKTICK
 	{
 		$$ = ast_mkUnOp(L_OP_CMDSUBST, NULL, @1.beg, @1.end);
-		$$->u.string = $1;
+		$$->str = $1;
 	}
 	| interpolated_expr T_STR_BACKTICK
 	{
 		$$ = ast_mkUnOp(L_OP_CMDSUBST, $1, @1.beg, @2.end);
-		$$->u.string = $2;
+		$$->str = $2;
 	}
 	;
 
@@ -1564,8 +1559,7 @@ regexp_literal:
 	}
 	| interpolated_expr T_RE
 	{
-		Expr *right = ast_mkConst(L_string, @2.beg, @2.end);
-		right->u.string = $2;
+		Expr *right = ast_mkConst(L_string, $2, @2.beg, @2.end);
 		$$ = ast_mkBinOp(L_OP_INTERP_RE, $1, right, @1.beg, @2.end);
 	}
 	;
@@ -1583,13 +1577,11 @@ regexp_literal_mod:
 subst_literal:
 	  T_SUBST
 	{
-		$$ = ast_mkConst(L_string, @1.beg, @1.end);
-		$$->u.string = $1;
+		$$ = ast_mkConst(L_string, $1, @1.beg, @1.end);
 	}
 	| interpolated_expr T_SUBST
 	{
-		Expr *right = ast_mkConst(L_string, @2.beg, @2.end);
-		right->u.string = $2;
+		Expr *right = ast_mkConst(L_string, $2, @2.beg, @2.end);
 		$$ = ast_mkBinOp(L_OP_INTERP_RE, $1, right, @1.beg, @2.end);
 	}
 	;
@@ -1597,15 +1589,13 @@ subst_literal:
 interpolated_expr:
 	  T_LEFT_INTERPOL expr T_RIGHT_INTERPOL
 	{
-		Expr *left = ast_mkConst(L_string, @1.beg, @1.end);
-		left->u.string = $1;
+		Expr *left = ast_mkConst(L_string, $1, @1.beg, @1.end);
 		$$ = ast_mkBinOp(L_OP_INTERP_STRING, left, $2,
 				 @1.beg, @3.end);
 	}
 	| interpolated_expr T_LEFT_INTERPOL expr T_RIGHT_INTERPOL
 	{
-		Expr *middle = ast_mkConst(L_string, @2.beg, @2.end);
-		middle->u.string = $2;
+		Expr *middle = ast_mkConst(L_string, $2, @2.beg, @2.end);
 		$$ = ast_mkTrinOp(L_OP_INTERP_STRING, $1, middle, $3,
 				    @1.beg, @4.end);
 	}

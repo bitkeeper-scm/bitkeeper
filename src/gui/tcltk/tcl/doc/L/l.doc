@@ -224,6 +224,9 @@ Hex and octal integer constants are specified like this:
     int space = 0x20;
     int escape = 0o33;
 
+Integer constants can be arbitrarily large; they are not limited
+by the machine's word size.
+
 Strings have a special feature where they can be indexed like arrays,
 to get a character or range of characters, or to change a character
 (but you cannot change a range of characters):

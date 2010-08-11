@@ -5652,7 +5652,7 @@ test switch-1.1 {check switch statement, if-then-else code} -body {
  */
 void switch_1_1()
 {
-	int	i;
+	int	a, b, c, d, i;
 	int	zero = 0;
 	int	ia[] = { 3, 1, 4, 1 };
 	string	s, s1, s2, s3, s4, s5;
@@ -6108,11 +6108,117 @@ void switch_1_1()
 		break;
 	}
 	unless (i == 1) puts("bad 12.4");
+
+	/*
+	 * Test that the right comparison bytecode is generated
+	 * (string vs numeric).
+	 */
+	i = 0;
+	switch ("0") {
+	    case "00":
+		puts("bad 13.1");
+		break;
+	    case /0/:
+	    default:
+		++i;
+		break;
+	}
+	unless (i == 1) puts("bad 13.2");
+
+	/*
+	 * Check that integer switch expressions and the case values
+	 * are properly canonicalized.
+	 */
+
+	s = "";
+	for (i = 0; i <= 3; ++i) {
+		switch (i) {
+		    case 0:
+			s .= "0";
+			break;
+		    case 0x1:
+			s .= "1";
+			break;
+		    case 0o2:
+			s .= "2";
+			break;
+		    case 000000003:
+			s .= "3";
+			break;
+		    case 99+0:
+		    default:
+			puts("bad 13.3");
+			break;
+		}
+	}
+	unless (s eq "0123") puts("bad 13.4");
+
+	s = "";
+	for (i = 100000000000000000000; i <= 100000000000000000003; ++i) {
+		switch (i) {
+		    case 100000000000000000000:
+			s .= "0";
+			break;
+		    case 0x56bc75e2d63100001:
+			s .= "1";
+			break;
+		    case 0o12657072742654304000002:
+			s .= "2";
+			break;
+		    case 0000000000000100000000000000000003:
+			s .= "3";
+			break;
+		    case 99+0:
+		    default:
+			puts("bad 13.5");
+			break;
+		}
+	}
+	unless (s eq "0123") puts("bad 13.6");
+
+	s = "";
+	a = (poly)"100000000000000000000";
+	b = (poly)"0x56bc75e2d63100001";	// this is a+1
+	c = (poly)"0o12657072742654304000002";	// this is a+2
+	d = (poly)"100000000000000000003";	// this is a+3
+	for (i = 100000000000000000000; i <= 100000000000000000003; ++i) {
+		switch (i) {
+		    case a:
+			s .= "0";
+			break;
+		    case b:
+			s .= "1";
+			break;
+		    case c:
+			s .= "2";
+			break;
+		    case d:
+			s .= "3";
+			break;
+		    default:
+			puts("bad 13.7");
+			break;
+		}
+	}
+	unless (s eq "0123") puts("bad 13.8");
+
+	s = "";
+	i = (poly)"0x1";  // don't use (int) since that canonicalizes
+	switch (i) {
+	    case 1:
+		s .= "1";
+		break;
+	    case 99+0:
+	    default:
+		puts("bad 13.9");
+		break;
+	}
+	unless (s eq "1") puts("bad 13.10");
 }
 switch_1_1();
 } -output {}
 
-test switch-1.2 {check switch statement, if-then-else code} -body {
+test switch-1.2 {check switch statement, jump-table code} -body {
 #lang L
 /*
  * This test exercises the case of constant case expressions in switch
@@ -6429,6 +6535,83 @@ void switch_1_2()
 		    goto lab3;
 	}
 	unless (i == 2) puts("bad 11.2");
+
+	/*
+	 * Test that the right comparison bytecode is generated
+	 * (string vs numeric).
+	 */
+
+	i = 0;
+	switch ("0") {
+	    case "00":
+		puts("bad 13.1");
+		break;
+	    default:
+		++i;
+		break;
+	}
+	unless (i == 1) puts("bad 13.2");
+
+	/*
+	 * Check that integer switch expressions and the case values
+	 * are properly canonicalized.
+	 */
+
+	s = "";
+	for (i = 0; i <= 3; ++i) {
+		switch (i) {
+		    case 0:
+			s .= "0";
+			break;
+		    case 0x1:
+			s .= "1";
+			break;
+		    case 0o2:
+			s .= "2";
+			break;
+		    case 000000003:
+			s .= "3";
+			break;
+		    default:
+			puts("bad 13.3");
+			break;
+		}
+	}
+	unless (s eq "0123") puts("bad 13.4");
+
+	s = "";
+	for (i = 100000000000000000000; i <= 100000000000000000003; ++i) {
+		switch (i) {
+		    case 100000000000000000000:
+			s .= "0";
+			break;
+		    case 0x56bc75e2d63100001:
+			s .= "1";
+			break;
+		    case 0o12657072742654304000002:
+			s .= "2";
+			break;
+		    case 0000000000000100000000000000000003:
+			s .= "3";
+			break;
+		    default:
+			puts("bad 13.5");
+			break;
+		}
+	}
+	unless (s eq "0123") puts("bad 13.6");
+
+	s = "";
+	i = (poly)"0x1";  // don't use (int) since that canonicalizes
+	switch (i) {
+	    case 1:
+		s .= "1";
+		break;
+	    default:
+		puts("bad 13.7");
+		break;
+	}
+	unless (s eq "1") puts("bad 13.8");
 }
 switch_1_2();
 } -output {}
@@ -7066,7 +7249,7 @@ ihf has 2.2=>101
 ihf has 3.3=>102
 ihp has 0=>100
 ihp has two=>101
-ihp has 3.300000=>102
+ihp has 3.3=>102
 shi has 0=>zero
 shi has 1=>one
 shi has 2=>two
@@ -7077,7 +7260,7 @@ shf has 1.1=>one.one
 shf has 2.2=>two.two
 shf has 3.3=>three.three
 shp has 0=>zero
-shp has 1.100000=>one.one
+shp has 1.1=>one.one
 shp has two=>two2
 fhi has 0=>1.1
 fhi has 1=>2.2
@@ -7089,20 +7272,20 @@ fhf has 1.1=>11.1
 fhf has 2.2=>22.2
 fhf has 3.3=>33.3
 fhp has 0=>1.1
-fhp has 1.100000=>2.2
+fhp has 1.1=>2.2
 fhp has two=>3.3
 phi has 0=>1
 phi has 1=>two
-phi has 2=>3.300000
+phi has 2=>3.3
 phs has zero=>1
 phs has one=>two
-phs has two=>3.300000
+phs has two=>3.3
 phf has 1.1=>1
 phf has 2.2=>two
-phf has 3.3=>33.330000
+phf has 3.3=>33.33
 php has one=>1
-php has 1.100000=>two
-php has 2=>3.300000
+php has 1.1=>two
+php has 2=>3.3
 sthi has 0=>(100,101)
 sthi has 1=>(200,201)
 sthi has 2=>(300,301)
@@ -7113,7 +7296,7 @@ sthf has 1.1=>(100,101)
 sthf has 2.2=>(200,201)
 sthf has 3.3=>(300,301)
 sthp has 0=>(100,101)
-sthp has 1.100000=>(200,201)
+sthp has 1.1=>(200,201)
 sthp has two=>(300,301)
 end
 "
@@ -12735,19 +12918,52 @@ constants_1_0()
 	int	i;
 	float	f;
 
-	i = 1234;
-	printf("%u\n", i);
-	i = 0xdeadbeef;
-	printf("%x\n", i);
-	i = 0o755;
-	printf("%o\n", i);
+	/*
+	 * Adding 0 to these forces Tcl to shimmer them to a numeric type.
+	 */
 
-	f = 1234.5678;
-	printf("%.4f\n", f);
+	i = 0 + 0;
+	unless ((tcl)i eq "0") puts("bad 1.1");
+	i = 00 + 0;
+	unless ((tcl)i eq "0") puts("bad 1.2");
+	i = 000 + 0;
+	unless ((tcl)i eq "0") puts("bad 1.3");
+	i = 1234 + 0;
+	unless ((tcl)i eq "1234") puts("bad 1.4");
+	i = 01235 + 0;
+	unless ((tcl)i eq "1235") puts("bad 1.5");
+	i = 001236 + 0;
+	unless ((tcl)i eq "1236") puts("bad 1.6");
+	i = 10000000000 + 0;  // >32 bits
+	unless ((tcl)i eq "10000000000") puts("bad 1.7");
+	i = 36893488147419103232 + 0;  // >64 bits
+	unless ((tcl)i eq "36893488147419103232") puts("bad 1.8");
+	i = 314159265358979323846264338327950288 + 1;  // even bigger
+	unless ((tcl)i eq "314159265358979323846264338327950289") {
+		puts("bad 1.9");
+	}
+	i = 111111111111111111111111111111 + 222222222222222222222222222222;
+	unless ((tcl)i eq "333333333333333333333333333333") {
+		puts("bad 1.10");
+	}
+
+	i = 0xdeadbeef + 0;
+	unless ((tcl)i eq "3735928559") puts("bad 2.1");
+	i = 0xdeadbeefbadb0bad + 0;  // 64 bits
+	unless ((tcl)i eq "16045690984232324013") puts("bad 2.2");
+	i = 0xdeadbeefbadb0badb0 + 0;  // >64 bits
+	unless ((tcl)i eq "4107696891963474947504") puts("bad 2.3");
+
+	i = 0o755 + 0;
+	unless ((tcl)i eq "493") puts("bad 3.1");
+	i = 0o0756 + 0;
+	unless ((tcl)i eq "494") puts("bad 3.2");
+
+	f = 1234.5678 + 0.0;
+	unless (sprintf("%.4f", f) eq "1234.5678") puts("bad 4.1");
 }
-#lang tcl
-constants_1_0
-} -output "1234\ndeadbeef\n755\n1234.5678\n"
+constants_1_0();
+} -output {}
 
 # These tests check the L compiler's mapping between the source-file
 # offsets of each "command" and the tcl bytecodes generated for it.

@@ -25,6 +25,7 @@ ID	([a-zA-Z_]|::)([0-9a-zA-Z_]|::)*
 #include "tclInt.h"
 #include "Lcompile.h"
 #include "Lgrammar.h"
+#include "tommath.h"
 
 private int	include_pop();
 private int	include_push(FILE *f, char *name);
@@ -245,6 +246,27 @@ include_pop()
 	}
 }
 
+/*
+ * Given a decimal, hex, or octal integer constant of arbitrary
+ * precision, return a canonical string representation.  This is done
+ * by converting it to a bignum and then taking its string rep.
+ */
+private char *
+canonical_num(char *num)
+{
+	char	*ret;
+	Tcl_Obj	*obj;
+	mp_int	big;
+
+	obj = Tcl_NewStringObj(num, -1);
+	Tcl_IncrRefCount(obj);
+	Tcl_TakeBignumFromObj(NULL, obj, &big);
+	Tcl_SetBignumObj(obj, &big);
+	ret = ckstrdup(Tcl_GetString(obj));
+	Tcl_DecrRefCount(obj);
+	return (ret);
+}
+
 %}
 %%
 <INITIAL,interpol,re_arg>{
@@ -371,21 +393,30 @@ include_pop()
 				return T_ID;
 			}
 	[0-9]+		{
-				// XXX - we don't handle constants > 32 bits
-				L_lval.i = atoi(yytext);
+				/*
+				 * Skip any leading 0's which would
+				 * make it look like octal to Tcl.
+				 */
+				size_t	z = strspn(yytext, "0");
+				if (z == yyleng) z = 0;  // number is all 0's
+				L_lval.s = canonical_num(yytext+z);
 				return T_INT_LITERAL;
 			}
 	0o[0-7]+	{
-				L_lval.i = strtoul(yytext+2, 0, 8);
+				/*
+				 * Create a leading 0 so it looks like
+				 * octal to Tcl.
+				 */
+				yytext[1] = '0';
+				L_lval.s = canonical_num(yytext+1);
 				return T_INT_LITERAL;
 			}
 	0x[0-9a-fA-F]+	{
-				// XXX - we don't handle constants > 32 bits
-				L_lval.i = strtoul(yytext+2, 0, 16);
+				L_lval.s = canonical_num(yytext);
 				return T_INT_LITERAL;
 			}
 	[0-9]*\.[0-9]+	{
-				L_lval.f = atof(yytext);
+				L_lval.s = ckstrdup(yytext);
 				return T_FLOAT_LITERAL;
 			}
 	^include[ \t]*\([ \t]*\" {

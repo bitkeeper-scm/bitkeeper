@@ -183,7 +183,7 @@ ast_mkConstructor(ClsDecl *class)
 	FnDecl	*fn;
 
 	type  = type_mkFunc(class->decl->type, NULL, PER_INTERP);
-	name  = cksprintf("%s_new", class->decl->id->u.string);
+	name  = cksprintf("%s_new", class->decl->id->str);
 	id    = ast_mkId(name, 0, 0);
 	decl  = ast_mkVarDecl(type, id, 0, 0);
 	decl->flags |= SCOPE_GLOBAL | DECL_CLASS_FN | DECL_PUBLIC |
@@ -210,7 +210,7 @@ ast_mkDestructor(ClsDecl *class)
 	parm = ast_mkVarDecl(class->decl->type, self, 0, 0);
 	parm->flags = SCOPE_LOCAL | DECL_LOCAL_VAR;
 	type = type_mkFunc(L_void, parm, PER_INTERP);
-	name = cksprintf("%s_delete", class->decl->id->u.string);
+	name = cksprintf("%s_delete", class->decl->id->str);
 	id   = ast_mkId(name, 0, 0);
 	decl = ast_mkVarDecl(type, id, 0, 0);
 	decl->flags |= SCOPE_GLOBAL | DECL_CLASS_FN | DECL_PUBLIC |
@@ -241,11 +241,12 @@ ast_mkTrinOp(Op_k op, Expr *e1, Expr *e2, Expr *e3, int beg, int end)
 }
 
 Expr *
-ast_mkConst(Type *type, int beg, int end)
+ast_mkConst(Type *type, char *str, int beg, int end)
 {
 	Expr *e = ast_mkExpr(L_EXPR_CONST, L_OP_NONE, NULL, NULL, NULL,
 			    beg, end);
 	e->type = type;
+	e->str  = str;
 	return (e);
 }
 
@@ -253,7 +254,7 @@ Expr *
 ast_mkRegexp(char *re, int beg, int end)
 {
 	Expr *e = ast_mkExpr(L_EXPR_RE, L_OP_NONE, NULL, NULL, NULL, beg, end);
-	e->u.string = re;
+	e->str  = re;
 	e->type = L_string;
 	return (e);
 }
@@ -270,7 +271,7 @@ Expr *
 ast_mkId(char *name, int beg, int end)
 {
 	Expr *e = ast_mkExpr(L_EXPR_ID, L_OP_NONE, NULL, NULL, NULL, beg, end);
-	e->u.string = ckstrdup(name);
+	e->str = ckstrdup(name);
 	return (e);
 }
 

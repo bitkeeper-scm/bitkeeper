@@ -164,7 +164,6 @@ private void	list_mapReverse(Expr *l, int (*fn)(Expr *, Expr_f), int arg);
 private int	parse_options(int ac, Tcl_Obj **av);
 private void	proc_mkArg(Proc *proc, VarDecl *decl);
 private int	push_index(Expr *expr);
-private int	push_lit(Expr *expr);
 private int	push_parms(Expr *actuals);
 private void	push_pointer(Expr *lval);
 private int	push_regexpModifiers(Expr *regexp);
@@ -445,7 +444,7 @@ compile_clsDecl(ClsDecl *clsdecl)
 	frame_resumePrologue();
 	push_str("::namespace");
 	push_str("eval");
-	push_str("::L::_class_%s", clsdecl->decl->id->u.string);
+	push_str("::L::_class_%s", clsdecl->decl->id->str);
 	push_str("variable __num 0");
 	emit_invoke(4);
 	emit_pop();
@@ -477,7 +476,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 {
 	int	i, ismain, num_parms;
 	VarDecl	*decl = fun->decl;
-	char	*name = decl->id->u.string;
+	char	*name = decl->id->str;
 	char	*clsname = NULL;
 	ClsDecl	*clsdecl = NULL;
 	Sym	*self_sym = NULL;
@@ -552,7 +551,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 
 	/* Gather class decl and name, for class member functions. */
 	clsdecl = fun->decl->clsdecl;
-	if (clsdecl) clsname = clsdecl->decl->id->u.string;
+	if (clsdecl) clsname = clsdecl->decl->id->str;
 
 	/*
 	 * For private class member fns and the constructor, declare
@@ -928,7 +927,7 @@ compile_varDecl(VarDecl *decl)
 
 	ASSERT(decl->id && decl->type);
 
-	name = decl->id->u.string;
+	name = decl->id->str;
 
 	unless (L_typeck_declType(decl)) return;
 
@@ -951,7 +950,7 @@ compile_varDecl(VarDecl *decl)
 		return;
 	}
 	if ((decl->type->kind == L_CLASS) &&
-	    !strcmp(name, decl->type->u.class.clsdecl->decl->id->u.string)) {
+	    !strcmp(name, decl->type->u.class.clsdecl->decl->id->str)) {
 		L_errf(decl, "cannot declare object with same name as class");
 	}
 
@@ -1101,7 +1100,7 @@ private void
 proc_mkArg(Proc *proc, VarDecl *decl)
 {
 	int	argnum;
-	char	*name = decl->id->u.string;
+	char	*name = decl->id->str;
 	CompiledLocal *local;
 
 	argnum = proc->numArgs++;
@@ -1171,7 +1170,7 @@ compile_fnParms(VarDecl *decl)
 		Type	*clstype = decl->clsdecl->decl->type;
 		Expr	*self_id;
 		VarDecl	*self_decl;
-		if (!param||!param->id || strcmp(param->id->u.string, "self")) {
+		if (!param||!param->id || strcmp(param->id->str, "self")) {
 			L_errf(decl->id, "class public member function lacks "
 			       "'self' as first arg");
 			/* Add it so we can keep compiling. */
@@ -1201,7 +1200,7 @@ compile_fnParms(VarDecl *decl)
 			p->id = ast_mkId(name, 0, 0);
 			ckfree(name);
 		}
-		name = p->id->u.string;
+		name = p->id->str;
 		if (isClsConstructor(decl) && !strcmp(name, "self")) {
 			L_errf(p,
 			       "'self' parameter illegal in class constructor");
@@ -1211,9 +1210,9 @@ compile_fnParms(VarDecl *decl)
 			L_errf(p, "Rest parameter must be last");
 		}
 		if (iscallbyname(p)) {
-			name = cksprintf("&%s", p->id->u.string);
-			ckfree(p->id->u.string);
-			p->id->u.string = name;
+			name = cksprintf("&%s", p->id->str);
+			ckfree(p->id->str);
+			p->id->str = name;
 			++name_parms;
 		}
 		proc_mkArg(proc, p);
@@ -1239,10 +1238,10 @@ compile_fnParms(VarDecl *decl)
 
 		/* Lookup "&var". */
 		parmSym = sym_lookup(p->id, L_NOWARN);
-		ASSERT(parmSym && (p->id->u.string[0] == '&'));
+		ASSERT(parmSym && (p->id->str[0] == '&'));
 
 		/* Create "var". */
-		varId   = ast_mkId(p->id->u.string + 1,  // point past the &
+		varId   = ast_mkId(p->id->str + 1,  // point past the &
 				   p->id->node.beg,
 				   p->id->node.end);
 		varDecl = ast_mkVarDecl(type, varId, p->node.beg, p->node.end);
@@ -1677,7 +1676,8 @@ compile_expr(Expr *expr, Expr_f flags)
 		break;
 	    case L_EXPR_CONST:
 	    case L_EXPR_RE:
-		n = push_lit(expr);
+		push_str("%s", expr->str);
+		n = 1;
 		break;
 	    case L_EXPR_ID:
 		n = compile_var(expr, flags);
@@ -1757,8 +1757,7 @@ ispatternfn(char *name, Expr **foo, Expr **Foo_star, Expr **opts, int *nopts)
 			buf[i] = *p;
 		}
 		buf[i] = 0;
-		e = ast_mkConst(L_string, 0, 0);
-		e->u.string = buf;
+		e = ast_mkConst(L_string, buf, 0, 0);
 		APPEND_OR_SET(Expr, next, *opts, e);
 		++(*nopts);
 	}
@@ -1806,7 +1805,7 @@ compile_fnCall(Expr *expr)
 	VarDecl	*formals = NULL;
 
 	ASSERT(expr->a->kind == L_EXPR_ID);
-	name = expr->a->u.string;
+	name = expr->a->str;
 
 	/* Check for an L built-in function. */
 	for (i = 0; i < sizeof(builtins)/sizeof(builtins[0]); ++i) {
@@ -1851,7 +1850,7 @@ compile_fnCall(Expr *expr)
 		/* Pattern function.  Figure out which kind. */
 		if ((sym = sym_lookup(Foo_star, L_NOWARN))) {
 			/* Foo_* is defined -- compile Foo_*(opts,a,b,c). */
-			push_str(Foo_star->u.string);
+			push_str(Foo_star->str);
 			APPEND(Expr, next, opts, expr->b);
 			expr->b = opts;
 			formals = sym->type->u.func.formals;
@@ -1862,7 +1861,7 @@ compile_fnCall(Expr *expr)
 			compile_expr(expr->b, L_PUSH_VAL);
 			if (!expr->b) {
 				/* No args, compile as foo(opts). */
-				push_str(foo->u.string);
+				push_str(foo->str);
 				num_parms = push_parms(opts);
 			} else if (iswidget(expr->b)) {
 				/* Compile as *a(opts,b,c). */
@@ -1871,7 +1870,7 @@ compile_fnCall(Expr *expr)
 			} else {
 				/* Compile as foo(opts,a,b,c). */
 				// a
-				push_str(foo->u.string);
+				push_str(foo->str);
 				num_parms = push_parms(opts);
 				ASSERT(num_parms == nopts);
 				// a foo <opts>
@@ -1909,7 +1908,7 @@ compile_var(Expr *expr, Expr_f flags)
 	ASSERT(expr->op == L_EXPR_ID);
 
 	/* Check for pre-defined identifiers first. */
-	if (!strcmp(expr->u.string, "END")) {
+	if (!strcmp(expr->str, "END")) {
 		if (L->idx_nesting) {
 			TclEmitOpcode(INST_L_READ_SIZE, L->frame->envPtr);
 		} else {
@@ -1918,21 +1917,21 @@ compile_var(Expr *expr, Expr_f flags)
 		}
 		expr->type = L_int;
 		return (1);
-	} else if (!strcmp(expr->u.string, "undef")) {
+	} else if (!strcmp(expr->str, "undef")) {
 		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
 		expr->type = L_poly;
 		return (1);
-	} else if (!strcmp(expr->u.string, "__FILE__")) {
+	} else if (!strcmp(expr->str, "__FILE__")) {
 		push_str(expr->node.file);
 		expr->type = L_string;
 		return (1);
-	} else if (!strcmp(expr->u.string, "__LINE__")) {
+	} else if (!strcmp(expr->str, "__LINE__")) {
 		push_str("%d", expr->node.line);
 		expr->type = L_int;
 		return (1);
-	} else if (!strcmp(expr->u.string, "__FUNC__")) {
+	} else if (!strcmp(expr->str, "__FUNC__")) {
 		if (L->enclosing_func) {
-			push_str(L->enclosing_func->decl->id->u.string);
+			push_str(L->enclosing_func->decl->id->str);
 		} else {
 			push_str("%s", L->toplev);
 		}
@@ -1991,7 +1990,7 @@ compile_var(Expr *expr, Expr_f flags)
 			break;
 		    case DECL_CLASS_VAR:
 			push_str("::L::_class_%s::%s",
-				 sym->decl->clsdecl->decl->id->u.string,
+				 sym->decl->clsdecl->decl->id->str,
 				 sym->name);
 			break;
 		    case DECL_CLASS_INST_VAR:
@@ -2052,7 +2051,7 @@ push_parms(Expr *actuals)
 		} else {
 			compile_expr(a, L_PUSH_VAL);
 		}
-		s = a->u.string;
+		s = a->str;
 		widget_flag = ((a->kind == L_EXPR_CONST) &&
 		    isstring(a) &&
 		    /* has at least the minimum length */
@@ -2088,28 +2087,6 @@ push_pointer(Expr *expr)
 }
 
 private int
-push_lit(Expr *expr)
-{
-	switch (expr->type->kind) {
-	    case L_STRING:
-	    case L_POLY:
-	    case L_CLASS:
-		push_str("%s", expr->u.string);
-		break;
-	    case L_INT:
-		push_str("%lu", expr->u.integer);
-		break;
-	    case L_FLOAT:
-		push_str("%f", expr->u.flote);
-		break;
-	    default:
-		ASSERT(0);
-		break;
-	}
-	return (1);  // stack effect
-}
-
-private int
 compile_unOp(Expr *expr)
 {
 	Expr	*var;
@@ -2140,16 +2117,16 @@ compile_unOp(Expr *expr)
 		if (isaddrof(expr->a)) {
 			unless (expr->a->a->kind == L_EXPR_ID) {
 				L_errf(expr, "%s not a call-by-reference parm",
-				       expr->a->a->u.string);
+				       expr->a->a->str);
 				break;
 			}
-			var = ast_mkId(cksprintf("&%s", expr->a->a->u.string),
+			var = ast_mkId(cksprintf("&%s", expr->a->a->str),
 				       0, 0);
 			sym = sym_lookup(var, L_NOWARN);
 			unless (sym && (sym->decl->flags & DECL_REF)) {
 				L_errf(expr, "%s undeclared or not a "
 				       "call-by-reference parm",
-				       expr->a->a->u.string);
+				       expr->a->a->str);
 				break;
 			}
 			emit_load_scalar(sym->idx);
@@ -2192,10 +2169,10 @@ compile_unOp(Expr *expr)
 		push_str("::system");
 		if (expr->a) {
 			compile_expr(expr->a, L_PUSH_VAL);
-			push_str(expr->u.string);
+			push_str(expr->str);
 			TclEmitInstInt1(INST_CONCAT1, 2, L->frame->envPtr);
 		} else {
-			push_str(expr->u.string);
+			push_str(expr->str);
 		}
 		emit_invoke(2);
 		expr->type = L_string;
@@ -2534,7 +2511,7 @@ re_submatchCnt(Expr *re)
 	Tcl_RegExp	compiled;
 
 	if (re->kind == L_EXPR_RE) {
-		const_regexp = Tcl_NewStringObj(re->u.string, -1);
+		const_regexp = Tcl_NewStringObj(re->str, -1);
 		Tcl_IncrRefCount(const_regexp);
 		compiled = Tcl_GetRegExpFromObj(L->interp, const_regexp,
 					TCL_REG_ADVANCED);
@@ -2566,7 +2543,7 @@ re_kind(Expr *re, Tcl_DString *ds)
 	if (re_submatchCnt(re) || (re->flags & L_EXPR_RE_G)) {
 		return (RE_COMPLEX);
 	} else if (isstring(re) &&
-		   (TclReToGlob(NULL, re->u.string, strlen(re->u.string),
+		   (TclReToGlob(NULL, re->str, strlen(re->str),
 				ds, &exact) == TCL_OK)) {
 		if (ds == &myds) Tcl_DStringFree(&myds);
 		return (exact ? RE_CONST : RE_GLOB);
@@ -3308,7 +3285,7 @@ compile_switch(Switch *sw)
 	 * otherwise compile if-then-else code (slower).
 	 */
 	for (c = sw->cases; c; c = c->next) {
-		if (c->expr && (c->expr->kind != L_EXPR_CONST)) break;
+		if (c->expr && !isconst(c->expr)) break;
 	}
 	if (c) {
 		compile_switch_slow(sw);
@@ -3385,9 +3362,12 @@ compile_switch_slow(Switch *sw)
 			TclEmitOpcode(INST_DUP, L->frame->envPtr);
 			if (isregexp(c->expr)) {
 				compile_reMatch(c->expr);
-			} else {
+			} else if (isint(e)) {
 				compile_expr(c->expr, L_PUSH_VAL);
 				TclEmitOpcode(INST_EQ, L->frame->envPtr);
+			} else {
+				compile_expr(c->expr, L_PUSH_VAL);
+				TclEmitOpcode(INST_STR_EQ, L->frame->envPtr);
 			}
 			unless (L_typeck_compat(e->type, c->expr->type)) {
 				L_errf(c, "case type incompatible"
@@ -3442,7 +3422,6 @@ compile_switch_fast(Switch *sw)
 {
 	Expr		*e = sw->expr;
 	Case		*c;
-	char		*val;
 	int		jt_idx, new, start_off;
 	Jmp		*break_jmps;
 	Jmp		*default_jmp;
@@ -3459,6 +3438,14 @@ compile_switch_fast(Switch *sw)
 		L_errf(e, "switch expression must be int or string");
 		return;
 	}
+	if (isint(e)) {
+		/*
+		 * Since the jump table keys are strings, add 0 to
+		 * guarantee a canonicalized string rep of an int.
+		 */
+		push_str("0");
+		TclEmitOpcode(INST_ADD, L->frame->envPtr);
+	}
 
 	frame_push(sw, NULL, SWITCH|SEARCH);
 
@@ -3468,12 +3455,10 @@ compile_switch_fast(Switch *sw)
 
 	for (c = sw->cases; c; c = c->next) {
 		if (c->expr) {
-			if (isint(c->expr)) {
-				val = cksprintf("%lu", c->expr->u.integer);
-			} else {
-				val = cksprintf("%s", c->expr->u.string);
-			}
-			hPtr = Tcl_CreateHashEntry(&jt->hashTable, val, &new);
+			ASSERT(isconst(c->expr));
+			hPtr = Tcl_CreateHashEntry(&jt->hashTable,
+						   c->expr->str,
+						   &new);
 			if (new) {
 				Tcl_SetHashValue(hPtr,
 				    (ClientData)(currOffset(L->frame->envPtr) -
@@ -3511,7 +3496,7 @@ struct_lookupMember(Type *t, Expr *idx, int *offset)
 		return (NULL);
 	}
 	for (*offset = 0, m = t->u.struc.members; m; m = m->next, ++*offset) {
-		if (!strcmp(idx->u.string, m->id->u.string)) {
+		if (!strcmp(idx->str, m->id->str)) {
 			return (m);
 		}
 	}
@@ -3552,8 +3537,7 @@ push_index(Expr *expr)
 			push_str(buf);
 			type = member->type;
 		} else {
-			L_errf(expr, "struct field %s not found",
-			       expr->u.string);
+			L_errf(expr, "struct field %s not found", expr->str);
 		}
 		ret = L_IDX_ARRAY;
 		break;
@@ -3712,8 +3696,8 @@ compile_clsDeref(Expr *expr, Expr_f flags)
 
 	ASSERT(type && clsdecl);
 
-	clsnm = clsdecl->decl->id->u.string;
-	varnm = expr->u.string;
+	clsnm = clsdecl->decl->id->str;
+	varnm = expr->str;
 	if (L->enclosing_func) {
 		in_class = L->enclosing_func->decl->flags & DECL_CLASS_FN;
 	}
@@ -3781,8 +3765,8 @@ compile_clsInstDeref(Expr *expr, Expr_f flags)
 	ASSERT(isclass(expr->a) && clsdecl);
 	ASSERT(clsdecl->symtab);
 
-	clsnm = clsdecl->decl->id->u.string;
-	varnm = expr->u.string;
+	clsnm = clsdecl->decl->id->str;
+	varnm = expr->str;
 	if (L->enclosing_func) {
 		in_class = L->enclosing_func->decl->flags & DECL_CLASS_FN;
 	}
@@ -4304,7 +4288,7 @@ emit_globalUpvar(Sym *sym)
 		}
 		break;
 	    case DECL_CLASS_VAR:
-		push_str("::L::_class_%s", decl->clsdecl->decl->id->u.string);
+		push_str("::L::_class_%s", decl->clsdecl->decl->id->str);
 		push_str(id);
 		break;
 	    case DECL_CLASS_INST_VAR: {
@@ -4386,7 +4370,7 @@ private Sym *
 sym_store(VarDecl *decl)
 {
 	int	new;
-	char	*name = decl->id->u.string;
+	char	*name = decl->id->str;
 	Sym	*sym = NULL;
 	Frame	*frame = NULL;
 	Tcl_HashEntry *hPtr;
@@ -4512,7 +4496,7 @@ sym_store(VarDecl *decl)
 	} else if (decl->flags & (DECL_CLASS_VAR | DECL_CLASS_INST_VAR)) {
 		sym->kind    = L_SYM_GVAR;
 		sym->tclname = cksprintf("_%s_%s",
-					 decl->clsdecl->decl->id->u.string,
+					 decl->clsdecl->decl->id->str,
 					 name);
 	} else {
 		ASSERT(decl->flags & DECL_LOCAL_VAR);
@@ -4557,7 +4541,7 @@ sym_lookup(Expr *id, Expr_f flags)
 	Tcl_HashEntry *hPtr = NULL;
 
 	unless (id->kind == L_EXPR_ID) return (NULL);
-	name = id->u.string;
+	name = id->str;
 
 	for (frame = L->frame; frame; frame = frame->prevFrame) {
 		if ((frame->envPtr == L->frame->envPtr) ||
@@ -4832,18 +4816,18 @@ ast_free(Ast *ast_list)
 			switch (e->kind) {
 			    case L_EXPR_CONST:
 				if (e->type == L_string) {
-					ckfree(e->u.string);
+					ckfree(e->str);
 				}
 				break;
 			    case L_EXPR_BINOP:
 				if ((e->op == L_OP_DOT) ||
 				    (e->op == L_OP_POINTS)) {
-					ckfree(e->u.string);
+					ckfree(e->str);
 				}
 				break;
 			    case L_EXPR_ID:
 			    case L_EXPR_RE:
-				ckfree(e->u.string);
+				ckfree(e->str);
 				break;
 			    default:
 				break;
@@ -5237,7 +5221,7 @@ L_typedef_store(VarDecl *decl)
 {
 	int		new;
 	Tcl_HashEntry	*hPtr;
-	char		*name = decl->id->u.string;
+	char		*name = decl->id->str;
 
 	hPtr = Tcl_CreateHashEntry(L->curr_scope->typedefs, name, &new);
 	if (new) {
