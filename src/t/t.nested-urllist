@@ -252,6 +252,9 @@ bk here where gcc | grep -q "$HERE/clone1" && fail 11
 bk here where gcc | grep -q "$HERE/clone8" || fail 12
 bk here where gdb | grep -q "$HERE/clone1" || fail 13
 bk here where gdb | grep -q "$HERE/clone8" || fail 14
+# check that it saves timestamps
+grep "$HERE/clone8" BitKeeper/log/urllist | grep -q '|' || \
+	fail -f BitKeeper/log/urllist no time_t
 echo OK
 
 echo $N Push does not add dest for non-present components ...........$NL

@@ -1099,12 +1099,17 @@ isComponent(char *path)
 
 private	dev_t	local_dev;
 
+/*
+ * Sort URLs to make "local" URLs be favored over remote or network URLs
+ * Also look for optional timestamps and pick URLs used recently.
+ */
 private int
 sortUrls(const void *a, const void *b)
 {
 	char	*url[2];
 	remote	*r;
 	int	val[2];
+	char	*tt[2];
 	int	i;
 	struct	stat	sb;
 
@@ -1121,12 +1126,23 @@ sortUrls(const void *a, const void *b)
 	 *    http://host	1011
 	 *    ssh://localhost	1100
 	 *    rsh://host	1110
-	 *    ssh://host	1110	tie with rsh and no tie breaker
+	 *    ssh://host	1110	ties broken with timestamp
 	 *    badurl           10000
+	 *
+	 * Ties are broken by looking at the optional |timestamp or
+	 * with a simple strcmp() of the URLs
 	 */
 	for (i = 0; i < 2; i++) {
 		val[i] = 0;
-		unless (r = remote_parse(url[i], 0)) {
+		/* save any timestamp */
+		if (tt[i] = strchr(url[i], '|')) *tt[i] = 0;
+		r = remote_parse(url[i], 0);
+		if (tt[i]) {
+			*tt[i]++ = '|'; /* restore url */
+		} else {
+			tt[i] = "0";
+		}
+		unless (r) {
 			val[i] |= 0x10;
 			continue;
 		}
@@ -1145,15 +1161,27 @@ sortUrls(const void *a, const void *b)
 		}
 		remote_free(r);
 	}
-	return (val[0] - val[1]);
+	if (val[0] != val[1]) {
+		return (val[0] - val[1]);
+	} else if (!streq(tt[0], tt[1])) {
+		return (strtoul(tt[0], 0, 16) - strtoul(tt[1], 0, 16));
+	} else {
+		return (strcmp(url[0], url[1]));
+	}
 }
 
 /*
- * accessor for urllist
+ * returns a list of URLs that have had the component rootkey 'rk' populated
+ * in the past.
+ *
+ * The URLs are sorted to have locals repositories listed before
+ * remote ones.
  */
 char **
 urllist_fetchURLs(hash *h, char *rk, char **space)
 {
+	int	i;
+	char	*t;
 	char	**new = 0;
 	struct	stat	sb;
 
@@ -1161,24 +1189,27 @@ urllist_fetchURLs(hash *h, char *rk, char **space)
 		new = splitLine(h->vptr, "\n", 0);
 		local_dev = lstat(".", &sb) ? 0 : sb.st_dev;
 		sortLines(new, sortUrls);
+		/* strip timestamps */
+		EACH(new) if (t = strchr(new[i], '|')) *t = 0;
 	}
 	return (catLines(space, new));
 }
 
 /*
+ * Remember a URL that has recently been shown to be valid for a given
+ * URL.
+ *
  * h is a hash of rootkey to a newline separated list of url's
  *
  * add a new rk->url pair to the beginning of the list if it isn't
  * already there
- *
- * returns non-zero if the hash was updated
  */
-int
+void
 urllist_addURL(hash *h, char *rk, char *url)
 {
 	char	**list;
-	char	*new;
-	int	updated = 1;
+	char	*new, *nurl, *t;
+	int	i;
 
 	/*
 	 * We want to normalize the URL being saved.  The URLs either
@@ -1187,28 +1218,45 @@ urllist_addURL(hash *h, char *rk, char *url)
 	 */
 	if (strneq(url, "file://", 7)) url += 7;
 
-	unless (hash_insertStr(h, rk, url)) {
+	/* new URL's are tagged with 'now' */
+	nurl = aprintf("%s|%x", url, (u32)time(0));
+	if (hash_insertStr(h, rk, nurl)) {
+		free(nurl);
+	} else {
 		list = splitLine(h->vptr, "\n", 0);
-		removeLine(list, url, free); /* no dups */
-		list = unshiftLine(list, strdup(url));
+		EACH(list) {
+			/* compare without timestamp */
+			if (t = strchr(list[i], '|')) *t = 0;
+			if (streq(url, list[i])) {
+				/* update timestamp */
+				free(list[i]);
+				list[i] = nurl;
+				break;
+			}
+			if (t) *t = '|';
+		}
+		if (i > nLines(list)) {
+			/* new item */
+			list = unshiftLine(list, nurl);
+		}
 		new = joinLines("\n", list);
 		freeLines(list, free);
-
-		if (streq(new, h->vptr)) {
-			updated = 0;
-		} else {
-			hash_storeStr(h, rk, new);
-		}
+		hash_storeStr(h, rk, new);
 		free(new);
 	}
-	return (updated);
 }
 
 /*
+ * Mark that a give URL no longer is valid for a give rootkey.
+ *
  * h is a hash of rootkey to a newline separated list of url's
  *
- * remove url from rk's list, if it is present
- * if url==0, then remove all urls for that rk
+ * if rk==0
+ *    then remove url for all rootkeys
+ * if url==0,
+ *    then remove all urls for that rk
+ * else
+ *    remove url for the rk list
  *
  * returns non-zero of the hash was updated.
  */
@@ -1216,25 +1264,47 @@ int
 urllist_rmURL(hash *h, char *rk, char *url)
 {
 	char	**list;
-	char	*new;
-	int	updated = 0;
+	char	*new, *t;
+	int	i, updated = 0;
 
-	if (list = urllist_fetchURLs(h, rk, 0)) {
+	unless (rk) {
+		/* remove every instance of url */
+		char	**keys = 0;
+		int	i;
+
+		EACH_HASH(h) keys = addLine(keys, strdup(h->kptr));
+		EACH(keys) {
+			if (urllist_rmURL(h, keys[i], url)) updated = 1;
+		}
+		freeLines(keys, free);
+		return (updated);
+	}
+
+	if (hash_fetchStr(h, rk)) {
 		if (url) {
-			if (removeLine(list, url, free)) {
+			list = splitLine(h->vptr, "\n", 0);
+			EACH(list) {
+				if (t = strchr(list[i], '|')) *t = 0;
+				if (streq(url, list[i])) {
+					removeLineN(list, i, free);
+					updated = 1;
+					break;
+				}
+				if (t) *t = '|';
+			}
+			if (updated) {
 				if (new = joinLines("\n", list)) {
 					hash_storeStr(h, rk, new);
 					free(new);
 				} else {
 					hash_deleteStr(h, rk);
 				}
-				updated = 1;
 			}
+			freeLines(list, free);
 		} else {
 			hash_deleteStr(h, rk);
 			updated = 1;
 		}
-		freeLines(list, free);
 	}
 	return (updated);
 }
@@ -1267,6 +1337,8 @@ urllist_check(nested *n, u32 flags, char **urls)
 	EACH_HASH(urllist) {
 		urls = splitLine(urllist->vptr, "\n", urls);
 	}
+	/* strip timestamps */
+	EACH(urls) if (t = strchr(urls[i], '|')) *t = 0;
 	uniqLines(urls, free);
 
 	/* generate a list of rootkey deltakey pairs */
@@ -1360,7 +1432,6 @@ urllist_check(nested *n, u32 flags, char **urls)
 
 		list = c->data;
 		uniqLines(list, 0);
-		// XXX sort local urls first
 		EACH_INDEX(list, j) {
 			urllist_addURL(urllist, c->rootkey, list[j]);
 		}
@@ -1421,6 +1492,7 @@ urllist_dump(char *name)
 	hash	*urllist;
 	comp	*c;
 	nested	*n;
+	char	*t;
 	char	*path;
 
 	urllist = hash_fromFile(0, NESTED_URLLIST);
@@ -1435,6 +1507,7 @@ urllist_dump(char *name)
 		if (name && !streq(name, path)) continue;
 		urls = splitLine(urllist->vptr, "\n", 0);
 		EACH(urls) {
+			if (t = strchr(urls[i], '|')) *t = 0;
 			printf("%s\t%s\n", path, urls[i]);
 		}
 		freeLines(urls, free);

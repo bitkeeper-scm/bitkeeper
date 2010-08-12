@@ -552,7 +552,8 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
                  */
                 EACH_STRUCT(n->comps, c, i) {
                         if (c->product || !c->remotePresent) continue;
-                        flush |= urllist_addURL(urllist, c->rootkey, url);
+                        urllist_addURL(urllist, c->rootkey, url);
+			flush = 1;
                 }
                 if (flush) urllist_write(urllist);
                 hash_free(urllist);
