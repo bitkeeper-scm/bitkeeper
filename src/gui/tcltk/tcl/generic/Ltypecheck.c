@@ -59,6 +59,7 @@ type_str(Type_k kind)
 	if (kind & L_LIST)     str_add("list");
 	if (kind & L_FUNCTION) str_add("function");
 	if (kind & L_NAMEOF)   str_add("nameof");
+	if (kind & L_CLASS )   str_add("class");
 	return (type_buf);
 }
 

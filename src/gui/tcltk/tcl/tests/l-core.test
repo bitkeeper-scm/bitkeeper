@@ -11561,6 +11561,39 @@ void typecheck_10_2()
 .*42: L Error: expected type string or widget but got int in string comparison
 }
 
+test typecheck-10.3 {check type names in type-error messages} -body {
+#lang L
+class typecheck_10_3_cls {}
+void typecheck_10_3()
+{
+	int			x;
+	typecheck_10_3_cls	obj;
+
+	1 eq "string";
+	1.0 eq "string";
+	"string" == 1;
+	(widget)"s" == 1;
+	(void)"s" == 1;
+	(int{int})"s" == 1;
+	(struct {int i;})"s" == 1;
+	(int[])"s" == 1;
+	{1,2,3} == 1;
+	&x == 1;
+	obj == 1;
+}
+} -returnCodes error -match regexp -result {.*7: L Error: expected type string or widget but got int in string comparison
+.*8: L Error: expected type string or widget but got float in string comparison
+.*9: L Error: expected type int or float but got string in arithmetic operator
+.*10: L Error: expected type int or float but got widget in arithmetic operator
+.*11: L Error: expected type int or float but got void in arithmetic operator
+.*12: L Error: expected type int or float but got hash in arithmetic operator
+.*13: L Error: expected type int or float but got struct in arithmetic operator
+.*14: L Error: expected type int or float but got array in arithmetic operator
+.*15: L Error: expected type int or float but got list in arithmetic operator
+.*16: L Error: expected type int or float but got nameof in arithmetic operator
+.*17: L Error: expected type int or float but got class in arithmetic operator
+}
+
 test fnptr-1 {function pointers 1} -body {
 #lang L
 typedef string &fnptr1_t(int);
