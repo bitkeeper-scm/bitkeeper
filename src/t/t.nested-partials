@@ -20,11 +20,11 @@ bk _kill bk://localhost:$P
 
 cd gcc-only
 bk here check 2>ERR && fail -f ERR should fail 4
-grep -q "unable to connect.*:$P" ERR || fail 5
+grep -q "$P.*connect failure" ERR || fail -f ERR
 cd ..
-bk clone -sall $Q gcc-only copy-all 2>ERR && fail -f ERR should fail
-grep -q 'clone: failed to fetch component gdb' ERR || fail 7
-grep -q '/project: cannot connect' ERR || fail 9
+bk clone -sall gcc-only copy-all >/dev/null 2>ERR && fail -f ERR should fail
+grep -q 'clone: No other sources for gdb known' ERR || fail -f ERR
+grep -q '/project...connect failure' ERR || fail -f ERR
 grep -q 'clone: component fetch failed, only product is populated' ERR || fail
 
 cd gcc-only
@@ -91,7 +91,7 @@ echo OK
 
 echo $N And show that this rewritten URL works ......................$NL
 mv ../project.save ../project
-bk here check || fail
+bk here check $Q || fail
 echo OK
 
 echo $N Show that hardlinked urllist is not a problem ...............$NL

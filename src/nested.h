@@ -107,6 +107,15 @@ typedef struct {
 	u32	force:1;	// -f: force unpopulate with local diffs
 	u32	runcheck:1;	// follow up with a partial check of prod
 	int	comps;		// number of comps we worked on
+
+	/* internal state */
+
+	/* copy of nested_populated() args */
+	nested	*n;
+	char	**urls;
+	hash	*urllist;
+	char	*last;		/* last URL printed */
+	hash	*seen;		/* URLs processed */
 } popts;
 
 int	isComponent(char *path);

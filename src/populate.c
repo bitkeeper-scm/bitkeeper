@@ -2,7 +2,9 @@
 #include "nested.h"
 #include "bkd.h"
 
-private	int	unpopulate_check(comp *c, char **urls);
+private	int	unpopulate_check(popts *ops, comp *c);
+private	char	*locateComp(popts *ops, comp *cp, char ***flist);
+
 
 /*
  * called with cp->alias set to which components should be populated
@@ -14,16 +16,37 @@ nested_populate(nested *n, char **urls, popts *ops)
 {
 	int	i, j, status, rc;
 	int	done = 1;
+	int	flags = (ops->quiet ? SILENT : 0);
 	clonerc	clonerc;
 	char	**vp = 0;
 	char	**checkfiles = 0;
 	char	**list;
 	remote	*r;
+	char	*url;
 	comp	*cp;
-	hash	*urllist;
 
-	urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
-	assert(urllist);
+	ops->n = n;
+	ops->urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
+	assert(ops->urllist);
+	ops->urls = urls;
+	ops->seen = hash_new(HASH_MEMHASH);
+
+	if (ops->last) {
+		/* clone has already choosen the URL for some components */
+		url = ops->last;
+		if (strneq(url, "file://", 7)) {
+			url = strdup(url + 7);
+			free(ops->last);
+			ops->last = url;
+		}
+
+		hash_storeStr(ops->seen, url, 0);
+
+		EACH_STRUCT(n->comps, cp, j) {
+			if (cp->remotePresent) cp->data = strdup(url);
+		}
+	}
+
 	/*
 	 * Look to see if removed any components will cause a problem
 	 * and fail early if we see any.
@@ -31,22 +54,11 @@ nested_populate(nested *n, char **urls, popts *ops)
 	rc = 0;
 	EACH_STRUCT(n->comps, cp, j) {
 		if (!ops->force && cp->present && !cp->alias) {
-			char	**lurls = 0;
-
-			/* try urls from cmd line first */
-			EACH(urls) lurls = addLine(lurls, strdup(urls[i]));
-
-			/* then ones remembered for this component */
-			lurls = urllist_fetchURLs(urllist, cp->rootkey, lurls);
-
-			if ((i = unpopulate_check(cp, lurls)) <= 0) {
+			if (unpopulate_check(ops, cp)) {
 				fprintf(stderr, "%s: unable to remove %s\n",
 				    prog, cp->path);
 				++rc;
-			} else {
-				urllist_addURL(urllist, cp->rootkey, lurls[i]);
 			}
-			freeLines(lurls, free);
 		}
 		if (!cp->present && cp->alias) {
 			/* see if the namespace is not taken */
@@ -58,7 +70,7 @@ nested_populate(nested *n, char **urls, popts *ops)
 			ops->comps++;
 		}
 	}
-	if (rc) return (1);
+	if (rc) goto out;
 	START_TRANSACTION();
 	/*
 	 * Now add all the new repos and keep a list of repos added
@@ -66,106 +78,79 @@ nested_populate(nested *n, char **urls, popts *ops)
 	 */
 	list = 0;		/* repos added */
 	EACH_STRUCT(n->comps, cp, j) {
-		if (!cp->present && cp->alias) {
-			char	**lurls = 0;
-			char	**reasons = 0;
+		unless (!cp->present && cp->alias) continue;
+again:		if (url = locateComp(ops, cp, 0)) {
+			r = remote_parse(url, 0);
+			assert(r);
+			unless (r->params) r->params = hash_new(HASH_MEMHASH);
+			hash_storeStr(r->params, "ROOTKEY", cp->rootkey);
 
-			/* try urls from cmd line first */
-			EACH(urls) lurls = addLine(lurls, strdup(urls[i]));
-
-			/* then ones remembered for this component */
-			lurls = urllist_fetchURLs(urllist, cp->rootkey, lurls);
-			EACH(lurls) {
-				unless (r = remote_parse(lurls[i], 0)) {
-					reasons = addLine(reasons, "bad url");
-					continue;
-				}
-				unless (r->params) {
-					r->params = hash_new(HASH_MEMHASH);
-				}
-				hash_storeStr(r->params,
-				    "ROOTKEY", cp->rootkey);
-
-				vp = addLine(0, strdup("bk"));
-				vp = addLine(vp, strdup("clone"));
-				if (ops->debug) vp = addLine(vp, strdup("-d"));
-				if (ops->quiet) vp = addLine(vp, strdup("-q"));
-				if (ops->verbose) {
-					vp = addLine(vp, strdup("-v"));
-				}
-				if (ops->no_lclone) {
-					vp = addLine(vp,
-					    strdup("--no-hardlinks"));
-				}
-				vp = addLine(vp, strdup("-p"));
-				vp = addLine(vp, aprintf("-r%s", cp->deltakey));
-				vp = addLine(vp,
-				    aprintf("-P%u/%u %s",
-				    done, ops->comps, cp->path));
-				vp = addLine(vp, remote_unparse(r));
-				vp = addLine(vp, strdup(cp->path));
-				vp = addLine(vp, 0);
-				status = spawnvp(_P_WAIT, "bk", vp + 1);
-				freeLines(vp, free);
-				clonerc =
-				    WIFEXITED(status) ? WEXITSTATUS(status) : 1;
-				if (clonerc == 0) {
-					done++;
-					list = addLine(list, cp);
-					cp->present = 1;
-					urllist_addURL(urllist,
-					    cp->rootkey, lurls[i]);
-					if (ops->runcheck) {
-						checkfiles = addLine(checkfiles,
-						    aprintf("%s/ChangeSet",
-							cp->path));
-					}
-					break;
-				} else if ((clonerc == CLONE_EXISTS) &&
-				    exists(cp->path)) {
-					/*
-					 * failed: the dir was not empty
-					 * no use trying other urls
-					 */
-					fprintf(stderr, "%s: %s not empty\n",
-					    prog, cp->path);
-					goto conflict;
-				} else {
-					char	*t;
-
-					/* clone failed */
-					if (exists(cp->path)) {
-						/* failed and left crud */
-						nested_rmcomp(n, cp);
-					}
-					switch(clonerc) {
-					    case CLONE_CONNECT:
-						t = "cannot connect";
-						break;
-					    case CLONE_CHDIR:
-						t = "component not present";
-						break;
-					    case CLONE_BADREV:
-						t = "component missing cset";
-						break;
-					    default:
-						t = "unknown failure";
-						break;
-					}
-					reasons = addLine(reasons, t);
-
-					/*
-					 * In some cases we know this
-					 * URL is no good, so we can
-					 * stop remembering it.
-					 */
-					if ((clonerc == CLONE_CHDIR) ||
-					    (clonerc == CLONE_BADREV)) {
-						urllist_rmURL(urllist,
-						    cp->rootkey, lurls[i]);
-					}
-				}
+			vp = addLine(0, strdup("bk"));
+			vp = addLine(vp, strdup("clone"));
+			if (ops->debug) vp = addLine(vp, strdup("-d"));
+			if (ops->quiet) vp = addLine(vp, strdup("-q"));
+			if (ops->verbose) vp = addLine(vp, strdup("-v"));
+			if (ops->no_lclone) {
+				vp = addLine(vp, strdup("--no-hardlinks"));
 			}
+			vp = addLine(vp, strdup("-p"));
+			vp = addLine(vp, aprintf("-r%s", cp->deltakey));
+			vp = addLine(vp,
+			    aprintf("-P%u/%u %s", done, ops->comps, cp->path));
+			vp = addLine(vp, remote_unparse(r));
+			vp = addLine(vp, strdup(cp->path));
+			vp = addLine(vp, 0);
+			status = spawnvp(_P_WAIT, "bk", vp + 1);
+			freeLines(vp, free);
+			clonerc = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+			if (clonerc == 0) {
+				done++;
+				list = addLine(list, cp);
+				cp->present = 1;
+				if (ops->runcheck) {
+					checkfiles = addLine(checkfiles,
+					    aprintf("%s/ChangeSet", cp->path));
+				}
+			} else if ((clonerc == CLONE_EXISTS) && exists(cp->path)) {
+				/*
+				 * failed: the dir was not empty no use trying
+				 * other urls
+				 */
+				fprintf(stderr, "%s: %s not empty\n",
+				    prog, cp->path);
+			} else {
+				char	*t;
+
+				/* clone failed */
+				if (exists(cp->path)) {
+					/* failed and left crud */
+					nested_rmcomp(n, cp);
+				}
+				switch(clonerc) {
+				    case CLONE_CONNECT:
+					t = "cannot connect";
+					break;
+				    case CLONE_CHDIR:
+					t = "component not present";
+					break;
+				    case CLONE_BADREV:
+					t = "component missing cset";
+					break;
+				    default:
+					t = "unknown failure";
+					break;
+				}
+				fprintf(stderr,
+				    "%s: failed to fetch "
+				    "component %s from %s: %s\n",
+				    prog, cp->path, url, t);
+				free(cp->data);
+				cp->data = 0;
+				cp->remotePresent = 0;
+				goto again;
+			}
+		}
+		if (cp->present) {
 			/*
 			 * If populating this component made another
 			 * component deeply nested, then I need to update
@@ -177,9 +162,9 @@ nested_populate(nested *n, char **urls, popts *ops)
 
 				unless (strneq(
 				    cp->path, t->path, strlen(cp->path))) {
-				    	break;
+					break;
 				}
-				if (t->present && 
+				if (t->present &&
 				    t->path[strlen(cp->path)] == '/') {
 					dn = fopen("BitKeeper/log/deep-nests",
 					    "a");
@@ -187,105 +172,88 @@ nested_populate(nested *n, char **urls, popts *ops)
 					fclose(dn);
 				}
 			}
-			unless (cp->present) {
-				/* We tried all the urls and didn't break
-				 * early
-				 */
-				fprintf(stderr,
-				    "%s: failed to fetch component %s\n"
-				    "URLs tried:\n",
-				    prog, cp->path);
-				assert(nLines(lurls) == nLines(reasons));
-				EACH(lurls) {
-					fprintf(stderr, "\t%s: %s\n",
-					    lurls[i], reasons[i]);
-				}
-			}
-conflict:
-			freeLines(lurls, free);
-			freeLines(reasons, 0);
-			unless (cp->present) break;
-		}
-	}
-
-	rc = 0;
-	EACH_STRUCT(n->comps, cp, i) {
-		/*
-		 * If we failed to add all repos set exit status and remove
-		 * other repos we cloned.
-		 */
-		if (!cp->present && cp->alias) {
+		} else {
 			comp	*cj;
 			int	j;
 
+			/*
+			 * If we failed to add all repos set exit
+			 * status and remove other repos we cloned.
+			 */
 			EACH_STRUCT(list, cj, j) {
 				if (cj->present) nested_rmcomp(n, cj);
 			}
 			rc = 1;
+			break;
 		}
 	}
 	freeLines(list, 0);
-
-	unless (rc) {
-		/*
-		 * Now after we sucessfully cloned all new components
-		 * we can remove the ones to be deleted.
-		 */
-		reverseLines(n->comps);	/* deeply nested first */
-		EACH_STRUCT(n->comps, cp, j) {
-			if (cp->present && !cp->alias) {
-				if (nested_rmcomp(n, cp)) {
-					fprintf(stderr,
-					    "%s: remove of %s failed\n",
-					    prog, cp->path);
-					rc = 1;
-					break;
-				}
-				cp->present = 0;
-			}
-		}
-		reverseLines(n->comps);	/* restore order */
-	}
 	STOP_TRANSACTION();
-	unless (rc) {
-		EACH_STRUCT(n->comps, cp, i) {
-			/* just check that the code above all worked */
-			if (cp->present) {
-				assert(cp->alias);
-			} else {
-				assert(!cp->alias);
+	if (rc) goto out;
+
+	/*
+	 * Now after we sucessfully cloned all new components we can
+	 * remove the ones to be deleted.
+	 */
+	reverseLines(n->comps);	/* deeply nested first */
+	EACH_STRUCT(n->comps, cp, j) {
+		if (cp->present && !cp->alias) {
+			verbose((stderr, "%s: removing %s...", prog, cp->path));
+			if (nested_rmcomp(n, cp)) {
+				verbose((stderr, "failed\n"));
+				fprintf(stderr,
+				    "%s: remove of %s failed\n",
+				    prog, cp->path);
+				rc = 1;
+				break;
 			}
+			verbose((stderr, "done\n"));
+			cp->present = 0;
+		}
+	}
+	reverseLines(n->comps);	/* restore order */
+	if (rc) goto out;
+
+	EACH_STRUCT(n->comps, cp, i) {
+		/* just check that the code above all worked */
+		if (cp->present) {
+			assert(cp->alias);
+		} else {
+			assert(!cp->alias);
 		}
 	}
 
 	/* do consistency check at end */
-	unless (rc) nested_writeHere(n);
-	urllist_write(urllist);
+	nested_writeHere(n);
 	if (ops->runcheck) {
 		rc |= run_check(ops->verbose,
 		    checkfiles, ops->quiet ? 0 : "-v", 0);
 		freeLines(checkfiles, free);
 	}
-	hash_free(urllist);
+out:	urllist_write(ops->urllist);
+	EACH_STRUCT(n->comps, cp, i) {
+		if (cp->data) free(cp->data);
+	}
+	hash_free(ops->urllist);
+	hash_free(ops->seen);
+	if (ops->last) {
+		free(ops->last);
+		ops->last = 0;
+	}
 	return (rc);
 }
 
 /*
- * Verify that it is OK to delete this component as it can be found in
- * one of these urls.  Also verify that the local copy doesn't have any local
- * work.
- *
- * Returns -1 on failure or index of url used as a backup if this
- * component can be deleted.
  */
 private int
-unpopulate_check(comp *c, char **urls)
+unpopulate_check(popts *ops, comp *c)
 {
 	FILE	*f;
 	char	*t;
-	int	i, good = 0, errs;
+	int	i, errs;
+	int	rc = -1;
 	char	**av;
-	char	out[MAXPATH];
+	char	**flist = 0;
 
 	if (nested_isPortal(0)) {
 		fprintf(stderr, "Cannot remove components in a portal.\n");
@@ -293,7 +261,7 @@ unpopulate_check(comp *c, char **urls)
 	}
 	if (chdir(c->path)) {
 		perror(c->path);
-		return (-1);
+		goto out;
 	}
 	f = popen("bk sfiles -gcxp -v", "r");
 	errs = 0;
@@ -312,27 +280,13 @@ unpopulate_check(comp *c, char **urls)
 	}
 	pclose(f);
 	if (errs) goto out;
-	bktmp(out, 0);
-	av = addLine(0, "bk");
-	av = addLine(av, "changes");
-	av = addLine(av, "-LD");
-	EACH(urls) {
-		unless (sysio(0, out, DEVNULL_WR,
-			"bk", "changes", "-qaLnd:REV:", urls[i], SYS)) {
-			if (size(out) == 0) {
-				/* found no diffs? */
-				good = i;
-				break;
-			} else {
-				/* found diffs */
-				av = addLine(av, urls[i]);
-			}
-		}
-	}
-	unlink(out);
-	unless (good) {
-		++errs;
-		if (nLines(av) > 3) {
+	if (!locateComp(ops, c, &flist)) {
+		/* flist is all the URLs that have this component */
+		if (nLines(flist) > 0) {
+			av = addLine(0, "bk");
+			av = addLine(av, "changes");
+			av = addLine(av, "-LD");
+			av = catLines(av, flist);
 			fprintf(stderr, "Local changes to %s found:\n",
 			    c->path);
 			av = addLine(av, 0);
@@ -342,12 +296,154 @@ unpopulate_check(comp *c, char **urls)
 			spawnvp(_P_WAIT, "bk", av+1);
 			dup2(i, 1);
 			close(i);
-		} else {
-			fprintf(stderr, "%s: No other sources for %s known\n",
-			    prog, c->path);
+			freeLines(av, 0);
 		}
+		goto out;
 	}
-	freeLines(av, 0);
+	rc = 0;
 out:	proj_cd2product();
-	return (good);
+	return (rc);
+}
+
+/*
+ * find best url to fetch component
+ *
+ * if search failed returns list of urls that
+ * have component for error messages
+ */
+private char *
+locateComp(popts *ops, comp *cp, char ***flist)
+{
+	comp	*c;
+	FILE	*f;
+	char	*t, *p, *url;
+	int	i, j, rc;
+	char	**lurls = 0;
+	char	**missing = 0;
+	int	flags = (ops->quiet ? SILENT : 0);
+	char	keylist[MAXPATH];
+	char	buf[MAXLINE];
+
+	if (cp->remotePresent && cp->data) goto out;
+
+	cp->remotePresent = 0;
+	if (cp->data) free(cp->data);
+	cp->data = 0;
+
+	bktmp(keylist, 0);
+
+	/* try urls from cmd line first */
+	EACH(ops->urls) lurls = addLine(lurls, strdup(ops->urls[i]));
+
+	/* then ones remembered for this component */
+	lurls = urllist_fetchURLs(ops->urllist, cp->rootkey, lurls);
+
+	/* and then the parents */
+	lurls = catLines(lurls, parent_allp());
+
+	EACH(lurls) {
+		/* try each url once */
+		url = lurls[i];
+		if (strneq(url, "file://", 7)) url += 7;
+		unless (hash_insertStr(ops->seen, url, 0)) continue;
+
+		verbose((stderr, "%s: searching %s...", prog, url));
+
+		f = fopen(keylist, "w");
+		/* save just the components we haven't found yet */
+		EACH_STRUCT(ops->n->comps, c, j) {
+			if (c->product) continue;
+			if (c->present == c->alias) continue;
+			if (c->remotePresent) continue;
+
+			fprintf(f, "%s %s\n", c->rootkey, c->deltakey);
+		}
+		fclose(f);
+		sprintf(buf, "bk -q@'%s' -Lr -Bstdin havekeys -FD - "
+		    "< '%s' 2> " DEVNULL_WR,
+		    url, keylist);
+		f = popen(buf, "r");
+		assert(f);
+		while (t = fgetline(f)) {
+			if (p = separator(t)) *p = 0;
+			unless (c = nested_findKey(ops->n, t)) {
+				if (p) p[-1] = ' ';
+				verbose((stderr, "failed\n"));
+				fprintf(stderr,
+				    "%s: bad data from '%s'\n-> %s\n",
+				    buf, t);
+				pclose(f);
+				unlink(keylist);
+				goto out;
+			}
+			unless (p) {
+				/* has component, but missing this key */
+				missing = addLine(missing, strdup(url));
+				continue;
+			}
+			c->data = strdup(url);
+			c->remotePresent = 1;
+			urllist_addURL(ops->urllist, c->rootkey, url);
+		}
+		/*
+		 * We have 4 possible exit status values to consider from
+		 * havekeys:
+		 *  0   the connection worked and we captured the data
+		 *  16  we connected to the bkd fine, but the repository
+		 *      is not there.  This URL is bogus and can be ignored.
+		 *  8   The bkd_connect() failed
+		 *  other  Another failure.
+		 *
+		 */
+		rc = pclose(f);
+		unlink(keylist);
+		rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
+		if (rc == 16) {
+			/* no repo at that pathname? */
+			/* remove URL */
+			urllist_rmURL(ops->urllist, 0, url);
+			verbose((stderr, "repo gone\n"));
+		} else if (rc == 8) {
+			/* connect failure */
+			verbose((stderr, "connect failure\n"));
+		} else if (rc != 0) {
+			/* some other failure */
+			verbose((stderr, "unknown failure\n"));
+		} else {
+			/* havekeys worked
+			 * remove this url from urllist of repos that are
+			 * still not found
+			 */
+			EACH_STRUCT(ops->n->comps, c, j) {
+				if (c->product) continue;
+				if (c->present == c->alias) continue;
+				if (c->remotePresent) continue;
+
+				urllist_rmURL(ops->urllist,
+				    c->rootkey, url);
+			}
+			verbose((stderr, "ok\n"));
+		}
+		if (cp->remotePresent) break;
+	}
+out:	freeLines(lurls, free);
+	if (cp->remotePresent) {
+		unless ((flags & SILENT) ||
+		    (ops->last && streq(ops->last, cp->data))) {
+			if (ops->last) free(ops->last);
+			ops->last = strdup(cp->data);
+			fprintf(stderr, "Source %s\n", cp->data);
+		}
+		freeLines(missing, free);
+		if (flist) *flist = 0;
+		return (cp->data);
+	}
+	if (flist) {
+		*flist = missing;
+	} else {
+		freeLines(missing, free);
+	}
+	fprintf(stderr, "%s: No other sources for %s known\n",
+	    prog, cp->path);
+	return (0);
 }

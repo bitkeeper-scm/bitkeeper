@@ -753,7 +753,7 @@ _superset() {
 	}
 
 	test X$PRODUCT = XPRODUCT && {
-		bk here check --superset > $TMP2 || {
+		bk here check -q --superset > $TMP2 || {
 			test $LIST = NO && {
 				rm -f $TMP1 $TMP2
 				exit 1

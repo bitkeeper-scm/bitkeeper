@@ -918,9 +918,11 @@ nested_check(void)
  * are deep nested in path.  For example,
  * if src, src/libc, and src/libc/stdio
  * and pass in src, then pass back only src/libc.
+ * If present_only, then don't list deep components that are
+ * not present.
  */
 private	char	**
-nested_deep(nested *nin, char *path)
+nested_deep(nested *nin, char *path, int present_only)
 {
 	nested	*n = 0;
 	comp	*c;
@@ -933,6 +935,7 @@ nested_deep(nested *nin, char *path)
 	assert(path);
 	len = strlen(path);
 	EACH_STRUCT(n->comps, c, i) {
+		if (present_only && !c->present) continue;
 		unless (strneq(c->path, path, len) && (c->path[len] == '/')) {
 			continue;
 		}
@@ -1022,7 +1025,7 @@ compRemove(char *path, struct stat *statbuf, void *data)
  * components under the given dir.
  */
 private int
-nestedWalkdir(nested *n, char *dir, walkfn fn)
+nestedWalkdir(nested *n, char *dir, int present_only, walkfn fn)
 {
 	char	*relpath;
 	int	ret;
@@ -1036,7 +1039,7 @@ nestedWalkdir(nested *n, char *dir, walkfn fn)
 	chdir(proj_root(p));
 	relpath = proj_relpath(p, dir);
 	assert(relpath);
-	list = nested_deep(n, relpath);
+	list = nested_deep(n, relpath, present_only);
 
 	ret = walkdir(relpath, fn, list);
 	freeLines(list, free);
@@ -1055,12 +1058,12 @@ nestedWalkdir(nested *n, char *dir, walkfn fn)
 int
 nested_emptyDir(nested *n, char *dir)
 {
-	return (!nestedWalkdir(n, dir, empty));
+	return (!nestedWalkdir(n, dir, 0, empty));
 }
 
 /*
- * Smart rmtree that respects the namespaces of deep components, even
- * if they are not present.
+ * Smart rmtree that respects the namespaces of deep components,
+ * if they are present.
  */
 int
 nested_rmcomp(nested *n, comp *c)
@@ -1068,7 +1071,7 @@ nested_rmcomp(nested *n, comp *c)
 	int	ret;
 	char	buf[MAXPATH];
 
-	unless (ret = nestedWalkdir(n, c->path, compRemove)) {
+	unless (ret = nestedWalkdir(n, c->path, 1, compRemove)) {
 		c->present = 0;
 	}
 	proj_reset(0);
@@ -1267,6 +1270,7 @@ urllist_rmURL(hash *h, char *rk, char *url)
 	char	*new, *t;
 	int	i, updated = 0;
 
+
 	unless (rk) {
 		/* remove every instance of url */
 		char	**keys = 0;
@@ -1354,6 +1358,8 @@ urllist_check(nested *n, u32 flags, char **urls)
 
 	/* foreach url see which components they have */
 	EACH(urls) {
+		verbose((stderr, "%s: searching %s...", prog, urls[i]));
+
 		/* find deltakeys found locally */
 		sprintf(buf, "bk -q@'%s' -Lr -Bstdin havekeys -FD - "
 		    "< '%s' 2> " DEVNULL_WR,
@@ -1361,9 +1367,13 @@ urllist_check(nested *n, u32 flags, char **urls)
 		f = popen(buf, "r");
 		assert(f);
 		while (t = fgetline(f)) {
-			if (p = separator(t)) *p = 0;
+			unless (p = separator(t)) {
+				/* rootkey, but not deltakey found */
+				continue;
+			}
+			*p = 0;
 			unless (c = nested_findKey(n, t)) {
-				if (p) p[-1] = ' ';
+				if (p) *p = ' ';
 				fprintf(stderr,
 				    "%s: bad data from '%s'\n-> %s\n",
 				    buf, t);
@@ -1385,14 +1395,16 @@ urllist_check(nested *n, u32 flags, char **urls)
 		 */
 		rc = pclose(f);
 		rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
-		if (rc == 16) rc = 0;		/* no repo at that pathname? */
-		if (rc == 8) {
-			unless (flags & SILENT) {
-				fprintf(stderr,
-				    "%s: unable to connect to saved URL: %s\n",
-				    prog, urls[i]);
-			}
+		if (rc == 16) {
+			verbose((stderr, "repo gone\n"));
+			rc = 0;		/* no repo at that pathname? */
+		} else if (rc == 8) {
+			verbose((stderr, "connect failure\n"));
 			if (flags & URLLIST_TRIM_NOCONNECT) rc = 0;
+		} else if (rc) {
+			verbose((stderr, "unknown failure\n"));
+		} else {
+			verbose((stderr, "ok\n"));
 		}
 		if (rc) {
 			/*
@@ -1400,11 +1412,6 @@ urllist_check(nested *n, u32 flags, char **urls)
 			 * on this URL so we need to save the existing
 			 * data.
 			 */
-			if (!(flags & SILENT) && (rc != 8)) {
-				fprintf(stderr,
-				    "%s: error contacting saved URL: %s\n",
-				    prog, urls[i]);
-			}
 			EACH_HASH(urllist) {
 				unless (c = nested_findKey(n, urllist->kptr)) {
 					continue;

@@ -739,6 +739,7 @@ clone2(remote *r)
 
 		unless (n = nested_init(0, 0, 0, 0)) {
 			fprintf(stderr, "%s: nested_init failed\n");
+			free(parent);
 			return (CLONE_ERROR);
 		}
 
@@ -768,9 +769,10 @@ clone2(remote *r)
 
 			urllist_addURL(urllist, cp->rootkey, parent);
 			cp->alias = 0;
-		}
-		free(parent);
 
+			/* pre-seed nested_populate() */
+			cp->remotePresent = 1;
+		}
 
 		/* just in case we exit early */
 		urllist_write(urllist);
@@ -793,14 +795,17 @@ clone2(remote *r)
 		ops.quiet = opts->quiet;
 		ops.verbose = opts->verbose;
 		ops.comps = 1; // product
+		ops.last = strdup(parent);
 		if (nested_populate(n, 0, &ops)) {
 nested_err:		fprintf(stderr, "clone: component fetch failed, "
 			    "only product is populated\n");
 			nested_free(n);
+			free(parent);
 			return (CLONE_ERROR);
 		}
 		opts->comps = ops.comps;
 		nested_free(n);
+		free(parent);
 	}
 	if (!didcheck && (checkfiles || full_check())) {
 		/* undo already runs check so we only need this case */
