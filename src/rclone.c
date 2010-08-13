@@ -573,7 +573,7 @@ private int
 send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 {
 	FILE	*f, *fnull;
-	int	rc;
+	int	i, rc;
 	u32	extra = 1, m = 0, n;
 	char	msgfile[MAXPATH];
 
@@ -592,6 +592,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.debug) fprintf(f, " -d");
 	unless (opts.quiet) fprintf(f, " -v");
+	EACH(opts.aliases) fprintf(f, " '-s%s'", opts.aliases[i]);
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
 	fputs("\n", f);
 
