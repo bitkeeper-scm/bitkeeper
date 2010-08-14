@@ -130,6 +130,8 @@ typedef struct {
 	char	*toplev;	// name of toplevel proc
 	jmp_buf	jmp;		// for syntax error longjmp bail out
 	char	*fnhook;	// name of function-trace proc
+	int	expr_level;	// compile_expr() recursion depth
+	int	call_level;	// compile_expr() level of last fn call
 } Linterp;
 
 /*

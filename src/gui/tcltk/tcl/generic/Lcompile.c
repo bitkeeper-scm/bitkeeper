@@ -150,6 +150,9 @@ private void	emit_instrForLOp(Expr *expr);
 private void	emit_jmp_back(TclJumpType jmp_type, int offset);
 private Jmp	*emit_jmp_fwd(int op, Jmp *next);
 private void	fixup_jmps(Jmp **jumps);
+private int	fnCallBegin();
+private void	fnCallEnd(int lev);
+private int	fnInArgList();
 private Frame	*frame_find(Frame_f flags);
 private void	frame_pop(void);
 private void	frame_push(void *node, char *name, Frame_f flags);
@@ -1668,6 +1671,8 @@ compile_expr(Expr *expr, Expr_f flags)
 	int	n = 0;
 	int	start_off = currOffset(L->frame->envPtr);
 
+	++L->expr_level;
+
 	/* The compile_xxx returns indicate whether they pushed anything. */
 	unless (expr) return (0);
 	switch (expr->kind) {
@@ -1709,6 +1714,7 @@ compile_expr(Expr *expr, Expr_f flags)
 		track_cmd(start_off, expr);
 	}
 
+	--L->expr_level;
 	return (n);
 }
 
@@ -1796,9 +1802,8 @@ ispatternfn(char *name, Expr **foo, Expr **Foo_star, Expr **opts, int *nopts)
 private int
 compile_fnCall(Expr *expr)
 {
-	int	expand, i, nopts;
-	int	num_parms = 0;
-	int	typchk = FALSE;
+	int	expand, i, level, nopts;
+	int	num_parms = 0, typchk = FALSE;
 	char	*name;
 	Expr	*foo, *Foo_star, *opts, *p;
 	Sym	*sym;
@@ -1814,7 +1819,9 @@ compile_fnCall(Expr *expr)
 		}
 	}
 
-	/* Check for an (expand) or (expand all) in the arg list. */
+	level = fnCallBegin();
+
+	/* Check for an (expand) in the arg list. */
 	expand = 0;
 	for (p = expr->b; p; p = p->next) {
 		if (isexpand(p)) {
@@ -1896,6 +1903,7 @@ compile_fnCall(Expr *expr)
 		emit_invoke(num_parms+1);
 	}
 	if (typchk) L_typeck_fncall(formals, expr);
+	fnCallEnd(level);
 	return (1);  // stack effect
 }
 
@@ -2159,6 +2167,9 @@ compile_unOp(Expr *expr)
 		expr->type = expr->a->type;
 		break;
 	    case L_OP_EXPAND:
+		unless (fnInArgList()) {
+			L_errf(expr, "(expand) illegal in this context");
+		}
 		compile_expr(expr->a, L_PUSH_VAL);
 		TclEmitInstInt4(INST_EXPAND_STKTOP,
 				L->frame->envPtr->currStackDepth,
@@ -2187,7 +2198,7 @@ compile_unOp(Expr *expr)
 private int
 compile_binOp(Expr *expr, Expr_f flags)
 {
-	int	expand, n;
+	int	expand, level, n;
 	Type	*type;
 	Expr	*e;
 
@@ -2302,6 +2313,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 		expr->type = L_string;
 		return (1);
 	    case L_OP_LIST:
+		level = fnCallBegin();
 		for (e = expr, expand = 0; e; e = e->b) {
 			if (e->a && isexpand(e->a)) {
 				TclEmitOpcode(INST_EXPAND_START,
@@ -2348,6 +2360,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 			emit_invoke(n+1);
 		}
 		expr->type = type;
+		fnCallEnd(level);
 		return (1);
 	    case L_OP_KV:
 		n  = compile_expr(expr->a, L_PUSH_VAL);
@@ -4947,6 +4960,38 @@ track_cmd(int codeOffset, void *node)
 	ePtr->line = (int *) ckalloc(sizeof(int));
 	ePtr->nline = 1;
 	eclPtr->nuloc ++;
+}
+
+/*
+ * API for tracking when we are compiling a function argument. This is
+ * used to check whether an (expand) operator is being used as a
+ * function argument (OK) or as something else (error).
+ *
+ * fnCallBegin:		call just before compiling a fn call
+ * fnCallEnd:		call just after compiling a fn call
+ * fnInArgList:		returns 1 if we are just starting to compile a
+ *			fn call arg; returns 0 if we're either outside of a
+ *			fn call or nested within an expression inside of
+ *			an arg:
+ *			    foo(x)     -- true
+ *			    foo(x+y)   -- false
+ */
+private int
+fnCallBegin()
+{
+	int old = L->call_level;
+	L->call_level = L->expr_level;
+	return (old);
+}
+private void
+fnCallEnd(int lev)
+{
+	L->call_level = lev;
+}
+private int
+fnInArgList()
+{
+	return (L->expr_level == (L->call_level + 1));
 }
 
 char *

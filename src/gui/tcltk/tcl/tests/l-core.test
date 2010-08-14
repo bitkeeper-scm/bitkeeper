@@ -1076,9 +1076,9 @@ test proc-1.8 {test (expand)} -body {
 string proc_1_8_concat(...args)
 {
 	poly	p;
-	string	s;
+	string	s = "";
 
-	foreach (p in args) s = sprintf("%s%s", s, p);
+	foreach (p in args) s .= p;
 	return (s);
 }
 int proc_1_8_sum(int a, int b, int c)
@@ -1099,6 +1099,7 @@ void proc_1_8()
 	int	i1[] = { 10 };
 	int	i2[] = { 20, 30 };
 	int	i3[] = { 40, 50, 60 };
+	string	s;
 	string	sa[] = { "a", "b", "c" };
 	string	sb[] = { "d", "e" };
 	poly	p = { "a", "b", "c" };
@@ -1157,9 +1158,46 @@ void proc_1_8()
 	unless ((length(sa) == 2) && (sa[0] eq "1") && (sa[1] eq "2")) {
 		puts("bad 42.2");
 	}
+
+	/*
+	 * Test some expands inside of nested calls to verify that
+	 * they are not mistakenly caught as errors.
+	 */
+	s = proc_1_8_concat((expand){"1"},
+			    proc_1_8_concat((expand){"2"},
+					    proc_1_8_concat((expand){"3","4"}),
+					    (expand){"5","6"}),
+			    (expand){"7"});
+	unless (s eq "1234567") puts("bad 45.1");
 }
 proc_1_8();
 } -output {}
+
+test proc-1.9 {test (expand) errors} -body {
+#lang L --nowarn
+private int foo(...args) { return (0); }
+void proc_1_9()
+{
+	string	a[];
+
+	foo((expand)a + 1);
+	foo(1 ? (expand)a : 1);
+	{(expand)a + 1};
+	{1 ? (expand)a : 1};
+	{"x", {1 ? (expand)a : 1}};
+	(expand)a;
+	foo((expand)a, (expand)a+1);
+	foo("x", foo((expand)a+1));
+}
+} -returnCodes error -match regexp -result {.*6: L Error: \(expand\) illegal in this context
+.*7: L Error: \(expand\) illegal in this context
+.*8: L Error: \(expand\) illegal in this context
+.*9: L Error: \(expand\) illegal in this context
+.*10: L Error: \(expand\) illegal in this context
+.*11: L Error: \(expand\) illegal in this context
+.*12: L Error: \(expand\) illegal in this context
+.*13: L Error: \(expand\) illegal in this context
+}
 
 test var-1.0 {Test L variable assignment and reference} -body {
 #lang L
