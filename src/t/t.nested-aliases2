@@ -322,7 +322,7 @@ bk clone $Q bk://localhost:$P/proj-clone dash-h || {
 cd dash-h
 bk here > GOT
 cat > WANT <<EOF
-default
+DEFAULT
 EOF
 cmpfiles WANT GOT
 echo OK

@@ -160,7 +160,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	unless (rmAlias) reserved = chkReserved(alias, 1);
 	assert(reserved >= 0);
 	unless (rmAlias || reserved || validName(alias)) usage();
-	if (reserved && !(streq(alias, "default") || streq(alias, "here"))) {
+	if (reserved && !streq(alias, "here")) {
 		error("%s: reserved name \"%s\" may not be changed.\n",
 		    prog, alias);
 		usage();
@@ -447,9 +447,9 @@ dbAdd(hash *aliasdb, char *alias, char **aliases)
 		list = splitLine(val, "\r\n", 0);
 	}
 	EACH(aliases) {
-		if (streq(alias, "here") || streq(alias, "there")) {
-			error("%s: not allowed as value: %s\n",
-			    prog, alias);
+		if (streq(aliases[i], "here") || streq(aliases[i], "there")) {
+			error("%s: not allowed as value: %s in key %s\n",
+			    prog, aliases[i], alias);
 			goto err;
 		}
 		list = addLine(list, strdup(aliases[i]));
@@ -577,7 +577,7 @@ dbChk(nested *n, hash *aliasdb)
 				error("%s: bad case for key: %s\n",
 				    prog, key);
 				total++;
-			} else unless (streq(key, "default")) {
+			} else {
 				error("%s: illegal aliasdb key: %s\n",
 				    prog, key);
 				total++;
@@ -739,7 +739,7 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, aopts *op)
 	}
 	alias = aliases[1];	// firstLine(aliases);
 	/*
-	 * print the val entry from the db; fake default if not there
+	 * print the val entry from the db
 	 */
 	if (i = chkReserved(alias, 1)) {
 		assert(i >= 0);
@@ -748,8 +748,7 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, aopts *op)
 				items = addLine(items, strdup(n->here[j]));
 			}
 			goto preprint;
-		}
-		unless (streq(alias, "default")) {
+		} else {
 			error("%s: use -e when expanding "
 			    "reserved alias; %s\n", prog, alias);
 			goto err;
@@ -761,9 +760,7 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, aopts *op)
 		goto err;
 	}
 	val = hash_fetchStr(aliasdb, alias);
-	if (!val && streq(alias, "default")) {
-		val = "all";
-	} else if (!val) {
+	unless (val) {
 		error("%s: no alias: %s\n", prog, alias);
 		goto err;
 	}
@@ -840,11 +837,7 @@ expand(nested *n, hash *aliasdb, hash *keys, hash *seen, char *alias)
 	}
 
 	unless (mval = hash_fetchStr(aliasdb, alias)) {
-		if (streq("default", alias)) {
-			rc = expand(n, aliasdb, keys, seen, "all");
-		} else {
-			rc = value(n, keys, alias);
-		}
+		rc = value(n, keys, alias);
 		goto done;
 	}
 
@@ -950,6 +943,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 				errors++; /* case problem */
 			} else if (streq(alias, "here") ||
 			    streq(alias, "there")) {
+				/* 'here' will auto-expand */
 				if (fix) {
 					EACH_INDEX(n->here, j) {
 						addkeys = addLine(
@@ -1105,7 +1099,7 @@ chkReserved(char *alias, int fix)
 	int	rc = 0;
 	char	**wp, *w;
 	char	*reserved[] = {
-		"all", "default", "here", "there",
+		"all", "here", "there",
 		"new", "add", "rm", "set", "list", 0};
 
 	for (wp = reserved; (w = *wp); wp++) {

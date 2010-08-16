@@ -605,7 +605,7 @@ _partition() {
 	}
 
 	# everything is here
-	bk here set default || exit 1
+	bk here set ALL || exit 1
 
 	# Now that it's a product, make a cset for new gone work
 	bk -pN > $WA/newgone

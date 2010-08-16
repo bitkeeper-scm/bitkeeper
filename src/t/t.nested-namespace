@@ -5,7 +5,7 @@
 echo $N Setup the repo...............................................$NL
 nested parent
 # prep here file to not be all
-bk alias set $Q default ./gcc ./gdb
+bk alias set $Q DEFAULT ./gcc ./gdb
 # Assertions
 test -z "`bk config checkout`" || fail checkout assumption failed
 # Set up a non-deep repo that has some path

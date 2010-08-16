@@ -4,12 +4,12 @@ echo $N Test default alias setup ....................................$NL
 nested project
 # That gives us gcc and gdb
 # and a default alias in the db defined to all
-echo default > WANT
+echo DEFAULT > WANT
 bk alias > GOT
 cmpfiles WANT GOT
 # 
 echo all > WANT
-bk alias default > GOT
+bk alias DEFAULT > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -31,7 +31,7 @@ echo $N Test showing keys with the list command .....................$NL
 bk log -r1.0 -nd:KEY: gcc/ChangeSet gdb/ChangeSet | bk _sort > WANT
 bk alias -ek all > GOT
 cmpfiles WANT GOT
-bk alias -ek default > GOT
+bk alias -ek DEFAULT > GOT
 cmpfiles WANT GOT
 (echo gcc; echo gdb) | bk alias -ek - > GOT
 cmpfiles WANT GOT
@@ -50,7 +50,7 @@ echo $N Test showing paths with the list command ....................$NL
 printf "./gcc\n./gdb\n" > WANT
 bk alias -e all > GOT
 cmpfiles WANT GOT
-bk alias -e default > GOT
+bk alias -e DEFAULT > GOT
 cmpfiles WANT GOT
 (echo gcc; echo gdb) | bk alias -e - > GOT
 cmpfiles WANT GOT
@@ -84,7 +84,7 @@ echo $N And show default can be empty ...............................$NL
 bk alias set $Q DEFAULT || fail
 bk clone $Q . ../copy4 || fail
 cd ../copy4
-test `bk here` = "default" || fail
+test `bk here` = "DEFAULT" || fail
 test `bk comps -h | wc -l` -eq 0 || fail
 echo OK
 

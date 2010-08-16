@@ -67,6 +67,7 @@ cat <<EOF > WANT
   1.1 prod_file new
   1.0 prod_file 
 1.2 ChangeSet attach gcc, gdb
+  1.2 BitKeeper/etc/aliases Create alias DEFAULT
   1.2 gcc/ChangeSet attach gcc
   1.1 gcc/ChangeSet Initial repository create
     1.1 gcc/BitKeeper/etc/collapsed new
@@ -188,6 +189,9 @@ cat <<EOF > WANT
 </CSET>
 <CSET rev=1.2>
   attach gcc, gdb
+  <FILE path=BitKeeper/etc/aliases rev=1.2>
+      bk@bk_regression.bk
+  </FILE>
   <COMPONENT path=gcc/ChangeSet rev=1.2>
     attach gcc
   </COMPONENT>
@@ -338,6 +342,7 @@ cat <<EOF > WANT
   1.1 prod_file new
   1.0 prod_file 
 1.2 ChangeSet attach gcc, gdb
+  1.2 BitKeeper/etc/aliases Create alias DEFAULT
   1.2 gcc/ChangeSet attach gcc
   1.1 gcc/ChangeSet Initial repository create
     1.1 gcc/BitKeeper/etc/collapsed new
@@ -386,6 +391,7 @@ cat <<EOF > WANT
   1.1 prod_file new
   1.0 prod_file 
 1.2 ChangeSet attach gcc, gdb
+  1.2 BitKeeper/etc/aliases Create alias DEFAULT
 1.1 ChangeSet Initial repository create
   1.1 BitKeeper/etc/aliases new
   1.0 BitKeeper/etc/aliases 
@@ -761,6 +767,7 @@ $end {
 cat <<'EOF' > WANT
 <LIST>
   ChangeSet|1.2
+    BitKeeper/etc/aliases|1.2
   <LIST>
     newcc/ChangeSet|1.2
     newcc/ChangeSet|1.1

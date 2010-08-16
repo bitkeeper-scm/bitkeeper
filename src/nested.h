@@ -161,6 +161,9 @@ int	urllist_write(hash *urllist);
 #define	URLLIST_SUPERSET	0x20
 int	urllist_check(nested *n, u32 flags, char **urls);
 
+/* clone.c */
+char	**clone_defaultAlias(nested *n);
+
 /* locking.c */
 
 char	*nested_wrlock(project *p);

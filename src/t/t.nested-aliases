@@ -40,7 +40,7 @@ cd "$HERE"
 bk clone $Q project clone
 cd clone
 bk here > GOT
-echo default > WANT
+echo DEFAULT > WANT
 cmpfiles GOT WANT
 echo OK
 
@@ -204,7 +204,7 @@ echo OK
 
 echo $N Set up by populating all ....................................$NL
 cd project-nm
-bk alias set $Q HERE default || exit 1
+bk alias set $Q HERE DEFAULT || exit 1
 cat > WANT <<EOF
 ./gcc
 ./gcc/nm
@@ -223,10 +223,10 @@ cd project-just-gdb
 bk alias -k here > GOT
 (cd gdb; bk id) > WANT
 cmpfiles GOT WANT
-bk alias set default ./gdb || exit 1
-bk alias set $Q here default || exit 1
+bk alias set DEFAULT ./gdb || exit 1
+bk alias set $Q here DEFAULT || exit 1
 bk here > GOT
-echo default > WANT
+echo DEFAULT > WANT
 cmpfiles GOT WANT
 bk comps -h > GOT
 echo ./gdb > WANT
@@ -614,20 +614,20 @@ cd "$HERE/project"
 bk alias set $Q HERE ALL || fail
 # setup a default because none has been defined.
 # Then try to replace it
-bk aliases new -C default junk || fail
-bk aliases set -C default ./gcc || fail
-bk alias -k default > GOT
+bk aliases new -C DEFAULT junk || fail
+bk aliases set -C DEFAULT ./gcc || fail
+bk alias -k DEFAULT > GOT
 bk changes -qr1.0 -nd:KEY: gcc > WANT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Alias -a of missing components and check fails ..............$NL
 cd "$HERE/project-nm"
-bk -qA changes -r+ -nd:ROOTKEY: | bk alias set -C default -
+bk -qA changes -r+ -nd:ROOTKEY: | bk alias set -C DEFAULT -
 bk -r check || exit 1
 rm -fr junk
 bk -r check 2> ERR && { echo fix test; exit 1; }
-grep -q "error expanding alias 'default' because 'junk' is not present" ERR || {
+grep -q "error expanding alias 'DEFAULT' because 'junk' is not present" ERR || {
 	echo wrong msg
 	cat ERR
 	exit 1

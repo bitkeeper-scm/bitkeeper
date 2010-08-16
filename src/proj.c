@@ -428,8 +428,15 @@ proj_configval(project *p, char *key)
 
 	assert(db);
 	unless (ret = mdbm_fetch_str(db, key)) {
+		/* compat with old versions */
 		if (streq(key, "clock_skew")) {
 			ret = mdbm_fetch_str(db, "trust_window");
+		}
+		if (streq(key, "mail_proxy")) {
+			ret = mdbm_fetch_str(db, "mail-proxy");
+		}
+		if (streq(key, "upgrade_url")) {
+			ret = mdbm_fetch_str(db, "upgrade-url");
 		}
 	}
 	return (ret ? ret : "");

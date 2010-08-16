@@ -150,8 +150,8 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate alias not populated is an error...................$NL
-bk here rm default 2>ERR && exit 1
-grep -q "here: default not in HERE" ERR || {
+bk here rm DEFAULT 2>ERR && exit 1
+grep -q "here: DEFAULT not in HERE" ERR || {
 	echo failed
 	cat ERR
 	exit 1

@@ -79,9 +79,9 @@ bk clone $Q -scomp1 repoA repoC
 #   4. pull REPO_B <- REPO_C
 cd repoB
 bk pull $Q ../repoC 2>ERR && fail -f ERR should fail
-sed 's/build.*ws\/repoC/build...\/ws\/repoC/' < ERR > ERR2
+sed 's/file:.*ws\/repoC/file:\/\/...\/ws\/repoC/' < ERR > ERR2
 cat <<EOF > WANT
-pull: comp2 is missing in file:///build.../ws/repoC
+pull: comp2 is missing in file://.../ws/repoC
 pull: update aborted due to errs with 1 components.
 EOF
 cmpfiles ERR2 WANT
