@@ -537,7 +537,7 @@ test -s LIST && {
 	cat LIST
 	exit 1
 }
-bk here add $Q default || exit 1
+bk here add $Q DEFAULT || exit 1
 bk comps -h > GOT
 cat > WANT <<EOF
 ./gcc
@@ -601,7 +601,7 @@ done
 echo OK
 
 echo $N Test populate in repair mode with all components missing ....$NL
-echo default > BitKeeper/log/HERE
+echo DEFAULT > BitKeeper/log/HERE
 bk here add $Q || exit 1
 bk comps -h > GOT
 cat > WANT <<EOF

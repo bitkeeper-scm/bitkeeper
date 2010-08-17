@@ -125,13 +125,9 @@ When modifying an alias the command line can include '-' instead of
 the arguments and the list of aliases to add or remove will be read
 from standard input instead.
 .SH PRE-DEFINED OR RESERVED ALIASES
-.TP "DEFAULT "
+.TP "THERE "
 .B .
 Reserved name that means the product repository.
-.tp
-.B \-
-If a single trailing dash is the only component then the list of components
-are read from the standard input.
 .tp
 ALL
 This predefined alias means all components (as well as the product) and
@@ -143,13 +139,6 @@ missing components).
 ..
 If you try and expand ALL and there are missing
 components the expansion will fail.
-.tp
-DEFAULT
-This alias is what is cloned when no aliases or components are specified.
-It defaults to "ALL" but it may be changed to make the default set
-of components to be less than all.
-The default can even be empty so only the product will get cloned by
-default.
 .tp
 THERE
 This is another alias which may not be modified and it means all the
@@ -183,9 +172,9 @@ Reserved name, conflicts with the "bk alias new" command.
 list
 Reserved name, conflicts with the "bk alias list" command.
 .LP
-The predefined aliases ALL, DEFAULT, HERE, THERE, are case insensitive,
-i.e., "default" and
-"DEFAULT" mean the same thing.
+The predefined aliases ALL, HERE, THERE, are case insensitive,
+i.e., "here" and
+"HERE" mean the same thing.
 In all other cases the names are case sensitive.
 .LP
 .SH OPTIONS

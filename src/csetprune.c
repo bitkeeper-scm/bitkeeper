@@ -790,9 +790,6 @@ newFile(char *path, int ser)
 		perror(path);
 		goto err;
 	}
-	if (streq(path, ALIASES)) {
-		fprintf(f, "@default\nall\n");	/* from setup.c */
-	}
 	if (fclose(f)) {
 		perror(prog);
 		goto err;

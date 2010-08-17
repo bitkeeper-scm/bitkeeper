@@ -107,6 +107,15 @@ typedef struct {
 	u32	force:1;	// -f: force unpopulate with local diffs
 	u32	runcheck:1;	// follow up with a partial check of prod
 	int	comps;		// number of comps we worked on
+
+	/* internal state */
+
+	/* copy of nested_populated() args */
+	nested	*n;
+	char	**urls;
+	hash	*urllist;
+	char	*last;		/* last URL printed */
+	hash	*seen;		/* URLs processed */
 } popts;
 
 int	isComponent(char *path);
@@ -142,7 +151,7 @@ int	aliasdb_chkAliases(nested *n, hash *aliasdb,
 
 
 char	**urllist_fetchURLs(hash *h, char *rk, char **space);
-int	urllist_addURL(hash *h, char *rk, char *url);
+void	urllist_addURL(hash *h, char *rk, char *url);
 int	urllist_rmURL(hash *h, char *rk, char *url);
 void	urllist_dump(char *name);
 int	urllist_normalize(hash *urllist, char *url);
@@ -151,6 +160,9 @@ int	urllist_write(hash *urllist);
 #define URLLIST_TRIM_NOCONNECT  0x10
 #define	URLLIST_SUPERSET	0x20
 int	urllist_check(nested *n, u32 flags, char **urls);
+
+/* clone.c */
+char	**clone_defaultAlias(nested *n);
 
 /* locking.c */
 

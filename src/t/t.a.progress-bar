@@ -1982,10 +1982,10 @@ bk here rm $Q comp1 || fail
 cd ..
 mv product3 product3-renamed
 bk clone clone3 clone3-clone >OUT 2>&1 && fail -f OUT
-grep -q 'failed to fetch component comp1' OUT || fail
-chknumbars OUT 2 || fail $msg
-chkblanks OUT 0 || fail $msg
-chkoutput OUT '.' || fail $msg
+grep -q 'No other sources for comp1 known' OUT || fail -f OUT
+chknumbars OUT 2 || fail -f OUT $msg
+chkblanks OUT 0 || fail -f OUT $msg
+chkoutput OUT '.' || fail -f OUT $msg
 mv product3-renamed product3 || fail
 echo OK
 
@@ -2125,10 +2125,10 @@ cd ../..
 bk clone bad-product3 bad-product3-2 >OUT 2>&1 && fail -f OUT
 grep -q 'Missing file' OUT || fail
 grep -q 'check failed' OUT || fail
-chkpasses OUT 'check' || fail $msg
-chknumbars OUT 5 || fail $msg
-chkblanks OUT 0 || fail $msg
-chkoutput OUT '.' comp1 comp2 || fail $msg
+chkpasses OUT 'check' || fail -f OUT $msg
+chknumbars OUT 5 || fail -f OUT $msg
+chkblanks OUT 0 || fail -f OUT $msg
+chkoutput OUT '.' comp1 comp2 || fail -f OUT $msg
 bk _rm -rf bad-product3 bad-product3-2
 echo OK
 
@@ -2517,9 +2517,9 @@ bk here rm $Q comp1 || fail
 cd ..
 mv product3 product3-renamed
 bk clone -q clone3 clone3-clone >OUT 2>&1 && fail -f OUT
-grep -q 'failed to fetch component comp1' OUT || fail
-chknumbars OUT 0 || fail $msg
-chkblanks OUT 0 || fail $msg
+grep -q 'No other sources for comp1 known' OUT || fail -f OUT
+chknumbars OUT 0 || fail -f OUT $msg
+chkblanks OUT 0 || fail -f OUT $msg
 mv product3-renamed product3 || fail
 echo OK
 
@@ -2581,10 +2581,10 @@ add check-new || fail
 bk _mv SCCS/s.check-new x || fail
 cd ../..
 bk clone -q bad-product3 bad-product3-2 >OUT 2>&1 && fail -f OUT
-[ `cat OUT | wc -l` = 6 ] || fail
-grep -q 'Missing file' OUT || fail
-grep -q 'check failed' OUT || fail
-chknumbars OUT 0 || fail $msg
+[ `cat OUT | wc -l` = 5 ] || fail -f OUT
+grep -q 'Missing file' OUT || fail -f OUT
+grep -q 'check failed' OUT || fail -f OUT
+chknumbars OUT 0 || fail -f OUT $msg
 bk _rm -rf bad-product3 bad-product3-2
 echo OK
 
@@ -3028,9 +3028,9 @@ bk here rm $Q comp1 || fail
 cd ..
 mv product3 product3-renamed
 bk clone -v clone3 clone3-clone >OUT 2>&1 && fail -f OUT
-grep -q 'failed to fetch component comp1' OUT || fail
-chkoutput OUT '.' || fail $msg
-chkblanks OUT 0 || fail $msg
+grep -q 'No other sources for comp1 known' OUT || fail -f OUT
+chkoutput OUT '.' || fail -f OUT $msg
+chkblanks OUT 0 || fail -f OUT $msg
 mv product3-renamed product3 || fail
 echo OK
 

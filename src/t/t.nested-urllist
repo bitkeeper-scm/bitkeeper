@@ -112,7 +112,7 @@ cd ..
 cd cloneB
 bk here where gcc | grep -q "$HERE/cloneA" || fail 12
 bk here add $Q gcc 2>ERR && fail 13
-grep -q 'component not present' ERR || fail 14
+grep -q 'No other sources for gcc known' ERR || fail -f ERR
 bk here where gcc | grep -q "$HERE/cloneA" && fail 15
 cd ..
 rm -rf cloneA cloneB
@@ -140,7 +140,7 @@ bk alias set $Q HERE `bk comps -h` || fail 8
 bk here rm $Q -f gcc || fail 9
 bk here where gcc | grep -q "$HERE/cloneA" || fail 10
 bk here add $Q gcc 2>ERR && fail 11
-grep -q 'component missing cset' ERR || fail 12
+grep -q 'No other sources for gcc known' ERR || fail -f ERR
 bk here where gcc | grep -q "$HERE/cloneA" && fail 13
 cd ..
 rm -rf cloneA cloneB
@@ -160,8 +160,8 @@ bk here rm $Q -f gcc || fail 5
 bk here where gcc | grep -q "bk://.*:$P2/product" || fail 6
 # Attempt to populate cloneA/gcc from the now-now-existent bkd.
 # This should fail and NOT prune cloneA's urllist.
-bk here add $Q gcc 2>ERR && fail 7
-grep -q "cannot connect" ERR || fail 8
+bk here add gcc 2>ERR && fail 7
+grep -q "connect failure" ERR || fail -f ERR
 bk here where gcc | grep -q "bk://.*:$P2/product" || fail 9
 cd ..
 rm -rf cloneA
@@ -200,8 +200,7 @@ bk here where gcc | grep -q "$HERE/product2" || fail 5
 # Remove product2 and try to add gcc (this should fail).
 rm -rf ../product2
 bk here add $Q gcc 2>ERR && fail 6
-grep -q 'here: failed to fetch component gcc' ERR || fail 10
-grep -q 'product2: component not present' ERR || fail 11
+grep -q 'here: No other sources for gcc known' ERR || fail -f ERR
 # Now try to add gcc with -@ from cloneB (this should work).
 bk here add $Q -@../cloneB gcc || fail 8
 bk here where gcc | grep -q "$HERE/cloneB" || fail 9
@@ -252,6 +251,9 @@ bk here where gcc | grep -q "$HERE/clone1" && fail 11
 bk here where gcc | grep -q "$HERE/clone8" || fail 12
 bk here where gdb | grep -q "$HERE/clone1" || fail 13
 bk here where gdb | grep -q "$HERE/clone8" || fail 14
+# check that it saves timestamps
+grep "$HERE/clone8" BitKeeper/log/urllist | grep -q '|' || \
+	fail -f BitKeeper/log/urllist no time_t
 echo OK
 
 echo $N Push does not add dest for non-present components ...........$NL
@@ -305,7 +307,7 @@ bk clone $Q clone1 cloneD || fail 2
 bk clone $Q clone1 cloneE || fail 3
 # Add cloneD to cloneC's urllist (gcc and gdb).
 cd cloneC
-bk here check -@../cloneD
+bk here check -@../cloneD $Q || fail
 cd ..
 # Create a cset in cloneE/gcc.
 cd cloneE/gcc
@@ -333,7 +335,7 @@ bk clone $Q clone1 cloneD || fail 2
 bk clone $Q clone1 cloneE || fail 3
 # Add cloneD to cloneC's urllist (gcc and gdb).
 cd cloneC
-bk here check -@../cloneD
+bk here check -@../cloneD $Q || fail
 cd ..
 # Create a cset in cloneE/gcc.
 cd cloneE/gcc
@@ -361,7 +363,7 @@ bk clone $Q clone1 cloneD || fail 2
 bk clone $Q clone1 cloneE || fail 3
 # Add cloneD to cloneC's urllist (gcc and gdb).
 cd cloneC
-bk here check -@../cloneD
+bk here check -@../cloneD $Q || fail
 cd ..
 # Create a cset in cloneE/gcc.
 cd cloneE/gcc
@@ -389,7 +391,7 @@ bk clone $Q clone1 cloneD || fail 2
 bk clone $Q clone1 cloneE || fail 3
 # Add cloneD to cloneC's urllist (gcc and gdb).
 cd cloneC
-bk here check -@../cloneD
+bk here check -@../cloneD $Q || fail
 cd ..
 # Create a cset in cloneE/gcc.
 cd "$HERE/cloneE/gcc"
@@ -459,7 +461,7 @@ echo $N Urllist check: repo with no components ......................$NL
 cd "$HERE"
 bk setup -P -fc"$BK_CACHE/commercial.config" prod-empty || fail
 cd prod-empty
-bk here check || fail 2
+bk here check $Q || fail 2
 cd ..
 echo OK
 
@@ -480,7 +482,7 @@ cd ..
 # clone gets removed from clone2's urllist (leaving it empty).
 rm -rf clone
 cd clone2
-bk here check || fail 6
+bk here check $Q || fail 6
 test -z "`bk here where gcc`" || fail 7
 echo OK
 
@@ -503,7 +505,7 @@ cd clone
 bk alias set $Q HERE `bk comps -h` || fail 6
 bk here rm $Q -f gcc || fail 7
 cd ../clone2
-bk here check || fail 8
+bk here check $Q || fail 8
 test -z "`bk here where gcc`" || fail 9
 bk here where gdb | grep -q "$HERE/clone" || fail 10
 echo OK
@@ -524,7 +526,7 @@ bk here where gcc | grep -q "bk://.*:$P2/product" || fail 6
 # Check clone's urllist.  Should get error msgs but urllist
 # should not be pruned.
 bk here check 2>ERR && fail 7
-grep -q "unable to connect" ERR || fail 8
+grep -q "connect failure" ERR || fail 8
 grep -q "no valid urls found" ERR || fail 9
 bk here where gcc | grep -q "bk://.*:$P2/product" || fail 10
 bk here where gdb | grep -q "bk://.*:$P2/product" || fail 11
@@ -546,11 +548,11 @@ bk here where gcc | grep -q "bk://.*:$P2/product" || fail 6
 # Check -c clone's urllist.  Should get error msgs and urllist
 # should be pruned.
 bk here check -c 2>ERR && fail 7
-grep -q "unable to connect" ERR || fail 8
-grep -q "no valid urls found" ERR || fail 9
+grep -q "connect failure" ERR || fail -f ERR
+grep -q "no valid urls found" ERR || fail -f ERR
 test -z "`bk here where`" || fail 10
 bk here check 2>ERR && fail 11
-grep -q "no valid urls found" ERR || fail 12
+grep -q "no valid urls found" ERR || fail -f ERR
 echo OK
 
 echo $N Demonstrate component named rm problem.......................$NL
@@ -583,17 +585,17 @@ EOF
 bk here add -@ssh://bad2.bitkeeper.com:1/ ./gdb 2> ERR && {
    fail -f ERR should have failed
 }
-sed -ne 's/ cannot connect//;s/ unknown failure//;/^	/p' <ERR > LIST
 cat <<EOF > WANT
-	ssh://bad2.bitkeeper.com:1/:
-	$HERE/junk: component not present
-	bk://localhost:1/:
-	http://localhost:1/:
-	bk://bad.bitkeeper.com:1/:
-	http://bad.bitkeeper.com:1/:
-	ssh://localhost:1/:
-	rsh://bad.bitkeeper.com:1/:
-	bk://!junkurl:1/: bad url
+here: searching ssh://bad2.bitkeeper.com:1/...connect failure
+here: searching $HERE/junk...repo gone
+here: searching bk://localhost:1/...connect failure
+here: searching http://localhost:1/...connect failure
+here: searching bk://bad.bitkeeper.com:1/...connect failure
+here: searching http://bad.bitkeeper.com:1/...connect failure
+here: searching ssh://localhost:1/...connect failure
+here: searching rsh://bad.bitkeeper.com:1/...connect failure
+here: searching bk://!junkurl:1/...unknown failure
+here: No other sources for gdb known
 EOF
-cmpfiles WANT LIST
+cmpfiles WANT ERR
 echo OK

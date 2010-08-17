@@ -633,6 +633,41 @@ done:	disconnect(r);
 	return (clonerc);
 }
 
+char **
+clone_defaultAlias(nested *n)
+{
+	char	*defalias;
+	char	*t;
+	hash	*aliasdb;
+
+	defalias = proj_configval(0, "clone_default");
+	if (streq(defalias, "")) defalias = "all";
+
+	t = defalias + strlen(defalias);
+	while (isspace(t[-1])) *--t = 0;
+
+	unless (streq(defalias, ".") ||
+	    strieq(defalias, "here") ||
+	    strieq(defalias, "there") ||
+	    strieq(defalias, "all")) {
+
+		aliasdb = aliasdb_init(n, n->proj, 0, 1, 0);
+		t = hash_fetchStr(aliasdb, defalias);
+		aliasdb_free(aliasdb);
+
+		unless (t) {
+			fprintf(stderr, "%s: '%s' is not a valid alias\n"
+			    "clone_default: %s\n"
+			    "Please run 'bk config -v' to see where '%s' "
+			    "came from.\n",
+			    prog, defalias, defalias, defalias);
+			return (0);
+		}
+	}
+
+	return (addLine(0, strdup(defalias)));
+}
+
 private	clonerc
 clone2(remote *r)
 {
@@ -739,6 +774,7 @@ clone2(remote *r)
 
 		unless (n = nested_init(0, 0, 0, 0)) {
 			fprintf(stderr, "%s: nested_init failed\n");
+			free(parent);
 			return (CLONE_ERROR);
 		}
 
@@ -768,15 +804,17 @@ clone2(remote *r)
 
 			urllist_addURL(urllist, cp->rootkey, parent);
 			cp->alias = 0;
-		}
-		free(parent);
 
+			/* pre-seed nested_populate() */
+			cp->remotePresent = 1;
+		}
 
 		/* just in case we exit early */
 		urllist_write(urllist);
-		if (emptyLines(opts->aliases)) {
-			opts->aliases =
-			    addLine(opts->aliases, strdup("default"));
+		unless (opts->aliases) {
+			unless (opts->aliases = clone_defaultAlias(n)) {
+				goto nested_err;
+			}
 		}
 		if (nested_aliases(n, n->tip, &opts->aliases, ".", 0)) {
 			freeLines(opts->aliases, free);
@@ -793,14 +831,17 @@ clone2(remote *r)
 		ops.quiet = opts->quiet;
 		ops.verbose = opts->verbose;
 		ops.comps = 1; // product
+		ops.last = strdup(parent);
 		if (nested_populate(n, 0, &ops)) {
 nested_err:		fprintf(stderr, "clone: component fetch failed, "
 			    "only product is populated\n");
 			nested_free(n);
+			free(parent);
 			return (CLONE_ERROR);
 		}
 		opts->comps = ops.comps;
 		nested_free(n);
+		free(parent);
 	}
 	if (!didcheck && (checkfiles || full_check())) {
 		/* undo already runs check so we only need this case */

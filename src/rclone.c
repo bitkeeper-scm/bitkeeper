@@ -184,13 +184,15 @@ rclone_ensemble(remote *r)
 
 	url = remote_unparse(r);
 
-	unless (opts.aliases) opts.aliases = addLine(0, strdup("default"));
 	START_TRANSACTION();
 	urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
 	n = nested_init(0, opts.rev, 0, flags);
 	assert(n);
+	unless (opts.aliases) {
+		unless (opts.aliases = clone_defaultAlias(n)) goto out;
+	}
 	if (nested_aliases(n, n->tip, &opts.aliases, proj_cwd(), n->pending)) {
-		fprintf(stderr, "%s: unable to expand aliases\n");
+		fprintf(stderr, "%s: unable to expand aliases\n", prog);
 		rc = 1;
 		goto out;
 	}
@@ -573,7 +575,7 @@ private int
 send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 {
 	FILE	*f, *fnull;
-	int	rc;
+	int	i, rc;
 	u32	extra = 1, m = 0, n;
 	char	msgfile[MAXPATH];
 
@@ -592,6 +594,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.debug) fprintf(f, " -d");
 	unless (opts.quiet) fprintf(f, " -v");
+	EACH(opts.aliases) fprintf(f, " '-s%s'", opts.aliases[i]);
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
 	fputs("\n", f);
 

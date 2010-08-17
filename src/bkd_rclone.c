@@ -265,18 +265,6 @@ cmd_rclone_part2(int ac, char **av)
 			fflush(stdout);
 			return (0);
 		}
-
-		/*
-		 * Save the HERE file.
-		 * chmod because sfio w/o perms doesn't leave it RW.
-		 */
-		if (opts.aliases) {
-			chmod("BitKeeper/log/HERE", 0666);
-		    	if (lines2File(opts.aliases,
-			    "BitKeeper/log/HERE")) {
-				perror("BitKeeper/log/HERE");
-			}
-		}
 	}
 done:
 	fputs("@END@\n", stdout); /* end SFIO INFO block */
@@ -397,6 +385,17 @@ rclone_end(opts *opts)
 	} else {
 docheck:	/* undo already runs check so we only need this case */
 		rc = run_check(0, 0, quiet? "-fT" : "-fvT", 0);
+	}
+	/*
+	 * Save the HERE file.  chmod because sfio w/o perms doesn't
+	 * leave it RW.
+	 */
+	if (opts->aliases) {
+		chmod("BitKeeper/log/HERE", 0666);
+		if (lines2File(opts->aliases,
+			"BitKeeper/log/HERE")) {
+			perror("BitKeeper/log/HERE");
+		}
 	}
 	return (rc);
 }

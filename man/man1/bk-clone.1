@@ -42,6 +42,16 @@ If
 is specified, the cloned repository will include only
 changesets up to and including 
 .ARG rev .
+.if \n[NESTED] \{\
+.LP
+When cloning a product, the set of components to populate is defined
+by the
+.B \-s
+option.  If
+.B \-s
+is not specified on the command line then the alias in the clone_default
+config is used.  Without clone_default, -sALL is used as a default.
+.\}
 .LP
 The cloned repository remembers from which repository it was cloned.
 The 
@@ -85,6 +95,10 @@ If this option is repeated the implied subset is the union of all
 specified components.
 .ARG alias
 may be a component or an alias for a set of components.
+The option
+.B \-sTHERE
+can be use to make the destination of the clone have the same
+components populated as the source.
 .tp
 .\}
 .B \-q

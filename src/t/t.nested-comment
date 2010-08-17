@@ -3,6 +3,9 @@ echo $N Test that comments include component path in a product ......$NL
 nested product
 bk comment -p > GOT
 cat <<'EOF' > WANT
+### Comments for BitKeeper/etc/aliases|1.2
+Create alias DEFAULT
+
 ### Comments for ChangeSet|1.2
 attach gcc, gdb
 
@@ -37,6 +40,9 @@ bk comment - < WANT
 cd ..
 bk comment -p > GOT
 cat <<'EOF' > WANT
+### Comments for BitKeeper/etc/aliases|1.2
+Create alias DEFAULT
+
 ### Comments for ChangeSet|1.2
 attach gcc, gdb
 

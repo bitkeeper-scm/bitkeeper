@@ -150,8 +150,8 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate alias not populated is an error...................$NL
-bk here rm default 2>ERR && exit 1
-grep -q "here: default not in HERE" ERR || {
+bk here rm DEFAULT 2>ERR && exit 1
+grep -q "here: DEFAULT not in HERE" ERR || {
 	echo failed
 	cat ERR
 	exit 1
@@ -523,10 +523,7 @@ echo OK
 echo $N Populate with a symlink in a deeper component -- passes......$NL
 mkdir deep1/deep2/deep3/deep4 || exit 1
 ln -s ../../../../deep1 deep1/deep2/deep3/deep4/deep5
-bk here add $Q ./deep1/deep2/deep3 > ERR 2>&1 || {
-	echo failed
-	exit 1
-}
+bk here add $Q ./deep1/deep2/deep3 > ERR 2>&1 || fail -f ERR
 bk comps -h > GOT
 cat > WANT <<EOF
 ./deep1/deep2
@@ -564,3 +561,70 @@ echo OK
 echo $N Try to force unpopulate it ..................................$NL
 bk here rm $Q -f not-remapped || exit 1
 echo OK
+
+echo $N Test not-present comps do not interfere with rmcomp..........$NL
+cd "$HERE"
+echo > "$HERE/empty"
+nested all-present
+mkdir -p src
+cd src
+bk setup -fc"$HERE/empty" gui
+cd gui
+echo foo > Makefile
+bk new $Q Makefile
+bk commit $Q -y.
+bk -P commit $Q -y.
+bk setup -fc"$HERE/empty" tcltk/tcl
+bk setup -fc"$HERE/empty" tcltk/tk
+cd "$HERE"
+bk clone -sall $Q all-present not-present
+cd not-present
+bk here set $Q .
+test -d src/gui/tcltk && fail did not remove empty path
+echo OK
+
+echo $N Unpopulating should list local csets on failure .............$NL
+bk here add $Q src/gui/tcltk/tk
+cd src/gui/tcltk/tk
+echo hi > local
+bk new $Q local
+bk commit $Q -ylocal || fail
+cd ../../../..
+bk here rm $Q src/gui/tcltk/tk 2> ERR && fail -f ERR
+sed 's/ChangeSet@1.3,.*/ChangeSet@1.3,/' < ERR > ERR2
+cat <<EOF >WANT
+here: No other sources for src/gui/tcltk/tk known
+Local changes to src/gui/tcltk/tk found:
+ChangeSet@1.3,
+  local
+
+here: unable to remove src/gui/tcltk/tk
+EOF
+
+cmpfiles ERR2 WANT
+echo OK
+
+echo $N And with no other URLs we just list failure .................$NL
+rm BitKeeper/log/urllist
+bk parent $Q -r
+bk here rm $Q src/gui/tcltk/tk 2> ERR && fail -f ERR
+cat <<EOF > WANT
+here: No other sources for src/gui/tcltk/tk known
+here: unable to remove src/gui/tcltk/tk
+EOF
+cmpfiles ERR WANT
+echo OK
+
+echo $N Show rmcomp removes deep nest litter ........................$NL
+nested project3
+bk setup -f gcc/deep/stuff
+bk comps -h | bk here set -
+bk here rm $Q -f gcc/deep/stuff || fail
+mkdir -p gcc/deep/stuff/
+touch gcc/deep/stuff/README
+# XXX perhaps delta should prevent this?
+bk new $Q gcc/deep/stuff/README	|| fail
+bk here rm $Q -f gcc
+test -d gcc && fail
+echo OK
+

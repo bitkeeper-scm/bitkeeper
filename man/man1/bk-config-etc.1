@@ -122,7 +122,7 @@ BAM_checkout:option
 where option is as above.
 .LP
 BitMover recommends "BAM_checkout:last".
-.SS CLOCK_SKEW
+.SS CLOCK SKEW
 .br
 When \*[BK] is looking for modified files,
 file time stamps can be compared to a per-repo database to determine when
@@ -140,6 +140,24 @@ clock_skew: on          # use system defaults
 clock_skew: 86400       # one day
 clock_skew: off         # disable trusting of time stamps
 .DE
+.if \n[NESTED] \{\
+.SS CLONE DEFAULT
+.br
+When cloning a product is the
+.B \-s
+option is not passed to select which aliases to product in the resulting
+clone, then the
+.Q clone_default
+option gives the default alias.
+If
+.Q clone_default
+is not set then "ALL" will be used.
+.DS
+clone_default: THERE    # always match remote repository
+clone_default: .        # no components cloned by default
+clone_default: ALL      # all components cloned by default
+clone_default: MYALIAS  # clone MYALIAS by default
+.\}
 .SS COMPRESSION
 .br
 By default, when you setup a repository the compression algorithm
@@ -365,12 +383,12 @@ reserved.
 The upgrade command normally looks for new versions of \*[BK] here:
 .B http://upgrades.bitkeeper.com/upgrades/
 but that location may be overridden by setting the
-.I upgrade-url
+.I upgrade_url
 field to an different URL.
 .LP
 For example,
 .DS
-upgrade-url:	http://www.example.com/bk-release/
+upgrade_url:	http://www.example.com/bk-release/
 .DE
 The contents of that directory will need to be manually mirrored from BitMover.
 .SS USER PREFERENCES

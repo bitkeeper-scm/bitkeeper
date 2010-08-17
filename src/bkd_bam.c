@@ -25,7 +25,7 @@ havekeys_main(int ac, char **av)
 	int	c;
 	int	rc = 0, BAM = 0, recurse = 1, DELTA = 0, found = 0;
 	FILE	*f = 0;
-        MDBM	*idDB;
+	MDBM	*idDB;
 	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "BDFlq", 0)) != -1) {
@@ -64,7 +64,13 @@ havekeys_main(int ac, char **av)
 				/* didn't find deltakey locally */
 				c = 1;
 			}
-			if (found) c = !c;
+			if (found) {
+				c = !c;
+				if (!c && key && s) {
+					/* found rootkey, but not deltakey */
+					printf("%s\n", rootkey);
+				}
+			}
 			if (key) key[-1] = ' ';
 			if (c) printf("%s\n", rootkey);
 			if (s) sccs_free(s);

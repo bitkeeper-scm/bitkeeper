@@ -73,7 +73,7 @@ upgrade_main(int ac, char **av)
 			    urlbase);
 			exit(1);
 		}
-	} else if ((p = proj_configval(0, "upgrade-url")) && *p) {
+	} else if ((p = proj_configval(0, "upgrade_url")) && *p) {
 		urlbase = p;
 	} else if (test_release) {
 		urlbase = UPGRADETRIAL;

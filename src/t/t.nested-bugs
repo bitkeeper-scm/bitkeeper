@@ -1,0 +1,88 @@
+echo $N Setup .......................................................$NL
+cd "$HERE"
+nested product
+cd ..
+bk clone $Q product ws || fail
+bk clone $Q product clone || fail
+bk clone $Q product clone2 || fail
+cd ws
+bk here set $Q .
+cd ../clone/gcc
+echo foo > foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ..
+bk commit $Q -yfoo
+cd ../clone2/gcc
+echo bar > bar
+bk new $Q bar
+bk commit $Q -ybar
+cd ..
+bk commit $Q -ybar
+echo OK
+
+echo $N Pull each clone and then populate gcc .......................$NL
+cd ../ws
+bk here add $Q ./gcc || fail
+bk pull $Q ../clone
+bk pull $Q ../clone2
+echo OK
+
+echo $N Roll back the merge and see if it lets us unpopulate gcc ....$NL
+bk unpull -fs $Q || fail
+
+# The merge in gcc removes the urllist for that component
+# and so after the unpull we don't know about clone anymore
+# so we can unpopulate this component.
+
+# Larry thinks this should work
+
+bk here rm $Q gcc 2>ERR && fail -f ERR should fail
+sed 's/1.3,.*/1.3/' <ERR > ERR2
+cat <<EOF > WANT
+here: No other sources for gcc known
+Local changes to gcc found:
+ChangeSet@1.3
+  foo
+
+here: unable to remove gcc
+EOF
+cmpfiles ERR2 WANT
+echo 'failed (bug commit prunes urllist)'
+
+echo $N Demo Zahy\'s question ........................................$NL
+nested repoA
+touch c
+bk setup -fcc comp1
+bk setup -fcc comp2
+cd ..
+
+#   1.  Clone REPO_A to REPO_B
+bk clone $Q -sALL repoA repoB
+
+#   2. commit changes in REPO_A/comp1 and REPO_A/comp2
+cd repoA/comp1
+echo hi > new
+bk new $Q new
+bk commit $Q -ynew
+cd ../comp2
+echo hh > new2
+bk new $Q new2
+bk commit $Q -ynew2
+cd ..
+bk commit $Q -ystuff
+
+#   3. clone REPO_A/comp1 aside.  Lets call it – REPO_C
+cd ..
+bk clone $Q -scomp1 repoA repoC
+
+#   4. pull REPO_B <- REPO_C
+cd repoB
+bk pull $Q ../repoC 2>ERR && fail -f ERR should fail
+sed 's/file:.*ws\/repoC/file:\/\/...\/ws\/repoC/' < ERR > ERR2
+cat <<EOF > WANT
+pull: comp2 is missing in file://.../ws/repoC
+pull: update aborted due to errs with 1 components.
+EOF
+cmpfiles ERR2 WANT
+echo 'failed (bug no sideways pull of component from urllist)'

@@ -48,14 +48,18 @@ bk $Q -Ar check -a || {
 }
 echo OK
 
+echo $N Add BAM to product and try cloning again ....................$NL
+cd ../project
+echo junk > binfile
+bk new -b $Q binfile
+bk commit $Q -yBAM
+cd ..
+bk clone $Q project bk://localhost:$PORT/copy3 || fail
+echo OK
+
 echo $N Clone the product using rclone -r ...........................$NL
 cd "$HERE"
-bk clone $Q -rTIP project bk://localhost:$PORT/rollback || {
-	echo failed
-	cd rollback 
-	bk cmdlog -a
-	exit 1
-}
+bk clone $Q -rTIP project bk://localhost:$PORT/rollback || fail
 cd rollback || exit 1
 bk $Q -Ar check -a || {
 	echo failed
