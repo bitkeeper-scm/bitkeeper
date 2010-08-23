@@ -292,3 +292,7 @@ BK_CONFIG='partial_check:yes!' \
 # not bk _test
 test -f "remap/BitKeeper/log/x.id_cache" || fail no id_cache
 echo OK
+
+echo $N Test clone with @ in filename ...............................$NL
+bk clone $Q "$HERE/project" test@dir || fail
+echo OK

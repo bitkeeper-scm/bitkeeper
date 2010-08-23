@@ -155,7 +155,11 @@ clone_main(int ac, char **av)
 	if (av[optind + 1]) {
 		if (av[optind + 2]) usage();
 		opts->to = av[optind + 1];
-		l = remote_parse(opts->to, REMOTE_BKDURL);
+		unless (l = remote_parse(opts->to, REMOTE_BKDURL)) {
+			fprintf(stderr, "clone: failed to parse '%s'\n",
+			    opts->to);
+			exit(CLONE_ERROR);
+		}
 	}
 	if (opts->attach && !opts->to && !proj_product(0)) {
 		fprintf(stderr, "%s: not in a product\n", av[0]);
