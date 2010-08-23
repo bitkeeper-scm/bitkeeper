@@ -263,7 +263,7 @@ lock_main(int ac, char **av)
 				usleep(uslp);
 				if (uslp < 1000000) uslp <<= 1;
 			}
-			freeLines(locks, free);
+			freeLines(locks, freeNlock);
 		}
 		exit(0);
 

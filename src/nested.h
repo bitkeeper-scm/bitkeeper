@@ -118,6 +118,14 @@ typedef struct {
 	hash	*seen;		/* URLs processed */
 } popts;
 
+/*
+ * For getting info about locks
+ */
+typedef struct {
+	char	*nlid;		/* nested lock id */
+	int	stale;		/* whether said lock id is stale or not */
+} nlock;
+
 int	isComponent(char *path);
 
 nested	*nested_init(sccs *cset, char *rev, char **revs, u32 flags);
@@ -173,10 +181,12 @@ int	nested_unlock(project *p, char *t);
 int	nested_forceUnlock(project *p, int kind);
 int	nested_abort(project *p, char *t);
 char	*nested_errmsg(void);
+/* nested_lockers returns nlock *'s in the addLines */
 char	**nested_lockers(project *p, int listStale, int removeStale);
 void	nested_printLockers(project *p, FILE *out);
 void	nested_updateIdcache(project *comp);
 int	nested_isPortal(project *comp);
+void	freeNlock(void *nl);
 
 /* populate.c */
 int	nested_populate(nested *n, char **urls, popts *ops);
