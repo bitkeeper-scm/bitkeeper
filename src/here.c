@@ -15,10 +15,18 @@ here_main(int ac, char **av)
 		fprintf(stderr, "%s: must be in a nested repository\n", prog);
 		return (1);
 	}
-	if (!av[1] || streq(av[1], "list")) {
-		/* alias for 'bk alias HERE' */
-		if (av[1] && av[2]) usage();
+	if (!av[1] || streq(av[1], "list") || (av[1][0] == '-')) {
+		/* alias for 'bk alias <opts> HERE' */
+		i = (av[1] && streq(av[1], "list")) ? 2 : 1;
 		nav = addLine(nav, "alias");
+		/* copy options */
+		for (; av[i] && (av[i][0] == '-') && av[i][1]; i++) {
+			if (streq(av[i], "--")) {
+				i++;
+				break;
+			}
+			nav = addLine(nav, strdup(av[i]));
+		}
 		nav = addLine(nav, "here");
 		nav = addLine(nav, 0);
 		getoptReset();
