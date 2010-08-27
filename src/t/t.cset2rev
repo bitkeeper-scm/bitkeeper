@@ -80,9 +80,26 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Verify that the cset2rev cache is cleaned ...................$NL
-test `ls BitKeeper/tmp/csetcache.* | wc -l` -gt 2 && {
+test `ls BitKeeper/tmp/cset* | wc -l` -ne 5 && {
 	echo The cache files should have been cleaned
-	ls -l BitKeeper/tmp/csetcache.*
+	ls -l BitKeeper/tmp/cset*
 	exit 1
+}
+ls BitKeeper/tmp/cset* > BEFORE
+bk prs -r@=3 file1 > /dev/null || fail
+ls BitKeeper/tmp/cset* > AFTER
+
+# still only 5
+test `ls BitKeeper/tmp/cset* | wc -l` -ne 5 && {
+	echo The cache files should have been cleaned
+	ls -l BitKeeper/tmp/cset*
+	exit 1
+}
+
+# but a different 5	# this shows one file was replaced
+C=`bk diff BEFORE AFTER | wc -l`
+test $C -eq 4 || {
+     bk diff BEFORE AFTER
+     fail
 }
 echo OK

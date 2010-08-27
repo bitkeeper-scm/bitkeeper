@@ -73,7 +73,6 @@ private int	doFast(weave *w, char **patchmap, MMAP *diffs);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private	void	parseConfig(char *buf, MDBM *db);
-private	delta	*cset2rev(sccs *s, char *rev);
 private	void	taguncolor(sccs *s, delta *d);
 private	void	prefix(sccs *s,
 		    delta *d, u32 flags, int lines, char *name, FILE *out);
@@ -1803,16 +1802,44 @@ delta	*
 sccs_findrev(sccs *s, char *rev)
 {
 	delta	*d;
+	project	*proj;
+	char	*dk, *csetdk = 0;
+	char	rk[MAXKEY];
 
 	unless (rev && *rev) return (findrev(s, 0));
 again:	if (rev[0] == '@') {
 		if (rev[1] == '@') {
-			d = 0;
+			if (rev[2] == '@') return (0);
+			unless (proj_isComponent(s->proj)) {
+				rev = rev+1;
+				goto again;
+			}
+			proj = proj_product(s->proj);
+			rev += 2;
+			if (CSET(s)) goto atrev;
+			rev = csetdk = proj_cset2rev(proj,
+			    rev, proj_rootkey(s->proj));
+			if (rev) {
+				proj = s->proj;
+				goto atrev;
+			} else {
+				d = 0;
+			}
 		} else if (CSET(s) && !s->file) {
 			++rev;
 			goto again;
 		} else {
-			d = cset2rev(s, rev+1);
+			proj = s->proj;
+			if (CSET(s) && s->file) proj = proj_product(proj);
+			++rev;
+atrev:			sccs_sdelta(s, sccs_ino(s), rk);
+			if (dk = proj_cset2rev(proj, rev, rk)) {
+				d = sccs_findKey(s, dk);
+				free(dk);
+			} else {
+				d = 0;
+			}
+			if (csetdk) free(csetdk);
 		}
 	} else if (isKey(rev)) {
 		d = sccs_findKey(s, rev);
@@ -1878,138 +1905,6 @@ sccs_findDate(sccs *sc, char *s, int roundup)
 	}
 	if (roundup == ROUNDDOWN) return (tmp);
 	return (d);
-}
-
-void
-delete_cset_cache(char *rootpath, int save)
-{
-	char	**files;
-	char	**keep = 0;
-	int	i;
-	char	*p;
-	char	buf[MAXPATH];
-
-	/* delete old caches here, keep newest */
-	sprintf(buf, "%s/BitKeeper/tmp", rootpath);
-	files = getdir(buf);
-	p = buf + strlen(buf);
-	*p++ = '/';
-	EACH (files) {
-		if (strneq(files[i], "csetcache.", 10)) {
-			struct	stat statbuf;
-			strcpy(p, files[i]);
-			lstat(buf, &statbuf);
-			/* invert time to get newest first */
-			keep = addLine(keep,
-			    aprintf("%08x %s", (u32)~statbuf.st_atime, buf));
-		}
-	}
-	freeLines(files, free);
-	sortLines(keep, 0);
-	EACH (keep) {
-		if (i > save) {
-			p = strchr(keep[i], ' ');
-			unlink(p+1);
-		}
-	}
-	freeLines(keep, free);
-}
-
-private delta *
-cset2rev(sccs *s, char *rev)
-{
-	static	struct	stat	csetstat = {0};
-	char	*rootpath;
-	char	*mpath = 0;
-	MDBM	*m = 0;
-	delta	*ret = 0;
-	char	*s_cset = 0;
-	char	*deltakey;
-	project	*proj;
-	char	rootkey[MAXKEY];
-
-	/*
-	 * Sleazy little hack to optimize a common case of most recent
-	 * committed delta.
-	 */
-	if (streq(rev, "+")) {
-		for (ret = s->table;
-		    ret && (TAG(ret) || !(ret->flags & D_CSET));
-		     ret = NEXT(ret));
-		return (ret);
-	}
-	proj = s->proj;
-	if (CSET(s) && s->file) proj = proj_product(proj);
-	unless (rootpath = proj_root(proj)) goto ret;
-
-	/*  stat cset file once per process */
-	unless (csetstat.st_mtime) {
-		s_cset = aprintf("%s/" CHANGESET, rootpath);
-		if (lstat(s_cset, &csetstat)) goto ret;
-	}
-	mpath = aprintf("%s/BitKeeper/tmp/csetcache.%x", rootpath,
-	    (u32)adler32(0, rev, strlen(rev)));
-	if (exists(mpath) &&
-	    (m = mdbm_open(mpath, O_RDONLY, 0600, 0))) {
-		/* validate it still matches cset file */
-		char	*x;
-
-		if (!(x = mdbm_fetch_str(m, "STAT")) ||
-		    strtoul(x, &x, 16) != (unsigned long)csetstat.st_mtime ||
-		    strtoul(x, 0, 16) != (unsigned long)csetstat.st_size ||
-		    !(x = mdbm_fetch_str(m, "REV")) ||
-		    !streq(x, rev)) {
-			mdbm_close(m);
-			unlink(mpath);
-			m = 0;
-		}
-	}
-	unless (m) {
-		sccs	*sc;
-		MDBM	*csetm;
-		char	buf[20];
-
-		/* fetch MDBM from ChangeSet */
-		unless (s_cset) s_cset = aprintf("%s/" CHANGESET, rootpath);
-		unless (sc = sccs_init(s_cset, 0)) goto ret;
-		if (sccs_get(sc, rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
-			csetm = 0;
-		} else {
-			csetm = sc->mdbm;
-			sc->mdbm = 0;
-		}
-		sccs_free(sc);
-
-		delete_cset_cache(rootpath, 1);	/* save newest */
-
-		/* write new MDBM */
-		m = mdbm_open(mpath, O_RDWR|O_CREAT|O_TRUNC, 0666, 0);
-		unless (m) {
-			if (csetm) mdbm_close(csetm);
-			goto ret;
-		}
-		if (csetm) {
-			kvpair	kv;
-
-			EACH_KV (csetm) {
-				mdbm_store(m, kv.key, kv.val, MDBM_REPLACE);
-			}
-			mdbm_close(csetm);
-		}
-		sprintf(buf, "%lx %lx",
-		    (unsigned long)csetstat.st_mtime,
-		    (unsigned long)csetstat.st_size);
-		mdbm_store_str(m, "STAT", buf, MDBM_REPLACE);
-		mdbm_store_str(m, "REV", rev, MDBM_REPLACE);
-	}
-	sccs_sdelta(s, sccs_ino(s), rootkey);
-	deltakey = mdbm_fetch_str(m, rootkey);
-	if (deltakey) ret = sccs_findKey(s, deltakey);
-	mdbm_close(m);
- ret:
-	if (s_cset) free(s_cset);
-	if (mpath) free(mpath);
-	return (ret);
 }
 
 private inline int

@@ -43,6 +43,8 @@ struct project {
 	int	sync;		/* sync/fsync data? */
 	int	idxsock;	/* sock to index server for this repo */
 	int	noremap;	/* true == old style SCCS dirs */
+	size_t	cset_size;
+	time_t	cset_mtime;
 
 	/* checkout state */
 	u32	co;		/* cache of proj_checkout() return */
@@ -1342,4 +1344,154 @@ proj_hasDeltaTriggers(project *p)
 		}
 	}
 	return (p->preDelta);
+}
+
+/*
+ * Keep most recent cset2rev caches
+ */
+private void
+pruneCsetCache(project *p)
+{
+	char	**files;
+	char	**keep = 0;
+	int	i;
+	char	*s, *t;
+	struct	stat sb;
+	char	buf[MAXPATH];
+
+	/* delete old caches here, keep newest */
+	sprintf(buf, "%s/BitKeeper/tmp", p->root);
+	files = getdir(buf);
+	t = buf + strlen(buf);
+	*t++ = '/';
+	EACH (files) {
+		if (strneq(files[i], "csetkeycache.", 13) ||
+		    strneq(files[i], "csetcache.", 10)) {
+			strcpy(t, files[i]);
+
+			/*
+			 * Collect all the existing cache files and
+			 * save them with the current timestamp.
+			 *
+			 * XXX We may want to open the non-key caches
+			 *     to see if they are still valid, but I decided
+			 *     strict time order is fine for now.
+			 */
+			lstat(buf, &sb);
+			/* invert time to get newest first */
+			s = aprintf("%08x %s", (u32)~sb.st_atime, buf);
+			keep = addLine(keep, s);
+		}
+	}
+	freeLines(files, free);
+	sortLines(keep, 0);
+	EACH(keep) {
+		/* keep the latest 4 cache files */
+		if (i > 4) {
+			t = strchr(keep[i], ' ');
+			unlink(t+1);
+		}
+	}
+	freeLines(keep, free);
+}
+
+
+/*
+ * Given a csetrev and a file rootkey, return the file deltakey that
+ * was active when that cset was created.
+ *
+ * The data is cached in BitKeeper/tmp for fast access.
+ */
+char *
+proj_cset2rev(project *p, char *csetrev, char *rootkey)
+{
+	char	*mpath = 0;
+	MDBM	*m = 0;
+	char	*deltakey = 0;
+	int	key;
+	char	*x;
+	struct	stat sb;
+	char	buf[MAXLINE];
+
+	unless (p || (p = curr_proj())) return (0);
+
+	key = isKey(csetrev);
+	mpath = aprintf("%s/BitKeeper/tmp/cset%scache.%x",
+	    p->root,
+	    key ? "key" : "",
+	    (u32)adler32(0, csetrev, strlen(csetrev)));
+
+	unless (key || p->cset_size) {
+		/* stat cset file once per process */
+		concat_path(buf, p->root, CHANGESET);
+		unless (lstat(buf, &sb)) {
+			p->cset_size = sb.st_size;
+			p->cset_mtime = sb.st_mtime;
+		}
+	}
+	if (exists(mpath)) m = mdbm_open(mpath, O_RDONLY, 0600, 0);
+	/* validate it still matches rev */
+	if (m &&
+	    (!(x = mdbm_fetch_str(m, "REV")) || !streq(x, csetrev))) {
+		mdbm_close(m);
+		unlink(mpath);
+		m = 0;
+	}
+	if (m && !key) {
+		/* validate it still matches cset file */
+		char	*x;
+
+		if (!(x = mdbm_fetch_str(m, "STAT")) ||
+		    (strtoul(x, &x, 16) != (unsigned long)p->cset_mtime) ||
+		    (strtoul(x, 0, 16) != (unsigned long)p->cset_size)) {
+			mdbm_close(m);
+			unlink(mpath);
+			m = 0;
+		}
+	}
+	unless (m) {
+		sccs	*sc;
+		MDBM	*csetm;
+
+		/* fetch MDBM from ChangeSet */
+		concat_path(buf, p->root, CHANGESET);
+		unless (sc = sccs_init(buf, SILENT|INIT_NOCKSUM)) goto ret;
+		if (sccs_get(sc, csetrev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+			csetm = 0;
+		} else {
+			csetm = sc->mdbm;
+			sc->mdbm = 0;
+		}
+		sccs_free(sc);
+
+		pruneCsetCache(p);	/* save newest */
+
+		/* write new MDBM */
+		m = mdbm_open(mpath, O_RDWR|O_CREAT|O_TRUNC, 0666, 0);
+		unless (m) {
+			if (csetm) mdbm_close(csetm);
+			goto ret;
+		}
+		if (csetm) {
+			kvpair	kv;
+
+			EACH_KV (csetm) {
+				mdbm_store(m, kv.key, kv.val, MDBM_REPLACE);
+			}
+			mdbm_close(csetm);
+		}
+		unless (key) {
+			sprintf(buf, "%lx %lx",
+			    (unsigned long)p->cset_mtime,
+			    (unsigned long)p->cset_size);
+			mdbm_store_str(m, "STAT", buf, MDBM_REPLACE);
+		}
+		mdbm_store_str(m, "REV", csetrev, MDBM_REPLACE);
+	}
+	deltakey = mdbm_fetch_str(m, rootkey);
+	if (deltakey) deltakey = strdup(deltakey);
+	mdbm_close(m);
+ ret:
+	if (mpath) free(mpath);
+	return (deltakey);
 }
