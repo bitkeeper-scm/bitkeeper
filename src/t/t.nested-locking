@@ -107,7 +107,6 @@ echo for_undo >to-undo
 bk new $Q to-undo || fail
 bk commit $Q -y'add to-undo' || fail
 bk -P commit $Q -y'add gcc/to-undo' || fail
-bk tag $Q for-undo || fail
 cd "$HERE"
 bk bkd -q -d -aPORT -ikill || fail
 P=`cat PORT`

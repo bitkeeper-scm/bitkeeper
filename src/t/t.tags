@@ -32,6 +32,9 @@ bk commit $S -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
+cd "$HERE"
+nested nested
+cd "$HERE/project"
 cores
 
 echo $N Tags may not start with a digit .............................$NL
@@ -707,4 +710,20 @@ cd ..
 bk tags $Q "$REPO" > GOT
 cd "$REPO"
 cmpfiles WANT ../GOT
+echo OK
+
+echo $N Check that bk tag in component fails ........................$NL
+cd "$HERE/nested/gcc"
+bk tag bad 2>ERR && fail "should have failed"
+bk grep -q "tag: component tags not yet supported" ERR || fail -f ERR
+echo OK
+
+echo $N Check that bk tag -q in component still errs ................$NL
+bk tag -q bad 2>ERR && fail "should have failed"
+bk grep -q "tag: component tags not yet supported" ERR || fail -f ERR
+echo OK
+
+echo $N Check that bk tag in product succeeds .......................$NL
+cd "$HERE/nested"
+bk tag $Q ok || fail
 echo OK

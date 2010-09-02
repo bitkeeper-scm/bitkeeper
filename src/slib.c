@@ -10741,6 +10741,11 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 		    "Tagging files is not supported, use bk tag instead\n");
 		return (0);
 	}
+	if (proj_isComponent(sc->proj)) {
+		fprintf(stderr,
+		    "%s: component tags not yet supported.\n", prog);
+		return (0);
+	}
 
 	/*
 	 * "sym" means TOT

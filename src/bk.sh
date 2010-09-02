@@ -1254,6 +1254,11 @@ _tag() {		# /* doc 2.0 */
 		*) bk help -s tag; exit 1;;
 		esac
 	done
+	bk product -q
+	test $? -eq 1 && {
+		echo tag: component tags not yet supported 1>&2
+		exit 1
+	}
 	shift `expr $OPTIND - 1`
 	if [ "X$1" = X ]
 	then	bk help -s tag

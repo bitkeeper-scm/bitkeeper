@@ -485,7 +485,8 @@ echo $N Test out sccslog on a ported ChangeSet file .................$NL
 cd "$HERE"/project/bash
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -SBRANCHTIP -yfoo
+bk commit $Q -yfoo
+BRANCHTIP=`bk prs -hnd:MD5KEY: -r+ ChangeSet`
 bk portal $Q .
 bk port $Q ../../bash-sa
 bk sccslog -A -nd:I: > GOT
@@ -494,5 +495,5 @@ cmpfiles GOT WANT
 # test fix for CSETREV when non-cset tagged entry is tip of branch
 # the code couldn't find the tagged cset; now it can.
 bk -P commit $Q -yprod
-test "`bk changes -rBRANCHTIP -nd:CSETREV:`" = "1.4" || fail
+test "`bk changes -r$BRANCHTIP -nd:CSETREV:`" = "1.4" || fail
 echo OK

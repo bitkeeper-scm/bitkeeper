@@ -66,6 +66,12 @@ commit_main(int ac, char **av)
 		fprintf(stderr, "Cannot find root directory\n");
 		return (1);
 	}
+	if (sym && proj_isComponent(0)) {
+		fprintf(stderr,
+		    "%s: component tags not yet supported.\n", prog);
+		return (1);
+	}
+
 	/*
 	 * Check for licensing problems before we get buried in a bunch
 	 * of subprocesses.  This process will need the result anyway so
