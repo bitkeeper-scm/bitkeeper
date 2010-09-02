@@ -197,12 +197,34 @@ do_commit(char **av,
 	char	**syms = 0;
 	FILE 	*f;
 	char	commentFile[MAXPATH];
+	char	pendingFiles2[MAXPATH];
 	char	buf[MAXLINE];
 
 	cset = sccs_csetInit(0);
 	if (enforceLicense(cset)) {
 		rc = 1;
 		goto done;
+	}
+	if (!opts.resync && attr_update()) {
+		FILE	*f, *f2;
+		char	*t;
+
+		bktmp(pendingFiles2, "pending2");
+		f = fopen(pendingFiles, "r");
+		f2 = fopen(pendingFiles2, "w");
+		i = strlen(SATTR);
+		while (t = fgetline(f)) {
+			if (strneq(SATTR "|", t, i+1)) {
+				/* skip ATTR file */
+				continue;
+			}
+			fprintf(f2, "%s\n", t);
+		}
+		fclose(f);
+		fprintf(f2, "%s%c+\n", SATTR, BK_FS);
+		fclose(f2);
+		if (unlink(pendingFiles)) perror(pendingFiles);
+		fileMove(pendingFiles2, pendingFiles);
 	}
 	/*
 	 * XXX Do we want to fire the trigger when we are in RESYNC ?

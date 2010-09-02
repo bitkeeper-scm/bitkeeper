@@ -6,6 +6,8 @@ cat <<'EOF' > WANT
 ### Comments for BitKeeper/etc/aliases|1.2
 Create alias DEFAULT
 
+### Comments for BitKeeper/etc/attr|1.2
+
 ### Comments for ChangeSet|1.2
 attach gcc, gdb
 
@@ -42,6 +44,8 @@ bk comment -p > GOT
 cat <<'EOF' > WANT
 ### Comments for BitKeeper/etc/aliases|1.2
 Create alias DEFAULT
+
+### Comments for BitKeeper/etc/attr|1.2
 
 ### Comments for ChangeSet|1.2
 attach gcc, gdb

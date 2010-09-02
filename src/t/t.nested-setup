@@ -28,6 +28,11 @@ test -f product/BitKeeper/log/PRODUCT || {
 	echo "Did not create product marker"
 	exit 1
 }
+bk _test -f product/BitKeeper/etc/SCCS/s.attr || {
+	echo failed
+	echo "Did not create attributes"
+	exit 1
+}
 cd product
 bk get $Q BitKeeper/etc/config
 cmpfiles "$HERE"/c BitKeeper/etc/config

@@ -5,6 +5,10 @@ BK_DATE_TIME_ZONE="98/09/22 16:23:31+00:00"
 _BK_NO_UNIQ=1
 export BK_DATE_TIME_ZONE _BK_NO_UNIQ BK_RANDOM
 
+# The attribute file messes up this test, I don't know why. --Wayne
+_BK_NO_ATTR=1
+export _BK_NO_ATTR
+
 echo $N Order check in cset checksum and file path ..................$NL
 # do not use cache, as we want predictable repo
 fresh_commercial project

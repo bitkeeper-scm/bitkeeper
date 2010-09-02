@@ -379,6 +379,8 @@ typedef	enum {
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	CHECKED		"BitKeeper/log/checked"
 #define	REPO_ID		"BitKeeper/log/repo_id"
+#define	ATTR		"BitKeeper/etc/attr"
+#define	SATTR		"BitKeeper/etc/SCCS/s.attr"
 #define	BKSKIP		".bk_skip"
 #define	GROUP_MODE	0664
 #define	BAM_DSPEC	"$if(:BAMHASH:){:BAMHASH: :KEY: :MD5KEY|1.0:}"
@@ -1379,6 +1381,8 @@ void	usage(void)
 int	bk_notLicensed(project *p, u32 bits, int quiet);
 char	*file_fanout(char *file);
 void	upgrade_maybeNag(char *out);
+int	attr_update(void);
+int	attr_write(char *file);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);

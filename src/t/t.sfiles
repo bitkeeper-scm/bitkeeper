@@ -58,6 +58,7 @@ echo $N Check the list of SCCS files ................................$NL
 bk sfiles | sort > GOT
 sort <<EOF > WANT
 SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -92,6 +93,7 @@ echo $N Check the list of g-files ...................................$NL
 bk sfiles -g | sort > GOT
 sort <<EOF > WANT
 ChangeSet
+BitKeeper/etc/attr
 BitKeeper/etc/collapsed
 BitKeeper/etc/config
 BitKeeper/etc/gone
@@ -171,6 +173,7 @@ echo OK
 echo $N Check the list of unlocked files ............................$NL
 bk sfiles -u | sort > GOT
 sort <<EOF > WANT
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -206,6 +209,7 @@ SCCS/s.s.foo
 WANT
 .sfiles
 GOT
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -236,6 +240,7 @@ j------ SCCS/JUNK
 j------ SCCS/c.gone
 j------ SCCS/c.gone@1.1
 j------ SCCS/c.gone@1.2
+su----- BitKeeper/etc/SCCS/s.attr
 su----- BitKeeper/etc/SCCS/s.collapsed
 su--G-- BitKeeper/etc/SCCS/s.config
 su--G-- BitKeeper/etc/SCCS/s.gone
@@ -257,6 +262,7 @@ bk ci $Q -mfoo-R bar/s.foo
 bk ci $Q -mblech s.foo
 bk sfiles -u | sort > GOT
 sort <<EOF > WANT
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -419,6 +425,7 @@ echo OK
 
 echo $N Test disabling ignore lists with -au ........................$NL
 sort <<EOF > WANT
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -480,6 +487,7 @@ bk _mv SCCS/s.impostor s.impostor
 bk _mv impostor SCCS/s.impostor
 bk sfiles | sort > GOT
 sort <<EOF > WANT
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -502,6 +510,7 @@ then
 echo $N Test mildly paranoid mode ...................................$NL
 bk sfiles -P | sort > GOT
 sort <<EOF > WANT
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -523,6 +532,7 @@ echo $N Test truly paranoid mode ....................................$NL
 bk sfiles -PP
 bk sfiles -PP | sort > GOT
 sort <<EOF > WANT
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -708,7 +718,7 @@ echo OK
 
 echo $N Test summary output .........................................$NL
 cat <<EOF > "$HERE/WANT"
-    13 files under revision control.
+    14 files under revision control.
      1 subrepositories.
      4 files not under revision control (and not ignored).
      1 ignored files not under revision control.
@@ -746,6 +756,7 @@ j------ SCCS/c.NO_SFILE_NO_GFILE
 sl--G-- DIR_WITH_SCCS/SCCS/s.LOCKED
 slc-G-- DIR_WITH_SCCS/SCCS/s.MODIFIED
 slc-G-y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
+su----- BitKeeper/etc/SCCS/s.attr
 su----- BitKeeper/etc/SCCS/s.collapsed
 su----- DIR_WITH_SCCS/SCCS/s.NORMAL
 su----- DIR_WITH_SCCS/SCCS/s.UNLOCKED
@@ -781,6 +792,7 @@ j------ lmtest/SCCS/c.NO_SFILE_NO_GFILE
 sl--G-- lmtest/DIR_WITH_SCCS/SCCS/s.LOCKED
 slc-G-- lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED
 slc-G-y lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
+su----- lmtest/BitKeeper/etc/SCCS/s.attr
 su----- lmtest/BitKeeper/etc/SCCS/s.collapsed
 su----- lmtest/DIR_WITH_SCCS/SCCS/s.NORMAL
 su----- lmtest/DIR_WITH_SCCS/SCCS/s.UNLOCKED
@@ -983,6 +995,7 @@ echo OK
 echo $N Look for sfiles from the root ...............................$NL
 cd "$HERE/lmtest"
 sort <<EOF > "$HERE/WANT"
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -1004,6 +1017,7 @@ echo OK
 echo $N Look for sfiles from the root in verbose mode ...............$NL
 cd "$HERE/lmtest"
 bk sort -k1 <<EOF > "$HERE/WANT"
+su----- BitKeeper/etc/SCCS/s.attr
 su----- BitKeeper/etc/SCCS/s.collapsed
 su--G-- BitKeeper/etc/SCCS/s.config
 su--G-- BitKeeper/etc/SCCS/s.gone
@@ -1139,6 +1153,7 @@ echo OK
 echo $N Look for unlocked sfiles from the root ......................$NL
 cd "$HERE/lmtest"
 sort <<EOF > "$HERE/WANT"
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -1157,6 +1172,7 @@ echo OK
 echo $N Look for unlocked sfiles from the root in verbose mode ......$NL
 cd "$HERE/lmtest"
 bk sort -k1 <<EOF > "$HERE/WANT"
+su----- BitKeeper/etc/SCCS/s.attr
 su----- BitKeeper/etc/SCCS/s.collapsed
 su--G-- BitKeeper/etc/SCCS/s.config
 su--G-- BitKeeper/etc/SCCS/s.gone
@@ -1417,6 +1433,7 @@ echo OK
 
 echo $N Look for sfiles from the outside repo .......................$NL
 sort <<EOF > "$HERE/WANT"
+lmtest/BitKeeper/etc/SCCS/s.attr
 lmtest/BitKeeper/etc/SCCS/s.collapsed
 lmtest/BitKeeper/etc/SCCS/s.config
 lmtest/BitKeeper/etc/SCCS/s.gone
@@ -1489,6 +1506,7 @@ echo OK
 
 echo $N Look for unlocked sfiles from the outside repo ..............$NL
 sort <<EOF > "$HERE/WANT"
+lmtest/BitKeeper/etc/SCCS/s.attr
 lmtest/BitKeeper/etc/SCCS/s.collapsed
 lmtest/BitKeeper/etc/SCCS/s.config
 lmtest/BitKeeper/etc/SCCS/s.gone

@@ -14097,6 +14097,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 #define	f5d(n)	show_d(s, out, "%05d", n)
 #define	fs(str)	show_s(s, out, str, -1)
 #define	fsd(d)	show_s(s, out, d.dptr, d.dsize)
+#define	fm(ptr, len) show_s(s, out, ptr, len)
 
 	/*
 	 * Allow keywords of the form "word|rev"
@@ -15802,6 +15803,45 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 			}
 		}
 		return (nullVal);
+
+	case KW_ATTR_LICENSE: /* ATTR_LICENSE */
+	case KW_ATTR_VERSION: /* ATTR_VERSION */
+	case KW_ATTR_ID: /* ATTR_ID */
+	case KW_ATTR_HERE: /* ATTR_HERE */
+	case KW_ATTR_TEST: /* ATTR_TEST */
+	{
+		int	cnt, i;
+		FILE	*f;
+		char	buf[MAXLINE];
+		char	cmd[MAXLINE];
+
+		unless (CSET(s)) return (nullVal);
+
+		/*
+		 * Return attribute for a given cset
+		 * XXX: Like :ROOTLOG:, doesn't do $each()
+		 *
+		 * This version is not efficient. Each fetch must walk
+		 * the ChangeSet file weave and the weave of the attr
+		 * file.  This can be cached and made fast in the future.
+		 * Do an all-rev cset walk like checksum.c and then cache
+		 * the mapping from csetkey->attribkey.  Then the same walk on
+		 * on attr file can save the values.
+		 */
+		sccs_sdelta(s, d, buf);
+		sprintf(cmd,
+		    "bk -R get -qp -r@'%s' " ATTR "| bk _getkv - %.*s",
+		    buf, len - 5, kw + 5);	// yuck - strlen(ATTR)
+		cnt = 0;
+		if (f = popen(cmd, "r")) {
+			while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
+				fm(buf, i);
+				cnt += i;
+			}
+			pclose(f);
+		}
+		return (cnt ? strVal : nullVal);
+	}
 	default:
 		return (notKeyword);
 	}

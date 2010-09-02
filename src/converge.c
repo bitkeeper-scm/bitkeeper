@@ -34,6 +34,7 @@ converge_hash_files(void)
 		char	*file;
 		char	*opts;
 	} files[] = {{ "BitKeeper/etc/aliases", "-hs"},
+		     { ATTR, "ATTR"},
 		     { "BitKeeper/etc/collapsed", "-s" },
 		     { "BitKeeper/etc/gone", "-s" },
 		     { "BitKeeper/etc/ignore", "-s" },
@@ -168,8 +169,13 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 		 */
 		rc = sys("bk", "get", "-qeM", s->gfile, SYS);
 		assert(!rc);
-		rc = sysio(0, s->gfile, 0, "bk", "merge", opts, s->gfile, SYS);
-		assert(!rc);
+		if (streq(opts, "ATTR")) {
+			attr_write(s->gfile);
+		} else {
+			rc = sysio(0, s->gfile, 0,
+			    "bk", "merge", opts, s->gfile, SYS);
+			assert(!rc);
+		}
 		rc = sys("bk", "ci", "-qPyauto-union", s->gfile, SYS);
 		assert(!rc);
 
@@ -285,8 +291,13 @@ converge(State *g, char *gfile, char *opts)
 	 * nothing to union.
 	 */
 	if (!sys("bk", "get", "-qeM", gfile, SYS)) {
-		rc = sysio(0, gfile, 0, "bk", "merge", opts, gfile, SYS);
-		assert(!rc);
+		if (streq(opts, "ATTR")) {
+			attr_write(gfile);
+		} else {
+			rc = sysio(0, gfile, 0,
+			    "bk", "merge", opts, gfile, SYS);
+			assert(!rc);
+		}
 		rc = sys("bk", "ci", "-qPyauto-union-files", gfile, SYS);
 		assert(!rc);
 	}
