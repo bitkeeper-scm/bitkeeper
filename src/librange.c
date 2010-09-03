@@ -443,6 +443,13 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 }
 
 int
+walkrevs_clrFlags(sccs *s, delta *d, void *token)
+{
+	d->flags &= ~p2int(token);
+	return (0);
+}
+
+int
 walkrevs_setFlags(sccs *s, delta *d, void *token)
 {
 	d->flags |= p2int(token);

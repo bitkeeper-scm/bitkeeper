@@ -27,48 +27,40 @@
  * Copyright (c) 2001 Larry McVoy & Rick Smith
  */
 
-/*
- * replace delta keys for the gone file in the changeset file because
- * the keys will have new checksums.
- */
-typedef struct {
-	hash	*db;	// old delta key -> new delta key
-	char	*rk;	// rootkey for the gone file
-} goner;
-
 private	int	csetprune(hash *prunekeys, char *comppath, char **complist,
 		    char ***addweave, char *ranbits, char *rev);
-private	int	filterWeave(sccs *cset, char ***cweave, char ***addweave,
-		    char ***delkeys, hash *prunekeys, char *comppath,
-		    char **complist, goner *gonemap);
+private	int	filterWeave(sccs *cset, char **cweave, char **complist,
+		    char *comppath, char **deep, hash *prunekeys);
+private	int	filterRootkey(char *rk, char **list, int ret, sccs *cset,
+		    char **complist, char *comppath, char **deep,
+		    hash *prunekeys);
+private	int	fixAdded(sccs *cset, char **cweave);
 private	int	newBKfiles(sccs *cset, hash *prunekeys, char ***cweavep);
-private	int	printXcomp(char **cweave, char **complist, hash *prunekeys);
-private	goner	*filterGone( char **cweave, char *comppath, char **deepnest);
-private	int	rmKeys(char **delkeys);
+private	int	rmKeys(hash *prunekeys);
 private	char	*mkRandom(char *input);
 private	int	found(delta *start, delta *stop);
-private	void	_pruneEmpty(sccs *s, delta *d, u8 *slist);
+private	void	_pruneEmpty(sccs *s, delta *d, u8 *slist, char ***mkid);
 private	void	pruneEmpty(sccs *s, sccs *sb);
-private	hash	*getKeys(char *comppath);
+private	hash	*getKeys(char *file);
 private	int	keeper(char *rk);
-private	void	freeGone(goner *gonemap);
 
 private	int	do_file(sccs *s, char *path, char **deep);
 private	char	**deepPrune(char **map, char *path);
 private	char	*newname( char *delpath, char *comp, char *path, char **deep);
 private	char	*getPath(char *key, char **term);
 private	int	do_files(char *comppath, char **deepnest);
-private	hash	*mklookup(char **cweave);
+private	char	*key2delName(char *rk);
 
 private	int	flags;
+private	ser_t	partition_tip;
 
-/* restructure tag graph */
+#define	DELCOMP		"BitKeeper/delcomp"	/* component for deleted */
+
+/* 'flags' bits */
+#define	PRUNE_DELCOMP		0x10000000	/* prune deleted to a comp */
 #define	PRUNE_NEW_TAG_GRAPH	0x20000000	/* move tags to real deltas */
 #define	PRUNE_NO_SCOMPRESS	0x40000000	/* leave serials alone */
-#define	PRUNE_XCOMP		0x80000000	/* prune cross comp moves */
-#define	PRUNE_LVEMPTY		0x01000000	/* leave empty nodes in graph */
 #define	PRUNE_ALL		0x02000000	/* prune all user says to */
-#define	PRUNE_FIXGONE		0x04000000	/* Redo the keys in the gone */
 #define	PRUNE_NO_NEWROOT	0x08000000	/* leave backpointers alone */
 
 int
@@ -82,31 +74,23 @@ csetprune_main(int ac, char **av)
 	hash	*prunekeys = 0;
 	char	**addweave = 0;
 	char	*rev = 0;
-	char	*p;
 	int	i, c, ret = 1;
 
 	flags = PRUNE_NEW_TAG_GRAPH;
-	while ((c = getopt(ac, av, "ac:C:EGk:KNqr:sSXW:", 0)) != -1) {
+	while ((c = getopt(ac, av, "ac:C:k:KNqr:sSW:", 0)) != -1) {
 		switch (c) {
 		    case 'a': flags |= PRUNE_ALL; break;
 		    case 'c': comppath = optarg; break;
 		    case 'C': compfile = optarg; break;
-		    case 'E': flags |= PRUNE_LVEMPTY; break;
-		    case 'G': flags |= PRUNE_FIXGONE; break;
 		    case 'k': ranbits = optarg; break;
 		    case 'K': flags |= PRUNE_NO_NEWROOT; break;
 		    case 'N': flags |= PRUNE_NO_SCOMPRESS; break;
 		    case 'q': flags |= SILENT; break;
 		    case 'r': rev = optarg; break;
 		    case 'S': flags &= ~PRUNE_NEW_TAG_GRAPH; break;
-		    case 'X': flags |= PRUNE_XCOMP; break;
 		    case 'W': weavefile = optarg; break;
 		    default: bk_badArg(c, av);
 		}
-	}
-	if (rev && !(flags & PRUNE_XCOMP)) {
-		fprintf(stderr, "%s: -r only with -X\n", prog);
-		goto err;
 	}
 	if (ranbits) {
 		u8	*p;
@@ -120,26 +104,32 @@ k_err:			fprintf(stderr,
 			if (!isxdigit(*p) || isupper(*p)) goto k_err;
 		}
 	}
+	/* partition_tip works on keeping serials the same */
+	if (rev && !(flags & (PRUNE_NO_NEWROOT | PRUNE_NO_SCOMPRESS))) {
+		fprintf(stderr, "%s: -r in an internal interface\n", prog);
+		goto err;
+	}
 	/*
 	 * Backward compat -- fake '-' if no new stuff specified
 	 */
-	if ((!comppath && !compfile) ||
-	    ((optind < ac) && streq(av[optind], "-"))) {
-		p = comppath ? comppath : (compfile ? "." : 0);
-		if (flags & PRUNE_XCOMP) p = 0; /* global prune */
-		unless (prunekeys = getKeys(p)) goto err;
+	if ((!comppath && !compfile) || ((optind < ac))) {
+		unless (prunekeys = getKeys(av[optind])) goto err;
 	}
+	unless (prunekeys) prunekeys = hash_new(HASH_MEMHASH);
 	if (compfile) {
 		unless (complist = file2Lines(0, compfile)) {
 			fprintf(stderr, "%s: missing complist file\n", prog);
 			goto err;
 		}
 		uniqLines(complist, free);
-		c = (comppath == 0);	/* no comppath if product */
+		c = (!comppath || streq(comppath, "."));
 		EACH(complist) {
 			unless (c) c = streq(complist[i], comppath);
-			if (strneq(complist[i], "BitKeeper", 9) &&
-			    (!complist[i][9] || (complist[i][9] == '/'))) {
+			if (streq(complist[i], DELCOMP)) {
+				flags |= PRUNE_DELCOMP;
+			} else if (strneq(complist[i], "BitKeeper", 9) &&
+			    (!complist[i][9] || (complist[i][9] == '/')) &&
+			    !streq(complist[i]+9, "/triggers")) {
 				fprintf(stderr, "%s: no component allowed "
 				    "in the BitKeeper directory\n", prog);
 				goto err;
@@ -156,10 +146,11 @@ k_err:			fprintf(stderr,
 		goto err;
 	}
 	if (weavefile) {
-		unless (addweave = file2Lines(0, weavefile)) {
+		unless (exists(weavefile)) {
 			fprintf(stderr, "%s: missing weave file\n", prog);
 			goto err;
 		}
+		addweave = file2Lines(addweave, weavefile);
 	}
 	if (proj_cd2root()) {
 		fprintf(stderr, "%s: cannot find package root\n", prog);
@@ -187,72 +178,57 @@ csetprune(hash *prunekeys, char *comppath, char **complist, char ***addweave,
 	delta	*d = 0;
 	sccs	*cset = 0, *csetb = 0;
 	char	*p, *p1;
-	char	**delkeys = 0;
 	char	**cweave = 0;
 	char	**deepnest = 0;
-	goner	*gonemap = 0;
 	char	buf[MAXPATH];
+	char	key[MAXKEY];
 
 	unless (cset = sccs_csetInit(0)) {
 		fprintf(stderr, "csetinit failed\n");
 		goto err;
 	}
 	unless (!rev || (d = sccs_findrev(cset, rev))) {
-		fprintf(stderr, "%s: not a valid revision: %s\n", prog, rev);
+		fprintf(stderr,
+		    "%s: Revision must be present in repository\n  %s\n",
+		    prog, rev);
 		goto err;
 	}
-	range_walkrevs(cset, 0, 0, d, 0, walkrevs_setFlags, int2p(D_SET));
+	/* a hack way to color all D_SET */
+	range_walkrevs(cset, 0, 0, 0, 0, walkrevs_setFlags, int2p(D_SET));
 	cset->state |= S_SET;
 	if ((cweave = cset_mkList(cset)) == (char **)-1) {
 		fprintf(stderr, "cset_mkList failed\n");
 		goto err;
 	}
-	if (flags & PRUNE_XCOMP) {
-		ret = printXcomp(cweave, complist, prunekeys);
-		if (cweave) freeLines(cweave, free);
-		sccs_free(cset);
-		return (ret);
-	}
-
-	unless (ranbits) {
-		randomBits(buf);
-		ranbits = buf;
+	if (d) {
+		/* leave just history of rev colored (assuming single tip) */
+		partition_tip = d->serial;
+		range_walkrevs(cset, d, 0, sccs_top(cset), 0,
+		    walkrevs_clrFlags, int2p(D_SET));
 	}
 	deepnest = deepPrune(complist, comppath);
 
-	if (flags & PRUNE_FIXGONE) {
-		gonemap = filterGone(cweave, comppath, deepnest);
-		if (gonemap == INVALID) {
-			fprintf(stderr, "filterGone failed\n");
-			goto err;
-		}
-	}
-
-	empty_nodes = filterWeave(cset, &cweave, addweave,
-	    &delkeys, prunekeys, comppath, deepnest, gonemap);
-	if (empty_nodes == -1) {
-		fprintf(stderr, "Filtering failed\n");
+	if (filterWeave(
+	    cset, cweave, complist, comppath, deepnest, prunekeys)) {
 		goto err;
 	}
-	if (comppath) {
-		p = aprintf("%s %s\n", comppath, ranbits);
-		p1 = mkRandom(p);
-		free(p);
-		strcpy(buf, p1);
-		free(p1);
-		ranbits = buf;
-	}
+	cweave = catLines(cweave, *addweave);
+	*addweave = 0;
+
+	/* possibly inject new files into the weave, so do before sort */
+	if (newBKfiles(cset, prunekeys, &cweave)) goto err;
+	sortLines(cweave, cset_byserials);
+	empty_nodes = fixAdded(cset, cweave);
 	if (sccs_csetWrite(cset, cweave)) goto err;
 	sccs_free(cset);
 	cset = 0;
 	freeLines(cweave, free);
 	cweave = 0;
 
-	rmKeys(delkeys);
-	if (delkeys) freeLines(delkeys, free);
-	delkeys = 0;
+	/* blow away file cache -- init all sfiles in repo */
+	rmKeys(prunekeys);
+	if (do_files(comppath, deepnest)) goto err;
 	if (empty_nodes == 0) goto finish;
-	if (flags & PRUNE_LVEMPTY) goto finish;
 
 	unless ((cset = sccs_csetInit(INIT_NOCKSUM)) && HASGRAPH(cset)) {
 		fprintf(stderr, "%s: cannot init ChangeSet file\n", prog);
@@ -284,406 +260,104 @@ csetprune(hash *prunekeys, char *comppath, char **complist, char ***addweave,
 	sccs_free(cset);
 	cset = 0;
 finish:
-	if (do_files(comppath, deepnest)) goto err;
 	proj_reset(0);	/* let go of BAM index */
 	verbose((stderr, "Regenerating ChangeSet file checksums...\n"));
 	sys("bk", "checksum", "-f", "ChangeSet", SYS);
 	// sometimes want to skip this to save another sfile write/walk.
 	unless (flags & PRUNE_NO_NEWROOT) {
+		unless (ranbits) {
+			randomBits(buf);
+			ranbits = buf;
+		} else if (comppath && !streq(comppath, ".")) {
+			p = aprintf("%s %s\n", comppath, ranbits);
+			p1 = mkRandom(p);
+			free(p);
+			strcpy(buf, p1);
+			free(p1);
+			ranbits = buf;
+		}
+		if (partition_tip) {
+			cset = sccs_csetInit(INIT_MUSTEXIST);
+			d = sfind(cset, partition_tip);
+			assert(d);
+			sccs_sdelta(cset, d, key);
+			p = aprintf("-qycsetprune command: %s", key);
+			sccs_free(cset);
+			cset = 0;
+		} else {
+			p = aprintf("-qycsetprune command");
+		}
 		verbose((stderr,
 		    "Generating a new root key and updating files...\n"));
-		if (sys("bk", "newroot",
-		    "-qycsetprune command", "-k", ranbits, SYS)) {
+		if (sys("bk", "newroot", p, "-k", ranbits, SYS)) {
+			free(p);
 			goto err;
 		}
+		free(p);
 	}
 	/* Find any missing keys and make a delta about them. */
-	if (complist) {
+	if (comppath) {
 		verbose((stderr, "Running a check...\n"));
 		status = system("bk -r check -aggg | bk gone -q -");
-		unless (WIFEXITED(status)) goto err;
-		unless ((WEXITSTATUS(status) == 0) ||
-		    (WEXITSTATUS(status) == 0x40)) {
-		    	goto err;
-		}
+statuschk:	unless (WIFEXITED(status)) goto err;
 		if (WEXITSTATUS(status) == 0x40) {
 			verbose((stderr, "Updating gone...\n"));
+		} else unless (WEXITSTATUS(status) == 0) {
+			goto err;
 		}
 	} else if (flags & PRUNE_NO_NEWROOT) {
 		/* Hack - 4 g's is same as ignore gone */
 		verbose((stderr, "Running a check...\n"));
 		status = system("bk -r check -agggg");
-		unless (WIFEXITED(status)) goto err;
-		unless ((WEXITSTATUS(status) == 0) ||
-		    (WEXITSTATUS(status) == 0x40)) {
-		    	goto err;
-		}
-		if (WEXITSTATUS(status) == 0x40) {
-			verbose((stderr, "Ignoring gone...\n"));
-		}
+		goto statuschk;
 	} else {
 		verbose((stderr, "Running a check -ac...\n"));
 		if (system("bk -r check -ac")) goto err;
 	}
+	system("bk parent -qr");	/* parent no longer valid */
 	verbose((stderr, "All operations completed.\n"));
 	ret = 0;
 
 err:	if (cset) sccs_free(cset);
-	freeGone(gonemap);
 	if (csetb) sccs_free(csetb);
-	if (delkeys) freeLines(delkeys, free);
 	/* ptrs into complist, don't free */
 	if (deepnest) freeLines(deepnest, 0);
 	return (ret);
 }
 
-/*
- * sort by whole rootkey, then serial - big serial first.
- * lines:
- *    <serial>\t<rootkey> <deltakey>
- */
-
-private	int
-sortByKeyBigSer(const void *a, const void *b)
-{
-	char	*s1 = *(char**)a;
-	char	*s2 = *(char**)b;
-	char	*p1 = strchr(s1, '\t');	/* rootkey */
-	char	*p2 = strchr(s2, '\t');
-	char	*d1 = separator(p1);	/* deltakey */
-	char	*d2 = separator(p2);
-	int	rc;
-
-	*d1 = 0;
-	*d2 = 0;
-	unless (rc = strcmp(p1, p2)) rc = atoi(s2) - atoi(s1);
-	assert(rc);
-	*d1 = ' ';
-	*d2 = ' ';
-	return (rc);
-}
-
-/*
- * sort by whole rootkey, then serial
- * If that is not unique, then we have a rootkey in a serial twice(?)
- * Order from low serial to high serial
- * lines:
- *    <serial>\t<rootkey> <deltakey>
- */
-
-private	int
-sortByKeySer(const void *a, const void *b)
-{
-	char	*s1 = *(char**)a;
-	char	*s2 = *(char**)b;
-	char	*p1 = strchr(s1, '\t');	/* path in rootkey */
-	char	*p2 = strchr(s2, '\t');
-	char	*d1 = separator(p1); /* start of delta key */
-	char	*d2 = separator(p2);
-	int	rc;
-
-	*d1 = 0;
-	*d2 = 0;
-	unless (rc = strcmp(p1, p2)) rc = atoi(s1) - atoi(s2);
-	assert(rc);
-	*d1 = ' ';
-	*d2 = ' ';
-	return (rc);
-}
-
-private	void
-freeGone(goner *gonemap)
-{
-	unless (gonemap && (gonemap != INVALID)) return;
-	if (gonemap->db) hash_free(gonemap->db);
-	if (gonemap->rk) free(gonemap->rk);
-	free(gonemap);
-}
-/*
- * This is a hard problem.  There could be many gone files.  If we
- * want a clone -r to work, then all gone files would need to be
- * fixed.  Let's at least flush out the mechanics by working on the
- * current gone file...
- */
-private	goner	*
-filterGone(char **cweave, char *comppath, char **deepnest)
-{
-	int	iflags = INIT_MUSTEXIST|INIT_NOCKSUM|SILENT;
-	int	i;
-	goner	*gonemap = 0;
-	FILE	*out = 0;
-	sccs	*s = 0;
-	delta	*d;
-	char	*buf, *p, *e, *newpath, *delpath, *rootkey = 0;
-	char	*freeme = 0;
-	hash	*lookup = 0;
-	char	oldkey[MAXKEY], newkey[MAXKEY];
-
-	/*
-	 * Name the repo's gone instead of SGONE which could be an env var
-	 */
-	unless (s = sccs_init("BitKeeper/etc/SCCS/s.gone", iflags)) goto err;
-	if ((d = sccs_top(s)) && d->dangling) {
-		fprintf(stderr,
-		    "%s: dangling deltas in gone need to be removed\n", prog);
-		sccs_free(s);
-		return (INVALID);
-	}
-	unless (sccs_lock(s, 'z')) {
-		fprintf(stderr, "can't zlock %s\n", s->gfile);
-		goto err;
-	}
-	unless (out = sccs_startWrite(s)) goto err;
-	if (delta_table(s, out, 0)) goto err;
-	if (s->encoding & E_GZIP) sccs_zputs_init(s, out);
-	sccs_rdweaveInit(s);
-	while (buf = sccs_nextdata(s)) {
-		/* do a remap of path only in keys with path in them */
-		if ((i = strcnt(buf, '|')) == 4) {	/* new style rootkey */
-			rootkey = buf;
-		} else if (i == 3) {	/* deltakey or short rootkey */
-			unless (lookup) lookup = mklookup(cweave);
-			unless (rootkey = hash_fetchStr(lookup, buf)) {
-				/*
-				 * Gone file could be MONOTONIC and this 'buf'
-				 * be a valid key in another repo.
-				 * So ignore it.
-				 */
-				i = 0;
-			}
-		} else {
-			i = 0;
-			/* Comment out non keys */
-			unless (strchr("\001#\n", *buf)) {
-				fputdata(s, "# csetpruned: ", out);
-			}
-		}
-		if (i) {
-			unless (delpath = key2rmName(rootkey)) goto err;
-			p = strchr(buf, '|');
-			assert(p);
-			e = strchr(p+1, '|');
-			assert(e);
-			*p = *e = 0;
-			newpath = newname(delpath, comppath, p+1, deepnest);
-			freeme = aprintf("%s|%s|%s", buf, newpath, e+1);
-			free(delpath);
-			*p = *e = '|';
-			buf = freeme;
-		}
-
-		fputdata(s, buf, out);
-		fputdata(s, "\n", out);
-		if (freeme) {
-			free(freeme);
-			freeme = 0;
-		}
-	}
-	sccs_rdweaveDone(s);
-	if (lookup) {
-		hash_free(lookup);
-		lookup = 0;
-	}
-	if (fflushdata(s, out)) goto err;
-	fseek(out, 0L, SEEK_SET);
-	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
-	if (sccs_finishWrite(s, &out)) goto err;
-	sccs_restart(s);	/* delta checksums are wrong */
-	for (d = s->table; d; d = d->next) {
-		if (TAG(d)) continue;	// assert?
-		unless (d->flags & D_CSET) {
-			sccs_resum(s, d, 0, 1);
-			continue;
-		}
-
-		sccs_sdelta(s, d, oldkey);
-		sccs_resum(s, d, 0, 1);
-		sccs_sdelta(s, d, newkey);
-		if (streq(oldkey, newkey)) continue;
-
-		unless (gonemap) {
-			gonemap = new(goner);
-			gonemap->db = hash_new(HASH_MEMHASH);
-		}
-		unless (hash_insertStr(gonemap->db, oldkey, newkey)) {
-			fprintf(stderr,
-			    "Duplicate gone delta?\nKEY: %s\n", oldkey);
-			goto err;
-		}
-	}
-	if (gonemap && !gonemap->rk) {
-		sccs_sdelta(s, sccs_ino(s), newkey);
-		gonemap->rk = strdup(newkey);
-	}
-	sccs_unlock(s, 'z');
-	sccs_newchksum(s);	/* new checksums (XXX: could track if new) */
-	unlink("BitKeeper/etc/gone");
-	return (gonemap);
-err:
-	if (gonemap) freeGone(gonemap);
-	if (s) {
-		sccs_abortWrite(s, &out);
-		sccs_unlock(s, 'z');
-		sccs_free(s);
-	}
-	return (INVALID);
-}
-
-private	hash	*
-mklookup(char **cweave)
-{
-	int	i;
-	char	*rk, *dk, *p;
-	hash	*lookup = hash_new(HASH_MEMHASH);
-
-	EACH(cweave) {
-		rk = strchr(cweave[i], '\t');
-		assert(rk);
-		rk++;
-		dk = separator(rk);
-		assert(dk);
-		*dk++ = 0;
-		unless (hash_insertStr(lookup, dk, rk)) {
-			p = hash_fetchStr(lookup, dk);
-			assert(p && streq(p, rk));
-		}
-		dk[-1] = ' ';
-	}
-	return (lookup);
-}
-
 private	char	*
-whichComp(char *path, char **reverseComps)
+whichComp(char *key, char **complist)
 {
 	int	i, len;
-	char	*ret = 0;
+	char	*end, *path, *ret;
 
-	EACH(reverseComps) {
-		if (len = paths_overlap(path, reverseComps[i])) {
-			ret = path[len] ? reverseComps[i] : INVALID;
+	path = getPath(key, &end);
+	if (strneq(path, "BitKeeper/", 10)) {
+		if (strneq(path+10, "deleted/", 8)) {
+			return ("|deleted");
+		} else unless (strneq(path+10, "triggers/", 8)) {
+			return ("|all");
+		}
+	}
+	ret = ".";
+	*end = 0;	/* terminate path */
+	/* go backwards through list to find first deep nest which applies */
+	for (i = nLines(complist); i > 0; i--) {
+		if (len = paths_overlap(path, complist[i])) {
+			unless (path[len]) {
+				*end = '|';
+				fprintf(stderr,
+				    "%s: path collides with component\n"
+				    "comp: %s\nkey:  %s\n",
+				    prog, complist[i], key);
+				ret = INVALID;
+			} else {
+				ret = complist[i];
+			}
 			break;
 		}
 	}
-	return (ret);
-}
-
-/*
- * Print out things to prune relating to cross component moves:
- * Files that are currently deleted: rootkey
- * Files that moved from A to B: comp||rootkey
- * where comp = '.' if product.
- *
- * NOTE: this writes in and does not restore the cweave list.
- */
-private	int
-printXcomp(char **cweave, char **complist, hash *prunekeys)
-{
-	char	*rk, *dk, *path, *p, *comppath = 0, *delcomp;
-	char	**reverseComps = 0;
-	char	**deepnest = 0;
-	hash	*uniq = hash_new(HASH_MEMHASH);
-	hash	*seenpath = 0;	/* optimize: limit calls to whichComp() */
-	int	i, skip, ret = 1;
-	char	last_rk[MAXKEY];
-
-	assert(uniq);
-	verbose((stderr, "Extracting cross component prune list..\n"));
-
-	EACH(complist) reverseComps = addLine(reverseComps, complist[i]);
-	reverseLines(reverseComps);
-
-	sortLines(cweave, sortByKeyBigSer);
-	last_rk[0] = 0;
-	skip = 0;
-	EACH(cweave) {
-		rk = strchr(cweave[i], '\t');
-		rk++;
-		dk = separator(cweave[i]);
-		*dk++ = 0;
-		if (prunekeys && hash_fetchStr(prunekeys, dk)) continue;
-		path = getPath(dk, &p);
-		*p = 0;
-
-		unless (streq(rk, last_rk)) {
-			unless (sccs_iskeylong(rk)) {
-				fprintf(stderr,
-				    "ChangeSet file has short rootkeys\n");
-				goto err;
-			}
-			strcpy(last_rk, rk);
-			skip = 0;
-			if (seenpath) {
-				hash_free(seenpath);
-				seenpath = 0;
-			}
-			if (deepnest) {
-				freeLines(deepnest, 0);
-				deepnest = 0;
-			}
-			if (strneq(path, "BitKeeper/deleted/", 18)) {
-				/* delete this rk in all */
-				puts(rk);
-				skip = 1;
-				continue;
-			}
-			if (strneq(path, "BitKeeper/", 10)) {
-				/* keep - it is in all components */
-				skip = 1;
-				continue;
-			}
-			if (prunekeys && hash_fetchStr(prunekeys, rk)) {
-			    	skip = 1;
-				continue;
-			}
-			seenpath = hash_new(HASH_MEMHASH);
-			hash_insertStr(seenpath, path, 0);
-			comppath = whichComp(path, reverseComps);
-			if (comppath == INVALID) {
-				fprintf(stderr,
-				    "%s: tipkey path matches "
-				    "a component path '%s'.\n",
-				    prog, path);
-				*p = '|';
-				fprintf(stderr,
-				    "Rootkey and deltakey are:\n%s\n%s\n",
-				    prog, rk, dk);
-				goto err;
-			}
-			*p = '|';
-			deepnest = deepPrune(complist, comppath);
-			/* filter rootkey path too */
-			path = getPath(rk, &p);
-			*p = 0;
-		}
-		if (skip) continue;
-		delcomp = newname(0, comppath, path, deepnest);
-		if (delcomp == INVALID) {
-			fprintf(stderr,
-			    "%s: key path matches a component path %s.\n",
-			    prog, path);
-			*p = '|';
-			fprintf(stderr,
-			    "Rootkey and deltakey are:\n%s\n%s\n", rk, dk);
-			goto err;
-		}
-		if (delcomp) continue;
-		unless (hash_insertStr(seenpath, path, 0)) continue;
-		unless (delcomp = whichComp(path, reverseComps)) {
-			delcomp = ".";
-		}
-		*p = '|';	/* restore key (matters if rootkey) */
-		delcomp = aprintf("%s||%s", delcomp, rk);
-		if (hash_insertStr(uniq, delcomp, 0)) {
-			puts(delcomp);
-		}
-		free(delcomp);
-	}
-	ret = 0;
-err:
-	if (deepnest) freeLines(deepnest, 0);
-	if (reverseComps) freeLines(reverseComps, 0);
-	if (uniq) hash_free(uniq);
-	if (seenpath) hash_free(seenpath);
+	*end = '|';
 	return (ret);
 }
 
@@ -746,7 +420,7 @@ newFileEnv(sccs *cset, char **user, char **host)
 private	void
 clrFileEnv(char *user, char *host)
 {
-	// XXX save and restore USER and HOST? Since we can delta a gone file
+	// save and restore USER and HOST: Since could later delta a gone file
 	putenv("BK_DATE_TIME_ZONE=");
 	if (user) {
 		safe_putenv("BK_USER=%s", user);
@@ -829,193 +503,225 @@ err:
 	return (ret);
 }
 
-#define	TRIGGERS	"BitKeeper/triggers/"
-#define	TRIGLEN		(sizeof(TRIGGERS) - 1)
+private	int
+whereError(int didHeader, char *orig, char *dk)
+{
+	char	*end, *path;
+
+	unless (didHeader) {
+		fprintf(stderr,
+		    "%s: file moved between components.\n"
+		    "Partition will not work on this repository.\n"
+		    "You need to backport these files to a repository\n"
+		    "based on the partition reference revision.\n"
+		    "Listed below are files and where they moved from.\n",
+		    prog);
+	}
+	path = getPath(dk, &end);
+	*end = 0;
+	fprintf(stderr, "    %s -> %s\n", path, orig);
+	*end = '|';
+	return (2);	/* signal to filteerWeave to do all files */
+}
 
 /*
- * filterWeave - skip pruned, rename renames, add deleted
+ * Input - a weave with deltas in partition baseline tagged D_SET
+ * optionally, a list of components, and a component.
+ * optionally, a list of keys to prune
+ *
+ * output: a list of keys to delete and a cweave with names transformed
+ * and a lot of holes in it where keys were deleted.
  */
 private	int
-filterWeave(sccs *cset, char ***cweavep, char ***addweave, char ***delkeys,
-    hash *prunekeys, char *comppath, char **deepnest, goner *gonemap)
+filterWeave(sccs *cset, char **cweave, char **complist, char *comppath,
+    char **deep, hash *prunekeys)
 {
-	delta	*d;
 	char	*rk, *dk;
-	char	*delpath = 0, *path, *newpath, *p, **list;
-	char	**cweave = *cweavep;
-	int	ret = -1, striptrig = 0, skip, lasti;
-	int	empty = 0, i, j, marked = 0;
-	int	cnt, del_rk = 0, del_dk = 0, del = 0;
-	ser_t	ser, oldser;
-	char	last_rk[MAXKEY];
-	char	new_rk[MAXKEY];
-	char	new_dk[MAXKEY];
+	char	**list;
+	int	i, ret = 0;
+	hash	*inode = hash_new(HASH_MEMHASH);
 
-	assert(delkeys);
-
-	verbose((stderr, "Processing ChangeSet file...\n"));
-
-	sortLines(cweave, sortByKeySer);
-	last_rk[0] = 0;
-	cnt = 0;
-	skip = 0;
-	lasti = 0;
-	if (prunekeys && hash_fetchStr(prunekeys, TRIGGERS)) {
-		striptrig = 1;
-	}
 	EACH(cweave) {
 		rk = strchr(cweave[i], '\t');
+		assert(rk);
 		rk++;
-		dk = separator(cweave[i]);
+		dk = separator(rk);
 		*dk++ = 0;
 
-		unless (streq(rk, last_rk)) {
-			unless (sccs_iskeylong(rk)) {
-				fprintf(stderr,
-				    "ChangeSet file has short rootkeys\n");
-				goto err;
-			}
-			/*
-			 * If none were kept from last_rk, unlink sfile
-			 */
-			if (last_rk[0] && (cnt == 0)) {
-				*delkeys = addLine(*delkeys, strdup(last_rk));
-			}
-			del = 0;
-			cnt = 0;
-			lasti = i;
-			strcpy(last_rk, rk);
-			skip = 0;
-			if (prunekeys && ((flags & PRUNE_ALL) || !keeper(rk))
-			    && hash_fetchStr(prunekeys, rk)) {
-			    	skip = 1;
-zero:				cweave[i][0] = 0;
-				continue;
-			}
-			if (marked) {
-				sccs_clearbits(cset, D_RED);
-				marked = 0;
-			}
-			if (delpath) free(delpath);
-			unless (delpath = key2rmName(rk)) goto err;
-			path = getPath(rk, &p);
-			*p = 0;
-			path[-1] = 0;
-			newpath = newname(delpath, comppath, path, deepnest);
-			if (newpath == INVALID) {
-				*p = path[-1] = '|';
-				fprintf(stderr,
-				    "%s: rootkey path matches "
-				    "component path.  Rootkey:\n%s", prog, rk);
-				goto err;
-			}
-			del_rk = strneq(newpath, "BitKeeper/deleted/", 18);
-			sprintf(new_rk, "%s|%s|%s", rk, newpath, &p[1]);
-			if ((prunekeys && hash_fetchStr(prunekeys, path)) ||
-			    (striptrig && strneq(path, TRIGGERS, TRIGLEN))) {
-				skip = 1;
-			}
-			*p = path[-1] = '|';
-		}
-		if (skip) goto zero;
+		/* Wayne's malloc magic */
+		hash_insert(inode, rk, dk-rk, 0, sizeof(char **));
+		*(char ***)inode->vptr =
+		     addLine(*(char ***)inode->vptr, &cweave[i]);
+		dk[-1] = ' ';
+	}
+	EACH_HASH(inode) {
+		list = *(char ***)inode->vptr;
 		/*
-		 * User may want to exclude specific deltas
+		 * process all cross component file move errors (ret == 2)
+		 * while skipping if normal error (ret == 1) and just
+		 * doing the freeLines teardown of the rest of the hash.
 		 */
-		if (prunekeys && hash_fetchStr(prunekeys, dk)) goto zero;
-		if (gonemap && streq(rk, gonemap->rk)) {
-			if (hash_fetchStr(gonemap->db, dk)) {
-				dk = gonemap->db->vptr;
-			}
+		unless (ret & 1) {
+			rk = inode->kptr;
+			ret |= filterRootkey(rk, list, ret,
+			    cset, complist, comppath, deep, prunekeys);
 		}
-		path = getPath(dk, &p);
-		*p = 0;
-		path[-1] = 0;
-		newpath = newname(delpath, comppath, path, deepnest);
-		if (newpath == INVALID) {
-			*p = path[-1] = '|';
-			fprintf(stderr, "%s: deltakey path matches "
-			    "component path.\n"
-			    "The rootkey and deltakey:\n"
-			    "%s\n%s\n", prog, rk, dk);
-			goto err;
-		}
-		del_dk = strneq(newpath, "BitKeeper/deleted/", 18);
-		del = (newpath == delpath);	/* other component */
-		sprintf(new_dk, "%s|%s|%s", dk, newpath, &p[1]);
-		if ((prunekeys && hash_fetchStr(prunekeys, path)) ||
-		    (striptrig && strneq(path, TRIGGERS, TRIGLEN))) {
-			if (keyExists(rk, path)) {
-				*p = path[-1] = '|';
-				goto err;
-			}
-		}
-		*p = path[-1] = '|';
-
-		ser = atoi(cweave[i]);
-
-		unless (del_rk) goto save;
-		d = sfind(cset, ser);
-		assert(d);
-		if (d->flags & D_RED) goto save;
-
-		if (del_dk) goto zero;
-		/*
-		 * Color from this node to tip along graph
-		 */
-		marked = 1;
-		d->flags |= D_RED;
-		for (j = d->serial + 1; j < cset->nextserial; j++) {
-			unless (d = sfind(cset, j)) continue;
-			if (d->flags & D_RED) continue;
-			if ((PARENT(cset, d)->flags & D_RED) ||
-			    (d->merge &&
-			    (MERGE(cset, d)->flags & D_RED))) {
-			    	d->flags |= D_RED;
-			}
-		}
-save:
-		cnt++;
-		free(cweave[i]);
-		cweave[i] = aprintf("%u\t%s %s", ser, new_rk, new_dk);
-		assert(cweave[i]);
+		freeLines(list, 0);
 	}
-	if (delpath) {
-		free(delpath);
-		delpath = 0;
-	}
-	if (last_rk[0] && (cnt == 0)) {
-		*delkeys = addLine(*delkeys, strdup(last_rk));
-	}
-	cnt = 0;
+	hash_free(inode);
+	return (ret);
+}
 
-	if (marked) sccs_clearbits(cset, D_RED);
-	marked = 0;
+private	int
+filterRootkey(char *rk, char **list, int ret, sccs *cset, char **complist,
+    char *comppath, char **deep, hash *prunekeys)
+{
+	ser_t	ser;
+	char	*dk, *line;
+	char	*delpath = 0;
+	char	*rnew, *rend, *dnew, *dend, *which = 0, *cur;
+	int	i, skip, len, origlen;
+	char	buf[MAXKEY * 2 + 2];
 
-	list = *addweave;
-	EACH(list) cweave = addLine(cweave, list[i]);
-	freeLines(list, 0);
-	*addweave = list = 0;
-	*cweavep = cweave;
-	if (prunekeys) {
-		if (newBKfiles(cset, prunekeys, cweavep)) goto err;
-		cweave = *cweavep;
+	unless (sccs_iskeylong(rk)) {
+		fprintf(stderr, "ChangeSet file has short rootkeys\n");
+		goto err;
 	}
 
-	sortLines(cweave, cset_byserials);
+	if (hash_fetchStr(prunekeys, rk)) {
+zero:		EACH(list) (*(char **)list[i])[0] = 0;
+		return (ret);
+	}
+	rnew = getPath(rk, &rend);
+	*rend = 0;
+	hash_fetchStr(prunekeys, rnew);
+	*rend = '|';
+	if (prunekeys->vptr) {
+		/* mark for rmKeys() to delete */
+del:		hash_storeStr(prunekeys, rk, 0);
+		goto zero;
+	}
 
-	d = cset->table;
-	empty = 0;
-	oldser = 0;
-	lasti = 0;
-	EACH(cweave) {
-		unless (cweave[i][0]) {
-			/*
-			 * all the deleted nodes are at the end: okay to free
-			 */
-			free(cweave[i]);
-			unless (lasti) lasti = i;
+	skip = strlen(rk) + 2;	/* skip "\t<rk> " to get to deltakey */
+
+	unless (complist) goto prune;
+	/*
+	 * set 'which' component this deltakey is in at the partition pt
+	 * For new files created after partition pt, use rk path
+	 * Aside, make sure _all_ rk and dk are tested to not overlap
+	 * with a different component path (which == INVALID).
+	 * rk is tested in this loop and all dk's are tested in next.
+	 * Delete all files in deleted directory at partition pt.
+	 * Pedantic side effect: also delete new files born in deleted.
+	 */
+	which = whichComp(rk, complist);
+	if (which == INVALID) goto err;
+	EACH(list) {
+		dk = *(char **)list[i];
+		ser = atoi_p(&dk);
+		dk += skip;
+		if (hash_fetchStr(prunekeys, dk)) continue;
+		unless (sfind(cset, ser)->flags & D_SET) continue;;
+
+		which = whichComp(dk, complist);
+		if (which == INVALID) goto err;
+		break;
+	}
+	if ((!(flags & PRUNE_DELCOMP) && streq(which, "|deleted")) ||
+	    (comppath && !streq(which, comppath) &&
+	    !streq(which, "|all") &&
+	    (!streq(which, "|deleted") || !streq(comppath, DELCOMP)))) {
+		goto del;
+	}
+
+prune:
+	EACH(list) {
+		line = dk = *(char **)list[i];
+		ser = atoi_p(&dk);
+		dk += skip;
+		if (hash_fetchStr(prunekeys, dk)) {
+			line[0] = 0;
 			continue;
 		}
+		dnew = getPath(dk, &dend);
+		*dend = 0;
+		if (hash_fetchStr(prunekeys, dnew)) {
+			if (keyExists(rk, dnew)) goto err;
+		}
+		*dend = '|';
+		unless (complist) continue;
+
+		/*
+		 * test _all_ dk's for overlap with any comp.
+		 * Look for cross component moves outside of partition pt
+		 */
+		cur = whichComp(dk, complist);
+		if (cur == INVALID) goto err;
+		unless (sfind(cset, ser)->flags & D_SET) {
+			unless (streq(which, cur) ||
+			    streq(cur, "|deleted")) {
+				ret |= whereError(ret, which, dk);
+				break; /* one error per file */
+			}
+		}
+		unless (comppath) continue;
+
+		/*
+		 * Component path is given, so map rk and dk to that path
+		 * if outside component (okay for old history), then
+		 * map to a deleted path
+		 */
+		origlen = strlen(line);
+
+		/* kind of a hack, but it will skip over serial and tab */
+		rnew = getPath(line, &rend);
+		rnew[-1] = *rend = 0;
+		rnew = newname(delpath, comppath, rnew, deep);
+		assert(rnew != INVALID);
+
+		dnew = getPath(dk, &dend);
+		dnew[-1] = *dend = 0;
+		dnew = newname(delpath, comppath, dnew, deep);
+		assert(dnew != INVALID);
+
+		unless (rnew && dnew) {
+			/* compute lazily: most files don't need a delpath */
+			delpath = key2delName(rk);
+			unless (rnew) rnew = delpath;
+			unless (dnew) dnew = delpath;
+		}
+
+		/* XXX: better to just aprintf all the time? */
+		len = sprintf(buf, "%s|%s|%s|%s|%s",
+		   line, rnew, rend+1, dnew, dend+1);
+		assert(len < sizeof(buf));
+		if (len <= origlen) {
+			strcpy(line, buf);
+		} else {
+			free(line);
+			*(char **)list[i] = strdup(buf);
+		}
+	}
+	goto done;
+
+err:	ret |= 1;
+done:	if (delpath) free(delpath);
+	return (ret);
+}
+
+/*
+ * fix up the added to be 0 in nodes that are now empty
+ * return the number of now empty nodes which will get pruned
+ */
+private	int
+fixAdded(sccs *cset, char **cweave)
+{
+	delta	*d = cset->table;
+	int	i, ser;
+	int	oldser = 0, cnt = 0, empty = 0;
+
+	EACH(cweave) {
+		unless (cweave[i][0]) continue;
 		ser = atoi(cweave[i]);
 		if (ser == oldser) {
 			cnt++;
@@ -1028,28 +734,20 @@ save:
 		oldser = ser;
 		cnt = 1;
 		while (d->serial > ser) {
-			if (d->added) empty++;
+			if (d->added || (!TAG(d) && !d->merge)) empty++;
 			d->added = 0;
 			d = NEXT(d);
 		}
 		assert(d->serial == ser);
 	}
-	if (lasti) truncLines(cweave, lasti-1);
 	assert(oldser);
 	d->added = cnt;
 	while (d = NEXT(d)) { 
-		if (d->added) empty++;
+		if (d->added || (!TAG(d) && !d->merge)) empty++;
 		d->added = 0;
 	}
-	ret = empty;
-
-err:
-	if (delpath) {
-		free(delpath);
-		delpath = 0;
-	}
 	debug((stderr, "%d empty deltas\n", empty));
-	return (ret);
+	return (empty);
 }
 
 /*
@@ -1092,9 +790,9 @@ newBKfiles(sccs *cset, hash *prunekeys, char ***cweavep)
  * rmKeys - remove the keys and build a new file.
  */
 private int
-rmKeys(char **delkeys)
+rmKeys(hash *prunekeys)
 {
-	int	n = 0, i;
+	int	n = 0;
 	MDBM	*dirs = mdbm_mem();
 	MDBM	*idDB;
 	kvpair	kv;
@@ -1107,10 +805,11 @@ rmKeys(char **delkeys)
 		exit(1);
 	}
 	verbose((stderr, "Removing files...\n"));
-	EACH(delkeys) {
+	EACH_HASH(prunekeys) {
+		if (strcnt(prunekeys->kptr, '|') != 4) continue;
 		++n;
 		/* XXX: if have a verbose mode, pass a flags & SILENT */
-		sccs_keyunlink(delkeys[i], idDB, dirs, SILENT);
+		sccs_keyunlink(prunekeys->kptr, idDB, dirs, SILENT);
 	}
 	mdbm_close(idDB);
 	verbose((stderr, "%d removed\n", n));
@@ -1483,9 +1182,10 @@ fixTags(sccs *s)
  * written to disk!
  */
 private void
-_pruneEmpty(sccs *s, delta *d, u8 *slist)
+_pruneEmpty(sccs *s, delta *d, u8 *slist, char ***mkid)
 {
 	delta	*m;
+	int	i;
 
 	debug((stderr, "%s ", d->rev));
 	if (d->merge) {
@@ -1525,49 +1225,8 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist)
 		}
 		/* fix include and exclude lists */
 		sccs_adjustSet(sc, scb, d, slist);
-		// XXX: come up with a test case for 1st one (xaraya core)
+		// Test cases for these old asserts are in t.csetprune:
 		// assert((d->merge && d->include)||(!d->merge && !d->include));
-		unless ((d->merge && d->include)||(!d->merge && !d->include)) {
-			int	i;
-			delta	*w;
-
-			fprintf(stderr, "# Ignoring old assert\n");
-			fprintf(stderr, "new delta %s(%u) ", d->rev, d->serial);
-			fprintf(stderr, "parent %s(%u) ",
-			    d->pserial ? sfind(s, d->pserial)->rev : "none",
-			    d->pserial ? d->pserial : 0);
-			fprintf(stderr, "merge %s(%u) include",
-			    d->merge ? sfind(s, d->merge)->rev : "none",
-			    d->merge ? d->merge : 0);
-			
-			EACH(d->include) {
-				fprintf(stderr, " %s(%u)",
-				    sfind(s, d->include[i])->rev,
-				    d->include[i]);
-			}
-			fprintf(stderr, "\n");
-
-			w = d;
-			d = sfind(scb, d->serial);
-			s = scb;
-
-			fprintf(stderr, "old delta %s(%u) ", d->rev, d->serial);
-			fprintf(stderr, "parent %s(%u) ",
-			    d->pserial ? sfind(s, d->pserial)->rev : "none",
-			    d->pserial ? d->pserial : 0);
-			fprintf(stderr, "merge %s(%u) include",
-			    d->merge ? sfind(s, d->merge)->rev : "none",
-			    d->merge ? d->merge : 0);
-			
-			EACH(d->include) {
-				fprintf(stderr, " %s(%u)",
-				    sfind(s, d->include[i])->rev,
-				    d->include[i]);
-			}
-			fprintf(stderr, "\n");
-			d = w;
-			s = sc;
-		}
 		// assert(!d->exclude); -- we can have excludes (see test)
 	}
 	/* Else this never was a merge node, so just adjust inc and exc */
@@ -1583,14 +1242,12 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist)
 	debug((stderr, "RMDELTA(%s)\n", d->rev));
 	MK_GONE(sc, d);
 	assert(d->pserial);	/* never get rid of root node */
-	if (d->flags & D_MERGED) {
-		for (m = sc->table; m && m->serial > d->serial; m = NEXT(m)) {
-			unless (m->merge == d->serial) continue;
-			debug((stderr,
-			    "%s gets new merge parent %s (was %s)\n",
-			    m->rev, d->parent->rev, d->rev));
-			m->merge = d->pserial;
-		}
+	EACH(mkid[d->serial]) {
+		m = (delta *)mkid[d->serial][i];
+		debug((stderr,
+		    "%s gets new merge parent %s (was %s)\n",
+		    m->rev, d->parent->rev, d->rev));
+		m->merge = d->pserial;
 	}
 	for (m = KID(d); m; m = SIBLINGS(m)) {
 		unless (m->type == 'D') continue;
@@ -1599,6 +1256,7 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist)
 		m->parent = d->parent;
 		m->pserial = d->pserial;
 	}
+	if (d->serial == partition_tip) partition_tip = d->pserial;
 	return;
 }
 
@@ -1608,16 +1266,26 @@ pruneEmpty(sccs *s, sccs *sb)
 	int	i;
 	delta	*n;
 	u8	*slist;
+	char	***mkid;
 
 	sc = s;
 	scb = sb;
 	slist = (u8 *)calloc(sc->nextserial, sizeof(u8));
+	mkid = (char ***)calloc(sc->nextserial, sizeof(char **));
 	assert(slist);
+	for (n = s->table; n; n = NEXT(n)) {
+		if (n->merge) {
+			mkid[n->merge] = addLine(mkid[n->merge], n);
+		}
+	}
 	for (i = 1; i < sc->nextserial; i++) {
 		unless ((n = sfind(sc, i)) && NEXT(n) && !TAG(n)) continue;
-		_pruneEmpty(sc, n, slist);
+		_pruneEmpty(sc, n, slist, mkid);
 	}
 	free(slist);
+	for (n = s->table; n; n = NEXT(n)) {
+		if (mkid[n->serial]) freeLines(mkid[n->serial], 0);
+	}
 
 	verbose((stderr, "Rebuilding Tag Graph...\n"));
 	(flags & PRUNE_NEW_TAG_GRAPH) ? rebuildTags(sc) : fixTags(sc);
@@ -1636,16 +1304,11 @@ keeper(char *rk)
 	char	*path, *p;
 	int	ret = 0;
 
-	path = strchr(rk, '|');
-	assert(path);
-	path++;
-	p = strchr(path, '|');
-	assert(p);
+	path = getPath(rk, &p);
 	*p = 0;
 	if (streq(path, GCHANGESET) ||
 	    (strneq(path, "BitKeeper/", 10) &&
-	    !strneq(path, "BitKeeper/deleted/", 18)))
-	{
+	    !strneq(path+10, "deleted/", 8))) {
 		ret = 1;
 	}
 	*p = '|';
@@ -1653,41 +1316,36 @@ keeper(char *rk)
 }
 
 private hash	*
-getKeys(char *comppath)
+getKeys(char *file)
 {
-	char	*buf, *p;
+	char	*buf;
+	FILE	*f;
 	hash	*prunekeys = hash_new(HASH_MEMHASH);
 
+	if (!file || streq(file, "-")) {
+		f = stdin;
+	} else {
+		unless (f = fopen(file, "r")) {
+			fprintf(stderr, "Could not read from file %s\n", file);
+			hash_free(prunekeys);
+			return (0);
+		}
+	}
 	verbose((stderr, "Reading keys...\n"));
-	while (buf = fgetline(stdin)) {
-		if ((p = strchr(buf, '|')) && (p[1] == '|')) {
-			unless (comppath) continue;
-			if (p == buf) {
-				/* all components; ignore for product */
-				if (streq(comppath, ".")) continue;
-			} else {
-				/* ignore unless this component or product */
-				*p = 0;
-				unless (streq(buf, comppath)) continue;
-			}
-			buf = p + 2; /* rest is key or path */
-		} else if (comppath) {
-			continue;	/* not for a specific component */
+	while (buf = fgetline(f)) {
+		if (!(flags & PRUNE_ALL) &&
+		    (strcnt(buf, '|') == 4) && keeper(buf)) {
+		    	/* ignore rk trying to prune BitKeeper/ or ChangeSet */
+			continue;
 		}
 		unless (hash_insertStr(prunekeys, buf, 0)) {
 			fprintf(stderr, "Duplicate key?\nKEY: %s\n", buf);
 			hash_free(prunekeys);
+			if (f != stdin) fclose(f);
 			return (0);
 		}
 	}
-	/* force a new aliases file in the product */
-	if (comppath && streq(comppath, ".")) {
-		unless (hash_storeStr(prunekeys, ALIASES, 0)) {
-			fprintf(stderr, "Hash store aliases failed\n");
-			hash_free(prunekeys);
-			return (0);
-		}
-	}
+	if (f != stdin) fclose(f);
 	return (prunekeys);
 }
 
@@ -1707,11 +1365,9 @@ newname(char *delpath, char *comp, char *path, char **deep)
 	char	*newpath;
 	int	len, i;
 
-	len = comp ? strlen(comp) : 0;
-	if (strneq(path, "BitKeeper/", 10)) {
-		/* keep name as is */
-		newpath = path;
-	} else if (!len || (strneq(path, comp, len) && (path[len] == '/'))) {
+	unless (comp) return (path);
+	len = streq(comp, ".") ? 0 : strlen(comp);
+	if (!len || (strneq(path, comp, len) && (path[len] == '/'))) {
 		/* for component 'src', src/get.c => get.c */
 		newpath = &path[len ? len+1 : 0];
 		/*
@@ -1720,9 +1376,24 @@ newname(char *delpath, char *comp, char *path, char **deep)
 		 */
 		EACH(deep) {
 			if (len = paths_overlap(newpath, deep[i])) {
-				newpath = newpath[len] ? delpath : INVALID;
+				unless (newpath[len]) {
+					fprintf(stderr,
+					    "%s: path '%s' inside component "
+					    "'%s'\noverlaps with component "
+					    "'%s'\n",
+					    prog, newpath, comp, deep[i]);
+					newpath = INVALID;
+				} else {
+					newpath = delpath;
+				}
 				break;
 			}
+		}
+	} else if (strneq(path, "BitKeeper/", 10)) {
+		if (len && streq(path+10, "triggers/")){
+			newpath = delpath;
+		} else {
+			newpath = path;
 		}
 	} else {
 		/* in other component, so store as deleted here */
@@ -1743,8 +1414,8 @@ deepPrune(char **map, char *path)
 	char	*subpath, *oldsub = 0;
 	char	**deep = 0;
 
-	unless (map) return (0);
-	len = path ? strlen(path) : 0;
+	unless (map && path) return (0);
+	len = streq(path, ".") ? 0: strlen(path);
 	EACH(map) {
 		unless (map[i][0]) continue;
 		if (map[i][0] == '#') continue;
@@ -1779,14 +1450,11 @@ getPath(char *key, char **term)
 	return (p);
 }
 
-/*
- * This can use D_RED and leave it set
- */
 private	int
 do_file(sccs *s, char *comppath, char **deepnest)
 {
 	delta	*d;
-	int	i, j, keep = 0;
+	int	i;
 	int	rc = 1;
 	char	*newpath;
 	char	*delpath;
@@ -1795,7 +1463,7 @@ do_file(sccs *s, char *comppath, char **deepnest)
 	char	rk[MAXKEY];
 
 	sccs_sdelta(s, sccs_ino(s), rk);
-	delpath = key2rmName(rk);
+	delpath = key2delName(rk);
 	/*
 	 * Save all the old bam dspecs before we start mucking with anything.
 	 */
@@ -1872,26 +1540,6 @@ cmark:
 			}
 			free(bam_new);
 		}
-		if (keep || (d->flags & D_RED)) continue;
-		unless (d->flags & D_CSET) continue;
-		if (strneq(d->pathname, "BitKeeper/deleted/", 18)) {
-			d->flags &= ~D_CSET;
-			continue;
-		}
-	    	if (d == s->tree) { /* keep all cmarks if root not deleted */
-			keep = 1;
-			continue;
-		}
-		d->flags |= D_RED;
-		for (j = d->serial + 1; j < s->nextserial; j++) {
-			unless (d = sfind(s, j)) continue;
-			if (d->flags & D_RED) continue;
-			if ((PARENT(s, d)->flags & D_RED) ||
-			    (d->merge &&
-			    (MERGE(s, d)->flags & D_RED))) {
-			    	d->flags |= D_RED;
-			}
-		}
 	}
 	for (i = 1; BAM(s) && (i < s->nextserial); i++) {
 		unless (d = sfind(s, i)) continue;
@@ -1917,7 +1565,7 @@ do_files(char *comppath, char **deepnest)
 
 	unless (comppath || deepnest) return (0);
 
-	unless (sfiles = popen("bk sfiles", "r")) {
+	unless (sfiles = popen("bk sfiles -h", "r")) {
 		perror("sfiles");
 		goto err;
 	}
@@ -1943,4 +1591,13 @@ err:
 	if (s) sccs_free(s);
 	if (sfiles) pclose(sfiles);
 	return (ret);
+}
+
+private	char *
+key2delName(char *rk)
+{
+	char	*delName = key2rmName(rk);
+
+	str_subst(delName, "/deleted/", "/moved/", delName);
+	return (delName);
 }

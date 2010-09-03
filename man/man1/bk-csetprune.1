@@ -3,8 +3,10 @@
 .SH NAME
 bk csetprune \- shrink a repository by removing files
 .SH SYNOPSIS
-.B bk csetprune [\fIoptions\fP]
-.[B] \- < keylist
+.B bk csetprune
+.[B] \-S
+.[OPTreq] \-k 16hexDigits
+< keylist
 .SH DESCRIPTION
 .LP
 The
@@ -29,24 +31,15 @@ is changed (using
 and the remaining files are \*(lqreparented\*(rq
 to the new ChangeSet file.
 .SH OPTIONS 
-.if \n[NESTED] \{\
-.TP -C\*<component-list\*>n
-.OPTreq \-c component-path
-Specify a path to rebase the repository.
-For example, specifying src means that src/get.c would be kept
-and renamed get.c, while doc/howto would be pruned.
+.TP \-k\*<16hexDigits\*>n
+.B \-S
+Keep the symbol structure intact.
+This is needed when doing a csetprunes over time on
+same key set and wanting the resulting repository to communicate
+with a repository created by an earlier csetprune.
+Without this option, the internal symbol graph structure is
+streamlined.
 .tp
-.OPTreq \-C component-list
-Specify a file listing all the components.
-This is needed for handling of "deep nests" where src/ and src/libc
-may each be components.  When processing src/, csetprune needs to
-know to ignore files in src/libc.
-.tp
-.B \-E
-Keep empty cset nodes.
-Only needed as part of creating an product.
-.tp
-.\}
 .OPTreq \-k 16hexDigits
 Specify the
 .ARG 16hexDigits
@@ -54,23 +47,6 @@ used in a repository root key.
 This is needed when doing a csetprunes over time on
 same key set and wanting the resulting repository to communicate
 with a repository created by an earlier csetprune.
-.tp
-.if \n[NESTED] \{\
-.B \-N
-Do not compress the serials in the changeset file.
-Needed for building a product.
-.tp
-.\}
-.B \-q
-Do the operation quietly.
-.tp
-.B \-S
-Keep the symbol structure intact.
-This is needed when doing a series of csetprunes over time on
-same key set and wanting the resulting repository to communicate
-with a repository created by an earlier csetprune.
-Without this option, the internal symbol graph structure is
-streamlined.
 .SH "GENERATING KEYS"
 .LP
 The

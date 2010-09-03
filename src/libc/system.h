@@ -60,6 +60,12 @@
 # endif /* __va_copy */
 #endif        /* va_copy */
 
+#ifndef offsetof
+/* <stddef.h> should define this already */
+#define offsetof(st, m) \
+    ((size_t) ( (char *)&((st *)(0))->m - (char *)0 ))
+#endif
+
 #define BIG_PIPE 4096	/* 16K pipe buffer for win32, ingored on unix */
 #define	GOOD_PSIZE	(16<<10)
 #define	INVALID		(void *)~0u /* invalid pointer */

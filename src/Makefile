@@ -130,7 +130,7 @@ OBJ =	bkver.o cmd.o \
 	bam.o bkd.o bkd_bam.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
 	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o bkd_nested.o \
-	bkd_pull.o bkd_push.o bkd_pwd.o \
+	bkd_partition.o bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkusers.o \
 	cat.o cfile.o changes.o \
@@ -189,7 +189,7 @@ OBJ =	bkver.o cmd.o \
 	sccslog.o sccs_mv.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o startmenu.o \
-	stat.o stattest.o status.o stripdel.o surgery.o synckeys.o \
+	stat.o stattest.o status.o stripdel.o synckeys.o \
 	tagmerge.o testcode.o tclsh.o takepatch.o \
 	testdates.o time.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \

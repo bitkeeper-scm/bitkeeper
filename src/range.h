@@ -48,6 +48,7 @@ void	range_unrange(sccs *s, delta **left, delta **right, int all);
 int	range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to,
     int flags, int (*fcn)(sccs *s, delta *d, void *token), void *token);
 int	walkrevs_setFlags(sccs *s, delta *d, void *token);
+int	walkrevs_clrFlags(sccs *s, delta *d, void *token);
 int	walkrevs_printkey(sccs *s, delta *d, void *token);
 int	walkrevs_printmd5key(sccs *s, delta *d, void *token);
 

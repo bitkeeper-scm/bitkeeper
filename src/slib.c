@@ -16869,10 +16869,11 @@ sccs_reCache(int quiet)
 int
 gone(char *key, MDBM *db)
 {
-	unless (db) return (0);
-	unless (strchr(key, '|')) return (0);
-	if (mdbm_fetch_str(db, key) != 0) return (1);
-	
+	if (db) {
+		unless (strchr(key, '|')) return (0);
+		if (mdbm_fetch_str(db, key) != 0) return (1);
+	}
+
 	/*
 	 * OK, so it's not marked as gone.  It might be a changeset rootkey
 	 * for a component and we're going to let those be considered 

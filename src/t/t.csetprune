@@ -33,6 +33,7 @@ cd line
 bk edit $Q a
 bk delta $Q -fy1.2 a
 bk commit $Q -y1.3 || exit 1
+bk commit $Q -F -yempty || exit 1
 OLD=`bk id`
 bk admin -Zgzip ChangeSet
 bk csetprune < ../KEYS 2> ERROR
@@ -53,6 +54,16 @@ bk prs -hr1.0 -nd':USER:@:HOST: :Dy:/:Dm:/:Dd: :T::TZ:' ChangeSet |
 echo original >> WANT
 echo $OLD >> WANT
 cmpfiles GOT WANT
+echo OK
+
+echo $N Remove empty csets just as bk-4 did .........................$NL
+bk edit $Q d
+bk delta $Q -fy d
+bk commit $Q -yd
+bk commit $Q -F -yempty || exit 1
+bk csetprune -q -S - < /dev/null || fail
+tip=`bk prs -h -r+ -d':I:\n' ChangeSet`
+test "$tip" = 1.3 || fail wrong tip $tip is not 1.3
 echo OK
 
 # Test inherit of a time zone (this is single user, so no user or host)
@@ -588,6 +599,40 @@ cat <<EOF > WANT
 3d2
 < x 6
 EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Change a merge node to normal node plus include .............$NL
+# an exclude is older than an include but the include goes away.
+# the include was in a merge node for bookkeeping sake.
+cd "$HERE"
+commercial branch
+touch keep del
+bk new $Q keep del
+bk commit $Q -yboth
+bk clone $Q . ../trunk
+cd ../trunk
+# both define trunk (first after fork) and create a vanishing node (del)
+bk edit $Q del
+bk delta $Q -fydel del
+bk commit $Q -ydel
+# 2 csets - a keeper and a kept -x of the TIPPER node.
+cd ../branch
+bk edit $Q keep
+bk delta $Q -fykeep keep
+bk commit $Q -STIPPER -ykeep
+bk cset $Q -xTIPPER
+# pull in the keeper - this creates a -i to TIPPER to mark the merge
+# This merge node will go away, meaning the -i of the TIPPER will go
+cd ../trunk
+bk pull $Q -rTIPPER
+# now pull again; this one should go away, but doesn't because of keeping
+# the set for this node the same.  It requires a -iTIPPER.  No collapse then
+bk pull $Q
+bk prs -r+ -hnd:ROOTKEY: del > prune
+bk csetprune $Q < prune
+bk changes -r+ -nd:RI: > GOT
+bk changes -rTIPPER -nd+:I: > WANT
 cmpfiles WANT GOT
 echo OK
 

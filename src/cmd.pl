@@ -171,6 +171,7 @@ bkd
 binpool => bam
 cat
 _catfile	# bsd contrib/cat.c
+_cat_partition remote
 cfile
 changes
 check
@@ -186,7 +187,7 @@ components	# old compat code
 comps
 config
 cp
-_cpartition
+partition
 create
 crypto
 cset
@@ -350,7 +351,6 @@ _stattest
 status
 stripdel
 _strings
-surgery
 _svcinfo
 synckeys
 tagmerge
