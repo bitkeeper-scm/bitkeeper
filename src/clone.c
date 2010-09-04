@@ -1574,8 +1574,7 @@ attach(void)
 	}
 	free(tmp);
 
-	rc = rc || systemf("bk admin -D -C'%s' ChangeSet",
-			   proj_rootkey(proj_product(0)));
+	rc = rc || system("bk admin -D ChangeSet");
 	if (rc) {
 		fprintf(stderr, "attach failed\n");
 		return (CLONE_ERROR);

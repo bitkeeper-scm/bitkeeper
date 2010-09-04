@@ -9353,6 +9353,11 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	if (nodefault) {
 		unless (d->user) d->user = strdup("Anon");
 	} else {
+		project	*proj = s->proj;
+
+		if (CSET(s) && proj_isComponent(proj)) {
+			proj = proj_product(proj);
+		}
 		unless (d->user) d->user = strdup(sccs_user());
 		unless (d->hostname && sccs_gethost()) {
 			char	*imp, *h;
@@ -9365,9 +9370,8 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 				hostArg(d, sccs_host());
 			}
 		}
-		if (s && !d->pathname) {
+		unless (d->pathname) {
 			char *p, *q;
-			project	*proj = s->proj;
 
 			/*
 			 * Get the relativename of the sfile,
@@ -9376,9 +9380,6 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			 * win32 case-folding file system.
 			 */
 			if (CSET(s)) {
-				if (proj_isComponent(proj)) {
-					proj = proj_product(proj);
-				}
 				p = _relativeName(s->sfile, 1, 1, 1, proj);
 				/* strip out RESYNC */
 				str_subst(p, "/RESYNC/", "/", p);
@@ -9388,6 +9389,9 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			q = sccs2name(p);
 			pathArg(d, q);
 			free(q);
+		}
+		unless (d->csetFile) {
+			csetFileArg(d, proj_rootkey(proj));
 		}
 #ifdef	AUTO_MODE
 		assert("no" == 0);
@@ -9764,9 +9768,7 @@ out:		if (sfile) fclose(sfile);
 			first->flags |= D_CKSUM;
 		} else {
 			unless (first->csetFile) {
-				char	*c = proj_rootkey(s->proj);
-
-				if (c) first->csetFile = strdup(c);
+				csetFileArg(first, proj_rootkey(s->proj));
 			}
 		}
 	}
@@ -14910,8 +14912,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	}
 
 	case KW_CSETFILE: /* CSETFILE */ {
-		if (s->tree->csetFile) {
-			fs(s->tree->csetFile);
+		if (d->csetFile) {
+			fs(d->csetFile);
 			return (strVal);
 		}
 		return nullVal;

@@ -36,11 +36,11 @@ test -d $OLDBK || {
 	    exit 1
     }
     # NOTE bk-3.2.x didn't set exit status...
-    echo y | BK_NOLINKS=1 ./bk-$OLDVER-* $OLDBK >out 2>err || exit 1
+    echo y | BK_NOLINKS=1 ./bk-$OLDVER-* $OLDBK >out 2>err || fail
     rm $OLDBK/config
 
     # generate a crypto key for tests
-    $OLDBK/bk crypto -i 1024 $OLDBK/my.sec $OLDBK/my.pub || exit 1
+    $OLDBK/bk crypto -i 1024 $OLDBK/my.sec $OLDBK/my.pub || fail
 }
 VER=`$OLDBK/bk version -s`
 test X$VER = X$OLDVER || {
@@ -121,12 +121,12 @@ _commercial_config > c
 bk setup -a -f --sccs-compat -cc project.noremap || fail
 cd project.noremap
 echo BAMBAM > BAM
-bk new $Q -b BAM || exit 1
+bk new $Q -b BAM || fail
 bk commit $Q -ybamdata
-test -d SCCS || exit 1
-test -f BitKeeper/BAM/index.db || exit 1
+test -d SCCS || fail
+test -f BitKeeper/BAM/index.db || fail
 cd ..
-bk clone $Q project.noremap copy.noremap || exit 1
+bk clone $Q project.noremap copy.noremap || fail
 unset _BK_BAM_V2
 bk clone --hide-sccs-dirs $Q project.noremap project
 bk clone $Q project copy
@@ -135,34 +135,34 @@ bk parent $Q ../project
 cd ../project
 # verify new style BAM and BLOB
 test -d SCCS && exit 1
-test -d BitKeeper/BAM -a ! -f BitKeeper/BAM/index.db || exit 1
+test -d BitKeeper/BAM -a ! -f BitKeeper/BAM/index.db || fail
 touch send-as-sfile send-as-deltas
-bk new $Q send-as-sfile send-as-deltas || exit 1
-bk commit $Q -SBASE -yfooze || exit 1
+bk new $Q send-as-sfile send-as-deltas || fail
+bk commit $Q -SBASE -yfooze || fail
 bk push $Q ../copy
 bk push $Q ../copy.noremap
 touch newfile
-bk new $Q newfile || exit 1
-bk edit $Q send-as-sfile send-as-deltas || exit 1
+bk new $Q newfile || fail
+bk edit $Q send-as-sfile send-as-deltas || fail
 # 9 is the internal baseline for largest that passes as a patch
 for i in 1 2 3 4 5 6 7 8 9; do
-	bk delta $Q -l -f -ymkdeltas send-as-deltas send-as-sfile || exit 1
+	bk delta $Q -l -f -ymkdeltas send-as-deltas send-as-sfile || fail
 done
 # adding a 10th to send-as-sfile means it will move as an sfile
-bk delta $Q -l -f -ysend-as-sfile send-as-sfile || exit 1
-bk unedit $Q send-as-sfile send-as-deltas || exit 1
-bk commit $Q -y'deltas to existing files' || exit 1
-bk push $Q ../project.noremap || exit 1
+bk delta $Q -l -f -ysend-as-sfile send-as-sfile || fail
+bk unedit $Q send-as-sfile send-as-deltas || fail
+bk commit $Q -y'deltas to existing files' || fail
+bk push $Q ../project.noremap || fail
 #
-bk makepatch $Q -B -r+ > ../PATCH || exit 1
-bk makepatch $Q -B -C -r+ > ../PATCH-COMPAT || exit 1
-bk send $Q -r+ - > ../SEND || exit 1
+bk makepatch $Q -B -r+ > ../PATCH || fail
+bk makepatch $Q -B -C -r+ > ../PATCH-COMPAT || fail
+bk send $Q -r+ - > ../SEND || fail
 cd "$HERE"
 mv project project.remap
 mv project.noremap project
 cd project
-$OLDBK/bk makepatch $Q -B -r+ > ../OLDPATCH || exit 1
-$OLDBK/bk send $Q -r+ - > ../OLDSEND || exit 1
+$OLDBK/bk makepatch $Q -B -r+ > ../OLDPATCH || fail
+$OLDBK/bk send $Q -r+ - > ../OLDSEND || fail
 cd ..
 cmpfiles SEND OLDSEND
 cmpfiles PATCH-COMPAT OLDPATCH
@@ -175,10 +175,10 @@ mv project.remap project
 echo OK
 
 echo $N New patch, old bk, takepatch works, resolve fails ...........$NL
-cd copy.noremap || exit 1
-$OLDBK/bk takepatch < ../PATCH || exit 1
+cd copy.noremap || fail
+$OLDBK/bk takepatch < ../PATCH || fail
 $OLDBK/bk resolve 2> ERR && exit 1
-grep -q "Missing file" ERR || exit 1
+grep -q "Missing file" ERR || fail
 rm -fr RESYNC PENDING
 echo "failed (bug -- should increase PATCH_VER?)"
 
@@ -186,61 +186,61 @@ echo $N Start new and old bkds ......................................$NL
 cd "$HERE"
 OLDP=`port 54500`
 # old bkd will have "No root for triggers!" ttyprintf
-BK_TTYPRINTF= $OLDBK/bk bkd -d -p$OLDP -ikill 2> OLDERR || exit 1
-bk bkd -d -aPORT -ikill 2> NEWERR || exit 1
+BK_TTYPRINTF= $OLDBK/bk bkd -d -p$OLDP -ikill 2> OLDERR || fail
+bk bkd -d -aPORT -ikill 2> NEWERR || fail
 NEWP=`cat PORT`
 trap "bk _kill bk://localhost:$OLDP; bk _kill bk://localhost:$NEWP" 0
 echo OK
 
 echo $N Push old server new client ..................................$NL
-cd project || exit 1
-bk push $Q bk://localhost:$OLDP/copy.noremap || exit 1
+cd project || fail
+bk push $Q bk://localhost:$OLDP/copy.noremap || fail
 echo OK
 
 echo $N Push new server old client ..................................$NL
 cd ..
 rm -fr copy
 tar xf copy.tar
-cd project.noremap || exit 1
-$OLDBK/bk push $Q bk://localhost:$NEWP/copy || exit 1
+cd project.noremap || fail
+$OLDBK/bk push $Q bk://localhost:$NEWP/copy || fail
 echo OK
 
 echo $N Pull old server new client ..................................$NL
 cd ..
 rm -fr copy
 tar xf copy.tar
-cd copy || exit 1
-bk pull $Q bk://localhost:$OLDP/project.noremap || exit 1
+cd copy || fail
+bk pull $Q bk://localhost:$OLDP/project.noremap || fail
 echo OK
 
 echo $N Pull new server old client ..................................$NL
 cd ..
 rm -fr copy.noremap
 tar xf copy.noremap.tar
-cd copy.noremap || exit 1
-$OLDBK/bk pull $Q bk://localhost:$NEWP/project || exit 1
+cd copy.noremap || fail
+$OLDBK/bk pull $Q bk://localhost:$NEWP/project || fail
 echo OK
 
 echo $N Pull old server new client with local work present ..........$NL
 cd ..
 rm -fr copy
 tar xf copy.tar
-cd copy || exit 1
+cd copy || fail
 touch localfile
-bk new $Q localfile || exit 1
-bk commit $Q -ylocalcset || exit 1
-bk pull $Q bk://localhost:$OLDP/project.noremap || exit 1
+bk new $Q localfile || fail
+bk commit $Q -ylocalcset || fail
+bk pull $Q bk://localhost:$OLDP/project.noremap || fail
 echo OK
 
 echo $N Pull new server old client with local work present ..........$NL
 cd ..
 rm -fr copy.noremap
 tar xf copy.noremap.tar
-cd copy.noremap || exit 1
+cd copy.noremap || fail
 touch localfile
-bk new $Q localfile || exit 1
-bk commit $Q -ylocalcset || exit 1
-$OLDBK/bk pull $Q bk://localhost:$NEWP/project || exit 1
+bk new $Q localfile || fail
+bk commit $Q -ylocalcset || fail
+$OLDBK/bk pull $Q bk://localhost:$NEWP/project || fail
 echo OK
 
 echo $N Nested detached repo running behind old bkd .................$NL
@@ -266,7 +266,7 @@ echo OK
 echo $N Nested detached repo running behind new bkd with old client .$NL
 cd ../oldgcc
 $OLDBK/bk clone $Q . bk://localhost:$NEWP/newgcc2
-$OLDBK/bk clone $Q bk://localhost:$NEWP/oldgcc ../cloned-gcc2 || exit 1
+$OLDBK/bk clone $Q bk://localhost:$NEWP/oldgcc ../cloned-gcc2 || fail
 $OLDBK/bk parent $Q bk://localhost:$NEWP/newgcc2
 $OLDBK/bk pull $Q || exit 2
 $OLDBK/bk push $Q || exit 3
@@ -291,12 +291,12 @@ BK_DOTBK="$HERE/.mybk"
 export BK_DOTBK
 rm -fr copy
 tar xf copy.tar
-cd copy || exit 1
+cd copy || fail
 bk edit $Q BitKeeper/etc/config
 grep -v '^lic' BitKeeper/etc/config > ../repoconfig
 cp ../repoconfig BitKeeper/etc/config
 bk lease renew 2> ERR && echo lease worked?
-grep -q 'You do not have a license for BitKeeper' ERR || exit 1
+grep -q 'You do not have a license for BitKeeper' ERR || fail
 cd ..
 cp -R copy licserve
 cd licserve
@@ -304,26 +304,26 @@ rm BitKeeper/log/repo_id
 bk id -r > newid
 cd ../copy
 echo "licenseurl: bk://localhost:$OLDP" >> BitKeeper/etc/config
-bk lease renew || exit 1
-$OLDBK/bk lease renew || exit 1
+bk lease renew || fail
+$OLDBK/bk lease renew || fail
 cp ../repoconfig BitKeeper/etc/config
 echo "licenseurl: bk://localhost:$NEWP" >> BitKeeper/etc/config
-bk lease renew || exit 1
-$OLDBK/bk lease renew || exit 1
+bk lease renew || fail
+$OLDBK/bk lease renew || fail
 cp ../repoconfig BitKeeper/etc/config
 echo "licenseurl: bk://localhost:$OLDP/licserve" >> BitKeeper/etc/config
-bk lease renew || exit 1
-$OLDBK/bk lease renew || exit 1
+bk lease renew || fail
+$OLDBK/bk lease renew || fail
 cp ../repoconfig BitKeeper/etc/config
 echo "licenseurl: bk://localhost:$NEWP/licserve" >> BitKeeper/etc/config
-bk lease renew || exit 1
-$OLDBK/bk lease renew || exit 1
+bk lease renew || fail
+$OLDBK/bk lease renew || fail
 echo OK
 
 echo $N Check lease proxy trigger compat ............................$NL
 cd "$HERE"
-mkdir -p BitKeeper/triggers || exit 1
-cd BitKeeper/triggers || exit 1
+mkdir -p BitKeeper/triggers || fail
+cd BitKeeper/triggers || fail
 cat <<'EOF' > pre-lease-proxy.global
 #!/bin/sh
 echo "My message to you is that the $BK_EVENT failed"
@@ -342,7 +342,7 @@ grep -q "My message" ERR && exit 1
 cp ../repoconfig BitKeeper/etc/config
 echo "licenseurl: bk://localhost:$NEWP/licserve" >> BitKeeper/etc/config
 bk lease renew 2> ERR && exit 1
-grep -q "My message" ERR || exit 1
+grep -q "My message" ERR || fail
 $OLDBK/bk lease renew 2> ERR && exit 1
 grep -q "My message" ERR && exit 1
 echo OK
@@ -350,12 +350,12 @@ echo OK
 echo $N Show global lease proxy triggers do not fire if not in repo .$NL
 cp ../repoconfig BitKeeper/etc/config
 echo "licenseurl: bk://localhost:$OLDP" >> BitKeeper/etc/config
-bk lease renew || exit 1
-$OLDBK/bk lease renew || exit 1
+bk lease renew || fail
+$OLDBK/bk lease renew || fail
 cp ../repoconfig BitKeeper/etc/config
 echo "licenseurl: bk://localhost:$NEWP" >> BitKeeper/etc/config
-bk lease renew || exit 1
-$OLDBK/bk lease renew || exit 1
+bk lease renew || fail
+$OLDBK/bk lease renew || fail
 echo OK
 
 echo $N Check bkd error logs ........................................$NL
