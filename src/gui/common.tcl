@@ -727,7 +727,7 @@ proc GetTerminal {} {
 
 proc isComponent {path} {
 	catch {exec bk repotype [file dirname $path]} res
-	return [strint equal $res "component"]
+	return [string equal $res "component"]
 }
 
 proc isChangeSetFile {path} {
@@ -746,4 +746,9 @@ proc sccsFileExists {type file} {
 	set file [sccsFile $type $file]
 	if {[catch {exec bk _test -f $file}]} { return 0 }
 	return 1
+}
+
+proc inComponent {} {
+    catch {exec bk repotype} res
+    return [string equal $res "component"]
 }

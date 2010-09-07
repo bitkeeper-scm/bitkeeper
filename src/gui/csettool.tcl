@@ -375,6 +375,20 @@ proc adjustHeight {diff list} \
 	.diffs.right configure -height $gc(cset.diffHeight)
 }
 
+proc gotoProductCset {} \
+{
+	global currentCset
+
+	if {[catch {exec bk r2c -r$currentCset ChangeSet} productCset]} {
+	    popupMessage -E "Could not find Product ChangeSet revision."
+	    return
+	}
+
+	pack forget .menu.product
+	cd [exec bk -P root]
+	getFiles $productCset ""
+}
+
 proc widgets {} \
 {
 	global	scroll gc wish d search fmenu app env
@@ -516,6 +530,12 @@ proc widgets {} \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-font $gc(cset.buttonFont) -text "Help" \
 		-command { exec bk helptool csettool & }
+	    if {[inComponent]} {
+		button .menu.product -bg $gc(cset.buttonColor) \
+		    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+		    -font $gc(cset.buttonFont) -text "View Product" \
+		    -command { gotoProductCset }
+	    }
 	    button .menu.dot -bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) -width 15\
 		-font $gc(cset.buttonFont) -text "Current diff" \
@@ -523,6 +543,9 @@ proc widgets {} \
 
 	    pack .menu.quit -side left -fill y
 	    pack .menu.help -side left -fill y
+	    if {[winfo exists .menu.product]} {
+		    pack .menu.product -side left -fill y
+	    }
 	    pack .menu.mb -side left -fill y
 	    pack .menu.prevFile -side left -fill y
 	    pack .menu.fmb -side left -fill y
