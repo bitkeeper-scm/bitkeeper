@@ -529,7 +529,7 @@ trigger_dirs(void)
 	project	*proj;
 
 	p = proj_configval(0, "triggers");
-	if (!p || streq(p, "")) p = ".";
+	if (!p || streq(p, "")) p = "$PRODUCT|.";
 	// old, remove in 6.0
 	if (streq(p, "none")) return (0);
 

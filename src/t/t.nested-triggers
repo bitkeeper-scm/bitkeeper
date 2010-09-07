@@ -49,7 +49,6 @@ do
 	bk new $Q BitKeeper/triggers/$i || exit 1
 done
 bk edit $Q BitKeeper/etc/config
-echo 'triggers: .|$PRODUCT' >> BitKeeper/etc/config
 bk delta $Q -y'Look in product' BitKeeper/etc/config
 bk commit $Q -ytriggers || exit 8
 cd "$HERE"
