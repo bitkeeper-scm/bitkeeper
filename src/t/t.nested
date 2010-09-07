@@ -52,7 +52,7 @@ EOF
 cmpfiles WANT GOT
 bk commit $Q -y'gcc & gdb' || exit 1
 cd gcc
-test "`bk product || true`" = "This is a component." || {
+test "`bk repotype`" = "component" || {
 	echo failed to make it a component
 	ls BitKeeper/log
 	exit 1
@@ -69,7 +69,7 @@ bk -R get $Q -S BitKeeper/etc/config
 bk setup -Cfc"`bk root`"/BitKeeper/etc/config new-comp
 cp -rp new-comp "$HERE/save"
 cd new-comp || exit 1
-test "`bk product || true`" = "This is a component." || {
+test "`bk repotype`" = "component" || {
 	echo failed to make it a component
 	ls BitKeeper/log
 	exit 1
