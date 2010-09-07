@@ -129,4 +129,6 @@ test -s XXX || {
 }
 echo OK
 echo "You should have seen a popup explaining the license signature was bad"
-echo "and you should have had to exit citool manually."
+echo "and then citool exited."
+
+FOO

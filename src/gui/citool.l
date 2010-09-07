@@ -130,9 +130,9 @@ getNumFiles()
 int
 nested()
 {
-	string	res = bk("product");
+	string	res = bk("repotype");
 
-	return (res ne "");
+	return (res ne "traditional");
 }
 
 string[]
@@ -1309,6 +1309,7 @@ quit()
 	saveComments();
 	if (self.changed) {
 		if (catch("toplevel ${top}")) return;
+		Wm_title((string)top, "Quit Citool?");
 		Toplevel_configure(top, borderwidth: 0, background: bg);
 		image = joinpath(getenv("BK_BIN"), "gui", "images",
 		    "bklogo.gif");
@@ -1744,8 +1745,8 @@ doCommit()
 
 	saveComments();
 	if (isRepoLocked()) {
-		displayMessage(msgs{"repoLocked"}, 1);
-		return;
+		popupMessage(E: msgs{"repoLocked"});
+		exit(1);
 	}
 
 	unless (self.cnt_commented) {
@@ -1869,8 +1870,8 @@ commitComponent(string comp)
 			string	msg = "The checkin failed.  See the "
 			    "bottom pane for the reason.\n\ncitool "
 			    "will exit when you click OK.\n";
-			displayMessage(msg, 1);
-			exit();
+			popupMessage(E: msg);
+			exit(1);
 		}
 	}
 
@@ -1927,34 +1928,30 @@ commitComponent(string comp)
 
 		if ((bgExecInfo("stderr") ne "")
 		    || (bgExecInfo("stdout") ne "")) {
-			string	type = "-I";
-			string	title = "bk commit";
-			string	message;
-			string	out = tmpfile("bk_msg");
+			string	type;
+			string	message = "bk commit";;
 
-			if ((int)err != 0 && (int)err != 100) type = "-E";
+			if ((int)err != 0 && (int)err != 100) {
+				type = "-E";
+				message .= " failed with error ${err}:";
+			} else {
+				type = "-I";
+				message .= " output:";
+			}
+			message .= "\n";
+
 			if (bgExecInfo("stderr") ne "") {
-				message = trim(bgExecInfo("stderr"));
+				message .= trim(bgExecInfo("stderr"));
 				if (bgExecInfo("stdout") ne "") {
 					append(&message, "\n--\n");
 					append(&message,
 					    trim(bgExecInfo("stdout")));
 				}
 			} else {
-				message = trim(bgExecInfo("stdout"));
-			}
-			fd = fopen(out, "w");
-			if (type eq "-I") {
-				puts(fd, "bk commit output:\n");
-			} else {
-				puts(fd, "bk commit failed with "
-				    "error ${err}:\n");
+				message .= trim(bgExecInfo("stdout"));
 			}
 
-			puts(nonewline:, fd, message);
-			fclose(fd);
-			bgExec("bk", "msgtool", type, T: title, F: out);
-			unlink(out);
+			popupMessage(type, message);
 		}
 
 		deleteCommentFile(cset.file);

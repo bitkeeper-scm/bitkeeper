@@ -739,3 +739,34 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
+
+echo $N Attempt citool with pre-commit that errors ..................$NL
+cd "$HERE/project"
+bk edit $Q src/file1
+echo "FOO" >> src/file1
+mkdir "$HERE/project/BitKeeper/triggers"
+cat > "$HERE/project/BitKeeper/triggers/pre-commit" <<EOF
+#!/bin/sh
+
+echo "The repository is currently locked against updates, try later."
+exit 1
+EOF
+chmod +x "$HERE/project/BitKeeper/triggers/pre-commit"
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_inputComment "src/file1 comment"
+	test_selectFile "ChangeSet"
+	test_inputComment "ChangeSet comment"
+
+	test_buttonPress "Commit"
+	test_buttonPress "Commit"
+EOF
+err=$?
+test $err -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }
+expected="The repository is currently locked against updates, try later."
+grep -q "$expected" "$OUT" || {
+	echo failed
+	echo "expected: '$expected'"
+	echo "  actual: '`cat "$OUT"`'"
+	exit 1
+}
+echo OK
