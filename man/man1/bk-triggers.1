@@ -86,7 +86,7 @@ The directories are processed in the order found in the variable.
 There are several special values which are interpreted:
 .TP 
 .B .
-This is the default, it means `bk -R pwd`/BitKeeper/triggers is scanned
+It means `bk -R pwd`/BitKeeper/triggers is scanned
 for triggers.
 .TP
 .B $BK_DOTBK
@@ -106,6 +106,11 @@ It is a way to run product level triggers in each component.
 .B $SOMETHING_ELSE
 All other paths starting with "$" are ignored, that character is
 reserved.
+.LP
+If the the variable is not defined, the default is:
+.DS
+triggers:	$PRODUCT|.
+.DE
 .SS
 TRIGGER CLASSES
 .LP
