@@ -415,18 +415,18 @@ markThisCset(cset_t *cs, sccs *s, delta *d)
 		d->flags |= D_SET;
 		return;
 	}
-	do {
-		d->flags |= D_SET;
-		if (d->merge) {
-			delta	*e = MERGE(s, d);
-
-			assert(e);
-			unless (e->flags & (D_SET|D_CSET)) {
-				markThisCset(cs, s, e);
-			}
+	/*
+	 * range_cset colors region, but can't accumulate
+	 * so color blue, then accumulate D_SET
+	 */
+	range_cset(s, d, D_BLUE);
+	for (; d; d = NEXT(d)) {
+		if (d->flags & D_BLUE) {
+			d->flags &= ~D_BLUE;
+			d->flags |= D_SET;
 		}
-		d = PARENT(s, d);
-	} while (d && !(d->flags & (D_SET|D_CSET)));
+		if (d == s->rstart) break;
+	}
 }
 
 /*

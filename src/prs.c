@@ -94,7 +94,7 @@ log_main(int ac, char **av)
 		unless (HASGRAPH(s)) goto next;
 		if (cset) {
 			unless (e = sccs_findrev(s, cset)) goto next;
-			range_cset(s, e);
+			range_cset(s, e, D_SET);
 		} else if (want_parent) {
 			if (range_process(av[0], s, rflags, &rargs)) {
 				goto next;
