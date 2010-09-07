@@ -246,7 +246,7 @@ _superset() {
 	shift `expr $OPTIND - 1`
 	export PAGER=cat
 
-	bk product -q
+	bk repotype -q
 	case $? in
 	    3)	PRODUCT=STANDALONE;;
 	    1)	PRODUCT=COMPONENT;;
@@ -367,7 +367,7 @@ _superset() {
 		HERE=`bk pwd`
 		while read repo
 		do	cd "$HERE/$repo"
-			bk product -q
+			bk repotype -q
 			TMP_PROD=$?
 			bk superset -R $QUIET > $TMP3 2>&1 || touch $EXIT
 			test -s $TMP3 -o -f $EXIT || continue
@@ -782,7 +782,7 @@ _tag() {		# /* doc 2.0 */
 		*) bk help -s tag; exit 1;;
 		esac
 	done
-	bk product -q
+	bk repotype -q
 	test $? -eq 1 && {
 		echo tag: component tags not yet supported 1>&2
 		exit 1

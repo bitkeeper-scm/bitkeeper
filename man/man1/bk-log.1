@@ -312,6 +312,11 @@ command.
 Variables start out as empty strings, and
 when re-assigned the old value is discarded.
 .SS KEYWORDS
+Some fields are per repository and are marked with 
+.B R
+in the 
+.B T
+column below.
 Some fields are per file and are marked with
 .B F
 in the 
@@ -321,9 +326,6 @@ column below; other fields are per delta and are marked with
 In the ``What is printed'' column, 
 .B D
 refers to the specified delta, since some operations work relative to 
-.BR D .
-Some fields are compatible with \*[ATT], they are typically the one and 
-two letter fields;  \*[BK] fields tend to be longer.
 .if t .sp .5
 .if n .sp
 .nf
@@ -347,6 +349,10 @@ Name	T	What is printed
 .xx
 :AGE:	D	D's age, i.e., seven hours, two weeks, etc.
 .xx
+:ATTACHED_ID:	F	package id to be used for new deltas
+.xx
+:BAM:	F	true if the file is managed as a BAM file
+.xx
 :C:	D	D's comments
 .xx
 :CHANGESET:	F	true if ChangeSet file, false for user files
@@ -358,8 +364,6 @@ Name	T	What is printed
 :CSETKEY:	D	delta key if D is at a changeset boundary
 .xx
 :CSETREV:	D	revision of first cset boundary after D
-.xx
-:CSETFILE:	F	key of the ChangeSet file for this file
 .xx
 :D:	D	D's date as YYYY/MM/DD
 .xx
@@ -376,6 +380,8 @@ Name	T	What is printed
 :DIFFS_UP:	D	D's changes in the form of unified/procedural diffs
 .xx
 :DL:	D	lines inserted/deleted/unchanged in D
+.xx
+:DM:	D	month part of D's date (Jan..Dec)
 .xx
 :DOMAIN:	D	the domain part of the hostname of D
 .xx
@@ -395,8 +401,6 @@ Name	T	What is printed
 .xx
 :Dm:	D	month part of D's date as MM
 .xx
-:DM:	D	month part of D's date (Jan..Dec)
-.xx
 :Dn:	D	serial numbers of D's includes, if any
 .xx
 :Dt:	D	D's data as :DT::REV::D::T::USER::DS::DP:
@@ -405,7 +409,9 @@ Name	T	What is printed
 .xx
 :Dy:	D	year part of D's date as YY or YYYY
 .xx
-:ENC:	F	current encoding scheme (ascii|binary)
+:ENC:	F	current encoding scheme (ascii|uuencode|BAM)
+.xx
+:EVEN:	D	True on every other delta processed
 .xx
 :F:	F	basename of the \*(BK file
 .xx
@@ -435,11 +441,13 @@ Name	T	What is printed
 .xx
 :HOST:	D	hostname where D was made; could be BK_HOST
 .xx
-:IMPORTER:	D	name of the importer of D, if D was an emailed patch
+:HTML_AGE:	D	age in a form suitable for web pages
 .xx
 :HTML_C:	D	comments in a form suitable for web pages
 .xx
-:HTML_AGE:	D	age in a form suitable for web pages
+:ID:	D	the package id in effect when the delta was made
+.xx
+:IMPORTER:	D	name of the importer of D, if D was an emailed patch
 .xx
 :KEY:	D	\*[BK] key of D
 .xx
@@ -453,6 +461,8 @@ Name	T	What is printed
 .xx
 :LI:	D	lines inserted in D (%u)
 .xx
+:LREV:	F	for a file with conflicts, the LOCAL unmerged tip
+.xx
 :LU:	D	lines unchanged in D (%u)
 .xx
 :Ld:	D	lines deleted in D (%05u)
@@ -460,8 +470,6 @@ Name	T	What is printed
 :Li:	D	lines inserted in D (%05u)
 .xx
 :Lu:	D	lines unchanged in D (%05u)
-.xx
-:LREV:	F	for a file with conflicts, the LOCAL unmerged tip
 .xx
 :MD5KEY:	D	crypto based \*[BK] key of D
 .xx
@@ -477,9 +485,15 @@ Name	T	What is printed
 .xx
 :NEXT:	D	next entry after D in delta table 
 .xx
+:ODD:	D	True on every other delta processed
+.xx
+:PACKAGE_ID:	R	per repository unique id (like bk id)
+.xx
 :PARENT:	D	D's parent's revision
 .xx
 :PREV:	D	previous entry before D in delta table
+.xx
+:PRODUCT_ID:	R	per repository unique id (like bk -P id)
 .xx
 :PRS:	D	old-style bk prs default output
 .xx
@@ -492,6 +506,10 @@ Name	T	What is printed
 :REALUSER:	D	real programmer who made D, not assumed identity
 .xx
 :RENAME:	D	D's path if different from parent's path
+.xx
+:REPO_ID:	R	per repository unique id (like bk id -r)
+.xx
+:REPOTYPE:	R	repotype: product|component|traditional
 .xx
 :REV:	D	D's revision number
 .xx
@@ -627,15 +645,17 @@ for the
 .\" help://:P:
 .\" NOTE:  If you change the KEYWORDS list above, be sure to make the
 .\" corresponding changes to the following list.
+.\" Don't sort the list, we aren't completely in sorted order
 .\" BEGIN dspecs help links ## IMPORTANT: Do not edit or delete this line! ##
 .\" help://:AGE:
+.\" help://:ATTACHED_ID:
+.\" help://:BAM:
 .\" help://:C:
 .\" help://:CHANGESET:
 .\" help://:COMMENTS:
 .\" help://:COMPRESSION:
 .\" help://:CSETKEY:
 .\" help://:CSETREV:
-.\" help://:CSETFILE:
 .\" help://:D:
 .\" help://:D_:
 .\" help://:DANGLING:
@@ -644,6 +664,7 @@ for the
 .\" help://:DIFFS_U:
 .\" help://:DIFFS_UP:
 .\" help://:DL:
+.\" help://:DM:
 .\" help://:DOMAIN:
 .\" help://:DP:
 .\" help://:DPN:
@@ -653,12 +674,12 @@ for the
 .\" help://:DT:
 .\" help://:Dd:
 .\" help://:Dm:
-.\" help://:DM:
 .\" help://:Dn:
 .\" help://:Dt:
 .\" help://:Dx:
 .\" help://:Dy:
 .\" help://:ENC:
+.\" help://:EVEN:
 .\" help://:F:
 .\" help://:FLAGS:
 .\" help://:FSUM:
@@ -673,20 +694,21 @@ for the
 .\" help://:GREV:
 .\" help://:HASHCOUNT:
 .\" help://:HOST:
-.\" help://:IMPORTER:
-.\" help://:HTML_C:
 .\" help://:HTML_AGE:
+.\" help://:HTML_C:
+.\" help://:ID:
+.\" help://:IMPORTER:
 .\" help://:KEY:
 .\" help://:KID:
 .\" help://:KIDS:
 .\" help://:L:
 .\" help://:LD:
 .\" help://:LI:
+.\" help://:LREV:
 .\" help://:LU:
 .\" help://:Ld:
 .\" help://:Li:
 .\" help://:Lu:
-.\" help://:LREV:
 .\" help://:MD5KEY:
 .\" help://:MERGE:
 .\" help://:MGP:
@@ -694,14 +716,19 @@ for the
 .\" help://:MPARENT:
 .\" help://:N:
 .\" help://:NEXT:
+.\" help://:ODD:
+.\" help://:PACKAGE_ID:
 .\" help://:PARENT:
 .\" help://:PREV:
+.\" help://:PRODUCT_ID:
 .\" help://:PRS:
 .\" help://:R:
 .\" help://:RANDOM:
 .\" help://:REALHOST:
 .\" help://:REALUSER:
 .\" help://:RENAME:
+.\" help://:REPO_ID:
+.\" help://:REPOTYPE:
 .\" help://:REV:
 .\" help://:RI:
 .\" help://:ROOTKEY:

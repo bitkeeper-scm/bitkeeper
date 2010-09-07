@@ -159,7 +159,7 @@ OBJ =	bkver.o cmd.o \
 	mailsplit.o mtime.o mv.o names.o nested.o newroot.o \
 	opark.o \
 	parent.o park.o partition.o \
-	pending.o preference.o product.o proj.o \
+	pending.o preference.o proj.o \
 	populate.o \
 	port/bkd_server.o \
 	port/check_rsh.o \
@@ -179,7 +179,7 @@ OBJ =	bkver.o cmd.o \
 	rcs2bk.o rcsparse.o \
 	receive.o redblack.o regex.o registry.o renumber.o \
 	repo.o repos.o repogca.o resolve.o \
-	remap.o \
+	remap.o repotype.o \
 	remote.o resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \

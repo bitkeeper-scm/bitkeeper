@@ -295,7 +295,6 @@ platform
 _popensystem
 port => pull
 _probekey restricted
-product
 _progresstest
 prompt
 prs
@@ -317,6 +316,7 @@ _registry
 renumber
 repair
 repogca
+repotype
 relink
 repo
 resolve

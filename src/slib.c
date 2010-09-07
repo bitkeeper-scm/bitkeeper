@@ -14106,6 +14106,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 #define	fsd(d)	show_s(s, out, d.dptr, d.dsize)
 #define	fm(ptr, len) show_s(s, out, ptr, len)
 
+	unless (s && d) return (nullVal);
+
 	/*
 	 * Allow keywords of the form "word|rev"
 	 * to mean "word" for revision "rev".
@@ -14911,14 +14913,6 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		return (nullVal);
 	}
 
-	case KW_CSETFILE: /* CSETFILE */ {
-		if (d->csetFile) {
-			fs(d->csetFile);
-			return (strVal);
-		}
-		return nullVal;
-	}
-
 	case KW_RANDOM: /* RANDOM */ {
 		if (s->tree->random) {
 			fs(s->tree->random);
@@ -15688,10 +15682,84 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		fs("1");
 		return (strVal);
 
-	case KW_REPO_ID: /* REPO_ID */ {
-		fs(proj_repoID(0));
+	case KW_ID: /* ID */
+		if (d->csetFile) {
+			fs(d->csetFile);
+			return (strVal);
+		}
+		return (nullVal);
+
+	case KW_PRODUCT_ID: /* PRODUCT_ID */ {
+		project *proj;
+
+		/*
+		 * The reason this is not just
+		 * if (proj = proj_product(s->proj))
+		 * is that if there is a standalone copied into a product
+		 * it will find the product that way.  We want this to
+		 * return the value if and only if it is our product.
+		 */
+		if (proj_isProduct(s->proj)) {
+			proj = s->proj;
+		} else if (proj_isComponent(s->proj)) {
+			proj = proj_product(s->proj);
+		} else {
+			return (nullVal);
+		}
+		fs(proj_rootkey(proj));
 		return (strVal);
 	}
+
+	case KW_CSETFILE: /* CSETFILE */  /* compat */
+	case KW_PACKAGE_ID: /* PACKAGE_ID */ {
+		/*
+		 * Rootkey of repository containing file
+		 * Note that component->proj used to vary based on how it
+		 * was inited, from product or from component; that is
+		 * no longer the case so this code is simple.
+		 */
+		if (s->proj) {
+			fs(proj_rootkey(s->proj));
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
+	}
+	case KW_ATTACHED_ID: /* ATTACHED_ID */ {
+		project *proj = s->proj;
+
+		if (proj) {
+			if (CSET(s) && proj_isComponent(proj)) {
+				proj = proj_product(proj);
+			}
+			fs(proj_rootkey(proj));
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
+	}
+
+	case KW_REPO_ID: /* REPO_ID */
+		/* repo_id of repository containing file */
+		if  (s->proj) {
+			fs(proj_repoID(s->proj));
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
+
+	case KW_REPOTYPE: /* REPOTYPE */
+		if (proj_isComponent(s->proj)) {
+			fs("component");
+		} else if (proj_isProduct(s->proj)) {
+			fs("product");
+		} else if (s->proj) {
+			fs("traditional");
+		} else {
+			fs("SCCS");
+		}
+		return (strVal);
+
 	case KW_BAMHASH: /* BAMHASH */
 		if (d->hash) {
 			fs(d->hash);
@@ -15706,12 +15774,14 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		}
 		return (nullVal);
 
-	case KW_CSET_MD5ROOTKEY: /* CSET_MD5ROOTKEY */ 
-		if (p = proj_md5rootkey(s ? s->proj : 0)) {
-			fs(p);
+	case KW_CSET_MD5ROOTKEY: /* CSET_MD5ROOTKEY */
+		/* md5rootkey of repository containing file */
+		if (s->proj) {
+			fs(proj_md5rootkey(s->proj));
 			return (strVal);
+		} else {
+			return (nullVal);
 		}
-		return (nullVal);
 
 	case KW_BAMENTRY: /* BAMENTRY */
 		if (BAM(s) && (p = bp_lookup(s, d))) {

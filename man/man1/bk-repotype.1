@@ -1,0 +1,48 @@
+.so ../bk-macros
+.TH "bk repotype" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk repotype \- display repository type
+.SH SYNOPSIS
+.B bk repotype
+.[B] \-q
+.[ARG] directory
+.SH DESCRIPTION
+This command will print the type of the repository which is one
+of
+.IR traditional ,
+.IR product ,
+or
+.IR component .
+All repositories created by versions of \*[BK] prior to bk-5.0 are 
+traditional standalone repositories.
+.LP
+If a directory is specified then \*[BK] will change to that directory
+before running the command.
+.SH OPTIONS
+.TP 
+.OPT \-q
+Run quietly, exit status only.
+.SH EXIT STATUS
+When run without
+.B \-q
+the exit status is 0 for all valid repositories and is 3 otherwise.
+When run with
+.B \-q
+.B bk repotype
+returns exit status:
+.TP
+0
+if run on a product repository
+.tp
+1
+if run on a component repository
+.tp
+2
+if run on a traditional (standalone) repository
+.tp
+3
+if run on a non-repository or if some other error occurs.
+.SH CATEGORY
+.B Utility
+.SH "SEE ALSO"
+.SA triggers
