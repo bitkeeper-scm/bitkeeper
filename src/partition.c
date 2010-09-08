@@ -28,6 +28,7 @@ typedef struct {
 	char	**compprune;	/* files to prune from every component */
 	char	**prodprune;	/* files to prune from product */
 	char	**prune;	/* rootkeys to prune from all */
+	char	**feature;	/* a list of feature used in partition */
 	char	*ptip;		/* tip after product prune */
 	char	*random;	/* new random bits */
 	char	*rootkey;	/* original rootkey */
@@ -46,6 +47,7 @@ const struct {
 } kvdata[] = {
 	{"COMPLIST", 1, offsetof(Opts, comps)},
 	{"COMPPRUNE",1, offsetof(Opts, compprune)},
+	{"FEATURE",  1, offsetof(Opts, feature)},
 	{"PRODPRUNE",1, offsetof(Opts, prodprune)},
 	{"PRUNE",    1, offsetof(Opts, prune)},
 	{"PTIP",     0, offsetof(Opts, ptip)},
@@ -392,10 +394,23 @@ setupWorkArea(Opts *opts, char *repo)
 		uniqLines(opts->prune, free);	/* sort and no dups */
 		opts->tip = getTipkey(0);
 
-		opts->compprune = addLine(0, strdup("BitKeeper/etc/ignore"));
+		/* ATTR1 corresponds to the data csetprune writes to attr */
+		opts->feature = addLine(opts->feature, strdup("ATTR1"));
+
+		/*
+		 * Component prune list (keep sorted)
+		 * ATTR passed to comp and prod because it produces
+		 * a different file in csetprune in each context.
+		 */
+		opts->compprune = addLine(0, strdup(ATTR));
 		opts->compprune =
 		    addLine(opts->compprune, strdup("BitKeeper/etc/config"));
+		opts->compprune =
+		    addLine(opts->compprune, strdup("BitKeeper/etc/ignore"));
+
+		/* Product prune list (keep sorted) */
 		opts->prodprune = addLine(0, strdup(ALIASES));
+		opts->prodprune = addLine(opts->prodprune, strdup(ATTR));
 		opts->rootkey = strdup(proj_rootkey(0));
 	}
 	lines2File(opts->comps, "COMPS");
@@ -411,6 +426,10 @@ setupWorkArea(Opts *opts, char *repo)
 	fputc('\n', randf);
 	fputs(opts->tip, randf);
 	fputc('\n', randf);
+	EACH(opts->feature) {
+		fputs(opts->feature[i], randf);
+		fputc('\n', randf);
+	}
 	EACH(opts->comps) {
 		fputs(opts->comps[i], randf);
 		fputc('\n', randf);

@@ -456,3 +456,19 @@ bk -rBitKeeper/deleted \
 . ./X
 echo OK
 
+echo $N Test attributes file mappings ...............................$NL
+cd "$HERE"/project
+ROOTKEY=`bk prs -r+ -hnd:ROOTKEY: ChangeSet`
+# Test ID in component
+cd "$HERE"/copy/src
+IDKEY=`bk changes -qr1.1 -nd:ATTR_ID:`
+test "$ROOTKEY" = "$IDKEY" || fail "$ROOTKEY" not same as "$IDKEY"
+# Test ID and HERE in product
+cd ..
+IDKEY=`bk changes -qr1.1 -nd:ATTR_ID:`
+test "$ROOTKEY" = "$IDKEY" || fail "$ROOTKEY" not same as "$IDKEY"
+echo all > WANT
+# note .. no -n as I want to get the original file without extra newline
+bk changes -qr1.1 -d:ATTR_HERE: > GOT
+cmpfiles WANT GOT
+echo OK

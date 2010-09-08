@@ -464,6 +464,14 @@ newFile(char *path, int ser)
 		perror(path);
 		goto err;
 	}
+	if (streq(path, ATTR)) {
+		/* equiv alias file of unpartitioned -- all */
+		if (proj_isProduct(0)) fputs("@HERE\nall\n\n", f);
+
+		/* orig pre-partition rootkey created this cset */
+		fputs("@ID\n", f);
+		fprintf(f, "%s\n", proj_rootkey(0));
+	}
 	if (fclose(f)) {
 		perror(prog);
 		goto err;

@@ -46,6 +46,8 @@ cd ../partition
 bk -r check || fail
 _BK_NO_SORTKEY=1 bk -r check 2> GOT && fail
 cat > WANT <<EOF
+SCCS/s.ChangeSet: 1.3 is not earlier than 1.2.1.1
+SCCS/s.ChangeSet: 1.3 is not earlier than 1.2.1.1
 anno/SCCS/s.ChangeSet: 1.3 is not earlier than 1.2.1.1
 anno/SCCS/s.ChangeSet: 1.3 is not earlier than 1.2.1.1
 EOF
