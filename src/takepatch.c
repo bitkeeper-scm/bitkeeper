@@ -55,11 +55,9 @@ private	int	skipPatch(MMAP *p);
 private	void	getChangeSet(void);
 private	void	loadskips(void);
 private int	sfio(MMAP *m);
+private	int	parseFeatures(char *next);
 
-private	int	pbars = 0;	/* progress bars, default is off */
-private	u64	N;		/* number of ticks */
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
-private	int	mkpatch = 0;	/* act like makepatch verbose */
 private	int	line;		/* line number in the patch file */
 private	int	fileNum;	/* counter for the Nth init/diff file */
 private	patch	*patchList = 0;	/* patches for a file, list len == fileNum */
@@ -78,8 +76,32 @@ private	int	encoding;	/* encoding before we started */
 private	char	*comments;	/* -y'comments', pass to resolve. */
 private	char	**errfiles;	/* files had errors during apply */
 private	char	**edited;	/* files that were in modified state */
-private	int	collapsedups;	/* allow csets in BitKeeper/etc/collapsed */
-private	int	Fast;		/* Fast patch mode */
+
+typedef struct {
+	/* command line options */
+	int	pbars;		/* --progress: progress bars, default is off */
+	int	mkpatch;	/* -m: act like makepatch verbose */
+	int	collapsedups;	/* -D: allow csets in BitKeeper/etc/collapsed */
+
+	/* global state */
+	u64	N;		/* number of ticks */
+
+	/* modes enabled in patch */
+	u8	fast;		/* Fast patch mode */
+	u8	port;		/* patch created with 'bk port' */
+} Opts;
+private Opts *opts;
+
+/*
+ * Table of feature names mapping to the option it enables.
+ */
+private struct {
+	char	*name;
+	int	offset;
+} features[] = {
+	{"PORT", offsetof(Opts, port)},
+	{0}
+};
 
 /*
  * Structure for keys we skip when incoming, used for old LOD keys that
@@ -113,26 +135,27 @@ takepatch_main(int ac, char **av)
 
 	setmode(0, O_BINARY); /* for win32 */
 	input = "-";
+	opts = new(Opts);
 	while ((c = getopt(ac, av, "acDFf:iLmqsStTvy;", lopts)) != -1) {
 		switch (c) {
 		    case 'q':					/* undoc 2.0 */
 		    case 's':					/* undoc 2.0 */
-			echo = pbars = 0;
+			echo = opts->pbars = 0;
 			break;
 		    case 'a': resolve++; break;			/* doc 2.0 */
 		    case 'c': noConflicts++; break;		/* doc 2.0 */
-		    case 'D': collapsedups++; break;
+		    case 'D': opts->collapsedups++; break;
 		    case 'F': break;				/* obsolete */
 		    case 'f':					/* doc 2.0 */
 			    input = optarg;
 			    break;
 		    case 'i': newProject++; break;		/* doc 2.0 */
-		    case 'm': mkpatch++; break;			/* doc 2.0 */
+		    case 'm': opts->mkpatch++; break;		/* doc 2.0 */
 		    case 'S': saveDirs++; break;		/* doc 2.0 */
 		    case 'T': textOnly++; break;		/* doc 2.0 */
-		    case 'v': pbars = 0; echo++; break;		/* doc 2.0 */
+		    case 'v': opts->pbars = 0; echo++; break;	/* doc 2.0 */
 		    case 'y': comments = optarg; break;
-		    case 300: pbars = 1; break;
+		    case 300: opts->pbars = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -164,7 +187,7 @@ takepatch_main(int ac, char **av)
 	/*
 	 * Find a file and go do it.
 	 */
-	if (pbars) tick = progress_start(PROGRESS_BAR, N);
+	if (opts->pbars) tick = progress_start(PROGRESS_BAR, opts->N);
 	while (buf = mnext(p)) {
 		char	*b;
 		int	rc;
@@ -213,13 +236,13 @@ takepatch_main(int ac, char **av)
 		/* XXX: Save?  Purge? */
 		cleanup(CLEAN_RESYNC);
 	}
-	if (echo || pbars) {
+	if (echo || opts->pbars) {
 		files = 0;
 		if (f = popen("bk sfiles RESYNC", "r")) {
 			while (t = fgetline(f)) ++files;
 			pclose(f);
 		}
-		if (pbars) {
+		if (opts->pbars) {
 			t = conflicts ?
 			    aprintf("%3d", conflicts) : strdup(" no");
 			Fprintf("BitKeeper/log/progress-sum",
@@ -288,7 +311,8 @@ takepatch_main(int ac, char **av)
 		unless (WIFEXITED(i)) return (-1);
 		error = WEXITSTATUS(i);
 	}
-	exit(error);
+	free(opts);
+	return (error);
 }
 
 private void
@@ -309,7 +333,7 @@ loadCollapsed(void)
 	char	*p;
 	char	buf[MAXLINE];
 
-	if (collapsedups) return (0);
+	if (opts->collapsedups) return (0);
 	f = popen("bk annotate -ar " COLLAPSED, "r");
 	while (fnext(buf, f)) {
 		chomp(buf);
@@ -521,7 +545,7 @@ error:		if (perfile) sccs_free(perfile);
 	gfile = sccs2name(name);
 	if (echo > 1) fprintf(stderr, "Updating %s", gfile);
 	cset = s ? CSET(s) : streq(name, CHANGESET);
-	if (Fast || cset) {
+	if (opts->fast || cset) {
 		rc = applyCsetPatch(s, &nfound, perfile);
 		s = 0;		/* applyCsetPatch calls sccs_free */
 		unless (cset) nfound = 0;	/* only count csets */
@@ -666,7 +690,7 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int *np)
 delta1:	off = mtell(f);
 	d = getRecord(f);
 	sccs_sdelta(s, d, buf);
-	if (Fast) {
+	if (opts->fast) {
 		if (skipkey(s, buf)) ignore = 1;
 		goto save;
 	}
@@ -735,7 +759,7 @@ save:	mseekto(f, off);
 			line++;
 			if (echo>5) fprintf(stderr, "%.*s", linelen(b), b);
 		}
-		if (Fast) {
+		if (opts->fast) {
 			/* header and diff are not connected */
 			if (d->flags & D_META) p->meta = 1;
 			if (start != stop) {
@@ -843,7 +867,6 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	int	c;
 	int	psize = *nfound;
 	int	confThisFile;
-	int	port = 0;
 	FILE	*csets = 0, *f;
 	hash	*cdb;
 	char	csets_in[MAXPATH];
@@ -927,7 +950,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			}
 		}
 		/* passing in d = parent, setting d = new or existing */
-		if (d = cset_insert(s, iF, dF, d, Fast)) {
+		if (d = cset_insert(s, iF, dF, d, opts->fast)) {
 			(*nfound)++;
 			p->d = d;
 			if (d->flags & D_REMOTE) {
@@ -956,7 +979,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		    remote_tagtip->rev, remote_tagtip->serial));
 	}
 	if (CSET(s) && (echo == 3)) fputs(", ", stderr);
-	if (cset_write(s, (echo == 3), Fast)) {
+	if (cset_write(s, (echo == 3), opts->fast)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't update %s\n", s->sfile);
 		goto err;
@@ -997,7 +1020,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			while (t = mnext(p->diffMmap)) {
 				unless (*t == '>') continue;
 				++t;		      /* skip '>' */
-				unless (Fast) ++t;    /* skip space */
+				unless (opts->fast) ++t;    /* skip space */
 				s = separator(t);
 				strncpy(key, t, s-t);
 				key[s-t] = 0;
@@ -1038,7 +1061,6 @@ markup:
 		mclose(p->diffMmap); /* win32: must mclose after cset_write */
 		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
 		d->flags |= D_SET; /* for resum() */
-		unless (TAG(d)) port = !(d->flags & D_CSET);
 	}
 	if (top && (top->dangling || !(top->flags & D_CSET))) {
 		delta	*a, *b;
@@ -1079,7 +1101,7 @@ markup:
 
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) goto err;
 	/* Signal resolve to add a null cset for ChangeSet path fixup. */
-	if (port && exists(ROOT2RESYNC "/SCCS/m.ChangeSet")) {
+	if (opts->port && exists(ROOT2RESYNC "/SCCS/m.ChangeSet")) {
 		touch(ROOT2RESYNC "/SCCS/n.ChangeSet", 0664);
 	}
 	if (!confThisFile && (s->state & S_CSET) && 
@@ -1900,7 +1922,7 @@ init(char *inputFile)
 		}
 	}
 	if (streq(inputFile, "-")) {
-		if (echo && mkpatch) {
+		if (echo && opts->mkpatch) {
 			fprintf(stderr, "Receiving patch ...");
 			tick = progress_start(PROGRESS_SPIN, 0);
 		}
@@ -1946,14 +1968,21 @@ init(char *inputFile)
 				}
 				if (st.preamble_nl) {
 					if (streq(buf, PATCH_CURRENT) ||
-					    (Fast = streq(buf, PATCH_FAST))) {
+					    (opts->fast = streq(buf, PATCH_FAST))) {
 						st.type = 1;
 						st.preamble = 0;
 						st.preamble_nl = 0;
 					}
 				}
 			} else if (st.type) {
-				if (streq(buf, PATCH_REGULAR)) {
+				if (strneq(buf, PATCH_FEATURES, strsz(PATCH_FEATURES))) {
+					if (parseFeatures(buf +
+						strsz(PATCH_FEATURES))) {
+						goto error;
+					}
+					st.type = 0;
+					st.version = 1;
+				} else if (streq(buf, PATCH_REGULAR)) {
 					st.type = 0;
 					st.version = 1;
 				} else {
@@ -1987,7 +2016,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 				}
 			} else if (st.filename) {
 				if (tick) progress(tick, 0);
-				N++;
+				opts->N++;
 				if (st.newline) {
 					fprintf(stderr, "Expected metadata\n");
 					goto error;
@@ -2142,7 +2171,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		i = 0;
 		while (t = mnext(m)) {
 			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT)) ||
-			    (Fast = strneq(t, PATCH_FAST, strsz(PATCH_FAST)))) {
+			    (opts->fast = strneq(t, PATCH_FAST, strsz(PATCH_FAST)))) {
 				len = linelen(t);
 				sumC = adler32(sumC, t, len);
 				t = mnext(m);
@@ -2152,7 +2181,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		}
 		unless (i) errorMsg("tp_noversline", input, 0);
 		do {
-			if (strneq("== ", t, 3)) ++N;
+			if (strneq("== ", t, 3)) ++opts->N;
 			len = linelen(t);
 			sumC = adler32(sumC, t, len);
 			unless (t = mnext(m)) break;
@@ -2266,4 +2295,31 @@ done:
 		}
 	}
 	exit(rc);
+}
+
+private int
+parseFeatures(char *next)
+{
+	char	*t;
+	int	i;
+	char	buf[MAXLINE];
+
+	strcpy(buf, next);
+	next = buf;
+	while (t = strsep(&next, ", \n")) {
+		unless (*t) continue;
+		for (i = 0;; i++) {
+			unless (features[i].name) {
+				fprintf(stderr,
+				    "%s: patch feature %s unknown\n",
+				    prog, t);
+				return (-1);
+			}
+			if (streq(features[i].name, t)) {
+				((u8 *)opts)[features[i].offset] = 1;
+				break;
+			}
+		}
+	}
+	return (0);
 }

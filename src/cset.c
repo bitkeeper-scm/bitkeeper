@@ -713,7 +713,11 @@ again:	/* doDiffs can make it two pass */
 		fputs("\n", stdout);
 		fputs(PATCH_PATCH, stdout);
 		fputs(cs->fastpatch ? PATCH_FAST : PATCH_CURRENT, stdout);
-		fputs(PATCH_REGULAR, stdout);
+		if (copts.csetkey) {
+			fputs(PATCH_FEATURES "PORT\n", stdout);
+		} else {
+			fputs(PATCH_REGULAR, stdout);
+		}
 		fputs("\n", stdout);
 	}
 

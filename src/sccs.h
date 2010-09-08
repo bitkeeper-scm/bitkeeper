@@ -780,6 +780,7 @@ typedef struct patch {
 #define PATCH_FAST	"# Patch vers:\t1.4\n"
 
 #define PATCH_REGULAR	"# Patch type:\tREGULAR\n"
+#define PATCH_FEATURES	"# Patch features:\t"
 
 #define	BK_RELEASE	"2.O"	/* this is lame, we need a sccs keyword */
 
