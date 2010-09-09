@@ -366,7 +366,7 @@ BitKeeper is aborting this patch until you check in those files.\n\
 You need to check in the edited files and run takepatch on the file\n\
 in the PENDING directory.  Alternatively, you can rerun pull or resync\n\
 that will work too, it just gets another patch.\n");
-		resolve_cleanup(opts, CLEAN_RESYNC);
+		resolve_cleanup(opts, CLEAN_ABORT);
 	}
 
 	/*
@@ -409,7 +409,7 @@ that will work too, it just gets another patch.\n");
 			 */
 			opts->resolveNames = 1;
 			pass2_renames(opts);
-			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
+			resolve_cleanup(opts, CLEAN_ABORT|CLEAN_PENDING);
 		}
 
 		if (opts->automerge) {
@@ -2494,16 +2494,8 @@ pass4_apply(opts *opts)
 	if (ret = trigger(cmd,  "pre")) {
 		switch (ret) {
 		    case 3: flags = CLEAN_MVRESYNC; break;
-		    case 2: flags = CLEAN_RESYNC; break;
-		    default: flags = CLEAN_RESYNC|CLEAN_PENDING; break;
-		}
-		if (proj_isProduct(0)) {
-			/*
-			 * bk abort in nested uses information in the
-			 * RESYNC directory to abort, so don't remove
-			 * it.
-			 */
-			flags &= ~CLEAN_RESYNC;
+		    case 2: flags = CLEAN_ABORT; break;
+		    default: flags = CLEAN_ABORT|CLEAN_PENDING; break;
 		}
 		mdbm_close(permDB);
 		resolve_cleanup(opts, CLEAN_NOSHOUT|flags);
@@ -2828,18 +2820,40 @@ resolve_cleanup(opts *opts, int what)
 			perror("RESYNC");
 			fprintf(stderr, "resolve: rmtree failed\n");
 		}
+	} else if (what & CLEAN_ABORT) {
+		if (system("bk abort -qfp")) {
+			fprintf(stderr, "Abort failed\n");
+		}
 	} else if (what & CLEAN_MVRESYNC) {
 		char	*dir = savefile(".", "RESYNC-", 0);
 
 		assert(exists("RESYNC"));
 		assert(dir);
 		unlink(dir);
-		/*
-		 * XXX: for nested we'll probably need to make 'bk
-		 * abort' do the rename as it needs the information in
-		 * the RESYNC directory to work
-		 */
-		rename("RESYNC", dir);
+		if (proj_isProduct(0)) {
+			char	*cmd;
+
+			/*
+			 * In a product we can't just delete (or move) the RESYNC
+			 * directory because abort needs it to cleanup the other
+			 * components, so we copy the directory and then call abort.
+			 */
+			mkdir(dir, 0777);
+			cmd = aprintf("bk --cd='%s' _find . -type f | "
+				      "bk --cd='%s' sfio -qmo | "
+				      "bk --cd='%s' sfio -qmi",
+				      ROOT2RESYNC,
+				      ROOT2RESYNC,
+				      dir);
+			if (system(cmd)) perror("dircopy");
+			free(cmd);
+			if (system("bk abort -fp")) {
+				fprintf(stderr, "Abort failed\n");
+			}
+		} else {
+			rename("RESYNC", dir);
+		}
+		free(dir);
 	} else {
 		if (exists(ROOT2RESYNC "/SCCS/p.ChangeSet")) {
 			assert(!exists("RESYNC/ChangeSet"));

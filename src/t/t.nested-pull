@@ -835,3 +835,43 @@ grep -q "gcc has uncommitted changes" ERR || fail -f ERR
 # we should have no local changes
 test -n "`bk -P changes -qL`" && fail local changes found
 echo OK
+
+echo $N Setup pull with a conflict in product and quit ..............$NL
+cd "$HERE/parent/gcc"
+echo hi > cfile
+bk new $Q cfile
+bk commit $Q -ycfile
+cd ..
+echo hi > conflict
+bk new $Q conflict
+bk commit $Q -yparent
+
+cd ../child
+echo hi2 > conflict
+bk new $Q conflict
+bk commit $Q -ychild
+
+bk changes -v -r+ > BEFORE
+(echo q; echo y) | bk pull $Q 2>ERR && fail
+bk -qAr check -ac || fail
+bk changes -v -r+ > AFTER
+# this shouldn't change
+cmpfiles BEFORE AFTER
+echo OK
+
+echo $N Now repeat conflicting pull with abort ......................$NL
+(echo a; echo y) | bk pull $Q 2>ERR && fail
+bk -qAr check -ac || fail
+bk changes -v -r+ > AFTER
+# this shouldn't change
+cmpfiles BEFORE AFTER
+echo OK
+
+echo $N Now do the pull in two steps with resolve -c ................$NL
+bk pull -R $Q || fail
+cd gcc
+bk resolve -c $Q 2>ERR || fail
+cd ..
+bk resolve -c $Q 2>ERR && fail
+bk -qAr check -ac || fail
+echo OK
