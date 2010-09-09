@@ -42,7 +42,7 @@ names_main(int ac, char **av)
 	for (p = sfileFirst("names", &av[optind], 0); p; p = sfileNext()) {
 		if (tick) progress(tick, ++n);
 		if (streq(p, CHANGESET)) continue;
-		unless (s = sccs_init(p, 0)) continue;
+		unless (s = sccs_init(p, INIT_MUSTEXIST)) continue;
 		unless (d = sccs_top(s)) {
 			sccs_free(s);
 			continue;
@@ -109,7 +109,7 @@ pass2(u32 flags)
 	unless (filenum) return;
 	for (i = 1; i <= filenum; ++i) {
 		sprintf(path, "BitKeeper/RENAMES/repo.%d/SCCS/s.ChangeSet", i);
-		unless ((s = sccs_init(path, 0)) && HASGRAPH(s)) {
+		unless ((s = sccs_init(path, INIT_MUSTEXIST)) && HASGRAPH(s)) {
 			sccs_free(s);
 			sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", i);
 			s = sccs_init(path, 0);

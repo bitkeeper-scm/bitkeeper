@@ -626,23 +626,6 @@ cmp -s "$HERE/WANT" "$HERE/GOT" || {
 }
 echo OK
 
-echo $N Test sfile -U ...............................................$NL
-cd bar
-echo "This is not the real ChangeSet file" > ChangeSet
-bk new $Q -y"fake changeset file" ChangeSet
-mkdir BitKeeper
-echo "This is not the real config file" > BitKeeper/config
-bk new $Q -y"fake config file" BitKeeper/config
-bk sfiles -U -g | sort > GOT
-sort <<EOF > WANT
-BitKeeper/config
-blech/s.foo
-ChangeSet
-s.foo
-EOF
-cmpfiles GOT WANT
-echo OK
-
 echo $N Test sfile -U with triggers, they should be listed ..........$NL
 cd "`bk root`"
 test -d BitKeeper/triggers || mkdir BitKeeper/triggers

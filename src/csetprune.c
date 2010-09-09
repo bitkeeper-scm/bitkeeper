@@ -588,7 +588,7 @@ filterRootkey(char *rk, char **list, int ret, sccs *cset, char **complist,
 	char	*dk, *line;
 	char	*delpath = 0;
 	char	*rnew, *rend, *dnew, *dend, *which = 0, *cur;
-	int	i, skip, len, origlen;
+	int	i, badname, skip, len, origlen;
 	char	buf[MAXKEY * 2 + 2];
 
 	unless (sccs_iskeylong(rk)) {
@@ -603,11 +603,18 @@ zero:		EACH(list) (*(char **)list[i])[0] = 0;
 	rnew = getPath(rk, &rend);
 	*rend = 0;
 	hash_fetchStr(prunekeys, rnew);
+	badname = bk_badFilename(rnew);
 	*rend = '|';
 	if (prunekeys->vptr) {
 		/* mark for rmKeys() to delete */
 del:		hash_storeStr(prunekeys, rk, 0);
 		goto zero;
+	}
+	if (badname) {
+		fprintf(stderr,
+		    "%s: a rootkey has a reserved BitKeeper name\n  %s\n",
+		    prog, rk);
+		goto err;
 	}
 
 	skip = strlen(rk) + 2;	/* skip "\t<rk> " to get to deltakey */
@@ -653,10 +660,18 @@ prune:
 		}
 		dnew = getPath(dk, &dend);
 		*dend = 0;
+		badname = bk_badFilename(dnew);
 		if (hash_fetchStr(prunekeys, dnew)) {
 			if (keyExists(rk, dnew)) goto err;
 		}
 		*dend = '|';
+		if (badname) {
+			fprintf(stderr,
+			    "%s: a deltakey has a reserved BitKeeper name\n"
+			    "rootkey: %s\n" "deltakey: %s\n",
+			    prog, rk, dk);
+			goto err;
+		}
 		unless (complist) continue;
 
 		/*

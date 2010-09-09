@@ -404,10 +404,8 @@ echo OK
 
 echo $N Make sure we disallow .bk_skip file  .........................$NL
 touch .bk_skip
-bk new .bk_skip 2> new.out
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
-grep -q "not allowed" new.out
-if [ $? -ne 0 ]; then echo failed 2; exit 1; fi
+bk new .bk_skip 2> new.out && fail -f new.out should fail
+grep -q "new: illegal filename: .bk_skip" new.out || fail -f new.out wrong message
 echo OK
 
 if [ X$PLATFORM != X"WIN32" ]
@@ -415,39 +413,18 @@ then #------------------------------------------------------------------
 
 echo $N Make sure we don\'t allow files with \|\'s .....................$NL
 touch 'test|file'
-bk new $Q 'test|file' 2>new.out && {
-	echo should have failed
-	exit 1
-}
-grep -q "must not contain" new.out || {
-	echo wrong error
-	cat new.out
-	exit 1
-}
+bk new $Q 'test|file' 2>new.out && fail -f new.out should fail
+grep -q "new: illegal filename" new.out || fail -f new.out wrong message
 echo OK
 
 echo $N Make sure we don\'t allow pathnames with \|\'s .................$NL
 mkdir 'bad|dir'
 touch 'bad|dir/test'
-bk new $Q 'bad|dir/test' 2>new.out && {
-	echo should have failed
-	exit 1
-}
-grep -q "must not contain" new.out || {
-	echo wrong error
-	cat new.out
-	exit 1
-}
+bk new $Q 'bad|dir/test' 2>new.out && fail -f new.out should fail
+grep -q "new: illegal filename" new.out || fail -f new.out wrong message
 cd 'bad|dir'
-bk new $Q test 2>new.out && {
-	echo should have failed
-	exit 1
-}
-grep -q "must not contain" new.out || {
-	echo wrong error
-	cat new.out
-	exit 1
-}
+bk new $Q test 2>new.out && fail -f new.out should fail
+grep -q "new: illegal filename" new.out || fail -f new.out wrong message
 echo OK
 
 fi #--------------------------------------------------------------------
@@ -793,3 +770,23 @@ bk delta $Q -u -y'change happens' notmine 2>ERR || {
 }
 echo OK
 fi
+
+echo $N Check that users cannot create a file called ChangeSet.......$NL
+touch ChangeSet
+bk new $Q ChangeSet 2>ERR && fail
+grep -q "new: illegal filename: expand/ChangeSet" ERR || fail -f ERR wrong message
+mkdir adir
+touch adir/ChangeSet
+bk new $Q adir/ChangeSet 2>ERR && fail -f ERR
+grep -q "new: illegal filename: expand/adir/ChangeSet" ERR || fail -f ERR wrong message
+rm -f ChangeSet adir/ChangeSet
+touch afile
+bk new $Q afile || fail
+bk get $Q afile
+bk mv afile ChangeSet 2>ERR && fail
+grep -q "sccsmv: destination cannot be named: expand/ChangeSet" ERR || \
+	fail -f ERR wrong message
+bk mv afile adir/ChangeSet 2>ERR && fail
+grep -q "sccsmv: destination cannot be named: expand/adir/ChangeSet" ERR || \
+	fail -f ERR wrong message
+echo OK

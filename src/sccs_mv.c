@@ -104,6 +104,14 @@ err:		if (sname) free(sname);
 	oldpath = getRelativeName(sname, s->proj);
 	newpath = getRelativeName(destfile, s->proj);
 
+	if (bk_badFilename(newpath)) {
+		fprintf(stderr, "sccsmv: destination cannot be "
+		    "named: %s\n", newpath);
+		free(oldpath);
+		free(newpath);
+		goto err;
+	}
+
 	if (HAS_PFILE(s)) {
 		was_edited = 1;
 		has_diffs = sccs_hasDiffs(s, SILENT, 1);

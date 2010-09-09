@@ -9512,6 +9512,29 @@ toobig(sccs *s)
 }
 
 /*
+ * Given a relative gfile pathname from the repository root
+ * determine if the filename should be legal.
+ */
+int
+bk_badFilename(char *name)
+{
+	char	*base = basenm(name);
+
+	if (getenv("_BK_BADNAME")) return (0);
+	/*
+	 * Disallow BK_FS character in file name.
+	 * Some day we may allow caller to escape the BK_FS character
+	 */
+	if (strchr(name, BK_FS)) return (1);
+
+	if (streq(base, BKSKIP)) return (1);
+	if (streq(base, GCHANGESET) && !streq(name, GCHANGESET)) return (1);
+	if (streq(base, ".bk")) return (1);
+
+	return (0);
+}
+
+/*
  * Check in initial sfile.
  *
  * XXX - need to make sure that they do not check in binary files in
@@ -9588,26 +9611,11 @@ out:		if (sfile) fclose(sfile);
 	assert(t);
 	strcpy(buf, t);
 
-	/*
-	 * Disallow BK_FS character in file name.
-	 * Some day we may allow caller to escape the BK_FS character
-	 */
-	if (strchr(t, BK_FS)) {
-		fprintf(stderr,
-			"delta: %s: filename must not contain \"%c\"\n",
-			t, BK_FS);
+	if (bk_badFilename(buf)) {
+		fprintf(stderr, "%s: illegal filename: %s\n", prog, buf);
 		goto out;
 	}
 
-	/*
-	 * Disallow BKSKIP
-	 */
-	t = basenm(s->sfile);
-	if (streq(&t[2], BKSKIP)) {
-		fprintf(stderr,
-			"delta: checking in %s is not allowed\n", BKSKIP);
-		goto out;
-	}
 	unless (sfile = sccs_startWrite(s)) goto out;
 	if ((flags & DELTA_PATCH) || proj_root(s->proj)) {
 		s->bitkeeper = 1;

@@ -131,6 +131,30 @@ bk csetprune < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
 echo OK
 
+echo $N Test blocking files with ChangeSet in the name ..............$NL
+cd "$HERE"
+commercial badname
+mkdir src
+touch src/ChangeSet src/foo
+_BK_BADNAME=1 bk new $Q src/ChangeSet src/foo
+_BK_BADNAME=1 bk commit $Q -ybadname
+# rootkey test
+echo src/foo | bk csetprune -q 2> ERR
+grep -q "a rootkey has a reserved BitKeeper name" ERR || fail -f ERR
+# The workaround - get rid of the file
+echo src/ChangeSet | bk csetprune $Q
+# test a file renamed to ChangeSet
+touch src/bar
+bk new $Q src/bar
+bk commit $Q -ygoodname
+_BK_BADNAME=1 bk mv src/bar src/ChangeSet
+_BK_BADNAME=1 bk commit $Q -ybadname
+echo src/foo | bk csetprune -q 2> ERR
+grep -q "a deltakey has a reserved BitKeeper name" ERR || fail -f ERR
+# The workaround -- get rid of it
+echo src/bar | bk csetprune $Q
+echo OK
+
 echo $N Tag graph rewiring test: fork, merge, collapse, leaf ........$NL
 cd "$HERE"
 rm -rf tag_a, tag_b, tag_c
