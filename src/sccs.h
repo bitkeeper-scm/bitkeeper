@@ -636,7 +636,7 @@ struct sccs {
 	time_t	gtime;		/* gfile modidification time */
 	time_t	stime;		/* sfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
-	MDBM	*findkeydb;	/* Cache a map of delta key to delta* */
+	hash	*findkeydb;	/* Cache a map of delta key to delta* */
 	project	*proj;		/* If in BK mode, pointer to project */
 	void	*rrevs;		/* If has conflicts, revs in conflict */
 				/* Actually is of type "name *" in resolve.h */
@@ -668,8 +668,6 @@ struct sccs {
 	u32	bamlink:1;	/* BAM gfile is hardlinked to the sfile */
 	u32	used_cfile:1;	/* comments_readcfile found one; for cleanup */
 	u32	modified:1;	/* set if we wrote the s.file */
-	u32	keydb_long:1;	/* findkeydb contains long keys? */
-	u32	keydb_md5:1;	/* findkeydb contains md5 keys? */
 	u32	mem_in:1;	/* s->fh is in-memory FILE* */
 	u32	mem_out:1;	/* s->outfh is in-memory FILE* */
 	u32	file:1;		/* treat as a file in DSPECS */

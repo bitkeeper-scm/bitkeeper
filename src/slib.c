@@ -4639,7 +4639,7 @@ sccs_free(sccs *s)
 	freeLines(s->text, free);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
-	if (s->findkeydb) mdbm_close(s->findkeydb);
+	if (s->findkeydb) hash_free(s->findkeydb);
 	if (s->locs) free(s->locs);
 	if (s->proj) proj_free(s->proj);
 	if (s->rrevs) freenames(s->rrevs, 1);
@@ -16525,21 +16525,27 @@ delta	*
 sccs_findMD5(sccs *s, char *md5)
 {
 	delta	*d;
-	datum	k, v;
+	u32	dd;
+	char	dkey[MAXKEY];
 
-	unless (s->findkeydb) s->findkeydb = mdbm_mem();
-	unless (s->keydb_md5) {
-		s->keydb_md5 = 1;
+	unless (s && HASGRAPH(s)) return (0);
+
+	unless (s->findkeydb) {
+		s->findkeydb = hash_new(HASH_MEMHASH);
 		for (d = s->table; d; d = NEXT(d)) {
 			sccs_findKeyUpdate(s, d);
 		}
 	}
-	k.dptr = md5;
-	k.dsize = strlen(md5) + 1;
-	v = mdbm_fetch(s->findkeydb, k);
-	if (v.dsize) {
-		memcpy(&d, v.dptr, sizeof(d));
-		return (d);
+
+	strncpy(dkey, md5, 8);
+	dkey[8] = 0;
+	dd = strtoul(dkey, 0, 16);
+
+	unless (hash_fetch(s->findkeydb, &dd, sizeof(dd))) return (0);
+	d = *(delta **)s->findkeydb->vptr;
+	for (; d && (dd == d->date); d = NEXT(d)) {
+		sccs_md5delta(s, d, dkey);
+		if (streq(md5, dkey)) return (d);
 	}
 	return (0);
 }
@@ -16569,25 +16575,34 @@ delta *
 sccs_findKey(sccs *s, char *key)
 {
 	delta	*d;
-	datum	k, v;
+	char	*t;
+	u32	dd;
+	char	dkey[MAXKEY];
 
 	unless (s && HASGRAPH(s)) return (0);
 	debug((stderr, "findkey(%s)\n", key));
 	unless (strchr(key, '|')) return (sccs_findMD5(s, key));
 
-	unless (s->findkeydb) s->findkeydb = mdbm_mem();
-	unless (s->keydb_long) {
-		s->keydb_long = 1;
+	unless (s->findkeydb) {
+		s->findkeydb = hash_new(HASH_MEMHASH);
 		for (d = s->table; d; d = NEXT(d)) {
 			sccs_findKeyUpdate(s, d);
 		}
 	}
-	k.dptr = key;
-	k.dsize = strlen(key) + 1;
-	v = mdbm_fetch(s->findkeydb, k);
-	if (v.dsize) {
-		memcpy(&d, v.dptr, sizeof(d));
-		return (d);
+
+	unless (t = strchr(key, '|')) return (0);	/* path */
+	unless (t = strchr(t+1, '|')) return (0);	/* date */
+
+	dd = sccs_date2time(t+1, 0);
+	unless (hash_fetch(s->findkeydb, &dd, sizeof(dd))) return (0);
+	d = *(delta **)s->findkeydb->vptr;
+	for (; d && (dd == d->date); d = NEXT(d)) {
+		sccs_sdelta(s, d, dkey);
+		if (streq(key, dkey)) return (d);
+		if (!LONGKEY(s) && (t = sccs_iskeylong(dkey))) {
+			*t = 0;
+			if (streq(key, dkey)) return (d);
+		}
 	}
 	return (0);
 }
@@ -16595,32 +16610,18 @@ sccs_findKey(sccs *s, char *key)
 void
 sccs_findKeyUpdate(sccs *s, delta *d)
 {
-	datum	k, v;
-	char	*t;
-	char	key[MAXKEY];
+	u32	dd;
 
 	unless (s->findkeydb) return;
-	if (s->keydb_long) {
-		sccs_sdelta(s, d, key);
-		k.dptr = key;
-		k.dsize = strlen(key) + 1;
-		v.dptr = (void*)&d;
-		v.dsize = sizeof(d);
-		mdbm_store(s->findkeydb, k, v, MDBM_REPLACE);
 
-		if (!LONGKEY(s) && (t = sccs_iskeylong(k.dptr))) {
-			*t = 0;
-			k.dsize = strlen(k.dptr) + 1;
-			mdbm_store(s->findkeydb, k, v, MDBM_REPLACE);
+	dd = d->date;
+	unless (hash_insert(s->findkeydb,
+	    &dd, sizeof(dd), &d, sizeof(delta *))) {
+		/* date conflict */
+		if (d->serial > (*(delta **)(s->findkeydb->vptr))->serial) {
+			hash_store(s->findkeydb,
+			    &dd, sizeof(dd), &d, sizeof(delta *));
 		}
-	}
-	if (s->keydb_md5) {
-		sccs_md5delta(s, d, key);
-		k.dptr = key;
-		k.dsize = strlen(key) + 1;
-		v.dptr = (void*)&d;
-		v.dsize = sizeof(d);
-		mdbm_store(s->findkeydb, k, v, MDBM_REPLACE);
 	}
 }
 
