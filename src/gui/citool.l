@@ -24,6 +24,11 @@ typedef	struct	sfile {
 	int	ignored;	// file is ignored or not?
 	int	excluded;	// file is hard excluded by the user or not?
 	int	inProduct;	// Is this file part of the product?
+	int	commented;	// Whether this file had comments on startup.
+				// This variable is not used outside of the
+				// initial population of the list, as we want
+				// to trust what is on disk more than what we
+				// have in memory.
 } sfile;
 
 string  msgs{string};	    // standard messages
@@ -445,11 +450,9 @@ readSfilesProgress(FILE fd, string file, int pos)
 void
 updateGUI()
 {
-	int	now = Clock_milliseconds();
-
-	if ((now - self.last_update) >= 250) {
-		self.last_update = now;
+	if ((Clock_milliseconds() - self.last_update) >= 250) {
 		update();
+		self.last_update = Clock_milliseconds();
 	}
 }
 
@@ -495,6 +498,7 @@ readSfilesOutput(string file, int pos)
 		sf.ignored = 0;
 		sf.excluded = 0;
 		sf.inProduct = 0;
+		sf.commented = hasComments;
 
 		if (pending) {
 			sf.type = "pending";
@@ -595,6 +599,7 @@ findFiles()
 			sf.icon = img_cset;
 			sf.ignored = 0;
 			sf.excluded = 0;
+			sf.commented = -1;
 
 			insertFile(sf);
 		}
@@ -1432,6 +1437,10 @@ isCommented(sfile sf)
 	string	comments;
 
 	if (sf.type eq "pending") return (1);
+	if (self.sfiles_scanning && sf.commented > -1) {
+		self.files{sf.name}.commented = -1;
+		return (sf.commented);
+	}
 	comments = getComments(sf);
 	if (sf.node eq getSelectedNode()) comments = getCurrentComments();
 	if ((comments ne "") && !isTemplateComment(sf, comments)) return (1);
