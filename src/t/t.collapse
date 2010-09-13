@@ -485,3 +485,60 @@ cmpfiles GOT WANT
 bk _test -f SCCS/c.myfile || fail
 bk _cat SCCS/c.ChangeSet | grep -q '^hi2' || fail
 echo OK
+
+echo $N Make sure collapse does not leave edited attr file...........$NL
+cd "$HERE"
+rm -rf project copy
+commercial project
+touch afile bfile
+bk new $Q afile
+bk new $Q bfile
+bk commit -y. $Q
+REV=`bk changes -qnd:REV: -r+`
+cd "$HERE"
+bk clone $Q project copy
+cd project
+bk edit $Q afile
+echo content > afile
+bk delta $Q -y. afile
+bk commit $Q -y.
+cd "$HERE/copy"
+BK_CONFIG="license:$BKL_ACADEMIC!;
+licsign1:$BKL_A1!; licsign2:$BKL_A2!; licsign3:$BKL_A3!"
+export BK_CONFIG
+bk edit $Q bfile
+echo more > bfile
+bk delta $Q -y. bfile
+bk commit $Q -y.
+unset BK_CONFIG
+bk pull $Q ../project || fail
+bk collapse $Q -ea$REV || fail
+bk sfiles -cg | grep -q attr && fail left edited attr file
+echo OK
+
+echo $N Test attr file again but in nested this time.................$NL
+cd "$HERE"
+rm -rf project copy
+nested project
+# create csets in all components
+touch afile gcc/afile gdb/afile
+bk new $Q afile gcc/afile gdb/afile
+(cd gcc && bk commit $Q -yafile)
+(cd gdb && bk commit $Q -yafile)
+bk commit $Q -yafile
+REV=`bk changes -qnd:REV: -r+`
+BK_CONFIG="license:$BKL_ACADEMIC!;
+licsign1:$BKL_A1!; licsign2:$BKL_A2!; licsign3:$BKL_A3!"
+export BK_CONFIG
+bk edit $Q afile gcc/afile gdb/afile
+echo content > afile
+echo content > gcc/afile
+echo content > gdb/afile
+bk delta $Q -y. afile gcc/afile gdb/afile
+(cd gcc && bk commit $Q -yafile)
+(cd gdb && bk commit $Q -yafile)
+bk commit $Q -yafile
+unset BK_CONFIG
+bk collapse $Q -ea$REV || fail collapse failed
+bk -A sfiles -cg | grep -q attr && fail left edite attr file
+echo OK

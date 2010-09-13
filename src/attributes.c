@@ -83,7 +83,7 @@ attr_write(char *file)
 
 	if (proj_isProduct(proj)) {
 		fputs("@HERE\n", f);
-		lines = nested_here(0);
+		lines = nested_here(proj);
 		uniqLines(lines, free);
 		EACH(lines) fprintf(f, "%s\n", lines[i]);
 		fprintf(f, "\n"); /* so final newline is included */

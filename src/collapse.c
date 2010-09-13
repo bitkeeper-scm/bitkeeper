@@ -480,7 +480,7 @@ do_file(char *file, char *tiprev)
 		pathname = strdup(d->pathname);
 		xflags = sccs_xflags(s, d);
 
-		if (CSET(s)) {
+		if (CSET(s) || streq(s->gfile, ATTR)) {
 			unlink(gfile);
 		} else {
 			gtime = s->gtime;
@@ -548,7 +548,7 @@ do_file(char *file, char *tiprev)
 		}
 
 		/* regenerate new p.file */
-		unless (CSET(s)) {
+		unless (CSET(s) || streq(s->gfile, ATTR)) {
 			rename(savefile, gfile);
 			free(savefile);
 			savefile = 0;
