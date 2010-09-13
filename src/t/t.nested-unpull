@@ -18,8 +18,12 @@ echo OK
 
 echo $N Test unpulling a port........................................$NL
 # detach so we can port later
-cd "$HERE"/parent
+cd "$HERE"/child
 bk detach $Q gcc "$HERE"/gcc-detached || fail
+cd "$HERE"/gcc-detached
+echo bam > bam
+bk new $Q -b bam
+bk commit $Q -ylocal
 # now port
 cd "$HERE"/child
 bk portal $Q .

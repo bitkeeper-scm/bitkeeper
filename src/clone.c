@@ -41,6 +41,7 @@ private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private clonerc	clone_finish(remote *r, clonerc status, char **envVar);
 private	void	checkout(int quiet, int verbose, int parallel);
+private	int	chkAttach(char *dir);
 
 private	char	*bam_url;
 private	char	*bam_repoid;
@@ -154,6 +155,11 @@ clone_main(int ac, char **av)
 	opts->from = strdup(av[optind]);
 	if (av[optind + 1]) {
 		if (av[optind + 2]) usage();
+		if (attach_only) {
+			fprintf(stderr,
+			    "attach: only one repo valid with -N\n");
+			exit(CLONE_ERROR);
+		}
 		opts->to = av[optind + 1];
 		unless (l = remote_parse(opts->to, REMOTE_BKDURL)) {
 			fprintf(stderr, "clone: failed to parse '%s'\n",
@@ -178,12 +184,9 @@ clone_main(int ac, char **av)
 			return (CLONE_ERROR);
 		}
 	} else {
-		char	here[MAXPATH];
-
 		/*
 		 * Go prompt with the remotes license, it makes cleanup nicer.
 		 */
-		strcpy(here, proj_cwd());
 		assert(r->path);
 		chdir(r->path);
 		unless (eula_accept(EULA_PROMPT, 0)) {
@@ -191,7 +194,7 @@ clone_main(int ac, char **av)
 			    "clone: failed to accept license, aborting.\n");
 			exit(CLONE_ERROR);
 		}
-		chdir(here);
+		chdir(start_cwd);
 	}
 	if (opts->detach && bk_notLicensed(0, LIC_PL, 1)) {
 		fprintf(stderr,
@@ -200,11 +203,6 @@ clone_main(int ac, char **av)
 		return (1);
 	}
 	if (opts->to) {
-		if (attach_only) {
-			fprintf(stderr,
-			    "attach: only one repo valid with -N\n");
-			exit(CLONE_ERROR);
-		}
 
 		/*
 		 * Source and destination cannot both be remote 
@@ -236,21 +234,6 @@ clone_main(int ac, char **av)
 				av[0] = "_rclone";
 			}
 			return (rclone_main(ac, av) ? CLONE_ERROR : 0);
-		} else if (opts->attach) {
-			project	*prod = 0, *proj;
-
-			// Dest path must be somewhere under a product.
-			// Note that proj_init() works if l->path is under a bk
-			// repo even if all dirs in the path do not exist.
-			if (proj = proj_init(l->path)) {
-				prod = proj_product(proj);
-				proj_free(proj);
-			}
-			unless (prod) {
-				fprintf(stderr, "attach: %s not in a product\n",
-				    l->path);
-				return (CLONE_ERROR);
-			}
 		}
 	} else {
 		if (r->path && !getenv("BK_CLONE_FOLLOW_LINK")) {
@@ -270,33 +253,15 @@ clone_main(int ac, char **av)
 	if (opts->debug) r->trace = 1;
 
 	if (opts->attach) {
-		nested	*n;
-		comp	*cp;
-		int	i, errors = 0;
+		char	*dir;
 
-		// lm3di: attach only works in a portal that is fully populated
-		unless (nested_isPortal(0)) {
-			fprintf(stderr, "Attach can only run in a portal. "
-			    "See 'bk help portal'.\n");
-			return (CLONE_ERROR);
+		if (attach_only) {
+			dir = aprintf("%s/..", r->path);
+		} else {
+			dir = strdup(l ? l->path : opts->to);
 		}
-		// see that it's fully populated
-		unless (n = nested_init(0, 0, 0, NESTED_PENDING)) {
-			fprintf(stderr, "%s: nested_init failed\n");
-			return (CLONE_ERROR);
-		}
-		EACH_STRUCT(n->comps, cp, i) {
-			unless (cp->present) {
-				fprintf(stderr,
-				    "Product needs to be fully "
-				    "populated. Run 'bk here set all' to fix."
-				    "\n");
-				errors++;
-				break;
-			}
-		}
-		nested_free(n);
-		if (errors) return (CLONE_ERROR);
+		/* chkAttach frees 'dir' */
+		if (chkAttach(dir)) return (CLONE_ERROR);
 	}
 	if (attach_only) {
 		assert(r->path);
@@ -329,6 +294,56 @@ clone_main(int ac, char **av)
 		}
 	}
 	return (clonerc);
+}
+
+private	int
+chkAttach(char *dir)
+{
+	nested	*n = 0;
+	comp	*cp;
+	int	i, inprod = 0;
+	int	ret = 1;
+	project	*prod = 0, *proj = 0;
+
+	/* note: allowing under a standalone inside a product */
+	unless ((proj = proj_init(dir)) && (prod = proj_product(proj))) {
+		fprintf(stderr, "attach: not in a product\n");
+		goto err;
+	}
+	if (chdir(proj_root(prod))) {
+		perror(proj_root(prod));
+		goto err;
+	}
+	inprod = 1;
+
+	// lm3di: attach only works in a portal that is fully populated
+	unless (nested_isPortal(0)) {
+		fprintf(stderr, "Attach can only run in a portal. "
+		    "See 'bk help portal'.\n");
+		goto err;
+	}
+	// see that it's fully populated
+	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) {
+		fprintf(stderr, "%s: nested_init failed\n");
+		goto err;
+	}
+	EACH_STRUCT(n->comps, cp, i) {
+		unless (cp->present) {
+			fprintf(stderr, "Product needs to be fully "
+			    "populated. Run 'bk here set all' to fix.\n");
+			goto err;
+		}
+	}
+	ret = 0;
+
+err:	nested_free(n);
+	if (proj) proj_free(proj);
+	if (inprod && chdir(start_cwd)) {
+		perror(start_cwd);
+		ret = 1;
+	}
+	free(dir);
+	return (ret);
 }
 
 private int
@@ -1529,6 +1544,61 @@ relink(char *a, char *b)
 	return (0);
 }
 
+/*
+ * Set a new name on the 1.1 cset (and its sibs, 1.0.1.1, ...)
+ * and inherit that name through the whole graph.
+ * Either set all cset marks (detach, partition)
+ * or clear all marks (attach)
+ */
+int
+attach_name(sccs *cset, char *name, int setmarks)
+{
+	int	ret = 1;
+	sccs	*freeme = 0;
+	delta	*d, *p;
+	int	j;
+
+	unless (cset || (freeme = cset = sccs_csetInit(INIT_MUSTEXIST))) {
+		fprintf(stderr, "failed to init cset\n");
+		goto err;
+	}
+	/*
+	 * Only strictly needed if we change name on 1.0, but does not
+	 * hurt to have it here.  If not here and changing 1.0, then
+	 * newroot will create it with the wrong name.  So putting this
+	 * in now to save finding that out if we change something later.
+	 */
+	(void)sccs_defRootlog(cset);
+
+	for (j = 1; j < cset->nextserial; j++) {
+		unless (d = sfind(cset, j)) continue;
+		p = PARENT(cset, d);
+		if (setmarks && !TAG(d) && p) {
+			d->flags |= D_CSET;
+		} else {
+			d->flags &= ~D_CSET;
+		}
+		/* previous loop may have broken duppath pointer so fix */
+		if (d->flags & D_DUPPATH) {
+			assert(p);
+			d->pathname = p->pathname;
+		}
+		unless (p) {
+			/* leave rootkey name alone */
+		} else if (!p->pserial && !TAG(d)) { /* 1.1 and siblings */
+			sccs_setPath(cset, d, name);
+		} else unless (d->flags & D_DUPPATH) {
+			sccs_setPath(cset, d, p->pathname);
+		}
+	}
+	if (freeme && sccs_newchksum(freeme)) goto err;
+
+	ret = 0;
+err:
+	if (freeme) sccs_free(freeme);
+	return (ret);
+}
+
 private clonerc
 attach(void)
 {
@@ -1553,6 +1623,15 @@ attach(void)
 	}
 	/* remove any existing parent */
 	system("bk parent -qr");
+
+	/* fix up path and repoid */
+	tmp = relpath + strlen(relpath);
+	concat_path(relpath, relpath, "ChangeSet");
+	attach_name(0, relpath, 0);
+	*tmp = 0;
+	unlink(REPO_ID);
+	(void)proj_repoID(0);
+
 	rc = systemf("bk newroot %s %s -y'attach %s'",
 		     opts->quiet ? "-q":"",
 		     opts->verbose ? "-v":"",
@@ -1574,7 +1653,8 @@ attach(void)
 	}
 	free(tmp);
 
-	rc = rc || system("bk admin -D ChangeSet");
+	touch("SCCS/d.ChangeSet", 0664);
+
 	if (rc) {
 		fprintf(stderr, "attach failed\n");
 		return (CLONE_ERROR);
@@ -1583,12 +1663,7 @@ attach(void)
 		fprintf(stderr, "attach: failed to write COMPONENT file\n");
 		return (CLONE_ERROR);
 	}
-	if (system("bk edit -q ChangeSet") ||
-	    systemf("bk -?_BK_MV_OK=1 delta -f -q -y'attach %s' ChangeSet",
-		relpath)) {
-		fprintf(stderr, "attach: failed to make new cset\n");
-		return (CLONE_ERROR);
-	}
+
 	proj_reset(0);	/* to reset proj_isComponent() */
 	unless (nested_mine(0, getenv("_NESTED_LOCK"), 1)) {
 		unless (nlid = nested_wrlock(0)) {
@@ -1641,11 +1716,13 @@ detach(int quiet, int verbose)
 		fprintf(stderr, "detach: failed to newroot\n");
 		return (-1);
 	}
-	if (system("bk edit -q ChangeSet") ||
-	    system("bk -?_BK_MV_OK=1 delta -f -q -ydetach ChangeSet")) {
-		fprintf(stderr, "detach: failed to make a new cset\n");
+
+	/* fix up path and repoid */
+	if (attach_name(0, "ChangeSet", 1)) {
+		fprintf(stderr, "detach: failed to rework ChangeSet \n");
 		return (-1);
 	}
-	/* Restore ChangeSet cset marks and path. */
-	return (system("bk admin -A -p ChangeSet"));
+	unlink(REPO_ID);
+	(void)proj_repoID(0);
+	return (0);
 }

@@ -18,6 +18,7 @@ export BK_NO_HARDLINK_CLONE
 
 echo $N Create initial repositories .................................$NL
 commercial project
+bk -r check -ac	# Add's rootlog
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 cd ..
@@ -39,6 +40,8 @@ bk relink clone project 2>OUT || {
 grep -q "relinked $NFILE/$NFILE files, 0 different, 0 already linked." OUT || {
 	echo Bad status message
 	cat OUT
+	echo wanted
+	echo relinked $NFILE/$NFILE files, 0 different, 0 already linked.
 	exit 1
 }
 echo OK

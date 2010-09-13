@@ -668,6 +668,7 @@ struct sccs {
 	u32	bamlink:1;	/* BAM gfile is hardlinked to the sfile */
 	u32	used_cfile:1;	/* comments_readcfile found one; for cleanup */
 	u32	modified:1;	/* set if we wrote the s.file */
+	u32	keydb_nopath:1;	/* don't compare path in sccs_findKey() */
 	u32	mem_in:1;	/* s->fh is in-memory FILE* */
 	u32	mem_out:1;	/* s->outfh is in-memory FILE* */
 	u32	file:1;		/* treat as a file in DSPECS */
@@ -919,6 +920,7 @@ int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_md5delta(sccs *s, delta *d, char *b64);
 void	sccs_sortkey(sccs *s, delta *d, char *buf);
 void	sccs_key2md5(char *rootkey, char *deltakey, char *b64);
+void	sccs_setPath(sccs *s, delta *d, char *newpath);
 void	sccs_syncRoot(sccs *s, char *key);
 delta	*sccs_csetBoundary(sccs *s, delta *);
 void	sccs_shortKey(sccs *s, delta *, char *);
@@ -1225,6 +1227,7 @@ int	isNetworkFS(char *path);
 #define	KEY_EULA		6
 char	*makestring(int keynum);
 
+int	attach_name(sccs *cset, char *name, int setmarks);
 void	notice(char *key, char *arg, char *type);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
@@ -1391,6 +1394,8 @@ void	notifier_flush(void);
 #define	notifier_changed(x)
 #define	notifier_flush()
 #endif
+
+int	sccs_defRootlog(sccs *cset);
 
 extern	char	*editor;
 extern	char	*bin;

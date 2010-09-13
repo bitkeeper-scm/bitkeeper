@@ -91,7 +91,7 @@ test `cat new-comp/BitKeeper/log/COMPONENT` = new-comp || {
 	echo failed to leave pointer
 	exit 1
 }
-bk pending | grep -q "new-comp/ChangeSet@1.2" || {
+bk pending | grep -q "new-comp/ChangeSet@1.1" || {
 	echo wrong output
 	exit 1
 }
@@ -189,8 +189,6 @@ cat > WANT <<EOF
 gcc/ChangeSet
 gcc/ChangeSet
 gcc/ChangeSet
-gcc/ChangeSet
-gdb/ChangeSet
 gdb/ChangeSet
 gdb/ChangeSet
 gdb/ChangeSet
@@ -380,7 +378,7 @@ test "`bk sfiles -p`" = "gcc/SCCS/s.ChangeSet" || {
 echo OK
 
 echo $N Check sfiles -pC ............................................$NL
-test "`bk sfiles -pC`" = "gcc/SCCS/s.ChangeSet|1.4" || {
+test "`bk sfiles -pC`" = "gcc/SCCS/s.ChangeSet|1.3" || {
 	echo failed
 	bk sfiles -pC
 	bk sfiles -E
@@ -400,8 +398,8 @@ bk _test -f SCCS/d.ChangeSet || {
 }
 cd "$HERE/project"
 cat > WANT <<EOF
-gcc/SCCS/s.ChangeSet|1.5
 gcc/SCCS/s.ChangeSet|1.4
+gcc/SCCS/s.ChangeSet|1.3
 EOF
 bk sfiles -pA > GOT
 cmpfiles WANT GOT
@@ -409,11 +407,11 @@ echo OK
 
 echo $N Check bk pending ............................................$NL
 bk pending > GOT
-grep -q 1.4 GOT || {
+grep -q 1.3 GOT || {
 	echo failed to find 1.4
 	exit 1
 }
-grep -q 1.5 GOT || {
+grep -q 1.4 GOT || {
 	echo failed to find 1.5
 	exit 1
 }
@@ -421,7 +419,7 @@ echo OK
 
 echo $N Make sure that commit finds the two csets ...................$NL
 REV=`bk changes -r+ -nd:REV:`
-bk commit -y'Commit the 1.4 and 1.5 gcc csets' $Q || {
+bk commit -y'Commit the 1.3 and 1.4 gcc csets' $Q || {
 	echo failed
 	exit 1
 }
@@ -435,8 +433,8 @@ test "`bk sfiles -p`" = "" || {
 }
 bk changes -Vr+ -nd'$if(:FILE:){:FILE:|:REV:}' > GOT
 cat > WANT <<EOF
-gcc/ChangeSet|1.5
 gcc/ChangeSet|1.4
+gcc/ChangeSet|1.3
 EOF
 cmpfiles WANT GOT 
 echo OK
@@ -598,13 +596,13 @@ done
 cd "$HERE/project"
 bk commit $Q -y"Should be 3 csets"
 bk changes -vr+ > GOT
-grep -q gcc4/ChangeSet@1.9 GOT || exit 1
 grep -q gcc4/ChangeSet@1.8 GOT || exit 1
 grep -q gcc4/ChangeSet@1.7 GOT || exit 1
+grep -q gcc4/ChangeSet@1.6 GOT || exit 1
 echo OK
 
-echo $N See if bk log -r@1.6 maps to 1.9 in the component ...........$NL
-test "`bk log -r@1.6 -nd:REV: gcc4/ChangeSet`" = 1.9 || {
+echo $N See if bk log -r@1.6 maps to 1.8 in the component ...........$NL
+test "`bk log -r@1.6 -nd:REV: gcc4/ChangeSet`" = 1.8 || {
 	echo failed
 	bk log -r@1.6 -nd:REV: gcc4/ChangeSet
 	exit 1
@@ -701,7 +699,7 @@ echo + | bk _nested -Plpnd -u - > GOT
 # The list should be desired tips of .|1.5 and gcc4|1.6
 (
 bk changes -qnd".|:KEY:" -r1.5 .
-bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
+bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -713,7 +711,7 @@ mv ../gcc4 .
 # The list should be desired tips of .|1.5 and gcc4|1.6
 (
 bk changes -qnd".|:KEY:|(present)" -r1.5 .
-bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
+bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -771,7 +769,7 @@ echo 1.4
 # The list should be desired tips of 1.3 (just works out that way)
 (
 bk changes -qnd".|:KEY:" -r1.3 .
-bk changes -qnd"gcc4|:KEY:" -r1.3 gcc4
+bk changes -qnd"gcc4|:KEY:" -r1.2 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -791,8 +789,8 @@ bk _nested -Plpd -r1.3 > GOT
 # They are all at 1.3 in 1.3
 (
 bk changes -qnd".|:KEY:" -r1.3 .
-bk changes -qnd"gcc4|:KEY:" -r1.3 gcc4
-bk changes -qnd"gdb|:KEY:" -r1.3 gdb
+bk changes -qnd"gcc4|:KEY:" -r1.2 gcc4
+bk changes -qnd"gdb|:KEY:" -r1.2 gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -801,8 +799,8 @@ echo $N bk _nested for clone -r1.4 ..................................$NL
 bk _nested -Plpd -r1.4 > GOT
 (
 bk changes -qnd".|:KEY:" -r1.4 .
-bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
-bk changes -qnd"gdb|:KEY:" -r1.3 gdb
+bk changes -qnd"gcc4|:KEY:" -r1.4 gcc4
+bk changes -qnd"gdb|:KEY:" -r1.2 gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -812,7 +810,7 @@ echo 1.6 | bk _nested -Plpd - > GOT
 # The list should be desired tips of .|1.6 and gcc4|1.9
 (
 bk changes -qnd".|:KEY:" -r1.6 .
-bk changes -qnd"gcc4|:KEY:" -r1.9 gcc4
+bk changes -qnd"gcc4|:KEY:" -r1.8 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -821,7 +819,7 @@ echo $N bk _nested for push -r1.5 ...................................$NL
 echo 1.5 | bk _nested -Plpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.5 .
-bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
+bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -830,7 +828,7 @@ echo $N bk _nested for push -r1.4 ...................................$NL
 echo 1.4 | bk _nested -Plpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.4 .
-bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
+bk changes -qnd"gcc4|:KEY:" -r1.4 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -839,8 +837,8 @@ echo $N bk _nested for push -r1.3 ...................................$NL
 echo 1.3 | bk _nested -Plnpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.3 .
-bk changes -qnd"gcc4|:KEY:|(new)" -r1.3 gcc4
-bk changes -qnd"gdb|:KEY:|(new)" -r1.3 gdb
+bk changes -qnd"gcc4|:KEY:|(new)" -r1.2 gcc4
+bk changes -qnd"gdb|:KEY:|(new)" -r1.2 gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -862,8 +860,8 @@ echo 1.6
 ) | bk _nested -Plnpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.6 .
-bk changes -qnd"gcc4|:KEY:|(new)" -r1.9 gcc4
-bk changes -qnd"gdb|:KEY:|(new)" -r1.3 gdb
+bk changes -qnd"gcc4|:KEY:|(new)" -r1.8 gcc4
+bk changes -qnd"gdb|:KEY:|(new)" -r1.2 gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -924,7 +922,7 @@ bk $Q -Ar check -ac || {
 	exit 1
 }
 cd gcc4
-test `bk changes -r+ -nd:I:` = "1.6" || {
+test `bk changes -r+ -nd:I:` = "1.5" || {
 	echo failed in gcc4
 	bk changes
 	exit 1

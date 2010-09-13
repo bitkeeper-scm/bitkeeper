@@ -331,7 +331,7 @@ bk $Q -Ar check -a || {
 cat <<EOF > ../WANT.commit.log
 ChangeSet@1.7
 amerge@1.3
-gcc/ChangeSet@1.9
+gcc/ChangeSet@1.8
 gcc/file1@1.3
 ChangeSet@1.5.1.1
 BitKeeper/etc/attr@1.5
@@ -475,9 +475,9 @@ rr
 y
 EOF
 # Should get the new-file cset and a merge cset.
-bk changes -fr1.3,1.4 -nd:KEY: > WANT || exit 12
+bk changes -fr1.2,1.3 -nd:KEY: > WANT || exit 12
 cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.4 -nd:MERGE:`" = "1.4" || exit 14
+test "`bk log -r1.3 -nd:MERGE:`" = "1.3" || exit 14
 bk cat conflict-test | grep -q 'from copy2' || exit 15
 # Resolve in the product should work now.
 cd ..
@@ -518,9 +518,9 @@ rr
 y
 EOF
 # Should get the new-file cset and a merge cset.
-bk changes -fr1.3,1.4 -nd:KEY: > WANT || exit 10
+bk changes -fr1.2,1.3 -nd:KEY: > WANT || exit 10
 cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.4 -nd:MERGE:`" = "" || exit 12
+test "`bk log -r1.3 -nd:MERGE:`" = "" || exit 12
 bk cat conflict-test | grep -q 'from copy2' || exit 13
 # Resolve in the product should work now.
 cd ..

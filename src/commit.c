@@ -211,6 +211,7 @@ do_commit(char **av,
 		rc = 1;
 		goto done;
 	}
+	(void)sccs_defRootlog(cset);	/* if no rootlog, make one */
 	if (!opts.resync && attr_update()) {
 		FILE	*f, *f2;
 		char	*t;

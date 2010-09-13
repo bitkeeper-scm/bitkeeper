@@ -433,6 +433,7 @@ extractPatch(char *name, MMAP *p)
 	if (echo>4) fprintf(stderr, "%s\n", t);
 	s = sccs_keyinit(0, t, SILENT, idDB);
 	if (s && !s->cksumok) goto error;
+	if (opts->port && CSET(s)) s->keydb_nopath = 1;
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
@@ -912,6 +913,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			goto err;
 		}
 		s->bitkeeper = 1;
+		if (opts->port && CSET(s)) s->keydb_nopath = 1;
 		if (perfile) sccscopy(s, perfile);
 	}
 	assert(s);
@@ -977,6 +979,31 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		debug((stderr,
 		    "takepatch: adding leaf to tag delta %s (serial %d)\n",
 		    remote_tagtip->rev, remote_tagtip->serial));
+	}
+	if (opts->port) for (d = 0, p = patchList; p; p = p->next) {
+		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
+		unless (d->pserial) continue;	/* rootkey untouched */
+		if (d->flags & D_DUPPATH) {
+			/*
+			 * a previous round may have broken duppath linkage;
+			 * fix it and use this as the answer.
+			 */
+			assert(d->pserial);
+			d->pathname = PARENT(s, d)->pathname;
+		} else {
+			/* Use correct handling of keeping orig path */
+			sccs_setPath(s, d, PARENT(s, d)->pathname);
+		}
+		if (proj_isComponent(s->proj) &&
+		    streq(proj_rootkey(proj_product(s->proj)), d->csetFile)) {
+			errorMsg("tp_portself", p->pid, s->sfile);
+			/*NOTREACHED*/
+		}
+		if (d->merge && !streq(MERGE(s, d)->pathname, d->pathname)) {
+			errorMsg("tp_portmerge",
+			    MERGE(s, d)->pathname, d->pathname);
+			/*NOTREACHED*/
+		}
 	}
 	if (CSET(s) && (echo == 3)) fputs(", ", stderr);
 	if (cset_write(s, (echo == 3), opts->fast)) {
@@ -1045,7 +1072,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	assert(csets);
 	for (p = patchList; p; p = p->next) {
 		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
-		fprintf(csets, "%s\n", p->me);
+		sccs_sdelta(s, d, buf);
+		fprintf(csets, "%s\n", buf);
 	}
 	fclose(csets);
 markup:
@@ -1100,10 +1128,6 @@ markup:
 	}
 
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) goto err;
-	/* Signal resolve to add a null cset for ChangeSet path fixup. */
-	if (opts->port && exists(ROOT2RESYNC "/SCCS/m.ChangeSet")) {
-		touch(ROOT2RESYNC "/SCCS/n.ChangeSet", 0664);
-	}
 	if (!confThisFile && (s->state & S_CSET) && 
 	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
 	    	confThisFile++;
@@ -1242,6 +1266,7 @@ applyPatch(char *localPath, sccs *perfile)
 		}
 		return -1;
 	}
+	assert(!CSET(s));
 	/* convert to uncompressed, it's faster, we saved the mode above */
 	if (s->encoding & E_GZIP) s = sccs_unzip(s);
 	unless (s) return (-1);
@@ -1418,7 +1443,7 @@ apply:
 		if (!d && p->meta) continue;
 		assert(d);
 		if (p->remote) d->flags |= D_REMOTE;
-		if (s->state & S_CSET) continue;
+		if (CSET(s)) continue;
 		if (sccs_isleaf(s, d) && !(d->flags & D_CSET)) pending++;
 	}
 	if (pending) {
@@ -1465,6 +1490,7 @@ getLocals(sccs *s, delta *g, char *name)
 	int	n = 0;
 	static	char tmpf[MAXPATH];	/* don't allocate on stack */
 
+	assert(!CSET(s));
 	if (echo > 6) {
 		fprintf(stderr, "getlocals(%s, %s, %s)\n",
 		    s->gfile, g->rev, name);
@@ -1513,13 +1539,9 @@ getLocals(sccs *s, delta *g, char *name)
 		p->resyncFile = strdup(tmpf);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", fileNum);
 		unless (d->flags & D_META) {
-			int	dflag;
-
 			p->diffFile = strdup(tmpf);
 			sccs_restart(s);
-			dflag =
-			    (s->state & S_CSET) ? GET_HASHDIFFS : GET_BKDIFFS;
-			if (sccs_getdiffs(s, d->rev, dflag, tmpf)) {
+			if (sccs_getdiffs(s, d->rev, GET_BKDIFFS, tmpf)) {
 				SHOUT();
 				fprintf(stderr, "unable to create diffs");
 				cleanup(CLEAN_RESYNC);
@@ -2180,6 +2202,11 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			}
 		}
 		unless (i) errorMsg("tp_noversline", input, 0);
+		if (strneq(t, PATCH_FEATURES, strsz(PATCH_FEATURES))) {
+			if (parseFeatures(t + strsz(PATCH_FEATURES))) {
+				cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+			}
+		}
 		do {
 			if (strneq("== ", t, 3)) ++opts->N;
 			len = linelen(t);
@@ -2304,7 +2331,14 @@ parseFeatures(char *next)
 	int	i;
 	char	buf[MAXLINE];
 
-	strcpy(buf, next);
+	/* copy upto newline */
+	t = buf;
+	while (*t++ = *next++) {
+		if (*next == '\n') {
+			*t = 0;
+			break;
+		}
+	}
 	next = buf;
 	while (t = strsep(&next, ", \n")) {
 		unless (*t) continue;

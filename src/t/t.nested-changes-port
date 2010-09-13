@@ -46,16 +46,15 @@ bk changes -L $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/standalone" |
 	exit 1
 }
 cat <<EOF >WANT
-1.4 ChangeSet add c1-file-2
+1.3 ChangeSet add c1-file-2
   1.1 c1-file-2 new
   1.0 c1-file-2 
-1.3 ChangeSet add c1-file-1
+1.2 ChangeSet add c1-file-1
   1.2 BitKeeper/etc/attr 
   1.1 c1-file-1 new
   1.0 c1-file-1 
-1.2 ChangeSet attach c1
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Changes -R stand-alone, from component ......................$NL
@@ -71,7 +70,7 @@ cat <<EOF >WANT
   1.1 standalone-file new
   1.0 standalone-file 
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Changes -L detached, from component .........................$NL
@@ -83,11 +82,11 @@ bk changes -L $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
 	exit 1
 }
 cat <<EOF >WANT
-1.4 ChangeSet add c1-file-2
+1.3 ChangeSet add c1-file-2
   1.1 c1-file-2 new
   1.0 c1-file-2 
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Changes -R detached, from component .........................$NL
@@ -99,13 +98,12 @@ bk changes -R $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
 	exit 1
 }
 cat <<EOF >WANT
-1.5 ChangeSet add c1-detached-file
+1.3 ChangeSet add c1-detached-file
   1.3 BitKeeper/etc/attr 
   1.1 c1-detached-file new
   1.0 c1-detached-file 
-1.4 ChangeSet detach
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Changes -L component, from stand-alone ......................$NL
@@ -121,7 +119,7 @@ cat <<EOF >WANT
   1.1 standalone-file new
   1.0 standalone-file 
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Changes -R component, from stand-alone ......................$NL
@@ -133,16 +131,15 @@ bk changes -R $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/nested/c1" |
 	exit 1
 }
 cat <<EOF >WANT
-1.4 ChangeSet add c1-file-2
+1.3 ChangeSet add c1-file-2
   1.1 c1-file-2 new
   1.0 c1-file-2 
-1.3 ChangeSet add c1-file-1
+1.2 ChangeSet add c1-file-1
   1.2 BitKeeper/etc/attr 
   1.1 c1-file-1 new
   1.0 c1-file-1 
-1.2 ChangeSet attach c1
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Changes -L detached, from stand-alone .......................$NL
@@ -158,7 +155,7 @@ cat <<EOF >WANT
   1.1 standalone-file new
   1.0 standalone-file 
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Changes -R detached, from stand-alone .......................$NL
@@ -170,18 +167,16 @@ bk changes -R $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
 	exit 1
 }
 cat <<EOF >WANT
-1.5 ChangeSet add c1-detached-file
+1.3 ChangeSet add c1-detached-file
   1.3 BitKeeper/etc/attr 
   1.1 c1-detached-file new
   1.0 c1-detached-file 
-1.4 ChangeSet detach
-1.3 ChangeSet add c1-file-1
+1.2 ChangeSet add c1-file-1
   1.2 BitKeeper/etc/attr 
   1.1 c1-file-1 new
   1.0 c1-file-1 
-1.2 ChangeSet attach c1
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Changes -L component, from detached .........................$NL
@@ -193,13 +188,12 @@ bk changes -L $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/nested/c1" |
 	exit 1
 }
 cat <<EOF >WANT
-1.5 ChangeSet add c1-detached-file
+1.3 ChangeSet add c1-detached-file
   1.3 BitKeeper/etc/attr 
   1.1 c1-detached-file new
   1.0 c1-detached-file 
-1.4 ChangeSet detach
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Changes -R component, from detached .........................$NL
@@ -211,11 +205,11 @@ bk changes -R $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/nested/c1" |
 	exit 1
 }
 cat <<EOF >WANT
-1.4 ChangeSet add c1-file-2
+1.3 ChangeSet add c1-file-2
   1.1 c1-file-2 new
   1.0 c1-file-2 
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Changes -L stand-alone, from detached .......................$NL
@@ -227,18 +221,16 @@ bk changes -L $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/standalone" |
 	exit 1
 }
 cat <<EOF >WANT
-1.5 ChangeSet add c1-detached-file
+1.3 ChangeSet add c1-detached-file
   1.3 BitKeeper/etc/attr 
   1.1 c1-detached-file new
   1.0 c1-detached-file 
-1.4 ChangeSet detach
-1.3 ChangeSet add c1-file-1
+1.2 ChangeSet add c1-file-1
   1.2 BitKeeper/etc/attr 
   1.1 c1-file-1 new
   1.0 c1-file-1 
-1.2 ChangeSet attach c1
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Changes -R stand-alone, from detached .......................$NL
@@ -254,5 +246,5 @@ cat <<EOF >WANT
   1.1 standalone-file new
   1.0 standalone-file 
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK

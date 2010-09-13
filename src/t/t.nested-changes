@@ -51,7 +51,7 @@ cat <<EOF > WANT
 1.1 ChangeSet Initial repository create
 1.0 ChangeSet new
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level changes -v.................................$NL
@@ -61,7 +61,7 @@ cat <<EOF > WANT
 1.4 ChangeSet local
   1.4 BitKeeper/etc/attr 
   1.2 prod_file update
-  1.3 gcc/ChangeSet addlocal
+  1.2 gcc/ChangeSet addlocal
     1.2 gcc/BitKeeper/etc/attr 
     1.1 gcc/local1 add
     1.0 gcc/local1 
@@ -72,7 +72,6 @@ cat <<EOF > WANT
 1.2 ChangeSet attach gcc, gdb
   1.2 BitKeeper/etc/aliases Create alias DEFAULT
   1.2 BitKeeper/etc/attr 
-  1.2 gcc/ChangeSet attach gcc
   1.1 gcc/ChangeSet Initial repository create
     1.1 gcc/BitKeeper/etc/attr new
     1.0 gcc/BitKeeper/etc/attr 
@@ -85,7 +84,6 @@ cat <<EOF > WANT
     1.1 gcc/BitKeeper/etc/ignore new
     1.0 gcc/BitKeeper/etc/ignore 
   1.0 ChangeSet new
-  1.2 gdb/ChangeSet attach gdb
   1.1 gdb/ChangeSet Initial repository create
     1.1 gdb/BitKeeper/etc/attr new
     1.0 gdb/BitKeeper/etc/attr 
@@ -113,7 +111,7 @@ cat <<EOF > WANT
   1.0 BitKeeper/etc/ignore 
 1.0 ChangeSet new
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Project level changes -vv ...................................$NL
@@ -181,7 +179,7 @@ cat <<EOF > WANT
   <FILE path=prod_file rev=1.2>
       bk@bk_regression.bk
   </FILE>
-  <COMPONENT path=gcc/ChangeSet rev=1.3>
+  <COMPONENT path=gcc/ChangeSet rev=1.2>
     addlocal
     <FILE path=gcc/BitKeeper/etc/attr rev=1.2>
         bk@bk_regression.bk
@@ -214,9 +212,6 @@ cat <<EOF > WANT
   <FILE path=BitKeeper/etc/attr rev=1.2>
       bk@bk_regression.bk
   </FILE>
-  <COMPONENT path=gcc/ChangeSet rev=1.2>
-    attach gcc
-  </COMPONENT>
   <COMPONENT path=gcc/ChangeSet rev=1.1>
     Initial repository create
     <FILE path=gcc/BitKeeper/etc/attr rev=1.1>
@@ -251,9 +246,6 @@ cat <<EOF > WANT
     </FILE>
   </COMPONENT>
   <COMPONENT path=ChangeSet rev=1.0>
-  </COMPONENT>
-  <COMPONENT path=gdb/ChangeSet rev=1.2>
-    attach gdb
   </COMPONENT>
   <COMPONENT path=gdb/ChangeSet rev=1.1>
     Initial repository create
@@ -333,7 +325,7 @@ cat <<EOF > WANT
 <CSET rev=1.0>
 </CSET>
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level changes -V.................................$NL
@@ -341,19 +333,17 @@ bk -P changes  -V -nd':INDENT::REV: :DPN: :C:' |
     sed 's/BitKeeper file.*/new/' > OUT || exit 1
 cat <<EOF > WANT
 1.4 ChangeSet local
-  1.3 gcc/ChangeSet addlocal
+  1.2 gcc/ChangeSet addlocal
 1.3 ChangeSet file
 1.2 ChangeSet attach gcc, gdb
-  1.2 gcc/ChangeSet attach gcc
   1.1 gcc/ChangeSet Initial repository create
   1.0 ChangeSet new
-  1.2 gdb/ChangeSet attach gdb
   1.1 gdb/ChangeSet Initial repository create
   1.0 ChangeSet new
 1.1 ChangeSet Initial repository create
 1.0 ChangeSet new
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level changes -P.................................$NL
@@ -366,7 +356,7 @@ cat <<EOF > WANT
 1.1 ChangeSet Initial repository create
 1.0 ChangeSet new
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level changes -V -v..............................$NL
@@ -376,7 +366,7 @@ cat <<EOF > WANT
 1.4 ChangeSet local
   1.4 BitKeeper/etc/attr 
   1.2 prod_file update
-  1.3 gcc/ChangeSet addlocal
+  1.2 gcc/ChangeSet addlocal
     1.2 gcc/BitKeeper/etc/attr 
     1.1 gcc/local1 add
     1.0 gcc/local1 
@@ -387,7 +377,6 @@ cat <<EOF > WANT
 1.2 ChangeSet attach gcc, gdb
   1.2 BitKeeper/etc/aliases Create alias DEFAULT
   1.2 BitKeeper/etc/attr 
-  1.2 gcc/ChangeSet attach gcc
   1.1 gcc/ChangeSet Initial repository create
     1.1 gcc/BitKeeper/etc/attr new
     1.0 gcc/BitKeeper/etc/attr 
@@ -400,7 +389,6 @@ cat <<EOF > WANT
     1.1 gcc/BitKeeper/etc/ignore new
     1.0 gcc/BitKeeper/etc/ignore 
   1.0 ChangeSet new
-  1.2 gdb/ChangeSet attach gdb
   1.1 gdb/ChangeSet Initial repository create
     1.1 gdb/BitKeeper/etc/attr new
     1.0 gdb/BitKeeper/etc/attr 
@@ -428,7 +416,7 @@ cat <<EOF > WANT
   1.0 BitKeeper/etc/ignore 
 1.0 ChangeSet new
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level changes -P -v..............................$NL
@@ -460,7 +448,7 @@ cat <<EOF > WANT
   1.0 BitKeeper/etc/ignore 
 1.0 ChangeSet new
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level changes -icomp_file........................$NL
@@ -469,7 +457,7 @@ bk -P changes  -igcc/local1 -nd':INDENT::REV: :DPN: :C:' |
 cat <<EOF > WANT
 1.4 ChangeSet local
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level changes -V -icomp_file.....................$NL
@@ -477,9 +465,9 @@ bk -P changes  -igcc/local1 -V -nd':INDENT::REV: :DPN: :C:' |
     sed 's/BitKeeper file.*/new/' > OUT || exit 1
 cat <<EOF > WANT
 1.4 ChangeSet local
-  1.3 gcc/ChangeSet addlocal
+  1.2 gcc/ChangeSet addlocal
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level changes -P -icomp_file.....................$NL
@@ -488,7 +476,7 @@ bk -P changes  -P -igcc/local1 -nd':INDENT::REV: :DPN: :C:' |
 cat <<EOF > WANT
 1.4 ChangeSet local
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level changes -v -icomp_file.....................$NL
@@ -496,7 +484,7 @@ bk -P changes  -v -igcc/local1 -nd':INDENT::REV: :DPN: :C:' |
     sed 's/BitKeeper file.*/new/' > OUT || exit 1
 cat <<EOF > WANT
 1.4 ChangeSet local
-  1.3 gcc/ChangeSet addlocal
+  1.2 gcc/ChangeSet addlocal
     1.1 gcc/local1 add
     1.0 gcc/local1 
 EOF
@@ -507,9 +495,8 @@ echo $N Run component level changes .................................$NL
 bk changes -nd':INDENT::REV: :DPN: :C:' |
     sed 's/BitKeeper file.*/new/' > OUT || exit 1
 cat <<EOF > WANT
-1.4 ChangeSet new
-1.3 ChangeSet addlocal
-1.2 ChangeSet attach gcc
+1.3 ChangeSet new
+1.2 ChangeSet addlocal
 1.1 ChangeSet Initial repository create
 1.0 ChangeSet new
 EOF
@@ -532,13 +519,12 @@ echo $N Run component level changes -v...............................$NL
 bk changes -v -nd':INDENT::REV: :DPN: :C:' |
     sed 's/BitKeeper file.*/new/' > OUT || exit 1
 cat <<EOF > WANT
-1.4 ChangeSet new
+1.3 ChangeSet new
   1.2 local1 newlocal
-1.3 ChangeSet addlocal
+1.2 ChangeSet addlocal
   1.2 BitKeeper/etc/attr 
   1.1 local1 add
   1.0 local1 
-1.2 ChangeSet attach gcc
 1.1 ChangeSet Initial repository create
   1.1 BitKeeper/etc/attr new
   1.0 BitKeeper/etc/attr 
@@ -552,7 +538,7 @@ cat <<EOF > WANT
   1.0 BitKeeper/etc/ignore 
 1.0 ChangeSet new
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level changes -r+................................$NL
@@ -563,7 +549,7 @@ ChangeSet local
 BitKeeper/etc/attr 
 prod_file update
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level recursive changes .........................$NL
@@ -579,7 +565,7 @@ gcc/BitKeeper/etc/attr
 gcc/local1 add
 gcc/local1 
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level changes -L ................................$NL
@@ -594,7 +580,7 @@ gcc/BitKeeper/etc/attr
 gcc/local1 add
 gcc/local1 
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run changes -L in component .................................$NL
@@ -608,7 +594,7 @@ BitKeeper/etc/attr
 local1 add
 local1 
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run changes -L in product ...................................$NL
@@ -619,7 +605,7 @@ ChangeSet local
 BitKeeper/etc/attr 
 prod_file update
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Check running repogca .......................................$NL
@@ -651,7 +637,7 @@ gdb/file1
 gdb/file2
 gdb/file3
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Test filtering of csets .....................................$NL
@@ -734,18 +720,18 @@ cmpfiles WANT GOT
 bk changes -V -igcc/file1 -nd':GFILE:@:REV:' > GOT || exit 1
 cat <<'EOF' > WANT
 ChangeSet@1.6
-gcc/ChangeSet@1.4
-ChangeSet@1.4
 gcc/ChangeSet@1.3
+ChangeSet@1.4
+gcc/ChangeSet@1.2
 EOF
 cmpfiles WANT GOT
 bk changes -vigcc/file1 -nd':GFILE:@:REV:' > GOT || exit 1
 cat <<'EOF' > WANT
 ChangeSet@1.6
-gcc/ChangeSet@1.4
+gcc/ChangeSet@1.3
 gcc/file1@1.2
 ChangeSet@1.4
-gcc/ChangeSet@1.3
+gcc/ChangeSet@1.2
 gcc/file1@1.1
 gcc/file1@1.0
 EOF
@@ -836,7 +822,6 @@ cat <<'EOF' > WANT
     BitKeeper/etc/aliases|1.2
     BitKeeper/etc/attr|1.2
   <LIST>
-    newcc/ChangeSet|1.2
     newcc/ChangeSet|1.1
       newcc/BitKeeper/etc/attr|1.1
       newcc/BitKeeper/etc/attr|1.0
@@ -851,7 +836,6 @@ cat <<'EOF' > WANT
     newcc/ChangeSet|1.0
   </LIST>
   <LIST>
-    gdb/ChangeSet|1.2
     gdb/ChangeSet|1.1
       gdb/BitKeeper/etc/attr|1.1
       gdb/BitKeeper/etc/attr|1.0

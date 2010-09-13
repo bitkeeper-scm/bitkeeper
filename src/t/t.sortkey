@@ -84,3 +84,26 @@ cd ../..
 cmpfiles WANT-del GOT-del
 cmp -s WANT-del GOT-del-key && fail
 echo OK
+
+echo $N Test that sortkeys are now set by bk cp .....................$NL
+# make two kids of a node, a and b, with same timestamp, courtesy
+# of env vars and uniq db.  'a' sorts to trunk because of name.
+# bk cp a c, so now inherited name of node is 'c', and see that 'c'
+# sorts before 'b' because of sortkeys.
+cd "$HERE/copy"
+touch a
+bk new $Q a
+bk commit $Q -ya
+bk push $Q
+bk mv a b
+cd ..
+# these fork deltas 'a' and 'b' get the same time stamp
+bk edit $Q project/a copy/b
+bk delta $Q -fysync project/a copy/b
+bk --cd=project commit $Q -ya
+bk --cd=copy commit $Q -yb
+cd copy
+bk pull $Q
+bk cp b c 2>ERR
+bk check c || fail
+echo OK

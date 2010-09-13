@@ -1,21 +1,25 @@
 
 echo $N Test that comments include component path in a product ......$NL
 nested product
+touch gcc/afile
+touch gdb/afile
+bk new $Q -ynew gcc/afile
+bk new $Q -ynew gdb/afile
+(cd gcc && bk commit $Q -y.)
+(cd gdb && bk commit $Q -y.)
+bk commit -y. $Q
 bk comment -p > GOT
 cat <<'EOF' > WANT
-### Comments for BitKeeper/etc/aliases|1.2
-Create alias DEFAULT
+### Comments for BitKeeper/etc/attr|1.3
 
-### Comments for BitKeeper/etc/attr|1.2
-
-### Comments for ChangeSet|1.2
-attach gcc, gdb
+### Comments for ChangeSet|1.3
+.
 
 ### Comments for gcc/ChangeSet|1.2
-attach gcc
+.
 
 ### Comments for gdb/ChangeSet|1.2
-attach gdb
+.
 
 EOF
 cmpfiles WANT GOT
@@ -25,8 +29,13 @@ echo $N Test that comments have no component path in a component ....$NL
 cd gcc
 bk comment -p > GOT
 cat <<'EOF' > WANT
+### Comments for BitKeeper/etc/attr|1.2
+
 ### Comments for ChangeSet|1.2
-attach gcc
+.
+
+### Comments for afile|1.1
+new
 
 EOF
 cmpfiles WANT GOT
@@ -42,19 +51,16 @@ bk comment - < WANT
 cd ..
 bk comment -p > GOT
 cat <<'EOF' > WANT
-### Comments for BitKeeper/etc/aliases|1.2
-Create alias DEFAULT
+### Comments for BitKeeper/etc/attr|1.3
 
-### Comments for BitKeeper/etc/attr|1.2
-
-### Comments for ChangeSet|1.2
-attach gcc, gdb
+### Comments for ChangeSet|1.3
+.
 
 ### Comments for gcc/ChangeSet|1.2
 attach gcc using this new comment
 
 ### Comments for gdb/ChangeSet|1.2
-attach gdb
+.
 
 EOF
 cmpfiles WANT GOT
@@ -76,8 +82,13 @@ bk comment - < WANT
 cd gdb
 bk comment -p > GOT
 cat <<'EOF' > WANT
+### Comments for BitKeeper/etc/attr|1.2
+
 ### Comments for ChangeSet|1.2
 attach gdb using this new comment made in the product
+
+### Comments for afile|1.1
+new
 
 EOF
 cmpfiles WANT GOT

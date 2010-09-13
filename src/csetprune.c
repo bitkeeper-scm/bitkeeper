@@ -1482,7 +1482,6 @@ do_file(sccs *s, char *comppath, char **deepnest)
 	char	*newpath;
 	char	*delpath;
 	char	*bam_new;
-	char	*sortpath;
 	char	rk[MAXKEY];
 
 	sccs_sdelta(s, sccs_ino(s), rk);
@@ -1504,41 +1503,24 @@ do_file(sccs *s, char *comppath, char **deepnest)
 		assert(!TAG(d));
 
 		/*
-		 * knowledge leak: duppath means parent
-		 * inherit any name change that already went on
+		 * Previous loop have duppath point to freed mem, so fix.
+		 * Also if duppath, no need to set up new name.
 		 */
 		if (d->flags & D_DUPPATH) {
 			assert(d->pserial);
 			d->pathname = PARENT(s, d)->pathname;
-			goto cmark;
-		}
-		newpath = newname(delpath, comppath, d->pathname, deepnest);
-		if (newpath == INVALID) {
-			fprintf(stderr, "%s: file %s delta %s "
-			    "matches a component path '%s'.\n",
-			    prog, s->gfile, d->rev, d->pathname);
-			goto err;
-		}
-		if (newpath == d->pathname) goto cmark;	/* no change */
-
-		/* too noisy */
-		//verbose((stderr, "Moving %s to %s\n", d->pathname, newpath));
-
-		/*
-		 * The order here is important: new can possibly
-		 * point to inside pathname, so grab a copy of
-		 * it before freeing
-		 */
-		sortpath = PATH_SORTPATH(d->pathname);
-		if (*sortpath) {
-			newpath = PATH_BUILD(newpath, sortpath);
 		} else {
-			newpath = PATH_BUILD(newpath, d->pathname);
+			newpath = newname(
+			    delpath, comppath, d->pathname, deepnest);
+			if (newpath == INVALID) {
+				fprintf(stderr, "%s: file %s delta %s "
+				    "matches a component path '%s'.\n",
+				    prog, s->gfile, d->rev, d->pathname);
+				goto err;
+			}
+			sccs_setPath(s, d, newpath);
 		}
-		free(d->pathname);
-		d->pathname = newpath;
 
-cmark:
 		// BAM stuff
 		if (d->hash) {
 			bam_new = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);

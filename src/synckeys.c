@@ -189,6 +189,7 @@ listkey_main(int ac, char **av)
 	}
 	sccs_sdelta(s, sccs_ino(s), rootkey);
 	if (syncRoot) {
+		s->keydb_nopath = 1;
 		sccs_syncRoot(s, synckey);
 		if (streq(rootkey, synckey)) syncRoot = 0;
 	}
@@ -419,7 +420,10 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 		return (-1);
 	}
 
-	if (flags & PK_SYNCROOT) sccs_syncRoot(s, synckey);
+	if (flags & PK_SYNCROOT) {
+		s->keydb_nopath = 1;
+		sccs_syncRoot(s, synckey);
+	}
 
 	/* Work through the LOD key matches and color the graph. */
 	for ( ;; ) {
@@ -500,6 +504,7 @@ empty:	for (d = s->table; d; d = NEXT(d)) {
 		}
 		local++;
 	}
+	if (flags & PK_SYNCROOT) s->keydb_nopath = 0;
 	if (remote_csets) *remote_csets = rcsets;
 	if (remote_tags) *remote_tags = rtags;
 	if (local_only) *local_only = local;

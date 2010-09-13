@@ -133,8 +133,8 @@ sccs_dcmp(delta *d1, delta *d2)
 {
 	char	k1[MAXKEY], k2[MAXKEY];
 
-	sccs_sdelta(0, d1, k1);
-	sccs_sdelta(0, d2, k2);
+	sccs_sortkey(0, d1, k1);
+	sccs_sortkey(0, d2, k2);
 	return (strcmp(k2, k1));
 }
 
@@ -150,6 +150,7 @@ compar(const void *a, const void *b)
 	d2 = *((delta**)b);
 	if (d2->date != d1->date) return (d2->date - d1->date);
 	unless (ChangeSet) return (sccs_dcmp(d1, d2));
+	/* XXX Components ChangeSet files sorted 1st as well? */
 	if (streq(d1->pathname, GCHANGESET)) return (-1);
 	if (streq(d2->pathname, GCHANGESET)) return (1);
 	return (sccs_dcmp(d1, d2));
@@ -164,6 +165,7 @@ forwards(const void *a, const void *b)
 	d2 = *((delta**)a);
 	if (d2->date != d1->date) return (d2->date - d1->date);
 	unless (ChangeSet) return (sccs_dcmp(d1, d2));
+	/* XXX Components ChangeSet files sorted 1st as well? */
 	if (streq(d1->pathname, GCHANGESET)) return (-1);
 	if (streq(d2->pathname, GCHANGESET)) return (1);
 	return (sccs_dcmp(d1, d2));

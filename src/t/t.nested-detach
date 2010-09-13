@@ -294,12 +294,12 @@ test "`bk log -d:REV: -r+ ChangeSet`" = "1.1" || {
 }
 echo OK
 
-echo $N Check keys are same except for root and tip of detached .....$NL
+echo $N Check keys are same except for pathnames.....................$NL
 cd "$HERE/nested1/component1"
-bk changes -kr1.0.. > "$HERE/WANT"
+bk changes -nd:REV:-:KEY: -r1.0.. |
+	sed 's,|component1/ChangeSet|,|ChangeSet|,' > "$HERE/WANT"
 cd "$HERE/detached4"
-PTIP=`bk changes -r+ -nd:PARENT:`
-bk changes -kr1.0..$PTIP > "$HERE/GOT"
+bk changes -nd:REV:-:KEY: -r1.0.. > "$HERE/GOT"
 cd "$HERE"
 cmpfiles WANT GOT
 echo OK

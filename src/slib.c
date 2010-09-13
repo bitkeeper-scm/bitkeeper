@@ -978,6 +978,7 @@ private void
 uniqDelta(sccs *s)
 {
 	delta	*next, *d;
+	char	*p1, *p2;
 	char	buf[MAXPATH+100];
 
 	assert(s->tree != s->table);
@@ -1021,6 +1022,11 @@ uniqDelta(sccs *s)
 	}
 
 	sccs_shortKey(s, d, buf);
+	if (p1 = strstr(buf, "/ChangeSet|")) {
+		p2 = strchr(buf, '|');
+		assert(p2);
+		strcpy(p2+1, p1+1);
+	}
 	while (!unique(buf)) {
 //fprintf(stderr, "COOL: caught a duplicate key: %s\n", buf);
 		d->date++;
@@ -16577,6 +16583,23 @@ isKey(char *key)
 }
 
 /*
+ * Compare two keys while ignoring the path field
+ */
+private int
+keycmp_nopath(char *keya, char *keyb)
+{
+	char	*ta = 0, *date_a, *tb = 0, *date_b;
+	int	ret;
+
+	ta = strchr(keya, '|');
+	tb = strchr(keyb, '|');
+	if (ret = strncmp(keya, keyb, ta-keya)) return (ret);
+	date_a = strchr(ta+1, '|');
+	date_b = strchr(tb+1, '|');
+	return (strcmp(date_a, date_b));
+}
+
+/*
  * Take a key like sccs_sdelta makes and find it in the tree.
  */
 delta *
@@ -16606,7 +16629,11 @@ sccs_findKey(sccs *s, char *key)
 	d = *(delta **)s->findkeydb->vptr;
 	for (; d && (dd == d->date); d = NEXT(d)) {
 		sccs_sdelta(s, d, dkey);
-		if (streq(key, dkey)) return (d);
+		if (s->keydb_nopath) {
+			if (!keycmp_nopath(key, dkey)) return (d);
+		} else {
+			if (streq(key, dkey)) return (d);
+		}
 		if (!LONGKEY(s) && (t = sccs_iskeylong(dkey))) {
 			*t = 0;
 			if (streq(key, dkey)) return (d);
@@ -16771,6 +16798,33 @@ sccs_key2md5(char *rootkey, char *deltakey, char *b64)
 	p = strchr(p+1, '|');
 	sprintf(b64, "%08x%s", (u32)sccs_date2time(p+1, 0), hash);
 	free(hash);
+}
+
+void
+sccs_setPath(sccs *s, delta *d, char *new)
+{
+	delta	*p = PARENT(s, d);
+	char	*orig;
+
+	orig = PATH_SORTPATH(d->pathname);
+	unless (*orig) orig = d->pathname;
+	if (streq(orig, new)) orig = "";
+
+	/* new and orig are now set; just figure out how to store */
+
+	if (p && streq(new, p->pathname) &&
+	    streq(orig, PATH_SORTPATH(p->pathname))) {	/* duppath */
+		unless (d->flags & D_DUPPATH) free(d->pathname);
+		d->pathname = p->pathname;
+		d->flags |= D_DUPPATH;
+	} else unless (streq(new, d->pathname) &&
+	    streq(orig, PATH_SORTPATH(d->pathname))) {	/* new mem */
+		new = PATH_BUILD(new, orig);
+		assert(new);
+		unless (d->flags & D_DUPPATH) free(d->pathname);
+		d->pathname = new;
+		d->flags &= ~D_DUPPATH;
+	} /* else pathname is good as it is */
 }
 
 /*

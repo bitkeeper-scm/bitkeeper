@@ -390,7 +390,7 @@ bk commit $Q -y'added FOO'
 cd ..
 bk superset > ../GOT 2>&1
 test $? -ne 1 && fail -f ../GOT "superset with pending cset should exit 1"
-grep -q ChangeSet@1.3 ../GOT || fail -f ../GOT "superset missed a pending file"
+grep -q ChangeSet@1.2 ../GOT || fail -f ../GOT "superset missed a pending file"
 grep -q '=== Pending files ===' ../GOT || \
 	fail -f ../GOT "superset failed to flag the file as pending"
 echo OK

@@ -616,7 +616,7 @@ moveComps(Opts *opts)
 	sccs	*cset = 0;
 	delta	*d;
 	int	i, j, len, ret = 1;
-	char	*newpath, *sortpath, *both;
+	char	*newpath;
 	char	**bamdirs = 0;
 	char	*here = 0;
 	FILE	*prodweave = 0;
@@ -653,26 +653,27 @@ moveComps(Opts *opts)
 			if (rmtree(repo)) goto err;
 			continue;
 		}
-		sortpath = PATH_SORTPATH(d->pathname);
 		newpath = aprintf("%s/" GCHANGESET, opts->comps[i]);
-		if (*sortpath) {
-			both = PATH_BUILD(newpath, sortpath);
-		} else {
-			both = PATH_BUILD(newpath, d->pathname);
-		}
+		if (attach_name(cset, newpath, 1)) goto err;
 		free(newpath);
-		if (d->pathname && !(d->flags & D_DUPPATH)) free(d->pathname);
-		d->flags &= ~D_DUPPATH;
-		d->pathname = both;
+		newpath = 0;
+		/*
+		 * We want 1.2 to be first cset mark because that's the
+		 * first time user files appear in a repo, and we don't
+		 * want the repo to be attached until there are user files.
+		 * This lets a file 'foo' become a component 'foo' later.
+		 */
 		d = cset->tree;
 		assert(d);
 		d->flags &= ~D_CSET;
-		assert(d->kid);
+		assert(KID(d));
 		KID(d)->flags &= ~D_CSET;
+		/*
+		 * Accumulate serial-tagged entries for product weave
+		 * bk changes -nd'$if(:CSETKEY:){:DS:\t:ROOTKEY: :KEY:}'
+		 */
 		for (d = cset->table; d; d = NEXT(d)) {
 			unless (d->flags & D_CSET) continue;
-			assert((d->flags & D_DUPPATH) || (d->pathname == both));
-			d->pathname = both;
 			sccs_sdelta(cset, d, key);
 			fprintf(prodweave, "%u\t%s %s\n",
 			    d->serial, proj_rootkey(0), key);

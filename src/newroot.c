@@ -55,7 +55,7 @@ private int
 newroot(char *ranbits, int quiet, int verbose, char *comments)
 {
 	sccs	*s;
-	int	rc = 0, i;
+	int	rc = 0;
 	char	*p, *oldbamdir;
 	ticker	*tick = 0;
 	char	cset[] = CHANGESET;
@@ -88,19 +88,7 @@ newroot(char *ranbits, int quiet, int verbose, char *comments)
 			return (1);
 		}
 	}
-
-	/* create initial ROOTLOG, if needed. */
-	EACH (s->text) {
-		if (streq(s->text[i], "@ROOTLOG")) {
-			i = -1;
-			break;
-		}
-	}
-	unless (i == -1) {
-		s->text = addLine(s->text, strdup("@ROOTLOG"));
-		sccs_sdelta(s, sccs_ino(s), key);
-		update_rootlog(s, key, "original");
-	}
+	sccs_defRootlog(s);
 
 	if (ranbits) {
 		if (strneq(ranbits, "B:", 2)) {
@@ -246,4 +234,30 @@ foundit:
 	}
 nolog:	/* no ROOTLOG, just return old rootkey */
 	sccs_sdelta(s, sccs_ino(s), key);
+}
+
+
+/*
+ * Created the original ROOTLOG if it is missing
+ */
+int
+sccs_defRootlog(sccs *cset)
+{
+	int	i;
+	char	key[MAXKEY];
+
+	/* create initial ROOTLOG, if needed. */
+	EACH (cset->text) {
+		if (streq(cset->text[i], "@ROOTLOG")) {
+			i = -1;
+			break;
+		}
+	}
+	unless (i == -1) {
+		cset->text = addLine(cset->text, strdup("@ROOTLOG"));
+		sccs_sdelta(cset, sccs_ino(cset), key);
+		update_rootlog(cset, key, "original");
+		return (1);
+	}
+	return (0);
 }

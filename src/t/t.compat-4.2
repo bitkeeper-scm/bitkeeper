@@ -248,32 +248,12 @@ cd "$HERE"
 nested nest
 bk detach $Q --sccs-compat gcc ../newgcc || fail
 cd ../newgcc
-bk clone $Q . bk://localhost:$OLDP/oldgcc || fail
-bk clone $Q bk://localhost:$OLDP/oldgcc ../cloned-gcc || fail
-bk parent $Q bk://localhost:$OLDP/oldgcc || fail
-bk pull $Q || exit 2
-bk push $Q || exit 3
-# XXX Pause and agree -- okay to have changes fail here?
-# It's a detached repo running behind an old BKD and the new probe sends
-# the origkey as the rootkey and the old BKD doesn't know to look for it.
-# The fix in this case is to upgrade the bkd to something new.
-bk changes $Q -L 2> ERR && exit 4
-grep -q "synchronize with an unrelated package" ERR || exit 5
-bk changes $Q -R 2> ERR && exit 6
-grep -q "synchronize with an unrelated package" ERR || exit 7
+bk clone $Q . bk://localhost:$OLDP/oldgcc 2> ERR && fail -f ERR
 echo OK
 
 echo $N Nested detached repo running behind new bkd with old client .$NL
-cd ../oldgcc
 $OLDBK/bk clone $Q . bk://localhost:$NEWP/newgcc2
-$OLDBK/bk clone $Q bk://localhost:$NEWP/oldgcc ../cloned-gcc2 || fail
-$OLDBK/bk parent $Q bk://localhost:$NEWP/newgcc2
-$OLDBK/bk pull $Q || exit 2
-$OLDBK/bk push $Q || exit 3
-# This workes because when the bkd is new, listkeys takes either
-# an origkey or rootkey, so it works.
-$OLDBK/bk changes $Q -L || exit 4
-$OLDBK/bk changes $Q -R || exit 5
+# XXX put back more tests
 echo OK
 
 echo $N Old-bk clone of component behind nested-aware bkd fails .....$NL
