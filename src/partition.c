@@ -195,6 +195,9 @@ partition_main(int ac, char **av)
 		}
 	}
 	if (dumpPartitionKV(opts)) goto err;
+	/* clean up work area if all is well */
+	if (chdir(WA2PROD) || rmtree(WA)) goto err;
+
 	ret = 0;
 err:
 	/* free non kv stuff */
@@ -391,6 +394,9 @@ setupWorkArea(Opts *opts, char *repo)
 		opts->version = strdup(PARTITION_VER);
 		/* pumps up the prune list with gone files and deltas */
 		if (cleanMissing(opts)) goto err;
+		/* Collapsed keys don't apply to post-partition: prune 'em */
+		opts->prune = addLine(
+		    opts->prune, strdup("BitKeeper/etc/collapsed"));
 		uniqLines(opts->prune, free);	/* sort and no dups */
 		opts->tip = getTipkey(0);
 
@@ -401,10 +407,17 @@ setupWorkArea(Opts *opts, char *repo)
 		 * Component prune list (keep sorted)
 		 * ATTR passed to comp and prod because it produces
 		 * a different file in csetprune in each context.
+		 * grepping the source -- here's the rest not created
+		 * by default in a 4.6 or 5.x new repo:
+		 * "BitKeeper/etc/skipkeys"
 		 */
 		opts->compprune = addLine(0, strdup(ATTR));
 		opts->compprune =
+		    addLine(opts->compprune, strdup("BitKeeper/etc/collapsed"));
+		opts->compprune =
 		    addLine(opts->compprune, strdup("BitKeeper/etc/config"));
+		opts->compprune =
+		    addLine(opts->compprune, strdup("BitKeeper/etc/gone"));
 		opts->compprune =
 		    addLine(opts->compprune, strdup("BitKeeper/etc/ignore"));
 
@@ -516,6 +529,7 @@ mkComps(Opts *opts)
 	int	running, status = 0;
 	pid_t	pid;
 	int	flags = opts->flags;
+	int	joinlen;
 	char	**cmd = 0;
 	char	repo[MAXPATH];
 
@@ -552,12 +566,17 @@ mkComps(Opts *opts)
 			"\n### Cloning and pruning "
 			"component %u/%u: %s\n",
 			i, total, opts->comps[i]));
-		sprintf(repo, "repo%u", i);
+		joinlen = sprintf(repo, "repo%u", i);
 		if (clone(opts, WA2PROD, repo, 0)) {
 			/* clone should print error */
 			ret = 1;
 			break;
 		}
+		/* clone brings a file that is considered product only */
+		concat_path(repo, repo, "BitKeeper/etc/level");
+		unlink(repo);
+		repo[joinlen] = 0;
+		
 		cmd = addLine(0, strdup("bk"));
 		cmd = addLine(cmd, aprintf("--cd=%s", repo));
 		cmd = addLine(cmd, strdup("-?_BK_STRIPTAGS=1"));

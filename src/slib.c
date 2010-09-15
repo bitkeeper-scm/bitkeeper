@@ -7911,7 +7911,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			s->tree->flags |= D_XFLAGS;
 			s->tree->xflags = X_DEFAULT;
 		}
-		/* for old binaries */
+		/* for old binaries (XXX: why bother setting above?) */
 		s->tree->xflags |= X_BITKEEPER|X_CSETMARKED;
 		if (CSET(s)) {
 			s->tree->xflags &= ~(X_SCCS|X_RCS);

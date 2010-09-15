@@ -29,7 +29,10 @@ echo OK
 
 echo $N Create initial repository ...................................$NL
 commercial project
-mkdir src doc
+mkdir src doc BitKeeper/www
+# BitKeeper/* get mapped to product -- should it be a component?
+touch BitKeeper/www/index.html
+bk new $Q BitKeeper/www/index.html
 cd src
 mkdir -p deep/prune/path/starts/here
 touch a b c del deep/prune/path/starts/here/a
@@ -74,7 +77,7 @@ fresh_commercial comp1
 cd ..
 fresh_commercial comp2
 cd ..
-cat <<EOF > mapfile
+cat <<EOF > mapfile.noattach
 # The source component
 src
 
@@ -84,6 +87,9 @@ doc
 # The deep component
 src/deep/prune/path
 src/deep/prune/path/starts/here
+EOF
+cp mapfile.noattach mapfile
+cat <<EOF >> mapfile
 
 # Attach these when done
 path/to/attachfoo|$HERE/comp1
@@ -131,15 +137,30 @@ bk partition $Q -Cbadmap.rootkey project copy-bad.rootkey 2> ERR && fail -f ERR
 grep -q "path collides with component" ERR || fail -f ERR
 echo OK
 
+echo $N Run a comparison test to see no environmental influences ....$NL
+umask 000
+BK_CONFIG="eoln: native!; compression: gzip! " \
+    bk partition $Q -Cmapfile.noattach project config.one || fail
+umask 077
+BK_CONFIG="eoln: unix!; keyword:sccs, rcs, expand1!; compress: none! " \
+    bk partition $Q -Cmapfile.noattach project config.two || fail
+bk diff -ar -ux'log' config.one config.two > DIFF || fail -f DIFF diff failed
+test -s DIFF && fail -f DIFF
+umask 000
+echo OK
+
 echo $N Run a simple test ...........................................$NL
 bk partition $Q -Cmapfile project copy || exit 1
-TOP=`cd copy && bk changes -r+ -nd:DS:`
-COMP=`cd copy/doc && bk changes -r+ -nd:DS:`
+cd copy
+TOP=`bk changes -r+ -nd:DS:`
+COMP=`bk --cd=doc changes -r+ -nd:DS:`
 test "$TOP" -gt "$COMP" || {
 	echo failed scompress $TOP $COMP
 	exit 1
 }
-cd copy/BitKeeper/etc
+bk _test -f BitKeeper/www/SCCS/s.index.html || fail no web in product
+bk _test -f doc/BitKeeper/www/SCCS/s.index.html && fail web in comp
+cd BitKeeper/etc
 bk get $Q -S config
 test -s config || echo empty config
 cd ../../src/BitKeeper/etc
@@ -153,7 +174,12 @@ cd "$HERE"/copy/src
 bk sfiles BitKeeper/deleted > deleted
 test -s deleted && fail -f deleted "no files should be deleted"
 cd "$HERE"/project
+bk gfiles BitKeeper/etc > ../ETCFILES.project
 cd "$HERE"/copy
+test -d "BitKeeper/tmp/partition.d" && fail work area left
+bk _getkv BitKeeper/log/partition COMPPRUNE > ../ETCFILES.comp
+echo >> ../ETCFILES.comp
+cmpfiles ../ETCFILES.comp ../ETCFILES.project
 test "`bk changes -rDELTAG -nd:SORTKEY:`" != "$DELKEY" || fail
 cat ../dnrk | bk key2path > GOT
 echo src/deep/prune/path/starts/here/ChangeSet > WANT

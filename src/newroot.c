@@ -163,6 +163,10 @@ update_rootlog(sccs *s, char *key, char *comments)
 			s->text = addLine(s->text, aprintf("%s@%s %s%s",
 				s->tree->user, s->tree->hostname,
 				s->tree->sdate, s->tree->zone));
+		} else if (getenv("BK_REGRESSION")) {
+			s->text = addLine(s->text,
+				strdup("gina@bitmover.com "
+				    "10/09/08 16:47:48-07:00"));
 		} else {
 			s->text = addLine(s->text, aprintf("%s@%s %s%s",
 				sccs_user(), sccs_host(),

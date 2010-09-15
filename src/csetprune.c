@@ -1,6 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "bam.h"
+#include "logging.h"
 #include "nested.h"
 #include "range.h"
 
@@ -35,7 +36,8 @@ private	int	filterRootkey(char *rk, char **list, int ret, sccs *cset,
 		    char **complist, char *comppath, char **deep,
 		    hash *prunekeys);
 private	int	fixAdded(sccs *cset, char **cweave);
-private	int	newBKfiles(sccs *cset, hash *prunekeys, char ***cweavep);
+private	int	newBKfiles(sccs *cset,
+		    char *comp, hash *prunekeys, char ***cweavep);
 private	int	rmKeys(hash *prunekeys);
 private	char	*mkRandom(char *input);
 private	int	found(delta *start, delta *stop);
@@ -183,6 +185,7 @@ csetprune(hash *prunekeys, char *comppath, char **complist, char ***addweave,
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
 
+	verbose((stderr, "Processing ChangeSet file...\n"));
 	unless (cset = sccs_csetInit(0)) {
 		fprintf(stderr, "csetinit failed\n");
 		goto err;
@@ -216,7 +219,7 @@ csetprune(hash *prunekeys, char *comppath, char **complist, char ***addweave,
 	*addweave = 0;
 
 	/* possibly inject new files into the weave, so do before sort */
-	if (newBKfiles(cset, prunekeys, &cweave)) goto err;
+	if (newBKfiles(cset, comppath, prunekeys, &cweave)) goto err;
 	sortLines(cweave, cset_byserials);
 	empty_nodes = fixAdded(cset, cweave);
 	if (sccs_csetWrite(cset, cweave)) goto err;
@@ -314,6 +317,7 @@ statuschk:	unless (WIFEXITED(status)) goto err;
 		verbose((stderr, "Running a check -ac...\n"));
 		if (system("bk -r check -ac")) goto err;
 	}
+	unlink(CMARK);
 	system("bk parent -qr");	/* parent no longer valid */
 	verbose((stderr, "All operations completed.\n"));
 	ret = 0;
@@ -332,12 +336,8 @@ whichComp(char *key, char **complist)
 	char	*end, *path, *ret;
 
 	path = getPath(key, &end);
-	if (strneq(path, "BitKeeper/", 10)) {
-		if (strneq(path+10, "deleted/", 8)) {
-			return ("|deleted");
-		} else unless (strneq(path+10, "triggers/", 8)) {
-			return ("|all");
-		}
+	if (strneq(path, "BitKeeper/deleted/", 18)) {
+		return ("|deleted");
 	}
 	ret = ".";
 	*end = 0;	/* terminate path */
@@ -436,7 +436,7 @@ clrFileEnv(char *user, char *host)
 }
 
 private	char	*
-newFile(char *path, int ser)
+newFile(char *path, char *comp, int ser)
 {
 	FILE	*f;
 	char	*ret = 0, *randin = 0, *line = 0, *cmt = 0;
@@ -477,8 +477,8 @@ newFile(char *path, int ser)
 		goto err;
 	}
 
-	randin = aprintf("%s %s %s %s\n",
-	    path, getenv("BK_DATE_TIME_ZONE"),
+	randin = aprintf("%s %s %s %s %s\n",
+	    path, comp, getenv("BK_DATE_TIME_ZONE"),
 	    getenv("BK_USER"), getenv("BK_HOST"));
 	line = mkRandom(randin);
 	safe_putenv("BK_RANDOM=%s", line);
@@ -486,7 +486,7 @@ newFile(char *path, int ser)
 
 	cmt = aprintf("-yNew %s", path);
 	assert(cmt);
-	if (sys("bk", "new", cmt, "-qp", path, SYS)) {
+	if (sys("bk", "new", cmt, "-qPp", path, SYS)) {
 		perror("new");
 		goto err;
 	}
@@ -495,6 +495,14 @@ newFile(char *path, int ser)
 		perror("spath");
 		goto err;
 	}
+
+	/*
+	 * Give stability to the file created by hard coding settings
+	 * influenced by environment (BK_CONFIG, umask) so that prunes
+	 * everywhere will generate the same bits.
+	 */
+	s->tree->flags |= D_XFLAGS;
+	s->tree->xflags = X_DEFAULT;
 	d = sccs_top(s);
 	d->flags |= D_CSET;
 	sccs_sdelta(s, d, dk);
@@ -644,7 +652,6 @@ del:		hash_storeStr(prunekeys, rk, 0);
 	}
 	if ((!(flags & PRUNE_DELCOMP) && streq(which, "|deleted")) ||
 	    (comppath && !streq(which, comppath) &&
-	    !streq(which, "|all") &&
 	    (!streq(which, "|deleted") || !streq(comppath, DELCOMP)))) {
 		goto del;
 	}
@@ -778,13 +785,15 @@ fixAdded(sccs *cset, char **cweave)
  * and make new ones, shoving their keys into the weave.
  */
 private	int
-newBKfiles(sccs *cset, hash *prunekeys, char ***cweavep)
+newBKfiles(sccs *cset, char *comp, hash *prunekeys, char ***cweavep)
 {
 	int	i, ret = 1;
 	ser_t	ser = 0;
+	mode_t	mask = umask(002);
 	char	*rkdk, **list = 0, *user = 0, *host = 0;
 
 	unless (prunekeys) return (0);
+	unless (comp) comp = "";
 
 	EACH_HASH(prunekeys) {
 		unless (strchr(prunekeys->kptr, '|')) {
@@ -794,14 +803,16 @@ newBKfiles(sccs *cset, hash *prunekeys, char ***cweavep)
 		}
 	}
 	unless (list) return (0);
+	sortLines(list, 0);
 
 	unless (ser = newFileEnv(cset, &user, &host)) goto err;
 	EACH(list) {
-		unless (rkdk = newFile(list[i], ser)) goto err;
+		unless (rkdk = newFile(list[i], comp, ser)) goto err;
 		*cweavep = addLine(*cweavep, rkdk);
 	}
 	ret = 0;
  err:
+ 	umask(mask);
 	clrFileEnv(user, host);
 	if (user) free(user);
 	if (host) free(host);
