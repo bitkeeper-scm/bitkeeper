@@ -1343,6 +1343,7 @@ int	hasLocalWork(char *gfile);
 char	*goneFile(void);
 char	*sgoneFile(void);
 int	keycmp(const void *k1, const void *k2);
+int	keycmp_nopath(char *k1, char *k2);
 int	key_sort(const void *a, const void *b);
 int	earlier(sccs *s, delta *a, delta *b);
 int	startmenu_list(u32, char *);

@@ -83,7 +83,16 @@ earlier(sccs *s, delta *a, delta *b)
 
 	sccs_sortkey(s, a, keya);
 	sccs_sortkey(s, b, keyb);
-        ret = strcmp(keya, keyb);
+	if (CSET(s)) {
+		/*
+		 * ChangeSet files can never depend on the pathname to
+		 * assure ordering.  For components the pathname varies
+		 * with repositories.
+		 */
+		ret = keycmp_nopath(keya, keyb);
+	} else {
+		ret = strcmp(keya, keyb);
+	}
         if (ret < 0)   return 1;
         if (ret > 0)   return 0;
         assert("Can't figure out the order of deltas\n" == 0);

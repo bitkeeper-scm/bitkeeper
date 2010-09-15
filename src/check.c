@@ -1052,6 +1052,36 @@ keycmp(const void *k1, const void *k2)
 }
 
 /*
+ * Compare two keys while ignoring the path field
+ * (we assume valid keys here)
+ */
+int
+keycmp_nopath(char *keya, char *keyb)
+{
+	char	*ta = 0, *date_a, *tb = 0, *date_b;
+	int	ret, userlen;
+
+	/* user@host|path|date|sum */
+	ta = strchr(keya, '|')+1;
+	tb = strchr(keyb, '|')+1;
+
+	/*
+	 * Find the length of the shorter "user@host|" and compare
+	 * the two strings upto that number of chars.
+	 * If the two strings are a different length then the strncmp()
+	 * will return non-zero.
+	 */
+	userlen = (ta-keya <= tb-keyb) ? ta-keya : tb-keyb;
+	if (ret = strncmp(keya, keyb, userlen)) return (ret);
+
+	/* Now compare from the date onward */
+	date_a = strchr(ta, '|');
+	date_b = strchr(tb, '|');
+	return (strcmp(date_a, date_b));
+}
+
+
+/*
  * qsort routine to compare an array of keys
  */
 int

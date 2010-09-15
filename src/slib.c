@@ -10307,49 +10307,6 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 			error |= 2;
 		}
 	}
-	/* If the dates are identical, check that the keys are sorted */
-	if (BITKEEPER(s) && d->pserial && (d->date == PARENT(s, d)->date)) {
-		char	me[MAXPATH], parent[MAXPATH];
-
-		sccs_sdelta(s, d, me);
-		sccs_sdelta(s, PARENT(s, d), parent);
-		unless (strcmp(parent, me) < 0) {
-			fprintf(stderr,
-			    "\t%s: %s,%s have same date and bad key order\n",
-			    s->sfile, d->rev, PARENT(s, d)->rev);
-			error |= 2;
-		}
-	}
-
-	/* Make sure the table order is sorted */
-	if (BITKEEPER(s) && NEXT(d)) {
-		unless (NEXT(d)->date <= d->date) {
-			unless (flags & ADMIN_SHUTUP) {
-				fprintf(stderr,
-				    "\t%s: %s,%s dates do not "
-				    "increase in table\n",
-				    s->sfile, d->rev, NEXT(d)->rev);
-			}
-			error |= 2;
-		}
-	}
-
-	/* Make sure we have no duplicate keys, assuming table sorted by date */
-	if (BITKEEPER(s) &&
-	    NEXT(d) &&
-	    (d->date == NEXT(d)->date) &&
-	    (NEXT(d) != PARENT(s, d))) { /* parent already checked above */
-		char	me[MAXPATH], next[MAXPATH];
-
-		sccs_sdelta(s, d, me);
-		sccs_sdelta(s, NEXT(d), next);
-		if (streq(next, me)) {
-			fprintf(stderr,
-			    "\t%s: %s,%s have same key\n",
-			    s->sfile, d->rev, NEXT(d)->rev);
-			error |= 2;
-		}
-	}
 
 done:	if (error & 1) d->flags |= D_BADREV;
 	return (error);
@@ -16580,23 +16537,6 @@ isKey(char *key)
 		return (1);
 	}
 	return (0);
-}
-
-/*
- * Compare two keys while ignoring the path field
- */
-private int
-keycmp_nopath(char *keya, char *keyb)
-{
-	char	*ta = 0, *date_a, *tb = 0, *date_b;
-	int	ret;
-
-	ta = strchr(keya, '|');
-	tb = strchr(keyb, '|');
-	if (ret = strncmp(keya, keyb, ta-keya)) return (ret);
-	date_a = strchr(ta+1, '|');
-	date_b = strchr(tb+1, '|');
-	return (strcmp(date_a, date_b));
 }
 
 /*
