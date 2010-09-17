@@ -58,7 +58,13 @@ lock_main(int ac, char **av)
 		usage();
 	}
 	unless (what) what = (file) ? 'f' : 'l';
-	if (av[optind]) chdir(av[optind]);
+	if (av[optind]) {
+		if (chdir(av[optind])) {
+			fprintf(stderr, "%s: no such directory: %s\n",
+			    prog, av[optind]);
+			return (2);
+		}
+	}
 	unless (file) {
 		if (proj_cd2root() < 0) {
 			fprintf(stderr, "lock: Not in a repository\n");
@@ -263,7 +269,7 @@ lock_main(int ac, char **av)
 				usleep(uslp);
 				if (uslp < 1000000) uslp <<= 1;
 			}
-			freeLines(locks, free);
+			freeLines(locks, freeNlock);
 		}
 		exit(0);
 

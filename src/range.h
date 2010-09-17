@@ -39,7 +39,7 @@ struct	range {
 int	range_process(char *me, sccs *s, u32 flags, RANGE *rargs);
 int	range_addArg(RANGE *rargs, char *arg, int isdate);
 
-void	range_cset(sccs *s, delta *d);
+void	range_cset(sccs *s, delta *d, int bit);
 time_t	range_cutoff(char *spec);
 void	range_markMeta(sccs *s);
 int	range_gone(sccs *s, delta *d, u32 dflags);
@@ -48,6 +48,7 @@ void	range_unrange(sccs *s, delta **left, delta **right, int all);
 int	range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to,
     int flags, int (*fcn)(sccs *s, delta *d, void *token), void *token);
 int	walkrevs_setFlags(sccs *s, delta *d, void *token);
+int	walkrevs_clrFlags(sccs *s, delta *d, void *token);
 int	walkrevs_printkey(sccs *s, delta *d, void *token);
 int	walkrevs_printmd5key(sccs *s, delta *d, void *token);
 

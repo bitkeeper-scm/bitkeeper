@@ -110,21 +110,20 @@ test "`bk prs -hnd:SPN: -r+ sa2/ChangeSet`" = sa2/SCCS/s.ChangeSet || {
 bk -r check -ac || exit 1
 bk sfiles -pAC > GOT
 cat <<EOF > WANT
-sa2/SCCS/s.ChangeSet|1.4
-sa2/SCCS/s.ChangeSet|1.2.1.1
+sa2/SCCS/s.ChangeSet|1.3
 EOF
 cmpfiles GOT WANT
-bk log -C1.3 -d:JOIN::I: sa2/ChangeSet > WANT
-printf "1.3,1.2,1.1,1.0" > GOT
+bk log -C1.2 -d:JOIN::I: sa2/ChangeSet > WANT
+printf "1.2,1.1,1.0" > GOT
 cmpfiles GOT WANT
 # Commit to product.
 bk commit $Q -y'port from standalone' || exit 1
 # Make sure another port comes back empty.
 cd sa2
 bk port $Q ../../standalone || exit 1
-test "`bk changes -r+ -nd':REV: :GFILE:'`" = "1.4 ChangeSet" || exit 1
+test "`bk changes -r+ -nd':REV: :GFILE:'`" = "1.3 ChangeSet" || exit 1
 bk port $Q -r+ ../../standalone || exit 1
-test "`bk changes -r+ -nd':REV: :GFILE:'`" = "1.4 ChangeSet" || exit 1
+test "`bk changes -r+ -nd':REV: :GFILE:'`" = "1.3 ChangeSet" || exit 1
 echo OK
 
 echo $N Port csets from component in portal to standalone repo ......$NL
@@ -149,14 +148,14 @@ bk port $Q ../project2/sa2 || exit 1
 # We should get two csets from the component, and see a null cset
 # that sets the ChangeSet path.
 bk changes -e -d':JOIN::REV:' > GOT || exit 1
-grep -q '^1.5,1.4,1.2.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+grep -q '^1.3,1.2,1.1,1.0$' GOT || exit 1
 # Check :SPN: because :DPN: doesn't really print the path for ChangeSet.
 test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || {
 	echo wrong pathnname after port
 	exit 1
 }
 bk port $Q ../project2/sa2 || exit 1
-test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 1
+test "`bk changes -r+ -nd:REV:`" = 1.3 || exit 1
 echo OK
 
 echo $N Port csets from component not in portal to standalone repo ..$NL
@@ -182,14 +181,14 @@ bk port $Q ../project2/sa2 || exit 1
 # We should get two csets from the component, and see a null cset
 # that sets the ChangeSet path.
 bk changes -e -d':JOIN::REV:' > GOT || exit 1
-grep -q '^1.5,1.4,1.2.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+grep -q '^1.3,1.2,1.1,1.0$' GOT || exit 1
 # Check :SPN: because :DPN: doesn't really print the path for ChangeSet.
 test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || {
 	echo wrong pathnname after port
 	exit 1
 }
 bk port $Q ../project2/sa2 || exit 1
-test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 1
+test "`bk changes -r+ -nd:REV:`" = 1.3 || exit 1
 cd "$HERE/project2"
 bk portal $Q . || exit 1
 echo OK
@@ -219,9 +218,9 @@ grep -q 'component-only pulls are not allowed.' ERR || {
 	cat ERR
 	exit 1
 }
-test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 11
+test "`bk changes -r+ -nd:REV:`" = 1.3 || exit 11
 bk port $Q "$HERE/project2/sa2" || exit 12
-test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 13
+test "`bk changes -r+ -nd:REV:`" = 1.3 || exit 13
 test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || exit 14
 # Add a cset to the component.
 cd "$HERE/project2/sa2"
@@ -232,9 +231,9 @@ bk commit $Q -y'add sa2-new' || exit 16
 cd "$HERE/sa2-detached"
 bk port $Q "$HERE/project2/sa2" || exit 17
 bk changes -e -d':JOIN::REV:' > GOT || exit 18
-grep -q '^1.6,1.4.1.1,1.5,1.4,1.2.1.1,1.3,1.2,1.1,1.0$' GOT || exit 19
+grep -q '^1.4,1.3,1.2,1.1,1.0$' GOT || exit 19
 bk port $Q "$HERE/project2/sa2" || exit 1
-test "`bk changes -r+ -nd:REV:`" = 1.6 || exit 1
+test "`bk changes -r+ -nd:REV:`" = 1.4 || exit 1
 test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || exit 1
 echo OK
 
@@ -262,9 +261,9 @@ grep -q 'component-only pulls are not allowed.' ERR || {
 	cat ERR
 	exit 1
 }
-test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 11
+test "`bk changes -r+ -nd:REV:`" = 1.3 || exit 11
 bk port $Q "$HERE/project2/sa2" || exit 12
-test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 13
+test "`bk changes -r+ -nd:REV:`" = 1.3 || exit 13
 test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || exit 14
 # Add a cset to the component.
 cd "$HERE/project2/sa2"
@@ -275,9 +274,9 @@ bk commit $Q -y'add sa2-new' || exit 16
 cd "$HERE/sa2-detached"
 bk port $Q "$HERE/project2/sa2" || exit 17
 bk changes -e -d':JOIN::REV:' > GOT || exit 18
-grep -q '^1.6,1.4.1.1,1.5,1.4,1.2.1.1,1.3,1.2,1.1,1.0$' GOT || exit 19
+grep -q '^1.4,1.3,1.2,1.1,1.0$' GOT || exit 19
 bk port $Q "$HERE/project2/sa2" || exit 1
-test "`bk changes -r+ -nd:REV:`" = 1.6 || exit 1
+test "`bk changes -r+ -nd:REV:`" = 1.4 || exit 1
 test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || exit 1
 cd "$HERE/project2"
 bk portal $Q . || exit 1
@@ -290,11 +289,11 @@ bk detach $Q sa2 ../sa2-detached-2
 cd "$HERE/sa2-detached-2"
 test "`bk prs -hnd:SPN: -r+ ChangeSet`" = SCCS/s.ChangeSet || exit 1
 cd "$HERE/project2/sa2"
-test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 1
+test "`bk changes -r+ -nd:REV:`" = 1.4 || exit 1
 # We should get the detach cset and a merge cset.
 bk port $Q "$HERE/sa2-detached-2" || exit 1
 bk changes -e -d':JOIN::REV:' > GOT || exit 1
-grep -q '^1.7,1.6,1.5,1.4,1.2.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+grep -q '^1.4,1.3,1.2,1.1,1.0$' GOT || exit 1
 # Add a cset to the detached repo.
 cd "$HERE/sa2-detached-2"
 echo hi > sa2-new-2
@@ -316,11 +315,11 @@ test "`bk prs -hnd:SPN: -r+ ChangeSet`" = sa2/SCCS/s.ChangeSet || exit 1
 bk port $Q "$HERE/sa2-detached-2" || exit 1
 test "`bk prs -hnd:SPN: -r+ ChangeSet`" = sa2/SCCS/s.ChangeSet || exit 1
 bk changes -e -d':JOIN::REV:' > GOT || exit 1
-grep -q '^1.8,1.6.1.1,1.7,1.6,1.5,1.4,1.2.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+grep -q '^1.5,1.4,1.3,1.2,1.1,1.0$' GOT || exit 1
 # Nothing else should come over.
 bk port $Q "$HERE/sa2-detached-2" || exit 1
 test "`bk prs -hnd:SPN: -r+ ChangeSet`" = sa2/SCCS/s.ChangeSet || exit 1
-test "`bk changes -r+ -nd:REV:`" = 1.8 || exit 1
+test "`bk changes -r+ -nd:REV:`" = 1.5 || exit 1
 # Commit to the product.
 cd ..
 bk commit $Q -y'ports from sa2-detached-2' || exit 1
@@ -337,7 +336,7 @@ bk detach $Q sa3 ../detached-3 || exit 1
 # Detached should have the attach and detach csets.
 cd ../detached-3
 bk changes -e -d':JOIN::REV:' > GOT || exit 1
-grep -q '^1.3,1.2,1.1,1.0$' GOT || exit 1
+grep -q '^1.1,1.0$' GOT || exit 1
 # Add a cset to standalone-3 and port it to detached-3.
 cd "$HERE/standalone-3"
 echo hi > sa3-file
@@ -361,11 +360,11 @@ bk port $Q ../standalone-3 2> ERR 1>&2 || {
 	exit 1
 }
 bk changes -e -d':JOIN::REV:' > GOT || exit 1
-grep -q '^1.4,1.1.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+grep -q '^1.2,1.1,1.0$' GOT || exit 1
 # Another immediate port shouldn't get anything new.
 bk port $Q ../standalone-3 || exit 1
 bk changes -e -d':JOIN::REV:' > GOT || exit 1
-grep -q '^1.4,1.1.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+grep -q '^1.2,1.1,1.0$' GOT || exit 1
 echo OK
 
 echo $N Port csets from detached repo to standalone repo ............$NL
@@ -380,7 +379,7 @@ bk pull $Q ../detached-3 2> ERR 1>&2 && {
 # file path fix-up).
 bk port $Q ../detached-3 || exit 1
 bk changes -e -d':JOIN::REV:' > GOT || exit 1
-grep -q '^1.4,1.1.1.1,1.3,1.2,1.1,1.0$' GOT || exit 1
+grep -q '^1.2,1.1,1.0$' GOT || exit 1
 echo OK
 
 echo $N Test port of matching components in different products ......$NL
@@ -403,8 +402,6 @@ cd ..
 bk sfiles -pAC > GOT
 cat <<EOF > WANT
 mybash/SCCS/s.ChangeSet|1.4
-mybash/SCCS/s.ChangeSet|1.2.1.3
-mybash/SCCS/s.ChangeSet|1.3
 EOF
 cmpfiles GOT WANT
 bk commit $Q -ymkcset
@@ -431,7 +428,7 @@ bk attach $Q ../branch2 branch2
 cd branch2
 bk port $Q ../../project/branch || exit 1
 cd ..
-printf "1.2.1.1,1.2,1.1,1.0" > WANT
+printf "1.2,1.1,1.0" > WANT
 bk log -C1.2 -d:JOIN::I: branch2/ChangeSet > GOT
 cmpfiles GOT WANT
 bk commit $Q -y'cset on branch'
@@ -485,14 +482,15 @@ echo $N Test out sccslog on a ported ChangeSet file .................$NL
 cd "$HERE"/project/bash
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -SBRANCHTIP -yfoo
+bk commit $Q -yfoo
+BRANCHTIP=`bk prs -hnd:MD5KEY: -r+ ChangeSet`
 bk portal $Q .
 bk port $Q ../../bash-sa
 bk sccslog -A -nd:I: > GOT
-printf "1.4\n1.2.1.2\n1.3\n" > WANT
+printf "1.4\n1.2.1.1\n1.3\n" > WANT
 cmpfiles GOT WANT
 # test fix for CSETREV when non-cset tagged entry is tip of branch
 # the code couldn't find the tagged cset; now it can.
 bk -P commit $Q -yprod
-test "`bk changes -rBRANCHTIP -nd:CSETREV:`" = "1.4" || fail
+test "`bk changes -r$BRANCHTIP -nd:CSETREV:`" = "1.4" || fail
 echo OK

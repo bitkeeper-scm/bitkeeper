@@ -4,12 +4,12 @@ access 35
 chmod 22
 close 98
 fstat 77
-link 11
+link 12
 lseek 29
-lstat 193
+lstat 197
 mkdir 13
 open 95
-read 1620
+read 1600
 rmdir 1
 stat 4
 unlink 13

@@ -282,21 +282,22 @@ grep -q 'File/directory conflict: d1/sub1/a' OUT || {
 rmdir d1/sub1/a
 echo OK
 
-echo $N Make sure it complains about cset pointer problems ..........$NL
+echo $N Make sure it complains about copied files ...................$NL
+cd "$HERE"
+commercial other
 echo hi > foo
+bk commit $Q -yFOO
 bk new $Q foo || exit 1
-csetfile=`bk prs -hr+ -d ':CSETFILE:\n' foo`stuff
-bk admin -C$csetfile foo
-bk -r check -a > OUT 2>&1 && {
-	echo should have exited with a failure
-	cat OUT
-	exit 1
-}
-grep -q 'belongs to:' OUT || {
-	echo bad error message
-	cat OUT
-	exit 1
-}
+bk commit $Q -yFOO
+cd "$HERE"/project
+bk _cp ../other/SCCS/s.foo SCCS/s.foo
+bk -r check -a 2>ERR && fail -f ERR should fail
+grep -q \
+"check: File foo doesn't have any data that matches the local ChangeSet file" \
+	ERR || fail -f ERR
+bk admin -D foo
+bk sfiles -P > /dev/null
+bk -r check -a || fail
 echo OK
 
 echo $N Make sure commit refuses to commit out of sync files ........$NL
@@ -484,7 +485,7 @@ bk commit $Q -ycomment || exit 1
 touch BitKeeper/log/checked
 perl -e 'utime 1, 1, "BitKeeper/log/checked";'
 ls -l BitKeeper/log/checked > WANT
-bk admin -Cbusted foo
+bk admin -pbusted foo
 bk -r check -ac 2>ERR && {
 	echo check should have failed
 	cat ERR
@@ -539,7 +540,7 @@ cd "$HERE/proj4"
 touch BitKeeper/log/checked
 perl -e 'utime 1, 1, "BitKeeper/log/checked";'
 ls -l BitKeeper/log/checked > WANT
-bk admin -C`bk id` foo
+bk admin -pfoo foo
 bk -r check -ac 2>ERR || {
 	echo check should not have failed
 	cat ERR

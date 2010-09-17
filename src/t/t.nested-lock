@@ -37,7 +37,7 @@ test -f BitKeeper/writer/nested_lock || fail
 echo "corrupt lock" > BitKeeper/writer/nested_lock
 NLOCK2=`bk lock -Ppidfile -Wt`
 PID2=`cat pidfile`
-bk lock -l 2>&1 | tee X | grep -q "$PID" && fail -f X
+bk lock -l 2>&1 | tee X | grep -q "$PID" | grep -q "(stale)" && fail -f X
 grep -q "$PID2" X || fail -f X
 # nested unlock should refuse to unlock the wrong lock
 bk _kill $NLOCK

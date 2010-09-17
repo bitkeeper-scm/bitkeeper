@@ -880,11 +880,12 @@ move_file(char ***checkfiles)
 private	int
 undoLimit(char **limit)
 {
-	sccs	*s = sccs_csetInit(0);
+	sccs	*s;
 	int	i, ret = 0, in_log = 0;
 	char	*p;
 
-	unless (s) return (0);
+	if (getenv("_BK_TRANSACTION")) return (0); /* let top level chk */
+	unless (s = sccs_csetInit(INIT_MUSTEXIST)) return (0);
 	EACH(s->text) {
 		if (s->text[i][0] == '\001') continue;
 		unless (in_log) {
@@ -894,7 +895,7 @@ undoLimit(char **limit)
 		if (s->text[i][0] == '@') break;
 		unless (p = strchr(s->text[i], ':')) continue;
 
-		if (strneq(s->text[i], "partition command", p - s->text[i])) {
+		if (strneq(s->text[i], "csetprune command", p - s->text[i])) {
 			assert(p[1] == ' ');
 			*limit = strdup(p+2);
 			unless (sccs_findKey(s, p+2)) ret = 1;

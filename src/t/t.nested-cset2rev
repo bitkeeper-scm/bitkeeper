@@ -1,0 +1,48 @@
+echo $N Test -r@@tag ................................................$NL
+nested project
+cd gcc
+echo hi > file
+bk new $Q file
+bk commit $Q -ynew1
+bk -P commit $Q -ynew2
+bk edit $Q file
+echo next > file
+bk ci $Q -ynext file
+bk commit $Q -ynext1
+bk -P commit $Q -ynext2
+(cd ..; bk tag $Q FOO)
+bk edit $Q file
+echo bye > file
+bk ci $Q -ybye file
+bk commit $Q -ybye1
+bk -P commit $Q -ybye2
+
+cd ..
+# from product
+test `bk prs -r@@FOO -hnd:C:-:REV: ChangeSet` = next2-1.4 || fail
+test `bk prs -r@@FOO -hnd:C:-:REV: gcc/ChangeSet` = next1-1.3 || fail
+test `bk prs -r@@FOO -hnd:C:-:REV: gcc/file` = next-1.2 || fail
+test "`bk prs -r@@FOO -hnd:C:-:REV: gdb/ChangeSet`" = "Initial repository create"-1.1 || {
+     fail
+}
+cd gcc
+# from component
+test `bk prs -r@@FOO -hnd:C:-:REV: ../ChangeSet` = next2-1.4 || fail
+test `bk prs -r@@FOO -hnd:C:-:REV: ChangeSet` = next1-1.3 || fail
+test `bk prs -r@@FOO -hnd:C:-:REV: file` = next-1.2 || fail
+test "`bk prs -r@@FOO -hnd:C:-:REV: ../gdb/ChangeSet`" = "Initial repository create"-1.1 || {
+     fail
+}
+echo OK
+
+echo $N Test -r@@@FOO -- as more than 2 @ will fail .................$NL
+# in the old days, -r@@ was blocked; so now -r@@@ is
+bk prs -r@@@FOO file && fail
+echo OK
+
+echo $N Test -r@@badrev .............................................$NL
+# XXX why does librange.c:getrev() stifle error if lead @?
+# revtool doesn't help much as it is a collapsed bit of work.
+bk prs -r@@BAD file && fail
+echo OK
+

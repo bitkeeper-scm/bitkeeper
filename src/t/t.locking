@@ -21,6 +21,11 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 
+echo $N Test lock of bad directory ..................................$NL
+bk lock -r bad_directory 2>ERR && fail -f ERR should fail
+grep -q "lock: no such directory: bad_directory" ERR || fail -f ERR
+echo OK
+
 echo $N Create some data ............................................$NL
 echo 1 > A
 echo 2 > B

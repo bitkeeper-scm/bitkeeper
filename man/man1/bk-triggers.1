@@ -86,7 +86,7 @@ The directories are processed in the order found in the variable.
 There are several special values which are interpreted:
 .TP 
 .B .
-This is the default, it means `bk -R pwd`/BitKeeper/triggers is scanned
+It means `bk -R pwd`/BitKeeper/triggers is scanned
 for triggers.
 .TP
 .B $BK_DOTBK
@@ -106,6 +106,11 @@ It is a way to run product level triggers in each component.
 .B $SOMETHING_ELSE
 All other paths starting with "$" are ignored, that character is
 reserved.
+.LP
+If the the variable is not defined, the default is:
+.DS
+triggers:	$PRODUCT|.
+.DE
 .SS
 TRIGGER CLASSES
 .LP
@@ -530,6 +535,21 @@ The version of the server side \*[BK] binary as the symbolic name or the UTC.
 .DS
 #!/bin/sh
 
+# Simple post-commit trigger for email notification of changes
+
+# For nested collections, we don't want notification in components,
+# the product recurses.
+test `bk repotype` = "component" && exit 0
+
+# Let bk changes do all the work for us.
+bk changes -vvr+ |
+    mail -s "commit in `bk gethost -r`:`bk pwd` bk $BK_USER"
+exit 0
+.DE
+.SH "EXAMPLE 2"
+.DS
+#!/bin/sh
+
 # Display info about incoming and outgoing csets.
 
 if [ X$BK_STATUS = XDRYRUN -o X$BK_STATUS = XNOTHING ]
@@ -590,7 +610,7 @@ then	(
 fi
 ) | mail -s "$BK_EVENT in ${H}:${R}" notify@bitmover.com
 .DE
-.SH "EXAMPLE 2"
+.SH "EXAMPLE 3"
 .DS
 #!/bin/sh
 #
@@ -614,7 +634,7 @@ bk prompt -y"Reenter bugid" -n"No bugid is required" "$msg" && exit 1
 
 exit 0
 .DE
-.SH "EXAMPLE 3"
+.SH "EXAMPLE 4"
 .DS
 #!/bin/sh
 #
@@ -627,7 +647,7 @@ test -s /tmp/csets$$ && OK=1
 rm -f /tmp/csets$$
 exit $OK
 .DE
-.SH "EXAMPLE 4"
+.SH "EXAMPLE 5"
 .DS
 #!/bin/sh
 #
@@ -648,12 +668,14 @@ exit 1
 .SH SEE ALSO
 .SA clone
 .SA ci
+.SA changes
 .SA commit
 .SA collapse
 .SA prompt
 .SA pull
 .SA push
 .SA resolve
+.SA repotype
 .SA tag
 .\" help://trigger
 .SH CATEGORY

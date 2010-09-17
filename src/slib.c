@@ -73,7 +73,6 @@ private int	doFast(weave *w, char **patchmap, MMAP *diffs);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private	void	parseConfig(char *buf, MDBM *db);
-private	delta	*cset2rev(sccs *s, char *rev);
 private	void	taguncolor(sccs *s, delta *d);
 private	void	prefix(sccs *s,
 		    delta *d, u32 flags, int lines, char *name, FILE *out);
@@ -979,6 +978,7 @@ private void
 uniqDelta(sccs *s)
 {
 	delta	*next, *d;
+	char	*p1, *p2;
 	char	buf[MAXPATH+100];
 
 	assert(s->tree != s->table);
@@ -1022,6 +1022,11 @@ uniqDelta(sccs *s)
 	}
 
 	sccs_shortKey(s, d, buf);
+	if (p1 = strstr(buf, "/ChangeSet|")) {
+		p2 = strchr(buf, '|');
+		assert(p2);
+		strcpy(p2+1, p1+1);
+	}
 	while (!unique(buf)) {
 //fprintf(stderr, "COOL: caught a duplicate key: %s\n", buf);
 		d->date++;
@@ -1803,16 +1808,44 @@ delta	*
 sccs_findrev(sccs *s, char *rev)
 {
 	delta	*d;
+	project	*proj;
+	char	*dk, *csetdk = 0;
+	char	rk[MAXKEY];
 
 	unless (rev && *rev) return (findrev(s, 0));
 again:	if (rev[0] == '@') {
 		if (rev[1] == '@') {
-			d = 0;
+			if (rev[2] == '@') return (0);
+			unless (proj_isComponent(s->proj)) {
+				rev = rev+1;
+				goto again;
+			}
+			proj = proj_product(s->proj);
+			rev += 2;
+			if (CSET(s)) goto atrev;
+			rev = csetdk = proj_cset2rev(proj,
+			    rev, proj_rootkey(s->proj));
+			if (rev) {
+				proj = s->proj;
+				goto atrev;
+			} else {
+				d = 0;
+			}
 		} else if (CSET(s) && !s->file) {
 			++rev;
 			goto again;
 		} else {
-			d = cset2rev(s, rev+1);
+			proj = s->proj;
+			if (CSET(s) && s->file) proj = proj_product(proj);
+			++rev;
+atrev:			sccs_sdelta(s, sccs_ino(s), rk);
+			if (dk = proj_cset2rev(proj, rev, rk)) {
+				d = sccs_findKey(s, dk);
+				free(dk);
+			} else {
+				d = 0;
+			}
+			if (csetdk) free(csetdk);
 		}
 	} else if (isKey(rev)) {
 		d = sccs_findKey(s, rev);
@@ -1878,138 +1911,6 @@ sccs_findDate(sccs *sc, char *s, int roundup)
 	}
 	if (roundup == ROUNDDOWN) return (tmp);
 	return (d);
-}
-
-void
-delete_cset_cache(char *rootpath, int save)
-{
-	char	**files;
-	char	**keep = 0;
-	int	i;
-	char	*p;
-	char	buf[MAXPATH];
-
-	/* delete old caches here, keep newest */
-	sprintf(buf, "%s/BitKeeper/tmp", rootpath);
-	files = getdir(buf);
-	p = buf + strlen(buf);
-	*p++ = '/';
-	EACH (files) {
-		if (strneq(files[i], "csetcache.", 10)) {
-			struct	stat statbuf;
-			strcpy(p, files[i]);
-			lstat(buf, &statbuf);
-			/* invert time to get newest first */
-			keep = addLine(keep,
-			    aprintf("%08x %s", (u32)~statbuf.st_atime, buf));
-		}
-	}
-	freeLines(files, free);
-	sortLines(keep, 0);
-	EACH (keep) {
-		if (i > save) {
-			p = strchr(keep[i], ' ');
-			unlink(p+1);
-		}
-	}
-	freeLines(keep, free);
-}
-
-private delta *
-cset2rev(sccs *s, char *rev)
-{
-	static	struct	stat	csetstat = {0};
-	char	*rootpath;
-	char	*mpath = 0;
-	MDBM	*m = 0;
-	delta	*ret = 0;
-	char	*s_cset = 0;
-	char	*deltakey;
-	project	*proj;
-	char	rootkey[MAXKEY];
-
-	/*
-	 * Sleazy little hack to optimize a common case of most recent
-	 * committed delta.
-	 */
-	if (streq(rev, "+")) {
-		for (ret = s->table;
-		    ret && (TAG(ret) || !(ret->flags & D_CSET));
-		     ret = NEXT(ret));
-		return (ret);
-	}
-	proj = s->proj;
-	if (CSET(s) && s->file) proj = proj_product(proj);
-	unless (rootpath = proj_root(proj)) goto ret;
-
-	/*  stat cset file once per process */
-	unless (csetstat.st_mtime) {
-		s_cset = aprintf("%s/" CHANGESET, rootpath);
-		if (lstat(s_cset, &csetstat)) goto ret;
-	}
-	mpath = aprintf("%s/BitKeeper/tmp/csetcache.%x", rootpath,
-	    (u32)adler32(0, rev, strlen(rev)));
-	if (exists(mpath) &&
-	    (m = mdbm_open(mpath, O_RDONLY, 0600, 0))) {
-		/* validate it still matches cset file */
-		char	*x;
-
-		if (!(x = mdbm_fetch_str(m, "STAT")) ||
-		    strtoul(x, &x, 16) != (unsigned long)csetstat.st_mtime ||
-		    strtoul(x, 0, 16) != (unsigned long)csetstat.st_size ||
-		    !(x = mdbm_fetch_str(m, "REV")) ||
-		    !streq(x, rev)) {
-			mdbm_close(m);
-			unlink(mpath);
-			m = 0;
-		}
-	}
-	unless (m) {
-		sccs	*sc;
-		MDBM	*csetm;
-		char	buf[20];
-
-		/* fetch MDBM from ChangeSet */
-		unless (s_cset) s_cset = aprintf("%s/" CHANGESET, rootpath);
-		unless (sc = sccs_init(s_cset, 0)) goto ret;
-		if (sccs_get(sc, rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
-			csetm = 0;
-		} else {
-			csetm = sc->mdbm;
-			sc->mdbm = 0;
-		}
-		sccs_free(sc);
-
-		delete_cset_cache(rootpath, 1);	/* save newest */
-
-		/* write new MDBM */
-		m = mdbm_open(mpath, O_RDWR|O_CREAT|O_TRUNC, 0666, 0);
-		unless (m) {
-			if (csetm) mdbm_close(csetm);
-			goto ret;
-		}
-		if (csetm) {
-			kvpair	kv;
-
-			EACH_KV (csetm) {
-				mdbm_store(m, kv.key, kv.val, MDBM_REPLACE);
-			}
-			mdbm_close(csetm);
-		}
-		sprintf(buf, "%lx %lx",
-		    (unsigned long)csetstat.st_mtime,
-		    (unsigned long)csetstat.st_size);
-		mdbm_store_str(m, "STAT", buf, MDBM_REPLACE);
-		mdbm_store_str(m, "REV", rev, MDBM_REPLACE);
-	}
-	sccs_sdelta(s, sccs_ino(s), rootkey);
-	deltakey = mdbm_fetch_str(m, rootkey);
-	if (deltakey) ret = sccs_findKey(s, deltakey);
-	mdbm_close(m);
- ret:
-	if (s_cset) free(s_cset);
-	if (mpath) free(mpath);
-	return (ret);
 }
 
 private inline int
@@ -4744,7 +4645,7 @@ sccs_free(sccs *s)
 	freeLines(s->text, free);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
-	if (s->findkeydb) mdbm_close(s->findkeydb);
+	if (s->findkeydb) hash_free(s->findkeydb);
 	if (s->locs) free(s->locs);
 	if (s->proj) proj_free(s->proj);
 	if (s->rrevs) freenames(s->rrevs, 1);
@@ -8010,7 +7911,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			s->tree->flags |= D_XFLAGS;
 			s->tree->xflags = X_DEFAULT;
 		}
-		/* for old binaries */
+		/* for old binaries (XXX: why bother setting above?) */
 		s->tree->xflags |= X_BITKEEPER|X_CSETMARKED;
 		if (CSET(s)) {
 			s->tree->xflags &= ~(X_SCCS|X_RCS);
@@ -9458,6 +9359,11 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	if (nodefault) {
 		unless (d->user) d->user = strdup("Anon");
 	} else {
+		project	*proj = s->proj;
+
+		if (CSET(s) && proj_isComponent(proj)) {
+			proj = proj_product(proj);
+		}
 		unless (d->user) d->user = strdup(sccs_user());
 		unless (d->hostname && sccs_gethost()) {
 			char	*imp, *h;
@@ -9470,9 +9376,8 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 				hostArg(d, sccs_host());
 			}
 		}
-		if (s && !d->pathname) {
+		unless (d->pathname) {
 			char *p, *q;
-			project	*proj = s->proj;
 
 			/*
 			 * Get the relativename of the sfile,
@@ -9481,9 +9386,6 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			 * win32 case-folding file system.
 			 */
 			if (CSET(s)) {
-				if (proj_isComponent(proj)) {
-					proj = proj_product(proj);
-				}
 				p = _relativeName(s->sfile, 1, 1, 1, proj);
 				/* strip out RESYNC */
 				str_subst(p, "/RESYNC/", "/", p);
@@ -9493,6 +9395,9 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			q = sccs2name(p);
 			pathArg(d, q);
 			free(q);
+		}
+		unless (d->csetFile) {
+			csetFileArg(d, proj_rootkey(proj));
 		}
 #ifdef	AUTO_MODE
 		assert("no" == 0);
@@ -9613,6 +9518,29 @@ toobig(sccs *s)
 }
 
 /*
+ * Given a relative gfile pathname from the repository root
+ * determine if the filename should be legal.
+ */
+int
+bk_badFilename(char *name)
+{
+	char	*base = basenm(name);
+
+	if (getenv("_BK_BADNAME")) return (0);
+	/*
+	 * Disallow BK_FS character in file name.
+	 * Some day we may allow caller to escape the BK_FS character
+	 */
+	if (strchr(name, BK_FS)) return (1);
+
+	if (streq(base, BKSKIP)) return (1);
+	if (streq(base, GCHANGESET) && !streq(name, GCHANGESET)) return (1);
+	if (streq(base, ".bk")) return (1);
+
+	return (0);
+}
+
+/*
  * Check in initial sfile.
  *
  * XXX - need to make sure that they do not check in binary files in
@@ -9689,26 +9617,11 @@ out:		if (sfile) fclose(sfile);
 	assert(t);
 	strcpy(buf, t);
 
-	/*
-	 * Disallow BK_FS character in file name.
-	 * Some day we may allow caller to escape the BK_FS character
-	 */
-	if (strchr(t, BK_FS)) {
-		fprintf(stderr,
-			"delta: %s: filename must not contain \"%c\"\n",
-			t, BK_FS);
+	if (bk_badFilename(buf)) {
+		fprintf(stderr, "%s: illegal filename: %s\n", prog, buf);
 		goto out;
 	}
 
-	/*
-	 * Disallow BKSKIP
-	 */
-	t = basenm(s->sfile);
-	if (streq(&t[2], BKSKIP)) {
-		fprintf(stderr,
-			"delta: checking in %s is not allowed\n", BKSKIP);
-		goto out;
-	}
 	unless (sfile = sccs_startWrite(s)) goto out;
 	if ((flags & DELTA_PATCH) || proj_root(s->proj)) {
 		s->bitkeeper = 1;
@@ -9869,9 +9782,7 @@ out:		if (sfile) fclose(sfile);
 			first->flags |= D_CKSUM;
 		} else {
 			unless (first->csetFile) {
-				char	*c = proj_rootkey(s->proj);
-
-				if (c) first->csetFile = strdup(c);
+				csetFileArg(first, proj_rootkey(s->proj));
 			}
 		}
 	}
@@ -10396,49 +10307,6 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 			error |= 2;
 		}
 	}
-	/* If the dates are identical, check that the keys are sorted */
-	if (BITKEEPER(s) && d->pserial && (d->date == PARENT(s, d)->date)) {
-		char	me[MAXPATH], parent[MAXPATH];
-
-		sccs_sdelta(s, d, me);
-		sccs_sdelta(s, PARENT(s, d), parent);
-		unless (strcmp(parent, me) < 0) {
-			fprintf(stderr,
-			    "\t%s: %s,%s have same date and bad key order\n",
-			    s->sfile, d->rev, PARENT(s, d)->rev);
-			error |= 2;
-		}
-	}
-
-	/* Make sure the table order is sorted */
-	if (BITKEEPER(s) && NEXT(d)) {
-		unless (NEXT(d)->date <= d->date) {
-			unless (flags & ADMIN_SHUTUP) {
-				fprintf(stderr,
-				    "\t%s: %s,%s dates do not "
-				    "increase in table\n",
-				    s->sfile, d->rev, NEXT(d)->rev);
-			}
-			error |= 2;
-		}
-	}
-
-	/* Make sure we have no duplicate keys, assuming table sorted by date */
-	if (BITKEEPER(s) &&
-	    NEXT(d) &&
-	    (d->date == NEXT(d)->date) &&
-	    (NEXT(d) != PARENT(s, d))) { /* parent already checked above */
-		char	me[MAXPATH], next[MAXPATH];
-
-		sccs_sdelta(s, d, me);
-		sccs_sdelta(s, NEXT(d), next);
-		if (streq(next, me)) {
-			fprintf(stderr,
-			    "\t%s: %s,%s have same key\n",
-			    s->sfile, d->rev, NEXT(d)->rev);
-			error |= 2;
-		}
-	}
 
 done:	if (error & 1) d->flags |= D_BADREV;
 	return (error);
@@ -10844,6 +10712,11 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 	unless (CSET(sc)) {
 		fprintf(stderr,
 		    "Tagging files is not supported, use bk tag instead\n");
+		return (0);
+	}
+	if (proj_isComponent(sc->proj)) {
+		fprintf(stderr,
+		    "%s: component tags not yet supported.\n", prog);
 		return (0);
 	}
 
@@ -14202,6 +14075,9 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 #define	f5d(n)	show_d(s, out, "%05d", n)
 #define	fs(str)	show_s(s, out, str, -1)
 #define	fsd(d)	show_s(s, out, d.dptr, d.dsize)
+#define	fm(ptr, len) show_s(s, out, ptr, len)
+
+	unless (s && d) return (nullVal);
 
 	/*
 	 * Allow keywords of the form "word|rev"
@@ -15008,14 +14884,6 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		return (nullVal);
 	}
 
-	case KW_CSETFILE: /* CSETFILE */ {
-		if (s->tree->csetFile) {
-			fs(s->tree->csetFile);
-			return (strVal);
-		}
-		return nullVal;
-	}
-
 	case KW_RANDOM: /* RANDOM */ {
 		if (s->tree->random) {
 			fs(s->tree->random);
@@ -15785,10 +15653,84 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		fs("1");
 		return (strVal);
 
-	case KW_REPO_ID: /* REPO_ID */ {
-		fs(proj_repoID(0));
+	case KW_ID: /* ID */
+		if (d->csetFile) {
+			fs(d->csetFile);
+			return (strVal);
+		}
+		return (nullVal);
+
+	case KW_PRODUCT_ID: /* PRODUCT_ID */ {
+		project *proj;
+
+		/*
+		 * The reason this is not just
+		 * if (proj = proj_product(s->proj))
+		 * is that if there is a standalone copied into a product
+		 * it will find the product that way.  We want this to
+		 * return the value if and only if it is our product.
+		 */
+		if (proj_isProduct(s->proj)) {
+			proj = s->proj;
+		} else if (proj_isComponent(s->proj)) {
+			proj = proj_product(s->proj);
+		} else {
+			return (nullVal);
+		}
+		fs(proj_rootkey(proj));
 		return (strVal);
 	}
+
+	case KW_CSETFILE: /* CSETFILE */  /* compat */
+	case KW_PACKAGE_ID: /* PACKAGE_ID */ {
+		/*
+		 * Rootkey of repository containing file
+		 * Note that component->proj used to vary based on how it
+		 * was inited, from product or from component; that is
+		 * no longer the case so this code is simple.
+		 */
+		if (s->proj) {
+			fs(proj_rootkey(s->proj));
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
+	}
+	case KW_ATTACHED_ID: /* ATTACHED_ID */ {
+		project *proj = s->proj;
+
+		if (proj) {
+			if (CSET(s) && proj_isComponent(proj)) {
+				proj = proj_product(proj);
+			}
+			fs(proj_rootkey(proj));
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
+	}
+
+	case KW_REPO_ID: /* REPO_ID */
+		/* repo_id of repository containing file */
+		if  (s->proj) {
+			fs(proj_repoID(s->proj));
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
+
+	case KW_REPOTYPE: /* REPOTYPE */
+		if (proj_isComponent(s->proj)) {
+			fs("component");
+		} else if (proj_isProduct(s->proj)) {
+			fs("product");
+		} else if (s->proj) {
+			fs("traditional");
+		} else {
+			fs("SCCS");
+		}
+		return (strVal);
+
 	case KW_BAMHASH: /* BAMHASH */
 		if (d->hash) {
 			fs(d->hash);
@@ -15803,12 +15745,14 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		}
 		return (nullVal);
 
-	case KW_CSET_MD5ROOTKEY: /* CSET_MD5ROOTKEY */ 
-		if (p = proj_md5rootkey(s ? s->proj : 0)) {
-			fs(p);
+	case KW_CSET_MD5ROOTKEY: /* CSET_MD5ROOTKEY */
+		/* md5rootkey of repository containing file */
+		if (s->proj) {
+			fs(proj_md5rootkey(s->proj));
 			return (strVal);
+		} else {
+			return (nullVal);
 		}
-		return (nullVal);
 
 	case KW_BAMENTRY: /* BAMENTRY */
 		if (BAM(s) && (p = bp_lookup(s, d))) {
@@ -15907,6 +15851,45 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 			}
 		}
 		return (nullVal);
+
+	case KW_ATTR_LICENSE: /* ATTR_LICENSE */
+	case KW_ATTR_VERSION: /* ATTR_VERSION */
+	case KW_ATTR_ID: /* ATTR_ID */
+	case KW_ATTR_HERE: /* ATTR_HERE */
+	case KW_ATTR_TEST: /* ATTR_TEST */
+	{
+		int	cnt, i;
+		FILE	*f;
+		char	buf[MAXLINE];
+		char	cmd[MAXLINE];
+
+		unless (CSET(s)) return (nullVal);
+
+		/*
+		 * Return attribute for a given cset
+		 * XXX: Like :ROOTLOG:, doesn't do $each()
+		 *
+		 * This version is not efficient. Each fetch must walk
+		 * the ChangeSet file weave and the weave of the attr
+		 * file.  This can be cached and made fast in the future.
+		 * Do an all-rev cset walk like checksum.c and then cache
+		 * the mapping from csetkey->attribkey.  Then the same walk on
+		 * on attr file can save the values.
+		 */
+		sccs_sdelta(s, d, buf);
+		sprintf(cmd,
+		    "bk -R get -qp -r@'%s' " ATTR "| bk _getkv - %.*s",
+		    buf, len - 5, kw + 5);	// yuck - strlen(ATTR)
+		cnt = 0;
+		if (f = popen(cmd, "r")) {
+			while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
+				fm(buf, i);
+				cnt += i;
+			}
+			pclose(f);
+		}
+		return (cnt ? strVal : nullVal);
+	}
 	default:
 		return (notKeyword);
 	}
@@ -16513,21 +16496,27 @@ delta	*
 sccs_findMD5(sccs *s, char *md5)
 {
 	delta	*d;
-	datum	k, v;
+	u32	dd;
+	char	dkey[MAXKEY];
 
-	unless (s->findkeydb) s->findkeydb = mdbm_mem();
-	unless (s->keydb_md5) {
-		s->keydb_md5 = 1;
+	unless (s && HASGRAPH(s)) return (0);
+
+	unless (s->findkeydb) {
+		s->findkeydb = hash_new(HASH_MEMHASH);
 		for (d = s->table; d; d = NEXT(d)) {
 			sccs_findKeyUpdate(s, d);
 		}
 	}
-	k.dptr = md5;
-	k.dsize = strlen(md5) + 1;
-	v = mdbm_fetch(s->findkeydb, k);
-	if (v.dsize) {
-		memcpy(&d, v.dptr, sizeof(d));
-		return (d);
+
+	strncpy(dkey, md5, 8);
+	dkey[8] = 0;
+	dd = strtoul(dkey, 0, 16);
+
+	unless (hash_fetch(s->findkeydb, &dd, sizeof(dd))) return (0);
+	d = *(delta **)s->findkeydb->vptr;
+	for (; d && (dd == d->date); d = NEXT(d)) {
+		sccs_md5delta(s, d, dkey);
+		if (streq(md5, dkey)) return (d);
 	}
 	return (0);
 }
@@ -16557,25 +16546,38 @@ delta *
 sccs_findKey(sccs *s, char *key)
 {
 	delta	*d;
-	datum	k, v;
+	char	*t;
+	u32	dd;
+	char	dkey[MAXKEY];
 
 	unless (s && HASGRAPH(s)) return (0);
 	debug((stderr, "findkey(%s)\n", key));
 	unless (strchr(key, '|')) return (sccs_findMD5(s, key));
 
-	unless (s->findkeydb) s->findkeydb = mdbm_mem();
-	unless (s->keydb_long) {
-		s->keydb_long = 1;
+	unless (s->findkeydb) {
+		s->findkeydb = hash_new(HASH_MEMHASH);
 		for (d = s->table; d; d = NEXT(d)) {
 			sccs_findKeyUpdate(s, d);
 		}
 	}
-	k.dptr = key;
-	k.dsize = strlen(key) + 1;
-	v = mdbm_fetch(s->findkeydb, k);
-	if (v.dsize) {
-		memcpy(&d, v.dptr, sizeof(d));
-		return (d);
+
+	unless (t = strchr(key, '|')) return (0);	/* path */
+	unless (t = strchr(t+1, '|')) return (0);	/* date */
+
+	dd = sccs_date2time(t+1, 0);
+	unless (hash_fetch(s->findkeydb, &dd, sizeof(dd))) return (0);
+	d = *(delta **)s->findkeydb->vptr;
+	for (; d && (dd == d->date); d = NEXT(d)) {
+		sccs_sdelta(s, d, dkey);
+		if (s->keydb_nopath) {
+			if (!keycmp_nopath(key, dkey)) return (d);
+		} else {
+			if (streq(key, dkey)) return (d);
+		}
+		if (!LONGKEY(s) && (t = sccs_iskeylong(dkey))) {
+			*t = 0;
+			if (streq(key, dkey)) return (d);
+		}
 	}
 	return (0);
 }
@@ -16583,32 +16585,18 @@ sccs_findKey(sccs *s, char *key)
 void
 sccs_findKeyUpdate(sccs *s, delta *d)
 {
-	datum	k, v;
-	char	*t;
-	char	key[MAXKEY];
+	u32	dd;
 
 	unless (s->findkeydb) return;
-	if (s->keydb_long) {
-		sccs_sdelta(s, d, key);
-		k.dptr = key;
-		k.dsize = strlen(key) + 1;
-		v.dptr = (void*)&d;
-		v.dsize = sizeof(d);
-		mdbm_store(s->findkeydb, k, v, MDBM_REPLACE);
 
-		if (!LONGKEY(s) && (t = sccs_iskeylong(k.dptr))) {
-			*t = 0;
-			k.dsize = strlen(k.dptr) + 1;
-			mdbm_store(s->findkeydb, k, v, MDBM_REPLACE);
+	dd = d->date;
+	unless (hash_insert(s->findkeydb,
+	    &dd, sizeof(dd), &d, sizeof(delta *))) {
+		/* date conflict */
+		if (d->serial > (*(delta **)(s->findkeydb->vptr))->serial) {
+			hash_store(s->findkeydb,
+			    &dd, sizeof(dd), &d, sizeof(delta *));
 		}
-	}
-	if (s->keydb_md5) {
-		sccs_md5delta(s, d, key);
-		k.dptr = key;
-		k.dsize = strlen(key) + 1;
-		v.dptr = (void*)&d;
-		v.dsize = sizeof(d);
-		mdbm_store(s->findkeydb, k, v, MDBM_REPLACE);
 	}
 }
 
@@ -16750,6 +16738,33 @@ sccs_key2md5(char *rootkey, char *deltakey, char *b64)
 	p = strchr(p+1, '|');
 	sprintf(b64, "%08x%s", (u32)sccs_date2time(p+1, 0), hash);
 	free(hash);
+}
+
+void
+sccs_setPath(sccs *s, delta *d, char *new)
+{
+	delta	*p = PARENT(s, d);
+	char	*orig;
+
+	orig = PATH_SORTPATH(d->pathname);
+	unless (*orig) orig = d->pathname;
+	if (streq(orig, new)) orig = "";
+
+	/* new and orig are now set; just figure out how to store */
+
+	if (p && streq(new, p->pathname) &&
+	    streq(orig, PATH_SORTPATH(p->pathname))) {	/* duppath */
+		unless (d->flags & D_DUPPATH) free(d->pathname);
+		d->pathname = p->pathname;
+		d->flags |= D_DUPPATH;
+	} else unless (streq(new, d->pathname) &&
+	    streq(orig, PATH_SORTPATH(d->pathname))) {	/* new mem */
+		new = PATH_BUILD(new, orig);
+		assert(new);
+		unless (d->flags & D_DUPPATH) free(d->pathname);
+		d->pathname = new;
+		d->flags &= ~D_DUPPATH;
+	} /* else pathname is good as it is */
 }
 
 /*
@@ -16929,10 +16944,11 @@ sccs_reCache(int quiet)
 int
 gone(char *key, MDBM *db)
 {
-	unless (db) return (0);
-	unless (strchr(key, '|')) return (0);
-	if (mdbm_fetch_str(db, key) != 0) return (1);
-	
+	if (db) {
+		unless (strchr(key, '|')) return (0);
+		if (mdbm_fetch_str(db, key) != 0) return (1);
+	}
+
 	/*
 	 * OK, so it's not marked as gone.  It might be a changeset rootkey
 	 * for a component and we're going to let those be considered 

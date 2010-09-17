@@ -1,4 +1,7 @@
 #include "../sccs.h"
+#ifdef	RLIMIT_DEFAULT_SUCKS
+#include <sys/resource.h>
+#endif
 
 /*
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
@@ -22,6 +25,25 @@ platformInit(char **av)
 			      "BASH_ENV", "", 0};
 	char	delim[2];
 	char	buf2[MAXPATH];
+#ifdef	RLIMIT_DEFAULT_SUCKS
+	struct	rlimit r;
+
+	/*
+	 * This crap is for NetBSD which comes with a retardedly small data
+	 * limit.  We wack it up.
+	 */
+	bzero(&r, sizeof(r));
+	if (getrlimit(RLIMIT_DATA, &r) == 0) {
+		r.rlim_cur = r.rlim_max;
+		if (setrlimit(RLIMIT_DATA, &r)) {
+			/* maybe they don't let us go all the way up, try 3/4 */
+			r.rlim_cur = r.rlim_max / 2;
+			r.rlim_cur += r.rlim_max / 4;
+			(void)setrlimit(RLIMIT_DATA, &r);
+			/* and pray */
+		}
+	}
+#endif
 
 	if ((p = getenv("BK_DEBUG_PLATFORM")) && *p) {
 		flags = 0;

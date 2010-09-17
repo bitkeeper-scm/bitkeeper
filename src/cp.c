@@ -74,8 +74,7 @@ cp(char *from, char *to, int force)
 	 * Try using the new filename as the original filename.
 	 * Only necessary in long/short key trees like BitKeeper.
 	 */
-	if (s->tree->pathname) free(s->tree->pathname);
-	s->tree->pathname = PATH_BUILD(_relativeName(gfile, 0, 0, 0, 0), "");
+	sccs_setPath(s, s->tree, _relativeName(gfile, 0, 0, 0, 0));
 	sccs_clearbits(s, D_CSET);
 	free(s->sfile);
 	s->sfile = sfile;

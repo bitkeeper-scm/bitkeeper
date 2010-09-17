@@ -159,3 +159,15 @@ then	echo failed to union the data in the file
 	exit 1
 fi
 echo OK
+
+echo $N Test fix to converge makepatch bug ..........................$NL
+cd "$HERE"
+bk clone $Q -r1.2 copy local-gone
+cd local-gone
+bk edit $Q BitKeeper/etc/gone
+echo data@bitmover.com >> BitKeeper/etc/gone
+bk delta $Q -ylocal-work BitKeeper/etc/gone
+bk commit $Q -ylocal-gone
+# Used to trigger sfio pull
+bk pull $Q || fail
+echo OK

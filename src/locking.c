@@ -783,37 +783,52 @@ nested_getTimeout(int created)
 	return (created ? 7200 : 1800);
 }
 
-char *
-prettyNLID(char *nlid)
+private char *
+prettyNlock(nlock *l)
 {
 	struct nlid_s	*nl;
 	char		*ret, *spid;
 
 
-	unless (nl = explodeNLID(nlid)) {
-		return (aprintf("Invalid nested lock: %s", nlid));
+	unless (nl = explodeNLID(l->nlid)) {
+		return (aprintf("Invalid nested lock: %s", l->nlid));
 	}
 	spid = aprintf("%d", nl->pid);
-	ret = aprintf("\t%s locked by %s@%s (bk %s/%s) %s ago",
+	ret = aprintf("\t%s locked by %s@%s (bk %s/%s) %s ago %s",
 	    (nl->kind == 'r') ? "Read" : "Write",
 	    nl->user, nl->host, nl->prog,
 	    (nl->http == 'h') ? "http" : spid,
-	    age(time(0) - nl->created, " "));
+	    age(time(0) - nl->created, " "),
+	    l->stale?"(stale)":"");
 	free(spid);
 	freeNLID(nl);
 	return (ret);
 }
 
-int
-cmpNLID(const void *a, const void *b)
+void
+freeNlock(void *a)
+{
+	nlock	*nl = (nlock *)a;
+
+	unless (nl) return;
+	if (nl->nlid) free(nl->nlid);
+	free(nl);
+}
+
+private int
+cmpNlock(const void *a, const void *b)
 {
 	char	*p1, *p2;
+	nlock	*nl1, *nl2;
 	int	ia, ib, i;
 
-	p1 = *((char **)a);
+	/* should we sort the stales first? */
+	nl1 = *((nlock **)a);
+	nl2 = *((nlock **)b);
+	p1 = nl1->nlid;
+	p2 = nl2->nlid;
 	for (i = 0; i < 5; i++) p1 = strchr(p1, '|');
 	ia = strtol(p1, 0, 10);
-	p2 = *((char **)b);
 	for (i = 0; i < 5; i++) p2 = strchr(p2, '|');
 	ib = strtol(p2, 0, 10);
 	return (ia - ib);
@@ -878,7 +893,7 @@ nested_wrlock(project *p)
 
 	if (lockers = nested_lockers(p, 0, 1)) {
 		nl_errno = NL_ALREADY_LOCKED;
-		freeLines(lockers, free);
+		freeLines(lockers, freeNlock);
 		goto out;
 	}
 
@@ -1017,6 +1032,7 @@ nested_lockers(project *p, int listStale, int removeStale)
 {
 	char	**files, **lockers = 0;
 	char	*readers_dir, *writer;
+	nlock	*nl;
 	int	i;
 
 	unless (proj_isEnsemble(p) && (p = proj_product(p))) {
@@ -1029,14 +1045,16 @@ nested_lockers(project *p, int listStale, int removeStale)
 	files = getdir(readers_dir);
 	EACH(files) {
 		if (strneq(files[i], "NL", 2)) {
-			char	*fn, *p;
+			char	*fn;
 
 			fn = aprintf("%s/%s", readers_dir, files[i]);
 			if (nested_isStale(fn)) {
 				if (listStale) {
-					p = loadfile(fn, 0);
-					chomp(p);
-					lockers = addLine(lockers, p);
+					nl = new(nlock);
+					nl->nlid = loadfile(fn, 0);
+					chomp(nl->nlid);
+					nl->stale = 1;
+					lockers = addLine(lockers, nl);
 				}
 				if (removeStale) {
 					if (unlink(fn)) {
@@ -1050,9 +1068,10 @@ nested_lockers(project *p, int listStale, int removeStale)
 				free(fn);
 				continue;
 			}
-			p = loadfile(fn, 0);
-			chomp(p);
-			lockers = addLine(lockers, p);
+			nl = new(nlock);
+			nl->nlid = loadfile(fn, 0);
+			chomp(nl->nlid);
+			lockers = addLine(lockers, nl);
 			free(fn);
 		}
 	}
@@ -1062,16 +1081,17 @@ nested_lockers(project *p, int listStale, int removeStale)
 	writer = aprintf("%s/" NESTED_WRITER_LOCK, proj_root(p));
 	if (exists(writer)) {
 		unless (nested_isStale(writer) && !listStale) {
-			char	*p;
 
-			p = loadfile(writer, 0);
-			chomp(p);
-			lockers = addLine(lockers, p);
+			nl = new(nlock);
+			nl->nlid = loadfile(writer, 0);
+			chomp(nl->nlid);
+			nl->stale = 1;
+			lockers = addLine(lockers, nl);
 		}
 	}
 	free(writer);
 	/* sort by time */
-	sortLines(lockers, cmpNLID);
+	sortLines(lockers, cmpNlock);
 	return (lockers);
 }
 
@@ -1194,7 +1214,7 @@ nested_unlock(project *p, char *nlid)
 	TRACE("nested_unlocked: %s '%s'", tfile, nlid);
 	free(tfile);
 	if (lockers = nested_lockers(p, 0, 1)) {
-		freeLines(lockers, free);
+		freeLines(lockers, freeNlock);
 	} else {
 		/* no lockers, remove RESYNC */
 		unlockResync(p);
@@ -1241,8 +1261,10 @@ nested_forceUnlock(project *p, int kind)
 		/* remove readers */
 		lockers = nested_lockers(p, 0, 1);
 		EACH(lockers) {
-			if (lockers[i][0] == 'r') {
-				tfile = hashstr(lockers[i], strlen(lockers[i]));
+			nlock	*nl = (nlock *)(lockers[i]);
+
+			if (nl->nlid[0] == 'r') {
+				tfile = hashstr(nl->nlid, strlen(nl->nlid));
 				tpath = aprintf("%s/" READER_LOCK_DIR "/NL%s",
 				    proj_root(p), tfile);
 				if (unlink(tpath)) errors++;
@@ -1250,12 +1272,13 @@ nested_forceUnlock(project *p, int kind)
 				free(tfile);
 			}
 		}
-		freeLines(lockers, free);
+		freeLines(lockers, freeNlock);
 	}
 	if (kind & 0x2) {
 		tpath = proj_fullpath(p, NESTED_WRITER_LOCK);
 		if (exists(tpath) && unlink(tpath)) errors++;
 	}
+	unlockResync(p);
 	if (nlock_release(p)) TRACE("%s", "nlock_release failed");
 	return (errors);
 }
@@ -1288,8 +1311,12 @@ nested_errmsg(void)
 	msg = aprintf("%s\n%s\n",
 	    errMsgs[nl_errno],
 	    ((lines = joinLines("\n",
-		    mapLines(lockers, (void*)prettyNLID, free)))
+		    mapLines(lockers, (void*)prettyNlock, freeNlock)))
 		? lines : "No lockers found"));
+	/*
+	 * It's free and not freeNlock here because the mapLines
+	 * changes the items to strings.
+	 */
 	freeLines(lockers, free);
 	return (msg);
 }
@@ -1300,7 +1327,8 @@ nested_printLockers(project *p, FILE *out)
 	char	**lockers;
 	int	i;
 
-	lockers = mapLines(nested_lockers(p, 1, 0), (void*)prettyNLID, free);
+	lockers = mapLines(nested_lockers(p, 1, 0),
+	    (void*)prettyNlock, freeNlock);
 	repository_lockers(p);
 	EACH (lockers) {
 		fprintf(out, "%s\n", lockers[i]);

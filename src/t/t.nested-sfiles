@@ -32,6 +32,7 @@ bk sfiles > GOT
 cat <<EOF > WANT
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.aliases
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -51,6 +52,7 @@ bk sfiles . > GOT
 cat <<EOF > WANT
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.aliases
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -80,6 +82,7 @@ echo $N bk sfiles a/b/c .............................................$NL
 bk sfiles a/b/c > GOT
 cat <<EOF > WANT
 a/b/c/SCCS/s.ChangeSet
+a/b/c/BitKeeper/etc/SCCS/s.attr
 a/b/c/BitKeeper/etc/SCCS/s.collapsed
 a/b/c/BitKeeper/etc/SCCS/s.config
 a/b/c/BitKeeper/etc/SCCS/s.gone
@@ -116,6 +119,7 @@ bk sfiles -N > GOT
 cat <<EOF > WANT
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.aliases
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -123,23 +127,27 @@ BitKeeper/etc/SCCS/s.ignore
 a/b/SCCS/s.f
 a/b/c1/SCCS/s.f
 a/b/c/SCCS/s.ChangeSet
+a/b/c/BitKeeper/etc/SCCS/s.attr
 a/b/c/BitKeeper/etc/SCCS/s.collapsed
 a/b/c/BitKeeper/etc/SCCS/s.config
 a/b/c/BitKeeper/etc/SCCS/s.gone
 a/b/c/BitKeeper/etc/SCCS/s.ignore
 a/b/c/d/SCCS/s.f
 a/b/c/d/e/SCCS/s.ChangeSet
+a/b/c/d/e/BitKeeper/etc/SCCS/s.attr
 a/b/c/d/e/BitKeeper/etc/SCCS/s.collapsed
 a/b/c/d/e/BitKeeper/etc/SCCS/s.config
 a/b/c/d/e/BitKeeper/etc/SCCS/s.gone
 a/b/c/d/e/BitKeeper/etc/SCCS/s.ignore
 a/b/c/d/e/f/SCCS/s.f
 gcc/SCCS/s.ChangeSet
+gcc/BitKeeper/etc/SCCS/s.attr
 gcc/BitKeeper/etc/SCCS/s.collapsed
 gcc/BitKeeper/etc/SCCS/s.config
 gcc/BitKeeper/etc/SCCS/s.gone
 gcc/BitKeeper/etc/SCCS/s.ignore
 gdb/SCCS/s.ChangeSet
+gdb/BitKeeper/etc/SCCS/s.attr
 gdb/BitKeeper/etc/SCCS/s.collapsed
 gdb/BitKeeper/etc/SCCS/s.config
 gdb/BitKeeper/etc/SCCS/s.gone
@@ -167,18 +175,21 @@ bk sfiles -r > GOT
 cat <<EOF > WANT
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.aliases
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 a/b/SCCS/s.f
 a/b/c/SCCS/s.ChangeSet
+a/b/c/BitKeeper/etc/SCCS/s.attr
 a/b/c/BitKeeper/etc/SCCS/s.collapsed
 a/b/c/BitKeeper/etc/SCCS/s.config
 a/b/c/BitKeeper/etc/SCCS/s.gone
 a/b/c/BitKeeper/etc/SCCS/s.ignore
 a/b/c/d/SCCS/s.f
 a/b/c/d/e/SCCS/s.ChangeSet
+a/b/c/d/e/BitKeeper/etc/SCCS/s.attr
 a/b/c/d/e/BitKeeper/etc/SCCS/s.collapsed
 a/b/c/d/e/BitKeeper/etc/SCCS/s.config
 a/b/c/d/e/BitKeeper/etc/SCCS/s.gone
@@ -186,16 +197,19 @@ a/b/c/d/e/BitKeeper/etc/SCCS/s.ignore
 a/b/c/d/e/f/SCCS/s.f
 a/b/c1/SCCS/s.f
 gcc/SCCS/s.ChangeSet
+gcc/BitKeeper/etc/SCCS/s.attr
 gcc/BitKeeper/etc/SCCS/s.collapsed
 gcc/BitKeeper/etc/SCCS/s.config
 gcc/BitKeeper/etc/SCCS/s.gone
 gcc/BitKeeper/etc/SCCS/s.ignore
 gdb/SCCS/s.ChangeSet
+gdb/BitKeeper/etc/SCCS/s.attr
 gdb/BitKeeper/etc/SCCS/s.collapsed
 gdb/BitKeeper/etc/SCCS/s.config
 gdb/BitKeeper/etc/SCCS/s.gone
 gdb/BitKeeper/etc/SCCS/s.ignore
 standalone/SCCS/s.ChangeSet
+standalone/BitKeeper/etc/SCCS/s.attr
 standalone/BitKeeper/etc/SCCS/s.collapsed
 standalone/BitKeeper/etc/SCCS/s.config
 standalone/BitKeeper/etc/SCCS/s.gone
@@ -262,12 +276,14 @@ bk sfiles -r > GOT
 cat <<EOF > WANT
 b/SCCS/s.f
 b/c/SCCS/s.ChangeSet
+b/c/BitKeeper/etc/SCCS/s.attr
 b/c/BitKeeper/etc/SCCS/s.collapsed
 b/c/BitKeeper/etc/SCCS/s.config
 b/c/BitKeeper/etc/SCCS/s.gone
 b/c/BitKeeper/etc/SCCS/s.ignore
 b/c/d/SCCS/s.f
 b/c/d/e/SCCS/s.ChangeSet
+b/c/d/e/BitKeeper/etc/SCCS/s.attr
 b/c/d/e/BitKeeper/etc/SCCS/s.collapsed
 b/c/d/e/BitKeeper/etc/SCCS/s.config
 b/c/d/e/BitKeeper/etc/SCCS/s.gone

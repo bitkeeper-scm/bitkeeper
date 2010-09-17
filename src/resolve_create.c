@@ -14,7 +14,7 @@ res_abort(resolve *rs)
 			sccs_free(rs->s);
 			rs->s = 0;
 		}
-		resolve_cleanup(rs->opts, CLEAN_RESYNC);
+		resolve_cleanup(rs->opts, CLEAN_ABORT);
 	}
 	return (0);
 }
@@ -359,6 +359,12 @@ prs_common(resolve *rs, sccs *s, char *a, char *b)
 int
 res_quit(resolve *rs)
 {
+	if (proj_isEnsemble(0)) {
+		// warn they are about to lose info
+		unless (confirm(QUIT_WARNING)) {
+			return (0);
+		}
+	}
 	assert(exists(RESYNC2ROOT "/" ROOT2RESYNC));
 	chdir(RESYNC2ROOT);
 	proj_restoreAllCO(0, 0, 0);

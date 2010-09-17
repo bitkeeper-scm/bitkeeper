@@ -8,6 +8,7 @@ getkv_main(int ac, char **av)
 	char	*file;
 	char	*key;
 	hash	*h;
+	FILE	*f;
 	int	ret = 2;
 
 	unless (av[1] && (!av[2] || !av[3])) {
@@ -17,7 +18,12 @@ getkv_main(int ac, char **av)
 	file = av[1];
 	key = av[2];
 
-	if (h = hash_fromFile(0, file)) {
+	f = streq(file, "-") ? stdin : fopen(file, "r");
+	unless (f) {
+		fprintf(stderr, "%s: unable to open %s\n", prog, file);
+		return (1);
+	}
+	if (h = hash_fromStream(0, f)) {
 		unless (key) {
 			EACH_HASH(h) puts(h->kptr);
 			ret = 0;
@@ -27,6 +33,7 @@ getkv_main(int ac, char **av)
 		}
 		hash_free(h);
 	}
+	unless (streq(file, "-")) fclose(f);
 	return (ret);
 
 }

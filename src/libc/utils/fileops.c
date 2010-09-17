@@ -49,13 +49,16 @@ fileCopy(char *from, char *to)
 int
 fileLink(char *from, char *to)
 {
+	char	tofile[MAXPATH];
+
 	if (link(from, to)) {
-		if (mkdirf(to)) {
-			perror(to);
+		strcpy(tofile, to);	/* 'to' might be read only */
+		if (mkdirf(tofile)) {
+			perror(tofile);
 			return (-1);
 		}
 		/* fileCopy already calls perror on failure */
-		if (link(from, to) && fileCopy(from, to)) return (-1);
+		if (link(from, tofile) && fileCopy(from, tofile)) return (-1);
 	}
 	return (0);
 }
@@ -66,9 +69,12 @@ fileLink(char *from, char *to)
  * - will revert to fileCopy()/unlink if rename() fails
  */
 int
-fileMove(char *src, char *dest)
+fileMove(char *src, char *to)
 {
-	if (rename(src, dest)) {
+	char	dest[MAXPATH];
+
+	if (rename(src, to)) {
+		strcpy(dest, to);	/* 'to' might be read only */
 		/* try making the dir and see if that helps */
 		mkdirf(dest);
 		if (rename(src, dest)) {

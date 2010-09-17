@@ -461,8 +461,7 @@ private int
 pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 {
 	int	rc = 0, i;
-	FILE	*info, *f, *fout;
-	char	*t, *p;
+	FILE	*info;
 	char	**rmt_aliases = 0;
 	hash	*rmt_urllist = 0;
 	char	buf[MAXPATH * 2];
@@ -560,23 +559,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			rc = 1;
 			goto done;
 		}
-		if (opts.port) {
-			touch("RESYNC/SCCS/d.ChangeSet", 0666);
-
-			/* fixing CSETFILE ptr in RESYNC */
-			f = popen("bk sfiles RESYNC", "r");
-			sprintf(buf, "bk admin -C'%s' -", proj_rootkey(0));
-			fout = popen(buf, "w");
-			while (t = fgetline(f)) {
-				p = strrchr(t, '/');
-				/* skip cset files */
-				if (streq(p, "/s.ChangeSet")) continue;
-				fputs(t, fout);
-				fputc('\n', fout);
-			}
-			pclose(f);
-			pclose(fout);
-		}
+		if (opts.port) touch("RESYNC/SCCS/d.ChangeSet", 0666);
 		if (proj_isProduct(0)) {
 			unless (opts.verbose || opts.quiet || title) {
 				/* Finish the takepatch progress bar. */

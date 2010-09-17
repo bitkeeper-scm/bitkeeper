@@ -24,6 +24,11 @@ typedef	struct	sfile {
 	int	ignored;	// file is ignored or not?
 	int	excluded;	// file is hard excluded by the user or not?
 	int	inProduct;	// Is this file part of the product?
+	int	commented;	// Whether this file had comments on startup.
+				// This variable is not used outside of the
+				// initial population of the list, as we want
+				// to trust what is on disk more than what we
+				// have in memory.
 } sfile;
 
 string  msgs{string};	    // standard messages
@@ -130,9 +135,9 @@ getNumFiles()
 int
 nested()
 {
-	string	res = bk("product");
+	string	res = bk("repotype");
 
-	return (res ne "");
+	return (res ne "traditional");
 }
 
 string[]
@@ -445,11 +450,9 @@ readSfilesProgress(FILE fd, string file, int pos)
 void
 updateGUI()
 {
-	int	now = Clock_milliseconds();
-
-	if ((now - self.last_update) >= 250) {
-		self.last_update = now;
+	if ((Clock_milliseconds() - self.last_update) >= 250) {
 		update();
+		self.last_update = Clock_milliseconds();
 	}
 }
 
@@ -495,6 +498,7 @@ readSfilesOutput(string file, int pos)
 		sf.ignored = 0;
 		sf.excluded = 0;
 		sf.inProduct = 0;
+		sf.commented = hasComments;
 
 		if (pending) {
 			sf.type = "pending";
@@ -595,6 +599,7 @@ findFiles()
 			sf.icon = img_cset;
 			sf.ignored = 0;
 			sf.excluded = 0;
+			sf.commented = -1;
 
 			insertFile(sf);
 		}
@@ -1309,6 +1314,7 @@ quit()
 	saveComments();
 	if (self.changed) {
 		if (catch("toplevel ${top}")) return;
+		Wm_title((string)top, "Quit Citool?");
 		Toplevel_configure(top, borderwidth: 0, background: bg);
 		image = joinpath(getenv("BK_BIN"), "gui", "images",
 		    "bklogo.gif");
@@ -1431,6 +1437,10 @@ isCommented(sfile sf)
 	string	comments;
 
 	if (sf.type eq "pending") return (1);
+	if (self.sfiles_scanning && sf.commented > -1) {
+		self.files{sf.name}.commented = -1;
+		return (sf.commented);
+	}
 	comments = getComments(sf);
 	if (sf.node eq getSelectedNode()) comments = getCurrentComments();
 	if ((comments ne "") && !isTemplateComment(sf, comments)) return (1);
@@ -1744,8 +1754,8 @@ doCommit()
 
 	saveComments();
 	if (isRepoLocked()) {
-		displayMessage(msgs{"repoLocked"}, 1);
-		return;
+		popupMessage(E: msgs{"repoLocked"});
+		exit(1);
 	}
 
 	unless (self.cnt_commented) {
@@ -1869,8 +1879,8 @@ commitComponent(string comp)
 			string	msg = "The checkin failed.  See the "
 			    "bottom pane for the reason.\n\ncitool "
 			    "will exit when you click OK.\n";
-			displayMessage(msg, 1);
-			exit();
+			popupMessage(E: msg);
+			exit(1);
 		}
 	}
 
@@ -1927,34 +1937,30 @@ commitComponent(string comp)
 
 		if ((bgExecInfo("stderr") ne "")
 		    || (bgExecInfo("stdout") ne "")) {
-			string	type = "-I";
-			string	title = "bk commit";
-			string	message;
-			string	out = tmpfile("bk_msg");
+			string	type;
+			string	message = "bk commit";;
 
-			if ((int)err != 0 && (int)err != 100) type = "-E";
+			if ((int)err != 0 && (int)err != 100) {
+				type = "-E";
+				message .= " failed with error ${err}:";
+			} else {
+				type = "-I";
+				message .= " output:";
+			}
+			message .= "\n";
+
 			if (bgExecInfo("stderr") ne "") {
-				message = trim(bgExecInfo("stderr"));
+				message .= trim(bgExecInfo("stderr"));
 				if (bgExecInfo("stdout") ne "") {
 					append(&message, "\n--\n");
 					append(&message,
 					    trim(bgExecInfo("stdout")));
 				}
 			} else {
-				message = trim(bgExecInfo("stdout"));
-			}
-			fd = fopen(out, "w");
-			if (type eq "-I") {
-				puts(fd, "bk commit output:\n");
-			} else {
-				puts(fd, "bk commit failed with "
-				    "error ${err}:\n");
+				message .= trim(bgExecInfo("stdout"));
 			}
 
-			puts(nonewline:, fd, message);
-			fclose(fd);
-			bgExec("bk", "msgtool", type, T: title, F: out);
-			unlink(out);
+			popupMessage(type, message);
 		}
 
 		deleteCommentFile(cset.file);

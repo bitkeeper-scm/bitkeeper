@@ -171,6 +171,7 @@ bkd
 binpool => bam
 cat
 _catfile	# bsd contrib/cat.c
+_cat_partition remote
 cfile
 changes
 check
@@ -186,7 +187,7 @@ components	# old compat code
 comps
 config
 cp
-_cpartition
+partition
 create
 crypto
 cset
@@ -294,7 +295,6 @@ platform
 _popensystem
 port => pull
 _probekey restricted
-product
 _progresstest
 prompt
 prs
@@ -316,6 +316,7 @@ _registry
 renumber
 repair
 repogca
+repotype
 relink
 repo
 resolve
@@ -350,7 +351,6 @@ _stattest
 status
 stripdel
 _strings
-surgery
 _svcinfo
 synckeys
 tagmerge

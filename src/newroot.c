@@ -55,9 +55,8 @@ private int
 newroot(char *ranbits, int quiet, int verbose, char *comments)
 {
 	sccs	*s;
-	int	rc = 0, n = 0, i;
+	int	rc = 0;
 	char	*p, *oldbamdir;
-	FILE	*f;
 	ticker	*tick = 0;
 	char	cset[] = CHANGESET;
 	char	buf[MAXPATH];
@@ -89,19 +88,7 @@ newroot(char *ranbits, int quiet, int verbose, char *comments)
 			return (1);
 		}
 	}
-
-	/* create initial ROOTLOG, if needed. */
-	EACH (s->text) {
-		if (streq(s->text[i], "@ROOTLOG")) {
-			i = -1;
-			break;
-		}
-	}
-	unless (i == -1) {
-		s->text = addLine(s->text, strdup("@ROOTLOG"));
-		sccs_sdelta(s, sccs_ino(s), key);
-		update_rootlog(s, key, "original");
-	}
+	sccs_defRootlog(s);
 
 	if (ranbits) {
 		if (strneq(ranbits, "B:", 2)) {
@@ -146,29 +133,6 @@ newroot(char *ranbits, int quiet, int verbose, char *comments)
 	unlink("BitKeeper/log/ROOTKEY");
 	unlink("BitKeeper/log/CSETFILE"); /* bk before 5.0 used this */
 	proj_reset(0);
-	f = popen("bk sfiles", "r");
-	unless (quiet || verbose) {
-		tick = progress_start(PROGRESS_BAR, repo_nfiles(0,0));
-	}
-	if (verbose) {
-		fprintf(stderr, "Pointing files at new changeset id...\n");
-	}
-	while (fnext(buf, f)) {
-		chop(buf);
-		s = sccs_init(buf, 0);
-		unless (s && HASGRAPH(s)) {
-			rc = 1;
-			if (s) sccs_free(s);
-			continue;
-		}
-		if (tick) progress(tick, ++n);
-		if (verbose) fprintf(stderr, "%s\n", s->gfile);
-		free(s->tree->csetFile);
-		s->tree->csetFile = strdup(key);
-		if (sccs_newchksum(s)) rc = 1;
-		sccs_free(s);
-	}
-	pclose(f);
 
 	/* move BAM data if location changed */
 	if (isdir(oldbamdir)) {
@@ -199,6 +163,10 @@ update_rootlog(sccs *s, char *key, char *comments)
 			s->text = addLine(s->text, aprintf("%s@%s %s%s",
 				s->tree->user, s->tree->hostname,
 				s->tree->sdate, s->tree->zone));
+		} else if (getenv("BK_REGRESSION")) {
+			s->text = addLine(s->text,
+				strdup("gina@bitmover.com "
+				    "10/09/08 16:47:48-07:00"));
 		} else {
 			s->text = addLine(s->text, aprintf("%s@%s %s%s",
 				sccs_user(), sccs_host(),
@@ -270,4 +238,30 @@ foundit:
 	}
 nolog:	/* no ROOTLOG, just return old rootkey */
 	sccs_sdelta(s, sccs_ino(s), key);
+}
+
+
+/*
+ * Created the original ROOTLOG if it is missing
+ */
+int
+sccs_defRootlog(sccs *cset)
+{
+	int	i;
+	char	key[MAXKEY];
+
+	/* create initial ROOTLOG, if needed. */
+	EACH (cset->text) {
+		if (streq(cset->text[i], "@ROOTLOG")) {
+			i = -1;
+			break;
+		}
+	}
+	unless (i == -1) {
+		cset->text = addLine(cset->text, strdup("@ROOTLOG"));
+		sccs_sdelta(cset, sccs_ino(cset), key);
+		update_rootlog(cset, key, "original");
+		return (1);
+	}
+	return (0);
 }

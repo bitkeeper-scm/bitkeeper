@@ -56,7 +56,6 @@ findcset_main(int ac, char **av)
 	sccs	*s;
 	char	*name;
 	char	*tagFile = 0;
-	char	*cmd;
 	char	key[MAXKEY];
 	int	save, c, flags = SILENT;
 	int	fileIdx;
@@ -150,12 +149,6 @@ next:		sccs_free(s);
 	/* update rootkey embedded in files */
 	unlink("BitKeeper/log/ROOTKEY");
 	proj_reset(0);
-	cmd = aprintf("bk -r admin -C'%s'", proj_rootkey(0));
- 	if (system(cmd)) {
- 		fprintf(stderr, "bk -r admin -Cid: failed\n");
- 		exit(1);
-	}
-	free(cmd);
 	return (0);
 }
 

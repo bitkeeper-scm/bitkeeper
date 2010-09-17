@@ -65,6 +65,7 @@ int		proj_idxsock(project *p);
 int		proj_hasOldSCCS(project *p);
 int		proj_remapDefault(int doremap);
 int		proj_hasDeltaTriggers(project *p);
+char*		proj_cset2rev(project *p, char *csetrev, char *rootkey);
 
 #define		chdir	proj_chdir
 

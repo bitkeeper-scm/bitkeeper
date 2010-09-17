@@ -1,0 +1,17 @@
+
+echo $N Test multi-line HERE file ...................................$NL
+nested project
+bk comps -hk | bk here set -
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+bk get -qkp BitKeeper/etc/attr | bk _getkv - HERE > WANT
+bk changes -r+ -d:ATTR_HERE: > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test no HERE attribute in a component .......................$NL
+cd gcc
+bk changes -r+ -nd:ATTR_HERE: > GOT
+test -s GOT && fail -f GOT attribute HERE in component
+echo OK

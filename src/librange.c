@@ -123,7 +123,7 @@ range_cutoff(char *spec)
 }
 
 void
-range_cset(sccs *s, delta *d)
+range_cset(sccs *s, delta *d, int bit)
 {
 	delta	*e;
 	ser_t	last, clean;
@@ -131,13 +131,13 @@ range_cset(sccs *s, delta *d)
 
 	unless (d = sccs_csetBoundary(s, d)) return; /* if pending */
 
-	d->flags |= D_SET;
+	d->flags |= bit;
 	s->rstop = d;
 
 	/* walk back all children until all deltas in this cset are marked */
 	clean = last = d->serial;
 	for (; d; d = NEXT(d)) {
-		unless (color = (d->flags & (D_SET|D_RED))) continue;
+		unless (color = (d->flags & (bit|D_RED))) continue;
 		if (color & D_RED) {
 			d->flags &= ~color;
 			color = D_RED;
@@ -147,7 +147,7 @@ range_cset(sccs *s, delta *d)
 				e->flags |= D_RED;
 			} else {
 				e->flags |= color;
-				if (color == D_SET) {
+				if (color == bit) {
 					if (e->serial < last) last = e->serial;
 				}
 			}
@@ -158,7 +158,7 @@ range_cset(sccs *s, delta *d)
 				e->flags |= D_RED;
 			} else {
 				e->flags |= color;
-				if (color == D_SET) {
+				if (color == bit) {
 					if (e->serial < last) last = e->serial;
 				}
 			}
@@ -168,7 +168,7 @@ range_cset(sccs *s, delta *d)
 	}
 	d = NEXT(d);		/* boundary for diffs.c (sorta wrong..) */
 	s->rstart = d ? d : s->tree;
-	s->state |= S_SET;
+	if (bit & D_SET) s->state |= S_SET;
 	for ( ; d; d = NEXT(d)) {
 		if (d->serial < clean) break;
 		d->flags &= ~D_RED;
@@ -440,6 +440,13 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 		d->flags &= ~mask;
 	}
 	return (ret);
+}
+
+int
+walkrevs_clrFlags(sccs *s, delta *d, void *token)
+{
+	d->flags &= ~p2int(token);
+	return (0);
 }
 
 int

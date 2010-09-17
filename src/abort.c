@@ -202,7 +202,7 @@ abortComponents(int leavepatch, int quiet)
 	assert(exists(ROOT2RESYNC "/BitKeeper"));
 
 	START_TRANSACTION();
-	chdir(ROOT2RESYNC);
+	if (chdir(ROOT2RESYNC)) perror(ROOT2RESYNC);
 	unless (csets_in = file2Lines(0, CSETS_IN)) {
 		errors++;
 		error("failed to load csets-in\n");
@@ -214,7 +214,7 @@ abortComponents(int leavepatch, int quiet)
 		error("failed to init ChangeSet file\n");
 		goto out;
 	}
-	chdir(RESYNC2ROOT);
+	if (chdir(RESYNC2ROOT)) perror(RESYNC2ROOT);
 	unless (n = nested_init(s, 0, csets_in, NESTED_PULL)) {
 		errors++;
 		error("nested_init failed\n");

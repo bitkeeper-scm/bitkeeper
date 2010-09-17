@@ -136,8 +136,9 @@ nfs_parse(char *p, int flags)
 	/* just path, no host */
 	unless (s = isHostColonPath(p)) {
 		if (r->user) {
-			remote_free(r);
-			return (0);
+			p -= strlen(r->user) + 1;
+			free(r->user);
+			r->user = 0;
 		}
 		if (IsFullPath(p)) {
 			r->path = strdup(p);

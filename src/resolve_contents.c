@@ -115,6 +115,12 @@ c_helptool(resolve *rs)
 int
 c_quit(resolve *rs)
 {
+	if (proj_isEnsemble(0)) {
+		// warn they are about to lose info
+		unless (confirm(QUIT_WARNING)) {
+			return (0);
+		}
+	}
 	if (LOCKED(rs->s)) {
 		/*
 		 * Mark to be able to find it next time, since

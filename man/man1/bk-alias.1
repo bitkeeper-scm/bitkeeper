@@ -6,8 +6,7 @@ bk alias \- manage aliases for lists of components
 .SH SYNOPSIS
 .B bk alias 
 .[B] add|rm|set|new|list
-.[B] \-Cehmk
-.[OPTreq] \-@ URL
+.[ARG] options
 .ARG name
 .[ARG] component \ ...
 .br
@@ -50,6 +49,8 @@ bk alias \- manage aliases for lists of components
 .[B] list
 .[OPTreq] \-r rev
 .[B] \-hm
+.[B] \-k
+.[B] \-vvv
 .br
 .SS SHOW AN ALIAS
 .B bk alias
@@ -58,6 +59,7 @@ bk alias \- manage aliases for lists of components
 .[B] \-e
 .[B] \-hm
 .[B] \-k
+.[B] \-vvv
 .ARG name
 .SH DESCRIPTION
 The 
@@ -178,7 +180,12 @@ i.e., "here" and
 In all other cases the names are case sensitive.
 .LP
 .SH OPTIONS
-.TP \-r<rev>
+.TP \-\@\ URL\ 
+.OPTreq \-@ URL
+When changing an alias leads to changing what components are here, include 
+.ARG URL
+in the list of places to look.
+.\" also  -@@filename   (but ok not to document)
 .tp
 .B \-C
 Normally, modifying the aliases database results in a changeset committing that
@@ -207,6 +214,12 @@ present to be listed.
 .OPTreq \-r rev
 Used when showing aliases; causes the aliases to be listed as of an
 older revision of the BitKeeper/etc/aliases file.
+.tp
+.B \-vvv
+Used when showing aliases; causes aliases to be expanded to show
+contents using an indented list.  Adding more
+.B \-v
+options expands to more levels.
 .SH EXAMPLES
 To create an alias that points to a named list of components:
 .DS

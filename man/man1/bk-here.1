@@ -16,6 +16,7 @@ bk unpopulate - remove one or more components to a nested collection
 .[ARG] "alias | comp"
 .SS LISTING POPULATED ALIASES
 .B bk here [list]
+.[B] \-vvv
 .SS POPULATING COMPONENTS AND/OR ALIASES
 .B bk here add
 .[OPTreq] \-@ URL
@@ -94,7 +95,7 @@ If DEVTOOLS is populated and it implies "cmd/gcc" and "cmd/gdb",
 attempting to remove either component will result in an error.
 See examples below for how to work around this.
 .SH OPTIONS
-.TP
+.TP \-\@\ URL\ 
 .OPTreq \-@ URL
 When looking for components, include 
 .ARG URL
@@ -109,6 +110,12 @@ unless you plan to undo all of that work.
 .tp
 .B \-q
 Run quietly.
+.tp
+.B \-vvv
+When listing aliases, show alias expansions using an indented list.
+Add
+.B \-v
+options, to indent to a deeper level.
 .SH EXAMPLES
 .LP
 When cloning a product, it is possible to clone a subset of it by

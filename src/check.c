@@ -20,7 +20,6 @@ private	int	checkAll(hash *keys);
 private	void	listFound(hash *db);
 private	void	listCsetRevs(char *key);
 private int	checkKeys(sccs *s, char *root);
-private	int	chk_csetpointer(sccs *s);
 private void	warnPoly(void);
 private int	chk_gfile(sccs *s, MDBM *pathDB, int checkout);
 private int	chk_dfile(sccs *s);
@@ -44,7 +43,6 @@ private	int	goneKey;	/* 1: list files, 2: list deltas, 3: both */
 private	int	badWritable;	/* if set, list bad writable file only */
 private	int	names;		/* if set, we need to fix names */
 private	int	gotDupKey;	/* if set, we found dup keys */
-private	int	csetpointer;	/* if set, we need to fix cset pointers */
 private	int	lod;		/* if set, we need to fix lod data */
 private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
@@ -289,7 +287,6 @@ check_main(int ac, char **av)
 		if (no_gfile(s)) ferr++, errors |= 0x08;
 		if (readonly_gfile(s)) ferr++, errors |= 0x08;
 		if (writable_gfile(s)) ferr++, errors |= 0x08;
-		if (chk_csetpointer(s)) ferr++, errors |= 0x10;
 		if (!resync && chk_dfile(s)) ferr++, errors |= 0x10;
 		if (check_eoln && chk_eoln(s, eoln_native)) {
 			ferr++, errors |= 0x10;
@@ -444,22 +441,11 @@ check_main(int ac, char **av)
 			fprintf(stderr, "check: trying to fix xflags...\n");
 			system("bk -r xflags");
 		}
-		if (csetpointer) {
-			char	buf[MAXKEY + 20];
-			char	*csetkey = proj_rootkey(0);
-
-			fprintf(stderr,
-			    "check: "
-			    "fixing %d incorrect cset file pointers...\n",
-			    csetpointer);
-			sprintf(buf, "bk -r admin -C'%s'", csetkey);
-			system(buf);
-		}
 		if (lod && (fix > 1)) {
 			fprintf(stderr, "check: trying to remove lods...\n");
 			system("bk _fix_lod1");
 		}
-		if (names || xflags_failed || csetpointer || lod) {
+		if (names || xflags_failed || lod) {
 			errors = 2;
 			goto out;
 		}
@@ -1066,6 +1052,36 @@ keycmp(const void *k1, const void *k2)
 }
 
 /*
+ * Compare two keys while ignoring the path field
+ * (we assume valid keys here)
+ */
+int
+keycmp_nopath(char *keya, char *keyb)
+{
+	char	*ta = 0, *date_a, *tb = 0, *date_b;
+	int	ret, userlen;
+
+	/* user@host|path|date|sum */
+	ta = strchr(keya, '|')+1;
+	tb = strchr(keyb, '|')+1;
+
+	/*
+	 * Find the length of the shorter "user@host|" and compare
+	 * the two strings upto that number of chars.
+	 * If the two strings are a different length then the strncmp()
+	 * will return non-zero.
+	 */
+	userlen = (ta-keya <= tb-keyb) ? ta-keya : tb-keyb;
+	if (ret = strncmp(keya, keyb, userlen)) return (ret);
+
+	/* Now compare from the date onward */
+	date_a = strchr(ta, '|');
+	date_b = strchr(tb, '|');
+	return (strcmp(date_a, date_b));
+}
+
+
+/*
  * qsort routine to compare an array of keys
  */
 int
@@ -1513,7 +1529,7 @@ check(sccs *s, MDBM *idDB)
 {
 	static	int	haspoly = -1;
 	delta	*d, *ino, *tip = 0;
-	int	errors = 0;
+	int	errors = 0, goodkeys;
 	int	i;
 	char	*t, *term, *x;
 	hash	*deltas, *shortdeltas = 0;
@@ -1536,6 +1552,7 @@ check(sccs *s, MDBM *idDB)
 	/*
 	 * Make sure that all marked deltas are found in the ChangeSet
 	 */
+	goodkeys = 0;
 	for (d = s->table; d; d = NEXT(d)) {
 		if (verbose > 3) {
 			fprintf(stderr, "Check %s@%s\n", s->gfile, d->rev);
@@ -1570,12 +1587,21 @@ check(sccs *s, MDBM *idDB)
 			sccs_sdelta(s, d, buf);
 			fprintf(stderr, "\t%s -> %s\n", d->rev, buf);
 		} else {
+			++goodkeys;
 			unless (tip) tip = d;
 			if (verbose > 2) {
 				fprintf(stderr, "%s: found %s in ChangeSet\n",
 				    s->gfile, buf);
 			}
 		}
+	}
+	if (errors && !goodkeys) {
+		fprintf(stderr,
+		    "%s: File %s doesn't have any data that matches the "
+		    "local ChangeSet file.\n"
+		    "This file was likely copied from another repository\n",
+		    prog, s->gfile);
+		return (errors);
 	}
 
 	if (stripdel) {
@@ -1896,51 +1922,6 @@ csetFind(char *key)
 	pclose(p);
 	unless (r) return (strdup("[not found]"));
 	return (r);
-}
-
-private int
-chk_csetpointer(sccs *s)
-{
-	/* we don't use s->proj, it's in BitKeeper/repair which can look
-	 * like a repo but is not, it's partial maybe w/o the ChangeSet file.
-	 */
-	char	*csetkey = proj_rootkey(0);
-	project	*product = proj_product(0);
-	project	*p;
-
-	if (s->tree->csetFile == NULL ||
-	    !(streq(csetkey, s->tree->csetFile))) {
-		if (CSET(s) && product) {
-			unless (proj_isComponent(s->proj)) return (0);
-			assert(product);
-			if (!streq(s->tree->csetFile, proj_rootkey(product))) {
-				fprintf(stderr,
-				    "Wrong Product pointer: %s\n"
-				    "Should be: %s\n",
-				    s->tree->csetFile,
-				    proj_rootkey(product));
-				csetpointer++;
-				return (1);
-			}
-			return (0);
-		}
-		if (CSET(s) && proj_isComponent(s->proj) &&
-		    (p = proj_product(s->proj)) &&
-		    streq(proj_rootkey(p), s->tree->csetFile)) {
-			// It's cool baby.
-		    	return (0);
-		}
-		fprintf(stderr, 
-"Extra file: %s\n\
-     belongs to: %s\n\
-     should be:  %s\n",
-			s->gfile,
-			s->tree->csetFile == NULL ? "NULL" : s->tree->csetFile,
-			csetkey);
-		csetpointer++;
-		return (1);
-	}
-	return (0);
 }
 
 /*

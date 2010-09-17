@@ -28,6 +28,11 @@ test -f product/BitKeeper/log/PRODUCT || {
 	echo "Did not create product marker"
 	exit 1
 }
+bk _test -f product/BitKeeper/etc/SCCS/s.attr || {
+	echo failed
+	echo "Did not create attributes"
+	exit 1
+}
 cd product
 bk get $Q BitKeeper/etc/config
 cmpfiles "$HERE"/c BitKeeper/etc/config
@@ -227,6 +232,5 @@ echo $N Check that standalone setup inside a product works ..........$NL
 cd product
 bk setup -fc"$HERE/empty" ../sa3 || fail
 cd ../sa3
-bk product -q
-test $? = 2 || fail
+test `bk repotype` = "traditional" || fail
 echo OK

@@ -285,9 +285,8 @@ defaultFiles(int product)
 	fclose(f);
 	system("bk new -Pq BitKeeper/etc/ignore");
 	if (product) {
-		f = fopen("BitKeeper/etc/aliases", "w");
-		fclose(f);
-		system("bk new -Pq BitKeeper/etc/aliases");
+		touch(ALIASES, 0664);
+		system("bk new -Pq " ALIASES);
 		f = fopen("BitKeeper/log/HERE", "w");
 		fprintf(f, "all\n");
 		fclose(f);
@@ -295,6 +294,7 @@ defaultFiles(int product)
 		system("bk portal -q .");
 		proj_reset(0);		/* created product */
 	}
+	attr_update();
 	unless (getenv("_BK_SETUP_NOGONE")) {
 		f = fopen("BitKeeper/etc/gone", "w");
 		fprintf(f, "\n");

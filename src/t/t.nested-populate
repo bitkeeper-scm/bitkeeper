@@ -591,11 +591,11 @@ bk new $Q local
 bk commit $Q -ylocal || fail
 cd ../../../..
 bk here rm $Q src/gui/tcltk/tk 2> ERR && fail -f ERR
-sed 's/ChangeSet@1.3,.*/ChangeSet@1.3,/' < ERR > ERR2
+sed 's/ChangeSet@1.2,.*/ChangeSet@1.2,/' < ERR > ERR2
 cat <<EOF >WANT
 here: No other sources for src/gui/tcltk/tk known
 Local changes to src/gui/tcltk/tk found:
-ChangeSet@1.3,
+ChangeSet@1.2,
   local
 
 here: unable to remove src/gui/tcltk/tk

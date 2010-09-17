@@ -231,7 +231,9 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	 * make sure we are there.
 	 */
 	cwd = strdup(proj_cwd());
-	proj = proj_product(cset ? cset->proj : 0);
+	proj = cset ? cset->proj : 0;
+	if (proj_isResync(proj)) proj = proj_isResync(proj);
+	proj = proj_product(proj);
 	assert(proj);
 	if (chdir(proj_root(proj))) assert(0);
 	proj = 0;

@@ -1,0 +1,30 @@
+_BK_ATTR_TEST=base
+export _BK_ATTR_TEST
+
+echo $N Test fetching attributes ....................................$NL
+commercial project
+V1=`bk prs -r+ -hnd:ATTR_VERSION: ChangeSet`
+V2=`bk version -s`
+test X$V1 = X$V2 || fail
+echo OK
+
+echo $N Converge attribute files ....................................$NL
+bk clone $Q . ../copy
+RK1=`bk prs -r1.0 -hnd:ROOTKEY: BitKeeper/etc/attr`
+bk rm -f BitKeeper/etc/attr
+_BK_ATTR_TEST=T1 bk commit $Q -y'rm' || fail
+test `bk changes -r+ -qnd:ATTR_TEST:` = T1 || fail
+cd ../copy
+echo hi > file
+bk new $Q file
+_BK_ATTR_TEST=T2 bk commit $Q -y'add' || fail
+test `bk changes -r+ -qnd:ATTR_TEST:` = T2 || fail
+_BK_ATTR_TEST=T3 bk pull $Q || fail
+test `bk changes -r+ -qnd:ATTR_TEST:` = T3 || fail
+
+# the graph on BitKeeper/etc/attr is pretty wild at this point
+RK2=`bk prs -r1.0 -hnd:ROOTKEY: BitKeeper/etc/attr`
+
+# but it is the same file
+test "$RK1" = "$RK2" || fail
+echo OK

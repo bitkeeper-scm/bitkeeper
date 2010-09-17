@@ -82,7 +82,7 @@ echo OK
 
 echo $N Whole repo to this point in time -- cset and file ...........$NL
 bk makepatch -F -r.. > fullpatch
-patchcount fullpatch 6
+patchcount fullpatch 7
 echo OK
 
 echo $N Corrupted file checksum and makepatch does not core dump ....$NL

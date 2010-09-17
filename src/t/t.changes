@@ -560,6 +560,12 @@ cat > WANT <<EOF
 <CSET rev=1.0>
 </CSET>
 <CSET rev=1.1>
+  <FILE path=BitKeeper/etc/attr rev=1.0>
+    bk@bk_regression.bk
+  </FILE>
+  <FILE path=SAME rev=1.1>
+    bk@bk_regression.bk
+  </FILE>
   <FILE path=BitKeeper/etc/collapsed rev=1.0>
     bk@bk_regression.bk
   </FILE>
@@ -630,6 +636,8 @@ ChangeSet@1.2, DATE, adam@bk_regression.bk
   f@1.1 +1 -0
   f@1.0 +0 -0
 ChangeSet@1.1, DATE, bk@bk_regression.bk
+  BitKeeper/etc/attr@1.1 +6 -0
+  BitKeeper/etc/attr@1.0 +0 -0
   BitKeeper/etc/collapsed@1.1 +1 -0
   BitKeeper/etc/collapsed@1.0 +0 -0
   BitKeeper/etc/config@1.1 +11 -0

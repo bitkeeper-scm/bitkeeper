@@ -54,7 +54,8 @@ key2rmName(char *rootkey)
 		rand = t + 1;		/* at rand */
 	}
 	bn = basenm(path);
-	if (strneq(path, "BitKeeper/deleted/", 18)) {
+	if (strneq(path, "BitKeeper/deleted/", 18) ||
+	    strneq(path, "BitKeeper/moved/", 16)) {
 		/*
 		 * handle files created in BitKeeper/deleted
 		 * nested partition can do this

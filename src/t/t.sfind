@@ -27,6 +27,7 @@ echo $N Check the list of SCCS files ................................$NL
 bk sfind | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -60,6 +61,7 @@ echo $N Check the list of g-files ...................................$NL
 bk sfind -g | sort > SFILES
 sort <<EOF > LIST
 ChangeSet
+BitKeeper/etc/attr
 BitKeeper/etc/collapsed
 BitKeeper/etc/config
 BitKeeper/etc/gone
@@ -133,6 +135,7 @@ echo OK
 echo $N Check the list of unlocked files ............................$NL
 bk sfind -u | sort > SFILES
 sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -158,6 +161,7 @@ bk ci $Q -mfoo-R bar/s.foo
 bk ci $Q -mblech s.foo
 bk sfind -u | sort > SFILES
 sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -254,6 +258,7 @@ if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Test disabling ignore lists with -au ........................$NL
 sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -303,6 +308,7 @@ bk _mv SCCS/s.impostor s.impostor
 bk _mv impostor SCCS/s.impostor
 bk sfind | sort > SFILES
 sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.attr
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone

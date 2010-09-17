@@ -38,11 +38,11 @@ bk unpull -fs $Q || fail
 # Larry thinks this should work
 
 bk here rm $Q gcc 2>ERR && fail -f ERR should fail
-sed 's/1.3,.*/1.3/' <ERR > ERR2
+sed 's/1.2,.*/1.2/' <ERR > ERR2
 cat <<EOF > WANT
 here: No other sources for gcc known
 Local changes to gcc found:
-ChangeSet@1.3
+ChangeSet@1.2
   foo
 
 here: unable to remove gcc

@@ -476,7 +476,7 @@ proc ::bgExec::bgExec {args} \
 	}
 
 	set stderrFile [tmpfile "bgexec-stderr"]
-	set run_fd [open "|$args 2>$stderrFile" "r"]
+	set run_fd [open |[list {*}$args 2> $stderrFile] "r"]
 	fconfigure $run_fd -blocking false
 	fileevent $run_fd readable [namespace code [list readFile $run_fd]]
 
@@ -576,14 +576,16 @@ proc popupMessage {args} \
 
 	# export BK_MSG_GEOM so the popup will show in the right
 	# place...
-	if {[winfo viewable .]} {
+	if {[winfo viewable .] || [winfo viewable .citool]} {
 		set x [expr {[winfo rootx .] + 40}]
 		set y [expr {[winfo rooty .] + 40}]
 		set ::env(BK_MSG_GEOM) "+${x}+${y}"
 	}
 
-	# Messages look better with a little whitespace attached
-	append message \n
+	set tmp [tmpfile msg]
+	set fp [open $tmp w]
+	puts $fp $message
+	close $fp
 
 	# hopefully someday we'll turn the msgtool code into a library
 	# so we don't have to exec. For now, though, exec works just fine.
@@ -591,7 +593,7 @@ proc popupMessage {args} \
 		# we are running in test mode; spew to stderr
 		puts stderr $message
 	} else {
-		eval exec bk msgtool $option \$message
+		exec bk msgtool {*}$option -F $tmp
 	}
 }
 
@@ -724,8 +726,8 @@ proc GetTerminal {} {
 }
 
 proc isComponent {path} {
-	catch {exec bk product [file dirname $path]} res
-	return [string match "*component*" $res]
+	catch {exec bk repotype [file dirname $path]} res
+	return [string equal $res "component"]
 }
 
 proc isChangeSetFile {path} {
@@ -744,4 +746,9 @@ proc sccsFileExists {type file} {
 	set file [sccsFile $type $file]
 	if {[catch {exec bk _test -f $file}]} { return 0 }
 	return 1
+}
+
+proc inComponent {} {
+    catch {exec bk repotype} res
+    return [string equal $res "component"]
 }

@@ -7,6 +7,7 @@
 #define	CLEAN_OK	0x04	/* quietly exit 0 */
 #define	CLEAN_MVRESYNC	0x08	/* mv RESYNC RESYNC-YYYY-MM-DD-%03d */
 #define	CLEAN_NOSHOUT	0x10	/* No shouting */
+#define	CLEAN_ABORT	0x20	/* run bk abort -qf */
 #define	SHOUT() \
 	fputs("===================== ERROR ========================\n", stderr);
 #define	SHOUT2() \
@@ -24,6 +25,10 @@
 #define	RESOLVE_LOCK		(ROOT2RESYNC "/BitKeeper/tmp/resolve_lock")
 #define	AUTO_MERGE		"Auto merged"
 #define	SCCS_MERGE		"SCCS merged"
+#define	QUIT_WARNING		"If you quit out of the resolver, your pull " \
+	"will be aborted and whatever\n" \
+	"work you have already done will be lost.\n" \
+	"Are you sure you want to quit?"
 
 /* passed around everywhere to record state */
 typedef struct {

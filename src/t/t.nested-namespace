@@ -39,9 +39,7 @@ touch path/to/comp
 bk new $Q path/to/comp || fail
 bk commit $Q -yblock 2>ERR && fail -f ERR
 grep -q "conflicts with component at path/to/comp" ERR || fail -f ERR
-bk _rm path/to/SCCS/s.comp
-bk _rm path/to/SCCS/d.comp
-rm -rf path .bk/path
+bk _rm -r path
 echo OK
 
 echo $N Make a file that is in the unpopulated comp .................$NL
@@ -52,13 +50,7 @@ touch path/to/comp/subdir/foo
 bk new $Q path/to/comp/subdir/foo || fail
 bk commit $Q -yblock 2> ERR && fail
 grep -q "conflicts with component at path/to/comp" ERR || fail -f ERR
-# How to clean up quickly?
-bk _rm path/to/comp/subdir/SCCS/s.foo
-bk _rm path/to/comp/subdir/SCCS/d.foo
-# This should have been done?
-rmdir .bk/path/to/comp/subdir/SCCS .bk/path/to/comp/subdir
-rmdir .bk/path/to/comp .bk/path/to .bk/path
-rm -fr path
+bk _rm -r path
 test -d path -o -d .bk/path && fail
 echo OK
 
@@ -100,7 +92,7 @@ echo OK
 echo $N Pull in the other direction..................................$NL
 cd "$HERE/parent"
 # this currently gives a file/directory conflict in the resolver
-(echo h; echo q) | bk pull $Q ../project >OUT 2>&1 && fail
+(echo h; echo q; echo y) | bk pull $Q ../project >OUT 2>&1 && fail
 # it'd be better to check for the right error
 grep -q "1 unresolved conflicts" OUT || {
 	fail -f OUT wrong error

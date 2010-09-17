@@ -379,6 +379,8 @@ typedef	enum {
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	CHECKED		"BitKeeper/log/checked"
 #define	REPO_ID		"BitKeeper/log/repo_id"
+#define	ATTR		"BitKeeper/etc/attr"
+#define	SATTR		"BitKeeper/etc/SCCS/s.attr"
 #define	BKSKIP		".bk_skip"
 #define	GROUP_MODE	0664
 #define	BAM_DSPEC	"$if(:BAMHASH:){:BAMHASH: :KEY: :MD5KEY|1.0:}"
@@ -634,7 +636,7 @@ struct sccs {
 	time_t	gtime;		/* gfile modidification time */
 	time_t	stime;		/* sfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
-	MDBM	*findkeydb;	/* Cache a map of delta key to delta* */
+	hash	*findkeydb;	/* Cache a map of delta key to delta* */
 	project	*proj;		/* If in BK mode, pointer to project */
 	void	*rrevs;		/* If has conflicts, revs in conflict */
 				/* Actually is of type "name *" in resolve.h */
@@ -666,8 +668,7 @@ struct sccs {
 	u32	bamlink:1;	/* BAM gfile is hardlinked to the sfile */
 	u32	used_cfile:1;	/* comments_readcfile found one; for cleanup */
 	u32	modified:1;	/* set if we wrote the s.file */
-	u32	keydb_long:1;	/* findkeydb contains long keys? */
-	u32	keydb_md5:1;	/* findkeydb contains md5 keys? */
+	u32	keydb_nopath:1;	/* don't compare path in sccs_findKey() */
 	u32	mem_in:1;	/* s->fh is in-memory FILE* */
 	u32	mem_out:1;	/* s->outfh is in-memory FILE* */
 	u32	file:1;		/* treat as a file in DSPECS */
@@ -778,6 +779,7 @@ typedef struct patch {
 #define PATCH_FAST	"# Patch vers:\t1.4\n"
 
 #define PATCH_REGULAR	"# Patch type:\tREGULAR\n"
+#define PATCH_FEATURES	"# Patch features:\t"
 
 #define	BK_RELEASE	"2.O"	/* this is lame, we need a sccs keyword */
 
@@ -918,6 +920,7 @@ int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_md5delta(sccs *s, delta *d, char *b64);
 void	sccs_sortkey(sccs *s, delta *d, char *buf);
 void	sccs_key2md5(char *rootkey, char *deltakey, char *b64);
+void	sccs_setPath(sccs *s, delta *d, char *newpath);
 void	sccs_syncRoot(sccs *s, char *key);
 delta	*sccs_csetBoundary(sccs *s, delta *);
 void	sccs_shortKey(sccs *s, delta *, char *);
@@ -1224,7 +1227,7 @@ int	isNetworkFS(char *path);
 #define	KEY_EULA		6
 char	*makestring(int keynum);
 
-void	delete_cset_cache(char *rootpath, int save);
+int	attach_name(sccs *cset, char *name, int setmarks);
 void	notice(char *key, char *arg, char *type);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
@@ -1340,6 +1343,7 @@ int	hasLocalWork(char *gfile);
 char	*goneFile(void);
 char	*sgoneFile(void);
 int	keycmp(const void *k1, const void *k2);
+int	keycmp_nopath(char *k1, char *k2);
 int	key_sort(const void *a, const void *b);
 int	earlier(sccs *s, delta *a, delta *b);
 int	startmenu_list(u32, char *);
@@ -1380,6 +1384,9 @@ void	usage(void)
 int	bk_notLicensed(project *p, u32 bits, int quiet);
 char	*file_fanout(char *file);
 void	upgrade_maybeNag(char *out);
+int	attr_update(void);
+int	attr_write(char *file);
+int	bk_badFilename(char *name);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);
@@ -1388,6 +1395,8 @@ void	notifier_flush(void);
 #define	notifier_changed(x)
 #define	notifier_flush()
 #endif
+
+int	sccs_defRootlog(sccs *cset);
 
 extern	char	*editor;
 extern	char	*bin;

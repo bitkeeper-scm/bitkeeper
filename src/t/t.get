@@ -600,7 +600,7 @@ echo $N Check that get -p does not care about -i/-x .................$NL
 bk edit -x+ $Q ChangeSet
 rm ChangeSet
 bk get -p -hr+ ChangeSet > XXX 2>&1
-test `wc -l < XXX` -eq 5 || {
+test `wc -l < XXX` -eq 6 || {
 	echo wrong answer
 	cat XXX
 	exit 1
@@ -609,7 +609,7 @@ echo OK
 
 echo $N Check that get -D does not care about -i/-x .................$NL
 bk get -D -hr+ ChangeSet > XXX 2>&1
-test `wc -l < XXX` -eq 5 || {
+test `wc -l < XXX` -eq 6 || {
 	echo wrong answer
 	cat XXX
 	exit 1
@@ -618,7 +618,7 @@ echo OK
 
 echo $N Check that get -DD does not care about -i/-x ................$NL
 bk get -DD -hr+ ChangeSet > XXX 2>&1
-test `wc -l < XXX` -eq 5 || {
+test `wc -l < XXX` -eq 6 || {
 	echo wrong answer
 	cat XXX
 	exit 1
@@ -627,7 +627,7 @@ echo OK
 
 echo $N Check that get -DDD does not care about -i/-x ...............$NL
 bk get -DDD -hr+ ChangeSet > XXX 2>&1
-test `wc -l < XXX` -eq 5 || {
+test `wc -l < XXX` -eq 6 || {
 	echo wrong answer
 	cat XXX
 	exit 1
@@ -640,7 +640,7 @@ bk get -Gmyfoo -hr+ ChangeSet 2> ERR || {
 	cat ERR
 	exit 1
 }
-grep -q "myfoo 1.1: 4 lines" ERR || {
+grep -q "myfoo 1.1: 5 lines" ERR || {
 	echo wrong msg
 	cat ERR
 	exit 1
@@ -649,7 +649,7 @@ echo OK
 
 echo $N Check that prs does not care about -i/-x ....................$NL
 bk prs -hr+ -nd:HASHCOUNT: ChangeSet > XXX 2>&1
-test "`cat XXX`" = "4" || {
+test "`cat XXX`" = "5" || {
 	echo wrong answer
 	cat XXX
 	exit 1

@@ -126,11 +126,11 @@ BINS	= $(BK) inskeys$(EXE)
 # List of all objects in bk other than bk.o. Keep it sorted.
 # But put bkver.o/cmd.o first, they generate headers.
 OBJ =	bkver.o cmd.o \
-	abort.o adler32.o alias.o admin.o annotate.o \
+	abort.o adler32.o alias.o admin.o annotate.o attributes.o \
 	bam.o bkd.o bkd_bam.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
 	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o bkd_nested.o \
-	bkd_pull.o bkd_push.o bkd_pwd.o \
+	bkd_partition.o bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkusers.o \
 	cat.o cfile.o changes.o \
@@ -159,7 +159,7 @@ OBJ =	bkver.o cmd.o \
 	mailsplit.o mtime.o mv.o names.o nested.o newroot.o \
 	opark.o \
 	parent.o park.o partition.o \
-	pending.o preference.o product.o proj.o \
+	pending.o preference.o proj.o \
 	populate.o \
 	port/bkd_server.o \
 	port/check_rsh.o \
@@ -179,7 +179,7 @@ OBJ =	bkver.o cmd.o \
 	rcs2bk.o rcsparse.o \
 	receive.o redblack.o regex.o registry.o renumber.o \
 	repo.o repos.o repogca.o resolve.o \
-	remap.o \
+	remap.o repotype.o \
 	remote.o resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
@@ -189,7 +189,7 @@ OBJ =	bkver.o cmd.o \
 	sccslog.o sccs_mv.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o startmenu.o \
-	stat.o stattest.o status.o stripdel.o surgery.o synckeys.o \
+	stat.o stattest.o status.o stripdel.o synckeys.o \
 	tagmerge.o testcode.o tclsh.o takepatch.o \
 	testdates.o time.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \

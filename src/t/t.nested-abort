@@ -488,7 +488,7 @@ cat <<'EOF' > $T
 #!/bin/sh
 #      =>  called in the RESYNC directory, not the enclosing repository.
 #      =>  exit 0 allows the pull/push.
-#      =>  exit 1 fails the entire pull/push.
+#      =>  exit 1 fails the entire pull/push leaving RESYNC
 #      =>  exit 2 fails the pull/push but leaves the patch in PENDING.
 #      =>  exit 3 fails the pull/push but leaves the patch in PENDING and  the
 #          RESYNC tree in PENDING/RESYNC-date.
@@ -515,30 +515,22 @@ bk commit $Q -yremote
 cd ..
 bk commit $Q -ygdb/remote
 cd ..
-MSG="failed (bug pre-apply rc="
-FAIL=
-OUT=OK
 for rc in 1 2 3; do
 	cd copy
-	TRIGRC=$rc bk pull $Q 2> ERR$rc
-	bk -r check -ac 2> CHK$rc || {
-		MSG="$MSG $rc"
-		FAIL=1
-	}
+	TRIGRC=$rc bk pull $Q 2> ERR && fail -f ERR rc=$rc should fail
+	bk -r check -ac || fail rc=$rc should pass
+	test -d RESYNC && fail rc=$rc  	      # XXX rc=1 should leave RESYNC
 	cd ..
 	rm -fr copy
 	tar xf copy.tar
 done
-test -z "$FAIL" || {
-	OUT="$MSG)"
-}
 cd copy
-bk pull $Q -R || fail 1
+bk pull $Q -R || fail
 bk abort -qf
-bk pull $Q || fail 1
-test -f gdb/BitKeeper/etc/csets-in || fail 2
+bk pull $Q || fail
+test -f gdb/BitKeeper/etc/csets-in || fail
 cd ..
-echo "$OUT"
+echo OK
 
 echo $N Test trigger and abort with new component ...................$NL
 cd "$HERE"
@@ -547,29 +539,22 @@ cd parent
 touch c
 bk setup -fcc newrepo
 cd ..
-MSG="failed (bug pre-apply rc="
-FAIL=
-OUT=OK
 for rc in 1 2 3; do
 	cd copy
-	TRIGRC=$rc bk pull $Q 2> ERR$rc
-	bk -r check -ac 2> CHK$rc || {
-		MSG="$MSG $rc"
-		FAIL=1
-	}
+	TRIGRC=$rc bk pull $Q 2> ERR && fail -f ERR rc=$rc should fail
+	bk -r check -ac || fail rc=$rc should pass
+	test -d RESYNC && fail rc=$rc  	      # XXX rc=1 should leave RESYNC
 	cd ..
 	rm -fr copy
 	tar xf copy.tar
 done
-test -z "$FAIL" || {
-	OUT="$MSG)"
-}
 cd copy
-bk pull $Q -R || fail 1
+bk pull $Q -R || fail
 bk abort -qf
-bk pull $Q || fail 1
+bk pull $Q || fail
+test -f gdb/BitKeeper/etc/csets-in || fail
 cd ..
-echo $OUT
+echo OK
 
 echo $N Test a failed abort..........................................$NL
 cd "$HERE"

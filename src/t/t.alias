@@ -118,4 +118,113 @@ EOF
 cmpfiles ERR WANT
 test `bk sfiles -gc` = "BitKeeper/etc/aliases" || fail
 cmpfiles SAVE BitKeeper/etc/aliases
+bk unedit BitKeeper/etc/aliases
 echo OK
+
+echo $N Demo \'bk here -v\' ...........................................$NL
+for h in FOO BAR F3 F4 F5 F6 F7 F8
+do	bk alias new $Q $h
+done
+bk alias add FOO BAR F6 ./gcc
+bk alias add BAR F3 F5
+bk alias add F3 ./gdb F4
+bk alias set F4 ALL
+bk alias add F6 F7 F8
+bk alias add F7 ./gdb
+bk alias add F8 BAR
+bk here set FOO BAR F3
+
+bk here > GOT
+cat <<EOF >WANT
+BAR
+F3
+FOO
+EOF
+cmpfiles GOT WANT
+
+bk here -v > GOT
+cat <<EOF >WANT
+BAR:
+	F3
+	F5
+F3:
+	./gdb
+	F4
+FOO:
+	./gcc
+	BAR
+	F6
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Demo \'bk here -vv\' ..........................................$NL
+bk here -vv > GOT
+cat <<EOF >WANT
+BAR:
+	F3:
+		./gdb
+		F4
+	F5:
+F3*
+FOO:
+	./gcc
+	BAR*
+	F6:
+		F7
+		F8
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Demo \'bk here -vvv\' .........................................$NL
+bk here -vvv > GOT
+cat <<EOF >WANT
+BAR:
+	F3:
+		./gdb
+		F4:
+			all
+	F5:
+F3*
+FOO:
+	./gcc
+	BAR*
+	F6:
+		F7:
+			./gdb
+		F8:
+			BAR
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Demo \'bk alias -vvvv\' .......................................$NL
+bk alias -vvv > GOT
+cat <<EOF >WANT
+BAR:
+	F3:
+		./gdb
+		F4:
+			all
+	F5:
+DEFAULT:
+	all
+F3*
+F4*
+F5*
+F6:
+	F7:
+		./gdb
+	F8:
+		BAR*
+F7*
+F8*
+FOO:
+	./gcc
+	BAR*
+	F6*
+EOF
+cmpfiles GOT WANT
+echo OK
+

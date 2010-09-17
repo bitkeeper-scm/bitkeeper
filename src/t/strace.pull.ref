@@ -6,10 +6,10 @@ close 410
 fstat 340
 link 7
 lseek 240
-lstat 877
+lstat 878
 mkdir 20
 open 387
-read 5013
+read 4947
 rename 11
 rmdir 11
 stat 23

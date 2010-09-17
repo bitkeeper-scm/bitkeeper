@@ -11,6 +11,7 @@
 typedef struct {
 	char	**urls;		/* -@url: options for populate */
 	char	*rev;
+	hash	*seen;
 	u32	quiet:1;	/* -q: quiet */
 	u32	nocommit:1;	/* -C: don't commit in product after change */
 	u32	showkeys:1;	/* -k: show keys instead of pathnames */
@@ -18,7 +19,7 @@ typedef struct {
 	u32	missing:1;	/* -m: only aliases not present */
 	u32	expand:1;	/* -e: expand list of aliases */
 	u32	force:1;	/* -f: force remove components */
-	u32	verbose:1;	/* -v: be verbose */
+	u32	verbose:8;	/* -v: be verbose */
 } aopts;
 
 private	int	aliasCreate(char *cmd, aopts *opts, char **av);
@@ -102,7 +103,7 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 		    case 'm': islist = 1; opts.missing = 1; break;
 		    case 'r': islist = 1; opts.rev = optarg; break;
 		    case 'q': opts.quiet = 1; break;
-		    case 'v': opts.verbose = 1; break;
+		    case 'v': opts.verbose += 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -682,13 +683,78 @@ err:
 	return (comps);
 }
 
+private void
+dbPrint(nested *n, hash *aliasdb, char **items, int indent, aopts *op)
+{
+	int	sawall, i, j;
+	char	*val;
+	char	**comps, **list;
+	comp	*c;
+
+	if (op->missing || op->here) {
+		EACH(items) {
+			val = items[i];
+			sawall = 1;
+			comps = aliasdb_expandOne(n, aliasdb, val);
+			EACH_STRUCT(comps, c, j) {
+				unless (c->present) {
+					sawall = 0;
+					break;
+				}
+			}
+			freeLines(comps, 0);
+			unless ((sawall && op->here) ||
+			    (!sawall && op->missing)) {
+				removeLineN(items, i, free);
+				i--;
+			}
+		}
+	}
+	unless (op->showkeys) {
+		EACH(items) {
+			unless (isKey(items[i]) && strchr(items[i], '|')) {
+				continue;
+			}
+			unless (c = nested_findKey(n, items[i])) {
+				error("%s: no component: %s\n", prog, items[i]);
+				continue;
+			}
+			free(items[i]);
+			items[i] = aprintf("./%s", c->path);
+		}
+	}
+	sortLines(items, 0);
+	EACH(items) {
+		for (j = 0; j < indent; j++) putchar('\t');
+		printf("%s", items[i]);
+		if ((indent >= op->verbose) ||
+		    !(val = hash_fetchStr(aliasdb, items[i]))) {
+			puts("");
+			continue;
+		}
+		unless (hash_insertStr(op->seen, items[i], 0)) {
+			/* mark that this key was already expanded */
+			puts("*");
+			continue;
+		}
+		puts(":");
+
+		/* recurse */
+		list = splitLine(val, "\r\n", 0);
+		sortLines(list, 0);
+		dbPrint(n, aliasdb, list, indent+1, op);
+		freeLines(list, free);
+	}
+}
+
+
 private	int
 dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, aopts *op)
 {
-	char	**items = 0, **comps;
+	char	**items = 0;
 	char	*val, *alias;
 	comp	*c;
-	int	i, j, sawall, rc = 1;
+	int	i, j, rc = 1;
 
 	assert(aliasdb);
 	if (op->expand) {
@@ -713,7 +779,10 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, aopts *op)
 			    ?  strdup(c->rootkey)
 			    : aprintf("./%s", c->path));
 		}
-		goto print;
+		sortLines(items, 0);
+		EACH(items) puts(items[i]);
+		freeLines(items, free);
+		return (0);
 	}
 
 	unless (aliases) {
@@ -767,41 +836,9 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, aopts *op)
 	items = splitLine(val, "\r\n", 0);
 
 preprint:
-	if (op->missing || op->here) {
-		EACH(items) {
-			val = items[i];
-			sawall = 1;
-			comps = aliasdb_expandOne(n, aliasdb, val);
-			EACH_STRUCT(comps, c, j) {
-				unless (c->present) {
-					sawall = 0;
-					break;
-				}
-			}
-			freeLines(comps, 0);
-			unless ((sawall && op->here) ||
-			    (!sawall && op->missing)) {
-				removeLineN(items, i, free);
-				i--;
-			}
-		}
-	}
-	unless (op->showkeys) {
-		EACH(items) {
-			unless (isKey(items[i]) && strchr(items[i], '|')) {
-				continue;
-			}
-			unless (c = nested_findKey(n, items[i])) {
-				error("%s: no component: %s\n", prog, items[i]);
-				goto err;
-			}
-			free(items[i]);
-			items[i] = aprintf("./%s", c->path);
-		}
-	}
-print:
-	sortLines(items, 0);
-	EACH(items) printf("%s\n", items[i]);
+	op->seen = hash_new(HASH_MEMHASH);
+	dbPrint(n, aliasdb, items, 0, op);
+	hash_free(op->seen);
 	rc = 0;
 
 err:	freeLines(items, free);
