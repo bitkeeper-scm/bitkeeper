@@ -477,11 +477,6 @@ bk edit $Q a
 bk delta $Q -fy1.2 a
 bk commit $Q -SKG2A -y1.3
 # Test for invalid keys not working ..
-bk csetprune -k 12345 < ../KEYS 2> ERROR && {
-	echo Failed
-	echo Key must be 16 chars: worked with 12345
-	exit 1
-}
 bk csetprune -k 1234567890abcdeg < ../KEYS 2> ERROR && {
 	echo Failed
 	echo Must be hex characters: worked with 'g'

@@ -35,6 +35,8 @@ typedef struct {
 	hash	*prunekeys;
 	char	**addweave;
 	char	*rev;
+	char	*who;
+	char	*revfile;	// where to put the corresponding rev key
 } Opts;
 
 private	int	csetprune(Opts *opts);
@@ -79,10 +81,14 @@ csetprune_main(int ac, char **av)
 	char	*weavefile = 0;
 	Opts	*opts;
 	int	i, c, ret = 1;
+	longopt	lopts[] = {
+		{ "revfile;", 300 },		/* file to store rev key */
+		{ 0, 0 }
+	};
 
 	opts = new(Opts);
 	flags = PRUNE_NEW_TAG_GRAPH;
-	while ((c = getopt(ac, av, "ac:C:k:KNqr:sSW:", 0)) != -1) {
+	while ((c = getopt(ac, av, "ac:C:k:KNqr:sSw:W:", lopts)) != -1) {
 		switch (c) {
 		    case 'a': flags |= PRUNE_ALL; break;
 		    case 'c': opts->comppath = optarg; break;
@@ -94,15 +100,17 @@ csetprune_main(int ac, char **av)
 		    case 'r': opts->rev = optarg; break;
 		    case 'S': flags &= ~PRUNE_NEW_TAG_GRAPH; break;
 		    case 'W': weavefile = optarg; break;
+		    case 'w': opts->who = optarg; break;
+		    case 300: opts->revfile = optarg; break; /* --revfile */
 		    default: bk_badArg(c, av);
 		}
 	}
 	if (opts->ranbits) {
 		u8	*p;
-		if (strlen(opts->ranbits) != 16) {
+		if (strlen(opts->ranbits) > 16) {
 k_err:			fprintf(stderr,
-			    "ERROR: -k option '%s' must have 16 lower case "
-			    "hex digits\n", opts->ranbits);
+			    "ERROR: -k option '%s' can have at most 16 "
+			    "lower case hex digits\n", opts->ranbits);
 			usage();
 		}
 		for (p = opts->ranbits; *p; p++) {
@@ -193,6 +201,7 @@ csetprune(Opts *opts)
 		fprintf(stderr, "csetinit failed\n");
 		goto err;
 	}
+	bk_featureSet(cset->proj, FEAT_SORTKEY, 1);
 	unless (!opts->rev || (d = sccs_findrev(cset, opts->rev))) {
 		fprintf(stderr,
 		    "%s: Revision must be present in repository\n  %s\n",
@@ -262,7 +271,14 @@ csetprune(Opts *opts)
 		sccs_newchksum(cset);
 	} else {
 		verbose((stderr, "Serial compressing ChangeSet file...\n"));
-		sccs_scompress(cset, SILENT);
+		if (partition_tip) {
+			d = sfind(cset, partition_tip);
+			assert(d);
+			sccs_scompress(cset, SILENT);
+			partition_tip = d->serial;
+		} else {
+			sccs_scompress(cset, SILENT);
+		}
 	}
 	sccs_free(cset);
 	cset = 0;
@@ -284,23 +300,39 @@ finish:
 			opts->ranbits = buf;
 		}
 		if (partition_tip) {
+			/* must be after checksum */
 			cset = sccs_csetInit(INIT_MUSTEXIST);
 			d = sfind(cset, partition_tip);
 			assert(d);
 			sccs_sdelta(cset, d, key);
-			p = aprintf("-qycsetprune command: %s", key);
+			p = aprintf("-ycsetprune command: %s", key);
 			sccs_free(cset);
 			cset = 0;
 		} else {
-			p = aprintf("-qycsetprune command");
+			p = aprintf("-ycsetprune command");
+		}
+		if (opts->who) {
+			p1 = aprintf("-qw%s", opts->who);
+		} else {
+			p1 = strdup("-q");
 		}
 		verbose((stderr,
 		    "Generating a new root key and updating files...\n"));
-		if (sys("bk", "newroot", p, "-k", opts->ranbits, SYS)) {
+		if (sys("bk", "newroot", p, p1, "-k", opts->ranbits, SYS)) {
 			free(p);
+			free(p1);
 			goto err;
 		}
 		free(p);
+		free(p1);
+	} else if (partition_tip && opts->revfile) {
+		cset = sccs_csetInit(INIT_MUSTEXIST);
+		d = sfind(cset, partition_tip);
+		assert(d);
+		sccs_sdelta(cset, d, key);
+		Fprintf(opts->revfile, "%s", key);
+		sccs_free(cset);
+		cset = 0;
 	}
 	/* Find any missing keys and make a delta about them. */
 	if (opts->comppath) {

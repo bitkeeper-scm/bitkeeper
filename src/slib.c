@@ -8086,7 +8086,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			 * Leaving this fixed means we can diff the
 			 * s.files easily.
 			 */
-			if (d->flags & D_SORTSUM) {
+			if ((d->flags & D_SORTSUM) && (d->sum != d->sortSum)) {
 				sprintf(buf,
 				    "\001cK%05u|%05u\n", d->sum, d->sortSum);
 			} else {
@@ -16044,7 +16044,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	}
 	if (d->flags & D_CKSUM) {
 		fprintf(out, "K %u", d->sum);
-		if (d->flags & D_SORTSUM) {
+		if ((d->flags & D_SORTSUM) && (d->sum != d->sortSum)) {
 			fprintf(out, "|%u", d->sortSum);
 		}
 		fputc('\n', out);

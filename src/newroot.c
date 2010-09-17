@@ -4,8 +4,8 @@
 #include "bam.h"
 #include "progress.h"
 
-private int	newroot(char *ranbits, int q, int v, char *comment);
-private void	update_rootlog(sccs *s, char *key, char *comment);
+private int	newroot(char *ranbits, int q, int v, char *comment, char *who);
+private void	update_rootlog(sccs *s, char *key, char *comment, char *who);
 
 int
 newroot_main(int ac, char **av)
@@ -13,13 +13,15 @@ newroot_main(int ac, char **av)
 	int	c, quiet = 0, verbose = 0;
 	char	*ranbits = 0;
 	char	*comments = 0;
+	char	*who = 0;
 	u8	*p;
 
-	while ((c = getopt(ac, av, "k:qvy:", 0)) != -1) {
+	while ((c = getopt(ac, av, "k:qvw:y:", 0)) != -1) {
 		switch (c) {
 		    case 'k': ranbits = optarg; break;
 		    case 'q': quiet = 1; break;
 		    case 'v': verbose = 1; break;
+		    case 'w': who = optarg; break;
 		    case 'y': comments = optarg; break;
 		    default: bk_badArg(c, av);
 		}
@@ -42,7 +44,7 @@ k_err:			fprintf(stderr,
 		}
 		if (*p) goto k_err;
 	}
-	return (newroot(ranbits, quiet, verbose, comments));
+	return (newroot(ranbits, quiet, verbose, comments, who));
 }
 
 /*
@@ -52,7 +54,7 @@ k_err:			fprintf(stderr,
  * Prolly not.
  */
 private int
-newroot(char *ranbits, int quiet, int verbose, char *comments)
+newroot(char *ranbits, int quiet, int verbose, char *comments, char *who)
 {
 	sccs	*s;
 	int	rc = 0;
@@ -127,7 +129,7 @@ newroot(char *ranbits, int quiet, int verbose, char *comments)
 	s->tree->random = strdup(buf);
 
 	sccs_sdelta(s, sccs_ino(s), key);
-	update_rootlog(s, key, comments);
+	update_rootlog(s, key, comments, who);
 	sccs_newchksum(s);
 	sccs_free(s);
 	unlink("BitKeeper/log/ROOTKEY");
@@ -147,7 +149,7 @@ newroot(char *ranbits, int quiet, int verbose, char *comments)
 }
 
 private void
-update_rootlog(sccs *s, char *key, char *comments)
+update_rootlog(sccs *s, char *key, char *comments, char *who)
 {
 	char	**oldtext;
 	int	i;
@@ -159,14 +161,8 @@ update_rootlog(sccs *s, char *key, char *comments)
 		s->text = addLine(s->text, oldtext[i]);
 		unless (streq(oldtext[i], "@ROOTLOG")) continue;
 
-		if (streq(comments, "original")) {
-			s->text = addLine(s->text, aprintf("%s@%s %s%s",
-				s->tree->user, s->tree->hostname,
-				s->tree->sdate, s->tree->zone));
-		} else if (getenv("BK_REGRESSION")) {
-			s->text = addLine(s->text,
-				strdup("gina@bitmover.com "
-				    "10/09/08 16:47:48-07:00"));
+		if (who) {
+			s->text = addLine(s->text, strdup(who));
 		} else {
 			s->text = addLine(s->text, aprintf("%s@%s %s%s",
 				sccs_user(), sccs_host(),
@@ -248,6 +244,7 @@ int
 sccs_defRootlog(sccs *cset)
 {
 	int	i;
+	char	who[MAXKEY];
 	char	key[MAXKEY];
 
 	/* create initial ROOTLOG, if needed. */
@@ -260,7 +257,10 @@ sccs_defRootlog(sccs *cset)
 	unless (i == -1) {
 		cset->text = addLine(cset->text, strdup("@ROOTLOG"));
 		sccs_sdelta(cset, sccs_ino(cset), key);
-		update_rootlog(cset, key, "original");
+		sprintf(who, "%s@%s %s%s",
+		    cset->tree->user, cset->tree->hostname,
+		    cset->tree->sdate, cset->tree->zone);
+		update_rootlog(cset, key, "original", who);
 		return (1);
 	}
 	return (0);

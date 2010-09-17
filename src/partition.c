@@ -21,6 +21,7 @@ typedef struct {
 	char	*oconfig;	/* old BK_CONFIG */
 	char	*md5rootkey;	/* original rootkey */
 	char	*parent;	/* normalized reference url */
+	char	*ptip;		/* tip after product prune */
 	int	flags;		/* SILENT for now */
 
 	/* data from partition KV */
@@ -29,9 +30,9 @@ typedef struct {
 	char	**prodprune;	/* files to prune from product */
 	char	**prune;	/* rootkeys to prune from all */
 	char	**feature;	/* a list of feature used in partition */
-	char	*ptip;		/* tip after product prune */
 	char	*random;	/* new random bits */
 	char	*rootkey;	/* original rootkey */
+	char	*rootlog;	/* who and when for rootlog entry */
 	char	*tip;		/* tip of repo at time of orig parition */
 	char	*version;
 } Opts;
@@ -50,9 +51,9 @@ const struct {
 	{"FEATURE",  1, offsetof(Opts, feature)},
 	{"PRODPRUNE",1, offsetof(Opts, prodprune)},
 	{"PRUNE",    1, offsetof(Opts, prune)},
-	{"PTIP",     0, offsetof(Opts, ptip)},
 	{"RAND",     0, offsetof(Opts, random)},
 	{"ROOTKEY",  0, offsetof(Opts, rootkey)},
+	{"ROOTLOG",  0, offsetof(Opts, rootlog)},
 	{"TIP",      0, offsetof(Opts, tip)},
 	{"VERSION",  0, offsetof(Opts, version)},
 	{0}
@@ -69,6 +70,7 @@ private	int	doAttach(Opts *opts);
 private	hash	*getPartitionHash(char *url);
 private	int	loadComps(Opts *opts);
 private	int	cleanMissing(Opts *opts);
+private	int	firstPrune(Opts *opts);
 private	char	*getTipkey(project *proj);
 private	int	commitPending(Opts *opts);
 private	int	dumpPartitionKV(Opts *opts);
@@ -156,12 +158,7 @@ partition_main(int ac, char **av)
 
 	if (setupWorkArea(opts, opts->to)) goto err;
 
-	sprintf(buf, "bk csetprune -aSK%s -r'%s' -CCOMPS -",
-	    opts->quiet, opts->tip);
-	f = popen(buf, "w");
-	EACH(opts->prune) fprintf(f, "%s\n", opts->prune[i]);
-	if (pclose(f)) goto err;
-	unless (opts->referenceurl) opts->ptip = getTipkey(0);
+	if (firstPrune(opts)) goto err;
 
 	if (mkComps(opts)) goto err;
 
@@ -173,8 +170,8 @@ partition_main(int ac, char **av)
 	verbose((stderr, "\n### Pruning product\n"));
 
 	sprintf(buf,
-	    "bk csetprune -aNS%s -k%s -r'%s' -CCOMPS -c. -WPRODWEAVE -",
-	    opts->quiet, opts->random, opts->ptip);
+	    "bk csetprune -aNS%s -k%s -w'%s' -r'%s' -CCOMPS -c. -WPRODWEAVE -",
+	    opts->quiet, opts->random, opts->rootlog, opts->ptip);
 	f = popen(buf, "w");
 	EACH(opts->prodprune) fprintf(f, "%s\n", opts->prodprune[i]);
 	if (pclose(f)) goto err;
@@ -205,6 +202,7 @@ err:
 	if (opts->oconfig) free(opts->oconfig);
 	if (opts->md5rootkey) free(opts->md5rootkey);
 	if (opts->parent) free(opts->parent);
+	if (opts->ptip) free(opts->ptip);
 
 	freePartitionKV(opts);
 	if (opts) free(opts);
@@ -374,9 +372,8 @@ loadComps(Opts *opts)
 private	int
 setupWorkArea(Opts *opts, char *repo)
 {
-	int	i, ret = 1;
+	int	ret = 1;
 	char	**line = 0;
-	FILE	*randf;
 	char	buf[MAXPATH];
 
 	concat_path(buf, repo, WA);
@@ -426,53 +423,18 @@ setupWorkArea(Opts *opts, char *repo)
 		opts->prodprune = addLine(opts->prodprune, strdup(ATTR));
 		opts->rootkey = strdup(proj_rootkey(0));
 	}
+	unless (opts->rootlog) {
+		time_t	now = time(0);
+
+		opts->rootlog = aprintf("%s@%s %s%s",
+		    sccs_user(), sccs_host(), time2date(now), sccs_zone(now));
+	}
 	lines2File(opts->comps, "COMPS");
 	lines2File(opts->compprune, "COMPPRUNE");
 	opts->md5rootkey = strdup(proj_md5rootkey(0));
-
-	// get rootkey and tip key and we'll have all the parts to make
-	// RANDOM.  It is called RAND because RANDOM can't be used as
-	// a shell variable name -- it's magic.
-
-	randf = popen("bk crypto -hX - > RAND", "w");
-	fputs(opts->rootkey, randf);
-	fputc('\n', randf);
-	fputs(opts->tip, randf);
-	fputc('\n', randf);
-	EACH(opts->feature) {
-		fputs(opts->feature[i], randf);
-		fputc('\n', randf);
-	}
-	EACH(opts->comps) {
-		fputs(opts->comps[i], randf);
-		fputc('\n', randf);
-	}
-	EACH(opts->prune) {
-		fputs(opts->prune[i], randf);
-		fputc('\n', randf);
-	}
-	EACH(opts->prodprune) {
-		fputs(opts->prodprune[i], randf);
-		fputc('\n', randf);
-	}
-	EACH(opts->compprune) {
-		fputs(opts->compprune[i], randf);
-		fputc('\n', randf);
-	}
-	if (pclose(randf)) {
-		perror(prog);
-		goto err;
-	}
-	freeLines(line, free);
-	line = file2Lines(0, "RAND");
-	unlink("RAND");
-	assert(nLines(line) == 1);
-	assert(strlen(line[1]) == 32);
-	line[1][16] = 0;
-	if (opts->referenceurl) {
-		assert(streq(opts->random, line[1]));
-	} else {
-		opts->random = popLine(line);
+	unless (opts->random) {
+		randomBits(buf);
+		opts->random = strdup(buf);
 	}
 	ret = 0;
 err:
@@ -584,6 +546,7 @@ mkComps(Opts *opts)
 		cmd = addLine(cmd, aprintf("-aN%s", opts->quiet));
 		cmd = addLine(cmd, aprintf("-r%s", opts->ptip));
 		cmd = addLine(cmd, aprintf("-k%s", opts->random));
+		cmd = addLine(cmd, aprintf("-w%s", opts->rootlog));
 		cmd = addLine(cmd, strdup("-C../COMPS"));
 		cmd = addLine(cmd, aprintf("-c%s", opts->comps[i]));
 		cmd = addLine(cmd, strdup("../COMPPRUNE"));
@@ -802,9 +765,12 @@ commitPending(Opts *opts)
 	int	ret = 1;
 	int	flags = opts->flags;
 
-	verbose((stderr, "commit if pending gone\n"));
-	if (systemf("bk -%sA commit -%sy'partition gone'",
-	    opts->quiet, opts->quiet)) {
+	// XXX better if could have a
+	// bk -A _test --pending BitKeeper/etc/gone && commit
+	// as this sfiles the whole blasted nested collection.
+	verbose((stderr, "commit any pending gone\n"));
+	/* If seeing a long pause here, put back noise. */
+	if (system("bk -qA commit -qy'partition gone'")) {
 		goto err;
 	}
 	ret = 0;
@@ -908,6 +874,46 @@ freePartitionKV(Opts *opts)
 			*(char **)ptr = 0;
 		}
 	}
+}
+
+private	int
+firstPrune(Opts *opts)
+{
+	int	i, ret = 1;
+	char	*key;
+	FILE	*f;
+	char	tmpf[MAXPATH];
+	char	buf[MAXPATH];
+
+	bktmp(tmpf, "revfile");
+	sprintf(buf, "bk csetprune -aSK%s -r'%s' --revfile='%s' -CCOMPS -",
+	    opts->quiet, opts->tip, tmpf);
+	f = popen(buf, "w");
+	EACH(opts->prune) fprintf(f, "%s\n", opts->prune[i]);
+	if (pclose(f)) {
+		unlink(tmpf);
+		goto err;
+	}
+	unless (f = fopen(tmpf, "r")) {
+		perror(tmpf);
+		goto err;
+	}
+	unless (key = fgetline(f)) {
+		fprintf(stderr, "no firstprune data\n");
+		fclose(f);
+		goto err;
+	}
+	opts->ptip = strdup(key);
+	if (fclose(f)) {
+		perror(tmpf);
+		goto err;
+	}
+
+	ret = 0;
+
+err:
+	unlink(tmpf);
+	return (ret);
 }
 
 private	char *
