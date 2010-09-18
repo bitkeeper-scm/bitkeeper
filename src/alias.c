@@ -34,7 +34,7 @@ private	int	expand(nested *n, hash *db, hash *keys, hash *seen,
 		    char *alias);
 private	int	value(nested *n, hash *keys, char *alias);
 private	hash	*dbLoad(nested *n, hash *aliasdb);
-private	int	chkReserved(char *alias, int fix);
+private	int	chkReserved(char *alias);
 private	int	validName(char *name);
 private	comp	*findDir(nested *n, char *cwd, char *dir);
 private	char	*relGlob(char *alias, char *pre, char *cwd);
@@ -157,11 +157,10 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 		usage();
 	}
 	rmAlias = (streq(cmd, "rm") && !av[ac]);
-	// downcast reserved keys if not removing an alias
-	unless (rmAlias) reserved = chkReserved(alias, 1);
+	reserved = chkReserved(alias);
 	assert(reserved >= 0);
 	unless (rmAlias || reserved || validName(alias)) usage();
-	if (reserved && !streq(alias, "here")) {
+	if (reserved && !strieq(alias, "HERE")) {
 		error("%s: reserved name \"%s\" may not be changed.\n",
 		    prog, alias);
 		usage();
@@ -202,7 +201,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 		goto err;
 	}
 
-	if (streq(alias, "here")) {
+	if (strieq(alias, "HERE")) {
 		if (streq(cmd, "rm")) {
 			EACH(aliases) {
 				unless (removeLine(n->here, aliases[i], free)) {
@@ -271,7 +270,7 @@ write:
 			break;
 		}
 	}
-	if (streq(alias, "here")) {
+	if (strieq(alias, "HERE")) {
 		nested_writeHere(n);
 	} else {
 		if (dbWrite(n, aliasdb, comment, !opts->nocommit)) goto err;
@@ -448,7 +447,7 @@ dbAdd(hash *aliasdb, char *alias, char **aliases)
 		list = splitLine(val, "\r\n", 0);
 	}
 	EACH(aliases) {
-		if (streq(aliases[i], "here") || streq(aliases[i], "there")) {
+		if (strieq(aliases[i], "HERE") || strieq(aliases[i], "THERE")) {
 			error("%s: not allowed as value: %s in key %s\n",
 			    prog, aliases[i], alias);
 			goto err;
@@ -549,7 +548,6 @@ dbWrite(nested *n, hash *aliasdb, char *comment, int commit)
  * integrity check the db
  * XXX: Do we want to have a fix?
  */
-
 private	int
 dbChk(nested *n, hash *aliasdb)
 {
@@ -573,7 +571,7 @@ dbChk(nested *n, hash *aliasdb)
 
 	EACH_HASH(aliasdb) {
 		key = aliasdb->kptr;
-		if (reserved = chkReserved(key, 0)) {
+		if (reserved = chkReserved(key)) {
 			if (reserved < 0) {
 				error("%s: bad case for key: %s\n",
 				    prog, key);
@@ -658,7 +656,7 @@ aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 	 * of chasing down errors.  For now, it lets errors be seen.
 	 */
 
-	if (chkReserved(alias, 0) < 0) goto err;
+	if (chkReserved(alias) < 0) goto err;
 
 	unless (aliasdb = dbLoad(n, aliasdb)) goto err;
 
@@ -810,16 +808,16 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, aopts *op)
 	/*
 	 * print the val entry from the db
 	 */
-	if (i = chkReserved(alias, 1)) {
+	if (i = chkReserved(alias)) {
 		assert(i >= 0);
-		if (streq(alias, "here")) {
+		if (strieq(alias, "HERE")) {
 			EACH_INDEX(n->here, j) {
 				items = addLine(items, strdup(n->here[j]));
 			}
 			goto preprint;
 		} else {
 			error("%s: use -e when expanding "
-			    "reserved alias; %s\n", prog, alias);
+			    "reserved alias: %s\n", prog, alias);
 			goto err;
 		}
 	}
@@ -858,13 +856,18 @@ expand(nested *n, hash *aliasdb, hash *keys, hash *seen, char *alias)
 
 	assert(n && aliasdb && keys && seen && alias);
 
-	if (streq("here", alias) || streq("there", alias)) {
+	if (strieq("HERE", alias) || strieq("THERE", alias)) {
 		error("%s: %s not allowed in an alias definition\n",
 		    prog, alias);
 		goto done;
 	}
 
-	if (streq("all", alias)) {
+	if (strieq("PRODUCT", alias)) {
+		rc = 0;
+		goto done;
+	}
+
+	if (strieq("ALL", alias)) {
 		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
 			hash_insertStr(keys, c->rootkey, 0);
@@ -975,11 +978,11 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 	EACH(aliases) {
 		alias = aliases[i];
 
-		if (reserved = chkReserved(alias, fix)) {
+		if (reserved = chkReserved(alias)) {
 			if (reserved < 0) {
 				errors++; /* case problem */
-			} else if (streq(alias, "here") ||
-			    streq(alias, "there")) {
+			} else if (strieq(alias, "HERE") ||
+			    strieq(alias, "THERE")) {
 				/* 'here' will auto-expand */
 				if (fix) {
 					EACH_INDEX(n->here, j) {
@@ -1040,7 +1043,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 root:			if (c->product) {
 				unless (fix) {
 					error(
-					    "%s: list has product rookey: %s\n",
+					   "%s: list has product rootkey: %s\n",
 					    prog, alias);
 					errors++;
 					continue;
@@ -1131,12 +1134,13 @@ root:			if (c->product) {
 }
 
 private	int
-chkReserved(char *alias, int fix)
+chkReserved(char *alias)
 {
 	int	rc = 0;
 	char	**wp, *w;
 	char	*reserved[] = {
-		"all", "here", "there",
+		"ALL", "PRODUCT", "COMPONENTS",
+		"HERE", "THERE",
 		"new", "add", "rm", "set", "list", 0};
 
 	for (wp = reserved; (w = *wp); wp++) {
@@ -1145,18 +1149,15 @@ chkReserved(char *alias, int fix)
 	if (w) {
 		if (streq(w, alias)) {
 			rc = 1;
-		} else if (fix) {
-			debug((stderr, "downcasting alias: %s\n", alias));
+		} else {
+			debug((stderr, "casefixing alias: %s\n", alias));
 			assert(strlen(alias) == strlen(w));
 			strcpy(alias, w);
 
 			/* map there => here */
 			//XXX causes problems with error messages
-			//if (streq(alias, "there")) strcpy(alias, "here");
+			//if (strieq(alias, "THERE")) strcpy(alias, "HERE");
 			rc = 1;
-		} else {
-			error("%s: alias not downcasted: %s\n", prog, alias);
-			rc = -1;
 		}
 	}
 	return (rc);

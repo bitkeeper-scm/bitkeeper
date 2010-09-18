@@ -241,7 +241,7 @@ bk version
 
 bk repocheck
     a shorthand for running check in a standalone or nested collection.
-    Easier to remember than bk -Ar check -vac
+    Easier to remember than bk -s -r check -vac
 
 bk id
     New option '-5' - return the repo rootkey as an md5key.

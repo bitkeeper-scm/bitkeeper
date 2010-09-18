@@ -67,8 +67,10 @@ New commands
 
 Changed commands
 ----------------
-    bk -A cmd - iterator, runs <cmd> in each of the product/components 
-    bk -N cmd - like bk -r <cmd> except works across product/components
+    bk -A cmd - like bk -r <cmd> except works across product/components
+    bk -U cmd - like bk -Ur <cmd> except works across product/components
+    bk -s cmd - iterator, runs <cmd> in each of the product/components 
+    	with -s<alias> runs only in the specified alias[es].
     bk changes - nested aware, i.e., bk changes -v includes component files
     bk citool - nested aware, scans all repositories, faster
     bk clone - has a new option to specify one or more aliases

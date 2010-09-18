@@ -55,7 +55,7 @@ _repocheck() {
 	    X-*)	echo "Invalid option: $1"
 	    		echo "Usage: bk repocheck [-q]"
 			printf "This checks repository integrity by running: "
-			echo "bk -Ar check -aBcv"
+			echo "bk -s -r check -aBcv"
 			echo Use -q to run quietly
 			exit 1;;
 	esac
@@ -70,7 +70,7 @@ _repocheck() {
 		}
 		cd "$2" || exit 1
 	}
-	CMD="bk -Ar $Q check -aBc $V"
+	CMD="bk -s -r $Q check -aBc $V"
 	# check output goes to stderr, so put this to stderr too
 	test "X$Q" = X && echo running: $CMD 1>&2
 	$CMD

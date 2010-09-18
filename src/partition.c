@@ -165,7 +165,7 @@ partition_main(int ac, char **av)
 	verbose((stderr, "\n### Moving components into place\n"));
 	touch(WA2PROD "/BitKeeper/log/PRODUCT", 0444);
 	if (moveComps(opts)) goto err;
-	if (Fprintf(WA2PROD "/BitKeeper/log/HERE", "all\n") < 0) goto err;
+	if (Fprintf(WA2PROD "/BitKeeper/log/HERE", "ALL\n") < 0) goto err;
 
 	verbose((stderr, "\n### Pruning product\n"));
 
@@ -181,7 +181,7 @@ partition_main(int ac, char **av)
 
 	/* final big check also restores checkout mode (hence, override) */
 	restoreEnv(opts);
-	if (systemf("bk -?_BK_DEVELOPER= -%sAr check -%sacfT",
+	if (systemf("bk -?_BK_DEVELOPER= -%ss -r check -%sacfT",
 	    opts->quiet, *opts->quiet ? "" : "v")) {
 		goto err;
 	}
@@ -770,7 +770,7 @@ commitPending(Opts *opts)
 	// as this sfiles the whole blasted nested collection.
 	verbose((stderr, "commit any pending gone\n"));
 	/* If seeing a long pause here, put back noise. */
-	if (system("bk -qA commit -qy'partition gone'")) {
+	if (system("bk -qs commit -qy'partition gone'")) {
 		goto err;
 	}
 	ret = 0;

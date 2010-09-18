@@ -59,7 +59,7 @@ echo more >> extra
 bk edit $Q gcc/file
 echo more >> gcc/file
 bk citool || exit 1
-P=`bk -Acpqr | wc -l`
+P=`bk -s -cpqr | wc -l`
 if [ $P -ne 0 ]; then
 	echo "FAILED"
 	exit 1

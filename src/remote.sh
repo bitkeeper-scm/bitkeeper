@@ -82,8 +82,14 @@ case $CMD in
 	}
 	bk get -S Makefile build.sh
 	test -d SCCS || {
-		set +e
-		bk -qAUr get -qS	# ignore windows errors on symlinks
+		set +e			# ignore windows errors on symlinks
+		# This little dance is so we can transition from bk -UN
+		# to bk -U without having to deal with this code.
+		# Same thing for old bk -A / new bk -s
+		bk -Ur get -qS
+		bk comps -h | while read x
+		do	bk -P -Ur$x get -qS
+		done
 		set -e
 	}
 	make build || failed

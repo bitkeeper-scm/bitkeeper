@@ -783,7 +783,7 @@ nested_each(int quiet, int ac, char **av)
 	int	flags = 0;
 	int	c, i;
 	int	errors = 0;
-	int	product = 1;		// -A means include product
+	int	product = 1;		// -s means include product
 	int	status;
 	char	**aliases = 0;
 	longopt	lopts[] = {		// this is a copy of bk.c:lopts
@@ -793,14 +793,16 @@ nested_each(int quiet, int ac, char **av)
 	};
 
 	if (proj_cd2product()) {
-		fprintf(stderr, "Not in an Product.\n");
+		fprintf(stderr, "Not in a Product.\n");
 		return (1);
 	}
 	getoptReset();
 	// has to track bk.c's getopt string and lopts
+	// XXX - why?  All we are looking for is the -s part, just skip
+	// everything else?
 	while ((c = getopt(ac, av,
-	    "?;^@|1aAB;cdDgGhjL|lnNpPqr|Rs;uUxz;", lopts)) != -1) {
-		unless (c == 's') continue;
+	    "?;^@|1aB;cdDgGhjL|lnNpPqr|Rs|uUxz;", lopts)) != -1) {
+		unless ((c == 's') && optarg) continue;
 		if (optarg[0] == '|') {
 			rev = &optarg[1];
 		} else {
@@ -810,7 +812,7 @@ nested_each(int quiet, int ac, char **av)
 
 	/*
 	 * Include pending components if no rev is specified
-	 * Handy for 'bk -A ..' to include newly attached components
+	 * Handy for 'bk -s ..' to include newly attached components
 	 */
 	unless (rev) flags |= NESTED_PENDING;
 	unless (n = nested_init(0, rev, 0, flags)) {
@@ -825,7 +827,7 @@ nested_each(int quiet, int ac, char **av)
 		 * Open to debate whether -aall should include this.
 		 */
 		product = 0;
-		EACH(aliases) if (streq(aliases[i], ".")) product = 1;
+		EACH(aliases) if (streq(aliases[i], "PRODUCT")) product = 1;
 
 		// XXX add error checking when the error paths get made
 		if (nested_aliases(
@@ -842,7 +844,8 @@ nested_each(int quiet, int ac, char **av)
 		if (n->alias && !cp->alias && !cp->product) continue;
 		unless (cp->included) continue;
 		unless (quiet) {
-			printf("#### %s ####\n", cp->path);
+			printf("#### %s ####\n",
+			    cp->product ? "PRODUCT" : cp->path);
 			fflush(stdout);
 		}
 		proj_cd2product();

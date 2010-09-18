@@ -8,7 +8,7 @@ echo DEFAULT > WANT
 bk alias > GOT
 cmpfiles WANT GOT
 # 
-echo all > WANT
+echo ALL > WANT
 bk alias DEFAULT > GOT
 cmpfiles WANT GOT
 echo OK
@@ -24,7 +24,7 @@ bk alias foo 2> ERR && exit 1
 grep -q "alias: no alias: foo" ERR || exit 1
 # valid keyword, but not valid key 
 bk alias all 2> ERR && exit 1
-grep -q "alias: use -e when expanding reserved alias; all" ERR || exit 1
+grep -q "alias: use -e when expanding reserved alias: ALL" ERR || exit 1
 echo OK
 
 echo $N Test showing keys with the list command .....................$NL
@@ -184,7 +184,7 @@ BAR:
 	F3:
 		./gdb
 		F4:
-			all
+			ALL
 	F5:
 F3*
 FOO:
@@ -206,10 +206,10 @@ BAR:
 	F3:
 		./gdb
 		F4:
-			all
+			ALL
 	F5:
 DEFAULT:
-	all
+	ALL
 F3*
 F4*
 F5*

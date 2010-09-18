@@ -27,8 +27,7 @@ cmpfiles ERR WANT
 echo OK
 
 echo $N Demo just product in clone_default ..........................$NL
-BK_CONFIG=clone_default:.\! bk clone $Q . ../copy5 || fail
-(cd ../copy5; bk here)
+BK_CONFIG=clone_default:PRODUCT\! bk clone $Q . ../copy5 || fail
 echo OK
 
 echo $N Test default clone_default ..................................$NL
@@ -41,7 +40,7 @@ cd ../..
 bk commit $Q -yclear || fail
 bk clone $Q . ../copy6 || fail
 (cd ../copy6; bk here) > GOT
-echo all > WANT
+echo ALL > WANT
 cmpfiles GOT WANT
 echo OK
 

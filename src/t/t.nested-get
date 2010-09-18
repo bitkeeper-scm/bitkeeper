@@ -10,7 +10,7 @@ bk attach $Q ../nm gcc/nm
 # check them out
 bk -r get $Q
 
-bk -qA sfiles -cg >"$HERE/OUT"
+bk -qs sfiles -cg >"$HERE/OUT"
 test -s "$HERE/OUT" && {
 	echo failed
 	ls -l "$HERE/OUT"
@@ -18,9 +18,9 @@ test -s "$HERE/OUT" && {
 	exit 1
 }
 
-bk -qAr edit $Q
+bk -qs -r edit $Q
 
-bk -qA sfiles -cg >"$HERE/OUT"
+bk -qs sfiles -cg >"$HERE/OUT"
 test -s "$HERE/OUT" && {
 	echo failed
 	cat "$HERE/OUT"
@@ -54,9 +54,9 @@ test -f gcc/ChangeSet || {
 	exit 1
 }
 
-bk -qAr clean $Q || {
+bk -qs -r clean $Q || {
 	echo failed
-	bk -qAr clean -v
+	bk -qs -r clean -v
 	exit 1
 }
 

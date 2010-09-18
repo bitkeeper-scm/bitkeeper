@@ -157,14 +157,14 @@ grep -q "here: DEFAULT not in HERE" ERR || {
 	exit 1
 }
 bk here rm all 2> ERR && exit 1
-grep -q "here: all not in HERE" ERR || {
+grep -q "here: ALL not in HERE" ERR || {
 	echo failed
 	cat ERR
 	exit 1
 }
 echo OK
 
-echo $N Populate special alias \'all\' and unpopulate it...............$NL
+echo $N Populate special alias \'ALL\' and unpopulate it...............$NL
 bk here add $Q all || exit 1
 bk comps -h > GOT
 cat <<EOF > WANT
@@ -183,7 +183,7 @@ cat <<EOF > WANT
 EOF
 cmpfiles GOT WANT
 cat <<EOF > WANT
-all
+ALL
 primes
 EOF
 bk alias -k here > GOT
