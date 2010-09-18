@@ -1,3 +1,9 @@
+AIX 5.3:
+    If you get malloc errors, try setting this:
+    LDR_CNTRL=MAXDATA=0x40000000
+    and retry the BK command.  AIX limits you to a rather small process size
+    and this fixes that.
+
 Config change:
     nosync: yes is deprecated as it is now the default.  Use
     sync: yes to force a sync.

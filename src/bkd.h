@@ -132,6 +132,9 @@ int	read_blk(remote *r, char *c, int len);
 sccs *	mk_probekey(FILE *f);
 int	getline2(remote *r, char *buf, int size); 
 int	get_ok(remote *r, char *read_ahead, int verbose); 
+#ifdef	_AIX
+#define	send_file bk_send_file
+#endif
 int	send_file(remote *r, char *file, int extra);
 int	send_file_extra_done(remote *r);
 int	skip_hdr(remote *r);

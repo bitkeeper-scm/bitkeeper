@@ -92,7 +92,7 @@ unittests_main(int ac, char **av)
 	getMsg_tests();
 
 	/* hpux is 256M, sgi is 200M */
-#if	!defined(hpux) && !defined(sgi)
+#if	!defined(hpux) && !defined(sgi) && !defined(_AIX)
 	/* look for datasize limits */
 	t = malloc(300 * 1024 * 1024);	/* 300M */
 	assert(t);
