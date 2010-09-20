@@ -198,7 +198,7 @@ sfiles_main(int ac, char **av)
 			if (optarg) {
 				nested = addLine(nested, optarg);
 			} else {
-				nested = addLine(nested, ".");
+				nested = addLine(nested, "PRODUCT");
 				nested = addLine(nested, "ALL");
 			}
 			break;
@@ -250,9 +250,12 @@ sfiles_main(int ac, char **av)
 		if (opts.out) fclose(opts.out);
 		proj_cd2product();
 		EACH(nested) {
-			if (streq(nested[i], ".")) {
+			if (streq(nested[i], "PRODUCT")) {
 				/* no dups */
-				unless (comps) comps = addLine(0, strdup("."));
+				unless (comps) {
+					// wants to be ".", not PRODUCT
+					comps = addLine(0, strdup("."));
+				}
 			} else {
 				unless (nav) {
 					nav = addLine(0, "bk");

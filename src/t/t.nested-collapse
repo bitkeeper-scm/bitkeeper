@@ -118,7 +118,7 @@ gcc_file
 gdb_file
 prod_file
 EOF
-bk -qA sfiles -cg > GOT
+bk -qs sfiles -cg > GOT
 cmpfiles GOT WANT
 echo OK
 

@@ -153,7 +153,7 @@ gdb/BitKeeper/etc/SCCS/s.config
 gdb/BitKeeper/etc/SCCS/s.gone
 gdb/BitKeeper/etc/SCCS/s.ignore
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N bk sfiles -UN in a nested collection ........................$NL
@@ -327,7 +327,7 @@ bk -NBEGINWITHA -Nall > OUT
 cmpfiles OUT WANT
 # make sure product first, given that space sorts before '.'
 # filter product dups.
-bk -NBEGINWITHA -N. -N. > OUT
+bk -NBEGINWITHA -NPRODUCT -NPRODUCT > OUT
 bk sfiles -h > WANT
 bk sfiles " a leading space" a/b/c a/b/c/d/e >> WANT
 cmpfiles OUT WANT

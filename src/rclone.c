@@ -217,14 +217,14 @@ rclone_ensemble(remote *r)
 		proj_cd2product();
 		vp = addLine(0, strdup("bk"));
 		if (c->product) {
-			vp = addLine(vp, strdup("--title=."));
+			vp = addLine(vp, strdup("--title=PRODUCT"));
 		} else {
 			vp = addLine(vp, aprintf("--title=%d/%d %s", which,
 						 k, c->path));
 		}
 		vp = addLine(vp, strdup("_rclone"));
 		if (c->product) {
-			vp = addLine(vp, strdup("--sfiotitle=."));
+			vp = addLine(vp, strdup("--sfiotitle=PRODUCT"));
 		} else {
 			vp = addLine(vp,
 			    aprintf("--sfiotitle=%d/%d %s",
@@ -237,7 +237,7 @@ rclone_ensemble(remote *r)
 				vp = addLine(vp,
 				    aprintf("-s%s", opts.aliases[i]));
 		    	}
-			name = "Product";
+			name = "PRODUCT";
 			vp = addLine(vp, strdup("."));
 			vp = addLine(vp, strdup(url));
 		} else {
@@ -264,7 +264,7 @@ rclone_ensemble(remote *r)
 		++which;
 	}
 	unless (opts.quiet || opts.verbose) {
-		title = aprintf("%d/%d .", which, which);
+		title = aprintf("%d/%d PRODUCT", which, which);
 		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
 	}
 

@@ -283,7 +283,8 @@ clone_main(int ac, char **av)
 		if (opts->attach) title = "attach";
 		if (opts->detach) title = "detach";
 		if (opts->product) {
-			title = aprintf("%u/%u .", opts->comps, opts->comps);
+			title =
+			    aprintf("%u/%u PRODUCT", opts->comps, opts->comps);
 		}
 		if (opts->comppath) title = opts->comppath;
 		progress_end(PROGRESS_BAR, clonerc ? "FAILED" : "OK",
@@ -660,15 +661,15 @@ clone_defaultAlias(nested *n)
 	hash	*aliasdb;
 
 	defalias = proj_configval(0, "clone_default");
-	if (streq(defalias, "")) defalias = "all";
+	if (streq(defalias, "")) defalias = "ALL";
 
 	t = defalias + strlen(defalias);
 	while (isspace(t[-1])) *--t = 0;
 
-	unless (streq(defalias, ".") ||
-	    strieq(defalias, "here") ||
-	    strieq(defalias, "there") ||
-	    strieq(defalias, "all")) {
+	unless (strieq(defalias, "PRODUCT") ||
+	    strieq(defalias, "HERE") ||
+	    strieq(defalias, "THERE") ||
+	    strieq(defalias, "ALL")) {
 
 		aliasdb = aliasdb_init(n, n->proj, 0, 1, 0);
 		t = hash_fetchStr(aliasdb, defalias);
@@ -771,7 +772,7 @@ clone2(remote *r)
 		hash	*urllist;
 
 		unless (opts->quiet) {
-			title = ".";
+			title = "PRODUCT";
 			progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
 		}
 		urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
@@ -1117,7 +1118,7 @@ sfio(remote *r, char *prefix)
 
 	cmds[n = 0] = "bk";
 	if (opts->product) {
-		cmds[++n] = "--title=.";
+		cmds[++n] = "--title=PRODUCT";
 	}
 	if (opts->comppath) {
 		sprintf(buf, "--title=%s", opts->comppath);

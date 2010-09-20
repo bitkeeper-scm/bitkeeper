@@ -13,12 +13,12 @@ test -f BitKeeper/log/deep-nests || {
         echo No BitKeeper/log/deep-nests
         exit 1
 }
-bk -A > GOT
+bk -s > GOT
 cat > WANT <<EOF
 #### gcc ####
 #### gcc/nm ####
 #### gdb ####
-#### . ####
+#### PRODUCT ####
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -31,12 +31,12 @@ test -f BitKeeper/log/deep-nests || {
         echo No BitKeeper/log/deep-nests
         exit 1
 }
-bk -A > GOT
+bk -s > GOT
 cat > WANT <<EOF
 #### gcc ####
 #### gcc/nm ####
 #### gdb ####
-#### . ####
+#### PRODUCT ####
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -49,12 +49,12 @@ test -f BitKeeper/log/deep-nests || {
         echo No BitKeeper/log/deep-nests
         exit 1
 }
-bk -A > GOT
+bk -s > GOT
 cat > WANT <<EOF
 #### gcc ####
 #### gcc/nm ####
 #### gdb ####
-#### . ####
+#### PRODUCT ####
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -104,7 +104,7 @@ bk new $Q bar
 bk commit $Q -f
 bk -P commit $Q -f
 bk -P pull $Q || exit 1
-bk -qAr check -ac || exit 1
+bk -qs -r check -ac || exit 1
 echo OK
 
 echo $N Check that bk idcache does not break the repo ...............$NL

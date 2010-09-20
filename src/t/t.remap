@@ -28,7 +28,7 @@ do
     bk setup -fc"$HERE/empty" comp$i
 done
 bk commit $Q -y'adding components'
-bk -Aqr check -ac || {
+bk -qs -r check -ac || {
 	echo failed
 	exit 1
 }
@@ -36,9 +36,9 @@ echo OK
 
 echo $N Check populate follows product remapping state - remap ......$NL
 cd "$HERE"
-# I think the -shere should not be necessary but I might be in
+# I think the -sHERE should not be necessary but I might be in
 # the minority.
-bk clone -shere $Q product clone
+bk clone -sHERE $Q product clone
 cd clone
 bk here rm $Q comp0 comp1
 test -d comp0 -o -d comp1 || fail look at $PWD for comp0 and comp1
@@ -55,9 +55,9 @@ echo OK
 
 echo $N Check populate follows product remapping state - noremap ....$NL
 cd "$HERE"
-# I think the -shere should not be necessary but I might be in
+# I think the -sHERE should not be necessary but I might be in
 # the minority.
-bk clone --sccs-compat -shere $Q product clone2
+bk clone --sccs-compat -sHERE $Q product clone2
 cd clone2
 bk here rm $Q comp0 comp1
 test -d comp0 -o -d comp1 || fail look at $PWD for comp0 and comp1

@@ -30,7 +30,7 @@ bk commit $S -y"This is \"Change Set\" A"
 echo OK
 
 echo $N Make sure that BitKeeper and subdirs are 0770 mode ..........$NL
-bk _find -type d | bk _stat | grep 40770 | awk -F\| '{ print $NF }' | \
+bk _find -type d | bk _stat | awk -F\| '$3 ~ /770$/ { print $NF }' | \
 	sort -u > LIST
 cat <<EOF > WANT
 .

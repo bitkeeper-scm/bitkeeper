@@ -196,7 +196,7 @@ main(int volatile ac, char **av, char **env)
 		}
 		is_bk = 1;
 		while ((c = getopt(ac, av,
-			"?;^@|1aAB;cdDgGhjL|lnN|pPqr|Rs;uUxz;", lopts)) != -1) {
+			"?;^@|1aB;cdDgGhjL|lnN|pPqr|Rs|uUxz;", lopts)) != -1) {
 			switch (c) {
 			    case 'N':
 				dashr = nested = 1;
@@ -210,7 +210,6 @@ main(int volatile ac, char **av, char **env)
 				break;
 			    case '?': envargs = optarg; break;
 			    case '@': remote = 1; break;
-			    case 'A': iterator = 1; break;
 			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;
@@ -237,7 +236,7 @@ main(int volatile ac, char **av, char **env)
 					return(1);
 				}
 				break;
-			    case 's': iterator = 1; break;	/* nested_each */
+			    case 's': iterator = 1; break;	// nested_each 
 			    case 'z': break;	/* remote will eat it */
 			    case 300: title = optarg; break;
 			    case 301:

@@ -186,7 +186,7 @@ test $TIP = `bk changes -qr+ -d:REV: junk` && {
 	echo failed to roll back junk
 	exit 1
 }
-bk -Aqr check -ac || exit 1
+bk -s -qr check -ac || exit 1
 echo OK
 
 echo $N Test -s./gcc/nm .............................................$NL
@@ -365,7 +365,7 @@ echo OK
 
 echo $N Remove all aliases...........................................$NL
 cd "$HERE"/project
-bk alias | grep -v all | while read x
+bk alias | grep -v ALL | while read x
 do
 	bk alias rm -C $x 2> ERR || {
 		echo failed
@@ -534,7 +534,7 @@ bk alias rm all > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-grep -q 'alias: no such alias "all"' OUT || {
+grep -q 'alias: reserved name "ALL" may not be changed.' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -549,7 +549,7 @@ bk alias rm all ./gcc > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-grep -q 'alias: reserved name "all" may not be changed' OUT || {
+grep -q 'alias: reserved name "ALL" may not be changed' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -562,7 +562,7 @@ bk alias add all ./gcc > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-grep -q 'reserved name "all" may not be changed.' OUT || {
+grep -q 'reserved name "ALL" may not be changed.' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -623,7 +623,7 @@ echo OK
 
 echo $N Alias -a of missing components and check fails ..............$NL
 cd "$HERE/project-nm"
-bk -qA changes -r+ -nd:ROOTKEY: | bk alias set -C DEFAULT -
+bk -qs changes -r+ -nd:ROOTKEY: | bk alias set -C DEFAULT -
 bk -r check || exit 1
 rm -fr junk
 bk -r check 2> ERR && { echo fix test; exit 1; }

@@ -143,7 +143,7 @@ BK_CONFIG="eoln: native!; compression: gzip! " \
     bk partition $Q -Cmapfile.noattach project config.one || fail
 umask 077
 BK_CONFIG="eoln: unix!; keyword:sccs, rcs, expand1!; compress: none! " \
-    bk partition $Q -Cmapfile.noattach project config.two || fail
+    bk partition $Q -@config.one project config.two || fail
 bk diff -ar -ux'log' config.one config.two > DIFF || fail -f DIFF diff failed
 test -s DIFF && fail -f DIFF
 umask 000

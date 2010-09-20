@@ -704,4 +704,4 @@ EOF
 bk partition -X -gcompprune -Gprune -Cmap TRANSFORM DOGFOOD 2>&1 | tee LOG
 
 # cleanup leftover BAM data in each component
-(cd DOGFOOD; bk -Aq bam clean -q)
+(cd DOGFOOD; bk -s -q bam clean -q)

@@ -2425,7 +2425,7 @@ main(_unused int argc, string argv[])
 	if (self.nested) {
 		f = popen("bk comps -ch", "r");
 		while (defined(arg = fgetline(f))) {
-			if (arg eq ".") continue;
+			if (arg eq "PRODUCT") continue;
 			arg = joinpath(self.root, arg);
 			self.allComponents[END+1] = arg;
 		}

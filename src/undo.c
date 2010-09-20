@@ -460,7 +460,7 @@ undo_ensemble1(nested *n, int verbose, int quiet, char **nav, char ***comp_list)
 		    which++, num);
 		fflush(stdout);
 	} else unless (quiet) {
-		title = aprintf("%u/%u .", num, num);
+		title = aprintf("%u/%u PRODUCT", num, num);
 	}
 	return (0);
 err:	return (1);

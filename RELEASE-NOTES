@@ -1,3 +1,9 @@
+AIX 5.3:
+    If you get malloc errors, try setting this:
+    LDR_CNTRL=MAXDATA=0x40000000
+    and retry the BK command.  AIX limits you to a rather small process size
+    and this fixes that.
+
 Config change:
     nosync: yes is deprecated as it is now the default.  Use
     sync: yes to force a sync.
@@ -241,7 +247,7 @@ bk version
 
 bk repocheck
     a shorthand for running check in a standalone or nested collection.
-    Easier to remember than bk -Ar check -vac
+    Easier to remember than bk -s -r check -vac
 
 bk id
     New option '-5' - return the repo rootkey as an md5key.

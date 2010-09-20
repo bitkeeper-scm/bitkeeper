@@ -69,7 +69,7 @@ comps_citool(char **av)
 	}
 	(void)proj_cd2product();
 
-	puts(".");
+	puts("PRODUCT");
 	while (t = fgetline(f)) {
 		if (strneq(t, "./", 2)) t += 2;
 		if (first && streq(first, t)) {

@@ -29,7 +29,7 @@ nested nested1
 # test attach where product has no BAM dir initially
 test -d BitKeeper/BAM && fail product BAM directory there
 bk attach -q "$HERE/standalone1" component1 || exit 1
-bk -qAr check -ac || fail
+bk -qs -r check -ac || fail
 test -d component1/BitKeeper/BAM && fail BAM directory still there
 cd component1
 bk bam check $Q || fail
@@ -256,7 +256,7 @@ bk attach -q "$HERE/standalone1" component1 2>GOT 1>&2 || {
 	cat GOT
 	exit 1
 }
-bk -qAr check -ac || fail
+bk -qs -r check -ac || fail
 test -d component1/BitKeeper/BAM && fail BAM directory still there
 bk comps | grep -q component1 || exit 1
 cd component1 || exit 1

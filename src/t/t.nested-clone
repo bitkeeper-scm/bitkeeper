@@ -39,7 +39,7 @@ bk clone $Q project copy || {
 	exit 1
 }
 cd copy
-bk $Q -Ar check -a || {
+bk $Q -s -r check -a || {
 	echo failed
 	exit 1
 }
@@ -49,28 +49,28 @@ echo $N Clone the product using a bk:// url .........................$NL
 cd "$HERE"
 bk clone $Q bk://$M/project bkurl || fail
 cd bkurl
-bk $Q -Ar check -a || fail
+bk $Q -s -r check -a || fail
 echo OK
 
 echo $N Clone the product using an http:// url ......................$NL
 cd "$HERE"
 bk clone $Q http://$M/project httpurl || fail
 cd httpurl
-bk $Q -Ar check -a || fail
+bk $Q -s -r check -a || fail
 echo OK
 
 echo $N Rclone the product using a bk:// url ........................$NL
 cd "$HERE"
 bk clone $Q project bk://$M/rbkurl || fail
 cd rbkurl
-bk $Q -Ar check -a || fail
+bk $Q -s -r check -a || fail
 echo OK
 
 echo $N Rclone the product using an http:// url .....................$NL
 cd "$HERE"
 bk clone $Q project http://$M/rhttpurl || fail
 cd rhttpurl
-bk $Q -Ar check -a || fail
+bk $Q -s -r check -a || fail
 echo OK
 
 echo $N Test the parent pointer in copy .............................$NL
@@ -432,7 +432,7 @@ bk clone $Q -l project lcopy || {
 	exit 1
 }
 cd lcopy
-bk -Ar $Q check -a  || {
+bk -s -r $Q check -a  || {
 	echo failed
 	exit 1
 }

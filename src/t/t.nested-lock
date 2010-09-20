@@ -2,6 +2,7 @@ echo $N Test basic lock/unlock operations............................$NL
 nested product
 NLOCK=`bk lock -Ppidfile -Wt`
 PID=`cat pidfile`
+test "X$PID" = X && fail no PID
 test -f BitKeeper/writer/nested_lock || fail
 bk lock -l 2>&1 | tee X | grep -q "Write locked" || fail -f X
 grep -q "$PID" X || fail -f X
@@ -11,6 +12,7 @@ bk lock -l 2>&1 | tee X | grep -q "No active lock in repository" || fail -f X
 test -d RESYNC && fail
 NLOCK=`bk lock -Ppidfile -Rt`
 PID=`cat pidfile`
+test "X$PID" = X && fail no PID
 test -d BitKeeper/readers || fail
 test 1 = `ls BitKeeper/readers | wc -l` || fail
 test -d RESYNC || fail
@@ -33,6 +35,7 @@ echo OK
 echo $N Test corrupt lock gets staled................................$NL
 NLOCK=`bk lock -Ppidfile -Wt 2> LOCKMSG`
 PID=`cat pidfile`
+test "X$PID" = X && fail no PID
 test -f BitKeeper/writer/nested_lock || fail
 echo "corrupt lock" > BitKeeper/writer/nested_lock
 NLOCK2=`bk lock -Ppidfile -Wt`
@@ -50,13 +53,14 @@ _BK_LEAVE_LOCKED=1
 export _BK_LEAVE_LOCKED
 NLOCK=`bk lock -Ppidfile -Wt 2> LOCKMSG`
 PID=`cat pidfile`
+test "X$PID" = X && fail no PID
 bk lock -l 2>&1 | grep -q "$PID" || fail did not lock
 bk _kill $NLOCK
 c=0
 while bk _kill -0 $PID
-do	bk _usleep 1000
+do	bk _usleep 10000
 	c=`expr $c + 1`
-	test $c = 10 && fail too many retries
+	test $c = 100 && fail too many retries
 done
 test -f BitKeeper/writer/nested_lock || fail did not leave locked
 bk lock -l 2>&1 | grep -q "$PID" || fail cleared stale write lock
@@ -86,13 +90,14 @@ _BK_LEAVE_LOCKED=1
 export _BK_LEAVE_LOCKED
 NLOCK=`bk lock -Ppidfile -Wt 2> LOCKMSG`
 PID=`cat pidfile`
+test "X$PID" = X && fail no PID
 bk lock -l 2>&1 | grep -q "$PID" || fail did not lock
 bk _kill $NLOCK
 c=0
 while bk _kill -0 $PID
-do	bk _usleep 1000
+do	bk _usleep 10000
 	c=`expr $c + 1`
-	test $c = 10 && fail too many retries
+	test $c = 100 && fail too many retries
 done
 test -f BitKeeper/writer/nested_lock || fail did not leave locked
 bk unlock -w
