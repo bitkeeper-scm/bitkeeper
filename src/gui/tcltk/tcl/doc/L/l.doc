@@ -1827,6 +1827,17 @@ the stragglers get C<undef>:
 
     {a, b, c} = {1, 2};  // a gets 1, b gets 2, c gets undef
 
+These composite assignments also work with arrays or structs
+on the right-hand side:
+
+    int dev, inode;
+    struct stat st;
+
+    lstat(file, &st);
+    {dev, inode} = st;  // pull out first two fields of the stat struct
+
+    {first, second} = split(line);  // get first two words in line
+
 =head1 REGULAR EXPRESSIONS
 
 L's regular expression support is based on the PCRE (Perl Compatible

@@ -8117,6 +8117,24 @@ TclExecuteByteCode(
 	NEXT_INST_F(1, 0, 1);
     }
 
+    case INST_L_LINDEX_STK: {
+	int listc;
+	Tcl_Obj *list = OBJ_AT_TOS;
+	Tcl_Obj **listv;
+	unsigned int i = TclGetUInt1AtPtr(pc+1);
+
+	result = TclListObjGetElements(interp, list, &listc, &listv);
+	if (result != TCL_OK) {
+	    goto checkForCatch;
+	}
+	if ((i >= 0) && (i < listc)) {
+	    objResultPtr = listv[i];
+	} else {
+	    objResultPtr = *L_undefObjPtrPtr();
+	}
+	NEXT_INST_F(2, 0, 1);
+    }
+
     default:
 	Tcl_Panic("TclExecuteByteCode: unrecognized opCode %u", *pc);
     } /* end of switch on opCode */

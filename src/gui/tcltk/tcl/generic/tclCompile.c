@@ -432,6 +432,9 @@ InstructionDesc const tclInstructionTable[] = {
     {"expandRot",	 2,    0,	  1,    {OPERAND_UINT1}},
 	/* Rotate the top opnd1 stack elements with those after
 	 * the expand marker (see expandStart). */
+    {"l-lindex-stk",	 2,    1,	  1,	{OPERAND_UINT1}},
+	/* push(listindex stktop opnd) except if opnd is <0 or
+	 * > # list elements then push the L undef object. */
     {0}
 };
 

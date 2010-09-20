@@ -93,7 +93,7 @@ private void	ast_free(Ast *ast_list);
 private int	compile_assert(Expr *expr);
 private void	compile_assign(Expr *expr);
 private void	compile_assignComposite(Expr *expr);
-private void	compile_assignFromStack(Expr *lhs, Expr *rhs, Expr *expr);
+private void	compile_assignFromStack(Expr *lhs, Type *rhs_type, Expr *expr);
 private int	compile_binOp(Expr *expr, Expr_f flags);
 private void	compile_block(Block *block);
 private void	compile_break(Stmt *stmt);
@@ -163,7 +163,6 @@ private Type	*iscallbyname(VarDecl *formal);
 private int	ispatternfn(char *name, Expr **foo, Expr **Foo_star,
 			    Expr **opts, int *nopts);
 private Label	*label_lookup(Stmt *stmt, Label_f flags);
-private void	list_mapReverse(Expr *l, int (*fn)(Expr *, Expr_f), int arg);
 private int	parse_options(int ac, Tcl_Obj **av);
 private void	proc_mkArg(Proc *proc, VarDecl *decl);
 private int	push_index(Expr *expr);
@@ -3843,12 +3842,12 @@ compile_assign(Expr *expr)
 	} else {
 		/* Handle regular assignment. */
 		compile_expr(rhs, L_PUSH_VAL);
-		compile_assignFromStack(lhs, rhs, expr);
+		compile_assignFromStack(lhs, rhs->type, expr);
 	}
 }
 
 private void
-compile_assignFromStack(Expr *lhs, Expr *rhs, Expr *expr)
+compile_assignFromStack(Expr *lhs, Type *rhs_type, Expr *expr)
 {
 	/* Whether it's an arithmetic assignment (lhs op= rhs). */
 	int	arith = (expr->op != L_OP_EQUALS);
@@ -3858,7 +3857,7 @@ compile_assignFromStack(Expr *lhs, Expr *rhs, Expr *expr)
 		L_errf(expr, "invalid l-value in assignment");
 		return;
 	}
-	L_typeck_assign(lhs, rhs);
+	L_typeck_assign(lhs, rhs_type);
 
 	if (isdeepdive(lhs)) {
 		// <rval> <lhs-ptr>               if !arith
@@ -3893,64 +3892,67 @@ compile_assignFromStack(Expr *lhs, Expr *rhs, Expr *expr)
 }
 
 private void
-list_mapReverse(Expr *l, int (*fn)(Expr *, Expr_f), int arg)
-{
-	ASSERT(l->op == L_OP_LIST);
-
-	if (l->b) {
-		list_mapReverse(l->b, fn, arg);
-	}
-	if (l->a) fn(l->a, arg);
-}
-
-private void
 compile_assignComposite(Expr *expr)
 {
+	int	i;
 	Expr	*lhs = expr->a;
 	Expr	*rhs = expr->b;
+	Type	*list = NULL, *rhs_elt_type;
+	VarDecl	*member = NULL;
 
+	expr->type = L_poly;
 	unless (expr->op == L_OP_EQUALS) {
 		L_errf(expr, "arithmetic assignment illegal");
 		lhs->type = L_poly;
 		rhs->type = L_poly;
 		return;
 	}
-	unless (rhs->op == L_OP_LIST) {
-		L_errf(expr, "right-hand side must be list {}");
-		lhs->type = L_poly;
-		rhs->type = L_poly;
-		return;
-	}
 	ASSERT(lhs->op == L_OP_LIST);
 
-	/* Push all rhs list elements (right to left). */
-	list_mapReverse(rhs, compile_expr, L_PUSH_VAL);
+	compile_expr(rhs, L_PUSH_VAL);
 
-	/* Assign lhs <- rhs elements (left to right) until we run out. */
-	for (lhs = expr->a, rhs = expr->b;
-	     lhs && rhs && rhs->a;
-	     lhs = lhs->b, rhs = rhs->b) {
-		ASSERT((lhs->op == L_OP_LIST) && (rhs->op == L_OP_LIST));
+	/* rhs_elt_type stores the current rhs type as we walk the elts. */
+	switch (rhs->type->kind) {
+	    case L_POLY:
+		rhs_elt_type = L_poly;
+		break;
+	    case L_ARRAY:
+		rhs_elt_type = rhs->type->base_type;
+		break;
+	    case L_STRUCT:
+		member = rhs->type->u.struc.members;
+		ASSERT(member);
+		rhs_elt_type = member->type;
+		break;
+	    case L_LIST:
+		list = rhs->type;
+		rhs_elt_type = list->base_type;
+		break;
+	    default:
+		L_errf(expr,
+		       "right-hand side incompatible with composite assign");
+		return;
+	}
+	/* Assign lhs <- rhs elements (left to right). */
+	for (i = 0, lhs = expr->a; lhs; ++i, lhs = lhs->b) {
+		ASSERT(lhs->op == L_OP_LIST);
 		/* A lhs undef means skip the corresponding rhs element. */
 		unless (isid(lhs->a, "undef")) {
-			compile_assignFromStack(lhs->a, rhs->a, expr);
-		}
-		emit_pop();
-	}
-	/* Any left-over lhs elements get assigned undef. */
-	for (; lhs; lhs = lhs->b) {
-		ASSERT(lhs->op == L_OP_LIST);
-		unless (isid(lhs->a, "undef")) {
-			TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
-			compile_assignFromStack(lhs->a, NULL, expr);
+			TclEmitInstInt1(INST_L_LINDEX_STK, i, L->frame->envPtr);
+			compile_assignFromStack(lhs->a, rhs_elt_type, expr);
 			emit_pop();
 		}
+		/* Advance rhs_elt_type to type of next elt, if known. */
+		if (member) {
+			member = member->next;
+			rhs_elt_type = member? member->type: NULL;
+		} else if (list) {
+			list = list->next;
+			rhs_elt_type = list? list->base_type: NULL;
+		}
 	}
-	/* Pop any left-over rhs elements to balance run-time stack. */
-	for (; rhs && rhs->a; rhs = rhs->b) {
-		emit_pop();
-	}
-
+	/* Pop rhs. */
+	emit_pop();
 	/* The value of the assignment is undef. */
 	TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
 }

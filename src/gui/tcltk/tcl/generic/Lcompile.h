@@ -184,7 +184,7 @@ extern void	L_synerr2(const char *s, int offset);
 extern void	L_trace(const char *format, ...);
 extern void	L_typeck_init();
 extern int	L_typeck_arrElt(Type *var, Type *array);
-extern void	L_typeck_assign(Expr *lhs, Expr *rhs);
+extern void	L_typeck_assign(Expr *lhs, Type *rhs);
 extern int	L_typeck_compat(Type *lhs, Type *rhs);
 extern int	L_typeck_declType(VarDecl *decl);
 extern void	L_typeck_deny(Type_k deny, Expr *expr);

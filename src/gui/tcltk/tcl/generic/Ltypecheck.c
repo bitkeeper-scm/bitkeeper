@@ -122,15 +122,15 @@ L_typeck_compat(Type *lhs, Type *rhs)
 }
 
 void
-L_typeck_assign(Expr *lhs, Expr *rhs)
+L_typeck_assign(Expr *lhs, Type *rhs)
 {
 	if (L->options & L_OPT_POLY) return;
 	unless (lhs && rhs) return;
 
-	L_typeck_deny(L_VOID, lhs);
-	L_typeck_deny(L_VOID, rhs);
-
-	unless (L_typeck_compat(lhs->type, rhs->type)) {
+	if ((rhs->kind == L_VOID) || (lhs->type->kind == L_VOID)) {
+		L_errf(lhs, "type void illegal");
+	}
+	unless (L_typeck_compat(lhs->type, rhs)) {
 		L_errf(lhs, "assignment of incompatible types");
 	}
 }

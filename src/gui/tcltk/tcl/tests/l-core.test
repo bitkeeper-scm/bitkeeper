@@ -14360,8 +14360,75 @@ void composite_4_main()
 	composite_4_delete(o1);
 	composite_4_delete(o2);
 	composite_4_delete(o3);
+
+	a = b = "bad";
+	{ a, b } = (poly){ "one", "two" };
+	unless ((a eq "one") && (b eq "two")) puts("bad 22.1");
+	a = b = "bad";
+	{ a, b } = (poly){ "one", "two", "three" };
+	unless ((a eq "one") && (b eq "two")) puts("bad 22.2");
+	a = b = "bad";
+	{ a } = (poly){ "one", "two", "three" };
+	unless ((a eq "one") && (b eq "bad")) puts("bad 22.3");
 }
 composite_4_main();
+} -output {}
+
+test composite-4.1 {check composite l-values with non-constant rhs} -body {
+#lang L
+void composite_4_1()
+{
+	int	ai[], i, j, k;
+	string	as[], a, b, c;
+	poly	ap[];
+	struct {
+		int	i;
+		int	j;
+		string	s;
+		string	t;
+	} st;
+
+	as = { "a", "b", "c" };
+	{ a, b, c } = as;
+	unless ((a eq "a") && (b eq "b") && (c eq "c")) puts("bad 1.1");
+
+	ai = { 1, 2, 3 };
+	{ i, j, k } = ai;
+	unless ((i == 1) && (j == 2) && (k == 3)) puts("bad 2.1");
+
+	st = { 5, 6, "x", "y" };
+	{ i, j, a, b } = st;
+	unless ((i == 5) && (j == 6) && (a eq "x") && (b eq "y")) {
+		puts("bad 3.1");
+	}
+
+	{ a, b } = split("one two three");
+	unless ((a eq "one") && (b eq "two")) puts("bad 4.1");
+
+	as = { "a" };
+	{ a, b, c } = as;
+	unless ((a eq "a") && !defined(b) && !defined(c)) puts("bad 5.1");
+
+	ap = { 5, 6, "x", "y" };
+	{ i, j, a, b } = ap;
+	unless ((i == 5) && (j == 6) && (a eq "x") && (b eq "y")) {
+		puts("bad 6.1");
+	}
+	ap = { "5", "6", 1, 2 };
+	{ i, j, a, b } = ap;  // poly array, so no type checking
+	unless ((i == 5) && (j == 6) && (a eq "1") && (b eq "2")) {
+		puts("bad 6.2");
+	}
+
+	/* These are not type errors. */
+	i = j = 0;
+	{ a, i, j } = { "s" };
+	if (defined(i) || defined(j)) puts("bad 10.1");
+	c = ""; i = j = 0;
+	{ i, j, a, b, c, i, j } = st;
+	if (defined(c) || defined(i) || defined(j)) puts("bad 10.2");
+}
+composite_4_1();
 } -output {}
 
 test composite-5 {check composite l-value errors} -body {
@@ -14369,7 +14436,7 @@ test composite-5 {check composite l-value errors} -body {
 int composite_5_f() { return (0); }
 void composite_5()
 {
-	int	a, b, ai[];
+	int	a, b;
 	string	s;
 
 	{ a, b } += 1;
@@ -14386,7 +14453,6 @@ void composite_5()
 	{ s } =~ s/bad/bad/;
 
 	{ a, b } = 0;
-	{ a, b } = ai;
 
 	{ 1 } = { 1 };
 	{ composite_5_f() } = { 1 };
@@ -14403,10 +14469,42 @@ void composite_5()
 .*16: L Error: arithmetic assignment illegal
 .*17: L Error: expected type string but got list in =~
 .*18: L Error: invalid l-value in =~
-.*20: L Error: right-hand side must be list {}
-.*21: L Error: right-hand side must be list {}
+.*20: L Error: right-hand side incompatible with composite assign
+.*22: L Error: invalid l-value in assignment
 .*23: L Error: invalid l-value in assignment
-.*24: L Error: invalid l-value in assignment
+}
+
+test composite-6 {test composite l-value type errors} -body {
+#lang L
+void composite_6()
+{
+	string	as[], a, b;
+	int	ai[], i, j;
+	struct {
+		int	i;
+		string	s;
+	} st;
+
+	{ a, i } = as;
+	{ i, a } = ai;
+	{ i, i } = as;
+
+	{ a, b } = { "a", 1 };
+	{ a, b } = { 1, "a" };
+
+	{ a, i } = st;
+	{ i, j } = st;
+
+	{ a, b } = { "bad" => "bad" };
+}
+} -returnCodes {error} -match regexp -result {.*10: L Error: assignment of incompatible types
+.*11: L Error: assignment of incompatible types
+.*12: L Error: assignment of incompatible types
+.*14: L Error: assignment of incompatible types
+.*15: L Error: assignment of incompatible types
+.*17: L Error: assignment of incompatible types
+.*18: L Error: assignment of incompatible types
+.*20: L Error: right-hand side incompatible with composite assign
 }
 
 test lvalue-1 {check indexing hash/struct/array expressions} -body {
