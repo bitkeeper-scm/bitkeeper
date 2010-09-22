@@ -49,9 +49,10 @@ _unpopulate() {
 # faster way to get repository status
 _repocheck() {
 	V=-v
+	H=--headers
 	Q=""
 	case "X$1" in
-	    X-q)	Q=-q; V="";;
+	    X-q)	Q=-q; H=""; V="";;
 	    X-*)	echo "Invalid option: $1"
 	    		echo "Usage: bk repocheck [-q]"
 			printf "This checks repository integrity by running: "
@@ -70,7 +71,7 @@ _repocheck() {
 		}
 		cd "$2" || exit 1
 	}
-	CMD="bk -s -r $Q check -aBc $V"
+	CMD="bk -s -r $Q$H check -aBc $V"
 	# check output goes to stderr, so put this to stderr too
 	test "X$Q" = X && echo running: $CMD 1>&2
 	$CMD

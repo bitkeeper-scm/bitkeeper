@@ -137,7 +137,7 @@ comp	*nested_findMD5(nested *n, char *md5rootkey);
 comp	*nested_findDir(nested *n, char *dir);
 char	*nested_dir2key(nested *n, char *dir);
 void	nested_compFree(void *x);
-int	nested_each(int quiet, int ac, char **av);
+int	nested_each(int quiet, int prefix, char **av, char **aliases);
 void	nested_check(void);
 int	nested_emptyDir(nested *n, char *dir);
 int	nested_rmcomp(nested *n, comp *c);

@@ -25,9 +25,19 @@ cd ../..
 bk commit -ynew $Q || exit 1
 cd ../../..
 bk commit -ynew $Q || exit 1
+bk alias new DEV gcc gdb
 echo OK
 
-echo $N bk sfiles ...................................................$NL
+# bk -s pwd
+# project/a/b/c
+# project/a/b/c/d/e
+# project/gcc
+# project/gdb
+# project
+#
+# Plus project/standalone is unattached
+
+echo $N bk sfiles sees stuff in product only ........................$NL
 bk sfiles > GOT
 cat <<EOF > WANT
 SCCS/s.ChangeSet
@@ -43,6 +53,14 @@ a/b/c/d/e/SCCS/s.ChangeSet
 a/b/c1/SCCS/s.f
 gcc/SCCS/s.ChangeSet
 gdb/SCCS/s.ChangeSet
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N bk sfiles -h filters out component changeset files ..........$NL
+bk sfiles -h | grep ChangeSet > GOT
+cat <<EOF > WANT
+SCCS/s.ChangeSet
 EOF
 cmpfiles GOT WANT
 echo OK
@@ -74,6 +92,15 @@ a/b/SCCS/s.f
 a/b/c1/SCCS/s.f
 a/b/c/SCCS/s.ChangeSet
 a/b/c/d/e/SCCS/s.ChangeSet
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N bk sfiles -h a filters comp changesets ......................$NL
+bk sfiles -h a > GOT
+cat <<EOF > WANT
+a/b/SCCS/s.f
+a/b/c1/SCCS/s.f
 EOF
 cmpfiles GOT WANT
 echo OK
@@ -114,63 +141,152 @@ echo SCCS/s.ChangeSet > WANT
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles -N in a nested collection .........................$NL
-bk sfiles -N > GOT
+echo $N bk -A in a nested product ...................................$NL
+bk -A > GOT
 cat <<EOF > WANT
-SCCS/s.ChangeSet
-BitKeeper/etc/SCCS/s.aliases
-BitKeeper/etc/SCCS/s.attr
-BitKeeper/etc/SCCS/s.collapsed
-BitKeeper/etc/SCCS/s.config
-BitKeeper/etc/SCCS/s.gone
-BitKeeper/etc/SCCS/s.ignore
-a/b/SCCS/s.f
-a/b/c1/SCCS/s.f
-a/b/c/SCCS/s.ChangeSet
-a/b/c/BitKeeper/etc/SCCS/s.attr
-a/b/c/BitKeeper/etc/SCCS/s.collapsed
-a/b/c/BitKeeper/etc/SCCS/s.config
-a/b/c/BitKeeper/etc/SCCS/s.gone
-a/b/c/BitKeeper/etc/SCCS/s.ignore
-a/b/c/d/SCCS/s.f
-a/b/c/d/e/SCCS/s.ChangeSet
-a/b/c/d/e/BitKeeper/etc/SCCS/s.attr
-a/b/c/d/e/BitKeeper/etc/SCCS/s.collapsed
-a/b/c/d/e/BitKeeper/etc/SCCS/s.config
-a/b/c/d/e/BitKeeper/etc/SCCS/s.gone
-a/b/c/d/e/BitKeeper/etc/SCCS/s.ignore
-a/b/c/d/e/f/SCCS/s.f
-gcc/SCCS/s.ChangeSet
-gcc/BitKeeper/etc/SCCS/s.attr
-gcc/BitKeeper/etc/SCCS/s.collapsed
-gcc/BitKeeper/etc/SCCS/s.config
-gcc/BitKeeper/etc/SCCS/s.gone
-gcc/BitKeeper/etc/SCCS/s.ignore
-gdb/SCCS/s.ChangeSet
-gdb/BitKeeper/etc/SCCS/s.attr
-gdb/BitKeeper/etc/SCCS/s.collapsed
-gdb/BitKeeper/etc/SCCS/s.config
-gdb/BitKeeper/etc/SCCS/s.gone
-gdb/BitKeeper/etc/SCCS/s.ignore
+a/b/c/ChangeSet
+a/b/c/BitKeeper/etc/attr
+a/b/c/BitKeeper/etc/collapsed
+a/b/c/BitKeeper/etc/config
+a/b/c/BitKeeper/etc/gone
+a/b/c/BitKeeper/etc/ignore
+a/b/c/d/f
+a/b/c/d/e/ChangeSet
+a/b/c/d/e/BitKeeper/etc/attr
+a/b/c/d/e/BitKeeper/etc/collapsed
+a/b/c/d/e/BitKeeper/etc/config
+a/b/c/d/e/BitKeeper/etc/gone
+a/b/c/d/e/BitKeeper/etc/ignore
+a/b/c/d/e/f/f
+gcc/ChangeSet
+gcc/BitKeeper/etc/attr
+gcc/BitKeeper/etc/collapsed
+gcc/BitKeeper/etc/config
+gcc/BitKeeper/etc/gone
+gcc/BitKeeper/etc/ignore
+gdb/ChangeSet
+gdb/BitKeeper/etc/attr
+gdb/BitKeeper/etc/collapsed
+gdb/BitKeeper/etc/config
+gdb/BitKeeper/etc/gone
+gdb/BitKeeper/etc/ignore
+ChangeSet
+BitKeeper/etc/aliases
+BitKeeper/etc/attr
+BitKeeper/etc/collapsed
+BitKeeper/etc/config
+BitKeeper/etc/gone
+BitKeeper/etc/ignore
+a/b/f
+a/b/c1/f
 EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk sfiles -UN in a nested collection ........................$NL
-bk sfiles -UN > GOT
+echo $N bk -U in a nested product ...................................$NL
+bk -U > GOT
 grep -v ChangeSet WANT | grep -v BitKeeper > WANT2
 cmpfiles GOT WANT2
 echo OK
 
-echo $N bk sfiles -N vs find in a nested collection .................$NL
-bk sfiles -N | sort > GOT
+echo $N bk -A -sDEV in a nested product .............................$NL
+bk -A -sDEV > GOT
+cat <<EOF > WANT
+gcc/ChangeSet
+gcc/BitKeeper/etc/attr
+gcc/BitKeeper/etc/collapsed
+gcc/BitKeeper/etc/config
+gcc/BitKeeper/etc/gone
+gcc/BitKeeper/etc/ignore
+gdb/ChangeSet
+gdb/BitKeeper/etc/attr
+gdb/BitKeeper/etc/collapsed
+gdb/BitKeeper/etc/config
+gdb/BitKeeper/etc/gone
+gdb/BitKeeper/etc/ignore
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -U -sDEV in a nested product .............................$NL
+bk -U -sDEV > GOT
+grep -v ChangeSet WANT | grep -v BitKeeper > WANT2
+cmpfiles GOT WANT2
+echo OK
+
+echo $N bk -A vs find in a nested collection ........................$NL
+bk -A | sort > GOT
 mv standalone ..
-bk _find . -type f | grep SCCS/s | sort > WANT
+bk _find . -type f | grep SCCS/s | sed s,SCCS/s.,, | sort > WANT
 mv ../standalone .
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk sfiles -r in a nested collection includes extras .........$NL
+echo $N bk -Ar in a nested product should error .....................$NL
+bk -Ar > OUT 2>&1 && {
+	echo failed
+	cat OUT
+	exit 1
+}
+grep -q 'bk: -A may not be combined with -r' OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N bk -Ur in a nested product should be like bk -R sfiles -U ...$NL
+bk sfiles -U > WANT
+bk -Ur > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -sDEV -Ur should be a foreach bk sfiles -U ...............$NL
+bk -sDEV pwd -R | while read x
+do	(cd $x; bk sfiles -U)
+done > WANT
+bk -sDEV -Ur > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -s pwd -R from the product ...............................$NL
+cat > WANT << EOF
+a/b/c
+a/b/c/d/e
+gcc
+gdb
+.
+EOF
+bk -s pwd -R > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -sDEV pwd -R from the product ............................$NL
+cat > WANT << EOF
+gcc
+gdb
+EOF
+bk -sDEV pwd -R > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -s gfiles should not prefix - from product ...............$NL
+bk -s pwd -R | while read x
+do	(cd $x; bk gfiles)
+done > WANT
+bk -s gfiles > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -sDEV gfiles should not prefix - from product ............$NL
+bk -sDEV pwd -R | while read x
+do	(cd $x; bk gfiles)
+done > WANT
+bk -sDEV gfiles > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk sfiles -r in a nested collection includes standalone .....$NL
 bk sfiles -r > GOT
 cat <<EOF > WANT
 SCCS/s.ChangeSet
@@ -218,7 +334,7 @@ EOF
 cmpfiles GOT WANT
 echo OK
 
-echo ---- chdir a
+echo ---- similar tests in a subdirectory in the product
 cd "$HERE/project/a"
 
 echo $N bk sfiles ...................................................$NL
@@ -294,54 +410,343 @@ EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N bk -N in a non-nested tree should match bk -r ...............$NL
+echo $N bk -A in a nested product subdirectory ......................$NL
+bk -A > GOT
+cat <<EOF > WANT
+a/b/c/ChangeSet
+a/b/c/BitKeeper/etc/attr
+a/b/c/BitKeeper/etc/collapsed
+a/b/c/BitKeeper/etc/config
+a/b/c/BitKeeper/etc/gone
+a/b/c/BitKeeper/etc/ignore
+a/b/c/d/f
+a/b/c/d/e/ChangeSet
+a/b/c/d/e/BitKeeper/etc/attr
+a/b/c/d/e/BitKeeper/etc/collapsed
+a/b/c/d/e/BitKeeper/etc/config
+a/b/c/d/e/BitKeeper/etc/gone
+a/b/c/d/e/BitKeeper/etc/ignore
+a/b/c/d/e/f/f
+gcc/ChangeSet
+gcc/BitKeeper/etc/attr
+gcc/BitKeeper/etc/collapsed
+gcc/BitKeeper/etc/config
+gcc/BitKeeper/etc/gone
+gcc/BitKeeper/etc/ignore
+gdb/ChangeSet
+gdb/BitKeeper/etc/attr
+gdb/BitKeeper/etc/collapsed
+gdb/BitKeeper/etc/config
+gdb/BitKeeper/etc/gone
+gdb/BitKeeper/etc/ignore
+ChangeSet
+BitKeeper/etc/aliases
+BitKeeper/etc/attr
+BitKeeper/etc/collapsed
+BitKeeper/etc/config
+BitKeeper/etc/gone
+BitKeeper/etc/ignore
+a/b/f
+a/b/c1/f
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -U in a nested product subdirectory ......................$NL
+bk -U > GOT
+grep -v ChangeSet WANT | grep -v BitKeeper > WANT2
+cmpfiles GOT WANT2
+echo OK
+
+echo $N bk -A -sDEV in a nested product subdirectory ................$NL
+bk -A -sDEV > GOT
+cat <<EOF > WANT
+gcc/ChangeSet
+gcc/BitKeeper/etc/attr
+gcc/BitKeeper/etc/collapsed
+gcc/BitKeeper/etc/config
+gcc/BitKeeper/etc/gone
+gcc/BitKeeper/etc/ignore
+gdb/ChangeSet
+gdb/BitKeeper/etc/attr
+gdb/BitKeeper/etc/collapsed
+gdb/BitKeeper/etc/config
+gdb/BitKeeper/etc/gone
+gdb/BitKeeper/etc/ignore
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -U -sDEV in a nested product subdirectory ................$NL
+bk -U -sDEV > GOT
+grep -v ChangeSet WANT | grep -v BitKeeper > WANT2
+cmpfiles GOT WANT2
+echo OK
+
+
+echo $N bk -Ar in a nested product subdirectory should error ........$NL
+bk -Ar > OUT 2>&1 && {
+	echo failed
+	cat OUT
+	exit 1
+}
+grep -q 'bk: -A may not be combined with -r' OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N bk -Ur in a prod subdir should be like bk -R sfiles -U ......$NL
+bk -R sfiles -U > WANT
+bk -Ur > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -sDEV -Ur should be a foreach bk sfiles -U ...............$NL
+bk -sDEV pwd -R | while read x
+do	(cd ../$x; bk sfiles -U)
+done > WANT
+bk -sDEV -Ur > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -s pwd -R from a product subdirectory ....................$NL
+cat > WANT << EOF
+a/b/c
+a/b/c/d/e
+gcc
+gdb
+.
+EOF
+bk -s pwd -R > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -sDEV pwd -R from product subdirectory ...................$NL
+cat > WANT << EOF
+gcc
+gdb
+EOF
+bk -sDEV pwd -R > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -s gfiles should not prefix - from product subdirectory ..$NL
+cd ..
+bk -s pwd -R | while read x
+do	(cd $x; bk gfiles)
+done > WANT
+cd a
+bk -s gfiles > GOT
+cmpfiles ../WANT GOT
+echo OK
+
+echo $N bk -sDEV gfiles should not prefix - from product subdir .....$NL
+cd ..
+bk -sDEV pwd -R | while read x
+do	(cd $x; bk gfiles)
+done > WANT
+cd a
+bk -sDEV gfiles > GOT
+cmpfiles ../WANT GOT
+echo OK
+
+# project/a/b/c/d/e
+cd "$HERE/project/a/b/c/d/e"
+echo ---- similar tests in a deeply nested component
+
+echo $N bk -A in a nested component .................................$NL
+bk -A > GOT
+cat <<EOF > WANT
+a/b/c/ChangeSet
+a/b/c/BitKeeper/etc/attr
+a/b/c/BitKeeper/etc/collapsed
+a/b/c/BitKeeper/etc/config
+a/b/c/BitKeeper/etc/gone
+a/b/c/BitKeeper/etc/ignore
+a/b/c/d/f
+a/b/c/d/e/ChangeSet
+a/b/c/d/e/BitKeeper/etc/attr
+a/b/c/d/e/BitKeeper/etc/collapsed
+a/b/c/d/e/BitKeeper/etc/config
+a/b/c/d/e/BitKeeper/etc/gone
+a/b/c/d/e/BitKeeper/etc/ignore
+a/b/c/d/e/f/f
+gcc/ChangeSet
+gcc/BitKeeper/etc/attr
+gcc/BitKeeper/etc/collapsed
+gcc/BitKeeper/etc/config
+gcc/BitKeeper/etc/gone
+gcc/BitKeeper/etc/ignore
+gdb/ChangeSet
+gdb/BitKeeper/etc/attr
+gdb/BitKeeper/etc/collapsed
+gdb/BitKeeper/etc/config
+gdb/BitKeeper/etc/gone
+gdb/BitKeeper/etc/ignore
+ChangeSet
+BitKeeper/etc/aliases
+BitKeeper/etc/attr
+BitKeeper/etc/collapsed
+BitKeeper/etc/config
+BitKeeper/etc/gone
+BitKeeper/etc/ignore
+a/b/f
+a/b/c1/f
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -U in a nested component .................................$NL
+bk -U > GOT
+grep -v ChangeSet WANT | grep -v BitKeeper > WANT2
+cmpfiles GOT WANT2
+echo OK
+
+echo $N bk -A -sDEV in a nested component ...........................$NL
+bk -A -sDEV > GOT
+cat <<EOF > WANT
+gcc/ChangeSet
+gcc/BitKeeper/etc/attr
+gcc/BitKeeper/etc/collapsed
+gcc/BitKeeper/etc/config
+gcc/BitKeeper/etc/gone
+gcc/BitKeeper/etc/ignore
+gdb/ChangeSet
+gdb/BitKeeper/etc/attr
+gdb/BitKeeper/etc/collapsed
+gdb/BitKeeper/etc/config
+gdb/BitKeeper/etc/gone
+gdb/BitKeeper/etc/ignore
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -U -sDEV in a nested component ...........................$NL
+bk -U -sDEV > GOT
+grep -v ChangeSet WANT | grep -v BitKeeper > WANT2
+cmpfiles GOT WANT2
+echo OK
+
+echo $N bk -Ar in a nested component should error ...................$NL
+bk -Ar > OUT 2>&1 && {
+	echo failed
+	cat OUT
+	exit 1
+}
+grep -q 'bk: -A may not be combined with -r' OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N bk -Ur in a nested comp should be like bk -R sfiles -U ......$NL
+bk sfiles -U > WANT
+bk -Ur > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -sDEV -Ur should be a foreach bk sfiles -U ...............$NL
+bk -sDEV pwd | while read x
+do	(cd "$x"; bk sfiles -U)
+done > WANT
+bk -sDEV -Ur > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -s pwd -R from a component ...............................$NL
+cat > WANT << EOF
+a/b/c
+a/b/c/d/e
+gcc
+gdb
+.
+EOF
+bk -s pwd -R > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -sDEV pwd -R from component ..............................$NL
+cat > WANT << EOF
+gcc
+gdb
+EOF
+bk -sDEV pwd -R > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -s gfiles should not prefix - from component .............$NL
+bk -s pwd | while read x
+do	(cd "$x"; bk gfiles)
+done > WANT
+bk -s gfiles > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -sDEV gfiles should not prefix - from component ..........$NL
+bk -sDEV pwd | while read x
+do	(cd "$x"; bk gfiles)
+done > WANT
+bk -sDEV gfiles > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo ---- standalone tests
+echo $N bk -A in a non-nested tree should match bk -gr ..............$NL
 cd "$HERE"
 commercial non-nested
 for i in a b c d e f 
 do	echo $i > $i
 	bk new $Q $i
 done
-bk -N > A
-bk -r > B
+bk -A > A
+bk -gr > B
 cmpfiles A B
 echo OK
 
-echo $N bk -Nalias in product .......................................$NL
+echo $N bk -U in a non-nested tree should match bk -Ugr .............$NL
+bk -U > A
+bk -Ugr > B
+cmpfiles A B
+echo OK
+
+echo $N bk -A -salias in product.....................................$NL
 cd "$HERE"/project
 bk setup -f " a leading space"
 bk alias new $Q BEGINWITHA " a leading space" a/b/c a/b/c/d/e
-bk -Ngcc > OUT
-bk sfiles gcc > WANT
+bk -A -sgcc > OUT
+bk gfiles gcc > WANT
 cmpfiles OUT WANT
 # filter dups
-bk -Ngcc -Ngcc > OUT
+bk -A -sgcc -sgcc > OUT
 cmpfiles OUT WANT
-bk -Ngcc -Na/b/c > OUT
-bk sfiles a/b/c gcc > WANT
+bk -A -sgcc -sa/b/c > OUT
+bk gfiles a/b/c gcc > WANT
 cmpfiles OUT WANT
-bk -Nall > OUT
-bk sfiles " a leading space" a/b/c a/b/c/d/e gcc gdb > WANT
+bk -A -sall > OUT
+bk gfiles " a leading space" a/b/c a/b/c/d/e gcc gdb > WANT
 cmpfiles OUT WANT
 # filter non-obvious dups
-bk -NBEGINWITHA -Nall > OUT
+bk -A -sBEGINWITHA -sall > OUT
 cmpfiles OUT WANT
 # make sure product first, given that space sorts before '.'
 # filter product dups.
-bk -NBEGINWITHA -NPRODUCT -NPRODUCT > OUT
-bk sfiles -h > WANT
-bk sfiles " a leading space" a/b/c a/b/c/d/e >> WANT
+bk -A -sBEGINWITHA -sPRODUCT -sPRODUCT > OUT
+bk gfiles " a leading space" a/b/c a/b/c/d/e > WANT
+bk gfiles -h >> WANT
 cmpfiles OUT WANT
-bk sfiles -Nbad 2> ERR && fail -f ERR
-# XXX error message is not ideal
+bk -A -sbad 2> ERR && fail -f ERR
 cat <<EOF > WANT
-alias: bad must be either a glob, key, alias, or component.
+bk: bad must be either a glob, key, alias, or component.
 EOF
 cmpfiles ERR WANT
 echo OK
 
 echo $N White box command parsing -- save output of catlines ........$NL
-bk -ccccccccccccccccccN > GOT || fail
-test -s GOT && fail -f GOT edited files unexpected
-bk -ccccccccccccccccccN log -r+ > GOT || fail
-test -s GOT && fail -f GOT edited files unexpected
+bk -ccccccccccccccccccA > GOT || fail
+test -s GOT && fail -f GOT edited files unexpected 1
+bk -ccccccccccccccccccA log -r+ > GOT || fail
+test -s GOT && fail -f GOT edited files unexpected 2
 echo OK
