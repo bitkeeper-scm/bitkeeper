@@ -715,7 +715,7 @@ _obscure() {
 		echo "usage: bk obscure $ARG" 1>&2
 		exit 1
 	}
-	test `bk -r sfiles -c | wc -c` -gt 0 && {
+	test `bk sfiles -c | wc -c` -gt 0 && {
 		echo "obscure: will not obscure modified tree" 1>&2
 		exit 1
 	}

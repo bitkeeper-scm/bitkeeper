@@ -779,8 +779,6 @@ nested_each(int quiet, int prefix, char **av, char **aliases)
 {
 	nested	*n = 0;
 	comp	*cp;
-	char	*rev = 0;
-	int	flags = 0;
 	int	i;
 	int	product = 0;
 	int	errors = 0;
@@ -791,20 +789,16 @@ nested_each(int quiet, int prefix, char **av, char **aliases)
 		errors = 1;
 		goto err;
 	}
-
-	/*
-	 * Include pending components if no rev is specified
-	 * Handy for 'bk -s ..' to include newly attached components
-	 */
-	unless (rev) flags |= NESTED_PENDING;
-	unless (n = nested_init(0, rev, 0, flags)) {
+	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) {
 		fprintf(stderr, "No nested list?\n");
 		errors = 1;
 		goto err;
 	}
 	if (n->cset) sccs_close(n->cset);	/* win32 */
-	assert(aliases);
-
+	unless (aliases) {
+		aliases = addLine(aliases, strdup("PRODUCT"));
+		aliases = addLine(aliases, strdup("HERE"));
+	}
 	EACH(aliases) if (strieq(aliases[i], "PRODUCT")) product = 1;
 
 	// XXX add error checking when the error paths get made

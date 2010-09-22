@@ -65,7 +65,7 @@ typedef struct {
 	u32	unlocked:1;		/* -u: list unlocked files */
 	u32	useronly:1;		/* -U: list user files only */
 	u32	xdirs:1;		/* -D: list directories w/ no BK */
-	u32	skip_comps:1;		/* -h: list only files really "here" */
+	u32	skip_comps:1;		/* -h: skip comp csets in prod */
 	u32	atRoot:1;		/* running at root of repo? */
 
 	char	*prefix;		/* set from env for path prefix */

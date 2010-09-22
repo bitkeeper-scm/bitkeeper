@@ -55,9 +55,11 @@ save_gmon(void)
 int
 main(int volatile ac, char **av, char **env)
 {
-	int	i, c, ret, prefix;
+	int	i, c, ret;
 	int	is_bk = 0, dashr = 0, remote = 0, quiet = 0;
 	int	dashA = 0, dashU = 0, headers = 0;
+	int	dashs = 0;
+	int	from_iterator = 0;
 	char	*csp, *p, *dir = 0, *locking = 0;
 	char	*envargs = 0;
 	char	**sopts = 0;
@@ -68,6 +70,7 @@ main(int volatile ac, char **av, char **env)
 		{ "cd;", 301 },		// cd to dir
 		{ "subset|", 302 },	// --subset=alias|comp
 		{ "headers", 303 },	// --headers for -s
+		{ "from-iterator", 304 },
 		{ 0, 0 },
 	};
 
@@ -243,20 +246,15 @@ main(int volatile ac, char **av, char **env)
 				break;
 			    case 'R':				/* doc 2.0 */
 				if (proj_cd2root()) {
-					fprintf(stderr, 
+					fprintf(stderr,
 					    "bk: Cannot find package root.\n");
 					return(1);
 				}
 				break;
 			    case 's': 	// -s
 			    case 302:	// --subset=
-				unless (optarg) {
-					// XXX - hack
-					p = strdup("PRODUCT");
-					aliases = addLine(aliases, p);
-					p = strdup("HERE");
-					aliases = addLine(aliases, p);
-				} else {
+				dashs = 1;
+				if (optarg) {
 					aliases =
 					    addLine(aliases, strdup(optarg));
 				}
@@ -273,6 +271,9 @@ main(int volatile ac, char **av, char **env)
 			    case 303:	// --headers
 			    	headers = 1;
 				break;
+			    case 304:  // --from-iterator
+				from_iterator = 1;
+				break;
 			    default: bk_badArg(c, av);
 			}
 			optarg = 0;
@@ -285,6 +286,8 @@ main(int volatile ac, char **av, char **env)
 			fprintf(stderr, "bk: -A may not be combined with -r\n");
 			return (1);
 		}
+		if (dashA && dashU) dashA = 0;
+		if (dashA || dashU) sopts = addLine(sopts, strdup("-g"));
 
 		if (av[optind]) {
 			prog = av[optind];
@@ -295,37 +298,6 @@ main(int volatile ac, char **av, char **env)
 				return (1);
 			}
 		}
-		if (aliases || dashA || dashU) {
-			if (!getenv("_BK_ITERATOR") && proj_isEnsemble(0)) {
-				unless (aliases) {
-					p = strdup("HERE");
-					aliases = addLine(0, p);
-					// XXX - hack
-					p = strdup("PRODUCT");
-					aliases = addLine(aliases, p);
-				}
-			} else {
-				/*
-				 * Downgrade to be compat in standalone trees.
-				 * bk -A => bk -gr
-				 * bk -U => bk -gUr
-				 * bk -sHERE -A => bk -r
-				 */
-				if (dashA || dashU) {
-					dashr = 1;
-					dashA = dashU = 0;
-				}
-
-				// -s|-sHERE|-s.|-s^PRODUCT is fine.
-				// XXX - we don't look.
-				freeLines(aliases, free);
-				aliases = 0;
-
-			}
-			// -g
-			sopts = addLine(sopts, strdup("-g"));
-		}
-
 		/* -'?VAR=val&VAR2=val2' */
 		if (envargs) {
 			hash	*h = hash_new(HASH_MEMHASH);
@@ -344,15 +316,28 @@ main(int volatile ac, char **av, char **env)
 			goto out;
 		}
 
-		if (aliases && !getenv("_BK_ITERATOR")) {
-			putenv("_BK_ITERATOR=YES");
-			nav = addLine(nav, strdup("-h"));
+		if ((dashA || dashU || dashs) && !proj_isEnsemble(0)) {
+			/*
+			 * Downgrade to be compat in standalone trees.
+			 * bk -A => bk -gr
+			 * bk -U => bk -gUr
+			 * bk -sHERE -A => bk -r
+			 */
+			if (dashA || dashU) dashr = 1;
+			dashA = dashU = dashs = 0;
+
+			// -s|-sHERE|-s.|-s^PRODUCT is fine.
+			// XXX - we don't look.
+			freeLines(aliases, free);
+			aliases = 0;
+		}
+		if (dashs && !(dashA || dashU)) {
+			nav = addLine(nav, strdup("--from-iterator"));
 			for (i = optind; av[i]; i++) {
 				nav = addLine(nav, strdup(av[i]));
 			}
 			nav = addLine(nav, 0);
-			prefix = dashA || dashU;
-			ret = nested_each(!headers, prefix, &nav[1], aliases);
+			ret = nested_each(!headers, 0, &nav[1], aliases);
 			goto out;
 		}
 		if (dashr) {
@@ -367,6 +352,13 @@ main(int volatile ac, char **av, char **env)
 					    "bk: Cannot find package root.\n");
 					return(1);
 				}
+			}
+		}
+		if (dashA || dashU) {
+			if (proj_cd2product()) {
+				fprintf(stderr,
+				    "bk: Cannot find package root.\n");
+				return(1);
 			}
 		}
 		start_cwd = strdup(proj_cwd());
@@ -411,31 +403,49 @@ bad_locking:				fprintf(stderr,
 			}
 		}
 
-		/*
-		 * Allow "bk [-sfiles_opts] -r" as an alias for
-		 * cd2root
-		 * bk sfiles [-sfiles_opts]
-		 */
-		if (dashr && !av[optind]) {
-			sopts = unshiftLine(sopts, strdup("sfiles"));
-			sopts = addLine(sopts, 0);
-			av = &sopts[1];
-			ac = nLines(sopts);
-			prog = av[0];
-			goto run;
-		}
-
 		unless (prog = av[optind]) {
-			if (getenv("_BK_ITERATOR")) exit(0);
-			usage();
+			prog = "bk"; /* for error messages */
+			sopts = unshiftLine(sopts, strdup("sfiles"));
+			if (dashr) {
+				/* bk [opts] -r => bk -R sfiles [opts] */
+				sopts = addLine(sopts, 0);
+				av = &sopts[1];
+				ac = nLines(sopts);
+				prog = av[0];
+				goto run;
+			} else if (dashA || dashU) {
+				/* bk -U [opts] => bk -s sfiles -U [opts] -g */
+				sopts = unshiftLine(sopts, strdup("bk"));
+				sopts = addLine(sopts, strdup("-h"));
+				sopts = addLine(sopts, 0);
+				ret = nested_each(!headers, 1, &sopts[1],
+				    aliases);
+				goto out;
+			} else if (from_iterator) {
+				ret = 0;
+				goto out;
+			} else {
+				usage();
+			}
 		}
 		for (ac = 0; av[ac] = av[optind++]; ac++);
-		if (dashr && !streq(prog, "sfiles")) {
+		if ((dashr || dashA || dashU) && !streq(prog, "sfiles")) {
 			if (streq(prog, "check")) {
 				putenv("_BK_CREATE_MISSING_DIRS=1");
 			}
-			if (sfiles(sopts)) return (1);
-			sopts = 0; /* sfiles() free'd */
+			if (dashr) {
+				sopts = unshiftLine(sopts, strdup("sfiles"));
+			} else if (dashA) {
+				sopts = unshiftLine(sopts, strdup("-A"));
+			} else {
+				/* -U already in sopts */
+			}
+			sopts = unshiftLine(sopts, strdup("bk"));
+			sopts = addLine(sopts, 0);
+			if (sfiles(sopts+1)) {
+				ret = 1;
+				goto out;
+			}
 			if (streq(prog, "check")) {
 				putenv("_BK_CREATE_MISSING_DIRS=");
 			}
