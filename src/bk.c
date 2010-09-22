@@ -336,8 +336,7 @@ main(int volatile ac, char **av, char **env)
 			for (i = optind; av[i]; i++) {
 				nav = addLine(nav, strdup(av[i]));
 			}
-			nav = addLine(nav, 0);
-			ret = nested_each(!headers, 0, &nav[1], aliases);
+			ret = nested_each(!headers, nav, aliases);
 			goto out;
 		}
 		if (dashr) {
@@ -417,9 +416,9 @@ bad_locking:				fprintf(stderr,
 				/* bk -U [opts] => bk -s sfiles -U [opts] -g */
 				sopts = unshiftLine(sopts, strdup("bk"));
 				sopts = addLine(sopts, strdup("-h"));
-				sopts = addLine(sopts, 0);
-				ret = nested_each(!headers, 1, &sopts[1],
-				    aliases);
+				sopts = addLine(sopts,
+				    strdup("--prefix=$RELPATH"));
+				ret = nested_each(!headers, sopts, aliases);
 				goto out;
 			} else if (from_iterator) {
 				ret = 0;

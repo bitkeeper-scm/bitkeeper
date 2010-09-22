@@ -166,10 +166,7 @@ verbose() {
 }
 
 _prefixed_sfiles() {
-	if [ -f BitKeeper/log/COMPONENT ]
-	then	_BK_PREFIX=`bk pwd -R`/ bk sfiles "$@"
-	else	bk sfiles "$@"
-	fi
+	bk sfiles --prefix="`bk pwd -R`" "$@"
 }
 
 _portal() {

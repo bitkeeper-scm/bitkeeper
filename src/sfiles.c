@@ -140,6 +140,7 @@ sfiles_main(int ac, char **av)
 	filecnt	fc;
 	char	*path, *s, buf[MAXPATH];
 	longopt	lopts[] = {
+		{ "prefix:", 300 },
 		{ 0, 0 },
 	};
 
@@ -147,10 +148,7 @@ sfiles_main(int ac, char **av)
 		return (NO_OUTPUT); /* tell callers our output closed */
 	}
 
-	/* pass in path/to/component/ and note the trailing slash */
-	opts.prefix = getenv("_BK_PREFIX");
-
-	if ((ac == 1) && !opts.prefix)  {
+	if (ac == 1)  {
 		opts.sfiles = 1;
 		memset(&fc, 0, sizeof(fc));
 		walksfiles(".", fastprint, &fc);
@@ -226,6 +224,7 @@ sfiles_main(int ac, char **av)
 		    case 'U':	opts.useronly = 1; break;	/* doc 2.0 */
 		    case 'x':	opts.extras = 1; break;		/* doc */
 		    case 'y':	opts.cfiles = 1; break;		/* doc */
+		    case 300:   opts.prefix = optarg; break; /* --prefix */
 		    default: bk_badArg(c, av);
 		}
 		if (not && (c != '^')) {
@@ -1127,7 +1126,9 @@ error:				perror("output error");
 		}
 	}
 	/* if gfile or !sfile then print gfile style name */
-	if (opts.prefix) fputs(opts.prefix, opts.out);
+	if (opts.prefix && !streq(opts.prefix, ".")) {
+		fprintf(opts.out, "%s/", opts.prefix);
+	}
 	if (opts.gfile || (state[TSTATE] != 's')) {
 		if (fputs(gfile, opts.out) < 0) goto error;
 	} else {

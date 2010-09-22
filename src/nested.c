@@ -773,13 +773,16 @@ nested_free(nested *n)
 /*
  * Run a command in each component of the nested collection, including the
  * product.
+ *
+ * av is a lines array with program arguments
  */
 int
-nested_each(int quiet, int prefix, char **av, char **aliases)
+nested_each(int quiet, char **av, char **aliases)
 {
 	nested	*n = 0;
 	comp	*cp;
-	int	i;
+	int	i, j;
+	char	**nav;
 	int	product = 0;
 	int	errors = 0;
 	int	status;
@@ -826,12 +829,14 @@ nested_each(int quiet, int prefix, char **av, char **aliases)
 			errors |= 1;
 			continue;
 		}
-		if (!prefix || cp->product) {
-			putenv("_BK_PREFIX=");
-		} else {
-			safe_putenv("_BK_PREFIX=%s/", cp->path);
+		nav = 0;
+		EACH_INDEX(av, j) {
+			nav = addLine(nav,
+			    str_subst(av[j], "$RELPATH", cp->path, 0));
 		}
-		status = spawnvp(_P_WAIT, "bk", av);
+		nav = addLine(nav, 0);
+		status = spawnvp(_P_WAIT, "bk", nav+1);
+		freeLines(nav, free);
 		if (WIFEXITED(status)) {
 			errors |= WEXITSTATUS(status);
 		} else {
