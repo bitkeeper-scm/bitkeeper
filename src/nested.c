@@ -537,6 +537,7 @@ private void
 compCheckPresent(nested *n, comp *c, int idcache_wrong)
 {
 	project	*proj;
+	int	prodlen = strlen(proj_root(0)) + 1;
 
 	/* mark present components */
 	if (exists(c->path) && (proj = proj_init(c->path))) {
@@ -547,7 +548,7 @@ compCheckPresent(nested *n, comp *c, int idcache_wrong)
 			/* rootkey can be null for an interrupted clone */
 			fprintf(stderr,
 			    "Ignoring corrupted component at %s\n", c->path);
-		} else if (samepath(path, c->path) &&
+		} else if (streq(path + prodlen, c->path) &&
 		    streq(rootkey, c->rootkey)) {
 			c->present = 1;
 			if (idcache_wrong) {

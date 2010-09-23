@@ -258,8 +258,8 @@ test -d gdb || {
 echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
-bk alias -k here > GOT
-(cd gcc; bk id; cd ../gdb; bk id) > WANT
+bk alias -k here | bk _sort > GOT
+(cd gcc; bk id; cd ../gdb; bk id) | bk _sort > WANT
 cmpfiles GOT WANT
 echo OK
 
