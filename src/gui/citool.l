@@ -535,13 +535,12 @@ findFiles()
 
 	foreach (comp in self.allComponents) {
 		chdir(comp);
-		setenv("_BK_PREFIX", "${comp}/");
 		self.sfiles_found = 0;
 		self.sfiles_pending = 0;
 		self.sfiles_component = comp;
 		self.showPending{comp} = 0;
 		tmp = tmpfile("citool");
-		cmd = "bk sfiles -vgcyp {-o${tmp}}";
+		cmd = "bk sfiles -vgcyp --prefix=${comp} {-o${tmp}}";
 		unless (self.resolve) {
 			// Look for extra files when we're not in the resolver.
 			cmd .= " -x";
@@ -610,7 +609,6 @@ findFiles()
 		chdir(self.root);
 	}
 	self.sfiles_component = "";
-	setenv("_BK_PREFIX", "");
 	self.sfiles_scanning = 0;
 
 	if (self.cnt_total == 0) {
