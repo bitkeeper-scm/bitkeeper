@@ -773,71 +773,44 @@ nested_free(nested *n)
 /*
  * Run a command in each component of the nested collection, including the
  * product.
+ *
+ * av is a lines array with program arguments
  */
 int
-nested_each(int quiet, int ac, char **av)
+nested_each(int quiet, char **av, char **aliases)
 {
-	nested	*n;
+	nested	*n = 0;
 	comp	*cp;
-	char	*rev = 0;
-	int	flags = 0;
-	int	c, i;
+	int	i, j;
+	char	**nav;
+	int	product = 0;
 	int	errors = 0;
-	int	product = 1;		// -s means include product
 	int	status;
-	char	**aliases = 0;
-	longopt	lopts[] = {		// this is a copy of bk.c:lopts
-		{ "title;", 300 },	// title for progress bar
-		{ "cd;", 301 },		// --cd=dir, chdir
-		{ 0, 0 },
-	};
 
 	if (proj_cd2product()) {
 		fprintf(stderr, "Not in a Product.\n");
-		return (1);
+		errors = 1;
+		goto err;
 	}
-	getoptReset();
-	// has to track bk.c's getopt string and lopts
-	// XXX - why?  All we are looking for is the -s part, just skip
-	// everything else?
-	while ((c = getopt(ac, av,
-	    "?;^@|1aB;cdDgGhjL|lnNpPqr|Rs|uUxz;", lopts)) != -1) {
-		unless ((c == 's') && optarg) continue;
-		if (optarg[0] == '|') {
-			rev = &optarg[1];
-		} else {
-			aliases = addLine(aliases, strdup(optarg));
-		}
-	}
-
-	/*
-	 * Include pending components if no rev is specified
-	 * Handy for 'bk -s ..' to include newly attached components
-	 */
-	unless (rev) flags |= NESTED_PENDING;
-	unless (n = nested_init(0, rev, 0, flags)) {
+	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) {
 		fprintf(stderr, "No nested list?\n");
-		return (1);
+		errors = 1;
+		goto err;
 	}
 	if (n->cset) sccs_close(n->cset);	/* win32 */
-	if (aliases) {
-		/*
-		 * If we are here via -s<something> we default to no
-		 * product but let them add that back.
-		 * Open to debate whether -aall should include this.
-		 */
-		product = 0;
-		EACH(aliases) if (streq(aliases[i], "PRODUCT")) product = 1;
-
-		// XXX add error checking when the error paths get made
-		if (nested_aliases(
-		    n, n->tip, &aliases, proj_cwd(), n->pending)) {
-		    	errors = 1;
-			goto err;
-		}
-		freeLines(aliases, free);
-		aliases = 0;
+	unless (aliases) {
+		aliases = addLine(aliases, strdup("PRODUCT"));
+		aliases = addLine(aliases, strdup("HERE"));
 	}
+	EACH(aliases) if (strieq(aliases[i], "PRODUCT")) product = 1;
+
+	// XXX add error checking when the error paths get made
+	if (nested_aliases(
+	    n, n->tip, &aliases, proj_cwd(), n->pending)) {
+		errors = 1;
+		goto err;
+	}
+
 	EACH_STRUCT(n->comps, cp, i) {
 		unless (cp->present) continue;
 		if (!product && cp->product) continue;
@@ -856,15 +829,22 @@ nested_each(int quiet, int ac, char **av)
 			errors |= 1;
 			continue;
 		}
-		status = spawnvp(_P_WAIT, "bk", av);
+		nav = 0;
+		EACH_INDEX(av, j) {
+			nav = addLine(nav,
+			    str_subst(av[j], "$RELPATH", cp->path, 0));
+		}
+		nav = addLine(nav, 0);
+		status = spawnvp(_P_WAIT, "bk", nav+1);
+		freeLines(nav, free);
 		if (WIFEXITED(status)) {
 			errors |= WEXITSTATUS(status);
 		} else {
 			errors |= 1;
 		}
 	}
-err:	freeLines(aliases, free);
-	nested_free(n);
+err:	nested_free(n);
+	freeLines(aliases, free);
 	return (errors);
 }
 

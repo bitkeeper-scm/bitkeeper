@@ -39,7 +39,6 @@
 
 private	char	*lockHome(void);
 private	char	*keysHome(void);
-private	int	uniq_regen(void);
 
 private	int	dirty;			/* set if we updated the db */
 private	MDBM	*db;
@@ -61,12 +60,9 @@ lockHome(void)
 private char	*
 keysHome(void)
 {
-	static	char	*keysFile = 0;
 	char	path[MAXPATH];
 
-	if (keysFile) return (keysFile);
-	keysFile = strdup(findDotFile(".bk_keys", "bk_keys", path));
-	return (keysFile);
+	return (strdup(findDotFile(".bk_keys", "bk_keys", path)));
 }
 
 /*
@@ -100,79 +96,6 @@ uniq_drift(void)
 	return (t);
 }
 
-
-typedef struct kcinfo kcinfo;
-struct kcinfo {
-	time_t	cutoff;
-	char	*host;
-};
-
-private	int
-keycache_print(char *file, struct stat *sb, void *data)
-{
-	sccs	*s;
-	delta	*d;
-	int	len;
-	char	*p;
-	kcinfo	*kc = (kcinfo *)data;
-
-	unless (s = sccs_init(file, SILENT|INIT_NOCKSUM)) return (0);
-	unless (HASGRAPH(s)) {
-		sccs_free(s);
-		return (0);
-	}
-	for (d = s->table; d; d = NEXT(d)) {
-		if (d->date < kc->cutoff) break;
-		unless (d->hostname) continue;
-		if (p = strchr(d->hostname, '/')) {
-			len = p - d->hostname;
-		} else {
-			len = strlen(d->hostname);
-		}
-		if (strneq(d->hostname, kc->host, len)) {
-			u8	buf[MAXPATH+100];
-
-			sccs_shortKey(s, d, buf);
-			printf("%s %lu\n", buf, d->date);
-		}
-	}
-	sccs_free(s);
-	return (0);
-}
-
-int
-keycache_main(int ac, char **av)
-{
-	kcinfo	kc;
-
-	if (proj_cd2root()) {
-		fprintf(stderr, "keycache: must be called in repo\n");
-		return (1);
-	}
-	kc.cutoff = time(0) - uniq_drift();
-	unless (kc.host = sccs_gethost()) {
-		fprintf(stderr, "keycache: cannot figure out host name\n");
-		return (1);
-	}
-	return (walksfiles(".", keycache_print, &kc));
-}
-
-private	int
-uniq_regen(void)
-{
-	int	rc;
-	char	*tmp = keysHome();
-
-	/*
-	 * Only called with a locked cache, so we can overwrite it.
-	 */
-	unless (tmp) return (-1);
-	if (rc = sysio(0, tmp, 0, "bk", "keycache", SYS)) perror("keycache");
-	sccs_unlockfile(lockHome());
-	if (rc) return (-1);
-	return (uniq_open());
-}
-
 int
 uniq_open(void)
 {
@@ -192,21 +115,37 @@ uniq_open(void)
 	}
 	unless (tmp = keysHome()) return (-1);
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	unless (f = fopen(tmp, "r")) return (0);
+	unless (f = fopen(tmp, "r")) {
+		free(tmp);
+		return (0);
+	}
 	while (fnext(buf, f)) {
+		/*
+		 * expected format:
+		 * user@host|path|date timet [syncRoot]
+		 *
+		 * Notes:
+		 *   - bk-4.x only parses upto the timet
+		 *   - ChangeSet files will always have path==ChangeSet
+		 *     (no component pathnames)
+		 *   - syncRoot only occurs on ChangeSet files and is
+		 *     the random bits of the syncRoot key
+		 *   - bk-4.x might warn and drop lines that differ by
+		 *     only the syncRoot, but that still gives correct
+		 *     behavior.
+		 */
 		for (pipes = 0, s = buf; *s; s++) {
 			if (*s == '|') pipes++;
 			if ((*s == ' ') && (pipes == 2)) break;
 		}
 		unless ((pipes == 2) &&
 		    s && isdigit(s[1]) && (chop(buf) == '\n')) {
-			fprintf(stderr, "%s is corrupted, fixing.\n", tmp);
-			mdbm_close(db);
-			fclose(f);
-			return (uniq_regen());
+			fprintf(stderr, "skipped line in %s: %s\n",
+			    tmp, buf);
+			continue;
 		}
 		*s++ = 0;
-		t = (time_t)strtoul(s, 0, 0);
+		t = (time_t)strtoul(s, &s, 0);
 
 		/*
 		 * This will prune the old keys.
@@ -214,6 +153,14 @@ uniq_open(void)
 		if (t < cutoff) {
 			dirty = 1;
 			continue;
+		}
+
+		if (*s == ' ') {
+			char	*end;
+			/* more data after timestamp */
+			if (end = strchr(s, '|')) *end = 0; /* future */
+			*s = '|';
+			strcat(buf, s);
 		}
 		k.dptr = buf;
 		k.dsize = strlen(buf) + 1;
@@ -237,35 +184,67 @@ uniq_open(void)
 		}
 	}
 	fclose(f);
+	free(tmp);
 	return (0);
 }
 
 /*
- * Return true if this key is unique.
+ * Adjust the timestamp on a delta so that it is unique.
  */
 int
-unique(char *key)
+uniq_adjust(sccs *s, delta *d)
 {
+	char	*p1, *p2, *extra;
 	datum	k, v;
+	char	key[MAXKEY];
 
 	unless (db) return (1);
-	k.dptr = key;
-	k.dsize = strlen(key) + 1;
-	v.dsize = 0;
-	v = mdbm_fetch(db, k);
-	return (v.dsize == 0);
-}
 
-int
-uniq_update(char *key, time_t t)
-{
-	datum	k, v;
+	while (1) {
+		sccs_shortKey(s, d, key);
+		extra = 0;
+		if (CSET(s)) {
+			char	syncRoot[MAXKEY];
 
-	unless (db) return (0);
-	k.dptr = key;
-	k.dsize = strlen(key) + 1;
+			if (p1 = strstr(key, "/ChangeSet|")) {
+				/* strip pathname */
+				p2 = strchr(key, '|');
+				assert(p2);
+				strcpy(p2+1, p1+1);
+			}
+
+			/* Add rand from syncRoot to cset delta keys */
+			extra = key + strlen(key);
+			sccs_syncRoot(s, syncRoot);
+			p2 = strrchr(syncRoot, '|');
+			strcpy(extra, p2);
+		}
+		k.dptr = key;
+		k.dsize = strlen(key) + 1;
+		v.dsize = 0;
+		if (mdbm_fetch(db, k).dptr == 0) {
+			/* no key with syncroot */
+			if (extra) {
+				*extra = 0;
+				k.dsize = strlen(key) + 1;
+				if (mdbm_fetch(db, k).dptr == 0) {
+					/* no key without syncroot either */
+					break;
+				}
+			} else {
+				break;
+			}
+		}
+		/* keydup, try again */
+		d->date++;
+		d->dateFudge++;
+	}
+	if (extra) {
+		*extra = '|';
+		k.dsize = strlen(key) + 1;
+	}
 	v.dsize = sizeof(time_t);
-	v.dptr = (char *)&t;
+	v.dptr = (char *)&d->date;
 	if (mdbm_store(db, k, v, MDBM_INSERT)) {
 		perror("mdbm key store");
 		return (-1);
@@ -283,26 +262,42 @@ uniq_close(void)
 	FILE	*f;
 	kvpair	kv;
 	time_t	t;
-	char	*tmp;
+	char	*keyf, *rand;
+	char	key[MAXKEY];
+	char	tmpf[MAXPATH];
 
 	unless (db) return (0);
 	unless (dirty) goto close;
-	unless (tmp = keysHome()) {
+	unless (keyf = keysHome()) {
 		fprintf(stderr, "uniq_close:  cannot find keyHome");
 		return (-1);
 	}
-	unlink(tmp);
-	unless (f = fopen(tmp, "w")) {
-		fprintf(stderr, "unique_close: fopen %s failed\n", tmp);
-		perror(tmp);
+	sprintf(tmpf, "%s.%s.%u", keyf, sccs_realhost(), getpid());
+	unless (f = fopen(tmpf, "w")) {
+		fprintf(stderr, "unique_close: fopen %s failed\n", tmpf);
+		perror(tmpf);
+		free(keyf);
 		return (-1);
 	}
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+
+		strcpy(key, kv.key.dptr);
+		if (strcnt(key, '|') > 2) {
+
+			rand = strrchr(key, '|');
+			*rand++ = 0;
+		} else {
+			rand = 0;
+		}
 		assert(sizeof(time_t) == kv.val.dsize);
 		memcpy(&t, kv.val.dptr, sizeof(time_t));
-		fprintf(f, "%s %lu\n", kv.key.dptr, t);
+		fprintf(f, "%s %lu", key, t);
+		if (rand) fprintf(f, " %s", rand);
+		fputc('\n', f);
 	}
 	fclose(f);
+	if (rename(tmpf, keyf)) perror(tmpf);
+	free(keyf);
 close:  mdbm_close(db);
 	db = 0;
 	dirty = 0;

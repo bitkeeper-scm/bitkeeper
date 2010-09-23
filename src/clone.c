@@ -1417,6 +1417,7 @@ do_relink(char *from, char *to, int quiet, char *here)
 	char	frompath[MAXPATH];
 	char	buf[MAXPATH];
 	char	path[MAXPATH];
+	char	*p;
 	FILE	*f;
 	int	linked, total, n;
 
@@ -1437,7 +1438,7 @@ do_relink(char *from, char *to, int quiet, char *here)
 		return (8);
 	}
 	strcpy(frompath, proj_cwd());
-	f = popen("bk sfiles -N", "r");
+	f = popen("bk -A", "r");
 	chdir(here);
 	unless (chdir(to) == 0) {
 		fprintf(stderr, "relink: cannot chdir to %s\n", to);
@@ -1458,15 +1459,18 @@ out:		chdir(frompath);
 	while (fnext(buf, f)) {
 		total++;
 		chomp(buf);
-		sprintf(path, "%s/%s", frompath, buf);
-		switch (relink(path, buf)) {
+		p = name2sccs(buf);
+		sprintf(path, "%s/%s", frompath, p);
+		switch (relink(path, p)) {
 		    case 0: break;		/* no match */
 		    case 1: n++; break;		/* relinked */
 		    case 2: linked++; break;	/* already linked */
 		    case -1:			/* error */
+			free(p);
 			repository_rdunlock(0, 0);
 			goto out;
 		}
+		free(p);
 	}
 	pclose(f);
 	repository_rdunlock(0, 0);

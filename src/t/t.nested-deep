@@ -13,7 +13,7 @@ test -f BitKeeper/log/deep-nests || {
         echo No BitKeeper/log/deep-nests
         exit 1
 }
-bk -s > GOT
+bk --headers -s > GOT
 cat > WANT <<EOF
 #### gcc ####
 #### gcc/nm ####
@@ -31,7 +31,7 @@ test -f BitKeeper/log/deep-nests || {
         echo No BitKeeper/log/deep-nests
         exit 1
 }
-bk -s > GOT
+bk --headers -s > GOT
 cat > WANT <<EOF
 #### gcc ####
 #### gcc/nm ####
@@ -49,7 +49,7 @@ test -f BitKeeper/log/deep-nests || {
         echo No BitKeeper/log/deep-nests
         exit 1
 }
-bk -s > GOT
+bk --headers -s > GOT
 cat > WANT <<EOF
 #### gcc ####
 #### gcc/nm ####

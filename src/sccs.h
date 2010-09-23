@@ -194,10 +194,8 @@ int	checking_rmdir(char *dir);
 #define	EXACT	0
 #define	ROUNDDOWN -1
 #define	DATE(d)		((d)->date ? (d)->date : getDate(d))
-#define	CHKDATE(d)	unless ((d)->date || \
-			    streq("70/01/01 00:00:00", (d)->sdate)) { \
-				assert((d)->date); \
-			}
+#define	CHKDATE(d) \
+	assert((d)->date || streq("70/01/01 00:00:00", (d)->sdate))
 
 /*
  * Bits for the x flag in the s.file.
@@ -944,7 +942,7 @@ char	*sfileNext(void);
 char	*sfileRev(void);
 char	*sfileFirst(char *cmd, char **Av, int Flags);
 int	sfileDone(void);
-int	sfiles(char **opts);
+int	sfiles(char **av);
 int	sfilesDied(int killit);
 delta	*sccs_findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
@@ -1039,13 +1037,12 @@ char	*sccs_Xfile(sccs *s, char type);
 FILE	*sccs_startWrite(sccs *s);
 int	sccs_finishWrite(sccs *s, FILE **f);
 void	sccs_abortWrite(sccs *s, FILE **f);
-int	unique(char *key);
+int	uniq_adjust(sccs *s, delta *d);
 char	*uniq_keysHome(void);
 int	uniq_lock(void);
 int	uniq_unlock(void);
 int	uniq_open(void);
 time_t	uniq_drift(void);
-int	uniq_update(char *key, time_t t);
 int	uniq_close(void);
 time_t	sccs_date2time(char *date, char *zone);
 pid_t	smtpmail(char **to, char *subject, char *file);

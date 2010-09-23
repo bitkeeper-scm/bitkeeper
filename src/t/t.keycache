@@ -52,19 +52,11 @@ cmp -s WANT GOT || {
 }
 echo OK
 
-echo $N Make sure we can regenerate the keycache ....................$NL
-bk sort < "$KEYS" > WANT
-rm -f "$KEYS"
-bk keycache > "$KEYS"
-test -z "$KEYS" && {
-	echo failed to add keys to bk_keys
-	exit 1
-}
-bk sort < "$KEYS" > GOT
-cmp -s WANT GOT || {
-	echo failed to regenerate the same keycache
-	diff WANT GOT
-	bk prs -nd:KEY: BitKeeper/etc/config
-    	exit 1
-}
+echo $N Show parallel commits don\'t use fudge .......................$NL
+nested nest
+for f in f1 f2 f3 f4
+do  bk setup -C -f $f
+    bk log -r+ -nd'$if(:FUDGE: -gt 2){bad fudge(:FUDGE:) in :GFILE:@:REV:}' \
+       $f/ChangeSet
+done
 echo OK

@@ -57,13 +57,20 @@ main(int volatile ac, char **av, char **env)
 {
 	int	i, c, ret;
 	int	is_bk = 0, dashr = 0, remote = 0, quiet = 0;
-	int	iterator = 0, nested = 0;
+	int	dashA = 0, dashU = 0, headers = 0;
+	int	dashs = 0;
+	int	from_iterator = 0;
 	char	*csp, *p, *dir = 0, *locking = 0;
 	char	*envargs = 0;
 	char	**sopts = 0;
+	char	**aliases = 0;
+	char	**nav = 0;
 	longopt	lopts[] = {
 		{ "title;", 300 },	// title for progress bar
 		{ "cd;", 301 },		// cd to dir
+		{ "subset|", 302 },	// --subset=alias|comp
+		{ "headers", 303 },	// --headers for -s
+		{ "from-iterator", 304 },
 		{ 0, 0 },
 	};
 
@@ -195,15 +202,23 @@ main(int volatile ac, char **av, char **env)
 			return (0);
 		}
 		is_bk = 1;
+		nav = addLine(nav, strdup("bk"));
 		while ((c = getopt(ac, av,
-			"?;^@|1aB;cdDgGhjL|lnN|pPqr|Rs|uUxz;", lopts)) != -1) {
+			"?;^@|1aAB;cdDgGhjL|lnpPqr|Rs|uUxz;", lopts)) != -1) {
+			unless ((c == 's') || (c >= 300) || (c == '?')) {
+				p = aprintf("-%c%s", c, optarg ? optarg : "");
+				nav = addLine(nav, p);
+			}
 			switch (c) {
-			    case 'N':
-				dashr = nested = 1;
-				/* FALLTHOUGH */
+			    /* maybe sfiles, depends on nested or not */
+			    case 'A': dashA = 1; break;
+			    /* sfiles stuff */
+			    case 'U':
+				dashU = 1; /* nested -U mode */
+				/*FALLTHOUGH*/
 			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
-			    case 'n': case 'p': case 'u': case 'U': case 'x':
+			    case 'n': case 'p': case 'u': case 'x':
 			    case 'h': case '^':
  				sopts = addLine(sopts,
  				    aprintf("-%c%s", c, optarg ? optarg : ""));
@@ -215,7 +230,7 @@ main(int volatile ac, char **av, char **env)
 			    case 'L': locking = optarg; break;
 			    case 'P':				/* doc 2.0 */
 				if (proj_cd2product() && proj_cd2root()) {
-					fprintf(stderr, 
+					fprintf(stderr,
 					    "bk: Cannot find product root.\n");
 					return(1);
 				}
@@ -231,12 +246,19 @@ main(int volatile ac, char **av, char **env)
 				break;
 			    case 'R':				/* doc 2.0 */
 				if (proj_cd2root()) {
-					fprintf(stderr, 
+					fprintf(stderr,
 					    "bk: Cannot find package root.\n");
 					return(1);
 				}
 				break;
-			    case 's': iterator = 1; break;	// nested_each 
+			    case 's': 	// -s
+			    case 302:	// --subset=
+				dashs = 1;
+				if (optarg) {
+					aliases =
+					    addLine(aliases, strdup(optarg));
+				}
+				break;
 			    case 'z': break;	/* remote will eat it */
 			    case 300: title = optarg; break;
 			    case 301:
@@ -246,22 +268,36 @@ main(int volatile ac, char **av, char **env)
 					return (1);
 				}
 				break;
+			    case 303:	// --headers
+			    	headers = 1;
+				break;
+			    case 304:  // --from-iterator
+				from_iterator = 1;
+				break;
 			    default: bk_badArg(c, av);
 			}
+			optarg = 0;
 		}
+		/* if -r, then -U is only passed to sfiles */
+		if (dashr && dashU) dashU = 0;
 
-		/*
-		 * Make -A/-N be honored only in a nested collection.
-		 * If we just ignore them otherwise the right thing
-		 * happens, i.e,
-		 * bk -Ar co => bk -r co
-		 * bk -N co => bk -r co
-		 */
-		if ((nested || iterator) && !proj_isEnsemble(0)) {
-			nested = iterator = 0;
+		// No -A w/ -r, -A is new.
+		if (dashA && dashr) {
+			fprintf(stderr, "bk: -A may not be combined with -r\n");
+			return (1);
 		}
-		if (nested) putenv("_BK_FIX_NESTED_PATH=YES");
+		if (dashA && dashU) dashA = 0;
+		if (dashA || dashU) sopts = addLine(sopts, strdup("-g"));
 
+		if (av[optind]) {
+			prog = av[optind];
+			if ((dashA || dashU) && streq(prog, "check")) {
+				fprintf(stderr,
+				    "bk: -A/-U option cannot be used "
+				    "with check\n");
+				return (1);
+			}
+		}
 		/* -'?VAR=val&VAR2=val2' */
 		if (envargs) {
 			hash	*h = hash_new(HASH_MEMHASH);
@@ -280,12 +316,29 @@ main(int volatile ac, char **av, char **env)
 			goto out;
 		}
 
-		if (iterator && !getenv("_BK_ITERATOR")) {
-			putenv("_BK_ITERATOR=YES");
-			ret = nested_each(quiet, ac, av);
+		if ((dashA || dashU || dashs) && !proj_isEnsemble(0)) {
+			/*
+			 * Downgrade to be compat in standalone trees.
+			 * bk -A => bk -gr
+			 * bk -U => bk -gUr
+			 * bk -sHERE -A => bk -r
+			 */
+			if (dashA || dashU) dashr = 1;
+			dashA = dashU = dashs = 0;
+
+			// -s|-sHERE|-s.|-s^PRODUCT is fine.
+			// XXX - we don't look.
+			freeLines(aliases, free);
+			aliases = 0;
+		}
+		if (dashs && !(dashA || dashU)) {
+			nav = addLine(nav, strdup("--from-iterator"));
+			for (i = optind; av[i]; i++) {
+				nav = addLine(nav, strdup(av[i]));
+			}
+			ret = nested_each(!headers, nav, aliases);
 			goto out;
 		}
-
 		if (dashr) {
 			if (dir) {
 				unless (chdir(dir) == 0) {
@@ -293,13 +346,18 @@ main(int volatile ac, char **av, char **env)
 					return (1);
 				}
 			} else {
-				// Silently try and go to the product
-				if (nested) proj_cd2product();
 				if (proj_cd2root()) {
 					fprintf(stderr,
 					    "bk: Cannot find package root.\n");
 					return(1);
 				}
+			}
+		}
+		if (dashA || dashU) {
+			if (proj_cd2product()) {
+				fprintf(stderr,
+				    "bk: Cannot find package root.\n");
+				return(1);
 			}
 		}
 		start_cwd = strdup(proj_cwd());
@@ -344,47 +402,57 @@ bad_locking:				fprintf(stderr,
 			}
 		}
 
-		/*
-		 * Allow "bk [-sfiles_opts] -r" as an alias for
-		 * cd2root
-		 * bk sfiles [-sfiles_opts]
-		 */
-		if (dashr && !av[optind]) {
-			sopts = unshiftLine(sopts, strdup("sfiles"));
-			sopts = addLine(sopts, 0);
-			av = &sopts[1];
-			ac = nLines(sopts);
-			prog = av[0];
-			goto run;
-		}
-
 		unless (prog = av[optind]) {
-			if (getenv("_BK_ITERATOR")) exit(0);
-			usage();
-		}
-		if (nested && streq(prog, "check")) {
-			fprintf(stderr,
-			    "bk: -N option cannot be used with check\n");
-			return (1);
-		}
-		for (ac = 0; av[ac] = av[optind++]; ac++);
-		if (dashr) {
-			unless (streq(prog, "sfiles") || streq(prog, "sfind")) {
-				if (streq(prog, "check")) {
-					putenv("_BK_CREATE_MISSING_DIRS=1");
-				}
-				if (sfiles(sopts)) return (1);
-				sopts = 0; /* sfiles() free'd */
-				if (streq(prog, "check")) {
-					putenv("_BK_CREATE_MISSING_DIRS=");
-				}
-				/* we have bk [-r...] cmd [opts] ... */
-				/* we want cmd [opts] ... - */
-				av[ac++] = "-";
-				av[ac] = 0;
+			prog = "bk"; /* for error messages */
+			sopts = unshiftLine(sopts, strdup("sfiles"));
+			if (dashr) {
+				/* bk [opts] -r => bk -R sfiles [opts] */
+				sopts = addLine(sopts, 0);
+				av = &sopts[1];
+				ac = nLines(sopts);
+				prog = av[0];
+				goto run;
+			} else if (dashA || dashU) {
+				/* bk -U [opts] => bk -s sfiles -U [opts] -g */
+				sopts = unshiftLine(sopts, strdup("bk"));
+				sopts = addLine(sopts, strdup("-h"));
+				sopts = addLine(sopts,
+				    strdup("--prefix=$RELPATH"));
+				ret = nested_each(!headers, sopts, aliases);
+				goto out;
+			} else if (from_iterator) {
+				ret = 0;
+				goto out;
+			} else {
+				usage();
 			}
 		}
-		prog = av[0];
+		for (ac = 0; av[ac] = av[optind++]; ac++);
+		if ((dashr || dashA || dashU) && !streq(prog, "sfiles")) {
+			if (streq(prog, "check")) {
+				putenv("_BK_CREATE_MISSING_DIRS=1");
+			}
+			if (dashr) {
+				sopts = unshiftLine(sopts, strdup("sfiles"));
+			} else if (dashA) {
+				sopts = unshiftLine(sopts, strdup("-A"));
+			} else {
+				/* -U already in sopts */
+			}
+			sopts = unshiftLine(sopts, strdup("bk"));
+			sopts = addLine(sopts, 0);
+			if (sfiles(sopts+1)) {
+				ret = 1;
+				goto out;
+			}
+			if (streq(prog, "check")) {
+				putenv("_BK_CREATE_MISSING_DIRS=");
+			}
+			/* we have bk [-r...] cmd [opts] ... */
+			/* we want cmd [opts] ... - */
+			av[ac++] = "-";
+			av[ac] = 0;
+		}
 	}
 
 run:	trace_init(prog);	/* again 'cause we changed prog */
@@ -437,6 +505,7 @@ out:
 	fflush(stdout);
 	fflush(stderr);
 	freeLines(sopts, free);
+	freeLines(nav, free);
 #ifdef	WIN32
 	close(1);
 #endif
@@ -1411,6 +1480,7 @@ showproc_end(char *cmdlog_buffer, int ret)
 		EACH_KV(notes) fprintf(f, " %s=%s", kv.key.dptr, kv.val.dptr);
 		fprintf(f, " )");
 	}
+	fprintf(f, " [%s]", proj_cwd());
 	fprintf(f, "\n");
 	fclose(f);
 }

@@ -262,24 +262,18 @@ sfileDone(void)
 }
 
 int
-sfiles(char **opts)
+sfiles(char **av)
 {
 	int	pfd;
-	char	**sav = 0;
 	char	ignore[] = "BitKeeper/etc/ignore";
 
 	unless (exists(ignore)) get(ignore, SILENT, "-");
-	sav = addLine(0, strdup("bk"));
-	sav = addLine(sav, strdup("sfiles"));
-	sav = catLines(sav, opts);
-	sav = addLine(sav, 0);
-	if ((spid = spawnvpio(0, &pfd, 0, sav+1)) == -1) {
+	if ((spid = spawnvpio(0, &pfd, 0, av)) == -1) {
 		fprintf(stderr, "cannot spawn bk sfiles\n");
 		return (1);
 	}
 	dup2(pfd, 0);
 	close(pfd);
-	freeLines(sav, free);
 	return (0);
 }
 
@@ -289,7 +283,7 @@ sfilesDied(int killit)
 	int	ret, opt;
 	static	int sfilesRet = 0;
 
-	if (spid) {
+	if (spid > 0) {
 		opt = WNOHANG;
 		if (killit) {
 			if (kill(spid, SIGTERM)) kill(spid, SIGKILL);

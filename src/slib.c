@@ -951,23 +951,14 @@ private void
 uniqRoot(sccs *s)
 {
 	delta	*d;
-	char	buf[MAXPATH+100];
 
 	assert(s->tree == s->table);
 	d = s->tree;
 	DATE(d);
 
 	unless (uniq_open() == 0) return;	// XXX - no error?
-	sccs_shortKey(s, sccs_ino(s), buf);
-	while (!unique(buf)) {
-//fprintf(stderr, "COOL: caught a duplicate root: %s\n", buf);
-		d->dateFudge++;
-		d->date++;
-		sccs_shortKey(s, d, buf);
-	}
-	uniq_update(buf, d->date);
+	uniq_adjust(s, d);
 	uniq_close();
-	return;
 }
 
 /*
@@ -978,8 +969,6 @@ private void
 uniqDelta(sccs *s)
 {
 	delta	*next, *d;
-	char	*p1, *p2;
-	char	buf[MAXPATH+100];
 
 	assert(s->tree != s->table);
 	d = s->table;
@@ -1021,19 +1010,7 @@ uniqDelta(sccs *s)
 		return;
 	}
 
-	sccs_shortKey(s, d, buf);
-	if (p1 = strstr(buf, "/ChangeSet|")) {
-		p2 = strchr(buf, '|');
-		assert(p2);
-		strcpy(p2+1, p1+1);
-	}
-	while (!unique(buf)) {
-//fprintf(stderr, "COOL: caught a duplicate key: %s\n", buf);
-		d->date++;
-		d->dateFudge++;
-		sccs_shortKey(s, d, buf);
-	}
-	uniq_update(buf, d->date);
+	uniq_adjust(s, d);
 	uniq_close();
 }
 
@@ -9728,11 +9705,6 @@ out:		if (sfile) fclose(sfile);
 	} else {
 		l[0].flags = 0;
 	}
-	dinsert(s, n, fixDate && !(flags & DELTA_PATCH));
-	s->numdeltas++;
-	EACH (syms) {
-		addsym(s, n, n, !(flags & DELTA_PATCH), n->rev, syms[i]);
-	}
 	/* need random set before the call to sccs_sdelta */
 	/* XXX: changes n, so must be after syms stuff */
 	unless (nodefault || (flags & DELTA_PATCH)) {
@@ -9765,6 +9737,11 @@ out:		if (sfile) fclose(sfile);
 			comments_append(n, aprintf("BitKeeper file %s", t));
 			free(t);
 		}
+	}
+	dinsert(s, n, fixDate && !(flags & DELTA_PATCH));
+	s->numdeltas++;
+	EACH (syms) {
+		addsym(s, n, n, !(flags & DELTA_PATCH), n->rev, syms[i]);
 	}
 	if (BITKEEPER(s)) {
 		s->version = SCCS_VERSION;
@@ -15003,6 +14980,14 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		char key[MAXKEY];
 
 		sccs_sdelta(s, sccs_ino(s), key);
+		fs(key);
+		return (strVal);
+	}
+
+	case KW_SYNCROOT: /* SYNCROOT */ {
+		char key[MAXKEY];
+
+		sccs_syncRoot(s, key);
 		fs(key);
 		return (strVal);
 	}
