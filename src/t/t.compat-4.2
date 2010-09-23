@@ -218,7 +218,7 @@ cd ..
 rm -fr copy.noremap
 tar xf copy.noremap.tar
 cd copy.noremap || fail
-$OLDBK/bk pull $Q bk://localhost:$NEWP/project || fail
+$OLDBK/bk pull $Q bk://localhost:$NEWP/project 2>WARN || fail
 echo OK
 
 echo $N Pull old server new client with local work present ..........$NL
@@ -240,7 +240,10 @@ cd copy.noremap || fail
 touch localfile
 bk new $Q localfile || fail
 bk commit $Q -ylocalcset || fail
-$OLDBK/bk pull $Q bk://localhost:$NEWP/project || fail
+$OLDBK/bk pull $Q bk://localhost:$NEWP/project 2>WARN || fail
+test ! -s WARN \
+    || grep -q 'Warning: duplicate key .*/sandbox/.bk/bk_keys' WARN \
+    || fail -f WARN
 echo OK
 
 echo $N Nested detached repo running behind old bkd .................$NL

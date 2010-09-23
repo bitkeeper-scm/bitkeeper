@@ -490,7 +490,7 @@ cd gcc
 bk id
 cd ../gdb
 bk id
-) > ../WANT
+) | bk _sort > ../WANT
 cd "$HERE"
 bk clone $Q -s. project sparse || exit 1
 cd sparse || exit 1

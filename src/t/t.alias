@@ -38,8 +38,7 @@ cmpfiles WANT GOT
 bk log -r1.0 -nd:MD5KEY: gcc/ChangeSet gdb/ChangeSet | bk alias -ek - > GOT
 cmpfiles WANT GOT
 cd gcc
-bk alias -ek .  > ../GOT
-bk alias -ek ../gdb >> ../GOT
+(bk alias -ek .; bk alias -ek ../gdb) | bk _sort > ../GOT
 cd ..
 cmpfiles WANT GOT
 bk alias -ek 'g*' > GOT

@@ -252,7 +252,6 @@ _isnetwork
 inskeys
 key2rev
 key2path
-keycache
 _keyunlink
 _kill
 _lconfig
