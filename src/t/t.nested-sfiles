@@ -750,3 +750,7 @@ test -s GOT && fail -f GOT edited files unexpected 1
 bk -ccccccccccccccccccA log -r+ > GOT || fail
 test -s GOT && fail -f GOT edited files unexpected 2
 echo OK
+
+echo $N Show that bk -A handles sigpipe correctly ...................$NL
+bk -A | head -1 > FOO
+echo OK

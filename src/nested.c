@@ -822,7 +822,6 @@ nested_each(int quiet, char **av, char **aliases)
 			    cp->product ? "PRODUCT" : cp->path);
 			fflush(stdout);
 		}
-		proj_cd2product();
 		if (chdir(cp->path)) {
 			fprintf(stderr,
 			    "bk: unable to chdir to component at %s\n",
@@ -834,12 +833,20 @@ nested_each(int quiet, char **av, char **aliases)
 		EACH_INDEX(av, j) {
 			nav = addLine(nav,
 			    str_subst(av[j], "$RELPATH", cp->path, 0));
+			if ((j == 1) && streq(av[j], "bk")) {
+				/* tell bk it is OK to exit with SIGPIPE */
+				nav = addLine(nav, strdup("--sigpipe"));
+			}
 		}
 		nav = addLine(nav, 0);
 		status = spawnvp(_P_WAIT, "bk", nav+1);
 		freeLines(nav, free);
+		proj_cd2product();
 		if (WIFEXITED(status)) {
 			errors |= WEXITSTATUS(status);
+		} else if (WIFSIGNALED(status) &&
+		    (WTERMSIG(status) == SIGPIPE)) {
+			break;
 		} else {
 			errors |= 1;
 		}
