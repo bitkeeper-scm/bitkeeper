@@ -261,12 +261,35 @@ bk -s pwd -R > GOT
 cmpfiles WANT GOT
 echo OK
 
+echo $N bk -sc pwd -R from near a comp runs in that comp ............$NL
+echo a/b/c > WANT
+(cd a/b && bk -sc pwd -R) > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -s. pwd -R from inside a comp runs in that comp ..........$NL
+echo a/b/c > WANT
+(cd a/b/c/d && bk -s. pwd -R) > GOT
+cmpfiles WANT GOT
+echo OK
+
 echo $N bk -sDEV pwd -R from the product ............................$NL
 cat > WANT << EOF
 gcc
 gdb
 EOF
 bk -sDEV pwd -R > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -s^prOdUcT pwd -R from the product .......................$NL
+cat > WANT << EOF
+a/b/c
+a/b/c/d/e
+gcc
+gdb
+EOF
+bk -s^prOdUcT pwd -R > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -283,6 +306,12 @@ bk -sDEV pwd -R | while read x
 do	(cd $x; bk gfiles)
 done > WANT
 bk -sDEV gfiles > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -s. gfiles from inside a comp runs that in that comp .....$NL
+(cd a/b/c && bk gfiles) > WANT
+(cd a/b/c/d && bk -s. gfiles) > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -727,6 +756,7 @@ bk gfiles a/b/c gcc > WANT
 cmpfiles OUT WANT
 bk -A -sall > OUT
 bk gfiles " a leading space" a/b/c a/b/c/d/e gcc gdb > WANT
+bk gfiles -h >> WANT
 cmpfiles OUT WANT
 # filter non-obvious dups
 bk -A -sBEGINWITHA -sall > OUT

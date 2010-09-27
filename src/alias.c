@@ -63,6 +63,7 @@ int	rmAlias = 0;
  * bk alias [-rrev] [-hm]		// list all aliases
  * bk alias [-rrev] [-hm] [-k] name	// show the value of a db key
  * bk alias -e [-rrev] [-hm] [-k] name	// show the key or path expansion
+ * bk alias -e => bk comps -s'name'	// the documented interface
  */
 int
 alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
@@ -158,7 +159,6 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	}
 	rmAlias = (streq(cmd, "rm") && !av[ac]);
 	reserved = chkReserved(alias);
-	assert(reserved >= 0);
 	unless (rmAlias || reserved || validName(alias)) usage();
 	if (reserved && !strieq(alias, "HERE")) {
 		error("%s: reserved name \"%s\" may not be changed.\n",
@@ -200,6 +200,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 		    prog, c, (c > 1)?"s":"");
 		goto err;
 	}
+	if (aliasdb_caret(aliases)) goto err;
 
 	if (strieq(alias, "HERE")) {
 		if (streq(cmd, "rm")) {
@@ -219,8 +220,8 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 			EACH(aliases) {
 				n->here = addLine(n->here, strdup(aliases[i]));
 			}
-			uniqLines(n->here, free);
 		}
+		n->here = nested_fixHere(n->here);
 		goto write;
 
 	}
@@ -551,7 +552,6 @@ dbWrite(nested *n, hash *aliasdb, char *comment, int commit)
 private	int
 dbChk(nested *n, hash *aliasdb)
 {
-	int	reserved;
 	int	total = 0, errors = 0;
 	char	*key;
 	char	**aliases = 0;
@@ -571,16 +571,9 @@ dbChk(nested *n, hash *aliasdb)
 
 	EACH_HASH(aliasdb) {
 		key = aliasdb->kptr;
-		if (reserved = chkReserved(key)) {
-			if (reserved < 0) {
-				error("%s: bad case for key: %s\n",
-				    prog, key);
-				total++;
-			} else {
-				error("%s: illegal aliasdb key: %s\n",
-				    prog, key);
-				total++;
-			}
+		if (chkReserved(key)) {
+			error("%s: illegal aliasdb key: %s\n", prog, key);
+			total++;
 		} else {
 			unless (validName(key)) total++;
 		}
@@ -611,28 +604,52 @@ dbChk(nested *n, hash *aliasdb)
  * Given an aliasdb and a list of aliases, set c->alias on each component
  * in 'n' that is contained in those aliases.
  *
+ * If the list includes a alias of the form "^FOO" then subtract FOO from
+ * the list after adding in all the others.  Order is not important, the
+ * subtractions are done last so that ^BWIDGET TCLTK does what you want.
+ *
  * Prints error message and returns non-zero if aliases fail to expand.
  */
 int
 aliasdb_tag(nested *n, hash *aliasdb, char **aliases)
 {
 	comp	*c;
-	char	**comps;
+	char	**comps, **add = 0, **sub = 0;
 	int	i, j;
 
 	assert(n);
+	EACH_INDEX(aliases, j) {
+		if (aliases[j][0] == '^') {
+			// drop the caret
+			sub = addLine(sub, &aliases[j][1]);
+		} else {
+			add = addLine(add, aliases[j]);
+		}
+	}
+	unless (add) add = n->here;
 	EACH_STRUCT(n->comps, c, i) c->alias = 0;
+	aliases = add;
 	EACH_INDEX(aliases, j) {
 		unless (comps = aliasdb_expandOne(n, aliasdb, aliases[j])) {
 			return (-1);
 		}
 		EACH_STRUCT(comps, c, i) {
-			assert(!c->product);
 			c->alias = 1;
 		}
 		freeLines(comps, 0);
 	}
-	n->product->alias = 1;
+	aliases = sub;
+	EACH_INDEX(aliases, j) {
+		unless (comps = aliasdb_expandOne(n, aliasdb, aliases[j])) {
+			return (-1);
+		}
+		EACH_STRUCT(comps, c, i) {
+			c->alias = 0;
+		}
+		freeLines(comps, 0);
+	}
+	if (add != n->here) freeLines(add, 0);
+	freeLines(sub, 0);
 	n->alias = 1;
 	return (0);
 }
@@ -670,7 +687,6 @@ aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 	/* output subset of n->comps in n->comps order */
 	EACH_STRUCT(n->comps, c, i) {
 		if (hash_fetchStr(keys, c->rootkey)) {
-			assert(!c->product);
 			comps = addLine(comps, c);
 		}
 	}
@@ -766,12 +782,11 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, aopts *op)
 		}
 
 		EACH_STRUCT(n->comps, c, i) {
-			if (c->product ||
-			    (op->missing && c->present) ||
+			if ((op->missing && c->present) ||
 			    (op->here && !c->present)) {
 				continue;
 			}
-			if (n->alias && !c->alias) continue;
+			if (n->alias ? !c->alias : c->product) continue;
 			items = addLine(items,
 			    op->showkeys
 			    ?  strdup(c->rootkey)
@@ -816,14 +831,14 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, aopts *op)
 			}
 			goto preprint;
 		} else {
-			error("%s: use -e when expanding "
-			    "reserved alias: %s\n", prog, alias);
+			error("%s: use 'bk comps -s%s' to expand this "
+			    "reserved alias\n", prog, alias);
 			goto err;
 		}
 	}
 	if ((i == 0) && !validName(alias)) {
 		error("If a path, glob, or key, "
-		    "use -e when expanding\n");
+		    "use 'bk comps -s%s' when expanding\n", alias);
 		goto err;
 	}
 	val = hash_fetchStr(aliasdb, alias);
@@ -863,13 +878,13 @@ expand(nested *n, hash *aliasdb, hash *keys, hash *seen, char *alias)
 	}
 
 	if (strieq("PRODUCT", alias)) {
+		hash_insertStr(keys, n->product->rootkey, 0);
 		rc = 0;
 		goto done;
 	}
 
 	if (strieq("ALL", alias)) {
 		EACH_STRUCT(n->comps, c, i) {
-			if (c->product) continue;
 			hash_insertStr(keys, c->rootkey, 0);
 		}
 		rc = 0;
@@ -963,9 +978,9 @@ dbLoad(nested *n, hash *aliasdb)
 int
 aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 {
-	int	i, j, reserved, errors = 0, fix = (cwd != 0);
+	int	i, j, errors = 0, fix = (cwd != 0);
 	comp	*c;
-	char	*p, *alias, **aliases;
+	char	*p, *alias, **aliases, *not = 0;
 	char	**addkeys = 0, **globkeys = 0;
 
 	unless (aliasdb || (aliasdb = dbLoad(n, 0))) {
@@ -977,17 +992,21 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 	aliases = *paliases;
 	EACH(aliases) {
 		alias = aliases[i];
+		if (alias[0] == '^') {
+			not = "^";
+			alias++;
+		} else {
+			not = "";
+		}
 
-		if (reserved = chkReserved(alias)) {
-			if (reserved < 0) {
-				errors++; /* case problem */
-			} else if (strieq(alias, "HERE") ||
-			    strieq(alias, "THERE")) {
+		if (chkReserved(alias)) {
+			if (strieq(alias, "HERE") || strieq(alias, "THERE")) {
 				/* 'here' will auto-expand */
 				if (fix) {
 					EACH_INDEX(n->here, j) {
-						addkeys = addLine(
-						    addkeys, n->here[j]);
+						addkeys = addLine(addkeys,
+						    aprintf("%s%s",
+						    not, n->here[j]));
 					}
 					removeLineN(aliases, i, free);
 					i--;
@@ -1010,7 +1029,9 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 			if (strchr(alias, '|')) {
 				/* that is in the nested collection? */
 				if (c = nested_findKey(n, alias)) {
-					if (c->product) goto root;
+					if (c->product && fix) {
+						goto keys;
+					}
 					continue;
 				}
 
@@ -1038,28 +1059,20 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 
 			/* okay, we have a rootkey to replace it */
 			debug((stderr, "%s was md5, now rootkey\n", alias));
-
-			/* strip out product rootkeys */
-root:			if (c->product) {
-				unless (fix) {
-					error(
-					   "%s: list has product rootkey: %s\n",
-					    prog, alias);
-					errors++;
-					continue;
-				}
-				removeLineN(aliases, i, free);
-				i--;
-				continue;
-			}
+keys:
 			unless (c->included) {
 				error("%s: component not present: %s\n",
 				    prog, c->path);
 				errors++;
 				continue;
 			}
-			free(alias);
-			aliases[i] = strdup(c->rootkey);
+			free(aliases[i]);
+			if (c->product && fix) {
+				aliases[i] = aprintf("%s%s", not, "PRODUCT");
+			} else {
+				aliases[i] = aprintf("%s%s", not, c->rootkey);
+			}
+
 			continue;
 		}
 
@@ -1072,31 +1085,30 @@ root:			if (c->product) {
 				errors++;
 				continue;
 			}
-			unless (alias = relGlob(alias, p, cwd)) {
+			unless (p = relGlob(alias, p, cwd)) {
 				error( "%s: glob not in this repository: %s\n",
-				    prog, aliases[i]);
+				    prog, alias);
 				errors++;
 				continue;
 			}
 			assert(!globkeys);
 			EACH_STRUCT(n->comps, c, j) {
 				if (c->product) continue;
-				if (match_one(c->path, alias, 0)) {
+				if (match_one(c->path, p, 0)) {
 					globkeys = addLine(
 					    globkeys, c->rootkey);
 				}
 			}
-			free(alias);
-			alias = 0;
+			free(p);
 			unless (globkeys) {
 				error("%s: %s does not match any components.\n",
-				    prog, aliases[i]);
+				    prog, alias);
 				errors++;
 				continue;
 			} else {
 				EACH_INDEX(globkeys, j) {
-					addkeys = addLine(
-					    addkeys, globkeys[j]);
+					addkeys = addLine(addkeys,
+					    aprintf("%s%s", not, globkeys[j]));
 				}
 				freeLines(globkeys, 0);
 				globkeys = 0;
@@ -1111,7 +1123,7 @@ root:			if (c->product) {
 		 * if this is command line, is it a path which points
 		 * to a repository?
 		 */
-		if (fix && (c = findDir(n, cwd, alias))) goto root;
+		if (fix && (c = findDir(n, cwd, alias))) goto keys;
 
 		if (fix) {
 			error("%s: %s must be either a glob, "
@@ -1125,10 +1137,7 @@ root:			if (c->product) {
 		}
 		errors++;
 	}
-	EACH(addkeys) {
-		aliases = addLine(aliases, strdup(addkeys[i]));
-	}
-	freeLines(addkeys, 0);
+	aliases = catLines(aliases, addkeys);	/* frees addkeys */
 	*paliases = aliases;
 	return (errors);
 }
@@ -1185,6 +1194,26 @@ err:		error("%s: invalid alias name: %s\n", prog, name);
 }
 
 /*
+ * Stopgap before putting caret processing in is to block users
+ * from trying to use it now.
+ */
+int
+aliasdb_caret(char **aliases)
+{
+	int	i;
+
+	EACH(aliases) {
+		if (aliases[i][0] == '^') {
+			fprintf(stderr,
+			    "%s: no leading ^ allowed: %s\n",
+			    prog, aliases[i]);
+			return (1);
+		}
+	}
+	return (0);
+}
+
+/*
  * Get the rootkey of a directory and verify
  * that it is indeed a component of this product
  */
@@ -1193,14 +1222,16 @@ findDir(nested *n, char *cwd, char *dir)
 {
 	char	*p = 0;
 	comp	*c = 0;
+	int	exact;
 
+	exact = streq(dir, ".") ? 0 : 1;
 	/* cwd idiom lifted from bkd_client:nfs_parse() */
 	if (cwd && !IsFullPath(dir)) {
 		dir = p = aprintf("%s/%s", cwd, dir);
 	}
 	dir = proj_relpath(0, dir);
 	if (p) free(p);
-	c = nested_findDir(n, dir);
+	c = nested_findDir(n, dir, exact);
 	free(dir);
 	return (c);
 }

@@ -313,8 +313,8 @@ main(int volatile ac, char **av, char **env)
 			}
 			hash_free(h);
 		}
+		start_cwd = strdup(proj_cwd());
 		if (remote) {
-			start_cwd = strdup(proj_cwd());
 			cmdlog_start(av, 0);
 			ret = remote_bk(quiet, ac, av);
 			goto out;
@@ -364,7 +364,6 @@ main(int volatile ac, char **av, char **env)
 				return(1);
 			}
 		}
-		start_cwd = strdup(proj_cwd());
 		if (locking) {
 			int	waitsecs;
 

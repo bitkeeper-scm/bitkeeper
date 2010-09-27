@@ -53,6 +53,22 @@ bk clone $Q -seven -sodd -sprimes project copy
 bk clone $Q -sodd project odd
 echo OK
 
+echo $N Add PrOdUcT and see that nothing is added ...................$NL
+cd project
+cat <<EOF > WANT
+ALL
+PRODUCT
+EOF
+# Goofy case
+bk here set $Q aLl
+bk here > GOT
+cmpfiles WANT GOT
+# Add product with goofy case
+bk here add $Q PrOdUcT
+bk here > GOT
+cmpfiles WANT GOT
+echo OK
+
 echo $N Unpopulate even and primes...................................$NL
 cd "$HERE/copy"
 echo even | bk here rm $Q - || fail dash
@@ -67,13 +83,17 @@ cat <<EOF > WANT
 EOF
 cmpfiles GOT WANT
 bk alias -k here > GOT
-echo odd > WANT
+cat << EOF > WANT
+PRODUCT
+odd
+EOF
 cmpfiles GOT WANT
 echo OK
 
 echo $N Populate them back from a repo that does not have them ......$NL
 bk here add $Q -@../odd even primes || fail
 cat <<EOF > WANT
+PRODUCT
 even
 odd
 primes
@@ -124,6 +144,7 @@ cat <<EOF > WANT
 EOF
 cmpfiles GOT WANT
 cat <<EOF > WANT
+PRODUCT
 even
 primes
 EOF
@@ -144,7 +165,10 @@ cat <<EOF > WANT
 ./comp7
 EOF
 cmpfiles GOT WANT
-echo primes > WANT
+cat << EOF > WANT
+PRODUCT
+primes
+EOF
 bk alias -k here > GOT
 cmpfiles GOT WANT
 echo OK
@@ -184,6 +208,7 @@ EOF
 cmpfiles GOT WANT
 cat <<EOF > WANT
 ALL
+PRODUCT
 primes
 EOF
 bk alias -k here > GOT
@@ -198,6 +223,7 @@ cat <<EOF > WANT
 EOF
 cmpfiles GOT WANT
 cat <<EOF > WANT
+PRODUCT
 primes
 EOF
 bk alias -k here > GOT
@@ -216,7 +242,7 @@ cat <<EOF > WANT
 ./gdb
 EOF
 cmpfiles GOT WANT
-(echo primes; cd gcc; bk id; cd ../gdb; bk id) | bk _sort > WANT
+(echo PRODUCT; echo primes; cd gcc; bk id; cd ../gdb; bk id) | bk _sort > WANT
 bk alias -k here > GOT
 cmpfiles GOT WANT
 bk here rm $Q './g*' || exit 1
@@ -229,6 +255,7 @@ cat <<EOF > WANT
 EOF
 cmpfiles GOT WANT
 cat <<EOF > WANT
+PRODUCT
 primes
 EOF
 bk alias -k here > GOT
@@ -242,6 +269,9 @@ cat <<EOF > WANT
 EOF
 cmpfiles GOT WANT
 bk alias -k here > GOT
+cat <<EOF > WANT
+PRODUCT
+EOF
 cmpfiles GOT WANT
 echo OK
 
@@ -256,6 +286,7 @@ cat <<EOF > WANT
 EOF
 cmpfiles GOT WANT
 cat <<EOF > WANT
+PRODUCT
 primes
 EOF
 bk alias -k here > GOT
@@ -345,6 +376,7 @@ echo OK
 echo $N Unpopulate of subcomponents should work......................$NL
 bk here rm $Q primes || exit 1
 cat > WANT <<EOF
+PRODUCT
 subprimes
 EOF
 bk alias -k here > GOT
@@ -368,7 +400,10 @@ bk here add $Q primes 2> ERR && {
 }
 grep -q "comp2 not empty" ERR || fail -f ERR wrong error message
 bk alias -k here > GOT
-echo subprimes > WANT
+cat << EOF > WANT
+PRODUCT
+subprimes
+EOF
 cmpfiles GOT WANT
 bk comps -h > GOT
 cat > WANT <<EOF
@@ -408,7 +443,10 @@ bk commit $Q -y"add deep stuff" || exit 1
 cd "$HERE/copy"
 # should only have subprimes currently
 bk alias -k here > GOT
-echo subprimes > WANT
+cat << EOF > WANT
+PRODUCT
+subprimes
+EOF
 cmpfiles GOT WANT
 bk pull $Q || exit 1
 bk here rm $Q subprimes || exit 1
@@ -419,6 +457,9 @@ cat > WANT <<EOF
 EOF
 cmpfiles GOT WANT
 bk alias -k here > GOT
+cat > WANT <<EOF
+PRODUCT
+EOF
 cmpfiles GOT WANT
 echo OK
 

@@ -16,51 +16,52 @@ echo OK
 echo $N Test illegal entries for alias in the list command ..........$NL
 # bad name - start with alpha, only alphanumeric, +, -, _, = (why '=' ?)
 bk alias '8foo' 2> ERR && exit 1
-grep -q "alias: invalid alias name: 8foo" ERR || exit 1
+grep -q "alias: invalid alias name: 8foo" ERR || fail -f ERR
 bk alias "foo#" 2> ERR && exit 1
-grep -q "alias: invalid alias name: foo#" ERR || exit 1
+grep -q "alias: invalid alias name: foo#" ERR || fail -f ERR
 # valid but non-existent alias
 bk alias foo 2> ERR && exit 1
-grep -q "alias: no alias: foo" ERR || exit 1
+grep -q "alias: no alias: foo" ERR || fail -f ERR
 # valid keyword, but not valid key 
 bk alias all 2> ERR && exit 1
-grep -q "alias: use -e when expanding reserved alias: ALL" ERR || exit 1
+grep -q "use 'bk comps -sALL' to expand this reserved alias" ERR || fail -f ERR
 echo OK
 
 echo $N Test showing keys with the list command .....................$NL
-bk log -r1.0 -nd:KEY: gcc/ChangeSet gdb/ChangeSet | bk _sort > WANT
+bk log -r1.0 -nd:KEY: ChangeSet gcc/ChangeSet gdb/ChangeSet | bk _sort > WANT
 bk alias -ek all > GOT
 cmpfiles WANT GOT
 bk alias -ek DEFAULT > GOT
 cmpfiles WANT GOT
-(echo gcc; echo gdb) | bk alias -ek - > GOT
+(echo .; echo gcc; echo gdb) | bk alias -ek - > GOT
 cmpfiles WANT GOT
-bk log -r1.0 -nd:MD5KEY: gcc/ChangeSet gdb/ChangeSet | bk alias -ek - > GOT
+bk log -r1.0 -nd:MD5KEY: ChangeSet gcc/ChangeSet gdb/ChangeSet \
+    | bk alias -ek - > GOT
 cmpfiles WANT GOT
 cd gcc
-(bk alias -ek .; bk alias -ek ../gdb) | bk _sort > ../GOT
+(bk alias -ek ..; bk alias -ek .; bk alias -ek ../gdb) | bk _sort > ../GOT
 cd ..
 cmpfiles WANT GOT
-bk alias -ek 'g*' > GOT
+bk alias -ek PRODUCT 'g*' > GOT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Test showing paths with the list command ....................$NL
-printf "./gcc\n./gdb\n" > WANT
+printf "./.\n./gcc\n./gdb\n" > WANT
 bk alias -e all > GOT
 cmpfiles WANT GOT
 bk alias -e DEFAULT > GOT
 cmpfiles WANT GOT
-(echo gcc; echo gdb) | bk alias -e - > GOT
+(echo .; echo gcc; echo gdb) | bk alias -e - > GOT
 cmpfiles WANT GOT
-bk log -r1.0 -nd:MD5KEY: gcc/ChangeSet gdb/ChangeSet | bk alias -e - > GOT
+bk log -r1.0 -nd:MD5KEY: ChangeSet gcc/ChangeSet gdb/ChangeSet \
+    | bk alias -e - > GOT
 cmpfiles WANT GOT
 cd gcc
-bk alias -e .  > ../GOT
-bk alias -e ../gdb >> ../GOT
+(bk alias -e ..; bk alias -e .; bk alias -e ../gdb) | bk _sort > ../GOT
 cd ..
 cmpfiles WANT GOT
-bk alias -e 'g*' > GOT
+bk alias -e PRODUCT 'g*' > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -83,7 +84,12 @@ echo $N And show default can be empty ...............................$NL
 bk alias set $Q DEFAULT || fail
 bk clone $Q . ../copy4 || fail
 cd ../copy4
-test `bk here` = "DEFAULT" || fail
+cat << EOF > WANT
+DEFAULT
+PRODUCT
+EOF
+bk here > GOT
+cmpfiles WANT GOT
 test `bk comps -h | wc -l` -eq 0 || fail
 echo OK
 
@@ -138,6 +144,7 @@ cat <<EOF >WANT
 BAR
 F3
 FOO
+PRODUCT
 EOF
 cmpfiles GOT WANT
 
@@ -153,6 +160,7 @@ FOO:
 	./gcc
 	BAR
 	F6
+PRODUCT
 EOF
 cmpfiles GOT WANT
 echo OK
@@ -172,6 +180,7 @@ FOO:
 	F6:
 		F7
 		F8
+PRODUCT
 EOF
 cmpfiles GOT WANT
 echo OK
@@ -194,6 +203,7 @@ FOO:
 			./gdb
 		F8:
 			BAR
+PRODUCT
 EOF
 cmpfiles GOT WANT
 echo OK

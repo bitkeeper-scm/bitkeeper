@@ -167,6 +167,12 @@ cd ..
 rm -rf standalone
 echo OK
 
+echo $N Test that -s^ALIAS does not work ............................$NL
+bk clone $Q -s^gcc project no-create 2> ERR && fail -f ERR
+test -d no-create && fail created dir
+grep -q 'clone: no leading \^ allowed: \^gcc' ERR || fail -f ERR
+echo OK
+
 echo $N Test that -skey clones work .................................$NL
 KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
 rm -rf mynewgcc
@@ -235,7 +241,7 @@ echo OK
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 cd mynewgcc
 bk alias -k here > GOT
-(cd gcc; bk id) > WANT
+(echo PRODUCT; cd gcc; bk id) > WANT
 cmpfiles GOT WANT
 echo OK
 
@@ -259,7 +265,7 @@ echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 bk alias -k here | bk _sort > GOT
-(cd gcc; bk id; cd ../gdb; bk id) | bk _sort > WANT
+(echo PRODUCT; cd gcc; bk id; cd ../gdb; bk id) | bk _sort > WANT
 cmpfiles GOT WANT
 echo OK
 
@@ -309,7 +315,7 @@ test -d gdb && {
 	exit 1
 }
 bk alias -k here > GOT
-(cd gcc; bk id) > WANT
+(echo PRODUCT; cd gcc; bk id) > WANT
 cmpfiles GOT WANT
 echo OK
 
@@ -588,7 +594,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Unpopulate all components ...................................$NL
-bk here rm $Q here || {
+bk here set $Q PRODUCT || {
 	echo unpopulate failed
 	exit 1
 }
@@ -645,7 +651,7 @@ echo OK
 echo $N Test unpopulate with local extras ...........................$NL
 bk parent $Q ../project
 touch gcc/extra gdb/extra
-bk here rm $Q HERE 2>OUT && {
+bk here rm $Q DEFAULT 2>OUT && {
 	echo unpopulate should have failed
 	cat OUT
 	exit 1
@@ -666,7 +672,7 @@ echo OK
 echo $N Test unpopulate with local extras forcing it ................$NL
 bk parent $Q ../project
 touch gcc/extra gdb/extra
-bk here rm -f $Q here || {
+bk here set -f $Q PRODUCT || {
 	echo unpopulate should not have failed
 	exit 1
 }

@@ -54,7 +54,7 @@ cd ..
 _BKD_TEST_REQUIRED=HORSE bk clone $Q 2>ERR nest junk && fail -f ERR
 
 # the bkd can get a perror(EPIPE) when the client fails to read the SFIO
-grep -v 'Broken pipe' ERR > ERR2
+grep -v 'zputs_hfwrite' ERR > ERR2
 
 bk getmsg -= bk_missing_feature HORSE > WANT
 cmpfiles ERR2 WANT

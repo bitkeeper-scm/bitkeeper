@@ -121,6 +121,7 @@ clone_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 	    	}
 	}
+	if (aliasdb_caret(opts->aliases)) exit(CLONE_ERROR);
 	if (attach_only && !opts->attach) {
 		fprintf(stderr, "%s: -N valid only in attach command\n", av[0]);
 		exit(CLONE_ERROR);
@@ -802,7 +803,7 @@ clone2(remote *r)
 		 * find out which components are present remotely and
 		 * update URLLIST
 		 */
-		assert(!n->here);
+		if (n->here) free(n->here);
 		n->here = file2Lines(0, "BitKeeper/log/RMT_HERE");
 		unlink("BitKeeper/log/RMT_HERE");
 		EACH(n->here) {
@@ -836,6 +837,7 @@ clone2(remote *r)
 				goto nested_err;
 			}
 		}
+		opts->aliases = nested_fixHere(opts->aliases);
 		if (nested_aliases(n, n->tip, &opts->aliases, ".", 0)) {
 			freeLines(opts->aliases, free);
 			opts->aliases = 0;

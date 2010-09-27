@@ -392,8 +392,8 @@ docheck:	/* undo already runs check so we only need this case */
 	 */
 	if (opts->aliases) {
 		chmod("BitKeeper/log/HERE", 0666);
-		if (lines2File(opts->aliases,
-			"BitKeeper/log/HERE")) {
+		opts->aliases = nested_fixHere(opts->aliases);
+		if (lines2File(opts->aliases, "BitKeeper/log/HERE")) {
 			perror("BitKeeper/log/HERE");
 		}
 	}

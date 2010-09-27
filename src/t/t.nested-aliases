@@ -40,7 +40,10 @@ cd "$HERE"
 bk clone $Q project clone
 cd clone
 bk here > GOT
-echo DEFAULT > WANT
+cat << EOF > WANT
+DEFAULT
+PRODUCT
+EOF
 cmpfiles GOT WANT
 echo OK
 
@@ -56,6 +59,24 @@ bk portal $Q .
 bk attach $Q ../libc path/to/libc
 bk attach $Q ../libc junk
 bk alias add stuff path/to/libc
+echo OK
+
+echo $N See that bk comps can expand the aliases ....................$NL
+# no junk
+bk comps -sstuff > GOT
+cat << EOF > WANT
+./gcc
+./gdb
+./path/to/libc
+EOF
+cmpfiles WANT GOT
+# no junk
+bk comps -sall -s^stuff > GOT
+cat << EOF > WANT
+./.
+./junk
+EOF
+cmpfiles WANT GOT
 echo OK
 
 echo $N Test that we can read the name and dirs and globs ...........$NL
@@ -221,12 +242,16 @@ cd ..
 bk clone -s./gdb $Q project-nm project-just-gdb || exit 1
 cd project-just-gdb
 bk alias -k here > GOT
-(cd gdb; bk id) > WANT
+(cd gdb; echo PRODUCT; bk id) > WANT
 cmpfiles GOT WANT
 bk alias set DEFAULT ./gdb || exit 1
 bk alias set $Q here DEFAULT || exit 1
 bk here > GOT
-echo DEFAULT > WANT
+cat << EOF > WANT
+DEFAULT
+PRODUCT
+EOF
+cmpfiles GOT WANT
 cmpfiles GOT WANT
 bk comps -h > GOT
 echo ./gdb > WANT
@@ -305,8 +330,8 @@ bk here add $Q ./junk || {
 }
 test -d junk || exit 1
 bk here add $Q || exit 1
-bk alias -k here > GOT
-(cd junk; bk id) > WANT
+bk alias -k here | bk _sort > GOT
+(echo PRODUCT; cd junk; bk id) | bk _sort > WANT
 cmpfiles GOT WANT
 echo OK
 
