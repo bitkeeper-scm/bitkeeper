@@ -2,64 +2,99 @@
 #include "sccs.h"
 #include "range.h"
 
-/*
- * r2c - convert rev to cset rev
- *
- * usage: file -r<rev> file
- *
- * XXX - expects to be standalone, one shot, does not free resources.
- */
+private char * r2c(char *file, char *rev);
+
 int
 r2c_main(int ac, char **av)
 {
-	char	*name;
+	int	c;
+	char	*rev = 0, *file = 0;
+	char	*p;
+	int	rc = 1;
+	int	product = 0;
+
+	while ((c = getopt(ac, av, "Pr;", 0)) != -1) {
+		switch (c) {
+		    case 'P': product = 1; break;
+		    case 'r': rev = strdup(optarg); break;
+		    default:
+			usage();
+			break;
+		}
+	}
+	unless (file = av[optind]) {
+		usage();
+	}
+	unless (p = r2c(file, rev)) goto out;
+	free(rev);
+	rev = p;
+	if (product && proj_isComponent(0)) {
+		p = proj_relpath(proj_product(0), proj_root(0));
+		file = aprintf("%s/ChangeSet", p);
+		free(p);
+		proj_cd2product();
+		unless (p = r2c(file, rev)) {
+			free(file);
+			goto out;
+		}
+		free(file);
+		free(rev);
+		rev = p;
+	}
+	printf("%s\n", rev);
+	rc = 0;
+out:	if (rev) free(rev);
+	return (rc);
+}
+
+/*
+ * Run r2c on file@rev and return the appropriate
+ * rev. If run on a component ChangeSet file, it
+ * will return the rev of the product's ChangeSet
+ * that corresponds to this component's ChangeSet
+ * rev.
+ *
+ * Errors are printed on err (if not null).
+ */
+private char *
+r2c(char *file, char *rev)
+{
+	int	len;
+	char	*name, *t;
 	delta	*e;
-	sccs	*s, *cset;
-	char	*t, *key, *shortkey;
 	FILE	*f = 0;
-	int	rc, len;
-	char	tmpfile[MAXPATH];
+	sccs	*s = 0, *cset = 0;
+	char	*ret = 0, *key = 0, *shortkey = 0;
+	char	tmpfile[MAXPATH] = {0};
 	char	buf[MAXKEY*2];
 	RANGE	rargs = {0};
 
-	unless (av[1] && strneq(av[1], "-r", 2) && av[2] && !av[3]) { 
-		/* doc 2.0 */
-		usage();
+	name = name2sccs(file);
+	unless (s = sccs_init(name, INIT_NOCKSUM|INIT_MUSTEXIST)) {
+		fprintf(stderr, "%s: cannot init %s\n", prog, file);
+		goto out;
 	}
-	name = name2sccs(av[2]);
-	unless (s = sccs_init(name, INIT_NOCKSUM)) {
-		perror(name);
-		exit(1);
+	if (chdir(proj_root(s->proj))) {
+		fprintf(stderr, "%s: cannot find package root.\n", prog);
+		goto out;
 	}
-	unless (rc = chdir(proj_root(s->proj))) {
-		/*
-		 * This is a little bogus because it forces the view to the
-		 * product even if they were stupidly doing r2c on the 
-		 * changeset file.  Not sure what to do about it.
-		 */
-		if (CSET(s) && proj_isComponent(s->proj)) {
-			rc = proj_cd2product();	
-		}
+	if (CSET(s) && proj_isComponent(s->proj)) {
+		/* go to product */
+		if (proj_cd2product()) goto out;
 	}
-	if (rc) {
-		fprintf(stderr, "r2c: cannot find package root.\n");
-		exit(1);
-	}
-	unless (e = sccs_findrev(s, &av[1][2])) {
-		fprintf(stderr, "r2c: can't find rev like %s in %s\n",
-		    &av[1][2], name);
-	    	exit(1);
+	unless (e = sccs_findrev(s, rev)) {
+		fprintf(stderr, "%s: cannot find rev %s in %s\n",
+		    prog, rev, file);
+		goto out;
 	}
 	unless (e = sccs_csetBoundary(s, e)) {
 		fprintf(stderr,
-		    "r2c: cannot find cset marker at or below %s in %s\n",
-		    &av[1][2], name);
-	    	exit(1);
+		    "%s: cannot find cset marker at or below %s in %s\n",
+		    prog, rev, file);
+		goto out;
 	}
 	sccs_sdelta(s, e, buf);
 	key = strdup(buf);
-	sccs_free(s);
-	s = 0;
 	if (t = sccs_iskeylong(buf)) {
 		*t = 0;
 		shortkey = strdup(buf);
@@ -68,24 +103,24 @@ r2c_main(int ac, char **av)
 	}
 	strcpy(buf, CHANGESET);
 	unless (cset = sccs_init(buf, INIT_NOCKSUM)) {
-		fprintf(stderr, "r2c: cannot init ChangeSet\n");
-		exit(1);
+		fprintf(stderr, "%s: cannot init ChangeSet\n", prog);
+		goto out;
 	}
 	unless (bktmp(tmpfile, "r2c")) {
-		perror("bktmp");
-		exit(1);
+		fprintf(stderr, "%s: could not create %s\n", prog, tmpfile);
+		goto out;
 	}
 	if (range_process("r2c", cset, RANGE_SET, &rargs)) goto out;
 	if (sccs_cat(cset, PRINT|GET_NOHASH|GET_REVNUMS, tmpfile)) {
 		unless (BEEN_WARNED(s)) {
-			fprintf(stderr, "r2c: annotate of ChangeSet failed.\n");
+			fprintf(stderr, "%s: annotate of ChangeSet failed.\n",
+			    prog);
 		}
-		exit(1);
+		goto out;
 	}
-	sccs_free(cset);
 	unless (f = fopen(tmpfile, "r")) {
 		perror(tmpfile);
-		exit(1);
+		goto out;
 	}
 	len = strlen(key);
 	while (fnext(buf, f)) {
@@ -93,22 +128,20 @@ r2c_main(int ac, char **av)
 		t = separator(buf); assert(t); t++;
 		if (strneq(t, key, len) && t[len] == '\n') {
 			t = strchr(buf, '\t'); assert(t); *t = 0;
-			printf("%s\n", buf);
+			ret = aprintf("%s", buf);
 			goto out;
 		}
 	}
 	unless (shortkey) {
 notfound:	if (shortkey) {
 			fprintf(stderr,
-			    "r2c: cannot find either of\n\t%s\n\t%s\n",
-			    key, shortkey);
+			    "%s: cannot find either of\n\t%s\n\t%s\n",
+			    prog, key, shortkey);
 		} else {
 			fprintf(stderr,
-			    "r2c: cannot find\n\t%s\n", key);
+			    "%s: cannot find\n\t%s\n", prog, key);
 		}
-		fclose(f);
-		unlink(tmpfile);
-		exit(1);
+		goto out;
 	}
 	rewind(f);
 	len = strlen(shortkey);
@@ -117,12 +150,18 @@ notfound:	if (shortkey) {
 		t = separator(buf); assert(t); t++;
 		if (strneq(t, shortkey, len) && t[len] == '\n') {
 			t = strchr(buf, '\t'); assert(t); *t = 0;
-			printf("%s\n", buf);
+			ret = aprintf("%s", buf);
 			goto out;
 		}
 	}
 	goto notfound;
-out:	fclose(f);
-	unlink(tmpfile);
-	exit(0);
+out:	free(name);
+	if (key) free(key);
+	if (shortkey) free(shortkey);
+	sccs_free(s);
+	sccs_free(cset);
+	if (f) fclose(f);
+	if (tmpfile[0]) unlink(tmpfile);
+	return (ret);
 }
+

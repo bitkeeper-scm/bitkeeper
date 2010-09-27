@@ -4,11 +4,28 @@
 bk r2c \- convert file revision to ChangeSet revision
 .SH SYNOPSIS
 .B bk r2c 
+.[B] \-P
 .OPTreq \-r rev 
 .ARG file 
 .SH DESCRIPTION
 This command takes a revision and a filename and converts the specified
 revision into the changeset revision which contains the file revision.
+.SH OPTIONS
+.TP 
+.B \-P
+If run in a component of a nested collection, convert to product changeset,
+not component changeset.
+If run in a traditional repository or in the product of a nested collection,
+this option has no effect.
+.SH EXAMPLES
+See the changeset that contains the tip delta of foo.c:
+.DS
+$ bk changes -vr`bk r2c -r+ foo.c`
+.DE
+Same thing, in a nested collection, for the product and component[s]:
+.DS
+$ bk -P changes -vr`bk r2c -P -r+ foo.c`
+.DE
 .SH "SEE ALSO"
 .SA c2r
 .SH CATEGORY
