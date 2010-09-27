@@ -537,6 +537,7 @@ private void
 compCheckPresent(nested *n, comp *c, int idcache_wrong)
 {
 	project	*proj;
+	int	prodlen = strlen(proj_root(0)) + 1;
 
 	/* mark present components */
 	if (exists(c->path) && (proj = proj_init(c->path))) {
@@ -547,7 +548,7 @@ compCheckPresent(nested *n, comp *c, int idcache_wrong)
 			/* rootkey can be null for an interrupted clone */
 			fprintf(stderr,
 			    "Ignoring corrupted component at %s\n", c->path);
-		} else if (samepath(path, c->path) &&
+		} else if (streq(path + prodlen, c->path) &&
 		    streq(rootkey, c->rootkey)) {
 			c->present = 1;
 			if (idcache_wrong) {
@@ -821,7 +822,6 @@ nested_each(int quiet, char **av, char **aliases)
 			    cp->product ? "PRODUCT" : cp->path);
 			fflush(stdout);
 		}
-		proj_cd2product();
 		if (chdir(cp->path)) {
 			fprintf(stderr,
 			    "bk: unable to chdir to component at %s\n",
@@ -833,12 +833,20 @@ nested_each(int quiet, char **av, char **aliases)
 		EACH_INDEX(av, j) {
 			nav = addLine(nav,
 			    str_subst(av[j], "$RELPATH", cp->path, 0));
+			if ((j == 1) && streq(av[j], "bk")) {
+				/* tell bk it is OK to exit with SIGPIPE */
+				nav = addLine(nav, strdup("--sigpipe"));
+			}
 		}
 		nav = addLine(nav, 0);
 		status = spawnvp(_P_WAIT, "bk", nav+1);
 		freeLines(nav, free);
+		proj_cd2product();
 		if (WIFEXITED(status)) {
 			errors |= WEXITSTATUS(status);
+		} else if (WIFSIGNALED(status) &&
+		    (WTERMSIG(status) == SIGPIPE)) {
+			break;
 		} else {
 			errors |= 1;
 		}

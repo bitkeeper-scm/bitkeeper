@@ -71,6 +71,7 @@ main(int volatile ac, char **av, char **env)
 		{ "subset|", 302 },	// --subset=alias|comp
 		{ "headers", 303 },	// --headers for -s
 		{ "from-iterator", 304 },
+		{ "sigpipe", 305 },     // allow SIGPIPE
 		{ 0, 0 },
 	};
 
@@ -274,6 +275,9 @@ main(int volatile ac, char **av, char **env)
 			    case 304:  // --from-iterator
 				from_iterator = 1;
 				break;
+			    case 305:  // --sigpipe
+				signal(SIGPIPE, SIG_DFL);
+				break;
 			    default: bk_badArg(c, av);
 			}
 			optarg = 0;
@@ -286,12 +290,12 @@ main(int volatile ac, char **av, char **env)
 			fprintf(stderr, "bk: -A may not be combined with -r\n");
 			return (1);
 		}
-		if (dashA && dashU) dashA = 0;
-		if (dashA || dashU) sopts = addLine(sopts, strdup("-g"));
+		if (dashU) dashA = 1; /* from here on only dashA matters */
+		if (dashA) sopts = addLine(sopts, strdup("-g"));
 
 		if (av[optind]) {
 			prog = av[optind];
-			if ((dashA || dashU) && streq(prog, "check")) {
+			if (dashA && streq(prog, "check")) {
 				fprintf(stderr,
 				    "bk: -A/-U option cannot be used "
 				    "with check\n");
@@ -316,22 +320,22 @@ main(int volatile ac, char **av, char **env)
 			goto out;
 		}
 
-		if ((dashA || dashU || dashs) && !proj_isEnsemble(0)) {
+		if ((dashA || dashs) && !proj_isEnsemble(0)) {
 			/*
 			 * Downgrade to be compat in standalone trees.
 			 * bk -A => bk -gr
 			 * bk -U => bk -gUr
 			 * bk -sHERE -A => bk -r
 			 */
-			if (dashA || dashU) dashr = 1;
-			dashA = dashU = dashs = 0;
+			if (dashA) dashr = 1;
+			dashA = dashs = 0;
 
 			// -s|-sHERE|-s.|-s^PRODUCT is fine.
 			// XXX - we don't look.
 			freeLines(aliases, free);
 			aliases = 0;
 		}
-		if (dashs && !(dashA || dashU)) {
+		if (dashs && !dashA) {
 			nav = addLine(nav, strdup("--from-iterator"));
 			for (i = optind; av[i]; i++) {
 				nav = addLine(nav, strdup(av[i]));
@@ -353,7 +357,7 @@ main(int volatile ac, char **av, char **env)
 				}
 			}
 		}
-		if (dashA || dashU) {
+		if (dashA) {
 			if (proj_cd2product()) {
 				fprintf(stderr,
 				    "bk: Cannot find package root.\n");
@@ -412,7 +416,7 @@ bad_locking:				fprintf(stderr,
 				ac = nLines(sopts);
 				prog = av[0];
 				goto run;
-			} else if (dashA || dashU) {
+			} else if (dashA) {
 				/* bk -U [opts] => bk -s sfiles -U [opts] -g */
 				sopts = unshiftLine(sopts, strdup("bk"));
 				sopts = addLine(sopts, strdup("-h"));
@@ -428,16 +432,14 @@ bad_locking:				fprintf(stderr,
 			}
 		}
 		for (ac = 0; av[ac] = av[optind++]; ac++);
-		if ((dashr || dashA || dashU) && !streq(prog, "sfiles")) {
+		if ((dashr || dashA) && !streq(prog, "sfiles")) {
 			if (streq(prog, "check")) {
 				putenv("_BK_CREATE_MISSING_DIRS=1");
 			}
 			if (dashr) {
 				sopts = unshiftLine(sopts, strdup("sfiles"));
-			} else if (dashA) {
+			} else{
 				sopts = unshiftLine(sopts, strdup("-A"));
-			} else {
-				/* -U already in sopts */
 			}
 			sopts = unshiftLine(sopts, strdup("bk"));
 			sopts = addLine(sopts, 0);

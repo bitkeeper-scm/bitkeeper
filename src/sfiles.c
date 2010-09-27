@@ -75,7 +75,6 @@ typedef struct {
 
 /* don't use -z, bk.c needs it. */
 
-private	jmp_buf	output_closed;
 private hash	*timestamps = 0;
 private options	opts;
 private	project	*proj, *prodproj;
@@ -143,10 +142,6 @@ sfiles_main(int ac, char **av)
 		{ "prefix:", 300 },
 		{ 0, 0 },
 	};
-
-	if (setjmp(output_closed)) {
-		return (NO_OUTPUT); /* tell callers our output closed */
-	}
 
 	if (ac == 1)  {
 		opts.sfiles = 1;
@@ -1108,10 +1103,14 @@ print_it(STATE state, char *gfile, char *rev)
 		if (state[TSTATE] == 'j') {
 			assert(streq(state, "j      "));
 			if (fprintf(opts.out, "j------ ") != 8) {
-error:				perror("output error");
-				fflush(stderr);
-				/* back to sfiles_main */
-				longjmp(output_closed, 1);
+error:				if (opts.out == stdout) {
+					/* SIGPIPE mostly, just exit */
+					exit(0);
+				} else {
+					/* file write failed, old action */
+					perror("output error");
+					exit(1);
+				}
 			}
 		} else {
 			STATE	tmp;
@@ -1119,10 +1118,7 @@ error:				perror("output error");
 
 			strcpy(tmp, state);
 			for (p = tmp; *p; p++) if (*p == ' ') *p = '-';
-			if (fprintf(opts.out, "%s ", tmp) != 8) {
-				ttyprintf("STATE[%s]\n", tmp);
-				goto error;
-			}
+			if (fprintf(opts.out, "%s ", tmp) != 8) goto error;
 		}
 	}
 	/* if gfile or !sfile then print gfile style name */
