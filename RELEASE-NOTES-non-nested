@@ -1,0 +1,231 @@
+Non nested changes
+
+Commands
+
+bk cfile
+    read and write comments that are picked up by citool or
+    when using bk ci -c.  See 'bk help cfile'
+
+bk check
+    check if the tip cset has a pathname conflict where two different
+    rootkeys are stored at the same pathname.
+
+bk changes
+    The -L, -R and -k options no longer include -a option.
+    If you have scripts which use 'bk changes' with -L, -R, or -k,
+    please alter them to include -a:
+    	bk changes -L => bk changes -aL (or bk changes -La)
+    The reason -L used to include -a is that a 'bk changes -L'
+    showed everything that would be pushed.  The reason it was
+    removed was users trying to write scripts that didn't include
+    tags or empty csets.
+
+    Extended dspecs, search path, etc (also true for prs & log)
+    XXX: fill in some more about this here
+    Support "extended" dspecs that allow whitespace and comments.
+    Use this to move the default 'bk changes' dspec to `bk bin`/dspec-changes
+    and make it readable with comments.  This was also done for prs and log.
+
+    Allow the user to override the default dspecs in the usual places.
+
+    2010-05-19-001 - fix changes -av listing files details under
+    a tag instead of under the real cset.
+
+bk clean
+    The clean code is now smarter about handling files that were
+    edited without being locked properly.
+
+    Fix some bugs in 'bk clean' where 'bk clean -q file' and 'bk clean file'
+    had different behaviors if the file only differed by keywords.
+    We change clean's original behavior and now never check to see if an edited
+    gfile has expanded keywords.  This matches 'bk sfiles -c' behavior.
+
+    However 'bk clean' will continue to check a writable gfile without
+    a pfile to see if it has expanded keywords and clean it.
+
+bk clone
+    The clone code now automatically uses hardlinks whenever possible.
+    The option --no-hardlinks can be used to disable this.
+    The -l option is now ignored, except on windows, where the default
+    is to do regular clones.
+    The hardlink clone code path is now mostly the same as the clone
+    code path, so performance enhancements in the bk-4 for clone now
+    also apply for hardlink clones.
+
+bk csetprune
+    5x faster.
+
+bk clone
+    Now will make hardlinked clones by default if it can. 
+    Before, a user needed to run 'bk clone -l <url>' to get a hardlinked
+    clone, and that would fail if the file system didn't support it.
+    A new option, '--no-hardlinks', has been added to prevent hardlinks.
+    If you are running clones in a script and require the repositories
+    not to be hardlinked, then set BK_NO_HARDLINK_CLONE=YES in your
+    environment.
+    On Windows, hardlinks are not enabled by default.
+    BUGFIX: 'bk clone <repo> .' when run in an empty directory inside
+    a repository was doing the clone in the wrong place.
+
+bk id
+    New option '-5' - return the repo rootkey as an md5key.
+
+bk get/edit
+    Make get -S incompatible with -M/-i/-x/-r options.
+    Edit -S / get -e -S now will no longer complain about files already
+    checked out.
+
+bk gone
+    This now sets MONOTONIC on the gone file if it wasn't set.
+    Also fixes a bug where the delta done to the gone file didn't
+    work if there were dangling deltas in the gone file.
+
+bk mv
+  Fixed Bug 2007-12-10-001:
+  bk mv a/ b/ -- previously did move all of 'a' into 'b', plus added
+  a null mv delta to all things in 'b'.
+
+bk needscheck [-v]
+    Returns true if the repository is configured for partial_check and
+    would run a full check.
+
+bk prompt (GUI version)
+    Fix a window geometry problem.
+
+bk pull
+    pull -u now spawns changes -L if the pull fails.
+
+bk push
+    Now support 'bk push -rREV URL' to only push a subset of the local
+    repository to a remote location
+    BUGID: 2008-05-01-001:
+    Fix bug where a push to a unrelated package would exit 0.
+
+bk repocheck
+    a shorthand for running check in a standalone or nested collection.
+    Easier to remember than bk -Ar check -vac
+
+bk sfiles
+    Fix bug 2008-07-16-001 where bk sfiles -U $PWD would erroneously
+    report BK files.
+
+bk takepatch
+    Addressed a performance issue on large pulls over NFS or in other
+    cases where we have a slow local filesystem.  BitKeeper now does
+    significantly less disk IO.
+
+bk version
+    Work on a remote repository: bk version <url>
+
+-- other
+
+announcing "New version of BK available"
+    Tell users about new versions of BitKeeper when they quit out
+    of the GUIs or when they run 'bk help'. In the former case, a
+    "bk prompt" is launched, and in the latter case the upgrade info
+    is inserted into the help text.
+
+    The conditions for prompting are as follows:
+        - There is a new bk out (duh!).
+        - The current bk is older than the new bk.
+        - The new bk has been out for at least a month and the
+          current bk has been installed for at least a month.
+        - We haven't prompted in at least a month.
+
+deleted files now in a subdir
+    BK stores deleted files in subdirectories under BitKeeper/deleted
+    to avoid problems with filesystems that have problems with large
+    numbers of files in a single directory.
+    An example filename is like this:
+	BitKeeper/deleted/07/slib.c~f3733b2c327712e5
+	2 hex digits, the basename of the 1.1 delta, and the random
+	bits for this file
+    While not required, if you are experiencing performance problems in
+    your deleted directory you can try this:
+	bk -rBitKeeper/deleted rm -f
+	bk commit -y'mv deleted files'
+
+    Also BitKeeper now always uses unique names in the BitKeeper/deleted
+    directory and avoids lots of rename conflicts in some cases.
+
+emacs - Experimental backend for Emacs VC users
+    With remap, the traditional trick of Emacs users relying on
+    VC's SCCS support no longer works.
+
+    In this version, we are shipping an experimental version
+    of a BK backend for VC that is known to work with Emacs
+    versions 22 and 23.
+
+    See `bk bin`/contrib/vc-bk.el for source and install instructions.
+
+log file 
+    operations during a pull were logged in the RESYNC and the log deleted
+    with the RESYNC at the end of the pull.  Now the command that are run
+    are logged in the repository's cmd_log file.
+
+newroot log
+    every 'bk newroot' or commands which do a newroot, like csetprune,
+    will now be logged.
+
+progress bar
+    Reworked to have fewer pauses and displaying error
+    messages in a clean way.
+
+remap
+    SCCS directories are no longer stored each directory in the repository.
+    A new directory at the top level, .bk, stores all BK data.
+    In Windows, the .bk directory is hidden similar to the SCCS directories
+    being hidden.
+    A repository cannot be transformed in place, but can be transformed
+    as part of a clone.
+    Without options, clone does not transform.
+
+triggers
+    post-commit: The exit codes from post-commit triggers are ignored.
+    pre-delta triggers:
+    Fixes BUGID 2008-04-02-002 (set $BK_FILE relative from repo root)
+    Fixes BUGID 2005-03-31-001 (running pre-delta from outside a repo)
+    Fixes running a pre-delta specified by trigger path to be outside
+    of a repository when no pre-delta triggers are in the repository.
+
+Fixes:
+
+- Bug 2006-05-12-001:
+  bk get core dumped when symlink is edited and type changed and regotten.
+
+- Bug 2002-03-02-001: fix bk help initscripts to replace HUP with a TERM
+
+- Bug 2000-10-30-002
+  If the merge result hasn't been created yet, do the automerge.
+
+- Bug 2001-04-23-002
+  If there's a log file, log BAD CMD attempts as well.  This covers both
+  unknown commands and commands disabled by -x.
+
+- Allow the nosync config option to also prevent calls to fsync when
+  SCCS files are written.
+
+- Fixed some bugs related to compression over a ssh transport.
+  Avoid multiple compression passes.
+
+- Windows now flush modified data on the disk after a resolve has
+  completely applying new changes.  This matches the unix behavior.
+  This flush can be disabled with the nosync config option.
+
+- Fix a long standing bug in the file urls.  We don't support
+  non-absolute path file URLs, all file://whatever means whatever is
+  treated as /whatever.  But that should have been file:///whatever.
+  Oops.  We do support relative paths, such as ../project, but not in
+  a file:// form.
+  Now the code accepts either file://whatever or file:///whatever, but
+  only generates the last form.
+
+- BitKeeper will now refuse to run a different version of bk as a
+  subprocess.  We have had cases where users have forgotten to restart
+  their bkd's after upgrade BitKeeper and this cases bugs.  BitKeeper
+  will now notice this and error until the bkd is restarted.
+
+- Environment variables that are used to control BitKeeper's behavior
+  can not longer be set to an empty string.  So for example:
+    BK_NO_TRIGGERS="" bk push
+  won't work.  Use BK_NO_TRIGGERS=1 instead.
