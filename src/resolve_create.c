@@ -9,7 +9,8 @@ private	void	getFileConflict(char *gfile, char *path);
 int
 res_abort(resolve *rs)
 {
-	if (confirm("Abort patch?")) {
+	if (proj_isEnsemble(0) ? confirm(QUIT_WARNING)
+	    : confirm("Abort patch?")) {
 		if (rs->s) {
 			sccs_free(rs->s);
 			rs->s = 0;
