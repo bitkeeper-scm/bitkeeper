@@ -22,6 +22,7 @@ private struct {
 	u32	port:1;			/* is port command? */
 	u32	transaction:1;		/* is $_BK_TRANSACTION set? */
 	u32	local:1;		/* set if we find local work */
+	int	safe;			/* require all involved comps to be here */
 	int	n;			/* number of components */
 	int	delay;			/* -w<delay> */
 	char	*rev;			/* -r<rev> - no revs after this */
@@ -48,6 +49,11 @@ pull_main(int ac, char **av)
 	remote	*r;
 	char	*p, *prog;
 	char	**envVar = 0, **urls = 0;
+	longopt	lopts[] = {
+		{ "safe", 300 },	/* require all comps to be here */
+		{ "unsafe", 301 },	/* turn off safe above */
+		{ 0, 0 }
+	};
 
 	bzero(&opts, sizeof(opts));
 	prog = basenm(av[0]);
@@ -56,8 +62,9 @@ pull_main(int ac, char **av)
 		safe_putenv("BK_PORT_ROOTKEY=%s", proj_rootkey(0));
 	}
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:DdE:Fiqr;RstTuvw|z|", 0)) != -1) {
-		unless (c == 'r') {
+	opts.safe = -1;	/* -1 == not set on command line */
+	while ((c = getopt(ac, av, "c:DdE:Fiqr;RstTuvw|z|", lopts)) != -1) {
+		unless (c == 'r' || c >= 300) {
 			if (optarg) {
 				opts.av_pull = addLine(opts.av_pull,
 				    aprintf("-%c%s", c, optarg));
@@ -100,6 +107,12 @@ pull_main(int ac, char **av)
 		    case 'z':					/* doc 2.0 */
 			if (optarg) gzip = atoi(optarg);
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
+			break;
+		    case 300:	/* --safe */
+			opts.safe = 1;
+			break;
+		    case 301:	/* --unsafe */
+			opts.safe = 0;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -614,6 +627,7 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	int	i, j, rc = 0, errs = 0;
 	int	which = 0;
 	hash	*urllist;
+	hash	*aliasdb;
 	project	*proj;
 
 	/* allocate r->params for later */
@@ -640,8 +654,20 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	 * bits.  Then we lookup the local HERE file in the new merged
 	 * tip of aliases to find which components should be local.
 	 */
-	nested_aliases(n, n->tip, &rmt_aliases, 0, 0);
-	EACH_STRUCT(n->comps, c, i) if (c->alias) c->remotePresent = 1;
+	aliasdb = aliasdb_init(n, n->proj, n->tip, 0, 0);
+	assert(aliasdb);
+	if (aliasdb_chkAliases(n, aliasdb, &rmt_aliases, 0)) goto out;
+	EACH(rmt_aliases) {
+		char	**comps;
+
+		comps = aliasdb_expandOne(n, aliasdb, rmt_aliases[i]);
+		EACH_STRUCT(comps, c, j) {
+			c->data = addLine(c->data, rmt_aliases[i]);
+			c->remotePresent = 1;
+		}
+		freeLines(comps, 0);
+	}
+	aliasdb_free(aliasdb);
 
 	if (nested_aliases(n, 0, &n->here, 0, NESTED_PENDING)) {
 		/*
@@ -651,6 +677,37 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 		    prog);
 		rc = 1;
 		goto out;
+	}
+
+	/* change the zero below to !getenv("BKD_GATE") to turn on */
+	if ((opts.safe == 1) || ((opts.safe == -1) && 0)) {
+		char	**missing = 0;
+
+		EACH_STRUCT(n->comps, c, j) {
+			if (!c->present && !c->alias && c->remotePresent) {
+				char	**alist = c->data;
+
+				EACH(alist) {
+					missing = addLine(missing,
+					    strdup(alist[i]));
+				}
+			}
+		}
+		if (missing) {
+			uniqLines(missing, free);
+			fprintf(stderr, "pull: failing because populated "
+			    "aliases are different between remote and local.\n"
+			    "Please run bk populate to add the following "
+			    "aliases:\n");
+			EACH(missing) fprintf(stderr, "  %s\n", missing[i]);
+			freeLines(missing, free);
+			rc = 1;
+			goto out;
+		}
+	}
+	EACH_STRUCT(n->comps, c, j) {
+		freeLines((char **)c->data, 0);
+		c->data = 0;
 	}
 
 	/*
