@@ -166,10 +166,11 @@ verbose() {
 }
 
 _prefixed_sfiles() {
-	bk sfiles --prefix="`bk pwd -R`" "$@"
+	bk sfiles --prefix="`bk pwd -P`" "$@"
 }
 
 _portal() {
+	# XXX - should look for PL in options
 	Q=""
 	RC=0
 	REMOVE=""

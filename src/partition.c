@@ -165,7 +165,9 @@ partition_main(int ac, char **av)
 	verbose((stderr, "\n### Moving components into place\n"));
 	touch(WA2PROD "/BitKeeper/log/PRODUCT", 0444);
 	if (moveComps(opts)) goto err;
-	if (Fprintf(WA2PROD "/BitKeeper/log/HERE", "ALL\n") < 0) goto err;
+	if (Fprintf(WA2PROD "/BitKeeper/log/HERE", "ALL\nPRODUCT\n") < 0) {
+		goto err;
+	}
 
 	verbose((stderr, "\n### Pruning product\n"));
 

@@ -56,7 +56,7 @@ int
 main(int volatile ac, char **av, char **env)
 {
 	int	i, c, ret;
-	int	is_bk = 0, dashr = 0, remote = 0, quiet = 0;
+	int	is_bk = 0, dashr = 0, remote = 0;
 	int	dashA = 0, dashU = 0, headers = 0;
 	int	dashs = 0;
 	int	from_iterator = 0;
@@ -227,7 +227,7 @@ main(int volatile ac, char **av, char **env)
 			    case '?': envargs = optarg; break;
 			    case '@': remote = 1; break;
 			    case 'B': buffer = optarg; break;
-			    case 'q': quiet = 1; break;
+			    case 'q': break;	// noop, -q is the default
 			    case 'L': locking = optarg; break;
 			    case 'P':				/* doc 2.0 */
 				if (proj_cd2product() && proj_cd2root()) {
@@ -313,10 +313,10 @@ main(int volatile ac, char **av, char **env)
 			}
 			hash_free(h);
 		}
+		start_cwd = strdup(proj_cwd());
 		if (remote) {
-			start_cwd = strdup(proj_cwd());
 			cmdlog_start(av, 0);
-			ret = remote_bk(quiet, ac, av);
+			ret = remote_bk(!headers, ac, av);
 			goto out;
 		}
 
@@ -364,7 +364,6 @@ main(int volatile ac, char **av, char **env)
 				return(1);
 			}
 		}
-		start_cwd = strdup(proj_cwd());
 		if (locking) {
 			int	waitsecs;
 

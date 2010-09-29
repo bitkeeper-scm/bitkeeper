@@ -8,7 +8,10 @@ bk alias new $Q BAR
 bk here set $Q ALL || fail
 bk clone $Q -sBAR . ../copy2 || fail
 bk clone $Q ../copy2 ../copy3 || fail
-echo BAR > WANT
+cat <<EOF > WANT
+BAR
+PRODUCT
+EOF
 cmpfiles ../copy2/BitKeeper/log/HERE WANT
 cmpfiles ../copy3/BitKeeper/log/HERE WANT
 echo OK
@@ -40,7 +43,10 @@ cd ../..
 bk commit $Q -yclear || fail
 bk clone $Q . ../copy6 || fail
 (cd ../copy6; bk here) > GOT
-echo ALL > WANT
+cat <<EOF > WANT
+ALL
+PRODUCT
+EOF
 cmpfiles GOT WANT
 echo OK
 

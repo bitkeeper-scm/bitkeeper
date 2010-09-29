@@ -1,0 +1,69 @@
+.if \n[NESTED] \{\
+.so ../bk-macros
+.TH "bk gate" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk gate \- set or show the gate status of a nested collection
+.SH SYNOPSIS
+.B bk gate
+.[B] \-q
+.B .
+.br
+.B bk gate
+.[B] \-q
+.B \-r
+.SH DESCRIPTION
+.LP
+The
+.B bk gate
+command either reports whether the nested collection is a gate
+or it changes that nested collection to be a gate.
+.LP
+A 
+.I gate
+repository is part of \*[BK]'s product line functionality.
+A gate is an instance of a nested collection in which
+changesets are considered "safe", they will not be removed or
+collapsed.
+Similarly for what is is populated, that will not be unpopulated.
+.LP
+The gate concept exists to allow bk pull to run in --unsafe mode.
+.LP
+With an argument of ".", it marks the nested collection as a gate.
+With no argument, the command prints the gate status.
+With 
+.BR \-q ,
+the exit status indicates gate status; 0 means it is, 1 means it is not.
+.SH RESTRICTIONS
+Inside of a gate, commands that would remove information are disallowed.
+bk undo, bk collapse, bk unpopulate are examples of such commands.
+It is common that many other clones depend on the gate to be a 
+"safe" container of changes so removing information is not allowed 
+by default.
+.LP
+If it happens that a changeset gets pushed to a gate that really must
+be removed, then remove the gate status, undo (or unpull) the changeset,
+and put the gate status back.
+.SH OPTIONS
+.TP
+.B \-r
+Unmark the nested collection as a gate.
+.tp
+.B \-q
+Run silently.
+.SH "SEE ALSO"
+.SA portal
+.SA pull
+.SH CATEGORY
+.B Nested
+.SH AVAILABILITY
+This command is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license has this enabled, run
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "SAM" listed then your license has
+this feature enabled.
+If not, contact BitMover sales.
+.\}

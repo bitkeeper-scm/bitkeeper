@@ -4,7 +4,7 @@
 bk pwd \- print directory name
 .SH SYNOPSIS
 .B bk pwd
-.[B] \-rs
+.[B] \-PRs
 .[ARG] dir
 .SH DESCRIPTION
 The
@@ -17,7 +17,12 @@ current working directory is used.
 By default, the full pathname to the directory is printed.
 .SH OPTIONS
 .TP
-.B \-r
+.B \-P
+Print the relative path from the root of the product repository 
+to the directory (when in a nested collection.  If not, same as
+.BR \-R ).
+.TP
+.B \-R
 Print the relative path from the root of the repository to the directory.
 .TP
 .B \-s

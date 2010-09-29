@@ -288,7 +288,7 @@ defaultFiles(int product)
 		touch(ALIASES, 0664);
 		system("bk new -Pq " ALIASES);
 		f = fopen("BitKeeper/log/HERE", "w");
-		fprintf(f, "all\n");
+		fprintf(f, "ALL\nPRODUCT\n");
 		fclose(f);
 		touch("BitKeeper/log/PRODUCT", 0444);
 		system("bk portal -q .");

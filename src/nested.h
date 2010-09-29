@@ -47,7 +47,6 @@ extern	unsigned int turnTransOff;
 #define	NESTED_PENDING		0x10000000	/* included pending comps */
 #define	NESTED_PULL		0x20000000	/* This is a pull */
 #define	NESTED_PRODUCTFIRST	0x40000000	/* c->p first in c->comps */
-#define	NESTED_DEEPFIRST	0x80000000	/* deeper comps first */
 #define	NESTED_MARKPENDING	0x01000000	/* set c->pending */
 #define	NESTED_FIXIDCACHE	0x02000000	/* no error for bad idDB */
 
@@ -134,7 +133,7 @@ int	nested_aliases(nested *n, char *rev, char ***aliases, char *cwd,
 	    int pending);
 comp	*nested_findKey(nested *n, char *rootkey);
 comp	*nested_findMD5(nested *n, char *md5rootkey);
-comp	*nested_findDir(nested *n, char *dir);
+comp	*nested_findDir(nested *n, char *dir, int exact);
 char	*nested_dir2key(nested *n, char *dir);
 void	nested_compFree(void *x);
 int	nested_each(int quiet, char **av, char **aliases);
@@ -142,6 +141,7 @@ void	nested_check(void);
 int	nested_emptyDir(nested *n, char *dir);
 int	nested_rmcomp(nested *n, comp *c);
 char	**nested_here(project *p);
+char	**nested_fixHere(char **aliases);
 void	nested_writeHere(nested *n);
 
 /* alias.h */
@@ -156,7 +156,7 @@ char	**aliasdb_expandOne(nested *n, hash *aliasdb, char *alias);
 void	aliasdb_free(hash *db);
 int	aliasdb_chkAliases(nested *n, hash *aliasdb,
 	    char ***paliases, char *cwd);
-
+int	aliasdb_caret(char **aliases);
 
 char	**urllist_fetchURLs(hash *h, char *rk, char **space);
 void	urllist_addURL(hash *h, char *rk, char *url);

@@ -4,7 +4,9 @@
 bk \- \*(BK configuration management system front end
 .SH SYNOPSIS
 .B bk 
-.[ARG] options
+.[B] \-A|U|r
+.[OPTreq] \-s alias
+.[B] options
 .ARG command 
 .[ARG] options
 .SH DESCRIPTION
@@ -26,7 +28,10 @@ Only the global options are documented here.
 To see command specific options consult the documentation for the command
 in question (bk help
 .ARG command ).
-.TP -r[\*<dir\*>]\ 
+.de TPP
+.TP -s[\*<alias\*>]\ 
+..
+.TPP
 .OPTopt \-@ url
 Run the command in the specified repository rather than locally.
 If
@@ -51,86 +56,47 @@ If
 .Q \-
 is the last argument, then the standard input is read and buffered.
 Each remote command receives the same input.
-.tp
-.if \n[NESTED] \{\
+.TPP
 .B \-A
-In a nested collection, this option will cause the command to be run 
-in each of the components and then the product;
-in a standalone repository this option has no effect.
-The
-.B \-A
-is stripped from the options but all others are passed through.
-For example, to integrity check all the components and the product
-in succession:
+Starting at the current working directory, run
+.ARG command
+on all files in the entire repository or nested collection.
+In a standalone repository this option is similar to
+.BR \-r .
+For example, to search all files in a nested collection:
 .DS
-$ bk -Ar check -acv
+$ bk -A grep 'the string I want to find'
 .DE
-.\}
-.tp
+See \-s below for ways to limit the set of files processed in a nested
+collection.
+.TPP
 \fB--cd\fR=\*<dir\*>
 Change to
 .ARG dir
 before running the command.
+.TPP
+.B \--headers
+For remote commands (\-@)
+.if \n[NESTED] or for nested collection iterators,
+this option causes the output
+from running the command in each repository to prefixed with a header:
+.DS
+#### \*<repo-url or location\*> ####
+.DE
 .if \n[NESTED] \{\
-.tp
-.B \-N
-In a nested collection,
-starting at the root of the product repository, apply
-.ARG command
-recursively to all files in the product and each of the
-component repositories;
-in a standalone repository this option is the same as
-.BR \-r .
-For example, to check out all files in a nested collection:
-.DS
-$ bk -N co
-.DE
-.tp
-\fB-N\fR\*<alias\*>
-Limit the list of files to those found in
-.ARG alias .
-To get more than one alias, repeat with a different alias:
-.DS
-$ bk -Ndocs -Nwww grep whoops
-.DE
-The difference between 
-.B \-N
-and 
-.B \-A
-is that 
-.B \-N
-runs from the root of the product for all files;
-.B \-A
-runs from the root of the product, then the root of each of the components
-in turn.  Certain commands, such as
-.BR check ,
-will only work with
-.BR \-A .
-.tp
+.TPP
 .B \-P
 Change directories to the root of the product repository before running
 .ARG command .
 Same as 
 .B \-R
 in a non-nested collection.
-.tp
 .\}
-.B \-q
-For remote commands (\-@)
-.if \n[NESTED] or multi-repository commands (\-A/\-s),
-the output
-from running the command in each repository is prefixed with a header:
-.DS
-#### \*<repo-url or location\*> ####
-.DE
-The
-.B \-q
-option suppresses that header.
-.tp
+.TPP
 .B \-R
 Change directories to the root of the repository before running
 .ARG command .
-.tp
+.TPP
 .OPTopt \-r dir
 Starting at 
 .ARG dir ,
@@ -144,7 +110,59 @@ and all subdirectories.
 This works by generating a list of files and passing them to
 .ARG command
 on the standard input.
-.tp
+.if \n[NESTED] \{\
+.TPP
+.OPTopt \-s alias
+If not combined with -A/-U, this is a nested collection iterator that
+runs the command at the root of each selected component/product.
+If
+.ARG alias
+is not present, it defaults to "HERE" which means run the command
+in each component and then the product.
+For example, to integrity check all the components and the product
+in succession:
+.DS
+$ bk -s -r check -acv
+.DE
+though "bk repocheck" is easier to type and does the same thing.
+.sp .5
+If 
+.ARG alias
+is present, then it restricts the command to run in the specified
+alias[es].
+The option may be repeated to specify multiple aliases,
+the alias may be a component,
+and the alias may be negated.
+To run everywhere except the product:
+.DS
+$ bk -s^PRODUCT grep 'something only if in a component'
+.DE
+.sp .5
+When combined with
+.B \-A
+or
+.BR \-U ,
+.OPTreq \-s alias
+limits the files processed to those implied by
+.ARG alias .
+.sp .5
+In a standalone repository this option has no effect.
+.TPP
+.B \-U
+In a nested collection,
+starting at the current working directory, run
+.ARG command
+on all active (not deleted and not BitKeeper metadata )
+files in the entire collection, components and
+product.
+For example, to check out your collection:
+.DS
+$ bk -U co
+.DE
+See \-s above for ways to limit the set of files processed in a nested
+collection.
+.\}
+.TPP
 .B \-1acpx
 One or more of these options may be used in combination with 
 .Q \-r
@@ -184,10 +202,9 @@ bk -r co
 bk -R sfiles | bk -R co -
 cd \`bk root\`; bk sfiles | bk co -
 .DE
-An example usage for generating a patch of all
-new and/or changed files:
+An example usage for generating a patch of all new and/or changed files:
 .DS
-$ bk -cxr diffs -Nu
+$ bk -cxU diffs -Nu
 .DE
 .SH "SEE ALSO"
 .SA sfiles
@@ -195,14 +212,14 @@ $ bk -cxr diffs -Nu
 .B Repository
 .if \n[NESTED] \{\
 .SH AVAILABILITY
-The \-A/\-P options of this command are an optional feature of \*[BK]
+The \-P/\-s/ options of this command are an optional feature of \*[BK]
 and must be enabled in your license.
 To see if your license is so enabled, run 
 .DS
 bk lease renew
 bk lease show
 .DE
-If the options field has "nested" or "nested-pro" listed then your
+If the options field has "SAM" or "PL" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
 .\}

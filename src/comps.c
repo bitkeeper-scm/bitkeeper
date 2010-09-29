@@ -9,6 +9,7 @@ comps_main(int ac, char **av)
 	int	citool = 0;
 	int	rc;
 	char	**nav = 0;
+	char	**aliases = 0;
 	longopt	lopts[] = {
 		{ "here", 'h' },
 		{ "missing", 'm' },
@@ -16,17 +17,23 @@ comps_main(int ac, char **av)
 	};
 
 	nav = addLine(nav, "alias");
-	while ((c = getopt(ac, av, "chkm", lopts)) != -1) {
+	while ((c = getopt(ac, av, "chkms;", lopts)) != -1) {
 		switch (c) {
 		    case 'c': citool = 1; break;
 		    case 'h': nav = addLine(nav, "-h"); break;
 		    case 'k': nav = addLine(nav, "-k"); break;
 		    case 'm': nav = addLine(nav, "-m"); break;
+		    case 's': aliases = addLine(aliases, optarg); break;
 		    default: bk_badArg(c, av);
 		}
 	}
+	unless (aliases) {
+		aliases = addLine(aliases, "ALL");
+		aliases = addLine(aliases, "^PRODUCT");
+	}
 	nav = addLine(nav, "-e");
-	nav = addLine(nav, "ALL");
+	nav = catLines(nav, aliases);	/* frees aliases */
+	aliases = 0;
 	nav = addLine(nav, 0);
 
 	if (av[optind]) usage();

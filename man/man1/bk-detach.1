@@ -5,7 +5,7 @@
 bk detach \- create a stand-alone clone of a component repository
 .SH SYNOPSIS
 bk detach
-.[B] \-ql
+.[B] \-q
 .[OPTreq] \-B url
 .[OPTequal] \-E e v
 .[OPTreq] \-r rev
@@ -34,11 +34,6 @@ Only variables with the prefix
 .V BKU_
 are allowed.
 .tp
-.B \-l
-Clone using hard links instead of copying the data.  
-This is faster and saves disk space, but only works 
-within file systems supporting hard links.
-.tp
 .B \-q 
 Run quietly.
 .tp
@@ -50,6 +45,7 @@ A changeset number or changeset key can be used to specify
 .SH SEE ALSO
 .SA attach
 .SA clone
+.SA port
 .SA setup
 .SH CATEGORY
 .B Nested
@@ -61,7 +57,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "nested" listed then your
+If the options field has "PL" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
 .\}

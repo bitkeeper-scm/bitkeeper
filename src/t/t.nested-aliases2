@@ -323,6 +323,7 @@ cd dash-h
 bk here > GOT
 cat > WANT <<EOF
 DEFAULT
+PRODUCT
 EOF
 cmpfiles WANT GOT
 echo OK

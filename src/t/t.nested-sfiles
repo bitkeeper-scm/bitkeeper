@@ -242,14 +242,14 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk -sDEV -Ur should be a foreach bk sfiles -U ...............$NL
-bk -sDEV pwd -R | while read x
+bk -sDEV pwd -P | while read x
 do	(cd $x; bk sfiles -U)
 done > WANT
 bk -sDEV -Ur > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s pwd -R from the product ...............................$NL
+echo $N bk -s pwd -P from the product ...............................$NL
 cat > WANT << EOF
 a/b/c
 a/b/c/d/e
@@ -257,21 +257,44 @@ gcc
 gdb
 .
 EOF
-bk -s pwd -R > GOT
+bk -s pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -sDEV pwd -R from the product ............................$NL
+echo $N bk -sc pwd -P from near a comp runs in that comp ............$NL
+echo a/b/c > WANT
+(cd a/b && bk -sc pwd -P) > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -s. pwd -P from inside a comp runs in that comp ..........$NL
+echo a/b/c > WANT
+(cd a/b/c/d && bk -s. pwd -P) > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -sDEV pwd -P from the product ............................$NL
 cat > WANT << EOF
 gcc
 gdb
 EOF
-bk -sDEV pwd -R > GOT
+bk -sDEV pwd -P > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -s^prOdUcT pwd -P from the product .......................$NL
+cat > WANT << EOF
+a/b/c
+a/b/c/d/e
+gcc
+gdb
+EOF
+bk -s^prOdUcT pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
 echo $N bk -s gfiles should not prefix - from product ...............$NL
-bk -s pwd -R | while read x
+bk -s pwd -P | while read x
 do	(cd $x; bk gfiles)
 done > WANT
 bk -s gfiles > GOT
@@ -279,10 +302,16 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk -sDEV gfiles should not prefix - from product ............$NL
-bk -sDEV pwd -R | while read x
+bk -sDEV pwd -P | while read x
 do	(cd $x; bk gfiles)
 done > WANT
 bk -sDEV gfiles > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk -s. gfiles from inside a comp runs that in that comp .....$NL
+(cd a/b/c && bk gfiles) > WANT
+(cd a/b/c/d && bk -s. gfiles) > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -504,14 +533,14 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk -sDEV -Ur should be a foreach bk sfiles -U ...............$NL
-bk -sDEV pwd -R | while read x
+bk -sDEV pwd -P | while read x
 do	(cd ../$x; bk sfiles -U)
 done > WANT
 bk -sDEV -Ur > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s pwd -R from a product subdirectory ....................$NL
+echo $N bk -s pwd -P from a product subdirectory ....................$NL
 cat > WANT << EOF
 a/b/c
 a/b/c/d/e
@@ -519,22 +548,22 @@ gcc
 gdb
 .
 EOF
-bk -s pwd -R > GOT
+bk -s pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -sDEV pwd -R from product subdirectory ...................$NL
+echo $N bk -sDEV pwd -P from product subdirectory ...................$NL
 cat > WANT << EOF
 gcc
 gdb
 EOF
-bk -sDEV pwd -R > GOT
+bk -sDEV pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
 echo $N bk -s gfiles should not prefix - from product subdirectory ..$NL
 cd ..
-bk -s pwd -R | while read x
+bk -s pwd -P | while read x
 do	(cd $x; bk gfiles)
 done > WANT
 cd a
@@ -544,7 +573,7 @@ echo OK
 
 echo $N bk -sDEV gfiles should not prefix - from product subdir .....$NL
 cd ..
-bk -sDEV pwd -R | while read x
+bk -sDEV pwd -P | while read x
 do	(cd $x; bk gfiles)
 done > WANT
 cd a
@@ -656,7 +685,7 @@ bk -sDEV -Ur > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s pwd -R from a component ...............................$NL
+echo $N bk -s pwd -P from a component ...............................$NL
 cat > WANT << EOF
 a/b/c
 a/b/c/d/e
@@ -664,16 +693,16 @@ gcc
 gdb
 .
 EOF
-bk -s pwd -R > GOT
+bk -s pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -sDEV pwd -R from component ..............................$NL
+echo $N bk -sDEV pwd -P from component ..............................$NL
 cat > WANT << EOF
 gcc
 gdb
 EOF
-bk -sDEV pwd -R > GOT
+bk -sDEV pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -727,6 +756,7 @@ bk gfiles a/b/c gcc > WANT
 cmpfiles OUT WANT
 bk -A -sall > OUT
 bk gfiles " a leading space" a/b/c a/b/c/d/e gcc gdb > WANT
+bk gfiles -h >> WANT
 cmpfiles OUT WANT
 # filter non-obvious dups
 bk -A -sBEGINWITHA -sall > OUT

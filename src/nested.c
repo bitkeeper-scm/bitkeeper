@@ -519,7 +519,6 @@ pending:
 	mdbm_close(idDB);
 
 	sortLines(n->comps, compSort); /* by c->path */
-	if (flags & NESTED_DEEPFIRST) reverseLines(n->comps);
 prod:
 	if (flags & NESTED_PRODUCTFIRST) {
 		n->comps = unshiftLine(n->comps, n->product);
@@ -660,7 +659,23 @@ nested_here(project *p)
 
 	assert(proj_isProduct(p));
 	concat_path(buf, proj_root(p), "BitKeeper/log/HERE");
-	return (file2Lines(0, buf));
+	return (nested_fixHere(file2Lines(0, buf)));
+}
+
+char **
+nested_fixHere(char **aliases)
+{
+	int	i, found = 0;
+
+	EACH(aliases) {
+		if (strieq(aliases[i], "PRODUCT")) {
+			strcpy(aliases[i], "PRODUCT");
+			found++;
+		}
+	}
+	unless (found) aliases = addLine(aliases, strdup("PRODUCT"));
+	uniqLines(aliases, free);
+	return (aliases);
 }
 
 /*
@@ -669,6 +684,7 @@ nested_here(project *p)
 void
 nested_writeHere(nested *n)
 {
+	n->here = nested_fixHere(n->here);
 	lines2File(n->here, "BitKeeper/log/HERE");
 }
 
@@ -732,16 +748,26 @@ nested_findKey(nested *n, char *rootkey)
 	return (0);
 }
 
+/*
+ * if we want any path to match what component it would be
+ * in, set exact to 0.
+ */
 comp	*
-nested_findDir(nested *n, char *dir)
+nested_findDir(nested *n, char *dir, int exact)
 {
 	comp	*c;
-	int	i;
+	int	i, len;
 
-	unless (n && dir) return (0);
-	EACH_STRUCT(n->comps, c, i) {
-		if (streq(dir, c->path)) return (c);
+	unless (n && dir && n->comps) return (0);
+	for (i = nLines(n->comps); i > 0; i--) {
+		c = (comp *)n->comps[i];
+		if (c->product) continue;	/* first or last, so punt */
+		if ((len = paths_overlap(c->path, dir)) && !c->path[len]) {
+			if (!exact || !dir[len]) return (c);
+		}
+
 	}
+	if (!exact || streq(dir, ".")) return (n->product);
 	return (0);
 }
 
@@ -784,7 +810,6 @@ nested_each(int quiet, char **av, char **aliases)
 	comp	*cp;
 	int	i, j;
 	char	**nav;
-	int	product = 0;
 	int	errors = 0;
 	int	status;
 
@@ -800,23 +825,25 @@ nested_each(int quiet, char **av, char **aliases)
 	}
 	if (n->cset) sccs_close(n->cset);	/* win32 */
 	unless (aliases) {
-		aliases = addLine(aliases, strdup("PRODUCT"));
 		aliases = addLine(aliases, strdup("HERE"));
 	}
-	EACH(aliases) if (strieq(aliases[i], "PRODUCT")) product = 1;
 
-	// XXX add error checking when the error paths get made
-	if (nested_aliases(
-	    n, n->tip, &aliases, proj_cwd(), n->pending)) {
+	if (nested_aliases(n, n->tip, &aliases, start_cwd, n->pending)) {
 		errors = 1;
 		goto err;
 	}
+	assert(n->alias);
+	EACH_STRUCT(n->comps, cp, i) {
+		if (cp->alias && !cp->present) {
+			fprintf(stderr,
+			    "%s: Not populated: %s\n", prog, cp->path);
+			errors = 1;
+		}
+	}
+	if (errors) goto err;
 
 	EACH_STRUCT(n->comps, cp, i) {
-		unless (cp->present) continue;
-		if (!product && cp->product) continue;
-		if (n->alias && !cp->alias && !cp->product) continue;
-		unless (cp->included) continue;
+		unless (cp->alias && cp->present) continue;
 		unless (quiet) {
 			printf("#### %s ####\n",
 			    cp->product ? "PRODUCT" : cp->path);

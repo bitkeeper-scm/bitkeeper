@@ -2,7 +2,7 @@
 .so ../bk-macros
 .TH "bk port" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk port \- pull changes from a different product's component
+bk port \- pull changes from a different nested collection or standalone
 .SH SYNOPSIS
 .B bk port
 .[B] \-iqRsTu
@@ -18,6 +18,9 @@ different product or is a standalone repository.
 It is similar to 
 .B bk pull
 but differs in that it can pull across product boundaries.
+.LP
+If the destination is attached to a product, that product must be a 
+portal.
 .LP
 Changes are retrieved and automatically applied, if possible.
 You will only be asked to resolve conflicts by hand if a file
@@ -83,9 +86,10 @@ Do not complete the port if there are local changesets, i.e., insist
 that this operation is an update operation.
 .SH "SEE ALSO"
 .SA bkd
-.SA parent
-.SA pull
 .SA changes
+.SA parent
+.SA portal
+.SA pull
 .SA resolve
 .SA triggers
 .SA unpull
@@ -99,7 +103,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "nested-lines" listed then your
+If the options field has "PL" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
 .\}

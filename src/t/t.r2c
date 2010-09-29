@@ -1,0 +1,102 @@
+echo $N Simple test..................................................$NL
+commercial non-nested
+touch afile
+bk new $Q afile
+bk commit -y. $Q afile
+rev=`bk log -nd:REV: -r+ afile`
+crev=`bk changes -nd:REV: -r+`
+test `bk r2c -r+ afile` = $crev || fail
+test `bk r2c -r$rev afile` = $crev || fail
+echo OK
+
+echo $N r2c on ChangeSet file does not work which is.................$NL
+bk r2c -r+ ChangeSet 2>ERR && fail it worked
+bk grep -q 'r2c: cannot find either of' ERR || fail -f ERR
+echo OK
+
+echo $N Pending delta................................................$NL
+bk edit $Q afile
+echo "more stuff" > afile
+bk delta -y. $Q afile
+bk r2c -r+ afile 2>ERR && fail
+grep -q "cannot find cset marker" ERR || fail
+echo OK
+
+echo $N Non-existent rev.............................................$NL
+bk r2c -r1.55 afile 2>ERR && fail
+grep -q "cannot find rev 1.55 in afile" ERR || fail -f ERR
+echo OK
+
+echo $N Non-existent file............................................$NL
+bk r2c -r+ foobar 2>ERR && fail
+grep -q "cannot init foobar" ERR || fail -f ERR
+echo OK
+
+echo $N Many deltas in same cset.....................................$NL
+bk edit $Q afile
+echo "a" > afile
+bk delta $Q -y. afile
+rev=`bk log -nd:REV: -r+ afile`
+bk edit $Q afile
+echo "b" > afile
+bk delta $Q -y. afile
+bk commit $Q -y.
+crev=`bk changes -nd:REV: -r+`
+test `bk r2c -r$rev afile` = $crev || fail
+echo OK
+
+echo $N Test -P is ignored in non-nested.............................$NL
+bk r2c -r+ afile >WANT
+bk r2c -P -r+ afile >GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N r2c -P works in product files................................$NL
+cd "$HERE"
+nested product
+touch afile
+bk new $Q afile
+bk commit -y. $Q afile
+rev=`bk log -nd:REV: -r+ afile`
+crev=`bk changes -nd:REV: -r+`
+test `bk r2c -Pr+ afile` = $crev || fail
+test `bk r2c -Pr$rev afile` = $crev || fail
+echo OK
+
+echo $N Simple component case........................................$NL
+cd gcc
+touch afile
+bk new $Q afile
+bk commit -y. $Q afile
+bk -P commit -y. $Q
+rev=`bk log -nd:REV: -r+ afile`
+prev=`bk -P changes -nd:REV: -r+`
+test `bk r2c -Pr+ afile` = $prev || fail
+test `bk r2c -Pr$rev afile` = $prev || fail
+echo OK
+
+echo $N Many csets in same product cset..............................$NL
+rev=""
+for i in 1 2 3 4
+do
+	bk edit $Q afile
+	echo $i > afile
+	bk delta $Q -y. afile
+	bk commit $Q -y.
+	test $i = 3 && {
+		rev=`bk log -nd:REV: -r+ afile`
+	}
+done
+bk -P commit $Q -y.
+prev=`bk -P changes -nd:REV: -r+`
+test `bk r2c -Pr$rev afile` = $prev || fail
+test `bk r2c -Pr+ afile` = $prev || fail
+echo OK
+
+echo $N Pending delta in component...................................$NL
+bk edit $Q afile
+echo more > afile
+bk delta $Q -y. afile
+bk r2c -Pr+ afile 2>ERR && fail
+grep -q "cannot find cset marker" ERR || fail -f ERR
+echo OK

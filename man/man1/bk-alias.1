@@ -5,7 +5,7 @@
 bk alias \- manage aliases for lists of components
 .SH SYNOPSIS
 .B bk alias 
-.[B] add|rm|set|new|list
+.[B] add|rm|set|new
 .[ARG] options
 .ARG name
 .[ARG] component \ ...
@@ -46,20 +46,17 @@ bk alias \- manage aliases for lists of components
 .br
 .SS LIST ALL ALIASES
 .B bk alias
-.[B] list
 .[OPTreq] \-r rev
 .[B] \-hm
 .[B] \-k
-.[B] \-vvv
+.[B] \-v
 .br
 .SS SHOW AN ALIAS
 .B bk alias
-.[B] list
 .[OPTreq] \-r rev
-.[B] \-e
 .[B] \-hm
 .[B] \-k
-.[B] \-vvv
+.[B] \-v
 .ARG name
 .SH DESCRIPTION
 The 
@@ -127,13 +124,16 @@ When modifying an alias the command line can include '-' instead of
 the arguments and the list of aliases to add or remove will be read
 from standard input instead.
 .SH PRE-DEFINED OR RESERVED ALIASES
+There are a number of predefined aliases.
+Predefined aliases may not be modified and they may not be used as part
+of a user defined alias.
 .TP "PRODUCT "
 .B .
-Reserved name that means the product repository.
+This context sensitive alias means the current repository, be it the product
+or a component.
 .tp
 ALL
-This predefined alias means all components (as well as the product) and
-may not be modified.
+This alias means all components (as well as the product).
 .ig
 It is different than "./*" in that globs expand to
 whatever is present in the source repository (i.e., they are fine with
@@ -143,18 +143,16 @@ If you try and expand ALL and there are missing
 components the expansion will fail.
 .tp
 PRODUCT
-This predefined alias always means the product.
+This alias always means the product.
 .tp
 THERE
-This is another alias which may not be modified and it means all the
-components present in the repository.
+This alias means all components and the product that are currently
+present in the nested collection.
 If you do not care what the other side has, you just want to replicate
 it, then 
 .DS
 $ bk clone -sTHERE bk://good-stuff/some-repo
 .DE
-Note that the "THERE" alias is never found in the aliases file, it
-implied from the cached aliases list in BitKeeper/log.
 .tp
 HERE
 This is the same as THERE but it makes more sense for commands like so:
@@ -173,11 +171,8 @@ Reserved name, conflicts with the "bk alias set" command.
 .tp
 new
 Reserved name, conflicts with the "bk alias new" command.
-.tp
-list
-Reserved name, conflicts with the "bk alias list" command.
 .LP
-The predefined aliases ALL, HERE, THERE, are case insensitive,
+The predefined aliases ALL, HERE, THERE, PRODUCT, are case insensitive,
 i.e., "here" and
 "HERE" mean the same thing.
 In all other cases the names are case sensitive.
@@ -197,28 +192,24 @@ This option suppresses the commit.
 Use this option when you wish to combine the alias event with other
 changes to the product.
 .tp
-.B \-e
-Used when showing aliases; causes all aliases to be fully expanded so
-the output is the list of components matching the alias.
-.tp
 .B \-h
-Used when showing aliases; causes only aliases that are fully present
+(here) Used when showing aliases; causes only aliases that are fully present
 to be listed.
 .tp
 .B \-k
-Used when showing aliases; causes individual components to be listed
+(keys) Used when showing aliases; causes individual components to be listed
 by their rootkeys instead of the current pathname, which is the
 default output.
 .tp
 .B \-m
-Used when showing aliases; causes only aliases that are not fully
+(missing) Used when showing aliases; causes only aliases that are not fully
 present to be listed.
 .tp
 .OPTreq \-r rev
 Used when showing aliases; causes the aliases to be listed as of an
 older revision of the BitKeeper/etc/aliases file.
 .tp
-.B \-vvv
+.B \-v
 Used when showing aliases; causes aliases to be expanded to show
 contents using an indented list.  Adding more
 .B \-v
@@ -239,19 +230,19 @@ $ bk alias new DEV-TOOLS ./gdb COMPILER
 .DE
 List all aliases:
 .DS
-$ bk alias list
+$ bk alias
 COMPILER
 DEV-TOOLS
 .DE
 Show an alias that contains another:
 .DS
-$ bk alias list DEV-TOOLS
+$ bk alias DEV-TOOLS
 COMPILER
 \&./cmd/gdb
 .DE
 Expand an alias into paths:
 .DS
-$ bk alias list -e DEV-TOOLS
+$ bk comps -sDEV-TOOLS
 \&./cmd/as
 \&./cmd/gcc
 \&./cmd/gdb
@@ -270,7 +261,7 @@ as their root keys so that the alias will expand correctly even if
 the specified component[s] is/are moved.
 .SH "SEE ALSO"
 .SA clone
-.SA components
+.SA comps
 .SA glob
 .SA id
 .SA populate
@@ -284,7 +275,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "nested" listed then your license has this
+If the options field has "SAM" listed then your license has this
 feature enabled.
 If not, contact BitMover sales.
 .\" help://aliases

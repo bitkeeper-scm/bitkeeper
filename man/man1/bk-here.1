@@ -10,20 +10,32 @@ bk populate - add one or more components to a nested collection
 .br
 bk unpopulate - remove one or more components to a nested collection
 .SH SYNOPSIS
-.B bk here add|list|rm|set
+.B bk here [set|check|where]
 .[OPTreq] \-@ URL
-.[B] \-qf
+.[B] \-fq
 .[ARG] "alias | comp"
-.SS LISTING POPULATED ALIASES
-.B bk here [list]
-.[B] \-vvv
-.SS POPULATING COMPONENTS AND/OR ALIASES
-.B bk here add
+.br
+.B bk populate
 .[OPTreq] \-@ URL
 .[B] \-fq
 .ARG "alias | component"
 .B ...
 .br
+.B bk unpopulate
+.[OPTreq] \-@ URL
+.[B] \-fq
+.ARG "alias | component"
+.B ...
+.SS SETTING THE SET OF POPULATED COMPONENTS AND/OR ALIASES
+.B bk here set
+.[OPTreq] \-@ URL
+.[B] \-fq
+.ARG "alias | component"
+.B ...
+.SS LISTING POPULATED ALIASES
+.B bk here 
+.[B] \-v
+.SS POPULATING COMPONENTS AND/OR ALIASES
 .B bk populate
 .[OPTreq] \-@ URL
 .[B] \-fq
@@ -33,13 +45,7 @@ bk unpopulate - remove one or more components to a nested collection
 .B bk here check
 .[OPTreq] \-@ URL
 .[B] \-cq
-.SS DEPOPULATING COMPONENTS AND/OR ALIASES
-.B bk here rm
-.[OPTreq] \-@ URL
-.[B] \-fq
-.ARG "alias | component"
-.B ...
-.br
+.SS UNPOPULATING COMPONENTS AND/OR ALIASES
 .B bk unpopulate
 .[OPTreq] \-@ URL
 .[B] \-fq
@@ -57,27 +63,32 @@ bk unpopulate - remove one or more components to a nested collection
 .B ...
 .SH DESCRIPTION
 The
-.B "bk here"
-command is used to manage the set of populated aliases and/or components
+.BR "bk here" ,
+.BR "bk populate" ,
+and
+.B "bk unpopulate"
+commands are used to manage the set of populated aliases and/or components
 in a nested collection.
 .LP
 The initial set of populated aliases are determined when a nested
 collection is cloned.  If no aliases are specified on the clone
-command line then the set is just the "DEFAULT" alias.
-The "DEFAULT" alias expands to all components unless it has be
-modified with the 
-.B "bk alias"
-command.
+command line then the set is specified via the
+.I clone_default
+configuration variable (which is "ALL" if not found).
 If one or more aliases are
 specified, then only the repositories implied by those aliases 
 are populated.
 .LP
 The 
 .B "bk here"
-command can be used to list what is here,
-add to what is here,
-remove from what is here,
-or set what is here.
+command can be used to list what is here, set what is here, or
+check what is here or list where missing components are.
+The 
+.B "bk populate"
+command can be used to add to what is here.
+The 
+.B "bk unpopulate"
+command can be used to remove from what is here.
 .LP
 In order to preserve any local work, before removing any components
 .B "bk here"
@@ -111,11 +122,11 @@ unless you plan to undo all of that work.
 .B \-q
 Run quietly.
 .tp
-.B \-vvv
+.B \-v
 When listing aliases, show alias expansions using an indented list.
 Add
 .B \-v
-options, to indent to a deeper level.
+more options to indent to a deeper level.
 .SH EXAMPLES
 .LP
 When cloning a product, it is possible to clone a subset of it by
@@ -126,6 +137,7 @@ $ bk clone -sDEVTOOLS bk://server/big-product
 $ cd big-product
 $ bk here
 DEVTOOLS
+PRODUCT
 .DE
 Note that the list of what is "here" takes two forms, how you specified
 it (typically one or more aliases), and the set of components implied
@@ -138,31 +150,33 @@ $ bk comps -h
 \&./cmd/ld
 .DE
 If you need to add something, you just tell 
-.B "bk here" 
+.B "bk populate" 
 to do that:
 .DS
-$ bk here add DEBUGGER
+$ bk populate DEBUGGER
 $ bk here
 DEBUGGER
 DEVTOOLS
+PRODUCT
 .DE
 If you need to remove something, you can only remove what you added, not
 individual components:
 .DS
-$ bk here rm ./cmd/gcc
-here: ./cmd/gcc is part of the DEVTOOLS alias, not removing.
+$ bk unpopulate ./cmd/gcc
+unpopulate: ./cmd/gcc is part of the DEVTOOLS alias, not removing.
 .DE
 If you absolutely must remove a subset, you can do so by exploding the
 alias in question into components:
 .DS
 $ bk here | grep -v DEVTOOLS > tmp
-$ bk alias list DEVTOOLS >> tmp
+$ bk alias DEVTOOLS >> tmp
 $ bk here set - < tmp
-$ bk here rm ./cmd/gcc
+$ bk unpopulate ./cmd/gcc
 $ bk here
-DEBUGGER
 \&./cmd/gas
 \&./cmd/ld
+DEBUGGER
+PRODUCT
 .DE
 .SH "SEE ALSO"
 .SA alias
@@ -177,7 +191,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "nested" listed then your
+If the options field has "SAM" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
 .\}
