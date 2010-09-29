@@ -1,3 +1,21 @@
+echo $N Make sure we do not leak locks in components.................$NL
+cd "$HERE"
+nested atest
+cd gcc
+bk pull -n 2>ERR && fail
+grep -q "deleting orphan lock file" ERR && fail -f ERR leaked lock
+echo OK
+
+echo $N Make sure standalone inside nested works as well.............$NL
+cd "$HERE"
+commercial standalone
+cd ..
+mv standalone atest
+cd atest/standalone
+bk pull -n 2>ERR && fail
+grep -q "deleting orphan lock file" ERR && fail -f ERR leaked lock
+echo OK
+
 repo_setup() {
 	cd "$HERE"
 	rm -rf clone clone[1-4]

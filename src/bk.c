@@ -1213,7 +1213,14 @@ cmdlog_end(int ret, int bkd_cmd)
 	}
 
 	if (!bkd_cmd && (cmdlog_locks & (CMD_WRLOCK|CMD_RDLOCK))) {
-		repository_unlock(0, 0);
+		project	*prod = 0;
+
+		if ((cmdlog_flags & CMD_LOCK_PRODUCT) &&
+		    proj_isComponent(0)  &&
+		    !getenv("_BK_TRANSACTION")) {
+			prod = proj_product(0);
+		}
+		repository_unlock(prod, 0);
 	}
 out:
 	cmdlog_buffer[0] = 0;
