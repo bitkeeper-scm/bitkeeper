@@ -1,25 +1,29 @@
-/* %K% Copyright (c) 1999 Andrew Chang */
 #include "system.h"
 #include "sccs.h"
+
+#define	FULL_PATH	0
+#define	REPO_RELATIVE	1
+#define	PROD_RELATIVE	2
 
 int
 pwd_main(int ac, char **av)
 {
 	char	buf[MAXPATH], *p;
-	int	c, shortname = 0, bk_rpath = 0, windows = 0;
+	int	c, shortname = 0, bk_rpath = FULL_PATH, windows = 0;
 
-	while ((c = getopt(ac, av, "srRw", 0)) != -1) {
+	while ((c = getopt(ac, av, "sPrRw", 0)) != -1) {
 		switch (c) {
 			case 's': shortname = 1; break;
-			case 'r': bk_rpath = 1; break; /* bk relative path */
-			case 'R': bk_rpath = 2; break; /* from product root */
+			case 'r':
+			case 'R': bk_rpath = REPO_RELATIVE; break;
+			case 'P': bk_rpath = PROD_RELATIVE; break;
 			case 'w': windows = 1; break;
 			default: bk_badArg(c, av);
 		}
 	}
 	
 	if (bk_rpath && windows) {
-		fprintf(stderr, "pwd: -r or -w but not both.\n");
+		fprintf(stderr, "pwd: -R/-P or -w but not both.\n");
 		return (1);
 	}
 
@@ -50,14 +54,18 @@ pwd_main(int ac, char **av)
 	if (windows) bm2ntfname(p, p);
 #endif
 	switch (bk_rpath) {
-	    case 0: printf("%s\n", p); break;
-	    case 1: printf("%s\n", _relativeName(".", 1, 1, 1, 0)); break;
-	    case 2: 
-		unless (proj_product(0)) {
-			fprintf(stderr, "Not in an ensemble.\n");
-			exit(1);
+	    case 0:
+		printf("%s\n", p);
+		break;
+	    case PROD_RELATIVE:
+		if (proj_isComponent(0)) {
+			printf("%s\n",
+			    _relativeName(".", 1, 1, 1, proj_product(0)));
+			break;
 		}
-		printf("%s\n", _relativeName(".", 1, 1, 1, proj_product(0)));
+		/* fall through */
+	    case REPO_RELATIVE:
+		printf("%s\n", _relativeName(".", 1, 1, 1, 0));
 		break;
 	}
 	return (0);

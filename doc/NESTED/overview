@@ -22,21 +22,22 @@ to provide an audit trail for a collection of repositories much as a
 repository provides an audit trail for a collection of files.  The value
 to you is that all states of a product are reproducible and BitKeeper will
 never let a user create a view of the source that is not reproducible
-(unlike virtually all other SCM systems that scale to gigabytes of data).
+(no other SCM system that scales to gigabytes or terabytes of data can
+make this claim).
 
 The product feature makes it possible, even pleasant, to manage large
 collections of files with good performance.  For example, for testing
 we imported the entire FreeBSD CVS history.  Some numbers:
 
-	  144 components
+	  148 components
       149,051 files
-      300,141 changesets (over all repositories)
-    1,065,336 file deltas
+      430,185 changesets (over all repositories)
+    1,068,002 user file deltas
 	  2GB compressed history (4GB uncompressed)
 
 and some performance numbers:
 
-    Clone over network: 1.3 minutes (average of more than 23MB/sec)
+    Clone over network: 1.5 minutes
     Local clone: 43 seconds
     Local clone of the kernel component only: 3 seconds
     Scan revision history of all files: 8.5 seconds
@@ -53,6 +54,7 @@ Terminology
     Product line - a set of distinct products that reuse some/all components
     Alias - a symbolic name for one or more components
     Portal - an instance of a product used as a destination for bk port
+    Gate - a full or sparse clone which does not roll backwards/unpopulate.
 
 New commands
 ------------
@@ -60,10 +62,13 @@ New commands
     bk attach - clone and attach a repository to a product, creating a component
     bk comps - list components (here, missing, or all)
     bk detach - clone and detach a component into a standalone repository
-    bk here - list or change the set of populated repositories
+    bk gate - manage gates
+    bk here - list or manage the set of populated repositories
     bk partition - transform a repository into a nested collection
+    bk populate - add one or more components to a nested collection
     bk port - pull changes from a different product's component
     bk portal - mark a product as a portal, aka a destination for bk port
+    bk unpopulate - remove one or more components to a nested collection
 
 Changed commands
 ----------------
@@ -76,6 +81,7 @@ Changed commands
     bk clone - has a new option to specify one or more aliases
     bk csettool - nested aware, spans all repositories
     bk difftool - nested aware, spans all repositories
+    bk revtool - nested aware, can go from code all the way to nested cset
     bk rset - is nested aware, spans all repositories
     bk setup - has a new option to create a product
     bk abort, commit, clone, pull, push, resolve, undo - obviously nested aware
@@ -86,7 +92,7 @@ Creating a nested collection
     There are 3 ways to create a nested collection:
     a) create a new empty product repository with bk setup -P
     b) split a repository into a collection with bk partition
-    c) clone a repository and use bk newroot -P to make it a product
+    c) clone an existing product and newroot it to create a different product
 
 Adding components to a nested collection
 ----------------------------------------
@@ -94,10 +100,7 @@ Adding components to a nested collection
     bk attach command that will do both the clone and the bookkeeping
     to attach the component to the product.
 
-    Currently, components may be added to any instance of a nested
-    collection but this may change in the future to be limited to
-    the portal instance of the collection so that the same component 
-    is not added more than once.
+    Attach works only in a portal.
 
 Removing components from a nested collection
 --------------------------------------------
@@ -113,12 +116,15 @@ Making changes in a nested collection
     to a traditional repository.  The clone/pull/push/resolve/abort/undo
     commands are all nested aware and do the right thing.  Commit is an
     exception (by design), you have to commit in each of the components
-    first and then in the product.
+    first and then in the product but nested iterator (bk -s commit)
+    does it in component first and then product order so you can do
+    it with one command.
 
-    bk citool has been rewritten to hide all of this from you.  It scans
-    all of the collection and presents any files that need comments as
-    soon as they are found.  When you commit in citool it does the commit
-    in each of the components and then in the product automatically.
+    bk citool has been rewritten to make all of this pleasant.
+    Citool scans all of the collection and presents any files that need
+    comments as soon as they are found.  When you commit in citool it
+    does the commit in each of the components and then in the product
+    automatically.
 
 Aliases
 -------
@@ -139,20 +145,117 @@ Aliases
 	$ bk clone -sCOMPILERS <url> [<destination>]
 
     If you later need some other collection of components, you use the
-    here command to fetch them:
+    populate command to fetch them:
 
-	$ bk here add DOCS
+	$ bk populate DOCS
 
-    BitKeeper remembers where all missing components can be found and by
-    default bk here will try those locations to satisfy a request.  If
-    that fails or you know a closer location then an optional URL to use
-    can be passed as well.
+    BitKeeper usually remembers where all missing components can be found
+    and by default bk populate will try those locations to satisfy a request.
+    If that fails or you know a closer location then an optional URL to
+    use can be passed as well.
 
-    If you later need to remove some components, you use the here command
-    as well:
+    If you later need to remove some components, you use the unpopulate
+    command:
 
-	$ bk here rm DOCS
+	$ bk unpopulate DOCS
 
+    To see what is currently populated, you use the bk here command:
+
+	$ bk here
+	COMPILERS
+	DOCS
+	PRODUCT
+
+    and you can make it more verbose and show expansion:
+
+	$ bk here -v
+	COMPILERS
+		./src/gcc
+		./src/gdb
+	DOCS
+		./man
+	PRODUCT
+
+    The bk alias command supports the same -v option for showing aliases
+    and their expansion.
+
+Iterators
+---------
+    Non-nested BitKeeper has per file iterators like so:
+
+	$ bk -Ur grep foo
+	$ bk -r grep foo
+
+    Those did a per file search, the first form is limited to "user files"
+    and the second includes BitKeeper files and deleted files.
+
+    BK 5.0 has somewhat easier to use file iterators and introduces 
+    repository iterators.
+
+    The file iterators are:
+
+	$ bk -A grep foo		# look through all files in all repos
+	$ bk -U grep foo		# same thing, user files only
+
+    The -A/-U options work in both nested collections and in traditional
+    standalone repositories.  Unlike the old -r, -A/-U run from the 
+    current working directory, not the product root.  For example,
+    in our source tree, in the "src" subdirectory, it looks like:
+
+	$ bk -U grep -l 'product line'
+	../doc/NESTED/overview
+	../man/man1/bk-portal.1
+	../src/logging.c
+	../src/logging.h
+
+    For backwards compatibility (scripts, your fingers know to type it),
+
+	$ bk -r grep foo		# look through this repo only
+	$ bk -Ur grep foo		# same thing, user files
+
+    There is a new repository iterator, -s.  With no optional argument,
+    bk -s <command> will change directory to each populated component root
+    (and the product) in turn and run <command> there:
+
+	$ bk -s pwd -R
+	src/gnu/diffutils
+	src/gnu/patch
+	src/libc
+	src/t
+	.
+
+    The -s option may take an alias and may repeat.  With no alias
+    specified it means all populated components and then the product.
+    The following are all the same:
+
+	$ bk -s <command>
+	$ bk -sHERE <command>
+	$ bk -sHERE -sPRODUCT <command>
+
+    And you can exclude an aliases or components, this will run the command
+    in everything except the product:
+
+	$ bk -sHERE -s^PRODUCT <command>
+
+    which, because -sHERE is implied if no other alias is selected, is the
+    same as:
+
+	$ bk -s^PRODUCT pwd -R
+
+    You may combine the selector with the repository file iterator -r
+    to iterate over each file (that's the -r) in each repository (that's
+    the -s).  The "bk repocheck" command is just
+
+	$ bk -s -r check -acv
+
+    You may also combine the -s selector with the nested collection file
+    iterators -A/-U.  Doing so without an alias has no effect since that
+    means look everywhere.  But add an alias and you can restrict the
+    search to that alias:
+
+	$ bk -sDOCS -U grep -l 'product line'
+	../man/man1/bk-portal.1
+    
 Product lines
 -------------
     A product line is used when some or all of the same components are
@@ -160,7 +263,7 @@ Product lines
     lines are the SCM enablers for code reuse.
 
     A product line consists of two or more products, each of which
-    while distinct from each other, shares one or more components.
+    - while distinct from each other - shares one or more components.
     Examples where this sort of partitioning and reuse would be valuable
     include a family of cell phones, printers, and any other product
     line where various components may be shared across multiple products.
@@ -194,7 +297,7 @@ Product lines
 
 	$ bk clone old-printer new-printer
 	$ cd new-printer
-	$ bk newroot -P
+	$ bk newroot
 
     If it turned out that you wanted only a subset of the features in
     the old printer, you could have specified those like so:
@@ -289,37 +392,205 @@ Out-sourcing
 	$ bk port ../out-source
 	$ bk commit -Y'Drop from our crack out-sourcing team'
 
+    XXX - this needs work
+
 More examples/timing
 --------------------
     The configs in question are 3ghz CPUs on both ends, gig ether,
     at least 4GB of ram on both ends, linux 2.6.26, ext2 file system.
 
     Truth in advertising: all numbers are hot cache, the config is
-    checkout:none.
+    checkout:none, partial_check:on.
+    Doing the same thing over NFS and/or cold cache would be considerably
+    slower.
 
     $ time bk clone -q -s./src/sys bk://bits/freebsd kernel
-    0m11.609s
+    0m16.570s
     $ cd kernel
     $ du -sh .
-    210M .
-    $ bk comps -h
-    src/sys
-    $ time bk here add ./src/contrib/gcc
-    0m1.574s
-    $ bk comps -h
-    src/contrib/gcc
-    src/sys
+    262M .
+    $ bk here
+    ./src/sys
+    PRODUCT
+    $ time bk populate src/contrib/gcc
+    0m3.567s
+    $ here
+    ./src/lib
+    ./src/sys
+    PRODUCT
     $ bk changes -r+ -vnd:GFILE:
     ChangeSet
     src/sys/ChangeSet
     src/sys/dev/ata/ata-all.h
     src/sys/dev/ata/ata-raid.c
-    $ time bk -N co -q
+    $ time bk -U co -q
     0m5.148s
-    $ time bk -N clean
-    0m0.956s
     $ du -sh .
-    236M .
+    455M .
+    $ time bk -U clean
+    0m3.210s
+    $ du -sh .
+    300M .
     # The following tells you how many files
-    $ bk -N | wc -l
-    8944
+    $ bk -A | wc -l
+    11232
+    # Bring in all the rest of the nested collection
+    $ time bk populate ALL
+    here: searching bk://x6/freebsd...ok
+    Source bk://x6/freebsd
+    1/146 distrib/cvsup                100% |==============================| OK
+    2/146 doc                          100% |==============================| OK
+    3/146 doc/bn_BD.ISO10646-1         100% |==============================| OK
+    4/146 doc/da_DK.ISO8859-1          100% |==============================| OK
+    5/146 doc/de_DE.ISO8859-1          100% |==============================| OK
+    6/146 doc/el_GR.ISO8859-7          100% |==============================| OK
+    7/146 doc/en                       100% |==============================| OK
+    8/146 doc/en_US.ISO8859-1          100% |==============================| OK
+    9/146 doc/es_ES.ISO8859-1          100% |==============================| OK
+    10/146 doc/fr_FR.ISO8859-1         100% |==============================| OK
+    11/146 doc/hu_HU.ISO8859-2         100% |==============================| OK
+    12/146 doc/it_IT.ISO8859-15        100% |==============================| OK
+    13/146 doc/ja_JP.eucJP             100% |==============================| OK
+    14/146 doc/mn_MN.UTF-8             100% |==============================| OK
+    15/146 doc/nl_NL.ISO8859-1         100% |==============================| OK
+    16/146 doc/no_NO.ISO8859-1         100% |==============================| OK
+    17/146 doc/pl_PL.ISO8859-2         100% |==============================| OK
+    18/146 doc/pt_BR.ISO8859-1         100% |==============================| OK
+    19/146 doc/release                 100% |==============================| OK
+    20/146 doc/ru_RU.KOI8-R            100% |==============================| OK
+    21/146 doc/share                   100% |==============================| OK
+    22/146 doc/sr_YU.ISO8859-2         100% |==============================| OK
+    23/146 doc/tr_TR.ISO8859-9         100% |==============================| OK
+    24/146 doc/zh                      100% |==============================| OK
+    25/146 doc/zh_CN.GB2312            100% |==============================| OK
+    26/146 doc/zh_TW.Big5              100% |==============================| OK
+    27/146 ports                       100% |==============================| OK
+    28/146 ports/Mk                    100% |==============================| OK
+    29/146 ports/Templates             100% |==============================| OK
+    30/146 ports/Tools                 100% |==============================| OK
+    31/146 ports/accessibility         100% |==============================| OK
+    32/146 ports/arabic                100% |==============================| OK
+    33/146 ports/archivers             100% |==============================| OK
+    34/146 ports/astro                 100% |==============================| OK
+    35/146 ports/audio                 100% |==============================| OK
+    36/146 ports/benchmarks            100% |==============================| OK
+    37/146 ports/biology               100% |==============================| OK
+    38/146 ports/cad                   100% |==============================| OK
+    39/146 ports/chinese               100% |==============================| OK
+    40/146 ports/comms                 100% |==============================| OK
+    41/146 ports/converters            100% |==============================| OK
+    42/146 ports/databases             100% |==============================| OK
+    43/146 ports/deskutils             100% |==============================| OK
+    44/146 ports/devel                 100% |==============================| OK
+    45/146 ports/dns                   100% |==============================| OK
+    46/146 ports/editors               100% |==============================| OK
+    47/146 ports/emulators             100% |==============================| OK
+    48/146 ports/finance               100% |==============================| OK
+    49/146 ports/french                100% |==============================| OK
+    50/146 ports/ftp                   100% |==============================| OK
+    51/146 ports/games                 100% |==============================| OK
+    52/146 ports/german                100% |==============================| OK
+    53/146 ports/graphics              100% |==============================| OK
+    54/146 ports/hebrew                100% |==============================| OK
+    55/146 ports/hungarian             100% |==============================| OK
+    56/146 ports/irc                   100% |==============================| OK
+    57/146 ports/japanese              100% |==============================| OK
+    58/146 ports/java                  100% |==============================| OK
+    59/146 ports/korean                100% |==============================| OK
+    60/146 ports/lang                  100% |==============================| OK
+    61/146 ports/mail                  100% |==============================| OK
+    62/146 ports/math                  100% |==============================| OK
+    63/146 ports/mbone                 100% |==============================| OK
+    64/146 ports/misc                  100% |==============================| OK
+    65/146 ports/multimedia            100% |==============================| OK
+    66/146 ports/net                   100% |==============================| OK
+    67/146 ports/net-im                100% |==============================| OK
+    68/146 ports/net-mgmt              100% |==============================| OK
+    69/146 ports/net-p2p               100% |==============================| OK
+    70/146 ports/news                  100% |==============================| OK
+    71/146 ports/palm                  100% |==============================| OK
+    72/146 ports/polish                100% |==============================| OK
+    73/146 ports/ports-mgmt            100% |==============================| OK
+    74/146 ports/portuguese            100% |==============================| OK
+    75/146 ports/print                 100% |==============================| OK
+    76/146 ports/russian               100% |==============================| OK
+    77/146 ports/science               100% |==============================| OK
+    78/146 ports/security              100% |==============================| OK
+    79/146 ports/shells                100% |==============================| OK
+    80/146 ports/sysutils              100% |==============================| OK
+    81/146 ports/textproc              100% |==============================| OK
+    82/146 ports/ukrainian             100% |==============================| OK
+    83/146 ports/vietnamese            100% |==============================| OK
+    84/146 ports/www                   100% |==============================| OK
+    85/146 ports/x11                   100% |==============================| OK
+    86/146 ports/x11-clocks            100% |==============================| OK
+    87/146 ports/x11-drivers           100% |==============================| OK
+    88/146 ports/x11-fm                100% |==============================| OK
+    89/146 ports/x11-fonts             100% |==============================| OK
+    90/146 ports/x11-servers           100% |==============================| OK
+    91/146 ports/x11-themes            100% |==============================| OK
+    92/146 ports/x11-toolkits          100% |==============================| OK
+    93/146 ports/x11-wm                100% |==============================| OK
+    94/146 projects                    100% |==============================| OK
+    95/146 projects/binup              100% |==============================| OK
+    96/146 projects/compat-fbsd        100% |==============================| OK
+    97/146 projects/csup               100% |==============================| OK
+    98/146 projects/cvsweb             100% |==============================| OK
+    99/146 projects/doscmd             100% |==============================| OK
+    100/146 projects/elisports         100% |==============================| OK
+    101/146 projects/embeddedfreebsd   100% |==============================| OK
+    102/146 .../freebsd-update-server  100% |==============================| OK
+    103/146 projects/mfcns             100% |==============================| OK
+    104/146 projects/ndr               100% |==============================| OK
+    105/146 projects/portsnap          100% |==============================| OK
+    106/146 projects/sccs              100% |==============================| OK
+    107/146 projects/tinderbox         100% |==============================| OK
+    108/146 projects/validate          100% |==============================| OK
+    109/146 src                        100% |==============================| OK
+    110/146 src/bin                    100% |==============================| OK
+    111/146 src/cddl                   100% |==============================| OK
+    112/146 src/contrib                100% |==============================| OK
+    113/146 src/crypto                 100% |==============================| OK
+    114/146 src/etc                    100% |==============================| OK
+    115/146 src/games                  100% |==============================| OK
+    116/146 src/gnu                    100% |==============================| OK
+    117/146 src/include                100% |==============================| OK
+    118/146 src/kerberos5              100% |==============================| OK
+    119/146 src/libexec                100% |==============================| OK
+    120/146 src/release                100% |==============================| OK
+    121/146 src/rescue                 100% |==============================| OK
+    122/146 src/sbin                   100% |==============================| OK
+    123/146 src/secure                 100% |==============================| OK
+    124/146 src/share                  100% |==============================| OK
+    125/146 src/tools                  100% |==============================| OK
+    126/146 src/usr.bin                100% |==============================| OK
+    127/146 src/usr.sbin               100% |==============================| OK
+    128/146 www                        100% |==============================| OK
+    129/146 www/da                     100% |==============================| OK
+    130/146 www/de                     100% |==============================| OK
+    131/146 www/el                     100% |==============================| OK
+    132/146 www/en                     100% |==============================| OK
+    133/146 www/es                     100% |==============================| OK
+    134/146 www/fr                     100% |==============================| OK
+    135/146 www/hu                     100% |==============================| OK
+    136/146 www/it                     100% |==============================| OK
+    137/146 www/ja                     100% |==============================| OK
+    138/146 www/mn                     100% |==============================| OK
+    139/146 www/nl                     100% |==============================| OK
+    140/146 www/pt_BR                  100% |==============================| OK
+    141/146 www/ru                     100% |==============================| OK
+    142/146 www/share                  100% |==============================| OK
+    143/146 www/tools                  100% |==============================| OK
+    144/146 www/tr                     100% |==============================| OK
+    145/146 www/zh_CN                  100% |==============================| OK
+    146/146 www/zh_TW                  100% |==============================| OK
+     [check]                           100% |==============================| OK
+
+    real    1m33.989s
+    $ du -sh .
+    1.8G .
+    $ bk here
+    ALL
+    PRODUCT
+
+

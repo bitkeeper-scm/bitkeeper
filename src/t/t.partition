@@ -306,7 +306,7 @@ bk partition $Q -Cmapfile.delete project copy.delete || exit 1
 cd copy.delete || fail
 test "`bk changes -rDELTAG -nd:SORTKEY:`" = "$DELKEY" || fail
 cd BitKeeper/delcomp || fail
-test "`bk pwd -R`" = BitKeeper/delcomp || fail
+test "`bk pwd -P`" = BitKeeper/delcomp || fail
 echo OK
 
 echo $N Do partition with -j4 .......................................$NL

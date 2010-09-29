@@ -5,7 +5,7 @@
 bk attach \- attach a component repository to a product repository
 .SH SYNOPSIS
 bk attach
-.[B] \-qlC
+.[B] \-qC
 .[OPTequal] \-E e v
 .[OPTreq] \-r rev
 .ARG from
@@ -15,9 +15,11 @@ The
 .B bk attach
 command is a form of
 .BR "bk clone"
-used to attach a component repository to a product repository.
+used to attach a component repository to a product repository
+that is the portal.
 The specified repository is cloned and becomes a component within
-the product. This command must be run from within the product.
+the product. This command must be run from within the product that
+is the portal for this nested collection.
 .SH OPTIONS
 .TP \-E\*<env\*>=\*<val\*>
 .tp
@@ -35,11 +37,6 @@ Only variables with the prefix
 .V BKU_
 are allowed.
 .tp
-.B \-l
-Clone using hard links instead of copying the data.  
-This is faster and saves disk space, but only works 
-within file systems supporting hard links.
-.tp
 .B \-q 
 Run quietly.
 .tp
@@ -51,6 +48,8 @@ A changeset number or changeset key can be used to specify
 .SH SEE ALSO
 .SA clone
 .SA detach
+.SA port
+.SA portal
 .SA setup
 .SH CATEGORY
 .B Nested
@@ -62,7 +61,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "nested" listed then your
+If the options field has "SAM" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
 .\}

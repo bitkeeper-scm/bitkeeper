@@ -6,6 +6,7 @@ bk comps \- list the components belonging to a product
 .SH SYNOPSIS
 .B bk comps
 .[B] \-hmk
+.[OPTreq] \-s alias
 .SH DESCRIPTION
 The 
 .B bk comps
@@ -17,7 +18,7 @@ present or not.
 The options can be used to restrict the output depending on if the
 components are currently populated or not.
 .SH OPTIONS
-.TP
+.TP "\-s\*<alias\*>"
 .B \-h
 Only list components currently populated, or "here".
 .tp
@@ -27,6 +28,10 @@ the root keys for each component.
 .tp
 .B \-m
 Only list components not currently populated, or "missing".
+.tp
+.OPTreq \-s alias
+List all components that belong to 
+.ARG alias .
 .SH "SEE ALSO"
 .SA alias
 .SA attach
@@ -41,7 +46,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "nested" listed then your
+If the options field has "SAM" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
 .\}

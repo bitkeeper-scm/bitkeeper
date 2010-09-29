@@ -7,7 +7,6 @@ bk pull \- update a repository from its parent[s]
 .B bk pull
 .[B] \-iqRsTu
 .[OPTreq] \-c n
-.[OPTequal] \-E env var
 .[OPTreq] \-r rev
 .[ARG] parent \ .\|.\|.
 .SH DESCRIPTION
@@ -106,6 +105,19 @@ means do not do interactive resolve of any conflicts, leave that for later.)
 Mutually exclusive with
 .QR \-i .
 .tp
+.B \-\-safe
+In a nested collection, using this option means that the source
+repository may be safely removed after a successful pull.  
+Either the destination received everything that the source had,
+or the non-pulled components were found in a safe location (a gate
+or a portal).
+This option is implied when pulling from a nested collection that
+is not a gate or a portal.
+This option has no effect in a traditional standalone repository.
+See also
+.B \-\-unsafe
+below.
+.tp
 .B \-T
 Pass 
 .Q \-T
@@ -116,6 +128,18 @@ means do not use the GUI tools.)
 .B \-u
 Do not complete the pull if there are local changesets, i.e., insist
 that this operation is an update operation.
+.tp
+.B \-\-unsafe
+In a nested collection, using this option means that the source
+repository may contain work that is not pulled into the destination.
+.B \-\-unsafe
+means pull updates only to the components and/or aliases populated
+in the destination.
+This option has no effect in a traditional standalone repository.
+This option is implied when pulling from a gate or a portal.
+See also
+.B \-\-safe
+above.
 .SH "SEE ALSO"
 .SA bkd
 .SA parent

@@ -2,7 +2,7 @@
 .so ../bk-macros
 .TH "bk portal" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk portal \- set or show the portal status of a repository
+bk portal \- set or show the portal status of a nested collection
 .SH SYNOPSIS
 .B bk portal
 .[B] \-q
@@ -15,27 +15,52 @@ bk portal \- set or show the portal status of a repository
 .LP
 The
 .B bk portal
-command either reports whether the product repository is a portal
-or it sets that product repository to a portal.
+command either reports whether the nested collection is a portal
+or it changes that nested collection to a portal.
 .LP
 A 
 .I portal
-repository is part of \*[BK]'s product line functionality.
-A portal is the product instance that may receive changes
-from other products in the same product line.  
-In other words, the portal is the place to which changes may
-be ported, i.e., the portal is the destination of any 
-.B "bk port"
-command.
+nested collection is part of \*[BK]'s product line functionality.
+There should be one, and only one, portal for any nested collection.
 .LP
-For any given collection of repositories forming a product, only
-one instance should be a portal.
-.LP
-With an argument of ".", it marks the product as a portal.
-With no argument, the command prints the repository portal status.
+With an argument of ".", this command marks the nested collection as a portal.
+With no argument, the command prints the portal status.
 With 
 .BR \-q ,
 the exit status indicates portal status; 0 means it is, 1 means it is not.
+.LP
+A component in a portal may be the destination of a 
+.B "bk port"
+command; non-portals may not be such a destination.
+External repositories may be attached to a portal; non-portal attaches
+are not allowed.
+It is suggested that creating and modifying aliases is done in the portal.
+.LP
+For any given set of clones of a nested collection, only one instance
+should be a portal.
+If multiple instances are marked as portals the following are examples
+of problems that can, and likely will, occur:
+.TP
+\*(BU
+The same external repository could be attached multiple times.  To get
+rid of the name conflict when these collide means that the product will
+need to be run through bk csetprune which means the resulting instance
+will no longer interact with older instances.
+.TP
+\*(BU
+The same changesets can be ported into the history at different points
+in time, creating what is called the "poly problem", where the same
+component changeset[s] belong to multiple product changesets.  
+.SH RESTRICTIONS
+Inside of a portal, commands that would remove information are disallowed.
+bk undo, bk collapse, bk unpopulate are examples of such commands.
+It is common that many other clones depend on the portal to be a 
+"safe" container of changes so removing information is not allowed 
+by default.
+.LP
+If it happens that a changeset gets pushed to a portal that really must
+be removed, then remove the portal status, undo (or unpull) the changeset,
+and put the portal status back.
 .SH OPTIONS
 .TP
 .B \-r
@@ -44,8 +69,8 @@ Unmark the current product as a portal.
 .B \-q
 Run silently.
 .SH "SEE ALSO"
-.SA Howto-product
-.SA Howto-productLine
+.SA attach
+.SA gate
 .SA port
 .SH CATEGORY
 .B Nested
@@ -57,7 +82,7 @@ To see if your license has this enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "SAM" listed then your license has
+If the options field has "PL" listed then your license has
 this feature enabled.
 If not, contact BitMover sales.
 .\}

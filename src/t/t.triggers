@@ -1993,7 +1993,7 @@ cd triggers
 cat <<'EOF' > X
 #!/bin/sh
 pwd
-bk pwd -r
+bk pwd -R
 # Longline - more than 2048
 {
     for i in 1 2 3 4 5; do
