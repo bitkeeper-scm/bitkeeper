@@ -721,9 +721,20 @@ proj_repoID(project *p)
 void
 proj_reset(project *p)
 {
+	project	*p2;
 	hash	*h;
 	char	**recent;
 
+	/* free the cwd project */
+	if (proj.curr && (!p || (p == proj.curr))) {
+		/*
+		 * proj_free() checks proj caches like proj.curr so
+		 * proj.curr must be zero to avoid assert
+		 */
+		p2 = proj.curr;
+		proj.curr = 0;
+		proj_free(p2);
+	}
 	if (p) {
 		if (p->rootkey) {
 			free(p->rootkey);
@@ -776,16 +787,6 @@ proj_reset(project *p)
 			projcache_store(p->root, p);
 		}
 	} else {
-		/* free the cwd project */
-		if (proj.curr) {
-			/*
-			 * proj_free() checks proj caches like proj.curr
-			 * so proj.curr must be zero to avoid assert
-			 */
-			p = proj.curr;
-			proj.curr = 0;
-			proj_free(p);
-		}
 		/*
 		 * proj_free() checks to see that freed item isn't cached.
 		 * Mark the proj.recent cache as empty before freeing.

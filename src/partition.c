@@ -527,12 +527,11 @@ mkComps(Opts *opts)
 			}
 		}
 		verbose((stderr,
-			"\n### Cloning and pruning "
-			"component %u/%u: %s\n",
+			"\n### Pruning component %u/%u: %s\n",
 			i, total, opts->comps[i]));
 		joinlen = sprintf(repo, "repo%u", i);
-		if (clone(opts, WA2PROD, repo, 0)) {
-			/* clone should print error */
+		if (mkdirp(repo)) {
+			perror(repo);
 			ret = 1;
 			break;
 		}
@@ -545,6 +544,7 @@ mkComps(Opts *opts)
 		cmd = addLine(cmd, aprintf("--cd=%s", repo));
 		cmd = addLine(cmd, strdup("-?_BK_STRIPTAGS=1"));
 		cmd = addLine(cmd, strdup("csetprune"));
+		cmd = addLine(cmd, strdup("-I../" WA2PROD));
 		cmd = addLine(cmd, aprintf("-aN%s", opts->quiet));
 		cmd = addLine(cmd, aprintf("-r%s", opts->ptip));
 		cmd = addLine(cmd, aprintf("-k%s", opts->random));

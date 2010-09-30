@@ -34,16 +34,19 @@ typedef struct {
 	char	**complist;
 	hash	*prunekeys;
 	char	**addweave;
+	char	**filelist;	// the list of files to put in this comp
 	char	*rev;
 	char	*who;
 	char	*revfile;	// where to put the corresponding rev key
+	project	*refProj;
 } Opts;
 
 private	int	csetprune(Opts *opts);
+private	int	fixFiles(Opts *opts, char **deepnest);
 private	int	filterWeave(Opts *opts, sccs *cset,
 		    char **cweave, char **deepnest);
-private	int	filterRootkey(Opts *opts, sccs *cset,
-		    char *rk, char **list, int ret, char **deepnest);
+private	int	filterRootkey(Opts *opts, sccs *cset, char *rk,
+		    char **list, int ret, char **deepnest);
 private	int	fixAdded(sccs *cset, char **cweave);
 private	int	newBKfiles(sccs *cset,
 		    char *comp, hash *prunekeys, char ***cweavep);
@@ -55,11 +58,10 @@ private	void	pruneEmpty(sccs *s, sccs *sb);
 private	hash	*getKeys(char *file);
 private	int	keeper(char *rk);
 
-private	int	do_file(sccs *s, char *path, char **deepnest);
+private	int	do_file(Opts *opts, sccs *s, char **deepnest);
 private	char	**deepPrune(char **map, char *path);
 private	char	*newname( char *delpath, char *comp, char *path, char **deep);
 private	char	*getPath(char *key, char **term);
-private	int	do_files(char *comppath, char **deepnest);
 private	char	*key2delName(char *rk);
 
 private	int	flags;
@@ -78,6 +80,7 @@ int
 csetprune_main(int ac, char **av)
 {
 	char	*compfile = 0;
+	char	*sfilePath = 0;
 	char	*weavefile = 0;
 	Opts	*opts;
 	int	i, c, ret = 1;
@@ -88,11 +91,12 @@ csetprune_main(int ac, char **av)
 
 	opts = new(Opts);
 	flags = PRUNE_NEW_TAG_GRAPH;
-	while ((c = getopt(ac, av, "ac:C:k:KNqr:sSw:W:", lopts)) != -1) {
+	while ((c = getopt(ac, av, "ac:C:I;k:KNqr:sSw:W:", lopts)) != -1) {
 		switch (c) {
 		    case 'a': flags |= PRUNE_ALL; break;
 		    case 'c': opts->comppath = optarg; break;
 		    case 'C': compfile = optarg; break;
+		    case 'I': sfilePath = optarg; break;
 		    case 'k': opts->ranbits = optarg; break;
 		    case 'K': flags |= PRUNE_NO_NEWROOT; break;
 		    case 'N': flags |= PRUNE_NO_SCOMPRESS; break;
@@ -166,7 +170,14 @@ k_err:			fprintf(stderr,
 		}
 		opts->addweave = file2Lines(0, weavefile);
 	}
-	if (proj_cd2root()) {
+	if (sfilePath) {
+		unless (opts->refProj = proj_init(sfilePath)) {
+			fprintf(stderr, "%s: reference repo %s failed\n",
+			    prog, sfilePath);
+			goto err;
+		}
+	}
+	if (!opts->refProj && proj_cd2root()) {
 		fprintf(stderr, "%s: cannot find package root\n", prog);
 		goto err;
 	}
@@ -177,10 +188,32 @@ k_err:			fprintf(stderr,
 	ret = 0;
 
 err:
+	if (opts->refProj) proj_free(opts->refProj);
 	if (opts->prunekeys) hash_free(opts->prunekeys);
 	if (opts->addweave) freeLines(opts->addweave, free);
 	if (opts->complist) freeLines(opts->complist, free);
 	return (ret);
+}
+
+private	int
+fixPath(sccs *s, char *path)
+{
+	char	*spath = name2sccs(path);
+
+	/* arrange for this sccs* to write to here */
+	free(s->sfile);
+	s->sfile = strdup(spath);
+	free(s->gfile);
+	s->gfile = sccs2name(s->sfile);
+	free(s->pfile);
+	s->pfile = strdup(sccs_Xfile(s, 'p'));
+	free(s->zfile);
+	s->zfile = strdup(sccs_Xfile(s, 'z'));
+	s->state &= ~(S_PFILE|S_ZFILE|S_GFILE);
+	/* NOTE: we leave S_SFILE set, but no sfile there */
+	mkdirf(spath);
+	free(spath);
+	return (0);
 }
 
 private	int
@@ -196,7 +229,18 @@ csetprune(Opts *opts)
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
 
-	verbose((stderr, "Processing ChangeSet file...\n"));
+	if (opts->refProj) {
+		verbose((stderr, "Processing all files...\n"));
+		sccs_mkroot(".");
+		strcpy(buf, CHANGESET);
+		if (fileLink(proj_fullpath(opts->refProj, CHANGESET), buf)) {
+			fprintf(stderr,
+			    "%s: linking cset file failed\n", prog);
+			goto err;
+		}
+	} else {
+		verbose((stderr, "Processing ChangeSet file...\n"));
+	}
 	unless (cset = sccs_csetInit(0)) {
 		fprintf(stderr, "csetinit failed\n");
 		goto err;
@@ -242,8 +286,9 @@ csetprune(Opts *opts)
 	cweave = 0;
 
 	/* blow away file cache -- init all sfiles in repo */
-	rmKeys(opts->prunekeys);
-	if (do_files(opts->comppath, deepnest)) goto err;
+	unless (opts->refProj) rmKeys(opts->prunekeys);
+	if (opts->comppath && fixFiles(opts, deepnest)) goto err;
+
 	if (empty_nodes == 0) goto finish;
 
 	unless ((cset = sccs_csetInit(INIT_NOCKSUM)) && HASGRAPH(cset)) {
@@ -284,10 +329,10 @@ csetprune(Opts *opts)
 	cset = 0;
 finish:
 	proj_reset(0);	/* let go of BAM index */
-	verbose((stderr, "Regenerating ChangeSet file checksums...\n"));
-	sys("bk", "checksum", "-f", "ChangeSet", SYS);
 	// sometimes want to skip this to save another sfile write/walk.
 	unless (flags & PRUNE_NO_NEWROOT) {
+		verbose((stderr, "Regenerating ChangeSet file checksums...\n"));
+		sys("bk", "checksum", "-f", "ChangeSet", SYS);
 		unless (opts->ranbits) {
 			randomBits(buf);
 			opts->ranbits = buf;
@@ -362,6 +407,82 @@ err:	if (cset) sccs_free(cset);
 	if (csetb) sccs_free(csetb);
 	/* ptrs into complist, don't free */
 	if (deepnest) freeLines(deepnest, 0);
+	return (ret);
+}
+
+private	int
+bypath(const void *a, const void *b)
+{
+	char	*s1 = *(char**)a;
+	char	*s2 = *(char**)b;
+	char	*p1, *p2;
+	int	len;
+
+	p1 = strchr(s1, '|');
+	p2 = strchr(s2, '|');
+	len = p1-s1;
+	if ((p2-s2) < len) len = p2-s2;
+	if (len = strncmp(s1, s2, len)) return (len);
+	return ((p1-s1) - (p2-s2));
+}
+
+/*
+ * This works in two ways: operate on a local project (refProj == 0)
+ * or reach into another repo and init the file there.
+ * In both cases, a rename is done.  In the local case, the rename
+ * is moving within a repo, either to where it already is (in the
+ * case of a product), or up.  To make sure the namespace is clean,
+ * we could do a breadth first search, and not be sfiles order.
+ * Which would take more fixPath jiggering, and not worth it for
+ * just the product case.  Just run 'bk names' (which shouldn't do
+ * anything, if this is indeed the product).
+ */
+private	int
+fixFiles(Opts *opts, char **deepnest)
+{
+	char	*idcache;
+	MDBM	*idDB = 0;
+	char	*rk;
+	sccs	*s = 0;
+	delta	*d;
+	int	i, ret = 1;
+
+	idcache = aprintf("%s/%s",
+	    proj_root(opts->refProj), getIDCACHE(opts->refProj));
+	unless (idDB = loadDB(idcache, 0, DB_IDCACHE)) {
+		free(idcache);
+		perror("idcache");
+		return (1);
+	}
+	free(idcache);
+	/* sort from current hash order 'final-path|rootkey' */
+	sortLines(opts->filelist, bypath);
+	EACH(opts->filelist) {
+		rk = strchr(opts->filelist[i], '|');
+		rk++;
+		if (s = sccs_keyinit(opts->refProj, rk, INIT_MUSTEXIST, idDB)) {
+			if (do_file(opts, s, deepnest) ||
+			    !(d = sccs_top(s)) ||
+			    (opts->refProj && fixPath(s, d->pathname)) ||
+			    sccs_newchksum(s)) {
+				fprintf(stderr,
+				    "%s: file transform failed\n  %s\n",
+				    prog, rk);
+			    	goto err;
+			}
+		}
+	}
+	unless (opts->refProj) {
+		/* Too noisy for (flags & SILENT) ? " -q" : "" */
+		verbose((stderr, "Fixing names .....\n"));
+		system("bk -r names -q");
+	}
+	ret = 0;
+err:
+	sccs_free(s);
+	if (idDB) mdbm_close(idDB);
+	freeLines(opts->filelist, free);
+	opts->filelist = 0;
 	return (ret);
 }
 
@@ -631,6 +752,7 @@ filterRootkey(Opts *opts,
 	char	*delpath = 0;
 	char	*rnew, *rend, *dnew, *dend, *which = 0, *cur;
 	int	i, badname, skip, len, origlen;
+	int	gotTip = 0;
 	char	buf[MAXKEY * 2 + 2];
 
 	unless (sccs_iskeylong(rk)) {
@@ -758,6 +880,12 @@ prune:
 		/* XXX: better to just aprintf all the time? */
 		len = sprintf(buf, "%s|%s|%s|%s|%s",
 		   line, rnew, rend+1, dnew, dend+1);
+		if (!gotTip) {
+			gotTip = 1;
+			opts->filelist =
+			    addLine(opts->filelist,
+			    aprintf("%s|%s", dnew, rk));
+		}
 		assert(len < sizeof(buf));
 		if (len <= origlen) {
 			strcpy(line, buf);
@@ -1519,11 +1647,11 @@ getPath(char *key, char **term)
 }
 
 private	int
-do_file(sccs *s, char *comppath, char **deepnest)
+do_file(Opts *opts, sccs *s, char **deepnest)
 {
 	delta	*d;
 	int	i;
-	int	rc = 1;
+	int	ret = 1, rc;
 	char	*newpath;
 	char	*delpath;
 	char	*bam_new;
@@ -1556,7 +1684,7 @@ do_file(sccs *s, char *comppath, char **deepnest)
 			d->pathname = PARENT(s, d)->pathname;
 		} else {
 			newpath = newname(
-			    delpath, comppath, d->pathname, deepnest);
+			    delpath, opts->comppath, d->pathname, deepnest);
 			if (newpath == INVALID) {
 				fprintf(stderr, "%s: file %s delta %s "
 				    "matches a component path '%s'.\n",
@@ -1569,28 +1697,17 @@ do_file(sccs *s, char *comppath, char **deepnest)
 		// BAM stuff
 		if (d->hash) {
 			bam_new = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
-			unless (streq(d->bam_old, bam_new)) {
-				MDBM	*db;
-				char	*p;
-
-				db = proj_BAMindex(s->proj, 1);
-				assert(db);
-				if (p = mdbm_fetch_str(db, d->bam_old)) {
-					// mdbm doesn't like you to feed it
-					// back data from a fetch from the
-					// same db.
-					p = strdup(p);
-					mdbm_store_str(db,
-					    bam_new, p, MDBM_REPLACE);
-					bp_logUpdate(0, bam_new, p);
-					free(p);
-					mdbm_delete_str(db, d->bam_old);
-					bp_logUpdate(0, d->bam_old, 0);
-				}
+			if (opts->refProj) {
+				rc = bp_link(s->proj, d->bam_old, 0, bam_new);
+			} else {
+				rc = bp_rename(s->proj, d->bam_old, bam_new);
 			}
 			free(bam_new);
+			if (rc) goto err;
 		}
 	}
+	ret = 0;
+err:
 	for (i = 1; BAM(s) && (i < s->nextserial); i++) {
 		unless (d = sfind(s, i)) continue;
 		if (d->hash) {
@@ -1599,47 +1716,7 @@ do_file(sccs *s, char *comppath, char **deepnest)
 			d->bam_old = 0;
 		}
 	}
-	rc = sccs_newchksum(s);
-err:
 	free(delpath);
-	return (rc);
-}
-
-private	int
-do_files(char *comppath, char **deepnest)
-{
-	int	ret = 1;
-	sccs	*s = 0;
-	char	*sfile;
-	FILE	*sfiles;
-
-	unless (comppath || deepnest) return (0);
-
-	unless (sfiles = popen("bk sfiles -h", "r")) {
-		perror("sfiles");
-		goto err;
-	}
-	verbose((stderr, "Fixing file internals .....\n"));
-	while (sfile = fgetline(sfiles)) {
-		if (streq(CHANGESET, sfile)) continue;
-		unless (s = sccs_init(sfile, INIT_MUSTEXIST)) {
-			fprintf(stderr, "%s: cannot init %s\n", prog, sfile);
-			goto err;
-		}
-		assert(!CSET(s));
-		if (do_file(s, comppath, deepnest)) goto err;
-		sccs_free(s);
-		s = 0;
-	}
-	pclose(sfiles);
-	sfiles = 0;
-	/* Too noisy for (flags & SILENT) ? " -q" : "" */
-	verbose((stderr, "Fixing names .....\n"));
-	system("bk -r names -q");
-	ret = 0;
-err:
-	if (s) sccs_free(s);
-	if (sfiles) pclose(sfiles);
 	return (ret);
 }
 

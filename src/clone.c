@@ -1644,7 +1644,10 @@ attach(void)
 		     opts->verbose ? "-v":"",
 		     relpath);
 
-	/* move BAM data out of repo to product */
+	/*
+	 * move just my BAM data out of repo to product
+	 * XXX This ignores BAM data from other rootkeys that may be here
+	 */
 	proj_reset(0);		/* because of the newroot */
 	tmp = bp_dataroot(0, 0);
 	if (!rc && (isdir(tmp))) {
@@ -1656,6 +1659,7 @@ attach(void)
 				fprintf(stderr, "attach: BAM move failed\n");
 			}
 		}
+		/* XXX leave other repos BAM data here? */
 		unless (rc) rmdir("BitKeeper/BAM");
 	}
 	free(tmp);
