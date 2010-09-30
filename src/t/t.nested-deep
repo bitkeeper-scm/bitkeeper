@@ -18,7 +18,7 @@ cat > WANT <<EOF
 #### gcc ####
 #### gcc/nm ####
 #### gdb ####
-#### PRODUCT ####
+#### . ####
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -36,7 +36,7 @@ cat > WANT <<EOF
 #### gcc ####
 #### gcc/nm ####
 #### gdb ####
-#### PRODUCT ####
+#### . ####
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -54,7 +54,7 @@ cat > WANT <<EOF
 #### gcc ####
 #### gcc/nm ####
 #### gdb ####
-#### PRODUCT ####
+#### . ####
 EOF
 cmpfiles WANT GOT
 echo OK

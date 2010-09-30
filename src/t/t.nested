@@ -289,7 +289,7 @@ cat > WANT <<EOF
 gcc
 #### gdb ####
 gdb
-#### PRODUCT ####
+#### . ####
 .
 EOF
 cmpfiles WANT GOT
@@ -314,7 +314,7 @@ cat > WANT <<EOF
 gcc
 #### gdb ####
 gdb
-#### PRODUCT ####
+#### . ####
 .
 EOF
 cmpfiles WANT GOT
@@ -327,7 +327,7 @@ cat > WANT <<EOF
 name 1.1: 1 lines
 #### gdb ####
 name 1.1: 1 lines
-#### PRODUCT ####
+#### . ####
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -685,7 +685,7 @@ cat <<EOF > WANT
 #### gcc4 ####
 #### gdb ####
 #### gdb/pendingdeepnest ####
-#### PRODUCT ####
+#### . ####
 EOF
 cmpfiles WANT GOT
 echo OK

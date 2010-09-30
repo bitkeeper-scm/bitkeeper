@@ -9,7 +9,7 @@ chkoutput() {
 BK_NO_HARDLINK_CLONE=1
 export BK_NO_HARDLINK_CLONE
 
-PRODUCT=PRODUCT
+PRODUCT=.
 export PRODUCT
 
 # Grep the progress-bar output for the given pass names.

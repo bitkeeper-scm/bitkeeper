@@ -229,6 +229,7 @@ check_main(int ac, char **av)
 
 	if (verbose == 1) {
 		progress_delayStderr();
+		if (!title && (name = getenv("_BK_TITLE"))) title = name;
 		tick = progress_start(PROGRESS_BAR, nfiles);
 	}
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);

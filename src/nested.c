@@ -846,9 +846,12 @@ nested_each(int quiet, char **av, char **aliases)
 
 	EACH_STRUCT(n->comps, cp, i) {
 		unless (cp->alias && cp->present) continue;
-		unless (quiet) {
+		if (quiet) {
+			safe_putenv("_BK_TITLE=%s",
+			    cp->product ? PRODUCT : cp->path);
+		} else {
 			printf("#### %s ####\n",
-			    cp->product ? "PRODUCT" : cp->path);
+			    cp->product ? PRODUCT : cp->path);
 			fflush(stdout);
 		}
 		if (chdir(cp->path)) {

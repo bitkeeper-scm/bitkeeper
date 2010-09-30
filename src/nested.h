@@ -52,6 +52,8 @@ extern	unsigned int turnTransOff;
 
 #define	NESTED_URLLIST		"BitKeeper/log/urllist"
 
+#define	PRODUCT			"."		/* for titles */
+
 typedef struct nested nested;
 
 typedef struct {

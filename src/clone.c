@@ -285,7 +285,8 @@ clone_main(int ac, char **av)
 		if (opts->detach) title = "detach";
 		if (opts->product) {
 			title =
-			    aprintf("%u/%u PRODUCT", opts->comps, opts->comps);
+			    aprintf("%u/%u %s",
+			    opts->comps, opts->comps, PRODUCT);
 		}
 		if (opts->comppath) title = opts->comppath;
 		progress_end(PROGRESS_BAR, clonerc ? "FAILED" : "OK",
@@ -773,7 +774,7 @@ clone2(remote *r)
 		hash	*urllist;
 
 		unless (opts->quiet) {
-			title = "PRODUCT";
+			title = PRODUCT;
 			progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
 		}
 		urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
@@ -1120,7 +1121,7 @@ sfio(remote *r, char *prefix)
 
 	cmds[n = 0] = "bk";
 	if (opts->product) {
-		cmds[++n] = "--title=PRODUCT";
+		cmds[++n] = "--title=" PRODUCT;	// strcat
 	}
 	if (opts->comppath) {
 		sprintf(buf, "--title=%s", opts->comppath);

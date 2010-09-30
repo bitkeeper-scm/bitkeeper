@@ -616,10 +616,12 @@ cd "$HERE"
 nested nest
 bk repocheck -q || fail
 BK_NOTTY= bk repocheck > OUT 2> ERR || fail -f ERR
-# stdout has the component headings
-grep -q '#### gcc ####' OUT || fail -f OUT
 # stderr has the check output
-grep -q '100%.*OK$' ERR || fail -f ERR
+# === Checking /build/.regression lm/sandbox/nest ===
+# gcc                                100% |==============================| OK
+# gdb                                100% |==============================| OK
+# .                                  100% |==============================| OK
+grep -q 'gcc.*100%.*OK$' ERR || fail -f ERR
 # Bork the repo and see that it says it is borked
 rm -fr gcc
 bk repocheck -q 2> ERR && fail -f ERR

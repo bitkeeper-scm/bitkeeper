@@ -576,7 +576,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		if (proj_isProduct(0)) {
 			unless (opts.verbose || opts.quiet || title) {
 				/* Finish the takepatch progress bar. */
-				title = "PRODUCT";
+				title = PRODUCT;
 				progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
 				title = 0;
 			}
@@ -982,7 +982,8 @@ done:	putenv("BK_RESYNC=FALSE");
 		unless (title) {
 			if (proj_isProduct(0)) {
 				freeme = title =
-				    aprintf("%d/%d PRODUCT", opts.n, opts.n);
+				    aprintf("%d/%d %s",
+				    opts.n, opts.n, PRODUCT);
 			} else {
 				freeme = title = strdup("pull");
 			}
