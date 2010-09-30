@@ -97,6 +97,18 @@ cd "$HERE/parent"
 grep -q "1 unresolved conflicts" OUT || {
 	fail -f OUT wrong error
 }
+grep -q "If you quit out of the resolver" OUT || fail -f OUT did not warn
+echo OK
+
+echo $N Pull in the other direction but abort instead of quit........$NL
+cd "$HERE/parent"
+# this currently gives a file/directory conflict in the resolver
+(echo h; echo a; echo y) | bk pull $Q ../project >OUT 2>&1 && fail
+# it'd be better to check for the right error
+grep -q "1 unresolved conflicts" OUT || {
+	fail -f OUT wrong error
+}
+grep -q "If you quit out of the resolver" OUT || fail -f OUT did not warn
 echo OK
 
 echo $N attach/attach conflict w/pending component...................$NL
