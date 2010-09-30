@@ -442,41 +442,41 @@ echo OK
 echo $N bk -A in a nested product subdirectory ......................$NL
 bk -A > GOT
 cat <<EOF > WANT
-a/b/c/ChangeSet
-a/b/c/BitKeeper/etc/attr
-a/b/c/BitKeeper/etc/collapsed
-a/b/c/BitKeeper/etc/config
-a/b/c/BitKeeper/etc/gone
-a/b/c/BitKeeper/etc/ignore
-a/b/c/d/f
-a/b/c/d/e/ChangeSet
-a/b/c/d/e/BitKeeper/etc/attr
-a/b/c/d/e/BitKeeper/etc/collapsed
-a/b/c/d/e/BitKeeper/etc/config
-a/b/c/d/e/BitKeeper/etc/gone
-a/b/c/d/e/BitKeeper/etc/ignore
-a/b/c/d/e/f/f
-gcc/ChangeSet
-gcc/BitKeeper/etc/attr
-gcc/BitKeeper/etc/collapsed
-gcc/BitKeeper/etc/config
-gcc/BitKeeper/etc/gone
-gcc/BitKeeper/etc/ignore
-gdb/ChangeSet
-gdb/BitKeeper/etc/attr
-gdb/BitKeeper/etc/collapsed
-gdb/BitKeeper/etc/config
-gdb/BitKeeper/etc/gone
-gdb/BitKeeper/etc/ignore
-ChangeSet
-BitKeeper/etc/aliases
-BitKeeper/etc/attr
-BitKeeper/etc/collapsed
-BitKeeper/etc/config
-BitKeeper/etc/gone
-BitKeeper/etc/ignore
-a/b/f
-a/b/c1/f
+b/c/ChangeSet
+b/c/BitKeeper/etc/attr
+b/c/BitKeeper/etc/collapsed
+b/c/BitKeeper/etc/config
+b/c/BitKeeper/etc/gone
+b/c/BitKeeper/etc/ignore
+b/c/d/f
+b/c/d/e/ChangeSet
+b/c/d/e/BitKeeper/etc/attr
+b/c/d/e/BitKeeper/etc/collapsed
+b/c/d/e/BitKeeper/etc/config
+b/c/d/e/BitKeeper/etc/gone
+b/c/d/e/BitKeeper/etc/ignore
+b/c/d/e/f/f
+../gcc/ChangeSet
+../gcc/BitKeeper/etc/attr
+../gcc/BitKeeper/etc/collapsed
+../gcc/BitKeeper/etc/config
+../gcc/BitKeeper/etc/gone
+../gcc/BitKeeper/etc/ignore
+../gdb/ChangeSet
+../gdb/BitKeeper/etc/attr
+../gdb/BitKeeper/etc/collapsed
+../gdb/BitKeeper/etc/config
+../gdb/BitKeeper/etc/gone
+../gdb/BitKeeper/etc/ignore
+../ChangeSet
+../BitKeeper/etc/aliases
+../BitKeeper/etc/attr
+../BitKeeper/etc/collapsed
+../BitKeeper/etc/config
+../BitKeeper/etc/gone
+../BitKeeper/etc/ignore
+b/f
+b/c1/f
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -490,18 +490,18 @@ echo OK
 echo $N bk -A -sDEV in a nested product subdirectory ................$NL
 bk -A -sDEV > GOT
 cat <<EOF > WANT
-gcc/ChangeSet
-gcc/BitKeeper/etc/attr
-gcc/BitKeeper/etc/collapsed
-gcc/BitKeeper/etc/config
-gcc/BitKeeper/etc/gone
-gcc/BitKeeper/etc/ignore
-gdb/ChangeSet
-gdb/BitKeeper/etc/attr
-gdb/BitKeeper/etc/collapsed
-gdb/BitKeeper/etc/config
-gdb/BitKeeper/etc/gone
-gdb/BitKeeper/etc/ignore
+../gcc/ChangeSet
+../gcc/BitKeeper/etc/attr
+../gcc/BitKeeper/etc/collapsed
+../gcc/BitKeeper/etc/config
+../gcc/BitKeeper/etc/gone
+../gcc/BitKeeper/etc/ignore
+../gdb/ChangeSet
+../gdb/BitKeeper/etc/attr
+../gdb/BitKeeper/etc/collapsed
+../gdb/BitKeeper/etc/config
+../gdb/BitKeeper/etc/gone
+../gdb/BitKeeper/etc/ignore
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -586,7 +586,7 @@ cd "$HERE/project/a/b/c/d/e"
 echo ---- similar tests in a deeply nested component
 
 echo $N bk -A in a nested component .................................$NL
-bk -A > GOT
+bk -P -A > GOT
 cat <<EOF > WANT
 a/b/c/ChangeSet
 a/b/c/BitKeeper/etc/attr
@@ -628,7 +628,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk -U in a nested component .................................$NL
-bk -U > GOT
+bk -P -U > GOT
 grep -v ChangeSet WANT | grep -v BitKeeper > WANT2
 cmpfiles GOT WANT2
 echo OK
@@ -636,18 +636,18 @@ echo OK
 echo $N bk -A -sDEV in a nested component ...........................$NL
 bk -A -sDEV > GOT
 cat <<EOF > WANT
-gcc/ChangeSet
-gcc/BitKeeper/etc/attr
-gcc/BitKeeper/etc/collapsed
-gcc/BitKeeper/etc/config
-gcc/BitKeeper/etc/gone
-gcc/BitKeeper/etc/ignore
-gdb/ChangeSet
-gdb/BitKeeper/etc/attr
-gdb/BitKeeper/etc/collapsed
-gdb/BitKeeper/etc/config
-gdb/BitKeeper/etc/gone
-gdb/BitKeeper/etc/ignore
+../../../../../gcc/ChangeSet
+../../../../../gcc/BitKeeper/etc/attr
+../../../../../gcc/BitKeeper/etc/collapsed
+../../../../../gcc/BitKeeper/etc/config
+../../../../../gcc/BitKeeper/etc/gone
+../../../../../gcc/BitKeeper/etc/ignore
+../../../../../gdb/ChangeSet
+../../../../../gdb/BitKeeper/etc/attr
+../../../../../gdb/BitKeeper/etc/collapsed
+../../../../../gdb/BitKeeper/etc/config
+../../../../../gdb/BitKeeper/etc/gone
+../../../../../gdb/BitKeeper/etc/ignore
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -751,8 +751,12 @@ cmpfiles OUT WANT
 # filter dups
 bk -A -sgcc -sgcc > OUT
 cmpfiles OUT WANT
+bk -A -sgcc -sgcc _cat > OUT
+cmpfiles OUT WANT
 bk -A -sgcc -sa/b/c > OUT
 bk gfiles a/b/c gcc > WANT
+cmpfiles OUT WANT
+bk -A -sgcc -sa/b/c _cat > OUT
 cmpfiles OUT WANT
 bk -A -sall > OUT
 bk gfiles " a leading space" a/b/c a/b/c/d/e gcc gdb > WANT
@@ -781,6 +785,158 @@ bk -ccccccccccccccccccA log -r+ > GOT || fail
 test -s GOT && fail -f GOT edited files unexpected 2
 echo OK
 
+
 echo $N Show that bk -A handles sigpipe correctly ...................$NL
 bk -A | head -1 > FOO
+echo OK
+
+echo $N Show relative paths in -s -U ................................$NL
+cd a/b
+bk -s./c -U > GOT || fail
+cat <<EOF > WANT
+c/d/f
+EOF
+cmpfiles GOT WANT
+# this fails because -r implies a cd2root
+bk -s./c -Ugr 2>ERR && fail
+echo OK
+
+echo $N Test relative pathnames for \'bk -Ugr\' .......................$NL
+cd c/d
+bk -Ugr _debugargs > GOT || fail
+sed "s,$HERE,ROOT," < GOT > GOT2
+cat <<EOF > WANT
+0: _debugargs
+1: -
+cwd: ROOT/project/a/b/c
+start_cwd: ROOT/project/a/b/c
+stdin:
+d/f
+EOF
+cmpfiles GOT2 WANT
+echo OK
+
+echo $N Test relative pathnames for \'bk -s\' .........................$NL
+bk -s _debugargs > GOT || fail
+sed "s,$HERE,ROOT," < GOT > GOT2
+cat <<EOF > WANT
+0: _debugargs
+cwd: ROOT/project/ a leading space
+start_cwd: ROOT/project/ a leading space
+0: _debugargs
+cwd: ROOT/project/a/b/c
+start_cwd: ROOT/project/a/b/c
+0: _debugargs
+cwd: ROOT/project/a/b/c/d/e
+start_cwd: ROOT/project/a/b/c/d/e
+0: _debugargs
+cwd: ROOT/project/gcc
+start_cwd: ROOT/project/gcc
+0: _debugargs
+cwd: ROOT/project/gdb
+start_cwd: ROOT/project/gdb
+0: _debugargs
+cwd: ROOT/project
+start_cwd: ROOT/project
+EOF
+cmpfiles GOT2 WANT
+echo OK
+
+echo $N Test relative pathnames for \'bk -U\' .........................$NL
+bk -U _debugargs > GOT || fail
+sed "s,$HERE,ROOT," < GOT > GOT2
+cat <<EOF > WANT
+0: _debugargs
+1: -
+cwd: ROOT/project/a/b/c/d
+start_cwd: ROOT/project/a/b/c/d
+stdin:
+f
+... 3 more lines ...
+EOF
+cmpfiles GOT2 WANT
+echo OK
+
+echo $N Test relative pathnames for \'bk -s -Ugr\' ....................$NL
+bk -s -Ugr _debugargs > GOT || fail
+sed "s,$HERE,ROOT," < GOT > GOT2
+cat <<EOF > WANT
+0: _debugargs
+1: -
+cwd: ROOT/project/ a leading space
+start_cwd: ROOT/project/ a leading space
+stdin:
+0: _debugargs
+1: -
+cwd: ROOT/project/a/b/c
+start_cwd: ROOT/project/a/b/c
+stdin:
+d/f
+0: _debugargs
+1: -
+cwd: ROOT/project/a/b/c/d/e
+start_cwd: ROOT/project/a/b/c/d/e
+stdin:
+f/f
+0: _debugargs
+1: -
+cwd: ROOT/project/gcc
+start_cwd: ROOT/project/gcc
+stdin:
+0: _debugargs
+1: -
+cwd: ROOT/project/gdb
+start_cwd: ROOT/project/gdb
+stdin:
+0: _debugargs
+1: -
+cwd: ROOT/project
+start_cwd: ROOT/project
+stdin:
+a/b/f
+... 1 more lines ...
+EOF
+cmpfiles GOT2 WANT
+echo OK
+
+echo $N Test relative pathnames for \'bk -R\' .........................$NL
+bk -R _debugargs > GOT || fail
+sed "s,$HERE,ROOT," < GOT > GOT2
+cat <<EOF > WANT
+0: _debugargs
+cwd: ROOT/project/a/b/c
+start_cwd: ROOT/project/a/b/c
+EOF
+cmpfiles GOT2 WANT
+echo OK
+
+echo $N Test relative pathnames for \'bk -P\' .........................$NL
+bk -P _debugargs > GOT || fail
+sed "s,$HERE,ROOT," < GOT > GOT2
+cat <<EOF > WANT
+0: _debugargs
+cwd: ROOT/project
+start_cwd: ROOT/project
+EOF
+cmpfiles GOT2 WANT
+echo OK
+
+echo $N Test relative pathnames for \'bk -U\' in standalone ...........$NL
+cd "$HERE"/non-nested
+mkdir src
+cd src
+echo hi > foo
+bk new $Q foo
+bk -U _debugargs > GOT || fail
+sed "s,$HERE,ROOT," < GOT > GOT2
+cat <<EOF > WANT
+0: _debugargs
+1: -
+cwd: ROOT/non-nested/src
+start_cwd: ROOT/non-nested/src
+stdin:
+../a
+... 6 more lines ...
+EOF
+cmpfiles GOT2 WANT
 echo OK

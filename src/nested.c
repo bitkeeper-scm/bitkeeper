@@ -810,8 +810,10 @@ nested_each(int quiet, char **av, char **aliases)
 	comp	*cp;
 	int	i, j;
 	char	**nav;
+	char	*s, *t;
 	int	errors = 0;
 	int	status;
+	char	buf[MAXLINE];
 
 	if (proj_cd2product()) {
 		fprintf(stderr, "Not in a Product.\n");
@@ -858,9 +860,22 @@ nested_each(int quiet, char **av, char **aliases)
 		}
 		nav = 0;
 		EACH_INDEX(av, j) {
-			nav = addLine(nav,
-			    str_subst(av[j], "$RELPATH", cp->path, 0));
-			if ((j == 1) && streq(av[j], "bk")) {
+			s = buf;
+			for (t = av[j]; *t; t++) {
+				if (*t != '$') {
+					*s++ = *t;
+					continue;
+				}
+				if (strneq(t, "$PRODPATH", 9)) {
+					s += sprintf(s, "%s", cp->path);
+					t += 8;
+					continue;
+				}
+				*s++ = '$';
+			}
+			*s = 0;
+			nav = addLine(nav, strdup(buf));
+			if ((j == 1) && streq(buf, "bk")) {
 				/* tell bk it is OK to exit with SIGPIPE */
 				nav = addLine(nav, strdup("--sigpipe"));
 			}
