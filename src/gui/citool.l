@@ -488,13 +488,12 @@ readSfilesOutput(string file, int pos)
 
 	foreach (line in lines) {
 		file = join(" ", lrange(split(line, " "), 1, "end"));
-		if (file =~ /^~/) file = "./${file}";
 		extra = line[0] eq "x";
 		modified = line[2] eq "c";
 		pending = line[3] eq "p";
 		hasComments = line[6] eq "y";
-		sf.file = file;
-		sf.name = getRelativePath(file, self.root);
+		sf.file = self.root . "/" . file;
+		sf.name = file;
 		sf.ignored = 0;
 		sf.excluded = 0;
 		sf.inProduct = 0;
@@ -540,7 +539,7 @@ findFiles()
 		self.sfiles_component = comp;
 		self.showPending{comp} = 0;
 		tmp = tmpfile("citool");
-		cmd = "bk sfiles -vgcyp --prefix=${comp} {-o${tmp}}";
+		cmd = "bk sfiles -vgcyp {--relpath=${self.root}} {-o${tmp}}";
 		unless (self.resolve) {
 			// Look for extra files when we're not in the resolver.
 			cmd .= " -x";
