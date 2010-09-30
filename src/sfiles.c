@@ -68,7 +68,7 @@ typedef struct {
 	u32	skip_comps:1;		/* -h: skip comp csets in prod */
 	u32	atRoot:1;		/* running at root of repo? */
 
-	char	*prefix;		/* set from env for path prefix */
+	char	*relpath;		/* --replath: print relative paths */
 	FILE	*out;			/* -o<file>: send output here */
 	char	*glob;			/* only files which match this */
 } options;
@@ -139,7 +139,7 @@ sfiles_main(int ac, char **av)
 	filecnt	fc;
 	char	*path, *s, buf[MAXPATH];
 	longopt	lopts[] = {
-		{ "prefix:", 300 },
+		{ "relpath:", 300 },
 		{ 0, 0 },
 	};
 
@@ -219,7 +219,9 @@ sfiles_main(int ac, char **av)
 		    case 'U':	opts.useronly = 1; break;	/* doc 2.0 */
 		    case 'x':	opts.extras = 1; break;		/* doc */
 		    case 'y':	opts.cfiles = 1; break;		/* doc */
-		    case 300:   opts.prefix = optarg; break; /* --prefix */
+		    case 300: /* --relpath */
+			opts.relpath = fullname(optarg, 0);
+			break;
 		    default: bk_badArg(c, av);
 		}
 		if (not && (c != '^')) {
@@ -310,6 +312,7 @@ sfiles_main(int ac, char **av)
 	}
 	if (opts.out != stdout) fclose(opts.out);
 	if (opts.progress) uprogress(1);
+	if (opts.relpath) free(opts.relpath);
 	free_project();
 	return (0);
 }
@@ -1090,6 +1093,25 @@ isBkFile(char *gfile)
 	return (ret);
 }
 
+private int
+print_file(char *name)
+{
+	int	rc;
+	char	*rel, *aname = 0;
+
+	if (opts.relpath) {
+		aname = aprintf("%s/%s", proj_cwd(), name);
+		rel = relpath(opts.relpath, aname);
+		free(aname);
+		aname = rel;
+	} else {
+		rel = name;
+	}
+	rc = fputs(rel, opts.out);
+	if (aname) free(aname);
+	return (rc);
+}
+
 /* ONLY call this from do_print */
 private void
 print_it(STATE state, char *gfile, char *rev)
@@ -1122,14 +1144,11 @@ error:				if (opts.out == stdout) {
 		}
 	}
 	/* if gfile or !sfile then print gfile style name */
-	if (opts.prefix && !streq(opts.prefix, ".")) {
-		fprintf(opts.out, "%s/", opts.prefix);
-	}
 	if (opts.gfile || (state[TSTATE] != 's')) {
-		if (fputs(gfile, opts.out) < 0) goto error;
+		if (print_file(gfile) < 0) goto error;
 	} else {
 		sfile = name2sccs(gfile);
-		if (fputs(sfile, opts.out) < 0) goto error;
+		if (print_file(sfile) < 0) goto error;
 		free(sfile);
 	}
 	if (rev) {

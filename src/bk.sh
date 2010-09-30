@@ -165,10 +165,6 @@ verbose() {
 	test -z "$QUIET" && echo "$*" > /dev/tty
 }
 
-_prefixed_sfiles() {
-	bk sfiles --prefix="`bk pwd -P`" "$@"
-}
-
 _portal() {
 	# XXX - should look for PL in options
 	Q=""
