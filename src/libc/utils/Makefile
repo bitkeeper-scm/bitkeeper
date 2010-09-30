@@ -14,7 +14,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	milli.o \
 	mmap.o \
 	putenv.o \
-	realbasename.o rlimit.o rmtree.o \
+	realbasename.o relpath.o rlimit.o rmtree.o \
 	samepath.o sig.o smartrename.o \
 	spawn.o spawnvpio.o spawn_filterpipeline.o \
 	str_subst.o \

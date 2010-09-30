@@ -202,6 +202,9 @@ char	*safe_getenv(char *var);
 /* realbasename.c */
 char*	realBasename(const char *path, char *realname);
 
+/* relpath.c */
+char	*relpath(const char *base, const char *path);
+
 /* rlimit.c */
 void	core(void);
 

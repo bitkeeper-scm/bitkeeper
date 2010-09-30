@@ -442,10 +442,19 @@ cmd_wrunlock(int ac, char **av)
 int
 debugargs_main(int ac, char **av)
 {
-	int	i;
+	int	i, n;
+	char	*t;
 
 	for (i = 0; av[i]; i++) {
 		printf("%d: %s\n", i, shellquote(av[i]));
+	}
+	printf("cwd: %s\n", proj_cwd());
+	if (start_cwd) printf("start_cwd: %s\n", start_cwd);
+	if ((i > 1) && streq(av[i-1], "-")) {
+		printf("stdin:\n");
+		if (t = fgetline(stdin)) printf("%s\n", t);
+		for (n = 0; fgetline(stdin); n++);
+		if (n) printf("... %d more lines ...\n", n);
 	}
 	return (0);
 }

@@ -130,6 +130,8 @@ cat <<EOF > WANT
 0: _debugargs
 1: 1
 2: 2
+cwd: $HERE/project
+start_cwd: $HERE/project
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -167,6 +169,11 @@ cat <<EOF > WANT
 5: "jj e"
 6: -@jj
 7: -
+cwd: $HERE/clone
+start_cwd: $HERE/clone
+stdin:
+SCCS/s.ChangeSet
+... 5 more lines ...
 EOF
 cmpfiles WANT GOT
 echo OK

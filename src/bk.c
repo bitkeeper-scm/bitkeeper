@@ -60,7 +60,9 @@ main(int volatile ac, char **av, char **env)
 	int	dashA = 0, dashU = 0, headers = 0;
 	int	dashs = 0;
 	int	from_iterator = 0;
-	char	*csp, *p, *dir = 0, *locking = 0;
+	char	*csp, *p, *locking = 0;
+	char	*todir = 0;
+	int	toroot = 0;	/* 1==cd2root 3==cd2product */
 	char	*envargs = 0;
 	char	**sopts = 0;
 	char	**aliases = 0;
@@ -72,6 +74,7 @@ main(int volatile ac, char **av, char **env)
 		{ "headers", 303 },	// --headers for -s
 		{ "from-iterator", 304 },
 		{ "sigpipe", 305 },     // allow SIGPIPE
+		/* Note: remote_bk() won't like "option:" with a space */
 		{ 0, 0 },
 	};
 
@@ -204,6 +207,7 @@ main(int volatile ac, char **av, char **env)
 		}
 		is_bk = 1;
 		nav = addLine(nav, strdup("bk"));
+		/* adding options with args should update remote_bk() */
 		while ((c = getopt(ac, av,
 			"?;^@|1aAB;cdDgGhjL|lnpPqr|Rs|uUxz;", lopts)) != -1) {
 			unless ((c == 's') || (c >= 300) || (c == '?')) {
@@ -230,11 +234,7 @@ main(int volatile ac, char **av, char **env)
 			    case 'q': break;	// noop, -q is the default
 			    case 'L': locking = optarg; break;
 			    case 'P':				/* doc 2.0 */
-				if (proj_cd2product() && proj_cd2root()) {
-					fprintf(stderr,
-					    "bk: Cannot find product root.\n");
-					return(1);
-				}
+				toroot |= 3;
 				break;
 			    case 'r':				/* doc 2.0 */
 				if (dashr) {
@@ -242,15 +242,19 @@ main(int volatile ac, char **av, char **env)
 					    "bk: Only one -r allowed\n");
 					return (1);
 				}
-				dir = optarg;
 				dashr++;
+				if (optarg) {
+					if (todir) {
+baddir:						fprintf(stderr,
+						    "bk: only one --cd or "
+						    "-r<dir> allowed\n");
+						return (1);
+					}
+					todir = optarg;
+				}
 				break;
 			    case 'R':				/* doc 2.0 */
-				if (proj_cd2root()) {
-					fprintf(stderr,
-					    "bk: Cannot find package root.\n");
-					return(1);
-				}
+				toroot |= 1;
 				break;
 			    case 's': 	// -s
 			    case 302:	// --subset=
@@ -261,13 +265,12 @@ main(int volatile ac, char **av, char **env)
 				}
 				break;
 			    case 'z': break;	/* remote will eat it */
-			    case 300: title = optarg; break;
-			    case 301:
-				if (chdir(optarg)) {
-					fprintf(stderr,
-					    "bk: Cannot chdir to %s\n", p);
-					return (1);
-				}
+			    case 300:	// --title
+				title = optarg;
+				break;
+			    case 301:	// --cd
+				if (todir) goto baddir;
+				todir = optarg;
 				break;
 			    case 303:	// --headers
 			    	headers = 1;
@@ -290,6 +293,13 @@ main(int volatile ac, char **av, char **env)
 			fprintf(stderr, "bk: -A may not be combined with -r\n");
 			return (1);
 		}
+		if (todir && toroot) {
+			fprintf(stderr,
+			    "bk: --cd/-rDIR not allowed with -R or -P\n");
+			return (1);
+		}
+		/* -r implies cd2root unless combined with --cd */
+		if (dashr && !todir) toroot |= 1;
 		if (dashU) dashA = 1; /* from here on only dashA matters */
 		if (dashA) sopts = addLine(sopts, strdup("-g"));
 
@@ -313,13 +323,30 @@ main(int volatile ac, char **av, char **env)
 			}
 			hash_free(h);
 		}
-		start_cwd = strdup(proj_cwd());
 		if (remote) {
+			start_cwd = strdup(proj_cwd());
 			cmdlog_start(av, 0);
 			ret = remote_bk(!headers, ac, av);
 			goto out;
 		}
-
+		if (todir && chdir(todir)) {
+			fprintf(stderr, "bk: Cannot chdir to %s\n", todir);
+			return (1);
+		}
+		if ((toroot == 3) && proj_isComponent(0)) {
+			if (proj_cd2product()) {
+				fprintf(stderr,
+				    "bk: Cannot find product root.\n");
+				return(1);
+			}
+		} else if (toroot) {
+			if (proj_cd2root()) {
+				fprintf(stderr,
+				    "bk: Cannot find product root.\n");
+				return(1);
+			}
+		}
+		start_cwd = strdup(proj_cwd());
 		if ((dashA || dashs) && !proj_isEnsemble(0)) {
 			/*
 			 * Downgrade to be compat in standalone trees.
@@ -328,7 +355,10 @@ main(int volatile ac, char **av, char **env)
 			 * bk -sHERE -A => bk -r
 			 */
 			if (dashA) dashr = 1;
-			dashA = dashs = 0;
+			dashs = 0;
+
+			sopts = addLine(sopts,
+			   aprintf("--relpath=%s", start_cwd));
 
 			// -s|-sHERE|-s.|-s^PRODUCT is fine.
 			// XXX - we don't look.
@@ -342,27 +372,6 @@ main(int volatile ac, char **av, char **env)
 			}
 			ret = nested_each(!headers, nav, aliases);
 			goto out;
-		}
-		if (dashr) {
-			if (dir) {
-				unless (chdir(dir) == 0) {
-					perror(dir);
-					return (1);
-				}
-			} else {
-				if (proj_cd2root()) {
-					fprintf(stderr,
-					    "bk: Cannot find package root.\n");
-					return(1);
-				}
-			}
-		}
-		if (dashA) {
-			if (proj_cd2product()) {
-				fprintf(stderr,
-				    "bk: Cannot find package root.\n");
-				return(1);
-			}
 		}
 		if (locking) {
 			int	waitsecs;
@@ -409,6 +418,7 @@ bad_locking:				fprintf(stderr,
 			prog = "bk"; /* for error messages */
 			sopts = unshiftLine(sopts, strdup("sfiles"));
 			if (dashr) {
+				if (dashA) proj_cd2root();
 				/* bk [opts] -r => bk -R sfiles [opts] */
 				sopts = addLine(sopts, 0);
 				av = &sopts[1];
@@ -420,7 +430,7 @@ bad_locking:				fprintf(stderr,
 				sopts = unshiftLine(sopts, strdup("bk"));
 				sopts = addLine(sopts, strdup("-h"));
 				sopts = addLine(sopts,
-				    strdup("--prefix=$RELPATH"));
+				    aprintf("--relpath=%s", start_cwd));
 				ret = nested_each(!headers, sopts, aliases);
 				goto out;
 			} else if (from_iterator) {
@@ -437,8 +447,14 @@ bad_locking:				fprintf(stderr,
 			}
 			if (dashr) {
 				sopts = unshiftLine(sopts, strdup("sfiles"));
+				if (dashA) sopts = unshiftLine(sopts,
+				    strdup("-R"));
 			} else{
 				sopts = unshiftLine(sopts, strdup("-A"));
+				EACH(aliases) {
+					sopts = unshiftLine(sopts,
+					    aprintf("-s%s", aliases[i]));
+				}
 			}
 			sopts = unshiftLine(sopts, strdup("bk"));
 			sopts = addLine(sopts, 0);
@@ -1213,7 +1229,14 @@ cmdlog_end(int ret, int bkd_cmd)
 	}
 
 	if (!bkd_cmd && (cmdlog_locks & (CMD_WRLOCK|CMD_RDLOCK))) {
-		repository_unlock(0, 0);
+		project	*prod = 0;
+
+		if ((cmdlog_flags & CMD_LOCK_PRODUCT) &&
+		    proj_isComponent(0)  &&
+		    !getenv("_BK_TRANSACTION")) {
+			prod = proj_product(0);
+		}
+		repository_unlock(prod, 0);
 	}
 out:
 	cmdlog_buffer[0] = 0;
