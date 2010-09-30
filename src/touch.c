@@ -54,6 +54,7 @@ touch_main(int ac, char **av)
 				err = aprintf("bk touch: "
 				    "cannot touch '%s':", fn);
 				perror(err);
+				free(err);
 				continue;
 			}
 			unless (opts.tspec || opts.file) continue;
