@@ -649,18 +649,9 @@ proc keyboard_bindings {} \
 	bind all <Control-p>		prevFile
 	bind all <s>			exportCset
 
-	if {$gc(windows) || $gc(aqua)} {
-		bind all <MouseWheel> {
-		    if {%D < 0} { next } else { prev }
-		}
-	}
 	if {$gc(aqua)} {
 		bind all <Command-q> exit
 		bind all <Command-w> exit
-	}
-	if {$gc(x11)} {
-		bind all <Button-4>	prev
-		bind all <Button-5>	next
 	}
 	# note that the "after" is required for windows. Without
 	# it we often never see the double-1 events. 

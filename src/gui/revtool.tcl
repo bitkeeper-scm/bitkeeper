@@ -2225,40 +2225,9 @@ proc widgets {} \
 	bind $w(graph) <Right>		"$w(graph) xview scroll  1 units"
 	bind $w(graph) <Shift-Home>	"$w(graph) xview moveto 0"
 	bind $w(graph) <Shift-End>	"$w(graph) xview moveto 1.0"
-	if {$gc(windows) || $gc(aqua)} {
-		bind . <Shift-MouseWheel>   { 
-		    if {%D < 0} {
-		    	$w(graph) xview scroll -1 pages
-		    } else {
-		    	$w(graph) xview scroll 1 pages
-		    }
-		}
-		bind . <Control-MouseWheel> {
-		    if {%D < 0} {
-			$w(graph) yview scroll 1 units
-		    } else {
-			$w(graph) yview scroll -1 units
-		    }
-		}
-		bind . <MouseWheel> {
-		    if {%D < 0} {
-			$w(aptext) yview scroll 5 units
-		    } else {
-			$w(aptext) yview scroll -5 units
-		    }
-		}
-	}
 	if {$gc(aqua)} {
 		bind . <Command-q> done
 		bind . <Command-w> done
-	}
-	if {$gc(x11)} {
-		bind . <Shift-Button-4>   "$w(graph) xview scroll -1 pages"
-		bind . <Shift-Button-5>   "$w(graph) xview scroll 1 pages"
-		bind . <Control-Button-4> "$w(graph) yview scroll -1 units"
-		bind . <Control-Button-5> "$w(graph) yview scroll 1 units"
-		bind . <Button-4>	  "$w(aptext) yview scroll -5 units"
-		bind . <Button-5>	  "$w(aptext) yview scroll 5 units"
 	}
 	$search(widget) tag configure search \
 	    -background $gc(rev.searchColor) -font $gc(rev.fixedBoldFont)

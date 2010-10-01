@@ -14,6 +14,25 @@ if {[info exists ::env(BK_DEBUG_GUI)]} {
 
 proc bk_init {} {
 	bk_initPlatform
+
+	## Remove default Tk mouse wheel bindings.
+	foreach event {MouseWheel 4 5} {
+		foreach mod {"" Shift- Control- Command- Alt- Option-} {
+			catch {bind Text <$mod$event> ""}
+			catch {bind Listbox <$mod$event> ""}
+		}
+	}
+
+	## Mouse wheel bindings
+	if {[tk windowingsystem] eq "x11"} {
+		bind all <4> {scrollMouseWheel %W y %X %Y -1}
+		bind all <5> {scrollMouseWheel %W y %X %Y  1}
+		bind all <Shift-4> {scrollMouseWheel %W x %X %Y -1}
+		bind all <Shift-5> {scrollMouseWheel %W x %X %Y  1}
+	} else {
+		bind all <MouseWheel> {scrollMouseWheel %W y %X %Y %D}
+		bind all <Shift-MouseWheel> {scrollMouseWheel %W x %X %Y %D}
+	}
 }
 
 # Try to find the project root, limiting ourselves to 40 directories
@@ -751,4 +770,55 @@ proc sccsFileExists {type file} {
 proc inComponent {} {
     catch {exec bk repotype} res
     return [string equal $res "component"]
+}
+
+proc attachScrollbar {sb args} \
+{
+	global	gc
+
+	set xy x
+	if {[$sb cget -orient]  eq "vertical"} { set xy y }
+
+	$sb configure -command [list [lindex $args 0] ${xy}view]
+
+	foreach w $args {
+		dict set gc(scrollbars) $w $args
+		$w configure -${xy}scrollcommand [list setScrollbar $sb $w]
+	}
+}
+
+proc setScrollbar {sb w first last} \
+{
+	global	gc
+
+	$sb set $first $last
+	if {![dict exists $gc(scrollbars) $w]} { return }
+
+	set x [lindex [$w xview] 0]
+	set y [lindex [$w yview] 0]
+
+	foreach widg [dict get $gc(scrollbars) $w] {
+		if {$widg eq $w} { continue }
+		$widg xview moveto $x
+		$widg yview moveto $y
+	}
+}
+
+proc scrollMouseWheel {w dir x y delta} \
+{
+	set widg [winfo containing $x $y]
+	if {$widg eq ""} { set widg $w }
+
+	switch -- [tk windowingsystem] {
+	    "aqua"  { set delta [expr {-$delta}] }
+	    "x11"   { set delta [expr {$delta * 3}] }
+	    "win32" { set delta [expr {($delta / 120) * -3}] }
+	}
+
+	## If we fail to scroll the widget the mouse is
+	## over for some reason, just scroll the widget
+	## with focus.
+	if {[catch {$widg ${dir}view scroll $delta units}]} {
+		catch {$w ${dir}view scroll $delta units}
+	}
 }

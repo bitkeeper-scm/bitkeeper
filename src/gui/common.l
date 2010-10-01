@@ -15,6 +15,7 @@ struct	{
 } _bk;
 
 _bk.cmd_quit = "exit";
+_bk.wm = tk_windowingsystem();
 
 int	_bk_search_case = 0;
 int	_bk_search_highlight = 0;
@@ -42,7 +43,6 @@ bk_init()
 		bk_dieError("_bk.w_top must be set before bk_init()", 1);
 	}
 
-	_bk.wm = tk_windowingsystem();
 	bk_initPlatform();
 	getConfig(_bk.tool);
 	loadState(_bk.tool);
@@ -91,11 +91,15 @@ bk_initBindings()
 
 	// Mouse wheel bindings
 	if (_bk.wm eq "x11") {
-		bind("BK", "<4>", "scrollMouseWheel %W %X %Y -3; break");
-		bind("BK", "<5>", "scrollMouseWheel %W %X %Y  3; break");
+		bind("BK", "<4>", "scrollMouseWheel %W y %X %Y -1; break");
+		bind("BK", "<5>", "scrollMouseWheel %W y %X %Y  1; break");
+		bind("BK", "<Shift-4>","scrollMouseWheel %W x %X %Y -1; break");
+		bind("BK", "<Shift-5>","scrollMouseWheel %W x %X %Y  1; break");
 	} else {
 		bind("BK", "<MouseWheel>",
-		    "scrollMouseWheel %W %X %Y %D; break");
+		    "scrollMouseWheel %W y %X %Y %D; break");
+		bind("BK", "<Shift-MouseWheel>",
+		    "scrollMouseWheel %W x %X %Y %D; break");
 	}
 
 	if (_bk.wm eq "aqua") {
@@ -236,7 +240,7 @@ setScrollbar(string sb, string w, float first, float last)
 }
 
 void
-scrollMouseWheel(string w, int x, int y, int delta)
+scrollMouseWheel(string w, string dir, int x, int y, int delta)
 {
 	int	d = delta;
 	string	widg = winfo_containing(x, y);
@@ -245,12 +249,14 @@ scrollMouseWheel(string w, int x, int y, int delta)
 	if (_bk.wm eq "aqua") {
 		d = -delta;
 	} else if (_bk.wm eq "x11") {
+		d = delta * 3;
+	} else if (_bk.wm eq "win32") {
 		d = (delta / 120) * -3;
 	}
 	// If we fail to scroll the widget the mouse is
 	// over for some reason, just scroll the widget
 	// with focus.
-	if (catch("${widg} yview scroll ${d} units")) {
-		catch("${w} yview scroll ${d} units");
+	if (catch("${widg} ${dir}view scroll ${d} units")) {
+		catch("${w} ${dir}view scroll ${d} units");
 	}
 }

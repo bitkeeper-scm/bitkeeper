@@ -100,6 +100,9 @@ proc createDiffWidgets {w} \
 	    grid columnconfigure .diffs 0 -weight 1
 	    grid columnconfigure .diffs 2 -weight 1
 
+	    attachScrollbar .diffs.xscroll .diffs.left .diffs.right
+	    attachScrollbar .diffs.yscroll .diffs.left .diffs.right
+
 	    .diffs.left tag configure diff -background $gc($app.oldColor)
 	    .diffs.right tag configure diff -background $gc($app.newColor)
 	    bind .diffs <Configure> { computeHeight "diffs" }
