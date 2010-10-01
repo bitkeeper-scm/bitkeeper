@@ -816,22 +816,20 @@ saveKey(MDBM *db, ser_t ser, char **keylist)
 private MDBM *
 loadcset(sccs *cset)
 {
-	char	**keylist = 0, **cweave;
+	char	**keylist = 0;
 	char	*keypath, *pipe;
 	char	*p, *t;
 	MDBM	*db;
-	int	i;
-	ser_t	ser, cur_ser = 0;
+	int	print = 0;
+	int	noMeta = opts.verbose && !opts.all && !opts.inc;
+	ser_t	ser = 0;
+	delta	*d;
 	char	*pathp;
 	char	path[MAXPATH];
 
 	/*
 	 * Get a list of csets marked D_SET
 	 */
-	sccs_open(cset, 0);
-	if ((cweave = cset_mkList(cset)) == (char **)-1) return (0);
-	sccs_close(cset);
-
 	if (t = proj_comppath(cset->proj)) {
 		strcpy(path, t);
 		pathp = path + strlen(path);
@@ -840,13 +838,27 @@ loadcset(sccs *cset)
 		pathp = path;
 	}
 	db = mdbm_mem();
-	EACH(cweave) {
-		p = strchr(cweave[i], '\t');
-		assert(p);
-		*p++ = 0;
-		if (opts.filt) {
-			keypath = separator(p);
-			keypath = strchr(keypath, '|');
+	sccs_open(cset, 0);
+	sccs_rdweaveInit(cset);
+	while (p = sccs_nextdata(cset)) {
+		unless (isData(p)) {
+			if (p[1] == 'I') {
+				ser = atoi(p+3);
+				d = sfind(cset, ser);
+				assert(d);
+				print = (d->flags & D_SET);
+			} else if (p[1] == 'E') {
+				if (keylist) {
+					saveKey(db, ser, keylist);
+					keylist = 0;
+				}
+			}
+			continue;
+		}
+		unless (print) continue;
+		if (opts.filt || noMeta) {
+			t = separator(p);
+			keypath = strchr(t, '|');
 			assert(keypath);
 			keypath++;
 			pipe = strchr(keypath, '|');
@@ -856,38 +868,28 @@ loadcset(sccs *cset)
 			    strneq(&pipe[-10], "/ChangeSet", 10)) {
 				if (opts.BAM) {
 					/* skip unless rootkey =~ /^B:/ */
-					t = separator(p);
-					assert(t);
 					while (*t != '|') --t;
 					unless (strneq(t, "|B:", 3)) continue;
 				}
-				if (opts.inc || opts.exc) {
-					strncpy(pathp, keypath, pipe - keypath);
-					pathp[pipe-keypath] = 0;
-					if (opts.inc &&
-					    !match_globs(path, opts.inc, 0)) {
-						continue;
-					}
-					if (opts.exc &&
-					    match_globs(path, opts.exc, 0)) {
-						continue;
-					}
+				strncpy(pathp, keypath, pipe - keypath);
+				pathp[pipe-keypath] = 0;
+				if (opts.inc &&
+				    !match_globs(path, opts.inc, 0)) {
+					continue;
+				}
+				if (opts.exc &&
+				    match_globs(path, opts.exc, 0)) {
+					continue;
+				}
+				if (noMeta && sccs_metafile(pathp)) {
+					continue;
 				}
 			}
 		}
-		ser = atoi(cweave[i]);
-		unless (cur_ser) {
-			cur_ser = ser;
-			assert(keylist == NULL);
-		} else if (ser != cur_ser) {
-			saveKey(db, cur_ser, keylist);
-			cur_ser = ser;
-			keylist = 0;
-		}
 		keylist = addLine(keylist, strdup(p));
 	}
-	freeLines(cweave, free);
-	if (cur_ser) saveKey(db, cur_ser, keylist); /* save last entry */
+	sccs_rdweaveDone(cset);
+	sccs_close(cset);
 	if (opts.filt) fileFilt(cset, db);
 	return (db);
 }

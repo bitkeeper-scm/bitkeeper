@@ -15,6 +15,7 @@ typedef struct {
 
 private	int	mixed; 		/* if set, handle long and short keys */
 private	char	*path_prefix;	/* = getenv("_BK_PREFIX"); */
+private	int	csetIds_merge(sccs *s, char *rev, char *merge);
 
 /*
  * return ture if the keys v1 and v2 is the same
@@ -119,7 +120,7 @@ prefix(char *path)
 	sprintf(buf, "%s/%s", path_prefix, path);
 	return (buf);
 }
-	
+
 /*
  * Convert root/start/end keys to sfile|path1|rev1|path2|rev2 format
  * If we are rset -r<rev> then start is null, and end is <rev>.
@@ -137,6 +138,24 @@ process(char	*root,
 	char	smd5[MD5LEN], emd5[MD5LEN];
 
 	if (is_same(start, end)) return;
+	p = key2path(root, 0);
+	if (!opts.show_all && sccs_metafile(p)) {
+		/* skip meta files by default */
+		free(p);
+		return;
+	}
+	free(p);
+	p = key2path(end ? end : start, 0); /* deltakey path */
+	if (streq(p, GCHANGESET)) {
+		/*
+		 * Do not print the ChangeSet file we already printed
+		 * it as the first entry
+		 */
+		free(p);
+		return;
+	}
+	free(p);
+
 	if (opts.md5keys) {
 		if (opts.BAM) {
 			/* only allow if random field starts with B: */
@@ -202,11 +221,6 @@ process(char	*root,
 		path2 = sccs_top(s)->pathname;
 	}
 
-	/*
-	 * Do not print the ChangeSet file
-	 * we already printed it as the first entry
-	 */
-	if (streq(s->sfile, CHANGESET)) goto done;
 	/* hide component cset with -H */
 	if (opts.hide_cset && CSET(s)) goto done;
 
@@ -477,7 +491,7 @@ rset_main(int ac, char **av)
 	if (proj_cd2root()) {
 		fprintf(stderr, "mkrev: cannot find package root.\n");
 		exit(1);
-	} 
+	}
 	s = sccs_init(s_cset, SILENT);
 	assert(s);
 
@@ -541,7 +555,7 @@ usage:		if (s) sccs_free(s);
 	db1 = s->mdbm; s->mdbm = NULL;
 	assert(db1);
 	if (rev2) {
-		if (csetIds(s, rev2)) {
+		if (csetIds_merge(s, rev2, 0)) {
 			fprintf(stderr,
 			    "Cannot get ChangeSet for revision %s\n", rev2);
 			sccs_free(s);
@@ -563,5 +577,49 @@ usage:		if (s) sccs_free(s);
 	if (rev1) free(rev1);
 	if (rev2) free(rev2);
 	if (revM) free(revM);
+	return (0);
+}
+
+
+/*
+ * Get all the ids associated with a changeset.
+ * The db is db{root rev Id} = cset rev Id.
+ *
+ * Note: does not call sccs_restart, the caller of this sets up "s".
+ */
+private int
+csetIds_merge(sccs *s, char *rev, char *merge)
+{
+	kvpair	kv;
+	char	*t, **list = 0;
+	int	i;
+
+	assert(HASH(s));
+	if (sccs_get(s, rev, merge, 0, 0, SILENT|GET_HASHONLY, 0)) {
+		sccs_whynot("get", s);
+		return (-1);
+	}
+	unless (s->mdbm) {
+		fprintf(stderr, "get: no mdbm found\n");
+		return (-1);
+	}
+
+	/* If we are the new key format, then we shouldn't have mixed keys */
+	if (LONGKEY(s)) return (0);
+
+	/*
+	 * If there are both long and short keys, then use the long form
+	 * and delete the short form (the long form is later).
+	 */
+	for (kv = mdbm_first(s->mdbm); kv.key.dsize; kv = mdbm_next(s->mdbm)) {
+		unless (t = sccs_iskeylong(kv.key.dptr)) continue;
+		*t = 0;
+		if (mdbm_fetch_str(s->mdbm, kv.key.dptr)) {
+			list = addLine(list, strdup(kv.key.dptr));
+		}
+		*t = '|';
+	}
+	EACH(list) mdbm_delete_str(s->mdbm, list[i]);
+	freeLines(list, free);
 	return (0);
 }

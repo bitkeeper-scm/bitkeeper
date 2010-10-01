@@ -16816,6 +16816,19 @@ sccs_userfile(sccs *s)
 	return 1;
 }
 
+/*
+ * Return true for any file we want to hide from the user,
+ * eg. any file that is BK maintained metadata.
+ * The ChangeSet weave matches but the comments are user
+ * generated so it doesn't match.
+ * Right now, just the BitKeeper/etc/attr file.
+ */
+int
+sccs_metafile(char *file)
+{
+	return (streq(file, ATTR));
+}
+
 void
 sccs_shortKey(sccs *s, delta *d, char *buf)
 {
@@ -17080,52 +17093,6 @@ out:		if (f) fclose(f);
 	}
 	fclose(f);
 	return (DB);
-}
-
-/*
- * Get all the ids associated with a changeset.
- * The db is db{root rev Id} = cset rev Id.
- *
- * Note: does not call sccs_restart, the caller of this sets up "s".
- */
-int
-csetIds_merge(sccs *s, char *rev, char *merge)
-{
-	kvpair	kv;
-	char	*t;
-
-	assert(HASH(s));
-	if (sccs_get(s, rev, merge, 0, 0, SILENT|GET_HASHONLY, 0)) {
-		sccs_whynot("get", s);
-		return (-1);
-	}
-	unless (s->mdbm) {
-		fprintf(stderr, "get: no mdbm found\n");
-		return (-1);
-	}
-
-	/* If we are the new key format, then we shouldn't have mixed keys */
-	if (LONGKEY(s)) return (0);
-
-	/*
-	 * If there are both long and short keys, then use the long form
-	 * and delete the short form (the long form is later).
-	 */
-	for (kv = mdbm_first(s->mdbm); kv.key.dsize; kv = mdbm_next(s->mdbm)) {
-		unless (t = sccs_iskeylong(kv.key.dptr)) continue;
-		*t = 0;
-		if (mdbm_fetch_str(s->mdbm, kv.key.dptr)) {
-			mdbm_delete_str(s->mdbm, kv.key.dptr);
-		}
-		*t = '|';
-	}
-	return (0);
-}
-
-int
-csetIds(sccs *s, char *rev)
-{
-	return (csetIds_merge(s, rev, 0));
 }
 
 /*

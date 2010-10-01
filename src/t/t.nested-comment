@@ -10,8 +10,6 @@ bk new $Q -ynew gdb/afile
 bk commit -y. $Q
 bk comment -p > GOT
 cat <<'EOF' > WANT
-### Comments for BitKeeper/etc/attr|1.3
-
 ### Comments for ChangeSet|1.3
 .
 
@@ -29,8 +27,6 @@ echo $N Test that comments have no component path in a component ....$NL
 cd gcc
 bk comment -p > GOT
 cat <<'EOF' > WANT
-### Comments for BitKeeper/etc/attr|1.2
-
 ### Comments for ChangeSet|1.2
 .
 
@@ -51,8 +47,6 @@ bk comment - < WANT
 cd ..
 bk comment -p > GOT
 cat <<'EOF' > WANT
-### Comments for BitKeeper/etc/attr|1.3
-
 ### Comments for ChangeSet|1.3
 .
 
@@ -82,8 +76,6 @@ bk comment - < WANT
 cd gdb
 bk comment -p > GOT
 cat <<'EOF' > WANT
-### Comments for BitKeeper/etc/attr|1.2
-
 ### Comments for ChangeSet|1.2
 attach gdb using this new comment made in the product
 

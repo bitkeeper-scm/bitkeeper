@@ -12,9 +12,7 @@ bk commit $Q -SEND -f
 # does not fail because there is no error handling in recursive sys()
 bk rset -PrSTART,END 2> ERR | bk _sort > GOT
 cat >WANT <<EOF
-BitKeeper/etc/attr|1.2..1.3
 ChangeSet|1.2..1.4
-foo,bar/BitKeeper/etc/attr|1.0..1.2
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
 foo,bar/BitKeeper/etc/config|1.0..1.1
 foo,bar/BitKeeper/etc/gone|1.0..1.1
@@ -26,10 +24,9 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Prune ChangeSet files from the answer .......................$NL
-bk rset -HPrSTART,END 2> ERR | bk _sort > GOT
+bk rset -HPrSTART,END > OUT || fail
+bk _sort < OUT > GOT
 cat >WANT <<EOF
-BitKeeper/etc/attr|1.2..1.3
-foo,bar/BitKeeper/etc/attr|1.0..1.2
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
 foo,bar/BitKeeper/etc/config|1.0..1.1
 foo,bar/BitKeeper/etc/gone|1.0..1.1

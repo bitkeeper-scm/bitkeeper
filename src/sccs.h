@@ -905,6 +905,7 @@ delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, int patch,
 		      int *errorp, int *linesp, char ***symsp);
 delta	*sccs_ino(sccs *);
 int	sccs_userfile(sccs *);
+int	sccs_metafile(char *file);
 int	sccs_rmdel(sccs *s, delta *d, u32 flags);
 int	sccs_stripdel(sccs *s, char *who);
 int	stripdel_fixTable(sccs *s, int *pcnt);
@@ -975,8 +976,6 @@ void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 delta 	*mkOneZero(sccs *s);
 int	isCsetFile(char *);
-int	csetIds(sccs *cset, char *rev);
-int	csetIds_merge(sccs *cset, char *rev, char *merge);
 int	cset_inex(int flags, char *op, char *revs);
 void	sccs_fixDates(sccs *);
 int	sccs_xflags(sccs *s, delta *d);
