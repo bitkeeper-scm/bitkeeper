@@ -1191,7 +1191,6 @@ int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
 int	sccs_needSwap(sccs *s, delta *p, delta *m);
 void	sccs_reDup(sccs *s);
-void	sccs_adjustSet(sccs *sc, sccs *scb, delta *d, u8 *slist);
 int	chk_host(void);
 int	chk_user(void);
 int	chk_nlbug(sccs *s);

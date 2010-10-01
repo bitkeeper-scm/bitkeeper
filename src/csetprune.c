@@ -4,6 +4,10 @@
 #include "logging.h"
 #include "nested.h"
 #include "range.h"
+#include "graph.h"
+
+/* XXX make this global ? */
+#define	FREE(x)	do { if (x) { free(x); (x) = 0; } } while (0)
 
 /*
  * csetprune - prune a list of files from a ChangeSet file
@@ -52,9 +56,10 @@ private	int	newBKfiles(sccs *cset,
 		    char *comp, hash *prunekeys, char ***cweavep);
 private	int	rmKeys(hash *prunekeys);
 private	char	*mkRandom(char *input);
-private	int	found(delta *start, delta *stop);
-private	void	_pruneEmpty(sccs *s, delta *d, u8 *slist, char ***mkid);
-private	void	pruneEmpty(sccs *s, sccs *sb);
+private	int	found(sccs *s, delta *start, delta *stop);
+private	void	_pruneEmpty(sccs *s, delta *d,
+		    u8 *slist, ser_t **sd, char ***mkid);
+private	void	pruneEmpty(sccs *s);
 private	hash	*getKeys(char *file);
 private	int	keeper(char *rk);
 
@@ -73,6 +78,7 @@ private	ser_t	partition_tip;
 #define	PRUNE_DELCOMP		0x10000000	/* prune deleted to a comp */
 #define	PRUNE_NEW_TAG_GRAPH	0x20000000	/* move tags to real deltas */
 #define	PRUNE_NO_SCOMPRESS	0x40000000	/* leave serials alone */
+#define	PRUNE_NO_TAG_GRAPH	0x80000000	/* ignore tag graph */
 #define	PRUNE_ALL		0x02000000	/* prune all user says to */
 #define	PRUNE_NO_NEWROOT	0x08000000	/* leave backpointers alone */
 
@@ -91,7 +97,7 @@ csetprune_main(int ac, char **av)
 
 	opts = new(Opts);
 	flags = PRUNE_NEW_TAG_GRAPH;
-	while ((c = getopt(ac, av, "ac:C:I;k:KNqr:sSw:W:", lopts)) != -1) {
+	while ((c = getopt(ac, av, "ac:C:I;k:KNqr:sStw:W:", lopts)) != -1) {
 		switch (c) {
 		    case 'a': flags |= PRUNE_ALL; break;
 		    case 'c': opts->comppath = optarg; break;
@@ -103,6 +109,7 @@ csetprune_main(int ac, char **av)
 		    case 'q': flags |= SILENT; break;
 		    case 'r': opts->rev = optarg; break;
 		    case 'S': flags &= ~PRUNE_NEW_TAG_GRAPH; break;
+		    case 't': flags |= PRUNE_NO_TAG_GRAPH; break;
 		    case 'W': weavefile = optarg; break;
 		    case 'w': opts->who = optarg; break;
 		    case 300: opts->revfile = optarg; break; /* --revfile */
@@ -181,6 +188,7 @@ k_err:			fprintf(stderr,
 		fprintf(stderr, "%s: cannot find package root\n", prog);
 		goto err;
 	}
+	if (flags & PRUNE_NO_TAG_GRAPH) putenv("_BK_STRIPTAGS=1");
 	if (csetprune(opts)) {
 		fprintf(stderr, "%s: failed\n", prog);
 		goto err;
@@ -222,7 +230,7 @@ csetprune(Opts *opts)
 	int	empty_nodes = 0, ret = 1;
 	int	status;
 	delta	*d = 0;
-	sccs	*cset = 0, *csetb = 0;
+	sccs	*cset = 0;
 	char	*p, *p1;
 	char	**cweave = 0;
 	char	**deepnest = 0;
@@ -295,16 +303,8 @@ csetprune(Opts *opts)
 		fprintf(stderr, "%s: cannot init ChangeSet file\n", prog);
 		goto err;
 	}
-	unless ((csetb = sccs_csetInit(INIT_NOCKSUM)) && HASGRAPH(csetb)) {
-		fprintf(stderr,
-		    "%s: cannot init ChangeSet backup file\n", prog);
-		goto err;
-	}
 	verbose((stderr, "Pruning ChangeSet file...\n"));
-	sccs_close(csetb); /* for win32 */
-	pruneEmpty(cset, csetb);	/* does a sccs_free(cset) */
-	sccs_free(csetb);
-	csetb = 0;
+	pruneEmpty(cset);	/* does a sccs_free(cset) */
 	unless ((cset = sccs_csetInit(INIT_WACKGRAPH|INIT_NOCKSUM)) &&
 	    HASGRAPH(cset)) {
 		fprintf(stderr, "Whoops, can't reinit ChangeSet\n");
@@ -404,7 +404,6 @@ statuschk:	unless (WIFEXITED(status)) goto err;
 	ret = 0;
 
 err:	if (cset) sccs_free(cset);
-	if (csetb) sccs_free(csetb);
 	/* ptrs into complist, don't free */
 	if (deepnest) freeLines(deepnest, 0);
 	return (ret);
@@ -1069,12 +1068,40 @@ err:
  *
  * also remove tags, write it out, and free the sccs*.
  */
-private sccs *sc, *scb;
+
+private void
+_clr(sccs *s, delta *d)
+{
+	for (/* set */ ; d->flags & D_RED; d = PARENT(s, d)) {
+		d->flags &= ~D_RED;
+		if (d->merge) _clr(s, MERGE(s, d));
+	}
+}
 
 private int
-found(delta *start, delta *stop)
+_has(sccs *s, delta *d, int stopser)
+{
+	for (/* set */ ; d->serial > stopser; d = PARENT(s, d)) {
+		if (d->flags & D_RED) return (0);
+		d->flags |= D_RED;
+		if (d->merge >= stopser) {
+			if (_has(s, MERGE(s, d), stopser)) return (1);
+		}
+	}
+	return (d->serial == stopser);
+}
+
+/*
+ * Found -- see if one delta can be found in the history of the other.
+ * It is written recursive instead of iterative because it is running in a
+ * possibly large sparse graph (many nodes D_GONE) so having every merge
+ * node iteratively check many nodes can chew up resource.
+ */
+private int
+found(sccs *s, delta *start, delta *stop)
 {
 	delta	*d;
+	int	ret;
 
 	assert(start && stop);
 	if (start == stop) return (1);
@@ -1083,17 +1110,9 @@ found(delta *start, delta *stop)
 		start = stop;
 		stop = d;
 	}
-
-	for (d = NEXT(start); d && d != stop; d = NEXT(d)) d->flags &= ~D_RED;
-	start->flags |= D_RED;
-	stop->flags &= ~D_RED;
-
-	for (d = start; d && d != stop; d = NEXT(d)) {
-		unless (d->flags & D_RED) continue;
-		if (d->pserial) PARENT(sc, d)->flags |= D_RED;
-		if (d->merge) MERGE(sc, d)->flags |= D_RED;
-	}
-	return ((stop->flags & D_RED) != 0);
+	ret = _has(s, start, stop->serial);
+	_clr(s, start);
+	return (ret);
 }
 
 /*
@@ -1145,7 +1164,7 @@ mkTagGraph(sccs *s)
 			m = 0;
 		}
 		/* if both, but one is contained in other: use newer as p */
-		if (p && m && found(p, m)) {
+		if (p && m && found(s, p, m)) {
 			if (m->serial > p->serial) p = m;
 			m = 0;
 		}
@@ -1371,14 +1390,53 @@ fixTags(sccs *s)
 }
 
 /*
+ * replace any D_GONE nodes from d's symdiff list of serials (sd[d->serial])
+ * with the symdiff list for the D_GONE node, which will have no D_GONE's
+ * in them, because this will have already run on any D_GONE'd nodes.
+ *
+ * This also serves to collapse any dups that accumulated in calls
+ * to symdiff_setParent(), as the call to this is after calls to setParent.
+ */
+private	void
+rmPruned(sccs *s, delta *d, ser_t **sd)
+{
+	int	i;
+	ser_t	*new;
+	delta	*t;
+
+	assert(d->pserial && !(PARENT(s, d)->flags & D_GONE));
+	unless (sd[d->serial]) return;
+
+	new = 0;
+	EACH(sd[d->serial]) {
+		t = sfind(s, sd[d->serial][i]);
+		assert(t);
+		if (t->flags & D_GONE) {
+			new = symdiff_addBVC(sd, new, t);
+		} else {
+			new = addSerial(new, t->serial);
+		}
+	}
+	FREE(sd[d->serial]);
+	sd[d->serial] = symdiff_noDup(new);
+	free(new);
+	/* integrity check - no more gone in list */
+	new = sd[d->serial];
+	EACH(new) {
+		t = sfind(s, new[i]);
+		assert(t && !(t->flags & D_GONE));
+	}
+}
+
+/*
  * We maintain d->parent, d->merge, and d->pserial
  * We do not maintain d->kid, d->sibling, or d->flags & D_MERGED
  *
  * Which means, don't call much else after this, just get the file
  * written to disk!
  */
-private void
-_pruneEmpty(sccs *s, delta *d, u8 *slist, char ***mkid)
+private	void
+_pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd, char ***mkid)
 {
 	delta	*m;
 	int	i;
@@ -1406,37 +1464,42 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, char ***mkid)
 		 * Then fix up those pesky include and exclude lists.
 		 */
 		m = MERGE(s, d);
-		if (found(PARENT(s, d), m)) {	/* merge collapses */
+		if (found(s, PARENT(s, d), m)) {	/* merge collapses */
 			if (d->merge > d->pserial) {
-				d->parent = m;
-				d->pserial = d->merge;
+				symdiff_setParent(s, d, m, sd);
 			}
 			d->merge = 0;
 		}
 		/* else if merge .. (chk case d and e) */
 		else if (sccs_needSwap(s, PARENT(s, d), m)) {
 			d->merge = d->pserial;
-			d->parent = m;
-			d->pserial = m->serial;
+			symdiff_setParent(s, d, m, sd);
 		}
-		/* fix include and exclude lists */
-		sccs_adjustSet(sc, scb, d, slist);
-		// Test cases for these old asserts are in t.csetprune:
-		// assert((d->merge && d->include)||(!d->merge && !d->include));
-		// assert(!d->exclude); -- we can have excludes (see test)
-	}
-	/* Else this never was a merge node, so just adjust inc and exc */
-	else if (d->include || d->exclude) {
-		sccs_adjustSet(sc, scb, d, slist);
 	}
 	/*
-	 * See if node is a keeper ...
+	 * fix the sd list for d to have no D_GONE, and remove any pairs
+	 * that accumulated in the setParent calls.  As part of the pair
+	 * removal, sd[d->serial] could go away if nothing left.
 	 */
-	if (d->added || d->merge || d->include || d->exclude) return;
+	rmPruned(s, d, sd);
+	/*
+	 * See if node is a keeper ...
+	 * Inside knowledge: no sd entry is the same as no include
+	 * or exclude list, because of how the sd entry uses pserial too.
+	 */
+	if (d->added || d->merge || sd[d->serial]) {
+		FREE(d->include);
+		FREE(d->exclude);
+		if (sd[d->serial]) {
+			/* regen old style SCCS inc and excl lists */
+			graph_symdiff(d, PARENT(s, d), slist, sd, 0);
+		}
+		return;
+	}
 
 	/* Not a keeper, so re-wire around it */
 	debug((stderr, "RMDELTA(%s)\n", d->rev));
-	MK_GONE(sc, d);
+	MK_GONE(s, d);
 	assert(d->pserial);	/* never get rid of root node */
 	EACH(mkid[d->serial]) {
 		m = (delta *)mkid[d->serial][i];
@@ -1449,45 +1512,47 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, char ***mkid)
 		unless (m->type == 'D') continue;
 		debug((stderr, "%s gets new parent %s (was %s)\n",
 			    m->rev, d->parent->rev, d->rev));
-		m->parent = d->parent;
-		m->pserial = d->pserial;
+		symdiff_setParent(s, m, PARENT(s, d), sd);
 	}
 	if (d->serial == partition_tip) partition_tip = d->pserial;
 	return;
 }
 
 private void
-pruneEmpty(sccs *s, sccs *sb)
+pruneEmpty(sccs *s)
 {
 	int	i;
 	delta	*n;
 	u8	*slist;
 	char	***mkid;
+	ser_t	**sd;
 
-	sc = s;
-	scb = sb;
-	slist = (u8 *)calloc(sc->nextserial, sizeof(u8));
-	mkid = (char ***)calloc(sc->nextserial, sizeof(char **));
+	slist = (u8 *)calloc(s->nextserial, sizeof(u8));
+	mkid = (char ***)calloc(s->nextserial, sizeof(char **));
 	assert(slist);
 	for (n = s->table; n; n = NEXT(n)) {
-		if (n->merge) {
-			mkid[n->merge] = addLine(mkid[n->merge], n);
-		}
+		if (n->merge) mkid[n->merge] = addLine(mkid[n->merge], n);
 	}
-	for (i = 1; i < sc->nextserial; i++) {
-		unless ((n = sfind(sc, i)) && NEXT(n) && !TAG(n)) continue;
-		_pruneEmpty(sc, n, slist, mkid);
+	sd = graph_sccs2symdiff(s);
+	for (i = 1; i < s->nextserial; i++) {
+		unless ((n = sfind(s, i)) && NEXT(n) && !TAG(n)) continue;
+		_pruneEmpty(s, n, slist, sd, mkid);
 	}
 	free(slist);
-	for (n = s->table; n; n = NEXT(n)) {
-		if (mkid[n->serial]) freeLines(mkid[n->serial], 0);
+	for (i = 1; i < s->nextserial; i++) {
+		if (mkid[i]) freeLines(mkid[i], 0);
+		if (sd[i]) free(sd[i]);
 	}
+	free(mkid);
+	free(sd);
 
-	verbose((stderr, "Rebuilding Tag Graph...\n"));
-	(flags & PRUNE_NEW_TAG_GRAPH) ? rebuildTags(sc) : fixTags(sc);
-	sccs_reDup(sc);
-	sccs_newchksum(sc);
-	sccs_free(sc);
+	unless (flags & PRUNE_NO_TAG_GRAPH) {
+		verbose((stderr, "Rebuilding Tag Graph...\n"));
+		(flags & PRUNE_NEW_TAG_GRAPH) ? rebuildTags(s) : fixTags(s);
+	}
+	sccs_reDup(s);
+	sccs_newchksum(s);
+	sccs_free(s);
 }
 
 /*
