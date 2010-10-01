@@ -1,6 +1,7 @@
 #include "bkd.h"
 #include "logging.h"
 #include "progress.h"
+#include "nested.h"
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
@@ -1108,6 +1109,12 @@ sendServerInfo(int no_repo)
 			out(buf);
 		} else if (proj_isProduct(0)) {
 			out("REPOTYPE=prod\n");
+			if (nested_isPortal(0)) {
+				out("PORTAL=1\n");
+			}
+			if (nested_isGate(0)) {
+				out("GATE=1\n");
+			}
 		} else {
 			out("REPOTYPE=stand\n");
 		}

@@ -598,7 +598,7 @@ bk pull $Q ../project || {
 echo OK
 
 echo $N Pull of second one should fail ..............................$NL
-bk pull ../copy > OUT 2>&1 && {
+bk pull --unsafe ../copy > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
 	exit 1
@@ -618,7 +618,7 @@ echo junk > junk
 bk new $Q junk
 bk commit $Q -yjunk || fail
 cd ../sparse
-bk pull -q ../ponly ../copy 2>ERR && fail
+bk pull --unsafe -q ../ponly ../copy 2>ERR && fail
 cat <<EOF > WANT
 pull: Unable to resolve conflict in non-present component 'gdb'.
 pull: update aborted due to errs with 1 components.

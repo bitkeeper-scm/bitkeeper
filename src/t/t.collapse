@@ -520,6 +520,8 @@ echo $N Test attr file again but in nested this time.................$NL
 cd "$HERE"
 rm -rf project copy
 nested project
+bk gate $Q -r
+bk portal $Q -r
 # create csets in all components
 touch afile gcc/afile gdb/afile
 bk new $Q afile gcc/afile gdb/afile

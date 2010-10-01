@@ -548,6 +548,33 @@ out:
 }
 
 /*
+ * Checks to see if it's allowed to run a given command
+ */
+private int
+cmd_canRun(CMD *cmd)
+{
+	/* unknown commands are okay to run, they fall through bk.sh */
+	unless (cmd) return (1);
+	/* handle pro only commands */
+	if (cmd->pro) {
+		unless (proj_root(0)) {
+			fprintf(stderr,
+			    "%s: cannot find package root\n", prog);
+			return (0);
+		}
+		if (bk_notLicensed(0, LIC_ADM, 0)) return (0);
+	}
+
+	/* Handle restricted commands */
+	if (cmd->restricted && !bk_isSubCmd) {
+		/* error message matches shell message */
+		fprintf(stderr, "%s: command not found\n", prog);
+		return (0);
+	}
+	return (1);
+}
+
+/*
  * The commands here needed to be spawned, not execed, so command
  * logging works.
  */
@@ -570,23 +597,7 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 		fprintf(stderr, "%s is not a linkable command\n",  prog);
 		return (1);
 	}
-	if (cmd) {
-		/* handle pro only commands */
-		if (cmd->pro) {
-			unless (proj_root(0)) {
-				fprintf(stderr,
-				    "%s: cannot find package root\n", prog);
-				return (1);
-			}
-			if (bk_notLicensed(0, LIC_ADM, 0)) return (1);
-		}
-
-		/* Handle restricted commands */
-		if (cmd->restricted && !bk_isSubCmd) {
-			/* error message matches shell message */
-			cmd = 0;
-		}
-	}
+	unless (cmd_canRun(cmd)) return (1);
 	/* unknown commands fall through to bk.script */
 	switch (cmd ? cmd->type : CMD_BK_SH) {
 	    case CMD_INTERNAL:		/* handle internal command */

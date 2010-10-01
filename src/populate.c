@@ -54,6 +54,18 @@ nested_populate(nested *n, char **urls, popts *ops)
 	rc = 0;
 	EACH_STRUCT(n->comps, cp, j) {
 		if (!ops->force && cp->present && !cp->alias) {
+			if (nested_isPortal(0)) {
+				fprintf(stderr,
+				    "Cannot remove components in a portal.\n");
+				++rc;
+				break;
+			}
+			if (nested_isGate(0)) {
+				fprintf(stderr,
+				    "Cannot remove components in a gate.\n");
+				++rc;
+				break;
+			}
 			if (unpopulate_check(ops, cp)) {
 				fprintf(stderr, "%s: unable to remove %s\n",
 				    prog, cp->path);
@@ -255,10 +267,7 @@ unpopulate_check(popts *ops, comp *c)
 	char	**av;
 	char	**flist = 0;
 
-	if (nested_isPortal(0)) {
-		fprintf(stderr, "Cannot remove components in a portal.\n");
-		return (-1);
-	}
+	if (nested_isPortal(0) || nested_isGate(0)) return (-1);
 	if (chdir(c->path)) {
 		perror(c->path);
 		goto out;

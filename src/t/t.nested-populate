@@ -91,7 +91,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Populate them back from a repo that does not have them ......$NL
-bk here add $Q -@../odd even primes || fail
+bk populate $Q -@../odd even primes || fail
 cat <<EOF > WANT
 PRODUCT
 even
@@ -118,7 +118,7 @@ echo OK
 
 echo $N Show -@url is used before urllist by populate ...............$NL
 bk here rm $Q odd || fail
-bk here add -v -@../odd odd >OUT 2>&1 || fail
+bk populate -v -@../odd odd >OUT 2>&1 || fail
 grep -q 'Clone.*/odd\?' OUT || {
 	cat OUT
 	fail
@@ -126,7 +126,7 @@ grep -q 'Clone.*/odd\?' OUT || {
 echo OK
 
 echo $N Unpopulate odd...............................................$NL
-bk here rm $Q odd || {
+bk unpopulate $Q odd || {
 	echo failed
 	exit 1
 }
@@ -153,7 +153,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate even..............................................$NL
-bk here rm $Q even || {
+bk unpopulate $Q even || {
 	echo failed
 	exit 1
 }

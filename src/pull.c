@@ -679,8 +679,7 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 		goto out;
 	}
 
-	/* change the zero below to !getenv("BKD_GATE") to turn on */
-	if ((opts.safe == 1) || ((opts.safe == -1) && 0)) {
+	if ((opts.safe == 1) || ((opts.safe == -1) && !getenv("BKD_GATE"))) {
 		char	**missing = 0;
 
 		EACH_STRUCT(n->comps, c, j) {

@@ -292,6 +292,7 @@ path
 pending
 platform
 _popensystem
+populate
 port => pull
 _probekey restricted
 _progresstest
@@ -368,6 +369,7 @@ _unlink
 unlock
 uninstall
 unpark
+unpopulate
 unpull
 unwrap
 upgrade

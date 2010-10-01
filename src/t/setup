@@ -204,10 +204,11 @@ nested() {
 		_make_repo nested "$CF" ignored "$2"
 	}
 	(cd "$BK_CACHE"/nested; bk _eula -a)
-	bk clone -lq "$BK_CACHE/nested" "$1" || exit 1
+	bk clone -q "$BK_CACHE/nested" "$1" || exit 1
 	cd "$1" || exit 1
 	bk parent -qr || exit 1
 	bk portal -q . || exit 1
+	bk gate -q . || exit 1
 	rm BitKeeper/log/urllist
 }
 

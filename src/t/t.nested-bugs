@@ -24,8 +24,8 @@ echo OK
 echo $N Pull each clone and then populate gcc .......................$NL
 cd ../ws
 bk here add $Q ./gcc || fail
-bk pull $Q ../clone
-bk pull $Q ../clone2
+bk pull $Q --unsafe ../clone || fail
+bk pull $Q --unsafe ../clone2 || fail
 echo OK
 
 echo $N Roll back the merge and see if it lets us unpopulate gcc ....$NL

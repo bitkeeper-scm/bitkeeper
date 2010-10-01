@@ -37,15 +37,6 @@ __cd2product() {
 	cd "$root"
 }
 
-# Back by popular demand
-_populate() {
-	bk here add "$@"
-}
-
-_unpopulate() {
-	bk here rm "$@"
-}
-
 # faster way to get repository status
 _repocheck() {
 	V=-v
@@ -162,6 +153,52 @@ _merging() {
 
 verbose() {
 	test -z "$QUIET" && echo "$*" > /dev/tty
+}
+
+_gate() {
+	Q=""
+	RC=0
+	REMOVE=""
+	while getopts rq opt
+	do
+		case "$opt" in
+		r) REMOVE=1;;
+		q) Q='-q';;
+		*) bk help -s gate; exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	__cd2product
+	test "$REMOVE" && {
+		test "X$1" = X || {
+			bk help -s gate
+			exit 1
+		}
+		if [ -f BitKeeper/log/GATE ]
+		then	rm -f BitKeeper/log/GATE
+			qecho "This is no longer a gate"
+		else	qecho "This is not a gate"
+		fi
+		exit 0
+	}
+	test "X$1" = X && {
+		if [ -f BitKeeper/log/GATE ]
+		then	qecho "This is a gate"
+		else	qecho "This is not a gate"
+			RC=1
+		fi
+		exit $RC
+	}
+	test "$1" = "." || {
+		bk help -s gate
+		exit 1
+	}
+	if [ -f BitKeeper/log/GATE ]
+	then	qecho "This is already a gate"
+	else	touch BitKeeper/log/GATE
+		qecho "This is now a gate"
+	fi
+	exit 0
 }
 
 _portal() {

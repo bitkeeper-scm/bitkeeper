@@ -30,13 +30,14 @@ cd "$HERE"
 bk clone $Q gate project
 cd child-1
 bk parent -q ../project
+cd ../project
+bk gate $Q -r
 echo OK
 
 echo $N Pulling from gate should be unsafe...........................$NL
 cd "$HERE/child-1"
 bk here > WANT
-# Remove --unsafe when we merge with gate
-bk pull $Q --unsafe ../gate 2>ERR || fail -f ERR
+bk pull $Q ../gate 2>ERR || fail -f ERR
 bk here > GOT
 cmpfiles WANT GOT
 bk unpull $Q -f
@@ -46,7 +47,7 @@ echo OK
 
 echo $N Test pull from non-gate is safe..............................$NL
 bk here > WANT
-bk pull --safe $Q 2>ERR && fail should have failed
+bk pull $Q 2>ERR && fail should have failed
 grep -q "populated aliases are different" ERR || fail wrong error
 bk here > GOT
 cmpfiles WANT GOT
@@ -81,50 +82,48 @@ cd pulltools
 bk pull $Q --safe
 echo OK
 
-# turn these back on someday?
+echo $N Make sure we do not bring unchanged aliases..................$NL
+cd "$HERE"
+bk clone $Q -sGCC -sDOC project gcc-and-doc
+bk clone $Q -sGCC project just-gcc
+cd gcc-and-doc/gcc
+bk edit $Q afile
+echo content >afile
+bk ci -y. $Q afile
+bk commit -y. $Q
+bk -P commit -y. $Q
+cd "$HERE/just-gcc"
+bk pull --safe $Q ../gcc-and-doc 2>ERR || fail
+cat >WANT <<EOF
+GCC
+PRODUCT
+EOF
+bk here > GOT
+cmpfiles WANT GOT
+echo OK
 
-# echo $N Make sure we do not bring unchanged aliases..................$NL
-# cd "$HERE"
-# bk clone $Q -sGCC -sDOC project gcc-and-doc
-# bk clone $Q -sGCC project just-gcc
-# cd gcc-and-doc/gcc
-# bk edit $Q afile
-# echo content >afile
-# bk ci -y. $Q afile
-# bk commit -y. $Q
-# bk -P commit -y. $Q
-# cd "$HERE/just-gcc"
-# bk pull --safe $Q ../gcc-and-doc 2>ERR || fail
-# cat >WANT <<EOF
-# GCC
-# PRODUCT
-# EOF
-# bk here > GOT
-# cmpfiles WANT GOT
-# echo OK
-
-# echo $N Demo that bug that I told Rick about.........................$NL
-# cd "$HERE"
-# bk clone $Q -sGCC project repo-1
-# bk clone $Q -sGDB project repo-2
-# # make a cset in gcc
-# cd repo-1/gcc
-# bk edit $Q afile
-# echo more stuff > afile
-# bk ci $Q -y. afile
-# bk commit $Q -y.
-# bk -P commit $Q -y.
-# # change the meaning of GCC in repo-2
-# cd "$HERE/repo-2"
-# bk alias add $Q GCC gdb
-# bk push $Q ../project
-# bk here set $Q PRODUCT
-# # now pull GCC, note there are no changes to gdb in remote
-# bk pull $Q --safe ../repo-1 2>ERR || fail -f ERR
-# cat >WANT <<EOF
-# GCC
-# PRODUCT
-# EOF
-# bk here > GOT
-# cmpfiles WANT GOT
-# echo OK
+echo $N Demo that bug that I told Rick about.........................$NL
+cd "$HERE"
+bk clone $Q -sGCC project repo-1
+bk clone $Q -sGDB project repo-2
+# make a cset in gcc
+cd repo-1/gcc
+bk edit $Q afile
+echo more stuff > afile
+bk ci $Q -y. afile
+bk commit $Q -y.
+bk -P commit $Q -y.
+# change the meaning of GCC in repo-2
+cd "$HERE/repo-2"
+bk alias add $Q GCC gdb
+bk push $Q ../project
+bk here set $Q PRODUCT
+# now pull GCC, note there are no changes to gdb in remote
+bk pull $Q --safe ../repo-1 2>ERR && fail -f ERR
+cat <<EOF >WANT
+pull: failing because populated aliases are different between remote and local.
+Please run bk populate to add the following aliases:
+  GCC
+EOF
+cmpfiles WANT ERR
+echo OK

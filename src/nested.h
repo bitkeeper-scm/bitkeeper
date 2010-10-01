@@ -188,6 +188,7 @@ char	**nested_lockers(project *p, int listStale, int removeStale);
 void	nested_printLockers(project *p, FILE *out);
 void	nested_updateIdcache(project *comp);
 int	nested_isPortal(project *comp);
+int	nested_isGate(project *comp);
 void	freeNlock(void *nl);
 
 /* populate.c */

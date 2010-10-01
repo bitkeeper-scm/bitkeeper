@@ -124,6 +124,7 @@ CNT=9
 echo $N "Count the inits for a 'bk clone' ($CNT)........................."$NL
 cd "$HERE"
 nested nest
+bk gate $Q -r
 rm "$FILE"
 bk clone $Q . ../nest2 || exit 1
 check_cnt

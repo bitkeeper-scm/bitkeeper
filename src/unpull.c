@@ -3,6 +3,7 @@
  */
 #include "system.h"
 #include "sccs.h"
+#include "nested.h"
 
 private int	unpull(int force, int quiet, char *patch);
 
@@ -18,6 +19,19 @@ unpull_main(int ac, char **av)
 		    case 'q': quiet = 1; break;			/* doc 2.0 */
 		    case 's': patch = 0; break;
 		    default: bk_badArg(c, av);
+		}
+	}
+	if (proj_isComponent(0)) {
+		if (nested_isGate(0)) {
+gaterr:			fprintf(stderr, "unpull: not allowed in a gate\n");
+			return (1);
+		}
+	} else if (proj_isProduct(0)) {
+		if (nested_isGate(0)) goto gaterr;
+		if (nested_isPortal(0)) {
+			fprintf(stderr,
+			    "unpull: not allowed for product in a portal\n");
+			return (1);
 		}
 	}
 	if (proj_isComponent(0) && (!av[optind] || !streq(av[optind], "."))) {

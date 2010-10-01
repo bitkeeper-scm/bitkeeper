@@ -1686,9 +1686,21 @@ nested_updateIdcache(project *comp)
 int
 nested_isPortal(project *comp)
 {
-	project	*prod = proj_product(comp);
+	project	*prod;
 	char	buf[MAXPATH];
 
+	prod = proj_isComponent(comp) ? proj_product(comp): comp;
 	concat_path(buf, proj_root(prod), "BitKeeper/log/PORTAL");
+	return (exists(buf));
+}
+
+int
+nested_isGate(project *comp)
+{
+	project *prod;
+	char	buf[MAXPATH];
+
+	prod = proj_isComponent(comp) ? proj_product(comp): comp;
+	concat_path(buf, proj_root(prod), "BitKeeper/log/GATE");
 	return (exists(buf));
 }

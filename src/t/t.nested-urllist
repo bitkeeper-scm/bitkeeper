@@ -348,7 +348,7 @@ bk -P commit $Q -y'add new2' || fail 6
 cd ../../cloneC
 bk here where gdb | grep -q "$HERE/clone1" || fail 7
 bk here where gdb | grep -q "$HERE/cloneD" || fail 8
-bk pull $Q ../cloneE || fail 9
+bk pull --unsafe $Q ../cloneE || fail 9
 bk here where gdb | grep -q "$HERE/cloneE" || fail 10
 bk here where gdb | grep -q "$HERE/cloneD" || fail 11
 bk here where gdb | grep -q "$HERE/clone1" || fail 12
