@@ -25,6 +25,7 @@ private struct {
 	u32	tsearch:1;	/* pattern applies to tags instead of cmts */
 	u32	BAM:1;		/* only include BAM files */
 	u32	filt:1;		/* output limited by filenames */
+	u32	chgurl:1;	/* running 'bk changes URL', ignore local */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
@@ -284,6 +285,7 @@ changes_main(int ac, char **av)
 		}
 		pid2 = mkpager();
 		putenv("BK_PAGER=cat");
+		opts.chgurl = 1; /* ignore local repo */
 		EACH(urls) {
 			if (opts.urls) {
 				printf("==== changes %s ====\n", urls[i]);
@@ -1439,9 +1441,11 @@ _doit_remote(char **av, char *url)
 	char 	key_list[MAXPATH] = "";
 	char	*tmp;
 	int	rc;
+	u32	flags = REMOTE_BKDURL;
 	remote	*r;
 
-	r = remote_parse(url, REMOTE_BKDURL | REMOTE_ROOTKEY);
+	unless (opts.chgurl) flags |= REMOTE_ROOTKEY;
+	r = remote_parse(url, flags);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);
 		return (1);

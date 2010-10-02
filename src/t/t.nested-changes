@@ -807,3 +807,12 @@ bk changes -qRL "$HERE/nn" 2>ERR && fail -f ERR should have failed
 grep -q "You are trying to synchronize with an unrelated package." ERR \
 	|| fail -f ERR wrong error msg
 echo OK
+
+echo $N Try changes URL while in component...........................$NL
+cd gcc
+bk changes -qr+ "$HERE"/project > "$HERE"/OUT || fail
+cd "$HERE"/project
+bk changes -r+ > ../WANT
+cd ..
+cmpfiles OUT WANT
+echo OK
