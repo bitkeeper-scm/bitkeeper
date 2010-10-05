@@ -5,7 +5,7 @@ test -d gcc/BitKeeper/tmp -a -d gdb/BitKeeper/tmp || exit 1
 cd ..
 commercial nm
 cd "$HERE/project"
-bk attach $Q ../nm gcc/nm
+bk attach --force $Q ../nm gcc/nm
 echo OK
 
 echo $N Check that we see all components ............................$NL
@@ -80,9 +80,12 @@ cd "$HERE"
 rm -fr project copy
 nested project
 cd gcc
+# Note: fresh_commercial will do a setup which will automatically attach.
+# and commercial will just copy in the bits with no attach.  This matters
+# for having the attach -N work or fail.
 commercial deepnest
 cd ..
-bk attach $Q -N deepnest
+bk attach --force $Q -N deepnest
 cd ../..
 bk clone $Q -shere project copy
 cd project/gcc

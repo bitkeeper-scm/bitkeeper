@@ -15,6 +15,8 @@ private	struct {
 	u32	no_lclone:1;		/* --no-hardlinks */
 	u32	nocommit:1;		/* -C: do not commit (attach cmd) */
 	u32	attach:1;		/* is attach command? */
+	u32	attach_only:1;		/* -N: just do the attach, no clone */
+	u32	force:1;		/* --force: allow dups in attach */
 	u32	detach:1;		/* is detach command? */
 	u32	link:1;			/* lclone-mode */
 	u32	product:1;		/* is product? */
@@ -52,7 +54,7 @@ clone_main(int ac, char **av)
 {
 	int	c;
 	clonerc	clonerc = 0;
-	int	attach_only = 0, gzip = 6;
+	int	gzip = 6;
 	char	**envVar = 0;
 	remote 	*r = 0, *l = 0;
 	longopt	lopts[] = {
@@ -61,6 +63,7 @@ clone_main(int ac, char **av)
 		{ "hide-sccs-dirs", 301 },	/* move sfiles to .bk */
 		{ "sfiotitle;", 302 },		/* title for sfio */
 		{ "no-hardlinks", 303 },	/* never hardlink repo */
+		{ "force", 304 },		/* force attach dups */
 		{ 0, 0 }
 	};
 
@@ -68,7 +71,7 @@ clone_main(int ac, char **av)
 	opts->remap = -1;
 	if (streq(prog, "attach")) opts->attach = 1;
 	if (streq(prog, "detach")) opts->detach = 1;
-	unless (win32()) opts->link = 1;		/* try lclone by default */
+	unless (win32()) opts->link = 1;	    /* try lclone by default */
 	while ((c = getopt(ac, av, "B;CdE:j;lNpP;qr;s;vw|z|", lopts)) != -1) {
 		switch (c) {
 		    case 'B': bam_url = optarg; break;
@@ -89,8 +92,8 @@ clone_main(int ac, char **av)
 				opts->parallel = PARALLEL_MAX;	/* cap it */
 			}
 			break;
-		    case 'l': opts->link = 1; break;	      /* still works on win32 */
-		    case 'N': attach_only = 1; break;		/* undoc 2.0 */
+		    case 'l': opts->link = 1; break;/* still works on win32 */
+		    case 'N': opts->attach_only = 1; break;	/* undoc */
 		    case 'p': opts->no_parent = 1; break;
 		    case 'P': opts->comppath = optarg; break;
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
@@ -118,15 +121,18 @@ clone_main(int ac, char **av)
 		    case 303: /* --no-hardlinks */
 			opts->no_lclone = 1;
 			break;
+		    case 304: /* --force */
+			opts->force = 1;
+			break;
 		    default: bk_badArg(c, av);
 	    	}
 	}
 	if (aliasdb_caret(opts->aliases)) exit(CLONE_ERROR);
-	if (attach_only && !opts->attach) {
+	if (opts->attach_only && !opts->attach) {
 		fprintf(stderr, "%s: -N valid only in attach command\n", av[0]);
 		exit(CLONE_ERROR);
 	}
-	if (attach_only && (bam_url || opts->no_parent ||
+	if (opts->attach_only && (bam_url || opts->no_parent ||
 			    opts->rev || opts->aliases)) {
 		fprintf(stderr, "attach: -N illegal with other options\n");
 		exit(CLONE_ERROR);
@@ -156,7 +162,7 @@ clone_main(int ac, char **av)
 	opts->from = strdup(av[optind]);
 	if (av[optind + 1]) {
 		if (av[optind + 2]) usage();
-		if (attach_only) {
+		if (opts->attach_only) {
 			fprintf(stderr,
 			    "attach: only one repo valid with -N\n");
 			exit(CLONE_ERROR);
@@ -180,7 +186,7 @@ clone_main(int ac, char **av)
 	unless (r = remote_parse(opts->from, REMOTE_BKDURL)) usage();
 	r->gzip_in = gzip;
 	if (r->host) {
-		if (opts->detach || attach_only) {
+		if (opts->detach || opts->attach_only) {
 			fprintf(stderr, "%s: source must be local\n", av[0]);
 			return (CLONE_ERROR);
 		}
@@ -256,7 +262,7 @@ clone_main(int ac, char **av)
 	if (opts->attach) {
 		char	*dir;
 
-		if (attach_only) {
+		if (opts->attach_only) {
 			dir = aprintf("%s/..", r->path);
 		} else {
 			dir = strdup(l ? l->path : opts->to);
@@ -264,7 +270,7 @@ clone_main(int ac, char **av)
 		/* chkAttach frees 'dir' */
 		if (chkAttach(dir)) return (CLONE_ERROR);
 	}
-	if (attach_only) {
+	if (opts->attach_only) {
 		assert(r->path);
 		if (chdir(r->path)) {
 			fprintf(stderr, "attach: not a BitKeeper repository\n");
@@ -304,15 +310,47 @@ chkAttach(char *dir)
 {
 	nested	*n = 0;
 	comp	*cp;
+	char	*p, *syncroot = 0, *reldir = 0;
 	int	i, inprod = 0;
 	int	ret = 1;
+	int	already = 0;
 	project	*prod = 0, *proj = 0;
+	sccs	*s;
+	char	key[MAXKEY];
 
 	/* note: allowing under a standalone inside a product */
 	unless ((proj = proj_init(dir)) && (prod = proj_product(proj))) {
 		fprintf(stderr, "attach: not in a product\n");
 		goto err;
 	}
+
+	/*
+	 * Try and come up with a reasonable pathname for error messages.
+	 * This is a little bogus because we can be in a subdir or anywhere
+	 * and the path is relative to the product.
+	 * It sort of makes sense because the thing that we'll compare
+	 * against is also product relative.
+	 */
+	if (opts->attach_only) {
+		/* /build/.regression lm/sandbox/project/gcc/deepnest/.. */
+		p = dirname_alloc(dir);
+		reldir = proj_relpath(prod, p);
+		free(p);
+	} else {
+		reldir = proj_relpath(prod, dir);
+	}
+
+	/*
+	 * Get the remote's syncroot, can't be used already.
+	 */
+	unless (opts->force) {
+		p = aprintf(
+		   "bk changes -qnd':SYNCROOT:' -r1.0 '%s'", opts->from);
+		syncroot = backtick(p);
+		free(p);
+		unless (syncroot && isKey(syncroot)) goto err;
+	}
+
 	if (chdir(proj_root(prod))) {
 		perror(proj_root(prod));
 		goto err;
@@ -325,6 +363,7 @@ chkAttach(char *dir)
 		    "See 'bk help portal'.\n");
 		goto err;
 	}
+
 	// see that it's fully populated
 	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) {
 		fprintf(stderr, "%s: nested_init failed\n");
@@ -336,7 +375,22 @@ chkAttach(char *dir)
 			    "populated. Run 'bk here set all' to fix.\n");
 			goto err;
 		}
+		if (cp->product || opts->force) continue;
+
+		// XXX - be nice to cache this in BitKeeper/log
+		p = aprintf("%s/SCCS/s.ChangeSet", cp->path);
+		s = sccs_init(p, INIT_MUSTEXIST|INIT_NOCKSUM);
+		free(p);
+		sccs_syncRoot(s, key);
+		sccs_free(s);
+		if (streq(key, syncroot)) {
+			fprintf(stderr, "%s: already attached at %s\n",
+			    reldir, cp->path);
+		    	already++;
+		}
 	}
+	if (already) goto err;
+
 	ret = 0;
 
 err:	nested_free(n);
@@ -346,6 +400,8 @@ err:	nested_free(n);
 		ret = 1;
 	}
 	free(dir);
+	if (syncroot) free(syncroot);
+	if (reldir) free(reldir);
 	return (ret);
 }
 

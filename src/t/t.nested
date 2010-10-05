@@ -42,8 +42,8 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Add some components .........................................$NL
-bk attach -C $Q ../gcc gcc || exit 1
-bk attach -C $Q ../gdb gdb || exit 1
+bk attach --force -C $Q ../gcc gcc || exit 1
+bk attach --force -C $Q ../gdb gdb || exit 1
 bk sfiles -p > GOT
 cat > WANT <<EOF
 gcc/SCCS/s.ChangeSet
@@ -138,7 +138,7 @@ cd subproduct
 bk portal $Q . || fail
 commercial comp
 cd ..
-bk attach $Q -N comp || exit 1
+bk attach --force $Q -N comp || exit 1
 cd comp
 echo comp > WANT
 bk -P sfiles -R > GOT
@@ -623,7 +623,7 @@ commercial pendingdeepnest
 cd ..
 commercial extradeepnest
 cd ..
-bk attach $Q -C -N pendingdeepnest
+bk attach --force $Q -C -N pendingdeepnest
 cd ..
 echo OK
 
@@ -1291,7 +1291,7 @@ do	bk clone -q gcc $i
 done
 cd project
 bk portal $Q .
-bk attach $Q ../A gdb/A
+bk attach --force $Q ../A gdb/A
 test -f BitKeeper/log/deep-nests || {
 	echo failed to create hints file
 	exit 1
@@ -1310,7 +1310,7 @@ grep -q gdb/A/SCCS/s.ChangeSet GOT || {
 echo OK
 
 echo $N Test that we see a nested/nested component ..................$NL
-bk attach $Q ../B gdb/A/B
+bk attach --force $Q ../B gdb/A/B
 test -f BitKeeper/log/deep-nests || {
 	echo failed to maintain hints file
 	exit 1

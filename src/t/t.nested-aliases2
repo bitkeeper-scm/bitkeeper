@@ -25,8 +25,8 @@ cd "$HERE"
 commercial man
 cd "$HERE/project"
 bk portal $Q .
-bk attach $Q ../nm gcc/nm
-bk attach $Q ../man man
+bk attach --force $Q ../nm gcc/nm
+bk attach --force $Q ../man man
 bk alias new nm ./gcc/nm
 echo OK
 
@@ -58,7 +58,7 @@ bk alias new gcc ./gcc ./gcc/nm
 cd "$HERE"
 commercial libiberty
 cd "$HERE"/project
-bk attach $Q ../libiberty gcc/libiberty
+bk attach --force $Q ../libiberty gcc/libiberty
 bk alias add gcc ./gcc/libiberty
 cd "$HERE"
 bk clone $Q -r1.8 -sgcc project proj-clone || exit 1
@@ -149,11 +149,11 @@ cd ..
 bk clone $Q project proj-clone
 cd "$HERE"/project
 bk portal $Q .
-bk attach $Q ../gcov gcc/gcov
+bk attach --force $Q ../gcov gcc/gcov
 bk alias add dev ./gcc/gcov
 cd "$HERE"/proj-clone
 bk portal $Q .
-bk attach $Q ../libcpp gcc/libcpp
+bk attach --force $Q ../libcpp gcc/libcpp
 bk alias add dev ./gcc/libcpp
 bk here add $Q dev || exit 1
 bk pull $Q ../project || exit 1
@@ -233,7 +233,7 @@ echo $N Clone deep nested globs .....................................$NL
 cd "$HERE"
 commercial deep
 cd ../proj-clone
-bk attach $Q ../deep gcc/libcpp/deep
+bk attach --force $Q ../deep gcc/libcpp/deep
 cd "$HERE"
 bk clone $Q -s'./gcc/*' bk://localhost:$P/proj-clone glob3 || {
 	echo failed 1

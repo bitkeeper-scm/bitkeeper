@@ -20,7 +20,7 @@ bk delta $Q -fyfoo foo
 bk commit $Q -yfoo
 cd ..
 nested project
-bk attach $Q -rBASE ../bash-sa bash
+bk attach --force $Q -rBASE ../bash-sa bash
 cd ..
 commercial standalone
 echo sa1 > sa_file
@@ -31,10 +31,10 @@ bk cat standalone/BitKeeper/etc/config > c
 bk setup -P -fcc project2 || fail
 cd project2
 bk portal $Q . || fail
-bk attach $Q -rBASE ../bash-sa mybash
-bk attach $Q ../standalone sa2
+bk attach --force $Q -rBASE ../bash-sa mybash
+bk attach --force $Q ../standalone sa2
 cd ../project
-bk attach $Q ../standalone sa1
+bk attach --force $Q ../standalone sa1
 cd ..
 bk clone $Q project project-copy || exit 1
 echo OK
@@ -331,7 +331,7 @@ echo $N Port csets from standalone repo to detached repo ............$NL
 cd "$HERE"
 commercial standalone-3
 cd "$HERE/project2"
-bk attach $Q ../standalone-3 sa3 || exit 1
+bk attach --force $Q ../standalone-3 sa3 || exit 1
 bk detach $Q sa3 ../detached-3 || exit 1
 # Detached should have the attach and detach csets.
 cd ../detached-3
@@ -422,9 +422,9 @@ bk edit $Q foo
 bk delta $Q -fyfoo foo
 bk commit $Q -yfoo
 cd ../project
-bk attach $Q ../branch branch
+bk attach --force $Q ../branch branch
 cd ../project2
-bk attach $Q ../branch2 branch2
+bk attach --force $Q ../branch2 branch2
 cd branch2
 bk port $Q ../../project/branch || exit 1
 cd ..
