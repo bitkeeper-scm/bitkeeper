@@ -709,6 +709,7 @@ void
 gui()
 {
 	string	f;
+	widget	w;
 	widget	top = ".citool";
 	string	tags[];
 
@@ -734,13 +735,13 @@ gui()
 	grid("columnconfigure", top, 0, weight: 1);
 
 	frame(self.w_upperF, background: gc("BG"));
-	grid(self.w_upperF, row: 0, column: 0, sticky: "ew");
+	grid(self.w_upperF, row: 0, column: 0, sticky: "nesw");
 
 	grid("rowconfigure", self.w_upperF, 0, weight: 1);
 	grid("columnconfigure", self.w_upperF, 0, weight: 1);
 
 	ScrolledWindow(self.w_fileF, background: gc("BG"), auto: "none");
-	grid(self.w_fileF, row: 0, column: 0, sticky: "ew");
+	grid(self.w_fileF, row: 0, column: 0, sticky: "nesw");
 
 	ListBox(self.w_files,
 	    background: gc("ci.listBG"),
@@ -850,6 +851,55 @@ gui()
 	bind("BK", "<Control-Shift-t>", "toggleAllNewFiles; break");
 	bind("BK", "<Control-Shift-T>", "toggleAllNewFiles; break");
 	bind("BK", "<Control-Return>", "doCommit; break");
+
+	// Navigation bindings.
+	w = self.w_diffs;
+	bind("BK", "<Home>", "scrollTextY ${w} 0 top; break");
+	bind("BK", "<End>", "scrollTextY ${w} 0 bottom; break");
+	bind("BK", "<Prior>", "scrollTextY ${w} -1 page; break");
+	bind("BK", "<Next>", "scrollTextY ${w} 1 page; break");
+	bind("BK", "<Control-u>", "scrollTextY ${w} -0.5 pages; break");
+	bind("BK", "<Control-d>", "scrollTextY ${w}  0.5 pages; break");
+
+	w = self.w_comments;
+	if (gc("aqua")) {
+		string	anchor = tk::TextAnchor(w);
+
+		bind("BK", "<Command-Shift-x>", "cutComments; break");
+		bind("BK", "<Command-Shift-X>", "cutComments; break");
+		bind("BK", "<Command-Shift-v>", "pasteComments; break");
+		bind("BK", "<Command-Shift-V>", "pasteComments; break");
+
+		bind(w, "<Command-a>", "%W tag add sel 1.0 end; break");
+		bind(w, "<Command-Up>", "%W mark set insert 1.0; break");
+		bind(w, "<Command-Down>", "%W mark set insert end; break");
+		bind(w, "<Command-Left>",
+		    "%W mark set insert {insert display linestart}; break");
+		bind(w, "<Command-Right>",
+		    "%W mark set insert {insert display lineend}; break");
+		bind(w, "<Command-Down>", "%W mark set insert end; break");
+		bind(w, "<Command-Shift-Up>", "%W mark set ${anchor} insert;"
+		    . bind("Text", "<Control-Shift-Key-Home>") . "; break");
+		bind(w, "<Command-Shift-Down>", "%W mark set ${anchor} insert;"
+		    . bind("Text", "<Control-Shift-Key-End>") . "; break");
+		bind(w, "<Command-Shift-Left>",
+		    "%W tag add sel {insert display linestart} insert;"
+		    "%W mark set insert {insert display linestart}; break");
+		bind(w, "<Command-Shift-Right>",
+		    "%W tag add sel insert {insert display lineend};"
+		    "%W mark set insert {insert display lineend}; break");
+		bind(w, "<Command-BackSpace>",
+		    "%W delete {insert display linestart + 1 char} insert;"
+		    "break");
+	} else {
+		bind(w, "<Control-a>", "%W tag add sel 1.0 end; break");
+	}
+
+	if (gc("ci.compat_4x")) {
+		w = self.w_diffs;
+		bind("BK", "<Shift-Up>", "scrollTextY ${w} -1 unit; break");
+		bind("BK", "<Shift-Down>", "scrollTextY ${w} 1 unit; break");
+	}
 
 	bk_initGui();
 	updateButtons();

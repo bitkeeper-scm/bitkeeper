@@ -48,6 +48,8 @@ proc getConfig {prog} \
 	set _d(warnColor) $YELLOW		;# error messages
 
 	set _d(quit)	Control-q	;# binding to exit tool
+	set _d(compat_4x) 0		;# maintain compatibility with 4x
+					;# quirky bindings
 
 	set _d(bug.popupBG) $BLUE
 	set _d(support.popupBG) $BLUE

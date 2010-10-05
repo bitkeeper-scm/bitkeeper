@@ -146,7 +146,7 @@ case when there are no comments in the window and you press the
 .Q checkin
 button.
 .SH "KEYBOARD BINDINGS"
-.TP \fBShift-MouseWheel\fPn
+.TP "Control-Shift-t"
 .B Home
 Scroll to the start of the differences
 .tp
@@ -159,21 +159,22 @@ Scroll the differences up 1 screen
 .B PageDown
 Scroll the differences down 1 screen
 .tp
-.B Shift-DownArrow
-Scroll the differences down 1 line
+.B #BKMOD#-c
+Copy the selected text in the comments window to the clipboard.
 .tp
-.B Shift-UpArrow
-Scroll the differences up 1 line
+.B #BKMOD#-v
+Paste the contents of the clipboard to the comments window.
 .tp
-.B Control-c
-Copy the contents of the comments window to the cut buffer.
+.B #BKMOD#-x
+Cut the selected text in the comments window to the clipboard.
 .tp
-.B Control-x
-Delete the contents of the comments window, saving in the cut buffer.
+.B #BKMOD#-Shift-x
+Delete the contents of the comments window and save them in the citool
+pasteboard.
 .tp
-.B Control-v
-Paste the contents of the cut buffer into the comments window and
-advance to the next file.
+.B #BKMOD#-Shift-v
+Paste the contents of the citool pasteboard into the comments window,
+completely replacing any existing comments, and advance to the next file.
 .tp
 .B Middle-Button
 On Unix, this will paste the X11 selection buffer into the comments window.
@@ -191,7 +192,7 @@ Rerun the diffs in case an external program has changed the file.
 Toggle include/exclude state and/or add/don't add state.  See the text
 about include/exclude and new files.
 .tp
-.B Control-T
+.B Control-Shift-t
 Toggle all new files into or out off the changeset. 
 .tp
 .B Control-Enter
@@ -199,7 +200,7 @@ Do the commit. Same as clicking on the
 .Q Commit
 button.
 .tp
-.B Control-q
+.B #BKMOD#-q
 Same as clicking the
 .Q [Quit]
 button.
@@ -238,10 +239,12 @@ There are a series of buttons on the right.  They perform the following
 functions:
 .TP \fBShift-MouseWheel\fPn
 .B [Cut comments]
-takes the contents of the current comment window and saves them in a buffer.
+deletes the contents of the current comment window and saves them in the
+clipboard.
 .tp
 .B [Paste comments]
-pastes comments saved by the previous button, overwriting any existing comments.
+paste the contents of the clipboard into the comments window, completely
+replacing any existing comments, and advance to the next file.
 .tp
 .B [Commit]
 displays all comments in the differences window and asks if you want to commit.
