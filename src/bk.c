@@ -58,7 +58,7 @@ main(int volatile ac, char **av, char **env)
 	int	i, c, ret;
 	int	is_bk = 0, dashr = 0, remote = 0;
 	int	dashA = 0, dashU = 0, headers = 0;
-	int	dashs = 0;
+	int	dashs = 0, dashrdir = 0;
 	int	from_iterator = 0;
 	char	*csp, *p, *locking = 0;
 	char	*todir = 0;
@@ -250,6 +250,7 @@ baddir:						fprintf(stderr,
 						    "-r<dir> allowed\n");
 						return (1);
 					}
+					dashrdir = 1;
 					todir = optarg;
 				}
 				break;
@@ -293,14 +294,25 @@ baddir:						fprintf(stderr,
 			fprintf(stderr, "bk: -A may not be combined with -r\n");
 			return (1);
 		}
+		if (dashs && dashrdir) {
+			fprintf(stderr,
+			   "bk: -s may not be combined with -r<dir>\n");
+			return (1);
+		}
 		if (todir && toroot) {
 			fprintf(stderr,
 			    "bk: --cd/-rDIR not allowed with -R or -P\n");
 			return (1);
 		}
 		/* -r implies cd2root unless combined with --cd */
-		if (dashr && !todir) toroot |= 1;
+		if (dashr && !dashs && !todir) toroot |= 1;
 		if (dashU) dashA = 1; /* from here on only dashA matters */
+
+		if (toroot && dashs && !dashA) {
+			fprintf(stderr,
+			    "bk: -R/-P not allowed with -s\n");
+			return (1);
+		}
 		if (dashA) sopts = addLine(sopts, strdup("-g"));
 
 		if (av[optind]) {
@@ -350,18 +362,28 @@ baddir:						fprintf(stderr,
 		if ((dashA || dashs) && !proj_isEnsemble(0)) {
 			/*
 			 * Downgrade to be compat in standalone trees.
-			 * bk -A => bk -gr
-			 * bk -U => bk -gUr
+			 * bk -A => bk -gr, but with cwd relative paths
+			 * bk -U => bk -gUr, but with cwd relative paths
 			 * bk -sHERE -A => bk -r
 			 */
-			if (dashA) dashr = 1;
+			if (dashA) {
+				dashr = 1;
+				sopts = addLine(sopts,
+				   aprintf("--relpath=%s", start_cwd));
+			}
 			dashs = 0;
 
-			sopts = addLine(sopts,
-			   aprintf("--relpath=%s", start_cwd));
-
-			// -s|-sHERE|-s.|-s^PRODUCT is fine.
-			// XXX - we don't look.
+			// -s|-sHERE|-s. is fine.
+			EACH(aliases) {
+				unless (streq(aliases[i], ".") ||
+				    strieq(aliases[i], "HERE")) {
+					fprintf(stderr,
+					    "bk -s: illegal alias used in "
+					    "traditional repossitory:\n\t%s\n",
+					    aliases[i]);
+					return (1);
+				}
+			}
 			freeLines(aliases, free);
 			aliases = 0;
 		}
