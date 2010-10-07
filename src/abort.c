@@ -215,7 +215,7 @@ abortComponents(int leavepatch, int quiet)
 		goto out;
 	}
 	if (chdir(RESYNC2ROOT)) perror(RESYNC2ROOT);
-	unless (n = nested_init(s, 0, csets_in, NESTED_PULL)) {
+	unless (n = nested_init(s, 0, csets_in, NESTED_PULL|NESTED_FIXIDCACHE)) {
 		errors++;
 		error("nested_init failed\n");
 		goto out;

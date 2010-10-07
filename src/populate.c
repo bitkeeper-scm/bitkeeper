@@ -236,7 +236,7 @@ again:		if (url = locateComp(ops, cp, 0)) {
 	}
 
 	/* do consistency check at end */
-	nested_writeHere(n);
+	unless (ops->leaveHERE) nested_writeHere(n);
 	if (ops->runcheck) {
 		rc |= run_check(ops->verbose,
 		    checkfiles, ops->quiet ? 0 : "-v", 0);

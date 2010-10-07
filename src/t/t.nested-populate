@@ -669,3 +669,19 @@ bk here rm $Q -f gcc
 test -d gcc && fail
 echo OK
 
+echo $N Test populate through a pull.................................$NL
+cd "$HERE"
+nested pull-test
+bk alias set $Q GCC gcc
+bk alias set $Q GDB gdb
+cd "$HERE"
+bk clone $Q -sGCC pull-test pull-repo1
+bk clone $Q -sGCC pull-test pull-repo2
+cd pull-repo1
+bk alias set $Q GCC gcc gdb
+bk here set $Q gcc
+bk comps -h | grep -q gdb && fail
+cd ../pull-repo2
+bk pull $Q ../pull-repo1 2>ERR || fail -f ERR should have used populate
+bk comps -h | grep -q gdb || fail
+echo OK

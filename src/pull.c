@@ -619,6 +619,8 @@ private int
 pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 {
 	char	*url;
+	char	**urls = 0;
+	popts	popts = {0};
 	char	**vp;
 	sccs	*s = 0;
 	char	**revs = 0;
@@ -645,7 +647,7 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 		urllist = hash_new(HASH_MEMHASH);
 	}
 	/* enable if we use rmt_urllist */
-	//urllist_normalize(rmt_urllist, url);
+	urllist_normalize(rmt_urllist, url);
 
 	/*
 	 * Now takepatch should have merged the aliases file in the RESYNC
@@ -718,17 +720,15 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	 *  c->new	   comp created in this range of csets (do clone)
 	 *  c->localchanges   comp has local csets
 	 */
-	opts.n = 0;
+	opts.n = 1;		/* for product */
 	EACH_STRUCT(n->comps, c, i) {
-		if ((c->product || c->included) && c->alias) {
-			opts.n++;
-		}
 		if (c->product) continue;
 		if (c->included) {
 			/* this component is included in pull */
 			if (c->alias) {
+				unless (c->new) opts.n++;
 				/* The local will need this component */
-				if (!c->remotePresent) {
+				if (!c->remotePresent && !c->new) {
 					/* they don't have the data to send */
 
 					// XXX we can fix this
@@ -736,101 +736,53 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 					    "pull: %s is missing in %s\n",
 					    c->path, url);
 					++errs;
-				} else if (!c->present) {
-					if (c->localchanges) goto npmerge;
-					/* we don't have it currently */
-					unless (c->new) c->new = 1;
-				} else if (c->localchanges) {
-					/* we will merge this component */
-
-					/* no one else can have the merge */
-					urllist_rmURL(urllist, c->rootkey, 0);
-				} else {
-					/*
-					 * remember where we fetched
-					 * this and invalidate any
-					 * other URLs saved for this
-					 * component.
-					 */
-					urllist_rmURL(urllist, c->rootkey, 0);
-					urllist_addURL(urllist,
-					    c->rootkey, url);
 				}
 			} else {
 				/* we don't want this component */
-				if (c->present) {
-					/* but have it anyway */
+				if (c->localchanges) {
+					/* merge in gone component */
 					fprintf(stderr,
-					    "pull: %s shouldn't be here.\n",
-					    c->path);
-					++errs;
-				} else if (c->localchanges) {
-					/* merge in non-present component */
-npmerge:				fprintf(stderr,
 					    "%s: Unable to resolve conflict "
 					    "in non-present component '%s'.\n",
 					    prog, c->path);
 					++errs;
-				} else {
-					/*
-					 * remember where we fetched
-					 * this and invalidate any
-					 * other URLs saved for this
-					 * component.
-					 */
-					urllist_rmURL(urllist, c->rootkey, 0);
-					urllist_addURL(urllist,
-					    c->rootkey, url);
 				}
 			}
-			if (c->new) {
+		}
+		/* now update the urllist */
+		unless (c->localchanges) {
+			if (c->included) {
 				/*
-				 * Since we will clone, make sure the
-				 * destination namespace is not taken.
+				 * We are updating this component so
+				 * discard any existing saved URLs
 				 */
-				if (exists(c->path) &&
-				    !nested_emptyDir(n, c->path)) {
-					fprintf(stderr, "pull: %s not empty, "
-					    "clone failed\n", c->path);
-					++errs;
-				}
+				urllist_rmURL(urllist, c->rootkey, 0);
 			}
-		} else {
-			/* not included in pull */
-
-			/*
-			 * If the remote side has a component and we
-			 * don't have any local work in that
-			 * component, then they become a new source
-			 * for that componet.  Doesn't matter if we
-			 * have it populated or not.
-			 */
-			if (c->remotePresent && !c->localchanges) {
+			if (c->remotePresent) {
+				/*
+				 * If the remote side has a component
+				 * and we don't have any local work in
+				 * that component, then they become a
+				 * new source for that componet.
+				 * Doesn't matter if we have it
+				 * populated or not.
+				 */
 				urllist_addURL(urllist, c->rootkey, url);
 			}
+			/* now add any URL's remembered by the remote side */
+			if (rmt_urllist &&
+			    hash_fetchStr(rmt_urllist, c->rootkey)) {
+				char	*new;
 
-			if (c->alias && !c->present) {
-				/* we don't have it, but need it */
-				if (c->remotePresent) {
-					/* they do, so force a clone */
-					c->new = 1;
-					c->included = 1;
+				if (hash_fetchStr(urllist, c->rootkey)) {
+					new = aprintf("%s\n%s",
+						urllist->vptr,
+						rmt_urllist->vptr);
 				} else {
-					/* need it */
-					/* can try populate */
-					// XXX we can fix this
-					fprintf(stderr,
-					    "pull: %s is missing in %s\n",
-					    c->path, url);
-					++errs;
+					new = strdup(rmt_urllist->vptr);
 				}
-			} else if (!c->alias && c->present) {
-				/* We have a component that shouldn't be here */
-				/* try unpopulate */
-				fprintf(stderr,
-				    "pull: %s shouldn't be here.\n",
-				    c->path);
-				++errs;
+				hash_storeStr(urllist, c->rootkey, new);
+				free(new);
 			}
 		}
 	}
@@ -841,54 +793,68 @@ npmerge:				fprintf(stderr,
 		rc = 1;
 		goto out;
 	}
-
 	urllist_write(urllist);
 	/*
 	 * We are about to populate new components so clear all
 	 * mappings of directories to the product.
 	 */
 	proj_reset(0);
+
+	/*
+	 * Do the populates first (no merges there)
+	 */
+	popts.comps = opts.n;
+	popts.quiet = opts.quiet;
+	popts.verbose = opts.verbose;
+	popts.runcheck = 0;	/* we'll check after pull */
+	/*
+	 * Even though we are populating, there is no change to
+	 * the HERE file.  Just leave it as it is.
+	 */
+	popts.leaveHERE = 1;
+
+	/*
+	 * Remember which components we populated so we don't try
+	 * to pull them in the next loop.
+	 */
+	EACH_STRUCT(n->comps, c, j) {
+		c->remotePresent = 0; /* populate reuses this */
+		if (c->alias && !c->present) c->new = 1;
+	}
+	if (nested_populate(n, 0, &popts)) {
+		fprintf(stderr,
+		    "pull: problem populating components.\n");
+		goto out;
+	}
+
 	EACH_STRUCT(n->comps, c, j) {
 		proj_cd2product();
 		if (c->product || !c->included || !c->alias) continue;
+		if (c->new) continue; /* fetched by nested_populate() */
 		if (opts.verbose) {
 			printf("#### %s ####\n", c->path);
 			fflush(stdout);
 		}
 		vp = addLine(0, strdup("bk"));
-		if (c->new) {
-			vp = addLine(vp, strdup("clone"));
-			vp = addLine(vp,
-			    aprintf("--sfiotitle=%d/%d %s",
-			    ++which, opts.n, c->path));
-			EACH(opts.av_clone) {
-				vp = addLine(vp, strdup(opts.av_clone[i]));
-			}
-			vp = addLine(vp, strdup("-p"));
-			vp = addLine(vp,
-			    aprintf("-P%d/%d %s", which, opts.n, c->path));
-		} else {
-			vp = addLine(vp,
-			    aprintf("--title=%d/%d %s",
-			    ++which, opts.n, c->path));
-			if (chdir(c->path)) {
-				fprintf(stderr, "Could not chdir to "
-				    " component '%s'\n", c->path);
-				fprintf(stderr, "pull: update aborted.\n");
-				rc = 1;
-				break;
-			}
-			vp = addLine(vp, strdup("pull"));
-			EACH(opts.av_pull) {
-				vp = addLine(vp, strdup(opts.av_pull[i]));
-			}
+		vp = addLine(vp,
+		    aprintf("--title=%d/%d %s",
+			++which, opts.n, c->path));
+		if (chdir(c->path)) {
+			fprintf(stderr, "Could not chdir to "
+			    " component '%s'\n", c->path);
+			fprintf(stderr, "pull: update aborted.\n");
+			rc = 1;
+			break;
+		}
+		vp = addLine(vp, strdup("pull"));
+		EACH(opts.av_pull) {
+			vp = addLine(vp, strdup(opts.av_pull[i]));
 		}
 		vp = addLine(vp, aprintf("-r%s", c->deltakey));
 
 		/* calculate url to component */
 		hash_storeStr(r->params, "ROOTKEY", c->rootkey);
 		vp = addLine(vp, remote_unparse(r));
-		if (c->new) vp = addLine(vp, strdup(c->path));
 		vp = addLine(vp, 0);
 		if (rc = spawnvp(_P_WAIT, "bk", &vp[1])) {
 			fprintf(stderr, "Pulling %s failed %x\n", c->path, rc);
@@ -905,6 +871,7 @@ npmerge:				fprintf(stderr,
 	}
 	proj_cd2product();
 out:	free(url);
+	freeLines(urls, 0);
 	sccs_free(s);
 	nested_free(n);
 	STOP_TRANSACTION();
