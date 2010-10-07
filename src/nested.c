@@ -1114,8 +1114,13 @@ nested_rmcomp(nested *n, comp *c)
 	}
 	proj_reset(0);
 
+	/*
+	 * This only works when the rest of the component has been
+	 * removed and .bk/path/to/deepnest remains.
+	 * Otherwise bk can't even see .bk and won't remove it.
+	 */
 	concat_path(buf, c->path, ".bk");
-	rmdir(buf);
+	rmtree(buf);
 	return (ret);
 }
 

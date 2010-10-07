@@ -120,3 +120,21 @@ bk -r check -ac || exit 1
 bk changes -vr+ > WANT
 checkfiles WANT GOT
 echo OK
+
+echo $N Show that we can unpopulate and repopulate under deep .......$NL
+mkdir src
+cd src
+bk setup -f gui || fail
+mkdir gui/tcltk
+cd gui/tcltk
+echo hi > file
+bk new $Q file || fail
+bk commit $Q -yfile
+bk setup -f tk || fail
+bk -P commit $Q -ywrap || fail
+cd "$HERE"
+bk clone $Q -s./src/gui -s./src/gui/tcltk/tk project copy2 || fail
+cd copy2
+bk unpopulate $Q ./src/gui || fail
+bk populate $Q ./src/gui || fail
+echo OK
