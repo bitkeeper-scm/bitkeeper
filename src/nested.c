@@ -1428,11 +1428,12 @@ urllist_check(nested *n, u32 flags, char **urls)
 		}
 		/*
 		 * We have 4 possible exit status values to consider from
-		 * havekeys:
+		 * havekeys (see comment before remote_bk() for more info):
 		 *  0   the connection worked and we captured the data
 		 *  16  we connected to the bkd fine, but the repository
 		 *      is not there.  This URL is bogus and can be ignored.
 		 *  8   The bkd_connect() failed
+		 *  33  The connection was to myself
 		 *  other  Another failure.
 		 *
 		 */
@@ -1441,6 +1442,9 @@ urllist_check(nested *n, u32 flags, char **urls)
 		if (rc == 16) {
 			verbose((stderr, "repo gone\n"));
 			rc = 0;		/* no repo at that pathname? */
+		} else if (rc == 33) {
+			verbose((stderr, "link to myself\n"));
+			rc = 0;		/* remove this URL */
 		} else if (rc == 8) {
 			verbose((stderr, "connect failure\n"));
 			if (flags & URLLIST_TRIM_NOCONNECT) rc = 0;

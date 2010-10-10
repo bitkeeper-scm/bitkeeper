@@ -89,8 +89,9 @@ checkfiles "$HERE"/ALL "$HERE"/GOT
 echo OK
 
 echo $N Test bk -@ -r with a subdirectory ...........................$NL
-bk -q -@"$HERE"/project -grsrc > "$HERE"/GOT
-checkfiles "$HERE"/SRC "$HERE"/GOT
+bk -q -@"$HERE"/project -grsrc 2>ERR && fail -f ERR should fail
+echo "bk: --cd not allowed with -@<URL>" > WANT
+cmpfiles ERR WANT
 echo OK
 
 echo $N Test input fed on stdin .....................................$NL
@@ -159,7 +160,7 @@ echo OK
 
 echo $N Test expected argument parsing ..............................$NL
 mkdir me@foo
-bk -q@. -rme@foo/.. _debugargs 1 2 '2 2' -q 'jj e' -@jj > GOT
+bk -q@. -r _debugargs 1 2 '2 2' -q 'jj e' -@jj > GOT || fail
 cat <<EOF > WANT
 0: _debugargs
 1: 1

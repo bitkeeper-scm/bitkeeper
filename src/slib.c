@@ -15668,7 +15668,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		} else if (proj_isProduct(s->proj)) {
 			fs("product");
 		} else if (s->proj) {
-			fs("traditional");
+			fs("standalone");
 		} else {
 			fs("SCCS");
 		}

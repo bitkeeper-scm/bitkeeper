@@ -304,6 +304,13 @@ baddir:						fprintf(stderr,
 			    "bk: --cd/-rDIR not allowed with -R or -P\n");
 			return (1);
 		}
+		if (todir && remote) {
+			/* protect from: bk --cd=/etc -xr -@URL cmd */
+			fprintf(stderr,
+			    "bk: --cd not allowed with -@<URL>\n");
+			return (1);
+		}
+
 		/* -r implies cd2root unless combined with --cd */
 		if (dashr && !dashs && !todir) toroot |= 1;
 		if (dashU) dashA = 1; /* from here on only dashA matters */

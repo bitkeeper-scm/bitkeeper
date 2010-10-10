@@ -31,6 +31,7 @@ private	void	stream_stdin(remote *r, int gzip);
  *      8 bkd_connect failed
  *     16 bkd returns chdir failure
  *     32 protocol failure
+ *     33 a 'havekeys' special -- means remote repo and local repo are same
  *     63 bk-remote not supported
  *     64 unexpected eof
  */

@@ -685,3 +685,13 @@ cd ../pull-repo2
 bk pull $Q ../pull-repo1 2>ERR || fail -f ERR should have used populate
 bk comps -h | grep -q gdb || fail
 echo OK
+
+echo $N See if we can fool bk into using itself as a source .........$NL
+cd "$HERE"/copy
+rm BitKeeper/log/urllist
+bk parent $Q -r || fail
+bk comps -h > BEFORE
+bk here set $Q -@"$HERE"/copy . 2>ERR && fail -f ERR should have failed
+bk comps -h > AFTER
+cmpfiles BEFORE AFTER
+echo OK

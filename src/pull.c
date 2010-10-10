@@ -459,7 +459,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 	    default:
 		unlink(msg_file);
 		/* tell remote */
-		if ((t = getenv("BKD_REPOTYPE")) && streq(t, "prod")) {
+		if ((t = getenv("BKD_REPOTYPE")) && streq(t, "product")) {
 			rc = pull_finish(r, 1, envVar);
 		}
 		return (-1);
