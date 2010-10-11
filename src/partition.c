@@ -177,6 +177,16 @@ partition_main(int ac, char **av)
 	f = popen(buf, "w");
 	EACH(opts->prodprune) fprintf(f, "%s\n", opts->prodprune[i]);
 	if (pclose(f)) goto err;
+	/*
+	 * Set all the backpointers so it looks like the components were
+	 * built here from scratch.  Do this before the attached components
+	 * below, as we do not want them looking like they were included
+	 * from scratch.
+	 */
+	if (systemf("bk -s admin -C'%s' ChangeSet", proj_rootkey(0))) {
+		fprintf(stderr, "%s: failed to set backpointer\n", prog);
+		goto err;
+	}
 
 	if (doAttach(opts)) goto err;
 	if (commitPending(opts)) goto err;

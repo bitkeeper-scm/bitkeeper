@@ -201,6 +201,24 @@ test -f "$DBKPART" || fail no dotbk partition "$DBKPART"
 cd "$HERE"
 echo OK
 
+echo $N See that ID matches ATTACH_ID for native partition ..........$NL
+cd "$HERE/copy/src"
+bk changes -nd'$if(:ID:=:ATTACHED_ID:){:I:}' > GOT
+cat <<EOF > WANT
+1.2
+1.1
+1.0
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N See that ID different from ATTACH_ID for attaches ...........$NL
+cd "$HERE/copy/path/to/attachfoo"
+bk changes -nd'$if(:ID:=:ATTACHED_ID:){:I:}' > GOT
+test -s GOT && fail -f GOT
+cd "$HERE"
+echo OK
+
 echo $N See that bk names removes empty directories .................$NL
 test -d copy/src/src && {
 	echo failed
