@@ -593,8 +593,8 @@ bk portal $Q -r || fail
 bk comps | bk here set $Q -
 bk here rm $Q not-remapped > GOT 2>&1 && fail -f GOT
 cat <<'EOF' > WANT
-here: No other sources for not-remapped known
-here: unable to remove not-remapped
+here: No other sources for ./not-remapped known
+here: unable to remove ./not-remapped
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -634,12 +634,7 @@ cd ../../../..
 bk here rm $Q src/gui/tcltk/tk 2> ERR && fail -f ERR
 sed 's/ChangeSet@1.2,.*/ChangeSet@1.2,/' < ERR > ERR2
 cat <<EOF >WANT
-here: No other sources for src/gui/tcltk/tk known
-Local changes to src/gui/tcltk/tk found:
-ChangeSet@1.2,
-  local
-
-here: unable to remove src/gui/tcltk/tk
+here: unable to remove ./src/gui/tcltk/tk, it contains csets not committed in product.
 EOF
 
 cmpfiles ERR2 WANT
@@ -650,8 +645,7 @@ rm BitKeeper/log/urllist
 bk parent $Q -r
 bk here rm $Q src/gui/tcltk/tk 2> ERR && fail -f ERR
 cat <<EOF > WANT
-here: No other sources for src/gui/tcltk/tk known
-here: unable to remove src/gui/tcltk/tk
+here: unable to remove ./src/gui/tcltk/tk, it contains csets not committed in product.
 EOF
 cmpfiles ERR WANT
 echo OK

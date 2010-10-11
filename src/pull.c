@@ -639,7 +639,7 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	s = sccs_init(ROOT2RESYNC "/" CHANGESET, INIT_NOCKSUM);
 	revs = file2Lines(0, ROOT2RESYNC "/" CSETS_IN);
 	unless (revs) goto out;
-	n = nested_init(s, 0, revs, NESTED_PULL);
+	n = nested_init(s, 0, revs, NESTED_PULL|NESTED_MARKPENDING);
 	assert(n);
 	freeLines(revs, free);
 	unless (n->tip) goto out;	/* tags only */
@@ -824,8 +824,10 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	if (nested_populate(n, 0, &popts)) {
 		fprintf(stderr,
 		    "pull: problem populating components.\n");
+		rc = 1;
 		goto out;
 	}
+	opts.n = popts.comps;
 
 	EACH_STRUCT(n->comps, c, j) {
 		proj_cd2product();

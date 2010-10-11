@@ -700,8 +700,7 @@ bk here rm $Q all 2>ERR && {
 	exit 1
 }
 cat <<EOF > WANT
-here: No other sources for gdb known
-here: unable to remove gdb
+here: unable to remove ./gdb, it contains csets not committed in product.
 EOF
 cmpfiles ERR WANT
 for i in $LIST

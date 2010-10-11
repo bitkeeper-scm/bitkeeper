@@ -911,14 +911,20 @@ clone2(remote *r)
 		ops.verbose = opts->verbose;
 		ops.comps = 1; // product
 		ops.last = strdup(parent);
-		if (nested_populate(n, 0, &ops)) {
+		rc = nested_populate(n, 0, &ops);
+		opts->comps = ops.comps;
+		if (rc) {
 nested_err:		fprintf(stderr, "clone: component fetch failed, "
 			    "only product is populated\n");
+			if (n->here) {
+				free(n->here);
+				n->here = 0;
+			}
+			nested_writeHere(n);
 			nested_free(n);
 			free(parent);
 			return (CLONE_ERROR);
 		}
-		opts->comps = ops.comps;
 		nested_free(n);
 		free(parent);
 	}

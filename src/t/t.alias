@@ -99,7 +99,7 @@ bk portal $Q -r || fail
 bk gate $Q -r || fail
 bk here set $Q DEFAULT || fail
 bk alias set $Q DEFAULT 2> ERR && fail -f ERR should have failed
-grep -q "No other sources for gcc known" ERR || fail -f ERR
+grep -q "No other sources for ./gcc known" ERR || fail -f ERR
 bk -r check -ac || fail
 echo OK
 

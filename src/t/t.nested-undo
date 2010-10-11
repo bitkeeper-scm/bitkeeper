@@ -82,8 +82,8 @@ bk alias set FOO all || exit 1
 bk alias set $Q HERE FOO || exit 1
 bk undo -q -fsr+ 2>ERR && fail -f ERR
 cat <<EOF > WANT
-undo: No other sources for gdb known
-undo: unable to remove gdb
+undo: No other sources for ./gdb known
+undo: unable to remove ./gdb
 EOF
 cmpfiles WANT ERR
 # XXX be nice if clone updated src repo urllist like _rclone does
