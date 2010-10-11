@@ -260,8 +260,12 @@ proc getFiles {} \
 
 	# try doing 'bk sfiles -gc | bk difftool -' to see how this works
 	#puts "argc=($argc) argv=($argv)"
-	if {$argc == 0} {
-		set fd [open "|bk sfiles -gcvU"]
+	if {$argc == 0 || ($argc == 1 && $argv == ".")} {
+		if {$argc == 0} {
+			set fd [open "|bk -U --sfiles-opts=cgv"]
+		} else {
+			set fd [open "|bk -Ur. --sfiles-opts=cgv"]
+		}
 		# Sample output from 'bk sfiles -gcvU'
 		# lc---- Makefile
 		# lc---- annotate.c

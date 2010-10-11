@@ -68,13 +68,13 @@ main(int volatile ac, char **av, char **env)
 	char	**aliases = 0;
 	char	**nav = 0;
 	longopt	lopts[] = {
+		/* Note: remote_bk() won't like "option:" with a space */
 		{ "title;", 300 },	// title for progress bar
 		{ "cd;", 301 },		// cd to dir
-		{ "subset|", 302 },	// --subset=alias|comp
 		{ "headers", 303 },	// --headers for -s
 		{ "from-iterator", 304 },
 		{ "sigpipe", 305 },     // allow SIGPIPE
-		/* Note: remote_bk() won't like "option:" with a space */
+		{ "sfiles-opts;", 306 },// --sfiles-opts=vcg
 		{ 0, 0 },
 	};
 
@@ -228,6 +228,9 @@ main(int volatile ac, char **av, char **env)
  				sopts = addLine(sopts,
  				    aprintf("-%c%s", c, optarg ? optarg : ""));
 				break;
+			    case 306: // --sfiles-opts=cvg
+				sopts = addLine(sopts, aprintf("-%s", optarg));
+				break;
 			    case '?': envargs = optarg; break;
 			    case '@': remote = 1; break;
 			    case 'B': buffer = optarg; break;
@@ -258,7 +261,6 @@ baddir:						fprintf(stderr,
 				toroot |= 1;
 				break;
 			    case 's': 	// -s
-			    case 302:	// --subset=
 				dashs = 1;
 				if (optarg) {
 					aliases =
