@@ -5,7 +5,7 @@ bk sfiles \- generate lists of \*[BK] controlled files
 .SH SYNOPSIS
 .B bk
 .B sfiles
-.[B] \-01acCdDgGijlnNRsSuUvxy
+.[B] \-01acCdDgGijlnRsSuUvxy
 .[OPTreq] \-o file
 .[OPTopt] \-p \fBA\fP|\fBC\fP
 .[ARG] dirs
@@ -101,11 +101,6 @@ List locked files (p.file and/or z.file).
 .tp
 .B \-n
 List s.files that are not in the correct location.  
-.tp
-.B \-N
-If used in a nested collection, list all revision controlled files in
-all repositories that are part of the nested collection.  
-Otherwise it is ignored.
 .tp
 .OPTreq \-o file
 Send output to
