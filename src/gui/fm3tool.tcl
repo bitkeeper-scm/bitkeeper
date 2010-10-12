@@ -1673,13 +1673,13 @@ proc widgets {} \
 			bind $w <Command-1> {click %W 0 0; break}
 			bind $w <Shift-Command-1> {click %W 0 1; break}
 		}
-		bindtags $w [list $w all]
+		bindtags $w [list $w wheel]
 	}
 	foreach w {.merge.menu.t .prs.left .prs.right} {
-		bindtags $w {all}
+		bindtags $w {wheel}
 	}
 	bind .merge.t <Button-1> { edit_merge %x %y; break }
-	bindtags .merge.t {.merge.t all}
+	bindtags .merge.t {.merge.t wheel}
 	computeHeight "diffs"
 
 	$search(widget) tag configure search \
@@ -1830,7 +1830,7 @@ Useful keyboard shortcuts:
 	}
 	bind .merge.t <Escape> { edit_done }
 	bind .merge.t <Control-Escape> {catch {place forget .escape}}
-	bindtags .merge.t {.merge.t Text all}
+	bindtags .merge.t {.merge.t Text wheel}
 	.merge.t mark set insert [.merge.t index @$x,$y]
 	edit_save
 }

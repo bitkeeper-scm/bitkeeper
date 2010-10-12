@@ -1,0 +1,22 @@
+echo $N Manually merge so that \"int count, int flags\)\"...............$NL
+commercial fancy
+bk clone $Q --sccs-compat . ../project
+cd ../project
+echo "int somefunction(sccs *s);" > foo
+bk new $Q foo
+bk commit $Q -yfoo
+bk clone $Q . ../copy
+bk edit $Q foo
+echo "int somefunction(sccs *s, int flags);" > foo
+bk delta $Q -yflags foo
+bk commit $Q -yflags
+cd ../copy
+bk edit $Q foo
+echo "int somefunction(sccs *s, int count);" > foo
+bk delta $Q -ycount foo
+bk commit $Q -ycount
+bk pull $Q -R
+cd RESYNC
+bk edit $Q -M foo
+bk fm3tool -f -l1.2 -r1.1.1.1 foo
+echo OK

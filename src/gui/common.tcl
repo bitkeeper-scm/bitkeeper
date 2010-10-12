@@ -29,9 +29,17 @@ proc bk_init {} {
 		bind all <5> {scrollMouseWheel %W y %X %Y  1}
 		bind all <Shift-4> {scrollMouseWheel %W x %X %Y -1}
 		bind all <Shift-5> {scrollMouseWheel %W x %X %Y  1}
+
+		bind wheel <4> {scrollMouseWheel %W y %X %Y -1}
+		bind wheel <5> {scrollMouseWheel %W y %X %Y  1}
+		bind wheel <Shift-4> {scrollMouseWheel %W x %X %Y -1}
+		bind wheel <Shift-5> {scrollMouseWheel %W x %X %Y  1}
 	} else {
 		bind all <MouseWheel> {scrollMouseWheel %W y %X %Y %D}
 		bind all <Shift-MouseWheel> {scrollMouseWheel %W x %X %Y %D}
+
+		bind wheel <MouseWheel> {scrollMouseWheel %W y %X %Y %D}
+		bind wheel <Shift-MouseWheel> {scrollMouseWheel %W x %X %Y %D}
 	}
 }
 
