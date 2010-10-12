@@ -67,7 +67,7 @@ Changes made in the child can be pushed back into the parent by running
 Only completed changesets are cloned.  Any pending deltas are removed
 from the child before the clone completes.
 .SH OPTIONS
-.TP \-E\*<env\*>=\*<val\*>
+.TP \-\-no-hardlinks
 .OPTreq \-B url
 Set the BAM server url to 
 .ARG url
@@ -82,25 +82,16 @@ Only variables with the prefix
 .V BKU_
 are allowed.
 .tp
-.B \--no-hardlinks
+.B \-\-no-hardlinks
 Clone nomally uses hard links whenever it can.  This option will
 prevent this and is useful to create an archive of a repository that
 copies every file.
 .tp
-.if \n[NESTED] \{\
-.OPTreq \-s alias
-When cloning a product, limit the components to the subset implied by
-.ARG alias .
-If this option is repeated the implied subset is the union of all
-specified components.
-.ARG alias
-may be a component or an alias for a set of components.
-The option
-.B \-sTHERE
-can be use to make the destination of the clone have the same
-components populated as the source.
+.B \-\-no-sccsdirs
+By default, clone honors the SCCS dir mode of the source repository.
+This forces the new clone to be hide the SCCS dirs containing the 
+revision history.
 .tp
-.\}
 .B \-q
 Run quietly.
 .tp
@@ -112,6 +103,25 @@ A changeset number or changeset key can be used to specify
 See
 .B bk help terms
 for more information.
+.if \n[NESTED] \{\
+.tp
+.OPTreq \-s alias
+When cloning a product, limit the components to the subset implied by
+.ARG alias .
+If this option is repeated the implied subset is the union of all
+specified components.
+.ARG alias
+may be a component or an alias for a set of components.
+The option
+.B \-sTHERE
+can be use to make the destination of the clone have the same
+components populated as the source.
+.\}
+.tp
+.B \-\-sccsdirs
+By default, clone honors the SCCS dir mode of the source repository.
+This forces the new clone to make visible the SCCS dirs containing the
+revision history.
 .SH "SEE ALSO"
 .SA alias
 .SA BAM
