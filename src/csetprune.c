@@ -336,6 +336,13 @@ finish:
 		unless (opts->ranbits) {
 			randomBits(buf);
 			opts->ranbits = buf;
+		} else unless (opts->comppath) {
+			p = aprintf("SALT %s\n", opts->ranbits);
+			p1 = mkRandom(p);
+			free(p);
+			strcpy(buf, p1);
+			free(p1);
+			opts->ranbits = buf;
 		} else if (opts->comppath && !streq(opts->comppath, ".")) {
 			p = aprintf("%s %s\n", opts->comppath, opts->ranbits);
 			p1 = mkRandom(p);
