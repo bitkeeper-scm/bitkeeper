@@ -682,11 +682,12 @@ whereError(int didHeader, char *orig, char *dk)
 
 	unless (didHeader) {
 		fprintf(stderr,
-		    "%s: file moved between components.\n"
+		    "%s: At least one file moved between components.\n"
 		    "Partition will not work on this repository.\n"
-		    "You need to backport these files to a repository\n"
-		    "based on the partition reference revision.\n"
-		    "Listed below are files and where they moved from.\n",
+		    "You need to move these files to the component\n"
+		    "they were in based on the partition reference revision.\n"
+		    "Listed below are files and the component "
+		    "they need to be in.\n",
 		    prog);
 	}
 	path = getPath(dk, &end);
@@ -842,14 +843,17 @@ prune:
 		 */
 		cur = whichComp(dk, opts->complist);
 		if (cur == INVALID) goto err;
-		unless (sfind(cset, ser)->flags & D_SET) {
+		unless (gotTip || sfind(cset, ser)->flags & D_SET) {
 			unless (streq(which, cur) ||
 			    streq(cur, "|deleted")) {
 				ret |= whereError(ret, which, dk);
 				break; /* one error per file */
 			}
 		}
-		unless (opts->comppath) continue;
+		unless (opts->comppath) {
+			gotTip = 1;
+			continue;
+		}
 
 		/*
 		 * Component path is given, so map rk and dk to that path

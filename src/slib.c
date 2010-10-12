@@ -17264,6 +17264,15 @@ sccs_stripdel(sccs *s, char *who)
 		if ((e->type == 'D') && !(e->flags & D_SET)) break;
 	}
 	assert(e);
+	if (BITKEEPER(s) && e->pathname &&
+	    strneq(e->pathname, "BitKeeper/moved/", 16)) {
+		/* csetprune creates this path */
+		fprintf(stderr,
+		    "%s: illegal to leave file in the BitKeeper/moved "
+		    "directory: %s\n", who, s->gfile);
+		unless (getenv("_BK_UNDO_OK")) OUT;
+		
+	}
 	s->xflags = sccs_xflags(s, e);
 
 	/* write out upper half */

@@ -58,7 +58,9 @@ clone_main(int ac, char **av)
 	char	**envVar = 0;
 	remote 	*r = 0, *l = 0;
 	longopt	lopts[] = {
+		{ "sccsdirs", 300 },		/* 4.x compat, w/ SCCS/ */
 		{ "sccs-compat", 300 },		/* old non-remapped repo */
+		{ "no-sccsdirs", 301 },		/* force .bk */
 		{ "no-sccs-compat", 301 },	/* move sfiles to .bk */
 		{ "hide-sccs-dirs", 301 },	/* move sfiles to .bk */
 		{ "sfiotitle;", 302 },		/* title for sfio */

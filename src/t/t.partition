@@ -301,19 +301,38 @@ bk mv src/b doc/was-src-b
 bk commit $Q -ya
 cd ..
 bk partition $Q -@copy project copymv 2>ERR && fail -f ERR
-grep -q "csetprune: file moved between components." ERR || fail -f ERR
+grep -q "csetprune: At least one file moved between comp" ERR || fail -f ERR
 echo OK
 
-echo $N Move a file back and pull again -- still fails ..............$NL
+echo $N Move a file back and pull again -- this works ...............$NL
 cd "$HERE/project"
 bk mv doc/was-src-b src/back-in-src
 bk commit $Q -yget-it-back
 cd ..
-bk partition $Q -@copy project copymv2 2>ERR && fail -f ERR
-grep -q "csetprune: file moved between components." ERR || fail -f ERR
+bk partition $Q -@copy project copymv2
 # put it back
 cd project
-bk undo -qsfaROLLBACK
+echo OK
+
+echo $N Try to undo to illegal state -- fails .......................$NL
+cd ../copymv2
+bk undo -qfr+ 2> ERR && fail -f ERR
+grep -q "illegal to leave file in the BitKeeper/moved dir" ERR || fail -f ERR
+echo OK
+
+echo $N Try to undo to illegal state with secret override -- works ..$NL
+# still puts out error message; just not an error
+_BK_UNDO_OK=1 bk undo $Q -fr+ 2> ERR || fail
+grep -q "illegal to leave file in the BitKeeper/moved dir" ERR || fail -f ERR
+test `bk _find src/BitKeeper/moved -type f | wc -l` -gt 0 || {
+	echo failed
+	bk _find src/BitKeeper/moved -type f
+	fail expected at least 1 file
+}
+echo OK
+
+echo $N Try to undo further back to a legal state -- works ..........$NL
+bk undo $Q -sfaROLLBACK || fail
 echo OK
 
 echo $N Delete as a component .......................................$NL
@@ -372,7 +391,7 @@ echo OK
 
 echo $N Verify different command line map and gone lead to diff .....$NL
 cd "$HERE"
-rm -fr project
+mv project project.orig
 commercial project
 cat <<EOF > x
 #!/bin/sh
@@ -436,7 +455,25 @@ bk mv mvfile src/mvfile
 bk commit $Q -y"xcomp move"
 cd ..
 bk partition $Q -@one xcompmove xcompmove.ref 2>ERR && fail
-grep -q 'csetprune: file moved between components' ERR || fail -f ERR
+grep -q 'csetprune: At least one file moved between comp' ERR || fail -f ERR
+echo OK
+
+echo $N Demostrate why allowing move lowers support .................$NL
+bk partition $Q -Cmapfile.noattach project.orig nested.ref
+bk clone $Q -rROOT project.orig standalone.xcomp
+# Now, do some work in a file -- just an in place edit
+cd standalone.xcomp/src
+bk edit $Q a
+echo just doing my job > a
+bk delta $Q -y'another quality day of work' a
+cd ..
+bk commit $Q -y'another quality day of work'
+# oh, I need to pull this into the nested.  Let's see, it says pull
+# in the pivot repo .. okay:
+bk pull $Q
+# Then I'm ready to go!  Wonderful!
+cd ..
+bk partition $Q -@nested.ref standalone.xcomp nested.xcomp
 echo OK
 
 echo $N Verify simple deletes are not blocked after partition .......$NL
