@@ -26,6 +26,7 @@ private struct {
 	u32	BAM:1;		/* only include BAM files */
 	u32	filt:1;		/* output limited by filenames */
 	u32	chgurl:1;	/* running 'bk changes URL', ignore local */
+	u32	noMeta:1;	/* auto or --no-meta */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
@@ -84,6 +85,9 @@ changes_main(int ac, char **av)
 	char	*searchStr = 0;
 	char	buf[MAXPATH];
 	pid_t	pid = 0; /* pager */
+	longopt	lopts[] = {
+		{ "no-meta", 300 },		/* don't show meta files */
+	};
 
 	bzero(&opts, sizeof(opts));
 	opts.showdups = opts.urls = opts.noempty = 1;
@@ -94,7 +98,8 @@ changes_main(int ac, char **av)
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
-	while ((c = getopt(ac, av, "1aBc;Dd;efhi;kLmnPqRr;tTu;U;Vv/;x;", 0)) != -1)
+	while ((c =
+	    getopt(ac, av, "1aBc;Dd;efhi;kLmnPqRr;tTu;U;Vv/;x;", lopts)) != -1)
 	{
 		unless (c == 'L' || c == 'R' || c == 'D') {
 			if (optarg) {
@@ -153,6 +158,9 @@ changes_main(int ac, char **av)
 		    case '/': searchStr = optarg; break;
 		    case 'L': opts.local = 1; break;
 		    case 'R': opts.remote = 1; break;
+		    case 300: /* --no-meta */
+		    	opts.noMeta = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 		optarg = 0;
@@ -823,11 +831,16 @@ loadcset(sccs *cset)
 	char	*p, *t;
 	MDBM	*db;
 	int	print = 0;
-	int	noMeta = opts.verbose && !opts.all && !opts.inc;
 	ser_t	ser = 0;
 	delta	*d;
 	char	*pathp;
 	char	path[MAXPATH];
+
+	/* respect it if they set it on the command line */
+	unless (opts.noMeta) opts.noMeta = !opts.all && !opts.inc;
+
+	/* but it has no meaning unless we are -v */
+	unless (opts.verbose) opts.noMeta = 0;
 
 	/*
 	 * Get a list of csets marked D_SET
@@ -858,7 +871,7 @@ loadcset(sccs *cset)
 			continue;
 		}
 		unless (print) continue;
-		if (opts.filt || noMeta) {
+		if (opts.filt || opts.noMeta) {
 			t = separator(p);
 			keypath = strchr(t, '|');
 			assert(keypath);
@@ -883,7 +896,7 @@ loadcset(sccs *cset)
 				    match_globs(path, opts.exc, 0)) {
 					continue;
 				}
-				if (noMeta && sccs_metafile(pathp)) {
+				if (opts.noMeta && sccs_metafile(pathp)) {
 					continue;
 				}
 			}

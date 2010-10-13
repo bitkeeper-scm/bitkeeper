@@ -235,7 +235,7 @@ proc getFiles {revs {file_rev {}}} \
 	set found ""
 	set match ""
 	if {$revs == "-"} {
-		set r [open "| bk changes -faevnd:GFILE:|\$if(:DT:!=D)\{TAGS:\$each(:TAG:)\{(:TAG:),\}\}\$if(:DT:=D)\{:DPN:\}|:I: -" r]
+		set r [open "| bk changes -faevnd:GFILE:|\$if(:DT:!=D)\{TAGS:\$each(:TAG:)\{(:TAG:),\}\}\$if(:DT:=D)\{:DPN:\}|:I: --no-meta -" r]
 	} else {
 		set r [open "| bk changes -fvnd:GFILE:|:DPN:|:REV: -r$revs" r]
 	}
