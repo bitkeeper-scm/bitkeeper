@@ -44,10 +44,7 @@ chkblanks() {
 add() {
 	touch "$1" || return
 	bk new $Q "$1" || return
-	bk commit $Q -y"$1" || return
-	[ "`bk root`" = "`bk -P root`" ] || {
-	    bk -P commit $Q -y"$1" || return
-	}
+	bk -s commit $Q -y"$1" || return
 }
 
 echo $N Setup .......................................................$NL
@@ -151,7 +148,7 @@ cat - <<'EOF' >chkoutput.l
 void
 main(_unused int ac, string av[])
 {
-	int	comps{string};
+	int	comps{string}, total;
 	string	comp, s;
 	FILE	f;
 
@@ -163,6 +160,11 @@ main(_unused int ac, string av[])
 
 	unless (defined(f = fopen("x", "r"))) die("fopen");
 	while (defined(s = fgetline(f))) {
+		// There are cases where we rewalk list, so reset total
+		if ((s =~ /^clone: failed to fetch/)
+		    || (s =~ /^Could not undo/)) {
+		    	total = undef;
+		}
 #		printf("Checking <%s>\n", s);
 		// Check for output interleaved with progress bar updates.
 		// This would be any output between the \r's in |\r\r
@@ -181,6 +183,13 @@ main(_unused int ac, string av[])
 			} else {
 				puts("unexpected component ${$3}");
 				exit(2);
+			}
+			unless (defined(total)) {
+				total = (int)$2;
+			} else unless (total == (int)$2) {
+				puts("total is not consistent ${total} ${$2}");
+				puts("line is ${s}");
+				exit(3);
 			}
 		}
 	}

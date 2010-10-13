@@ -205,7 +205,7 @@ rclone_ensemble(remote *r)
 			    prog, c->path);
 			++errs;
 		}
-		if (c->alias && !c->product) k++;
+		if (c->alias) k++;
 	}
 	if (errs) {
 		fprintf(stderr, "%s: missing components\n", prog);

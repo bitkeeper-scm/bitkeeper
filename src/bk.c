@@ -388,7 +388,7 @@ baddir:						fprintf(stderr,
 				    strieq(aliases[i], "HERE")) {
 					fprintf(stderr,
 					    "bk -s: illegal alias used in "
-					    "traditional repossitory:\n\t%s\n",
+					    "traditional repository:\n\t%s\n",
 					    aliases[i]);
 					return (1);
 				}
