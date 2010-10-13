@@ -424,7 +424,7 @@ err:
 }
 
 /*
- * Given keys (":BAMHASH: :KEY: :MD5ROOTKEY:") return the .d
+ * Given keys (":BAMHASH: :KEY: :MD5KEY|1.0:") return the .d
  * file in the BAM pool that contains that data or null if the
  * data doesn't exist.
  * The pathname returned is malloced and needs to be freed.

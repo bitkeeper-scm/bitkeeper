@@ -144,10 +144,10 @@ cd "$HERE"/project
 bk pwd > "$HERE"/PWD
 bk bkd -U -q -d -aPORT -ikill > "$HERE"/BKD 2>&1 || exit 1
 P=`cat PORT`
+trap "bk _kill bk://localhost:$P" 0
 cd "$HERE"/clone
 bk -q -@bk://localhost:$P pwd > OUT 2>&1
 cmpfiles "$HERE"/PWD OUT
-bk _kill bk://localhost:$P || exit 1
 echo OK
 
 test X$PREFER_RSH = XYES -a "$PLATFORM" != "WIN32" && {
@@ -177,4 +177,16 @@ SCCS/s.ChangeSet
 ... 5 more lines ...
 EOF
 cmpfiles WANT GOT
+echo OK
+
+echo $N Make sure bk cleans locks when client dies ..................$NL
+cd "$HERE"/project
+perl -e 'print("bam" x 200000)' > bam
+bk new -b $Q bam || fail
+KEY=`bk log -r+ -nd':BAMHASH: :KEY: :MD5KEY|1.0:' bam`
+# allow bk client process to die while bkd side is still running
+echo $KEY | \
+     _BK_SIGPIPE=1 bk -q@bk://localhost:$P -zo0 -Lr -Bstdin sfio -qBo - | \
+     true
+bk -Lw30 version > /dev/null || fail didn\'t release lock
 echo OK

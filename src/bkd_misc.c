@@ -299,6 +299,7 @@ err:			if (zout) {
 			unless (bytes) {
 				zero = 0;
 				close(fd0);
+				fd0 = 0;
 				continue;
 			}
 			assert(bytes <= sizeof(wbuf));
@@ -368,7 +369,7 @@ died:			if (fd1) {
 					fputs(hdr, stdout);
 					if (fwrite(buf, 1, i, stdout) != i) {
 						perror("fwrite");
-						break;
+						goto died;
 					}
 				}
 			} else {
@@ -386,7 +387,7 @@ died:			if (fd1) {
 					fputs(hdr, stdout);
 					if (fwrite(buf, 1, i, stdout) != i) {
 						perror("fwrite");
-						break;
+						goto died;
 					}
 				}
 			} else {
@@ -395,6 +396,10 @@ died:			if (fd1) {
 			}
 		}
 	}
+	/* make sure we are not hold any connections to child */
+	if (fd0) close(fd0);
+	if (fd1) close(fd1);
+	if (fd2) close(fd2);
 	if ((waitpid(pid, &status, 0) > 0) && WIFEXITED(status)) {
 		rc = WEXITSTATUS(status);
 	} else {

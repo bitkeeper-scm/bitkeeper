@@ -59,6 +59,7 @@ main(int volatile ac, char **av, char **env)
 	int	is_bk = 0, dashr = 0, remote = 0;
 	int	dashA = 0, dashU = 0, headers = 0;
 	int	dashs = 0, dashrdir = 0;
+	int	buf_stdin = 0;	/* -Bstdin */
 	int	from_iterator = 0;
 	char	*csp, *p, *locking = 0;
 	char	*todir = 0;
@@ -100,7 +101,7 @@ main(int volatile ac, char **av, char **env)
 	if (p = getenv("BK_WIN_NORETRY")) win32_retry(strtol(p, 0, 10));
 #endif
 
-	signal(SIGPIPE, SIG_IGN); /* no-op on win32 */
+	unless (getenv("_BK_SIGPIPE")) signal(SIGPIPE, SIG_IGN);
 
 	/*
 	 * Support redirection via BK_STDIO=$HOST:$PORT.
@@ -233,7 +234,13 @@ main(int volatile ac, char **av, char **env)
 				break;
 			    case '?': envargs = optarg; break;
 			    case '@': remote = 1; break;
-			    case 'B': buffer = optarg; break;
+			    case 'B':
+				unless (streq(optarg, "stdin")) {
+					fprintf(stderr, "bk: only -Bstdin\n");
+					return (1);
+				}
+				buf_stdin = 1;
+				break;
 			    case 'q': break;	// noop, -q is the default
 			    case 'L': locking = optarg; break;
 			    case 'P':				/* doc 2.0 */
@@ -532,19 +539,15 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 	nt_loadWinSock();
 #endif
 	cmdlog_start(av, 0);
-	if (buffer) {
-		unless (streq(buffer, "stdin")) {
-			fprintf(stderr, "bk: only -Bstdin\n");
-			exit(1);
-		}
+	if (buf_stdin) {
 		buffer = bktmp(0, "stdin");
 		fd2file(0, buffer);
 		close(0);
 		open(buffer, O_RDONLY, 0);
 	}
 	ret = cmd_run(prog, is_bk, ac, av);
-	if (locking && streq(locking, "r")) repository_rdunlock(0, 0);
-	if (locking && streq(locking, "w")) repository_wrunlock(0, 0);
+	if (locking && (locking[0] == 'r')) repository_rdunlock(0, 0);
+	if (locking && (locking[0] == 'w')) repository_wrunlock(0, 0);
 out:
 	progress_restoreStderr();
 	cmdlog_end(ret, 0);
@@ -749,7 +752,7 @@ bk_cleanup(int ret)
 	/* this is attached to stdin and we have to clean it up or
 	 * bktmpcleanup() will deadlock on windows.
 	 */
-	if (buffer && exists(buffer)) {
+	if (buffer) {
 		close(0);
 		unlink(buffer);
 		free(buffer);
