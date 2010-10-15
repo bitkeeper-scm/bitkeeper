@@ -277,6 +277,7 @@ setEnv(Opts *opts)
 		opts->oconfig = strdup(p);
 		safe_putenv("BK_CONFIG=%s; %s", p, conf);
 	} else {
+		opts->oconfig = strdup("");
 		safe_putenv("BK_CONFIG=%s", conf);
 	}
 	putenv("BK_NO_TRIGGERS=1");
@@ -289,11 +290,10 @@ setEnv(Opts *opts)
 private	void
 restoreEnv(Opts *opts)
 {
-	if (opts->oconfig) {
-		safe_putenv("BK_CONFIG=%s", opts->oconfig);
-		free(opts->oconfig);
-		opts->oconfig = 0;
-	}
+	assert(opts->oconfig);
+	safe_putenv("BK_CONFIG=%s", opts->oconfig);
+	free(opts->oconfig);
+	opts->oconfig = 0;
 }
 
 /*

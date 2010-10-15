@@ -262,6 +262,19 @@ test -f copy/src/b || {
 }
 echo OK
 
+echo $N Again, but not using BK_CONFIG ..............................$NL
+rm -fr copy
+test -f "$BK_DOTBK"/config && fail fix test to save and restore config
+echo checkout: get >> "$BK_DOTBK"/config
+bk partition $Q -Cmapfile project copy || exit 1
+rm "$BK_DOTBK"/config
+test -f copy/src/b || {
+	echo failed
+	echo no file checked out when one expected
+	exit 1
+}
+echo OK
+
 echo $N Test rollback generating an error ...........................$NL
 bk partition $Q -Cmapfile project xcomps || exit 1
 cd xcomps
