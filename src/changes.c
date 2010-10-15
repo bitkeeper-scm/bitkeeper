@@ -1019,6 +1019,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			} else {
 				sccs_prsdelta(sc, e, flags, dspec, opts.fcset);
 			}
+			if (opts.one) return (rc);
 		} else {
 			if (opts.keys) {
 				sccs_pdelta(sc, e, f);
@@ -1026,6 +1027,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			} else {
 				sccs_prsdelta(sc, e, flags, dspec, f);
 			}
+			if (opts.one) return (rc);
 			continue;
 		}
 
