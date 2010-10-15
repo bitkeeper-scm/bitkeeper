@@ -44,36 +44,6 @@ nfiles_main(int ac, char **av)
 	return (0);
 }
 
-/*
- * Some better variation of the following two functions eventually
- * will become part of libc/hash.h.
- */
-private inline char *
-hash_storeSN(hash *h, char *key, int val)
-{
-	int	vlen;
-	char	buf[64];
-
-	vlen = snprintf(buf, sizeof(buf), "%d", val) + 1;
-	assert(vlen < sizeof(buf));
-	return (hash_store(h, key, strlen(key)+1, buf, vlen));
-}
-
-private inline int
-hash_fetchSN(hash *h, char *key)
-{
-	if (hash_fetch(h, key, strlen(key) + 1)) {
-		return (strtol(h->vptr, 0, 10));
-	} else {
-		/*
-		 * Return 0 when the key isn't found.  The user can
-		 * test h->kptr to distingush from a real 0 stored in
-		 * the hash.
-		 */
-		return (0);
-	}
-}
-
 /* key names for NFILES kv file */
 #define TOTFILES	""
 #define USRFILES	"usrfiles"
@@ -95,10 +65,10 @@ repo_nfiles(project *p, filecnt *fc)
 	fc->tot = -1;
 	fc->usr = -1;
 	if (h = hash_fromFile(0, proj_fullpath(p, "BitKeeper/log/NFILES"))) {
-		unless ((fc->tot = hash_fetchSN(h, TOTFILES)) || h->kptr) {
+		unless ((fc->tot = hash_fetchStrNum(h, TOTFILES)) || h->kptr) {
 			fc->tot = -1;
 		}
-		unless ((fc->usr = hash_fetchSN(h, USRFILES)) || h->kptr) {
+		unless ((fc->usr = hash_fetchStrNum(h, USRFILES)) || h->kptr) {
 			fc->usr = -1;
 		}
 		hash_free(h);
@@ -134,10 +104,10 @@ repo_nfilesUpdate(filecnt *nf)
 	hash	*h;
 
 	h = hash_fromFile(hash_new(HASH_MEMHASH), n);
-	if ((nf->tot != hash_fetchSN(h, TOTFILES)) ||
-	    (nf->usr != hash_fetchSN(h, USRFILES))) {
-		hash_storeSN(h, TOTFILES, nf->tot);
-		hash_storeSN(h, USRFILES, nf->usr);
+	if ((nf->tot != hash_fetchStrNum(h, TOTFILES)) ||
+	    (nf->usr != hash_fetchStrNum(h, USRFILES))) {
+		hash_storeStrNum(h, TOTFILES, nf->tot);
+		hash_storeStrNum(h, USRFILES, nf->usr);
 		hash_toFile(h, n);
 	}
 	hash_free(h);

@@ -17412,9 +17412,9 @@ bad:				/* the database has invalid information in it
 				continue;
 			}
 			*p++ = 0;
-			unless (ts = hash_fetchStr(db, buf)) {
-				ts = hash_store(db,
-				    buf, strlen(buf)+1, 0, sizeof(tsrec));
+			unless (ts = hash_fetchStrMem(db, buf)) {
+				ts = hash_storeStrMem(db,
+				    buf, 0, sizeof(tsrec));
 			}
 			unless (parseTimestamps(p, ts)) goto bad;
 		}

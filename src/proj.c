@@ -72,12 +72,8 @@ private struct {
 private project *
 projcache_lookup(char *dir)
 {
-	project	*ret = 0;
-	project	**p;
-
 	unless (proj.cache) proj.cache = hash_new(HASH_MEMHASH);
-	if (p = hash_fetchStr(proj.cache, dir)) ret = *p;
-	return (ret);
+	return (hash_fetchStrPtr(proj.cache, dir));
 }
 
 /*
@@ -87,7 +83,7 @@ projcache_lookup(char *dir)
 private void
 projcache_store(char *dir, project *p)
 {
-	unless (hash_insert(proj.cache, dir, strlen(dir)+1, &p, sizeof(p))) {
+	unless (hash_insertStrPtr(proj.cache, dir, p)) {
 		/* we should never init a new project when we already
 		 * have a copy open.
 		 */

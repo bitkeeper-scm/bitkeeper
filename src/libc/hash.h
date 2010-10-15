@@ -82,16 +82,6 @@ hash_fetch(hash *h, void *key, int klen)
 }
 
 /*
- * Identical to hash_fetch() other than setting klen as a C-string
- * automatically.
- */
-private inline void *
-hash_fetchStr(hash *h, void *key)
-{
-	return (h->ops->fetch(h, key, strlen(key) + 1));
-}
-
-/*
  * Store a data item into hash under key replacing any existing data.
  *
  * Copies data from (val,vlen) into hash under key.  If key already
@@ -109,14 +99,6 @@ private inline void *
 hash_store(hash *h, void *key, int klen, void *val, int vlen)
 {
 	return (h->ops->store(h, key, klen, val, vlen));
-}
-
-private inline void *
-hash_storeStr(hash *h, void *key, void *val)
-{
-	int	vlen = val ? strlen(val) + 1 : 0;
-
-	return (h->ops->store(h, key, strlen(key)+1, val, vlen));
 }
 
 /*
@@ -141,14 +123,6 @@ hash_insert(hash *h, void *key, int klen, void *val, int vlen)
 	return (h->ops->insert(h, key, klen, val, vlen));
 }
 
-private inline void *
-hash_insertStr(hash *h, void *key, void *val)
-{
-	int	vlen = val ? strlen(val) + 1 : 0;
-
-	return (h->ops->insert(h, key, strlen(key)+1, val, vlen));
-}
-
 /*
  * Delete a key from the hash.
  *
@@ -163,12 +137,6 @@ private inline int
 hash_delete(hash *h, void *key, int klen)
 {
 	return (h->ops->delete(h, key, klen));
-}
-
-private inline int
-hash_deleteStr(hash *h, void *key)
-{
-	return (h->ops->delete(h, key, strlen(key) + 1));
 }
 
 /*
@@ -238,15 +206,184 @@ hash_prev(hash *h)
 #define EACH_HASH(h) \
         for (hash_first(h); (h)->kptr; hash_next(h))
 
-
 char	*hash_toStr(hash *h);
 int	hash_fromStr(hash *h, char *str);
-
 int	hash_toStream(hash *h, FILE *f);
 hash	*hash_fromStream(hash *h, FILE *f);
 int	hash_toFile(hash *h, char *path);
 hash	*hash_fromFile(hash *h, char *path);
 int	hash_keyDiff3(hash *A, hash *B, hash *C);
 int	hash_keyDiff(hash *A, hash *B);
+
+
+/* ------------ convenience wrappers ---------------------------------- */
+
+
+/*
+ * The following are wrappers for fetch/insert/store/delete to make code
+ * simpler when working with certain types for keys and values in hashes.
+ *
+ * The hash functions have a convention of having a XY suffix to indicate
+ * the types of the key and value respectively.  The 3 letter type names
+ * are in this list to indicate the type.
+ *
+ *   Str  C string, including the trailing null
+ *   Ptr  void* pointer
+ *   Mem  start/len  like memcpy
+ *   I64  i64
+ *   Num  int stored as a decimal string
+ *
+ * Only the combinations we actually use are implemented below, but others
+ * can be added as needed.
+ *
+ * The prototypes follow the following patterns:
+ *    Y hash_fetchXY(hash *h, X key);
+ *    Y *hash_storeXY(hash *h, X key, Y val);
+ *    Y *hash_insertXY(hash *h, X key, Y val);
+ *    int hash_deleteX(hash *h, X key);
+ *
+ *  In cases where the data has a transform (like N above) the return type
+ *  from hash_storeXY() will match the data layout not the key type.
+ */
+
+private inline char *
+hash_fetchStrStr(hash *h, char *key)
+{
+	return (h->ops->fetch(h, key, strlen(key) + 1));
+}
+#define	hash_fetchStr	hash_fetchStrStr
+
+private inline void *
+hash_fetchStrPtr(hash *h, char *key)
+{
+	void	**data;
+
+	if (data = h->ops->fetch(h, key, strlen(key) + 1)) {
+		return (*data);
+	} else {
+		/*
+		 * Return 0 when the key isn't found.  The user can
+		 * test h->kptr to distingush from a real 0 stored in
+		 * the hash.
+		 */
+		return (0);
+	}
+}
+
+private inline void *
+hash_fetchStrMem(hash *h, char *key)
+{
+	return (h->ops->fetch(h, key, strlen(key) + 1));
+}
+
+private inline i64
+hash_fetchStrI64(hash *h, char *key)
+{
+	if (h->ops->fetch(h, key, strlen(key) + 1)) {
+		return (*(i64 *)h->vptr);
+	} else {
+		/*
+		 * Return 0 when the key isn't found.  The user can
+		 * test h->kptr to distingush from a real 0 stored in
+		 * the hash.
+		 */
+		return (0);
+	}
+}
+
+private inline int
+hash_fetchStrNum(hash *h, char *key)
+{
+	if (h->ops->fetch(h, key, strlen(key) + 1)) {
+		return (strtol(h->vptr, 0, 10));
+	} else {
+		/*
+		 * Return 0 when the key isn't found.  The user can
+		 * test h->kptr to distingush from a real 0 stored in
+		 * the hash.
+		 */
+		return (0);
+	}
+}
+
+private inline char *
+hash_storeStrStr(hash *h, char *key, char *val)
+{
+	int	vlen = val ? strlen(val) + 1 : 0;
+
+	return (h->ops->store(h, key, strlen(key)+1, val, vlen));
+}
+#define	hash_storeStr	hash_storeStrStr
+
+private inline void **
+hash_storeStrPtr(hash *h, char *key, void *val)
+{
+	return (h->ops->store(h, key, strlen(key)+1, &val, sizeof(val)));
+}
+
+private inline void *
+hash_storeStrMem(hash *h, char *key, void *val, int vlen)
+{
+	return (h->ops->store(h, key, strlen(key)+1, val, vlen));
+}
+
+private inline i64 *
+hash_storeStrI64(hash *h, char *key, i64 val)
+{
+	return (h->ops->store(h, key, strlen(key)+1, &val, sizeof(val)));
+}
+
+private inline char *
+hash_storeStrNum(hash *h, char *key, int val)
+{
+	int	vlen;
+	char	buf[64];
+
+	vlen = sprintf(buf, "%ld", val) + 1;
+	return (h->ops->store(h, key, strlen(key)+1, buf, vlen));
+}
+
+private inline char *
+hash_insertStrStr(hash *h, char *key, char *val)
+{
+	int	vlen = val ? strlen(val) + 1 : 0;
+
+	return (h->ops->insert(h, key, strlen(key)+1, val, vlen));
+}
+#define	hash_insertStr	hash_insertStrStr
+
+private inline void **
+hash_insertStrPtr(hash *h, char *key, void *val)
+{
+	return (h->ops->insert(h, key, strlen(key)+1, &val, sizeof(val)));
+}
+
+private inline void *
+hash_insertStrMem(hash *h, char *key, void *val, int vlen)
+{
+	return (h->ops->insert(h, key, strlen(key)+1, val, vlen));
+}
+
+private inline i64 *
+hash_insertStrI64(hash *h, char *key, i64 val)
+{
+	return (h->ops->insert(h, key, strlen(key)+1, &val, sizeof(val)));
+}
+
+private inline char *
+hash_insertStrNum(hash *h, char *key, int val)
+{
+	int	vlen;
+	char	buf[64];
+
+	vlen = sprintf(buf, "%ld", val) + 1;
+	return (h->ops->insert(h, key, strlen(key)+1, buf, vlen));
+}
+
+private inline int
+hash_deleteStr(hash *h, char *key)
+{
+	return (h->ops->delete(h, key, strlen(key) + 1));
+}
 
 #endif

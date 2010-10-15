@@ -400,9 +400,9 @@ _doit_local(char **nav, char *url)
 		} else {
 			int	*v;
 
-			unless (v = hash_fetchStr(seen, buf)) {
-				v = hash_insert(seen,
-				    buf, strlen(buf) + 1, 0, sizeof(int));
+			unless (v = hash_fetchStrMem(seen, buf)) {
+				v = hash_insertStrMem(seen,
+				    buf, 0, sizeof(int));
 			}
 			*v += 1;
 		}
