@@ -7,38 +7,42 @@
 #include "sccs.h"
 #include "range.h"
 
+typedef	struct {
+	time_t	date;
+	char	*pathname;
+	char	*key;
+	char	*output;
+} data;
+
+private	int	forwards(const void *a, const void *b);
 private	int	compar(const void *a, const void *b);
-private	void	sortlog(int flags);
 private	void	printConsolidatedLog(FILE *);
 private	void	printSortedLog(FILE *);
 private	void	printlog(FILE *);
-private void	pdelta(delta *d, FILE *f);
-private	void	do_dspec(sccs *s, delta *d);
+private	void	pdelta(sccs *s, delta *d, FILE *f);
 private	void	sccslog(sccs *s);
-private	void	reallocDelta(sccs *s, delta *d);
 private	void	freelog(void);
 private	int	isBlank(char *p);
 private	char	**str2line(char **lines, char *prefix, char *str);
-private	char	*line2str(char **comments);
 private	char	**db2line(MDBM *db);
-private	void	saveComment(MDBM *db, char *rrev, char *comment, char *gfile);
+private	void	saveComment(MDBM *db, char *comment, char *gfile);
 private	void	freeComment(MDBM *db);
 
-private	delta	*list, **sorted;
-private	int	n;
+
+private	char	**list;
 private	int	ChangeSet;	/* if set, ChangeSet is one of the files */
 
 private	struct {
 	u32	uncommitted:1;	/* -A: select all uncomitted deltas in a file */
 	u32	changeset:1;	/* -C: comment format used by bk commit */
 	u32	rmdups:1;	/* -D: factor out duplicate comments */
-	char	*dspec;		/* -d: override default format */
 	u32	forwards:1;	/* -f: print in oldest..newest order */
-	int	indent;		/* -i: indent amount */
 	u32	indentOpt:1;	/* 1 if -i was present */
-	u32	newline:1;	/* -n: like prs -n */
 	u32	basenames:1;	/* -b: do basenames */
 	u32	sort:1;		/* -s: time sorted pathname|rev output */
+	int	indent;		/* -i: indent amount */
+	char	*dspec;		/* -d: override default format */
+	u32	prs_flags;	/* -n: newline */
 } opts;
 
 int
@@ -47,9 +51,10 @@ sccslog_main(int ac, char **av)
 	sccs	*s;
 	char	*name;
 	int	errors = 0;
-	int	save, c, flags = SILENT;
+	int	c, flags = SILENT;
 	RANGE	rargs = {0};
 
+	opts.prs_flags = PRS_ALL;
 	setmode(1, _O_TEXT);
 	while ((c = getopt(ac, av, "AbCc;d|Dfi;nr|s", 0)) != -1) {
 		switch (c) {
@@ -66,7 +71,7 @@ sccslog_main(int ac, char **av)
 			opts.indent = atoi(optarg);
 			opts.indentOpt = 1;
 			break;
-		    case 'n': opts.newline = 1; break;
+		    case 'n': opts.prs_flags |= PRS_LF; break;
 		    case 's': opts.sort = 1; break;		/* doc 2.0 */
 		    case 'c':
 			if (range_addArg(&rargs, optarg, 1)) usage();
@@ -104,19 +109,20 @@ next:			sccs_free(s);
 				}
 			}
 		} while ((name = sfileNext()) && streq(s->sfile, name));
-		save = n;
 		sccslog(s);
-		verbose((stderr, "%s: %d deltas\n", s->sfile, n - save));
+		verbose((stderr, "%s: %d deltas\n", s->sfile, nLines(list)));
 		sccs_free(s);
 	}
 	if (sfileDone()) errors = 1;
-	verbose((stderr, "Total %d deltas\n", n));
-	if (n) {
+	verbose((stderr, "Total %d deltas\n", nLines(list)));
+	if (nLines(list) > 0) {
 		pid_t	pid;
 
 		pid = mkpager();
 		if (ChangeSet && !opts.indentOpt) opts.indent = 2;
-		sortlog(flags);
+		verbose((stderr, "Sorting...."));
+		sortLines(list, opts.forwards ? forwards : compar);
+		verbose((stderr, "done.\n"));
 		printlog(stdout);
 		fclose(stdout);
 		freelog();
@@ -126,94 +132,44 @@ next:			sccs_free(s);
 }
 
 /*
- * Compare to deltas in a way suitable for qsort.
- */
-private int
-sccs_dcmp(delta *d1, delta *d2)
-{
-	char	k1[MAXKEY], k2[MAXKEY];
-
-	sccs_sortkey(0, d1, k1);
-	sccs_sortkey(0, d2, k2);
-	return (strcmp(k2, k1));
-}
-
-/*
  * Note that these two are identical except for the d1/d2 assignment.
  */
-private	int
+private	inline int
 compar(const void *a, const void *b)
 {
-	register	delta *d1, *d2;
+	data	*d1, *d2;
 
-	d1 = *((delta**)a);
-	d2 = *((delta**)b);
+	d1 = *((data**)a);
+	d2 = *((data**)b);
 	if (d2->date != d1->date) return (d2->date - d1->date);
-	unless (ChangeSet) return (sccs_dcmp(d1, d2));
-	/* XXX Components ChangeSet files sorted 1st as well? */
+	unless (ChangeSet) return (strcmp(d2->key, d1->key));
 	if (streq(d1->pathname, GCHANGESET)) return (-1);
 	if (streq(d2->pathname, GCHANGESET)) return (1);
-	return (sccs_dcmp(d1, d2));
+	return (strcmp(d2->key, d1->key));
 }
 
 private	int
 forwards(const void *a, const void *b)
 {
-	register	delta *d1, *d2;
-
-	d1 = *((delta**)b);
-	d2 = *((delta**)a);
-	if (d2->date != d1->date) return (d2->date - d1->date);
-	unless (ChangeSet) return (sccs_dcmp(d1, d2));
-	/* XXX Components ChangeSet files sorted 1st as well? */
-	if (streq(d1->pathname, GCHANGESET)) return (-1);
-	if (streq(d2->pathname, GCHANGESET)) return (1);
-	return (sccs_dcmp(d1, d2));
-}
-
-private	void
-sortlog(int flags)
-{
-	int	i = n;
-	delta	*d;
-
-	verbose((stderr, "Sorting...."));
-	sorted = malloc(n * sizeof(sorted));
-	if (!sorted) {
-		perror("malloc");
-		exit(1);
-	}
-	for (d = list; d; d = d->next) {
-		assert(i > 0);
-		unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
-			assert(d->date);
-		}
-		sorted[--i] = d;
-	}
-	assert(i == 0);
-	qsort(sorted, n, sizeof(sorted), opts.forwards ? forwards : compar);
-	verbose((stderr, "done.\n"));
+	return (compar(b, a));
 }
 
 private void
 printConsolidatedLog(FILE *f)
 {
-	int	i, j;
-	delta	*d;
+	int	i;
+	data	*d;
 	MDBM	*db = mdbm_mem();
 	char	**lines;
 
 	assert(db);
-	for (j = 0; j < n; ++j) {
-		d = sorted[j];
-		unless (d->type == 'D') continue;
-		comments_load(0, d);
-		unless (COMMENTS(d)) continue;
-		saveComment(db, d->rev, line2str(d->cmnts), d->pathname);
+	EACH(list) {
+		d = (data *)list[i];
+		unless (d->output && !isBlank(d->output)) continue;
+		saveComment(db, d->output, d->pathname);
 	}
 
 	lines = db2line(db);
-
 	EACH (lines) {
 		fprintf(f, "%s\n", lines[i]);
 	}
@@ -225,47 +181,46 @@ private	void
 printSortedLog(FILE *f)
 {
 	int	i, j;
-	delta	*d;
+	data	*d;
 
-	for (j = 0; j < n; ++j) {
-		d = sorted[j];
-		unless (d->type == 'D') continue;
+	EACH_INDEX(list, j) {
+		d = (data *)list[j];
+
 		unless (opts.forwards && ChangeSet) {
-			pdelta(d, f);
+			fputs(d->output, f);
 			continue;
 		}
 		if (streq(GCHANGESET, d->pathname)) {
-			pdelta(d, f);
+			fputs(d->output, f);
 			continue;
 		}
 		/*
 		 * We're on a regular file, go find the ChangeSet,
 		 * do that first, then work forward to the ChangeSet.
 		 */
-		for (i = j+1; i < n; ++i) {
-			d = sorted[i];
-			unless (d->type == 'D') continue;
+		EACH_START(j+1, list, i) {
+			d = (data *)list[i];
 			if (streq(d->pathname, GCHANGESET)) {
-				pdelta(d, f);
+				fputs(d->output, f);
 				break;
 			}
 		}
-		while ((j < i) && (j <n)) pdelta(sorted[j++], f);
+		EACH_START(j, list, j) {
+			if (j >= i) break;
+			d = (data *)list[j];
+			fputs(d->output, f);
+		}
 	}
 }
 
 private void
-pdelta(delta *d, FILE *f)
+pdelta(sccs *s, delta *d, FILE *f)
 {
 	int	indent, i;
 	char	*y;
 
 	if (opts.dspec) {
-		if (COMMENTS(d)) {
-			comments_load(0, d);
-			fputs(d->cmnts[1], f);
-			if (opts.newline) fputc('\n', f);
-		}
+		sccs_prsdelta(s, d, opts.prs_flags, opts.dspec, f);
 		return;
 	}
 	if (opts.sort) {
@@ -278,7 +233,7 @@ pdelta(delta *d, FILE *f)
 		indent = opts.indent;
 	}
 	if (opts.changeset) {
-		EACH_COMMENT(0, d) {
+		EACH_COMMENT(s, d) {
 			if (indent) fprintf(f, "%*s", indent, "");
 			if (d->pathname) {
 				fprintf(f, "%-8s\t", basenm(d->pathname));
@@ -306,8 +261,7 @@ pdelta(delta *d, FILE *f)
 	    d->user);
 	if (d->hostname) fprintf(f, "@%s", d->hostname);
 	fprintf(f, " +%d -%d\n", d->added, d->deleted);
-	EACH_COMMENT(0, d) {
-		if (d->cmnts[i][0] == '\001') continue;
+	EACH_COMMENT(s, d) {
 		if (indent) fprintf(f, "%*s", indent, "");
 		fprintf(f, "  %s\n", d->cmnts[i]);
 	}
@@ -324,15 +278,6 @@ printlog(FILE *f)
 	}
 }
 
-private void
-do_dspec(sccs *s, delta *d)
-{
-	char	*p = sccs_prsbuf(s, d, PRS_ALL, opts.dspec);
-
-	comments_free(d);
-	comments_append(d, p);
-}
-
 /*
  * Save the info.
  * If no revisions specified, save the whole tree.
@@ -342,92 +287,63 @@ do_dspec(sccs *s, delta *d)
 private	void
 sccslog(sccs *s)
 {
-	delta	*d, *e;
+	delta	*d;
+	data	*nd;
+	FILE	*f;
+	char	key[MAXKEY];
 
-	unless (SET(s)) {
-		if (CSET(s)) ChangeSet = 1;
-		for (d = s->table, n++; d; n++, d = d->next) {
-			comments_load(s, d);
-			if (opts.dspec) do_dspec(s, d);
-			unless (d->pathname) {
-				d->pathname = PATH_BUILD(s->gfile, "");
+	f = fmem_open();
+	if (CSET(s)) ChangeSet = 1;
+	for (d = s->table; d; d = d->next) {
+		if (SET(s) && !(d->flags & D_SET)) continue;
+		if (d->type != 'D') continue;
+
+		nd = new(data);
+		nd->date = d->date;
+		nd->pathname = strdup(d->pathname ? d->pathname : s->gfile);
+		sccs_sdelta(s, d, key);
+		nd->key = strdup(key);
+
+		if (opts.rmdups) {
+			if (opts.dspec) {
+				nd->output = sccs_prsbuf(s, d,
+				    opts.prs_flags, opts.dspec);
+			} else {
+				nd->output =
+				    joinLines("\n", comments_load(s, d));
+				if (nd->output &&
+				    (streq(d->rev, "1.1") ||
+				     streq(d->rev, "1.0")) &&
+				    strneq(nd->output,
+					"BitKeeper file ", 15)) {
+					free(nd->output);
+					nd->output = strdup("new file");
+				}
 			}
-			unless (d->next) break;
-		}
-		if (list) {
-			assert(d);
-			d->next = list;
-		}
-		list = s->table;
-		s->table = s->tree = 0;
-		return;
-	}
-	for (d = s->table; d; ) {
-		comments_load(s, d);
-		d->kid = d->siblings = 0;
-		if (d->flags & D_SET) {
-			if (CSET(s)) ChangeSet = 1;
-			if (opts.dspec) do_dspec(s, d);
-			reallocDelta(s, d);
-			e = d->next;
-			d->next = list;
-			list = d;
-			n++;
-			d = e;
 		} else {
-			e = d;
-			d = d->next;
-			sccs_freetree(e);
+			pdelta(s, d, f);
+			nd->output = fmem_retbuf(f, 0);
 		}
-	}
-	s->table = s->tree = 0;
-}
 
-/*
- * Take all the deltas from start down, pruning at stop.
- * Put them on the list (destroying the delta table list).
- */
-private	void
-reallocDelta(sccs *s, delta *d)
-{
-	if (d->zone) {
-		if (d->flags & D_DUPZONE) {
-			d->flags &= ~D_DUPZONE;
-			d->zone = strdup(d->zone);
-		}
+		list = addLine(list, nd);
 	}
-	if (d->flags & D_DUPPATH) {
-		d->flags &= ~D_DUPPATH;
-		d->pathname = PATH_DUP(d->pathname);
-	}
-	unless (d->pathname) d->pathname = PATH_BUILD(s->gfile, "");
-	if (d->flags & D_DUPHOST) {
-		d->flags &= ~D_DUPHOST;
-		d->hostname = strdup(d->hostname);
-	}
+	fclose(f);
 }
 
 private	void
 freelog(void)
 {
-	delta	*d;
+	data	*d;
+	int	i;
 
-	for (d = list; d; d = list) {
-		n--;
-		list = list->next;
-		d->siblings = d->kid = 0;
-		sccs_freetree(d);
+	EACH(list) {
+		d = (data *)list[i];
+		free(d->pathname);
+		free(d->key);
+		free(d->output);
 	}
-	if (sorted) free(sorted);
+	freeLines(list, free);
 }
-
-
-
-/*
- * This code below is gotten from findcset.c in the 2.1 dev tree
- */
-#define	EACH_KV(d)	for (kv = mdbm_first(d); \
-			    kv.key.dsize; kv = mdbm_next(d))
 
 /*
  * Return true if blank line
@@ -471,32 +387,7 @@ str2line(char **lines, char *prefix, char *str)
 }
 
 /*
- * Convert line array into a regular string
- */
-private char *
-line2str(char **comments)
-{
-	int	i, len = 0;
-	char	*buf, *p, *q;
-
-	EACH(comments) {
-		len += strlen(comments[i]) + 1;
-	}
-
-	p = buf = malloc(++len);
-	EACH(comments) {
-		q = comments[i];
-		if (isBlank(q)) continue; /* skip blank line */
-		while (*q) *p++ = *q++;
-		*p++ = '\n';
-	}
-	*p = 0;
-	assert(buf + len > p);
-	return (buf);
-}
-
-/*
- * Convert cset commnent strore in a mdbm into lines format
+ * Convert cset comment strore in a mdbm into lines format
  */
 private char **
 db2line(MDBM *db)
@@ -514,7 +405,7 @@ db2line(MDBM *db)
 		 * Compute length of file list
 		 */
 		comment = kv.key.dptr;
-		memcpy(&gDB, kv.val.dptr, sizeof (MDBM *));
+		memcpy(&gDB, kv.val.dptr, sizeof(MDBM *));
 		len = 0;
 		EACH_KV(gDB) {
 			len += strlen(kv.key.dptr) + 2;
@@ -565,21 +456,13 @@ db2line(MDBM *db)
  * that came from different files.
  */
 private void
-saveComment(MDBM *db, char *rev, char *comment_str, char *gfile)
+saveComment(MDBM *db, char *comment_str, char *gfile)
 {
 	datum	k, v, tmp;
 	MDBM	*gDB = 0;
 	int	ret;
 
-#define	BK_REV_1_0_DEFAULT_COMMENT	"BitKeeper file "
-
-	if (isBlank(comment_str)) return;
-	if ((streq("1.0", rev)) &&
-	    strneq(BK_REV_1_0_DEFAULT_COMMENT, comment_str, 15)) {
-		comment_str = "new file";
-	}
-
-	k.dptr = (char *) comment_str;
+	k.dptr = comment_str;
 	k.dsize = strlen(comment_str) + 1;
 	tmp = mdbm_fetch(db, k);
 	if (tmp.dptr) memcpy(&gDB, tmp.dptr, sizeof (MDBM *));
