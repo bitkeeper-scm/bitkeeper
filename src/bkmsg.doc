@@ -93,16 +93,8 @@ Do this by running
 and then committing the changeset.
 $
 #chk4
-One or more files has LOD data in it.  The first approach we took to
-LODs was not a good one, and we are trying to remove all vestiges of
-that approach.  Other than the MySQL repository, we know of no examples
-of LOD usage at the current time.  If this is the MySQL tree, you may
-safely run
-
-	bk -r check -aff
-
-to fix up your repository.  If it is somewhere other than the MySQL 
-tree, contact BitMover.
+Your repository has a file with an illegal revision numbering.
+vision numbering.  Please write support@bitmover.com for assistance.
 $
 #chk5
 The ChangeSet file retrieved from your parent appears to be behind the

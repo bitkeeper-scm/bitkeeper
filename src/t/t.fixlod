@@ -21,15 +21,8 @@ unset _BK_DEVELOPER
 _BK_SETUP_NOGONE=1
 export _BK_SETUP_NOGONE
 
-echo $N Create initial repository ...................................$NL
-fresh_commercial project
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
-P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-echo OK
-
 echo $N Create some data ............................................$NL
+fresh_commercial project
 for dir in d1 d2
 do	mkdir $dir
 	for file in a b
@@ -52,7 +45,7 @@ test `bk sfiles -pC | wc -l` -eq 0 || {
 }
 echo OK
 
-echo $N Make version 1 LOD structures ...............................$NL
+echo $N Try making version 1 LOD structures -- now fails ............$NL
 bk clone $Q . ../lod
 cd ../lod
 bk edit $Q d1/a || exit 1
@@ -69,102 +62,6 @@ perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" tmp > tmp2
 bk _cp SCCS/s.ChangeSet old-s.ChangeSet
 chmod 444 tmp2
 bk _cp tmp2 SCCS/s.ChangeSet
-bk admin -z SCCS/s.ChangeSet || exit 1
-rm tmp tmp2
-rev=`bk prs -r+ -hnd:I: d1/a`
-bk _cp d1/SCCS/s.a tmp
-perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" tmp > tmp2
-bk _cp d1/SCCS/s.a old-d1-s.a
-chmod 444 tmp2
-bk _cp tmp2 d1/SCCS/s.a
-bk admin -z d1/SCCS/s.a
-test `bk prs -r2 -hd:I: ChangeSet` = 2.1 || {
-	echo Failed: could not create fake lod
-	exit 1
-}
-rm -f tmp tmp2
-echo OK
-
-# use tar because clone will not work since it has illegal structures
-rm BitKeeper/log/repo_id
-tar cf ../save.tar .
-
-echo $N Fix version 1 LOD structures ................................$NL
-cd "$HERE"
-mkdir fix1
-cd fix1
-tar xmf ../save.tar
-bk _fix_lod1 > out1 2> err1 || {
-	echo Failed fix
-	echo STDOUT:
-	cat out1
-	echo
-	echo STDERR:
-	cat err1
-	exit 1
-}
-bk -r prs -hnd'$if(:R:!=1){:GFILE:|:I:}' > results
-test `wc -l < results` -eq 0 || {
-	echo Failed: could not erase fake lod
-	echo Non main LOD data
-	cat results
-	exit 1
-}
-echo OK
-
-echo $N Converge to repos which each fixed lod ......................$NL
-cd "$HERE"
-mkdir fix2
-cd fix2
-tar xmf ../save.tar
-bk _fix_lod1 > out1 2> err1 || {
-	echo Failed fix
-	echo STDOUT:
-	cat out1
-	echo
-	echo STDERR:
-	cat err1
-	exit 1
-}
-bk -r prs -hnd'$if(:R:!=1){:GFILE:|:I:}' > results
-test `wc -l < results` -eq 0 || {
-	echo Failed: could not erase fake lod
-	echo Non main LOD data
-	cat results
-	exit 1
-}
-bk pull $Q ../fix1 > pull.out 2> pull.err || {
-	echo Pull failed.
-	echo STDOUT
-	cat pull.out
-	echo
-	echo STDERR
-	cat pull.err
-}
-bk gfiles BitKeeper/deleted | grep -q skipkeys || {
-	echo Failed: no skipkeys in deleted
-	exit 1
-}
-echo OK
-
-echo $N Pull bad into fixed repo to see that skipping works .........$NL
-cd "$HERE/fix1"
-# old way passes
-_BK_NO_FASTPATCH=1 bk pull $Q -R ../lod || exit 1
-test -d RESYNC && exit 2
-# and so does fast
-bk pull $Q -R ../lod || exit 3
-test -d RESYNC && exit 4
-echo OK
-
-echo $N Pull bad into fixed repo that has been rolled back ..........$NL
-bk admin -fMONOTONIC BitKeeper/etc/skipkeys
-bk commit $S -yMONOTONIC-skipkeys
-bk undo $Q -fsaBASE
-_BK_NO_FASTPATCH=1 bk pull $Q -R ../lod || exit 1
-test -d RESYNC || exit 2
-bk abort -f || exit 3
-bk pull $Q -R ../lod || exit 4
-test -d RESYNC || exit 5
-bk abort -f || exit 6
+bk admin -z SCCS/s.ChangeSet 2> ERR && fail
+grep -q 'SCCS/s.ChangeSet: bad revision 2.1 (parent = 1.3)' ERR || fail
 echo OK

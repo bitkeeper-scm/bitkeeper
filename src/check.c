@@ -43,7 +43,6 @@ private	int	goneKey;	/* 1: list files, 2: list deltas, 3: both */
 private	int	badWritable;	/* if set, list bad writable file only */
 private	int	names;		/* if set, we need to fix names */
 private	int	gotDupKey;	/* if set, we found dup keys */
-private	int	lod;		/* if set, we need to fix lod data */
 private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
 private	sccs	*cset;		/* the initialized cset file */
@@ -442,11 +441,7 @@ check_main(int ac, char **av)
 			fprintf(stderr, "check: trying to fix xflags...\n");
 			system("bk -r xflags");
 		}
-		if (lod && (fix > 1)) {
-			fprintf(stderr, "check: trying to remove lods...\n");
-			system("bk _fix_lod1");
-		}
-		if (names || xflags_failed || lod) {
+		if (names || xflags_failed) {
 			errors = 2;
 			goto out;
 		}
@@ -1560,13 +1555,10 @@ check(sccs *s, MDBM *idDB)
 		}
 		/* check for V1 LOD */
 		if (d->r[0] != 1) {
-			lod = 1;	/* global tag */
 			errors++;
-			unless ((fix & 2) || goneKey) {
-				fprintf(stderr,
-				    "Obsolete LOD data(bk help chk4): %s|%s\n",
-		    		    s->gfile, d->rev);
-			}
+			fprintf(stderr,
+			    "Obsolete LOD data(bk help chk4): %s|%s\n",
+	    		    s->gfile, d->rev);
 		}
 
 		unless (d->flags & D_CSET) continue;

@@ -10119,7 +10119,8 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 	 * The random part says that we allow x.y.z.0 if has random bits;
 	 * that is for grafted trees.
 	 */
-	if (!d->r[0] || (!d->r[2] && !d->r[1] && (d->r[0] != 1)) ||
+	if (!d->r[0] || (BITKEEPER(s) && (d->r[0] != 1)) ||
+	    (!d->r[2] && !d->r[1] && (d->r[0] != 1)) ||
 	    (d->r[2] && (!d->r[3] && !d->random)))
 	{
 		unless (flags & ADMIN_SHUTUP) {
@@ -10217,7 +10218,6 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 		if (d->r[0] == p->r[0]) {
 			if (d->r[1] != p->r[1]+1) badparent = 1;
 		} else {
-			/* LOD case needed for _fix_lod1 */
 			if (d->r[1] != 1) badparent = 1;
 		}
 	}
