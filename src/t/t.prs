@@ -603,6 +603,15 @@ cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 
+echo $N checking UTC TIME :UTC-FUDGE: ...............................$NL
+bk undos > CMP1 <<EOF
+======== FILE 1.5 ========
+19980130224517
+EOF
+bk prs -d':UTC-FUDGE:\n' -r1.5 FILE > CMP2
+cmp -s CMP1 CMP2 || fail -f CMP2 file did not match
+echo OK
+
 echo $N checking body :GB: ..........................................$NL
 bk undos > CMP1 <<EOF
 1.1
