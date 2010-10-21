@@ -1800,7 +1800,7 @@ again:	if (rev[0] == '@') {
 			proj = proj_product(s->proj);
 			rev += 2;
 			if (CSET(s)) goto atrev;
-			rev = csetdk = proj_cset2rev(proj,
+			rev = csetdk = proj_cset2key(proj,
 			    rev, proj_rootkey(s->proj));
 			if (rev) {
 				proj = s->proj;
@@ -1816,7 +1816,7 @@ again:	if (rev[0] == '@') {
 			if (CSET(s) && s->file) proj = proj_product(proj);
 			++rev;
 atrev:			sccs_sdelta(s, sccs_ino(s), rk);
-			if (dk = proj_cset2rev(proj, rev, rk)) {
+			if (dk = proj_cset2key(proj, rev, rk)) {
 				d = sccs_findKey(s, dk);
 				free(dk);
 			} else {
@@ -1826,6 +1826,12 @@ atrev:			sccs_sdelta(s, sccs_ino(s), rk);
 		}
 	} else if (isKey(rev)) {
 		d = sccs_findKey(s, rev);
+	} else if (!isalpha(rev[0])) {
+		d = findrev(s, rev);
+	} else if (!CSET(s) || proj_isComponent(s->proj)) {
+		/* likely a tag, assume @@tag */
+		sprintf(rk, "@@%s", rev);
+		d = sccs_findrev(s, rk);
 	} else {
 		d = findrev(s, rev);
 	}

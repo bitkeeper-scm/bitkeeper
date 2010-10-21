@@ -1400,7 +1400,7 @@ pruneCsetCache(project *p)
  * The data is cached in BitKeeper/tmp for fast access.
  */
 char *
-proj_cset2rev(project *p, char *csetrev, char *rootkey)
+proj_cset2key(project *p, char *csetrev, char *rootkey)
 {
 	char	*mpath = 0;
 	MDBM	*m = 0;
