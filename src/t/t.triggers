@@ -12,6 +12,37 @@
 DASHA=
 test X`uname -s` = XDarwin && DASHA=-a
 
+echo $N Test locks behave the same in pull -R and just pull..........$NL
+cd "$HERE"
+commercial locking_parent
+cd "$HERE"
+bk clone $Q locking_parent locking_child
+cd locking_child
+mkdir -p BitKeeper/triggers
+cat > BitKeeper/triggers/post-incoming <<EOF
+#!/bin/bash
+echo Running lock command
+bk lock -l > "$HERE/trigger-lock-result" 2>&1
+EOF
+chmod +x BitKeeper/triggers/post-incoming
+cd "$HERE/locking_parent"
+touch afile
+bk new $Q afile
+bk commit -y. $Q
+cd "$HERE/locking_child"
+bk pull $Q || fail
+grep -q "Entire repository is locked" "$HERE/trigger-lock-result" || \
+	fail -f "$HERE/trigger-lock-result"
+rm -f "$HERE/trigger-lock-result"
+bk unpull -f $Q || fail
+bk pull $Q -R || fail
+test -f "$HERE/trigger-lock-result" && fail
+bk resolve $Q || fail
+grep -q "Entire repository is locked" "$HERE/trigger-lock-result" || \
+	fail -f "$HERE/trigger-lock-result"
+rm -f "$HERE/trigger-lock-result"
+echo OK
+
 echo $N Check commit trigger environment variables ..................$NL
 cd "$HERE"
 commercial project
