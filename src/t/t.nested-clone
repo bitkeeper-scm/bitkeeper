@@ -724,3 +724,11 @@ do	test -d $i && {
 done
 echo OK
 
+echo $N Show a clone with a local baseline ..........................$NL
+cd "$HERE"
+bk clone $Q -s./gdb -@project bk://$M/mynewgcc3 clonemod || fail
+cd clonemod || fail
+bk comps -h > GOT
+echo ./gdb > WANT
+cmpfiles GOT WANT
+echo OK

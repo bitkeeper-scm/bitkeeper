@@ -411,6 +411,7 @@ bkd(remote *r)
 
 	if ((r->port == 1) && getenv("BK_REGRESSION")) {
 		r->wfd = r->rfd = -1;
+		r->badconnect = 1;
 		return (0);
 	}
 	if (r->port && (r->type != ADDR_SSH) && !r->loginshell) {

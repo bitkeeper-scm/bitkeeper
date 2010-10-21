@@ -118,6 +118,22 @@ bk push $Q || exit 1
 check_cnt
 echo OK
 
+CNT=26
+echo $N "Count the inits for a 'bk clone -@base' ($CNT) ................"$NL
+echo hi > file_copy
+bk new $Q file_copy
+bk commit $Q -ycopy || fail
+cd ../project || fail
+echo hi > file_project
+bk new $Q file_project
+bk commit $Q -yproject || fail
+bk tag $Q junk || fail
+cd ..
+rm "$FILE"
+bk clone $Q -@project "$HERE"/copy newcopy || fail
+check_cnt
+echo OK
+
 echo "---- nested tests"
 
 CNT=9
@@ -219,3 +235,30 @@ rm "$FILE"
 bk push $Q || exit 1
 check_cnt
 echo OK
+
+CNT=58
+echo $N "Count the inits for a 'bk clone -@base' ($CNT) ................"$NL
+cd "$HERE"/nest2/gcc
+echo hi > file_copy
+bk new $Q file_copy
+bk commit $Q -ygcc_copy || fail
+cd ..
+echo hi > file_copy
+bk new $Q file_copy
+bk commit $Q -ycopy || fail
+bk comps -h | grep -v www | bk here set -f $Q - || fail
+cd ../nest/gdb || fail
+echo hi > file_project
+bk new $Q file_project
+bk commit $Q -ygdb_project || fail
+cd ..
+echo hi > file_project
+bk new $Q file_project
+bk commit $Q -yproject || fail
+bk tag $Q junk || fail
+cd ..
+rm "$FILE"
+bk clone $Q -sALL -@nest2 "$HERE"/nest newnest2 || fail
+check_cnt
+echo OK
+

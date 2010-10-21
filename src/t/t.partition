@@ -123,7 +123,7 @@ grep -q "partition: Must use -C or -@" ERR || fail -f ERR
 bk partition -Cnotthere a b 2> ERR && exit 1
 grep -q "partition: (-C) No notthere file found" ERR || fail -f ERR
 bk partition -q -Cmapfile notthere b 2> ERR && exit 1
-grep -q "illegal, nonexistent, or not package root" ERR || fail -f ERR
+grep -q "clone: can't find repository" ERR || fail -f ERR
 bk partition -Cmapfile project project 2> ERR && exit 1
 grep -q "partition: destination 'project' exists" ERR || fail -f ERR
 # collide file namespace with component namespace in different ways

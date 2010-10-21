@@ -1067,12 +1067,8 @@ _c2r() {	# undoc
 	bk prs -r"$REV" -hnd:REV: "$@"
 }
 
-# XXX undocumented hack that wayne uses.
-#
-# clone a remote repo using a local tree as a baseline
-# assumes UNIX/NTFS (clone -l)
+# XXX old compat interface, use clone -@URL instead
 _clonemod() {
-	CSETS=BitKeeper/etc/csets-in
 	Q=
 	while getopts q OPT
 	do	case $OPT in
@@ -1083,21 +1079,10 @@ _clonemod() {
 	shift `expr $OPTIND - 1`
 	if [ $# -ne 3 ]
 	then
-		echo "usage: bk clonemod URL LOCAL NEW" 1>&2
+		echo "clonemod has been replaced by 'bk clone -@URL'" 1>&2
 		exit 1
 	fi
-
-	bk clone -q "$2" "$3" || exit 1
-	cd "$3" || exit 1
-	bk parent -sq "$1" || exit 1
-	bk undo -q -fa`bk repogca` || exit 1
-	# remove any local tags that the above undo missed
-	bk changes -qafkL > $CSETS || exit 1
-	if [ -s "$CSETS" ]
-	then	bk unpull -sfq || exit 1
-	else	rm $CSETS || exit 1
-	fi
-	bk pull $Q -u || exit 1
+	bk clone $Q -@"$1" "$2" "$3"
 }
 
 # XXX undocumented alias from 3.0.4 

@@ -726,12 +726,19 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 		if (c->included) {
 			/* this component is included in pull */
 			if (c->alias) {
-				unless (c->new) opts.n++;
-				/* The local will need this component */
-				if (!c->remotePresent && !c->new) {
-					/* they don't have the data to send */
-
-					// XXX we can fix this
+				/* and we will need those new csets */
+				if (c->present) opts.n++;
+				if (!c->remotePresent && c->present) {
+					/*
+					 * Since this component has
+					 * new csets coming and we
+					 * have it populated, it will
+					 * need a pull. But the remote
+					 * doesn't the component so it
+					 * will need to be pulled from
+					 * a 3rd party.  We don't
+					 * support that yet.
+					 */
 					fprintf(stderr,
 					    "pull: %s is missing in %s\n",
 					    c->path, url);

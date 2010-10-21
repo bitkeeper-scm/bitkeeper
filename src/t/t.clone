@@ -49,6 +49,34 @@ test -d RESYNC && {
 rm -f "$HERE/file"
 echo OK
 
+echo $N Test clone to existing directory ............................$NL
+bk clone $Q project copy 2>ERR && fail -f ERR should have failed
+test $? = 2 || fail
+cat <<EOF > WANT
+clone: $HERE/copy exists and is not empty
+EOF
+cmpfiles ERR WANT
+echo OK
+
+echo $N Test clone from bogus directory .............................$NL
+bk clone $Q project33 copy2 2>ERR && fail -f ERR should have failed
+test $? = 6 || fail
+cat <<EOF > WANT
+clone: can't find repository
+EOF
+cmpfiles ERR WANT
+echo OK
+
+echo $N Test clone from bogus URL ...................................$NL
+bk clone $Q bk://bad.bitkeeper.com:1/foo copy2 2>ERR && \
+   fail -f ERR should have failed
+test $? = 5 || fail -f ERR
+cat <<EOF > WANT
+Unable to connect to host 'bad.bitkeeper.com'.
+EOF
+cmpfiles ERR WANT
+echo OK
+
 echo $N Test clone to directory with spaces in its name..............$NL
 unset TMPDIR
 mkdir "Silly directory with spaces"
@@ -120,7 +148,7 @@ cd "$HERE"/project
 bk commit $Q -ystuff
 cd ..
 bk lclone $Q project cmbase
-bk clonemod $Q "$HERE/project" cmbase nullclonemod || exit 1
+bk clone $Q -@cmbase "$HERE/project" nullclonemod || fail
 cd nullclonemod
 bk parent -l > GOT
 bk parent $Q ../project
@@ -137,7 +165,7 @@ bk edit $Q src/bar.c
 bk delta $Q -fybar src/bar.c
 bk commit $Q -ybar
 cd ..
-bk clonemod $Q "$HERE/project" cmbase remotecset || exit 1
+bk clone $Q -@cmbase "$HERE/project" remotecset || fail
 cd remotecset
 bk parent -l > GOT
 bk parent $Q ../project
@@ -154,14 +182,14 @@ bk edit $Q src/bar.c
 bk delta $Q -fybar src/bar.c
 bk commit $Q -ybar
 cd ..
-bk clonemod $Q "$HERE/project" cmbase localcset || exit 1
+bk clone $Q -@cmbase "$HERE/project" localcset || fail
 cd localcset
 bk parent -l > GOT
 bk parent $Q ../project
 bk parent -l > WANT
 cmpfiles WANT GOT
 bk changes -qLR > CHANGES
-test -s CHANGES && exit 1
+test -s CHANGES && fail -f CHANGES
 cd ..
 echo OK
 
@@ -176,7 +204,7 @@ bk pull $Q ../nullclonemod
 cd ../cmbase
 bk pull $Q ../nullclonemod
 cd ..
-bk clonemod $Q "$HERE/project" cmbase multinode || exit 1
+bk clone $Q -@cmbase "$HERE/project" multinode || fail
 cd multinode
 bk parent -l > GOT
 bk parent $Q ../project
@@ -207,7 +235,7 @@ cd ../tagbase
 bk tag $Q TAGLOCAL3
 bk pull $Q ../project
 cd ..
-bk clonemod $Q "$HERE/project" tagbase localtag || exit 1
+bk clone $Q -@tagbase "$HERE/project" localtag || fail
 cd localtag
 bk parent -l > GOT
 bk parent $Q ../project
@@ -216,6 +244,18 @@ cmpfiles WANT GOT
 bk changes -qLR > CHANGES
 test -s CHANGES && exit 1
 cd ..
+echo OK
+
+echo $N Test clonemod without a remote basename .....................$NL
+cd "$HERE"/project
+bk bkd -q -aPORT -ikill || exit 1
+P=`cat PORT`
+trap "bk _kill bk://localhost:$P" 0
+cd ..
+mkdir foo
+cd foo
+bk clone $Q -@../localcset bk://localhost:$P || fail
+test -d project || fail
 echo OK
 
 echo $N Test clone with 1 arg and trailing slash ....................$NL
