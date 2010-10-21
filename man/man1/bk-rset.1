@@ -5,11 +5,15 @@ bk rset \- generate a \*(lqrelease set\*(rq
 .SH SYNOPSIS
 .B bk rset
 .[B] \-ah 
-.OPTreq \-r rev
-.br
-.B bk rset
-.[B] \-ah 
+.if \n[NESTED] \{\
+.[OPTopt] \-s alias
+.\}
 .OPTreq \-l rev
+|
+.OPTreq \-r rev 
+|
+.OPTreq \-r r1
+.OPTreq \-r r2
 .SH DESCRIPTION
 .B bk rset
 is used to generate a view of either the changes contained in a particular
@@ -40,7 +44,7 @@ combined with
 .hy
 to generate traditional patches.
 .SH OPTIONS
-.TP \-r\*<r1\*>,\*<r2\*>
+.TP "\-r\*<r1\*> \-r\*<r2\*>"
 .B \-a
 show deleted files which are normally suppressed.
 .tp
@@ -71,12 +75,29 @@ Mutually exclusive with
 specify the changeset revision to show.  This will show all the files
 changed in this changeset.
 .tp
-.OPTreq \-r r1\fB,\fIr2
-specify the changeset range to show.  This will show all the files
-changed after changeset
-.ARG r1 
-up to and including changeset
-.ARG r2 .
+.OPTreq \-r r1 \ \fB\-r\fP\*<r2\*>
+If two revisions are specified, 
+the two revs specify the changeset range to show.
+The files included will be all files changed after the changeset specified
+by the first rev, up to and including the changeset specified by the
+second rev.
+.if \n[NESTED] \{\
+.tp
+.OPTopt \-s alias
+In a nested collection, 
+.B rset
+can recurse into some or all of the populated components.
+Using the 
+.OPTreq \-s alias
+option limits the repositories processed to those specified by
+.ARG alias .
+If this option is repeated the implied subset is the union of all
+specified components.
+If no
+.ARG alias
+is specified that is taken to be the same as
+.BR \-sHERE .
+.\}
 .SH "SEE ALSO"
 .SA export
 .SA gnupatch

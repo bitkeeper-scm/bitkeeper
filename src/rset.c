@@ -1,16 +1,20 @@
 /* Copyright (c) 2000 Andrew Chang */ 
 #include "sccs.h"
+#include "nested.h"
 
 typedef struct {
 	u32 	show_all:1;	/* -a show deleted files */
 	u32	show_diffs:1;	/* -r output in rev diff format */
 	u32	show_path:1;	/* -h show d->pathname */
 	u32	hide_cset:1;	/* -H hide ChangeSet file from file list */
+	u32	hide_comp:1;	/* -H also hide component csets */
 	u32	lflg:1;		/* -l list a rset */
 	u32	md5keys:1;	/* -5 use md5keys instead of revs */
 	u32	BAM:1;		/* -B only list BAM files */
 	u32	nested:1;	/* -P recurse into nested components */
 	char	**nav;
+	char	**aliases;	/* -s limit nested output to aliases */
+	nested	*n;		/* only if -s (and therefore, -P) */
 } options;
 
 private	int	mixed; 		/* if set, handle long and short keys */
@@ -131,6 +135,7 @@ process(char	*root,
 	char	*start, char *end, MDBM *idDB, MDBM **goneDB, options opts)
 {
 	sccs	*s = 0;
+	comp	*c;
 	delta 	*d1, *d2;
 	char	*rev1, *rev2, *path1, *path2;
 	char	*p, *here, *t;
@@ -155,6 +160,17 @@ process(char	*root,
 		return;
 	}
 	free(p);
+
+	if (opts.n) { /* opts.n only set if in PRODUCT and with -s aliases*/
+		/* we're rummaging through all product files/components */
+		if (c = nested_findKey(opts.n, root)) {
+			/* this component is not selected by -s */
+			unless (c->alias) return;
+		} else {
+			/* if -s^PRODUCT skip product files */
+			unless (opts.n->product->alias) return;
+		}
+	}
 
 	if (opts.md5keys) {
 		if (opts.BAM) {
@@ -222,7 +238,7 @@ process(char	*root,
 	}
 
 	/* hide component cset with -H */
-	if (opts.hide_cset && CSET(s)) goto done;
+	if (opts.hide_comp && CSET(s)) goto done;
 
 	if (opts.show_diffs) {
 		/*
@@ -457,6 +473,10 @@ parse_rev(sccs	*s,
 {
 	char	*p;
 
+	/*
+	 * -rREV1,REV2 is the old form
+	 * -rREV1..REV2 or -rREV1 -rREV2 preferred
+	 */
 	p = strchr(args, ',');
 	unless (p) {
 		for (p = strchr(args, '.');
@@ -465,12 +485,19 @@ parse_rev(sccs	*s,
 	if (p) {
 		if (*p == '.') *p++ = 0;
 		*p++ = 0;
+		if (*rev1) {
+err:			fprintf(stderr, "%s: too many -r REVs\n", prog);
+			return (1);
+		}
 		unless (*rev1 = fix_rev(s, args)) return (1); /* failed */
 		unless (*rev2 = fix_rev(s, p)) return (1); /* failed */
 	} else {
-		unless (*rev2 = fix_rev(s, args)) return (1); /* failed */
-		if (sccs_parent_revs(s, *rev2, rev1, revM)) {
-			return (1); /* failed */
+		unless (p = fix_rev(s, args)) return (1); /* failed */
+		if (*rev1) {
+			if (*rev2) goto err;
+			*rev2 = p;
+		} else {
+			*rev1 = p;
 		}
 	}
 	return (0); /* ok */
@@ -480,10 +507,13 @@ int
 rset_main(int ac, char **av)
 {
 	int	c;
+	comp	*cp;
+	int	i;
 	char	*rev1 = 0, *rev2 = 0, *revM = 0;
 	char	s_cset[] = CHANGESET;
 	sccs	*s = 0;
 	MDBM	*db1, *db2 = 0, *idDB;
+	int	rc = 1;
 	options	opts;
 
 	path_prefix = getenv("_BK_PREFIX");
@@ -495,8 +525,8 @@ rset_main(int ac, char **av)
 	s = sccs_init(s_cset, SILENT);
 	assert(s);
 
-	while ((c = getopt(ac, av, "5aBhHl;Pr;", 0)) != -1) {
-		unless (c == 'r' || c == 'P' || c == 'l') {
+	while ((c = getopt(ac, av, "5aBhHl;Pr;s|", 0)) != -1) {
+		unless (c == 'r' || c == 'P' || c == 'l' || c == 's') {
 			if (optarg) {
 				opts.nav = addLine(opts.nav,
 				    aprintf("-%c%s", c, optarg));
@@ -516,11 +546,12 @@ rset_main(int ac, char **av)
 				break;
 		case 'H':					/* undoc 2.0 */
 				opts.hide_cset = 1; /* hide ChangeSet file */
+				opts.hide_comp = 1; /* hide components  */
 				break;
 		case 'l':	opts.lflg = 1;			/* doc 2.0 */
 				rev1 = strdup(optarg);
 				break;
-		case 'P':	opts.nested = 1;
+		case 'P':	opts.nested = 1; /* old, compat */
 				break;
 		case 'r':	opts.show_diffs = 1;		/* doc 2.0 */
 				if (parse_rev(s, optarg,
@@ -529,22 +560,72 @@ rset_main(int ac, char **av)
 					return (1); /* parse failed */
 				}
 				break;
+		case 's':	opts.nested = 1;
+				if (optarg) {
+					opts.aliases = addLine(opts.aliases,
+					    strdup(optarg));
+				}
+				break;
 		default:	if (s) sccs_free(s);
 				bk_badArg(c, av);
 		}
+		optarg = 0;	/* XXX didn't Oscar put this in getopt? */
 	}
 
 	unless (rev1) {
 usage:		if (s) sccs_free(s);
 		usage();
 	}
+
+	if (opts.show_diffs && !rev2) {
+		rev2 = rev1;
+		if (sccs_parent_revs(s, rev2, &rev1, &revM)) {
+			return (1); /* failed */
+		}
+	}
+
 	if (opts.BAM && !opts.md5keys) goto usage;
 
 	/* Let them use -P by default but ignore it in non-products. */
-	unless (proj_isProduct(0)) opts.nested = 0;
+	unless (proj_isProduct(0)) {
+		EACH(opts.aliases) {
+			unless (streq(opts.aliases[i], ".") ||
+			    strieq(opts.aliases[i], "HERE")) {
+				fprintf(stderr,
+				    "%s: -sALIAS only allowed in product\n",
+				    prog);
+				return (1);
+			}
+		}
+		freeLines(opts.aliases, free);
+		opts.aliases = 0;
+		opts.nested = 0;
+	}
+
+	if (opts.aliases) {
+		unless ((opts.n = nested_init(s, 0, 0, NESTED_PENDING)) &&
+		    !nested_aliases(opts.n, 0, &opts.aliases, start_cwd, 1)) {
+			goto out;
+		}
+		c = 0;
+		EACH_STRUCT(opts.n->comps, cp, i) {
+			if (cp->alias && !cp->present) {
+				unless (c) {
+					c = 1;
+					fprintf(stderr,
+					    "%s: error, the following "
+					    "components are not populated:\n",
+					    prog);
+				}
+				fprintf(stderr, "\t./%s\n", cp->path);
+			}
+		}
+		if (c) goto out;
+		unless (opts.n->product->alias) opts.hide_cset = 1;
+	}
 
 	/*
-	 * load the two ChangeSet 
+	 * load the two ChangeSet
 	 */
 	if (csetIds_merge(s, rev1, revM)) {
 		fprintf(stderr,
@@ -566,6 +647,7 @@ usage:		if (s) sccs_free(s);
 	}
 	mixed = !LONGKEY(s);
 	sccs_free(s);
+	s = 0;
 
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	assert(idDB);
@@ -574,10 +656,15 @@ usage:		if (s) sccs_free(s);
 	} else {
 		rel_list(db1, idDB, rev1, opts);
 	}
+	rc = 0;
+out:
+	if (s) sccs_free(s);
 	if (rev1) free(rev1);
 	if (rev2) free(rev2);
 	if (revM) free(revM);
-	return (0);
+	if (opts.aliases) freeLines(opts.aliases, free);
+	if (opts.n) nested_free(opts.n);
+	return (rc);
 }
 
 
