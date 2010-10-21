@@ -24,7 +24,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Prune ChangeSet files from the answer .......................$NL
-bk rset -HPrSTART,END > OUT || fail
+bk rset -PrSTART,END -H > OUT || fail
 bk _sort < OUT > GOT
 cat >WANT <<EOF
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
@@ -35,3 +35,59 @@ foo,bar/x|1.0..1.1
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N Test -sALL when not all components are populated ............$NL
+bk clone -s./foo,bar $Q . ../copy || fail
+cd ../copy
+bk rset -PrSTART,END -sALL 2>ERR && fail -f ERR
+cat <<EOF >WANT
+rset: error, the following components are not populated:
+	./gcc
+	./gdb
+EOF
+cmpfiles ERR WANT
+echo OK
+
+echo $N Test -sPRODUCT ..............................................$NL
+bk rset -PrSTART,END -sPRODUCT >OUT || fail
+cat <<EOF > WANT
+ChangeSet|1.2..1.4
+EOF
+cmpfiles WANT OUT
+echo OK
+
+echo $N Test -s^PRODUCT .............................................$NL
+bk rset -PrSTART,END -s^PRODUCT | bk _sort >OUT || fail
+cat <<EOF > WANT
+foo,bar/BitKeeper/etc/collapsed|1.0..1.1
+foo,bar/BitKeeper/etc/config|1.0..1.1
+foo,bar/BitKeeper/etc/gone|1.0..1.1
+foo,bar/BitKeeper/etc/ignore|1.0..1.1
+foo,bar/ChangeSet|1.0..1.2
+foo,bar/x|1.0..1.1
+EOF
+cmpfiles WANT OUT
+echo OK
+
+echo $N Test -s./comp ...............................................$NL
+bk rset -PrSTART,END -sfoo,bar | bk _sort >OUT || fail
+cat <<EOF > WANT
+foo,bar/BitKeeper/etc/collapsed|1.0..1.1
+foo,bar/BitKeeper/etc/config|1.0..1.1
+foo,bar/BitKeeper/etc/gone|1.0..1.1
+foo,bar/BitKeeper/etc/ignore|1.0..1.1
+foo,bar/ChangeSet|1.0..1.2
+foo,bar/x|1.0..1.1
+EOF
+cmpfiles WANT OUT
+echo OK
+
+
+echo $N Test -s^./comp ..............................................$NL
+bk rset -PrSTART,END -s^foo,bar >OUT || fail
+cat <<EOF > WANT
+ChangeSet|1.2..1.4
+EOF
+cmpfiles WANT OUT
+echo OK
+

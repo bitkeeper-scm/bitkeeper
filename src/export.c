@@ -97,7 +97,7 @@ export_main(int ac,  char **av)
 	product = proj_isProduct(0) ? 1 : 0;
 
 	bktmp(file_rev, "file_rev");
-	sprintf(buf, "bk rset -%sHPhl'%s' > '%s'",
+	sprintf(buf, "bk rset -s -%sHhl'%s' > '%s'",
 	    sysfiles ? "a" : "",
 	    rev ? rev : "+",
 	    file_rev);
@@ -176,7 +176,7 @@ export_patch(char *diff_style,
 	int	status;
 
 	bktmp(file_rev, "file_rev");
-	sprintf(buf, "bk rset -HPhr'%s' > '%s'", rev ? rev : "+", file_rev);
+	sprintf(buf, "bk rset -s -Hhr'%s' > '%s'", rev ? rev : "+", file_rev);
 	status = system(buf);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 		unlink(file_rev);

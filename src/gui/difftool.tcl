@@ -284,7 +284,7 @@ proc getFiles {} \
 			set files [readInput stdin]
 		} elseif {[regexp -- {-r(@.*)..(@.*)} $argv - - -]} {
 			cd2root
-			set f [open "| bk rset -P $argv" r]
+			set f [open "| bk rset -s $argv" r]
 			set files [readInput $f]
 			if {[catch {close $f} err]} {
 				puts $err
@@ -307,7 +307,7 @@ proc getFiles {} \
 			if {[regexp -- {-r(.*)} $b - rev2]} {
 				# rset mode
 				cd2root
-				set f [open "| bk rset -Pr$rev1..$rev2" r]
+				set f [open "| bk rset -s -r$rev1..$rev2" r]
 				set files [readInput $f]
 				if {[catch {close $f} err]} {
 					puts $err
