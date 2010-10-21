@@ -857,6 +857,7 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 		/* calculate url to component */
 		hash_storeStr(r->params, "ROOTKEY", c->rootkey);
 		vp = addLine(vp, remote_unparse(r));
+		hash_deleteStr(r->params, "ROOTKEY");
 		vp = addLine(vp, 0);
 		if (rc = spawnvp(_P_WAIT, "bk", &vp[1])) {
 			fprintf(stderr, "Pulling %s failed %x\n", c->path, rc);

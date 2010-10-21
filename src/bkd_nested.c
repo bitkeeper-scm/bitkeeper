@@ -9,12 +9,16 @@ cmd_nested(int ac, char **av)
 	int	verbose = 0;
 
 	unless (av[1]) {
-		out("ERROR-invalid command");
+		out("ERROR-invalid command\n");
+		return (1);
+	}
+	unless (proj_isProduct(0)) {
+		out("ERROR-nested only in product\n");
 		return (1);
 	}
 	unless (nlid = getenv("_NESTED_LOCK")) {
-		out("@OK@\n");
-		return (0);
+		out("ERROR-nested command expects nested lock\n");
+		return (1);
 	}
 	if (streq(av[1], "unlock")) {
 		if (av[2] && streq(av[2], "-R")) {

@@ -12,6 +12,7 @@ print C <<EOF;
 %{
 /* !!! automatically generated file !!! Do not edit. */
 #include "system.h"
+#include "bkd.h"
 #include "cmd.h"
 %}
 %struct-type
@@ -101,15 +102,6 @@ while (<SH>) {
     }
 }
 close(SH) or die;
-close(C) or die;
-
-# only replace cmd.c and cmd.h if they have changed
-foreach (qw(cmd.c cmd.h)) {
-    if (system("cmp -s $_ $_.new") != 0) {
-	rename("$_.new", $_);
-    }
-    unlink "$_.new";
-}
 
 # all commands tagged with 'remote' must live in files named bkd_*.c
 # (can't use perl's glob() because win32 perl is missing library)
@@ -125,6 +117,13 @@ while (<>) {
     if (/^(\w+_main)\(/) {
 	delete $rmts{$1};
     }
+
+    # export bkd command as to the command line
+    #  (ex:   cmd_pull_part1 => 'bk _bkd_pull_part1')
+
+    if (/^cmd_(\w+)\(/) {
+	print C "_bkd_$1, CMD_INTERNAL, cmd_$1, 0, 0, 0, 1\n";
+    }
 }
 if (%rmts) {
     print STDERR "Commands marked with 'remote' need to move to bkd_*.c:\n";
@@ -133,6 +132,17 @@ if (%rmts) {
     }
     die;
 }
+
+close(C) or die;
+
+# only replace cmd.c and cmd.h if they have changed
+foreach (qw(cmd.c cmd.h)) {
+    if (system("cmp -s $_ $_.new") != 0) {
+	rename("$_.new", $_);
+    }
+    unlink "$_.new";
+}
+
 
 # All the command line functions names in bk should be listed below
 # followed by any optional modifiers.  A line with just a single name
