@@ -34,7 +34,7 @@ clone: component fetch failed, only product is populated
 EOF
 cmpfiles ERR2 WANT
 cd copy-all
-bk -s -r check -ac || fail 5
+bk -e -r check -ac || fail 5
 
 cd ../gcc-only
 cp BitKeeper/log/urllist BACK

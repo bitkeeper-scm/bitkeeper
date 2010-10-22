@@ -207,7 +207,7 @@ test $TIP = `bk changes -qr+ -d:REV: junk` && {
 	echo failed to roll back junk
 	exit 1
 }
-bk -s -qr check -ac || exit 1
+bk -e -qr check -ac || exit 1
 echo OK
 
 echo $N Test -s./gcc/nm .............................................$NL
@@ -648,7 +648,7 @@ echo OK
 
 echo $N Alias -a of missing components and check fails ..............$NL
 cd "$HERE/project-nm"
-bk -qs changes -r+ -nd:ROOTKEY: | bk alias set -C DEFAULT -
+bk -e changes -r+ -nd:ROOTKEY: | bk alias set -C DEFAULT -
 bk -r check || exit 1
 rm -fr junk
 bk -r check 2> ERR && { echo fix test; exit 1; }

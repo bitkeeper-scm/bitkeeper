@@ -272,7 +272,7 @@ echo OK
 
 echo $N Check iterator from product root - default mode aka quiet ...$NL
 cd "$HERE/project"
-bk -s pwd -P > GOT
+bk -e pwd -P > GOT
 cat > WANT <<EOF
 gcc
 gdb
@@ -283,7 +283,7 @@ echo OK
 
 echo $N Check iterator from product root - noisy mode ...............$NL
 cd "$HERE/project"
-bk --headers -s pwd -P > GOT
+bk --headers -e pwd -P > GOT
 cat > WANT <<EOF
 #### gcc ####
 gcc
@@ -297,7 +297,7 @@ echo OK
 
 echo $N Check iterator from component - default mode aka quiet ......$NL
 cd "$HERE/project/gcc"
-bk -s pwd -P > GOT
+bk -e pwd -P > GOT
 cat > WANT <<EOF
 gcc
 gdb
@@ -308,7 +308,7 @@ echo OK
 
 echo $N Check iterator from component - noisy mode ..................$NL
 cd "$HERE/project/gcc"
-bk --headers -s pwd -P > GOT
+bk --headers -e pwd -P > GOT
 cat > WANT <<EOF
 #### gcc ####
 gcc
@@ -321,7 +321,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Check iterator with get .....................................$NL
-bk --headers -s -Ur get > GOT 2>&1
+bk --headers -e -Ur get > GOT 2>&1
 cat > WANT <<EOF
 #### gcc ####
 name 1.1: 1 lines
@@ -679,8 +679,8 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s lists committed and pending components ................$NL
-bk --headers -s > GOT
+echo $N bk -e lists committed and pending components ................$NL
+bk --headers -e > GOT
 cat <<EOF > WANT
 #### gcc4 ####
 #### gdb ####
@@ -917,7 +917,7 @@ bk undo $Q -fsr+ || {
 	echo failed undo
 	exit 1
 }
-bk $Q -s -r check -ac || {
+bk $Q -e -r check -ac || {
 	echo failed check
 	exit 1
 }
@@ -940,7 +940,7 @@ grep -q "check: trying to fix names..." OUT && {
 	echo warning: should have fixed names before running check
 	cat OUT
 }
-bk $Q -s -r check -ac || {
+bk $Q -e -r check -ac || {
 	echo failed check
 	exit 1
 }
@@ -965,7 +965,7 @@ bk undo $Q -fsr1.4,1.3 || {
 	echo failed undo
 	exit 1
 }
-bk $Q -s -r check -ac || {
+bk $Q -e -r check -ac || {
 	echo failed check
 	exit 1
 }
@@ -983,7 +983,7 @@ echo y | bk undo -sa1.2 > OUT 2>&1  || {
 	cat OUT
 	exit 1
 }
-bk -s -r check -ac > OUT 2>&1 || {
+bk -e -r check -ac > OUT 2>&1 || {
 	echo failed check
 	cat OUT
 	exit 1
@@ -1003,7 +1003,7 @@ bk undo $Q -fsr+ || {
 	echo failed undo
 	exit 1
 }
-bk $Q -s -r check -ac || {
+bk $Q -e -r check -ac || {
 	echo failed check
 	exit 1
 }
@@ -1569,12 +1569,12 @@ cd ..
 bk cset -qx"$CSET" 2>&1 | grep -q "Operation not supported" || fail
 # # Uncomment these once it's fixed
 # cd ..
-# bk -qs -r check -ac || fail
+# bk -e -r check -ac || fail
 # # product
 # bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
 # cd gdb
 # bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
 # cd ../liberty
 # bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
-# bk -s -Ur. grep -n lineb > OUT || fail -f OUT exclude did not work
+# bk -e -Ur. grep -n lineb > OUT || fail -f OUT exclude did not work
 echo OK

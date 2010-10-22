@@ -44,7 +44,7 @@ chkblanks() {
 add() {
 	touch "$1" || return
 	bk new $Q "$1" || return
-	bk -s commit $Q -y"$1" || return
+	bk -e commit $Q -y"$1" || return
 }
 
 echo $N Setup .......................................................$NL
