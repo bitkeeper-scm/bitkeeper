@@ -65,23 +65,11 @@ pull_main(int ac, char **av)
 	opts.safe = -1;	/* -1 == not set on command line */
 	while ((c = getopt(ac, av, "c:DdE:Fiqr;RstTuvw|z|", lopts)) != -1) {
 		unless (c == 'r' || c >= 300) {
-			if (optarg) {
-				opts.av_pull = addLine(opts.av_pull,
-				    aprintf("-%c%s", c, optarg));
-			} else {
-				opts.av_pull = addLine(opts.av_pull,
-				    aprintf("-%c", c));
-			}
+			opts.av_pull = bk_saveArg(opts.av_pull, av, c);
 		}
 		if ((c == 'd') || (c == 'E') || (c == 'q') ||
 		    (c == 'v') || (c == 'w') || (c == 'z')) {
-			if (optarg) {
-				opts.av_clone = addLine(opts.av_clone,
-				    aprintf("-%c%s", c, optarg));
-			} else {
-				opts.av_clone = addLine(opts.av_clone,
-				    aprintf("-%c", c));
-			}
+			opts.av_clone = bk_saveArg(opts.av_clone, av, c);
 		}
 		switch (c) {
 		    case 'D': opts.collapsedups = 1; break;
@@ -116,7 +104,6 @@ pull_main(int ac, char **av)
 			break;
 		    default: bk_badArg(c, av);
 		}
-		optarg = 0;
 	}
 	if (getenv("BK_NOTTY")) {
 		opts.quiet = 1;

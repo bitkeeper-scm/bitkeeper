@@ -221,8 +221,7 @@ main(int volatile ac, char **av, char **env)
 			unless ((c == 'e') || (c == 's') || (c == '?') ||
 			    (c >= 300)) {
 				/* save options for --each */
-				p = aprintf("-%c%s", c, optarg ? optarg : "");
-				nav = addLine(nav, p);
+				nav = bk_saveArg(nav, av, c);
 			}
 			switch (c) {
 			    /* maybe sfiles, depends on nested or not */
@@ -235,8 +234,7 @@ main(int volatile ac, char **av, char **env)
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
 			    case 'n': case 'p': case 'u': case 'x':
 			    case 'h': case '^':
- 				sopts = addLine(sopts,
- 				    aprintf("-%c%s", c, optarg ? optarg : ""));
+				sopts = bk_saveArg(sopts, av, c);
 				break;
 			    case 306: // --sfiles-opts=cvg
 				sopts = addLine(sopts, aprintf("-%s", optarg));
@@ -306,7 +304,6 @@ baddir:						fprintf(stderr,
 				break;
 			    default: bk_badArg(c, av);
 			}
-			optarg = 0;
 		}
 		/* if -r, then -U is only passed to sfiles */
 		if (dashr && dashU) dashU = 0;

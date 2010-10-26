@@ -1366,6 +1366,7 @@ char	**remap_getdir(project *proj, char *dir);
 char	*remap_realBasename(project *proj, char *rel, char *realname);
 int	remap_access(project *proj, char *file, int mode);
 int	bk_urlArg(char ***urls, char *arg);
+char	**bk_saveArg(char **nav, char **av, int c);
 void	bk_badArg(int c, char **av)
 #ifdef __GNUC__
 	__attribute__((noreturn))

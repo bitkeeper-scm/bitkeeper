@@ -60,12 +60,7 @@ undo_main(int ac,  char **av)
 	while ((c = getopt(ac, av, "a:Cfqp;r:sv", 0)) != -1) {
 		/* We make sure component undo's always save a patch */
 		unless ((c == 'a') || (c == 'r') || (c == 's')) {
-			if (optarg) {
-				nav = addLine(nav,
-				    aprintf("-%c%s", c, optarg));
-			} else {
-				nav = addLine(nav, aprintf("-%c", c));
-			}
+			nav = bk_saveArg(nav, av, c);
 		}
 		switch (c) {
 		    case 'a': aflg = 1;				/* doc 2.0 */
@@ -81,7 +76,6 @@ undo_main(int ac,  char **av)
 			freeLines(nav, free);
 			bk_badArg(c, av);
 		}
-		optarg = 0;
 	}
 	unless (rev) usage();
 	if (undoLimit(&must_have)) limitwarning = 1;

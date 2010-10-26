@@ -58,6 +58,7 @@ dotest()
 		bk "$@" -r+ < /dev/null
 		bk "$@" XYZ < /dev/null
 		bk "$@" "" <  /dev/null
+		bk "$@" --bad-long <  /dev/null
 		bk "$@" - < .STDIN
 	) > OUT 2>&1
 	find . -type f -name 'core*' > XXX

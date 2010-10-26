@@ -497,13 +497,7 @@ rset_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "5aBhHl;Pr;", 0)) != -1) {
 		unless (c == 'r' || c == 'P' || c == 'l') {
-			if (optarg) {
-				opts.nav = addLine(opts.nav,
-				    aprintf("-%c%s", c, optarg));
-			} else {
-				opts.nav = addLine(opts.nav,
-				    aprintf("-%c", c));
-			}
+			opts.nav = bk_saveArg(opts.nav, av, c);
 		}
 		switch (c) {
 		case '5':	opts.md5keys = 1; break;	/* undoc */

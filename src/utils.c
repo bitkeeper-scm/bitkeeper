@@ -1923,6 +1923,34 @@ bk_badArg(int c, char **av)
 }
 
 /*
+ * Use after getopt() to have a command line that will repoduce the
+ * same set of options.
+ */
+char **
+bk_saveArg(char **nav, char **av, int c)
+{
+	char	buf[MAXLINE];
+
+	if (c > 32 && c < 127) {
+		/* normal short option */
+		sprintf(buf, "-%c", c);
+		if (optarg) strcat(buf, optarg);
+		nav = addLine(nav, strdup(buf));
+	} else if (c > 256) {
+		/* long option */
+		if (optarg && (optarg == av[optind-1])) {
+			/* --long with-arg */
+			nav = addLine(nav, strdup(av[optind-2]));
+		}
+		nav = addLine(nav, strdup(av[optind-1]));
+	} else {
+		/* getopt error */
+		assert((c == -1) || (c == GETOPT_ERR));
+	}
+	return (nav);
+}
+
+/*
  * print usage message to stderr and exit.
  * Use 3 since some command use 1 as a special meaning. ex: diff
  *

@@ -845,3 +845,12 @@ cmpfiles ERR WANT
 cd ..
 rm -rf copy
 echo OK
+
+echo $N Verify that --no-meta works remotely ........................$NL
+cd project
+bk changes -av > 1 || fail
+bk changes -av --no-meta > 2 || fail
+bk changes -q -av --no-meta . > 3 || fail
+cmp -s 2 3 || fail
+cmp -s 1 2 && fail
+echo OK

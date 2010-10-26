@@ -149,9 +149,9 @@ admin_main(int ac, char **av)
 			fprintf(stderr, "Set BK_FORCE to do this\n");
 			exit(1);
 		}
-		if (streq(optarg, "all")) {
+		if (streq(obscure, "all")) {
 			flags |= NEWCKSUM|ADMIN_OBSCURE;
-		} else if (streq(optarg, "license")) {
+		} else if (streq(obscure, "license")) {
 			flags |= NEWCKSUM|ADMIN_RMLICENSE;
 		} else {
 			fprintf(stderr,

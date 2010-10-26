@@ -35,7 +35,7 @@
 int	optopt;		/* option that is in error, if we return an error */
 int	optind;		/* next arg in argv we process */
 char	*optarg;	/* argument to an option */
-static int n;
+static int n;		/* current position == av[optind][n] */
 
 private	int	doLong(int ac, char **av, longopt *lopts);
 private	void	printUsage(char *prog, char *opts, longopt *lopts);
@@ -58,12 +58,14 @@ getopt(int ac, char **av, char *opts, longopt *lopts)
 {
 	char	*t;
 
+	optarg = 0;	/* clear out arg from last round */
+	optopt = 0;	/* clear error return */
 	if (!optind) {
 		optind = 1;
 		n = 1;
 	}
-	debug((stderr, "GETOPT ind=%d n=%d arg=%s av[%d]='%s'\n",
-	    optind, n, optarg ? optarg : "", optind, av[optind]));
+	debug((stderr, "GETOPT ind=%d n=%d av[%d]='%s'\n",
+	    optind, n, optind, av[optind]));
 
 	if ((optind >= ac) || (av[optind][0] != '-') || !av[optind][1]) {
 		return (EOF);
@@ -111,11 +113,7 @@ getopt(int ac, char **av, char *opts, longopt *lopts)
 
 	/* got one with an option, see if it is cozied up to the flag */
 	if (av[optind][n+1]) {
-		if (av[optind][n+1]) {
-			optarg = &av[optind][n+1];
-		} else {
-			optarg = 0;
-		}
+		optarg = &av[optind][n+1];
 		optind++;
 		n = 1;
 		debug((stderr, "\t%c with %s\n", *t, optarg));
@@ -124,7 +122,6 @@ getopt(int ac, char **av, char *opts, longopt *lopts)
 
 	/* If it was not there, and it is optional, OK */
 	if (t[1] == '|') {
-		optarg = 0;
 		optind++;
 		n = 1;
 		debug((stderr, "\t%c without arg\n", *t));
@@ -133,7 +130,6 @@ getopt(int ac, char **av, char *opts, longopt *lopts)
 
 	/* was it supposed to be there? */
 	if (t[1] == ';') {
-		optarg = 0;
 		optind++;
 		optopt = *t;
 		debug((stderr, "\twanted another word\n"));
@@ -161,7 +157,6 @@ doLong(int ac, char **av, longopt *lopts)
 
 	unless (lopts) {
 err:		n = 1;
-		optarg = 0;
 		optind++;
 		optopt = 0;
 		return (GETOPT_ERR);
@@ -203,7 +198,6 @@ err:		n = 1;
 
 	/* If it was not there, and it is optional, OK */
 	if (*t == '|') {
-		optarg = 0;
 		optind++;
 		n = 1;
 		return (lopts->ret);
