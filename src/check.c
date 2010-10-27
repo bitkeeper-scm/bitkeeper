@@ -218,8 +218,15 @@ check_main(int ac, char **av)
 	goneDB = loadDB(GONE, 0, DB_GONE);
 	buildKeys(idDB);
 	if (all) {
+		/*
+		 * Going to build a new idcache so delete the old one,
+		 * also cleanup old IDCACHE file, just in case.
+		 */
 		mdbm_close(idDB);
 		idDB = mdbm_mem();
+		unlink("BitKeeper/etc/SCCS/x.id_cache");
+		unlink("BitKeeper/log/x.idcache");
+		
 		unlink(BAM_MARKER); /* recreate BAM_MARKER */
 	}
 	if (check_eoln) {

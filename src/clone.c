@@ -622,11 +622,21 @@ clone(char **av, remote *r, char *local, char **envVar)
 		getMsg("bkd_missing_feature", "SAMv3", '=', stderr);
 		goto done;
 	}
-	unless (exists(IDCACHE)) {
-		if (exists("BitKeeper/log/x.id_cache")) {
+
+	/*
+	 * When the source and destination of a clone are remapped
+	 * differently, then the id_cache may appear in the wrong location.
+	 * Here we move the correct idcache into position before
+	 * continuing.
+	 */
+	if (proj_hasOldSCCS(0)) {
+		if (getenv("BKD_REMAP")) {
+			/* clone remapped -> non-remapped */
 			rename("BitKeeper/log/x.id_cache", IDCACHE);
 		}
-		if (exists("BitKeeper/etc/SCCS/x.id_cache")) {
+	} else {
+		unless (getenv("BKD_REMAP")) {
+			/* clone non-remapped -> remapped */
 			rename("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
 		}
 	}

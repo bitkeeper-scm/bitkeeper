@@ -1508,8 +1508,6 @@ findsfiles(char *file, struct stat *sb, void *data)
 			if (exists(file)) si->fn(file, sb, si->data);
 			strcpy(p+6, "x.dfile");
 			if (exists(file)) si->fn(file, sb, si->data);
-			strcpy(p+6, "x.id_cache");
-			if (exists(file)) si->fn(file, sb, si->data);
 		}
 		if (si->is_clone && streq(file + 2, "BitKeeper/log")) {
 			/*
@@ -1532,9 +1530,10 @@ findsfiles(char *file, struct stat *sb, void *data)
 				if (exists(file)) si->fn(file, sb, si->data);
 				strcpy(p+5, "HERE");
 				if (exists(file)) si->fn(file, sb, si->data);
-				strcpy(p+5, "x.id_cache");
-				if (exists(file)) si->fn(file, sb, si->data);
 			}
+			/* just send whatever IDCACHE is local */
+			sprintf(buf, "./%s", IDCACHE);
+			si->fn(buf, sb, si->data);
 		}
 		if (prunedirs) {
 			concat_path(buf, si->proj_prefix,
