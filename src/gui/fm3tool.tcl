@@ -2150,6 +2150,15 @@ proc nextCommon {} \
 	}
 	prs $lrevs .prs.left
 	prs $rrevs .prs.right
+
+	## Make sure both text widgets have the same number of lines.
+	set llines [lindex [split [.prs.left index end] .] 0]
+	set rlines [lindex [split [.prs.right index end] .] 0]
+	if {$rlines > $llines} {
+	    .prs.left insert end [string repeat \n [expr {$rlines - $llines}]]
+	} elseif {$llines > $rlines} {
+	    .prs.right insert end [string repeat \n [expr {$llines - $rlines}]]
+	}
 	update
 	dot
 	# Has to be after dot, for the horizontal positioning
@@ -2202,8 +2211,6 @@ proc prs {revs text} \
 	}
 	doprs $text $old old
 	doprs $text $new new
-	$text see end
-	$text yview scroll -1 units
 }
 
 proc doprs {text revs tag} \
