@@ -1396,7 +1396,7 @@ proc sfile {} \
 	if {$compression == "gzip"} { 
 		catch {exec bk admin -Znone $sfile} err
 	}
-	set f [open "$sfile" "r"]
+	set f [open "|[list bk _cat $sfile]"]
 	set ttype "sccs"
 	filltext $w(aptext) $f 1 "No sfile data"
 }
