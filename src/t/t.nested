@@ -1439,10 +1439,7 @@ echo OK
 echo $N Test that bk root with -P gives the right answer.............$NL
 cd "$HERE/project"
 R=`bk root -P ../remote/gcc`
-test "$R" = "$HERE/remote" || {
-	echo failed
-	exit 1
-}
+test "$R" = "$HERE/remote" || fail $R
 echo OK
 
 echo $N Components in idcache .......................................$NL

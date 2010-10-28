@@ -23,7 +23,7 @@ qecho() {
 }
 
 __cd2root() {
-	root="`bk root 2> /dev/null`"
+	root="`bk root -R 2> /dev/null`"
 	test $? -ne 0 && {
 		echo "bk: cannot find package root." 1>&2
 		exit 1
@@ -647,7 +647,7 @@ _unrm () {
 	fi
 
 	# Make sure we are inside a BK repository
-	bk root > /dev/null || return 1
+	bk root -R > /dev/null || return 1
 
 	# Assume the path name specified is relative to the current directory
 	rdir=`bk pwd -r`
@@ -867,7 +867,7 @@ _chmod() {		# /* doc 2.0 */
 	fi
 	MODE=$1
 	shift
-	ROOT=`bk root`
+	ROOT=`bk root -R`
 	rm -f "$ROOT/BitKeeper/tmp/err$$"
 	bk sfiles -g ${1+"$@"} | while read i
 	do	test "X`bk sfiles -c $i`" = X || {
@@ -1759,7 +1759,7 @@ _conflicts() {
 	done
 	shift `expr $OPTIND - 1`
 
-	ROOTDIR=`bk root 2>/dev/null`
+	ROOTDIR=`bk root -R 2>/dev/null`
 	test $? -ne 0 && { echo "You must be in a BK repository" 1>&2; exit 1; }
 	cd "$ROOTDIR" > /dev/null
 	test -d RESYNC || { echo "No files are in conflict"; exit 0; }

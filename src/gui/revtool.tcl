@@ -2383,7 +2383,7 @@ select a new file to view"
 		if {$lfname == ""} { exit }
 		set file [exec bk sfiles -g $lfname 2>$dev_null]
 	}
-	if {[catch {exec bk root $file} proot]} {
+	if {[catch {exec bk root -R $file} proot]} {
 		wm title . "revtool: $file $R"
 	} else {
 		wm title . "revtool: $proot: $file $R"
