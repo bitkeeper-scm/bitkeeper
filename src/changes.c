@@ -457,6 +457,9 @@ doit_local(char ***nav, char **urls)
 		unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) rc=1;
 	}
 done:
+	p = popLine(*nav); /* remove '-' from above */
+	free(p);
+	*nav = addLine(*nav, 0);
 	return (rc);
 }
 

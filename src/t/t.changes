@@ -206,6 +206,13 @@ echo 1.5 jane project > WANT
 checkfiles WANT GOT
 echo OK
 
+echo $N Check changes -LR ...........................................$NL
+bk changes -LR -qnd':I: :P: :C:' > GOT || fail
+echo 1.5 joe clone > WANT
+echo 1.5 jane project >> WANT
+checkfiles WANT GOT
+echo OK
+
 echo $N Check remote dspec listing ..................................$NL
 cd "$HERE/clone"
 bk changes -qnd':I: :P: :C:' > WANT
