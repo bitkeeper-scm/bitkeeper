@@ -3738,47 +3738,57 @@ config2mdbm(MDBM *db, char *config)
 /*
  * Load config file into a MDBM DB
  */
-private MDBM *
-loadRepoConfig(char *root)
+private int
+loadRepoConfig(MDBM *DB, char *root)
 {
-	MDBM	*DB = 0;
-	sccs	*s = 0;
+	sccs	*s;
+	char	*tmpf;
 	char	config[MAXPATH];
 
-	unless (root) return (0);
+	unless (root) return (-1);
+
+ 	/*
+	 * Support for a non-versioned config file.
+	 */
+	concat_path(config, root, "/BitKeeper/log/config");
+	if (exists(config)) config2mdbm(DB, config);
+
 	/*
 	 * If the config is already checked out, use that.
 	 */
 	concat_path(config, root, "/BitKeeper/etc/config");
 	if (exists(config)) {
-		DB = mdbm_mem();
 		config2mdbm(DB, config);
-		return (DB);
+		return (0);
 	}
 
 	/*
-	 * No g file, so load it directly from the s.file
-	 */
-	concat_path(config, root, "BitKeeper/etc/SCCS/s.config");
-	unless (exists(config)) return (0);
-
-	/*
+	 * Normally we'll have a checked out file, check does that for us.
+	 * This code is just for the rare case someone cleaned it.
+	 *
 	 * Note that we can't skip WACKGRAPH here because of a change
 	 * where we call the notifier on deltas.  That forces a load
 	 * of BitKeeper/etc/config while we're mucking with it.  So
 	 * we just have to live without checking revs in loading the
 	 * config file.  bk -r check -a will check them.
 	 */
-	unless (s = sccs_init(config, SILENT|INIT_WACKGRAPH)) return (0);
-	s->state |= S_CONFIG; /* This should really be stored on disk */
-	if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_HASH|GET_HASHONLY, 0)) {
+	concat_path(config, root, "BitKeeper/etc/SCCS/s.config");
+	if (s = sccs_init(config, SILENT|INIT_MUSTEXIST|INIT_WACKGRAPH)) {
+		int	ret = 0;
+
+		tmpf = bktmp(0, 0);
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT|GET_EXPAND, tmpf)) {
+			perror(tmpf);
+			ret = 1;
+		} else {
+			config2mdbm(DB, tmpf);
+		}
+		unlink(tmpf);
+		free(tmpf);
 		sccs_free(s);
-		return (0);
+		return (ret);
 	}
-	DB = s->mdbm;
-	s->mdbm = 0;
-	sccs_free(s);
-	return (DB);
+	return (-1);
 }
 
 /*
@@ -3862,22 +3872,26 @@ loadEnvConfig(MDBM *db)
 MDBM *
 loadConfig(project *p, int forcelocal)
 {
-	MDBM	*db;
+	MDBM	*db = mdbm_mem();
+	char	*t;
 	project	*prod;
-	char	*config;
 
-	unless (db = loadRepoConfig(proj_root(p))) {
+	/*
+	 * Support for a magic way to set clone default
+	 */
+	if (t = getenv("BKD_CLONE_DEFAULT")) {
+		mdbm_store_str(db, "clone_default", t, MDBM_INSERT);
+	}
+
+	if (loadRepoConfig(db, proj_root(p))) {
 		if (forcelocal) return (0);
-		db = mdbm_mem();
 	}
 	if (proj_isComponent(p)) {
 		unless (prod = proj_isResync(p)) prod = p;
 		prod = proj_product(prod);
 
 		/* fetch config from product */
-		config = proj_fullpath(prod, "BitKeeper/etc/config");
-		unless (exists(config)) get(config, SILENT|GET_EXPAND, "-");
-		config2mdbm(db, config);
+		loadRepoConfig(db, proj_root(prod));
 	}
 	loadDotBkConfig(db);
 	unless (getenv("BK_REGRESSION")) loadGlobalConfig(db);
@@ -3911,6 +3925,7 @@ printconfig(char *file, MDBM *db, MDBM *cfg)
 		}
 	}
 	EACH_KV(db) keys = addLine(keys, kv.key.dptr);
+	unless (keys) goto out;
 	sortLines(keys, 0);
 	printf("%s:\n", file);
 	EACH(keys) {
@@ -3936,8 +3951,9 @@ printconfig(char *file, MDBM *db, MDBM *cfg)
 		}
 		puts(v1);
 	}
-	freeLines(keys, 0);
 	putchar('\n');
+out:
+	freeLines(keys, 0);
 	if (freeme) mdbm_close(freeme);
 }
 
@@ -4045,6 +4061,10 @@ config_main(int ac, char **av)
 
 	/* repo config */
 	if (root = proj_root(0)) {
+		file = aprintf("%s/BitKeeper/log/config", root);
+		if (exists(file)) printconfig(file, 0, cfg);
+		free(file);
+
 		file = aprintf("%s/BitKeeper/etc/config", root);
 		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
 		printconfig(file, 0, cfg);
@@ -4053,6 +4073,10 @@ config_main(int ac, char **av)
 
 	/* product config */
 	if (proj_isComponent(0) && (root = proj_root(proj_product(0)))) {
+		file = aprintf("%s/BitKeeper/log/config", root);
+		if (exists(file)) printconfig(file, 0, cfg);
+		free(file);
+
 		file = aprintf("%s/BitKeeper/etc/config", root);
 		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
 		printconfig(file, 0, cfg);
@@ -6228,10 +6252,7 @@ getKey(MDBM *DB, char *data, int flags)
 	char	*k, *v;
 	int	rc;
 
-	if (flags & DB_CONFIG) {
-		parseConfig(data, DB);
-		return (1);
-	} else if (flags & DB_KEYFORMAT) {
+	if (flags & DB_KEYFORMAT) {
 		k = data;
 		if (v = separator(data)) *v++ = 0;
 	} else {
@@ -6346,11 +6367,7 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 
 	if ((HASH(s) && !(flags & GET_NOHASH)) || (flags & GET_HASH)) {
 		hash = 1;
-		if (CSET(s)) {
-			hashFlags = DB_KEYFORMAT;
-		} else if (CONFIG(s)) {
-			hashFlags = DB_CONFIG;
-		}
+		if (CSET(s)) hashFlags = DB_KEYFORMAT;
 		unless ((encoding & E_DATAENC) == E_ASCII) {
 			fprintf(stderr, "get: has files must be ascii.\n");
 			s->state |= S_WARNED;

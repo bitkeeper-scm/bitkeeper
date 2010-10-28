@@ -730,8 +730,14 @@ clone_defaultAlias(nested *n)
 	char	*t;
 	hash	*aliasdb;
 
-	defalias = proj_configval(0, "clone_default");
-	if (streq(defalias, "")) defalias = "ALL";
+	/*
+	 * Drop the proj cache so we will reread the clone default,
+	 * merging in any value sent from the server.
+	 * Doing it this way lets people override the server config
+	 * if they want.
+	 */
+	proj_reset(n->proj);
+	defalias = proj_configval(n->proj, "clone_default");
 
 	t = defalias + strlen(defalias);
 	while (isspace(t[-1])) *--t = 0;

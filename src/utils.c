@@ -1134,6 +1134,9 @@ sendServerInfo(int no_repo)
 		unless (proj_hasOldSCCS(0)) out("REMAP=1\n");
 		sprintf(buf, "NFILES=%u\n", repo_nfiles(0,0));
 		out(buf);
+		sprintf(buf,
+		    "CLONE_DEFAULT=%s\n", proj_configval(0, "clone_default"));
+		out(buf);
 		if (v = file2Lines(0, "BitKeeper/log/TIP")) {
 			/* old repos, compat. */
 			if (nLines(v) >= 1) {

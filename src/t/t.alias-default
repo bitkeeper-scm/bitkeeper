@@ -62,3 +62,39 @@ clone: component fetch failed, only product is populated
 EOF
 cmpfiles ERR WANT
 echo OK
+
+echo $N Test that clone_default in edited config gfile is honored ...$NL
+cd "$HERE/project"
+bk alias new ALIAS1 ./gcc || fail
+# Commit clone_default: HERE.
+cd BitKeeper/etc
+bk edit $Q config || fail
+echo "clone_default: HERE" >>config
+bk delta $Q -y'clone_default: HERE' config || fail
+bk commit $Q -yconfig || fail
+# Now edit config so it has clone_default: ALIAS1.
+bk edit $Q config || fail
+sed -e 's/clone_default: HERE/clone_default: ALIAS1/' <config >x
+mv x config
+cd ../../..
+# Clone project.  The child should get ALIAS1 (./gcc) only.
+bk clone $Q project clone || fail
+cd clone
+bk comps -h >HAVE
+cat >WANT <<EOF
+./gcc
+EOF
+cmpfiles HAVE WANT
+# Now populate to be different than parent
+bk here set $Q ALL
+# Now clone the child.  This clone should get same as parent's HERE
+cd ..
+bk clone $Q clone clone-of-clone || fail
+cd clone-of-clone
+bk comps -h >HAVE
+cat >WANT <<EOF
+./gcc
+./gdb
+EOF
+cmpfiles HAVE WANT
+echo OK

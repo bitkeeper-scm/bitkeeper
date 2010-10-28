@@ -32,6 +32,30 @@ done
 bk commit $Q -y"Added files to gcc & gdb" || fail
 echo OK
 
+echo $N See if we can override clone_default in BitKeeper/log .......$NL
+cd "$HERE/project"
+echo clone_default:PRODUCT > BitKeeper/log/config
+cd "$HERE"
+bk clone $Q project clone
+cd clone
+bk here > GOT
+echo PRODUCT > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N See if we go back to DEFAULT in the clone ...................$NL
+bk here set $Q ALL || fail
+cd ..
+bk clone $Q clone clone2
+cd clone2
+bk here > GOT
+echo DEFAULT > WANT
+echo PRODUCT >> WANT
+cmpfiles WANT GOT
+cd ..
+rm -rf clone clone2 project/BitKeeper/log/config
+echo OK
+
 echo $N Clone the product............................................$NL
 cd "$HERE"
 bk clone $Q project copy || {
