@@ -1494,7 +1494,7 @@ cd "$HERE/project/gdb"
 bk comps -c > GOT || fail
 cat <<EOF > WANT
 gdb
-PRODUCT
+.
 gcc4
 gdb/A
 gdb/A/B

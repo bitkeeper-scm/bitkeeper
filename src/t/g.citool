@@ -17,7 +17,7 @@ export BK_TEST_HOME="$HERE/home"
 OUT="$HERE/out"
 RC="`bk dotbk`/ci.rc"
 
-echo $N Create some data ............................................$NL
+echo $N Create a non-nested repo ....................................$NL
 commercial project
 mkdir src
 cd src
@@ -94,12 +94,7 @@ EOF
 err=$?
 test $err -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }
 test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
-test -s "$OUT" && {
-	echo failed
-	echo "expected: '$expected'"
-	echo "  actual: '`cat "$OUT"`'"
-	exit 1
-}
+test -s "$OUT" && fail -f "$OUT"
 bk unget file1
 echo OK
 
@@ -313,11 +308,21 @@ echo $N last test again but with absolute paths......................$NL
 rm -f WANT GOT
 bk _find . -name "c.*" | while read name; do bk _rm "$name"; done
 bk guitest citool "`pwd`" > "$OUT" 2>&1 <<'EOF'
-	foreach file {~foo src/~foo "~ spaces in file name"
-	    "spaces in dir name/~ spaces in file name" "~src/file"} {
+	foreach file {"~foo" "~ spaces in file name"} {
 		test_selectFile $file
 		test_inputComment "This is a comment"
 		test_inputComment "^n"
+	}
+
+	## These files should not be in the list.  We passed a directory
+	## as an argument to citool, so it should only scan that directory
+	## and not find anything in these subdirectories.
+	foreach file {
+	    "src/~foo"
+	    "~src/file"
+	    "spaces in dir name/~ spaces in file name"
+	} {
+		test_fileIsNotInList $file
 	}
 	test_buttonPress "Quit" then "Quit but save*"
 EOF
@@ -325,13 +330,7 @@ test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo "This is a comment" > WANT
 bk cfile print ./~foo > GOT
 cmpfiles WANT GOT
-bk cfile print src/~foo > GOT
-cmpfiles WANT GOT
 bk cfile print "~ spaces in file name" > GOT
-cmpfiles WANT GOT
-bk cfile print "spaces in dir name/~ spaces in file name" > GOT
-cmpfiles WANT GOT
-bk cfile print "./~src/file" > GOT
 cmpfiles WANT GOT
 echo OK
 

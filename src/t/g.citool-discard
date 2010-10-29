@@ -16,7 +16,7 @@ export BK_TEST_HOME="$HERE/home"
 OUT="$HERE/out"
 RC="`bk dotbk`/ci.rc"
 
-echo $N Create some data ............................................$NL
+echo $N Create a non-nested repo ....................................$NL
 commercial project
 mkdir src
 cd src

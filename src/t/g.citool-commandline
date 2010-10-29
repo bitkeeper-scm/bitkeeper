@@ -1,0 +1,91 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2005 Larry McVoy
+
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/ci.rc"
+
+doFiles() {
+	for f in file1 file2 file3 file4 file5 ; do
+		echo "this is $1/$f" > $f
+		bk ci $Q -i -y'new file' $f || fail
+	done
+	bk commit $Q -y'initial checkin' || fail
+}
+
+echo $N Create a nested repo ........................................$NL
+nested project deep
+cd "$HERE/project"
+doFiles
+cd "$HERE/project/gcc"
+doFiles gcc
+cd "$HERE/project/gdb"
+doFiles gdb
+cd "$HERE/project/gui/bin"
+doFiles gui/bin
+cd "$HERE/project/gui/lib"
+doFiles gui/lib
+cd "$HERE/project"
+bk commit $Q -y'commit components' || fail
+echo OK
+
+echo $N Test with no arguments ......................................$NL
+bk edit $Q file1
+echo FOO >> file1
+bk edit $Q gcc/file2
+echo FOO >> gcc/file2
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "file1"
+	test_fileIsInList "gcc/file2"
+	test_buttonPress "Quit"
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo OK
+
+echo $N Test with . as a single argument ............................$NL
+bk guitest citool . > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "file1"
+	test_fileIsNotInList "file2"
+	test_fileIsNotInList "gcc/file2"
+	test_buttonPress "Quit"
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo OK
+
+echo $N Test with a directory as a single argument ..................$NL
+bk guitest citool gcc > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "file2"
+	test_fileIsNotInList "file1"
+	test_buttonPress "Quit"
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo OK
+
+echo $N Test with stdin should fail in a nested repo ................$NL
+bk guitest citool - > "$OUT" 2>&1 <<'EOF'
+	test_buttonPress "Quit"
+EOF
+err=$?
+test $err -ne 1 && fail
+cat >WANT <<EOF
+Reading files from stdin not supported in a nested repository.
+EOF
+cmpfiles WANT "$OUT"
+echo OK
