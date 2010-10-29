@@ -222,14 +222,16 @@ fresh_nested() {
 	bk commit -q -y"attach gcc, gdb"
 }
 
-create_test_files() { (
+create_test_files() {
+	(
 	cd "$1"
 	for f in file1 file2 file3 file4 file5 ; do
 		echo "this is $f" > $f
 		bk ci $Q -i -y'new file' $f || exit 1
 	done
 	bk commit $Q -y'initial checkin' || exit 1
-) }
+	)
+}
 
 # move a nested component (helper)
 mvcomp() {
