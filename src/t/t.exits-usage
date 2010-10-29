@@ -989,13 +989,9 @@ echo OK
 
 echo $N bk root with bogus option ...................................$NL
 bk root -z > /dev/null 2> ERR
-bk grep -iq usage ERR
-if [ $? -ne 0 ]
-then	echo 'failed (bug usage not implemented)'
-else	echo 'OK, fix test'
-	exit 1
-fi
+bk grep -iq usage ERR || fail "No Usage"
 rm -f ERR
+echo OK
 
 echo $N bk rset with bogus option and missing arg ...................$NL
 bk rset -z > /dev/null 2> ERR && {

@@ -38,6 +38,7 @@
 #include "mdbm/mdbm.h"
 #include "zlib/zlib.h"
 
+#define	FREE(x)	do { if (x) { free(x); (x) = 0; } } while (0)
 #ifndef	isascii
 #define	isascii(x)	(((x) & ~0x7f) == 0)
 #endif

@@ -5,14 +5,18 @@ int
 root_main(int ac, char **av)
 {
 	char	*p;
-	int	i = 1, product = 0;
+	int	c;
+	int	product = 1;
 
-	if (av[i] && streq(av[i], "-P")) {
-		product = 1;
-		i++;
+	while ((c = getopt(ac, av, "PR", 0)) != -1) {
+		switch (c) {
+		    case 'P':	break;
+		    case 'R':	product = 0; break;
+		    default:	bk_badArg(c, av);
+		}
 	}
-	if (av[i]) {
-		p = isdir(av[i]) ? av[i] : dirname(av[i]);
+	if (av[optind]) {
+		p = isdir(av[optind]) ? av[optind] : dirname(av[optind]);
 		if (chdir(p)) {
 			perror(p);
 			return(1);

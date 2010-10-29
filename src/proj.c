@@ -436,6 +436,7 @@ proj_configval(project *p, char *key)
 		if (streq(key, "upgrade_url")) {
 			ret = mdbm_fetch_str(db, "upgrade-url");
 		}
+		if (streq(key, "clone_default")) ret = "ALL";
 	}
 	return (ret ? ret : "");
 }

@@ -14,9 +14,18 @@ Each \*(BK repository must have some minimum configuration
 information available in order to properly execute \*(BK commands.
 Repository configuration information is searched for in the following 
 places, in order:
-.TP "\fB`bk root`/BitKeeper/etc/config\fP"
+.TP "\fB`bk root -P`/BitKeeper/etc/config\fP "
+.B \`bk\ root\`/BitKeeper/log/config
+This repository's config file
+.tp
 .B \`bk\ root\`/BitKeeper/etc/config
-Repository level config file
+This repository's config file
+.tp
+.B \`bk\ root -P\`/BitKeeper/log/config
+Product repository config file
+.tp
+.B \`bk\ root -P\`/BitKeeper/etc/config
+Product repository config file
 .tp
 .B \`bk\ dotbk\`/config
 Personal config file
@@ -29,6 +38,14 @@ Per-installation config file
 .tp
 .V $BK_CONFIG
 Environment variable
+.LP
+The 
+.B BitKeeper/log/config
+file[s] are not version controlled but the
+.B BitKeeper/etc/config
+file[s] are.
+Having two gives you a way to have repository specific values that
+do not propagate.
 .LP
 For detailed information about how all the search order works, or to get
 help debugging your configuration, please see
@@ -154,9 +171,10 @@ If
 is not set then "ALL" will be used.
 .DS
 clone_default: THERE    # always match remote repository
-clone_default: .        # no components cloned by default
+clone_default: PRODUCT  # only the product, no components
 clone_default: ALL      # all components cloned by default
 clone_default: MYALIAS  # clone MYALIAS by default
+.DE
 .\}
 .SS COMPRESSION
 .br

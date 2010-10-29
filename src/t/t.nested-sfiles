@@ -28,7 +28,7 @@ bk commit -ynew $Q || exit 1
 bk alias new DEV gcc gdb
 echo OK
 
-# bk -s pwd
+# bk -e pwd
 # project/a/b/c
 # project/a/b/c/d/e
 # project/gcc
@@ -184,13 +184,18 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk -U in a nested product ...................................$NL
-bk -U > GOT
+bk -U > GOT || fail
 grep -v ChangeSet WANT | grep -v BitKeeper > WANT2
 cmpfiles GOT WANT2
 echo OK
 
+echo $N bk --user-files in a nested product .........................$NL
+bk --user-files > GOT
+cmpfiles GOT WANT2
+echo OK
+
 echo $N bk -A -sDEV in a nested product .............................$NL
-bk -A -sDEV > GOT
+bk -A -sDEV > GOT || fail
 cat <<EOF > WANT
 gcc/ChangeSet
 gcc/BitKeeper/etc/attr
@@ -208,8 +213,13 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N bk --all-files -sDEV in a nested product ....................$NL
+bk --all-files -sDEV > GOT || fail
+cmpfiles WANT GOT
+echo OK
+
 echo $N bk -U -sDEV in a nested product .............................$NL
-bk -U -sDEV > GOT
+bk -U -sDEV > GOT || fail
 grep -v ChangeSet WANT | grep -v BitKeeper > WANT2
 cmpfiles GOT WANT2
 echo OK
@@ -241,15 +251,35 @@ bk -Ur > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -sDEV -Ur should be a foreach bk sfiles -U ...............$NL
-bk -sDEV pwd -P | while read x
+echo $N bk -e -sDEV -Ur should be a foreach bk sfiles -U ............$NL
+bk -esDEV pwd -P | while read x
 do	(cd $x; bk sfiles -U)
 done > WANT
-bk -sDEV -Ur > GOT
+bk -esDEV -Ur > GOT || fail
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s pwd -P from the product ...............................$NL
+echo $N bk --each-repo -sDEV -Ur should be same as above ............$NL
+bk --each-repo -sDEV -Ur > GOT || fail
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk --each-repo --subset=DEV -Ur should be same as above .....$NL
+bk --each-repo --subset=DEV -Ur > GOT || fail
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk --each-repo -s -Ur is an error -- no arg .................$NL
+bk --each-repo -s -Ur 2> ERR && fail -f ERR
+grep -q 'bk -sALIAS: ALIAS cannot be omitted' ERR || fail -f ERR
+echo OK
+
+echo $N bk --each-repo --subset -Ur is an error -- no arg ...........$NL
+bk --each-repo --subset -Ur 2> ERR && fail -f ERR
+grep -q 'bk -sALIAS: ALIAS cannot be omitted' ERR || fail -f ERR
+echo OK
+
+echo $N bk -e pwd -P from the product ...............................$NL
 cat > WANT << EOF
 a/b/c
 a/b/c/d/e
@@ -257,61 +287,61 @@ gcc
 gdb
 .
 EOF
-bk -s pwd -P > GOT
+bk -e pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -sc pwd -P from near a comp runs in that comp ............$NL
+echo $N bk -e -sc pwd -P from near a comp runs in that comp .........$NL
 echo a/b/c > WANT
-(cd a/b && bk -sc pwd -P) > GOT
+(cd a/b && bk -e -sc pwd -P) > GOT || fail
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s. pwd -P from inside a comp runs in that comp ..........$NL
+echo $N bk -e -s. pwd -P from inside a comp runs in that comp .......$NL
 echo a/b/c > WANT
-(cd a/b/c/d && bk -s. pwd -P) > GOT
+(cd a/b/c/d && bk -e -s. pwd -P) > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -sDEV pwd -P from the product ............................$NL
+echo $N bk -e -sDEV pwd -P from the product .........................$NL
 cat > WANT << EOF
 gcc
 gdb
 EOF
-bk -sDEV pwd -P > GOT
+bk -e -sDEV pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s^prOdUcT pwd -P from the product .......................$NL
+echo $N bk -e -s^prOdUcT pwd -P from the product ....................$NL
 cat > WANT << EOF
 a/b/c
 a/b/c/d/e
 gcc
 gdb
 EOF
-bk -s^prOdUcT pwd -P > GOT
+bk -e -s^prOdUcT pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s gfiles should not prefix - from product ...............$NL
-bk -s pwd -P | while read x
+echo $N bk -e gfiles should not prefix - from product ...............$NL
+bk -e pwd -P | while read x
 do	(cd $x; bk gfiles)
 done > WANT
-bk -s gfiles > GOT
+bk -e gfiles > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -sDEV gfiles should not prefix - from product ............$NL
-bk -sDEV pwd -P | while read x
+echo $N bk -e -sDEV gfiles should not prefix - from product .........$NL
+bk -e -sDEV pwd -P | while read x
 do	(cd $x; bk gfiles)
 done > WANT
-bk -sDEV gfiles > GOT
+bk -e -sDEV gfiles > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s. gfiles from inside a comp runs that in that comp .....$NL
+echo $N bk -e -s. gfiles from inside a comp runs that in that comp ..$NL
 (cd a/b/c && bk gfiles) > WANT
-(cd a/b/c/d && bk -s. gfiles) > GOT
+(cd a/b/c/d && bk -e -s. gfiles) > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -532,15 +562,15 @@ bk -Ur > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -sDEV -Ur should be a foreach bk sfiles -U ...............$NL
-bk -sDEV pwd -P | while read x
+echo $N bk -e -sDEV -Ur should be a foreach bk sfiles -U ............$NL
+bk -e -sDEV pwd -P | while read x
 do	(cd ../$x; bk sfiles -U)
 done > WANT
-bk -sDEV -Ur > GOT
+bk -e -sDEV -Ur > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s pwd -P from a product subdirectory ....................$NL
+echo $N bk -e -s pwd -P from a product subdirectory .................$NL
 cat > WANT << EOF
 a/b/c
 a/b/c/d/e
@@ -548,36 +578,36 @@ gcc
 gdb
 .
 EOF
-bk -s pwd -P > GOT
+bk -e pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -sDEV pwd -P from product subdirectory ...................$NL
+echo $N bk -e -sDEV pwd -P from product subdirectory ................$NL
 cat > WANT << EOF
 gcc
 gdb
 EOF
-bk -sDEV pwd -P > GOT
+bk -e -sDEV pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s gfiles should not prefix - from product subdirectory ..$NL
+echo $N bk -e gfiles should not prefix - from product subdirectory ..$NL
 cd ..
-bk -s pwd -P | while read x
+bk -e pwd -P | while read x
 do	(cd $x; bk gfiles)
 done > WANT
 cd a
-bk -s gfiles > GOT
+bk -e gfiles > GOT
 cmpfiles ../WANT GOT
 echo OK
 
-echo $N bk -sDEV gfiles should not prefix - from product subdir .....$NL
+echo $N bk -e -sDEV gfiles should not prefix - from product subdir ..$NL
 cd ..
-bk -sDEV pwd -P | while read x
+bk -e -sDEV pwd -P | while read x
 do	(cd $x; bk gfiles)
 done > WANT
 cd a
-bk -sDEV gfiles > GOT
+bk -e -sDEV gfiles > GOT
 cmpfiles ../WANT GOT
 echo OK
 
@@ -677,15 +707,15 @@ bk -Ur > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -sDEV -Ur should be a foreach bk sfiles -U ...............$NL
-bk -sDEV pwd | while read x
+echo $N bk -e -sDEV -Ur should be a foreach bk sfiles -U ............$NL
+bk -e -sDEV pwd | while read x
 do	(cd "$x"; bk sfiles -U)
 done > WANT
-bk -sDEV -Ur > GOT
+bk -e -sDEV -Ur > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s pwd -P from a component ...............................$NL
+echo $N bk -e pwd -P from a component ...............................$NL
 cat > WANT << EOF
 a/b/c
 a/b/c/d/e
@@ -693,32 +723,32 @@ gcc
 gdb
 .
 EOF
-bk -s pwd -P > GOT
+bk -e pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -sDEV pwd -P from component ..............................$NL
+echo $N bk -e -sDEV pwd -P from component ...........................$NL
 cat > WANT << EOF
 gcc
 gdb
 EOF
-bk -sDEV pwd -P > GOT
+bk -e -sDEV pwd -P > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -s gfiles should not prefix - from component .............$NL
-bk -s pwd | while read x
+echo $N bk -e gfiles should not prefix - from component .............$NL
+bk -e pwd | while read x
 do	(cd "$x"; bk gfiles)
 done > WANT
-bk -s gfiles > GOT
+bk -e gfiles > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk -sDEV gfiles should not prefix - from component ..........$NL
-bk -sDEV pwd | while read x
+echo $N bk -e -sDEV gfiles should not prefix - from component .......$NL
+bk -e -sDEV pwd | while read x
 do	(cd "$x"; bk gfiles)
 done > WANT
-bk -sDEV gfiles > GOT
+bk -e -sDEV gfiles > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -741,22 +771,22 @@ bk -Ugr > B
 cmpfiles A B
 echo OK
 
-echo $N bk -s in a non-nested tree works if ., HERE, or nothing .....$NL
+echo $N bk -e in a non-nested tree works if ., HERE, or nothing .....$NL
 # Inherit A from above
-bk -s. -U > B
+bk -e -s. -U > B
 cmpfiles A B
-bk -sHERE -U > B
+bk -e -sHERE -U > B
 cmpfiles A B
-bk -s. -U > B
+bk -e -s. -U > B
 cmpfiles A B
-bk -s. -shere -s -U > B
+bk -e -s. -shere -U > B
 cmpfiles A B
 echo OK
 
-echo $N bk -s in a non-nested tree fails if anything else ...........$NL
-bk -sother -U 2> ERR && fail -f ERR
+echo $N bk -e -sXXX in a non-nested tree fails if anything else .....$NL
+bk -e -sother -U 2> ERR && fail -f ERR
 cat <<EOF > WANT
-bk -s: illegal alias used in traditional repossitory:
+bk -e: illegal alias used in traditional repository:
 	other
 EOF
 echo OK
@@ -818,7 +848,7 @@ c/d/f
 EOF
 cmpfiles GOT WANT
 # this works because -r implies a cd2root inside the nested_each
-bk -s./c -Ugr > GOT || fail
+bk -es./c -Ugr > GOT || fail
 echo d/f > WANT
 cmpfiles GOT WANT
 echo OK
@@ -838,8 +868,8 @@ EOF
 cmpfiles GOT2 WANT
 echo OK
 
-echo $N Test relative pathnames for \'bk -s\' .........................$NL
-bk -s _debugargs > GOT || fail
+echo $N Test relative pathnames for \'bk -e\' .........................$NL
+bk -e _debugargs > GOT || fail
 sed "s,$HERE,ROOT," < GOT > GOT2
 cat <<EOF > WANT
 0: _debugargs
@@ -879,8 +909,8 @@ EOF
 cmpfiles GOT2 WANT
 echo OK
 
-echo $N Test relative pathnames for \'bk -s -Ugr\' ....................$NL
-bk -s -Ugr _debugargs > GOT || fail
+echo $N Test relative pathnames for \'bk -e -Ugr\' ....................$NL
+bk -e -Ugr _debugargs > GOT || fail
 sed "s,$HERE,ROOT," < GOT > GOT2
 cat <<EOF > WANT
 0: _debugargs
@@ -921,8 +951,8 @@ EOF
 cmpfiles GOT2 WANT
 echo OK
 
-echo $N Test relative pathnames for \'bk -s./relative -Ugr\' ..........$NL
-bk -s../../c -Ugr _debugargs > GOT || fail
+echo $N Test relative pathnames for \'bk -es./relative -Ugr\' .........$NL
+bk -es../../c -Ugr _debugargs > GOT || fail
 sed "s,$HERE,ROOT," < GOT > GOT2
 cat <<EOF > WANT
 0: _debugargs
@@ -935,14 +965,14 @@ EOF
 cmpfiles GOT2 WANT
 echo OK
 
-echo $N Test relative pathnames for \'bk -s./relative -Ugr\<dir\>\' .....$NL
-bk -s../../c -Ugr.. _debugargs 2> GOT && fail -f GOT
-echo 'bk: -s may not be combined with -r<dir>' > WANT
+echo $N Test relative pathnames for \'bk -es./relative -Ugr\<dir\>\' ....$NL
+bk -es../../c -Ugr.. _debugargs 2> GOT && fail -f GOT
+echo 'bk: -e may not be combined with -r<dir>' > WANT
 cmpfiles GOT WANT
 echo OK
 
-echo $N Test relative pathnames for \'bk -s./relative bk -Ugr\<dir\>\' ..$NL
-bk -s../../c bk -Ugr.. _debugargs > GOT || fail -f GOT
+echo $N Test relative pathnames for \'bk -es./relative bk -Ugr\<dir\>\' .$NL
+bk -es../../c bk -Ugr.. _debugargs > GOT || fail -f GOT
 sed "s,$HERE,ROOT," < GOT > GOT2
 cat <<EOF > WANT
 0: _debugargs

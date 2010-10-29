@@ -2452,14 +2452,14 @@ main(_unused int argc, string argv[])
 		self.root = `bk -P pwd`;
 		self.nested = nested();
 	} else if ((llength(files) == 1) && isdir(files[0])) {
-		self.root = `bk root files[0]`;
+		self.root = `bk root -R files[0]`;
 	} else {
 		string	file;
 
 		foreach (file in files) {
 			if (isdir(file)) bk_usage();
 		}
-		self.root = `bk root`;
+		self.root = `bk root -R`;
 	}
 
 	if (self.resolve) {

@@ -1110,8 +1110,10 @@ sendServerInfo(int no_repo)
 		/* Match :REPOTYPE: */
 		if (proj_isComponent(0)) {
 			prod = proj_product(0);
-			sprintf(buf, "REPOTYPE=component\nPRODUCT_ROOTKEY=%s\n",
-			    proj_rootkey(prod));
+			sprintf(buf, "REPOTYPE=component\nPRODUCT_ROOTKEY=%s\n"
+			    "COMPONENT_PATH=%s\n",
+			    proj_rootkey(prod),
+			    proj_relpath(prod, proj_root(0)));
 			out(buf);
 		} else if (proj_isProduct(0)) {
 			out("REPOTYPE=product\n");
@@ -1133,6 +1135,9 @@ sendServerInfo(int no_repo)
 		}
 		unless (proj_hasOldSCCS(0)) out("REMAP=1\n");
 		sprintf(buf, "NFILES=%u\n", repo_nfiles(0,0));
+		out(buf);
+		sprintf(buf,
+		    "CLONE_DEFAULT=%s\n", proj_configval(0, "clone_default"));
 		out(buf);
 		if (v = file2Lines(0, "BitKeeper/log/TIP")) {
 			/* old repos, compat. */
@@ -1920,6 +1925,34 @@ bk_badArg(int c, char **av)
 		}
 	}
 	usage();
+}
+
+/*
+ * Use after getopt() to have a command line that will repoduce the
+ * same set of options.
+ */
+char **
+bk_saveArg(char **nav, char **av, int c)
+{
+	char	buf[MAXLINE];
+
+	if (c > 32 && c < 127) {
+		/* normal short option */
+		sprintf(buf, "-%c", c);
+		if (optarg) strcat(buf, optarg);
+		nav = addLine(nav, strdup(buf));
+	} else if (c > 256) {
+		/* long option */
+		if (optarg && (optarg == av[optind-1])) {
+			/* --long with-arg */
+			nav = addLine(nav, strdup(av[optind-2]));
+		}
+		nav = addLine(nav, strdup(av[optind-1]));
+	} else {
+		/* getopt error */
+		assert((c == -1) || (c == GETOPT_ERR));
+	}
+	return (nav);
 }
 
 /*

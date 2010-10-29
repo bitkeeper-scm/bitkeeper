@@ -6,9 +6,6 @@
 #include "range.h"
 #include "graph.h"
 
-/* XXX make this global ? */
-#define	FREE(x)	do { if (x) { free(x); (x) = 0; } } while (0)
-
 /*
  * csetprune - prune a list of files from a ChangeSet file
  *

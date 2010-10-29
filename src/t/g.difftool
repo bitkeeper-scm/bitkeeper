@@ -17,9 +17,14 @@ export BK_TEST_HOME="$HERE/home"
 OUT="$HERE/out"
 RC="`bk dotbk`/diff.rc"
 
-echo $N Simple startup with no args and nothing to diff..............$NL
+echo $N Create a nested repo ........................................$NL
 nested project
-    bk guitest difftool >"$OUT" 2>&1 <<'EOF'
+create_test_files "$HERE/project"
+create_test_files "$HERE/project/gcc"
+echo OK
+
+echo $N Simple startup with no args and nothing to diff..............$NL
+bk guitest difftool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     test_die 99
 EOF
@@ -90,6 +95,28 @@ echo "foo" > foo
 
 echo $N "Testing command line (<file>) ...............................$NL"
 bk guitest difftool foo >"$OUT" 2>&1 <<'EOF'
+    test_buttonPress Quit
+    test_die 99
+EOF
+err=$?
+if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+echo "OK"
+
+echo $N "Testing command line (bk difftool .) ........................$NL"
+bk guitest difftool . >"$OUT" 2>&1 <<'EOF'
+    test_buttonPress Quit
+    test_die 99
+EOF
+err=$?
+if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+echo "OK"
+
+echo $N "Testing command line (bk difftool <dir>) ....................$NL"
+bk edit $Q gcc/file1
+echo FOO >> gcc/file1
+bk guitest difftool gcc >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     test_die 99
 EOF

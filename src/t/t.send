@@ -202,6 +202,7 @@ echo OK
 
 echo $N Send a patch using a key in a range .........................$NL
 cd "$HERE/project"
+bk repocheck $Q
 KEY="`bk changes -kr1.5`"
 bk send -qr"$KEY".. - > KEYS
 bk send -qr1.6,1.7 - > LIST

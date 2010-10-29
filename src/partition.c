@@ -183,7 +183,7 @@ partition_main(int ac, char **av)
 	 * below, as we do not want them looking like they were included
 	 * from scratch.
 	 */
-	if (systemf("bk -s admin -C'%s' ChangeSet", proj_rootkey(0))) {
+	if (systemf("bk --each-repo admin -C'%s' ChangeSet", proj_rootkey(0))) {
 		fprintf(stderr, "%s: failed to set backpointer\n", prog);
 		goto err;
 	}
@@ -193,7 +193,7 @@ partition_main(int ac, char **av)
 
 	/* final big check also restores checkout mode (hence, override) */
 	restoreEnv(opts);
-	if (systemf("bk -?_BK_DEVELOPER= -%ss -r check -%sacfT",
+	if (systemf("bk -?_BK_DEVELOPER= -%se -r check -%sacfT",
 	    opts->quiet, *opts->quiet ? "" : "v")) {
 		goto err;
 	}
@@ -777,7 +777,7 @@ commitPending(Opts *opts)
 	// as this sfiles the whole blasted nested collection.
 	verbose((stderr, "commit any pending gone\n"));
 	/* If seeing a long pause here, put back noise. */
-	if (system("bk -qs commit -qy'partition gone'")) {
+	if (system("bk --each-repo commit -qy'partition gone'")) {
 		goto err;
 	}
 	ret = 0;

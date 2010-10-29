@@ -542,5 +542,5 @@ bk delta $Q -y. afile gcc/afile gdb/afile
 bk commit $Q -yafile
 unset BK_CONFIG
 bk collapse $Q -ea$REV || fail collapse failed
-bk -s sfiles -cg | grep -q attr && fail left edite attr file
+bk -e sfiles -cg | grep -q attr && fail left edite attr file
 echo OK

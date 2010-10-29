@@ -23,7 +23,7 @@ qecho() {
 }
 
 __cd2root() {
-	root="`bk root 2> /dev/null`"
+	root="`bk root -R 2> /dev/null`"
 	test $? -ne 0 && {
 		echo "bk: cannot find package root." 1>&2
 		exit 1
@@ -40,9 +40,8 @@ __cd2product() {
 # faster way to get repository status
 _repocheck() {
 	V=-v
-	Q=""
 	case "X$1" in
-	    X-q)	Q=-q; V="";;
+	    X-q)	V="";;
 	    X-*)	echo "Invalid option: $1"
 	    		echo "Usage: bk repocheck [-q]"
 			printf "This checks repository integrity by running: "
@@ -61,10 +60,9 @@ _repocheck() {
 		}
 		cd "$2" || exit 1
 	}
-	CMD="bk -s -r $Q check -aBc $V"
 	# check output goes to stderr, so put this to stderr too
-	test "X$Q" = X && echo === Checking `bk -P pwd` === 1>&2
-	$CMD
+	test "X$V" != X && echo === Checking `bk -P pwd` === 1>&2
+	bk --each-repo -r check -aBc $V
 }
 
 # shorthand to dig out renames
@@ -649,7 +647,7 @@ _unrm () {
 	fi
 
 	# Make sure we are inside a BK repository
-	bk root > /dev/null || return 1
+	bk root -R > /dev/null || return 1
 
 	# Assume the path name specified is relative to the current directory
 	rdir=`bk pwd -r`
@@ -869,7 +867,7 @@ _chmod() {		# /* doc 2.0 */
 	fi
 	MODE=$1
 	shift
-	ROOT=`bk root`
+	ROOT=`bk root -R`
 	rm -f "$ROOT/BitKeeper/tmp/err$$"
 	bk sfiles -g ${1+"$@"} | while read i
 	do	test "X`bk sfiles -c $i`" = X || {
@@ -1630,7 +1628,7 @@ _conflicts() {
 	done
 	shift `expr $OPTIND - 1`
 
-	ROOTDIR=`bk root 2>/dev/null`
+	ROOTDIR=`bk root -R 2>/dev/null`
 	test $? -ne 0 && { echo "You must be in a BK repository" 1>&2; exit 1; }
 	cd "$ROOTDIR" > /dev/null
 	test -d RESYNC || { echo "No files are in conflict"; exit 0; }

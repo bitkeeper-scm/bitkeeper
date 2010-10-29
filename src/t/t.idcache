@@ -148,3 +148,21 @@ grep -q 'check: SCCS/s.catch_me should be SCCS/s.duplicate' OUT || {
 	exit 1
 }
 echo OK
+
+echo $N clone bug related to propagating idcache ....................$NL
+cd "$HERE/project"
+echo binary > bam
+bk new $Q -b bam
+bk commit $Q -ybam
+bk idcache -q
+bk _cp BitKeeper/log/x.id_cache BitKeeper/etc/SCCS/x.id_cache
+bk rm bam
+bk commit $Q -yrm
+bk clone $Q . ../copy 2> ERR || fail -f ERR
+test -s ERR && fail -f ERR
+echo OK
+
+echo $N Rclone bug related to propagating idcache ...................$NL
+bk _rclone $Q -s. . ../rcopy 2> ERR || fail -f ERR
+test -s ERR && fail -f ERR
+echo OK

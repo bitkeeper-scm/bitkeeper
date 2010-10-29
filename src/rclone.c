@@ -50,12 +50,7 @@ rclone_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "B;dE:pqr;s;vw|z|", lopts)) != -1) {
 		unless ((c == 'r') || (c == 's') || (c > 256)) {
-			if (optarg) {
-				opts.av = addLine(opts.av,
-				    aprintf("-%c%s", c, optarg));
-			} else {
-				opts.av = addLine(opts.av, aprintf("-%c", c));
-			}
+			opts.av = bk_saveArg(opts.av, av, c);
 		}
 		switch (c) {
 		    case 'B': opts.bam_url = optarg; break;
@@ -89,7 +84,6 @@ rclone_main(int ac, char **av)
 			opts.sfiotitle = optarg; break;
 		    default: bk_badArg(c, av);
 		}
-		optarg = 0;
 	}
 
 	/*

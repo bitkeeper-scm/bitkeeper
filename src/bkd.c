@@ -91,7 +91,6 @@ bkd_main(int ac, char **av)
 		    case 'U': Opts.unsafe = 1; break;
 		    default: bk_badArg(c, av);
 	    	}
-		optarg = 0;
 	}
 	EACH(unenabled) exclude(unenabled[i], 0);
 	freeLines(unenabled, 0);

@@ -41,6 +41,7 @@ longopt	lopts[] = {
 	{ VS_OPT, 's' },
 #endif
 	{ UP_OPT, 'u' },
+	{ 0, 0 }
 };
 
 char	*prog;
