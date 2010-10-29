@@ -271,13 +271,34 @@ changes_main(int ac, char **av)
 		if (rc = doit_local(&nav, lurls)) goto out;
 	}
 	if (opts.remote) {
+		char	*cpath = 0;
+
+		if (proj_isComponent(0)) {
+			/*
+			 * Ideally we want the remote path, but if we can't
+			 * get it then the local path will do.
+			 */
+			if (cpath=getenv("BKD_COMPONENT_PATH")){
+				cpath = strdup(cpath);
+			} else {
+				cpath = proj_relpath(proj_product(0),
+				    proj_root(0));
+			}
+		}
 		EACH(rurls) {
 			if (opts.urls) {
-				printf("==== changes -R %s ====\n", rurls[i]);
+				if (cpath) {
+					printf("==== changes -R %s/%s ====\n",
+					    rurls[i], cpath);
+				} else {
+					printf("==== changes -R %s ====\n",
+					    rurls[i]);
+				}
 				fflush(stdout);
 			}
 			rc |= doit_remote(nav, rurls[i]);
 		}
+		FREE(cpath);
 	}
 	if (opts.local || opts.remote) goto out;
 
@@ -418,19 +439,25 @@ private int
 doit_local(char ***nav, char **urls)
 {
 	FILE	*f;
-	char	*p;
+	char	*p, *cpath = 0;
 	int	status, i;
 	int	rc = 0;
 	int	all = 0;
 
 	*nav = addLine(*nav, strdup("-"));
 	*nav = addLine(*nav, 0);
+	if (proj_isComponent(0)) {
+		cpath = proj_relpath(proj_product(0), proj_root(0));
+	}
 	EACH(urls) {
 		if (opts.urls) {
 			if ((p = getenv("BK_STATUS")) &&
 			    streq(p, "LOCAL_WORK")) {
-			    	printf("#### Not updating "
+				printf("#### Not updating "
 				    "due to the following local work:\n");
+			} else if (cpath) {
+				printf("==== changes -L %s/%s ====\n",
+				    urls[i], cpath);
 			} else {
 				printf("==== changes -L %s ====\n", urls[i]);
 			}
@@ -457,6 +484,7 @@ doit_local(char ***nav, char **urls)
 		unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) rc=1;
 	}
 done:
+	FREE(cpath);
 	p = popLine(*nav); /* remove '-' from above */
 	free(p);
 	*nav = addLine(*nav, 0);

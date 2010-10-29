@@ -1015,3 +1015,27 @@ cat <<EOF > WANT
 EOF
 cmpfiles OUT WANT
 echo OK
+
+echo $N Check paths in changes and pull..............................$NL
+cd "$HERE"
+bk clone $Q project copy4
+bk clone $Q copy4 copy5
+cd copy4
+touch C/copy4_file
+bk --cd=C new $Q copy4_file
+bk --cd=C commit $Q -ycopy4_file
+bk commit $Q -ycopy4_file
+cd ../copy5
+touch C/copy5_file
+bk --cd=C new $Q copy5_file
+bk --cd=C commit $Q -ycopy5_file
+bk commit $Q -ycopy5_file
+bk --cd=C changes -RL > GOT
+grep -q "==== changes -L .*/C ====" GOT || fail -f GOT wrong local output
+grep -q "==== changes -R .*/C ====" GOT || fail -f GOT wrong remote output
+bk pull $Q ../copy4 || fail
+bk changes -vr+ > GOT
+grep -q "Merge .*/C" GOT || fail -f GOT wrong remote path
+grep -q "into .*/C" GOT || fail -f GOT wrong local path
+echo OK
+

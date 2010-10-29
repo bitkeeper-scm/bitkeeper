@@ -1110,8 +1110,10 @@ sendServerInfo(int no_repo)
 		/* Match :REPOTYPE: */
 		if (proj_isComponent(0)) {
 			prod = proj_product(0);
-			sprintf(buf, "REPOTYPE=component\nPRODUCT_ROOTKEY=%s\n",
-			    proj_rootkey(prod));
+			sprintf(buf, "REPOTYPE=component\nPRODUCT_ROOTKEY=%s\n"
+			    "COMPONENT_PATH=%s\n",
+			    proj_rootkey(prod),
+			    proj_relpath(prod, proj_root(0)));
 			out(buf);
 		} else if (proj_isProduct(0)) {
 			out("REPOTYPE=product\n");

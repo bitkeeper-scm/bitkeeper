@@ -1040,6 +1040,7 @@ resolve_comments(remote *r)
 {
 	FILE	*f;
 	char	*u, *c;
+	char	*cpath = 0;
 	char	*h = sccs_gethost();
 	char	buf[MAXPATH];
 
@@ -1049,7 +1050,16 @@ resolve_comments(remote *r)
 	} else {
 		u = aprintf("%s:%s", h, r->path);
 	}
-	c = aprintf("Merge %s\ninto  %s:%s\n", u, h, buf);
+	if (proj_isComponent(0)) {
+		if (cpath = getenv("BKD_COMPONENT_PATH")) {
+			cpath = strdup(cpath);
+		} else {
+			cpath = proj_relpath(proj_product(0), proj_root(0));
+		}
+		c = aprintf("Merge %s/%s\ninto  %s:%s\n", u, cpath, h, buf);
+	} else {
+		c = aprintf("Merge %s\ninto  %s:%s\n", u, h, buf);
+	}
 	free(u);
 	sprintf(buf, "%s/%s", ROOT2RESYNC, CHANGESET);
 	assert(exists(buf));
@@ -1062,6 +1072,7 @@ resolve_comments(remote *r)
 		perror(buf);
 	}
 	free(c);
+	FREE(cpath);
 }
 
 private	int
