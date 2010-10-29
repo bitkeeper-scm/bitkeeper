@@ -852,6 +852,7 @@ private	struct {
 #define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
 #define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
 #define	CMD_LOCK_PRODUCT	0x00000800	/* lock product, not comp */
+#define	CMD_RDUNLOCK		0x00001000	/* unlock a previous READ */
 } repolog[] = {
 	{"abort",
 	    CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
@@ -870,7 +871,7 @@ private	struct {
 	{"remote abort",
 	     CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
 	{"remote changes part1", CMD_RDLOCK},
-	{"remote changes part2", CMD_RDLOCK},
+	{"remote changes part2", CMD_RDUNLOCK},
 	{"remote clone", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
 	{"remote pull part1", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
 	{"remote pull part2", CMD_BYTES|CMD_RDLOCK},
@@ -1123,6 +1124,13 @@ cmdlog_start(char **av, int bkd_cmd)
 		} else {
 			/* fail? */
 		}
+	}
+	if ((cmdlog_locks & CMD_RDLOCK) && (cmdlog_flags & CMD_RDUNLOCK)) {
+		/*
+		 * We are holding a read lock and we need to drop it.
+		 */
+		repository_unlock(0, 0);
+		cmdlog_locks &= ~CMD_RDLOCK;
 	}
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
 	if (bkd_cmd) {
