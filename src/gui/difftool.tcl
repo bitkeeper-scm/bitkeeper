@@ -260,10 +260,11 @@ proc getFiles {} \
 
 	# try doing 'bk sfiles -gc | bk difftool -' to see how this works
 	#puts "argc=($argc) argv=($argv)"
-	if {$argc == 0 || ($argc == 1 && $argv == ".")} {
+	if {$argc == 0 || ($argc == 1 && [file isdir [lindex $argv 0]])} {
 		if {$argc == 0} {
 			set fd [open "|bk -U --sfiles-opts=cgv"]
 		} else {
+			cd [lindex $argv 0]
 			set fd [open "|bk -Ur. --sfiles-opts=cgv"]
 		}
 		# Sample output from 'bk sfiles -gcvU'
@@ -379,7 +380,7 @@ proc getFiles {} \
 			set rr [lindex $e 4]
 			#displayMessage "rf=($rf) lf=($lf)"
 			$menu(widget) add command \
-			    -label $rf \
+			    -label $fn \
 			    -command \
 				"pickFile \"$lf\" \"$rf\" \"$fn\" $item $lr $rr"
 			incr item
