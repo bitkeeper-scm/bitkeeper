@@ -1319,7 +1319,7 @@ proc filltext {win f clear {msg {}}} \
 proc prs {{id ""} } \
 {
 	global file rev1 dspec dev_null search w diffpair ttype 
-	global sem lock chgdspec
+	global sem lock chgdspec dashs
 
 	set lock "inprs"
 
@@ -1329,7 +1329,9 @@ proc prs {{id ""} } \
 		set diffpair(right) ""
 		busy 1
 		if {[isChangeSetFile $file]} {
-			set cmd "|bk changes {$chgdspec} -evr$rev1"
+			set S ""
+			if {$dashs} { set S "-S" }
+			set cmd "|bk changes $S {$chgdspec} -evr$rev1"
 			set ttype "cset_prs"
 			if {[file dirname $file] ne "."} {
 				append cmd " [file dirname $file]"
@@ -1459,7 +1461,7 @@ proc difftool {file r1 r2} \
 
 proc csettool {} \
 {
-	global rev1 rev2 file
+	global rev1 rev2 file dashs
 
 	if {[info exists rev1] != 1} { return }
 	if {[info exists rev2] != 1} { set rev2 $rev1 }
@@ -1468,7 +1470,9 @@ proc csettool {} \
 	} else {
 		set revs -r$rev1..$rev2
 	}
-	catch {exec bk csettool $revs &} err
+	set S ""
+	if {$dashs} { set S "-s." }
+	catch {exec bk csettool {*}$S $revs &} err
 }
 
 proc diff2 {difftool {id {}} } \
@@ -1539,7 +1543,7 @@ proc gotoRev {f hrev} \
 proc currentMenu {} \
 {
 	global file gc rev1 rev2 bk_fs dev_null 
-	global fileEventHandle currentMenuList
+	global fileEventHandle currentMenuList dashs
 
 	$gc(fmenu) entryconfigure "Current Changeset*" \
 	    -state disabled
@@ -1560,7 +1564,7 @@ proc currentMenu {} \
 		    -label "Current Changesets"
 	}
 	busy 1
-	cd2root
+	revtool_cd2root
 	set currentMenuList {}
 	$gc(current) delete 1 end
 	$gc(current) add command -label "Computing..." -state disabled
@@ -1569,8 +1573,10 @@ proc currentMenu {} \
 	if {[info exists fileEventHandle]} {
 		catch {close $fileEventHandle}
 	}
+	set S ""
+	if {$dashs} { set S "-S" }
 	set fileEventHandle \
-	    [open "| bk changes -nd:DPN:@:I: -fv -er$rev1..$end"]
+	    [open "| bk changes $S -nd:DPN:@:I: -fv -er$rev1..$end"]
 
 	fconfigure $fileEventHandle -blocking false
 	fileevent $fileEventHandle readable \
@@ -1646,7 +1652,7 @@ proc updateCurrentMenu {fd {cleanup 0}} \
 proc csetdiff2 {{rev {}}} \
 {
 	global file rev1 rev2 Opts dev_null w ttype anchor
-	global chgdspec
+	global chgdspec dashs
 
 	busy 1
 	if {$rev != ""} {
@@ -1664,7 +1670,9 @@ proc csetdiff2 {{rev {}}} \
 	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 	$w(aptext) insert end "ChangeSet history for $revs\n\n"
 
-	set revs [open "|bk changes {$chgdspec} -fv -er$revs"]
+	set S ""
+	if {$dashs} { set S "-S" }
+	set revs [open "|bk changes $S {$chgdspec} -fv -er$revs"]
 	filltext $w(aptext) $revs 0 "sccslog for files"
 	set ttype "cset_prs"
 	catch {close $revs}
@@ -1674,7 +1682,7 @@ proc csetdiff2 {{rev {}}} \
 # Bring up csettool for a given set of revisions as selected by the mouse
 proc r2c {} \
 {
-	global file rev1 rev2 errorCode
+	global file rev1 rev2 errorCode dashs
 
 	# if the following is true it means there's nothing selected
 	# so we should just do nothing. 
@@ -1720,7 +1728,9 @@ proc r2c {} \
 			return
 		}
 	}
-	catch {exec bk csettool -r$csets -f$file@$rev1 &}
+	set S ""
+	if {$dashs} { set S "-s." }
+	catch {exec bk csettool {*}$S -r$csets -f$file@$rev1 &}
 	busy 0
 }
 
@@ -2326,7 +2336,7 @@ proc openChangesetHistory {} \
 	# calling that proc or it might try to diff
 	# non-existent revs in the selected file.
 	if {[info exists diffpair]} {unset diffpair}
-	cd2root
+	revtool_cd2root
 	revtool ChangeSet
 }
 
@@ -2338,6 +2348,17 @@ proc openNewFile {} \
 	if {$fname != ""} {
 		if {[info exists diffpair]} {unset diffpair}
 		revtool $fname
+	}
+}
+
+proc revtool_cd2root {} \
+{
+	global	dashs
+	
+	if {$dashs} {
+		cd2root
+	} else {
+		cd2product
 	}
 }
 
@@ -2467,7 +2488,7 @@ The file $lfname was last modified ($ago) ago."
 proc arguments {} \
 {
 	global rev1 rev2 dfile argv argc fname gca errorCode
-	global searchString startingLineNumber
+	global searchString startingLineNumber dashs
 
 	set rev1 ""
 	set rev2 ""
@@ -2475,6 +2496,7 @@ proc arguments {} \
 	set fname ""
 	set dfile ""
 	set fnum 0
+	set dashs 0
 	set argindex 0
 
 	while {$argindex < $argc} {
@@ -2509,6 +2531,16 @@ proc arguments {} \
 					[string range $arg 2 end]
 			    }
 		    }
+		    "^-s.*$" {
+			set arg [string range $arg 2 end]
+			if {$arg ne "."} {
+			    catch {exec bk help -s revtool} usage
+			    puts $usage
+			    exit
+			}
+
+			set dashs 1
+		    }
 		    default {
 		    	incr fnum
 			set opts(file,$fnum) $arg
@@ -2527,7 +2559,7 @@ proc arguments {} \
 		puts stderr "Error: Incorrect argument or too many arguments."
 		exit 1
 	} elseif {$fnum == 0} {
-		cd2root
+		revtool_cd2root
 		# This should match the CHANGESET path defined in sccs.h
 		set fname ChangeSet
 		catch {exec bk sane -r} err
@@ -2549,7 +2581,7 @@ proc arguments {} \
 				displayMessage "Unable to cd to $fname"
 				exit 1
 			}
-			cd2root
+			revtool_cd2root
 			# This should match the CHANGESET path defined in sccs.h
 			set fname ChangeSet
 			catch {exec bk sane} err

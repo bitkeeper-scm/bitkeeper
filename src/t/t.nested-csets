@@ -1,0 +1,43 @@
+
+echo $N Test bk csets run from a component runs in a product ........$NL
+nested project
+bk clone $Q . ../copy
+bk detach $Q gcc ../gcc.standalone
+touch gcc/foo
+bk new $Q gcc/foo
+bk -e commit $Q -yfoo
+cd ../copy
+bk pull $Q
+cd gcc
+bk csets -v | sed -e "s?$HERE?X?" -e 's/,.*//' > GOT
+cat <<EOF > WANT
+ChangeSet@1.3
+  foo
+
+  gcc/ChangeSet@1.2
+    foo
+
+    gcc/foo@1.1 +0 -0
+      BitKeeper file X/project/gcc/foo
+
+    gcc/foo@1.0 +0 -0
+
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test bk csets run from a standalone runs okay ...............$NL
+cd "$HERE"/gcc.standalone
+bk port $Q ../project/gcc
+bk csets -v | sed -e "s?$HERE?X?" -e 's/,.*//' > GOT
+cat <<EOF > WANT
+ChangeSet@1.2
+  foo
+
+  foo@1.1 +0 -0
+    BitKeeper file X/project/gcc/foo
+
+  foo@1.0 +0 -0
+
+EOF
+echo OK

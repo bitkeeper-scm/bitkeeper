@@ -448,6 +448,7 @@ readSfilesProgress(FILE fd, string file, int pos)
 				// while we're reading.
 				fileevent(fd, "readable", "");
 				pos = readSfilesOutput(file, pos);
+				updateGUI();
 				// Re-establish the read event with the new
 				// position in the output file.
 				fileevent(fd, "readable",
@@ -457,11 +458,10 @@ readSfilesProgress(FILE fd, string file, int pos)
 	} else {
 		fclose(fd);
 		readSfilesOutput(file, pos);
+		updateGUI();
 		self.sfiles_last = 0;
 		_done = 1;
 	}
-
-	updateGUI();
 }
 
 void
@@ -1756,7 +1756,7 @@ showFile(sfile sf)
 			string	dir = dirname(file);
 			Text_insert(self.w_diffs, "end", "\n");
 			Text_insert(self.w_diffs, "end",
-			    bk("changes -v -r${sf.rev} \"${dir}\""), "");
+			    bk("changes -S -v -r${sf.rev} \"${dir}\""), "");
 			Text_configure(self.w_diffs, state: "disabled");
 			return;
 		}

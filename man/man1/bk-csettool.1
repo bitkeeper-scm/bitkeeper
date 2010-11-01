@@ -6,7 +6,10 @@ bk csettool \- \*(BK graphical changeset browser
 .B bk csettool
 .[B] \-
 .br
+.ie \n[NESTED] \{\
 .B bk csettool
+[\fB\-s\fI.\fR]
+..el .B bk csettool
 .[OPTreq] \-r revs
 .[B] dir
 .br
@@ -82,7 +85,10 @@ If the changeset being viewed was part of a commit in a nested collection
 and spanned multiple components, this wider view can be useful.
 .SH OPTIONS
 .LP
-All options are mutually exclusive, i.e., pick one (or none) of the
+All options\c
+.ie \n[NESTED] , with the exception of \fB\-s\fI.\fR,
+.el \ 
+are mutually exclusive, i.e., pick one (or none) of the
 following.
 .TP "\fBDouble-Clicking\fP"
 .OPTreq \-r revs
@@ -94,6 +100,16 @@ option is given,
 defaults to
 .QR \-r+ ,
 i.e. the most recent changeset.
+.tp
+.BI \-s .
+By default,
+.B bk csettool
+runs in the product of a nested collection.
+To view the changeset in the context of this component you run
+.DS
+$ bk csettool -s.
+.DE
+.\}
 .tp
 .B \-f\*<file\*>|\*<rev\*>
 Given a filename and revision,

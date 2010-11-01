@@ -56,7 +56,7 @@ proc dotFile {{line {}}} \
 {
 	global	lastFile fileCount Files file_stop
 	global	RealFiles file finfo currentCset dev_null
-	global gc
+	global	gc
 
 	set finfo(lt) ""
 	set finfo(rt) ""
@@ -168,7 +168,7 @@ proc dotFile {{line {}}} \
 	}
 	if {[isChangeSetFile $file] && [isComponent $file]} {
 		catch {
-			exec bk changes -vr$rev [file dirname $file] > $r
+			exec bk changes -S -vr$rev [file dirname $file] > $r
 		} result
 		readFiles $dev_null $r
 	} else {
@@ -213,6 +213,7 @@ proc getFiles {revs {file_rev {}}} \
 {
 	global	fileCount lastFile Files line2File
 	global  RealFiles fmenu file_old_new bk_fs
+	global	dashs
 
 	busy 1
 
@@ -234,10 +235,12 @@ proc getFiles {revs {file_rev {}}} \
 	set line 0
 	set found ""
 	set match ""
+	set S ""
+	if {$dashs} { set S "-S" }
 	if {$revs == "-"} {
-		set r [open "| bk changes -faevnd:GFILE:|\$if(:DT:!=D)\{TAGS:\$each(:TAG:)\{(:TAG:),\}\}\$if(:DT:=D)\{:DPN:\}|:I: --no-meta -" r]
+		set r [open "| bk changes $S -faevnd:GFILE:|\$if(:DT:!=D)\{TAGS:\$each(:TAG:)\{(:TAG:),\}\}\$if(:DT:=D)\{:DPN:\}|:I: --no-meta -" r]
 	} else {
-		set r [open "| bk changes -fvnd:GFILE:|:DPN:|:REV: -r$revs" r]
+		set r [open "| bk changes $S -fvnd:GFILE:|:DPN:|:REV: -r$revs" r]
 	}
 	set csets 0
 	set tags 0
@@ -377,7 +380,7 @@ proc adjustHeight {diff list} \
 
 proc gotoProductCset {} \
 {
-	global currentCset
+	global	currentCset dashs
 
 	if {[catch {exec bk r2c -r$currentCset ChangeSet} productCset]} {
 	    popupMessage -E "Could not find Product ChangeSet revision."
@@ -385,7 +388,8 @@ proc gotoProductCset {} \
 	}
 
 	pack forget .menu.product
-	cd [exec bk -P root]
+	cd2product
+	set dashs 0
 	getFiles $productCset ""
 }
 
@@ -686,7 +690,7 @@ proc usage {} \
 
 proc main {} \
 {
-	global argv0 argv argc app showAnnotations gc
+	global argv0 argv argc app showAnnotations gc dashs
 
 	wm title . "Cset Tool"
 
@@ -695,6 +699,7 @@ proc main {} \
 	set revs ""
 	set argindex 0
 	set file_rev ""
+	set dashs 0
 	set stdin 0
 
 	while {$argindex < $argc} {
@@ -709,6 +714,9 @@ proc main {} \
 		   	regexp {^[ \t]*-r(.*)} $rev dummy revs
 			# make sure we don't get an empty revision
 			if {$revs eq ""} { usage }
+		    }
+		    "^-s\.$" {
+			set dashs 1
 		    }
 		    "^-$" {
 			set stdin 1
@@ -732,9 +740,14 @@ proc main {} \
 	}
 	#displayMessage "csetttool: revs=($revs) file=($file_rev)"
 	bk_init
-	if {[cd2root [file dirname $file_rev]] == -1} {
-		displayMessage "CsetTool must be run in a repository"
-		exit 0
+
+	if {$dashs} {
+		if {[cd2root [file dirname $file_rev]] == -1} {
+			displayMessage "CsetTool must be run in a repository"
+			exit 0
+		}
+	}  else {
+		cd2product
 	}
 
 	loadState cset
