@@ -69,6 +69,27 @@ bk $Q -e -r check -a || {
 }
 echo OK
 
+echo $N Clone with pending delete in product.........................$NL
+cd "$HERE"
+bk clone $Q project pending-rm
+# first put a file in the product
+cd pending-rm
+echo 'foo' > afile
+bk new $Q afile
+bk commit $Q -yprod
+# now in the component
+echo 'foo' > gcc/afile
+bk new $Q gcc/afile
+bk --cd=gcc commit $Q -ygcc
+bk commit $Q -ygcc
+# now leave a pending delete in gcc
+bk rm gcc/afile
+cd "$HERE"
+# clone w/partial_check to trigger Zahy's bug
+BK_CONFIG=partial_check:on\! bk clone $Q pending-rm pending-rm-copy 2>ERR || \
+	fail -f ERR
+echo OK
+
 echo $N Clone the product using a bk:// url .........................$NL
 cd "$HERE"
 bk clone $Q bk://$M/project bkurl || fail
