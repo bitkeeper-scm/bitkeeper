@@ -13,7 +13,7 @@ echo OK
 
 echo $N Test no HERE attribute in a component .......................$NL
 cd gcc
-bk changes -r+ -nd:ATTR_HERE: > GOT
+bk changes -Sr+ -nd:ATTR_HERE: > GOT
 test -s GOT && fail -f GOT attribute HERE in component
 echo OK
 

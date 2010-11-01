@@ -184,7 +184,7 @@ do	cd path/to/libc
 	cd ..
 	bk commit $Q -y$i
 done
-TIP=`bk changes -qr+ -d:REV: junk`
+TIP=`bk changes -Sqr+ -d:REV: junk`
 echo OK
 
 echo $N Clone backwards, getting just libc, populate junk ...........$NL
@@ -203,7 +203,7 @@ bk here add $Q ./junk || {
 	echo failed
 	exit 1
 }
-test $TIP = `bk changes -qr+ -d:REV: junk` && {
+test $TIP = `bk changes -Sqr+ -d:REV: junk` && {
 	echo failed to roll back junk
 	exit 1
 }
@@ -642,13 +642,13 @@ bk alias set $Q HERE ALL || fail
 bk aliases new -C DEFAULT junk || fail
 bk aliases set -C DEFAULT ./gcc || fail
 bk alias -k DEFAULT > GOT
-bk changes -qr1.0 -nd:KEY: gcc > WANT
+bk changes -Sqr1.0 -nd:KEY: gcc > WANT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Alias -a of missing components and check fails ..............$NL
 cd "$HERE/project-nm"
-bk -e changes -r+ -nd:ROOTKEY: | bk alias set -C DEFAULT -
+bk -e changes -Sr+ -nd:ROOTKEY: | bk alias set -C DEFAULT -
 bk -r check || exit 1
 rm -fr junk
 bk -r check 2> ERR && { echo fix test; exit 1; }

@@ -191,7 +191,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		for (i = 0; i<79; ++i) putchar('-'); putchar('\n');
 		fflush(stdout);
 		f = popen(verbose ?
-		    "bk changes -Pav -" : "bk changes -Pa -", "w");
+		    "bk changes -Sav -" : "bk changes -Sa -", "w");
 		EACH (csetrevs) fprintf(f, "%s\n", csetrevs[i]);
 		pclose(f);
 		printf("Remove these [y/n]? ");
@@ -643,7 +643,7 @@ getrev(char *top_rev, int aflg)
 	 * output itself but that's a lot of work to save some sfile inits.
 	 */
 	cmd = aprintf(
-	    "bk changes -Pafvnd':SFILE:|:KEY:' %s 2>" DEVNULL_WR, rev);
+	    "bk changes -Safvnd':SFILE:|:KEY:' %s 2>" DEVNULL_WR, rev);
 	free(rev);
 	f = popen(cmd, "r");
 	free(cmd);

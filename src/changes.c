@@ -27,6 +27,7 @@ private struct {
 	u32	filt:1;		/* output limited by filenames */
 	u32	chgurl:1;	/* running 'bk changes URL', ignore local */
 	u32	noMeta:1;	/* auto or --no-meta */
+	u32	standalone:1;	/* --standalone: treat comps as standalone */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
@@ -87,6 +88,8 @@ changes_main(int ac, char **av)
 	pid_t	pid = 0; /* pager */
 	longopt	lopts[] = {
 		{ "no-meta", 300 },		/* don't show meta files */
+		{ "html", 301 },		/* old -h */
+		{ "standalone", 'S' },		/* treat comps as standalone */
 		{ 0, 0 }
 	};
 
@@ -100,8 +103,8 @@ changes_main(int ac, char **av)
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
 	while ((c =
-	    getopt(ac, av, "1aBc;Dd;efhi;kLmnPqRr;tTu;U;Vv/;x;", lopts)) != -1)
-	{
+	    getopt(ac, av, "1aBc;Dd;efi;kLmnPqRr;StTu;U;Vv/;x;",
+		lopts)) != -1) {
 		unless (c == 'L' || c == 'R' || c == 'D') {
 			nav = bk_saveArg(nav, av, c);
 		}
@@ -120,7 +123,7 @@ changes_main(int ac, char **av)
 		    case 'd': opts.dspec = strdup(optarg); break;
 		    case 'e': opts.noempty = !opts.noempty; break;
 		    case 'f': opts.forwards = 1; break;
-		    case 'h': opts.html = 1; opts.urls = 0; break;
+		    case 301: opts.html = 1; opts.urls = 0; break;
 		    case 'i':
 			opts.inc = addLine(opts.inc, strdup(optarg));
 			break;
@@ -155,6 +158,10 @@ changes_main(int ac, char **av)
 		    case '/': searchStr = optarg; break;
 		    case 'L': opts.local = 1; break;
 		    case 'R': opts.remote = 1; break;
+		    case 'S':
+			opts.standalone = 1;
+			opts.prodOnly = 1;
+			break;
 		    case 300: /* --no-meta */
 		    	opts.noMeta = 1;
 			break;
@@ -259,7 +266,11 @@ changes_main(int ac, char **av)
 		seen = hash_new(HASH_MEMHASH);
 		pid = mkpager();
 		putenv("BK_PAGER=cat");
-		proj_cd2root();
+		if (proj_isComponent(0) && !opts.standalone) {
+			proj_cd2product();
+		} else {
+			proj_cd2root();
+		}
 		s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM|INIT_MUSTEXIST);
 		unless (s_cset) {
 			fprintf(stderr, "changes: missing ChangeSet file\n");
@@ -325,9 +336,13 @@ changes_main(int ac, char **av)
 			waitpid(pid2, 0, 0);
 		}
 	} else {
-		if (proj_cd2root()) {
-			fprintf(stderr, "Can't find package root\n");
-			exit(1);
+		if (proj_isComponent(0) && !opts.standalone) {
+			proj_cd2product();
+		} else {
+			if (proj_cd2root()) {
+				fprintf(stderr, "Can't find package root\n");
+				exit(1);
+			}
 		}
 		s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM|INIT_MUSTEXIST);
 		unless (s_cset) {
@@ -1260,6 +1275,9 @@ send_part1_msg(remote *r, char **av)
 		 */
 		fputs(" -K", f); /* this enables the key sync code path */
 	} else {
+		/* make -S easy to find in bkd_changes.c (MUST be first arg) */
+		if (opts.standalone) fprintf(f, " -S");
+
 		/* Use the -L/-R cleaned options; skip over "bk" "changes" */
 		EACH_START(3, av, i) fprintf(f, " %s", av[i]);
 	}

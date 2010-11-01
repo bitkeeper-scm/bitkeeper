@@ -198,7 +198,7 @@ grep -q 'clone: no leading \^ allowed: \^gcc' ERR || fail -f ERR
 echo OK
 
 echo $N Test that -skey clones work .................................$NL
-KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
+KEY=`bk changes -Sr+ -q -d:ROOTKEY: project/gcc`
 rm -rf mynewgcc
 bk clone $Q -s"$KEY" project mynewgcc 2> ERR || {
 	echo failed
@@ -432,7 +432,7 @@ echo OK
 
 echo $N Test that we can run changes -R in a component ..............$NL
 cd gcc
-bk changes -R > OUT || exit 1
+bk changes -SR > OUT || exit 1
 grep -q "Add 4 to file4" OUT || {
 	echo failed
 	cat OUT

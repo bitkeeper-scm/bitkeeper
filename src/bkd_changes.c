@@ -10,13 +10,20 @@ cmd_chg_part1(int ac, char **av)
 	FILE 	*f;
 
 	if (ac == 2 && streq(av[1], "-K")) {
+		/* used by: bk changes -R */
 		av[1][1] = 'S';
 		return (cmd_synckeys(ac, av));
 	}
 
+	/* used by: bk changes <URL> */
 	setmode(0, _O_BINARY);
 	unless(isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
+		out("@END@\n");
+		return (1);
+	}
+	if ((ac > 1) && !streq(av[1], "-S") && proj_isComponent(0)) {
+		out("ERROR-components require --standalone\n");
 		out("@END@\n");
 		return (1);
 	}
@@ -40,6 +47,7 @@ cmd_chg_part1(int ac, char **av)
 	return (0);
 }
 
+/* this is only called by 'bk changes -R' */
 int
 cmd_chg_part2(int ac, char **av)
 {
