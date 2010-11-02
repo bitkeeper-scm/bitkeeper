@@ -806,7 +806,10 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	 */
 	EACH_STRUCT(n->comps, c, j) {
 		c->remotePresent = 0; /* populate reuses this */
-		if (c->alias && !c->present) c->new = 1;
+		if (c->alias && !c->present) {
+			c->new = 1;
+			++which;
+		}
 	}
 	if (nested_populate(n, 0, &popts)) {
 		fprintf(stderr,
