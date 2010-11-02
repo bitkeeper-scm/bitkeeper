@@ -1,12 +1,12 @@
 #include "sccs.h"
 
-private	int	comps_citool(char **av);
+private	int	comps_citool(char **av, int haveAliases);
 
 int
 comps_main(int ac, char **av)
 {
 	int	c;
-	int	citool = 0;
+	int	citool = 0, haveAliases = 0;
 	int	rc;
 	char	**nav = 0;
 	char	**aliases = 0;
@@ -23,13 +23,16 @@ comps_main(int ac, char **av)
 		    case 'h': nav = addLine(nav, "-h"); break;
 		    case 'k': nav = addLine(nav, "-k"); break;
 		    case 'm': nav = addLine(nav, "-m"); break;
-		    case 's': aliases = addLine(aliases, optarg); break;
+		    case 's':
+			      haveAliases = 1;
+			      aliases = addLine(aliases, optarg);
+			      break;
 		    default: bk_badArg(c, av);
 		}
 	}
 	unless (aliases) {
 		aliases = addLine(aliases, "ALL");
-		aliases = addLine(aliases, "^PRODUCT");
+		unless (citool) aliases = addLine(aliases, "^PRODUCT");
 	}
 	nav = addLine(nav, "-e");
 	nav = catLines(nav, aliases);	/* frees aliases */
@@ -40,7 +43,7 @@ comps_main(int ac, char **av)
 	if (citool) {
 		nav = unshiftLine(nav, "bk");
 		nav = addLine(nav, 0);	/* guarantee array termination */
-		rc = comps_citool(nav+1);
+		rc = comps_citool(nav+1, haveAliases);
 	} else {
 		getoptReset();
 		rc = alias_main(nLines(nav), nav+1);
@@ -61,7 +64,7 @@ components_main(int ac, char **av)
 }
 
 private int
-comps_citool(char **av)
+comps_citool(char **av, int haveAliases)
 {
 	FILE	*f;
 	char	*t;
@@ -70,13 +73,12 @@ comps_citool(char **av)
 
 	unless (f = popenvp(av, "r")) return (1);
 
-	if (proj_isComponent(0)) {
+	if (!haveAliases && proj_isComponent(0)) {
 		first = strdup(proj_comppath(0));
 		puts(first);
 	}
 	(void)proj_cd2product();
 
-	puts("PRODUCT");
 	while (t = fgetline(f)) {
 		if (strneq(t, "./", 2)) t += 2;
 		if (first && streq(first, t)) {

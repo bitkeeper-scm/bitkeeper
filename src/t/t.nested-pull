@@ -98,13 +98,13 @@ bk new $Q foo
 bk mv foo bar
 BADRK=`bk prs -r1.0 -hnd:KEY: bar`
 cd ../copy
-RK2=`bk changes -q -r1.0 -nd:KEY: ../project?ROOTKEY=$RK`
+RK2=`bk changes -Sq -r1.0 -nd:KEY: ../project?ROOTKEY=$RK`
 test "$RK" = "$RK2" || exit 1
 echo OK
 
 echo $N Test rootkey urls, file url, product root key ...............$NL
 PRK=`bk -R prs -r1.0 -hnd:KEY: ChangeSet`
-RK2=`bk changes -q -r1.0 -nd:KEY: ../project?ROOTKEY=$PRK`
+RK2=`bk changes -Sq -r1.0 -nd:KEY: ../project?ROOTKEY=$PRK`
 test "$PRK" = "$RK2" || exit 1
 echo OK
 
@@ -154,7 +154,7 @@ echo $N Test rootkey urls, bk:// url above, component root key ......$NL
 cd "$HERE"
 bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
 P=`cat PORT`
-RK2=`bk changes -q -r1.0 -nd:KEY: bk://localhost:$P/project?ROOTKEY=$RK`
+RK2=`bk changes -Sq -r1.0 -nd:KEY: bk://localhost:$P/project?ROOTKEY=$RK`
 test "$RK" = "$RK2" || {
 	echo failed
 	bk _kill bk://localhost:$P
@@ -177,7 +177,7 @@ echo $N Test rootkey urls, bk:// url in repo, component root key ....$NL
 cd "$HERE/project"
 bk bkd -q -d -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
 P=`cat PORT`
-RK2=`bk changes -q -r1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$RK`
+RK2=`bk changes -Sq -r1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$RK`
 test "$RK" = "$RK2" || {
 	echo failed
 	bk _kill bk://localhost:$P
@@ -474,7 +474,7 @@ rr
 y
 EOF
 # Should get the new-file cset and a merge cset.
-bk changes -fr1.2,1.3 -nd:KEY: > WANT || exit 12
+bk changes -Sfr1.2,1.3 -nd:KEY: > WANT || exit 12
 cmpfiles WANT BitKeeper/etc/csets-in
 test "`bk log -r1.3 -nd:MERGE:`" = "1.3" || exit 14
 bk cat conflict-test | grep -q 'from copy2' || exit 15
@@ -482,7 +482,7 @@ bk cat conflict-test | grep -q 'from copy2' || exit 15
 cd ..
 bk resolve -a $Q || exit 16
 # The product should get the new-file cset and a merge cset.
-bk changes -fr1.3,1.4 -nd:KEY: > WANT || exit 17
+bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || exit 17
 cmpfiles WANT BitKeeper/etc/csets-in
 test "`bk log -r1.4 -nd:MERGE:`" = "1.4" || exit 19
 cd "$HERE"
@@ -517,7 +517,7 @@ rr
 y
 EOF
 # Should get the new-file cset and a merge cset.
-bk changes -fr1.2,1.3 -nd:KEY: > WANT || exit 10
+bk changes -Sfr1.2,1.3 -nd:KEY: > WANT || exit 10
 cmpfiles WANT BitKeeper/etc/csets-in
 test "`bk log -r1.3 -nd:MERGE:`" = "" || exit 12
 bk cat conflict-test | grep -q 'from copy2' || exit 13
@@ -525,7 +525,7 @@ bk cat conflict-test | grep -q 'from copy2' || exit 13
 cd ..
 bk resolve -a $Q || exit 14
 # The product should get the new-file cset and another cset.
-bk changes -fr1.3,1.4 -nd:KEY: > WANT || exit 15
+bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || exit 15
 cmpfiles WANT BitKeeper/etc/csets-in
 test "`bk log -r1.4 -nd:MERGE:`" = "" || exit 16
 cd "$HERE"
@@ -1030,7 +1030,7 @@ touch C/copy5_file
 bk --cd=C new $Q copy5_file
 bk --cd=C commit $Q -ycopy5_file
 bk commit $Q -ycopy5_file
-bk --cd=C changes -RL > GOT
+bk --cd=C changes -SRL > GOT
 grep -q "==== changes -L .*/C ====" GOT || fail -f GOT wrong local output
 grep -q "==== changes -R .*/C ====" GOT || fail -f GOT wrong remote output
 bk pull $Q ../copy4 || fail

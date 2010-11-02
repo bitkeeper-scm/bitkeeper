@@ -64,6 +64,13 @@ proc cd2root { {startpath {}} } \
 	return -1
 }
 
+proc cd2product {} {
+	if {[catch { cd [exec bk root] } err]} {
+		puts "Could not change directory to product root."
+		exit 1
+	}
+}
+
 proc resolveSymlink {filename} {
 	catch {
 		set original_path [file dirname $filename]

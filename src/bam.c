@@ -709,7 +709,7 @@ bp_updateServer(char *range, char *list, int quiet)
 			assert(list);
 			p = aprintf("- < '%s'", list);
 		}
-		cmd = aprintf("bk changes -qPBv -nd'"
+		cmd = aprintf("bk changes -qSBv -nd'"
 		    "$if(:BAMHASH:){|:BAMSIZE:|:BAMHASH: :KEY: :MD5KEY|1.0:}' "
 		    "%s > '%s'",
 		    p, tmpkeys);

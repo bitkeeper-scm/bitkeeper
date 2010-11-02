@@ -699,7 +699,7 @@ echo + | bk _nested -Plpnd -u - > GOT
 # The list should be desired tips of .|1.5 and gcc4|1.6
 (
 bk changes -qnd".|:KEY:" -r1.5 .
-bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
+bk changes -Sqnd"gcc4|:KEY:" -r1.5 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -711,7 +711,7 @@ mv ../gcc4 .
 # The list should be desired tips of .|1.5 and gcc4|1.6
 (
 bk changes -qnd".|:KEY:|(present)" -r1.5 .
-bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
+bk changes -Sqnd"gcc4|:KEY:" -r1.5 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -724,8 +724,8 @@ mv ../gcc4 .
 # The list should be the current tips
 (
 bk changes -qnd".|:KEY:|(present)" -r+ .
-bk changes -qnd"gcc4|:KEY:|(new)" -r+ gcc4
-bk changes -qnd"gdb|:KEY:|(new)|(present)" -r+ gdb
+bk changes -Sqnd"gcc4|:KEY:|(new)" -r+ gcc4
+bk changes -Sqnd"gdb|:KEY:|(new)|(present)" -r+ gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -769,7 +769,7 @@ echo 1.4
 # The list should be desired tips of 1.3 (just works out that way)
 (
 bk changes -qnd".|:KEY:" -r1.3 .
-bk changes -qnd"gcc4|:KEY:" -r1.2 gcc4
+bk changes -Sqnd"gcc4|:KEY:" -r1.2 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -778,8 +778,8 @@ echo $N bk _nested for clone -r+ ....................................$NL
 bk _nested -Plpd -r+ > GOT
 (
 bk changes -qnd".|:KEY:" -r+ .
-bk changes -qnd"gcc4|:KEY:" -r+ gcc4
-bk changes -qnd"gdb|:KEY:" -r+ gdb
+bk changes -Sqnd"gcc4|:KEY:" -r+ gcc4
+bk changes -Sqnd"gdb|:KEY:" -r+ gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -789,8 +789,8 @@ bk _nested -Plpd -r1.3 > GOT
 # They are all at 1.3 in 1.3
 (
 bk changes -qnd".|:KEY:" -r1.3 .
-bk changes -qnd"gcc4|:KEY:" -r1.2 gcc4
-bk changes -qnd"gdb|:KEY:" -r1.2 gdb
+bk changes -Sqnd"gcc4|:KEY:" -r1.2 gcc4
+bk changes -Sqnd"gdb|:KEY:" -r1.2 gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -799,8 +799,8 @@ echo $N bk _nested for clone -r1.4 ..................................$NL
 bk _nested -Plpd -r1.4 > GOT
 (
 bk changes -qnd".|:KEY:" -r1.4 .
-bk changes -qnd"gcc4|:KEY:" -r1.4 gcc4
-bk changes -qnd"gdb|:KEY:" -r1.2 gdb
+bk changes -Sqnd"gcc4|:KEY:" -r1.4 gcc4
+bk changes -Sqnd"gdb|:KEY:" -r1.2 gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -810,7 +810,7 @@ echo 1.6 | bk _nested -Plpd - > GOT
 # The list should be desired tips of .|1.6 and gcc4|1.9
 (
 bk changes -qnd".|:KEY:" -r1.6 .
-bk changes -qnd"gcc4|:KEY:" -r1.8 gcc4
+bk changes -Sqnd"gcc4|:KEY:" -r1.8 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -819,7 +819,7 @@ echo $N bk _nested for push -r1.5 ...................................$NL
 echo 1.5 | bk _nested -Plpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.5 .
-bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
+bk changes -Sqnd"gcc4|:KEY:" -r1.5 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -828,7 +828,7 @@ echo $N bk _nested for push -r1.4 ...................................$NL
 echo 1.4 | bk _nested -Plpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.4 .
-bk changes -qnd"gcc4|:KEY:" -r1.4 gcc4
+bk changes -Sqnd"gcc4|:KEY:" -r1.4 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -837,8 +837,8 @@ echo $N bk _nested for push -r1.3 ...................................$NL
 echo 1.3 | bk _nested -Plnpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.3 .
-bk changes -qnd"gcc4|:KEY:|(new)" -r1.2 gcc4
-bk changes -qnd"gdb|:KEY:|(new)" -r1.2 gdb
+bk changes -Sqnd"gcc4|:KEY:|(new)" -r1.2 gcc4
+bk changes -Sqnd"gdb|:KEY:|(new)" -r1.2 gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -860,8 +860,8 @@ echo 1.6
 ) | bk _nested -Plnpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.6 .
-bk changes -qnd"gcc4|:KEY:|(new)" -r1.8 gcc4
-bk changes -qnd"gdb|:KEY:|(new)" -r1.2 gdb
+bk changes -Sqnd"gcc4|:KEY:|(new)" -r1.8 gcc4
+bk changes -Sqnd"gdb|:KEY:|(new)" -r1.2 gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -1277,7 +1277,7 @@ echo $N bk components for clone -r+ but limited to -s./gcc4 .........$NL
 bk _nested -s./gcc4 -Plpd -r+ > GOT
 (
 bk changes -qnd".|:KEY:" -r+ .
-bk changes -qnd"gcc4|:KEY:" -r+ gcc4
+bk changes -Sqnd"gcc4|:KEY:" -r+ gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -1494,7 +1494,7 @@ cd "$HERE/project/gdb"
 bk comps -c > GOT || fail
 cat <<EOF > WANT
 gdb
-PRODUCT
+.
 gcc4
 gdb/A
 gdb/A/B

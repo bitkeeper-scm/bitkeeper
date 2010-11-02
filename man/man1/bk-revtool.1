@@ -9,10 +9,11 @@ bk revtool \- \*(BK graphical history browser
 .B bk revtool
 .[OPTreq] \-l local
 .[OPTreq] \-r remote
-.[ARG] file
+.ARG file
 .br
 .B bk revtool
 .[OPTreq] \-r rev
+.if \n[NESTED] [\fB\-s\fI.\fR]
 .[OPTreq] \-/ string /
 .[OPTreq] + number
 .[ARG] file
@@ -29,6 +30,14 @@ or file.
 may be used to view any revision controlled file,
 including the ChangeSet file. When no filename is given, the entire
 package history is shown.
+.if \n[NESTED] \{\
+In a nested collection, the default is to show the product history.
+If you wish to look at a component's history, go to that directory
+and run
+.DS
+$ bk revtool -s.
+.DE
+.\}
 .LP
 .B bk revtool
 has an upper window which shows the graph of revision history

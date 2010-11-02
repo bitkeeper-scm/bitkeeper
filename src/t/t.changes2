@@ -108,10 +108,10 @@ LIST=`bk changes -f -d":I: "`
 test "1.0 1.1 1.2 1.3 " = "$LIST" || fail
 echo OK
 
-echo $N Check html output with -h ...................................$NL
-bk changes -r+ -h | grep -q '<html>' || fail
+echo $N Check html output with --html ...............................$NL
+bk changes -r+ --html | grep -q '<html>' || fail
 # no html and dspec at the same time
-bk changes -r+ -h -d:I: > OUT 2> ERR && fail
+bk changes -r+ --html -d:I: > OUT 2> ERR && fail
 echo OK
 
 echo $N Check that keys output with -k ..............................$NL
@@ -585,13 +585,13 @@ checkfiles LOCAL ../clone/REMOTE
 checkfiles REMOTE ../clone/LOCAL
 echo OK
 
-echo $N Changes -h should show multiple tags correctly...............$NL
+echo $N Changes --html should show multiple tags correctly ..........$NL
 #commercial project
 bk tag $Q foo
 bk tag $Q bar
 bk tag $Q baz
 # The output of changes should have some kind of delimiter between tags
-bk changes -h -r+ | grep 'bazbarfoo' >OUT 2>ERR && fail
+bk changes --html -r+ | grep 'bazbarfoo' >OUT 2>ERR && fail
 echo OK
 
 ## check changes working when deltas or files are missing.

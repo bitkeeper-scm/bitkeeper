@@ -1595,6 +1595,11 @@ again:
 		}
 		buf[j] = 0;
 		opts = buf;
+		/*
+		 * After a partial check needs an auto-fix, require a
+		 * full check
+		 */
+		flist = 0;
 		goto again;
 	}
 	return (ret);

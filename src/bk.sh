@@ -537,7 +537,7 @@ _csets() {		# /* doc 2.0 */
 		esac
 	done
 	shift `expr $OPTIND - 1`
-	__cd2root
+	__cd2product
 	if [ -f RESYNC/BitKeeper/etc/csets-in ]
 	then	if [ $GUI = YES ]
 		then	echo Viewing RESYNC/BitKeeper/etc/csets-in

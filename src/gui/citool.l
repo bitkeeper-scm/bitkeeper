@@ -49,6 +49,8 @@ struct {
 	int	partial;	    // is this a partial commit from resolve
 	int	nfiles;		    // number of files in repo
 	int	nested;		    // are we dealing with a nested repo?
+	int	dashs;		    // did we get a -sALIAS on the command line?
+	string	dir;		    // dir passed on the command line
 	int	changed;	    // has anything changed where we need to
 				    // prompt the user on quit?
 	string	comments;	    // file comments before changes
@@ -65,6 +67,7 @@ struct {
 	string	sfiles_component;   // component currently being scanned
 	string  templates{string};  // template comments
 	sfile	files{string};	    // a hash of files by name
+	string[] filelist;	    // list of files from the command line
 	string	clipboard;	    // contents of the cut-and-paste clipboard
 	string	trigger_sock;	    // open socket to accept trigger output
 	string[] allComponents;	    // a list of all components in the repo
@@ -125,11 +128,23 @@ joinpath(...args)
 }
 
 int
-getNumFiles()
+getNumFiles(string opts)
 {
+	FILE	fp;
+	string	line;
+	int	n = 0;
+	string	cmd = "bk --each-repo ${opts} nfiles";
+
 	setStatus("Getting file count...");
 	update();
-	return ((int)bk("nfiles -r"));
+
+	fp = popen(cmd, "r");
+	while (defined(line = fgetline(fp))) {
+		n += (int)line;
+	}
+	pclose(fp);
+
+	return (n);
 }
 
 int
@@ -210,7 +225,9 @@ componentHasComments(string component)
 void
 insertFile(sfile sf)
 {
-	sf.component = self.sfiles_component;
+	unless (defined(sf.component)) {
+		sf.component = self.sfiles_component;
+	}
 	sf.inProduct = (sf.component eq self.root);
 
 	// Increment the total counts for the various file
@@ -431,6 +448,7 @@ readSfilesProgress(FILE fd, string file, int pos)
 				// while we're reading.
 				fileevent(fd, "readable", "");
 				pos = readSfilesOutput(file, pos);
+				updateGUI();
 				// Re-establish the read event with the new
 				// position in the output file.
 				fileevent(fd, "readable",
@@ -440,11 +458,10 @@ readSfilesProgress(FILE fd, string file, int pos)
 	} else {
 		fclose(fd);
 		readSfilesOutput(file, pos);
+		updateGUI();
 		self.sfiles_last = 0;
 		_done = 1;
 	}
-
-	updateGUI();
 }
 
 void
@@ -456,35 +473,12 @@ updateGUI()
 	}
 }
 
-int
-readSfilesOutput(string file, int pos)
+void
+addSfilesLines(string lines[])
 {
-	int	len;
-	int	extra, modified, pending, hasComments;
-	string	data, line, lines[];
-	FILE	fd = fopen(file, "r");
 	sfile	sf;
-
-	unless (defined(fd)) {
-		puts("ERROR: ${stdio_lasterr}");
-		return (-1);
-	}
-
-	self.sfiles_reading = 1;
-	seek(fd, pos, "start");
-	data = freadn(fd, -1);
-	unless (defined(data)) {
-		fclose(fd);
-		return (-1);
-	}
-	lines = split(data, "\n");
-	len = llength(lines);
-	if ((data ne "") && (data[END] ne "\n")) {
-		seek(fd, length(lines[len-1]) * -1, "current");
-		lines = lrange(lines, 0, "end-1");
-	}
-	pos = tell(fd);
-	fclose(fd);
+	string	line, file;
+	int	extra, modified, pending, hasComments;
 
 	foreach (line in lines) {
 		file = join(" ", lrange(split(line, " "), 1, "end"));
@@ -517,96 +511,126 @@ readSfilesOutput(string file, int pos)
 
 		insertFile(sf);
 	}
+}
+
+int
+readSfilesOutput(string file, int pos)
+{
+	int	len;
+	string	data, lines[];
+	FILE	fd = fopen(file, "r");
+
+	unless (defined(fd)) {
+		puts("ERROR: ${stdio_lasterr}");
+		return (-1);
+	}
+
+	self.sfiles_reading = 1;
+	seek(fd, pos, "start");
+	data = freadn(fd, -1);
+	unless (defined(data)) {
+		fclose(fd);
+		return (-1);
+	}
+	lines = split(data, "\n");
+	len = llength(lines);
+	if ((data ne "") && (data[END] ne "\n")) {
+		seek(fd, length(lines[len-1]) * -1, "current");
+		lines = lines[0..END-1];
+	}
+	pos = tell(fd);
+	fclose(fd);
+	addSfilesLines(lines);
 	self.sfiles_reading = 0;
 	updateStatus();
 	return (pos);
 }
 
 void
-findFiles()
+addFiles(string files[])
 {
 	FILE	fd;
-	string	comp, tmp, cmd;
+	string	tmp, file, lines[];
 
+	tmp = tmpfile("citool");
+	fd = popen("bk sfiles -cgvxyp {-o${tmp}} -", "r+");
+	puts(fd, join("\n", files));
+	fclose(fd);
+
+	fd = fopen(tmp, "r");
+	while(defined(file = fgetline(fd))) {
+		push(&lines, file);
+	}
+	pclose(fd);
+	addSfilesLines(lines);
+	if (self.sfiles_pending > 0) insertPendingNode(self.root);
+	insertCsetFile(self.root);
+}
+
+void
+insertCsetFile(string comp)
+{
+	sfile	sf;
+
+	if (comp eq self.root) {
+		sf.inProduct = 1;
+		sf.name = "ChangeSet";
+	} else {
+		sf.inProduct = 0;
+		sf.name = getRelativePath(comp, "") . " ChangeSet";
+	}
+
+	sf.type = "cset";
+	sf.file = joinpath(comp, "ChangeSet");
+	sf.icon = img_cset;
+	sf.component = comp;
+	sf.ignored = 0;
+	sf.excluded = 0;
+	sf.commented = -1;
+
+	insertFile(sf);
+}
+
+void
+insertPendingNode(string comp)
+{
+	string	txt;
+	string	img = img_done;
+
+	txt = "Show (${self.sfiles_pending}) pending delta";
+	if (self.sfiles_pending != 1) txt .= "s";
+	if (self.nested) {
+		txt .= " in ";
+		if (comp eq self.root) {
+			txt .= "the Product";
+		} else {
+			txt .= getRelativePath(comp,"");
+		}
+	}
+	self.showPending{comp} = 0;
+	self.pendingNodes{comp} =
+	    ListBox_insert(
+		self.w_files,
+		"end", "pending#auto",
+		image: img, data: comp,
+		font: self.font_underline,
+		fill: "blue", text: txt);
+}
+
+void
+processFiles(string files[])
+{
 	self.sfiles_scanning = 1;
 	self.sfiles_component = self.root;
+	updateStatus();
 	updateButtons();
 
-	foreach (comp in self.allComponents) {
-		chdir(comp);
-		self.sfiles_found = 0;
-		self.sfiles_pending = 0;
-		self.sfiles_component = comp;
-		self.showPending{comp} = 0;
-		tmp = tmpfile("citool");
-		cmd = "bk sfiles -vgcyp {--relpath=${self.root}} {-o${tmp}}";
-		unless (self.resolve) {
-			// Look for extra files when we're not in the resolver.
-			cmd .= " -x";
-		}
-		fd = popen(cmd, "r");
-		fconfigure(fd, blocking: 0, buffering: "line");
-		fileevent(fd, "readable", {"readSfilesProgress", fd, tmp, 0});
-		vwait(&_done);
-
-		if (self.sfiles_found || (comp eq self.root)) {
-			int	n;
-			sfile	sf;
-			string	node;
-
-			if (self.sfiles_pending) {
-				string	txt;
-				string	img = img_done;
-
-				n = self.sfiles_pending;
-				txt = "Show (${n}) pending delta";
-				if (n != 1) txt .= "s";
-				if (self.nested) {
-					txt .= " in ";
-					if (comp eq self.root) {
-						txt .= "the Product";
-					} else {
-						txt .= getRelativePath(comp,"");
-					}
-				}
-				if (defined(self.pendingNodes{comp})) {
-					ListBox_itemconfigure(
-					    self.w_files, text: txt);
-				} else {
-					node = ListBox_insert(
-					    self.w_files,
-					    "end", "pending#auto",
-					    image: img, data: comp,
-					    font: self.font_underline,
-					    fill: "blue", text: txt);
-					self.pendingNodes{comp} = node;
-				}
-			}
-			
-			if (comp eq self.root) {
-				sf.inProduct = 1;
-				sf.name = "ChangeSet";
-			} else {
-				sf.inProduct = 0;
-				sf.name = getRelativePath(comp, "")
-				    . " ChangeSet";
-			}
-
-			sf.type = "cset";
-			sf.file = joinpath(comp, "ChangeSet");
-			sf.icon = img_cset;
-			sf.ignored = 0;
-			sf.excluded = 0;
-			sf.commented = -1;
-
-			insertFile(sf);
-		}
-
-		if (!self.sfiles_found && (comp ne self.root)) {
-			undef(self.components{comp});
-		}
-		chdir(self.root);
+	if (length(files) > 0) {
+		addFiles(files);
+	} else {
+		findFiles();
 	}
+
 	self.sfiles_component = "";
 	self.sfiles_scanning = 0;
 
@@ -621,11 +645,55 @@ findFiles()
 	}
 
 	Progressbar_configure(self.w_progress, value: 100);
-	StatusBar_remove(self.w_statusF, self.w_progress,
-	    background: gc("BG"));
+	StatusBar_remove(self.w_statusF, self.w_progress, background: gc("BG"));
 	configureCsetNodes();
 	updateStatus();
 	updateButtons();
+}
+
+void
+findFiles()
+{
+	FILE	fd;
+	string	comp, tmp, cmd;
+	string	opts = "-vgcyp";
+	int	didProduct = 0;
+
+	if (defined(self.dir)) opts = "-1vgcyp";
+	foreach (comp in self.allComponents) {
+		if (comp eq self.root) didProduct = 1;
+		if (defined(self.dir)) {
+			chdir(self.dir);
+		} else {
+			chdir(comp);
+		}
+		self.sfiles_found = 0;
+		self.sfiles_pending = 0;
+		self.sfiles_component = comp;
+		self.showPending{comp} = 0;
+		tmp = tmpfile("citool");
+		cmd = "bk sfiles ${opts} {--relpath=${self.root}} {-o${tmp}}";
+		unless (self.resolve) {
+			// Look for extra files when we're not in the resolver.
+			cmd .= " -x";
+		}
+		fd = popen(cmd, "r");
+		fconfigure(fd, blocking: 0, buffering: "line");
+		fileevent(fd, "readable", {"readSfilesProgress", fd, tmp, 0});
+		vwait(&_done);
+
+		if (self.sfiles_pending) insertPendingNode(comp);
+		if (self.sfiles_found || (comp eq self.root)) {
+			insertCsetFile(comp);
+		}
+
+		if (!self.sfiles_found && (comp ne self.root)) {
+			undef(self.components{comp});
+		}
+		chdir(self.root);
+	}
+
+	if (self.dashs && !didProduct) insertCsetFile(self.root);
 }
 
 void
@@ -1470,7 +1538,8 @@ getComments(sfile sf)
 			comments = self.templates{sf.name};
 		}
 
-		if ((sf.type eq "cset") && !sf.inProduct
+		if (self.nested
+		    && (sf.type eq "cset") && !sf.inProduct
 		    && componentHasComments(sf.component)) {
 			comments = getComments(self.files{"ChangeSet"});
 		}
@@ -1687,7 +1756,7 @@ showFile(sfile sf)
 			string	dir = dirname(file);
 			Text_insert(self.w_diffs, "end", "\n");
 			Text_insert(self.w_diffs, "end",
-			    bk("changes -v -r${sf.rev} \"${dir}\""), "");
+			    bk("changes -S -v -r${sf.rev} \"${dir}\""), "");
 			Text_configure(self.w_diffs, state: "disabled");
 			return;
 		}
@@ -1825,7 +1894,7 @@ doCommit()
 
 	unless (self.commitSwitch) {
 		self.commitSwitch = 1;
-		if (isCommented(cset)) {
+		if (isCommented(cset) && !isExcluded(cset)) {
 			topMessage(msgs{"gotCset"}, "message");
 		} else {
 			topMessage(msgs{"noCset"}, "message");
@@ -2134,8 +2203,6 @@ rescan()
 	self.components = undef;
 	self.pendingNodes = undef;
 	foreach (comp in self.allComponents) {
-		// self.components{comp} = undef;
-		// self.pendingNodes{comp} = undef;
 		chdir(comp);
 		self.nfiles += (int)`bk nfiles`;
 	}
@@ -2146,7 +2213,7 @@ rescan()
 	StatusBar_add(self.w_statusF, self.w_progress,
 	    separator: 0, sticky: "e");
 	update();
-	findFiles();
+	processFiles(self.filelist);
 }
 
 void
@@ -2167,7 +2234,8 @@ initMsgs()
 "  Type Control-l to go back and provide ChangeSet comments.\n";
 	msgs{"noCset"} = "\n"
 "  Notice: this will not group and commit the deltas listed below\n"
-"  into a ChangeSet, because there are no ChangeSet comments.\n"
+"  into a ChangeSet, because there are no ChangeSet comments or\n"
+"  because the ChangeSet has been excluded.\n"
 "  Click \[Checkin] again to check in only the commented deltas,\n"
 "  or type Control-l to go back and provide ChangeSet comments.\n";
 	msgs{"resolveCset"} = "\n"
@@ -2393,6 +2461,7 @@ test_toggleFile(string file)
 void
 init()
 {
+	self.dashs = 0;
 	self.nfiles = 0;
 	self.changed = 0;
 	self.commented = 0;
@@ -2418,8 +2487,11 @@ init()
 void
 main(_unused int argc, string argv[])
 {
-	string	arg, files[];
+	string	arg, file, files[];
 	FILE	f;
+	string	nfilesOpts = "";
+	string	compscmd = "bk comps -ch";
+	int	includeProduct = 1;
 
 	arg = bk("sane 2>@1");
 	if (arg ne "") bk_dieError(arg, 1);
@@ -2438,6 +2510,10 @@ main(_unused int argc, string argv[])
 			self.resolve = 1;
 		} else if (arg eq "-P") {
 			self.partial = 1;
+		} else if (arg =~ /^-s(.*)/) {
+			self.dashs = 1;
+			compscmd .= " " . arg;
+			nfilesOpts = arg;
 		} else {
 			push(&files, arg);
 			self.argv[END+1] = arg;
@@ -2449,18 +2525,45 @@ main(_unused int argc, string argv[])
 		// If no files or directory were passed on the command-line, we
 		// check to see if we're in a nested component or product and
 		// make the root product our directory.
-		self.root = `bk -P pwd`;
+		self.root = `bk root`;
 		self.nested = nested();
-	} else if ((llength(files) == 1) && isdir(files[0])) {
-		self.root = `bk root -R files[0]`;
-	} else {
-		string	file;
-
-		foreach (file in files) {
+	} else if ((length(files) == 1) && isdir(files[0])) {
+		self.dir = File_normalize(files[0]);
+		if (self.dashs) {
+			bk_dieError("Cannot specify -s together with a"
+			    " directory", 1);
+		}
+		self.root = `bk root -R "${files[0]}"`;
+		files = undef;
+	} else if ((length(files) == 1) && files[0] eq "-") {
+		if (nested()) {
+		    bk_dieError("Reading files from stdin not supported"
+			" in a nested repository.", 1);
+		}
+		if (self.dashs) {
+			bk_dieError("Cannot specify -s together with -", 1);
+		}
+		files = undef;
+		while (defined(file = fgetline(stdin))) {
 			if (isdir(file)) bk_usage();
+			push(&files, file);
+		}
+		self.root = `bk root`;
+	} else {
+		string	filelist[] = files;
+
+		if (self.dashs) {
+			bk_dieError("Cannot specify -s together with files", 1);
+		}
+		files = undef;
+		foreach (file in filelist) {
+			if (isdir(file)) bk_usage();
+			push(&files, File_normalize(file));
 		}
 		self.root = `bk root -R`;
 	}
+
+	self.filelist = files;
 
 	if (self.resolve) {
 		self.root = `bk pwd`;
@@ -2470,19 +2573,26 @@ main(_unused int argc, string argv[])
 	gui();
 
 	if (self.nested) {
-		f = popen("bk comps -ch", "r");
+		includeProduct = 0;
+		f = popen(compscmd, "r");
 		while (defined(arg = fgetline(f))) {
-			if (arg eq "PRODUCT") continue;
+			if (arg eq ".") {
+				includeProduct = 1;
+				continue;
+			}
 			arg = joinpath(self.root, arg);
 			self.allComponents[END+1] = arg;
 		}
 		pclose(f);
 	}
-	self.allComponents[END+1] = self.root;
+
+	if (includeProduct) {
+		self.allComponents[END+1] = self.root;
+	}
 
 	if (isdir(self.root)) chdir(self.root);
 
-	self.nfiles = getNumFiles();
+	self.nfiles = getNumFiles(nfilesOpts);
 
 	// Initialize the ChangeSet template if it exists.
 	self.templates{"ChangeSet"} = bk("-R cat BitKeeper/templates/commit");
@@ -2492,6 +2602,6 @@ main(_unused int argc, string argv[])
 
 	initMsgs();
 	createImages();
-	findFiles();
+	processFiles(self.filelist);
 }
 
