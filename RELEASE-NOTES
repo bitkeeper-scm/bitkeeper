@@ -1,3 +1,71 @@
+BitKeeper 5.0.1 Release Notes
+
+This is a cleanup release though it does change some UI (something we
+normally do not do in a "dot dot" release.
+
+bk options
+    -e
+    --each-repo	runs the specified command once per repository in a 
+    		nested collection.  It may be combined with -s<alias>
+		to restrict the selected repositories to those in
+		<alias>.  If no -s is specified the default is -sHERE.
+
+    -A
+    --all-files	Unchanged, long option added.
+
+    -U
+    --user-files
+    		Unchanged, long option added.
+
+    --sfiles-opts=opts
+    		New option to pass any sfiles options through to the file
+		selector.
+
+bk changes
+    The rarely used -h option is replaced with an easier to remember --html.
+
+    -S
+    --standalone
+    		When used in a nested component, treats the component as if 
+		it were detached.  This is how you get "standalone" or
+		"just this repo" changes output.
+
+bk config
+    BitKeeper/log/config is searched for configuration ahead of 
+    BitKeeper/etc/config.  In some cases, such as clone_default,
+    it is useful to have two values for the variable, the value
+    for this repo and the value for all others.
+
+bk csettool
+    -s.		Selects the component instead of the default, the product.
+
+bk csets	Fixed a bug where it failed to change directories to the
+		product first.
+
+bk difftool
+    <default>	No arguments means diff the entire repository or nested
+    		collection.
+    <dir>	Shows modified files in that directory only (no recursion).
+
+bk repocheck	Added documentation.
+
+bk revtool	Defaults to product changeset with no args, use -s. to select
+		the current component.
+
+bk root		Fixed a bug and made the default be to show the product root.
+		As before, bk root -R does the component root.
+
+Bugs fixed
+----------
+    bk citool could recurse on events in large repos and run out of stack.
+    bk clone with uncommitted changes in partial_check mode could fail the
+    check after stripping the uncommitted changes.
+    bk fm3tool with different sized comment windows did not scroll to the end.
+    bk revtool in remapped (no SCCS dirs) trees could not view files via "s".
+    bk changes no longer holds a read lock until the user quits.  It locks,
+    reads the changeset file, and drops the lock.
+
+============================================================================
 BitKeeper 5.0 Release Notes
 
 Nested collections
