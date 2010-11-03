@@ -21,7 +21,7 @@ pwd_main(int ac, char **av)
 			default: bk_badArg(c, av);
 		}
 	}
-	
+
 	if (bk_rpath && windows) {
 		fprintf(stderr, "pwd: -R/-P or -w but not both.\n");
 		return (1);
@@ -65,6 +65,10 @@ pwd_main(int ac, char **av)
 		}
 		/* fall through */
 	    case REPO_RELATIVE:
+		unless (proj_root(0)) {
+			fprintf(stderr, "%s: Cannot find package root.\n", prog);
+			return (1);
+		}
 		printf("%s\n", _relativeName(".", 1, 1, 1, 0));
 		break;
 	}
