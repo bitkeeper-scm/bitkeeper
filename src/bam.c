@@ -319,6 +319,7 @@ bp_hashgfile(char *gfile, char **hashp, sum_t *sump)
  * Insert the named file into the BAM pool, checking to be sure that we do
  * not have another file with the same hash but different data.
  * If canmv is set then move instead of copy.
+ * If canmv == 2, then hardlink.
  * XXX: does canmv mean "act like move in all cases" or "if you need a
  * file, move it, otherwise leave it there and it might save a get later?"
  */
@@ -344,7 +345,7 @@ bp_insert(project *proj, char *file, char *keys, int canmv, mode_t mode)
 		 * If the data matches then we have two deltas which point at
 		 * the same data.
 		 */
-		if (sameFiles(file, buf)) goto domap;//XXX bug
+		if (sameFiles(file, buf)) goto domap;//XXX bug (modematch?)
 	}
 	/* need to insert new entry */
 	mkdirf(buf);
@@ -354,12 +355,18 @@ bp_insert(project *proj, char *file, char *keys, int canmv, mode_t mode)
 		if (fileCopy(file, tmp)) goto nofile;
 		file = tmp;
 	}
-	if (rename(file, buf) && fileCopy(file, buf)) {
-nofile:		fprintf(stderr, "BAM: insert to %s failed\n", buf);
-		unless (canmv) unlink(buf);
-		return (1);
+	if (canmv == 2) {
+		/* ignore mode -- it is inherited */
+		if (fileLink(file, buf)) goto nofile;
+	} else {
+		if (rename(file, buf) && fileCopy(file, buf)) {
+nofile:			fprintf(stderr, "BAM: insert to %s failed\n", buf);
+			unlink(buf);
+			unless (canmv) unlink(tmp);
+			return (1);
+		}
+		chmod(buf, (mode & 0555));
 	}
-	chmod(buf, (mode & 0555));
 domap:
 	/* move p to path relative to BAM dir */
 	while (*p != '/') --p;
@@ -376,8 +383,48 @@ domap:
 	return (0);
 }
 
+/* rename the bam index for a single key */
+int
+bp_rename(project *proj, char *old, char *new)
+{
+	MDBM	*db;
+	char	*p;
+
+	if (streq(old, new)) return (0);
+	db = proj_BAMindex(proj, 1);
+	assert(db);
+	if (p = mdbm_fetch_str(db, old)) {
+		// mdbm doesn't like you to feed it
+		// back data from a fetch from the
+		// same db.
+		p = strdup(p);
+		mdbm_store_str(db, new, p, MDBM_REPLACE);
+		bp_logUpdate(0, new, p);
+		free(p);
+		mdbm_delete_str(db, old);
+		bp_logUpdate(0, old, 0);
+	}
+	return (0);
+}
+
 /*
- * Given keys (":BAMHASH: :KEY: :MD5ROOTKEY:") return the .d
+ * copy a BAM key between repos and just hardlink the data (if possible)
+ */
+int
+bp_link(project *oproj, char *old, project *nproj, char *new)
+{
+	char	*bpfile;
+	int	ret = 1;
+
+	unless (bpfile = bp_lookupkeys(oproj, old)) goto err;
+	if (bp_insert(nproj, bpfile, new, 2, 0)) goto err;
+	ret = 0;
+err:
+	return (ret);
+}
+
+/*
+ * Given keys (":BAMHASH: :KEY: :MD5KEY|1.0:") return the .d
  * file in the BAM pool that contains that data or null if the
  * data doesn't exist.
  * The pathname returned is malloced and needs to be freed.

@@ -23,11 +23,20 @@ bk here check 2>ERR && fail -f ERR should fail 4
 grep -q "$P.*connect failure" ERR || fail -f ERR
 cd ..
 bk clone -sall gcc-only copy-all >/dev/null 2>ERR && fail -f ERR should fail
-grep -q 'clone: No other sources for gdb known' ERR || fail -f ERR
-grep -q '/project...connect failure' ERR || fail -f ERR
-grep -q 'clone: component fetch failed, only product is populated' ERR || fail
+perl -pe "s/.*\r//;s,bk://.*/project,URL/project," < ERR > ERR2
+cat <<EOF > WANT
+.                                  100% |==============================| OK
+1/3 gcc                            100% |==============================| OK
+clone: searching URL/project...connect failure
+clone: No other sources for ./gdb known
+clone: component fetch failed, only product is populated
+3/3 .                              100% |==============================| FAILED
+EOF
+cmpfiles ERR2 WANT
+cd copy-all
+bk -s -r check -ac || fail 5
 
-cd gcc-only
+cd ../gcc-only
 cp BitKeeper/log/urllist BACK
 grep -q :$P BitKeeper/log/urllist || fail 11
 bk here check $Q -c && fail should fail 12
@@ -62,7 +71,7 @@ echo OK
 echo $N Show how an unpopulate might fail ...........................$NL
 cd ../gcc-only
 bk here rm $Q ./gcc 2>ERR && fail -f ERR should fail
-grep -q 'here: No other sources for gcc known' ERR || fail
+grep -q 'here: No other sources for ./gcc known' ERR || fail
 echo OK
 
 echo $N Providing a URL will work ...................................$NL

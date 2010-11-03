@@ -177,6 +177,16 @@ partition_main(int ac, char **av)
 	f = popen(buf, "w");
 	EACH(opts->prodprune) fprintf(f, "%s\n", opts->prodprune[i]);
 	if (pclose(f)) goto err;
+	/*
+	 * Set all the backpointers so it looks like the components were
+	 * built here from scratch.  Do this before the attached components
+	 * below, as we do not want them looking like they were included
+	 * from scratch.
+	 */
+	if (systemf("bk -s admin -C'%s' ChangeSet", proj_rootkey(0))) {
+		fprintf(stderr, "%s: failed to set backpointer\n", prog);
+		goto err;
+	}
 
 	if (doAttach(opts)) goto err;
 	if (commitPending(opts)) goto err;
@@ -267,6 +277,7 @@ setEnv(Opts *opts)
 		opts->oconfig = strdup(p);
 		safe_putenv("BK_CONFIG=%s; %s", p, conf);
 	} else {
+		opts->oconfig = strdup("");
 		safe_putenv("BK_CONFIG=%s", conf);
 	}
 	putenv("BK_NO_TRIGGERS=1");
@@ -279,11 +290,10 @@ setEnv(Opts *opts)
 private	void
 restoreEnv(Opts *opts)
 {
-	if (opts->oconfig) {
-		safe_putenv("BK_CONFIG=%s", opts->oconfig);
-		free(opts->oconfig);
-		opts->oconfig = 0;
-	}
+	assert(opts->oconfig);
+	safe_putenv("BK_CONFIG=%s", opts->oconfig);
+	free(opts->oconfig);
+	opts->oconfig = 0;
 }
 
 /*
@@ -527,25 +537,20 @@ mkComps(Opts *opts)
 			}
 		}
 		verbose((stderr,
-			"\n### Cloning and pruning "
-			"component %u/%u: %s\n",
+			"\n### Pruning component %u/%u: %s\n",
 			i, total, opts->comps[i]));
 		joinlen = sprintf(repo, "repo%u", i);
-		if (clone(opts, WA2PROD, repo, 0)) {
-			/* clone should print error */
+		/* csetprune -I will fill in the empty directory */
+		if (mkdirp(repo)) {
+			perror(repo);
 			ret = 1;
 			break;
 		}
-		/* clone brings a file that is considered product only */
-		concat_path(repo, repo, "BitKeeper/etc/level");
-		unlink(repo);
-		repo[joinlen] = 0;
-		
 		cmd = addLine(0, strdup("bk"));
 		cmd = addLine(cmd, aprintf("--cd=%s", repo));
-		cmd = addLine(cmd, strdup("-?_BK_STRIPTAGS=1"));
 		cmd = addLine(cmd, strdup("csetprune"));
-		cmd = addLine(cmd, aprintf("-aN%s", opts->quiet));
+		cmd = addLine(cmd, strdup("-I../" WA2PROD));
+		cmd = addLine(cmd, aprintf("-atN%s", opts->quiet));
 		cmd = addLine(cmd, aprintf("-r%s", opts->ptip));
 		cmd = addLine(cmd, aprintf("-k%s", opts->random));
 		cmd = addLine(cmd, aprintf("-w%s", opts->rootlog));

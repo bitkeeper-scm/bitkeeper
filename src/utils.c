@@ -1,6 +1,7 @@
 #include "bkd.h"
 #include "logging.h"
 #include "progress.h"
+#include "nested.h"
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
@@ -817,6 +818,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	char	*t;
 	char	*lic;
 	project	*p = proj_init(".");
+	project	*prod = p;	/* product if we have one */
 	char	buf[MAXLINE];
 
 	assert(r->wfd >= 0);	/* we should be connected */
@@ -882,8 +884,18 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		} else {
 			fprintf(f, "putenv BK_ROOT=%s\n", proj);
 		}
+		fprintf(f, "putenv BK_REPOTYPE=");	// no newline here
+		/* Match :REPOTYPE: */
+		if (proj_isProduct(p)) {
+			fprintf(f, "product\n");
+		} else if (proj_isComponent(p)) {
+			prod = proj_product(p);
+			fprintf(f, "component\n");
+		} else {
+			fprintf(f, "standalone\n");
+		}
 		fprintf(f, "putenv BK_ROOTKEY=%s\n", proj_rootkey(p));
-		if (repo = proj_repoID(0)) {
+		if (repo = proj_repoID(prod)) {
 			if (strchr(repo, ' ')) {
 				fprintf(f, "putenv 'BK_REPO_ID=%s'\n", repo);
 			} else {
@@ -902,7 +914,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 				}
 			}
 			unless (bp = bp_serverID(buf, 0)) {
-				bp = proj_repoID(proj_product(0));
+				bp = repo;
 			}
 			if (strchr(bp, ' ')) {
 				fprintf(f,
@@ -910,14 +922,6 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			} else {
 				fprintf(f, "putenv BK_BAM_SERVER_ID=%s\n", bp);
 			}
-		}
-		fprintf(f, "putenv BK_REPOTYPE=");	// no newline here
-		if (proj_isProduct(0)) {
-			fprintf(f, "prod\n");
-		} else if (proj_isComponent(0)) {
-			fprintf(f, "comp\n");
-		} else {
-			fprintf(f, "stand\n");
 		}
 		if ((flags & SENDENV_FORCEREMAP) ||
 		    !(proj_hasOldSCCS(0) || (flags & SENDENV_FORCENOREMAP))) {
@@ -936,7 +940,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			}
 		} else {
 			/* Require a license or die */
-			fprintf(f, "putenv BK_LICENSE=%s\n", proj_bkl(0));
+			fprintf(f, "putenv BK_LICENSE=%s\n", proj_bkl(p));
 		}
 	}
 	if (t = getenv("_BK_TESTFEAT")) {
@@ -1054,6 +1058,7 @@ sendServerInfo(int no_repo)
 {
 	char	*repoid, *rootkey, *p, *errs = 0;
 	char	**v;
+	project	*prod = 0;	/* product project* (if we have a product) */
 	char	buf[MAXPATH];
 	char	bp[MAXLINE];
 
@@ -1102,16 +1107,24 @@ sendServerInfo(int no_repo)
 			sprintf(buf, "ROOTKEY=%s\n", rootkey);
 			out(buf);
 		}
+		/* Match :REPOTYPE: */
 		if (proj_isComponent(0)) {
-			sprintf(buf, "REPOTYPE=comp\nPRODUCT_ROOTKEY=%s\n",
-			    proj_rootkey(proj_product(0)));
+			prod = proj_product(0);
+			sprintf(buf, "REPOTYPE=component\nPRODUCT_ROOTKEY=%s\n",
+			    proj_rootkey(prod));
 			out(buf);
 		} else if (proj_isProduct(0)) {
-			out("REPOTYPE=prod\n");
+			out("REPOTYPE=product\n");
+			if (nested_isPortal(0)) {
+				out("PORTAL=1\n");
+			}
+			if (nested_isGate(0)) {
+				out("GATE=1\n");
+			}
 		} else {
-			out("REPOTYPE=stand\n");
+			out("REPOTYPE=standalone\n");
 		}
-		if (repoid = proj_repoID(0)) {
+		if (repoid = proj_repoID(prod)) {
 			sprintf(buf, "REPO_ID=%s\n", repoid);
 			out(buf);
 			unless (p = bp_serverID(bp, 0)) p = repoid;

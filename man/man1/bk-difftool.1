@@ -5,6 +5,8 @@ bk difftool \- \*(BK graphical differences viewer
 .SH SYNOPSIS
 .B bk difftool
 .br
+.B bk difftool .
+.br
 .B bk difftool \-
 .br
 .B bk difftool
@@ -47,6 +49,12 @@ finds all the modified files in the current directory and
 subdirectories and allows the user to select the files they are
 interested in via a pull-down menu. Also, keyboard accelerators can
 be used to navigate between the files.
+.LP
+If a dot is given as an argument,
+.B bk difftool
+looks for changes in and below the current working directory.
+In a nested collection, "." means here and down but in this
+component/product only.
 .LP
 If a dash (\c
 .QR \- )

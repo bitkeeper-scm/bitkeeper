@@ -143,7 +143,7 @@ OBJ =	bkver.o cmd.o \
 	delta.o diffs.o diffsplit.o dspec.o \
 	eula.o export.o \
 	features.o \
-	find.o findcset.o findkey.o fixlod.o fixtool.o fsl.o fslayer.o \
+	find.o findcset.o findkey.o fixtool.o fsl.o fslayer.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o \

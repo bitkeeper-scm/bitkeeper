@@ -1,6 +1,7 @@
 
 echo $N Test undo of a pending component cset .......................$NL
 nested project
+bk gate $Q -r
 cd gcc
 test `bk changes -r+ -nd:REV:` = 1.1 || exit 1
 echo hi > file
@@ -32,7 +33,7 @@ echo $N Demonstrate that undo is not allowed in a portal ............$NL
 bk portal $Q || fail
 bk -P undo -q -fsr+ 2>ERR && fail -f ERR should have failed
 cat <<EOF > WANT
-undo: not allowed in a portal.
+undo: not allowed for product in a portal
 EOF
 cmpfiles ERR WANT
 bk portal $Q -r || fail
@@ -81,8 +82,8 @@ bk alias set FOO all || exit 1
 bk alias set $Q HERE FOO || exit 1
 bk undo -q -fsr+ 2>ERR && fail -f ERR
 cat <<EOF > WANT
-undo: No other sources for gdb known
-undo: unable to remove gdb
+undo: No other sources for ./gdb known
+undo: unable to remove ./gdb
 EOF
 cmpfiles WANT ERR
 # XXX be nice if clone updated src repo urllist like _rclone does

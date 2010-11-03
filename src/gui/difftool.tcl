@@ -153,18 +153,9 @@ proc keyboard_bindings {} \
 	bind all	<space>			next
 	bind all	<p>			prev
 	bind all	<period>		dot
-	if {$gc(windows) || $gc(aqua)} {
-		bind all <MouseWheel> {
-		    if {%D < 0} { next } else { prev }
-		}
-	}
 	if {$gc(aqua)} {
 		bind all <Command-q> exit
 		bind all <Command-w> exit
-	}
-	if {$gc(x11)} {
-		bind all <Button-4>	prev
-		bind all <Button-5>	next
 	}
 	# In the search window, don't listen to "all" tags.
 	bindtags $search(text) { .menu.search Entry . }
@@ -269,8 +260,12 @@ proc getFiles {} \
 
 	# try doing 'bk sfiles -gc | bk difftool -' to see how this works
 	#puts "argc=($argc) argv=($argv)"
-	if {$argc == 0} {
-		set fd [open "|bk sfiles -gcvU"]
+	if {$argc == 0 || ($argc == 1 && $argv == ".")} {
+		if {$argc == 0} {
+			set fd [open "|bk -U --sfiles-opts=cgv"]
+		} else {
+			set fd [open "|bk -Ur. --sfiles-opts=cgv"]
+		}
 		# Sample output from 'bk sfiles -gcvU'
 		# lc---- Makefile
 		# lc---- annotate.c

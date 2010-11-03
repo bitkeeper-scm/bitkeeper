@@ -24,8 +24,8 @@ echo OK
 echo $N Pull each clone and then populate gcc .......................$NL
 cd ../ws
 bk here add $Q ./gcc || fail
-bk pull $Q ../clone
-bk pull $Q ../clone2
+bk pull $Q --unsafe ../clone || fail
+bk pull $Q --unsafe ../clone2 || fail
 echo OK
 
 echo $N Roll back the merge and see if it lets us unpopulate gcc ....$NL
@@ -40,12 +40,12 @@ bk unpull -fs $Q || fail
 bk here rm $Q gcc 2>ERR && fail -f ERR should fail
 sed 's/1.2,.*/1.2/' <ERR > ERR2
 cat <<EOF > WANT
-here: No other sources for gcc known
-Local changes to gcc found:
+here: No other sources for ./gcc known
+Local changes to ./gcc found:
 ChangeSet@1.2
   foo
 
-here: unable to remove gcc
+here: unable to remove ./gcc
 EOF
 cmpfiles ERR2 WANT
 echo 'failed (bug commit prunes urllist)'

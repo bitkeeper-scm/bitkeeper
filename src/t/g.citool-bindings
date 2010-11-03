@@ -56,14 +56,14 @@ echo OK
 echo $N Test that Control-n moves to the next file ..................$NL
 bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	test_selectFile "src/file1"
-	test_inputString "&n"
+	test_inputString "^n"
 	test_fileIsSelected "src/file2"
-	test_inputString "&n"
+	test_inputString "^n"
 	test_fileIsSelected "ChangeSet"
 
 	## We are on ChangeSet, so moving again should not
 	## move us anywhere.
-	test_inputString "&n"
+	test_inputString "^n"
 	test_fileIsSelected "ChangeSet"
 
 	test_buttonPress Quit then "Quit without saving*"
@@ -76,14 +76,14 @@ echo OK
 echo $N Test that Control-p moves to the previous file ..............$NL
 bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	test_selectFile "ChangeSet"
-	test_inputString "&p"
+	test_inputString "^p"
 	test_fileIsSelected "src/file2"
-	test_inputString "&p"
+	test_inputString "^p"
 	test_fileIsSelected "src/file1"
 
 	## We are at the top, so Control-p again should
 	## not move us anywhere.
-	test_inputString "&p"
+	test_inputString "^p"
 	test_fileIsSelected "src/file1"
 
 	test_buttonPress Quit then "Quit without saving*"

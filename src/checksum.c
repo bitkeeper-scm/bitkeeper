@@ -498,7 +498,8 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	EACH_INDEX(order, orderIndex) {
 		d = (delta *)order[orderIndex];
 
-		graph_symdiff(d, prev, slist, -1);  /* incremental serialmap */
+		/* incremental serialmap */
+		graph_symdiff(d, prev, slist, 0, -1);
 		prev = d;
 
 		if (tick) progress(tick, ++n);

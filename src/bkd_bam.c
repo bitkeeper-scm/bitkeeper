@@ -47,6 +47,11 @@ havekeys_main(int ac, char **av)
 		fprintf(stderr, "%s: only -B or -D supported.\n", av[0]);
 		return (1);
 	}
+	if (getenv("_BK_VIA_REMOTE") &&
+	    (key = getenv("BK_REPO_ID")) && streq(key, proj_repoID(0))) {
+		fprintf(stderr, "%s: Cannot connect to myself.\n", prog);
+		return (33);	/* see comment before remote_bk() for info */
+	}
 
 	if (DELTA) {
 		/*

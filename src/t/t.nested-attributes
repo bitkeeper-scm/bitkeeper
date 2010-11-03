@@ -1,6 +1,7 @@
 
 echo $N Test multi-line HERE file ...................................$NL
 nested project
+bk clone $Q . ../clone
 bk comps -hk | bk here set -
 touch foo
 bk new $Q foo
@@ -14,4 +15,39 @@ echo $N Test no HERE attribute in a component .......................$NL
 cd gcc
 bk changes -r+ -nd:ATTR_HERE: > GOT
 test -s GOT && fail -f GOT attribute HERE in component
+echo OK
+
+echo $N Test that bk changes does not include attr file .............$NL
+cd "$HERE/clone"
+bk pull $Q || exit 1
+bk changes -vr+ > GOT 2>&1
+grep -q BitKeeper/etc/attr GOT && {
+	echo failed on bk changes -vr+
+	cat GOT
+	exit 1
+}
+bk csets -v > GOT 2>&1
+grep -q BitKeeper/etc/attr GOT && {
+	echo failed on bk csets -v
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Test that we do see it if we set -a .........................$NL
+bk changes -avr+ > GOT 2>&1
+grep -q BitKeeper/etc/attr GOT || {
+	echo failed on bk changes -avr+
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Test that we surpress if -a and --no-meta ...................$NL
+bk changes -avr+ --no-meta > GOT 2>&1
+grep -q BitKeeper/etc/attr GOT && {
+	echo failed on bk changes -avr+ --no-meta
+	cat GOT
+	exit 1
+}
 echo OK

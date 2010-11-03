@@ -94,3 +94,21 @@ echon Test bk id -5 ...............................................
 ID=`bk changes -nd:MD5KEY: -r1.0`
 test `bk id -5` = $ID || fail
 echo OK
+
+echon Test bk -cd w -r ............................................
+cd "$HERE"/project
+mkdir src
+echo hi > src/foo
+bk new $Q src/foo || fail
+bk commit $Q -ynew || fail
+
+bk --cd=src -gr > OUT || fail
+echo foo > WANT
+cmpfiles OUT WANT
+
+bk -R --cd=src 2>ERR && fail
+echo "bk: --cd/-rDIR not allowed with -R or -P" > WANT
+cmpfiles ERR WANT
+bk -rsrc -R 2>ERR && fail
+cmpfiles ERR WANT
+echo OK

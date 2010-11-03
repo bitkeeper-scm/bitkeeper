@@ -215,9 +215,16 @@ err:		if (undo_list[0]) unlink(undo_list);
 		putenv("BK_CSETLIST=" UNDO_CSETS);
 		if (trigger("undo", "pre")) goto err;
 	}
-	if (proj_isProduct(0)) {
+	if (proj_isComponent(0)) {
+		if (nested_isGate(0)) {
+gaterr:			fprintf(stderr, "undo: not allowed in a gate\n");
+			goto err;
+		}
+	} else if (proj_isProduct(0)) {
+		if (nested_isGate(0)) goto gaterr;
 		if (nested_isPortal(0)) {
-			fprintf(stderr, "undo: not allowed in a portal.\n");
+			fprintf(stderr,
+			    "undo: not allowed for product in a portal\n");
 			goto err;
 		}
 		unless (n = nested_init(0, 0, csetrevs, NESTED_MARKPENDING)) {
@@ -460,7 +467,7 @@ undo_ensemble1(nested *n, int verbose, int quiet, char **nav, char ***comp_list)
 		    which++, num);
 		fflush(stdout);
 	} else unless (quiet) {
-		title = aprintf("%u/%u PRODUCT", num, num);
+		title = aprintf("%u/%u %s", num, num, PRODUCT);
 	}
 	return (0);
 err:	return (1);

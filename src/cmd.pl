@@ -210,7 +210,6 @@ _findcset
 _findhashdup
 findkey
 fix
-_fixlod
 fixtool
 _fslchmod
 _chmod => _fslchmod
@@ -292,6 +291,7 @@ path
 pending
 platform
 _popensystem
+populate
 port => pull
 _probekey restricted
 _progresstest
@@ -368,6 +368,7 @@ _unlink
 unlock
 uninstall
 unpark
+unpopulate
 unpull
 unwrap
 upgrade
@@ -395,7 +396,6 @@ co => get
 checkout => get
 edit => get
 comment => comments	# alias for Linus, remove...
-_fix_lod1 => _fixlod
 identity => id
 info => sinfo
 _key2path => key2path

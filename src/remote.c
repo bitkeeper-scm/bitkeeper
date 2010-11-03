@@ -31,6 +31,7 @@ private	void	stream_stdin(remote *r, int gzip);
  *      8 bkd_connect failed
  *     16 bkd returns chdir failure
  *     32 protocol failure
+ *     33 a 'havekeys' special -- means remote repo and local repo are same
  *     63 bk-remote not supported
  *     64 unexpected eof
  */
@@ -52,9 +53,13 @@ remote_bk(int quiet, int ac, char **av)
 	 */
 	for (i = 1; av[i]; i++) {
 		if (av[i][0] != '-') break;
+		if (av[i][1] == '-') {
+			if (av[i][2]) continue; /* skip long options */
+			break;			/* stop at '--' */
+		}
 
 		/* find '@<opt>' argument, but don't look in -r<dir> */
-		if ((p = strchrs(av[i], "Lr@")) && (*p == '@')) {
+		if ((p = strchrs(av[i], "Lsr@")) && (*p == '@')) {
 			if (bk_urlArg(&urls, p+1)) {
 				ret = 1;
 				goto out;

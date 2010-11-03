@@ -294,7 +294,7 @@ echo OK
 
 echo $N Pull in new cset without component, then populate ...........$NL
 cd "$HERE/mynewgcc2"
-bk pull -q || exit 1
+bk pull --unsafe -q || fail
 BEFORE=`bk changes -r+ -nd:I:`
 bk here add $Q -@"$HERE/mynewgcc" ./gdb  || exit 1
 AFTER=`bk changes -r+ -nd:I:`
@@ -700,8 +700,7 @@ bk here rm $Q all 2>ERR && {
 	exit 1
 }
 cat <<EOF > WANT
-here: No other sources for gdb known
-here: unable to remove gdb
+here: unable to remove ./gdb, it contains csets not committed in product.
 EOF
 cmpfiles ERR WANT
 for i in $LIST

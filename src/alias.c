@@ -28,7 +28,7 @@ private	int	dbAdd(hash *aliasdb, char *alias, char **aliases);
 private	int	dbRemove(hash *aliasdb, char *alias, char **aliases);
 private	int	dbWrite(nested *n, hash *aliasdb, char *comment, int commit);
 private	int	dbChk(nested *n, hash *aliasdb);
-private	int	dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases,
+private	int	dbShow(nested *n, hash *aliasdb, char *cwd, char ***aliases,
 		    aopts *o);
 private	int	expand(nested *n, hash *db, hash *keys, hash *seen,
 		    char *alias);
@@ -333,7 +333,7 @@ aliasShow(char *cmd, aopts *opts, char **av)
 		}
 	}
 
-	rc = dbShow(n, aliasdb, start_cwd, aliases, opts);
+	rc = dbShow(n, aliasdb, start_cwd, &aliases, opts);
 err:
 	nested_free(n);
 	aliasdb_free(aliasdb);
@@ -763,19 +763,21 @@ dbPrint(nested *n, hash *aliasdb, char **items, int indent, aopts *op)
 
 
 private	int
-dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, aopts *op)
+dbShow(nested *n, hash *aliasdb, char *cwd, char ***paliases, aopts *op)
 {
 	char	**items = 0;
 	char	*val, *alias;
+	char	**aliases = paliases ? *paliases : 0;
 	comp	*c;
 	int	i, j, rc = 1;
 
 	assert(aliasdb);
 	if (op->expand) {
 		if (aliases) {
-			if (aliasdb_chkAliases(n, aliasdb, &aliases, cwd)) {
+			if (aliasdb_chkAliases(n, aliasdb, paliases, cwd)) {
 				goto err;
 			}
+			aliases = *paliases;
 			if (aliasdb_tag(n, aliasdb, aliases)) {
 				goto err;
 			}
@@ -807,9 +809,10 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, aopts *op)
 	}
 
 	if (op->missing || op->here) {
-		if (aliasdb_chkAliases(n, aliasdb, &aliases, cwd)) {
+		if (aliasdb_chkAliases(n, aliasdb, paliases, cwd)) {
 			goto err;
 		}
+		aliases = *paliases;
 		EACH(aliases) items = addLine(items, strdup(aliases[i]));
 		goto preprint;
 	}

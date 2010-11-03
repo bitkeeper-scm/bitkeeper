@@ -201,6 +201,24 @@ test -f "$DBKPART" || fail no dotbk partition "$DBKPART"
 cd "$HERE"
 echo OK
 
+echo $N See that ID matches ATTACH_ID for native partition ..........$NL
+cd "$HERE/copy/src"
+bk changes -nd'$if(:ID:=:ATTACHED_ID:){:I:}' > GOT
+cat <<EOF > WANT
+1.2
+1.1
+1.0
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N See that ID different from ATTACH_ID for attaches ...........$NL
+cd "$HERE/copy/path/to/attachfoo"
+bk changes -nd'$if(:ID:=:ATTACHED_ID:){:I:}' > GOT
+test -s GOT && fail -f GOT
+cd "$HERE"
+echo OK
+
 echo $N See that bk names removes empty directories .................$NL
 test -d copy/src/src && {
 	echo failed
@@ -237,6 +255,19 @@ test -f copy/src/b && {
 rm -fr copy
 BK_CONFIG="checkout: get! " \
     bk partition $Q -Cmapfile project copy || exit 1
+test -f copy/src/b || {
+	echo failed
+	echo no file checked out when one expected
+	exit 1
+}
+echo OK
+
+echo $N Again, but not using BK_CONFIG ..............................$NL
+rm -fr copy
+test -f "$BK_DOTBK"/config && fail fix test to save and restore config
+echo checkout: get >> "$BK_DOTBK"/config
+bk partition $Q -Cmapfile project copy || exit 1
+rm "$BK_DOTBK"/config
 test -f copy/src/b || {
 	echo failed
 	echo no file checked out when one expected
@@ -283,19 +314,38 @@ bk mv src/b doc/was-src-b
 bk commit $Q -ya
 cd ..
 bk partition $Q -@copy project copymv 2>ERR && fail -f ERR
-grep -q "csetprune: file moved between components." ERR || fail -f ERR
+grep -q "csetprune: At least one file moved between comp" ERR || fail -f ERR
 echo OK
 
-echo $N Move a file back and pull again -- still fails ..............$NL
+echo $N Move a file back and pull again -- this works ...............$NL
 cd "$HERE/project"
 bk mv doc/was-src-b src/back-in-src
 bk commit $Q -yget-it-back
 cd ..
-bk partition $Q -@copy project copymv2 2>ERR && fail -f ERR
-grep -q "csetprune: file moved between components." ERR || fail -f ERR
+bk partition $Q -@copy project copymv2
 # put it back
 cd project
-bk undo -qsfaROLLBACK
+echo OK
+
+echo $N Try to undo to illegal state -- fails .......................$NL
+cd ../copymv2
+bk undo -qfr+ 2> ERR && fail -f ERR
+grep -q "illegal to leave file in the BitKeeper/moved dir" ERR || fail -f ERR
+echo OK
+
+echo $N Try to undo to illegal state with secret override -- works ..$NL
+# still puts out error message; just not an error
+_BK_UNDO_OK=1 bk undo $Q -fr+ 2> ERR || fail
+grep -q "illegal to leave file in the BitKeeper/moved dir" ERR || fail -f ERR
+test `bk _find src/BitKeeper/moved -type f | wc -l` -gt 0 || {
+	echo failed
+	bk _find src/BitKeeper/moved -type f
+	fail expected at least 1 file
+}
+echo OK
+
+echo $N Try to undo further back to a legal state -- works ..........$NL
+bk undo $Q -sfaROLLBACK || fail
 echo OK
 
 echo $N Delete as a component .......................................$NL
@@ -354,7 +404,7 @@ echo OK
 
 echo $N Verify different command line map and gone lead to diff .....$NL
 cd "$HERE"
-rm -fr project
+mv project project.orig
 commercial project
 cat <<EOF > x
 #!/bin/sh
@@ -418,7 +468,25 @@ bk mv mvfile src/mvfile
 bk commit $Q -y"xcomp move"
 cd ..
 bk partition $Q -@one xcompmove xcompmove.ref 2>ERR && fail
-grep -q 'csetprune: file moved between components' ERR || fail -f ERR
+grep -q 'csetprune: At least one file moved between comp' ERR || fail -f ERR
+echo OK
+
+echo $N Demostrate why allowing move lowers support .................$NL
+bk partition $Q -Cmapfile.noattach project.orig nested.ref
+bk clone $Q -rROOT project.orig standalone.xcomp
+# Now, do some work in a file -- just an in place edit
+cd standalone.xcomp/src
+bk edit $Q a
+echo just doing my job > a
+bk delta $Q -y'another quality day of work' a
+cd ..
+bk commit $Q -y'another quality day of work'
+# oh, I need to pull this into the nested.  Let's see, it says pull
+# in the pivot repo .. okay:
+bk pull $Q
+# Then I'm ready to go!  Wonderful!
+cd ..
+bk partition $Q -@nested.ref standalone.xcomp nested.xcomp
 echo OK
 
 echo $N Verify simple deletes are not blocked after partition .......$NL

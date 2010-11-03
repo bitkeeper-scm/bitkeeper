@@ -420,7 +420,7 @@ echo OK
 echo $N Try a push from sparse to full - local proxy ................$NL
 # Start from above and do a pull to bring in the sparse.
 # It can be populated later by a populate (urllist checked)
-bk pull $Q ../modified
+bk pull --unsafe $Q ../modified || fail
 # stuff should have gdb by now, but can't find the patch to update
 bk push $Q ../stuff 2> ERR && fail 5
 grep -q "gdb is needed to push" ERR || fail 6
@@ -438,7 +438,7 @@ cd prodclient2
 bk portal $Q . || fail
 bk setup -f newcomp
 cd ../prodclient1
-bk pull $Q ../prodclient2 || fail
+bk pull --unsafe $Q ../prodclient2 || fail
 test -d newcomp && fail
 bk push $Q || fail
 cd ..

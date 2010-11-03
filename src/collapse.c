@@ -83,6 +83,19 @@ collapse_main(int ac, char **av)
 		}
 	}
 	if (av[optind]) usage();
+	if (proj_isComponent(0)) {
+		if (nested_isGate(0)) {
+gaterr:			fprintf(stderr, "collapse: not allowed in a gate\n");
+			goto out;
+		}
+	} else if (proj_isProduct(0)) {
+		if (nested_isGate(0)) goto gaterr;
+		if (nested_isPortal(0)) {
+			fprintf(stderr, "collapse: "
+			    "not allowed for a product in a portal\n");
+			goto out;
+		}
+	}
 	if (merge && (after || revlist || fromurl)) {
 		fprintf(stderr, "%s: cannot combine -m with -r or -a\n", me);
 		goto out;

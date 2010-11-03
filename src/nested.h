@@ -52,6 +52,8 @@ extern	unsigned int turnTransOff;
 
 #define	NESTED_URLLIST		"BitKeeper/log/urllist"
 
+#define	PRODUCT			"."		/* for titles */
+
 typedef struct nested nested;
 
 typedef struct {
@@ -105,6 +107,7 @@ typedef struct {
 	u32	verbose:1;	// -v: verbose
 	u32	force:1;	// -f: force unpopulate with local diffs
 	u32	runcheck:1;	// follow up with a partial check of prod
+	u32	leaveHERE:1;	// do not update the HERE file with our actions
 	int	comps;		// number of comps we worked on
 
 	/* internal state */
@@ -186,6 +189,7 @@ char	**nested_lockers(project *p, int listStale, int removeStale);
 void	nested_printLockers(project *p, FILE *out);
 void	nested_updateIdcache(project *comp);
 int	nested_isPortal(project *comp);
+int	nested_isGate(project *comp);
 void	freeNlock(void *nl);
 
 /* populate.c */

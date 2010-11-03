@@ -89,8 +89,9 @@ checkfiles "$HERE"/ALL "$HERE"/GOT
 echo OK
 
 echo $N Test bk -@ -r with a subdirectory ...........................$NL
-bk -q -@"$HERE"/project -grsrc > "$HERE"/GOT
-checkfiles "$HERE"/SRC "$HERE"/GOT
+bk -q -@"$HERE"/project -grsrc 2>ERR && fail -f ERR should fail
+echo "bk: --cd not allowed with -@<URL>" > WANT
+cmpfiles ERR WANT
 echo OK
 
 echo $N Test input fed on stdin .....................................$NL
@@ -130,6 +131,8 @@ cat <<EOF > WANT
 0: _debugargs
 1: 1
 2: 2
+cwd: $HERE/project
+start_cwd: $HERE/project
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -141,10 +144,10 @@ cd "$HERE"/project
 bk pwd > "$HERE"/PWD
 bk bkd -U -q -d -aPORT -ikill > "$HERE"/BKD 2>&1 || exit 1
 P=`cat PORT`
+trap "bk _kill bk://localhost:$P" 0
 cd "$HERE"/clone
 bk -q -@bk://localhost:$P pwd > OUT 2>&1
 cmpfiles "$HERE"/PWD OUT
-bk _kill bk://localhost:$P || exit 1
 echo OK
 
 test X$PREFER_RSH = XYES -a "$PLATFORM" != "WIN32" && {
@@ -157,7 +160,7 @@ echo OK
 
 echo $N Test expected argument parsing ..............................$NL
 mkdir me@foo
-bk -q@. -rme@foo/.. _debugargs 1 2 '2 2' -q 'jj e' -@jj > GOT
+bk -q@. -r _debugargs 1 2 '2 2' -q 'jj e' -@jj > GOT || fail
 cat <<EOF > WANT
 0: _debugargs
 1: 1
@@ -167,6 +170,23 @@ cat <<EOF > WANT
 5: "jj e"
 6: -@jj
 7: -
+cwd: $HERE/clone
+start_cwd: $HERE/clone
+stdin:
+SCCS/s.ChangeSet
+... 5 more lines ...
 EOF
 cmpfiles WANT GOT
+echo OK
+
+echo $N Make sure bk cleans locks when client dies ..................$NL
+cd "$HERE"/project
+perl -e 'print("bam" x 200000)' > bam
+bk new -b $Q bam || fail
+KEY=`bk log -r+ -nd':BAMHASH: :KEY: :MD5KEY|1.0:' bam`
+# allow bk client process to die while bkd side is still running
+echo $KEY | \
+     _BK_SIGPIPE=1 bk -q@bk://localhost:$P -zo0 -Lr -Bstdin sfio -qBo - | \
+     true
+bk -Lw30 version > /dev/null || fail didn\'t release lock
 echo OK

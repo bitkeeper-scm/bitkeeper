@@ -23,8 +23,8 @@ int
 reviewmerge_main(int ac, char **av)
 {
 	FILE	*f;
-	hash	**taghash;
-	RBtree	**range;
+	hash	*taghash;
+	RBtree	*range;
 	char	*p;
 	int	line;
 	intvl	*d;
@@ -62,19 +62,17 @@ reviewmerge_main(int ac, char **av)
 		*p++ = 0;
 		line = atoi(p);
 
-		unless (taghash = hash_fetchStr(reviews, buf)) {
-			hash    *h = hash_new(HASH_MEMHASH);
+		unless (taghash = hash_fetchStrPtr(reviews, buf)) {
+			taghash = hash_new(HASH_MEMHASH);
 
-			taghash = hash_store(reviews,
-			    buf, strlen(buf) + 1, &h, sizeof(h));
+			hash_storeStrPtr(reviews, buf, taghash);
 		}
-		unless (range = hash_fetchStr(*taghash, tag)) {
-			RBtree  *rb = intvl_new();
+		unless (range = hash_fetchStrPtr(taghash, tag)) {
+			range = intvl_new();
 
-			range = hash_store(*taghash,
-			    tag, strlen(tag) + 1, &rb, sizeof(rb));
+			hash_storeStrPtr(taghash, tag, range);
 		}
-		intvl_add(*range, line, line);
+		intvl_add(range, line, line);
 	}
 	if (exist) {
 		f = fopen(exist, "w");
@@ -83,17 +81,17 @@ reviewmerge_main(int ac, char **av)
 	}
 	EACH_HASH(reviews) {
 		fprintf(f, "%s", (char *)reviews->kptr);
-		taghash = (hash **)reviews->vptr;
-		EACH_HASH(*taghash) {
-			fprintf(f, " %s", (char *)(*taghash)->kptr);
-			range = (RBtree **)(*taghash)->vptr;
-			d = RBtree_first(*range);
+		taghash = *(hash **)reviews->vptr;
+		EACH_HASH(taghash) {
+			fprintf(f, " %s", (char *)taghash->kptr);
+			range = *(RBtree **)taghash->vptr;
+			d = RBtree_first(range);
 			while (d) {
 				fprintf(f, ",%d", d->start);
 				if (d->start != d->end) {
 					fprintf(f, "-%d", d->end);
 				}
-				d = RBtree_next(*range, d);
+				d = RBtree_next(range, d);
 			}
 		}
 		fprintf(f, "\n");
@@ -117,8 +115,8 @@ reviewmerge_main(int ac, char **av)
 private	void
 load_existing(char *file)
 {
-	hash	**taghash;
-	RBtree	**range;
+	hash	*taghash;
+	RBtree	*range;
 	FILE	*f;
 	char	*a, *b, *c, *d;
 	int	start, end;
@@ -129,10 +127,9 @@ load_existing(char *file)
 		a = strchr(buf, ' ');
 		*a++ = 0;
 
-		unless (taghash = hash_fetchStr(reviews, buf)) {
-			hash    *h = hash_new(HASH_MEMHASH);
-			taghash = hash_store(reviews,
-			    buf, strlen(buf) + 1, &h, sizeof(h));
+		unless (taghash = hash_fetchStrPtr(reviews, buf)) {
+			taghash = hash_new(HASH_MEMHASH);
+			hash_storeStrPtr(reviews, buf, taghash);
 		}
 		/* a points at start of first tag */
 		while (a) {
@@ -141,11 +138,10 @@ load_existing(char *file)
 			c = strchr(a, ',');
 			*c++ = 0; /* c = start of range */
 
-			unless (range = hash_fetchStr(*taghash, a)) {
-				RBtree  *rb = intvl_new();
+			unless (range = hash_fetchStrPtr(taghash, a)) {
+				range = intvl_new();
 
-				range = hash_store(*taghash,
-				    a, strlen(a) + 1, &rb, sizeof(rb));
+				hash_storeStrPtr(taghash, a, range);
 			}
 			while (c) {
 				a = strchr(c, ',');
@@ -156,7 +152,7 @@ load_existing(char *file)
 				} else {
 					end = start;
 				}
-				intvl_add(*range, start, end);
+				intvl_add(range, start, end);
 				c = a;
 			}
 			a = b;
@@ -273,7 +269,7 @@ intvl_add(RBtree *range, int start, int end)
 private int
 mark_annotations(void)
 {
-	hash	**taghash;
+	hash	*taghash;
 	RBtree	*range;
 	char	*p;
 	int	line;
@@ -286,9 +282,9 @@ mark_annotations(void)
 		line = atoi(p);
 
 		found = 0;
-		taghash = hash_fetchStr(reviews, buf);
-		if (taghash) EACH_HASH(*taghash) {
-			range = *(RBtree **)(*taghash)->vptr;
+		taghash = hash_fetchStrPtr(reviews, buf);
+		if (taghash) EACH_HASH(taghash) {
+			range = *(RBtree **)taghash->vptr;
 			if (found = intvl_in(range, line)) break;
 		}
 		p = strchr(p, '\t');

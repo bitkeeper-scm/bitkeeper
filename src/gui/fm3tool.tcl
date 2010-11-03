@@ -379,6 +379,9 @@ proc createDiffWidgets {w} \
 		-orient vertical \
 		-command { yscroll }
 
+	    attachScrollbar .diffs.xscroll .diffs.left .diffs.right
+	    attachScrollbar .diffs.yscroll .diffs.left .diffs.right
+
 	    grid .diffs.left -row 0 -column 0 -sticky nsew
 	    grid .diffs.yscroll -row 0 -column 1 -sticky ns
 	    grid .diffs.right -row 0 -column 2 -sticky nsew
@@ -1623,6 +1626,8 @@ proc widgets {} \
 	    grid columnconfigure $prs 0 -weight 1
 	    grid columnconfigure $prs 2 -weight 1
 
+	    attachScrollbar $prs.cscroll $prs.left $prs.right
+
 	grid .menu -row 0 -column 0 -sticky nsew
 	if {$gc(fm3.comments)} {
 		grid $prs -row 1 -column 0 -sticky ewns
@@ -1668,13 +1673,13 @@ proc widgets {} \
 			bind $w <Command-1> {click %W 0 0; break}
 			bind $w <Shift-Command-1> {click %W 0 1; break}
 		}
-		bindtags $w [list $w]
+		bindtags $w [list $w wheel]
 	}
 	foreach w {.merge.menu.t .prs.left .prs.right} {
-		bindtags $w {none}
+		bindtags $w {wheel}
 	}
 	bind .merge.t <Button-1> { edit_merge %x %y; break }
-	bindtags .merge.t {.merge.t}
+	bindtags .merge.t {.merge.t wheel}
 	computeHeight "diffs"
 
 	$search(widget) tag configure search \
@@ -1762,18 +1767,9 @@ proc keyboard_bindings {} \
 	}
 	bind all	<u>				{ undo }
 	bind all	<period>			{ dot; break }
-	if {$gc(windows) || $gc(aqua)} {
-		bind all <MouseWheel> {
-		    if {%D < 0} { next 0 } else { prev 0 }
-		}
-	}
 	if {$gc(aqua)} {
 		bind all <Command-q> exit
 		bind all <Command-w> exit
-	}
-	if {$gc(x11)} {
-		bind all <Button-4>			{ prev 0 }
-		bind all <Button-5>			{ next 0 }
 	}
 	# In the search window, don't listen to "all" tags.
 	bindtags $search(text) { .menu.search Entry . }
@@ -1834,7 +1830,7 @@ Useful keyboard shortcuts:
 	}
 	bind .merge.t <Escape> { edit_done }
 	bind .merge.t <Control-Escape> {catch {place forget .escape}}
-	bindtags .merge.t {.merge.t Text}
+	bindtags .merge.t {.merge.t Text wheel}
 	.merge.t mark set insert [.merge.t index @$x,$y]
 	edit_save
 }

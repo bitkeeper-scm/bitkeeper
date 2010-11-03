@@ -36,7 +36,9 @@ private	int	smallFirst(const void *a, const void *b);
 
 /*
  * Compute or collapse the symmetric difference between two nodes.
- * Two modes currently supported: expand and compress
+ * Four modes currently supported:
+ *	expand and compress SCCS to and from a binary vector (slist)
+ *	compute and compress Symmetric Difference Compression (sd) to SCCS
  *
  * ## Expand - if count passed in is < 0, then run in expand mode:
  * Take two deltas and return in slist the symmetric difference
@@ -48,9 +50,9 @@ private	int	smallFirst(const void *a, const void *b);
  *
  *   slist = (u8 *)calloc(s->nextserial, sizeof(u8));
  *   count = 0;
- *   count += graph_symdiff(a, b, slist, -1);
- *   count += graph_symdiff(c, d, slist, -1);
- *   count += graph_symdiff(e, f, slist, -1);
+ *   count += graph_symdiff(a, b, slist, 0, -1);
+ *   count += graph_symdiff(c, d, slist, 0, -1);
+ *   count += graph_symdiff(e, f, slist, 0, -1);
  *
  * will have count be the number of non-zero items in slist
  *
@@ -59,9 +61,9 @@ private	int	smallFirst(const void *a, const void *b);
  *
  *   slist = (u8 *)calloc(s->nextserial, sizeof(u8));
  *   count = 0;
- *   count += graph_symdiff(a, 0, slist, -1);	// slist = CV(a)
- *   count += graph_symdiff(b, a, slist, -1);	// slist = CV(b)
- *   count += graph_symdiff(c, b, slist, -1);	// slist = CV(c)
+ *   count += graph_symdiff(a, 0, slist, 0, -1);	// slist = CV(a)
+ *   count += graph_symdiff(b, a, slist, 0, -1);	// slist = CV(b)
+ *   count += graph_symdiff(c, b, slist, 0, -1);	// slist = CV(c)
  *
  * ## Compress - if count passed in >= 0, then run in compress mode.
  * Count must be the number of non-zero entries in slist.
@@ -82,8 +84,9 @@ private	int	smallFirst(const void *a, const void *b);
  * of a megabyte. At some point, this may help caches.
  *
  */
+
 int
-graph_symdiff(delta *left, delta *right, u8 *slist, int count)
+graph_symdiff(delta *left, delta *right, u8 *slist, ser_t **sd, int count)
 {
 	ser_t	ser, lower = 0;
 	u8	bits, newbits;
@@ -92,10 +95,15 @@ graph_symdiff(delta *left, delta *right, u8 *slist, int count)
 	int	i, activeLeft, activeRight;
 	delta	*t = 0;
 
+	if (left && (left == right)) {	/* X symdiff X = {} */
+		assert(expand);
+		return (0);
+	}
 	if (expand) {
 		count = 0;
 	} else {
 		assert(left);
+		if (sd) assert(count == 0);
 		marked = count;
 		if (left->include) {
 			free(left->include);
@@ -106,26 +114,27 @@ graph_symdiff(delta *left, delta *right, u8 *slist, int count)
 			left->exclude = 0;
 		}
 	}
-	/*
-	 * Non-optimized, but symmetrical for clarity
-	 */
 	if (left) {
+		bits = SL_PAR;
+		marked++;
+		if (sd) {
+			bits |= S_DIFF;
+			marked++;
+		}
 		ser = left->serial;
-		bits = slist[ser];
-		if (S_DIFFERENT(bits)) marked--;
-		bits |= SL_PAR;
-		if (S_DIFFERENT(bits)) marked++;
-		slist[ser] = bits;
+		slist[ser] |= bits;
 		if (!t || (t->serial < ser)) t = left;
 		if (!lower || (lower > ser)) lower = ser;
 	}
 	if (right) {
+		bits = SR_PAR;
+		marked++;
+		if (sd) {
+			bits |= S_DIFF;
+			marked++;
+		}
 		ser = right->serial;
-		bits = slist[ser];
-		if (S_DIFFERENT(bits)) marked--;
-		bits |= SR_PAR;
-		if (S_DIFFERENT(bits)) marked++;
-		slist[ser] = bits;
+		slist[ser] |= bits;
 		if (!t || (t->serial < ser)) t = right;
 		if (!lower || (lower > ser)) lower = ser;
 	}
@@ -134,21 +143,17 @@ graph_symdiff(delta *left, delta *right, u8 *slist, int count)
 		if (TAG(t)) continue;
 
 		ser = t->serial;
-		bits = slist[ser];
+		unless (bits = slist[ser]) continue;
+		assert(!(t->flags & D_GONE));
 
-		if (expand) {
+		if (expand && !sd) {
 			slist[ser] = bits & S_DIFF;
 		} else {
 			slist[ser] = 0;
 			if (bits & S_DIFF) {
-				count--;
+				unless (sd) count--;
 				marked--;
 			}
-		}
-
-		if (t->flags & D_GONE) {
-			assert (!(bits & ~S_DIFF));
-			continue;
 		}
 
 		if (S_DIFFERENT(bits)) marked--;
@@ -161,7 +166,7 @@ graph_symdiff(delta *left, delta *right, u8 *slist, int count)
 		activeRight= ((bits & SR_INC) ||
 		    ((bits & (SR_PAR|SR_EXCL)) == SR_PAR));
 
-		if (expand) {
+		if (expand && !sd) {
 			if (activeLeft ^ activeRight) {
 				if (bits & S_DIFF) {
 					slist[ser] = 0;
@@ -171,13 +176,41 @@ graph_symdiff(delta *left, delta *right, u8 *slist, int count)
 					count++;
 				}
 			}
-		} else if (((bits & S_DIFF) != 0) ^ activeLeft ^ activeRight) {
+		} else unless ((
+		    (bits & S_DIFF) != 0) ^ activeLeft ^ activeRight) {
+		    	/* do nothing */
+		} else if (expand) {	/* Compute SD compression */
+			assert(sd);
+			bits ^= S_DIFF;
+			sd[left->serial] = addSerial(sd[left->serial], ser);
+		} else {		/* Compute SCCS compression */
 			if (activeLeft) {
 				left->exclude = addSerial(left->exclude, ser);
 				activeLeft = 0;
 			} else {
 				left->include = addSerial(left->include, ser);
 				activeLeft = 1;
+			}
+		}
+
+		if (sd && (bits & S_DIFF)) {
+			/*
+			 * Save allocating lists for most nodes by making
+			 * use of parent serial.
+			 */
+			if (t->pserial) {
+				if ((slist[t->pserial] ^= S_DIFF) & S_DIFF) {
+					marked++;
+				} else {
+					marked--;
+				}
+			}
+			EACH(sd[ser]) {
+				if ((slist[sd[ser][i]] ^= S_DIFF) & S_DIFF) {
+					marked++;
+				} else {
+					marked--;
+				}
 			}
 		}
 
@@ -247,6 +280,90 @@ graph_symdiff(delta *left, delta *right, u8 *slist, int count)
 		}
 	}
 	return (count);
+}
+
+/*
+ * Add to a list, the Base Version Compression (the Symmetric Difference
+ * Compression (SDC) of the Base Version (the set of deltas active
+ * at the time this delta was made).
+ */
+ser_t *
+symdiff_addBVC(ser_t **sd, ser_t *list, delta *d)
+{
+	int	i;
+
+	if (d->pserial) list = addSerial(list, d->pserial);
+	EACH(sd[d->serial]) {
+		list = addSerial(list, sd[d->serial][i]);
+	}
+	return (list);
+}
+
+/*
+ * remove paired entries that have accumulated.  This counts and keeps
+ * ones with an odd number.  This is needed because addSerial accumulates
+ * duplicates instead of symdiffing on the fly.
+ */
+ser_t *
+symdiff_noDup(ser_t *list)
+{
+	int	i;
+	int	prev = 0;
+	int	count = 0;
+	ser_t	*new = 0;
+
+	EACH(list) {
+		if (prev == list[i]) {
+			count++;
+		} else {
+			if (count & 1) new = addSerial(new, prev);
+			prev = list[i];
+			count = 1;
+		}
+	}
+	if (count & 1) new = addSerial(new, prev);
+	return (new);
+}
+
+/*
+ * Just like most nodes have one parent and no d->include or d->exclude,
+ * the sd lists will mostly have one entry, which is the same as d->pserial.
+ * To save lots of lists from being created, just treat the list as though
+ * d->pserial is in it, and if it ever is not, have a d->pserial in the
+ * list.  That means when code wants to change the parent pointer, it
+ * needs to call here to keep the bookkeeping lined up.
+ * This routine works hard to not create a list if one isn't needed.
+ */
+void
+symdiff_setParent(sccs *s, delta *d, delta *new, ser_t **sd)
+{
+	assert(d->pserial);
+	if (sd[d->serial] || sd[d->pserial] ||
+	    (PARENT(s, d)->pserial != new->serial)) {
+		sd[d->serial] = addSerial(sd[d->serial], d->pserial);
+		sd[d->serial] = addSerial(sd[d->serial], new->serial);
+	}
+	d->parent = new;
+	d->pserial = new->serial;
+}
+
+ser_t	**
+graph_sccs2symdiff(sccs *s)
+{
+	int	j;
+	delta	*d;
+	ser_t	**sd = (ser_t **)calloc(s->nextserial, sizeof(ser_t *));
+	u8	*slist = (u8 *)calloc(s->nextserial, sizeof(u8));
+
+	assert(sd && slist);
+	for (j = 1; j < s->nextserial; j++) {
+		unless ((d = sfind(s, j)) && !TAG(d) && d->pserial) continue;
+		if (d->merge || d->include || d->exclude) {
+			graph_symdiff(d, PARENT(s, d), slist, sd, -1);
+		}
+	}
+	free(slist);
+	return (sd);
 }
 
 /*

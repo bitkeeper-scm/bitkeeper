@@ -15,6 +15,7 @@ struct	{
 } _bk;
 
 _bk.cmd_quit = "exit";
+_bk.wm = tk_windowingsystem();
 
 int	_bk_search_case = 0;
 int	_bk_search_highlight = 0;
@@ -42,7 +43,6 @@ bk_init()
 		bk_dieError("_bk.w_top must be set before bk_init()", 1);
 	}
 
-	_bk.wm = tk_windowingsystem();
 	bk_initPlatform();
 	getConfig(_bk.tool);
 	loadState(_bk.tool);
@@ -63,6 +63,7 @@ void
 bk_initBindings()
 {
 	string	w, widgets[];
+	string	quit = gc("quit");
 
 	// Add a special BK bindtag to every widget
 	// in the application so that we can apply
@@ -74,9 +75,10 @@ bk_initBindings()
 	}
 
 	if (_bk.wm eq "aqua") {
-		bind("BK", "<Command-p>", "${_bk.cmd_prev}; break");
-		bind("BK", "<Command-n>", "${_bk.cmd_next}; break");
+		bind("BK", "<Control-p>", "${_bk.cmd_prev}; break");
+		bind("BK", "<Control-n>", "${_bk.cmd_next}; break");
 		bind("BK", "<Command-q>", "${_bk.cmd_quit}; break");
+		bind("BK", "<Command-w>", "${_bk.cmd_quit}; break");
 	} else {
 		bind("BK", "<Control-p>", "${_bk.cmd_prev}; break");
 		bind("BK", "<Control-n>", "${_bk.cmd_next}; break");
@@ -88,14 +90,19 @@ bk_initBindings()
 	bind("BK", "<Control-e>",  "${w} yview scroll  1 units; break");
 	bind("BK", "<Control-f>",  "${w} yview scroll  1 pages; break");
 	bind("BK", "<Control-y>",  "${w} yview scroll -1 units; break");
+	bind("BK", "<${quit}>", _bk.cmd_quit);
 
 	// Mouse wheel bindings
 	if (_bk.wm eq "x11") {
-		bind("BK", "<4>", "scrollMouseWheel %W %X %Y -3; break");
-		bind("BK", "<5>", "scrollMouseWheel %W %X %Y  3; break");
+		bind("BK", "<4>", "scrollMouseWheel %W y %X %Y -1; break");
+		bind("BK", "<5>", "scrollMouseWheel %W y %X %Y  1; break");
+		bind("BK", "<Shift-4>","scrollMouseWheel %W x %X %Y -1; break");
+		bind("BK", "<Shift-5>","scrollMouseWheel %W x %X %Y  1; break");
 	} else {
 		bind("BK", "<MouseWheel>",
-		    "scrollMouseWheel %W %X %Y %D; break");
+		    "scrollMouseWheel %W y %X %Y %D; break");
+		bind("BK", "<Shift-MouseWheel>",
+		    "scrollMouseWheel %W x %X %Y %D; break");
 	}
 
 	if (_bk.wm eq "aqua") {
@@ -236,7 +243,7 @@ setScrollbar(string sb, string w, float first, float last)
 }
 
 void
-scrollMouseWheel(string w, int x, int y, int delta)
+scrollMouseWheel(string w, string dir, int x, int y, int delta)
 {
 	int	d = delta;
 	string	widg = winfo_containing(x, y);
@@ -245,12 +252,38 @@ scrollMouseWheel(string w, int x, int y, int delta)
 	if (_bk.wm eq "aqua") {
 		d = -delta;
 	} else if (_bk.wm eq "x11") {
+		d = delta * 3;
+	} else if (_bk.wm eq "win32") {
 		d = (delta / 120) * -3;
 	}
 	// If we fail to scroll the widget the mouse is
 	// over for some reason, just scroll the widget
 	// with focus.
-	if (catch("${widg} yview scroll ${d} units")) {
-		catch("${w} yview scroll ${d} units");
+	if (catch("${widg} ${dir}view scroll ${d} units")) {
+		catch("${w} ${dir}view scroll ${d} units");
+	}
+}
+
+void
+scrollTextY(widget w, float i, string what)
+{
+	if ((i != -1) && (i != 1) && ((what eq "page") || (what eq "pages"))) {
+		// Scroll by fractions of a page.
+		int	wh, lh;
+
+		wh = Winfo_height((string)w)
+		    - (Text_cget(w, pady:) * 2)
+		    - (Text_cget(w, highlightthickness:) * 2);
+		lh = Font_metrics(Text_cget(w, font:), linespace:);
+		i = (wh / lh) * i;
+		what = "units";
+	}
+
+	if (what eq "top") {
+		Text_yviewMoveto(w, 0.0);
+	} else if (what eq "bottom") {
+		Text_yviewMoveto(w, 1.0);
+	} else {
+		Text_yviewScroll(w, (int)i, what);
 	}
 }

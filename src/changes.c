@@ -25,6 +25,8 @@ private struct {
 	u32	tsearch:1;	/* pattern applies to tags instead of cmts */
 	u32	BAM:1;		/* only include BAM files */
 	u32	filt:1;		/* output limited by filenames */
+	u32	chgurl:1;	/* running 'bk changes URL', ignore local */
+	u32	noMeta:1;	/* auto or --no-meta */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
@@ -83,6 +85,9 @@ changes_main(int ac, char **av)
 	char	*searchStr = 0;
 	char	buf[MAXPATH];
 	pid_t	pid = 0; /* pager */
+	longopt	lopts[] = {
+		{ "no-meta", 300 },		/* don't show meta files */
+	};
 
 	bzero(&opts, sizeof(opts));
 	opts.showdups = opts.urls = opts.noempty = 1;
@@ -93,7 +98,8 @@ changes_main(int ac, char **av)
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
-	while ((c = getopt(ac, av, "1aBc;Dd;efhi;kLmnPqRr;tTu;U;Vv/;x;", 0)) != -1)
+	while ((c =
+	    getopt(ac, av, "1aBc;Dd;efhi;kLmnPqRr;tTu;U;Vv/;x;", lopts)) != -1)
 	{
 		unless (c == 'L' || c == 'R' || c == 'D') {
 			if (optarg) {
@@ -152,6 +158,9 @@ changes_main(int ac, char **av)
 		    case '/': searchStr = optarg; break;
 		    case 'L': opts.local = 1; break;
 		    case 'R': opts.remote = 1; break;
+		    case 300: /* --no-meta */
+		    	opts.noMeta = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 		optarg = 0;
@@ -284,6 +293,7 @@ changes_main(int ac, char **av)
 		}
 		pid2 = mkpager();
 		putenv("BK_PAGER=cat");
+		opts.chgurl = 1; /* ignore local repo */
 		EACH(urls) {
 			if (opts.urls) {
 				printf("==== changes %s ====\n", urls[i]);
@@ -390,9 +400,9 @@ _doit_local(char **nav, char *url)
 		} else {
 			int	*v;
 
-			unless (v = hash_fetchStr(seen, buf)) {
-				v = hash_insert(seen,
-				    buf, strlen(buf) + 1, 0, sizeof(int));
+			unless (v = hash_fetchStrMem(seen, buf)) {
+				v = hash_insertStrMem(seen,
+				    buf, 0, sizeof(int));
 			}
 			*v += 1;
 		}
@@ -816,22 +826,25 @@ saveKey(MDBM *db, ser_t ser, char **keylist)
 private MDBM *
 loadcset(sccs *cset)
 {
-	char	**keylist = 0, **cweave;
+	char	**keylist = 0;
 	char	*keypath, *pipe;
 	char	*p, *t;
 	MDBM	*db;
-	int	i;
-	ser_t	ser, cur_ser = 0;
+	int	print = 0;
+	ser_t	ser = 0;
+	delta	*d;
 	char	*pathp;
 	char	path[MAXPATH];
+
+	/* respect it if they set it on the command line */
+	unless (opts.noMeta) opts.noMeta = !opts.all && !opts.inc;
+
+	/* but it has no meaning unless we are -v */
+	unless (opts.verbose) opts.noMeta = 0;
 
 	/*
 	 * Get a list of csets marked D_SET
 	 */
-	sccs_open(cset, 0);
-	if ((cweave = cset_mkList(cset)) == (char **)-1) return (0);
-	sccs_close(cset);
-
 	if (t = proj_comppath(cset->proj)) {
 		strcpy(path, t);
 		pathp = path + strlen(path);
@@ -840,13 +853,27 @@ loadcset(sccs *cset)
 		pathp = path;
 	}
 	db = mdbm_mem();
-	EACH(cweave) {
-		p = strchr(cweave[i], '\t');
-		assert(p);
-		*p++ = 0;
-		if (opts.filt) {
-			keypath = separator(p);
-			keypath = strchr(keypath, '|');
+	sccs_open(cset, 0);
+	sccs_rdweaveInit(cset);
+	while (p = sccs_nextdata(cset)) {
+		unless (isData(p)) {
+			if (p[1] == 'I') {
+				ser = atoi(p+3);
+				d = sfind(cset, ser);
+				assert(d);
+				print = (d->flags & D_SET);
+			} else if (p[1] == 'E') {
+				if (keylist) {
+					saveKey(db, ser, keylist);
+					keylist = 0;
+				}
+			}
+			continue;
+		}
+		unless (print) continue;
+		if (opts.filt || opts.noMeta) {
+			t = separator(p);
+			keypath = strchr(t, '|');
 			assert(keypath);
 			keypath++;
 			pipe = strchr(keypath, '|');
@@ -856,38 +883,28 @@ loadcset(sccs *cset)
 			    strneq(&pipe[-10], "/ChangeSet", 10)) {
 				if (opts.BAM) {
 					/* skip unless rootkey =~ /^B:/ */
-					t = separator(p);
-					assert(t);
 					while (*t != '|') --t;
 					unless (strneq(t, "|B:", 3)) continue;
 				}
-				if (opts.inc || opts.exc) {
-					strncpy(pathp, keypath, pipe - keypath);
-					pathp[pipe-keypath] = 0;
-					if (opts.inc &&
-					    !match_globs(path, opts.inc, 0)) {
-						continue;
-					}
-					if (opts.exc &&
-					    match_globs(path, opts.exc, 0)) {
-						continue;
-					}
+				strncpy(pathp, keypath, pipe - keypath);
+				pathp[pipe-keypath] = 0;
+				if (opts.inc &&
+				    !match_globs(path, opts.inc, 0)) {
+					continue;
+				}
+				if (opts.exc &&
+				    match_globs(path, opts.exc, 0)) {
+					continue;
+				}
+				if (opts.noMeta && sccs_metafile(pathp)) {
+					continue;
 				}
 			}
 		}
-		ser = atoi(cweave[i]);
-		unless (cur_ser) {
-			cur_ser = ser;
-			assert(keylist == NULL);
-		} else if (ser != cur_ser) {
-			saveKey(db, cur_ser, keylist);
-			cur_ser = ser;
-			keylist = 0;
-		}
 		keylist = addLine(keylist, strdup(p));
 	}
-	freeLines(cweave, free);
-	if (cur_ser) saveKey(db, cur_ser, keylist); /* save last entry */
+	sccs_rdweaveDone(cset);
+	sccs_close(cset);
 	if (opts.filt) fileFilt(cset, db);
 	return (db);
 }
@@ -1002,6 +1019,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			} else {
 				sccs_prsdelta(sc, e, flags, dspec, opts.fcset);
 			}
+			if (opts.one) return (rc);
 		} else {
 			if (opts.keys) {
 				sccs_pdelta(sc, e, f);
@@ -1009,6 +1027,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			} else {
 				sccs_prsdelta(sc, e, flags, dspec, f);
 			}
+			if (opts.one) return (rc);
 			continue;
 		}
 
@@ -1437,9 +1456,11 @@ _doit_remote(char **av, char *url)
 	char 	key_list[MAXPATH] = "";
 	char	*tmp;
 	int	rc;
+	u32	flags = REMOTE_BKDURL;
 	remote	*r;
 
-	r = remote_parse(url, REMOTE_BKDURL | REMOTE_ROOTKEY);
+	unless (opts.chgurl) flags |= REMOTE_ROOTKEY;
+	r = remote_parse(url, flags);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);
 		return (1);

@@ -810,8 +810,10 @@ nested_each(int quiet, char **av, char **aliases)
 	comp	*cp;
 	int	i, j;
 	char	**nav;
+	char	*s, *t;
 	int	errors = 0;
 	int	status;
+	char	buf[MAXLINE];
 
 	if (proj_cd2product()) {
 		fprintf(stderr, "Not in a Product.\n");
@@ -844,9 +846,12 @@ nested_each(int quiet, char **av, char **aliases)
 
 	EACH_STRUCT(n->comps, cp, i) {
 		unless (cp->alias && cp->present) continue;
-		unless (quiet) {
+		if (quiet) {
+			safe_putenv("_BK_TITLE=%s",
+			    cp->product ? PRODUCT : cp->path);
+		} else {
 			printf("#### %s ####\n",
-			    cp->product ? "PRODUCT" : cp->path);
+			    cp->product ? PRODUCT : cp->path);
 			fflush(stdout);
 		}
 		if (chdir(cp->path)) {
@@ -858,9 +863,22 @@ nested_each(int quiet, char **av, char **aliases)
 		}
 		nav = 0;
 		EACH_INDEX(av, j) {
-			nav = addLine(nav,
-			    str_subst(av[j], "$RELPATH", cp->path, 0));
-			if ((j == 1) && streq(av[j], "bk")) {
+			s = buf;
+			for (t = av[j]; *t; t++) {
+				if (*t != '$') {
+					*s++ = *t;
+					continue;
+				}
+				if (strneq(t, "$PRODPATH", 9)) {
+					s += sprintf(s, "%s", cp->path);
+					t += 8;
+					continue;
+				}
+				*s++ = '$';
+			}
+			*s = 0;
+			nav = addLine(nav, strdup(buf));
+			if ((j == 1) && streq(buf, "bk")) {
 				/* tell bk it is OK to exit with SIGPIPE */
 				nav = addLine(nav, strdup("--sigpipe"));
 			}
@@ -1096,8 +1114,13 @@ nested_rmcomp(nested *n, comp *c)
 	}
 	proj_reset(0);
 
+	/*
+	 * This only works when the rest of the component has been
+	 * removed and .bk/path/to/deepnest remains.
+	 * Otherwise bk can't even see .bk and won't remove it.
+	 */
 	concat_path(buf, c->path, ".bk");
-	rmdir(buf);
+	rmtree(buf);
 	return (ret);
 }
 
@@ -1405,11 +1428,12 @@ urllist_check(nested *n, u32 flags, char **urls)
 		}
 		/*
 		 * We have 4 possible exit status values to consider from
-		 * havekeys:
+		 * havekeys (see comment before remote_bk() for more info):
 		 *  0   the connection worked and we captured the data
 		 *  16  we connected to the bkd fine, but the repository
 		 *      is not there.  This URL is bogus and can be ignored.
 		 *  8   The bkd_connect() failed
+		 *  33  The connection was to myself
 		 *  other  Another failure.
 		 *
 		 */
@@ -1418,6 +1442,9 @@ urllist_check(nested *n, u32 flags, char **urls)
 		if (rc == 16) {
 			verbose((stderr, "repo gone\n"));
 			rc = 0;		/* no repo at that pathname? */
+		} else if (rc == 33) {
+			verbose((stderr, "link to myself\n"));
+			rc = 0;		/* remove this URL */
 		} else if (rc == 8) {
 			verbose((stderr, "connect failure\n"));
 			if (flags & URLLIST_TRIM_NOCONNECT) rc = 0;
@@ -1668,9 +1695,21 @@ nested_updateIdcache(project *comp)
 int
 nested_isPortal(project *comp)
 {
-	project	*prod = proj_product(comp);
+	project	*prod;
 	char	buf[MAXPATH];
 
+	prod = proj_isComponent(comp) ? proj_product(comp): comp;
 	concat_path(buf, proj_root(prod), "BitKeeper/log/PORTAL");
+	return (exists(buf));
+}
+
+int
+nested_isGate(project *comp)
+{
+	project *prod;
+	char	buf[MAXPATH];
+
+	prod = proj_isComponent(comp) ? proj_product(comp): comp;
+	concat_path(buf, proj_root(prod), "BitKeeper/log/GATE");
 	return (exists(buf));
 }

@@ -91,7 +91,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Populate them back from a repo that does not have them ......$NL
-bk here add $Q -@../odd even primes || fail
+bk populate $Q -@../odd even primes || fail
 cat <<EOF > WANT
 PRODUCT
 even
@@ -118,7 +118,7 @@ echo OK
 
 echo $N Show -@url is used before urllist by populate ...............$NL
 bk here rm $Q odd || fail
-bk here add -v -@../odd odd >OUT 2>&1 || fail
+bk populate -v -@../odd odd >OUT 2>&1 || fail
 grep -q 'Clone.*/odd\?' OUT || {
 	cat OUT
 	fail
@@ -126,7 +126,7 @@ grep -q 'Clone.*/odd\?' OUT || {
 echo OK
 
 echo $N Unpopulate odd...............................................$NL
-bk here rm $Q odd || {
+bk unpopulate $Q odd || {
 	echo failed
 	exit 1
 }
@@ -153,7 +153,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate even..............................................$NL
-bk here rm $Q even || {
+bk unpopulate $Q even || {
 	echo failed
 	exit 1
 }
@@ -593,8 +593,8 @@ bk portal $Q -r || fail
 bk comps | bk here set $Q -
 bk here rm $Q not-remapped > GOT 2>&1 && fail -f GOT
 cat <<'EOF' > WANT
-here: No other sources for not-remapped known
-here: unable to remove not-remapped
+here: No other sources for ./not-remapped known
+here: unable to remove ./not-remapped
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -634,12 +634,7 @@ cd ../../../..
 bk here rm $Q src/gui/tcltk/tk 2> ERR && fail -f ERR
 sed 's/ChangeSet@1.2,.*/ChangeSet@1.2,/' < ERR > ERR2
 cat <<EOF >WANT
-here: No other sources for src/gui/tcltk/tk known
-Local changes to src/gui/tcltk/tk found:
-ChangeSet@1.2,
-  local
-
-here: unable to remove src/gui/tcltk/tk
+here: unable to remove ./src/gui/tcltk/tk, it contains csets not committed in product.
 EOF
 
 cmpfiles ERR2 WANT
@@ -650,8 +645,7 @@ rm BitKeeper/log/urllist
 bk parent $Q -r
 bk here rm $Q src/gui/tcltk/tk 2> ERR && fail -f ERR
 cat <<EOF > WANT
-here: No other sources for src/gui/tcltk/tk known
-here: unable to remove src/gui/tcltk/tk
+here: unable to remove ./src/gui/tcltk/tk, it contains csets not committed in product.
 EOF
 cmpfiles ERR WANT
 echo OK
@@ -669,3 +663,29 @@ bk here rm $Q -f gcc
 test -d gcc && fail
 echo OK
 
+echo $N Test populate through a pull.................................$NL
+cd "$HERE"
+nested pull-test
+bk alias set $Q GCC gcc
+bk alias set $Q GDB gdb
+cd "$HERE"
+bk clone $Q -sGCC pull-test pull-repo1
+bk clone $Q -sGCC pull-test pull-repo2
+cd pull-repo1
+bk alias set $Q GCC gcc gdb
+bk here set $Q gcc
+bk comps -h | grep -q gdb && fail
+cd ../pull-repo2
+bk pull $Q ../pull-repo1 2>ERR || fail -f ERR should have used populate
+bk comps -h | grep -q gdb || fail
+echo OK
+
+echo $N See if we can fool bk into using itself as a source .........$NL
+cd "$HERE"/copy
+rm BitKeeper/log/urllist
+bk parent $Q -r || fail
+bk comps -h > BEFORE
+bk here set $Q -@"$HERE"/copy . 2>ERR && fail -f ERR should have failed
+bk comps -h > AFTER
+cmpfiles BEFORE AFTER
+echo OK

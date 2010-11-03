@@ -42,8 +42,8 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Add some components .........................................$NL
-bk attach -C $Q ../gcc gcc || exit 1
-bk attach -C $Q ../gdb gdb || exit 1
+bk attach --force -C $Q ../gcc gcc || exit 1
+bk attach --force -C $Q ../gdb gdb || exit 1
 bk sfiles -p > GOT
 cat > WANT <<EOF
 gcc/SCCS/s.ChangeSet
@@ -138,7 +138,7 @@ cd subproduct
 bk portal $Q . || fail
 commercial comp
 cd ..
-bk attach $Q -N comp || exit 1
+bk attach --force $Q -N comp || exit 1
 cd comp
 echo comp > WANT
 bk -P sfiles -R > GOT
@@ -289,7 +289,7 @@ cat > WANT <<EOF
 gcc
 #### gdb ####
 gdb
-#### PRODUCT ####
+#### . ####
 .
 EOF
 cmpfiles WANT GOT
@@ -314,7 +314,7 @@ cat > WANT <<EOF
 gcc
 #### gdb ####
 gdb
-#### PRODUCT ####
+#### . ####
 .
 EOF
 cmpfiles WANT GOT
@@ -327,7 +327,7 @@ cat > WANT <<EOF
 name 1.1: 1 lines
 #### gdb ####
 name 1.1: 1 lines
-#### PRODUCT ####
+#### . ####
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -623,7 +623,7 @@ commercial pendingdeepnest
 cd ..
 commercial extradeepnest
 cd ..
-bk attach $Q -C -N pendingdeepnest
+bk attach --force $Q -C -N pendingdeepnest
 cd ..
 echo OK
 
@@ -685,7 +685,7 @@ cat <<EOF > WANT
 #### gcc4 ####
 #### gdb ####
 #### gdb/pendingdeepnest ####
-#### PRODUCT ####
+#### . ####
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -1282,197 +1282,6 @@ bk changes -qnd"gcc4|:KEY:" -r+ gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N Test prefix in the iterator, with no -h, dup cset files .....$NL
-bk -qs prefixed_sfiles > GOT
-cat > WANT <<EOF
-gcc4/SCCS/s.ChangeSet
-gcc4/SCCS/s.file1
-gcc4/SCCS/s.file2
-gcc4/SCCS/s.file3
-gcc4/SCCS/s.name
-gcc4/BitKeeper/etc/SCCS/s.attr
-gcc4/BitKeeper/etc/SCCS/s.collapsed
-gcc4/BitKeeper/etc/SCCS/s.config
-gcc4/BitKeeper/etc/SCCS/s.gone
-gcc4/BitKeeper/etc/SCCS/s.ignore
-gdb/SCCS/s.ChangeSet
-gdb/SCCS/s.name
-gdb/BitKeeper/etc/SCCS/s.attr
-gdb/BitKeeper/etc/SCCS/s.collapsed
-gdb/BitKeeper/etc/SCCS/s.config
-gdb/BitKeeper/etc/SCCS/s.gone
-gdb/BitKeeper/etc/SCCS/s.ignore
-SCCS/s.ChangeSet
-BitKeeper/etc/SCCS/s.aliases
-BitKeeper/etc/SCCS/s.attr
-BitKeeper/etc/SCCS/s.collapsed
-BitKeeper/etc/SCCS/s.config
-BitKeeper/etc/SCCS/s.gone
-BitKeeper/etc/SCCS/s.ignore
-gcc4/SCCS/s.ChangeSet
-gdb/SCCS/s.ChangeSet
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test prefix in the iterator with aliases ....................$NL
-bk -q -s./gcc4 prefixed_sfiles -h > GOT
-cat > WANT <<EOF
-gcc4/SCCS/s.ChangeSet
-gcc4/SCCS/s.file1
-gcc4/SCCS/s.file2
-gcc4/SCCS/s.file3
-gcc4/SCCS/s.name
-gcc4/BitKeeper/etc/SCCS/s.attr
-gcc4/BitKeeper/etc/SCCS/s.collapsed
-gcc4/BitKeeper/etc/SCCS/s.config
-gcc4/BitKeeper/etc/SCCS/s.gone
-gcc4/BitKeeper/etc/SCCS/s.ignore
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test prefix in the iterator with aliases - add product ......$NL
-bk -q -sPRODUCT -s./gcc4 prefixed_sfiles -h > GOT
-cat > WANT <<EOF
-gcc4/SCCS/s.ChangeSet
-gcc4/SCCS/s.file1
-gcc4/SCCS/s.file2
-gcc4/SCCS/s.file3
-gcc4/SCCS/s.name
-gcc4/BitKeeper/etc/SCCS/s.attr
-gcc4/BitKeeper/etc/SCCS/s.collapsed
-gcc4/BitKeeper/etc/SCCS/s.config
-gcc4/BitKeeper/etc/SCCS/s.gone
-gcc4/BitKeeper/etc/SCCS/s.ignore
-SCCS/s.ChangeSet
-BitKeeper/etc/SCCS/s.aliases
-BitKeeper/etc/SCCS/s.attr
-BitKeeper/etc/SCCS/s.collapsed
-BitKeeper/etc/SCCS/s.config
-BitKeeper/etc/SCCS/s.gone
-BitKeeper/etc/SCCS/s.ignore
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test prefix in the iterator with rev ........................$NL
-cd ..
-bk clone $Q gcc liberty
-cd project
-bk portal $Q . || fail
-REV=`bk changes -r+ -d:REV:`
-bk attach $Q ../liberty liberty
-if true
-then	echo skipped
-else
-bk -qs"|$REV" prefixed_sfiles -h > GOT
-cat > WANT <<EOF
-gcc4/SCCS/s.ChangeSet
-gcc4/SCCS/s.file1
-gcc4/SCCS/s.file2
-gcc4/SCCS/s.file3
-gcc4/SCCS/s.name
-gcc4/BitKeeper/etc/SCCS/s.attr
-gcc4/BitKeeper/etc/SCCS/s.collapsed
-gcc4/BitKeeper/etc/SCCS/s.config
-gcc4/BitKeeper/etc/SCCS/s.gone
-gcc4/BitKeeper/etc/SCCS/s.ignore
-gdb/SCCS/s.ChangeSet
-gdb/SCCS/s.name
-gdb/BitKeeper/etc/SCCS/s.attr
-gdb/BitKeeper/etc/SCCS/s.collapsed
-gdb/BitKeeper/etc/SCCS/s.config
-gdb/BitKeeper/etc/SCCS/s.gone
-gdb/BitKeeper/etc/SCCS/s.ignore
-SCCS/s.ChangeSet
-BitKeeper/etc/SCCS/s.aliases
-BitKeeper/etc/SCCS/s.attr
-BitKeeper/etc/SCCS/s.collapsed
-BitKeeper/etc/SCCS/s.config
-BitKeeper/etc/SCCS/s.gone
-BitKeeper/etc/SCCS/s.ignore
-EOF
-cmpfiles WANT GOT
-echo OK
-fi
-
-echo $N Test prefix in the iterator with no rev, should see liberty .$NL
-bk -qs prefixed_sfiles -h > GOT
-cat > WANT <<EOF
-gcc4/SCCS/s.ChangeSet
-gcc4/SCCS/s.file1
-gcc4/SCCS/s.file2
-gcc4/SCCS/s.file3
-gcc4/SCCS/s.name
-gcc4/BitKeeper/etc/SCCS/s.attr
-gcc4/BitKeeper/etc/SCCS/s.collapsed
-gcc4/BitKeeper/etc/SCCS/s.config
-gcc4/BitKeeper/etc/SCCS/s.gone
-gcc4/BitKeeper/etc/SCCS/s.ignore
-gdb/SCCS/s.ChangeSet
-gdb/SCCS/s.name
-gdb/BitKeeper/etc/SCCS/s.attr
-gdb/BitKeeper/etc/SCCS/s.collapsed
-gdb/BitKeeper/etc/SCCS/s.config
-gdb/BitKeeper/etc/SCCS/s.gone
-gdb/BitKeeper/etc/SCCS/s.ignore
-liberty/SCCS/s.ChangeSet
-liberty/SCCS/s.name
-liberty/BitKeeper/etc/SCCS/s.attr
-liberty/BitKeeper/etc/SCCS/s.collapsed
-liberty/BitKeeper/etc/SCCS/s.config
-liberty/BitKeeper/etc/SCCS/s.gone
-liberty/BitKeeper/etc/SCCS/s.ignore
-SCCS/s.ChangeSet
-BitKeeper/etc/SCCS/s.aliases
-BitKeeper/etc/SCCS/s.attr
-BitKeeper/etc/SCCS/s.collapsed
-BitKeeper/etc/SCCS/s.config
-BitKeeper/etc/SCCS/s.gone
-BitKeeper/etc/SCCS/s.ignore
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test that we can suppress the product with -sHERE ...........$NL
-bk -q -sHERE prefixed_sfiles -h > GOT
-cat > WANT <<EOF
-gcc4/SCCS/s.ChangeSet
-gcc4/SCCS/s.file1
-gcc4/SCCS/s.file2
-gcc4/SCCS/s.file3
-gcc4/SCCS/s.name
-gcc4/BitKeeper/etc/SCCS/s.attr
-gcc4/BitKeeper/etc/SCCS/s.collapsed
-gcc4/BitKeeper/etc/SCCS/s.config
-gcc4/BitKeeper/etc/SCCS/s.gone
-gcc4/BitKeeper/etc/SCCS/s.ignore
-gdb/SCCS/s.ChangeSet
-gdb/SCCS/s.name
-gdb/BitKeeper/etc/SCCS/s.attr
-gdb/BitKeeper/etc/SCCS/s.collapsed
-gdb/BitKeeper/etc/SCCS/s.config
-gdb/BitKeeper/etc/SCCS/s.gone
-gdb/BitKeeper/etc/SCCS/s.ignore
-liberty/SCCS/s.ChangeSet
-liberty/SCCS/s.name
-liberty/BitKeeper/etc/SCCS/s.attr
-liberty/BitKeeper/etc/SCCS/s.collapsed
-liberty/BitKeeper/etc/SCCS/s.config
-liberty/BitKeeper/etc/SCCS/s.gone
-liberty/BitKeeper/etc/SCCS/s.ignore
-SCCS/s.ChangeSet
-BitKeeper/etc/SCCS/s.aliases
-BitKeeper/etc/SCCS/s.attr
-BitKeeper/etc/SCCS/s.collapsed
-BitKeeper/etc/SCCS/s.config
-BitKeeper/etc/SCCS/s.gone
-BitKeeper/etc/SCCS/s.ignore
-EOF
-cmpfiles WANT GOT
-echo OK
-
 # Deep nesting
 echo $N Test that we see a nested component .........................$NL
 cd "$HERE"
@@ -1481,7 +1290,8 @@ do	bk clone -q gcc $i
 	# (cd $i && bk newroot -q)
 done
 cd project
-bk attach $Q ../A gdb/A
+bk portal $Q .
+bk attach --force $Q ../A gdb/A
 test -f BitKeeper/log/deep-nests || {
 	echo failed to create hints file
 	exit 1
@@ -1500,7 +1310,7 @@ grep -q gdb/A/SCCS/s.ChangeSet GOT || {
 echo OK
 
 echo $N Test that we see a nested/nested component ..................$NL
-bk attach $Q ../B gdb/A/B
+bk attach --force $Q ../B gdb/A/B
 test -f BitKeeper/log/deep-nests || {
 	echo failed to maintain hints file
 	exit 1
@@ -1691,9 +1501,8 @@ PRODUCT
 gcc4
 gdb/A
 gdb/A/B
-liberty
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Demonstrate that bk -A check is not allowed .................$NL
@@ -1710,12 +1519,12 @@ cd gdb
 echo "aline" > afile
 bk new $Q afile
 bk commit $Q -y"add afile"
-cd ../liberty
+cd ../gcc4
 echo "aline" > afile
 bk new $Q afile
 bk commit $Q -y"add afile"
 cd ..
-bk commit $Q -y"added afile to gdb and liberty"
+bk commit $Q -y"added afile to gdb and gcc4"
 # add a content cset since cset -x doesn't support removing new files
 bk edit $Q afile
 echo "lineb" >> afile
@@ -1725,7 +1534,7 @@ bk edit $Q afile
 echo "lineb" >> afile
 bk delta $Q -y"add lineb" afile
 bk commit $Q -y"add lineb"
-cd ../liberty
+cd ../gcc4
 bk edit $Q afile
 echo "lineb" >> afile
 bk delta $Q -y"add lineb" afile
@@ -1742,7 +1551,7 @@ bk edit $Q afile
 echo "linec" >> afile
 bk delta $Q -y"add linec" afile
 bk commit $Q -y"add linec"
-cd ../liberty
+cd ../gcc4
 bk edit $Q afile
 echo "linec" >> afile
 bk delta $Q -y"add linec" afile

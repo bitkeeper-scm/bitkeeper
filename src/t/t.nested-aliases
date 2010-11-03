@@ -56,8 +56,8 @@ bk clone $Q -sstuff project stuff2
 commercial libc
 cd "$HERE/project"
 bk portal $Q .
-bk attach $Q ../libc path/to/libc
-bk attach $Q ../libc junk
+bk attach --force $Q ../libc path/to/libc
+bk attach --force $Q ../libc junk
 bk alias add stuff path/to/libc
 echo OK
 
@@ -214,7 +214,7 @@ echo $N Test -s./gcc/nm .............................................$NL
 cd "$HERE"
 commercial nm
 cd "$HERE"/project
-bk attach $Q ../nm gcc/nm
+bk attach --force $Q ../nm gcc/nm
 cd "$HERE"
 bk clone -s./gcc/nm project project-nm > OUT 2>&1 || {
 	echo failed

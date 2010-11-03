@@ -96,9 +96,10 @@ echo OK
 echo $N Show that a failed update to aliases reverts changes ........$NL
 cd "$HERE/project"
 bk portal $Q -r || fail
+bk gate $Q -r || fail
 bk here set $Q DEFAULT || fail
 bk alias set $Q DEFAULT 2> ERR && fail -f ERR should have failed
-grep -q "No other sources for gcc known" ERR || fail -f ERR
+grep -q "No other sources for ./gcc known" ERR || fail -f ERR
 bk -r check -ac || fail
 echo OK
 
@@ -237,3 +238,16 @@ EOF
 cmpfiles GOT WANT
 echo OK
 
+echo $N Demo alias expand bug .......................................$NL
+cd "$HERE/project"
+bk portal $Q .
+rm -f WANT
+for c in 1 2 3 4 5 6 7 8
+do	bk setup -C -f f$c || fail
+	echo ./f$c >> WANT
+done
+echo ./gcc >> WANT
+echo ./gdb >> WANT
+bk alias -e \* > OUT || fail
+cmpfiles OUT WANT
+echo OK

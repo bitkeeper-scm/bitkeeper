@@ -28,7 +28,7 @@ cd "$HERE"
 nested nested1
 # test attach where product has no BAM dir initially
 test -d BitKeeper/BAM && fail product BAM directory there
-bk attach -q "$HERE/standalone1" component1 || exit 1
+bk attach --force -q "$HERE/standalone1" component1 || exit 1
 bk -qs -r check -ac || fail
 test -d component1/BitKeeper/BAM && fail BAM directory still there
 cd component1
@@ -43,7 +43,7 @@ echo OK
 
 echo $N Test not in a repo error ....................................$NL
 cd "$HERE"
-bk attach "$HERE/standalone2" 2>GOT && {
+bk attach --force "$HERE/standalone2" 2>GOT && {
 	echo should have failed
 	cat GOT
 	exit 1
@@ -57,7 +57,7 @@ echo OK
 
 echo $N Test not in a product error .................................$NL
 cd "$HERE/standalone1"
-bk attach "$HERE/standalone2" 2>GOT && {
+bk attach --force "$HERE/standalone2" 2>GOT && {
 	echo should have failed
 	cat GOT
 	exit 1
@@ -71,7 +71,7 @@ echo OK
 
 echo $N Attach to inside a non-existent dir .........................$NL
 cd "$HERE/nested1"
-bk attach -q "$HERE/standalone1" "$HERE/does-not-exist" 2>GOT && {
+bk attach --force -q "$HERE/standalone1" "$HERE/does-not-exist" 2>GOT && {
 	echo should have failed
 	exit 1
 }
@@ -79,7 +79,7 @@ echo OK
 
 echo $N Attach to path under a non-existent dir .....................$NL
 cd "$HERE/nested1"
-bk attach -q "$HERE/standalone1" "$HERE/does-not-exist/a/b/c" 2>GOT && {
+bk attach --force -q "$HERE/standalone1" "$HERE/does-not-exist/a/b/c" 2>GOT && {
 	echo should have failed
 	exit 1
 }
@@ -88,14 +88,14 @@ echo OK
 echo $N Attach to inside a non-repo .................................$NL
 cd "$HERE"
 mkdir not-a-repo || exit 1
-bk attach -q "$HERE/standalone1" "$HERE/not-a-repo" 2>GOT && {
+bk attach --force -q "$HERE/standalone1" "$HERE/not-a-repo" 2>GOT && {
 	echo should have failed
 	exit 1
 }
 echo OK
 
 echo $N Attach to path under a non-repo .............................$NL
-bk attach -q "$HERE/standalone1" "$HERE/not-a-repo/a/b/c" 2>GOT && {
+bk attach --force -q "$HERE/standalone1" "$HERE/not-a-repo/a/b/c" 2>GOT && {
 	echo should have failed
 	exit 1
 }
@@ -103,7 +103,7 @@ echo OK
 
 echo $N Attach to inside a non-product ..............................$NL
 cd "$HERE"
-bk attach -q "$HERE/standalone1" "$HERE/standalone2" 2>GOT && {
+bk attach --force -q "$HERE/standalone1" "$HERE/standalone2" 2>GOT && {
 	echo should have failed
 	exit 1
 }
@@ -111,7 +111,7 @@ echo OK
 
 echo $N Attach to path under a non-product ..........................$NL
 cd "$HERE"
-bk attach -q "$HERE/standalone1" "$HERE/standalone2/a/b/c" 2>GOT && {
+bk attach --force -q "$HERE/standalone1" "$HERE/standalone2/a/b/c" 2>GOT && {
 	echo should have failed
 	exit 1
 }
@@ -119,7 +119,7 @@ echo OK
 
 echo $N Test non-local destination error ............................$NL
 cd "$HERE/nested1"
-bk attach "$HERE/standalone2" bk://localhost/bad 2>GOT && {
+bk attach --force "$HERE/standalone2" bk://localhost/bad 2>GOT && {
 	echo should have failed
 	cat GOT
 	exit 1
@@ -133,7 +133,7 @@ echo OK
 
 echo $N Test attaching a product error ..............................$NL
 cd "$HERE/nested1"
-bk attach "$HERE/nested2" 2>GOT && {
+bk attach --force "$HERE/nested2" 2>GOT && {
 	echo should have failed
 	cat GOT
 	exit 1
@@ -147,7 +147,7 @@ echo OK
 
 echo $N Test attaching a component in same product error ............$NL
 cd "$HERE/nested1"
-bk attach component1 component2 2>GOT && {
+bk attach --force component1 component2 2>GOT && {
 	echo should have failed
 	cat GOT
 	exit 1
@@ -161,7 +161,7 @@ echo OK
 
 echo $N Test attaching a component in different product error .......$NL
 cd "$HERE/nested2"
-bk attach "$HERE/nested1/component1" 2>GOT && {
+bk attach --force "$HERE/nested1/component1" 2>GOT && {
 	echo should have failed
 	cat GOT
 	exit 1
@@ -207,32 +207,32 @@ bk clone -N standalone1 bad 2>GOT && exit 1
 grep -q "\-N valid only in attach command" GOT || exit 1
 cd nested1
 touch not-a-dir
-bk attach -N not-a-dir 2>GOT && exit 1
+bk attach --force -N not-a-dir 2>GOT && exit 1
 grep -q "not a BitKeeper repository" GOT || exit 1
 mkdir not-a-repo
 cd not-a-repo
-bk attach -N not-a-dir 2>GOT && exit 1
+bk attach --force -N not-a-dir 2>GOT && exit 1
 grep -q "not a BitKeeper repository" GOT || exit 1
 cd ..
 bk detach -N component1 ../bad 2>GOT && exit 1
 grep -q "\-N valid only in attach command" GOT || exit 1
-bk attach -N -Burl ../standalone1 2>GOT && exit 1
+bk attach --force -N -Burl ../standalone1 2>GOT && exit 1
 grep -q "\-N illegal with other options" GOT || exit 1
-bk attach -N -p ../standalone1 2>GOT && exit 1
+bk attach --force -N -p ../standalone1 2>GOT && exit 1
 grep -q "\-N illegal with other options" GOT || exit 1
-bk attach -N -r1.1 ../standalone1 2>GOT && exit 1
+bk attach --force -N -r1.1 ../standalone1 2>GOT && exit 1
 grep -q "\-N illegal with other options" GOT || exit 1
-bk attach -N -sbad ../standalone1 2>GOT && exit 1
+bk attach --force -N -sbad ../standalone1 2>GOT && exit 1
 grep -q "\-N illegal with other options" GOT || exit 1
-bk attach -N bk://localhost/bad 2>GOT && exit 1
+bk attach --force -N bk://localhost/bad 2>GOT && exit 1
 grep -q "source must be local" GOT || exit 1
-bk attach -N ../standalone1 bad 2>GOT && exit 1
+bk attach --force -N ../standalone1 bad 2>GOT && exit 1
 grep -q "only one repo valid with -N" GOT || exit 1
 echo OK
 
 echo $N Test component already there error ..........................$NL
 cd "$HERE/nested1"
-bk attach "$HERE/standalone1" component1 2>GOT 1>&1 && {
+bk attach --force "$HERE/standalone1" component1 2>GOT 1>&1 && {
 	echo should have failed
 	cat GOT
 	exit 1
@@ -244,6 +244,31 @@ grep -q 'component1 exists and is not empty' GOT || {
 }
 echo OK
 
+echo $N Test duplicate attach error .................................$NL
+cd "$HERE/nested1"
+bk attach "$HERE/standalone1" duplicate 2>GOT 1>&1 && {
+	echo should have failed
+	cat GOT
+	exit 1
+}
+grep -q 'duplicate: already attached at component1' GOT || {
+	echo unexpected output
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Test duplicate attach works after a newroot .................$NL
+cd "$HERE"
+bk clone $Q standalone1 standalone1_newroot
+cd standalone1_newroot
+bk newroot $Q
+cd "$HERE/nested1"
+bk attach $Q -C "$HERE/standalone1_newroot" duplicate || fail
+bk here rm $Q -f duplicate
+rm -fr duplicate
+echo OK
+
 echo $N Basic attach functionality ..................................$NL
 cd "$HERE/nested2"
 echo bam > bam
@@ -251,7 +276,7 @@ bk new $Q -b bam
 test -d BitKeeper/BAM || fail product BAM directory not there
 bk commit $Q -ybam
 # test attach where product has BAM dir initially
-bk attach -q "$HERE/standalone1" component1 2>GOT 1>&2 || {
+bk attach --force -q "$HERE/standalone1" component1 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
@@ -275,7 +300,7 @@ echo $N Check 'attach <dir> <dir>' functionality ......................$NL
 cd "$HERE"
 bk clone -q standalone1 nested2/dir1 || exit 1
 cd nested2
-bk attach -q dir1 component2 2>GOT 1>&2 || {
+bk attach --force -q dir1 component2 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
@@ -291,7 +316,7 @@ echo OK
 
 echo $N Check 'attach <dir> <path>' functionality .....................$NL
 cd "$HERE/nested2"
-bk attach -q dir1 a/b/component2b 2>GOT 1>&2 || {
+bk attach --force -q dir1 a/b/component2b 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
@@ -307,7 +332,7 @@ echo OK
 
 echo $N Check 'attach <dir> <fullpath>' functionality .................$NL
 cd "$HERE/nested2"
-bk attach -q dir1 "$HERE/nested2/c/d/component2c" 2>GOT 1>&2 || {
+bk attach --force -q dir1 "$HERE/nested2/c/d/component2c" 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
@@ -323,7 +348,7 @@ echo OK
 
 echo $N Check 'attach <fullpath> <dir>' functionality .................$NL
 cd "$HERE/nested2"
-bk attach -q "$HERE/standalone1" component3 2>GOT 1>&2 || {
+bk attach --force -q "$HERE/standalone1" component3 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
@@ -339,7 +364,7 @@ echo OK
 
 echo $N Check 'attach <fullpath> <path>' functionality ................$NL
 cd "$HERE/nested2"
-bk attach -q "$HERE/standalone1" e/f/component3b 2>GOT 1>&2 || {
+bk attach --force -q "$HERE/standalone1" e/f/component3b 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
@@ -355,7 +380,7 @@ echo OK
 
 echo $N Check 'attach <fullpath> <fullpath>' functionality ............$NL
 cd "$HERE/nested2"
-bk attach -q "$HERE/standalone1" "$HERE/nested2/component4" 2>GOT 1>&2 || {
+bk attach --force -q "$HERE/standalone1" "$HERE/nested2/component4" 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
@@ -371,7 +396,7 @@ echo OK
 
 echo $N Check 'attach <remote>' functionality .........................$NL
 cd "$HERE/nested2"
-bk attach -q "bk://localhost:$P/standalone1" 2>GOT 1>&2 || {
+bk attach --force -q "bk://localhost:$P/standalone1" 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
@@ -387,7 +412,7 @@ echo OK
 
 echo $N Check 'attach <remote> <dir>' functionality ...................$NL
 cd "$HERE/nested2"
-bk attach -q "bk://localhost:$P/$HERE/standalone1" component5 2>GOT 1>&2 || {
+bk attach --force -q "bk://localhost:$P/$HERE/standalone1" component5 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
@@ -403,7 +428,7 @@ echo OK
 
 echo $N Check 'attach <dir> nested/<dir>' functionality ...............$NL
 cd "$HERE"
-bk attach $Q standalone1 nested2/component5.5 || fail
+bk attach --force $Q standalone1 nested2/component5.5 || fail
 cd nested2
 bk comps | grep -q component5.5 || exit 1
 echo OK
@@ -411,14 +436,14 @@ echo OK
 echo $N Check 'attach <dir> nested/trad/<dir>' functionality ..........$NL
 cd "$HERE"
 bk clone $Q standalone1 nested2/traditional
-bk attach $Q standalone1 nested2/traditional/component5.6 || fail
+bk attach --force $Q standalone1 nested2/traditional/component5.6 || fail
 cd nested2
 bk comps | grep -q traditional/component5.6 || exit 1
 echo OK
 
 echo $N Check attach -C .............................................$NL
 cd "$HERE/nested2"
-bk attach -q -C "$HERE/standalone1" component6 2>GOT 1>&2 || {
+bk attach --force -q -C "$HERE/standalone1" component6 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
@@ -434,7 +459,7 @@ echo OK
 
 echo $N Check attach -C and commit with others ......................$NL
 cd "$HERE/nested2"
-bk attach -q -C "$HERE/standalone1" component6a 2>GOT 1>&2 || {
+bk attach --force -q -C "$HERE/standalone1" component6a 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
@@ -444,7 +469,7 @@ cat <<EOF >WANT
 component6a/SCCS/s.ChangeSet
 EOF
 cmpfiles GOT WANT
-bk attach -q -C "$HERE/standalone1" component6b 2>GOT 1>&2 || {
+bk attach --force -q -C "$HERE/standalone1" component6b 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1
@@ -462,7 +487,7 @@ echo OK
 
 echo $N Check attach -r .............................................$NL
 cd "$HERE/nested2"
-bk attach -q -r1.1 "$HERE/standalone1" component7 2>GOT 1>&2 || {
+bk attach --force -q -r1.1 "$HERE/standalone1" component7 2>GOT 1>&2 || {
 	echo should have worked
 	cat GOT
 	exit 1

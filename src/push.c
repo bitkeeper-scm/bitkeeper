@@ -333,7 +333,8 @@ out:	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 		unless (title) {
 			if (opts.product) {
 				freeme = title =
-				    aprintf("%d/%d PRODUCT", opts.n, opts.n);
+				    aprintf("%d/%d %s",
+				    opts.n, opts.n, PRODUCT);
 			} else {
 				freeme = title = strdup("push");
 			}

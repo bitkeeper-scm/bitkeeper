@@ -58,20 +58,24 @@ main(int volatile ac, char **av, char **env)
 	int	i, c, ret;
 	int	is_bk = 0, dashr = 0, remote = 0;
 	int	dashA = 0, dashU = 0, headers = 0;
-	int	dashs = 0;
+	int	dashs = 0, dashrdir = 0;
+	int	buf_stdin = 0;	/* -Bstdin */
 	int	from_iterator = 0;
-	char	*csp, *p, *dir = 0, *locking = 0;
+	char	*csp, *p, *locking = 0;
+	char	*todir = 0;
+	int	toroot = 0;	/* 1==cd2root 3==cd2product */
 	char	*envargs = 0;
 	char	**sopts = 0;
 	char	**aliases = 0;
 	char	**nav = 0;
 	longopt	lopts[] = {
+		/* Note: remote_bk() won't like "option:" with a space */
 		{ "title;", 300 },	// title for progress bar
 		{ "cd;", 301 },		// cd to dir
-		{ "subset|", 302 },	// --subset=alias|comp
 		{ "headers", 303 },	// --headers for -s
 		{ "from-iterator", 304 },
 		{ "sigpipe", 305 },     // allow SIGPIPE
+		{ "sfiles-opts;", 306 },// --sfiles-opts=vcg
 		{ 0, 0 },
 	};
 
@@ -97,7 +101,7 @@ main(int volatile ac, char **av, char **env)
 	if (p = getenv("BK_WIN_NORETRY")) win32_retry(strtol(p, 0, 10));
 #endif
 
-	signal(SIGPIPE, SIG_IGN); /* no-op on win32 */
+	unless (getenv("_BK_SIGPIPE")) signal(SIGPIPE, SIG_IGN);
 
 	/*
 	 * Support redirection via BK_STDIO=$HOST:$PORT.
@@ -204,6 +208,7 @@ main(int volatile ac, char **av, char **env)
 		}
 		is_bk = 1;
 		nav = addLine(nav, strdup("bk"));
+		/* adding options with args should update remote_bk() */
 		while ((c = getopt(ac, av,
 			"?;^@|1aAB;cdDgGhjL|lnpPqr|Rs|uUxz;", lopts)) != -1) {
 			unless ((c == 's') || (c >= 300) || (c == '?')) {
@@ -224,17 +229,22 @@ main(int volatile ac, char **av, char **env)
  				sopts = addLine(sopts,
  				    aprintf("-%c%s", c, optarg ? optarg : ""));
 				break;
+			    case 306: // --sfiles-opts=cvg
+				sopts = addLine(sopts, aprintf("-%s", optarg));
+				break;
 			    case '?': envargs = optarg; break;
 			    case '@': remote = 1; break;
-			    case 'B': buffer = optarg; break;
+			    case 'B':
+				unless (streq(optarg, "stdin")) {
+					fprintf(stderr, "bk: only -Bstdin\n");
+					return (1);
+				}
+				buf_stdin = 1;
+				break;
 			    case 'q': break;	// noop, -q is the default
 			    case 'L': locking = optarg; break;
 			    case 'P':				/* doc 2.0 */
-				if (proj_cd2product() && proj_cd2root()) {
-					fprintf(stderr,
-					    "bk: Cannot find product root.\n");
-					return(1);
-				}
+				toroot |= 3;
 				break;
 			    case 'r':				/* doc 2.0 */
 				if (dashr) {
@@ -242,18 +252,22 @@ main(int volatile ac, char **av, char **env)
 					    "bk: Only one -r allowed\n");
 					return (1);
 				}
-				dir = optarg;
 				dashr++;
-				break;
-			    case 'R':				/* doc 2.0 */
-				if (proj_cd2root()) {
-					fprintf(stderr,
-					    "bk: Cannot find package root.\n");
-					return(1);
+				if (optarg) {
+					if (todir) {
+baddir:						fprintf(stderr,
+						    "bk: only one --cd or "
+						    "-r<dir> allowed\n");
+						return (1);
+					}
+					dashrdir = 1;
+					todir = optarg;
 				}
 				break;
+			    case 'R':				/* doc 2.0 */
+				toroot |= 1;
+				break;
 			    case 's': 	// -s
-			    case 302:	// --subset=
 				dashs = 1;
 				if (optarg) {
 					aliases =
@@ -261,13 +275,12 @@ main(int volatile ac, char **av, char **env)
 				}
 				break;
 			    case 'z': break;	/* remote will eat it */
-			    case 300: title = optarg; break;
-			    case 301:
-				if (chdir(optarg)) {
-					fprintf(stderr,
-					    "bk: Cannot chdir to %s\n", p);
-					return (1);
-				}
+			    case 300:	// --title
+				title = optarg;
+				break;
+			    case 301:	// --cd
+				if (todir) goto baddir;
+				todir = optarg;
 				break;
 			    case 303:	// --headers
 			    	headers = 1;
@@ -290,7 +303,32 @@ main(int volatile ac, char **av, char **env)
 			fprintf(stderr, "bk: -A may not be combined with -r\n");
 			return (1);
 		}
+		if (dashs && dashrdir) {
+			fprintf(stderr,
+			   "bk: -s may not be combined with -r<dir>\n");
+			return (1);
+		}
+		if (todir && toroot) {
+			fprintf(stderr,
+			    "bk: --cd/-rDIR not allowed with -R or -P\n");
+			return (1);
+		}
+		if (todir && remote) {
+			/* protect from: bk --cd=/etc -xr -@URL cmd */
+			fprintf(stderr,
+			    "bk: --cd not allowed with -@<URL>\n");
+			return (1);
+		}
+
+		/* -r implies cd2root unless combined with --cd */
+		if (dashr && !dashs && !todir) toroot |= 1;
 		if (dashU) dashA = 1; /* from here on only dashA matters */
+
+		if (toroot && dashs && !dashA) {
+			fprintf(stderr,
+			    "bk: -R/-P not allowed with -s\n");
+			return (1);
+		}
 		if (dashA) sopts = addLine(sopts, strdup("-g"));
 
 		if (av[optind]) {
@@ -313,25 +351,55 @@ main(int volatile ac, char **av, char **env)
 			}
 			hash_free(h);
 		}
-		start_cwd = strdup(proj_cwd());
 		if (remote) {
+			start_cwd = strdup(proj_cwd());
 			cmdlog_start(av, 0);
 			ret = remote_bk(!headers, ac, av);
 			goto out;
 		}
-
+		if (todir && chdir(todir)) {
+			fprintf(stderr, "bk: Cannot chdir to %s\n", todir);
+			return (1);
+		}
+		if ((toroot == 3) && proj_isComponent(0)) {
+			if (proj_cd2product()) {
+				fprintf(stderr,
+				    "bk: Cannot find product root.\n");
+				return(1);
+			}
+		} else if (toroot) {
+			if (proj_cd2root()) {
+				fprintf(stderr,
+				    "bk: Cannot find product root.\n");
+				return(1);
+			}
+		}
+		start_cwd = strdup(proj_cwd());
 		if ((dashA || dashs) && !proj_isEnsemble(0)) {
 			/*
 			 * Downgrade to be compat in standalone trees.
-			 * bk -A => bk -gr
-			 * bk -U => bk -gUr
+			 * bk -A => bk -gr, but with cwd relative paths
+			 * bk -U => bk -gUr, but with cwd relative paths
 			 * bk -sHERE -A => bk -r
 			 */
-			if (dashA) dashr = 1;
-			dashA = dashs = 0;
+			if (dashA) {
+				dashr = 1;
+				sopts = addLine(sopts,
+				   aprintf("--relpath=%s", start_cwd));
+			}
+			dashs = 0;
 
-			// -s|-sHERE|-s.|-s^PRODUCT is fine.
-			// XXX - we don't look.
+			// -s|-sHERE|-s. is fine.
+			EACH(aliases) {
+				unless (streq(aliases[i], ".") ||
+				    strieq(aliases[i], "HERE")) {
+					fprintf(stderr,
+					    "bk -s: illegal alias used in "
+					    "traditional repository:\n\t%s\n",
+					    aliases[i]);
+					return (1);
+				}
+			}
 			freeLines(aliases, free);
 			aliases = 0;
 		}
@@ -342,27 +410,6 @@ main(int volatile ac, char **av, char **env)
 			}
 			ret = nested_each(!headers, nav, aliases);
 			goto out;
-		}
-		if (dashr) {
-			if (dir) {
-				unless (chdir(dir) == 0) {
-					perror(dir);
-					return (1);
-				}
-			} else {
-				if (proj_cd2root()) {
-					fprintf(stderr,
-					    "bk: Cannot find package root.\n");
-					return(1);
-				}
-			}
-		}
-		if (dashA) {
-			if (proj_cd2product()) {
-				fprintf(stderr,
-				    "bk: Cannot find package root.\n");
-				return(1);
-			}
 		}
 		if (locking) {
 			int	waitsecs;
@@ -409,6 +456,7 @@ bad_locking:				fprintf(stderr,
 			prog = "bk"; /* for error messages */
 			sopts = unshiftLine(sopts, strdup("sfiles"));
 			if (dashr) {
+				if (dashA) proj_cd2root();
 				/* bk [opts] -r => bk -R sfiles [opts] */
 				sopts = addLine(sopts, 0);
 				av = &sopts[1];
@@ -420,7 +468,7 @@ bad_locking:				fprintf(stderr,
 				sopts = unshiftLine(sopts, strdup("bk"));
 				sopts = addLine(sopts, strdup("-h"));
 				sopts = addLine(sopts,
-				    strdup("--prefix=$RELPATH"));
+				    aprintf("--relpath=%s", start_cwd));
 				ret = nested_each(!headers, sopts, aliases);
 				goto out;
 			} else if (from_iterator) {
@@ -437,8 +485,14 @@ bad_locking:				fprintf(stderr,
 			}
 			if (dashr) {
 				sopts = unshiftLine(sopts, strdup("sfiles"));
+				if (dashA) sopts = unshiftLine(sopts,
+				    strdup("-R"));
 			} else{
 				sopts = unshiftLine(sopts, strdup("-A"));
+				EACH(aliases) {
+					sopts = unshiftLine(sopts,
+					    aprintf("-s%s", aliases[i]));
+				}
 			}
 			sopts = unshiftLine(sopts, strdup("bk"));
 			sopts = addLine(sopts, 0);
@@ -485,19 +539,15 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 	nt_loadWinSock();
 #endif
 	cmdlog_start(av, 0);
-	if (buffer) {
-		unless (streq(buffer, "stdin")) {
-			fprintf(stderr, "bk: only -Bstdin\n");
-			exit(1);
-		}
+	if (buf_stdin) {
 		buffer = bktmp(0, "stdin");
 		fd2file(0, buffer);
 		close(0);
 		open(buffer, O_RDONLY, 0);
 	}
 	ret = cmd_run(prog, is_bk, ac, av);
-	if (locking && streq(locking, "r")) repository_rdunlock(0, 0);
-	if (locking && streq(locking, "w")) repository_wrunlock(0, 0);
+	if (locking && (locking[0] == 'r')) repository_rdunlock(0, 0);
+	if (locking && (locking[0] == 'w')) repository_wrunlock(0, 0);
 out:
 	progress_restoreStderr();
 	cmdlog_end(ret, 0);
@@ -532,6 +582,33 @@ out:
 }
 
 /*
+ * Checks to see if it's allowed to run a given command
+ */
+private int
+cmd_canRun(CMD *cmd)
+{
+	/* unknown commands are okay to run, they fall through bk.sh */
+	unless (cmd) return (1);
+	/* handle pro only commands */
+	if (cmd->pro) {
+		unless (proj_root(0)) {
+			fprintf(stderr,
+			    "%s: cannot find package root\n", prog);
+			return (0);
+		}
+		if (bk_notLicensed(0, LIC_ADM, 0)) return (0);
+	}
+
+	/* Handle restricted commands */
+	if (cmd->restricted && !bk_isSubCmd) {
+		/* error message matches shell message */
+		fprintf(stderr, "%s: command not found\n", prog);
+		return (0);
+	}
+	return (1);
+}
+
+/*
  * The commands here needed to be spawned, not execed, so command
  * logging works.
  */
@@ -554,23 +631,7 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 		fprintf(stderr, "%s is not a linkable command\n",  prog);
 		return (1);
 	}
-	if (cmd) {
-		/* handle pro only commands */
-		if (cmd->pro) {
-			unless (proj_root(0)) {
-				fprintf(stderr,
-				    "%s: cannot find package root\n", prog);
-				return (1);
-			}
-			if (bk_notLicensed(0, LIC_ADM, 0)) return (1);
-		}
-
-		/* Handle restricted commands */
-		if (cmd->restricted && !bk_isSubCmd) {
-			/* error message matches shell message */
-			cmd = 0;
-		}
-	}
+	unless (cmd_canRun(cmd)) return (1);
 	/* unknown commands fall through to bk.script */
 	switch (cmd ? cmd->type : CMD_BK_SH) {
 	    case CMD_INTERNAL:		/* handle internal command */
@@ -691,7 +752,7 @@ bk_cleanup(int ret)
 	/* this is attached to stdin and we have to clean it up or
 	 * bktmpcleanup() will deadlock on windows.
 	 */
-	if (buffer && exists(buffer)) {
+	if (buffer) {
 		close(0);
 		unlink(buffer);
 		free(buffer);
@@ -1213,7 +1274,14 @@ cmdlog_end(int ret, int bkd_cmd)
 	}
 
 	if (!bkd_cmd && (cmdlog_locks & (CMD_WRLOCK|CMD_RDLOCK))) {
-		repository_unlock(0, 0);
+		project	*prod = 0;
+
+		if ((cmdlog_flags & CMD_LOCK_PRODUCT) &&
+		    proj_isComponent(0)  &&
+		    !getenv("_BK_TRANSACTION")) {
+			prod = proj_product(0);
+		}
+		repository_unlock(prod, 0);
 	}
 out:
 	cmdlog_buffer[0] = 0;

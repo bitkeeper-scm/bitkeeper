@@ -488,10 +488,11 @@ bk csetprune -k 1234567890abcdeF < ../KEYS 2> ERROR && {
 	exit 1
 }
 RDOM="1234567890abcdef"
+SALTED="e9c6ae3a919b57be"
 bk csetprune -k "$RDOM" < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
 rbits=`bk prs -r+ -hnd':RANDOM:' ChangeSet`
-test "$rbits" = "$RDOM" || {
+test "$rbits" = "$SALTED" || {
 	echo Failed
 	echo "RANDOM bits in rootkey: wanted '$RDOM', got '$rbits'"
 	exit 1

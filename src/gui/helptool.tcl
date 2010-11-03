@@ -519,22 +519,9 @@ proc widgets {} \
 	bind all <Alt-Left>		{ upStack }
 	bind all <Alt-Right>		{ downStack }
 	bind all <$gc(help.quit)>	{ exit }
-	if {$gc(windows) || $gc(aqua)} {
-		bind all <MouseWheel> {
-		    if {%D < 0} {
-			scroll "page" 1
-		    } else {
-			scroll "page" -1
-		    }
-		}
-	}
 	if {$gc(aqua)} {
 		bind all <Command-q> exit
 		bind all <Command-w> exit
-	}
-	if {$gc(x11)} {
-		bind all <Button-4> 	{ scroll "page" -1; break }
-		bind all <Button-5> 	{ scroll "page" 1; break }
 	}
 	bind .menu.entry <Return> { search }
 	bindtags .menu.entry { all .menu.entry Entry . }

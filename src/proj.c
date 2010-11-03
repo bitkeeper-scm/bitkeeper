@@ -72,12 +72,8 @@ private struct {
 private project *
 projcache_lookup(char *dir)
 {
-	project	*ret = 0;
-	project	**p;
-
 	unless (proj.cache) proj.cache = hash_new(HASH_MEMHASH);
-	if (p = hash_fetchStr(proj.cache, dir)) ret = *p;
-	return (ret);
+	return (hash_fetchStrPtr(proj.cache, dir));
 }
 
 /*
@@ -87,7 +83,7 @@ projcache_lookup(char *dir)
 private void
 projcache_store(char *dir, project *p)
 {
-	unless (hash_insert(proj.cache, dir, strlen(dir)+1, &p, sizeof(p))) {
+	unless (hash_insertStrPtr(proj.cache, dir, p)) {
 		/* we should never init a new project when we already
 		 * have a copy open.
 		 */
@@ -721,9 +717,20 @@ proj_repoID(project *p)
 void
 proj_reset(project *p)
 {
+	project	*p2;
 	hash	*h;
 	char	**recent;
 
+	/* free the cwd project */
+	if (proj.curr && (!p || (p == proj.curr))) {
+		/*
+		 * proj_free() checks proj caches like proj.curr so
+		 * proj.curr must be zero to avoid assert
+		 */
+		p2 = proj.curr;
+		proj.curr = 0;
+		proj_free(p2);
+	}
 	if (p) {
 		if (p->rootkey) {
 			free(p->rootkey);
@@ -776,16 +783,6 @@ proj_reset(project *p)
 			projcache_store(p->root, p);
 		}
 	} else {
-		/* free the cwd project */
-		if (proj.curr) {
-			/*
-			 * proj_free() checks proj caches like proj.curr
-			 * so proj.curr must be zero to avoid assert
-			 */
-			p = proj.curr;
-			proj.curr = 0;
-			proj_free(p);
-		}
 		/*
 		 * proj_free() checks to see that freed item isn't cached.
 		 * Mark the proj.recent cache as empty before freeing.

@@ -299,6 +299,7 @@ err:			if (zout) {
 			unless (bytes) {
 				zero = 0;
 				close(fd0);
+				fd0 = 0;
 				continue;
 			}
 			assert(bytes <= sizeof(wbuf));
@@ -368,7 +369,7 @@ died:			if (fd1) {
 					fputs(hdr, stdout);
 					if (fwrite(buf, 1, i, stdout) != i) {
 						perror("fwrite");
-						break;
+						goto died;
 					}
 				}
 			} else {
@@ -386,7 +387,7 @@ died:			if (fd1) {
 					fputs(hdr, stdout);
 					if (fwrite(buf, 1, i, stdout) != i) {
 						perror("fwrite");
-						break;
+						goto died;
 					}
 				}
 			} else {
@@ -395,6 +396,10 @@ died:			if (fd1) {
 			}
 		}
 	}
+	/* make sure we are not hold any connections to child */
+	if (fd0) close(fd0);
+	if (fd1) close(fd1);
+	if (fd2) close(fd2);
 	if ((waitpid(pid, &status, 0) > 0) && WIFEXITED(status)) {
 		rc = WEXITSTATUS(status);
 	} else {
@@ -442,10 +447,19 @@ cmd_wrunlock(int ac, char **av)
 int
 debugargs_main(int ac, char **av)
 {
-	int	i;
+	int	i, n;
+	char	*t;
 
 	for (i = 0; av[i]; i++) {
 		printf("%d: %s\n", i, shellquote(av[i]));
+	}
+	printf("cwd: %s\n", proj_cwd());
+	if (start_cwd) printf("start_cwd: %s\n", start_cwd);
+	if ((i > 1) && streq(av[i-1], "-")) {
+		printf("stdin:\n");
+		if (t = fgetline(stdin)) printf("%s\n", t);
+		for (n = 0; fgetline(stdin); n++);
+		if (n) printf("... %d more lines ...\n", n);
 	}
 	return (0);
 }

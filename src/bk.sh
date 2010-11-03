@@ -37,22 +37,12 @@ __cd2product() {
 	cd "$root"
 }
 
-# Back by popular demand
-_populate() {
-	bk here add "$@"
-}
-
-_unpopulate() {
-	bk here rm "$@"
-}
-
 # faster way to get repository status
 _repocheck() {
 	V=-v
-	H=--headers
 	Q=""
 	case "X$1" in
-	    X-q)	Q=-q; H=""; V="";;
+	    X-q)	Q=-q; V="";;
 	    X-*)	echo "Invalid option: $1"
 	    		echo "Usage: bk repocheck [-q]"
 			printf "This checks repository integrity by running: "
@@ -71,9 +61,9 @@ _repocheck() {
 		}
 		cd "$2" || exit 1
 	}
-	CMD="bk -s -r $Q$H check -aBc $V"
+	CMD="bk -s -r $Q check -aBc $V"
 	# check output goes to stderr, so put this to stderr too
-	test "X$Q" = X && echo running: $CMD 1>&2
+	test "X$Q" = X && echo === Checking `bk -P pwd` === 1>&2
 	$CMD
 }
 
@@ -165,8 +155,50 @@ verbose() {
 	test -z "$QUIET" && echo "$*" > /dev/tty
 }
 
-_prefixed_sfiles() {
-	bk sfiles --prefix="`bk pwd -P`" "$@"
+_gate() {
+	Q=""
+	RC=0
+	REMOVE=""
+	while getopts rq opt
+	do
+		case "$opt" in
+		r) REMOVE=1;;
+		q) Q='-q';;
+		*) bk help -s gate; exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	__cd2product
+	test "$REMOVE" && {
+		test "X$1" = X || {
+			bk help -s gate
+			exit 1
+		}
+		if [ -f BitKeeper/log/GATE ]
+		then	rm -f BitKeeper/log/GATE
+			qecho "This is no longer a gate"
+		else	qecho "This is not a gate"
+		fi
+		exit 0
+	}
+	test "X$1" = X && {
+		if [ -f BitKeeper/log/GATE ]
+		then	qecho "This is a gate"
+		else	qecho "This is not a gate"
+			RC=1
+		fi
+		exit $RC
+	}
+	test "$1" = "." || {
+		bk help -s gate
+		exit 1
+	}
+	if [ -f BitKeeper/log/GATE ]
+	then	qecho "This is already a gate"
+	else	touch BitKeeper/log/GATE
+		qecho "This is now a gate"
+	fi
+	exit 0
 }
 
 _portal() {
@@ -1072,122 +1104,6 @@ _clonemod() {
 _leaseflush() {
         echo "Please use 'bk lease flush' now." 1>&2
 	bk lease flush -a
-}
-
-__find_merge_errors() {
-	__cd2root
-	NEW=$TMP/bk.NEW.$$
-	O1=$TMP/bk.OLD301.$$
-	O2=$TMP/bk.OLD302.$$
-	LIST=$TMP/bk.LIST.$$
-
-	echo Searching for merges with possible problems from old versions of bitkeeper...
-	IFS="|"
-	bk sfiles -g | grep -v ChangeSet |
-	bk prs -hnd'$if(:MERGE:){:GFILE:|:REV:|:PARENT:|:MPARENT:|:GCA2:|:SETGCA:|:TIME_T:|:LI:|:LD:|:LU:}' - |
-	while read g r p m gca setgca timet LI LD LU
-	do	test "$gca" = "$setgca" && continue
-		test $timet -lt 1042681071 && continue    # 3.0.1 release date
-
-		# it was possible for bk-3.0.1 to replace a merge
-		# with an empty file.  If this happened, flag it.
-		if [ $LU -eq 0 -a $LI -eq 0 -a $LD -gt 0 ]; then 
-			echo "$g|$r|$p|$m|3.0.1 <empty merge>"
-			continue
-		fi
-
-		bk smerge -g -l$p -r$m "$g" > $NEW
-		bk get -qkpr$r "$g" > $O1
-		# if the new smerge automerges and matches user merge, then
-		# no problems.
-		cmp -s $NEW $O1 && continue
-
-		# if user's merge matches SCCS merge, then skip
-		if [ $LI -eq 0 -a $LD -eq 0 ]; then
-			continue
-		fi
-
-		SMERGE_EMULATE_BUGS=301 bk smerge -g -l$p -r$m "$g" > $O1
-		SMERGE_EMULATE_BUGS=302 bk smerge -g -l$p -r$m "$g" > $O2
-		bad1=0
-		bad2=0
-		cmp -s $O1 $NEW || bad1=1
-		cmp -s $O2 $NEW || bad2=1
-		test $timet -lt 1060807265 && bad2=0	# 3.0.2 release date
-
-		# if we think the merge MIGHT have been bad from 3.0.1 and
-		# it has more then one include, then it couldn't have been
-		# 3.0.1 because the output would be empty and it would have
-		# been caught above.
-		if [ $bad1 -ne 0 ]; then
-			echo "$setgca" | grep -q "," && bad1=0
-		fi
-
-		if [ $bad1 -ne 0 -a $bad2 -ne 0 ]; then
-		    echo "$g|$r|$p|$m|3.0.1+3.0.2"
-		elif [ $bad1 -ne 0 ]; then
-		    echo "$g|$r|$p|$m|3.0.1"
-		elif [ $bad2 -ne 0 ]; then
-		    echo "$g|$r|$p|$m|3.0.2"
-		fi
-	done > $LIST
-	rm -f $O1 $O2 $NEW
-
-	errors=`wc -l < $LIST`
-
-	if [ "$errors" -eq 0 ]; then
-	    echo no errors found!
-	    rm -f $LIST
-	    exit 0
-	fi
-
-	echo $errors errors found.
-	echo
-	cat $LIST | sed 's/|/	/g'
-cat <<EOF
-
-The $errors merges listed above are merges that are potentially
-incorrect because of limitations of earlier versions of BitKeeper.
-Each line is a merge and it contains the following fields:
-  <gfile>   The file that contains the merge.  Because of renames
-            the file might have had a different name during the
-            merge.
-  <rev>     The revision of the merge node
-  <parent>  The parent of the merge node
-  <mparent> The other revision being merged
-  <version> Which version(s) of BitKeeper may have merged this
-            revision incorrectly.
-
-EOF
-	grep -q "empty" $LIST && cat <<EOF
-The lines that contain <empty merge> are merges where BitKeeper
-version 3.0.1 incorrectly wrote an empty file when it tried to
-automerge that file.
-
-EOF
-cat <<EOF
-For each of these merges here is a diff between the corrected merge
-output and merge results that the user of the tool created last time.
-
-Read each diff and look for problems.  It is quite possible that no
-errors will be found.  Futher information about a merge can be found
-by running 'bk explore_merge -rREV FILE'
-
-If you have any questions or need help fixing a problem, please send
-email to support@bitmover.com and we will assist you.
---------------------------------------------------
-EOF
-	grep -v empty < $LIST |
-	while read g r p m ver
-	do
-	        echo $g $r $p $m
-		bk smerge -g -l$p -r$m "$g" > $O1
-		bk get -qkpr$r "$g" > $NEW
-		bk diff -u $O1 $NEW
-		echo --------------------------------------------------
-	done
-	rm -f $LIST
-	rm -f $O1 $NEW
 }
 
 # If the top rev is a merge, redo the merge and leave it in an edited gfile

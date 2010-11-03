@@ -54,8 +54,26 @@ nested_populate(nested *n, char **urls, popts *ops)
 	rc = 0;
 	EACH_STRUCT(n->comps, cp, j) {
 		if (!ops->force && cp->present && !cp->alias) {
-			if (unpopulate_check(ops, cp)) {
-				fprintf(stderr, "%s: unable to remove %s\n",
+			if (nested_isPortal(0)) {
+				fprintf(stderr,
+				    "Cannot remove components in a portal.\n");
+				++rc;
+				break;
+			}
+			if (nested_isGate(0)) {
+				fprintf(stderr,
+				    "Cannot remove components in a gate.\n");
+				++rc;
+				break;
+			}
+			if (cp->pending) {
+				fprintf(stderr,
+				    "%s: unable to remove ./%s, it contains "
+				    "csets not committed in product.\n",
+				    prog, cp->path);
+				++rc;
+			} else if (unpopulate_check(ops, cp)) {
+				fprintf(stderr, "%s: unable to remove ./%s\n",
 				    prog, cp->path);
 				++rc;
 			}
@@ -63,7 +81,7 @@ nested_populate(nested *n, char **urls, popts *ops)
 		if (!cp->present && cp->alias) {
 			/* see if the namespace is not taken */
 			if (exists(cp->path) && !nested_emptyDir(n, cp->path)){
-				fprintf(stderr, "%s: %s not empty\n",
+				fprintf(stderr, "%s: ./%s not empty\n",
 				    prog, cp->path);
 				++rc;
 			}
@@ -80,6 +98,12 @@ nested_populate(nested *n, char **urls, popts *ops)
 	EACH_STRUCT(n->comps, cp, j) {
 		unless (!cp->present && cp->alias) continue;
 again:		if (url = locateComp(ops, cp, 0)) {
+			unless ((flags & SILENT) ||
+			    (ops->last && streq(ops->last, cp->data))) {
+				if (ops->last) free(ops->last);
+				ops->last = strdup(cp->data);
+				fprintf(stderr, "Source %s\n", cp->data);
+			}
 			r = remote_parse(url, 0);
 			assert(r);
 			unless (r->params) r->params = hash_new(HASH_MEMHASH);
@@ -116,7 +140,7 @@ again:		if (url = locateComp(ops, cp, 0)) {
 				 * failed: the dir was not empty no use trying
 				 * other urls
 				 */
-				fprintf(stderr, "%s: %s not empty\n",
+				fprintf(stderr, "%s: ./%s not empty\n",
 				    prog, cp->path);
 			} else {
 				char	*t;
@@ -142,7 +166,7 @@ again:		if (url = locateComp(ops, cp, 0)) {
 				}
 				fprintf(stderr,
 				    "%s: failed to fetch "
-				    "component %s from %s: %s\n",
+				    "component ./%s from %s: %s\n",
 				    prog, cp->path, url, t);
 				free(cp->data);
 				cp->data = 0;
@@ -198,11 +222,12 @@ again:		if (url = locateComp(ops, cp, 0)) {
 	reverseLines(n->comps);	/* deeply nested first */
 	EACH_STRUCT(n->comps, cp, j) {
 		if (cp->present && !cp->alias) {
-			verbose((stderr, "%s: removing %s...", prog, cp->path));
+			verbose((stderr, "%s: removing ./%s...",
+				prog, cp->path));
 			if (nested_rmcomp(n, cp)) {
 				verbose((stderr, "failed\n"));
 				fprintf(stderr,
-				    "%s: remove of %s failed\n",
+				    "%s: remove of ./%s failed\n",
 				    prog, cp->path);
 				rc = 1;
 				break;
@@ -224,7 +249,7 @@ again:		if (url = locateComp(ops, cp, 0)) {
 	}
 
 	/* do consistency check at end */
-	nested_writeHere(n);
+	unless (ops->leaveHERE) nested_writeHere(n);
 	if (ops->runcheck) {
 		rc |= run_check(ops->verbose,
 		    checkfiles, ops->quiet ? 0 : "-v", 0);
@@ -255,10 +280,8 @@ unpopulate_check(popts *ops, comp *c)
 	char	**av;
 	char	**flist = 0;
 
-	if (nested_isPortal(0)) {
-		fprintf(stderr, "Cannot remove components in a portal.\n");
-		return (-1);
-	}
+	if (nested_isPortal(0) || nested_isGate(0)) return (-1);
+	if (c->pending) return (-1);
 	if (chdir(c->path)) {
 		perror(c->path);
 		goto out;
@@ -287,7 +310,7 @@ unpopulate_check(popts *ops, comp *c)
 			av = addLine(av, "changes");
 			av = addLine(av, "-LD");
 			av = catLines(av, flist);
-			fprintf(stderr, "Local changes to %s found:\n",
+			fprintf(stderr, "Local changes to ./%s found:\n",
 			    c->path);
 			av = addLine(av, 0);
 			/* send changes output to stderr */
@@ -387,11 +410,12 @@ locateComp(popts *ops, comp *cp, char ***flist)
 		}
 		/*
 		 * We have 4 possible exit status values to consider from
-		 * havekeys:
+		 * havekeys (see comment before remote_bk() for more info):
 		 *  0   the connection worked and we captured the data
 		 *  16  we connected to the bkd fine, but the repository
 		 *      is not there.  This URL is bogus and can be ignored.
 		 *  8   The bkd_connect() failed
+		 *  33	havekeys says this is myself
 		 *  other  Another failure.
 		 *
 		 */
@@ -406,6 +430,10 @@ locateComp(popts *ops, comp *cp, char ***flist)
 		} else if (rc == 8) {
 			/* connect failure */
 			verbose((stderr, "connect failure\n"));
+		} else if (rc == 33) {
+			/* talking to myself */
+			urllist_rmURL(ops->urllist, 0, url);
+			verbose((stderr, "link to myself\n"));
 		} else if (rc != 0) {
 			/* some other failure */
 			verbose((stderr, "unknown failure\n"));
@@ -428,12 +456,6 @@ locateComp(popts *ops, comp *cp, char ***flist)
 	}
 out:	freeLines(lurls, free);
 	if (cp->remotePresent) {
-		unless ((flags & SILENT) ||
-		    (ops->last && streq(ops->last, cp->data))) {
-			if (ops->last) free(ops->last);
-			ops->last = strdup(cp->data);
-			fprintf(stderr, "Source %s\n", cp->data);
-		}
 		freeLines(missing, free);
 		if (flist) *flist = 0;
 		return (cp->data);
@@ -443,7 +465,7 @@ out:	freeLines(lurls, free);
 	} else {
 		freeLines(missing, free);
 	}
-	fprintf(stderr, "%s: No other sources for %s known\n",
+	fprintf(stderr, "%s: No other sources for ./%s known\n",
 	    prog, cp->path);
 	return (0);
 }

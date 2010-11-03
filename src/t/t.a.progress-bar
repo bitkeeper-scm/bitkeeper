@@ -9,7 +9,7 @@ chkoutput() {
 BK_NO_HARDLINK_CLONE=1
 export BK_NO_HARDLINK_CLONE
 
-PRODUCT=PRODUCT
+PRODUCT=.
 export PRODUCT
 
 # Grep the progress-bar output for the given pass names.
@@ -44,10 +44,7 @@ chkblanks() {
 add() {
 	touch "$1" || return
 	bk new $Q "$1" || return
-	bk commit $Q -y"$1" || return
-	[ "`bk root`" = "`bk -P root`" ] || {
-	    bk -P commit $Q -y"$1" || return
-	}
+	bk -s commit $Q -y"$1" || return
 }
 
 echo $N Setup .......................................................$NL
@@ -151,7 +148,7 @@ cat - <<'EOF' >chkoutput.l
 void
 main(_unused int ac, string av[])
 {
-	int	comps{string};
+	int	comps{string}, total;
 	string	comp, s;
 	FILE	f;
 
@@ -163,6 +160,11 @@ main(_unused int ac, string av[])
 
 	unless (defined(f = fopen("x", "r"))) die("fopen");
 	while (defined(s = fgetline(f))) {
+		// There are cases where we rewalk list, so reset total
+		if ((s =~ /^clone: failed to fetch/)
+		    || (s =~ /^Could not undo/)) {
+		    	total = undef;
+		}
 #		printf("Checking <%s>\n", s);
 		// Check for output interleaved with progress bar updates.
 		// This would be any output between the \r's in |\r\r
@@ -181,6 +183,13 @@ main(_unused int ac, string av[])
 			} else {
 				puts("unexpected component ${$3}");
 				exit(2);
+			}
+			unless (defined(total)) {
+				total = (int)$2;
+			} else unless (total == (int)$2) {
+				puts("total is not consistent ${total} ${$2}");
+				puts("line is ${s}");
+				exit(3);
 			}
 		}
 	}
@@ -1985,7 +1994,7 @@ bk here rm $Q comp1 || fail
 cd ..
 mv product3 product3-renamed
 bk clone clone3 clone3-clone >OUT 2>&1 && fail -f OUT
-grep -q 'No other sources for comp1 known' OUT || fail -f OUT
+grep -q 'No other sources for ./comp1 known' OUT || fail -f OUT
 chknumbars OUT 2 || fail -f OUT $msg
 chkblanks OUT 0 || fail -f OUT $msg
 chkoutput OUT $PRODUCT || fail -f OUT $msg
@@ -2520,7 +2529,7 @@ bk here rm $Q comp1 || fail
 cd ..
 mv product3 product3-renamed
 bk clone -q clone3 clone3-clone >OUT 2>&1 && fail -f OUT
-grep -q 'No other sources for comp1 known' OUT || fail -f OUT
+grep -q 'No other sources for ./comp1 known' OUT || fail -f OUT
 chknumbars OUT 0 || fail -f OUT $msg
 chkblanks OUT 0 || fail -f OUT $msg
 mv product3-renamed product3 || fail
@@ -3031,7 +3040,7 @@ bk here rm $Q comp1 || fail
 cd ..
 mv product3 product3-renamed
 bk clone -v clone3 clone3-clone >OUT 2>&1 && fail -f OUT
-grep -q 'No other sources for comp1 known' OUT || fail -f OUT
+grep -q 'No other sources for ./comp1 known' OUT || fail -f OUT
 chkoutput OUT $PRODUCT || fail -f OUT $msg
 chkblanks OUT 0 || fail -f OUT $msg
 mv product3-renamed product3 || fail

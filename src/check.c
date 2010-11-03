@@ -43,7 +43,6 @@ private	int	goneKey;	/* 1: list files, 2: list deltas, 3: both */
 private	int	badWritable;	/* if set, list bad writable file only */
 private	int	names;		/* if set, we need to fix names */
 private	int	gotDupKey;	/* if set, we found dup keys */
-private	int	lod;		/* if set, we need to fix lod data */
 private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
 private	sccs	*cset;		/* the initialized cset file */
@@ -229,6 +228,7 @@ check_main(int ac, char **av)
 
 	if (verbose == 1) {
 		progress_delayStderr();
+		if (!title && (name = getenv("_BK_TITLE"))) title = name;
 		tick = progress_start(PROGRESS_BAR, nfiles);
 	}
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
@@ -441,11 +441,7 @@ check_main(int ac, char **av)
 			fprintf(stderr, "check: trying to fix xflags...\n");
 			system("bk -r xflags");
 		}
-		if (lod && (fix > 1)) {
-			fprintf(stderr, "check: trying to remove lods...\n");
-			system("bk _fix_lod1");
-		}
-		if (names || xflags_failed || lod) {
+		if (names || xflags_failed) {
 			errors = 2;
 			goto out;
 		}
@@ -901,7 +897,7 @@ checkAll(hash *keys)
 {
 	char	*t, *rkey;
 	hash	*warned = hash_new(HASH_MEMHASH);
-	hash	**deltas = 0;
+	hash	*deltas = 0;
 	int	found = 0;
 	char	buf[MAXPATH*3];
 
@@ -928,10 +924,10 @@ checkAll(hash *keys)
 				assert(t);
 				*t++ = 0;
 				unless (streq(buf, r2deltas->kptr)) {
-					deltas = hash_fetchStr(r2deltas, buf);
-					assert(deltas && *deltas);
+					deltas = hash_fetchStrPtr(r2deltas, buf);
+					assert(deltas);
 				}
-				if (hash_deleteStr(*deltas, t)) {
+				if (hash_deleteStr(deltas, t)) {
 					fprintf(stderr, "delta %s missing?\n",
 					    t);
 					exit(1);
@@ -943,9 +939,9 @@ checkAll(hash *keys)
 	EACH_HASH(r2deltas) {
 		rkey = r2deltas->kptr;
 		if (hash_fetchStr(keys, rkey)) continue;
-		deltas = r2deltas->vptr;
+		deltas = *(hash **)r2deltas->vptr;
 		/* no resync deltas, whatever that means */
-		unless (t = hash_first(*deltas)) continue;
+		unless (t = hash_first(deltas)) continue;
 
 		if (gone(rkey, goneDB)) continue;
 
@@ -1559,13 +1555,10 @@ check(sccs *s, MDBM *idDB)
 		}
 		/* check for V1 LOD */
 		if (d->r[0] != 1) {
-			lod = 1;	/* global tag */
 			errors++;
-			unless ((fix & 2) || goneKey) {
-				fprintf(stderr,
-				    "Obsolete LOD data(bk help chk4): %s|%s\n",
-		    		    s->gfile, d->rev);
-			}
+			fprintf(stderr,
+			    "Obsolete LOD data(bk help chk4): %s|%s\n",
+	    		    s->gfile, d->rev);
 		}
 
 		unless (d->flags & D_CSET) continue;

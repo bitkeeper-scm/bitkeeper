@@ -19,7 +19,7 @@ cd "$HERE"
 commercial standalone2
 cd "$HERE"
 nested nested1
-bk attach -q "$HERE/standalone1" component1 || exit 3
+bk attach --force -q "$HERE/standalone1" component1 || exit 3
 cd "$HERE"
 nested nested2
 cd "$HERE"
@@ -154,9 +154,9 @@ echo $N Check re-attaching a detached repo ..........................$NL
 # You wouldn't necessarily do this normally in practice, but it
 # helps check that a detached repo isn't totally messed up.
 cd "$HERE/nested1"
-bk attach -q ../detached1 reattached1 || exit 1
+bk attach --force -q ../detached1 reattached1 || exit 1
 bk detach -q reattached1 ../detached1b || exit 1
-bk attach -q ../detached1b reattached2 || exit 1
+bk attach --force -q ../detached1b reattached2 || exit 1
 echo OK
 
 echo $N Check clone -r of detached repo .............................$NL

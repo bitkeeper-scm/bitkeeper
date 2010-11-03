@@ -190,8 +190,8 @@ commercial() {
 }
 
 fresh_commercial() {
-	_commercial_config > c
-	bk setup -a -f -cc "$1" || { echo "Setup failed!"; exit 1; }
+	_commercial_config > .config
+	bk setup -a -f -c.config "$1" || { echo "Setup failed!"; exit 1; }
 	cd "$1"
 }
 
@@ -204,16 +204,17 @@ nested() {
 		_make_repo nested "$CF" ignored "$2"
 	}
 	(cd "$BK_CACHE"/nested; bk _eula -a)
-	bk clone -lq "$BK_CACHE/nested" "$1" || exit 1
+	bk clone -q "$BK_CACHE/nested" "$1" || exit 1
 	cd "$1" || exit 1
 	bk parent -qr || exit 1
 	bk portal -q . || exit 1
+	bk gate -q . || exit 1
 	rm BitKeeper/log/urllist
 }
 
 fresh_nested() {
-	_commercial_config 1 > c
-	bk setup -P -a -f -cc "$1" || { echo "Setup failed!"; exit 1; }
+	_commercial_config 1 > .config
+	bk setup -P -a -f -c.config "$1" || { echo "Setup failed!"; exit 1; }
 	cd "$1"
 	bk setup -C -a -f gcc
 	bk setup -C -a -f gdb

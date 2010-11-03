@@ -124,6 +124,7 @@ CNT=9
 echo $N "Count the inits for a 'bk clone' ($CNT)........................."$NL
 cd "$HERE"
 nested nest
+bk gate $Q -r
 rm "$FILE"
 bk clone $Q . ../nest2 || exit 1
 check_cnt
@@ -177,7 +178,7 @@ bk changes -Rv > /dev/null || exit 1
 check_cnt
 echo OK
 
-CNT=43
+CNT=44
 echo $N "Count the inits for a 'bk pull -u' ($CNT)......................"$NL
 rm "$FILE"
 bk pull -u $Q || exit 1
@@ -191,7 +192,7 @@ bk unpull -fs $Q || exit 1
 check_cnt
 echo OK
 
-CNT=58
+CNT=59
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 bk portal $Q .
 touch c

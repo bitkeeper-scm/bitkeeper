@@ -143,3 +143,34 @@ here_where_main(int ac, char **av)
 
 }
 
+int
+populate_main(int ac, char **av)
+{
+	char	**nav = 0;
+	int	rc;
+
+	av++;		/* skip [0]=populate */
+	nav = addLine(nav, "here");
+	nav = addLine(nav, "add");
+	while (*av) nav = addLine(nav, *av++);
+	nav = addLine(nav, 0);
+	rc = here_main(ac+1, nav+1);
+	freeLines(nav, 0);
+	return (rc);
+}
+
+int
+unpopulate_main(int ac, char **av)
+{
+	char	**nav = 0;
+	int	rc;
+
+	av++;		/* skip [0]=unpopulate */
+	nav = addLine(nav, "here");
+	nav = addLine(nav, "rm");
+	while (*av) nav = addLine(nav, *av++);
+	nav = addLine(nav, 0);
+	rc = here_main(ac+1, nav+1);
+	freeLines(nav, 0);
+	return (rc);
+}

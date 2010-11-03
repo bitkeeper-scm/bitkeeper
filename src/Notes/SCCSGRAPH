@@ -8,18 +8,18 @@ to assign strict ordering by age with tie breaker of sorting
 their deltakeys.
 
 NOTE: This means how we name deltas is wired into
-to the structure of the graph.
+to the structure of the graph, which gave rise to sortkeys.
 
 Each node has a parent serial number
 ------------------------------------
 Every node has 1 parent serial assigned to it.
 For the root node, it has a parent of 0.
 
-The parent link forms a tree graph.
+The parent link forms a tree graph -- no merges.
 
 Many nodes may have the same parent serial number
 -------------------------------------------------
-Two nodes may be based on the same parent node.
+N nodes may be based on the same parent node.
 The reverse link of parent is kid for the oldest kid.
 And a link list of x->sliblings for the rest of the kids:
 
@@ -28,7 +28,7 @@ d->kid, d->kid->siblings, d->kid->siblings->siblings, ...
 Each node might have a merge serial number
 ------------------------------------------
 NOTE: This is only in BK, and not AT&T SCCS.
-A merge can bring together 2 nodes.
+A merge can bring together at most 2 nodes.
 One of the nodes is a parent, the other is a merge.
 To figure out which is which, walk the parent node of each
 back to the greatest common ancestor, which will always exist.

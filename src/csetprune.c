@@ -4,6 +4,10 @@
 #include "logging.h"
 #include "nested.h"
 #include "range.h"
+#include "graph.h"
+
+/* XXX make this global ? */
+#define	FREE(x)	do { if (x) { free(x); (x) = 0; } } while (0)
 
 /*
  * csetprune - prune a list of files from a ChangeSet file
@@ -34,32 +38,35 @@ typedef struct {
 	char	**complist;
 	hash	*prunekeys;
 	char	**addweave;
+	char	**filelist;	// the list of files to put in this comp
 	char	*rev;
 	char	*who;
 	char	*revfile;	// where to put the corresponding rev key
+	project	*refProj;
 } Opts;
 
 private	int	csetprune(Opts *opts);
+private	int	fixFiles(Opts *opts, char **deepnest);
 private	int	filterWeave(Opts *opts, sccs *cset,
 		    char **cweave, char **deepnest);
-private	int	filterRootkey(Opts *opts, sccs *cset,
-		    char *rk, char **list, int ret, char **deepnest);
+private	int	filterRootkey(Opts *opts, sccs *cset, char *rk,
+		    char **list, int ret, char **deepnest);
 private	int	fixAdded(sccs *cset, char **cweave);
 private	int	newBKfiles(sccs *cset,
 		    char *comp, hash *prunekeys, char ***cweavep);
 private	int	rmKeys(hash *prunekeys);
 private	char	*mkRandom(char *input);
-private	int	found(delta *start, delta *stop);
-private	void	_pruneEmpty(sccs *s, delta *d, u8 *slist, char ***mkid);
-private	void	pruneEmpty(sccs *s, sccs *sb);
+private	int	found(sccs *s, delta *start, delta *stop);
+private	void	_pruneEmpty(sccs *s, delta *d,
+		    u8 *slist, ser_t **sd, char ***mkid);
+private	void	pruneEmpty(sccs *s);
 private	hash	*getKeys(char *file);
 private	int	keeper(char *rk);
 
-private	int	do_file(sccs *s, char *path, char **deepnest);
+private	int	do_file(Opts *opts, sccs *s, char **deepnest);
 private	char	**deepPrune(char **map, char *path);
 private	char	*newname( char *delpath, char *comp, char *path, char **deep);
 private	char	*getPath(char *key, char **term);
-private	int	do_files(char *comppath, char **deepnest);
 private	char	*key2delName(char *rk);
 
 private	int	flags;
@@ -71,6 +78,7 @@ private	ser_t	partition_tip;
 #define	PRUNE_DELCOMP		0x10000000	/* prune deleted to a comp */
 #define	PRUNE_NEW_TAG_GRAPH	0x20000000	/* move tags to real deltas */
 #define	PRUNE_NO_SCOMPRESS	0x40000000	/* leave serials alone */
+#define	PRUNE_NO_TAG_GRAPH	0x80000000	/* ignore tag graph */
 #define	PRUNE_ALL		0x02000000	/* prune all user says to */
 #define	PRUNE_NO_NEWROOT	0x08000000	/* leave backpointers alone */
 
@@ -78,6 +86,7 @@ int
 csetprune_main(int ac, char **av)
 {
 	char	*compfile = 0;
+	char	*sfilePath = 0;
 	char	*weavefile = 0;
 	Opts	*opts;
 	int	i, c, ret = 1;
@@ -88,17 +97,19 @@ csetprune_main(int ac, char **av)
 
 	opts = new(Opts);
 	flags = PRUNE_NEW_TAG_GRAPH;
-	while ((c = getopt(ac, av, "ac:C:k:KNqr:sSw:W:", lopts)) != -1) {
+	while ((c = getopt(ac, av, "ac:C:I;k:KNqr:sStw:W:", lopts)) != -1) {
 		switch (c) {
 		    case 'a': flags |= PRUNE_ALL; break;
 		    case 'c': opts->comppath = optarg; break;
 		    case 'C': compfile = optarg; break;
+		    case 'I': sfilePath = optarg; break;
 		    case 'k': opts->ranbits = optarg; break;
 		    case 'K': flags |= PRUNE_NO_NEWROOT; break;
 		    case 'N': flags |= PRUNE_NO_SCOMPRESS; break;
 		    case 'q': flags |= SILENT; break;
 		    case 'r': opts->rev = optarg; break;
 		    case 'S': flags &= ~PRUNE_NEW_TAG_GRAPH; break;
+		    case 't': flags |= PRUNE_NO_TAG_GRAPH; break;
 		    case 'W': weavefile = optarg; break;
 		    case 'w': opts->who = optarg; break;
 		    case 300: opts->revfile = optarg; break; /* --revfile */
@@ -166,10 +177,18 @@ k_err:			fprintf(stderr,
 		}
 		opts->addweave = file2Lines(0, weavefile);
 	}
-	if (proj_cd2root()) {
+	if (sfilePath) {
+		unless (opts->refProj = proj_init(sfilePath)) {
+			fprintf(stderr, "%s: reference repo %s failed\n",
+			    prog, sfilePath);
+			goto err;
+		}
+	}
+	if (!opts->refProj && proj_cd2root()) {
 		fprintf(stderr, "%s: cannot find package root\n", prog);
 		goto err;
 	}
+	if (flags & PRUNE_NO_TAG_GRAPH) putenv("_BK_STRIPTAGS=1");
 	if (csetprune(opts)) {
 		fprintf(stderr, "%s: failed\n", prog);
 		goto err;
@@ -177,10 +196,32 @@ k_err:			fprintf(stderr,
 	ret = 0;
 
 err:
+	if (opts->refProj) proj_free(opts->refProj);
 	if (opts->prunekeys) hash_free(opts->prunekeys);
 	if (opts->addweave) freeLines(opts->addweave, free);
 	if (opts->complist) freeLines(opts->complist, free);
 	return (ret);
+}
+
+private	int
+fixPath(sccs *s, char *path)
+{
+	char	*spath = name2sccs(path);
+
+	/* arrange for this sccs* to write to here */
+	free(s->sfile);
+	s->sfile = strdup(spath);
+	free(s->gfile);
+	s->gfile = sccs2name(s->sfile);
+	free(s->pfile);
+	s->pfile = strdup(sccs_Xfile(s, 'p'));
+	free(s->zfile);
+	s->zfile = strdup(sccs_Xfile(s, 'z'));
+	s->state &= ~(S_PFILE|S_ZFILE|S_GFILE);
+	/* NOTE: we leave S_SFILE set, but no sfile there */
+	mkdirf(spath);
+	free(spath);
+	return (0);
 }
 
 private	int
@@ -189,14 +230,25 @@ csetprune(Opts *opts)
 	int	empty_nodes = 0, ret = 1;
 	int	status;
 	delta	*d = 0;
-	sccs	*cset = 0, *csetb = 0;
+	sccs	*cset = 0;
 	char	*p, *p1;
 	char	**cweave = 0;
 	char	**deepnest = 0;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
 
-	verbose((stderr, "Processing ChangeSet file...\n"));
+	if (opts->refProj) {
+		verbose((stderr, "Processing all files...\n"));
+		sccs_mkroot(".");
+		strcpy(buf, CHANGESET);
+		if (fileLink(proj_fullpath(opts->refProj, CHANGESET), buf)) {
+			fprintf(stderr,
+			    "%s: linking cset file failed\n", prog);
+			goto err;
+		}
+	} else {
+		verbose((stderr, "Processing ChangeSet file...\n"));
+	}
 	unless (cset = sccs_csetInit(0)) {
 		fprintf(stderr, "csetinit failed\n");
 		goto err;
@@ -242,24 +294,17 @@ csetprune(Opts *opts)
 	cweave = 0;
 
 	/* blow away file cache -- init all sfiles in repo */
-	rmKeys(opts->prunekeys);
-	if (do_files(opts->comppath, deepnest)) goto err;
+	unless (opts->refProj) rmKeys(opts->prunekeys);
+	if (opts->comppath && fixFiles(opts, deepnest)) goto err;
+
 	if (empty_nodes == 0) goto finish;
 
 	unless ((cset = sccs_csetInit(INIT_NOCKSUM)) && HASGRAPH(cset)) {
 		fprintf(stderr, "%s: cannot init ChangeSet file\n", prog);
 		goto err;
 	}
-	unless ((csetb = sccs_csetInit(INIT_NOCKSUM)) && HASGRAPH(csetb)) {
-		fprintf(stderr,
-		    "%s: cannot init ChangeSet backup file\n", prog);
-		goto err;
-	}
 	verbose((stderr, "Pruning ChangeSet file...\n"));
-	sccs_close(csetb); /* for win32 */
-	pruneEmpty(cset, csetb);	/* does a sccs_free(cset) */
-	sccs_free(csetb);
-	csetb = 0;
+	pruneEmpty(cset);	/* does a sccs_free(cset) */
 	unless ((cset = sccs_csetInit(INIT_WACKGRAPH|INIT_NOCKSUM)) &&
 	    HASGRAPH(cset)) {
 		fprintf(stderr, "Whoops, can't reinit ChangeSet\n");
@@ -284,12 +329,19 @@ csetprune(Opts *opts)
 	cset = 0;
 finish:
 	proj_reset(0);	/* let go of BAM index */
-	verbose((stderr, "Regenerating ChangeSet file checksums...\n"));
-	sys("bk", "checksum", "-f", "ChangeSet", SYS);
 	// sometimes want to skip this to save another sfile write/walk.
 	unless (flags & PRUNE_NO_NEWROOT) {
+		verbose((stderr, "Regenerating ChangeSet file checksums...\n"));
+		sys("bk", "checksum", "-f", "ChangeSet", SYS);
 		unless (opts->ranbits) {
 			randomBits(buf);
+			opts->ranbits = buf;
+		} else unless (opts->comppath) {
+			p = aprintf("SALT %s\n", opts->ranbits);
+			p1 = mkRandom(p);
+			free(p);
+			strcpy(buf, p1);
+			free(p1);
 			opts->ranbits = buf;
 		} else if (opts->comppath && !streq(opts->comppath, ".")) {
 			p = aprintf("%s %s\n", opts->comppath, opts->ranbits);
@@ -359,9 +411,84 @@ statuschk:	unless (WIFEXITED(status)) goto err;
 	ret = 0;
 
 err:	if (cset) sccs_free(cset);
-	if (csetb) sccs_free(csetb);
 	/* ptrs into complist, don't free */
 	if (deepnest) freeLines(deepnest, 0);
+	return (ret);
+}
+
+private	int
+bypath(const void *a, const void *b)
+{
+	char	*s1 = *(char**)a;
+	char	*s2 = *(char**)b;
+	char	*p1, *p2;
+	int	len;
+
+	p1 = strchr(s1, '|');
+	p2 = strchr(s2, '|');
+	len = p1-s1;
+	if ((p2-s2) < len) len = p2-s2;
+	if (len = strncmp(s1, s2, len)) return (len);
+	return ((p1-s1) - (p2-s2));
+}
+
+/*
+ * This works in two ways: operate on a local project (refProj == 0)
+ * or reach into another repo and init the file there.
+ * In both cases, a rename is done.  In the local case, the rename
+ * is moving within a repo, either to where it already is (in the
+ * case of a product), or up.  To make sure the namespace is clean,
+ * we could do a breadth first search, and not be sfiles order.
+ * Which would take more fixPath jiggering, and not worth it for
+ * just the product case.  Just run 'bk names' (which shouldn't do
+ * anything, if this is indeed the product).
+ */
+private	int
+fixFiles(Opts *opts, char **deepnest)
+{
+	char	*idcache;
+	MDBM	*idDB = 0;
+	char	*rk;
+	sccs	*s = 0;
+	delta	*d;
+	int	i, ret = 1;
+
+	idcache = aprintf("%s/%s",
+	    proj_root(opts->refProj), getIDCACHE(opts->refProj));
+	unless (idDB = loadDB(idcache, 0, DB_IDCACHE)) {
+		free(idcache);
+		perror("idcache");
+		return (1);
+	}
+	free(idcache);
+	/* sort from current hash order 'final-path|rootkey' */
+	sortLines(opts->filelist, bypath);
+	EACH(opts->filelist) {
+		rk = strchr(opts->filelist[i], '|');
+		rk++;
+		if (s = sccs_keyinit(opts->refProj, rk, INIT_MUSTEXIST, idDB)) {
+			if (do_file(opts, s, deepnest) ||
+			    !(d = sccs_top(s)) ||
+			    (opts->refProj && fixPath(s, d->pathname)) ||
+			    sccs_newchksum(s)) {
+				fprintf(stderr,
+				    "%s: file transform failed\n  %s\n",
+				    prog, rk);
+			    	goto err;
+			}
+		}
+	}
+	unless (opts->refProj) {
+		/* Too noisy for (flags & SILENT) ? " -q" : "" */
+		verbose((stderr, "Fixing names .....\n"));
+		system("bk -r names -q");
+	}
+	ret = 0;
+err:
+	sccs_free(s);
+	if (idDB) mdbm_close(idDB);
+	freeLines(opts->filelist, free);
+	opts->filelist = 0;
 	return (ret);
 }
 
@@ -562,11 +689,12 @@ whereError(int didHeader, char *orig, char *dk)
 
 	unless (didHeader) {
 		fprintf(stderr,
-		    "%s: file moved between components.\n"
+		    "%s: At least one file moved between components.\n"
 		    "Partition will not work on this repository.\n"
-		    "You need to backport these files to a repository\n"
-		    "based on the partition reference revision.\n"
-		    "Listed below are files and where they moved from.\n",
+		    "You need to move these files to the component\n"
+		    "they were in based on the partition reference revision.\n"
+		    "Listed below are files and the component "
+		    "they need to be in.\n",
 		    prog);
 	}
 	path = getPath(dk, &end);
@@ -631,6 +759,7 @@ filterRootkey(Opts *opts,
 	char	*delpath = 0;
 	char	*rnew, *rend, *dnew, *dend, *which = 0, *cur;
 	int	i, badname, skip, len, origlen;
+	int	gotTip = 0;
 	char	buf[MAXKEY * 2 + 2];
 
 	unless (sccs_iskeylong(rk)) {
@@ -721,14 +850,17 @@ prune:
 		 */
 		cur = whichComp(dk, opts->complist);
 		if (cur == INVALID) goto err;
-		unless (sfind(cset, ser)->flags & D_SET) {
+		unless (gotTip || sfind(cset, ser)->flags & D_SET) {
 			unless (streq(which, cur) ||
 			    streq(cur, "|deleted")) {
 				ret |= whereError(ret, which, dk);
 				break; /* one error per file */
 			}
 		}
-		unless (opts->comppath) continue;
+		unless (opts->comppath) {
+			gotTip = 1;
+			continue;
+		}
 
 		/*
 		 * Component path is given, so map rk and dk to that path
@@ -758,6 +890,12 @@ prune:
 		/* XXX: better to just aprintf all the time? */
 		len = sprintf(buf, "%s|%s|%s|%s|%s",
 		   line, rnew, rend+1, dnew, dend+1);
+		if (!gotTip) {
+			gotTip = 1;
+			opts->filelist =
+			    addLine(opts->filelist,
+			    aprintf("%s|%s", dnew, rk));
+		}
 		assert(len < sizeof(buf));
 		if (len <= origlen) {
 			strcpy(line, buf);
@@ -941,12 +1079,40 @@ err:
  *
  * also remove tags, write it out, and free the sccs*.
  */
-private sccs *sc, *scb;
+
+private void
+_clr(sccs *s, delta *d)
+{
+	for (/* set */ ; d->flags & D_RED; d = PARENT(s, d)) {
+		d->flags &= ~D_RED;
+		if (d->merge) _clr(s, MERGE(s, d));
+	}
+}
 
 private int
-found(delta *start, delta *stop)
+_has(sccs *s, delta *d, int stopser)
+{
+	for (/* set */ ; d->serial > stopser; d = PARENT(s, d)) {
+		if (d->flags & D_RED) return (0);
+		d->flags |= D_RED;
+		if (d->merge >= stopser) {
+			if (_has(s, MERGE(s, d), stopser)) return (1);
+		}
+	}
+	return (d->serial == stopser);
+}
+
+/*
+ * Found -- see if one delta can be found in the history of the other.
+ * It is written recursive instead of iterative because it is running in a
+ * possibly large sparse graph (many nodes D_GONE) so having every merge
+ * node iteratively check many nodes can chew up resource.
+ */
+private int
+found(sccs *s, delta *start, delta *stop)
 {
 	delta	*d;
+	int	ret;
 
 	assert(start && stop);
 	if (start == stop) return (1);
@@ -955,17 +1121,9 @@ found(delta *start, delta *stop)
 		start = stop;
 		stop = d;
 	}
-
-	for (d = NEXT(start); d && d != stop; d = NEXT(d)) d->flags &= ~D_RED;
-	start->flags |= D_RED;
-	stop->flags &= ~D_RED;
-
-	for (d = start; d && d != stop; d = NEXT(d)) {
-		unless (d->flags & D_RED) continue;
-		if (d->pserial) PARENT(sc, d)->flags |= D_RED;
-		if (d->merge) MERGE(sc, d)->flags |= D_RED;
-	}
-	return ((stop->flags & D_RED) != 0);
+	ret = _has(s, start, stop->serial);
+	_clr(s, start);
+	return (ret);
 }
 
 /*
@@ -1017,7 +1175,7 @@ mkTagGraph(sccs *s)
 			m = 0;
 		}
 		/* if both, but one is contained in other: use newer as p */
-		if (p && m && found(p, m)) {
+		if (p && m && found(s, p, m)) {
 			if (m->serial > p->serial) p = m;
 			m = 0;
 		}
@@ -1243,14 +1401,53 @@ fixTags(sccs *s)
 }
 
 /*
+ * replace any D_GONE nodes from d's symdiff list of serials (sd[d->serial])
+ * with the symdiff list for the D_GONE node, which will have no D_GONE's
+ * in them, because this will have already run on any D_GONE'd nodes.
+ *
+ * This also serves to collapse any dups that accumulated in calls
+ * to symdiff_setParent(), as the call to this is after calls to setParent.
+ */
+private	void
+rmPruned(sccs *s, delta *d, ser_t **sd)
+{
+	int	i;
+	ser_t	*new;
+	delta	*t;
+
+	assert(d->pserial && !(PARENT(s, d)->flags & D_GONE));
+	unless (sd[d->serial]) return;
+
+	new = 0;
+	EACH(sd[d->serial]) {
+		t = sfind(s, sd[d->serial][i]);
+		assert(t);
+		if (t->flags & D_GONE) {
+			new = symdiff_addBVC(sd, new, t);
+		} else {
+			new = addSerial(new, t->serial);
+		}
+	}
+	FREE(sd[d->serial]);
+	sd[d->serial] = symdiff_noDup(new);
+	free(new);
+	/* integrity check - no more gone in list */
+	new = sd[d->serial];
+	EACH(new) {
+		t = sfind(s, new[i]);
+		assert(t && !(t->flags & D_GONE));
+	}
+}
+
+/*
  * We maintain d->parent, d->merge, and d->pserial
  * We do not maintain d->kid, d->sibling, or d->flags & D_MERGED
  *
  * Which means, don't call much else after this, just get the file
  * written to disk!
  */
-private void
-_pruneEmpty(sccs *s, delta *d, u8 *slist, char ***mkid)
+private	void
+_pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd, char ***mkid)
 {
 	delta	*m;
 	int	i;
@@ -1278,37 +1475,42 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, char ***mkid)
 		 * Then fix up those pesky include and exclude lists.
 		 */
 		m = MERGE(s, d);
-		if (found(PARENT(s, d), m)) {	/* merge collapses */
+		if (found(s, PARENT(s, d), m)) {	/* merge collapses */
 			if (d->merge > d->pserial) {
-				d->parent = m;
-				d->pserial = d->merge;
+				symdiff_setParent(s, d, m, sd);
 			}
 			d->merge = 0;
 		}
 		/* else if merge .. (chk case d and e) */
 		else if (sccs_needSwap(s, PARENT(s, d), m)) {
 			d->merge = d->pserial;
-			d->parent = m;
-			d->pserial = m->serial;
+			symdiff_setParent(s, d, m, sd);
 		}
-		/* fix include and exclude lists */
-		sccs_adjustSet(sc, scb, d, slist);
-		// Test cases for these old asserts are in t.csetprune:
-		// assert((d->merge && d->include)||(!d->merge && !d->include));
-		// assert(!d->exclude); -- we can have excludes (see test)
-	}
-	/* Else this never was a merge node, so just adjust inc and exc */
-	else if (d->include || d->exclude) {
-		sccs_adjustSet(sc, scb, d, slist);
 	}
 	/*
-	 * See if node is a keeper ...
+	 * fix the sd list for d to have no D_GONE, and remove any pairs
+	 * that accumulated in the setParent calls.  As part of the pair
+	 * removal, sd[d->serial] could go away if nothing left.
 	 */
-	if (d->added || d->merge || d->include || d->exclude) return;
+	rmPruned(s, d, sd);
+	/*
+	 * See if node is a keeper ...
+	 * Inside knowledge: no sd entry is the same as no include
+	 * or exclude list, because of how the sd entry uses pserial too.
+	 */
+	if (d->added || d->merge || sd[d->serial]) {
+		FREE(d->include);
+		FREE(d->exclude);
+		if (sd[d->serial]) {
+			/* regen old style SCCS inc and excl lists */
+			graph_symdiff(d, PARENT(s, d), slist, sd, 0);
+		}
+		return;
+	}
 
 	/* Not a keeper, so re-wire around it */
 	debug((stderr, "RMDELTA(%s)\n", d->rev));
-	MK_GONE(sc, d);
+	MK_GONE(s, d);
 	assert(d->pserial);	/* never get rid of root node */
 	EACH(mkid[d->serial]) {
 		m = (delta *)mkid[d->serial][i];
@@ -1321,45 +1523,47 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, char ***mkid)
 		unless (m->type == 'D') continue;
 		debug((stderr, "%s gets new parent %s (was %s)\n",
 			    m->rev, d->parent->rev, d->rev));
-		m->parent = d->parent;
-		m->pserial = d->pserial;
+		symdiff_setParent(s, m, PARENT(s, d), sd);
 	}
 	if (d->serial == partition_tip) partition_tip = d->pserial;
 	return;
 }
 
 private void
-pruneEmpty(sccs *s, sccs *sb)
+pruneEmpty(sccs *s)
 {
 	int	i;
 	delta	*n;
 	u8	*slist;
 	char	***mkid;
+	ser_t	**sd;
 
-	sc = s;
-	scb = sb;
-	slist = (u8 *)calloc(sc->nextserial, sizeof(u8));
-	mkid = (char ***)calloc(sc->nextserial, sizeof(char **));
+	slist = (u8 *)calloc(s->nextserial, sizeof(u8));
+	mkid = (char ***)calloc(s->nextserial, sizeof(char **));
 	assert(slist);
 	for (n = s->table; n; n = NEXT(n)) {
-		if (n->merge) {
-			mkid[n->merge] = addLine(mkid[n->merge], n);
-		}
+		if (n->merge) mkid[n->merge] = addLine(mkid[n->merge], n);
 	}
-	for (i = 1; i < sc->nextserial; i++) {
-		unless ((n = sfind(sc, i)) && NEXT(n) && !TAG(n)) continue;
-		_pruneEmpty(sc, n, slist, mkid);
+	sd = graph_sccs2symdiff(s);
+	for (i = 1; i < s->nextserial; i++) {
+		unless ((n = sfind(s, i)) && NEXT(n) && !TAG(n)) continue;
+		_pruneEmpty(s, n, slist, sd, mkid);
 	}
 	free(slist);
-	for (n = s->table; n; n = NEXT(n)) {
-		if (mkid[n->serial]) freeLines(mkid[n->serial], 0);
+	for (i = 1; i < s->nextserial; i++) {
+		if (mkid[i]) freeLines(mkid[i], 0);
+		if (sd[i]) free(sd[i]);
 	}
+	free(mkid);
+	free(sd);
 
-	verbose((stderr, "Rebuilding Tag Graph...\n"));
-	(flags & PRUNE_NEW_TAG_GRAPH) ? rebuildTags(sc) : fixTags(sc);
-	sccs_reDup(sc);
-	sccs_newchksum(sc);
-	sccs_free(sc);
+	unless (flags & PRUNE_NO_TAG_GRAPH) {
+		verbose((stderr, "Rebuilding Tag Graph...\n"));
+		(flags & PRUNE_NEW_TAG_GRAPH) ? rebuildTags(s) : fixTags(s);
+	}
+	sccs_reDup(s);
+	sccs_newchksum(s);
+	sccs_free(s);
 }
 
 /*
@@ -1519,11 +1723,11 @@ getPath(char *key, char **term)
 }
 
 private	int
-do_file(sccs *s, char *comppath, char **deepnest)
+do_file(Opts *opts, sccs *s, char **deepnest)
 {
 	delta	*d;
 	int	i;
-	int	rc = 1;
+	int	ret = 1, rc;
 	char	*newpath;
 	char	*delpath;
 	char	*bam_new;
@@ -1556,7 +1760,7 @@ do_file(sccs *s, char *comppath, char **deepnest)
 			d->pathname = PARENT(s, d)->pathname;
 		} else {
 			newpath = newname(
-			    delpath, comppath, d->pathname, deepnest);
+			    delpath, opts->comppath, d->pathname, deepnest);
 			if (newpath == INVALID) {
 				fprintf(stderr, "%s: file %s delta %s "
 				    "matches a component path '%s'.\n",
@@ -1569,28 +1773,17 @@ do_file(sccs *s, char *comppath, char **deepnest)
 		// BAM stuff
 		if (d->hash) {
 			bam_new = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
-			unless (streq(d->bam_old, bam_new)) {
-				MDBM	*db;
-				char	*p;
-
-				db = proj_BAMindex(s->proj, 1);
-				assert(db);
-				if (p = mdbm_fetch_str(db, d->bam_old)) {
-					// mdbm doesn't like you to feed it
-					// back data from a fetch from the
-					// same db.
-					p = strdup(p);
-					mdbm_store_str(db,
-					    bam_new, p, MDBM_REPLACE);
-					bp_logUpdate(0, bam_new, p);
-					free(p);
-					mdbm_delete_str(db, d->bam_old);
-					bp_logUpdate(0, d->bam_old, 0);
-				}
+			if (opts->refProj) {
+				rc = bp_link(s->proj, d->bam_old, 0, bam_new);
+			} else {
+				rc = bp_rename(s->proj, d->bam_old, bam_new);
 			}
 			free(bam_new);
+			if (rc) goto err;
 		}
 	}
+	ret = 0;
+err:
 	for (i = 1; BAM(s) && (i < s->nextserial); i++) {
 		unless (d = sfind(s, i)) continue;
 		if (d->hash) {
@@ -1599,47 +1792,7 @@ do_file(sccs *s, char *comppath, char **deepnest)
 			d->bam_old = 0;
 		}
 	}
-	rc = sccs_newchksum(s);
-err:
 	free(delpath);
-	return (rc);
-}
-
-private	int
-do_files(char *comppath, char **deepnest)
-{
-	int	ret = 1;
-	sccs	*s = 0;
-	char	*sfile;
-	FILE	*sfiles;
-
-	unless (comppath || deepnest) return (0);
-
-	unless (sfiles = popen("bk sfiles -h", "r")) {
-		perror("sfiles");
-		goto err;
-	}
-	verbose((stderr, "Fixing file internals .....\n"));
-	while (sfile = fgetline(sfiles)) {
-		if (streq(CHANGESET, sfile)) continue;
-		unless (s = sccs_init(sfile, INIT_MUSTEXIST)) {
-			fprintf(stderr, "%s: cannot init %s\n", prog, sfile);
-			goto err;
-		}
-		assert(!CSET(s));
-		if (do_file(s, comppath, deepnest)) goto err;
-		sccs_free(s);
-		s = 0;
-	}
-	pclose(sfiles);
-	sfiles = 0;
-	/* Too noisy for (flags & SILENT) ? " -q" : "" */
-	verbose((stderr, "Fixing names .....\n"));
-	system("bk -r names -q");
-	ret = 0;
-err:
-	if (s) sccs_free(s);
-	if (sfiles) pclose(sfiles);
 	return (ret);
 }
 

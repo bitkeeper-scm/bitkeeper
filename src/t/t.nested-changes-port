@@ -50,7 +50,6 @@ cat <<EOF >WANT
   1.1 c1-file-2 new
   1.0 c1-file-2 
 1.2 ChangeSet add c1-file-1
-  1.2 BitKeeper/etc/attr 
   1.1 c1-file-1 new
   1.0 c1-file-1 
 EOF
@@ -99,7 +98,6 @@ bk changes -R $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
 }
 cat <<EOF >WANT
 1.3 ChangeSet add c1-detached-file
-  1.3 BitKeeper/etc/attr 
   1.1 c1-detached-file new
   1.0 c1-detached-file 
 EOF
@@ -135,7 +133,6 @@ cat <<EOF >WANT
   1.1 c1-file-2 new
   1.0 c1-file-2 
 1.2 ChangeSet add c1-file-1
-  1.2 BitKeeper/etc/attr 
   1.1 c1-file-1 new
   1.0 c1-file-1 
 EOF
@@ -168,11 +165,9 @@ bk changes -R $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
 }
 cat <<EOF >WANT
 1.3 ChangeSet add c1-detached-file
-  1.3 BitKeeper/etc/attr 
   1.1 c1-detached-file new
   1.0 c1-detached-file 
 1.2 ChangeSet add c1-file-1
-  1.2 BitKeeper/etc/attr 
   1.1 c1-file-1 new
   1.0 c1-file-1 
 EOF
@@ -189,7 +184,6 @@ bk changes -L $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/nested/c1" |
 }
 cat <<EOF >WANT
 1.3 ChangeSet add c1-detached-file
-  1.3 BitKeeper/etc/attr 
   1.1 c1-detached-file new
   1.0 c1-detached-file 
 EOF
@@ -222,11 +216,9 @@ bk changes -L $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/standalone" |
 }
 cat <<EOF >WANT
 1.3 ChangeSet add c1-detached-file
-  1.3 BitKeeper/etc/attr 
   1.1 c1-detached-file new
   1.0 c1-detached-file 
 1.2 ChangeSet add c1-file-1
-  1.2 BitKeeper/etc/attr 
   1.1 c1-file-1 new
   1.0 c1-file-1 
 EOF

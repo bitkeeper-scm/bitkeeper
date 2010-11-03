@@ -64,9 +64,9 @@ do
 	cd $proj/gcc || exit 2
 	for i in 1 2 3 4 5
 	do
-		bk edit $Q file$proj$i
+		bk edit $Q file$proj$i || true
 		echo "new stuff $i" >> file$proj$i
-		bk delta $Q -y"modify" file$proj$i
+		bk delta $Q -a -y"modify" file$proj$i
 		bk commit $Q -y"Add $i to file$proj$i"
 	done
 	cd ..
@@ -334,7 +334,6 @@ amerge@1.3
 gcc/ChangeSet@1.8
 gcc/file1@1.3
 ChangeSet@1.5.1.1
-BitKeeper/etc/attr@1.5
 fff@1.1
 fff@1.0
 EOF
@@ -564,7 +563,7 @@ echo OK
 
 echo $N Setup for pulling conflict into missing component ...........$NL
 cd "$HERE"
-bk _rm -fr project copy sparse
+bk _rm -fr project copy
 nested project
 cd ..
 bk clone $Q project copy
@@ -598,7 +597,7 @@ bk pull $Q ../project || {
 echo OK
 
 echo $N Pull of second one should fail ..............................$NL
-bk pull ../copy > OUT 2>&1 && {
+bk pull --unsafe ../copy > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
 	exit 1
@@ -618,7 +617,7 @@ echo junk > junk
 bk new $Q junk
 bk commit $Q -yjunk || fail
 cd ../sparse
-bk pull -q ../ponly ../copy 2>ERR && fail
+bk pull --unsafe -q ../ponly ../copy 2>ERR && fail
 cat <<EOF > WANT
 pull: Unable to resolve conflict in non-present component 'gdb'.
 pull: update aborted due to errs with 1 components.
@@ -874,4 +873,145 @@ bk resolve -c $Q 2>ERR || fail
 cd ..
 bk resolve -c $Q 2>ERR && fail
 bk -qs -r check -ac || fail
+echo OK
+
+echo $N Set up for urllist pull populates ...........................$NL
+cd "$HERE"/project
+for c in A B C D
+do	bk setup -f $c || fail
+done
+bk clone -sA -sB -sC -sD $Q . ../copy1 || fail
+cd ../copy1
+rm BitKeeper/log/urllist
+bk clone -sA -sC $Q . ../copy2 || fail
+bk here set $Q B D || fail
+cd ../copy2
+bk alias new TRACK C D || fail
+bk clone $Q -sTRACK . ../copy3 || fail
+bk alias set TRACK A B || fail
+
+bk comps -h | bk _sort > OUT
+cat <<EOF > WANT
+./A
+./C
+EOF
+cmpfiles OUT WANT
+
+cd ../copy3
+
+bk comps -h | bk _sort > OUT
+cat <<EOF > WANT
+./C
+./D
+EOF
+cmpfiles OUT WANT
+
+echo OK
+
+echo $N Ensure pull fails unpopulate if pending local work present ..$NL
+# Now:
+#    copy1: B,D
+#    copy2: A,C TRACK=A,B
+#    copy3: C,D HERE=TRACK=C,D
+# A pull of copy2 into copy3 should fail if there is pending local work in
+# C because C then cannot be unpopulated.
+cd C
+date >new-file
+bk new $Q new-file || fail
+bk commit $Q -ynew-file || fail
+cd ..
+bk pull >OUT 2>ERR && fail -f ERR should have failed
+perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
+cat <<EOF > WANT
+.                                  100% |==============================| OK
+pull: unable to remove ./C, it contains csets not committed in product.
+pull: searching ROOT/copy1...ok
+pull: problem populating components.
+EOF
+cmpfiles ERR2 WANT
+# Remove the local work in C for the subsequent tests.
+cd C
+bk undo -fr+ $Q || fail
+cd ..
+echo OK
+
+echo $N Demonstrate urllist pull populates ..........................$NL
+# Magic pull that updates TRACK in the HERE alias from C D to A B
+# and only A and C are populated in my parent and B and D have to be found
+# in a different URL:
+bk pull 2>ERR >OUT || fail
+# Now:
+#    copy3: A,B HERE=TRACK=A,B
+
+perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
+cat <<EOF > WANT
+.                                  100% |==============================| OK
+pull: searching ROOT/copy1...ok
+pull: searching ROOT/copy2...ok
+Source ROOT/copy2
+1/3 A                              100% |==============================| OK
+Source ROOT/copy1
+2/3 B                              100% |==============================| OK
+pull: removing ./D...done
+pull: removing ./C...done
+3/3 .                                1 changeset,   no merges in   2 files
+EOF
+cmpfiles ERR2 WANT
+
+bk comps -h | bk _sort > OUT
+cat <<EOF > WANT
+./A
+./B
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Show when pull can\'t find a component it needs ..............$NL
+bk unpull -f $Q || fail
+cd ../copy1
+bk unpopulate $Q ./B || fail
+cd ../copy3
+bk pull 2>ERR > OUT && fail -f ERR
+perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
+cat << EOF > WANT
+.                                  100% |==============================| OK
+pull: searching ROOT/copy1...ok
+pull: searching ROOT/copy2...ok
+Source ROOT/copy2
+1/3 A                              100% |==============================| OK
+pull: No other sources for ./B known
+pull: problem populating components.
+EOF
+cmpfiles ERR2 WANT
+
+bk comps -h | bk _sort > OUT
+cat <<EOF > WANT
+./C
+./D
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Show when pull can\'t find a component to unpopulate .........$NL
+cd ../copy1
+bk here set $Q ./B || fail
+cd ../copy3
+bk pull 2>ERR > OUT && fail -f ERR
+perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
+cat << EOF > WANT
+.                                  100% |==============================| OK
+pull: searching ROOT/copy1...ok
+pull: searching ROOT/copy2...ok
+pull: No other sources for ./D known
+pull: unable to remove ./D
+pull: problem populating components.
+EOF
+cmpfiles ERR2 WANT
+
+bk comps -h | bk _sort > OUT
+cat <<EOF > WANT
+./C
+./D
+EOF
+cmpfiles OUT WANT
 echo OK

@@ -292,3 +292,22 @@ EOF
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
+
+echo $N Check sccslog -AD ...........................................$NL
+bk commit $Q -yjunk || fail
+bk edit $Q a/b/c/Data || fail
+bk delta -f $Q -y'Rev 11' a/b/c/Data || fail
+echo 1 > f1
+echo 2 > f2
+bk new $Q f1 f2 || fail
+bk edit $Q f2
+bk delta -f $Q -y'Rev 11' f2 || fail
+bk -r sccslog -AD > GOT
+cat <<EOF > WANT
+Data, f2:
+  Rev 11
+f1, f2:
+  new file
+EOF
+cmpfiles GOT WANT
+echo OK

@@ -24,10 +24,6 @@ private void	remember(MDBM *db, delta *d);
 private int	taken(MDBM *db, delta *d);
 private int	redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release,
 		    ser_t *map);
-private void	parentSwap(sccs *s, delta *d, delta **pp, delta **mp,
-		    int flags);
-
-private sccs	*Fix_inex;       /* Fix include/exclude of some deltas */
 
 int
 renumber_main(int ac, char **av)
@@ -39,9 +35,8 @@ renumber_main(int ac, char **av)
 	ticker	*tick = 0;
 
 	quiet = 1;
-	while ((c = getopt(ac, av, "fN;nqsv", 0)) != -1) {
+	while ((c = getopt(ac, av, "N;nqsv", 0)) != -1) {
 		switch (c) {
-		    case 'f': Fix_inex = INVALID; break;	/* undoc 5.0 */
 		    case 'N': nfiles = atoi(optarg); break;
 		    case 'n': dont = 1; break;			/* doc 2.0 */
 		    case 's':					/* undoc? 2.0 */
@@ -99,8 +94,6 @@ sccs_renumber(sccs *s, u32 flags)
 	ser_t	maxrel = 0;
 	char	def[20];	/* X.Y.Z each 5 digit plus term = 18 */
 
-	Fix_inex = 0;
-
 	if (BITKEEPER(s)) {
 		assert(!s->defbranch);
 	} else {
@@ -153,10 +146,6 @@ sccs_renumber(sccs *s, u32 flags)
 			free(s->defbranch);
 			s->defbranch = 0;
 		}
-	}
-	if (Fix_inex) {
-		sccs_free(Fix_inex);
-		sccs_reDup(s);
 	}
 	free(map);
 	mdbm_close(db);
@@ -236,88 +225,6 @@ sccs_needSwap(sccs *s, delta *p, delta *m)
 	return (m->serial < p->serial);
 }
 
-/*
- * Swap parent and merge pointers relating to a delta
- * Means also fixing backpointing structures
- * Do not worry about include/exclude fixing.  That will be done elsewhere.
- */
-private void
-parentSwap(sccs *s, delta *d, delta **pp, delta **mp, int flags)
-{
-	delta	*t;
-	delta	**tp;
-	delta	*p = *pp;
-	delta	*m = *mp;
-	int	serial;
-
-	verbose((stderr,
-	    "renumber %s@%s swap parent %s and merge %s\n",
-	    s->gfile, d->rev, p->rev, m->rev));
-	/*
-	 * Unset parent, delete d from parent's kid link list
-	 */
-	d->parent = 0;
-	d->pserial = 0;
-	for (tp = &p->kid; t = *tp; tp = &t->siblings) {
-		if (t == d) break;
-	}
-	assert(t);
-	*tp = d->siblings;
-	d->siblings = 0;
-
-	/*
-	 * Unset merge
-	 * old merge parent might still be merged elsewhere
-	 */
-	d->merge = 0;
-	m->flags &= ~D_MERGED;
-	for (t = s->table; t; t = NEXT(t)) {
-		unless (t->merge == m->serial) continue;
-		assert(t->serial > m->serial);
-		m->flags |= D_MERGED;
-		break;	/* only need to find one */
-	}
-
-	/*
-	 * Set old merge as new parent
-	 * Add as first kid, find oldest kid and move it to first.
-	 * Loosely patterned after 'dinsert'
-	 * Assume list is not strictly sorted.
-	 */
-	d->parent = m;
-	d->pserial = m->serial;
-
-	d->siblings = m->kid;
-	m->kid = d;
-	serial = d->serial;
-
-	/* find oldest */
-	for (t = KID(m); t; t = SIBLINGS(t)) {
-		unless (t->type == 'D' && (t->serial < serial)) continue;
-		serial = t->serial;
-	}
-	if (serial < d->serial) {	/* set oldest to be first */
-		for (tp = &m->kid; t = *tp; tp = &t->siblings) {
-			if (t->serial == serial) break;
-		}
-		assert(t);
-		*tp = t->siblings;
-		t->siblings = m->kid;
-		m->kid = t;
-	}
-
-	/*
-	 * Set old parent as new merge
-	 */
-	d->merge = p->serial;
-	p->flags |= D_MERGED;
-
-	/* Swap parent and merge and we are done */
-	*pp = m;
-	*mp = p;
-}
-
-
 private	int
 redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 {
@@ -343,30 +250,13 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 	 * If merge was on the trunk at time of merge, then swap
 	 */
 	m = MERGE(s, d);
-	if (m && (m->r[0] == p->r[0]) && Fix_inex) {
-		assert(p != m);
+	if (m && (m->r[0] == p->r[0])) {
+		assert((p != m) && BITKEEPER(s));
 		if (sccs_needSwap(s, p, m)) {
-			if (Fix_inex == INVALID) {
-				Fix_inex = sccs_init(s->sfile, flags);
-				unless (Fix_inex) {
-					fprintf(stderr, "Renumber: Error: "
-					    "Init %s failed in redo()\n",
-					    s->sfile);
-					exit (1);
-				}
-				sccs_close(Fix_inex);
-			}
-			parentSwap(s, d, &p, &m, flags);
+			fprintf(stderr, "Renumber: corrupted sfile:\n  %s\n"
+			    "Please write support@bitmover.com\n", s->sfile);
+			exit (1);
 		}
-	}
-
-	/* Once Fix_inex set, fix all suspects: merge and any inc/exc */
-	if (Fix_inex && (d->merge || d->include || d->exclude)) {
-		u8	*slist = (u8 *)calloc(s->nextserial, sizeof(u8));
-
-		assert(slist);
-		sccs_adjustSet(s, Fix_inex, d, slist);
-		free(slist);
 	}
 
 	/*

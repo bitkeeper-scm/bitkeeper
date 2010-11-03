@@ -77,8 +77,8 @@ cd cloneB
 bk alias set $Q HERE `bk comps -h` || fail 7
 bk here rm $Q gcc 2>ERR && fail 8
 cat <<EOF > WANT
-here: No other sources for gcc known
-here: unable to remove gcc
+here: No other sources for ./gcc known
+here: unable to remove ./gcc
 EOF
 cmpfiles ERR WANT
 cd ..
@@ -112,7 +112,7 @@ cd ..
 cd cloneB
 bk here where gcc | grep -q "$HERE/cloneA" || fail 12
 bk here add $Q gcc 2>ERR && fail 13
-grep -q 'No other sources for gcc known' ERR || fail -f ERR
+grep -q 'No other sources for ./gcc known' ERR || fail -f ERR
 bk here where gcc | grep -q "$HERE/cloneA" && fail 15
 cd ..
 rm -rf cloneA cloneB
@@ -140,7 +140,7 @@ bk alias set $Q HERE `bk comps -h` || fail 8
 bk here rm $Q -f gcc || fail 9
 bk here where gcc | grep -q "$HERE/cloneA" || fail 10
 bk here add $Q gcc 2>ERR && fail 11
-grep -q 'No other sources for gcc known' ERR || fail -f ERR
+grep -q 'No other sources for ./gcc known' ERR || fail -f ERR
 bk here where gcc | grep -q "$HERE/cloneA" && fail 13
 cd ..
 rm -rf cloneA cloneB
@@ -200,7 +200,7 @@ bk here where gcc | grep -q "$HERE/product2" || fail 5
 # Remove product2 and try to add gcc (this should fail).
 rm -rf ../product2
 bk here add $Q gcc 2>ERR && fail 6
-grep -q 'here: No other sources for gcc known' ERR || fail -f ERR
+grep -q 'here: No other sources for ./gcc known' ERR || fail -f ERR
 # Now try to add gcc with -@ from cloneB (this should work).
 bk here add $Q -@../cloneB gcc || fail 8
 bk here where gcc | grep -q "$HERE/cloneB" || fail 9
@@ -348,7 +348,7 @@ bk -P commit $Q -y'add new2' || fail 6
 cd ../../cloneC
 bk here where gdb | grep -q "$HERE/clone1" || fail 7
 bk here where gdb | grep -q "$HERE/cloneD" || fail 8
-bk pull $Q ../cloneE || fail 9
+bk pull --unsafe $Q ../cloneE || fail 9
 bk here where gdb | grep -q "$HERE/cloneE" || fail 10
 bk here where gdb | grep -q "$HERE/cloneD" || fail 11
 bk here where gdb | grep -q "$HERE/clone1" || fail 12
@@ -595,7 +595,7 @@ here: searching http://bad.bitkeeper.com:1/...connect failure
 here: searching ssh://localhost:1/...connect failure
 here: searching rsh://bad.bitkeeper.com:1/...connect failure
 here: searching bk://!junkurl:1/...unknown failure
-here: No other sources for gdb known
+here: No other sources for ./gdb known
 EOF
 cmpfiles WANT ERR
 echo OK

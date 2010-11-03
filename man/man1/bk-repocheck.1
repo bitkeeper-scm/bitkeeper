@@ -1,0 +1,38 @@
+.so ../bk-macros
+.TH "bk repocheck" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk repocheck \- check repository for consistency
+.SH SYNOPSIS
+.B bk repocheck
+.[B] \-q
+.SH DESCRIPTION
+.LP
+.B "bk repocheck"
+is used to make sure that a repository is in a consistent state.
+It works in traditional standalone repositories as well as nested 
+collections.
+.LP
+If you suspect there might be a problem with your repository, run
+.BR "bk repocheck" .
+If you send email for support, please include the output of the following:
+.DS
+bk version
+bk config
+bk repocheck
+.DE
+.LP
+This command is implemented on top of
+.B bk check
+and as such, it prints out the check command being run before running it.
+.SH OPTIONS
+.TP \-q
+.B \-q
+Run quietly.
+.\".SH EXIT STATUS
+.\"XXX - list error codes here.
+.SH SEE ALSO
+.SA check
+.SA support
+.SA repair
+.SH CATEGORY
+.B Repository

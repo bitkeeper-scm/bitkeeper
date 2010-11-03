@@ -1,49 +1,50 @@
-AIX 5.3:
-    If you get malloc errors, try setting this:
-    LDR_CNTRL=MAXDATA=0x40000000
-    and retry the BK command.  AIX limits you to a rather small process size
-    and this fixes that.
+BitKeeper 5.0 Release Notes
 
-Config change:
-    nosync: yes is deprecated as it is now the default.  Use
-    sync: yes to force a sync.
+Nested collections
+------------------
+BitKeeper 5.0 introduces a new feature, BK/Nested.  BK/Nested is
+technology that provides product and product line development support.
+A product is a collection of repositories, called components, that are
+grouped together and move in lock step as one.  Clones of a nested
+collection may be fully or partially populated with components.
 
-Release notes for BitKeeper beta 8
+A product line is a development effort which spans multiple related
+products.  In most cases, each product in a product line reuses some
+or all components from other products in the product line.
 
-bk gone
-    This now sets MONOTONIC on the gone file if it wasn't set.
-    Also fixes a bug where the delta done to the gone file didn't
-    work if there were dangling deltas in the gone file.
+A product is N+1 repositories: the N are components and the +1 is the 
+product itself.  Each component belongs to the product just like files
+belong to a repository.
 
-bk partition
-    Improve stability of partitions going forward, while breaking backward
-    compatibility.
-    Remove possibility of ChangeSet order change when metadata changes
-    during a partition.
-    Protect against file and component namespace clash.
+The product repository is the "glue" that makes the set of components
+all move forward in lock step; a product may be thought of as a way
+to provide an audit trail for a collection of repositories much as a
+repository provides an audit trail for a collection of files.  The value
+to you is that all states of a product are reproducible and BitKeeper will
+never let a user create a view of the source that is not reproducible
+(no other SCM system that scales to gigabytes or terabytes of data can
+make this claim).
 
-pre-delta triggers
-    Fixes BUGID 2008-04-02-002 (set $BK_FILE relative from repo root)
-    Fixes BUGID 2005-03-31-001 (running pre-delta from outside a repo)
-    Fixes running a pre-delta specified by trigger path to be outside
-    of a repository when no pre-delta triggers are in the repository.
+The product feature makes it possible, even pleasant, to manage large
+collections of files with good performance.  
 
-Performance
-    Fix some perf issues in bk-5.0 by turning off compression
-    for local connections. Bk-4.6b did this and it really helps.
+A more detailed overview of the technology is available; contact
+sales@bitmover.com for more info.
 
-Progress bar
-    Fix small bug in progress bars that could cause delayed stderr output
-    to not get delayed and thereby stomp on a progress bar.
+Backwards compatibility
+-----------------------
+BitKeeper 5.0 can inter-operate with all 4.x releases.  However, there are
+new features introduced in 5.0 that make it such that 4.x binaries may not
+work on repositories created by 5.x.
 
-===============================================================================
-Release notes for BitKeeper beta 7
+Commands changed
+----------------
 
-READ THIS PART -- YOU MAY NEED TO CHANGE EXISTING SCRIPTS
-
-This is a change from how bk-4 work.  This could impact scripts
-you have.  Included is how to modify the script to work both
-for bk-4 and bk-5 .
+bk options
+    bk -U is a file iterator over all user files, no -r required.
+    bk -A is the same thing except it includes deleted & BitKeeper files
+    Both forms are $CWD relative (unlike 4.x which was repo root relative).
+    bk -r/bk -Ur continue to work as before.
 
 bk changes
     The -L, -R and -k options no longer include -a option.
@@ -55,229 +56,14 @@ bk changes
     removed was users trying to write scripts that didn't include
     tags or empty csets.
 
-bk clone
-    Now will make hardlinked clones by default if it can. 
-    Before, a user needed to run 'bk clone -l <url>' to get a hardlinked
-    clone, and that would fail if the file system didn't support it.
-    A new option, '--no-hardlinks', has been added to prevent hardlinks.
-    If you are running clones in a script and require the repositories
-    not to be hardlinked, then set BK_NO_HARDLINK_CLONE=YES in your
-    environment.
-    On Windows, hardlinks are not enabled by default.
+    Support "extended" dspecs that allow whitespace and comments.
+    Use this to move the default 'bk changes' dspec to `bk bin`/dspec-changes
+    and make it readable with comments.  This was also done for prs and log.
 
-END of compatibility changes.
+    Allow the user to override the default dspecs in the usual places.
 
-This release contains more work to progress bars displayed
-during push, pull and clone.  Improvements were specifically
-on NFS where pauses would been seen in the progress bars.
-
-bk superset
-    This command now works in a nested repository.
-    In a nested repository, these are the same:
-    	bk superset
-	bk -P superset
-    That is, the command is run only in the product, even if started
-    in a component.
-
-Bugfixes
     2010-05-19-001 - fix changes -av listing files details under
     a tag instead of under the real cset.
-
-    Fix NFS clone -- it didn't correctly strip pending deltas.
-
-    Fix NFS locking -- it now works when accessing a nested repository from
-    different machines.
-
-Experimental backend for Emacs VC users
-
-    With the hiding of the SCCS files, the traditional trick of
-    Emacs users relying on VC's SCCS support no longer works.
-
-    In this version, we are shipping an experimental version
-    of a BK backend for VC that is known to work with Emacs
-    versions 22 and 23.
-
-    See `bk bin`/contrib/vc-bk.el for source and install
-    instructions.
-
-===============================================================================
-Release notes for BitKeeper beta 6
-
-Big overhaul of progress bars used in clone, undo, push, pull,
-renumber, takepatch, check and more.  Please watch those operations
-and let us know if it is too much or too little or just right.
-
-This version of bk stores deleted files in subdirectories under
-BitKeeper/deleted to avoid problems with filesystems that have
-problems with large numbers of files in a single directory.  An
-example filename is like this:
-	BitKeeper/deleted/07/slib.c~f3733b2c327712e5
-	2 hex digits, the basename of the 1.1 delta, and the random
-	bits for this file
-
-While not required, if you are experiencing performance problems in
-your deleted directory you can try this:
-    bk -rBitKeeper/deleted rm -f
-    bk commit -y'mv deleted files'
-
-Tell users about new versions of BitKeeper when they quit out
-of the GUIs or when they run 'bk help'. In the former case, a
-"bk prompt" is launched, and in the latter case the upgrade info
-is inserted into the help text.
-
-The conditions for prompting are as follows:
-    - There is a new bk out (duh!).
-    - The current bk is older than the new bk.
-    - The new bk has been out for at least a month and the
-      current bk has been installed for at least a month.
-    - We haven't prompted in at least a month.
-
-This version integrates bk-4.6b which has a bugfix for 2010-04-30-001
-
-bk alias
-    Add locking to avoid collision
-
-bk attach
-    Only works in portals (and checks they are still fully populated).
-
-bk check
-    check if the tip cset has a pathname conflict where two different
-    rootkeys are stored at the same pathname.
-
-bk mv/mvdir
-    Prevent component renames
-
-bk portal
-    Portals are fully populated before becoming portals.
-    You can't remove comps from a portal (bk here rm), nor run undo.
-    The intention of a portal is to limit information entering a
-    product to happen once.  That way, a given component cset can be
-    traced to one product cset.  To support this, portals are fully
-    populated and can only move forward.
-
-bk get/edit
-    Make get -S incompatible with -M/-i/-x/-r options.
-    Edit -S / get -e -S now will no longer complain about files already
-    checked out.
-
-bk partition
-    Incompatible with previous beta and intending to be stable.
-    New default behavior - prune out deleted and gone, and only
-    have sfiles reside in the most recent component (if a file
-    in its life moved between components).
-
-bk undo
-    No undo in a portal.  See bk portal above.
-
-===============================================================================
-Release notes for BitKeeper beta 5
-
-This is a bugfix and partition performance release.
-
-bk partition
-    Add a -j<parallel-processes> option to help partition run faster.
-    If the user has GNU make installed, then partition can create
-    components in parallel.  This helps when using a multi core processor.
-
-bk prompt (GUI version)
-    Fix a window geometry problem.
-
-bk commit - fix how pending comments are accumulated, which in certain
-cases after using attach, would be wrong.
-
-MS Windows - when working in a repository where the SCCS directories
-have been hidden in the .bk directory, mark the .bk directory as hidden,
-in the same way that SCCS directories were marked hidden in an existing
-bk repository.
-
-===============================================================================
-Release notes for BitKeeper beta 4
-
-bk bam server <NEWURL>
-    This now works in a nested repository.
-
-bk checksum ChangeSet
-    Performance is enhanced.  Verifying checksum integrity
-    for all csets in a ChangeSet file requires many passes over the
-    data.  Checksums are now calculated more efficiently.
-    This will help bk partition.
-
-bk csetprune
-    Performance is enhanced.  Running csetprune can remove
-    csets from the history, leading to re-structuring of the graph.
-    Previous, that was done in a straight forward, but inefficient
-    manner, which was fine since csetprune wasn't used often.  With
-    partition, csetprune performance is critical, and the graph
-    restructuring computation is now more efficient.
-
-bk fix -c
-    This now works in a nested repository.
-
-bk needscheck [-v]
-    Returns true if the repository is configured for partial_check and
-    would run a full check.
-
-bk partition
-    Besides running faster (see bk checksum and bk csetprune),
-    partition now transforms the gone file.  Previous versions required
-    pruning out missing files.  This version still allows pruning,
-    but doesn't require it.
-
-Other changes
-
-bk-4.6 was released, and those changes have been integrated into this
-release.
-
-progress bars
-    The push, pull, clone, and undo commands have been reworked
-    to have progress bars instead of listing out files being worked on.
-    The previous behavior is still available by using the -v option.
-
-triggers
-    The exit codes from post-commit triggers are ignored.
-
-===============================================================================
-Release notes for BitKeeper beta 3
-
-Performance groundwork in clones, pushes and pulls.  We are working
-on more which builds on the changes in this release.
-
-bk version
-    Work on a remote repository: bk version <url>
-
-bk repocheck
-    a shorthand for running check in a standalone or nested collection.
-    Easier to remember than bk -s -r check -vac
-
-bk id
-    New option '-5' - return the repo rootkey as an md5key.
-
-bk citool
-    Significant changes for use in a nested collection.
-    Give it a try, please, and let us know what you think.
-
-===============================================================================
-Release notes for BitKeeper beta 2
-
-Minor bugfixes and polish.  Do fewer stats of the file system.
-
-===============================================================================
-
-Release notes for BitKeeper beta
-
-This is a preview of a major release of BitKeeper
-
-BK-Nested - supports organizing a collection of repositories.
-This support scaling by linking many repositories together but
-not requiring all repositories be present.
-
-SCCS directories are no longer stored each directory in the repository.
-
-Command level changes:
-
-bk changes
-    extended dspecs, search path, etc
-    (also prs & log)
 
 bk clean
     The clean code is now smarter about handling files that were
@@ -286,12 +72,35 @@ bk clean
 bk clone
     The clone code now automatically uses hardlinks whenever possible.
     The option --no-hardlinks can be used to disable this.
-    The -l option is now ignored.
+    If you are running clones in a script and require the repositories
+    not to be hardlinked, then set BK_NO_HARDLINK_CLONE=YES in your
+    environment.
+    The hardlink clone code path is now mostly the same as the clone
+    code path, so performance enhancements in the bk-4 for clone now
+    also apply for hardlink clones.
 
-bk takepatch
-    Addressed a performance issue on large pulls over NFS or in other
-    cases where we have a slow local filesystem.  BitKeeper now does
-    significantly less disk IO.
+bk csetprune
+    The 5.0 csetprune fixes some rare bugs but in doing so creates
+    repositories that 4.x will not read.  The bugs, while rare, are real
+    and BitMover recommends that all csetprune operations be done with 5.x.
+
+bk id
+    New option '-5' - return the repo rootkey as an md5key.
+
+bk gone
+    This now sets MONOTONIC on the gone file if it wasn't set.
+
+bk mv
+    Fixed bug 2007-12-10-001:
+    bk mv a/ b/ -- previously did move all of 'a' into 'b', plus added
+    a null mv delta to all things in 'b'.
+
+bk needscheck [-v]
+    Returns true if the repository is configured for partial_check and
+    would run a full check.
+
+bk prompt (GUI version)
+    Fix a window geometry problem.
 
 bk pull
     pull -u now spawns changes -L if the pull fails.
@@ -299,9 +108,123 @@ bk pull
 bk push
     Now support 'bk push -rREV URL' to only push a subset of the local
     repository to a remote location
+    BUGID: 2008-05-01-001:
+    Fix bug where a push to a unrelated package would exit 0.
 
----------------
-Misc fixes
+bk repocheck
+    a shorthand for running check in a standalone or nested collection.
+    Easier to remember than bk -Ar check -vac
+
+bk sfiles
+    Fix bug 2008-07-16-001 where bk sfiles -U $PWD would erroneously
+    report BK files.
+
+bk takepatch
+    Addressed a performance issue on large pulls over NFS or in other
+    cases where we have a slow local filesystem.  BitKeeper now does
+    significantly less disk IO.
+
+bk version
+    Work on a remote repository: bk version <url>
+
+Commands added
+--------------
+    bk alias - manage aliases for lists of components
+    bk attach - attach a component repository to a product repository
+    bk comps - list the components belonging to a product
+    bk detach - create a stand-alone clone of a component repository
+    bk gate - set or show the gate status of a nested collection
+    bk here - list or change the set of populated repositories
+    bk partition - transform a single repository into a nested collection
+    bk populate - add one or more components to a nested collection
+    bk port - pull changes from a different nested collection or standalone
+    bk portal - set or show the portal status of a nested collection
+    bk repotype - display repository type
+    bk unpopulate - remove one or more components to a nested collection
+
+Other changes
+-------------
+
+SCCS directories are no more
+    SCCS directories are no longer stored each directory in the repository.
+    A new directory at the top level, .bk, stores all BK data.
+    In Windows, the .bk directory is hidden similar to the SCCS
+    directories being hidden.  A repository cannot be transformed in
+    place, but can be transformed as part of a clone.  Without options,
+    clone does not transform.
+
+progress bars are now the default
+    As we move to larger repositories, the old verbose output became too
+    verbose.  You can turn it back on with "-v", but the default is a 
+    progress bar.
+
+Announcing "New version of BK available"
+    Tell users about new versions of BitKeeper when they quit out
+    of the GUIs or when they run 'bk help'. In the former case, a
+    "bk prompt" is launched, and in the latter case the upgrade info
+    is inserted into the help text.
+
+Deleted files now in a subdir
+    BK stores deleted files in subdirectories under BitKeeper/deleted
+    to avoid problems with filesystems that have problems with large
+    numbers of files in a single directory.
+    An example filename is like this:
+	BitKeeper/deleted/07/slib.c~f3733b2c327712e5
+	2 hex digits, the basename of the 1.1 delta, and the random
+	bits for this file
+    While not required, if you are experiencing performance problems in
+    your deleted directory you can try this:
+	bk -rBitKeeper/deleted rm -f
+	bk commit -y'mv deleted files'
+
+emacs - Experimental backend for Emacs VC users
+    With remap, the traditional trick of Emacs users relying on VC's
+    SCCS support no longer works.
+
+    In this version, we are shipping an experimental version of a BK
+    backend for VC that is known to work with Emacs versions 22 and 23.
+
+    See `bk bin`/contrib/vc-bk.el for source and install instructions.
+
+log file 
+    Operations during a pull were logged in the RESYNC and the log deleted
+    with the RESYNC at the end of the pull.  Now the commands that are run
+    are logged in the repository's cmd_log file.
+
+newroot log
+    every 'bk newroot' or commands which do a newroot, like csetprune,
+    will now be logged.
+
+setup defaults
+    Newly created repositories default to the following:
+
+    compression: gzip
+    autofix: yes
+    checkout: edit
+    clock_skew: on
+    partial_check: on
+
+triggers
+    post-commit: The exit codes from post-commit triggers are ignored.
+    pre-delta triggers:
+    Fixes BUGID 2008-04-02-002 (set $BK_FILE relative from repo root)
+    Fixes BUGID 2005-03-31-001 (running pre-delta from outside a repo)
+    Fixes running a pre-delta specified by trigger path to be outside
+    of a repository when no pre-delta triggers are in the repository.
+
+Fixes:
+
+- Bug 2006-05-12-001:
+  bk get core dumped when symlink is edited and type changed and regotten.
+
+- Bug 2002-03-02-001: fix bk help initscripts to replace HUP with a TERM
+
+- Bug 2000-10-30-002
+  If the merge result hasn't been created yet, do the automerge.
+
+- Bug 2001-04-23-002
+  If there's a log file, log BAD CMD attempts as well.  This covers both
+  unknown commands and commands disabled by -x.
 
 - Allow the nosync config option to also prevent calls to fsync when
   SCCS files are written.
@@ -321,15 +244,28 @@ Misc fixes
   Now the code accepts either file://whatever or file:///whatever, but
   only generates the last form.
 
-- BitKeeper now always uses unique names in the BitKeeper/deleted
-  directory and avoids lots of rename conflicts in some cases.
-
 - BitKeeper will now refuse to run a different version of bk as a
   subprocess.  We have had cases where users have forgotten to restart
   their bkd's after upgrade BitKeeper and this cases bugs.  BitKeeper
   will now notice this and error until the bkd is restarted.
 
-Environment variables that are used to control BitKeeper's behavior
-can not longer be set to an empty string.  So for example:
-  BK_NO_TRIGGERS="" bk push
-won't work.  Use BK_NO_TRIGGERS=1 instead.
+- Environment variables that are used to control BitKeeper's behavior
+  can not longer be set to an empty string.  So for example:
+    BK_NO_TRIGGERS="" bk push
+  won't work.  Use BK_NO_TRIGGERS=1 instead.
+
+Platforms
+---------
+
+AIX 4.x is no longer supported, 5.3 is the oldest supported release.
+    If you get malloc errors, try setting this:
+    LDR_CNTRL=MAXDATA=0x40000000
+    and retry the BK command.  AIX limits you to a rather small process size
+    and this fixes that.
+
+Linux/MIPS
+Linux/s390
+    Supported upon request only.
+
+Windows/Vista
+    Supported but strongly discouraged.  Use XP or Windows 7.
