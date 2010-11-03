@@ -308,6 +308,7 @@ unpopulate_check(popts *ops, comp *c)
 		if (nLines(flist) > 0) {
 			av = addLine(0, "bk");
 			av = addLine(av, "changes");
+			av = addLine(av, "--standalone");
 			av = addLine(av, "-LD");
 			av = catLines(av, flist);
 			fprintf(stderr, "Local changes to ./%s found:\n",

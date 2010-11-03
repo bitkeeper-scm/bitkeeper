@@ -30,6 +30,10 @@ private	struct {
 	char	*to;			/* where to put it */
 	char	*comppath;		/* for fromTo */
 	char	*sfiotitle;		/* pass down for title */
+	char	*localurl;		/* -@ local baseline URL */
+	char	*pull_from;
+	char	*pull_rev;
+	char	**pull_aliases;
 	u32	in, out;		/* stats */
 } *opts;
 
@@ -44,6 +48,8 @@ private	int	do_relink(char *from, char *to, int quiet, char *here);
 private clonerc	clone_finish(remote *r, clonerc status, char **envVar);
 private	void	checkout(int quiet, int verbose, int parallel);
 private	int	chkAttach(char *dir);
+private	clonerc	clonemod_part1(remote **r);
+private	int	clonemod_part2(char **envVar);
 
 private	char	*bam_url;
 private	char	*bam_repoid;
@@ -74,8 +80,19 @@ clone_main(int ac, char **av)
 	if (streq(prog, "attach")) opts->attach = 1;
 	if (streq(prog, "detach")) opts->detach = 1;
 	unless (win32()) opts->link = 1;	    /* try lclone by default */
-	while ((c = getopt(ac, av, "B;CdE:j;lNpP;qr;s;vw|z|", lopts)) != -1) {
+	while ((c = getopt(ac, av, "@;B;CdE:j;lNpP;qr;s;vw|z|", lopts)) != -1) {
 		switch (c) {
+		    case '@':
+			opts->localurl = optarg;
+			r = remote_parse(opts->localurl, REMOTE_BKDURL);
+			unless (r) {
+				fprintf(stderr, "%s: cannot parse '%s'n",
+				    prog, opts->localurl);
+				return (CLONE_ERROR);
+			}
+			remote_free(r);
+			r = 0;
+			break;
 		    case 'B': bam_url = optarg; break;
 		    case 'C': opts->nocommit = 1; break;
 		    case 'd': opts->debug = 1; break;		/* undoc 2.0 */
@@ -169,7 +186,7 @@ clone_main(int ac, char **av)
 			    "attach: only one repo valid with -N\n");
 			exit(CLONE_ERROR);
 		}
-		opts->to = av[optind + 1];
+		opts->to = strdup(av[optind + 1]);
 		unless (l = remote_parse(opts->to, REMOTE_BKDURL)) {
 			fprintf(stderr, "clone: failed to parse '%s'\n",
 			    opts->to);
@@ -247,7 +264,7 @@ clone_main(int ac, char **av)
 	} else {
 		if (r->path && !getenv("BK_CLONE_FOLLOW_LINK")) {
 			cleanPath(r->path, r->path);
-			opts->to = basenm(r->path);
+			opts->to = strdup(basenm(r->path));
 		}
 	}
 
@@ -279,12 +296,21 @@ clone_main(int ac, char **av)
 			clonerc = CLONE_CHDIR;
 		}
 	} else {
-		clonerc = clone(av, r, l ? l->path : opts->to, envVar);
+		clonerc = 0;
+		if (opts->localurl) clonerc = clonemod_part1(&r);
+		unless (clonerc) {
+			clonerc = clone(av, r, l ? l->path : opts->to, envVar);
+		}
+		if (!clonerc && opts->localurl) {
+			clonerc = clonemod_part2(envVar);
+		}
 	}
 	if (opts->attach && !clonerc) clonerc = attach();
 	free(opts->from);
+	if (opts->to) free(opts->to);
 	freeLines(envVar, free);
 	freeLines(opts->aliases, free);
+	freeLines(opts->pull_aliases, free);
 	if (l) remote_free(l);
 	remote_free(r);
 	unless (opts->quiet) {
@@ -304,6 +330,7 @@ clone_main(int ac, char **av)
 			title = "";
 		}
 	}
+	free(opts);
 	return (clonerc);
 }
 
@@ -444,7 +471,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 	char	*p, buf[MAXPATH];
 	char	*lic;
 	int	rc, do_part2;
-	clonerc	clonerc = CLONE_EXISTS;
+	int	after_create = 0;
+	clonerc	clonerc = CLONE_ERROR;
 	char	*trans;
 
 	/*
@@ -456,13 +484,13 @@ clone(char **av, remote *r, char *local, char **envVar)
 	trans = getenv("_BK_TRANSACTION");
 	if (local && exists(local) && !trans && !emptyDir(local)) {
 		fprintf(stderr, "clone: %s exists and is not empty\n", local);
-		exit(CLONE_EXISTS);
+		return (CLONE_EXISTS);
 	}
-	if (local ? test_mkdirp(local) : 
+	if (local ? test_mkdirp(local) :
 		(!writable(".") || access(".", W_OK))) {
 		fprintf(stderr, "clone: %s: %s\n",
 			(local ? local : "current directory"), strerror(errno));
-		usage();
+		return (CLONE_ERROR);
 	}
 	if (opts->link) {
 		if (r->host || opts->no_lclone ||
@@ -485,7 +513,10 @@ clone(char **av, remote *r, char *local, char **envVar)
 		r->pid = bkd(r);
 		if (r->wfd < 0) exit(CLONE_CONNECT);
 	} else {
-		if (bkd_connect(r)) goto done;
+		if (bkd_connect(r)) {
+			clonerc = CLONE_CONNECT;
+			goto done;
+		}
 	}
 	if (send_clone_msg(r, envVar)) goto done;
 
@@ -518,18 +549,21 @@ clone(char **av, remote *r, char *local, char **envVar)
 			disconnect(r);
 			goto done;
 		}
-	} else if (trans &&
+	} else if (
 	    (strneq(buf, "ERROR-cannot use key", 20 ) ||
 	     strneq(buf, "ERROR-cannot cd to ", 19))) {
-		/* populate doesn't need to propagate error message */
-		exit(CLONE_CHDIR);
+		unless (trans) {
+			/* populate doesn't need to propagate error message */
+			fprintf(stderr, "%s: can't find repository\n", prog);
+		}
+		return (CLONE_CHDIR);
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
-		exit(CLONE_ERROR);
+		return (CLONE_ERROR);
 	}
 	if (trans && strneq(buf, "ERROR-rev ", 10)) {
 		/* populate doesn't need to propagate error message */
-		exit(CLONE_BADREV);
+		return (CLONE_BADREV);
 	}
 
 	if (get_ok(r, buf, 1)) {
@@ -591,6 +625,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		disconnect(r);
 		goto done;
 	}
+	after_create = 1;
 
 	/*
 	 * Now that we know where we are going, go see if it is a network
@@ -622,11 +657,21 @@ clone(char **av, remote *r, char *local, char **envVar)
 		getMsg("bkd_missing_feature", "SAMv3", '=', stderr);
 		goto done;
 	}
-	unless (exists(IDCACHE)) {
-		if (exists("BitKeeper/log/x.id_cache")) {
+
+	/*
+	 * When the source and destination of a clone are remapped
+	 * differently, then the id_cache may appear in the wrong location.
+	 * Here we move the correct idcache into position before
+	 * continuing.
+	 */
+	if (proj_hasOldSCCS(0)) {
+		if (getenv("BKD_REMAP")) {
+			/* clone remapped -> non-remapped */
 			rename("BitKeeper/log/x.id_cache", IDCACHE);
 		}
-		if (exists("BitKeeper/etc/SCCS/x.id_cache")) {
+	} else {
+		unless (getenv("BKD_REMAP")) {
+			/* clone non-remapped -> remapped */
 			rename("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
 		}
 	}
@@ -682,7 +727,9 @@ clone(char **av, remote *r, char *local, char **envVar)
 done:	disconnect(r);
 	if (clonerc) {
 		putenv("BK_STATUS=FAILED");
-		if (clonerc == CLONE_ERROR) mkdir("RESYNC", 0777);
+		if (after_create && (clonerc == CLONE_ERROR)) {
+			mkdir("RESYNC", 0777);
+		}
 	} else {
 		putenv("BK_STATUS=OK");
 	}
@@ -707,7 +754,7 @@ done:	disconnect(r);
 			clonerc = CLONE_ERROR;
 		}
 		unless (clonerc) rmtree(ROOT2RESYNC);
-
+		putenv("_NESTED_LOCK=");
 	}
 	repository_unlock(0, 0);
 	return (clonerc);
@@ -720,8 +767,14 @@ clone_defaultAlias(nested *n)
 	char	*t;
 	hash	*aliasdb;
 
-	defalias = proj_configval(0, "clone_default");
-	if (streq(defalias, "")) defalias = "ALL";
+	/*
+	 * Drop the proj cache so we will reread the clone default,
+	 * merging in any value sent from the server.
+	 * Doing it this way lets people override the server config
+	 * if they want.
+	 */
+	proj_reset(n->proj);
+	defalias = proj_configval(n->proj, "clone_default");
 
 	t = defalias + strlen(defalias);
 	while (isspace(t[-1])) *--t = 0;
@@ -901,6 +954,19 @@ clone2(remote *r)
 			freeLines(opts->aliases, free);
 			opts->aliases = 0;
 			goto nested_err;
+		}
+		if (opts->localurl) {
+			/*
+			 * We don't want the clone->undo->pull sequence
+			 * of a clonemod to have to move all the components
+			 * around.  So we do it all product-only and
+			 * then populate the components at the end.
+			 */
+			opts->pull_aliases = opts->aliases;
+			opts->aliases = addLine(0, strdup("PRODUCT"));
+			EACH_STRUCT(n->comps, cp, i) {
+				unless (cp->product) cp->alias = 0;
+			}
 		}
 		freeLines(n->here, free);
 		n->here = opts->aliases;
@@ -1801,4 +1867,131 @@ detach(int quiet, int verbose)
 	unlink(REPO_ID);
 	(void)proj_repoID(0);
 	return (0);
+}
+
+private clonerc
+clonemod_part1(remote **r)
+{
+	/*
+	 * If we don't have a destination directory then we need to
+	 * make another bkd connection to find what is used on the
+	 * remote side.
+	 */
+	unless (opts->to) {
+		FILE	*f;
+		int	rc;
+		char	buf[MAXPATH];
+
+		if (bkd_connect(*r)) return (CLONE_ERROR);
+		bktmp(buf, "clonebasenm");
+		f = fopen(buf, "w");
+		assert(f);
+		sendEnv(f, 0, *r, SENDENV_NOREPO);
+		add_cd_command(f, *r);
+		fprintf(f, "quit\n");
+		fclose(f);
+
+		rc = send_file(*r, buf, 0);
+		unlink(buf);
+		if (rc) return (CLONE_ERROR);
+		if ((*r)->type == ADDR_HTTP) skip_http_hdr(*r);
+
+		while (getline2(*r, buf, sizeof (buf)) > 0) {
+			unless (strneq(buf, "ROOT=", 5)) continue;
+			opts->to = strdup(basenm(buf+5));
+		}
+		wait_eof(*r, 0);
+		disconnect(*r);
+		unless (opts->to) {
+			/* unlikely to happen so make error unique */
+			fprintf(stderr, "%s: unable to find remote basename\n");
+			return (CLONE_ERROR);
+		}
+	}
+	if (opts->rev) {
+		opts->pull_rev = opts->rev;
+		opts->rev = 0;
+	}
+	opts->pull_from = remote_unparse(*r);
+	remote_free(*r);
+	free(opts->from);
+	opts->from = strdup(opts->localurl);
+	*r = remote_parse(opts->from, REMOTE_BKDURL);
+	return (CLONE_OK);
+}
+
+private int
+clonemod_part2(char **envVar)
+{
+	int	i, rc;
+	char	**av;
+	char	*t;
+	sccs	*cset;
+	delta	*d;
+	FILE	*f;
+	char	**strip = 0;
+	char	buf[MAXLINE];
+
+	unless (opts->no_parent) {
+		sys("bk", "parent", "-sq", opts->pull_from, SYS);
+	}
+	sprintf(buf, "bk changes -qakL '%s'", opts->pull_from);
+	f = popen(buf, "r");
+	assert(f);
+	cset = sccs_csetInit(SILENT|INIT_NOCKSUM);
+	while (t = fgetline(f)) {
+		d = sccs_findKey(cset, t);
+		assert(d);
+		d->flags |= D_SET;
+	}
+	pclose(f);
+	for (d = cset->table; d; d = NEXT(d)) {
+		if (d->flags & D_SET) continue;
+		if (TAG(d)) continue;
+
+		/* newest gca tip */
+		sccs_color(cset, d);
+		break;
+	}
+	for (d = cset->table; d; d = NEXT(d)) {
+		if ((d->flags & D_SET) ||
+		    (!(d->flags & D_RED) && !TAG(d))) {
+			sccs_sdelta(cset, d, buf);
+			strip = addLine(strip, strdup(buf));
+		}
+	}
+	sccs_free(cset);
+	if (strip) {
+		reverseLines(strip);
+		lines2File(strip, CSETS_IN);
+		freeLines(strip, free);
+		if (sys("bk", "unpull", "-qfs", SYS)) return (CLONE_ERROR);
+	}
+	/*
+	 * Now everything is setup and we can pull the new changes
+	 * from the remote site.
+	 * We will write the HERE file now and pull automatically "fix"
+	 * the current repository to make it correct.
+	 */
+	lines2File(opts->pull_aliases, "BitKeeper/log/HERE");
+
+	av = addLine(0, strdup("bk"));
+	av = addLine(av, strdup("-?BK_NO_TRIGGERS=1"));
+	av = addLine(av, strdup("pull"));
+	av = addLine(av, strdup("-u"));
+	if (opts->quiet) av = addLine(av, strdup("-q"));
+	if (opts->verbose) av = addLine(av, strdup("-v"));
+	if (opts->debug) av = addLine(av, strdup("-d"));
+	if (opts->pull_rev) {
+		av = addLine(av, aprintf("-r'%s'", strdup(opts->pull_rev)));
+	}
+	// XXX -z?
+	EACH(envVar) av = addLine(av, aprintf("-E'%'", strdup(envVar[i])));
+	av = addLine(av, opts->pull_from);
+	av = addLine(av, 0);
+
+	rc = spawnvp(0, "bk", av+1);
+	freeLines(av, free);
+
+	return (rc ? CLONE_ERROR : CLONE_OK);
 }

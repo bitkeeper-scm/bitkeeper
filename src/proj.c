@@ -436,6 +436,7 @@ proj_configval(project *p, char *key)
 		if (streq(key, "upgrade_url")) {
 			ret = mdbm_fetch_str(db, "upgrade-url");
 		}
+		if (streq(key, "clone_default")) ret = "ALL";
 	}
 	return (ret ? ret : "");
 }
@@ -1400,7 +1401,7 @@ pruneCsetCache(project *p)
  * The data is cached in BitKeeper/tmp for fast access.
  */
 char *
-proj_cset2rev(project *p, char *csetrev, char *rootkey)
+proj_cset2key(project *p, char *csetrev, char *rootkey)
 {
 	char	*mpath = 0;
 	MDBM	*m = 0;

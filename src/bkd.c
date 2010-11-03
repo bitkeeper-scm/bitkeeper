@@ -16,6 +16,15 @@ private int	svc_uninstall(void);
 char		*bkd_getopt = "a:cCdDeE:hi:l|p:P:qRSt:UV:x:";
 private char	**exCmds;
 
+/*
+ * An easy way of debugging bkd commands (bkd_*.c files - cmd_functions)
+ * is to run them directly from the command line (perhaps under gdb).
+ * E.g. for debugging pull:
+ *
+ * $ BK_FEATURES=SAMv3,BAMv2 BK_REMOTE_PROTOCOL=1.3 ./bk -P _bkd_pull_part1
+ *
+ * Then type the protocol directly.
+ */
 int
 bkd_main(int ac, char **av)
 {
@@ -82,7 +91,6 @@ bkd_main(int ac, char **av)
 		    case 'U': Opts.unsafe = 1; break;
 		    default: bk_badArg(c, av);
 	    	}
-		optarg = 0;
 	}
 	EACH(unenabled) exclude(unenabled[i], 0);
 	freeLines(unenabled, 0);

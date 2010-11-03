@@ -56,11 +56,7 @@ collapse_main(int ac, char **av)
 		 * not respect -s (don't save a patch).
 		 */
 		unless ((c == 'a') || (c == 'r') || (c == '@')) {
-			if (optarg) {
-				nav = addLine(nav, aprintf("-%c%s", c,optarg));
-			} else {
-				nav = addLine(nav, aprintf("-%c", c));
-			}
+			nav = bk_saveArg(nav, av, c);
 		}
 		switch (c) {
 		    case '@':
@@ -186,11 +182,7 @@ fix_main(int ac,  char **av)
 		 * Collect options for running collapse in components.
 		 */
 		unless ((c == 'a') || (c == 'c')) {
-			if (optarg) {
-				nav = addLine(nav, aprintf("-%c%s", c,optarg));
-			} else {
-				nav = addLine(nav, aprintf("-%c", c));
-			}
+			nav = bk_saveArg(nav, av, c);
 		}
 		switch (c) {
 		    case 'a': after = optarg; break;

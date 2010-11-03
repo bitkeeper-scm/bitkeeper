@@ -15,6 +15,9 @@ key-value pairs, associated with a \*(BK repository.
 Repository configuration information is searched for in the following 
 places, in order:
 .TP "\fB`bk root`/BitKeeper/etc/config\fP"
+.B \`bk\ root\`/BitKeeper/log/config
+Repository level config file
+.tp
 .B \`bk\ root\`/BitKeeper/etc/config
 Repository level config file
 .tp
@@ -29,6 +32,10 @@ Per-installation config file
 .tp
 .V $BK_CONFIG
 Environment variable
+.LP
+The first repository file is not version controlled, the second is.
+Having two gives you a way to have repository specific values that
+do not propagate.
 .LP
 For each key-value pair, the first instance of a key found is used.
 You can override an earlier value with a later value, however, by

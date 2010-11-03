@@ -217,8 +217,15 @@ check_main(int ac, char **av)
 	goneDB = loadDB(GONE, 0, DB_GONE);
 	buildKeys(idDB);
 	if (all) {
+		/*
+		 * Going to build a new idcache so delete the old one,
+		 * also cleanup old IDCACHE file, just in case.
+		 */
 		mdbm_close(idDB);
 		idDB = mdbm_mem();
+		unlink("BitKeeper/etc/SCCS/x.id_cache");
+		unlink("BitKeeper/log/x.idcache");
+		
 		unlink(BAM_MARKER); /* recreate BAM_MARKER */
 	}
 	if (check_eoln) {
@@ -558,6 +565,7 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 {
 	char	*type, *p;
 	char	*sfile;
+	int	force = 0;
 	u32	flags;
 	char	buf[MAXPATH];
 
@@ -575,14 +583,20 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 		free(sfile);
 	}
 	checkout = BAM(s) ? (checkout >> 4) : (checkout & 0xf);
-	if (!CSET(s) &&
-	    !(strneq(s->gfile, "BitKeeper/", 10) &&
-		!strneq(s->gfile, "BitKeeper/triggers/", 19)) &&
-	    (((checkout == CO_EDIT) && !EDITED(s)) ||
-	     ((checkout == CO_GET) && !HAS_GFILE(s)))) {
+	if (CSET(s)) checkout = 0;
+	if (strneq(s->gfile, "BitKeeper/", 10) &&
+	    !strneq(s->gfile, "BitKeeper/triggers/", 19)) {
+		checkout = 0;
+	}
+	if (streq(s->gfile, "BitKeeper/etc/config")) {
+		checkout = CO_GET;
+		force = 1;
+	}
+	if (((checkout == CO_EDIT) && !EDITED(s)) ||
+	     ((checkout == CO_GET) && !HAS_GFILE(s))) {
 		if (win32() && S_ISLNK(sccs_top(s)->mode)) {
 			/* do nothing, no symlinks on windows */
-		} else if ((p = getenv("_BK_DEVELOPER")) && *p) {
+		} else if (!force && (p = getenv("_BK_DEVELOPER"))) {
 			// flags both missing and ro when we want rw
 			fprintf(stderr,
 			    "check: '%s' checkout CO=0x%x BAM=%s\n",

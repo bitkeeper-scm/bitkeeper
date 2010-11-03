@@ -167,7 +167,6 @@ int	checking_rmdir(char *dir);
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
 #define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
-#define S_CONFIG	0x00040000	/* this is a config file */
 #define S_IMPORT	0x00080000	/* import mode */
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
@@ -342,7 +341,6 @@ typedef	enum {
 #define	DB_NODUPS       0x01		/* keys must be unique */
 #define	DB_KEYSONLY	0x08		/* boolean hashes */
 #define	DB_KEYFORMAT	0x20		/* key/value are u@h|path|date|cksum */
-#define	DB_CONFIG	0x40		/* config file format */
 
 /* shortcuts for common formats */
 #define	DB_IDCACHE	(0x80|DB_KEYFORMAT|DB_NODUPS)
@@ -1366,6 +1364,7 @@ char	**remap_getdir(project *proj, char *dir);
 char	*remap_realBasename(project *proj, char *rel, char *realname);
 int	remap_access(project *proj, char *file, int mode);
 int	bk_urlArg(char ***urls, char *arg);
+char	**bk_saveArg(char **nav, char **av, int c);
 void	bk_badArg(int c, char **av)
 #ifdef __GNUC__
 	__attribute__((noreturn))

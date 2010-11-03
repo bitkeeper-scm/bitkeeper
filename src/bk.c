@@ -58,7 +58,7 @@ main(int volatile ac, char **av, char **env)
 	int	i, c, ret;
 	int	is_bk = 0, dashr = 0, remote = 0;
 	int	dashA = 0, dashU = 0, headers = 0;
-	int	dashs = 0, dashrdir = 0;
+	int	each_repo = 0, dashrdir = 0;
 	int	buf_stdin = 0;	/* -Bstdin */
 	int	from_iterator = 0;
 	char	*csp, *p, *locking = 0;
@@ -70,12 +70,19 @@ main(int volatile ac, char **av, char **env)
 	char	**nav = 0;
 	longopt	lopts[] = {
 		/* Note: remote_bk() won't like "option:" with a space */
+		/* none of these are passed to --each commands */
 		{ "title;", 300 },	// title for progress bar
 		{ "cd;", 301 },		// cd to dir
 		{ "headers", 303 },	// --headers for -s
 		{ "from-iterator", 304 },
 		{ "sigpipe", 305 },     // allow SIGPIPE
 		{ "sfiles-opts;", 306 },// --sfiles-opts=vcg
+
+		/* long aliases for some options */
+		{ "all-files", 'A' },
+		{ "user-files", 'U' },
+		{ "each-repo", 'e' },
+		{ "subset|", 's' },
 		{ 0, 0 },
 	};
 
@@ -210,10 +217,11 @@ main(int volatile ac, char **av, char **env)
 		nav = addLine(nav, strdup("bk"));
 		/* adding options with args should update remote_bk() */
 		while ((c = getopt(ac, av,
-			"?;^@|1aAB;cdDgGhjL|lnpPqr|Rs|uUxz;", lopts)) != -1) {
-			unless ((c == 's') || (c >= 300) || (c == '?')) {
-				p = aprintf("-%c%s", c, optarg ? optarg : "");
-				nav = addLine(nav, p);
+			"?;^@|1aAB;cdeDgGhjL|lnpPqr|Rs|uUxz;", lopts)) != -1) {
+			unless ((c == 'e') || (c == 's') || (c == '?') ||
+			    (c >= 300)) {
+				/* save options for --each */
+				nav = bk_saveArg(nav, av, c);
 			}
 			switch (c) {
 			    /* maybe sfiles, depends on nested or not */
@@ -221,13 +229,12 @@ main(int volatile ac, char **av, char **env)
 			    /* sfiles stuff */
 			    case 'U':
 				dashU = 1; /* nested -U mode */
-				/*FALLTHOUGH*/
+				/*FALLTHROUGH*/
 			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
 			    case 'n': case 'p': case 'u': case 'x':
 			    case 'h': case '^':
- 				sopts = addLine(sopts,
- 				    aprintf("-%c%s", c, optarg ? optarg : ""));
+				sopts = bk_saveArg(sopts, av, c);
 				break;
 			    case 306: // --sfiles-opts=cvg
 				sopts = addLine(sopts, aprintf("-%s", optarg));
@@ -240,6 +247,9 @@ main(int volatile ac, char **av, char **env)
 					return (1);
 				}
 				buf_stdin = 1;
+				break;
+			    case 'e':
+				each_repo = 1;
 				break;
 			    case 'q': break;	// noop, -q is the default
 			    case 'L': locking = optarg; break;
@@ -267,12 +277,13 @@ baddir:						fprintf(stderr,
 			    case 'R':				/* doc 2.0 */
 				toroot |= 1;
 				break;
-			    case 's': 	// -s
-				dashs = 1;
-				if (optarg) {
-					aliases =
-					    addLine(aliases, strdup(optarg));
+			    case 's':
+				unless (optarg) {
+					fprintf(stderr,
+					    "bk -sALIAS: ALIAS cannot be omitted\n");
+					return (1);
 				}
+				aliases = addLine(aliases, strdup(optarg));
 				break;
 			    case 'z': break;	/* remote will eat it */
 			    case 300:	// --title
@@ -293,7 +304,6 @@ baddir:						fprintf(stderr,
 				break;
 			    default: bk_badArg(c, av);
 			}
-			optarg = 0;
 		}
 		/* if -r, then -U is only passed to sfiles */
 		if (dashr && dashU) dashU = 0;
@@ -303,9 +313,9 @@ baddir:						fprintf(stderr,
 			fprintf(stderr, "bk: -A may not be combined with -r\n");
 			return (1);
 		}
-		if (dashs && dashrdir) {
+		if (each_repo && dashrdir) {
 			fprintf(stderr,
-			   "bk: -s may not be combined with -r<dir>\n");
+			   "bk: -e may not be combined with -r<dir>\n");
 			return (1);
 		}
 		if (todir && toroot) {
@@ -321,12 +331,19 @@ baddir:						fprintf(stderr,
 		}
 
 		/* -r implies cd2root unless combined with --cd */
-		if (dashr && !dashs && !todir) toroot |= 1;
+		if (dashr && !each_repo && !todir) toroot |= 1;
 		if (dashU) dashA = 1; /* from here on only dashA matters */
 
-		if (toroot && dashs && !dashA) {
+
+		if (aliases && !(each_repo || dashA)) {
 			fprintf(stderr,
-			    "bk: -R/-P not allowed with -s\n");
+			    "bk: -sALIAS requires -e or -A\n");
+			return (1);
+		}
+
+		if (toroot && each_repo && !dashA) {
+			fprintf(stderr,
+			    "bk: -R/-P not allowed with -e\n");
 			return (1);
 		}
 		if (dashA) sopts = addLine(sopts, strdup("-g"));
@@ -375,7 +392,7 @@ baddir:						fprintf(stderr,
 			}
 		}
 		start_cwd = strdup(proj_cwd());
-		if ((dashA || dashs) && !proj_isEnsemble(0)) {
+		if ((dashA || each_repo) && !proj_isEnsemble(0)) {
 			/*
 			 * Downgrade to be compat in standalone trees.
 			 * bk -A => bk -gr, but with cwd relative paths
@@ -387,7 +404,7 @@ baddir:						fprintf(stderr,
 				sopts = addLine(sopts,
 				   aprintf("--relpath=%s", start_cwd));
 			}
-			dashs = 0;
+			each_repo = 0;
 
 			// -s|-sHERE|-s. is fine.
 			EACH(aliases) {
@@ -403,7 +420,7 @@ baddir:						fprintf(stderr,
 			freeLines(aliases, free);
 			aliases = 0;
 		}
-		if (dashs && !dashA) {
+		if (each_repo && !dashA) {
 			nav = addLine(nav, strdup("--from-iterator"));
 			for (i = optind; av[i]; i++) {
 				nav = addLine(nav, strdup(av[i]));
@@ -835,6 +852,7 @@ private	struct {
 #define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
 #define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
 #define	CMD_LOCK_PRODUCT	0x00000800	/* lock product, not comp */
+#define	CMD_RDUNLOCK		0x00001000	/* unlock a previous READ */
 } repolog[] = {
 	{"abort",
 	    CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
@@ -853,7 +871,7 @@ private	struct {
 	{"remote abort",
 	     CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
 	{"remote changes part1", CMD_RDLOCK},
-	{"remote changes part2", CMD_RDLOCK},
+	{"remote changes part2", CMD_RDUNLOCK},
 	{"remote clone", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
 	{"remote pull part1", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
 	{"remote pull part2", CMD_BYTES|CMD_RDLOCK},
@@ -1106,6 +1124,13 @@ cmdlog_start(char **av, int bkd_cmd)
 		} else {
 			/* fail? */
 		}
+	}
+	if ((cmdlog_locks & CMD_RDLOCK) && (cmdlog_flags & CMD_RDUNLOCK)) {
+		/*
+		 * We are holding a read lock and we need to drop it.
+		 */
+		repository_unlock(0, 0);
+		cmdlog_locks &= ~CMD_RDLOCK;
 	}
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
 	if (bkd_cmd) {

@@ -27,6 +27,7 @@ private struct {
 	u32	filt:1;		/* output limited by filenames */
 	u32	chgurl:1;	/* running 'bk changes URL', ignore local */
 	u32	noMeta:1;	/* auto or --no-meta */
+	u32	standalone:1;	/* --standalone: treat comps as standalone */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
@@ -65,7 +66,7 @@ private int	changes_part1(remote *r, char **av, char *key_list);
 private int	changes_part2(remote *r, char **av, char *key_list, int ret);
 private int	_doit_remote(char **av, char *url);
 private int	doit_remote(char **nav, char *url);
-private int	doit_local(int nac, char **nav, char **urls);
+private int	doit_local(char ***nav, char **urls);
 private	int	cset(hash *state, sccs *cset, char *dkey, FILE *f, char *dspec);
 private	MDBM	*loadcset(sccs *cset);
 private	void	fileFilt(sccs *s, MDBM *csetDB);
@@ -78,8 +79,8 @@ int
 changes_main(int ac, char **av)
 {
 	int	i, c;
-	int	rc = 0, nac = 0;
-	char	*nav[30];
+	int	rc = 0;
+	char	**nav = 0;
 	char	**urls = 0, **rurls = 0, **lurls = 0;
 	char	*normal;
 	char	*searchStr = 0;
@@ -87,26 +88,25 @@ changes_main(int ac, char **av)
 	pid_t	pid = 0; /* pager */
 	longopt	lopts[] = {
 		{ "no-meta", 300 },		/* don't show meta files */
+		{ "html", 301 },		/* old -h */
+		{ "standalone", 'S' },		/* treat comps as standalone */
+		{ 0, 0 }
 	};
 
 	bzero(&opts, sizeof(opts));
 	opts.showdups = opts.urls = opts.noempty = 1;
 
-	nav[nac++] = "bk";
-	nav[nac++] = "changes";
+	nav = addLine(nav, strdup("bk"));
+	nav = addLine(nav, strdup("changes"));
 	/*
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
 	while ((c =
-	    getopt(ac, av, "1aBc;Dd;efhi;kLmnPqRr;tTu;U;Vv/;x;", lopts)) != -1)
-	{
+	    getopt(ac, av, "1aBc;Dd;efi;kLmnPqRr;StTu;U;Vv/;x;",
+		lopts)) != -1) {
 		unless (c == 'L' || c == 'R' || c == 'D') {
-			if (optarg) {
-				nav[nac++] = aprintf("-%c%s", c, optarg);
-			} else {
-				nav[nac++] = aprintf("-%c", c);
-			}
+			nav = bk_saveArg(nav, av, c);
 		}
 		switch (c) {
 		    /*
@@ -123,7 +123,7 @@ changes_main(int ac, char **av)
 		    case 'd': opts.dspec = strdup(optarg); break;
 		    case 'e': opts.noempty = !opts.noempty; break;
 		    case 'f': opts.forwards = 1; break;
-		    case 'h': opts.html = 1; opts.urls = 0; break;
+		    case 301: opts.html = 1; opts.urls = 0; break;
 		    case 'i':
 			opts.inc = addLine(opts.inc, strdup(optarg));
 			break;
@@ -158,12 +158,15 @@ changes_main(int ac, char **av)
 		    case '/': searchStr = optarg; break;
 		    case 'L': opts.local = 1; break;
 		    case 'R': opts.remote = 1; break;
+		    case 'S':
+			opts.standalone = 1;
+			opts.prodOnly = 1;
+			break;
 		    case 300: /* --no-meta */
 		    	opts.noMeta = 1;
 			break;
 		    default: bk_badArg(c, av);
 		}
-		optarg = 0;
 	}
 	opts.filt = opts.BAM || opts.inc || opts.exc;
 
@@ -193,7 +196,9 @@ changes_main(int ac, char **av)
 		return (1);
 	}
 	if (searchStr && prepSearch(searchStr)) usage();
-	nav[nac] = 0;	/* terminate list of args with -L and -R removed */
+
+	/* terminate list of args with -L and -R removed */
+	nav = addLine(nav, 0);
 
 #if 0
 	// NOT YET
@@ -261,7 +266,11 @@ changes_main(int ac, char **av)
 		seen = hash_new(HASH_MEMHASH);
 		pid = mkpager();
 		putenv("BK_PAGER=cat");
-		proj_cd2root();
+		if (proj_isComponent(0) && !opts.standalone) {
+			proj_cd2product();
+		} else {
+			proj_cd2root();
+		}
 		s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM|INIT_MUSTEXIST);
 		unless (s_cset) {
 			fprintf(stderr, "changes: missing ChangeSet file\n");
@@ -270,16 +279,37 @@ changes_main(int ac, char **av)
 		}
 	}
 	if (opts.local) {
-		if (rc = doit_local(nac, nav, lurls)) goto out;
+		if (rc = doit_local(&nav, lurls)) goto out;
 	}
 	if (opts.remote) {
+		char	*cpath = 0;
+
+		if (proj_isComponent(0)) {
+			/*
+			 * Ideally we want the remote path, but if we can't
+			 * get it then the local path will do.
+			 */
+			if (cpath=getenv("BKD_COMPONENT_PATH")){
+				cpath = strdup(cpath);
+			} else {
+				cpath = proj_relpath(proj_product(0),
+				    proj_root(0));
+			}
+		}
 		EACH(rurls) {
 			if (opts.urls) {
-				printf("==== changes -R %s ====\n", rurls[i]);
+				if (cpath) {
+					printf("==== changes -R %s/%s ====\n",
+					    rurls[i], cpath);
+				} else {
+					printf("==== changes -R %s ====\n",
+					    rurls[i]);
+				}
 				fflush(stdout);
 			}
 			rc |= doit_remote(nav, rurls[i]);
 		}
+		FREE(cpath);
 	}
 	if (opts.local || opts.remote) goto out;
 
@@ -306,9 +336,13 @@ changes_main(int ac, char **av)
 			waitpid(pid2, 0, 0);
 		}
 	} else {
-		if (proj_cd2root()) {
-			fprintf(stderr, "Can't find package root\n");
-			exit(1);
+		if (proj_isComponent(0) && !opts.standalone) {
+			proj_cd2product();
+		} else {
+			if (proj_cd2root()) {
+				fprintf(stderr, "Can't find package root\n");
+				exit(1);
+			}
 		}
 		s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM|INIT_MUSTEXIST);
 		unless (s_cset) {
@@ -337,7 +371,7 @@ out:	if (s_cset) sccs_free(s_cset);
 	if (opts.begin) free(opts.begin);
 	if (opts.end) free(opts.end);
 	if (seen) hash_free(seen);
-	for (c = 2; c < nac; c++) free(nav[c]);
+	freeLines(nav, free);
 	freeLines(urls, free);
 	if (rurls != lurls) freeLines(rurls, free);
 	freeLines(lurls, free);
@@ -380,7 +414,7 @@ _doit_local(char **nav, char *url)
 	 * What we get here is: bk synckey -l -S url | bk changes opts -
 	 */
 	if (opts.showdups) {
-		f = popenvp(nav, "w");
+		f = popenvp(nav + 1, "w");
 		assert(f);
 	}
 
@@ -417,29 +451,34 @@ _doit_local(char **nav, char *url)
 }
 
 private int
-doit_local(int nac, char **nav, char **urls)
+doit_local(char ***nav, char **urls)
 {
 	FILE	*f;
-	char	*p;
+	char	*p, *cpath = 0;
 	int	status, i;
-	int	ac = nac, rc = 0;
+	int	rc = 0;
 	int	all = 0;
 
-	nav[ac++] = strdup("-");
-	assert(ac < 30);
-	nav[ac] = 0;
+	*nav = addLine(*nav, strdup("-"));
+	*nav = addLine(*nav, 0);
+	if (proj_isComponent(0)) {
+		cpath = proj_relpath(proj_product(0), proj_root(0));
+	}
 	EACH(urls) {
 		if (opts.urls) {
 			if ((p = getenv("BK_STATUS")) &&
 			    streq(p, "LOCAL_WORK")) {
-			    	printf("#### Not updating "
+				printf("#### Not updating "
 				    "due to the following local work:\n");
+			} else if (cpath) {
+				printf("==== changes -L %s/%s ====\n",
+				    urls[i], cpath);
 			} else {
 				printf("==== changes -L %s ====\n", urls[i]);
 			}
 			fflush(stdout);
 		}
-		if (rc = _doit_local(nav, urls[i])) goto done;
+		if (rc = _doit_local(*nav, urls[i])) goto done;
 		all++;
 	}
 	unless (opts.showdups) {
@@ -451,7 +490,7 @@ doit_local(int nac, char **nav, char **urls)
 		 * Optimize: see if we are going to list anything
 		 * and skip starting a process if we aren't.
 		 */
-		f = popenvp(nav, "w");
+		f = popenvp((*nav) + 1, "w");
 		assert(f);
 		EACH_HASH(seen) {
 			if (*(int *)seen->vptr == all) fputs(seen->kptr, f);
@@ -460,10 +499,13 @@ doit_local(int nac, char **nav, char **urls)
 		unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) rc=1;
 	}
 done:
-	while(ac > nac) free(nav[--ac]);
-	nav[nac] = 0;
+	FREE(cpath);
+	p = popLine(*nav); /* remove '-' from above */
+	free(p);
+	*nav = addLine(*nav, 0);
 	return (rc);
 }
+
 
 private int
 doit(int dash)
@@ -1233,8 +1275,11 @@ send_part1_msg(remote *r, char **av)
 		 */
 		fputs(" -K", f); /* this enables the key sync code path */
 	} else {
-		/* Use the -L/-R cleaned options */
-		for (i = 1; av[i]; i++) fprintf(f, " %s", av[i]);
+		/* make -S easy to find in bkd_changes.c (MUST be first arg) */
+		if (opts.standalone) fprintf(f, " -S");
+
+		/* Use the -L/-R cleaned options; skip over "bk" "changes" */
+		EACH_START(3, av, i) fprintf(f, " %s", av[i]);
 	}
 	fputs("\n", f);
 	fclose(f);
@@ -1306,8 +1351,8 @@ send_part2_msg(remote *r, char **av, char *key_list)
 
 	if (r->type == ADDR_HTTP) add_cd_command(f, r);
 	fprintf(f, "chg_part2");
-	/* Use the -L/-R cleaned options */
-	for (i = 1; av[i]; i++) fprintf(f, " %s", av[i]);
+	/* Use the -L/-R cleaned options; skip over "bk" "changes" */
+	EACH_START(3, av, i) fprintf(f, " %s", av[i]);
 	fputs("\n", f);
 	fclose(f);
 
@@ -1451,11 +1496,11 @@ done:	unlink(key_list);
 }
 
 private int
-_doit_remote(char **av, char *url)
+_doit_remote(char **nav, char *url)
 {
 	char 	key_list[MAXPATH] = "";
 	char	*tmp;
-	int	rc;
+	int	rc, i;
 	u32	flags = REMOTE_BKDURL;
 	remote	*r;
 
@@ -1467,15 +1512,15 @@ _doit_remote(char **av, char *url)
 	}
 
 	/* Quote the dspec for the other side */
-	for (rc = 0; av[rc]; ++rc) {
-		unless (strneq("-d", av[rc], 2)) continue;
-		tmp = aprintf("'-d%s'", &av[rc][2]);
-		free(av[rc]);
-		av[rc] = tmp;
+	EACH(nav) {
+		unless (strneq("-d", nav[i], 2)) continue;
+		tmp = aprintf("'-d%s'", &nav[i][2]);
+		free(nav[i]);
+		nav[i] = tmp;
 	}
-	rc = changes_part1(r, av, key_list);
+	rc = changes_part1(r, nav, key_list);
 	if (rc >= 0 && opts.remote) {
-		rc = changes_part2(r, av, key_list, rc);
+		rc = changes_part2(r, nav, key_list, rc);
 	}
 	disconnect(r);
 	remote_free(r);
@@ -1490,7 +1535,7 @@ doit_remote(char **nav, char *url)
 	int	i = 0;
 
 	for (i = 1; i <= 5; i++) {
-		rc = _doit_remote(&nav[1], url);
+		rc = _doit_remote(nav, url);
 		if (rc != -2) break; /* -2 means locked */
 		if (getenv("BK_REGRESSION")) break;
 		fprintf(stderr,

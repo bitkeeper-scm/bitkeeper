@@ -499,16 +499,16 @@ bk new $Q blech || exit 1
 bk commit -ynnn $Q || exit 1
 bk tag $Q nnn || exit 1
 
-test `bk prs -hnd:REV: -rthis_tag_should_be_there` = 1.3 || {
+test `bk prs -hnd:REV: -rthis_tag_should_be_there ChangeSet` = 1.3 || {
 	echo tag should exist
 	exit 1
 }
-test `bk prs -hnd:REV: -rnnn` = 1.4 || {
+test `bk prs -hnd:REV: -rnnn ChangeSet` = 1.4 || {
 	echo tag should exist
 	exit 1
 }
 bk fix -c $Q || exit 1
-test `bk prs -hnd:REV: -rthis_tag_should_be_there` = 1.3 || {
+test `bk prs -hnd:REV: -rthis_tag_should_be_there ChangeSet` = 1.3 || {
 	echo tag should exist
 	exit 1
 }

@@ -121,7 +121,6 @@ push_main(int ac, char **av)
 			break;
 		    default: bk_badArg(c, av);
 		}
-		optarg = 0;
 	}
 	if (getenv("BK_NOTTY")) {
 		opts.quiet = 1;

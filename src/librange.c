@@ -180,7 +180,7 @@ getrev(char *me, sccs *s, int flags, char *rev)
 {
 	delta	*d;
 
-	unless ((d = sccs_findrev(s, rev)) || (rev[0] == '@')) {
+	unless (d = sccs_findrev(s, rev)) {
 		verbose((stderr, "%s: no such delta ``%s'' in %s\n",
 			    me, rev, s->gfile));
 	}

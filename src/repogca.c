@@ -9,17 +9,23 @@ repogca_main(int ac, char **av)
 	FILE	*f;
 	int	c, i, status;
 	int	all = 0, rc = 1;
+	int	standalone = 0;
 	char	**urls, **nav;
 	char	*dspec = ":JOIN::REV:\n$end{\\n}";
 	char	*begin = 0, *end = 0;
 	char	buf[MAXKEY];
+	longopt	lopts[] = {
+		{ "standalone", 'S' }, /* treat comp as standalone */
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "a5d;k", 0)) != -1) {
+	while ((c = getopt(ac, av, "a5d;kS", lopts)) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
 		    case 'd': dspec = optarg; break;
 		    case 'k': dspec = ":KEY:\\n"; break;
 		    case '5': dspec = ":MD5KEY:\\n"; break;
+		    case 'S': standalone = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -27,8 +33,10 @@ repogca_main(int ac, char **av)
 		fprintf(stderr, "repogca: must be run in a repository\n");
 		exit(1);
 	}
+	if (proj_isComponent(0) && !standalone) proj_cd2product();
 	nav = addLine(0, strdup("bk"));
 	nav = addLine(nav, strdup("changes"));
+	if (standalone) nav = addLine(nav, strdup("-S"));
 	nav = addLine(nav, strdup("-L"));
 	nav = addLine(nav, strdup("-end:KEY:"));
 

@@ -61,7 +61,7 @@ echo -n "APPL$abbrev" > PkgInfo
 cd Resources
 rm -f Wish.icns
 bk -R get -S macosx/data/BK.icns
-cp `bk root`/macosx/data/BK.icns $abbrev.icns
+cp `bk root -R`/macosx/data/BK.icns $abbrev.icns
 
 cd ../Frameworks
 

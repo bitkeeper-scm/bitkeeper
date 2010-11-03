@@ -17,7 +17,7 @@ OUT="$HERE/out"
 RC="`bk dotbk`/ci.rc"
 CSETCMTS="$HERE/project/SCCS/c.ChangeSet"
 
-echo $N Create some data ............................................$NL
+echo $N Create a non-nested repo ....................................$NL
 commercial project
 mkdir src
 cd src

@@ -113,7 +113,7 @@ extern	bkdopts Opts;
 
 void	bkd_server(int ac, char **av);
 
-#define	REMOTE_BKDURL	1	/* URL is for BKD (effects http headers) */
+#define	REMOTE_BKDURL	1	/* URL is for BKD (affects http headers) */
 #define	REMOTE_ROOTKEY	2	/* add in rootkey if we are a component */
 #define	REMOTE_ROOTREL	4	/* if relative, URL is rel to root not cwd */
 remote	*remote_parse(const char *url, u32 flags);

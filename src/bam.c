@@ -709,7 +709,7 @@ bp_updateServer(char *range, char *list, int quiet)
 			assert(list);
 			p = aprintf("- < '%s'", list);
 		}
-		cmd = aprintf("bk changes -qPBv -nd'"
+		cmd = aprintf("bk changes -qSBv -nd'"
 		    "$if(:BAMHASH:){|:BAMSIZE:|:BAMHASH: :KEY: :MD5KEY|1.0:}' "
 		    "%s > '%s'",
 		    p, tmpkeys);
@@ -2318,7 +2318,7 @@ rm:
 	}
 	if (!nosync && old_server[0] && !streq(old_server, ".")) {
 		/* fetch any missing data from old URL */
-		rc = systemf("bk -qs bam pull %s '%s'",
+		rc = systemf("bk -e bam pull %s '%s'",
 		    quiet ? "-q" : "", old_server);
 		if (rc) rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 7;
 	} else {

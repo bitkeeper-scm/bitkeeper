@@ -1,4 +1,4 @@
-# the default dspec used by 'bk changes -h'
+# the default dspec used by 'bk changes --html'
 
 $begin {
 	"<html><body bgcolor=white>\n"

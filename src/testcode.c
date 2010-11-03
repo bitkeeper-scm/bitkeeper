@@ -105,18 +105,24 @@ int
 getopt_test_main(int ac, char **av)
 {
 	char	*comment = 0;
-	int	c;
+	char	**nav = 0;
+	int	c, i;
 	longopt	lopts[] = {
-		{ "longf", 'f' },  /* alias for -f */
-		{ "longx:", 'x' }, /* alias for -x */
-		{ "longy;", 'y' }, /* alias for -y */
-		{ "longz|", 'z' }, /* alias for -z */
+		{ "aliasf", 'f' },  /* alias for -f */
+		{ "aliasx:", 'x' }, /* alias for -x */
+		{ "aliasy;", 'y' }, /* alias for -y */
+		{ "aliasz|", 'z' }, /* alias for -z */
 		{ "unique", 400 },  /* unique option */
 		{ "unhandled", 401 },
+		{ "longf",  402 },
+		{ "longx:", 403 },
+		{ "longy;", 404 },
+		{ "longz|", 405 },
 		{ 0, 0}
 	};
 
 	while ((c = getopt(ac, av, "fnpsx:y;z|Q", lopts)) != -1) {
+		nav = bk_saveArg(nav, av, c);
 		switch (c) {
 		    case 'f':
 		    case 'n':
@@ -133,11 +139,21 @@ getopt_test_main(int ac, char **av)
 		    case 400:
 			printf("Got option --unique\n");
 			break;
+		    case 402:
+		    case 403:
+		    case 404:
+		    case 405:
+			comment = optarg ? optarg : "(none)";
+			printf("Got optarg %s with --%d\n", comment, c);
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
 	for (; av[optind]; optind++) {
 		printf("av[%d] = %s\n", optind, av[optind]);
+	}
+	EACH(nav) {
+		printf("nav[%d] = %s\n", i, nav[i]);
 	}
 	return (0);
 }

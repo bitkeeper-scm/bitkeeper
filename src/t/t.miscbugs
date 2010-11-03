@@ -112,3 +112,10 @@ cmpfiles ERR WANT
 bk -rsrc -R 2>ERR && fail
 cmpfiles ERR WANT
 echo OK
+
+echon Test pwd -P outside of repo .................................
+cd "$HERE"
+bk pwd -P 2>ERR && fail -f ERR should fail
+echo "pwd: Cannot find package root." > WANT
+cmpfiles ERR WANT
+echo OK

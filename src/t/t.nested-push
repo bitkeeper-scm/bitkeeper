@@ -84,7 +84,7 @@ test -z "`bk changes -qL`" || {
 	exit 1
 }
 cd "$HERE/project"
-bk -s -r check -av >OUT 2>&1 || {
+bk -e -r check -av >OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -575,5 +575,5 @@ grep -q "gcc has uncommitted changes" ERR || fail -f ERR wrong error
 test -n "`bk -P changes -qR ../child`" && fail local changes found
 # destination repo should be fine
 cd "$HERE/child"
-bk -qs -r check -ac >ERR 2>&1 || fail -f ERR
+bk -e -r check -ac >ERR 2>&1 || fail -f ERR
 echo OK

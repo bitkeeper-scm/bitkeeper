@@ -24,7 +24,7 @@ doFiles() {
 	bk commit $Q -y'initial checkin' || exit 1
 }
 
-echo $N Create some data ............................................$NL
+echo $N Create a nested repo.........................................$NL
 nested project deep
 cd "$HERE/project"
 doFiles

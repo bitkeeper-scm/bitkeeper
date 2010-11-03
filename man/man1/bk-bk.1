@@ -4,7 +4,7 @@
 bk \- \*(BK configuration management system front end
 .SH SYNOPSIS
 .B bk 
-.[B] \-A|U|r
+.[B] \-A|U|e|r
 .[OPTreq] \-s alias
 .[B] options
 .ARG command 
@@ -29,7 +29,7 @@ To see command specific options consult the documentation for the command
 in question (bk help
 .ARG command ).
 .de TPP
-.TP -s[\*<alias\*>]\ 
+.TP \-\-subset=\*<a\*>\ 
 ..
 .TPP
 .OPTopt \-@ url
@@ -58,6 +58,8 @@ is the last argument, then the standard input is read and buffered.
 Each remote command receives the same input.
 .TPP
 .B \-A
+.tp
+.B \-\-all-files
 Starting at the current working directory, run
 .ARG command
 on all files in the entire repository or nested collection.
@@ -74,6 +76,22 @@ collection.
 Change to
 .ARG dir
 before running the command.
+.if \n[NESTED] \{\
+.TPP
+.B \-e
+.tp
+.B \-\-each-repo
+This is a nested collection iterator that runs
+.ARG command
+in each of the populated components and then the product.
+For example, to see the full path to the root of each repository in a nested
+collection:
+.DS
+$ bk -e pwd
+.DE
+See \-s below for ways to limit the set of repositories processed in a nested
+collection.
+.\}
 .TPP
 .B \--headers
 For remote commands (\-@)
@@ -112,52 +130,45 @@ This works by generating a list of files and passing them to
 on the standard input.
 .if \n[NESTED] \{\
 .TPP
-.OPTopt \-s alias
-If not combined with -A/-U, this is a nested collection iterator that
-runs the command at the root of each selected component/product.
-If
-.ARG alias
-is not present, it defaults to "HERE" which means run the command
-in each component and then the product.
-For example, to integrity check all the components and the product
-in succession:
-.DS
-$ bk -s -r check -acv
-.DE
-though "bk repocheck" is easier to type and does the same thing.
-.sp .5
-If 
-.ARG alias
-is present, then it restricts the command to run in the specified
-alias[es].
+.OPTreq \-s alias
+.tp
+.B \-\-subset=\*<a\*>
+This option restricts the files (\-A/\-U) or repositories (\-e)
+processed to those belonging to the specified alias[es].
 The option may be repeated to specify multiple aliases,
 the alias may be a component,
 and the alias may be negated.
-To run everywhere except the product:
+To search everywhere except the product:
 .DS
-$ bk -s^PRODUCT grep 'something only if in a component'
+$ bk -U -s^PRODUCT grep some_string
 .DE
-.sp .5
-When combined with
-.B \-A
-or
-.BR \-U ,
-.OPTreq \-s alias
-limits the files processed to those implied by
-.ARG alias .
-.sp .5
+This option must be combined with one of:
+\-A,
+\-\-all-files,
+\-e,
+\-\-each-repo,
+\-U,
+\-\-user-files.
+.SP
 In a standalone repository this option has no effect.
 .TPP
 .B \-U
-In a nested collection,
-starting at the current working directory, run
+.tp
+.B \-\-user-files
+Starting at the current working directory, run
 .ARG command
-on all active (not deleted and not BitKeeper metadata )
-files in the entire collection, components and
-product.
+on all user files
+in the entire repository or nested collection.
+User files means everything except deleted and \*[BK] metadata files.
+In a standalone repository this option is similar to
+.BR \-Ur .
 For example, to check out your collection:
 .DS
 $ bk -U co
+.DE
+To see all unchecked in changes:
+.DS
+$ bk -cU diffs
 .DE
 See \-s above for ways to limit the set of files processed in a nested
 collection.
@@ -190,6 +201,9 @@ List files with pending deltas.
 .B \-x
 List files which have no revision control files.
 See EXAMPLES below for a typical usage.
+.tp
+.OPTreq \-\-sfiles-opts= opts
+This long option may be used to pass any valid option to sfiles.
 .RE
 .SH EXIT STATUS
 Unless otherwise documented, all \*(BK commands return exit status

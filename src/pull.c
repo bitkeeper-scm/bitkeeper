@@ -65,23 +65,11 @@ pull_main(int ac, char **av)
 	opts.safe = -1;	/* -1 == not set on command line */
 	while ((c = getopt(ac, av, "c:DdE:Fiqr;RstTuvw|z|", lopts)) != -1) {
 		unless (c == 'r' || c >= 300) {
-			if (optarg) {
-				opts.av_pull = addLine(opts.av_pull,
-				    aprintf("-%c%s", c, optarg));
-			} else {
-				opts.av_pull = addLine(opts.av_pull,
-				    aprintf("-%c", c));
-			}
+			opts.av_pull = bk_saveArg(opts.av_pull, av, c);
 		}
 		if ((c == 'd') || (c == 'E') || (c == 'q') ||
 		    (c == 'v') || (c == 'w') || (c == 'z')) {
-			if (optarg) {
-				opts.av_clone = addLine(opts.av_clone,
-				    aprintf("-%c%s", c, optarg));
-			} else {
-				opts.av_clone = addLine(opts.av_clone,
-				    aprintf("-%c", c));
-			}
+			opts.av_clone = bk_saveArg(opts.av_clone, av, c);
 		}
 		switch (c) {
 		    case 'D': opts.collapsedups = 1; break;
@@ -116,7 +104,6 @@ pull_main(int ac, char **av)
 			break;
 		    default: bk_badArg(c, av);
 		}
-		optarg = 0;
 	}
 	if (getenv("BK_NOTTY")) {
 		opts.quiet = 1;
@@ -726,12 +713,19 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 		if (c->included) {
 			/* this component is included in pull */
 			if (c->alias) {
-				unless (c->new) opts.n++;
-				/* The local will need this component */
-				if (!c->remotePresent && !c->new) {
-					/* they don't have the data to send */
-
-					// XXX we can fix this
+				/* and we will need those new csets */
+				if (c->present) opts.n++;
+				if (!c->remotePresent && c->present) {
+					/*
+					 * Since this component has
+					 * new csets coming and we
+					 * have it populated, it will
+					 * need a pull. But the remote
+					 * doesn't the component so it
+					 * will need to be pulled from
+					 * a 3rd party.  We don't
+					 * support that yet.
+					 */
 					fprintf(stderr,
 					    "pull: %s is missing in %s\n",
 					    c->path, url);
@@ -857,6 +851,7 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 		/* calculate url to component */
 		hash_storeStr(r->params, "ROOTKEY", c->rootkey);
 		vp = addLine(vp, remote_unparse(r));
+		hash_deleteStr(r->params, "ROOTKEY");
 		vp = addLine(vp, 0);
 		if (rc = spawnvp(_P_WAIT, "bk", &vp[1])) {
 			fprintf(stderr, "Pulling %s failed %x\n", c->path, rc);
@@ -1053,6 +1048,7 @@ resolve_comments(remote *r)
 {
 	FILE	*f;
 	char	*u, *c;
+	char	*cpath = 0;
 	char	*h = sccs_gethost();
 	char	buf[MAXPATH];
 
@@ -1062,7 +1058,16 @@ resolve_comments(remote *r)
 	} else {
 		u = aprintf("%s:%s", h, r->path);
 	}
-	c = aprintf("Merge %s\ninto  %s:%s\n", u, h, buf);
+	if (proj_isComponent(0)) {
+		if (cpath = getenv("BKD_COMPONENT_PATH")) {
+			cpath = strdup(cpath);
+		} else {
+			cpath = proj_relpath(proj_product(0), proj_root(0));
+		}
+		c = aprintf("Merge %s/%s\ninto  %s:%s\n", u, cpath, h, buf);
+	} else {
+		c = aprintf("Merge %s\ninto  %s:%s\n", u, h, buf);
+	}
 	free(u);
 	sprintf(buf, "%s/%s", ROOT2RESYNC, CHANGESET);
 	assert(exists(buf));
@@ -1075,6 +1080,7 @@ resolve_comments(remote *r)
 		perror(buf);
 	}
 	free(c);
+	FREE(cpath);
 }
 
 private	int

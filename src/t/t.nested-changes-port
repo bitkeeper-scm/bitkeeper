@@ -39,7 +39,7 @@ echo OK
 
 echo $N Changes -L stand-alone, from component ......................$NL
 cd "$HERE/nested/c1"
-bk changes -L $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/standalone" |
+bk changes -SL $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/standalone" |
     sed 's/BitKeeper file.*/new/' >GOT || {
 	echo should have worked
 	cat GOT
@@ -58,7 +58,7 @@ echo OK
 
 echo $N Changes -R stand-alone, from component ......................$NL
 cd "$HERE/nested/c1"
-bk changes -R $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/standalone" |
+bk changes -SR $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/standalone" |
     sed 's/BitKeeper file.*/new/' >GOT || {
 	echo should have worked
 	cat GOT
@@ -74,7 +74,7 @@ echo OK
 
 echo $N Changes -L detached, from component .........................$NL
 cd "$HERE/nested/c1"
-bk changes -L $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
+bk changes -SL $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
     sed 's/BitKeeper file.*/new/' >GOT || {
 	echo should have worked
 	cat GOT
@@ -90,7 +90,7 @@ echo OK
 
 echo $N Changes -R detached, from component .........................$NL
 cd "$HERE/nested/c1"
-bk changes -R $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
+bk changes -SR $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
     sed 's/BitKeeper file.*/new/' >GOT || {
 	echo should have worked
 	cat GOT
@@ -106,7 +106,7 @@ echo OK
 
 echo $N Changes -L component, from stand-alone ......................$NL
 cd "$HERE/standalone"
-bk changes -L $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/nested/c1" |
+bk changes -SL $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/nested/c1" |
     sed 's/BitKeeper file.*/new/' >GOT || {
 	echo should have worked
 	cat GOT
@@ -122,7 +122,7 @@ echo OK
 
 echo $N Changes -R component, from stand-alone ......................$NL
 cd "$HERE/standalone"
-bk changes -R $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/nested/c1" |
+bk changes -SR $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/nested/c1" |
     sed 's/BitKeeper file.*/new/' >GOT || {
 	echo should have worked
 	cat GOT
@@ -141,7 +141,7 @@ echo OK
 
 echo $N Changes -L detached, from stand-alone .......................$NL
 cd "$HERE/standalone"
-bk changes -L $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
+bk changes -SL $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
     sed 's/BitKeeper file.*/new/' >GOT || {
 	echo should have worked
 	cat GOT
@@ -157,7 +157,7 @@ echo OK
 
 echo $N Changes -R detached, from stand-alone .......................$NL
 cd "$HERE/standalone"
-bk changes -R $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
+bk changes -SR $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/c1-detached" |
     sed 's/BitKeeper file.*/new/' >GOT || {
 	echo should have worked
 	cat GOT
@@ -176,7 +176,7 @@ echo OK
 
 echo $N Changes -L component, from detached .........................$NL
 cd "$HERE/c1-detached"
-bk changes -L $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/nested/c1" |
+bk changes -SL $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/nested/c1" |
     sed 's/BitKeeper file.*/new/' >GOT || {
 	echo should have worked
 	cat GOT
@@ -192,7 +192,7 @@ echo OK
 
 echo $N Changes -R component, from detached .........................$NL
 cd "$HERE/c1-detached"
-bk changes -R $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/nested/c1" |
+bk changes -SR $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/nested/c1" |
     sed 's/BitKeeper file.*/new/' >GOT || {
 	echo should have worked
 	cat GOT
@@ -208,7 +208,7 @@ echo OK
 
 echo $N Changes -L stand-alone, from detached .......................$NL
 cd "$HERE/c1-detached"
-bk changes -L $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/standalone" |
+bk changes -SL $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/standalone" |
     sed 's/BitKeeper file.*/new/' >GOT || {
 	echo should have worked
 	cat GOT
@@ -227,7 +227,7 @@ echo OK
 
 echo $N Changes -R stand-alone, from detached .......................$NL
 cd "$HERE/c1-detached"
-bk changes -R $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/standalone" |
+bk changes -SR $Q -vnd':INDENT::REV: :GFILE: :C:' "$HERE/standalone" |
     sed 's/BitKeeper file.*/new/' >GOT || {
 	echo should have worked
 	cat GOT

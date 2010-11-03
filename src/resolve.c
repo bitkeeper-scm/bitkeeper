@@ -2785,8 +2785,6 @@ resolve_cleanup(opts *opts, int what)
 		goto exit;
 	}
 
-	unless (opts->from_pullpush) repository_wrunlock(0, 0);
-
 	/*
 	 * Get the patch file name from RESYNC before deleting RESYNC.
 	 */
@@ -2891,6 +2889,7 @@ resolve_cleanup(opts *opts, int what)
 	/* Only get here from pass4_apply() */
 	rc = 0;
 exit:
+	unless (opts->from_pullpush) repository_unlock(0, 0);
 	sccs_unlockfile(RESOLVE_LOCK);
 	exit(rc);
 }

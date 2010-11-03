@@ -42,7 +42,7 @@ bk clone $Q project bk://localhost:$PORT/copy || {
 	exit 1
 }
 cd copy || exit 1
-bk $Q -s -r check -a || {
+bk $Q -e -r check -a || {
 	echo failed
 	exit 1
 }
@@ -61,7 +61,7 @@ echo $N Clone the product using rclone -r ...........................$NL
 cd "$HERE"
 bk clone $Q -rTIP project bk://localhost:$PORT/rollback || fail
 cd rollback || exit 1
-bk $Q -s -r check -a || {
+bk $Q -e -r check -a || {
 	echo failed
 	exit 1
 }
@@ -107,7 +107,7 @@ bk clone $Q -sgdb copy bk://localhost:$PORT/copy2 || {
 	exit 1
 }
 cd copy2 || exit 1
-bk $Q -s -r check -a || {
+bk $Q -e -r check -a || {
 	echo failed
 	exit 1
 }
@@ -120,7 +120,7 @@ cd "$HERE"
 cd project
 bk sfiles -R | grep -v gcc > ../LIST
 cd ..
-KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
+KEY=`bk changes -Sr+ -q -d:ROOTKEY: project/gcc`
 rm -rf mynewgcc
 bk clone $Q -s"$KEY" project bk://localhost:$PORT/mynewgcc || {
 	echo failed

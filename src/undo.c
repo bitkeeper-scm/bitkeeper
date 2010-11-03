@@ -60,12 +60,7 @@ undo_main(int ac,  char **av)
 	while ((c = getopt(ac, av, "a:Cfqp;r:sv", 0)) != -1) {
 		/* We make sure component undo's always save a patch */
 		unless ((c == 'a') || (c == 'r') || (c == 's')) {
-			if (optarg) {
-				nav = addLine(nav,
-				    aprintf("-%c%s", c, optarg));
-			} else {
-				nav = addLine(nav, aprintf("-%c", c));
-			}
+			nav = bk_saveArg(nav, av, c);
 		}
 		switch (c) {
 		    case 'a': aflg = 1;				/* doc 2.0 */
@@ -81,7 +76,6 @@ undo_main(int ac,  char **av)
 			freeLines(nav, free);
 			bk_badArg(c, av);
 		}
-		optarg = 0;
 	}
 	unless (rev) usage();
 	if (undoLimit(&must_have)) limitwarning = 1;
@@ -197,7 +191,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		for (i = 0; i<79; ++i) putchar('-'); putchar('\n');
 		fflush(stdout);
 		f = popen(verbose ?
-		    "bk changes -Pav -" : "bk changes -Pa -", "w");
+		    "bk changes -Sav -" : "bk changes -Sa -", "w");
 		EACH (csetrevs) fprintf(f, "%s\n", csetrevs[i]);
 		pclose(f);
 		printf("Remove these [y/n]? ");
@@ -649,7 +643,7 @@ getrev(char *top_rev, int aflg)
 	 * output itself but that's a lot of work to save some sfile inits.
 	 */
 	cmd = aprintf(
-	    "bk changes -Pafvnd':SFILE:|:KEY:' %s 2>" DEVNULL_WR, rev);
+	    "bk changes -Safvnd':SFILE:|:KEY:' %s 2>" DEVNULL_WR, rev);
 	free(rev);
 	f = popen(cmd, "r");
 	free(cmd);

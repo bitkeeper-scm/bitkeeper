@@ -62,7 +62,6 @@ rm -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
 rm -f copy/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
 rm -f copy/BitKeeper/log/*
-rmdir  project/BitKeeper/readers
 bk diff -r project copy > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
@@ -203,6 +202,7 @@ echo OK
 
 echo $N Send a patch using a key in a range .........................$NL
 cd "$HERE/project"
+bk repocheck $Q
 KEY="`bk changes -kr1.5`"
 bk send -qr"$KEY".. - > KEYS
 bk send -qr1.6,1.7 - > LIST

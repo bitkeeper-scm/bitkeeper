@@ -68,6 +68,10 @@ Only completed changesets are cloned.  Any pending deltas are removed
 from the child before the clone completes.
 .SH OPTIONS
 .TP \-\-no-hardlinks
+.OPTreq \-@ base_url
+Use a local repository as a baseline for the clone so that only the
+changes need to be transferred from a remote location.
+.tp
 .OPTreq \-B url
 Set the BAM server url to 
 .ARG url

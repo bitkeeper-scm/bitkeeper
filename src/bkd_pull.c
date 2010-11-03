@@ -116,7 +116,11 @@ cmd_pull_part2(int ac, char **av)
 		    default:  /* ignore and pray */ break;
 		}
 	}
-
+	unless (isdir("BitKeeper/etc")) {
+		out("ERROR-Not at package root\n");
+		out("@END@\n");
+		return (1);
+	}
 	if (port = getenv("BK_PORT_ROOTKEY")) pkflags |= PK_SYNCROOT;
 	if (hasLocalWork(GONE)) {
 		out("ERROR-must commit local changes to ");

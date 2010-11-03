@@ -134,7 +134,7 @@ next:			sccs_free(s);
 /*
  * Note that these two are identical except for the d1/d2 assignment.
  */
-private	inline int
+private	int
 compar(const void *a, const void *b)
 {
 	data	*d1, *d2;

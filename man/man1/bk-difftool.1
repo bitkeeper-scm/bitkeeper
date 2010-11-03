@@ -5,7 +5,7 @@ bk difftool \- \*(BK graphical differences viewer
 .SH SYNOPSIS
 .B bk difftool
 .br
-.B bk difftool .
+.B bk difftool \*<dir\*>
 .br
 .B bk difftool \-
 .br
@@ -45,16 +45,16 @@ keys described below.
 .LP
 If no arguments are given, 
 .B bk difftool
-finds all the modified files in the current directory and
-subdirectories and allows the user to select the files they are
-interested in via a pull-down menu. Also, keyboard accelerators can
-be used to navigate between the files.
+finds all the modified files in the repository and allows
+the user to select the files they are
+interested in via a pull-down menu.
+Keyboard accelerators may also be be used to navigate between the files.
 .LP
-If a dot is given as an argument,
+If a directory,
+.ARG dir ,
+is given as an argument,
 .B bk difftool
-looks for changes in and below the current working directory.
-In a nested collection, "." means here and down but in this
-component/product only.
+looks for changes in and only in that directory.
 .LP
 If a dash (\c
 .QR \- )
@@ -62,8 +62,23 @@ is given as an argument,
 .B bk difftool
 takes a list of files to view from stdin. For example, 
 .DS
-bk sfiles -gc | bk difftool -
+$ bk gfiles -cU | bk difftool -
+$ bk -cgU difftool
 .DE
+.if \n[NESTED] \{\
+In a nested collection, one way to limit the files processed by 
+.B bk difftool
+is select an alias or component to diff:
+.DS
+$ bk -cgU -s\*<alias\*> difftool
+.DE
+In a future release 
+.B bk difftool
+will be able to do that directly with
+.DS
+$ bk difftool -s\*<alias\*>
+.DE
+but for now you need to have \*[BK] feed the list of files to the command.
 .LP
 If only one file is specified and that file is a locked and modified file,
 .B bk difftool

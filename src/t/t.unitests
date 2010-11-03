@@ -2,3 +2,52 @@
 echo $N Run C-based unit tests ......................................$NL
 bk _unittests || exit 1
 echo OK
+
+echo $N Test getopt parsing .........................................$NL
+bk _getopt_test -ff -xargx -x argx2 -yargy -z -zargz \
+   --aliasf --aliasx=argx --aliasx argx2 --aliasy=argy --aliasz --aliasz=argz \
+   --longf --longx=argx --longx argx2 --longy=argy --longz --longz=argz \
+   > OUT || fail
+cat <<EOF > WANT
+Got option f
+Got option f
+Got optarg argx with -x
+Got optarg argx2 with -x
+Got optarg argy with -y
+Got optarg (none) with -z
+Got optarg argz with -z
+Got option f
+Got optarg argx with -x
+Got optarg argx2 with -x
+Got optarg argy with -y
+Got optarg (none) with -z
+Got optarg argz with -z
+Got optarg (none) with --402
+Got optarg argx with --403
+Got optarg argx2 with --403
+Got optarg argy with --404
+Got optarg (none) with --405
+Got optarg argz with --405
+nav[1] = -f
+nav[2] = -f
+nav[3] = -xargx
+nav[4] = -xargx2
+nav[5] = -yargy
+nav[6] = -z
+nav[7] = -zargz
+nav[8] = -f
+nav[9] = -xargx
+nav[10] = -xargx2
+nav[11] = -yargy
+nav[12] = -z
+nav[13] = -zargz
+nav[14] = --longf
+nav[15] = --longx=argx
+nav[16] = --longx
+nav[17] = argx2
+nav[18] = --longy=argy
+nav[19] = --longz
+nav[20] = --longz=argz
+EOF
+cmpfiles OUT WANT
+echo OK
