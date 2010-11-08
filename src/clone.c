@@ -20,6 +20,7 @@ private	struct {
 	u32	detach:1;		/* is detach command? */
 	u32	link:1;			/* lclone-mode */
 	u32	product:1;		/* is product? */
+	u32	identical:1;		/* --identical */
 	int	delay;			/* wait for (ssh) to drain */
 	int	remap;			/* force remapping? */
 	int	parallel;		/* -j%d: for NFS */
@@ -72,6 +73,10 @@ clone_main(int ac, char **av)
 		{ "sfiotitle;", 302 },		/* title for sfio */
 		{ "no-hardlinks", 303 },	/* never hardlink repo */
 		{ "force", 304 },		/* force attach dups */
+		{ "identical", 305 },
+
+		/* aliases */
+		{ "subset;" , 's' },
 		{ 0, 0 }
 	};
 
@@ -143,6 +148,9 @@ clone_main(int ac, char **av)
 		    case 304: /* --force */
 			opts->force = 1;
 			break;
+		    case 305: /* --identical */
+			opts->identical = 1;
+			break;
 		    default: bk_badArg(c, av);
 	    	}
 	}
@@ -165,6 +173,7 @@ clone_main(int ac, char **av)
 		    "%s: SCCS-mode can't be overriden in a component\n", prog);
 		exit(CLONE_ERROR);
 	}
+	if (opts->identical && opts->aliases) usage();
 	if (opts->attach) {
 		if (bam_url) {
 			fprintf(stderr, "%s: -Bnone is implied by attach\n",
@@ -945,7 +954,24 @@ clone2(remote *r)
 		/* just in case we exit early */
 		urllist_write(urllist);
 		unless (opts->aliases) {
-			unless (opts->aliases = clone_defaultAlias(n)) {
+			if (opts->identical) {
+				FILE	*f;
+
+				get("BitKeeper/etc/attr", SILENT, "-");
+				f = popen("bk _getkv BitKeeper/etc/attr HERE",
+				    "r");
+				while (p = fgetline(f)) {
+					opts->aliases = addLine(opts->aliases,
+					    strdup(p));
+				}
+				if (pclose(f)) {
+					fprintf(stderr,
+					    "%s: --indentical failed, target "
+					    "cset not annotated with HERE "
+					    "alias.\n", prog);
+					goto nested_err;
+				}
+			} else unless (opts->aliases = clone_defaultAlias(n)) {
 				goto nested_err;
 			}
 		}

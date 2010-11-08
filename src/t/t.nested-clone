@@ -777,3 +777,17 @@ bk comps -h > GOT
 echo ./gdb > WANT
 cmpfiles GOT WANT
 echo OK
+
+echo $N Demo clone --identical ......................................$NL
+cd "$HERE"
+bk clone $Q --identical -sHERE project testiden 2>/dev/null && fail
+bk clone $Q --identical project testiden || fail
+cd testiden
+cat <<EOF > WANT
+./gcc/deep
+ALL
+PRODUCT
+EOF
+bk here > GOT
+cmpfiles GOT WANT
+echo OK
