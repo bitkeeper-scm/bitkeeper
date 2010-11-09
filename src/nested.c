@@ -1592,6 +1592,7 @@ urllist_normalize(hash *urllist, char *url)
 	char	nurl[MAXPATH];
 	char	buf[MAXPATH];
 
+	unless (urllist) return (0);
 	TRACE("url=%s", url);
 	unless (r = remote_parse(url, 0)) return (0);
 	if (r->type == ADDR_FILE) {
