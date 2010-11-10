@@ -32,6 +32,13 @@ private int	include_push(FILE *f, char *name);
 private FILE *	include_search(char *file);
 private void	put_back(char c);
 private void	tally_newlines(char *s, int len, int tally);
+private void	interpol_lbrace();
+private void	interpol_pop();
+private int	interpol_push();
+private int	interpol_rbrace();
+
+// Max nesting depth of string interpolations.
+#define INTERPOL_STACK_SZ	10
 
 // Stack for tracking include() statements.
 #define INCLUDE_STACK_SZ	10
@@ -50,6 +57,8 @@ private char	*here_delim = NULL;
 private int	include_top;
 private Include	include_stk[INCLUDE_STACK_SZ+1];
 private Tcl_HashTable *include_table = NULL;
+private	int	interpol_top = -1;
+private	int	interpol_stk[INTERPOL_STACK_SZ+1];
 
 #define STRBUF_START(beg)			\
 	do {					\
@@ -272,7 +281,7 @@ canonical_num(char *num)
 <INITIAL,interpol,re_arg>{
 	"("		return T_LPAREN;
 	")"		return T_RPAREN;
-	"{"		return T_LBRACE;
+	"{"		interpol_lbrace(); return T_LBRACE;
 	"["		return T_LBRACKET;
 	"]"		return T_RBRACKET;
 	","		return T_COMMA;
@@ -474,9 +483,7 @@ canonical_num(char *num)
 		for (p = yytext+1; *p != '<'; ++p) ;
 		p += 2;  // now points one past the end of the <<
 		len = yyleng - (p - yytext) - 1;
-		here_delim = ckalloc(len+1);
-		strncpy(here_delim, p, len);
-		here_delim[len] = 0;
+		here_delim = ckstrndup(p, len);
 		STRBUF_START(L->token_off);
 		L_lloc.end = L_lloc.beg + 1;
 		yy_push_state(here_doc_interp);
@@ -493,9 +500,7 @@ canonical_num(char *num)
 		for (p = yytext+1; *p != '<'; ++p) ;
 		p += 3;  // now points one past the end of the <<'
 		len = yyleng - (p - yytext) - 2;
-		here_delim = ckalloc(len+1);
-		strncpy(here_delim, p, len);
-		here_delim[len] = 0;
+		here_delim = ckstrndup(p, len);
 		STRBUF_START(L->token_off);
 		L_lloc.end = L_lloc.beg + 1;
 		yy_push_state(here_doc_nointerp);
@@ -554,11 +559,14 @@ canonical_num(char *num)
 
 <interpol>{
 	"}"		{
-				STRBUF_START(L_lloc.end);
-				yy_pop_state();
-				return T_RIGHT_INTERPOL;
+				if (interpol_rbrace()) {
+					STRBUF_START(L_lloc.end);
+					interpol_pop();
+					return T_RIGHT_INTERPOL;
+				} else {
+					return T_RBRACE;
+				}
 			}
-	"\\}"		return T_RBRACE;
 }
 
 <str_double>{
@@ -573,7 +581,7 @@ canonical_num(char *num)
 			}
 	[^\\\"$\n]+	STRBUF_ADD(yytext, yyleng);
 	"${"		{
-				yy_push_state(interpol);
+				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
 				STRBUF_STOP(L_lloc.beg);
 				return T_LEFT_INTERPOL;
@@ -607,18 +615,17 @@ canonical_num(char *num)
 }
 
 <str_backtick>{
-	\\r		STRBUF_ADD("\r", 1);
-	\\n		STRBUF_ADD("\n", 1);
-	\\t		STRBUF_ADD("\t", 1);
-	\\(.|\n)	STRBUF_ADD(yytext+1, 1);
-	"$"		STRBUF_ADD("$", 1);
+	\\("$"|`|\\)	STRBUF_ADD(yytext+1, 1);
+	\\\n		/* ignore \<newline> */
+	\\.		|
+	"$"		|
+	[^\\`$\n]+	STRBUF_ADD(yytext, yyleng);
 	\n		{
 				L_err("missing string terminator `");
 				STRBUF_ADD("\n", 1);
 			}
-	[^\\`$\n]+	STRBUF_ADD(yytext, yyleng);
 	"${"		{
-				yy_push_state(interpol);
+				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
 				STRBUF_STOP(L_lloc.beg);
 				return T_LEFT_INTERPOL;
@@ -627,13 +634,14 @@ canonical_num(char *num)
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
 				STRBUF_STOP(L_lloc.end);
+				if (YYSTATE == here_doc_interp) {
+					STRBUF_START(L_lloc.end);
+				}
 				return T_STR_BACKTICK;
 			}
 }
 
 <here_doc_nointerp>{
-	\\\\		STRBUF_ADD("\\", 1);
-	\\\'		STRBUF_ADD("'", 1);
 	^[a-zA-Z_][a-zA-Z_0-9]*$	{
 				if (strcmp(yytext, here_delim)) {
 					STRBUF_ADD(yytext, yyleng);
@@ -677,14 +685,22 @@ canonical_num(char *num)
 }
 
 <here_doc_interp>{
-	\\n		STRBUF_ADD("\n", 1);
-	\\t		STRBUF_ADD("\t", 1);
-	\\.		STRBUF_ADD(yytext+1, 1);
+	\\\\		STRBUF_ADD("\\", 1);
+	\\\$		STRBUF_ADD("$", 1);
+	\\`		STRBUF_ADD("`", 1);
+	\\\n		// ignore \<newline>
 	"${"		{
-				yy_push_state(interpol);
+				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
 				STRBUF_STOP(L_lloc.beg);
 				return T_LEFT_INTERPOL;
+			}
+	`		{
+				L_lval.s = ckstrdup(STRBUF_STRING());
+				STRBUF_STOP(L_lloc.beg);
+				yy_push_state(str_backtick);
+				STRBUF_START(L->token_off);
+				return T_START_BACKTICK;
 			}
 	^[a-zA-Z_][a-zA-Z_0-9]*$	{
 				if (strcmp(yytext, here_delim)) {
@@ -736,7 +752,7 @@ canonical_num(char *num)
 
 <glob_re,subst_re>{
 	"${"		{
-				yy_push_state(interpol);
+				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
 				STRBUF_STOP(L_lloc.beg);
 				return T_LEFT_INTERPOL;
@@ -823,6 +839,12 @@ L_lex_endReArg()
 }
 
 /*
+ * These functions are declared down here because they reference
+ * things that flex has not yet declared in the prelogue (like
+ * unput() or yyterminate() etc).
+ */
+
+/*
  * Unput a single character.  This function is declared down here
  * because it calls flex's unput() which is not declared before
  * the prelogue code earlier.
@@ -836,4 +858,55 @@ put_back(char c)
 	tally_newlines(&c, 1, -1);
 	--L->script_len;
 	Tcl_SetObjLength(L->script, L->script_len);
+}
+
+/*
+ * API for scanning string interpolations:
+ * interpol_push()	- call when starting an interpolation; returns 1
+ *			  on interpolation stack overflow
+ * interpol_pop()	- call when finishing an interpolation
+ * interpol_lbrace()	- call when "{" seen
+ * interpol_rbrace()	- call when "}" seen; returns non-0 if this brace
+ *			  ends the current interpolation
+ */
+
+private int
+interpol_push()
+{
+	if (interpol_top >= INTERPOL_STACK_SZ) {
+		L_err("string interpolation nesting too deep -- aborting");
+		interpol_top = -1;
+		return (1);
+	}
+	interpol_stk[++interpol_top] = 0;
+	yy_push_state(interpol);
+	return (0);
+}
+
+private void
+interpol_pop()
+{
+	ASSERT((interpol_top >= 0) && (interpol_top <= INTERPOL_STACK_SZ));
+	--interpol_top;
+	yy_pop_state();
+}
+
+private void
+interpol_lbrace()
+{
+	if (interpol_top >= 0) {
+		ASSERT(interpol_top <= INTERPOL_STACK_SZ);
+		++interpol_stk[interpol_top];
+	}
+}
+
+private int
+interpol_rbrace()
+{
+	if (interpol_top >= 0) {
+		ASSERT(interpol_top <= INTERPOL_STACK_SZ);
+		return (interpol_stk[interpol_top]-- == 0);
+	} else {
+		return (0);
+	}
 }

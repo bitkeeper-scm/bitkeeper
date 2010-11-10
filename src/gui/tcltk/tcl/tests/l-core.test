@@ -656,17 +656,75 @@ ENDEND
 END
 	unless (s eq "EN\nEN D\nEND \n END\nENDEND\n") puts("bad 6");
 
-	/* Check escapes. */
+	/*
+	 * Check escapes:
+	 * non-interpolated here doc:
+	 *   no escapes
+	 * interpolated here doc:
+	 *   \\ \$ \`    get escaped
+	 *   \<newline>  gets ignored
+	 *   \x          for anything else, not escaped
+	 *
+	 * We can't test \<newline> by simply writing it here because the
+	 * tcltest parsing messes with it.
+	 */
 
 	s = <<END
-a\tb\nc\\d\x
+$\\\$\`\n\tx
 END
-	unless (s eq "a\tb\nc\\dx\n") puts("bad 9");
+	unless (s eq "$\\$`\\n\\tx\n") puts("bad 9.1");
 
 	s = <<'END'
 a\tb\nc\\d\x\\\'
 END
-	unless (s eq "a\\tb\\nc\\d\\x\\'\n") puts("bad 10");
+	unless (s eq "a\\tb\\nc\\\\d\\x\\\\\\'\n") puts("bad 9.2");
+
+	/*
+	 * Checking \<newline> is tough since tcltest's parsing of
+	 * the test source won't let \<newline> through.  So create
+	 * strings of L code and eval those.
+	 */
+	// x\<newline>
+	// y
+	eval("#lang L\nstring s = <<END\nx\\\ny\nEND\n");
+	unless (s eq "xy\n") puts("bad 9.3");
+	eval("#lang L\ns = <<'END'\nx\\\ny\nEND\n");
+	unless (s eq "x\\\ny\n") puts("bad 9.4");
+	// x\<newline>
+	// y\<newline>
+	eval("#lang L\ns = <<END\nx\\\ny\\\nEND\n");
+	unless (s eq "xy") puts("bad 9.5");
+	eval("#lang L\ns = <<'END'\nx\\\ny\\\nEND\n");
+	unless (s eq "x\\\ny\\\n") puts("bad 9.6");
+	// \<newline>
+	eval("#lang L\ns = <<END\n\\\nEND\n");
+	unless (s eq "") puts("bad 9.7");
+	eval("#lang L\ns = <<'END'\n\\\nEND\n");
+	unless (s eq "\\\n") puts("bad 9.8");
+
+	/* Check `cmd` inside interpolated here document. */
+	s = <<END
+abc
+`perl -e 'print "cmd"'`
+def
+END
+	unless (s eq "abc\ncmd\ndef\n") puts("bad 20.1");
+
+	/* Check multiple `cmd` in a here document. */
+
+	s = <<END
+abc
+`perl -e 'print "cmd1"'``perl -e 'print "cmd2"'`
+def
+END
+	unless (s eq "abc\ncmd1cmd2\ndef\n") puts("bad 21.1");
+
+	s = <<END
+abc
+`perl -e 'print "cmd1"'``perl -e 'print "cmd2"'``perl -e 'print "cmd3"'`
+def
+END
+	unless (s eq "abc\ncmd1cmd2cmd3\ndef\n") puts("bad 21.2");
 }
 scan_1_8();
 } -output {}
@@ -936,13 +994,26 @@ void cmdsubst_1()
 	`rm -f foo.txt`;
 
 	/*
-	 * Check escapes.  The \r\n\t should get expanded but then
-	 * ignored when the compiler splits the command string.
+	 * Check escapes:
+	 * \$ \` \\      get escaped
+	 * \<newline>    gets ignored
+	 * \x            for anything else, does not get escaped
+	 *
+	 * These are a bit confusing.  Once escaped by backtick
+	 * processing, the command string undergoes bash-style
+	 * quoting.  And because tcltest parsing messes with a
+	 * \<newline> in the source, we can't simply write one of
+	 * those here, so create strings of L code and eval those.
 	 */
 
-	`${cmd} \r\n\t\a$x >foo.txt`;
+	`${cmd} \r\n\t\a$x\$\\\\ \`backquote\` >foo.txt`;
 	s1 = `cat foo.txt`;
-	unless (s1 eq "a$x") puts("bad 10.1");
+	unless (s1 eq "rnta$x$\\ `backquote`") puts("bad 10.1");
+	`rm -f foo.txt`;
+
+	eval("#lang L\n`${cmd} x\\\ny >foo.txt`;\n");
+	s1 = `cat foo.txt`;
+	unless (s1 eq "xy") puts("bad 10.2");
 	`rm -f foo.txt`;
 }
 cmdsubst_1();
@@ -2138,18 +2209,67 @@ syntax_1_1
 
 test syntax-1.2 {interpolated strings} -body {
 #lang L
+void syntax_1_2()
+{
+	string	s = "xxx";
+	int	h{int} = { 1=>1, 3 => 4 };
+	int	hh{int}{int} = { 2 => {1=>3,4=>5} };
+	string	hs{string} = { "1" => "1" };
 
-void syntax_1_2() {
-        int i = 1, j = 2;
-        string m = "ASDF";
+	/* Check interpolations at beginning, middle, and end of a string. */
+	unless ("${s} start" eq "xxx start") puts("bad 1.1");
+	unless ("middle ${s} start" eq "middle xxx start") puts("bad 1.2");
+	unless ("end ${s}" eq "end xxx") puts("bad 1.3");
+	unless ("1${s}${s}2" eq "1xxxxxx2") puts("bad 1.4");
+	unless ("1${s} ${s}2" eq "1xxx xxx2") puts("bad 1.5");
+	unless ("1${s}2${s}3${s}" eq "1xxx2xxx3xxx") puts("bad 1.6");
 
-        puts("syntax_${ i + j - 2 }_${j}.");
-        puts("foo ${"bar ${m} baz"} zot");
+	/* Test that braces are counted properly within an interpolation. */
+	unless ("a${h{3}}b" eq "a4b") puts("bad 2.1");
+	unless ("a${hh{2}{4}}b" eq "a5b") puts("bad 2.2");
+	unless ("a${hh{2}{h{1}}}b" eq "a3b") puts("bad 2.4");
+	unless ("a${hh{2}{h{h{1}}}}b" eq "a3b") puts("bad 2.5");
+	unless ("a${hh{2}{h{h{h{1}}}}}b" eq "a3b") puts("bad 2.6");
+
+	/*
+	 * These have a right brace after the right brace that ends the
+	 * interpolation.  The left and right braces are still balanced
+	 * because the tcl test parsing dies if they are not, but L does
+	 * not require it inside strings.
+	 */
+	unless ("{a${h{3}}}b" eq "{a4}b") puts("bad 3.1");
+	unless ("{a${hh{2}{4}}}b" eq "{a5}b") puts("bad 3.2");
+	unless ("{a${hh{2}{h{1}}}}b" eq "{a3}b") puts("bad 3.4");
+	unless ("{a${hh{2}{h{h{1}}}}}b" eq "{a3}b") puts("bad 3.5");
+	unless ("{a${hh{2}{h{h{h{1}}}}}}b" eq "{a3}b") puts("bad 3.6");
+
+	/* Test nested interpolations. */
+	unless ("1 ${"3 ${s} 4"} 2" eq "1 3 xxx 4 2") puts("bad 4.1");
+	unless ("1 ${"3 ${"5 ${s} 6"} 4"} 2" eq "1 3 5 xxx 6 4 2") {
+		puts("bad 4.2");
+	}
+	unless ("1 ${"3 ${"5 ${"7 ${s} 8"} 6"} 4"} 2" eq "1 3 5 7 xxx 8 6 4 2") {
+		puts("bad 4.3");
+	}
+
+	/* Test that braces are counted properly in nested interpolations. */
+	unless ("a ${hs{"${1}"}} b" eq "a 1 b") puts("bad 5.1");
+	unless ("a ${hs{hs{"${1}"}}} b" eq "a 1 b") puts("bad 5.2");
+	unless ("a ${hs{hs{"${h{1}}"}}} b" eq "a 1 b") puts("bad 5.2");
+	unless ("a ${hs{hs{"${h{h{1}}}"}}} b" eq "a 1 b") puts("bad 5.3");
+	unless ("a ${hs{"${h{h{1}}}"}} b" eq "a 1 b") puts("bad 5.4");
 }
+syntax_1_2();
+} -output {}
 
-#lang tcl
-syntax_1_2
-} -output "syntax_1_2.\nfoo bar ASDF baz zot\n"
+test syntax-1.2.1 {check string interpolations nested too deeply} -body {
+#lang L
+void syntax_1_2_1()
+{
+	"1${"2${"3${"4${"5${"6${"7${"8${"9${"10${"11${12}"}"}"}"}"}"}"}"}"}"}";
+}
+} -returnCodes {error} -match regexp -result {.*3: L Error: string interpolation nesting too deep -- aborting
+}
 
 test syntax-1.3 {tcl options short-cut} -body {
 #lang L

@@ -129,6 +129,7 @@ extern int	L_lex (void);
 %token T_LBRACKET "["
 %token T_LE "le"
 %token <s> T_LEFT_INTERPOL "${"
+%token <s> T_START_BACKTICK "backtick"
 %token T_LESSTHAN "<"
 %token T_LESSTHANEQ "<="
 %token T_LPAREN "("
@@ -189,7 +190,7 @@ extern int	L_lex (void);
 %nonassoc T_IF T_UNLESS T_RETURN T_ID T_STR_LITERAL T_LEFT_INTERPOL
 %nonassoc T_STR_BACKTICK T_INT_LITERAL T_FLOAT_LITERAL T_TYPE T_WHILE
 %nonassoc T_FOR T_DO T_DEFINED T_STRING T_FOREACH T_BREAK T_CONTINUE
-%nonassoc T_SPLIT T_GOTO T_WIDGET T_PRAGMA T_SWITCH
+%nonassoc T_SPLIT T_GOTO T_WIDGET T_PRAGMA T_SWITCH T_START_BACKTICK
 %left T_COMMA
 %nonassoc T_ELSE T_SEMI
 %right T_EQUALS T_EQPLUS T_EQMINUS T_EQSTAR T_EQSLASH T_EQPERC
@@ -223,7 +224,7 @@ extern int	L_lex (void);
 %type <Expr> expr expression_stmt argument_expr_list opt_arg_list re_or_string
 %type <Expr> id id_list string_literal cmdsubst_literal dotted_id
 %type <Expr> regexp_literal regexp_literal_mod subst_literal interpolated_expr
-%type <Expr> list list_element case_expr option_arg
+%type <Expr> list list_element case_expr option_arg here_doc_backtick
 %type <VarDecl> parameter_list parameter_decl_list parameter_decl
 %type <VarDecl> declaration_list declaration declaration2
 %type <VarDecl> init_declarator_list declarator_list init_declarator
@@ -1536,6 +1537,31 @@ string_literal:
 		Expr *right = ast_mkConst(L_string, $2, @2.beg, @2.end);
 		$$ = ast_mkBinOp(L_OP_INTERP_STRING, $1, right,
 				 @1.beg, @2.end);
+	}
+	| here_doc_backtick T_STR_LITERAL
+	{
+		Expr *right = ast_mkConst(L_string, $2, @2.beg, @2.end);
+		$$ = ast_mkBinOp(L_OP_INTERP_STRING, $1, right,
+				 @1.beg, @2.end);
+	}
+	;
+
+here_doc_backtick:
+	  T_START_BACKTICK T_STR_BACKTICK
+	{
+		Expr *left  = ast_mkConst(L_string, $1, @1.beg, @1.end);
+		Expr *right = ast_mkUnOp(L_OP_CMDSUBST, NULL, @2.beg, @2.end);
+		right->str = $2;
+		$$ = ast_mkBinOp(L_OP_INTERP_STRING, left, right,
+				 @1.beg, @2.end);
+	}
+	| here_doc_backtick T_START_BACKTICK T_STR_BACKTICK
+	{
+		Expr *middle = ast_mkConst(L_string, $2, @2.beg, @2.end);
+		Expr *right  = ast_mkUnOp(L_OP_CMDSUBST, NULL, @3.beg, @3.end);
+		right->str = $3;
+		$$ = ast_mkTrinOp(L_OP_INTERP_STRING, $1, middle, right,
+				  @1.beg, @3.end);
 	}
 	;
 

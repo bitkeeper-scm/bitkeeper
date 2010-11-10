@@ -557,6 +557,19 @@ system(_unused string cmd)
 	return (res);
 }
 
+/* Like system() but do not re-direct stderr; used for `cmd`. */
+string
+backtick_(_unused string cmd)
+{
+	string	res;
+
+	if (catch("exec -ignorestderr -- {*}[shsplit $cmd]", &res)) {
+		stdio_lasterr = res;
+		return (undef);
+	}
+	return (res);
+}
+
 string
 tolower(string s)
 {

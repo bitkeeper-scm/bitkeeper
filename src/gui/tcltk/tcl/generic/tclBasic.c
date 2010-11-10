@@ -231,6 +231,7 @@ static const CmdInfo builtInCmds[] = {
      */
 
     {"L",		Tcl_LObjCmd,		NULL,		NULL, 1},
+    {"shsplit",		Tcl_ShSplitObjCmd,	NULL,		NULL, 1},
 
     /*
      * Commands in the OS-interface. Note that many of these are unsafe.

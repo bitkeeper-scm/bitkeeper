@@ -2176,7 +2176,7 @@ compile_unOp(Expr *expr)
 		expr->type = L_poly;
 		break;
 	    case L_OP_CMDSUBST:
-		push_str("::system");
+		push_str("::backtick_");
 		if (expr->a) {
 			compile_expr(expr->a, L_PUSH_VAL);
 			push_str(expr->str);
@@ -5467,4 +5467,117 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 		Tcl_ListObjReplace(interp, listPtr, i, 1, 0, NULL);
 	}
 	return (listPtr);
+}
+
+/*
+ * This command splits the given arguments according to bash-style
+ * quoting, returning a string[] array.
+ *
+ * xyz   -- all escapes are processed except \<newline> ignored
+ * 'xyz' -- no single quotes allowed inside, no escapes processed
+ * "xyz" -- only \\ and \" are processed, \<newline> ignored
+ */
+int
+Tcl_ShSplitObjCmd(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	char	*cmd;
+	int	i, j, len;
+	Tcl_Obj	*arg = NULL, *argv;
+	enum { LOOKING, ARG, SINGLE, DOUBLE } state;
+
+	unless (objc >= 2) {
+		Tcl_WrongNumArgs(interp, 1, objv, "string ?string ...?");
+		return (TCL_ERROR);
+	}
+	argv = Tcl_NewObj();
+	for (i = 1; i < objc; ++i) {
+		cmd = TclGetStringFromObj(objv[i], &len);
+		state = LOOKING;
+		for (j = 0; j < len; ++j) {
+			char c = cmd[j];
+			switch (state) {
+			    case LOOKING:
+				if (isspace(c)) {
+					continue;
+				} else {
+					arg = Tcl_NewObj();
+					state = ARG;
+					/*FALLTHRU*/
+				}
+			    case ARG:
+				if (isspace(c)) {
+					Tcl_ListObjAppendElement(interp,
+								 argv, arg);
+					state = LOOKING;
+				} else if (c == '\\') {
+					char	e = 0;
+					if ((j+1) < len) e = cmd[j+1];
+					// escape anything but ignore \<newline>
+					if (!e) {
+						Tcl_AppendResult(interp,
+								 "trailing \\",
+								 NULL);
+						return (TCL_ERROR);
+					} else if (e == '\n') {
+						++j;
+					} else {
+						Tcl_AppendToObj(arg, &e, 1);
+						++j;
+					}
+				} else if (c == '\'') {
+					state = SINGLE;
+				} else if (c == '"') {
+					state = DOUBLE;
+				} else {
+					Tcl_AppendToObj(arg, &c, 1);
+				}
+				break;
+			    case SINGLE:
+				if (c == '\'') {
+					state = ARG;
+				} else {
+					Tcl_AppendToObj(arg, &c, 1);
+				}
+				break;
+			    case DOUBLE:
+				if (c == '\\') {
+					char	e = 0;
+					if ((j+1) < len) e = cmd[j+1];
+					// escape \ and " but ignore \<newline>
+					if ((e == '\\') || (e == '"')) {
+						Tcl_AppendToObj(arg, &e, 1);
+						++j;
+					} else if (e == '\n') {
+						++j;
+					} else {
+						Tcl_AppendToObj(arg, &c, 1);
+					}
+				} else if (c == '"') {
+					state = ARG;
+				} else {
+					Tcl_AppendToObj(arg, &c, 1);
+				}
+				break;
+			}
+		}
+		switch (state) {
+		    case LOOKING:
+			break;
+		    case ARG:
+			Tcl_ListObjAppendElement(interp, argv, arg);
+			break;
+		    case SINGLE:
+			Tcl_AppendResult(interp, "unterminated \'", NULL);
+			return (TCL_ERROR);
+		    case DOUBLE:
+			Tcl_AppendResult(interp, "unterminated \"", NULL);
+			return (TCL_ERROR);
+		}
+	}
+	Tcl_SetObjResult(interp, argv);
+	return (TCL_OK);
 }
