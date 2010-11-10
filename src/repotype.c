@@ -11,14 +11,18 @@ repotype_main(int ac, char **av)
 {
 	int	flags = 0;
 	int	rc;
+	char	*dir;
 
 	if (av[1] && streq(av[1], "-q")) {
 		flags |= SILENT;
 		ac--, av++;
 	}
-	if (av[1] && chdir(av[1])) {
-		perror(av[1]);
-		return (3);
+	if (dir = av[1]) {
+		unless (isdir(dir)) dir = dirname(dir);
+		if (chdir(dir)) {
+			perror(dir);
+			return (3);
+		}
 	}
 	if (proj_cd2root()) {
 		verbose((stderr, "%s: not in a repository.\n", prog));

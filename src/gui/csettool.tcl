@@ -534,7 +534,7 @@ proc widgets {} \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-font $gc(cset.buttonFont) -text "Help" \
 		-command { exec bk helptool csettool & }
-	    if {[inComponent]} {
+	    if {[inComponent] && ![inRESYNC]} {
 		button .menu.product -bg $gc(cset.buttonColor) \
 		    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		    -font $gc(cset.buttonFont) -text "View Product" \
