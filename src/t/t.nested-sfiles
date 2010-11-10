@@ -772,14 +772,14 @@ cmpfiles A B
 echo OK
 
 echo $N bk -e in a non-nested tree works if ., HERE, or nothing .....$NL
-# Inherit A from above
-bk -e -s. -U > B
+bk -Ur > A
+bk -e -s. -Ur > B
 cmpfiles A B
-bk -e -sHERE -U > B
+bk -e -sHERE -Ur > B
 cmpfiles A B
-bk -e -s. -U > B
+bk -e -s. -Ur > B
 cmpfiles A B
-bk -e -s. -shere -U > B
+bk -e -s. -shere -Ur > B
 cmpfiles A B
 echo OK
 
@@ -1024,6 +1024,17 @@ start_cwd: ROOT/non-nested/src
 stdin:
 ../a
 ... 6 more lines ...
+EOF
+cmpfiles GOT2 WANT
+echo OK
+
+echo $N Test start_cwd for \'bk -e\' in standalone ....................$NL
+bk -e _debugargs > GOT || fail
+sed "s,$HERE,ROOT," < GOT > GOT2
+cat <<EOF > WANT
+0: _debugargs
+cwd: ROOT/non-nested
+start_cwd: ROOT/non-nested
 EOF
 cmpfiles GOT2 WANT
 echo OK
