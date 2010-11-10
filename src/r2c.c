@@ -11,11 +11,16 @@ r2c_main(int ac, char **av)
 	char	*rev = 0, *file = 0;
 	char	*p;
 	int	rc = 1;
-	int	product = 0;
+	int	product = 1;
 
-	while ((c = getopt(ac, av, "Pr;", 0)) != -1) {
+	while ((c = getopt(ac, av, "PRr;s;", 0)) != -1) {
 		switch (c) {
-		    case 'P': product = 1; break;
+		    case 'P':	break;			// do not doc
+		    case 'R':	product = 0; break;	// do not doc
+		    case 's':
+			product = 0;
+			unless (streq(optarg, ".")) usage();
+			break;
 		    case 'r': rev = strdup(optarg); break;
 		    default:
 			usage();

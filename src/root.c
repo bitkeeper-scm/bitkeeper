@@ -8,10 +8,14 @@ root_main(int ac, char **av)
 	int	c;
 	int	product = 1;
 
-	while ((c = getopt(ac, av, "PR", 0)) != -1) {
+	while ((c = getopt(ac, av, "PRs;", 0)) != -1) {
 		switch (c) {
-		    case 'P':	break;
-		    case 'R':	product = 0; break;
+		    case 'P':	break;			// do not doc
+		    case 'R':	product = 0; break;	// do not doc
+		    case 's':
+			product = 0;
+			unless (streq(optarg, ".")) usage();
+			break;
 		    default:	bk_badArg(c, av);
 		}
 	}

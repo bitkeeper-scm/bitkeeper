@@ -787,6 +787,11 @@ proc inComponent {} {
     return [string equal $res "component"]
 }
 
+proc inRESYNC {} {
+    set dir [file tail [exec bk root -s.]]
+    return [string equal $dir "RESYNC"]
+}
+
 proc attachScrollbar {sb args} \
 {
 	global	gc
