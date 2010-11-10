@@ -628,6 +628,7 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	unless (revs) goto out;
 	n = nested_init(s, 0, revs, NESTED_PULL|NESTED_MARKPENDING);
 	assert(n);
+	sccs_close(s);		/* win32 */
 	freeLines(revs, free);
 	unless (n->tip) goto out;	/* tags only */
 	unless (urllist = hash_fromFile(0, NESTED_URLLIST)) {
@@ -667,6 +668,7 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 		rc = 1;
 		goto out;
 	}
+
 
 	if ((opts.safe == 1) || ((opts.safe == -1) && !getenv("BKD_GATE"))) {
 		char	**missing = 0;
@@ -813,7 +815,10 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	 */
 	EACH_STRUCT(n->comps, c, j) {
 		c->remotePresent = 0; /* populate reuses this */
-		if (c->alias && !c->present) c->new = 1;
+		if (c->alias && !c->present) {
+			c->new = 1;
+			++which;
+		}
 	}
 	if (nested_populate(n, 0, &popts)) {
 		fprintf(stderr,

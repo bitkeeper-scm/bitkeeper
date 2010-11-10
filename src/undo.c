@@ -377,6 +377,8 @@ undo_ensemble1(nested *n, int verbose, int quiet, char **nav, char ***comp_list)
 			    prog, c->path);
 			++errs;
 		}
+		/* foreach populate */
+		if (c->alias && !c->present) which++;
 
 		/* count number of calls to undo needed */
 		if (c->present && c->included && !c->new) num++;

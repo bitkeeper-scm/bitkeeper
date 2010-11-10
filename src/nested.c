@@ -1265,7 +1265,7 @@ urllist_addURL(hash *h, char *rk, char *url)
 	if (strneq(url, "file://", 7)) url += 7;
 
 	/* new URL's are tagged with 'now' */
-	nurl = aprintf("%s|%x", url, (u32)time(0));
+	nurl = aprintf("%s|%08x", url, (u32)time(0));
 	if (hash_insertStr(h, rk, nurl)) {
 		free(nurl);
 	} else {
@@ -1283,7 +1283,7 @@ urllist_addURL(hash *h, char *rk, char *url)
 		}
 		if (i > nLines(list)) {
 			/* new item */
-			list = unshiftLine(list, nurl);
+			list = addLine(list, nurl);
 		}
 		new = joinLines("\n", list);
 		freeLines(list, free);
@@ -1592,6 +1592,7 @@ urllist_normalize(hash *urllist, char *url)
 	char	nurl[MAXPATH];
 	char	buf[MAXPATH];
 
+	unless (urllist) return (0);
 	TRACE("url=%s", url);
 	unless (r = remote_parse(url, 0)) return (0);
 	if (r->type == ADDR_FILE) {
@@ -1651,17 +1652,48 @@ urllist_normalize(hash *urllist, char *url)
 int
 urllist_write(hash *urllist)
 {
+	FILE	*f;
+	int	i;
+	char	*t;
+	char	**urls;
+	char	*last;
+	char	now[64];
 	char	tmpf[MAXPATH];
 
 	unless (isdir(BKROOT)) {
 		fprintf(stderr, "urllist_write() not at root\n");
 		return (-1);
 	}
+	sprintf(now, "%08x", (u32)time(0));
 	bktmp_local(tmpf, "urllist");
-	if (hash_toFile(urllist, tmpf)) {
+	unless (f = fopen(tmpf, "w")) {
 		perror(tmpf);
 		return (-1);
 	}
+	EACH_HASH(urllist) {
+		fprintf(f, "@%s\n", urllist->kptr);
+
+		urls = splitLine(urllist->vptr, "\n", 0);
+
+		/* sort, matching urls together, latest timestamp first */
+		sortLines(urls, string_sortrev);
+
+		/* remove duplicates and pick latest timestamp */
+		last = 0;
+		EACH(urls) {
+			/* strip timestamp and remember it */
+			if (t = strrchr(urls[i], '|')) {
+				*t++ = 0;
+			} else {
+				t = now; /* add one */
+			}
+			if (last && streq(urls[i], last)) continue;
+			fprintf(f, "%s|%s\n", urls[i], t);
+			last = urls[i];
+		}
+		freeLines(urls, free);
+	}
+	fclose(f);
 	if (fileMove(tmpf, NESTED_URLLIST)) {
 		perror(NESTED_URLLIST);
 		return (-1);

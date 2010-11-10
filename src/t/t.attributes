@@ -28,3 +28,12 @@ RK2=`bk prs -r1.0 -hnd:ROOTKEY: BitKeeper/etc/attr`
 # but it is the same file
 test "$RK1" = "$RK2" || fail
 echo OK
+
+echo $N Attr comment bug ............................................$NL
+bk rm -f BitKeeper/etc/attr
+echo hi > c
+bk _mv c BitKeeper/etc/SCCS/c.attr
+echo junk > file2
+bk new $Q file2 || fail
+bk commit $Q -yjunk || fail
+echo OK

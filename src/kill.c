@@ -21,8 +21,9 @@ usage:		fprintf(stderr, "Usage: bk kill URL <or> bk kill -SIG PID\n");
 		unless (av[1][0] == '-') goto usage;
 		if (av[3]) goto usage;
 		sig = strtol(&av[1][1], 0, 10);
-		unless ((sig == 0) || (sig == 9)) {
-			fprintf(stderr, "only signals 0 and 9 are supported\n");
+		unless ((sig == 0) || (sig == 9) || (sig == 13)) {
+			fprintf(stderr,
+			    "only signals 0, 9 and 13 are supported\n");
 			return (1);
 		}
 		unless (pid = strtol(av[2], 0, 10)) {

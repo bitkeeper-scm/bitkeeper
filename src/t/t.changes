@@ -861,3 +861,39 @@ bk changes -q -av --no-meta . > 3 || fail
 cmp -s 2 3 || fail
 cmp -s 1 2 && fail
 echo OK
+
+# Setup a case where changes is hanging a remote repo with a read lock
+# and show that it doesn't in the -R case, as part2 now releases the readlock
+
+# This is because kill leaves bk_keylist_* file as litter, so leave it as
+# litter somewhere other than the tracked location.
+TMPDIR="$BK_TMP"
+export TMPDIR
+
+echo $N Test read lock being released in remote repo in -R case .....$NL
+cd "$HERE/clone1"
+# keep clone1 read locked
+L=`bk lock -rt`
+cd "$HERE/project"
+touch foo
+bk new $Q foo
+bk clone $Q . ../read-lock
+bk edit $Q foo
+# hack way to get a > 64k byte file (this is ~100k)
+# Note: On ia64, this test always passes with s/1000/2555/ and fails w/ 2556
+# So leaving the size of the block of data small as it fails on some machines.
+perl -e 'for (1..1000) {print "abcde" x 20, "\n"}' >> foo
+bk delta $Q -ydata foo
+bk commit $Q -ydata
+cd ../read-lock
+bk changes -vvR | bk lock -U ../clone1 &
+# Let things get started
+bk _usleep 10000
+# Wayne's cool trick from t.remote: do command holding write lock
+cd ../project
+bk -Lw10 _usleep 1 || {
+	bk _kill $L
+	fail didn\'t release lock
+}
+bk _kill $L
+echo OK

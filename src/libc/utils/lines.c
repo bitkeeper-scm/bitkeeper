@@ -160,6 +160,16 @@ string_sort(const void *a, const void *b)
 }
 
 int
+string_sortrev(const void *a, const void *b)
+{
+	char	*l, *r;
+
+	l = *(char**)a;
+	r = *(char**)b;
+	return (strcmp(r, l));	/* reverse sort */
+}
+
+int
 number_sort(const void *a, const void *b)
 {
 	int	l, r;

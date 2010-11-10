@@ -9705,7 +9705,7 @@ out:		if (sfile) fclose(sfile);
 				d->random = strdup(buf);
 			}
 		}
-		unless (COMMENTS(n)) {
+	        unless (COMMENTS(n) || (flags & DELTA_DONTASK)) {
 			if (flags & DELTA_CFILE) {
 				if (comments_readcfile(s, 0, n)) goto out;
 			} else if (comments_readcfile(s, 1, n) == -2) {

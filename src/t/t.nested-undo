@@ -99,10 +99,27 @@ echo $N Undo changes alias needing to populate ......................$NL
 cd ..
 bk clone $Q project copy || exit 1
 cd copy
+bk portal $Q .
+bk setup -f newcomp
+bk portal $Q -r
 bk alias set FOO all || fail
-bk alias set FOO ./gcc || exit 1
+bk alias set -C FOO ./gcc ./newcomp || exit 1
+cd newcomp
+echo hi > jj
+bk new $Q jj
+bk commit $Q -yjj
+cd ..
+bk commit $Q -yjj
 bk alias set $Q HERE FOO || exit 1
-bk undo $Q -fsr+ || fail
+bk undo -fsr+ 2>OUT || fail
+# check progressbar
+perl -lne 'print $1 if /(\d\/\d)/' OUT > GOT
+cat <<EOF > WANT
+1/3
+2/3
+3/3
+EOF
+cmpfiles GOT WANT
 echo OK
 
 echo $N Undo should not allow deleting pending component csets ......$NL

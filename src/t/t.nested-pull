@@ -543,6 +543,14 @@ bk pull >OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
+# check progressbar
+perl -lne 'print $1 if /(\d\/\d)/' OUT > GOT
+cat <<EOF > WANT
+1/3
+2/3
+3/3
+EOF
+cmpfiles GOT WANT
 test -d newcomp || {
 	echo failed
 	exit 1
