@@ -8,6 +8,9 @@ test $# -eq 0 || {
 BK_NO_TRIGGERS=1
 export BK_NO_TRIGGERS
 
+# Use the sanctioned bits
+export PATH=`runbk mkdogfood bk bin`:$PATH
+
 cd "`bk root`"
 
 # Shortkey transform been done?
@@ -703,5 +706,10 @@ EOF
 # do the dogfooding ...
 bk partition -X -gcompprune -Gprune -Cmap TRANSFORM DOGFOOD 2>&1 | tee LOG
 
-# cleanup leftover BAM data in each component
-(cd DOGFOOD; bk -Aq bam clean -q)
+cd DOGFOOD
+
+# Move BAM into place
+echo Fixing BAM locations
+mv src/t/BitKeeper/BAM/* BitKeeper/BAM
+
+bk -Ar check -vac
