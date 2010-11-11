@@ -1210,7 +1210,7 @@ sortUrls(const void *a, const void *b)
 	if (val[0] != val[1]) {
 		return (val[0] - val[1]);
 	} else if (!streq(tt[0], tt[1])) {
-		return (strtoul(tt[0], 0, 16) - strtoul(tt[1], 0, 16));
+		return (strtoul(tt[1], 0, 16) - strtoul(tt[0], 0, 16));
 	} else {
 		return (strcmp(url[0], url[1]));
 	}

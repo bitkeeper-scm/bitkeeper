@@ -579,7 +579,9 @@ http://localhost:1/
 bk://localhost:1/
 bk://!junkurl:1/
 $HERE/junk
-bk://bad.bitkeeper.com:1/
+bk://bad1.bitkeeper.com:1/|3000
+bk://bad2.bitkeeper.com:1/|1000
+bk://bad3.bitkeeper.com:1/|2000
 http://bad.bitkeeper.com:1/
 EOF
 bk here add -@ssh://bad2.bitkeeper.com:1/ ./gdb 2> ERR && {
@@ -590,7 +592,9 @@ here: searching ssh://bad2.bitkeeper.com:1/...connect failure
 here: searching $HERE/junk...repo gone
 here: searching bk://localhost:1/...connect failure
 here: searching http://localhost:1/...connect failure
-here: searching bk://bad.bitkeeper.com:1/...connect failure
+here: searching bk://bad1.bitkeeper.com:1/...connect failure
+here: searching bk://bad3.bitkeeper.com:1/...connect failure
+here: searching bk://bad2.bitkeeper.com:1/...connect failure
 here: searching http://bad.bitkeeper.com:1/...connect failure
 here: searching ssh://localhost:1/...connect failure
 here: searching rsh://bad.bitkeeper.com:1/...connect failure
