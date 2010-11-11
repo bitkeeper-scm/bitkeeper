@@ -17,7 +17,15 @@ print the internet address instead of the host
 .B \-r
 print the real host name, ignoring
 .V $BK_HOST .
+.SH NOTES
+On some UNIX systems, it can happen that \*[BK] will output an error
+message complaining that localhost is an invalid hostname.  Often the
+fix is to simply add a fully qualified hostname to /etc/hosts.  For
+example:
+.IP
+::1	localhost6 yourhost.yourdomain.com
 .SH SEE ALSO
 .SA getuser
 .SH CATEGORY
 .B Utility
+.\" help://hostname

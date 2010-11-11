@@ -599,3 +599,22 @@ here: No other sources for ./gdb known
 EOF
 cmpfiles WANT ERR
 echo OK
+
+echo $N Demonstrate pull from a repo with no urllist ................$NL
+cd "$HERE"
+nested project2
+rm -f BitKeeper/log/urllist
+cd "$HERE"
+bk clone $Q project2 project2-clone
+cd project2
+touch gcc/foo gdb/bar
+bk new $Q gcc/foo gdb/bar
+bk -e commit $Q -y'added files'
+cd "$HERE"
+bk bkd -q -aPORT -ikill || fail
+P2=`cat PORT`
+cd project2-clone
+bk pull $Q bk://localhost:$P2/project2 >ERR 2>&1 || fail
+# echo 'failed (bug: empty urllist)'
+bk _kill bk://localhost:$P2
+echo OK

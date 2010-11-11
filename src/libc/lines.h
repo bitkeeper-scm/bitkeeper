@@ -98,6 +98,7 @@ void	reverseLines(char **space);
 void	sortLines(char **space, int (*compar)(const void *, const void *));
 char	**mapLines(char **space, void *(*fn)(void *), void(*freep)(void *ptr));
 int	string_sort(const void *a, const void *b);
+int	string_sortrev(const void *a, const void *b);
 int	number_sort(const void *a, const void *b);
 char	**shellSplit(const char *line);
 char	**prog2Lines(char **space, char *file);
