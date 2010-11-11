@@ -741,9 +741,9 @@ typedef struct {
 	u32	buflen;		/* sizeof(buf) */
 	u32	left;		/* space left */
 	u32	bytes;		/* bytes saved so far */
+	u32	nlen;		/* size of len array */
+	u32	lasti;		/* len of len array */
 	u16	len[0];		/* array of data lengths */
-				/* [0] = # of elements */
-				/* [1] = lasti */
 } dinfo;
 
 char	**
@@ -751,7 +751,7 @@ data_append(char **space, void *str, int len, int gift)
 {
 	dinfo	*s;
 	int	inc = 1;
-	
+
 	unless (len) {
 		/* str_append(buf, strnonldup("\n"), 1); */
 		if (str && gift) free(str);
@@ -761,8 +761,8 @@ data_append(char **space, void *str, int len, int gift)
 	unless (space) {
 		space = allocLines(4);
 		s = calloc(1, sizeof(*s) + (LSIZ(space) * sizeof(u16)));
-		s->len[0] = LSIZ(space);
-		s->len[1] = 1;
+		s->nlen = LSIZ(space);
+		s->lasti = 1;
 		space = addLine(space, s);
 	}
 	s = (dinfo*)space[1];
@@ -791,20 +791,20 @@ data_append(char **space, void *str, int len, int gift)
 		space = addLine(space, s->buf);
 		if (gift) free(str);
 	}
-	if (s->len[0] != LSIZ(space)) {
+	if (s->nlen != LSIZ(space)) {
 		dinfo	*ns;
 		int	i;
 
 		ns = calloc(1, sizeof(*s) + (LSIZ(space) * sizeof(u16)));
 		*ns = *s;
-		for (i = 1; i < s->len[0]; ns->len[i] = s->len[i], i++);
-		ns->len[0] = LSIZ(space);
+		for (i = 2; i <= s->lasti; ns->len[i] = s->len[i], i++);
+		ns->nlen = LSIZ(space);
 		space[1] = (char*)ns;
 		free(s);
 		s = ns;
 	}
-	s->len[1] += inc;
-	s->len[s->len[1]] += len;
+	s->lasti += inc;
+	s->len[s->lasti] += len;
 	assert(s);
 	return (space);
 }
@@ -832,7 +832,7 @@ _pullup(u32 *bytep, char **space, int null)
 	}
 	s = (dinfo*)space[1];
 	data = malloc(s->bytes + (null ? 1 : 0));
-	for (i = 2; i <= s->len[1]; i++) {
+	for (i = 2; i <= s->lasti; i++) {
 		memcpy(&data[len], space[i], s->len[i]);
 		len += s->len[i];
 	}
@@ -858,7 +858,7 @@ main()
 	/*
 	 * Test by generating random numbers of inserts of varying sizes.
 	 */
-	srand(0x30962);
+	srand(0x30962 + time(0) + getpid());
 	for (iter = 1; iter <= 30000; ++iter) {
 		if (iter < 500) {
 			biggest = RAND(10000);
