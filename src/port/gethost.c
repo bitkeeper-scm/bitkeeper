@@ -56,7 +56,7 @@ gethost(char *host, int hlen, int envOK)
 	struct	hostent *hp;
 	char 	*h, *p;
 #ifndef	WIN32
-	char	*q, buf[MAXPATH], domain[MAXPATH];
+	char	buf[MAXPATH], domain[MAXPATH];
 	FILE	*f;
 #endif
 
@@ -86,13 +86,13 @@ gethost(char *host, int hlen, int envOK)
 	unless (hp = gethostbyname(host)) goto out;
 	unless (hp->h_name) goto out;
 	unless (strchr(hp->h_name, '.') &&
-	    !streq(hp->h_name, "localhost.localdomain")) {
+	    !strneq(hp->h_name, "localhost", 9)) {
 		int	i;
 		char	domain[257];
 
 		for (i = 0; hp->h_aliases && hp->h_aliases[i]; ++i) {
 			if (strchr(hp->h_aliases[i], '.') &&
-			    !streq(hp->h_aliases[i], "localhost.localdomain")) {
+			    !strneq(hp->h_aliases[i], "localhost", 9)) {
 				strcpy(host, hp->h_aliases[i]);
 				goto out;
 			}
@@ -158,34 +158,7 @@ out:
 			fclose(f);
 		}
 	}
-	
-	/*
-	 * Still no fully qualified hostname ?
-	 * Try extracting it from netscape config file
-	 * XXX FIXME: the location of netscape config file is different on
-	 * 	different Unix platform, need to handle that.
-	 */
-	if (!host[0] || !strchr(host, '.')) {
- 		p = getHomeDir();
-        	assert(p);
-        	sprintf(buf, "%s/.netscape/preferences.js", p);
-        	f = fopen(buf, "r"); 
-		if (f) {
-			while (fgets(buf, sizeof(buf), f)) {
-				if (strneq(
-				    "user_pref(\"network.hosts.smtp_server\",",
-				    buf, 38)) {
-					p = &buf[40];
-					q = host;
-					while (*p && *p != '\"') *q++ = *p++;
-					assert(*p == '\"');
-					*q = 0;
-					break;
-				}
-			}
-			fclose(f);
-		}
-	}
+
 #endif
 	/* Fold case. */
 	for (h = host; *h; h++) *h = tolower(*h);
