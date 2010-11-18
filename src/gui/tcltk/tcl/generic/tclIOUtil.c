@@ -2078,8 +2078,7 @@ EvalFileCallback(
 }
 
 /* If the path ends in .l assume it's meant to contain L code, in which case
-   ensure that the file contents are preceded by #lang L, and followed by a
-   %%call_main_if_defined to ensure that main gets called.  Return a Tcl_Obj
+   ensure that the file contents are preceded by #lang L.  Return a Tcl_Obj
    containing the potentially wrapped string. */
 static Tcl_Obj *
 FsMaybeWrapInLLang(
@@ -2088,23 +2087,15 @@ FsMaybeWrapInLLang(
     const char *path)
 {
     int len = strlen(path);
-    Linterp *myL = NULL;
 
-    if ((len >= 2) && (path[len-2] == '.') && (path[len-1] == 'l') &&
-      !Tcl_RegExpMatch(interp, Tcl_GetString(fileContents),
-	"^#lang\\s+L"))
-    {
+    if (((len >= 2) && (path[len-2] == '.') && (path[len-1] == 'l')) ||
+	(L && L->global->forceL)) {
 	Tcl_Obj *newContents = Tcl_ObjPrintf(
 	      "#lang L\n%s\n#lang tcl", Tcl_GetString(fileContents));
-	if (interp) {
-	    myL = Tcl_GetAssocData(interp, "L", NULL);
-	}
-	if (!myL || !(myL->options & L_OPT_NORUN)) {
-	    Tcl_AppendToObj(newContents, "\n%%call_main_if_defined", -1);
-	}
 	Tcl_DecrRefCount(fileContents);
 	Tcl_IncrRefCount(newContents);
 	fileContents = newContents;
+	if (L) L->global->forceL = 0;
     }
     return fileContents;
 }

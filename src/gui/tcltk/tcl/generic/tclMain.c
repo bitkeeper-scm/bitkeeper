@@ -371,6 +371,30 @@ Tcl_Main(
 
     path = Tcl_GetStartupScript(&encodingName);
     if (path != NULL) {
+	int argc, i;
+	char *av0path;
+	Tcl_Obj **argvObjs, *pathObj;
+
+	/*
+	 * Set L->global->forceL if argv[0] is "L", or "-L" or "--L" was given
+	 * as a cmd-line option.  This causes Tcl_FSEvalFileEx() to wrap the
+	 * input file in a #lang L regardless of its extension.
+	 */
+	if (L->global->argv) {
+	    Tcl_ListObjGetElements(interp, L->global->argv, &argc, &argvObjs);
+	    pathObj = Tcl_FSGetNormalizedPath(interp, argvObjs[0]);
+	    av0path = Tcl_GetString(pathObj);
+	    if (av0path) {
+		L->global->forceL = (!strcmp(av0path+strlen(av0path)-2, "/L"));
+	    }
+	    for (i = 1; i < argc; ++i) {
+		if (!strcmp(Tcl_GetString(argvObjs[i]), "--L") ||
+		    !strcmp(Tcl_GetString(argvObjs[i]), "-L")) {
+		    L->global->forceL = 1;
+		}
+	    }
+	}
+
 	code = Tcl_FSEvalFileEx(interp, path, encodingName);
 	if (code != TCL_OK) {
 	    errChannel = Tcl_GetStdChannel(TCL_STDERR);

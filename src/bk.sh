@@ -1464,7 +1464,12 @@ __sortmerge()
 _tclsh() {
 	TCLSH=`bk bin`/gui/bin/tclsh
 	test "X$OSTYPE" = "Xmsys" && TCLSH=`win2msys "$TCLSH"`
+	echo exec "$TCLSH" "$@" >/tmp/bo
 	exec "$TCLSH" "$@"
+}
+
+_L() {
+	_tclsh --L "$@"
 }
 
 _wish() {

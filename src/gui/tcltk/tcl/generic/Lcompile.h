@@ -96,6 +96,7 @@ struct scope {
 typedef struct {
 	int	argc;
 	Tcl_Obj	*argv;
+	int	forceL;		// wrap input in #lang L directive
 } Lglobal;
 
 /*

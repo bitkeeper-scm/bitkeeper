@@ -31,21 +31,24 @@ test lfile-1.1 {Test autowrapping of .l works} -setup {
 	removeFile lfile-1.1.l
 } -result {hi mom}
 
-# main shouldn't be automatically called if within an .l file we find
-# the #lang L directive... right?
-test lfile-1.2 {Test autowrapping does not wrap twice} -setup {
-	set fname [makeFile {#lang L -nowarn
+test lfile-1.1 {Test #lang L wrapping with -L and --L cmd-line options} -setup {
+	set fname [makeFile {
 		void main() {
-			printf("hi dad\n");
+			puts("this is L");
 		}
-	} lfile-1.2.l]
+	} lfile-1.1.n]
 } -constraints {
 	exec
 } -body {
-	exec [interpreter] $fname
+	set s1 [exec [interpreter] -L $fname]
+	set s2 [exec [interpreter] --L $fname]
+	puts $s1
+	puts $s2
 } -cleanup {
-	removeFile lfile-1.2.l
-} -result {}
+	removeFile lfile-1.1.n
+} -output {this is L
+this is L
+}
 
 test lfile-1.3 {Test .l mapping via source command} -setup {
 	set fname [makeFile {printf("hello there");} lfile-1.3.l]
@@ -54,6 +57,54 @@ test lfile-1.3 {Test .l mapping via source command} -setup {
 } -cleanup {
 	removeFile lfile-1.3.l
 } -output {hello there}
+
+test lfile-1.4 {Test that in a Tcl script L does not call a Tcl main} -body {
+proc main {} { puts "bad 1" }
+} -output {}
+
+test lfile-1.5 {Test that L mains in multiple interps get invoked} -body {
+#lang L
+void lfile_1_5()
+{
+	// Touch files instead of puts'ing since the slave interps seem
+	// to not get tcltest's puts so -output{} doesn't match it.
+
+	string	cmd1 = <<'END'
+slave1 eval {#lang L
+void main() { fclose(fopen("interp1", "w")); }}
+END
+	string	cmd2 = <<'END'
+slave2 eval {#lang L
+void main() { fclose(fopen("interp2", "w")); }}
+END
+	eval("interp create slave1");
+	eval("interp create slave2");
+	eval(cmd1);
+	eval(cmd2);
+	unless (exists("interp1")) puts("bad 1");
+	unless (exists("interp2")) puts("bad 2");
+}
+lfile_1_5();
+} -cleanup {
+	removeFile "interp1"
+	removeFile "interp2"
+} -output {}
+
+test lfile-1.6 {Test a Tcl file sourced from an L file} -setup {
+	set fname [makeFile {puts "in Tcl"} lfile-1.6.tcl]
+} -body {
+#lang L
+source("lfile-1.6.tcl");
+void lfile_1_6()
+{
+	puts("in L");
+}
+lfile_1_6();
+} -cleanup {
+	removeFile lfile-1.6.tcl
+} -output {in Tcl
+in L
+}
 
 test parse-1.0 {Test parsing an empty L script} -body {
 #lang L

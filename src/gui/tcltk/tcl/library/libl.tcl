@@ -12,29 +12,28 @@ set ::L_libl_initted 1
 set ::%%suppress_calling_main 0
 
 proc %%call_main_if_defined {} {
+	if {$::tcl_interactive} { return }
 	if {[llength [info proc main]] && !${::%%suppress_calling_main}} {
 		incr ::argc
+		if {![info exists ::argv]}  { set ::argv {} }
+		if {![info exists ::argv0]} { set ::argv0 "L" }
 		set  ::argv [linsert $::argv 0 $::argv0]
 		switch [llength [info args main]] {
 		    0 {
 			set ::%%suppress_calling_main 1
 			main
-			set ::%%suppress_calling_main 0
 		    }
 		    1 {
 			set ::%%suppress_calling_main 1
 			main $::argc
-			set ::%%suppress_calling_main 0
 		    }
 		    2 {
 			set ::%%suppress_calling_main 1
 			main $::argc $::argv
-			set ::%%suppress_calling_main 0
 		    }
 		    3 {
 			set ::%%suppress_calling_main 1
 			main $::argc $::argv [dict create {*}[array get ::env]]
-			set ::%%suppress_calling_main 0
 		    }
 		    default {
 			error "Too many parameters for main()."

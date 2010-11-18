@@ -1,0 +1,30 @@
+# Test the bk L command.
+
+echo $N Test bk tclsh script.l ......................................$NL
+cat >script.l <<EOF
+void main()
+{
+	puts("in L");
+}
+EOF
+bk L script.l >OUT || fail
+bk grep -q "in L" OUT || fail -f OUT
+echo OK
+
+echo $N Test bk tclsh --L script.x ..................................$NL
+# The --L should interpret the given file as L regardless of the file extension
+cat >script.x <<EOF
+void main()
+{
+	puts("in L");
+}
+EOF
+bk tclsh --L script.x >OUT || fail
+bk grep -q "in L" OUT || fail -f OUT
+echo OK
+
+echo $N Test bk L script.x ..........................................$NL
+# bk L should interpret the given file as L regardless of the file extension
+bk L script.x >OUT || fail
+bk grep -q "in L" OUT || fail -f OUT
+echo OK

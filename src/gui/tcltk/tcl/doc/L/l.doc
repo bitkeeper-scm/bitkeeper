@@ -673,6 +673,9 @@ when L is invoked.  Although you can change this hash, writes to it
 are not reflected back into the environment.  To do that use the
 C<setenv> library function.
 
+Only a C<main> written in L is automatically called.
+You can write a C<main> in Tcl but L will not call it automatically.
+
 =head2 Function Pointers
 
 Function pointers are supported, but only as arguments -- you cannot

@@ -404,6 +404,12 @@ L_CompileScript(void *ast)
 		}
 	}
 
+	/* If main() was defined, emit a %%call_main_if_defined call. */
+	if (sym_lookup(ast_mkId("main", 0, 0), L_NOWARN)) {
+		push_str("%%%%call_main_if_defined");
+		emit_invoke(1);
+	}
+
 	push_str("");
 	TclEmitOpcode(INST_DONE, L->frame->envPtr);
 	frame_pop();
