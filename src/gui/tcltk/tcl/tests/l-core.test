@@ -939,21 +939,19 @@ test scan-2.2 {test #file directive with include files} -setup {
 			++scan_2_2;
 			unless (basename(__FILE__) eq "foo.l") puts("bad 1");
 			unless (__LINE__ == 3) puts("bad 2");
-		   } scan-2.2.l ../tests]
+		   } scan-2.2.l .]
 } -body {
 #lang L
 int scan_2_2 = 0;
 puts(scan_2_2);
-include("scan-2.2.l");
+#include "scan-2.2.l"
 puts(scan_2_2);
 // Check variations in spacing and punctation.
 // The compiler should include scan-2.2.l only once.
-include("scan-2.2.l") ;
-include ("scan-2.2.l");
-include ("scan-2.2.l") ;
-include ( "scan-2.2.l") ;
-include ( "scan-2.2.l" ) ;
-include("scan-2.2.l");;
+#include "scan-2.2.l"
+#include  "scan-2.2.l"
+#include  "scan-2.2.l" 
+#include"scan-2.2.l"
 puts(scan_2_2);
 } -cleanup {
 	removeFile $fname
@@ -969,28 +967,28 @@ test scan-2.3 {test #file directive with nested include files} -setup {
 # include() only when it starts at the beginning of the line.
 #
 	set fname1 [makeFile {#file "foo1.l"
-include("scan-2.3-2.l");
+#include "scan-2.3-2.l"
 unless (basename(__FILE__) eq "foo1.l") puts("bad 1");
 unless (__LINE__ == 3) puts("bad 2");
-} scan-2.3-1.l ../tests]
+} scan-2.3-1.l .]
 	set fname2 [makeFile {#file "foo2.l"
 int scan_2_3a = 3;
 unless (basename(__FILE__) eq "foo2.l") puts("bad 3");
 unless (__LINE__ == 3) puts("bad 4");
-include("scan-2.3-3.l");
+#include "scan-2.3-3.l"
 unless (basename(__FILE__) eq "foo2.l") puts("bad 5");
 unless (__LINE__ == 6) puts("bad 6 ${__LINE__}");
-} scan-2.3-2.l ../tests]
+} scan-2.3-2.l .]
 	set fname3 [makeFile {#file "foo3.l"
 int scan_2_3b = 4;
 unless (basename(__FILE__) eq "foo3.l") puts("bad 7");
 unless (__LINE__ == 3) puts("bad 8");
-} scan-2.3-3.l ../tests]
+} scan-2.3-3.l .]
 } -body {
 #lang L
 #file "foo4.l"
 unless (__FILE__ eq "foo4.l") puts("bad 10.1");
-include("scan-2.3-1.l");
+#include "scan-2.3-1.l"
 unless (__FILE__ eq "foo4.l") puts("bad 10.2");
 unless (scan_2_3a == 3) puts("bad 10.3");
 unless (scan_2_3b == 4) puts("bad 10.4");
@@ -2213,13 +2211,12 @@ return_3_10();
 
 test syntax-1.0 {single-line comments a la C++} -body {
 #lang L
+# this kind of comment valid only on line 1
 void syntax_1_0() {
         // single-line comments are 
         puts("working"); //see?
         //////cruftilioucious 
-# and this
 }
-# and this
 
 #lang tcl
 syntax_1_0
@@ -2227,13 +2224,15 @@ syntax_1_0
 
 test syntax-1.0.1 {hash-comment errors} -body {
 #lang L
+ # err -- starts on column 2
 void syntax_1_0_1()
 {
- # err -- starts on column 2
-	# err -- leading tab
+# err -- not on line 1
+	# err -- same
 }
-} -returnCodes {error} -match regexp -result {.*3: L Error: # comment must start at first column
-.*4: L Error: # comment must start at first column
+} -returnCodes {error} -match regexp -result {.*1: L Error: # comment must start at first column
+.*4: L Error: # comment valid only on line 1
+.*5: L Error: # comment valid only on line 1
 }
 
 test syntax-1.1 {structure syntax} -body {
@@ -12490,21 +12489,20 @@ test include-1.0 {include files} -setup {
 			++include_1_0;
 			unless (basename(__FILE__) eq "foo-1.0.l") puts("bad 1");
 			unless (__LINE__ == 4) puts("bad 2");
-		   } foo-1.0.l ../tests]
+		   } foo-1.0.l .]
 } -body {
 #lang L
 int include_1_0 = 0;
 puts(include_1_0);
-include("foo-1.0.l");
+#include "foo-1.0.l"
 puts(include_1_0);
 // Check variations in spacing and punctation.
 // The compiler should include foo-1.0.l only once.
-include("foo-1.0.l") ;
-include ("foo-1.0.l");
-include ("foo-1.0.l") ;
-include ( "foo-1.0.l") ;
-include ( "foo-1.0.l" ) ;
-include("foo-1.0.l");;
+#include"foo-1.0.l"
+#include "foo-1.0.l"
+#include  "foo-1.0.l"
+#include  "foo-1.0.l" 
+#include"foo-1.0.l"
 puts(include_1_0);
 } -cleanup {
 	removeFile $fname
@@ -12518,27 +12516,26 @@ test include-1.1 {nested include files} -setup {
 # The code for these files isn't indented because L recognizes
 # include() only when it starts at the beginning of the line.
 #
-	set fname1 [makeFile {
-include("foo-1.1-2.l");
-unless (basename(__FILE__) eq "foo-1.1-1.l") puts("bad 1");
-unless (__LINE__ == 4) puts("bad 2");
-} foo-1.1-1.l ../tests]
-	set fname2 [makeFile {
+	set fname1 [makeFile {#include "foo-1.1-2.l"
+unless (basename(__FILE__) eq "foo-1.1-1.l") puts("bad 1.1");
+unless (__LINE__ == 3) puts("bad 1.2");
+} foo-1.1-1.l .]
+	set fname2 [makeFile {unless (__LINE__ == 1) puts("bad 2.1");
 int include_1_1a = 3;
-unless (basename(__FILE__) eq "foo-1.1-2.l") puts("bad 3");
-unless (__LINE__ == 4) puts("bad 4");
-include("foo-1.1-3.l");
-unless (basename(__FILE__) eq "foo-1.1-2.l") puts("bad 5");
-unless (__LINE__ == 7) puts("bad 6");
-} foo-1.1-2.l ../tests]
+unless (basename(__FILE__) eq "foo-1.1-2.l") puts("bad 2.2");
+unless (__LINE__ == 4) puts("bad 2.3");
+#include "foo-1.1-3.l"
+unless (basename(__FILE__) eq "foo-1.1-2.l") puts("bad 2.4");
+unless (__LINE__ == 7) puts("bad 2.5");
+} foo-1.1-2.l .]
 	set fname3 [makeFile {
 int include_1_1b = 4;
-unless (basename(__FILE__) eq "foo-1.1-3.l") puts("bad 7");
-unless (__LINE__ == 4) puts("bad 8");
-} foo-1.1-3.l ../tests]
+unless (basename(__FILE__) eq "foo-1.1-3.l") puts("bad 3.1");
+unless (__LINE__ == 4) puts("bad 3.2");
+} foo-1.1-3.l .]
 } -body {
 #lang L
-include("foo-1.1-1.l");
+#include "foo-1.1-1.l"
 unless (include_1_1a == 3) puts("bad 10.1");
 unless (include_1_1b == 4) puts("bad 10.2");
 } -cleanup {
@@ -12549,25 +12546,27 @@ unless (include_1_1b == 4) puts("bad 10.2");
 
 test include-1.2 {malformed includes} -body {
 #lang L
-include("   // bad
-include(""  // bad
-include("") // bad "
-} -returnCodes {error} -match regexp -result {.*1: L Error: malformed include
-.*2: L Error: malformed include
-.*3: L Error: malformed include
+#include "
+#include <
+#include ""
+#include <>
+} -returnCodes {error} -match regexp -result {.*1: L Error: malformed #include
+.*2: L Error: malformed #include
+.*3: L Error: malformed #include
+.*4: L Error: malformed #include
 }
 
 test include-1.3 {test line number tracking with include files} -setup {
 	set fname1 [makeFile {int include_1_3a = "bad1";
-include("foo-1.3-2.l");} foo-1.3-1.l ../tests]
+#include "foo-1.3-2.l"} foo-1.3-1.l .]
 	set fname2 [makeFile {int include_1_3b = "bad2";
-include("foo-1.3-3.l");
-int include_1_3c = "bad3";} foo-1.3-2.l ../tests]
-	set fname3 [makeFile {int include_1_3d = "bad4";} foo-1.3-3.l ../tests]
+#include "foo-1.3-3.l"
+int include_1_3c = "bad3";} foo-1.3-2.l .]
+	set fname3 [makeFile {int include_1_3d = "bad4";} foo-1.3-3.l .]
 } -body {
 #lang L
 int include_1_3 = "bad0";
-include("foo-1.3-1.l");
+#include "foo-1.3-1.l"
 int include_1_3last = "badn";
 } -cleanup {
 	removeFile $fname1
@@ -12583,30 +12582,103 @@ int include_1_3last = "badn";
 
 test include-1.4 {test missing include file} -body {
 #lang L
-include("does-not-exist.l");
+#include "does-not-exist.l"
 } -returnCodes {error} -match regexp -result {.*1: L Error: cannot find include file does-not-exist.l
 }
 
-# This test creates two slave interps that declare global symbols
-# with the same names as those declared in the master interp.
-# If the L global state is properly kept per-interp, there
-# should be no multiple-declaration errors.
+# Create files with the same names in $BIN/mydir, $BIN/include, and in
+# the cwd of the L script, and ensure that the one specified by an
+# absolute path (to mydir) gets included, where $BIN is where the
+# running tclsh lives.
+test include-1.5 {test include "/abs/path" search path} -setup {
+	set mydir  [makeDirectory mydir [file dirname [interpreter]]]
+	set incdir [makeDirectory include [file dirname [interpreter]]]
+	set fname1 [makeFile {puts("good");} f-1.5-1.l $mydir]
+	set fname2 [makeFile {puts("bad");}  f-1.5-1.l $incdir]
+	set fname3 [makeFile {puts("bad");}  f-1.5-1.l .]
+	set script [makeFile "#include \"$mydir/f-1.5-1.l\"" f-1.5-scr.l .]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $script
+} -cleanup {
+	removeFile $fname1
+	removeFile $fname2
+	removeFile $fname3
+	removeFile $script
+	removeDirectory $mydir
+	removeDirectory $incdir
+} -result {good}
+
+# Create files with the same names in $BIN/include and in
+# the cwd of the L script, and ensure that #include "file.l" includes
+# the one in the cwd, where $BIN is where the running tclsh lives.
+test include-1.6 {test include "file" search path} -setup {
+	set incdir [makeDirectory include [file dirname [interpreter]]]
+	set fname1 [makeFile {puts("bad");}  f-1.6-1.l $incdir]
+	set fname2 [makeFile {puts("good");} f-1.6-1.l .]
+	set script [makeFile "#include \"f-1.6-1.l\"" f-1.6-scr.l .]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $script
+} -cleanup {
+	removeFile $fname1
+	removeFile $fname2
+	removeFile $script
+	removeDirectory $incdir
+} -result {good}
+
+# Create files with the same names in $BIN/include and in
+# the cwd of the L script, and ensure that #include <file.l> includes
+# the one in $BIN, where $BIN is where the running tclsh lives.
+test include-1.7 {test include <file> search path 1} -setup {
+	set incdir [makeDirectory include [file dirname [interpreter]]]
+	set fname1 [makeFile {puts("good");} f-1.7-1.l $incdir]
+	set fname2 [makeFile {puts("bad");}  f-1.7-1.l .]
+	set script [makeFile "#include <f-1.7-1.l>" f-1.7-scr.l .]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $script
+} -cleanup {
+	removeFile $fname1
+	removeFile $fname2
+	removeFile $script
+	removeDirectory $incdir
+} -result {good}
+
+# Ensure that #include <file.l> finds file.l in $BIN/include,
+# where $BIN is where the running tclsh lives.
+test include-1.8 {test include <file> search path 1} -setup {
+	set incdir [makeDirectory include [file dirname [interpreter]]]
+	set fname1 [makeFile {puts("good");} f-1.8-1.l $incdir]
+	set script [makeFile "#include <f-1.8-1.l>" f-1.8-scr.l .]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $script
+} -cleanup {
+	removeFile $fname1
+	removeFile $script
+	removeDirectory $incdir
+} -result {good}
 
 test include-2.1 {nested include files almost nested too deeply} -setup {
-	set fname1  [makeFile {include("f-1.2.l");}  f-1.1.l ../tests]
-	set fname2  [makeFile {include("f-1.3.l");}  f-1.2.l ../tests]
-	set fname3  [makeFile {include("f-1.4.l");}  f-1.3.l ../tests]
-	set fname4  [makeFile {include("f-1.5.l");}  f-1.4.l ../tests]
-	set fname5  [makeFile {include("f-1.6.l");}  f-1.5.l ../tests]
-	set fname6  [makeFile {include("f-1.7.l");}  f-1.6.l ../tests]
-	set fname7  [makeFile {include("f-1.8.l");}  f-1.7.l ../tests]
-	set fname8  [makeFile {include("f-1.9.l");}  f-1.8.l ../tests]
-	set fname9  [makeFile {include("f-1.10.l");} f-1.9.l ../tests]
-	set fname10 [makeFile {include("f-1.11.l");} f-1.10.l ../tests]
-	set fname11 [makeFile {printf("ok");}	     f-1.11.l ../tests]
+	set fname1  [makeFile {#include "f-1.2.l"}  f-1.1.l .]
+	set fname2  [makeFile {#include "f-1.3.l"}  f-1.2.l .]
+	set fname3  [makeFile {#include "f-1.4.l"}  f-1.3.l .]
+	set fname4  [makeFile {#include "f-1.5.l"}  f-1.4.l .]
+	set fname5  [makeFile {#include "f-1.6.l"}  f-1.5.l .]
+	set fname6  [makeFile {#include "f-1.7.l"}  f-1.6.l .]
+	set fname7  [makeFile {#include "f-1.8.l"}  f-1.7.l .]
+	set fname8  [makeFile {#include "f-1.9.l"}  f-1.8.l .]
+	set fname9  [makeFile {#include "f-1.10.l"} f-1.9.l .]
+	set fname10 [makeFile {#include "f-1.11.l"} f-1.10.l .]
+	set fname11 [makeFile {printf("ok");}	    f-1.11.l .]
 } -body {
 #lang L
-include("f-1.1.l");
+#include "f-1.1.l"
 } -cleanup {
 	removeFile $fname1
 	removeFile $fname2
@@ -12622,21 +12694,21 @@ include("f-1.1.l");
 } -output {ok}
 
 test include-2.2 {nested include files nested too deeply} -setup {
-	set fname1  [makeFile {include("f-2.2.l");}  f-2.1.l ../tests]
-	set fname2  [makeFile {include("f-2.3.l");}  f-2.2.l ../tests]
-	set fname3  [makeFile {include("f-2.4.l");}  f-2.3.l ../tests]
-	set fname4  [makeFile {include("f-2.5.l");}  f-2.4.l ../tests]
-	set fname5  [makeFile {include("f-2.6.l");}  f-2.5.l ../tests]
-	set fname6  [makeFile {include("f-2.7.l");}  f-2.6.l ../tests]
-	set fname7  [makeFile {include("f-2.8.l");}  f-2.7.l ../tests]
-	set fname8  [makeFile {include("f-2.9.l");}  f-2.8.l ../tests]
-	set fname9  [makeFile {include("f-2.10.l");} f-2.9.l ../tests]
-	set fname10 [makeFile {include("f-2.11.l");} f-2.10.l ../tests]
-	set fname11 [makeFile {include("f-2.12.l");} f-2.11.l ../tests]
-	set fname12 [makeFile {printf("ok");}	     f-2.12.l ../tests]
+	set fname1  [makeFile {#include "f-2.2.l"}  f-2.1.l .]
+	set fname2  [makeFile {#include "f-2.3.l"}  f-2.2.l .]
+	set fname3  [makeFile {#include "f-2.4.l"}  f-2.3.l .]
+	set fname4  [makeFile {#include "f-2.5.l"}  f-2.4.l .]
+	set fname5  [makeFile {#include "f-2.6.l"}  f-2.5.l .]
+	set fname6  [makeFile {#include "f-2.7.l"}  f-2.6.l .]
+	set fname7  [makeFile {#include "f-2.8.l"}  f-2.7.l .]
+	set fname8  [makeFile {#include "f-2.9.l"}  f-2.8.l .]
+	set fname9  [makeFile {#include "f-2.10.l"} f-2.9.l .]
+	set fname10 [makeFile {#include "f-2.11.l"} f-2.10.l .]
+	set fname11 [makeFile {#include "f-2.12.l"} f-2.11.l .]
+	set fname12 [makeFile {printf("ok");}	    f-2.12.l .]
 } -body {
 #lang L
-include("f-2.1.l");
+#include "f-2.1.l"
 } -cleanup {
 	removeFile $fname1
 	removeFile $fname2
@@ -12652,6 +12724,11 @@ include("f-2.1.l");
 	removeFile $fname12
 } -returnCodes {error} -match regexp -result {f-2.11.l:1: L Error: include file nesting too deep -- aborting
 }
+
+# This test creates two slave interps that declare global symbols
+# with the same names as those declared in the master interp.
+# If the L global state is properly kept per-interp, there
+# should be no multiple-declaration errors.
 
 test interp-1 {test per-interp global state} -body {
 #lang L
@@ -13691,18 +13768,18 @@ void src_mappings_4_foo1()
 		puts(v1);
 	}
 }
-include ("foo-sm4-2.l");
-} foo-sm4-1.l ../tests]
+#include "foo-sm4-2.l"
+} foo-sm4-1.l .]
 	set fname2 [makeFile {
 void src_mappings_4_foo2()
 {
 	int	i, j;
 	i = j+1;
 }
-} foo-sm4-2.l ../tests]
+} foo-sm4-2.l .]
 } -body {
 #lang L
-include ("foo-sm4-1.l");
+#include "foo-sm4-1.l"
 void src_mappings_4()
 {
 	/*
@@ -17673,11 +17750,17 @@ test fntrace-1 {check function tracing, pragma syntax} -body {
 #lang L
 // These are all legal syntax.
 #pragma fntrace(on)
+unless (__LINE__ == 3) puts("bad 1");
 #pragma fntrace(on, hook=myhook)
+unless (__LINE__ == 5) puts("bad 2");
 #pragma fntrace(on, defhook)
+unless (__LINE__ == 7) puts("bad 3");
 #pragma fntrace(off)
+unless (__LINE__ == 9) puts("bad 4");
 #pragma fntrace(off, hook=myhook)
+unless (__LINE__ == 11) puts("bad 5");
 #pragma fntrace(off, defhook)
+unless (__LINE__ == 13) puts("bad 6");
 } -output {}
 
 test fntrace-2 {check function trace, default hooks} -body {

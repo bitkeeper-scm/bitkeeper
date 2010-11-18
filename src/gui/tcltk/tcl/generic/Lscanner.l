@@ -10,11 +10,8 @@
 %x str_single
 %x str_backtick
 %x interpol
-%x include
 %x here_doc_interp
 %x here_doc_nointerp
-%x hash
-%x hash2
 ID	([a-zA-Z_]|::)([0-9a-zA-Z_]|::)*
 %{
 /*
@@ -29,7 +26,8 @@ ID	([a-zA-Z_]|::)([0-9a-zA-Z_]|::)*
 
 private int	include_pop();
 private int	include_push(FILE *f, char *name);
-private FILE *	include_search(char *file);
+private FILE *	include_search(char *file, char **path, int pwdOnly);
+private FILE *	include_try(Tcl_Obj *fileObj, int *found);
 private void	put_back(char c);
 private void	tally_newlines(char *s, int len, int tally);
 private void	interpol_lbrace();
@@ -112,7 +110,7 @@ yy_user_action()
 /*
  * Un-do the effects of the YY_USER_ACTION on the token offset
  * tracking.  This is useful in include() processing where the
- * characters in the 'include("file");' must be ignored.
+ * characters in the '#include "file"' must be ignored.
  */
 private void
 undo_yy_user_action()
@@ -158,58 +156,93 @@ tally_newlines(char *s, int len, int tally)
 	}
 }
 
-/*
- * Search for file in the include path and open it.  If the passed-in
- * name is not an absolute path, we currently look only in the
- * directory of the current script (i.e., dirname of [info script]).
- */
 private FILE *
-include_search(char *file)
+include_try(Tcl_Obj *fileObj, int *found)
 {
 	int	new;
 	FILE	*f;
-	char	*path, *resolvedFile;
-	Interp	*iPtr = (Interp *)L->interp;
-	Tcl_Obj *fileObj, *pathObj;
+	char	*file = Tcl_GetString(fileObj);
+	char	*path;
+	Tcl_Obj	*pathObj;
 	Tcl_HashEntry *hPtr;
-
-	unless (include_table) {
-		include_table = (Tcl_HashTable *)ckalloc(sizeof(Tcl_HashTable));
-		Tcl_InitHashTable(include_table, TCL_STRING_KEYS);
-	}
-
-	/* If the path is relative, make it absolute. */
-	fileObj = Tcl_NewStringObj(file, -1);
-	Tcl_IncrRefCount(fileObj);
-	if ((Tcl_FSGetPathType(fileObj) == TCL_PATH_ABSOLUTE) ||
-	    !iPtr->scriptFile) {
-		resolvedFile = ckstrdup(file);
-	} else {
-		Tcl_DecrRefCount(fileObj);
-		fileObj = TclPathPart(L->interp, iPtr->scriptFile,
-				      TCL_PATH_DIRNAME);
-		Tcl_AppendPrintfToObj(fileObj, "/%s", file);
-		resolvedFile = ckstrdup(Tcl_GetString(fileObj));
-	}
 
 	/* See if the normalized path has been included before. */
 	if ((pathObj = Tcl_FSGetNormalizedPath(NULL, fileObj)) == NULL) {
-		L_err("unable to normalize include file %s\n", file);
+		L_err("unable to normalize include file %s", file);
 		return (NULL);
 	}
 	path = Tcl_GetString(pathObj);
 	hPtr = Tcl_CreateHashEntry(include_table, path, &new);
 
 	if (new) {
-		f = fopen(resolvedFile, "r");
-		unless (f) {
-			L_err("cannot find include file %s", file);
-		}
+		f = fopen(path, "r");
+		*found = (f != NULL);
+		return (f);
 	} else {
-		f = NULL;
+		*found = 1;  // already included
+		return (NULL);
 	}
+}
+
+/*
+ * Search for an include file.  If the path is absolute, use it.
+ * Else, for #include <file> (pwdOnly == 0) try
+ *    $BIN/include  (where BIN is where the running tclsh lives)
+ *    /usr/local/include/L
+ *    /usr/include/L
+ * For #include "file" (pwdOnly == 1) look only in the cwd.
+ */
+private FILE *
+include_search(char *file, char **path, int pwdOnly)
+{
+	int	found, len;
+	FILE	*f = NULL;
+	Tcl_Obj	*binObj = NULL;
+	Tcl_Obj *fileObj;
+
+	unless (include_table) {
+		/*
+		 * REVIEW: Who deletes include_table?  Is the state per interp?
+		 */
+		include_table = (Tcl_HashTable *)ckalloc(sizeof(Tcl_HashTable));
+		Tcl_InitHashTable(include_table, TCL_STRING_KEYS);
+	}
+
+	fileObj = Tcl_NewStringObj(file, -1);
+	Tcl_IncrRefCount(fileObj);
+	if ((Tcl_FSGetPathType(fileObj) == TCL_PATH_ABSOLUTE) || pwdOnly) {
+		f = include_try(fileObj, &found);
+	} else {
+		/* Try $BIN/include */
+		binObj = TclGetObjNameOfExecutable();
+		Tcl_GetStringFromObj(binObj, &len);
+		if (len > 0) {
+			Tcl_DecrRefCount(fileObj);
+			/* TclPathPart bumps the ref count. */
+			fileObj = TclPathPart(L->interp, binObj,
+			    TCL_PATH_DIRNAME);
+			Tcl_AppendPrintfToObj(fileObj, "/include/%s", file);
+			f = include_try(fileObj, &found);
+			if (found) goto done;
+		}
+		/* Try /usr/local/include/L */
+		Tcl_DecrRefCount(fileObj);
+		fileObj = Tcl_ObjPrintf("/usr/local/include/L/%s", file);
+		Tcl_IncrRefCount(fileObj);
+		f = include_try(fileObj, &found);
+		if (found) goto done;
+		/* Try /usr/include/L */
+		Tcl_DecrRefCount(fileObj);
+		fileObj = Tcl_ObjPrintf("/usr/include/L/%s", file);
+		Tcl_IncrRefCount(fileObj);
+		f = include_try(fileObj, &found);
+	}
+ done:
+	unless (found) {
+		L_err("cannot find include file %s", file);
+	}
+	if (path) *path = ckstrdup(Tcl_GetString(fileObj));
 	Tcl_DecrRefCount(fileObj);
-	ckfree(resolvedFile);
 	return (f);
 }
 
@@ -232,7 +265,12 @@ include_push(FILE *f, char *name)
 		include_stk[include_top].buf = YY_CURRENT_BUFFER;
 		yy_switch_to_buffer(buf);
 		L->file = name;
-		L->line_adj = L_offset_to_lineno(L_lloc.beg);
+		if ((L_lloc.beg == 0) && (L_lloc.end == 0)) {
+			/* Special case: no current token yet. */
+			L->line_adj = 0;
+		} else {
+			L->line_adj = L_offset_to_lineno(L_lloc.beg);
+		}
 		L->line = 1;
 		return (1);
 	}
@@ -244,7 +282,7 @@ include_pop()
 	if (include_top >= 0) {
 		L->file = include_stk[include_top].name;
 		L->line = include_stk[include_top].line;
-		L->line_adj = L_offset_to_lineno(L_lloc.beg) - (L->line - 1);
+		L->line_adj = L_offset_to_lineno(L_lloc.beg) - L->line;
 		fclose(include_stk[include_top].file);
 		yy_delete_buffer(YY_CURRENT_BUFFER);
 		yy_switch_to_buffer(include_stk[include_top].buf);
@@ -428,14 +466,83 @@ canonical_num(char *num)
 				L_lval.s = ckstrdup(yytext);
 				return T_FLOAT_LITERAL;
 			}
-	^include[ \t]*\([ \t]*\" {
+	^#file\ \"[^\"\n]*\"\n {
+				char *name = ckstrndup(yytext + 7, yyleng - 9);
+				/*
+				 * Make like the #file wasn't there in the
+				 * input, and reset the line # to 1.
+				 */
 				undo_yy_user_action();
-				BEGIN(include);
+				L->file = name;
+				L->line = 1;
+				L->line_adj = L_offset_to_lineno(L_lloc.end)-1;
 			}
-	^#		BEGIN(hash);
-	[ \t]+#.*("\r"|"\n"|"\r\n") {
+	^#include[ \t]*\"[^\"\n]+\"[ \t]*\n	{
+				char	*beg  = strchr(yytext, '"') + 1;
+				char	*end  = strrchr(yytext, '"');
+				char	*name = ckstrndup(beg, end-beg);
+				FILE	*f;
+
 				--L->line;  // since we already scanned the \n
-				L_err("# comment must start at first column");
+				f = include_search(name, NULL, 1);
+				++L->line;
+
+				undo_yy_user_action();
+				if (f && !include_push(f, name)) {
+					/* Bail if includes nest too deeply. */
+					yyterminate();
+				}
+			}
+	^#include[ \t]*<[^>\n]+>[ \t]*\n		{
+				char	*beg  = strchr(yytext, '<') + 1;
+				char	*end  = strrchr(yytext, '>');
+				char	*name = ckstrndup(beg, end-beg);
+				char	*path = NULL;
+				FILE	*f;
+
+				--L->line;  // since we already scanned the \n
+				f = include_search(name, &path, 0);
+				ckfree(name);
+				++L->line;
+
+				undo_yy_user_action();
+				if (f && !include_push(f, path)) {
+					/* Bail if includes nest too deeply. */
+					yyterminate();
+				}
+			}
+	^#include[ \t]*.*\n	{
+				--L->line;  // since we already scanned the \n
+				L_err("malformed #include");
+				++L->line;
+			}
+	^#pragma[ \t]+		return T_PRAGMA;
+	^#.*("\r"|"\n"|"\r\n")	{
+				/*
+				 * Rather than using a start condition
+				 * to separate out all the ^# usages,
+				 * this is simpler.  If it's a pragma,
+				 * REJECT it so that flex then takes the
+				 * second best rule (immediately above).
+				 */
+				if (!strncmp(yytext, "#pragma ",  8) ||
+				    !strncmp(yytext, "#pragma\t", 8)) {
+					undo_yy_user_action();
+					REJECT;
+				} else unless (L->line == 2) {
+					--L->line;  // since \n already scanned
+					L_err("# comment valid only on line 1");
+					++L->line;
+				}
+			}
+	[ \t]+#.*("\r"|"\n"|"\r\n") {
+				--L->line;  // since \n already scanned
+				unless (L->line == 1) {
+					L_err("# comment valid only on line 1");
+				} else {
+					L_err("# comment must start at "
+					      "first column");
+				}
 				++L->line;
 			}
 	"//".*("\r"|"\n"|"\r\n")
@@ -512,25 +619,6 @@ canonical_num(char *num)
 	}
 	"="[ \t\r\n]*"<<\'"[a-zA-Z_][a-zA-Z_0-9]*\'[^\n]		{
 		L_synerr("illegal here-document delimeter");
-	}
-}
-
-<include>{
-	[^\"]*\"[ \t]*\)[ \t]*;[ \t;]*	{
-		int	len = strrchr(yytext, '"') - yytext;
-		char	*name = ckstrndup(yytext, len);
-		FILE	*f = include_search(name);
-
-		undo_yy_user_action();
-		if (f) {
-			/* This bails if includes nest too deeply. */
-			unless (include_push(f, name)) yyterminate();
-		}
-		BEGIN(INITIAL);
-	}
-	.	{
-		L_err("malformed include");
-		BEGIN(INITIAL);
 	}
 }
 
@@ -806,25 +894,6 @@ canonical_num(char *num)
 	<<EOF>>		{
 				unless (include_pop()) yyterminate();
 			}
-<hash>{
-	pragma[ \t]+	BEGIN(INITIAL); return T_PRAGMA;
-	file\ \"[^\"\n]*\"\n {
-				char *name = ckstrndup(yytext + 6, yyleng - 8);
-				/*
-				 * Make like the #file wasn't there in the
-				 * input, and reset the line # to 1.
-				 */
-				undo_yy_user_action();
-				L->file = name;
-				L->line = 1;
-				L->line_adj = L_offset_to_lineno(L_lloc.end) - 1;
-				BEGIN(INITIAL);
-			}
-	.		BEGIN(hash2);
-}
-<hash2>{
-	.*("\r"|"\n"|"\r\n")	BEGIN(INITIAL);
-}
 %%
 void
 L_lex_begReArg()

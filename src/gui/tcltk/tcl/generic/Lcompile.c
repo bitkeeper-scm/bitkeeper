@@ -4818,7 +4818,7 @@ L_offset_to_lineno(int off)
 	int	n = 1;
 	char	*p = Tcl_GetString(L->script);
 
-	ASSERT(off <= L->script_len);
+	ASSERT((off >= 0) && (off <= L->script_len));
 	while (off--) {
 		if (*p++ == '\n') ++n;
 	}

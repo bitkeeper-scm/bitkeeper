@@ -884,19 +884,30 @@ declaration or else the variable will be inaccessible.
 
 =head1 INCLUDES
 
-L has an C<include> statement like the one in the C pre-processor.
-An include can appear anywhere a statement can appear as long as it begins
+L has an C<#include> statement like the one in the C pre-processor.
+A #include can appear anywhere a statement can appear as long as it begins
 in the first column and is contained entirely on one line:
 
-    include("types.l");
-    include("globals.l);
+    #include <types.l>
+    #include "myglobals.l"
     void main()
     {
         ...
     }
 
-L remembers which files have been included and will not include a file
-more than once, allowing you to have include files that include each
+Unless given an absolute path, when the file name is in angle brackets
+(like <types.l>), L searches these paths, where BIN is where the
+running tclsh exists:
+
+    $BIN/include
+    /usr/local/include/L
+    /usr/include/L
+
+When the file name is in quotes (like "myglobals.l"), L searches only
+the current working directory.
+
+L also remembers which files have been included and will not include a file
+more than once, allowing you to have #include files that include each
 other.
 
 =head1 HERE DOCUMENTS
