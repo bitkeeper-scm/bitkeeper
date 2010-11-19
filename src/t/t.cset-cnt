@@ -236,7 +236,7 @@ bk push $Q || exit 1
 check_cnt
 echo OK
 
-CNT=58
+CNT=50
 echo $N "Count the inits for a 'bk clone -@base' ($CNT) ................"$NL
 cd "$HERE"/nest2/gcc
 echo hi > file_copy

@@ -1212,7 +1212,7 @@ sortUrls(const void *a, const void *b)
 	} else if (!streq(tt[0], tt[1])) {
 		return (strtoul(tt[1], 0, 16) - strtoul(tt[0], 0, 16));
 	} else {
-		return (strcmp(url[0], url[1]));
+		return (strcmp(url[1], url[0]));
 	}
 }
 
