@@ -232,8 +232,7 @@ typedef enum {
 /*
  * Flags for L expression compilation.  Bits are used for simplicity
  * even though some of these are mutually exclusive.  These are used
- * in calls to compile_expr() and subordinates and also put in
- * the Expr AST node.
+ * in various places such as calls to compile_expr() and in the AST.
  */
 typedef enum {
 	L_EXPR_RE_I   = 0x00000001, // expr is an re with "i" qualifier
@@ -258,6 +257,7 @@ typedef enum {
 	L_SPLIT_STR   = 0x00080000, // split on a string
 	L_SPLIT_LIM   = 0x00100000, // enforce split limit
 	L_APPEND      = 0x00200000, // append to deep list obj
+	L_WAS_DUPD    = 0x00400000, // obj was dup'd to make an unshared copy
 } Expr_f;
 
 struct Expr {

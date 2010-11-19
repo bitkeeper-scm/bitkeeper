@@ -7822,6 +7822,47 @@ void deep_4_0()
 deep_4_0();
 } -output {}
 
+test deep-5.1 {check deep-dive object sharing} -body {
+#lang L
+typedef struct block {
+	string	line;
+} block;
+
+void deep_5_1()
+{
+	block	b, v1, v2;
+	string	h{string}, h2{string}, h3{string};
+
+	/*
+	 * Having the rhs be a string concat creates an object with a
+	 * refCount of 1.
+	 */
+	b.line = "LINE1" . "1";
+	v1 = b;
+
+	/*
+	 * Now change b.line.  v1's copy should not change.
+	 */
+	b.line = "LINE2";
+	v2 = b;
+
+	unless (v1.line eq "LINE11") puts("v1 bad: ${v1}");
+	unless (v2.line eq "LINE2") puts("v2 bad: ${v2}");
+
+	/* Try the same thing with hashes. */
+
+	h{"idx"} = "LINE1" . "1";
+	h2 = h;
+
+	h{"idx"} = "LINE2";
+	h3 = h;
+
+	unless (h2{"idx"} eq "LINE11") puts("h2 bad: ${h2}");
+	unless (h3{"idx"} eq "LINE2") puts("h3 bad: ${h3}");
+}
+deep_5_1();
+} -output {}
+
 test regexp-1.0 {regular expression support} -body {
 #lang L
 void regexp_1_0() {
