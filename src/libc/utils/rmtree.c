@@ -14,15 +14,6 @@ rmtree(char *dir)
 	unless (ret) {
 		reverseLines(dirs);
 		EACH (dirs) {
-			unless (streq(basenm(dirs[i]), "SCCS")) continue;
-			if (rmdir(dirs[i])) {
-				perror(dirs[i]);
-				ret = 1;
-				break;
-			}
-		}
-		EACH (dirs) {
-			if (streq(basenm(dirs[i]), "SCCS")) continue;
 			if (rmdir(dirs[i])) {
 				perror(dirs[i]);
 				ret = 1;
@@ -39,8 +30,10 @@ private int
 rmtreewalk(char *file, struct stat *sb, void *data)
 {
 	char	***dirs = data;
+	int	ret;
 
 	if (S_ISDIR(sb->st_mode)) {
+		if (ret = rmIfRepo(file)) return (ret);
 		if ((sb->st_mode & 0700) != 0700) {
 			chmod(file, sb->st_mode | 0700);
 		}

@@ -60,7 +60,7 @@ struct project {
 
 private char	*find_root(char *dir);
 
-#define	NRECENT	4		/* save last 4 proj structs */
+private	int NRECENT = -1;	/* save last 4 in real life, 2 in regressions */
 
 private struct {
 	project	*curr;
@@ -114,6 +114,8 @@ private void
 proj_recent(project *p)
 {
 	project	*oldp;
+
+	if (NRECENT == -1) NRECENT = getenv("BK_REGRESSION") ? 2 : 4;
 
 	while (nLines(proj.recent) >= NRECENT) {
 		/*

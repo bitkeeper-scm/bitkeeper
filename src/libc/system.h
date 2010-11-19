@@ -212,6 +212,9 @@ void	core(void);
 /* rmtree.c */
 int	rmtree(char *dir);
 
+/* rmrepo.c */
+int	rmIfRepo(char *dir);
+
 /* samepath.c */
 int	samepath(char *a, char *b);
 int	patheq(char *a, char *b);
