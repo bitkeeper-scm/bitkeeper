@@ -843,6 +843,12 @@ _ignore() {		# /* doc 2.0 */
 			then	bk get -sp BitKeeper/etc/ignore
 			fi
 		fi
+		dotbk="`bk dotbk`"
+		test -f "$dotbk/ignore" && {
+			echo
+			echo "# $dotbk/ignore"
+			cat "$dotbk/ignore"
+		}
 		exit 0
 	fi
 	bk _test -f BitKeeper/etc/SCCS/s.ignore && bk edit -q BitKeeper/etc/ignore
