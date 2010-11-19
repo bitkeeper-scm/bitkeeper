@@ -1150,7 +1150,7 @@ proc highlightAncestry {rev1} \
 #
 proc getLeftRev { {id {}} } \
 {
-	global	rev1 rev2 w gc fname dev_null file
+	global	rev1 rev2 w gc fname dev_null file dashs
 
 	unsetNodes
 	.menus.cset configure -state disabled -text "View Changeset "
@@ -1163,7 +1163,9 @@ proc getLeftRev { {id {}} } \
 		if {$file eq "ChangeSet"} {
 			set info $rev1
 		} else {
-			catch {exec bk r2c -r$rev1 $file} info
+			set here ""
+			if {$dashs} { set here "-S" }
+			catch {exec bk r2c {*}$here -r$rev1 $file} info
 		}
 		#puts "info=($info)"
 		if {$info == ""} {
@@ -1182,7 +1184,7 @@ proc getLeftRev { {id {}} } \
 
 proc getRightRev { {id {}} } \
 {
-	global	anchor rev1 rev2 file w rev2rev_name
+	global	anchor rev1 rev2 file w rev2rev_name dashs
 
 	$w(graph) delete new old
 	set rev2 [getRev "unknown" $id]
@@ -1211,7 +1213,9 @@ proc getRightRev { {id {}} } \
 		if {$file eq "ChangeSet"} {
 			set info $rev2
 		} else {
-			catch {exec bk r2c -r$rev2 $file} info
+			set here ""
+			if {$dashs} { set here "-S" }
+			catch {exec bk r2c {*}$here -r$rev2 $file} info
 		}
 		if {$info == ""} {
 			.menus.cset configure \
@@ -1471,7 +1475,7 @@ proc csettool {} \
 		set revs -r$rev1..$rev2
 	}
 	set S ""
-	if {$dashs} { set S "-s." }
+	if {$dashs} { set S "-S" }
 	catch {exec bk csettool {*}$S $revs &} err
 }
 
@@ -1692,6 +1696,8 @@ proc r2c {} \
 	set csets ""
 	set c ""
 	set errorCode [list]
+	set here ""
+	if {$dashs} { set here "-S" }
 	if {$file == "ChangeSet"} {
 		busy 0
 		csettool
@@ -1703,7 +1709,7 @@ proc r2c {} \
 	if {[info exists rev2] && ![string equal $rev1 $rev2]} {
 		set revs [open "| bk prs -nhfr$rev1..$rev2 -d:I: \"$file\""]
 		while {[gets $revs r] >= 0} {
-			catch {set c [exec bk r2c -r$r "$file"]} err 
+			catch {set c [exec bk r2c {*}$here -r$r "$file"]} err 
 			if {[lindex $errorCode 2] == 1} {
 				displayMessage \
 				    "Unable to find ChangeSet information for $file@$r"
@@ -1720,7 +1726,7 @@ proc r2c {} \
 		catch {close $revs} err
 	} else {
 		#displayMessage "rev1=($rev1) file=($file)"
-		catch {set csets [exec bk r2c -r$rev1 "$file"]} c
+		catch {set csets [exec bk r2c {*}$here -r$rev1 "$file"]} c
 		if {[lindex $errorCode 2] == 1} {
 			displayMessage \
 			    "Unable to find ChangeSet information for $file@$rev1"
@@ -1729,7 +1735,7 @@ proc r2c {} \
 		}
 	}
 	set S ""
-	if {$dashs} { set S "-s." }
+	if {$dashs} { set S "-S" }
 	catch {exec bk csettool {*}$S -r$csets -f$file@$rev1 &}
 	busy 0
 }
@@ -2531,15 +2537,14 @@ proc arguments {} \
 					[string range $arg 2 end]
 			    }
 		    }
-		    "^-s.*$" {
-			set arg [string range $arg 2 end]
-			if {$arg ne "."} {
-			    catch {exec bk help -s revtool} usage
-			    puts $usage
-			    exit
-			}
-
+		    "^-S$" {
 			set dashs 1
+		    }
+		    "^-.*" {
+			catch {exec bk help -s revtool} usage
+			puts "Invalid option $arg"
+			puts $usage
+			exit 1
 		    }
 		    default {
 		    	incr fnum
@@ -2589,11 +2594,17 @@ proc arguments {} \
 				displayMessage "$err" 0
 				exit 1
 			}
-		} elseif {[exec bk sfiles -g "$fname"] == ""} {
-			puts stderr \
-			    "\"$fname\" is not a revision controlled file"
-			displayMessage "\"$fname\" not a bk controlled file"
-			exit
+		} else {
+			if {[exec bk sfiles -g "$fname"] == ""} {
+				puts stderr \
+				  "\"$fname\" is not a revision controlled file"
+				displayMessage \
+				    "\"$fname\" not a bk controlled file"
+				exit
+			}
+			if {[exec bk repotype "$fname"] == "component"} {
+				set dashs 1
+			}
 		}
 	}
 	if {($rev2 != "") && ($rev1 != "")} {

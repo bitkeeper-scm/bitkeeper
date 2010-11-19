@@ -13,7 +13,7 @@ bk revtool \- \*(BK graphical history browser
 .br
 .B bk revtool
 .[OPTreq] \-r rev
-.if \n[NESTED] [\fB\-s\fI.\fR]
+.if \n[NESTED] [\fB\-S\fR]
 .[OPTreq] \-/ string /
 .[OPTreq] + number
 .[ARG] file
@@ -35,7 +35,7 @@ In a nested collection, the default is to show the product history.
 If you wish to look at a component's history, go to that directory
 and run
 .DS
-$ bk revtool -s.
+$ bk revtool -S
 .DE
 .\}
 .LP

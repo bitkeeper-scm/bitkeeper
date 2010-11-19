@@ -466,6 +466,30 @@ fslayer_rmdir(const char *dir)
 }
 
 /*
+ * The return feeds the walkdir callback:
+ * 0 - nothing happened
+ * -1 - prune this from walk
+ * -2 - dump this whole getdir that this dir was part of (not used here)
+ * > 0 - error
+ */
+int
+fslayer_rmIfRepo(char *dir)
+{
+	int	ret = 0;
+	char	buf[MAXPATH];
+
+	if (noloop) return (0);
+	concat_path(buf, dir, BKROOT);
+	if (exists(buf)) {
+		noloop = 1;
+		ret = rmtree(dir);
+		noloop = 0;
+		unless (ret) ret = -1; 	// prune from walk, as this was removed.
+	}
+	return (ret);
+}
+
+/*
  * Called from main() to cleanup
  */
 void

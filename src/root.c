@@ -7,11 +7,16 @@ root_main(int ac, char **av)
 	char	*p;
 	int	c;
 	int	product = 1;
+	longopt	lopts[] = {
+		{ "standalone", 'S' },		/* treat comps as standalone */
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "PR", 0)) != -1) {
+	while ((c = getopt(ac, av, "PRS", lopts)) != -1) {
 		switch (c) {
-		    case 'P':	break;
-		    case 'R':	product = 0; break;
+		    case 'P':	break;			// do not doc
+		    case 'R':				// do not doc
+		    case 'S':	product = 0; break;
 		    default:	bk_badArg(c, av);
 		}
 	}

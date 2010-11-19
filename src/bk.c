@@ -334,6 +334,10 @@ baddir:						fprintf(stderr,
 		if (dashr && !each_repo && !todir) toroot |= 1;
 		if (dashU) dashA = 1; /* from here on only dashA matters */
 
+		if (each_repo && dashA) {
+			fprintf(stderr, "bk: -A not allowed with -e\n");
+			return (1);
+		}
 
 		if (aliases && !(each_repo || dashA)) {
 			fprintf(stderr,
@@ -341,7 +345,7 @@ baddir:						fprintf(stderr,
 			return (1);
 		}
 
-		if (toroot && each_repo && !dashA) {
+		if (toroot && each_repo) {
 			fprintf(stderr,
 			    "bk: -R/-P not allowed with -e\n");
 			return (1);
@@ -391,7 +395,6 @@ baddir:						fprintf(stderr,
 				return(1);
 			}
 		}
-		start_cwd = strdup(proj_cwd());
 		if ((dashA || each_repo) && !proj_isEnsemble(0)) {
 			/*
 			 * Downgrade to be compat in standalone trees.
@@ -402,7 +405,12 @@ baddir:						fprintf(stderr,
 			if (dashA) {
 				dashr = 1;
 				sopts = addLine(sopts,
-				   aprintf("--relpath=%s", start_cwd));
+				    aprintf("--relpath=%s", proj_cwd()));
+			}
+			if (each_repo && proj_cd2root()) {
+				fprintf(stderr,
+				    "bk: Cannot find repository root.\n");
+				return(1);
 			}
 			each_repo = 0;
 
@@ -420,6 +428,7 @@ baddir:						fprintf(stderr,
 			freeLines(aliases, free);
 			aliases = 0;
 		}
+		start_cwd = strdup(proj_cwd());
 		if (each_repo && !dashA) {
 			nav = addLine(nav, strdup("--from-iterator"));
 			for (i = optind; av[i]; i++) {
