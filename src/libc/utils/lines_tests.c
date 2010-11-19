@@ -59,7 +59,24 @@ uniqLines_test(void)
 }
 
 void
+databuf_tests(void)
+{
+	char	**data = 0;
+	int	i;
+	char	*out;
+	char	buf[64];
+
+	for (i = 0; i < 64; i++) buf[i] = i;
+	for (i = 0; i < 140000; i++) {
+		data = data_append(data, buf, 63, 0);
+	}
+	out = data_pullup(0, data);
+	free(out);
+}
+void
 lines_tests(void)
 {
 	uniqLines_test();
+	databuf_tests();
+
 }

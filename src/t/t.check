@@ -609,11 +609,15 @@ bk _test -f SCCS/d.foo && {
 echo OK
 
 echo $N Test repocheck in a standalone and nested repo ..............$NL
+mkdir src
+cd src
 bk repocheck -q || fail
 BK_NOTTY= bk repocheck 2> ERR || fail -f ERR
 grep -q '100%.*OK$' ERR || fail -f ERR
 cd "$HERE"
 nested nest
+mkdir src
+cd src
 bk repocheck -q || fail
 BK_NOTTY= bk repocheck > OUT 2> ERR || fail -f ERR
 # stderr has the check output
@@ -623,7 +627,7 @@ BK_NOTTY= bk repocheck > OUT 2> ERR || fail -f ERR
 # .                                  100% |==============================| OK
 grep -q 'gcc.*100%.*OK$' ERR || fail -f ERR
 # Bork the repo and see that it says it is borked
-rm -fr gcc
+rm -fr ../gcc
 bk repocheck -q 2> ERR && fail -f ERR
 grep -q "check: Not populated: gcc" ERR || fail -f ERR
 echo OK
