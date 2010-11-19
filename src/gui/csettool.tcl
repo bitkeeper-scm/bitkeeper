@@ -715,7 +715,7 @@ proc main {} \
 			# make sure we don't get an empty revision
 			if {$revs eq ""} { usage }
 		    }
-		    "^-s\.$" {
+		    "^-S$" {
 			set dashs 1
 		    }
 		    "^-$" {

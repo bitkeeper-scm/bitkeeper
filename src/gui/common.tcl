@@ -788,7 +788,7 @@ proc inComponent {} {
 }
 
 proc inRESYNC {} {
-    set dir [file tail [exec bk root -s.]]
+    set dir [file tail [exec bk root -S]]
     return [string equal $dir "RESYNC"]
 }
 

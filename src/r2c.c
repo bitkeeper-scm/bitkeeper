@@ -12,15 +12,16 @@ r2c_main(int ac, char **av)
 	char	*p;
 	int	rc = 1;
 	int	product = 1;
+	longopt	lopts[] = {
+		{ "standalone", 'S' },		/* treat comps as standalone */
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "PRr;s;", 0)) != -1) {
+	while ((c = getopt(ac, av, "PRr;S", lopts)) != -1) {
 		switch (c) {
 		    case 'P':	break;			// do not doc
-		    case 'R':	product = 0; break;	// do not doc
-		    case 's':
-			product = 0;
-			unless (streq(optarg, ".")) usage();
-			break;
+		    case 'R':				// do not doc
+		    case 'S': product = 0; break;
 		    case 'r': rev = strdup(optarg); break;
 		    default:
 			usage();

@@ -4,15 +4,20 @@
 bk r2c \- convert file revision to ChangeSet revision
 .SH SYNOPSIS
 .B bk r2c 
-.[OPTreq] \-s .
+.[B] \-S
 .OPTreq \-r rev 
 .ARG file 
 .SH DESCRIPTION
 This command takes a revision and a filename and converts the specified
 revision into the changeset revision which contains the file revision.
 .SH OPTIONS
-.TP 
-.BI \-s .
+.de Tp
+.TP "\\fB\\-\\-standalone \\fP"
+..
+.Tp
+.B \-S
+.tp
+.B \-\-standalone
 If run in a component of a nested collection, convert to component changeset,
 not the product changeset.
 If run in a traditional repository or in the product of a nested collection,

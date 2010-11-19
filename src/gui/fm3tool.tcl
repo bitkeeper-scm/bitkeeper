@@ -1195,13 +1195,13 @@ proc csettool {what} \
 	}
 	set revs ""
 	foreach r [array names l] { 
-		set fd [open [list |bk r2c -s. -r$r $filename] "r"]
+		set fd [open [list |bk r2c -S -r$r $filename] "r"]
 		set r [gets $fd]
 		close $fd
 		set revs "$r,$revs"
 	}
 	set revs [string trimright $revs ,]
-	exec bk csettool -s. -r$revs -f$filename &
+	exec bk csettool -S -r$revs -f$filename &
 }
 
 # --------------- Window stuff ------------------

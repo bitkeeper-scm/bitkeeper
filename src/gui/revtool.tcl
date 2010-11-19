@@ -1164,7 +1164,7 @@ proc getLeftRev { {id {}} } \
 			set info $rev1
 		} else {
 			set here ""
-			if {$dashs} { set here "-s." }
+			if {$dashs} { set here "-S" }
 			catch {exec bk r2c {*}$here -r$rev1 $file} info
 		}
 		#puts "info=($info)"
@@ -1214,7 +1214,7 @@ proc getRightRev { {id {}} } \
 			set info $rev2
 		} else {
 			set here ""
-			if {$dashs} { set here "-s." }
+			if {$dashs} { set here "-S" }
 			catch {exec bk r2c {*}$here -r$rev2 $file} info
 		}
 		if {$info == ""} {
@@ -1475,7 +1475,7 @@ proc csettool {} \
 		set revs -r$rev1..$rev2
 	}
 	set S ""
-	if {$dashs} { set S "-s." }
+	if {$dashs} { set S "-S" }
 	catch {exec bk csettool {*}$S $revs &} err
 }
 
@@ -1697,7 +1697,7 @@ proc r2c {} \
 	set c ""
 	set errorCode [list]
 	set here ""
-	if {$dashs} { set here "-s." }
+	if {$dashs} { set here "-S" }
 	if {$file == "ChangeSet"} {
 		busy 0
 		csettool
@@ -1735,7 +1735,7 @@ proc r2c {} \
 		}
 	}
 	set S ""
-	if {$dashs} { set S "-s." }
+	if {$dashs} { set S "-S" }
 	catch {exec bk csettool {*}$S -r$csets -f$file@$rev1 &}
 	busy 0
 }
@@ -2537,15 +2537,14 @@ proc arguments {} \
 					[string range $arg 2 end]
 			    }
 		    }
-		    "^-s.*$" {
-			set arg [string range $arg 2 end]
-			if {$arg ne "."} {
-			    catch {exec bk help -s revtool} usage
-			    puts $usage
-			    exit
-			}
-
+		    "^-S$" {
 			set dashs 1
+		    }
+		    "^-.*" {
+			catch {exec bk help -s revtool} usage
+			puts "Invalid option $arg"
+			puts $usage
+			exit 1
 		    }
 		    default {
 		    	incr fnum

@@ -8,7 +8,7 @@ bk csettool \- \*(BK graphical changeset browser
 .br
 .ie \n[NESTED] \{\
 .B bk csettool
-[\fB\-s\fI.\fR]
+.[B] \-S
 ..el .B bk csettool
 .[OPTreq] \-r revs
 .[B] dir
@@ -86,7 +86,7 @@ and spanned multiple components, this wider view can be useful.
 .SH OPTIONS
 .LP
 All options\c
-.ie \n[NESTED] , with the exception of \fB\-s\fI.\fR,
+.ie \n[NESTED] , with the exception of \fB\-S\fR,
 .el \ 
 are mutually exclusive, i.e., pick one (or none) of the
 following.
@@ -101,13 +101,13 @@ defaults to
 .QR \-r+ ,
 i.e. the most recent changeset.
 .tp
-.BI \-s .
+.B \-S
 By default,
 .B bk csettool
 runs in the product of a nested collection.
 To view the changeset in the context of this component you run
 .DS
-$ bk csettool -s.
+$ bk csettool -S
 .DE
 .\}
 .tp
