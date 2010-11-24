@@ -1,0 +1,44 @@
+echo $N Resolve with rl a new file with a new file ..................$NL
+set -e
+commercial project
+bk clone $Q . ../copy
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ../copy
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+echo OK
+bk pull -i -T < /dev/tty
+echo
+echo
+
+echo $N Resolve with s C a new file with a conflict file ............$NL
+cd ../project
+bk edit $Q foo
+echo abc > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yproj
+cd ../copy
+bk edit $Q foo
+echo xyz > foo
+bk delta $Q -yfoo foo
+bk commit $Q -ycopy
+echo OK
+bk pull -i -T < /dev/tty
+echo
+echo
+
+echo $N Do both new files and conflict ..............................$NL
+bk unpull $Q -f
+cd ../project
+touch bar
+bk new $Q bar
+bk commit $Q -yproj
+cd ../copy
+touch bar
+bk new $Q bar
+bk commit $Q -ycopy
+echo OK
+bk pull -i -T < /dev/tty

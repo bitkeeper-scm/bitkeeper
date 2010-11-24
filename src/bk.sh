@@ -67,12 +67,26 @@ _repocheck() {
 
 # shorthand to dig out renames
 _renames() {
-	case "X$1" in
-	    X-r*)	;;
-	    *)		bk help -s renames; exit 1;;
-	esac
-	__cd2root
-	bk rset -h "$1" | awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
+	standalone=0
+	while getopts Sr: opt
+	do
+		case "$opt" in
+		S)	standalone=1;;
+		r)	REV="$OPTARG";;
+		*)	bk help -s renames; exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	if [ $standalone -eq 1 ]
+	then
+		__cd2root
+		bk rset -h -r"$REV" | \
+		    awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
+	else
+		__cd2product
+		bk rset -Ph -r"$REV" | \
+		    awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
+	fi
 }
 
 _repatch() {
@@ -843,6 +857,12 @@ _ignore() {		# /* doc 2.0 */
 			then	bk get -sp BitKeeper/etc/ignore
 			fi
 		fi
+		dotbk="`bk dotbk`"
+		test -f "$dotbk/ignore" && {
+			echo
+			echo "# $dotbk/ignore"
+			cat "$dotbk/ignore"
+		}
 		exit 0
 	fi
 	bk _test -f BitKeeper/etc/SCCS/s.ignore && bk edit -q BitKeeper/etc/ignore

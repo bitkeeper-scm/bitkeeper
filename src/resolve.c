@@ -422,6 +422,11 @@ that will work too, it just gets another patch.\n");
 		/*
 		 * Now do the same thing, calling the resolver.
 		 */
+		if (opts->progress) {
+			progress_done(tick, "OK");
+			tick = 0;
+			progress_restoreStderr();
+		}
 		opts->resolveNames = 1;
 		save = opts->renames2;
 		n = -1;
@@ -1613,6 +1618,15 @@ pass3_resolve(opts *opts)
 	unless (opts->automerge) {
 		FILE	*p;
 
+		if (opts->progress) {
+			/*
+			 * all conflicts are manual, so drop out for now.
+			 * leaving opts->progress set for progbars on check
+			 */
+			progress_done(tick, "OK");
+			tick = 0;
+			progress_restoreStderr();
+		}
 		unless (p = popen("bk _find . -name 'm.*'", "r")) {
 			perror("popen of find");
 			resolve_cleanup(opts, 0);
@@ -1667,7 +1681,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	/* hadConflicts only gets touched by automerge */
 	if (opts->hadConflicts) {
 		char	*nav[20];
-		int	i;
+		int	i, rc;
 
 		if (opts->autoOnly) {
 			unless (opts->quiet) {
@@ -1687,22 +1701,24 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 			    opts->hadConflicts);
 			resolve_cleanup(opts, 0);
 			exit(1);	/* Shouldn't get here */
-	    	}
+		}
 
 		if (opts->progress) {
 			progress_done(tick, "OK");
 			progress_restoreStderr();
 		}
 
-		nav[i=0] = "bk";
-		nav[++i] = "resolve";
+		nav[i=0] = strdup("bk");
+		nav[++i] = strdup("resolve");
 		if (opts->mergeprog) {
 			nav[++i] = aprintf("-m%s", opts->mergeprog);
 		}
 		if (opts->quiet) {
-			nav[++i] = "-q";
+			nav[++i] = strdup("-q");
 		}
-		if (opts->textOnly) nav[++i] = "-T";
+		/* run progress bars on final check */
+		if (opts->progress) nav[++i] = strdup("--progress");
+		if (opts->textOnly) nav[++i] = strdup("-T");
 		if (opts->comment) nav[++i] = aprintf("-y%s", opts->comment);
 		nav[++i] = 0;
 		fprintf(stderr,
@@ -1716,9 +1732,10 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		opts->notmerged = 0;
 		chdir(RESYNC2ROOT);
 		sccs_unlockfile(RESOLVE_LOCK);
-		i = spawnvp(P_WAIT, "bk", nav);
+		rc = spawnvp(P_WAIT, "bk", nav);
+		for (i = 0; nav[i]; i++) free(nav[i]);
 		proj_restoreAllCO(0, opts->idDB, 0);
-		exit(WIFEXITED(i) ? WEXITSTATUS(i) : 1);
+		exit(WIFEXITED(rc) ? WEXITSTATUS(rc) : 1);
 	}
 
 	/*

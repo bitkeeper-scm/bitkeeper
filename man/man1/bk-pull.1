@@ -5,7 +5,7 @@
 bk pull \- update a repository from its parent[s]
 .SH SYNOPSIS
 .B bk pull
-.[B] \-iqRsTu
+.[B] \-iqRsTuv
 .[OPTreq] \-c n
 .[OPTreq] \-r rev
 .[ARG] parent \ .\|.\|.
@@ -20,7 +20,7 @@ touched the same line in the same file).
 .LP
 To see what would be pulled run
 .DS
-bk changes -R
+bk changes -aR
 .DE
 .\" XXX - do I really want to tell them this?
 .ig
@@ -140,6 +140,9 @@ This option is implied when pulling from a gate or a portal.
 See also
 .B \-\-safe
 above.
+.tp
+.B \-v
+Be verbose by listing each file.
 .SH "SEE ALSO"
 .SA bkd
 .SA parent

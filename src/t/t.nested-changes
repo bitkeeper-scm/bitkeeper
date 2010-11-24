@@ -679,6 +679,9 @@ bk changes -vrTAG -nd:GFILE: > gfile.BEFORE
 bk changes -vrTAG > BEFORE
 cd gcc
 bk mv file1 moveit
+cd ../gdb
+bk mv file3 moveit3
+bk commit $Q -ymvfiles
 cd ..
 mv gcc newcc
 bk edit $Q newcc/ChangeSet
@@ -689,6 +692,35 @@ cd ..
 bk commit $Q -yallmv
 bk changes -vrTAG > AFTER
 cmpfiles BEFORE AFTER
+echo OK
+
+echo $N Test renames command ........................................$NL
+bk renames -r+ | bk _sort > GOT
+cat > WANT  <<EOF
+gcc/ChangeSet -> newcc/ChangeSet
+gdb/file3 -> gdb/moveit3
+newcc/file1 -> newcc/moveit
+EOF
+cmpfiles WANT GOT
+cd gdb
+bk renames -r+ | bk _sort > GOT
+cd ..
+cmpfiles WANT gdb/GOT
+echo OK
+
+echo $N Test renames -S command .....................................$NL
+bk renames -Sr+ | bk _sort > GOT
+cat > WANT  <<EOF
+gcc/ChangeSet -> newcc/ChangeSet
+EOF
+cmpfiles WANT GOT
+cd newcc
+bk renames -Sr+ | bk _sort > GOT
+cat > WANT  <<EOF
+file1 -> moveit
+EOF
+cmpfiles WANT GOT
+cd ..
 echo OK
 
 echo $N Test renaming file and component and :GFILE: changes ........$NL
@@ -714,8 +746,8 @@ bk commit $Q -ynull
 cd ..
 bk commit $Q -ynullinproj
 cd ../copy2/gdb
-bk edit $Q file3
-bk delta $Q -fynull file3
+bk edit $Q moveit3
+bk delta $Q -fynull moveit3
 bk commit $Q -ynull
 cd ..
 bk commit $Q -ynullincopy
