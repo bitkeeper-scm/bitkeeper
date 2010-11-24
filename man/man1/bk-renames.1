@@ -4,9 +4,11 @@
 bk renames \- list file renames contained in one or more changesets
 .SH SYNOPSIS
 .B bk renames
+.[B] -S
 .OPTreq \-r rev
 .br
 .B bk renames
+.[B] -S
 .Bc \-r
 .ARGc rev
 .OPTreq , rev
@@ -16,5 +18,8 @@ Show a listing of files that have been renamed as
 .br
 .ARG oldname \ -> 
 .ARG newname
+.LP
+The optional \-S flag will limit the listing to the current component
+repository.
 .SH CATEGORY
 .B Utility
