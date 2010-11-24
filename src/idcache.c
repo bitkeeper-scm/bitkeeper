@@ -162,7 +162,7 @@ idcache_write(project *p, MDBM *idDB)
 	char	id_lock[MAXPATH];
 
 	root = proj_root(p);
-	sprintf(id_tmp, "%s/%s.new", root, getIDCACHE(p));
+	sprintf(id_tmp, "%s/%s.new.%u", root, getIDCACHE(p), getpid());
 	unless (f = fopen(id_tmp, "w")) {
 		perror(id_tmp);
 		return (1);
@@ -199,8 +199,8 @@ idcache_write(project *p, MDBM *idDB)
 			perror("rename of idcache");
 			unlink(buf);
 		}
-		if (sccs_unlockfile(id_lock)) perror(id_lock);
 		chmod(buf, GROUP_MODE);
+		if (sccs_unlockfile(id_lock)) perror(id_lock);
 	}
 	return (0);
 }

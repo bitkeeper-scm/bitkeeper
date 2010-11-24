@@ -28,6 +28,8 @@ do	mkdir $dir
 	do	echo "I am $dir/$file: %I%" > $dir/$file
 	done
 done
+echo bam-bam > bam
+bk new $Q -b bam
 bk sfiles -x | bk ci $Q -i -
 if bk _test ! -f d3/sub2/SCCS/s.a; then echo failed to create files; exit 1; fi
 echo OK
@@ -684,3 +686,32 @@ cd ../copy
 bk pull $Q 2>ERR && fail -f ERR should fail
 grep -q "check: two files are committed at the same pathname" ERR || fail
 echo OK
+
+# sgi doesn't do the waits correctly
+test "`bk gethost -r`" != "sgi.bitmover.com" && {
+
+echo $N Setup check/clone race ......................................$NL
+cd "$HERE"
+bk clone $Q --sccsdirs project project.noremap
+cd project.noremap
+mkdir d4
+bk mv d3/sub/a d4/anew || fail
+bk commit $Q -ymv || fail
+
+bk repocheck -q &
+CPID1=$!
+bk clone $Q --no-hardlinks . ../junk &
+CPID2=$!
+bk repocheck -q &
+CPID3=$!
+bk clone $Q --no-hardlinks . ../junk2 &
+CPID4=$!
+wait $CPID1 || fail
+wait $CPID2 || fail
+wait $CPID3 || fail
+wait $CPID4 || fail
+echo OK
+
+}
+
+true

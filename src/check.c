@@ -219,15 +219,12 @@ check_main(int ac, char **av)
 	buildKeys(idDB);
 	if (all) {
 		/*
-		 * Going to build a new idcache so delete the old one,
-		 * also cleanup old IDCACHE file, just in case.
+		 * Going to build a new idcache so start from scratch.
+		 * As check may be running under a read lock, wait until
+		 * writing the idcache to alter the existing one.
 		 */
 		mdbm_close(idDB);
 		idDB = mdbm_mem();
-		unlink("BitKeeper/etc/SCCS/x.id_cache");
-		unlink("BitKeeper/log/x.idcache");
-		
-		unlink(BAM_MARKER); /* recreate BAM_MARKER */
 	}
 	if (check_eoln) {
 		eoln_native = !streq(proj_configval(0, "eoln"), "unix");
@@ -365,11 +362,23 @@ check_main(int ac, char **av)
 	}
 	if (e = sfileDone()) return (e);
 	if (BAM) {
-		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
+		unless (exists(BAM_MARKER)) {
+			if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
+		}
+	} else if (all) {
+		if (exists(BAM_MARKER)) {
+			/* In case there was BAM, but now none */
+			if (unlink(BAM_MARKER)) perror(BAM_MARKER);
+		}
 	}
 	if (all || update_idcache(idDB, keys)) {
 		idcache_write(0, idDB);
 		mdbm_close(idDB);
+
+		/* remove the "other" idcache if we have that for some reason */
+		unlink(proj_hasOldSCCS(0) ?
+		    "BitKeeper/log/x.id_cache" :
+		    "BitKeeper/etc/SCCS/x.id_cache");
 	}
 	freeLines(subrepos, free);
 	/* note: checkAll can mangle r2deltas */
@@ -381,7 +390,7 @@ check_main(int ac, char **av)
 		freeLines(bp_missing, free);
 	}
 	if (goneDB) mdbm_close(goneDB);
-	unless (errors) cset_savetip(cset, 1);
+	unless (errors) cset_savetip(cset);
 	/* The _BK_TRANSACTION check is necessary to avoid checking the
 	 * aliases in the middle of a multi-clone */
 	if (!proj_isResync(0) &&

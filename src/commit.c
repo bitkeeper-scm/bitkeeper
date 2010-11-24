@@ -327,7 +327,7 @@ do_commit(char **av,
 		}
 	}
 	/* Also update the TIP file */
-	cset_savetip(cset, 1);
+	cset_savetip(cset);
 	putenv("BK_STATUS=OK");
 	if (rc) putenv("BK_STATUS=FAILED");
 	trigger(opts.resync ? "merge" : av[0], "post");
