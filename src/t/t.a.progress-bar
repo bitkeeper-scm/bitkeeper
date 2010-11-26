@@ -180,14 +180,14 @@ main(_unused int ac, string av[])
 		    || (s =~ /^Could not undo/)) {
 		    	total = undef;
 		}
-#		printf("Checking <%s>\n", s);
+//		printf("Checking <%s>\n", s);
 		// Check for output interleaved with progress bar updates.
 		// This would be any output between the \r's in |\r\r
 		// the |\r is the end of one progress bar and the following
 		// \r is the start of the next.
 		if (s =~ /\|#[^#]/) {
 			puts("output interleaved with progress bar");
-#			puts(s);
+//			puts(s);
 			exit(1);
 		}
 		// If there's a component name, scratch it off the list.
