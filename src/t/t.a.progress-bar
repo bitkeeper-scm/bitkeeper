@@ -29,6 +29,21 @@ chkpasses() {
 	msg=""
 }
 
+# Same as above, but must be 100% listed on the pass
+chkpasses100() {
+	file=$1; shift;
+	# break up potentially very long lines to keep grep happy
+	tr '\r' '\n' <$file >x
+	while [ $# -gt 0 ]; do
+		msg="pass '$1' not in progress-bar output"
+		# match things like "file xfer]          10%"
+		# bk grep "$1.[ ]*[0-9]" x >grep-out || return
+		bk grep "$1.[ ]*100%" x >grep-out || return
+		shift
+	done
+	msg=""
+}
+
 # Check that there are exactly $2 full progress bars in the file $1.
 chknumbars() {
 	msg=`bk tclsh "$HERE/chknumbars.l" $*`
@@ -325,7 +340,7 @@ echo $N pull ........................................................$NL
 cd "$HERE/clone"
 bk unpull $Q -f || fail
 bk pull ../standalone >OUT 2>&1 || fail -f OUT
-chkpasses OUT 'takepatch' 'pull' 'resolve' || fail $msg
+chkpasses OUT 'takepatch' 'pull' 'check' 'resolve' || fail $msg
 chkoutput OUT || fail $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
@@ -382,8 +397,8 @@ bk grep -q 'resolve: 2 unresolved conflicts, starting manual' OUT || fail -f OUT
 bk grep -q '(content conflict) for-automerge-conflict-1' OUT || fail -f OUT
 bk grep -q '(content conflict) for-automerge-conflict-2' OUT || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'takepatch' 'pull' 'resolve' || fail $msg
-chknumbars OUT 2 || fail $msg
+chkpasses OUT 'takepatch' 'pull' 'check' 'resolve' || fail $msg
+chknumbars OUT 3 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
@@ -411,8 +426,17 @@ bk grep -q '(create/sfile conflict) for-name-conflict-1' OUT || fail -f OUT
 bk grep -q '(create/sfile conflict) for-name-conflict-2' OUT || fail -f OUT
 bk grep -q '(create/sfile conflict) for-name-conflict-3' OUT || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'takepatch' 'pull' 'resolve' || fail $msg
-chknumbars OUT 2 || fail $msg
+chkpasses OUT 'takepatch' 'pull' 'check' 'resolve' || fail $msg
+chknumbars OUT 3 || fail $msg
+chkblanks OUT 0 || fail $msg
+echo OK
+
+echo $N pull -i w/name conflicts ....................................$NL
+bk unpull $Q -f
+echo q | bk pull -Ti ../standalone >OUT 2>&1 && fail -f OUT
+bk grep -q '(create/sfile conflict) for-name-conflict-1' OUT || fail -f OUT
+chkpasses100 OUT 'takepatch' 'resolve' || fail -f x $msg
+chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 cd ..
 bk _rm -rf clone
@@ -491,8 +515,17 @@ bk grep -q '	for-content-conflict-1' OUT || fail -f OUT
 bk grep -q '	for-content-conflict-2' OUT || fail -f OUT
 bk grep -q '	for-content-conflict-3' OUT || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'takepatch' 'resolve' 'pull' || fail $msg
-chknumbars OUT 2 || fail $msg
+chkpasses OUT 'takepatch' 'resolve' 'pull' 'check' || fail $msg
+chknumbars OUT 3 || fail $msg
+chkblanks OUT 0 || fail $msg
+echo OK
+
+echo $N pull -i w/content merge conflicts ...........................$NL
+bk unpull $Q -f
+echo q | bk pull -i ../standalone >OUT 2>&1 && fail -f OUT
+bk grep -q ' for-content-conflict-1' OUT || fail -f OUT
+chkpasses100 OUT 'takepatch' 'resolve' || fail $msg
+chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 cd ..
 bk _rm -rf clone
@@ -570,7 +603,7 @@ bk grep -q pre-incoming OUT || fail -f OUT
 bk grep -q pre-outgoing OUT || fail -f OUT
 bk grep -q pre-resolve OUT || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT takepatch pull resolve || fail $msg
+chkpasses OUT takepatch pull check resolve || fail $msg
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1916,7 +1949,7 @@ bk pull -T "$HERE/product1" <resolve >OUT 2>&1 || fail -f OUT
 grep -q for-conflict OUT || fail
 chkoutput OUT $PRODUCT comp1 || fail $msg
 chkpasses OUT takepatch resolve || fail $msg
-chknumbars OUT 4 || fail $msg
+chknumbars OUT 5 || fail $msg
 chkblanks OUT 0 || fail $msg
 cd "$HERE"
 bk _rm -rf clone1
@@ -1979,7 +2012,7 @@ grep -q for-comp2-conflict OUT || fail
 grep -q for-comp3-conflict OUT || fail
 chkoutput OUT $PRODUCT comp1 comp2 comp3 || fail $msg
 chkpasses OUT takepatch resolve || fail $msg
-chknumbars OUT 9 || fail $msg
+chknumbars OUT 13 || fail $msg
 chkblanks OUT 0 || fail $msg
 cd "$HERE"
 bk _rm -rf clone3

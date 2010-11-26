@@ -1533,7 +1533,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 			}
 			/* just send whatever IDCACHE is local */
 			sprintf(buf, "./%s", IDCACHE);
-			si->fn(buf, sb, si->data);
+			if (exists(buf)) si->fn(buf, sb, si->data);
 		}
 		if (prunedirs) {
 			concat_path(buf, si->proj_prefix,

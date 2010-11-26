@@ -7721,6 +7721,7 @@ TclExecuteByteCode(
 	 */
 	if (lvalue && Tcl_IsShared(objPtr)) {
 	    objPtr = Tcl_DuplicateObj(objPtr);
+	    flags |= L_WAS_DUPD;  // checked by L_deepDiveArray()
 	}
 
 	/*
@@ -9600,8 +9601,14 @@ L_deepDiveArray(
 	    Tcl_AppendResult(interp, "cannot convert object to list", NULL);
 	    return (NULL);
 	}
-	if (Tcl_IsShared(elemPtrs[idx])) {
-	    /* Make an un-shared copy of the element. */
+	if (Tcl_IsShared(elemPtrs[idx]) || (flags & L_WAS_DUPD)) {
+	    /*
+	     * Make an un-shared copy of the element.  If the list object this
+	     * element is from was duplicated because the list was shared
+	     * (flags & L_WAS_DUPD), we have to do this because
+	     * Tcl_DuplicateObj() on a list does not bump the ref count on the
+	     * list elements.
+	     */
 	    subObj = Tcl_DuplicateObj(elemPtrs[idx]);
 	    TclListObjSetElement(NULL, obj, idx, subObj);
 	    if (Tcl_IsShared(subObj)) {

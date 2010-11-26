@@ -8215,23 +8215,26 @@ SCCS:
 }
 
 void
-cset_savetip(sccs *s, int force)
+cset_savetip(sccs *s)
 {
 	FILE	*f;
 	delta	*d;
-	char	md5[MAXPATH];
-	char	key[MAXPATH];
+	char	*tmp, *tip;
+	char	md5[MD5LEN];
+	char	key[MAXKEY];
 
 	assert(s->proj);
-	sprintf(key, "%s/BitKeeper/log/TIP", proj_root(s->proj));
-	if (!force && exists(key)) return;
-	unlink(key);	// until Wayne doesn't hardlink log/*
-	f = fopen(key, "w");
+	tip = aprintf("%s/BitKeeper/log/TIP", proj_root(s->proj));
+	tmp = aprintf("%s.new.%u", tip, getpid());
+	f = fopen(tmp, "w");
 	assert(f);
 	sccs_md5delta(s, d = sccs_top(s), md5);
 	sccs_sdelta(s, d, key);
 	fprintf(f, "%s\n%s\n%s\n", md5, key, d->rev);
 	fclose(f);
+	if (rename(tmp, tip)) perror(tmp);
+	free(tmp);
+	free(tip);
 }
 
 /*
@@ -13915,7 +13918,7 @@ mkDiffTarget(sccs *s,
 		return (-1);
 	}
 	/* Assumes that we only delta the ChangeSet file from the root */
-	if (CSET(s)) cset_savetip(s, 1);
+	if (CSET(s)) cset_savetip(s);
 	return (0);
 }
 

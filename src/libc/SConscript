@@ -137,6 +137,7 @@ libc = Library("libc", stubs + Split('''
 	utils/putenv.c
 	utils/realbasename.c
 	utils/rlimit.c
+	utils/rmrepo.c
 	utils/rmtree.c
 	utils/samepath.c
 	utils/sig.c

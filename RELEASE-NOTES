@@ -1,3 +1,28 @@
+BitKeeper 5.0.2 Release Notes
+
+This is a mostly a bugfix release to cleanup outstanding issues.
+
+Bugfixes:
+    - Fix some cases where progress bars are numbered wrong
+    - In rare cases bk would try an prompt for BitKeeper/etc/attr comments
+    - Pull could crash if urllist is deleted
+    - Prevent telling the user the current license has expired if the
+      the license data is old.
+    - Fix a case where the urllist could grow large and become a performance
+      problem.
+    - When populating components favor more recently used URLs.
+    - Fix bk pull cleanup error that happened when a pull creates merges
+      in many components.
+
+Product centric command changes:
+    - bk r2c and bk root each work with the product, unless given the -S
+      or --standalone option, which then can work on the component the
+      user is in, similar to bk changes.
+    - bk revtool and bk csettool with no options will display product
+      changeset information.  Use -S to focus on the component the user
+      is in.
+
+============================================================================
 BitKeeper 5.0.1 Release Notes
 
 This is a cleanup release though it does change some UI (something we
