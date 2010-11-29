@@ -173,7 +173,7 @@ changes_main(int ac, char **av)
 	/* ERROR check options */
 	/* XXX: could have rev range limit output -- whose name space? */
 	if ((opts.local || opts.remote) && opts.rargs.rstart) usage();
-	if (proj_isProduct(0)) {
+	if (proj_isEnsemble(0)) {
 		if (opts.verbose && !opts.prodOnly) opts.doComp = 1;
 		if (opts.filt && !opts.doComp && !opts.BAM) {
 			opts.doComp = opts.prodOnly = 1;

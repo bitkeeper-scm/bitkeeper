@@ -104,6 +104,12 @@ EOF
 cmpfiles WANT OUT
 echo OK
 
+echo $N Run project level changes -v from component .................$NL
+bk changes  -v -nd':INDENT::REV: :DPN: :C:' |
+    sed 's/BitKeeper file.*/new/' > OUT || exit 1
+cmpfiles WANT OUT
+echo OK
+
 echo $N Project level changes -vv ...................................$NL
 bk -P changes -vv -r+ > OUT || exit 1
 grep -q "1.1/gcc/local1" OUT || {
