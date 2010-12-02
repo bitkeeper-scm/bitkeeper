@@ -140,8 +140,8 @@ cmd_abort(int ac, char **av)
 	int	status, rc;
 
 	out("@ABORT INFO@\n");
-	status = system("bk abort -f 2>&1");
-	rc = WEXITSTATUS(status); 
+	status = system("bk -?BK_NO_REPO_LOCK=YES abort -f 2>&1");
+	rc = WEXITSTATUS(status);
 	fputc(BKD_NUL, stdout);
 	fputc('\n', stdout);
 	if (rc) printf("%c%d\n", BKD_RC, rc);

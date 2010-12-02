@@ -1290,7 +1290,7 @@ nested_abort(project *p, char *nlid)
 	unless (nlid) return (1);
 
 	if (nlid[0] == 'w') {
-		if (system("bk -P abort -qf")) {
+		if (system("bk -P -?BK_NO_REPO_LOCK=YES abort -qf")) {
 			nl_errno = NL_ABORT_FAILED;
 			return (1);
 		}

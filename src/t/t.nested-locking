@@ -212,7 +212,7 @@ echo OK
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
-bk undo $Q for-undo >ERR 2>&1 && fail
+bk undo $Q -fr+ 2>ERR && fail -f ERR should fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
@@ -312,7 +312,7 @@ echo OK
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
-bk undo $Q for-undo >ERR 2>&1 && fail
+bk undo $Q -fr+ >ERR 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
@@ -408,7 +408,7 @@ echo OK
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
-bk undo $Q for-undo >ERR 2>&1 && fail
+bk undo $Q -fr+ >ERR 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
@@ -509,7 +509,7 @@ echo OK
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
-bk undo $Q for-undo >ERR 2>&1 && fail
+bk undo $Q -fr+ >ERR 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
@@ -607,7 +607,7 @@ echo OK
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
-bk undo $Q for-undo >ERR 2>&1 && fail
+bk undo $Q -fr+ >ERR 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
@@ -702,7 +702,7 @@ echo OK
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
-bk undo $Q for-undo >ERR 2>&1 && fail
+bk undo $Q -fr+ >ERR 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
@@ -799,7 +799,7 @@ echo OK
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
-bk undo $Q for-undo >ERR 2>&1 && fail
+bk undo $Q -fr+ >ERR 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
@@ -888,7 +888,7 @@ echo OK
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
-bk undo $Q for-undo >ERR 2>&1 && fail
+bk undo $Q -fr+ >ERR 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
@@ -977,7 +977,7 @@ echo OK
 # Undo a cset in the gcc component.
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
-bk undo $Q for-undo >ERR 2>&1 && fail
+bk undo $Q >ERR -fr+ 2>&1 && fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 

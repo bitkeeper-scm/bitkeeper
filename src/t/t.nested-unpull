@@ -30,6 +30,6 @@ bk portal $Q .
 cd gcc
 bk port $Q "$HERE"/gcc-detached || fail
 # now unpull
-bk unpull $Q -f . || fail unpull should have worked
+bk unpull $Q -Sf || fail unpull should have worked
 test -z "`bk changes  -qaL`" || fail
 echo OK

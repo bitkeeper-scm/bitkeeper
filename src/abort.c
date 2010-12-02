@@ -39,6 +39,7 @@ abort_main(int ac, char **av)
 		remote_free(r);
 		return (ret);
 	}
+	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC);
 	proj_cd2root();
 	/*
 	 * product is write locked, which means RESYNC may be there.
@@ -257,8 +258,8 @@ abortComponents(int leavepatch, int quiet)
 		}
 		/* not new */
 		if (isdir(ROOT2RESYNC)) {
-			if (systemf("bk abort -f%s%s", leavepatch ? "p" : "",
-				    quiet ? "q" : "")) {
+			if (systemf("bk -?BK_NO_REPO_LOCK=YES abort -f%s%s",
+			    leavepatch ? "p" : "", quiet ? "q" : "")) {
 				error("abort: component %s failed\n", c->path);
 				errors++;
 				goto out;
@@ -268,8 +269,8 @@ abortComponents(int leavepatch, int quiet)
 			 * XXX what makes sure the user hasn't added new
 			 * csets after the pull that failed?
 			 */
-			if (systemf("bk undo -%ssfa'%s'", quiet ? "q" : "",
-				    c->lowerkey)) {
+			if (systemf("bk -?BK_NO_REPO_LOCK=YES undo "
+			    "-%sSsfa'%s'", quiet ? "q" : "", c->lowerkey)) {
 				error("abort: failed to revert %s\n", c->path);
 				errors++;
 			}

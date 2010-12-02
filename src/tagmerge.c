@@ -166,5 +166,5 @@ m(sccs *s, delta *l, delta *r)
 	}
 	unlink("SCCS/s.ChangeSet");
 	rename("RESYNC/SCCS/s.ChangeSet", "SCCS/s.ChangeSet");
-	system("bk abort -f");
+	system("bk -?BK_NO_REPO_LOCK=YES abort -f");
 }

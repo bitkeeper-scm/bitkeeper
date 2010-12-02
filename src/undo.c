@@ -38,6 +38,7 @@ undo_main(int ac,  char **av)
 	int	i, match = 0, lines = 0, limitwarning = 0, ncsetrevs = 0;
 	int	status;
 	int	rmresync = 1;
+	int	standalone = 0;
 	char	**sfiles = 0;		// sfiles to undo
 	char	**filesNrevs = 0;	// sfile|key to undo
 	char	**csetrevs = 0;		// revs as keys of csets to undo
@@ -50,14 +51,13 @@ undo_main(int ac,  char **av)
 	char	*must_have = 0;
 	char	**nav = 0;
 	filecnt	nf;
-
-	if (proj_cd2root()) {
-		fprintf(stderr, "undo: cannot find package root.\n");
-		return (UNDO_ERR);
-	}
+	longopt	lopts[] = {
+		{ "standalone", 'S' },
+		{ 0, 0 }
+	};
 
 	fromclone = 0;
-	while ((c = getopt(ac, av, "a:Cfqp;r:sv", 0)) != -1) {
+	while ((c = getopt(ac, av, "a:Cfqp;r:Ssv", lopts)) != -1) {
 		/* We make sure component undo's always save a patch */
 		unless ((c == 'a') || (c == 'r') || (c == 's')) {
 			nav = bk_saveArg(nav, av, c);
@@ -70,6 +70,7 @@ undo_main(int ac,  char **av)
 		    case 'f': force  =  1; break;		/* doc 2.0 */
 		    case 'q': quiet = 1; break;			/* doc 2.0 */
 		    case 'p': patch = optarg; break;
+		    case 'S': standalone = 1; break;
 		    case 's': save = 0; break;			/* doc 2.0 */
 		    case 'v': verbose = 1; break;
 		    default:
@@ -78,6 +79,10 @@ undo_main(int ac,  char **av)
 		}
 	}
 	unless (rev) usage();
+	if (proj_isProduct(0) && standalone) usage();
+	bk_nested2root(standalone);
+
+	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	if (undoLimit(&must_have)) limitwarning = 1;
 	save_log_markers();
 	// XXX - be nice to do this only if we actually are going to undo
@@ -105,7 +110,8 @@ undo_main(int ac,  char **av)
 		/* No revs we are done. */
 		freeLines(nav, free);
 		if (must_have) free(must_have);
-		return (fromclone ? UNDO_SKIP : 0);
+		rc = fromclone ? UNDO_SKIP : 0;
+		goto out;
 	}
 	EACH (filesNrevs) {
 		p = strchr(filesNrevs[i], '|');
@@ -159,8 +165,9 @@ err:		if (undo_list[0]) unlink(undo_list);
 			freeLines(comp_list, 0);
 		}
 		if (n) nested_free(n);
+		rc = UNDO_ERR;
 		if ((size(BACKUP_SFIO) > 0) && restore_backup(BACKUP_SFIO,0)) {
-			return (UNDO_ERR);
+			goto out;
 		}
 		unlink(BACKUP_SFIO);
 		if (rmresync && exists("RESYNC")) rmtree("RESYNC");
@@ -168,7 +175,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		freeLines(filesNrevs, free);
 		freeLines(sfiles, free);
 		freeLines(csetrevs, 0);
-		return (UNDO_ERR);
+		goto out;
 	}
 	EACH (csetrevs) fprintf(f, "ChangeSet|%s\n", csetrevs[i]);
 	status = pclose(f);
@@ -198,7 +205,8 @@ err:		if (undo_list[0]) unlink(undo_list);
 		unless (fgets(buf, sizeof(buf), stdin)) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) {
 			unlink(undo_list);
-			return (UNDO_ERR);
+			rc = UNDO_ERR;
+			goto out;
 		}
 	}
 
@@ -315,15 +323,17 @@ prod:
 	unless (fromclone || verbose || quiet) {
 		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
 	}
-	if (rc) return (rc); /* do not remove backup if check failed */
-	unlink(BACKUP_SFIO);
-	unlink(CSETS_IN);	/* no longer valid */
-	unless (fromclone) {
-		putenv("BK_CSETLIST=");
-		putenv("BK_STATUS=OK");
-		trigger("undo", "post");
+	unless (rc) {
+		/* do not remove backup if check failed */
+		unlink(BACKUP_SFIO);
+		unlink(CSETS_IN);	/* no longer valid */
+		unless (fromclone) {
+			putenv("BK_CSETLIST=");
+			putenv("BK_STATUS=OK");
+			trigger("undo", "post");
+		}
 	}
-	return (rc);
+out:	return (rc);
 }
 
 /*
@@ -429,7 +439,7 @@ undo_ensemble1(nested *n, int verbose, int quiet, char **nav, char ***comp_list)
 		}
 		vp = addLine(vp, strdup("undo"));
 		EACH(nav) vp = addLine(vp, strdup(nav[i]));
-		cmd = aprintf("-fa%s", c->lowerkey);
+		cmd = aprintf("-Sfa%s", c->lowerkey);
 		vp = addLine(vp, cmd);
 		vp = addLine(vp, 0);
 		if (verbose) {

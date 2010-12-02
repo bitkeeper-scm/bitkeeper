@@ -939,7 +939,7 @@ EOF
 cmpfiles ERR2 WANT
 # Remove the local work in C for the subsequent tests.
 cd C
-bk undo -fr+ $Q || fail
+bk undo -Sfr+ $Q || fail
 cd ..
 echo OK
 

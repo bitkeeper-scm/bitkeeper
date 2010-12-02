@@ -11,16 +11,23 @@ int
 unpull_main(int ac, char **av)
 {
 	int	c, force = 0, quiet = 0;
+	int	standalone = 0;
 	char	*patch = "-pBitKeeper/tmp/unpull.patch";
+	longopt	lopts[] = {
+		{ "standalone", 'S' },
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "fqs", 0)) != -1) {
+	while ((c = getopt(ac, av, "fqSs", lopts)) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break;			/* doc 2.0 */
 		    case 'q': quiet = 1; break;			/* doc 2.0 */
+		    case 'S': standalone = 1; break;
 		    case 's': patch = 0; break;
 		    default: bk_badArg(c, av);
 		}
 	}
+	bk_nested2root(standalone);
 	if (proj_isComponent(0)) {
 		if (nested_isGate(0)) {
 gaterr:			fprintf(stderr, "unpull: not allowed in a gate\n");
@@ -31,12 +38,6 @@ gaterr:			fprintf(stderr, "unpull: not allowed in a gate\n");
 		if (nested_isPortal(0)) {
 			fprintf(stderr,
 			    "unpull: not allowed for product in a portal\n");
-			return (1);
-		}
-	}
-	if (proj_isComponent(0) && (!av[optind] || !streq(av[optind], "."))) {
-		if (proj_cd2product()) {
-			fprintf(stderr,"unpull: can not find product root.\n");
 			return (1);
 		}
 	}
@@ -61,10 +62,6 @@ unpull(int force, int quiet, char *patch)
 	char	buf[MAXLINE];
 	char	key[MAXKEY];
 
-	if (proj_cd2root()) {
-		fprintf(stderr, "unpull: can not find package root.\n");
-		return (1);
-	}
 	if (isdir(ROOT2RESYNC)) {
 		fprintf(stderr,
 		    "unpull: RESYNC exists, did you want 'bk abort'?\n");
@@ -141,6 +138,7 @@ err:			sccs_free(s);
 	av[++i] = patch ? patch : "-s";
 	if (force) av[++i] = "-f";
 	if (quiet) av[++i] = "-q";
+	if (proj_isComponent(0)) av[++i] = "-S";
 	sprintf(path, "-r%s", proj_fullpath(0, CSETS_IN));
 	av[++i] = path;
 	av[++i] = 0;

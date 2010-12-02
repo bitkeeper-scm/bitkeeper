@@ -11,16 +11,8 @@ bk collapse -el || exit 1
 echo test2 > file
 bk -cr ci -c $Q || exit 1
 bk commit -yreplacement $Q || exit 1
-bk pull $Q 2>ERR && {
-	echo should have failed
-	cat ERR
-	exit 1
-}
-grep -q "the cset has been collapsed" ERR || {
-	echo wrong error message
-	cat ERR
-	exit 1
-}
+bk pull $Q 2>ERR && fail -f ERR
+grep -q "the cset has been collapsed" ERR || fail -f ERR 
 echo OK
 
 echo $N Test that \'bk pull -D\' will allow uncollapsed csets .........$NL

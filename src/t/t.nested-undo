@@ -8,7 +8,7 @@ echo hi > file
 bk new $Q file || exit 1
 bk commit $Q -ynew || exit 1
 test `bk changes -Sr+ -nd:REV:` = 1.2 || exit 1
-bk undo $Q -fsr+ || exit 1
+bk undo $Q -Sfsr+ || fail
 test `bk changes -Sr+ -nd:REV:` = 1.1 || exit 1
 echo OK
 
@@ -17,11 +17,7 @@ echo hi > file
 bk new $Q file || exit 1
 bk commit $Q -ynew || exit 1
 bk -P commit $Q -yprod || exit 1
-bk undo $Q -fsr+ >ERR && {
-	echo should have failed
-	cat ERR
-	exit 1
-}
+bk undo $Q -Sfsr+ >ERR && fail -f ERR should have failed
 grep -q "can.t remove committed delta ChangeSet@1.2" ERR || {
 	echo wrong error message
 	cat ERR

@@ -907,7 +907,7 @@ pull(char **av, remote *r, char **envVar)
 		chdir(RESYNC2ROOT);
 		if (rc) {
 			fprintf(stderr, "BAM fetch failed, aborting pull.\n");
-			system("bk abort -f");
+			system("bk -?BK_NO_REPO_LOCK=YES abort -f");
 			exit(1);
 		}
 	}
@@ -928,9 +928,9 @@ pull(char **av, remote *r, char **envVar)
 			putenv("BK_STATUS=LOCAL TRIGGER FAILURE");
 			rc = 2;
 			if (i == 2) {
-				system("bk abort -fp");
+				system("bk -?BK_NO_REPO_LOCK=YES abort -fp");
 			} else {
-				system("bk abort -f");
+				system("bk -?BK_NO_REPO_LOCK=YES abort -f");
 			}
 			goto done;
 		}

@@ -4,7 +4,7 @@
 bk collapse \- combine recent changesets into a single unit of work
 .SH SYNOPSIS
 .B bk collapse
-.[B] \-lqs
+.[B] \-lqSs
 .B \-e
 .[OPTreq] \-a rev
 .[OPTopt] \-@ url
@@ -72,7 +72,7 @@ patch in
 .B BitKeeper/tmp/collapse.patch
 in case it turns out that the collapse was the wrong idea.
 .SH OPTIONS
-.TP \*<revsn\*>
+.TP "\\fB\\-\\-standalone \\fP"
 .OPTopt \-@ url
 If the current repository is a strict superset of the repository at
 .B url
@@ -99,6 +99,16 @@ Record the csetkeys of the changesets being replaced in
 the
 .B BitKeeper/etc/collapsed
 file.
+.if \n[NESTED] \{\
+.tp
+.B \-S
+.tp
+.B \-\-standalone
+Just collapse the current component.
+This has no effect in a traditional standalone repository,
+but in a nested collection, it collapses just the current component
+and not the entire collection.
+\}
 .tp
 .B \-s
 when fixing the entire changeset the normal behavior is to save a

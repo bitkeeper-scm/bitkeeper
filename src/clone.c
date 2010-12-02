@@ -1433,6 +1433,7 @@ after(int quiet, int verbose, char *rev)
 	cmds[++i] = "-?BK_NO_REPO_LOCK=YES"; /* so undo doesn't lock */
 	cmds[++i] = "undo";
 	cmds[++i] = "-fsC";
+	if (proj_isComponent(0)) cmds[++i] = "-S";
 	if (quiet) cmds[++i] = "-q";
 	if (verbose) cmds[++i] = "-v";
 	cmds[++i] = p = malloc(strlen(rev) + 3);

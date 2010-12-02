@@ -28,6 +28,7 @@ private struct {
 	u32	chgurl:1;	/* running 'bk changes URL', ignore local */
 	u32	noMeta:1;	/* auto or --no-meta */
 	u32	standalone:1;	/* --standalone: treat comps as standalone */
+	u32	sameComp:1;	/* --same-component */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
@@ -89,6 +90,7 @@ changes_main(int ac, char **av)
 	longopt	lopts[] = {
 		{ "no-meta", 300 },		/* don't show meta files */
 		{ "html", 301 },		/* old -h */
+		{ "same-component", 302 },
 		{ "standalone", 'S' },		/* treat comps as standalone */
 		{ 0, 0 }
 	};
@@ -164,6 +166,9 @@ changes_main(int ac, char **av)
 			break;
 		    case 300: /* --no-meta */
 		    	opts.noMeta = 1;
+			break;
+		    case 302: /* --same-component */
+			opts.sameComp = 1;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -323,7 +328,18 @@ changes_main(int ac, char **av)
 		}
 		pid2 = mkpager();
 		putenv("BK_PAGER=cat");
-		opts.chgurl = 1; /* ignore local repo */
+		unless (opts.sameComp) {
+			/*
+			 * Tell changes not to add ROOTKEY=proj_rootkey() to
+			 * the URL when talking to the remote bkd.
+			 * This is used for 'bk changes URL' so the CWD
+			 * doesn't change the output.
+			 *
+			 * --same-component can be used to keep this behavior
+			 * this is used in collapse
+			 */
+			opts.chgurl = 1; /* ignore local repo */
+		}
 		EACH(urls) {
 			if (opts.urls) {
 				printf("==== changes %s ====\n", urls[i]);

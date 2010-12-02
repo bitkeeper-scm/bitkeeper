@@ -1560,7 +1560,7 @@ bk commit $Q -y"add linec"
 cd gdb
 bk cset -qx+ >OUT 2>&1 || fail -f OUT
 # clean it up
-bk undo -qsfr+ >OUT 2>&1 || fail -f OUT
+bk undo -qSsfr+ >OUT 2>&1 || fail -f OUT
 # in the product it should fail
 cd ..
 bk cset -qx"$CSET" 2>&1 | grep -q "Operation not supported" || fail

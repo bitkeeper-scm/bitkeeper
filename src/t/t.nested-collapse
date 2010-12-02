@@ -20,7 +20,7 @@ echo OK
 
 echo $N Try to collapse top cset in committed component .............$NL
 bk changes -r+ -v  > WANT
-bk fix -c 2>ERR && {
+bk fix -Sc 2>ERR && {
 	echo should fail
 	cat ERR
 	exit 1
@@ -42,7 +42,7 @@ echo OK
 
 echo $N Now collapse top cset in component ..........................$NL
 cd gcc
-bk fix -c || exit 1
+bk fix -Sc || exit 1
 bk sfiles -x > GOT
 cat <<EOF > WANT
 ERR
@@ -64,8 +64,7 @@ bk _rm SCCS/c.ChangeSet
 cd ..
 bk commit $Q -YSCCS/c.ChangeSet || faile
 bk _rm SCCS/c.ChangeSet
-
-bk fix -c $Q || fail
+bk --cd=gcc fix -c $Q || fail
 bk sfiles -p > GOT
 test -s GOT && fail
 cd gcc
@@ -126,3 +125,25 @@ bk -e sfiles -cg > GOT
 cmpfiles GOT WANT
 echo OK
 
+echo $N Test collapse -@ in a component .............................$NL
+cd "$HERE"
+bk clone $Q project copy
+cd copy/gcc
+echo new2 > gcc_file
+bk new $Q -ynew2 gcc_file || fail
+KEY1=`bk changes -Sr+ -nd:KEY:`
+bk commit $Q -ynew2 || fail
+KEY2=`bk changes -Sr+ -nd:KEY:`
+
+bk _test -f SCCS/c.gcc_file && fail
+bk _test -f SCCS/c.ChangeSet && fail
+bk collapse $Q -Se@ || fail
+KEY3=`bk changes -Sr+ -nd:KEY:`
+
+test "$KEY1" = "$KEY3" || fail
+test "$KEY1" != "$KEY2" || fail
+
+echo new2 > WANT
+cmpsfiles WANT SCCS/c.gcc_file
+cmpsfiles WANT SCCS/c.ChangeSet
+echo OK

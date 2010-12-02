@@ -2826,7 +2826,7 @@ resolve_cleanup(opts *opts, int what)
 			fprintf(stderr, "resolve: rmtree failed\n");
 		}
 	} else if (what & CLEAN_ABORT) {
-		if (system("bk abort -qfp")) {
+		if (system("bk -?BK_NO_REPO_LOCK=YES abort -qfp")) {
 			fprintf(stderr, "Abort failed\n");
 		}
 	} else if (what & CLEAN_MVRESYNC) {
@@ -2852,7 +2852,7 @@ resolve_cleanup(opts *opts, int what)
 				      dir);
 			if (system(cmd)) perror("dircopy");
 			free(cmd);
-			if (system("bk abort -fp")) {
+			if (system("bk -?BK_NO_REPO_LOCK=YES abort -fp")) {
 				fprintf(stderr, "Abort failed\n");
 			}
 		} else {

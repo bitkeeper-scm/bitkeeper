@@ -109,10 +109,10 @@ cp "$HERE/parkfile"$$ "$HERE/project/BitKeeper/tmp/parkfile_1.sfio"
 
 echo $N Check park/unpark with offset diff ..........................$NL
 bk clean foo.c
-bk fix $Q foo.c
+bk fix $Q foo.c || fail
 echo foo-new4 > foo.c
 bk get $Q -p -r1.1 foo.c >> foo.c
-bk unpark -c 2>/dev/null 1>&2
+bk unpark -c 2>/dev/null 1>&2 || fail
 bk undos > CMP2 <<EOF
 foo-new4
 foo-new2
