@@ -2148,7 +2148,7 @@ cd "$HERE"/multitrig
 bk lock -U
 bk undo -qsfaTRIGBASE
 cd BitKeeper/triggers
-bk rm -f
+bk -r. rm
 bk commit -yall-trigs-deleted
 cd ..
 # clone, rclone, push, pull, undo, tags, collapse, lease renew

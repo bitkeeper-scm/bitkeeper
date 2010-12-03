@@ -86,3 +86,29 @@ test -d junk && {
 	exit 1
 }
 echo OK
+
+echo $N Make sure that we can move a trigger ........................$NL
+mkdir BitKeeper/triggers
+touch BitKeeper/triggers/foo
+bk new $Q BitKeeper/triggers/foo
+bk mv BitKeeper/triggers/foo BitKeeper/triggers/bar 2>ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Make sure that we cannot move stuff into other BK dirs ......$NL
+touch pre-outgoing
+bk new $Q pre-outgoing
+bk mv pre-outgoing BitKeeper/log 2>ERR && {
+	echo failed
+	cat ERR
+	exit 1
+}
+bk mv BitKeeper/triggers/bar BitKeeper/log 2>ERR && {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK

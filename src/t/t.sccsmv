@@ -380,7 +380,7 @@ bk rm config 2> OUT && {
 	echo failed to exit with an error
 	exit 1
 }
-grep -q 'Will not remove BitKeeper file' OUT || {
+grep -q 'Will not move BitKeeper file' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -394,7 +394,7 @@ bk rm ChangeSet 2> OUT && {
 	echo failed to exit with an error
 	exit 1
 }
-grep -q 'Will not remove BitKeeper file' OUT || {
+grep -q 'Will not move ChangeSet file' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -453,7 +453,7 @@ bk mv ChangeSet JUNK 2> OUT && {
 	echo failed to exit with an error
 	exit 1
 }
-grep -q 'Will not move BitKeeper file' OUT || {
+grep -q 'Will not move ChangeSet file' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -471,6 +471,23 @@ bk mv -f config JUNK 2> OUT || {
 	exit 1
 }
 bk _test -f SCCS/s.config && {
+	echo failed to move file
+	exit 1
+}
+echo OK
+
+echo $N Make sure triggers don\'t require -f to move .................$NL
+cd ../
+mkdir triggers
+cd triggers
+echo 'exit 0' > post-commit
+bk new $Q post-commit
+bk mv post-commit post-commit.moved 2>OUT || {
+	echo failed to let us move the file
+	cat OUT
+	exit 1
+}
+test -f SCCS/s.post-commit && {
 	echo failed to move file
 	exit 1
 }

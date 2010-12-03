@@ -42,6 +42,7 @@ sccs_mv(char	*name,
 	char	*sname = 0, *gfile = 0, *sfile = 0, *ogfile = 0, *osfile = 0;
 	char	**xlist = NULL;
 	sccs	*s = 0;
+	delta	*d;
 	int	error = 0, was_edited = 0, has_diffs = 0;
 	int	i, flags;
 	pfile   pf;
@@ -68,18 +69,10 @@ err:		if (sname) free(sname);
 		    s->gfile);
 		goto err;
 	}
-	if (CSET(s) ||
-	    (strneq("BitKeeper/", s->tree->pathname, 10) && !force)) {
-		fprintf(stderr, "Will not move BitKeeper file %s\n", name);
+	if (CSET(s)) {
+		fprintf(stderr, "Will not move ChangeSet file\n");
 		goto err;
 	}
-
-	/* XXX - shouldn't this call sccs_clean()? */
-	if (HAS_PFILE(s) && !HAS_GFILE(s)){
-		unlink(s->pfile);	
-		s->state &= ~S_PFILE;
-	}
-
 	if (isDir) {
 		concat_path(buf, dest, basenm(s->gfile));
 	} else {
@@ -92,6 +85,34 @@ err:		if (sname) free(sname);
 	sfile = strdup(t);
 	gfile = sccs2name(t);
 	t = 0;
+
+	unless (force) {
+		d = sccs_top(s);
+		t = d->pathname;	/* where file is now */
+		if (strneq("BitKeeper/", t, 10) &&
+		    !(strneq("BitKeeper/triggers/", t, 19) ||
+		      strneq("BitKeeper/deleted/", t, 18))) {
+			fprintf(stderr, "Will not move BitKeeper file %s\n",
+			    name);
+			goto err;
+		}
+		t = proj_relpath(s->proj, gfile); /* where file is going */
+		if (strneq("BitKeeper/", t, 10) &&
+		    !(strneq("BitKeeper/triggers/", t, 19) ||
+		      strneq("BitKeeper/deleted/", t, 18))) {
+			fprintf(stderr, "Will not move to BitKeeper file %s\n",
+			    name);
+			free(t);
+			goto err;
+		}
+		free(t);
+	}
+
+	/* XXX - shouldn't this call sccs_clean()? */
+	if (HAS_PFILE(s) && !HAS_GFILE(s)){
+		unlink(s->pfile);
+		s->state &= ~S_PFILE;
+	}
 
 	if (exists(sfile)) {
 		fprintf(stderr, "sccsmv: destination %s exists\n", sfile);
