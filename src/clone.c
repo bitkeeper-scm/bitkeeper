@@ -77,6 +77,7 @@ clone_main(int ac, char **av)
 
 		/* aliases */
 		{ "subset;" , 's' },
+		{ "standalone", 'S'},
 		{ 0, 0 }
 	};
 
@@ -85,7 +86,7 @@ clone_main(int ac, char **av)
 	if (streq(prog, "attach")) opts->attach = 1;
 	if (streq(prog, "detach")) opts->detach = 1;
 	unless (win32()) opts->link = 1;	    /* try lclone by default */
-	while ((c = getopt(ac, av, "@;B;CdE:j;lNpP;qr;s;vw|z|", lopts)) != -1) {
+	while ((c = getopt(ac, av, "@;B;CdE:j;lNpP;qr;Ss;vw|z|", lopts)) != -1) {
 		switch (c) {
 		    case '@':
 			opts->localurl = optarg;
@@ -122,6 +123,11 @@ clone_main(int ac, char **av)
 		    case 'P': opts->comppath = optarg; break;
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
+		    case 'S':
+			fprintf(stderr,
+			    "%s: -S unsupported, try attach or detach.\n",
+			    prog);
+			exit(1);
 		    case 's':
 			opts->aliases = addLine(opts->aliases, strdup(optarg));
 			break;

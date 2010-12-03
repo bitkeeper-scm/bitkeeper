@@ -340,7 +340,7 @@ bk setup -f newrepo || fail
 bk push $Q || fail
 # A successful push of newrepo should add newrepo's rootkey to the urllist.
 cd newrepo
-NEWREPO_ROOTKEY=`bk id`
+NEWREPO_ROOTKEY=`bk id -S`
 cd ..
 grep -q "$NEWREPO_ROOTKEY" BitKeeper/log/urllist || fail
 echo OK

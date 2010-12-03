@@ -75,10 +75,14 @@ push_main(int ac, char **av)
 	char	**urls = 0;
 	remote	*r;
 	int	gzip = 6;
+	longopt	lopts[] = {
+		{ "standalone", 'S'},
+		{ 0, 0 }
+	};
 
 	bzero(&opts, sizeof(opts));
 
-	while ((c = getopt(ac, av, "ac:deE:iqr;Tvz|", 0)) != -1) {
+	while ((c = getopt(ac, av, "ac:deE:iqr;STvz|", lopts)) != -1) {
 		unless (c == 'r') {
 			if (optarg) {
 				opts.av_push = addLine(opts.av_push,
@@ -112,6 +116,10 @@ push_main(int ac, char **av)
 		    case 'q': opts.quiet = 1; opts.verbose = 0;	/* doc */
 		    	break;
 		    case 'r': opts.rev = optarg; break;
+		    case 'S':
+			fprintf(stderr,
+			    "%s: -S unsupported, try port.\n", prog);
+			exit(1);
 		    case 'T': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'v': opts.verbose = 1; opts.quiet = 0;	/* doc */
 		    	break;

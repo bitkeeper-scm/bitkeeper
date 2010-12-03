@@ -52,6 +52,7 @@ pull_main(int ac, char **av)
 	longopt	lopts[] = {
 		{ "safe", 300 },	/* require all comps to be here */
 		{ "unsafe", 301 },	/* turn off safe above */
+		{ "standalone", 'S'},
 		{ 0, 0 }
 	};
 
@@ -63,7 +64,7 @@ pull_main(int ac, char **av)
 	}
 	opts.automerge = 1;
 	opts.safe = -1;	/* -1 == not set on command line */
-	while ((c = getopt(ac, av, "c:DdE:Fiqr;RstTuvw|z|", lopts)) != -1) {
+	while ((c = getopt(ac, av, "c:DdE:Fiqr;RsStTuvw|z|", lopts)) != -1) {
 		unless (c == 'r' || c >= 300) {
 			opts.av_pull = bk_saveArg(opts.av_pull, av, c);
 		}
@@ -89,6 +90,10 @@ pull_main(int ac, char **av)
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
+		    case 'S':
+			fprintf(stderr,
+			    "%s: -S unsupported, try port.\n", prog);
+			exit(1);
 		    case 'u': opts.update_only = 1; break;
 		    case 'v': opts.verbose = 1; break;
 		    case 'w': opts.delay = atoi(optarg); break;	/* undoc 2.0 */

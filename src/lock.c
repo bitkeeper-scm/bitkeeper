@@ -346,15 +346,6 @@ tcpHandshake(int lockclient, int tcp)
 	closesocket(lockclient);
 }
 
-int
-repo_main(int ac, char **av)
-{
-	fprintf(stderr, "The repo command has been replaced.\n");
-	fprintf(stderr, "To lock use bk lock.\n");
-	fprintf(stderr, "To unlock use bk unlock.\n");
-	return (1);
-}
-
 private	int
 openIt(char *file, HANDLE *h)
 {

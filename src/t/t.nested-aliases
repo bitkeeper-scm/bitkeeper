@@ -242,7 +242,7 @@ cd ..
 bk clone -s./gdb $Q project-nm project-just-gdb || exit 1
 cd project-just-gdb
 bk alias -k here > GOT
-(cd gdb; echo PRODUCT; bk id) > WANT
+(cd gdb; echo PRODUCT; bk id -S) > WANT
 cmpfiles GOT WANT
 bk alias set DEFAULT ./gdb || exit 1
 bk alias set $Q here DEFAULT || exit 1
@@ -331,7 +331,7 @@ bk here add $Q ./junk || {
 test -d junk || exit 1
 bk here add $Q || exit 1
 bk alias -k here | bk _sort > GOT
-(echo PRODUCT; cd junk; bk id) | bk _sort > WANT
+(echo PRODUCT; cd junk; bk id -S) | bk _sort > WANT
 cmpfiles GOT WANT
 echo OK
 
@@ -355,7 +355,7 @@ echo @alias2
 echo alias3
 echo alias3
 echo @alias3
-(cd gcc; bk id)
+(cd gcc; bk id -S)
 ) >> BitKeeper/etc/aliases
 bk delta $Q -ywhatever BitKeeper/etc/aliases
 bk alias -e alias1 > GOT 2>&1 || {
@@ -377,7 +377,7 @@ echo @alias2
 echo alias3
 echo @alias3
 echo alias1
-(cd gcc; bk id)
+(cd gcc; bk id -S)
 ) >> BitKeeper/etc/aliases
 bk delta $Q -ywhatever BitKeeper/etc/aliases
 bk alias -e alias1 2> ERR && {
@@ -512,9 +512,9 @@ echo $N Test creating aliases in a sparse tree ......................$NL
 bk commit $Q -y'aliases'
 (
 cd gcc
-bk id
+bk id -S
 cd ../gdb
-bk id
+bk id -S
 ) | bk _sort > ../WANT
 cd "$HERE"
 bk clone $Q -s. project sparse || exit 1

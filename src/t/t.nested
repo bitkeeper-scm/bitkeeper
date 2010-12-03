@@ -106,12 +106,22 @@ echo $N id -p on a component should work.............................$NL
 cd "$HERE/project"
 ROOTKEY=`bk id`
 cd "gcc"
-bk id -p >GOT 2>&1 || {
+bk id >GOT 2>&1 || {
 	echo failed
 	cat GOT
 	exit 1
 }
 test "`cat GOT`" = "$ROOTKEY" || {
+	echo failed
+	cat GOT
+	exit 1
+}
+bk id -S >GOT 2>&1 || {
+	echo failed
+	cat GOT
+	exit 1
+}
+test "`cat GOT`" = "$ROOTKEY" && {
 	echo failed
 	cat GOT
 	exit 1
@@ -998,7 +1008,7 @@ cd project
 echo $N Test bk undo -r+ in a sparse ensemble .......................$NL
 # XXX really should use unpopulate (if it worked)
 rm -rf gcc4
-(cd gdb; bk id) > BitKeeper/log/HERE
+(cd gdb; bk id -S) > BitKeeper/log/HERE
 bk undo $Q -fsr+ || {
 	echo failed undo
 	exit 1
@@ -1050,8 +1060,8 @@ test $REV = `bk changes -r+ -d:REV:` && {
 (
 echo @dev 
     (
-	(cd gcc4 && bk id ) 
-	(cd gdb && bk id )
+	(cd gcc4 && bk id -S) 
+	(cd gdb && bk id -S )
     ) | bk _sort
 ) > WANT
 bk cat BitKeeper/etc/aliases > GOT
@@ -1090,8 +1100,8 @@ bk alias new mydev dev
 (
 echo @dev 
     (
-	(cd gcc4 && bk id ) 
-	(cd gdb && bk id )
+	(cd gcc4 && bk id -S ) 
+	(cd gdb && bk id -S )
     ) | bk _sort
 echo @mydev
 echo dev
@@ -1434,6 +1444,29 @@ bk _nested -Ha -r1.3 -ld > WANT
 # set it up like a pull
 echo 1.3 | bk _nested -p -Ha -ld - > GOT
 cmpfiles WANT GOT
+echo OK
+
+echo $N Test that level works in nested .............................$NL
+cd "$HERE"
+bk clone $Q remote level10
+cd level10/gcc
+bk level 10
+cd ..
+test "`bk level`" = "Repository level is 10" || {
+	echo failed to set level in product
+	bk level
+	exit 1
+}
+bk push > OUT 2>&1 && {
+	echo push should have failed
+	cat OUT
+	exit 1
+}
+bk grep -q "push: cannot push to lower level repository" OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N Test that bk root with -P gives the right answer.............$NL

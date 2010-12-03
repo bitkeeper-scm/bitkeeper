@@ -568,7 +568,7 @@ echo failed \(bug comp named rm\)
 
 echo $N Test ordering of multiple URLS in populate ..................$NL
 cd "$HERE"/product
-RK=`(cd gdb; bk id)`
+RK=`(cd gdb; bk id -S)`
 bk here set -f $Q ./gcc || fail
 
 cat <<EOF > BitKeeper/log/urllist

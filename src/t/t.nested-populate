@@ -242,7 +242,7 @@ cat <<EOF > WANT
 ./gdb
 EOF
 cmpfiles GOT WANT
-(echo PRODUCT; echo primes; cd gcc; bk id; cd ../gdb; bk id) | bk _sort > WANT
+(echo PRODUCT; echo primes; cd gcc; bk id -S; cd ../gdb; bk id -S) | bk _sort > WANT
 bk alias -k here > GOT
 cmpfiles GOT WANT
 bk here rm $Q './g*' || exit 1

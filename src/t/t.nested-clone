@@ -286,7 +286,7 @@ echo OK
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 cd mynewgcc
 bk alias -k here | bk _sort > GOT
-(echo PRODUCT; cd gcc; bk id) | bk _sort > WANT
+(echo PRODUCT; cd gcc; bk id -S) | bk _sort > WANT
 cmpfiles GOT WANT
 echo OK
 
@@ -310,7 +310,7 @@ echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 bk alias -k here | bk _sort > GOT
-(echo PRODUCT; cd gcc; bk id; cd ../gdb; bk id) | bk _sort > WANT
+(echo PRODUCT; cd gcc; bk id -S; cd ../gdb; bk id -S) | bk _sort > WANT
 cmpfiles GOT WANT
 echo OK
 
@@ -360,7 +360,7 @@ test -d gdb && {
 	exit 1
 }
 bk alias -k here > GOT
-(echo PRODUCT; cd gcc; bk id) > WANT
+(echo PRODUCT; cd gcc; bk id -S) > WANT
 cmpfiles GOT WANT
 echo OK
 

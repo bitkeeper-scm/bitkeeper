@@ -327,7 +327,6 @@ repair
 repogca
 repotype
 relink
-repo
 resolve
 restore
 _reviewmerge

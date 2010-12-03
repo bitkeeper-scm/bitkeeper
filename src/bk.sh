@@ -40,29 +40,37 @@ __cd2product() {
 # faster way to get repository status
 _repocheck() {
 	V=-v
-	case "X$1" in
-	    X-q)	V="";;
-	    X-*)	echo "Invalid option: $1"
-	    		echo "Usage: bk repocheck [-q]"
+	EACH=--each-repo
+	P=-P
+	while getopts qS opt
+	do
+		case "$opt" in
+		    q)	V="";;
+		    S)	EACH=""; P=-R;;
+		    X*)	echo "Invalid option: $1"
+	    		echo "Usage: bk repocheck [-Sq]"
 			printf "This checks repository integrity by running: "
-			echo "bk -s -r check -aBcv"
+			echo "bk -e -r check -aBcv"
 			echo Use -q to run quietly
+			echo "    -S only check current component"
 			exit 1;;
-	esac
-	test "X$3" != X && {
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	test "X$2" != X && {
 		echo "repocheck: too many arguments"
 		exit 1
 	}
-	test "X$2" != X && {
-		test -d "$2" || {
-			echo "$2 is not a directory"
+	test "X$1" != X && {
+		test -d "$1" || {
+			echo "$1 is not a directory"
 			exit 1
 		}
-		cd "$2" || exit 1
+		cd "$1" || exit 1
 	}
 	# check output goes to stderr, so put this to stderr too
-	test "X$V" != X && echo === Checking `bk -P pwd` === 1>&2
-	bk --each-repo -r check -aBc $V
+	test "X$V" != X && echo === Checking `bk $P pwd` === 1>&2
+	bk $EACH -r check -aBc $V
 }
 
 # shorthand to dig out renames

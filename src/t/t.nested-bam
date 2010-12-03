@@ -15,7 +15,7 @@ perl -e 'sysread(STDIN, $buf, 81920);
 syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
 cp "$DATA" data
 bk new $Q data || exit 1
-RK=`bk id | sed 's/|/-/g'`
+RK=`bk id -S | sed 's/|/-/g'`
 test -d ../BitKeeper/BAM/$RK || exit 1
 bk commit $Q -ybam
 cd ..
@@ -56,7 +56,7 @@ echo $N Create a new component with BAM data ........................$NL
 bk portal $Q .
 bk setup -f bam_comp || exit 1
 cd bam_comp
-RK=`bk id | sed 's/|/-/g'`
+RK=`bk id -S | sed 's/|/-/g'`
 echo junk > file1
 bk new $Q -b file1 || exit
 bk commit $Q -ybam2 || exit 1
