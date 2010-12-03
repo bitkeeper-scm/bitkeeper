@@ -303,8 +303,10 @@ clean: FORCE
 	    $(LOCALSRC) $(PSRC) $(PROGS)
 	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		tclkey.h core *.bb *.bbg *.da *.gcov \
-		bk.ico Academic.lic Basic.lic Pro.lic \
-		Enterprise.lic MLA.lic bkl.lic bkcl.lic tclwrap$(EXE) \
+		bk.ico \
+		Academic.lic Basic.lic Enterprise.lic Essentials.lic \
+		MLA.lic Premier.lic Pro.lic \
+		bkl.lic bkcl.lic tclwrap$(EXE) \
 		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
 		diff.exe diff3.exe hidestring.exe inskeys_main.o mend.exe
