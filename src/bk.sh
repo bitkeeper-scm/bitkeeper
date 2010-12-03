@@ -75,26 +75,19 @@ _repocheck() {
 
 # shorthand to dig out renames
 _renames() {
-	standalone=0
+	standalone=""
 	while getopts Sr: opt
 	do
 		case "$opt" in
-		S)	standalone=1;;
+		S)	standalone="-S";;
 		r)	REV="$OPTARG";;
 		*)	bk help -s renames; exit 1;;
 		esac
 	done
+	test "$REV" || { bk help -s renames; exit 1; }
 	shift `expr $OPTIND - 1`
-	if [ $standalone -eq 1 ]
-	then
-		__cd2root
-		bk rset -h -r"$REV" | \
-		    awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
-	else
-		__cd2product
-		bk rset -Ph -r"$REV" | \
-		    awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
-	fi
+	bk rset $standalone -h -r"$REV" | \
+		awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
 }
 
 _repatch() {

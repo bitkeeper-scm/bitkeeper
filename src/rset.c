@@ -6,12 +6,14 @@ typedef struct {
 	u32 	show_all:1;	/* -a show deleted files */
 	u32	show_diffs:1;	/* -r output in rev diff format */
 	u32	show_path:1;	/* -h show d->pathname */
+	u32	hide_bk:1;	/* --hide-bk: hide BitKeeper/ files */
 	u32	hide_cset:1;	/* -H hide ChangeSet file from file list */
 	u32	hide_comp:1;	/* -H also hide component csets */
 	u32	lflg:1;		/* -l list a rset */
 	u32	md5keys:1;	/* -5 use md5keys instead of revs */
 	u32	BAM:1;		/* -B only list BAM files */
 	u32	nested:1;	/* -P recurse into nested components */
+	u32	standalone:1;	/* -S standalone */
 	char	**nav;
 	char	**aliases;	/* -s limit nested output to aliases */
 	nested	*n;		/* only if -s (and therefore, -P) */
@@ -249,6 +251,11 @@ process(char	*root,
 		    isNullFile(rev2, path2)) {
 			goto done;
 		}
+		if (opts.hide_bk &&
+		    strneq(path1, "BitKeeper/", 10) &&
+		    strneq(path2, "BitKeeper/", 10)) {
+			goto done;
+		}
 		unless (opts.show_path) {
 			printf("%s|%s..%s\n", prefix(s->gfile), rev1, rev2);
 		} else {
@@ -262,6 +269,8 @@ process(char	*root,
 		}
 	} else {
 		if (!opts.show_all && isNullFile(rev2, path2)) goto done;
+		if (opts.hide_bk && strneq(path1, "BitKeeper/", 10)) goto done;
+
 		unless (opts.show_path) {
 			printf("%s|%s\n", prefix(s->gfile), rev2);
 		} else {
@@ -290,7 +299,7 @@ done:	if (s) sccs_free(s);
 			free(path1);
 			return;
 		}
-		sprintf(buf, "bk rset -H "); /* we already printed the cset */
+		sprintf(buf, "bk rset -HS "); /* we already printed the cset */
 		EACH(opts.nav) {
 			strcat(buf, opts.nav[i]);
 			strcat(buf, " ");
@@ -468,8 +477,7 @@ fix_rev(sccs *s, char *rev)
 }
 
 private int
-parse_rev(sccs	*s,
-	char	*args, char **rev1, char **revM, char **rev2)
+parse_rev(char *args, char **rev1, char **rev2)
 {
 	char	*p;
 
@@ -478,26 +486,23 @@ parse_rev(sccs	*s,
 	 * -rREV1..REV2 or -rREV1 -rREV2 preferred
 	 */
 	p = strchr(args, ',');
-	unless (p) {
-		for (p = strchr(args, '.');
-		    p && (p[1] != '.'); p = strchr(p+1, '.'));
-	}
+	unless (p) p = strstr(args, "..");
 	if (p) {
 		if (*p == '.') *p++ = 0;
 		*p++ = 0;
+		unless (*p) p = "+";
 		if (*rev1) {
 err:			fprintf(stderr, "%s: too many -r REVs\n", prog);
 			return (1);
 		}
-		unless (*rev1 = fix_rev(s, args)) return (1); /* failed */
-		unless (*rev2 = fix_rev(s, p)) return (1); /* failed */
+		*rev1 = args;
+		*rev2 = p;
 	} else {
-		unless (p = fix_rev(s, args)) return (1); /* failed */
 		if (*rev1) {
 			if (*rev2) goto err;
-			*rev2 = p;
+			*rev2 = args;
 		} else {
-			*rev1 = p;
+			*rev1 = args;
 		}
 	}
 	return (0); /* ok */
@@ -515,18 +520,21 @@ rset_main(int ac, char **av)
 	MDBM	*db1, *db2 = 0, *idDB;
 	int	rc = 1;
 	options	opts;
+	longopt	lopts[] = {
+		{ "hide-bk", 300 },
+
+		/* long aliases */
+		{ "subset;", 's' },
+		{ "standalone", 'S' },
+		{ 0, 0 }
+	};
 
 	path_prefix = getenv("_BK_PREFIX");
 	bzero(&opts, sizeof (options));
-	if (proj_cd2root()) {
-		fprintf(stderr, "mkrev: cannot find package root.\n");
-		exit(1);
-	}
-	s = sccs_init(s_cset, SILENT);
-	assert(s);
 
-	while ((c = getopt(ac, av, "5aBhHl;Pr;s|", 0)) != -1) {
-		unless (c == 'r' || c == 'P' || c == 'l' || c == 's') {
+	while ((c = getopt(ac, av, "5aBhHl;Pr;Ss;", lopts)) != -1) {
+		unless (c == 'r' || c == 'P' || c == 'l' || c == 's' ||
+		    c == 'S') {
 			opts.nav = bk_saveArg(opts.nav, av, c);
 		}
 		switch (c) {
@@ -545,43 +553,30 @@ rset_main(int ac, char **av)
 		case 'l':	opts.lflg = 1;			/* doc 2.0 */
 				rev1 = strdup(optarg);
 				break;
-		case 'P':	opts.nested = 1; /* old, compat */
-				break;
+		case 'P':	break;			/* old, compat */
 		case 'r':	opts.show_diffs = 1;		/* doc 2.0 */
-				if (parse_rev(s, optarg,
-					&rev1, &revM, &rev2)) {
-					sccs_free(s);
+				if (parse_rev(optarg, &rev1, &rev2)) {
 					return (1); /* parse failed */
 				}
 				break;
-		case 's':	opts.nested = 1;
-				if (optarg) {
-					opts.aliases = addLine(opts.aliases,
-					    strdup(optarg));
-				}
+	        case 'S':	opts.standalone = 1; break;
+		case 's':	opts.aliases = addLine(opts.aliases,
+					strdup(optarg));
 				break;
-		default:	if (s) sccs_free(s);
-				bk_badArg(c, av);
-		}
-		optarg = 0;	/* XXX didn't Oscar put this in getopt? */
-	}
-
-	unless (rev1) {
-usage:		if (s) sccs_free(s);
-		usage();
-	}
-
-	if (opts.show_diffs && !rev2) {
-		rev2 = rev1;
-		if (sccs_parent_revs(s, rev2, &rev1, &revM)) {
-			return (1); /* failed */
+		case 300:	opts.hide_bk = 1; break;
+		default:	bk_badArg(c, av);
 		}
 	}
+	if (opts.standalone && opts.aliases) usage();
+	if ((!opts.standalone && proj_isComponent(0) && proj_cd2product()) ||
+	    proj_cd2root()) {
+		fprintf(stderr, "%s: cannot find package root.\n", prog);
+		exit(1);
+	}
+	if (!opts.standalone && proj_isProduct(0)) opts.nested = 1;
 
-	if (opts.BAM && !opts.md5keys) goto usage;
-
-	/* Let them use -P by default but ignore it in non-products. */
-	unless (proj_isProduct(0)) {
+	/* Let them use -sHERE by default but ignore it in non-products. */
+	if (!opts.nested && opts.aliases) {
 		EACH(opts.aliases) {
 			unless (streq(opts.aliases[i], ".") ||
 			    strieq(opts.aliases[i], "HERE")) {
@@ -593,8 +588,28 @@ usage:		if (s) sccs_free(s);
 		}
 		freeLines(opts.aliases, free);
 		opts.aliases = 0;
-		opts.nested = 0;
 	}
+	s = sccs_init(s_cset, SILENT);
+	assert(s);
+
+	unless (rev1) {
+usage:		if (s) sccs_free(s);
+		usage();
+	}
+	if (opts.show_diffs) {
+		if (rev1 && !(rev1 = fix_rev(s, rev1))) return (1);
+		if (rev2 && !(rev2 = fix_rev(s, rev2))) return (1);
+	}
+
+	if (opts.show_diffs && !rev2) {
+		rev2 = rev1;
+		if (sccs_parent_revs(s, rev2, &rev1, &revM)) {
+			return (1); /* failed */
+		}
+	}
+
+	if (opts.BAM && !opts.md5keys) goto usage;
+
 
 	if (opts.aliases) {
 		unless ((opts.n = nested_init(s, 0, 0, NESTED_PENDING)) &&

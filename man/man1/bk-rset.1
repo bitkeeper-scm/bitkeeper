@@ -4,9 +4,9 @@
 bk rset \- generate a \*(lqrelease set\*(rq
 .SH SYNOPSIS
 .B bk rset
-.[B] \-ah 
+.[B] \-ahS 
 .if \n[NESTED] \{\
-.[OPTopt] \-s alias
+.[OPTreq] \-s alias
 .\}
 .OPTreq \-l rev
 |
@@ -34,17 +34,8 @@ parse this output know where the last changeset stopped.  It is also
 worth noting that \*(BK changesets can contain multiple revisions to 
 the same file, which is why the end of the last changeset and the start
 of the requested changeset is listed in the output.
-.LP
-This program is not normally run by users, the 
-bk export command uses 
-.B bk rset
-combined with
-.nh
-.B bk gnupatch
-.hy
-to generate traditional patches.
 .SH OPTIONS
-.TP "\-r\*<r1\*> \-r\*<r2\*>"
+.TP "\\fB\\-\\-standalone \\fP"
 .B \-a
 show deleted files which are normally suppressed.
 .tp
@@ -83,8 +74,16 @@ by the first rev, up to and including the changeset specified by the
 second rev.
 .if \n[NESTED] \{\
 .tp
-.OPTopt \-s alias
-In a nested collection, 
+.B \-S
+.tp
+.B \-\-standalone
+Just run rset on the current component.
+This has no effect in a traditional standalone repository,
+but in a nested collection, processes just the current component
+and not the entire nested collection.
+.tp
+.OPTreq \-s alias
+In a nested collection,
 .B rset
 can recurse into some or all of the populated components.
 Using the 
@@ -100,7 +99,6 @@ is specified that is taken to be the same as
 .\}
 .SH "SEE ALSO"
 .SA export
-.SA gnupatch
 .SA log
 .BR diff (1),
 .BR patch (1),

@@ -706,7 +706,7 @@ cmpfiles OUT WANT
 echo OK
 
 echo $N Again, with -s. and -sHERE ..................................$NL
-bk rset -s -rONE,TWO | bk _sort > OUT
+bk rset -rONE,TWO | bk _sort > OUT
 cat <<EOF > WANT
 ${RMNAME}|1.1..1.2
 ChangeSet|1.2..1.3

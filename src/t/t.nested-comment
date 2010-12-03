@@ -16,8 +16,14 @@ cat <<'EOF' > WANT
 ### Comments for gcc/ChangeSet|1.2
 .
 
+### Comments for gcc/afile|1.1
+new
+
 ### Comments for gdb/ChangeSet|1.2
 .
+
+### Comments for gdb/afile|1.1
+new
 
 EOF
 cmpfiles WANT GOT
@@ -25,7 +31,7 @@ echo OK
 
 echo $N Test that comments have no component path in a component ....$NL
 cd gcc
-bk comment -p > GOT
+bk comment -Sp > GOT
 cat <<'EOF' > WANT
 ### Comments for ChangeSet|1.2
 .
@@ -43,7 +49,7 @@ cat <<'EOF' > WANT
 attach gcc using this new comment
 
 EOF
-bk comment - < WANT
+bk comment -S - < WANT
 cd ..
 bk comment -p > GOT
 cat <<'EOF' > WANT
@@ -53,8 +59,14 @@ cat <<'EOF' > WANT
 ### Comments for gcc/ChangeSet|1.2
 attach gcc using this new comment
 
+### Comments for gcc/afile|1.1
+new
+
 ### Comments for gdb/ChangeSet|1.2
 .
+
+### Comments for gdb/afile|1.1
+new
 
 EOF
 cmpfiles WANT GOT
@@ -74,7 +86,7 @@ attach gdb using this new comment made in the product
 EOF
 bk comment - < WANT
 cd gdb
-bk comment -p > GOT
+bk comment -Sp > GOT
 cat <<'EOF' > WANT
 ### Comments for ChangeSet|1.2
 attach gdb using this new comment made in the product

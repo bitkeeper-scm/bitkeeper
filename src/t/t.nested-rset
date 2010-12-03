@@ -10,7 +10,7 @@ bk commit $Q -f
 cd ..
 bk commit $Q -SEND -f
 # does not fail because there is no error handling in recursive sys()
-bk rset -PrSTART,END 2> ERR | bk _sort > GOT
+bk rset -rSTART,END | bk _sort > GOT
 cat >WANT <<EOF
 ChangeSet|1.2..1.4
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
@@ -23,8 +23,32 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Try rset -S in product ......................................$NL
+bk rset -rSTART,END -S | bk _sort > GOT
+cat >WANT <<EOF
+ChangeSet|1.2..1.4
+foo,bar/ChangeSet|1.0..1.2
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Try rset -S in component ....................................$NL
+cd foo,bar
+bk rset -r1.0..1.2 -S | bk _sort > GOT
+cat >WANT <<EOF
+BitKeeper/etc/collapsed|1.0..1.1
+BitKeeper/etc/config|1.0..1.1
+BitKeeper/etc/gone|1.0..1.1
+BitKeeper/etc/ignore|1.0..1.1
+ChangeSet|1.0..1.2
+x|1.0..1.1
+EOF
+cmpfiles WANT GOT
+cd ..
+echo OK
+
 echo $N Prune ChangeSet files from the answer .......................$NL
-bk rset -PrSTART,END -H > OUT || fail
+bk rset -rSTART,END -H > OUT || fail
 bk _sort < OUT > GOT
 cat >WANT <<EOF
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
@@ -39,7 +63,7 @@ echo OK
 echo $N Test -sALL when not all components are populated ............$NL
 bk clone -s./foo,bar $Q . ../copy || fail
 cd ../copy
-bk rset -PrSTART,END -sALL 2>ERR && fail -f ERR
+bk rset -rSTART,END -sALL 2>ERR && fail -f ERR
 cat <<EOF >WANT
 rset: error, the following components are not populated:
 	./gcc
@@ -49,7 +73,7 @@ cmpfiles ERR WANT
 echo OK
 
 echo $N Test -sPRODUCT ..............................................$NL
-bk rset -PrSTART,END -sPRODUCT >OUT || fail
+bk rset -rSTART,END -sPRODUCT >OUT || fail
 cat <<EOF > WANT
 ChangeSet|1.2..1.4
 EOF
@@ -57,7 +81,7 @@ cmpfiles WANT OUT
 echo OK
 
 echo $N Test -s^PRODUCT .............................................$NL
-bk rset -PrSTART,END -s^PRODUCT | bk _sort >OUT || fail
+bk rset -rSTART,END -s^PRODUCT | bk _sort >OUT || fail
 cat <<EOF > WANT
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
 foo,bar/BitKeeper/etc/config|1.0..1.1
@@ -70,7 +94,7 @@ cmpfiles WANT OUT
 echo OK
 
 echo $N Test -s./comp ...............................................$NL
-bk rset -PrSTART,END -sfoo,bar | bk _sort >OUT || fail
+bk rset -rSTART,END -sfoo,bar | bk _sort >OUT || fail
 cat <<EOF > WANT
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
 foo,bar/BitKeeper/etc/config|1.0..1.1
@@ -84,7 +108,7 @@ echo OK
 
 
 echo $N Test -s^./comp ..............................................$NL
-bk rset -PrSTART,END -s^foo,bar >OUT || fail
+bk rset -rSTART,END -s^foo,bar >OUT || fail
 cat <<EOF > WANT
 ChangeSet|1.2..1.4
 EOF

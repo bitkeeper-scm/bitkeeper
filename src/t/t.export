@@ -392,3 +392,77 @@ bk export project export 2>"$HERE/ERR" && {
 echo OK
 
 fi	# if Darwin
+
+echo $N Demonstrate export -tpatch on nested tree ...................$NL
+cd "$HERE"
+nested nest
+cd gcc
+echo hi > file
+bk new $Q file
+bk commit $Q -yhi file
+cd ../gdb
+echo hi > file
+bk new $Q file
+bk commit $Q -yhi file
+cd ..
+bk commit $Q -yhi
+
+bk export -tpatch -r1.2..1.3 | grep ^diff > OUT
+cat <<EOF > WANT
+diff -Nru a/gcc/file b/gcc/file
+diff -Nru a/gdb/file b/gdb/file
+EOF
+cmpfiles OUT WANT
+
+cd gcc
+bk export -tpatch -s. -r1.2..1.3 | grep ^diff > OUT
+cat <<EOF > WANT
+diff -Nru a/gcc/file b/gcc/file
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N nested export -tpatch -S in component .......................$NL
+bk export -tpatch -S -r1.1..1.2 | grep ^diff > OUT
+cat <<EOF > WANT
+diff -Nru a/file b/file
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N nested export -tplain .......................................$NL
+bk export -tplain "$HERE"/nout || fail
+cd "$HERE"/nout
+bk _find -type f > ../OUT
+cat <<EOF > WANT
+gcc/file
+gdb/file
+EOF
+cmpfiles ../OUT WANT
+echo OK
+
+echo $N nested export -tplain -s. in component.......................$NL
+cd ..
+rm -rf nout
+cd nest/gcc
+bk export -tplain -s. "$HERE"/nout || fail
+cd "$HERE"/nout
+bk _find -type f > ../OUT
+cat <<EOF > WANT
+gcc/file
+EOF
+cmpfiles ../OUT WANT
+echo OK
+
+echo $N nested export -tplain -S in component........................$NL
+cd ..
+rm -rf nout
+cd nest/gcc
+bk export -tplain -S "$HERE"/nout || fail
+cd "$HERE"/nout
+bk _find -type f > ../OUT
+cat <<EOF > WANT
+file
+EOF
+cmpfiles ../OUT WANT
+echo OK
