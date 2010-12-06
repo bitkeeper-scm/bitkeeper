@@ -21,15 +21,15 @@ do
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i
 done
-bk commit $Q -y"Add $i to file$i"
-cd "$HERE/project" && bk commit $Q -y"Commit cset in gcc"
+bk commit -S $Q -y"Add $i to file$i"
+cd "$HERE/project" && bk commit -S $Q -y"Commit cset in gcc"
 cd "$HERE/project/gdb"
 for i in 1 2 3 4 5
 do
 	touch file$i
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i
-	bk commit $Q -y"add file $i"
+	bk commit -S $Q -y"add file $i"
 done
 cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
 echo OK
@@ -67,10 +67,10 @@ do
 		bk edit $Q file$proj$i || true
 		echo "new stuff $i" >> file$proj$i
 		bk delta $Q -a -y"modify" file$proj$i
-		bk commit $Q -y"Add $i to file$proj$i"
+		bk commit -S $Q -y"Add $i to file$proj$i"
 	done
 	cd ..
-	bk commit $Q -y"more stuff to gcc"
+	bk commit -S $Q -y"more stuff to gcc"
 	cd ..
 done
 cd "$HERE/project"
@@ -251,7 +251,7 @@ bk clone $Q ../remote ../local
 cd x/y/z/comp
 touch f.remote
 bk new $Q f.remote || exit 1
-bk commit $Q -yremote || exit 1
+bk commit -S $Q -yremote || exit 1
 cd "$HERE"/remote
 echo bam > bam
 bk new $Q -b bam
@@ -265,7 +265,7 @@ do
 	bk edit $Q file$i
 	echo "new stuff $i" >> file$i
 	bk delta $Q -y"modify" file$i
-	bk commit $Q -y"Add $i to file$i"
+	bk commit -S $Q -y"Add $i to file$i"
 done
 cd "$HERE"/remote
 bk commit $Q -y"remote gcc"
@@ -279,7 +279,7 @@ for i in 6 7 8 9
 do
 	echo "new stuff $i" >> file$i
 	bk new $Q -y"modify" file$i
-	bk commit $Q -y"Add $i to file$i"
+	bk commit -S $Q -y"Add $i to file$i"
 done
 bk edit $Q file1
 cp file1 old
@@ -287,7 +287,7 @@ echo "stuff at top" > file1
 cat old >> file1
 rm old
 bk delta $Q -ymodify file1 || exit 1
-bk commit $Q -y"modify file1" || exit 1
+bk commit -S $Q -y"modify file1" || exit 1
 cd "$HERE"/local
 bk edit $Q amerge
 bk delta $Q -fyamerge amerge
@@ -453,13 +453,13 @@ bk clone $Q project2 copy2 || exit 1
 cd project2/gcc
 echo "from project2" >conflict-test
 bk new $Q conflict-test || exit 2
-bk commit $Q -y'add conflict-test in project2' || exit 3
+bk commit -S $Q -y'add conflict-test in project2' || exit 3
 bk -P commit $Q -y'add conflict-test in project2/gcc' || exit 4
 # Add a new file with the same name to copy2/gcc.
 cd ../../copy2/gcc
 echo "from copy2" >conflict-test
 bk new $Q conflict-test || exit 5
-bk commit $Q -y'add conflict-test in copy2' || exit 6
+bk commit -S $Q -y'add conflict-test in copy2' || exit 6
 bk -P commit $Q -y'add conflict-test in copy2/gcc' || exit 7
 cd ..
 # Pull project2 into copy2 but do not resolve.
@@ -498,7 +498,7 @@ bk clone $Q project2 copy2 || exit 1
 cd project2/gcc
 echo "from project2" >conflict-test
 bk new $Q conflict-test || exit 2
-bk commit $Q -y'add conflict-test in project2' || exit 3
+bk commit -S $Q -y'add conflict-test in project2' || exit 3
 bk -P commit $Q -y'add conflict-test in project2/gcc' || exit 4
 # Add a new file with the same name to copy2/gcc, but do NOT commit it.
 cd ../../copy2/gcc
@@ -582,7 +582,7 @@ do	for c in gcc gdb
 	do	cd "$HERE/$i/$c"
 		touch $i-$c
 		bk new $Q $i-$c
-		bk commit $Q -ywhatever
+		bk commit -S $Q -ywhatever
 	done
 	cd "$HERE/$i"
 	bk commit $Q -ywhatever
@@ -595,7 +595,7 @@ cd "$HERE/sparse"
 cd gcc
 touch sparse
 bk new $Q sparse
-bk commit $Q -ywhatever
+bk commit -S $Q -ywhatever
 cd ..
 bk commit $Q -ywhatever
 bk pull $Q ../project || {
@@ -639,7 +639,7 @@ bk clone $Q project clone
 cd project/gdb
 touch junk
 bk new $Q junk
-bk commit $Q -ywhatever
+bk commit -S $Q -ywhatever
 cd ..
 bk commit $Q -ywhatever
 cd "$HERE"
@@ -686,7 +686,7 @@ do
 	bk edit $Q file$i
 	echo "new stuff $i" >> file$i
 	bk delta $Q -y"modify" file$i
-	bk commit $Q -y"Add $i to file$i"
+	bk commit -S $Q -y"Add $i to file$i"
 done
 cd "$HERE"/remote
 bk commit $Q -y"remote gcc"
@@ -766,13 +766,13 @@ bk clone -q -r1.8 -sHERE remote local
 cd remote/gcc
 touch gcc-file1
 bk new $Q gcc-file1
-bk commit $Q -ygcc || exit 3
+bk commit -S $Q -ygcc || exit 3
 cd ..
 bk commit $Q -ygcc || exit 3
 cd ../local/gcc
 touch gcc-file
 bk new $Q gcc-file
-bk commit $Q -ygcc || exit 3
+bk commit -S $Q -ygcc || exit 3
 cd ..
 bk pull -u > OUT 2>&1 && fail -f OUT should have failed
 grep -q 'gcc has uncommitted changes' OUT || fail -f OUT bad message
@@ -820,7 +820,7 @@ nested parent
 cd gcc
 echo `date` > afile
 bk new $Q afile
-bk commit $Q -yafile
+bk commit -S $Q -yafile
 bk -P commit $Q -yafile
 cd "$HERE"
 bk clone $Q parent child
@@ -829,13 +829,13 @@ cd "$HERE/parent/gcc"
 bk edit $Q afile
 echo new stuff > afile
 bk delta $Q -yafile-parent
-bk commit $Q -yafile-parent
+bk commit -S $Q -yafile-parent
 bk -P commit $Q -yafile-parent
 # add pending to child (that does not conflict)
 cd "$HERE/child/gcc"
 echo `date` > bfile
 bk new $Q bfile
-bk commit $Q  -ybfile
+bk commit -S $Q  -ybfile
 # pull should fail (we have a pending)
 bk -P pull $Q 2>ERR && fail should have failed
 grep -q "gcc has uncommitted changes" ERR || fail -f ERR
@@ -847,7 +847,7 @@ echo $N Setup pull with a conflict in product and quit ..............$NL
 cd "$HERE/parent/gcc"
 echo hi > cfile
 bk new $Q cfile
-bk commit $Q -ycfile
+bk commit -S $Q -ycfile
 cd ..
 echo hi > conflict
 bk new $Q conflict
@@ -926,7 +926,7 @@ echo $N Ensure pull fails unpopulate if pending local work present ..$NL
 cd C
 date >new-file
 bk new $Q new-file || fail
-bk commit $Q -ynew-file || fail
+bk commit -S $Q -ynew-file || fail
 cd ..
 bk pull >OUT 2>ERR && fail -f ERR should have failed
 perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
@@ -1031,12 +1031,12 @@ bk clone $Q copy4 copy5
 cd copy4
 touch C/copy4_file
 bk --cd=C new $Q copy4_file
-bk --cd=C commit $Q -ycopy4_file
+bk --cd=C commit -S $Q -ycopy4_file
 bk commit $Q -ycopy4_file
 cd ../copy5
 touch C/copy5_file
 bk --cd=C new $Q copy5_file
-bk --cd=C commit $Q -ycopy5_file
+bk --cd=C commit -S $Q -ycopy5_file
 bk commit $Q -ycopy5_file
 bk --cd=C changes -SRL > GOT
 grep -q "==== changes -L .*/C ====" GOT || fail -f GOT wrong local output

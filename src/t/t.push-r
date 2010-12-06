@@ -20,11 +20,11 @@ bk clone $Q project copy
 cd copy
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -STRUNK -yfoo
+bk commit $Q --tag=TRUNK -yfoo
 cd ../project
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -SBRANCH -yfoo
+bk commit $Q --tag=BRANCH -yfoo
 bk clone $Q . ../copy2
 bk pull $Q ../copy
 bk tag $Q T1

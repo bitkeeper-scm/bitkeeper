@@ -91,20 +91,20 @@ bk clone $Q -shere project copy
 cd project/gcc
 touch foo
 bk new $Q foo
-bk commit $Q -f
+bk commit -S $Q -f
 cd deepnest
 touch foo
 bk new $Q foo
-bk commit $Q -f
+bk commit -S $Q -f
 bk -P commit $Q -f
 cd ../../../copy/gcc
 touch bar
 bk new $Q bar
-bk commit $Q -f
+bk commit -S $Q -f
 cd deepnest
 touch bar
 bk new $Q bar
-bk commit $Q -f
+bk commit -S $Q -f
 bk -P commit $Q -f
 bk -P pull $Q || exit 1
 bk -e -r check -ac || exit 1
@@ -129,7 +129,7 @@ mkdir gui/tcltk
 cd gui/tcltk
 echo hi > file
 bk new $Q file || fail
-bk commit $Q -yfile
+bk commit -S $Q -yfile
 bk setup -f tk || fail
 bk -P commit $Q -ywrap || fail
 cd "$HERE"

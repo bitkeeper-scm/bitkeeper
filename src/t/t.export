@@ -25,14 +25,14 @@ cd "$HERE/project"
 echo foo.c > foo.c
 echo bar.c > bar.c
 bk new $Q foo.c bar.c
-bk commit $S -SCSET1 -y'foo.c and bar.c'
+bk commit $S --tag=CSET1 -y'foo.c and bar.c'
 echo OK
 
 echo $N Create 2nd changeset with a change to bar.c .................$NL
 bk edit $Q bar.c
 echo bar.c version 2 > bar.c
 bk delta $Q -ywhatever bar.c
-bk commit $S -SCSET2 -y'bar.c v2'
+bk commit $S --tag=CSET2 -y'bar.c v2'
 echo OK
 
 echo $N Create 3rd changeset in which we bk rm foo.c ................$NL
@@ -399,13 +399,13 @@ nested nest
 cd gcc
 echo hi > file
 bk new $Q file
-bk commit $Q -yhi file
+bk commit $Q -S -yhi file
 cd ../gdb
 echo hi > file
 bk new $Q file
-bk commit $Q -yhi file
+bk commit $Q -S -yhi file
 cd ..
-bk commit $Q -yhi
+bk commit $Q -S -yhi
 
 bk export -tpatch -r1.2..1.3 | grep ^diff > OUT
 cat <<EOF > WANT

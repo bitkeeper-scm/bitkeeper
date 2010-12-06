@@ -114,7 +114,7 @@ _make_repo() {
 			}
 			bk setup -C -a -f bin
 			bk setup -C -a -f lib
-			bk commit -q -y"create gui repo"
+			bk commit -S -q -y"create gui repo"
 			touch bin/BitKeeper/tmp/saveme
 			touch lib/BitKeeper/tmp/saveme
 			cd ..

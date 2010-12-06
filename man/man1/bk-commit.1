@@ -7,14 +7,15 @@ bk commit \- commit deltas to a changeset
 .B bk commit
 .[B] \-cfq
 .[OPTreq] \-l file 
-.[OPTreq] \-S tag
+.[OPTreq] \-\-tag=tag
+.[OPTreq] \-sALIAS
+.[B] \-S
 .[OPTreq] \-Y file 
 .[B] \-
 .br
 .B bk commit
 .[B] \-cfq
 .[OPTreq] \-l file 
-.[OPTreq] \-S tag
 .[OPTreq] \-y comment
 .[B] \-
 .SH DESCRIPTION
@@ -92,7 +93,7 @@ comment entries in the ChangeSet file.  The ChangeSet file is the center
 of activity in \*(BK, and having an unnecessarily large one will not help
 performance.
 .SH OPTIONS
-.TP \-y\*<comment\*>
+.TP "\\fB\\-\\-standalone \\fP"
 .B \-c
 Use comments saved by a previous run of citool, fix, collapse, etc.
 It is an error if there are no saved comments.
@@ -111,7 +112,21 @@ format described above.
 .B \-q
 Run quietly.
 .tp
-.OPTreq \-S tag
+.if \n[NESTED] \{\
+.B \-sALIAS
+Commit all pending files in the given aliases as well as the
+PRODUCT.
+Use
+.B \-s\^PRODUCT
+if the top level commit is not wanted.
+.tp
+.B \-S
+.tp
+.B \-\-standalone
+Commit only in the current repository.
+\}
+.tp
+\fB--tag\fR=\*<tag\*>
 Tag the tree with
 .ARG tag
 at the same time as the commit.

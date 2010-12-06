@@ -1,0 +1,48 @@
+echo $N Test commit -s. in component ................................$NL
+nested project
+echo junk > file
+bk new $Q file
+cd gcc
+echo junk > file
+bk new $Q file
+bk commit $Q -ynew -s. || fail
+bk changes -r+ -v -nd':DPN:|:I:' >OUT
+cat <<EOF > WANT
+ChangeSet|1.3
+file|1.1
+file|1.0
+gcc/ChangeSet|1.2
+gcc/file|1.1
+gcc/file|1.0
+EOF
+cmpfiles WANT OUT
+echo OK
+
+echo $N Test commit -s. -s^PRODUCT in component .....................$NL
+bk edit $Q file
+echo hh >> file
+bk ci $Q -yhh file
+
+bk commit $Q -ynew2 -s. -s^PRODUCT || fail
+# product cset unchanged
+bk changes -r+ -v -nd':DPN:|:I:' >OUT
+cmpfiles WANT OUT
+
+# component is new
+bk changes -Sr+ -v -nd':DPN:|:I:' >OUT
+cat <<EOF > WANT
+ChangeSet|1.3
+file|1.2
+EOF
+cmpfiles WANT OUT
+echo OK
+
+echo $N Test using pending files over whole nest ....................$NL
+cd ..
+bk sfiles -pAC > pending
+bk commit $Q -lpending 2>ERR1 && fail -f ERR1 should fail
+bk commit $Q - 2>ERR2 < pending && fail -f ERR2 should fail
+echo 'commit: Must use -S with -l or "-"' > WANT
+cmpfiles ERR1 WANT
+cmpfiles ERR2 WANT
+echo OK

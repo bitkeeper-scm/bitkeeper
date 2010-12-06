@@ -19,7 +19,7 @@ commercial project
 echo foo > foo.c
 bk ci $Q -i foo.c 
 if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
-bk commit $S -yCset -SCSET
+bk commit $S -yCset --tag=CSET
 bk get $S -p ChangeSet > TOT
 bk get $S -prCSET ChangeSet > SYM
 cmp -s TOT SYM
@@ -48,11 +48,11 @@ bk clone $Q project copy
 cd project
 bk edit $Q foo.c
 bk delta $Q -ywhatever foo.c
-bk commit -y'PROJECT tag' $Q -SPROJECT 
+bk commit -y'PROJECT tag' $Q --tag=PROJECT 
 cd "$HERE/copy"
 bk edit $Q foo.c
 bk delta $Q -ywhatever foo.c
-bk commit -y'COPY tag' $Q -SCOPY
+bk commit -y'COPY tag' $Q --tag=COPY
 bk pull $Q
 if [ -d RESYNC ]
 then	echo Failed to finish resolve
@@ -64,11 +64,11 @@ echo $N Add the same tag in each repository, creating conflict ......$NL
 cd "$HERE/project"
 bk edit $Q foo.c
 bk delta $Q -ywhatever foo.c
-bk commit -y'project CONFLICT' $Q -SCONFLICT
+bk commit -y'project CONFLICT' $Q --tag=CONFLICT
 cd "$HERE/copy"
 bk edit $Q foo.c
 bk delta $Q -ywhatever foo.c
-bk commit -y'copy CONFLICT' $Q -SCONFLICT
+bk commit -y'copy CONFLICT' $Q --tag=CONFLICT
 (echo '?'; echo x; echo l; echo q; ) |
 bk pull $Q 2> OUT
 if [ -d RESYNC ]

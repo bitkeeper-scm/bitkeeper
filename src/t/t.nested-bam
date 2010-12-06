@@ -17,7 +17,7 @@ cp "$DATA" data
 bk new $Q data || exit 1
 RK=`bk id -S | sed 's/|/-/g'`
 test -d ../BitKeeper/BAM/$RK || exit 1
-bk commit $Q -ybam
+bk commit -S $Q -ybam
 cd ..
 bk commit $Q -ybam
 echo OK
@@ -59,7 +59,7 @@ cd bam_comp
 RK=`bk id -S | sed 's/|/-/g'`
 echo junk > file1
 bk new $Q -b file1 || exit
-bk commit $Q -ybam2 || exit 1
+bk commit -S $Q -ybam2 || exit 1
 bk -P commit $Q -ybam2 || exit 1
 echo OK
 
@@ -95,12 +95,12 @@ echo $N Pushing a updates to non-BAM components with a BAM product ..$NL
 cd clone3
 echo hi > prod_bam
 bk new $Q -b prod_bam || exit 1
-bk commit $Q -yprod || exit 1
+bk commit -S $Q -yprod || exit 1
 bk push $Q || exit 1
 cd gcc
 touch hi > nonbam
 bk new $Q nonbam || exit 1
-bk commit $Q -ynonbam || exit 1
+bk commit -S $Q -ynonbam || exit 1
 bk -P commit $Q -yprod_gcc || exit 1
 bk -P push $Q || exit 1
 echo OK

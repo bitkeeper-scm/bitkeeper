@@ -2054,7 +2054,7 @@ cd triggers
 set -x
 bk new $TRIGS || fail
 # fire pre and post commit
-bk commit -STRIGBASE -yall-trigs || fail
+bk commit --tag=TRIGBASE -yall-trigs || fail
 cd ..
 # clone, rclone, push, pull, undo, tags, collapse, lease renew
 bk clone -v .. ../../clone.mt || fail

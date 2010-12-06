@@ -755,7 +755,7 @@ doAttach(Opts *opts)
 			}
 		}
 		if (nLines(opts->attach) &&
-		    systemf("bk commit -%sy'attaching new components'",
+		    systemf("bk commit -S -%sy'attaching new components'",
 		    opts->quiet)) {
 			goto err;
 		}
@@ -777,7 +777,7 @@ commitPending(Opts *opts)
 	// as this sfiles the whole blasted nested collection.
 	verbose((stderr, "commit any pending gone\n"));
 	/* If seeing a long pause here, put back noise. */
-	if (system("bk --each-repo commit -qy'partition gone'")) {
+	if (system("bk commit -sALL -qy'partition gone'")) {
 		goto err;
 	}
 	ret = 0;

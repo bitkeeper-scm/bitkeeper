@@ -2029,7 +2029,7 @@ bam_convert_main(int ac, char **av)
 		system("echo 'BAM:on' >> BitKeeper/etc/config");
 		system("bk delta -qy'Add BAM' BitKeeper/etc/config");
 		system("echo 'BitKeeper/etc/SCCS/s.config|+' | "
-		    "bk commit -qy'Add BAM' -");
+		    "bk commit -S -qy'Add BAM' -");
 		proj_reset(0);
 	}
 	sfiles = popen("bk sfiles", "r");

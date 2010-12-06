@@ -80,7 +80,7 @@ rm -fr stripdel proj copy1 copy2 left right
 commercial proj
 touch foo bar
 bk new $Q foo bar
-bk commit $Q -Sfirst -ynewfoo
+bk commit $Q --tag=first -ynewfoo
 if [ $? -ne 0 ]; then echo failed commit; exit 1; fi
 echo OK
 echo $N Clone and make deltas in each proj and copy1 ................$NL

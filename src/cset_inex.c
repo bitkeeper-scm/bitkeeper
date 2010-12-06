@@ -197,7 +197,8 @@ commit(int quiet, delta *d)
 	cmds[i=0] = "bk";
 	cmds[++i] = "commit";
 	cmds[++i] = "-dF";
-	if (quiet) cmds[++i] = "-s";
+	cmds[++i] = "-S";
+	if (quiet) cmds[++i] = "-q";
 	cmds[++i] = comment;
 	cmds[++i] = 0;
 	i = spawnvp(_P_WAIT, "bk", cmds);

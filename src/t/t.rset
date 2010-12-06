@@ -41,7 +41,7 @@ touch deleted base
 bk new $Q deleted base BitKeeper/triggers/pre-delta
 bk admin $Q -fEOLN_UNIX BitKeeper/triggers/pre-delta
 RMNAME=`bk log -r1.0 -nd:RM_NAME: deleted`
-bk commit $Q -SONE -f
+bk commit $Q --tag=ONE -f
 cd ..
 bk clone $Q project copy
 cd project
@@ -51,14 +51,14 @@ bk delta $Q -fyuniq base
 bk mv base project
 touch new.project
 bk new $Q new.project
-bk commit $Q -STWO -f
+bk commit $Q --tag=TWO -f
 cd ../copy
 bk edit $Q base
 bk delta $Q -fyuniq base
 bk mv base copy
 touch new.copy
 bk new $Q new.copy
-bk commit $Q -STHREE -f
+bk commit $Q --tag=THREE -f
 { echo m; echo merge; } | bk pull $Q 2> ERR || fail -f ERR
 bk tag $Q FOUR
 echo OK

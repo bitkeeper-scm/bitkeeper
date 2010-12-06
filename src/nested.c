@@ -811,7 +811,7 @@ nested_each(int quiet, char **av, char **aliases)
 	int	i, j;
 	char	**nav;
 	char	*s, *t;
-	int	errors = 0;
+	int	errors = 0, freethem = 0;
 	int	status;
 	char	buf[MAXLINE];
 
@@ -828,6 +828,7 @@ nested_each(int quiet, char **av, char **aliases)
 	if (n->cset) sccs_close(n->cset);	/* win32 */
 	unless (aliases) {
 		aliases = addLine(aliases, strdup("HERE"));
+		freethem = 1;
 	}
 
 	if (nested_aliases(n, n->tip, &aliases, start_cwd, n->pending)) {
@@ -897,7 +898,7 @@ nested_each(int quiet, char **av, char **aliases)
 		}
 	}
 err:	nested_free(n);
-	freeLines(aliases, free);
+	if (freethem) freeLines(aliases, free);
 	return (errors);
 }
 

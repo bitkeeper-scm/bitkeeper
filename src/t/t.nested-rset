@@ -6,9 +6,9 @@ bk setup -af foo,bar
 cd foo,bar
 touch x
 bk new $Q x
-bk commit $Q -f
+bk commit -S $Q -f
 cd ..
-bk commit $Q -SEND -f
+bk commit $Q --tag=END -f
 # does not fail because there is no error handling in recursive sys()
 bk rset -rSTART,END | bk _sort > GOT
 cat >WANT <<EOF

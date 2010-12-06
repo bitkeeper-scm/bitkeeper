@@ -413,10 +413,11 @@ baddir:						fprintf(stderr,
 			}
 			each_repo = 0;
 
-			// -s|-sHERE|-s. is fine.
+			// -s|-sHERE|-s.|-sPRODUCT are fine.
 			EACH(aliases) {
 				unless (streq(aliases[i], ".") ||
-				    strieq(aliases[i], "HERE")) {
+				    strieq(aliases[i], "HERE") ||
+				    strieq(aliases[i], "PRODUCT")) {
 					fprintf(stderr,
 					    "bk -s: illegal alias used in "
 					    "traditional repository:\n\t%s\n",
@@ -434,6 +435,7 @@ baddir:						fprintf(stderr,
 				nav = addLine(nav, strdup(av[i]));
 			}
 			ret = nested_each(!headers, nav, aliases);
+			freeLines(aliases, free);
 			goto out;
 		}
 		if (locking) {
@@ -495,6 +497,7 @@ bad_locking:				fprintf(stderr,
 				sopts = addLine(sopts,
 				    aprintf("--relpath=%s", start_cwd));
 				ret = nested_each(!headers, sopts, aliases);
+				freeLines(aliases, free);
 				goto out;
 			} else if (from_iterator) {
 				ret = 0;
@@ -854,7 +857,7 @@ private	struct {
 	{"check", CMD_COMPAT_NOSI},
 	{"clone", 0},		/* locking handled in clone.c */
 	{"collapse", 0},
-	{"commit", CMD_WRLOCK|CMD_NESTED_WRLOCK},
+	{"commit", 0},
 	{"fix", 0},
 	{"get", CMD_COMPAT_NOSI},
 	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},

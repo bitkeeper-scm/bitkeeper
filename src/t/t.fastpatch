@@ -275,7 +275,7 @@ base 4
 EOF
 bk new $Q -l file
 bk admin -Znone file
-bk commit $Q -SBASE -yfile
+bk commit $Q --tag=BASE -yfile
 bk clone $Q . ../boston
 cat <<EOF > file
 chicago 1
@@ -370,7 +370,7 @@ EOF
 cmpfiles PATCH.got PATCH.want
 # Switch to boston...
 cd ../boston
-bk commit $Q -SBOSTON -yboston
+bk commit $Q --tag=BOSTON -yboston
 weavedump SCCS/s.file > WEAVE.got
 cat <<EOF > WEAVE.want
 I 3
@@ -538,22 +538,22 @@ cd "$HERE"/copy
 bk clone $Q . ../helper
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -Scopy -yfoo
+bk commit $Q --tag=copy -yfoo
 bk tag $Q start
 cd ../helper
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -Shelper -yfoo
+bk commit $Q --tag=helper -yfoo
 bk tag $Q here
 cd ../project
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -Sproject -yfoo
+bk commit $Q --tag=project -yfoo
 bk tag $Q -rBASE there
 bk tag $Q top
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -Sprojectagain -yfoo
+bk commit $Q --tag=projectagain -yfoo
 bk tag $Q -rtop topper
 cd ../copy
 bk pull $Q ../helper

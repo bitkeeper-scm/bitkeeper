@@ -6,7 +6,7 @@ bk portal $Q -r
 cd gcc
 echo hi > gcc_file
 bk new $Q gcc_file || exit 1
-bk commit -yadd $Q || exit 1
+bk commit -S -yadd $Q || exit 1
 bk -P commit -yadd $Q || exit 1
 echo OK
 
@@ -59,10 +59,10 @@ echo OK
 echo $N Now run fix -c in product ...................................$NL
 # redo collapse
 bk ci $Q -i -c gcc_file
-bk commit $Q -YSCCS/c.ChangeSet || faile
+bk commit -S $Q -YSCCS/c.ChangeSet || fail
 bk _rm SCCS/c.ChangeSet
 cd ..
-bk commit $Q -YSCCS/c.ChangeSet || faile
+bk commit $Q -YSCCS/c.ChangeSet || fail
 bk _rm SCCS/c.ChangeSet
 bk --cd=gcc fix -c $Q || fail
 bk sfiles -p > GOT
@@ -92,7 +92,7 @@ do
 	cd $comp
 	echo "PRE-COLLAPSE $comp" > ${comp}_file
 	bk new $Q -y'pre-collapse' ${comp}_file
-	bk commit $Q -y"pre-collapse $comp"
+	bk commit -S $Q -y"pre-collapse $comp"
 	cd ..
 done
 bk commit $Q -y"pre-collapse product"
@@ -108,7 +108,7 @@ do
 	bk edit $Q ${comp}_file
 	echo "POST-COLLAPSE $comp" > ${comp}_file
 	bk ci $Q -y'post-collapse' ${comp}_file
-	bk commit $Q -y"post-collapse $comp"
+	bk commit -S $Q -y"post-collapse $comp"
 	cd ..
 done
 bk commit $Q -y"post-collapse product"
@@ -132,7 +132,7 @@ cd copy/gcc
 echo new2 > gcc_file
 bk new $Q -ynew2 gcc_file || fail
 KEY1=`bk changes -Sr+ -nd:KEY:`
-bk commit $Q -ynew2 || fail
+bk commit $Q -S -ynew2 || fail
 KEY2=`bk changes -Sr+ -nd:KEY:`
 
 bk _test -f SCCS/c.gcc_file && fail

@@ -3,18 +3,18 @@ nested project
 cd gcc
 echo hi > file
 bk new $Q file
-bk commit $Q -ynew1
+bk commit -S $Q -ynew1
 bk -P commit $Q -ynew2
 bk edit $Q file
 echo next > file
 bk ci $Q -ynext file
-bk commit $Q -ynext1
+bk commit -S $Q -ynext1
 bk -P commit $Q -ynext2
 (cd ..; bk tag $Q FOO)
 bk edit $Q file
 echo bye > file
 bk ci $Q -ybye file
-bk commit $Q -ybye1
+bk commit -S $Q -ybye1
 bk -P commit $Q -ybye2
 
 cd ..

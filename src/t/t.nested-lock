@@ -76,7 +76,7 @@ bk clone $Q product child
 cd product/gcc
 touch afile
 bk new $Q afile
-bk commit $Q -yafile
+bk commit -S $Q -yafile
 cd ..
 bk commit $Q -yafile
 cd "$HERE/child"

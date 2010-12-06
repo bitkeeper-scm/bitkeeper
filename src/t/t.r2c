@@ -67,7 +67,7 @@ echo $N Simple component case........................................$NL
 cd gcc
 touch afile
 bk new $Q afile
-bk commit -y. $Q afile
+bk commit -S -y. $Q afile
 bk -P commit -y. $Q
 rev=`bk log -nd:REV: -r+ afile`
 prev=`bk -P changes -nd:REV: -r+`
@@ -82,7 +82,7 @@ do
 	bk edit $Q afile
 	echo $i > afile
 	bk delta $Q -y. afile
-	bk commit $Q -y.
+	bk commit -S $Q -y.
 	test $i = 3 && {
 		rev=`bk log -nd:REV: -r+ afile`
 	}

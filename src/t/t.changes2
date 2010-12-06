@@ -62,7 +62,7 @@ bk pull $Q
 cd ../simple
 bk edit $Q f
 BK_USER=$NAME2 bk delta $Q -fy'Second checkin' f
-BK_USER=$NAME2 bk commit $Q -Ssecond -y'Second checkin' || fail
+BK_USER=$NAME2 bk commit $Q --tag=second -y'Second checkin' || fail
 cd ../diamond
 # binary data
 printf "binary\0data\0" > b
@@ -70,7 +70,7 @@ bk new $Q -b b
 BAMCKEY=`bk prs -r+ -hnd:KEY: b`
 bk edit $Q f g
 BK_USER=$NAME2 bk delta $Q -fy'Branch checkin' f g
-BK_USER=$NAME2 bk commit $Q -Sbranch -y'Branch checkin' || fail
+BK_USER=$NAME2 bk commit $Q --tag=branch -y'Branch checkin' || fail
 BAMCSET=`bk changes -kr+`
 BK_USER=$NAME2 bk tag $Q branchtag
 bk pull $Q
@@ -602,7 +602,7 @@ touch foo
 bk new $Q foo
 bk commit $Q -yfoo
 bk mv foo bar
-bk commit $Q -S"THIS_ONE" -ymv
+bk commit $Q --tag="THIS_ONE" -ymv
 KEY=`bk log -r+ -nd:KEY: bar`
 ROOTKEY=`bk log -r+ -nd:ROOTKEY: bar`
 bk edit $Q BitKeeper/etc/gone

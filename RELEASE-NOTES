@@ -1,4 +1,67 @@
-BitKeeper 5.0.2 Release Notes
+Release notes for BitKeeper version 5.1 (released xx-Dec-2010)
+
+Nested interface changes:
+    In nested repositories the behavior of several commands have
+    changed.  In general, commands now operate on the entire nested
+    collection by default and the --standalone/-S option is used to
+    restrict a command to only the current component.  Or if running
+    from the product the -S option will prevent recursing into all
+    populated components.  Also several commands now have a -sALIAS
+    option that is valid when _not_ in standalone mode to restrict the
+    command to just a subset of the currently populated components.
+    No interface changes for traditional standalone repositories.
+
+    Changes:
+      - changes
+          The 5.0 release already followed this model, but
+	  'bk changes -v' was broken when run from a component and
+          then include a bugfix for that.
+ 
+      - comments, export, rset
+         Whole collection by default and supports -S and -sALIAS
+         
+      - commit:
+          bk commit	    # commit all components
+          bk commit -S      # commit just the current component
+          bk commit -sALIAS # commit product + components in ALIAS
+
+      - id, repocheck, renames
+      	 Runs from product by default, use -S for components
+      - level
+         Only runs in product
+
+    - bk commit's old -S<tag> option was renamed to --tag=<tag>. -S now
+      is the same as --standalone. This is for consistency with other
+      commands.
+
+clone
+    - Add new -@baseline option.
+      This used to be the undocuemented 'bk clonemod' command.
+      When doing a network clone over a slow connection, it can be made
+      much faster by tell clone about a local baseline that already contains
+      the majority of the data.  Then the local copy will be used and
+      only new data will be pulled from the remote repository.
+
+    - The new --identical option when used with a nested repository
+      will make the destination have the same components populated as were
+      in the repository when the cset being cloned was originally created.
+      This is used to exactly recreate old repositories.
+
+ignore
+    - The 'bk ignore' command with no arguements lists the current
+      BitKeeper/etc/ignore file.  It now mentions the contents of
+      $HOME/.bk/ignore if the current use have ignore patterns there
+      as well.
+
+revision parsing
+    - Now for all files -rTAG will work as if the file had that tag.
+      For files this expands to the delta that was current as if
+      the cset containing that tag.
+      This was available before as -r@@TAG.
+
+
+============================================================================
+Release notes for BitKeeper version 5.0.2 (released 18-Nov-2010)
 
 This is a mostly a bugfix release to cleanup outstanding issues.
 
@@ -23,7 +86,7 @@ Product centric command changes:
       is in.
 
 ============================================================================
-BitKeeper 5.0.1 Release Notes
+Release notes for BitKeeper version 5.0.1 (released 01-Nov-2010)
 
 This is a cleanup release though it does change some UI (something we
 normally do not do in a "dot dot" release.
@@ -91,7 +154,7 @@ Bugs fixed
     reads the changeset file, and drops the lock.
 
 ============================================================================
-BitKeeper 5.0 Release Notes
+Release notes for BitKeeper version 5.0 (released 11-Oct-2010)
 
 Nested collections
 ------------------

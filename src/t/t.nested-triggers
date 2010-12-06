@@ -199,7 +199,7 @@ echo $N Triggers during pull w/component cset .......................$NL
 cd "$HERE/source/gcc"
 echo new >new
 bk new $Q new || exit 1
-bk commit $Q -y'add new' || exit 2
+bk commit -S $Q -y'add new' || exit 2
 bk -P commit $Q -y'add gcc/new' || exit 3
 rm -f "$TRIGS.client" "$TRIGS.server"
 cd "$HERE/pulldest"
@@ -384,7 +384,7 @@ echo $N Triggers during undo w/component cset .......................$NL
 cd "$HERE/source/gcc"
 echo new >undo
 bk new $Q undo || exit 1
-bk commit $Q -y'add undo' || exit 2
+bk commit -S $Q -y'add undo' || exit 2
 bk -P commit $Q -y'add gcc/undo' || exit 3
 cd ..
 rm -f "$TRIGS.client" "$TRIGS.server"

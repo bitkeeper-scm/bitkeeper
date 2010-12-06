@@ -79,17 +79,17 @@ bk clone $Q project resolve-tag
 cd resolve-tag
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -yfoo -SFIRST
+bk commit $Q -yfoo --tag=FIRST
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -yfoo -SSECOND
+bk commit $Q -yfoo --tag=SECOND
 cd ../project
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -yfoo -SFIRST
+bk commit $Q -yfoo --tag=FIRST
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -yfoo -SSECOND
+bk commit $Q -yfoo --tag=SECOND
 cd ../resolve-tag
 ORIG=`_tagkeys SECOND | head -1`
 bk pull $Q -R

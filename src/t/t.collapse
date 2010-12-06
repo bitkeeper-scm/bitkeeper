@@ -517,8 +517,8 @@ bk portal $Q -r
 # create csets in all components
 touch afile gcc/afile gdb/afile
 bk new $Q afile gcc/afile gdb/afile
-(cd gcc && bk commit $Q -yafile)
-(cd gdb && bk commit $Q -yafile)
+(cd gcc && bk commit $Q -S -yafile)
+(cd gdb && bk commit $Q -S -yafile)
 bk commit $Q -yafile
 REV=`bk changes -qnd:REV: -r+`
 BK_CONFIG="license:$BKL_ACADEMIC!;
@@ -529,8 +529,8 @@ echo content > afile
 echo content > gcc/afile
 echo content > gdb/afile
 bk delta $Q -y. afile gcc/afile gdb/afile
-(cd gcc && bk commit $Q -yafile)
-(cd gdb && bk commit $Q -yafile)
+(cd gcc && bk commit $Q -S -yafile)
+(cd gdb && bk commit $Q -S -yafile)
 bk commit $Q -yafile
 unset BK_CONFIG
 bk collapse $Q -ea$REV || fail collapse failed

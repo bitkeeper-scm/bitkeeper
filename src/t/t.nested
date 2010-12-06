@@ -374,7 +374,7 @@ cd "$HERE/project/gcc"
 bk edit $Q name
 echo him mom > name
 bk delta $Q -yxxx name
-bk commit -yxxx $Q 
+bk commit -S -yxxx $Q
 bk _test -f SCCS/d.ChangeSet || {
 	echo failed to leave d.file
 	exit 1
@@ -401,7 +401,7 @@ cd gcc
 bk edit $Q name
 echo him mom >> name
 bk delta $Q -yxxx name
-bk commit -yxxx $Q
+bk commit -S -yxxx $Q
 bk _test -f SCCS/d.ChangeSet || {
 	echo failed to leave d.file
 	exit 1
@@ -595,13 +595,13 @@ echo OK
 echo $N Make some csets and look at changes output ..................$NL
 # First commit the rename
 cd "$HERE/project"
-bk commit $Q -y"rename cset"
+bk commit -S $Q -y"rename cset"
 cp -rp gcc4 ../gcc4-save
 cd gcc4
 for i in file1 file2 file3
 do	echo $i > $i
 	bk new $Q $i
-	bk commit $Q -y"Add in $i in gcc"
+	bk commit $Q -S -y"Add in $i in gcc"
 done
 cd "$HERE/project"
 bk commit $Q -y"Should be 3 csets"
@@ -1429,13 +1429,13 @@ cd remote
 cd gcc
 touch foo
 bk new $Q foo
-bk commit $Q -f
+bk commit -S $Q -f
 cd ..
-bk commit $Q -f
+bk commit -S $Q -f
 cd ../local/gdb
 touch foo
 bk new $Q foo
-bk commit $Q -f
+bk commit -S $Q -f
 cd ..
 bk commit $Q -f
 bk pull $Q -R
@@ -1548,11 +1548,11 @@ bk new $Q afile
 cd gdb
 echo "aline" > afile
 bk new $Q afile
-bk commit $Q -y"add afile"
+bk commit -S $Q -y"add afile"
 cd ../gcc4
 echo "aline" > afile
 bk new $Q afile
-bk commit $Q -y"add afile"
+bk commit -S $Q -y"add afile"
 cd ..
 bk commit $Q -y"added afile to gdb and gcc4"
 # add a content cset since cset -x doesn't support removing new files
@@ -1563,12 +1563,12 @@ cd gdb
 bk edit $Q afile
 echo "lineb" >> afile
 bk delta $Q -y"add lineb" afile
-bk commit $Q -y"add lineb"
+bk commit -S $Q -y"add lineb"
 cd ../gcc4
 bk edit $Q afile
 echo "lineb" >> afile
 bk delta $Q -y"add lineb" afile
-bk commit $Q -y"add lineb"
+bk commit -S $Q -y"add lineb"
 cd ..
 bk commit $Q -y"add lineb"
 CSET=`bk changes -nd:KEY: -r+`
@@ -1580,12 +1580,12 @@ cd gdb
 bk edit $Q afile
 echo "linec" >> afile
 bk delta $Q -y"add linec" afile
-bk commit $Q -y"add linec"
+bk commit -S $Q -y"add linec"
 cd ../gcc4
 bk edit $Q afile
 echo "linec" >> afile
 bk delta $Q -y"add linec" afile
-bk commit $Q -y"add linec"
+bk commit -S $Q -y"add linec"
 cd ..
 bk commit $Q -y"add linec"
 # okay, now test the cset -x

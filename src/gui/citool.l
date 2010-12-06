@@ -2044,10 +2044,10 @@ commitComponent(string comp)
 		scrollToBottom();
 		update();
 		unless (self.resolve) {
-			err = bgExec("bk", "commit", "-dq",
+			err = bgExec("bk", "commit", "-S", "-dq",
 			    "-l${tmp1}", "-Y${tmp2}");
 		} else {
-			err = bgExec("bk", "commit", "-dq", "-R",
+			err = bgExec("bk", "commit", "-S", "-dq", "-R",
 			    "-l${tmp1}", "-Y${tmp2}");
 		}
 

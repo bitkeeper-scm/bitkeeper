@@ -5,7 +5,7 @@ bk clone $Q . ../copy
 bk detach $Q gcc ../gcc.standalone
 touch gcc/foo
 bk new $Q gcc/foo
-bk -e commit $Q -yfoo
+bk commit $Q -yfoo || fail
 cd ../copy
 bk pull $Q
 cd gcc

@@ -149,7 +149,7 @@ echo $N Matrix clone tests to check performance assumptions .........$NL
 commercial project
 touch foo bar
 bk new $Q foo bar
-bk commit $Q -SBASE -yfiles
+bk commit $Q --tag=BASE -yfiles
 bk edit $Q foo
 echo foo > foo
 bk delta $Q -yjustfoo foo

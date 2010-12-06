@@ -2321,10 +2321,11 @@ commit(opts *opts)
 	cmds[i = 0] = "bk";
 	cmds[++i] = "-?BK_NO_REPO_LOCK=YES";
 	cmds[++i] = "commit";
+	cmds[++i] = "-S";
 	cmds[++i] = "-R";
 	/* force a commit if we are a null merge */
 	unless (opts->resolved || opts->renamed) cmds[++i] = "-F";
-	if (opts->quiet) cmds[++i] = "-s";
+	if (opts->quiet) cmds[++i] = "-q";
 	if (opts->comment) {
 	    	/* Only do comments if they really gave us one */
 		if (opts->comment[0]) {

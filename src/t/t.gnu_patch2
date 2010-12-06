@@ -28,12 +28,12 @@ echo foo > foo_init.c
 bk admin $Q -r1.1 -ifoo_init.c  foo.c
 rm foo_init.c
 bk co $Q -l foo.c
-bk commit $S -y"This is \"Change Set\" A" -SCSET_A
+bk commit $S -y"This is \"Change Set\" A" --tag=CSET_A
 echo foo-new >> foo.c
 bk ci $Q -y foo.c
 date > "$HERE/project/BitKeeper/etc/data"
 bk ci $Q -i "$HERE/project/BitKeeper/etc/data"
-bk commit $S -y"This is a \"Change Set\" B" -SCSET_B
+bk commit $S -y"This is a \"Change Set\" B" --tag=CSET_B
 cd "$HERE/project"
 # the sed script filters off the time which might not match
 bk export -hT -tpatch -r1.2,1.3 | sed -e 's/foo\.c.*/foo.c/' > "$HERE/CMP1"
@@ -58,7 +58,7 @@ rm bar2_init.c
 bk co $Q -l bar2.c
 echo bar2-new >> bar2.c
 bk ci $Q -y bar2.c
-bk commit $S -y"This is a \"Change Set\" C" -SCSET_C
+bk commit $S -y"This is a \"Change Set\" C" --tag=CSET_C
 cd "$HERE/project"
 bk export -T -k -r1.3 "$HERE/a"
 bk export -hT -tpatch -r1.3,1.4 > patch

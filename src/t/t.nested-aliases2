@@ -8,7 +8,7 @@ do
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i
 done
-bk commit $Q -y"Add $i to file$i"
+bk commit -S $Q -y"Add $i to file$i"
 cd "$HERE/project" && bk commit $Q -y"Commit cset in gcc"
 cd "$HERE/project/gdb"
 for i in 1 2 3 4 5
@@ -16,7 +16,7 @@ do
 	touch file$i
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i
-	bk commit $Q -y"add file $i"
+	bk commit -S $Q -y"add file $i"
 done
 cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
 cd "$HERE"
@@ -284,7 +284,7 @@ echo $N Remove component, clone previous glob .......................$NL
 cd "$HERE/glob3/gcc/nm"
 echo hi > hi
 bk new $Q hi || fail
-bk commit $Q -yhi || fail
+bk commit -S $Q -yhi || fail
 bk -P commit $Q -yhi || fail
 cd "$HERE"
 rm -rf glob3/gcc/nm

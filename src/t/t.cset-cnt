@@ -6,9 +6,13 @@ BK_TTYPRINTF="$HERE/INITs"
 FILE="$BK_TTYPRINTF"
 export BK_SHOWINIT BK_TTYPRINTF
 
+# useful debug (uncomment to use)
+#BK_SHOWPROC="$HERE/INITs"
+#export BK_SHOWPROC
+
 # Put _only_ inits in the INITs file, otherwise there could be races
 check_cnt() {
-	SEEN=`cat "$FILE" | wc -l`
+	SEEN=`grep ^init "$FILE" | wc -l`
 	test $SEEN -ne $CNT && {
 		echo was $CNT now $SEEN
 		echo list at "$FILE"
@@ -152,12 +156,12 @@ cd gcc
 echo hi > file1
 bk new $Q file1
 rm "$FILE"
-bk commit $Q -ynew || exit 1
+bk commit -S $Q -ynew || exit 1
 check_cnt
 echo OK
 
-CNT=9
-echo $N "Count the inits for a 'bk -P commit' ($CNT) ...................."$NL
+CNT=10
+echo $N "Count the inits for a 'bk -P commit' ($CNT) ..................."$NL
 rm -f "$FILE"
 bk -P commit $Q -ynew || exit 1
 check_cnt
@@ -172,12 +176,12 @@ bk setup -cc -f docs || exit 1
 cd docs
 echo hi > doc
 bk new $Q doc
-bk commit $Q -ydoc || exit 1
+bk commit -S $Q -ydoc || exit 1
 cd ..
 cd gdb
 echo ss > gdbfile
 bk new $Q gdbfile
-bk commit $Q -ygdb || exit 1
+bk commit -S $Q -ygdb || exit 1
 cd ..
 bk commit $Q -ytop || exit 1
 
@@ -216,11 +220,11 @@ bk setup -f -cc www || exit 1
 cd www
 echo kk > 1.html
 bk new $Q 1.html
-bk commit -ywww $Q || exit 1
+bk commit -S -ywww $Q || exit 1
 cd ../gdb
 echo hi > new
 bk new $Q new || exit 1
-bk commit -ynew $Q || exit 1
+bk commit -S -ynew $Q || exit 1
 cd ..
 bk commit -ylocal $Q || exit 1
 
@@ -241,20 +245,20 @@ echo $N "Count the inits for a 'bk clone -@base' ($CNT) ................"$NL
 cd "$HERE"/nest2/gcc
 echo hi > file_copy
 bk new $Q file_copy
-bk commit $Q -ygcc_copy || fail
+bk commit -S $Q -ygcc_copy || fail
 cd ..
 echo hi > file_copy
 bk new $Q file_copy
-bk commit $Q -ycopy || fail
+bk commit -S $Q -ycopy || fail
 bk comps -h | grep -v www | bk here set -f $Q - || fail
 cd ../nest/gdb || fail
 echo hi > file_project
 bk new $Q file_project
-bk commit $Q -ygdb_project || fail
+bk commit -S $Q -ygdb_project || fail
 cd ..
 echo hi > file_project
 bk new $Q file_project
-bk commit $Q -yproject || fail
+bk commit -S $Q -yproject || fail
 bk tag $Q junk || fail
 cd ..
 rm "$FILE"

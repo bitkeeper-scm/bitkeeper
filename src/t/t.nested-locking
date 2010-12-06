@@ -28,19 +28,19 @@ repo_setup() {
 		cd "$HERE/clone1/gcc"
 		echo new >new1
 		bk new $Q new1 || fail
-		bk commit $Q -y'add new1' || fail
+		bk commit -S $Q -y'add new1' || fail
 		bk -P commit $Q -y'add gcc/new1' || fail
 		# Create a cset in clone2/gcc.
 		cd "$HERE/clone2/gcc"
 		echo new >new2
 		bk new $Q new2 || fail
-		bk commit $Q -y'add new2' || fail
+		bk commit -S $Q -y'add new2' || fail
 		bk -P commit $Q -y'add gcc/new2' || fail
 		# Create a cset in clone3/gcc.
 		cd "$HERE/clone3/gcc"
 		echo new >new3
 		bk new $Q new3 || fail
-		bk commit $Q -y'add new3' || fail
+		bk commit -S $Q -y'add new3' || fail
 		bk -P commit $Q -y'add gcc/new3' || fail
 	}
 	test "x$1" = "xcsets-in-products" && {
@@ -49,17 +49,17 @@ repo_setup() {
 		cd "$HERE/clone1"
 		echo new >new1
 		bk new $Q new1 || fail
-		bk commit $Q -y'add new1' || fail
+		bk commit -S $Q -y'add new1' || fail
 		# Create a cset in the clone2 product.
 		cd "$HERE/clone2"
 		echo new >new2
 		bk new $Q new2 || fail
-		bk commit $Q -y'add new2' || fail
+		bk commit -S $Q -y'add new2' || fail
 		# Create a cset in the clone3 product.
 		cd "$HERE/clone3"
 		echo new >new3
 		bk new $Q new3 || fail
-		bk commit $Q -y'add new3' || fail
+		bk commit -S $Q -y'add new3' || fail
 	}
 	cd "$HERE"
 }
@@ -113,9 +113,9 @@ bk new $Q gcc/BitKeeper/triggers/post-incoming || fail
 bk new $Q gdb/BitKeeper/triggers/pre-incoming || fail
 bk new $Q gdb/BitKeeper/triggers/post-incoming || fail
 cd gcc || fail
-bk commit $Q -ytriggers || fail
+bk commit -S $Q -ytriggers || fail
 cd ../gdb || fail
-bk commit $Q -ytriggers || fail
+bk commit -S $Q -ytriggers || fail
 cd ..
 bk commit $Q -ytriggers || fail
 # Create a cset in the gcc component, to give something
@@ -123,7 +123,7 @@ bk commit $Q -ytriggers || fail
 cd gcc
 echo for_undo >to-undo
 bk new $Q to-undo || fail
-bk commit $Q -y'add to-undo' || fail
+bk commit -S $Q -y'add to-undo' || fail
 bk -P commit $Q -y'add gcc/to-undo' || fail
 cd "$HERE"
 bk bkd -q -d -aPORT -ikill || fail
@@ -196,7 +196,7 @@ echo $N Commit in locked component should fail.......................$NL
 cd "$HERE/clone/gcc"
 echo new >new10
 bk new $Q new10 >ERR 2>&1 || fail -f ERR
-bk commit $Q -ynew10 >ERR 2>&1 && fail -f ERR
+bk commit -S $Q -ynew10 >ERR 2>&1 && fail -f ERR
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -205,7 +205,7 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 && fail you fixed a bug
+bk commit -S $Q -y'new file' >ERR 2>&1 && fail you fixed a bug
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -305,7 +305,7 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 && fail
+bk commit -S $Q -y'new file' >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -401,7 +401,7 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 && fail
+bk commit -S $Q -y'new file' >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -502,7 +502,7 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 && fail
+bk commit -S $Q -y'new file' >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -600,7 +600,7 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 && fail
+bk commit -S $Q -y'new file' >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -695,7 +695,7 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 && fail you fixed a bug
+bk commit -S $Q -y'new file' >ERR 2>&1 && fail you fixed a bug
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -792,7 +792,7 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 && fail
+bk commit -S $Q -y'new file' >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -881,7 +881,7 @@ echo $N Commit in component should fail..............................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 && fail
+bk commit -S $Q -y'new file' >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -970,7 +970,7 @@ echo $N Commit in other component should fail........................$NL
 cd "$HERE/clone/gdb"
 echo new >new
 bk new $Q new >ERR 2>&1 || fail
-bk commit $Q -y'new file' >ERR 2>&1 && fail
+bk commit -S $Q -y'new file' >ERR 2>&1 && fail
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 

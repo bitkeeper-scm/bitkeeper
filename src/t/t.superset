@@ -386,7 +386,7 @@ echo OK
 
 echo $N Check nested - pending changeSet in a component .............$NL
 cd "$HERE"/prod-clone/gcc
-bk commit $Q -y'added FOO'
+bk commit -S $Q -y'added FOO'
 cd ..
 bk superset > ../GOT 2>&1
 test $? -ne 1 && fail -f ../GOT "superset with pending cset should exit 1"
@@ -400,7 +400,7 @@ cd "$HERE"/prod-clone/gcc
 bk superset > ../../GOT2 2>&1 && fail -f ../../GOT2
 cmpfiles ../../GOT ../../GOT2
 # Commit and push the stuff to the parent to get ready for the next tests
-bk commit $Q -y'stuff'
+bk commit -S $Q -y'stuff'
 bk push $Q
 echo OK
 

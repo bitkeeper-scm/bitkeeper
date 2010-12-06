@@ -22,7 +22,7 @@ do
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i
 done
-bk commit $Q -y"Add $i to file$i"
+bk commit -S $Q -y"Add $i to file$i"
 cd "$HERE/project" && bk commit $Q -y"Commit cset in gcc"
 cd "$HERE/project/gdb"
 for i in 1 2 3 4 5
@@ -30,7 +30,7 @@ do
 	touch file$i
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i
-	bk commit $Q -y"add file $i"
+	bk commit -S $Q -y"add file $i"
 done
 cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
 echo OK
@@ -176,11 +176,11 @@ for i in 1 2
 do	cd path/to/libc
 	touch FILE$i
 	bk new $Q FILE$i
-	bk commit $Q -y$i
+	bk commit -S $Q -y$i
 	cd ../../../junk
 	touch FILE$i
 	bk new $Q FILE$i
-	bk commit $Q -y$i
+	bk commit -S $Q -y$i
 	cd ..
 	bk commit $Q -y$i
 done
@@ -533,23 +533,15 @@ echo $N Test creating files in the place of missing aliases .........$NL
 cd "$HERE"/project-gcc
 mkdir gdb
 echo hi > gdb/foo
-bk new $Q gdb/foo || exit 1
-bk commit -ybadfile $Q 2>ERR && {
-	echo should have failed
-	cat ERR
-	exit 1
-}
-grep -q "check: gdb/foo conflicts with component at gdb" ERR || exit 1
+bk new $Q gdb/foo || fail
+bk commit -S -ybadfile $Q 2>ERR && fail -f ERR should have failed
+grep -q "check: gdb/foo conflicts with component at gdb" ERR || fail
 
 cd gcc
 mkdir nm
 echo hi > nm/foo
 bk new $Q nm/foo || exit 1
-bk commit -ybadfile $Q  2>ERR && {
-	echo should have failed
-	cat ERR
-	exit 1
-}
+bk commit -S -ybadfile $Q  2>ERR && fail -f ERR should have failed
 grep -q "check: nm/foo conflicts with component at nm" ERR || exit 1
 echo OK
 

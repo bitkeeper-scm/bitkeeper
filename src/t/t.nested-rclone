@@ -23,7 +23,7 @@ do
 		echo $i > file$i
 		bk new $Q file$i
 	done
-	bk commit $Q -y"add some files"
+	bk commit -S $Q -y"add some files"
 	cd ..
 done
 bk setup -Cf "A new component"

@@ -3,7 +3,7 @@ echo $N Create an ensemble...........................................$NL
 nested project
 touch prod_file
 bk new $Q prod_file
-bk commit $Q -yfile
+bk commit -S $Q -yfile
 BASEP=`bk changes -r+ -nd:MD5KEY:`
 BASEGCC=`cd gcc; bk changes -r+ -nd:MD5KEY:`
 bk clone $Q  "$HERE"/project "$HERE"/copy || exit 1
@@ -15,7 +15,7 @@ do
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i || exit 1
 done
-bk commit $Q -y"Add $i to file$i" || exit 1
+bk commit -S $Q -y"Add $i to file$i" || exit 1
 bk -P commit $Q -y"Commit cset in gcc" || exit 1
 cd ../gdb
 for i in 1 2 3 
@@ -23,14 +23,14 @@ do
 	touch file$i
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i || exit 1
-	bk commit $Q -y"add file $i" || exit 1
+	bk commit -S $Q -y"add file $i" || exit 1
 done
 bk -P commit $Q -y"add csets to gdb" || exit 1
 cd ../../copy/gcc
 touch local1
 echo "stuff 1" > local1
 bk new $Q -yadd local1 || exit 1
-bk commit $Q -yaddlocal || exit 1
+bk commit -S $Q -yaddlocal || exit 1
 bk edit $Q ../prod_file
 echo 1 >> ../prod_file
 bk ci $Q -yupdate ../prod_file || exit 1
@@ -38,7 +38,7 @@ bk -P commit $Q -ylocal || exit 1
 bk edit $Q local1 || exit 1
 echo new >> local1
 bk delta $Q -ynewlocal || exit 1
-bk commit $Q -ynew || exit 1
+bk commit -S $Q -ynew || exit 1
 echo OK
 
 echo $N Run project level changes ...................................$NL
@@ -617,7 +617,7 @@ bk edit $Q prod_file
 bk delta $Q -fynull prod_file
 bk edit $Q gcc/file1
 bk delta $Q -fynull gcc/file1
-(cd gcc; bk commit $Q -yin-gcc)
+(cd gcc; bk commit -S $Q -yin-gcc)
 bk commit $Q -y"prod_file and gcc"
 bk tag $Q TAG
 bk changes -v -i'prod_file' \
@@ -687,15 +687,15 @@ cd gcc
 bk mv file1 moveit
 cd ../gdb
 bk mv file3 moveit3
-bk commit $Q -ymvfiles
+bk commit -S $Q -ymvfiles
 cd ..
 mv gcc newcc
 bk edit $Q newcc/ChangeSet
 _BK_MV_OK=1 bk ci $Q -ymoved newcc/ChangeSet
 cd newcc
-bk commit $Q -ymvfiles
+bk commit -S $Q -ymvfiles
 cd ..
-bk commit $Q -yallmv
+bk commit -S $Q -yallmv
 bk changes -vrTAG > AFTER
 cmpfiles BEFORE AFTER
 echo OK
@@ -748,13 +748,13 @@ bk clone $Q project copy2
 cd project/gdb
 bk edit $Q file2
 bk delta $Q -fynull file2
-bk commit $Q -ynull
+bk commit -S $Q -ynull
 cd ..
 bk commit $Q -ynullinproj
 cd ../copy2/gdb
 bk edit $Q moveit3
 bk delta $Q -fynull moveit3
-bk commit $Q -ynull
+bk commit -S $Q -ynull
 cd ..
 bk commit $Q -ynullincopy
 bk pull $Q

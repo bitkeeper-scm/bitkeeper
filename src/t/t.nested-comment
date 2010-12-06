@@ -5,8 +5,8 @@ touch gcc/afile
 touch gdb/afile
 bk new $Q -ynew gcc/afile
 bk new $Q -ynew gdb/afile
-(cd gcc && bk commit $Q -y.)
-(cd gdb && bk commit $Q -y.)
+(cd gcc && bk commit -S $Q -y.)
+(cd gdb && bk commit -S $Q -y.)
 bk commit -y. $Q
 bk comment -p > GOT
 cat <<'EOF' > WANT
