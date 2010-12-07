@@ -109,4 +109,7 @@ char	**reg_values(char *key);
 
 /* win32/nt_stat.c */
 int	linkcount(char *file, struct stat *sp);
+
+/* win32/runas.c */
+int	runas(char *cmd, char *param, int async);
 #endif
