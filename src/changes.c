@@ -38,6 +38,7 @@ private struct {
 	char	**notusers;	/* lines list of users to exclude */
 	char	**inc;		/* list of globs for files to include */
 	char	**exc;		/* list of globs for files to exclude */
+	char	*dspecfile;	/* name the file where the dspec is */
 
 	RANGE	rargs;
 	FILE	*fmem;		/* in-mem output buffering */
@@ -91,6 +92,7 @@ changes_main(int ac, char **av)
 		{ "no-meta", 300 },		/* don't show meta files */
 		{ "html", 301 },		/* old -h */
 		{ "same-component", 302 },
+		{ "dspec-file;", 303 },		/* let user pass in dspec */
 		{ "standalone", 'S' },		/* treat comps as standalone */
 		{ 0, 0 }
 	};
@@ -122,7 +124,10 @@ changes_main(int ac, char **av)
 			if (range_addArg(&opts.rargs, optarg, 1)) usage();
 			break;
 		    case 'D': opts.urls = opts.showdups = 0; break;
-		    case 'd': opts.dspec = strdup(optarg); break;
+		    case 'd':
+			if (opts.dspec) usage();
+			opts.dspec = strdup(optarg);
+			break;
 		    case 'e': opts.noempty = !opts.noempty; break;
 		    case 'f': opts.forwards = 1; break;
 		    case 301: opts.html = 1; opts.urls = 0; break;
@@ -170,7 +175,23 @@ changes_main(int ac, char **av)
 		    case 302: /* --same-component */
 			opts.sameComp = 1;
 			break;
+		    case 303: /* --dspec-file */
+			opts.dspecfile = optarg;
+			break;
 		    default: bk_badArg(c, av);
+		}
+	}
+	if (opts.dspecfile) {
+		if (opts.dspec) {
+			fprintf(stderr,
+			    "changes: cannot combine dspec and dspecfile\n");
+			return (1);
+		}
+		unless (opts.dspec = loadfile(opts.dspecfile, 0)) {
+			fprintf(stderr,
+			    "changes: cannot load file \"%s\"\n",
+			    opts.dspecfile);
+			return (1);
 		}
 	}
 	opts.filt = opts.BAM || opts.inc || opts.exc;

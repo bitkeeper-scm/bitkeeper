@@ -14048,6 +14048,13 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	if (p < q) {
 		p++;
 		rev = strndup(p, len - (p-kw));
+		if ((rev[0] == '$') && isdigit(rev[1]) && !rev[2]) {
+			/* substitute for a $\d variable */
+			if (t = sccs_prsbuf(s, d, 0, rev)) {
+				free(rev);
+				rev = t;
+			}
+		}
 		if (streq(rev, "PARENT")) {
 			if (d) e = PARENT(s, d);
 		} else if (streq(rev, "MPARENT")) {
@@ -14280,6 +14287,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		/* branch */
 		for (p = d->rev; *p && *p != '.'; p++); /* skip release field */
 		for (p++; *p && *p != '.'; p++);	/* skip branch field */
+		unless (*p) return (nullVal);
 		for (p++; *p && *p != '.'; )
 			fc(*p++);
 		return (strVal);
@@ -14289,6 +14297,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		/* sequence */
 		for (p = d->rev; *p && *p != '.'; p++); /* skip release field */
 		for (p++; *p && *p != '.'; p++);	/* skip branch field */
+		unless (*p) return (nullVal);
 		for (p++; *p && *p != '.'; p++);	/* skip level field */
 		for (p++; *p; )
 			fc(*p++);
