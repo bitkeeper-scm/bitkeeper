@@ -82,13 +82,13 @@ echo "OK"
 echo "foo" > foo
 echo "bar" > bar
 bk ci -a -y'checkin comment' foo bar 2> /dev/null
-bk commit -y'commit comment' 2> /dev/null
+bk commit $Q -y'commit comment' 2> /dev/null
 
 bk edit foo bar 2> /dev/null
 echo "foo foo" > foo
 echo "bar bar" > bar
 bk ci -a -y'checkin comment' foo bar 2> /dev/null
-bk commit -y'commit comment' 2> /dev/null
+bk commit $Q -y'commit comment' 2> /dev/null
 
 bk edit foo bar 2> /dev/null
 echo "foo" > foo

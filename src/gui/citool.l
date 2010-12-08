@@ -657,11 +657,9 @@ findFiles()
 	FILE	fd;
 	string	comp, tmp, cmd;
 	string	opts = "-vgcyp";
-	int	didProduct = 0;
 
 	if (defined(self.dir)) opts = "-1vgcyp";
 	foreach (comp in self.allComponents) {
-		if (comp eq self.root) didProduct = 1;
 		if (defined(self.dir)) {
 			chdir(self.dir);
 		} else {
@@ -692,8 +690,6 @@ findFiles()
 		}
 		chdir(self.root);
 	}
-
-	if (self.dashs && !didProduct) insertCsetFile(self.root);
 }
 
 void
@@ -1527,7 +1523,7 @@ getComments(sfile sf)
 		return (comments);
 	}
 
-	if (sf.node eq getSelectedNode()) {
+	if (defined(sf.node) && (sf.node eq getSelectedNode())) {
 		comments = getCurrentComments();
 	} else {
 		comments = bk("cfile print \"${sf.file}\"");
@@ -2512,12 +2508,18 @@ main(_unused int argc, string argv[])
 			self.partial = 1;
 		} else if (arg =~ /^-s(.*)/) {
 			self.dashs = 1;
+			if ($1 eq "^PRODUCT") includeProduct = 0;
 			compscmd .= " " . arg;
-			nfilesOpts = arg;
+			nfilesOpts .= " " . arg;
 		} else {
 			push(&files, arg);
 			self.argv[END+1] = arg;
 		}
+	}
+
+	if (self.dashs && includeProduct) {
+		compscmd .= " -sPRODUCT";
+		nfilesOpts .= " -sPRODUCT";
 	}
 
 	self.nested = 0;
