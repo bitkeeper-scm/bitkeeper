@@ -35,8 +35,16 @@ echo foo > nokeyword
 echo foo > deltatime
 printf "binary\0data\0" > binary
 printf "binary\0time\0" > binary_deltatime
+if [ $WINDOWS = YES ]
+then	echo windows symlink > symlink.resolve
+	echo windows symlink > symlink.noresolve
+else	echo symlink > "$HERE"/the-symlink
+	ln -s "$HERE/the-symlink" symlink.resolve
+	ln -s "$HERE/no-such-symlink" symlink.noresolve
+fi
 bk _touch -t $T11 keyword nokeyword deltatime binary binary_deltatime
-BK_DATE_TIME_ZONE="$DTZ12" bk new $Q keyword nokeyword binary
+BK_DATE_TIME_ZONE="$DTZ12" bk new $Q keyword nokeyword binary \
+    symlink.resolve symlink.noresolve
 bk delta $Q -i -T deltatime binary_deltatime
 test -f keyword -o -f nokeyword -o -f deltatime -o -f binary \
     -o -f binary_deltatime && {
@@ -257,13 +265,22 @@ test `_mtime nokeyword` -ge `_mtime SCCS/s.nokeyword` \
     || { echo failed 5; exit 1; }
 test `_mtime deltatime` -ge `_mtime SCCS/s.deltatime` \
     || { echo failed 6; exit 1; }
-# XXX: note that -TG (as well as export / gnupatch) move the s time back
+# XXX: note that -TG (as well as export / gnupatch)
+# no longer moves the s time back
 bk clean keyword
 bk _touch -r now SCCS/s.keyword
 bk get $Q -TG keyword.copy keyword
 test $T12 -eq `_mtime keyword.copy`	|| { echo failed 7; exit 1; }
-test $T12 -ge `_mtime SCCS/s.keyword`	|| { echo failed 8; exit 1; }
+# Using -G doesn't mess with sfile time
+test $T12 -lt `_mtime SCCS/s.keyword`	|| { echo failed 8; exit 1; }
 rm -f keyword.copy
+# Same test with BAM (different code path)
+bk clean binary
+bk _touch -r now SCCS/s.binary
+bk get $Q -TG binary.copy binary
+test $T12 -eq `_mtime binary.copy`	|| { echo failed 7; exit 1; }
+test $T12 -lt `_mtime SCCS/s.binary`	|| { echo failed 8; exit 1; }
+rm -f binary.copy
 # make a future delta and see that we get the clamping we expect
 # this is different than the -G test in co, because this uses env
 # variable to actually make future delta.
@@ -284,6 +301,15 @@ test `_mtime newnow` -ge `_mtime keyword.copy`	|| { echo failed 12; exit 1; }
 bk _rm newnow keyword.copy keyword SCCS/s.keyword
 bk _mv backup SCCS/s.keyword
 echo OK
+
+test $WINDOWS = NO && {
+echo $N Test co /get -T on symlinks does not alter time .............$NL
+test `_mtime ../the-symlink` -ge `_mtime now`	|| fail
+test -f symlink.resolve || fail
+test -f symlink.noresolve && fail
+bk clean symlink*
+echo OK
+}
 
 # comments - uses admin to re-write?
 # commit - uses admin?

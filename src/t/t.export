@@ -165,6 +165,19 @@ grep src/ < LIST | grep -v foo.c > WANT
 checkfiles GOT WANT
 echo OK
 
+# =================== Time test =============================================
+test -d "$TESTDATA/export" && {
+echo $N Set export file time when sfile is owned by another .........$NL
+cd "$HERE"
+# Times used from t.timestamps
+T11=864154091
+bk export -Tktplain "$TESTDATA/export" export
+cd export
+test -f foo || fail no foo
+test $T11 -eq `_mtime foo` || fail $T11 `_mtime foo`
+echo OK
+}
+
 # =================== Patch tests ===========================================
 
 echo $N Exclude src subdirectory in a patch .........................$NL
@@ -345,8 +358,8 @@ cd "$HERE/project/src"
 ln -s no/such/file symlnk
 bk new $Q symlnk
 bk commit $Q -ysym
-bk export -w "$HERE/project" "$HERE/exp-sym"
-islink "$HERE/exp-sym/src/symlnk" || { echo failed; exit 1; }
+bk export -w "$HERE/project" "$HERE/exp-sym" || fail
+islink "$HERE/exp-sym/src/symlnk" || fail
 echo OK
 fi #---------------------------------------------------------------------
 

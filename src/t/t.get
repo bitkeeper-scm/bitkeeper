@@ -230,6 +230,20 @@ bk delta $Q -y1.6 date || exit 1
 if [ "`bk prs -r+ -hnd:DI: date`" != '-8' ]; then echo Fail; exit 1; fi
 echo OK
 
+echo $N Test that there is no leak of exclude list between files ....$NL
+cat <<EOF > list
+moved|1.3
+date|1.4
+EOF
+bk edit - 2> GOT < list
+bk unedit moved date
+cat <<EOF > WANT
+moved 1.4 exc: 1.4 -> 1.5: 3 lines
+date 1.8 exc: 1.5,1.6,1.7,1.8 -> 1.9: 1 lines
+EOF
+cmpfiles WANT GOT
+echo OK
+
 echo $N Make sure get -ab works .....................................$NL
 echo HI > T
 bk ci $Q -i T
@@ -375,7 +389,7 @@ bk get $Q foo.c -Gbar.c || {
 	echo failed to exit cleanly
 	exit 1
 }
-test -f bar.c || {
+test -f bar.c -a ! -w bar.c || {
 	echo failed get bar.c
 	exit 1
 }
@@ -386,26 +400,68 @@ test `cat bar.c` = foo.c || {
 }
 echo OK
 
+echo $N Test edit with foo.c -Gbar.c ................................$NL
+bk edit $Q foo.c -Gbar.c || fail
+test -f bar.c -a -w bar.c || fail
+test `cat bar.c` = foo.c || fail
+bk _test -f SCCS/s.foo.c || fail
+bk _test -f SCCS/p.foo.c && fail
+echo OK
+
 echo $N Test get with -Gsubdir foo.c ................................$NL
 mkdir subdir
-rm -f bar.c
-bk get $Q -Gsubdir foo.c || {
+REV=`bk prs -r+ -hnd:I: foo.c`
+bk mv foo.c src/foo.c
+bk get $Q -Gsubdir src/foo.c || {
 	echo failed to exit cleanly
 	exit 1
 }
-test -f bar.c && {
-	echo got bar.c in . not in subdir
+test -f src/foo.c && fail got src/foo.c in . not in subdir/src/foo.c
+test -f subdir/foo.c && fail got foo.c in subdir not subdir/src
+test -f subdir/src/foo.c || fail expected file in subdir/src/foo.c
+test -w subdir/src/foo.c && fail expected non-writable file in subdir/src/foo.c
+test `cat subdir/src/foo.c` = foo.c || {
+	echo incorrect contents
+	cat subdir/foo.c
 	exit 1
 }
-test -f subdir/foo.c || {
-	echo failed get foo.c
+rm -fr subdir/src
+echo OK
+
+echo $N Test edit with -Gsubdir foo.c ...............................$NL
+bk edit $Q -Gsubdir src/foo.c || fail
+test -f src/foo.c && fail got src/foo.c in . not in subdir/src/foo.c
+test -f subdir/foo.c && fail got foo.c in subdir not subdir/src
+test -f subdir/src/foo.c || fail expected file in subdir/src/foo.c
+test -w subdir/src/foo.c || fail expected writable file in subdir/src/foo.c
+test `cat subdir/src/foo.c` = foo.c || {
+	echo incorrect contents
+	cat subdir/foo.c
 	exit 1
 }
+rm -fr subdir/src
+echo OK
+
+echo $N Test editwith -Gsubdir -rREV foo.c uses historical name .....$NL
+# same as bk edit -r$REV -Gsubdir src/foo.c showing rset lists can be processed
+echo "src/foo.c|$REV" | bk edit -Gsubdir - 2> GOT || {
+	echo failed to exit cleanly
+	exit 1
+}
+# historical name is foo.c
+test -f src/foo.c && fail got src/foo.c in . not in subdir/src/foo.c
+test -f subdir/src/foo.c && fail got foo.c in subdir/src not subdir
+test -f subdir/foo.c || fail expected file in subdir/foo.c
+test -w subdir/foo.c || fail expected writable file in subdir/foo.c
 test `cat subdir/foo.c` = foo.c || {
 	echo incorrect contents
 	cat subdir/foo.c
 	exit 1
 }
+echo "src/foo.c 1.1: 1 lines" > WANT
+cmpfiles GOT WANT
+rm -fr subdir/foo.c
+bk mv src/foo.c foo.c
 echo OK
 
 echo $N Test get with -Gsubdir ......................................$NL
@@ -625,22 +681,13 @@ test `wc -l < XXX` -eq 6 || {
 }
 echo OK
 
-echo $N Check that get -DDD does not care about -i/-x ...............$NL
-bk get -DDD -hr+ ChangeSet > XXX 2>&1
-test `wc -l < XXX` -eq 6 || {
-	echo wrong answer
-	cat XXX
-	exit 1
-}
-echo OK
-
 echo $N Check that get -G does not care about -i/-x .................$NL
 bk get -Gmyfoo -hr+ ChangeSet 2> ERR || {
 	echo failed
 	cat ERR
 	exit 1
 }
-grep -q "myfoo 1.1: 5 lines" ERR || {
+grep -q "ChangeSet 1.1: 5 lines" ERR || {
 	echo wrong msg
 	cat ERR
 	exit 1
