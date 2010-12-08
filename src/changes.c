@@ -107,7 +107,7 @@ changes_main(int ac, char **av)
 	while ((c =
 	    getopt(ac, av, "1aBc;Dd;efi;kLmnPqRr;StTu;U;Vv/;x;",
 		lopts)) != -1) {
-		unless (c == 'L' || c == 'R' || c == 'D') {
+		unless (c == 'L' || c == 'R' || c == 'D' || c == 302) {
 			nav = bk_saveArg(nav, av, c);
 		}
 		switch (c) {
