@@ -16252,59 +16252,44 @@ gca2(sccs *s, delta *left, delta *right)
 	return (d);
 }
 
-/* XXX: could be one pass through table to do everything.
- * instead it is more or less 5 pass:
- *   gca (from bigger of left and right until gca)
- *   lmap (all of table)
- *   rmap (all of table)
- *   gmap (all of table)
- *   (not walking table, but do set equation for all elements in set)
- *   compress (all of table)
+/*
+ * compute a delta +i -x represtation of a list of the gca deltas
  *
- * could do as one really intense and messy loop, or could do with
- * streams somehow
+ * A better interface would be to return the gca list and
+ * have 'get' work with a list:
+ * sccs_get(sccs *s, char **delta, ..)
+ * bk get -r<rev1>,<rev2>,<rev3> foo.c
  */
-
 private delta *
 gca3(sccs *s, delta *left, delta *right, char **inc, char **exc)
 {
 	delta	*ret = 0;
 	delta	*gca;
-	u8	*lmap, *rmap, *gmap;
-	ser_t	serial;
-	int	errp;
+	u8	*gmap = 0;
+	char	**glist, **list;
+	int	count;
 
 	*inc = *exc = 0;
 	unless (s && s->nextserial && left && right) return (0);
 
-	/* get three sets, fiddle with them, then compress */
-	gca = gca2(s, left, right);
-
-	errp = 0;
-	lmap = serialmap(s, left, 0, 0, &errp);
-	rmap = serialmap(s, right, 0, 0, &errp);
-	gmap = serialmap(s, gca, 0, 0, &errp);
-
-	if (errp || !lmap || !rmap || !gmap) goto bad;
-
-	/* Compute simple set gca: (left & right) | ((left | right) & gca) */
-	serial = (left->serial > right->serial)
-		? left->serial : right->serial;
-	for ( ; serial > 0; serial--) {
-		gmap[serial] = ((lmap[serial] && rmap[serial])
-			|| ((lmap[serial] || rmap[serial]) && gmap[serial]));
+	list = addLine(0, left);
+	list = addLine(list, right);
+	glist = range_gcalist(s, list);
+	freeLines(list, 0);
+	count = nLines(glist);
+	assert(count);
+	gca = (delta *)glist[1];
+	if (count > 1) {
+		gmap = (u8 *)calloc(s->nextserial, sizeof(u8));
+		graph_symdiff((delta *)glist, 0, gmap, 0, -1, SD_MERGE);
+		if (compressmap(s, gca, gmap, 0, (void **)inc, (void **)exc)) {
+			goto bad;
+		}
 	}
-
-	/* gmap was gca2 expanded.  It is now the set gca.
-	 * compress it to be -i and -x relative to gca2 result
-	 */
-
-	if (compressmap(s, gca, gmap, 0, (void **)inc, (void **)exc))  goto bad;
 	ret = gca;
 
-bad:	if (lmap) free (lmap);
-	if (rmap) free (rmap);
-	if (gmap) free (gmap);
+bad:	if (gmap) free (gmap);
+	freeLines(glist, 0);
 	return (ret);
 }
 

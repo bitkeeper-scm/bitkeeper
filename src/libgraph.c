@@ -9,8 +9,6 @@ private	int	v2Left(sccs *s, delta *d, void *token);
 
 private	void	sortKids(delta *start,
     int (*compar)(const void *, const void *), char ***karr);
-private	int	bigFirst(const void *a, const void *b);
-private	int	smallFirst(const void *a, const void *b);
 
 #define	S_DIFF		0x01	/* final active states differ */
 #define	SR_PAR		0x02	/* Right side parent lineage */
@@ -50,9 +48,9 @@ private	int	smallFirst(const void *a, const void *b);
  *
  *   slist = (u8 *)calloc(s->nextserial, sizeof(u8));
  *   count = 0;
- *   count += graph_symdiff(a, b, slist, 0, -1);
- *   count += graph_symdiff(c, d, slist, 0, -1);
- *   count += graph_symdiff(e, f, slist, 0, -1);
+ *   count += graph_symdiff(a, b, slist, 0, -1, 0);
+ *   count += graph_symdiff(c, d, slist, 0, -1, 0);
+ *   count += graph_symdiff(e, f, slist, 0, -1, 0);
  *
  * will have count be the number of non-zero items in slist
  *
@@ -61,9 +59,9 @@ private	int	smallFirst(const void *a, const void *b);
  *
  *   slist = (u8 *)calloc(s->nextserial, sizeof(u8));
  *   count = 0;
- *   count += graph_symdiff(a, 0, slist, 0, -1);	// slist = CV(a)
- *   count += graph_symdiff(b, a, slist, 0, -1);	// slist = CV(b)
- *   count += graph_symdiff(c, b, slist, 0, -1);	// slist = CV(c)
+ *   count += graph_symdiff(a, 0, slist, 0, -1, 0);	// slist = CV(a)
+ *   count += graph_symdiff(b, a, slist, 0, -1, 0);	// slist = CV(b)
+ *   count += graph_symdiff(c, b, slist, 0, -1, 0);	// slist = CV(c)
  *
  * ## Compress - if count passed in >= 0, then run in compress mode.
  * Count must be the number of non-zero entries in slist.
@@ -86,19 +84,28 @@ private	int	smallFirst(const void *a, const void *b);
  */
 
 int
-graph_symdiff(delta *left, delta *right, u8 *slist, ser_t **sd, int count)
+graph_symdiff(delta *left, delta *right, u8 *slist,
+    ser_t **sd, int count, int flags)
 {
 	ser_t	ser, lower = 0;
 	u8	bits, newbits;
 	int	marked = 0;
 	int	expand = (count < 0);
 	int	i, activeLeft, activeRight;
-	delta	*t = 0;
+	char	**list;
+	delta	*t = 0, *x;
 
-	if (left && (left == right)) {	/* X symdiff X = {} */
+	if (flags & SD_MERGE) {
+		assert(!right);
+		list = (char **)left;
+		left = nLines(list) ? (delta *)list[1] : 0;
+	} else if (left == right) {	/* X symdiff X = {} */
 		assert(expand);
 		return (0);
+	} else {
+		list = addLine(0, left);
 	}
+
 	if (expand) {
 		count = 0;
 	} else {
@@ -114,16 +121,18 @@ graph_symdiff(delta *left, delta *right, u8 *slist, ser_t **sd, int count)
 			left->exclude = 0;
 		}
 	}
-	if (left) {
+	/* init the array with the starting points */
+	EACH (list) {
+		x = (delta *)list[i];
 		bits = SL_PAR;
 		marked++;
 		if (sd) {
 			bits |= S_DIFF;
 			marked++;
 		}
-		ser = left->serial;
+		ser = x->serial;
 		slist[ser] |= bits;
-		if (!t || (t->serial < ser)) t = left;
+		if (!t || (t->serial < ser)) t = x;
 		if (!lower || (lower > ser)) lower = ser;
 	}
 	if (right) {
@@ -139,7 +148,7 @@ graph_symdiff(delta *left, delta *right, u8 *slist, ser_t **sd, int count)
 		if (!lower || (lower > ser)) lower = ser;
 	}
 
-	for (/* set */; t && marked; t = t->next) {
+	for (/* set */; t && marked; t = NEXT(t)) {
 		if (TAG(t)) continue;
 
 		ser = t->serial;
@@ -359,7 +368,7 @@ graph_sccs2symdiff(sccs *s)
 	for (j = 1; j < s->nextserial; j++) {
 		unless ((d = sfind(s, j)) && !TAG(d) && d->pserial) continue;
 		if (d->merge || d->include || d->exclude) {
-			graph_symdiff(d, PARENT(s, d), slist, sd, -1);
+			graph_symdiff(d, PARENT(s, d), slist, sd, -1, 0);
 		}
 	}
 	free(slist);
@@ -396,7 +405,7 @@ graph_v1(sccs *s)
 	label.list = (reach *)calloc(s->nextserial, sizeof(reach));
 	printf("Demo reachability v1\n");
 	graph_kidwalk(s, v1Right, v1Left, &label);
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if (TAG(d)) continue;
 		printf("%s -> [%d, %d)\n",
 		    d->rev,
@@ -489,12 +498,12 @@ graph_kidwalk(sccs *s, walkfcn toTip, walkfcn toRoot, void *token)
 		for (next = d; next && !TAG(next); next = d->kid) {
 			d = next;
 			if (toTip && (rc = toTip(s, d, token))) goto out;
-			sortKids(d, bigFirst, &karr);
+			sortKids(d, graph_bigFirst, &karr);
 		}
 		/* now next sibling or up parent link */
 		for (; d; d = d->parent) {
 			/* only need d->kid to be oldest */
-			sortKids(d, smallFirst, &karr);
+			sortKids(d, graph_smallFirst, &karr);
 			if (toRoot && (rc = toRoot(s, d, token))) goto out;
 			if ((next = d->siblings) && !TAG(next)) {
 				d = next;
@@ -503,14 +512,14 @@ graph_kidwalk(sccs *s, walkfcn toTip, walkfcn toRoot, void *token)
 		}
 	}
 out:	if (d) {
-		while (d = d->parent) sortKids(d, smallFirst, &karr);
+		while (d = d->parent) sortKids(d, graph_smallFirst, &karr);
 	}
 	freeLines(karr, 0);
 	return (rc);
 }
 
-private	int
-smallFirst(const void *a, const void *b)
+int
+graph_smallFirst(const void *a, const void *b)
 {
 	delta	*l, *r;
 	int	cmp;
@@ -521,8 +530,8 @@ smallFirst(const void *a, const void *b)
 	return (l->serial - r->serial);
 }
 
-private	int
-bigFirst(const void *a, const void *b)
+int
+graph_bigFirst(const void *a, const void *b)
 {
 	delta	*l, *r;
 	int	cmp;

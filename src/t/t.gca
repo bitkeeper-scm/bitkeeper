@@ -42,7 +42,9 @@ bk delta $Q -fy1.7 foo.c
 bk _get $Q -e -M1.4 -r1.2.1 foo.c
 bk delta $Q -fy1.2.1.5 foo.c
 gca=`bk gca -r1.2.1.5 -r1.7 foo.c`
-expect="1.2.1.2 -i1.3,1.4 -x1.2"
+# Used to -x1.2 because both sides did; now if it isn't gca, it isn't there
+# expect="1.2.1.2 -i1.3,1.4 -x1.2"
+expect="1.2.1.2 -i1.3,1.4"
 if [ "$gca" != "$expect" ]; then
 	echo failed gca
 	echo "gca gave ==> '$gca'"
@@ -70,9 +72,9 @@ bk _get $Q -e -x1.1.2.1 -r1.1.1 bar.c
 bk delta $Q -fy1.1.1.2 bar.c
 bk _get $Q -e -x1.1.1.1 -r1.1.2 bar.c
 bk delta $Q -fy1.1.2.2 bar.c
-# do set gca to see what it says.  Should include 1.2 (should be 1.2)
+# do set gca to see what it says.  That's the set equiv of graph gca.
 gca=`bk gca -r1.1.1.2 -r1.1.2.2 bar.c`
-expect="1.1 -i1.2"
+expect="1.1"
 if [ "$gca" != "$expect" ]; then
 	echo failed gca
 	echo "gca gave ==> '$gca'"

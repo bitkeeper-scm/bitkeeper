@@ -499,7 +499,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		d = (delta *)order[orderIndex];
 
 		/* incremental serialmap */
-		graph_symdiff(d, prev, slist, 0, -1);
+		graph_symdiff(d, prev, slist, 0, -1, 0);
 		prev = d;
 
 		if (tick) progress(tick, ++n);
