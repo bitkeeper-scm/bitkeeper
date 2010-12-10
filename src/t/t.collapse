@@ -376,7 +376,7 @@ echo f2 > f2
 BK_USER=user2 bk new $Q f2 || exit 1
 BK_USER=user2 bk commit $Q -yf2 || exit 1
 
-bk collapse -eda$REV || exit 1
+bk collapse --no-save -eda$REV || exit 1
 bk -r check -ac || exit 1
 # bk fix can be used to do a partial collapse of files before commit
 BK_USER=user3 bk commit $Q -ynew || exit 1
@@ -445,7 +445,7 @@ echo OK
 
 echo $N Test collapse -e@ ...........................................$NL
 bk pull $Q || fail
-bk collapse -e@ || fail
+bk collapse --no-save -e@ || fail
 touch GOT
 test "`bk sfiles -cp`" && fail
 bk sfiles -x > GOT

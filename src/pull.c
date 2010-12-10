@@ -13,7 +13,7 @@ private struct {
 	u32	fullPatch:1;		/* -F force fullpatch */
 	u32	noresolve:1;		/* -R: don't run resolve at all */
 	u32	textOnly:1;		/* -T: pass -T to resolve */
-	u32	autoOnly:1;		/* -s: pass -s to resolve */
+	u32	autoOnly:1;		/* -s: pass --batch to resolve */
 	u32	debug:1;		/* -d: debug */
 	u32	update_only:1;		/* -u: pull iff no local csets */
 	u32	verbose:1;		/* -v: old verbose output */
@@ -50,8 +50,11 @@ pull_main(int ac, char **av)
 	char	*p, *prog;
 	char	**envVar = 0, **urls = 0;
 	longopt	lopts[] = {
-		{ "safe", 300 },	/* require all comps to be here */
-		{ "unsafe", 301 },	/* turn off safe above */
+		{ "batch", 310},	/* pass -s to resolve */
+		{ "safe", 320 },	/* require all comps to be here */
+		{ "unsafe", 330 },	/* turn off safe above */
+
+		/* aliases */
 		{ "standalone", 'S'},
 		{ 0, 0 }
 	};
@@ -78,7 +81,12 @@ pull_main(int ac, char **av)
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.rev = optarg; break;
 		    case 'R': opts.noresolve = 1; break;	/* doc 2.0 */
-		    case 's': opts.autoOnly = 1; break;
+		    case 's':
+			/* obsolete but we have to support it for scripts */
+			/* fall through to preferred form */
+		    case 310:   /* --batch */
+			opts.autoOnly = 1;
+			break;
 		    case 'T': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'F': opts.fullPatch = 1; break;	/* undoc 2.0 */
@@ -101,10 +109,10 @@ pull_main(int ac, char **av)
 			if (optarg) gzip = atoi(optarg);
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
 			break;
-		    case 300:	/* --safe */
+		    case 320:	/* --safe */
 			opts.safe = 1;
 			break;
-		    case 301:	/* --unsafe */
+		    case 330:	/* --unsafe */
 			opts.safe = 0;
 			break;
 		    default: bk_badArg(c, av);
@@ -1103,7 +1111,7 @@ resolve(void)
 	cmd[++i] = "resolve";
 	unless (opts.verbose) cmd[++i] = "-q";
 	if (opts.textOnly) cmd[++i] = "-T";
-	if (opts.autoOnly) cmd[++i] = "-s";
+	if (opts.autoOnly) cmd[++i] = "--batch";
 	if (opts.automerge) cmd[++i] = "-a";
 	if (opts.debug) cmd[++i] = "-d";
 	unless (opts.quiet) cmd[++i] = "--progress";

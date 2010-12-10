@@ -47,13 +47,16 @@ collapse_main(int ac, char **av)
 	char	*url = 0;
 	char	buf[MAXLINE];
 	longopt	lopts[] = {
+		{ "no-save", 310 },
+
+		/* aliases */
 		{ "standalone", 'S' },
 		{ 0, 0 }
 	};
 
 	me = "collapse";
 	flags = 0;
-	while ((c = getopt(ac, av, "@|a:delmPr:qSs", lopts)) != -1) {
+	while ((c = getopt(ac, av, "@|a:delmPqr:Ss|", lopts)) != -1) {
 		/*
 		 * Collect options for running collapse in components.
 		 * lm sez: unless we are going to try and replay a
@@ -80,7 +83,13 @@ collapse_main(int ac, char **av)
 			if (revlist) usage(); revlist = optarg; break;
 		    case 'q': flags |= SILENT; break;
 		    case 'S': standalone = 1; break;
-		    case 's': flags |= COLLAPSE_NOSAVE; break;
+		    case 's':  /* reserved for --subset */
+			fprintf(stderr,
+			    "%s: -s was renamed to --no-save\n", prog);
+			usage();
+		    case 310: // --no-save
+			 flags |= COLLAPSE_NOSAVE;
+			 break;
 		    default: bk_badArg(c, av);
 		}
 	}
