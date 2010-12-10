@@ -1935,7 +1935,6 @@ void if_1_3() {
 if_1_3
 } -output "1 before\n1 working\n1 after\n1 done\n"
 
-
 test if-1.4 {else is only allowed with curly braces} -body {
 #lang L
 void if_1_4(void)
@@ -2707,15 +2706,16 @@ void op_1_10()
 {
 	/*
 	 * Ensure that conditionals of type string are tested properly
-	 * in the short-circuited operators (i.e., tested against "0").
+	 * in the short-circuited operators (i.e., tested for defined).
 	 */
 
 	int	i = 0, j;
+	string	s;
 
-	if ("0" && ++i) j = 1;
+	if (s && ++i) j = 1;
 	unless (i == 0) puts("bad 1");
 
-	if ("0" || ++i) j = 1;
+	if (s || ++i) j = 1;
 	unless (i == 1) puts("bad 2");
 }
 #lang tcl
@@ -9538,6 +9538,7 @@ string defined_1_6_foo(string arg)
 void defined_1_6()
 {
 	int	i;
+	string	s;
 
 	if (defined(undef)) puts("bad 0.1");
 
@@ -9557,7 +9558,7 @@ void defined_1_6()
 	if (defined(i)) puts("bad 3.2");
 
 	unless (defined(defined_1_6_foo("1"))) puts("bad 4.1");
-	if (defined(defined_1_6_foo("0"))) puts("bad 4.2");
+	if (defined(defined_1_6_foo(s))) puts("bad 4.2");
 	if (defined(defined_1_6_foo(undef))) puts("bad 4.3");
 }
 defined_1_6();
@@ -9759,6 +9760,62 @@ defined_1_13();
 .*20: L Error:.*not a call-by-reference parm
 .*21: L Error:.*not a call-by-reference parm
 }
+
+test defined-1.14 {check that undef is false} -body {
+#lang L
+void defined_1_14()
+{
+	int	i;
+	string	s;
+	poly	p;
+
+	if (undef) puts("bad 1");
+	if (i) puts("bad 2");
+	if (s) puts("bad 3");
+	if (p) puts("bad 4");
+
+	/* Check that Tcl code does the same thing. */
+	eval('if {$i} {puts "bad 5"}');
+	eval('if {$s} {puts "bad 6"}');
+	eval('if {$p} {puts "bad 7"}');
+}
+defined_1_14();
+} -output {}
+
+test defined-1.15 {check that undef != anything defined} -body {
+#lang L
+void defined_1_15()
+{
+	int	i;
+	string	s;
+	poly	p;
+
+	if (defined(i) || defined(s) || defined(p)) puts("bad");
+
+	if (i == 0) puts("bad 1.1");
+	unless (i != 0) puts("bad 1.2");
+
+	if (s eq "") puts("bad 2.1");
+	unless (s ne "") puts("bad 2.2");
+
+	if (p eq "") puts("bad 3.1");
+	unless (p ne "") puts("bad 3.2");
+
+	/*
+	 * An L regexp compiles down to different opcodes depending on the
+	 * complexity of the regexp, so test each.
+	 */
+	if (s =~ /^$/) puts("bad 4.1");		// constant (INST_STR_EQ)
+	if (s =~ /.*/) puts("bad 4.2");		// glob (INST_STR_MATCH)
+	if (s =~ /x*/) puts("bad 4.2");		// non-glob re (INST_REGEXP)
+	if (s =~ //g) puts("bad 4.3");		// complex (::regexp cmd)
+
+	/* Check that Tcl code does the same thing. */
+	eval('if {$i == 0}  {puts "bad 5.1"}');
+	eval('if {$s == ""} {puts "bad 5.2"}');
+}
+defined_1_15();
+} -output {}
 
 test undef-1 {check undef built-in} -body {
 #lang L
@@ -10888,14 +10945,14 @@ typecheck_4_4()
 
 	int	i = 0;
 	float	f = 0.0;
-	string	s1 = "0", s2 = "1";
-	widget	w = "0";
+	string	s1, s2 = "defined";
+	widget	w;
 	poly	p = "0";
 
 	if (i) puts("bad 1");
 	if (f) puts("bad 2");  // Exact comparisons w/floats don't always work
 
-	/* Strings as conditionals get compared against "0". */
+	/* Strings as conditionals get checked for defined. */
 	if (s1) puts("bad 3");
 	unless (s2) puts("bad 4");
 

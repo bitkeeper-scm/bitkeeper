@@ -267,19 +267,34 @@ This is different than the C<undef()> built-in I<function> which
 deletes array, hash, or string elements and which is described
 later.
 
-You can test whether something has the value undef or a regular value
-with the built-in function C<defined()>:
+When used in comparisons, a variable that is undefined is never seen
+as true, or as equal to anything defined, so you can easily check for
+error conditions:
 
-    if (defined(int_var)) {
-        printf("int_var has the value %d\n", int_var);
+    unless (f = fopen("file", "r")) {
+        die("fopen");
+    }
+    while (s = fgetline(f)) {
+        printf("%s\n", s);
+    }
+
+And for the cases where it matters, you can test whether something is
+undefined with the built-in function C<defined()>:
+
+    ret = myfunc();
+    unless (defined(ret)) die("error");
+    if (ret != 0) {
+        printf("myfunc returned %d\n", ret);
     } else {
-        printf("int_var is undefined\n");
+        printf("no data from myfunc\n");
     }
 
 L itself sometimes uses undef to tell you that no value is available.
 One case is when you assign to an array element that is more than one
 past the end of an array.  L auto-extends the array and sets the
-unassigned elements to undef.  Undefinedness is an attribute of a
+unassigned elements to undef.
+
+Undefinedness is an attribute of a
 variable; undefined does not have a value.  It may be anything since
 the underlying Tcl system "shimmers" variables.  If a variable can be
 undefined, don't rely on its value until you've checked it first with

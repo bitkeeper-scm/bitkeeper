@@ -231,6 +231,12 @@ Tcl_RegexpObjCmd(
 	return TCL_ERROR;
     }
 
+    /* L undef never matches anything. */
+    if (objv[1]->undef) {
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
+	return TCL_OK;
+    }
+
     /*
      * Get the length of the string that we are matching against so we can do
      * the termination test for -all matches. Do this before getting the

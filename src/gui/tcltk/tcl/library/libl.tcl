@@ -183,7 +183,7 @@ fclose(FILE f)
 {
 	string	err;
 
-	unless (defined(f)) return (-1);
+	unless (f) return (-1);
 
 	if (catch("close $f", &err)) {
 		stdio_lasterr = err;
@@ -200,11 +200,11 @@ fopen(string path, string mode)
 	FILE	f;
 	string	err;
 
-	unless (defined(path)) {
+	unless (path) {
 		warn("fopen: pathname is not defined");
 		return (undef);
 	}
-	unless (defined(mode)) {
+	unless (mode) {
 		warn("fopen: mode is not defined");
 		return (undef);
 	}

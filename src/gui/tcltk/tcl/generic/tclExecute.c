@@ -4561,7 +4561,10 @@ TclExecuteByteCode(
 	value2Ptr = OBJ_AT_TOS;
 	valuePtr = OBJ_UNDER_TOS;
 
-	if (valuePtr == value2Ptr) {
+	/* L undef never equals anything that's defined. */
+	if (valuePtr->undef ^ value2Ptr->undef) {
+	    iResult = (*pc == INST_STR_NEQ);
+	} else if (valuePtr == value2Ptr) {
 	    /*
 	     * On the off-chance that the objects are the same, we don't
 	     * really have to think hard about equality.
@@ -4632,7 +4635,11 @@ TclExecuteByteCode(
 	 * length only.
 	 */
 
-	if (valuePtr == value2Ptr) {
+	/* L undef never equals anything that's defined. */
+	if (((*pc == INST_EQ) || (*pc == INST_NEQ)) &&
+	    (valuePtr->undef ^ value2Ptr->undef)) {
+	    iResult = (*pc == INST_NEQ);
+	} else if (valuePtr == value2Ptr) {
 	    /*
 	     * In the pure equality case, set lengths too for the checks below
 	     * (or we could goto beyond it).
@@ -4801,7 +4808,10 @@ TclExecuteByteCode(
 	 * both.
 	 */
 
-	if ((valuePtr->typePtr == &tclStringType)
+	/* L undef never equals anything that's defined. */
+	if (valuePtr->undef ^ value2Ptr->undef) {
+	    match = 0;
+	} else if ((valuePtr->typePtr == &tclStringType)
 		|| (value2Ptr->typePtr == &tclStringType)) {
 	    Tcl_UniChar *ustring1, *ustring2;
 	    int length1, length2;
@@ -4853,6 +4863,9 @@ TclExecuteByteCode(
 	regExpr = Tcl_GetRegExpFromObj(interp, value2Ptr, cflags);
 	if (regExpr == NULL) {
 	    match = -1;
+	} else if (valuePtr->undef ^ value2Ptr->undef) {
+	    /* L undef never equals anything that's defined. */
+	    match = 0;
 	} else {
 	    match = Tcl_RegExpExecObj(interp, regExpr, valuePtr, 0, 0, 0);
 	}
@@ -4892,6 +4905,12 @@ TclExecuteByteCode(
 	Tcl_WideInt w1, w2;
 #endif
 
+	/* L undef never equals anything that's defined. */
+	if (((*pc == INST_EQ) || (*pc == INST_NEQ)) &&
+	    (valuePtr->undef ^ value2Ptr->undef)) {
+	    iResult = (*pc == INST_NEQ);
+	    goto foundResult;
+	}
 	if (GetNumberFromObj(NULL, valuePtr, &ptr1, &type1) != TCL_OK) {
 	    /*
 	     * At least one non-numeric argument - compare as strings.

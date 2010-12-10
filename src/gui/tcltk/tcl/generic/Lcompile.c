@@ -3203,7 +3203,7 @@ compile_shortCircuit(Expr *expr)
 /*
  * Compile an expression that is used as a conditional test.
  * This is compiled like a normal expression except that if it's
- * of string type its value is compared against the string "0".
+ * of string type the expression is tested for defined.
  */
 private void
 compile_condition(Expr *cond)
@@ -3212,8 +3212,7 @@ compile_condition(Expr *cond)
 	if (isvoid(cond)) {
 		L_errf(cond, "void type illegal in predicate");
 	} else if (isstring(cond) || iswidget(cond)) {
-		push_str("0");
-		TclEmitOpcode(INST_NEQ, L->frame->envPtr);
+		TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
 	} else unless (isscalar(cond)) {
 		L_errf(cond, "predicate must be scalar");
 	}

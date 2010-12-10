@@ -1322,6 +1322,10 @@ Tcl_GetBooleanFromObj(
     register Tcl_Obj *objPtr,	/* The object from which to get boolean. */
     register int *boolPtr)	/* Place to store resulting boolean. */
 {
+    if (objPtr->undef) {
+	*boolPtr = 0;
+	return TCL_OK;
+    }
     do {
 	if (objPtr->typePtr == &tclIntType) {
 	    *boolPtr = (objPtr->internalRep.longValue != 0);
