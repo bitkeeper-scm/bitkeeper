@@ -4,8 +4,8 @@
 bk csetprune \- shrink a repository by removing files
 .SH SYNOPSIS
 .B bk csetprune
-.[B] \-S
-.[OPTreq] \-k 16hexDigits
+.[B] options
+.B \-
 < keylist
 .SH DESCRIPTION
 .LP
@@ -31,14 +31,7 @@ is changed (using
 and the remaining files are \*(lqreparented\*(rq
 to the new ChangeSet file.
 .SH OPTIONS 
-.TP \-k\*<16hexDigits\*>n
-.B \-S
-Keep the symbol structure intact.
-This is needed when doing a csetprunes over time on
-same key set and wanting the resulting repository to communicate
-with a repository created by an earlier csetprune.
-Without this option, the internal symbol graph structure is
-streamlined.
+.TP "\\fB\\-\\-standalone\\fP"
 .tp
 .OPTreq \-k 16hexDigits
 Specify the
@@ -47,6 +40,21 @@ used in a repository root key.
 This is needed when doing a csetprunes over time on
 same key set and wanting the resulting repository to communicate
 with a repository created by an earlier csetprune.
+.tp
+.B \-S
+.tp
+.B \-\-standalone
+Just run csetprune on the current component.
+This has no effect in a traditional standalone repository,
+but in a nested collection, processes just the current component
+and not the entire nested collection.
+.tp
+.B \-\-tag\-csets
+Alter the symbol structure to remove duplicates and move the symbols
+directly onto the tagged cset.
+Use this if you do not need to csetprune more than one repository such
+that the resulting repositories to communicate via push, pull or changes.
+With this option, the internal symbol graph structure is streamlined.
 .SH "GENERATING KEYS"
 .LP
 The

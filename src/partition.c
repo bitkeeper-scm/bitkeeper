@@ -550,7 +550,7 @@ mkComps(Opts *opts)
 		cmd = addLine(cmd, aprintf("--cd=%s", repo));
 		cmd = addLine(cmd, strdup("csetprune"));
 		cmd = addLine(cmd, strdup("-I../" WA2PROD));
-		cmd = addLine(cmd, aprintf("-atN%s", opts->quiet));
+		cmd = addLine(cmd, aprintf("-atNS%s", opts->quiet));
 		cmd = addLine(cmd, aprintf("-r%s", opts->ptip));
 		cmd = addLine(cmd, aprintf("-k%s", opts->random));
 		cmd = addLine(cmd, aprintf("-w%s", opts->rootlog));
