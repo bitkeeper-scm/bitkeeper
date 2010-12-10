@@ -406,6 +406,7 @@ bkhelp.txt: FORCE
 
 ../doc/bk_refcard.ps: FORCE
 	echo building $@
+	-bk -r../doc co -qS
 	$(MAKE) -C ../doc all
 
 ../doc/bk_refcard.pdf: ../doc/bk_refcard.ps
@@ -457,6 +458,7 @@ installdir: utils/registry.tcl
 		www/*.gif www/*.png | (cd $(IMGDIR) && tar xf -)
 	cp -f $(DATA) $(IMGDIR)
 	cp -f $(CONTRIB) $(IMGDIR)/contrib
+	(cd ../doc/nested && $(MAKE) install HTML=$(IMGDIR)/html)
 	if [ $(SYS) = unix ]; \
 	then	(cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
 		bk get -S ../man/Makefile; \

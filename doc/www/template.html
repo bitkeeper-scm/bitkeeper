@@ -1,0 +1,86 @@
+<html>
+<head>
+<title>%TITLE%</title>
+
+<style>
+    body {
+	margin: 0;
+	background: #FFFFFF;
+    }
+
+    dt {
+	font-size: large;
+    }
+
+    .code {
+	padding: 5px;
+	background: #EEEEDD;
+	font: bold 1em monospace;
+	border: 1px solid #CCCCCC;
+    }
+
+    #toc {
+	color: #CCCCCC;
+	font-size: .9em;
+	padding-left: 20px;
+	padding-right: 10px;
+    }
+
+    #toc ul {
+	padding-left: 20px;
+	color: #CCCCCC;
+    }
+
+    #toc a:link, #toc a:visited {
+	color: #CCCCCC;
+	text-decoration: none;
+    }
+
+    #logo {
+	text-align: center;
+	background: #304080;
+	background-position: center;
+	background-repeat: no-repeat;
+	background-image: url('images/delta.gif');
+    }
+
+    .hshade {
+	width: 10px;
+	background-image: url('images/hshade.gif');
+    }
+
+    #toctd {
+	background: #304080;
+	padding: 10px 5px;
+	vertical-align: top;
+    }
+
+    #header {
+	border: 0;
+	height: 90px;
+	background-repeat: no-repeat;
+	background-image: url('images/pageheader.jpg');
+    }
+
+    #content {
+	padding: 20px 10px;
+    }
+</style>
+</head>
+
+<body>
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr>
+    <td id="logo"></td>
+    <td class="hshade"></td>
+    <td id="header"></td>
+</tr>
+
+<tr>
+    <td id="toctd">%TOC%</td>
+    <td class="hshade"></td>
+    <td id="content">%BODY%</td>
+</tr>
+</table>
+</body>
+</html>

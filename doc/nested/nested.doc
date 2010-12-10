@@ -1,0 +1,764 @@
+=head1 BitKeeper Nested overview
+
+=head2 Introduction
+
+BitKeeper 5.0 introduces a new feature, BK/Nested.  BK/Nested is
+technology that provides product and product line development support.
+A product is a collection of repositories, called components, that are
+grouped together and move in lock step.  Clones of a nested collection
+may be fully or partially populated with components.
+
+A product line is a development effort which spans multiple related
+products.  In most cases, each product in a product line reuses some
+or all components from other products in the product line.
+
+A product, or nested collection, is N+1 repositories: the N are the
+components and the +1 is the product itself.  Each component belongs to
+the product just like files belong to a repository.  For our examples
+we use the Freebsd source tree which consists of the kernel, compilers,
+debuggers, editors, and various applications adding up to about 150
+components.
+
+The product repository is the "glue" that makes the set of components
+all move forward in lock step; a product may be thought of as a way
+to provide an audit trail for a collection of repositories much as a
+repository provides an audit trail for a collection of files.  The value
+to you is that all states of a product are reproducible and BitKeeper will
+never let a user create a view of the source that is not reproducible
+(no other SCM system that scales to gigabytes or terabytes of data can
+make this claim).
+
+A product line is what lets you have more than one product that share
+some or all of the components.  The lock step movement is enforced
+within a product but not across different products in a product line.
+In other words, if you have two products that share multiple components,
+it is possible to update just one component from product A to product B.
+Within a single product, if you update one component, you update all,
+that is what we mean by them moving in lockstep.
+
+The product feature makes it possible, even pleasant, to manage large
+collections of files with good performance.  For example, for testing
+we imported the entire FreeBSD CVS history.  Some numbers:
+
+	  148 components
+      149,051 files
+      430,185 changesets (over all repositories)
+    1,068,002 user file deltas
+	  2GB compressed history (4GB uncompressed)
+
+and some performance numbers:
+
+    Clone over network: 1.5 minutes
+    Local clone: 43 seconds
+    Local clone of the kernel component only: 3 seconds
+    Scan revision history of all files: 8.5 seconds
+
+These numbers are without any performance tuning, we suspect we can
+do better.  Even without tuning, they are reasonable given the amount
+of data involved.  
+
+=head2 Terminology
+
+    BK/Nested - a collection of repositories which operate in lock step
+    Product - the repository at the top of the collection
+    Component - a repository that "belongs" to the product
+    Product line - a set of distinct products that reuse some/all components
+    Alias - a symbolic name for one or more components
+    Gate - a full or sparse collection which does not roll backwards/unpopulate.
+    Portal - like a gate, but fully populated, used for attach and port
+
+=head1 Command model
+
+Users familiar with traditional distributed source management systems are
+used to the commands operating on the the entire repository as a whole.
+Nested collections introduce the concept of sub-repositories and there 
+is a design choice: treat the entire collection as a unit or as a
+loosely coupled group of repositories.  The latter is far less work
+but the former is far more pleasant.  BitKeeper presents the model
+that the entire collection may be viewed as a unit.
+The benefits of the BitKeeper approach is that in a traditional
+standalone repository and nested collection, both containing
+the same source (see bk partition), repository level commands 
+have the same effect and produce almost identical output.
+
+For example, suppose you wanted to back port a change from one repository
+to another:
+
+    bk changes -vv -r1.234 | (cd /other/repo && bk patch -p1 -g1)
+
+This will work (as well as diff/patch can work) in both traditional and nested
+repositories.  In the nested case, bk changes recurses into the 
+subrepositories (components).
+
+Most of the repository level commands have been evolved to work this
+way, including the graphical tools.  
+
+Scripts and triggers that have been built for traditional standalone
+repositories will mostly just work in a nested collection.  Triggers,
+because each component will (by default) try to run the triggers in
+the product, may need a slight modification.  For example, a notification
+trigger (post-commit) that will work in cases:
+
+    #/bin/sh
+
+    # Skip components, the product will do it:
+    test `bk repotype` = component && exit 0
+    bk changes -vvr+ | mail -s "Commit in $BK_HOST:`bk pwd` by $BK_USER" dev
+
+=head2 Singletons
+
+Sometimes the only thing you are interested in is the current component,
+for example, you want to see the history of the kernel without the 
+other "noise":
+
+    $ cd src/sys
+    $ bk changes -S
+
+Any command that has been made nested collection aware also supports this
+option to narrow the focus to the current repository.
+
+=head2 Aliases
+
+When managing larger collections of data, it is natural to want a way
+operate on a subset of the data.  As we saw above, the -S option gets
+you to a single repository, but what if you want to name a subset that
+is more than one repository?
+A new concept, called an alias, has been added to support subsets.
+
+An alias is a symbolic name for one or more components.  There is
+an aliases database, a versioned controlled file in the product, that
+defines the mapping between symbolic names and the list of components.
+There is an alias command that is used to manage the aliases database.
+
+Suppose that you had several components that made up a subset of
+your product.  If the aliases database has an entry for that subset,
+you may clone just the subset like so:
+
+	$ bk clone -sCOMPILERS I<url> [I<destination>]
+
+If you later need some other collection of components, you use the
+populate command to fetch them:
+
+	$ bk populate DOCS
+
+BitKeeper usually remembers where all missing components can be found
+and by default bk populate will try those locations to satisfy a request.
+If that fails or you know a closer location then an optional URL to
+use can be passed as well.
+
+	$ bk populate -@bk://server/LOOK_OVER_HERE DOCS
+
+If you later need to remove some components, you use the unpopulate
+command:
+
+	$ bk unpopulate DOCS
+
+To see what is currently populated, you use the bk here command:
+
+	$ bk here
+	COMPILERS
+	DOCS
+	PRODUCT
+
+and you can make it more verbose and show expansion:
+
+	$ bk here -v
+	COMPILERS
+		./src/gcc
+		./src/gdb
+	DOCS
+		./man
+	PRODUCT
+
+The bk alias command supports the same -v option for showing aliases
+and their expansion.
+
+=head3 Using aliases
+
+Many commands take one or more -sALIAS options to restrict the set of
+components processed.  In general, if no -s is specified, the implied
+value is -sHERE which means all components present as well as the product.
+
+The option may repeat and the results are unioned:
+
+    -sDEVTOOLS -sDOCS
+
+And an alias may be negated which means it is subtracted from the list,
+this means everything that is populated except the product:
+
+    -sHERE -s^PRODUCT
+
+=head2 Iterators
+
+BitKeeper 5.x has two sorts of iterators, file iterators and repository
+iterators.  The file iterator runs one command over each file; the
+repository iterator runs one command in each repository in a nested 
+collection.  Both work in traditional standalone repositories so that
+scripts written using these iterators work everywhere.
+
+=head3 File iterators
+
+File iterators run a command that is passed the file names on stdin.
+Almost all BitKeeper commands that operate on files are happy to take
+a list of files on stdin.
+
+To check out all user files (skips deleted and BitKeeper metadata):
+
+    $ bk -U co
+
+To search all files, including deleted and metadata, for a string
+
+    $ bk -A grep 'dag nabbit!'
+
+The -A/-U options work in both nested collections and in traditional
+repositories.  Unlike BitKeeper 4.x -A/-U run from the 
+current working directory, not the product root.  For example,
+in our source tree, in the "src" subdirectory, it looks like:
+
+    $ bk -U grep -l 'product line'
+    ../doc/NESTED/overview
+    ../man/man1/bk-portal.1
+    logging.c
+    logging.h
+
+The relative paths make it easier to pipe the output into some other 
+command.
+
+=head4 Aliases
+
+Sometimes you want to seach over part of a nested collection.  Suppose your
+collection has a 1000 components and you know that what you want is in
+the developer tools alias, DEVTOOLS.  Restrict the search to all files in
+the DEVTOOLS alias like so:
+
+    $ bk -U -sDEVTOOLS grep 'stacktrace'
+
+=head3 Repository iterators
+
+BitKeeper 5.x introduces a repository iterator, -e (also --each-repo).
+bk --each-repo I<command> will change directory to each populated
+component root (and then the product) in turn and run I<command> there:
+
+    $ bk --each-repo pwd -P
+    src/gnu/diffutils
+    src/gnu/patch
+    src/gui
+    src/gui/tcltk/bwidget
+    src/gui/tcltk/pcre
+    src/gui/tcltk/tcl
+    src/gui/tcltk/tk
+    src/gui/tcltk/tkcon
+    src/gui/tcltk/tktable
+    src/gui/tcltk/tktreectrl
+    src/libc
+    src/t
+    src/tomcrypt
+    src/tommath
+    src/win32/dll/scc
+    src/win32/dll/shellx
+    src/win32/msys
+    .
+
+The iterator may be combined with the -sALIAS option to limit which
+repositories are processed.  
+
+    $ bk --each-repo -sWIN32_DLL pwd -P
+    src/win32/dll/scc
+    src/win32/dll/shellx
+
+And you can exclude an aliases or components, this will run the command
+in everything except the product:
+
+    $ bk --each-repo -sHERE -s^TCLTK -s^MSYS -s^WIN32_DLL pwd -P
+    src/gnu/diffutils
+    src/gnu/patch
+    src/gui
+    src/libc
+    src/t
+    src/tomcrypt
+    src/tommath
+    .
+
+You may combine the selector with the repository file iterator -r
+to iterate over each file (that's the -r) in each repository (that's
+the -s).  This combination is a hybrid, it means go to each repository
+and then do a file iterator over each fine in that repository:
+
+The "bk repocheck" command is built this, it is similar to this:
+
+    $ bk --each-repo -r check -acv
+
+=head2 New commands
+
+    bk alias - manage aliases for lists of components
+    bk attach - clone and attach a repository to a product, creating a component
+    bk comps - list components (here, missing, or all)
+    bk detach - clone and convert a component into a traditional repository
+    bk gate - manage gates
+    bk here - list or manage the set of populated repositories
+    bk partition - transform a repository into a nested collection
+    bk populate - add one or more components to a nested collection
+    bk port - pull changes from a different product's component
+    bk portal - mark a product as a portal, aka a destination for bk port
+    bk unpopulate - remove one or more components to a nested collection
+
+
+=head2 Changed commands
+
+    bk -A cmd - file iterator, runs cmd over all files in the nested collection
+    bk -U cmd - same as -A except it runs over user files only
+    bk -e cmd - repository iterator, runs cmd once in each repository
+    	Any of the above with -sI<alias> runs only in the specified alias[es].
+    bk changes - nested aware, i.e., bk changes -v includes component files
+    bk citool - nested aware, scans all repositories, faster
+    bk clone - use -sI<alias> to limit what is cloned
+    bk commit - nested aware, does the entire repo, or -sI<alias> subsets
+    bk csettool - nested aware, spans all repositories
+    bk difftool - nested aware, spans all repositories
+    bk export - nested aware, spans all repositories
+    bk revtool - nested aware, can go from code all the way to nested cset
+    bk rset - is nested aware, spans all repositories
+    bk setup - can create nested product or components
+    bk abort, commit, clone, pull, push, resolve, undo - obviously nested aware
+    bk newroot - remembers old rootkeys (for port)
+
+=head1 Creating a nested collection
+
+There are three ways to create a nested collection:
+
+<ul><li>
+create a new empty product repository with bk setup -P
+</li><li>
+split an existing repository into a collection with bk partition
+</li><li>
+clone an existing product and newroot it to create a different product
+</li></ul>
+
+=head2 Best practices when creating a nested collection
+
+A nested collection consists of the top level repository: the product,
+plus one or more lower level repositories: the components. The product
+may be thought of as the container in which the components reside.
+
+=head3 What goes in the product?
+
+While the product may be thought of as just a container, it will usually 
+have a small set of files.  These files may be
+
+<ul><li>
+Build infrastructure, i.e., C<Makefile, README, INSTALL>.
+</li><li>
+Triggers (the components inherit the product triggers by default).
+</li><li>
+BitKeeper infrastructure, such as C<BitKeeper/etc/config>, also inherited.
+</li></ul>
+
+In general, you don't want much more than that in the product.  The content
+wants to live in the components since components may be reused in other
+products.
+
+=head3 What makes a good component?
+
+If we take as an example a Linux distribution, 
+each package that you can install is an ideal component.
+
+So the kernel, gcc, gdb, vi, emacs, are all good component boundaries 
+for the same reasons that they are good package boundaries.
+
+Another way to look at components is what are the "chunks" that you might
+want to reuse.  Suppose you are a printer company and you make printers
+that have Wifi, USB, a scanner, a print head, etc.  Each one of those logical
+chunks are a good candidate for a component.  You want to have the chunks
+be the parts that you would reuse in a new product.
+
+Creating a stripped down printer that just had USB and a B&W print head
+might be as easy as
+
+    $ bk setup -P printer-basic
+    $ cd printer-basic
+    $ bk attach ../printer-bells-and-whistles/USB
+    $ bk attach ../printer-bells-and-whistles/B+W
+
+=head2 Creating and/or adding components to a nested collection
+
+To create a new empty component just run setup inside of a product:
+
+    $ bk setup [options] my_component
+
+To add a pre-existing traditional repository as a component, you
+run bk attach, which is similar to running clone.
+
+Attach works only in a portal.
+
+=head2 Removing components from a nested collection
+
+Removing components is not currently supported so be careful when adding
+them.
+
+In the worst case, you can create a new product and reattach the subset
+that you wanted in the first place (see product lines below).
+
+=head2 Making changes in a nested collection
+
+Once you have your nested collection, it works almost identically
+to a traditional repository.  The C<clone/commit/pull/push/resolve/abort/undo>
+commands are all nested aware and do the right thing.  
+
+Performance, even in a large collection, can be quite pleasant, the
+following took less than 30 seconds (this is clone
+the freebsd kernel component, make a change, check it in, push it back,
+fast disks, hot cache):
+
+    $ bk clone -sKERNEL bk://bits/freebsd kernel
+    $ cd kernel/src/sys
+    # Wack Makefile...
+    $ bk commit -y'Wack Makefile'
+    $ bk push
+
+Note that other than the C<-sKERNEL> to get just the kernel component, the
+commands are identical to those that would be used in a traditional 
+standalone repository.
+
+For those who prefer graphical checkins, bk citool has been rewritten
+to make working in a nested collection pleasant.  Citool scans all
+of the nested collection and presents any files that need comments as
+soon as they are found, the scan is asynchronous, unlike BitKeeper 4.x.
+When you commit in citool it does the commit in each of the components
+and then in the product automatically.
+
+=head1 Product lines
+
+A product line is used when some or all of the same components are
+reused in other products.  It is reasonable to say that product
+lines are the SCM enablers for code reuse.
+
+A product line consists of two or more products, each of which
+- while distinct from each other - shares one or more components.
+Examples where this sort of partitioning and reuse would be valuable
+include a family of cell phones, printers, and any other product
+line where various components may be shared across multiple products.
+
+Product line support in BitKeeper consists of two parts: the ability
+to use one product as the baseline for another product; and the
+ability to move changes across product boundaries.
+
+A product line is distinctly different than two clones of the same
+source code.  Unlike clones, the products are not constrained to two
+versions of the same source code; each product may share as little
+or as much as it wants with other products.  More importantly,
+each product has independent control over its own components.
+That point is key.  If you have two clones, updating one from the
+other is an all or nothing event, it is not possible to update just
+one subdirectory.  In a product line, product A can pick and and
+choose, on a per component basis, which components to update and
+when to update them.  If you've ever wanted the ability to hold one
+area stable while updating another, you want product lines.
+
+Product lines are supported via the bk port command.  The port
+command is similar to pull but works across different products on
+individual components.
+
+For example, suppose you had a product that was the source base for
+a printer (printers, cell phones, even CPUs are good examples of
+product lines where you want to make a new one based on an old one).
+
+In the simplest case, the new printer has all the same components
+as the old printer.  So you'd create a new printer like so:
+
+    $ bk clone old-printer new-printer
+    $ cd new-printer
+    $ bk newroot
+
+If it turned out that you wanted only a subset of the features in
+the old printer, you could have specified those like so:
+
+    $ bk clone -sfeatures-I-want old-printer new-printer
+    $ bk comps -mk | bk csetprune -
+
+Once you have your new printer, you do development on that as normal.
+The old printer may continue to improve and you may want some or
+all of those improvements.	To get them, you must use the "bk port"
+command.
+
+    $ bk port I<old-printer-url>/usb
+
+=head2 Combining repositories into a nested collection
+
+Suppose your current world consists of several different repositories,
+the source, tests, and documentation.  You may wish to combine those
+into a single product:
+
+    $ bk setup -P product
+    $ bk attach bk://server/source
+    $ bk attach bk://server/tests
+    $ bk attach bk://server/docs
+
+A new effort can use "product" and you might suppose you were done.
+Unfortunately, it is difficult or impossible to get everyone to
+switch at the same time, so it is likely that the old traditional
+repositories are still changing.
+
+Periodically, the project lead for the new nested product will want
+to get the changes from one or more of the traditional repositories.
+
+    $ bk port bk://server/source
+
+will do the trick.
+
+=head2 Splitting a repository into a nested collection
+
+We currently maintain two main trees of BitKeeper source, our stable
+tree that we call "bugfix" and the basis for BitKeeper 5.0 that we
+call "dev".  What is interesting is that "bugfix" is a traditional
+repository and "dev" is a nested collection.  Interesting because
+"bugfix" continues to be developed in parallel with "dev" and we
+want all of those changes in "dev".  Here is how that works.
+
+There is a bk partition command that is used to take a single
+repository and break it up into a nested collection.  It takes as
+input a set of directories and creates a component for each named
+directory and leaves the rest in the product.
+
+The resulting tree can then be pulled forward into the nested
+collection.  We've been doing this for more than a year and it works
+quite well.
+
+A simplified example:
+
+    $ cd bugfix
+    $ cat &gt; COMPONENTS &lt;&lt;EOF
+    src/gnu/patch
+    src/gnu/diffutils
+    src/libc
+    src/gui
+    src/t
+    src/win32
+    EOF
+    $ bk partition -CCOMPONENTS . NESTED
+    $ cd ../bk
+    $ bk pull ../bugfix/NESTED
+
+=head2 Out-sourcing
+
+Suppose you wanted to out-source translation of the docs but you did
+not want to expose the source code.   Further suppose that the product
+changesets contained too much IP to let the product+docs out the door.
+
+The solution is to create a detached instance of the component, send
+that off to the external people, get back changes in the detached
+repository, and the project lead ports those into the collection:
+
+    # Hand them the docs repo
+    $ bk detach docs ../out-source
+    $ cd ../out-source
+    $ bk clone . bk://out-source-is-us/docs
+
+    # they do their their work
+    $ cd out-source
+    $ bk pull
+    
+    # move it to the product
+    $ cd ../product
+    $ bk port ../out-source
+    $ bk commit -Y'Drop from our crack out-sourcing team'
+
+=head2 More examples/timing
+
+The test setup is 3ghz CPUs on both ends, gig ether,
+at least 4GB of ram on both ends, linux 2.6.26, ext2 file system.
+
+Truth in advertising: all numbers are hot cache, the config is
+checkout:none, partial_check:on.
+Doing the same thing over NFS and/or cold cache would be considerably
+slower.
+
+    $ time bk clone -q -s./src/sys bk://bits/freebsd kernel
+    0m16.570s
+    $ cd kernel
+    $ du -sh .
+    262M .
+    $ bk here
+    ./src/sys
+    PRODUCT
+    $ time bk populate src/contrib/gcc
+    0m3.567s
+    $ here
+    ./src/lib
+    ./src/sys
+    PRODUCT
+    $ bk changes -r+ -vnd:GFILE:
+    ChangeSet
+    src/sys/ChangeSet
+    src/sys/dev/ata/ata-all.h
+    src/sys/dev/ata/ata-raid.c
+    $ time bk -U co -q
+    0m5.148s
+    $ du -sh .
+    455M .
+    $ time bk -U clean
+    0m3.210s
+    $ du -sh .
+    300M .
+    # The following tells you how many files
+    $ bk -A | wc -l
+    11232
+    # Bring in all the rest of the nested collection
+    $ time bk populate ALL
+    here: searching bk://x6/freebsd...ok
+    Source bk://x6/freebsd
+    1/146 distrib/cvsup                100% |==============================| OK
+    2/146 doc                          100% |==============================| OK
+    3/146 doc/bn_BD.ISO10646-1         100% |==============================| OK
+    4/146 doc/da_DK.ISO8859-1          100% |==============================| OK
+    5/146 doc/de_DE.ISO8859-1          100% |==============================| OK
+    6/146 doc/el_GR.ISO8859-7          100% |==============================| OK
+    7/146 doc/en                       100% |==============================| OK
+    8/146 doc/en_US.ISO8859-1          100% |==============================| OK
+    9/146 doc/es_ES.ISO8859-1          100% |==============================| OK
+    10/146 doc/fr_FR.ISO8859-1         100% |==============================| OK
+    11/146 doc/hu_HU.ISO8859-2         100% |==============================| OK
+    12/146 doc/it_IT.ISO8859-15        100% |==============================| OK
+    13/146 doc/ja_JP.eucJP             100% |==============================| OK
+    14/146 doc/mn_MN.UTF-8             100% |==============================| OK
+    15/146 doc/nl_NL.ISO8859-1         100% |==============================| OK
+    16/146 doc/no_NO.ISO8859-1         100% |==============================| OK
+    17/146 doc/pl_PL.ISO8859-2         100% |==============================| OK
+    18/146 doc/pt_BR.ISO8859-1         100% |==============================| OK
+    19/146 doc/release                 100% |==============================| OK
+    20/146 doc/ru_RU.KOI8-R            100% |==============================| OK
+    21/146 doc/share                   100% |==============================| OK
+    22/146 doc/sr_YU.ISO8859-2         100% |==============================| OK
+    23/146 doc/tr_TR.ISO8859-9         100% |==============================| OK
+    24/146 doc/zh                      100% |==============================| OK
+    25/146 doc/zh_CN.GB2312            100% |==============================| OK
+    26/146 doc/zh_TW.Big5              100% |==============================| OK
+    27/146 ports                       100% |==============================| OK
+    28/146 ports/Mk                    100% |==============================| OK
+    29/146 ports/Templates             100% |==============================| OK
+    30/146 ports/Tools                 100% |==============================| OK
+    31/146 ports/accessibility         100% |==============================| OK
+    32/146 ports/arabic                100% |==============================| OK
+    33/146 ports/archivers             100% |==============================| OK
+    34/146 ports/astro                 100% |==============================| OK
+    35/146 ports/audio                 100% |==============================| OK
+    36/146 ports/benchmarks            100% |==============================| OK
+    37/146 ports/biology               100% |==============================| OK
+    38/146 ports/cad                   100% |==============================| OK
+    39/146 ports/chinese               100% |==============================| OK
+    40/146 ports/comms                 100% |==============================| OK
+    41/146 ports/converters            100% |==============================| OK
+    42/146 ports/databases             100% |==============================| OK
+    43/146 ports/deskutils             100% |==============================| OK
+    44/146 ports/devel                 100% |==============================| OK
+    45/146 ports/dns                   100% |==============================| OK
+    46/146 ports/editors               100% |==============================| OK
+    47/146 ports/emulators             100% |==============================| OK
+    48/146 ports/finance               100% |==============================| OK
+    49/146 ports/french                100% |==============================| OK
+    50/146 ports/ftp                   100% |==============================| OK
+    51/146 ports/games                 100% |==============================| OK
+    52/146 ports/german                100% |==============================| OK
+    53/146 ports/graphics              100% |==============================| OK
+    54/146 ports/hebrew                100% |==============================| OK
+    55/146 ports/hungarian             100% |==============================| OK
+    56/146 ports/irc                   100% |==============================| OK
+    57/146 ports/japanese              100% |==============================| OK
+    58/146 ports/java                  100% |==============================| OK
+    59/146 ports/korean                100% |==============================| OK
+    60/146 ports/lang                  100% |==============================| OK
+    61/146 ports/mail                  100% |==============================| OK
+    62/146 ports/math                  100% |==============================| OK
+    63/146 ports/mbone                 100% |==============================| OK
+    64/146 ports/misc                  100% |==============================| OK
+    65/146 ports/multimedia            100% |==============================| OK
+    66/146 ports/net                   100% |==============================| OK
+    67/146 ports/net-im                100% |==============================| OK
+    68/146 ports/net-mgmt              100% |==============================| OK
+    69/146 ports/net-p2p               100% |==============================| OK
+    70/146 ports/news                  100% |==============================| OK
+    71/146 ports/palm                  100% |==============================| OK
+    72/146 ports/polish                100% |==============================| OK
+    73/146 ports/ports-mgmt            100% |==============================| OK
+    74/146 ports/portuguese            100% |==============================| OK
+    75/146 ports/print                 100% |==============================| OK
+    76/146 ports/russian               100% |==============================| OK
+    77/146 ports/science               100% |==============================| OK
+    78/146 ports/security              100% |==============================| OK
+    79/146 ports/shells                100% |==============================| OK
+    80/146 ports/sysutils              100% |==============================| OK
+    81/146 ports/textproc              100% |==============================| OK
+    82/146 ports/ukrainian             100% |==============================| OK
+    83/146 ports/vietnamese            100% |==============================| OK
+    84/146 ports/www                   100% |==============================| OK
+    85/146 ports/x11                   100% |==============================| OK
+    86/146 ports/x11-clocks            100% |==============================| OK
+    87/146 ports/x11-drivers           100% |==============================| OK
+    88/146 ports/x11-fm                100% |==============================| OK
+    89/146 ports/x11-fonts             100% |==============================| OK
+    90/146 ports/x11-servers           100% |==============================| OK
+    91/146 ports/x11-themes            100% |==============================| OK
+    92/146 ports/x11-toolkits          100% |==============================| OK
+    93/146 ports/x11-wm                100% |==============================| OK
+    94/146 projects                    100% |==============================| OK
+    95/146 projects/binup              100% |==============================| OK
+    96/146 projects/compat-fbsd        100% |==============================| OK
+    97/146 projects/csup               100% |==============================| OK
+    98/146 projects/cvsweb             100% |==============================| OK
+    99/146 projects/doscmd             100% |==============================| OK
+    100/146 projects/elisports         100% |==============================| OK
+    101/146 projects/embeddedfreebsd   100% |==============================| OK
+    102/146 .../freebsd-update-server  100% |==============================| OK
+    103/146 projects/mfcns             100% |==============================| OK
+    104/146 projects/ndr               100% |==============================| OK
+    105/146 projects/portsnap          100% |==============================| OK
+    106/146 projects/sccs              100% |==============================| OK
+    107/146 projects/tinderbox         100% |==============================| OK
+    108/146 projects/validate          100% |==============================| OK
+    109/146 src                        100% |==============================| OK
+    110/146 src/bin                    100% |==============================| OK
+    111/146 src/cddl                   100% |==============================| OK
+    112/146 src/contrib                100% |==============================| OK
+    113/146 src/crypto                 100% |==============================| OK
+    114/146 src/etc                    100% |==============================| OK
+    115/146 src/games                  100% |==============================| OK
+    116/146 src/gnu                    100% |==============================| OK
+    117/146 src/include                100% |==============================| OK
+    118/146 src/kerberos5              100% |==============================| OK
+    119/146 src/libexec                100% |==============================| OK
+    120/146 src/release                100% |==============================| OK
+    121/146 src/rescue                 100% |==============================| OK
+    122/146 src/sbin                   100% |==============================| OK
+    123/146 src/secure                 100% |==============================| OK
+    124/146 src/share                  100% |==============================| OK
+    125/146 src/tools                  100% |==============================| OK
+    126/146 src/usr.bin                100% |==============================| OK
+    127/146 src/usr.sbin               100% |==============================| OK
+    128/146 www                        100% |==============================| OK
+    129/146 www/da                     100% |==============================| OK
+    130/146 www/de                     100% |==============================| OK
+    131/146 www/el                     100% |==============================| OK
+    132/146 www/en                     100% |==============================| OK
+    133/146 www/es                     100% |==============================| OK
+    134/146 www/fr                     100% |==============================| OK
+    135/146 www/hu                     100% |==============================| OK
+    136/146 www/it                     100% |==============================| OK
+    137/146 www/ja                     100% |==============================| OK
+    138/146 www/mn                     100% |==============================| OK
+    139/146 www/nl                     100% |==============================| OK
+    140/146 www/pt_BR                  100% |==============================| OK
+    141/146 www/ru                     100% |==============================| OK
+    142/146 www/share                  100% |==============================| OK
+    143/146 www/tools                  100% |==============================| OK
+    144/146 www/tr                     100% |==============================| OK
+    145/146 www/zh_CN                  100% |==============================| OK
+    146/146 www/zh_TW                  100% |==============================| OK
+     [check]                           100% |==============================| OK
+
+    real    1m33.989s
+    $ du -sh .
+    1.8G .
+    $ bk here
+    ALL
+    PRODUCT
+
+
