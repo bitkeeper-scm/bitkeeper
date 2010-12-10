@@ -320,7 +320,7 @@ OO_OBJS = tclOO.o tclOOBasic.o tclOOCall.o tclOODefineCmds.o tclOOInfo.o \
 	tclOOMethod.o tclOOStubInit.o
 
 L_OBJS = Lscanner-pregen.o Lgrammar-pregen.o Lcompile.o Last.o \
-	Ltypecheck.o
+	Ltypecheck.o Lgetopt.o
 
 TOMMATH_OBJS = bncore.o bn_reverse.o bn_fast_s_mp_mul_digs.o \
 	bn_fast_s_mp_sqr.o bn_mp_add.o bn_mp_and.o \
@@ -496,7 +496,8 @@ L_SRCS = \
 	$(GENERIC_DIR)/Lgrammar.y \
 	$(GENERIC_DIR)/Lcompile.c \
 	$(GENERIC_DIR)/Ltypecheck.c \
-	$(GENERIC_DIR)/Last.c
+	$(GENERIC_DIR)/Last.c \
+	$(GENERIC_DIR)/Lgetopt.c
 
 STUB_SRCS = \
 	$(GENERIC_DIR)/tclStubLib.c
@@ -1352,6 +1353,9 @@ Lcompile.o: $(GENERIC_DIR)/Lcompile.c $(L_HDRS)
 
 Ltypecheck.o: $(GENERIC_DIR)/Ltypecheck.c $(L_HDRS)
 	$(CC) -c $(CC_SWITCHES) $(GENERIC_DIR)/Ltypecheck.c
+
+Lgetopt.o: $(GENERIC_DIR)/Lgetopt.c $(L_HDRS)
+	$(CC) -c $(CC_SWITCHES) $(GENERIC_DIR)/Lgetopt.c
 
 Last.o: $(GENERIC_DIR)/Last.c $(L_HDRS) 
 	$(CC) -c $(CC_SWITCHES) $(GENERIC_DIR)/Last.c

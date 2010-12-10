@@ -310,7 +310,8 @@ L_OBJS	= Lscanner-pregen.$(OBJEXT) \
 	Lgrammar-pregen.$(OBJEXT) \
 	Lcompile.$(OBJEXT) \
 	Last.$(OBJEXT) \
-	Ltypecheck.$(OBJEXT)
+	Ltypecheck.$(OBJEXT) \
+	Lgetopt.$(OBJEXT)
 
 TOMMATH_OBJS = \
 	bncore.${OBJEXT} \
@@ -398,7 +399,8 @@ L_SRCS	= \
 	$(GENERIC_DIR)/Lscanner.l \
 	$(GENERIC_DIR)/Lgrammar.y \
 	$(GENERIC_DIR)/Lcompile.c \
-	$(GENERIC_DIR)/Last.c
+	$(GENERIC_DIR)/Last.c \
+	$(GENERIC_DIR)/Lgetopt.c
 
 WIN_OBJS = \
 	tclWin32Dll.$(OBJEXT) \
@@ -634,6 +636,9 @@ Lgrammar-pregen.$(OBJEXT): $(GENERIC_DIR)/Lgrammar-pregen.c Lcompile.$(OBJEXT) $
 
 Lcompile.$(OBJEXT): $(GENERIC_DIR)/Lcompile.c $(L_HDRS)
 	$(CC) -c $(CC_SWITCHES) -DBUILD_tcl @DEPARG@ $(GENERIC_DIR)/Lcompile.c
+
+Lgetopt.$(OBJEXT): $(GENERIC_DIR)/Lgetopt.c $(L_HDRS)
+	$(CC) -c $(CC_SWITCHES) -DBUILD_tcl @DEPARG@ $(GENERIC_DIR)/Lgetopt.c
 
 Last.$(OBJEXT): $(GENERIC_DIR)/Last.c $(L_HDRS) 
 	$(CC) -c $(CC_SWITCHES) -DBUILD_tcl @DEPARG@ $(GENERIC_DIR)/Last.c

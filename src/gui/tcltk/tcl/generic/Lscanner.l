@@ -314,6 +314,14 @@ canonical_num(char *num)
 	return (ret);
 }
 
+/*
+ * Work around a Windows problem where our getopt type conficts
+ * with the system's.
+ */
+#undef getopt
+#undef optarg
+#undef optind
+
 %}
 %%
 <INITIAL,interpol,re_arg>{
@@ -384,7 +392,7 @@ canonical_num(char *num)
 	"constructor"	return T_CONSTRUCTOR;
 	"destructor"	return T_DESTRUCTOR;
 	"expand"	return T_EXPAND;
-	"_unused"	return T_UNUSED;
+	"_argused"	return T_ARGUSED;
 	"goto"		return T_GOTO;
 	"switch"	return T_SWITCH;
 	"case"		return T_CASE;

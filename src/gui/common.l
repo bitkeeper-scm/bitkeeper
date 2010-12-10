@@ -15,7 +15,7 @@ struct	{
 } _bk;
 
 _bk.cmd_quit = "exit";
-_bk.wm = tk_windowingsystem();
+_bk.wm = Tk_windowingsystem();
 
 int	_bk_search_case = 0;
 int	_bk_search_highlight = 0;
@@ -135,7 +135,7 @@ bk_exit(...args)
 void
 bk_message(string title, string message)
 {
-	if ((tk_windowingsystem() eq "win32")
+	if ((Tk_windowingsystem() eq "win32")
 	    && (getenv("BK_REGRESSION") eq "")) {
 		tk_messageBox(title: title, message: message);
 	} else {
@@ -146,7 +146,7 @@ bk_message(string title, string message)
 void
 bk_error(string title, string message)
 {
-	if ((tk_windowingsystem() eq "win32")
+	if ((Tk_windowingsystem() eq "win32")
 	    && (getenv("BK_REGRESSION") eq "")) {
 		tk_messageBox(title: title, message: message);
 	} else {
@@ -246,7 +246,7 @@ void
 scrollMouseWheel(string w, string dir, int x, int y, int delta)
 {
 	int	d = delta;
-	string	widg = winfo_containing(x, y);
+	string	widg = Winfo_containing(x, y);
 
 	if (widg eq "") widg = w;
 	if (_bk.wm eq "aqua") {

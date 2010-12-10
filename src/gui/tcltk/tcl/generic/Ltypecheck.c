@@ -12,25 +12,16 @@ private int	typeck_decls(VarDecl *a, VarDecl *b);
 private int	typeck_list(Type *a, Type *b);
 private int	typeck_declType(Type *type, VarDecl *decl, int nameof_ok);
 
-/*
- * Create the pre-defined types.  Init only once so all L scripts see
- * the same fundamental type pointers.  We persist these across all
- * time so we don't have to make them part of the L global state and
- * reference them as L->L_string instead of just L_string.
- */
+/* Create the pre-defined types. */
 void
 L_typeck_init()
 {
-	static int initted = 0;
-
-	unless (initted++) {
-		L_int    = type_mkScalar(L_INT, PERSIST);
-		L_float  = type_mkScalar(L_FLOAT, PERSIST);
-		L_string = type_mkScalar(L_STRING, PERSIST);
-		L_widget = type_mkScalar(L_WIDGET, PERSIST);
-		L_void   = type_mkScalar(L_VOID, PERSIST);
-		L_poly   = type_mkScalar(L_POLY, PERSIST);
-	}
+	L_int    = type_mkScalar(L_INT);
+	L_float  = type_mkScalar(L_FLOAT);
+	L_string = type_mkScalar(L_STRING);
+	L_widget = type_mkScalar(L_WIDGET);
+	L_void   = type_mkScalar(L_VOID);
+	L_poly   = type_mkScalar(L_POLY);
 }
 
 private	char	type_buf[80];
@@ -43,8 +34,8 @@ str_add(char *s)
 	strncat(type_buf, s, sizeof(type_buf));
 }
 
-private char *
-type_str(Type_k kind)
+char *
+L_type_str(Type_k kind)
 {
 	notfirst = type_buf[0] = 0;
 	if (kind & L_INT)      str_add("int");
@@ -71,9 +62,9 @@ pr_err(Type_k got, Type_k want, char *bef, char *aft, void *node)
 	buf[0] = '\0';
 	if (bef) snprintf(buf, sizeof(buf), "%s, ", bef);
 	strncat(buf, "expected type ", sizeof(buf));
-	strncat(buf, type_str(want), sizeof(buf));
+	strncat(buf, L_type_str(want), sizeof(buf));
 	strncat(buf, " but got ", sizeof(buf));
-	strncat(buf, type_str(got), sizeof(buf));
+	strncat(buf, L_type_str(got), sizeof(buf));
 	if (aft) {
 		strncat(buf, " ", sizeof(buf));
 		strncat(buf, aft, sizeof(buf));
@@ -89,7 +80,7 @@ L_typeck_deny(Type_k deny, Expr *expr)
 	if (L->options & L_OPT_POLY) return;
 
 	if (expr->type->kind & deny) {
-		L_errf(expr, "type %s illegal", type_str(expr->type->kind));
+		L_errf(expr, "type %s illegal", L_type_str(expr->type->kind));
 		expr->type = L_poly;  // minimize cascading errors
 	}
 }
@@ -385,7 +376,7 @@ L_typeck_same(Type *a, Type *b)
 			typeck_decls(a->u.func.formals, b->u.func.formals));
 	    case L_CLASS:
 		/* Must be the same class. */
-		return (a == b);
+		return (a->u.class.clsdecl == b->u.class.clsdecl);
 	    default:
 		L_bomb("bad type kind in L_typeck_same");
 		return (0);

@@ -25,7 +25,7 @@ proc %%call_main_if_defined {} {
 		    }
 		    1 {
 			set ::%%suppress_calling_main 1
-			main $::argc
+			main $::argv
 		    }
 		    2 {
 			set ::%%suppress_calling_main 1
@@ -43,6 +43,7 @@ proc %%call_main_if_defined {} {
 }
 
 #lang L
+#file "libl.tcl"
 #pragma fntrace(off)
 /*
  * Types for compatibility with older versions of the compiler.
@@ -53,14 +54,7 @@ typedef	poly	hash{poly};
 typedef	poly	tcl;
 
 typedef	string	FILE;
-FILE    stdin  = "stdin";
-FILE    stderr = "stderr";
-FILE    stdout = "stdout";
-string	stdio_lasterr;
-
-extern	string errorCode[];
-
-typedef void &fnhook_t(int pre, int ac, poly av[], poly ret);
+typedef void	&fnhook_t(int pre, int ac, poly av[], poly ret);
 
 struct	stat {
 	int	st_dev;
@@ -76,12 +70,30 @@ struct	stat {
 	string	st_type;
 };
 
-int
-abs(int i)
-{
-	if (i < 0) i = -i;
-	return (i);
-}
+typedef struct {
+	string	name;	// name of the exe as passed in
+	string	path;	// if defined, this is the path to the exe
+			// if not defined, the executable was not found
+	int	exit;	// if defined, the process exited with this val
+	int	signal;	// if defined, the signal that killed the process
+} STATUS;
+
+FILE    stdin  = "stdin";
+FILE    stderr = "stderr";
+FILE    stdout = "stdout";
+string	stdio_lasterr;
+STATUS	stdio_status;
+
+extern	string	::argv[];
+extern	int	::argc;
+extern	string	errorCode[];
+extern	int	optind;
+extern	string	optarg, optopt;
+
+extern string	getopt(string av[], string opts, string lopts[]);
+extern void	getoptReset(void);
+
+private int	signame_to_num(string signame);
 
 string
 basename(string path)
@@ -101,9 +113,12 @@ caller(int stacks)
 }
 
 int
-chdir(_unused string dir)
+chdir(_argused string dir)
 {
-	if (catch("cd $dir")) {
+	string	res;
+
+	if (catch("cd $dir", &res)) {
+		stdio_lasterr = res;
 		return (-1);
 	} else {
 		return (0);
@@ -111,9 +126,12 @@ chdir(_unused string dir)
 }
 
 int
-chmod(_unused string path, _unused string permissions)
+chmod(_argused string path, _argused string permissions)
 {
-	if (catch("file attributes $path -permissions 0$permissions")) {
+	string	res;
+
+	if (catch("file attributes $path -permissions 0$permissions", &res)) {
+		stdio_lasterr = res;
 		return (-1);
 	} else {
 		return (0);
@@ -121,8 +139,9 @@ chmod(_unused string path, _unused string permissions)
 }
 
 int
-chown(string owner, string group, _unused string path)
+chown(string owner, string group, _argused string path)
 {
+	string	res;
 	string	cmd = "file attributes $path";
 
 	if ((owner eq "") && (group eq "")) return (0);
@@ -132,7 +151,8 @@ chown(string owner, string group, _unused string path)
 	unless (group eq "") {
 		cmd = cmd . " -group $group";
 	}
-	if (catch(cmd)) {
+	if (catch(cmd, &res)) {
+		stdio_lasterr = res;
 		return (-1);
 	} else {
 		return (0);
@@ -140,9 +160,9 @@ chown(string owner, string group, _unused string path)
 }
 
 void
-die(string message)
+die_(string func, int line, string fmt, ...args)
 {
-	warn(message);
+	warn_(func, line, fmt, (expand)args);
 	exit(1);
 }
 
@@ -170,19 +190,6 @@ fclose(FILE f)
 		return (-1);
 	} else {
 		return (0);
-	}
-}
-
-string
-fgetline(_unused FILE f)
-{
-	string	buf;
-	int	ret;
-
-	if (catch("set ret [gets $f buf]") || (ret < 0)) {
-		return (undef);
-	} else {
-		return (buf);
 	}
 }
 
@@ -217,7 +224,7 @@ fopen(string path, string mode)
 }
 
 int
-fprintf(_unused FILE f, _unused string fmt, _unused ...args)
+fprintf(_argused FILE f, _argused string fmt, _argused ...args)
 {
 	if (catch("puts -nonewline $f [format $fmt {*}$args]")) {
 		return (-1);
@@ -226,27 +233,13 @@ fprintf(_unused FILE f, _unused string fmt, _unused ...args)
 	}
 }
 
-string
-freadn(_unused FILE f, _unused int numBytes)
-{
-	string	buf;
-
-	if (numBytes == -1) {
-		if (catch("set buf [read $f]")) {
-			return (undef);
-		}
-	} else {
-		if (catch("set buf [read $f $numBytes]")) {
-			return (undef);
-		}
-	}
-	return (buf);
-}
-
 int
-frename(_unused string oldPath, _unused string newPath)
+frename(_argused string oldPath, _argused string newPath)
 {
-	if (catch("file rename $oldPath $newPath")) {
+	string	res;
+
+	if (catch("file rename $oldPath $newPath", &res)) {
+		stdio_lasterr = res;
 		return (-1);
 	} else {
 		return (0);
@@ -254,7 +247,7 @@ frename(_unused string oldPath, _unused string newPath)
 }
 
 string
-ftype(_unused string path)
+ftype(_argused string path)
 {
 	string	type;
 
@@ -266,43 +259,51 @@ ftype(_unused string path)
 }
 
 string[]
-getdir(string dir, string pattern)
+getdir(string dir, ...args)
 {
+	string	pattern;
+
+	switch (length(args)) {
+	    case 0:
+		pattern = "*";
+		break;
+	    case 1:
+		pattern = args[0];
+		break;
+	    default:
+		return (undef);
+	}
 	return (glob(nocomplain:, directory: dir, pattern));
 }
 
 string
 getenv(string varname)
 {
-	if (Info_exists("::env(${varname})")) {
-		return (set("::env(${varname})"));
+	string	val;
+
+	if (catch("set val $::env(${varname})") || !length(val)) {
+		return (undef);
 	} else {
-		return ("");
+		return (val);
 	}
 }
 
-string
-img_create(...args)
+int
+getpid()
 {
-	return (Image_createPhoto((expand)args));
+	return ((int)pid());
 }
 
-int
-isdouble(poly n)
+void
+here_(string file, int line, string func)
 {
-	return (String_isDouble(n));
+	puts(stderr, "${func}() in ${basename(file)}:${line}");
 }
 
 int
 isdir(string path)
 {
 	return (File_isdirectory(path));
-}
-
-int
-isinteger(poly n)
-{
-	return (String_isInteger(n));
 }
 
 int
@@ -323,10 +324,19 @@ isspace(string buf)
 	return (String_isSpace(buf));
 }
 
-int
-link(_unused string sourcePath, _unused string targetPath)
+string
+lc(string s)
 {
-	if (catch("file link -hard $sourcePath $targetPath")) {
+	return (String_tolower(s));
+}
+
+int
+link(_argused string sourcePath, _argused string targetPath)
+{
+	string	res;
+
+	if (catch("file link -hard $sourcePath $targetPath", &res)) {
+		stdio_lasterr = res;
 		return (-1);
 	} else {
 		return (0);
@@ -334,7 +344,7 @@ link(_unused string sourcePath, _unused string targetPath)
 }
 
 int
-lstat(_unused string path, struct stat &buf)
+lstat(_argused string path, struct stat &buf)
 {
 	if (catch("file lstat $path ret")) {
 		return (-1);
@@ -356,9 +366,12 @@ lstat(_unused string path, struct stat &buf)
 }
 
 int
-mkdir(_unused string path)
+mkdir(_argused string path)
 {
-	if (catch("file mkdir $path")) {
+	string	res;
+
+	if (catch("file mkdir $path", &res)) {
+		stdio_lasterr = res;
 		return (-1);
 	} else {
 		return (0);
@@ -366,7 +379,7 @@ mkdir(_unused string path)
 }
 
 int
-mtime(_unused string path)
+mtime(_argused string path)
 {
 	int	t;
 
@@ -384,9 +397,26 @@ normalize(string path)
 }
 
 int
-pclose(FILE f)
+pclose_(_argused FILE f, STATUS &status_ref)
 {
-	return (fclose(f));
+	string	res;
+	STATUS	status;
+
+	if (catch("close $f", &res)) {
+	    stdio_lasterr = res;
+	    switch (errorCode[0]) {
+		case "CHILDSTATUS":
+		    status.exit = (int)errorCode[2];
+		    break;
+		case "CHILDKILLED":
+		    status.signal = signame_to_num(errorCode[2]);
+		    break;
+	    }
+	} else {
+		status.exit = 0;
+	}
+	if (defined(&status_ref)) status_ref = status;
+	return ((status.exit == 0) ? 0 : -1);
 }
 
 string
@@ -399,17 +429,31 @@ platform()
 }
 
 FILE
-popen(_unused string cmd, _unused string mode)
+popen(string cmd, string mode)
 {
 	int	v = 0;
 	FILE	f;
-	string	err;
+	string	arg, argv[], err;
 
 	if (mode =~ /v/) {
 		mode =~ s/v//g;
 		v = 1;
 	}
-	if (catch("set f [open |$cmd $mode]", &err)) {
+	if (catch("set argv [shsplit $cmd]", &err)) {
+		stdio_lasterr = err;
+		return (undef);
+	}
+
+	/*
+	 * Re-direct stderr to this process' stderr unless the caller
+	 * redirected it inside their command.
+	 */
+	foreach (arg in argv) {
+		if (arg =~ /^2>/) break;
+	}
+	unless (defined(arg)) push(&argv, "2>@stderr");
+
+	if (catch("set f [open |$argv $mode]", &err)) {
 		stdio_lasterr = err;
 		if (v) fprintf(stderr, "popen(%s, %s) = %s\n", cmd, mode, err);
 		return (undef);
@@ -424,12 +468,35 @@ printf(string fmt, ...args)
 	puts(nonewline:, format(fmt, (expand)args));
 }
 
+int
+read_(_argused FILE f, string &buf, _argused int numBytes)
+{
+	string	res;
+
+	if (eof(f)) {
+		stdio_lasterr = "end of file";
+		return (-1);
+	}
+	if (numBytes == -1) {
+		if (catch("set buf [read $f]", &res)) {
+			stdio_lasterr = res;
+			return (-1);
+		}
+	} else {
+		if (catch("set buf [read $f $numBytes]", &res)) {
+			stdio_lasterr = res;
+			return (-1);
+		}
+	}
+	return (length(buf));
+}
+
 string
-require(_unused string packageName)
+require(_argused string packageName)
 {
 	string	ver;
 
-	if (catch("set ver [package require $packageName]")) {
+	if (catch("package require $packageName", &ver)) {
 		return (undef);
 	} else {
 		return (ver);
@@ -437,13 +504,39 @@ require(_unused string packageName)
 }
 
 int
-rmdir(_unused string dir)
+rmdir(_argused string dir)
 {
-	if (catch("file delete $dir")) {
+	string	res;
+
+	if (catch("file delete $dir", &res)) {
+		stdio_lasterr = res;
 		return (-1);
 	} else {
 		return (0);
 	}
+}
+
+void
+perror(...args)
+{
+	string	msg = args[0];
+
+	if (defined(msg)) {
+		puts("${msg}: ${stdio_lasterr}");
+	} else {
+		puts(stdio_lasterr);
+	}
+}
+
+string
+putenv(string var_fmt, ...args)
+{
+	string	fmt, var;
+
+	/* Use Tcl's split since L strips tailing null fields. */
+	{var, fmt} = ::split(var_fmt, "=");
+	unless (defined(fmt)) return (undef);
+	return (set("::env(${var})", format(fmt, (expand)args)));
 }
 
 string
@@ -453,11 +546,11 @@ setenv(string varname, string val)
 }
 
 int
-size(_unused string path)
+size(_argused string path)
 {
 	int	sz;
 
-	if (catch("set sz [file size $path]")) {
+	if (catch("file size $path", &sz)) {
 		return (-1);
 	} else {
 		return (sz);
@@ -465,9 +558,9 @@ size(_unused string path)
 }
 
 void
-sleep(int seconds)
+sleep(float seconds)
 {
-	after(seconds * 1000);
+	after((int)(seconds * 1000));
 }
 
 string
@@ -477,7 +570,7 @@ sprintf(string fmt, ...args)
 }
 
 int
-stat(_unused string path, struct stat &buf)
+stat(_argused string path, struct stat &buf)
 {
 	if (catch("file stat $path ret")) {
 		return (-1);
@@ -513,7 +606,7 @@ strchr(string s, string c)
 int
 streq(string a, string b)
 {
-	return (String_compare(a, b) eq "0");
+	return (a eq b);
 }
 
 int
@@ -535,50 +628,342 @@ strrchr(string s, string c)
 }
 
 int
-symlink(_unused string sourcePath, _unused string targetPath)
+symlink(_argused string sourcePath, _argused string targetPath)
 {
-	if (catch("file link -symbolic $sourcePath $targetPath")) {
+	string	res;
+
+	if (catch("file link -symbolic $sourcePath $targetPath", &res)) {
+		stdio_lasterr = res;
 		return (-1);
 	} else {
 		return (0);
 	}
 }
 
-string
-system(_unused string cmd)
+private int
+signame_to_num(string signame)
+{
+	switch (signame) {
+	    case "SIGHUP":	return (1);
+	    case "SIGINT":	return (2);
+	    case "SIGQUIT":	return (3);
+	    case "SIGABRT":	return (6);
+	    case "SIGKILL":	return (9);
+	    case "SIGALRM":	return (14);
+	    case "SIGTERM":	return (15);
+	    default:		return (undef);
+	}
+}
+
+/* These are pre-defined identifiers set by the compiler. */
+extern int	SYSTEM_ARGV__;
+extern int	SYSTEM_IN_STRING__;
+extern int	SYSTEM_IN_ARRAY__;
+extern int	SYSTEM_IN_FILENAME__;
+extern int	SYSTEM_IN_HANDLE__;
+extern int	SYSTEM_OUT_STRING__;
+extern int	SYSTEM_OUT_ARRAY__;
+extern int	SYSTEM_OUT_FILENAME__;
+extern int	SYSTEM_OUT_HANDLE__;
+extern int	SYSTEM_ERR_STRING__;
+extern int	SYSTEM_ERR_ARRAY__;
+extern int	SYSTEM_ERR_FILENAME__;
+extern int	SYSTEM_ERR_HANDLE__;
+extern int	SYSTEM_BACKGROUND__;
+
+private struct {
+	FILE	chIn;
+	FILE	chOut;
+	string	nmIn;
+	int	flags;
+	STATUS	status;
+} spawn_handles{int};
+
+/*
+ * This is used as a filevent handler for a spawned process' stdout.
+ * Read what's there and write it to whatever user output channel
+ * system_() set up for it.  When we see EOF, close the process output
+ * channel and reap the exit status.  Stuff it in a private global for
+ * eventual use by waitpid().
+ */
+private void
+spawn_checker_(FILE f)
 {
 	string	res;
+	int	mypid = pid(f);
+	int	flags = spawn_handles{mypid}.flags;
+	FILE	chOut = spawn_handles{mypid}.chOut;
 
-	if (catch("exec {*}$cmd", &res)) {
-		stdio_lasterr = res;
-		return (undef);
+	// Can't happen?  But be paranoid.
+	unless (defined(chOut)) return;
+
+	puts(nonewline: chOut, ::read(f));
+
+	if (eof(f)) {
+		spawn_handles{mypid}.chOut = undef;
+		if (catch("close $f", &res)) {
+		    switch (errorCode[0]) {
+			case "CHILDSTATUS":
+			    spawn_handles{mypid}.status.exit =
+				(int)errorCode[2];
+			    break;
+			case "CHILDKILLED":
+			    spawn_handles{mypid}.status.signal =
+				signame_to_num(errorCode[2]);
+			    break;
+		    }
+		} else {
+			spawn_handles{mypid}.status.exit = 0;
+		}
+		if (flags & (SYSTEM_OUT_FILENAME__ | SYSTEM_OUT_HANDLE__)) {
+			close(chOut);
+		}
+		if (flags & (SYSTEM_IN_ARRAY__ | SYSTEM_IN_STRING__)) {
+			close(spawn_handles{mypid}.chIn);
+			unlink(spawn_handles{mypid}.nmIn);
+		}
+		set("::%L_pid${mypid}_done", 1);  // waitpid() vwaits on this
 	}
-	return (res);
+}
+
+int
+system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
+	int flags)
+{
+	int	ret = 0;
+	int	spawn = (flags & SYSTEM_BACKGROUND__);
+	string	err, nmErr, nmIn, nmOut, out, path, res;
+	FILE	chErr, chIn, chOut, f;
+	STATUS	status;
+
+	/*
+	 * This aliases our locals "err" and "out" to the values of
+	 * the "&err_ref" and "&out_ref" actuals, letting us access their
+	 * values if they are strings (call-by-value) and not variable
+	 * names (call-by-reference).  The flags arg tells us which
+	 * are which.
+	 */
+	eval('unset err out');
+	eval('upvar 0 &err_ref err');
+	eval('upvar 0 &out_ref out');
+
+	unless (flags & SYSTEM_ARGV__) {
+		if (catch("set argv [shsplit $argv]", &res)) {
+			stdio_lasterr = res;
+			ret = undef;
+			goto out;
+		}
+	}
+	status.name   = argv[0];
+	status.exit   = undef;
+	status.signal = undef;
+	if (length(path = auto_execok(argv[0]))) {
+		status.path = path;
+	} else {
+		status.path = undef;
+		ret = undef;
+		goto out;
+	}
+
+	if (flags & (SYSTEM_IN_ARRAY__ | SYSTEM_IN_STRING__)) {
+		chIn = File_Tempfile(&nmIn);
+		if (flags & SYSTEM_IN_ARRAY__) {
+			in = join("\n", in);
+			puts(chIn, in);
+		} else {
+			puts(nonewline: chIn, in);
+		}
+		close(chIn);
+		chIn = fopen(nmIn, "r");
+	} else if (flags & SYSTEM_IN_FILENAME__) {
+		if (defined(in)) {
+			unless (defined(chIn = fopen(in, "r"))) {
+				ret = undef;
+				goto out;
+			}
+		}
+	} else if (flags & SYSTEM_IN_HANDLE__) {
+		chIn = in;
+	}
+	if (flags & (SYSTEM_OUT_STRING__ | SYSTEM_OUT_ARRAY__)) {
+		chOut = File_Tempfile(&nmOut);
+	} else if (flags & SYSTEM_OUT_FILENAME__) {
+		if (defined(out)) {
+			unless (defined(chOut = fopen(out, "w"))) {
+				ret = undef;
+				goto out;
+			}
+		}
+	} else if (flags & SYSTEM_OUT_HANDLE__) {
+		chOut = out;
+	} else {
+		chOut = "stdout";
+	}
+	if (flags & (SYSTEM_ERR_STRING__ | SYSTEM_ERR_ARRAY__)) {
+		chErr = File_Tempfile(&nmErr);
+	} else if (flags & SYSTEM_ERR_FILENAME__) {
+		if (defined(err)) {
+			unless (defined(chErr = fopen(err, "w"))) {
+				ret = undef;
+				goto out;
+			}
+		}
+	} else if (flags & SYSTEM_ERR_HANDLE__) {
+		chErr = err;
+	} else {
+		chErr = "stderr";
+	}
+
+	if (defined(chIn))  push(&argv, "<@${chIn}");
+	if (defined(chOut) && !spawn) push(&argv, ">@${chOut}");
+	if (defined(chErr)) push(&argv, "2>@${chErr}");
+
+	if (spawn) {
+		/* For spawn(). */
+		if (catch("set f [open |$argv r]", &res)) {
+			stdio_lasterr = res;
+			ret = undef;
+			goto out;
+		} else {
+			int	mypid = pid(f);
+
+			unless (defined(chOut)) chOut = "stdout";
+			spawn_handles{mypid}.chIn   = chIn;
+			spawn_handles{mypid}.nmIn   = nmIn;
+			spawn_handles{mypid}.chOut  = chOut;
+			spawn_handles{mypid}.status = status;
+			spawn_handles{mypid}.flags  = flags;
+			unless (Info_vars("::%L_pid${mypid}_done") eq "") {
+				unset("::%L_pid${mypid}_done");
+			}
+			fconfigure(f, blocking: 0, buffering: "none");
+			fileevent(f, "readable", {&spawn_checker_, f});
+			return (mypid);
+		}
+	} else {
+		/* For system(). */
+		if (catch("exec -- {*}$argv", &res)) {
+			stdio_lasterr = res;
+			switch (errorCode[0]) {
+			    case "CHILDSTATUS":
+				ret = (int)errorCode[2];
+				status.exit = ret;
+				break;
+			    case "CHILDKILLED":
+				status.signal = signame_to_num(errorCode[2]);
+				break;
+			    default:
+				ret = undef;
+				goto out;
+			}
+		} else {
+			ret = 0;
+			status.exit = ret;
+		}
+	}
+
+	if (flags & (SYSTEM_OUT_STRING__ | SYSTEM_OUT_ARRAY__)) {
+		close(chOut);
+		if (defined(chOut = fopen(nmOut, "r"))) {
+			if (read(chOut, &out_ref, -1) < 0) {
+				ret = undef;
+				goto out;
+			}
+			if (flags & SYSTEM_OUT_ARRAY__) {
+				// Chomp and split.  Use Tcl's split since L's
+				// strips trailing null fields.
+				if (length((string)out_ref) &&
+				    ((string)out_ref)[END] eq "\n") {
+					((string)out_ref)[END] = "";
+				}
+				out_ref = ::split(out_ref, "\n");
+			}
+		} else {
+			ret = undef;
+			goto out;
+		}
+	}
+	if (flags & (SYSTEM_ERR_STRING__ | SYSTEM_ERR_ARRAY__)) {
+		close(chErr);
+		if (defined(chErr = fopen(nmErr, "r"))) {
+			if (read(chErr, &err_ref, -1) < 0) {
+				ret = undef;
+				goto out;
+			}
+			if (flags & SYSTEM_ERR_ARRAY__) {
+				// Chomp and split.  Use Tcl's split since L's
+				// strips trailing null fields.
+				if (length((string)err_ref) &&
+				    ((string)err_ref)[END] eq "\n") {
+					((string)err_ref)[END] = "";
+				}
+				err_ref = ::split(err_ref, "\n");
+			}
+		} else {
+			ret = undef;
+		}
+	}
+ out:
+	if (flags & (SYSTEM_IN_ARRAY__|SYSTEM_IN_FILENAME__|SYSTEM_IN_STRING__)) {
+		if (defined(chIn)) close(chIn);
+	}
+	if (flags & (SYSTEM_OUT_ARRAY__|SYSTEM_OUT_FILENAME__|SYSTEM_OUT_STRING__)) {
+		if (defined(chOut)) close(chOut);
+	}
+	if (flags & (SYSTEM_ERR_ARRAY__|SYSTEM_ERR_FILENAME__|SYSTEM_ERR_STRING__)) {
+		if (defined(chErr)) close(chErr);
+	}
+	if (flags & (SYSTEM_IN_ARRAY__ | SYSTEM_IN_STRING__)) {
+		if (defined(nmIn)) unlink(nmIn);
+	}
+	if (flags & (SYSTEM_OUT_ARRAY__ | SYSTEM_OUT_STRING__)) {
+		if (defined(nmOut)) unlink(nmOut);
+	}
+	if (flags & (SYSTEM_ERR_ARRAY__ | SYSTEM_ERR_STRING__) ) {
+		if (defined(nmErr)) unlink(nmErr);
+	}
+	stdio_status = status;
+	if (defined(&status_ref)) status_ref = status;
+	return (ret);
 }
 
 /* Like system() but do not re-direct stderr; used for `cmd`. */
 string
-backtick_(_unused string cmd)
+backtick_(_argused string cmd)
 {
-	string	res;
+	string	argv[], path, res;
 
-	if (catch("exec -ignorestderr -- {*}[shsplit $cmd]", &res)) {
+	stdio_status = undef;
+
+	if (catch("set argv [shsplit $cmd]", &res)) {
 		stdio_lasterr = res;
 		return (undef);
 	}
+
+	stdio_status.name = argv[0];
+	if (length(path = auto_execok(argv[0]))) {
+		stdio_status.path = path;
+	}
+
+	if (catch("exec -ignorestderr -- {*}$argv", &res)) {
+		switch (errorCode[0]) {
+		    case "CHILDSTATUS":
+			stdio_lasterr = "child process exited abnormally";
+			res =~ s/child process exited abnormally\z//;
+			stdio_status.exit = (int)errorCode[2];
+			break;
+		    case "CHILDKILLED":
+			stdio_lasterr = res;
+			stdio_status.signal = signame_to_num(errorCode[2]);
+			break;
+		    default:
+			stdio_lasterr = res;
+			return (undef);
+		}
+	} else {
+		stdio_status.exit = 0;
+	}
 	return (res);
-}
-
-string
-tolower(string s)
-{
-	return (String_tolower(s));
-}
-
-string
-toupper(string s)
-{
-	return (String_toupper(s));
 }
 
 string
@@ -588,54 +973,60 @@ trim(string s)
 }
 
 int
-unlink(_unused string path)
+unlink(_argused string path)
 {
-	if (catch("file delete $path")) {
+	string	res;
+
+	if (catch("file delete $path", &res)) {
+		stdio_lasterr = res;
 		return (-1);
 	} else {
 		return (0);
 	}
 }
 
-void
-unsetenv(string varname)
+string
+uc(string s)
 {
-	unset(nocomplain: "::env(${varname})");
+	return (String_toupper(s));
+}
+
+int
+waitpid(int pid, STATUS &status, int nohang)
+{
+	if (nohang) {
+		int	started = defined(spawn_handles{pid}.chOut);
+		int	done    = (Info_vars("::%L_pid${pid}_done") eq "");
+		if (started && !done) {
+			return (0);
+		} else {
+			stdio_status = spawn_handles{pid}.status;
+			if (defined(&status)) status = stdio_status;
+			return (-1);
+		}
+	} else {
+		vwait("::%L_pid${pid}_done");
+		stdio_status = spawn_handles{pid}.status;
+		if (defined(&status)) status = stdio_status;
+		return (0);
+	}
 }
 
 void
-warn(string message)
+warn_(string func, int line, string fmt, ...args)
 {
-	puts(stderr, message);
+	string	out;
+
+	if (length(args)) {
+		out = format(fmt, (expand)args);
+	} else {
+		out = fmt;
+	}
+	unless (out[END] eq "\n") {
+		out .= " in ${func}:${line}\n";
+	}
+	puts(nonewline:, stderr, out);
 	flush(stderr);
-}
-
-/*
- * Tk API functions
- */
-
-string
-tk_windowingsystem()
-{
-	return (tk("windowingsystem"));
-}
-
-void
-update_idletasks()
-{
-	update("idletasks");
-}
-
-string[]
-winfo_children(string w)
-{
-	return (Winfo_children(w));
-}
-
-string
-winfo_containing(int x, int y)
-{
-	return (Winfo_containing(x, y));
 }
 
 /* Default function-trace hooks. */

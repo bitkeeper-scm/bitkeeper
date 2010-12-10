@@ -111,7 +111,6 @@ citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) citool.l
 			cat $$f ;		\
 		done ;				\
 		echo '}' ; 		\
-		echo 'main $$argc $$argv' ;	\
 	) | $(TCLWRAP) > $(LIBDIR)/citool
 
 csettool: $(COMMON) search.tcl appState.tcl difflib.tcl csettool.tcl

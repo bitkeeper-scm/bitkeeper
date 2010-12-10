@@ -13,6 +13,193 @@ if {$::tcl_platform(platform) eq "windows"} {
     set _windows 0
 }
 
+test angle-1 {test <f>} -setup {
+	set fname1 [makeFile "linea1\n" angle1 .]
+	set fname2 [makeFile "lineb1\nlineb2\n" angle2 .]
+	set fname3 [makeFile "linec1\nlinec2\nlinec3\n" angle3 .]
+} -body {
+#lang L
+void angle1()
+{
+	int	i;
+	string	s;
+	FILE	f;
+
+	unless (defined(f = fopen("angle1", "r"))) puts("bad 1.1");
+	for (i = 1; i <= 1; ++i) {
+		unless (defined(s = <f>)) puts("bad 1.2");
+		unless (s eq "linea${i}") puts("bad 1.3");
+	}
+	if (defined(<f>)) puts("bad 1.4");
+	unless (fclose(f) == 0) puts("bad 1.5");
+
+	unless (defined(f = fopen("angle2", "r"))) puts("bad 3.1");
+	for (i = 1; i <= 2; ++i) {
+		unless (defined(s = <f>)) puts("bad 3.2");
+		unless (s eq "lineb${i}") puts("bad 3.3");
+	}
+	if (defined(<f>)) puts("bad 3.4");
+	unless (fclose(f) == 0) puts("bad 3.5");
+
+	unless (defined(f = fopen("angle3", "r"))) puts("bad 4.1");
+	for (i = 1; i <= 3; ++i) {
+		unless (defined(s = <f>)) puts("bad 4.2");
+		unless (s eq "linec${i}") puts("bad 4.3");
+	}
+	if (defined(<f>)) puts("bad 4.4");
+	unless (fclose(f) == 0) puts("bad 4.5");
+
+	/* Create and read an empty file. */
+	unless (defined(f = fopen("angle4", "w"))) puts("bad 5.1");
+	fclose(f);
+	unless (defined(f = fopen("angle4", "r"))) puts("bad 5.2");
+	if (defined(<f>)) puts("bad 5.3");
+	unless (fclose(f) == 0) puts("bad 5.4");
+	unlink("angle4");
+}
+angle1();
+} -output {}
+
+test angle-2 {test <>} -setup {
+	set script [makeFile {
+			void main() {
+				string	s;
+				printf("<");
+				while (defined(s=<>)) puts(s);
+				printf(">");
+			}
+		} angle2.l .]
+	set fname1 [makeFile "linea1\n" angle2-1 .]
+	set fname2 [makeFile "lineb1\nlineb2\n" angle2-2 .]
+	set fname3 [makeFile "linec1\nlinec2\nlinec3\n" angle2-3 .]
+} -constraints {
+	exec
+} -body {
+	puts [exec [interpreter] $script $fname1]
+	puts [exec [interpreter] $script $fname1 $fname2]
+	puts [exec [interpreter] $script $fname1 $fname2 $fname3]
+	puts [exec [interpreter] $script $fname1 $fname1]
+	puts [exec [interpreter] $script $fname1 $fname1 $fname1]
+} -output {<linea1
+>
+<linea1
+lineb1
+lineb2
+>
+<linea1
+lineb1
+lineb2
+linec1
+linec2
+linec3
+>
+<linea1
+linea1
+>
+<linea1
+linea1
+linea1
+>
+}
+
+test angle-3 {test <f> errors} -body {
+#lang L
+void angle3()
+{
+	FILE	f;
+
+	if (defined(<f>)) puts("bad 1");
+	if (defined(<undef>)) puts("bad 2");
+}
+angle3();
+} -output {}
+
+test angle-4 {test <> type errors} -body {
+#lang L
+void angle4()
+{
+	string	arr[];
+	string	hsh{string};
+	struct { string s; } st;
+
+	/* These are all type errors. */
+	<0>;
+	<0.0>;
+	<{0}>;
+	<arr>;
+	<st>;
+	<hsh>;
+}
+} -returnCodes error -match regexp -result {.*8: L Error: must use FILE in <>
+.*9: L Error: must use FILE in <>
+.*10: L Error: must use FILE in <>
+.*11: L Error: must use FILE in <>
+.*12: L Error: must use FILE in <>
+.*13: L Error: must use FILE in <>
+}
+
+test angle-5 {test <> file-open errors} -setup {
+	set script [makeFile {
+			void main() {
+				string	s;
+				while (defined(s=<>)) puts(s);
+			}
+		} angle5.l .]
+	set fname [makeFile "line1\n" angle5-1 .]
+} -constraints {
+	exec
+} -body {
+	puts [exec [interpreter] $script bad1 2>err]
+	puts [exec cat err]
+	puts [exec [interpreter] $script bad2 $fname 2>err]
+	puts [exec cat err]
+	puts [exec [interpreter] $script $fname bad3 $fname 2>err]
+	puts [exec cat err]
+	puts [exec [interpreter] $script $fname bad4 bad5 $fname bad6 2>err]
+	puts [exec cat err]
+} -output {
+couldn't open "bad1": no such file or directory
+line1
+couldn't open "bad2": no such file or directory
+line1
+line1
+couldn't open "bad3": no such file or directory
+line1
+line1
+couldn't open "bad4": no such file or directory
+couldn't open "bad5": no such file or directory
+couldn't open "bad6": no such file or directory
+}
+
+test assert-1 {test assert} -setup {
+	set fname [makeFile {
+		int	i = 0;
+		assert(i > 0);
+	} assert1.l]
+} -body {
+#lang L
+/*
+ * Some contortions here to run tclsh on assert1.l (above) which
+ * prints to stderr and then exits(1), so we can capture stderr and
+ * check the return status.  Otherwise, tcltest sees anything to
+ * stderr as an error and fails the test.
+ */
+void assert1()
+{
+	int	ret;
+	string	cmd = "${eval('interpreter')} assert1.l";
+	string	err[], out[];
+
+	ret = system(cmd, undef, &out, &err);
+	unless (ret == 1) puts("bad status ${ret}");
+	unless (length(out) == 0) puts("bad 2");
+	unless (err[0] eq "ASSERTION FAILED assert1.l:3: i > 0") {
+		puts("bad stderr ${err}");
+	}
+}
+assert1();
+} -output {}
+
 test basename-1 {test basename} -body {
 #lang L
 void basename1()
@@ -190,16 +377,19 @@ void dirname1()
 dirname1();
 } -output {}
 
-test env-1 {setenv, getenv, and unsetenv} -body {
+test env-1 {getenv and putenv} -body {
 #lang L
 void env1()
 {
-	setenv("LIBLTEST", "123");
+	unless (putenv("LIBLTEST=123") eq "123") puts("bad 0");
 	unless (getenv("LIBLTEST") eq "123") puts("bad 1");
-	unsetenv("LIBLTEST");
-	unless (getenv("LIBLTEST") eq "") puts("bad 2");
+	unless (putenv("LIBLTEST=") eq "") puts("bad 1.2");
+	if (defined(getenv("LIBLTEST"))) puts("bad 2");
 
-	unless (getenv("PATH") ne "") puts("bad 3");
+	unless (defined(getenv("PATH"))) puts("bad 3");
+
+	putenv("LIBLTEST=%s%s", "one", "two");
+	unless (getenv("LIBLTEST") eq "onetwo") puts("bad 4");
 }
 env1();
 } -output {}
@@ -241,50 +431,16 @@ void fclose1()
 fclose1();
 } -output {}
 
-test fgetline-1 {test fgetline} -setup {
-	set fname [makeFile "line1\nline2\nline3" fgetline_test .]
-} -body {
-#lang L
-void fgetline1()
-{
-	int	i;
-	FILE	f;
-	string	buf;
-
-	f = fopen("fgetline_test", "r");
-	unless (defined(f)) puts("bad 1");
-
-	i = 1;
-	while (defined(buf = fgetline(f))) {
-		unless (buf eq "line${i}") printf("bad 2 i=%d\n", i);
-		++i;
-	}
-	unless (i == 4) puts("bad 3");
-
-	fclose(f);
-}
-fgetline1();
-} -cleanup {
-	file delete -force $fname
-} -output {}
-
-test file-1 {test fopen/fclose/fprintf/fgetline} -body {
+test file-1 {test fopen/fclose/fprintf} -body {
 #lang L
 void file1(string nm)
 {
 	FILE	f;
-	string	buf;
 
 	f = fopen(nm, "w");
 	unless (defined(f)) puts("bad 1.1");
 	unless (fprintf(f, "file-1 test\n") == 0) puts("bad 1.2");
 	unless (fclose(f) == 0) puts("bad 1.3");
-
-	f = fopen(nm, "r");
-	unless (defined(f)) puts("bad 2.1");
-	unless (defined(buf = fgetline(f))) puts("bad 2.2");
-	unless (buf eq "file-1 test") puts("bad 2.3");
-	unless (fclose(f) == 0) puts("bad 2.4");
 
 	unlink(nm);
 }
@@ -294,19 +450,17 @@ file1("file test {3}");
 unless (platform() eq "windows") file1("file test \"4\'");
 } -output {}
 
-test file-2 {test fopen/fclose/fprintf/fgetline errors} -setup {
+test file-2 {test fopen/fclose/fprintf errors} -setup {
 	file delete -force "does not exist"
 } -body {
 #lang L
 void file2()
 {
 	FILE	f;
-	string	buf;
 
 	if (defined(f = fopen("does not exist", "rw"))) puts("bad 1");
 
 	unless (fclose(f) == -1) puts("bad 2");
-	if (defined(buf = fgetline(f))) puts("bad 3");
 	unless (fprintf(f, "bad") == -1) puts("bad 4");
 }
 file2();
@@ -326,57 +480,6 @@ void fopen1()
 fopen1();
 } -errorOutput {fopen(bad2, r) = couldn't open "bad2": no such file or directory
 fopen(bad3, r) = couldn't open "bad3": no such file or directory
-} -output {}
-
-test freadn-1 {test freadn} -setup {
-	# Note: makeFile appends a newline.
-	set fname [makeFile "012345678901234567" freadn_test .]
-} -body {
-#lang L
-void freadn1()
-{
-	FILE	f;
-	string	buf;
-
-	f = fopen("freadn_test", "r");
-	unless (defined(f)) puts("bad 1.1");
-
-	buf = freadn(f, 5);
-	unless (defined(buf)) puts("bad 2.1");
-	unless (buf eq "01234") puts("bad 2.2");
-	buf = freadn(f, 5);
-	unless (defined(buf)) puts("bad 2.3");
-	unless (buf eq "56789") puts("bad 2.4");
-	buf = freadn(f, 5);
-	unless (defined(buf)) puts("bad 2.5");
-	unless (buf eq "01234") puts("bad 2.6");
-	buf = freadn(f, 5);
-	unless (defined(buf)) puts("bad 2.7");
-	unless (buf eq "567\n") puts("bad 2.8");
-
-	fclose(f);
-
-	f = fopen("freadn_test", "r");
-	unless (defined(f)) puts("bad 3.1");
-
-	buf = freadn(f, -1);
-	unless (defined(buf)) puts("bad 4.1");
-	unless (buf eq "012345678901234567\n") puts("bad 4.2");
-
-	fclose(f);
-}
-freadn1();
-} -cleanup {
-	file delete -force $fname
-} -output {}
-
-test freadn-2 {test freadn error} -body {
-#lang L
-void freadn2()
-{
-	if (defined(freadn(undef, 1))) puts("bad 1");
-}
-freadn2();
 } -output {}
 
 test ftype-1 {test ftpye} -setup {
@@ -456,8 +559,16 @@ void getdir1()
 	unless (length(dirs) == 1) puts("bad 3.1");
 	unless (dirs[0] eq "getdirtest/f3") puts("bad 3.2");
 
+	dirs = sort(getdir("getdirtest"));
+	unless (length(dirs) == 3) puts("bad 4.1");
+	unless (dirs[0] eq "getdirtest/f1") puts("bad 4.2");
+	unless (dirs[1] eq "getdirtest/f2") puts("bad 4.3");
+	unless (dirs[2] eq "getdirtest/f3") puts("bad 4.4");
+
 	dirs = getdir("does not exist", "*");
 	unless (length(dirs) == 0) puts("bad 10.1");
+
+	if (defined(getdir("dir", "*", "too-many-args"))) puts("bad 11.1");
 }
 getdir1();
 } -cleanup {
@@ -467,7 +578,136 @@ getdir1();
 	file delete -force getdirtest
 } -output {}
 
-test is-1 {test isdouble/isdir/isinteger/isreg/islink} -setup {
+test getopt-1 {test getopt} -body {
+#lang L
+private string doit(string av[], string opts, string lopts[])
+{
+	string	c, s = "";
+
+	getoptReset();
+	while (defined(c = getopt(av, opts, lopts))) {
+		if (c eq "") {
+			s .= "<${optopt}|err>";
+			break;
+		} else {
+			s .= "<${c}|${optarg}|${optind}>";
+		}
+	}
+	return (s);
+}
+void getopt1()
+{
+	string	s;
+
+	/*
+	 * This could be more exhaustive.  It covers cases only for a
+	 * single arg.
+	 */
+
+	s = doit({}, "", {});
+	unless (s eq "") puts("bad 1.1");
+
+	/* opt a */
+	s = doit({"a.out","-a","x"}, "a", {});
+	unless (s eq "<a||2>") puts("bad 3.1");
+
+	/* opt a: */
+	s = doit({"a.out","-a","x"}, "a:", {});
+	unless (s eq "<a|x|3>") puts("bad 4.1");
+	s = doit({"a.out","-ax"}, "a:", {});
+	unless (s eq "<a|x|2>") puts("bad 4.2");
+	s = doit({"a.out","-a"}, "a:", {});
+	unless (s eq "<a|err>") puts("bad 4.3");
+	s = doit({"a.out","-a","-b"}, "a:", {});
+	unless (s eq "<a|err>") puts("bad 4.4");
+
+	/* opt a; */
+	s = doit({"a.out","-ax"}, "a;", {});
+	unless (s eq "<a|x|2>") puts("bad 5.1");
+	s = doit({"a.out","-a","x"}, "a;", {});
+	unless (s eq "<a|err>") puts("bad 5.2");
+	s = doit({"a.out","-a"}, "a;", {});
+	unless (s eq "<a|err>") puts("bad 5.3");
+
+	/* opt a| */
+	s = doit({"a.out","-ax"}, "a|", {});
+	unless (s eq "<a|x|2>") puts("bad 6.1");
+	s = doit({"a.out","-a","x"}, "a|", {});
+	unless (s eq "<a||2>") puts("bad 6.2");
+
+	/* longopt long */
+	s = doit({"a.out","--long", "x"}, "", {"long"});
+	unless (s eq "<long||2>") puts("bad 7.1");
+
+	/* longopt long: */
+	s = doit({"a.out","--long", "x"}, "", {"long:"});
+	unless (s eq "<long|x|3>") puts("bad 8.1");
+	s = doit({"a.out","--long=x"}, "", {"long:"});
+	unless (s eq "<long|x|2>") puts("bad 8.2");
+	s = doit({"a.out","--long"}, "", {"long:"});
+	unless (s eq "<|err>") puts("bad 8.3");
+
+	/* longopt long; */
+	s = doit({"a.out","--long", "x"}, "", {"long;"});
+	unless (s eq "<|err>") puts("bad 9.1");
+	s = doit({"a.out","--long=x"}, "", {"long;"});
+	unless (s eq "<long|x|2>") puts("bad 9.2");
+	s = doit({"a.out","--long"}, "", {"long;"});
+	unless (s eq "<|err>") puts("bad 9.3");
+
+	/* longopt long| */
+	s = doit({"a.out","--long", "x"}, "", {"long|"});
+	unless (s eq "<long||2>") puts("bad 10.1");
+	s = doit({"a.out","--long=x"}, "", {"long|"});
+	unless (s eq "<long|x|2>") puts("bad 10.2");
+	s = doit({"a.out","--long"}, "", {"long|"});
+	unless (s eq "<long||2>") puts("bad 10.3");
+}
+getopt1();
+} -output {}
+
+test getpid-1 {test getpid} -body {
+#lang L
+void getpid1()
+{
+	unless (getpid() == pid()) puts("bad");
+}
+getpid1();
+} -output {}
+
+test here-1 {test here} -body {
+#lang L
+void here1func() {
+	here();
+}
+void here1()
+{
+	here();
+	here(); here();
+	here1func();
+
+	here();
+}
+here1();
+here();
+} -match regexp -errorOutput {here1\(\) in l-libl.test:6
+here1\(\) in l-libl.test:7
+here1\(\) in l-libl.test:7
+here1func\(\) in l-libl.test:2
+here1\(\) in l-libl.test:10
+\d+%l_toplevel\(\) in l-libl.test:13
+} -output {}
+
+test here-2 {test here errors} -body {
+#lang L
+void here2()
+{
+	here("bad");
+}
+} -returnCodes error -match regexp -result {.*3: L Error: here\(\) takes no arguments
+}
+
+test is-1 {test isdir/isreg/islink} -setup {
 	set fdirname1 istestdir1
 	set fdirname2 {is test dir2}
 	set fdirname3 istestdir\{3\}
@@ -502,13 +742,6 @@ test is-1 {test isdouble/isdir/isinteger/isreg/islink} -setup {
 #lang L
 void is1(string dirnm, string filenm, string linknm)
 {
-	unless (isdouble(3.14159)) puts("bad 1.1");
-	if (isdouble("not")) puts("bad 1.2");
-
-	unless (isinteger(3)) puts("bad 2.1");
-	if (isinteger(3.14159)) puts("bad 2.2");
-	if (isinteger("not")) puts("bad 2.3");
-
 	unless (isdir(dirnm)) puts("bad 3.1");
 	unless (isreg(filenm)) puts("bad 4.1");
 	unless (platform() eq "windows") {
@@ -536,7 +769,19 @@ if {!$_windows} {is1 $fdirname4 $fname4 $flink4}
 	if {!$_windows} {removeFile $fname4}
 } -output {}
 
-test link-1 {test link} -constraints tempNotWin -setup {
+test lc-1 {test lc} -body {
+#lang L
+void lc1()
+{
+	unless (lc("abcde") eq "abcde") puts("bad 1");
+	unless (lc("ABCDE") eq "abcde") puts("bad 2");
+	unless (lc("AbCdE") eq "abcde") puts("bad 3");
+	unless (lc("") eq "") puts("bad 4");
+}
+lc1();
+} -output {}
+
+test link-1 {test link} -setup {
 	set fname [makeFile {123456} linktest .]
 	file delete -force linktest2
 } -body {
@@ -642,6 +887,22 @@ void normalize1()
 normalize1();
 } -output {}
 
+test pclose-1 {test pclose errors} -body {
+#lang L
+void pclose1()
+{
+	FILE	fd;
+	STATUS	st;
+
+	pclose();
+	pclose(0, undef, 0);
+	pclose(fd, st);
+}
+} -returnCodes error -match regexp -result {.*6: L Error: incorrect # args to pclose
+.*7: L Error: incorrect # args to pclose
+.*8: L Error: second arg to pclose must be STATUS\&
+}
+
 test popen-1 {test popen/pclose} -setup {
 	set fname [makeFile "line1\nline2\nline3\n" popen_file .]
 } -body {
@@ -651,18 +912,22 @@ void popen1()
 	int	i;
 	FILE	f;
 	string	buf;
+	STATUS	st;
+
+	/* There are more popen() tests in system1() later on. */
 
 	f = popen("cat popen_file", "r");
 	unless (defined(f)) puts("bad 1");
 
 	i = 1;
-	while (defined(buf = fgetline(f))) {
+	while (defined(buf = <f>)) {
 		unless (buf eq "line${i}") printf("bad i=%d\n", i);
 		++i;
 	}
 	unless (i == 4) puts("bad 2");
 
-	unless (pclose(f) == 0) puts("bad 3");
+	unless (pclose(f, &st) == 0) puts("bad 3.1");
+	unless (st.exit == 0) puts("bad 3.2");
 
 	/* Check error case. */
 	f = popen("what-the-heck bad-command", "r");
@@ -688,6 +953,62 @@ popen2();
 popen\(bad-cmd3, r\) = couldn't execute "bad-cmd3".*
 } -output {}
 
+test popen-3 {test popen stderr} -setup {
+	set fname [makeFile {
+		string	cmd;
+		FILE	f;
+
+		cmd = "perl -e 'print \"to out\"; print STDERR \"to err\";'";
+		f = popen(cmd, "r");
+		unless (defined(f)) die("popen");
+		unless (<f> eq "to out") puts("bad stdout");
+		pclose(f);
+	} popen3.l]
+} -body {
+#lang L
+/*
+ * Some contortions here to run tclsh on popen3.l (above) which prints
+ * to stderr, so we can capture stderr and check it.  Otherwise,
+ * tcltest sees anything to stderr as an error and fails the test.
+ */
+void popen3()
+{
+	int	ret;
+	string	cmd = "${eval('interpreter')} popen3.l";
+	string	err[], out[];
+
+	ret = system(cmd, undef, &out, &err);
+	unless (defined(ret)) puts("bad status ${ret}");
+	unless (length(out) == 0) puts("bad 2");
+	unless (err[0] eq "to err") puts("bad 3");
+}
+popen3();
+} -output {}
+
+test popen-4 {test popen stderr re-direction} -body {
+#lang L
+void popen4()
+{
+	string	cmd;
+	FILE	f;
+
+	cmd = "perl -e 'print \"to out\"; print STDERR \"to err\";' 2>p4err";
+
+	f = popen(cmd, "r");
+	unless (defined(f)) puts("bad 1.1");
+	unless (<f> eq "to out") puts("bad 1.2");
+	pclose(f);
+
+	f = fopen("p4err", "r");
+	unless (defined(f)) puts("bad 2.1");
+	unless (<f> eq "to err") puts("bad 2.2");
+	fclose(f);
+}
+popen4();
+} -cleanup {
+	removeFile "p4err"
+} -output {}
+
 test printf-1 {test printf} -body {
 #lang L
 void printf1()
@@ -700,6 +1021,85 @@ printf1();
 } -output {Test1
 Test2
 Test3 - last one
+}
+
+test read-1 {test read} -setup {
+	set fname [makeFile "012345678901234567\n" read_test .]
+} -body {
+#lang L
+void read1()
+{
+	int	n;
+	FILE	f;
+	string	buf;
+
+	f = fopen("read_test", "r");
+	unless (defined(f)) puts("bad 1.1");
+
+	buf = undef;
+	n = read(f, &buf, 5);
+	unless (defined(buf)) puts("bad 2.1");
+	unless ((n == 5) && (buf eq "01234")) puts("bad 2.2");
+
+	buf = undef;
+	n = read(f, &buf, 5);
+	unless (defined(buf)) puts("bad 2.3");
+	unless ((n == 5) && (buf eq "56789")) puts("bad 2.4");
+
+	buf = undef;
+	n = read(f, &buf, 5);
+	unless (defined(buf)) puts("bad 2.5");
+	unless ((n == 5) && (buf eq "01234")) puts("bad 2.6");
+
+	buf = undef;
+	n = read(f, &buf, 5);
+	unless (defined(buf)) puts("bad 2.7");
+	unless ((n == 4) && (buf eq "567\n")) puts("bad 2.8");
+
+	n = read(f, &buf, 1);
+	unless (n == -1) puts("bad 2.9");
+	n = read(f, &buf, 1);
+	unless (n == -1) puts("bad 2.10");
+
+	fclose(f);
+
+	f = fopen("read_test", "r");
+	unless (defined(f)) puts("bad 3.1");
+
+	buf = undef;
+	n = read(f, &buf, -1);
+	unless (defined(buf)) puts("bad 4.1");
+	unless ((n == 19) && (buf eq "012345678901234567\n")) puts("bad 4.2");
+
+	fclose(f);
+}
+read1();
+} -cleanup {
+	file delete -force $fname
+} -output {}
+
+test read-2 {test read type errors} -body {
+#lang L
+void read2()
+{
+	FILE	f;
+	string	s;
+
+	read();
+	read(f);
+	read(f, &s);
+	read(f, &s, -1, "too many");
+	read(0, &s, -1);
+	read(f, 0, -1);
+	read(f, &s, s);
+}
+} -returnCodes error -match regexp -result {.*6: L Error: incorrect # args to read\(\)
+.*7: L Error: incorrect # args to read\(\)
+.*8: L Error: incorrect # args to read\(\)
+.*9: L Error: incorrect # args to read\(\)
+.*10: L Error: first arg to read\(\) must have type FILE
+.*11: L Error: second arg to read\(\) must have type string\&
+.*12: L Error: third arg to read\(\) must have type int
 }
 
 test rename-1 {test rename} -setup {
@@ -718,9 +1118,9 @@ void rename1(string old)
 	unless (rename(old, new) == 0) puts("bad 1.1");
 	f = fopen(new, "r");
 	unless (defined(f)) puts("bad 2.1");
-	unless (defined(buf = fgetline(f))) puts("bad 2.2");
+	unless (defined(buf = <f>)) puts("bad 2.2");
 	unless (buf eq "test") puts("bad 2.3");
-	if (defined(buf = fgetline(f))) puts("bad 2.4");
+	if (defined(buf = <f>)) puts("bad 2.4");
 	unless (fclose(f) == 0) puts("bad 2.5");
 
 	unlink(new);
@@ -832,7 +1232,7 @@ void sleep1()
 	fclose(f);
 	t1 = mtime("sleep_test");
 
-	sleep(3);
+	sleep(3.0);
 
 	f = fopen("sleep_test", "a");
 	unless (defined(f)) puts("bad 2");
@@ -845,6 +1245,119 @@ void sleep1()
 	unlink("sleep_test");
 }
 sleep1();
+} -output {}
+
+test spawn1 {test spawn type errors} -body {
+#lang L
+void spawn1()
+{
+	int	iarr[];
+	string	arr[], s;
+	STATUS	status;
+	FILE	f;
+
+	spawn();
+	spawn("not", "enough", "args");
+	spawn("cmd", "in", "out", "err", "status", "toomany");
+
+	/*
+	 * Type errors in cmd arg.  It must be string or string[].
+	 */
+	spawn(&s);
+	spawn(&arr);
+	spawn(iarr);
+
+	/*
+	 * Type errors in status arg.  It must be STATUS&.
+	 */
+	spawn(s, status);
+	spawn(s, s);
+
+	/*
+	 * Type errors in "in" arg.  It must be string[], a string
+	 * constant, string variable, or FILE.
+	 */
+	spawn(s, &arr, "out", "err");
+	spawn(s, iarr, "out", "err");
+	spawn(s, &f, "out", "err");
+
+	/*
+	 * Type errors in "out" arg.  It must be string constant, or
+	 * FILE.
+	 */
+	spawn(s, "in", s, "err");
+	spawn(s, "in", &s, "err");
+	spawn(s, "in", &arr, "err");
+	spawn(s, "in", arr, "err");
+	spawn(s, "in", &iarr, "err");
+	spawn(s, "in", &f, "err");
+
+	/*
+	 * Type errors in "err" arg.  Same as for "out" arg.
+	 */
+	spawn(s, "in", "out", s);
+	spawn(s, "in", "out", &s);
+	spawn(s, "in", "out", &arr);
+	spawn(s, "in", "out", arr);
+	spawn(s, "in", "out", &iarr);
+	spawn(s, "in", "out", &f);
+}
+} -returnCodes error -match regexp -result {.*8: L Error: incorrect # args
+.*9: L Error: incorrect # args
+.*10: L Error: incorrect # args
+.*15: L Error: first arg must be string or string array
+.*16: L Error: first arg must be string or string array
+.*17: L Error: first arg must be string or string array
+.*22: L Error: last arg must be of type STATUS \&
+.*23: L Error: last arg must be of type STATUS \&
+.*29: L Error: second arg must be FILE, or string constant/variable/array
+.*30: L Error: second arg must be FILE, or string constant/variable/array
+.*31: L Error: second arg must be FILE, or string constant/variable/array
+.*37: L Error: third arg must be FILE, or string constant
+.*38: L Error: third arg must be FILE, or string constant
+.*39: L Error: third arg must be FILE, or string constant
+.*40: L Error: third arg must be FILE, or string constant
+.*41: L Error: third arg must be FILE, or string constant
+.*42: L Error: third arg must be FILE, or string constant
+.*47: L Error: fourth arg must be FILE, or string constant
+.*48: L Error: fourth arg must be FILE, or string constant
+.*49: L Error: fourth arg must be FILE, or string constant
+.*50: L Error: fourth arg must be FILE, or string constant
+.*51: L Error: fourth arg must be FILE, or string constant
+.*52: L Error: fourth arg must be FILE, or string constant
+}
+
+test spawn2 {test spawn return values} -body {
+#lang L
+void spawn2()
+{
+	int	pid;
+
+	/*
+	 * Possible errors:
+	 * error parsing bash quoting in argv[] command
+	 * command not found
+	 * cannot open input file
+	 * cannot open output file
+	 * cannot open err file
+	 * error from Tcl open command (unclear how to get this)
+	 */
+
+	pid = spawn("'bad quoting");
+	if (defined(pid)) puts("bad 1.1");
+
+	pid = spawn("command-not-found");
+	if (defined(pid)) puts("bad 2.1");
+
+	pid = spawn("date", "bad-input-file", undef, undef);
+	if (defined(pid)) puts("bad 2.1");
+
+	pid = spawn("date", undef, "/bad/bad-file", undef);
+	if (defined(pid)) puts("bad 2.2");
+	pid = spawn("date", undef, undef, "/bad/bad-file");
+	if (defined(pid)) puts("bad 2.3");
+}
+spawn2();
 } -output {}
 
 test sprintf-1 {test sprintf} -body {
@@ -979,7 +1492,822 @@ void strrchr1()
 strrchr1();
 } -output {}
 
-test symlink-1 {test symlink} -constraints tempNotWin -setup {
+test system-1 {test system and popen shell quoting} -body {
+#lang L
+private string do_popen(string cmd)
+{
+	FILE	f;
+	string	ret;
+
+	unless (defined(f = popen(cmd, "r"))) return (undef);
+	read(f, &ret, -1);
+	pclose(f);
+	return (ret);
+}
+void system1()
+{
+	/*
+	 * This test checks that we got the shell-quoting semantics right.
+	 * It uses a perl script to echo each element of the argv array
+	 * bracketed with < and >.
+	 *
+	 * xyz   -- all escapes are processed except \<newline> ignored
+	 * 'xyz' -- no single quotes allowed inside, no escapes processed
+	 * "xyz" -- only \\ and \" are processed, \<newline> ignored
+	 */
+
+	int	ret;
+	string	s, t;
+	string	perl = "perl -e 'foreach (@ARGV) {print \"<\${_}>\"}'";
+
+	/*
+	 * Format is <argv element> | <expected output from perl script>
+	 * Note that the Tcl parser requires that the *test* itself
+	 * have balanced {}, so be careful with the order of braces below.
+	 */
+	string	tests = <<'END'
+x		| <x>
+xy		| <xy>
+x\yz		| <xyz>
+x\y\zx		| <xyzx>
+x\\\\y		| <x\\y>
+x\ny		| <xny>
+$x		| <$x>
+[		| <[>
+]		| <]>
+"x"		| <x>
+"xy"		| <xy>
+"x y"		| <x y>
+"x\yz"		| <x\yz>
+"x\"y"		| <x"y>
+"x\\y"		| <x\y>
+'x'		| <x>
+'xy'		| <xy>
+'x y'		| <x y>
+'x\\'		| <x\\>
+'x\y'		| <x\y>
+x"y"		| <xy>
+x"y"z		| <xyz>
+x"y""z"		| <xyz>
+x'y'		| <xy>
+x'y'z		| <xyz>
+x'y''z'		| <xyz>
+x"y"'z'		| <xyz>
+x'y'"z"		| <xyz>
+"{"		| <{>
+}		| <}>
+{		| <{>
+"}"		| <}>
+{}		| <{}>
+}{		| <}{>
+"{}"		| <{}>
+"}{"		| <}{>
+x y		| <x><y>
+ x y		| <x><y>
+  x y		| <x><y>
+	x y	| <x><y>
+ 	x y	| <x><y>
+x  y		| <x><y>
+x	y	| <x><y>
+x y z		| <x><y><z>
+-		| <->
+-- --x		| <--x>
+END
+//" (to balance quotes for emacs)
+	foreach (t in split(tests, "\n")) {
+		string	a[] = split(t, /\s*\|\s*/);
+		assert(length(a) == 2);
+		unless (defined(system("${perl} ${a[0]}", undef, &s, undef))) {
+			puts("system: error for ${a[0]}");
+		}
+		unless (s eq a[1]) {
+			puts("system: for ${a[0]} got ${s} wanted ${a[1]}");
+		}
+		unless ((s = do_popen("${perl} ${a[0]}")) eq a[1]) {
+			puts("popen: for ${a[0]} got ${s} wanted ${a[1]}");
+		}
+	}
+
+	/* Check \<newline> escapes. */
+	ret = system("${perl} x\\\ny", undef, &s, undef);	//  x\ny
+	unless (defined(ret) && (s eq "<xy>")) puts("bad 1.1");
+	ret = system("${perl} \"x\\\ny\"", undef, &s, undef);	// "x\ny"
+	unless (defined(ret) && (s eq "<xy>")) puts("bad 1.2");
+	ret = system("${perl} 'x\\\ny'", undef, &s, undef);	// 'x\ny'
+	unless (defined(ret) && (s eq "<x\\\ny>")) puts("bad 1.3");
+	s = do_popen("${perl} x\\\ny");		//  x\ny
+	unless (s eq "<xy>") puts("bad 1.4");
+	s = do_popen("${perl} \"x\\\ny\"");	// "x\ny"
+	unless (s eq "<xy>") puts("bad 1.5");
+
+	/* Check error cases (unterminated escapes and quoted strings). */
+
+	if (defined(system("\\"))) puts("bad 2.1");
+	unless (stdio_lasterr eq "trailing \\") puts("bad 2.2");
+	if (defined(system("\"\\"))) puts("bad 2.3");
+	unless (stdio_lasterr eq "unterminated \"") puts("bad 2.4");
+	if (defined(system("\'\\"))) puts("bad 2.5");
+	unless (stdio_lasterr eq "unterminated '") puts("bad 2.6");
+	if (defined(system("\""))) puts("bad 2.7");
+	unless (stdio_lasterr eq "unterminated \"") puts("bad 2.8");
+	if (defined(system("\'"))) puts("bad 2.9");
+	unless (stdio_lasterr eq "unterminated '") puts("bad 2.10");
+	if (defined(system(""))) puts("bad 2.11");
+	if (defined(system("bad-executable"))) puts("bad 2.12");
+
+	if (defined(do_popen("\\"))) puts("bad 3.1");
+	unless (stdio_lasterr eq "trailing \\") puts("bad 3.2");
+	if (defined(do_popen("\"\\"))) puts("bad 3.3");
+	unless (stdio_lasterr eq "unterminated \"") puts("bad 3.4");
+	if (defined(do_popen("\'\\"))) puts("bad 3.5");
+	unless (stdio_lasterr eq "unterminated '") puts("bad 3.6");
+	if (defined(do_popen("\""))) puts("bad 3.7");
+	unless (stdio_lasterr eq "unterminated \"") puts("bad 3.8");
+	if (defined(do_popen("\'"))) puts("bad 3.9");
+	unless (stdio_lasterr eq "unterminated '") puts("bad 3.10");
+	if (defined(do_popen(""))) puts("bad 3.11");
+	if (defined(do_popen("bad-executable"))) puts("bad 3.12");
+}
+system1();
+} -output {}
+
+test system-2 {test system type errors} -body {
+#lang L
+void system2()
+{
+	int	iarr[];
+	string	arr[], s;
+	STATUS	status;
+	FILE	f;
+
+	system();
+	system("not", "enough", "args");
+	system("cmd", "in", "out", "err", "status", "toomany");
+
+	/*
+	 * Type errors in cmd arg.  It must be string or string[].
+	 */
+	system(&s);
+	system(&arr);
+	system(iarr);
+
+	/*
+	 * Type errors in status arg.  It must be STATUS&.
+	 */
+	system(s, status);
+	system(s, s);
+
+	/*
+	 * Type errors in "in" arg.  It must be string[], a string
+	 * constant, string variable, or FILE.
+	 */
+	system(s, &arr, "out", "err");
+	system(s, iarr, "out", "err");
+	system(s, &f, "out", "err");
+
+	/*
+	 * Type errors in "out" arg.  It must be string[]&, string&,
+	 * string constant, or FILE.
+	 */
+	system(s, "in", s, "err");
+	system(s, "in", arr, "err");
+	system(s, "in", &iarr, "err");
+	system(s, "in", &f, "err");
+
+	/*
+	 * Type errors in "err" arg.  Same as for "out" arg.
+	 */
+	system(s, "in", "out", s);
+	system(s, "in", "out", arr);
+	system(s, "in", "out", &iarr);
+	system(s, "in", "out", &f);
+}
+} -returnCodes error -match regexp -result {.*8: L Error: incorrect # args
+.*9: L Error: incorrect # args
+.*10: L Error: incorrect # args
+.*15: L Error: first arg must be string or string array
+.*16: L Error: first arg must be string or string array
+.*17: L Error: first arg must be string or string array
+.*22: L Error: last arg must be of type STATUS \&
+.*23: L Error: last arg must be of type STATUS \&
+.*29: L Error: second arg must be FILE, or string constant/variable/array
+.*30: L Error: second arg must be FILE, or string constant/variable/array
+.*31: L Error: second arg must be FILE, or string constant/variable/array
+.*37: L Error: third arg must be FILE, string constant, or reference to string or string array
+.*38: L Error: third arg must be FILE, string constant, or reference to string or string array
+.*39: L Error: third arg must be FILE, string constant, or reference to string or string array
+.*45: L Error: fourth arg must be FILE, string constant, or reference to string or string array
+.*46: L Error: fourth arg must be FILE, string constant, or reference to string or string array
+.*47: L Error: fourth arg must be FILE, string constant, or reference to string or string array
+}
+
+test system-3 {test system return values} -body {
+#lang L
+void system3()
+{
+	int	ret;
+	string	err[], out[];
+	STATUS	status;
+
+	/* Check that a non-zero cmd return status is surfaced as an error. */
+	ret = system("perl -e 'print \"out\";exit(123)'",
+		     undef, &out, &err, &status);
+	unless (ret == 123) puts("bad 1.1");
+	unless (status.exit == 123) puts("bad 1.2");
+	if (defined(status.signal)) puts("bad 1.3");
+
+	/* Writing to stderr is NOT an error, unlike with Tcl's exec cmd. */
+	ret = system("perl -e 'print STDERR \"err\"'",
+		     undef, &out, &err, &status);
+	unless (ret == 0) puts("bad 2.1");
+	unless (status.exit == 0) puts("bad 2.2");
+
+	/*
+	 * This is a poor test, but to check the name and path members
+	 * of the status, check that "perl" is a pathname of some sort.
+	 */
+	ret = system("perl -e ''", undef, &out, &err, &status);
+	unless (ret == 0) puts("bad 3.1");
+	unless (status.name eq "perl") puts("bad 3.2");
+	unless (status.path =~ /.+perl(.exe)?$/i) puts("bad 3.3");
+
+	/* Check that the path comes back undef if executable not found. */
+	ret = system("verybadxyz", undef, &out, &err, &status);
+	if (defined(ret)) puts("bad 4.1");
+	if (defined(status.path)) puts("bad 4.2");
+
+	/* Error parsing bash quoting in argv[] command. */
+	ret = system("'bad quoting");
+	if (defined(ret)) puts("bad 5.1");
+
+	/* Command not found. */
+	ret = system("command-not-found");
+	if (defined(ret)) puts("bad 6.1");
+
+	/* Cannot open input file. */
+	ret = system("date", "bad-input-file", "out", "err");
+	if (defined(ret)) puts("bad 7.1");
+
+	/* Cannot open output file. */
+	ret = system("date", undef, "/bad/unwritable", "err");
+	if (defined(ret)) puts("bad 7.3");
+
+	/* Cannot open error file. */
+	ret = system("date", undef, "out", "/bad/unwritable");
+	if (defined(ret)) puts("bad 8.1");
+
+	unlink("out");
+	unlink("err");
+}
+system3();
+} -output {}
+
+test system-4 {test system and spawn I/O} -body {
+#lang L
+// Write lines[] to file fname w/open file handle f, then re-open.
+private FILE tstwriteh(FILE f, string fname, string lines[])
+{
+	string	s;
+
+	foreach (s in lines) puts(f, s);
+	fclose(f);
+	unless (defined(f = fopen(fname, "r"))) {
+		puts("cannot open ${fname} for read");
+		return (undef);
+	}
+	return (f);
+}
+// Write lines[] to file fname, then close.
+private void tstwritef(string fname, string lines[])
+{
+	string	s;
+	FILE	f;
+
+	unless (defined(f = fopen(fname, "w"))) return;
+	foreach (s in lines) puts(f, s);
+	fclose(f);
+}
+// Read from open file handle f, verify it has lines[].
+private int tstreadh(FILE f, string lines[])
+{
+	string	s;
+
+	while (defined(s = <f>)) {
+		unless (defined(lines[0])) {
+			puts("file too long");
+			return (1);
+		}
+		unless (s eq lines[0]) {
+			puts("expected \"${lines[0]}\" got \"${s}\"");
+			return (1);
+		}
+		undef(lines[0]);
+	}
+	if (defined(lines[0])) {
+		puts("file too short");
+		return (1);
+	}
+	return (0);
+}
+// Read from file name fname, verify it has lines[].
+private int tstreadf(string fname, string lines[])
+{
+	int	ret;
+	FILE	f;
+
+	unless (defined(f = fopen(fname, "r"))) {
+		puts("cannot open ${fname} for read");
+		return (1);
+	}
+	ret = tstreadh(f, lines);
+	fclose(f);
+	return (ret);
+}
+void system4()
+{
+	int	pid, ret;
+	string	cmd, strIn, strOut, strErr;
+	string	av[], err[], in[], out[];
+	string	errNm, inNm, outNm;
+	FILE	errf, inf, outf;
+
+	/* Try a cmd that copies stdin to stdout and converts to upper case. */
+	cmd  = "perl -e 'print uc $_ while (<>)'";
+	in   = { "this is line 1", "and line 2", "line 3" };
+	ret  = system(cmd, in, &out, &err);
+	unless (ret == 0) puts("bad 1.1");
+	unless ((tcl)out eq (tcl){"THIS IS LINE 1", "AND LINE 2", "LINE 3"}) {
+		puts("bad 1.2");
+	}
+	unless (defined(err) && !length(err)) puts("bad 1.3");
+
+	/* Same, with stdin coming from a list. */
+	cmd  = "perl -e 'print uc $_ while (<>)'";
+	ret  = system(cmd, { "this is line 1", "and line 2", "line 3" },
+		      &out, &err);
+	unless (ret == 0) puts("bad 1.4");
+	unless ((tcl)out eq (tcl){"THIS IS LINE 1", "AND LINE 2", "LINE 3"}) {
+		puts("bad 1.5");
+	}
+	unless (defined(err) && !length(err)) puts("bad 1.6");
+
+	/* Same, with the command in av[]. */
+	av   = { "perl", "-e", "print uc $_ while (<>)" };
+	in   = { "this is line 1", "and line 2", "line 3" };
+	ret  = system(av, in, &out, &err);
+	unless (ret == 0) puts("bad 2.1");
+	unless ((tcl)out eq (tcl){"THIS IS LINE 1", "AND LINE 2", "LINE 3"}) {
+		puts("bad 2.2");
+	}
+	unless (defined(err) && !length(err)) puts("bad 2.3");
+
+	/* Same, reading and writing to files. */
+	av = { "perl", "-e", "print uc $_ while (<>)" };
+	tstwritef("in", { "this is line 1", "and line 2", "line 3" });
+	ret = system(av, "in", "out", "err");
+	unless (ret == 0) puts("bad 3.1");
+	if (tstreadf("out", {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 3.2");
+	}
+	if (tstreadf("err", {})) {
+		puts("bad 3.3");
+	}
+	unlink("in");
+	unlink("out");
+	unlink("err");
+
+	/* Same, using spawn(). */
+	av = { "perl", "-e", "print uc $_ while (<>)" };
+	tstwritef("in", { "this is line 1", "and line 2", "line 3" });
+	pid = spawn(av, "in", "out", "err");
+	unless (defined(pid)) puts("bad 3.10");
+	unless (waitpid(pid, undef, 0) >= 0) puts("bad 3.11");
+	if (tstreadf("out", {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 3.12");
+	}
+	if (tstreadf("err", {})) {
+		puts("bad 3.13");
+	}
+	unlink("in");
+	unlink("out");
+	unlink("err");
+
+	/* Same, reading and writing to open file handles. */
+	av   = { "perl", "-e", "print uc $_ while (<>)" };
+	inf  = File_Tempfile(&inNm);
+	outf = File_Tempfile(&outNm);
+	errf = File_Tempfile(&errNm);
+	inf = tstwriteh(inf, inNm, { "this is line 1", "and line 2", "line 3" });
+	ret  = system(av, inf, outf, errf);
+	unless (ret == 0) puts("bad 4.1");
+	fclose(inf);
+	fclose(outf);
+	fclose(errf);
+	if (tstreadf(outNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 4.2");
+	}
+	if (tstreadf(errNm, {})) {
+		puts("bad 4.3");
+	}
+	unlink(inNm);
+	unlink(outNm);
+	unlink(errNm);
+
+	/* Same, using spawn(). */
+	av   = { "perl", "-e", "print uc $_ while (<>)" };
+	inf  = File_Tempfile(&inNm);
+	outf = File_Tempfile(&outNm);
+	errf = File_Tempfile(&errNm);
+	inf = tstwriteh(inf, inNm, { "this is line 1", "and line 2", "line 3" });
+	pid  = spawn(av, inf, outf, errf);
+	unless (defined(pid)) puts("bad 4.10");
+	unless (waitpid(pid, undef, 0) >= 0) puts("bad 4.11");
+	fclose(inf);
+	fclose(outf);
+	fclose(errf);
+	if (tstreadf(outNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 4.12");
+	}
+	if (tstreadf(errNm, {})) {
+		puts("bad 4.13");
+	}
+	unlink(inNm);
+	unlink(outNm);
+	unlink(errNm);
+
+	/* Same, with I/O to and from string variables. */
+	av    = { "perl", "-e", "print uc $_ while (<>)" };
+	strIn = "this is line 1\nand line 2\nline 3";
+	ret   = system(av, strIn, &strOut, &strErr);
+	unless (ret == 0) puts("bad 5.1");
+	unless (strOut eq "THIS IS LINE 1\nAND LINE 2\nLINE 3") puts("bad 5.2");
+	unless (strErr eq "") puts("bad 5.3");
+
+	/* Same, using spawn() with input from a string variable. */
+	av    = { "perl", "-e", "print uc $_ while (<>)" };
+	strIn = "this is line 1\nand line 2\nline 3";
+	pid   = spawn(av, strIn, "out", "err");
+	unless (defined(pid)) puts("bad 5.10");
+	unless (waitpid(pid, undef, 0) >= 0) puts("bad 5.11");
+	fclose(inf);
+	fclose(outf);
+	fclose(errf);
+	if (tstreadf("out", {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 5.12");
+	}
+	if (tstreadf("err", {})) {
+		puts("bad 5.13");
+	}
+	unlink("out");
+	unlink("err");
+
+	/* Try a cmd that copies stdin to stderr and converts to upper case. */
+	cmd  = "perl -e 'print STDERR uc $_ while (<>)'";
+	in   = { "this is line 1", "and line 2", "line 3" };
+	ret  = system(cmd, in, &out, &err);
+	unless (ret == 0) puts("bad 10.1");
+	unless (defined(out) && !length(out)) puts("bad 10.2");
+	unless ((tcl)err eq (tcl){"THIS IS LINE 1", "AND LINE 2", "LINE 3"}) {
+		puts("bad 10.3");
+	}
+
+	/* Same, with the command in av[]. */
+	av   = { "perl", "-e", "print STDERR uc $_ while (<>)" };
+	in   = { "this is line 1", "and line 2", "line 3" };
+	ret  = system(cmd, in, &out, &err);
+	unless (ret == 0) puts("bad 11.1");
+	unless (defined(out) && !length(out)) puts("bad 11.2");
+	unless ((tcl)err eq (tcl){"THIS IS LINE 1", "AND LINE 2", "LINE 3"}) {
+		puts("bad 11.3");
+	}
+
+	/* Same, reading and writing to files. */
+	av = { "perl", "-e", "print STDERR uc $_ while (<>)" };
+	tstwritef("in", { "this is line 1", "and line 2", "line 3" });
+	ret = system(av, "in", "out", "err");
+	unless (ret == 0) puts("bad 12.1");
+	if (tstreadf("out", {})) {
+		puts("bad 12.2");
+	}
+	if (tstreadf("err", {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 12.3");
+	}
+	unlink("in");
+	unlink("out");
+	unlink("err");
+
+	/* Same, using spawn(). */
+	av = { "perl", "-e", "print STDERR uc $_ while (<>)" };
+	tstwritef("in", { "this is line 1", "and line 2", "line 3" });
+	pid = spawn(av, "in", "out", "err");
+	unless (defined(pid)) puts("bad 12.10");
+	unless (waitpid(pid, undef, 0) >= 0) puts("bad 12.11");
+	if (tstreadf("out", {})) {
+		puts("bad 12.12");
+	}
+	if (tstreadf("err", {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 12.13");
+	}
+	unlink("in");
+	unlink("out");
+	unlink("err");
+
+	/* Same, reading and writing to open file handles. */
+	av   = { "perl", "-e", "print STDERR uc $_ while (<>)" };
+	inf  = File_Tempfile(&inNm);
+	outf = File_Tempfile(&outNm);
+	errf = File_Tempfile(&errNm);
+	inf = tstwriteh(inf, inNm, { "this is line 1", "and line 2", "line 3" });
+	ret  = system(av, inf, outf, errf);
+	unless (ret == 0) puts("bad 13.1");
+	fclose(inf);
+	fclose(outf);
+	fclose(errf);
+	if (tstreadf(outNm, {})) {
+		puts("bad 13.2");
+	}
+	if (tstreadf(errNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 13.3");
+	}
+	unlink(inNm);
+	unlink(outNm);
+	unlink(errNm);
+
+	/* Same, using spawn(). */
+	av   = { "perl", "-e", "print STDERR uc $_ while (<>)" };
+	inf  = File_Tempfile(&inNm);
+	outf = File_Tempfile(&outNm);
+	errf = File_Tempfile(&errNm);
+	inf = tstwriteh(inf, inNm, { "this is line 1", "and line 2", "line 3" });
+	pid  = spawn(av, inf, outf, errf);
+	unless (defined(pid)) puts("bad 13.10");
+	unless (waitpid(pid, undef, 0) >= 0) puts("bad 13.11");
+	fclose(inf);
+	fclose(outf);
+	fclose(errf);
+	if (tstreadf(outNm, {})) {
+		puts("bad 13.12");
+	}
+	if (tstreadf(errNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 13.13");
+	}
+	unlink(inNm);
+	unlink(outNm);
+	unlink(errNm);
+
+	/* Same, with I/O to and from string variables. */
+	av    = { "perl", "-e", "print STDERR uc $_ while (<>)" };
+	strIn = "this is line 1\nand line 2\nline 3";
+	ret   = system(cmd, strIn, &strOut, &strErr);
+	unless (ret == 0) puts("bad 14.1");
+	unless (defined(strOut) && (strOut eq "")) puts("bad 14.2");
+	unless (strErr eq "THIS IS LINE 1\nAND LINE 2\nLINE 3") {
+		puts("bad 14.3");
+	}
+
+	/* Same, using spawn() with input from a string variable. */
+	av    = { "perl", "-e", "print STDERR uc $_ while (<>)" };
+	strIn = "this is line 1\nand line 2\nline 3";
+	pid   = spawn(cmd, strIn, "out", "err");
+	unless (defined(pid)) puts("bad 14.10");
+	unless (waitpid(pid, undef, 0) >= 0) puts("bad 14.11");
+	if (tstreadf("out", {})) {
+		puts("bad 14.12");
+	}
+	if (tstreadf("err", {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 14.13");
+	}
+	unlink("out");
+	unlink("err");
+
+	/* Try a cmd that copies to both stdin and stderr. */
+	cmd  = "perl -e 'while (<>) {print lc $_;print STDERR uc $_}'";
+	in   = { "this is line 1", "and line 2", "line 3" };
+	ret  = system(cmd, in, &out, &err);
+	unless (ret == 0) puts("bad 20.1");
+	unless ((tcl)out eq (tcl){"this is line 1", "and line 2", "line 3"}) {
+		puts("bad 20.2");
+	}
+	unless ((tcl)err eq (tcl){"THIS IS LINE 1", "AND LINE 2", "LINE 3"}) {
+		puts("bad 20.3");
+	}
+
+	/* Same, with the command in av[]. */
+	av   = { "perl", "-e", "while (<>) {print lc $_;print STDERR uc $_}" };
+	in   = { "this is line 1", "and line 2", "line 3" };
+	ret  = system(cmd, in, &out, &err);
+	unless (ret == 0) puts("bad 21.1");
+	unless ((tcl)out eq (tcl){"this is line 1", "and line 2", "line 3"}) {
+		puts("bad 21.2");
+	}
+	unless ((tcl)err eq (tcl){"THIS IS LINE 1", "AND LINE 2", "LINE 3"}) {
+		puts("bad 21.3");
+	}
+
+	/* Same, reading and writing to files. */
+	av = { "perl", "-e", "while (<>) {print lc $_;print STDERR uc $_}" };
+	tstwritef("in", { "this is line 1", "and line 2", "line 3" });
+	ret = system(av, "in", "out", "err");
+	unless (ret == 0) puts("bad 22.1");
+	if (tstreadf("out", {"this is line 1", "and line 2", "line 3"})) {
+		puts("bad 22.2");
+	}
+	if (tstreadf("err", {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 22.3");
+	}
+	unlink("in");
+	unlink("out");
+	unlink("err");
+
+	/* Same, using spawn(). */
+	av = { "perl", "-e", "while (<>) {print lc $_;print STDERR uc $_}" };
+	tstwritef("in", { "this is line 1", "and line 2", "line 3" });
+	pid = spawn(av, "in", "out", "err");
+	unless (defined(pid)) puts("bad 22.10");
+	unless (waitpid(pid, undef, 0) >= 0) puts("bad 22.11");
+	if (tstreadf("out", {"this is line 1", "and line 2", "line 3"})) {
+		puts("bad 22.12");
+	}
+	if (tstreadf("err", {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 22.13");
+	}
+	unlink("in");
+	unlink("out");
+	unlink("err");
+
+	/* Same, reading and writing to open file handles. */
+	av = { "perl", "-e", "while (<>) {print lc $_;print STDERR uc $_}" };
+	inf  = File_Tempfile(&inNm);
+	outf = File_Tempfile(&outNm);
+	errf = File_Tempfile(&errNm);
+	inf = tstwriteh(inf, inNm, { "this is line 1", "and line 2", "line 3" });
+	ret  = system(av, inf, outf, errf);
+	unless (ret == 0) puts("bad 23.1");
+	fclose(inf);
+	fclose(outf);
+	fclose(errf);
+	if (tstreadf(outNm, {"this is line 1", "and line 2", "line 3"})) {
+		puts("bad 23.2");
+	}
+	if (tstreadf(errNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 23.3");
+	}
+	unlink(inNm);
+	unlink(outNm);
+	unlink(errNm);
+
+	/* Same, using spawn(). */
+	av = { "perl", "-e", "while (<>) {print lc $_;print STDERR uc $_}" };
+	inf  = File_Tempfile(&inNm);
+	outf = File_Tempfile(&outNm);
+	errf = File_Tempfile(&errNm);
+	inf = tstwriteh(inf, inNm, { "this is line 1", "and line 2", "line 3" });
+	pid  = spawn(av, inf, outf, errf);
+	unless (defined(pid)) puts("bad 23.10");
+	unless (waitpid(pid, undef, 0) >= 0) puts("bad 23.11");
+	fclose(inf);
+	fclose(outf);
+	fclose(errf);
+	if (tstreadf(outNm, {"this is line 1", "and line 2", "line 3"})) {
+		puts("bad 23.12");
+	}
+	if (tstreadf(errNm, {"THIS IS LINE 1", "AND LINE 2", "LINE 3"})) {
+		puts("bad 23.13");
+	}
+	unlink(inNm);
+	unlink(outNm);
+	unlink(errNm);
+}
+system4();
+} -output {}
+
+test system-5 {test system quoting some more} -body {
+#lang L
+void system5()
+{
+	string	t;
+	string	err, out;
+	string	perl[] = { 'perl', '-e', 'foreach (@ARGV) {print "<${_}>"}' };
+
+	/*
+	 * This checks that the args are literally sent to the cmd,
+	 * with no quote or escape processing.  It uses a perl script
+	 * to echo each element of the argv array bracketed with < and >.
+	 *
+	 * Format is <arg1> | <arg2> | ... | <argn> | <expected output>
+	 * Note that the Tcl parser requires that the *test* itself
+	 * have balanced {}, so be careful with the order of braces below.
+	 */
+	string	tests = <<'END'
+x		| <x>
+x | y		| <x><y>
+x | y | z	| <x><y><z>
+x\		| <x\>
+x\\		| <x\\>
+x\\\		| <x\\\>
+x\y		| <x\y>
+'x'		| <'x'>
+"x"		| <"x">
+{x}		| <{x}>
+{x} | {y}	| <{x}><{y}>
+{{x}} | {{y}}	| <{{x}}><{{y}}>
+{{x}} {{y}}	| <{{x}} {{y}}>
+"'}{ { } " ' "	| <"'}{ { } " ' ">
+"'}{ | { | } | " | ' '	| <"'}{><{><}><"><' '>
+-		| <->
+-- | --x	| <--x>
+END
+	foreach (t in split(tests, "\n")) {
+		string	a[] = split(t, /\s*\|\s*/);
+		string	cmd[] = { (expand)perl, (expand)a[0..END-1] };
+		unless (system(cmd, undef, &out, &err) == 0) puts("bad 1");
+		unless (out eq a[END]) {
+			puts("for ${a[0..END-1]} got ${out} want ${a[END]}");
+		}
+		unless (err eq "") puts("bad 2");
+	}
+}
+system5();
+} -output {}
+
+test system6 {test system and spawn chomping} -body {
+#lang L
+int s6chk(string fname, string contents)
+{
+	FILE	f;
+	string	buf;
+
+	unless (defined(f = fopen(fname, "r"))) return (0);
+	if (read(f, &buf, -1) < 0) return (0);
+	fclose(f);
+	return (buf eq contents);
+}
+void system6()
+{
+	int	pid;
+	string	errNm, errStr, outNm, outStr;
+	string	errArr[], outArr[];
+	FILE	errHandle, outHandle;
+	string	av[] = {'perl', '-e', 'print "xx\n\n";print STDERR "yy\n\n"'};
+	STATUS	status;
+
+	/*
+	 * For system() and spawn(), a string arg is passed in/out
+	 * without chomping or appending a newline.  Same for FILE and
+	 * "filename".  For a string[], when used as the input, each
+	 * element is appending with a newline, and when used as the
+	 * output (system() only), each element is chomped.
+	 */
+
+	system(av, undef, &outStr, &errStr);
+	unless (outStr eq "xx\n\n") puts("bad 1.1");
+	unless (errStr eq "yy\n\n") puts("bad 1.2");
+
+	system(av, undef, &outArr, &errArr);
+	unless (length(outArr) == 2) puts("bad 2.1");
+	unless (length(errArr) == 2) puts("bad 2.2");
+	unless ((outArr[0] eq "xx") && (outArr[1] eq "")) puts("bad 2.3");
+	unless ((errArr[0] eq "yy") && (errArr[1] eq "")) puts("bad 2.4");
+
+	system(av, undef, "s6tst-out", "s6tst-err");
+	unless (s6chk("s6tst-out", "xx\n\n")) puts("bad 3.1");
+	unless (s6chk("s6tst-err", "yy\n\n")) puts("bad 3.2");
+	unlink("s6tst-out");
+	unlink("s6tst-err");
+
+	pid = spawn(av, undef, "s6tst-out", "s6tst-err");
+	unless (defined(pid)) puts("bad 3.5");
+	unless (waitpid(pid, &status, 0) >= 0) puts("bad 3.6");
+	unless (s6chk("s6tst-out", "xx\n\n")) puts("bad 3.7");
+	unless (s6chk("s6tst-err", "yy\n\n")) puts("bad 3.8");
+	unlink("s6tst-out");
+	unlink("s6tst-err");
+
+	outHandle = File_Tempfile(&outNm);
+	errHandle = File_Tempfile(&errNm);
+	system(av, undef, outHandle, errHandle);
+	fclose(outHandle);
+	fclose(errHandle);
+	unless (s6chk(outNm, "xx\n\n")) puts("bad 4.1");
+	unless (s6chk(errNm, "yy\n\n")) puts("bad 4.2");
+	unlink(outNm);
+	unlink(errNm);
+
+	outHandle = File_Tempfile(&outNm);
+	errHandle = File_Tempfile(&errNm);
+	pid = spawn(av, undef, outHandle, errHandle);
+	unless (waitpid(pid, &status, 0) >= 0) puts("bad 5.1");
+	fclose(outHandle);
+	fclose(errHandle);
+	unless (s6chk(outNm, "xx\n\n")) puts("bad 5.2");
+	unless (s6chk(errNm, "yy\n\n")) puts("bad 5.3");
+	unlink(outNm);
+	unlink(errNm);
+}
+system6();
+} -output {}
+
+test symlink-1 {test symlink} -setup {
 	set fname [makeFile {test} linktest .]
 	file delete -force linktest2
 } -body {
@@ -1003,46 +2331,85 @@ symlink1();
 } -output {}
 
 test backtick-1 {test backtick} -setup {
-	set fname [makeFile "line1\nline2\nline3" system_file .]
+	set fname [makeFile "line1\nline2\nline3\n" system_file .]
 } -body {
 #lang L
 void backtick1()
 {
 	string	s;
 
+	/* Note: back-tick trims trailing newline. */
 	s = `cat system_file`;
 	unless (s eq "line1\nline2\nline3") puts("bad 1");
 
 	/* Check error case. */
-	// not yet
-	// s = `what-the-heck bad-command`;
-	// if (defined(s)) puts("bad 2");
+	s = `what-the-heck bad-command`;
+	if (defined(s)) puts("bad 2");
 }
 backtick1();
 } -output {}
 
-test tolower-1 {test tolower} -body {
+test backtick-2 {test backtick stderr} -setup {
+	set fname [makeFile {
+		string	ret;
+
+		ret = `perl -e 'print "to out"; print STDERR "to err";'`;
+		unless (ret eq "to out") puts("bad stdout ${ret}");
+		unless (stdio_status.name eq "perl") puts("bad 10");
+		unless (stdio_status.path =~ /.+perl(.exe)?$/i) puts("bad 11");
+		unless (stdio_status.exit == 0) puts("bad 12");
+		if (defined(stdio_status.signal)) puts("bad 13");
+	} backtick2.l]
+} -body {
 #lang L
-void tolower1()
+/*
+ * Some contortions here to run tclsh on backtick2.l (above) which
+ * prints to stderr, so we can capture stderr and check it.
+ * Otherwise, tcltest sees anything to stderr as an error and fails
+ * the test.
+ */
+void backtick2()
 {
-	unless (tolower("abcde") eq "abcde") puts("bad 1");
-	unless (tolower("ABCDE") eq "abcde") puts("bad 2");
-	unless (tolower("AbCdE") eq "abcde") puts("bad 3");
-	unless (tolower("") eq "") puts("bad 4");
+	int	ret;
+	string	cmd = "${eval('interpreter')} backtick2.l";
+	string	err[], out[];
+
+	ret = system(cmd, undef, &out, &err);
+	unless (defined(ret)) puts("bad status ${ret}");
+	unless (length(out) == 0) puts("bad 2 ${out}");
+	unless (err[0] eq "to err") puts("bad 3 ${err}");
 }
-tolower1();
+backtick2();
 } -output {}
 
-test toupper-1 {test toupper} -body {
+test backtick-3 {test backtick stderr} -setup {
+	set fname [makeFile {
+		string	ret;
+
+		ret = `perl -e 'print "to out"; print STDERR "to err";exit 3'`;
+		unless (ret eq "to out") puts("bad stdout ${ret}");
+		unless (stdio_status.name eq "perl") puts("bad 10");
+		unless (stdio_status.path =~ /.+perl(.exe)?$/i) puts("bad 11");
+		unless (stdio_status.exit == 3) puts("bad 12");
+		if (defined(stdio_status.signal)) puts("bad 13");
+	} backtick3.l]
+} -body {
 #lang L
-void toupper1()
+/*
+ * Same as backtick2() above except with non-zero exit status.
+ */
+void backtick3()
 {
-	unless (toupper("abcde") eq "ABCDE") puts("bad 1");
-	unless (toupper("ABCDE") eq "ABCDE") puts("bad 2");
-	unless (toupper("AbCdE") eq "ABCDE") puts("bad 3");
-	unless (toupper("") eq "") puts("bad 5");
+	int	ret;
+	string	cmd = "${eval('interpreter')} backtick3.l";
+	string	err[], out[];
+
+	ret = system(cmd, undef, &out, &err);
+	unless (defined(ret)) puts("bad status ${ret}");
+	unless (length(out) == 0) puts("bad 2 ${out}");
+	unless (err[0] eq "to err") puts("bad 3 ${err}");
 }
-toupper1();
+backtick3();
 } -output {}
 
 test trim-1 {test trim} -body {
@@ -1088,14 +2455,116 @@ if {!$_windows} {unlink1 $fname4}
 	if {!$_windows} {file delete -force $fname4}
 } -output {}
 
+test uc-1 {test uc} -body {
+#lang L
+void uc1()
+{
+	unless (uc("abcde") eq "ABCDE") puts("bad 1");
+	unless (uc("ABCDE") eq "ABCDE") puts("bad 2");
+	unless (uc("AbCdE") eq "ABCDE") puts("bad 3");
+	unless (uc("") eq "") puts("bad 5");
+}
+uc1();
+} -output {}
+
 test warn-1 {test warn} -body {
 #lang L
 void warn1()
 {
-	warn("warning test");
+	string	s1 = "s1", s2 = "s2";
+
+	warn("warning: %s OK here\n");
+	warn("warning: %s\n", s1);
+	warn("warning: %s %s\n", s1, s2);
+
+	/* No trailing newline -- warn should append file,line. */
+	warn("warning: %s OK here");
+	warn("warning: %s", s1);
+	warn("warning: %s %s", s1, s2);
 }
 warn1();
-} -errorOutput "warning test\n" -output {}
+} -errorOutput {warning: %s OK here
+warning: s1
+warning: s1 s2
+warning: %s OK here in warn1:10
+warning: s1 in warn1:11
+warning: s1 s2 in warn1:12
+} -output {}
+
+test write-1 {test write} -body {
+#lang L
+void write1()
+{
+	int	n;
+	string	s;
+	FILE	f;
+
+	f = fopen("write1", "w");
+	unless (defined(f)) puts("bad 1.1");
+	s = "x";
+	unless (write(f, s, 1) == 1) puts("bad 1.2");
+	s = "yz";
+	unless (write(f, s, 2) == 2) puts("bad 1.3");
+	s = "0123456789";
+	unless (write(f, s, 10) == 10) puts("bad 1.4");
+	fclose(f);
+
+	f = fopen("write1", "r");
+	unless (defined(f)) puts("bad 2.1");
+	n = read(f, &s, -1);
+	unless (n == 13) puts("bad 2.2");
+	unless (s eq "xyz0123456789") puts("bad 2.3");
+	fclose(f);
+}
+write1();
+} -cleanup {
+	removeFile write1
+} -output {}
+
+test write-2 {test write type errors} -body {
+#lang L
+void write2()
+{
+	FILE	f;
+	string	s;
+
+	write();
+	write(f);
+	write(f, s);
+	write(f, s, -1, "too many");
+	write(0, s, -1);
+	write(f, 0, -1);
+	write(f, s, s);
+}
+} -returnCodes error -match regexp -result {.*6: L Error: incorrect # args to write\(\)
+.*7: L Error: incorrect # args to write\(\)
+.*8: L Error: incorrect # args to write\(\)
+.*9: L Error: incorrect # args to write\(\)
+.*10: L Error: first arg to write\(\) must have type FILE
+.*11: L Error: second arg to write\(\) must have type string
+.*12: L Error: third arg to write\(\) must have type int
+}
+
+test write-3 {test write run-time errors} -body {
+#lang L
+void write3()
+{
+	string	s;
+	FILE	f;
+
+	f = fopen("write3", "w");
+	unless (defined(f)) puts("bad 1");
+	fclose(f);
+	f = fopen("write3", "r");
+	unless (defined(f)) puts("bad 2");
+	unless (write(f, s, 1) == -1) puts("bad 3");
+	unless (stdio_lasterr =~ /wasn\'t opened for writing/) puts("bad 4");
+	fclose(f);
+}
+write3();
+} -cleanup {
+	removeFile write3
+} -output {}
 
 ::tcltest::cleanupTests
 return

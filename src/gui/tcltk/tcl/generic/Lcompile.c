@@ -10,6 +10,24 @@
 #include "Lcompile.h"
 #include "Lgrammar.h"
 
+/* Used by compile_spawn_system(). */
+enum {
+	SYSTEM_ARGV		= 0x00000001,
+	SYSTEM_IN_STRING	= 0x00000002,
+	SYSTEM_IN_ARRAY		= 0x00000004,
+	SYSTEM_IN_FILENAME	= 0x00000008,
+	SYSTEM_IN_HANDLE	= 0x00000010,
+	SYSTEM_OUT_STRING	= 0x00000020,
+	SYSTEM_OUT_ARRAY	= 0x00000040,
+	SYSTEM_OUT_FILENAME	= 0x00000080,
+	SYSTEM_OUT_HANDLE	= 0x00000100,
+	SYSTEM_ERR_STRING	= 0x00000200,
+	SYSTEM_ERR_ARRAY	= 0x00000400,
+	SYSTEM_ERR_FILENAME	= 0x00000800,
+	SYSTEM_ERR_HANDLE	= 0x00001000,
+	SYSTEM_BACKGROUND	= 0x00002000,
+};
+
 /*
  * As of March 2009, we use a bit in the Tcl_Obj structure to
  * represent when an object has the L undefined value.  This avoids
@@ -90,6 +108,7 @@ extern void	L__delete_buffer(void *buf);
 private int	L_ParseScript(CONST char *str, Ast **L_ast);
 private int	L_CompileScript(void *ast);
 private void	ast_free(Ast *ast_list);
+private int	compile_abs(Expr *expr);
 private int	compile_assert(Expr *expr);
 private void	compile_assign(Expr *expr);
 private void	compile_assignComposite(Expr *expr);
@@ -102,6 +121,7 @@ private int	compile_clsDeref(Expr *expr, Expr_f flags);
 private int	compile_clsInstDeref(Expr *expr, Expr_f flags);
 private void	compile_condition(Expr *cond);
 private void	compile_continue(Stmt *stmt);
+private int	compile_die(Expr *expr);
 private void	compile_do(Loop *loop);
 private void	compile_for_while(Loop *loop);
 private int	compile_idxOp(Expr *expr, Expr_f flags);
@@ -115,6 +135,7 @@ private void	compile_foreachArray(ForEach *loop);
 private void	compile_foreachHash(ForEach *loop);
 private void	compile_foreachString(ForEach *loop);
 private void	compile_goto(Stmt *stmt);
+private int	compile_here(Expr *expr);
 private void	compile_ifUnless(Cond *cond);
 private void	compile_incdec(Expr *expr);
 private int	compile_join(Expr *expr);
@@ -123,14 +144,17 @@ private void	compile_label(Stmt *stmt);
 private int	compile_length(Expr *expr);
 private void	compile_loop(Loop *loop);
 private int	compile_fnParms(VarDecl *decl);
+private int	compile_pclose(Expr *expr);
 private void	compile_pragma(Stmt *stmt);
 private int	compile_pop(Expr *expr);
 private int	compile_push(Expr *expr);
 private void	compile_reMatch(Expr *re);
+private int	compile_read(Expr *expr);
 private int	compile_rename(Expr *expr);
 private void	compile_return(Stmt *stmt);
 private void	compile_shortCircuit(Expr *expr);
 private int	compile_sort(Expr *expr);
+private int	compile_spawn_system(Expr *expr);
 private int	compile_split(Expr *expr);
 private void	compile_stmt(Stmt *stmt);
 private void	compile_stmts(Stmt *stmt);
@@ -140,11 +164,15 @@ private void	compile_switch_slow(Switch *sw);
 private int	compile_trinOp(Expr *expr);
 private void	compile_twiddle(Expr *expr);
 private void	compile_twiddleSubst(Expr *expr);
+private int	compile_typeof(Expr *expr);
 private int	compile_undef(Expr *expr);
 private int	compile_unOp(Expr *expr);
 private int	compile_var(Expr *expr, Expr_f flags);
 private void	compile_varDecl(VarDecl *decl);
 private void	compile_varDecls(VarDecl *decls);
+private int	compile_warn(Expr *expr);
+private int	compile_write(Expr *expr);
+private Tcl_Obj	*do_getline(Tcl_Interp *interp, Tcl_Channel chan);
 private void	emit_globalUpvar(Sym *sym);
 private void	emit_instrForLOp(Expr *expr);
 private void	emit_jmp_back(TclJumpType jmp_type, int offset);
@@ -154,11 +182,13 @@ private int	fnCallBegin();
 private void	fnCallEnd(int lev);
 private int	fnInArgList();
 private Frame	*frame_find(Frame_f flags);
+private char	*frame_name(void);
 private void	frame_pop(void);
 private void	frame_push(void *node, char *name, Frame_f flags);
 private void	frame_resumeBody();
 private void	frame_resumePrologue();
 private char	*get_text(Expr *expr);
+private void	init_predefined();
 private Type	*iscallbyname(VarDecl *formal);
 private int	ispatternfn(char *name, Expr **foo, Expr **Foo_star,
 			    Expr **opts, int *nopts);
@@ -179,6 +209,8 @@ private int	tmp_getFree(char **s);
 private int	tmp_getSingle(char **s);
 private void	track_cmd(int codeOffset, void *node);
 private void	type_free(Type *type_list);
+private int	typeck_spawn(Expr *in, Expr *out, Expr *err);
+private int	typeck_system(Expr *in, Expr *out, Expr *err);
 
 Linterp	*L;		// per-interp L state
 Type	*L_int;		// pre-defined types
@@ -196,16 +228,26 @@ static struct {
 	char	*name;
 	int	(*fn)(Expr *);
 } builtins[] = {
+	{ "abs",	compile_abs },
 	{ "assert",	compile_assert },
+	{ "die",	compile_die },
+	{ "here",	compile_here },
 	{ "join",	compile_join },
 	{ "keys",	compile_keys },
 	{ "length",	compile_length },
+	{ "pclose",	compile_pclose },
 	{ "pop",	compile_pop },
 	{ "push",	compile_push },
+	{ "read",	compile_read },
 	{ "rename",	compile_rename },
 	{ "sort",	compile_sort },
 	{ "split",	compile_split },
+	{ "spawn",	compile_spawn_system },
+	{ "system",	compile_spawn_system },
+	{ "typeof",	compile_typeof },
 	{ "undef",	compile_undef },
+	{ "warn",	compile_warn },
+	{ "write",	compile_write },
 };
 
 /*
@@ -231,8 +273,8 @@ Tcl_LObjCmd(ClientData clientData, Tcl_Interp *interp, int objc,
 
 	/* Parse options from both the Tcl command and the tclsh cmd line. */
 	L->options = parse_options(objc-1, (Tcl_Obj **)objv);
-	if (L->global->argv &&
-	    Tcl_ListObjGetElements(L->interp, L->global->argv, &argc,
+	if (L->global->tclsh_argv &&
+	    Tcl_ListObjGetElements(L->interp, L->global->tclsh_argv, &argc,
 				   &argvList) == TCL_OK) {
 		L->options |= parse_options(argc-1, argvList);
 	}
@@ -363,6 +405,8 @@ L_CompileScript(void *ast)
 
 	L->toplev = cksprintf("%d%%l_toplevel", ctr++);
 
+	init_predefined();  // set the L pre-defined identifiers
+
 	/*
 	 * Two frames get pushed, one for private globals that exist
 	 * at file scope, and one for the top-level code.  See the
@@ -430,6 +474,36 @@ L_CompileScript(void *ast)
 		ret = Tcl_Eval(L->interp, L->toplev);
 	}
 	return (ret);
+}
+
+private void
+init_predefined()
+{
+#define SET_INT(name, val) \
+	Tcl_SetVar2Ex(L->interp, (name), NULL, Tcl_NewIntObj(val), \
+		      TCL_GLOBAL_ONLY)
+
+	/*
+	 * These are flags used by compile_spawn_system() when
+	 * compiling calls to libl.tcl's system_().  Pre-define them as L
+	 * variables so that system_() in lib L can see their values.
+	 */
+	SET_INT("SYSTEM_ARGV__",	 SYSTEM_ARGV);
+	SET_INT("SYSTEM_IN_STRING__",    SYSTEM_IN_STRING);
+	SET_INT("SYSTEM_IN_ARRAY__",     SYSTEM_IN_ARRAY);
+	SET_INT("SYSTEM_IN_FILENAME__",  SYSTEM_IN_FILENAME);
+	SET_INT("SYSTEM_IN_HANDLE__",    SYSTEM_IN_HANDLE);
+	SET_INT("SYSTEM_OUT_STRING__",   SYSTEM_OUT_STRING);
+	SET_INT("SYSTEM_OUT_ARRAY__",    SYSTEM_OUT_ARRAY);
+	SET_INT("SYSTEM_OUT_FILENAME__", SYSTEM_OUT_FILENAME);
+	SET_INT("SYSTEM_OUT_HANDLE__",   SYSTEM_OUT_HANDLE);
+	SET_INT("SYSTEM_ERR_STRING__",   SYSTEM_ERR_STRING);
+	SET_INT("SYSTEM_ERR_ARRAY__",    SYSTEM_ERR_ARRAY);
+	SET_INT("SYSTEM_ERR_FILENAME__", SYSTEM_ERR_FILENAME);
+	SET_INT("SYSTEM_ERR_HANDLE__",   SYSTEM_ERR_HANDLE);
+	SET_INT("SYSTEM_BACKGROUND__",   SYSTEM_BACKGROUND);
+
+#undef SET_INT
 }
 
 private void
@@ -831,7 +905,7 @@ frame_pop()
 	     hPtr = Tcl_NextHashEntry(&hSearch)) {
 		sym = (Sym *)Tcl_GetHashValue(hPtr);
 		unless (sym->used_p || !(sym->kind & L_SYM_LVAR) ||
-			(sym->decl->flags & DECL_UNUSED)) {
+			(sym->decl->flags & DECL_ARGUSED)) {
 			L_warnf(sym->decl, "%s unused", sym->name);
 		}
 		unless (frame->flags & KEEPSYMS) {
@@ -856,7 +930,6 @@ frame_pop()
 			L_err("label %s referenced but not defined",
 			      label->name);
 		}
-		ckfree(label->name);
 		ckfree((char *)label);
 	}
 	Tcl_DeleteHashTable(frame->labeltab);
@@ -898,6 +971,16 @@ frame_find(Frame_f flags)
 	return (f);
 }
 
+private char *
+frame_name()
+{
+	if (L->enclosing_func) {
+		return(L->enclosing_func->decl->id->str);
+	} else {
+		return(L->toplev);
+	}
+}
+
 private void
 compile_varInitializer(VarDecl *decl)
 {
@@ -919,7 +1002,6 @@ compile_varDecl(VarDecl *decl)
 {
 	char	*name;
 	Sym	*sym;
-
 
 	/*
 	 * Process any declaration only once, but generate code for
@@ -1178,7 +1260,7 @@ compile_fnParms(VarDecl *decl)
 		Type	*clstype = decl->clsdecl->decl->type;
 		Expr	*self_id;
 		VarDecl	*self_decl;
-		if (!param||!param->id || strcmp(param->id->str, "self")) {
+		unless (param && param->id && isid(param->id, "self")) {
 			L_errf(decl->id, "class public member function lacks "
 			       "'self' as first arg");
 			/* Add it so we can keep compiling. */
@@ -1187,7 +1269,7 @@ compile_fnParms(VarDecl *decl)
 			self_decl->flags = SCOPE_LOCAL | DECL_LOCAL_VAR;
 			self_decl->next = param;
 			param = self_decl;
-		} else if (param->type != clstype) {
+		} else unless (L_typeck_same(param->type, clstype)) {
 			L_errf(param, "'self' parameter must be of class type");
 		}
 	}
@@ -1208,8 +1290,7 @@ compile_fnParms(VarDecl *decl)
 			p->id = ast_mkId(name, 0, 0);
 			ckfree(name);
 		}
-		name = p->id->str;
-		if (isClsConstructor(decl) && !strcmp(name, "self")) {
+		if (isClsConstructor(decl) && isid(p->id, "self")) {
 			L_errf(p,
 			       "'self' parameter illegal in class constructor");
 			continue;
@@ -1293,7 +1374,7 @@ compile_split(Expr *expr)
 	if (n > 3) {
 		L_errf(expr, "too many args to split");
 	}
-	unless (isstring(arg) && !isregexp(arg)) {
+	unless ((isstring(arg) || ispoly(arg)) && !isregexp(arg)) {
 		L_errf(expr, "first arg to split must be string");
 	}
 	if (arg && arg->next) {
@@ -1314,7 +1395,7 @@ compile_split(Expr *expr)
 	}
 	TclEmitInstInt4(INST_L_SPLIT, flags, L->frame->envPtr);
 	TclAdjustStackDepth(n-1, L->frame->envPtr);
-	expr->type = type_mkArray(0, L_string, PER_INTERP);
+	expr->type = type_mkArray(0, L_string);
 	return (1);  // stack effect
 }
 
@@ -1323,6 +1404,7 @@ compile_push(Expr *expr)
 {
 	int	idx;
 	Expr	*arg, *array;
+	Type	*base_type;
 
 	expr->type = L_void;
 	unless (expr->b && expr->b->next && !expr->b->next->next) {
@@ -1347,7 +1429,12 @@ compile_push(Expr *expr)
 	}
 	idx = array->sym->idx;  // local slot # for array
 	compile_expr(arg, L_PUSH_VAL);
-	unless (L_typeck_compat(array->type->base_type, arg->type)) {
+	if (isarray(array)) {
+		base_type = array->type->base_type;
+	} else {
+		base_type = L_poly;
+	}
+	unless (L_typeck_compat(base_type, arg->type)) {
 		L_errf(expr, "arg to push has type incompatible with array");
 	}
 	if (array->flags & L_EXPR_DEEP) {
@@ -1413,6 +1500,8 @@ compile_keys(Expr *expr)
 {
 	int	n;
 
+	push_str("::dict");
+	push_str("keys");
 	n = compile_exprs(expr->b, L_PUSH_VAL);
 	unless (n == 1) {
 		L_errf(expr, "incorrect # args to keys");
@@ -1424,16 +1513,11 @@ compile_keys(Expr *expr)
 		expr->type = L_poly;
 		return (0);  // stack effect
 	}
-	push_str("::dict");
-	push_str("keys");
-	TclEmitInstInt1(INST_ROT, 2, L->frame->envPtr);
 	emit_invoke(3);
 	if (ispoly(expr->b)) {
 		expr->type = L_poly;
 	} else {
-		expr->type = type_mkArray(0,
-					  expr->b->type->u.hash.idx_type,
-					  PER_INTERP);
+		expr->type = type_mkArray(0, expr->b->type->u.hash.idx_type);
 	}
 	return (1);  // stack effect
 }
@@ -1485,9 +1569,11 @@ compile_sort(Expr *expr)
 	 * <last arg (the thing to be sorted)>
 	 */
 
+	push_str("::lsort");
 	n = compile_exprs(expr->b, L_PUSH_VAL);
 	unless (n >= 1) {
 		L_errf(expr, "incorrect # args to sort");
+		expr->type = L_poly;
 		return (0);  // stack effect
 	}
 	/* Last argument to sort must be an array, list, or poly. */
@@ -1498,6 +1584,7 @@ compile_sort(Expr *expr)
 		t = L_poly;
 	} else {
 		L_errf(expr, "last arg to sort not an array or list");
+		expr->type = L_poly;
 		return (0);  // stack effect
 	}
 	switch (t->kind) {
@@ -1513,41 +1600,53 @@ compile_sort(Expr *expr)
 	}
 	TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
 	if (n > 255) L_errf(expr, "sort cannot have >255 args");
-	push_str("::lsort");
-	TclEmitInstInt1(INST_ROT, -(n+1), L->frame->envPtr);
 	emit_invoke(n+2);
-	expr->type = type_mkArray(0, t, PER_INTERP);
+	expr->type = type_mkArray(0, t);
 	return (1);  // stack effect
 }
 
 private int
 compile_join(Expr *expr)
 {
-	int	n;
-	Expr	*array;
-	Expr	*sep;
+	Expr	*array, *sep;
 
 	expr->type = L_string;
-
-	n = compile_exprs(expr->b, L_PUSH_VAL);
-	unless (n == 2) {
+	push_str("::join");
+	unless ((sep=expr->b) && (array=sep->next) && !array->next) {
 		L_errf(expr, "incorrect # args to join");
 		return (0);  // stack effect
 	}
-	sep   = expr->b;
-	array = expr->b->next;
-	unless (isstring(sep) || ispoly(sep)) {
-		L_errf(expr, "first arg to join not a string");
-		return (0);  // stack effect
-	}
+	compile_expr(array, L_PUSH_VAL);
 	unless (isarray(array) || islist(array) || ispoly(array)) {
 		L_errf(expr, "second arg to join not an array or list");
 		return (0);  // stack effect
 	}
-	TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
-	push_str("::join");
-	TclEmitInstInt1(INST_ROT, -n, L->frame->envPtr);
-	emit_invoke(n+1);
+	compile_expr(sep, L_PUSH_VAL);
+	unless (isstring(sep) || ispoly(sep)) {
+		L_errf(expr, "first arg to join not a string");
+		return (0);  // stack effect
+	}
+	emit_invoke(3);
+	return (1);  // stack effect
+}
+
+private int
+compile_abs(Expr *expr)
+{
+	int	n;
+
+	push_str("::tcl::mathfunc::abs");
+	n = compile_exprs(expr->b, L_PUSH_VAL);
+	unless (n == 1) {
+		L_errf(expr, "incorrect # args to abs");
+		expr->type = L_poly;
+		return (0);
+	}
+	unless (isint(expr->b) || isfloat(expr->b) || ispoly(expr->b)) {
+		L_errf(expr, "must pass int or float to abs");
+	}
+	emit_invoke(2);
+	expr->type = expr->b->type;
 	return (1);  // stack effect
 }
 
@@ -1557,6 +1656,7 @@ compile_assert(Expr *expr)
 	Jmp	*jmp;
 	char	*cond_txt;
 
+	expr->type = L_void;
 	unless (expr->b && !expr->b->next) {
 		L_errf(expr, "incorrect # args to assert");
 		return (0);  // stack effect
@@ -1564,15 +1664,70 @@ compile_assert(Expr *expr)
 	compile_condition(expr->b);
 	jmp = emit_jmp_fwd(INST_JUMP_TRUE4, NULL);
 	cond_txt = get_text(expr->b);
-	push_str("die");
+	push_str("die_");
+	push_str("%s", frame_name());
+	push_str("%d", expr->node.line);
 	push_str("ASSERTION FAILED %s:%d: %s\n", expr->node.file,
 		 expr->node.line, cond_txt);
-	emit_invoke(2);
+	emit_invoke(4);
 	emit_pop();
 	ckfree(cond_txt);
 	fixup_jmps(&jmp);
-	expr->type = L_void;
 	return (0);  // stack effect
+}
+
+/*
+ * Change die(fmt, ...args) into die_(__FUNC__, __LINE__, fmt, ...args)
+ */
+private int
+compile_die(Expr *expr)
+{
+	Expr	*arg;
+
+	ckfree(expr->a->str);
+	expr->a->str = ckstrdup("die_");
+	arg = ast_mkId("__FUNC__", expr->node.beg, expr->node.end);
+	arg->next = ast_mkId("__LINE__", expr->node.beg, expr->node.end);
+	arg->next->next = expr->b;
+	expr->b = arg;
+	return (compile_expr(expr, L_PUSH_VAL));
+}
+
+/*
+ * Change warn(fmt, ...args) into warn_(__FUNC__, __LINE__, fmt, ...args)
+ */
+private int
+compile_warn(Expr *expr)
+{
+	Expr	*arg;
+
+	ckfree(expr->a->str);
+	expr->a->str = ckstrdup("warn_");
+	arg = ast_mkId("__FUNC__", expr->node.beg, expr->node.end);
+	arg->next = ast_mkId("__LINE__", expr->node.beg, expr->node.end);
+	arg->next->next = expr->b;
+	expr->b = arg;
+	return (compile_expr(expr, L_PUSH_VAL));
+}
+
+/*
+ * Change here() into here_(__FILE__, __LINE__, __FUNC__)
+ */
+private int
+compile_here(Expr *expr)
+{
+	Expr	*arg;
+
+	if (expr->b) {
+		L_errf(expr, "here() takes no arguments");
+	}
+	ckfree(expr->a->str);
+	expr->a->str = ckstrdup("here_");
+	arg = ast_mkId("__FILE__", expr->node.beg, expr->node.end);
+	arg->next = ast_mkId("__LINE__", expr->node.beg, expr->node.end);
+	arg->next->next = ast_mkId("__FUNC__", expr->node.beg, expr->node.end);
+	expr->b = arg;
+	return (compile_expr(expr, L_PUSH_VAL));
 }
 
 private int
@@ -1612,6 +1767,305 @@ compile_undef(Expr *expr)
  done:
 	expr->type = L_void;
 	return (0);  // stack effect
+}
+
+private int
+compile_typeof(Expr *expr)
+{
+	Sym	*sym;
+
+	expr->type = L_string;
+	unless (expr->b->kind == L_EXPR_ID) {
+		L_errf(expr, "argument to typeof() not a variable");
+		return (0);
+	}
+	sym = sym_lookup(expr->b, 0);
+	if (sym) {
+		if (sym->type->name) {
+			push_str(sym->type->name);
+		} else {
+			push_str(L_type_str(sym->type->kind));
+		}
+	}
+	return (1);  // stack effect
+}
+
+private int
+compile_read(Expr *expr)
+{
+	int	n;
+	Expr	*buf, *fd, *nbytes;
+
+	expr->type = L_int;
+	push_str("read_");
+	n = compile_exprs(expr->b, L_PUSH_VAL);
+	unless (n == 3) {
+		L_errf(expr, "incorrect # args to read()");
+		return (0);
+	}
+	fd = expr->b;
+	unless (typeisf(fd, "FILE") || ispoly(fd)) {
+		L_errf(expr, "first arg to read() must have type FILE");
+		return (0);
+	}
+	buf = fd->next;
+	unless (isaddrof(buf) && (isstring(buf->a) || ispoly(buf->a))) {
+		L_errf(expr, "second arg to read() must have type string&");
+		return (0);
+	}
+	nbytes = buf->next;
+	unless (isint(nbytes) || ispoly(nbytes)) {
+		L_errf(expr, "third arg to read() must have type int");
+		return (0);
+	}
+	emit_invoke(4);
+	return (1);  // stack effect
+}
+
+private int
+compile_write(Expr *expr)
+{
+	int	n;
+	Expr	*buf, *fd, *nbytes;
+
+	expr->type = L_int;
+	push_str("Lwrite_");
+	n = compile_exprs(expr->b, L_PUSH_VAL);
+	unless (n == 3) {
+		L_errf(expr, "incorrect # args to write()");
+		return (0);
+	}
+	fd = expr->b;
+	unless (typeisf(fd, "FILE") || ispoly(fd)) {
+		L_errf(expr, "first arg to write() must have type FILE");
+		return (0);
+	}
+	buf = fd->next;
+	unless (isstring(buf) || ispoly(buf)) {
+		L_errf(expr, "second arg to write() must have type string");
+		return (0);
+	}
+	nbytes = buf->next;
+	unless (isint(nbytes) || ispoly(nbytes)) {
+		L_errf(expr, "third arg to write() must have type int");
+		return (0);
+	}
+	emit_invoke(4);
+	return (1);  // stack effect
+}
+
+/*
+ * Allowable forms of system():
+ *
+ * int system(string cmd)
+ * int system(string cmd, STATUS &s)
+ * int system(string argv[])
+ * int system(string argv[], STATUS &s)
+ * int system(cmd | argv[], string in, string &out, string &err)
+ * int system(cmd | argv[], string in, string &out, string &err, STATUS &)
+ * int system(cmd | argv[], string[] in, string[] &out, string[] &err)
+ * int system(cmd | argv[], string[] in, string[] &out, string[] &err,STATUS &)
+ * int system(cmd | argv[], "input", "${outf}", "errors")
+ * int system(cmd | argv[], "input", "${outf}", "errors", STATUS &s)
+ * int system(cmd | argv[], FILE in, FILE out, FILE err);
+ * int system(cmd | argv[], FILE in, FILE out, FILE err, STATUS &s);
+ *
+ * and spawn():
+ *
+ * int spawn(string cmd)
+ * int spawn(string cmd, STATUS &s)
+ * int spawn(string argv[])
+ * int spawn(string argv[], STATUS &s)
+ * int spawn(cmd | argv[], "input", "${outf}", "errors")
+ * int spawn(cmd | argv[], "input", "${outf}", "errors", STATUS &s)
+ * int spawn(cmd | argv[], FILE in, FILE out, FILE err);
+ * int spawn(cmd | argv[], FILE in, FILE out, FILE err, STATUS &s);
+ *
+ * Convert these into a call to system_ or spawn_ that has exactly
+ * seven args, the last being flags indicating the number and type of
+ * what the user supplied.
+ */
+
+private int
+compile_spawn_system(Expr *expr)
+{
+	int	flags = 0, n;
+	Expr	*cmd;
+	Expr	*err = NULL, *in = NULL, *out = NULL, *status = NULL;
+	enum	{ SYSTEM, SPAWN } kind;
+
+	kind = isid(expr->a, "system") ? SYSTEM : SPAWN;
+
+	push_str("system_");
+	n = compile_exprs(expr->b, L_PUSH_VAL);
+
+	expr->type = L_poly;
+	cmd = expr->b;
+	switch (n) {
+	    case 1:
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+		break;
+	    case 2:
+		status = cmd->next;
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+		TclEmitInstInt1(INST_ROT, 3, L->frame->envPtr);
+		break;
+	    case 4:
+		in  = cmd->next;
+		out = in->next;
+		err = out->next;
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+		break;
+	    case 5:
+		in  = cmd->next;
+		out = in->next;
+		err = out->next;
+		status = err->next;
+		break;
+	    default:
+		L_errf(expr, "incorrect # args");
+		return (0);
+	}
+	if (isstring(cmd) || ispoly(cmd)) {
+	} else if (isarrayof(cmd, L_STRING | L_POLY)) {
+		flags |= SYSTEM_ARGV;
+	} else {
+		L_errf(expr, "first arg must be string or string array");
+	}
+	switch (kind) {
+	    case SYSTEM: flags |= typeck_system(in, out, err); break;
+	    case SPAWN:  flags |= typeck_spawn(in, out, err); break;
+	}
+	if (status) {
+		Type	*base_type = status->type->base_type;
+		unless (isnameoftype(status->type) &&
+			(ispolytype(base_type) || typeis(base_type, "STATUS"))) {
+			L_errf(expr, "last arg must be of type STATUS &");
+			return (0);
+		}
+	}
+	push_str("0x%x", flags);
+	emit_invoke(7);
+	expr->type = L_int;
+	return (1);
+}
+
+private int
+typeck_spawn(Expr *in, Expr *out, Expr *err)
+{
+	int	flags = 0;
+
+	if (!in || isid(in, "undef")) {
+	} else if (typeisf(in, "FILE")) {
+		flags |= SYSTEM_IN_HANDLE;
+	} else if (isstring(in) && isconst(in)) {
+		flags |= SYSTEM_IN_FILENAME;
+	} else if (isstring(in) || ispoly(in)) {
+		flags |= SYSTEM_IN_STRING;
+	} else if (isarrayof(in, L_STRING | L_POLY)) {
+		flags |= SYSTEM_IN_ARRAY;
+	} else {
+		L_errf(in, "second arg must be FILE, or "
+		       "string constant/variable/array");
+	}
+	if (!out || isid(out, "undef")) {
+	} else if (typeisf(out, "FILE")) {
+		flags |= SYSTEM_OUT_HANDLE;
+	} else if (isstring(out) && isconst(out)) {
+		flags |= SYSTEM_OUT_FILENAME;
+	} else {
+		L_errf(out, "third arg must be FILE, or string constant");
+	}
+	if (!err || isid(err, "undef")) {
+	} else if (typeisf(err, "FILE")) {
+		flags |= SYSTEM_ERR_HANDLE;
+	} else if (isstring(err) && isconst(err)) {
+		flags |= SYSTEM_ERR_FILENAME;
+	} else {
+		L_errf(err, "fourth arg must be FILE, or string constant");
+	}
+
+	return (flags | SYSTEM_BACKGROUND);
+}
+
+private int
+typeck_system(Expr *in, Expr *out, Expr *err)
+{
+	int	flags = 0;
+
+	if (!in || isid(in, "undef")) {
+	} else if (typeisf(in, "FILE")) {
+		flags |= SYSTEM_IN_HANDLE;
+	} else if (isstring(in) && isconst(in)) {
+		flags |= SYSTEM_IN_FILENAME;
+	} else if (isstring(in) || ispoly(in)) {
+		flags |= SYSTEM_IN_STRING;
+	} else if (isarrayof(in, L_STRING | L_POLY) || islist(in)) {
+		flags |= SYSTEM_IN_ARRAY;
+	} else {
+		L_errf(in, "second arg must be FILE, or "
+		       "string constant/variable/array");
+	}
+	if (!out || isid(out, "undef")) {
+	} else if (typeisf(out, "FILE")) {
+		flags |= SYSTEM_OUT_HANDLE;
+	} else if (isstring(out) && isconst(out)) {
+		flags |= SYSTEM_OUT_FILENAME;
+	} else if (isaddrof(out) && (isstring(out->a) || ispoly(out->a))) {
+		flags |= SYSTEM_OUT_STRING;
+	} else if (isaddrof(out) && isarrayof(out->a, L_STRING | L_POLY)) {
+		flags |= SYSTEM_OUT_ARRAY;
+	} else {
+		L_errf(out, "third arg must be FILE, string "
+		       "constant, or reference to string or string array");
+	}
+	if (!err || isid(err, "undef")) {
+	} else if (typeisf(err, "FILE")) {
+		flags |= SYSTEM_ERR_HANDLE;
+	} else if (isstring(err) && isconst(err)) {
+		flags |= SYSTEM_ERR_FILENAME;
+	} else if (isaddrof(err) && (isstring(err->a) || ispoly(err->a))) {
+		flags |= SYSTEM_ERR_STRING;
+	} else if (isaddrof(err) && isarrayof(err->a, L_STRING | L_POLY)) {
+		flags |= SYSTEM_ERR_ARRAY;
+	} else {
+		L_errf(err, "fourth arg must be FILE, string "
+		       "constant, or reference to string or string array");
+	}
+
+	return (flags);
+}
+
+private int
+compile_pclose(Expr *expr)
+{
+	int	n;
+	Expr	*status;
+
+	push_str("pclose_");
+	n = compile_exprs(expr->b, L_PUSH_VAL);
+	unless ((n == 1) || (n == 2)) {
+		L_errf(expr, "incorrect # args to pclose");
+		expr->type = L_void;
+		return (0);  // stack effect
+	}
+	unless (typeisf(expr->b, "FILE")) {
+		L_errf(expr, "first arg to pclose must be FILE");
+	}
+	status = expr->b->next;
+	if (!status) {
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+	} else unless (isaddrof(status) && typeisf(status->a, "STATUS")) {
+		L_errf(expr, "second arg to pclose must be STATUS&");
+	}
+	emit_invoke(3);
+	expr->type = L_int;
+	return (1);  // stack effect
 }
 
 /*
@@ -1921,7 +2375,7 @@ compile_var(Expr *expr, Expr_f flags)
 	ASSERT(expr->op == L_EXPR_ID);
 
 	/* Check for pre-defined identifiers first. */
-	if (!strcmp(expr->str, "END")) {
+	if (isid(expr, "END")) {
 		if (L->idx_nesting) {
 			TclEmitOpcode(INST_L_READ_SIZE, L->frame->envPtr);
 		} else {
@@ -1930,24 +2384,20 @@ compile_var(Expr *expr, Expr_f flags)
 		}
 		expr->type = L_int;
 		return (1);
-	} else if (!strcmp(expr->str, "undef")) {
+	} else if (isid(expr, "undef")) {
 		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
 		expr->type = L_poly;
 		return (1);
-	} else if (!strcmp(expr->str, "__FILE__")) {
+	} else if (isid(expr, "__FILE__")) {
 		push_str(expr->node.file);
 		expr->type = L_string;
 		return (1);
-	} else if (!strcmp(expr->str, "__LINE__")) {
+	} else if (isid(expr, "__LINE__")) {
 		push_str("%d", expr->node.line);
 		expr->type = L_int;
 		return (1);
-	} else if (!strcmp(expr->str, "__FUNC__")) {
-		if (L->enclosing_func) {
-			push_str(L->enclosing_func->decl->id->str);
-		} else {
-			push_str("%s", L->toplev);
-		}
+	} else if (isid(expr, "__FUNC__")) {
+		push_str("%s", frame_name());
 		expr->type = L_string;
 		return (1);
 	}
@@ -2104,6 +2554,7 @@ compile_unOp(Expr *expr)
 {
 	Expr	*var;
 	Sym	*sym;
+	char	*name;
 
 	switch (expr->op) {
 	    case L_OP_BANG:
@@ -2133,8 +2584,9 @@ compile_unOp(Expr *expr)
 				       expr->a->a->str);
 				break;
 			}
-			var = ast_mkId(cksprintf("&%s", expr->a->a->str),
-				       0, 0);
+			name = cksprintf("&%s", expr->a->a->str);
+			var = ast_mkId(name, 0, 0);
+			ckfree(name);
 			sym = sym_lookup(var, L_NOWARN);
 			unless (sym && (sym->decl->flags & DECL_REF)) {
 				L_errf(expr, "%s undeclared or not a "
@@ -2158,7 +2610,7 @@ compile_unOp(Expr *expr)
 		compile_expr(expr->a, L_PUSH_NAME);
 		if (!(expr->a->flags & L_EXPR_DEEP) &&
 		    (expr->a->sym && canDeref(expr->a->sym))) {
-			expr->type = type_mkNameOf(expr->a->type, PER_INTERP);
+			expr->type = type_mkNameOf(expr->a->type);
 		} else {
 			L_errf(expr, "illegal operand to &");
 			expr->type = L_poly;
@@ -2191,6 +2643,20 @@ compile_unOp(Expr *expr)
 			push_str(expr->str);
 		}
 		emit_invoke(2);
+		expr->type = L_string;
+		break;
+	    case L_OP_FILE:
+		if (expr->a) {
+			push_str("fgetline");
+			compile_expr(expr->a, L_PUSH_VAL);
+			unless (typeisf(expr->a, "FILE") || ispoly(expr->a)) {
+				L_errf(expr->a, "must use FILE in <>");
+			}
+			emit_invoke(2);
+		} else {
+			push_str("angle_read_");
+			emit_invoke(1);
+		}
 		expr->type = L_string;
 		break;
 	    default:
@@ -2336,7 +2802,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 			ASSERT((n == 2) && ishash(expr->a));
 			type = expr->a->type;
 		} else {
-			type = type_mkList(expr->a->type, PER_INTERP);
+			type = type_mkList(expr->a->type);
 		}
 		for (e = expr->b; e; e = e->b) {
 			ASSERT(e->op == L_OP_LIST);
@@ -2351,7 +2817,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 				 * The list type is literally a list of all the
 				 * individual element types linked together.
 				 */
-				Type *t = type_mkList(e->a->type, PER_INTERP);
+				Type *t = type_mkList(e->a->type);
 				APPEND(Type, next, type, t);
 			} else unless (ispolytype(type)) {
 				L_errf(expr, "cannot mix hash and "
@@ -2374,8 +2840,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 		unless (isscalar(expr->a)) {
 			L_errf(expr->a, "hash keys must be scalar");
 		}
-		expr->type = type_mkHash(expr->a->type, expr->b->type,
-					 PER_INTERP);
+		expr->type = type_mkHash(expr->a->type, expr->b->type);
 		return (n);
 	    case L_OP_EQTWID:
 		compile_twiddle(expr);
@@ -2391,11 +2856,11 @@ compile_binOp(Expr *expr, Expr_f flags)
 		if (flags & L_LVALUE) {
 			compile_expr(expr->b, flags);
 		} else {
-			if (type == L_int) {
+			if (type->kind == L_INT) {
 				push_str("::tcl::mathfunc::int");
 				compile_expr(expr->b, flags);
 				emit_invoke(2);
-			} else if (type == L_float) {
+			} else if (type->kind == L_FLOAT) {
 				push_str("::tcl::mathfunc::double");
 				compile_expr(expr->b, flags);
 				emit_invoke(2);
@@ -4832,29 +5297,17 @@ ast_free(Ast *ast_list)
 		Ast	*node = ast_list;
 		ast_list = ast_list->next;
 		switch (node->type) {
-		    case L_NODE_EXPR: {
-			Expr *e = (Expr *)node;
-			switch (e->kind) {
-			    case L_EXPR_CONST:
-				if (e->type == L_string) {
-					ckfree(e->str);
-				}
-				break;
-			    case L_EXPR_BINOP:
-				if ((e->op == L_OP_DOT) ||
-				    (e->op == L_OP_POINTS)) {
-					ckfree(e->str);
-				}
-				break;
-			    case L_EXPR_ID:
-			    case L_EXPR_RE:
-				ckfree(e->str);
-				break;
-			    default:
-				break;
+		    case L_NODE_STMT: {
+			Stmt *s = (Stmt *)node;
+			if ((s->kind == L_STMT_LABEL) ||
+			    (s->kind == L_STMT_GOTO)) {
+				ckfree(s->u.label);
 			}
 			break;
 		    }
+		    case L_NODE_EXPR:
+			ckfree(((Expr *)node)->str);
+			break;
 		    case L_NODE_VAR_DECL:
 			ckfree(((VarDecl *)node)->tclprefix);
 			break;
@@ -4878,6 +5331,7 @@ type_free(Type *type_list)
 		Type	*type = type_list;
 		type_list = type_list->list;
 		if (type->kind == L_STRUCT) ckfree(type->u.struc.tag);
+		ckfree(type->name);
 		ckfree((char *)type);
 	}
 }
@@ -5210,7 +5664,7 @@ L_struct_lookup(char *tag, int local)
 		type = (Type *)Tcl_GetHashValue(hPtr);
 	} else {
 		hPtr = Tcl_CreateHashEntry(L->curr_scope->structs, tag, &new);
-		type = type_mkStruct(tag, NULL, PER_INTERP);
+		type = type_mkStruct(tag, NULL);
 		Tcl_SetHashValue(hPtr, type);
 	}
 	return (type);
@@ -5274,11 +5728,15 @@ L_typedef_store(VarDecl *decl)
 {
 	int		new;
 	Tcl_HashEntry	*hPtr;
+	Type		*new_type;
 	char		*name = decl->id->str;
 
 	hPtr = Tcl_CreateHashEntry(L->curr_scope->typedefs, name, &new);
 	if (new) {
-		Tcl_SetHashValue(hPtr, decl->type);
+		new_type = type_dup(decl->type);
+		if (new_type->name) ckfree(new_type->name);
+		new_type->name = ckstrdup(name);
+		Tcl_SetHashValue(hPtr, new_type);
 	} else {
 		Type *t = Tcl_GetHashValue(hPtr);
 		unless (L_typeck_same(decl->type, t)) {
@@ -5586,4 +6044,269 @@ Tcl_ShSplitObjCmd(
 	}
 	Tcl_SetObjResult(interp, argv);
 	return (TCL_OK);
+}
+
+int
+Tcl_GetOptObjCmd(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	int		ac, i, n, ret = TCL_OK;
+	char		**av, *opts, *s;
+	longopt		*lopts = NULL;
+	Tcl_Obj		**objs;
+
+	/*
+	 * This is all about converting the L args to C args for the
+	 * getopt() call and then mapping back for the return value.
+	 */
+
+	unless (objc == 4) {
+		Tcl_WrongNumArgs(interp, 1, objv, "av opts lopts");
+		return (TCL_ERROR);
+	}
+	if (Tcl_ListObjGetElements(interp, objv[1], &ac, &objs) != TCL_OK) {
+		return (TCL_ERROR);
+	}
+	av = (char **)ckalloc(ac * sizeof(char *));
+	for (i = 0; i < ac; ++i) {
+		av[i] = TclGetString(objs[i]);
+	}
+	opts = TclGetString(objv[2]);
+	/*
+	 * For long opts, the C API wants an array of <char*,int>, and
+	 * the L call sent in a string array, so map the long opt name to
+	 * its L array index + 300 (values <= 256 are reserved for the
+	 * short opts and GETOPT_ERR).
+	 */
+	if (Tcl_ListObjGetElements(interp, objv[3], &n, &objs) != TCL_OK) {
+		ret = TCL_ERROR;
+		goto done;
+	}
+	if (n) lopts = (longopt *)ckalloc(n * sizeof(longopt));
+	for (i = 0; i < n; ++i) {
+		lopts[i].name = TclGetString(objs[i]);
+		lopts[i].ret  = 300 + i;
+	}
+	i = getopt(ac, av, opts, lopts);
+	switch (i) {
+	    case GETOPT_EOF:
+		Tcl_SetObjResult(interp, *L_undefObjPtrPtr());
+		break;
+	    case GETOPT_ERR:
+		Tcl_SetObjResult(interp, Tcl_NewStringObj("", 0));
+		break;
+	    default:
+		if (i < 300) {
+			// short opt
+			Tcl_SetObjResult(interp,
+					 Tcl_NewStringObj((char *)&i, 1));
+		} else {
+			// long opt -- map back to the longopts array entry
+			// and strip any trailing :;|
+			s = TclGetStringFromObj(objs[i-300], &n);
+			if ((s[n-1] == ':') || (s[n-1] == ';') ||
+			    (s[n-1] == '|')) {
+				Tcl_SetObjResult(interp,
+						 Tcl_NewStringObj(s,n-1));
+			} else {
+				Tcl_SetObjResult(interp, objs[i-300]);
+			}
+		}
+		break;
+	}
+	/* Set the optind, optopt, and optarg globals from the C variables. */
+	s = cksprintf("%d", optind);
+	Tcl_SetVar(interp, "optind", s, TCL_GLOBAL_ONLY);
+	ckfree(s);
+	s = cksprintf("%c", optopt);
+	Tcl_SetVar(interp, "optopt", s, TCL_GLOBAL_ONLY);
+	ckfree(s);
+	Tcl_SetVar(interp, "optarg", optarg, TCL_GLOBAL_ONLY);
+ done:
+	ckfree((char *)av);
+	ckfree((char *)lopts);
+	return (ret);
+}
+
+int
+Tcl_GetOptResetObjCmd(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	unless (objc == 1) {
+		Tcl_WrongNumArgs(interp, 1, objv, NULL);
+		return (TCL_ERROR);
+	}
+	getoptReset();
+	return (TCL_OK);
+}
+
+/*
+ * Parts of the next two functions are taken from Tcl_GetsObjCmd().
+ * do_getline() is like Tcl_GetsObjCmd() except that it results in
+ * undef on error or EOF, and it returns the result object so you
+ * don't have to pull it out of the interp to see what happened.
+ */
+
+private Tcl_Obj *
+do_getline(Tcl_Interp *interp, Tcl_Channel chan)
+{
+	Tcl_Obj	*ret;
+
+	ret = Tcl_NewObj();
+	if (Tcl_GetsObj(chan, ret) < 0) {
+		Tcl_DecrRefCount(ret);
+		if (!Tcl_Eof(chan) && !Tcl_InputBlocked(chan)) {
+			/*
+			 * TIP #219. Capture error messages put by the
+			 * driver into the bypass area and put them
+			 * into the regular interpreter result.  Fall
+			 * back to the regular message if nothing was
+			 * found in the bypass.
+			 */
+			if (!TclChanCaughtErrorBypass(interp, chan)) {
+				Tcl_ResetResult(interp);
+				Tcl_AppendResult(interp, Tcl_PosixError(interp),
+						 NULL);
+			}
+			Tcl_SetVar2Ex(interp, "::stdio_lasterr", NULL,
+				      Tcl_GetObjResult(interp),
+				      TCL_GLOBAL_ONLY);
+			return (NULL);
+		}
+		ret = *L_undefObjPtrPtr();
+	}
+	Tcl_SetObjResult(interp, ret);
+	return (ret);
+}
+
+int
+Tcl_FGetlineObjCmd(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	int		mode;
+	Tcl_Channel	chan;
+
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 1, objv, "channelId");
+		return (TCL_ERROR);
+	}
+	if (TclGetChannelFromObj(interp, objv[1], &chan, &mode, 0) != TCL_OK) {
+		goto err;
+	}
+	unless (mode & TCL_READABLE) {
+		Tcl_AppendResult(interp, "channel \"", TclGetString(objv[1]),
+				 "\" wasn't opened for reading", NULL);
+		goto err;
+	}
+	unless (do_getline(interp, chan)) {
+		goto err;
+	}
+	return (TCL_OK);
+ err:
+	Tcl_SetVar2Ex(interp, "::stdio_lasterr", NULL,
+		      Tcl_GetObjResult(interp),
+		      TCL_GLOBAL_ONLY);
+	Tcl_SetObjResult(interp, *L_undefObjPtrPtr());
+	return (TCL_OK);
+}
+
+int
+Tcl_LAngleReadObjCmd(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	Tcl_Obj			*ret = NULL;
+	int			argc;
+	Tcl_Obj			**argv;
+	static int		cur = 0;
+	static Tcl_Channel	chan = NULL;
+
+	if (objc != 1) {
+		Tcl_WrongNumArgs(interp, 1, objv, NULL);
+		return (TCL_ERROR);
+	}
+	unless (L->global->script_argc) {
+		Tcl_Obj	*objv[1];
+
+		objv[0] = Tcl_NewStringObj("angle_read_", -1);
+		objv[1] = Tcl_NewStringObj("::stdin", -1);
+		int res = Tcl_FGetlineObjCmd(dummy, interp, 2, objv);
+		Tcl_DecrRefCount(objv[0]);
+		Tcl_DecrRefCount(objv[1]);
+		return (res);
+	}
+	Tcl_ListObjGetElements(L->interp, L->global->script_argv, &argc, &argv);
+	while (1) {
+		if (chan) {
+			ret = do_getline(interp, chan);
+			if (ret && !ret->undef) break;
+			Tcl_UnregisterChannel(interp, chan);
+			chan = NULL;
+		}
+		if (cur >= argc) {
+			Tcl_SetObjResult(interp, *L_undefObjPtrPtr());
+			break;
+		}
+		chan = Tcl_FSOpenFileChannel(interp, argv[cur++], "r", 0);
+		if (chan) {
+			Tcl_RegisterChannel(interp, chan);
+		} else {
+			fprintf(stderr, "%s\n", Tcl_GetStringResult(interp));
+			Tcl_ResetResult(interp);
+		}
+	}
+	return (TCL_OK);
+}
+
+int
+Tcl_LWriteCmd(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	int		mode, nbytes;
+	char		*errmsg = "";
+	Tcl_Channel	chan;
+
+	if (objc != 4) {
+		Tcl_WrongNumArgs(interp, 1, objv, "channel buffer numBytes");
+		return (TCL_ERROR);
+	}
+	if (TclGetChannelFromObj(interp, objv[1], &chan, &mode, 0) != TCL_OK) {
+		return (TCL_ERROR);
+	}
+	if (!(mode & TCL_WRITABLE)) {
+		errmsg = "channel wasn't opened for writing";
+		goto err;
+	}
+	if (Tcl_GetIntFromObj(interp, objv[3], &nbytes) != TCL_OK) {
+		return (TCL_ERROR);
+	}
+
+	nbytes = Tcl_Write(chan, Tcl_GetString(objv[2]), nbytes);
+	if (nbytes < 0) {
+		if (!TclChanCaughtErrorBypass(interp, chan)) {
+			errmsg = (char *)Tcl_PosixError(interp);
+		}
+		goto err;
+	}
+ out:
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(nbytes));
+	return (TCL_OK);
+ err:
+	Tcl_SetVar2(interp, "::stdio_lasterr", NULL, errmsg, TCL_GLOBAL_ONLY);
+	nbytes = -1;
+	goto out;
 }

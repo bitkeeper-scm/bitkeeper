@@ -10,11 +10,12 @@ ast_init(void *node, Node_k type, int beg, int end)
 {
 	Ast	*ast = (Ast *)node;
 
-	ast->file     = L->file;
-	ast->type     = type;
-	ast->beg      = beg;
-	ast->end      = end;
-	ast->next     = L->ast_list;
+	ast->file   = L->file;
+	ast->type   = type;
+	ast->beg    = beg;
+	ast->end    = end;
+	ast->next   = L->ast_list;
+	L->ast_list = (void *)ast;
 
 	/*
 	 * Adjust the line # to account for include()'d code.  This
@@ -25,8 +26,6 @@ ast_init(void *node, Node_k type, int beg, int end)
 	} else {
 		ast->line = L->line;
 	}
-
-	L->ast_list   = (void *)ast;
 }
 
 Block *
@@ -182,7 +181,7 @@ ast_mkConstructor(ClsDecl *class)
 	Block	*block;
 	FnDecl	*fn;
 
-	type  = type_mkFunc(class->decl->type, NULL, PER_INTERP);
+	type  = type_mkFunc(class->decl->type, NULL);
 	name  = cksprintf("%s_new", class->decl->id->str);
 	id    = ast_mkId(name, 0, 0);
 	decl  = ast_mkVarDecl(type, id, 0, 0);
@@ -209,7 +208,7 @@ ast_mkDestructor(ClsDecl *class)
 	self = ast_mkId("self", 0, 0);
 	parm = ast_mkVarDecl(class->decl->type, self, 0, 0);
 	parm->flags = SCOPE_LOCAL | DECL_LOCAL_VAR;
-	type = type_mkFunc(L_void, parm, PER_INTERP);
+	type = type_mkFunc(L_void, parm);
 	name = cksprintf("%s_delete", class->decl->id->str);
 	id   = ast_mkId(name, 0, 0);
 	decl = ast_mkVarDecl(type, id, 0, 0);
@@ -287,80 +286,94 @@ ast_mkPragma(char *id, char *val, int beg, int end)
 }
 
 private Type *
-type_alloc(Type_k kind, enum typemk_k disposition)
+type_alloc(Type_k kind)
 {
 	Type *type = (Type *)ckalloc(sizeof(Type));
 	memset(type, 0, sizeof(Type));
-	type->kind = kind;
-	unless (disposition == PERSIST) {
-		type->list   = L->type_list;
-		L->type_list = type;
+	type->kind   = kind;
+	type->list   = L->type_list;
+	L->type_list = type;
+	return (type);
+}
+
+Type *
+type_dup(Type *type)
+{
+	Type *dup = (Type *)ckalloc(sizeof(Type));
+	*dup = *type;
+	if (type->name) {
+		dup->name = ckstrdup(type->name);
 	}
+	if ((type->kind == L_STRUCT) && type->u.struc.tag) {
+		dup->u.struc.tag = ckstrdup(type->u.struc.tag);
+	}
+	dup->list    = L->type_list;
+	L->type_list = dup;
+	return (dup);
+}
+
+Type *
+type_mkScalar(Type_k kind)
+{
+	Type *type = type_alloc(kind);
 	return (type);
 }
 
 Type *
-type_mkScalar(Type_k kind, enum typemk_k disposition)
+type_mkArray(Expr *size, Type *base_type)
 {
-	Type *type = type_alloc(kind, disposition);
-	return (type);
-}
-
-Type *
-type_mkArray(Expr *size, Type *base_type, enum typemk_k disposition)
-{
-	Type *type = type_alloc(L_ARRAY, disposition);
+	Type *type = type_alloc(L_ARRAY);
 	type->u.array.size = size;
 	type->base_type    = base_type;
 	return (type);
 }
 
 Type *
-type_mkHash(Type *index_type, Type *base_type, enum typemk_k disposition)
+type_mkHash(Type *index_type, Type *base_type)
 {
-	Type *type = type_alloc(L_HASH, disposition);
+	Type *type = type_alloc(L_HASH);
 	type->u.hash.idx_type = index_type;
 	type->base_type       = base_type;
 	return (type);
 }
 
 Type *
-type_mkStruct(char *tag, VarDecl *members, enum typemk_k disposition)
+type_mkStruct(char *tag, VarDecl *members)
 {
-	Type *type = type_alloc(L_STRUCT, disposition);
+	Type *type = type_alloc(L_STRUCT);
 	type->u.struc.tag     = ckstrdup(tag);
 	type->u.struc.members = members;
 	return (type);
 }
 
 Type *
-type_mkNameOf(Type *base_type, enum typemk_k disposition)
+type_mkNameOf(Type *base_type)
 {
-	Type *type = type_alloc(L_NAMEOF, disposition);
+	Type *type = type_alloc(L_NAMEOF);
 	type->base_type = base_type;
 	return (type);
 }
 
 Type *
-type_mkFunc(Type *ret_type, VarDecl *formals, enum typemk_k disposition)
+type_mkFunc(Type *ret_type, VarDecl *formals)
 {
-	Type *type = type_alloc(L_FUNCTION, disposition);
+	Type *type = type_alloc(L_FUNCTION);
 	type->base_type      = ret_type;
 	type->u.func.formals = formals;
 	return (type);
 }
 
 Type *
-type_mkList(Type *a, enum typemk_k disposition)
+type_mkList(Type *a)
 {
-	Type *type = type_alloc(L_LIST, disposition);
+	Type *type = type_alloc(L_LIST);
 	type->base_type = a;
 	return (type);
 }
 
 Type *
-type_mkClass(enum typemk_k disposition)
+type_mkClass(void)
 {
-	Type *type = type_alloc(L_CLASS, disposition);
+	Type *type = type_alloc(L_CLASS);
 	return (type);
 }

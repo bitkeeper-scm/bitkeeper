@@ -131,7 +131,7 @@ fi
 # L script for checking the number of progres bars in the output.
 cat - <<'EOF' >chknumbars.l
 void
-main(_unused int ac, string av[])
+main(_argused int ac, string av[])
 {
 	int	n = 0;
 	string	s;
@@ -139,7 +139,7 @@ main(_unused int ac, string av[])
 
 	// Convert \r's to # since otherwise tcl will treat
 	// them like newlines when reading the file.
-	system("perl -ne {s/\r/#/g;print} ${av[1]} >x");
+	system("perl -ne 's/\r/#/g;print' '${av[1]}'", undef, "x", undef);
 
 	unless (defined(f = fopen("x", "r"))) die("fopen");
 	while (defined(s = fgetline(f))) {
@@ -161,7 +161,7 @@ EOF
 cat - <<'EOF' >chkoutput.l
 // Check several aspects of the progress-bar output for correctness.
 void
-main(_unused int ac, string av[])
+main(_argused int ac, string av[])
 {
 	int	comps{string}, total;
 	string	comp, s;
@@ -171,7 +171,7 @@ main(_unused int ac, string av[])
 
 	// Convert \r's to # since otherwise tcl will treat
 	// them like newlines when reading the file.
-	system("perl -ne {s/\r/#/g;print} ${av[1]} >x");
+	system("perl -ne 's/\r/#/g;print' '${av[1]}'", undef, "x", undef);
 
 	unless (defined(f = fopen("x", "r"))) die("fopen");
 	while (defined(s = fgetline(f))) {
@@ -231,7 +231,7 @@ EOF
 # L script for checking # blank lines in output.
 cat - <<'EOF' >chkblanks.l
 void
-main(_unused int ac, string av[])
+main(_argused int ac, string av[])
 {
 	int	blanks = 0;
 	string	s;
@@ -239,7 +239,7 @@ main(_unused int ac, string av[])
 
 	// Convert \r's to # since otherwise tcl will treat
 	// them like newlines when reading the file below.
-	system("perl -ne {s/\r/#/g;print} ${av[1]} >x");
+	system("perl -ne 's/\r/#/g;print' '${av[1]}'", undef, "x", undef);
 
 	unless (defined(f = fopen("x", "r"))) die("fopen");
 	while (defined(s = fgetline(f))) {

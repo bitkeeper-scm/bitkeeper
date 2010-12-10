@@ -279,9 +279,9 @@ Tcl_Main(
 	 */
 
 	/* Create argv list obj for L. */
-	L->global->argc = 1;
-	L->global->argv = Tcl_NewObj();
-	Tcl_ListObjAppendElement(NULL, L->global->argv,
+	L->global->tclsh_argc = 1;
+	L->global->tclsh_argv = Tcl_NewObj();
+	Tcl_ListObjAppendElement(NULL, L->global->tclsh_argv,
 				 Tcl_NewStringObj(argv[0], -1));
 
 	if ((argc > 3) && (0 == strcmp("-encoding", argv[1]))
@@ -295,8 +295,8 @@ Tcl_Main(
 	    Tcl_Obj *argObj;
 	    for (i = 1; i < argc; ++i) {
 		argObj = Tcl_NewStringObj(argv[i], -1);
-		Tcl_ListObjAppendElement(NULL, L->global->argv, argObj);
-		++L->global->argc;
+		Tcl_ListObjAppendElement(NULL, L->global->tclsh_argv, argObj);
+		++L->global->tclsh_argc;
 		if ('-' != argv[i][0]) {
 		    Tcl_SetStartupScript(argObj, NULL);
 		    argc -= i;
@@ -323,6 +323,7 @@ Tcl_Main(
     argv++;
 
     Tcl_SetVar2Ex(interp, "argc", NULL, Tcl_NewIntObj(argc), TCL_GLOBAL_ONLY);
+    L->global->script_argc = argc;
 
     argvPtr = Tcl_NewListObj(0, NULL);
     while (argc--) {
@@ -334,6 +335,8 @@ Tcl_Main(
 	Tcl_DStringFree(&ds);
     }
     Tcl_SetVar2Ex(interp, "argv", NULL, argvPtr, TCL_GLOBAL_ONLY);
+    L->global->script_argv = argvPtr;
+    Tcl_IncrRefCount(argvPtr);
 
     /*
      * Set the "tcl_interactive" variable.
@@ -380,8 +383,9 @@ Tcl_Main(
 	 * as a cmd-line option.  This causes Tcl_FSEvalFileEx() to wrap the
 	 * input file in a #lang L regardless of its extension.
 	 */
-	if (L->global->argv) {
-	    Tcl_ListObjGetElements(interp, L->global->argv, &argc, &argvObjs);
+	if (L->global->tclsh_argv) {
+	    Tcl_ListObjGetElements(interp, L->global->tclsh_argv, &argc,
+				   &argvObjs);
 	    pathObj = Tcl_FSGetNormalizedPath(interp, argvObjs[0]);
 	    av0path = Tcl_GetString(pathObj);
 	    if (av0path) {

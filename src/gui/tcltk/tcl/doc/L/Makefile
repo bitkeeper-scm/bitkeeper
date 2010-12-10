@@ -6,7 +6,8 @@ L.man: l.doc pod2man
 	rm -f L.pod
 
 L.html: l.doc pod2html.l FORCE
-	./pod2html.l --title="L Programmer's Reference Guide" l.doc > L.html
+	bk tclsh ./pod2html.l --title="L Programmer's Reference Guide" l.doc > L.html
+	-@test -d /home/lm/public_html/ && cp L.html /home/lm/public_html/
 
 L.1: L.man
 	nroff -man L.man > L.1

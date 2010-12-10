@@ -170,7 +170,7 @@ extern int	L_lex (void);
 %token <Typename> T_TYPE "type name"
 %token T_TYPEDEF "typedef"
 %token T_UNLESS "unless"
-%token T_UNUSED "unused"
+%token T_ARGUSED "_argused"
 %token T_VOID "void"
 %token T_WIDGET "widget"
 %token T_WHILE "while"
@@ -310,7 +310,7 @@ class_decl:
 		 * the class name so that it is available while
 		 * parsing the class body.
 		 */
-		Type	*t = type_mkClass(PER_INTERP);
+		Type	*t = type_mkClass();
 		VarDecl	*d = ast_mkVarDecl(t, $2, @1.beg, 0);
 		ClsDecl	*c = ast_mkClsDecl(d, @1.beg, 0);
 		t->u.class.clsdecl = c;
@@ -346,7 +346,7 @@ class_decl:
 	| T_CLASS id ";"
 	{
 		/* This is a forward class declaration. */
-		Type	*t = type_mkClass(PER_INTERP);
+		Type	*t = type_mkClass();
 		VarDecl	*d = ast_mkVarDecl(t, $2, @1.beg, @3.end);
 		ClsDecl	*c = ast_mkClsDecl(d, @1.beg, @3.end);
 		ASSERT(!L_typedef_lookup($2->str));
@@ -506,13 +506,13 @@ fundecl_tail:
 fundecl_tail1:
 	  "(" parameter_list ")" compound_stmt
 	{
-		Type	*type = type_mkFunc(NULL, $2, PER_INTERP);
+		Type	*type = type_mkFunc(NULL, $2);
 		VarDecl	*decl = ast_mkVarDecl(type, NULL, @1.beg, @3.end);
 		$$ = ast_mkFnDecl(decl, $4->u.block, @1.beg, @4.end);
 	}
 	| "(" parameter_list ")" ";"
 	{
-		Type	*type = type_mkFunc(NULL, $2, PER_INTERP);
+		Type	*type = type_mkFunc(NULL, $2);
 		VarDecl	*decl = ast_mkVarDecl(type, NULL, @1.beg, @3.end);
 		$$ = ast_mkFnDecl(decl, NULL, @1.beg, @4.end);
 	}
@@ -820,24 +820,24 @@ parameter_decl:
 		$$ = $2;
 		$$->node.beg = @1.beg;
 	}
-	| T_UNUSED type_specifier declarator
+	| T_ARGUSED type_specifier declarator
 	{
 		L_set_declBaseType($3, $2);
 		$$ = $3;
-		$$->flags |= DECL_UNUSED;
+		$$->flags |= DECL_ARGUSED;
 		$$->node.beg = @1.beg;
 	}
 	| T_ELLIPSIS id
 	{
-		Type *t = type_mkArray(NULL, L_poly, PER_INTERP);
+		Type *t = type_mkArray(NULL, L_poly);
 		$$ = ast_mkVarDecl(t, $2, @1.beg, @2.end);
 		$$->flags |= DECL_REST_ARG;
 	}
-	| T_UNUSED T_ELLIPSIS id
+	| T_ARGUSED T_ELLIPSIS id
 	{
-		Type *t = type_mkArray(NULL, L_poly, PER_INTERP);
+		Type *t = type_mkArray(NULL, L_poly);
 		$$ = ast_mkVarDecl(t, $3, @1.beg, @3.end);
-		$$->flags |= DECL_REST_ARG | DECL_UNUSED;
+		$$->flags |= DECL_REST_ARG | DECL_ARGUSED;
 	}
 	;
 
@@ -1228,6 +1228,14 @@ expr:
 		$$ = ast_mkTrinOp(L_OP_TERNARY_COND, $1, $3, $5, @1.beg,
 				  @5.end);
 	}
+	| "<" expr ">"
+	{
+		$$ = ast_mkUnOp(L_OP_FILE, $2, @1.beg, @3.end);
+	}
+	| "<" ">"
+	{
+		$$ = ast_mkUnOp(L_OP_FILE, NULL, @1.beg, @2.end);
+	}
 	;
 
 begin_re_arg:
@@ -1395,14 +1403,14 @@ declarator:
 	}
 	| T_BITAND id array_or_hash_type
 	{
-		Type *t = type_mkNameOf($3, PER_INTERP);
+		Type *t = type_mkNameOf($3);
 		$$ = ast_mkVarDecl(t, $2, @1.beg, @3.end);
 		$$->flags |= DECL_REF;
 	}
 	| T_BITAND id "(" parameter_list ")"
 	{
-		Type *tf = type_mkFunc(NULL, $4, PER_INTERP);
-		Type *tn = type_mkNameOf(tf, PER_INTERP);
+		Type *tf = type_mkFunc(NULL, $4);
+		Type *tn = type_mkNameOf(tf);
 		$$ = ast_mkVarDecl(tn, $2, @1.beg, @5.end);
 		$$->flags |= DECL_REF;
 	}
@@ -1416,15 +1424,15 @@ array_or_hash_type:
 	}
 	| "[" expr "]" array_or_hash_type
 	{
-		$$ = type_mkArray($2, $4, PER_INTERP);
+		$$ = type_mkArray($2, $4);
 	}
 	| "[" "]" array_or_hash_type
 	{
-		$$ = type_mkArray(NULL, $3, PER_INTERP);
+		$$ = type_mkArray(NULL, $3);
 	}
 	| "{" scalar_type_specifier "}" array_or_hash_type
 	{
-		$$ = type_mkHash($2, $4, PER_INTERP);
+		$$ = type_mkHash($2, $4);
 	}
 	;
 
@@ -1470,7 +1478,7 @@ struct_specifier:
 	{
 		REVERSE(VarDecl, next, $3);
 		(void)L_struct_store(NULL, $3);  // to sanity check member types
-		$$ = type_mkStruct(NULL, $3, PER_INTERP);
+		$$ = type_mkStruct(NULL, $3);
 	}
 	| T_STRUCT T_ID
 	{

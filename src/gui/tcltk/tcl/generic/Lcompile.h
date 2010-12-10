@@ -92,10 +92,14 @@ struct scope {
 
 /*
  * Global L state.  There is only one of these, reachable via L->global.
+ * The general L command line is
+ * tclsh [-tclsh_opt1] ... [-tclsh_optn] script_name [-script_opt1] ... [-script_optm]
  */
 typedef struct {
-	int	argc;
-	Tcl_Obj	*argv;
+	int	tclsh_argc;
+	Tcl_Obj	*tclsh_argv;
+	int	script_argc;
+	Tcl_Obj	*script_argv;
 	int	forceL;		// wrap input in #lang L directive
 } Lglobal;
 
@@ -159,10 +163,34 @@ struct Sym {
 	VarDecl	*decl;
 };
 
+/*
+ * For our getopt.  Note that this renders libc's getopt unusable,
+ * but the #define's are kept for compatibility with our getopt.
+ */
+
+#define getopt  mygetopt
+#define optind  myoptind
+#define optarg  myoptarg
+#define optopt  myoptopt
+
+extern  int     optind;
+extern  int     optopt;
+extern  char    *optarg;
+
+typedef struct {
+	char    *name;	/* name w args ex: "url:" */
+	int     ret;	/* return value from getopt */
+} longopt;
+
+#define GETOPT_EOF	-1
+#define GETOPT_ERR      256
+
 extern char	*cksprintf(const char *fmt, ...);
 extern char	*ckstrdup(const char *str);
 extern char	*ckstrndup(const char *str, int len);
 extern char	*ckvsprintf(const char *fmt, va_list ap, int len);
+extern int	getopt(int ac, char **av, char *opts, longopt *lopts);
+extern void	getoptReset(void);
 extern void	L_bomb(const char *format, ...);
 extern void	L_err(const char *s, ...);
 extern void	L_errf(void *node, const char *format, ...);
@@ -183,6 +211,7 @@ extern Type	*L_struct_store(char *tag, VarDecl *members);
 extern void	L_synerr(const char *s);	// yyerror
 extern void	L_synerr2(const char *s, int offset);
 extern void	L_trace(const char *format, ...);
+extern char	*L_type_str(Type_k kind);
 extern void	L_typeck_init();
 extern int	L_typeck_arrElt(Type *var, Type *array);
 extern void	L_typeck_assign(Expr *lhs, Type *rhs);
@@ -337,6 +366,11 @@ isid(Expr *expr, char *s)
 {
 	return ((expr->kind == L_EXPR_ID) && !strcmp(expr->str, s));
 }
+static inline int
+isarrayof(Expr *expr, Type_k kind)
+{
+	return (isarray(expr) && (expr->type->base_type->kind & kind));
+}
 /*
  * Return the flags that match the kind of variable we can
  * dereference: globals, locals, class variables, and class instance
@@ -379,6 +413,16 @@ isClsFnPrivate(VarDecl *decl)
 {
 	return ((decl->flags & (DECL_CLASS_FN | DECL_PRIVATE)) ==
 		(DECL_CLASS_FN | DECL_PRIVATE));
+}
+static inline int
+typeis(Type *type, char *name)
+{
+	return (type->name && !strcmp(type->name, name));
+}
+static inline int
+typeisf(Expr *expr, char *name)
+{
+	return (expr->type->name && !strcmp(expr->type->name, name));
 }
 static inline void
 emit_load_scalar(int idx)

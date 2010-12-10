@@ -349,6 +349,7 @@ bk guitest citool >"$OUT" 2>&1 <<'EOF'
 	test_buttonPress "Checkin"
 	test_buttonPress "Checkin"
 EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 cat > "$HERE"/WANT <<EOF
 SCCS/s.foo.c|1.2
 EOF

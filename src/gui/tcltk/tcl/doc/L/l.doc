@@ -28,7 +28,7 @@ Tcl code may be intermixed.  More importantly, it means that
 L may use all of the TK widgets.  The net result is a type-checked
 scripting language which may be used for cross-platform GUIs.
 
-L is open source under the same license as Tcl/TK BSD like).
+L is open source under the same license as Tcl/TK (BSD like).
 
 =head1 RUNNING L PROGRAMS
 
@@ -92,9 +92,9 @@ Both C style and hash style comments are allowed, but the hash
 style comments must start on column 1.
 
     # This is a comment
-	// So is this
+    	// So is this
     /* And this too */
-        # But this is an error (does not start on column 1)
+    	# But this is an error (does not start on column 1)
 
 Whitespace usually is irrelevant.
 
@@ -156,7 +156,7 @@ private globals are not allowed to shadow public globals.  Names
 declared in a function, or in a block within a function, are C<local>
 and are scoped to the block in which they are declared.
 
-Functions and global variables share the same name space, so a
+Functions and global variables share the same namespace, so a
 variable and function cannot have identical names.  Struct tags
 have their own namespace, and type names have theirs.
 
@@ -209,7 +209,12 @@ undefined value C<undef>, discussed more below.
 =item Scalars
 
 A scalar represents a single value that is a string, integer, or
-floating-point number:
+floating-point number.
+Strings are wide char (unicode),
+integers are arbitrarily large,
+and floats are like C's double.
+
+Examples:
 
     string animal = "camel";
     int answer = 42;
@@ -252,7 +257,7 @@ setting it to "" (the empty string), or by using the C<undef()> built-in:
 =item Undef
 
 Sometimes you want to signify that a variable has no legal value, such
-as when returning an error from a function.  L has a pre-defined
+as when returning an error from a function.  L has a read-only pre-defined
 constant called C<undef> which you can assign to anything.
 
     int_var = undef;
@@ -274,14 +279,11 @@ with the built-in function C<defined()>:
 L itself sometimes uses undef to tell you that no value is available.
 One case is when you assign to an array element that is more than one
 past the end of an array.  L auto-extends the array and sets the
-unassigned elements to undef.
-
-Undef requires some care, because the underlying execution engine
-I<does> let you read its value, which is the empty string ("").  In a
-string operation this would be a legal value but would cause a
-run-time error in an arithmetic operation.  So if you call a function
-that can return undef, you should check the definedness of the return
-value before using it.
+unassigned elements to undef.  Undefinedness is an attribute of a
+variable; undefined does not have a value.  It may be anything since
+the underlying Tcl system "shimmers" variables.  If a variable can be
+undefined, don't rely on its value until you've checked it first with
+C<defined(var)>.
 
 =item Arrays
 
@@ -456,7 +458,7 @@ Structs can be named like C<my_struct> above or they can be anonymous:
         int    j;
     } var1;
 
-Struct names have their own name space, so they will never clash with
+Struct names have their own namespace, so they will never clash with
 function, variable, or type names.
 
 =item Lists
@@ -539,7 +541,7 @@ as type function that takes two ints and returns an int:
 
     typedef int compar_t(int a, int b);
 
-Type names belong to their own name space, so you can define a typedef
+Type names belong to their own namespace, so you can define a typedef
 with the same name as a variable, function, or struct name without
 ambiguity.
 
@@ -660,18 +662,21 @@ have executed.  The main() function may defined in any of the following
 ways:
 
    void main() {}
+   void main(string argv[]) {}
    void main(int argc, string argv[]) {}
    void main(int argc, string argv[], string env{string}) {}
 
-The C<argv> array is populated from any arguments that appear after the
-script name on the L command line:
+The C<argv> array is populated from the script name and any arguments
+that appear after the name on the L command line.
+In this example, argc is 4 and argv[] contains "script.l", "arg1",
+"arg2", and "arg3":
 
    L script.l arg1 arg2 arg3
 
 The C<env> hash is populated with the environment variables present
 when L is invoked.  Although you can change this hash, writes to it
 are not reflected back into the environment.  To do that use the
-C<setenv> library function.
+C<putenv> library function.
 
 Only a C<main> written in L is automatically called.
 You can write a C<main> in Tcl but L will not call it automatically.
@@ -815,7 +820,7 @@ loop with a C<goto>, the loop counters keep their values.
 
 =item switch
 
-The C<switch> statment is like C's except that regular expressions
+The C<switch> statement is like C's except that regular expressions
 can be used as case expressions:
 
     switch (string_var) {
@@ -861,7 +866,7 @@ in C<switch> case bodies.
 The C<goto> statement unconditionally transfers control to a label in
 the same function, or to a label at the global scope if the goto is at
 the global scope.  You cannot use a goto to transfer in to or out of
-a function.  Labels have their own name space so they will not clash
+a function.  Labels have their own namespace so they will not clash
 with variable, function, or type names.
 
     /* A goto at the global scope. */
@@ -915,25 +920,26 @@ other.
 Sometimes you need to assign a multi-line string to a variable.
 C<Here documents> help with that:
 
-    string s;
-
-    s = <<END
+    string s = <<END
     This is the first line in s.
     This is the second.
     And the last.
     END
 
-Everything in the line starting after the initial <<END delimeter and
-before the final END delimeter get put into the variable C<s>.  You
-can use any identifier you want as the delimeter, it doesn't have
+Everything in the line starting after the initial <<END delimiter and
+before the final END delimiter get put into the variable C<s>.  You
+can use any identifier you want as the delimiter, it doesn't have
 to be END.
 
-The text inside the here document undergoes interpolation.  If you
-don't want that, put the initial delimeter inside of single quotes:
+The text inside the here document undergoes interpolation and escape
+processing.
+If you don't want that, put the initial delimiter inside of single
+quotes:
 
-    s = <<'END'
+    string s = <<'END'
     None of this text is interpolated.
     So this ${xyz} appears literally as '${xyz}'.
+    And so does \ and ' and " and anything else.
     END
 
 =head1 WORKING WITH TCL/TK
@@ -988,8 +994,8 @@ Without this, you would have to say:
 
 A similar feature is for passing sub-commands to Tcl commands:
 
-    String_length("xyzzy");   // like tcl's [string length xyzzy]
-    String_isSpace(s);        // like tcl's [string is space $s]
+    String_length("xyzzy");   // like Tcl's [string length xyzzy]
+    String_isSpace(s);        // like Tcl's [string is space $s]
 
 Whenever the function name is capitalized and contains an underscore,
 the sequence of capitalized names after the underscore are converted
@@ -1054,7 +1060,7 @@ An exception is that C<private> L functions are not callable from Tcl.
 
 =head2 Variables
 
-Because L globals are just Tcl variables, you can access L variables
+Because L variables are just Tcl variables, you can access L variables
 from Tcl code.  Here is an example from the L library:
 
     int size(string path)
@@ -1074,7 +1080,30 @@ illustrates how you can use Tcl's exception-handling facility
 to catch an exception raised within some Tcl code.
 
 An exception is that private L global names are mangled (to
-make them unique per-file) so they are not accessible from Tcl.
+make them unique per-file).
+You can pass the mangled name to Tcl code with the C<&> operator.
+Here we are passing the name of the private function C<mycallback> to
+register a Tcl fileevent "readable" handler:
+
+    private void mycallback(FILE f) { ... }
+
+    fileevent(f, "readable", {&mycallback, f});
+
+=head2 Complex variables
+
+Passing scalar variables works because they have the same representation
+in L and in Tcl.
+
+Passing complex variables is trickier and is not supported, but if you
+want to try here is what you need to know.  This is subject to change.
+An L array is a Tcl list.
+An L struct is a Tcl list with the first struct member as the first
+list element and so on.
+An L hash table is a Tcl dict.
+If an L variable is deeply nested, so is the Tcl variable.
+
+So long as you understand that and do the appropriate thing in both
+languages, passing complex variables usually is possible.
 
 =head2 Namespaces
 
@@ -1097,7 +1126,7 @@ a string except in a pattern function call where it is the name
 of the widget to call:
 
     widget w = Text_new();
-    Text_insert(w, "end", "hi!");   // like tcl's $w insert end hi!
+    Text_insert(w, "end", "hi!");   // like Tcl's $w insert end hi!
 
 Another feature is useful for calling Tk widgets that take the I<name>
 of a variable whose value is updated when the user changes a widget
@@ -1127,7 +1156,7 @@ hash element.
     /   division
     %   remainder
 
-=item Numeric comparison
+=item Numeric and String comparison
 
     ==  equality
     !=  inequality
@@ -1192,8 +1221,8 @@ hash element.
     * / % (left)
     + - . (string concatenation) (left)
     << >> (left)
-    < <= > >= lt le gt ge (left)
-    == != eq ne =~ (left)
+    < <= > >= (left)
+    == != =~ (left)
     & (left)
     ^ (left)
     | (left)
@@ -1235,11 +1264,17 @@ string or the last element of a non-empty array.  If the array or
 string is empty, END is -1.  Valid only inside of a string or array
 subscript.  Read only.
 
+=item stdio_status
+
+A struct of type STATUS (see system()) containing status of the
+last system(), `command`, successful waitpid(), or failed spawn().
+
 =item undef
 
-A poly containing the undef value and defined(undef) is true.  The
-undef value can be assigned to variables to make them not defined.
-The value of undef is the empty string ("").  Read only.
+A poly containing the undef value, where defined(undef) is false.
+Assigning this to something makes it undefined.
+However, undef is not guaranteed to have any particular value, so applications
+should not rely on the value.  Read only.
 
 =back
 
@@ -1249,55 +1284,103 @@ The following identifiers are reserved.  They cannot be used for
 variable, function, or type names:
 
     break
+    case
     class
     constructor
     continue
+    default
+    defined
     destructor
     do
     else
-    eq
     expand
     extern
     float
     for
     foreach
-    ge
     goto
-    gt
     if
     instance
     int
-    le
-    lt
-    ne
     poly
     private
     public
     return
-    split
     string
     struct
+    switch
     typedef
+    undef
     unless
     void
     while
+    widget
 
 =head1 BUILT-IN AND LIBRARY FUNCTIONS
 
 L has several built-in functions and a set of library functions
-modeled after the standard C library and/or Perl.
+modeled after the standard C library and Perl.
 
 =over 4
+
+=proto string <>
+=proto string <FILE f>
+
+Get the next line from a FILE handle and return it, or return undef
+for EOF or errors.  Trailing newlines are removed.  If a file handle
+is specified, it is not closed by this function.
+
+The form without a file handle
+
+    while (defined(buf = <>)) {
+	    ...
+    }
+
+means
+
+    unless (defined(argv[1])) {
+	    while (defined(buf = <stdin>)) {
+		    ...
+	    }
+    } else for (i = 1; defined(argv[i]); i++) {
+	    unless (defined(f = open(argv[i], "r"))) {
+                perror(argv[i]);
+                continue;
+            }
+	    while (defined(buf = <f>)) {
+		    ...
+	    }
+    }
+
+A trivial cat implementation:
+
+    void
+    main(int ac, string argv[])
+    {
+    	string	buf;
+
+    	while (defined(buf = <>)) print(buf);
+    }
 
 =item `command`
 
 Execute the command (the string enclosed within back-ticks) and
-substitute its output as the value of the expression.  The command is
-executed using the Tcl C<exec> command which understands I/O
-re-direction and pipes.  The command string is interpolated.
-On error, the value is undef.
+substitute its stdout as the value of the expression.
+Any output to stderr is passed through to the calling application's
+stderr and is not considered an error.
+The command is executed using the Tcl C<exec> command which
+understands I/O re-direction and pipes, except that the command undergoes
+bash-style quoting instead of Tcl quoting.
+The command string is interpolated.
+Backslash escapes $, `, and \, \<newline> is ignored, but otherwise
+backslash is literally interpreted.
+An embedded newline is an error.
+If the command cannot be run, undef is returned.
+The global variable C<stdio_status> (see system()) contains the
+command's exit status.
 
 =proto int abs(int val)
+=proto float abs(float val)
 
 Return the absolute value of the argument.
 
@@ -1323,6 +1406,7 @@ Return 0 on success, -1 on error.
 
 =proto int chmod(string path, string permissions)
 
+Not available on Windows.
 Change the mode of the file or directory named by path.  Permissions
 can be the octal code that chmod(1) uses, or symbolic attributes that
 chmod(1) uses of the form [ugo]?[[+-=][rwxst],[...]], where multiple
@@ -1335,15 +1419,17 @@ Return 0 on success, -1 on error.
 
 =proto int chown(string owner, string group, string path)
 
+Not available on Windows.
 Change the file ownership of the file or directory names by path.  If
 either owner or group is an empty string, the attribute will not be
 modified.
 Return 0 on success, -1 on error.
 
-=proto void die(string message)
+=proto void die(string fmt, ...args)
 
-Output the message to stderr and exit 1. If message does not have a
-trailing newline, append " in <filename> at line <linenum>\n".
+Output a printf-like message to stderr and exit 1.
+If message does not have a trailing newline, append " in <filename>
+line <linenum>\n".
 
 =proto string dirname(string path)
 
@@ -1357,11 +1443,6 @@ Return 1 if the given path exists or 0 if it does not exist.
 
 Close an open FILE handle.
 Return 0 on success, -1 on error.
-
-=proto string fgetline(FILE f)
-
-Get the next line from a FILE handle and return it, or return undef
-for EOF/errors.
 
 =proto FILE fopen(string path, string mode)
 
@@ -1415,23 +1496,18 @@ C<stdin>, C<stdout>, and C<stderr> are pre-defined.
 
 Return 0 on success, -1 on error.
 
-=proto string freadn(FILE f, int numBytes)
-
-Read at most numBytes from the given FILE handle, or read the entire
-file if numBytes == -1.
-Return undef on error.
-
 =proto string ftype(string path)
 
 Return the type of file at the given path. Type can be C<directory>, C<file>,
 C<character>, C<block>, C<fifo>, C<symlink> or C<socket>.
 Return undef on error.
 
+=proto string[] getdir(string dir)
 =proto string[] getdir(string dir, string pattern)
 
-Return the files in the given directory, as a string array.  Filter
-the list by C<pattern> which is a glob and may contain the following
-special characters:
+Return the files in the given directory, as a string array.
+Optionally filter the list by C<pattern> which is a glob and may
+contain the following special characters:
 
 =over 4 
 
@@ -1465,22 +1541,69 @@ environment variable is used.
 
 =proto string getenv(string varname)
 
-Return the value of an environment variable if it exists, or return ""
-if the it does not exist.
+Return the value of an environment variable if it exists and is of
+non-zero length, or return undef if it has zero length or does not
+exist.
+This allows you to say putenv("VAR=") and have getenv("VAR") return
+undef.
+
+=proto string getopt(string av[], string opts, string longopts[])
+
+Parse command-line arguments.
+This version recognizes the following types of short and long options
+in the av array:
+
+    -    (leaves it and returns)
+    --   end of options
+    -a
+    -abcd
+    -r <arg>
+    -r<arg>
+    -abcr <arg>
+    -abcr<arg>
+    -r<arg> -R<arg>, etc.
+    --long
+    --long=<arg>
+    --long <arg>
+
+Short options are all specified in a single C<opts> string as follows:
+
+    d		boolean option		-d
+    d:		required arg		-dARG or -d ARG
+    d;		required arg no space   -dARG
+    d|		optional arg no space	-dARG or -d
+
+Long options are specified in the C<longopts> array (one option
+per element) as follows:
+
+    long	boolean option		--long
+    long:	required arg		--long=ARG or --long ARG
+    long;	required arg no space   --long=ARG
+    long|	optional arg no space	--long=ARG or --long
+
+The function returns the name of the next recognized option or
+undef if no more options exist.
+The global variable C<optind> is set to the next av[] index to
+process, and C<optarg> is set to the option value (if any).
+
+If an unrecognized option is seen, the empty string ("") is returned
+and the global variable C<optopt> is set to the name of the
+offending option (unless the option is a long option).
+
+=proto int getpid()
+
+Return the caller's process id.
+
+=proto void here()
+
+Output a message like "myfunc() in script.l:86" to stderr which
+contains the file name, line number, and currently executing function
+name.
+Typically used for debugging.
 
 =proto int isdir(string path)
 
 Return 1 if the given path exists and is a directory, else return 0.
-
-=proto int isdouble(poly n)
-
-Return 1 if n is a double or can be converted to one, else return 0.
-For example, both isdouble(3.14159) and isdouble("3.14159") return 1.
-
-=proto int isinteger(poly n)
-
-Return 1 if n is an integer or can be converted to one, else return 0.
-For example, both isdouble(13) and isdouble("13") return 1.
 
 =proto int islink(string path)
 
@@ -1504,9 +1627,15 @@ inserting sep between each pair.
 Return an array containing the keys of a given hash.  Note that the
 return type depends on the argument type.
 
+=proto string lc(string s)
+
+Return a copy of the string that is in all lower case.
+
 =proto int length(type array[])
 
-Return the number of elements the given array.
+Return the number of elements in the given array.
+
+	for (i = 0; i < length(array); i++)
 
 =proto int length(valType hash{keyType})
 
@@ -1541,6 +1670,10 @@ The C<struct stat> type is defined as follows:
 
 =back
 
+where C<st_type> is a string giving the type of file name, which will
+be one of file, directory, characterSpecial, blockSpecial, fifo, link,
+or socket.
+
 =proto int mkdir(string path)
 
 Create a directory at the given path.  This creates all non-existing
@@ -1558,9 +1691,19 @@ Return a normalized version of path. The pathname will be an absolute
 path with all "../" and "./" removed.
 
 =proto int pclose(FILE f)
+=proto int pclose(FILE f, STATUS &s)
 
 Close an open pipe created by popen().
 Return 0 on success, -1 on error.
+See system() for details of the STATUS struct.
+
+=proto void perror()
+=proto void perror(string message)
+
+Print the error message corresponding to the last error from
+various L library calls.
+If C<message> is not undef, it is prepended to the error string
+with a ": ".
 
 =proto type pop(type &array[])
 
@@ -1569,14 +1712,18 @@ Return undef if the array is already empty.
 
 =proto FILE popen(string cmd, string mode)
 
-Open a pipe to the command C<cmd>.  The returned FILE handle may be
+Open a pipe to the command C<cmd>.
+The command string undergoes bash-style quoting instead of Tcl quoting.
+The returned FILE handle may be
 used to write to the command's input pipe or read from its output
 pipe, depending on the value of C<mode>.  If write-only access is used
 ("w"), then standard output for the pipeline is directed to the
 current standard output unless overridden by the command.  If
 read-only access is used ("r"), standard input for the pipeline is
 taken from the current standard input unless overridden by the
-command.  Return the FILE handle on success, or undef on error.
+command.  Unless re-directed by the command, any stderr output is
+passed through to the calling script's stderr and is not considered an
+error.  Return the FILE handle on success, or undef on error.
 
 =proto void printf(string fmt, ...args)
 
@@ -1588,6 +1735,22 @@ Return 0 on success, -1 on error.
 Push an element onto the end of C<array>.  Equivalent to
 saying array[END+1] = element.
 
+=proto string putenv(string var_fmt, ...args)
+
+Set an environment variable, overwriting any pre-existing value,
+using printf-like arguments:
+
+	putenv("VAR=val");
+	putenv("MYPID=%d", getpid());
+
+Return the new value or undef if var_fmt contains no "=".
+
+=proto int read(FILE f, string &buffer, int numBytes)
+
+Read at most numBytes from the given FILE handle into the buffer, or
+read the entire file if numBytes == -1.  Return the number of
+bytes read, -1 on error or EOF.
+
 =proto int rename(string oldpath, string newpath)
 
 Rename a file.
@@ -1595,7 +1758,7 @@ Return 0 on success, -1 on error.
 
 =proto string require(string packageName)
 
-Find and load the given package packageName.  Return the version
+Find and load the given Tcl package packageName.  Return the version
 string of the package loaded on success, and undef on error.
 
 =proto int rmdir(string dir)
@@ -1603,18 +1766,14 @@ string of the package loaded on success, and undef on error.
 Delete the given directory.
 Return 0 on success, -1 on error.
 
-=proto string setenv(string varname, string val)
-
-Set an environment variable, overwriting any pre-existing value.
-Return the new value.
-
 =proto int size(string path)
 
 Return the size, in bytes, of the named file path, or -1 on error.
 
-=proto void sleep(int seconds)
+=proto void sleep(float seconds)
 
-Sleep for C<seconds> seconds.
+Sleep for C<seconds> seconds.  Note that C<seconds> can be fractional to 
+get sub-second sleeps.
 
 =proto type[] sort(type[] array)
 
@@ -1633,6 +1792,22 @@ function can be specified.  The function must take two array elements
 of type T as arguments and return -1 if the first comes before the
 second in the sort order, +1 if the first comes after the second, and
 0 if the two are equal.
+
+=proto int spawn(string cmd)
+=proto int spawn(string cmd, STATUS &s)
+=proto int spawn(string argv[])
+=proto int spawn(string argv[], STATUS &s)
+=proto int spawn(cmd | argv[], FILE in, FILE out, FILE err);
+=proto int spawn(cmd | argv[], FILE in, FILE out, FILE err, STATUS &s);
+=proto int spawn(cmd | argv[], "input", "${outf}", "errors")
+=proto int spawn(cmd | argv[], "input", "${outf}", "errors", STATUS &s)
+
+Execute a command in background.  All forms return either a process id or
+undef to indicate an error.
+
+See the system() function for information about the arguments.
+
+See the waitpid() function for information about waiting on the child.
 
 =proto string[] split(string s)
 
@@ -1653,24 +1828,24 @@ by the white space:
     split("a b c");    // returns {"a", "b", "c"}
     split(" x y z ");  // returns {"x", "y", "z"}
 
-In the second variation, the string is split on a given delimeter
+In the second variation, the string is split on a given delimiter
 which can be of any length:
 
     split("we.are.dots", ".");  // returns {"we", "are", "dots"}
     split("AxxxBxxxC", "xxx");  // returns {"A", "B", "C"}
 
-The delimeter must be a constant and not a variable or expression (but
+The delimiter must be a constant and not a variable or expression (but
 you can work around that by putting variables in a string
 interpolation).
 
-In the third variation, the delimeter is a regular expression:
+In the third variation, the delimiter is a regular expression:
 
     split("1;10,20", /[;,]/);  // returns {"1", "10", "20"}
 
-When a delimeter is used (whether a string or a regular expression),
+When a delimiter is used (whether a string or a regular expression),
 split returns a null first field if the
-string begins with the delimeter, but if the string ends with the
-delimeter no trailing null field is returned.
+string begins with the delimiter, but if the string ends with the
+delimiter no trailing null field is returned.
 This provides compatibility with Perl's split:
 
     split("xxAxxBxxCxx", "xx");  // returns {"", "A", "B", "C"}
@@ -1691,26 +1866,13 @@ Call stat(2) on C<path> and place the information in C<buf>.
 Return 0 on success, -1 on error.
 See the lstat() command for the definition of C<struct stat>.
 
-=proto string stdio_getLastError(void)
-
-Return the last error from an fclose(), fopen(), popen(), or system() call.
-
 =proto int strchr(string s, string c)
 
 Return the first index of c into s, or -1 if c is not found.
 
-=proto int streq(string a, string b)
-
-Return 1 if the two strings are equal, else return 0.
-
 =proto int strlen(string s)
 
 Return the string length.
-
-=proto int strneq(string a, string b, int n)
-
-Return 1 if the two strings are equal up to n characters, else return
-0.
 
 =proto int strrchr(string s, string c)
 
@@ -1721,23 +1883,116 @@ Return the last index of c into s, or -1 if c is not found.
 Create a symbolic link from sourcePath to targetPath.
 Return 0 on success, -1 on failure.
 
-=proto string system(string cmd)
+=proto int system(string cmd)
+=proto int system(string cmd, STATUS &s)
+=proto int system(string argv[])
+=proto int system(string argv[], STATUS &s)
+=proto int system(cmd | argv[], string in, string &out, string &err)
+=proto int system(cmd | argv[], string in, string &out, string &err, STATUS &s)
+=proto int system(cmd | argv[], string[] in, string[] &out, string[] &err, STATUS &s)
+=proto int system(cmd | argv[], string[] in, string[] &out, string[] &err)
+=proto int system(cmd | argv[], string[] in, string[] &out, string[] &err, STATUS &s)
+=proto int system(cmd | argv[], FILE in, FILE out, FILE err);
+=proto int system(cmd | argv[], FILE in, FILE out, FILE err, STATUS &s);
+=proto int system(cmd | argv[], "input", "${outf}", "errors")
+=proto int system(cmd | argv[], "input", "${outf}", "errors", STATUS &s)
 
-Execute the given command.  This is the same as the `` operator (see above)
-but in a function-call form.
+Execute a command and wait for it to finish (see C<spawn()> for the
+async version).
+The command is executed using Tcl's C<exec> command, except that
+the single-command-string form requires bash-style quoting, not Tcl quoting,
+and the argv[] form must not be quoted at all.
 
-=proto string tolower(string s)
+If the number of arguments is one or two, then the existing stdin,
+stdout, stderr channels are used.
 
-Return a copy of the string that is in all lower case.
+If the number of arguments is four or five, then the second, third,
+and fourth arguments specify stdin, stdout, stderr, respectively.
+Each can be a string variable or string array
+(a reference is required for stdout and stderr),
+a FILE variable which must be an open file handle, or
+a string literal which is interpreted as a file path name.
+If you want to specify a file name from a variable, use the string
+literal "${filename}".
+You should not try to re-direct stdin, stdout, or stderr in the command
+string itself, as that will be ignored.
 
-=proto string toupper(string s)
+The optional last argument is a reference to the following structure:
 
-Return a copy of the string that is in all upper case.
+    typedef struct {
+	string	name;	// name of the exe as passed in
+	string	path;	// if defined, this is the path to the exe
+			// if undef, the executable was not found
+	int	exit;	// if defined, the process exited with this value
+	int	signal;	// if defined, the signal that killed the process
+    } STATUS;
+
+The global variable C<stdio_status> is also set.
+If the the command is a pipeline and a process in that pipeline fails,
+the returned status is for the first process that failed.
+
+Upon error, undef is returned, otherwise the return value is the
+process exit status (for a pipeline, the status of the first process
+that exited with error).
+
+Examples:
+
+    // No futzing with input/output, uses stdin/out/err.
+    ret = system(cmd);
+
+    // Same thing but no quoting issues, like execve(2).
+    ret = system(argv);
+
+    // Get detailed status.
+    unless (defined(ret = system(cmd, &status))) {
+    	unless (defined(status.path)) {
+    		warn("%s not found or bad perm\n", status.path);
+    	}
+    	if (defined(status.signal)) {
+    		warn("%s killed with %d\n", status.name, status.signal);
+    	}
+    }
+
+    // Taking input and sending output to string arrays.
+    // The in_vec elements should not contain newlines and
+    // the out/err_vec elements will not contain newlines.
+    string in_vec[], out_vec[], err_vec[];
+    ret = system(cmd, in_vec, &out_vec, &err_vec);
+
+    // Taking input and sending output to files.
+    string outf = sprintf("/tmp/out%d", getpid());
+    ret = system(cmd, "/etc/passwd", "${outf}", "/tmp/errors");
+
+    // Using open file handles.
+    FILE in = popen("/some/producer/process", "r");
+    FILE out = popen("/some/consumer/process", "w");
+    FILE err = popen("cat > /dev/tty", "w");
+    ret = system(argv, buf, in, out, err, &status);
+    // error handling here
+    pclose(in, &status);
+    // error handling here
+    ...
+
+    // Mixing and matching.
+    ret = system(argv, buf, &out, "/tmp/errors", &status);
 
 =proto string trim(string s)
 
 Return a copy of the string that has been trimmed of any leading and
-trailing whitespace.
+trailing whitespace (spaces, tabs, newlines, and carriage returns).
+
+=proto string typeof(<variable>)
+
+Return the simple type name of the given variable.
+This is one of "int", "string", "poly", "widget", "array",
+"hash", or "struct";
+or if the variable's type is a typedef, the typedef name;
+or if the variable has a class type, the class name;
+of if the variable is really a function name, "function".
+
+=proto string uc(string s)
+
+Return a copy of the string that is in all upper case.
 
 =proto void undef(<array>[index])
 
@@ -1745,33 +2000,47 @@ trailing whitespace.
 
 =proto void undef(<hash>{index})
 
-Remove an array, string, or hash element from the specified variable.
+=proto void undef(<variable>)
+
+In the first three forms, remove an array, string, or hash element
+from the specified variable.
+In the last form, sets the variable to undef.
+When setting a hash or array to undef, all of its old elements are
+freed (unless they were shared with some other variable).
 
 =proto int unlink(string path)
 
 Delete the named file.
 Return 0 on success, -1 on failure.
 
-=proto void unsetenv(string varname)
+=proto int waitpid(int pid, STATUS &status, int nohang)
 
-Unset an environment variable.
-Return 0 on success, -1 on failure.
+Given a pid returned by spawn(), wait for it, and place the exit information
+in the STATUS struct.
+Returns the process exit status, or -1 on error.
+If C<nohang> is non-zero, returns undef if the process does not exist or other
+error, and returns 0 if the process exists and is not yet done.
 
 =proto void warn(string message)
 
-Output the message to stderr.  If message does not have a trailing
-newline, append " in <filename> at line <linenum>\n".
+Output a printf-like message to stderr.
+If message does not have a trailing newline, append " in <filename>:<linenum>\n".
+
+=proto int write(FILE f, string buffer, int numBytes)
+
+Write at most numBytes to the given FILE handle from the buffer.
+Return the number of bytes written, or -1 on error.
 
 =back
 
 =head1 MANIPULATING COMPLEX STRUCTURES
 
 L has built-in operators for turning complex data structures into
-something else: (expand) and (tcl).
+something else: (expand), and (tcl).
 
 (expand) takes an array of things and pushes them all onto the
 run-time stack to call a function that expects such a list.
-It is identical to tcl's {*}:
+It is identical to Tcl's {*}:
 
     void foo(string a, string b, string c);
 
@@ -1805,8 +2074,8 @@ you need a function definition like this:
 
 There is no way to recursively expand at this time.
 
-(tcl) is used to pass a single string to a tcl proc for processing.
-It puts in the tcl quotes.  So
+(tcl) is used to pass a single string to a Tcl proc for processing.
+It puts in the Tcl quotes.  So
 
     (tcl)foo
 
@@ -1892,8 +2161,8 @@ tell L what variable to look at.
 
 Quantifiers can be used to specify how many of the previous thing you
 want to match on, where "thing" means either a literal character, one
-of the metacharacters listed above, or a group of characters or
-metacharacters in parentheses.
+of the meta characters listed above, or a group of characters or
+meta characters in parentheses.
 
     *                   zero or more of the previous thing
     +                   one or more of the previous thing
@@ -2117,273 +2386,472 @@ the default hook, do this:
 
     #pragma fntrace(on, defhook)
 
-To avoid inifinite recursion, during the call of a hook, further calls
+To avoid infinite recursion, during the call of a hook, further calls
 into the hook are disabled.  Also, when the currently defined hook
 function is compiled, it is not instrumented.  The L library functions
 are never instrumented.
 
 =head1 EXAMPLE CODE
 
+=head2 shapes.l
+
+This is something we hand to our customers to see what "shape"
+their source trees have.  
+
+    #!/usr/bin/bk tclsh
+    /*
+     * Determine the files/size of each directory under a bk repository.
+     * Optionally transform the directory names to obscure their structure.
+     *
+     * The idea is that you can run this script like this:
+     *
+     *   bk tclsh shapes.l <path_to_root_of_repo>
+     *
+     * and get a list of directories with their sizes and number of files in
+     * each of them. Save the output, then run it again with -o:
+     *
+     *   bk tclsh shapes.l -o <path_to_root_of_repo>
+     *
+     * and send the output to BitMover.
+     *
+     * The names of all the directories will be rot13'd and sorted (since
+     * sort is a destructive transform, it makes it harder to reverse the
+     * rot13). This is a weak form of obfuscation, but it lets BitMover
+     * work with the directory structure without inadvertedly learning
+     * about the client's projects.
+     *
+     * The line numbers at the beginning is so that we can talk about a certain
+     * directory by number without BitMover knowing the name of the directory.
+     *
+     *	ob@dirac.bitmover.com|src/contrib/shapes.l|20100723224240|23777
+     *
+     */
+
+    string	obscure(string s);	// pathname to no-IP-leak pathname
+    string	pp(float n);		// pretty print a number, like df -h
+    string	rot13(string str);	// if you don't know, you don't know
+
+    int
+    main(int ac, string[] av)
+    {
+	    int		size, files, maxlen, n;
+	    int		do_obscure = 0;
+	    string	fn, root, dir, d, ob;
+	    FILE	f;
+	    struct	stat sb;
+	    struct	dirstats {
+		int	files;
+		int	size;
+		int	total_files;
+		int	total_size;
+	    } dirs{string};
+
+	    dir = ".";
+	    if (ac == 3) {
+		    if (av[1] == "-o") {
+			    do_obscure = 1;
+		    } else {
+			    fprintf(stderr, "usage: %s [-o] [<dir>]\n", av[0]);
+			    exit(1);
+		    }
+		    dir = av[2];
+	    } else if (ac == 2) {
+		    if (av[1] == "-o") {
+			    do_obscure = 1;
+			    dir = ".";
+		    } else {
+			    dir = av[1];
+		    }
+	    } else if (ac > 3) {
+		    fprintf(stderr, "usage: %s [-o] [<dir>]\n", av[0]);
+		    exit(1);
+	    }
+	    if (chdir(dir)) {
+		    fprintf(stderr, "Could not chdir to %s\n", dir);
+		    exit(1);
+	    }
+	    root = `bk root`;
+	    if (root == "") {
+		    fprintf(stderr, "Must be run in a BitKeeper repository\n");
+		    exit(1);
+	    }
+	    if (chdir(root)) {
+		    fprintf(stderr, "Could not chdir to %s\n", root);
+		    exit(1);
+	    }
+
+	    size = 0;
+	    files = 0;
+	    f = popen("bk sfiles", "r");
+	    while (defined(fn = <f>)) {
+		    dir = dirname(fn);
+		    if (dir == "SCCS") {
+			    dir = ".";
+		    } else {
+			     // remove SCCS and obscure
+			    dir = dirname(dir);
+		    }
+		    unless (defined(dirs{dir})) dirs{dir} = {0, 0, 0, 0};
+		    if (maxlen < length(dir)) maxlen = length(dir);
+		    dirs{dir}.files++;
+		    files++;
+		    if (lstat(fn, &sb)) {
+			    fprintf(stderr, "Could not stat %s\n", fn);
+			    continue;
+		    }
+		    dirs{dir}.size += sb.st_size;
+		    size += sb.st_size;
+		    // add our size/file count to each parent dir
+		    for (d = dirname(dir); d != "."; d = dirname(d)) {
+			    unless (defined(dirs{d})) dirs{d} = {0,0,0,0};
+			    dirs{d}.total_size += sb.st_size;
+			    dirs{d}.total_files++;
+		    }
+		    dirs{"."}.total_size += sb.st_size;
+		    dirs{"."}.total_files++;
+	    }
+	    close(f);
+	    // now print it
+	    printf("  N   | %-*s | FILES | SIZE    | T_FILES | T_SIZE \n",
+		maxlen, "DIRS");
+	    n = 1;
+	    foreach (dir in sort(keys(dirs))) {
+		    ob = dir;
+		    if (do_obscure) {
+			    ob = obscure(dir);
+		    }
+		    if (dirs{dir}.total_files > 0) {
+			    printf("%5d | %-*s | %5d | %7s | %7s | %7s\n",
+				n, maxlen,
+				ob, dirs{dir}.files, pp(dirs{dir}.size),
+				dirs{dir}.total_files, pp(dirs{dir}.total_size));
+		    } else {
+			    printf("%5d | %-*s | %5d | %7s | %7s | %7s\n",
+				n, maxlen,
+				ob, dirs{dir}.files, pp(dirs{dir}.size),
+				"","");
+		    }
+		    n++;
+	    }
+	    printf("TOTAL: %u files, %s\n",
+		dirs{"."}.total_files, pp(dirs{"."}.total_size));
+	    return (0);
+    }
+
+    /* Pretty print a number */
+    string
+    pp(float n)
+    {
+	    int		i;
+	    float	num = (float)n;
+	    string	sizes[] = {"b", "K", "M", "G", "T"};
+
+	    for (i = 0; i < 5; i++) {
+		    if (num < 1024.0) return (sprintf("%3.2f%s", num, sizes[i]));
+		    num /= 1024.0;
+	    }
+    }
+
+    /* Table for rot13 function below */
+    string rot13_table{string} = {
+	    "A" => "N", "B" => "O", "C" => "P", "D" => "Q", "E" => "R", "F" => "S",
+	    "G" => "T", "H" => "U", "I" => "V", "J" => "W", "K" => "X", "L" => "Y",
+	    "M" => "Z", "N" => "A", "O" => "B", "P" => "C", "Q" => "D", "R" => "E",
+	    "S" => "F", "T" => "G", "U" => "H", "V" => "I", "W" => "J", "X" => "K",
+	    "Y" => "L", "Z" => "M",	"a" => "n", "b" => "o", "c" => "p", "d" => "q",
+	    "e" => "r", "f" => "s", "g" => "t", "h" => "u", "i" => "v", "j" => "w",
+	    "k" => "x", "l" => "y", "m" => "z", "n" => "a", "o" => "b", "p" => "c",
+	    "q" => "d", "r" => "e", "s" => "f", "t" => "g", "u" => "h", "v" => "i",
+	    "w" => "j", "x" => "k", "y" => "l", "z" => "m",
+    };
+
+    /* rot13 a string */
+    string
+    rot13(string str)
+    {
+	    int		i;
+	    string	ret = "";
+
+	    for (i = 0; i < length(str); i++) {
+		    ret .= rot13_table{str[i]};
+	    }
+	    return (ret);
+    }
+
+    /*
+     * Print an obscured version of the string
+     * rot13 + sort
+     */
+    string
+    obscure(string s)
+    {
+	    string	p;
+	    string[]	ret;
+	    string[]	sp = split(s, "/");
+
+	    foreach (p in sp) {
+		    push(&ret, rot13(join("", lsort(split(p, "")))));
+	    }
+	    return (join("/", ret));
+    }
+
 =head2 pod2html.l
 
 This is an L implementation of pod2html.  Pretty stripped down but slightly
 prettier than the Perl pod2html.
 
-	#!../../unix/tclsh
+    int
+    main(int ac, string av[])
+    {
+	    FILE	f;
+	    int		i, ul;
+	    int		space = 0, dd = 0, p = 0, pre = 0, table = 0;
+	    string	head, buf, tmp, title, trim, all[];
 
-	int
-	main(int ac, string av[])
-	{
-		FILE	f;
-		int	i, ul;
-		int	space = 0, dd = 0, p = 0, pre = 0, table = 0;
-		string	head, buf, tmp, title, trim, all[];
+	    // lint
+	    if (0) ac++;
 
-		// lint
-		if (0) ac++;
+	    /*
+	     * -t<title> or --title=<title>
+	     */
+	    for (i = 1; defined(av[i]) && (av[i] =~ /^-/); i++) {
+		    if (av[i] == "--") {
+			    i++;
+			    break;
+		    }
+		    if ((av[i] =~ /--title=(.*)/) || (av[i] =~ /-t(.*)/)) {
+			    title = $1;
+		    } else {
+			    die("usage: ${av[0]} [--title=whatever]");
+		    }
+	    }
+	    if (!defined(av[i]) ||
+		defined(av[i+1]) || !defined(f = fopen(av[i], "r"))) {
+		    die("usage: ${av[0]} filename");
+	    }
+	    unless (defined(title)) title = av[i];
 
-		/*
-		 * -t&lt;title&gt; or --title=&lt;title&gt;
-		 */
-		for (i = 1; defined(av[i]) && (av[i] =~ /^-/); i++) {
-			if (av[i] eq "--") {
-				i++;
-				break;
-			}
-			if ((av[i] =~ /--title=(.*)/) || (av[i] =~ /-t(.*)/)) {
-				title = $1;
-			} else {
-				die("usage: ${av[0]} [--title=whatever]");
-			}
-		}
-		if (!defined(av[i]) ||
-		    defined(av[i+1]) || !defined(f = fopen(av[i], "r"))) {
-			die("usage: ${av[0]} filename");
-		}
-		unless (defined(title)) title = av[i];
+	    header(title);
 
-		header(title);
-		
-		/*
-		 * Load up the whole file in all[] and spit out the index.
-		 */
-		puts("&lt;ul&gt;");
-		ul = 1;
-		while (defined(buf = fgetline(f))) {
-			push(&all, buf);
-			if (buf =~ /^=head(\d+)\s+(.*)/) {
-				i = (int)$1;
-				while (ul &gt; i) {
-					puts("&lt;/ul&gt;");
-					ul--;
-				}
-				while (i &gt; ul) {
-					puts("&lt;ul&gt;");
-					ul++;
-				}
-				tmp = $2;
-				tmp =~ s/\s+/_/g;
-				buf =~ s/^=head(\d+)\s+//;
-				puts("&lt;li&gt;&lt;a href=\"#${tmp}\"&gt;${buf}&lt;/a&gt;&lt;/li&gt;");
-			}
-		}
-		while (ul--) puts("&lt;/ul&gt;");
-		fclose(f);
+	    /*
+	     * Load up the whole file in all[] and spit out the index.
+	     */
+	    puts("<ul>");
+	    ul = 1;
+	    while (defined(buf = <f>)) {
+		    push(&all, buf);
+		    if (buf =~ /^=head(\d+)\s+(.*)/) {
+			    i = (int)$1;
+			    while (ul > i) {
+				    puts("</ul>");
+				    ul--;
+			    }
+			    while (i > ul) {
+				    puts("<ul>");
+				    ul++;
+			    }
+			    tmp = $2;
+			    tmp =~ s/\s+/_/g;
+			    buf =~ s/^=head(\d+)\s+//;
+			    puts("<li><a href=\"#${tmp}\">${buf}</a></li>");
+		    }
+	    }
+	    while (ul--) puts("</ul>");
+	    fclose(f);
 
-		/*
-		 * Now walk all[] and process the markup.  We currently handle:
-		 * =head%d title
-		 * =over 
-		 * =item name
-		 * =proto return_type func(args)
-		 * =back
-		 * &lt;blank line&gt;
-		 * B&lt;bold this&gt;
-		 * C&lt;some code&gt;
-		 * I&lt;italics&gt;
-		 */
-		for (i = 0; i &lt;= length(all); i++) {
-			buf = inline(all[i]);
-			if (buf =~ /^=head(\d+)\s+(.*)/) {
-				if ((int)$1 == 1) puts("&lt;HR&gt;");
-				tmp = $2;
-				tmp =~ s/\s+/_/g;
-				printf("&lt;H%d&gt;&lt;a name=\"%s\"&gt;%s&lt;/a&gt;&lt;/H%d&gt;\n",
-				    $1, tmp, $2, $1);
-			} else if (buf =~ /^=over/) {
-				puts("&lt;dl&gt;");
-			} else if (buf =~ /^=item\s+(.*)/) {
-				if (dd) {
-					puts("&lt;/dd&gt;");
-					dd--;
-				}
-				puts("&lt;dt&gt;&lt;strong&gt;${$1}&lt;/strong&gt;&lt;/dt&gt;&lt;dd&gt;");
-				dd++;
-			} else if (buf =~ /^=proto\s+([^ \t]+)\s+(.*)/) {
-				if (dd) {
-					puts("&lt;/dd&gt;");
-					dd--;
-				}
-				puts("&lt;dt&gt;&lt;b&gt;${$1}&lt;br&gt;${$2}&lt;/b&gt;&lt;/dt&gt;&lt;dd&gt;");
-				dd++;
-			} else if (buf =~ /=table/) {
-				
-			} else if (buf =~ /^=back/) {
-				if (dd) {
-					puts("&lt;/dd&gt;");
-					dd--;
-				}
-				puts("&lt;/dl&gt;");
-			} else if (buf =~ /^\s*$/) {
-				if (p) {
-					puts("&lt;/p&gt;");
-					p = 0;
-				}
-				if (pre) {
-					/*
-					 * If we see a blank line in a preformatted
-					 * block, we don't want to stop the pre
-					 * unless the next line is not indented.
-					 * So peek ahead.
-					 */
-					if (defined(buf = all[i+1]) && (buf =~ /^\s/)) {
-						puts("");
-						continue;
-					}
-					puts("&lt;/pre&gt;");
-					pre = 0;
-					trim = undef;
-				}
-				space = 1;
-			} else {
-				if (space) {
-					if (buf =~ /^(\s+)[^ \t]+/) {
-						trim = $1;
-						puts("&lt;pre&gt;");
-						pre = 1;
-					} else {
-						puts("&lt;p&gt;");
-						p = 1;
-					}
-					space = 0;
-				}
-				if (defined(trim)) buf =~ s/^${trim}//;
-				puts(buf);
-			}
-		}
-		puts("&lt;/body&gt;&lt;/html&gt;");
-		return (0);
-	}
+	    /*
+	     * Now walk all[] and process the markup.  We currently handle:
+	     * =head%d title
+	     * =over
+	     * =item name
+	     * =proto return_type func(args)
+	     * =back
+	     * <blank line>
+	     * B<bold this>
+	     * C<some code>
+	     * I<italics>
+	     */
+	    for (i = 0; i <= length(all); i++) {
+		    buf = inline(all[i]);
+		    if (buf =~ /^=head(\d+)\s+(.*)/) {
+			    if ((int)$1 == 1) puts("<HR>");
+			    tmp = $2;
+			    tmp =~ s/\s+/_/g;
+			    printf("<H%d><a name=\"%s\">%s</a></H%d>\n",
+				$1, tmp, $2, $1);
+		    } else if (buf =~ /^=over/) {
+			    puts("<dl>");
+		    } else if (buf =~ /^=item\s+(.*)/) {
+			    if (dd) {
+				    puts("</dd>");
+				    dd--;
+			    }
+			    puts("<dt><strong>${$1}</strong></dt><dd>");
+			    dd++;
+		    } else if (buf =~ /^=proto\s+([^ \t]+)\s+(.*)/) {
+			    if (dd) {
+				    puts("</dd>");
+				    dd--;
+			    }
+			    puts("<dt><b>${$1} ${$2}</b></dt><dd>");
+			    dd++;
+		    } else if (buf =~ /=table/) {
+		    } else if (buf =~ /^=back/) {
+			    if (dd) {
+				    puts("</dd>");
+				    dd--;
+			    }
+			    puts("</dl>");
+		    } else if (buf =~ /^\s*$/) {
+			    if (p) {
+				    puts("</p>");
+				    p = 0;
+			    }
+			    if (pre) {
+				    /*
+				     * If we see a blank line in a preformatted
+				     * block, we don't want to stop the pre
+				     * unless the next line is not indented.
+				     * So peek ahead.
+				     */
+				    if (defined(buf = all[i+1]) && (buf =~ /^\s/)) {
+					    puts("");
+					    continue;
+				    }
+				    puts("</pre>");
+				    pre = 0;
+				    trim = undef;
+			    }
+			    space = 1;
+		    } else {
+			    if (space) {
+				    if (buf =~ /^(\s+)[^ \t]+/) {
+					    trim = $1;
+					    puts("<pre>");
+					    pre = 1;
+				    } else {
+					    puts("<p>");
+					    p = 1;
+				    }
+				    space = 0;
+			    }
+			    if (defined(trim)) buf =~ s/^${trim}//;
+			    puts(buf);
+		    }
+	    }
+	    puts("</body></html>");
+	    return (0);
+    }
 
-	/*
-	 * header and style sheet
-	 */
-	void
-	header(string title)
-	{
-		string	head = &lt;&lt;EOF
-	&lt;html&gt;
-	&lt;head&gt;
-	&lt;title&gt;${title}&lt;/title&gt;
-	&lt;style&gt;
-	pre {
-		background: #eeeedd;
-		border-width: 1px;
-		border-style: solid solid solid solid;
-		border-color: #ccc;
-		padding: 5px 5px 5px 5px;
-		font-family: monospace;
-		font-weight: bolder;
-	}
-	body {
-		padding-left: 10px;
-	}
-	dt {
-		font-size: large;
-	}
-	&lt;/style&gt;
-	&lt;/head&gt;
-	&lt;body&gt;
-	EOF
-		puts(head);
-		puts("&lt;h1&gt;${title}&lt;/h1&gt;");
-	}
+    /*
+     * header and style sheet
+     */
+    void
+    header(string title)
+    {
+	    string	head = <<EOF
+    <html>
+    <head>
+    <title>${title}</title>
+    <style>
+    pre {
+	    background: #eeeedd;
+	    border-width: 1px;
+	    border-style: solid solid solid solid;
+	    border-color: #ccc;
+	    padding: 5px 5px 5px 5px;
+	    font-family: monospace;
+	    font-weight: bolder;
+    }
+    body {
+	    padding-left: 10px;
+    }
+    dt {
+	    font-size: large;
+    }
+    </style>
+    </head>
+    <body>
+    EOF
+	    puts(head);
+	    puts("<h1>${title}</h1>");
+    }
 
-	/*
-	 * Process B&lt;bold&gt;, C&lt;code&gt;, I&lt;italic&gt;, F&lt;italic&gt;, L&lt;link&gt;, S&lt;non-breaking&gt;.
-	 * This will handle nested stuff like C&lt;if (!I&lt;condition&gt;)&gt;
-	 * but dies if there are nested ones of the same type, i.e.,
-	 * C&lt;whatever C&lt;some more&gt;&gt;
-	 */
-	string
-	inline(string buf)
-	{
-		string	c, prev, result, link, stack[];
-		int	B = 0, C = 0, I = 0, L = 0, S = 0;
+    /*
+     * Process B<bold>, C<code>, I<italic>, F<italic>, L<link>, S<non-breaking>.
+     * This will handle nested stuff like C<if (!I<condition>)>
+     * but dies if there are nested ones of the same type.
+     */
+    string
+    inline(string buf)
+    {
+	    string	c, prev, result, link, stack[];
+	    int		B = 0, C = 0, I = 0, L = 0, S = 0;
 
-		unless (buf =~ /[BCFILS]&lt;.+&gt;/) {
-			return (buf);
-		}
-		foreach (c in buf) {
-			if ((c eq "&lt;") && defined(prev)) {
-				if (prev eq "B") {
-					if (B++) die("Nested B&lt;&gt; unsupported: ${buf}");
-					result[END] = "";
-					result .= "&lt;B&gt;";
-					push(&stack, "B");
-				} else if (prev eq "C") {
-					if (C++) die("Nested C&lt;&gt; unsupported: ${buf}");
-					result[END] = "";
-					result .= "&lt;CODE&gt;";
-					push(&stack, "CODE");
-				} else if (prev eq "I" || prev eq "F") {
-					if (I++) die("Nested I&lt;&gt; unsupported: ${buf}");
-					result[END] = "";
-					result .= "&lt;I&gt;";
-					push(&stack, "I");
-				} else if (prev eq "L") {
-					if (L++) die("Nested L&lt;&gt; unsupported: ${buf}");
-					result[END] = "";
-					result .= "&lt;a href=\"";
-					link = "";
-					push(&stack, "L");
-				} else if (prev eq "S") {
-					if (S++) die("Nested S&lt;&gt; unsupported: ${buf}");
-					result[END] = "";
-					push(&stack, "S");
-				} else {
-					result .= c;
-					prev = c;
-				}
-			} else if ((c eq "&gt;") && length(stack)) {
-				c = pop(&stack);
-				if (c eq "B") {
-					B--;
-				} else if (c eq "CODE") {
-					C--;
-				} else if (c eq "I") {
-					I--;
-				} else if (c eq "L") {
-					L--;
-					result .= "\"&gt;${link}&lt;/a&gt;";
-					c = undef;
-				} else {
-					S--;
-					c = undef;
-				}
-				if (defined(c)) {
-					result .= "&lt;/" . c . "&gt;";
-				}
-				prev = undef;
-			} else {
-				if (S && isspace(c)) {
-					result .= "&nbsp;";
-				} else {
-					result .= c;
-				}
-				if (L) link .= c;
-				prev = c;
-			}
-		}
-		return (result);
-	}
+	    foreach (c in buf) {
+		    if ((c == "<") && defined(prev)) {
+			    if (prev == "B") {
+				    if (B++) die("Nested B<> unsupported: ${buf}");
+				    result[END] = "";
+				    result .= "<B>";
+				    push(&stack, "B");
+			    } else if (prev == "C") {
+				    if (C++) die("Nested C<> unsupported: ${buf}");
+				    result[END] = "";
+				    result .= "<CODE>";
+				    push(&stack, "CODE");
+			    } else if (prev == "I" || prev == "F") {
+				    if (I++) die("Nested I<> unsupported: ${buf}");
+				    result[END] = "";
+				    result .= "<I>";
+				    push(&stack, "I");
+			    } else if (prev == "L") {
+				    if (L++) die("Nested L<> unsupported: ${buf}");
+				    result[END] = "";
+				    result .= "<a href=\"";
+				    link = "";
+				    push(&stack, "L");
+			    } else if (prev == "S") {
+				    if (S++) die("Nested S<> unsupported: ${buf}");
+				    result[END] = "";
+				    push(&stack, "S");
+			    } else {
+				    result .= "&lt;";
+				    prev = c;
+			    }
+		    } else if ((c == ">") && length(stack)) {
+			    c = pop(&stack);
+			    if (c == "B") {
+				    B--;
+			    } else if (c == "CODE") {
+				    C--;
+			    } else if (c == "I") {
+				    I--;
+			    } else if (c == "L") {
+				    L--;
+				    result .= "\">${link}</a>";
+				    c = undef;
+			    } else {
+				    S--;
+				    c = undef;
+			    }
+			    if (defined(c)) {
+				    result .= "</" . c . ">";
+			    }
+			    prev = undef;
+		    } else {
+			    if (S && isspace(c)) {
+				    result .= "&nbsp;";
+			    } else if (c == "<") {
+				    result .= "&lt;";
+			    } else if (c == ">") {
+				    result .= "&gt;";
+			    } else {
+				    result .= c;
+			    }
+			    if (L) link .= c;
+			    prev = c;
+		    }
+	    }
+	    return (result);
+    }

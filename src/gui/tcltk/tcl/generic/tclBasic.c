@@ -232,6 +232,9 @@ static const CmdInfo builtInCmds[] = {
 
     {"L",		Tcl_LObjCmd,		NULL,		NULL, 1},
     {"shsplit",		Tcl_ShSplitObjCmd,	NULL,		NULL, 1},
+    {"fgetline",	Tcl_FGetlineObjCmd,	NULL,		NULL, 1},
+    {"angle_read_",	Tcl_LAngleReadObjCmd,	NULL,		NULL, 1},
+    {"Lwrite_",		Tcl_LWriteCmd,		NULL,		NULL, 1},
 
     /*
      * Commands in the OS-interface. Note that many of these are unsafe.
@@ -250,6 +253,8 @@ static const CmdInfo builtInCmds[] = {
     {"file",		Tcl_FileObjCmd,		NULL,			NULL,	0},
     {"fileevent",	Tcl_FileEventObjCmd,	NULL,			NULL,	1},
     {"flush",		Tcl_FlushObjCmd,	NULL,			NULL,	1},
+    {"getopt",		Tcl_GetOptObjCmd,	NULL,			NULL,	0},
+    {"getoptReset",	Tcl_GetOptResetObjCmd,	NULL,			NULL,	0},
     {"gets",		Tcl_GetsObjCmd,		NULL,			NULL,	1},
     {"glob",		Tcl_GlobObjCmd,		NULL,			NULL,	0},
     {"load",		Tcl_LoadObjCmd,		NULL,			NULL,	0},

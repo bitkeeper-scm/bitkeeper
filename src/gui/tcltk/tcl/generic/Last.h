@@ -8,12 +8,6 @@
 #define	unless(p)	if (!(p))
 #define	private		static
 
-/* Argument type for type_mk* functions. */
-enum typemk_k {
-	PERSIST,	// persist type descriptor across all interps
-	PER_INTERP,	// type descriptor is freed when interp is freed
-};
-
 typedef struct Ast	Ast;
 typedef struct Block	Block;
 typedef struct VarDecl	VarDecl;
@@ -112,8 +106,9 @@ typedef enum {
 
 struct Type {
 	Type_k	kind;
-	Type	*base_type;	// for array, hash, list, nameof, fn ret type
+	Type	*base_type;	// for array, hash, list, nameof, etc
 	Type	*next;		// for linking list types
+	char	*name;		// if a typedef, the type name being declared
 	union {
 		struct {
 			Expr	*size;
@@ -225,6 +220,7 @@ typedef enum {
 	L_OP_CONCAT,
 	L_OP_CMDSUBST,
 	L_OP_TERNARY_COND,
+	L_OP_FILE,
 } Op_k;
 
 /*
@@ -386,7 +382,7 @@ typedef enum {
 	DECL_PRIVATE		= 0x008000, // decl has private qualifier
 	DECL_PUBLIC		= 0x010000, // decl has public qualifier
 	DECL_REF		= 0x020000, // decl has & qualifier
-	DECL_UNUSED		= 0x040000, // decl has _unused qualifier
+	DECL_ARGUSED		= 0x040000, // decl has _argused qualifier
 	DECL_FORWARD		= 0x080000, // a forward decl
 	DECL_DONE		= 0x100000, // decl already processed
 	FN_PROTO_ONLY		= 0x200000, // compile fn proto only
@@ -432,17 +428,14 @@ extern Expr	*ast_mkTrinOp(Op_k op, Expr *e1, Expr *e2, Expr *e3,
 			      int beg, int end);
 extern Expr	*ast_mkUnOp(Op_k op, Expr *e1, int beg, int end);
 extern VarDecl	*ast_mkVarDecl(Type *type, Expr *name, int beg, int end);
-extern Type	*type_mkArray(Expr *size, Type *base_type,
-			      enum typemk_k disposition);
-extern Type	*type_mkClass(enum typemk_k disposition);
-extern Type	*type_mkFunc(Type *base_type, VarDecl *formals,
-			     enum typemk_k disposition);
-extern Type	*type_mkHash(Type *index_type, Type *base_type,
-			     enum typemk_k disposition);
-extern Type	*type_mkList(Type *a, enum typemk_k disposition);
-extern Type	*type_mkNameOf(Type *base_type, enum typemk_k disposition);
-extern Type	*type_mkScalar(Type_k kind, enum typemk_k disposition);
-extern Type	*type_mkStruct(char *tag, VarDecl *members,
-			       enum typemk_k disposition);
+extern Type	*type_dup(Type *type);
+extern Type	*type_mkArray(Expr *size, Type *base_type);
+extern Type	*type_mkClass(void);
+extern Type	*type_mkFunc(Type *base_type, VarDecl *formals);
+extern Type	*type_mkHash(Type *index_type, Type *base_type);
+extern Type	*type_mkList(Type *a);
+extern Type	*type_mkNameOf(Type *base_type);
+extern Type	*type_mkScalar(Type_k kind);
+extern Type	*type_mkStruct(char *tag, VarDecl *members);
 
 #endif /* L_AST_H */

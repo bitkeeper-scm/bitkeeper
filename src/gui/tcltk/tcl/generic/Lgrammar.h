@@ -135,7 +135,7 @@
      T_TYPE = 351,
      T_TYPEDEF = 352,
      T_UNLESS = 353,
-     T_UNUSED = 354,
+     T_ARGUSED = 354,
      T_VOID = 355,
      T_WIDGET = 356,
      T_WHILE = 357,
@@ -154,7 +154,7 @@
 
 
 /* Copy the first part of user declarations.  */
-#line 1 "/Users/rob/bk/bk-L-string-escapes/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1 "/Users/rob/bk/bk-L-libl/src/gui/tcltk/tcl/generic/Lgrammar.y"
 
 /*
  * Copyright (c) 2006-2008 BitMover, Inc.
@@ -171,7 +171,7 @@ extern int	L_lex (void);
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE 
-#line 53 "/Users/rob/bk/bk-L-string-escapes/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 53 "/Users/rob/bk/bk-L-libl/src/gui/tcltk/tcl/generic/Lgrammar.y"
 {
 	long	i;
 	char	*s;

@@ -116,7 +116,7 @@ bk(string cmdline)
 	string	result;
 
 	fd = popen("bk ${cmdline}", "r");
-	result = freadn(fd, -1);
+	read(fd, &result, -1);
 	catch("close ${fd}");
 	return(trim(result));
 }
@@ -311,7 +311,7 @@ removeFile(sfile sf)
 void
 insertPending(sfile sf)
 {
-	FILE	fd = popen("bk sfiles -gpA \"${sf.file}\"", "r");
+	FILE	fd = popen("bk sfiles -gpA '${sf.file}'", "r");
 	string	line;
 	string	name = sf.name;
 
@@ -527,7 +527,7 @@ readSfilesOutput(string file, int pos)
 
 	self.sfiles_reading = 1;
 	seek(fd, pos, "start");
-	data = freadn(fd, -1);
+	read(fd, &data, -1);
 	unless (defined(data)) {
 		fclose(fd);
 		return (-1);
@@ -553,7 +553,7 @@ addFiles(string files[])
 	string	tmp, file, lines[];
 
 	tmp = tmpfile("citool");
-	fd = popen("bk sfiles -cgvxyp {-o${tmp}} -", "r+");
+	fd = popen("bk sfiles -cgvxyp -o'${tmp}' -", "r+");
 	puts(fd, join("\n", files));
 	fclose(fd);
 
@@ -672,7 +672,7 @@ findFiles()
 		self.sfiles_component = comp;
 		self.showPending{comp} = 0;
 		tmp = tmpfile("citool");
-		cmd = "bk sfiles ${opts} {--relpath=${self.root}} {-o${tmp}}";
+		cmd = "bk sfiles ${opts} --relpath='${self.root}' -o'${tmp}'";
 		unless (self.resolve) {
 			// Look for extra files when we're not in the resolver.
 			cmd .= " -x";
@@ -1212,7 +1212,7 @@ updateButtons()
 	sfile	cset;
 	sfile	sf = getSelectedFile();
 	string	state = "normal";
-	widget	b, buttons[] = winfo_children(self.w_buttons);
+	widget	b, buttons[] = Winfo_children((string)self.w_buttons);
 
 	if (self.committing) state = "disabled";
 
@@ -1322,7 +1322,7 @@ isTemplateComment(sfile sf, string comment)
 void
 deleteCommentFile(string file)
 {
-	bk("cfile rm \"${file}\"");
+	bk("cfile rm '${file}'");
 }
 
 void
@@ -1343,7 +1343,7 @@ writeComments(sfile sf, string comments)
 	FILE	fd;
 
 	self.changed = 1;
-	fd = popen("bk cfile save \"${sf.file}\"", "w");
+	fd = popen("bk cfile save '${sf.file}'", "w");
 	puts(fd, comments);
 	fclose(fd);
 }
@@ -1434,7 +1434,7 @@ quit()
 		image = joinpath(getenv("BK_BIN"), "gui", "images",
 		    "bklogo.gif");
 		if (exists(image)) {
-			string	logo = img_create(file: image);
+			string	logo = Image_createPhoto(file: image);
 
 			label(".c.logo", image: logo,
 			    background: gc("ci.logoBG"),
@@ -1497,16 +1497,16 @@ createImages()
 {
 	string	path = joinpath(getenv("BK_BIN"), "gui", "images");;
 
-	img_new = img_create(file: joinpath(path, "ci-new.gif"));
-	img_cset = img_create(file: joinpath(path, "ci-cset.gif"));
-	img_done = img_create(file: joinpath(path, "ci-done.gif"));
-	img_exclude = img_create(file: joinpath(path, "ci-exclude.gif"));
+	img_new = Image_createPhoto(file: joinpath(path, "ci-new.gif"));
+	img_cset = Image_createPhoto(file: joinpath(path, "ci-cset.gif"));
+	img_done = Image_createPhoto(file: joinpath(path, "ci-done.gif"));
+	img_exclude = Image_createPhoto(file: joinpath(path, "ci-exclude.gif"));
 	img_modified = 
-	    img_create(file: joinpath(path, "ci-modified.gif"));
+	    Image_createPhoto(file: joinpath(path, "ci-modified.gif"));
 	img_notincluded
-	    = img_create(file: joinpath(path, "ci-notincluded.gif"));
-	img_checkon = img_create(file: joinpath(path, "check_on.gif"));
-	img_checkoff = img_create(file: joinpath(path, "check_off.gif"));
+	    = Image_createPhoto(file: joinpath(path, "ci-notincluded.gif"));
+	img_checkon = Image_createPhoto(file: joinpath(path, "check_on.gif"));
+	img_checkoff = Image_createPhoto(file: joinpath(path, "check_off.gif"));
 }
 
 string
@@ -1518,7 +1518,7 @@ getComments(sfile sf)
 		FILE	fd;
 		string	line;
 
-		fd = popen("bk prs -hd:COMMENTS: -r${sf.rev} \"${sf.file}\"",
+		fd = popen("bk prs -hd:COMMENTS: -r${sf.rev} '${sf.file}'",
 		    "r");
 		while (defined(line = fgetline(fd))) {
 			append(&comments, line[2..END], "\n");
@@ -1530,7 +1530,7 @@ getComments(sfile sf)
 	if (sf.node eq getSelectedNode()) {
 		comments = getCurrentComments();
 	} else {
-		comments = bk("cfile print \"${sf.file}\"");
+		comments = bk("cfile print '${sf.file}'");
 	}
 
 	if (comments eq "") {
@@ -1612,7 +1612,7 @@ showFileContents(sfile sf)
 		string	contents;
 		Text_insert(self.w_diffs, "end",
 		    "${sf.name}:\t(new file) ${fsize} bytes\n\n");
-		contents = bk("_strings \"${sf.file}\"");
+		contents = bk("_strings '${sf.file}'");
 		if (bytes > 0) {
 			contents = contents[0..bytes];
 		}
@@ -1739,13 +1739,13 @@ showFile(sfile sf)
 	}
 
 	if (sf.rev eq "") {
-		string	sinfo = bk("sinfo \"${sf.file}\"");
+		string	sinfo = bk("sinfo '${sf.file}'");
 
 		sinfo = getRelativePath(sinfo, self.root);
 		Text_insert(self.w_diffs, "end", sinfo);
 		Text_insert(self.w_diffs, "end", "\n\n");
 
-		fd = popen("bk diffs -up \"${sf.file}\"", "r");
+		fd = popen("bk diffs -up '${sf.file}'", "r");
 	} else {
 		// Pending file.
 		string	file = getRelativePath(sf.file, sf.component);
@@ -1756,14 +1756,14 @@ showFile(sfile sf)
 			string	dir = dirname(file);
 			Text_insert(self.w_diffs, "end", "\n");
 			Text_insert(self.w_diffs, "end",
-			    bk("changes -S -v -r${sf.rev} \"${dir}\""), "");
+			    bk("changes -S -v -r${sf.rev} '${dir}'"), "");
 			Text_configure(self.w_diffs, state: "disabled");
 			return;
 		}
 		Text_insert(self.w_diffs, "end",
 		    "\n bk diffs -up -R${sf.rev} ${file}\n", "notice");
 		Text_insert(self.w_diffs, "end", "\n");
-		fd = popen("bk diffs -up -R${sf.rev} \"${sf.file}\"", "r");
+		fd = popen("bk diffs -up -R${sf.rev} '${sf.file}'", "r");
 	}
 
 	gets(fd); gets(fd); gets(fd);
@@ -1971,7 +1971,7 @@ commitComponent(string comp)
 
 	if (length(checkin)) {
 		FILE	fd;
-		string	error;
+		STATUS	st;
 
 		if (comp eq self.root) {
 			insertBottomText("Checking in files...", 0);
@@ -1980,21 +1980,21 @@ commitComponent(string comp)
 			    "${getRelativePath(comp, self.root)}...\n", 0);
 		}
 		scrollToBottom();
-		fd = popen("bk ci -a -c -", "w");
+		fd = popen("bk ci -a -c -q -", "w");
 		foreach (file in checkin) {
 			file = getRelativePath(file, comp);
 			puts(fd, file);
 		}
-		catch("close ${fd}", &error);
-		if (error ne "") {
-			insertBottomText(error, 0);
-			insertBottomText("\n", 0);
-			update();
-		}
-		if (errorCode[0] ne "NONE") {
+		pclose(fd, &st);
+		unless (st.exit == 0) {
 			string	msg = "The checkin failed.  See the "
 			    "bottom pane for the reason.\n\ncitool "
 			    "will exit when you click OK.\n";
+
+			insertBottomText(stdio_getLastError(), 0);
+			insertBottomText("\n", 0);
+			update();
+
 			popupMessage(E: msg);
 			exit(1);
 		}
@@ -2023,7 +2023,7 @@ commitComponent(string comp)
 		fd = fopen(tmp1, "w");
 		commit = lsort(unique:, commit);
 		foreach (file in commit) {
-			line = bk("sfiles -pC \"${file}\"");
+			line = bk("sfiles -pC '${file}'");
 			if (line eq "") continue;
 			puts(fd, getRelativePath(line, comp));
 		}
@@ -2485,7 +2485,7 @@ init()
 }
 
 void
-main(_unused int argc, string argv[])
+main(_argused int argc, string argv[])
 {
 	string	arg, file, files[];
 	FILE	f;
@@ -2505,7 +2505,7 @@ main(_unused int argc, string argv[])
 
 	self.partial = 0;
 	self.resolve = 0;
-	foreach (arg in argv) {
+	foreach (arg in argv[1..END]) {
 		if (arg eq "-R") {
 			self.resolve = 1;
 		} else if (arg eq "-P") {

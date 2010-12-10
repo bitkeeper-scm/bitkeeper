@@ -5,8 +5,8 @@ main(int ac, string av[])
 {
 	FILE	f;
 	int	i, ul;
-	int	space = 0, dd = 0, p = 0, pre = 0, table = 0;
-	string	head, buf, tmp, title, trim, all[];
+	int	space = 0, dd = 0, p = 0, pre = 0;
+	string	buf, tmp, title, trim, all[];
 
 	// lint
 	if (0) ac++;
@@ -93,10 +93,8 @@ main(int ac, string av[])
 				puts("</dd>");
 				dd--;
 			}
-			puts("<dt><b>${$1}<br>${$2}</b></dt><dd>");
+			puts("<dt><b>${$1} ${$2}</b></dt><dd>");
 			dd++;
-		} else if (buf =~ /=table/) {
-			
 		} else if (buf =~ /^=back/) {
 			if (dd) {
 				puts("</dd>");
@@ -190,9 +188,6 @@ inline(string buf)
 	string	c, prev, result, link, stack[];
 	int	B = 0, C = 0, I = 0, L = 0, S = 0;
 
-	unless (buf =~ /[BCFILS]<.+>/) {
-		return (buf);
-	}
 	foreach (c in buf) {
 		if ((c eq "<") && defined(prev)) {
 			if (prev eq "B") {
@@ -221,7 +216,7 @@ inline(string buf)
 				result[END] = "";
 				push(&stack, "S");
 			} else {
-				result .= c;
+				result .= "&lt;";
 				prev = c;
 			}
 		} else if ((c eq ">") && length(stack)) {
@@ -247,6 +242,10 @@ inline(string buf)
 		} else {
 			if (S && isspace(c)) {
 				result .= "&nbsp;";
+			} else if (c eq "<") {
+				result .= "&lt;";
+			} else if (c eq ">") {
+				result .= "&gt;";
 			} else {
 				result .= c;
 			}
