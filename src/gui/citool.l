@@ -1734,15 +1734,7 @@ showFile(sfile sf)
 		return;
 	}
 
-	if (sf.rev eq "") {
-		string	sinfo = bk("sinfo '${sf.file}'");
-
-		sinfo = getRelativePath(sinfo, self.root);
-		Text_insert(self.w_diffs, "end", sinfo);
-		Text_insert(self.w_diffs, "end", "\n\n");
-
-		fd = popen("bk diffs -up '${sf.file}'", "r");
-	} else {
+	if (sf.rev) {
 		// Pending file.
 		string	file = getRelativePath(sf.file, sf.component);
 
@@ -1760,6 +1752,14 @@ showFile(sfile sf)
 		    "\n bk diffs -up -R${sf.rev} ${file}\n", "notice");
 		Text_insert(self.w_diffs, "end", "\n");
 		fd = popen("bk diffs -up -R${sf.rev} '${sf.file}'", "r");
+	} else {
+		string	sinfo = bk("sinfo '${sf.file}'");
+
+		sinfo = getRelativePath(sinfo, self.root);
+		Text_insert(self.w_diffs, "end", sinfo);
+		Text_insert(self.w_diffs, "end", "\n\n");
+
+		fd = popen("bk diffs -up '${sf.file}'", "r");
 	}
 
 	gets(fd); gets(fd); gets(fd);
