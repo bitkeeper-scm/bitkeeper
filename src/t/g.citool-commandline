@@ -89,3 +89,57 @@ Reading files from stdin not supported in a nested repository.
 EOF
 cmpfiles WANT "$OUT"
 echo OK
+
+echo $N Test with -sgui .............................................$NL
+bk edit $Q gui/file1
+echo FOO > gui/file1
+bk edit $Q gcc/file1
+echo FOO > gcc/file1
+bk guitest citool -sgui > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "gui/file1"
+	test_fileIsInList "gui ChangeSet"
+	test_fileIsNotInList "gcc/file1"
+	test_fileIsNotInList "gcc ChangeSet"
+	test_fileIsInList "ChangeSet"
+	test_buttonPress "Quit"
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo OK
+
+echo $N Test with -s^PRODUCT ........................................$NL
+bk edit $Q gui/file1
+echo FOO > gui/file1
+bk edit $Q gcc/file1
+echo FOO > gcc/file1
+bk guitest citool -s^PRODUCT > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "gui/file1"
+	test_fileIsInList "gui ChangeSet"
+	test_fileIsInList "gcc/file1"
+	test_fileIsInList "gcc ChangeSet"
+	test_fileIsNotInList "ChangeSet"
+	test_buttonPress "Quit"
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo OK
+
+echo $N Test with -sgui -s^PRODUCT ..................................$NL
+bk edit $Q gui/file1
+echo FOO > gui/file1
+bk edit $Q gcc/file1
+echo FOO > gcc/file1
+bk guitest citool -sgui -s^PRODUCT > "$OUT" 2>&1 <<'EOF'
+	test_fileIsInList "gui/file1"
+	test_fileIsInList "gui ChangeSet"
+	test_fileIsNotInList "gcc/file1"
+	test_fileIsNotInList "gcc ChangeSet"
+	test_fileIsNotInList "ChangeSet"
+	test_buttonPress "Quit"
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo OK

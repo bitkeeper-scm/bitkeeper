@@ -20,7 +20,7 @@ echo $N Setting up cset split testing respositories .................$NL
 TZ=UTC+0 commercial simple
 touch a b c d
 bk new $Q a b c d
-TZ=EST bk commit $Q -SBASETAG -y1.2 || exit 1
+TZ=EST bk commit $Q --tag=BASETAG -y1.2 || exit 1
 bk prs -h -r+ -d':ROOTKEY:\n' a c > ../KEYS
 echo OK
 
@@ -93,14 +93,14 @@ bk clone $Q simple tag
 cd tag
 bk edit $Q a
 bk delta $Q -fy1.2 a
-bk commit $Q -STAG1_3 -y1.3
+bk commit $Q --tag=TAG1_3 -y1.3
 bk edit $Q a
 bk delta $Q -fy1.3 a
 bk commit $Q -y1.4
 bk tag $Q TAG1_4
 bk edit $Q b
 bk delta $Q -fy1.2 b
-bk commit $Q -STAG1_5 -y1.5
+bk commit $Q --tag=TAG1_5 -y1.5
 bk tag $Q TAG1_6
 bk csetprune < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
@@ -122,7 +122,7 @@ bk clone $Q simple tagdup
 cd tagdup
 bk edit $Q b
 bk delta $Q -fy1.2 b
-bk commit $Q -STAGDUP -y1.3
+bk commit $Q --tag=TAGDUP -y1.3
 bk edit $Q a
 bk delta $Q -fy1.2 a
 bk commit $Q -y1.4
@@ -164,11 +164,11 @@ cd "$HERE/tag_b"
 bk tag $Q -r1.1 OLDEST-OLD
 bk edit $Q b
 bk delta $Q -fy1.2 b
-bk commit $Q -STAG_B1 -y"Tagged node on trunk"
+bk commit $Q --tag=TAG_B1 -y"Tagged node on trunk"
 cd "$HERE/tag_a"
 bk edit $Q b
 bk delta $Q -fy1.2 b
-bk commit $Q -STAG_A1 -y"Tagged node before fork on branch"
+bk commit $Q --tag=TAG_A1 -y"Tagged node before fork on branch"
 bk edit $Q b
 bk delta $Q -fy1.2 b
 bk commit $Q -y"nothing node"
@@ -181,19 +181,19 @@ bk commit $Q -y"node on trunk of branch with no label"
 cd "$HERE/tag_c"
 bk edit $Q b
 bk delta $Q -fy1.2 b
-bk commit $Q -STAG_C1 -y"Tagged node on branch of branch"
+bk commit $Q --tag=TAG_C1 -y"Tagged node on branch of branch"
 cd "$HERE/tag_b"
 bk edit $Q b
 bk delta $Q -fy1.2 b
-bk commit $Q -STAG_B2 -y"Tagged node on trunk"
+bk commit $Q --tag=TAG_B2 -y"Tagged node on trunk"
 cd "$HERE/tag_c"
 bk edit $Q b
 bk delta $Q -fy1.2 b
-bk commit $Q -STAG_C2 -y"Tagged node on branch of branch (again)"
+bk commit $Q --tag=TAG_C2 -y"Tagged node on branch of branch (again)"
 bk pull $Q "$HERE/tag_a"
 bk edit $Q b
 bk delta $Q -fy1.2 b
-bk commit $Q -STAG_C3 -y"Tagged node on branch after merge"
+bk commit $Q --tag=TAG_C3 -y"Tagged node on branch after merge"
 bk pull $Q "$HERE/tag_b"
 bk edit $Q a
 bk delta $Q -fy1.2 a
@@ -451,10 +451,10 @@ bk clone $Q simple kg1
 cd kg1
 bk edit $Q a
 bk delta $Q -fy1.2 a
-bk commit $Q -SKG1A -y1.3
+bk commit $Q --tag=KG1A -y1.3
 bk edit $Q a
 bk delta $Q -fy1.3 a
-bk commit $Q -SKG1B -y1.4
+bk commit $Q --tag=KG1B -y1.4
 bk cset $Q -x1.4
 bk tag $Q KG1C
 bk csetprune -S < ../KEYS 2> ERROR
@@ -475,7 +475,7 @@ bk clone $Q simple ranbit
 cd ranbit
 bk edit $Q a
 bk delta $Q -fy1.2 a
-bk commit $Q -SKG2A -y1.3
+bk commit $Q --tag=KG2A -y1.3
 # Test for invalid keys not working ..
 bk csetprune -k 1234567890abcdeg < ../KEYS 2> ERROR && {
 	echo Failed
@@ -640,7 +640,7 @@ bk commit $Q -ydel
 cd ../branch
 bk edit $Q keep
 bk delta $Q -fykeep keep
-bk commit $Q -STIPPER -ykeep
+bk commit $Q --tag=TIPPER -ykeep
 bk cset $Q -xTIPPER
 # pull in the keeper - this creates a -i to TIPPER to mark the merge
 # This merge node will go away, meaning the -i of the TIPPER will go

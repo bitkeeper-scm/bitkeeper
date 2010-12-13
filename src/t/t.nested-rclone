@@ -23,7 +23,7 @@ do
 		echo $i > file$i
 		bk new $Q file$i
 	done
-	bk commit $Q -y"add some files"
+	bk commit -S $Q -y"add some files"
 	cd ..
 done
 bk setup -Cf "A new component"
@@ -184,6 +184,6 @@ echo OK
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 cd mynewgcc
 bk alias -k here > GOT
-(echo PRODUCT; cd gcc; bk id) > WANT
+(echo PRODUCT; cd gcc; bk id -S) > WANT
 cmpfiles GOT WANT
 echo OK

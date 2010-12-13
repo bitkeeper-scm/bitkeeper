@@ -12,13 +12,12 @@ get_main(int ac, char **av)
 {
 	sccs	*s;
 	int	iflags = 0, flags = GET_EXPAND|GET_NOREMOTE, c, errors = 0;
-	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *Gname = 0;
+	char	*iLst = 0, *xLst = 0, *name, *rev = 0;
 	char	*gfile = 0, *pfile = 0, *p;
 	char	*prog;
 	char	*mRev = 0, *Rev = 0;
 	delta	*d;
 	int	recursed = 0;
-	int	gdir = 0;
 	int	getdiff = 0;
 	int	sf_flags = 0;
 	int	dohash = 0;
@@ -31,6 +30,7 @@ get_main(int ac, char **av)
 	int	n = 0, nfiles = -1;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	ac_optend;
+	int	rollback = 0;
 	MDBM	*realNameCache = 0;
 	char	*out = "-";
 	char	**bp_files = 0;
@@ -38,6 +38,9 @@ get_main(int ac, char **av)
 	project	*bp_proj = 0;
 	u64	bp_todo = 0;
 	ticker	*tick = 0;
+	int	Gname = 0;	/* -G on command line */
+	char	*gdir = 0;	/* if -Gdir, the directory name */
+	char	Gout[MAXPATH];	/* current file being written by -G */
 	char	realname[MAXPATH];
 
 	if (prog = strrchr(av[0], '/')) {
@@ -77,7 +80,10 @@ get_main(int ac, char **av)
 			putenv("_BK_FASTGET=YES");
 			break;
 		    case 'g': flags |= GET_SKIPGET; break;	/* doc 2.0 */
-		    case 'G': Gname = optarg; break;		/* doc 2.0 */
+		    case 'G':
+			Gname = 1;
+			strcpy(Gout, optarg);
+			break;
 		    case 'h': dohash = 1; break;		/* doc 2.0 */
 		    case 'i': iLst = optarg; break;		/* doc 2.0 */
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
@@ -98,6 +104,15 @@ get_main(int ac, char **av)
 		}
 	}
 	ac_optend = optind;
+	if (Gname && (flags & PRINT)) {
+		fprintf(stderr, "%s: can't use -G and -p together,\n", av[0]);
+		usage();
+	}
+	if (Gname) flags |= PRINT|GET_PERMS;
+	if ((flags & (PRINT|GET_SKIPGET)) == (PRINT|GET_SKIPGET)) {
+		fprintf(stderr, "%s: can't use -g with -p/G\n", prog);
+		return(1);
+	}
 	if (flags & GET_PREFIX) {
 		if (flags & GET_EDIT) {
 			fprintf(stderr, "%s: can't use -e with -dNum\n",
@@ -110,38 +125,36 @@ get_main(int ac, char **av)
 		flags &= ~GET_EXPAND;
 	}
 	name = sfileFirst("get", &av[optind], sf_flags);
-	gdir = Gname && isdir(Gname);
+	if (Gname && isdir(Gout)) {
+		gdir = strdup(Gout);
+		Gout[0] = 0;
+	}
 	if (((Gname && !gdir) || iLst || xLst) && sfileNext()) {
 onefile:	fprintf(stderr,
 		    "%s: only one file name with -G/i/x.\n", av[0]);
 		usage();
 	}
 	if (av[optind] && av[optind+1] && strneq(av[optind+1], "-G", 2)) {
-		Gname = &av[optind+1][2];
-	}
-	if (Gname && (flags & GET_EDIT)) {
-		fprintf(stderr, "%s: can't use -G and -e/-l together.\n",av[0]);
-		usage();
-	}
-	if (Gname && (flags & PRINT)) {
-		fprintf(stderr, "%s: can't use -G and -p together,\n", av[0]);
-		usage();
+		if (Gname) goto onefile;
+		Gname = 1;
+		strcpy(Gout, av[optind+1] + 2);
+		flags |= PRINT|GET_PERMS;
 	}
 	if (rev && closetips) {
 		fprintf(stderr,
 		    "%s: -M can not be combined with rev.\n", av[0]);
 		usage();
 	}
-	if ((Rev || mRev || iLst || xLst) && (flags & GET_NOREGET)) {
+	if ((Rev || mRev || iLst || xLst || (flags & PRINT)) &&
+	    (flags & GET_NOREGET)) {
 		fprintf(stderr,
-		    "%s: -S cannot be used with -r/-M/-i/-x.\n", av[0]);
+		    "%s: -S cannot be used with -r/-M/-i/-x/-p/-G.\n", av[0]);
 		usage();
 	}
 	switch (getdiff) {
 	    case 0: break;
 	    case 1: flags |= GET_DIFFS; break;
 	    case 2: flags |= GET_BKDIFFS; break;
-	    case 3: flags |= GET_HASHDIFFS; break;
 	    default:
 		fprintf(stderr, "%s: invalid D flag value %d\n", av[0],getdiff);
 		return(1);
@@ -207,20 +220,23 @@ onefile:	fprintf(stderr,
 				break;
 			}
 		}
+		if (Rev) {
+			rev = Rev;
+		} else {
+			rev = sfileRev();
+		}
 		if (Gname) {
 			if (gdir) {
-				char	buf[1024];
-				int	ret;
-
-				sprintf(buf, "%s/%s", Gname, basenm(s->gfile));
-				free(s->gfile);
-				s->gfile = strdup(buf);
-				ret = check_gfile(s, 0);
-				assert(ret == 0);
-			} else {
-				free(s->gfile);
-				s->gfile = strdup(Gname);
+				unless (d = sccs_findrev(s, rev)) {
+					fprintf(stderr, "%s: cannot find rev "
+					    "%s in %s\n", prog, rev, s->gfile);
+					goto err;
+				}
+				sprintf(Gout, "%s/%s", gdir,
+				    d->pathname ? d->pathname : s->gfile);
 			}
+			unlink(Gout);
+			out = Gout;
 		}
 		unless (HASGRAPH(s)) {
 			unless (HAS_SFILE(s)) {
@@ -237,11 +253,6 @@ err:			sccs_free(s);
 			sccs_free(s);
 			continue;
 		}
-		if (Rev) {
-			rev = Rev;
-		} else {
-			rev = sfileRev();
-		}
 		if (dohash) {
 			if (HASH(s)) {
 				s->xflags &= ~X_HASH;
@@ -251,7 +262,7 @@ err:			sccs_free(s);
 		}
 		if (BITKEEPER(s) &&
 		    (iLst || xLst) && !branch_ok && !(flags & GET_EDIT)) {
-			unless ((flags & PRINT) || Gname) {
+			unless (flags & PRINT) {
 				fprintf(stderr,
 				    "%s: can't specify include/exclude "
 				    "without -p, -e or -l\n", av[0]);
@@ -260,7 +271,7 @@ err:			sccs_free(s);
 		}
 		if (BITKEEPER(s) && rev && !branch_ok
 		    && !(flags & GET_EDIT) && !streq(rev, "+")) {
-			unless ((flags & PRINT) || Gname) {
+			unless (flags & PRINT) {
 				fprintf(stderr,
 				    "%s: can't specify revisions without -p\n",
 				    av[0]);
@@ -289,17 +300,19 @@ err:			sccs_free(s);
 				goto err;
 			}
 		}
-		if (BITKEEPER(s) && (flags & GET_EDIT) && rev && !branch_ok) {
+		if (BITKEEPER(s) && ((flags & (PRINT|GET_EDIT)) == GET_EDIT) &&
+		    rev && !branch_ok) {
 			/* recalc iLst and xLst to be relative to tip */
 			if (get_rollback(s, rev, &iLst, &xLst, av[0])) {
 				goto next;
 			}
+			rollback = 1;
 			rev = 0;	/* Use tip below */
 		}
 		if (pnames) {
 			printf("|FILE|%s|CRC|%u\n", s->gfile, crc(s->gfile));
 		}
-		if ((flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS))
+		if ((flags & (GET_DIFFS|GET_BKDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)
 		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
 			if (s->cachemiss && !recursed) {
@@ -337,6 +350,10 @@ err:			sccs_free(s);
 			errors = 1;
 		}
 next:		sccs_free(s);
+		if (rollback) {
+			FREE(iLst);
+			FREE(xLst);
+		}
 		/* sfileNext() will try and check out -G<whatever> */
 		if (Gname && !gdir) {
 			while ((name = sfileNext()) &&
@@ -402,6 +419,7 @@ get_rollback(sccs *s, char *rev, char **iLst, char **xLst, char *me)
 	u8	*map;
 	delta	*d;
 
+	*iLst = *xLst = 0;
 	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "%s: cannot find %s in %s\n", me,rev, s->gfile);
 		return (1);

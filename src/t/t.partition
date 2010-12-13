@@ -41,9 +41,9 @@ bk commit $Q -yone
 bk mv a ../a
 bk mv ../a a
 # Make a cset which only exists in the orig comp of a xcomp move
-bk commit $Q -SPOOF -ytwo
+bk commit $Q --tag=POOF -ytwo
 bk rm del
-bk commit $Q -SDELTAG -ydel
+bk commit $Q --tag=DELTAG -ydel
 DELKEY=`bk changes -kr+`
 cd ../doc
 # Make an non-cset delta on a file doc/collide-dk, to collide with comp
@@ -59,7 +59,7 @@ bk mv collide-rk d
 echo bam > b
 bk new $Q -b b
 cd ..
-bk commit $Q -SROOT -ybaseline
+bk commit $Q --tag=ROOT -ybaseline
 bk mv src/a a
 touch src/a
 bk new $Q src/a

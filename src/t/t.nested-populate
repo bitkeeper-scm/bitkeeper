@@ -22,7 +22,7 @@ do
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i
 done
-bk commit $Q -y"Add $i to file$i"
+bk commit -S $Q -y"Add $i to file$i"
 cd "$HERE/project" && bk commit $Q -y"Commit cset in gcc"
 cd "$HERE/project/gdb"
 for i in 1 2 3 4 5
@@ -30,7 +30,7 @@ do
 	touch file$i
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i
-	bk commit $Q -y"add file $i"
+	bk commit -S $Q -y"add file $i"
 done
 cd "$HERE/project"
 echo hi > bam
@@ -242,7 +242,7 @@ cat <<EOF > WANT
 ./gdb
 EOF
 cmpfiles GOT WANT
-(echo PRODUCT; echo primes; cd gcc; bk id; cd ../gdb; bk id) | bk _sort > WANT
+(echo PRODUCT; echo primes; cd gcc; bk id -S; cd ../gdb; bk id -S) | bk _sort > WANT
 bk alias -k here > GOT
 cmpfiles GOT WANT
 bk here rm $Q './g*' || exit 1
@@ -613,7 +613,7 @@ bk setup -fc"$HERE/empty" gui
 cd gui
 echo foo > Makefile
 bk new $Q Makefile
-bk commit $Q -y.
+bk commit -S $Q -y.
 bk -P commit $Q -y.
 bk setup -fc"$HERE/empty" tcltk/tcl
 bk setup -fc"$HERE/empty" tcltk/tk
@@ -629,7 +629,7 @@ bk here add $Q src/gui/tcltk/tk
 cd src/gui/tcltk/tk
 echo hi > local
 bk new $Q local
-bk commit $Q -ylocal || fail
+bk commit -S $Q -ylocal || fail
 cd ../../../..
 bk here rm $Q src/gui/tcltk/tk 2> ERR && fail -f ERR
 sed 's/ChangeSet@1.2,.*/ChangeSet@1.2,/' < ERR > ERR2

@@ -2,6 +2,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "graph.h"
 
 private int	range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs);
 
@@ -365,6 +366,11 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
  * on the single color nodes so the callback function can know which
  * was which.  It is up to the callback function to clear them in that
  * case.
+ *
+ * WR_GCA mode: the callback will be on the first deltas to be in both
+ * regions.  Note: the callbacks do not happen in newest to oldest order,
+ * as the call is done when a node is colored, not when it is visited.
+ * as it is outside the region of interest, it may never be visited.
  */
 int
 range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
@@ -390,12 +396,17 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 #define	MARK(x, change)	do {					\
 	    before = (x)->flags & mask;				\
 	    (x)->flags |= change;	/* after */		\
+	    if ((x)->serial < last) last = (x)->serial;		\
 	    if (((x)->flags & mask) == mask) { /* after == 2 */ \
-		if (before && (before != mask)) marked--;	\
+		if (before && (before != mask)) { /* before == 1 */ \
+		    marked--;					\
+		    if ((flags & WR_GCA) && (change != mask)) {/* chg == 1 */ \
+			if (fcn && (ret = fcn(s, (x), token))) goto err; \
+	    	    }						\
+	    	}						\
 	    } else {	/* after == 1 */ 			\
 		unless (before) marked++; 			\
 	    }							\
-	    if ((x)->serial < last) last = (x)->serial;		\
 	} while (0)
 
 	assert (!from || !fromlist);
@@ -415,7 +426,6 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 		if (d->serial < from->serial) d = from;
 		MARK(from, D_BLUE);
 	}
-	if (freelist) freeLines(fromlist, 0);
 
 	/* compute RED - BLUE */
 	for (; d && (all || (marked > 0)); d = NEXT(d)) {
@@ -426,6 +436,7 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 		if (color != mask) marked--;
 		if (e = PARENT(s, d)) MARK(e, color);
 		if (e = MERGE(s, d)) MARK(e, color);
+		if (flags & WR_GCA) continue;
 		if ((color == D_RED) ||
 		    ((flags & WR_BOTH) && (color != mask))) {
 			if (flags & WR_BOTH) d->flags |= color;
@@ -434,11 +445,12 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 			s->rstart = d;
 		}
 	}
-
+err:
 	/* cleanup */
 	for (; d && (d->serial >= last); d = NEXT(d)) {
 		d->flags &= ~mask;
 	}
+	if (freelist) freeLines(fromlist, 0);
 	return (ret);
 }
 
@@ -472,6 +484,49 @@ walkrevs_printmd5key(sccs *s, delta *d, void *token)
         sccs_md5delta(s, d, buf);
         fprintf((FILE *)token, "%s\n", buf);
         return (0);
+}
+
+int
+walkrevs_addLine(sccs *s, delta *d, void *token)
+{
+	char	***line = (char ***)token;
+
+	*line = addLine(*line, d);
+	return (0);
+}
+
+/*
+ * return a list of gca deltas for the list of deltas passed in.
+ * The gca list is made up of the tips of the common-to-all region.
+ * In each round of the loop, gca will be the list of what is common
+ * to all the deltas processed so far.
+ */
+char **
+range_gcalist(sccs *s, char **list)
+{
+	char	**gca = 0, **fromlist = 0, **tmp;
+	delta	*to;
+	int	i;
+
+	EACH_STRUCT(list, to, i) {
+		unless (gca) {
+			/* first round: just set tip as gca */
+			gca = addLine(0, to);
+			continue;
+		}
+		/* gca from previous round is fromlist this round */
+		tmp = fromlist;
+		fromlist = gca;
+		gca = tmp;
+		if (gca) truncLines(gca, 0);
+		if (range_walkrevs(s, 0, fromlist, to,
+		    WR_GCA, walkrevs_addLine, &gca)) {
+			assert("What can fail?" == 0);
+		}
+	}
+	freeLines(fromlist, 0);
+	sortLines(gca, graph_bigFirst);
+	return (gca);
 }
 
 /*

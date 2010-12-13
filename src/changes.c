@@ -28,6 +28,7 @@ private struct {
 	u32	chgurl:1;	/* running 'bk changes URL', ignore local */
 	u32	noMeta:1;	/* auto or --no-meta */
 	u32	standalone:1;	/* --standalone: treat comps as standalone */
+	u32	sameComp:1;	/* --same-component */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
@@ -37,6 +38,7 @@ private struct {
 	char	**notusers;	/* lines list of users to exclude */
 	char	**inc;		/* list of globs for files to include */
 	char	**exc;		/* list of globs for files to exclude */
+	char	*dspecfile;	/* name the file where the dspec is */
 
 	RANGE	rargs;
 	FILE	*fmem;		/* in-mem output buffering */
@@ -89,6 +91,8 @@ changes_main(int ac, char **av)
 	longopt	lopts[] = {
 		{ "no-meta", 300 },		/* don't show meta files */
 		{ "html", 301 },		/* old -h */
+		{ "same-component", 302 },
+		{ "dspec-file;", 303 },		/* let user pass in dspec */
 		{ "standalone", 'S' },		/* treat comps as standalone */
 		{ 0, 0 }
 	};
@@ -105,7 +109,7 @@ changes_main(int ac, char **av)
 	while ((c =
 	    getopt(ac, av, "1aBc;Dd;efi;kLmnPqRr;StTu;U;Vv/;x;",
 		lopts)) != -1) {
-		unless (c == 'L' || c == 'R' || c == 'D') {
+		unless (c == 'L' || c == 'R' || c == 'D' || c == 302) {
 			nav = bk_saveArg(nav, av, c);
 		}
 		switch (c) {
@@ -120,7 +124,10 @@ changes_main(int ac, char **av)
 			if (range_addArg(&opts.rargs, optarg, 1)) usage();
 			break;
 		    case 'D': opts.urls = opts.showdups = 0; break;
-		    case 'd': opts.dspec = strdup(optarg); break;
+		    case 'd':
+			if (opts.dspec) usage();
+			opts.dspec = strdup(optarg);
+			break;
 		    case 'e': opts.noempty = !opts.noempty; break;
 		    case 'f': opts.forwards = 1; break;
 		    case 301: opts.html = 1; opts.urls = 0; break;
@@ -165,7 +172,26 @@ changes_main(int ac, char **av)
 		    case 300: /* --no-meta */
 		    	opts.noMeta = 1;
 			break;
+		    case 302: /* --same-component */
+			opts.sameComp = 1;
+			break;
+		    case 303: /* --dspec-file */
+			opts.dspecfile = optarg;
+			break;
 		    default: bk_badArg(c, av);
+		}
+	}
+	if (opts.dspecfile) {
+		if (opts.dspec) {
+			fprintf(stderr,
+			    "changes: cannot combine dspec and dspecfile\n");
+			return (1);
+		}
+		unless (opts.dspec = loadfile(opts.dspecfile, 0)) {
+			fprintf(stderr,
+			    "changes: cannot load file \"%s\"\n",
+			    opts.dspecfile);
+			return (1);
 		}
 	}
 	opts.filt = opts.BAM || opts.inc || opts.exc;
@@ -173,7 +199,7 @@ changes_main(int ac, char **av)
 	/* ERROR check options */
 	/* XXX: could have rev range limit output -- whose name space? */
 	if ((opts.local || opts.remote) && opts.rargs.rstart) usage();
-	if (proj_isProduct(0)) {
+	if (proj_isEnsemble(0)) {
 		if (opts.verbose && !opts.prodOnly) opts.doComp = 1;
 		if (opts.filt && !opts.doComp && !opts.BAM) {
 			opts.doComp = opts.prodOnly = 1;
@@ -323,7 +349,18 @@ changes_main(int ac, char **av)
 		}
 		pid2 = mkpager();
 		putenv("BK_PAGER=cat");
-		opts.chgurl = 1; /* ignore local repo */
+		unless (opts.sameComp) {
+			/*
+			 * Tell changes not to add ROOTKEY=proj_rootkey() to
+			 * the URL when talking to the remote bkd.
+			 * This is used for 'bk changes URL' so the CWD
+			 * doesn't change the output.
+			 *
+			 * --same-component can be used to keep this behavior
+			 * this is used in collapse
+			 */
+			opts.chgurl = 1; /* ignore local repo */
+		}
 		EACH(urls) {
 			if (opts.urls) {
 				printf("==== changes %s ====\n", urls[i]);

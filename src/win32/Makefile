@@ -1,4 +1,4 @@
-all: svcmgr diffutils patch msys bkscc bkshellx
+all: svcmgr diffutils patch msys populate
 	cd pub/winctl && unset MAKEFLAGS && make
 
 .PHONY: clean
@@ -7,7 +7,6 @@ clean:
 	for sub in svcmgr pub/blat pub/winctl pub/diffutils pub/patch; \
 	do	$(MAKE) -C $$sub clean; \
 	done
-	$(RM) -r dll
 else
 clean:
 endif
@@ -34,9 +33,8 @@ msys: ./msysver.sh FORCE
 	-MSYSVER=`./msysver.sh`; \
 	if [ -n "$$MSYSVER" -a -f "$$MSYSVER" ]; \
 	then	tar -C$(MSYSBIN) -xpzf $$MSYSVER; \
-	else	test -d msys || bk here add MSYS || bk components add \
-		-@ -@bk://data.bitmover.com$$_BUILD_PORT/bk \
-		MSYS; \
+	else	test -d msys || bk here add MSYS || \
+		bk here add -@bk://data.bitmover.com$_BUILD_PORT/bk MSYS; \
 		(cd msys && bk -Ugr bk get -S); \
 		(cd msys; bk sfiles -Ug) | \
 			tar -Cmsys -cf- -T- | \
@@ -50,19 +48,10 @@ msys: ./msysver.sh FORCE
 	fi
 	rm -f $(MSYSBIN)/bin/rxvt.exe
 
-bkshellx: FORCE
-	[ -d dll ] || mkdir dll
-	test -d dll/shellx || bk here add WIN32_DLL || bk components add \
-		-@ -@bk://data.bitmover.com$$_BUILD_PORT/bk \
-		WIN32_DLL
-	cd dll/shellx; bk -Ur get -Sq
-
-bkscc: FORCE
-	[ -d dll ] || mkdir dll
-	test -d dll/scc || bk here add WIN32_DLL || bk components add \
-		-@ -@bk://data.bitmover.com$$_BUILD_PORT/bk \
-		WIN32_DLL
-	cd dll/scc; bk -Ur get -Sq
+populate: FORCE
+	bk here add WIN32_DLL || \
+	  bk here add -@bk://data.bitmover.com$$_BUILD_PORT/bk WIN32_DLL
+	bk -U^G -sWIN32_DLL get -Sq
 
 install: all blat data/bk.ico
 	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi

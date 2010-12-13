@@ -4,7 +4,7 @@
 bk repocheck \- check repository for consistency
 .SH SYNOPSIS
 .B bk repocheck
-.[B] \-q
+.[B] \-qS
 .SH DESCRIPTION
 .LP
 .B "bk repocheck"
@@ -28,6 +28,12 @@ and as such, it prints out the check command being run before running it.
 .TP \-q
 .B \-q
 Run quietly.
+.TP \-S
+.B \-S
+Just check the current repo.  
+This has no effect in a traditional standalone repository,
+but in a nested collection, this will check just the current repository,
+not the entire nested collection.
 .\".SH EXIT STATUS
 .\"XXX - list error codes here.
 .SH SEE ALSO

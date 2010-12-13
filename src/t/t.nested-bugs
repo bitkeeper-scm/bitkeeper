@@ -10,13 +10,13 @@ bk here set $Q .
 cd ../clone/gcc
 echo foo > foo
 bk new $Q foo
-bk commit $Q -yfoo
+bk commit -S $Q -yfoo
 cd ..
 bk commit $Q -yfoo
 cd ../clone2/gcc
 echo bar > bar
 bk new $Q bar
-bk commit $Q -ybar
+bk commit -S $Q -ybar
 cd ..
 bk commit $Q -ybar
 echo OK
@@ -64,11 +64,11 @@ bk clone $Q -sALL repoA repoB
 cd repoA/comp1
 echo hi > new
 bk new $Q new
-bk commit $Q -ynew
+bk commit -S $Q -ynew
 cd ../comp2
 echo hh > new2
 bk new $Q new2
-bk commit $Q -ynew2
+bk commit -S $Q -ynew2
 cd ..
 bk commit $Q -ystuff
 

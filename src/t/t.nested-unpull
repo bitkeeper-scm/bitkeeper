@@ -5,8 +5,8 @@ bk clone $Q parent child
 cd "$HERE"/parent
 touch afile gcc/afile gdb/afile
 bk new $Q -y. afile gcc/afile gdb/afile
-(cd gcc && bk commit $Q -y.)
-(cd gdb && bk commit $Q -y.)
+(cd gcc && bk commit -S $Q -y.)
+(cd gdb && bk commit -S $Q -y.)
 bk commit $Q -y.
 cd "$HERE"/child
 bk pull $Q || fail  first pull failed
@@ -30,6 +30,6 @@ bk portal $Q .
 cd gcc
 bk port $Q "$HERE"/gcc-detached || fail
 # now unpull
-bk unpull $Q -f . || fail unpull should have worked
+bk unpull $Q -Sf || fail unpull should have worked
 test -z "`bk changes  -qaL`" || fail
 echo OK

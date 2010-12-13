@@ -3,7 +3,7 @@ cd "$HERE"
 nested gate
 bk setup -C -f doc
 bk setup -C -f man
-bk commit $Q -SNOTOOLS -y"no tools"
+bk commit $Q --tag=NOTOOLS -y"no tools" || fail -f OUT
 bk setup -C -f tools
 bk alias set -C GCC gcc tools
 bk alias set -C GDB gdb tools
@@ -19,11 +19,11 @@ bk clone -sGCC $Q gate child-1
 cd "$HERE/gate/gcc"
 touch afile
 bk new $Q afile
-bk commit $Q -y.
+bk commit -S $Q -y.
 cd ../gdb
 touch afile
 bk new $Q afile
-bk commit $Q -y.
+bk commit -S $Q -y.
 cd ..
 bk commit $Q -y.
 cd "$HERE"
@@ -90,7 +90,7 @@ cd gcc-and-doc/gcc
 bk edit $Q afile
 echo content >afile
 bk ci -y. $Q afile
-bk commit -y. $Q
+bk commit -S -y. $Q
 bk -P commit -y. $Q
 cd "$HERE/just-gcc"
 bk pull --safe $Q ../gcc-and-doc 2>ERR || fail
@@ -111,7 +111,7 @@ cd repo-1/gcc
 bk edit $Q afile
 echo more stuff > afile
 bk ci $Q -y. afile
-bk commit $Q -y.
+bk commit -S $Q -y.
 bk -P commit $Q -y.
 # change the meaning of GCC in repo-2
 cd "$HERE/repo-2"

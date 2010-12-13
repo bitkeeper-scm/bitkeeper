@@ -10,7 +10,7 @@ bk clone $Q project pull-targ || fail
 cd project
 for c in gcc gdb
 do
-	(cd $c; echo hi > file; bk new $Q file; bk commit $Q -yhi)
+	(cd $c; echo hi > file; bk new $Q file; bk commit -S $Q -yhi)
 done
 bk commit $Q -yhi || fail 2
 cd ..

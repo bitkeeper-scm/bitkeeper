@@ -550,7 +550,7 @@ mkComps(Opts *opts)
 		cmd = addLine(cmd, aprintf("--cd=%s", repo));
 		cmd = addLine(cmd, strdup("csetprune"));
 		cmd = addLine(cmd, strdup("-I../" WA2PROD));
-		cmd = addLine(cmd, aprintf("-atN%s", opts->quiet));
+		cmd = addLine(cmd, aprintf("-atNS%s", opts->quiet));
 		cmd = addLine(cmd, aprintf("-r%s", opts->ptip));
 		cmd = addLine(cmd, aprintf("-k%s", opts->random));
 		cmd = addLine(cmd, aprintf("-w%s", opts->rootlog));
@@ -755,7 +755,7 @@ doAttach(Opts *opts)
 			}
 		}
 		if (nLines(opts->attach) &&
-		    systemf("bk commit -%sy'attaching new components'",
+		    systemf("bk commit -S -%sy'attaching new components'",
 		    opts->quiet)) {
 			goto err;
 		}
@@ -777,7 +777,7 @@ commitPending(Opts *opts)
 	// as this sfiles the whole blasted nested collection.
 	verbose((stderr, "commit any pending gone\n"));
 	/* If seeing a long pause here, put back noise. */
-	if (system("bk --each-repo commit -qy'partition gone'")) {
+	if (system("bk commit -sALL -qy'partition gone'")) {
 		goto err;
 	}
 	ret = 0;

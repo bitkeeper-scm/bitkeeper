@@ -22,7 +22,7 @@ do
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i
 done
-bk commit $Q -y"Add $i to file$i"
+bk commit -S $Q -y"Add $i to file$i"
 cd "$HERE/project" && bk commit $Q -y"Commit cset in gcc"
 cd "$HERE/project/gdb"
 for i in 1 2 3 4 5
@@ -30,7 +30,7 @@ do
 	touch file$i
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i
-	bk commit $Q -y"add file $i"
+	bk commit -S $Q -y"add file $i"
 done
 cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
 echo OK
@@ -176,11 +176,11 @@ for i in 1 2
 do	cd path/to/libc
 	touch FILE$i
 	bk new $Q FILE$i
-	bk commit $Q -y$i
+	bk commit -S $Q -y$i
 	cd ../../../junk
 	touch FILE$i
 	bk new $Q FILE$i
-	bk commit $Q -y$i
+	bk commit -S $Q -y$i
 	cd ..
 	bk commit $Q -y$i
 done
@@ -242,7 +242,7 @@ cd ..
 bk clone -s./gdb $Q project-nm project-just-gdb || exit 1
 cd project-just-gdb
 bk alias -k here > GOT
-(cd gdb; echo PRODUCT; bk id) > WANT
+(cd gdb; echo PRODUCT; bk id -S) > WANT
 cmpfiles GOT WANT
 bk alias set DEFAULT ./gdb || exit 1
 bk alias set $Q here DEFAULT || exit 1
@@ -331,7 +331,7 @@ bk here add $Q ./junk || {
 test -d junk || exit 1
 bk here add $Q || exit 1
 bk alias -k here | bk _sort > GOT
-(echo PRODUCT; cd junk; bk id) | bk _sort > WANT
+(echo PRODUCT; cd junk; bk id -S) | bk _sort > WANT
 cmpfiles GOT WANT
 echo OK
 
@@ -355,7 +355,7 @@ echo @alias2
 echo alias3
 echo alias3
 echo @alias3
-(cd gcc; bk id)
+(cd gcc; bk id -S)
 ) >> BitKeeper/etc/aliases
 bk delta $Q -ywhatever BitKeeper/etc/aliases
 bk alias -e alias1 > GOT 2>&1 || {
@@ -377,7 +377,7 @@ echo @alias2
 echo alias3
 echo @alias3
 echo alias1
-(cd gcc; bk id)
+(cd gcc; bk id -S)
 ) >> BitKeeper/etc/aliases
 bk delta $Q -ywhatever BitKeeper/etc/aliases
 bk alias -e alias1 2> ERR && {
@@ -512,9 +512,9 @@ echo $N Test creating aliases in a sparse tree ......................$NL
 bk commit $Q -y'aliases'
 (
 cd gcc
-bk id
+bk id -S
 cd ../gdb
-bk id
+bk id -S
 ) | bk _sort > ../WANT
 cd "$HERE"
 bk clone $Q -s. project sparse || exit 1
@@ -533,23 +533,15 @@ echo $N Test creating files in the place of missing aliases .........$NL
 cd "$HERE"/project-gcc
 mkdir gdb
 echo hi > gdb/foo
-bk new $Q gdb/foo || exit 1
-bk commit -ybadfile $Q 2>ERR && {
-	echo should have failed
-	cat ERR
-	exit 1
-}
-grep -q "check: gdb/foo conflicts with component at gdb" ERR || exit 1
+bk new $Q gdb/foo || fail
+bk commit -S -ybadfile $Q 2>ERR && fail -f ERR should have failed
+grep -q "check: gdb/foo conflicts with component at gdb" ERR || fail
 
 cd gcc
 mkdir nm
 echo hi > nm/foo
 bk new $Q nm/foo || exit 1
-bk commit -ybadfile $Q  2>ERR && {
-	echo should have failed
-	cat ERR
-	exit 1
-}
+bk commit -S -ybadfile $Q  2>ERR && fail -f ERR should have failed
 grep -q "check: nm/foo conflicts with component at nm" ERR || exit 1
 echo OK
 

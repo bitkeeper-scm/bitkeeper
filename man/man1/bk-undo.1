@@ -5,7 +5,7 @@
 bk undo \- Undo a changeset or set of changesets
 .SH SYNOPSIS
 .B bk undo
-.[B] \-fqsv
+.[B] \-fqSsv
 .[OPTreq] \-a rev
 .[OPTreq] \-r rev
 .SH DESCRIPTION
@@ -52,7 +52,7 @@ The
 command can take an optional argument which specifies an alternate
 patch to reapply.
 .SH OPTIONS
-.TP \-P\*<patch\*>
+.TP "\\fB\\-\\-standalone \\fP"
 .OPTreq \-a rev
 Remove all changesets which occurred after 
 .ARG rev .
@@ -76,6 +76,15 @@ must be of the form r1,r2,r3, etc. and can be either the
 changeset number or the changeset key.  See
 .B bk help terms
 for more information.
+.if \n[NESTED] \{\
+.tp
+.B \-S
+.tp
+.B \-\-standalone
+Just undo the current component.
+In a nested collection, this rolls back just the current component
+and not the entire nested collection.
+\}
 .tp
 .B \-s
 Do not save undone changes as a patch.

@@ -42,13 +42,21 @@ collapse_main(int ac, char **av)
 	char	*after = 0;
 	char	*revlist = 0;
 	int	edit = 0, merge = 0, fromurl = 0;
+	int	standalone = 0;
 	char	**nav = 0;
 	char	*url = 0;
 	char	buf[MAXLINE];
+	longopt	lopts[] = {
+		{ "no-save", 310 },
+
+		/* aliases */
+		{ "standalone", 'S' },
+		{ 0, 0 }
+	};
 
 	me = "collapse";
 	flags = 0;
-	while ((c = getopt(ac, av, "@|a:delmPr:qs", 0)) != -1) {
+	while ((c = getopt(ac, av, "@|a:delmPqr:Ss|", lopts)) != -1) {
 		/*
 		 * Collect options for running collapse in components.
 		 * lm sez: unless we are going to try and replay a
@@ -74,11 +82,19 @@ collapse_main(int ac, char **av)
 		    case 'r':
 			if (revlist) usage(); revlist = optarg; break;
 		    case 'q': flags |= SILENT; break;
-		    case 's': flags |= COLLAPSE_NOSAVE; break;
+		    case 'S': standalone = 1; break;
+		    case 's':  /* reserved for --subset */
+			fprintf(stderr,
+			    "%s: -s was renamed to --no-save\n", prog);
+			usage();
+		    case 310: // --no-save
+			 flags |= COLLAPSE_NOSAVE;
+			 break;
 		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind]) usage();
+	bk_nested2root(standalone);
 	if (proj_isComponent(0)) {
 		if (nested_isGate(0)) {
 gaterr:			fprintf(stderr, "collapse: not allowed in a gate\n");
@@ -142,7 +158,8 @@ gaterr:			fprintf(stderr, "collapse: not allowed in a gate\n");
 			url = parent_normalize(parents[1]);
 			freeLines(parents, free);
 		}
-		sprintf(buf, "bk changes -r+ -qnd:MD5KEY: '%s'", url);
+		sprintf(buf,
+		    "bk changes --same-component -r+ -Sqnd:MD5KEY: '%s'", url);
 		f = popen(buf, "r");
 		after = fgetline(f);
 		if (after) after = strdup(after);
@@ -172,12 +189,17 @@ fix_main(int ac,  char **av)
 	sccs	*s;
 	int	c, i;
 	int	cset = 0, rc = 1;
+	int	standalone = 0;
 	char	*after = 0;
 	char	**nav = 0;
+	longopt	lopts[] = {
+		{ "standalone", 'S' },
+		{ 0, 0 }
+	};
 
 	me = "fix";
 	flags = COLLAPSE_FIX;
-	while ((c = getopt(ac, av, "a;cdPqs", 0)) != -1) {
+	while ((c = getopt(ac, av, "a;cdPqSs", lopts)) != -1) {
 		/*
 		 * Collect options for running collapse in components.
 		 */
@@ -190,6 +212,7 @@ fix_main(int ac,  char **av)
 		    case 'd': flags |= COLLAPSE_DELTAS; break;
 		    case 'P': flags |= COLLAPSE_PONLY; break;
 		    case 'q': flags |= SILENT; break;		/* undoc 2.0 */
+		    case 'S': standalone = 1; break;
 		    case 's': flags |= COLLAPSE_NOSAVE; break;
 		    default: bk_badArg(c, av);
 		}
@@ -198,6 +221,7 @@ fix_main(int ac,  char **av)
 	nav = addLine(nav, strdup("-e"));
 	if (cset) {
 		if (after) usage(); /* use collapse instead */
+		bk_nested2root(standalone);
 		s = sccs_csetInit(0);
 		rc = do_cset(s, 0, nav); /* this frees s */
 	} else {
@@ -232,6 +256,7 @@ do_cset(sccs *s, char *rev, char **nav)
 		fprintf(stderr, "%s: can't find repository root\n", me);
 		goto out;
 	}
+	cmdlog_lock(CMD_NESTED_WRLOCK|CMD_WRLOCK);
 	unless (rev) {
 		unless (d = parent_of_tip(s)) goto out;
 		rev = d->rev;
@@ -346,7 +371,7 @@ do_cset(sccs *s, char *rev, char **nav)
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("collapse"));
 			EACH_INDEX(nav, j) vp = addLine(vp, strdup(nav[j]));
-			vp = addLine(vp, aprintf("-a%s", c->lowerkey));
+			vp = addLine(vp, aprintf("-Sa%s", c->lowerkey));
 			vp = addLine(vp, 0);
 			unless (flags & SILENT) {
 				printf("#### %c%s in %s ####\n",

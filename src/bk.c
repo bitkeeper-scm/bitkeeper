@@ -33,7 +33,6 @@ private	char	cmdlog_buffer[MAXPATH*4];
 private	int	cmdlog_flags;
 private	int	cmdlog_locks;
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
-private	int	hasArgs(char **av);
 private	void	showproc_start(char **av);
 private	void	showproc_end(char *cmdlog_buffer, int ret);
 
@@ -414,10 +413,11 @@ baddir:						fprintf(stderr,
 			}
 			each_repo = 0;
 
-			// -s|-sHERE|-s. is fine.
+			// -s|-sHERE|-s.|-sPRODUCT are fine.
 			EACH(aliases) {
 				unless (streq(aliases[i], ".") ||
-				    strieq(aliases[i], "HERE")) {
+				    strieq(aliases[i], "HERE") ||
+				    strieq(aliases[i], "PRODUCT")) {
 					fprintf(stderr,
 					    "bk -s: illegal alias used in "
 					    "traditional repository:\n\t%s\n",
@@ -435,6 +435,7 @@ baddir:						fprintf(stderr,
 				nav = addLine(nav, strdup(av[i]));
 			}
 			ret = nested_each(!headers, nav, aliases);
+			freeLines(aliases, free);
 			goto out;
 		}
 		if (locking) {
@@ -496,6 +497,7 @@ bad_locking:				fprintf(stderr,
 				sopts = addLine(sopts,
 				    aprintf("--relpath=%s", start_cwd));
 				ret = nested_each(!headers, sopts, aliases);
+				freeLines(aliases, free);
 				goto out;
 			} else if (from_iterator) {
 				ret = 0;
@@ -848,30 +850,15 @@ bk_cleanup(int ret)
 private	struct {
 	char	*name;
 	int	flags;
-#define	CMD_BYTES		0x00000001	/* log command byte count */
-#define	CMD_WRLOCK		0x00000002	/* write lock */
-#define	CMD_RDLOCK		0x00000004	/* read lock */
-#define	CMD_REPOLOG		0x00000008	/* log in repolog, all below */
-#define	CMD_QUIT		0x00000010	/* mark quit command */
-#define	CMD_NOREPO		0x00000020	/* don't assume in repo */
-#define	CMD_NESTED_WRLOCK	0x00000040	/* nested write lock */
-#define	CMD_NESTED_RDLOCK	0x00000080	/* nested read lock */
-#define	CMD_SAMELOCK		0x00000100	/* grab a repolock that matches
-						 * the nested lock we have */
-#define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
-#define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
-#define	CMD_LOCK_PRODUCT	0x00000800	/* lock product, not comp */
-#define	CMD_RDUNLOCK		0x00001000	/* unlock a previous READ */
 } repolog[] = {
-	{"abort",
-	    CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
+	{"abort", CMD_COMPAT_NOSI},
 	{"attach", 0},
 	{"bk", CMD_COMPAT_NOSI}, /* bk-remote */
 	{"check", CMD_COMPAT_NOSI},
 	{"clone", 0},		/* locking handled in clone.c */
-	{"collapse", CMD_WRLOCK|CMD_NESTED_WRLOCK},
-	{"commit", CMD_WRLOCK|CMD_NESTED_WRLOCK},
-	{"fix", CMD_WRLOCK|CMD_NESTED_WRLOCK},
+	{"collapse", 0},
+	{"commit", 0},
+	{"fix", 0},
 	{"get", CMD_COMPAT_NOSI},
 	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},
 	{"license", CMD_NOREPO},
@@ -896,17 +883,14 @@ private	struct {
 	{"remote wrlock", CMD_WRLOCK},
 	{"synckeys", CMD_RDLOCK},
 	{"tagmerge", CMD_WRLOCK|CMD_NESTED_WRLOCK},
-	{"undo", CMD_WRLOCK|CMD_NESTED_WRLOCK},
+	{"undo", 0},
 	{ 0, 0 },
 };
 
 void
 cmdlog_start(char **av, int bkd_cmd)
 {
-	int	i, len, do_lock = 1;
-	char	*repo1, *repo2, *nlid = 0;
-	char	*error_msg = 0;
-	project	*proj = 0;
+	int	i, len;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
@@ -917,18 +901,37 @@ cmdlog_start(char **av, int bkd_cmd)
 			break;
 		}
 	}
-
-	/*
-	 * When in http mode, each connection of push will be
-	 * obtaining a separate repository lock.  For a BAM push a
-	 * RESYNC dir is created in push_part2 and resolved at the end
-	 * of push_part3.  The lock created at the start of push_part3
-	 * needs to know that it is OK to ignore the existing RESYNC.
-	 */
-	if (getenv("_BKD_HTTP")) {
-		if (streq(av[0], "remote push part3")) {
-			putenv("_BK_IGNORE_RESYNC_LOCK=YES");
+	if (cmdlog_flags && proj_root(0)) {
+		/*
+		 * When in http mode, each connection of push will be
+		 * obtaining a separate repository lock.  For a BAM push a
+		 * RESYNC dir is created in push_part2 and resolved at the end
+		 * of push_part3.  The lock created at the start of push_part3
+		 * needs to know that it is OK to ignore the existing RESYNC.
+		 */
+		if (getenv("_BKD_HTTP") && streq(av[0], "remote push part3")) {
+			cmdlog_flags |= CMD_IGNORE_RESYNC;
 		}
+
+		/*
+		 * Remote clone from a component without already having a
+		 * nested lock means we're doing a populate, so skip
+		 * nested locking.
+		 */
+		if (proj_isComponent(0) && streq(av[0], "remote clone")) {
+			cmdlog_flags &= ~CMD_NESTED_RDLOCK;
+		}
+
+		/*
+		 * Port is another command that just works at a component
+		 * level, so we skip the nested locking.
+		 */
+		if (getenv("BK_PORT_ROOTKEY")) {
+			cmdlog_flags &= ~CMD_NESTED_RDLOCK;
+		}
+
+		if (bkd_cmd) cmdlog_flags |= CMD_BKD_CMD;
+		cmdlog_lock(cmdlog_flags);
 	}
 
 	for (len = 1, i = 0; av[i]; i++) {
@@ -938,8 +941,46 @@ cmdlog_start(char **av, int bkd_cmd)
 		strcat(cmdlog_buffer, av[i]);
 	}
 
-	unless (proj_root(0)) goto out;
+	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
 
+	if (bkd_cmd) {
+		char	*repoID = getenv("BK_REPO_ID");
+		if (repoID) cmdlog_addnote("rmtc", repoID);
+	}
+	if (bkd_cmd &&
+	    (!(cmdlog_flags & CMD_COMPAT_NOSI) || bk_hasFeature(FEAT_SAMv3))) {
+		/*
+		 * COMPAT: Old bk's don't expect a serverInfo block
+		 * before the error, but since we have the environment
+		 * here, we can just check what version of bk we're
+		 * talking to and either send the error before or
+		 * after the serverInfo block
+		 */
+		if (sendServerInfo((cmdlog_flags & CMD_NOREPO))) {
+			drain();
+			repository_unlock(0, 0);
+			exit(1);
+		}
+	}
+}
+
+/*
+ * Handle locking issues for commands.
+ * This is normally called automatically for commands out of
+ * cmdlog_start() above, but commands can call it directly if locking
+ * is conditional on factors not known yet.
+ *
+ * Global vars:  cmdlog_locks (read/write) cmdlog_flags (write)
+ */
+void
+cmdlog_lock(int flags)
+{
+	int	i, do_lock = 1;
+	char	*repo1, *repo2, *nlid = 0;
+	project	*proj = 0;
+	char	*error_msg = 0;
+
+	cmdlog_flags = flags;
 	/*
 	 * If we want a product lock (push/pull) and we're in a component,
 	 * pop up and grab the product's proj so we lock that one.  But
@@ -950,6 +991,8 @@ cmdlog_start(char **av, int bkd_cmd)
 		/* if in a product, act like a cd2product, as cmd will do it */
 		proj = proj_product(0);
 	}
+
+	/* used by "remote nested" */
 	if (cmdlog_flags & CMD_SAMELOCK) {
 		if (nlid = getenv("_NESTED_LOCK")) {
 			if (nested_mine(proj, nlid, 1)) {
@@ -999,7 +1042,8 @@ cmdlog_start(char **av, int bkd_cmd)
 		}
 	}
 
-	if (bkd_cmd && (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) &&
+	if ((cmdlog_flags & CMD_BKD_CMD) &&
+	    (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) &&
 	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = proj_repoID(proj))) {
 		i = streq(repo1, repo2);
 		if (i) {
@@ -1007,19 +1051,6 @@ cmdlog_start(char **av, int bkd_cmd)
 			if (getenv("BK_REGRESSION")) usleep(100000);
 			goto out;
 		}
-	}
-
-	/*
-	 * Special case for abort: if it has args it is a remote cmd so
-	 * don't lock. If it is called from bk, the enclosing command is
-	 * supposed to do the locking so don't lock either.
-	 *
-	 * This latter case applies to undo as well since it's called
-	 * from bk abort.
-	 */
-	if ((streq("abort", av[0]) && (hasArgs(av) || bk_isSubCmd)) ||
-	    (streq("undo", av[0]) && bk_isSubCmd)) {
-		do_lock = 0;
 	}
 
 	if (do_lock && (cmdlog_flags & CMD_WRLOCK)) {
@@ -1031,7 +1062,8 @@ cmdlog_start(char **av, int bkd_cmd)
 			putenv("_BK_IGNORE_RESYNC_LOCK=");
 		}
 		if (i) {
-			unless (bkd_cmd || !proj_root(proj)) {
+			unless ((cmdlog_flags & CMD_BKD_CMD) ||
+			    !proj_root(proj)) {
 				repository_lockers(proj);
 				if (proj_isEnsemble(proj)) {
 					nested_printLockers(proj, stderr);
@@ -1063,7 +1095,8 @@ cmdlog_start(char **av, int bkd_cmd)
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
 		if (i = repository_rdlock(proj)) {
-			unless (bkd_cmd || !proj_root(proj)) {
+			unless ((cmdlog_flags & CMD_BKD_CMD) ||
+			    !proj_root(proj)) {
 				repository_lockers(proj);
 				if (proj_isEnsemble(proj)) {
 					nested_printLockers(proj, stderr);
@@ -1091,20 +1124,7 @@ cmdlog_start(char **av, int bkd_cmd)
 	}
 	if (do_lock &&
 	    (cmdlog_flags & (CMD_NESTED_RDLOCK | CMD_NESTED_WRLOCK)) &&
-	    proj_isEnsemble(proj) &&
-	    /*
-	     * Remote clone from a component without already having a
-	     * nested lock means we're doing a populate, so skip
-	     * nested locking. Note that repository locking has
-	     * already been handled above.
-	     */
-	    !(proj_isComponent(proj) &&
-		strneq(cmdlog_buffer, "remote clone", 12)) &&
-	    /*
-	     * Port is another command that just works at a component
-	     * level, so we skip the nested locking.
-	     */
-	    !getenv("BK_PORT_ROOTKEY")) {
+	    proj_isEnsemble(proj)) {
 		if (nlid = getenv("_NESTED_LOCK")) {
 			TRACE("checking: %s", nlid);
 			unless (nested_mine(proj, nlid,
@@ -1141,37 +1161,16 @@ cmdlog_start(char **av, int bkd_cmd)
 		repository_unlock(0, 0);
 		cmdlog_locks &= ~CMD_RDLOCK;
 	}
-	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
-	if (bkd_cmd) {
-		char	*repoID = getenv("BK_REPO_ID");
-		if (repoID) cmdlog_addnote("rmtc", repoID);
-	}
 out:
-	if (bkd_cmd &&
-	    (!(cmdlog_flags & CMD_COMPAT_NOSI) || bk_hasFeature(FEAT_SAMv3))) {
-		/*
-		 * COMPAT: Old bk's don't expect a serverInfo block
-		 * before the error, but since we have the environment
-		 * here, we can just check what version of bk we're
-		 * talking to and either send the error before or
-		 * after the serverInfo block
-		 */
-		if (sendServerInfo((cmdlog_flags & CMD_NOREPO) || error_msg)) {
-			drain();
-			repository_unlock(proj, 0);
-			exit(1);
-		}
-	}
 	if (error_msg) {
 		error("%s", error_msg);
 		free(error_msg);
-		if (bkd_cmd) {
+		if (cmdlog_flags & CMD_BKD_CMD) {
 			drain();
 			repository_unlock(proj, 0);
 		}
 		exit (1);
 	}
-
 }
 
 private	MDBM	*notes = 0;
@@ -1294,6 +1293,7 @@ cmdlog_end(int ret, int bkd_cmd)
 
 		nlid = getenv("_NESTED_LOCK");
 		assert(nlid);
+		TRACE("nlid = %s", nlid);
 		if (ret && !streq(prog, "abort")) {
 			if (nested_abort(0, nlid)) {
 				error("%s", nested_errmsg());
@@ -1519,23 +1519,6 @@ launch_wish(char *script, char **av)
 	} else {
 		return (WEXITSTATUS(ret));
 	}
-}
-
-/*
- * It's an arg if it doesn't begin with '-' or is after '--'.
- */
-private	int
-hasArgs(char **av)
-{
-	int	i;
-
-	for (i = 1; av[i]; i++) {
-		if ((av[i][0] != '-') ||
-		    ((av[i][1] == '-') && !av[i][2] && av[i+1])) {
-			return (1);
-		}
-	}
-	return (0);
 }
 
 static	char	*prefix;

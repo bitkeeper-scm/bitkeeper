@@ -83,12 +83,12 @@ int	checking_rmdir(char *dir);
 #define	GET_HASHONLY	0x00002000	/* skip the file */
 #define	GET_DIFFS	0x00004000	/* get -D, regular diffs */
 #define	GET_BKDIFFS	0x00008000	/* get -DD, BK (rick's) diffs */
-#define	GET_HASHDIFFS	0x00000100	/* get -DDD, 0a0 hash style diffs */
+#define	GET_PERMS	0x00000100	/* extract perms for non gfile */
 #define	GET_SUM		0x00000200	/* used to force dsum in getRegBody */
 #define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
 #define	GET_LINENAME	0x00000800	/* get -O: prefix with line name */
 #define	GET_RELPATH	0x00000010	/* like GET_MODNAME but full relative */
-#define	GET_HASH	0x00000020	/* force hash file, ignore ~S_HASH */
+/* AVAILABLE		0x00000020	*/
 #define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
 #define	GET_COMMENTS	0x00000080	/* diffs -H: prefix diffs with hist */
 #define	DIFF_COMMENTS	GET_COMMENTS
@@ -1099,6 +1099,7 @@ int	trigger(char *cmd, char *when);
 void	cmdlog_start(char **av, int bkd_mode);
 void	cmdlog_addnote(char *key, char *val);
 int	cmdlog_end(int ret, int bkd_mode);
+void	cmdlog_lock(int flags);
 int	write_log(char *file, int rotate, char *format, ...)
 #ifdef __GNUC__
      __attribute__((format (__printf__, 3, 4)))
@@ -1370,6 +1371,7 @@ void	bk_badArg(int c, char **av)
 	__attribute__((noreturn))
 #endif
 ;
+int	bk_nested2root(int standalone);
 void	usage(void)
 #ifdef __GNUC__
 	__attribute__((noreturn))
@@ -1412,5 +1414,24 @@ extern	char	*title;
 
 #define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)
 #define	changesetKey(k) (strstr(k, "|ChangeSet|") != (char*)0)
+
+/*
+ * Locking flags for cmdlog_start() and cmdlog_lock()
+ */
+#define	CMD_BYTES		0x00000001	/* log command byte count */
+#define	CMD_WRLOCK		0x00000002	/* write lock */
+#define	CMD_RDLOCK		0x00000004	/* read lock */
+#define	CMD_REPOLOG		0x00000008	/* log in repolog, all below */
+#define	CMD_QUIT		0x00000010	/* mark quit command */
+#define	CMD_NOREPO		0x00000020	/* don't assume in repo */
+#define	CMD_NESTED_WRLOCK	0x00000040	/* nested write lock */
+#define	CMD_NESTED_RDLOCK	0x00000080	/* nested read lock */
+#define	CMD_SAMELOCK		0x00000100	/* grab a repolock that matches
+						 * the nested lock we have */
+#define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
+#define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
+#define	CMD_LOCK_PRODUCT	0x00000800	/* lock product, not comp */
+#define	CMD_RDUNLOCK		0x00001000	/* unlock a previous READ */
+#define	CMD_BKD_CMD		0x00002000	/* command comes from bkd.c */
 
 #endif	/* _SCCS_H_ */

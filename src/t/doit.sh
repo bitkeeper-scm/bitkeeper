@@ -531,7 +531,7 @@ init_main_loop()
 get_options()
 {
 	Q=-q
-	S=-s;
+	S=-q;
 	KEEP_GOING=NO
 	TESTS=0
 	PAUSE=NO

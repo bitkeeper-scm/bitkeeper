@@ -292,11 +292,19 @@ next:				freeLines(data, free);
 		goto out;
 	}
 	putenv("BK_NOLINKS=1");	/* XXX -u already does this */
+#ifdef WIN32
+	if (runas(data[1], "-u", 0)) {
+		fprintf(stderr, "upgrade: install failed\n");
+		goto out;
+	}
+
+#else
 	sprintf(buf, "./%s -u", data[1]);
 	if (system(buf)) {
 		fprintf(stderr, "upgrade: install failed\n");
 		goto out;
 	}
+#endif
 	unlink(data[1]);
 	rc = 0;
  out:

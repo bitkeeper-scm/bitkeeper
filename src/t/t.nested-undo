@@ -6,22 +6,18 @@ cd gcc
 test `bk changes -Sr+ -nd:REV:` = 1.1 || exit 1
 echo hi > file
 bk new $Q file || exit 1
-bk commit $Q -ynew || exit 1
+bk commit -S $Q -ynew || exit 1
 test `bk changes -Sr+ -nd:REV:` = 1.2 || exit 1
-bk undo $Q -fsr+ || exit 1
+bk undo $Q -Sfsr+ || fail
 test `bk changes -Sr+ -nd:REV:` = 1.1 || exit 1
 echo OK
 
 echo $N Now test component undo that is already committed ...........$NL
 echo hi > file
 bk new $Q file || exit 1
-bk commit $Q -ynew || exit 1
+bk commit -S $Q -ynew || exit 1
 bk -P commit $Q -yprod || exit 1
-bk undo $Q -fsr+ >ERR && {
-	echo should have failed
-	cat ERR
-	exit 1
-}
+bk undo $Q -Sfsr+ >ERR && fail -f ERR should have failed
 grep -q "can.t remove committed delta ChangeSet@1.2" ERR || {
 	echo wrong error message
 	cat ERR
@@ -49,7 +45,7 @@ echo $N Test undo where the HERE file becomes invalid ...............$NL
 cd ..
 echo hi > gcc/new
 bk new $Q gcc/new || exit 1
-(cd gcc; bk commit $Q -ynew)
+(cd gcc; bk commit -S $Q -ynew)
 bk commit $Q -ynew
 bk alias new GCC ./gcc || exit 1
 bk here add $Q GCC || exit !
@@ -107,7 +103,7 @@ bk alias set -C FOO ./gcc ./newcomp || exit 1
 cd newcomp
 echo hi > jj
 bk new $Q jj
-bk commit $Q -yjj
+bk commit -S $Q -yjj
 cd ..
 bk commit $Q -yjj
 bk alias set $Q HERE FOO || exit 1
@@ -127,12 +123,12 @@ bk alias set $Q HERE all || exit 1
 cd gdb
 echo hi > file
 bk new $Q file || fail
-bk commit $Q -ynewfile || fail
+bk commit -S $Q -ynewfile || fail
 bk -P commit $Q -ygdb || fail
 bk edit $Q file || fail
 echo bye > file
 bk ci $Q -ybye file || fail
-bk commit $Q -yupdatefile || fail
+bk commit -S $Q -yupdatefile || fail
 cd ..
 bk undo $Q -fsr+ 2>ERR && fail -f ERR should have failed
 grep -q 'undo: The component gdb includes pending csets that cannot be undone.' ERR || fail -f ERR

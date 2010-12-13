@@ -5456,7 +5456,7 @@ sccs_graph(sccs *s, delta *d, u8 *map, char **inc, char **exc)
 u8 *
 sccs_set(sccs *s, delta *d, char *iLst, char *xLst)
 {
-	int	junk;
+	int	junk = 0;
 
 	return (serialmap(s, d, iLst, xLst, &junk));
 }
@@ -6167,7 +6167,6 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 	if (flags & (PRINT|GET_SUM)) {
 		f = printOut;
 	} else {
-		/* With -G/somewhere/foo.c we need to check the gfile again */
 		if (flags & GET_NOREGET) flags |= SILENT;
 		if (WRITABLE_REG(s) && writable(s->gfile)) {
 			verbose((stderr, "Writable %s exists\n", s->gfile));
@@ -6367,11 +6366,9 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 	/* we're changing the meaning of the file, checksum would be invalid */
 	if (HASH(s)) {
 		if (flags & GET_NOHASH) flags &= ~NEWCKSUM;
-	} else {
-		if (flags & GET_HASH) flags &= ~NEWCKSUM;
 	}
 
-	if ((HASH(s) && !(flags & GET_NOHASH)) || (flags & GET_HASH)) {
+	if (HASH(s) && !(flags & GET_NOHASH)) {
 		hash = 1;
 		if (CSET(s)) hashFlags = DB_KEYFORMAT;
 		unless ((encoding & E_DATAENC) == E_ASCII) {
@@ -6690,62 +6687,6 @@ write:
 		if (DB) mdbm_close(DB);
 		return (1);
 	}
-
-	/* Win32 restriction, must do this before we chmod to read only */
-	if (d && (flags&GET_DTIME)){
-		char	*fname = (flags&PRINT) ? printOut : s->gfile;
-		int	doit = 1;
-		time_t	now;
-		struct	utimbuf ut;
-
-		/*
-		 * If we are doing a regular SCCS/s.foo -> foo get then
-		 * we set the gfile time iff we can set the sfile time.
-		 * This keeps make happy.
-		 */
-		ut.modtime = d->date - d->dateFudge;
-		unless (flags & PRINT) {
-			now = time(0);
-			if (ut.modtime > now) ut.modtime = now;
-			s->gtime = ut.modtime;
-			if (sccs_setStime(s, s->stime)) doit = 0;
-		}
-		ut.actime = ut.modtime;
-		if (doit && !streq(fname, "-") && (utime(fname, &ut) != 0)) {
-			char	*msg;
-
-			msg = aprintf("Cannot set mod time on %s:", fname);
-			perror(msg);
-			free(msg);
-			s->state |= S_WARNED;
-			goto out;
-		}
-	}
-
-	unless (hash && (flags&GET_HASHONLY)) {
-		int 	rc = 0;
-
-		if (flags&GET_EDIT) {
-			if (d->mode) {
-				rc = chmod(s->gfile, d->mode);
-			} else {
-				rc = chmod(s->gfile, 0666);
-			}
-		} else if (!(flags&PRINT)) {
-			if (d->mode) {
-				rc = chmod(s->gfile, d->mode & ~0222);
-			} else {
-				rc = chmod(s->gfile, 0444);
-			}
-		}
-		if (rc) {
-			fprintf(stderr,
-				"get_reg: cannot chmod %s\n", s->gfile);
-			perror(s->gfile);
-		}
-	}
-
-
 #ifdef X_SHELL
 	if (SHELL(s) && ((flags & PRINT) == 0)) {
 		char	*path = strdup(getenv("PATH"));
@@ -6798,8 +6739,8 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 	 * GET_SUM
 	 */
 #define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|GET_HEADER|\
-		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS|\
-		GET_HASH|GET_SEQ|GET_COMMENTS)
+		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS|\
+		GET_SEQ|GET_COMMENTS)
 	if (flags & BAD) {
 		fprintf(stderr,
 		    "get: bad flags on get for %s: %x\n", s->gfile, flags);
@@ -6843,44 +6784,6 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 			"gotten anyway.");
 		}
 	}
-	/* Win32 restriction, must do this before we chmod to read only */
-	if ((flags & GET_DTIME) && !(flags & PRINT)) {
-		time_t	now;
-		struct	utimbuf ut;
-		char	*msg;
-
-		/*
-		 * If we are doing a regular SCCS/s.foo -> foo get then
-		 * we set the gfile time iff we can set the sfile time.
-		 * This keeps make happy.
-		 */
-		ut.modtime = d->date - d->dateFudge;
-		now = time(0);
-		if (ut.modtime > now) ut.modtime = now;
-		s->gtime = ut.actime = ut.modtime;
-		assert(gfile);
-		if ((sccs_setStime(s, s->stime) == 0) &&
-		    (utime(gfile, &ut) != 0)) {
-			msg = aprintf("Cannot set mod time on %s:", gfile);
-			perror(msg);
-			free(msg);
-			s->state |= S_WARNED;
-			error = 1;
-		}
-	}
-	if (flags & GET_EDIT) {
-		if (d->mode) {
-			error = chmod(s->gfile, d->mode);
-		} else {
-			error = chmod(s->gfile, 0666);
-		}
-	} else if (!(flags & PRINT)) {
-		if (d->mode) {
-			error = chmod(s->gfile, d->mode & ~0222);
-		} else {
-			error = chmod(s->gfile, 0444);
-		}
-	}
 	if (error) {
 		fprintf(stderr, "get_bp: cannot chmod %s\n", s->gfile);
 		perror(s->gfile);
@@ -6917,7 +6820,7 @@ get_link(sccs *s, char *printOut, int flags, delta *d, int *ln)
 				"gotten anyway.");
 		}
 	}
-	if (flags & PRINT) {
+	if ((flags & PRINT) && !(flags & GET_PERMS)) {
 		int	ret;
 		FILE 	*out;
 
@@ -6960,6 +6863,7 @@ get_link(sccs *s, char *printOut, int flags, delta *d, int *ln)
 		unless (streq("-", f)) fclose(out);
 		*ln = 1;
 	} else {
+		mkdirf(f);
 		unless (symlink(d->symlink, f) == 0 ) {
 #ifdef WIN32
 			getMsg("symlink", s->gfile, '=', stderr);
@@ -7040,17 +6944,12 @@ err:		if (i2) free(i2);
 		if (tmp && i2 != tmp) free(tmp);
 	}
 	if (rev && streq(rev, "+")) rev = 0;
-	if (flags & GET_EDIT) {
+	if ((flags & (GET_EDIT|PRINT)) == GET_EDIT) {
 		d = sccs_getedit(s, &rev);
 		if (!d) {
 			fprintf(stderr, "get: can't find revision %s in %s\n",
 			    notnull(rev), s->sfile);
 			s->state |= S_WARNED;
-		}
-		if (flags & PRINT) {
-			fprintf(stderr, "get: can't combine edit and print\n");
-			s->state |= S_WARNED;
-			d = 0;
 		}
 	} else {
 		d = sccs_findrev(s, rev ? rev : "+");
@@ -7063,14 +6962,14 @@ err:		if (i2) free(i2);
 	}
 	unless (d) goto err;
 
-	if (flags & GET_EDIT) {
+	if ((flags & (GET_EDIT|PRINT)) == GET_EDIT) {
 		if (write_pfile(s, flags, d, rev, iLst, i2, xLst, mRev)) {
 			goto err;
 		}
 		locked = 1;
 	} 
 #define	NOGFILE	(PRINT | GET_SKIPGET | \
-		GET_HASHONLY | GET_DIFFS | GET_BKDIFFS | GET_HASHDIFFS)
+		GET_HASHONLY | GET_DIFFS | GET_BKDIFFS)
 	else if (HAS_PFILE(s) && !HAS_GFILE(s) && !(flags & NOGFILE)) {
 		pfile	pf;
 		int	rc;
@@ -7129,7 +7028,7 @@ err:		if (i2) free(i2);
 		if (BAM(s)) {
 			error = get_bp(s, printOut, flags, d, &lines, 0, 0);
 			break;
-		} 
+		}
 		error =
 		    get_reg(s, printOut, flags, d, &lines, i2? i2 : iLst, xLst);
 		break;
@@ -7148,10 +7047,54 @@ err:		if (i2) free(i2);
 	    default:
 		assert("bad error return in get" == 0);
 	}
+	/* Win32 restriction, must do this before we chmod to read only */
+	if (!S_ISLNK(d->mode) && (flags & GET_DTIME)) {
+		char	*fname = (flags&PRINT) ? printOut : s->gfile;
+		int	doit = 1;
+		time_t	now;
+		struct	utimbuf ut;
+
+		/*
+		 * If we are doing a regular SCCS/s.foo -> foo get then
+		 * we set the gfile time iff we can set the sfile time.
+		 * This keeps make happy.
+		 */
+		ut.modtime = d->date - d->dateFudge;
+		now = time(0);
+		if (ut.modtime > now) ut.modtime = now;
+		unless (flags & PRINT) {
+			s->gtime = ut.modtime;
+			if (sccs_setStime(s, s->stime)) doit = 0;
+		}
+		ut.actime = ut.modtime;
+		if (doit && !streq(fname, "-") && (utime(fname, &ut) != 0)) {
+			char	*msg;
+
+			msg = aprintf("Cannot set mod time on %s:", fname);
+			perror(msg);
+			free(msg);
+			s->state |= S_WARNED;
+			goto err;
+		}
+	}
+	if (!S_ISLNK(d->mode) &&
+	    ((flags & GET_PERMS) || !(flags & NOGFILE))) {
+		char	*fname = (flags&PRINT) ? printOut : s->gfile;
+		mode_t	mode;
+
+		mode = d->mode ? d->mode : 0666;
+		unless (flags & GET_EDIT) mode &= ~0222;
+
+		if (chmod(fname, mode)) {
+			fprintf(stderr,
+			    "get_reg: cannot chmod %s\n", fname);
+			perror(fname);
+		}
+	}
 	debug((stderr, "GET done\n"));
 
 skip_get:
-	if (flags & GET_EDIT) {
+	if ((flags & (GET_EDIT|PRINT)) == GET_EDIT) {
 		sccs_unlock(s, 'z');
 		s->state &= ~S_ZFILE;
 	}
@@ -7165,7 +7108,7 @@ skip_get:
 		if (xLst) {
 			fprintf(stderr, " exc: %s", xLst);
 		}
-		if (flags & GET_EDIT) {
+		if ((flags & (GET_EDIT|PRINT)) == GET_EDIT) {
 			fprintf(stderr, " -> %s", rev);
 		}
 		unless (flags & GET_SKIPGET) {
@@ -7269,7 +7212,6 @@ err:		return (-1);
 		s->state |= S_WARNED;
 		goto err;
 	}
-
 	error = get_reg(s, printOut, flags, 0, &lines, 0, 0);
 	if (error) return (-1);
 
@@ -7378,7 +7320,7 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 int
 sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 {
-	int	type = flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS);
+	int	type = flags & (GET_DIFFS|GET_BKDIFFS);
 	serlist *state = 0;
 	u8	*slist = 0;
 	ser_t	old = 0;
@@ -7429,37 +7371,6 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	free(tmppat);
 	openOutput(s, encoding, printOut, &out);
 	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
-	if (type == GET_HASHDIFFS) {
-		int	lines = 0;
-		int	f = PRINT;
-		int	hash = s->xflags & X_HASH;
-		int	set = d->flags & D_SET;
-		char	b[MAXLINE];
-
-		s->xflags |= X_HASH;
-		d->flags |= D_SET;
-		ret = get_reg(s, tmpfile, f|flags, 0, &lines, 0, 0);
-		unless (hash) s->xflags &= ~X_HASH;
-		unless (set) d->flags &= ~D_SET;
-		unless ((ret == 0) && (lines != 0)) {
-		    	goto done3;
-		}
-		unless (lbuf = fopen(tmpfile, "r")) {
-			perror(tmpfile);
-			ret = -1;
-			goto done2;
-		}
-		/* XXX: NOT YET fprintf(out, "I0 %u\n", lines); */
-		fprintf(out, "0a0\n");
-		while (fnext(b, lbuf)) {
-			fputs("> ", out);
-			fputs(b, out);
-		}
-		fclose(lbuf);
-		lbuf = NULL;
-		unlink(tmpfile);
-		goto done2;
-	}
 	unless (lbuf = fopen(tmpfile, "w+")) {
 		perror(tmpfile);
 		fprintf(stderr, "getdiffs: couldn't open %s\n", tmpfile);
@@ -7542,7 +7453,6 @@ done2:	/* for GET_HASHDIFFS, the encoding has been handled in get_reg() */
 		}
 		fclose(lbuf);
 	}
-done3:
 	if (flushFILE(out)) {
 		s->io_error = 1;
 		ret = -1; /* i/o error: no disk space ? */
@@ -14048,6 +13958,13 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	if (p < q) {
 		p++;
 		rev = strndup(p, len - (p-kw));
+		if ((rev[0] == '$') && isdigit(rev[1]) && !rev[2]) {
+			/* substitute for a $\d variable */
+			if (t = sccs_prsbuf(s, d, 0, rev)) {
+				free(rev);
+				rev = t;
+			}
+		}
 		if (streq(rev, "PARENT")) {
 			if (d) e = PARENT(s, d);
 		} else if (streq(rev, "MPARENT")) {
@@ -14280,6 +14197,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		/* branch */
 		for (p = d->rev; *p && *p != '.'; p++); /* skip release field */
 		for (p++; *p && *p != '.'; p++);	/* skip branch field */
+		unless (*p) return (nullVal);
 		for (p++; *p && *p != '.'; )
 			fc(*p++);
 		return (strVal);
@@ -14289,6 +14207,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		/* sequence */
 		for (p = d->rev; *p && *p != '.'; p++); /* skip release field */
 		for (p++; *p && *p != '.'; p++);	/* skip branch field */
+		unless (*p) return (nullVal);
 		for (p++; *p && *p != '.'; p++);	/* skip level field */
 		for (p++; *p; )
 			fc(*p++);
@@ -16252,59 +16171,44 @@ gca2(sccs *s, delta *left, delta *right)
 	return (d);
 }
 
-/* XXX: could be one pass through table to do everything.
- * instead it is more or less 5 pass:
- *   gca (from bigger of left and right until gca)
- *   lmap (all of table)
- *   rmap (all of table)
- *   gmap (all of table)
- *   (not walking table, but do set equation for all elements in set)
- *   compress (all of table)
+/*
+ * compute a delta +i -x represtation of a list of the gca deltas
  *
- * could do as one really intense and messy loop, or could do with
- * streams somehow
+ * A better interface would be to return the gca list and
+ * have 'get' work with a list:
+ * sccs_get(sccs *s, char **delta, ..)
+ * bk get -r<rev1>,<rev2>,<rev3> foo.c
  */
-
 private delta *
 gca3(sccs *s, delta *left, delta *right, char **inc, char **exc)
 {
 	delta	*ret = 0;
 	delta	*gca;
-	u8	*lmap, *rmap, *gmap;
-	ser_t	serial;
-	int	errp;
+	u8	*gmap = 0;
+	char	**glist, **list;
+	int	count;
 
 	*inc = *exc = 0;
 	unless (s && s->nextserial && left && right) return (0);
 
-	/* get three sets, fiddle with them, then compress */
-	gca = gca2(s, left, right);
-
-	errp = 0;
-	lmap = serialmap(s, left, 0, 0, &errp);
-	rmap = serialmap(s, right, 0, 0, &errp);
-	gmap = serialmap(s, gca, 0, 0, &errp);
-
-	if (errp || !lmap || !rmap || !gmap) goto bad;
-
-	/* Compute simple set gca: (left & right) | ((left | right) & gca) */
-	serial = (left->serial > right->serial)
-		? left->serial : right->serial;
-	for ( ; serial > 0; serial--) {
-		gmap[serial] = ((lmap[serial] && rmap[serial])
-			|| ((lmap[serial] || rmap[serial]) && gmap[serial]));
+	list = addLine(0, left);
+	list = addLine(list, right);
+	glist = range_gcalist(s, list);
+	freeLines(list, 0);
+	count = nLines(glist);
+	assert(count);
+	gca = (delta *)glist[1];
+	if (count > 1) {
+		gmap = (u8 *)calloc(s->nextserial, sizeof(u8));
+		graph_symdiff((delta *)glist, 0, gmap, 0, -1, SD_MERGE);
+		if (compressmap(s, gca, gmap, 0, (void **)inc, (void **)exc)) {
+			goto bad;
+		}
 	}
-
-	/* gmap was gca2 expanded.  It is now the set gca.
-	 * compress it to be -i and -x relative to gca2 result
-	 */
-
-	if (compressmap(s, gca, gmap, 0, (void **)inc, (void **)exc))  goto bad;
 	ret = gca;
 
-bad:	if (lmap) free (lmap);
-	if (rmap) free (rmap);
-	if (gmap) free (gmap);
+bad:	if (gmap) free (gmap);
+	freeLines(glist, 0);
 	return (ret);
 }
 

@@ -1933,6 +1933,21 @@ bk_badArg(int c, char **av)
 }
 
 /*
+ * Given the --standalone option moves to the root we are tracking
+ * and returns true if operating on whole nested collection.
+ */
+int
+bk_nested2root(int standalone)
+{
+	if ((!standalone && proj_isComponent(0) && proj_cd2product()) ||
+	    proj_cd2root()) {
+		fprintf(stderr, "%s: cannot find package root.\n", prog);
+		exit(1);
+	}
+	return (!standalone && proj_isProduct(0));
+}
+
+/*
  * Use after getopt() to have a command line that will repoduce the
  * same set of options.
  */

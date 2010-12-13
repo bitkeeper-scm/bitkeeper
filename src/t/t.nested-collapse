@@ -6,7 +6,7 @@ bk portal $Q -r
 cd gcc
 echo hi > gcc_file
 bk new $Q gcc_file || exit 1
-bk commit -yadd $Q || exit 1
+bk commit -S -yadd $Q || exit 1
 bk -P commit -yadd $Q || exit 1
 echo OK
 
@@ -20,7 +20,7 @@ echo OK
 
 echo $N Try to collapse top cset in committed component .............$NL
 bk changes -r+ -v  > WANT
-bk fix -c 2>ERR && {
+bk fix -Sc 2>ERR && {
 	echo should fail
 	cat ERR
 	exit 1
@@ -42,7 +42,7 @@ echo OK
 
 echo $N Now collapse top cset in component ..........................$NL
 cd gcc
-bk fix -c || exit 1
+bk fix -Sc || exit 1
 bk sfiles -x > GOT
 cat <<EOF > WANT
 ERR
@@ -59,13 +59,12 @@ echo OK
 echo $N Now run fix -c in product ...................................$NL
 # redo collapse
 bk ci $Q -i -c gcc_file
-bk commit $Q -YSCCS/c.ChangeSet || faile
+bk commit -S $Q -YSCCS/c.ChangeSet || fail
 bk _rm SCCS/c.ChangeSet
 cd ..
-bk commit $Q -YSCCS/c.ChangeSet || faile
+bk commit $Q -YSCCS/c.ChangeSet || fail
 bk _rm SCCS/c.ChangeSet
-
-bk fix -c $Q || fail
+bk --cd=gcc fix -c $Q || fail
 bk sfiles -p > GOT
 test -s GOT && fail
 cd gcc
@@ -93,7 +92,7 @@ do
 	cd $comp
 	echo "PRE-COLLAPSE $comp" > ${comp}_file
 	bk new $Q -y'pre-collapse' ${comp}_file
-	bk commit $Q -y"pre-collapse $comp"
+	bk commit -S $Q -y"pre-collapse $comp"
 	cd ..
 done
 bk commit $Q -y"pre-collapse product"
@@ -109,7 +108,7 @@ do
 	bk edit $Q ${comp}_file
 	echo "POST-COLLAPSE $comp" > ${comp}_file
 	bk ci $Q -y'post-collapse' ${comp}_file
-	bk commit $Q -y"post-collapse $comp"
+	bk commit -S $Q -y"post-collapse $comp"
 	cd ..
 done
 bk commit $Q -y"post-collapse product"
@@ -126,3 +125,25 @@ bk -e sfiles -cg > GOT
 cmpfiles GOT WANT
 echo OK
 
+echo $N Test collapse -@ in a component .............................$NL
+cd "$HERE"
+bk clone $Q project copy
+cd copy/gcc
+echo new2 > gcc_file
+bk new $Q -ynew2 gcc_file || fail
+KEY1=`bk changes -Sr+ -nd:KEY:`
+bk commit $Q -S -ynew2 || fail
+KEY2=`bk changes -Sr+ -nd:KEY:`
+
+bk _test -f SCCS/c.gcc_file && fail
+bk _test -f SCCS/c.ChangeSet && fail
+bk collapse $Q -Se@ || fail
+KEY3=`bk changes -Sr+ -nd:KEY:`
+
+test "$KEY1" = "$KEY3" || fail
+test "$KEY1" != "$KEY2" || fail
+
+echo new2 > WANT
+cmpsfiles WANT SCCS/c.gcc_file
+cmpsfiles WANT SCCS/c.ChangeSet
+echo OK

@@ -371,7 +371,7 @@ bk commit $Q -ycleanup
 bk clone $Q . ../oldproject
 touch poof
 bk new $Q poof
-bk commit $Q -SNEW -y'now you see it'
+bk commit $Q --tag=NEW -y'now you see it'
 bk rm -f BitKeeper/etc/gone
 bk _rm SCCS/s.poof
 bk -r check -aggg | bk gone $Q -

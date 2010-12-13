@@ -127,15 +127,17 @@ gnupatch_main(int ac, char **av)
 	FILE *pipe;
 	MDBM *db;
 
-	while ((c = getopt(ac, av, "ehTd|", 0)) != -1) { 
+	while ((c = getopt(ac, av, "d|ehpT", 0)) != -1) {
 		switch (c) {
+		    case 'd':
+			diff_style = notnull(optarg); break;
 		    case 'e':
 			expandkeywords = 1; break;		/* doc 2.1 */
 		    case 'h':					/* doc 2.0 */
 			header = 0; break; /* disable header */
+		    case 'p':
+			diff_style = "up"; break;
 		    case 'T':	fix_mod_time = 1; break;	/* doc 2.0 */
-		    case 'd':
-			diff_style = notnull(optarg); break;	/* doc 2.0 */
 		    default: bk_badArg(c, av);
 		}
 	}

@@ -36,7 +36,7 @@ cmd_nested(int ac, char **av)
 			error("%s", nested_errmsg());
 			return (1);
 		}
-		system("bk abort -qf 2>" DEVNULL_WR);
+		system("bk -?BK_NO_REPO_LOCK=YES abort -qf 2>" DEVNULL_WR);
 		out("@OK@\n");
 	} else {
 		/* fail */

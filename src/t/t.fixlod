@@ -34,7 +34,7 @@ if bk _test ! -f d2/SCCS/s.b; then echo failed to create files; exit 1; fi
 echo OK
 
 echo $N Commit the data .............................................$NL
-bk commit $S -SBASE -yCset
+bk commit $S --tag=BASE -yCset
 bk edit $Q d1/a || exit 1
 echo foo >> d1/a
 bk delta $Q -fy'new lod' d1/a || exit 1

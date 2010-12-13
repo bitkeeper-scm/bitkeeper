@@ -105,7 +105,7 @@ echo OK
 
 echo $N Local edits in alias file can be queried ....................$NL
 bk edit $Q BitKeeper/etc/aliases || fail
-(cd gcc; echo @FOO; bk id) >> BitKeeper/etc/aliases
+(cd gcc; echo @FOO; bk id -S) >> BitKeeper/etc/aliases
 cp BitKeeper/etc/aliases SAVE
 bk alias FOO > GOT || fail
 cat <<EOF > WANT

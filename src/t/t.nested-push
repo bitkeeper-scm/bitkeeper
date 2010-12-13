@@ -22,15 +22,15 @@ do
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i
 done
-bk commit $Q -y"Add $i to file$i"
-cd "$HERE/project" && bk commit $Q -y"Commit cset in gcc"
+bk commit -S $Q -y"Add $i to file$i"
+cd "$HERE/project" && bk commit -S $Q -y"Commit cset in gcc"
 cd "$HERE/project/gdb"
 for i in 1 2 3 4 5
 do
 	touch file$i
 	echo "stuff $i" > file$i
 	bk new $Q -y"add" file$i
-	bk commit $Q -y"add file $i"
+	bk commit -S $Q -y"add file $i"
 done
 cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
 echo OK
@@ -68,7 +68,7 @@ do
 	bk edit $Q file$i
 	echo "new stuff $i" >> file$i
 	bk delta $Q -y"modify" file$i
-	bk commit $Q -y"Add $i to file$i"
+	bk commit -S $Q -y"Add $i to file$i"
 done
 cd "$HERE/copy"
 bk commit $Q -y"more stuff to gcc"
@@ -136,7 +136,7 @@ do
 	bk edit $Q file$i
 	echo "new stuff $i" >> file$i
 	bk delta $Q -y"modify" file$i
-	bk commit $Q -y"Add $i to file$i"
+	bk commit -S $Q -y"Add $i to file$i"
 done
 cd "$HERE/copy"
 bk commit $Q -y"more stuff to gdb"
@@ -215,7 +215,7 @@ cd "$HERE/project/gdb"
 bk edit $Q file1 || fail
 echo "conflicts" >> file1
 bk ci $Q -y"conflict" file1
-bk commit $Q -y"make a conflict" || fail
+bk commit -S $Q -y"make a conflict" || fail
 cd "$HERE/project"
 bk commit $Q -y"make conflict" || fail
 bk bkd -q -d -aPORT -ikill || fail
@@ -340,7 +340,7 @@ bk setup -f newrepo || fail
 bk push $Q || fail
 # A successful push of newrepo should add newrepo's rootkey to the urllist.
 cd newrepo
-NEWREPO_ROOTKEY=`bk id`
+NEWREPO_ROOTKEY=`bk id -S`
 cd ..
 grep -q "$NEWREPO_ROOTKEY" BitKeeper/log/urllist || fail
 echo OK
@@ -359,7 +359,7 @@ for i in gdb libc
 do	(cd $i
 	echo whatever > NEW_FILE
 	bk new $Q NEW_FILE
-	bk commit $Q -yNEW_FILE
+	bk commit -S $Q -yNEW_FILE
 	)
 done
 bk commit $Q -yNEW_FILE
@@ -406,7 +406,7 @@ bk pull $Q ../solo || fail
 cd gdb
 touch newfile
 bk new $Q newfile
-bk commit $Q -ynewfile
+bk commit -S $Q -ynewfile
 cd ..
 bk commit $Q -ynewfile
 bk push $Q ../solo 2>ERR && fail -f ERR should fail
@@ -505,7 +505,7 @@ bk clone $Q . ../copy
 mv gcc gcc4
 bk edit $Q gcc4/ChangeSet
 _BK_MV_OK=1 bk delta $Q -y'rename' gcc4/ChangeSet
-bk commit $Q -y'rename component'
+bk commit $Q -S -y'rename component' || fail
 bk push $Q ../copy 2> ERR && {
 	echo fix test
 	exit 1
@@ -551,7 +551,7 @@ nested parent
 cd gcc
 echo `date` > afile
 bk new $Q afile
-bk commit $Q -yafile
+bk commit -S $Q -yafile
 bk -P commit $Q -yafile
 cd "$HERE"
 bk clone $Q parent child
@@ -560,13 +560,13 @@ cd "$HERE/parent/gcc"
 bk edit $Q afile
 echo new stuff > afile
 bk delta $Q -yafile-parent
-bk commit $Q -yafile-parent
+bk commit -S $Q -yafile-parent
 bk -P commit $Q -yafile-parent
 # add pending to child (that does not conflict)
 cd "$HERE/child/gcc"
 echo `date` > bfile
 bk new $Q bfile
-bk commit $Q  -ybfile
+bk commit -S $Q  -ybfile
 # push should fail (we have a pending)
 cd "$HERE/parent"
 bk push $Q ../child 2>ERR && fail -f ERR should have failed

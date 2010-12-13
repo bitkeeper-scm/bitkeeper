@@ -62,7 +62,7 @@ cd ./shallow
 mkdir deep
 touch deep/foobar.c
 bk new $Q deep/foobar.c || fail
-bk commit -y"add foobar.c" 2> ERR && fail
+bk commit -S -y"add foobar.c" 2> ERR && fail
 grep -q "conflicts with component at deep" ERR || fail -f ERR
 bk _rm -r deep || fail
 echo OK

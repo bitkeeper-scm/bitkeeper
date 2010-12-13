@@ -26,7 +26,7 @@ do
 		echo $i > file$i
 		bk new $Q file$i
 	done
-	bk commit $Q -y"add some files" || fail
+	bk commit -S $Q -y"add some files" || fail
 	cd ..
 done
 bk commit $Q -y"Added files to gcc & gdb" || fail
@@ -76,11 +76,11 @@ bk clone $Q project pending-rm
 cd pending-rm
 echo 'foo' > afile
 bk new $Q afile
-bk commit $Q -yprod
+bk commit -S $Q -yprod
 # now in the component
 echo 'foo' > gcc/afile
 bk new $Q gcc/afile
-bk --cd=gcc commit $Q -ygcc
+bk --cd=gcc commit -S $Q -ygcc
 bk commit $Q -ygcc
 # now leave a pending delete in gcc
 bk rm gcc/afile
@@ -286,7 +286,7 @@ echo OK
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 cd mynewgcc
 bk alias -k here | bk _sort > GOT
-(echo PRODUCT; cd gcc; bk id) | bk _sort > WANT
+(echo PRODUCT; cd gcc; bk id -S) | bk _sort > WANT
 cmpfiles GOT WANT
 echo OK
 
@@ -310,7 +310,7 @@ echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 bk alias -k here | bk _sort > GOT
-(echo PRODUCT; cd gcc; bk id; cd ../gdb; bk id) | bk _sort > WANT
+(echo PRODUCT; cd gcc; bk id -S; cd ../gdb; bk id -S) | bk _sort > WANT
 cmpfiles GOT WANT
 echo OK
 
@@ -332,7 +332,7 @@ echo $N Update a component now that it is here ......................$NL
 cd gdb
 bk edit $Q file1
 bk delta $Q -fyempty file1
-bk commit $Q -ytouch
+bk commit -S $Q -ytouch
 cd ..
 bk commit $Q -ytouch
 echo OK
@@ -360,7 +360,7 @@ test -d gdb && {
 	exit 1
 }
 bk alias -k here > GOT
-(echo PRODUCT; cd gcc; bk id) > WANT
+(echo PRODUCT; cd gcc; bk id -S) > WANT
 cmpfiles GOT WANT
 echo OK
 
@@ -429,7 +429,7 @@ do
 	bk edit $Q file$i
 	echo "stuff $i" > file$i
 	bk delta $Q -y"modify" file$i
-	bk commit $Q -y"Add $i to file$i"
+	bk commit -S $Q -y"Add $i to file$i"
 done
 cd ..
 bk commit $Q -y"more stuff to gcc"
@@ -736,7 +736,7 @@ test -d gdb || exit 1
 (cd gdb
 echo foo > foo
 bk new $Q foo
-bk commit $Q -yfoo
+bk commit -S $Q -yfoo
 )
 LIST=`bk comps -h`
 bk here rm $Q all 2>ERR && {
@@ -775,5 +775,19 @@ bk clone $Q -s./gdb -@project bk://$M/mynewgcc3 clonemod || fail
 cd clonemod || fail
 bk comps -h > GOT
 echo ./gdb > WANT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Demo clone --identical ......................................$NL
+cd "$HERE"
+bk clone $Q --identical -sHERE project testiden 2>/dev/null && fail
+bk clone $Q --identical project testiden || fail
+cd testiden
+cat <<EOF > WANT
+./gcc/deep
+ALL
+PRODUCT
+EOF
+bk here > GOT
 cmpfiles GOT WANT
 echo OK

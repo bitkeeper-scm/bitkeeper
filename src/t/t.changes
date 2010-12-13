@@ -20,10 +20,10 @@ BK_USER=adam bk delta $Q -i -y'Initial checkin' f
 BK_USER=adam bk commit $Q -y'Initial checkin' || exit 1
 bk edit $Q f
 BK_USER=second bk delta $Q -fy'Second checkin' f
-BK_USER=second bk commit $Q -Ssecond -y'Second checkin' || exit 1
+BK_USER=second bk commit $Q --tag=second -y'Second checkin' || exit 1
 bk edit $Q f
 BK_USER=third bk delta $Q -fy'Third checkin' f
-BK_USER=third bk commit $Q -Sthird -y'Third checkin' || exit 1
+BK_USER=third bk commit $Q --tag=third -y'Third checkin' || exit 1
 echo OK
 
 echo $N Check that -/search/ works ..................................$NL
@@ -824,9 +824,9 @@ do	cd ../copy
 	cd ../project
 	bk delta $Q -fyproject a
 done
-bk commit $Q -SPROJ -yproject
+bk commit $Q --tag=PROJ -yproject
 cd ../copy
-bk commit $Q -SCOPY -ycopy
+bk commit $Q --tag=COPY -ycopy
 bk pull $Q
 bk changes -v -rPROJ,COPY -nd:C: > GOT
 cat <<EOF > WANT
@@ -860,6 +860,15 @@ bk changes -av --no-meta > 2 || fail
 bk changes -q -av --no-meta . > 3 || fail
 cmp -s 2 3 || fail
 cmp -s 1 2 && fail
+echo OK
+
+echo $N Verify that --dspec-file loads a dspec ......................$NL
+bk changes -n --dspec-file=nonexist 2> GOT && fail -f GOT
+echo 'changes: cannot load file "nonexist"' > WANT
+echo :I: > dspec
+bk changes -n --dspec-file=dspec > GOT || fail
+bk changes -nd:I: > WANT
+cmpfiles WANT GOT
 echo OK
 
 # Setup a case where changes is hanging a remote repo with a read lock

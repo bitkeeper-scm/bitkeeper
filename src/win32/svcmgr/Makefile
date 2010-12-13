@@ -15,8 +15,10 @@ usage.h: usage.txt Makefile
 	perl -n -p -e 's/\\/\\\\/g;s/$$/\\n\\/' <"$<" >>"$@"
 	echo "\"" >>"$@"
 
-clobber clean:
-	-rm -f MSG*.bin *.obj *.exe *.dll *.lib *.exp *.res.o *.o
+clean:
+	-rm -f usage.h MSG*.bin *.obj *.exe *.dll *.lib *.exp *.res.o *.o
+
+clobber:
 	-bk clean
 
 %.res:  %.rc

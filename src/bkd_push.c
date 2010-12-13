@@ -279,9 +279,9 @@ bkd_doResolve(char *me, int verbose)
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
 	if (c = trigger("remote resolve",  "pre")) {
 		if (c == 2) {
-			system("bk abort -fp");
+			system("bk -?BK_NO_REPO_LOCK=YES abort -fp");
 		} else {
-			system("bk abort -f");
+			system("bk -?BK_NO_REPO_LOCK=YES abort -f");
 		}
 		return (1);
 	}
@@ -413,7 +413,7 @@ cmd_push_part3(int ac, char **av)
 			 * directly into the BAM pool so we won't resend when
 			 * they sort out the bad file.
 			 */
-			system("bk abort -f");
+			system("bk -?BK_NO_REPO_LOCK=YES abort -f");
 			goto done;
 		}
 	} else if (streq(buf, "@NOBAM@")) {

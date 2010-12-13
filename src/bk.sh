@@ -40,53 +40,54 @@ __cd2product() {
 # faster way to get repository status
 _repocheck() {
 	V=-v
-	case "X$1" in
-	    X-q)	V="";;
-	    X-*)	echo "Invalid option: $1"
-	    		echo "Usage: bk repocheck [-q]"
+	EACH=--each-repo
+	P=-P
+	while getopts qS opt
+	do
+		case "$opt" in
+		    q)	V="";;
+		    S)	EACH=""; P=-R;;
+		    X*)	echo "Invalid option: $1"
+	    		echo "Usage: bk repocheck [-Sq]"
 			printf "This checks repository integrity by running: "
-			echo "bk -s -r check -aBcv"
+			echo "bk -e -r check -aBcv"
 			echo Use -q to run quietly
+			echo "    -S only check current component"
 			exit 1;;
-	esac
-	test "X$3" != X && {
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	test "X$2" != X && {
 		echo "repocheck: too many arguments"
 		exit 1
 	}
-	test "X$2" != X && {
-		test -d "$2" || {
-			echo "$2 is not a directory"
+	test "X$1" != X && {
+		test -d "$1" || {
+			echo "$1 is not a directory"
 			exit 1
 		}
-		cd "$2" || exit 1
+		cd "$1" || exit 1
 	}
 	# check output goes to stderr, so put this to stderr too
-	test "X$V" != X && echo === Checking `bk -P pwd` === 1>&2
-	bk --each-repo -r check -aBc $V
+	test "X$V" != X && echo === Checking `bk $P pwd` === 1>&2
+	bk $EACH -r check -aBc $V
 }
 
 # shorthand to dig out renames
 _renames() {
-	standalone=0
+	standalone=""
 	while getopts Sr: opt
 	do
 		case "$opt" in
-		S)	standalone=1;;
+		S)	standalone="-S";;
 		r)	REV="$OPTARG";;
 		*)	bk help -s renames; exit 1;;
 		esac
 	done
+	test "$REV" || { bk help -s renames; exit 1; }
 	shift `expr $OPTIND - 1`
-	if [ $standalone -eq 1 ]
-	then
-		__cd2root
-		bk rset -h -r"$REV" | \
-		    awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
-	else
-		__cd2product
-		bk rset -Ph -r"$REV" | \
-		    awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
-	fi
+	bk rset $standalone -h -r"$REV" | \
+		awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
 }
 
 _repatch() {
@@ -1085,8 +1086,11 @@ _c2r() {	# undoc
 	bk prs -r"$REV" -hnd:REV: "$@"
 }
 
-# XXX old compat interface, use clone -@URL instead
+# The origial clonemod, replaced by 'bk clone -@base URL' now, but this
+# version is kept because it is still desirable for nested in some cases
+#
 _clonemod() {
+	CSETS=BitKeeper/etc/csets-in
 	Q=
 	while getopts q OPT
 	do	case $OPT in
@@ -1097,10 +1101,21 @@ _clonemod() {
 	shift `expr $OPTIND - 1`
 	if [ $# -ne 3 ]
 	then
-		echo "clonemod has been replaced by 'bk clone -@URL'" 1>&2
+		echo "usage: bk clonemod URL LOCAL NEW" 1>&2
 		exit 1
 	fi
-	bk clone $Q -@"$1" "$2" "$3"
+
+	bk clone -q "$2" "$3" || exit 1
+	cd "$3" || exit 1
+	bk parent -sq "$1" || exit 1
+	bk undo -q -fa`bk repogca` || exit 1
+	# remove any local tags that the above undo missed
+	bk changes -qafkL > $CSETS || exit 1
+	if [ -s "$CSETS" ]
+	then	bk unpull -sfq || exit 1
+	else	rm $CSETS || exit 1
+	fi
+	bk pull $Q -u || exit 1
 }
 
 # XXX undocumented alias from 3.0.4 

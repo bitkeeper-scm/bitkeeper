@@ -12,6 +12,7 @@ struct	range {
 #define	RANGE_SET	0x20	/* return S_SET */
 
 #define	WR_BOTH		0x01	/* keep RED and BLUE; callback on both */
+#define	WR_GCA		0x02	/* Callback only on the gca deltas */
 
 /*
  *  1.1 -- 1.2 -- 1.3 -- 1.4 -- 1.5
@@ -51,5 +52,8 @@ int	walkrevs_setFlags(sccs *s, delta *d, void *token);
 int	walkrevs_clrFlags(sccs *s, delta *d, void *token);
 int	walkrevs_printkey(sccs *s, delta *d, void *token);
 int	walkrevs_printmd5key(sccs *s, delta *d, void *token);
+int	walkrevs_addLine(sccs *s, delta *d, void *token);
+
+char	**range_gcalist(sccs *s, char **list);
 
 #endif

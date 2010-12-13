@@ -138,7 +138,7 @@ test -d SCCS && exit 1
 test -d BitKeeper/BAM -a ! -f BitKeeper/BAM/index.db || fail
 touch send-as-sfile send-as-deltas
 bk new $Q send-as-sfile send-as-deltas || fail
-bk commit $Q -SBASE -yfooze || fail
+bk commit $Q --tag=BASE -yfooze || fail
 bk push $Q ../copy
 bk push $Q ../copy.noremap
 touch newfile

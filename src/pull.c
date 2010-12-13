@@ -13,7 +13,7 @@ private struct {
 	u32	fullPatch:1;		/* -F force fullpatch */
 	u32	noresolve:1;		/* -R: don't run resolve at all */
 	u32	textOnly:1;		/* -T: pass -T to resolve */
-	u32	autoOnly:1;		/* -s: pass -s to resolve */
+	u32	autoOnly:1;		/* -s: pass --batch to resolve */
 	u32	debug:1;		/* -d: debug */
 	u32	update_only:1;		/* -u: pull iff no local csets */
 	u32	verbose:1;		/* -v: old verbose output */
@@ -50,8 +50,12 @@ pull_main(int ac, char **av)
 	char	*p, *prog;
 	char	**envVar = 0, **urls = 0;
 	longopt	lopts[] = {
-		{ "safe", 300 },	/* require all comps to be here */
-		{ "unsafe", 301 },	/* turn off safe above */
+		{ "batch", 310},	/* pass -s to resolve */
+		{ "safe", 320 },	/* require all comps to be here */
+		{ "unsafe", 330 },	/* turn off safe above */
+
+		/* aliases */
+		{ "standalone", 'S'},
 		{ 0, 0 }
 	};
 
@@ -63,7 +67,7 @@ pull_main(int ac, char **av)
 	}
 	opts.automerge = 1;
 	opts.safe = -1;	/* -1 == not set on command line */
-	while ((c = getopt(ac, av, "c:DdE:Fiqr;RstTuvw|z|", lopts)) != -1) {
+	while ((c = getopt(ac, av, "c:DdE:Fiqr;RsStTuvw|z|", lopts)) != -1) {
 		unless (c == 'r' || c >= 300) {
 			opts.av_pull = bk_saveArg(opts.av_pull, av, c);
 		}
@@ -77,7 +81,12 @@ pull_main(int ac, char **av)
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.rev = optarg; break;
 		    case 'R': opts.noresolve = 1; break;	/* doc 2.0 */
-		    case 's': opts.autoOnly = 1; break;
+		    case 's':
+			/* obsolete but we have to support it for scripts */
+			/* fall through to preferred form */
+		    case 310:   /* --batch */
+			opts.autoOnly = 1;
+			break;
 		    case 'T': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'F': opts.fullPatch = 1; break;	/* undoc 2.0 */
@@ -89,6 +98,10 @@ pull_main(int ac, char **av)
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
+		    case 'S':
+			fprintf(stderr,
+			    "%s: -S unsupported, try port.\n", prog);
+			exit(1);
 		    case 'u': opts.update_only = 1; break;
 		    case 'v': opts.verbose = 1; break;
 		    case 'w': opts.delay = atoi(optarg); break;	/* undoc 2.0 */
@@ -96,10 +109,10 @@ pull_main(int ac, char **av)
 			if (optarg) gzip = atoi(optarg);
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
 			break;
-		    case 300:	/* --safe */
+		    case 320:	/* --safe */
 			opts.safe = 1;
 			break;
-		    case 301:	/* --unsafe */
+		    case 330:	/* --unsafe */
 			opts.safe = 0;
 			break;
 		    default: bk_badArg(c, av);
@@ -907,7 +920,7 @@ pull(char **av, remote *r, char **envVar)
 		chdir(RESYNC2ROOT);
 		if (rc) {
 			fprintf(stderr, "BAM fetch failed, aborting pull.\n");
-			system("bk abort -f");
+			system("bk -?BK_NO_REPO_LOCK=YES abort -f");
 			exit(1);
 		}
 	}
@@ -928,9 +941,9 @@ pull(char **av, remote *r, char **envVar)
 			putenv("BK_STATUS=LOCAL TRIGGER FAILURE");
 			rc = 2;
 			if (i == 2) {
-				system("bk abort -fp");
+				system("bk -?BK_NO_REPO_LOCK=YES abort -fp");
 			} else {
-				system("bk abort -f");
+				system("bk -?BK_NO_REPO_LOCK=YES abort -f");
 			}
 			goto done;
 		}
@@ -1098,7 +1111,7 @@ resolve(void)
 	cmd[++i] = "resolve";
 	unless (opts.verbose) cmd[++i] = "-q";
 	if (opts.textOnly) cmd[++i] = "-T";
-	if (opts.autoOnly) cmd[++i] = "-s";
+	if (opts.autoOnly) cmd[++i] = "--batch";
 	if (opts.automerge) cmd[++i] = "-a";
 	if (opts.debug) cmd[++i] = "-d";
 	unless (opts.quiet) cmd[++i] = "--progress";

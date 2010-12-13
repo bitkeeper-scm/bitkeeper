@@ -20,10 +20,10 @@ BK_USER=adam bk delta -f $Q -i -y'Initial checkin' f
 BK_USER=adam bk commit $Q -y'Initial checkin' || exit 1
 bk edit $Q f
 BK_USER=second bk delta -f $Q -y'Second checkin' f
-BK_USER=second bk commit $Q -Ssecond -y'Second checkin' || exit 1
+BK_USER=second bk commit $Q --tag=second -y'Second checkin' || exit 1
 bk edit $Q f
 BK_USER=third bk delta -f $Q -y'Third checkin' f
-BK_USER=third bk commit $Q -Sthird -y'Third checkin' || exit 1
+BK_USER=third bk commit $Q --tag=third -y'Third checkin' || exit 1
 echo OK
 
 echo $N Test basic takepatch ........................................$NL
@@ -121,7 +121,7 @@ rm -fr project copy
 commercial project
 touch start-as-sfile send-as-deltas
 bk new $Q start-as-sfile send-as-deltas || exit 1
-bk commit $Q -SBASE -yfooze || exit 1
+bk commit $Q --tag=BASE -yfooze || exit 1
 cd ..
 bk clone $Q project copy || exit 1
 cd project
@@ -129,7 +129,7 @@ echo BAMBAM > BAM
 bk new $Q -b BAM || exit 1
 touch newfile
 bk new $Q newfile || exit 1
-bk commit $Q -SFIRST -y'new BAM and plain file' || exit 1
+bk commit $Q --tag=FIRST -y'new BAM and plain file' || exit 1
 bk mv start-as-sfile send-as-sfile
 bk edit $Q send-as-sfile send-as-deltas || exit 1
 # 9 is the internal baseline for largest that passes as a patch
@@ -137,7 +137,7 @@ for i in 1 2; do
 	bk delta $Q -l -f -ymkdeltas send-as-deltas send-as-sfile || exit 1
 done
 bk unedit $Q send-as-sfile send-as-deltas || exit 1
-bk commit $Q -SSECOND -y'deltas to existing files' || exit 1
+bk commit $Q --tag=SECOND -y'deltas to existing files' || exit 1
 bk makepatch $Q -rBASE..+ -M3 > ../PATCH3 || exit 1
 bk makepatch $Q -B -rBASE..+ -M3 > ../BPATCH3 || exit 1
 bk send $Q -rBASE..+ - > ../SEND || exit 1
@@ -349,7 +349,7 @@ bk commit $Q -y1.2
 cd ../branch
 touch 2 
 bk new $Q 2
-bk commit $Q -STAG -y1.1.1.1
+bk commit $Q --tag=TAG -y1.1.1.1
 cd ../trunk
 touch 3 
 bk new $Q 3

@@ -10,6 +10,7 @@
 typedef struct {
 	u32	quiet:1;
 	u32	resync:1;
+	u32	standalone:1;
 } c_opts;
 
 private int	do_commit(char **av, c_opts opts, char *sym,
@@ -18,15 +19,30 @@ private int	do_commit(char **av, c_opts opts, char *sym,
 int
 commit_main(int ac, char **av)
 {
-	int	c, doit = 0, force = 0;
+	int	i, c, doit = 0, force = 0;
+	int	subCommit = 0;	/* commit called itself */
+	char	**aliases = 0;
+	char	*cmtsFile;
 	char	*sym = 0;
 	int	dflags = 0;
+	char	**nav = 0;
+	int	nested;		/* commiting all components? */
 	c_opts	opts  = {0, 0};
 	char	*sfopts;
 	char	pendingFiles[MAXPATH] = "";
+	longopt	lopts[] = {
+		{ "standalone", 'S' },		/* new -S option */
+		{ "subset", 's' },		/* aliases */
+		{ "tag:", 300 },		/* old -S option */
+		{ "sub-commit", 301 },		/* calling myself */
+		{ 0, 0 }
+	};
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "cdfFl:qRsS:y:Y:", 0)) != -1) {
+	while ((c = getopt(ac, av, "cdfFl:qRs|S|y:Y:", lopts)) != -1) {
+		unless ((c == 's') || (c == 'S') || (c == 'Y')) {
+			nav = bk_saveArg(nav, av, c);
+		}
 		switch (c) {
 		    case 'c': dflags |= DELTA_CFILE; break;
 		    case 'd': 
@@ -38,16 +54,46 @@ commit_main(int ac, char **av)
 		    case 'R':	BitKeeper = "../BitKeeper/";	/* doc 2.0 */
 				opts.resync = 1;
 				break;
-		    case 's':	/* fall thru  *//* internal */	/* undoc 2.0 */
+		    case 's':
+			unless (optarg) {
+				fprintf(stderr,
+				    "bk %s -sALIAS: ALIAS "
+				    "cannot be omitted\n", prog);
+				return (1);
+			}
+			unless (aliases) {
+				/* LM3DI: always commit product */
+				aliases = addLine(aliases, strdup("PRODUCT"));
+			}
+			aliases = addLine(aliases, strdup(optarg));
+			break;
 		    case 'q':	opts.quiet = 1; break;		/* doc 2.0 */
-		    case 'S':	sym = optarg;
-				if (sccs_badTag("commit", sym, 0)) exit (1);
-				break;		/* doc 2.0 */
+		    case 'S':
+			if (optarg) {
+				fprintf(stderr, "%s: commit -S<tag> is now "
+				    "commit --tag=<tag>\n", prog);
+				return (1);
+			}
+			opts.standalone = 1;
+			break;
 		    case 'y':					/* doc 2.0 */
 			dflags |= DELTA_DONTASK;
 			if (comments_save(optarg)) return (1);
 			break;
 		    case 'Y':					/* doc 2.0 */
+			/*
+			 * Turn to a full path here and _then_ save
+			 * it. This is so that the iterator below
+			 * doesn't have relative path problems.
+			 */
+			unless (cmtsFile = fullname(optarg, 0)) {
+				fprintf(stderr,
+				    "%s: can't read comments from %s\n",
+				    prog, optarg);
+				exit(1);
+			}
+			optarg = cmtsFile;
+			nav = bk_saveArg(nav, av, c);
 			if (comments_savefile(optarg)) {
 				fprintf(stderr,
 				    "commit: can't read comments from %s\n",
@@ -55,6 +101,14 @@ commit_main(int ac, char **av)
 				exit(1);
 			}
 			dflags |= DELTA_DONTASK;
+			free(cmtsFile);
+			break;
+		    case 300:	/* --tag=TAG */
+			sym = optarg;
+			if (sccs_badTag("commit", sym, 0)) exit (1);
+			break;
+		    case 301:	/* --sub-commit */
+			opts.standalone = subCommit = 1;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -62,14 +116,33 @@ commit_main(int ac, char **av)
 
 	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
 
-	if (proj_cd2root()) {
-		fprintf(stderr, "Cannot find root directory\n");
+	nested = bk_nested2root(opts.standalone);
+	if (opts.standalone && aliases) {
+		fprintf(stderr, "bk %s: options -S and -sALIAS "
+		    "cannot be combined.\n");
 		return (1);
 	}
+	if (aliases && !nested) {
+		EACH(aliases) {
+			unless (streq(aliases[i], ".") ||
+			    strieq(aliases[i], "HERE") ||
+			    strieq(aliases[i], "PRODUCT")) {
+				fprintf(stderr,
+				    "%s: -sALIAS only allowed in product\n",
+				    prog);
+				return (1);
+			}
+		}
+		freeLines(aliases, free);
+		aliases = 0;
+	}
 	if (sym && proj_isComponent(0)) {
-		fprintf(stderr,
-		    "%s: component tags not yet supported.\n", prog);
-		return (1);
+		unless (subCommit) {
+			fprintf(stderr,
+			    "%s: component tags not yet supported.\n", prog);
+			return (1);
+		}
+		sym = 0;
 	}
 
 	/*
@@ -78,6 +151,32 @@ commit_main(int ac, char **av)
 	 * this isn't any slower.
 	 */
 	lease_check(0, O_WRONLY, 0);
+
+	if (nested) {
+		int	rc;
+
+		if (pendingFiles[0] ||
+		    (av[optind] && streq("-", av[optind]))) {
+			fprintf(stderr,
+			    "%s: Must use -S with -l or \"-\"\n", prog);
+			return (1);
+		}
+		cmdlog_lock(CMD_NESTED_WRLOCK);
+		nav = unshiftLine(nav, strdup("--sub-commit"));
+		nav = unshiftLine(nav, strdup("commit"));
+		nav = unshiftLine(nav, strdup("bk"));
+
+		rc = nested_each(opts.quiet, nav, aliases);
+		freeLines(aliases, free);
+		freeLines(nav, free);
+		if (rc) {
+			fprintf(stderr, "%s: failed to commit some components\n",
+			    prog);
+		}
+		return (rc);
+	}
+
+	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 
 	if (pendingFiles[0]) {
 		if (av[optind] && streq("-", av[optind])) {

@@ -85,13 +85,21 @@ Typically used to pass information to remote triggers.
 Only variables with the prefix
 .V BKU_
 are allowed.
+.if \n[NESTED] \{\
 .tp
-.B \-\-no-hardlinks
+.B \-\-identical
+When cloning a product, have the set of populated aliases be
+identical to the repository where the tip ChangeSet was created.
+This option is incompatible with
+.BR \-s .
+.\}
+.tp
+.B \-\-no\-hardlinks
 Clone nomally uses hard links whenever it can.  This option will
 prevent this and is useful to create an archive of a repository that
 copies every file.
 .tp
-.B \-\-no-sccsdirs
+.B \-\-no\-sccsdirs
 By default, clone honors the SCCS dir mode of the source repository.
 This forces the new clone to be hide the SCCS dirs containing the 
 revision history.

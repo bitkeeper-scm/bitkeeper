@@ -4,18 +4,18 @@
 bk export \- export a patch or version of a \*(BK repository
 .SH SYNOPSIS
 .B bk export \-tpatch
-.[OPTopt] \-d u|c|p
-.[B] \-hT
+.[B] \-hpST
+.[OPTreq] \-s alias
 .[OPTreq] \-i pat
 .[OPTreq] \-x pat
-.OPTreq \-r rev1\fB,\fPrev2
+.OPTreq \-r r1\fB,\fPr2
 .br
 .B bk export \-tplain
-.[B] \-kTvw
+.[B] \-kSTvw
+.[OPTreq] \-s alias
 .[OPTreq] \-i pat
 .[OPTreq] \-x pat
 .OPTreq \-r rev
-.[ARG] from
 .ARG to
 .SH DESCRIPTION
 .LP
@@ -37,25 +37,7 @@ and
 .Q \-x
 options.
 .SH OPTIONS
-.TP \fB\-d[u|c|p]\fPn
-.B \-d\fR[\fPu|c|p\fR]
-Select the style of 
-.BR diff (1)
-output, 
-.Q \-d
-for regular diffs, 
-.Q \-du
-for unified diffs, 
-.Q \-dc
-for context diffs,
-.Q \-dp
-for procedural (use 
-.Q \-dup
-to get unified + procedural diffs).
-The default is
-.Q \-du
-if this option is not used.
-.tp
+.TP "\\fB\\-\\-standalone \\fP"
 .B \-h
 Disable patch header.
 .tp
@@ -67,9 +49,37 @@ pattern (see below).
 .B \-k
 Do not expand keywords (default is to expand keywords).
 .tp
+.B \-p
+Do procedural diffs when exporting a patch (see diff(1)).
+.tp
 .OPTreq \-r rev
 Export the tree as of revision 
 .ARG rev .
+.if \n[NESTED] \{\
+.tp
+.B \-S
+.tp
+.B \-\-standalone
+Just export the current component.
+This has no effect in a traditional standalone repository,
+but in a nested collection, processes just the current component
+and not the entire nested collection.
+.tp
+.OPTreq \-s alias
+In a nested collection,
+.B export
+can recurse into some or all of the populated components.
+Using the 
+.OPTreq \-s alias
+option limits the repositories processed to those specified by
+.ARG alias .
+If this option is repeated the implied subset is the union of all
+specified components.
+If no
+.ARG alias
+is specified that is taken to be the same as
+.BR \-sHERE .
+.\}
 .tp
 .B \-T
 Set gfile modification time to check-in time.
@@ -129,7 +139,6 @@ then the file will be in the set.
 .BR diff (1),
 .BR patch (1),
 .SA glob
-.SA gnupatch
 .SA rset
 .SH CATEGORY
 .B Compat

@@ -537,7 +537,7 @@ dbWrite(nested *n, hash *aliasdb, char *comment, int commit)
 		if (ret = system(buf)) return (ret);
 		sprintf(buf,
 		    "bk -P sfiles -pC %s |"
-		    "bk -P commit -qfY'%s' -", ALIASES, tmpfile);
+		    "bk -P commit -S -qfY'%s' -", ALIASES, tmpfile);
 		ret = system(buf);
 		unlink(tmpfile);
 		free(tmpfile);

@@ -988,3 +988,10 @@ bk prs -hd'$unless($0){${0=:REV:}}<$0>' DVFILE > GOT
 printf "<1.4><1.4><1.4><1.4>" > WANT
 checkfiles WANT GOT
 echo OK
+
+echo $N checking :B: and :S: do not output garbage ..................$NL
+bk prs -r1.2 -hnd'$if(:B:){failed B ":B:" :GFILE:}' DVFILE newbar > OUT
+test -s OUT && fail -f OUT
+bk prs -r1.2 -hnd'$if(:S:){failed S ":S:" :GFILE:}' DVFILE newbar > OUT
+test -s OUT && fail -f OUT
+echo OK

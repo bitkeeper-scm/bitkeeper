@@ -3,7 +3,7 @@
 #include "sccs.h"
 
 private	char	**readFile(char *file);
-private char	**getfiles(char *csetrev);
+private char	**getfiles(char *csetrev, int standalone);
 private void	write_editfile(FILE *f, char **files, int to_stdout);
 private void	read_editfile(FILE *f);
 
@@ -25,13 +25,19 @@ comments_main(int ac, char **av)
 	char	**lines = 0;
 	char	*csetrev = 0;
 	int	to_stdout = 0;
+	int	standalone = 0;
 	char	tmp[MAXPATH];
 	FILE	*tf;
+	longopt	lopts[] = {
+		{ "standalone", 'S' },
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "C|pr|y|Y|", 0)) != -1) {
+	while ((c = getopt(ac, av, "C:pr:Sy:Y:", lopts)) != -1) {
 		switch (c) {
 		    case 'C': csetrev = optarg; break;
 		    case 'p': to_stdout = 1; break;
+		    case 'S': standalone = 1; break;
 		    case 'y': comment = optarg; break;
 		    case 'Y': file = optarg; break;
 		    case 'r': rev = optarg; break;
@@ -62,6 +68,7 @@ comments_main(int ac, char **av)
 			    "comments: can't find repository root\n");
 			exit(1);
 		}
+		unless (standalone) proj_cd2product();
 		read_editfile(stdin);
 		return (0);
 	}
@@ -80,7 +87,8 @@ comments_main(int ac, char **av)
 			    "comments: can't find repository root\n");
 			exit(1);
 		}
-		files = getfiles(csetrev);
+		unless (standalone) proj_cd2product();
+		files = getfiles(csetrev, standalone);
 	} else {
 		unless (rev) rev = "+";
 		for (name = sfileFirst("comment", &av[optind], SF_NODIREXPAND);
@@ -141,6 +149,7 @@ comments_main(int ac, char **av)
 				    "comments: can't find repository root\n");
 				exit(1);
 			}
+			unless (standalone) proj_cd2product();
 			sys(editor, tmp, SYS);
 		}
 		unless (tf = fopen(tmp, "r")) {
@@ -175,7 +184,7 @@ readFile(char *file)
 
 
 private char **
-getfiles(char *csetrev)
+getfiles(char *csetrev, int standalone)
 {
 	char	**files = 0;
 	char	*av[30];
@@ -188,6 +197,7 @@ getfiles(char *csetrev)
 
 	av[i=0] = "bk";
 	av[++i] = "rset";
+	if (standalone) av[++i] = "-S";
 	av[++i] = rev;
 	av[++i] = 0;
 

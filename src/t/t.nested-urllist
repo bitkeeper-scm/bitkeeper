@@ -14,7 +14,7 @@ bk here where gcc | grep -q "$HERE/product" || fail 2
 cd gcc
 echo new > new-file
 bk new $Q new-file || fail 3
-bk commit $Q -y'add new-file' || fail 4
+bk commit -S $Q -y'add new-file' || fail 4
 bk -P commit $Q -y'add new-file' || fail 5
 cd ..
 test -z "`bk here where gcc`" || fail 6
@@ -61,7 +61,7 @@ bk clone $Q clone1 cloneA || fail
 cd cloneA/gcc
 echo new >new
 bk new $Q new || fail 2
-bk commit $Q -y'add new' || fail 3
+bk commit -S $Q -y'add new' || fail 3
 cd ..
 test -z "`bk here where gcc`" || fail 4
 cd "$HERE"
@@ -92,7 +92,7 @@ bk clone $Q product cloneA || fail
 cd cloneA/gcc
 echo new >new
 bk new $Q new || fail 2
-bk commit $Q -y'add new' || fail 3
+bk commit -S $Q -y'add new' || fail 3
 bk -P commit $Q -y'add new' || fail 4
 cd ../..
 bk clone $Q cloneA cloneB || fail 5
@@ -125,7 +125,7 @@ bk clone $Q product cloneA || fail
 cd cloneA/gcc
 echo new >new
 bk new $Q new || fail 3
-bk commit $Q -y'add new' || fail 4
+bk commit -S $Q -y'add new' || fail 4
 bk -P commit $Q -y'add new' || fail 5
 cd ../..
 bk clone $Q cloneA cloneB || fail 6
@@ -174,7 +174,7 @@ bk clone $Q clone1 cloneA || fail
 cd cloneA/gcc
 echo new >new
 bk new $Q new || fail 2
-bk commit $Q -y'add new' || fail 3
+bk commit -S $Q -y'add new' || fail 3
 cd "$HERE"
 bk clone $Q cloneA cloneB || fail 4
 rm -rf cloneA/gcc
@@ -233,7 +233,7 @@ bk clone $Q clone1 clone8 || fail 2
 cd clone7/gcc
 echo new >new
 bk new $Q new || fail 3
-bk commit $Q -y'add new' || fail 4
+bk commit -S $Q -y'add new' || fail 4
 bk -P commit $Q -y'add new' || fail 5
 # This cset removes gcc from clone7's urllist.
 cd "$HERE/clone7"
@@ -263,7 +263,7 @@ bk clone $Q -sgcc clone1 cloneA || fail 2
 cd clone9/gcc
 echo new >new
 bk new $Q new || fail 4
-bk commit $Q -y'add new' || fail 5
+bk commit -S $Q -y'add new' || fail 5
 bk -P commit $Q -y'add new' || fail 6
 # This cset removes gcc from clone9's urllist.
 cd ..
@@ -285,12 +285,12 @@ bk clone $Q clone1 cloneB || fail
 cd clone1/gcc
 echo new1 >new1
 bk new $Q new1 || fail 2
-bk commit $Q -y'add new1' || fail 3
+bk commit -S $Q -y'add new1' || fail 3
 bk -P commit $Q -y'add new1' || fail 4
 cd ../../cloneB/gcc
 echo new2 >new2
 bk new $Q new2 || fail 5
-bk commit $Q -y'add new2' || fail 6
+bk commit -S $Q -y'add new2' || fail 6
 bk -P commit $Q -y'add new2' || fail 7
 # This pull has a merge in gcc so gcc should not be re-added to
 # cloneB's urllist.
@@ -313,7 +313,7 @@ cd ..
 cd cloneE/gcc
 echo new2 >new2
 bk new $Q new2 || fail 4
-bk commit $Q -y'add new2' || fail 5
+bk commit -S $Q -y'add new2' || fail 5
 bk -P commit $Q -y'add new2' || fail 6
 # Pull cloneE->cloneC.  The pull should remove all urls for gcc and add
 # cloneE (the pull parent).
@@ -341,7 +341,7 @@ cd ..
 cd cloneE/gcc
 echo new2 >new2
 bk new $Q new2 || fail 4
-bk commit $Q -y'add new2' || fail 5
+bk commit -S $Q -y'add new2' || fail 5
 bk -P commit $Q -y'add new2' || fail 6
 # Pull cloneE->cloneC.  The pull should add cloneE for gdb.
 # we don't have gdb.
@@ -369,7 +369,7 @@ cd ..
 cd cloneE/gcc
 echo new2 >new2
 bk new $Q new2 || fail 4
-bk commit $Q -y'add new2' || fail 5
+bk commit -S $Q -y'add new2' || fail 5
 bk -P commit $Q -y'add new2' || fail 6
 # Pull cloneE->cloneC.  The pull should add cloneE for gdb even though
 # we don't have gdb.
@@ -397,13 +397,13 @@ cd ..
 cd "$HERE/cloneE/gcc"
 echo new2 >new2
 bk new $Q new2 || fail 4
-bk commit $Q -y'add new2' || fail 5
+bk commit -S $Q -y'add new2' || fail 5
 bk -P commit $Q -y'add new2' || fail 6
 # Create a cset in cloneC/gdb.
 cd "$HERE/cloneC/gdb"
 echo new >new
 bk new $Q new || fail 7
-bk commit $Q -y'add new' || fail 8
+bk commit -S $Q -y'add new' || fail 8
 bk -P commit $Q -y'add new' || fail 9
 # Pull cloneE->cloneC.  The pull should add nothing for gdb since
 # it has local changes.
@@ -568,7 +568,7 @@ echo failed \(bug comp named rm\)
 
 echo $N Test ordering of multiple URLS in populate ..................$NL
 cd "$HERE"/product
-RK=`(cd gdb; bk id)`
+RK=`(cd gdb; bk id -S)`
 bk here set -f $Q ./gcc || fail
 
 cat <<EOF > BitKeeper/log/urllist
@@ -613,7 +613,7 @@ bk clone $Q project2 project2-clone
 cd project2
 touch gcc/foo gdb/bar
 bk new $Q gcc/foo gdb/bar
-bk -e commit $Q -y'added files'
+bk commit $Q -y'added files' || fail
 cd "$HERE"
 bk bkd -q -aPORT -ikill || fail
 P2=`cat PORT`

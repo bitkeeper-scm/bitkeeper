@@ -110,15 +110,8 @@ echo $N Make sure we do not attempt a fix with repository locked ....$NL
 cd "$HERE/save"
 bk -r prs -hnd:MD5KEY: -r+ | sort > WANT
 mkdir RESYNC
-bk fix -c > OUT 2>&1 && {
-	echo should have exited with an error
-	exit 1
-}
-grep -q RESYNC OUT || {
-	echo bad error message
-	cat OUT
-	exit 1
-}
+bk fix -c > OUT 2>&1 && fail -f OUT should have exited with an error
+grep -q RESYNC OUT || fail -f OUT bad error message
 bk -r prs -hnd:MD5KEY: -r+ | sort > GOT
 cmp -s WANT GOT || {
 	echo Some files were changed

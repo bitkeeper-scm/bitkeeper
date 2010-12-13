@@ -163,7 +163,7 @@ echo OK
 echo $N Add same tag to a new cset as part of the cset ..............$NL
 ls > RST
 bk new $Q RST
-bk commit $Q -SNEW -yNEW2 || exit 1
+bk commit $Q --tag=NEW -yNEW2 || exit 1
 bk admin -hhhq || exit 1
 echo OK
 
@@ -186,7 +186,7 @@ cd "$HERE/project/src"
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
 echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -fywhatever 'F!O#O$ B%A^R&RR(R)RR'
-_BK_NO_TAG_GRAPH=YES bk commit $Q -yopull_cset -S'NOT IN TAG GRAPH'
+_BK_NO_TAG_GRAPH=YES bk commit $Q -yopull_cset --tag='NOT IN TAG GRAPH'
 cd ..
 bk _cat SCCS/s.ChangeSet | grep -q '^.cS[0-9]' && {
 	echo added a tag graph node
@@ -223,12 +223,12 @@ bk clone $Q project copy
 cd "$HERE/project"
 echo hi > bar
 bk new $Q bar
-bk commit -yDsub2 -STAG $Q
+bk commit -yDsub2 --tag=TAG $Q
 REMOTE=`bk prs -hrTAG -d:KEY: ChangeSet`
 cd "$HERE/copy"
 echo hi > snafu
 bk new $Q snafu
-bk commit -yDsub3 -STAG $Q
+bk commit -yDsub3 --tag=TAG $Q
 LOCAL=`bk prs -hrTAG -d:KEY: ChangeSet`
 bk _cp SCCS/s.ChangeSet CSET
 bk pull $Q -R
@@ -359,7 +359,7 @@ echo $N Test propogation of a tag added with a commit ...............$NL
 cd "$HERE/tagpush"
 bk edit $Q file
 bk delta -fywww $Q file
-bk commit $Q -ywhatever -STAG_NO_2
+bk commit $Q -ywhatever --tag=TAG_NO_2
 cd "$HERE/tagchild"
 bk pull $Q || {
 	echo pull failed
@@ -412,7 +412,7 @@ echo $N Test propogation of a tag added with a commit, pick remote ..$NL
 cd "$HERE/tagpush"
 bk edit $Q file
 bk delta -fywww $Q file
-bk commit $Q -ywhatever -Ssame_tag
+bk commit $Q -ywhatever --tag=same_tag
 cd "$HERE/tagchild"
 bk pull $Q || {
 	echo pull failed
@@ -424,7 +424,7 @@ do	for dir in tagpush tagchild
 	do	cd "$HERE"/$dir
 		bk edit $Q file
 		bk delta -fywww $Q file
-		bk commit $Q -ywhatever -Ssame_tag
+		bk commit $Q -ywhatever --tag=same_tag
 	done
 done
 cd "$HERE"
@@ -507,17 +507,17 @@ bk clone $Q project mergemain
 cd mergemain
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -Sfoo -yfoo
+bk commit $Q --tag=foo -yfoo
 cd "$HERE"
 bk clone $Q mergemain mergebranch
 cd mergemain
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -Sbar -yfoo
+bk commit $Q --tag=bar -yfoo
 cd "$HERE/mergebranch"
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -Sfoo -yfoo
+bk commit $Q --tag=foo -yfoo
 bk pull $Q "$HERE/mergemain"
 echo OK
 
@@ -525,7 +525,7 @@ echo $N Merge tag where history contains same name on L1 branch .....$NL
 cd "$HERE/mergemain"
 bk edit $Q foo
 bk delta $Q -fyfoo foo
-bk commit $Q -Sbaz -yfoo
+bk commit $Q --tag=baz -yfoo
 echo q | bk pull $Q "$HERE/mergebranch" > OUT 2>&1 || {
 	echo Failed
 	exit 1
@@ -542,7 +542,7 @@ echo OK
 #bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
 #echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
 #bk delta $Q -yopush_cset 'F!O#O$ B%A^R&RR(R)RR'
-#bk commit $Q -yopush_cset -STAG2
+#bk commit $Q -yopush_cset --tag=TAG2
 #echo OK
 
 test -x /usr/bin/ruby && {
@@ -597,7 +597,7 @@ cd "$HERE"
 commercial proj
 touch foo
 bk new $Q foo
-bk commit $Q -S.1 -yfoo  2>out && { echo failed; exit 1; }
+bk commit $Q --tag=.1 -yfoo  2>out && fail
 grep -q "commit: .1: tags can't start with a '.'" out || {
 	echo failed; exit 1;
 }

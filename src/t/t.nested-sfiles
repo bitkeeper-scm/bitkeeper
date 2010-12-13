@@ -20,9 +20,9 @@ mkdir a/b/c/d/e/f
 echo hi > a/b/c/d/e/f/f
 bk new $Q a/b/c/d/e/f/f
 cd a/b/c/d/e
-bk commit -ynew $Q || exit 1
+bk commit -S -ynew $Q || exit 1
 cd ../..
-bk commit -ynew $Q || exit 1
+bk commit -S -ynew $Q || exit 1
 cd ../../..
 bk commit -ynew $Q || exit 1
 bk alias new DEV gcc gdb
@@ -777,9 +777,13 @@ bk -e -s. -Ur > B
 cmpfiles A B
 bk -e -sHERE -Ur > B
 cmpfiles A B
+bk -e -sPRODUCT -Ur > B
+cmpfiles A B
 bk -e -s. -Ur > B
 cmpfiles A B
 bk -e -s. -shere -Ur > B
+cmpfiles A B
+bk -e -s. -sproduct -Ur > B
 cmpfiles A B
 echo OK
 

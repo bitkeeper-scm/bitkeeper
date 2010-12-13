@@ -59,7 +59,7 @@ chkblanks() {
 add() {
 	touch "$1" || return
 	bk new $Q "$1" || return
-	bk -e commit $Q -y"$1" || return
+	bk commit $Q -y"$1" || return
 }
 
 echo $N Setup .......................................................$NL
@@ -1657,7 +1657,7 @@ echo OK
 
 echo $N unpull component only .......................................$NL
 cd "$HERE/clone1"
-bk unpull -f >OUT 2>&1 || fail
+bk unpull -f >OUT 2>&1 || fail -f OUT
 chkoutput OUT $PRODUCT comp1 || fail $msg
 chkpasses OUT undo || fail $msg
 chknumbars OUT 2 || fail $msg
@@ -1964,7 +1964,7 @@ cd "$HERE/product1/comp1"
 bk edit $Q for-edit
 echo edit >for-edit || fail
 bk delta $Q -yedit for-edit || fail
-bk commit $Q -yedit || fail
+bk commit -S $Q -yedit || fail
 bk -P commit $Q -yedit || fail
 cd "$HERE/clone1/comp1"
 bk edit $Q for-edit
@@ -2541,12 +2541,11 @@ bk edit $Q for-edit-q
 echo edit >for-edit-q || fail
 bk delta $Q -yedit for-edit-q || fail
 bk commit $Q -yedit || fail
-bk -P commit $Q -yedit || fail
 cd "$HERE/clone1/comp1"
 bk edit $Q for-edit-q
 echo edit2 >for-edit-q || fail
 bk pull -q "$HERE/product1" >OUT 2>&1 && fail -f OUT
-[ `cat OUT | wc -l` = 12 ] || fail
+[ `cat OUT | wc -l` = 12 ] || fail -f OUT
 chknumbars OUT 0 || fail $msg
 cd ../..
 bk _rm -rf clone1
@@ -3052,7 +3051,6 @@ bk edit $Q for-edit-v
 echo edit >for-edit-v || fail
 bk delta $Q -yedit for-edit-v || fail
 bk commit $Q -yedit || fail
-bk -P commit $Q -yedit || fail
 cd "$HERE/clone1/comp1"
 bk edit $Q for-edit-v
 echo edit2 >for-edit-v || fail

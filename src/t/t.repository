@@ -36,7 +36,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 echo $N Create a change set with a symbol with spaces in it .........$NL
-bk commit $S -yCset -S"Hi there this is a changeset"
+bk commit $S -yCset --tag="Hi there this is a changeset"
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 bk -R get $S -p ChangeSet > TOT

@@ -22,7 +22,7 @@ rm_main(int ac, char **av)
                     default: bk_badArg(c, av);
                 }
         }
-	if (ac < 2) usage();
+	unless (av[optind]) usage(); /* require one argument */
 
 	for (name = sfileFirst("sccsrm",&av[optind], 0);
 	    name; name = sfileNext()) {
@@ -136,12 +136,6 @@ sccs_rm(char *name, int force)
 	unless (s && HASGRAPH(s) && BITKEEPER(s)) {
 		fprintf(stderr,
 		    "Warning: %s is not a BitKeeper file, ignored\n", name);
-		sccs_free(s);
-		return (1);
-	}
-	if (CSET(s) ||
-	    (strneq("BitKeeper/", s->tree->pathname, 10) && !force)) {
-		fprintf(stderr, "Will not remove BitKeeper file %s\n", name);
 		sccs_free(s);
 		return (1);
 	}

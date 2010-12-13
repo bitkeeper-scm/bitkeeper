@@ -106,12 +106,22 @@ echo $N id -p on a component should work.............................$NL
 cd "$HERE/project"
 ROOTKEY=`bk id`
 cd "gcc"
-bk id -p >GOT 2>&1 || {
+bk id >GOT 2>&1 || {
 	echo failed
 	cat GOT
 	exit 1
 }
 test "`cat GOT`" = "$ROOTKEY" || {
+	echo failed
+	cat GOT
+	exit 1
+}
+bk id -S >GOT 2>&1 || {
+	echo failed
+	cat GOT
+	exit 1
+}
+test "`cat GOT`" = "$ROOTKEY" && {
 	echo failed
 	cat GOT
 	exit 1
@@ -364,7 +374,7 @@ cd "$HERE/project/gcc"
 bk edit $Q name
 echo him mom > name
 bk delta $Q -yxxx name
-bk commit -yxxx $Q 
+bk commit -S -yxxx $Q
 bk _test -f SCCS/d.ChangeSet || {
 	echo failed to leave d.file
 	exit 1
@@ -391,7 +401,7 @@ cd gcc
 bk edit $Q name
 echo him mom >> name
 bk delta $Q -yxxx name
-bk commit -yxxx $Q
+bk commit -S -yxxx $Q
 bk _test -f SCCS/d.ChangeSet || {
 	echo failed to leave d.file
 	exit 1
@@ -585,13 +595,13 @@ echo OK
 echo $N Make some csets and look at changes output ..................$NL
 # First commit the rename
 cd "$HERE/project"
-bk commit $Q -y"rename cset"
+bk commit -S $Q -y"rename cset"
 cp -rp gcc4 ../gcc4-save
 cd gcc4
 for i in file1 file2 file3
 do	echo $i > $i
 	bk new $Q $i
-	bk commit $Q -y"Add in $i in gcc"
+	bk commit $Q -S -y"Add in $i in gcc"
 done
 cd "$HERE/project"
 bk commit $Q -y"Should be 3 csets"
@@ -998,7 +1008,7 @@ cd project
 echo $N Test bk undo -r+ in a sparse ensemble .......................$NL
 # XXX really should use unpopulate (if it worked)
 rm -rf gcc4
-(cd gdb; bk id) > BitKeeper/log/HERE
+(cd gdb; bk id -S) > BitKeeper/log/HERE
 bk undo $Q -fsr+ || {
 	echo failed undo
 	exit 1
@@ -1050,8 +1060,8 @@ test $REV = `bk changes -r+ -d:REV:` && {
 (
 echo @dev 
     (
-	(cd gcc4 && bk id ) 
-	(cd gdb && bk id )
+	(cd gcc4 && bk id -S) 
+	(cd gdb && bk id -S )
     ) | bk _sort
 ) > WANT
 bk cat BitKeeper/etc/aliases > GOT
@@ -1090,8 +1100,8 @@ bk alias new mydev dev
 (
 echo @dev 
     (
-	(cd gcc4 && bk id ) 
-	(cd gdb && bk id )
+	(cd gcc4 && bk id -S ) 
+	(cd gdb && bk id -S )
     ) | bk _sort
 echo @mydev
 echo dev
@@ -1419,13 +1429,13 @@ cd remote
 cd gcc
 touch foo
 bk new $Q foo
-bk commit $Q -f
+bk commit -S $Q -f
 cd ..
-bk commit $Q -f
+bk commit -S $Q -f
 cd ../local/gdb
 touch foo
 bk new $Q foo
-bk commit $Q -f
+bk commit -S $Q -f
 cd ..
 bk commit $Q -f
 bk pull $Q -R
@@ -1434,6 +1444,29 @@ bk _nested -Ha -r1.3 -ld > WANT
 # set it up like a pull
 echo 1.3 | bk _nested -p -Ha -ld - > GOT
 cmpfiles WANT GOT
+echo OK
+
+echo $N Test that level works in nested .............................$NL
+cd "$HERE"
+bk clone $Q remote level10
+cd level10/gcc
+bk level 10
+cd ..
+test "`bk level`" = "Repository level is 10" || {
+	echo failed to set level in product
+	bk level
+	exit 1
+}
+bk push > OUT 2>&1 && {
+	echo push should have failed
+	cat OUT
+	exit 1
+}
+bk grep -q "push: cannot push to lower level repository" OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N Test that bk root with -P gives the right answer.............$NL
@@ -1515,11 +1548,11 @@ bk new $Q afile
 cd gdb
 echo "aline" > afile
 bk new $Q afile
-bk commit $Q -y"add afile"
+bk commit -S $Q -y"add afile"
 cd ../gcc4
 echo "aline" > afile
 bk new $Q afile
-bk commit $Q -y"add afile"
+bk commit -S $Q -y"add afile"
 cd ..
 bk commit $Q -y"added afile to gdb and gcc4"
 # add a content cset since cset -x doesn't support removing new files
@@ -1530,12 +1563,12 @@ cd gdb
 bk edit $Q afile
 echo "lineb" >> afile
 bk delta $Q -y"add lineb" afile
-bk commit $Q -y"add lineb"
+bk commit -S $Q -y"add lineb"
 cd ../gcc4
 bk edit $Q afile
 echo "lineb" >> afile
 bk delta $Q -y"add lineb" afile
-bk commit $Q -y"add lineb"
+bk commit -S $Q -y"add lineb"
 cd ..
 bk commit $Q -y"add lineb"
 CSET=`bk changes -nd:KEY: -r+`
@@ -1547,12 +1580,12 @@ cd gdb
 bk edit $Q afile
 echo "linec" >> afile
 bk delta $Q -y"add linec" afile
-bk commit $Q -y"add linec"
+bk commit -S $Q -y"add linec"
 cd ../gcc4
 bk edit $Q afile
 echo "linec" >> afile
 bk delta $Q -y"add linec" afile
-bk commit $Q -y"add linec"
+bk commit -S $Q -y"add linec"
 cd ..
 bk commit $Q -y"add linec"
 # okay, now test the cset -x
@@ -1560,7 +1593,7 @@ bk commit $Q -y"add linec"
 cd gdb
 bk cset -qx+ >OUT 2>&1 || fail -f OUT
 # clean it up
-bk undo -qsfr+ >OUT 2>&1 || fail -f OUT
+bk undo -qSsfr+ >OUT 2>&1 || fail -f OUT
 # in the product it should fail
 cd ..
 bk cset -qx"$CSET" 2>&1 | grep -q "Operation not supported" || fail

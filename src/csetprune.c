@@ -40,6 +40,7 @@ typedef struct {
 	char	*who;
 	char	*revfile;	// where to put the corresponding rev key
 	project	*refProj;
+	u32	standalone:1;	// --standalone
 } Opts;
 
 private	int	csetprune(Opts *opts);
@@ -88,12 +89,13 @@ csetprune_main(int ac, char **av)
 	Opts	*opts;
 	int	i, c, ret = 1;
 	longopt	lopts[] = {
-		{ "revfile;", 300 },		/* file to store rev key */
+		{ "revfile;", 300 },	/* file to store rev key */
+		{ "tag-csets", 310 },	/* collapse tag graph onto D graph */
+		{ "standalone", 'S'},
 		{ 0, 0 }
 	};
 
 	opts = new(Opts);
-	flags = PRUNE_NEW_TAG_GRAPH;
 	while ((c = getopt(ac, av, "ac:C:I;k:KNqr:sStw:W:", lopts)) != -1) {
 		switch (c) {
 		    case 'a': flags |= PRUNE_ALL; break;
@@ -105,11 +107,18 @@ csetprune_main(int ac, char **av)
 		    case 'N': flags |= PRUNE_NO_SCOMPRESS; break;
 		    case 'q': flags |= SILENT; break;
 		    case 'r': opts->rev = optarg; break;
-		    case 'S': flags &= ~PRUNE_NEW_TAG_GRAPH; break;
+		    case 'S': /* -- standalone */
+			opts->standalone = 1;
+		    	break;
 		    case 't': flags |= PRUNE_NO_TAG_GRAPH; break;
 		    case 'W': weavefile = optarg; break;
 		    case 'w': opts->who = optarg; break;
-		    case 300: opts->revfile = optarg; break; /* --revfile */
+		    case 300: /* --revfile */
+		    	opts->revfile = optarg;
+			break;
+		    case 310: /* --tag-csets */
+			flags = PRUNE_NEW_TAG_GRAPH;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -181,8 +190,17 @@ k_err:			fprintf(stderr,
 			goto err;
 		}
 	}
-	if (!opts->refProj && proj_cd2root()) {
-		fprintf(stderr, "%s: cannot find package root\n", prog);
+	unless (opts->refProj)  {
+		if (bk_nested2root(opts->standalone)) {
+			fprintf(stderr,
+			    "%s: prune of whole nested collection "
+			    "not supported\n", prog);
+			goto err;
+		}
+	}
+	if (proj_isComponent(0)) {
+		fprintf(stderr,
+		    "%s: csetprune not supported in a component\n", prog);
 		goto err;
 	}
 	if (flags & PRUNE_NO_TAG_GRAPH) putenv("_BK_STRIPTAGS=1");
@@ -1500,7 +1518,7 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd, char ***mkid)
 		FREE(d->exclude);
 		if (sd[d->serial]) {
 			/* regen old style SCCS inc and excl lists */
-			graph_symdiff(d, PARENT(s, d), slist, sd, 0);
+			graph_symdiff(d, PARENT(s, d), slist, sd, 0, 0);
 		}
 		return;
 	}

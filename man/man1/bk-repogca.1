@@ -5,7 +5,7 @@ bk repogca \- show greatest common ancestor across a set of repositories
 .SH SYNOPSIS
 .B bk repogca
 .[OPTreq] \-d spec
-.[B] \-k5
+.[B] \-5kS
 [\c
 .ARG repo
 .ARGc repo
@@ -24,11 +24,15 @@ Use
 .ARG spec
 as the specification for displaying the revision.
 .tp
+.B \-5
+A short hand for asking for a spec of \*(lq:MD5KEY:\*(rq.
+.tp
 .B \-k
 A short hand for asking for a spec of \*(lq:KEY:\*(rq.
 .tp
-.B \-5
-A short hand for asking for a spec of \*(lq:MD5KEY:\*(rq.
+.B \-S
+In a component in a nested collection, produce the repo gca of the
+component instead of the repo gca of the product.
 .SH EXAMPLES
 To generate a traditional patch for the changes that exist only in the
 local repository:

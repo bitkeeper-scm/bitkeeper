@@ -9,6 +9,7 @@ level_main(int ac,  char **av)
 	int	c;
 
 	while ((c = getopt(ac, av, "", 0)) != -1) bk_badArg(c, av);
+	(void)proj_cd2product();
 	unless (av[1]) {
 		printf("Repository level is %d\n", getlevel());
 		exit(0);

@@ -195,7 +195,7 @@ echo OK
 
 echo $N Test a pull with no local work ..............................$NL
 cd copy
-bk resolve $Q -s || { echo failed; exit 1; }
+bk resolve $Q --batch || { echo failed; exit 1; }
 cd ..
 echo OK
 
@@ -210,7 +210,7 @@ rm -fr copy
 tar xf copy.tar
 cd copy
 mkdir block
-bk resolve $Q -s 2> ERR || { echo failed; exit 1; }
+bk resolve $Q --batch 2> ERR || { echo failed; exit 1; }
 grep -q "removing empty directory" ERR || { echo failed; exit 1; }
 cd ..
 echo OK
@@ -220,7 +220,7 @@ rm -fr copy
 tar xf copy.tar
 cd copy
 mkdir -p src/empty/empty/empty1 src/empty/empty/empty2
-bk resolve $Q -s 2> ERR || { echo failed; exit 1; }
+bk resolve $Q --batch 2> ERR || { echo failed; exit 1; }
 grep -q "removing empty directory" ERR || { echo failed; exit 1; }
 cd ..
 echo OK

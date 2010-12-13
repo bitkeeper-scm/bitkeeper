@@ -464,11 +464,11 @@ bk new $Q -Ebinary bdata
 bk get $Q -r1.1 -Gbdata bdata
 cmp -s bdata $BIN1
 if [ $? -ne 0 ]; then echo failed test 1; cmp bdata $BIN1; exit 1; fi
-bk commit $S -Sbinary1 -ybinary1
+bk commit $S --tag=binary1 -ybinary1
 bk get $Q -e bdata
 cp $BIN2 bdata
 bk ci $Q -y bdata
-bk commit $S -Sbinary2 -ybinary2
+bk commit $S --tag=binary2 -ybinary2
 cd  "$HERE/copy/src"
 bk pull $Q -R "$HERE/project" || exit 1
 bk resolve $L $Q
@@ -566,7 +566,7 @@ echo $N Test propagation of a symbol on new changeset ...............$NL
 cd "$HERE/project/src"
 date > symbol_test
 bk new $Q symbol_test
-bk commit $S -y"symbol test" -S'symbol test'
+bk commit $S -y"symbol test" --tag='symbol test'
 cd "$HERE/copy"
 bk pull $Q "$HERE/project"
 if bk _test ! -f src/SCCS/s.symbol_test; then echo failed to send file; exit 1; fi

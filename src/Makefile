@@ -303,8 +303,10 @@ clean: FORCE
 	    $(LOCALSRC) $(PSRC) $(PROGS)
 	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		tclkey.h core *.bb *.bbg *.da *.gcov \
-		bk.ico Academic.lic Basic.lic Pro.lic \
-		Enterprise.lic MLA.lic bkl.lic bkcl.lic tclwrap$(EXE) \
+		bk.ico \
+		Academic.lic Basic.lic Enterprise.lic Essentials.lic \
+		MLA.lic Premier.lic Pro.lic \
+		bkl.lic bkcl.lic tclwrap$(EXE) \
 		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
 		diff.exe diff3.exe hidestring.exe inskeys_main.o mend.exe
@@ -404,6 +406,7 @@ bkhelp.txt: FORCE
 
 ../doc/bk_refcard.ps: FORCE
 	echo building $@
+	-bk -r../doc co -qS
 	$(MAKE) -C ../doc all
 
 ../doc/bk_refcard.pdf: ../doc/bk_refcard.ps
@@ -455,6 +458,7 @@ installdir: utils/registry.tcl
 		www/*.gif www/*.png | (cd $(IMGDIR) && tar xf -)
 	cp -f $(DATA) $(IMGDIR)
 	cp -f $(CONTRIB) $(IMGDIR)/contrib
+	(cd ../doc/nested && $(MAKE) install HTML=$(IMGDIR)/html)
 	if [ $(SYS) = unix ]; \
 	then	(cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
 		bk get -S ../man/Makefile; \

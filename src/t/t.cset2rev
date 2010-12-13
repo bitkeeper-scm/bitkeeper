@@ -24,7 +24,7 @@ bk edit $Q file1 || exit 1
 bk delta -fy12 $Q file1 || exit 1
 echo 3 > file3
 bk new $Q file3
-bk commit -St2 -y2 $Q || exit 1
+bk commit --tag=t2 -y2 $Q || exit 1
 bk tag $Q t2/again || exit 1
 bk edit $Q file2 file3
 bk delta -fy233 $Q file2 file3 || exit 1

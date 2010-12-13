@@ -152,9 +152,8 @@ CHANGELOGS =  \
 $(CHANGELOGS):
 	$(if $(Q), @echo Cloning TclTk repos,)
 	$(Q) BK_CONFIG='checkout:get!' bk here add $(QUIET) TCLTK || \
-	     BK_CONFIG='checkout:get!' bk components add $(QUIET) \
-		-@ -@bk://data.bitmover.com$$_BUILD_PORT/bk \
-		TCLTK
+	     BK_CONFIG='checkout:get!' bk here add $(QUIET) \
+		-@bk://data.bitmover.com$$_BUILD_PORT/bk TCLTK
 	$(Q) bk get -S $(CHANGELOGS)
 
 # fetch tcl subdirectory if needed
