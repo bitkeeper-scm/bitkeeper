@@ -53,18 +53,22 @@ sccslog_main(int ac, char **av)
 	int	errors = 0;
 	int	c, flags = SILENT;
 	RANGE	rargs = {0};
+	longopt	lopts[] = {
+		{ "dspec-file;", 300 },		/* let user pass in dspec */
+		{ 0, 0 }
+	};
 
 	opts.prs_flags = PRS_ALL;
 	setmode(1, _O_TEXT);
-	while ((c = getopt(ac, av, "AbCc;d|Dfi;nr|s", 0)) != -1) {
+	while ((c = getopt(ac, av, "AbCc;d|Dfi;nr|s", lopts)) != -1) {
 		switch (c) {
 		    case 'A': opts.uncommitted = 1; break;	/* doc 2.0 */
 		    case 'b': opts.basenames = 1; break;	/* doc 2.0 */
 		    case 'C': opts.changeset = 1; break;	/* doc 2.0 */
 		    case 'D': opts.rmdups = 1; break;
 		    case 'd':
+			if (opts.dspec) usage();
 			opts.dspec = strdup(optarg);
-			dspec_collapse(&opts.dspec, 0, 0);
 			break;
 		    case 'f': opts.forwards = 1; break;
 		    case 'i':					/* doc 2.0 */
@@ -79,10 +83,19 @@ sccslog_main(int ac, char **av)
 		    case 'r':
 			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
+		    case 300:	/* --dspec-file */
+			if (opts.dspec) usage();
+			unless (opts.dspec = loadfile(optarg, 0)) {
+				fprintf(stderr,
+				    "%s: cannot load file \"%s\"\n",
+				    prog, optarg);
+				return (1);
+			}
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
-
+	if (opts.dspec) dspec_collapse(&opts.dspec, 0, 0);
 	for (name = sfileFirst("sccslog", &av[optind], 0); name; ) {
 		unless ((s = sccs_init(name, INIT_NOCKSUM|flags)) &&
 		    HASGRAPH(s)) {

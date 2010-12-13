@@ -26,8 +26,12 @@ log_main(int ac, char **av)
 	pid_t	pid = 0;	/* pager */
 	char	*dspec = 0;
 	RANGE	rargs = {0};
+	longopt	lopts[] = {
+		{ "dspec-file;", 300 },		/* let user pass in dspec */
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "1abc;C;d:DfhMnopr;Y", 0)) != -1) {
+	while ((c = getopt(ac, av, "1abc;C;d:DfhMnopr;Y", lopts)) != -1) {
 		switch (c) {
 		    case '1': one = 1; doheader = 0; break;
 		    case 'a':					/* doc 2.0 */
@@ -37,7 +41,10 @@ log_main(int ac, char **av)
 		    case 'f':					/* doc */
 		    case 'b': reverse++; break;			/* undoc */
 		    case 'C': cset = optarg; break;		/* doc 2.0 */
-		    case 'd': dspec = strdup(optarg); break;	/* doc 2.0 */
+		    case 'd':					/* doc 2.0 */
+			if (dspec) usage();
+			dspec = strdup(optarg);
+			break;
 		    case 'h': doheader = 0; break;		/* doc 2.0 */
 		    case 'M': 	/* for backward compat, undoc 2.0 */
 			      break;
@@ -57,6 +64,15 @@ log_main(int ac, char **av)
 			break;
 		    case 'r':
 			if (range_addArg(&rargs, optarg, 0)) usage();
+			break;
+		    case 300:	/* --dspec-file */
+			if (dspec) usage();
+			unless (dspec = loadfile(optarg, 0)) {
+				fprintf(stderr,
+				    "%s: cannot load file \"%s\"\n",
+				    prog, optarg);
+				return (1);
+			}
 			break;
 		    default: bk_badArg(c, av);
 		}

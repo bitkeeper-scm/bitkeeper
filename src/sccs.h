@@ -83,12 +83,12 @@ int	checking_rmdir(char *dir);
 #define	GET_HASHONLY	0x00002000	/* skip the file */
 #define	GET_DIFFS	0x00004000	/* get -D, regular diffs */
 #define	GET_BKDIFFS	0x00008000	/* get -DD, BK (rick's) diffs */
-#define	GET_HASHDIFFS	0x00000100	/* get -DDD, 0a0 hash style diffs */
+#define	GET_PERMS	0x00000100	/* extract perms for non gfile */
 #define	GET_SUM		0x00000200	/* used to force dsum in getRegBody */
 #define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
 #define	GET_LINENAME	0x00000800	/* get -O: prefix with line name */
 #define	GET_RELPATH	0x00000010	/* like GET_MODNAME but full relative */
-#define	GET_HASH	0x00000020	/* force hash file, ignore ~S_HASH */
+/* AVAILABLE		0x00000020	*/
 #define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
 #define	GET_COMMENTS	0x00000080	/* diffs -H: prefix diffs with hist */
 #define	DIFF_COMMENTS	GET_COMMENTS

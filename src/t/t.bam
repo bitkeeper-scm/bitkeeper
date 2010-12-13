@@ -655,9 +655,11 @@ echo OK
 
 echo $N Test that chmod +x works with hardlinks .....................$NL
 TIP=`bk prs -r+ -hnd:I: data`
+BK_CONFIG='BAM_hardlinks:yes' bk get $Q data
+mv data data-old
 bk chmod ugo+x data
-BK_CONFIG='BAM_hardlinks:yes' bk get $Q -r$TIP -Gdata-old data
-BK_CONFIG='BAM_hardlinks:yes' bk get $Q -r+ -Gdata-new data
+BK_CONFIG='BAM_hardlinks:yes' bk get $Q data
+mv data data-new
 OLINK=`linkcount data-old`
 NLINK=`linkcount data-new`
 test `expr $OLINK + $NLINK` -le 2 && {

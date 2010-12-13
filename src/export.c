@@ -167,14 +167,9 @@ export_main(int ac,  char **av)
 		unless (vflag) flags |= SILENT;
 		unless (kflag) flags |= GET_EXPAND;
 		if (opts->tflag) flags |= GET_DTIME;
+		flags |= GET_PERMS|PRINT;
 		mkdirf(output);
-		/*
-		 * This is stolen from the get -G code
-		 * XXX - why do we have output then?
-		 */
-		free(s->gfile);
-		s->gfile = strdup(output);
-		if (sccs_get(s, rev, 0, 0, 0, flags, "-")) {
+		if (sccs_get(s, rev, 0, 0, 0, flags, output)) {
 			fprintf(stderr, "cannot export to %s\n", output);
 			ret = 1;
 			sccs_free(s);

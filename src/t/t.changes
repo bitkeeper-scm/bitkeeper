@@ -862,6 +862,15 @@ cmp -s 2 3 || fail
 cmp -s 1 2 && fail
 echo OK
 
+echo $N Verify that --dspec-file loads a dspec ......................$NL
+bk changes -n --dspec-file=nonexist 2> GOT && fail -f GOT
+echo 'changes: cannot load file "nonexist"' > WANT
+echo :I: > dspec
+bk changes -n --dspec-file=dspec > GOT || fail
+bk changes -nd:I: > WANT
+cmpfiles WANT GOT
+echo OK
+
 # Setup a case where changes is hanging a remote repo with a read lock
 # and show that it doesn't in the -R case, as part2 now releases the readlock
 

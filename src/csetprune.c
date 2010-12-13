@@ -1518,7 +1518,7 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd, char ***mkid)
 		FREE(d->exclude);
 		if (sd[d->serial]) {
 			/* regen old style SCCS inc and excl lists */
-			graph_symdiff(d, PARENT(s, d), slist, sd, 0);
+			graph_symdiff(d, PARENT(s, d), slist, sd, 0, 0);
 		}
 		return;
 	}
