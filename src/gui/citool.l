@@ -131,18 +131,23 @@ int
 getNumFiles(string opts)
 {
 	FILE	fp;
-	string	line;
+	STATUS	st;
+	string	line, data;
 	int	n = 0;
-	string	cmd = "bk --each-repo ${opts} nfiles";
+	string	cmd = "bk --each-repo ${opts} nfiles 2>@1";
 
 	setStatus("Getting file count...");
 	update();
 
 	fp = popen(cmd, "r");
-	while (defined(line = fgetline(fp))) {
-		n += (int)line;
+	read(fp, &data, -1);
+	pclose(fp, &st);
+
+	if (st.exit == 0) {
+		foreach (line in split(data, "\n")) {
+			n += (int)line;
+		}
 	}
-	pclose(fp);
 
 	return (n);
 }
@@ -431,12 +436,13 @@ readSfilesProgress(FILE fd, string file, int pos)
 	string	line;
 
 	if (defined(line = fgetline(fd))) {
-		// list = {sfiles, extras, dirs, changed}
-		int	list[4] = (int[])line;
+		int	n;
 
-		if (list[0] != self.sfiles_last) {
-			self.sfiles_done += list[0] - self.sfiles_last;
-			self.sfiles_last = list[0];
+		unless (line =~ /^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)/) return;
+		n = (int)$1;
+		if (n != self.sfiles_last) {
+			self.sfiles_done += n - self.sfiles_last;
+			self.sfiles_last = n;
 			if (self.nfiles > 0) {
 				Progressbar_configure(self.w_progress, value:
 				    (100 * self.sfiles_done) / self.nfiles);
@@ -675,6 +681,7 @@ findFiles()
 			// Look for extra files when we're not in the resolver.
 			cmd .= " -x";
 		}
+		cmd .= " 2>@1";
 		fd = popen(cmd, "r");
 		fconfigure(fd, blocking: 0, buffering: "line");
 		fileevent(fd, "readable", {"readSfilesProgress", fd, tmp, 0});
