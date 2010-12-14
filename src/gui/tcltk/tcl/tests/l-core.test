@@ -12281,6 +12281,10 @@ void pattern_1_0()
 	unless (s eq "Pattern1_* bar 3") puts("bad 2.2");
 	s = Pattern1_bar(3, 4);	// calls Pattern1_*("bar", 3, 4)
 	unless (s eq "Pattern1_* bar 3 4") puts("bad 2.3");
+	s = Pattern1_foo123(1, 2);	// calls Pattern1_*("foo123", 1, 2)
+	unless (s eq "Pattern1_* foo123 1 2") puts("bad 2.4");
+	s = Pattern1_foo_(1, 2);	// calls Pattern1_*("foo_", 1, 2)
+	unless (s eq "Pattern1_* foo_ 1 2") puts("bad 2.5");
 
 	s = Pattern1_Bar();	// calls Pattern1_*("bar")
 	unless (s eq "Pattern1_* bar") puts("bad 3.1");

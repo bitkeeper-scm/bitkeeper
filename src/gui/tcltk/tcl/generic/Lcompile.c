@@ -2218,7 +2218,7 @@ ispatternfn(char *name, Expr **foo, Expr **Foo_star, Expr **opts, int *nopts)
 	while (*p) {
 		*p = tolower(*p);
 		buf = ckalloc(strlen(p) + 1);
-		for (i = 0; *p && islower(*p); ++p, ++i) {
+		for (i = 0; *p && !isupper(*p); ++p, ++i) {
 			buf[i] = *p;
 		}
 		buf[i] = 0;
