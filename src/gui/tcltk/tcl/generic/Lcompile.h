@@ -237,6 +237,11 @@ extern Type	*L_poly;
 extern Type	*L_widget;
 
 static inline int
+istype(Expr *expr, int type_flags)
+{
+	return (expr->type && (expr->type->kind & type_flags));
+}
+static inline int
 isarray(Expr *expr)
 {
 	return (expr->type && (expr->type->kind == L_ARRAY));

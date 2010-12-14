@@ -2805,6 +2805,7 @@ void op_1_12()
 	string	a, b, c;
 	string	as[];
 	string	hs{string};
+	widget	w;
 	poly	p;
 	struct {
 		string	a, b, c;
@@ -2874,6 +2875,28 @@ void op_1_12()
 	a = "0234";
 	a[0] .= "1";
 	unless (a eq "01234") puts("bad 32.1");
+
+	/* String and widget should both work. */
+
+	a = "a";
+	w = "w";
+	unless ((a . w) eq "aw") puts("bad 33.1");
+	unless ((w . a) eq "wa") puts("bad 33.2");
+	unless ((w . w) eq "ww") puts("bad 33.3");
+
+	a .= w;
+	unless (a eq "aw") puts("bad 34.1");
+	a = "a";
+	w .= a;
+	unless (w eq "wa") puts("bad 34.2");
+	w = "w";
+	w .= w;
+	unless (w eq "ww") puts("bad 34.3");
+
+	w = "abc";
+	unless (w =~ /b/) puts("bad 35.1");
+	w =~ s/ab/x/;
+	unless (w eq "xc") puts("bad 35.2");
 }
 op_1_12();
 } -output {}
@@ -3465,6 +3488,7 @@ void strindex_1()
 	} st;
 	string	sa[];
 	string	sh{string};
+	widget	w;
 
 	s = "abcd";
 	s[0] = "x";
@@ -3582,6 +3606,10 @@ void strindex_1()
 	s[1] = "x";
 	unless (s eq "xxzzy") puts("bad 7.1");
 	unless (s2 eq "xyzzy") puts("bad 7.2");
+
+	/* Should work with widgets too. */
+	w = "wid";
+	unless ((w[0] eq "w") && (w[END] eq "d")) puts("bad 8.1");
 }
 strindex_1();
 } -output {}
@@ -3651,6 +3679,7 @@ void slice_1()
 {
 	int	i, j;
 	string	s;
+	widget	w;
 
 	s = "";
 	unless (s[0..0] eq "") puts("bad 1.1");
@@ -3696,6 +3725,11 @@ void slice_1()
 	unless (s[i..j] eq "234") puts("bad 6.1");
 	unless (s[i-1..j] eq "1234") puts("bad 6.2");
 	unless (s[i-1..j+1] eq "12345") puts("bad 6.3");
+
+	w = "0123456789";
+	unless (s[2..4][0..0] eq "2") puts("bad 7.1");
+	unless (s[2..4][1..1] eq "3") puts("bad 7.2");
+	unless (s[1..8][1..6][1..4][1..2] eq "45") puts("bad 7.3");
 }
 slice_1();
 } -output {}
@@ -5865,6 +5899,7 @@ void switch_1_1()
 	int	ia[] = { 3, 1, 4, 1 };
 	string	s, s1, s2, s3, s4, s5;
 	string	sa[] = { "abc", "def", "ghi", "JkL" };
+	widget	w;
 
 	/* Test empty switch statement. */
 	i = 0;
@@ -6422,6 +6457,23 @@ void switch_1_1()
 		break;
 	}
 	unless (s eq "1") puts("bad 13.10");
+
+	/* Test switching on a widget type. */
+
+	w = "2";
+	s = "";
+	switch (w) {
+	    case "1":
+		puts("bad 14.1");
+		break;
+	    case /2/:
+		s .= "1";
+		break;
+	    default:
+		puts("bad 14.2");
+		break;
+	}
+	unless (s eq "1") puts("bad 14.3");
 }
 switch_1_1();
 } -output {}
@@ -6439,6 +6491,7 @@ void switch_1_2()
 	int	ia[] = { 3, 1, 4, 1 };
 	string	s;
 	string	sa[] = { "abc", "def", "ghi", "JkL", "00" };
+	widget	w;
 
 	/* Test string matching. */
 	s = "";
@@ -6820,6 +6873,23 @@ void switch_1_2()
 		break;
 	}
 	unless (s eq "1") puts("bad 13.8");
+
+	/* Test switching on a widget type. */
+
+	w = "2";
+	s = "";
+	switch (w) {
+	    case "1":
+		puts("bad 14.1");
+		break;
+	    case "2":
+		s .= "1";
+		break;
+	    default:
+		puts("bad 14.2");
+		break;
+	}
+	unless (s eq "1") puts("bad 14.3");
 }
 switch_1_2();
 } -output {}
@@ -11832,7 +11902,7 @@ void typecheck_10_1()
 .*21: L Error: assignment of incompatible types
 .*22: L Error: assignment of incompatible types
 .*23: L Error: assignment of incompatible types
-.*25: L Error: expected type string but got int in .=
+.*25: L Error: expected type string or widget but got int in .=
 .*26: L Error: assignment of incompatible types
 .*27: L Error: assignment of incompatible types
 }
@@ -12889,6 +12959,7 @@ split_1_0()
 	int	m;
 	string	s;
 	string	r[];
+	widget	w;
 
 	/* These are all white space. */
 	string	allspace[] = {
@@ -13287,6 +13358,15 @@ split_1_0()
 		puts("bad 12.3");
 	}
 	unless (length(r) == 3) puts("bad 12.4");
+
+	/* Split on a widget should work. */
+
+	w = "axbxc";
+	r = split(w, "x");
+	unless ((r[0] eq "a") && (r[1] eq "b") && (r[2] eq "c")) {
+		puts("bad 13.1");
+	}
+	unless (length(r) == 3) puts("bad 13.2");
 }
 #lang tcl
 split_1_0
@@ -14844,7 +14924,7 @@ void composite_5()
 .*14: L Error: arithmetic assignment illegal
 .*15: L Error: arithmetic assignment illegal
 .*16: L Error: arithmetic assignment illegal
-.*17: L Error: expected type string but got list in =~
+.*17: L Error: expected type string or widget but got list in =~
 .*18: L Error: invalid l-value in =~
 .*20: L Error: right-hand side incompatible with composite assign
 .*22: L Error: invalid l-value in assignment
@@ -15159,11 +15239,13 @@ void builtin_3()
 	int	a[] = {1,2,3,4};
 	int	h{int} = {1=>1,2=>2,3=>3};
 	poly	p = {1,2,3,4,5,6};
+	widget	w = "12345";
 
 	unless (length("abcde") == 5) puts("bad 1");
 	unless (length(a) == 4) puts("bad 2");
 	unless (length(p) == 6) puts("bad 4");
 	unless (length(h) == 3) puts("bad 5");
+	unless (length(w) == 5) puts("bad 6");
 }
 builtin_3();
 } -output {}
@@ -15274,6 +15356,7 @@ void builtin_7()
 	string	as[] = {"a","b","c"};
 	string	s = "x";
 	poly	p = "p";
+	widget	w = "w";
 
 	unless (join(" ", as) eq "a b c") puts("bad 1");
 	unless (join(s, as) eq "axbxc") puts("bad 2");
@@ -15281,6 +15364,7 @@ void builtin_7()
 	unless (join(p, as) eq "apbpc") puts("bad 4");
 	unless (join(p,p) eq "p") puts("bad 5");
 	unless (join(" ", ai) eq "1 2 3") puts("bad 6");
+	unless (join(w, ai) eq "1w2w3") puts("bad 7");
 }
 builtin_7();
 } -output {}

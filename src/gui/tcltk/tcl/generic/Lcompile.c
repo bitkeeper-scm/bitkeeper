@@ -1374,7 +1374,7 @@ compile_split(Expr *expr)
 	if (n > 3) {
 		L_errf(expr, "too many args to split");
 	}
-	unless ((isstring(arg) || ispoly(arg)) && !isregexp(arg)) {
+	unless (istype(arg, L_STRING|L_WIDGET|L_POLY) && !isregexp(arg)) {
 		L_errf(expr, "first arg to split must be string");
 	}
 	if (arg && arg->next) {
@@ -1534,7 +1534,7 @@ compile_length(Expr *expr)
 		L_errf(expr, "incorrect # args to length");
 		return (0);  // stack effect
 	}
-	if (isstring(expr->b)) {
+	if (isstring(expr->b) || iswidget(expr->b)) {
 		push_str("::string");
 		push_str("length");
 		TclEmitInstInt1(INST_ROT, 2, L->frame->envPtr);
@@ -1622,7 +1622,7 @@ compile_join(Expr *expr)
 		return (0);  // stack effect
 	}
 	compile_expr(sep, L_PUSH_VAL);
-	unless (isstring(sep) || ispoly(sep)) {
+	unless (isstring(sep) || iswidget(sep) || ispoly(sep)) {
 		L_errf(expr, "first arg to join not a string");
 		return (0);  // stack effect
 	}
@@ -1841,7 +1841,7 @@ compile_write(Expr *expr)
 		return (0);
 	}
 	buf = fd->next;
-	unless (isstring(buf) || ispoly(buf)) {
+	unless (isstring(buf) || iswidget(buf) || ispoly(buf)) {
 		L_errf(expr, "second arg to write() must have type string");
 		return (0);
 	}
@@ -2701,7 +2701,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 		return (1);
 	    case L_OP_EQDOT:
 		compile_assign(expr);
-		L_typeck_expect(L_STRING, expr->a, "in .=");
+		L_typeck_expect(L_STRING|L_WIDGET, expr->a, "in .=");
 		expr->type = expr->a->type;
 		return (1);
 	    case L_OP_ANDAND:
@@ -2876,8 +2876,10 @@ compile_binOp(Expr *expr, Expr_f flags)
 	    case L_OP_CONCAT:
 		compile_expr(expr->a, L_PUSH_VAL);
 		compile_expr(expr->b, L_PUSH_VAL);
-		L_typeck_expect(L_STRING, expr->a, "in lhs of . operator");
-		L_typeck_expect(L_STRING, expr->b, "in rhs of . operator");
+		L_typeck_expect(L_STRING|L_WIDGET, expr->a,
+				"in lhs of . operator");
+		L_typeck_expect(L_STRING|L_WIDGET, expr->b,
+				"in rhs of . operator");
 		TclEmitInstInt1(INST_CONCAT1, 2, L->frame->envPtr);
 		expr->type = L_string;
 		return (1);
@@ -2911,7 +2913,7 @@ compile_trinOp(Expr *expr)
 		break;
 	    case L_OP_ARRAY_SLICE:
 		compile_expr(expr->a, L_PUSH_VAL);
-		if (isstring(expr->a)) {
+		if (isstring(expr->a) || iswidget(expr->a)) {
 			push_str("::string");
 			push_str("range");
 			TclEmitInstInt1(INST_ROT, 2, L->frame->envPtr);
@@ -2926,7 +2928,7 @@ compile_trinOp(Expr *expr)
 			L_errf(expr->a, "illegal type for slice");
 			expr->type = L_poly;
 		}
-		if (isstring(expr->a)) {
+		if (isstring(expr->a) || iswidget(expr->a)) {
 			TclEmitOpcode(INST_L_PUSH_STR_SIZE, L->frame->envPtr);
 		} else if (isarray(expr->a) || islist(expr->a) ||
 			   ispoly(expr->a)) {
@@ -2942,8 +2944,7 @@ compile_trinOp(Expr *expr)
 			L_errf(expr->c, "second slice index not an int");
 		}
 		--L->idx_nesting;
-		if (isstring(expr->a) || isarray(expr->a) || islist(expr->a) ||
-		    ispoly(expr->a)) {
+		if (istype(expr->a, L_STRING|L_WIDGET|L_ARRAY|L_LIST|L_POLY)) {
 			TclEmitOpcode(INST_L_POP_SIZE, L->frame->envPtr);
 		}
 		emit_invoke(i);
@@ -3040,7 +3041,7 @@ compile_twiddle(Expr *expr)
 {
 	compile_expr(expr->a, L_PUSH_VAL);
 	compile_reMatch(expr->b);
-	L_typeck_expect(L_STRING, expr->a, "in =~");
+	L_typeck_expect(L_STRING|L_WIDGET, expr->a, "in =~");
 }
 
 /*
@@ -3168,7 +3169,7 @@ compile_twiddleSubst(Expr *expr)
 		// <match> <new-val>
 		emit_pop();
 	}
-	L_typeck_expect(L_STRING, lhs, "in =~");
+	L_typeck_expect(L_STRING|L_WIDGET, lhs, "in =~");
 	// <match>
 }
 
@@ -3814,7 +3815,7 @@ compile_switch_slow(Switch *sw)
 	Jmp	*next_body_jmp = NULL, *next_test_jmp = NULL, *undef_jmp = NULL;
 
 	compile_expr(e, L_PUSH_VAL);
-	unless (isint(e) || isstring(e) || ispoly(e)) {
+	unless (istype(e, L_INT|L_STRING|L_WIDGET|L_POLY)) {
 		L_errf(e, "switch expression must be int or string");
 		return;
 	}
@@ -3916,7 +3917,7 @@ compile_switch_fast(Switch *sw)
 	jt_idx = TclCreateAuxData(jt, &tclJumptableInfoType, L->frame->envPtr);
 
 	compile_expr(e, L_PUSH_VAL);
-	unless (isint(e) || isstring(e) || ispoly(e)) {
+	unless (istype(e, L_INT|L_STRING|L_WIDGET|L_POLY)) {
 		L_errf(e, "switch expression must be int or string");
 		return;
 	}
@@ -4029,7 +4030,7 @@ push_index(Expr *expr)
 		if (isarray(expr->a) || islist(expr->a)) {
 			type = expr->a->type->base_type;
 			ret  = L_IDX_ARRAY;
-		} else if (isstring(expr->a)) {
+		} else if (isstring(expr->a) || iswidget(expr->a)) {
 			type = L_string;
 			ret  = L_IDX_STRING;
 		} else if (ispoly(expr->a)) {
@@ -4112,7 +4113,7 @@ compile_idxOp(Expr *expr, Expr_f flags)
 		return (compile_clsInstDeref(expr, flags));
 	}
 
-	if (isstring(expr->a)) {
+	if (isstring(expr->a) || iswidget(expr->a)) {
 		TclEmitOpcode(INST_L_PUSH_STR_SIZE, L->frame->envPtr);
 	} else if (isarray(expr->a) || islist(expr->a) || ispoly(expr->a)) {
 		TclEmitOpcode(INST_L_PUSH_LIST_SIZE, L->frame->envPtr);
@@ -4122,8 +4123,7 @@ compile_idxOp(Expr *expr, Expr_f flags)
 	flags |= push_index(expr);
 	--L->idx_nesting;
 
-	if (isstring(expr->a) || isarray(expr->a) || islist(expr->a) ||
-	    ispoly(expr->a)) {
+	if (istype(expr->a, L_STRING|L_WIDGET|L_ARRAY|L_LIST|L_POLY)) {
 		TclEmitOpcode(INST_L_POP_SIZE, L->frame->envPtr);
 	}
 
