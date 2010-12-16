@@ -496,7 +496,9 @@ pending:
 				delta	*d;
 
 				concat_path(buf, c->path, CHANGESET);
-				s = sccs_init(buf, SILENT|INIT_NOCKSUM);
+				s = sccs_init(buf,
+				    SILENT|INIT_NOCKSUM|INIT_MUSTEXIST);
+				assert(s);
 				d = sccs_top(s);
 				unless (d->flags & D_CSET) {
 					c->pending = 1;
@@ -847,6 +849,7 @@ nested_each(int quiet, char **av, char **aliases)
 
 	EACH_STRUCT(n->comps, cp, i) {
 		unless (cp->alias && cp->present) continue;
+		if (errors && cp->product) break;
 		if (quiet) {
 			safe_putenv("_BK_TITLE=%s",
 			    cp->product ? PRODUCT : cp->path);
