@@ -13,7 +13,7 @@ echo $N Setup .......................................................$NL
 cd "$HERE"
 commercial standalone1
 echo file1 >file1
-bk new -q file1 || exit 1
+bk new -q -b file1 || exit 1
 bk commit -q -y'add file1' || exit 2
 cd "$HERE"
 commercial standalone2
@@ -123,6 +123,13 @@ cat <<EOF >WANT
 file1
 EOF
 cmpfiles GOT WANT
+cd ..
+echo OK
+
+echo $N Basic detach functionality staying inside product ...........$NL
+cd nested1
+bk detach $Q component1 inside-prod || fail
+bk _rm -fr inside-prod
 cd ..
 echo OK
 
@@ -271,7 +278,7 @@ test -f BitKeeper/log/COMPONENT && {
 	echo COMPONENT file not removed by detach
 	exit 1
 }
-bk cat file1 >GOT || exit 1
+bk cat file1 >GOT || fail
 cat <<EOF >WANT
 file1
 EOF

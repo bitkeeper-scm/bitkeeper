@@ -587,6 +587,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.debug) fprintf(f, " -d");
+	if (opts.detach) fprintf(f, " -D");
 	unless (opts.quiet) fprintf(f, " -v");
 	EACH(opts.aliases) fprintf(f, " '-s%s'", opts.aliases[i]);
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);

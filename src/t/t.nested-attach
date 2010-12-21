@@ -16,7 +16,7 @@ cd ..
 fresh_commercial standalone1
 bk bam server $Q ../bam_server
 echo bam > bam
-bk new $Q -b bam
+_BK_BAM_V2=1 bk new $Q -b bam
 echo file1 >file1
 bk new -q file1 || exit 1
 bk commit -q -y'add file1' || exit 1

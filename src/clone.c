@@ -138,11 +138,11 @@ clone_main(int ac, char **av)
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
 			break;
 		    case 300: /* --sccs-compat */
-			opts->link = 0;
+			opts->no_lclone = 1;
 			opts->remap = 0;
 			break;
 		    case 301: /* --hide-sccs-dirs */
-			opts->link = 0;
+			opts->no_lclone = 1;
 			opts->remap = 1;
 			break;
 		    case 302: /* --sfiotitle=title */
@@ -187,7 +187,9 @@ clone_main(int ac, char **av)
 			return (CLONE_ERROR);
 		}
 		bam_url = "none";
+		opts->no_lclone = 1;
 	}
+	if (opts->detach) opts->no_lclone = 1;
 	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	unless (opts->quiet) progress_startMulti();
 	if (av[optind]) localName2bkName(av[optind], av[optind]);
@@ -233,6 +235,12 @@ clone_main(int ac, char **av)
 		unless (eula_accept(EULA_PROMPT, 0)) {
 			fprintf(stderr,
 			    "clone: failed to accept license, aborting.\n");
+			exit(CLONE_ERROR);
+		}
+		if (opts->attach_only && exists(BAM_ROOT "/" BAM_DB)) {
+			fprintf(stderr,
+			    "%s: cannot attach repo with "
+			    "old BAM data directly.\n", prog);
 			exit(CLONE_ERROR);
 		}
 		chdir(start_cwd);
@@ -691,6 +699,12 @@ clone(char **av, remote *r, char *local, char **envVar)
 		}
 	}
 	bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
+	if (opts->detach) {
+		if (unlink("BitKeeper/log/COMPONENT")) {
+			fprintf(stderr, "detach: failed to unlink COMPONENT\n");
+			return (-1);
+		}
+	}
 	if (opts->product) {
 		char	*nlid = 0;
 
@@ -1882,10 +1896,6 @@ int
 detach(int quiet, int verbose)
 {
 	assert(isdir(BKROOT));
-	if (unlink("BitKeeper/log/COMPONENT")) {
-		fprintf(stderr, "detach: failed to unlink COMPONENT\n");
-		return (-1);
-	}
 	if (systemf("bk newroot %s %s -y'detach'",
 	    verbose ? "-v" : "", quiet ? "-q" : "")) {
 		fprintf(stderr, "detach: failed to newroot\n");

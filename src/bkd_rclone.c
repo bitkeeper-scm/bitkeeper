@@ -219,6 +219,8 @@ cmd_rclone_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	rc = getsfio(parallel);
+	if (opts.detach) unlink("BitKeeper/log/COMPONENT");
+
 	/*
 	 * After unpacking sfio we need to reset proj because it might
 	 * have become a component.
@@ -386,8 +388,15 @@ rclone_end(opts *opts)
 	/* remove any uncommited stuff */
 	sccs_rmUncommitted(quiet, 0);
 
-	if (opts->detach && detach(quiet, 0)) return (-1);
-
+	if (opts->detach) {
+		/*
+		 * bp_dataroot() using $BK_ROOTKEY in a bkd to remember the
+		 * current ROOTKEY, but we are about the change that so we
+		 * need to clear this.
+		 */
+		putenv("BK_ROOTKEY=");
+		if (detach(quiet, 0)) return (-1);
+	}
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
 	if (opts->rev) {
