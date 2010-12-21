@@ -13960,7 +13960,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		rev = strndup(p, len - (p-kw));
 		if ((rev[0] == '$') && isdigit(rev[1]) && !rev[2]) {
 			/* substitute for a $\d variable */
-			if (t = sccs_prsbuf(s, d, 0, rev)) {
+			if (t = sccs_prsbuf(s, d, PRS_FORCE, rev)) {
 				free(rev);
 				rev = t;
 			}

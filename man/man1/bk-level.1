@@ -4,6 +4,7 @@
 bk level \- set or show the level of the repository
 .SH SYNOPSIS
 .B bk level
+.[B] \-l
 .[ARG] num
 .SH DESCRIPTION
 .LP
@@ -23,6 +24,10 @@ may only flow to a repository of the same or higher level.  The typical
 use for levels is to create a stable or bug-fix repository.  If that repository
 has a lower level than the development repository, changes may be moved from
 stable to development, but not the other way.
+.SH OPTIONS
+.tp
+.B \-l
+Just list the level on a line by itself.  Useful for scripts.
 .SH "SEE ALSO"
 .SA clone
 .SA pull

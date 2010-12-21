@@ -328,7 +328,7 @@ srcs: $(SRCS) $(HDRS) FORCE
 
 tags: $(patsubst %,%/tags.local, $(SUBDIRS)) tags.local
 	@bk get -Sq tags.skippats
-	@sort $^ | grep -v -ftags.skippats > $@
+	@bk _sort -u $^ | grep -v -ftags.skippats > $@
 	@echo ctags completed
 
 tags.local: $(SRCS) $(HDRS)

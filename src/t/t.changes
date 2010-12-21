@@ -906,3 +906,8 @@ bk -Lw10 _usleep 1 || {
 }
 bk _kill $L
 echo OK
+
+echo $N Test that using a variable to access another rev works ......$NL
+cd "$HERE"/project
+test `bk changes -r1.5 -nd'${0=1.8}:REV|$0:'` = 1.8 || fail
+echo OK
