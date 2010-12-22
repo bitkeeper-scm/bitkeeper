@@ -695,7 +695,7 @@ private int
 writable_gfile(sccs *s)
 {
 	if (!HAS_PFILE(s) && S_ISREG(s->mode) && WRITABLE(s)) {
-		pfile pf = { "+", "?", "?", NULL, "?", NULL, NULL, NULL };
+		pfile	pf = { "+", "?", NULL, NULL, NULL };
 
 		if (badWritable) {
 			printf("%s\n", s->gfile);
@@ -781,15 +781,15 @@ gfile_unchanged(sccs *s)
 		fprintf(stderr, "%s: cannot read pfile\n", s->gfile);
 		return (1);
 	}
-	rc = diff_gfile(s, &pf, 0, DEVNULL_WR);
-	if (rc == 1) return (1); /* no changed */
-	if (rc != 0) return (rc); /* error */
-
-	/*
-	 * If RCS/SCCS keyword enabled, try diff it with keyword expanded
-	 */
-	if (SCCS(s) || RCS(s)) return (diff_gfile(s, &pf, 1, DEVNULL_WR));
-	return (0); /* changed */
+	unless (rc = diff_gfile(s, &pf, 0, DEVNULL_WR)) {
+		/*
+		 * If RCS/SCCS keyword enabled, try diff it with
+		 * keyword expanded
+		 */
+		if (SCCS(s) || RCS(s)) rc = diff_gfile(s, &pf, 1, DEVNULL_WR);
+	}
+	free_pfile(&pf);
+	return (rc); /* changed */
 }
 
 private int

@@ -129,7 +129,7 @@ delta_main(int ac, char **av)
 	char	*mode = 0;
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
-	pfile	pf;
+	pfile	pf = {0};
 	int	dash, errors = 0, fire, dangling;
 	off_t	sz;
 
@@ -432,6 +432,7 @@ next:		if (init) mclose(init);
 		 * if (diffs) fclose(diffs);
 		 */
 		sccs_free(s);
+		free_pfile(&pf);
 		name = sfileNext();
 	}
 	if (sfileDone()) errors |= 64;

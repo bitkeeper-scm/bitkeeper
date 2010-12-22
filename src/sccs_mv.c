@@ -233,10 +233,12 @@ err:		if (sname) free(sname);
 		/*
 		 * Update the p.file, make sure we preserve -i -x
 		 */
-		strcpy(pf.oldrev, pf.newrev);
+		free(pf.oldrev);
+		pf.oldrev = strdup(pf.newrev);
 		rev = NULL; /* Next rev will be relative to TOT */
 		sccs_getedit(s, &rev);
-		strcpy(pf.newrev, rev);
+		free(pf.newrev);
+		pf.newrev = strdup(rev);
 		sccs_rewrite_pfile(s, &pf);
 		free_pfile(&pf);
 	}

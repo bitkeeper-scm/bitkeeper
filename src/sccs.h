@@ -680,16 +680,14 @@ typedef struct {
 
 /*
  * Passed back from read_pfile().
+ * All strings are malloced and cleared by calling free_pfile(&pf);
  */
 typedef struct {
-	char	oldrev[MAXREV];		/* XXX - needs to be malloced */
-	char	newrev[MAXREV];		/* XXX - needs to be malloced */
-	char	sccsrev[MAXREV];
-	char	*user;			/* malloced - caller frees */
-	char	date[20];
-	char	*iLst;			/* malloced - caller frees */
-	char	*xLst;			/* malloced - caller frees */
-	char	*mRev;			/* malloced - caller frees */
+	char	*oldrev;	/* old tip rev */
+	char	*newrev;	/* rev to be created */
+	char	*iLst;		/* include revs for delta */
+	char	*xLst;		/* exclude revs for delta */
+	char	*mRev;		/* merge rev for delta */
 } pfile;
 
 /*

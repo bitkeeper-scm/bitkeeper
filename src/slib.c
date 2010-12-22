@@ -54,7 +54,6 @@ private	int	unlinkGfile(sccs *s);
 private int	write_pfile(sccs *s, int flags, delta *d,
 		    char *rev, char *iLst, char *i2, char *xLst, char *mRev);
 private time_t	date2time(char *asctime, char *z, int roundup);
-private	char	*sccsrev(delta *d);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
 private int	sameFileType(sccs *s, delta *d);
 private int	deflate_gfile(sccs *s, char *tmpfile);
@@ -1305,12 +1304,6 @@ explode_rev(delta *d)
 	    case 2: d->r[2] = 0;	/* fall through */
 	    case 3: d->r[3] = 0;
 	}
-}
-
-private char *
-sccsrev(delta *d)
-{
-	return (d->rev);
 }
 
 /*
@@ -6114,6 +6107,9 @@ sccs_rewrite_pfile(sccs *s, pfile *pf)
 {
 	int	fd, len;
 	char	*tmp;
+	char	*user = sccs_getuser();
+	char	*date = time2date(time(0));
+
 
 	/* XXX: Do I need any special locking code? */
 	if ((fd = open(s->pfile, O_WRONLY|O_TRUNC, 0666)) == -1) {
@@ -6123,15 +6119,15 @@ sccs_rewrite_pfile(sccs *s, pfile *pf)
 	len = strlen(pf->oldrev)
 	    + MAXREV + 2
 	    + strlen(pf->newrev)
-	    + strlen(pf->user)
-	    + strlen(pf->date)
+	    + strlen(user)
+	    + strlen(date)
 	    + (pf->iLst ? strlen(pf->iLst) + 3 : 0)
 	    + (pf->xLst ? strlen(pf->xLst) + 3 : 0)
 	    + (pf->mRev ? strlen(pf->mRev) + 3 : 0)
 	    + 3 + 1 + 1; /* 3 spaces \n NULL */
 	tmp = malloc(len);
 	sprintf(tmp, "%s %s %s %s",
-	    pf->oldrev, pf->newrev, pf->user, pf->date);
+	    pf->oldrev, pf->newrev, user, date);
 	if (pf->iLst) {
 		strcat(tmp, " -i");
 		strcat(tmp, pf->iLst);
@@ -7873,7 +7869,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		p = fmts(buf, "\001d ");
 		*p++ = d->type;
 		*p++ = ' ';
-		p = fmts(p, sccsrev(d));
+		p = fmts(p, d->rev);
 		*p++ = ' ';
 		p = fmts(p, d->sdate);
 		*p++ = ' ';
@@ -8426,7 +8422,8 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	if ((ret == 1) && MONOTONIC(s) && d->dangling && !s->tree->dangling) {
 		while (NEXT(d) && (d->dangling || TAG(d))) d = NEXT(d);
 		assert(NEXT(d));
-		strcpy(pf.oldrev, d->rev);
+		free(pf.oldrev);
+		pf.oldrev = strdup(d->rev);
 		ret = _hasDiffs(s, d, flags, inex, &pf);
 	}
 	free_pfile(&pf);
@@ -8723,10 +8720,11 @@ pdiffs(char *gfile, char *left, char *right, FILE *diffs)
 void
 free_pfile(pfile *pf)
 {
+	if (pf->oldrev) free(pf->oldrev);
+	if (pf->newrev) free(pf->newrev);
 	if (pf->iLst) free(pf->iLst);
 	if (pf->xLst) free(pf->xLst);
 	if (pf->mRev) free(pf->mRev);
-	if (pf->user) free(pf->user);
 	bzero(pf, sizeof(*pf));
 }
 
@@ -8751,7 +8749,7 @@ sccs_clean(sccs *s, u32 flags)
 	}
 
 	unless (HAS_PFILE(s)) {
-		pfile	dummy = { "+", "?", "?", 0, "?", 0, 0, 0 };
+		pfile	dummy = { "+", "?", 0, 0, 0 };
 
 		if (isRegularFile(s->mode) && !WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
@@ -12844,6 +12842,7 @@ sccs_read_pfile(char *who, sccs *s, pfile *pf)
 	char	c1 = 0, c2 = 0, c3 = 0;
 	int	e;
 	FILE	*tmp;
+	char	oldrev[MAXREV], newrev[MAXREV];
 	char	date[10], time[10], user[40];
 
 	bzero(pf, sizeof(*pf));
@@ -12860,14 +12859,11 @@ sccs_read_pfile(char *who, sccs *s, pfile *pf)
 	xLst = malloc(fsize);
 	iLst[0] = xLst[0] = 0;
 	e = fscanf(tmp, "%s %s %s %s %s -%c%s -%c%s -%c%s",
-	    pf->oldrev, pf->newrev, user, date, time, &c1, iLst, &c2, xLst,
+	    oldrev, newrev, user, date, time, &c1, iLst, &c2, xLst,
 	    &c3, mRev);
-	pf->user = strdup(user);
-	strcpy(pf->date, date);
-	strcat(pf->date, " ");
-	strcat(pf->date, time);
+	pf->oldrev = strdup(oldrev);
+	pf->newrev = strdup(newrev);
 	fclose(tmp);
-	pf->sccsrev[0] = 0;
 
 	/*
 	 * mRev always means there is at least an include -
@@ -12931,7 +12927,7 @@ sccs_read_pfile(char *who, sccs *s, pfile *pf)
 	pf->xLst = xLst;
 	pf->mRev = mRev;
 	debug((stderr, "pfile(%s, %s, %s, %s, %s, %s, %s)\n",
-    	    pf->oldrev, pf->newrev, user, pf->date,
+    	    pf->oldrev, pf->newrev, user, date,
 	    notnull(pf->iLst), notnull(pf->xLst), notnull(pf->mRev)));
 	return (0);
 }
@@ -13227,7 +13223,8 @@ out:
 		fprintf(stderr,
 		    "delta: invalid nextrev %s in p.file, using %s instead.\n",
 		    pf.newrev, rev);
-		strcpy(pf.newrev, rev);
+		free(pf.newrev);
+		pf.newrev = strdup(rev);
 	}
 
 	if (d->dangling) {
@@ -13325,18 +13322,8 @@ out:
 	n = sccs_dInit(n, 'D', s, init != 0);
 	updMode(s, n, d);
 
-	if (!n->rev) {
-		if (pf.sccsrev[0]) {
-			n->rev = pf.sccsrev;
-			explode_rev(n);
-			n->rev = strdup(pf.newrev);
-		} else {
-			n->rev = strdup(pf.newrev);
-			explode_rev(n);
-		}
-	} else {
-		explode_rev(n);
-	}
+	unless (n->rev) n->rev = strdup(pf.newrev);
+	explode_rev(n);
 	n->serial = s->nextserial++;
 	n->next = s->table;
 	s->table = n;

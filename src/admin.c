@@ -37,7 +37,7 @@ admin_main(int ac, char **av)
 	char	*obscure = 0;
 	delta	*d = 0;
 	int 	was_edited = 0, new_delta = 0;
-	pfile	pf;
+	pfile	pf = {0};
 
 	bzero(f, sizeof(f));
 	bzero(u, sizeof(u));
@@ -294,6 +294,7 @@ admin_main(int ac, char **av)
 			}
 		}
 next:		sccs_free(sc);
+		free_pfile(&pf);
 		name = sfileNext();
 	}
 	if (sfileDone()) error = 1;
