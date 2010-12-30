@@ -3209,6 +3209,10 @@ compile_shortCircuit(Expr *expr)
 private void
 compile_condition(Expr *cond)
 {
+	unless (cond) {
+		push_str("1");
+		return;
+	}
 	compile_expr(cond, L_PUSH_VAL);
 	if (isvoid(cond)) {
 		L_errf(cond, "void type illegal in predicate");

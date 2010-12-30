@@ -5304,6 +5304,27 @@ void loop_1_2_13()
 loop_1_2_13();
 } -output {}
 
+test loop-1.2.14 {test empty condition in for statement} -body {
+#lang L
+void loop_1_2_14()
+{
+	int	i = 0;
+
+	for (;; ++i) {
+		break;
+	}
+	unless (i == 0) puts("bad 1");
+
+	i = 0;
+	for (;;) {
+		++i;
+		break;
+	}
+	unless (i == 1) puts("bad 2");
+}
+loop_1_2_14();
+} -output {}
+
 test loop-1.3 {continue statements} -body {
 #lang L
 void loop_1_3_for_continue()
