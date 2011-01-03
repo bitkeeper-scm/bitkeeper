@@ -146,17 +146,8 @@ push_main(int ac, char **av)
 			urls = addLine(urls, parent_normalize(av[optind++]));
 		}
 	}
-
-	if (proj_isEnsemble(0) && !getenv("_BK_TRANSACTION")) {
-		if (proj_cd2product()) {
-			fprintf(stderr, "push: cannot find product root.\n");
-			exit(1);
-		}
-		opts.product = 1;
-	} else if (proj_cd2root()) {
-		fprintf(stderr, "push: cannot find package root.\n");
-		exit(1);
-	}
+	opts.product = bk_nested2root(getenv("_BK_TRANSACTION") != 0);
+	cmdlog_lock(CMD_NESTED_RDLOCK|CMD_RDLOCK);
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "push: failed to accept license, aborting.\n");

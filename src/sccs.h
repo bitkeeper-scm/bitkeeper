@@ -1428,7 +1428,6 @@ extern	char	*title;
 						 * the nested lock we have */
 #define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
 #define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
-#define	CMD_LOCK_PRODUCT	0x00000800	/* lock product, not comp */
 #define	CMD_RDUNLOCK		0x00001000	/* unlock a previous READ */
 #define	CMD_BKD_CMD		0x00002000	/* command comes from bkd.c */
 

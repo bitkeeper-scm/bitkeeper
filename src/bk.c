@@ -862,8 +862,8 @@ private	struct {
 	{"get", CMD_COMPAT_NOSI},
 	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},
 	{"license", CMD_NOREPO},
-	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_LOCK_PRODUCT},
-	{"push", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK|CMD_LOCK_PRODUCT},
+	{"pull", CMD_BYTES},
+	{"push", CMD_BYTES},
 	{"remote abort",
 	     CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
 	{"remote changes part1", CMD_RDLOCK},
@@ -981,16 +981,6 @@ cmdlog_lock(int flags)
 	char	*error_msg = 0;
 
 	cmdlog_flags = flags;
-	/*
-	 * If we want a product lock (push/pull) and we're in a component,
-	 * pop up and grab the product's proj so we lock that one.  But
-	 * only if we're not already in a nested op (_BK_TRANSACTION).
-	 */
-	if ((cmdlog_flags & CMD_LOCK_PRODUCT) && proj_isComponent(0) &&
-	    !getenv("_BK_TRANSACTION")) {
-		/* if in a product, act like a cd2product, as cmd will do it */
-		proj = proj_product(0);
-	}
 
 	/* used by "remote nested" */
 	if (cmdlog_flags & CMD_SAMELOCK) {
@@ -1308,14 +1298,7 @@ cmdlog_end(int ret, int bkd_cmd)
 	}
 
 	if (!bkd_cmd && (cmdlog_locks & (CMD_WRLOCK|CMD_RDLOCK))) {
-		project	*prod = 0;
-
-		if ((cmdlog_flags & CMD_LOCK_PRODUCT) &&
-		    proj_isComponent(0)  &&
-		    !getenv("_BK_TRANSACTION")) {
-			prod = proj_product(0);
-		}
-		repository_unlock(prod, 0);
+		repository_unlock(0, 0);
 	}
 out:
 	cmdlog_buffer[0] = 0;

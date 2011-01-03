@@ -153,15 +153,8 @@ pull_main(int ac, char **av)
 		}
 	}
 
-	if (proj_isComponent(0) && !opts.transaction && !opts.port) {
-		if (proj_cd2product()) {
-			fprintf(stderr, "pull: cannot find product root.\n");
-			exit(1);
-		}
-	} else if (proj_cd2root()) {
-		fprintf(stderr, "pull: cannot find package root.\n");
-		exit(1);
-	}
+	bk_nested2root(opts.transaction || opts.port);
+	cmdlog_lock(opts.port ? CMD_WRLOCK : CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
 		exit(1);
