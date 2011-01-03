@@ -11270,9 +11270,17 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 				flagsChanged +=
 				    changeXFlag(sc, d, flags, add, fl);
 			} else if (streq(fl, "DEFAULT")) {
-				if (sc->defbranch) free(sc->defbranch);
-				sc->defbranch = v ? strdup(v) : 0;
-				flagsChanged++;
+				if (BITKEEPER(sc) && add && v) {
+					fprintf(stderr,
+					   "Setting DEFAULT is unsupported.\n");
+					error = 1;
+					sc->state |= S_WARNED;
+				} else {
+					free(sc->defbranch);
+					sc->defbranch =
+					    (add && v) ? strdup(v) : 0;
+					flagsChanged++;
+				}
 			} else {
 				if (v) {
 					fprintf(stderr,
@@ -11295,9 +11303,17 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 
 			switch (f[i].thing[0]) {
 			    case 'd':
-				if (sc->defbranch) free(sc->defbranch);
-				sc->defbranch = *v ? strdup(v) : 0;
-				flagsChanged++;
+				if (BITKEEPER(sc) && (add && *v)) {
+					fprintf(stderr,
+					   "Setting d flag is unsupported.\n");
+					error = 1;
+					sc->state |= S_WARNED;
+				} else {
+					if (sc->defbranch) free(sc->defbranch);
+					sc->defbranch =
+					    (add && *v) ? strdup(v) : 0;
+					flagsChanged++;
+				}
 				break;
 			    case 'e':
 				if (BITKEEPER(sc)) {
@@ -11319,6 +11335,14 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 				}
 				/* fall through if not testing */
 			    default:
+				/*
+				 * Other flags are silently ignored in
+				 * bk-mode. Note emacs vc-mode creates files
+				 * with:
+				 *    admin -fb -i<file>
+				 */
+				if (BITKEEPER(sc)) break;
+
 				buf = aprintf("%c %s", v[-1], v);
 				flagsChanged++;
 				if (add) {
