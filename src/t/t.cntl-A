@@ -134,3 +134,36 @@ bk edit $Q test2 2> get.out || exit 1
 cat get.out
 grep -q "bad delta cksum" get.out && exit 1
 echo OK
+
+echo $N check cnt-A in just the right place in a long line ..........$NL
+# in checkin, fgets buf is 2048, so 2047 chars and a null.
+# if 2048 char is a ^A, another ^A will be added during the checkin
+# which won't be removed on a get, so the checksum will be one off.
+printf "+++++++++++++++++++++++++++++++\001" > A
+for i in 1 2 3; do
+	cat A A A A > B
+	mv B A
+done
+bk new $Q A
+bk checksum -r+ A || exit 1
+echo OK
+
+echo $N check carraige return in just the right place ...............$NL
+# in checkin, fgets buf is 2048, so 2047 chars and a null.
+# \r are stripped only if they occur before \n, which could be multiple
+# buffers away.  Test that the code tracks that.
+printf "\015\015\015\015\015\015\015\015" > C
+for i in 1 2 3 4; do
+	cat C C C C > B
+	mv B C
+done
+echo $NX x$NXL > x
+echo > y
+cat C x C C y C > B
+cat C x y C > WANT
+mv B C
+bk new $Q C
+bk admin -fEOLN_UNIX C
+bk get $Q C
+checkfiles WANT C
+echo OK

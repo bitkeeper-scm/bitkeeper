@@ -9324,21 +9324,6 @@ updatePending(sccs *s)
 	touch(sccsXfile(s, 'd'),  GROUP_MODE);
 }
 
-/* s/\r+\n$/\n/ */
-private void
-fix_crnl(register char *s)
-{
-	char	*p = s;
-	while (*p) p++;
-	unless (p - s >= 2) return;
-	unless (p[-2] == '\r' && p[-1] == '\n') return;
-	for (p -= 2; p != s; p--) {
-		unless (p[-1] == '\r') break;
-	}
-	p[0] = '\n';
-	p[1] = 0;
-}
-
 /*
  * Escape the control-A character in data buffer
  */
@@ -9423,7 +9408,7 @@ checkin(sccs *s,
 	FILE	*sfile = 0, *gfile = 0;
 	delta	*n0 = 0, *n, *first;
 	int	added = 0;
-	int	len;
+	size_t	len;
 	int	i;
 	char	*t;
 	char	buf[MAXLINE];
@@ -9700,20 +9685,32 @@ out:		if (sfile) fclose(sfile);
 		} else if (gfile) {
 			int	crnl_bug = (getenv("_BK_CRNL_BUG") != 0);
 
-			while (fnext(buf, gfile)) {
-				unless (crnl_bug) fix_crnl(buf);
-				fix_cntl_a(s, buf, sfile);
+			strcpy(buf, "\n");
+			while (t = fgetln(gfile, &len)) {
+				assert(!no_lf);
+				fix_cntl_a(s, t, sfile);
+				--len;
+				if (t[len] != '\n') {
+					/* must be last line in file */
+					no_lf = 1;
+					buf[0] = t[len]; /* buf last char */
+				} else unless (crnl_bug) {
+					while ((len > 0) &&
+					    (t[len - 1] == '\r')) {
+						--len;
+					}
+				}
+				t[len] = 0;
+				if (len) s->dsum += fputdata(s, t, sfile);
 				s->dsum += fputdata(s, buf, sfile);
 				added++;
 			}
 			/*
 			 * For ascii files, add missing \n automagically.
 			 */
-			len = strlen(buf);
-			if (len && (buf[len - 1] != '\n')) {
+			if (no_lf) {
 				/* put lf in sfile, but not in dsum */
 				fputdata(s, "\n", sfile);
-				no_lf = 1;
 			}
 		} else if (S_ISLNK(s->mode)) {
 			u8	*t;
