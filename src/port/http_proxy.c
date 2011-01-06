@@ -8,9 +8,17 @@ _get_http_proxy_env(char **proxies)
 
 	/* http://[use:password@]proxy.host:8080 */
 	p = getenv("http_proxy"); 
-	if (p && *p && strneq("http://", p, 7) && (q = strrchr(&p[7], ':'))) {
+	if (p && *p) {
+		// the http:// is optional
+		r = p;
+		if (strneq("http://", p, 7)) p += 7;
+		unless (q = strchr(p, ':')) {
+			fprintf(stderr,
+			    "bk: ignoring malformed proxy '%s'\n", r);
+			goto skip;
+		}
+		
 		*q++ = 0;
-		p = &p[7];
 		r = strrchr(p, '@'); /* look for optional user:passwd@ */
 		if (r) {
 			*r++ = 0;
@@ -35,9 +43,9 @@ _get_http_proxy_env(char **proxies)
 		q[-1] = ':'; 
 		if (r) r[-1] = '@';
 		proxies = addLine(proxies, strdup(buf));
-	} else if (p && *p) {
-		fprintf(stderr, "bk: ignoring malformed proxy '%s'\n", p);
 	}
+
+skip:
 
 	p = getenv("HTTP_PROXY_HOST"); 
 	q = getenv("HTTP_PROXY_PORT"); 
@@ -48,7 +56,6 @@ _get_http_proxy_env(char **proxies)
 
 	return (proxies);
 }
-
 
 private char **
 _get_socks_proxy(char **proxies)
