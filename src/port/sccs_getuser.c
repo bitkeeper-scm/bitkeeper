@@ -10,20 +10,24 @@ static	uid_t	uid = (uid_t)-1;
 private	char *
 cleanup(char *s)
 {
-	char	 *t;
+	int	warned = 0;
+	char	*t;
 
 	unless (s && *s) return (0);
 	for (t = s; *t; t++) {
 		if (*t == ' ') *t = '.';
-		unless ((*t == '\r') || (*t == '\n') ||
+		if ((*t == '\r') || (*t == '\n') ||
 		    (*t == '|') || (*t == '/')) {
-		    	continue;
+			unless (warned) {
+				fprintf(stderr,
+				    "Bad user name '%s'; names may not "
+				    "contain LR, CR, "
+				    "'|' or '/' characters.\n"
+				    "Replacing bad characters with a '.'\n", s);
+			}
+			warned = 1;
+			*t = '.';
 		}
-		fprintf(stderr,
-		    "Bad user name '%s'; names may not contain LR, CR, '|' or "
-		    "'/' characters.\n", s);
-		*s = 0;
-		return (0);
 	}
 	return (s);
 }

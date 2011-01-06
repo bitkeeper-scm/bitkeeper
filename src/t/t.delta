@@ -432,10 +432,7 @@ fi #--------------------------------------------------------------------
 echo $N Make sure we don\'t allow usernames with \|\'s .................$NL
 cd "$HERE/project"
 touch testfile
-BK_USER='test|user' bk new $Q testfile 2>new.out && {
-	echo should have failed
-	exit 1
-}
+BK_USER='test|user' bk new $Q testfile 2>new.out
 grep -q "Bad user name" new.out || {
 	echo wrong error
 	cat new.out

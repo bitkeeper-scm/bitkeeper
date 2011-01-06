@@ -26,6 +26,7 @@ unsigned int turnTransOff;	/* for transactions, see nested.h */
 private	char	*buffer = 0;	/* copy of stdin */
 private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
+private	int	indent_level;
 
 private	void	bk_atexit(void);
 private	void	bk_cleanup(int ret);
@@ -35,9 +36,11 @@ private	int	cmdlog_locks;
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private	void	showproc_start(char **av);
 private	void	showproc_end(char *cmdlog_buffer, int ret);
+private	void	callstack_add(int remote);
 
 #define	MAXARGS	1024
 #define	MAXPROCDEPTH	30	/* fallsafe, don't recurse deeper than this */
+#define	INDENT_SPACES	4
 
 private void
 save_gmon(void)
@@ -60,7 +63,7 @@ main(int volatile ac, char **av, char **env)
 	int	each_repo = 0, dashrdir = 0;
 	int	buf_stdin = 0;	/* -Bstdin */
 	int	from_iterator = 0;
-	char	*csp, *p, *locking = 0;
+	char	*p, *locking = 0;
 	char	*todir = 0;
 	int	toroot = 0;	/* 1==cd2root 3==cd2product */
 	char	*envargs = 0;
@@ -373,6 +376,7 @@ baddir:						fprintf(stderr,
 		}
 		if (remote) {
 			start_cwd = strdup(proj_cwd());
+			callstack_add(remote);
 			cmdlog_start(av, 0);
 			ret = remote_bk(!headers, ac, av);
 			goto out;
@@ -541,18 +545,9 @@ bad_locking:				fprintf(stderr,
 run:	trace_init(prog);	/* again 'cause we changed prog */
 
 	/*
-	 * Don't recurse too deep.
+	 * Update callstack and don't recurse too deep.
 	 */
-	if ((csp = getenv("_BK_CALLSTACK"))) {
-		if (strcnt(csp, ':') >= MAXPROCDEPTH) {
-			fprintf(stderr, "BK callstack: %s\n", csp);
-			fprintf(stderr, "BK callstack too deep, aborting.\n");
-			exit(1);
-		}
-		safe_putenv("_BK_CALLSTACK=%s:%s", csp, prog);
-	} else {
-		safe_putenv("_BK_CALLSTACK=%s", prog);
-	}
+	callstack_add(0);
 
 	/*
 	 * XXX - we could check to see if we are licensed for SAM and make
@@ -891,6 +886,7 @@ void
 cmdlog_start(char **av, int bkd_cmd)
 {
 	int	i, len;
+	char	*quoted;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
@@ -938,8 +934,13 @@ cmdlog_start(char **av, int bkd_cmd)
 		len += strlen(av[i]) + 1;
 		if (len >= sizeof(cmdlog_buffer)) continue;
 		if (i) strcat(cmdlog_buffer, " ");
-		strcat(cmdlog_buffer, av[i]);
+		quoted = shellquote(av[i]);
+		strcat(cmdlog_buffer, quoted);
+		free(quoted);
 	}
+
+	write_log("cmd_log", 1, "%s", cmdlog_buffer);
+	indent_level++;
 
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
 
@@ -1177,8 +1178,8 @@ write_log(char *file, int rotate, char *format, ...)
 {
 	FILE	*f;
 	char	*root;
-	char	path[MAXPATH];
 	struct	stat	sb;
+	char	path[MAXPATH], nformat[MAXPATH];
 	va_list	ap;
 
 	unless (root = proj_root(0)) return (1);
@@ -1197,13 +1198,14 @@ write_log(char *file, int rotate, char *format, ...)
 			return (1);
 		}
 	}
-	fprintf(f, "%c%s %lu %s: ",
+	setvbuf(f, NULL, _IONBF, 0);
+	sprintf(nformat, "%c%s %lu %s:%*s%s\n",
 	    log_versions[LOGVER],
-	    sccs_user(), time(0), bk_vers);
+	    sccs_user(), time(0), bk_vers,
+	    indent_level * INDENT_SPACES, " ", format);
 	va_start(ap, format);
-	vfprintf(f, format, ap);
+	vfprintf(f, nformat, ap);
 	va_end(ap);
-	fputc('\n', f);
 	if (fstat(fileno(f), &sb)) {
 		/* ignore errors */
 		sb.st_size = 0;
@@ -1245,6 +1247,16 @@ cmdlog_end(int ret, int bkd_cmd)
 
 	/* If we have no project root then bail out */
 	unless (proj_root(0)) goto out;
+
+	/*
+	 * if we got here as a result of an exit() call
+	 * before indent_level was incremented then
+	 * we cannot decrement here.
+	 * (ie. this happens when you try a nested pull
+	 * without the SAM license bit)
+	 */
+	unless (ret != 0 && indent_level == 0)
+		indent_level--;
 
 	len = strlen(cmdlog_buffer) + 20;
 	EACH_KV (notes) len += kv.key.dsize + kv.val.dsize;
@@ -1303,6 +1315,7 @@ cmdlog_end(int ret, int bkd_cmd)
 out:
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
+	assert(indent_level >= 0);
 	return (rc);
 }
 
@@ -1310,25 +1323,74 @@ int
 cmdlog_main(int ac, char **av)
 {
 	FILE	*f;
-	time_t	t, cutoff = 0;
-	char	*p;
+	time_t	t;
+	char	*p, *p1, *equals;
 	char	*version;
 	char	*user;
 	char	buf[MAXPATH*3];
-	int	yelled = 0, c, all = 0;
+	int	yelled = 0, c, ind;
+	struct	{
+		int	all:1;
+		int	user:1;
+		int	date:1;
+		int	exit:1;
+		int	version:1;
+		int	verbose:1;
+		time_t	cutoff;
+		char	*pattern;
+		search	search;
+	} opts;
+	longopt lopts[] = {
+		{ "user", 300 },
+		{ "date", 301 },
+		{ "exit", 302 },
+		{ "version", 303 },
+		{ 0, 0 },
+	};
 
 	unless (proj_root(0)) return (1);
-	while ((c = getopt(ac, av, "ac;", 0)) != -1) {
+	memset(&opts, 0, sizeof(opts));
+	while ((c = getopt(ac, av, "ac;v", lopts)) != -1) {
 		switch (c) {
-		    case 'a': all = 1; break;
+		    case 'a': opts.all = 1; break;
 		    case 'c':
-			cutoff = range_cutoff(optarg + 1);
+			opts.cutoff = range_cutoff(optarg + 1);
 			break;
+		    case 'v':
+			opts.verbose = 1;
+			break;
+		    case 300:	// --user
+			opts.user = 1; break;
+		    case 301:	// --date
+			opts.date = 1; break;
+		    case 302:	// --exit
+			opts.exit = 1; break;
+		    case 303:	// --version
+			opts.version = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
+	if (opts.verbose &&
+	    (opts.user || opts.date || opts.exit || opts.version)) {
+		fprintf(stderr,
+		    "%s: -v with --user, --date, --exit or --version"
+		    " is redundant\n", prog);
+		usage();
+		return (1);
+	}
+	if (opts.verbose) {
+		opts.user = opts.date = opts.exit = opts.version = 1;
+	}
+	if (av[optind]) {
+		if (av[optind][0] != '^' && !opts.all) {
+			opts.pattern = aprintf("^%s/", av[optind]);
+		} else {
+			opts.pattern = aprintf("%s/", av[optind]);
+		}
+		opts.search = search_parse(opts.pattern);
+	}
 	concat_path(buf, proj_root(0), "/BitKeeper/log/");
-	concat_path(buf, buf, (all ? "cmd_log" : "repo_log"));
+	concat_path(buf, buf, (opts.all ? "cmd_log" : "repo_log"));
 	f = fopen(buf, "r");
 	unless (f) return (1);
 	while (fgets(buf, sizeof(buf), f)) {
@@ -1372,12 +1434,60 @@ cmdlog_main(int ac, char **av)
 				}
 			}
 		}
-		unless (t >= cutoff) continue;
-		printf("%s %.19s %14s %s", user, ctime(&t),
-		    version ? version : "", 1+p);
+		unless (t >= opts.cutoff) continue;
+		p+=2; // skip colon and extra space inserted by log indenting
+		chomp(p);
+		/* find indent, if any */
+		for (p1 = p; isspace(*p1); p1++);
+		ind = p1 - p;
+		/* figure out if we get to skip this entry */
+		if (opts.pattern) {
+			unless (search_either(p, opts.search)) continue;
+			/*
+			 * if somebody is looking for foo, then
+			 * they'll also match the "bk cmdlog foo" so
+			 * don't print ourselves, unless we are
+			 * actually looking for cmdlog entries
+			 */
+			unless (strneq(opts.pattern, "cmdlog", 6) ||
+			    strneq(opts.pattern, "^cmdlog", 7)) {
+				if (strneq(p, "cmdlog ", 7)) continue;
+			}
+		}
+		if (!opts.all && isspace(*p)) continue;
+
+		if (opts.user) printf("%s ", user);
+		if (opts.date) printf("%.19s ", ctime(&t));
+		if (opts.version) printf("%14s ", version ? version : "");
+		if (opts.verbose) {
+			printf("%s\n", p);
+		} else {
+			equals = strchr(p, '=');
+			unless (equals) continue;
+			if (equals) *equals = 0;
+			if (ind) {
+				printf("%*sbk %s", ind, " ", p1);
+			} else {
+				printf("bk %s", p);
+			}
+			if (equals) {
+				if (opts.exit) {
+					*equals = '=';
+					if ((p = strchr(equals + 2, ' '))) {
+						*p = 0;
+					} 
+				} else {
+					*equals = 0;
+				}
+				printf("%s", equals);
+			}
+			printf("\n");
+		}
+
 nextline:	;
 	}
 	fclose(f);
+	if (opts.pattern) free(opts.pattern);
 	return (0);
 }
 
@@ -1552,4 +1662,23 @@ showproc_end(char *cmdlog_buffer, int ret)
 	fprintf(f, " [%s]", proj_cwd());
 	fprintf(f, "\n");
 	fclose(f);
+}
+
+private void
+callstack_add(int remote)
+{
+	char *csp;
+	char *at = (remote) ? "@" : "";
+
+	if ((csp = getenv("_BK_CALLSTACK"))) {
+		if ((indent_level = strcnt(csp, ':')) >= MAXPROCDEPTH) {
+			fprintf(stderr, "BK callstack: %s\n", csp);
+			fprintf(stderr, "BK callstack too deep, aborting.\n");
+			exit(1);
+		}
+		safe_putenv("_BK_CALLSTACK=%s:%s%s", csp, at, prog);
+		indent_level++;
+	} else {
+		safe_putenv("_BK_CALLSTACK=%s%s", at, prog);
+	}
 }
