@@ -57,11 +57,7 @@ sccs2bk_main(int ac, char **av)
 	if (licChk) return (0);
 
 	unless (csetkey) usage();
-	if (name = getenv("BK_CONFIG")) {
-		safe_putenv("BK_CONFIG=%s; checkout:none!", name);
-	} else {
-		putenv("BK_CONFIG=checkout:none!");
-	}
+	bk_setConfig("checkout", "none");
 	for (name = sfileFirst("sccs2bk", &av[optind], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;

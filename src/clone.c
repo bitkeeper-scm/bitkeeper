@@ -64,6 +64,7 @@ clone_main(int ac, char **av)
 	int	gzip = 6;
 	char	**envVar = 0;
 	remote 	*r = 0, *l = 0;
+	char	*check_out = 0;		/* --checkout=none|get|edit */
 	longopt	lopts[] = {
 		{ "sccsdirs", 300 },		/* 4.x compat, w/ SCCS/ */
 		{ "sccs-compat", 300 },		/* old non-remapped repo */
@@ -73,7 +74,8 @@ clone_main(int ac, char **av)
 		{ "sfiotitle;", 302 },		/* title for sfio */
 		{ "no-hardlinks", 303 },	/* never hardlink repo */
 		{ "force", 304 },		/* force attach dups */
-		{ "identical", 305 },
+		{ "identical", 305 },		/* aliases as of commit */
+		{ "checkout:", 306, },		/* --checkout=none|get|edit */
 
 		/* aliases */
 		{ "subset;" , 's' },
@@ -157,6 +159,9 @@ clone_main(int ac, char **av)
 		    case 305: /* --identical */
 			opts->identical = 1;
 			break;
+		    case 306: /* --checkout=none|get|edit */
+			check_out = optarg;
+			break;
 		    default: bk_badArg(c, av);
 	    	}
 	}
@@ -191,7 +196,6 @@ clone_main(int ac, char **av)
 	}
 	if (opts->detach) opts->no_lclone = 1;
 	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
-	unless (opts->quiet) progress_startMulti();
 	if (av[optind]) localName2bkName(av[optind], av[optind]);
 	if (av[optind+1]) localName2bkName(av[optind+1], av[optind+1]);
 	unless (av[optind]) usage();
@@ -301,6 +305,8 @@ clone_main(int ac, char **av)
 	}
 	if (opts->debug) r->trace = 1;
 
+	unless (opts->quiet) progress_startMulti();
+	if (check_out) bk_setConfig("checkout", check_out);
 	if (opts->attach) {
 		char	*dir;
 

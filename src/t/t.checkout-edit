@@ -47,3 +47,25 @@ bk edit $Q bar.c >OUT 2>&1 || {
 	exit 1
 }
 echo OK
+
+echo $N Test command line override of checkout mode .................$NL
+cd ..
+bk ci $Q -ysnap BitKeeper/etc/config
+bk commit $Q -ysnap 
+cd ..
+bk clone $Q --checkout=none project none
+test -f none/src/foo.c && {
+	echo "foo.c should not be checked out"
+	exit 1
+}
+bk clone $Q --checkout=get project get
+test -f get/src/foo.c || {
+	echo "foo.c should be checked out"
+	exit 1
+}
+test -w get/src/foo.c && {
+	echo "foo.c should not be read-write"
+	ls -l get/src/foo.c
+	exit 1
+}
+echo OK

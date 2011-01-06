@@ -1391,6 +1391,7 @@ void	notifier_flush(void);
 #endif
 
 int	sccs_defRootlog(sccs *cset);
+void	bk_setConfig(char *key, char *val);
 
 extern	char	*editor;
 extern	char	*bin;

@@ -1997,3 +1997,20 @@ usage(void)
 	}
 	exit(3);
 }
+
+/*
+ * Override bk config in this process by setting BK_CONFIG in the
+ * environment.
+ */
+void
+bk_setConfig(char *key, char *val)
+{
+	char	*p = getenv("BK_CONFIG");
+
+	if (p) {
+		safe_putenv("BK_CONFIG=%s;%s:%s!", p, key, val);
+	} else {
+		safe_putenv("BK_CONFIG=%s:%s!", key, val);
+	}
+}
+
