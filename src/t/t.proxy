@@ -37,13 +37,7 @@ echo OK
 echo $N Repeat with http://data.bitmover.com \(missing port\) .........$NL
 http_proxy=http://data.bitmover.com
 export http_proxy
-BK_TRACE_REMOTE=1 bk changes -qrbk-3.2.5 -nd:MD5KEY: \
-	http://proxytest:14690/bk-3.2.x >OUT 2>ERR || {
-	echo should not have failed
-	cat OUT
-	cat ERR
-	exit 1
-}
+bk changes -qrbk-3.2.5 -nd:MD5KEY: http://proxytest:14690/bk-3.2.x >OUT 2>ERR
 grep -q 'bk: ignoring malformed proxy' ERR || {
 	echo "wrong error message"
 	cat ERR
