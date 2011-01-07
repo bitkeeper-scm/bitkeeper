@@ -20,7 +20,8 @@ foo,bar/BitKeeper/etc/ignore|1.0..1.1
 foo,bar/ChangeSet|1.0..1.2
 foo,bar/x|1.0..1.1
 EOF
-cmpfiles WANT GOT
+perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
+cmpfiles WANT2 GOT
 echo OK
 
 echo $N Try rset -S in product ......................................$NL
@@ -29,7 +30,8 @@ cat >WANT <<EOF
 ChangeSet|1.2..1.4
 foo,bar/ChangeSet|1.0..1.2
 EOF
-cmpfiles WANT GOT
+perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
+cmpfiles WANT2 GOT
 echo OK
 
 echo $N Try rset -S in component ....................................$NL
@@ -43,7 +45,8 @@ BitKeeper/etc/ignore|1.0..1.1
 ChangeSet|1.0..1.2
 x|1.0..1.1
 EOF
-cmpfiles WANT GOT
+perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
+cmpfiles WANT2 GOT
 cd ..
 echo OK
 
@@ -57,16 +60,19 @@ foo,bar/BitKeeper/etc/gone|1.0..1.1
 foo,bar/BitKeeper/etc/ignore|1.0..1.1
 foo,bar/x|1.0..1.1
 EOF
-cmpfiles WANT GOT
+perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
+cmpfiles WANT2 GOT
 echo OK
 
 echo $N Test -sALL when not all components are populated ............$NL
+mvcomp gcc gcc-old
+bk commit $Q -y'rename component'
 bk clone -s./foo,bar $Q . ../copy || fail
 cd ../copy
 bk rset -rSTART,END -sALL 2>ERR && fail -f ERR
 cat <<EOF >WANT
 rset: error, the following components are not populated:
-	./gcc
+	./gcc-old
 	./gdb
 EOF
 cmpfiles ERR WANT
@@ -90,7 +96,8 @@ foo,bar/BitKeeper/etc/ignore|1.0..1.1
 foo,bar/ChangeSet|1.0..1.2
 foo,bar/x|1.0..1.1
 EOF
-cmpfiles WANT OUT
+perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
+cmpfiles WANT2 OUT
 echo OK
 
 echo $N Test -s./comp ...............................................$NL
@@ -103,7 +110,8 @@ foo,bar/BitKeeper/etc/ignore|1.0..1.1
 foo,bar/ChangeSet|1.0..1.2
 foo,bar/x|1.0..1.1
 EOF
-cmpfiles WANT OUT
+perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
+cmpfiles WANT2 OUT
 echo OK
 
 
@@ -115,3 +123,61 @@ EOF
 cmpfiles WANT OUT
 echo OK
 
+echo $N Test gone file support ......................................$NL
+cd foo,bar
+echo 1 > gone_here
+echo 2 > gone_gone
+bk new $Q gone_here gone_gone
+bk prs -hnd:ROOTKEY: gone_here gone_gone | bk gone -q -
+bk commit $Q -ygone || fail
+bk _rm SCCS/s.gone_gone
+cd ..
+echo 1 > gone_here
+echo 2 > gone_gone
+bk new $Q gone_here gone_gone
+bk prs -hnd:ROOTKEY: gone_here gone_gone | bk gone -q -
+bk commit $Q -ygone || fail
+KEY=`bk changes -r+ -nd:MD5KEY:`
+bk mv gone_gone gone_gone_moved || fail
+bk commit $Q -ymvgone
+bk _rm SCCS/s.gone_gone_moved
+bk mv gone_here gone_here_mv_pending
+bk repocheck $Q		# this rebuilds the idcache
+
+bk rset -hl$KEY | 
+   grep -v BitKeeper | bk _sort | sed 's/|[^|]*$/|/' > OUT
+cat <<EOF > WANT
+ChangeSet|ChangeSet|
+foo,bar/ChangeSet|foo,bar/ChangeSet|
+foo,bar/gone_here|foo,bar/gone_here|
+foo,bar/x|foo,bar/x|
+gone_here_mv_pending|gone_here|
+EOF
+cmpfiles WANT OUT
+
+bk rset --show-gone -hl$KEY | 
+   grep -v BitKeeper | bk _sort | sed 's/|[^|]*$/|/' > OUT
+cat <<EOF > WANT
+ChangeSet|ChangeSet|
+foo,bar/ChangeSet|foo,bar/ChangeSet|
+foo,bar/gone_gone|foo,bar/gone_gone|
+foo,bar/gone_here|foo,bar/gone_here|
+foo,bar/x|foo,bar/x|
+gcc-old/ChangeSet|gcc-old/ChangeSet|
+gdb/ChangeSet|gdb/ChangeSet|
+gone_gone_moved|gone_gone|
+gone_here_mv_pending|gone_here|
+EOF
+cmpfiles WANT OUT
+
+bk rset --show-gone -hlEND | 
+   grep -v BitKeeper | bk _sort | sed 's/|[^|]*$/|/' > OUT
+cat <<EOF > WANT
+ChangeSet|ChangeSet|
+foo,bar/ChangeSet|foo,bar/ChangeSet|
+foo,bar/x|foo,bar/x|
+gcc-old/ChangeSet|gcc/ChangeSet|
+gdb/ChangeSet|gdb/ChangeSet|
+EOF
+cmpfiles WANT OUT
+echo OK

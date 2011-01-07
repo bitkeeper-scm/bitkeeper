@@ -88,7 +88,7 @@ int	checking_rmdir(char *dir);
 #define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
 #define	GET_LINENAME	0x00000800	/* get -O: prefix with line name */
 #define	GET_RELPATH	0x00000010	/* like GET_MODNAME but full relative */
-/* AVAILABLE		0x00000020	*/
+#define	GET_SKIPGONE	0x00000020	/* ignore gone deltas in HASH */
 #define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
 #define	GET_COMMENTS	0x00000080	/* diffs -H: prefix diffs with hist */
 #define	DIFF_COMMENTS	GET_COMMENTS
@@ -632,6 +632,8 @@ struct sccs {
 	time_t	gtime;		/* gfile modidification time */
 	time_t	stime;		/* sfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
+	MDBM	*goneDB;	/* GoneDB used in the get_reg() setup */
+	MDBM	*idDB;		/* id cache used in the get_reg() setup */
 	hash	*findkeydb;	/* Cache a map of delta key to delta* */
 	project	*proj;		/* If in BK mode, pointer to project */
 	void	*rrevs;		/* If has conflicts, revs in conflict */

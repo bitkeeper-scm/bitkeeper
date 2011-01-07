@@ -704,8 +704,8 @@ echo $N Test renames command ........................................$NL
 bk renames -r+ | bk _sort > GOT
 cat > WANT  <<EOF
 gcc/ChangeSet -> newcc/ChangeSet
+gcc/file1 -> newcc/moveit
 gdb/file3 -> gdb/moveit3
-newcc/file1 -> newcc/moveit
 EOF
 cmpfiles WANT GOT
 cd gdb

@@ -4645,6 +4645,8 @@ sccs_free(sccs *s)
 	freeLines(s->text, free);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
+	if (s->goneDB) mdbm_close(s->goneDB);
+	if (s->idDB) mdbm_close(s->idDB);
 	if (s->findkeydb) hash_free(s->findkeydb);
 	if (s->locs) free(s->locs);
 	if (s->proj) proj_free(s->proj);
@@ -6247,25 +6249,66 @@ getSymlnkCksumDelta(sccs *s, delta *d)
 	return (d);
 }
 
+/*
+ * fail if
+ *   - the file for rk is there, and delta dk is missing and gone
+ *   - the rk is gone and the file is missing
+ * goneDB normally doesn't use the hash value.  Here it stores a "1"
+ * in place of the default "" to mean really gone (not in file system).
+ */
+private	int
+deltaChk(sccs *cset, char *rk, char *dk)
+{
+	sccs	*s;
+	char	*rkgone;
+	int	rc = 0;
+	char	buf[MAXPATH];
+
+	unless ((rkgone = mdbm_fetch_str(cset->goneDB, rk)) ||
+	    mdbm_fetch_str(cset->goneDB, dk)) {
+	    	return (0);
+	}
+	if (rkgone && (*rkgone == '1')) return (1);
+	unless (cset->idDB) {
+		concat_path(buf, proj_root(cset->proj), getIDCACHE(cset->proj));
+		unless (cset->idDB = loadDB(buf, 0, DB_IDCACHE)) {
+			perror(buf);
+			exit(1);
+		}
+	}
+	if (s = sccs_keyinit(cset->proj, rk, SILENT, cset->idDB)) {
+		/* if file there, but key is missing, ignore line. */
+		unless (sccs_findKey(s, dk)) rc = 1;
+		sccs_free(s);
+	} else if (rkgone) {
+		/* if no file, mark goneDB that it was really gone */
+		mdbm_store_str(cset->goneDB, rk, "1", MDBM_REPLACE);
+		rc = 1;
+	} else {
+		// not rk gone but no keyinit -- let rset fail => rc = 0;
+	}
+	return (rc);
+}
+
 private int
-getKey(MDBM *DB, char *data, int flags)
+getKey(sccs *s, MDBM *DB, char *data, int flags)
 {
 	char	*k, *v;
 	int	rc;
 
-	if (flags & DB_KEYFORMAT) {
-		k = data;
-		if (v = separator(data)) *v++ = 0;
-	} else {
-		k = data;
-		if (v = strchr(data, ' ')) *v++ = 0;
-	}
-	unless (v) {
+	k = data;
+	unless (v = separator(data)) {
 		fprintf(stderr, "get hash: no separator in '%s'\n", data);
 		return (-1);
 	}
+	*v++ = 0;
+	if (flags & GET_SKIPGONE) {
+		if (mdbm_fetch_str(DB, k) || deltaChk(s, k, v)) {
+			goto skip;
+		}
+	}
 	if (mdbm_store_str(DB, k, v, MDBM_INSERT) && (errno == EEXIST)) {
-		rc = 0;
+skip:		rc = 0;
 	} else {
 		rc = 1;
 	}
@@ -6312,7 +6355,6 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 	char	*buf, *name = 0, *gfile = 0;
 	MDBM	*DB = 0;
 	int	hash = 0;
-	int	hashFlags = 0;
 	int	sccs_expanded, rcs_expanded;
 	int	lf_pend = 0;
 	char	*eol = "\n";
@@ -6361,12 +6403,11 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 	}
 	/* we're changing the meaning of the file, checksum would be invalid */
 	if (HASH(s)) {
-		if (flags & GET_NOHASH) flags &= ~NEWCKSUM;
+		if (flags & (GET_NOHASH|GET_SKIPGONE)) flags &= ~NEWCKSUM;
 	}
 
 	if (HASH(s) && !(flags & GET_NOHASH)) {
 		hash = 1;
-		if (CSET(s)) hashFlags = DB_KEYFORMAT;
 		unless ((encoding & E_DATAENC) == E_ASCII) {
 			fprintf(stderr, "get: has files must be ascii.\n");
 			s->state |= S_WARNED;
@@ -6478,7 +6519,7 @@ out:			if (slist) free(slist);
 				continue;
 			}
 			if (hash) {
-				if (getKey(DB, buf, hashFlags|flags) == 1) {
+				if (getKey(s, DB, buf, flags) == 1) {
 					unless (flags &
 					    (GET_HASHONLY|GET_SUM)) {
 						fputs(buf, out);
@@ -6736,7 +6777,7 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 	 */
 #define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|GET_HEADER|\
 		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS|\
-		GET_SEQ|GET_COMMENTS)
+		GET_SKIPGONE|GET_SEQ|GET_COMMENTS)
 	if (flags & BAD) {
 		fprintf(stderr,
 		    "get: bad flags on get for %s: %x\n", s->gfile, flags);
