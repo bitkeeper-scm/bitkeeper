@@ -9,8 +9,7 @@ private	void	getFileConflict(char *gfile, char *path);
 int
 res_abort(resolve *rs)
 {
-	if (proj_isEnsemble(0) ? confirm(QUIT_WARNING)
-	    : confirm("Abort patch?")) {
+	if (confirm("Abort patch?")) {
 		if (rs->s) {
 			sccs_free(rs->s);
 			rs->s = 0;
@@ -360,12 +359,6 @@ prs_common(resolve *rs, sccs *s, char *a, char *b)
 int
 res_quit(resolve *rs)
 {
-	if (proj_isEnsemble(0)) {
-		// warn they are about to lose info
-		unless (confirm(QUIT_WARNING)) {
-			return (0);
-		}
-	}
 	assert(exists(RESYNC2ROOT "/" ROOT2RESYNC));
 	chdir(RESYNC2ROOT);
 	proj_restoreAllCO(0, 0, 0);

@@ -1021,7 +1021,6 @@ int	sccs_read_pfile(char *who, sccs *s, pfile *pf);
 int	sccs_rewrite_pfile(sccs *s, pfile *pf);
 int	sccs_isleaf(sccs *s, delta *d);
 int	emptyDir(char *dir);
-int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
 int	sccs_mv(char *, char *, int, int, int, int);
 delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x);

@@ -745,12 +745,10 @@ L=`bk lock -rt`
   echo 'm'
   echo 'C'
   echo q
-) | _BK_NO_LOCK_RETRY=YES bk resolve -a > OUT 2>&1
-grep -q 'Waiting for write lock...' OUT || {
-	echo failed
-	cat OUT
+) | bk resolve -a > OUT 2>&1
+grep -q 'Entire repository is locked by:' OUT || {
 	bk _kill $L
-	exit 1
+	fail -f OUT
 }
 bk _kill $L
 echo OK

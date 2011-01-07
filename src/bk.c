@@ -876,6 +876,7 @@ private	struct {
 	{"remote rdlock", CMD_RDLOCK},
 	{"remote nested", CMD_SAMELOCK},
 	{"remote wrlock", CMD_WRLOCK},
+	{"resolve", 0},
 	{"synckeys", CMD_RDLOCK},
 	{"tagmerge", CMD_WRLOCK|CMD_NESTED_WRLOCK},
 	{"undo", 0},
@@ -1028,6 +1029,7 @@ cmdlog_lock(int flags)
 		char	*p = getenv("BK_NO_REPO_LOCK");
 
 		if (p && streq(p, "YES")) {
+			TRACE("%s", "Skipping locking due to BK_NO_REPO_LOCK");
 			putenv("BK_NO_REPO_LOCK=");
 			do_lock = 0;
 		}
@@ -1048,6 +1050,7 @@ cmdlog_lock(int flags)
 		if (cmdlog_flags & CMD_IGNORE_RESYNC) {
 			putenv("_BK_IGNORE_RESYNC_LOCK=1");
 		}
+		TRACE("WRLOCK in %s", proj_cwd());
 		i = repository_wrlock(proj);
 		if (cmdlog_flags & CMD_IGNORE_RESYNC) {
 			putenv("_BK_IGNORE_RESYNC_LOCK=");
@@ -1085,6 +1088,7 @@ cmdlog_lock(int flags)
 		cmdlog_locks |= CMD_WRLOCK;
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
+		TRACE("RDLOCK in %s", proj_cwd());
 		if (i = repository_rdlock(proj)) {
 			unless ((cmdlog_flags & CMD_BKD_CMD) ||
 			    !proj_root(proj)) {
@@ -1296,20 +1300,15 @@ cmdlog_end(int ret, int bkd_cmd)
 		nlid = getenv("_NESTED_LOCK");
 		assert(nlid);
 		TRACE("nlid = %s", nlid);
-		if (ret && !streq(prog, "abort")) {
-			if (nested_abort(0, nlid)) {
-				error("%s", nested_errmsg());
-			}
-		} else {
-			if (nested_unlock(0, nlid)) {
-				error("%s", nested_errmsg());
-				// XXX we need to fail command here
-				//     *ret = 1;  ?
-			}
+		if (nested_unlock(0, nlid)) {
+			error("%s", nested_errmsg());
+			// XXX we need to fail command here
+			//     *ret = 1;  ?
 		}
 	}
 
 	if (!bkd_cmd && (cmdlog_locks & (CMD_WRLOCK|CMD_RDLOCK))) {
+		TRACE("UNLOCK %s", proj_cwd());
 		repository_unlock(0, 0);
 	}
 out:

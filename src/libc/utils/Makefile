@@ -17,7 +17,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	realbasename.o relpath.o rlimit.o rmrepo.o rmtree.o \
 	samepath.o sig.o smartrename.o \
 	spawn.o spawnvpio.o spawn_filterpipeline.o \
-	str_subst.o \
+	stackdump.o str_subst.o \
 	stdioext.o sys.o system.o \
 	testcode.o trace.o tty.o ttyprintf.o \
 	utils.o \

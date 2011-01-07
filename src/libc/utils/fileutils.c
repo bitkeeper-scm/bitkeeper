@@ -117,3 +117,32 @@ touch(char *file, int mode)
 	if (fh < 0) return (fh);
 	return (close(fh));
 }
+
+int
+sameFiles(char *file1, char *file2)
+{
+	int	rc = 0;
+	int	len;
+	FILE	*f1 = 0, *f2 = 0;
+	struct	stat sb1, sb2;
+	char	buf1[8<<10], buf2[8<<10];
+
+	unless (f1 = fopen(file1, "r")) goto out;
+	unless (f2 = fopen(file2, "r")) goto out;
+	if (fstat(fileno(f1), &sb1)) goto out;
+	if (fstat(fileno(f2), &sb2)) goto out;
+	if (sb1.st_size != sb2.st_size) goto out;
+	if (!win32() &&
+	    (sb1.st_ino == sb2.st_ino) && (sb1.st_dev == sb2.st_dev)) {
+		rc = 1;
+		goto out;
+	}
+	while (len = fread(buf1, 1, sizeof(buf1), f1)) {
+		unless (len == fread(buf2, 1, sizeof(buf2), f2)) goto out;
+		if (memcmp(buf1, buf2, len)) goto out;
+	}
+	rc = 1;
+out:	if (f1) fclose(f1);
+	if (f2) fclose(f2);
+	return (rc);
+}

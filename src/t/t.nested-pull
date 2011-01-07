@@ -387,19 +387,7 @@ echo $N Do it again, but in two steps: bk pull -R and bk resolve -a .$NL
 cd "$HERE"/local
 bk unpull $Q -sf || exit 1
 bk pull $Q -R
-bk resolve $Q -a 2>ERR && {
-	echo should fail
-	cat ERR
-	exit 1
-}
-cat <<EOF > WANT
-resolve: product resolve cannot start until all components have completed.
-Missing:
-	gcc/RESYNC
-	x/y/z/comp/RESYNC
-EOF
-cmpfiles ERR WANT
-bk $Q -e resolve $Q -a || fail
+bk resolve $Q -a 2>ERR || fail -f ERR did not resolve
 bk lock -q || fail
 # gcc/ChangeSet is in product's changeset
 cd "$HERE"/local
@@ -448,43 +436,33 @@ echo $N Pull with committed new-file conflict in component...........$NL
 cd "$HERE"
 nested project2
 cd ..
-bk clone $Q project2 copy2 || exit 1
+bk clone $Q project2 copy2 || fail clone
 # Add a new file to project2/gcc.
 cd project2/gcc
 echo "from project2" >conflict-test
-bk new $Q conflict-test || exit 2
-bk commit -S $Q -y'add conflict-test in project2' || exit 3
-bk -P commit $Q -y'add conflict-test in project2/gcc' || exit 4
+bk new $Q conflict-test || fail new
+bk commit $Q -S -y'add conflict-test in project2' || fail commit
+bk -P commit $Q -y'add conflict-test in project2/gcc' || fail prod commit
 # Add a new file with the same name to copy2/gcc.
 cd ../../copy2/gcc
 echo "from copy2" >conflict-test
-bk new $Q conflict-test || exit 5
-bk commit -S $Q -y'add conflict-test in copy2' || exit 6
-bk -P commit $Q -y'add conflict-test in copy2/gcc' || exit 7
+bk new $Q conflict-test || fail new
+bk commit -S $Q -y'add conflict-test in copy2' || fail commit
+bk -P commit $Q -y'add conflict-test in copy2/gcc' || fail prod commit
 cd ..
 # Pull project2 into copy2 but do not resolve.
-bk pull $Q -R ../project2 || exit 8
-# Product-level resolve should issue error at this point.
-bk resolve $Q -a 2> GOT && exit 9
-grep -q "product resolve cannot start" GOT || exit 10
-# Resolve in the component -- rr is to remove remote file.
-cd gcc
+bk pull $Q -R ../project2 || fail pull
+# Resolve in the Product -- rr is to remove remote file.
 bk resolve -a $Q <<EOF > OUT 2>&1 || exit 11
 rr
 y
 EOF
 # Should get the new-file cset and a merge cset.
-bk changes -Sfr1.2,1.3 -nd:KEY: > WANT || exit 12
+bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || exit 12
 cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.3 -nd:MERGE:`" = "1.3" || exit 14
-bk cat conflict-test | grep -q 'from copy2' || exit 15
-# Resolve in the product should work now.
-cd ..
-bk resolve -a $Q || exit 16
-# The product should get the new-file cset and a merge cset.
-bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || exit 17
-cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.4 -nd:MERGE:`" = "1.4" || exit 19
+test "`bk log -r1.4 -nd:MERGE:`" = "1.4" || exit 14
+bk cat gcc/conflict-test >OUT
+grep -q 'from copy2' OUT || fail -f OUT
 cd "$HERE"
 rm -rf project2 copy2
 echo OK
@@ -507,27 +485,15 @@ bk new $Q conflict-test || exit 5
 cd ..
 # Pull project2 into copy2 but do not resolve.
 bk pull $Q -R ../project2 || exit 6
-# Product-level resolve should issue error at this point.
-bk resolve $Q -a 2> GOT && exit 7
-grep -q "product resolve cannot start" GOT || exit 8
-# Resolve in the component -- rr is to remove remote file.
-cd gcc
 bk resolve -a $Q <<EOF > OUT 2>&1 || exit 9
 rr
 y
 EOF
 # Should get the new-file cset and a merge cset.
-bk changes -Sfr1.2,1.3 -nd:KEY: > WANT || exit 10
+bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || exit 10
 cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.3 -nd:MERGE:`" = "" || exit 12
-bk cat conflict-test | grep -q 'from copy2' || exit 13
-# Resolve in the product should work now.
-cd ..
-bk resolve -a $Q || exit 14
-# The product should get the new-file cset and another cset.
-bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || exit 15
-cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.4 -nd:MERGE:`" = "" || exit 16
+test "`bk log -r1.4 -nd:MERGE:`" = "" || exit 12
+bk cat gcc/conflict-test | grep -q 'from copy2' || exit 13
 cd "$HERE"
 rm -rf project2 copy2
 echo OK
@@ -615,6 +581,7 @@ grep -q "Unable to resolve conflict in non-present component 'gdb'." OUT || {
 	cat OUT
 	exit 1
 }
+bk abort -qf || fail
 echo OK
 
 echo $N Setup N-way pull where a later pull fails ...................$NL
@@ -630,7 +597,7 @@ cat <<EOF > WANT
 pull: Unable to resolve conflict in non-present component 'gdb'.
 pull: update aborted due to errs with 1 components.
 EOF
-cmpfiles ERR WANT
+cmpfiles WANT ERR
 echo OK
 
 echo $N Try a pull where source did rm -rf component ................$NL
@@ -860,6 +827,7 @@ bk commit $Q -ychild
 
 bk changes -v -r+ > BEFORE
 (echo q; echo y) | bk pull $Q 2>ERR && fail
+bk abort -qf
 bk -e -r check -ac || fail
 bk changes -v -r+ > AFTER
 # this shouldn't change
@@ -877,9 +845,9 @@ echo OK
 echo $N Now do the pull in two steps with resolve -c ................$NL
 bk pull -R $Q || fail
 cd gcc
-bk resolve -c $Q 2>ERR || fail
+bk resolve -S -c $Q 2>ERR || fail
 cd ..
-bk resolve -c $Q 2>ERR && fail
+bk resolve -S -c $Q 2>ERR && fail
 bk -e -r check -ac || fail
 echo OK
 
@@ -937,6 +905,7 @@ pull: searching ROOT/copy1...ok
 pull: problem populating components.
 EOF
 cmpfiles ERR2 WANT
+bk abort -qf
 # Remove the local work in C for the subsequent tests.
 cd C
 bk undo -Sfr+ $Q || fail
@@ -947,7 +916,7 @@ echo $N Demonstrate urllist pull populates ..........................$NL
 # Magic pull that updates TRACK in the HERE alias from C D to A B
 # and only A and C are populated in my parent and B and D have to be found
 # in a different URL:
-bk pull 2>ERR >OUT || fail
+bk pull 2>ERR >OUT || fail -f ERR
 # Now:
 #    copy3: A,B HERE=TRACK=A,B
 
@@ -964,7 +933,7 @@ pull: removing ./D...done
 pull: removing ./C...done
 3/3 .                                1 changeset,   no merges in   2 files
 EOF
-cmpfiles ERR2 WANT
+cmpfiles WANT ERR2
 
 bk comps -h | bk _sort > OUT
 cat <<EOF > WANT
@@ -998,6 +967,7 @@ cat <<EOF > WANT
 ./D
 EOF
 cmpfiles OUT WANT
+bk abort -qf
 echo OK
 
 echo $N Show when pull can\'t find a component to unpopulate .........$NL

@@ -11,6 +11,7 @@ private struct {
 	u32	automerge:1;		/* -i: turn off automerge */
 	u32	quiet:1;		/* -q: shut up */
 	u32	fullPatch:1;		/* -F force fullpatch */
+	u32	product:1;		/* nested pull in the product? */
 	u32	noresolve:1;		/* -R: don't run resolve at all */
 	u32	textOnly:1;		/* -T: pass -T to resolve */
 	u32	autoOnly:1;		/* -s: pass --batch to resolve */
@@ -32,10 +33,12 @@ private struct {
 } opts;
 
 private int	pull(char **av, remote *r, char **envVar);
-private int	pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist);
+private	int	pull_ensemble(remote *r, char **rmt_aliases,
+    hash *rmt_urllist, char ***conflicts);
 private int	pull_finish(remote *r, int status, char **envVar);
 private void	resolve_comments(remote *r);
-private	int	resolve(void);
+private	int	resolve_conflicts(char **conflicts);
+private	int	resolve(int interactive);
 private	int	takepatch(remote *r);
 
 int
@@ -153,7 +156,7 @@ pull_main(int ac, char **av)
 		}
 	}
 
-	bk_nested2root(opts.transaction || opts.port);
+	opts.product = bk_nested2root(opts.transaction || opts.port);
 	cmdlog_lock(opts.port ? CMD_WRLOCK : CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
@@ -190,7 +193,7 @@ err:		freeLines(envVar, free);
 
 	if (opts.verbose) {
 		print_title = 1;
-	} else if (!opts.quiet && proj_isProduct(0)) {
+	} else if (!opts.quiet && !opts.transaction) {
 		print_title = 1;
 	}
 
@@ -464,7 +467,8 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 }
 
 private int
-pull_part2(char **av, remote *r, char probe_list[], char **envVar)
+pull_part2(char **av, remote *r, char probe_list[], char **envVar,
+    char ***conflicts)
 {
 	int	rc = 0, i;
 	FILE	*info;
@@ -566,14 +570,20 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			goto done;
 		}
 		if (opts.port) touch("RESYNC/SCCS/d.ChangeSet", 0666);
-		if (proj_isProduct(0)) {
+		if (opts.product) {
 			unless (opts.verbose || opts.quiet || title) {
 				/* Finish the takepatch progress bar. */
 				title = PRODUCT;
 				progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
 				title = 0;
 			}
-			if (rc = pull_ensemble(r, rmt_aliases, rmt_urllist)) goto done;
+			/*
+			 * pull_ensemble doesn't do conflict resolution, just
+			 * transfers the data and auto-resolves if possible.
+			 */
+			rc = pull_ensemble(r, rmt_aliases,
+			    rmt_urllist, conflicts);
+			if (rc) goto done;
 		}
 		if (exists(ROOT2RESYNC)){
 			putenv("BK_STATUS=OK");
@@ -609,7 +619,8 @@ done:	unlink(probe_list);
 }
 
 private int
-pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
+pull_ensemble(remote *r, char **rmt_aliases,
+    hash *rmt_urllist, char ***conflicts)
 {
 	char	*url;
 	char	**urls = 0;
@@ -865,20 +876,49 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 		hash_deleteStr(r->params, "ROOTKEY");
 		vp = addLine(vp, 0);
 		if (rc = spawnvp(_P_WAIT, "bk", &vp[1])) {
-			fprintf(stderr, "Pulling %s failed %x\n", c->path, rc);
-			rc = 1;
+			/*
+			 * Resolve doesn't tell us whether it failed because
+			 * of conflicts or some other reason, so we need to
+			 * check for a RESYNC here.
+			 */
+			unless (isdir(ROOT2RESYNC)) {
+				/*
+				 * Pull really failed, who knows why
+				 */
+				fprintf(stderr, "Pulling %s failed %x\n", c->path, rc);
+				rc = 1;
+				freeLines(vp, free);
+				break;
+			}
+			/* we're still ok */
+			rc = 0;
+			title = aprintf("%d/%d %s", which, opts.n, c->path);
+			*conflicts = addLine(*conflicts, strdup(c->path));
+			unless (opts.quiet || opts.verbose) {
+				progress_end(PROGRESS_BAR,
+				    "CONFLICTS", PROGRESS_SUM);
+			}
+			FREE(title);
+			freeLines(vp, free);
+			continue; /* avoid progress bar */
 		} else {
 			if (opts.noresolve && (proj = proj_init(c->path))) {
 				nested_updateIdcache(proj);
 				proj_free(proj);
+			}
+			unless (opts.quiet || opts.verbose) {
+				title = aprintf("%d/%d %s", which, opts.n, c->path);
+				progress_end(PROGRESS_BAR, "OK", PROGRESS_SUM);
+				FREE(title);
 			}
 		}
 		freeLines(vp, free);
 		progress_nldone();
 		if (rc) break;
 	}
-	proj_cd2product();
-out:	free(url);
+
+out:	proj_cd2product();
+	free(url);
 	freeLines(urls, 0);
 	sccs_free(s);
 	nested_free(n);
@@ -890,15 +930,17 @@ private int
 pull(char **av, remote *r, char **envVar)
 {
 	int	rc, i, marker;
+	int	noPost = 0;
 	char	*p;
 	char	*freeme = 0;
+	char	**conflicts = 0;
 	int	got_patch;
 	char	key_list[MAXPATH];
 
 	assert(r);
 	putenv("BK_STATUS=");
 	if (rc = pull_part1(av, r, key_list, envVar)) return (rc);
-	rc = pull_part2(av, r, key_list, envVar);
+	rc = pull_part2(av, r, key_list, envVar, &conflicts);
 	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));
 	marker = bp_hasBAM();
 	if (!rc && got_patch &&
@@ -907,7 +949,7 @@ pull(char **av, remote *r, char **envVar)
 		chdir(ROOT2RESYNC);
 		rc = bkd_BAM_part3(r, envVar, opts.quiet,
 		    "- < " CSETS_IN);
-		if ((r->type == ADDR_HTTP) && proj_isProduct(0)) {
+		if ((r->type == ADDR_HTTP) && opts.product) {
 			disconnect(r);
 		}
 		chdir(RESYNC2ROOT);
@@ -923,7 +965,18 @@ pull(char **av, remote *r, char **envVar)
 	 * trigger failure. In both cases the remote side (if nested)
 	 * has already unlocked, so no need for push_finish().
 	 */
-	if (proj_isProduct(0) && (rc != 2)) rc = pull_finish(r, rc, envVar);
+	if (opts.product && (rc != 2)) rc = pull_finish(r, rc, envVar);
+
+	/*
+	 * We don't need the remote side anymore, all the data has been
+	 * transferred so disconnect to unlock the bkd side.
+	 *
+	 * Wait for remote to disconnect
+	 * This is important when trigger/error condition
+	 * short circuit the code path
+	 */
+	wait_eof(r, opts.debug);
+	disconnect(r);
 
 	if (got_patch) {
 		/*
@@ -942,19 +995,32 @@ pull(char **av, remote *r, char **envVar)
 		}
 		resolve_comments(r);
 		unless (opts.noresolve) {
+			if (conflicts) {
+				if (rc = resolve_conflicts(conflicts)) {
+					fprintf(stderr,
+					    "Resolving Components failed\n");
+					goto done;
+				}
+			}
+			/*
+			 * We allow interaction based on whether we are
+			 * the toplevel pull or not.
+			 */
 			putenv("FROM_PULLPUSH=YES");
-			if (resolve()) {
+			if (resolve(!opts.transaction)) {
 				rc = 1;
 				putenv("BK_STATUS=CONFLICTS");
+				if (opts.transaction) noPost = 1;
 				goto done;
 			}
 		}
 	}
 done:	putenv("BK_RESYNC=FALSE");
+	freeLines(conflicts, free);
 	unless (opts.quiet || rc ||
 	    ((p = getenv("BK_STATUS")) && streq(p, "NOTHING"))) {
 		unless (title) {
-			if (proj_isProduct(0)) {
+			if (opts.product) {
 				freeme = title =
 				    aprintf("%d/%d %s",
 				    opts.n, opts.n, PRODUCT);
@@ -962,19 +1028,15 @@ done:	putenv("BK_RESYNC=FALSE");
 				freeme = title = strdup("pull");
 			}
 		}
-		progress_end(PROGRESS_BAR, "OK", PROGRESS_SUM);
+		unless (opts.transaction) {
+			/* pull_ensemble handles the progress bars */
+			progress_end(PROGRESS_BAR, "OK", PROGRESS_SUM);
+		}
 		if (freeme) free(freeme);
 		title = 0;
 	}
-	unless (opts.noresolve) trigger(av[0], "post");
+	unless (opts.noresolve || noPost) trigger(av[0], "post");
 
-	/*
-	 * Wait for remote to disconnect
-	 * This is important when trigger/error condition 
-	 * short circuit the code path
-	 */
-	wait_eof(r, opts.debug);
-	disconnect(r);
 	return (rc);
 }
 
@@ -1054,6 +1116,47 @@ takepatch(remote *r)
 	return (100);
 }
 
+private int
+resolve_conflicts(char **conflicts)
+{
+	int	i;
+	int	rc = 0;
+
+	/*
+	 * Now do a pass to manually resolve whatever could not be
+	 * merged automatically.
+	 */
+	EACH(conflicts) {
+		proj_cd2product();
+		unless (opts.quiet) fprintf(stderr,
+		    "Resolving component %s\n", conflicts[i]);
+		if (chdir(conflicts[i])) {
+			fprintf(stderr, "Could not cd to %s\n",
+			    conflicts[i]);
+			rc = 1;
+			break;
+		}
+		/*
+		 * It's okay for the resolver to be interactive
+		 * at this point.
+		 */
+		if (rc = resolve(1)) break;
+		/*
+		 * If there is still a RESYNC, even after resolve
+		 * supposedly worked, it didn't really work
+		 */
+		if (isdir(ROOT2RESYNC)) {
+			fprintf(stderr,
+			    "resolve: failed to resolve %s\n",
+			    conflicts[i]);
+			rc = 1;
+			break;
+		}
+	}
+	proj_cd2product();
+	return (rc);
+}
+
 private void
 resolve_comments(remote *r)
 {
@@ -1095,17 +1198,24 @@ resolve_comments(remote *r)
 }
 
 private	int
-resolve(void)
+resolve(int interactive)
 {
 	int	i, status;
 	char	*cmd[20];
 
 	cmd[i = 0] = "bk";
+	cmd[++i] = "-?BK_NO_REPO_LOCK=YES";
 	cmd[++i] = "resolve";
+	cmd[++i] = "-S";
 	unless (opts.verbose) cmd[++i] = "-q";
 	if (opts.textOnly) cmd[++i] = "-T";
 	if (opts.autoOnly) cmd[++i] = "--batch";
-	if (opts.automerge) cmd[++i] = "-a";
+	unless (interactive) cmd[++i] = "--auto-only";
+	if (opts.automerge) {
+		cmd[++i] = "-a";
+	} else unless (interactive) {
+		cmd[++i] = "-c";
+	}
 	if (opts.debug) cmd[++i] = "-d";
 	unless (opts.quiet) cmd[++i] = "--progress";
 	cmd[++i] = 0;

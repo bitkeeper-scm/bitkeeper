@@ -295,14 +295,13 @@ takepatch_main(int ac, char **av)
 	getChangeSet();
 
 	if (resolve) {
-		char 	*resolve[] = {"bk", "resolve", 0, 0, 0, 0, 0, 0};
-		int 	i;
+		char	*resolve[] = {"bk", "resolve", "-S", 0, 0, 0, 0, 0, 0};
+		int	i = 2;
 
 		if (echo) {
 			fprintf(stderr,
 			    "Running resolve to apply new work...\n");
 		}
-		i = 1;
 		unless (echo) resolve[++i] = "-q";
 		if (textOnly) resolve[++i] = "-T";
 		if (noConflicts) resolve[++i] = "-c";
@@ -1726,6 +1725,10 @@ resync_lock(void)
 		cleanup(CLEAN_RESYNC);
 	}
 	fprintf(f, "%u\n", getpid());
+	if (proj_isProduct(0)) {
+		mkdirp("RESYNC/BitKeeper/log");
+		touch("RESYNC/BitKeeper/log/PRODUCT", 0644);
+	}
 	fclose(f);
 }
 

@@ -124,6 +124,7 @@ int	cat(char *file);
 char	*loadfile(char *file, int *size);
 int	touch(char *file, int mode);
 int	hide(char *file, int on_off);
+int	sameFiles(char *file1, char *file2);
 
 /* findpid.c */
 pid_t	findpid(pid_t pid);
@@ -253,6 +254,9 @@ pid_t	bk_spawnvp(int flags, char *cmdname, char *av[]);
 pid_t	spawnvp_ex(int flags, char *cmdname, char *av[]);
 pid_t	spawnvpio(int *fd0, int *fd1, int *fd2, char *av[]);
 int	spawn_filterPipeline(char **cmds);
+
+/* stackdump.c */
+char	*stackdump(void);
 
 /* stdioext.c */
 char	*gets_alloc(char *(*fcn)(char *buf, int size, void *arg), void *arg);

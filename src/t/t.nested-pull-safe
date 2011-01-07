@@ -51,15 +51,17 @@ bk pull $Q 2>ERR && fail should have failed
 grep -q "populated aliases are different" ERR || fail wrong error
 bk here > GOT
 cmpfiles WANT GOT
+bk abort -qf
 echo OK
 
 echo $N Test pull --safe from gate...................................$NL
 cd "$HERE/child-1"
 bk here > WANT
 bk pull --safe $Q ../gate 2>ERR && fail -f ERR should have failed
-grep -q "populated aliases are different" ERR || fail wrong error
+grep -q "populated aliases are different" ERR || fail -f ERR wrong error
 bk here > GOT
 cmpfiles WANT GOT
+bk abort -qf
 echo OK
 
 echo $N Test pull --unsafe from non-gate.............................$NL

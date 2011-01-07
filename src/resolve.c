@@ -24,6 +24,7 @@
 #include "resolve.h"
 #include "logging.h"
 #include "progress.h"
+#include "nested.h"
 
 private	void	commit(opts *opts);
 private	void	conflict(opts *opts, char *rfile);
@@ -49,6 +50,7 @@ private	void	listPendingRenames(void);
 private	int	noDiffs(void);
 private char	**find_files(opts *opts, int pfiles);
 private	int	moveupComponent(void);
+private	int	resolve_components(opts *opts);
 
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
@@ -59,9 +61,11 @@ private u64	nticks = 0;	/* current progress-bar tick count */
 int
 resolve_main(int ac, char **av)
 {
+	char	**aliases = 0;
 	int	c;
 	opts	opts;
 	longopt	lopts[] = {
+		{ "auto-only", 305}, /* different than --batch */
 		{ "batch", 310},
 		{ "progress", 320 },
 
@@ -75,6 +79,9 @@ resolve_main(int ac, char **av)
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
 	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrSs|tTx;1234", lopts)) != -1) {
+		unless ((c == 's') || (c == 'S')) {
+			opts.nav = bk_saveArg(opts.nav, av, c);
+		}
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -92,13 +99,16 @@ resolve_main(int ac, char **av)
 		    case 'm': opts.mergeprog = optarg; break;	/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
-		    case 's':	/* reserved for --subset */
-			fprintf(stderr,
-			    "%s: -s was renamed to --batch\n", prog);
-			/* fall through */
-		    case 'S':	/* reserved for --standalone */
-			bk_badArg(c, av);
+		    case 's':	/* --subset */
+			unless (optarg) {
+				fprintf(stderr,
+				    "bk %s -sALIAS: ALIAS "
+				    "cannot be omitted\n", prog);
+				return (1);
+			}
+			aliases = addLine(aliases, strdup(optarg));
 			break;
+		    case 'S': opts.standalone = 1; break;
 		    case 'T': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'i':
 			opts.partial = 1;
@@ -115,6 +125,9 @@ resolve_main(int ac, char **av)
 		    case '2': opts.pass2 = 0; break;		/* doc 2.0 */
 		    case '3': opts.pass3 = 0; break;		/* doc 2.0 */
 		    case '4': opts.pass4 = 0; break;		/* doc 2.0 */
+		    case 305: // --auto-only
+			opts.autoOnly = 1;
+			break;
 		    case 310: // --batch
 			opts.automerge = opts.autoOnly = 1;
 			break;
@@ -145,11 +158,6 @@ resolve_main(int ac, char **av)
 	if (opts.pass3 && !opts.textOnly && !gui_useDisplay()) {
 		opts.textOnly = 1; 
 	}
-	if (opts.pass3 &&
-	    !opts.textOnly && !opts.quiet && !win32() && gui_useDisplay()) {
-		fprintf(stderr,
-		    "Using %s as graphical display\n", gui_displayName());
-	}
 
 	/*
 	 * Load the config file before we may delete it in the apply pass
@@ -165,15 +173,11 @@ resolve_main(int ac, char **av)
 	/*
 	 * Make sure we are where we think we are.
 	 */
-	unless (exists("BitKeeper/etc")) proj_cd2root();
-	unless (exists("BitKeeper/etc")) {
-		fprintf(stderr, "resolve: can't find package root.\n");
-		resolve_cleanup(&opts, 0);
-	}
+	opts.nested = bk_nested2root(opts.standalone);
 	unless (exists(ROOT2RESYNC)) {
 		unless (opts.quiet) {
 			fprintf(stderr, "resolve: "
-			    "can't find RESYNC dir, nothing to resolve?\n");
+			    "Nothing to resolve.\n");
 		}
 		freeStuff(&opts);
 		exit(0);
@@ -183,37 +187,11 @@ resolve_main(int ac, char **av)
 		resyncDB = mdbm_mem();
 	}
 	putenv("_BK_MV_OK=1");
-	if (proj_isProduct(0)) {
-		FILE	*f = popen("bk sfiles -g", "r");
-		char	*t;
-		int	rc = 0;
-		char	buf[MAXPATH];
-
-		while (fnext(buf, f)) {
-			chomp(buf);
-			unless (t = strrchr(buf, '/')) continue;
-			unless (streq(t, "/ChangeSet")) continue;
-			strcpy(t, "/RESYNC");
-			if (isdir(buf)) {
-				unless (rc) {
-					rc = 1;
-					fprintf(stderr,
-					    "resolve: product resolve cannot "
-					    "start until all components have "
-					    "completed.\nMissing:\n");
-				}
-				fprintf(stderr, "\t%s\n", buf);
-			}
-		}
-		pclose(f);
-		if (rc) return (rc);
-		mkdirp("RESYNC/BitKeeper/log");
-		touch("RESYNC/BitKeeper/log/PRODUCT", 0644);
-	}
 	c = passes(&opts);
 	if (localDB) mdbm_close(localDB);
 	if (resyncDB) mdbm_close(resyncDB);
 	resolve_post(&opts, c);
+	freeLines(opts.nav, free);
 	return (c);
 }
 
@@ -292,6 +270,16 @@ passes(opts *opts)
 	    (sys("bk", "-r", "check", "-cR", SYS) == 0)) {
 		syserr("failed.  Resolve not even started.\n");
 		/* XXX - better help message */
+		resolve_cleanup(opts, 0);
+	}
+
+	/*
+	 * resolve_components() will either run the resolve for the
+	 * components or check that they are resolved before allowing
+	 * a product resolve to proceed.
+	 */
+	if (opts->nested && resolve_components(opts)) {
+		fprintf(stderr, "%s: Unresolved components.\n", prog);
 		resolve_cleanup(opts, 0);
 	}
 
@@ -486,6 +474,143 @@ pass3:	if (opts->pass3) pass3_resolve(opts);
 		progress_restoreStderr();
 	}
 	return (0);
+}
+
+/*
+ * This function checks whether it's safe to resolve the product and
+ * create a merge cset there. If any components are unresolved, it
+ * returns non-zero. As a side effect, if opts->nested is true, bk
+ * resolve will be run for any components in opts->aliases (or "HERE"
+ * if opts->aliases is zero)
+ */
+private int
+resolve_components(opts *opts)
+{
+	char	**unresolved = 0, **revs = 0;
+	char	*compCset = 0, *resync = 0, *compCset2 = 0;
+	char	*cwd;
+	comp	*c;
+	int	errors = 0, status = 0;
+	int	i;
+	sccs	*s, *cs;
+	nested	*n;
+	char	buf[MAXKEY];
+
+	cwd = strdup(proj_cwd());
+	proj_cd2product();
+	s = sccs_init(ROOT2RESYNC "/" CHANGESET, INIT_MUSTEXIST|INIT_NOCKSUM);
+	assert(s);
+	revs = file2Lines(0, ROOT2RESYNC "/" CSETS_IN);
+	n = nested_init(s, 0,
+	    revs, NESTED_MARKPENDING|NESTED_PULL|NESTED_FIXIDCACHE);
+	assert(n);
+	unless (n->tip) goto out; /* tag only */
+	sccs_close(s);
+	freeLines(revs, free);
+	unless (opts->aliases) opts->aliases = addLine(0, strdup("HERE"));
+
+	nested_aliases(n, n->tip, &opts->aliases, start_cwd, n->pending);
+	assert(n->alias);
+	opts->nav = unshiftLine(opts->nav, strdup("-S"));
+	opts->nav = unshiftLine(opts->nav, strdup("resolve"));
+	opts->nav = unshiftLine(opts->nav, strdup("--sigpipe"));
+	opts->nav = unshiftLine(opts->nav, strdup("bk"));
+	opts->nav = addLine(opts->nav, 0);
+
+	EACH_STRUCT(n->comps, c, i) {
+		proj_cd2product();
+		if (c->alias && !c->present) {
+missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
+			    c->path);
+			++errors;
+			break;
+		}
+		if (c->product || !c->included) continue;
+		FREE(compCset);
+		compCset = aprintf(ROOT2RESYNC "/%s/" CHANGESET, c->path);
+		FREE(resync);
+		resync = aprintf("%s/" ROOT2RESYNC, c->path);
+
+		if (isdir(resync) && opts->nested && c->alias) {
+			if (chdir(c->path)) goto missing;
+			unless (opts->quiet) printf("### %s ###\n", c->path);
+			status = spawnvp(_P_WAIT, "bk", opts->nav+1);
+			if (WIFEXITED(status)) {
+				TRACE("%s", "Resolve failed");
+				errors += !!WEXITSTATUS(status);
+			} else if (WIFSIGNALED(status) &&
+			    (WTERMSIG(status) == SIGPIPE)) {
+				TRACE("%s", "Resolve aborted");
+				++errors;
+				break;
+			} else {
+				TRACE("%s", "fail");
+				++errors;
+			}
+			proj_cd2product();
+		}
+		/*
+		 * Verify this component is okay.
+		 */
+		if (isdir(resync)) {
+			/*
+			 * Not resolved yet.
+			 */
+			unresolved = addLine(unresolved, c->path);
+			++errors;
+			continue;
+		}
+
+		FREE(compCset2);
+		compCset2 = aprintf("%s/" CHANGESET, c->path);
+		if (exists(compCset)) {
+			/*
+			 * Already resolved with merge. Verify that
+			 * the component's actual ChangeSet file
+			 * matches what we have in the product's
+			 * RESYNC directory
+			 */
+			TRACE("sameFiles(%s, %s)", compCset, compCset2);
+			unless (sameFiles(compCset, compCset2)) {
+				fprintf(stderr, "%s: component ChangeSet "
+				    "mismatch for %s\n",
+				    prog, c->path);
+				++errors;
+				break;
+			}
+		} else {
+			/*
+			 * No RESYNC and no ChangeSet file in the product's
+			 * RESYNC?  Just verify that the key is what we
+			 * expect.
+			 */
+			cs = sccs_init(compCset2, INIT_MUSTEXIST|INIT_NOCKSUM);
+			assert(cs);
+			sccs_sdelta(cs, sccs_top(cs), buf);
+			sccs_free(cs);
+			unless (streq(buf, c->deltakey)) {
+				fprintf(stderr, "KEY MISMATCH for %s:\nwanted: %s\n   got: %s\n",
+				    c->path, c->deltakey, buf);
+				++errors;
+				break;
+			}
+		}
+	}
+	if (unresolved) {
+		fprintf(stderr, "%d unresolved component%s:\n",
+		    nLines(unresolved),
+		    (nLines(unresolved) > 1) ? "s": "");
+		EACH(unresolved) fprintf(stderr, " %s\n", unresolved[i]);
+	}
+	FREE(compCset);
+	FREE(compCset2);
+	FREE(resync);
+	freeLines(unresolved, 0);
+out:	chdir(cwd);
+	free(cwd);
+	sccs_free(s);
+	nested_free(n);
+	return (errors);
 }
 
 /* ---------------------------- Pass1 stuff ---------------------------- */
@@ -1688,7 +1813,10 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	}
 
 	if (opts->errors) {
-err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
+err:		unless (opts->autoOnly) {
+			fprintf(stderr,
+			    "resolve: had errors, nothing is applied.\n");
+		}
 		resolve_cleanup(opts, 0);
 	}
 
@@ -1698,12 +1826,30 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		int	i, rc;
 
 		if (opts->autoOnly) {
+			char	*pf;
+			char	*str1, *str2;
 			unless (opts->quiet) {
 				fprintf(stderr,
 				    "resolve: %d conflicts "
 				    "will need manual resolve.\n",
 				    opts->hadConflicts);
 			}
+			/*
+			 * update progressbar info (we're in RESYNC here)
+			 */
+			pf = aprintf("%s/" RESYNC2ROOT
+			    "/BitKeeper/log/progress-sum",
+			    proj_root(0));
+			if (str1 = loadfile(pf, 0)) {
+				chomp(str1);
+				str2 = aprintf("%s (%d conflict%s)",
+				    str1, opts->hadConflicts,
+				    (opts->hadConflicts > 1) ? "s" : "");
+				free(str1);
+				Fprintf(pf, "%s\n", str2);
+				free(str2);
+			}
+			free(pf);
 			resolve_cleanup(opts, 0);
 			/* NOT REACHED */
 		}
@@ -1721,15 +1867,20 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 			progress_done(tick, "OK");
 			progress_restoreStderr();
 		}
+		if (!opts->textOnly &&
+		    !opts->quiet && !win32() && gui_useDisplay()) {
+			fprintf(stderr,
+			    "Using %s as graphical display\n",
+			    gui_displayName());
+		}
 
 		nav[i=0] = strdup("bk");
 		nav[++i] = strdup("resolve");
+		nav[++i] = strdup("-S");
 		if (opts->mergeprog) {
 			nav[++i] = aprintf("-m%s", opts->mergeprog);
 		}
-		if (opts->quiet) {
-			nav[++i] = strdup("-q");
-		}
+		if (opts->quiet) nav[++i] = strdup("-q");
 		/* run progress bars on final check */
 		if (opts->progress) nav[++i] = strdup("--progress");
 		if (opts->textOnly) nav[++i] = strdup("-T");
@@ -2022,8 +2173,11 @@ conflict(opts *opts, char *sfile)
 		    rs->revs->local, rs->revs->gca, rs->revs->remote);
 	}
 	if (opts->noconflicts) {
-	    	fprintf(stderr,
-		    "resolve: can't process conflict in %s\n", s->gfile);
+		unless (opts->autoOnly) {
+	    		fprintf(stderr,
+			    "resolve: can't process conflict in %s\n",
+			    s->gfile);
+		}
 err:		resolve_free(rs);
 		opts->errors = 1;
 		return;
@@ -2208,8 +2362,11 @@ same:		if (!LOCKED(rs->s) && edit(rs)) return;
 		return;
 	}
 	if (WEXITSTATUS(ret) == 1) {
-		fprintf(stderr,
-		    "Conflicts during automerge of %s\n", rs->s->gfile);
+		unless (rs->opts->autoOnly) {
+			fprintf(stderr,
+			    "Conflicts during automerge of %s\n",
+			    rs->s->gfile);
+		}
 		rs->opts->hadConflicts++;
 		unlink(rs->s->gfile);
 		return;
@@ -2481,24 +2638,10 @@ pass4_apply(opts *opts)
 	 * to get one.
 	 */
 	chdir(RESYNC2ROOT);
-	putenv("_BK_IGNORE_RESYNC_LOCK=YES");
-	for ( ; !opts->from_pullpush; ) {
-		unless (ret = repository_wrlock(0)) break;
-		switch (ret) {
-		    case LOCKERR_LOST_RACE:
-			fprintf(stderr, "Waiting for write lock...\n");
-			if (getenv("_BK_NO_LOCK_RETRY")) {
-				resolve_cleanup(opts, 0);
-			}
-			sleep(1);
-			break;
-		    case LOCKERR_PERM:
-			assert(0);	/* sane should have caught this */
-		    default:
-			fprintf(stderr, "Unknown locking error.\n");
-			resolve_cleanup(opts, 0);
-		}
-	}
+	flags = CMD_WRLOCK|CMD_IGNORE_RESYNC;
+	unless (opts->standalone) flags |= CMD_NESTED_WRLOCK;
+	cmdlog_lock(flags);
+	flags = 0;		/* reused below */
 	chdir(ROOT2RESYNC);
 
 	unfinished(opts);
@@ -2882,8 +3025,11 @@ resolve_cleanup(opts *opts, int what)
 			    ROOT2RESYNC "/SCCS/r.ChangeSet");
 		}
 		unless (what && CLEAN_NOSHOUT) {
-			fprintf(stderr,
-			    "resolve: RESYNC directory left intact.\n");
+			unless (opts->progress) {
+				fprintf(stderr,
+				    "resolve: RESYNC directory "
+				    "left intact.\n");
+			}
 		}
 	}
 
@@ -2901,7 +3047,7 @@ resolve_cleanup(opts *opts, int what)
 
 	freeStuff(opts);
 	unless (what & CLEAN_OK) {
-		unless (what & CLEAN_NOSHOUT) SHOUT2();
+		unless ((what & CLEAN_NOSHOUT) || opts->progress) SHOUT2();
 		goto exit;
 	}
 
@@ -2921,7 +3067,6 @@ resolve_cleanup(opts *opts, int what)
 	/* Only get here from pass4_apply() */
 	rc = 0;
 exit:
-	unless (opts->from_pullpush) repository_unlock(0, 0);
 	sccs_unlockfile(RESOLVE_LOCK);
 	exit(rc);
 }
@@ -3044,7 +3189,7 @@ moveupComponent(void)
 	dfile_from = strdup(from);
 	*t = 's';
 
-	if (fileCopy(from, to)) {
+	if (fileLink(from, to)) {
 		fprintf(stderr, "Could not copy '%s' to "
 		    "'%s'\n", from, to);
 		rc = 1;

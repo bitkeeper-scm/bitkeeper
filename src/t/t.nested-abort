@@ -59,7 +59,7 @@ bk clone $Q -sMYALIAS parent edit_in_product || fail
 tar cf edit_in_product.tar edit_in_product
 for i in gcc gdb comp
 do	bk clone $Q -sMYALIAS parent edit_in_$i || fail
-	cd edit_in_$i/gcc
+	cd edit_in_$i/$i
 	bk edit $Q file
 	RAND > file
 	cd ../..
@@ -184,6 +184,7 @@ bk pull $Q 2>ERR && fail -f ERR
 grep -q "The following files are modified locally and in the patch" ERR || {
      fail -f ERR
 }
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -193,15 +194,22 @@ echo $N Pull, edited file in gcc.....................................$NL
 cd "$HERE/edit_in_gcc"
 save_state
 bk pull >ERR 2>&1 && fail -f ERR
+test -d RESYNC || fail Did not leave RESYNC
+grep -q "The following files are modified locally and in the patch" ERR || {
+	fail -f ERR
+}
+bk abort -qf || fail -f ERR
 check_state || fail -f ERR $err
 echo OK
 
 echo $N Pull, edited file in gdb.....................................$NL
-# Pull should fail in gdb and leave all components unchanged,
-# no RESYNC dirs, and newcomp should not have come over.
+# Pull should fail in gdb. Note it doesn't leave a RESYNC
+# beacause it is takepatch that fails.
 cd "$HERE/edit_in_gdb"
 save_state
-bk pull $Q 2>ERR && fail
+bk pull >ERR 2>&1 && fail
+test -d RESYNC || fail -f ERR did not leave RESYNC
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -209,6 +217,7 @@ echo $N Pull, pending cset in product................................$NL
 cd "$HERE/pending_in_product"
 save_state
 bk pull $Q 2>ERR && fail
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -217,6 +226,7 @@ echo $N Pull, gcc cset pending in product............................$NL
 cd "$HERE/pending_in_product_gcc"
 save_state
 bk pull $Q 2>ERR && fail should have failed
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -225,6 +235,7 @@ echo $N Pull, gdb cset pending in product............................$NL
 cd "$HERE/pending_in_product_gdb"
 save_state
 bk pull $Q 2>ERR && fail should have failed
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -232,6 +243,7 @@ echo $N Pull, cset pending in gcc....................................$NL
 cd "$HERE/pending_in_gcc"
 save_state
 bk pull $Q 2>ERR && fail
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -239,6 +251,7 @@ echo $N Pull, cset pending in gdb....................................$NL
 cd "$HERE/pending_in_gdb"
 save_state
 bk pull $Q 2>ERR && fail
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -247,6 +260,7 @@ cd "$HERE/newcomp_taken"
 save_state
 test -f newcomp/must_exist || fail
 bk pull $Q 2>ERR && fail
+bk abort -qf || fail
 check_state || fail $err
 # abort should only remove things brought by clone
 test -f newcomp/must_exist || fail
@@ -262,6 +276,7 @@ save_state
 cd ../parent
 bk push $Q ../edit_in_product 2>ERR && fail
 cd ../edit_in_product
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -274,6 +289,7 @@ save_state
 cd ../parent
 bk push $Q ../edit_in_gcc 2>ERR && fail
 cd ../edit_in_gcc
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -286,6 +302,7 @@ save_state
 cd ../parent
 bk push $Q ../edit_in_gdb 2>ERR && fail
 cd ../edit_in_gdb
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -298,6 +315,7 @@ save_state
 cd ../parent
 bk push $Q ../pending_in_product 2>ERR && fail
 cd ../pending_in_product
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -310,6 +328,7 @@ save_state
 cd ../parent
 bk push $Q ../pending_in_product 2>ERR && fail
 cd ../pending_in_product_gcc
+bk abort -qf || fail
 check_state || fail -f $err
 echo OK
 
@@ -322,6 +341,7 @@ save_state
 cd ../parent
 bk push $Q ../pending_in_product_gdb 2>ERR && fail
 cd ../pending_in_product_gdb
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -334,6 +354,7 @@ save_state
 cd ../parent
 bk push $Q ../pending_in_gcc 2>ERR && fail
 cd ../pending_in_gcc
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -346,6 +367,7 @@ save_state
 cd ../parent
 bk push $Q ../pending_in_gdb 2>ERR && fail
 cd ../pending_in_gdb
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -359,6 +381,7 @@ test -f newcomp/must_exist || fail
 cd ../parent
 bk push $Q ../newcomp_taken 2>ERR && fail
 cd ../newcomp_taken
+bk abort -qf || fail
 check_state || fail $err
 test -f newcomp/must_exist || fail
 echo OK
@@ -373,6 +396,7 @@ bk edit $Q file || fail
 RAND > file
 save_state
 bk undo $Q -f -r+ 2>ERR && fail
+bk abort -qf || fail
 check_state || fail -f ERR $err
 echo OK
 
@@ -386,6 +410,7 @@ RAND > file
 cd ..
 save_state
 bk undo $Q -f -r+ 2>ERR && fail
+bk abort -qf || fail
 check_state || fail -f ERR $err
 echo OK
 
@@ -399,6 +424,7 @@ RAND > file
 cd ..
 save_state
 bk undo $Q -f -r+ 2>ERR && fail -f ERR
+bk abort -qf || fail
 check_state || fail -f ERR
 echo OK
 
@@ -412,6 +438,7 @@ RAND > file
 bk delta $Q -yfile file || fail
 save_state
 bk undo $Q -f -r+ 2>ERR && fail
+bk abort -qf || fail
 check_state || fail -f ERR $err
 echo OK
 
@@ -428,6 +455,7 @@ bk commit -S $Q -yfile
 cd ..
 save_state
 bk undo $Q -f -r+ 2>ERR && fail
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -443,6 +471,7 @@ bk commit -S $Q -yfile
 cd ..
 save_state
 bk undo $Q -f -r+ 2>ERR && fail
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -457,6 +486,7 @@ bk delta $Q -yfile file || fail
 cd ..
 save_state
 bk undo $Q -f -r+ 2>ERR && fail
+bk abort -qf || fail
 check_state || fail $err
 echo OK
 
@@ -471,6 +501,7 @@ bk delta $Q -yfile file || fail
 cd ..
 save_state
 bk undo $Q -f -r+ 2>ERR && fail -f ERR
+bk abort -qf || fail
 check_state || fail -f ERR
 echo OK
 
@@ -519,14 +550,14 @@ for rc in 1 2 3; do
 	cd copy
 	TRIGRC=$rc bk pull $Q 2> ERR && fail -f ERR rc=$rc should fail
 	bk -r check -ac || fail rc=$rc should pass
-	test -d RESYNC && fail rc=$rc  	      # XXX rc=1 should leave RESYNC
+	test -d RESYNC || fail rc=$rc
 	cd ..
 	rm -fr copy
 	tar xf copy.tar
 done
 cd copy
 bk pull $Q -R || fail
-bk abort -qf
+bk abort -qf || fail
 bk pull $Q || fail
 test -f gdb/BitKeeper/etc/csets-in || fail
 cd ..

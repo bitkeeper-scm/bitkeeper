@@ -87,6 +87,7 @@ bk pull $Q 2>ERR && fail -f ERR pull should have failed
 grep -q "check: two files are committed at the same pathname. (block)" ERR || {
      fail -f ERR wrong err message
 }
+bk abort -qf || fail
 echo OK
 
 echo $N Pull in the other direction..................................$NL
@@ -97,7 +98,7 @@ cd "$HERE/parent"
 grep -q "1 unresolved conflicts" OUT || {
 	fail -f OUT wrong error
 }
-grep -q "If you quit out of the resolver" OUT || fail -f OUT did not warn
+bk abort -qf || fail
 echo OK
 
 echo $N Pull in the other direction but abort instead of quit........$NL
@@ -108,7 +109,6 @@ cd "$HERE/parent"
 grep -q "1 unresolved conflicts" OUT || {
 	fail -f OUT wrong error
 }
-grep -q "If you quit out of the resolver" OUT || fail -f OUT did not warn
 echo OK
 
 echo $N attach/attach conflict w/pending component...................$NL
@@ -121,12 +121,14 @@ bk setup -Cf block || fail
 bk sfiles -pC | grep -q block || fail
 bk pull $Q >OUT 2>ERR && fail should have failed
 grep -q "not a component rootkey" ERR || fail you fixed the error message
+bk abort -qf
 echo failed \(bug wrong error\)
 
 echo $N attach/attach conflict w/committed component.................$NL
 bk commit $Q -y.
 bk pull $Q >OUT 2>ERR && fail should have failed
 grep -q "block not empty" ERR || fail -f ERR wrong error
+bk abort -qf
 echo OK
 
 echo $N attach/attach conflict w/unpopulated component...............$NL
@@ -137,5 +139,6 @@ bk pull $Q >OUT 2>ERR && fail should have failed
 grep -q "check: two files are committed at the same pathname. (block)" ERR || {
 	fail -f ERR wrong error
 }
+bk abort -qf
 echo OK
 

@@ -270,8 +270,9 @@ bkd_doResolve(char *me, int verbose)
 	int	status, debug = 0;
 	pid_t	pid;
 	char	bkd_nul = BKD_NUL;
-	char	*resolve[] = { "bk", "resolve", "-T", "-c", 0, 0, 0};
-	int	resolve_opt = 4; /* index of 0 after "-c" above */
+	char	*resolve[] = { "bk", "-?BK_NO_REPO_LOCK=YES",
+			       "resolve", "-S", "-T", "-c", 0, 0, 0};
+	int	resolve_opt = 6; /* index of 0 after "-c" above */
 
 	/*
 	 * Fire up the pre-trigger
