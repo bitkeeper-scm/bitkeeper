@@ -940,7 +940,7 @@ cmdlog_start(char **av, int bkd_cmd)
 		free(quoted);
 	}
 
-	write_log("cmd_log", 1, "%s", cmdlog_buffer);
+	write_log("cmd_log", 0, "%s", cmdlog_buffer);
 	indent_level++;
 
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
@@ -1210,6 +1210,11 @@ write_log(char *file, int rotate, char *format, ...)
 	va_start(ap, format);
 	vfprintf(f, nformat, ap);
 	va_end(ap);
+	unless (rotate) {
+		fclose(f);
+		return (0);
+	}
+	/* do file rotation if needed */
 	if (fstat(fileno(f), &sb)) {
 		/* ignore errors */
 		sb.st_size = 0;
@@ -1219,7 +1224,7 @@ write_log(char *file, int rotate, char *format, ...)
 
 	if (sb.st_mode != 0666) chmod(path, 0666);
 #define	LOG_MAXSIZE	(1<<20)
-	if (rotate && (sb.st_size > LOG_MAXSIZE)) {
+	if (sb.st_size > LOG_MAXSIZE) {
 		char	old[MAXPATH];
 
 		sprintf(old, "%s-older", path);
@@ -1283,7 +1288,8 @@ cmdlog_end(int ret, int bkd_cmd)
 	assert(len < savelen);
 	mdbm_close(notes);
 	notes = 0;
-	write_log("cmd_log", 1, "%s", log);
+	/* only rotate logs on command boundries */
+	write_log("cmd_log", (indent_level == 0), "%s", log);
 	if (cmdlog_flags & CMD_REPOLOG) {
 		/*
 		 * commands in the repolog table above get written
