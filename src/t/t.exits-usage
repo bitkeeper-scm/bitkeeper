@@ -1230,6 +1230,7 @@ bk uninstall -z > /dev/null 2> ERR && {
 }
 bk grep -iq usage ERR || fail -f ERR no usage
 rm -f ERR
+echo OK
 
 echo $N bk unlock with bogus option .................................$NL
 bk unlock -a > /dev/null 2> ERR && {

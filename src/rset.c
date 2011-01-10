@@ -15,6 +15,7 @@ typedef struct {
 	u32	nested:1;	/* -P recurse into nested components */
 	u32	standalone:1;	/* -S standalone */
 	u32	freetip:1;	/* The tip MDBM is unique */
+	u32	mixed:1; 	/* if set, handle long and short keys */
 	char	**nav;
 	char	**aliases;	/* -s limit nested output to aliases */
 	nested	*n;		/* only if -s (and therefore, -P) */
@@ -22,10 +23,211 @@ typedef struct {
 	char	*prefix0;	/* prefix for current path */
 	char	*prefix1;	/* prefix for 'start' path */
 	char	*prefix2;	/* prefix for 'end' path */
-} options;
+} Opts;
 
-private	int	mixed; 		/* if set, handle long and short keys */
-private	int	csetIds_merge(options *opt, sccs *s, char *rev, char *merge);
+private	int	parse_rev(char *args, char **rev1, char **rev2);
+private	int	csetIds_merge(Opts *opts, sccs *s, char *rev, char *merge);
+private char	*fix_rev(sccs *s, char *rev);
+private void	rel_diffs(Opts *opts, MDBM *db1, MDBM *db2,
+    MDBM	*idDB, char *rev1, char *revM, char *rev2);
+private void	rel_list(Opts *opts, MDBM *db, MDBM *idDB, char *rev);
+private char	*find_key(Opts *opts, MDBM *db, char *rootkey, MDBM **s2l);
+
+int
+rset_main(int ac, char **av)
+{
+	int	c;
+	comp	*cp;
+	int	i;
+	char	*rev1 = 0, *rev2 = 0, *revM = 0;
+	char	s_cset[] = CHANGESET;
+	sccs	*s = 0;
+	MDBM	*db1, *db2 = 0, *idDB;
+	int	rc = 1;
+	Opts	*opts;
+	longopt	lopts[] = {
+		{ "hide-bk", 310 },
+		{ "prefix0;", 320 },
+		{ "prefix1;", 330 },
+		{ "prefix2;", 340 },
+		{ "show-gone", 350 },
+
+		/* long aliases */
+		{ "subset;", 's' },
+		{ "standalone", 'S' },
+		{ 0, 0 }
+	};
+
+	opts = new(Opts);
+	while ((c = getopt(ac, av, "5aBhHl;Pr;Ss;", lopts)) != -1) {
+		unless (c == 'r' || c == 'P' || c == 'l' || c == 's' ||
+		    c == 'S') {
+			opts->nav = bk_saveArg(opts->nav, av, c);
+		}
+		switch (c) {
+		case '5':	break; /* ignored, always on */
+		case 'B':	opts->BAM = 1; break;		/* undoc */
+		case 'a':					/* doc 2.0 */
+				opts->show_all = 1;  /* show deleted files */
+				break;
+		case 'h':					/* doc 2.0 */
+				opts->show_path = 1; /* show historic path */
+				break;
+		case 'H':					/* undoc 2.0 */
+				opts->hide_cset = 1; /* hide ChangeSet file */
+				opts->hide_comp = 1; /* hide components  */
+				break;
+		case 'l':	opts->lflg = 1;			/* doc 2.0 */
+				rev1 = strdup(optarg);
+				break;
+		case 'P':	break;			/* old, compat */
+		case 'r':	opts->show_diffs = 1;		/* doc 2.0 */
+				if (parse_rev(optarg, &rev1, &rev2)) {
+					goto out; /* parse failed */
+				}
+				break;
+	        case 'S':	opts->standalone = 1; break;
+		case 's':	opts->aliases = addLine(opts->aliases,
+					strdup(optarg));
+				break;
+		case 310:  // --hide-bk
+				opts->hide_bk = 1; break;
+		case 320:  // --prefix0
+				opts->prefix0 = optarg; break;
+		case 330:  // --prefix1
+				opts->prefix1 = optarg; break;
+		case 340:  // --prefix2
+				opts->prefix2 = optarg; break;
+		case 350:  // --show-gone
+				opts->show_gone = 1; break;
+		default:        bk_badArg(c, av);
+		}
+	}
+	if (opts->standalone && opts->aliases) usage();
+	unless (rev1) usage();
+	opts->nested = bk_nested2root(opts->standalone);
+
+	/* Let them use -sHERE by default but ignore it in non-products. */
+	if (!opts->nested && opts->aliases) {
+		EACH(opts->aliases) {
+			unless (streq(opts->aliases[i], ".") ||
+			    strieq(opts->aliases[i], "HERE")) {
+				fprintf(stderr,
+				    "%s: -sALIAS only allowed in product\n",
+				    prog);
+				goto out;
+			}
+		}
+		freeLines(opts->aliases, free);
+		opts->aliases = 0;
+	}
+	s = sccs_init(s_cset, SILENT);
+	assert(s);
+	s->goneDB = loadDB(GONE, 0, DB_GONE);
+
+	if (opts->show_diffs) {
+		if (rev1 && !(rev1 = fix_rev(s, rev1))) goto out;
+		if (rev2 && !(rev2 = fix_rev(s, rev2))) goto out;
+	}
+
+	if (opts->show_diffs && !rev2) {
+		rev2 = rev1;
+		rev1 = 0;
+		if (sccs_parent_revs(s, rev2, &rev1, &revM)) goto out;
+	}
+
+	if (opts->aliases) {
+		unless ((opts->n = nested_init(s, 0, 0, NESTED_PENDING)) &&
+		    !nested_aliases(opts->n, 0, &opts->aliases, start_cwd, 1)) {
+			goto out;
+		}
+		c = 0;
+		EACH_STRUCT(opts->n->comps, cp, i) {
+			if (cp->alias && !cp->present) {
+				unless (c) {
+					c = 1;
+					fprintf(stderr,
+					    "%s: error, the following "
+					    "components are not populated:\n",
+					    prog);
+				}
+				fprintf(stderr, "\t./%s\n", cp->path);
+			}
+		}
+		if (c) goto out;
+		unless (opts->n->product->alias) opts->hide_cset = 1;
+	}
+
+	/*
+	 * load the two ChangeSet
+	 */
+	if (csetIds_merge(opts, s, rev1, revM)) {
+		fprintf(stderr,
+		    "Cannot get ChangeSet for revision %s\n", rev1);
+		goto out;
+	}
+	db1 = s->mdbm; s->mdbm = NULL;
+	assert(db1);
+	if (rev2) {
+		if (csetIds_merge(opts, s, rev2, 0)) {
+			fprintf(stderr,
+			    "Cannot get ChangeSet for revision %s\n", rev2);
+			goto out;
+		}
+		db2 = s->mdbm; s->mdbm = NULL;
+		assert(db2);
+	}
+
+	/*
+	 * If show_gone, then set up a tipkey db to be able to get
+	 * current-but-missing paths.
+	 */
+	if (opts->show_gone) {
+		delta	*d, *tip = sccs_top(s);
+
+		unless (revM) {
+			d = sccs_findrev(s, rev1);
+			if (d == tip) opts->tip = db1;
+		}
+		if (!opts->tip && rev2) {
+			d = sccs_findrev(s, rev2);
+			if (d == tip) opts->tip = db2;
+		}
+		if (!opts->tip) {
+			if (csetIds_merge(opts, s, "+", 0)) {
+				fprintf(stderr,
+				    "Cannot get ChangeSet for tip\n");
+				goto out;
+			}
+			opts->tip = s->mdbm; s->mdbm = NULL;
+			opts->freetip = 1;
+		}
+		assert(opts->tip);
+	}
+
+	opts->mixed = !LONGKEY(s);
+	sccs_free(s);
+	s = 0;
+
+	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	assert(idDB);
+	if (rev2) {
+		rel_diffs(opts, db1, db2, idDB, rev1, revM, rev2);
+	} else {
+		rel_list(opts, db1, idDB, rev1);
+	}
+	rc = 0;
+out:
+	if (s) sccs_free(s);
+	if (opts->freetip) mdbm_close(opts->tip);
+	if (rev1) free(rev1);
+	if (rev2) free(rev2);
+	if (revM) free(revM);
+	if (opts->aliases) freeLines(opts->aliases, free);
+	if (opts->n) nested_free(opts->n);
+	free(opts);
+	return (rc);
+}
 
 /*
  * return ture if the keys v1 and v2 is the same
@@ -81,7 +283,7 @@ mk_s2l(MDBM *db)
  * it can get a match
  */
 private char *
-find_key(MDBM *db, char *rootkey, MDBM **s2l)
+find_key(Opts *opts, MDBM *db, char *rootkey, MDBM **s2l)
 {
 	char	*p, *q;
 
@@ -90,7 +292,7 @@ find_key(MDBM *db, char *rootkey, MDBM **s2l)
 	 * Not found ? If we are in mixed key mode,
 	 * try the equivalent long/short key
 	 */
-	if (mixed && !p) {
+	if (opts->mixed && !p) {
 		q = sccs_iskeylong(rootkey);
 		if (q) { /* we just tried the long key, so try the short key */
 			*q = 0;
@@ -126,8 +328,7 @@ isNullFile(char *rev, char *file)
  * If we are rset -r<rev1>,<rev2> then start is <rev1> and end is <rev2>.
  */
 private void
-process(char	*root,
-	char	*start, char *end, MDBM *idDB, options opts)
+process(Opts *opts, char *root, char *start, char *end, MDBM *idDB)
 {
 	comp	*c;
 	char	*path0 = 0, *path1 = 0, *path2 = 0;
@@ -136,24 +337,24 @@ process(char	*root,
 	char	smd5[MD5LEN], emd5[MD5LEN];
 
 	if (is_same(start, end)) return;
-	if (opts.n) { /* opts.n only set if in PRODUCT and with -s aliases*/
+	if (opts->n) { /* opts->n only set if in PRODUCT and with -s aliases*/
 		/* we're rummaging through all product files/components */
-		if (c = nested_findKey(opts.n, root)) {
+		if (c = nested_findKey(opts->n, root)) {
 			/* this component is not selected by -s */
 			unless (c->alias) return;
 		} else {
 			/* if -s^PRODUCT skip product files */
-			unless (opts.n->product->alias) return;
+			unless (opts->n->product->alias) return;
 		}
 	}
 	/* path0 == path where file lives currently */
 	if (path0 = mdbm_fetch_str(idDB, root)) {
 		path0 = strdup(path0);
 	} else {
-		if (opts.show_gone) {
+		if (opts->show_gone) {
 			/* or path where file would be if it was here */
-			assert(opts.tip);
-			t = mdbm_fetch_str(opts.tip, root);
+			assert(opts->tip);
+			t = mdbm_fetch_str(opts->tip, root);
 			assert(t);
 			unless (path0 = key2path(t, 0)) {
 				fprintf(stderr, "rset: Can't find %s\n", t);
@@ -176,7 +377,7 @@ process(char	*root,
 			}
 		}
 	}
-	if (opts.show_diffs) {
+	if (opts->show_diffs) {
 		if (start) {
 			sccs_key2md5(root, start, smd5);
 		} else {
@@ -192,48 +393,48 @@ process(char	*root,
 		strcpy(emd5, "1.0");
 	}
 	path2 = key2path(end, 0);
-	if (opts.BAM) {
+	if (opts->BAM) {
 		/* only allow if random field starts with B: */
 		p = strrchr(root, '|');
 		unless (p && strneq(p+1, "B:", 2)) goto done;
 	}
-	if (!opts.show_all && sccs_metafile(path0)) goto done;
-	if (opts.hide_comp && streq(basenm(path0), GCHANGESET)) goto done;
-	unless (opts.show_all) {
-		if (opts.show_diffs) {
+	if (!opts->show_all && sccs_metafile(path0)) goto done;
+	if (opts->hide_comp && streq(basenm(path0), GCHANGESET)) goto done;
+	unless (opts->show_all) {
+		if (opts->show_diffs) {
 			if (isNullFile(smd5, path1) &&
 			    isNullFile(emd5, path2)) {
 				goto done;
 			}
-			if (opts.hide_bk &&
+			if (opts->hide_bk &&
 			    strneq(path1, "BitKeeper/", 10) &&
 			    strneq(path2, "BitKeeper/", 10)) {
 				goto done;
 			}
 		} else {
 			if (isNullFile(emd5, path2)) goto done;
-			if (opts.hide_bk && strneq(path2, "BitKeeper/", 10)) {
+			if (opts->hide_bk && strneq(path2, "BitKeeper/", 10)) {
 				goto done;
 			}
 		}
 	}
-	if (opts.prefix0) printf("%s", opts.prefix0);
+	if (opts->prefix0) printf("%s", opts->prefix0);
 	printf("%s|", path0);
-	if (opts.show_diffs) {
-		if (opts.show_path) {
-			if (opts.prefix1) printf("%s", opts.prefix1);
+	if (opts->show_diffs) {
+		if (opts->show_path) {
+			if (opts->prefix1) printf("%s", opts->prefix1);
 			printf("%s|%s|", path1, smd5);
 		} else {
 			printf("%s..", smd5);
 		}
 	}
-	if (opts.show_path) {
-		if (opts.prefix2) printf("%s", opts.prefix2);
+	if (opts->show_path) {
+		if (opts->prefix2) printf("%s", opts->prefix2);
 		printf("%s|", path2);
 	}
 	printf("%s\n", emd5);
 
-done:	if (opts.nested && end && componentKey(end)) {
+done:	if (opts->nested && end && componentKey(end)) {
 		char	**av;
 
 		/*
@@ -251,8 +452,8 @@ done:	if (opts.nested && end && componentKey(end)) {
 		av = addLine(av, strdup("rset"));
 		av = addLine(av, strdup("-HS")); /* we already printed cset */
 		av = addLine(av, aprintf("--prefix0=%s/", path0));
-		if (opts.show_path) {
-			if (opts.show_diffs) {
+		if (opts->show_path) {
+			if (opts->show_diffs) {
 				dirname(path1);
 				av = addLine(av,
 				    aprintf("--prefix1=%s/", path1));
@@ -260,8 +461,8 @@ done:	if (opts.nested && end && componentKey(end)) {
 			dirname(path2);
 			av = addLine(av, aprintf("--prefix2=%s/", path2));
 		}
-		EACH(opts.nav) av = addLine(av, strdup(opts.nav[i]));
-		if (opts.lflg) {
+		EACH(opts->nav) av = addLine(av, strdup(opts->nav[i]));
+		if (opts->lflg) {
 			t = aprintf("-l%s", emd5);
 		} else {
 			t = aprintf("-r%s..%s", smd5, emd5);
@@ -284,8 +485,8 @@ clear:	if (path0) free(path0);
  * Compute diffs of  rev1 and rev2
  */
 private void
-rel_diffs(MDBM	*db1, MDBM *db2,
-	MDBM	*idDB, char *rev1, char *revM, char *rev2, options opts)
+rel_diffs(Opts *opts, MDBM *db1, MDBM *db2,
+	MDBM *idDB, char *rev1, char *revM, char *rev2)
 {
 	MDBM	*short2long = 0;
 	char	*root_key, *start_key, *end_key, parents[100];
@@ -300,13 +501,13 @@ rel_diffs(MDBM	*db1, MDBM *db2,
 	 * XXX If we move the ChangeSet file,
 	 * XXX this needs to be updated.
 	 */
-	unless (opts.hide_cset) {
+	unless (opts->hide_cset) {
 		if (revM) {
 			sprintf(parents, "%s+%s", rev1, revM);
 		} else {
 			strcpy(parents, rev1);
 		}
-		unless (opts.show_path) {
+		unless (opts->show_path) {
 			printf("ChangeSet|%s..%s\n", parents, rev2);
 		} else {
 			printf("ChangeSet|ChangeSet|%s|ChangeSet|%s\n",
@@ -319,10 +520,10 @@ rel_diffs(MDBM	*db1, MDBM *db2,
 		root_key = kv.key.dptr;
 		start_key = kv.val.dptr;
 		strcpy(root_key2, root_key); /* because find_key stomps */
-		end_key = find_key(db2, root_key2, &short2long);
-		process(root_key, start_key, end_key, idDB, opts);
+		end_key = find_key(opts, db2, root_key2, &short2long);
+		process(opts, root_key, start_key, end_key, idDB);
 		/*
-		 * Delete the entry from db2, so we don't 
+		 * Delete the entry from db2, so we don't
 		 * re-process it in the next loop
 		 * Note: We want to use root_key2 (not root_key)
 		 * beacuse find_key may have updated it.
@@ -335,7 +536,7 @@ rel_diffs(MDBM	*db1, MDBM *db2,
 	EACH_KV(db2) {
 		root_key = kv.key.dptr;
 		end_key = kv.val.dptr;
-		process(root_key, NULL, end_key, idDB, opts);
+		process(opts, root_key, NULL, end_key, idDB);
 	}
 
 	mdbm_close(db1);
@@ -345,14 +546,14 @@ rel_diffs(MDBM	*db1, MDBM *db2,
 }
 
 private void
-rel_list(MDBM *db, MDBM *idDB, char *rev, options opts)
+rel_list(Opts *opts, MDBM *db, MDBM *idDB, char *rev)
 {
 	MDBM	*short2long = 0;
 	char	*root_key, *end_key;
 	kvpair	kv;
 
-	unless (opts.hide_cset) {
-		unless (opts.show_path) {
+	unless (opts->hide_cset) {
+		unless (opts->show_path) {
 			printf("ChangeSet|%s\n", rev);
 		} else {
 			printf("ChangeSet|ChangeSet|%s\n", rev);
@@ -361,7 +562,7 @@ rel_list(MDBM *db, MDBM *idDB, char *rev, options opts)
 	EACH_KV(db) {
 		root_key = kv.key.dptr;
 		end_key = kv.val.dptr;
-		process(root_key, NULL, end_key, idDB, opts);
+		process(opts, root_key, NULL, end_key, idDB);
 	}
 	mdbm_close(db);
 	mdbm_close(idDB);
@@ -402,12 +603,12 @@ fix_rev(sccs *s, char *rev)
 {
 	delta	*d;
 
-	unless (rev && *rev) rev = "+";
 	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "Cannot find revision \"%s\"\n", rev);
 		return (0); /* failed */
 	}
 	assert(d);
+	FREE(rev);
 	return (strdup(d->rev)); /* ok */
 }
 
@@ -430,224 +631,18 @@ parse_rev(char *args, char **rev1, char **rev2)
 err:			fprintf(stderr, "%s: too many -r REVs\n", prog);
 			return (1);
 		}
-		*rev1 = args;
-		*rev2 = p;
+		*rev1 = strdup(args);
+		*rev2 = strdup(p);
 	} else {
 		if (*rev1) {
 			if (*rev2) goto err;
-			*rev2 = args;
+			*rev2 = strdup(args);
 		} else {
-			*rev1 = args;
+			*rev1 = strdup(args);
 		}
 	}
 	return (0); /* ok */
 }
-
-int
-rset_main(int ac, char **av)
-{
-	int	c;
-	comp	*cp;
-	int	i;
-	char	*rev1 = 0, *rev2 = 0, *revM = 0;
-	char	s_cset[] = CHANGESET;
-	sccs	*s = 0;
-	MDBM	*db1, *db2 = 0, *idDB;
-	int	rc = 1;
-	options	opts;
-	longopt	lopts[] = {
-		{ "hide-bk", 310 },
-		{ "prefix0;", 320 },
-		{ "prefix1;", 330 },
-		{ "prefix2;", 340 },
-		{ "show-gone", 350 },
-
-		/* long aliases */
-		{ "subset;", 's' },
-		{ "standalone", 'S' },
-		{ 0, 0 }
-	};
-
-	bzero(&opts, sizeof (options));
-
-	while ((c = getopt(ac, av, "5aBhHl;Pr;Ss;", lopts)) != -1) {
-		unless (c == 'r' || c == 'P' || c == 'l' || c == 's' ||
-		    c == 'S') {
-			opts.nav = bk_saveArg(opts.nav, av, c);
-		}
-		switch (c) {
-		case '5':	break; /* ignored, always on */
-		case 'B':	opts.BAM = 1; break;		/* undoc */
-		case 'a':					/* doc 2.0 */	
-				opts.show_all = 1;  /* show deleted files */
-				break;
-		case 'h':					/* doc 2.0 */
-				opts.show_path = 1; /* show historic path */
-				break;
-		case 'H':					/* undoc 2.0 */
-				opts.hide_cset = 1; /* hide ChangeSet file */
-				opts.hide_comp = 1; /* hide components  */
-				break;
-		case 'l':	opts.lflg = 1;			/* doc 2.0 */
-				rev1 = strdup(optarg);
-				break;
-		case 'P':	break;			/* old, compat */
-		case 'r':	opts.show_diffs = 1;		/* doc 2.0 */
-				if (parse_rev(optarg, &rev1, &rev2)) {
-					return (1); /* parse failed */
-				}
-				break;
-	        case 'S':	opts.standalone = 1; break;
-		case 's':	opts.aliases = addLine(opts.aliases,
-					strdup(optarg));
-				break;
-		case 310:  // --hide-bk
-				opts.hide_bk = 1; break;
-		case 320:  // --prefix0
-				opts.prefix0 = optarg; break;
-		case 330:  // --prefix1
-				opts.prefix1 = optarg; break;
-		case 340:  // --prefix2
-				opts.prefix2 = optarg; break;
-		case 350:  // --show-gone
-				opts.show_gone = 1; break;
-		default:        bk_badArg(c, av);
-		}
-	}
-	if (opts.standalone && opts.aliases) usage();
-	opts.nested = bk_nested2root(opts.standalone);
-
-	/* Let them use -sHERE by default but ignore it in non-products. */
-	if (!opts.nested && opts.aliases) {
-		EACH(opts.aliases) {
-			unless (streq(opts.aliases[i], ".") ||
-			    strieq(opts.aliases[i], "HERE")) {
-				fprintf(stderr,
-				    "%s: -sALIAS only allowed in product\n",
-				    prog);
-				return (1);
-			}
-		}
-		freeLines(opts.aliases, free);
-		opts.aliases = 0;
-	}
-	s = sccs_init(s_cset, SILENT);
-	assert(s);
-	s->goneDB = loadDB(GONE, 0, DB_GONE);
-
-	unless (rev1) {
-		if (s) sccs_free(s);
-		usage();
-	}
-	if (opts.show_diffs) {
-		if (rev1 && !(rev1 = fix_rev(s, rev1))) return (1);
-		if (rev2 && !(rev2 = fix_rev(s, rev2))) return (1);
-	}
-
-	if (opts.show_diffs && !rev2) {
-		rev2 = rev1;
-		if (sccs_parent_revs(s, rev2, &rev1, &revM)) {
-			return (1); /* failed */
-		}
-	}
-
-	if (opts.aliases) {
-		unless ((opts.n = nested_init(s, 0, 0, NESTED_PENDING)) &&
-		    !nested_aliases(opts.n, 0, &opts.aliases, start_cwd, 1)) {
-			goto out;
-		}
-		c = 0;
-		EACH_STRUCT(opts.n->comps, cp, i) {
-			if (cp->alias && !cp->present) {
-				unless (c) {
-					c = 1;
-					fprintf(stderr,
-					    "%s: error, the following "
-					    "components are not populated:\n",
-					    prog);
-				}
-				fprintf(stderr, "\t./%s\n", cp->path);
-			}
-		}
-		if (c) goto out;
-		unless (opts.n->product->alias) opts.hide_cset = 1;
-	}
-
-	/*
-	 * load the two ChangeSet
-	 */
-	if (csetIds_merge(&opts, s, rev1, revM)) {
-		fprintf(stderr,
-		    "Cannot get ChangeSet for revision %s\n", rev1);
-		sccs_free(s);
-		return (1);
-	}
-	db1 = s->mdbm; s->mdbm = NULL;
-	assert(db1);
-	if (rev2) {
-		if (csetIds_merge(&opts, s, rev2, 0)) {
-			fprintf(stderr,
-			    "Cannot get ChangeSet for revision %s\n", rev2);
-			sccs_free(s);
-			return (1);
-		}
-		db2 = s->mdbm; s->mdbm = NULL;
-		assert(db2);
-	}
-
-	/*
-	 * If show_gone, then load a tipkey db to be able to get
-	 * current-but-missing component paths.  The tipkey db could
-	 * be a copy of db1 or db2 if they are the tipkey, or it would
-	 * be another call to csetIds_merge() to get the tips.
-	 */
-	if (opts.show_gone) {
-		delta	*d, *tip = sccs_top(s);
-
-		unless (revM) {
-			d = sccs_findrev(s, rev1);
-			if (d == tip) opts.tip = db1;
-		}
-		if (!opts.tip && rev2) {
-			d = sccs_findrev(s, rev2);
-			if (d == tip) opts.tip = db2;
-		}
-		if (!opts.tip) {
-			if (csetIds_merge(&opts, s, "+", 0)) {
-				fprintf(stderr,
-				    "Cannot get ChangeSet for tip\n");
-				sccs_free(s);
-				return (1);
-			}
-			opts.tip = s->mdbm; s->mdbm = NULL;
-			opts.freetip = 1;
-		}
-		assert(opts.tip);
-	}
-
-	mixed = !LONGKEY(s);
-	sccs_free(s);
-	s = 0;
-
-	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-	assert(idDB);
-	if (rev2) {
-		rel_diffs(db1, db2, idDB, rev1, revM, rev2, opts);
-	} else {
-		rel_list(db1, idDB, rev1, opts);
-	}
-	rc = 0;
-out:
-	if (s) sccs_free(s);
-	if (opts.freetip) mdbm_close(opts.tip);
-	if (rev1) free(rev1);
-	if (rev2) free(rev2);
-	if (revM) free(revM);
-	if (opts.aliases) freeLines(opts.aliases, free);
-	if (opts.n) nested_free(opts.n);
-	return (rc);
-}
-
 
 /*
  * Get all the ids associated with a changeset.
@@ -656,7 +651,7 @@ out:
  * Note: does not call sccs_restart, the caller of this sets up "s".
  */
 private int
-csetIds_merge(options *opts, sccs *s, char *rev, char *merge)
+csetIds_merge(Opts *opts, sccs *s, char *rev, char *merge)
 {
 	kvpair	kv;
 	char	*t, **list = 0;
