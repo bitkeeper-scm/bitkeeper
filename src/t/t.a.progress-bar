@@ -218,7 +218,7 @@ main(_argused int ac, string av[])
 
 	// Check for no newline on the last line.
 	unless (defined(f = fopen("x", "r"))) die("fopen 2");
-	unless (defined(s = freadn(f, -1))) die("freadn");
+	unless (read(f, &s, -1) >= 0) die("read");
 	fclose(f);
 	unless (!length(s) || (s[END] eq "\n")) {
 		puts("no trailing newline");
