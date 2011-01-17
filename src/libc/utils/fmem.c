@@ -172,14 +172,25 @@ private int
 fmem_read(void *cookie, char *buf, int len)
 {
 	FMEM	*fm = cookie;
+	char	*ptr;
 	int	newlen;
 
 	assert(fm);
 	newlen = len;
 	if (newlen + fm->offset > fm->len) newlen = fm->len - fm->offset;
 	len = newlen;
-	assert((buf == fm->buf + fm->offset) || (len == 0));
+	unless (len) return (0);
+
 	assert(len >= 0);
+	ptr = fm->buf + fm->offset;
+
+	/*
+	 * Normally this read() call doesn't do anything because the
+	 * backing store _is_ the stdio buffer.  But if fread()
+	 * bypasses directly to user's buffer, then this read will
+	 * need to copy the data to the user.
+	 */
+	if (buf != ptr) memcpy(buf, ptr, len);
 	fm->offset += len;
 	return (len);
 }

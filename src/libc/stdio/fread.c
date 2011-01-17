@@ -86,8 +86,12 @@ fread(buf, size, count, fp)
 		 * If the user is requesting enough data that we will
 		 * consume the entire buffer, then just write to the
 		 * destination buffer directly.
+		 *
+		 * We can't do this in RW mode because __srefill() may
+		 * need to flush the old buffer when switching from
+		 * writing to reading.
 		 */
-		if (!HASUB(fp) &&
+		if ((fp->_flags & __SRD) && !HASUB(fp) &&
 		    (fp->_bf._size > 0) && (resid >= fp->_bf._size)) {
 			char *obuf = fp->_bf._base;
 			size_t osize = fp->_bf._size;
