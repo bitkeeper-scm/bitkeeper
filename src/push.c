@@ -591,7 +591,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 		return ((ret == -2) ? REMOTE_LOCKED : PUSH_ERROR);
 	}
 	if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			return (PUSH_ERROR);
 		}
 		if (getenv("BKD_LEVEL") &&
@@ -912,7 +912,7 @@ push_finish(remote *r, push_rc status, char **envVar)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (PUSH_ERROR);
 	if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) return (PUSH_ERROR);
+		if (getServerInfo(r, 0)) return (PUSH_ERROR);
 		getline2(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
@@ -960,7 +960,7 @@ receive_serverInfoBlock(remote *r)
 	if (remote_lock_fail(buf, opts.verbose)) {
 		return (REMOTE_LOCKED);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			return (PUSH_ERROR);
 		}
 	}

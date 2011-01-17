@@ -337,7 +337,7 @@ rclone_part1(remote *r, char **envVar)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 	if (streq(buf, "@SERVER INFO@"))  {
-		if (getServerInfo(r)) return (-1);
+		if (getServerInfo(r, 0)) return (-1);
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
 		exit(1);
@@ -425,7 +425,7 @@ rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			rc = 1;
 			goto done;
 		}
@@ -666,7 +666,7 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 		rc = 1;
 		goto done;
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			rc = 1;
 			goto done;
 		}

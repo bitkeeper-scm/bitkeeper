@@ -71,7 +71,7 @@ remoteCheck(remote *r)
 
 	getline2(r, buf, sizeof (buf));
 	if (streq("@SERVER INFO@", buf)) {
-		if (getServerInfo(r)) return (1);
+		if (getServerInfo(r, 0)) return (1);
 		getline2(r, buf, sizeof (buf));
 	}
 	unless (streq("@CHECK INFO@", buf)) return (1); /* protocol error */

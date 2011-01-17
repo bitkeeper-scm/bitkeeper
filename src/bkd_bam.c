@@ -205,7 +205,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 
 	getline2(r, buf, sizeof (buf));
 	if (streq("@SERVER INFO@", buf)) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			rc = 1;
 			goto done;
 		}

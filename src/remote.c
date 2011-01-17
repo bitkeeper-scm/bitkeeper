@@ -180,7 +180,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	line = (getline2(r, buf, sizeof(buf)) > 0) ? buf : 0;
 	if (streq("@SERVER INFO@", buf)) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			rc = 1;
 			goto out;
 		}

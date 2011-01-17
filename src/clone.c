@@ -559,7 +559,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		return (CLONE_ERROR);	// XXX: return a lock failed rc?
 	}
 	if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) goto done;
+		if (getServerInfo(r, 0)) goto done;
 		getline2(r, buf, sizeof(buf));
 		if (remote_lock_fail(buf, 1)) return (CLONE_ERROR);
 		/* use the basename of the src if no dest is specified */
@@ -1217,7 +1217,7 @@ clone_finish(remote *r, clonerc status, char **envVar)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (CLONE_ERROR);
 	if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) return (CLONE_ERROR);
+		if (getServerInfo(r, 0)) return (CLONE_ERROR);
 		getline2(r, buf, sizeof(buf));
 	}
 	unless (streq(buf, "@OK@")) {

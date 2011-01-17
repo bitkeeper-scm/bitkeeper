@@ -148,7 +148,7 @@ remoteAbort(remote *r)
 	 * only 5.0 and newer sends server info and error
 	 */
 	if (streq("@SERVER INFO@", buf)) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			rc = 1;
 			goto out;
 		}

@@ -969,19 +969,21 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
  * ERROR- message that should be expanded for the user.
  */
 int
-getServerInfo(remote *r)
+getServerInfo(remote *r, hash *bkdEnv)
 {
 	int	ret = 1; /* protocol error, never saw @END@ */
 	int	gotseed = 0;
 	int	i;
-	char	*newseed;
+	char	*newseed, *p, *key;
 	char	buf[4096];
 
-	/* clear previous values for stuff that is set conditionally */
-	putenv("BKD_BAM=");
-	putenv("BKD_BAM_SERVER_URL=");
-	putenv("BKD_PRODUCT_ROOTKEY=");
-	putenv("BKD_REMAP=");
+	unless (bkdEnv) {
+		/* clear previous values for stuff that is set conditionally */
+		putenv("BKD_BAM=");
+		putenv("BKD_BAM_SERVER_URL=");
+		putenv("BKD_PRODUCT_ROOTKEY=");
+		putenv("BKD_REMAP=");
+	}
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq(buf, "@END@")) {
 			ret = 0; /* ok */
@@ -1000,9 +1002,28 @@ getServerInfo(remote *r)
 			return (1);
 		}
 		if (strneq(buf, "PROTOCOL", 8)) {
-			safe_putenv("BK_REMOTE_%s", buf);
+			if (bkdEnv) {
+				p = strchr(buf, '=');
+				assert(p);
+				*p++ = 0;
+				key = aprintf("BK_REMOTE_%s", buf);
+				hash_storeStrStr(bkdEnv, key, p);
+				free(key);
+			} else {
+				safe_putenv("BK_REMOTE_%s", buf);
+			}
 		} else {
-			safe_putenv("BKD_%s", buf);
+			if (bkdEnv) {
+				p = strchr(buf, '=');
+				assert(p);
+				*p++ = 0;
+				key = aprintf("BKD_%s", buf);
+				hash_storeStrStr(bkdEnv, key, p);
+				free(key);
+				*(--p) = '=';
+			} else {
+				safe_putenv("BKD_%s", buf);
+			}
 			if (strneq(buf, "REPO_ID=", 8)) {
 				cmdlog_addnote("rmts", buf+8);
 			}
@@ -1016,14 +1037,17 @@ getServerInfo(remote *r)
 		i = 0;
 		newseed = 0;
 	}
-	safe_putenv("BKD_SEED_OK=%d", i);
+	unless (bkdEnv) {
+		safe_putenv("BKD_SEED_OK=%d", i);
+	}
 	if (r->seed) free(r->seed);
 	r->seed = newseed;
 	if (ret) {
 		fprintf(stderr, "%s: premature disconnect\n", prog);
 	} else if (bk_featureChk(0, r->noLocalRepo)) {
 		/* cleanup stale nested lock */
-		if (getenv("BKD_NESTED_LOCK")) {
+		if ((bkdEnv && hash_fetchStr(bkdEnv, "BKD_NESTED_LOCK")) ||
+		    getenv("BKD_NESTED_LOCK")) {
 			FILE	*f;
 			char	buf[MAXPATH];
 
