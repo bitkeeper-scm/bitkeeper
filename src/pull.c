@@ -789,8 +789,8 @@ pull_ensemble(remote *r, char **rmt_aliases,
 
 				if (hash_fetchStr(urllist, c->rootkey)) {
 					new = aprintf("%s\n%s",
-						urllist->vptr,
-						rmt_urllist->vptr);
+						(char *)urllist->vptr,
+						(char *)rmt_urllist->vptr);
 				} else {
 					new = strdup(rmt_urllist->vptr);
 				}

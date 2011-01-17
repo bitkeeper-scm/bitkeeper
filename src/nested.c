@@ -1423,7 +1423,7 @@ urllist_check(nested *n, u32 flags, char **urls)
 				if (p) *p = ' ';
 				fprintf(stderr,
 				    "%s: bad data from '%s'\n-> %s\n",
-				    buf, t);
+				    prog, buf, t);
 				pclose(f);
 				goto out;
 			}
@@ -1675,7 +1675,7 @@ urllist_write(hash *urllist)
 		return (-1);
 	}
 	EACH_HASH(urllist) {
-		fprintf(f, "@%s\n", urllist->kptr);
+		fprintf(f, "@%s\n", (char *)urllist->kptr);
 
 		urls = splitLine(urllist->vptr, "\n", 0);
 

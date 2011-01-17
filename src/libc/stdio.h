@@ -207,8 +207,16 @@ int	 fgetc(FILE *);
 int	 fgetpos(FILE * __restrict, fpos_t * __restrict);
 char	*fgets(char * __restrict, int, FILE * __restrict);
 FILE	*fopen(const char * __restrict , const char * __restrict);
-int	 Fprintf(char *path, char *fmt, ...);
-int	 fprintf(FILE * __restrict , const char * __restrict, ...);
+int	 Fprintf(char *path, char *fmt, ...)
+#ifdef __GNUC__
+	    __attribute__((__format__(__printf__, 2, 3)))
+#endif
+;
+int	 fprintf(FILE * __restrict , const char * __restrict, ...)
+#ifdef __GNUC__
+	    __attribute__((__format__(__printf__, 2, 3)))
+#endif
+;
 int	 fputc(int, FILE *);
 int	 fputs(const char * __restrict, FILE * __restrict);
 size_t	 fread(void * __restrict, size_t, size_t, FILE * __restrict);
@@ -226,7 +234,11 @@ size_t	 fwrite(const void * __restrict, size_t, size_t, FILE * __restrict);
 int	 getc(FILE *);
 int	 getchar(void);
 void	 perror(const char *);
-int	 printf(const char * __restrict, ...);
+int	 printf(const char * __restrict, ...)
+#ifdef __GNUC__
+	    __attribute__((__format__(__printf__, 1, 2)))
+#endif
+;
 int	 putc(int, FILE *);
 int	 puts(const char *);
 int	 remove(const char *);
@@ -242,7 +254,7 @@ int	 sscanf(const char * __restrict, const char * __restrict, ...)
 #ifdef __GNUC__
 	__attribute__((format (__scanf__, 2, 3)))
 #endif
-	;
+;
 FILE	*tmpfile(void);
 int	 ungetc(int, FILE *);
 int	 vfprintf(FILE * __restrict, const char * __restrict, va_list);
@@ -250,7 +262,11 @@ int	 vprintf(const char * __restrict, va_list);
 
 #ifndef __AUDIT__
 char	*gets(char *);
-int	 sprintf(char * __restrict, const char * __restrict, ...);
+int	 sprintf(char * __restrict, const char * __restrict, ...)
+#ifdef __GNUC__
+	__attribute__((format (__printf__, 2, 3)))
+#endif
+;
 char	*tmpnam(char *);
 int	 vsprintf(char * __restrict, const char * __restrict, va_list);
 #endif
@@ -283,10 +299,16 @@ FILE	*popen(const char *, const char *);
  * Functions defined in ISO XPG4.2, ISO C99, POSIX 1003.1-2001 or later.
  */
 int	 snprintf(char * __restrict, size_t, const char * __restrict, ...)
-	    __attribute__((__format__(__printf__, 3, 4)));
+#ifdef __GNUC__
+	    __attribute__((__format__(__printf__, 3, 4)))
+#endif
+;
 int	 vsnprintf(char * __restrict, size_t, const char * __restrict,
 	    va_list)
-	    __attribute__((__format__(__printf__, 3, 0)));
+#ifdef __GNUC__
+	    __attribute__((__format__(__printf__, 3, 0)))
+#endif
+;
 
 /*
  * X/Open CAE Specification Issue 5 Version 2
@@ -304,7 +326,10 @@ off_t	 ftello(FILE *);
 #define	FPARSELN_UNESCALL	0x0f
 
 int	 asprintf(char ** __restrict, const char * __restrict, ...)
-	    __attribute__((__format__(__printf__, 2, 3)));
+#ifdef __GNUC__
+	    __attribute__((__format__(__printf__, 2, 3)))
+#endif
+;
 char	*fgetln(FILE * __restrict, size_t * __restrict);
 char	*fgetline(FILE * __restrict);
 char	*fparseln(FILE *, size_t *, size_t *, const char[3], int);
@@ -313,19 +338,42 @@ void	 setbuffer(FILE *, char *, int);
 int	 setlinebuf(FILE *);
 int	 vasprintf(char ** __restrict, const char * __restrict ab,
 	    va_list)
-	    __attribute__((__format__(__printf__, 2, 0)));
+#ifdef __GNUC__
+	    __attribute__((__format__(__printf__, 2, 0)))
+#endif
+;
 int	 vscanf(const char * __restrict, va_list)
-	    __attribute__((__format__(__scanf__, 1, 0)));
+#ifdef __GNUC__
+	    __attribute__((__format__(__scanf__, 1, 0)))
+#endif
+;
 int	 vfscanf(FILE * __restrict, const char * __restrict,
 	    va_list)
-	    __attribute__((__format__(__scanf__, 2, 0)));
+#ifdef __GNUC__
+	    __attribute__((__format__(__scanf__, 2, 0)))
+#endif
+;
 int	 vsscanf(const char * __restrict, const char * __restrict,
 	    va_list)
-	    __attribute__((__format__(__scanf__, 2, 0)));
+#ifdef __GNUC__
+	    __attribute__((__format__(__scanf__, 2, 0)))
+#endif
+;
 const char *fmtcheck(const char *, const char *)
-	    __attribute__((__format_arg__(2)));
+#ifdef __GNUC__
+	    __attribute__((__format_arg__(2)))
+#endif
+;
 
 /* macro for bk source */
+
+#ifdef __GNUC__
+static inline char *
+aprintf(const char *fmt, ...)
+	__attribute__((__format__(__printf__, 1, 2)));
+#endif
+
+
 static inline char *
 aprintf(const char *fmt, ...)
 {

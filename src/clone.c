@@ -424,7 +424,7 @@ chkAttach(char *dir)
 
 	// see that it's fully populated
 	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) {
-		fprintf(stderr, "%s: nested_init failed\n");
+		fprintf(stderr, "%s: nested_init failed\n", prog);
 		goto err;
 	}
 	EACH_STRUCT(n->comps, cp, i) {
@@ -941,7 +941,7 @@ clone2(remote *r)
 		urllist_normalize(urllist, parent);
 
 		unless (n = nested_init(0, 0, 0, 0)) {
-			fprintf(stderr, "%s: nested_init failed\n");
+			fprintf(stderr, "%s: nested_init failed\n", prog);
 			free(parent);
 			return (CLONE_ERROR);
 		}
@@ -1953,7 +1953,8 @@ clonemod_part1(remote **r)
 		disconnect(*r);
 		unless (opts->to) {
 			/* unlikely to happen so make error unique */
-			fprintf(stderr, "%s: unable to find remote basename\n");
+			fprintf(stderr,
+			    "%s: unable to find remote basename\n", prog);
 			return (CLONE_ERROR);
 		}
 	}
@@ -2032,10 +2033,10 @@ clonemod_part2(char **envVar)
 	if (opts->verbose) av = addLine(av, strdup("-v"));
 	if (opts->debug) av = addLine(av, strdup("-d"));
 	if (opts->pull_rev) {
-		av = addLine(av, aprintf("-r'%s'", strdup(opts->pull_rev)));
+		av = addLine(av, aprintf("-r%s", strdup(opts->pull_rev)));
 	}
 	// XXX -z?
-	EACH(envVar) av = addLine(av, aprintf("-E'%'", strdup(envVar[i])));
+	EACH(envVar) av = addLine(av, aprintf("-E%s", strdup(envVar[i])));
 	av = addLine(av, opts->pull_from);
 	av = addLine(av, 0);
 

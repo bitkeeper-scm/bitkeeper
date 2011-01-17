@@ -118,8 +118,8 @@ commit_main(int ac, char **av)
 
 	nested = bk_nested2root(opts.standalone);
 	if (opts.standalone && aliases) {
-		fprintf(stderr, "bk %s: options -S and -sALIAS "
-		    "cannot be combined.\n");
+		fprintf(stderr, "%s: options -S and -sALIAS "
+		    "cannot be combined.\n", prog);
 		return (1);
 	}
 	if (aliases && !nested) {

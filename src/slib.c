@@ -12078,7 +12078,7 @@ getHashSum(sccs *sc, delta *n, MMAP *diffs)
 	}
 	else unless (strneq(buf, "I0 ", 3)) {
 		fprintf(stderr, "Missing '0a0' or 'I0 #lines', ");
-bad:		fprintf(stderr, "bad diffs: 's'\n", buf);
+bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
 		return (-1);
 	}
 	while (buf = mnext(diffs)) {

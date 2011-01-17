@@ -806,7 +806,7 @@ http_anno(char *page)
 			p = src;
 			while (*p && (isalnum(*p) || (*p == '_'))) p++;
 			if (*p == '(') {
-				printf("<a name=\"%.*s\">", p-src, src);
+				printf("<a name=\"%.*s\">", (int)(p-src), src);
 				closeTag=1;
 			}
 		}

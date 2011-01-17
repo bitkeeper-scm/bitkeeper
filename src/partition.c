@@ -600,7 +600,7 @@ moveComps(Opts *opts)
 	char	key[MAXKEY];
 
 	unless (prodweave = fopen("PRODWEAVE", "wb")) {
-		fprintf(stderr, "%s: could not create prod weave\n");
+		fprintf(stderr, "%s: could not create prod weave\n", prog);
 		goto err;
 	}
 	prod = proj_init(".");

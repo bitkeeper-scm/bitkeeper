@@ -280,7 +280,11 @@ void	syserr(const char *postfix);
 #define	fclose(f)	safe_fclose(f)
 
 int	safe_system(char *cmd);
-int	safe_systemf(char *fmt, ...);
+int	safe_systemf(char *fmt, ...)
+#ifdef __GNUC__
+	    __attribute__((__format__(__printf__, 1, 2)))
+#endif
+;
 FILE *	safe_popen(char *cmd, char *type);
 FILE *	popenvp(char *av[], char *type);
 int	safe_pclose(FILE *f);

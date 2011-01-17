@@ -102,7 +102,7 @@ again:		if (url = locateComp(ops, cp, 0)) {
 			    (ops->last && streq(ops->last, cp->data))) {
 				if (ops->last) free(ops->last);
 				ops->last = strdup(cp->data);
-				fprintf(stderr, "Source %s\n", cp->data);
+				fprintf(stderr, "Source %s\n", (char *)cp->data);
 			}
 			r = remote_parse(url, 0);
 			assert(r);
@@ -395,7 +395,7 @@ locateComp(popts *ops, comp *cp, char ***flist)
 				verbose((stderr, "failed\n"));
 				fprintf(stderr,
 				    "%s: bad data from '%s'\n-> %s\n",
-				    buf, t);
+				    prog, buf, t);
 				pclose(f);
 				unlink(keylist);
 				goto out;

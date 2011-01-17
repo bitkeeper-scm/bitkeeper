@@ -339,7 +339,7 @@ hash_storeStrNum(hash *h, char *key, int val)
 	int	vlen;
 	char	buf[64];
 
-	vlen = sprintf(buf, "%ld", val) + 1;
+	vlen = sprintf(buf, "%d", val) + 1;
 	return (h->ops->store(h, key, strlen(key)+1, buf, vlen));
 }
 
@@ -376,7 +376,7 @@ hash_insertStrNum(hash *h, char *key, int val)
 	int	vlen;
 	char	buf[64];
 
-	vlen = sprintf(buf, "%ld", val) + 1;
+	vlen = sprintf(buf, "%d", val) + 1;
 	return (h->ops->insert(h, key, strlen(key)+1, buf, vlen));
 }
 

@@ -139,7 +139,8 @@ gaterr:			fprintf(stderr, "collapse: not allowed in a gate\n");
 	}
 	s = sccs_csetInit(0);
 	if (after && strchr(after, ',')) {
-		fprintf(stderr, "%s: rev passed to -a (%s) is not singular\n");
+		fprintf(stderr,
+		    "%s: rev passed to -a (%s) is not singular\n", prog, after);
 		goto out;
 	}
 	if (fromurl) {
@@ -274,7 +275,7 @@ do_cset(sccs *s, char *rev, char **nav)
 	range_walkrevs(s, d, 0, 0, 0, walkrevs_printmd5key, f);
 	fclose(f);
 	if (size(csetfile) == 0) {
-		fprintf(stderr, "Nothing to collapse.\n", me);
+		fprintf(stderr, "Nothing to collapse.\n");
 		rc = 0;
 		goto out;
 	}

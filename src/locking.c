@@ -710,7 +710,7 @@ getLID(char kind)
 	http = getenv("_BKD_HTTP") ? 'h' : 'n';
 	return(aprintf("%c|%c|%s|%s|%s|%d|%u|%u|%s|%s",
 		kind, http, user, host, prog,
-		time(0), getpid(), random, ruser, rhost));
+		(u32)time(0), getpid(), random, ruser, rhost));
 }
 
 /*

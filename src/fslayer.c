@@ -77,7 +77,8 @@ fslayer_read(int fd, void *buf, size_t count)
 	} else {
 		noloop = 1;
 		ret = read(fd, buf, count);
-		STRACE((strace, "read(%d, buf, %d) = %d\n", fd, count, ret));
+		STRACE((strace, "read(%d, buf, %d) = %d\n",
+			fd, (int)count, (int)ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -93,7 +94,8 @@ fslayer_write(int fd, const void *buf, size_t count)
 	} else {
 		noloop = 1;
 		ret = write(fd, buf, count);
-		STRACE((strace, "write(%d, buf, %d) = %d\n", fd, count, ret));
+		STRACE((strace, "write(%d, buf, %d) = %d\n",
+			fd, (int)count, (int)ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -110,7 +112,7 @@ fslayer_lseek(int fildes, off_t offset, int whence)
 		noloop = 1;
 		ret = lseek(fildes, offset, whence);
 		STRACE((strace, "lseek(%d, %d, %d) = %d\n",
-		    fildes, offset, whence, ret));
+		    fildes, (int)offset, whence, (int)ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -139,7 +141,7 @@ fslayer_lstat(const char *path, struct stat *buf)
 				fprintf(strace, "mode=%o", buf->st_mode);
 				if (S_ISREG(buf->st_mode)) {
 					fprintf(strace, ", size=%d",
-					    buf->st_size);
+					    (int)buf->st_size);
 				}
 			}
 			fprintf(strace, "}) = %d\n", ret);
@@ -172,7 +174,7 @@ fslayer_stat(const char *path, struct stat *buf)
 				fprintf(strace, "mode=%o", buf->st_mode);
 				if (S_ISREG(buf->st_mode)) {
 					fprintf(strace, ", size=%d",
-					    buf->st_size);
+					    (int)buf->st_size);
 				}
 			}
 			fprintf(strace, "}) = %d\n", ret);
@@ -198,7 +200,7 @@ fslayer_fstat(int fd, struct stat *buf)
 				fprintf(strace, "mode=%o", buf->st_mode);
 				if (S_ISREG(buf->st_mode)) {
 					fprintf(strace, ", size=%d",
-					    buf->st_size);
+					    (int)buf->st_size);
 				}
 			}
 			fprintf(strace, "}) = %d\n", ret);
