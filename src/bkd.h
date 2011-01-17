@@ -150,7 +150,7 @@ int	prunekey(sccs *, remote *, hash *, int, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
-int	getServerInfo(remote *r);
+int	getServerInfo(remote *r, hash *bkdEnv);
 char	*vpath_translate(char *path);
 
 #define	SENDENV_NOREPO	   1 /* don't assume we are called from a repo */

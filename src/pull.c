@@ -317,7 +317,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 	if ((rc = remote_lock_fail(buf, opts.verbose))) {
 		return (rc); /* -2 means lock busy */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) return (-1);
+		if (getServerInfo(r, 0)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	} else if (getenv("_BK_TRANSACTION") &&
 	    (strneq(buf, "ERROR-cannot use key", 20 ) ||
@@ -490,7 +490,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 	if (remote_lock_fail(buf, opts.verbose)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) goto err;
+		if (getServerInfo(r, 0)) goto err;
 		getline2(r, buf, sizeof(buf));
 	}
 	if (get_ok(r, buf, 1)) {
@@ -1059,7 +1059,7 @@ pull_finish(remote *r, int status, char **envVar)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (1);
 	if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) return (1);
+		if (getServerInfo(r, 0)) return (1);
 		getline2(r, buf, sizeof(buf));
 	}
 	unless (streq(buf, "@OK@")) {

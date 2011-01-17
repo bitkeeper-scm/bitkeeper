@@ -65,7 +65,7 @@ usage:		fprintf(stderr, "Usage: bk kill URL <or> bk kill -SIG PID\n");
 		if (r->type == ADDR_HTTP) skip_http_hdr(r);
 		getline2(r, buf, sizeof (buf));
 		if (streq("@SERVER INFO@", buf)) {
-			if (getServerInfo(r)) {
+			if (getServerInfo(r, 0)) {
 				rc = 1;
 				goto out;
 			}
