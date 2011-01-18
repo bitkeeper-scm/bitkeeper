@@ -482,6 +482,7 @@ addSfilesLines(string lines[])
 
 	foreach (line in lines) {
 		file = join(" ", lrange(split(line, " "), 1, "end"));
+		file = getRelativePath(file, self.root);
 		extra = line[0] eq "x";
 		modified = line[2] eq "c";
 		pending = line[3] eq "p";

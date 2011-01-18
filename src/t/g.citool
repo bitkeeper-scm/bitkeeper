@@ -85,40 +85,48 @@ echo OK
 
 echo $N Simple startup and exit with a file as the argument..........$NL
 bk get $Q -e file1
+bk get $Q -e file2
 echo "new line" >> file1
+echo "new line" >> file2
 bk guitest citool file1 >"$OUT" 2>&1 <<'EOF'
 	# at this point Quit should just quit (as opposed to popping up the
 	# annoying "do you want to save the comments" dialog).
+	test_fileIsInList "src/file1"
+	test_fileIsInList "ChangeSet"
+	test_fileIsNotInList "src/file2"
 	test_buttonPress Quit
 EOF
 err=$?
+test -s "$OUT" && fail -f "$OUT"
 test $err -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }
 test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
-test -s "$OUT" && fail -f "$OUT"
 bk unget file1
+bk unget file2
 echo OK
 
 echo $N Simple startup and exit with a multiple files as arguments...$NL
 bk get $Q -e file1
 bk get $Q -e file2
+bk get $Q -e file3
 echo "new line" >> file1
 echo "new line" >> file2
-bk guitest citool file1 file 2>"$OUT" 2>&1 <<'EOF'
+echo "new line" >> file3
+bk guitest citool file1 file2 2>"$OUT" 2>&1 <<'EOF'
 	# at this point Quit should just quit (as opposed to popping up the
 	# annoying "do you want to save the comments" dialog).
+	test_fileIsInList "src/file1"
+	test_fileIsInList "src/file2"
+	test_fileIsInList "ChangeSet"
+	test_fileIsNotInList "src/file3"
 	test_buttonPress Quit
 EOF
 err=$?
+test -s "$OUT" && fail -f "$OUT"
 test $err -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }
 test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
-test -s "$OUT" && {
-	echo failed
-	echo "expected: '$expected'"
-	echo "  actual: '`cat "$OUT"`'"
-	exit 1
-}
 bk unget file1
 bk unget file2
+bk unget file3
 echo OK
 
 echo $N Create dotbk/ci.rc ..........................................$NL
