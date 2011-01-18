@@ -502,8 +502,17 @@ out:
 		progress_restoreStderr();
 	}
 	if (all && !errors && !(flags & INIT_NOCKSUM)) {
-		unlink(CHECKED);
-		touch(CHECKED, 0666);
+		FILE	*f;
+
+		/* update timestamp of CHECKED file */
+		unless (f = fopen(CHECKED, "w")) {
+			unlink(CHECKED);
+			f = fopen(CHECKED, "w");
+		}
+		if (f) {
+			fprintf(f, "%u\n", (u32)time(0));
+			fclose(f);
+		}
 	}
 	if (all && !errors) {
 		/* clean check so we can update dfile marker */

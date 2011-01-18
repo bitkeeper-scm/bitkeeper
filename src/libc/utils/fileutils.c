@@ -109,6 +109,12 @@ loadfile(char *file, int *size)
 	return (ret);
 }
 
+/*
+ * Create a file if it doesn't already exist.
+ *
+ * NOTE: Unlike touch(1) this doesn't update the timestamp for
+ *       existing files.
+ */
 int
 touch(char *file, int mode)
 {

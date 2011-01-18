@@ -41,6 +41,8 @@ rm parallel/BitKeeper/log/*log*
 rm bitcluster/BitKeeper/log/*log*
 rm parallel/BitKeeper/log/repo_id
 rm bitcluster/BitKeeper/log/repo_id
+rm parallel/BitKeeper/log/checked
+rm bitcluster/BitKeeper/log/checked
 diff -r parallel bitcluster | grep -v 'Common subdirectories:' > D
 test -s D && {
 	echo has diffs
@@ -79,6 +81,8 @@ rm parallel/BitKeeper/log/*log*
 rm bitcluster/BitKeeper/log/*log*
 rm parallel/BitKeeper/log/repo_id
 rm bitcluster/BitKeeper/log/repo_id
+rm parallel/BitKeeper/log/checked
+rm bitcluster/BitKeeper/log/checked
 diff -r parallel bitcluster | grep -v 'Common subdirectories:' > D
 test -s D && {
 	echo has diffs
