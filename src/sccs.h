@@ -327,13 +327,13 @@ int	checking_rmdir(char *dir);
  * Don't renumber these in the future, just add to them.
  */
 typedef	enum {
-	CLONE_OK = 0,
-	CLONE_ERROR = 1,	/* other error */
-	CLONE_EXISTS = 2,	/* remote repo exists already */
-	CLONE_CONNECT = 5,	/* bkd_connect() failed */
-	CLONE_CHDIR = 6,	/* chdir failure */
-	CLONE_BADREV = 7,	/* rev not found */
-} clonerc;
+	RET_OK		= 0,
+	RET_ERROR	= 1,	/* other error */
+	RET_EXISTS	= 2,	/* remote repo exists already */
+	RET_CONNECT	= 5,	/* bkd_connect() failed */
+	RET_CHDIR	= 6,	/* chdir failure */
+	RET_BADREV	= 7,	/* rev not found */
+} retrc;
 
 /*
  * Hash behaviour.  Bitmask.

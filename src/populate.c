@@ -17,7 +17,7 @@ nested_populate(nested *n, char **urls, popts *ops)
 	int	i, j, status, rc;
 	int	done = 1;
 	int	flags = (ops->quiet ? SILENT : 0);
-	clonerc	clonerc;
+	retrc	retrc;
 	char	**vp = 0;
 	char	**checkfiles = 0;
 	char	**list;
@@ -126,8 +126,8 @@ again:		if (url = locateComp(ops, cp, 0)) {
 			vp = addLine(vp, 0);
 			status = spawnvp(_P_WAIT, "bk", vp + 1);
 			freeLines(vp, free);
-			clonerc = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
-			if (clonerc == 0) {
+			retrc = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+			if (retrc == 0) {
 				done++;
 				list = addLine(list, cp);
 				cp->present = 1;
@@ -135,7 +135,7 @@ again:		if (url = locateComp(ops, cp, 0)) {
 					checkfiles = addLine(checkfiles,
 					    aprintf("%s/ChangeSet", cp->path));
 				}
-			} else if ((clonerc == CLONE_EXISTS) && exists(cp->path)) {
+			} else if ((retrc == RET_EXISTS) && exists(cp->path)) {
 				/*
 				 * failed: the dir was not empty no use trying
 				 * other urls
@@ -150,14 +150,14 @@ again:		if (url = locateComp(ops, cp, 0)) {
 					/* failed and left crud */
 					nested_rmcomp(n, cp);
 				}
-				switch(clonerc) {
-				    case CLONE_CONNECT:
+				switch(retrc) {
+				    case RET_CONNECT:
 					t = "cannot connect";
 					break;
-				    case CLONE_CHDIR:
+				    case RET_CHDIR:
 					t = "component not present";
 					break;
-				    case CLONE_BADREV:
+				    case RET_BADREV:
 					t = "component missing cset";
 					break;
 				    default:
