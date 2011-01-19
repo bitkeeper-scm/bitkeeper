@@ -56,7 +56,6 @@ trigger(char *cmd, char *when)
 	} else if (streq(cmd, "resolve") || streq(cmd, "remote resolve")) {
 		what = event = "resolve";
 	} else if (strneq(cmd, "clone", 5)) {
-		/* XXX - can this happen?  Where's the trigger? */
 		what = "incoming";
 		event = "incoming clone";
 	} else if (strneq(cmd, "_rclone", 6)) {

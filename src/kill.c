@@ -48,7 +48,7 @@ usage:		fprintf(stderr, "Usage: bk kill URL <or> bk kill -SIG PID\n");
 		goto usage;
 	}
 
-	if (bkd_connect(r)) {
+	if (bkd_connect(r, 0)) {
 		fprintf(stderr, "kill: failed to connect to %s\n", av[1]);
 		return (1);
 	}

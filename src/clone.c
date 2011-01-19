@@ -538,14 +538,9 @@ clone(char **av, remote *r, char *local, char **envVar)
 		}
 	}
 	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
-	if (trans) {
-		r->pid = bkd(r);
-		if (r->wfd < 0) exit(RET_CONNECT);
-	} else {
-		if (bkd_connect(r)) {
-			retrc = RET_CONNECT;
-			goto done;
-		}
+	if (bkd_connect(r, trans ? SILENT : 0)) {
+		retrc = RET_CONNECT;
+		goto done;
 	}
 	if (send_clone_msg(r, envVar)) goto done;
 
@@ -769,9 +764,9 @@ done:	disconnect(r);
 		putenv("BK_STATUS=OK");
 	}
 	/*
-	 * Don't bother to fire trigger if we have no tree.
+	 * Don't bother to fire trigger unless we created a repo
 	 */
-	if (proj_root(0) && (retrc != RET_EXISTS)) {
+	if (after_create) {
 		proj_reset(0);
 		trigger("clone", "post");
 	}
@@ -1204,7 +1199,7 @@ clone_finish(remote *r, retrc status, char **envVar)
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) return (RET_ERROR);
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) return (RET_ERROR);
 	bktmp(buf, "clone_finish");
 	f = fopen(buf, "w");
 	assert(f);
@@ -1931,7 +1926,7 @@ clonemod_part1(remote **r)
 		int	rc;
 		char	buf[MAXPATH];
 
-		if (bkd_connect(*r)) return (RET_ERROR);
+		if (bkd_connect(*r, 0)) return (RET_ERROR);
 		bktmp(buf, "clonebasenm");
 		f = fopen(buf, "w");
 		assert(f);

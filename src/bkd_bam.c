@@ -173,7 +173,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 	char	cmd_file[MAXPATH];
 	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 		return (-1);
 	}
 	bktmp(cmd_file, "BAMmsg");

@@ -1419,7 +1419,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	int	flags, fd, rc, rcsets = 0, rtags = 0;
 	char	buf[MAXPATH];
 
-	if (bkd_connect(r)) return (-1);
+	if (bkd_connect(r, 0)) return (-1);
 	if (send_part1_msg(r, av)) return (-1);
 	if (r->rfd < 0) return (-1);
 
@@ -1489,7 +1489,7 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 	int	rc_lock;
 	char	buf[MAXLINE];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 		return (1);
 	}
 

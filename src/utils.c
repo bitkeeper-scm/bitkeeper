@@ -547,29 +547,6 @@ isCsetFile(char *spath)
 	return (isdir(buf));					/* case ' e' */
 }
 
-int
-bkd_connect(remote *r)
-{
-	assert((r->rfd == -1) && (r->wfd == -1));
-	r->pid = bkd(r);
-	if (r->trace) {
-		fprintf(stderr,
-		    "bkd_connect: r->rfd = %d, r->wfd = %d\n", r->rfd, r->wfd);
-	}
-	if (r->wfd >= 0) return (0);
-	if (r->badhost) {
-		fprintf(stderr, "Cannot resolve host '%s'.\n", r->host);
-	} else if (r->badconnect) {
-		fprintf(stderr, "Unable to connect to host '%s'.\n", r->host);
-	} else {
-		char	*rp = remote_unparse(r);
-
-		perror(rp);
-		free(rp);
-	}
-	return (-1);
-}
-
 private int
 send_msg(remote *r, char *msg, int mlen, int extra)
 {
@@ -1053,7 +1030,7 @@ getServerInfo(remote *r, hash *bkdEnv)
 
 			if (r->type == ADDR_HTTP) {
 				disconnect(r);
-				bkd_connect(r);
+				bkd_connect(r, 0);
 			}
 			bktmp(buf, "abort");
 			f = fopen(buf, "w");

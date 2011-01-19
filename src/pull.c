@@ -306,7 +306,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	if (bkd_connect(r)) return (-1);
+	if (bkd_connect(r, 0)) return (-1);
 	if (send_part1_msg(r, envVar)) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
@@ -476,7 +476,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 	hash	*rmt_urllist = 0;
 	char	buf[MAXPATH * 2];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 		return (-1);
 	}
 	if (send_keys_msg(r, probe_list, envVar)) {
@@ -1046,7 +1046,7 @@ pull_finish(remote *r, int status, char **envVar)
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) return (1);
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) return (1);
 	bktmp(buf, "pull_finish");
 	f = fopen(buf, "w");
 	assert(f);

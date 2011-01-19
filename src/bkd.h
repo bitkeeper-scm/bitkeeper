@@ -122,7 +122,6 @@ void	remote_free(remote *r);
 void	remote_print(remote *r, FILE *f);
 void	remote_error(remote *r, char *msg);
 int	remote_valid(char *url);
-pid_t	bkd(remote *r);
 int	gzipAll2fh(int rfd, FILE *wf, int level, int *in, int *out,
     int verbose);
 int	gunzipAll2fh(int rfd, FILE *wf, int *in, int *out);
@@ -139,7 +138,7 @@ int	send_file(remote *r, char *file, int extra);
 int	send_file_extra_done(remote *r);
 int	skip_hdr(remote *r);
 int	getTriggerInfoBlock(remote *r, int verbose); 
-int	bkd_connect(remote *r);
+int	bkd_connect(remote *r, int opts);
 void	disconnect(remote *r);
 void	drain(void);
 char	**getClientInfoBlock(void);

@@ -256,7 +256,7 @@ push(char **av, remote *r, char **envVar)
 		fprintf(stderr, "Root Key = \"%s\"\n", proj_rootkey(0));
 	}
 
-	if (bkd_connect(r)) return (CONNECTION_FAILED);
+	if (bkd_connect(r, 0)) return (CONNECTION_FAILED);
 	ret = push_part1(r, rev_list, envVar);
 
 	if (opts.debug) {
@@ -277,7 +277,7 @@ push(char **av, remote *r, char **envVar)
 	    default:			assert(ret == PUSH_OK);	break;
 	}
 	if (abort) {
-		if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+		if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 			ret = CONNECTION_FAILED;
 			goto err;
 		}
@@ -288,7 +288,7 @@ push(char **av, remote *r, char **envVar)
 	if (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES"))) {
 		bp_keys = bktmp(0, "bpkeys");
 	}
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 		ret = CONNECTION_FAILED;
 		goto err;
 	}
@@ -300,7 +300,7 @@ push(char **av, remote *r, char **envVar)
 	if (r->type == ADDR_HTTP) disconnect(r);
 
 	if (bp_keys) {
-		if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+		if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 			ret = CONNECTION_FAILED;
 			goto err;
 		}
@@ -318,7 +318,7 @@ push(char **av, remote *r, char **envVar)
 		/* push_ensemble doesn't need the connection */
 		ret = push_ensemble(r, rev_list, envVar);
 
-		if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+		if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 			ret = CONNECTION_FAILED;
 			goto err;
 		}
