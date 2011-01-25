@@ -120,7 +120,7 @@ grep -q "1.1/gcc/local1" OUT || {
 echo OK
 
 echo $N Demonstrate XML output w extended dspec-syntax ..............$NL
-bk -P changes -v -d'
+bk -P changes -v -d'# dspec-v2
 # $1 = in cset
 # $2 = last filename in same component
 # $3 = in component
@@ -768,7 +768,7 @@ echo "failed (bug )"
 
 echo $N 'Test $begin and $end ........................................'$NL
 cd "$HERE/project"
-bk changes -v -nd'
+bk changes -v -nd'# dspec-v2
 $begin {
 	<LIST>
 }

@@ -1,3 +1,4 @@
+# dspec-v2
 # dspec used by the 'bk log' command
 
 ":DPN: :REV:\n"
@@ -5,10 +6,10 @@
 $each(:C:) {		# comments
 	"  (:C:)\n"
 }
-\n
+"\n"
 $if (:TAG:) {
 	$each(:TAG:) {
 		"  TAG: (:TAG:)\n"
 	}
-	\n
+	"\n"
 }

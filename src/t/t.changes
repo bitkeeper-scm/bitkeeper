@@ -537,7 +537,7 @@ bk commit $Q -ywhatever
 echo OK
 
 echo $N Demonstrate saving data across csets ........................$NL
-bk changes -r..1.2 -vf -d'
+bk changes -r..1.2 -vf -d'#dv2
 $if (:CHANGESET:) {
 	${2=}			# dont compare path with other csets
 	$if ($1) {		# close old cset
@@ -862,11 +862,18 @@ cmp -s 2 3 || fail
 cmp -s 1 2 && fail
 echo OK
 
-echo $N Verify that --dspec-file loads a dspec ......................$NL
-bk changes -n --dspec-file=nonexist 2> GOT && fail -f GOT
+echo $N Verify that --dspecf loads a dspec ..........................$NL
+bk changes -n --dspecf=nonexist 2> GOT && fail -f GOT
 echo 'changes: cannot load file "nonexist"' > WANT
+# Test v1
 echo :I: > dspec
-bk changes -n --dspec-file=dspec > GOT || fail
+bk changes --dspecf=dspec > GOT || fail
+bk changes -nd:I: > WANT
+cmpfiles WANT GOT
+# Test v2
+echo '#dv2' > dspec
+echo :I: >> dspec
+bk changes -n --dspecf=dspec > GOT || fail
 bk changes -nd:I: > WANT
 cmpfiles WANT GOT
 echo OK

@@ -1,12 +1,13 @@
+# dspec-v2
 # the default dspec used by 'bk changes -vv'
 
-\n
+"\n"
 $if (:CHANGESET:) {
 	"#### :DPN: ####"
 } $else {
 	"==== :DPN: ===="
 }
-\n
+"\n"
 ":Dy:-:Dm:-:Dd: :T::TZ:, " :USER:$if(:HOST:){@:HOST:}
 $if (:FILE:) {
 	" +:LI: -:LD:"
@@ -19,5 +20,5 @@ $each(:TAG:) {
 	"  TAG: (:TAG:)\n"
 }
 $unless(:CHANGESET:) {
-	:DIFFS_UP:
+	":DIFFS_UP:"
 }

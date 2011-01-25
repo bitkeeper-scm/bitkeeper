@@ -27,7 +27,7 @@ log_main(int ac, char **av)
 	char	*dspec = 0;
 	RANGE	rargs = {0};
 	longopt	lopts[] = {
-		{ "dspec-file;", 300 },		/* let user pass in dspec */
+		{ "dspecf;", 300 },		/* let user pass in dspec */
 		{ 0, 0 }
 	};
 
@@ -65,7 +65,7 @@ log_main(int ac, char **av)
 		    case 'r':
 			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
-		    case 300:	/* --dspec-file */
+		    case 300:	/* --dspecf */
 			if (dspec) usage();
 			unless (dspec = loadfile(optarg, 0)) {
 				fprintf(stderr,
@@ -77,7 +77,6 @@ log_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
-	// XXX removed BK_LOG_DSPEC (ok?)
 	unless (dspec) {
 		char	*specf;
 		char	*spec = log ? "dspec-log" : "dspec-prs";

@@ -11,10 +11,13 @@ repogca_main(int ac, char **av)
 	int	all = 0, rc = 1;
 	int	standalone = 0;
 	char	**urls, **nav;
-	char	*dspec = ":JOIN::REV:\n$end{\\n}";
+	char	*dspec = 0;
 	char	*begin = 0, *end = 0;
 	char	buf[MAXKEY];
 	longopt	lopts[] = {
+		{ "dspecf;", 310 },
+
+		/* aliases */
 		{ "standalone", 'S' }, /* treat comp as standalone */
 		{ 0, 0 }
 	};
@@ -22,10 +25,27 @@ repogca_main(int ac, char **av)
 	while ((c = getopt(ac, av, "a5d;kS", lopts)) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
-		    case 'd': dspec = optarg; break;
-		    case 'k': dspec = ":KEY:\\n"; break;
-		    case '5': dspec = ":MD5KEY:\\n"; break;
+		    case 'd':
+			if (dspec) usage();
+			dspec = strdup(optarg);
+			break;
+		    case 'k':
+			if (dspec) usage();
+			dspec = strdup(":KEY:\\n");
+			break;
+		    case '5':
+			if (dspec) usage();
+			dspec = strdup(":MD5KEY:\\n");
+			break;
 		    case 'S': standalone = 1; break;
+		    case 310: // --dspecf=FILE
+			if (dspec) usage();
+			unless (dspec = loadfile(optarg, 0)) {
+				fprintf(stderr, "%s: unable to read '%s'\n",
+				    prog, optarg);
+				return (1);
+			}
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -73,7 +93,7 @@ repogca_main(int ac, char **av)
 		fprintf(stderr, "repogca: connection to parent failed\n");
 		return (2);
 	}
-	dspec = strdup(dspec);
+	unless (dspec) dspec = strdup("#dv2\n:JOIN::REV:\n$end{\\n}");
 	dspec_collapse(&dspec, &begin, &end);
 	lastd = s->table;
 	for (d = s->table; d; d = NEXT(d)) {

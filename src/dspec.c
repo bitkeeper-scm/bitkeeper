@@ -741,11 +741,20 @@ dspec_collapse(char **dspec, char **begin, char **end)
 	char	*who, ***where;
 
 	/*
-	 * Don't enable "extended" mode unless the dspec is more than
-	 * one line
-	*/
-	unless (strchr(*dspec, '\n')) return;
-	if (getenv("BK_4X_DSPEC_COMPAT")) return;
+	 * The first line has to be
+	 * #[ ]dv2
+	 * or
+	 * #[ ]dspec-v2
+	 * or we don't expand.
+	 * The first is for tired fingers, but we should use the second in
+	 * the files we ship, self documenting.
+	 * Note that I don't look for trailing \n, I don't care and it opened
+	 * the \r\n vs \n can of worms.
+	 */
+	p = *dspec;
+	unless (*p == '#') return;
+	for (p++; *p && isspace(*p); p++);
+	unless (strneq(p, "dv2", 3) || strneq(p, "dspec-v2", 8)) return;
 
 	f = fmem_open();
 	p = *dspec;
@@ -828,7 +837,7 @@ dspec_collapse(char **dspec, char **begin, char **end)
 				exit(1);
 			}
 			*t = 0;
-			**where = strdup(p+1);
+			**where = aprintf("#dv2\n%s", p+1);
 			dspec_collapse(*where, 0, 0);
 			p = t;
 			break;

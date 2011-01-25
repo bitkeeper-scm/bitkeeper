@@ -1,3 +1,4 @@
+# dspec-v2
 # the default dspec used by 'bk changes --html'
 
 $begin {
@@ -12,24 +13,24 @@ $begin {
 "<tr bgcolor=lightblue>"
   "<td font size=4>"
     "&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;:USER:@:HOST:&nbsp;&nbsp;:REV:"
-  </td>
-</tr>\n
+  "</td>"
+"</tr>\n"
 $if (:TAG:) {
 	"<tr bgcolor=yellow>"
-	  <td>
+	  "<td>"
 	    $each(:TAG:) {
 		"&nbsp;TAG: (:TAG:)<br>\n"
 	    }
-	  </td>
-	</tr>\n
+	  "</td>"
+	"</tr>\n"
 }
 "<tr bgcolor=white>"
-  <td>
+  "<td>"
     $each(:C:) {
-      &nbsp;(:C:)<br>\n
+      "&nbsp;(:C:)<br>\n"
     }
-  </td>
-</tr>\n
+  "</td>"
+"</tr>\n"
 
 $end {
 	"</td></tr></table></table></body></html>\n"

@@ -92,7 +92,7 @@ changes_main(int ac, char **av)
 		{ "no-meta", 300 },		/* don't show meta files */
 		{ "html", 301 },		/* old -h */
 		{ "same-component", 302 },
-		{ "dspec-file;", 303 },		/* let user pass in dspec */
+		{ "dspecf;", 303 },		/* let user pass in dspec */
 		{ "standalone", 'S' },		/* treat comps as standalone */
 		{ 0, 0 }
 	};
@@ -175,7 +175,7 @@ changes_main(int ac, char **av)
 		    case 302: /* --same-component */
 			opts.sameComp = 1;
 			break;
-		    case 303: /* --dspec-file */
+		    case 303: /* --dspecf */
 			opts.dspecfile = optarg;
 			break;
 		    default: bk_badArg(c, av);
@@ -565,9 +565,13 @@ doit(int dash)
 			    "dspec-changes-hv" :
 			    "dspec-changes-h";
 		} else {
-			spec = opts.diffs ?
-			    "dspec-changes-vv" :
-			    "dspec-changes";
+			if (!opts.diffs && getenv("BK_4X_DSPEC_COMPAT")) {
+				spec = "dspec-changes-4.0";
+			} else {
+				spec = opts.diffs ?
+				    "dspec-changes-vv" :
+				    "dspec-changes";
+			}
 		}
 		specf = bk_searchFile(spec);
 		TRACE("Reading dspec from %s", specf ? specf : "(not found)");
