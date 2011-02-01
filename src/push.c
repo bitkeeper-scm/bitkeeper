@@ -134,7 +134,7 @@ push_main(int ac, char **av)
 		opts.quiet = 1;
 		opts.verbose = 0;
 	}
-	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	trigger_setQuiet(opts.quiet);
 	unless (opts.quiet) progress_startMulti();
 
 	/*
@@ -621,7 +621,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 		exit(1);
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, opts.verbose)) return (PUSH_ERROR);
+		if (getTriggerInfoBlock(r, opts.quiet)) return (PUSH_ERROR);
 		getline2(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@HERE@")) {
@@ -784,7 +784,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 		return(PUSH_ERROR);
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, opts.verbose)) {
+		if (getTriggerInfoBlock(r, opts.quiet)) {
 			return(PUSH_ERROR);
 		}
 		getline2(r, buf, sizeof(buf));
@@ -793,16 +793,17 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 		return (DELAYED_RESOLVE);
 	}
 	if (streq(buf, "@RESOLVE INFO@")) {
+		/* normally the resolve output contains a progress bar stream */
+		unless (opts.quiet || opts.verbose) progress_active();
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
 			if (buf[0] == '@') {
-				if (maybe_trigger(r)) {
-					return(PUSH_ERROR);
-				}
+				if (maybe_trigger(r)) return (PUSH_ERROR);
 			} else unless (opts.quiet) {
-				writen(2, buf, n);
+				fwrite(buf, 1, n, stderr);
 			}
 		}
+		unless (opts.quiet || opts.verbose) progress_nlneeded();
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {
 			int	ret = atoi(&buf[1]);
@@ -856,7 +857,7 @@ push_part3(char **av, remote *r, char **envVar, char *bp_keys)
 	}
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, opts.verbose)) {
+		if (getTriggerInfoBlock(r, opts.quiet)) {
 			return(PUSH_ERROR);
 		}
 		getline2(r, buf, sizeof(buf));
@@ -865,16 +866,17 @@ push_part3(char **av, remote *r, char **envVar, char *bp_keys)
 		return (DELAYED_RESOLVE);
 	}
 	if (streq(buf, "@RESOLVE INFO@")) {
+		/* normally the resolve output contains a progress bar stream */
+		unless (opts.quiet || opts.verbose) progress_active();
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
 			if (buf[0] == '@') {
-				if (maybe_trigger(r)) {
-					return(PUSH_ERROR);
-				}
+				if (maybe_trigger(r)) return (PUSH_ERROR);
 			} else unless (opts.quiet) {
-				writen(2, buf, n);
+				fwrite(buf, 1, n, stderr);
 			}
 		}
+		unless (opts.quiet || opts.verbose) progress_nlneeded();
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {
 			rc = atoi(&buf[1]);
@@ -916,22 +918,23 @@ push_finish(remote *r, push_rc status, char **envVar)
 		getline2(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, opts.verbose)) {
+		if (getTriggerInfoBlock(r, opts.quiet)) {
 			return (PUSH_ERROR);
 		}
 		getline2(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@RESOLVE INFO@")) {
+		/* normally the resolve output contains a progress bar stream */
+		unless (opts.quiet || opts.verbose) progress_active();
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
 			if (buf[0] == '@') {
-				if (maybe_trigger(r)) {
-					return (PUSH_ERROR);
-				}
+				if (maybe_trigger(r)) return (PUSH_ERROR);
 			} else unless (opts.quiet) {
-				writen(2, buf, n);
+				fwrite(buf, 1, n, stderr);
 			}
 		}
+		unless (opts.quiet || opts.verbose) progress_nlneeded();
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {
 			rc = atoi(&buf[1]);
@@ -1176,7 +1179,9 @@ send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip, int quiet)
 	if (quiet) {
 		strcpy(buf, "-q");
 	} else {
+		/* enable a progress bar in sfio */
 		snprintf(buf, sizeof(buf), "-b%s", psize(bpsz));
+		progress_nlneeded();
 	}
 	sfio[3] = buf;
 
@@ -1218,7 +1223,11 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	fprintf(f, "push_part3");
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.debug) fprintf(f, " -d");
-	if (opts.quiet) fprintf(f, " -q");
+	if (opts.verbose) {
+		fprintf(f, " -v");
+	} else if (opts.quiet) {
+		fprintf(f, " -q");
+	}
 	if (opts.product) fprintf(f, " -P");
 	fputs("\n", f);
 
@@ -1324,11 +1333,11 @@ maybe_trigger(remote *r)
 		if ((read_blk(r, &buf[n], 1) != 1) ||
 		    (buf[n] != "@TRIGGER INFO@\n"[n])) {
 			buf[n] = 0;
-			if (opts.verbose) writen(2, buf, n);
+			unless (opts.quiet) fwrite(buf, 1, n, stderr);
 			return (0);
 		}
 	}
-	if (getTriggerInfoBlock(r, opts.verbose)) {
+	if (getTriggerInfoBlock(r, opts.quiet)) {
 		return (1);
 	}
 	return (0);

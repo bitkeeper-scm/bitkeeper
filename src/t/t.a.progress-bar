@@ -301,8 +301,8 @@ cd "$HERE/standalone"
 add new || fail
 bk push ../clone >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'takepatch' 'push' 'resolve' || fail $msg
-chknumbars OUT 1 || fail $msg
+chkpasses OUT 'takepatch' 'push' 'resolve' || fail -f OUT $msg
+chknumbars OUT 1 || fail -f OUT $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
@@ -588,9 +588,9 @@ cd "$HERE/standalone"
 add push-new || fail
 bk push ../clone >OUT 2>&1 || fail -f OUT
 bk grep -q pre-outgoing OUT || fail -f OUT
-chkoutput OUT || fail $msg
+chkoutput OUT || fail -f OUT $msg
 chkpasses OUT takepatch push resolve || fail $msg
-chknumbars OUT 1 || fail $msg
+chknumbars OUT 3 || fail -f OUT $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
@@ -1207,8 +1207,8 @@ add new-v || fail
 bk push -v ../clone >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
 chkpasses OUT check || fail $msg
-chknumbars OUT 1 || fail $msg
-chkblanks OUT 0 || fail $msg
+chknumbars OUT 1 || fail -f OUT $msg
+chkblanks OUT 0 || fail -f OUT $msg
 echo OK
 
 echo $N rclone ......................................................$NL
@@ -1401,7 +1401,7 @@ cd "$HERE/standalone"
 add push-new-v || fail
 bk push -v ../clone >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
-chkblanks OUT 0 || fail $msg
+chkblanks OUT 0 || fail -f OUT $msg
 echo OK
 
 echo $N pull w/pre triggers .........................................$NL
@@ -1457,7 +1457,7 @@ if [ $SKIP_BAM = NO ]; then
 	bk cat data3 data3 >data6 || fail
 	add data6 || fail
 	bk push -v ../bam-clone >OUT 2>&1 || fail -f OUT
-	chkoutput OUT || fail $msg
+	chkoutput OUT || fail -f OUT $msg
 	chkblanks OUT 0 || fail $msg
 	echo OK
 else
@@ -2125,8 +2125,8 @@ grep -q pre-outgoing-comp2 OUT || fail
 grep -q pre-outgoing-comp3 OUT || fail
 chkoutput OUT $PRODUCT comp1 comp2 comp3 || fail $msg
 chkpasses OUT takepatch resolve || fail $msg
-chknumbars OUT 5 || fail $msg
-chkblanks OUT 0 || fail $msg
+chknumbars OUT 12 || fail -f OUT $msg
+chkblanks OUT 1 || fail -f OUT $msg
 echo OK
 
 echo $N pull w/pre triggers .........................................$NL
@@ -2802,7 +2802,7 @@ echo $N pull component only .........................................$NL
 cd "$HERE/clone1"
 bk unpull -q -f || fail
 bk pull -v ../product1 >OUT 2>&1 || fail -f OUT
-#chkoutput OUT comp1 $PRODUCT || fail -f OUT $msg
+chkoutput OUT $PRODUCT || fail -f OUT $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
@@ -2831,7 +2831,7 @@ echo $N pull product and component ..................................$NL
 cd "$HERE/clone1"
 bk unpull -qf >OUT 2>&1 || fail
 bk pull -v ../product1 >OUT 2>&1 || fail -f OUT
-#chkoutput OUT comp1 $PRODUCT || fail -f OUT $msg
+chkoutput OUT $PRODUCT || fail -f OUT $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
@@ -2894,7 +2894,7 @@ echo $N pull 3 components ...........................................$NL
 cd "$HERE/clone3"
 bk unpull -q -f >OUT 2>&1 || fail
 bk pull -v ../product3 >OUT 2>&1 || fail -f OUT
-#chkoutput OUT comp1 comp2 comp3 $PRODUCT || fail $msg
+chkoutput OUT $PRODUCT || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
@@ -3022,7 +3022,7 @@ bk edit $Q for-edit-v
 echo edit2 >for-edit-q || fail
 bk pull -v ../product0 >OUT 2>&1 && fail -f OUT
 chkoutput OUT || fail $msg
-chkblanks OUT 1 || fail $msg
+chkblanks OUT 0 || fail -f OUT $msg
 cd ..
 bk _rm -rf clone0
 echo OK
@@ -3038,8 +3038,8 @@ y
 EOF
 bk pull -v -T "$HERE/product1" <resolve >OUT 2>&1 || fail -f OUT
 grep -q for-conflict-q OUT || fail
-#chkoutput OUT comp1 $PRODUCT || fail $msg
-chkblanks OUT 0 || fail $msg
+chkoutput OUT $PRODUCT || fail -f OUT $msg
+chkblanks OUT 1 || fail -f OUT $msg
 cd "$HERE"
 bk _rm -rf clone1
 echo OK
@@ -3114,7 +3114,7 @@ echo $N pull w/pre triggers .........................................$NL
 cd "$HERE/clone3"
 bk unpull $Q -f || fail
 bk pull -v ../product3 >OUT 2>&1 || fail -f OUT
-#chkoutput OUT comp1 comp2 comp3 $PRODUCT || fail $msg
+chkoutput OUT $PRODUCT || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
@@ -3175,8 +3175,8 @@ y
 EOF
 bk pull -v -T "$HERE/product3" <resolve >OUT 2>&1 || fail -f OUT
 # Should have three lines for each of the four conflicting files.
-#chkoutput OUT comp1 comp2 comp3 $PRODUCT || fail $msg
-chkblanks OUT 0 || fail $msg
+chkoutput OUT $PRODUCT || fail $msg
+chkblanks OUT 3 || fail -f OUT $msg
 grep -q for-prod-conflict-v OUT || fail
 grep -q for-comp1-conflict-v OUT || fail
 grep -q for-comp2-conflict-v OUT || fail

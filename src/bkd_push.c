@@ -258,13 +258,13 @@ abort:		resync = aprintf("%s/%s", proj_root(0), ROOT2RESYNC);
 	} else if (product) {
 		printf("@DELAYING RESOLVE@\n");
 	} else {
-		rc = bkd_doResolve(av[0], verbose);
+		rc = bkd_doResolve(av[0], quiet, verbose);
 	}
 done:	return (rc);
 }
 
 int
-bkd_doResolve(char *me, int verbose)
+bkd_doResolve(char *me, int quiet, int verbose)
 {
 	int	fd2, pfd, c, rc = 0;
 	int	status, debug = 0;
@@ -277,6 +277,7 @@ bkd_doResolve(char *me, int verbose)
 	/*
 	 * Fire up the pre-trigger
 	 */
+	trigger_setQuiet(quiet);
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
 	if (c = trigger("remote resolve",  "pre")) {
 		if (c == 2) {
@@ -295,17 +296,21 @@ bkd_doResolve(char *me, int verbose)
 	if (verbose) {
 		printf("Running resolve to apply new work...\n");
 	} else {
+		/*
+		 * NOTE: -q is selected by !verbose,
+		 * and -q only selects triggers
+		 */
 		resolve[resolve_opt++] = "-q";
-		resolve[resolve_opt] = "--progress";
 	}
+	unless (quiet || verbose) resolve[resolve_opt++] = "--progress";
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	putenv("FROM_PULLPUSH=YES");
 	pid = spawnvpio(&pfd, 0, 0, resolve);
+	close(pfd);
 	dup2(fd2, 2); close(fd2);
 	waitpid(pid, &status, 0);
-	close(pfd);
 	rc =  WEXITSTATUS(status);
 	write(1, &bkd_nul, 1);
 	if (rc) {
@@ -343,6 +348,7 @@ cmd_push_part3(int ac, char **av)
 	int	status, debug = 0;
 	int	inbytes, outbytes;
 	int	gzip = 0, product = 0, verbose = 0;
+	int	quiet = 0;
 	pid_t	pid;
 	FILE	*f;
 	char	*sfio[] = {"bk", "sfio", "-iqB", "-", 0};
@@ -357,7 +363,7 @@ cmd_push_part3(int ac, char **av)
 		    case 'd': debug = 1; break;
 		    case 'G': putenv("BK_NOTTY=1"); break;
 		    case 'P': product = 1; break;
-		    case 'q': break;
+		    case 'q': quiet = 1; break;
 		    case 'v': verbose++; break;
 		    default: break;	/* ignore and pray */
 		}
@@ -430,7 +436,7 @@ cmd_push_part3(int ac, char **av)
 	if (product) {
 		printf("@DELAYING RESOLVE@\n");
 	} else if (isdir(ROOT2RESYNC)) {
-		rc = bkd_doResolve(av[0], verbose);
+		rc = bkd_doResolve(av[0], quiet, verbose);
 	}
 done:	return (rc);
 }

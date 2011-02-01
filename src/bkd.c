@@ -247,6 +247,8 @@ do_cmds(void)
 	putenv("BK_REMAP=");
 	putenv("BK_FEATURES=");
 	putenv("BK_FEATURES_REQUIRED=");
+	putenv("BK_QUIET_TRIGGERS=");
+
 	lease_inbkd();		/* enable bkd-mode in lease code */
 
 	/*

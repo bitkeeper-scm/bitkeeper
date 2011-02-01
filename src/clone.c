@@ -195,7 +195,7 @@ clone_main(int ac, char **av)
 		opts->no_lclone = 1;
 	}
 	if (opts->detach) opts->no_lclone = 1;
-	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	trigger_setQuiet(opts->quiet);
 	if (av[optind]) localName2bkName(av[optind], av[optind]);
 	if (av[optind+1]) localName2bkName(av[optind+1], av[optind+1]);
 	unless (av[optind]) usage();
@@ -484,6 +484,7 @@ send_clone_msg(remote *r, char **envVar)
 	if (getenv("_BK_TRANSACTION")) fprintf(f, " -N");
 	if (opts->link) fprintf(f, " -l");
 	if (getenv("_BK_FLUSH_BLOCK")) fprintf(f, " -f");
+	if (opts->quiet) fprintf(f, " -q");
 	fputs("\n", f);
 	fclose(f);
 
@@ -618,8 +619,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 
 	getline2(r, buf, sizeof (buf));
-	if (streq(buf, "@TRIGGER INFO@")) { 
-		if (getTriggerInfoBlock(r, !opts->quiet)) goto done;
+	if (streq(buf, "@TRIGGER INFO@")) {
+		if (getTriggerInfoBlock(r, opts->quiet)) goto done;
 		getline2(r, buf, sizeof (buf));
 	}
 	if (strneq(buf, "ERROR-", 6)) {

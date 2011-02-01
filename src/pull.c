@@ -38,7 +38,7 @@ private	int	pull_ensemble(remote *r, char **rmt_aliases,
 private int	pull_finish(remote *r, int status, char **envVar);
 private void	resolve_comments(remote *r);
 private	int	resolve_conflicts(char **conflicts);
-private	int	resolve(int interactive);
+private	int	resolve(int interactive, int nolock);
 private	int	takepatch(remote *r);
 
 int
@@ -125,7 +125,7 @@ pull_main(int ac, char **av)
 		opts.quiet = 1;
 		opts.verbose = 0;
 	}
-	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	trigger_setQuiet(opts.quiet);
 	unless (opts.quiet || opts.verbose) progress_startMulti();
 	if (opts.autoOnly && !opts.automerge) {
 		fprintf(stderr, "pull: -s and -i cannot be used together\n");
@@ -534,7 +534,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 	 * check remote trigger
 	 */
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, !opts.quiet)) {
+		if (getTriggerInfoBlock(r, opts.quiet)) {
 			putenv("BK_STATUS=REMOTE TRIGGER FAILURE");
 			rc = 2;
 			goto done;
@@ -1007,7 +1007,7 @@ pull(char **av, remote *r, char **envVar)
 			 * the toplevel pull or not.
 			 */
 			putenv("FROM_PULLPUSH=YES");
-			if (resolve(!opts.transaction)) {
+			if (resolve(!opts.transaction, 1)) {
 				rc = 1;
 				putenv("BK_STATUS=CONFLICTS");
 				if (opts.transaction) noPost = 1;
@@ -1140,7 +1140,7 @@ resolve_conflicts(char **conflicts)
 		 * It's okay for the resolver to be interactive
 		 * at this point.
 		 */
-		if (rc = resolve(1)) break;
+		if (rc = resolve(1, 0)) break;
 		/*
 		 * If there is still a RESYNC, even after resolve
 		 * supposedly worked, it didn't really work
@@ -1198,13 +1198,13 @@ resolve_comments(remote *r)
 }
 
 private	int
-resolve(int interactive)
+resolve(int interactive, int nolock)
 {
 	int	i, status;
 	char	*cmd[20];
 
 	cmd[i = 0] = "bk";
-	cmd[++i] = "-?BK_NO_REPO_LOCK=YES";
+	if (nolock) cmd[++i] = "-?BK_NO_REPO_LOCK=YES";
 	cmd[++i] = "resolve";
 	cmd[++i] = "-S";
 	unless (opts.verbose) cmd[++i] = "-q";
@@ -1217,7 +1217,7 @@ resolve(int interactive)
 		cmd[++i] = "-c";
 	}
 	if (opts.debug) cmd[++i] = "-d";
-	unless (opts.quiet) cmd[++i] = "--progress";
+	unless (opts.quiet || opts.verbose) cmd[++i] = "--progress";
 	cmd[++i] = 0;
 	if (opts.verbose) {
 		fprintf(stderr, "Running resolve to apply new work ...\n");

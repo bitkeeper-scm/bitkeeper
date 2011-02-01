@@ -14,6 +14,7 @@ cmd_clone(int ac, char **av)
 	int	attach = 0, detach = 0, gzip = 0, delay = -1, lclone = 0;
 	int	nlid = 0;
 	char	*p, *rev = 0;
+	int	quiet = 0;
 	char	buf[MAXLINE];
 
 	unless (isdir("BitKeeper/etc")) {
@@ -43,7 +44,7 @@ cmd_clone(int ac, char **av)
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'q':
-			/* no op */
+			quiet = 1;
 			break;
 		    case 'r':
 			rev = optarg;
@@ -51,6 +52,7 @@ cmd_clone(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
+	trigger_setQuiet(quiet);
 	/*
 	 * This is where we would put in an exception for bk port.
 	 */

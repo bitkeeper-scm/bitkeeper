@@ -69,10 +69,6 @@ TRIG pre-outgoing outgoing pull project r=1/1 w=0/0 side=server
 TRIG pre-incoming incoming pull copy/gcc r=0/0 w=1/1 side=client
 TRIG pre-outgoing outgoing pull project/gcc r=1/1 w=0/0 side=server
 TRIG pre-resolve resolve copy/gcc/RESYNC r=0/0 w=1/1 side=client
-TRIG pre-commit commit copy/gcc/RESYNC r=0/0 w=1/1 side=client
-TRIG post-commit commit copy/gcc/RESYNC r=0/0 w=1/1 side=client
-TRIG pre-apply apply copy/gcc/RESYNC r=0/0 w=1/1 side=client
-TRIG post-incoming incoming pull copy/gcc r=1/0 w=0/1 side=client
 TRIG pre-incoming incoming pull copy/gdb r=0/0 w=1/1 side=client
 TRIG pre-outgoing outgoing pull project/gdb r=1/1 w=0/0 side=server
 TRIG pre-resolve resolve copy/gdb/RESYNC r=0/0 w=1/1 side=client
@@ -81,6 +77,10 @@ TRIG post-commit commit copy/gdb/RESYNC r=0/0 w=1/1 side=client
 TRIG pre-apply apply copy/gdb/RESYNC r=0/0 w=1/1 side=client
 TRIG post-incoming incoming pull copy/gdb r=1/0 w=0/1 side=client
 TRIG pre-resolve resolve copy/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-commit commit copy/gcc/RESYNC r=0/0 w=0/1 side=client
+TRIG post-commit commit copy/gcc/RESYNC r=0/0 w=0/1 side=client
+TRIG pre-apply apply copy/gcc/RESYNC r=0/0 w=1/1 side=client
+TRIG post-incoming incoming pull copy/gcc r=1/0 w=0/1 side=client
 TRIG pre-commit commit copy/RESYNC r=0/0 w=1/1 side=client
 TRIG post-commit commit copy/RESYNC r=0/0 w=1/1 side=client
 TRIG pre-apply apply copy/RESYNC r=0/0 w=1/1 side=client
@@ -120,9 +120,8 @@ grep "^TRIG" ../ERR > ERR2
 cmpfiles ERR2 WANTbkd
 rm ../ERR
 
-grep -v commit < WANT | grep -v pre-apply > WANT2
-cmpfiles WANT2 OUTPUT
-BK_QUIET_TRIGGERS=YES bk unpull $Q -sf || fail
+cmpfiles WANT OUTPUT
+bk unpull $Q -sf || fail
 echo OK
 
 echo $N Try it out with pull -i .....................................$NL
@@ -134,18 +133,18 @@ TRIG pre-outgoing outgoing pull project r=1/1 w=0/0 side=server
 TRIG pre-incoming incoming pull copy/gcc r=0/0 w=1/1 side=client
 TRIG pre-outgoing outgoing pull project/gcc r=1/1 w=0/0 side=server
 TRIG pre-resolve resolve copy/gcc/RESYNC r=0/0 w=1/1 side=client
-TRIG pre-commit commit copy/gcc/RESYNC r=0/0 w=1/1 side=client
-TRIG post-commit commit copy/gcc/RESYNC r=0/0 w=1/1 side=client
-TRIG pre-apply apply copy/gcc/RESYNC r=0/0 w=1/1 side=client
-TRIG post-incoming incoming pull copy/gcc r=1/0 w=0/1 side=client
 TRIG pre-incoming incoming pull copy/gdb r=0/0 w=1/1 side=client
 TRIG pre-outgoing outgoing pull project/gdb r=1/1 w=0/0 side=server
 TRIG pre-resolve resolve copy/gdb/RESYNC r=0/0 w=1/1 side=client
-TRIG pre-commit commit copy/gdb/RESYNC r=0/0 w=1/1 side=client
-TRIG post-commit commit copy/gdb/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-resolve resolve copy/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-commit commit copy/gcc/RESYNC r=0/0 w=0/1 side=client
+TRIG post-commit commit copy/gcc/RESYNC r=0/0 w=0/1 side=client
+TRIG pre-apply apply copy/gcc/RESYNC r=0/0 w=1/1 side=client
+TRIG post-incoming incoming pull copy/gcc r=1/0 w=0/1 side=client
+TRIG pre-commit commit copy/gdb/RESYNC r=0/0 w=0/1 side=client
+TRIG post-commit commit copy/gdb/RESYNC r=0/0 w=0/1 side=client
 TRIG pre-apply apply copy/gdb/RESYNC r=0/0 w=1/1 side=client
 TRIG post-incoming incoming pull copy/gdb r=1/0 w=0/1 side=client
-TRIG pre-resolve resolve copy/RESYNC r=0/0 w=1/1 side=client
 TRIG pre-commit commit copy/RESYNC r=0/0 w=1/1 side=client
 TRIG post-commit commit copy/RESYNC r=0/0 w=1/1 side=client
 TRIG pre-apply apply copy/RESYNC r=0/0 w=1/1 side=client
@@ -202,12 +201,10 @@ echo $N Try push without -v..........................................$NL
 cd ../project
 bk gate -r $Q
 bk portal -r $Q 
-BK_QUIET_TRIGGERS=YES bk unpull -qsf || fail
+bk unpull -qsf || fail
 cd ../copy
 bk push 2>&1 | grep "^TRIG" > OUTPUT
-
-grep -v -e pre-incoming -e pre-resolve -e pre-apply < WANT > WANT2
-cmpfiles WANT2 OUTPUT
+cmpfiles WANT OUTPUT
 
 grep "^TRIG" ../ERR > ERR2
 cmpfiles ERR2 WANTbkd
@@ -216,7 +213,7 @@ rm ../ERR
 echo OK
 
 echo $N Clone -v ....................................................$NL
-BK_QUIET_TRIGGERS=YES bk new $Q BitKeeper/triggers/* || fail
+bk new $Q BitKeeper/triggers/* || fail
 bk commit $Q -y'add-triggers' || fail
 bk clone -v bk://localhost:$P/copy ../copy3 2>&1 | grep "^TRIG" > OUTPUT
 cat <<EOF > WANT
@@ -260,12 +257,12 @@ echo $N Rclone -v ...................................................$NL
 bk clone -v . bk://localhost:$P/copy5 2>&1 | grep "^TRIG" > OUTPUT
 # XXX order funny, no nested write lock at dest
 cat <<EOF > WANT
-TRIG pre-outgoing outgoing clone copy r=0/0 w=0/0 side=client
-TRIG post-outgoing outgoing clone copy r=0/0 w=0/0 side=client
-TRIG pre-outgoing outgoing clone copy/gcc r=0/0 w=0/0 side=client
-TRIG post-outgoing outgoing clone copy/gcc r=0/0 w=0/0 side=client
-TRIG pre-outgoing outgoing clone copy/gdb r=0/0 w=0/0 side=client
-TRIG post-outgoing outgoing clone copy/gdb r=0/0 w=0/0 side=client
+TRIG pre-outgoing outgoing clone copy r=1/1 w=0/0 side=client
+TRIG post-outgoing outgoing clone copy r=1/1 w=0/0 side=client
+TRIG pre-outgoing outgoing clone copy/gcc r=1/1 w=0/0 side=client
+TRIG post-outgoing outgoing clone copy/gcc r=1/1 w=0/0 side=client
+TRIG pre-outgoing outgoing clone copy/gdb r=1/1 w=0/0 side=client
+TRIG post-outgoing outgoing clone copy/gdb r=1/1 w=0/0 side=client
 EOF
 
 cat <<EOF > WANTbkd

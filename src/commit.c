@@ -114,7 +114,7 @@ commit_main(int ac, char **av)
 		}
 	}
 
-	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	trigger_setQuiet(opts.quiet);
 
 	nested = bk_nested2root(opts.standalone);
 	if (opts.standalone && aliases) {

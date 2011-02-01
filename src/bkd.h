@@ -137,7 +137,7 @@ int	get_ok(remote *r, char *read_ahead, int verbose);
 int	send_file(remote *r, char *file, int extra);
 int	send_file_extra_done(remote *r);
 int	skip_hdr(remote *r);
-int	getTriggerInfoBlock(remote *r, int verbose); 
+int	getTriggerInfoBlock(remote *r, int quiet);
 int	bkd_connect(remote *r, int opts);
 void	disconnect(remote *r);
 void	drain(void);
@@ -170,5 +170,5 @@ int	bkd_seed(char *oldseed, char *newval, char **newout);
 void	bkd_saveSeed(char *repoid, char *seed);
 char	*bkd_restoreSeed(char *repoid);
 
-int	bkd_doResolve(char *me, int verbose);
+int	bkd_doResolve(char *me, int quiet, int verbose);
 #endif

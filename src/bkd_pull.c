@@ -116,6 +116,7 @@ cmd_pull_part2(int ac, char **av)
 		    default:  /* ignore and pray */ break;
 		}
 	}
+	trigger_setQuiet(!verbose);
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");

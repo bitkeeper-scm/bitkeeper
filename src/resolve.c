@@ -137,7 +137,7 @@ resolve_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
     	}
-	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	trigger_setQuiet(opts.quiet);
 	/*
 	 * It is the responsibility of the calling code to set this env
 	 * var to indicate that we were not run standalone, we are called
@@ -198,8 +198,6 @@ resolve_main(int ac, char **av)
 private void
 resolve_post(opts *opts, int c)
 {
-	char	*cmd = "resolve";
-
 	if (opts->from_pullpush) return;
 
 	/* XXX - there can be other reasons */
@@ -208,10 +206,7 @@ resolve_post(opts *opts, int c)
 	} else {
 		putenv("BK_STATUS=OK");
 	}
-	if (getenv("BK_REMOTE") && streq(getenv("BK_REMOTE"), "YES")) {
-		cmd = "remote resolve";
-	}
-	trigger(cmd, "post");
+	trigger(getenv("_BK_IN_BKD") ? "push" : "pull", "post");
 }
 
 private void

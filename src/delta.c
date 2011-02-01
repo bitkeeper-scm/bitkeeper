@@ -158,7 +158,9 @@ delta_main(int ac, char **av)
 
 		    /* RCS flags */
 		    case 'q': 					/* doc 2.0 */
-			dflags |= SILENT; gflags |= SILENT; break;
+			trigger_setQuiet(1);
+			dflags |= SILENT; gflags |= SILENT;
+			break;
 		    case 'f': dflags |= DELTA_FORCE; break;	/* doc 2.0 ci */
 		    case 'i': dflags |= NEWFILE; 		/* doc 2.0 */
 			      sflags |= SF_NODIREXPAND;

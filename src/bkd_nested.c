@@ -6,7 +6,10 @@ int
 cmd_nested(int ac, char **av)
 {
 	char	*nlid;
+	int	c;
+	int	resolve = 0;
 	int	verbose = 0;
+	int	quiet = 0;
 
 	unless (av[1]) {
 		out("ERROR-invalid command\n");
@@ -21,11 +24,17 @@ cmd_nested(int ac, char **av)
 		return (1);
 	}
 	if (streq(av[1], "unlock")) {
-		if (av[2] && streq(av[2], "-R")) {
-			// Yuck.  Too lazy to getopt this
-			if (av[3]) if (streq(av[3], "-v")) verbose = 1;
-			bkd_doResolve(av[0], verbose);
+		while ((c = getopt(ac-1, av+1, "qRv", 0)) != -1) {
+			switch(c) {
+			    case 'q': quiet = 1; break;
+			    case 'R': resolve = 1; break;
+			    case 'v': verbose = 1; break;
+			    default:
+				/* ignore unknown */
+				break;
+			}
 		}
+		if (resolve) bkd_doResolve(av[0], quiet, verbose);
 		if (nested_unlock(0, nlid)) {
 			error("%s", nested_errmsg());
 			return (1);

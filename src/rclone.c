@@ -8,6 +8,7 @@ private	struct {
 	u32	quiet:1;		/* -q shut up */
 	u32	verbose:1;		/* -v old style noise */
 	u32	detach:1;		/* is detach command? */
+	u32	transaction:1;		/* is _BK_TRANSACTION set */
 	u32	sendenv_flags;		/* flags for sendEnv(); */
 	char	*rev;
 	char	*bam_url;		/* -B URL */
@@ -86,6 +87,8 @@ rclone_main(int ac, char **av)
 		}
 	}
 
+	if (getenv("_BK_TRANSACTION")) opts.transaction = 1;
+
 	/*
 	 * Validate arguments
 	 */
@@ -100,16 +103,11 @@ rclone_main(int ac, char **av)
 		perror(av[optind]);
 		exit(1);
 	}
-	/*
-	 * XXX
-	 * rclone doesn't get a repository lock or a nested lock
-	 * on the source side of the transfer.
-	 */
 	unless (exists(BKROOT)) {
 		fprintf(stderr, "%s is not a BitKeeper root\n", av[optind]);
 		exit(1);
 	}
-	if (!getenv("_BK_TRANSACTION") && proj_isComponent(0) && !opts.detach) {
+	if (!opts.transaction && proj_isComponent(0) && !opts.detach) {
 		fprintf(stderr,
 		    "clone: clone of a component is not allowed, use -s\n");
 		exit(1);
@@ -151,9 +149,11 @@ rclone_main(int ac, char **av)
 		return (1);
 	}
 
-	if (!getenv("_BK_TRANSACTION") && proj_isEnsemble(0) && !opts.detach) {
+	if (!opts.transaction && proj_isEnsemble(0) && !opts.detach) {
+		cmdlog_lock(CMD_NESTED_RDLOCK);
 		rc = rclone_ensemble(r);
 	} else {
+		cmdlog_lock(CMD_RDLOCK);
 		rc = rclone(av, r, envVar);
 	}
 	freeLines(envVar, free);
@@ -344,7 +344,7 @@ rclone_part1(remote *r, char **envVar)
 	}
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
+		if (getTriggerInfoBlock(r, opts.quiet)) return (-1);
 	}
 	if (strneq(buf, "ERROR-BAM server URL \"", 22)) {
 		if (p = strchr(buf + 22, '"')) *p = 0;
@@ -387,7 +387,7 @@ send_part1_msg(remote *r, char **envVar)
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.verbose) fprintf(f, " -v");
-	if (getenv("_BK_TRANSACTION")) {
+	if (opts.transaction) {
 		if (proj_isProduct(0)) {
 			fprintf(f, " -P");
 		} else {

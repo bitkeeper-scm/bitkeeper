@@ -259,7 +259,7 @@ runit(char *file, char *what, char *output)
  * If the trigger exited non-zero we always print if there is something to say.
  */
 int
-getTriggerInfoBlock(remote *r, int verbose)
+getTriggerInfoBlock(remote *r, int quiet)
 {
 	int	i = 0, rc = 0;
 	char	**lines = 0;
@@ -278,8 +278,8 @@ getTriggerInfoBlock(remote *r, int verbose)
 	}
 	/* Nothing to say */
 	unless (lines) goto out;
-	/* if 0 exit status and not verbose goto out */
-	if (!rc && !verbose) goto out;
+	/* if 0 exit status and quiet goto out */
+	if (!rc && quiet) goto out;
 	fprintf(stderr, "------------------------- "
 	    "Remote trigger message --------------------------\n");
 	EACH(lines) fprintf(stderr, "%s\n", lines[i]);
@@ -304,6 +304,9 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 	FILE	*gui = 0, *logfile = 0;
 	char	output[MAXPATH], buf[MAXLINE];
 
+	/* pull|commit -q set BK_QUIET_TRIGGERS for us */
+	quiet = (p = getenv("BK_QUIET_TRIGGERS")) && streq(p, "YES") && !gui;
+
 	trigger_env(remote ? "BKD" : "BK", event, what);
 
 	/*
@@ -311,7 +314,7 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 	 * the output.
 	 */
 	proto = remote && streq(when, "pre");
-	
+
 	/*
 	 * No triggers in the protocol for lease-proxy, it's handled
 	 * in the lease hash.  Fitting it into the protocol lost the
@@ -342,9 +345,6 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 		}
 	}
 
-	/* pull|commit -q set BK_QUIET_TRIGGERS for us */
-	quiet = getenv("BK_QUIET_TRIGGERS") && !gui;
-
 	if (proto) fputs("@TRIGGER INFO@\n", out);
 
 	bktmp(output, "trigger");
@@ -365,6 +365,7 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 		/* allow people to surpress noise (like getTriggerInfobLock) */
 		if (quiet && (rc == 0)) continue;
 
+		if (out == stdout) progress_injectnl();
 		fprintf(out, "%s>> Trigger \"%s\"", bkd_data, trigger);
 		if (strneq("pre-delta", trigger, 9) && getenv("BK_FILE")) {
 			fprintf(out, " on \"%s\"", getenv("BK_FILE"));
@@ -476,6 +477,12 @@ trigger_env(char *prefix, char *event, char *what)
 			free(p);
 		}
 	}
+
+	/*
+	 * clear some values from the environment that we don't want
+	 * sent to triggers.
+	 */
+	trigger_putenv("BK", "QUIET_TRIGGERS", 0);
 }
 
 static  char    **backup_env = 0;
@@ -558,4 +565,12 @@ trigger_dirs(void)
 		}
 	}
 	return (dirs);
+}
+
+void
+trigger_setQuiet(int yes)
+{
+	unless (getenv("BK_QUIET_TRIGGERS")) {
+		safe_putenv("BK_QUIET_TRIGGERS=%s", yes ? "YES" : "NO");
+	}
 }

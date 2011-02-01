@@ -82,6 +82,7 @@ undo_main(int ac,  char **av)
 	if (proj_isProduct(0) && standalone) usage();
 	bk_nested2root(standalone);
 
+	trigger_setQuiet(quiet);
 	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	if (undoLimit(&must_have)) limitwarning = 1;
 	save_log_markers();
