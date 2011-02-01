@@ -241,7 +241,7 @@ lock_main(int ac, char **av)
 	    case 'l':	/* list lockers / exit status */
 		unless (silent) {
 			if (proj_isEnsemble(0)) {
-				nested_printLockers(0, stdout);
+				nested_printLockers(0, stderr);
 			} else {
 				repository_lockers(0);
 			}
