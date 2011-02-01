@@ -1080,12 +1080,13 @@ nested_lockers(project *p, int listStale, int removeStale)
 	/* now check for a writer */
 	writer = aprintf("%s/" NESTED_WRITER_LOCK, proj_root(p));
 	if (exists(writer)) {
-		unless (nested_isStale(writer) && !listStale) {
+		int	stale = nested_isStale(writer);
+		unless (stale && !listStale) {
 
 			nl = new(nlock);
 			nl->nlid = loadfile(writer, 0);
 			chomp(nl->nlid);
-			nl->stale = 1;
+			nl->stale = stale;
 			lockers = addLine(lockers, nl);
 		}
 	}

@@ -1,0 +1,295 @@
+set -e
+# Triggers
+echo $N Create a test case and a pile-o-triggers ....................$NL
+bk bkd -aPORT -d -ikill -lERR
+P=`cat PORT`
+trap "bk _kill bk://localhost:$P" 0
+nested project
+touch prod gcc/gcc gdb/gdb
+bk new $Q prod gcc/gcc gdb/gdb
+bk commit $Q -yfiles
+# clone and set up conflict cases
+bk clone $Q bk://localhost:$P/project ../copy
+bk edit $Q prod gcc/gcc gdb/gdb
+echo remote > gcc/gcc
+bk delta $Q -fyfiles prod gcc/gcc gdb/gdb
+bk commit $Q -yremote
+cd ../copy
+bk edit $Q prod gcc/gcc gdb/gdb
+echo local > gcc/gcc
+bk delta $Q -fyfiles prod gcc/gcc gdb/gdb
+bk commit $Q -yremote
+# set up some non-propagating triggers
+# remember: printf not portable in the cluster inside of a trigger
+cat <<EOF > BitKeeper/tmp/trig
+#!/bin/sh
+(
+	cwd=\`bk pwd | sed 's/.*sandbox\///'\`
+	echo \$cwd | grep -q RESYNC && CD=--cd=..
+	bk \$CD lock -l 2> /tmp/lock\$\$
+	NR=\`grep 'Read  locker' /tmp/lock\$\$ | awk 'END{print NR}'\`
+	NW=\`grep 'Write locker' /tmp/lock\$\$ | awk 'END{print NR}'\`
+	NNR=\`grep 'Read locked by' /tmp/lock\$\$ | awk 'END{print NR}'\`
+	NNW=\`grep 'Write locked by' /tmp/lock\$\$ | awk 'END{print NR}'\`
+	grep stale /tmp/lock\$\$
+	rm -f /tmp/lock\$\$
+	echo "TRIG \$BK_TRIGGER \$BK_EVENT \$cwd r=\$NR/\$NNR w=\$NW/\$NNW side=\$BK_SIDE"
+) 2>&1 | tee -a "$HERE"/GOT
+EOF
+chmod +x BitKeeper/tmp/trig
+mkdir BitKeeper/triggers
+for f in \
+    post-commit \
+    post-incoming \
+    post-lease-proxy \
+    post-outgoing \
+    post-undo \
+    pre-apply \
+    pre-collapse \
+    pre-commit \
+    pre-delta \
+    pre-incoming \
+    pre-lease-proxy \
+    pre-outgoing \
+    pre-resolve \
+    pre-tag \
+    pre-undo
+do
+	cp BitKeeper/tmp/trig BitKeeper/triggers/$f
+done
+mkdir ../project/BitKeeper/triggers
+cp BitKeeper/triggers/* ../project/BitKeeper/triggers
+echo OK
+
+echo $N Try it out with pull ........................................$NL
+printf "s\nC\n" | bk pull -v 2>&1 | grep "^TRIG" > OUTPUT
+cat <<EOF > WANT
+TRIG pre-incoming incoming pull copy r=0/0 w=1/1 side=client
+TRIG pre-outgoing outgoing pull project r=1/1 w=0/0 side=server
+TRIG pre-incoming incoming pull copy/gcc r=0/0 w=1/1 side=client
+TRIG pre-outgoing outgoing pull project/gcc r=1/1 w=0/0 side=server
+TRIG pre-resolve resolve copy/gcc/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-commit commit copy/gcc/RESYNC r=0/0 w=1/1 side=client
+TRIG post-commit commit copy/gcc/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-apply apply copy/gcc/RESYNC r=0/0 w=1/1 side=client
+TRIG post-incoming incoming pull copy/gcc r=1/0 w=0/1 side=client
+TRIG pre-incoming incoming pull copy/gdb r=0/0 w=1/1 side=client
+TRIG pre-outgoing outgoing pull project/gdb r=1/1 w=0/0 side=server
+TRIG pre-resolve resolve copy/gdb/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-commit commit copy/gdb/RESYNC r=0/0 w=1/1 side=client
+TRIG post-commit commit copy/gdb/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-apply apply copy/gdb/RESYNC r=0/0 w=1/1 side=client
+TRIG post-incoming incoming pull copy/gdb r=1/0 w=0/1 side=client
+TRIG pre-resolve resolve copy/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-commit commit copy/RESYNC r=0/0 w=1/1 side=client
+TRIG post-commit commit copy/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-apply apply copy/RESYNC r=0/0 w=1/1 side=client
+TRIG post-incoming incoming pull copy r=1/0 w=0/1 side=client
+EOF
+
+cat <<EOF > WANTbkd
+TRIG post-outgoing outgoing pull project r=1/1 w=0/0 side=server
+TRIG post-outgoing outgoing pull project/gcc r=1/1 w=0/0 side=server
+TRIG post-outgoing outgoing pull project/gdb r=1/1 w=0/0 side=server
+EOF
+grep "^TRIG" ../ERR > ERR2
+cmpfiles ERR2 WANTbkd
+rm ../ERR
+
+cmpfiles WANT OUTPUT
+echo OK
+
+echo $N Test unpull triggers ........................................$NL
+bk unpull -sf 2>&1 | grep "^TRIG" > OUTPUT
+cat <<EOF > WANTundo
+TRIG pre-undo undo copy r=0/0 w=1/1 side=client
+TRIG pre-undo undo copy/gcc r=0/0 w=1/1 side=client
+TRIG post-undo undo copy/gcc r=1/0 w=0/1 side=client
+TRIG pre-undo undo copy/gdb r=0/0 w=1/1 side=client
+TRIG post-undo undo copy/gdb r=1/0 w=0/1 side=client
+TRIG post-undo undo copy r=1/0 w=0/1 side=client
+EOF
+
+cmpfiles WANTundo OUTPUT
+echo OK
+
+echo $N Repeat pull without -v ......................................$NL
+printf "s\nC\n" | bk pull 2>&1 | grep "^TRIG" > OUTPUT
+
+grep "^TRIG" ../ERR > ERR2
+cmpfiles ERR2 WANTbkd
+rm ../ERR
+
+grep -v commit < WANT | grep -v pre-apply > WANT2
+cmpfiles WANT2 OUTPUT
+BK_QUIET_TRIGGERS=YES bk unpull $Q -sf || fail
+echo OK
+
+echo $N Try it out with pull -i .....................................$NL
+# The difference is gdb isn't known to autoresolve until round 2
+printf "s\nC\n" | bk pull -v -i 2>&1 | grep "^TRIG" > OUTPUT
+cat <<EOF > WANT
+TRIG pre-incoming incoming pull copy r=0/0 w=1/1 side=client
+TRIG pre-outgoing outgoing pull project r=1/1 w=0/0 side=server
+TRIG pre-incoming incoming pull copy/gcc r=0/0 w=1/1 side=client
+TRIG pre-outgoing outgoing pull project/gcc r=1/1 w=0/0 side=server
+TRIG pre-resolve resolve copy/gcc/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-commit commit copy/gcc/RESYNC r=0/0 w=1/1 side=client
+TRIG post-commit commit copy/gcc/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-apply apply copy/gcc/RESYNC r=0/0 w=1/1 side=client
+TRIG post-incoming incoming pull copy/gcc r=1/0 w=0/1 side=client
+TRIG pre-incoming incoming pull copy/gdb r=0/0 w=1/1 side=client
+TRIG pre-outgoing outgoing pull project/gdb r=1/1 w=0/0 side=server
+TRIG pre-resolve resolve copy/gdb/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-commit commit copy/gdb/RESYNC r=0/0 w=1/1 side=client
+TRIG post-commit commit copy/gdb/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-apply apply copy/gdb/RESYNC r=0/0 w=1/1 side=client
+TRIG post-incoming incoming pull copy/gdb r=1/0 w=0/1 side=client
+TRIG pre-resolve resolve copy/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-commit commit copy/RESYNC r=0/0 w=1/1 side=client
+TRIG post-commit commit copy/RESYNC r=0/0 w=1/1 side=client
+TRIG pre-apply apply copy/RESYNC r=0/0 w=1/1 side=client
+TRIG post-incoming incoming pull copy r=1/0 w=0/1 side=client
+EOF
+
+cat <<EOF > WANTbkd
+TRIG post-outgoing outgoing pull project r=1/1 w=0/0 side=server
+TRIG post-outgoing outgoing pull project/gcc r=1/1 w=0/0 side=server
+TRIG post-outgoing outgoing pull project/gdb r=1/1 w=0/0 side=server
+EOF
+
+grep "^TRIG" ../ERR > ERR2
+cmpfiles ERR2 WANTbkd
+rm ../ERR
+
+cmpfiles WANT OUTPUT
+echo OK
+
+echo $N Try push -v..................................................$NL
+bk push -v 2>&1 | grep "^TRIG" > OUTPUT
+cat <<EOF > WANT
+TRIG pre-incoming incoming push project r=0/0 w=1/1 side=server
+TRIG pre-outgoing outgoing push copy r=1/1 w=0/0 side=client
+TRIG pre-incoming incoming push project/gcc r=0/0 w=1/1 side=server
+TRIG pre-outgoing outgoing push copy/gcc r=1/1 w=0/0 side=client
+TRIG pre-resolve resolve project/gcc/RESYNC r=0/0 w=1/1 side=server
+TRIG pre-apply apply project/gcc/RESYNC r=0/0 w=1/1 side=server
+TRIG post-outgoing outgoing push copy/gcc r=1/1 w=0/0 side=client
+TRIG pre-incoming incoming push project/gdb r=0/0 w=1/1 side=server
+TRIG pre-outgoing outgoing push copy/gdb r=1/1 w=0/0 side=client
+TRIG pre-resolve resolve project/gdb/RESYNC r=0/0 w=1/1 side=server
+TRIG pre-apply apply project/gdb/RESYNC r=0/0 w=1/1 side=server
+TRIG post-outgoing outgoing push copy/gdb r=1/1 w=0/0 side=client
+TRIG pre-resolve resolve project/RESYNC r=0/0 w=1/1 side=server
+TRIG pre-apply apply project/RESYNC r=0/0 w=1/1 side=server
+TRIG post-outgoing outgoing push copy r=1/1 w=0/0 side=client
+EOF
+
+cat <<EOF > WANTbkd
+TRIG post-incoming incoming push project/gcc r=1/0 w=0/1 side=server
+TRIG post-incoming incoming push project/gdb r=1/0 w=0/1 side=server
+TRIG post-incoming incoming push project r=1/0 w=0/1 side=server
+EOF
+
+grep "^TRIG" ../ERR > ERR2
+cmpfiles ERR2 WANTbkd
+rm ../ERR
+
+cmpfiles WANT OUTPUT
+echo OK
+
+echo $N Try push without -v..........................................$NL
+cd ../project
+bk gate -r $Q
+bk portal -r $Q 
+BK_QUIET_TRIGGERS=YES bk unpull -qsf || fail
+cd ../copy
+bk push 2>&1 | grep "^TRIG" > OUTPUT
+
+grep -v -e pre-incoming -e pre-resolve -e pre-apply < WANT > WANT2
+cmpfiles WANT2 OUTPUT
+
+grep "^TRIG" ../ERR > ERR2
+cmpfiles ERR2 WANTbkd
+rm ../ERR
+
+echo OK
+
+echo $N Clone -v ....................................................$NL
+BK_QUIET_TRIGGERS=YES bk new $Q BitKeeper/triggers/* || fail
+bk commit $Q -y'add-triggers' || fail
+bk clone -v bk://localhost:$P/copy ../copy3 2>&1 | grep "^TRIG" > OUTPUT
+cat <<EOF > WANT
+TRIG pre-outgoing outgoing clone copy r=1/1 w=0/0 side=server
+TRIG pre-outgoing outgoing clone copy/gcc r=1/1 w=0/0 side=server
+TRIG post-incoming incoming clone copy3/gcc r=1/0 w=0/1 side=client
+TRIG pre-outgoing outgoing clone copy/gdb r=1/1 w=0/0 side=server
+TRIG post-incoming incoming clone copy3/gdb r=1/0 w=0/1 side=client
+TRIG post-incoming incoming clone copy3 r=1/0 w=0/1 side=client
+EOF
+
+cat <<EOF > WANTbkd
+TRIG post-outgoing outgoing clone copy r=1/1 w=0/0 side=server
+TRIG post-outgoing outgoing clone copy/gcc r=1/1 w=0/0 side=server
+TRIG post-outgoing outgoing clone copy/gdb r=1/1 w=0/0 side=server
+EOF
+
+grep "^TRIG" ../ERR > ERR2
+cmpfiles ERR2 WANTbkd
+rm ../ERR
+
+cmpfiles WANT OUTPUT
+
+echo OK
+
+echo $N Clone .......................................................$NL
+bk clone bk://localhost:$P/copy ../copy4 2>&1 | grep "^TRIG" > OUTPUT
+cp WANT WANT2
+sed 's/copy3/copy4/' < WANT2 > WANT
+cmpfiles WANT OUTPUT
+
+cp WANTbkd WANTbkd2
+sed 's/copy3/copy4/' < WANTbkd2 > WANTbkd
+grep "^TRIG" ../ERR > ERR2
+cmpfiles ERR2 WANTbkd
+rm ../ERR
+
+echo OK
+
+echo $N Rclone -v ...................................................$NL
+bk clone -v . bk://localhost:$P/copy5 2>&1 | grep "^TRIG" > OUTPUT
+# XXX order funny, no nested write lock at dest
+cat <<EOF > WANT
+TRIG pre-outgoing outgoing clone copy r=0/0 w=0/0 side=client
+TRIG post-outgoing outgoing clone copy r=0/0 w=0/0 side=client
+TRIG pre-outgoing outgoing clone copy/gcc r=0/0 w=0/0 side=client
+TRIG post-outgoing outgoing clone copy/gcc r=0/0 w=0/0 side=client
+TRIG pre-outgoing outgoing clone copy/gdb r=0/0 w=0/0 side=client
+TRIG post-outgoing outgoing clone copy/gdb r=0/0 w=0/0 side=client
+EOF
+
+cat <<EOF > WANTbkd
+TRIG post-incoming incoming clone copy5 r=1/0 w=0/0 side=server
+TRIG post-incoming incoming clone copy5/gcc r=1/0 w=0/0 side=server
+TRIG post-incoming incoming clone copy5/gdb r=1/0 w=0/0 side=server
+EOF
+
+cmpfiles WANT OUTPUT
+
+grep "^TRIG" ../ERR > ERR2
+cmpfiles ERR2 WANTbkd
+rm ../ERR
+echo OK
+
+echo $N Rclone ......................................................$NL
+bk clone . bk://localhost:$P/copy6 2>&1 | grep "^TRIG" > OUTPUT
+cp WANT WANT2
+sed 's/copy5/copy6/' < WANT2 > WANT
+cmpfiles WANT OUTPUT
+
+cp WANTbkd WANTbkd2
+sed 's/copy5/copy6/' < WANTbkd2 > WANTbkd
+grep "^TRIG" ../ERR > ERR2
+cmpfiles ERR2 WANTbkd
+rm ../ERR
+echo OK
