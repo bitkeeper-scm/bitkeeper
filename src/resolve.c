@@ -2948,6 +2948,14 @@ resolve_cleanup(opts *opts, int what)
 
 	if (opts->progress) progress_restoreStderr();
 
+	/*
+	 * If pull requested --auto-only, then we shouldn't
+	 * automatically abort on a failure.  Resolve will be rerun
+	 * interactively and the user will be give a chance to fix the
+	 * problem.
+	 */
+	if (opts->autoOnly) what &= ~(CLEAN_ABORT|CLEAN_PENDING);
+
 	unless (exists(ROOT2RESYNC)) chdir(RESYNC2ROOT);
 	unless (exists(ROOT2RESYNC)) {
 		fprintf(stderr, "cleanup: can't find RESYNC dir\n");

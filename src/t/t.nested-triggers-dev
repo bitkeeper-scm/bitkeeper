@@ -5,19 +5,21 @@ bk bkd -aPORT -d -ikill -lERR
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 nested project
-touch prod gcc/gcc gdb/gdb
-bk new $Q prod gcc/gcc gdb/gdb
+touch prod gcc/gcc gdb/gdb gcc/start
+bk new $Q prod gcc/gcc gdb/gdb gcc/start
 bk commit $Q -yfiles
 # clone and set up conflict cases
 bk clone $Q bk://localhost:$P/project ../copy
 bk edit $Q prod gcc/gcc gdb/gdb
 echo remote > gcc/gcc
 bk delta $Q -fyfiles prod gcc/gcc gdb/gdb
+bk mv gcc/start gcc/project
 bk commit $Q -yremote
 cd ../copy
 bk edit $Q prod gcc/gcc gdb/gdb
 echo local > gcc/gcc
 bk delta $Q -fyfiles prod gcc/gcc gdb/gdb
+bk mv gcc/start gcc/copy
 bk commit $Q -yremote
 # set up some non-propagating triggers
 # remember: printf not portable in the cluster inside of a trigger
@@ -62,7 +64,7 @@ cp BitKeeper/triggers/* ../project/BitKeeper/triggers
 echo OK
 
 echo $N Try it out with pull ........................................$NL
-printf "s\nC\n" | bk pull -v 2>&1 | grep "^TRIG" > OUTPUT
+printf "l\ns\nC\n" | bk pull -v 2>&1 | grep "^TRIG" > OUTPUT
 cat <<EOF > WANT
 TRIG pre-incoming incoming pull copy r=0/0 w=1/1 side=client
 TRIG pre-outgoing outgoing pull project r=1/1 w=0/0 side=server
@@ -114,7 +116,7 @@ cmpfiles WANTundo OUTPUT
 echo OK
 
 echo $N Repeat pull without -v ......................................$NL
-printf "s\nC\n" | bk pull 2>&1 | grep "^TRIG" > OUTPUT
+printf "l\ns\nC\n" | bk pull 2>&1 | grep "^TRIG" > OUTPUT
 
 grep "^TRIG" ../ERR > ERR2
 cmpfiles ERR2 WANTbkd
@@ -126,7 +128,7 @@ echo OK
 
 echo $N Try it out with pull -i .....................................$NL
 # The difference is gdb isn't known to autoresolve until round 2
-printf "s\nC\n" | bk pull -v -i 2>&1 | grep "^TRIG" > OUTPUT
+printf "h\nl\ns\nC\n" | bk pull -v -i 2>&1 | tee OUT | grep "^TRIG" > OUTPUT
 cat <<EOF > WANT
 TRIG pre-incoming incoming pull copy r=0/0 w=1/1 side=client
 TRIG pre-outgoing outgoing pull project r=1/1 w=0/0 side=server
