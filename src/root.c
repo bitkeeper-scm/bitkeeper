@@ -6,7 +6,7 @@ root_main(int ac, char **av)
 {
 	char	*p;
 	int	c;
-	int	product = 1;
+	int	standalone = 0;
 	longopt	lopts[] = {
 		{ "standalone", 'S' },		/* treat comps as standalone */
 		{ 0, 0 }
@@ -16,7 +16,7 @@ root_main(int ac, char **av)
 		switch (c) {
 		    case 'P':	break;			// do not doc
 		    case 'R':				// do not doc
-		    case 'S':	product = 0; break;
+		    case 'S':	standalone = 1; break;
 		    default:	bk_badArg(c, av);
 		}
 	}
@@ -27,17 +27,7 @@ root_main(int ac, char **av)
 			return(1);
 		}
 	}
-	if (product) {
-		unless (p = proj_root(proj_product(0))) {
-			fprintf(stderr, "cannot find product root\n");
-			exit(1);
-		}
-	} else {
-		unless (p = proj_root(0)) {
-			fprintf(stderr, "cannot find package root\n");
-			exit(1);
-		}
-	}
-	printf("%s\n", p);
+	bk_nested2root(standalone);
+	printf("%s\n", proj_cwd());
 	return(0);
 }

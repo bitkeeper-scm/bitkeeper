@@ -3,6 +3,9 @@ fresh_commercial standalone
 cd ..
 nested project
 mv ../standalone .
+cd standalone
+test "`bk pwd`" = "`bk root`" || fail
+cd ..
 bk lease renew -w  # hack!
 mkdir -p a/b
 touch c
