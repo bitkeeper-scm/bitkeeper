@@ -194,11 +194,10 @@ echo $N Pull, edited file in gcc.....................................$NL
 cd "$HERE/edit_in_gcc"
 save_state
 bk pull >ERR 2>&1 && fail -f ERR
-test -d RESYNC || fail Did not leave RESYNC
+test -d RESYNC && fail -f ERR left RESYNC
 grep -q "The following files are modified locally and in the patch" ERR || {
 	fail -f ERR
 }
-bk abort -qf || fail -f ERR
 check_state || fail -f ERR $err
 echo OK
 
@@ -208,8 +207,7 @@ echo $N Pull, edited file in gdb.....................................$NL
 cd "$HERE/edit_in_gdb"
 save_state
 bk pull >ERR 2>&1 && fail
-test -d RESYNC || fail -f ERR did not leave RESYNC
-bk abort -qf || fail
+test -d RESYNC && fail -f ERR left RESYNC
 check_state || fail $err
 echo OK
 
@@ -550,7 +548,7 @@ for rc in 1 2 3; do
 	cd copy
 	TRIGRC=$rc bk pull $Q 2> ERR && fail -f ERR rc=$rc should fail
 	bk -r check -ac || fail rc=$rc should pass
-	test -d RESYNC || fail rc=$rc
+#	test -d RESYNC && fail rc=$rc
 	cd ..
 	rm -fr copy
 	tar xf copy.tar

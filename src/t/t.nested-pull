@@ -1017,3 +1017,22 @@ grep -q "Merge .*/C" GOT || fail -f GOT wrong remote path
 grep -q "into .*/C" GOT || fail -f GOT wrong local path
 echo OK
 
+echo $N Create a component conflict and see that cleanup works ......$NL
+cd "$HERE"
+nested repo
+touch gcc/foo
+bk new $Q gcc/foo
+bk commit $Q -yfiles
+bk clone $Q . ../repocopy
+bk edit $Q gcc/foo
+echo remote > gcc/foo
+bk delta $Q -fyfiles gcc/foo
+bk commit $Q -yremote
+cd ../repocopy
+bk edit $Q gcc/foo
+echo local > gcc/foo
+bk pull $Q > OUT 2>&1 && fail should have failed
+grep -q "The following files are modified locally and " OUT || fail -f OUT
+bk unedit gcc/foo
+bk pull $Q || fail should have worked
+echo OK

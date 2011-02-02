@@ -112,7 +112,7 @@ undo_main(int ac,  char **av)
 		freeLines(nav, free);
 		if (must_have) free(must_have);
 		rc = fromclone ? UNDO_SKIP : 0;
-		goto out;
+		goto out2;
 	}
 	EACH (filesNrevs) {
 		p = strchr(filesNrevs[i], '|');
@@ -207,7 +207,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) {
 			unlink(undo_list);
 			rc = UNDO_ERR;
-			goto out;
+			goto out2;
 		}
 	}
 
@@ -321,9 +321,6 @@ prod:
 	freeLines(csetrevs, 0);
 	unless (fromclone) unlink(UNDO_CSETS);
 	update_log_markers(verbose);
-	unless (fromclone || verbose || quiet) {
-		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
-	}
 	unless (rc) {
 		/* do not remove backup if check failed */
 		unlink(BACKUP_SFIO);
@@ -333,6 +330,9 @@ prod:
 			putenv("BK_STATUS=OK");
 			trigger("undo", "post");
 		}
+	}
+out2:	unless (fromclone || verbose || quiet) {
+		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
 	}
 out:	return (rc);
 }

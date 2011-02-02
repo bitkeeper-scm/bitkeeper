@@ -583,7 +583,10 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 			 */
 			rc = pull_ensemble(r, rmt_aliases,
 			    rmt_urllist, conflicts);
-			if (rc) goto done;
+			if (rc) {
+				system("bk -?BK_NO_REPO_LOCK=YES abort -qf");
+				goto done;
+			}
 		}
 		if (exists(ROOT2RESYNC)){
 			putenv("BK_STATUS=OK");

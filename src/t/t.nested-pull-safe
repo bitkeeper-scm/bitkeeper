@@ -129,3 +129,17 @@ Please run bk populate to add the following aliases:
 EOF
 cmpfiles WANT ERR
 echo OK
+
+echo $N Do an unsafe pull after a safe pull fails ...................$NL
+cd "$HERE"
+nested nongate
+bk gate $Q -r
+bk clone $Q -s. . ../just-prod
+touch foo
+bk new $Q foo
+bk commit $Q -yremote
+cd ../just-prod
+bk pull $Q > OUT 2>&1 && fail should have failed
+grep -q "failing because populated aliases are different" OUT || fail -f OUT
+bk pull $Q --unsafe || fail should have worked
+echo OK
