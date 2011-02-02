@@ -623,7 +623,7 @@ http_dir(char *page)
 	char	*cmd, *file, *gfile, *rev, *enc, *md5key;
 	int	i;
 	char	**d;
-	FILE	*f;
+	FILE	*f, *out;
 	time_t	now = time(0);
 	char	buf[MAXLINE];
 
@@ -674,6 +674,7 @@ http_dir(char *page)
 	    " <td>:HTML_C:&nbsp;</td>"
 	    "</tr>\\n%s' '%s'",
 	    prefix, suffix, fpath);
+	out = fmem_open();
 	f = popen(cmd, "r");
 	free(cmd);
 	while (fnext(buf, f)) {
@@ -707,8 +708,9 @@ http_dir(char *page)
 			hash_storeStr(qout, "PAGE", "history");
 			hash_deleteStr(qout, "REV");
 			mk_querystr();
-			enc = str_pullup(0,
-			    webencode(0, gfile ,strlen(gfile)+1));
+			ftrunc(out, 0);
+			webencode(out, gfile, strlen(gfile)+1);
+			enc = fmem_getbuf(out, 0);
 			printf("<td><a href=\"%s%s\"><img border=0 src="
 			    BKWWW "document_delta.png></a></td>",
 			    enc, querystr);
@@ -730,10 +732,10 @@ http_dir(char *page)
 			printf("<td align=center>"
 			    "<a href=\"%s%s\">CSets</a></td>",
 			    enc, querystr);
-			free(enc);
 		}
 	}
 	pclose(f);
+	fclose(out);
 
 	cmd = aprintf("bk sfiles -1x '%s'", fpath);
 	f = popen(cmd, "r");
@@ -744,18 +746,20 @@ http_dir(char *page)
 		hash_storeStr(qout, "PAGE", "cat");
 		hash_deleteStr(qout, "REV");
 		mk_querystr();
-		enc = str_pullup(0, webencode(0, gfile ,strlen(gfile)+1));
 		printf("%s<tr bgcolor=white>\n"
 		    "<td><img border=0 src="
 		    BKWWW "document_plain.png></td>"
-		    "<td><a href=\"%s%s\">%s<a/></td>"
+		    "<td><a href=\"",
+		    prefix);
+		webencode(stdout, gfile ,strlen(gfile)+1);
+		printf("%s\">%s<a/></td>"
 		    "<td align=center>-</td>"
 		    "<td align=center>-</td>"
 		    "<td align=right>%s</td>"
 		    "<td align=center>-</td>"
 		    "<td>non-version controlled file</td>\n"
 		    "</tr>\n%s",
-		    prefix, enc, querystr, gfile,
+		    querystr, gfile,
 		    age(now - mtime(buf), "&nbsp;"), suffix);
 	}
 	pclose(f);
@@ -826,21 +830,24 @@ http_anno(char *page)
 private char *
 dl_link(void)
 {
-	char	**link = 0;
+	char	*ret;
+	FILE	*f = fmem_open();
 
-	link = str_append(link, "<a href=\"/", 0);
-	link = webencode(link, root, strlen(root)+1);
-	link = str_append(link, "/", 0);
-	link = webencode(link, fpath, strlen(fpath)+1);
-	link = str_append(link, "?PAGE=cat", 0);
+	fputs("<a href=\"/", f);
+	webencode(f, root, strlen(root)+1);
+	putc('/', f);
+	webencode(f, fpath, strlen(fpath)+1);
+	fputs("?PAGE=cat", f);
 	if (hash_fetchStr(qin, "REV")) {
-		link = str_append(link, "&REV=", 0);
-		link = webencode(link, qin->vptr, qin->vlen);
+		fputs("&REV=", f);
+		webencode(f, qin->vptr, qin->vlen);
 	}
-	link = str_append(link, "\">", 0);
-	link = webencode(link, fpath, strlen(fpath)+1);
-	link = str_append(link, "</a>", 0);
-	return (str_pullup(0, link));
+	fputs("\">", f);
+	webencode(f, fpath, strlen(fpath)+1);
+	fputs("</a>", f);
+	ret = fmem_retbuf(f, 0);
+	fclose(f);
+	return (ret);
 }
 
 #define BLACK 1
@@ -1775,6 +1782,7 @@ http_repos(char *page)
 	char	*enc;
 	time_t	now = time(0);
 	struct	stat	sb;
+	FILE	*f = fmem_open();
 	char	buf[MAXPATH];
 	char	buf2[MAXPATH];
 
@@ -1796,32 +1804,32 @@ http_repos(char *page)
 		if (lstat(buf, &sb) == -1) continue;
 		unless (S_ISDIR(sb.st_mode)) continue;
 		concat_path(buf2, buf, "BitKeeper/etc");
+		ftrunc(f, 0);
+		webencode(f, d[i], strlen(d[i])+1);
+		enc = fmem_getbuf(f, 0);
 		if (isdir(buf2)) {
 			concat_path(buf, buf, "SCCS/s.ChangeSet");
 			if (lstat(buf, &sb) == -1) continue;
-			enc = str_pullup(0, webencode(0, d[i],strlen(d[i])+1));
 			printf("<tr bgcolor=white>\n"
 			    "<td align=center><a href=\"%s/%s\">"
 			    "<img border=0 src=" BKWWW "folder_delta.png></a></td>"
 			    "<td>&nbsp;<a href=\"%s/%s\">%s</a></td>\n"
 			    "<td align=center>%s</td></tr>",
-			    enc, querystr, 
+			    enc, querystr,
 			    enc, querystr, d[i],
 			    age(now - sb.st_mtime, "&nbsp;"));
-			free(enc);
 		} else {
-			enc = str_pullup(0, webencode(0, d[i], strlen(d[i])+1));
 			printf("<tr bgcolor=#e0e0e0>\n"
 			    "<td align=center><a href=\"%s/%s\">"
 			    "<img border=0 src=" BKWWW "folder_plain.png></a></td>"
 			    "<td>&nbsp;<a href=\"%s/%s\">%s</a></td>\n"
 			    "<td align=center>%s</td></tr>",
-			    enc, querystr, 
+			    enc, querystr,
 			    enc, querystr, d[i],
 			    age(now - sb.st_mtime, "&nbsp;"));
-			free(enc);
 		}
 	}
+	fclose(f);
 	freeLines(d, free);
 	printf("</tbody>\n");
 	puts(INNER_END OUTER_END);

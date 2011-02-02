@@ -348,7 +348,7 @@ void	my_perror(char *, int, char *);
 int	chomp(char *str);
 
 /* webencode.c */
-char	**webencode(char **buf, u8 *ptr, int len);
+void	webencode(FILE *out, u8 *ptr, int len);
 char	*webdecode(char *data, char **buf, int *sizep);
 
 /* which.c */
