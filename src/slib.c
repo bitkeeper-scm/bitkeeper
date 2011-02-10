@@ -2104,7 +2104,7 @@ int
 sccs_finishWrite(sccs *s, FILE **f)
 {
 	char	*xfile = sccsXfile(s, 'x');
-	int	rc;
+	int	rc = ferror(*f);
  	FILE	*tmp;
 
 	if (s->mem_out) {
@@ -2122,11 +2122,11 @@ sccs_finishWrite(sccs *s, FILE **f)
 		}
 		*f = 0;
 	} else {
-		rc = fclose(*f);
+		if (fclose(*f)) rc = -1;
 		*f = 0;
 		if (rc) {
 			perror(xfile);
-			return (-1);
+			goto out;
 		}
 		sccs_close(s);
 		if (rename(xfile, s->sfile)) {
@@ -2140,7 +2140,7 @@ sccs_finishWrite(sccs *s, FILE **f)
 		if (sccs_setStime(s, 0)) perror(s->sfile);
 		if (chmod(s->sfile, 0444)) perror(s->sfile);
 	}
-	return (0);
+out:	return (rc);
 }
 
 /*
@@ -2498,7 +2498,7 @@ rcsexpand(sccs *s, delta *d, char *line, int *expanded)
  * where we call this function.  There should be only one place in the
  * get_reg() function.
  */
-int
+private int
 flushFILE(FILE *out)
 {
 	if (fflush(out) && (errno != EPIPE)) {
@@ -4604,6 +4604,9 @@ sccs_free(sccs *s)
 		out = sccs_startWrite(s);
 		assert(buf);
 		fwrite(buf, 1, len, out);
+		// XXX In this case sccs_free has transactional quality
+		// and has no back channel to let caller know transaction
+		// failed.
 		sccs_finishWrite(s, &out);
 		fclose(f);
 	}
@@ -11539,8 +11542,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	/* not really needed, we already wrote it */
 	sc->encoding = new_enc;
 	if (fflushdata(sc, sfile)) {
-		sccs_unlock(sc, 'x');
-		sccs_finishWrite(sc, &sfile);
+		sccs_abortWrite(sc, &sfile);
 		if (sc->io_warned) OUT;
 		goto out;
 	}
@@ -11622,8 +11624,7 @@ out:
 		fputdata(s, "\n", sfile);
 	}
 	if (fflushdata(s, sfile)) {
-		sccs_unlock(s, 'x');
-		sccs_finishWrite(s, &sfile);
+		sccs_abortWrite(s, &sfile);
 		if (s->io_warned) OUT;
 		goto out;
 	}
@@ -12431,7 +12432,6 @@ sccs_csetWrite(sccs *s, char **cweave)
 	sccs_close(s);
 	if (sccs_finishWrite(s, &out)) goto err;
 	ret = 0;
-	
 err:
 	if (out) {
 		fclose(out);
@@ -13500,8 +13500,7 @@ out:
 	}
 
 	if (delta_table(s, sfile, 1)) {
-		sccs_finishWrite(s, &sfile);
-		sccs_unlock(s, 'x');
+		sccs_abortWrite(s, &sfile);
 		goto out;	/* not OUT - we want the warning */
 	}
 
@@ -13520,8 +13519,7 @@ out:
 		for (t = n->symlink; *t; t++) s->dsum += *t;
 	}
 	if (end(s, n, sfile, flags, added, deleted, unchanged)) {
-		sccs_finishWrite(s, &sfile);
-		sccs_unlock(s, 'x');
+		sccs_abortWrite(s, &sfile);
 		WARN;
 	}
 	unless (flags & DELTA_SAVEGFILE)  {
