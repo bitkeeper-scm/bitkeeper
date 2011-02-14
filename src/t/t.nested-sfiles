@@ -4,7 +4,10 @@ cd ..
 nested project
 mv ../standalone .
 cd standalone
-test "`bk pwd`" = "`bk root`" || fail
+ROOT=`bk root`
+PWD1=`bk pwd -s`
+PWD2=`bk pwd -s "$ROOT"`
+test "$PWD1" = "$PWD2" || fail
 cd ..
 bk lease renew -w  # hack!
 mkdir -p a/b
