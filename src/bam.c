@@ -2210,7 +2210,8 @@ uu2bp(sccs *s)
 	progress_done(tick, 0);
 	fprintf(stderr, "\n");
 	unless (out = sccs_startWrite(s)) {
-err:		sccs_unlock(s, 'z');
+err:		sccs_abortWrite(s, &out);
+		sccs_unlock(s, 'z');
 		return (32);
 	}
 	s->encoding = E_BAM;
