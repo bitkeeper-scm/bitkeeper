@@ -1,3 +1,14 @@
+============================================================================
+Release notes for BitKeeper version 5.1.1 (released 16-Feb-2011)
+
+This is a bugfix only release that is functionally identical to bk-5.1.
+It includes a fix for problem introduced in bk-5.0 where bk can corrupt
+the revision history if it hits a disk full condition while doing a
+commit.
+
+All users of bk-5.x are advised to upgrade to this version.
+
+============================================================================
 Release notes for BitKeeper version 5.1 (released 17-Dec-2010)
 
 Nested interface changes:
