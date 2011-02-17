@@ -17,8 +17,7 @@ echo OK
 
 echo $N Test that \'bk pull -D\' will allow uncollapsed csets .........$NL
 (echo rr; echo y) | BK_FORCE_RESOLVE_RERUN=1 bk pull $Q -D 2> ERR || {
-	echo should have worked
-	exit 1
+	fail -f ERR should have worked
 }
 grep -q "1 unresolved name conflict" ERR || exit 1
 echo OK

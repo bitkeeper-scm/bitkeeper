@@ -301,7 +301,7 @@ cd "$HERE/standalone"
 add new || fail
 bk push ../clone >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'takepatch' 'push' 'resolve' || fail -f OUT $msg
+chkpasses OUT 'takepatch' 'push' || fail -f OUT $msg
 chknumbars OUT 1 || fail -f OUT $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -340,7 +340,7 @@ echo $N pull ........................................................$NL
 cd "$HERE/clone"
 bk unpull $Q -f || fail
 bk pull ../standalone >OUT 2>&1 || fail -f OUT
-chkpasses OUT 'takepatch' 'pull' 'check' 'resolve' || fail $msg
+chkpasses OUT 'takepatch' 'pull' 'check' || fail $msg
 chkoutput OUT || fail $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
@@ -397,7 +397,7 @@ bk grep -q 'resolve: 2 unresolved conflicts, starting manual' OUT || fail -f OUT
 bk grep -q '(content conflict) for-automerge-conflict-1' OUT || fail -f OUT
 bk grep -q '(content conflict) for-automerge-conflict-2' OUT || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'takepatch' 'pull' 'check' 'resolve' || fail $msg
+chkpasses OUT 'takepatch' 'pull' 'check' || fail $msg
 chknumbars OUT 3 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -435,7 +435,7 @@ echo $N pull -i w/name conflicts ....................................$NL
 bk unpull $Q -f
 echo q | bk pull -Ti ../standalone >OUT 2>&1 && fail -f OUT
 bk grep -q '(create/sfile conflict) for-name-conflict-1' OUT || fail -f OUT
-chkpasses100 OUT 'takepatch' 'resolve' || fail -f x $msg
+chkpasses100 OUT 'takepatch' || fail -f x $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 cd ..
@@ -468,7 +468,7 @@ bk pull -s ../standalone >OUT 2>&1 && fail -f OUT
 bk grep -q 'edited-modif-1-renamed is modified' OUT || fail -f OUT
 bk grep -q 'edited-modif-2-renamed is modified' OUT || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'takepatch' 'resolve' || fail $msg
+chkpasses OUT 'takepatch' || fail -f OUT $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 cd "$HERE"
@@ -524,7 +524,7 @@ echo $N pull -i w/content merge conflicts ...........................$NL
 bk unpull $Q -f
 echo q | bk pull -i ../standalone >OUT 2>&1 && fail -f OUT
 bk grep -q ' for-content-conflict-1' OUT || fail -f OUT
-chkpasses100 OUT 'takepatch' 'resolve' || fail $msg
+chkpasses100 OUT 'takepatch' || fail -f OUT $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 cd ..
@@ -589,7 +589,7 @@ add push-new || fail
 bk push ../clone >OUT 2>&1 || fail -f OUT
 bk grep -q pre-outgoing OUT || fail -f OUT
 chkoutput OUT || fail -f OUT $msg
-chkpasses OUT takepatch push resolve || fail $msg
+chkpasses OUT takepatch push || fail -f OUT $msg
 chknumbars OUT 3 || fail -f OUT $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -603,7 +603,7 @@ bk grep -q pre-incoming OUT || fail -f OUT
 bk grep -q pre-outgoing OUT || fail -f OUT
 bk grep -q pre-resolve OUT || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT takepatch pull check resolve || fail $msg
+chkpasses OUT takepatch pull check || fail -f OUT $msg
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -668,7 +668,7 @@ if [ $SKIP_BAM = NO ]; then
 	add data4 || fail
 	bk push ../bam-clone >OUT 2>&1 || fail -f OUT
 	chkoutput OUT || fail $msg
-	chkpasses OUT 'takepatch' 'BAM xfer' 'resolve' || fail $msg
+	chkpasses OUT 'takepatch' 'BAM xfer' || fail -f OUT $msg
 	chknumbars OUT 1 || fail $msg
 	chkblanks OUT 0 || fail $msg
 	echo OK
@@ -683,7 +683,7 @@ if [ $SKIP_BAM = NO ]; then
 	bk bam clean $Q data4 || fail
 	bk pull ../bam >OUT 2>&1 || fail -f OUT
 	chkoutput OUT || fail $msg
-	chkpasses OUT 'takepatch' 'BAM xfer' 'resolve' || fail $msg
+	chkpasses OUT 'takepatch' 'BAM xfer' || fail $msg
 	chknumbars OUT 1 || fail $msg
 	chkblanks OUT 0 || fail $msg
 	cd ..
@@ -1552,7 +1552,7 @@ cd "$HERE/product0"
 add push-new || fail
 bk push ../clone0 >OUT 2>&1 || fail -f OUT
 chkoutput OUT $PRODUCT || fail $msg
-chkpasses OUT takepatch resolve || fail $msg
+chkpasses OUT takepatch || fail $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1599,7 +1599,7 @@ echo OK
 echo $N pull product only ...........................................$NL
 bk pull ../product0 >OUT 2>&1 || fail -f OUT
 chkoutput OUT $PRODUCT || fail $msg
-chkpasses OUT takepatch resolve || fail $msg
+chkpasses OUT takepatch || fail $msg
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1620,7 +1620,7 @@ cd "$HERE/product1/comp1"
 add push-new || fail
 bk push ../../clone1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT $PRODUCT comp1 || fail $msg
-chkpasses OUT takepatch resolve || fail $msg
+chkpasses OUT takepatch || fail $msg
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1667,7 +1667,7 @@ echo OK
 echo $N pull component only .........................................$NL
 bk pull ../product1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT $PRODUCT comp1 || fail -f OUT $msg
-chkpasses OUT takepatch resolve || fail -f OUT $msg
+chkpasses OUT takepatch || fail -f OUT $msg
 chknumbars OUT 3 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1692,7 +1692,7 @@ cd "$HERE/product1/comp1"
 add push-new2 || fail
 bk push ../../clone1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT $PRODUCT comp1 || fail $msg
-chkpasses OUT takepatch resolve || fail $msg
+chkpasses OUT takepatch || fail $msg
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1709,7 +1709,7 @@ echo OK
 echo $N pull product and component ..................................$NL
 bk pull ../product1 >OUT 2>&1 || fail -f OUT
 chkoutput OUT $PRODUCT comp1 || fail $msg
-chkpasses OUT takepatch resolve || fail $msg
+chkpasses OUT takepatch || fail $msg
 chknumbars OUT 3 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1744,7 +1744,7 @@ cd "$HERE/product3/comp3"
 add push-new || fail
 bk push ../../clone3 >OUT 2>&1 || fail -f OUT
 chkoutput OUT $PRODUCT comp1 comp2 comp3 || fail $msg
-chkpasses OUT takepatch resolve || fail $msg
+chkpasses OUT takepatch || fail $msg
 chknumbars OUT 4 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1791,7 +1791,7 @@ echo OK
 echo $N pull 3 components ...........................................$NL
 bk pull ../product3 >OUT 2>&1 || fail -f OUT
 chkoutput OUT $PRODUCT comp1 comp2 comp3 || fail $msg
-chkpasses OUT takepatch resolve || fail $msg
+chkpasses OUT takepatch || fail $msg
 chknumbars OUT 5 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -1910,7 +1910,7 @@ y
 EOF
 bk pull -T ../product0 <resolve >OUT 2>&1 || fail -f OUT
 bk grep -q for-conflict OUT || fail
-chkpasses OUT takepatch resolve || fail $msg
+chkpasses OUT takepatch || fail $msg
 chkblanks OUT 0 || fail $msg
 cd ..
 bk _rm -rf clone0
@@ -1949,7 +1949,7 @@ EOF
 bk pull -T "$HERE/product1" <resolve >OUT 2>&1 || fail -f OUT
 grep -q for-conflict OUT || fail
 chkoutput OUT $PRODUCT comp1 || fail $msg
-chkpasses OUT takepatch resolve || fail $msg
+chkpasses OUT takepatch || fail $msg
 chknumbars OUT 5 || fail -f OUT $msg
 chkblanks OUT 0 || fail -f OUT $msg
 cd "$HERE"
@@ -2013,8 +2013,8 @@ grep -q for-comp1-conflict OUT || fail
 grep -q for-comp2-conflict OUT || fail
 grep -q for-comp3-conflict OUT || fail
 chkoutput OUT $PRODUCT comp1 comp2 comp3 || fail $msg
-chkpasses OUT takepatch resolve || fail $msg
-chknumbars OUT 15 || fail -f OUT $msg
+chkpasses OUT takepatch || fail $msg
+chknumbars OUT 13 || fail -f OUT $msg
 chkblanks OUT 0 || fail -f OUT $msg
 cd "$HERE"
 bk _rm -rf clone3
@@ -2124,7 +2124,7 @@ grep -q pre-outgoing-comp1 OUT || fail
 grep -q pre-outgoing-comp2 OUT || fail
 grep -q pre-outgoing-comp3 OUT || fail
 chkoutput OUT $PRODUCT comp1 comp2 comp3 || fail $msg
-chkpasses OUT takepatch resolve || fail $msg
+chkpasses OUT takepatch || fail $msg
 chknumbars OUT 12 || fail -f OUT $msg
 chkblanks OUT 1 || fail -f OUT $msg
 echo OK
@@ -2138,7 +2138,7 @@ grep -q pre-outgoing-comp1 OUT || fail
 grep -q pre-outgoing-comp2 OUT || fail
 grep -q pre-outgoing-comp3 OUT || fail
 chkoutput OUT $PRODUCT comp1 comp2 comp3 || fail $msg
-chkpasses OUT takepatch resolve || fail $msg
+chkpasses OUT takepatch || fail $msg
 chknumbars OUT 8 || fail $msg
 chkblanks OUT 0 || fail $msg
 cd ..
@@ -3039,7 +3039,7 @@ EOF
 bk pull -v -T "$HERE/product1" <resolve >OUT 2>&1 || fail -f OUT
 grep -q for-conflict-q OUT || fail
 chkoutput OUT $PRODUCT || fail -f OUT $msg
-chkblanks OUT 1 || fail -f OUT $msg
+chkblanks OUT 0 || fail -f OUT $msg
 cd "$HERE"
 bk _rm -rf clone1
 echo OK
@@ -3176,7 +3176,7 @@ EOF
 bk pull -v -T "$HERE/product3" <resolve >OUT 2>&1 || fail -f OUT
 # Should have three lines for each of the four conflicting files.
 chkoutput OUT $PRODUCT || fail $msg
-chkblanks OUT 3 || fail -f OUT $msg
+chkblanks OUT 0 || fail -f OUT $msg
 grep -q for-prod-conflict-v OUT || fail
 grep -q for-comp1-conflict-v OUT || fail
 grep -q for-comp2-conflict-v OUT || fail

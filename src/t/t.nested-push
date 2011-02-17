@@ -11,6 +11,7 @@
 
 # Tests for product clone.
 
+set -e
 
 echo $N Create an ensemble...........................................$NL
 nested project
@@ -32,7 +33,7 @@ do
 	bk new $Q -y"add" file$i
 	bk commit -S $Q -y"add file $i"
 done
-cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
+cd "$HERE/project" && bk commit $Q -S -y"add csets to gdb"
 echo OK
 
 echo $N Try a null push..............................................$NL
@@ -126,7 +127,6 @@ test -d project/RESYNC && {
 echo OK
 
 echo $N Try a push -r................................................$NL
-cd "$HERE/project" && bk undo $Q -sfr+ >$DEV_NULL 2>&1
 cd "$HERE/copy"
 TIP=`bk changes -kr+`
 # add more stuff to gdb

@@ -52,6 +52,7 @@ private char	**find_files(opts *opts, int pfiles);
 private	int	moveupComponent(void);
 private	int	resolve_components(opts *opts);
 
+private	jmp_buf	cleanup_jmp;
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
 private int	nfiles;		/* # files in RESYNC */
@@ -76,6 +77,10 @@ resolve_main(int ac, char **av)
 	};
 
 	bzero(&opts, sizeof(opts));
+	localDB = resyncDB = 0;
+	nfiles = 0;
+	tick = 0;
+	nticks = 0;
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
 	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrSs|tTx;1234", lopts)) != -1) {
@@ -141,7 +146,7 @@ resolve_main(int ac, char **av)
 	/*
 	 * It is the responsibility of the calling code to set this env
 	 * var to indicate that we were not run standalone, we are called
-	 * from a higher level and they will run the triggers.
+	 * from a higher level
 	 */
 	if (getenv("FROM_PULLPUSH") && streq(getenv("FROM_PULLPUSH"), "YES")) {
 		opts.from_pullpush = 1;
@@ -180,13 +185,16 @@ resolve_main(int ac, char **av)
 			    "Nothing to resolve.\n");
 		}
 		freeStuff(&opts);
-		exit(0);
+		return (0);
 	}
 	if (proj_isCaseFoldingFS(0)) {
 		localDB = mdbm_mem();
 		resyncDB = mdbm_mem();
 	}
 	putenv("_BK_MV_OK=1");
+
+	if (c = setjmp(cleanup_jmp)) return (c >= 1000 ? c-1000 : 1);
+
 	c = passes(&opts);
 	if (localDB) mdbm_close(localDB);
 	if (resyncDB) mdbm_close(resyncDB);
@@ -198,15 +206,13 @@ resolve_main(int ac, char **av)
 private void
 resolve_post(opts *opts, int c)
 {
-	if (opts->from_pullpush) return;
-
 	/* XXX - there can be other reasons */
 	if (c) {
 		putenv("BK_STATUS=CONFLICTS");
 	} else {
 		putenv("BK_STATUS=OK");
 	}
-	trigger(getenv("_BK_IN_BKD") ? "push" : "pull", "post");
+	trigger(getenv("_BK_IN_BKD") ? "remote push" : "pull", "post");
 }
 
 private void
@@ -230,6 +236,7 @@ passes(opts *opts)
 	sccs	*s = 0;
 	FILE	*p = 0;
 	char	*t;
+	int	rc;
 	char	buf[MAXPATH];
 	char	path[MAXPATH];
 	char	flist[MAXPATH];
@@ -363,7 +370,7 @@ BitKeeper is aborting this patch until you check in those files.\n\
 You need to check in the edited files and run takepatch on the file\n\
 in the PENDING directory.  Alternatively, you can rerun pull or resync\n\
 that will work too, it just gets another patch.\n");
-		resolve_cleanup(opts, CLEAN_ABORT);
+		resolve_cleanup(opts, 0);
 	}
 
 	/*
@@ -448,7 +455,7 @@ that will work too, it just gets another patch.\n");
 	/*
 	 * Pass 3 - resolve content/permissions/flags conflicts.
 	 */
-pass3:	if (opts->pass3) pass3_resolve(opts);
+pass3:	if (opts->pass3 && (rc = pass3_resolve(opts))) return (rc);
 
 	/*
 	 * Pass 4 - apply files to repository.
@@ -508,6 +515,7 @@ resolve_components(opts *opts)
 	opts->nav = unshiftLine(opts->nav, strdup("-S"));
 	opts->nav = unshiftLine(opts->nav, strdup("resolve"));
 	opts->nav = unshiftLine(opts->nav, strdup("--sigpipe"));
+	opts->nav = unshiftLine(opts->nav, strdup("-?FROM_PULLPUSH="));
 	opts->nav = unshiftLine(opts->nav, strdup("bk"));
 	opts->nav = addLine(opts->nav, 0);
 
@@ -519,7 +527,7 @@ missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 			++errors;
 			break;
 		}
-		if (c->product || !c->included) continue;
+		if (!c->present || c->product || !c->included) continue;
 		FREE(compCset);
 		compCset = aprintf(ROOT2RESYNC "/%s/" CHANGESET, c->path);
 		FREE(resync);
@@ -532,6 +540,7 @@ missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 			if (WIFEXITED(status)) {
 				TRACE("%s", "Resolve failed");
 				errors += !!WEXITSTATUS(status);
+				if (WEXITSTATUS(status) == 2) break;
 			} else if (WIFSIGNALED(status) &&
 			    (WTERMSIG(status) == SIGPIPE)) {
 				TRACE("%s", "Resolve aborted");
@@ -1894,7 +1903,8 @@ err:		unless (opts->autoOnly) {
 		rc = spawnvp(P_WAIT, "bk", nav);
 		for (i = 0; nav[i]; i++) free(nav[i]);
 		proj_restoreAllCO(0, opts->idDB, 0);
-		exit(WIFEXITED(rc) ? WEXITSTATUS(rc) : 1);
+		rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
+		longjmp(cleanup_jmp, 1000+rc); /* exit resolve_main() */
 	}
 
 	/*
@@ -2631,12 +2641,14 @@ pass4_apply(opts *opts)
 	 * If the user called us directly we don't have a repo lock and need
 	 * to get one.
 	 */
-	chdir(RESYNC2ROOT);
-	flags = CMD_WRLOCK|CMD_IGNORE_RESYNC;
-	unless (opts->standalone) flags |= CMD_NESTED_WRLOCK;
-	cmdlog_lock(flags);
-	flags = 0;		/* reused below */
-	chdir(ROOT2RESYNC);
+	unless (opts->from_pullpush) {
+		chdir(RESYNC2ROOT);
+		flags = CMD_WRLOCK|CMD_IGNORE_RESYNC;
+		unless (opts->standalone) flags |= CMD_NESTED_WRLOCK;
+		cmdlog_lock(flags);
+		flags = 0;		/* reused below */
+		chdir(ROOT2RESYNC);
+	}
 
 	unfinished(opts);
 
@@ -2713,7 +2725,7 @@ pass4_apply(opts *opts)
 				fprintf(stderr,
 				    "\nWill not overwrite edited %s\n",
 				    l->gfile);
-				fclose(save); 
+				fclose(save);
 				resolve_cleanup(opts, 0);
 			}
 			/* Can I write where it used to live? */
@@ -2991,32 +3003,28 @@ resolve_cleanup(opts *opts, int what)
 		}
 	} else if (what & CLEAN_MVRESYNC) {
 		char	*dir = savefile(".", "RESYNC-", 0);
+		char	*cmd;
 
 		assert(exists("RESYNC"));
 		assert(dir);
 		unlink(dir);
-		if (proj_isProduct(0)) {
-			char	*cmd;
-
-			/*
-			 * In a product we can't just delete (or move) the RESYNC
-			 * directory because abort needs it to cleanup the other
-			 * components, so we copy the directory and then call abort.
-			 */
-			mkdir(dir, 0777);
-			cmd = aprintf("bk --cd='%s' _find . -type f | "
-				      "bk --cd='%s' sfio -qmo | "
-				      "bk --cd='%s' sfio -qmi",
-				      ROOT2RESYNC,
-				      ROOT2RESYNC,
-				      dir);
-			if (system(cmd)) perror("dircopy");
-			free(cmd);
-			if (system("bk -?BK_NO_REPO_LOCK=YES abort -fp")) {
-				fprintf(stderr, "Abort failed\n");
-			}
-		} else {
-			rename("RESYNC", dir);
+		/*
+		 * We can't just delete (or move) the RESYNC
+		 * directory because abort needs it to cleanup the other
+		 * components, so we copy the directory and then call abort.
+		 */
+		mkdir(dir, 0777);
+		sccs_mkroot(dir);
+		cmd = aprintf("bk --cd='%s' _find . -type f | "
+		    "bk --cd='%s' sfio -qmo | "
+		    "bk --cd='%s' sfio -qmi",
+		    ROOT2RESYNC,
+		    ROOT2RESYNC,
+		    dir);
+		if (system(cmd)) perror("dircopy");
+		free(cmd);
+		if (system("bk -?BK_NO_REPO_LOCK=YES abort -fp")) {
+			fprintf(stderr, "Abort failed\n");
 		}
 		free(dir);
 	} else {
@@ -3070,7 +3078,7 @@ resolve_cleanup(opts *opts, int what)
 	rc = 0;
 exit:
 	sccs_unlockfile(RESOLVE_LOCK);
-	exit(rc);
+	longjmp(cleanup_jmp, rc+1000);
 }
 
 typedef	struct {

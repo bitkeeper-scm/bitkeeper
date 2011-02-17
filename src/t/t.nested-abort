@@ -548,7 +548,7 @@ for rc in 1 2 3; do
 	cd copy
 	TRIGRC=$rc bk pull $Q 2> ERR && fail -f ERR rc=$rc should fail
 	bk -r check -ac || fail rc=$rc should pass
-#	test -d RESYNC && fail rc=$rc
+	test -d RESYNC && fail rc=$rc
 	cd ..
 	rm -fr copy
 	tar xf copy.tar

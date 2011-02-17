@@ -37,8 +37,7 @@ private	int	pull_ensemble(remote *r, char **rmt_aliases,
     hash *rmt_urllist, char ***conflicts);
 private int	pull_finish(remote *r, int status, char **envVar);
 private void	resolve_comments(remote *r);
-private	int	resolve_conflicts(char **conflicts);
-private	int	resolve(int interactive, int nolock);
+private	int	resolve(void);
 private	int	takepatch(remote *r);
 
 int
@@ -936,7 +935,6 @@ private int
 pull(char **av, remote *r, char **envVar)
 {
 	int	rc, i, marker;
-	int	noPost = 0;
 	char	*p;
 	char	*freeme = 0;
 	char	**conflicts = 0;
@@ -1001,28 +999,15 @@ pull(char **av, remote *r, char **envVar)
 		}
 		resolve_comments(r);
 		unless (opts.noresolve) {
-			if (conflicts) {
-				if (rc = resolve_conflicts(conflicts)) {
-					fprintf(stderr,
-					    "Resolving Components failed\n");
-					goto done;
-				}
-			}
 			/*
 			 * We allow interaction based on whether we are
 			 * the toplevel pull or not.
 			 */
 			putenv("FROM_PULLPUSH=YES");
-			if (resolve(!opts.transaction, 1)) {
-				rc = 1;
-				putenv("BK_STATUS=CONFLICTS");
-				if (opts.transaction) noPost = 1;
-				goto done;
-			}
+			if (resolve()) rc = 1;
 		}
 	}
-done:	putenv("BK_RESYNC=FALSE");
-	freeLines(conflicts, free);
+done:	freeLines(conflicts, free);
 	unless (opts.quiet || rc ||
 	    ((p = getenv("BK_STATUS")) && streq(p, "NOTHING"))) {
 		unless (title) {
@@ -1041,8 +1026,10 @@ done:	putenv("BK_RESYNC=FALSE");
 		if (freeme) free(freeme);
 		title = 0;
 	}
-	unless (opts.noresolve || noPost) trigger(av[0], "post");
-
+	unless (got_patch || opts.noresolve) {
+		/* we run a post trigger only if we didn't call resolve */
+		trigger(av[0], "post");
+	}
 	return (rc);
 }
 
@@ -1122,47 +1109,6 @@ takepatch(remote *r)
 	return (100);
 }
 
-private int
-resolve_conflicts(char **conflicts)
-{
-	int	i;
-	int	rc = 0;
-
-	/*
-	 * Now do a pass to manually resolve whatever could not be
-	 * merged automatically.
-	 */
-	EACH(conflicts) {
-		proj_cd2product();
-		unless (opts.quiet) fprintf(stderr,
-		    "Resolving component %s\n", conflicts[i]);
-		if (chdir(conflicts[i])) {
-			fprintf(stderr, "Could not cd to %s\n",
-			    conflicts[i]);
-			rc = 1;
-			break;
-		}
-		/*
-		 * It's okay for the resolver to be interactive
-		 * at this point.
-		 */
-		if (rc = resolve(1, 0)) break;
-		/*
-		 * If there is still a RESYNC, even after resolve
-		 * supposedly worked, it didn't really work
-		 */
-		if (isdir(ROOT2RESYNC)) {
-			fprintf(stderr,
-			    "resolve: failed to resolve %s\n",
-			    conflicts[i]);
-			rc = 1;
-			break;
-		}
-	}
-	proj_cd2product();
-	return (rc);
-}
-
 private void
 resolve_comments(remote *r)
 {
@@ -1204,22 +1150,20 @@ resolve_comments(remote *r)
 }
 
 private	int
-resolve(int interactive, int nolock)
+resolve(void)
 {
 	int	i, status;
 	char	*cmd[20];
 
-	cmd[i = 0] = "bk";
-	if (nolock) cmd[++i] = "-?BK_NO_REPO_LOCK=YES";
-	cmd[++i] = "resolve";
-	cmd[++i] = "-S";
+	cmd[i = 0] = "resolve";
+	if (opts.transaction || opts.port) cmd[++i] = "-S";
 	unless (opts.verbose) cmd[++i] = "-q";
 	if (opts.textOnly) cmd[++i] = "-T";
 	if (opts.autoOnly) cmd[++i] = "--batch";
-	unless (interactive) cmd[++i] = "--auto-only";
+	if (opts.transaction) cmd[++i] = "--auto-only";
 	if (opts.automerge) {
 		cmd[++i] = "-a";
-	} else unless (interactive) {
+	} else if (opts.transaction) {
 		cmd[++i] = "-c";
 	}
 	if (opts.debug) cmd[++i] = "-d";
@@ -1233,11 +1177,8 @@ resolve(int interactive, int nolock)
 	 * while it is running so that no one hits ^C and leaves it
 	 * orphaned.
 	 */
-	sig_ignore();
-	status = spawnvp(_P_WAIT, "bk", cmd);
-	sig_default();
+	getoptReset();
+	status = resolve_main(i, cmd);
 	unless (opts.quiet) progress_nlneeded();
-	unless (WIFEXITED(status)) return (100);
-	return (WEXITSTATUS(status));
-	return (0);
+	return (status);
 }

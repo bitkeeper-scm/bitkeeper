@@ -266,13 +266,11 @@ done:	return (rc);
 int
 bkd_doResolve(char *me, int quiet, int verbose)
 {
-	int	fd2, pfd, c, rc = 0;
-	int	status, debug = 0;
-	pid_t	pid;
+	int	fd2, c, rc = 0;
+	int	debug = 0;
 	char	bkd_nul = BKD_NUL;
-	char	*resolve[] = { "bk", "-?BK_NO_REPO_LOCK=YES",
-			       "resolve", "-S", "-T", "-c", 0, 0, 0};
-	int	resolve_opt = 6; /* index of 0 after "-c" above */
+	char	*resolve[] = { "resolve", "-S", "-T", "-c", 0, 0, 0};
+	int	resolve_opt = 4; /* index of 0 after "-c" above */
 
 	/*
 	 * Fire up the pre-trigger
@@ -303,15 +301,14 @@ bkd_doResolve(char *me, int quiet, int verbose)
 		resolve[resolve_opt++] = "-q";
 	}
 	unless (quiet || verbose) resolve[resolve_opt++] = "--progress";
+	resolve[resolve_opt] = 0;
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	putenv("FROM_PULLPUSH=YES");
-	pid = spawnvpio(&pfd, 0, 0, resolve);
-	close(pfd);
+	getoptReset();
+	rc = resolve_main(resolve_opt, resolve);
 	dup2(fd2, 2); close(fd2);
-	waitpid(pid, &status, 0);
-	rc =  WEXITSTATUS(status);
 	write(1, &bkd_nul, 1);
 	if (rc) {
 		printf("%c%d\n", BKD_RC, rc);
@@ -319,22 +316,7 @@ bkd_doResolve(char *me, int quiet, int verbose)
 	}
 	fputs("@END@\n", stdout);
 	fflush(stdout);
-	if (!WIFEXITED(status)) {
-		putenv("BK_STATUS=SIGNALED");
-		rc = 1;
-		goto done;
-	}
-	if (WEXITSTATUS(status)) {
-		putenv("BK_STATUS=CONFLICTS");
-		rc = 1;
-		goto done;
-	}
-
-done:	/*
-	 * Fire up the post-trigger
-	 */
-	putenv("BK_RESYNC=FALSE");
-	trigger(me,  "post");
+	if (rc) rc = 1;
 	return (rc);
 }
 

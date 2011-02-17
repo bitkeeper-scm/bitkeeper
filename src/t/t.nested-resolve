@@ -81,9 +81,7 @@ EOF
 grep -q "FORCED FAILURE" OUT || fail -f OUT wrong failure
 test -d RESYNC && fail left comp RESYNC
 cd ..
-bk resolve $Q >OUT 2>&1 && fail should have failed
-grep -q "KEY MISMATCH" OUT || fail -f OUT wrong error
-bk abort -qf
+test -d RESYNC && fail left prod RESYNC
 echo OK
 
 echo $N Again, but leaving RESYNC....................................$NL
@@ -103,9 +101,7 @@ C
 EOF
 grep -q "FORCED FAILURE" OUT || fail -f OUT wrong failure
 cd ..
-bk resolve $Q >OUT 2>&1 && fail -f OUT should have failed
-grep -q "KEY MISMATCH" OUT || fail -f OUT wrong failure
-bk abort -qf
+test -d RESYNC && fail left prod RESYNC
 echo OK
 
 echo $N Try a port and see if resolve works..........................$NL
@@ -142,8 +138,16 @@ echo after >> gcc/foo
 bk delta $Q -yafter gcc/foo
 bk $Q -e commit $Q -yafter
 echo q | bk pull -i -T -q 2>ERR && fail -f ERR
-grep -q '^(content conflict) foo>> Resolving Components failed$' ERR \
-    || fail -f ERR
+cat <<EOF > WANT
+resolve: RESYNC directory left intact.
+====================================================
+(content conflict) foo>> 1 unresolved component:
+ gcc
+pull: Unresolved components.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles ERR WANT
 echo OK
 
 echo $N Test pull -i does not automerge .............................$NL

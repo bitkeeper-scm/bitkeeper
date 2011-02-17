@@ -9,6 +9,8 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+set -e
+
 echo $N Create an ensemble...........................................$NL
 nested project
 touch amerge
@@ -551,7 +553,7 @@ do	for c in gcc gdb
 		bk commit -S $Q -ywhatever
 	done
 	cd "$HERE/$i"
-	bk commit $Q -ywhatever
+	bk commit $Q -S -ywhatever
 done
 echo OK
 
@@ -563,7 +565,7 @@ touch sparse
 bk new $Q sparse
 bk commit -S $Q -ywhatever
 cd ..
-bk commit $Q -ywhatever
+bk commit $Q -S -ywhatever
 bk pull $Q ../project || {
 	echo pull failed
 	exit 1
@@ -836,7 +838,7 @@ echo OK
 
 echo $N Now repeat conflicting pull with abort ......................$NL
 (echo a; echo y) | bk pull $Q 2>ERR && fail
-bk -e -r check -ac || fail
+bk -e -r check -ac || fail -f ERR
 bk changes -v -r+ > AFTER
 # this shouldn't change
 cmpfiles BEFORE AFTER

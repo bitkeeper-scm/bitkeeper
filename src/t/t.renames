@@ -1426,6 +1426,7 @@ BitKeeper is aborting this patch until you check in those files.
 You need to check in the edited files and run takepatch on the file
 in the PENDING directory.  Alternatively, you can rerun pull or resync
 that will work too, it just gets another patch.
+resolve: RESYNC directory left intact.
 ====================================================
 EOF
 if [ $? != 0 ]
@@ -1433,14 +1434,12 @@ then	echo Bad error message from resolve
 	cat ../ERR
 	exit 1
 fi
-if [ -d RESYNC ]
-then	echo Failed to remove RESYNC directory
-	exit 1
-fi
+test -d RESYNC || fail should have left RESYNC
 if [ ! -d PENDING ]
 then	echo Failed to leave PENDING dir
 	exit 1
 fi
+bk abort $Q -pf || fail
 echo OK
 echo $N Clean the edit and try the first pass of resolve ............$NL
 bk unedit "A A"

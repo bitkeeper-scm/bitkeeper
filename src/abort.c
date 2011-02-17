@@ -3,10 +3,16 @@
 #include "resolve.h"
 #include "nested.h"
 
-private	int	abort_patch(int leavepatch, int quiet);
+typedef struct {
+	u32	leavepatch:1;
+	u32	quiet:1;
+	u32	nested:1;
+} options;
+
+private	int	abort_patch(options *opts);
 private int	send_abort_msg(remote *r);
 private int	remoteAbort(remote *r);
-private int	abortComponents(int leavepatch, int quiet);
+private int	abortComponents(options *opts);
 
 /*
  * Abort a pull/resync by deleting the RESYNC dir and the patch file in
@@ -15,42 +21,55 @@ private int	abortComponents(int leavepatch, int quiet);
 int
 abort_main(int ac, char **av)
 {
-	int	c, force = 0, leavepatch = 0, quiet = 0;
+	int	c, force = 0;
+	int	standalone = 0;
+	int	rc = 1;
+	options	*opts;
 	char	buf[MAXPATH];
+	longopt	lopts[] = {
+		{ "standalone", 'S' },
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "fpq", 0)) != -1) {
+	opts = new(options);
+	while ((c = getopt(ac, av, "fpqS", lopts)) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break; 	/* doc 2.0 */
-		    case 'p': leavepatch = 1; break; 	/* undoc? 2.0 */
-		    case 'q': quiet = 1; break;
+		    case 'p': opts->leavepatch = 1; break;
+		    case 'q': opts->quiet = 1; break;
+		    case 'S': standalone = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind]) {
 		remote	*r;
-		int	ret;
 
 		r = remote_parse(av[optind], REMOTE_BKDURL);
 		unless (r) {
 			fprintf(stderr, "Cannot parse \"%s\"\n", av[optind]);
-			return (1);
+			goto out;
 		}
-		ret = remoteAbort(r);
+		if (standalone) usage();
+		rc = remoteAbort(r);
 		remote_free(r);
-		return (ret);
+		goto out;
 	}
-	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC);
-	proj_cd2root();
+	opts->nested = bk_nested2root(standalone);
+	c = CMD_WRLOCK|CMD_IGNORE_RESYNC;
+	if (opts->nested) c |= CMD_NESTED_WRLOCK;
+	cmdlog_lock(c);
+
 	/*
 	 * product is write locked, which means RESYNC may be there.
 	 * Need to do more of a test to see if it's just a lock.
 	 * XXX: Is there a test to distinguish?  isRealResync(path) ?
 	 */
 	unless (exists(ROOT2RESYNC "/BitKeeper")) {
-		unless (quiet) {
+		unless (opts->quiet) {
 			fprintf(stderr, "abort: no RESYNC directory.\n");
 		}
-		return (0);
+		rc = 0;
+		goto out;
 	}
 	unless (force) {
 		prompt("Abort update? (y/n)", buf);
@@ -60,15 +79,17 @@ abort_main(int ac, char **av)
 			break;
 		    default:
 			fprintf(stderr, "Not aborting.\n");
-			return (0);
+			goto out;
 		}
 	}
 
-	return(abort_patch(leavepatch, quiet));
+	rc = abort_patch(opts);
+out:	free(opts);
+	return (rc);
 }
 
 private	int
-abort_patch(int leavepatch, int quiet)
+abort_patch(options *opts)
 {
 	char	buf[MAXPATH];
 	char	pendingFile[MAXPATH];
@@ -87,9 +108,8 @@ abort_patch(int leavepatch, int quiet)
 		return (1);
 	}
 
-	if (proj_isProduct(0)) {
-		if (rc = abortComponents(leavepatch, quiet)) return (rc);
-	}
+	if (opts->nested && (rc = abortComponents(opts))) return (rc);
+
 	/*
 	 * Get the patch file name from RESYNC before deleting RESYNC.
 	 */
@@ -105,7 +125,7 @@ abort_patch(int leavepatch, int quiet)
 	}
 
 	unless (rc = rmtree("RESYNC")) {
-		if (!leavepatch && pendingFile[0]) unlink(pendingFile);
+		if (!opts->leavepatch && pendingFile[0]) unlink(pendingFile);
 		rmdir(ROOT2PENDING);
 		unlink(BACKUP_LIST);
 		unlink(PASS4_TODO);
@@ -190,7 +210,7 @@ out:	wait_eof(r, 0);
 }
 
 private int
-abortComponents(int leavepatch, int quiet)
+abortComponents(options *opts)
 {
 	nested	*n = 0;
 	sccs	*s = 0;
@@ -258,8 +278,8 @@ abortComponents(int leavepatch, int quiet)
 		}
 		/* not new */
 		if (isdir(ROOT2RESYNC)) {
-			if (systemf("bk -?BK_NO_REPO_LOCK=YES abort -f%s%s",
-			    leavepatch ? "p" : "", quiet ? "q" : "")) {
+			if (systemf("bk -?BK_NO_REPO_LOCK=YES abort -Sf%s%s",
+			    opts->leavepatch ? "p" : "", opts->quiet ? "q" : "")) {
 				error("abort: component %s failed\n", c->path);
 				errors++;
 				goto out;
@@ -270,7 +290,7 @@ abortComponents(int leavepatch, int quiet)
 			 * csets after the pull that failed?
 			 */
 			if (systemf("bk -?BK_NO_REPO_LOCK=YES undo "
-			    "-%sSsfa'%s'", quiet ? "q" : "", c->lowerkey)) {
+			    "-%sSsfa'%s'", opts->quiet ? "q" : "", c->lowerkey)) {
 				error("abort: failed to revert %s\n", c->path);
 				errors++;
 			}
