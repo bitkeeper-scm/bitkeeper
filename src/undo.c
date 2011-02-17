@@ -301,6 +301,7 @@ prod:
 	rmtree("RESYNC");
 	if (n) {
 		if (undo_ensemble2(n, verbose)) goto err;
+		urlinfo_write(n); /* don't write urllist on failure */
 		nested_free(n);
 		n = 0;
 	}
@@ -426,7 +427,7 @@ undo_ensemble1(nested *n, int verbose, int quiet, char **nav, char ***comp_list)
 	ops.quiet = quiet;
 	ops.verbose = verbose;
 	ops.comps = num;
-	if (errs = nested_populate(n, 0, &ops)) goto err;
+	if (errs = nested_populate(n, &ops)) goto err;
 	num = ops.comps;
 	START_TRANSACTION();
 	errs = 0;

@@ -165,10 +165,6 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 		    prog, alias);
 		usage();
 	}
-	bzero(&ops, sizeof(ops));
-	ops.quiet = opts->quiet;
-	ops.verbose = opts->verbose;
-
 	/* lock */
 	unless (nested_mine(0, getenv("_NESTED_LOCK"), 1)) {
 		unless (nlid = nested_wrlock(0)) {
@@ -181,6 +177,7 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	/* get the nest */
 	unless (n = nested_init(0, 0, 0, NESTED_PENDING)) goto err;
 	unless (aliasdb = aliasdb_init(n, 0, n->tip, n->pending, 1)) goto err;
+
 
 	/* get the list of aliases to add or remove */
 	for (; (p = av[ac]); ++ac) {
@@ -263,11 +260,17 @@ write:
 	if (aliasdb_tag(n, aliasdb, n->here)) goto err;
 	EACH_STRUCT(n->comps, cp, i) {
 		if (cp->present != cp->alias) {
+			urlinfo_urlArgs(n, opts->urls);
+
+			bzero(&ops, sizeof(ops));
+			ops.quiet = opts->quiet;
+			ops.verbose = opts->verbose;
 			ops.runcheck = 1;
 			ops.force = opts->force;
-			if (nested_populate(n, opts->urls, &ops)) {
+			if (nested_populate(n, &ops)) {
 				goto err;
 			}
+			urlinfo_write(n);
 			break;
 		}
 	}

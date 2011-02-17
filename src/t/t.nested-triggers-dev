@@ -94,7 +94,7 @@ TRIG post-outgoing outgoing pull project r=1/1 w=0/0 side=server
 TRIG post-outgoing outgoing pull project/gcc r=1/1 w=0/0 side=server
 TRIG post-outgoing outgoing pull project/gdb r=1/1 w=0/0 side=server
 EOF
-grep "^TRIG" ../ERR > ERR2
+grep "^TRIG" ../ERR | bk _sort > ERR2
 cmpfiles ERR2 WANTbkd
 rm ../ERR
 
@@ -233,7 +233,7 @@ TRIG post-outgoing outgoing clone copy/gcc r=1/1 w=0/0 side=server
 TRIG post-outgoing outgoing clone copy/gdb r=1/1 w=0/0 side=server
 EOF
 
-grep "^TRIG" ../ERR > ERR2
+grep "^TRIG" ../ERR | bk _sort > ERR2
 cmpfiles ERR2 WANTbkd
 rm ../ERR
 
@@ -249,7 +249,7 @@ cmpfiles WANT OUTPUT
 
 cp WANTbkd WANTbkd2
 sed 's/copy3/copy4/' < WANTbkd2 > WANTbkd
-grep "^TRIG" ../ERR > ERR2
+grep "^TRIG" ../ERR | bk _sort > ERR2
 cmpfiles ERR2 WANTbkd
 rm ../ERR
 
@@ -275,7 +275,7 @@ EOF
 
 cmpfiles WANT OUTPUT
 
-grep "^TRIG" ../ERR > ERR2
+grep "^TRIG" ../ERR | bk _sort > ERR2
 cmpfiles ERR2 WANTbkd
 rm ../ERR
 echo OK
@@ -288,7 +288,7 @@ cmpfiles WANT OUTPUT
 
 cp WANTbkd WANTbkd2
 sed 's/copy5/copy6/' < WANTbkd2 > WANTbkd
-grep "^TRIG" ../ERR > ERR2
+grep "^TRIG" ../ERR | bk _sort > ERR2
 cmpfiles ERR2 WANTbkd
 rm ../ERR
 echo OK

@@ -45,20 +45,72 @@ bk unpull $Q -f
 bk here set $Q GCC
 echo OK
 
-echo $N Test pull from non-gate is safe..............................$NL
+echo $N Test pull from non-gate ok, as long as we have gate..........$NL
 bk here > WANT
-bk pull $Q 2>ERR && fail should have failed
-grep -q "populated aliases are different" ERR || fail wrong error
+bk pull $Q || fail should have worked
+bk here > GOT
+cmpfiles WANT GOT
+bk unpull $Q -f
+echo OK
+
+echo $N Test pull from non-gate with gate but old urllist............$NL
+bk here > WANT
+mv BitKeeper/log/urllist BitKeeper/log/urllist.old
+# strip gate information from urllist
+cat BitKeeper/log/urllist.old | \
+	awk -F\| '/^[@]/ {print; next;} /[^@]/ {print $1"|"$2}' \
+	> BitKeeper/log/urllist
+bk pull $Q || fail should have worked
+bk here > GOT
+cmpfiles WANT GOT
+bk unpull $Q -f
+# restore urllist file
+cp BitKeeper/log/urllist.old BitKeeper/log/urllist
+echo OK
+
+echo $N Repeat without -q ...........................................$NL
+bk pull > OUT 2>ERR || fail should work
+cat <<EOF > WANT
+.                                  100% |==============================| OK
+pull: searching $HERE/gate...ok
+1/2 gcc                              1 changeset,   no merges in   3 files
+2/2 .                                1 changeset,   no merges in   2 files
+EOF
+perl -pe 's/.*\r//' ERR > ERR2
+cmpfiles WANT ERR2
+bk unpull $Q -f
+# restore urllist file
+mv BitKeeper/log/urllist.old BitKeeper/log/urllist
+echo OK
+
+echo $N Test pull from non-gate fails, when no gate..................$NL
+bk here > WANT
+# clear out urllist
+rm ../project/BitKeeper/log/urllist
+mv BitKeeper/log/urllist BitKeeper/log/urllist.old
+bk pull $Q 2>ERR && fail -f ERR should have failed
+cat <<EOF > WANT2
+pull: ./doc cannot be found at a gate
+pull: ./gdb cannot be found at a gate
+pull: ./man cannot be found at a gate
+pull: failing because there are aliases that are not populated locally
+but have changesets that could not be found in any gate.
+Please run bk populate to add the following aliases:
+  DEFAULT
+EOF
+cmpfiles WANT2 ERR
 bk here > GOT
 cmpfiles WANT GOT
 bk abort -qf
+# restore it
+mv BitKeeper/log/urllist.old BitKeeper/log/urllist
 echo OK
 
 echo $N Test pull --safe from gate...................................$NL
 cd "$HERE/child-1"
 bk here > WANT
 bk pull --safe $Q ../gate 2>ERR && fail -f ERR should have failed
-grep -q "populated aliases are different" ERR || fail -f ERR wrong error
+grep -q "aliases that are not populated locally" ERR || fail -f ERR wrong error
 bk here > GOT
 cmpfiles WANT GOT
 bk abort -qf
@@ -123,7 +175,8 @@ bk here set $Q PRODUCT
 # now pull GCC, note there are no changes to gdb in remote
 bk pull $Q --safe ../repo-1 2>ERR && fail -f ERR
 cat <<EOF >WANT
-pull: failing because populated aliases are different between remote and local.
+pull: failing because there are aliases that are not populated locally
+but have changesets that could not be found in any gate.
 Please run bk populate to add the following aliases:
   GCC
 EOF
@@ -140,6 +193,6 @@ bk new $Q foo
 bk commit $Q -yremote
 cd ../just-prod
 bk pull $Q > OUT 2>&1 && fail should have failed
-grep -q "failing because populated aliases are different" OUT || fail -f OUT
+grep -q "failing because there are aliases that are not" OUT || fail -f OUT
 bk pull $Q --unsafe || fail should have worked
 echo OK

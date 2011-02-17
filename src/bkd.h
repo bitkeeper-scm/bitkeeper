@@ -122,6 +122,8 @@ void	remote_free(remote *r);
 void	remote_print(remote *r, FILE *f);
 void	remote_error(remote *r, char *msg);
 int	remote_valid(char *url);
+char	*remoteurl_normalize(remote *r, char *url);
+
 int	gzipAll2fh(int rfd, FILE *wf, int level, int *in, int *out,
     int verbose);
 int	gunzipAll2fh(int rfd, FILE *wf, int *in, int *out);
@@ -171,4 +173,17 @@ void	bkd_saveSeed(char *repoid, char *seed);
 char	*bkd_restoreSeed(char *repoid);
 
 int	bkd_doResolve(char *me, int quiet, int verbose);
+
+// like sccs.h -- use high bits to leave low bits for things like SILENT
+#define	REMOTE_GZ_SND	0x1000	/* gzip the stdin we send */
+#define	REMOTE_GZ_RCV	0x2000	/* ungzip the stdout we receive */
+#define	REMOTE_STREAM	0x4000	/* whether to send the input as part of
+				 * the send_file() message, or as a second
+				 * stream.
+				 */
+#define	REMOTE_BKDERRS	0x8000	/* print bkd_connect() errors to stderr */
+
+int	remote_cmd(char **av, char *url,
+    FILE *in, FILE *out, FILE *err, hash *bkdEnv, int opts);
+
 #endif

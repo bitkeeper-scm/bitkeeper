@@ -539,23 +539,13 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		progress_nldone();
 	}
         unless (rc || opts.rev) {
-                int     flush = 0;
-                hash    *urllist;
-
-                urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
-
                 /*
                  * successful push so if we are pushing tip we
                  * can save this URL
                  * XXX pending csets in component
                  */
-                EACH_STRUCT(n->comps, c, i) {
-                        if (c->product || !c->remotePresent) continue;
-                        urllist_addURL(urllist, c->rootkey, url);
-			flush = 1;
-                }
-                if (flush) urllist_write(urllist);
-                hash_free(urllist);
+		urlinfo_setFromEnv(n, url);
+		urlinfo_write(n);
         }
 	STOP_TRANSACTION();
 out:

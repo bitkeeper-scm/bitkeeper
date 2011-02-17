@@ -123,11 +123,26 @@ here_where_main(int ac, char **av)
 {
 	int	c;
 	char	*p;
+	int	allurls = 0, allcomps = 0, flags = SILENT|URLLIST_NOERRORS;
+	longopt	lopts[] = {
+		{ "all", 310 },		/* all comps, all urls */
+		{ "allcomps", 320 },	/* all comps not just missing */
+		{ "allurls", 330},	/* all urls for a comp */
+		{ 0, 0}
+	};
 
-	while ((c = getopt(ac, av, "", 0)) != -1) bk_badArg(c, av);
+	while ((c = getopt(ac, av, "v", lopts)) != -1) {
+		switch (c) {
+		    case 'v': flags = 0; break;
+		    case 310: allurls = 1; allcomps = 1; break;
+		    case 320: allcomps = 1; break;
+		    case 330: allurls = 1; break;
+		    default: bk_badArg(c, av);
+		}
+	}
 	proj_cd2product();
 	unless (av[optind]) {
-		urllist_dump(0);
+		urllist_dump(0, allurls, allcomps, flags);
 	} else if (streq(av[optind], "rm")) {
 		/* Perhaps _rm? or change the verb? */
 		if (av[optind+1]) usage();
@@ -136,7 +151,7 @@ here_where_main(int ac, char **av)
 		for ( ; av[optind]; optind++) {
 			p = av[optind];
 			if (strneq(p, "./", 2)) p += 2;
-			urllist_dump(p);
+			urllist_dump(p, allurls, allcomps, flags);
 		}
 	}
 	return (0);

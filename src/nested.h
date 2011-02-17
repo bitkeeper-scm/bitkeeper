@@ -51,6 +51,7 @@ extern	unsigned int turnTransOff;
 #define	NESTED_FIXIDCACHE	0x02000000	/* no error for bad idDB */
 
 #define	NESTED_URLLIST		"BitKeeper/log/urllist"
+#define	NESTED_URLINFO		"BitKeeper/log/urlinfo"
 
 #define	PRODUCT			"."		/* for titles */
 
@@ -87,15 +88,39 @@ struct nested {
 	hash	*aliasdb;	// lazy init'd aliasdb
 	hash	*compdb;	// lazy init rk lookup of &n->comp[i]
 	comp	*product;	// pointer into comps to the product
+
+	// urllist
+	u32	list_loaded:1;	// urllist file loaded
+	u32	list_dirty:1;	// urllist data changed
+	char	**urls;		// array of urlinfo *'s
+	hash	*urlinfo;	// info about urls
+
 	// bits
 	u32	alias:1;	// components tagged with c->alias
-	u32	product_first:1;// default is last in list
-	u32	undo:1;		// undo wants the -a inferred from opts.revs
-	u32	deepfirst:1;	// sort such that deeply nested comps are first
 	u32	pending:1;	// include pending component state
 	u32	freecset:1;	// do a sccs_free(cset) in nested_free()
 	u32	fix_idDB:1;	// don't complain about idDB problems
 };
+
+typedef struct {
+	// normalized url, output of remote_unparse() with any leading
+	// file:// removed
+	char	*url;
+
+	// map comp struct pointers to "1" if remote has the needed
+	// component tipkey or "0" if they have the component, but not
+	// the tipkey.
+	hash	*pcomps;	/* populated components found in this URL */
+	u32	checked:1;	/* have we actually connected? */
+	u32	checkedGood:1;	/* was URL probe successful this time? */
+	u32	noconnect:1;	/* probeURL failed for connection problem */
+
+	// From URLINFO file, extras are ignored
+	time_t	time;		/* 1 time of last successful connection */
+	int	gate;		/* 2 is it a gate?*/
+	char	*repoID;	/* 3 */
+	char	**extra;	/* extra data we don't parse */
+} urlinfo;
 
 /*
  * This is the subset of the clone opts we pass down to nested_populate.
@@ -114,10 +139,7 @@ typedef struct {
 
 	/* copy of nested_populated() args */
 	nested	*n;
-	char	**urls;
-	hash	*urllist;
-	char	*last;		/* last URL printed */
-	hash	*seen;		/* URLs processed */
+	char	*lasturl;		/* last URL printed */
 } popts;
 
 /*
@@ -161,16 +183,30 @@ int	aliasdb_chkAliases(nested *n, hash *aliasdb,
 	    char ***paliases, char *cwd);
 int	aliasdb_caret(char **aliases);
 
-char	**urllist_fetchURLs(hash *h, char *rk, char **space);
-void	urllist_addURL(hash *h, char *rk, char *url);
-int	urllist_rmURL(hash *h, char *rk, char *url);
-void	urllist_dump(char *name);
-int	urllist_normalize(hash *urllist, char *url);
-int	urllist_write(hash *urllist);
+/* urllist.h */
+void	urllist_dump(char *path, int allurls, int allcomps, int silent);
 
 #define URLLIST_TRIM_NOCONNECT  0x10
 #define	URLLIST_SUPERSET	0x20
+#define	URLLIST_GATEONLY	0x40	/* only gates */
+#define	URLLIST_NOERRORS	0x80 	/* don't print errors to stderr */
 int	urllist_check(nested *n, u32 flags, char **urls);
+
+/* urlinfo.c */
+void	urlinfo_load(nested *n, remote *base);
+void	urlinfo_buildArray(nested *n);
+void	urlinfo_urlArgs(nested *n, char **urls);
+
+void	urlinfo_addURL(nested *n, comp *c, char *url);
+void	urlinfo_rmURL(nested *n, comp *c, char *url);
+
+int	urlinfo_probeURL(nested *n, char *url, FILE *out);
+
+void	urlinfo_setFromEnv(nested *n, char *url);
+void	urlinfo_set(nested *n, char *url, int gate, char *repoID);
+urlinfo	*urlinfo_get(nested *n, char *url);
+int	urlinfo_write(nested *n);
+void	urlinfo_free(nested *n);
 
 /* clone.c */
 char	**clone_defaultAlias(nested *n);
@@ -193,6 +229,7 @@ int	nested_isGate(project *comp);
 void	freeNlock(void *nl);
 
 /* populate.c */
-int	nested_populate(nested *n, char **urls, popts *ops);
+int	nested_populate(nested *n, popts *ops);
+char	*urllist_find(nested *n, comp *cp, int flags, int *idx);
 
 #endif	// _NESTED_H

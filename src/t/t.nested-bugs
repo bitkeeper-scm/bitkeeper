@@ -1,3 +1,5 @@
+set -e
+
 echo $N Setup .......................................................$NL
 cd "$HERE"
 nested product
@@ -38,8 +40,9 @@ bk unpull -fs $Q || fail
 # Larry thinks this should work
 
 bk here rm $Q gcc 2>ERR && fail -f ERR should fail
-sed 's/1.2,.*/1.2/' <ERR > ERR2
+sed -e 's/1.2,.*/1.2/' <ERR > ERR2
 cat <<EOF > WANT
+here: searching $HERE/product...ok
 here: No other sources for ./gcc known
 Local changes to ./gcc found:
 ChangeSet@1.2

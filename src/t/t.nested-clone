@@ -739,7 +739,7 @@ bk new $Q foo
 bk commit -S $Q -yfoo
 )
 LIST=`bk comps -h`
-bk here rm $Q all 2>ERR && {
+bk here rm -q all 2>ERR && {
 	echo unpopulate should have failed
 	cat ERR
 	exit 1

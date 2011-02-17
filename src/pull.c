@@ -617,6 +617,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 	}
 
 done:	unlink(probe_list);
+	if (rmt_urllist) hash_free(rmt_urllist);
 	if (r->type == ADDR_HTTP) disconnect(r);
 	return (rc);
 }
@@ -635,7 +636,6 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	comp	*c;
 	int	i, j, rc = 0, errs = 0;
 	int	which = 0;
-	hash	*urllist;
 	hash	*aliasdb;
 	project	*proj;
 
@@ -651,11 +651,6 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	sccs_close(s);		/* win32 */
 	freeLines(revs, free);
 	unless (n->tip) goto out;	/* tags only */
-	unless (urllist = hash_fromFile(0, NESTED_URLLIST)) {
-		urllist = hash_new(HASH_MEMHASH);
-	}
-	/* enable if we use rmt_urllist */
-	urllist_normalize(rmt_urllist, url);
 
 	/*
 	 * Now takepatch should have merged the aliases file in the RESYNC
@@ -679,6 +674,29 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	}
 	aliasdb_free(aliasdb);
 
+	urlinfo_setFromEnv(n, url);
+
+	EACH_HASH(rmt_urllist) {
+		char	*rk = (char *)rmt_urllist->kptr;
+		char	**urls;
+		char	*url, *t;
+
+		unless (c = nested_findKey(n, rk)) continue;
+		if (c->localchanges) continue;
+
+		urls = splitLine(rmt_urllist->vptr, "\n", 0);
+		EACH(urls) {
+			/* strip old timestamps */
+			if (t = strchr(urls[i], '|')) *t = 0;
+
+			// These are urls of the parent, so we normalize
+			url = remoteurl_normalize(r, urls[i]);
+			urlinfo_addURL(n, c, url);
+			free(url);
+		}
+		freeLines(urls, free);
+	}
+
 	if (nested_aliases(n, 0, &n->here, 0, NESTED_PENDING)) {
 		/*
 		 * this can fail
@@ -692,9 +710,21 @@ pull_ensemble(remote *r, char **rmt_aliases,
 
 	if ((opts.safe == 1) || ((opts.safe == -1) && !getenv("BKD_GATE"))) {
 		char	**missing = 0;
+		int	flags = URLLIST_GATEONLY;
+
+		if (opts.quiet) flags |= SILENT;
 
 		EACH_STRUCT(n->comps, c, j) {
-			if (!c->present && !c->alias && c->remotePresent) {
+			/*
+			 * !c->alias           = I'm not going have it
+			 * c->remotePresent    = Remote has it
+			 * (opts.safe != 1 &&  = user explicitly asked for
+			 *                       --safe
+			 * || !urllist_find()) = we can't find it in a gate
+			 */
+			if (!c->alias && c->remotePresent &&
+			    ((opts.safe == 1) ||
+				!urllist_find(n, c, flags, 0))) {
 				char	**alist = c->data;
 
 				EACH(alist) {
@@ -705,8 +735,10 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		}
 		if (missing) {
 			uniqLines(missing, free);
-			fprintf(stderr, "pull: failing because populated "
-			    "aliases are different between remote and local.\n"
+			fprintf(stderr, "pull: failing because there are "
+			    "aliases that are not populated locally\n"
+			    "but have changesets that could not be found in "
+			    "any gate.\n"
 			    "Please run bk populate to add the following "
 			    "aliases:\n");
 			EACH(missing) fprintf(stderr, "  %s\n", missing[i]);
@@ -765,42 +797,6 @@ pull_ensemble(remote *r, char **rmt_aliases,
 				}
 			}
 		}
-		/* now update the urllist */
-		unless (c->localchanges) {
-			if (c->included) {
-				/*
-				 * We are updating this component so
-				 * discard any existing saved URLs
-				 */
-				urllist_rmURL(urllist, c->rootkey, 0);
-			}
-			if (c->remotePresent) {
-				/*
-				 * If the remote side has a component
-				 * and we don't have any local work in
-				 * that component, then they become a
-				 * new source for that componet.
-				 * Doesn't matter if we have it
-				 * populated or not.
-				 */
-				urllist_addURL(urllist, c->rootkey, url);
-			}
-			/* now add any URL's remembered by the remote side */
-			if (rmt_urllist &&
-			    hash_fetchStr(rmt_urllist, c->rootkey)) {
-				char	*new;
-
-				if (hash_fetchStr(urllist, c->rootkey)) {
-					new = aprintf("%s\n%s",
-						(char *)urllist->vptr,
-						(char *)rmt_urllist->vptr);
-				} else {
-					new = strdup(rmt_urllist->vptr);
-				}
-				hash_storeStr(urllist, c->rootkey, new);
-				free(new);
-			}
-		}
 	}
 	if (errs) {
 		fprintf(stderr,
@@ -809,7 +805,6 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		rc = 1;
 		goto out;
 	}
-	urllist_write(urllist);
 	/*
 	 * We are about to populate new components so clear all
 	 * mappings of directories to the product.
@@ -823,6 +818,14 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	popts.quiet = opts.quiet;
 	popts.verbose = opts.verbose;
 	popts.runcheck = 0;	/* we'll check after pull */
+
+	/*
+	 * suppress the "Source URL" line if components come
+	 * from the same pull URL
+	 */
+	popts.lasturl = url;
+	if (strneq(popts.lasturl, "file://", 7)) popts.lasturl += 7;
+
 	/*
 	 * Even though we are populating, there is no change to
 	 * the HERE file.  Just leave it as it is.
@@ -834,13 +837,12 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	 * to pull them in the next loop.
 	 */
 	EACH_STRUCT(n->comps, c, j) {
-		c->remotePresent = 0; /* populate reuses this */
 		if (c->alias && !c->present) {
 			c->new = 1;
 			++which;
 		}
 	}
-	if (nested_populate(n, 0, &popts)) {
+	if (nested_populate(n, &popts)) {
 		fprintf(stderr,
 		    "pull: problem populating components.\n");
 		rc = 1;
@@ -921,6 +923,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	}
 
 out:	proj_cd2product();
+	unless (rc) urlinfo_write(n); /* don't write on error */
 	free(url);
 	freeLines(urls, 0);
 	sccs_free(s);

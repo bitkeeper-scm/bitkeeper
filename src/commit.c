@@ -419,9 +419,8 @@ do_commit(char **av,
 		 * for this component are now all invalid.
 		 */
 		if (urllist = hash_fromFile(0, file)) {
-			if (urllist_rmURL(urllist, proj_rootkey(0), 0)) {
-				if (hash_toFile(urllist, file)) perror(file);
-			}
+			hash_deleteStr(urllist, proj_rootkey(0));
+			if (hash_toFile(urllist, file)) perror(file);
 			hash_free(urllist);
 		}
 	}

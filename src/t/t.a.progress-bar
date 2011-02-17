@@ -3075,7 +3075,7 @@ cd ..
 mv product3 product3-renamed
 bk clone -v clone3 clone3-clone >OUT 2>&1 && fail -f OUT
 grep -q 'No other sources for ./comp1 known' OUT || fail -f OUT
-chkoutput OUT $PRODUCT || fail -f OUT $msg
+chkoutput OUT $PRODUCT comp1 || fail -f OUT $msg
 chkblanks OUT 0 || fail -f OUT $msg
 mv product3-renamed product3 || fail
 echo OK

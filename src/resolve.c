@@ -496,8 +496,7 @@ resolve_components(opts *opts)
 	s = sccs_init(ROOT2RESYNC "/" CHANGESET, INIT_MUSTEXIST|INIT_NOCKSUM);
 	assert(s);
 	revs = file2Lines(0, ROOT2RESYNC "/" CSETS_IN);
-	n = nested_init(s, 0,
-	    revs, NESTED_MARKPENDING|NESTED_PULL|NESTED_FIXIDCACHE);
+	n = nested_init(s, 0, revs, NESTED_PULL|NESTED_FIXIDCACHE);
 	assert(n);
 	unless (n->tip) goto out; /* tag only */
 	sccs_close(s);

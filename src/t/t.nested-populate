@@ -592,7 +592,8 @@ echo $N Try to unpopulate it -- should fail because no parent .......$NL
 bk portal $Q -r || fail
 bk comps | bk here set $Q -
 bk here rm $Q not-remapped > GOT 2>&1 && fail -f GOT
-cat <<'EOF' > WANT
+cat <<EOF > WANT
+here: searching $HERE/project...ok
 here: No other sources for ./not-remapped known
 here: unable to remove ./not-remapped
 EOF

@@ -297,7 +297,9 @@ echo OK
 
 echo $N Clone alias, remove globbed component, reclone ..............$NL
 bk clone $Q -sdev bk://localhost:$P/proj-clone glob5 || fail
+# you have to try harder than this to make it fail
 rm -rf glob5/gcc/nm
+rm -rf project/gcc/nm
 bk clone $Q -sdev bk://localhost:$P/glob5 glob6 2>ERR || fail -f ERR
 grep -q "glob5: component not present" ERR || fail -f ERR
 cd glob6

@@ -40,16 +40,16 @@ cd ../gcc-only
 cp BitKeeper/log/urllist BACK
 grep -q :$P BitKeeper/log/urllist || fail 11
 bk here check $Q -c && fail should fail 12
-grep -q localhost:$P BitKeeper/log/urllist && fail bad url should be gone 13
+grep -q :$P BitKeeper/log/urllist && fail bad url should be gone 13
 bk here check $Q -@../project || fail 14
 cd ..
 bk clone -sall $Q gcc-only copy-all2 || fail 15
 rm -rf copy-all2
 mv project pp
 cd gcc-only
-bk here check 2>ERR && fail 16
-grep -q "here: no valid urls found for missing component gdb" ERR || fail
-grep -q project BitKeeper/log/urllist && fail 17
+bk here check -c 2>ERR && fail 16
+grep -q "here: no valid urls found for missing component gdb" ERR || fail -f ERR
+grep -q project BitKeeper/log/urllist && fail -f BitKeeper/log/urllist 17
 cp BACK BitKeeper/log/urllist
 cd ..
 mv pp project
@@ -92,10 +92,12 @@ trap "bk _kill bk://localhost:$P >/dev/null 2>&1" 0
 mv project project.save
 bk clone $Q -s. bk://localhost:$P/gcc-only gcc-neturl || fail 2
 cd gcc-neturl
-bk here where gcc > OUT
-printf "gcc\t`bk parent -l`\n" > WANT
-printf "gcc\tbk://`bk gethost -r`:$P/$HERE/project\n" >> WANT
-cmpfiles WANT OUT
+bk here where -v --allurls gcc >GOT 2>&1
+printf "here: searching `bk parent -l`...ok\n" >WANT
+printf "here: searching bk://localhost:$P/$HERE/project...repo gone\n" >> WANT
+printf "here: No other sources for ./gcc known\n" >>WANT
+printf "gcc: `bk parent -l`\n" >>WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N And show that this rewritten URL works ......................$NL

@@ -174,12 +174,10 @@ rclone_ensemble(remote *r)
 	int	errs;
 	int	i, j, status, which = 0, k = 0, rc = 0;
 	u32	flags = NESTED_PRODUCTFIRST;
-	hash	*urllist;
 
 	url = remote_unparse(r);
 
 	START_TRANSACTION();
-	urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
 	n = nested_init(0, opts.rev, 0, flags);
 	assert(n);
 	unless (opts.aliases) {
@@ -193,6 +191,7 @@ rclone_ensemble(remote *r)
 	n->product->alias = 1;
 	errs = 0;
 	EACH_STRUCT(n->comps, c, i) {
+		c->remotePresent = c->alias;	/* used in setFromEnv() */
 		if (c->alias && !c->present) {
 			fprintf(stderr,
 			    "%s: component %s not present.\n",
@@ -206,6 +205,7 @@ rclone_ensemble(remote *r)
 		rc = 1;
 		goto out;
 	}
+	urlinfo_setFromEnv(n, url);
 	EACH_STRUCT(n->comps, c, j) {
 		unless (c->included && c->alias) continue;
 		proj_cd2product();
@@ -241,9 +241,6 @@ rclone_ensemble(remote *r)
 			vp = addLine(vp, aprintf("%s/%s", url,
 				dirname(dstpath)));
 			free(dstpath);
-
-			/* new place to find this component */
-			urllist_addURL(urllist, c->rootkey, url);
 		}
 		vp = addLine(vp, 0);
 		if (opts.verbose) printf("#### %s ####\n", name);
@@ -262,13 +259,12 @@ rclone_ensemble(remote *r)
 		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
 	}
 
-	unless (rc) urllist_write(urllist);
+	unless (rc) urlinfo_write(n);
 	/*
 	 * XXX - put code in here to finish the transaction.
 	 */
 
 out:	free(url);
-	hash_free(urllist);
 	nested_free(n);
 	STOP_TRANSACTION();
 	return (rc);

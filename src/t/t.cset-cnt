@@ -198,7 +198,7 @@ bk changes -Rv > /dev/null || exit 1
 check_cnt
 echo OK
 
-CNT=44
+CNT=43
 echo $N "Count the inits for a 'bk pull -u' ($CNT)......................"$NL
 rm "$FILE"
 bk pull -u $Q || exit 1
@@ -212,7 +212,7 @@ bk unpull -fs $Q || exit 1
 check_cnt
 echo OK
 
-CNT=60
+CNT=59
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 bk portal $Q .
 touch c
@@ -240,7 +240,7 @@ bk push $Q || exit 1
 check_cnt
 echo OK
 
-CNT=50
+CNT=46
 echo $N "Count the inits for a 'bk clone -@base' ($CNT) ................"$NL
 cd "$HERE"/nest2/gcc
 echo hi > file_copy

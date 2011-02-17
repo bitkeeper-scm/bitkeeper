@@ -3,8 +3,6 @@
 #include "bkd.h"
 
 private	int	unpopulate_check(popts *ops, comp *c);
-private	char	*locateComp(popts *ops, comp *cp, char ***flist);
-
 
 /*
  * called with cp->alias set to which components should be populated
@@ -12,9 +10,9 @@ private	char	*locateComp(popts *ops, comp *cp, char ***flist);
  * matches cp->alias
  */
 int
-nested_populate(nested *n, char **urls, popts *ops)
+nested_populate(nested *n, popts *ops)
 {
-	int	i, j, status, rc;
+	int	i, j, k, status, rc;
 	int	done = 1;
 	int	flags = (ops->quiet ? SILENT : 0);
 	retrc	retrc;
@@ -25,31 +23,14 @@ nested_populate(nested *n, char **urls, popts *ops)
 	char	*url;
 	comp	*cp;
 
+	/* we assume pending components are marked */
+	assert(n->pending);
+
 	ops->n = n;
-	ops->urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
-	assert(ops->urllist);
-	ops->urls = urls;
-	ops->seen = hash_new(HASH_MEMHASH);
-
-	if (ops->last) {
-		/* clone has already choosen the URL for some components */
-		url = ops->last;
-		if (strneq(url, "file://", 7)) {
-			url = strdup(url + 7);
-			free(ops->last);
-			ops->last = url;
-		}
-
-		hash_storeStr(ops->seen, url, 0);
-
-		EACH_STRUCT(n->comps, cp, j) {
-			if (cp->remotePresent) cp->data = strdup(url);
-		}
-	}
 
 	/*
-	 * Look to see if removed any components will cause a problem
-	 * and fail early if we see any.
+	 * See if removing components will cause a problem and fail
+	 * early if it will.
 	 */
 	rc = 0;
 	EACH_STRUCT(n->comps, cp, j) {
@@ -97,12 +78,14 @@ nested_populate(nested *n, char **urls, popts *ops)
 	list = 0;		/* repos added */
 	EACH_STRUCT(n->comps, cp, j) {
 		unless (!cp->present && cp->alias) continue;
-again:		if (url = locateComp(ops, cp, 0)) {
-			unless ((flags & SILENT) ||
-			    (ops->last && streq(ops->last, cp->data))) {
-				if (ops->last) free(ops->last);
-				ops->last = strdup(cp->data);
-				fprintf(stderr, "Source %s\n", (char *)cp->data);
+		k = 0;
+		while (url = urllist_find(n, cp, flags, &k)) {
+			unless (flags & SILENT) {
+				unless (ops->lasturl &&
+				    streq(ops->lasturl, url)) {
+					fprintf(stderr, "Source %s\n", url);
+					ops->lasturl = url;
+				}
 			}
 			r = remote_parse(url, 0);
 			assert(r);
@@ -135,6 +118,7 @@ again:		if (url = locateComp(ops, cp, 0)) {
 					checkfiles = addLine(checkfiles,
 					    aprintf("%s/ChangeSet", cp->path));
 				}
+				break;
 			} else if ((retrc == RET_EXISTS) && exists(cp->path)) {
 				/*
 				 * failed: the dir was not empty no use trying
@@ -168,11 +152,9 @@ again:		if (url = locateComp(ops, cp, 0)) {
 				    "%s: failed to fetch "
 				    "component ./%s from %s: %s\n",
 				    prog, cp->path, url, t);
-				free(cp->data);
-				cp->data = 0;
-				cp->remotePresent = 0;
-				goto again;
 			}
+			// failed to clone
+			unless (url) break;
 		}
 		if (cp->present) {
 			/*
@@ -255,17 +237,7 @@ again:		if (url = locateComp(ops, cp, 0)) {
 		    checkfiles, ops->quiet ? 0 : "-v", 0);
 		freeLines(checkfiles, free);
 	}
-out:	urllist_write(ops->urllist);
-	EACH_STRUCT(n->comps, cp, i) {
-		if (cp->data) free(cp->data);
-	}
-	hash_free(ops->urllist);
-	hash_free(ops->seen);
-	if (ops->last) {
-		free(ops->last);
-		ops->last = 0;
-	}
-	return (rc);
+out:	return (rc);
 }
 
 /*
@@ -276,10 +248,14 @@ unpopulate_check(popts *ops, comp *c)
 	FILE	*f;
 	char	*t;
 	int	i, errs;
+	int	flags = 0;
 	int	rc = -1;
 	char	**av;
 	char	**flist = 0;
+	urlinfo *data;
 
+	// flags |= URLLIST_GATEONLY;  /* require gates */
+	if (ops->quiet) flags |= SILENT;
 	if (nested_isPortal(0) || nested_isGate(0)) return (-1);
 	if (c->pending) return (-1);
 	if (chdir(c->path)) {
@@ -303,8 +279,17 @@ unpopulate_check(popts *ops, comp *c)
 	}
 	pclose(f);
 	if (errs) goto out;
-	if (!locateComp(ops, c, &flist)) {
-		/* flist is all the URLs that have this component */
+	unless (urllist_find(ops->n, c, flags, 0)) {
+		/* print all the tried URLs that have this component */
+		flist = 0;
+		EACH_STRUCT(ops->n->urls, data, i) {
+			unless (data->checked) continue;
+
+			if ((t = hash_fetch(data->pcomps, &c, sizeof(comp *)))
+			    && (*t == '0')) {
+				flist = addLine(flist, data->url);
+			}
+		}
 		if (nLines(flist) > 0) {
 			av = addLine(0, "bk");
 			av = addLine(av, "changes");
@@ -329,144 +314,91 @@ out:	proj_cd2product();
 	return (rc);
 }
 
+
 /*
- * find best url to fetch component
+ * Find best url to fetch component.
  *
- * if search failed returns list of urls that
- * have component for error messages
+ * Uses:
+ *   n->urls
  */
-private char *
-locateComp(popts *ops, comp *cp, char ***flist)
+char *
+urllist_find(nested *n, comp *cp, int flags, int *idx)
 {
-	comp	*c;
-	FILE	*f;
-	char	*t, *p, *url;
-	int	i, j, rc;
-	char	**lurls = 0;
-	char	**missing = 0;
-	int	flags = (ops->quiet ? SILENT : 0);
-	char	keylist[MAXPATH];
-	char	buf[MAXLINE];
+	char	*t;
+	int	i, j;
+	int	gateonly = (flags & URLLIST_GATEONLY);
+	FILE	*out;
+	urlinfo	*data, *data2;
 
-	if (cp->remotePresent && cp->data) goto out;
+	/* In quiet mode, buffer to display on error */
+	out = (flags & SILENT) ? fmem_open() : stderr;
 
-	cp->remotePresent = 0;
-	if (cp->data) free(cp->data);
-	cp->data = 0;
+	unless (n->urls) urlinfo_buildArray(n);
 
-	bktmp(keylist, 0);
+	i = idx ? (1 + *idx) : 1;
+	EACH_START(i, n->urls, i) {
+		data = (urlinfo *)n->urls[i];
 
-	/* try urls from cmd line first */
-	EACH(ops->urls) lurls = addLine(lurls, strdup(ops->urls[i]));
-
-	/* then ones remembered for this component */
-	lurls = urllist_fetchURLs(ops->urllist, cp->rootkey, lurls);
-
-	/* and then the parents */
-	lurls = catLines(lurls, parent_allp());
-
-	EACH(lurls) {
-		/* try each url once */
-		url = lurls[i];
-		if (strneq(url, "file://", 7)) url += 7;
-		unless (hash_insertStr(ops->seen, url, 0)) continue;
-
-		verbose((stderr, "%s: searching %s...", prog, url));
-
-		f = fopen(keylist, "w");
-		/* save just the components we haven't found yet */
-		EACH_STRUCT(ops->n->comps, c, j) {
-			if (c->product) continue;
-			if (c->present == c->alias) continue;
-			if (c->remotePresent) continue;
-
-			fprintf(f, "%s %s\n", c->rootkey, c->deltakey);
+		// skip urls that we don't think have the component
+		unless ((t = hash_fetch(data->pcomps, &cp, sizeof(comp *))) &&
+		    (*t == '1')) {
+			continue;
 		}
-		fclose(f);
-		sprintf(buf, "bk -q@'%s' -Lr -Bstdin havekeys -FD - "
-		    "< '%s' 2> " DEVNULL_WR,
-		    url, keylist);
-		f = popen(buf, "r");
-		assert(f);
-		while (t = fgetline(f)) {
-			if (p = separator(t)) *p = 0;
-			unless (c = nested_findKey(ops->n, t)) {
-				if (p) p[-1] = ' ';
-				verbose((stderr, "failed\n"));
-				fprintf(stderr,
-				    "%s: bad data from '%s'\n-> %s\n",
-				    prog, buf, t);
-				pclose(f);
-				unlink(keylist);
-				goto out;
-			}
-			unless (p) {
-				/* has component, but missing this key */
-				missing = addLine(missing, strdup(url));
-				continue;
-			}
-			c->data = strdup(url);
-			c->remotePresent = 1;
-			urllist_addURL(ops->urllist, c->rootkey, url);
-		}
-		/*
-		 * We have 4 possible exit status values to consider from
-		 * havekeys (see comment before remote_bk() for more info):
-		 *  0   the connection worked and we captured the data
-		 *  16  we connected to the bkd fine, but the repository
-		 *      is not there.  This URL is bogus and can be ignored.
-		 *  8   The bkd_connect() failed
-		 *  33	havekeys says this is myself
-		 *  other  Another failure.
-		 *
-		 */
-		rc = pclose(f);
-		unlink(keylist);
-		rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 1;
-		if (rc == 16) {
-			/* no repo at that pathname? */
-			/* remove URL */
-			urllist_rmURL(ops->urllist, 0, url);
-			verbose((stderr, "repo gone\n"));
-		} else if (rc == 8) {
-			/* connect failure */
-			verbose((stderr, "connect failure\n"));
-		} else if (rc == 33) {
-			/* talking to myself */
-			urllist_rmURL(ops->urllist, 0, url);
-			verbose((stderr, "link to myself\n"));
-		} else if (rc != 0) {
-			/* some other failure */
-			verbose((stderr, "unknown failure\n"));
-		} else {
-			/* havekeys worked
-			 * remove this url from urllist of repos that are
-			 * still not found
+
+		// continue if it's a known non-gate and they only want gates
+		if (gateonly && (data->gate == 0)) continue;
+
+		if (data->repoID) {
+			/* don't talk to myself */
+			if (streq(data->repoID, proj_repoID(n->proj))) continue;
+
+			/*
+			 * See if we have already passed a validated URL
+			 * that points at the same repoID
+			 * If so don't look here.
 			 */
-			EACH_STRUCT(ops->n->comps, c, j) {
-				if (c->product) continue;
-				if (c->present == c->alias) continue;
-				if (c->remotePresent) continue;
+			EACH_STRUCT(n->urls, data2, j) {
+				unless (j < i) break;
 
-				urllist_rmURL(ops->urllist,
-				    c->rootkey, url);
+				if (data2->repoID && data2->checkedGood &&
+				    streq(data->repoID, data2->repoID)) {
+					break;
+				}
 			}
-			verbose((stderr, "ok\n"));
+			if (j < i) continue;
 		}
-		if (cp->remotePresent) break;
+
+		// probe it, this updates the urlinfo struct
+		unless (data->checked) urlinfo_probeURL(n, data->url, out);
+
+		unless (data->checkedGood) continue; // probe failed
+
+		if (gateonly && (data->gate != 1)) continue;
+
+		if ((t = hash_fetch(data->pcomps, &cp, sizeof(comp *))) &&
+		    (*t == '1')) {
+			// now we know it has the component, so return it
+			if (flags & SILENT) fclose(out);
+			if (idx) *idx = i;	/* start where left off */
+			return (data->url);
+		}
 	}
-out:	freeLines(lurls, free);
-	if (cp->remotePresent) {
-		freeLines(missing, free);
-		if (flist) *flist = 0;
-		return (cp->data);
+	if (flags & SILENT) {
+		unless (flags & URLLIST_NOERRORS) {
+			fputs(fmem_getbuf(out, 0), stderr);
+		}
+		fclose(out);
 	}
-	if (flist) {
-		*flist = missing;
-	} else {
-		freeLines(missing, free);
+	unless (flags & URLLIST_NOERRORS) {
+		if (gateonly) {
+			fprintf(stderr,
+			    "%s: ./%s cannot be found at a gate\n",
+			    prog, cp->path);
+		} else {
+			fprintf(stderr, "%s: No other sources for ./%s known\n",
+			    prog, cp->path);
+		}
 	}
-	fprintf(stderr, "%s: No other sources for ./%s known\n",
-	    prog, cp->path);
+	if (idx) *idx = i;	/* start where left off */
 	return (0);
 }

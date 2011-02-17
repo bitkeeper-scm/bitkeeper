@@ -913,14 +913,11 @@ clone2(remote *r)
 	if (proj_isProduct(0)) {
 		nested	*n;
 		comp	*cp;
-		hash	*urllist;
 
 		unless (opts->quiet) {
 			title = PRODUCT;
 			progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
 		}
-		urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
-		assert(urllist);
 
 		/*
 		 * Special knowledge: at this time in a clone the parent
@@ -933,10 +930,7 @@ clone2(remote *r)
 		parent = loadfile("BitKeeper/log/parent", 0);
 		chomp(parent);
 
-		/* expand pathnames in the urllist with the parent URL */
-		urllist_normalize(urllist, parent);
-
-		unless (n = nested_init(0, 0, 0, 0)) {
+		unless (n = nested_init(0, 0, 0, NESTED_MARKPENDING)) {
 			fprintf(stderr, "%s: nested_init failed\n", prog);
 			free(parent);
 			return (RET_ERROR);
@@ -957,24 +951,21 @@ clone2(remote *r)
 				i--;
 			}
 		}
-
 		// XXX wrong, for clone -r, the meaning of HERE may have changed
 		if (nested_aliases(n, n->tip, &n->here, 0, 0)) {
 			/* It is OK if this fails, just tag everything */
 			EACH_STRUCT(n->comps, cp, i) cp->alias = 1;
 		}
 		EACH_STRUCT(n->comps, cp, i) {
-			if (cp->product || !cp->alias) continue;
-
-			urllist_addURL(urllist, cp->rootkey, parent);
-			cp->alias = 0;
-
-			/* pre-seed nested_populate() */
-			cp->remotePresent = 1;
+			if (cp->product) continue;
+			cp->remotePresent = cp->alias;
 		}
 
+		urlinfo_setFromEnv(n, parent);
+		urlinfo_load(n, r); /* normalize remote urllist file */
+
 		/* just in case we exit early */
-		urllist_write(urllist);
+		urlinfo_write(n);
 		unless (opts->aliases) {
 			if (opts->identical) {
 				FILE	*f;
@@ -1026,8 +1017,17 @@ clone2(remote *r)
 		ops.quiet = opts->quiet;
 		ops.verbose = opts->verbose;
 		ops.comps = 1; // product
-		ops.last = strdup(parent);
-		rc = nested_populate(n, 0, &ops);
+
+		/*
+		 * suppress the "Source URL" line if components come
+		 * from the same clone URL
+		 */
+		ops.lasturl = parent;
+		if (strneq(ops.lasturl, "file://", 7)) ops.lasturl += 7;
+
+		rc = nested_populate(n, &ops);
+		/* always write what we know, even on error */
+		urlinfo_write(n);
 		opts->comps = ops.comps;
 		if (rc) {
 nested_err:		fprintf(stderr, "clone: component fetch failed, "
@@ -1168,7 +1168,7 @@ checkout(int quiet, int verbose, int parallel)
  *     url:
  *          bk://work//home/bk/wscott/bk-foo
  */
-private char *
+char *
 remoteurl_normalize(remote *r, char *url)
 {
 	remote	*rurl = 0;
