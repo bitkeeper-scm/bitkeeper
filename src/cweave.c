@@ -344,7 +344,7 @@ cset_write(sccs *s, int spinners, int fast)
 	}
 	fseek(f, 0L, SEEK_SET);
 	fprintf(f, "\001H%05u\n", s->cksum);
-	if (sccs_finishWrite(s, &f)) return (-1);
+	if (sccs_finishWrite(s, &f)) goto err;
 	return (0);
 
 err:	sccs_abortWrite(s, &f);

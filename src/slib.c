@@ -2074,6 +2074,7 @@ sccs_startWrite(sccs *s)
 void
 sccs_abortWrite(sccs *s, FILE **f)
 {
+	unless (s) return;
 	if (*f) fclose(*f);	/* before the unlink */
 	if (s->mem_out) {
 		s->mem_in = 0;
@@ -4600,7 +4601,7 @@ sccs_free(sccs *s)
 		// XXX In this case sccs_free has transactional quality
 		// and has no back channel to let caller know transaction
 		// failed.
-		sccs_finishWrite(s, &out);
+		if (sccs_finishWrite(s, &out)) sccs_abortWrite(s, &out);
 		fclose(f);
 	}
 	chk_gmode(s);
@@ -9470,9 +9471,8 @@ checkin(sccs *s,
 	unless (flags & NEWFILE) {
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
-out:		if (sfile) fclose(sfile);
+out:		if (sfile) sccs_abortWrite(s, &sfile);
 		sccs_unlock(s, 'z');
-		sccs_unlock(s, 'x');
 		if (prefilled) sccs_freetree(prefilled);
 		if (gfile && (gfile != stdin)) fclose(gfile);
 		s->state |= S_WARNED;
@@ -11146,7 +11146,7 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_compp,
 			    "admin: can't get lock on %s\n", sc->sfile));
 			error = -1; sc->state |= S_WARNED;
 out:
-			if (sfile) fclose(sfile);
+			if (sfile) sccs_abortWrite(sc, &sfile);
 			if (locked) sccs_unlock(sc, 'z');
 			debug((stderr, "admin returns %d\n", error));
 			return (error);
@@ -11453,7 +11453,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	old_enc = sc->encoding;
 	sc->encoding = new_enc;
 	if (delta_table(sc, sfile, 0)) {
-		sccs_unlock(sc, 'x');
 		if (sc->io_warned) OUT;
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
@@ -11543,7 +11542,7 @@ sccs_scompress(sccs *s, int flags)
 		fprintf(stderr, "scompress: can't get lock on %s\n", s->sfile);
 		error = -1; s->state |= S_WARNED;
 out:
-		if (sfile) fclose(sfile);
+		if (sfile) sccs_abortWrite(s, &sfile);
 		if (locked) sccs_unlock(s, 'z');
 		debug((stderr, "scompress returns %d\n", error));
 		return (error);
@@ -11576,7 +11575,6 @@ out:
 
 	unless (sfile = sccs_startWrite(s)) OUT;
 	if (delta_table(s, sfile, 0)) {
-		sccs_unlock(s, 'x');
 		if (s->io_warned) OUT;
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
@@ -11594,7 +11592,6 @@ out:
 		fputdata(s, "\n", sfile);
 	}
 	if (fflushdata(s, sfile)) {
-		sccs_abortWrite(s, &sfile);
 		if (s->io_warned) OUT;
 		goto out;
 	}
@@ -12367,7 +12364,7 @@ sccs_csetWrite(sccs *s, char **cweave)
 		return (-1);
 	}
 	unless (out = sccs_startWrite(s)) goto err;
-	delta_table(s, out, 0);
+	if (delta_table(s, out, 0)) goto err;
 
 	if (s->encoding & E_GZIP) sccs_zputs_init(s, out);
 	EACH(cweave) {
@@ -12403,10 +12400,7 @@ sccs_csetWrite(sccs *s, char **cweave)
 	if (sccs_finishWrite(s, &out)) goto err;
 	ret = 0;
 err:
-	if (out) {
-		fclose(out);
-		unlink(sccsXfile(s, 'x'));
-	}
+	sccs_abortWrite(s, &out);
 	sccs_unlock(s, 'z');
 
 	return (ret);
@@ -13074,8 +13068,8 @@ sccs_meta(char *me, sccs *s, delta *parent, MMAP *iF, int fixDate)
 		exit(1);
 	}
 	if (delta_table(s, sfile, 0)) {
-abort:		fclose(sfile);
-		sccs_unlock(s, 'x');
+abort:		sccs_abortWrite(s, &sfile);
+		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	sccs_rdweaveInit(s);
@@ -13091,10 +13085,7 @@ abort:		fclose(sfile);
 	sccs_rdweaveDone(s);
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
-	if (sccs_finishWrite(s, &sfile)) {
-		sccs_unlock(s, 'z');
-		exit(1);
-	}
+	if (sccs_finishWrite(s, &sfile)) goto abort;
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -13150,7 +13141,7 @@ sccs_delta(sccs *s,
 		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freetree(prefilled);
-		if (sfile) fclose(sfile);
+		if (sfile) sccs_abortWrite(s, &sfile);
 		if (diffs) mclose(diffs);
 		free_pfile(&pf);
 		if (free_syms) freeLines(syms, free); 
@@ -13459,7 +13450,6 @@ out:
 	}
 
 	if (delta_table(s, sfile, 1)) {
-		sccs_abortWrite(s, &sfile);
 		goto out;	/* not OUT - we want the warning */
 	}
 
@@ -17160,7 +17150,7 @@ sccs_color(sccs *s, delta *d)
  * Given an SCCS structure with a list of marked deltas, strip them from
  * the delta table and place the striped body in out
  */
-int
+private int
 stripDeltas(sccs *s, FILE *out)
 {
 	serlist *state = 0;
@@ -17248,7 +17238,6 @@ sccs_stripdel(sccs *s, char *who)
 		    "%s: illegal to leave file in the BitKeeper/moved "
 		    "directory: %s\n", who, s->gfile);
 		unless (getenv("_BK_UNDO_OK")) OUT;
-		
 	}
 	s->xflags = sccs_xflags(s, e);
 
@@ -17256,8 +17245,6 @@ sccs_stripdel(sccs *s, char *who)
 	if (delta_table(s, sfile, 0)) {  /* 0 means as-is, so chksum works */
 		fprintf(stderr,
 		    "%s: can't write delta table for %s\n", who, s->sfile);
-		sccs_unlock(s, 'x');
-		fclose(sfile);
 		OUT;
 	}
 
@@ -17265,13 +17252,14 @@ sccs_stripdel(sccs *s, char *who)
 	if (stripDeltas(s, sfile)) {
 		fprintf(stderr,
 		    "%s: can't write delta body for %s\n", who, s->sfile);
-		sccs_unlock(s, 'x');
 		OUT;
 	}
+	/* sfile closed by stripDeltas() */
+	sfile = 0;
 #undef	OUT
 
 out:
-	/* sfile closed by stripDeltas() */
+	if (sfile) sccs_abortWrite(s, &sfile);
 	if (locked) sccs_unlock(s, 'z');
 	debug((stderr, "stripdel returns %d\n", error));
 	return (error);
