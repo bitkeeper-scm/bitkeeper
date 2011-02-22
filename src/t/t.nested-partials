@@ -71,7 +71,12 @@ echo OK
 echo $N Show how an unpopulate might fail ...........................$NL
 cd ../gcc-only
 bk here rm $Q ./gcc 2>ERR && fail -f ERR should fail
-grep -q 'here: No other sources for ./gcc known' ERR || fail
+printf "here: searching `bk parent -l`...connect failure\n" >WANT
+cat <<EOF >> WANT
+here: ./gcc cannot be found at a gate
+here: unable to remove ./gcc
+EOF
+cmpfiles ERR WANT
 echo OK
 
 echo $N Providing a URL will work ...................................$NL

@@ -254,7 +254,7 @@ unpopulate_check(popts *ops, comp *c)
 	char	**flist = 0;
 	urlinfo *data;
 
-	// flags |= URLLIST_GATEONLY;  /* require gates */
+	flags |= URLLIST_GATEONLY;  /* require gates */
 	if (ops->quiet) flags |= SILENT;
 	if (nested_isPortal(0) || nested_isGate(0)) return (-1);
 	if (c->pending) return (-1);
@@ -279,7 +279,7 @@ unpopulate_check(popts *ops, comp *c)
 	}
 	pclose(f);
 	if (errs) goto out;
-	unless (urllist_find(ops->n, c, flags, 0)) {
+	unless (ops->noURLprobe || urllist_find(ops->n, c, flags, 0)) {
 		/* print all the tried URLs that have this component */
 		flist = 0;
 		EACH_STRUCT(ops->n->urls, data, i) {

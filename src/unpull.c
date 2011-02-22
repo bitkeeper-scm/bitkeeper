@@ -135,6 +135,7 @@ err:			sccs_free(s);
 
 	av[i=0] = "bk";
 	av[++i] = "undo";
+	av[++i] = "--force-unpopulate";
 	av[++i] = patch ? patch : "-s";
 	if (force) av[++i] = "-f";
 	if (quiet) av[++i] = "-q";

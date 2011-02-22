@@ -77,8 +77,7 @@ cd cloneB
 bk alias set $Q HERE `bk comps -h` || fail 7
 bk here rm $Q gcc 2>ERR && fail 8
 cat <<EOF > WANT
-here: searching $HERE/cloneA...ok
-here: No other sources for ./gcc known
+here: ./gcc cannot be found at a gate
 here: unable to remove ./gcc
 EOF
 cmpfiles ERR WANT
@@ -101,7 +100,7 @@ bk clone $Q cloneA cloneB || fail 5
 cd cloneB
 bk here where gcc | grep -q "$HERE/cloneA" || fail 6
 bk alias set $Q HERE `bk comps -h` || fail 7
-bk here rm $Q gcc || fail 8
+bk here rm $Q -f gcc || fail 8
 bk here where gcc | grep -q "$HERE/cloneA" || fail 9
 cd ..
 # Force remove gcc from cloneA.
@@ -703,7 +702,7 @@ echo $N Pulls fail, populate from pull source works .................$NL
 STAT=OK
 cd ../task2
 bk pull $Q ../project2-clone
-bk unpopulate $Q gdb gcc
+bk unpopulate $Q -f gdb gcc || fail
 bk pull $Q ../task1 2> ERR && fail -f ERR
 grep -q "pull: ./gcc cannot be found at a gate" ERR || fail -f ERR
 grep -q "pull: searching .*/sandbox/project2...ok" ERR || fail -f ERR

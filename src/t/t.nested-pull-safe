@@ -171,7 +171,7 @@ bk -P commit $Q -y.
 cd "$HERE/repo-2"
 bk alias add $Q GCC gdb
 bk push $Q ../project
-bk here set $Q PRODUCT
+bk here set -f $Q PRODUCT
 # now pull GCC, note there are no changes to gdb in remote
 bk pull $Q --safe ../repo-1 2>ERR && fail -f ERR
 cat <<EOF >WANT

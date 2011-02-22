@@ -1798,7 +1798,7 @@ echo OK
 
 echo $N unpopulate 1 component ......................................$NL
 bk comps -h | bk here set - || fail
-bk here rm comp3 >OUT 2>&1 || fail
+bk here rm -f comp3 >OUT 2>&1 || fail
 chkoutput OUT || fail $msg
 chkpasses OUT check || fail $msg
 chknumbars OUT 1 || fail $msg
@@ -1814,7 +1814,7 @@ chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N unpopulate 3 components .....................................$NL
-bk here rm comp1 comp2 comp3 >OUT 2>&1 || fail
+bk here rm -f comp1 comp2 comp3 >OUT 2>&1 || fail
 chkoutput OUT || fail $msg
 chkpasses OUT check || fail $msg
 chknumbars OUT 1 || fail $msg
@@ -2025,7 +2025,7 @@ cd "$HERE"
 bk clone $Q product3 clone3 || fail
 cd clone3
 bk comps -h | bk here set - || fail
-bk here rm $Q comp1 || fail
+bk here rm -f $Q comp1 || fail
 cd ..
 mv product3 product3-renamed
 bk clone clone3 clone3-clone >OUT 2>&1 && fail -f OUT
@@ -2395,7 +2395,7 @@ echo OK
 
 echo $N unpopulate 1 component ......................................$NL
 bk comps -h | bk here set - || fail
-bk here rm -q comp3 >OUT 2>&1 || fail
+bk here rm -fq comp3 >OUT 2>&1 || fail
 [ -s OUT ] && fail -f OUT
 echo OK
 
@@ -2405,7 +2405,7 @@ bk here add -q comp3 >OUT 2>&1 || fail
 echo OK
 
 echo $N unpopulate 3 components .....................................$NL
-bk here rm -q comp1 comp2 comp3 >OUT 2>&1 || fail
+bk here rm -fq comp1 comp2 comp3 >OUT 2>&1 || fail
 [ -s OUT ] && fail -f OUT
 echo OK
 
@@ -2559,7 +2559,7 @@ bk _rm -rf clone3 clone3-clone
 bk clone $Q product3 clone3 || fail
 cd clone3
 bk comps -h | bk here set - || fail
-bk here rm $Q comp1 || fail
+bk here rm $Q -f comp1 || fail
 cd ..
 mv product3 product3-renamed
 bk clone -q clone3 clone3-clone >OUT 2>&1 && fail -f OUT
@@ -2900,7 +2900,7 @@ echo OK
 
 echo $N unpopulate 1 component ......................................$NL
 bk comps -h | bk here set - || fail
-bk here rm -v comp3 >OUT 2>&1 || fail
+bk here rm -vf comp3 >OUT 2>&1 || fail
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -2912,7 +2912,7 @@ chkblanks OUT 0 || fail $msg
 echo OK
 
 echo $N unpopulate 3 components .....................................$NL
-bk here rm -v comp1 comp2 comp3 >OUT 2>&1 || fail
+bk here rm -vf comp1 comp2 comp3 >OUT 2>&1 || fail
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
@@ -3070,7 +3070,7 @@ bk _rm -rf clone3 clone3-clone
 bk clone $Q product3 clone3 || fail
 cd clone3
 bk comps -h | bk here set - || fail
-bk here rm $Q comp1 || fail
+bk here rm $Q -f comp1 || fail
 cd ..
 mv product3 product3-renamed
 bk clone -v clone3 clone3-clone >OUT 2>&1 && fail -f OUT
