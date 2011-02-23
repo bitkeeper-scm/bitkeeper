@@ -102,6 +102,10 @@ loadfile(char *file, int *size)
 	ret = malloc(len+1);
 	unless (ret) goto err;
 	fread(ret, 1, len, f);
+	if (ferror(f)) {
+		free(ret);
+		goto err;
+	}
 	fclose(f);
 	ret[len] = 0;
 

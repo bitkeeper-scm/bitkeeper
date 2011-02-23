@@ -131,6 +131,20 @@ P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 echo OK
 
+# no perms repo
+NPR="$TESTDATA/nested_locking_no_perms"
+test -d "$NPR" && {
+echo ---- Demo Zahy\'s bug
+echo $N Clone with wrong perms in source.............................$NL
+# repository lock the source with wrong perms
+cd "$HERE"
+bk clone $Q "$NPR" npr_clone >OUT 2>&1 && fail -f OUT should have failed
+grep -iq "assertion" OUT && fail -f OUT assert popped
+grep -iq "permission denied" OUT || fail -f OUT wrong error
+echo OK
+}
+true
+
 echo ---- While clone to destination in progress
 repo_setup csets-in-components
 # Clone clone1 to clone but cause the clone to spin in

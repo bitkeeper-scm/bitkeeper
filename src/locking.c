@@ -730,7 +730,14 @@ nested_isStale(char *file)
 		TRACE("stat(%s) failed", file);
 		return (stale);
 	}
-	nlid = loadfile(file, 0);
+	unless (nlid = loadfile(file, 0)) {
+		/*
+		 * If we can't read the file, it's probably a
+		 * permission problem. We're counting on whoever
+		 * locked to unlock so we call it not stale.
+		 */
+		return (0);
+	}
 	chomp(nlid);
 	/* garbage == stale lock */
 	unless (nl = explodeNLID(nlid)) {
@@ -1051,7 +1058,14 @@ nested_lockers(project *p, int listStale, int removeStale)
 			if (nested_isStale(fn)) {
 				if (listStale) {
 					nl = new(nlock);
-					nl->nlid = loadfile(fn, 0);
+					unless (nl->nlid = loadfile(fn, 0)) {
+rderr:						error(READER_LOCK_DIR
+						    "/%s: %s\n",
+						    files[i], strerror(errno));
+						free(nl);
+						free(fn);
+						continue;
+					}
 					chomp(nl->nlid);
 					nl->stale = 1;
 					lockers = addLine(lockers, nl);
@@ -1069,7 +1083,7 @@ nested_lockers(project *p, int listStale, int removeStale)
 				continue;
 			}
 			nl = new(nlock);
-			nl->nlid = loadfile(fn, 0);
+			unless (nl->nlid = loadfile(fn, 0)) goto rderr;
 			chomp(nl->nlid);
 			lockers = addLine(lockers, nl);
 			free(fn);
@@ -1084,10 +1098,15 @@ nested_lockers(project *p, int listStale, int removeStale)
 		unless (stale && !listStale) {
 
 			nl = new(nlock);
-			nl->nlid = loadfile(writer, 0);
-			chomp(nl->nlid);
-			nl->stale = stale;
-			lockers = addLine(lockers, nl);
+			if (nl->nlid = loadfile(writer, 0)) {
+				chomp(nl->nlid);
+				nl->stale = stale;
+				lockers = addLine(lockers, nl);
+			} else {
+				error(NESTED_WRITER_LOCK
+				    ": %s\n", strerror(errno));
+				free(nl);
+			}
 		}
 	}
 	free(writer);
@@ -1124,6 +1143,7 @@ nested_mine(project *p, char *nested_lock, int write)
 			goto out;
 		}
 		t = loadfile(tfile, 0);
+		assert(t);
 		chomp(t);
 		unless (rc = streq(nested_lock, t)) nl_errno = NL_MISMATCH;
 		free(t);
