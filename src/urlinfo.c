@@ -108,7 +108,6 @@ urlinfo_urlArgs(nested *n, char **urls)
 		unless (data->checked) {
 			/* mark all components */
 			EACH_STRUCT(n->comps, c, j) {
-				if (c->product) continue;
 				urlinfo_addURL(n, c, urls[i]);
 			}
 			n->list_dirty = 1;
@@ -131,7 +130,6 @@ urlinfo_urlArgs(nested *n, char **urls)
 		unless (data->checked) {
 			/* mark all components */
 			EACH_STRUCT(n->comps, c, j) {
-				if (c->product) continue;
 				urlinfo_addURL(n, c, urls[i]);
 			}
 		}
@@ -344,7 +342,6 @@ urlinfo_setFromEnv(nested *n, char *url)
 	data->pcomps = hash_new(HASH_MEMHASH);
 	EACH_STRUCT(n->comps, c, i) {
 		unless (c->remotePresent) continue;
-		if (c->product) continue;
 		if (c->localchanges) continue;
 
 		urlinfo_addURL(n, c, url);
@@ -456,8 +453,6 @@ urlinfo_probeURL(nested *n, char *url, FILE *out)
 	/* find deltakeys found locally */
 	fin = fmem_open();
 	EACH_STRUCT(n->comps, c, i) {
-		if (c->product) continue;
-
 		fprintf(fin, "%s %s\n", c->rootkey, c->deltakey);
 	}
 	rewind(fin);

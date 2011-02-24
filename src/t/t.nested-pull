@@ -905,7 +905,14 @@ date >new-file
 bk new $Q new-file || fail
 bk commit -S $Q -ynew-file || fail
 cd ..
-bk here check $Q -@../copy4 && fail should fail
+# record that ./D can be found in copy4
+bk here check -q -@../copy4 ALL 2>ERR && fail -f ERR should fail
+cat <<'EOF' > WANT
+C  : no valid urls found (present)
+gcc: no valid urls found (missing)
+gdb: no valid urls found (missing)
+EOF
+cmpfiles WANT ERR
 bk pull >OUT 2>ERR && fail -f ERR should have failed
 perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
 cat <<EOF > WANT

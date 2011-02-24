@@ -184,15 +184,6 @@ int	aliasdb_chkAliases(nested *n, hash *aliasdb,
 	    char ***paliases, char *cwd);
 int	aliasdb_caret(char **aliases);
 
-/* urllist.h */
-void	urllist_dump(char *path, int allurls, int allcomps, int silent);
-
-#define URLLIST_TRIM_NOCONNECT  0x10
-#define	URLLIST_SUPERSET	0x20
-#define	URLLIST_GATEONLY	0x40	/* only gates */
-#define	URLLIST_NOERRORS	0x80 	/* don't print errors to stderr */
-int	urllist_check(nested *n, u32 flags, char **urls);
-
 /* urlinfo.c */
 void	urlinfo_load(nested *n, remote *base);
 void	urlinfo_buildArray(nested *n);
@@ -211,6 +202,9 @@ void	urlinfo_free(nested *n);
 
 /* clone.c */
 char	**clone_defaultAlias(nested *n);
+
+/* here_check.c */
+int	here_check_main(int ac, char **av);
 
 /* locking.c */
 
@@ -231,6 +225,9 @@ void	freeNlock(void *nl);
 
 /* populate.c */
 int	nested_populate(nested *n, popts *ops);
+
+#define	URLLIST_GATEONLY	0x40	/* only gates */
+#define	URLLIST_NOERRORS	0x80 	/* don't print errors to stderr */
 char	*urllist_find(nested *n, comp *cp, int flags, int *idx);
 
 #endif	// _NESTED_H

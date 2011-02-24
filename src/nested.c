@@ -435,6 +435,9 @@ err:				if (revsDB) mdbm_close(revsDB);
 		v[-1] = ' ';	/* restore possibly in mem weave */
 	}
 	sccs_rdweaveDone(cset);
+	if (left && (flags & NESTED_PULL) && IN_LOCAL(left)) {
+		n->product->localchanges = 1;
+	}
 	unless (rev || revs) nestedSaveCache(n);
 
 pending:
@@ -783,6 +786,7 @@ compFree(void *x)
 	FREE(c->deltakey);
 	FREE(c->lowerkey);
 	FREE(c->path);
+	free(c);
 }
 
 void
@@ -1147,113 +1151,6 @@ isComponent(char *path)
 	ret = exists(buf) && (p = proj_init(buf)) && proj_isComponent(p);
 	if (p) proj_free(p);
 	return (ret);
-}
-
-/*
- * Examine the urllists for the current nested collection and look for
- * problems.
- *
- * Returns non-zero if sources cannot be found for any non present
- * repositories.
- *
- * Assumes it is run from the product root.
- * Frees 'urls' when finished.
- */
-int
-urllist_check(nested *n, u32 flags, char **urls)
-{
-	int	i, rc = 0;
-	comp	*c;
-	FILE	*out;
-	urlinfo	*data;
-
-	out = (flags & SILENT) ? fmem_open() : stderr;
-
-	EACH_STRUCT(n->comps, c, i) c->alias = 0;
-	urlinfo_urlArgs(n, urls);
-	EACH_STRUCT(n->urls, data, i) {
-		unless (urlinfo_probeURL(n, data->url, out)) {
-
-			/* mark the components that can be found */
-			EACH_HASH(data->pcomps) {
-				c = *(comp **)data->pcomps->kptr;
-				c->alias = 1;
-			}
-		}
-		if (data->noconnect && (flags & URLLIST_TRIM_NOCONNECT)) {
-			urlinfo_rmURL(n, 0, data->url);
-		}
-	}
-	urlinfo_write(n);
-
-	rc = 0;
-	EACH_STRUCT(n->comps, c, i) {
-		if (c->product || c->alias) continue;
-
-		if (flags & URLLIST_SUPERSET) {
-			if (c->present) {
-				/*
-				 * We are running superset and a
-				 * component that we have populated
-				 * can't be found anywhere else.
-				 */
-				printf("%s\n", c->path);
-				rc = 1;
-			}
-		} else {
-			unless (c->present) {
-				rc = 1;
-
-				fprintf(out,
-				    "%s: no valid urls found for "
-				    "missing component %s\n",
-				    prog, c->path);
-			}
-		}
-	}
-	/* discard all output on silent, even on failure. */
-	if (flags & SILENT) fclose(out);
-	return (rc);
-}
-
-/*
- * For debugging right now.  Dump the urllist file, for just one
- * component if a name is specified.  Must call from product root.
- * Larry has talked about wanting a command that shows you where
- * components can be found, so this may turn into that eventually.
- */
-void
-urllist_dump(char *name, int allurls, int allcomps, int silent)
-{
-	int	i, k;
-	comp	*c;
-	nested	*n;
-	char	*url, **urls = 0;
-	urlinfo	*data;
-
-	n = nested_init(0, 0, 0, NESTED_PENDING);
-	EACH_STRUCT(n->comps, c, i) {
-		if (c->product) continue;
-		if (!name && !allcomps && c->present) continue;
-		if (name && !streq(name, c->path)) continue;
-		urls = 0;
-		k = 0;
-		while (url = urllist_find(n, c, silent, &k)) {
-			data = urlinfo_get(n, url);
-			urls = addLine(urls, aprintf("%s%s", data->url,
-				(data->gate == 1) ? " (gate)" : ""));
-			unless (allurls) break;
-		}
-		if (nLines(urls) == 1) {
-			printf("%s: %s\n", c->path, urls[1]);
-		} else if (nLines(urls) > 1) {
-			url = joinLines("\n\t", urls);
-			printf("%s:\n\t%s\n", c->path, url);
-			free(url);
-		}
-		if (urls) freeLines(urls, free);
-	}
-	nested_free(n);
 }
 
 /*

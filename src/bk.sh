@@ -325,13 +325,13 @@ _superset() {
 	}
 
 	test X$PRODUCT = XPRODUCT && {
-		bk here check -q --superset > $TMP2 || {
+		bk here check -q HERE ^PRODUCT 2>$TMP2 || {
 			test $LIST = NO && {
 				rm -f $TMP1 $TMP2
 				exit 1
 			}
 			echo === Components with no known sources === >> $TMP1
-			sed 's/^/    /' < $TMP2 >> $TMP1
+			sed -e 's/ *: no valid urls.*//' < $TMP2 >> $TMP1
 		}
 	}
 	bk pending $QUIET > $TMP2 2>&1 && {

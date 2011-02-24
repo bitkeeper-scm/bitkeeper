@@ -10,7 +10,7 @@ bk populate - add one or more components to a nested collection
 .br
 bk unpopulate - remove one or more components to a nested collection
 .SH SYNOPSIS
-.B bk here [set|check|where]
+.B bk here [set|check]
 .[OPTreq] \-@ URL
 .[B] \-fq
 .[ARG] "alias | comp"
@@ -44,7 +44,9 @@ bk unpopulate - remove one or more components to a nested collection
 .SS CHECKING COMPONENT AVAILABILITY
 .B bk here check
 .[OPTreq] \-@ URL
-.[B] \-cq
+.[B] \-qv
+.[ARG] "alias | component"
+.B ...
 .SS UNPOPULATING COMPONENTS AND/OR ALIASES
 .B bk unpopulate
 .[OPTreq] \-@ URL
@@ -56,13 +58,6 @@ bk unpopulate - remove one or more components to a nested collection
 .[OPTreq] \-@ URL
 .[B] \-fq
 .ARG "alias | component"
-.B ...
-.SS LIST LOCATION[S] OF MISSING COMPONENTS
-.B bk here where
-.[B] \-\-allurls
-.[B] \-\-allcomps
-.[B] \-\-all
-.[ARG] "component"
 .B ...
 .SH DESCRIPTION
 The
@@ -85,22 +80,17 @@ are populated.
 The 
 .B "bk here"
 command can be used to list what is here, set what is here, or
-check what is here or list where missing components are. 
+check what is here and list other places where components can be found. 
 The
-.B \--allurls
+.B \-a
 option to
-.B "bk here where"
+.B "bk here check"
 prints out all URLs in which the component(s) can be found.
+If no alias parameters are listed with
+.BR "bk here check" ,
+then only the missing components are checked.
+.LP
 The
-.B \--allcomps
-option prints information for all components, not only for the ones
-not present.  And finally, the
-.B \--all
-option turns on both
-.B \--allcomps
-and
-.B \--allurls
-thus printing all known URLs for all components.
 .B "bk populate"
 command can be used to add to what is here.
 The 
@@ -130,6 +120,11 @@ When looking for components, include
 in the list of places to look.
 .\" also  -@@filename   (but ok not to document)
 .tp
+.B \-a
+When used with
+.BR "bk here check" ,
+print out all URLs in which the component(s) can be found.
+.tp
 .B \-f
 When removing repositories, do not check for local only work
 in the repositories to be removed.
@@ -144,6 +139,9 @@ When listing aliases, show alias expansions using an indented list.
 Add
 .B \-v
 more options to indent to a deeper level.
+When checking aliases,
+.B \-v
+will output status of connecting to other repositories.
 .SH EXAMPLES
 .LP
 When cloning a product, it is possible to clone a subset of it by
@@ -194,6 +192,30 @@ $ bk here
 \&./cmd/ld
 DEBUGGER
 PRODUCT
+.DE
+If you want to check where missing components can be found:
+.DS
+$ bk here check
+bin    : no valid urls found (missing)
+cmd/gcc: /repos/bk-trunk
+.DE
+This shows that the missing bin component has unique work in it relative
+to other searched repositories.
+In this case, in order for populate to work, the user would need to specify
+.OPTreq \-@ URL
+to name where to fetch the bin component.
+
+If you want to see all places this repository can find the missing
+components, add
+.B \-a
+to the command:
+.DS
+$ bk here check -a
+bin:
+	no valid urls found (missing)
+cmd/gcc:
+	/repos/bk-trunk
+	bk://repos.bitmover.com/bk-trunk
 .DE
 .SH "SEE ALSO"
 .SA alias

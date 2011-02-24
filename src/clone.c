@@ -956,10 +956,7 @@ clone2(remote *r)
 			/* It is OK if this fails, just tag everything */
 			EACH_STRUCT(n->comps, cp, i) cp->alias = 1;
 		}
-		EACH_STRUCT(n->comps, cp, i) {
-			if (cp->product) continue;
-			cp->remotePresent = cp->alias;
-		}
+		EACH_STRUCT(n->comps, cp, i) cp->remotePresent = cp->alias;
 
 		urlinfo_setFromEnv(n, parent);
 		urlinfo_load(n, r); /* normalize remote urllist file */

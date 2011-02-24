@@ -1,9 +1,6 @@
 #include "sccs.h"
 #include "nested.h"
 
-private int	here_check_main(int ac, char **av);
-private int	here_where_main(int ac, char **av);
-
 int
 here_main(int ac, char **av)
 {
@@ -60,9 +57,6 @@ here_main(int ac, char **av)
 	} else if (streq(av[1], "check")) {
 		return (here_check_main(ac-1, av+1));
 
-	} else if (streq(av[1], "where")) {
-		return (here_where_main(ac-1, av+1));
-
 	} else if (streq(av[1], "missing")) {
 		/* alias for 'bk alias -m' */
 		if (av[2]) usage();
@@ -80,82 +74,6 @@ here_main(int ac, char **av)
 	}
 	/* not reached */
 	abort();
-}
-
-private int
-here_check_main(int ac, char **av)
-{
-	int	i, c, rc;
-	u32	flags = 0;
-	nested	*n;
-	char	**urls = 0;
-	longopt	lopts[] = {
-		{ "superset", 300 },
-		{ 0, 0 }
-	};
-
-	while ((c = getopt(ac, av, "@|cq", lopts)) != -1) {
-		switch (c) {
-		    case '@': if (bk_urlArg(&urls, optarg)) return (1); break;
-		    case 'c': flags |= URLLIST_TRIM_NOCONNECT; break;
-		    case 'q': flags |= SILENT; break;
-		    case 300: flags |= URLLIST_SUPERSET; break;
-		    default: bk_badArg(c, av);
-		}
-	}
-	if (av[optind]) usage();
-	EACH(urls) {
-		char	*u = urls[i];
-
-		urls[i] = parent_normalize(u);
-		free(u);
-	}
-	proj_cd2product();
-	n = nested_init(0, 0, 0, NESTED_PENDING);
-	assert(n);
-	rc = urllist_check(n, flags, urls);
-	nested_free(n);
-	return (rc);
-}
-
-private int
-here_where_main(int ac, char **av)
-{
-	int	c;
-	char	*p;
-	int	allurls = 0, allcomps = 0, flags = SILENT|URLLIST_NOERRORS;
-	longopt	lopts[] = {
-		{ "all", 310 },		/* all comps, all urls */
-		{ "allcomps", 320 },	/* all comps not just missing */
-		{ "allurls", 330},	/* all urls for a comp */
-		{ 0, 0}
-	};
-
-	while ((c = getopt(ac, av, "v", lopts)) != -1) {
-		switch (c) {
-		    case 'v': flags = 0; break;
-		    case 310: allurls = 1; allcomps = 1; break;
-		    case 320: allcomps = 1; break;
-		    case 330: allurls = 1; break;
-		    default: bk_badArg(c, av);
-		}
-	}
-	proj_cd2product();
-	unless (av[optind]) {
-		urllist_dump(0, allurls, allcomps, flags);
-	} else if (streq(av[optind], "rm")) {
-		/* Perhaps _rm? or change the verb? */
-		if (av[optind+1]) usage();
-		unlink(NESTED_URLLIST);
-	} else {
-		for ( ; av[optind]; optind++) {
-			p = av[optind];
-			if (strneq(p, "./", 2)) p += 2;
-			urllist_dump(p, allurls, allcomps, flags);
-		}
-	}
-	return (0);
-
 }
 
 int
