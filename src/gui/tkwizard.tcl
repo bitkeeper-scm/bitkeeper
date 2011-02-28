@@ -1437,10 +1437,15 @@ proc ::tkwizard::layout-default::build {name} \
 	-background $background \
 	-anchor c
 
-    array set labelfont [font actual [$widget(title) cget -font]]
-    set labelfont(-weight) bold
-    incr labelfont(-size) 6
-    $widget(title) configure -font [array get labelfont]
+    set font [font configure TkDefaultFont]
+    switch -- [tk windowingsystem] {
+	"win32" { set size  18 }
+	"aqua"  { set size  24 }
+	"x11"   { set size -24 }
+    }
+    dict set font -size $size
+    dict set font -weight bold
+    $widget(title) configure -font $font
 
     set tf $widget(frame).titleframe
     grid $widget(title)    -in $tf -row 0 -column 0 -sticky nsew

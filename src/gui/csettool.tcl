@@ -412,7 +412,7 @@ proc widgets {} \
 
 	frame .l
 	frame .l.filelist -background $gc(BG)
-	    text .l.filelist.t -height $gc(cset.listHeight) -width 30 \
+	    text .l.filelist.t -height $gc(cset.listHeight) -width 40 \
 		-state disabled -wrap none -font $gc(cset.fixedFont) \
 		-setgrid true \
 		-xscrollcommand { .l.filelist.xscroll set } \
@@ -429,9 +429,8 @@ proc widgets {} \
 	    grid .l.filelist.t -row 0 -column 0 -sticky news
 	    grid .l.filelist.yscroll -row 0 -column 1 -sticky nse 
 	    grid .l.filelist.xscroll -row 1 -column 0 -sticky ew
-	    grid rowconfigure .l.filelist 0 -weight 1
-	    grid rowconfigure .l.filelist 1 -weight 0
-	    grid columnconfigure .l.filelist 0 -weight 1
+	    grid rowconfigure    .l.filelist .l.filelist.t -weight 1
+	    grid columnconfigure .l.filelist .l.filelist.t -weight 1
 
 	frame .l.sccslog -background $gc(BG)
 	    text .l.sccslog.t -height $gc(cset.listHeight) -width 80 \
@@ -451,12 +450,8 @@ proc widgets {} \
 	    grid .l.sccslog.t -row 0 -column 0 -sticky news
 	    grid .l.sccslog.yscroll -row 0 -column 1 -sticky ns
 	    grid .l.sccslog.xscroll -row 1 -column 0 -sticky ew
-	    grid rowconfigure .l.sccslog 0 -weight 1
-	    grid rowconfigure .l.sccslog 1 -weight 0
-	    grid columnconfigure .l.sccslog.yscroll 1 -weight 0
-	    grid columnconfigure .l.sccslog.xscroll 0 -weight 1
-	    grid columnconfigure .l.sccslog.t 0 -weight 1
-	    grid columnconfigure .l.sccslog 0 -weight 1
+	    grid rowconfigure    .l.sccslog .l.sccslog.t -weight 1
+	    grid columnconfigure .l.sccslog .l.sccslog.t -weight 1
 
 	    createDiffWidgets .diffs
 
@@ -578,11 +573,14 @@ proc widgets {} \
 	grid rowconfigure . 0 -weight 0
 	grid rowconfigure . 1 -weight 0
 	grid rowconfigure . 2 -weight 2
+
+	grid rowconfigure    .l .l.filelist -weight 1
+	grid columnconfigure .l .l.filelist -weight 1
+	grid rowconfigure    .l .l.sccslog  -weight 1
+	grid columnconfigure .l .l.sccslog  -weight 1
+
 	grid columnconfigure . 0 -weight 1
 	grid columnconfigure .menu 0 -weight 1
-	grid columnconfigure .l 0 -weight 1
-	grid columnconfigure .l.filelist 0 -weight 1
-	grid columnconfigure .l.sccslog 1 -weight 1
 	grid columnconfigure .diffs 0 -weight 1
 
 	#$search(widget) tag configure search \

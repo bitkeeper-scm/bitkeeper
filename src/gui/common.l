@@ -44,8 +44,8 @@ bk_init()
 	}
 
 	bk_initPlatform();
-	getConfig(_bk.tool);
 	loadState(_bk.tool);
+	getConfig(_bk.tool);
 }
 
 void

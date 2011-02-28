@@ -23,9 +23,7 @@ else
 	EXE :=
 	SO  := .so
 	XSSSUPPORT := --disable-xss
-	XFTSUPPORT := --disable-xft
-#	Once we solve the font issues, we can turn on True Type Font support
-#	XFTSUPPORT := --enable-xft
+	XFTSUPPORT := --enable-xft
 	SHARED := --disable-shared
 	PCRE_OBJ:= bin/tclsh
 	ifeq "$(shell uname)" "Darwin"

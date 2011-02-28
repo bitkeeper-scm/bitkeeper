@@ -379,6 +379,7 @@ proc widgets {} \
 	set rootY [winfo screenheight .]
 	wm title . "BitKeeper Help"
 	set firstConfig 1
+	set sb $gc(help.scrollbars)
 
 	frame .menu -borderwidth 0 -relief flat
 	    button .menu.done -text "Quit" -font $gc(help.buttonFont) \
@@ -424,7 +425,7 @@ proc widgets {} \
 		-wrap none \
 		-height $gc(help.height) \
 		-font $gc(help.fixedFont) -width 16 \
-		-background $gc(help.listBG) \
+		-background "#F8F8F8" \
 		-yscrollcommand [list .ctrl.yscroll set] \
 		-xscrollcommand [list .ctrl.xscroll set]
 	    scrollbar .ctrl.yscroll \
@@ -441,7 +442,7 @@ proc widgets {} \
 		-width $gc(help.scrollWidth) \
 		-command ".ctrl.topics xview"
 
-	    if {[info exists gc(help.center_scrollbars)]} {
+	    if {[string index $sb 0] eq "R"} {
 		    grid .ctrl.topics -row 0 -column 0 -sticky nsew
 		    grid .ctrl.yscroll -row 0 -column 1 -sticky nse
 		    grid .ctrl.xscroll -row 1 -column 0 -sticky ew
@@ -450,7 +451,8 @@ proc widgets {} \
 		    grid .ctrl.yscroll -row 0 -column 0 -sticky nse
 		    grid .ctrl.xscroll -row 1 -column 1 -sticky ew
 	    }
-	    grid rowconfigure .ctrl 0 -weight 1
+	    grid rowconfigure    .ctrl .ctrl.topics -weight 1
+	    grid columnconfigure .ctrl .ctrl.topics -weight 1
 
 	frame .text -borderwidth 0 -relief flat
 	    text .text.help \
@@ -463,6 +465,7 @@ proc widgets {} \
 		-background $gc(help.textBG) -fg $gc(help.textFG) \
 		-xscrollcommand [list .text.x2scroll set] \
 		-yscrollcommand [list .text.y2scroll set]
+
 	    scrollbar .text.x2scroll \
 		-orient horiz \
 		-troughcolor $gc(help.troughColor) \
@@ -475,13 +478,18 @@ proc widgets {} \
 		-background $gc(help.scrollColor) \
 		-command ".text.help yview"
 
-	    grid .text.help -row 0 -column 1 -sticky nsew
-	    grid .text.y2scroll -row 0 -column 0 -sticky nse
-	    grid .text.x2scroll -row 1 -column 1 -sticky ew 
+	    if {[string index $sb 1] eq "R"} {
+		    grid .text.help     -row 0 -column 0 -sticky nsew
+		    grid .text.y2scroll -row 0 -column 1 -sticky nse
+		    grid .text.x2scroll -row 1 -column 0 -sticky ew 
+	    } else {
+		    grid .text.help     -row 0 -column 1 -sticky nsew
+		    grid .text.y2scroll -row 0 -column 0 -sticky nse
+		    grid .text.x2scroll -row 1 -column 1 -sticky ew 
+	    }
 
-	    grid rowconfigure .text 0 -weight 1
-	    grid columnconfigure .text 0 -weight 0
-	    grid columnconfigure .text 1 -weight 1
+	    grid rowconfigure    .text .text.help -weight 1
+	    grid columnconfigure .text .text.help -weight 1
 
 	grid .menu -row 0 -column 0 -columnspan 2 -sticky nsew
 	grid .ctrl -row 1 -column 0 -sticky nsew

@@ -1778,6 +1778,9 @@ _latest() {
 	exec "$LATEST"/bk ${1+"$@"}
 }
 
+_catcomments() {
+	bk tclsh "`bk bin`/gui/lib/catcomments.l"
+}
 
 
 # ------------- main ----------------------

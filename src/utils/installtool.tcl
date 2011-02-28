@@ -23,9 +23,16 @@ proc main {} \
 		catch {wm iconbitmap . bitkeeper/gui/images/bk.ico}
 	}
 
-	set w [expr [font measure $fixedFont "="] * 79]
-	incr w 50
-	centerWindow . $w 375
+	set fixedFont TkFixedFont
+	option add *font TkDefaultFont
+	if {[tk windowingsystem] eq "x11"} {
+	    font configure TkDefaultFont -size -14
+	}
+
+	set w 600
+	set h 400
+	centerWindow . $w $h
+	wm geometry  . ${w}x${h}
 
 	. configure -step Welcome
 	. show
@@ -306,8 +313,6 @@ proc widgets {} \
 	    -title "BK Installation Assistant" \
 	    -sequential 1 \
 	    -icon bklogo
-
-	initFonts
 
 	. buttonconfigure finish -text "Done"
 
@@ -1367,10 +1372,9 @@ Installation of
 
 %v
 
-is completed. Enjoy BitKeeper and send support@bitmover.com
+is complete. Enjoy BitKeeper and send support@bitmover.com
 any questions. Don't forget to try the quick and informative
 demo at http://www.bitkeeper.com/Test.html
 
 The BitKeeper Team
 }
-

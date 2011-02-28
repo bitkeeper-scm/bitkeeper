@@ -13,7 +13,7 @@ REPO   := $(shell basename "`bk -P root`")
 LIBDIR	= lib
 GUIS	= revtool citool oldcitool helptool difftool csettool fmtool fm3tool \
 	  msgtool renametool setuptool bugform supportform newdifftool \
-	  showproc
+	  showproc catcomments
 TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
 GUITEST = ../t/guitest.tcl
@@ -145,3 +145,6 @@ newdifftool: $(COMMON) search.tcl appState.tcl newdifflib.tcl \
 
 showproc: showproc.tcl
 	@(echo "wm withdraw ."; cat $^) | $(TCLWRAP) > $(LIBDIR)/showproc
+
+catcomments: catcomments.l
+	@cat $^ > $(LIBDIR)/catcomments.l

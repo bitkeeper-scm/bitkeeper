@@ -72,10 +72,10 @@ sfio_utils.o: sfio_utils.c
 sfio$(EXE): $(SFIO_OBJS)
 	$(LD) $(LFLAGS) $(SFIO_OBJS) $(SYSTEM_OBJS) $(LIBS) -o $@
 
-installtool: ../port/$(SYS)_platform.tcl installtool.tcl font.tcl \
+installtool: ../port/$(SYS)_platform.tcl installtool.tcl \
 	../gui/tkwizard.tcl ../gui/common.tcl \
 	../gui/imgsrc/bklogo.gif ../bk
-	(cat ../port/$(SYS)_platform.tcl installtool.tcl font.tcl \
+	(cat ../port/$(SYS)_platform.tcl installtool.tcl \
 	 ../gui/common.tcl ../gui/tkwizard.tcl; \
 	 echo "image create photo bklogo -data {`../bk base64<../gui/imgsrc/bklogo.gif`}";\
 	 echo "main"\

@@ -2499,11 +2499,11 @@ proc fm3tool {} \
 	global State gc
 
 	bk_init
+	loadState fm3
 	getConfig fm3
 
 	smerge
 
-	loadState fm3
 	widgets
 	restoreGeometry fm3
 

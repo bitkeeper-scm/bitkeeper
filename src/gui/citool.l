@@ -45,6 +45,7 @@ struct {
 	string	argv[];		    // argv from the command line
 	string	cwd;		    // current directory
 	string	root;		    // root directory of the repo
+	string	dotbk;		    // dotbk directory
 	int	resolve;	    // is this commit from the resolver
 	int	partial;	    // is this a partial commit from resolve
 	int	nfiles;		    // number of files in repo
@@ -54,6 +55,7 @@ struct {
 	int	changed;	    // has anything changed where we need to
 				    // prompt the user on quit?
 	string	comments;	    // file comments before changes
+	string[] oldcomments{string}; // backup comment hash
 	int	commented;	    // do we have comments in the text widget
 	int	last_update;	    // time of last GUI update
 	int	sfiles_last;	    // last count of sfiles read
@@ -556,13 +558,14 @@ addFiles(string files[])
 	tmp = tmpfile("citool");
 	fd = popen("bk sfiles -cgvxyp {-o${tmp}} -", "r+");
 	puts(fd, join("\n", files));
-	fclose(fd);
+	pclose(fd);
 
 	fd = fopen(tmp, "r");
 	while(defined(file = fgetline(fd))) {
 		push(&lines, file);
 	}
-	pclose(fd);
+	fclose(fd);
+	unlink(tmp);
 	addSfilesLines(lines);
 	if (self.sfiles_pending > 0) insertPendingNode(self.root);
 	insertCsetFile(self.root);
@@ -811,7 +814,8 @@ gui()
 	ListBox(self.w_files,
 	    background: gc("ci.listBG"),
 	    height: gc("ci.filesHeight"), padx: 20, deltay: 20,
-	    selectfill: 1, selectforeground: "white");
+	    selectfill: 1, selectforeground: "white",
+	    font: gc("ci.fixedFont"));
 	ScrolledWindow_setwidget(self.w_fileF, self.w_files);
 	// grid("configure", "${self.w_fileF}.vscroll", rowspan: 2);
 	::ListBox::bindText(self.w_files, "<1>", "selectFile");
@@ -1127,8 +1131,6 @@ toggleFile(string node)
 		self.files{file}.excluded = !sf.excluded;
 	}
 
-	redrawFile(node); // this will call configureFile to update the counts.
-	configureCsetNodes();
 	if (node eq getSelectedNode()) {
 		Tree_selectionClear(self.w_files);
 		selectFile(node);
@@ -1136,6 +1138,9 @@ toggleFile(string node)
 		sf = getSelectedFile();
 		if (sf.type eq "cset") showCsetContents(sf);
 	}
+
+	redrawFile(node); // this will call configureFile to update the counts.
+	configureCsetNodes();
 }
 
 void
@@ -1364,10 +1369,41 @@ saveComments()
 			if (comments eq msg) return;
 		}
 		if (comments ne self.comments) {
+			self.oldcomments{sf.name}[END+1] = comments;
 			writeComments(sf, comments);
+			saveBackupComments();
 		}
 	}
 	redrawFile(sf.node);
+}
+
+void
+readBackupComments()
+{
+	FILE	fp;
+	string	backup = joinpath(self.dotbk, "citool.comments");
+
+	unless (exists(backup)) return;
+
+	unless (fp = fopen(backup, "r")) return;
+	self.oldcomments = (string{string}[])freadn(fp, -1);
+	fclose(fp);
+}
+
+void
+saveBackupComments()
+{
+	FILE	fp;
+	string	file, comments[];
+	string	backup = joinpath(self.dotbk, "citool.comments");
+
+	fp = fopen(backup, "w");
+	foreach (file => comments in self.oldcomments) {
+		comments = comments[END-19..END];
+		self.oldcomments{file} = comments;
+		puts(fp, {file, comments});
+	}
+	fclose(fp);
 }
 
 void
@@ -1427,6 +1463,7 @@ quit()
 	if (self.changed) {
 		if (catch("toplevel ${top}")) return;
 		Wm_title((string)top, "Quit Citool?");
+		Wm_resizable((string)top, 0, 0);
 		Toplevel_configure(top, borderwidth: 0, background: bg);
 		image = joinpath(getenv("BK_BIN"), "gui", "images",
 		    "bklogo.gif");
@@ -1606,13 +1643,27 @@ showFileContents(sfile sf)
 	} else if (type eq "file") {
 		int	fsize = size(sf.file);
 		int	bytes = (int)gc("ci.display_bytes");
+		string	msg;
 		string	contents;
-		Text_insert(self.w_diffs, "end",
-		    "${sf.name}:\t(new file) ${fsize} bytes\n\n");
-		contents = bk("_strings \"${sf.file}\"");
-		if (bytes > 0) {
-			contents = contents[0..bytes];
+
+		if (fsize > bytes) {
+			msg = sprintf("showing %d of %d bytes", bytes, fsize);
+		} else {
+			msg = "${fsize} bytes";
 		}
+		if (isBinary(sf.file)) {
+			contents = "<<binary file, ${fsize} bytes not shown.>>";
+			msg = "";
+		} else {
+			FILE	fd;
+
+			fd = fopen(sf.file, "r");
+			contents = freadn(fd, bytes);
+			fclose(fd);
+		}
+
+		Text_insert(self.w_diffs, "end",
+		    "${sf.name}:\t(new file) ${msg}\n\n");
 		Text_insert(self.w_diffs, "end", "${contents}\n");
 	} else {
 		Text_insert(self.w_diffs, "end",
@@ -2200,8 +2251,11 @@ rescan()
 	self.components = undef;
 	self.pendingNodes = undef;
 	foreach (comp in self.allComponents) {
+		int	n;
+
 		chdir(comp);
-		self.nfiles += (int)`bk nfiles`;
+		n = (int)`bk nfiles`;
+		if (String_isInteger(strict: n)) self.nfiles += n;
 	}
 
 	ListBox_configure(self.w_files, state: "normal");
@@ -2499,6 +2553,7 @@ main(_unused int argc, string argv[])
 
 	init();
 	self.cwd = pwd();
+	self.dotbk = `bk dotbk`;
 
 	self.partial = 0;
 	self.resolve = 0;
@@ -2573,6 +2628,8 @@ main(_unused int argc, string argv[])
 		self.nested = 0;
 	}
 
+	self.root = File_normalize(self.root);
+
 	gui();
 
 	if (self.nested) {
@@ -2606,5 +2663,6 @@ main(_unused int argc, string argv[])
 	initMsgs();
 	createImages();
 	processFiles(self.filelist);
+	readBackupComments();
 }
 

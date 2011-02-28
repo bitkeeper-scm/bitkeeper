@@ -685,9 +685,9 @@ proc main {} \
 	wm title . "Diff Tool - initializing..."
 
 	bk_init
-	getConfig diff
 
 	loadState diff
+	getConfig diff
 	widgets
 	restoreGeometry diff
 

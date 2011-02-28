@@ -164,11 +164,11 @@ proc app_init {} \
 	# Presently we don't support setup.BG, because the wizard widget
 	# isn't graceful about accepting anything other than default colors.
 	# Bummer, huh?
-	option add *Checkbutton.font      $gc(setup.noticeFont)  startupFile
-	option add *Radiobutton.font      $gc(setup.noticeFont)  startupFile
-	option add *Menubutton.font       $gc(setup.noticeFont)  startupFile
+	option add *Checkbutton.font      $gc(setup.buttonFont)  startupFile
+	option add *Radiobutton.font      $gc(setup.buttonFont)  startupFile
+	option add *Menubutton.font       $gc(setup.buttonFont)  startupFile
 	option add *Button.font           $gc(setup.buttonFont)  startupFile
-	option add *Label.font            $gc(setup.noticeFont)  startupFile
+	option add *Label.font            $gc(setup.buttonFont)  startupFile
 	option add *Entry.background      $gc(setup.entryColor)  startupFile
 	option add *Text*background       $gc(setup.textBG)      startupFile
 	option add *Text*foreground       $gc(setup.textFG)      startupFile
@@ -284,7 +284,7 @@ proc computeSize {wvar hvar} \
 	# vertically we need enough space to show 28 or so lines of
 	# text in the label/button font. We'll do the same sort of 
 	# dance again, but with the label/button font
-	.bogus configure -font $gc(setup.noticeFont)
+	.bogus configure -font $gc(setup.buttonFont)
 	set height [winfo reqheight .bogus]
 	destroy .bogus
 
