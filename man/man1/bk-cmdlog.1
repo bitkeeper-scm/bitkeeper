@@ -5,15 +5,8 @@ bk cmdlog \- show the log of commands executed in this repository
 .SH SYNOPSIS
 .B bk cmdlog
 .[B] \-a
-.[OPTreq] \-c cutoff
-[
 .[B] \-v
-\ |\ 
-.[B] \-\-user
-.[B] \-\-date
-.[B] \-\-exit
-.[B] \-\-version
-]
+.[OPTreq] \-c cutoff
 [pattern]
 .SH DESCRIPTION
 List the history of repository level commands run in repository of
@@ -38,20 +31,11 @@ List commands which happened during the date range specified by
 .ARG cutoff .
 .tp
 .B \-v
-List commands in legacy format (verbose).  Implies \-\-user, \-\-date,
-\-\-exit and \-\-version options.
-.tp
-.B \-\-user
-List user name.
-.tp
-.B \-\-date
-List (localized) timestamp.
-.tp
-.B \-\-exit
-List exit codes.
-.tp
-.B \-\-version
-List \*(BK version.
+Each line of output is
+prefixed with userid, timestamp and BK version.  Combined with
+the
+.B \-a
+option, everything is listed, including commands run by BK itself.
 .tp
 .B pattern
 Limit the output to lines matching (regexp) pattern.
@@ -67,22 +51,12 @@ contains all repository level commands ever run in that repository.
 .B cmd_log
 contains recent commands run in that repository.
 .PP
-The
-.B \-a
-option toggles two additional behaviors.  In the absence of the
-.BR \-a ,
-the optional
-.ARG pattern
-argument is auto-anchored (has a '^' prepended) and the \*(BK commands
-that were spawned as subprocesses of user commands are suppressed.  In
-other words, only user commands are listed.
-.PP
-Commands are logged at the time they start and at
-the time they finish.  By default, the output is limited to
+In the cmd_log file, commands are logged at the time they start and at
+the time they finish.  By default, cmdlog output is limited to
 the latter.
-With the
-.B \-v
-option, both the start and finish of commands is listed (as well
+Using the
+.B \-av
+options, both the start and finish of commands is listed (as well
 as other events such as trigger launches).
 .SH "SEE ALSO"
 .SA range

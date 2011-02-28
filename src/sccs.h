@@ -1412,6 +1412,7 @@ extern	char	*bk_build_dir;
 extern	int	test_release;
 extern	char	*prog;
 extern	char	*title;
+extern	char	*log_versions;
 
 #define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)
 #define	changesetKey(k) (strstr(k, "|ChangeSet|") != (char*)0)
@@ -1422,7 +1423,7 @@ extern	char	*title;
 #define	CMD_BYTES		0x00000001	/* log command byte count */
 #define	CMD_WRLOCK		0x00000002	/* write lock */
 #define	CMD_RDLOCK		0x00000004	/* read lock */
-#define	CMD_REPOLOG		0x00000008	/* log in repolog, all below */
+#define	CMD_REPOLOG		0x00000008	/* log in repolog */
 #define	CMD_QUIT		0x00000010	/* mark quit command */
 #define	CMD_NOREPO		0x00000020	/* don't assume in repo */
 #define	CMD_NESTED_WRLOCK	0x00000040	/* nested write lock */
@@ -1433,5 +1434,7 @@ extern	char	*title;
 #define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
 #define	CMD_RDUNLOCK		0x00001000	/* unlock a previous READ */
 #define	CMD_BKD_CMD		0x00002000	/* command comes from bkd.c */
+
+#define	LOGVER			0		/* dflt idx into log_versions */
 
 #endif	/* _SCCS_H_ */

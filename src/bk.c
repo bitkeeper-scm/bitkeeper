@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include "range.h"
 #include "bkd.h"
 #include "cmd.h"
 #include "logging.h"
@@ -24,7 +23,7 @@ char	*start_cwd;		/* if -R or -P, where did I start? */
 unsigned int turnTransOff;	/* for transactions, see nested.h */
 
 private	char	*buffer = 0;	/* copy of stdin */
-private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
+char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
 private	int	indent_level;
 
@@ -32,6 +31,7 @@ private	void	bk_atexit(void);
 private	void	bk_cleanup(int ret);
 private	char	cmdlog_buffer[MAXPATH*4];
 private	int	cmdlog_flags;
+private	int	cmdlog_repolog;	/* if true log to repo_log in addition */
 private	int	cmdlog_locks;
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private	void	showproc_start(char **av);
@@ -838,48 +838,50 @@ bk_cleanup(int ret)
 }
 
 /*
- * If a command is listed below, then it will be logged in
- * BitKeeper/log/repo_log, in addition to the cmd_log.
- * Also optional flags for commands can be specified.
+ * Special flags for various BK commands.  See sccs.h for definitions.
  */
 private	struct {
 	char	*name;
 	int	flags;
-} repolog[] = {
-	{"abort", CMD_COMPAT_NOSI},
-	{"attach", 0},
+} cmdtab[] = {
+	{"abort", CMD_REPOLOG|CMD_COMPAT_NOSI},
+	{"attach", CMD_REPOLOG},
 	{"bk", CMD_COMPAT_NOSI}, /* bk-remote */
 	{"check", CMD_COMPAT_NOSI},
-	{"clone", 0},		/* locking handled in clone.c */
-	{"collapse", 0},
-	{"commit", 0},
-	{"fix", 0},
+	{"clone", CMD_REPOLOG},		/* locking handled in clone.c */
+	{"collapse", CMD_REPOLOG},
+	{"commit", CMD_REPOLOG},
+	{"fix", CMD_REPOLOG},
 	{"get", CMD_COMPAT_NOSI},
 	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},
 	{"license", CMD_NOREPO},
-	{"pull", CMD_BYTES},
-	{"push", CMD_BYTES},
+	{"pull", CMD_REPOLOG|CMD_BYTES},
+	{"push", CMD_REPOLOG|CMD_BYTES},
 	{"remote abort",
-	     CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
-	{"remote changes part1", CMD_RDLOCK},
-	{"remote changes part2", CMD_RDUNLOCK},
-	{"remote clone", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
-	{"remote pull part1", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
-	{"remote pull part2", CMD_BYTES|CMD_RDLOCK},
-	{"remote push part1", CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK},
-	{"remote push part2", CMD_BYTES|CMD_WRLOCK},
-	{"remote push part3", CMD_BYTES|CMD_WRLOCK},
-	{"remote rclone part1", CMD_NOREPO|CMD_BYTES},
-	{"remote rclone part2", CMD_NOREPO|CMD_BYTES},
-	{"remote rclone part3", CMD_NOREPO|CMD_BYTES},
+	     CMD_REPOLOG|CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|
+	     CMD_IGNORE_RESYNC},
+	{"remote changes part1", CMD_REPOLOG|CMD_RDLOCK},
+	{"remote changes part2", CMD_REPOLOG|CMD_RDUNLOCK},
+	{"remote clone", CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
+	{"remote pull part1",
+	     CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
+	{"remote pull part2", CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK},
+	{"remote push part1",
+	     CMD_REPOLOG|CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK},
+	{"remote push part2", CMD_REPOLOG|CMD_BYTES|CMD_WRLOCK},
+	{"remote push part3", CMD_REPOLOG|CMD_BYTES|CMD_WRLOCK},
+	{"remote rclone part1", CMD_REPOLOG|CMD_NOREPO|CMD_BYTES},
+	{"remote rclone part2", CMD_REPOLOG|CMD_NOREPO|CMD_BYTES},
+	{"remote rclone part3", CMD_REPOLOG|CMD_NOREPO|CMD_BYTES},
 	{"remote quit", CMD_NOREPO|CMD_QUIT},
 	{"remote rdlock", CMD_RDLOCK},
 	{"remote nested", CMD_SAMELOCK},
 	{"remote wrlock", CMD_WRLOCK},
-	{"resolve", 0},
+	{"resolve", CMD_REPOLOG},
 	{"synckeys", CMD_RDLOCK},
 	{"tagmerge", CMD_WRLOCK|CMD_NESTED_WRLOCK},
-	{"undo", 0},
+	{"undo", CMD_REPOLOG},
+	{"unpull", CMD_REPOLOG},
 	{ 0, 0 },
 };
 
@@ -891,12 +893,22 @@ cmdlog_start(char **av, int bkd_cmd)
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
-	for (i = 0; repolog[i].name; i++) {
-		if (strieq(repolog[i].name, av[0])) {
-			cmdlog_flags = repolog[i].flags;
-			cmdlog_flags |= CMD_REPOLOG;
-			break;
+	cmdlog_repolog = 0;
+	for (i = 0; cmdtab[i].name; i++) {
+		unless (strieq(cmdtab[i].name, av[0])) continue;
+
+		cmdlog_flags = cmdtab[i].flags;
+		/*
+		 * set the cmd_repolog flag when it's defined in the
+		 * table above, an actual user command (indent_level
+		 * == 0) or when it's a remote command (indent_level
+		 * will be > 0 because it is spawned by a bkd)
+		 */
+		if ((cmdlog_flags & CMD_REPOLOG) &&
+		    ((indent_level == 0) || strneq(av[0], "remote ", 7))) {
+			cmdlog_repolog = 1;
 		}
+		break;
 	}
 	if (cmdlog_flags && proj_root(0)) {
 		/*
@@ -1290,7 +1302,7 @@ cmdlog_end(int ret, int bkd_cmd)
 	notes = 0;
 	/* only rotate logs on command boundries */
 	write_log("cmd_log", (indent_level == 0), "%s", log);
-	if (cmdlog_flags & CMD_REPOLOG) {
+	if (cmdlog_repolog) {
 		/*
 		 * commands in the repolog table above get written
 		 * to the repo_log in addition to the cmd_log and
@@ -1322,178 +1334,6 @@ out:
 	cmdlog_flags = 0;
 	assert(indent_level >= 0);
 	return (rc);
-}
-
-int
-cmdlog_main(int ac, char **av)
-{
-	FILE	*f;
-	time_t	t;
-	char	*p, *p1, *equals;
-	char	*version;
-	char	*user;
-	char	buf[MAXPATH*3];
-	int	yelled = 0, c, ind;
-	struct	{
-		int	all:1;
-		int	user:1;
-		int	date:1;
-		int	exit:1;
-		int	version:1;
-		int	verbose:1;
-		time_t	cutoff;
-		char	*pattern;
-		search	search;
-	} opts;
-	longopt lopts[] = {
-		{ "user", 300 },
-		{ "date", 301 },
-		{ "exit", 302 },
-		{ "version", 303 },
-		{ 0, 0 },
-	};
-
-	unless (proj_root(0)) return (1);
-	memset(&opts, 0, sizeof(opts));
-	while ((c = getopt(ac, av, "ac;v", lopts)) != -1) {
-		switch (c) {
-		    case 'a': opts.all = 1; break;
-		    case 'c':
-			opts.cutoff = range_cutoff(optarg + 1);
-			break;
-		    case 'v':
-			opts.verbose = 1;
-			break;
-		    case 300:	// --user
-			opts.user = 1; break;
-		    case 301:	// --date
-			opts.date = 1; break;
-		    case 302:	// --exit
-			opts.exit = 1; break;
-		    case 303:	// --version
-			opts.version = 1; break;
-		    default: bk_badArg(c, av);
-		}
-	}
-	if (opts.verbose &&
-	    (opts.user || opts.date || opts.exit || opts.version)) {
-		fprintf(stderr,
-		    "%s: -v with --user, --date, --exit or --version"
-		    " is redundant\n", prog);
-		usage();
-		return (1);
-	}
-	if (opts.verbose) {
-		opts.user = opts.date = opts.exit = opts.version = 1;
-	}
-	if (av[optind]) {
-		if (av[optind][0] != '^' && !opts.all) {
-			opts.pattern = aprintf("^%s/", av[optind]);
-		} else {
-			opts.pattern = aprintf("%s/", av[optind]);
-		}
-		opts.search = search_parse(opts.pattern);
-	}
-	concat_path(buf, proj_root(0), "/BitKeeper/log/");
-	concat_path(buf, buf, (opts.all ? "cmd_log" : "repo_log"));
-	f = fopen(buf, "r");
-	unless (f) return (1);
-	while (fgets(buf, sizeof(buf), f)) {
-		user = buf;
-		for (p = log_versions; *p; ++p) {
-			if (*p == buf[0]) {
-				if ((p-log_versions) > LOGVER) {
-					if (yelled) goto nextline;
-					printf("cannot display this "
-					       "log entry; please upgrade\n");
-					yelled = 1;
-					goto nextline;
-				}
-				user = buf+1;
-				break;
-			}
-		}
-
-		for (p = user; (*p != ' ') && (*p != '@'); p++);
-		*p++ = 0;
-		t = strtoul(p, &version, 0);
-		while (isspace(*version)) ++version;
-		if (*version == ':') {
-			p = version;
-			*p = 0;
-			version = 0;
-		} else {
-			char *q;
-
-			unless (p = strchr(p, ':')) continue;
-			*p = 0;
-
-			unless (isalnum(*version)) {
-				version = 0;
-			} else  {
-				for (q = 1+version; *q; ++q) {
-					if ( (*q & 0x80) || (*q < ' ') ) {
-						version = 0;
-						break;
-					}
-				}
-			}
-		}
-		unless (t >= opts.cutoff) continue;
-		p+=2; // skip colon and extra space inserted by log indenting
-		chomp(p);
-		/* find indent, if any */
-		for (p1 = p; isspace(*p1); p1++);
-		ind = p1 - p;
-		/* figure out if we get to skip this entry */
-		if (opts.pattern) {
-			unless (search_either(p, opts.search)) continue;
-			/*
-			 * if somebody is looking for foo, then
-			 * they'll also match the "bk cmdlog foo" so
-			 * don't print ourselves, unless we are
-			 * actually looking for cmdlog entries
-			 */
-			unless (strneq(opts.pattern, "cmdlog", 6) ||
-			    strneq(opts.pattern, "^cmdlog", 7)) {
-				if (strneq(p, "cmdlog ", 7)) continue;
-			}
-		}
-		if (!opts.all && isspace(*p)) continue;
-
-		if (opts.user) printf("%s ", user);
-		if (opts.date) printf("%.19s ", ctime(&t));
-		if (opts.version) printf("%14s ", version ? version : "");
-		if (opts.verbose) {
-			printf("%s\n", p);
-		} else {
-			equals = strchr(p, '=');
-			unless (equals) continue;
-			if (equals) *equals = 0;
-			if (ind) {
-				printf("%*sbk %s", ind, " ", p1);
-			} else {
-				printf("bk %s", p);
-			}
-			if (equals) {
-				if (opts.exit) {
-					*equals = '=';
-					if ((p = strchr(equals + 2, ' '))) {
-						*p = 0;
-					} 
-				} else {
-					*equals = 0;
-				}
-				printf("%s", equals);
-			}
-			printf("\n");
-		}
-
-nextline:	;
-	}
-	fclose(f);
-	if (opts.pattern) free(opts.pattern);
-	return (0);
 }
 
 int

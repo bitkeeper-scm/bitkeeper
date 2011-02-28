@@ -135,6 +135,7 @@ OBJ =	bkver.o cmd.o \
 	bkusers.o \
 	cat.o cfile.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
+	cmdlog.o \
 	collapse.o comment.o comments.o commit.o comps.o compress.o \
 	contrib/cat.o \
 	contrib/test.o \

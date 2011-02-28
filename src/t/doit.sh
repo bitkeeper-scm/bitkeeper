@@ -258,6 +258,9 @@ setup_env()
 	esac
 	check_enclosing_repo
 
+	# clear callstack so bk can call doit and still pass
+	_BK_CALLSTACK=
+
 	BK_USER=bk
 	export BK_USER
 	BK_HOST=bk_regression.bk
