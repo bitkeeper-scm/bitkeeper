@@ -1,13 +1,66 @@
 ============================================================================
-Release notes for BitKeeper version 5.2 (released dd-MMM-2011)
+Release notes for BitKeeper version 5.2 (released 01-Mar-2011)
 
-The cmdlog command has changed.
-    If you have scripts depending on the previous behaviour, you can
+This is a feature release mainly focusing on extending the nested
+repository functionality and some GUI polish.   
+
+New features:
+ GUI tools
+    Now default to using xft on X11 based systems which means you get
+    True Type fonts by default.
+
+    Other encodings, such as UTF-8, should display correctly so long as
+    your system encoding and the file encoding match.  If you are on a
+    system that uses a different encoding, but your data is all UTF-8,
+    you can do this in `bk dotbk`/config-gui:
+
+	encoding system utf-8
+
+    You can get a list of the supported encodings by running
+
+    	echo "puts [encoding names]" | bk tclsh
+
+    All GUI tools will change font size a la Firefox, Control-plus
+    (also Control-equal) makes them bigger, Control-minus makes them
+    smaller, Control-zero restores the defaults.  Command-<whatever>
+    on the Mac.
+
+    We tried to make resizing better with little size popups that show
+    the XxY text size in the upper left corner of each text widget;
+    feedback welcome.
+
+    bk helptool has more standard scrollbars on the right, see
+    bk help config-gui to change this.
+
+ dspec behavior
+    All commands that take DSPECs on the command line with the -d
+    option have changed.  A new --dspecf=FILE option allows the dspecs
+    to be read from a file. 
+    These commands are: changes, prs, log, sccslog & repogca.
+
+    In bk-5.0, an extended dspec format was automatically selected if
+    a dspec contained multiple lines.  This extended form must now
+    be explicitly selected with a '# dspec-v2' header.
+    The extended dspec format will be documented in a future release;
+    examples may be found in `bk bin`/dspec-*
+
+ clone
+    Add new --checkout=none|get|edit option to override the default
+    checkout options for a given clone.
+
+ cmdlog
+    The formatting of the BitKeeper/log/cmd_log file has changed
+    to include more information and show which commands where run
+    directly and which were run by BitKeeper.
+
+    The 'bk cmdlog' command has been extended to have new features
+    for sorting and selecting output.
+
+    If you have scripts depending on the previous behavior, you can
     simply add -v.  Without the -v, you will just get the commands.
 
     The new cmdlog takes an optional pattern argument, allowing
     forms like:
-
       bk cmdlog pull
 
     which will list all the pull commands run.
@@ -17,6 +70,69 @@ The cmdlog command has changed.
     cmdlog may need to adjust.
 
     See 'bk help cmdlog' for more information.
+
+ level
+    Add 'bk level -l' to just print the level to make it easier for
+    scripts.
+
+ pull
+    In nested, bk-5.1 would complain on the pull from a non-gate if
+    the remote repository has components populated that are not
+    populated locally.  The reasoning is to prevent loss of data where
+    people think a repository can be deleted after it is pulled into
+    an integration tree.  This check got to be a pain in practice.
+
+    With this release the code will look to see of the missing
+    components can be located in other gates that are accessible and
+    if found the pull will be allowed.  This allows pull to work
+    in more cases.
+
+ resolve/pull
+    In nested it is again possible to quit out of a resolve and
+    restart it again later.  In bk-5.0 a nested pull was all or
+    nothing, but now we allow components to be resolved separately or
+    later, like is possible with standalone repositories.
+
+    Both the resolve and abort commands now run on the entire
+    repository by default like the other nested commands.
+
+ rset
+    The rset command is now defaults to using md5keys instead of revs
+    in the output format.  Since md5keys can be used anywhere revs are
+    accepted most scripts will not notice the difference.  As a result
+    of this change, rset is now an order of magnitude faster.
+
+    Several subtle bugs in the rset output related to nested were also
+    fixed at the same time.
+
+ triggers
+    Fixed some consistency problems with how bk commands handle
+    triggers that generate output.  The rule is that any output for a
+    failing trigger is displayed and for passing triggers output will
+    be suppressed if -q is passed to the bk command and displayed
+    otherwise.
+    (before several triggers required -v before output was shown)
+
+    Note: bkd-side post triggers will never send output over the bkd
+    connection to the client side.  (We may add this back-channel in
+    the future.)
+
+ unpopulate
+    The code to unpopulate a component now requires that it be found
+    in a gate before removing.  This is consistent with the pull
+    changes related to gates.
+
+Bugfixes:
+  - Fixed problems related to attaching and detaching components that
+    contained BAM data from a nested repository.
+  - Fixed a case where giving old SCCS options to 'bk admin' could
+    mangle a SCCS file.
+  - The http_proxy env is a bit more tolerant of bad data
+  - Fixed some races where a repocheck would interfere with a clone
+    and with another read-only operation that is happening in parallel.
+  - Several display issues related to progress bars have been addressed.
+  - 'bk root' didn't work correctly in a standalone repository that
+    happened to be below a nested repository in the filesystem.
 
 ============================================================================
 Release notes for BitKeeper version 5.1.1 (released 16-Feb-2011)
@@ -67,7 +183,7 @@ Nested interface changes:
 
 clone
     - Add new -@baseline option.
-      This used to be the undocuemented 'bk clonemod' command.
+      This used to be the undocumented 'bk clonemod' command.
       When doing a network clone over a slow connection, it can be made
       much faster by tell clone about a local baseline that already contains
       the majority of the data.  Then the local copy will be used and
@@ -79,7 +195,7 @@ clone
       This is used to exactly recreate old repositories.
 
 ignore
-    - The 'bk ignore' command with no arguements lists the current
+    - The 'bk ignore' command with no arguments lists the current
       BitKeeper/etc/ignore file.  It now mentions the contents of
       $HOME/.bk/ignore if the current use have ignore patterns there
       as well.

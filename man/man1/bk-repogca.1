@@ -18,11 +18,16 @@ By default,
 .C \`bk parent\`
 is the remote repository. 
 .SH OPTIONS
-.TP \-d\*<spec\*>
+.TP \fB\-\-dspecf\=\fP\*<file\*>
 .OPTreq \-d spec
 Use
 .ARG spec
 as the specification for displaying the revision.
+.tp
+.OPTreq \-\-dspecf\= file
+Like
+.B \-d
+but read the dspec from a file.
 .tp
 .B \-5
 A short hand for asking for a spec of \*(lq:MD5KEY:\*(rq.
