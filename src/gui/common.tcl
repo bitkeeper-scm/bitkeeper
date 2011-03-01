@@ -904,8 +904,8 @@ proc displayTextSize {top w h x y} \
 
 		set label $text.__size
 		if {![winfo exists $label]} {
-			label $text.__size -highlightthickness 2 \
-			    -background #FFFFFF -highlightbackground #000000
+			label $text.__size -relief solid \
+			    -borderwidth 1 -background #FEFFE6
 		}
 		place $label -x 0 -y 0
 		$label configure -text "${cwidth}x${cheight}"
@@ -956,7 +956,8 @@ proc configureTextWidgets {} \
 	set ::textWidgets($top,x) 0
 	set ::textWidgets($top,y) 0
 
-	bind Toplevel <Configure> {
+	bind Toplevel <Map> {
+		bind Toplevel <Map> {}
 		bind Toplevel <Configure> "displayTextSize %%W %%w %%h %%x %%y"
 	}
 }
