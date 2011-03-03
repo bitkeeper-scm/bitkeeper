@@ -488,7 +488,9 @@ send_clone_msg(remote *r, char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	if (send_file(r, buf, 0)) goto err;
+	if (send_file(r, buf, 7)) goto err;
+	writen(r->wfd, "badcmd\n", 7);
+	send_file_extra_done(r);
 	rc = 0;
 err:
 	unlink(buf);
@@ -735,6 +737,9 @@ clone(char **av, remote *r, char *local, char **envVar)
 		    "need to update the bkd first.\n");
 		do_part2 = 0;
 	}
+
+	/* get badcmd message, which means bkd post-outgoing is done */
+	getline2(r, buf, sizeof (buf));
 	if ((r->type == ADDR_HTTP) || (!do_part2 && !opts->product)) {
 		disconnect(r);
 	}
