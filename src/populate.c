@@ -201,8 +201,9 @@ nested_populate(nested *n, popts *ops)
 	 * Now after we sucessfully cloned all new components we can
 	 * remove the ones to be deleted.
 	 */
-	reverseLines(n->comps);	/* deeply nested first */
-	EACH_STRUCT(n->comps, cp, j) {
+	/* deeply nested first */
+	for (j = nLines(n->comps); j > 0; j--) {
+		cp = (comp *)n->comps[j];
 		if (cp->present && !cp->alias) {
 			verbose((stderr, "%s: removing ./%s...",
 				prog, cp->path));
@@ -218,7 +219,6 @@ nested_populate(nested *n, popts *ops)
 			cp->present = 0;
 		}
 	}
-	reverseLines(n->comps);	/* restore order */
 	if (rc) goto out;
 
 	EACH_STRUCT(n->comps, cp, i) {
@@ -296,6 +296,7 @@ unpopulate_check(popts *ops, comp *c)
 			av = addLine(av, "--standalone");
 			av = addLine(av, "-LD");
 			av = catLines(av, flist);
+			freeLines(flist, 0);
 			fprintf(stderr, "Local changes to ./%s found:\n",
 			    c->path);
 			av = addLine(av, 0);

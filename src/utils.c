@@ -1884,7 +1884,7 @@ bk_searchFile(char *base)
 int
 bk_urlArg(char ***urls, char *arg)
 {
-	char	**list;
+	char	**list = 0;
 
 	if (arg && (arg[0] == '@')) {
 		unless (list = file2Lines(0, arg+1)) {
@@ -1903,6 +1903,7 @@ bk_urlArg(char ***urls, char *arg)
 		}
 		*urls = catLines(*urls, list);
 	}
+	if (list) freeLines(list, free);
 	return (0);
 }
 

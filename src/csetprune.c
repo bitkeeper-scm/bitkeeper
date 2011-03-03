@@ -294,6 +294,7 @@ csetprune(Opts *opts)
 		goto err;
 	}
 	cweave = catLines(cweave, opts->addweave);
+	freeLines(opts->addweave, free);
 	opts->addweave = 0;
 
 	/* possibly inject new files into the weave, so do before sort */

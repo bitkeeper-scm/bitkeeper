@@ -35,7 +35,8 @@ comps_main(int ac, char **av)
 		unless (citool) aliases = addLine(aliases, "^PRODUCT");
 	}
 	nav = addLine(nav, "-e");
-	nav = catLines(nav, aliases);	/* frees aliases */
+	nav = catLines(nav, aliases);
+	freeLines(aliases, 0);
 	aliases = 0;
 	nav = addLine(nav, 0);
 

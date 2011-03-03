@@ -1323,36 +1323,43 @@ char *
 nested_errmsg(void)
 {
 	static	char	*msg;
+	int	i;
 	char	*lines;
-	char	**lockers;
+	char	**lockers = 0, **plockers = 0;
 
 	assert(errMsgs[nl_errno]);
 	if (msg) free(msg);
 	lockers = nested_lockers(0, 1, 0);
-	msg = aprintf("%s\n%s\n",
-	    errMsgs[nl_errno],
-	    ((lines = joinLines("\n",
-		    mapLines(lockers, (void*)prettyNlock, freeNlock)))
-		? lines : "No lockers found"));
+	EACH(lockers) {
+		plockers = addLine(plockers, prettyNlock((nlock *)lockers[i]));
+	}
+	freeLines(lockers, freeNlock);
+	lines = joinLines("\n", plockers);
+	msg = aprintf("%s\n%s\n", errMsgs[nl_errno],
+	    lines ? lines : "No lockers found");
+	free(lines);
 	/*
 	 * It's free and not freeNlock here because the mapLines
 	 * changes the items to strings.
 	 */
-	freeLines(lockers, free);
+	freeLines(plockers, free);
 	return (msg);
 }
 
 void
 nested_printLockers(project *p, FILE *out)
 {
-	char	**lockers;
+	char	**lockers = 0, **plockers = 0;
 	int	i;
 
-	lockers = mapLines(nested_lockers(p, 1, 0),
-	    (void*)prettyNlock, freeNlock);
-	repository_lockers(p);
-	EACH (lockers) {
-		fprintf(out, "%s\n", lockers[i]);
+	lockers = nested_lockers(p, 1, 0);
+	EACH(lockers) {
+		plockers = addLine(plockers, prettyNlock((nlock *)lockers[i]));
 	}
-	freeLines(lockers, free);
+	freeLines(lockers, freeNlock);
+	repository_lockers(p);
+	EACH (plockers) {
+		fprintf(out, "%s\n", plockers[i]);
+	}
+	freeLines(plockers, free);
 }

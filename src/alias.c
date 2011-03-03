@@ -1143,7 +1143,8 @@ keys:
 		}
 		errors++;
 	}
-	aliases = catLines(aliases, addkeys);	/* frees addkeys */
+	aliases = catLines(aliases, addkeys);
+	freeLines(addkeys, free);
 	*paliases = aliases;
 	return (errors);
 }

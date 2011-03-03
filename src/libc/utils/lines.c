@@ -11,106 +11,153 @@
 #endif
 
 /* length of array (use nLines() in code) */
-#define	LLEN(s)				(p2uint(s[0]) & LMASK)
-#define	setLLEN(s, len)	(s[0] = uint2p((p2uint(s[0]) & ~LMASK) | len))
+#define	LLEN(s)				(*(u32 *)(s) & LMASK)
+#define	setLLEN(s, len)	(*(u32 *)(s) = (*(u32 *)(s) & ~LMASK) | len)
 
 /* size of array (saves LSIZ-1 items) */
-#define	LSIZ(s)				(1u << (p2uint(s[0]) >> LBITS))
+#define	LSIZ(s)				(1u << (*(u32 *)(s) >> LBITS))
+
 /*
- * pre allocate line space.
- * room for n-1 lines
+ * add 'add' more elements to an array, resizing as needed
+ * internal version that doesn't clear memory
  */
-char	**
-allocLines(int n)
+private void	*
+_growArray_int(void *space, int add, int elemsize)
 {
-	char	**space;
-	u32	sz = 2;
-	u32	c = 1;
+	u32	size, len;	/* len and size of array */
+	int	c;
+	void	*tmp;
 
-	assert(n > 1);
-	/* round up two the next power of 2 */
-	while (sz < n) {
-		sz <<= 1;
-		c++;
+	if (space) {
+		len = LLEN(space) + add;
+		c = (*(u32 *)space >> LBITS);
+		size = 1u << c;
+
+		assert(size > 0);	 /* size==0 is read-only array */
+	} else {
+		assert(elemsize >= sizeof(u32));
+		len = add;
+		c = (elemsize > 128) ? 2 : 3; /* min alloc size */
+		size = 1u << c;
+		goto alloc;
 	}
-	space = malloc(sz * sizeof(char *));
-	assert(space);
-	space[0] = uint2p(c << LBITS);
-
+	if (len >= size) {	/* full up, dude */
+alloc:		while (len >= size) {
+			size *= 2;
+			++c;
+		}
+		tmp = malloc(size * elemsize);
+		assert(tmp);
+		if (space) {
+			memcpy((u8 *)tmp + elemsize,
+			    (u8 *)space + elemsize,
+			    (len - add) * elemsize);
+			free(space);
+		}
+		space = tmp;
+	}
+	*(u32 *)space = (c << LBITS) | len;
 	return (space);
 }
 
 /*
- * Save a line in an array.  If the array is out of space, reallocate it.
- * The size of the array is in array[0].
- * This is OK on 64 bit platforms.
- *
- * addLine(space, 0) will make sure that the array has a null at the end.
+ * add 'add' more elements to an array, resizing as needed
+ * new elements are set to zero
+ * returns: a pointer to the new elements
+ */
+void	*
+_growArray(void **space, int add, int size)
+{
+	void	*ret;
+
+	*space = _growArray_int(*space, add, size);
+	ret = (u8 *)space + (LLEN(space)-add+1)*size;
+	memset(ret, 0, add * size);
+	return (ret);
+}
+
+/*
+ * Return a new array of length 0 with space for n lines.
+ */
+char	**
+allocLines(int	n)
+{
+	char	**space = _growArray_int(0, n, sizeof(char *));
+
+	setLLEN(space, 0);
+	return (space);
+}
+
+/*
+ * Add a char* to the end of an array, if line==0 then the array is
+ * zero terminated, but the length doesn't actually change.
  */
 char	**
 addLine(char **space, void *line)
 {
-	u32	size, len;	/* len and size of array */
+	int	len;
 
-	if (space) {
-		len = LLEN(space);
-		size = LSIZ(space);
-
-		assert(size > 0);	 /* size==0 is read-only array */
-		if ((len + 1) == size) {	/* full up, dude */
-			char	**tmp = allocLines(2*size);
-
-			assert(tmp);
-			memcpy(&tmp[1], &space[1], len * sizeof(char*));
-			free(space);
-			space = tmp;
-		}
-	} else {
-		space = allocLines(8);
-		len = 0;
-	}
-	space[len+1] = line;
-	if (line) len++;	/* adding 0 doesn't grow array */
-	assert(len <= LMASK);
-	setLLEN(space, len);
+	space = _growArray_int(space, 1, sizeof(char *));
+	len = nLines(space);
+	space[len] = line;
+	unless (line) setLLEN(space, len-1);
 	return (space);
 }
 
 /*
- * set the length of a lines array to a new value.
+ * Adds 1 new element to array and copies 'x' into, if
+ * x==0 then the new item is cleared.
+ * returns a pointer to the new item.
+ */
+void   *
+_addArray(void **space, void *x, int size)
+{
+	void	*ret;
+	int	len;
+
+	*space = _growArray_int(*space, 1, size);
+	len = nLines(*space);
+	ret = (u8 *)(*space) + len * size;
+	if (x) {
+		memcpy(ret, x, size);
+	} else {
+		memset(ret, 0, size);
+	}
+	return (ret);
+}
+
+/*
+ * set the length of a lines array to a new (smaller) value.
  */
 void
-truncLines(char **space, int len)
+truncArray(void *space, int len)
 {
-	assert(space);
-	assert(len <= LSIZ(space)); /* no growing the array at the moment */
-	setLLEN(space, len);
+	if (space) {
+		/* no growing the array at the moment */
+		assert(len <= LLEN(space));
+		setLLEN(space, len);
+	} else {
+		assert(len == 0);
+	}
 }
 
 /*
- * copy array to the end of space and then free array
+ * copy array to the end of space and then zero array
  */
-char **
-catLines(char **space, char **array)
+void	*
+_catArray(void **space, void *array, int size)
 {
 	int	n1, n2;
-	char	**new;
+	void	*ret = 0;
 
-	unless (space) return (array); /* simple case */
-
-	n2 = nLines(array);
-	n1 = nLines(space);
-
-	if (n1+n2 >= LSIZ(space)) {
-		new = allocLines(n1+n2+1);
-		memcpy(&new[1], &space[1], n1*sizeof(void *));
-		free(space);
-		space = new;
+	if (n2 = nLines(array)) {
+		n1 = nLines(*space);
+		*space = _growArray_int(*space, n2, size);
+		ret = (u8 *)*space+(n1+1)*size;
+		memcpy(ret, (u8 *)array+size, n2*size);
+		setLLEN(array, 0);
 	}
-	memcpy(&space[n1+1], &array[1], n2*sizeof(void *));
-	free(array);
-	setLLEN(space, n1+n2);
-	return (space);
+	return (ret);
 }
 
 void
@@ -130,18 +177,12 @@ reverseLines(char **space)
 	}
 }
 
-char **
-mapLines(char **space, void *(*fn)(void *), void(*freep)(void *ptr))
+void
+_sortArray(void *space, int (*compar)(const void *, const void *), int size)
 {
-	int	i;
-	char	*tmp;
-
-	EACH(space) {
-		tmp = space[i];
-		space[i] = (char *)fn(space[i]);
-		if (freep) freep(tmp);
-	}
-	return (space);
+	if (!space) return;
+	unless (compar) compar = string_sort;
+	qsort((u8 *)space+size, nLines(space), size, compar);
 }
 
 /*
@@ -178,14 +219,6 @@ number_sort(const void *a, const void *b)
 	r = atoi(*(char**)b);
 	if (l - r) return (l - r);
 	return (string_sort(a, b));
-}
-
-void
-sortLines(char **space, int (*compar)(const void *, const void *))
-{
-	if (!space) return;
-	unless (compar) compar = string_sort;
-	qsort((void*)&space[1], nLines(space), sizeof(char*), compar);
 }
 
 void
@@ -268,60 +301,65 @@ removeLine(char **space, char *s, void(*freep)(void *ptr))
 	return (n);
 }
 
-void
-removeLineN(char **space, int rm, void(*freep)(void *ptr))
-{
-	int	i;
-
-	assert(rm <= LLEN(space));
-	assert(rm > 0);
-	if (freep) freep(space[rm]);
-	EACH_START(rm+1, space, i) {
-		space[i-1] = space[i];
-	}
-	truncLines(space, i-2);
-}
-
-void	*
-popLine(char **space)
-{
-	int	i;
-
-	i = nLines(space);
-	unless (i > 0) return (0);
-	truncLines(space, i-1);
-	return (space[i]);
-}
-
 /*
- * Add item to beginning of array moving everything over one
+ * set space[j] = line
+ * and shift everything down to make room
+ * return ptr to new item
  */
-char **
-unshiftLine(char **space, void *line)
+void	*
+_insertArrayN(void **space, int j, void *new, int size)
 {
-	int	n = nLines(space);
+	int	len;
+	void	*ret;
 
-	space = addLine(space, line); /* allocate room; done if n was 0 */
-	if (n) {
-		memmove(&space[2], &space[1], n * sizeof(void *));
-		space[1] = line;
+	len = nLines(*space) + 1;
+	assert((j > 0) && (j <= len));
+	/* alloc spot and inc line count */
+	*space = _growArray_int(*space, 1, size);
+	ret = (u8 *)*space+j*size;
+	if (j < len) memmove((u8 *)ret+size, ret, (len-j)*size);
+	if (new) {
+		memcpy(ret, new, size);
+	} else {
+		memset(ret, 0, size);
 	}
-	return (space);
+	return (ret);
+}
+
+void
+_removeArrayN(void *space, int rm, int size)
+{
+	int	len = LLEN(space);
+
+	assert(rm <= len);
+	assert(rm > 0);
+	if (rm < len) {
+		memmove((u8 *)space+rm*size,
+		    (u8 *)space+(rm+1)*size,
+		    (len - rm)*size);
+	}
+	setLLEN(space, len-1);
 }
 
 /*
- * remove the first element from the line and return it
+ * A simple wrapper for removeArray() to use for an array of pointers.
+ * If freep is passed, then we free the pointer being removed
+ * and return zero.  Otherwise we return the pointer removed
+ * from the array.
  */
 void *
-shiftLine(char **space)
+removeLineN(char **space, int rm, void(*freep)(void *ptr))
 {
-	void	*ret;
-	int	n = nLines(space);
+	char	*ret;
 
-	if (n < 1) return (0);
-	ret = space[1];
-	if (n > 1) memmove(&space[1], &space[2], (n-1)*sizeof(void *));
-	truncLines(space, n-1);
+	if (freep) {
+		freep(space[rm]);
+		ret = 0;
+	} else {
+		if ((rm < 1) || (rm > nLines(space))) return (0);
+		ret = space[rm];
+	}
+	_removeArrayN(space, rm, sizeof(void *));
 	return (ret);
 }
 
