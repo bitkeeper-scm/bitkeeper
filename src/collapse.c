@@ -440,12 +440,9 @@ do_file(char *file, char *tiprev)
 	gfile = strdup(s->gfile);
 	pfile = strdup(s->pfile);
 	d = sccs_findrev(s, "+");
-	if (tiprev) {
-		tipd = sccs_findrev(s, tiprev);
-	} else {
-		unless (tipd = parent_of_tip(s)) goto done;
-		if (streq(tipd->rev, "1.0")) tipd = 0;
-	}
+	tipd = tiprev ? sccs_findrev(s, tiprev) : parent_of_tip(s);
+	unless (tipd) goto done;
+	if (streq(tipd->rev, "1.0")) tipd = 0;
 	/* tipd is not the delta that will be the new tip */
 	if (tipd == d) {
 		rc = 0;

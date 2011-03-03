@@ -1395,6 +1395,11 @@ void	notifier_flush(void);
 int	sccs_defRootlog(sccs *cset);
 void	bk_setConfig(char *key, char *val);
 
+
+#define	RGCA_ALL	0x1000
+#define	RGCA_STANDALONE	0x2000
+int	repogca(char **urls, char *dspec, u32 flags, FILE *out);
+
 extern	char	*editor;
 extern	char	*bin;
 extern	char	*BitKeeper;

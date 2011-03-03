@@ -14,7 +14,7 @@ range_main(int ac, char **av)
 	int	c;
 	RANGE	rargs = {0};
 
-	while ((c = getopt(ac, av, "aec;qr;", 0)) != -1) {
+	while ((c = getopt(ac, av, "@|aec;qr;", 0)) != -1) {
 		switch (c) {
 		    case 'a': all++; break;
 		    case 'e': expand++; break;
@@ -24,6 +24,9 @@ range_main(int ac, char **av)
 			break;
 		    case 'r':
 			if (range_addArg(&rargs, optarg, 0)) usage();
+			break;
+		    case '@':
+			if (range_urlArg(&rargs, optarg)) usage();
 			break;
 		    default: bk_badArg(c, av);
 		}

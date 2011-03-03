@@ -6779,7 +6779,7 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 	 * GET_NOREGET (handled in setupOutput)
 	 * GET_SUM
 	 */
-#define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|GET_HEADER|\
+#define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|\
 		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS|\
 		GET_SKIPGONE|GET_SEQ|GET_COMMENTS)
 	if (flags & BAD) {

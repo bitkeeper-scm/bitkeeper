@@ -90,3 +90,11 @@ test `bk repogca -a ../b` = 1.2.1.1,1.3 || {
 	exit 1
 }
 echo OK
+
+echo $N Show diffs -@ will fail with list GCA .......................$NL
+bk -U diffs -@../b 2>ERR && fail -f ERR should fail
+cat <<EOF > WANT
+diffs: non-unique baseline revision
+EOF
+cmpfiles ERR WANT
+echo OK

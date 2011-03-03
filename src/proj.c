@@ -1463,6 +1463,7 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 			sc->mdbm = 0;
 		}
 		sccs_free(sc);
+		unless (csetm) goto ret; /* bad cset rev */
 
 		pruneCsetCache(p, basenm(mpath));	/* save newest */
 
@@ -1491,7 +1492,15 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 		mdbm_store_str(m, "REV", csetrev, MDBM_REPLACE);
 	}
 	deltakey = mdbm_fetch_str(m, rootkey);
-	if (deltakey) deltakey = strdup(deltakey);
+	if (deltakey) {
+		deltakey = strdup(deltakey);
+	} else {
+		/*
+		 * We found the cset but this rookey didn't exist
+		 * then.  Have @REV expand to 1.0 in this case.
+		 */
+		deltakey = strdup(rootkey);
+	}
 	mdbm_close(m);
  ret:
 	if (mtmp) {

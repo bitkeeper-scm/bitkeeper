@@ -284,7 +284,8 @@ changes_main(int ac, char **av)
 			if (opts.remote) rurls = parent_pullp();
 			unless (lurls || rurls) {
 				getMsg("missing_parent", 0, 0, stderr);
-				usage();
+				rc = 1;
+				goto out;
 			}
 		}
 		unless (lurls || rurls) usage();

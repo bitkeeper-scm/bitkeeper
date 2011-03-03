@@ -4,16 +4,11 @@
 int
 repogca_main(int ac, char **av)
 {
-	sccs	*s;
-	delta	*d, *p, *lastd;
-	FILE	*f;
-	int	c, i, status;
-	int	all = 0, rc = 1;
-	int	standalone = 0;
-	char	**urls, **nav;
+	int	c, i;
+	int	rc = 1;
+	char	**urls = 0;
 	char	*dspec = 0;
-	char	*begin = 0, *end = 0;
-	char	buf[MAXKEY];
+	int	flags = 0;
 	longopt	lopts[] = {
 		{ "dspecf;", 310 },
 
@@ -24,7 +19,7 @@ repogca_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "a5d;kS", lopts)) != -1) {
 		switch (c) {
-		    case 'a': all = 1; break;
+		    case 'a': flags |= RGCA_ALL; break;
 		    case 'd':
 			if (dspec) usage();
 			dspec = strdup(optarg);
@@ -37,7 +32,7 @@ repogca_main(int ac, char **av)
 			if (dspec) usage();
 			dspec = strdup(":MD5KEY:\\n");
 			break;
-		    case 'S': standalone = 1; break;
+		    case 'S': flags |= RGCA_STANDALONE; break;
 		    case 310: // --dspecf=FILE
 			if (dspec) usage();
 			unless (dspec = loadfile(optarg, 0)) {
@@ -49,25 +44,41 @@ repogca_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
-	unless (proj_root(0)) {
-		fprintf(stderr, "repogca: must be run in a repository\n");
-		exit(1);
-	}
-	if (proj_isComponent(0) && !standalone) proj_cd2product();
+	for (i = optind; av[i]; i++) urls = addLine(urls, av[i]);
+	rc = repogca(urls, dspec, flags, stdout);
+	FREE(dspec);
+	freeLines(urls, 0);
+	return (rc);
+}
+
+int
+repogca(char **urls, char *dspec, u32 flags, FILE *out)
+{
+	sccs	*s = 0;
+	delta	*d, *p, *lastd;
+	FILE	*f;
+	int	i, status;
+	int	rc = 1;
+	char	**nav;
+	char	*key;
+	char	*begin = 0, *end = 0;
+	char	buf[MAXPATH];
+
+	if (dspec) dspec = strdup(dspec);
 	nav = addLine(0, strdup("bk"));
 	nav = addLine(nav, strdup("changes"));
-	if (standalone) nav = addLine(nav, strdup("-S"));
-	nav = addLine(nav, strdup("-L"));
+	if (flags & RGCA_STANDALONE) nav = addLine(nav, strdup("-S"));
+	nav = addLine(nav, strdup("-qL"));
 	nav = addLine(nav, strdup("-end:KEY:"));
 
-	if (av[optind]) {
-		for (i = optind; av[i]; i++) {
-			unless (remote_valid(av[i])) {
-				fprintf(stderr,
-				    "repogca: invalid url %s\n", av[i]);
-				exit(1);
+	if (urls) {
+		EACH(urls) {
+			unless (remote_valid(urls[i])) {
+				verbose((stderr,
+					"%s: invalid url %s\n", prog, urls[i]));
+				goto out;
 			}
-			nav = addLine(nav, strdup(av[i]));
+			nav = addLine(nav, strdup(urls[i]));
 		}
 	} else {
 		urls = parent_pullp();
@@ -75,23 +86,31 @@ repogca_main(int ac, char **av)
 		freeLines(urls, 0);
 	}
 	nav = addLine(nav, 0);	/* null term list */
-	s = sccs_csetInit(SILENT);
+
+	unless (proj_root(0)) {
+		verbose((stderr, "%s: must be run in a repository\n", prog));
+		goto out;
+	}
+	if (proj_isComponent(0) && !(flags & RGCA_STANDALONE)) {
+		strcpy(buf, proj_root(proj_product(0)));
+	} else {
+		strcpy(buf, proj_root(0));
+	}
+	concat_path(buf, buf, CHANGESET);
+	s = sccs_init(buf, SILENT);
 	assert(s && HASGRAPH(s));
 
 	f = popenvp(nav + 1, "r");
-	freeLines(nav, free);
-	while (fnext(buf, f)) {
-		if (strneq(buf, "==== ", 5)) continue;
-		chop(buf);
-		d = sccs_findKey(s, buf);
+	while (key = fgetline(f)) {
+		d = sccs_findKey(s, key);
 		assert(d);
 		d->flags |= D_RED;
 	}
 	status = pclose(f);
 	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
-		sccs_free(s);
-		fprintf(stderr, "repogca: connection to parent failed\n");
-		return (2);
+		verbose((stderr, "%s: connection to parent failed\n", prog));
+		rc = 2;
+		goto out;
 	}
 	unless (dspec) dspec = strdup("#dv2\n:JOIN::REV:\n$end{\\n}");
 	dspec_collapse(&dspec, &begin, &end);
@@ -99,14 +118,14 @@ repogca_main(int ac, char **av)
 	for (d = s->table; d; d = NEXT(d)) {
 		if ((d->type == 'D') && !(d->flags & (D_RED|D_BLUE))) {
 			if (begin) {
-				sccs_prsdelta(s, d, 0, begin, stdout);
+				sccs_prsdelta(s, d, 0, begin, out);
 				free(begin);
 				begin = 0;
 			}
 			lastd = d;
-			sccs_prsdelta(s, d, 0, dspec, stdout);
+			sccs_prsdelta(s, d, 0, dspec, out);
 			rc = 0;
-			unless (all) break;
+			unless (flags & RGCA_ALL) break;
 			d->flags |= D_BLUE;
 		}
 		if (d->flags & D_BLUE) {
@@ -115,10 +134,11 @@ repogca_main(int ac, char **av)
 		}
 	}
 	if (end) {
-		sccs_prsdelta(s, lastd, 0, end, stdout);
+		sccs_prsdelta(s, lastd, 0, end, out);
 		free(end);
 	}
-	free(dspec);
-	sccs_free(s);
+out:	FREE(dspec);
+	freeLines(nav, free);
+	if (s) sccs_free(s);
 	return (rc);
 }
