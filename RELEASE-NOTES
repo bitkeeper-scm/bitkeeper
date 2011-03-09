@@ -133,6 +133,8 @@ Bugfixes:
   - Several display issues related to progress bars have been addressed.
   - 'bk root' didn't work correctly in a standalone repository that
     happened to be below a nested repository in the filesystem.
+  - Resolved some issues with 'bk unedit' when sharing repositories between
+    multiple users.
 
 ============================================================================
 Release notes for BitKeeper version 5.1.1 (released 16-Feb-2011)

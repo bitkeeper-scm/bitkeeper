@@ -6177,11 +6177,17 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		} else if ((flags & GET_NOREGET) && exists(s->gfile) &&
 		    (!(flags&GET_EDIT) || !(s->xflags & (X_RCS|X_SCCS)))) {
 			if ((flags & GET_EDIT) && !WRITABLE(s)) {
-				s->mode |= 0200;
-				if (chmod(s->gfile, s->mode)) {
-					perror(s->gfile);
-					return ((char*)-1);
+
+				if (chmod(s->gfile, s->mode | 0200)) {
+					/*
+					 * If chmod fails then we just
+					 * unlink the gfile and
+					 * refetch it
+					 */
+					goto doreget;
 				}
+				s->mode |= 0200;
+
 				/*
 				 * We're changing the status of the file
 				 * without touching the file, tell bkshellx
@@ -6196,7 +6202,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 			}
 			return (0);
 		}
-		f = s->gfile;
+doreget:	f = s->gfile;
 		unlinkGfile(s);
 	}
 	return (f);
@@ -9017,11 +9023,11 @@ sccs_unedit(sccs *s, u32 flags)
 			 * readonly files (look for unlink in sccs_get()),
 			 * so fix perms here if EDIT and readonly
 			 */
-			fix_gmode(s, getFlags);
+			if (fix_gmode(s, getFlags)) goto reget;
 		}
 		getFlags |= GET_SKIPGET;
 	} else {
-		unlinkGfile(s);
+reget:		unlinkGfile(s);
 		/* For make, foo.o may be more recent than s.foo.c */
 		utime(s->sfile, 0);
 	}
@@ -9030,7 +9036,13 @@ sccs_unedit(sccs *s, u32 flags)
 			return (1);
 		}
 		s = sccs_restart(s);
-		fix_gmode(s, getFlags);
+		if (fix_gmode(s, getFlags)) {
+			if (getFlags & GET_SKIPGET) {
+				getFlags &= ~GET_SKIPGET;
+				goto reget;
+			}
+			perror(s->gfile);
+		}
 	}
 	return (0);
 }
@@ -11217,9 +11229,9 @@ out:
 		ALLOC_D();
 		addMode("admin", sc, d, m);
 		if (HAS_GFILE(sc) && HAS_PFILE(sc)) {
-			chmod(sc->gfile, m);
+			if (chmod(sc->gfile, m)) perror(sc->gfile);
 		} else if (HAS_GFILE(sc)) {
-			chmod(sc->gfile, m & ~0222);
+			if (chmod(sc->gfile, m & ~0222)) perror(sc->gfile);
 		}
 		flags |= NEWCKSUM;
 	}
