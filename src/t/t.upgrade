@@ -74,6 +74,21 @@ grep -q "BitKeeper version .* is available for download." OUT || {
 }
 echo OK
 
+test x$SUFF != x && {
+echo $N Test that bk upgrade works with an expired image.............$NL
+# Test out expiration always shows version (minus the time dep items)
+bk version | grep -v "^Built on:" | grep -v "^Expires in:" > WANT
+BK_NOTTY=1 _BK_EXPIRED_TRIAL=1 \
+    bk changes -r+ | grep -v "^Built on:" | grep -v "^Expires in:" > GOT
+cmpfiles WANT GOT
+# That's good.  Now see that upgrade works.
+BK_NOTTY=1 _BK_EXPIRED_TRIAL=1 \
+    bk upgrade -cf >OUT 2>ERR || fail -f ERR should not have failed
+grep -q "BitKeeper version .* is available for download." OUT || \
+	fail -f OUT wrong output
+echo OK
+}
+
 echo $N Test upgrade where we already have the latest ...............$NL
 BK_NOTTY=1 BK_UPGRADE_FORCEMATCH=1 bk upgrade -cf >OUT 2>ERR && {
 	echo should have failed
