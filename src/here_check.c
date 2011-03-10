@@ -22,8 +22,10 @@ here_check_main(int ac, char **av)
 	char	*url;
 	char	**urls = 0;
 	char	**aliases = 0;
+	int	sort = 0;	/* mostly debug option to make output stable */
 	options	*opts;
 	longopt	lopts[] = {
+		{ "sort", 310 },
 		{ 0, 0 }
 	};
 
@@ -36,6 +38,9 @@ here_check_main(int ac, char **av)
 		    case 'c': opts->noconnect = 1; break;
 		    case 'q': opts->quiet = 1; break;
 		    case 'v': opts->verbose = 1; break;
+		    case 310: // --sort
+			sort = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -106,6 +111,7 @@ here_check_main(int ac, char **av)
 				printf("%-*s:%s",
 				    maxlen, cp->path,
 				    opts->all ? "\n" : " ");
+				if (sort) sortLines(urls, 0);
 				EACH_INDEX(urls, j) {
 					if (opts->all) putc('\t', stdout);
 					printf("%s\n", urls[j]);

@@ -1,5 +1,7 @@
 set -e
 
+URLINFO="`bk dotbk`"/urlinfo/`bk gethost -r`
+
 echo $N Setup .......................................................$NL
 cd "$HERE"
 nested product
@@ -54,7 +56,7 @@ cat <<EOF >WANT
 ./gdb
 EOF
 cmpfiles GOT WANT
-bk here check -a ALL > OUT
+bk here check -a --sort ALL > OUT
 cat <<EOF > WANT
 gcc:
 	$HERE/clone1
@@ -245,7 +247,7 @@ cat <<EOF >WANT
 ./gcc
 EOF
 cmpfiles GOT WANT
-bk here check -a ALL > OUT
+bk here check --sort -a ALL > OUT
 cat <<EOF > WANT
 gcc:
 	$HERE/clone1
@@ -276,22 +278,22 @@ cd "$HERE/clone7"
 bk here check -q ./gcc 2>ERR && fail -f shouldnt find gcc
 echo 'gcc: no valid urls found (present)' > WANT
 cmpfiles WANT ERR
-bk here check ./gdb | grep -q "$HERE/clone1" || fail 7
+bk here check -a ./gdb | grep -q "$HERE/clone1" || fail 7
 # clone8 should still have clone1 for gcc and gdb.
 cd "$HERE/clone8"
-bk here check ./gcc | grep -q "$HERE/clone1" || fail 8
-bk here check ./gdb | grep -q "$HERE/clone1" || fail 9
+bk here check -a ./gcc | grep -q "$HERE/clone1" || fail 8
+bk here check -a ./gdb | grep -q "$HERE/clone1" || fail 9
 # The clone7->clone8 push should add clone8 to clone7's urllist for
 # all components.
 cd "$HERE/clone7"
 bk push $Q "$HERE/clone8" || fail 10
-bk here check -a ALL > OUT || fail
+bk here check --sort -a ALL > OUT || fail
 cat <<EOF > WANT
 gcc:
 	$HERE/clone8
 gdb:
-	$HERE/clone8
 	$HERE/clone1
+	$HERE/clone8
 	$HERE/product
 .:
 	$HERE/clone8
@@ -313,23 +315,22 @@ cd ..
 bk here check -q ./gcc 2>ERR && fail -f ERR shouldnt find gcc
 echo 'gcc: no valid urls found (present)' > WANT
 cmpfiles WANT ERR
-bk here check ./gdb | grep -q "$HERE/clone1" || fail 8
+bk here check -a ./gdb | grep -q "$HERE/clone1" || fail 8
 # The clone9->cloneA push should add cloneA to clone9's urllist only for
 # the components present in cloneA, so gdb should not be added.
 cd "$HERE/clone9"
 bk push $Q "$HERE/cloneA" || fail 10
-bk here check -ac ALL > OUT
+bk here check --sort -ac ALL > OUT
 cat <<EOF > WANT
 gcc:
-	$HERE/cloneA
 	$HERE/clone1
+	$HERE/cloneA
 gdb:
 	$HERE/clone1
 	$HERE/product
 .:
-	$HERE/cloneA
 	$HERE/clone1
-	$HERE/product
+	$HERE/cloneA
 EOF
 cmpfiles OUT WANT
 echo OK
@@ -656,7 +657,7 @@ bk://bad2.bitkeeper.com:1/
 bk://bad3.bitkeeper.com:1/
 http://bad.bitkeeper.com:1/
 EOF
-cat <<EOF > BitKeeper/log/urlinfo
+cat <<EOF >> "$URLINFO"
 @bk%3a//bad1.bitkeeper.com%3a1/
 3000
 @bk%3a//bad2.bitkeeper.com%3a1/
@@ -700,16 +701,19 @@ cd "$HERE"/product
 bk portal $Q -r
 bk gate $Q -r
 cat SAVE > BitKeeper/log/urllist
-echo "bk://localhost:$P/copy5|3333|1" >> BitKeeper/log/urllist
+echo "bk://localhost:$P/copy5" >> BitKeeper/log/urllist
 echo "@$RM_RK" >> BitKeeper/log/urllist
-echo "bk://localhost:$P/copy5|3333|1" >> BitKeeper/log/urllist
+echo "bk://localhost:$P/copy5" >> BitKeeper/log/urllist
+cat <<EOF >> "$URLINFO"
+@bk://localhost:$P/copy5
+3333
+1
+EOF
 bk pull ../copy4 >OUT 2>&1 || fail -f OUT
 cat <<EOF > WANT
 Pull file://$HERE/copy4
   -> file://$HERE/product
 .                                  100% |==============================| OK
-pull: searching $HERE/locked...repo gone
-pull: searching $HERE/junk...repo gone
 pull: searching bk://localhost:$P/copy5...ok
 Source bk://localhost:$P/copy5
 1/2 rm                             100% |==============================| OK

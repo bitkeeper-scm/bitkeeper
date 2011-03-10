@@ -51,7 +51,6 @@ extern	unsigned int turnTransOff;
 #define	NESTED_FIXIDCACHE	0x02000000	/* no error for bad idDB */
 
 #define	NESTED_URLLIST		"BitKeeper/log/urllist"
-#define	NESTED_URLINFO		"BitKeeper/log/urlinfo"
 
 #define	PRODUCT			"."		/* for titles */
 

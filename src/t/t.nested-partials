@@ -107,7 +107,8 @@ bk here check -av ./gcc >GOT 2>&1
 printf "here: searching `bk parent -l`...ok\n" >WANT
 printf "here: searching bk://localhost:$P/$HERE/project...repo gone\n" >> WANT
 printf "gcc:\n	`bk parent -l`\n" >>WANT
-cmpfiles WANT GOT
+grep -v 'connect failure' GOT > GOT2
+cmpfiles WANT GOT2
 echo OK
 
 echo $N And show that this rewritten URL works ......................$NL
