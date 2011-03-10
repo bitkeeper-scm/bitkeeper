@@ -151,78 +151,41 @@ proc widgets {} \
 	set image "$env(BK_BIN)/gui/images/bklogo.gif"
 	if {[file exists $image]} {
 		set bklogo [image create photo -file $image]
-		label $widgets(logo) \
-		    -highlightthickness 0 \
-		    -image $bklogo \
-		    -background #FFFFFF \
-		    -bd 2 \
-		    -relief groove
+		ttk::label $widgets(logo) -image $bklogo \
+		    -background #FFFFFF -borderwidth 2 -relief groove
 	} else {
 		# No logo? That should never happen. But if it does,
 		# we still want the user to know this is a bitkeeper
 		# dialog so we'll fake a logo
-		label $widgets(logo) \
-		    -text "BitKeeper" \
-		    -background #FFFFFF \
-		    -bd 2 \
-		    -relief groove
+		ttk::label $widgets(logo) -text "BitKeeper" \
+		    -background #FFFFFF -borderwidth 2 -relief groove
 
 		array set tmp [font actual [$widgets(logo) cget -font]]
 		incr tmp(-size) 4
 		$widgets(logo) configure -font [array get tmp]
 	}
 
-	## The widget(s) to display the message
-	# The display of the message depends on it's relative size.
-	# The number 10 is picked out of a hat. Most messages will
-	# either be one line, or many.
-	if {$gc(windows)} {
-		set font {{Courier New} 8 normal}
-	} elseif {$gc(aqua)} {
-		set font {Monaco 10}
-	} else {
-		set width [winfo screenwidth .]
-		if {$width <= 1024} {
-			set font 6x12
-		} else {
-			set font 7x13
-		}
-	}
 	set lines [split $options(-message) \n]
 	if {[llength $lines] > 24} {
 		set height 24
 	} else {
 		set height [expr [llength $lines] + 1]
 	}
-	frame $widgets(message) \
-	    -borderwidth 1 \
-	    -relief sunken \
-	    -background #f8f8f8 
+	ttk::frame $widgets(message)
 	text $widgets(text) \
 	    -highlightthickness 0 \
 	    -borderwidth 0 \
 	    -width $options(-textWidth) \
 	    -height $height \
 	    -wrap none \
-	    -font $font \
 	    -borderwidth 0 \
 	    -background #f8f8f8 
 
-	scrollbar $widgets(sby) \
-	    -command [list $widgets(text) yview] \
-	    -borderwidth 1 \
-	    -orient vertical \
-	    -highlightthickness 0 \
-	    -width 12 \
-	    -takefocus 0 
+	ttk::scrollbar $widgets(sby) -orient vertical \
+	    -command [list $widgets(text) yview]
 
-	scrollbar $widgets(sbx) \
+	ttk::scrollbar $widgets(sbx) -orient horizontal \
 	    -command [list $widgets(text) xview] \
-	    -borderwidth 1 \
-	    -orient horizontal \
-	    -highlightthickness 0 \
-	    -width 12 \
-	    -takefocus 0
 
 	$w.message.text configure \
 	    -xscrollcommand [list scroll x] \
@@ -264,32 +227,24 @@ proc widgets {} \
 	bind . <End> [list doCommand scroll end]
 
 	## Buttons
-	frame $widgets(buttonFrame) -borderwidth 0
+	ttk::frame $widgets(buttonFrame)
 
-	button $widgets(yes) \
+	ttk::button $widgets(yes) \
 	    -text $options(-yes) \
-	    -borderwidth 1 \
-	    -padx 8 \
-	    -relief raised \
 	    -command [list doCommand yes]
 	
 	if {[string length $options(-no)] > 0} {
-		button $widgets(no) \
+		ttk::button $widgets(no) \
 		    -text $options(-no) \
-		    -borderwidth 1 \
-		    -relief raised \
 		    -command [list doCommand no]
 
-		frame $widgets(buttonFrame).spacer \
-		    -width 16 \
-		    -background [$widgets(buttonFrame) cget -background]
+		ttk::frame $widgets(buttonFrame).spacer -width 16
 
 		pack $widgets(yes) -side right -fill x -expand y
 		pack $widgets(buttonFrame).spacer -side right -fill y
 		pack $widgets(no) -side left -fill x -expand y
 
 	} else {
-
 		pack $widgets(yes) -side top -fill x -expand y
 	}
 

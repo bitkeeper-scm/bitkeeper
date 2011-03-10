@@ -1839,7 +1839,6 @@ proc widgets {} \
 	set stacked 1
 
 	getConfig "rev"
-	option add *background $gc(BG)
 
 	set gc(bw) 1
 	if {$gc(windows)} {
@@ -1854,21 +1853,12 @@ proc widgets {} \
 	}
 	set Opts(line_time)  "-c-$gc(rev.showHistory)"
 
-	frame .menus
-	    button .menus.quit -font $gc(rev.buttonFont) -relief raised \
-		-bg $gc(rev.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Quit" -command done
-	    button .menus.help -font $gc(rev.buttonFont) -relief raised \
-		-bg $gc(rev.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Help" -command { exec bk helptool revtool & }
-	    menubutton .menus.mb -font $gc(rev.buttonFont) -relief raised \
-	        -indicatoron 1 \
-		-bg $gc(rev.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Select Range" -width 15 -state normal \
-		-menu .menus.mb.menu
+	ttk::frame .menus
+	    ttk::button .menus.quit -text "Quit" -command done
+	    ttk::button .menus.help -text "Help" -command {
+		exec bk helptool revtool &
+	    }
+	    ttk::menubutton .menus.mb -text "Select Range" -menu .menus.mb.menu
 		set m [menu .menus.mb.menu]
 		if {$gc(aqua)} {$m configure -tearoff 0}
 		$m add command -label "Last Day" \
@@ -1907,20 +1897,11 @@ proc widgets {} \
 		    -command {revtool $fname -1Y}
 		$m add command -label "All Changes" \
 		    -command {revtool $fname ..}
-	    button .menus.cset -font $gc(rev.buttonFont) -relief raised \
-		-bg $gc(rev.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "View Changeset " -width 15 -command r2c -state disabled
-	    button .menus.difftool -font $gc(rev.buttonFont) -relief raised \
-		-bg $gc(rev.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Diff tool" -command "doDiff 1" -state disabled
-	    menubutton .menus.fmb -font $gc(rev.buttonFont) -relief raised \
-	        -indicatoron 1 \
-		-bg $gc(rev.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Select File" -width 12 -state normal \
-		-menu .menus.fmb.menu
+	    ttk::button .menus.cset -text "View Changeset " -command r2c \
+		-state disabled
+	    ttk::button .menus.difftool -text "Diff tool" -command "doDiff 1" \
+		-state disabled
+	    ttk::menubutton .menus.fmb -text "Select File" -menu .menus.fmb.menu
 		set gc(fmenu) [menu .menus.fmb.menu]
 		if {$gc(aqua)} {$gc(fmenu) configure -tearoff 0}
 		set gc(current) $gc(fmenu).current
@@ -1935,23 +1916,19 @@ proc widgets {} \
 	    if {"$fname" == "ChangeSet"} {
 		    #.menus.cset configure -command csettool
 		    pack .menus.quit .menus.help .menus.mb .menus.cset \
-			.menus.fmb -side left -fill y
+			.menus.fmb -side left -fill y -padx 1
 	    } else {
 		    pack .menus.quit .menus.help .menus.difftool \
-			.menus.mb .menus.cset .menus.fmb -side left -fill y
+			.menus.mb .menus.cset .menus.fmb \
+			-side left -fill y -padx 1
 	    }
 
 	ttk::panedwindow .p
-	    frame .p.top -borderwidth 1 -relief sunken
-		scrollbar .p.top.xscroll -wid $gc(rev.scrollWidth) \
-		    -orient horiz \
-		    -command "$w(graph) xview" \
-		    -background $gc(rev.scrollColor) \
-		    -troughcolor $gc(rev.troughColor)
-		scrollbar .p.top.yscroll -wid $gc(rev.scrollWidth)  \
-		    -command "$w(graph) yview" \
-		    -background $gc(rev.scrollColor) \
-		    -troughcolor $gc(rev.troughColor)
+	    ttk::frame .p.top
+		ttk::scrollbar .p.top.xscroll -orient horizontal \
+		    -command "$w(graph) xview"
+		ttk::scrollbar .p.top.yscroll -orient vertical \
+		    -command "$w(graph) yview"
 		canvas $w(graph) -width 500 \
 	    	    -borderwidth 1 \
 		    -background $gc(rev.canvasBG) \
@@ -1966,9 +1943,9 @@ proc widgets {} \
 		grid columnconfigure .p.top 0 -weight 1
 		grid columnconfigure .p.top 1 -weight 0
 		
-	    frame .p.b -borderwidth 1 -relief sunken
+	    ttk::frame .p.b
 	    	# prs and annotation window
-		frame .p.b.p
+		ttk::frame .p.b.p
 		    text .p.b.p.t -width $gc(rev.textWidth) \
 			-borderwidth 1 \
 			-height $gc(rev.textHeight) \
@@ -1976,17 +1953,12 @@ proc widgets {} \
 			-xscrollcommand { .p.b.p.xscroll set } \
 			-yscrollcommand { .p.b.p.yscroll set } \
 			-bg $gc(rev.textBG) -fg $gc(rev.textFG) -wrap none 
-		    scrollbar .p.b.p.xscroll -orient horizontal \
-			-wid $gc(rev.scrollWidth) -command { .p.b.p.t xview } \
-			-background $gc(rev.scrollColor) \
-			-troughcolor $gc(rev.troughColor)
-		    scrollbar .p.b.p.yscroll -orient vertical \
-			-wid $gc(rev.scrollWidth) \
-			-command { .p.b.p.t yview } \
-			-background $gc(rev.scrollColor) \
-			-troughcolor $gc(rev.troughColor)
+		    ttk::scrollbar .p.b.p.xscroll -orient horizontal \
+			-command { .p.b.p.t xview }
+		    ttk::scrollbar .p.b.p.yscroll -orient vertical \
+			-command { .p.b.p.t yview }
 		# change comment window
-		frame .p.b.c
+		ttk::frame .p.b.c
 		    text .p.b.c.t -width $gc(rev.textWidth) \
 			-borderwidth 1 \
 			-height $gc(rev.commentHeight) \
@@ -1994,15 +1966,10 @@ proc widgets {} \
 			-xscrollcommand { .p.b.c.xscroll set } \
 			-yscrollcommand { .p.b.c.yscroll set } \
 			-bg $gc(rev.commentBG) -fg $gc(rev.textFG) -wrap none 
-		    scrollbar .p.b.c.xscroll -orient horizontal \
-			-wid $gc(rev.scrollWidth) -command { .p.b.c.t xview } \
-			-background $gc(rev.scrollColor) \
-			-troughcolor $gc(rev.troughColor)
-		    scrollbar .p.b.c.yscroll -orient vertical \
-			-wid $gc(rev.scrollWidth) \
-			-command { .p.b.c.t yview } \
-			-background $gc(rev.scrollColor) \
-			-troughcolor $gc(rev.troughColor)
+		    ttk::scrollbar .p.b.c.xscroll -orient horizontal \
+			-command { .p.b.c.t xview }
+		    ttk::scrollbar .p.b.c.yscroll -orient vertical \
+			-command { .p.b.c.t yview }
 
 		grid .p.b.c.yscroll -row 0 -column 1 -sticky ns
 		grid .p.b.c.xscroll -row 1 -column 0 -sticky ew
@@ -2026,14 +1993,14 @@ proc widgets {} \
 	.p add .p.top
 	.p add .p.b -weight 1
 
-	frame .cmd 
+	ttk::frame .cmd 
 	search_widgets .cmd $w(aptext)
 	# Make graph the default window to have the focus
 	set search(focus) $w(graph)
 
-	grid .menus -row 0 -column 0 -sticky ew
+	grid .menus -row 0 -column 0 -sticky ew -pady 2
 	grid .p -row 1 -column 0 -sticky ewns
-	grid .cmd -row 2 -column 0 -sticky w
+	grid .cmd -row 2 -column 0 -sticky ew -pady 2
 	grid rowconfigure . 1 -weight 1
 	grid columnconfigure . 0 -weight 1
 	grid columnconfigure .cmd 0 -weight 1
@@ -2079,7 +2046,6 @@ proc widgets {} \
 	bind $w(graph) <t>		"history tags"
 	bind $w(graph) <d>		"doDiff"
 	bind $w(graph) <Button-2>	{ history; break }
-	bind $w(graph) <$gc(rev.quit)>	"done"
 	bind $w(graph) <s>		"sfile"
 	bind $w(graph) <c>		"annotate"
 	bind $w(graph) <Prior>		"$w(aptext) yview scroll -1 pages"
@@ -2158,8 +2124,9 @@ proc widgets {} \
 	# in the search.tcl lib) <remove if all goes well> -ask
 	#bindtags $search(text) { .cmd.search Entry }
 
+	bind all <$gc(rev.quit)>	"done"
+
 	focus $w(graph)
-	. configure -background $gc(BG)
 } ;# proc widgets
 
 proc commentsWindow {action} \

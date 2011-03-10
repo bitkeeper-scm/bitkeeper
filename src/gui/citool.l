@@ -701,12 +701,10 @@ addButton(string buttonName, string text, string command)
 {
 	string	path = "${self.w_buttons}.${buttonName}";
 
-	button(path,
-	    font: gc("ci.buttonFont"),
-	    background: gc("ci.buttonColor"),
+	ttk::button(path,
 	    text: text,
 	    command: command);
-	pack(path, side: "top", fill: "x");
+	pack(path, side: "top", fill: "x", pady: 2);
 }
 
 void
@@ -794,7 +792,7 @@ gui()
 	self.w_status   = "${top}.status.text";
 	self.w_progress = "${top}.status.progress";
 
-	toplevel(top, background: gc("BG"));
+	toplevel(top);
 	wm("withdraw", top);
 	wm("title", top, "Check In Tool");
 	wm("minsize", top, 500, 480);
@@ -802,13 +800,13 @@ gui()
 	grid("rowconfigure", top, 1, weight: 1);
 	grid("columnconfigure", top, 0, weight: 1);
 
-	frame(self.w_upperF, background: gc("BG"));
+	ttk::frame(self.w_upperF);
 	grid(self.w_upperF, row: 0, column: 0, sticky: "nesw");
 
 	grid("rowconfigure", self.w_upperF, 0, weight: 1);
 	grid("columnconfigure", self.w_upperF, 0, weight: 1);
 
-	ScrolledWindow(self.w_fileF, background: gc("BG"), auto: "none");
+	ScrolledWindow(self.w_fileF, auto: "none");
 	grid(self.w_fileF, row: 0, column: 0, sticky: "nesw");
 
 	ListBox(self.w_files,
@@ -829,11 +827,11 @@ gui()
 	self.font_underline{"-underline"} = "1";
 	self.font_overstrike{"-overstrike"} = "1";
 
-	ScrolledWindow(self.w_commentF, background: gc("BG"), auto: "none");
+	ScrolledWindow(self.w_commentF, auto: "none");
 	grid(self.w_commentF, row: 1, column: 0, sticky: "nesw");
 
 	text(self.w_comments, relief: "sunken", borderwidth: 1,
-	    font: gc("ci.fixedFont"), wrap: "none", highlightthickness: 1,
+	    font: gc("ci.fixedFont"), wrap: "none", highlightthickness: 0,
 	    background: gc("ci.textBG"), foreground: gc("ci.textFG"),
 	    width: 70, height: gc("ci.commentsHeight"), state: "disabled");
 	ScrolledWindow_setwidget(self.w_commentF, self.w_comments);
@@ -846,17 +844,15 @@ gui()
 	Text_tag(self.w_comments, "configure", "warning",
 	    background: gc("ci.warnColor"));
 
-	frame(self.w_buttons, background: gc("BG"));
+	ttk::frame(self.w_buttons);
 	grid(self.w_buttons, row: 0, column: 1,
-	    rowspan: 2, sticky: "ne");
+	    rowspan: 2, sticky: "ne", padx: 2);
 	addButton("cut", "Cut", "cutComments");
 	addButton("paste", "Paste", "pasteComments");
 	configureButton("paste", state: "disabled");
 	addButton("rescan", "Rescan", "rescan");
 	addButton("checkin", "Checkin", "doCommit");
-	menubutton("${self.w_buttons}.edit",
-	    background: gc("ci.buttonColor"), highlightthickness: 1,
-	    indicatoron: 1, font: gc("ci.buttonFont"), relief: "raised",
+	ttk::menubutton("${self.w_buttons}.edit",
 	    text: "Edit", menu: "${self.w_buttons}.edit.menu");
 	pack("${self.w_buttons}.edit", side: "top", fill: "x");
 	menu("${self.w_buttons}.edit.menu", tearoff: 0);
@@ -875,11 +871,11 @@ gui()
 	addButton("help", "Help", "launchHelptool");
 	addButton("quit", "Quit", "quit");
 
-	ScrolledWindow(self.w_lowerF, background: gc("BG"), auto: "none");
+	ScrolledWindow(self.w_lowerF, auto: "none");
 	grid(self.w_lowerF, row: 1, column: 0, sticky: "nesw");
 
 	text(self.w_diffs, relief: "sunken", borderwidth: 1,
-	    font: gc("ci.fixedFont"), wrap: "none", highlightthickness: 1,
+	    font: gc("ci.fixedFont"), wrap: "none", highlightthickness: 0,
 	    background: gc("ci.textBG"), foreground: gc("ci.textFG"),
 	    width: 81, height: gc("ci.diffHeight"), state: "disabled");
 	ScrolledWindow_setwidget(self.w_lowerF, self.w_diffs);
@@ -893,17 +889,15 @@ gui()
 	    background: gc("ci.noticeColor"));
 
 	if (gc("aqua")) {
-		StatusBar(self.w_statusF, showresize: 0, background: gc("BG"));
+		StatusBar(self.w_statusF, showresize: 0);
 		grid(self.w_statusF, row: 2, column: 0, sticky: "ew",
 		    padx: "0 15");
 	} else {
-		StatusBar(self.w_statusF, background: gc("BG"));
+		StatusBar(self.w_statusF);
 		grid(self.w_statusF, row: 2, column: 0, sticky: "ew");
 	}
 
-	label(self.w_status, anchor: "w",
-	    background: gc("BG"),
-	    font: gc("ci.fixedFont"));
+	ttk::label(self.w_status);
 	StatusBar_add(self.w_statusF, self.w_status, sticky: "ew", weight: 1);
 	ttk::progressbar(self.w_progress);
 	StatusBar_add(self.w_statusF, self.w_progress,
@@ -1972,7 +1966,7 @@ doCommit()
 	if (String_isTrue(strict:, gc("ci.rescan")) && !self.resolve) {
 		After_idle("rescan");
 	} else {
-		exit();
+		bk_exit();
 	}
 }
 
@@ -2550,6 +2544,7 @@ main(_unused int argc, string argv[])
 	bk_init();
 
 	require("BWidget");
+	Widget::theme(1);
 
 	init();
 	self.cwd = pwd();

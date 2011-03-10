@@ -486,7 +486,7 @@ proc widgets {L R O} \
 	global	scroll wish gc d app
 
 	getConfig "fm"
-	option add *background $gc(BG)
+
 	set g [wm geometry .]
 	if {$gc(fm.diffHeight) < $gc(fm.mergeHeight)} {
 		set scroll $gc(fm.diffHeight)
@@ -496,19 +496,14 @@ proc widgets {L R O} \
 	keyboard_bindings
 	wm title . "File Merge"
 
-	frame .diffs
-	    frame .diffs.status
-		label .diffs.status.l -background $gc(fm.oldColor) \
-		    -font $gc(fm.buttonFont) -relief sunken -borderwid 2
-		label .diffs.status.r -background $gc(fm.newColor) \
-		    -font $gc(fm.buttonFont) -relief sunken -borderwid 2
-		label .diffs.status.middle -background $gc(fm.oldColor) \
-		    -foreground $gc($app.textFG) -background $gc(fm.statusColor) \
-		    -font  $gc(fm.fixedFont) -wid 20 \
-		    -font $gc(fm.buttonFont) -relief sunken -borderwid 2
-		    grid .diffs.status.l -row 0 -column 0 -sticky ew
-		    grid .diffs.status.middle -row 0 -column 1
-		    grid .diffs.status.r -row 0 -column 2 -sticky ew
+	ttk::frame .diffs
+	    ttk::frame .diffs.status
+		ttk::label .diffs.status.l 
+		ttk::label .diffs.status.r
+		ttk::label .diffs.status.middle 
+		grid .diffs.status.l -row 0 -column 0 -sticky ew
+		grid .diffs.status.middle -row 0 -column 1
+		grid .diffs.status.r -row 0 -column 2 -sticky ew
 	    text .diffs.left -width $gc(fm.diffWidth) \
 		-height $gc(fm.diffHeight) \
 		-background $gc(fm.textBG) -fg $gc(fm.textFG) \
@@ -519,14 +514,8 @@ proc widgets {L R O} \
 		-height $gc(fm.diffHeight) \
 		-background $gc(fm.textBG) -fg $gc(fm.textFG) \
 		-state disabled -wrap none -font $gc(fm.fixedFont)
-	    scrollbar .diffs.xscroll -wid $gc(fm.scrollWidth) \
-		-troughcolor $gc(fm.troughColor) \
-		-background $gc(fm.scrollColor) \
-		-orient horizontal -command { xscroll }
-	    scrollbar .diffs.yscroll -wid $gc(fm.scrollWidth) \
-		-troughcolor $gc(fm.troughColor) \
-		-background $gc(fm.scrollColor) \
-		-orient vertical -command { yscroll }
+	    ttk::scrollbar .diffs.xscroll -orient horizontal -command xscroll
+	    ttk::scrollbar .diffs.yscroll -orient vertical -command yscroll
 	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
 	    grid .diffs.left -row 1 -column 0 -sticky nsew
 	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
@@ -534,82 +523,58 @@ proc widgets {L R O} \
 	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
 	    grid .diffs.xscroll -columnspan 3
 
-	frame .merge
-	    label .merge.l -background $gc(fm.buttonColor) \
-		-font $gc(fm.fixedBoldFont)
+	ttk::frame .merge
+	    ttk::label .merge.l
 	    text .merge.t -width $gc(fm.mergeWidth) \
 		-height $gc(fm.mergeHeight) \
 		-background $gc(fm.textBG) -fg $gc(fm.textFG) \
 		-wrap none -font $gc(fm.fixedFont) \
 		-xscrollcommand { .merge.xscroll set } \
 		-yscrollcommand { .merge.yscroll set }
-	    scrollbar .merge.xscroll -wid $gc(fm.scrollWidth) \
-		-troughcolor $gc(fm.troughColor) \
-		-background $gc(fm.scrollColor) \
-		-orient horizontal -command { .merge.t xview }
-	    scrollbar .merge.yscroll -wid $gc(fm.scrollWidth) \
-		-troughcolor $gc(fm.troughColor) \
-		-background $gc(fm.scrollColor) \
-		-orient vertical -command { .merge.t yview }
-	    frame .merge.menu
-		button .merge.menu.open -width 7 -bg $gc(fm.buttonColor) \
-		    -font $gc(fm.buttonFont) -text "Open" \
-		    -command selectFiles
-		button .merge.menu.restart -font $gc(fm.buttonFont) \
-		    -bg $gc(fm.buttonColor) \
-		    -text "Restart" -width 7 -state disabled -command startup
-		button .merge.menu.undo -font $gc(fm.buttonFont) \
-		    -bg $gc(fm.buttonColor) \
-		    -text "Undo" -width 7 -state disabled \
+	    ttk::scrollbar .merge.xscroll -orient horizontal \
+		-command { .merge.t xview }
+	    ttk::scrollbar .merge.yscroll -orient vertical \
+		-command { .merge.t yview }
+	    ttk::frame .merge.menu
+		ttk::button .merge.menu.open -text "Open" -command selectFiles
+		ttk::button .merge.menu.restart -text "Restart" \
+		    -state disabled -command startup
+		ttk::button .merge.menu.undo -text "Undo" -state disabled \
 		    -command undo
-		button .merge.menu.redo -font $gc(fm.buttonFont) \
-		    -bg $gc(fm.buttonColor) \
-		    -text "Redo" -width 7 -state disabled \
+		ttk::button .merge.menu.redo -text "Redo" -state disabled \
 		    -command redo
-		button .merge.menu.skip -font $gc(fm.buttonFont) \
-		    -bg $gc(fm.buttonColor) \
-		    -text "Skip" -width 7 -state disabled \
+		ttk::button .merge.menu.skip -text "Skip" -state disabled \
 		    -command skip
-		button .merge.menu.left -font $gc(fm.buttonFont) \
-		    -bg $gc(fm.buttonColor) \
-		    -text "Use Left" -width 7 -state disabled \
+		ttk::button .merge.menu.left -text "Use Left" -state disabled \
 		    -command useLeft
-		button .merge.menu.right -font $gc(fm.buttonFont) \
-		    -bg $gc(fm.buttonColor) \
-		    -text "Use Right" -width 7 -state disabled \
-		    -command useRight
-		label .merge.menu.l -font $gc(fm.buttonFont) \
-		    -bg $gc(fm.buttonColor) \
-		    -width 20 -relief groove -pady 2 -borderwidth 2
-		button .merge.menu.save -font $gc(fm.buttonFont) \
-		    -bg $gc(fm.buttonColor) \
-		    -text "Done" -width 7 -command save -state disabled
-		button .merge.menu.help -width 7 -bg $gc(fm.buttonColor) \
-		    -font $gc(fm.buttonFont) -text "Help" \
+		ttk::button .merge.menu.right -text "Use Right" \
+		    -state disabled -command useRight
+		ttk::label .merge.menu.l
+		ttk::button .merge.menu.save -text "Done" -state disabled \
+		    -command save
+		ttk::button .merge.menu.help -text "Help" \
 		    -command { exec bk helptool fmtool & }
-		button .merge.menu.quit -font $gc(fm.buttonFont) \
-		    -bg $gc(fm.buttonColor) \
-		    -text "Quit" -width 7 -command cmd_done
-		grid .merge.menu.l -row 0 -column 0 -columnspan 2 -sticky ew
-		grid .merge.menu.open -row 1 -sticky ew
-		grid .merge.menu.restart -row 1 -column 1 -sticky ew
-		grid .merge.menu.undo -row 2 -column 0 -sticky ew
-		grid .merge.menu.redo -row 2 -column 1 -sticky ew
-		grid .merge.menu.skip -row 3 -column 0 -sticky ew
-		grid .merge.menu.save -row 3 -column 1 -sticky ew
-		grid .merge.menu.left -row 4 -column 0 -sticky ew
-		grid .merge.menu.right -row 4 -column 1 -sticky ew
-		grid .merge.menu.help -row 5 -column 0 -sticky ew
-		grid .merge.menu.quit -row 5 -column 1 -sticky ew
+		ttk::button .merge.menu.quit -text "Quit" -command cmd_done
+		grid .merge.menu.l -row 0 -column 0 -columnspan 2 -sticky ew \
+		    -padx 1
+		grid .merge.menu.open -row 1 -sticky ew -padx 1
+		grid .merge.menu.restart -row 1 -column 1 -sticky ew -padx 1
+		grid .merge.menu.undo -row 2 -column 0 -sticky ew -padx 1
+		grid .merge.menu.redo -row 2 -column 1 -sticky ew -padx 1
+		grid .merge.menu.skip -row 3 -column 0 -sticky ew -padx 1
+		grid .merge.menu.save -row 3 -column 1 -sticky ew -padx 1
+		grid .merge.menu.left -row 4 -column 0 -sticky ew -padx 1
+		grid .merge.menu.right -row 4 -column 1 -sticky ew -padx 1
+		grid .merge.menu.help -row 5 -column 0 -sticky ew -padx 1
+		grid .merge.menu.quit -row 5 -column 1 -sticky ew -padx 1
 	    grid .merge.l -row 0 -column 0 -columnspan 2 -sticky ew
 	    grid .merge.t -row 1 -column 0 -sticky nsew
 	    grid .merge.yscroll -row 1 -column 1 -sticky ns
-	    grid .merge.menu -row 0 -rowspan 3 -column 2 -sticky n
+	    grid .merge.menu -row 0 -rowspan 3 -column 2 -sticky n -padx 2
 	    grid .merge.xscroll -row 2 -rowspan 2 -column 0 \
 		-columnspan 2 -sticky ew
 
-	label .status -relief sunken \
-	    -borderwidth 2 -anchor w -font {clean 12 roman}
+	ttk::label .status -anchor w
 
 	grid .diffs -row 0 -column 0 -sticky nsew
 	grid .merge -row 1 -column 0 -sticky nsew
@@ -653,7 +618,6 @@ proc widgets {L R O} \
 	set foo [bindtags .diffs.left]
 	computeHeight "diffs"
 	computeHeight "merge"
-	. configure -background $gc(BG)
 	wm protocol . WM_DELETE_WINDOW { cmd_done }
 }
 

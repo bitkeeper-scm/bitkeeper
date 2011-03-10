@@ -448,7 +448,7 @@ proc defineSymbolicColors {} \
 		} elseif {[tk windowingsystem] eq "aqua"} {
 			set SYSTEMBUTTONFACE $WHITE
 		} else {
-			set SYSTEMBUTTONFACE #d0d0d0
+			set SYSTEMBUTTONFACE [ttk::style lookup . -background]
 		}
 
 		# these are other colors for which no official name exists;

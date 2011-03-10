@@ -398,7 +398,7 @@ proc widgets {} \
 	global	scroll gc wish d search fmenu app env
 
 	getConfig "cset"
-	option add *background $gc(BG)
+
 	set gc(bw) 1
 	set gc(mbwid) 8
 	if {$gc(windows)} {
@@ -410,43 +410,35 @@ proc widgets {} \
 		set gc(py) 1; set gc(px) 4
 	}
 
-	frame .l
-	frame .l.filelist -background $gc(BG)
+	ttk::frame .l
+	ttk::frame .l.filelist
 	    text .l.filelist.t -height $gc(cset.listHeight) -width 40 \
 		-state disabled -wrap none -font $gc(cset.fixedFont) \
 		-setgrid true \
 		-xscrollcommand { .l.filelist.xscroll set } \
 		-yscrollcommand { .l.filelist.yscroll set } \
 		-background $gc(cset.listBG) -foreground $gc(cset.textFG)
-	    scrollbar .l.filelist.xscroll -wid $gc(cset.scrollWidth) \
-		-troughcolor $gc(cset.troughColor) \
-		-background $gc(cset.scrollColor) \
-		-orient horizontal -command ".l.filelist.t xview"
-	    scrollbar .l.filelist.yscroll -wid $gc(cset.scrollWidth) \
-		-troughcolor $gc(cset.troughColor) \
-		-background $gc(cset.scrollColor) \
-		-orient vertical -command ".l.filelist.t yview"
+	    ttk::scrollbar .l.filelist.xscroll -orient horizontal \
+		-command ".l.filelist.t xview"
+	    ttk::scrollbar .l.filelist.yscroll -orient vertical \
+		-command ".l.filelist.t yview"
 	    grid .l.filelist.t -row 0 -column 0 -sticky news
 	    grid .l.filelist.yscroll -row 0 -column 1 -sticky nse 
 	    grid .l.filelist.xscroll -row 1 -column 0 -sticky ew
 	    grid rowconfigure    .l.filelist .l.filelist.t -weight 1
 	    grid columnconfigure .l.filelist .l.filelist.t -weight 1
 
-	frame .l.sccslog -background $gc(BG)
+	ttk::frame .l.sccslog
 	    text .l.sccslog.t -height $gc(cset.listHeight) -width 80 \
 		-state disabled -wrap none -font $gc(cset.fixedFont) \
 		-setgrid true \
 		-xscrollcommand { .l.sccslog.xscroll set } \
 		-yscrollcommand { .l.sccslog.yscroll set } \
 		-background $gc(cset.listBG) -foreground $gc(cset.textFG)
-	    scrollbar .l.sccslog.xscroll -wid $gc(cset.scrollWidth) \
-		-troughcolor $gc(cset.troughColor) \
-		-background $gc(cset.scrollColor) \
-		-orient horizontal -command ".l.sccslog.t xview"
-	    scrollbar .l.sccslog.yscroll -wid $gc(cset.scrollWidth) \
-		-troughcolor $gc(cset.troughColor) \
-		-background $gc(cset.scrollColor) \
-		-orient vertical -command ".l.sccslog.t yview"
+	    ttk::scrollbar .l.sccslog.xscroll -orient horizontal \
+		-command ".l.sccslog.t xview"
+	    ttk::scrollbar .l.sccslog.yscroll -orient vertical \
+		-command ".l.sccslog.t yview"
 	    grid .l.sccslog.t -row 0 -column 0 -sticky news
 	    grid .l.sccslog.yscroll -row 0 -column 1 -sticky ns
 	    grid .l.sccslog.xscroll -row 1 -column 0 -sticky ew
@@ -460,98 +452,59 @@ proc widgets {} \
 	set nextImage [image create photo \
 			   -file $env(BK_BIN)/gui/images/next.gif]
 
-	set menuwid 7
-	frame .menu -background $gc(BG)
-	    button .menu.prevCset -font $gc(cset.buttonFont) \
-		-bg $gc(cset.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "<< Cset" -command prevCset
-	    button .menu.nextCset -font $gc(cset.buttonFont) \
-		-bg $gc(cset.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text ">> Cset" -command nextCset
-	    button .menu.prevFile -font $gc(cset.buttonFont) \
-		-bg $gc(cset.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image $prevImage -command prevFile
-	    menubutton .menu.fmb -font $gc(cset.buttonFont) -relief raised \
-	        -indicatoron 1 \
-		-bg $gc(cset.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "File" -width $gc(mbwid) -state normal \
-		-menu .menu.fmb.menu
+	ttk::frame .menu
+	    ttk::button .menu.prevCset -text "<< Cset" -command prevCset
+	    ttk::button .menu.nextCset -text ">> Cset" -command nextCset
+	    ttk::button .menu.prevFile -image $prevImage -command prevFile
+	    ttk::menubutton .menu.fmb -text "File" -menu .menu.fmb.menu
 		set fmenu(widget) [menu .menu.fmb.menu]
 		if {$gc(aqua)} {$fmenu(widget) configure -tearoff 0}
-	    $fmenu(widget) add checkbutton \
-	        -label "Show Annotations" \
-	        -onvalue 1 \
-	    	-offvalue 0 \
-	        -variable showAnnotations \
-	        -command redoFile
-	    $fmenu(widget) add separator
-	    button .menu.nextFile -font $gc(cset.buttonFont) \
-		-bg $gc(cset.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image $nextImage -command nextFile
-	    button .menu.prev -font $gc(cset.buttonFont) \
-		-bg $gc(cset.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image $prevImage -state disabled \
-		-command {
-			searchreset
-		    	prev
-		}
-	    button .menu.next -font $gc(cset.buttonFont) \
-		-bg $gc(cset.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image $nextImage -state disabled \
-		-command {
-			searchreset
-			next
-		}
-	    menubutton .menu.mb -font $gc(cset.buttonFont) -relief raised \
-	        -indicatoron 1 \
-		-bg $gc(cset.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "History" -width $gc(mbwid) -state normal \
-		-menu .menu.mb.menu
+		$fmenu(widget) add checkbutton \
+		    -label "Show Annotations" \
+		    -onvalue 1 \
+		    -offvalue 0 \
+		    -variable showAnnotations \
+		    -command redoFile
+		$fmenu(widget) add separator
+	    ttk::button .menu.nextFile -image $nextImage -command nextFile
+	    ttk::button .menu.prev -image $prevImage -state disabled -command {
+		searchreset
+		prev
+	    }
+	    ttk::button .menu.next -image $nextImage -state disabled -command {
+		searchreset
+		next
+	    }
+	    ttk::menubutton .menu.mb -text "History" -menu .menu.mb.menu
 		set m [menu .menu.mb.menu]
 		if {$gc(aqua)} {$m configure -tearoff 0}
 		$m add command -label "Changeset History" \
 		    -command "exec bk revtool &"
 		$m add command -label "File History" \
 		    -command file_history
-	    button .menu.quit -font $gc(cset.buttonFont) \
-		-bg $gc(cset.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Quit" -command exit 
-	    button .menu.help -bg $gc(cset.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-font $gc(cset.buttonFont) -text "Help" \
-		-command { exec bk helptool csettool & }
+	    ttk::button .menu.quit -text "Quit" -command exit 
+	    ttk::button .menu.help -text "Help" -command {
+		exec bk helptool csettool &
+	    }
 	    if {[inComponent] && ![inRESYNC]} {
-		button .menu.product -bg $gc(cset.buttonColor) \
-		    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		    -font $gc(cset.buttonFont) -text "View Product" \
-		    -command { gotoProductCset }
+		ttk::button .menu.product -text "View Product" -command {
+		    gotoProductCset
+		}
 	    }
-	    button .menu.dot -bg $gc(cset.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) -width 15\
-		-font $gc(cset.buttonFont) -text "Current diff" \
-		-command dot
+	    ttk::button .menu.dot -text "Current diff" -command dot
 
-	    pack .menu.quit -side left -fill y
-	    pack .menu.help -side left -fill y
+	    pack .menu.quit -side left -padx 1
+	    pack .menu.help -side left -padx 1
 	    if {[winfo exists .menu.product]} {
-		    pack .menu.product -side left -fill y
+		    pack .menu.product -side left -padx 1
 	    }
-	    pack .menu.mb -side left -fill y
-	    pack .menu.prevFile -side left -fill y
-	    pack .menu.fmb -side left -fill y
-	    pack .menu.nextFile -side left -fill y
-	    pack .menu.prev -side left -fill y
-	    pack .menu.dot -side left -fill y
-	    pack .menu.next -side left -fill y
+	    pack .menu.mb -side left -padx 1
+	    pack .menu.prevFile -side left -padx 1
+	    pack .menu.fmb -side left -padx 1
+	    pack .menu.nextFile -side left -padx 1
+	    pack .menu.prev -side left -padx 1
+	    pack .menu.dot -side left -padx 1
+	    pack .menu.next -side left -padx 1
 	    # Add the search widgets to the menu bar
 	    search_widgets .menu .diffs.right
 
@@ -563,7 +516,7 @@ proc widgets {} \
 	# smaller than this doesn't look good.
 	#wm minsize . $x 400
 
-	grid .menu -row 0 -column 0 -sticky w
+	grid .menu -row 0 -column 0 -sticky ew -pady 2
 	grid .l -row 1 -column 0 -sticky nsew
 	grid .l.sccslog -row 0 -column 1 -sticky nsew
 	grid .l.filelist -row 0 -column 0 -sticky nsew
@@ -605,7 +558,6 @@ proc widgets {} \
 	.l.filelist.t configure -cursor left_ptr
 	.diffs.left configure -cursor left_ptr
 	.diffs.right configure -cursor left_ptr
-	. configure -background $gc(BG)
 }
 
 # Set up keyboard accelerators.

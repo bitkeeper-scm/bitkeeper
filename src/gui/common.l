@@ -44,6 +44,7 @@ bk_init()
 	}
 
 	bk_initPlatform();
+	bk_initTheme();
 	loadState(_bk.tool);
 	getConfig(_bk.tool);
 }

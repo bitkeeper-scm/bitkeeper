@@ -19,7 +19,7 @@ DOIT	= ../t/doit
 GUITEST = ../t/guitest.tcl
 BK	= $(REPO)/src/bk
 T	= $(REPO)/src/t
-COMMON	= ../port/$(SYS)_platform.tcl config.tcl common.tcl
+COMMON	= ../port/$(SYS)_platform.tcl config.tcl bktheme.tcl common.tcl
 LCOMMON = common.l search.l
 SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 	  common.tcl config.tcl csettool.tcl difflib.tcl difftool.tcl \
