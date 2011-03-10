@@ -2264,6 +2264,7 @@ compile_fnCall(Expr *expr)
 	int	expand, i, level, nopts;
 	int	num_parms = 0, typchk = FALSE;
 	char	*name;
+	char	*defchk = NULL;  // name for definedness chk before main() runs
 	Expr	*foo, *Foo_star, *opts, *p;
 	Sym	*sym;
 	VarDecl	*formals = NULL;
@@ -2297,6 +2298,7 @@ compile_fnCall(Expr *expr)
 		push_str(sym->tclname);
 		formals = sym->type->u.func.formals;
 		typchk = TRUE;
+		defchk = name;
 		expr->type = sym->type->base_type;
 	} else if (sym && (sym->type->kind == L_NAMEOF) &&
 		   (sym->type->base_type->kind == L_FUNCTION)) {
@@ -2321,6 +2323,7 @@ compile_fnCall(Expr *expr)
 			expr->b = opts;
 			formals = sym->type->u.func.formals;
 			typchk = TRUE;
+			defchk = Foo_star->str;
 			expr->type = sym->type->base_type;
 		} else {
 			/* Push first arg, then check its type. */
@@ -2329,6 +2332,7 @@ compile_fnCall(Expr *expr)
 				/* No args, compile as foo(opts). */
 				push_str(foo->str);
 				num_parms = push_parms(opts);
+				defchk = foo->str;
 			} else if (iswidget(expr->b)) {
 				/* Compile as *a(opts,b,c). */
 				APPEND(Expr, next, opts, expr->b->next);
@@ -2347,6 +2351,7 @@ compile_fnCall(Expr *expr)
 				// foo <opts> a
 				expr->b = expr->b->next;
 				++num_parms;
+				defchk = foo->str;
 			}
 			expr->type = L_poly;
 		}
@@ -2354,6 +2359,7 @@ compile_fnCall(Expr *expr)
 		/* Call to an undeclared function. */
 		push_str(name);
 		expr->type = L_poly;
+		defchk = name;
 	}
 	num_parms += push_parms(expr->b);
 	if (expand) {
@@ -2363,6 +2369,19 @@ compile_fnCall(Expr *expr)
 	}
 	if (typchk) L_typeck_fncall(formals, expr);
 	fnCallEnd(level);
+	/*
+	 * If the call is to a function name that is known now (e.g.,
+	 * not a function pointer), add it to the L->fn_calls list
+	 * which is walked before main() is called to verify that the
+	 * function exists.
+	 */
+	if (defchk) {
+		Tcl_Obj *nm  = Tcl_NewStringObj(defchk, -1);
+		Tcl_Obj *val = Tcl_NewObj();
+		Tcl_DictObjPut(L->interp, L->fn_calls, nm, val);
+		Tcl_SetVar2Ex(L->interp, "%%L_fnsCalled", NULL, L->fn_calls,
+			      TCL_GLOBAL_ONLY);
+	}
 	return (1);  // stack effect
 }
 
@@ -4328,7 +4347,7 @@ compile_assignFromStack(Expr *lhs, Type *rhs_type, Expr *expr)
 
 	compile_expr(lhs, (arith?L_PUSH_VALPTR:L_PUSH_PTR) | L_LVALUE);
 	unless (lhs->sym) {
-		L_errf(expr, "invalid l-value in assignment");
+		L_errf(lhs, "invalid l-value in assignment");
 		return;
 	}
 	L_typeck_assign(lhs, rhs_type);
@@ -4861,6 +4880,7 @@ sym_store(VarDecl *decl)
 	int	new;
 	char	*name = decl->id->str;
 	Sym	*sym = NULL;
+	Sym	*sym2;
 	Frame	*frame = NULL;
 	Tcl_HashEntry *hPtr;
 
@@ -4918,7 +4938,11 @@ sym_store(VarDecl *decl)
 		}
 		break;
 	    case SCOPE_LOCAL:
-		/* Declaring a local -- search current proc's local scopes. */
+		/*
+		 * Declaring a local -- search current proc's local
+		 * scopes, then the global scope so we can issue a warning
+		 * if this is a local that shadows a class or global var.
+		 */
 		for (frame = L->frame; frame; frame = frame->prevFrame) {
 			unless (frame->envPtr == L->frame->envPtr) break;
 			hPtr = Tcl_FindHashEntry(frame->symtab, name);
@@ -4930,6 +4954,27 @@ sym_store(VarDecl *decl)
 					       "of local %s", name);
 					return (NULL);
 				}
+			}
+		}
+		for (; frame; frame = frame->prevFrame) {
+			hPtr = Tcl_FindHashEntry(frame->symtab, name);
+			unless (hPtr && (frame->flags & SEARCH)) continue;
+			sym2 = (Sym *)Tcl_GetHashValue(hPtr);
+			if (sym2->decl->flags & DECL_GLOBAL_VAR) {
+				L_warnf(decl, "local variable %s shadows "
+					"a global declared at %s:%d",
+					name, sym2->decl->node.file,
+					sym2->decl->node.line);
+			} else if (sym2->decl->flags & DECL_CLASS_VAR) {
+				L_warnf(decl, "local variable %s shadows "
+					"a class variable declared at %s:%d",
+					name, sym2->decl->node.file,
+					sym2->decl->node.line);
+			} else if (sym2->decl->flags & DECL_CLASS_INST_VAR) {
+				L_warnf(decl, "local variable %s shadows a "
+					"class instance variable declared "
+					"at %s:%d", name, sym2->decl->node.file,
+					sym2->decl->node.line);
 			}
 		}
 		break;
@@ -5150,32 +5195,6 @@ L_trace(const char *format, ...)
 	fflush(stderr);
 }
 
-void
-L_warn(char *s)
-{
-	unless (L->options & L_OPT_NOWARN) {
-		fprintf(stderr, "L Warning: %s\n", s);
-	}
-}
-
-void
-L_warnf(void *node, const char *format, ...)
-{
-	va_list	ap;
-
-	unless (L->options & L_OPT_NOWARN) {
-		va_start(ap, format);
-		if (node) {
-			fprintf(stderr, "%s:%d: ",
-				((Ast *)node)->file, ((Ast *)node)->line);
-		}
-		fprintf(stderr, "L Warning: ");
-		vfprintf(stderr, format, ap);
-		fprintf(stderr, "\n");
-		va_end(ap);
-	}
-}
-
 /*
  * L_synerr is Bison's yyerror and is called by the parser for syntax
  * errors.  Bail out by longjumping back to Tcl_LObjCmd, as a way
@@ -5230,54 +5249,63 @@ L_synerr2(const char *s, int offset)
 	L_synerr(s);
 }
 
+private void
+err(char *format, va_list ap)
+{
+	int	len = 64;
+	char	*buf;
+
+	while (!(buf = ckvsprintf(format, ap, len))) len *= 2;
+	unless (L->errs) L->errs = Tcl_NewObj();
+	Tcl_AppendToObj(L->errs, buf, -1);
+	ckfree(buf);
+}
+
+void
+L_warnf(void *node, const char *format, ...)
+{
+	va_list ap;
+	char	*fmt;
+
+	if (L->options & L_OPT_NOWARN) return;
+
+	fmt = cksprintf("%s:%d: L Warning: %s\n",
+			((Ast *)node)->file, ((Ast *)node)->line, format);
+	va_start(ap, format);
+	err(fmt, ap);
+	va_end(ap);
+	ckfree(fmt);
+}
+
 void
 L_err(const char *format, ...)
 {
 	va_list ap;
-	int	len = 64;
-	char	*buf;
+	char	*fmt;
 
+	fmt = cksprintf("%s:%d: L Error: %s\n", L->file, L->line, format);
 	va_start(ap, format);
-	while (!(buf = ckvsprintf(format, ap, len))) {
-		va_end(ap);
-		va_start(ap, format);
-		len *= 2;
-	}
+	err(fmt, ap);
 	va_end(ap);
-
-	unless (L->errs) {
-		L->errs = Tcl_NewObj();
-	}
-	Tcl_AppendPrintfToObj(L->errs, "%s:%d: L Error: %s\n",
-			      L->file, L->line, buf);
-	ckfree(buf);
+	ckfree(fmt);
 }
 
 void
 L_errf(void *node, const char *format, ...)
 {
 	va_list ap;
-	int	len = 64;
-	char	*buf;
+	char	*fmt;
 
-	va_start(ap, format);
-	while (!(buf = ckvsprintf(format, ap, len))) {
-		va_end(ap);
-		va_start(ap, format);
-		len *= 2;
-	}
-	va_end(ap);
-
-	unless (L->errs) {
-		L->errs = Tcl_NewObj();
-	}
 	if (node) {
-		Tcl_AppendPrintfToObj(L->errs, "%s:%d: ",
-				      ((Ast *)node)->file,
-				      ((Ast *)node)->line);
+		fmt = cksprintf("%s:%d: L Error: %s\n", ((Ast *)node)->file,
+				((Ast *)node)->line, format);
+	} else {
+		fmt = cksprintf("L Error: %s\n", format);
 	}
-	Tcl_AppendPrintfToObj(L->errs, "L Error: %s\n", buf);
-	ckfree(buf);
+	va_start(ap, format);
+	err(fmt, ap);
+	va_end(ap);
+	ckfree(fmt);
 }
 
 int
@@ -5586,6 +5614,9 @@ TclLInitCompiler(Tcl_Interp *interp)
 	L->interp = interp;
 	frame_push(NULL, NULL, OUTER|SEARCH);
 	L_scope_enter();
+	L->fn_calls = Tcl_NewObj();
+	Tcl_SetVar2Ex(L->interp, "%%L_fnsCalled", NULL, L->fn_calls,
+		      TCL_GLOBAL_ONLY);
 }
 
 void

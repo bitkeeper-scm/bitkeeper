@@ -646,10 +646,11 @@ scan_1_7();
 } -output {}
 
 test scan-1.8 {test here documents 2} -body {
-#lang L
+#lang L -nowarn
+string scan_1_8a;
 void scan_1_8()
 {
-	string	s;
+	string	s, scan_1_8a;
 	string	foo = "foo";
 
 	/* Check string interpolation. */
@@ -737,21 +738,21 @@ END
 	 */
 	// x\<newline>
 	// y
-	eval("#lang L\nstring s = <<END\nx\\\ny\nEND\n");
-	unless (s eq "xy\n") puts("bad 9.3");
-	eval("#lang L\ns = <<'END'\nx\\\ny\nEND\n");
-	unless (s eq "x\\\ny\n") puts("bad 9.4");
+	eval("#lang L\nscan_1_8a = <<END\nx\\\ny\nEND\n");
+	unless (scan_1_8a eq "xy\n") puts("bad 9.3 ${scan_1_8a}");
+	eval("#lang L\nscan_1_8a = <<'END'\nx\\\ny\nEND\n");
+	unless (scan_1_8a eq "x\\\ny\n") puts("bad 9.4");
 	// x\<newline>
 	// y\<newline>
-	eval("#lang L\ns = <<END\nx\\\ny\\\nEND\n");
-	unless (s eq "xy") puts("bad 9.5");
-	eval("#lang L\ns = <<'END'\nx\\\ny\\\nEND\n");
-	unless (s eq "x\\\ny\\\n") puts("bad 9.6");
+	eval("#lang L\nscan_1_8a = <<END\nx\\\ny\\\nEND\n");
+	unless (scan_1_8a eq "xy") puts("bad 9.5");
+	eval("#lang L\nscan_1_8a = <<'END'\nx\\\ny\\\nEND\n");
+	unless (scan_1_8a eq "x\\\ny\\\n") puts("bad 9.6");
 	// \<newline>
-	eval("#lang L\ns = <<END\n\\\nEND\n");
-	unless (s eq "") puts("bad 9.7");
-	eval("#lang L\ns = <<'END'\n\\\nEND\n");
-	unless (s eq "\\\n") puts("bad 9.8");
+	eval("#lang L\nscan_1_8a = <<END\n\\\nEND\n");
+	unless (scan_1_8a eq "") puts("bad 9.7");
+	eval("#lang L\nscan_1_8a = <<'END'\n\\\nEND\n");
+	unless (scan_1_8a eq "\\\n") puts("bad 9.8");
 
 	/* Check `cmd` inside interpolated here document. */
 	s = <<END
@@ -1381,7 +1382,7 @@ var_1_2_2();
 } -output {}
 
 test var-1.2.3 {L global variable access from inside class} -body {
-#lang L
+#lang L -nowarn
 /*
  * Like the above test (var-1.2.2) but with class variables as well.
  */
@@ -1586,6 +1587,37 @@ decl_1_3_shadow
 } -returnCodes error -match glob -result {*L Error: multiple declaration of local foo
 }
 
+test decl-1.3.1 {test variable shadowing warnings} -body {
+#lang L
+string decl_1_3_1g;
+private string decl_1_3_1gp;
+class decl_1_3_1cl
+{
+	public	string	decl_1_3_1cls;
+	instance {
+		public	string	decl_1_3_1inst;
+	};
+	public void foo(decl_1_3_1cl self)
+	{
+		string	decl_1_3_1g = "";
+		string	decl_1_3_1gp = "";
+		string	decl_1_3_1cls = "";
+		string	decl_1_3_1inst = "";
+	}
+}
+void decl_1_3_1()
+{
+	string	decl_1_3_1g = "";
+	string	decl_1_3_1gp = "";
+}
+} -returnCodes error -match regexp -result {.*11: L Warning: local variable decl_1_3_1g shadows a global declared at.*:1
+.*12: L Warning: local variable decl_1_3_1gp shadows a global declared at.*:2
+.*13: L Warning: local variable decl_1_3_1cls shadows a class variable declared at.*:5
+.*14: L Warning: local variable decl_1_3_1inst shadows a class instance variable declared at.*:7
+.*19: L Warning: local variable decl_1_3_1g shadows a global declared at.*:1
+.*20: L Warning: local variable decl_1_3_1gp shadows a global declared at.*:2
+}
+
 test decl-1.4 {Single dimensional initializers actually initialize} -body {
 #lang L
 void decl_1_4 () {
@@ -1659,7 +1691,7 @@ void decl_1_6_bad()
 }
 
 test decl-1.7 {Check scoping rules for globals and externs} -body {
-#lang L
+#lang L -nowarn
 /*
  * This test checks the non-error cases of the scoping rules described
  * above.
@@ -10263,11 +10295,12 @@ in toplevel_1_0, i is: 2
 test toplevel-1.1 {Toplevel code via the L command, sharing variables} -body {
 L { puts("Accent on helpful side of your nature.  Drain the moat."); }
 proc toplevel_1_1 {} {
-    set v 2
+    set toplevel_1_1_v 2
     L {
-        string v = "Sphenic numbers always have exactly eight divisors.";
+	    string toplevel_1_1_v = "Sphenic numbers always have exactly "
+		    "eight divisors.";
     }
-    puts $v
+    puts $toplevel_1_1_v
 }
 toplevel_1_1
 } -output {Accent on helpful side of your nature.  Drain the moat.
@@ -14321,6 +14354,34 @@ void function_1_6_i(int i) { i = 0; }
 } -returnCodes {error} -match regexp -result {.*8: L Error: too many arguments for function function_1_6_v
 .*9: L Error: not enough arguments for function function_1_6_i
 .*10: L Error: parameter 1 has incompatible type
+}
+
+test function-2 {check call to undefined function warnings} -setup {
+	set file [makeFile {
+			void fn2_nobody();
+			void Fn2_*();
+			void main()
+			{
+				undeclared_call1();
+				undeclared_call2();
+				undeclared_call3();
+				fn2_nobody();
+				Undeclared1_too();
+				Undeclared2_hasargs(1,2,3);
+				Fn2_star();
+			}
+		} function2.l .]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $file
+} -returnCodes {error} -match regexp -result {L Warning: function undeclared_call1 not defined
+L Warning: function undeclared_call2 not defined
+L Warning: function undeclared_call3 not defined
+L Warning: function fn2_nobody not defined
+L Warning: function undeclared1 not defined
+L Warning: function undeclared2 not defined
+L Warning: function Fn2_\* not defined
 }
 
 test initializers-1 {check variable initializer error cases} -body {

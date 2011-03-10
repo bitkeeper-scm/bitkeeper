@@ -14,6 +14,11 @@ set ::%%suppress_calling_main 0
 proc %%call_main_if_defined {} {
 	if {$::tcl_interactive} { return }
 	if {[llength [info proc main]] && !${::%%suppress_calling_main}} {
+		foreach f [dict keys ${::%%L_fnsCalled}] {
+		    if {![llength [info commands $f]] && ![llength [info procs $f]]} {
+			puts stderr "L Warning: function $f not defined"
+		    }
+		}
 		incr ::argc
 		if {![info exists ::argv]}  { set ::argv {} }
 		if {![info exists ::argv0]} { set ::argv0 "L" }

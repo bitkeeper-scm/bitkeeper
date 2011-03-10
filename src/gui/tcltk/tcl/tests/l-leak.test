@@ -406,23 +406,23 @@ test leak-4.3 {leaks in structs} -body {
 test leak-5.1 {leaks in deep diving} -body {
 #lang L
     struct leak_5_1_js {string h{string}; poly a[2];};
-    struct leak_5_1_js j[2];
-    string h{string};
+    struct leak_5_1_js leak_5_1_j[2];
+    string leak_5_1_h{string};
     void leak_5_1() {
 	int tmp, end, i;
 	end = getbytes();
 	for(i=0; i<5;i++) {
-	    j[0].h{"foo"}= j[1].a[1];
-	    j[1].h{"foo"}= "moo";
-	    j[0].a[0]=j[1].h;
-	    j[0].a[1]=j[0].h{"foo"};
-	    j[1].a[0]=j[0].h{"foo"};
-	    j[1].a[1]=j[1].a[0];
+	    leak_5_1_j[0].h{"foo"}= leak_5_1_j[1].a[1];
+	    leak_5_1_j[1].h{"foo"}= "moo";
+	    leak_5_1_j[0].a[0]=leak_5_1_j[1].h;
+	    leak_5_1_j[0].a[1]=leak_5_1_j[0].h{"foo"};
+	    leak_5_1_j[1].a[0]=leak_5_1_j[0].h{"foo"};
+	    leak_5_1_j[1].a[1]=leak_5_1_j[1].a[0];
 	    tmp=end;
 	    end = getbytes();
 	}
-	h = (hash)j[0].a[0];
-	puts(list(end-tmp, h{"foo"}, j[1].h{"foo"}));
+	leak_5_1_h = (hash)leak_5_1_j[0].a[0];
+	puts(list(end-tmp, leak_5_1_h{"foo"}, leak_5_1_j[1].h{"foo"}));
     }
     leak_5_1();
 } -constraints memory -output "0 moo moo\n"

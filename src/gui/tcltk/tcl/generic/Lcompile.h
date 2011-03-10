@@ -137,6 +137,7 @@ typedef struct {
 	char	*fnhook;	// name of function-trace proc
 	int	expr_level;	// compile_expr() recursion depth
 	int	call_level;	// compile_expr() level of last fn call
+	Tcl_Obj	*fn_calls;	// list of all fn calls compiled
 } Linterp;
 
 /*
@@ -224,7 +225,6 @@ extern int	L_typeck_same(Type *a, Type *b);
 extern Type	*L_typedef_lookup(char *name);
 extern void	L_typedef_store(VarDecl *decl);
 extern Tcl_Obj **L_undefObjPtrPtr();
-extern void	L_warn(char *s);
 extern void	L_warnf(void *node, const char *format, ...);
 
 extern Linterp	*L;
