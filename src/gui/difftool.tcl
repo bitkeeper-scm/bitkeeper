@@ -248,7 +248,7 @@ proc readInput {in} \
 proc getFiles {} \
 {
 	global argv argc dev_null lfile rfile unique
-	global gc menu rev1 rev2 Diffs DiffsEnd
+	global gc menu rev1 rev2 Diffs DiffsEnd filepath
 
 	if {$argc > 3} { usage }
 	set files [list]
@@ -292,7 +292,8 @@ proc getFiles {} \
 				exit 1
 			}
 		} else { ;# bk difftool file
-			set rfile [normalizePath [lindex $argv 0]]
+			set filepath [lindex $argv 0]
+			set rfile [normalizePath $filepath]
 			set lfile [getRev $rfile "+" 1]
 			set rev1 "+"
 
@@ -315,7 +316,8 @@ proc getFiles {} \
 					exit 1
 				}
 			} else {
-				set rfile [normalizePath [lindex $argv 1]]
+				set filepath [lindex $argv 1]
+				set rfile [normalizePath $filepath]
 				set lfile [getRev $rfile $rev1 0]
 				# If bk file and not checked out, check it out ro
 				#displayMessage "lfile=($lfile) rfile=($rfile)"
@@ -351,7 +353,8 @@ proc getFiles {} \
 			}
 		}
 	} else { ;# bk difftool -r<rev> -r<rev2> file
-		set file [normalizePath [lindex $argv 2]]
+		set filepath [lindex $argv 2]
+		set file [normalizePath $filepath]
 		set a [lindex $argv 0]
 		if {![regexp -- {-r(.*)} $a junk rev1]} { usage }
 		set lfile [getRev $file $rev1 0]
@@ -544,7 +547,7 @@ proc discard {{what firstClick} args} \
 	global menu
 	global lname rname
 
-	set tmp [split $lname @]
+	set tmp [split $lname @|]
 	set file [lindex $tmp 0]
 
 	switch -exact -- $what {
@@ -653,7 +656,7 @@ proc clearDisplay {} \
 
 proc revtool {} \
 {
-	global lname rname
+	global lname rname filepath
 	global menu
 
 	# These regular expressions come straight from revtool, and are
@@ -664,19 +667,23 @@ proc revtool {} \
 
 	set command [list bk revtool]
 
-	set tmp [split $rname @]
+	set tmp [split $rname @|]
 	set file [lindex $tmp 0]
 	set rev [lindex $tmp 1]
 	if {[regexp $r2 $rev] || [regexp $r4 $rev]} {
 		lappend command "-r$rev"
 
-		set tmp [split $lname @]
+		set tmp [split $lname @|]
 		set rev [lindex $tmp 1]
 		if {[regexp $r2 $rev] || [regexp $r4 $rev]} {
 			lappend command "-l$rev"
 		}
 	}
-	lappend command $file
+	if {[info exists filepath]} {
+		lappend command $filepath
+	} else {
+		lappend command $file
+	}
 	eval exec $command &
 }
 

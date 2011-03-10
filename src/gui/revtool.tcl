@@ -273,11 +273,11 @@ proc doDiff {{difftool 0}} \
 	set b ""
 	if {![info exists anchor] || $anchor == ""} return
 
-	set r $anchor
 	if {[string match *-* $anchor]} {
 		# anchor is wrong (1.223-lm) instead of just 1.223
-		set r [lindex [split $anchor -] 0]
+		set anchor [lindex [split $anchor -] 0]
 	}
+	set r $anchor
 
 	# No second rev? Get the parent
 	if {![info exists rev2] || "$rev2" == "$rev1" || "$rev2" == ""} {
