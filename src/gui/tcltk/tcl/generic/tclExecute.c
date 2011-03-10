@@ -8051,13 +8051,13 @@ TclExecuteByteCode(
 
 	if (opnd & L_SPLIT_LIM) {
 	    ASSERT(opnd & (L_SPLIT_RE | L_SPLIT_STR));
-	    strObj   = OBJ_AT_DEPTH(2);
-	    delimObj = OBJ_AT_DEPTH(1);
+	    delimObj = OBJ_AT_DEPTH(2);
+	    strObj   = OBJ_AT_DEPTH(1);
 	    limitObj = OBJ_AT_DEPTH(0);
 	    n = 3;
 	} else if (opnd & (L_SPLIT_RE | L_SPLIT_STR)) {
-	    strObj   = OBJ_AT_DEPTH(1);
-	    delimObj = OBJ_AT_DEPTH(0);
+	    delimObj = OBJ_AT_DEPTH(1);
+	    strObj   = OBJ_AT_DEPTH(0);
 	    n = 2;
 	} else {
 	    strObj   = OBJ_AT_DEPTH(0);

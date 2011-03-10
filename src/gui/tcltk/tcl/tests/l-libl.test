@@ -187,7 +187,7 @@ test assert-1 {test assert} -setup {
 void assert1()
 {
 	int	ret;
-	string	cmd = "${eval('interpreter')} assert1.l";
+	string	cmd = "\"${eval('interpreter')}\" assert1.l";
 	string	err[], out[];
 
 	ret = system(cmd, undef, &out, &err);
@@ -390,6 +390,26 @@ void env1()
 
 	putenv("LIBLTEST=%s%s", "one", "two");
 	unless (getenv("LIBLTEST") eq "onetwo") puts("bad 4");
+
+	/* The value can contain = */
+	unless (putenv("LIBLTEST=HAS=") eq "HAS=") puts("bad 5.1");
+	unless (getenv("LIBLTEST") eq "HAS=") puts("bad 5.2");
+	unless (putenv("LIBLTEST=HAS=X") eq "HAS=X") puts("bad 5.3");
+	unless (getenv("LIBLTEST") eq "HAS=X") puts("bad 5.4");
+	unless (putenv("LIBLTEST=HAS==") eq "HAS==") puts("bad 5.5");
+	unless (getenv("LIBLTEST") eq "HAS==") puts("bad 5.6");
+	unless (putenv("LIBLTEST=HAS=TWO=") eq "HAS=TWO=") puts("bad 5.7");
+	unless (getenv("LIBLTEST") eq "HAS=TWO=") puts("bad 5.8");
+	unless (putenv("LIBLTEST=HAS=TWO==") eq "HAS=TWO==") puts("bad 5.9");
+	unless (getenv("LIBLTEST") eq "HAS=TWO==") puts("bad 5.10");
+	unless (putenv("LIBLTEST==") eq "=") puts("bad 5.11");
+	unless (getenv("LIBLTEST") eq "=") puts("bad 5.12");
+	unless (putenv("LIBLTEST=====") eq "====") puts("bad 5.13");
+	unless (getenv("LIBLTEST") eq "====") puts("bad 5.14");
+
+	/* Check bad putenv format. */
+	if (defined(putenv("BAD"))) puts("bad 6.1");
+	if (defined(putenv(""))) puts("bad 6.2");
 }
 env1();
 } -output {}
@@ -423,13 +443,24 @@ test fclose-1 {test fclose errors} -body {
 #lang L
 void fclose1()
 {
-	fclose("bad");
+	FILE	f = "bad";
+
+	fclose(f);
 	unless (stdio_lasterr eq 'can not find channel named "bad"') {
 		puts("bad 1");
 	}
 }
 fclose1();
 } -output {}
+
+test fclose-2 {test fclose type errors} -body {
+#lang L
+void fclose2()
+{
+	fclose("not a FILE");
+}
+} -returnCodes error -match regexp -result {.*3: L Error: parameter 1 has incompatible type
+}
 
 test file-1 {test fopen/fclose/fprintf} -body {
 #lang L
@@ -466,6 +497,15 @@ void file2()
 file2();
 } -output {}
 
+test file-3 {test fprintf type errors} -body {
+#lang L
+void file3()
+{
+	fprintf("not a FILE", "%s", "bad");
+}
+} -returnCodes error -match regexp -result {.*3: L Error: parameter 1 has incompatible type
+}
+
 test fopen-1 {test fopen errors} -body {
 #lang L
 void fopen1()
@@ -480,6 +520,23 @@ void fopen1()
 fopen1();
 } -errorOutput {fopen(bad2, r) = couldn't open "bad2": no such file or directory
 fopen(bad3, r) = couldn't open "bad3": no such file or directory
+} -output {}
+
+test Fprintf-1 {test Fprintf} -body {
+#lang L
+void Fprintf1()
+{
+	FILE	f;
+
+	unless (Fprintf("/this/is/bad", "bad")) puts("bad 1.1");
+
+	unless (Fprintf("fprintf-tst", "hello Fprintf\n") == 0) puts("bad 2.1");
+	unless (f = fopen("fprintf-tst", "r")) puts("bad 2.2");
+	unless (<f> eq "hello Fprintf") puts("bad 2.3");
+	if (<f>) puts("bad 2.4");
+	fclose(f);
+}
+Fprintf1();
 } -output {}
 
 test ftype-1 {test ftpye} -setup {
@@ -533,7 +590,7 @@ void ftype2()
 ftype2();
 } -output {}
 
-test getdir1 {test getdir} -setup {
+test getdir-1 {test getdir} -setup {
 	file mkdir getdirtest
 	set fname1 [makeFile {test1} f1 getdirtest]
 	set fname2 [makeFile {test2} f2 getdirtest]
@@ -545,7 +602,7 @@ void getdir1()
 {
 	string	dirs[];
 
-	dirs = sort(getdir("getdirtest", "*"));
+	dirs = getdir("getdirtest", "*");
 	unless (length(dirs) == 3) puts("bad 1.1");
 	unless (dirs[0] eq "getdirtest/f1") puts("bad 1.2");
 	unless (dirs[1] eq "getdirtest/f2") puts("bad 1.3");
@@ -559,7 +616,7 @@ void getdir1()
 	unless (length(dirs) == 1) puts("bad 3.1");
 	unless (dirs[0] eq "getdirtest/f3") puts("bad 3.2");
 
-	dirs = sort(getdir("getdirtest"));
+	dirs = getdir("getdirtest");
 	unless (length(dirs) == 3) puts("bad 4.1");
 	unless (dirs[0] eq "getdirtest/f1") puts("bad 4.2");
 	unless (dirs[1] eq "getdirtest/f2") puts("bad 4.3");
@@ -569,6 +626,15 @@ void getdir1()
 	unless (length(dirs) == 0) puts("bad 10.1");
 
 	if (defined(getdir("dir", "*", "too-many-args"))) puts("bad 11.1");
+
+	/* getdir should strip any leading ./ now */
+	cd("getdirtest");
+	dirs = getdir(".");
+	unless (length(dirs) == 3) puts("bad 12.1");
+	unless (dirs[0] eq "f1") puts("bad 12.2");
+	unless (dirs[1] eq "f2") puts("bad 12.3");
+	unless (dirs[2] eq "f3") puts("bad 12.4");
+	cd("..");
 }
 getdir1();
 } -cleanup {
@@ -795,10 +861,10 @@ void link1()
 	 * This isn't supported on all platforms, so if it returns
 	 * failure, don't check for the link.
 	 */
-	if (link("linktest2", "linktest") == 0) {
-		if (islink("linktest2")) puts("bad 2.1");
+	if (link("linktest", "linktest2") == 0) {
+		unless (exists("linktest2")) puts("bad 2.1");
+		unless (size("linktest") == size("linktest2")) puts("bad 2.2");
 	}
-	unless (size("linktest") == size("linktest2")) puts("bad 2.2");
 }
 link1();
 } -cleanup {
@@ -887,6 +953,21 @@ void normalize1()
 normalize1();
 } -output {}
 
+test ord-1 {test ord} -body {
+#lang L
+void ord1()
+{
+	string	s;
+
+	unless (ord("A") == 65) puts("bad 1");
+	unless (ord("BCD") == 66) puts("bad 2");
+	unless (ord("") == -1) puts("bad 3");
+	s = "";
+	unless (ord(s) == -1) puts("bad 4");
+}
+ord1();
+ } -output {}
+
 test pclose-1 {test pclose errors} -body {
 #lang L
 void pclose1()
@@ -897,10 +978,12 @@ void pclose1()
 	pclose();
 	pclose(0, undef, 0);
 	pclose(fd, st);
+	pclose("not a FILE");
 }
-} -returnCodes error -match regexp -result {.*6: L Error: incorrect # args to pclose
-.*7: L Error: incorrect # args to pclose
-.*8: L Error: second arg to pclose must be STATUS\&
+} -returnCodes error -match regexp -result {.*6: L Error: not enough arguments for function pclose
+.*7: L Error: too many arguments for function pclose
+.*8: L Error: parameter 2 has incompatible type
+.*9: L Error: parameter 1 has incompatible type
 }
 
 test popen-1 {test popen/pclose} -setup {
@@ -974,7 +1057,7 @@ test popen-3 {test popen stderr} -setup {
 void popen3()
 {
 	int	ret;
-	string	cmd = "${eval('interpreter')} popen3.l";
+	string	cmd = "\"${eval('interpreter')}\" popen3.l";
 	string	err[], out[];
 
 	ret = system(cmd, undef, &out, &err);
@@ -1022,6 +1105,33 @@ printf1();
 Test2
 Test3 - last one
 }
+
+test printf-2 {test that we exit silently on broken stdout pipe} -setup {
+	set fname [makeFile {
+		while (1) puts("printf2 test");
+	} printf2.l]
+} -body {
+#lang L
+void printf2()
+{
+	int	ret;
+	string	cmd, err[], out[];
+
+	/*
+	 * This runs the printf2.l script (above) in a separate
+	 * instance of the L interpreter and pipes it to a perl script
+	 * that reads only the first two lines and then exits.  L
+	 * should ignore the broken output pipe error and silently
+	 * exit.
+	 */
+	cmd = "\"${eval('interpreter')}\" printf2.l | perl -e '$_=<>;$_=<>'";
+	ret = system(cmd, undef, &out, &err);
+	unless (defined(ret)) perror("system");
+	unless (length(out) == 0) puts("bad 2 ${out}");
+	unless (length(err) == 0) puts("bad 3 ${err}");
+}
+printf2();
+} -output {}
 
 test read-1 {test read} -setup {
 	set fname [makeFile "012345678901234567\n" read_test .]
@@ -1072,6 +1182,16 @@ void read1()
 	unless ((n == 19) && (buf eq "012345678901234567\n")) puts("bad 4.2");
 
 	fclose(f);
+
+	/* Check that last arg is optional. */
+
+	f = fopen("read_test", "r");
+	unless (defined(f)) puts("bad 5.1");
+	buf = undef;
+	n = read(f, &buf);
+	unless (defined(buf)) puts("bad 5.2");
+	unless ((n == 19) && (buf eq "012345678901234567\n")) puts("bad 5.3");
+	fclose(f);
 }
 read1();
 } -cleanup {
@@ -1087,7 +1207,6 @@ void read2()
 
 	read();
 	read(f);
-	read(f, &s);
 	read(f, &s, -1, "too many");
 	read(0, &s, -1);
 	read(f, 0, -1);
@@ -1096,10 +1215,9 @@ void read2()
 } -returnCodes error -match regexp -result {.*6: L Error: incorrect # args to read\(\)
 .*7: L Error: incorrect # args to read\(\)
 .*8: L Error: incorrect # args to read\(\)
-.*9: L Error: incorrect # args to read\(\)
-.*10: L Error: first arg to read\(\) must have type FILE
-.*11: L Error: second arg to read\(\) must have type string\&
-.*12: L Error: third arg to read\(\) must have type int
+.*9: L Error: first arg to read\(\) must have type FILE
+.*10: L Error: second arg to read\(\) must have type string\&
+.*11: L Error: third arg to read\(\) must have type int
 }
 
 test rename-1 {test rename} -setup {
@@ -1327,7 +1445,7 @@ void spawn1()
 .*52: L Error: fourth arg must be FILE, or string constant
 }
 
-test spawn2 {test spawn return values} -body {
+test spawn2 {test spawn error return values} -body {
 #lang L
 void spawn2()
 {
@@ -1358,6 +1476,32 @@ void spawn2()
 	if (defined(pid)) puts("bad 2.3");
 }
 spawn2();
+} -output {}
+
+test spawn3 {test spawn pid return value} -body {
+#lang L
+void spawn3()
+{
+	int	pid;
+	FILE	f;
+
+	/*
+	 * For a pipeline, spawn should return the pid of the last
+	 * command, like bash does with #!, not a list of pids like
+	 * Tcl's pid() does.
+	 */
+
+	pid = spawn("date | perl -e 'print $$'", undef, "spawn3-out", undef);
+	unless (defined(pid)) puts("bad 1");
+	unless ((poly)pid =~ /^\d+$/) puts("bad 2");
+	waitpid(pid, undef, 0);
+	unless (exists("spawn3-out")) puts("bad 3");
+	unless (f = fopen("spawn3-out", "r")) puts("bad 4");
+	unless ((int)<f> == pid) puts("bad 5");
+	fclose(f);
+	unlink("spawn3-out");
+}
+spawn3();
 } -output {}
 
 test sprintf-1 {test sprintf} -body {
@@ -1574,8 +1718,8 @@ x y z		| <x><y><z>
 -- --x		| <--x>
 END
 //" (to balance quotes for emacs)
-	foreach (t in split(tests, "\n")) {
-		string	a[] = split(t, /\s*\|\s*/);
+	foreach (t in split(/\n/, tests)) {
+		string	a[] = split(/\s*\|\s*/, t);
 		assert(length(a) == 2);
 		unless (defined(system("${perl} ${a[0]}", undef, &s, undef))) {
 			puts("system: error for ${a[0]}");
@@ -2217,8 +2361,8 @@ x\y		| <x\y>
 -		| <->
 -- | --x	| <--x>
 END
-	foreach (t in split(tests, "\n")) {
-		string	a[] = split(t, /\s*\|\s*/);
+	foreach (t in split(/\n/, tests)) {
+		string	a[] = split(/\s*\|\s*/, t);
 		string	cmd[] = { (expand)perl, (expand)a[0..END-1] };
 		unless (system(cmd, undef, &out, &err) == 0) puts("bad 1");
 		unless (out eq a[END]) {
@@ -2307,6 +2451,35 @@ void system6()
 system6();
 } -output {}
 
+test system7 {misc system and spawn tests} -body {
+#lang L
+void system7()
+{
+	int	ret;
+	string	out;
+	FILE	f;
+
+	/* These used to be type errors. */
+
+	out = undef;
+	ret = undef;
+	ret = system({'perl', '-e', 'print "SYSTEM7"'}, undef, &out, undef);
+	unless (defined(ret)) puts("bad 1.1");
+	unless (out eq "SYSTEM7") puts("bad 1.2");
+
+	out = undef;
+	ret = undef;
+	ret = spawn({'perl', '-e', 'print "SYSTEM7"'}, undef, "out7", undef);
+	unless (defined(ret) && (ret > 0)) puts("bad 2.1");
+	waitpid(ret, undef, 0);
+	unless (f = fopen("out7", "r")) puts("bad 2.2");
+	unless (<f> eq "SYSTEM7") puts("bad 2.3");
+	fclose(f);
+	unlink("out7");
+}
+system7();
+} -output {}
+
 test symlink-1 {test symlink} -setup {
 	set fname [makeFile {test} linktest .]
 	file delete -force linktest2
@@ -2321,8 +2494,9 @@ void symlink1()
 	 * This isn't supported on all platforms, so if it returns
 	 * failure, don't check for the symlink.
 	 */
-	if (symlink("linktest2", "linktest") == 0) {
+	if (symlink("linktest", "linktest2") == 0) {
 		unless (islink("linktest2")) puts("bad 2.1");
+		unless (exists("linktest2")) puts("bad 2.2");
 	}
 }
 symlink1();
@@ -2371,7 +2545,7 @@ test backtick-2 {test backtick stderr} -setup {
 void backtick2()
 {
 	int	ret;
-	string	cmd = "${eval('interpreter')} backtick2.l";
+	string	cmd = "\"${eval('interpreter')}\" backtick2.l";
 	string	err[], out[];
 
 	ret = system(cmd, undef, &out, &err);
@@ -2401,7 +2575,7 @@ test backtick-3 {test backtick stderr} -setup {
 void backtick3()
 {
 	int	ret;
-	string	cmd = "${eval('interpreter')} backtick3.l";
+	string	cmd = "\"${eval('interpreter')}\" backtick3.l";
 	string	err[], out[];
 
 	ret = system(cmd, undef, &out, &err);
@@ -2467,29 +2641,152 @@ void uc1()
 uc1();
 } -output {}
 
+test waitpid-1 {test waitpid, nohang} -body {
+#lang L
+void wpDoit(int exit_status)
+{
+	int	i, pid, ret, reaped, secs;
+	string	av[];
+	STATUS	st;
+
+	secs = 2;
+	av = {"perl", "-e", "sleep ${secs}; exit ${exit_status}"};
+	pid = spawn(av);
+	unless (defined(pid)) puts("bad 1.1");
+
+	/* Poll waitpid every 1/4 second up to secs+1 seconds. */
+	reaped = 0;
+	for (i = 0; i < (secs+1)*4; ++i) {
+		ret = waitpid(pid, &st, 1);
+		switch (ret) {
+		    case 0:	// process still running
+			break;
+		    case -1:	// error
+			puts("bad 2.0");
+			break;
+		    undef:	// should never happen
+			puts("bad 2.1");
+			break;
+		    default:	// should be pid
+			unless (ret == pid) puts("bad 2.2");
+			unless (defined(st.exit)) puts("bad 2.3");
+			unless (st.exit == exit_status) puts("bad 2.4");
+			if (defined(st.signal)) puts("bad 2.5");
+			++reaped;
+			break;
+		}
+		sleep(0.25);
+	}
+	unless (reaped) puts("bad 3.1");
+}
+void waitpid1()
+{
+	wpDoit(0);
+	wpDoit(1);
+	wpDoit(100);
+}
+waitpid1();
+} -output {}
+
+test waitpid-2 {test waitpid on exited process} -body {
+#lang L
+void waitpid2()
+{
+	int	pid;
+	FILE	f;
+
+	/* Test waitpid on an already exited process. */
+
+	pid = spawn({'perl', '-e', 'print "waitpid2"'},
+		    undef, "outp2", undef);
+	unless (pid > 0) puts("bad 1.1");
+	sleep(1);
+	unless (waitpid(pid, undef, 0) == pid) puts("bad 1.2");
+	unless (f = fopen("outp2", "r")) puts("bad 1.3");
+	unless (<f> eq "waitpid2") puts("bad 1.4");
+	fclose(f);
+	unlink("outp2");
+}
+waitpid2();
+} -output {}
+
+test waitpid-3 {test waitpid with multiple procs} -body {
+#lang L
+/* This test is from Larry. */
+void waitpid3(int n, int parallel)
+{
+	string  cmd[];
+	string  pids{int};
+	int     i, pid, reaped, ret;
+	int     bg = 0;
+	int     usleep = getpid();
+	STATUS	st;
+
+	for (i = 0; i < n; ++i) {
+		while (bg > parallel) {
+			reaped = 0;
+			foreach (pid in keys(pids)) {
+				ret = waitpid(pid, &st, 1);
+				if (ret == 0) continue;
+				if (ret < 0) puts("bad 1.1");
+				unless (ret == pid) puts("bad 1.2");
+				unless (st.exit == 0) puts("bad 1.3");
+				reaped++;
+				bg--;
+				undef(pids{pid});
+				break;
+			}
+			if (reaped) break;
+			sleep(0.1);
+		}
+		cmd = {
+			"bk",
+			"_usleep",
+			(string)usleep,
+		};
+		unless (defined(pid = spawn(cmd))) puts("spawn failed: ${cmd}");
+		pids{pid} = join(" ", cmd);
+		bg++;
+		usleep = pid;   // move the amounts around
+	}
+	foreach (pid in keys(pids)) {
+		unless (waitpid(pid, &st, 0) == pid) puts("bad 2.1");
+		unless (st.exit == 0) puts("bad 2.2");
+	}
+}
+waitpid3(10, 5);
+} -output {}
+
 test warn-1 {test warn} -body {
 #lang L
 void warn1()
 {
 	string	s1 = "s1", s2 = "s2";
 
-	warn("warning: %s OK here\n");
+
 	warn("warning: %s\n", s1);
 	warn("warning: %s %s\n", s1, s2);
 
 	/* No trailing newline -- warn should append file,line. */
-	warn("warning: %s OK here");
+
 	warn("warning: %s", s1);
 	warn("warning: %s %s", s1, s2);
 }
 warn1();
-} -errorOutput {warning: %s OK here
-warning: s1
+} -errorOutput {warning: s1
 warning: s1 s2
-warning: %s OK here in warn1:10
 warning: s1 in warn1:11
 warning: s1 s2 in warn1:12
 } -output {}
+
+test warn-2 {test warn errors} -body {
+#lang L
+void warn2()
+{
+	warn("%s");
+}
+warn2();
+} -returnCodes error -result {not enough arguments for all format specifiers}
 
 test write-1 {test write} -body {
 #lang L
@@ -2567,6 +2864,45 @@ void write3()
 write3();
 } -cleanup {
 	removeFile write3
+} -output {}
+
+test write-4 {test write with binary data} -body {
+#lang L
+void write4()
+{
+	/*
+	 * Write all the ordinals from 0 to 255 to a file a few times
+	 * and read them back.
+	 */
+
+	int	i, n;
+	int	niters = 3;
+	FILE	f;
+	string	buf;
+
+	unless (f = fopen("write4-out", "w")) puts("bad 1");
+	fconfigure(f, translation: "binary");
+	for (i = 0; i < 256*niters; ++i) {
+		buf = sprintf("%c", i%256);
+		assert(length(buf) == 1);
+		write(f, buf, 1);
+	}
+	fclose(f);
+
+	unless (f = fopen("write4-out", "r")) puts("bad 2");
+	fconfigure(f, translation: "binary");
+	i = 0;
+	while ((n = read(f, &buf, 1)) > 0) {
+		unless (n == 1) puts("bad 3");
+		unless (length(buf) == 1) puts("bad 4");
+		unless (ord(buf[0]) == (i%256)) puts("bad 5 @${i}");
+		++i;
+	}
+	unless (n == 0) puts("bad 6");
+	unless (i == 256*niters) puts("bad 7 ${i}");
+	unlink("write4-out");
+}
+write4();
 } -output {}
 
 ::tcltest::cleanupTests

@@ -393,6 +393,8 @@ canonical_num(char *num)
 	"destructor"	return T_DESTRUCTOR;
 	"expand"	return T_EXPAND;
 	"_argused"	return T_ARGUSED;
+	"_optional"	return T_OPTIONAL;
+	"_mustbetype"	return T_MUSTBETYPE;
 	"goto"		return T_GOTO;
 	"switch"	return T_SWITCH;
 	"case"		return T_CASE;
@@ -586,6 +588,14 @@ canonical_num(char *num)
 		re_quote_char = *(yytext + yyleng - 1);
 		L_lloc.end = L_lloc.beg + 2;	// this token spans the "=~"
 		return T_EQTWID;
+	}
+	/* a regexp after an open paren, as in split(/re/,arg) */
+	"("[ \t\r\n]*"/"	{
+		yy_push_state(re_modifier);
+		yy_push_state(glob_re);
+		STRBUF_START(L_lloc.end - 1);	// next token starts at the "/"
+		re_quote_char = '/';
+		return T_LPAREN;
 	}
 	/* here document (interpolated), valid only on rhs of an assignment */
 	"="[ \t\r\n]*"<<"[a-zA-Z_][a-zA-Z_0-9]*"\n"		{
@@ -881,7 +891,7 @@ canonical_num(char *num)
 
 }
 <re_modifier>{
-	[ig]+		{
+	[igt]+		{
 				L_lval.s = ckstrdup(yytext);
 				yy_pop_state();
 				return T_RE_MODIFIER;

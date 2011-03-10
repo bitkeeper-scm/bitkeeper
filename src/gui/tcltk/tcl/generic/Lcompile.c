@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include "tclInt.h"
+#include "tclIO.h"
 #include "tclCompile.h"
 #include "tclRegexp.h"
 #include "Lcompile.h"
@@ -146,7 +147,6 @@ private void	compile_label(Stmt *stmt);
 private int	compile_length(Expr *expr);
 private void	compile_loop(Loop *loop);
 private int	compile_fnParms(VarDecl *decl);
-private int	compile_pclose(Expr *expr);
 private void	compile_pragma(Stmt *stmt);
 private int	compile_pop(Expr *expr);
 private int	compile_push(Expr *expr);
@@ -198,7 +198,7 @@ private Label	*label_lookup(Stmt *stmt, Label_f flags);
 private int	parse_options(int ac, Tcl_Obj **av);
 private void	proc_mkArg(Proc *proc, VarDecl *decl);
 private int	push_index(Expr *expr, int flags);
-private int	push_parms(Expr *actuals);
+private int	push_parms(Expr *actuals, VarDecl *formals);
 private int	push_regexpModifiers(Expr *regexp);
 private ReKind	re_kind(Expr *re, Tcl_DString *ds);
 private int	re_submatchCnt(Expr *re);
@@ -236,7 +236,6 @@ static struct {
 	{ "join",	compile_join },
 	{ "keys",	compile_keys },
 	{ "length",	compile_length },
-	{ "pclose",	compile_pclose },
 	{ "pop",	compile_pop },
 	{ "push",	compile_push },
 	{ "read",	compile_read },
@@ -1306,6 +1305,9 @@ compile_fnParms(VarDecl *decl)
 		if ((p->flags & DECL_REST_ARG) && (p->next)) {
 			L_errf(p, "Rest parameter must be last");
 		}
+		if ((p->flags & DECL_OPTIONAL) && (p->next)) {
+			L_errf(p, "_optional parameter must be last");
+		}
 		if (iscallbyname(p)) {
 			name = cksprintf("&%s", p->id->str);
 			ckfree(p->id->str);
@@ -1359,7 +1361,7 @@ compile_rename(Expr *expr)
 {
 	int	n;
 
-	push_str("frename");
+	push_str("frename_");
 	n = compile_exprs(expr->b, L_PUSH_VAL);
 	unless (n == 2) {
 		L_errf(expr, "incorrect # args for rename");
@@ -1373,32 +1375,48 @@ private int
 compile_split(Expr *expr)
 {
 	int	n;
-	Expr	*arg = expr->b;
-	Expr	*lim = NULL, *sep = NULL;
+	Expr	*str = NULL, *lim = NULL, *sep = NULL;
 	Expr_f	flags = 0;
 
+	expr->type = L_poly;  // for err return path
 	n = compile_exprs(expr->b, L_PUSH_VAL);
 	ASSERT(n > 0);  // grammar ensures this
 	if (n > 3) {
 		L_errf(expr, "too many args to split");
+		return (0);
 	}
-	unless (istype(arg, L_STRING|L_WIDGET|L_POLY) && !isregexp(arg)) {
-		L_errf(expr, "first arg to split must be string");
+	switch (n) {
+	    case 1:	// split(<str>)
+		str = expr->b;
+		break;
+	    case 2:	// split(/re/, <str>)
+		sep = expr->b;
+		str = sep->next;
+		break;
+	    case 3:	// split(/re/, <str>, <lim>)
+		sep = expr->b;
+		str = sep->next;
+		lim = str->next;
+		break;
 	}
-	if (arg && arg->next) {
-		sep = arg->next;
-		ASSERT(isstring(sep));  // grammar ensures this
-		if (isregexp(sep)) {
-			flags |= L_SPLIT_RE;
-		} else {
-			flags |= L_SPLIT_STR;
+	unless (istype(str, L_STRING|L_WIDGET|L_POLY)) {
+		L_errf(str, "expression to split must be string");
+	}
+	if (sep) {
+		unless (isregexp(sep)) {
+			L_errf(sep, "split delimiter must be a "
+			       "regular expression");
 		}
+		if (sep->flags && !(sep->flags & L_EXPR_RE_T)) {
+			L_errf(sep, "illegal regular expression modifier");
+		}
+		flags |= L_SPLIT_RE | sep->flags;
 	}
-	if (sep && sep->next) {
-		lim = sep->next;
+	if (lim) {
 		flags |= L_SPLIT_LIM;
 		unless (isint(lim)) {
 			L_errf(expr, "third arg to split must be integer");
+			return (0);
 		}
 	}
 	TclEmitInstInt4(INST_L_SPLIT, flags, L->frame->envPtr);
@@ -1410,13 +1428,13 @@ compile_split(Expr *expr)
 private int
 compile_push(Expr *expr)
 {
-	int	idx;
+	int	i, idx;
 	Expr	*arg, *array;
 	Type	*base_type;
 
 	expr->type = L_void;
-	unless (expr->b && expr->b->next && !expr->b->next->next) {
-		L_errf(expr, "incorrect # arguments to push");
+	unless (expr->b && expr->b->next) {
+		L_errf(expr, "too few arguments to push");
 		return (0);
 	}
 	unless (isaddrof(expr->b)) {
@@ -1436,26 +1454,30 @@ compile_push(Expr *expr)
 		return (0);
 	}
 	idx = array->sym->idx;  // local slot # for array
-	compile_expr(arg, L_PUSH_VAL);
 	if (isarray(array)) {
 		base_type = array->type->base_type;
 	} else {
 		base_type = L_poly;
 	}
-	unless (L_typeck_compat(base_type, arg->type)) {
-		L_errf(expr, "arg to push has type incompatible with array");
-	}
-	if (array->flags & L_EXPR_DEEP) {
-		TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
-		TclEmitInstInt4(INST_L_DEEP_WRITE, idx, L->frame->envPtr);
-		TclEmitInt4(L_APPEND | L_PUSH_NEW, L->frame->envPtr);
-	} else {
-		if (idx <= 255) {
-			TclEmitInstInt1(INST_LAPPEND_SCALAR1, idx,
+	for (i = 2; arg; arg = arg->next, ++i) {
+		compile_expr(arg, L_PUSH_VAL);
+		unless (L_typeck_compat(base_type, arg->type)) {
+			L_errf(expr, "arg #%d to push has type incompatible "
+			       "with array", i);
+		}
+		if (array->flags & L_EXPR_DEEP) {
+			TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
+			TclEmitInstInt4(INST_L_DEEP_WRITE, idx,
 					L->frame->envPtr);
+			TclEmitInt4(L_APPEND | L_PUSH_NEW, L->frame->envPtr);
 		} else {
-			TclEmitInstInt4(INST_LAPPEND_SCALAR4, idx,
-					L->frame->envPtr);
+			if (idx <= 255) {
+				TclEmitInstInt1(INST_LAPPEND_SCALAR1, idx,
+						L->frame->envPtr);
+			} else {
+				TclEmitInstInt4(INST_LAPPEND_SCALAR4, idx,
+						L->frame->envPtr);
+			}
 		}
 	}
 	emit_pop();
@@ -1805,9 +1827,9 @@ compile_read(Expr *expr)
 	Expr	*buf, *fd, *nbytes;
 
 	expr->type = L_int;
-	push_str("read_");
+	push_str("Lread_");
 	n = compile_exprs(expr->b, L_PUSH_VAL);
-	unless (n == 3) {
+	unless ((n == 2) || (n == 3)) {
 		L_errf(expr, "incorrect # args to read()");
 		return (0);
 	}
@@ -1822,11 +1844,13 @@ compile_read(Expr *expr)
 		return (0);
 	}
 	nbytes = buf->next;
-	unless (isint(nbytes) || ispoly(nbytes)) {
-		L_errf(expr, "third arg to read() must have type int");
-		return (0);
+	if (nbytes) {
+		unless (isint(nbytes) || ispoly(nbytes)) {
+			L_errf(expr, "third arg to read() must have type int");
+			return (0);
+		}
 	}
-	emit_invoke(4);
+	emit_invoke(n+1);
 	return (1);  // stack effect
 }
 
@@ -1940,7 +1964,7 @@ compile_spawn_system(Expr *expr)
 		return (0);
 	}
 	if (isstring(cmd) || ispoly(cmd)) {
-	} else if (isarrayof(cmd, L_STRING | L_POLY)) {
+	} else if (isarrayof(cmd, L_STRING | L_POLY) || islist(cmd)) {
 		flags |= SYSTEM_ARGV;
 	} else {
 		L_errf(expr, "first arg must be string or string array");
@@ -2047,33 +2071,6 @@ typeck_system(Expr *in, Expr *out, Expr *err)
 	}
 
 	return (flags);
-}
-
-private int
-compile_pclose(Expr *expr)
-{
-	int	n;
-	Expr	*status;
-
-	push_str("pclose_");
-	n = compile_exprs(expr->b, L_PUSH_VAL);
-	unless ((n == 1) || (n == 2)) {
-		L_errf(expr, "incorrect # args to pclose");
-		expr->type = L_void;
-		return (0);  // stack effect
-	}
-	unless (typeisf(expr->b, "FILE")) {
-		L_errf(expr, "first arg to pclose must be FILE");
-	}
-	status = expr->b->next;
-	if (!status) {
-		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
-	} else unless (isaddrof(status) && typeisf(status->a, "STATUS")) {
-		L_errf(expr, "second arg to pclose must be STATUS&");
-	}
-	emit_invoke(3);
-	expr->type = L_int;
-	return (1);  // stack effect
 }
 
 /*
@@ -2339,7 +2336,7 @@ compile_fnCall(Expr *expr)
 			if (!expr->b) {
 				/* No args, compile as foo(opts). */
 				push_str(foo->str);
-				num_parms = push_parms(opts);
+				num_parms = push_parms(opts, NULL);
 				defchk = foo->str;
 			} else if (iswidget(expr->b)) {
 				/* Compile as *a(opts,b,c). */
@@ -2349,7 +2346,7 @@ compile_fnCall(Expr *expr)
 				/* Compile as foo(opts,a,b,c). */
 				// a
 				push_str(foo->str);
-				num_parms = push_parms(opts);
+				num_parms = push_parms(opts, NULL);
 				ASSERT(num_parms == nopts);
 				// a foo <opts>
 				TclEmitInstInt1(isexpand(expr->b)?
@@ -2369,7 +2366,7 @@ compile_fnCall(Expr *expr)
 		expr->type = L_poly;
 		defchk = name;
 	}
-	num_parms += push_parms(expr->b);
+	num_parms += push_parms(expr->b, formals);
 	if (expand) {
 		emit_invoke_expanded();
 	} else {
@@ -2547,7 +2544,7 @@ compile_exprs(Expr *expr, Expr_f flags)
  *   checker sorts out any mis-matches with the declared formals.
  */
 private int
-push_parms(Expr *actuals)
+push_parms(Expr *actuals, VarDecl *formals)
 {
 	int	i = 0;
 	int	widget_flag = FALSE;
@@ -2576,6 +2573,11 @@ push_parms(Expr *actuals)
 		    (s[0] == '-') &&
 		    /* ends with "variable" */
 		    !strcmp("variable", s + (strlen(s) - strlen_of_variable)));
+		if (formals) formals = formals->next;
+	}
+	if (formals && (formals->flags & DECL_OPTIONAL)) {
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+		++i;
 	}
 	return (i);
 }
@@ -5861,13 +5863,12 @@ L_typedef_store(VarDecl *decl)
  *
  * - A limit <= 0 means no limit.
  *
- * - If the delim is / / or ' ', split on white space but leading
- *   white space does not produce a null first field.
+ * - Trailing null fields in the result are always suppressed.
  *
- * - No regexp means split on white space (and can return a null first
- *   field).
+ * - If there is no delim, split on white space and trim any leading
+ *   null fields from the result.
  *
- * - Trailing null fields in the result are suppressed.
+ * - If the delim is /regexp/t, trim any leading null fields.
  *
  * - If all result fields are null, they are considered to be trailing
  *   and are all suppressed.
@@ -5876,13 +5877,14 @@ Tcl_Obj *
 L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	Tcl_Obj *limobj, Expr_f flags)
 {
-	int		ondefault=0, onre=(flags & L_SPLIT_RE), onspace=0;
-	int		delimlen=0, i, len, lim, matches, off, ret;
+	int		i, leading, len, lim, matches, off, ret;
+	int		trim = (flags & L_EXPR_RE_T);
+	int		delimlen = 0, onspace = 0;
 	int		start = 0, end = 0;
 	Tcl_RegExp	regExpr = NULL;
 	Tcl_RegExpInfo	info;
 	Tcl_Obj		**elems, *resultPtr, *objPtr, *listPtr;
-	char		*delimstr = NULL, *p, *str;
+	char		*delimstr = NULL, *str;
 
 	if (limobj) {
 		Tcl_GetIntFromObj(interp, limobj, &lim);
@@ -5899,15 +5901,12 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	}
 
 	/*
-	 * Check for the cases of no delimeter (split on white space) or
-	 * splitting on ' ' (split on white space but don't return a
-	 * null field for any leading white space).
+	 * Check for no delimiter (split on white space).
 	 */
 	if (delimobj) {
 		delimstr = TclGetStringFromObj(delimobj, &delimlen);
-		unless (strcmp(" ", delimstr)) onspace = 1;
 	} else {
-		ondefault = 1;
+		onspace = 1;
 	}
 
 	/*
@@ -5924,12 +5923,13 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 
 	listPtr = Tcl_NewObj();
 	matches = 0;
+	leading = 1;
 	off     = 0;
 
 	/*
-	 * Split on white space if no delim or ' ' or / / was specified.
+	 * Split on white space if no delim was specified.
 	 */
-	if (ondefault || onspace) {
+	if (onspace) {
 		int letters = 0, skip = 0;
 		for (start = 0; (off < len) && (matches < lim); ++off) {
 			if (skip) {
@@ -5941,9 +5941,9 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 				}
 			} else {
 				if (isspace(str[off])) {
-					/* When delim is ' ', create no null
-					 * field for leading white space. */
-					unless (onspace && !off && !start) {
+					/* Suppress leading null field
+					 * in result. */
+					if (off || start) {
 						resultPtr = Tcl_NewStringObj(
 								str+start,
 								off-start);
@@ -5963,47 +5963,37 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	}
 
 	/*
-	 * Split on a string or regular expression.
+	 * Split on a regular expression.
 	 */
-	if (delimlen == 0) onre = 1;  // handle "" like the regexp //
-	if (onre) {
-		regExpr = Tcl_GetRegExpFromObj(interp, delimobj,
-					       TCL_REG_ADVANCED | TCL_REG_PCRE);
-		unless (regExpr) {  // bad regexp
-			listPtr = NULL;
-			goto done;
-		}
+	regExpr = Tcl_GetRegExpFromObj(interp, delimobj,
+				       TCL_REG_ADVANCED | TCL_REG_PCRE);
+	unless (regExpr) {  // bad regexp
+		listPtr = NULL;
+		goto done;
 	}
 	while ((off < len) && (matches < lim)) {
-		if (onre) {
-			ret = Tcl_RegExpExecObj(interp, regExpr, objPtr, off,
-						10 /* matches */,
-						((off>0 && (str[off-1]!='\n'))
-						 ? TCL_REG_NOTBOL : 0));
-			if (ret < 0) goto done;
-			if (ret == 0) break;
-			Tcl_RegExpGetInfo(regExpr, &info);
-			start = info.matches[0].start;
-			end   = info.matches[0].end;
-			matches++;
-		} else {
-			for (p = str+off; (p-str) < len; ++p) {
-				if ((*p == *delimstr) &&
-				    !strncmp(p, delimstr, delimlen)) {
-					start = p - (str+off);
-					end   = start + delimlen;
-					matches++;
-					break;
-				}
-			}
-			if ((p-str) == len) break;
-		}
+		ret = Tcl_RegExpExecObj(interp, regExpr, objPtr, off,
+					10 /* matches */,
+					((off>0 && (str[off-1]!='\n'))
+					 ? TCL_REG_NOTBOL : 0));
+		if (ret < 0) goto done;
+		if (ret == 0) break;
+		Tcl_RegExpGetInfo(regExpr, &info);
+		start = info.matches[0].start;
+		end   = info.matches[0].end;
+		matches++;
 
 		/*
 		 * Copy to the result list the portion of the source
 		 * string before the match. If we matched the empty
-		 * string, split after the current char.
+		 * string, split after the current char. Don't add
+		 * leading null fields if specified.
 		 */
+		if (leading && trim && (start == 0)) {
+			if (start == end) ++off;
+			off += end;
+			continue;
+		}
 		if (start == end) {
 			ASSERT(start == 0);
 			resultPtr = Tcl_NewStringObj(str+off, 1);
@@ -6011,6 +6001,7 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 		} else {
 			resultPtr = Tcl_NewStringObj(str+off, start);
 		}
+		leading = 0;
 		Tcl_ListObjAppendElement(NULL, listPtr, resultPtr);
 		off += end;
 	}
@@ -6182,7 +6173,7 @@ Tcl_GetOptObjCmd(
 	for (i = 0; i < ac; ++i) {
 		av[i] = TclGetString(objs[i]);
 	}
-	opts = TclGetString(objv[2]);
+	opts = (objv[2]->undef ? "" : TclGetString(objv[2]));
 	/*
 	 * For long opts, the C API wants an array of <char*,int>, and
 	 * the L call sent in a string array, so map the long opt name to
@@ -6193,10 +6184,13 @@ Tcl_GetOptObjCmd(
 		ret = TCL_ERROR;
 		goto done;
 	}
-	if (n) lopts = (longopt *)ckalloc(n * sizeof(longopt));
-	for (i = 0; i < n; ++i) {
-		lopts[i].name = TclGetString(objs[i]);
-		lopts[i].ret  = 300 + i;
+	if (n) {
+		lopts = (longopt *)ckalloc((n+1) * sizeof(longopt));
+		for (i = 0; i < n; ++i) {
+			lopts[i].name = TclGetString(objs[i]);
+			lopts[i].ret  = 300 + i;
+		}
+		lopts[i].name = NULL;
 	}
 	i = getopt(ac, av, opts, lopts);
 	switch (i) {
@@ -6209,8 +6203,9 @@ Tcl_GetOptObjCmd(
 	    default:
 		if (i < 300) {
 			// short opt
-			Tcl_SetObjResult(interp,
-					 Tcl_NewStringObj((char *)&i, 1));
+			char str[1];
+			str[0] = i;
+			Tcl_SetObjResult(interp, Tcl_NewStringObj(str, 1));
 		} else {
 			// long opt -- map back to the longopts array entry
 			// and strip any trailing :;|
@@ -6335,7 +6330,7 @@ Tcl_LAngleReadObjCmd(
     Tcl_Obj *const objv[])	/* Argument objects. */
 {
 	Tcl_Obj			*ret = NULL;
-	int			argc;
+	int			argc, res;
 	Tcl_Obj			**argv;
 	static int		cur = 0;
 	static Tcl_Channel	chan = NULL;
@@ -6349,7 +6344,7 @@ Tcl_LAngleReadObjCmd(
 
 		objv[0] = Tcl_NewStringObj("angle_read_", -1);
 		objv[1] = Tcl_NewStringObj("::stdin", -1);
-		int res = Tcl_FGetlineObjCmd(dummy, interp, 2, objv);
+		res = Tcl_FGetlineObjCmd(dummy, interp, 2, objv);
 		Tcl_DecrRefCount(objv[0]);
 		Tcl_DecrRefCount(objv[1]);
 		return (res);
@@ -6377,6 +6372,8 @@ Tcl_LAngleReadObjCmd(
 	return (TCL_OK);
 }
 
+extern int Tcl_WriteObjN(Tcl_Channel chan, Tcl_Obj *objPtr, int numBytes);
+
 int
 Tcl_LWriteCmd(
     ClientData dummy,		/* Not used. */
@@ -6402,8 +6399,7 @@ Tcl_LWriteCmd(
 	if (Tcl_GetIntFromObj(interp, objv[3], &nbytes) != TCL_OK) {
 		return (TCL_ERROR);
 	}
-
-	nbytes = Tcl_Write(chan, Tcl_GetString(objv[2]), nbytes);
+	nbytes = Tcl_WriteObjN(chan, objv[2], nbytes);
 	if (nbytes < 0) {
 		if (!TclChanCaughtErrorBypass(interp, chan)) {
 			errmsg = (char *)Tcl_PosixError(interp);
@@ -6417,4 +6413,56 @@ Tcl_LWriteCmd(
 	Tcl_SetVar2(interp, "::stdio_lasterr", NULL, errmsg, TCL_GLOBAL_ONLY);
 	nbytes = -1;
 	goto out;
+}
+
+int
+Tcl_LReadCmd(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	int		mode, nbytes = -1;
+	char		*errmsg = "";
+	Tcl_Channel	chan;
+	Tcl_Obj		*buf;
+
+	if ((objc != 4) && (objc != 3)) {
+		Tcl_WrongNumArgs(interp, 1, objv, "channel varName ?numBytes");
+		return (TCL_ERROR);
+	}
+	if (TclGetChannelFromObj(interp, objv[1], &chan, &mode, 0) != TCL_OK) {
+		return (TCL_ERROR);
+	}
+	if (!(mode & TCL_READABLE)) {
+		errmsg = "channel wasn't opened for reading";
+		goto err;
+	}
+	if (Tcl_Eof(chan)) {
+		errmsg = "end of file";
+		goto err;
+	}
+	if (objc == 4) {
+		if (Tcl_GetIntFromObj(interp, objv[3], &nbytes) != TCL_OK) {
+			return (TCL_ERROR);
+		}
+	}
+	buf = Tcl_NewObj();
+	Tcl_IncrRefCount(buf);
+	nbytes = Tcl_ReadChars(chan, buf, nbytes, 0);
+	if (nbytes < 0) {
+		if (!TclChanCaughtErrorBypass(interp, chan)) {
+			errmsg = (char *)Tcl_PosixError(interp);
+		}
+		Tcl_DecrRefCount(buf);
+		goto err;
+	}
+	Tcl_ObjSetVar2(interp, objv[2], NULL, buf, TCL_LEAVE_ERR_MSG);
+	Tcl_DecrRefCount(buf);
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(nbytes));
+	return (TCL_OK);
+ err:
+	Tcl_SetVar(interp, "::stdio_lasterr", errmsg, TCL_GLOBAL_ONLY);
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(-1));
+	return (TCL_OK);
 }

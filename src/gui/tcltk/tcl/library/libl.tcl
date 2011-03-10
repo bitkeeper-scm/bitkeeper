@@ -184,7 +184,7 @@ exists(string path)
 }
 
 int
-fclose(FILE f)
+fclose(_mustbetype FILE f)
 {
 	string	err;
 
@@ -229,9 +229,24 @@ fopen(string path, string mode)
 }
 
 int
-fprintf(_argused FILE f, _argused string fmt, _argused ...args)
+Fprintf(string fname, string fmt, ...args)
 {
-	if (catch("puts -nonewline $f [format $fmt {*}$args]")) {
+	int	ret;
+	FILE	f;
+
+	unless (f = fopen(fname, "w")) return (-1);
+	ret = fprintf(f, fmt, args);
+	fclose(f);
+	return (ret);
+}
+
+int
+fprintf(_mustbetype _argused FILE f, _argused string fmt, _argused ...args)
+{
+	string	res;
+
+	if (catch("puts -nonewline $f [format $fmt {*}$args]", &res)) {
+		stdio_lasterr = res;
 		return (-1);
 	} else {
 		return (0);
@@ -239,7 +254,7 @@ fprintf(_argused FILE f, _argused string fmt, _argused ...args)
 }
 
 int
-frename(_argused string oldPath, _argused string newPath)
+frename_(_argused string oldPath, _argused string newPath)
 {
 	string	res;
 
@@ -266,7 +281,8 @@ ftype(_argused string path)
 string[]
 getdir(string dir, ...args)
 {
-	string	pattern;
+	int	i;
+	string	pattern, ret[];
 
 	switch (length(args)) {
 	    case 0:
@@ -278,7 +294,13 @@ getdir(string dir, ...args)
 	    default:
 		return (undef);
 	}
-	return (glob(nocomplain:, directory: dir, pattern));
+	ret = lsort(glob(nocomplain:, directory: dir, pattern));
+
+	// Strip any leading ./
+	for (i = 0; i < length(ret); ++i) {
+		ret[i] =~ s|^\./||;
+	}
+	return (ret);
 }
 
 string
@@ -296,7 +318,7 @@ getenv(string varname)
 int
 getpid()
 {
-	return ((int)pid());
+	return ((int)(pid()[END]));
 }
 
 void
@@ -340,7 +362,7 @@ link(_argused string sourcePath, _argused string targetPath)
 {
 	string	res;
 
-	if (catch("file link -hard $sourcePath $targetPath", &res)) {
+	if (catch("file link -hard $targetPath $sourcePath", &res)) {
 		stdio_lasterr = res;
 		return (-1);
 	} else {
@@ -402,7 +424,16 @@ normalize(string path)
 }
 
 int
-pclose_(_argused FILE f, STATUS &status_ref)
+ord(string c)
+{
+	int	n = -1;
+
+	if (length(c)) scan(c[0], "%c", &n);
+	return (n);
+}
+
+int
+pclose(_mustbetype _argused FILE f, _optional STATUS &status_ref)
 {
 	string	res;
 	STATUS	status;
@@ -473,29 +504,6 @@ printf(string fmt, ...args)
 	puts(nonewline:, format(fmt, (expand)args));
 }
 
-int
-read_(_argused FILE f, string &buf, _argused int numBytes)
-{
-	string	res;
-
-	if (eof(f)) {
-		stdio_lasterr = "end of file";
-		return (-1);
-	}
-	if (numBytes == -1) {
-		if (catch("set buf [read $f]", &res)) {
-			stdio_lasterr = res;
-			return (-1);
-		}
-	} else {
-		if (catch("set buf [read $f $numBytes]", &res)) {
-			stdio_lasterr = res;
-			return (-1);
-		}
-	}
-	return (length(buf));
-}
-
 string
 require(_argused string packageName)
 {
@@ -536,18 +544,8 @@ perror(...args)
 string
 putenv(string var_fmt, ...args)
 {
-	string	fmt, var;
-
-	/* Use Tcl's split since L strips tailing null fields. */
-	{var, fmt} = ::split(var_fmt, "=");
-	unless (defined(fmt)) return (undef);
-	return (set("::env(${var})", format(fmt, (expand)args)));
-}
-
-string
-setenv(string varname, string val)
-{
-	return (set("::env(${varname})", val));
+	unless (var_fmt =~ /([^=]+)=(.*)/) return (undef);
+	return (set("::env(${$1})", format($2, (expand)args)));
 }
 
 int
@@ -596,12 +594,6 @@ stat(_argused string path, struct stat &buf)
 	}
 }
 
-string
-stdio_getLastError()
-{
-	return (stdio_lasterr);
-}
-
 int
 strchr(string s, string c)
 {
@@ -637,7 +629,7 @@ symlink(_argused string sourcePath, _argused string targetPath)
 {
 	string	res;
 
-	if (catch("file link -symbolic $sourcePath $targetPath", &res)) {
+	if (catch("file link -symbolic $targetPath $sourcePath", &res)) {
 		stdio_lasterr = res;
 		return (-1);
 	} else {
@@ -682,6 +674,7 @@ private struct {
 	string	nmIn;
 	int	flags;
 	STATUS	status;
+	int	started;
 } spawn_handles{int};
 
 /*
@@ -695,7 +688,7 @@ private void
 spawn_checker_(FILE f)
 {
 	string	res;
-	int	mypid = pid(f);
+	int	mypid = pid(f)[END];
 	int	flags = spawn_handles{mypid}.flags;
 	FILE	chOut = spawn_handles{mypid}.chOut;
 
@@ -706,6 +699,12 @@ spawn_checker_(FILE f)
 
 	if (eof(f)) {
 		spawn_handles{mypid}.chOut = undef;
+
+		// Need to configure the channel to be blocking
+		// before we call close so it will fail with an
+		// error if there was one instead of ignoring it.
+		fconfigure(f, blocking: 1);
+
 		if (catch("close $f", &res)) {
 		    switch (errorCode[0]) {
 			case "CHILDSTATUS":
@@ -830,7 +829,7 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 			ret = undef;
 			goto out;
 		} else {
-			int	mypid = pid(f);
+			int	mypid = pid(f)[END];
 
 			unless (defined(chOut)) chOut = "stdout";
 			spawn_handles{mypid}.chIn   = chIn;
@@ -838,9 +837,8 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 			spawn_handles{mypid}.chOut  = chOut;
 			spawn_handles{mypid}.status = status;
 			spawn_handles{mypid}.flags  = flags;
-			unless (Info_vars("::%L_pid${mypid}_done") eq "") {
-				unset("::%L_pid${mypid}_done");
-			}
+			spawn_handles{mypid}.started = 1;
+			unset(nocomplain: "::%L_pid${mypid}_done");
 			fconfigure(f, blocking: 0, buffering: "none");
 			fileevent(f, "readable", {&spawn_checker_, f});
 			return (mypid);
@@ -999,35 +997,28 @@ uc(string s)
 int
 waitpid(int pid, STATUS &status, int nohang)
 {
-	if (nohang) {
-		int	started = defined(spawn_handles{pid}.chOut);
-		int	done    = (Info_vars("::%L_pid${pid}_done") eq "");
-		if (started && !done) {
-			return (0);
-		} else {
-			stdio_status = spawn_handles{pid}.status;
-			if (defined(&status)) status = stdio_status;
-			return (-1);
-		}
-	} else {
+	// If we don't call vwait, Tcl will never enter the
+	// event loop and call the rest of our code, so we
+	// want to force an update of the event loop before
+	// we do our checks.
+	if (nohang) update();
+
+	unless (defined(spawn_handles{pid}.started)) return (-1);
+	unless (Info_exists("::%L_pid${pid}_done")) {
+		if (nohang) return (0);
 		vwait("::%L_pid${pid}_done");
-		stdio_status = spawn_handles{pid}.status;
-		if (defined(&status)) status = stdio_status;
-		return (0);
 	}
+	stdio_status = spawn_handles{pid}.status;
+	if (defined(&status)) status = stdio_status;
+	return (pid);
 }
 
 void
 warn_(string func, int line, string fmt, ...args)
 {
-	string	out;
+	string	out = format(fmt, (expand)args);
 
-	if (length(args)) {
-		out = format(fmt, (expand)args);
-	} else {
-		out = fmt;
-	}
-	unless (out[END] eq "\n") {
+	unless (length(out) && (out[END] eq "\n")) {
 		out .= " in ${func}:${line}\n";
 	}
 	puts(nonewline:, stderr, out);
@@ -1068,3 +1059,15 @@ L_def_fn_hook(int pre, int ac, poly av[], poly ret)
 	unless (pre) fprintf(stderr, " ret '%s'", ret);
 	fprintf(stderr, "\n");
 }
+
+/*
+ * This is top-level run-time initialization code that gets called
+ * before main().
+ */
+
+/*
+ * Exit on a broken stdout pipe, so that things like
+ *   tclsh myscript.l | more
+ * exit silently when you type 'q'.
+ */
+fconfigure(stdout, epipe: "exit");

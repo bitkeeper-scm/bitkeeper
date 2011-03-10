@@ -77,7 +77,7 @@ bk guitest >GOT 2>&1 <<'EOF'
 L {
 void pcre()
 {
-	string s[] = split("axbxc", "x");
+	string s[] = split(/x/, "axbxc");
 	if (defined(s[0])) {
 		printf("PCRE is working.\n");
 	} else {

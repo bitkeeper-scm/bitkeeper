@@ -171,6 +171,8 @@ extern int	L_lex (void);
 %token T_TYPEDEF "typedef"
 %token T_UNLESS "unless"
 %token T_ARGUSED "_argused"
+%token T_OPTIONAL "_optional"
+%token T_MUSTBETYPE "_mustbetype"
 %token T_VOID "void"
 %token T_WIDGET "widget"
 %token T_WHILE "while"
@@ -221,19 +223,19 @@ extern int	L_lex (void);
 %type <Switch> switch_stmt
 %type <Case> switch_cases switch_case
 %type <Pragma> pragma_arg_list
-%type <Expr> expr expression_stmt argument_expr_list opt_arg_list re_or_string
+%type <Expr> expr expression_stmt argument_expr_list
 %type <Expr> id id_list string_literal cmdsubst_literal dotted_id
 %type <Expr> regexp_literal regexp_literal_mod subst_literal interpolated_expr
 %type <Expr> list list_element case_expr option_arg here_doc_backtick
 %type <VarDecl> parameter_list parameter_decl_list parameter_decl
 %type <VarDecl> declaration_list declaration declaration2
 %type <VarDecl> init_declarator_list declarator_list init_declarator
-%type <VarDecl> declarator struct_decl_list struct_decl
+%type <VarDecl> declarator opt_declarator struct_decl_list struct_decl
 %type <VarDecl> struct_declarator_list
 %type <Type> array_or_hash_type type_specifier scalar_type_specifier
 %type <Type> struct_specifier
 %type <obj> dotted_id_1
-%type <i> decl_qualifier
+%type <i> decl_qualifier parameter_attrs
 
 %%
 
@@ -809,36 +811,31 @@ parameter_decl_list:
 	;
 
 parameter_decl:
-	  type_specifier
+	  parameter_attrs type_specifier opt_declarator
 	{
-		$$ = ast_mkVarDecl($1, NULL, @1.beg, @1.end);
-		if (isnameoftype($1)) $$->flags |= DECL_REF;
+		if ($3) {
+			L_set_declBaseType($3, $2);
+			$$ = $3;
+			$$->flags |= $1;
+			$$->node.beg = @1.beg;
+		} else {
+			$$ = ast_mkVarDecl($2, NULL, @2.beg, @2.end);
+			if (isnameoftype($2)) $$->flags |= DECL_REF;
+		}
 	}
-	| type_specifier declarator
-	{
-		L_set_declBaseType($2, $1);
-		$$ = $2;
-		$$->node.beg = @1.beg;
-	}
-	| T_ARGUSED type_specifier declarator
-	{
-		L_set_declBaseType($3, $2);
-		$$ = $3;
-		$$->flags |= DECL_ARGUSED;
-		$$->node.beg = @1.beg;
-	}
-	| T_ELLIPSIS id
-	{
-		Type *t = type_mkArray(NULL, L_poly);
-		$$ = ast_mkVarDecl(t, $2, @1.beg, @2.end);
-		$$->flags |= DECL_REST_ARG;
-	}
-	| T_ARGUSED T_ELLIPSIS id
+	| parameter_attrs T_ELLIPSIS id
 	{
 		Type *t = type_mkArray(NULL, L_poly);
 		$$ = ast_mkVarDecl(t, $3, @1.beg, @3.end);
-		$$->flags |= DECL_REST_ARG | DECL_ARGUSED;
+		$$->flags |= $1 | DECL_REST_ARG;
 	}
+	;
+
+parameter_attrs:
+	  parameter_attrs T_ARGUSED	{ $$ = $1 | DECL_ARGUSED; }
+	| parameter_attrs T_OPTIONAL	{ $$ = $1 | DECL_OPTIONAL; }
+	| parameter_attrs T_MUSTBETYPE	{ $$ = $1 | DECL_NAME_EQUIV; }
+	| /* epsilon */	{ $$ = 0; }
 	;
 
 argument_expr_list:
@@ -1080,26 +1077,17 @@ expr:
 		REVERSE(Expr, next, $3);
 		$$ = ast_mkFnCall(id, $3, @1.beg, @4.end);
 	}
-	/*
-	 * L_lex_begReArg() and L_lex_endReArg() tell the
-	 * scanner to start or stop recognizing a regexp.
-	 */
-	| T_SPLIT "(" expr begin_re_arg
-	  "," re_or_string { L_lex_endReArg(); }
-	  opt_arg_list ")"
+	| T_SPLIT "(" regexp_literal_mod "," argument_expr_list ")"
 	{
 		Expr *id = ast_mkId("split", @1.beg, @1.end);
-		$3->next = $6;
-		$6->next = $8;
-		$$ = ast_mkFnCall(id, $3, @1.beg, @9.end);
-		if (isregexp($6) && $6->flags) {
-			L_errf($6,
-			    "regular expression modifiers illegal in split");
-		}
+		REVERSE(Expr, next, $5);
+		$3->next = $5;
+		$$ = ast_mkFnCall(id, $3, @1.beg, @6.end);
 	}
-	| T_SPLIT "(" expr ")"
+	| T_SPLIT "(" argument_expr_list ")"
 	{
 		Expr *id = ast_mkId("split", @1.beg, @1.end);
+		REVERSE(Expr, next, $3);
 		$$ = ast_mkFnCall(id, $3, @1.beg, @4.end);
 	}
 	/* this is to allow calling Tk widget functions */
@@ -1238,23 +1226,6 @@ expr:
 	}
 	;
 
-begin_re_arg:
-	  /* epsilon */ %prec T_COMMA
-	{
-		L_lex_begReArg();
-	}
-	;
-
-opt_arg_list:
-	  "," argument_expr_list	{ $$ = $2; $$->node.beg = @1.beg; }
-	|				{ $$ = NULL; }
-	;
-
-re_or_string:
-	  regexp_literal_mod
-	| string_literal
-	;
-
 id:
 	  T_ID
 	{
@@ -1387,6 +1358,11 @@ init_declarator:
 		$$ = $1;
 		$$->node.end = @3.end;
 	}
+	;
+
+opt_declarator:
+	  declarator
+	| { $$ = NULL; }
 	;
 
 declarator:
@@ -1603,6 +1579,7 @@ regexp_literal_mod:
 	{
 		if (strchr($2, 'i')) $1->flags |= L_EXPR_RE_I;
 		if (strchr($2, 'g')) $1->flags |= L_EXPR_RE_G;
+		if (strchr($2, 't')) $1->flags |= L_EXPR_RE_T;
 		ckfree($2);
 		$$ = $1;
 	}

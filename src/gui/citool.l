@@ -144,7 +144,7 @@ getNumFiles(string opts)
 	pclose(fp, &st);
 
 	if (st.exit == 0) {
-		foreach (line in split(data, "\n")) {
+		foreach (line in split(/\n/, data)) {
 			n += (int)line;
 		}
 	}
@@ -487,7 +487,7 @@ addSfilesLines(string lines[])
 	int	extra, modified, pending, hasComments;
 
 	foreach (line in lines) {
-		file = join(" ", lrange(split(line, " "), 1, "end"));
+		file = join(" ", lrange(split(/ /, line), 1, "end"));
 		extra = line[0] eq "x";
 		modified = line[2] eq "c";
 		pending = line[3] eq "p";
@@ -538,7 +538,7 @@ readSfilesOutput(string file, int pos)
 		fclose(fd);
 		return (-1);
 	}
-	lines = split(data, "\n");
+	lines = split(/\n/, data);
 	len = llength(lines);
 	if ((data ne "") && (data[END] ne "\n")) {
 		seek(fd, length(lines[len-1]) * -1, "current");
@@ -1686,7 +1686,7 @@ showCsetContents(sfile sf)
 			comments = getComments(cset);
 			if (comments ne ""
 			    && !isTemplateComment(cset, comments)) {
-				lines = split(comments, "\n");
+				lines = split(/\n/, comments);
 				foreach (line in lines) {
 					Text_insert(textBox, "end",
 					    "  ${line}\n");
@@ -1704,7 +1704,7 @@ showCsetContents(sfile sf)
 			Text_insert(textBox, "end", sp1);
 			Text_insert(textBox, "end", s.name);
 			Text_insert(textBox, "end", "\n");
-			lines = split(comments, "\n");
+			lines = split(/\n/, comments);
 			foreach (line in lines) {
 				Text_insert(textBox, "end", sp2);
 				Text_insert(textBox, "end", line);
@@ -2035,7 +2035,7 @@ commitComponent(string comp)
 		self.trigger_sock = socket(myaddr: "localhost",
 		    server: "triggerAccept", 0);
 		list = fconfigure(self.trigger_sock, sockname:);
-		setenv("_BK_TRIGGER_SOCK", "localhost:${list[2]}");
+		putenv("_BK_TRIGGER_SOCK=localhost:${list[2]}");
 
 		msg = "Committing";
 		if (comp eq self.root) {

@@ -129,7 +129,8 @@ L_typeck_assign(Expr *lhs, Type *rhs)
 void
 L_typeck_fncall(VarDecl *formals, Expr *call)
 {
-	int	i, rest_arg = 0;
+	int	i, type_ok;
+	int	rest_arg = 0;
 	Expr	*actuals = call->b;
 
 	if (L->options & L_OPT_POLY) return;
@@ -137,8 +138,12 @@ L_typeck_fncall(VarDecl *formals, Expr *call)
 	for (i = 1; actuals && formals; ++i) {
 		if (isexpand(actuals)) return;
 		rest_arg = formals->flags & DECL_REST_ARG;  // is it "...id"?
-		unless (L_typeck_compat(formals->type, actuals->type) ||
-			rest_arg) {
+		if (formals->flags & DECL_NAME_EQUIV) {
+			type_ok = (formals->type == actuals->type);
+		} else {
+			type_ok = L_typeck_compat(formals->type, actuals->type);
+		}
+		unless (type_ok || rest_arg) {
 			L_errf(call, "parameter %d has incompatible type", i);
 		}
 		actuals = actuals->next;
@@ -148,9 +153,12 @@ L_typeck_fncall(VarDecl *formals, Expr *call)
 		L_errf(call, "too many arguments for function %s",
 		       call->a->str);
 	}
-	if (formals && !(formals->flags & DECL_REST_ARG)) {
-		L_errf(call, "not enough arguments for function %s",
-		       call->a->str);
+	if (formals) {
+	    unless ((formals->flags & DECL_REST_ARG) ||
+		    (!formals->next && (formals->flags & DECL_OPTIONAL))) {
+		    L_errf(call, "not enough arguments for function %s",
+			   call->a->str);
+	    }
 	}
 }
 

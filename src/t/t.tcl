@@ -68,7 +68,7 @@ echo $N Test that PCRE is working....................................$NL
 cat <<EOF > pcre.l
 void main()
 {
-	string s[] = split("axbxc", "x");
+	string s[] = split(/x/, "axbxc");
 	if (defined(s[0])) {
 		printf("PCRE is working.\n");
 	} else {

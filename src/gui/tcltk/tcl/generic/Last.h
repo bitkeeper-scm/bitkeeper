@@ -242,29 +242,30 @@ typedef enum {
 typedef enum {
 	L_EXPR_RE_I   = 0x00000001, // expr is an re with "i" qualifier
 	L_EXPR_RE_G   = 0x00000002, // expr is an re with "g" qualifier
-	L_EXPR_DEEP   = 0x00000004, // expr is the result of a deep dive
-	L_IDX_ARRAY   = 0x00000008, // what kind of thing we're indexing
-	L_IDX_HASH    = 0x00000010,
-	L_IDX_STRING  = 0x00000020,
-	L_LVALUE      = 0x00000040, // if we will be writing the obj
-	L_DELETE      = 0x00000080, // delete obj from its parent hash/array
-	L_PUSH_VAL    = 0x00000100, // what we want INST_L_INDEX to leave on
-	L_PUSH_PTR    = 0x00000200, //   the stack
-	L_PUSH_VALPTR = 0x00000400,
-	L_PUSH_PTRVAL = 0x00000800,
-	L_DISCARD     = 0x00001000, // have compile_expr push nothing
-	L_PUSH_NAME   = 0x00002000, // have compile_expr push name not val
-	L_PUSH_NEW    = 0x00004000, // whether INST_L_DEEP_WRITE should push
-	L_PUSH_OLD    = 0x00008000, //   the new or old value
-	L_SAVE_IDX    = 0x00010000, // save idx to a tmp var (for copy in/out)
-	L_REUSE_IDX   = 0x00020000, // get idx from tmp var instead of expr
-	L_NOTUSED     = 0x00040000, // do not update used_p in symtab entry
-	L_NOWARN      = 0x00080000, // issue no err if symbol undefined
-	L_SPLIT_RE    = 0x00100000, // split on a regexp
-	L_SPLIT_STR   = 0x00200000, // split on a string
-	L_SPLIT_LIM   = 0x00400000, // enforce split limit
-	L_APPEND      = 0x00800000, // append to deep list obj
-	L_WAS_DUPD    = 0x01000000, // obj was dup'd to make an unshared copy
+	L_EXPR_RE_T   = 0x00000004, // expr is an re with "t" qualifier
+	L_EXPR_DEEP   = 0x00000008, // expr is the result of a deep dive
+	L_IDX_ARRAY   = 0x00000010, // what kind of thing we're indexing
+	L_IDX_HASH    = 0x00000020,
+	L_IDX_STRING  = 0x00000040,
+	L_LVALUE      = 0x00000080, // if we will be writing the obj
+	L_DELETE      = 0x00000100, // delete obj from its parent hash/array
+	L_PUSH_VAL    = 0x00000200, // what we want INST_L_INDEX to leave on
+	L_PUSH_PTR    = 0x00000400, //   the stack
+	L_PUSH_VALPTR = 0x00000800,
+	L_PUSH_PTRVAL = 0x00001000,
+	L_DISCARD     = 0x00002000, // have compile_expr push nothing
+	L_PUSH_NAME   = 0x00004000, // have compile_expr push name not val
+	L_PUSH_NEW    = 0x00008000, // whether INST_L_DEEP_WRITE should push
+	L_PUSH_OLD    = 0x00010000, //   the new or old value
+	L_SAVE_IDX    = 0x00020000, // save idx to a tmp var (for copy in/out)
+	L_REUSE_IDX   = 0x00040000, // get idx from tmp var instead of expr
+	L_NOTUSED     = 0x00080000, // do not update used_p in symtab entry
+	L_NOWARN      = 0x00100000, // issue no err if symbol undefined
+	L_SPLIT_RE    = 0x00200000, // split on a regexp
+	L_SPLIT_STR   = 0x00400000, // split on a string
+	L_SPLIT_LIM   = 0x00800000, // enforce split limit
+	L_APPEND      = 0x01000000, // append to deep list obj
+	L_WAS_DUPD    = 0x02000000, // obj was dup'd to make an unshared copy
 } Expr_f;
 
 struct Expr {
@@ -383,29 +384,31 @@ struct TopLev {
  * Some flags are redundant but were chosen for clarity.
  */
 typedef enum {
-	SCOPE_LOCAL		= 0x000001, // scope the symbol should go in
-	SCOPE_SCRIPT		= 0x000002, //   visible in current script
-	SCOPE_GLOBAL		= 0x000004, //   visible across scripts
-	SCOPE_CLASS		= 0x000008, //   visible in a class
-	DECL_GLOBAL_VAR		= 0x000010, // the kind of declaration
-	DECL_LOCAL_VAR		= 0x000020,
-	DECL_TEMP		= 0x000040, //   temp variable
-	DECL_FN			= 0x000080, //   regular function
-	DECL_CLASS_VAR		= 0x000100, //   class variable
-	DECL_CLASS_INST_VAR	= 0x000200, //   class instance variable
-	DECL_CLASS_FN		= 0x000400, //   class member fn
-	DECL_CLASS_CONST	= 0x000800, //   class constructor
-	DECL_CLASS_DESTR	= 0x001000, //   class destructor
-	DECL_REST_ARG		= 0x002000, //   ...arg formal parameter
-	DECL_EXTERN		= 0x004000, // decl has extern qualifier
-	DECL_PRIVATE		= 0x008000, // decl has private qualifier
-	DECL_PUBLIC		= 0x010000, // decl has public qualifier
-	DECL_REF		= 0x020000, // decl has & qualifier
-	DECL_ARGUSED		= 0x040000, // decl has _argused qualifier
-	DECL_FORWARD		= 0x080000, // a forward decl
-	DECL_DONE		= 0x100000, // decl already processed
-	FN_PROTO_ONLY		= 0x200000, // compile fn proto only
-	FN_PROTO_AND_BODY	= 0x400000, // compile entire fn decl
+	SCOPE_LOCAL		= 0x00000001, // scope the symbol should go in
+	SCOPE_SCRIPT		= 0x00000002, //   visible in current script
+	SCOPE_GLOBAL		= 0x00000004, //   visible across scripts
+	SCOPE_CLASS		= 0x00000008, //   visible in a class
+	DECL_GLOBAL_VAR		= 0x00000010, // the kind of declaration
+	DECL_LOCAL_VAR		= 0x00000020,
+	DECL_TEMP		= 0x00000040, //   temp variable
+	DECL_FN			= 0x00000080, //   regular function
+	DECL_CLASS_VAR		= 0x00000100, //   class variable
+	DECL_CLASS_INST_VAR	= 0x00000200, //   class instance variable
+	DECL_CLASS_FN		= 0x00000400, //   class member fn
+	DECL_CLASS_CONST	= 0x00000800, //   class constructor
+	DECL_CLASS_DESTR	= 0x00001000, //   class destructor
+	DECL_REST_ARG		= 0x00002000, //   ...arg formal parameter
+	DECL_EXTERN		= 0x00004000, // decl has extern qualifier
+	DECL_PRIVATE		= 0x00008000, // decl has private qualifier
+	DECL_PUBLIC		= 0x00010000, // decl has public qualifier
+	DECL_REF		= 0x00020000, // decl has & qualifier
+	DECL_ARGUSED		= 0x00040000, // decl has _argused qualifier
+	DECL_OPTIONAL		= 0x00080000, // decl has _optional qualifier
+	DECL_NAME_EQUIV		= 0x00100000, // decl has _mustbetype qualifier
+	DECL_FORWARD		= 0x00200000, // a forward decl
+	DECL_DONE		= 0x00400000, // decl already processed
+	FN_PROTO_ONLY		= 0x00800000, // compile fn proto only
+	FN_PROTO_AND_BODY	= 0x01000000, // compile entire fn decl
 } Decl_f;
 
 struct VarDecl {

@@ -88,8 +88,8 @@ L statements end in a semi-colon.
 
     printf("Hello, world\n");
 
-Both C style and hash style comments are allowed, but the hash
-style comments must start on column 1.
+Both C style and hash style comments are allowed, but the hash-style
+comments are only for the first line and must start on column 1.
 
     # This is a comment
     	// So is this
@@ -119,8 +119,8 @@ Double quotes or single quotes may be used around literal strings:
 However, only double quotes "interpolate" variables and handle
 character escapes such as for newlines (C<\n>):
 
-    printf("Hello, ${name}\n");     # works fine
-    printf('Hello, ${name}\n');     # prints ${name}\n literally
+    printf("Hello, ${name}\n");     // works fine
+    printf('Hello, ${name}\n');     // prints ${name}\n literally
 
 Inside single quotes, you can still escape a line break, the
 single quote character (C<\'>), and the escape character (C<\\>).
@@ -274,7 +274,7 @@ error conditions:
     unless (f = fopen("file", "r")) {
         die("fopen");
     }
-    while (s = fgetline(f)) {
+    while (s = <f>) {
         printf("%s\n", s);
     }
 
@@ -312,19 +312,19 @@ arrays grow dynamically.
 
 Arrays are zero-indexed.  Here's how you get at elements in an array:
 
-    puts(animals[0]);              # prints "camel"
-    puts(animals[1]);              # prints "llama"
+    puts(animals[0]);              // prints "camel"
+    puts(animals[1]);              // prints "llama"
 
 The pre-defined identifier C<END> is index of the last element
 of an array, unless the array is empty and then END is -1:
 
-    puts(animals[END]);       # last element, prints "owl"
+    puts(animals[END]);       // last element, prints "owl"
 
 END is valid only inside of an array subscript.
 
 If you need the length of an array, use a built-in function:
 
-    num_elems = length(animals);   # will get 3
+    num_elems = length(animals);   // will get 3
 
 If the array is empty, length() returns 0.
 
@@ -332,8 +332,8 @@ To get multiple values from an array, you use what's called an array
 C<slice> which is a sub-array of the array being sliced.
 Slices are for reading values only, you cannot write to a slice.
 
-    animals[0..1];            # gives { "camel", "llama" }
-    animals[1..END];          # gives all except the first element
+    animals[0..1];            // gives { "camel", "llama" }
+    animals[1..END];          // gives all except the first element
 
 In this last example where END is used, you must be careful, because if
 the array is empty, END will be -1, and an array slice where the
@@ -343,6 +343,7 @@ You can add on to the end of an array no matter how many elements
 it already has:
 
     push(&animals, "tiger");
+    push(&animals, "lion", "bear", "badger");
 
 The & means that animals is passed by reference, because it will
 be changed.  This is discussed more later.
@@ -370,7 +371,7 @@ hasn't yet grown up to that index.  If you assign more than one past
 the current end, the unassigned elements are assigned undef:
 
     string colors[] = { "blue, "red" };
-    colors[3] = "green";   # colors[2] gets undef and colors[3] gets "green"
+    colors[3] = "green";   // colors[2] gets undef and colors[3] gets "green"
 
 You can read from any non-negative array index as well.  You will simply
 get undef if the element doesn't exist.  Reading from a negative index
@@ -405,7 +406,7 @@ be of any type, allowing you to create hashes of arrays or other hashes.
 
 To get at a hash element, you index the hash with the key:
 
-    grades{"Rose"};           # gives 90
+    grades{"Rose"};           // gives 90
 
 If the given key does not exist in the hash, you get back undef.
 Using undef as a key causes a run-time error.
@@ -1360,6 +1361,7 @@ modeled after the standard C library and Perl.
 =over 4
 
 =proto string <>
+
 =proto string <FILE f>
 
 Get the next line from a FILE handle and return it, or return undef
@@ -1368,22 +1370,22 @@ is specified, it is not closed by this function.
 
 The form without a file handle
 
-    while (defined(buf = <>)) {
+    while (buf = <>) {
 	    ...
     }
 
 means
 
-    unless (defined(argv[1])) {
-	    while (defined(buf = <stdin>)) {
+    unless (argv[1]) {
+	    while (buf = <stdin>) {
 		    ...
 	    }
-    } else for (i = 1; defined(argv[i]); i++) {
-	    unless (defined(f = open(argv[i], "r"))) {
+    } else for (i = 1; argv[i]; i++) {
+	    unless (f = open(argv[i], "r")) {
                 perror(argv[i]);
                 continue;
             }
-	    while (defined(buf = <f>)) {
+	    while (buf = <f>) {
 		    ...
 	    }
     }
@@ -1395,7 +1397,7 @@ A trivial cat implementation:
     {
     	string	buf;
 
-    	while (defined(buf = <>)) print(buf);
+    	while (buf = <>) print(buf);
     }
 
 =item `command`
@@ -1416,6 +1418,7 @@ The global variable C<stdio_status> (see system()) contains the
 command's exit status.
 
 =proto int abs(int val)
+
 =proto float abs(float val)
 
 Return the absolute value of the argument.
@@ -1539,9 +1542,10 @@ C<character>, C<block>, C<fifo>, C<symlink> or C<socket>.
 Return undef on error.
 
 =proto string[] getdir(string dir)
+
 =proto string[] getdir(string dir, string pattern)
 
-Return the files in the given directory, as a string array.
+Return the files in the given directory, as a sorted string array.
 Optionally filter the list by C<pattern> which is a glob and may
 contain the following special characters:
 
@@ -1726,7 +1730,13 @@ Return the modified time of path, or 0 to indicate error.
 Return a normalized version of path. The pathname will be an absolute
 path with all "../" and "./" removed.
 
+=proto int ord(string c)
+
+Return the numeric value of the encoding (ASCII, Unicode) of the first character
+of C<c>, or -1 on error or if C<c> is the empty string.
+
 =proto int pclose(FILE f)
+
 =proto int pclose(FILE f, STATUS &s)
 
 Close an open pipe created by popen().
@@ -1734,6 +1744,7 @@ Return 0 on success, -1 on error.
 See system() for details of the STATUS struct.
 
 =proto void perror()
+
 =proto void perror(string message)
 
 Print the error message corresponding to the last error from
@@ -1766,10 +1777,9 @@ error.  Return the FILE handle on success, or undef on error.
 Format arguments and print to stdout, as in printf(3).
 Return 0 on success, -1 on error.
 
-=proto void push(type &array[], type element)
+=proto void push(type &array[], type element1, ...)
 
-Push an element onto the end of C<array>.  Equivalent to
-saying array[END+1] = element.
+Push one or more elements onto the end of C<array>.
 
 =proto string putenv(string var_fmt, ...args)
 
@@ -1781,10 +1791,12 @@ using printf-like arguments:
 
 Return the new value or undef if var_fmt contains no "=".
 
+=proto int read(FILE f, string &buffer)
+
 =proto int read(FILE f, string &buffer, int numBytes)
 
 Read at most numBytes from the given FILE handle into the buffer, or
-read the entire file if numBytes == -1.  Return the number of
+read the entire file if numBytes == -1 or is omitted.  Return the number of
 bytes read, -1 on error or EOF.
 
 =proto int rename(string oldpath, string newpath)
@@ -1830,12 +1842,19 @@ second in the sort order, +1 if the first comes after the second, and
 0 if the two are equal.
 
 =proto int spawn(string cmd)
+
 =proto int spawn(string cmd, STATUS &s)
+
 =proto int spawn(string argv[])
+
 =proto int spawn(string argv[], STATUS &s)
+
 =proto int spawn(cmd | argv[], FILE in, FILE out, FILE err);
+
 =proto int spawn(cmd | argv[], FILE in, FILE out, FILE err, STATUS &s);
+
 =proto int spawn(cmd | argv[], "input", "${outf}", "errors")
+
 =proto int spawn(cmd | argv[], "input", "${outf}", "errors", STATUS &s)
 
 Execute a command in background.  All forms return either a process id or
@@ -1847,13 +1866,9 @@ See the waitpid() function for information about waiting on the child.
 
 =proto string[] split(string s)
 
-=proto string[] split(string s, /regexp/)
+=proto string[] split(/regexp/, string s)
 
-=proto string[] split(string s, string sep)
-
-=proto string[] split(string s, /regexp/, int limit)
-
-=proto string[] split(string s, string sep, int limit)
+=proto string[] split(/regexp/, string s, int limit)
 
 Split a string into substrings.
 In the first variation, the string is split on whitespace, and any
@@ -1864,32 +1879,29 @@ by the white space:
     split("a b c");    // returns {"a", "b", "c"}
     split(" x y z ");  // returns {"x", "y", "z"}
 
-In the second variation, the string is split on a given delimiter
-which can be of any length:
+In the second variation, the string is split using a regular expression
+as the delimiter:
 
-    split("we.are.dots", ".");  // returns {"we", "are", "dots"}
-    split("AxxxBxxxC", "xxx");  // returns {"A", "B", "C"}
+    split(/,/, "we,are,commas");  // returns {"we", "are", "commas"}
+    split(/xxx/, "AxxxBxxxC");    // returns {"A", "B", "C"}
+    split(/[;,]/, "1;10,20");     // returns {"1", "10", "20"}
 
-The delimiter must be a constant and not a variable or expression (but
-you can work around that by putting variables in a string
-interpolation).
-
-In the third variation, the delimiter is a regular expression:
-
-    split("1;10,20", /[;,]/);  // returns {"1", "10", "20"}
-
-When a delimiter is used (whether a string or a regular expression),
-split returns a null first field if the
+When a delimiter is used, split returns a null first field if the
 string begins with the delimiter, but if the string ends with the
-delimiter no trailing null field is returned.
-This provides compatibility with Perl's split:
+delimiter no trailing null field is returned.  This provides
+compatibility with Perl's split:
 
-    split("xxAxxBxxCxx", "xx");  // returns {"", "A", "B", "C"}
+    split(/xx/, "xxAxxBxxCxx");  // returns {"", "A", "B", "C"}
 
-In the last two variations, at most C<limit> fields are split off
+You can avoid the leading null fields in the result if you put a
+C<t> after the regular expression (to tell it to "trim" the result):
+
+    split(/xx/t, "xxAxxBxxCxx");  // returns {"A", "B", "C"}
+
+If a C<limit> argument is given, at most C<limit> substrings are returned
 (limit <= 0 means no limit):
 
-    split("a b c d e f", " ", 3);  // returns {"a", "b", "c", "d e f"}
+    split(/ /, "a b c d e f", 3);  // returns {"a", "b", "c d e f"}
 
 =proto string sprintf(string fmt, ...args)
 
@@ -1920,17 +1932,29 @@ Create a symbolic link from sourcePath to targetPath.
 Return 0 on success, -1 on failure.
 
 =proto int system(string cmd)
+
 =proto int system(string cmd, STATUS &s)
+
 =proto int system(string argv[])
+
 =proto int system(string argv[], STATUS &s)
+
 =proto int system(cmd | argv[], string in, string &out, string &err)
+
 =proto int system(cmd | argv[], string in, string &out, string &err, STATUS &s)
+
 =proto int system(cmd | argv[], string[] in, string[] &out, string[] &err, STATUS &s)
+
 =proto int system(cmd | argv[], string[] in, string[] &out, string[] &err)
+
 =proto int system(cmd | argv[], string[] in, string[] &out, string[] &err, STATUS &s)
+
 =proto int system(cmd | argv[], FILE in, FILE out, FILE err);
+
 =proto int system(cmd | argv[], FILE in, FILE out, FILE err, STATUS &s);
+
 =proto int system(cmd | argv[], "input", "${outf}", "errors")
+
 =proto int system(cmd | argv[], "input", "${outf}", "errors", STATUS &s)
 
 Execute a command and wait for it to finish (see C<spawn()> for the
@@ -2052,10 +2076,11 @@ Return 0 on success, -1 on failure.
 =proto int waitpid(int pid, STATUS &status, int nohang)
 
 Given a pid returned by spawn(), wait for it, and place the exit information
-in the STATUS struct.
-Returns the process exit status, or -1 on error.
-If C<nohang> is non-zero, returns undef if the process does not exist or other
-error, and returns 0 if the process exists and is not yet done.
+in the (optional) STATUS struct.
+Returns C<pid> or -1 on error.
+If C<nohang> is non-zero, returns -1 if the process does not exist or other
+error, returns 0 if the process exists and has not exited, and
+returns C<pid> and updates C<status> if the process has exited.
 
 =proto void warn(string message)
 
@@ -2168,16 +2193,16 @@ L<http://www.pcre.org/pcre.txt>.
 
 =item Simple matching
 
-    if (s =~ /foo/) { ... }  # true if s contains "foo"
+    if (s =~ /foo/) { ... }  // true if s contains "foo"
 
 The C<//> matching operator must be used in conjunction with C<=~> to
 tell L what variable to look at.
 
 =item Simple substitution
 
-    x =~ s/foo/bar/;         # replaces foo with bar in x
-    x =~ s/foo/bar/g;        # replaces ALL INSTANCES of foo with bar in x
-    x =~ s/foo/bar/i;        # does a case-insensitive search
+    x =~ s/foo/bar/;         // replaces foo with bar in x
+    x =~ s/foo/bar/g;        // replaces ALL INSTANCES of foo with bar in x
+    x =~ s/foo/bar/i;        // does a case-insensitive search
 
 =item More complex regular expressions
 
@@ -2218,7 +2243,7 @@ Some brief examples:
 
     // This loop reads from stdin, and prints non-blank lines.
     string buf;
-    while (defined(buf = fgetline(stdin)) {
+    while (buf = <stdin>) {
         unless (buf =~ /^$/) puts(buf);
     }
 

@@ -234,6 +234,7 @@ static const CmdInfo builtInCmds[] = {
     {"shsplit",		Tcl_ShSplitObjCmd,	NULL,		NULL, 1},
     {"fgetline",	Tcl_FGetlineObjCmd,	NULL,		NULL, 1},
     {"angle_read_",	Tcl_LAngleReadObjCmd,	NULL,		NULL, 1},
+    {"Lread_",		Tcl_LReadCmd,		NULL,		NULL, 1},
     {"Lwrite_",		Tcl_LWriteCmd,		NULL,		NULL, 1},
 
     /*
