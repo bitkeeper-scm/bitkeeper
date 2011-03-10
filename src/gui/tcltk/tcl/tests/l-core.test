@@ -8877,6 +8877,74 @@ void reference_1_1_tweak(struct reference_1_1_point &foo)
 reference_1_1();
 } -output {}
 
+test reference-1.2 {test deep-dive arguments (copy in/out)} -body {
+#lang L
+void r12set(string &s, string v) { s = v; }
+void reference_1_2()
+{
+	string	a[];
+	string	aa[][];
+	string	aaa[][][];
+	string	h{string};
+	string	hh{string}{string};
+	string	hhh{string}{string}{string};
+	struct {
+		string	s;
+		string	a[];
+		string	h{string};
+	} st;
+
+	r12set(&a[0], "zero");
+	unless (a[0] eq "zero") puts("bad 1.1");
+	r12set(&a[1], "one");
+	unless ((a[0] eq "zero") && (a[1] eq "one")) puts("bad 1.2");
+	r12set(&a[0], "is1");
+	unless ((a[0] eq "is1") && (a[1] eq "one")) puts("bad 1.3");
+
+	r12set(&aa[1][2], "12");
+	unless (aa[1][2] eq "12") puts("bad 2.1");
+
+	r12set(&aaa[3][2][1], "321");
+	unless (aaa[3][2][1] eq "321") puts("bad 3.1");
+
+	r12set(&h{"zero"}, "is0");
+	unless (h{"zero"} eq "is0") puts("bad 10.1");
+
+	r12set(&hh{"zero1"}{"zero2"}, "is00");
+	unless (hh{"zero1"}{"zero2"} eq "is00") puts("bad 11.1");
+
+	r12set(&hhh{"zero3"}{"zero2"}{"zero1"}, "is000");
+	unless (hhh{"zero3"}{"zero2"}{"zero1"} eq "is000") puts("bad 12.1");
+
+	r12set(&st.s, "iss");
+	unless (st.s eq "iss") puts("bad 20.1");
+
+	r12set(&st.a[3], "a-3");
+	unless (st.a[3] eq "a-3") puts("bad 21.1");
+
+	r12set(&st.h{"two"}, "h-2");
+	unless (st.h{"two"} eq "h-2") puts("bad 22.1");
+}
+reference_1_2();
+} -output {}
+
+test reference-1.3 {test copy in/out semantics} -body {
+#lang L
+string g_ref13[];
+void r13(string &s, string v)
+{
+	s = v;
+	g_ref13 = { "ch-one", "ch-two", "ch-three" };
+}
+void reference_1_3()
+{
+	g_ref13 = { "one", "two" };
+	r13(&g_ref13[0], "new-one");
+	unless (join("|", g_ref13) eq "new-one|ch-two|ch-three") puts("bad 1.1");
+}
+reference_1_3();
+} -output {}
+
 test reference-1.4 {test multiple reference arguments} -body {
 #lang L
 void reference_1_4_foo1(string &s1, string &s2)
@@ -15220,9 +15288,6 @@ void lvalue_5()
 	&{1,2,3};
 	&{1=>1};
 	&(1+2);
-	&a[0];
-	&aa[0];
-	&aa[0][0];
 }
 #lang tcl
 lvalue_5
@@ -15234,9 +15299,6 @@ lvalue_5
 .*12: L Error: illegal operand to &
 .*13: L Error: illegal operand to &
 .*14: L Error: illegal operand to &
-.*15: L Error: illegal operand to &
-.*16: L Error: illegal operand to &
-.*17: L Error: illegal operand to &
 }
 
 test builtin-1 {check keys built-in} -body {

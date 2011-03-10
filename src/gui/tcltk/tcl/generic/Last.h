@@ -74,6 +74,17 @@ typedef enum {
 } Node_k;
 
 /*
+ * A compiler temp.
+ */
+typedef struct Tmp Tmp;
+struct Tmp {
+	int	free;
+	int	idx;	// local variable slot #
+	char	*name;
+	Tmp	*next;
+};
+
+/*
  * An L type name is represented with exactly one instance of a
  * Type structure.  All references to the type name point to that
  * structure, so pointer comparison can be used to check for name
@@ -245,13 +256,15 @@ typedef enum {
 	L_PUSH_NAME   = 0x00002000, // have compile_expr push name not val
 	L_PUSH_NEW    = 0x00004000, // whether INST_L_DEEP_WRITE should push
 	L_PUSH_OLD    = 0x00008000, //   the new or old value
-	L_NOTUSED     = 0x00010000, // do not update used_p in symtab entry
-	L_NOWARN      = 0x00020000, // issue no err if symbol undefined
-	L_SPLIT_RE    = 0x00040000, // split on a regexp
-	L_SPLIT_STR   = 0x00080000, // split on a string
-	L_SPLIT_LIM   = 0x00100000, // enforce split limit
-	L_APPEND      = 0x00200000, // append to deep list obj
-	L_WAS_DUPD    = 0x00400000, // obj was dup'd to make an unshared copy
+	L_SAVE_IDX    = 0x00010000, // save idx to a tmp var (for copy in/out)
+	L_REUSE_IDX   = 0x00020000, // get idx from tmp var instead of expr
+	L_NOTUSED     = 0x00040000, // do not update used_p in symtab entry
+	L_NOWARN      = 0x00080000, // issue no err if symbol undefined
+	L_SPLIT_RE    = 0x00100000, // split on a regexp
+	L_SPLIT_STR   = 0x00200000, // split on a string
+	L_SPLIT_LIM   = 0x00400000, // enforce split limit
+	L_APPEND      = 0x00800000, // append to deep list obj
+	L_WAS_DUPD    = 0x01000000, // obj was dup'd to make an unshared copy
 } Expr_f;
 
 struct Expr {
@@ -265,6 +278,12 @@ struct Expr {
 	Expr_f	flags;
 	Sym	*sym;  // for id, ptr to symbol table entry
 	char	*str;  // for constants/id/re/struct-index
+	union {
+		struct {
+			Tmp	*idx;
+			Tmp	*val;
+		} deepdive;
+	} u;
 	Expr	*next;
 };
 

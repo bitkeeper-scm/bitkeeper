@@ -79,6 +79,8 @@ typedef struct Frame {
 	int		proc_top;
 	// Fix-ups for return stmts which all jmp to the end.
 	Jmp		*ret_jmps;
+	// List of temps allocated in this frame.
+	Tmp		*tmps;
 	struct Frame	*prevFrame;
 } Frame;
 

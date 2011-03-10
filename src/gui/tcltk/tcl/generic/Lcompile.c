@@ -112,7 +112,8 @@ private int	compile_abs(Expr *expr);
 private int	compile_assert(Expr *expr);
 private void	compile_assign(Expr *expr);
 private void	compile_assignComposite(Expr *expr);
-private void	compile_assignFromStack(Expr *lhs, Type *rhs_type, Expr *expr);
+private void	compile_assignFromStack(Expr *lhs, Type *rhs_type, Expr *expr,
+					int flags);
 private int	compile_binOp(Expr *expr, Expr_f flags);
 private void	compile_block(Block *block);
 private void	compile_break(Stmt *stmt);
@@ -125,6 +126,7 @@ private int	compile_die(Expr *expr);
 private void	compile_do(Loop *loop);
 private void	compile_for_while(Loop *loop);
 private int	compile_idxOp(Expr *expr, Expr_f flags);
+private int	compile_idxOp2(Expr *expr, Expr_f flags);
 private int	compile_expr(Expr *expr, Expr_f flags);
 private int	compile_exprs(Expr *expr, Expr_f flags);
 private int	compile_fnCall(Expr *expr);
@@ -195,9 +197,8 @@ private int	ispatternfn(char *name, Expr **foo, Expr **Foo_star,
 private Label	*label_lookup(Stmt *stmt, Label_f flags);
 private int	parse_options(int ac, Tcl_Obj **av);
 private void	proc_mkArg(Proc *proc, VarDecl *decl);
-private int	push_index(Expr *expr);
+private int	push_index(Expr *expr, int flags);
 private int	push_parms(Expr *actuals);
-private void	push_pointer(Expr *lval);
 private int	push_regexpModifiers(Expr *regexp);
 private ReKind	re_kind(Expr *re, Tcl_DString *ds);
 private int	re_submatchCnt(Expr *re);
@@ -205,8 +206,8 @@ private VarDecl	*struct_lookupMember(Type *t, Expr *idx, int *offset);
 private Sym	*sym_mk(char *name, Type *t, Expr_f flags);
 private Sym	*sym_lookup(Expr *id, Expr_f flags);
 private Sym	*sym_store(VarDecl *decl);
-private int	tmp_getFree(char **s);
-private int	tmp_getSingle(char **s);
+private Tmp	*tmp_get(void);
+private void	tmp_free(Tmp *tmp);
 private void	track_cmd(int codeOffset, void *node);
 private void	type_free(Type *type_list);
 private int	typeck_spawn(Expr *in, Expr *out, Expr *err);
@@ -868,6 +869,7 @@ frame_pop()
 	Frame	*frame = L->frame;
 	Proc	*proc  = frame->proc;
 	Sym	*sym;
+	Tmp	*tmp;
 	Label	*label;
 	Tcl_HashEntry *hPtr;
 	Tcl_HashSearch hSearch;
@@ -957,6 +959,12 @@ frame_pop()
 		ckfree((char *)frame->prologueEnvPtr);
 	}
 
+	tmp = frame->tmps;
+	while (tmp) {
+		Tmp *next = tmp->next;
+		ckfree((char *)tmp);
+		tmp = next;
+	}
 	L->frame = frame->prevFrame;
 	ckfree((char *)frame);
 }
@@ -2265,7 +2273,7 @@ compile_fnCall(Expr *expr)
 	int	num_parms = 0, typchk = FALSE;
 	char	*name;
 	char	*defchk = NULL;  // name for definedness chk before main() runs
-	Expr	*foo, *Foo_star, *opts, *p;
+	Expr	*actual, *foo, *Foo_star, *opts, *p;
 	Sym	*sym;
 	VarDecl	*formals = NULL;
 
@@ -2367,6 +2375,26 @@ compile_fnCall(Expr *expr)
 	} else {
 		emit_invoke(num_parms+1);
 	}
+
+	/*
+	 * Copy out any deep-dive expressions that were passed with &.
+	 * For these, the actual's value was copied into a temp var
+	 * and its name passed.  Copy that temp back out.
+	 */
+	for (actual = expr->b; actual; actual = actual->next) {
+		Expr *arg = actual->a;
+		unless (isaddrof(actual) && (arg->flags & L_EXPR_DEEP)) {
+			continue;
+		}
+		emit_load_scalar(arg->u.deepdive.val->idx);
+		compile_assignFromStack(arg, arg->type, NULL, L_REUSE_IDX);
+		emit_pop();
+		tmp_free(arg->u.deepdive.val);
+		tmp_free(arg->u.deepdive.idx);
+		arg->u.deepdive.val  = NULL;
+		arg->u.deepdive.idx = NULL;
+	}
+
 	if (typchk) L_typeck_fncall(formals, expr);
 	fnCallEnd(level);
 	/*
@@ -2525,13 +2553,19 @@ push_parms(Expr *actuals)
 	int	widget_flag = FALSE;
 	int	strlen_of_variable = strlen("variable");
 	char	*s;
-	Expr	*a;
+	Expr	*a, *v;
 
 	for (i = 0, a = actuals; a; a = a->next, ++i) {
+		compile_expr(a, L_PUSH_VAL);
 		if (widget_flag && isaddrof(a)) {
-			push_pointer(a);
-		} else {
-			compile_expr(a, L_PUSH_VAL);
+			a->type = L_poly;
+			v = a->a;
+			/* can't use local vars or functions from a widget */
+			if (v->sym &&
+			    ((v->sym->decl->flags & (DECL_LOCAL_VAR|DECL_FN)) ||
+			    !canDeref(v->sym))) {
+				L_errf(a, "illegal operand to &");
+			}
 		}
 		s = a->str;
 		widget_flag = ((a->kind == L_EXPR_CONST) &&
@@ -2544,28 +2578,6 @@ push_parms(Expr *actuals)
 		    !strcmp("variable", s + (strlen(s) - strlen_of_variable)));
 	}
 	return (i);
-}
-
-private void
-push_pointer(Expr *expr)
-{
-	Expr	*e = expr->a;
-
-	/*
-	 * Only the following are legal:
-	 *
-	 * &global_var
-	 * &classname->var
-	 * &object->var
-	 */
-	compile_expr(e, L_PUSH_NAME);
-	expr->type = L_poly;
-	unless (e->sym) return;  // not a variable, or undeclared variable
-	/* can't use local vars or functions from a widget */
-	if ((e->sym->decl->flags & (DECL_LOCAL_VAR | DECL_FN)) ||
-	    !canDeref(e->sym)) {
-		L_errf(expr, "illegal operand to &");
-	}
 }
 
 private int
@@ -2622,16 +2634,16 @@ compile_unOp(Expr *expr)
 		break;
 	    case L_OP_ADDROF:
 		/*
-		 * Compile &var -- push the name of var.  This
-		 * works for function names, regular variables, and
-		 * class variables (&x, &classname->var, &obj->var).
+		 * Compile &<expr>.  For function names, regular
+		 * variables, and class variables (&x,
+		 * &classname->var, &obj->var), this is just the name
+		 * of the Tcl variable.  For a deep-dive expr,
+		 * it's the name of a temp var that holds the value.
 		 */
 		compile_expr(expr->a, L_PUSH_NAME);
-		if (!(expr->a->flags & L_EXPR_DEEP) &&
-		    (expr->a->sym && canDeref(expr->a->sym))) {
-			expr->type = type_mkNameOf(expr->a->type);
-		} else {
-			L_errf(expr, "illegal operand to &");
+		expr->type = type_mkNameOf(expr->a->type);
+		unless (expr->a->sym) {
+			L_errf(expr->a, "illegal operand to &");
 			expr->type = L_poly;
 		}
 		break;
@@ -3142,8 +3154,8 @@ private void
 compile_twiddleSubst(Expr *expr)
 {
 	Expr	*lhs = expr->a;
-	int	modCount, tmpIndex = 0;
-	char	*tmpNm;
+	int	modCount;
+	Tmp	*tmp = NULL;
 
 	push_str("::regsub");
 	modCount = push_regexpModifiers(expr->b);
@@ -3159,13 +3171,13 @@ compile_twiddleSubst(Expr *expr)
 		return;
 	}
 	if (isdeepdive(lhs)) {
-		tmpIndex = tmp_getSingle(&tmpNm);
+		tmp = tmp_get();
 		// ::regsub <mods> -line -- <re> <subst> <lhs-val> <lhs-ptr>
 		TclEmitInstInt1(INST_ROT, -(6+modCount), L->frame->envPtr);
 		// <lhs-ptr> ::regsub <mods> -line -- <re> <subst> <lhs-val>
 		TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
 		// <lhs-ptr> ::regsub <mods> -line -- <re> <lhs-val> <subst>
-		push_str("%s", tmpNm);
+		push_str("%s", tmp->name);
 		// <lhs-ptr> ::regsub <mods> -line -- <re> <lhs-val> <subst> <tmp-name>
 	} else {
 		// ::regsub <mods> -line -- <re> <subst> <lhs-val>
@@ -3177,7 +3189,8 @@ compile_twiddleSubst(Expr *expr)
 	emit_invoke(modCount + 7);
 	if (isdeepdive(lhs)) {
 		// <lhs-ptr> <match>
-		emit_load_scalar(tmpIndex);
+		emit_load_scalar(tmp->idx);
+		tmp_free(tmp);
 		// <lhs-ptr> <match> <new-val>
 		TclEmitInstInt1(INST_ROT, 2, L->frame->envPtr);
 		// <match> <new-val> <lhs-ptr>
@@ -4015,13 +4028,14 @@ struct_lookupMember(Type *t, Expr *idx, int *offset)
  * whether the operator is an array, hash, struct, or string index.
  */
 private int
-push_index(Expr *expr)
+push_index(Expr *expr, int flags)
 {
 	int	ret;
+	int	reuse = flags & L_REUSE_IDX;
+	int	save  = flags & L_SAVE_IDX;
 	Type	*type;
 	VarDecl *member;
 	int	offset;
-	char	buf[16];
 
 	/* Error-path return values. */
 	ret  = 0;
@@ -4039,8 +4053,7 @@ push_index(Expr *expr)
 					     expr,
 					     &offset);
 		if (member) {
-			snprintf(buf, sizeof(buf), "%i", offset);
-			push_str(buf);
+			unless (reuse) push_str("%i", offset);
 			type = member->type;
 		} else {
 			L_errf(expr, "struct field %s not found", expr->str);
@@ -4048,7 +4061,7 @@ push_index(Expr *expr)
 		ret = L_IDX_ARRAY;
 		break;
 	    case L_OP_ARRAY_INDEX:
-		compile_expr(expr->b, L_PUSH_VAL);
+		unless (reuse) compile_expr(expr->b, L_PUSH_VAL);
 		L_typeck_expect(L_INT, expr->b, "in array/string index");
 		if (isarray(expr->a) || islist(expr->a)) {
 			type = expr->a->type->base_type;
@@ -4064,7 +4077,7 @@ push_index(Expr *expr)
 		}
 		break;
 	    case L_OP_HASH_INDEX: {
-		compile_expr(expr->b, L_PUSH_VAL);
+		unless (reuse) compile_expr(expr->b, L_PUSH_VAL);
 		if (ishash(expr->a)) {
 			L_typeck_expect(expr->a->type->u.hash.idx_type->kind,
 					expr->b,
@@ -4083,6 +4096,16 @@ push_index(Expr *expr)
 		break;
 	}
  out:
+	if (save) {
+		// save copy of index to a temp
+		Tmp *idxTmp = tmp_get();
+		expr->u.deepdive.idx = idxTmp;
+		emit_store_scalar(idxTmp->idx);
+	} else if (reuse) {
+		// get index value from temp
+		ASSERT(expr->u.deepdive.idx);
+		emit_load_scalar(expr->u.deepdive.idx->idx);
+	}
 	expr->type = type;
 	return (ret);
 }
@@ -4099,11 +4122,53 @@ push_index(Expr *expr)
  * <deep-ptr>                  if flags & L_PUSH_PTR
  * <elem-obj> <deep-ptr>       if flags & L_PUSH_VAL_PTR
  * <deep-ptr> <elem-obj>       if flags & L_PUSH_PTR_VAL
+ * <tmp-name>                  if flags & L_PUSH_NAME
+ *
+ * For L_PUSH_NAME, we evaluate the indexed expression and store its
+ * value and all the indices in local temp variables, then use the
+ * value temp's name as the value of the expression.  The expr nodes
+ * store information about the temps so they can be accessed later,
+ * such as for the copy-out part of copy in/out parameters.
  */
 private int
 compile_idxOp(Expr *expr, Expr_f flags)
 {
-	compile_expr(expr->a, L_PUSH_PTR | L_PUSH_VAL | (flags & L_LVALUE));
+	int	ret;
+	Tmp	*valTmp;
+
+	if ((flags & L_PUSH_NAME) && !(flags & L_SAVE_IDX)) {
+		/* First time through for L_PUSH_NAME. */
+		ret = compile_idxOp2(expr, flags | L_PUSH_VAL | L_SAVE_IDX);
+		/*
+		 * Check whether this was really an object index (we
+		 * don't know until now).
+		 */
+		if (isclass(expr->a)) return (ret);
+		valTmp = tmp_get();
+		expr->u.deepdive.val = valTmp;
+		emit_store_scalar(valTmp->idx);
+		emit_pop();
+		push_str("%s", valTmp->name);
+	} else {
+		ret = compile_idxOp2(expr, flags);
+	}
+	return (ret);
+}
+
+private int
+compile_idxOp2(Expr *expr, Expr_f flags)
+{
+	/*
+	 * Eval the thing being indexed.  The flags magic here is
+	 * because we always want its value if it's a variable, or a
+	 * deep-pointer if it's the result of another deep-dive index,
+	 * regardless of in what form we want expr.
+	 */
+	compile_expr(expr->a, L_PUSH_PTR | L_PUSH_VAL |
+		     (flags & ~(L_PUSH_VALPTR |
+				L_PUSH_PTRVAL |
+				L_DISCARD |
+				L_PUSH_NAME)));
 
 	/*
 	 * Require "->" for all objects and call-by-reference structures.
@@ -4136,17 +4201,19 @@ compile_idxOp(Expr *expr, Expr_f flags)
 		return (compile_clsInstDeref(expr, flags));
 	}
 
-	if (isstring(expr->a) || iswidget(expr->a)) {
+	if (flags & L_REUSE_IDX) {
+	} else if (isstring(expr->a) || iswidget(expr->a)) {
 		TclEmitOpcode(INST_L_PUSH_STR_SIZE, L->frame->envPtr);
 	} else if (isarray(expr->a) || islist(expr->a) || ispoly(expr->a)) {
 		TclEmitOpcode(INST_L_PUSH_LIST_SIZE, L->frame->envPtr);
 	}
 
 	++L->idx_nesting;
-	flags |= push_index(expr);
+	flags |= push_index(expr, flags);
 	--L->idx_nesting;
 
-	if (istype(expr->a, L_STRING|L_WIDGET|L_ARRAY|L_LIST|L_POLY)) {
+	if (istype(expr->a, L_STRING|L_WIDGET|L_ARRAY|L_LIST|L_POLY) &&
+	    !(flags & L_REUSE_IDX)) {
 		TclEmitOpcode(INST_L_POP_SIZE, L->frame->envPtr);
 	}
 
@@ -4192,9 +4259,9 @@ private int
 compile_clsDeref(Expr *expr, Expr_f flags)
 {
 	int	in_class = 0;
-	int	tmpidx;
-	char	*clsnm, *tmpnm, *varnm;
+	char	*clsnm, *varnm;
 	Sym	*sym, *tmpsym;
+	Tmp	*tmp;
 	Type	*type    = (Type *)expr->a;
 	ClsDecl	*clsdecl = type->u.class.clsdecl;
 	Tcl_HashEntry *hPtr;
@@ -4230,8 +4297,8 @@ compile_clsDeref(Expr *expr, Expr_f flags)
 		return (1);  // stack effect
 	}
 
-	tmpidx = tmp_getFree(&tmpnm);
-	tmpsym = sym_mk(tmpnm,
+	tmp = tmp_get();
+	tmpsym = sym_mk(tmp->name,
 			sym->type,
 			SCOPE_LOCAL | DECL_LOCAL_VAR | DECL_TEMP);
 	ASSERT(tmpsym);  // cannot be multiply declared
@@ -4239,14 +4306,14 @@ compile_clsDeref(Expr *expr, Expr_f flags)
 
 	push_str("::L::_class_%s", clsnm);
 	push_str(sym->name);
-	TclEmitInstInt4(INST_NSUPVAR, tmpidx, L->frame->envPtr);
+	TclEmitInstInt4(INST_NSUPVAR, tmp->idx, L->frame->envPtr);
 	emit_pop();
 
 	expr->sym  = tmpsym;
 	expr->type = sym->type;
 
 	if (flags & L_PUSH_VAL) {
-		emit_load_scalar(tmpidx);
+		emit_load_scalar(tmp->idx);
 		return (1);  // stack effect
 	} else {
 		return (0);  // stack effect
@@ -4261,8 +4328,8 @@ private int
 compile_clsInstDeref(Expr *expr, Expr_f flags)
 {
 	int	in_class = 0;
-	int	tmpidx;
-	char	*clsnm, *tmpnm, *varnm;
+	char	*clsnm, *varnm;
+	Tmp	*tmp;
 	Sym	*sym, *tmpsym;
 	ClsDecl	*clsdecl = expr->a->type->u.class.clsdecl;
 	Tcl_HashEntry *hPtr;
@@ -4301,22 +4368,22 @@ compile_clsInstDeref(Expr *expr, Expr_f flags)
 		return (1);  // stack effect
 	}
 
-	tmpidx = tmp_getFree(&tmpnm);
-	tmpsym = sym_mk(tmpnm,
+	tmp = tmp_get();
+	tmpsym = sym_mk(tmp->name,
 			sym->type,
 			SCOPE_LOCAL | DECL_LOCAL_VAR | DECL_TEMP);
 	ASSERT(tmpsym);  // cannot be multiply declared
 	tmpsym->used_p = TRUE;
 
 	push_str(sym->name);
-	TclEmitInstInt4(INST_NSUPVAR, tmpidx, L->frame->envPtr);
+	TclEmitInstInt4(INST_NSUPVAR, tmp->idx, L->frame->envPtr);
 	emit_pop();
 
 	expr->sym  = tmpsym;
 	expr->type = sym->type;
 
 	if (flags & L_PUSH_VAL) {
-		emit_load_scalar(tmpidx);
+		emit_load_scalar(tmp->idx);
 		return (1);  // stack effect
 	} else {
 		return (0);  // stack effect
@@ -4335,17 +4402,17 @@ compile_assign(Expr *expr)
 	} else {
 		/* Handle regular assignment. */
 		compile_expr(rhs, L_PUSH_VAL);
-		compile_assignFromStack(lhs, rhs->type, expr);
+		compile_assignFromStack(lhs, rhs->type, expr, 0);
 	}
 }
 
 private void
-compile_assignFromStack(Expr *lhs, Type *rhs_type, Expr *expr)
+compile_assignFromStack(Expr *lhs, Type *rhs_type, Expr *expr, int flags)
 {
 	/* Whether it's an arithmetic assignment (lhs op= rhs). */
-	int	arith = (expr->op != L_OP_EQUALS);
+	int	arith = (expr && (expr->op != L_OP_EQUALS));
 
-	compile_expr(lhs, (arith?L_PUSH_VALPTR:L_PUSH_PTR) | L_LVALUE);
+	compile_expr(lhs, (arith?L_PUSH_VALPTR:L_PUSH_PTR) | L_LVALUE | flags);
 	unless (lhs->sym) {
 		L_errf(lhs, "invalid l-value in assignment");
 		return;
@@ -4432,7 +4499,7 @@ compile_assignComposite(Expr *expr)
 		/* A lhs undef means skip the corresponding rhs element. */
 		unless (isid(lhs->a, "undef")) {
 			TclEmitInstInt1(INST_L_LINDEX_STK, i, L->frame->envPtr);
-			compile_assignFromStack(lhs->a, rhs_elt_type, expr);
+			compile_assignFromStack(lhs->a, rhs_elt_type, expr, 0);
 			emit_pop();
 		}
 		/* Advance rhs_elt_type to type of next elt, if known. */
@@ -5147,23 +5214,30 @@ sym_mk(char *name, Type *t, Expr_f flags)
 	return (sym_store(decl));
 }
 
-/*
- * XXX this should be enhanced to re-use temps.
- */
-private int
-tmp_getFree(char **p)
+private Tmp *
+tmp_get()
 {
-	char *s = cksprintf("=temp%d", L->tmpnum++);
-	*p = s;
-	return (TclFindCompiledLocal(s, strlen(s), 1, L->frame->envPtr));
+	Tmp	*tmp;
+
+	for (tmp = L->frame->tmps; tmp; tmp = tmp->next) {
+		if (tmp->free) break;
+	}
+	unless (tmp) {
+		tmp = (Tmp *)ckalloc(sizeof(*tmp));
+		tmp->next = L->frame->tmps;
+		L->frame->tmps = tmp;
+	}
+	tmp->name = cksprintf("=temp%d", L->tmpnum++);
+	tmp->idx  = TclFindCompiledLocal(tmp->name, strlen(tmp->name), 1,
+					 L->frame->envPtr);
+	tmp->free = 0;
+	return (tmp);
 }
 
-private int
-tmp_getSingle(char **p)
+private void
+tmp_free(Tmp *tmp)
 {
-	static char *s = "=single_temp";
-	*p = s;
-	return (TclFindCompiledLocal(s, strlen(s), 1, L->frame->envPtr));
+	tmp->free = 1;
 }
 
 void

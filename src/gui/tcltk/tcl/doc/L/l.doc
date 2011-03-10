@@ -632,6 +632,27 @@ the caller's variable.
 
 Only variables can be passed by reference, not elements of arrays,
 hashes, or structs.  This is one significant difference from C.
+Passing an array, hash, or struct element with C<&> uses C<copy
+in/out>, not a true reference.  The element value is copied
+into a temp variable and the temp is passed by reference.  Then when
+the function returns, any changes to the temp are copied back into the
+array, hash, or struct element.  In most cases this behaves like
+call-by-reference and you don't need to worry about it.
+But if you access the passed element during the function call,
+by referencing it directly instead of through the formal parameter,
+then you must be careful:
+
+    string array[] = { "one", "two" };
+    void fn(string &var, string val)
+    {
+        var = val;
+	array[0] = "this gets overwritten by the copy-out";
+    }
+    void main()
+    {
+        fn(&array[0], "new");
+	puts(array[0]);  // will print "new"
+    }
 
 Instead of passing a reference, you can pass C<undef> like you would a
 NULL pointer in C.
