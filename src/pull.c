@@ -617,6 +617,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 
 done:	unlink(probe_list);
 	if (rmt_urllist) hash_free(rmt_urllist);
+	freeLines(rmt_aliases, free);
 	if (r->type == ADDR_HTTP) disconnect(r);
 	return (rc);
 }
