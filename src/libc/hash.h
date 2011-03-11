@@ -47,6 +47,7 @@ struct hashops {
 	void	*(*next)(hash *h);
 	void	*(*last)(hash *h);
 	void	*(*prev)(hash *h);
+	int	(*count)(hash *h);
 };
 
 
@@ -205,6 +206,23 @@ hash_prev(hash *h)
  */
 #define EACH_HASH(h) \
         if (h) for (hash_first(h); (h)->kptr; hash_next(h))
+
+/*
+ * return the number of nodes in
+ * a hash
+ */
+private inline int
+hash_count(hash *h)
+{
+	int	sum = 0;
+
+	if (h->ops->count) {
+		sum = h->ops->count(h);
+	} else {
+		EACH_HASH(h) sum++;
+	}
+	return (sum);
+}
 
 char	*hash_toStr(hash *h);
 int	hash_fromStr(hash *h, char *str);

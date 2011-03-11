@@ -4,10 +4,10 @@
 typedef struct node node;
 typedef	struct memhash memhash;
 struct memhash {
-	hash	hdr;
-	int	nodes;
-	node	**arr;
-	uint32	mask;
+	hash	hdr;		/* std header for hash_* wrappers */
+	int	nodes;		/* number of elements in hash */
+	node	**arr;		/* array indexed by hash */
+	uint32	mask;		/* size of array */
 
 	/* for nextkey .. */
 	int	lastidx;
@@ -16,10 +16,10 @@ struct memhash {
 };
 
 struct node {
-	node	*next;
-	int	klen;
-	int	dlen;
-	char	key[0];
+	node	*next;		/* next element in same hash bucket */
+	int	klen;		/* key len */
+	int	dlen;		/* data len */
+	char	key[0];		/* key and data stored here */
 };
 
 node	*nodes;
@@ -151,7 +151,6 @@ new_node(memhash *h, node **nn, void *kptr, int klen, int dlen)
 	n->next = *nn;
 	*nn = n;
 	if (++h->nodes >= h->mask) memhash_split(h);
-	++h->nodes;
 	return (h->hdr.vptr);
 }
 
@@ -304,4 +303,12 @@ memhash_split(memhash *h)
 	free(h->arr);
 	h->arr = newarr;
 	h->mask = newmask;
+}
+
+int
+memhash_count(hash *_h)
+{
+	memhash	*h = (memhash *)_h;
+
+	return (h->nodes);
 }
