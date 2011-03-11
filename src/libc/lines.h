@@ -130,19 +130,19 @@ char	*shellquote(char *in);
 /* TYPE *growArray(TYPE **space, int n) */
 #define	growArray(space, n)					\
 	({ typeof(*space) _ret;					\
-	   _ret = _growArray((void **)space, n, sizeof((space)[0])); \
+	   _ret = _growArray((void **)space, n, sizeof(*_ret));	\
 	   _ret; })
 
 /* TYPE *addArray(TYPE **space, TYPE *new) */
 #define	addArray(space, x)				\
 	({ typeof(*space) _arg = (x), _ret;			\
-	   _ret = _addArray((void **)space, _arg, sizeof(*_arg));	\
+	   _ret = _addArray((void **)space, _arg, sizeof(*_ret));	\
 	   _ret; })
 
 /* TYPE *insertArrayN(TYPE **space, int n, TYPE *x) */
 #define	insertArrayN(space, n, x)			\
 	({ typeof(*space) _arg = (x), _ret;			\
-	   _ret = _insertArrayN((void **)space, n, _arg,  sizeof(*_arg)); \
+	   _ret = _insertArrayN((void **)space, n, _arg,  sizeof(*_ret)); \
 	   _ret; })
 
 /* void removeArrayN(TYPE *space, int n); */

@@ -71,7 +71,7 @@ _growArray(void **space, int add, int size)
 	void	*ret;
 
 	*space = _growArray_int(*space, add, size);
-	ret = (u8 *)space + (LLEN(space)-add+1)*size;
+	ret = *(u8 **)space + (LLEN(*space)-add+1)*size;
 	memset(ret, 0, add * size);
 	return (ret);
 }
