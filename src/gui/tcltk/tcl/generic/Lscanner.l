@@ -12,6 +12,7 @@
 %x interpol
 %x here_doc_interp
 %x here_doc_nointerp
+%x eat_through_eol
 ID	([a-zA-Z_]|::)([0-9a-zA-Z_]|::)*
 %{
 /*
@@ -44,7 +45,6 @@ typedef struct {
 	FILE	*file;
 	char	*name;
 	int	line;
-	int	line_adj;
 	YY_BUFFER_STATE	buf;
 } Include;
 
@@ -97,6 +97,7 @@ yy_user_action()
 	L_lloc.end = L->token_off + yyleng;
 
 	tally_newlines(yytext, yyleng, 1);
+	L_lloc.line = L->line;
 
 	/*
 	 * Build up in L->script the text that the scanner scans.
@@ -122,6 +123,7 @@ undo_yy_user_action()
 	L_lloc.end = L->prev_token_off + L->prev_token_len;
 
 	tally_newlines(yytext, yyleng, -1);
+	L_lloc.line = L->line;
 
 	L->script_len -= yyleng;
 	Tcl_SetObjLength(L->script, L->script_len);
@@ -261,16 +263,9 @@ include_push(FILE *f, char *name)
 		include_stk[include_top].file = f;
 		include_stk[include_top].name = L->file;
 		include_stk[include_top].line = L->line;
-		include_stk[include_top].line_adj = L->line_adj;
 		include_stk[include_top].buf = YY_CURRENT_BUFFER;
 		yy_switch_to_buffer(buf);
 		L->file = name;
-		if ((L_lloc.beg == 0) && (L_lloc.end == 0)) {
-			/* Special case: no current token yet. */
-			L->line_adj = 0;
-		} else {
-			L->line_adj = L_offset_to_lineno(L_lloc.beg);
-		}
 		L->line = 1;
 		return (1);
 	}
@@ -282,7 +277,6 @@ include_pop()
 	if (include_top >= 0) {
 		L->file = include_stk[include_top].name;
 		L->line = include_stk[include_top].line;
-		L->line_adj = L_offset_to_lineno(L_lloc.beg) - L->line;
 		fclose(include_stk[include_top].file);
 		yy_delete_buffer(YY_CURRENT_BUFFER);
 		yy_switch_to_buffer(include_stk[include_top].buf);
@@ -485,17 +479,14 @@ canonical_num(char *num)
 				undo_yy_user_action();
 				L->file = name;
 				L->line = 1;
-				L->line_adj = L_offset_to_lineno(L_lloc.end)-1;
 			}
-	^#include[ \t]*\"[^\"\n]+\"[ \t]*\n	{
+	^#include[ \t]*\"[^\"\n]+\"	{
 				char	*beg  = strchr(yytext, '"') + 1;
 				char	*end  = strrchr(yytext, '"');
 				char	*name = ckstrndup(beg, end-beg);
 				FILE	*f;
 
-				--L->line;  // since we already scanned the \n
 				f = include_search(name, NULL, 1);
-				++L->line;
 
 				undo_yy_user_action();
 				if (f && !include_push(f, name)) {
@@ -503,17 +494,15 @@ canonical_num(char *num)
 					yyterminate();
 				}
 			}
-	^#include[ \t]*<[^>\n]+>[ \t]*\n		{
+	^#include[ \t]*<[^>\n]+>	{
 				char	*beg  = strchr(yytext, '<') + 1;
 				char	*end  = strrchr(yytext, '>');
 				char	*name = ckstrndup(beg, end-beg);
 				char	*path = NULL;
 				FILE	*f;
 
-				--L->line;  // since we already scanned the \n
 				f = include_search(name, &path, 0);
 				ckfree(name);
-				++L->line;
 
 				undo_yy_user_action();
 				if (f && !include_push(f, path)) {
@@ -521,24 +510,26 @@ canonical_num(char *num)
 					yyterminate();
 				}
 			}
-	^#include[ \t]*.*\n	{
-				--L->line;  // since we already scanned the \n
+	^#include	{
 				L_err("malformed #include");
-				++L->line;
+				yy_push_state(eat_through_eol);
 			}
 	^#pragma[ \t]+		return T_PRAGMA;
 	^#.*("\r"|"\n"|"\r\n")	{
 				/*
 				 * Rather than using a start condition
 				 * to separate out all the ^# usages,
-				 * this is simpler.  If it's a pragma,
+				 * this is simpler.  If it's not a comment,
 				 * REJECT it so that flex then takes the
-				 * second best rule (immediately above).
+				 * second best rule (those above).
 				 */
 				if (!strncmp(yytext, "#pragma ",  8) ||
 				    !strncmp(yytext, "#pragma\t", 8)) {
 					undo_yy_user_action();
 					REJECT;
+				} else if (!strncmp(yytext, "#include", 8)) {
+					undo_yy_user_action();
+					REJECT
 				} else unless (L->line == 2) {
 					--L->line;  // since \n already scanned
 					L_err("# comment valid only on line 1");
@@ -904,6 +895,12 @@ canonical_num(char *num)
 				return T_RE_MODIFIER;
 			}
 }
+
+<eat_through_eol>{
+	.
+	\n	yy_pop_state();
+}
+
 	.		{
 				/* This rule matches a char if no other does. */
 				L_err("illegal character '%c'", *yytext);

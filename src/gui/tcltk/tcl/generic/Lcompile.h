@@ -120,7 +120,6 @@ typedef struct {
 	Tcl_Obj	*errs;
 	char	*file;
 	int	line;
-	int	line_adj;	// starting line# for included()'d code
 	int	prev_token_len;
 	int	token_off;	// offset of curr token from start of input
 	int	prev_token_off;	// offset of prev token from start of input
@@ -201,7 +200,6 @@ extern int	L_isUndef(Tcl_Obj *o);
 extern void	L_lex_begReArg();
 extern void	L_lex_endReArg();
 extern void	L_lex_start(void);
-extern int	L_offset_to_lineno(int off);
 extern int	L_parse(void);			// yyparse
 extern void	L_scope_enter();
 extern void	L_scope_leave();
@@ -555,15 +553,10 @@ currOffset(CompileEnv *envPtr)
     } while (0)
 
 /*
- * These are for maintaining source-file offsets of tokens and
- * nonterminals.  The YYLOC_DEFAULT macro is used by the
- * bison-generated parser to update locations before each reduction.
+ * YYLOC_DEFAULT() is invoked by the scanner after matching a pattern
+ * and before executing its code.  It tracks the source-file offset
+ * and line #.
  */
-typedef struct {
-	int	beg;
-	int	end;
-} L_YYLTYPE;
-#define YYLTYPE L_YYLTYPE
 extern YYLTYPE L_lloc;
 #define YYLLOC_DEFAULT(c,r,n)				\
 	do {						\
@@ -574,6 +567,7 @@ extern YYLTYPE L_lloc;
 			(c).beg = YYRHSLOC(r,0).beg;	\
 			(c).end = YYRHSLOC(r,0).end;	\
 		}					\
+		(c).line = L->line;			\
 	} while (0)
 
 #ifdef TCL_COMPILE_DEBUG

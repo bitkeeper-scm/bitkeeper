@@ -970,7 +970,7 @@ test scan-2.3 {test #file directive with nested include files} -setup {
 	set fname1 [makeFile {#file "foo1.l"
 #include "scan-2.3-2.l"
 unless (basename(__FILE__) eq "foo1.l") puts("bad 1");
-unless (__LINE__ == 3) puts("bad 2");
+unless (__LINE__ == 3) puts("bad 2 ${__LINE__}");
 } scan-2.3-1.l .]
 	set fname2 [makeFile {#file "foo2.l"
 int scan_2_3a = 3;
@@ -12861,7 +12861,7 @@ test include-1.1 {nested include files} -setup {
 #
 	set fname1 [makeFile {#include "foo-1.1-2.l"
 unless (basename(__FILE__) eq "foo-1.1-1.l") puts("bad 1.1");
-unless (__LINE__ == 3) puts("bad 1.2");
+unless (__LINE__ == 3) puts("bad 1.2 ${__LINE__}");
 } foo-1.1-1.l .]
 	set fname2 [makeFile {unless (__LINE__ == 1) puts("bad 2.1");
 int include_1_1a = 3;
@@ -12869,7 +12869,7 @@ unless (basename(__FILE__) eq "foo-1.1-2.l") puts("bad 2.2");
 unless (__LINE__ == 4) puts("bad 2.3");
 #include "foo-1.1-3.l"
 unless (basename(__FILE__) eq "foo-1.1-2.l") puts("bad 2.4");
-unless (__LINE__ == 7) puts("bad 2.5");
+unless (__LINE__ == 7) puts("bad 2.5 ${__LINE__}");
 } foo-1.1-2.l .]
 	set fname3 [makeFile {
 int include_1_1b = 4;
@@ -14023,6 +14023,20 @@ END
 src_mappings_5();
 } -match regexp -output {.*Command \d+: "s1 = <<END\\nstr1\\nEND"
 .*Command \d+: "s2 = <<'END'\\nstr2\\nEND"
+}
+
+test src-mappings-6 {test bytecode <-> source-file-offset mapping for variable} -body {
+#lang L
+void src_mappings_6()
+{
+	string	s = "";
+
+	if (s) s = "1";
+
+	puts(::tcl::unsupported::disassemble("proc", "src_mappings_6"));
+}
+src_mappings_6();
+} -match regexp -output {.*Command \d+: "s"
 }
 
 test function-1.0 {check function call rules} -body {
@@ -16589,7 +16603,7 @@ class class_2_14
 	void class_2_14_new(class_2_14 self) {}  // err
 	private void class_2_14_new(class_2_14 self) {}  // err
 }
-} -returnCodes {error} -match regexp -result {.*5: L Error: does not match other declaration of class_2_14_new
+} -returnCodes {error} -match regexp -result {.*1: L Error: does not match other declaration of class_2_14_new
 .*4: L Error: function class_2_14_new already declared
 }
 

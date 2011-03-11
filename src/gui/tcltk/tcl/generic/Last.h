@@ -27,6 +27,17 @@ typedef struct Type	Type;
 typedef struct Sym	Sym;
 typedef struct Pragma	Pragma;
 
+/*
+ * Source-file offset and line # of an AST node, token, or
+ * nonterminal.  Set by the scanner and parser.
+ */
+typedef struct {
+	int	beg;	// source offset of first char
+	int	end;	// source offset of last char + 1
+	int	line;	// line # of first char adjusted for any #include's
+} YYLTYPE;
+#define YYLTYPE YYLTYPE
+
 typedef enum {
 	L_LOOP_DO,
 	L_LOOP_FOR,
@@ -145,9 +156,7 @@ struct Ast {
 	Node_k	type;
 	Ast	*next;	// links all nodes in an AST
 	char	*file;
-	int	line;
-	int	beg;
-	int	end;
+	YYLTYPE	loc;
 };
 
 struct Block {
@@ -423,33 +432,44 @@ struct VarDecl {
 	Decl_f	flags;
 };
 
-extern Expr	*ast_mkBinOp(Op_k op, Expr *e1, Expr *e2, int beg, int end);
-extern Block	*ast_mkBlock(VarDecl *decls,Stmt *body, int beg, int end);
-extern Case	*ast_mkCase(Expr *expr, Stmt *body, int beg, int end);
-extern ClsDecl	*ast_mkClsDecl(VarDecl *decl, int beg, int end);
-extern Expr	*ast_mkConst(Type *type, char *str, int beg, int end);
+extern Expr	*ast_mkBinOp(Op_k op, Expr *e1, Expr *e2, YYLTYPE beg,
+			     YYLTYPE end);
+extern Block	*ast_mkBlock(VarDecl *decls,Stmt *body, YYLTYPE beg,
+			     YYLTYPE end);
+extern Case	*ast_mkCase(Expr *expr, Stmt *body, YYLTYPE beg,
+			    YYLTYPE end);
+extern ClsDecl	*ast_mkClsDecl(VarDecl *decl, YYLTYPE beg, YYLTYPE end);
+extern Expr	*ast_mkConst(Type *type, char *str, YYLTYPE beg,
+			     YYLTYPE end);
 extern FnDecl	*ast_mkConstructor(ClsDecl *class);
 extern FnDecl	*ast_mkDestructor(ClsDecl *class);
 extern Expr	*ast_mkExpr(Expr_k kind, Op_k op, Expr *a, Expr *b, Expr *c,
-			    int beg, int end);
-extern Expr	*ast_mkFnCall(Expr *id, Expr *arg_list, int beg, int end);
-extern FnDecl	*ast_mkFnDecl(VarDecl *decl, Block *body, int beg, int end);
+			    YYLTYPE beg, YYLTYPE end);
+extern Expr	*ast_mkFnCall(Expr *id, Expr *arg_list, YYLTYPE beg,
+			      YYLTYPE end);
+extern FnDecl	*ast_mkFnDecl(VarDecl *decl, Block *body, YYLTYPE beg,
+			      YYLTYPE end);
 extern ForEach	*ast_mkForeach(Expr *hash, Expr *key, Expr *value,
-			       Stmt *body, int beg, int end);
-extern Expr	*ast_mkId(char *name, int beg, int end);
+			       Stmt *body, YYLTYPE beg, YYLTYPE end);
+extern Expr	*ast_mkId(char *name, YYLTYPE beg, YYLTYPE end);
 extern Cond	*ast_mkIfUnless(Expr *expr, Stmt *if_body, Stmt *else_body,
-				int beg, int end);
+				YYLTYPE beg, YYLTYPE end);
 extern Loop	*ast_mkLoop(Loop_k kind, Expr *pre, Expr *cond, Expr *post,
-			    Stmt *body, int beg, int end);
-extern Pragma	*ast_mkPragma(char *id, char *val, int beg, int end);
-extern Expr	*ast_mkRegexp(char *re, int beg, int end);
-extern Stmt	*ast_mkStmt(Stmt_k kind, Stmt *next, int beg, int end);
-extern Switch	*ast_mkSwitch(Expr *expr, Case *cases, int beg, int end);
-extern TopLev	*ast_mkTopLevel(Toplv_k kind, TopLev *next, int beg, int end);
+			    Stmt *body, YYLTYPE beg, YYLTYPE end);
+extern Pragma	*ast_mkPragma(char *id, char *val, YYLTYPE beg,
+			      YYLTYPE end);
+extern Expr	*ast_mkRegexp(char *re, YYLTYPE beg, YYLTYPE end);
+extern Stmt	*ast_mkStmt(Stmt_k kind, Stmt *next, YYLTYPE beg,
+			    YYLTYPE end);
+extern Switch	*ast_mkSwitch(Expr *expr, Case *cases, YYLTYPE beg,
+			      YYLTYPE end);
+extern TopLev	*ast_mkTopLevel(Toplv_k kind, TopLev *next, YYLTYPE beg,
+				YYLTYPE end);
 extern Expr	*ast_mkTrinOp(Op_k op, Expr *e1, Expr *e2, Expr *e3,
-			      int beg, int end);
-extern Expr	*ast_mkUnOp(Op_k op, Expr *e1, int beg, int end);
-extern VarDecl	*ast_mkVarDecl(Type *type, Expr *name, int beg, int end);
+			      YYLTYPE beg, YYLTYPE end);
+extern Expr	*ast_mkUnOp(Op_k op, Expr *e1, YYLTYPE beg, YYLTYPE end);
+extern VarDecl	*ast_mkVarDecl(Type *type, Expr *name, YYLTYPE beg,
+			       YYLTYPE end);
 extern Type	*type_dup(Type *type);
 extern Type	*type_mkArray(Expr *size, Type *base_type);
 extern Type	*type_mkClass(void);

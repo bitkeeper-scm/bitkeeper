@@ -156,7 +156,7 @@
 
 
 /* Copy the first part of user declarations.  */
-#line 1 "/Users/rob/bk/bk-L-waitpid/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1 "/Users/rob/bk/bk-6.0-L-stage/src/gui/tcltk/tcl/generic/Lgrammar.y"
 
 /*
  * Copyright (c) 2006-2008 BitMover, Inc.
@@ -173,7 +173,7 @@ extern int	L_lex (void);
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE 
-#line 53 "/Users/rob/bk/bk-L-waitpid/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 53 "/Users/rob/bk/bk-6.0-L-stage/src/gui/tcltk/tcl/generic/Lgrammar.y"
 {
 	long	i;
 	char	*s;

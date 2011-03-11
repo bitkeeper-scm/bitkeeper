@@ -6,30 +6,21 @@
 #include "Lcompile.h"
 
 private void
-ast_init(void *node, Node_k type, int beg, int end)
+ast_init(void *node, Node_k type, YYLTYPE beg, YYLTYPE end)
 {
 	Ast	*ast = (Ast *)node;
 
-	ast->file   = L->file;
-	ast->type   = type;
-	ast->beg    = beg;
-	ast->end    = end;
-	ast->next   = L->ast_list;
-	L->ast_list = (void *)ast;
-
-	/*
-	 * Adjust the line # to account for include()'d code.  This
-	 * acts like cpp's #line directive.
-	 */
-	if (beg) {
-		ast->line = L_offset_to_lineno(beg) - L->line_adj;
-	} else {
-		ast->line = L->line;
-	}
+	ast->file     = L->file;
+	ast->type     = type;
+	ast->loc.beg  = beg.beg;
+	ast->loc.end  = end.end;
+	ast->loc.line = beg.line;
+	ast->next     = L->ast_list;
+	L->ast_list   = (void *)ast;
 }
 
 Block *
-ast_mkBlock(VarDecl *decls, Stmt *body, int beg, int end)
+ast_mkBlock(VarDecl *decls, Stmt *body, YYLTYPE beg, YYLTYPE end)
 {
 	Block	*block = (Block *)ckalloc(sizeof(Block));
 	memset(block, 0, sizeof(Block));
@@ -40,7 +31,8 @@ ast_mkBlock(VarDecl *decls, Stmt *body, int beg, int end)
 }
 
 Expr *
-ast_mkExpr(Expr_k kind, Op_k op, Expr *a, Expr *b, Expr *c, int beg, int end)
+ast_mkExpr(Expr_k kind, Op_k op, Expr *a, Expr *b, Expr *c, YYLTYPE beg,
+	   YYLTYPE end)
 {
 	Expr	*expr = (Expr *)ckalloc(sizeof(Expr));
 	memset(expr, 0, sizeof(Expr));
@@ -55,7 +47,7 @@ ast_mkExpr(Expr_k kind, Op_k op, Expr *a, Expr *b, Expr *c, int beg, int end)
 
 ForEach *
 ast_mkForeach(Expr *expr, Expr *key, Expr *value, Stmt *body,
-	      int beg, int end)
+	      YYLTYPE beg, YYLTYPE end)
 {
 	ForEach	*foreach = (ForEach *)ckalloc(sizeof(ForEach));
 	memset(foreach, 0, sizeof(ForEach));
@@ -68,7 +60,7 @@ ast_mkForeach(Expr *expr, Expr *key, Expr *value, Stmt *body,
 }
 
 FnDecl *
-ast_mkFnDecl(VarDecl *decl, Block *body, int beg, int end)
+ast_mkFnDecl(VarDecl *decl, Block *body, YYLTYPE beg, YYLTYPE end)
 {
 	FnDecl *fndecl = (FnDecl *)ckalloc(sizeof(FnDecl));
 	memset(fndecl, 0, sizeof(FnDecl));
@@ -79,7 +71,8 @@ ast_mkFnDecl(VarDecl *decl, Block *body, int beg, int end)
 }
 
 Cond *
-ast_mkIfUnless(Expr *expr, Stmt *if_body, Stmt *else_body, int beg, int end)
+ast_mkIfUnless(Expr *expr, Stmt *if_body, Stmt *else_body, YYLTYPE beg,
+	       YYLTYPE end)
 {
 	Cond *cond = (Cond *)ckalloc(sizeof(Cond));
 	memset(cond, 0, sizeof(Cond));
@@ -92,7 +85,7 @@ ast_mkIfUnless(Expr *expr, Stmt *if_body, Stmt *else_body, int beg, int end)
 
 Loop *
 ast_mkLoop(Loop_k kind, Expr *pre, Expr *cond, Expr *post, Stmt *body,
-	   int beg, int end)
+	   YYLTYPE beg, YYLTYPE end)
 {
 	Loop *loop = (Loop *)ckalloc(sizeof(Loop));
 	memset(loop, 0, sizeof(Loop));
@@ -106,7 +99,7 @@ ast_mkLoop(Loop_k kind, Expr *pre, Expr *cond, Expr *post, Stmt *body,
 }
 
 Switch *
-ast_mkSwitch(Expr *expr, Case *cases, int beg, int end)
+ast_mkSwitch(Expr *expr, Case *cases, YYLTYPE beg, YYLTYPE end)
 {
 	Switch	*sw = (Switch *)ckalloc(sizeof(Switch));
 	memset(sw, 0, sizeof(Switch));
@@ -117,7 +110,7 @@ ast_mkSwitch(Expr *expr, Case *cases, int beg, int end)
 }
 
 Case *
-ast_mkCase(Expr *expr, Stmt *body, int beg, int end)
+ast_mkCase(Expr *expr, Stmt *body, YYLTYPE beg, YYLTYPE end)
 {
 	Case	*c = (Case *)ckalloc(sizeof(Case));
 	memset(c, 0, sizeof(Case));
@@ -128,7 +121,7 @@ ast_mkCase(Expr *expr, Stmt *body, int beg, int end)
 }
 
 Stmt *
-ast_mkStmt(Stmt_k kind, Stmt *next, int beg, int end)
+ast_mkStmt(Stmt_k kind, Stmt *next, YYLTYPE beg, YYLTYPE end)
 {
 	Stmt *stmt = (Stmt *)ckalloc(sizeof(Stmt));
 	memset(stmt, 0, sizeof(Stmt));
@@ -139,7 +132,7 @@ ast_mkStmt(Stmt_k kind, Stmt *next, int beg, int end)
 }
 
 TopLev *
-ast_mkTopLevel(Toplv_k kind, TopLev *next, int beg, int end)
+ast_mkTopLevel(Toplv_k kind, TopLev *next, YYLTYPE beg, YYLTYPE end)
 {
 	TopLev *toplev = (TopLev *)ckalloc(sizeof(TopLev));
 	memset(toplev, 0, sizeof(TopLev));
@@ -150,7 +143,7 @@ ast_mkTopLevel(Toplv_k kind, TopLev *next, int beg, int end)
 }
 
 VarDecl *
-ast_mkVarDecl(Type *type, Expr *id, int beg, int end)
+ast_mkVarDecl(Type *type, Expr *id, YYLTYPE beg, YYLTYPE end)
 {
 	VarDecl *vardecl = (VarDecl *)ckalloc(sizeof(VarDecl));
 	memset(vardecl, 0, sizeof(VarDecl));
@@ -161,7 +154,7 @@ ast_mkVarDecl(Type *type, Expr *id, int beg, int end)
 }
 
 ClsDecl *
-ast_mkClsDecl(VarDecl *decl, int beg, int end)
+ast_mkClsDecl(VarDecl *decl, YYLTYPE beg, YYLTYPE end)
 {
 	ClsDecl *clsdecl = (ClsDecl *)ckalloc(sizeof(ClsDecl));
 	memset(clsdecl, 0, sizeof(ClsDecl));
@@ -180,16 +173,17 @@ ast_mkConstructor(ClsDecl *class)
 	VarDecl	*decl;
 	Block	*block;
 	FnDecl	*fn;
+	YYLTYPE	loc = class->node.loc;
 
 	type  = type_mkFunc(class->decl->type, NULL);
 	name  = cksprintf("%s_new", class->decl->id->str);
-	id    = ast_mkId(name, 0, 0);
-	decl  = ast_mkVarDecl(type, id, 0, 0);
+	id    = ast_mkId(name, loc, loc);
+	decl  = ast_mkVarDecl(type, id, loc, loc);
 	decl->flags |= SCOPE_GLOBAL | DECL_CLASS_FN | DECL_PUBLIC |
 		DECL_CLASS_CONST;
 	decl->clsdecl = class;
-	block = ast_mkBlock(NULL, NULL, 0, 0);
-	fn    = ast_mkFnDecl(decl, block, 0, 0);
+	block = ast_mkBlock(NULL, NULL, loc, loc);
+	fn    = ast_mkFnDecl(decl, block, loc, loc);
 
 	return (fn);
 }
@@ -204,43 +198,45 @@ ast_mkDestructor(ClsDecl *class)
 	VarDecl	*decl, *parm;
 	Block	*block;
 	FnDecl	*fn;
+	YYLTYPE	loc = class->node.loc;
 
-	self = ast_mkId("self", 0, 0);
-	parm = ast_mkVarDecl(class->decl->type, self, 0, 0);
+	self = ast_mkId("self", loc, loc);
+	parm = ast_mkVarDecl(class->decl->type, self, loc, loc);
 	parm->flags = SCOPE_LOCAL | DECL_LOCAL_VAR;
 	type = type_mkFunc(L_void, parm);
 	name = cksprintf("%s_delete", class->decl->id->str);
-	id   = ast_mkId(name, 0, 0);
-	decl = ast_mkVarDecl(type, id, 0, 0);
+	id   = ast_mkId(name, loc, loc);
+	decl = ast_mkVarDecl(type, id, loc, loc);
 	decl->flags |= SCOPE_GLOBAL | DECL_CLASS_FN | DECL_PUBLIC |
 		DECL_CLASS_DESTR;
 	decl->clsdecl = class;
-	block = ast_mkBlock(NULL, NULL, 0, 0);
-	fn    = ast_mkFnDecl(decl, block, 0, 0);
+	block = ast_mkBlock(NULL, NULL, loc, loc);
+	fn    = ast_mkFnDecl(decl, block, loc, loc);
 
 	return (fn);
 }
 
 Expr *
-ast_mkUnOp(Op_k op, Expr *e1, int beg, int end)
+ast_mkUnOp(Op_k op, Expr *e1, YYLTYPE beg, YYLTYPE end)
 {
 	return (ast_mkExpr(L_EXPR_UNOP, op, e1, NULL, NULL, beg, end));
 }
 
 Expr *
-ast_mkBinOp(Op_k op, Expr *e1, Expr *e2, int beg, int end)
+ast_mkBinOp(Op_k op, Expr *e1, Expr *e2, YYLTYPE beg, YYLTYPE end)
 {
 	return (ast_mkExpr(L_EXPR_BINOP, op, e1, e2, NULL, beg, end));
 }
 
 Expr *
-ast_mkTrinOp(Op_k op, Expr *e1, Expr *e2, Expr *e3, int beg, int end)
+ast_mkTrinOp(Op_k op, Expr *e1, Expr *e2, Expr *e3, YYLTYPE beg,
+	     YYLTYPE end)
 {
 	return (ast_mkExpr(L_EXPR_TRINOP, op, e1, e2, e3, beg, end));
 }
 
 Expr *
-ast_mkConst(Type *type, char *str, int beg, int end)
+ast_mkConst(Type *type, char *str, YYLTYPE beg, YYLTYPE end)
 {
 	Expr *e = ast_mkExpr(L_EXPR_CONST, L_OP_NONE, NULL, NULL, NULL,
 			    beg, end);
@@ -250,7 +246,7 @@ ast_mkConst(Type *type, char *str, int beg, int end)
 }
 
 Expr *
-ast_mkRegexp(char *re, int beg, int end)
+ast_mkRegexp(char *re, YYLTYPE beg, YYLTYPE end)
 {
 	Expr *e = ast_mkExpr(L_EXPR_RE, L_OP_NONE, NULL, NULL, NULL, beg, end);
 	e->str  = re;
@@ -259,7 +255,7 @@ ast_mkRegexp(char *re, int beg, int end)
 }
 
 Expr *
-ast_mkFnCall(Expr *id, Expr *arg_list, int beg, int end)
+ast_mkFnCall(Expr *id, Expr *arg_list, YYLTYPE beg, YYLTYPE end)
 {
 	Expr *e = ast_mkExpr(L_EXPR_FUNCALL, L_OP_NONE, id, arg_list, NULL,
 			    beg, end);
@@ -267,7 +263,7 @@ ast_mkFnCall(Expr *id, Expr *arg_list, int beg, int end)
 }
 
 Expr *
-ast_mkId(char *name, int beg, int end)
+ast_mkId(char *name, YYLTYPE beg, YYLTYPE end)
 {
 	Expr *e = ast_mkExpr(L_EXPR_ID, L_OP_NONE, NULL, NULL, NULL, beg, end);
 	e->str = ckstrdup(name);
@@ -275,7 +271,7 @@ ast_mkId(char *name, int beg, int end)
 }
 
 Pragma *
-ast_mkPragma(char *id, char *val, int beg, int end)
+ast_mkPragma(char *id, char *val, YYLTYPE beg, YYLTYPE end)
 {
 	Pragma	*pragma = (Pragma *)ckalloc(sizeof(Pragma));
 	memset(pragma, 0, sizeof(Pragma));

@@ -195,6 +195,7 @@ private Type	*iscallbyname(VarDecl *formal);
 private int	ispatternfn(char *name, Expr **foo, Expr **Foo_star,
 			    Expr **opts, int *nopts);
 private Label	*label_lookup(Stmt *stmt, Label_f flags);
+private Expr	*mkId(char *name);
 private int	parse_options(int ac, Tcl_Obj **av);
 private void	proc_mkArg(Proc *proc, VarDecl *decl);
 private int	push_index(Expr *expr, int flags);
@@ -372,7 +373,6 @@ L_ParseScript(CONST char *str, Ast **ast_p)
 	}
 
 	L->line		  = 1;
-	L->line_adj       = 0;
 	L->token_off      = 0;
 	L->prev_token_off = 0;
 	L->prev_token_len = 0;
@@ -449,7 +449,7 @@ L_CompileScript(void *ast)
 	}
 
 	/* If main() was defined, emit a %%call_main_if_defined call. */
-	if (sym_lookup(ast_mkId("main", 0, 0), L_NOWARN)) {
+	if (sym_lookup(mkId("main"), L_NOWARN)) {
 		push_str("%%%%call_main_if_defined");
 		emit_invoke(1);
 	}
@@ -648,7 +648,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 		ASSERT(self_sym && self_sym->idx >= 0);
 		self_sym->used_p = TRUE;
 	} else if (isClsFnPublic(decl)) {
-		self_sym = sym_lookup(ast_mkId("self", 0, 0), L_NOWARN);
+		self_sym = sym_lookup(mkId("self"), L_NOWARN);
 		ASSERT(self_sym && self_sym->idx >= 0);
 	}
 
@@ -996,9 +996,9 @@ compile_varInitializer(VarDecl *decl)
 	unless (decl->initializer) {
 		decl->initializer = ast_mkBinOp(L_OP_EQUALS,
 						decl->id,
-						ast_mkId("undef",0,0),
-						decl->node.beg,
-						decl->node.end);
+						mkId("undef"),
+						decl->node.loc,
+						decl->node.loc);
 	}
 	compile_expr(decl->initializer, L_DISCARD);
 	track_cmd(start_off, decl);
@@ -1271,8 +1271,10 @@ compile_fnParms(VarDecl *decl)
 			L_errf(decl->id, "class public member function lacks "
 			       "'self' as first arg");
 			/* Add it so we can keep compiling. */
-			self_id   = ast_mkId("self", 0, 0);
-			self_decl = ast_mkVarDecl(clstype, self_id, 0, 0);
+			self_id   = mkId("self");
+			self_decl = ast_mkVarDecl(clstype, self_id,
+						  decl->node.loc,
+						  decl->node.loc);
 			self_decl->flags = SCOPE_LOCAL | DECL_LOCAL_VAR;
 			self_decl->next = param;
 			param = self_decl;
@@ -1294,7 +1296,7 @@ compile_fnParms(VarDecl *decl)
 		unless (p->id) {
 			L_errf(p, "formal parameter #%d lacks a name", n+1);
 			name = cksprintf("unnamed-arg-%d", n+1);
-			p->id = ast_mkId(name, 0, 0);
+			p->id = mkId(name);
 			ckfree(name);
 		}
 		if (isClsConstructor(decl) && isid(p->id, "self")) {
@@ -1341,11 +1343,11 @@ compile_fnParms(VarDecl *decl)
 
 		/* Create "var". */
 		varId   = ast_mkId(p->id->str + 1,  // point past the &
-				   p->id->node.beg,
-				   p->id->node.end);
-		varDecl = ast_mkVarDecl(type, varId, p->node.beg, p->node.end);
+				   p->id->node.loc,
+				   p->id->node.loc);
+		varDecl = ast_mkVarDecl(type, varId, p->node.loc, p->node.loc);
 		varDecl->flags = SCOPE_LOCAL | DECL_LOCAL_VAR | p->flags;
-		varDecl->node.line = p->node.line;
+		varDecl->node.loc.line = p->node.loc.line;
 		unless (varSym = sym_store(varDecl)) continue; // multiple decl
 		varSym->decl->refsym = parmSym;
 		emit_load_scalar(parmSym->idx);
@@ -1503,9 +1505,9 @@ compile_pop(Expr *expr)
 	ASSERT(expr->b->a);
 	arg = ast_mkBinOp(L_OP_ARRAY_INDEX,
 			  expr->b->a,
-			  ast_mkId("END", 0, 0),
-			  expr->b->a->node.beg,
-			  expr->b->a->node.end);
+			  mkId("END"),
+			  expr->b->a->node.loc,
+			  expr->b->a->node.loc);
 	expr->b->a = arg;
 	/* L_DELETE here permits indexing element -1 (array already empty). */
 	compile_expr(arg, L_PUSH_PTR | L_DELETE | L_LVALUE);
@@ -1696,9 +1698,9 @@ compile_assert(Expr *expr)
 	cond_txt = get_text(expr->b);
 	push_str("die_");
 	push_str("%s", frame_name());
-	push_str("%d", expr->node.line);
+	push_str("%d", expr->node.loc.line);
 	push_str("ASSERTION FAILED %s:%d: %s\n", expr->node.file,
-		 expr->node.line, cond_txt);
+		 expr->node.loc.line, cond_txt);
 	emit_invoke(4);
 	emit_pop();
 	ckfree(cond_txt);
@@ -1716,8 +1718,8 @@ compile_die(Expr *expr)
 
 	ckfree(expr->a->str);
 	expr->a->str = ckstrdup("die_");
-	arg = ast_mkId("__FUNC__", expr->node.beg, expr->node.end);
-	arg->next = ast_mkId("__LINE__", expr->node.beg, expr->node.end);
+	arg = ast_mkId("__FUNC__", expr->node.loc, expr->node.loc);
+	arg->next = ast_mkId("__LINE__", expr->node.loc, expr->node.loc);
 	arg->next->next = expr->b;
 	expr->b = arg;
 	return (compile_expr(expr, L_PUSH_VAL));
@@ -1733,8 +1735,8 @@ compile_warn(Expr *expr)
 
 	ckfree(expr->a->str);
 	expr->a->str = ckstrdup("warn_");
-	arg = ast_mkId("__FUNC__", expr->node.beg, expr->node.end);
-	arg->next = ast_mkId("__LINE__", expr->node.beg, expr->node.end);
+	arg = ast_mkId("__FUNC__", expr->node.loc, expr->node.loc);
+	arg->next = ast_mkId("__LINE__", expr->node.loc, expr->node.loc);
 	arg->next->next = expr->b;
 	expr->b = arg;
 	return (compile_expr(expr, L_PUSH_VAL));
@@ -1753,9 +1755,9 @@ compile_here(Expr *expr)
 	}
 	ckfree(expr->a->str);
 	expr->a->str = ckstrdup("here_");
-	arg = ast_mkId("__FILE__", expr->node.beg, expr->node.end);
-	arg->next = ast_mkId("__LINE__", expr->node.beg, expr->node.end);
-	arg->next->next = ast_mkId("__FUNC__", expr->node.beg, expr->node.end);
+	arg = ast_mkId("__FILE__", expr->node.loc, expr->node.loc);
+	arg->next = ast_mkId("__LINE__", expr->node.loc, expr->node.loc);
+	arg->next->next = ast_mkId("__FUNC__", expr->node.loc, expr->node.loc);
 	expr->b = arg;
 	return (compile_expr(expr, L_PUSH_VAL));
 }
@@ -2080,8 +2082,8 @@ typeck_system(Expr *in, Expr *out, Expr *err)
 private char *
 get_text(Expr *expr)
 {
-	int	beg = expr->node.beg;
-	int	end = expr->node.end;
+	int	beg = expr->node.loc.beg;
+	int	end = expr->node.loc.end;
 	int	len = end - beg;
 	char	*s;
 
@@ -2173,10 +2175,7 @@ compile_expr(Expr *expr, Expr_f flags)
 		while (n--) emit_pop();
 	}
 
-	if ((expr->kind == L_EXPR_UNOP)   || (expr->kind == L_EXPR_BINOP) ||
-	    (expr->kind == L_EXPR_TRINOP) || (expr->kind == L_EXPR_FUNCALL)) {
-		track_cmd(start_off, expr);
-	}
+	track_cmd(start_off, expr);
 
 	--L->expr_level;
 	return (n);
@@ -2208,12 +2207,12 @@ ispatternfn(char *name, Expr **foo, Expr **Foo_star, Expr **opts, int *nopts)
 	/* Build foo from Foo_bar. */
 	buf = cksprintf("%s", name);
 	buf[0] = tolower(buf[0]);
-	*foo = ast_mkId(buf, 0, 0);
+	*foo = mkId(buf);
 	ckfree(buf);
 
 	/* Build Foo_* from Foo_bar. */
 	buf = cksprintf("%s_*", name);
-	*Foo_star = ast_mkId(buf, 0, 0);
+	*Foo_star = mkId(buf);
 	ckfree(buf);
 
 	/* Build a list of bar,baz,blech nodes from barBazBlech. */
@@ -2221,13 +2220,14 @@ ispatternfn(char *name, Expr **foo, Expr **Foo_star, Expr **opts, int *nopts)
 	*opts  = NULL;
 	*nopts = 0;
 	while (*p) {
+		YYLTYPE loc = { 0, 0, 0 };
 		*p = tolower(*p);
 		buf = ckalloc(strlen(p) + 1);
 		for (i = 0; *p && !isupper(*p); ++p, ++i) {
 			buf[i] = *p;
 		}
 		buf[i] = 0;
-		e = ast_mkConst(L_string, buf, 0, 0);
+		e = ast_mkConst(L_string, buf, loc, loc);
 		APPEND_OR_SET(Expr, next, *opts, e);
 		++(*nopts);
 	}
@@ -2437,7 +2437,7 @@ compile_var(Expr *expr, Expr_f flags)
 		expr->type = L_string;
 		return (1);
 	} else if (isid(expr, "__LINE__")) {
-		push_str("%d", expr->node.line);
+		push_str("%d", expr->node.loc.line);
 		expr->type = L_int;
 		return (1);
 	} else if (isid(expr, "__FUNC__")) {
@@ -2501,7 +2501,7 @@ compile_var(Expr *expr, Expr_f flags)
 				 sym->name);
 			break;
 		    case DECL_CLASS_INST_VAR:
-			self = sym_lookup(ast_mkId("self", 0, 0), L_NOWARN);
+			self = sym_lookup(mkId("self"), L_NOWARN);
 			ASSERT(self);
 			emit_load_scalar(self->idx);
 			push_str("::%s", sym->name);
@@ -2618,7 +2618,7 @@ compile_unOp(Expr *expr)
 				break;
 			}
 			name = cksprintf("&%s", expr->a->a->str);
-			var = ast_mkId(name, 0, 0);
+			var = mkId(name);
 			ckfree(name);
 			sym = sym_lookup(var, L_NOWARN);
 			unless (sym && (sym->decl->flags & DECL_REF)) {
@@ -3138,7 +3138,7 @@ compile_reMatch(Expr *re)
 		for (i = 0; i <= submatch_cnt; i++) {
 			char	buf[32];
 			snprintf(buf, sizeof(buf), "$%d", i);
-			id = ast_mkId(buf, 0, 0);
+			id = mkId(buf);
 			unless (sym_lookup(id, L_NOWARN)) {
 				s = sym_mk(buf, L_string,
 					   SCOPE_LOCAL | DECL_LOCAL_VAR);
@@ -4869,7 +4869,7 @@ emit_globalUpvar(Sym *sym)
 		push_str(id);
 		break;
 	    case DECL_CLASS_INST_VAR: {
-		Sym *self = sym_lookup(ast_mkId("self", 0, 0), L_NOWARN);
+		Sym *self = sym_lookup(mkId("self"), L_NOWARN);
 		ASSERT(self);
 		emit_load_scalar(self->idx);
 		push_str(id);
@@ -5033,17 +5033,17 @@ sym_store(VarDecl *decl)
 				L_warnf(decl, "local variable %s shadows "
 					"a global declared at %s:%d",
 					name, sym2->decl->node.file,
-					sym2->decl->node.line);
+					sym2->decl->node.loc.line);
 			} else if (sym2->decl->flags & DECL_CLASS_VAR) {
 				L_warnf(decl, "local variable %s shadows "
 					"a class variable declared at %s:%d",
 					name, sym2->decl->node.file,
-					sym2->decl->node.line);
+					sym2->decl->node.loc.line);
 			} else if (sym2->decl->flags & DECL_CLASS_INST_VAR) {
 				L_warnf(decl, "local variable %s shadows a "
 					"class instance variable declared "
 					"at %s:%d", name, sym2->decl->node.file,
-					sym2->decl->node.line);
+					sym2->decl->node.loc.line);
 			}
 		}
 		break;
@@ -5209,8 +5209,9 @@ sym_lookup(Expr *id, Expr_f flags)
 private Sym *
 sym_mk(char *name, Type *t, Expr_f flags)
 {
-	Expr	*id = ast_mkId(name, 0, 0);
-	VarDecl	*decl = ast_mkVarDecl(t, id, 0, 0);
+	YYLTYPE	loc = { 0, 0, 0 };
+	Expr	*id = mkId(name);
+	VarDecl	*decl = ast_mkVarDecl(t, id, loc, loc);
 
 	decl->flags = flags;
 	return (sym_store(decl));
@@ -5346,7 +5347,7 @@ L_warnf(void *node, const char *format, ...)
 	if (L->options & L_OPT_NOWARN) return;
 
 	fmt = cksprintf("%s:%d: L Warning: %s\n",
-			((Ast *)node)->file, ((Ast *)node)->line, format);
+			((Ast *)node)->file, ((Ast *)node)->loc.line, format);
 	va_start(ap, format);
 	err(fmt, ap);
 	va_end(ap);
@@ -5374,7 +5375,7 @@ L_errf(void *node, const char *format, ...)
 
 	if (node) {
 		fmt = cksprintf("%s:%d: L Error: %s\n", ((Ast *)node)->file,
-				((Ast *)node)->line, format);
+				((Ast *)node)->loc.line, format);
 	} else {
 		fmt = cksprintf("L Error: %s\n", format);
 	}
@@ -5382,19 +5383,6 @@ L_errf(void *node, const char *format, ...)
 	err(fmt, ap);
 	va_end(ap);
 	ckfree(fmt);
-}
-
-int
-L_offset_to_lineno(int off)
-{
-	int	n = 1;
-	char	*p = Tcl_GetString(L->script);
-
-	ASSERT((off >= 0) && (off <= L->script_len));
-	while (off--) {
-		if (*p++ == '\n') ++n;
-	}
-	return (n);
 }
 
 private void
@@ -5452,8 +5440,8 @@ track_cmd(int codeOffset, void *node)
 {
 	int	cmdIndex = L->frame->envPtr->numCommands++;
 	Ast	*ast = (Ast *)node;
-	int	len = ast->end - ast->beg;
-	int	srcOffset = ast->beg;
+	int	len = ast->loc.end - ast->loc.beg;
+	int	srcOffset = ast->loc.beg;
 	ECL	*ePtr;
 	CmdLocation *cmdLocPtr;
 	CompileEnv *envPtr = L->frame->envPtr;
@@ -5561,6 +5549,14 @@ private int
 fnInArgList()
 {
 	return (L->expr_level == (L->call_level + 1));
+}
+
+private Expr *
+mkId(char *name)
+{
+	YYLTYPE	loc = { 0, 0, 0 };
+
+	return (ast_mkId(name, loc, loc));
 }
 
 char *

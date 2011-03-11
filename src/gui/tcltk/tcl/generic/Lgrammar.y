@@ -250,8 +250,7 @@ toplevel_code:
 	  toplevel_code class_decl
 	{
 		if ($2) {
-			$$ = ast_mkTopLevel(L_TOPLEVEL_CLASS, $1, @2.beg,
-					    @2.end);
+			$$ = ast_mkTopLevel(L_TOPLEVEL_CLASS, $1, @2, @2);
 			$$->u.class = $2;
 		} else {
 			// Don't create a node for a forward class declaration.
@@ -260,7 +259,7 @@ toplevel_code:
 	}
 	| toplevel_code function_decl
 	{
-		$$ = ast_mkTopLevel(L_TOPLEVEL_FUN, $1, @2.beg, @2.end);
+		$$ = ast_mkTopLevel(L_TOPLEVEL_FUN, $1, @2, @2);
 		$2->decl->flags |= DECL_FN;
 		if ($2->decl->flags & DECL_PRIVATE) {
 			$2->decl->flags |= SCOPE_SCRIPT;
@@ -283,7 +282,7 @@ toplevel_code:
 	{
 		// Global variable declaration.
 		VarDecl *v;
-		$$ = ast_mkTopLevel(L_TOPLEVEL_GLOBAL, $1, @2.beg, @2.end);
+		$$ = ast_mkTopLevel(L_TOPLEVEL_GLOBAL, $1, @2, @2);
 		for (v = $2; v; v = v->next) {
 			v->flags |= DECL_GLOBAL_VAR;
 			if ($2->flags & DECL_PRIVATE) {
@@ -297,7 +296,7 @@ toplevel_code:
 	| toplevel_code stmt
 	{
 		// Top-level statement.
-		$$ = ast_mkTopLevel(L_TOPLEVEL_STMT, $1, @2.beg, @2.end);
+		$$ = ast_mkTopLevel(L_TOPLEVEL_STMT, $1, @2, @2);
 		$$->u.stmt = $2;
 	}
 	| /* epsilon */		{ $$ = NULL; }
@@ -313,8 +312,8 @@ class_decl:
 		 * parsing the class body.
 		 */
 		Type	*t = type_mkClass();
-		VarDecl	*d = ast_mkVarDecl(t, $2, @1.beg, 0);
-		ClsDecl	*c = ast_mkClsDecl(d, @1.beg, 0);
+		VarDecl	*d = ast_mkVarDecl(t, $2, @1, @1);
+		ClsDecl	*c = ast_mkClsDecl(d, @1, @1);
 		t->u.class.clsdecl = c;
 		ASSERT(!L_typedef_lookup($2->str));
 		L_typedef_store(d);
@@ -349,8 +348,8 @@ class_decl:
 	{
 		/* This is a forward class declaration. */
 		Type	*t = type_mkClass();
-		VarDecl	*d = ast_mkVarDecl(t, $2, @1.beg, @3.end);
-		ClsDecl	*c = ast_mkClsDecl(d, @1.beg, @3.end);
+		VarDecl	*d = ast_mkVarDecl(t, $2, @1, @3);
+		ClsDecl	*c = ast_mkClsDecl(d, @1, @3);
 		ASSERT(!L_typedef_lookup($2->str));
 		t->u.class.clsdecl = c;
 		d->flags |= DECL_FORWARD;
@@ -371,8 +370,8 @@ class_decl_tail:
 	class_code "}"
 	{
 		$$ = $<ClsDecl>0;
-		$$->node.end       = @2.end;
-		$$->decl->node.end = @2.end;
+		$$->node.loc.end       = @2.end;
+		$$->decl->node.loc.end = @2.end;
 		/* If constructor or destructor were omitted, make defaults. */
 		unless ($$->constructors) {
 			$$->constructors = ast_mkConstructor($$);
@@ -470,14 +469,14 @@ function_decl:
 	{
 		$2->decl->type->base_type = $1;
 		$$ = $2;
-		$$->node.beg = @1.beg;
+		$$->node.loc = @1;
 	}
 	| decl_qualifier type_specifier fundecl_tail
 	{
 		$3->decl->type->base_type = $2;
 		$3->decl->flags |= $1;
 		$$ = $3;
-		$$->node.beg = @1.beg;
+		$$->node.loc = @1;
 	}
 	;
 
@@ -486,19 +485,19 @@ fundecl_tail:
 	{
 		$2->decl->id = $1;
 		$$ = $2;
-		$$->node.beg = @1.beg;
+		$$->node.loc = @1;
 	}
 	| T_PATTERN fundecl_tail1
 	{
 		VarDecl	*new_param;
-		Expr	*dollar1 = ast_mkId("$1", @2.beg, @2.end);
+		Expr	*dollar1 = ast_mkId("$1", @2, @2);
 
-		$2->decl->id = ast_mkId($1, @1.beg, @1.end);
+		$2->decl->id = ast_mkId($1, @1, @1);
 		ckfree($1);
 		$$ = $2;
-		$$->node.beg = @1.beg;
+		$$->node.loc = @1;
 		/* Prepend a new arg "$1" as the first formal. */
-		new_param = ast_mkVarDecl(L_string, dollar1, @1.beg, @2.end);
+		new_param = ast_mkVarDecl(L_string, dollar1, @1, @2);
 		new_param->flags = SCOPE_LOCAL | DECL_LOCAL_VAR;
 		new_param->next = $2->decl->type->u.func.formals;
 		$2->decl->type->u.func.formals = new_param;
@@ -509,35 +508,35 @@ fundecl_tail1:
 	  "(" parameter_list ")" compound_stmt
 	{
 		Type	*type = type_mkFunc(NULL, $2);
-		VarDecl	*decl = ast_mkVarDecl(type, NULL, @1.beg, @3.end);
-		$$ = ast_mkFnDecl(decl, $4->u.block, @1.beg, @4.end);
+		VarDecl	*decl = ast_mkVarDecl(type, NULL, @1, @3);
+		$$ = ast_mkFnDecl(decl, $4->u.block, @1, @4);
 	}
 	| "(" parameter_list ")" ";"
 	{
 		Type	*type = type_mkFunc(NULL, $2);
-		VarDecl	*decl = ast_mkVarDecl(type, NULL, @1.beg, @3.end);
-		$$ = ast_mkFnDecl(decl, NULL, @1.beg, @4.end);
+		VarDecl	*decl = ast_mkVarDecl(type, NULL, @1, @3);
+		$$ = ast_mkFnDecl(decl, NULL, @1, @4);
 	}
 	;
 
 stmt:
 	  T_ID ":" stmt
 	{
-		$$ = ast_mkStmt(L_STMT_LABEL, NULL, @1.beg, @3.end);
+		$$ = ast_mkStmt(L_STMT_LABEL, NULL, @1, @3);
 		$$->u.label = $1;
 		$$->next = $3;
 	}
 	| T_ID ":" %prec LOWEST
 	{
-		$$ = ast_mkStmt(L_STMT_LABEL, NULL, @1.beg, @2.end);
+		$$ = ast_mkStmt(L_STMT_LABEL, NULL, @1, @2);
 		$$->u.label = $1;
 	}
 	| unlabeled_stmt
 	| T_PRAGMA T_ID "(" pragma_arg_list ")"
 	{
-		Pragma *p = ast_mkPragma($2, NULL, @2.beg, @2.end);
+		Pragma *p = ast_mkPragma($2, NULL, @2, @2);
 		APPEND(Pragma, next, p, $4);
-		$$ = ast_mkStmt(L_STMT_PRAGMA, NULL, @1.beg, @5.end);
+		$$ = ast_mkStmt(L_STMT_PRAGMA, NULL, @1, @5);
 		$$->u.pragma = p;
 	}
 	;
@@ -545,21 +544,21 @@ stmt:
 pragma_arg_list:
 	  T_ID
 	{
-		$$ = ast_mkPragma($1, NULL, @1.beg, @1.end);
+		$$ = ast_mkPragma($1, NULL, @1, @1);
 	}
 	| T_ID "=" T_ID
 	{
-		$$ = ast_mkPragma($1, $3, @1.beg, @1.end);
+		$$ = ast_mkPragma($1, $3, @1, @1);
 	}
 	| pragma_arg_list "," T_ID
 	{
-		Pragma *p = ast_mkPragma($3, NULL, @1.beg, @3.end);
+		Pragma *p = ast_mkPragma($3, NULL, @1, @3);
 		APPEND(Pragma, next, $1, p);
 		$$ = $1;
 	}
 	| pragma_arg_list "," T_ID "=" T_ID
 	{
-		Pragma *p = ast_mkPragma($3, $5, @1.beg, @5.end);
+		Pragma *p = ast_mkPragma($3, $5, @1, @5);
 		APPEND(Pragma, next, $1, p);
 		$$ = $1;
 	}
@@ -573,49 +572,49 @@ unlabeled_stmt:
 single_stmt:
 	  selection_stmt
 	{
-		$$ = ast_mkStmt(L_STMT_COND, NULL, @1.beg, @1.end);
+		$$ = ast_mkStmt(L_STMT_COND, NULL, @1, @1);
 		$$->u.cond = $1;
 	}
 	| iteration_stmt
 	{
-		$$ = ast_mkStmt(L_STMT_LOOP, NULL, @1.beg, @1.end);
+		$$ = ast_mkStmt(L_STMT_LOOP, NULL, @1, @1);
 		$$->u.loop = $1;
 	}
 	| switch_stmt
 	{
-		$$ = ast_mkStmt(L_STMT_SWITCH, NULL, @1.beg, @1.end);
+		$$ = ast_mkStmt(L_STMT_SWITCH, NULL, @1, @1);
 		$$->u.swich = $1;
 	}
 	| foreach_stmt
 	{
-		$$ = ast_mkStmt(L_STMT_FOREACH, NULL, @1.beg, @1.end);
+		$$ = ast_mkStmt(L_STMT_FOREACH, NULL, @1, @1);
 		$$->u.foreach = $1;
 	}
 	| expr ";"
 	{
-		$$ = ast_mkStmt(L_STMT_EXPR, NULL, @1.beg, @1.end);
+		$$ = ast_mkStmt(L_STMT_EXPR, NULL, @1, @1);
 		$$->u.expr = $1;
 	}
 	| T_BREAK ";"
 	{
-		$$ = ast_mkStmt(L_STMT_BREAK, NULL, @1.beg, @1.end);
+		$$ = ast_mkStmt(L_STMT_BREAK, NULL, @1, @1);
 	}
 	| T_CONTINUE ";"
 	{
-		$$ = ast_mkStmt(L_STMT_CONTINUE, NULL, @1.beg, @1.end);
+		$$ = ast_mkStmt(L_STMT_CONTINUE, NULL, @1, @1);
 	}
 	| T_RETURN ";"
 	{
-		$$ = ast_mkStmt(L_STMT_RETURN, NULL, @1.beg, @1.end);
+		$$ = ast_mkStmt(L_STMT_RETURN, NULL, @1, @1);
 	}
 	| T_RETURN expr ";"
 	{
-		$$ = ast_mkStmt(L_STMT_RETURN, NULL, @1.beg, @2.end);
+		$$ = ast_mkStmt(L_STMT_RETURN, NULL, @1, @2);
 		$$->u.expr = $2;
 	}
 	| T_GOTO T_ID ";"
 	{
-		$$ = ast_mkStmt(L_STMT_GOTO, NULL, @1.beg, @3.end);
+		$$ = ast_mkStmt(L_STMT_GOTO, NULL, @1, @3);
 		$$->u.label = $2;
 	}
 	| ";"	{ $$ = NULL; }
@@ -624,20 +623,20 @@ single_stmt:
 selection_stmt:
 	  T_IF "(" expr ")" compound_stmt optional_else
 	{
-		$$ = ast_mkIfUnless($3, $5, $6, @1.beg, @6.end);
+		$$ = ast_mkIfUnless($3, $5, $6, @1, @6);
 	}
 	/* If you have no curly braces, you get no else. */
 	| T_IF "(" expr ")" single_stmt
 	{
-		$$ = ast_mkIfUnless($3, $5, NULL, @1.beg, @5.end);
+		$$ = ast_mkIfUnless($3, $5, NULL, @1, @5);
 	}
 	| T_UNLESS "(" expr ")" compound_stmt optional_else
 	{
-		$$ = ast_mkIfUnless($3, $6, $5, @1.beg, @6.end);
+		$$ = ast_mkIfUnless($3, $6, $5, @1, @6);
 	}
 	| T_UNLESS "(" expr ")" single_stmt
 	{
-		$$ = ast_mkIfUnless($3, NULL, $5, @1.beg, @5.end);
+		$$ = ast_mkIfUnless($3, NULL, $5, @1, @5);
 	}
 	;
 
@@ -654,7 +653,7 @@ switch_stmt:
 			}
 			def = c;
 		}
-		$$ = ast_mkSwitch($3, $6, @1.beg, @7.end);
+		$$ = ast_mkSwitch($3, $6, @1, @7);
 	}
 	;
 
@@ -676,13 +675,13 @@ switch_case:
 	  ":" opt_stmt_list
 	{
 		REVERSE(Stmt, next, $6);
-		$$ = ast_mkCase($3, $6, @1.beg, @6.end);
+		$$ = ast_mkCase($3, $6, @1, @6);
 	}
 	| "default" ":" opt_stmt_list
 	{
 		/* The default case is distinguished by a NULL expr. */
 		REVERSE(Stmt, next, $3);
-		$$ = ast_mkCase(NULL, $3, @1.beg, @2.end);
+		$$ = ast_mkCase(NULL, $3, @1, @2);
 	}
 	;
 
@@ -701,11 +700,11 @@ optional_else:
 	  T_ELSE compound_stmt
 	{
 		$$ = $2;
-		$$->node.beg = @1.beg;
+		$$->node.loc = @1;
 	}
 	| T_ELSE selection_stmt
 	{
-		$$ = ast_mkStmt(L_STMT_COND, NULL, @1.beg, @2.end);
+		$$ = ast_mkStmt(L_STMT_COND, NULL, @1, @2);
 		$$->u.cond = $2;
 	}
 	| /* epsilon */		{ $$ = NULL; }
@@ -714,27 +713,26 @@ optional_else:
 iteration_stmt:
 	  T_WHILE "(" expr ")" stmt
 	{
-		$$ = ast_mkLoop(L_LOOP_WHILE, NULL, $3, NULL, $5,
-				@1.beg, @5.end);
+		$$ = ast_mkLoop(L_LOOP_WHILE, NULL, $3, NULL, $5, @1, @5);
 	}
 	| T_DO stmt T_WHILE "(" expr ")" ";"
 	{
-		$$ = ast_mkLoop(L_LOOP_DO, NULL, $5, NULL, $2, @1.beg, @6.end);
+		$$ = ast_mkLoop(L_LOOP_DO, NULL, $5, NULL, $2, @1, @6);
 	}
 	| T_FOR "(" expression_stmt expression_stmt ")" stmt
 	{
-		$$ = ast_mkLoop(L_LOOP_FOR, $3, $4, NULL, $6, @1.beg, @6.end);
+		$$ = ast_mkLoop(L_LOOP_FOR, $3, $4, NULL, $6, @1, @6);
 	}
 	| T_FOR "(" expression_stmt expression_stmt expr ")" stmt
 	{
-		$$ = ast_mkLoop(L_LOOP_FOR, $3, $4, $5, $7, @1.beg, @7.end);
+		$$ = ast_mkLoop(L_LOOP_FOR, $3, $4, $5, $7, @1, @7);
 	}
 	;
 
 foreach_stmt:
 	  T_FOREACH "(" id "=>" id id expr ")" stmt
 	{
-		$$ = ast_mkForeach($7, $3, $5, $9, @1.beg, @9.end);
+		$$ = ast_mkForeach($7, $3, $5, $9, @1, @9);
 		unless (isid($6, "in")) {
 			L_synerr2("syntax error -- expected 'in' in foreach",
 				  @6.beg);
@@ -742,7 +740,7 @@ foreach_stmt:
 	}
 	| T_FOREACH "(" id_list id expr ")" stmt
 	{
-		$$ = ast_mkForeach($5, $3, NULL, $7, @1.beg, @7.end);
+		$$ = ast_mkForeach($5, $3, NULL, $7, @1, @7);
 		unless (isid($4, "in")) {
 			L_synerr2("syntax error -- expected 'in' in foreach",
 				  @4.beg);
@@ -806,7 +804,7 @@ parameter_decl_list:
 	{
 		$3->next = $1;
 		$$ = $3;
-		$$->node.beg = @1.beg;
+		$$->node.loc = @1;
 	}
 	;
 
@@ -817,16 +815,16 @@ parameter_decl:
 			L_set_declBaseType($3, $2);
 			$$ = $3;
 			$$->flags |= $1;
-			$$->node.beg = @1.beg;
+			$$->node.loc = @1;
 		} else {
-			$$ = ast_mkVarDecl($2, NULL, @2.beg, @2.end);
+			$$ = ast_mkVarDecl($2, NULL, @2, @2);
 			if (isnameoftype($2)) $$->flags |= DECL_REF;
 		}
 	}
 	| parameter_attrs T_ELLIPSIS id
 	{
 		Type *t = type_mkArray(NULL, L_poly);
-		$$ = ast_mkVarDecl(t, $3, @1.beg, @3.end);
+		$$ = ast_mkVarDecl(t, $3, @1, @3);
 		$$->flags |= $1 | DECL_REST_ARG;
 	}
 	;
@@ -845,26 +843,26 @@ argument_expr_list:
 	{
 		$2->next = $1;
 		$$ = $2;
-		$$->node.beg = @1.beg;
+		$$->node.loc = @1;
 	}
 	| argument_expr_list "," expr
 	{
 		$3->next = $1;
 		$$ = $3;
-		$$->node.end = @3.end;
+		$$->node.loc.end = @3.end;
 	}
 	| argument_expr_list "," option_arg
 	{
 		$3->next = $1;
 		$$ = $3;
-		$$->node.end = @3.end;
+		$$->node.loc.end = @3.end;
 	}
 	| argument_expr_list "," option_arg expr %prec T_COMMA
 	{
 		$4->next = $3;
 		$3->next = $1;
 		$$ = $4;
-		$$->node.end = @4.end;
+		$$->node.loc.end = @4.end;
 	}
 	;
 
@@ -879,13 +877,13 @@ option_arg:
 	  T_ID ":"
 	{
 		char	*s = cksprintf("-%s", $1);
-		$$ = ast_mkConst(L_string, s, @1.beg, @2.end);
+		$$ = ast_mkConst(L_string, s, @1, @2);
 		ckfree($1);
 	}
 	| "default" ":"
 	{
 		char	*s = cksprintf("-default");
-		$$ = ast_mkConst(L_string, s, @1.beg, @2.end);
+		$$ = ast_mkConst(L_string, s, @1, @2);
 	}
 	;
 
@@ -893,308 +891,306 @@ expr:
 	  "(" expr ")"
 	{
 		$$ = $2;
-		$$->node.beg = @1.beg;
-		$$->node.end = @3.end;
+		$$->node.loc = @1;
+		$$->node.loc.end = @3.end;
 	}
 	| "(" type_specifier ")" expr %prec PREFIX_INCDEC
 	{
 		// This is a binop where an arg is a Type*.
-		$$ = ast_mkBinOp(L_OP_CAST, (Expr *)$2, $4, @1.beg, @4.end);
+		$$ = ast_mkBinOp(L_OP_CAST, (Expr *)$2, $4, @1, @4);
 	}
 	| "(" T_EXPAND ")" expr %prec PREFIX_INCDEC
 	{
-		$$ = ast_mkUnOp(L_OP_EXPAND, $4, @1.beg, @4.end);
+		$$ = ast_mkUnOp(L_OP_EXPAND, $4, @1, @4);
 	}
 	| T_BANG expr
 	{
-		$$ = ast_mkUnOp(L_OP_BANG, $2, @1.beg, @2.end);
+		$$ = ast_mkUnOp(L_OP_BANG, $2, @1, @2);
 	}
 	| T_BITNOT expr
 	{
-		$$ = ast_mkUnOp(L_OP_BITNOT, $2, @1.beg, @2.end);
+		$$ = ast_mkUnOp(L_OP_BITNOT, $2, @1, @2);
 	}
 	| T_BITAND expr %prec ADDRESS
 	{
-		$$ = ast_mkUnOp(L_OP_ADDROF, $2, @1.beg, @2.end);
+		$$ = ast_mkUnOp(L_OP_ADDROF, $2, @1, @2);
 	}
 	| T_MINUS expr %prec UMINUS
 	{
-		$$ = ast_mkUnOp(L_OP_UMINUS, $2, @1.beg, @2.end);
+		$$ = ast_mkUnOp(L_OP_UMINUS, $2, @1, @2);
 	}
 	| T_PLUS expr %prec UPLUS
 	{
-		$$ = ast_mkUnOp(L_OP_UPLUS, $2, @1.beg, @2.end);
+		$$ = ast_mkUnOp(L_OP_UPLUS, $2, @1, @2);
 	}
 	| T_PLUSPLUS expr %prec PREFIX_INCDEC
 	{
-		$$ = ast_mkUnOp(L_OP_PLUSPLUS_PRE, $2, @1.beg, @2.end);
+		$$ = ast_mkUnOp(L_OP_PLUSPLUS_PRE, $2, @1, @2);
 	}
 	| T_MINUSMINUS expr %prec PREFIX_INCDEC
 	{
-		$$ = ast_mkUnOp(L_OP_MINUSMINUS_PRE, $2, @1.beg, @2.end);
+		$$ = ast_mkUnOp(L_OP_MINUSMINUS_PRE, $2, @1, @2);
 	}
 	| expr T_PLUSPLUS
 	{
-		$$ = ast_mkUnOp(L_OP_PLUSPLUS_POST, $1, @1.beg, @2.end);
+		$$ = ast_mkUnOp(L_OP_PLUSPLUS_POST, $1, @1, @2);
 	}
 	| expr T_MINUSMINUS
 	{
-		$$ = ast_mkUnOp(L_OP_MINUSMINUS_POST, $1, @1.beg, @2.end);
+		$$ = ast_mkUnOp(L_OP_MINUSMINUS_POST, $1, @1, @2);
 	}
 	| expr T_EQTWID regexp_literal T_RE_MODIFIER
 	{
 		if (strchr($4, 'i')) $3->flags |= L_EXPR_RE_I;
 		if (strchr($4, 'g')) $3->flags |= L_EXPR_RE_G;
-		$$ = ast_mkBinOp(L_OP_EQTWID, $1, $3, @1.beg, @4.end);
+		$$ = ast_mkBinOp(L_OP_EQTWID, $1, $3, @1, @4);
 		ckfree($4);
 	}
 	| expr T_EQTWID regexp_literal subst_literal T_RE_MODIFIER
 	{
 		if (strchr($5, 'i')) $3->flags |= L_EXPR_RE_I;
 		if (strchr($5, 'g')) $3->flags |= L_EXPR_RE_G;
-		$$ = ast_mkTrinOp(L_OP_EQTWID, $1, $3, $4, @1.beg, @5.end);
+		$$ = ast_mkTrinOp(L_OP_EQTWID, $1, $3, $4, @1, @5);
 		ckfree($5);
 	}
 	| expr T_STAR expr
 	{
-		$$ = ast_mkBinOp(L_OP_STAR, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_STAR, $1, $3, @1, @3);
 	}
 	| expr T_SLASH expr
 	{
-		$$ = ast_mkBinOp(L_OP_SLASH, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_SLASH, $1, $3, @1, @3);
 	}
 	| expr T_PERC expr
 	{
-		$$ = ast_mkBinOp(L_OP_PERC, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_PERC, $1, $3, @1, @3);
 	}
 	| expr T_PLUS expr
 	{
-		$$ = ast_mkBinOp(L_OP_PLUS, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_PLUS, $1, $3, @1, @3);
 	}
 	| expr T_MINUS expr
 	{
-		$$ = ast_mkBinOp(L_OP_MINUS, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_MINUS, $1, $3, @1, @3);
 	}
 	| expr T_EQ expr
 	{
-		$$ = ast_mkBinOp(L_OP_STR_EQ, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_STR_EQ, $1, $3, @1, @3);
 	}
 	| expr T_NE expr
 	{
-		$$ = ast_mkBinOp(L_OP_STR_NE, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_STR_NE, $1, $3, @1, @3);
 	}
 	| expr T_LT expr
 	{
-		$$ = ast_mkBinOp(L_OP_STR_LT, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_STR_LT, $1, $3, @1, @3);
 	}
 	| expr T_LE expr
 	{
-		$$ = ast_mkBinOp(L_OP_STR_LE, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_STR_LE, $1, $3, @1, @3);
 	}
 	| expr T_GT expr
 	{
-		$$ = ast_mkBinOp(L_OP_STR_GT, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_STR_GT, $1, $3, @1, @3);
 	}
 	| expr T_GE expr
 	{
-		$$ = ast_mkBinOp(L_OP_STR_GE, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_STR_GE, $1, $3, @1, @3);
 	}
 	| expr T_EQUALEQUAL expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQUALEQUAL, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQUALEQUAL, $1, $3, @1, @3);
 	}
 	| expr T_NOTEQUAL expr
 	{
-		$$ = ast_mkBinOp(L_OP_NOTEQUAL, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_NOTEQUAL, $1, $3, @1, @3);
 	}
 	| expr T_GREATER expr
 	{
-		$$ = ast_mkBinOp(L_OP_GREATER, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_GREATER, $1, $3, @1, @3);
 	}
 	| expr T_GREATEREQ expr
 	{
-		$$ = ast_mkBinOp(L_OP_GREATEREQ, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_GREATEREQ, $1, $3, @1, @3);
 	}
 	| expr T_LESSTHAN expr
 	{
-		$$ = ast_mkBinOp(L_OP_LESSTHAN, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_LESSTHAN, $1, $3, @1, @3);
 	}
 	| expr T_LESSTHANEQ expr
 	{
-		$$ = ast_mkBinOp(L_OP_LESSTHANEQ, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_LESSTHANEQ, $1, $3, @1, @3);
 	}
 	| expr T_ANDAND expr
 	{
-		$$ = ast_mkBinOp(L_OP_ANDAND, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_ANDAND, $1, $3, @1, @3);
 	}
 	| expr T_OROR expr
 	{
-		$$ = ast_mkBinOp(L_OP_OROR, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_OROR, $1, $3, @1, @3);
 	}
 	| expr T_LSHIFT expr
 	{
-		$$ = ast_mkBinOp(L_OP_LSHIFT, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_LSHIFT, $1, $3, @1, @3);
 	}
 	| expr T_RSHIFT expr
 	{
-		$$ = ast_mkBinOp(L_OP_RSHIFT, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_RSHIFT, $1, $3, @1, @3);
 	}
 	| expr T_BITOR expr
 	{
-		$$ = ast_mkBinOp(L_OP_BITOR, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_BITOR, $1, $3, @1, @3);
 	}
 	| expr T_BITAND expr
 	{
-		$$ = ast_mkBinOp(L_OP_BITAND, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_BITAND, $1, $3, @1, @3);
 	}
 	| expr T_BITXOR expr
 	{
-		$$ = ast_mkBinOp(L_OP_BITXOR, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_BITXOR, $1, $3, @1, @3);
 	}
 	| id
 	| string_literal
 	| cmdsubst_literal
 	| T_INT_LITERAL
 	{
-		$$ = ast_mkConst(L_int, $1, @1.beg, @1.end);
+		$$ = ast_mkConst(L_int, $1, @1, @1);
 	}
 	| T_FLOAT_LITERAL
 	{
-		$$ = ast_mkConst(L_float, $1, @1.beg, @1.end);
+		$$ = ast_mkConst(L_float, $1, @1, @1);
 	}
 	| id "(" argument_expr_list ")"
 	{
 		REVERSE(Expr, next, $3);
-		$$ = ast_mkFnCall($1, $3, @1.beg, @4.end);
+		$$ = ast_mkFnCall($1, $3, @1, @4);
 	}
 	| id "(" ")"
 	{
-		$$ = ast_mkFnCall($1, NULL, @1.beg, @3.end);
+		$$ = ast_mkFnCall($1, NULL, @1, @3);
 	}
 	| T_STRING "(" argument_expr_list ")"
 	{
-		Expr *id = ast_mkId("string", @1.beg, @1.end);
+		Expr *id = ast_mkId("string", @1, @1);
 		REVERSE(Expr, next, $3);
-		$$ = ast_mkFnCall(id, $3, @1.beg, @4.end);
+		$$ = ast_mkFnCall(id, $3, @1, @4);
 	}
 	| T_SPLIT "(" regexp_literal_mod "," argument_expr_list ")"
 	{
-		Expr *id = ast_mkId("split", @1.beg, @1.end);
+		Expr *id = ast_mkId("split", @1, @1);
 		REVERSE(Expr, next, $5);
 		$3->next = $5;
-		$$ = ast_mkFnCall(id, $3, @1.beg, @6.end);
+		$$ = ast_mkFnCall(id, $3, @1, @6);
 	}
 	| T_SPLIT "(" argument_expr_list ")"
 	{
-		Expr *id = ast_mkId("split", @1.beg, @1.end);
+		Expr *id = ast_mkId("split", @1, @1);
 		REVERSE(Expr, next, $3);
-		$$ = ast_mkFnCall(id, $3, @1.beg, @4.end);
+		$$ = ast_mkFnCall(id, $3, @1, @4);
 	}
 	/* this is to allow calling Tk widget functions */
 	| dotted_id "(" argument_expr_list ")"
 	{
 		REVERSE(Expr, next, $3);
-		$$ = ast_mkFnCall($1, $3, @1.beg, @4.end);
+		$$ = ast_mkFnCall($1, $3, @1, @4);
 	}
 	| dotted_id "(" ")"
 	{
-		$$ = ast_mkFnCall($1, NULL, @1.beg, @3.end);
+		$$ = ast_mkFnCall($1, NULL, @1, @3);
 	}
 	| expr T_EQUALS expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQUALS, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQUALS, $1, $3, @1, @3);
 	}
 	| expr T_EQPLUS expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQPLUS, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQPLUS, $1, $3, @1, @3);
 	}
 	| expr T_EQMINUS expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQMINUS, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQMINUS, $1, $3, @1, @3);
 	}
 	| expr T_EQSTAR expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQSTAR, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQSTAR, $1, $3, @1, @3);
 	}
 	| expr T_EQSLASH expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQSLASH, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQSLASH, $1, $3, @1, @3);
 	}
 	| expr T_EQPERC expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQPERC, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQPERC, $1, $3, @1, @3);
 	}
 	| expr T_EQBITAND expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQBITAND, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQBITAND, $1, $3, @1, @3);
 	}
 	| expr T_EQBITOR expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQBITOR, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQBITOR, $1, $3, @1, @3);
 	}
 	| expr T_EQBITXOR expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQBITXOR, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQBITXOR, $1, $3, @1, @3);
 	}
 	| expr T_EQLSHIFT expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQLSHIFT, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQLSHIFT, $1, $3, @1, @3);
 	}
 	| expr T_EQRSHIFT expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQRSHIFT, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQRSHIFT, $1, $3, @1, @3);
 	}
 	| expr T_EQDOT expr
 	{
-		$$ = ast_mkBinOp(L_OP_EQDOT, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_EQDOT, $1, $3, @1, @3);
 	}
 	| T_DEFINED "(" expr ")"
 	{
-		$$ = ast_mkUnOp(L_OP_DEFINED, $3, @1.beg, @4.end);
+		$$ = ast_mkUnOp(L_OP_DEFINED, $3, @1, @4);
 	}
 	| expr "[" expr "]"
 	{
-		$$ = ast_mkBinOp(L_OP_ARRAY_INDEX, $1, $3, @1.beg, @4.end);
+		$$ = ast_mkBinOp(L_OP_ARRAY_INDEX, $1, $3, @1, @4);
 	}
 	| expr "{" expr "}"
 	{
-		$$ = ast_mkBinOp(L_OP_HASH_INDEX, $1, $3, @1.beg, @4.end);
+		$$ = ast_mkBinOp(L_OP_HASH_INDEX, $1, $3, @1, @4);
 	}
 	| expr T_STRCAT expr
 	{
-		$$ = ast_mkBinOp(L_OP_CONCAT, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_CONCAT, $1, $3, @1, @3);
 	}
 	| expr "." T_ID
 	{
-		$$ = ast_mkBinOp(L_OP_DOT, $1, NULL, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_DOT, $1, NULL, @1, @3);
 		$$->str = $3;
 	}
 	| expr "->" T_ID
 	{
-		$$ = ast_mkBinOp(L_OP_POINTS, $1, NULL, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_POINTS, $1, NULL, @1, @3);
 		$$->str = $3;
 	}
 	| T_TYPE "." T_ID
 	{
 		// This is a binop where an arg is a Type*.
-		$$ = ast_mkBinOp(L_OP_CLASS_INDEX, (Expr *)$1.t, NULL, @1.beg,
-				 @3.end);
+		$$ = ast_mkBinOp(L_OP_CLASS_INDEX, (Expr *)$1.t, NULL, @1, @3);
 		$$->str = $3;
 	}
 	| T_TYPE "->" T_ID
 	{
 		// This is a binop where an arg is a Type*.
-		$$ = ast_mkBinOp(L_OP_CLASS_INDEX, (Expr *)$1.t, NULL, @1.beg,
-				 @3.end);
+		$$ = ast_mkBinOp(L_OP_CLASS_INDEX, (Expr *)$1.t, NULL, @1, @3);
 		$$->str = $3;
 	}
 	| expr "," expr
 	{
-		$$ = ast_mkBinOp(L_OP_COMMA, $1, $3, @1.beg, @3.end);
+		$$ = ast_mkBinOp(L_OP_COMMA, $1, $3, @1, @3);
 	}
 	| expr "[" expr T_DOTDOT expr "]"
 	{
-		$$ = ast_mkTrinOp(L_OP_ARRAY_SLICE, $1, $3, $5, @1.beg, @3.end);
+		$$ = ast_mkTrinOp(L_OP_ARRAY_SLICE, $1, $3, $5, @1, @3);
 	}
 	/*
 	 * We don't really need to open a scope here, but it doesn't hurt, and
@@ -1203,33 +1199,32 @@ expr:
 	| "{" enter_scope list "}"
 	{
 		$$ = $3;
-		$$->node.beg = @1.beg;
-		$$->node.end = @4.end;
+		$$->node.loc = @1;
+		$$->node.loc.end = @4.end;
 		L_scope_leave();
 	}
 	| "{" "}"
 	{
-		$$ = ast_mkBinOp(L_OP_LIST, NULL, NULL, 0, 0);
+		$$ = ast_mkBinOp(L_OP_LIST, NULL, NULL, @1, @2);
 	}
 	| expr "?" expr ":" expr %prec T_QUESTION
 	{
-		$$ = ast_mkTrinOp(L_OP_TERNARY_COND, $1, $3, $5, @1.beg,
-				  @5.end);
+		$$ = ast_mkTrinOp(L_OP_TERNARY_COND, $1, $3, $5, @1, @5);
 	}
 	| "<" expr ">"
 	{
-		$$ = ast_mkUnOp(L_OP_FILE, $2, @1.beg, @3.end);
+		$$ = ast_mkUnOp(L_OP_FILE, $2, @1, @3);
 	}
 	| "<" ">"
 	{
-		$$ = ast_mkUnOp(L_OP_FILE, NULL, @1.beg, @2.end);
+		$$ = ast_mkUnOp(L_OP_FILE, NULL, @1, @2);
 	}
 	;
 
 id:
 	  T_ID
 	{
-		$$ = ast_mkId($1, @1.beg, @1.end);
+		$$ = ast_mkId($1, @1, @1);
 		ckfree($1);
 	}
 	;
@@ -1240,22 +1235,22 @@ id_list:
 	{
 		$$ = $1;
 		$$->next = $3;
-		$$->node.end = @3.end;
+		$$->node.loc.end = @3.end;
 	}
 	;
 
 compound_stmt:
 	  "{" enter_scope "}"
 	{
-		$$ = ast_mkStmt(L_STMT_BLOCK, NULL, @1.beg, @3.end);
-		$$->u.block = ast_mkBlock(NULL, NULL, @1.beg, @3.end);
+		$$ = ast_mkStmt(L_STMT_BLOCK, NULL, @1, @3);
+		$$->u.block = ast_mkBlock(NULL, NULL, @1, @3);
 		L_scope_leave();
 	}
 	| "{" enter_scope stmt_list "}"
 	{
 		REVERSE(Stmt, next, $3);
-		$$ = ast_mkStmt(L_STMT_BLOCK, NULL, @1.beg, @4.end);
-		$$->u.block = ast_mkBlock(NULL, $3, @1.beg, @4.end);
+		$$ = ast_mkStmt(L_STMT_BLOCK, NULL, @1, @4);
+		$$->u.block = ast_mkBlock(NULL, $3, @1, @4);
 		L_scope_leave();
 	}
 	| "{" enter_scope declaration_list "}"
@@ -1265,8 +1260,8 @@ compound_stmt:
 		for (v = $3; v; v = v->next) {
 			v->flags |= SCOPE_LOCAL | DECL_LOCAL_VAR;
 		}
-		$$ = ast_mkStmt(L_STMT_BLOCK, NULL, @1.beg, @4.end);
-		$$->u.block = ast_mkBlock($3, NULL, @1.beg, @4.end);
+		$$ = ast_mkStmt(L_STMT_BLOCK, NULL, @1, @4);
+		$$->u.block = ast_mkBlock($3, NULL, @1, @4);
 		L_scope_leave();
 	}
 	| "{" enter_scope declaration_list stmt_list "}"
@@ -1277,8 +1272,8 @@ compound_stmt:
 			v->flags |= SCOPE_LOCAL | DECL_LOCAL_VAR;
 		}
 		REVERSE(Stmt, next, $4);
-		$$ = ast_mkStmt(L_STMT_BLOCK, NULL, @1.beg, @5.end);
-		$$->u.block = ast_mkBlock($3, $4, @1.beg, @5.end);
+		$$ = ast_mkStmt(L_STMT_BLOCK, NULL, @1, @5);
+		$$->u.block = ast_mkBlock($3, $4, @1, @5);
 		L_scope_leave();
 	}
 	;
@@ -1309,7 +1304,7 @@ declaration:
 			v->flags |= $1;
 		}
 		$$ = $2;
-		$$->node.beg = @1.beg;
+		$$->node.loc = @1;
 	}
 	;
 
@@ -1353,10 +1348,9 @@ init_declarator:
 	  declarator
 	| declarator T_EQUALS expr
 	{
-		$1->initializer = ast_mkBinOp(L_OP_EQUALS, $1->id, $3,
-					      @3.beg, @3.end);
+		$1->initializer = ast_mkBinOp(L_OP_EQUALS, $1->id, $3, @3, @3);
 		$$ = $1;
-		$$->node.end = @3.end;
+		$$->node.loc.end = @3.end;
 	}
 	;
 
@@ -1368,26 +1362,26 @@ opt_declarator:
 declarator:
 	  id array_or_hash_type
 	{
-		$$ = ast_mkVarDecl($2, $1, @1.beg, @2.end);
+		$$ = ast_mkVarDecl($2, $1, @1, @2);
 	}
 	| T_TYPE array_or_hash_type
 	{
-		Expr *id = ast_mkId($1.s, @1.beg, @1.end);
-		$$ = ast_mkVarDecl($2, id, @1.beg, @2.end);
+		Expr *id = ast_mkId($1.s, @1, @1);
+		$$ = ast_mkVarDecl($2, id, @1, @2);
 		if (isnameoftype($1.t)) $$->flags |= DECL_REF;
 		ckfree($1.s);
 	}
 	| T_BITAND id array_or_hash_type
 	{
 		Type *t = type_mkNameOf($3);
-		$$ = ast_mkVarDecl(t, $2, @1.beg, @3.end);
+		$$ = ast_mkVarDecl(t, $2, @1, @3);
 		$$->flags |= DECL_REF;
 	}
 	| T_BITAND id "(" parameter_list ")"
 	{
 		Type *tf = type_mkFunc(NULL, $4);
 		Type *tn = type_mkNameOf(tf);
-		$$ = ast_mkVarDecl(tn, $2, @1.beg, @5.end);
+		$$ = ast_mkVarDecl(tn, $2, @1, @5);
 		$$->flags |= DECL_REF;
 	}
 	;
@@ -1469,12 +1463,12 @@ struct_decl_list:
 	{
 		APPEND(VarDecl, next, $2, $1);
 		$$ = $2;
-		$$->node.beg = @1.beg;
+		$$->node.loc = @1;
 	}
 	;
 
 struct_decl:
-	  struct_declarator_list ";"	{ $$->node.end = @2.end; }
+	  struct_declarator_list ";"	{ $$->node.loc.end = @2.end; }
 	;
 
 struct_declarator_list:
@@ -1485,7 +1479,7 @@ struct_declarator_list:
 			L_set_declBaseType(v, $1);
 		}
 		$$ = $2;
-		$$->node.beg = @1.beg;
+		$$->node.loc = @1;
 	}
 	;
 
@@ -1502,62 +1496,59 @@ list:
 list_element:
 	  expr %prec HIGHEST
 	{
-		$$ = ast_mkBinOp(L_OP_LIST, $1, NULL, @1.beg, @1.end);
+		$$ = ast_mkBinOp(L_OP_LIST, $1, NULL, @1, @1);
 	}
 	| expr "=>" expr %prec HIGHEST
 	{
-		Expr *kv = ast_mkBinOp(L_OP_KV, $1, $3, @1.beg, @3.end);
-		$$ = ast_mkBinOp(L_OP_LIST, kv, NULL, @1.beg, @3.end);
+		Expr *kv = ast_mkBinOp(L_OP_KV, $1, $3, @1, @3);
+		$$ = ast_mkBinOp(L_OP_LIST, kv, NULL, @1, @3);
 	}
 	;
 
 string_literal:
 	  T_STR_LITERAL
 	{
-		$$ = ast_mkConst(L_string, $1, @1.beg, @1.end);
+		$$ = ast_mkConst(L_string, $1, @1, @1);
 	}
 	| interpolated_expr T_STR_LITERAL
 	{
-		Expr *right = ast_mkConst(L_string, $2, @2.beg, @2.end);
-		$$ = ast_mkBinOp(L_OP_INTERP_STRING, $1, right,
-				 @1.beg, @2.end);
+		Expr *right = ast_mkConst(L_string, $2, @2, @2);
+		$$ = ast_mkBinOp(L_OP_INTERP_STRING, $1, right, @1, @2);
 	}
 	| here_doc_backtick T_STR_LITERAL
 	{
-		Expr *right = ast_mkConst(L_string, $2, @2.beg, @2.end);
-		$$ = ast_mkBinOp(L_OP_INTERP_STRING, $1, right,
-				 @1.beg, @2.end);
+		Expr *right = ast_mkConst(L_string, $2, @2, @2);
+		$$ = ast_mkBinOp(L_OP_INTERP_STRING, $1, right, @1, @2);
 	}
 	;
 
 here_doc_backtick:
 	  T_START_BACKTICK T_STR_BACKTICK
 	{
-		Expr *left  = ast_mkConst(L_string, $1, @1.beg, @1.end);
-		Expr *right = ast_mkUnOp(L_OP_CMDSUBST, NULL, @2.beg, @2.end);
+		Expr *left  = ast_mkConst(L_string, $1, @1, @1);
+		Expr *right = ast_mkUnOp(L_OP_CMDSUBST, NULL, @2, @2);
 		right->str = $2;
-		$$ = ast_mkBinOp(L_OP_INTERP_STRING, left, right,
-				 @1.beg, @2.end);
+		$$ = ast_mkBinOp(L_OP_INTERP_STRING, left, right, @1, @2);
 	}
 	| here_doc_backtick T_START_BACKTICK T_STR_BACKTICK
 	{
-		Expr *middle = ast_mkConst(L_string, $2, @2.beg, @2.end);
-		Expr *right  = ast_mkUnOp(L_OP_CMDSUBST, NULL, @3.beg, @3.end);
+		Expr *middle = ast_mkConst(L_string, $2, @2, @2);
+		Expr *right  = ast_mkUnOp(L_OP_CMDSUBST, NULL, @3, @3);
 		right->str = $3;
 		$$ = ast_mkTrinOp(L_OP_INTERP_STRING, $1, middle, right,
-				  @1.beg, @3.end);
+				  @1, @3);
 	}
 	;
 
 cmdsubst_literal:
 	  T_STR_BACKTICK
 	{
-		$$ = ast_mkUnOp(L_OP_CMDSUBST, NULL, @1.beg, @1.end);
+		$$ = ast_mkUnOp(L_OP_CMDSUBST, NULL, @1, @1);
 		$$->str = $1;
 	}
 	| interpolated_expr T_STR_BACKTICK
 	{
-		$$ = ast_mkUnOp(L_OP_CMDSUBST, $1, @1.beg, @2.end);
+		$$ = ast_mkUnOp(L_OP_CMDSUBST, $1, @1, @2);
 		$$->str = $2;
 	}
 	;
@@ -1565,12 +1556,12 @@ cmdsubst_literal:
 regexp_literal:
 	  T_RE
 	{
-		$$ = ast_mkRegexp($1, @1.beg, @1.end);
+		$$ = ast_mkRegexp($1, @1, @1);
 	}
 	| interpolated_expr T_RE
 	{
-		Expr *right = ast_mkConst(L_string, $2, @2.beg, @2.end);
-		$$ = ast_mkBinOp(L_OP_INTERP_RE, $1, right, @1.beg, @2.end);
+		Expr *right = ast_mkConst(L_string, $2, @2, @2);
+		$$ = ast_mkBinOp(L_OP_INTERP_RE, $1, right, @1, @2);
 	}
 	;
 
@@ -1588,38 +1579,36 @@ regexp_literal_mod:
 subst_literal:
 	  T_SUBST
 	{
-		$$ = ast_mkConst(L_string, $1, @1.beg, @1.end);
+		$$ = ast_mkConst(L_string, $1, @1, @1);
 	}
 	| interpolated_expr T_SUBST
 	{
-		Expr *right = ast_mkConst(L_string, $2, @2.beg, @2.end);
-		$$ = ast_mkBinOp(L_OP_INTERP_RE, $1, right, @1.beg, @2.end);
+		Expr *right = ast_mkConst(L_string, $2, @2, @2);
+		$$ = ast_mkBinOp(L_OP_INTERP_RE, $1, right, @1, @2);
 	}
 	;
 
 interpolated_expr:
 	  T_LEFT_INTERPOL expr T_RIGHT_INTERPOL
 	{
-		Expr *left = ast_mkConst(L_string, $1, @1.beg, @1.end);
-		$$ = ast_mkBinOp(L_OP_INTERP_STRING, left, $2,
-				 @1.beg, @3.end);
+		Expr *left = ast_mkConst(L_string, $1, @1, @1);
+		$$ = ast_mkBinOp(L_OP_INTERP_STRING, left, $2, @1, @3);
 	}
 	| interpolated_expr T_LEFT_INTERPOL expr T_RIGHT_INTERPOL
 	{
-		Expr *middle = ast_mkConst(L_string, $2, @2.beg, @2.end);
-		$$ = ast_mkTrinOp(L_OP_INTERP_STRING, $1, middle, $3,
-				    @1.beg, @4.end);
+		Expr *middle = ast_mkConst(L_string, $2, @2, @2);
+		$$ = ast_mkTrinOp(L_OP_INTERP_STRING, $1, middle, $3, @1, @4);
 	}
 	;
 
 dotted_id:
 	  "."
 	{
-		$$ = ast_mkId(".", @1.beg, @1.end);
+		$$ = ast_mkId(".", @1, @1);
 	}
 	| dotted_id_1
 	{
-		$$ = ast_mkId(Tcl_GetString($1), @1.beg, @1.end);
+		$$ = ast_mkId(Tcl_GetString($1), @1, @1);
 		Tcl_DecrRefCount($1);
 	}
 	;
