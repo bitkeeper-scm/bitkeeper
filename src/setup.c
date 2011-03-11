@@ -134,9 +134,12 @@ setup_main(int ac, char **av)
 		perror(package_path);
 		exit(1);
 	}
-	if (allowNonEmptyDir && exists(BKROOT)) {
-		printf("bk: %s repository exists already, setup fails.\n",
-		package_path);
+
+	if (exists(s_config)) {
+		fprintf(stderr,
+		    "bk: %s is already a BitKeeper repository, setup fails.\n",
+		    package_path);
+		exit (1);
 	}
 
 	if (config_path == 0) {

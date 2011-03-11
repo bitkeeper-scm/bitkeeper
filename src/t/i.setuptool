@@ -12,11 +12,15 @@
 # Copyright (c) 2004 Larry McVoy
 # %K%
 
+# NOTE: Setting BK_TEST_HOME alters setuptool -- it doesn't do
+# popups for errors, it sends status out stderr.  Look for
+# the env var in setuptool.tcl
+
 test -d "$HERE/home" || mkdir "$HERE/home"
 export BK_TEST_HOME="$HERE/home"
 
-echo $N Starting setuptool in the regression test dir ...............$NL
-cd "$HERE"
+echo $N Pick keys.txt file to fill in the license ...................$NL
+_commercial_config > keys.txt
 bk setuptool "$HERE/project" 2> ERR || { echo failed; exit 1; }
 grep -q "The repository was successfully created." ERR || {
 	echo wrong mesg
