@@ -182,6 +182,7 @@ void	aliasdb_free(hash *db);
 int	aliasdb_chkAliases(nested *n, hash *aliasdb,
 	    char ***paliases, char *cwd);
 int	aliasdb_caret(char **aliases);
+char	**alias_coverMissing(nested *n, char **missing, char **aliases);
 
 /* urlinfo.c */
 void	urlinfo_load(nested *n, remote *base);

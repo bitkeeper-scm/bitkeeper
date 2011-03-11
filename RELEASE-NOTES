@@ -76,6 +76,8 @@ New features:
     scripts.
 
  pull
+    Summary: your repository can now get some extra components populated.
+
     In nested, bk-5.1 would complain on the pull from a non-gate if
     the remote repository has components populated that are not
     populated locally.  The reasoning is to prevent loss of data where
@@ -83,9 +85,9 @@ New features:
     an integration tree.  This check got to be a pain in practice.
 
     With this release the code will look to see of the missing
-    components can be located in other gates that are accessible and
-    if found the pull will be allowed.  This allows pull to work
-    in more cases.
+    components can be located in other gates that are accessible.
+    The components that cannot be found in a gate will be pulled in
+    by populating a subset of the remote's populated aliases.
 
  resolve/pull
     In nested it is again possible to quit out of a resolve and
