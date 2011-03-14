@@ -641,6 +641,8 @@ bk alias new TRACK ./gcc
 bk clone $Q -s. . ../copy4 || fail
 bk clone $Q -s./gdb . ../copy5 || fail
 RK=`(cd gdb; bk id -S)`
+bk portal $Q -r
+bk gate $Q -r
 bk here set -f $Q TRACK || fail
 
 cat <<EOF > BitKeeper/log/urllist
