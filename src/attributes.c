@@ -16,6 +16,13 @@ attr_update(void)
 	int	dflags = DELTA_AUTO|DELTA_DONTASK|SILENT;
 
 	if (getenv("_BK_NO_ATTR")) return (0);
+
+	/*
+	 * We have seen problems with 4.x merging the attr file; don't
+	 * record it unless they ask for it or we are nested.
+	 */
+	unless (getenv("BK_ATTR") || proj_isEnsemble(0)) return (0);
+
 	attr_write(ATTR);
 	s = sccs_init(SATTR, iflags);
 	assert(s);
@@ -50,6 +57,12 @@ attr_write(char *file)
 	int	i;
 	int	incomp;
 	project	*proj = proj_isResync(0);
+
+	/*
+	 * We have seen problems with 4.x merging the attr file; don't
+	 * record it unless they ask for it or we are nested.
+	 */
+	unless (getenv("BK_ATTR") || proj_isEnsemble(0)) return (0);
 
 	/*
 	 * Note: we don't merge into existing attributes.  If we did then

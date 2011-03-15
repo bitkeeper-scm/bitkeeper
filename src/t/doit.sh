@@ -258,6 +258,10 @@ setup_env()
 	esac
 	check_enclosing_repo
 
+	# Default to always creating BitKeeper/etc/attr, even in old trees
+	BK_ATTR=YES
+	export BK_ATTR
+
 	# clear callstack so bk can call doit and still pass
 	_BK_CALLSTACK=
 

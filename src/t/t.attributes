@@ -37,3 +37,16 @@ echo junk > file2
 bk new $Q file2 || fail
 bk commit $Q -yjunk || fail
 echo OK
+
+echo $N Check that we do not do attributes by default in monolithic .$NL
+cd "$HERE"
+# comment the next line out and the test fails
+BK_ATTR=
+fresh_commercial monolithic
+bk gfiles > XXX
+grep -q BitKeeper/etc/attr XXX && {
+	echo failed
+	find . -type f
+	exit 1
+}
+echo OK
