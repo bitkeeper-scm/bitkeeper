@@ -13,7 +13,7 @@ REPO   := $(shell basename "`bk -P root`")
 LIBDIR	= lib
 GUIS	= revtool citool oldcitool helptool difftool csettool fmtool fm3tool \
 	  msgtool renametool setuptool bugform supportform newdifftool \
-	  showproc catcomments
+	  showproc catcomments debugtool
 TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
 GUITEST = ../t/guitest.tcl
@@ -26,7 +26,7 @@ SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 	  fm3tool.tcl fmtool.tcl helptool.tcl msgtool.tcl progress.tcl \
 	  renametool.tcl revtool.tcl search.tcl setuptool.tcl \
 	  ../port/$(SYS)_platform.tcl supportform.tcl supportlib.tcl \
-	  newdifftool.tcl showproc.tcl
+	  newdifftool.tcl showproc.tcl debugtool.l
 
 default: notes/BUILD
 	@cat notes/BUILD
@@ -148,3 +148,13 @@ showproc: showproc.tcl
 
 catcomments: catcomments.l
 	@cat $^ > $(LIBDIR)/catcomments.l
+
+debugtool: $(COMMON) appState.tcl $(LCOMMON) debugtool.l
+	@(	echo 'wm withdraw .' ;		\
+		cat $(filter %.tcl,$^) ;	\
+		echo ; echo 'L {' ; echo ;	\
+		cat $(filter %.l,$^) ;		\
+		echo '}' ; 		\
+		echo 'main $$argc $$argv' ;	\
+	) | $(TCLWRAP) > $(LIBDIR)/debugtool
+	@cp -f debugtool.l debugserver.l $(LIBDIR)

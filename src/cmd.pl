@@ -438,6 +438,7 @@ renametool gui
 revtool gui
 setuptool gui
 showproc gui
+debugtool gui
 
 # gui aliases
 csetool => csettool
