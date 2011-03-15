@@ -77,7 +77,7 @@ popupSearchBar(string text, int search)
 	}
 	Entry_selection((widget)"${bar}.e", "clear");
 	Entry_selection((widget)"${bar}.e", "range", 0, "end");
-	update_idletasks();
+	update("idletasks");
 	focus(force:, "${bar}.e");
 }
 

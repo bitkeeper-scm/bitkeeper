@@ -14322,7 +14322,7 @@ test function-2 {check call to undefined function warnings} -setup {
 } -constraints {
 	exec
 } -body {
-	exec [interpreter] $file
+	exec [interpreter] --warn-undefined-fns $file
 } -returnCodes {error} -match regexp -result {L Warning: function undeclared_call1 not defined
 L Warning: function undeclared_call2 not defined
 L Warning: function undeclared_call3 not defined

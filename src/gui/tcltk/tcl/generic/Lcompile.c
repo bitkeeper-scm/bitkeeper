@@ -322,12 +322,15 @@ parse_options(int ac, Tcl_Obj **av)
 		"--poly",
 		"-poly",
 		"-P",
+		"--warn-undefined-fns",
+		"-warn-undefined-fns",
 		NULL
 	};
 	enum	options {
 		L_NORUN_1, L_NORUN_2, L_NORUN_3,
 		L_NOWARN_1, L_NOWARN_2, L_NOWARN_3,
 		L_POLY_1, L_POLY_2, L_POLY_3,
+		L_WARN_UNDEF_FNS_1, L_WARN_UNDEF_FNS_2,
 	};
 
 	for (i = 1; i < ac; ++i) {
@@ -345,6 +348,8 @@ parse_options(int ac, Tcl_Obj **av)
 		    case L_POLY_1: case L_POLY_2: case L_POLY_3:
 			opts |= L_OPT_POLY;
 			break;
+		    case L_WARN_UNDEF_FNS_1: case L_WARN_UNDEF_FNS_2:
+			opts |= L_OPT_WARN_UNDEF_FNS;
 		    default:
 			ASSERT(0);
 		}
@@ -450,6 +455,10 @@ L_CompileScript(void *ast)
 
 	/* If main() was defined, emit a %%call_main_if_defined call. */
 	if (sym_lookup(mkId("main"), L_NOWARN)) {
+		if (L->options & L_OPT_WARN_UNDEF_FNS) {
+			push_str("%%%%check_L_fns");
+			emit_invoke(1);
+		}
 		push_str("%%%%call_main_if_defined");
 		emit_invoke(1);
 	}
@@ -464,7 +473,19 @@ L_CompileScript(void *ast)
 		return (TCL_ERROR);
 	}
 
-	if (L->options & L_OPT_NORUN) return (TCL_OK);
+	if (L->options & L_OPT_NORUN) {
+		/* Still check for undefined functions if requested. */
+		if ((L->options & L_OPT_WARN_UNDEF_FNS) &&
+		    sym_lookup(mkId("main"), L_NOWARN)) {
+			if (L->frame->envPtr) {
+				push_str("%%%%check_L_fns");
+				emit_invoke(1);
+			} else {
+				Tcl_Eval(L->interp, "%%check_L_fns");
+			}
+		}
+		return (TCL_OK);
+	}
 
 	/* Invoke the top-level code that was just compiled. */
 	if (L->frame->envPtr) {
@@ -5326,52 +5347,57 @@ L_synerr2(const char *s, int offset)
 	L_synerr(s);
 }
 
-private void
-err(char *format, va_list ap)
-{
-	int	len = 64;
-	char	*buf;
-
-	while (!(buf = ckvsprintf(format, ap, len))) len *= 2;
-	unless (L->errs) L->errs = Tcl_NewObj();
-	Tcl_AppendToObj(L->errs, buf, -1);
-	ckfree(buf);
-}
-
 void
 L_warnf(void *node, const char *format, ...)
 {
 	va_list ap;
-	char	*fmt;
+	int	len = 64;
+	char	*buf, *fmt;
 
 	if (L->options & L_OPT_NOWARN) return;
 
 	fmt = cksprintf("%s:%d: L Warning: %s\n",
 			((Ast *)node)->file, ((Ast *)node)->loc.line, format);
 	va_start(ap, format);
-	err(fmt, ap);
+	while (!(buf = ckvsprintf(fmt, ap, len))) {
+		va_end(ap);
+		va_start(ap, format);
+		len *= 2;
+	}
 	va_end(ap);
+	unless (L->errs) L->errs = Tcl_NewObj();
+	Tcl_AppendToObj(L->errs, buf, -1);
 	ckfree(fmt);
+	ckfree(buf);
 }
 
 void
 L_err(const char *format, ...)
 {
 	va_list ap;
-	char	*fmt;
+	int	len = 64;
+	char	*buf, *fmt;
 
 	fmt = cksprintf("%s:%d: L Error: %s\n", L->file, L->line, format);
 	va_start(ap, format);
-	err(fmt, ap);
+	while (!(buf = ckvsprintf(fmt, ap, len))) {
+		va_end(ap);
+		va_start(ap, format);
+		len *= 2;
+	}
 	va_end(ap);
+	unless (L->errs) L->errs = Tcl_NewObj();
+	Tcl_AppendToObj(L->errs, buf, -1);
 	ckfree(fmt);
+	ckfree(buf);
 }
 
 void
 L_errf(void *node, const char *format, ...)
 {
 	va_list ap;
-	char	*fmt;
+	int	len = 64;
+	char	*buf, *fmt;
 
 	if (node) {
 		fmt = cksprintf("%s:%d: L Error: %s\n", ((Ast *)node)->file,
@@ -5380,8 +5406,14 @@ L_errf(void *node, const char *format, ...)
 		fmt = cksprintf("L Error: %s\n", format);
 	}
 	va_start(ap, format);
-	err(fmt, ap);
+	while (!(buf = ckvsprintf(fmt, ap, len))) {
+		va_end(ap);
+		va_start(ap, format);
+		len *= 2;
+	}
 	va_end(ap);
+	unless (L->errs) L->errs = Tcl_NewObj();
+	Tcl_AppendToObj(L->errs, buf, -1);
 	ckfree(fmt);
 }
 

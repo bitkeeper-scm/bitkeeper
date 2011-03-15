@@ -60,6 +60,13 @@ bothered with.
 
 Treat all types as C<poly>.  This effectively disables type checking.
 
+=item B<--warn-undefined-fns>
+
+Just before main() is called, warn if any functions referenced by
+L code are undefined.
+You can combine this with --norun to do this check even when no
+code is run.
+
 =back
 
 The optional [args] is a white-space separated list of arguments that

@@ -1994,7 +1994,7 @@ commitComponent(string comp)
 			    "bottom pane for the reason.\n\ncitool "
 			    "will exit when you click OK.\n";
 
-			insertBottomText(stdio_getLastError(), 0);
+			insertBottomText(stdio_lasterr, 0);
 			insertBottomText("\n", 0);
 			update();
 
