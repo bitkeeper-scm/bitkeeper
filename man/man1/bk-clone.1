@@ -86,6 +86,11 @@ are
 .IR get ,
 or
 .IR edit .
+Note that this mode becomes "sticky" in that the checkout mode will
+added to 
+.BR \`bk\ root\`/BitKeeper/log/config .
+If no other config overrides that, then this mode will "stick"
+for subsequent updates.
 .tp
 .OPTequal \-E env val
 Export an environment variable to the 

@@ -3739,10 +3739,8 @@ config2mdbm(MDBM *db, char *config)
  * Load config file into a MDBM DB
  */
 private int
-loadRepoConfig(MDBM *DB, char *root)
+loadRepologConfig(MDBM *DB, char *root)
 {
-	sccs	*s;
-	char	*tmpf;
 	char	config[MAXPATH];
 
 	unless (root) return (-1);
@@ -3752,6 +3750,21 @@ loadRepoConfig(MDBM *DB, char *root)
 	 */
 	concat_path(config, root, "/BitKeeper/log/config");
 	if (exists(config)) config2mdbm(DB, config);
+	return (0);
+}
+
+
+/*
+ * Load config file into a MDBM DB
+ */
+private int
+loadRepoConfig(MDBM *DB, char *root)
+{
+	sccs	*s;
+	char	*tmpf;
+	char	config[MAXPATH];
+
+	unless (root) return (-1);
 
 	/*
 	 * If the config is already checked out, use that.
@@ -3874,7 +3887,7 @@ loadConfig(project *p, int forcelocal)
 {
 	MDBM	*db = mdbm_mem();
 	char	*t;
-	project	*prod;
+	project	*prod = 0;
 
 	/*
 	 * Support for a magic way to set clone default
@@ -3896,6 +3909,12 @@ loadConfig(project *p, int forcelocal)
 	loadDotBkConfig(db);
 	unless (getenv("BK_REGRESSION")) loadGlobalConfig(db);
 	loadBinConfig(db);
+	/* repolog is higher than all but env */
+	loadRepologConfig(db, proj_root(p));
+	if (proj_isComponent(p)) {
+		/* prod still set from above */
+		loadRepologConfig(db, proj_root(prod));
+	}
 	loadEnvConfig(db);
 	return (db);
 }
@@ -4061,10 +4080,6 @@ config_main(int ac, char **av)
 
 	/* repo config */
 	if (root = proj_root(0)) {
-		file = aprintf("%s/BitKeeper/log/config", root);
-		if (exists(file)) printconfig(file, 0, cfg);
-		free(file);
-
 		file = aprintf("%s/BitKeeper/etc/config", root);
 		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
 		printconfig(file, 0, cfg);
@@ -4073,10 +4088,6 @@ config_main(int ac, char **av)
 
 	/* product config */
 	if (proj_isComponent(0) && (root = proj_root(proj_product(0)))) {
-		file = aprintf("%s/BitKeeper/log/config", root);
-		if (exists(file)) printconfig(file, 0, cfg);
-		free(file);
-
 		file = aprintf("%s/BitKeeper/etc/config", root);
 		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
 		printconfig(file, 0, cfg);
@@ -4099,6 +4110,20 @@ config_main(int ac, char **av)
 	file = aprintf("%s/config", bin);
 	printconfig(file, 0, cfg);
 	free(file);
+
+	/* local config used in bk clone --checkout=<mode> */
+	if (root = proj_root(0)) {
+		file = aprintf("%s/BitKeeper/log/config", root);
+		if (exists(file)) printconfig(file, 0, cfg);
+		free(file);
+	}
+
+	/* product config */
+	if (proj_isComponent(0) && (root = proj_root(proj_product(0)))) {
+		file = aprintf("%s/BitKeeper/log/config", root);
+		if (exists(file)) printconfig(file, 0, cfg);
+		free(file);
+	}
 
 	/* $BK_CONFIG */
 	db = mdbm_mem();

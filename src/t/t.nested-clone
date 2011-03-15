@@ -34,7 +34,7 @@ echo OK
 
 echo $N See if we can override clone_default in BitKeeper/log .......$NL
 cd "$HERE/project"
-echo clone_default:PRODUCT > BitKeeper/log/config
+echo 'clone_default:PRODUCT!' > BitKeeper/log/config
 cd "$HERE"
 bk clone $Q project clone
 cd clone

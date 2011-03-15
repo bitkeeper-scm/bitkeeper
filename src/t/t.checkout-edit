@@ -49,6 +49,7 @@ bk edit $Q bar.c >OUT 2>&1 || {
 echo OK
 
 echo $N Test command line override of checkout mode .................$NL
+echo 'checkout: edit!' >> "$BK_DOTBK/config"
 cd ..
 bk ci $Q -ysnap BitKeeper/etc/config
 bk commit $Q -ysnap 
@@ -58,6 +59,13 @@ test -f none/src/foo.c && {
 	echo "foo.c should not be checked out"
 	exit 1
 }
+cd none
+test `bk config checkout` = none || {
+	echo failed to make mode sticky
+	bk config -v
+	exit 1
+}
+cd ..
 bk clone $Q --checkout=get project get
 test -f get/src/foo.c || {
 	echo "foo.c should be checked out"
@@ -68,4 +76,15 @@ test -w get/src/foo.c && {
 	ls -l get/src/foo.c
 	exit 1
 }
+echo OK
+
+echo $N Test only the product is set ................................$NL
+cd "$HERE"
+nested nest
+cd ..
+bk clone $Q --checkout=edit nest ncopy
+cd ncopy
+test -f gcc/BitKeeper/log/config -o -f gcc/BitKeeper/log/config && fail
+echo 'checkout:edit!' > WANT
+cmpfiles WANT BitKeeper/log/config
 echo OK

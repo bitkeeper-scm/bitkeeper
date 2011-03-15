@@ -335,6 +335,12 @@ clone_main(int ac, char **av)
 		}
 	}
 	if (opts->attach && !retrc) retrc = attach();
+	/*
+	 * Make command line checkout mode sticky.
+	 */
+	if (check_out && !proj_isComponent(0)) {
+		Fprintf("BitKeeper/log/config", "checkout:%s!\n", check_out);
+	}
 	free(opts->from);
 	if (opts->to) free(opts->to);
 	freeLines(envVar, free);
