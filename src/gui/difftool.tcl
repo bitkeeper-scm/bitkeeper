@@ -8,8 +8,6 @@ proc widgets {} \
 	global	scroll wish search gc d app
 	global State env
 
-	option add *background $gc(BG)
-
 	set gc(bw) 1
 	if {$gc(windows)} {
 		set gc(py) -2; set gc(px) 1
@@ -25,75 +23,42 @@ proc widgets {} \
 			   -file $env(BK_BIN)/gui/images/previous.gif]
 	set nextImage [image create photo \
 			   -file $env(BK_BIN)/gui/images/next.gif]
-	frame .menu
-	    button .menu.prev -font $gc(diff.buttonFont) \
-		-bg $gc(diff.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image $prevImage -state disabled -command {
-			searchreset
-			prev
-		}
-	    button .menu.next -font $gc(diff.buttonFont) \
-		-bg $gc(diff.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image $nextImage -state disabled -command {
-			searchreset
-			next
-		}
-	    button .menu.quit -font $gc(diff.buttonFont) \
-		-bg $gc(diff.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Quit" -command exit 
-	    button .menu.reread -font $gc(diff.buttonFont) \
-		-bg $gc(diff.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Reread" -command reread
-	    button .menu.help -bg $gc(diff.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-font $gc(diff.buttonFont) -text "Help" \
-		-command { exec bk helptool difftool & }
-	    button .menu.dot -bg $gc(diff.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-font $gc(diff.buttonFont) -text "Current diff" \
-		-width 15 -command dot
-            button .menu.filePrev -font $gc(diff.buttonFont) \
-                -bg $gc(diff.buttonColor) \
-                -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-                -image $prevImage \
-                -state disabled -command { prevFile }
-            button .menu.fileNext -font $gc(diff.buttonFont) \
-                -bg $gc(diff.buttonColor) \
-                -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-                -image $nextImage \
-                -state normal -command { nextFile }
-	    button .menu.discard -font $gc(diff.buttonFont) \
-	        -text "Discard" \
-                -bg $gc(diff.buttonColor) \
-                -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-                -state disabled -command { discard }
-	    button .menu.revtool -font $gc(diff.buttonFont) \
-	        -text "Revtool" \
-                -bg $gc(diff.buttonColor) \
-                -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-                -state normal -command { revtool }
+	ttk::frame .menu
+	    ttk::button .menu.prev -image $prevImage -state disabled -command {
+		searchreset
+		prev
+	    }
+	    ttk::button .menu.next -image $nextImage -state disabled -command {
+		searchreset
+		next
+	    }
+	    ttk::button .menu.quit -text "Quit" -command exit 
+	    ttk::button .menu.reread -text "Reread" -command reread
+	    ttk::button .menu.help -text "Help" -command {
+		exec bk helptool difftool &
+	    }
+	    ttk::button .menu.dot -text "Current diff" -command dot
+            ttk::button .menu.filePrev -image $prevImage -command { prevFile } \
+		-state disabled
+            ttk::button .menu.fileNext -image $nextImage -command { nextFile }
+	    ttk::button .menu.discard -text "Discard" -command { discard } \
+		-state disabled
+	    ttk::button .menu.revtool -text "Revtool" -command { revtool }
 	        
-            menubutton .menu.fmb -font $gc(diff.buttonFont) -relief raised \
-                -bg $gc(diff.buttonColor) -pady $gc(py) -padx $gc(px) \
-                -borderwid $gc(bw) -text "Files" -state normal \
-                -menu .menu.fmb.menu -indicatoron 1
+            ttk::menubutton .menu.fmb -text "Files" -menu .menu.fmb.menu
 
-	    pack .menu.quit -side left -fill y
-	    pack .menu.help -side left -fill y
-	    pack .menu.discard -side left -fill y
-	    pack .menu.revtool -side left -fill y
-	    pack .menu.reread -side left -fill y
-	    pack .menu.prev -side left -fill y 
-	    pack .menu.dot -side left -fill y
-	    pack .menu.next -side left -fill y
+	    pack .menu.quit -side left -padx 1
+	    pack .menu.help -side left -padx 1
+	    pack .menu.discard -side left -padx 1
+	    pack .menu.revtool -side left -padx 1
+	    pack .menu.reread -side left -padx 1
+	    pack .menu.prev -side left -padx 1
+	    pack .menu.dot -side left -padx 1
+	    pack .menu.next -side left -padx 1
 
 	    search_widgets .menu .diffs.right
 
-	grid .menu -row 0 -column 0 -sticky ew
+	grid .menu -row 0 -column 0 -sticky ew -pady 2
 	grid .diffs -row 1 -column 0 -sticky nsew
 	grid rowconfigure .diffs 1 -weight 1
 	grid rowconfigure . 0 -weight 0
@@ -114,7 +79,6 @@ proc widgets {} \
 	keyboard_bindings
 	search_keyboard_bindings
 	searchreset
-	. configure -background $gc(BG)
 }
 
 # Set up keyboard accelerators.
@@ -248,7 +212,7 @@ proc readInput {in} \
 proc getFiles {} \
 {
 	global argv argc dev_null lfile rfile unique
-	global gc menu rev1 rev2 Diffs DiffsEnd
+	global gc menu rev1 rev2 Diffs DiffsEnd filepath
 
 	if {$argc > 3} { usage }
 	set files [list]
@@ -292,7 +256,8 @@ proc getFiles {} \
 				exit 1
 			}
 		} else { ;# bk difftool file
-			set rfile [normalizePath [lindex $argv 0]]
+			set filepath [lindex $argv 0]
+			set rfile [normalizePath $filepath]
 			set lfile [getRev $rfile "+" 1]
 			set rev1 "+"
 
@@ -315,7 +280,8 @@ proc getFiles {} \
 					exit 1
 				}
 			} else {
-				set rfile [normalizePath [lindex $argv 1]]
+				set filepath [lindex $argv 1]
+				set rfile [normalizePath $filepath]
 				set lfile [getRev $rfile $rev1 0]
 				# If bk file and not checked out, check it out ro
 				#displayMessage "lfile=($lfile) rfile=($rfile)"
@@ -351,7 +317,8 @@ proc getFiles {} \
 			}
 		}
 	} else { ;# bk difftool -r<rev> -r<rev2> file
-		set file [normalizePath [lindex $argv 2]]
+		set filepath [lindex $argv 2]
+		set file [normalizePath $filepath]
 		set a [lindex $argv 0]
 		if {![regexp -- {-r(.*)} $a junk rev1]} { usage }
 		set lfile [getRev $file $rev1 0]
@@ -391,7 +358,7 @@ proc getFiles {} \
 			.menu.fmb.menu entryconfigure 0 -state disabled
 		}
 		pack configure .menu.filePrev .menu.fmb .menu.fileNext \
-		    -side left -fill y -after .menu.revtool
+		    -side left -after .menu.revtool
 		set menu(max) [$menu(widget) index last]
 		set menu(selected) 1
 		$menu(widget) invoke 1
@@ -544,7 +511,7 @@ proc discard {{what firstClick} args} \
 	global menu
 	global lname rname
 
-	set tmp [split $lname @]
+	set tmp [split $lname @|]
 	set file [lindex $tmp 0]
 
 	switch -exact -- $what {
@@ -653,7 +620,7 @@ proc clearDisplay {} \
 
 proc revtool {} \
 {
-	global lname rname
+	global lname rname filepath
 	global menu
 
 	# These regular expressions come straight from revtool, and are
@@ -664,19 +631,23 @@ proc revtool {} \
 
 	set command [list bk revtool]
 
-	set tmp [split $rname @]
+	set tmp [split $rname @|]
 	set file [lindex $tmp 0]
 	set rev [lindex $tmp 1]
 	if {[regexp $r2 $rev] || [regexp $r4 $rev]} {
 		lappend command "-r$rev"
 
-		set tmp [split $lname @]
+		set tmp [split $lname @|]
 		set rev [lindex $tmp 1]
 		if {[regexp $r2 $rev] || [regexp $r4 $rev]} {
 			lappend command "-l$rev"
 		}
 	}
-	lappend command $file
+	if {[info exists filepath]} {
+		lappend command $filepath
+	} else {
+		lappend command $file
+	}
 	eval exec $command &
 }
 

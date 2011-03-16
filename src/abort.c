@@ -300,7 +300,6 @@ abortComponents(options *opts)
 out:	if (n) nested_free(n);
 	if (s) sccs_free(s);
 	if (csets_in) freeLines(csets_in, free);
-	STOP_TRANSACTION();
 	proj_cd2product();
 	/*
 	 * The failed operation (pull) could have brough in extra
@@ -311,5 +310,6 @@ out:	if (n) nested_free(n);
 		error("abort: bk here failed\n");
 		errors++;
 	}
+	STOP_TRANSACTION();
 	return (errors);
 }

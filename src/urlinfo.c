@@ -160,8 +160,10 @@ urlinfo_write(nested *n)
 	comp	*c;
 	hash	*urllist;
 	char	***listp, **list;
-	int	cnt;
+	time_t	now = time(0);
+	char	*lockf;
 	char	tmpf[MAXPATH];
+	char	buf[MAXPATH];
 
 	unless (isdir(BKROOT)) {
 		fprintf(stderr, "urlinfo_write() not at root\n");
@@ -172,15 +174,29 @@ urlinfo_write(nested *n)
 	unless (n->list_loaded) urlinfo_load(n, 0);
 
 	urllist = hash_new(HASH_MEMHASH);
-	bktmp_local(tmpf, "urllist");
+
+	/* find urlinfo file */
+	concat_path(buf, getDotBk(), "urlinfo");
+	mkdir(buf, 0777);	/* make sure directory exists */
+	concat_path(buf, buf, sccs_realhost());
+
+	lockf = aprintf("%s.lock", buf);
+	if (sccs_lockfile(lockf, 30, 1)) {
+		free(lockf);
+		fprintf(stderr, "%s: unable to lock %s for update\n",
+		    prog, buf);
+		return (-1);
+	}
+	sprintf(tmpf, "%s.new.%u", buf, getpid());
 	unless (f = fopen(tmpf, "w")) {
 		perror(tmpf);
+		sccs_unlockfile(lockf);
+		free(lockf);
 		return (-1);
 	}
 	EACH_HASH(n->urlinfo) {
 		url = n->urlinfo->kptr;
 		data = (urlinfo *)n->urlinfo->vptr;
-		cnt = 0;
 		EACH_HASH(data->pcomps) {
 			if (*(char *)data->pcomps->vptr != '1') continue;
 			c = *(comp **)data->pcomps->kptr;
@@ -192,9 +208,13 @@ urlinfo_write(nested *n)
 			}
 			TRACE("add %s to %s\n", data->url, c ? c->path : "?");
 			*listp = addLine(*listp, data->url);
-			++cnt;
 		}
-		unless (cnt) continue; /* unused */
+		/*
+		 * Don't write out URLs that are never contacted or that
+		 * are old.
+		 */
+		if (now - data->time > 6*MONTH) continue;
+
 		putc('@', f);
 		webencode(f, url, strlen(url)+1);
 		putc('\n', f);
@@ -206,11 +226,15 @@ urlinfo_write(nested *n)
 		}
 	}
 	fclose(f);
-	if (fileMove(tmpf, NESTED_URLINFO)) {
-		perror(NESTED_URLINFO);
+	i = fileMove(tmpf, buf);
+	sccs_unlockfile(lockf);
+	free(lockf);
+	if (i) {
+		perror(buf);
 		return (-1);
 	}
 
+	bktmp_local(tmpf, "urllist");
 	unless (f = fopen(tmpf, "w")) {
 		perror(tmpf);
 		return (-1);
@@ -551,7 +575,6 @@ urlinfo_fetchAlloc(nested *n, char *url)
 	char	**list;
 	hash	*h;
 	int	i, len;
-	project	*proj;
 	char	buf[MAXPATH];
 
 	/*
@@ -565,8 +588,9 @@ urlinfo_fetchAlloc(nested *n, char *url)
 	unless (n->urlinfo) {
 		n->urlinfo = hash_new(HASH_MEMHASH);
 
-		unless (proj = proj_isResync(n->proj)) proj = n->proj;
-		concat_path(buf, proj_root(proj), NESTED_URLINFO);
+		concat_path(buf, getDotBk(), "urlinfo");
+		concat_path(buf, buf, sccs_realhost());
+
 		h = hash_fromFile(0, buf);
 		EACH_HASH(h) {
 			data = urlinfo_fetchAlloc(n, h->kptr);

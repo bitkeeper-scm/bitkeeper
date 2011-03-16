@@ -95,7 +95,7 @@ undo_main(int ac,  char **av)
 	if (proj_isProduct(0) && standalone) usage();
 	bk_nested2root(standalone);
 
-	if (proj_isEnsemble(0)) {
+	if (proj_isEnsemble(0) && !getenv("_BK_TRANSACTION")) {
 		if (nested_isGate(0)) {
 			fprintf(stderr, "undo: not allowed in a gate\n");
 			goto err;

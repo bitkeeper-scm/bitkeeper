@@ -654,6 +654,8 @@ echo OK
 echo $N Show rmcomp removes deep nest litter ........................$NL
 nested project3
 bk setup -f gcc/deep/stuff
+bk portal $Q -r
+bk gate $Q -r
 bk comps -h | bk here set -
 bk here rm $Q -f gcc/deep/stuff || fail
 mkdir -p gcc/deep/stuff/
@@ -689,4 +691,19 @@ bk comps -h > BEFORE
 bk here set $Q -@"$HERE"/copy . 2>ERR && fail -f ERR should have failed
 bk comps -h > AFTER
 cmpfiles BEFORE AFTER
+echo OK
+
+echo $N Test forcing an unpopulate in a portal or gate ..............$NL
+nested project
+echo "Cannot remove components in a portal." > WANT
+bk here set PRODUCT 2> GOT && fail -f GOT
+cmpfiles WANT GOT
+bk here set -f PRODUCT 2> GOT && fail -f GOT
+cmpfiles WANT GOT
+bk portal $Q -r
+echo "Cannot remove components in a gate." > WANT
+bk here set PRODUCT 2> GOT && fail -f GOT
+cmpfiles WANT GOT
+bk here set -f PRODUCT 2> GOT && fail -f GOT
+cmpfiles WANT GOT
 echo OK

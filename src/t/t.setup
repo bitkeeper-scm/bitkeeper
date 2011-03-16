@@ -69,3 +69,11 @@ EOF
 cmpfiles OUT WANT
 echo OK
 
+echo $N Check setup -e works ........................................$NL
+# Inherit 'c' config file from first test
+mkdir proj2
+touch proj2/stuff
+bk setup -e -a -f -cc proj2 2>ERR || fail -f ERR "should have worked"
+# Try again, should fail this time
+bk setup -e -a -f -cc proj2 2>ERR && fail -f ERR "should have failed"
+echo OK

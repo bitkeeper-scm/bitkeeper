@@ -76,18 +76,8 @@ proc createDiffWidgets {w} \
 		-borderwidth 0 \
 		-wrap none \
 		-font $gc($app.fixedFont)
-	    scrollbar .diffs.xscroll \
-		-wid $gc($app.scrollWidth) \
-		-troughcolor $gc($app.troughColor) \
-		-background $gc($app.scrollColor) \
-		-orient horizontal \
-		-command { xscroll }
-	    scrollbar .diffs.yscroll \
-		-wid $gc($app.scrollWidth) \
-		-troughcolor $gc($app.troughColor) \
-		-background $gc($app.scrollColor) \
-		-orient vertical \
-		-command { yscroll }
+	    ttk::scrollbar .diffs.xscroll -orient horizontal -command xscroll
+	    ttk::scrollbar .diffs.yscroll -orient vertical -command yscroll
 
 	    grid .diffs.status -row 0 -column 0 -columnspan 5 -stick ew
 	    grid .diffs.left -row 1 -column 0 -sticky nsew
@@ -437,8 +427,10 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	set fnames(left) "$lfile"
 	set fnames(right) "$rfile"
 
-	.diffs.left tag configure "select" -background $gc($app.infoColor)
-	.diffs.right tag configure "select" -background $gc($app.infoColor)
+	.diffs.left tag configure "select" -background $gc($app.infoColor) \
+	    -borderwidth 1 -relief solid -lmargin1 5 -spacing1 2 -spacing3 2
+	.diffs.right tag configure "select" -background $gc($app.infoColor) \
+	    -borderwidth 1 -relief solid -lmargin1 5 -spacing1 2 -spacing3 2
 	# 1.0 files do not have a mode line. 
 	# XXX: Ask lm if x.0 files have mode lines...
 	set dspec1 "{-d:DPN:\\n\tFlags = :FLAGS:\\n\tMode  = :RWXMODE:\\n}"

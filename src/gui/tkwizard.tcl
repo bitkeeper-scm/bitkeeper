@@ -1627,43 +1627,30 @@ proc ::tkwizard::style-default::init {name} \
     set widget(cancelButton) $prefix.buttonFrame.cancelButton
     set widget(finishButton) $prefix.buttonFrame.finishButton
 
-    button $widget(backButton) \
+    ttk::button $widget(backButton) \
         -text "< Back" \
         -default normal \
-        -width 6 \
-        -bd 1 \
-        -relief raised \
         -command [list event generate $name <<WizBackStep>>]
 
-    button $widget(nextButton) \
+    ttk::button $widget(nextButton) \
         -text "Next >" \
         -default normal \
-        -width 6 \
-        -bd 1 \
-        -relief raised \
         -command [list event generate $name <<WizNextStep>>]
 
-    button $widget(finishButton) \
+    ttk::button $widget(finishButton) \
         -text "Finish" \
         -default normal \
-        -width 6 \
-        -bd 1 \
-        -relief raised \
         -command [list event generate $name <<WizFinish>>]
 
-    button $widget(cancelButton) \
-        -text Cancel   \
+    ttk::button $widget(cancelButton) \
+        -text "Cancel"   \
         -default normal \
-        -width 6 \
-        -bd 1  \
-        -relief raised \
         -command [list event generate $name <<WizCancel>>]
 
-
-    pack $widget(cancelButton) -side right -pady 4 -padx 4 
-    pack $widget(finishButton) -side right -pady 4 -padx 2
-    pack $widget(nextButton)   -side right -pady 4
-    pack $widget(backButton)   -side right -pady 4
+    pack $widget(cancelButton) -side right -pady 4 -padx 5 
+    pack $widget(finishButton) -side right -pady 4 -padx 1
+    pack $widget(nextButton)   -side right -pady 4 -padx 1
+    pack $widget(backButton)   -side right -pady 4 -padx 1
 
     # return the name of the layout frame
     return $prefix.layoutFrame

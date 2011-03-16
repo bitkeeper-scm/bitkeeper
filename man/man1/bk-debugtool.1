@@ -1,0 +1,84 @@
+.so ../bk-macros
+.TH "bk debugtool" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+
+.SH NAME
+bk debugtool - tool for use in remote command line debugging
+
+.SH SYNOPSIS
+.B bk debugtool 
+[--shell]
+[--server]
+.[OPTreq] -p proxy
+.[OPTreq] -u username
+[host:port]
+
+.SH DESCRIPTION
+.LP
+.B bk debugtool
+launches a graphical interface to connect to a remote debug server and
+allow the possibility of remote command line debugging.  Once instance
+of debugtool connecting to the server declares themselves as the shell,
+and all other instances can chat and issue commands to the shell.
+
+.LP
+The debugtool works by connecting to a remote debug server using the
+HTTP protocol.  It does not keep an open connection to the server
+but instead polls the server for updates at regular intervals.  This
+allows the debugtool to appear exactly as any other HTTP client to
+any intermediate proxy servers, which should allow all communication
+to pass through any firewalls that already allow web traffic.  The
+client will simply appear as another web client.
+
+.LP
+Passing --shell signifies that you wish your instance of debugtool to
+be the shell that everyone executes commands on.  Each time a command
+is requested, you are asked to allow the command to proceed, or you can
+simply say that all commands from that user should be allowed.
+.LP
+There can only be one shell in a session, and any attempt to connect a
+second shell will simply disable the shell for the subsequent clients.
+Only the first to request it is given the shell.
+
+.LP
+Passing --server will start a local instance of the debug server and
+then immediately launch the debugtool and connect to that local
+instance.  Others can then connect to your local instance to create
+a debug session.
+
+.SH COMMANDS
+.LP
+Hitting Tab from within the debugtool will switch between chat and
+shell mode.  The prompt at the bottom next to the entry box will show
+the current mode.  Anything you type while in chat mode will simply
+be echoed to everyone in the session.  Anything entered while in
+shell mode will be sent to the client who has the shell, executed on
+their machine, and the result echoed back for everyone to see.
+
+Typing a / as the first character of anything entered specifies any of
+a list of commands to be called from within the tool.  The available
+commands are:
+
+.LP
+.B /allow <all | username>
+.br
+Allow all users or a single user access to execute commands if you are
+the shell.  This will give permanent permission to execute commands if
+you are the shell, and you will not be prompted to approve commands if
+they are sent from this user (or all users).
+
+.LP
+.B /clear <chat | shell>
+.br
+Clear either the chat or shell window.
+
+.LP
+.B /say <message>
+.br
+Send a message to the chat window no matter which mode you are in.  This
+is handy if you want to say something without exiting command mode.
+
+.LP
+.B /shell <command>
+.br
+Execute a command in the shell no matter which mode you are in.  This is
+handy if you want to execute a quick command without exiting chat mode.

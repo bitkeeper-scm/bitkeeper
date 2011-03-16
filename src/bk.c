@@ -189,18 +189,6 @@ main(int volatile ac, char **av, char **env)
 	fslayer_enable(1);
 	unless (getenv("BK_TMP")) bktmpenv();
 
-	/*
-	 * Determine if this should be a trial version of bk.
-	 * Add versions that are not tagged will automaticly expire
-	 * in 2 weeks.
-	 */
-	if (test_release && (time(0) > (time_t)bk_build_timet + 3600*24*14)) {
-		char	*nav[] = {"version", 0};
-
-		version_main(1, nav);
-		exit(1);
-	}
-
 	/* stderr write(2) wrapper for progress bars */
 	stderr->_write = progress_syswrite;
 
@@ -363,6 +351,17 @@ baddir:						fprintf(stderr,
 				return (1);
 			}
 		}
+
+		/* Trial versions of bk will expire in 2 weeks. */
+		if (test_release && !streq(prog, "upgrade") &&
+		    (getenv("_BK_EXPIRED_TRIAL") ||
+			(time(0) > (time_t)bk_build_timet + 2*WEEK))) {
+			char	*nav[] = {"version", 0};
+
+			version_main(1, nav);
+			exit(1);
+		}
+
 		/* -'?VAR=val&VAR2=val2' */
 		if (envargs) {
 			hash	*h = hash_new(HASH_MEMHASH);

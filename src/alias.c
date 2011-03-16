@@ -603,6 +603,262 @@ dbChk(nested *n, hash *aliasdb)
 
 // =================== functions to read the db ===============
 
+typedef struct {
+	char	*name;		/* alias name */
+	char	**exp;		/* expanded component list */
+} Cand;
+
+private void
+freeCand(void *c)
+{
+	Cand	*cand = (Cand *)c;
+
+	unless(cand) return;
+	freeLines(cand->exp, 0);
+	free(cand);
+}
+
+/*
+ * Find the smallest subset of the aliases passed in the third
+ * parameter that covers all missing components (missing_list) while
+ * at the same time minimizing the number of extra clones (!present &&
+ * !missing).
+ *
+ * This is a greedy solution to a variation of the weighted set-cover
+ * problem that adds variable weights.
+ *
+ * Although this looks a lot like the blue-red set cover problem, we
+ * are optimizing for the minimum amount of red (unwanted extra
+ * clones, avoid hash) rather than the minimum cover.
+ *
+ * See http://www.cs.cmu.edu/~pawasthi/redBlueSetCover.pdf for a paper
+ * on solving the red-blue set-cover which will accept a few red nodes
+ * to get a tighter cover.
+ */
+char	**
+alias_coverMissing(nested *n, char **missing_list, char **aliases)
+{
+	int	chosen, cnt, covered, extra;
+	int	price, minprice;
+	int	i, j;
+	comp	*c, *c1;
+	char	**ret = 0, **candidates = 0;
+	char	***lp;
+	hash	*aliasdb = 0;
+	hash	*need;		/* nodes we want covered (blue) */
+	hash	*avoid;		/* unwanted, extra clones (red) */
+	Cand	*cand;
+
+	/* Maybe none are missing? */
+	unless (nLines(missing_list)) return (0);
+	assert(aliases);
+
+	/*
+	 * Data structures:
+	 *
+	 * cand
+	 *    struct for each alias in 'aliases' that contains
+	 *    cand->exp which is a list of comp* for each component in
+	 *    alias
+	 *
+	 * candidates
+	 *    list of cand* for all aliases still in consideration
+	 *
+	 * need
+	 *    list of components in missing list (nodes needed)
+	 *    hash of comp* to list of cand*'s that cover this component
+	 *
+	 * avoid
+	 *    hash with comp*'s implied by one of the candidates that
+	 *    are not in 'need' and are not going to be populated.
+	 *    ie: stuff we want to avoid including
+	 */
+
+	/*
+	 * build our working sets
+	 */
+	need  = hash_new(HASH_MEMHASH);
+	avoid = hash_new(HASH_MEMHASH);
+	EACH_STRUCT(missing_list, c, i) {
+		hash_store(need, &c, sizeof(c), 0, sizeof(char **));
+	}
+
+	/* In RESYNC, take the tip of merge or tip of local as current */
+	aliasdb = aliasdb_init(n, 0, 0, NESTED_PENDING, 0);
+	assert(aliasdb);
+
+	/*
+	 * Copy the aliases to a candidates list since we're going to
+	 * muck with them and we need some extra info anyway.
+	 */
+	EACH(aliases) {
+		cand = new(Cand);
+		cand->name = aliases[i];
+		unless (cand->exp = aliasdb_expandOne(n, aliasdb, cand->name)){
+			/* if we can't expand it, we can't use it */
+			freeCand(cand);
+			continue;
+		}
+		cnt = 0;
+		EACH_STRUCT(cand->exp, c, j) {
+			unless (lp = hash_fetch(need, &c, sizeof(c))) {
+				unless (c->alias) {
+					/* Not needed and not here
+					 * means it's an unnecessary
+					 * clone. Avoid it.
+					 *
+					 * We use c->alias rather than
+					 * c->present because in a
+					 * pull some components might
+					 * need to be brough in anyway
+					 * (they might not be present,
+					 * but the pull will fetch
+					 * them anyway). These should
+					 * not count against the
+					 * alias.
+					 */
+					hash_store(avoid, &c, sizeof(c), 0, 0);
+				}
+				continue;
+			}
+			/*
+			 * Build a reverse mapping from each missing component
+			 * to the list of candidates that can cover it.
+			 */
+			cnt++;
+			*lp = addLine(*lp, cand);
+		}
+		unless (cnt) {
+			/* it doesn't cover any of the missing ones */
+			freeCand(cand);
+			continue;
+		}
+		candidates = addLine(candidates, cand);
+	}
+
+	/*
+	 * Prune the need (blue) set (missing components we want
+	 * covered) by removing those that are covered by none of the
+	 * aliases (just add the rootkey of the component to the
+	 * return set), or covered by just one alias (add that alias
+	 * to the return set regardless of the cost).
+	 */
+	EACH_STRUCT(missing_list, c, i) {
+		unless (lp = hash_fetch(need, &c, sizeof(c))) {
+			/*
+			 * It was removed from the need set as a side
+			 * effect of adding some previous alias to the
+			 * return set. Just ignore it.
+			 */
+			continue;
+		}
+		if (nLines(*lp) == 0) {
+			/* not covered by any aliases */
+			ret = addLine(ret, strdup(c->rootkey));
+			freeLines(*lp, 0);
+			hash_delete(need, &c, sizeof(c));
+		} else if (nLines(*lp) == 1) {
+			/* covered by exactly one alias */
+			cand = popLine(*lp);
+			ret = addLine(ret, strdup(cand->name));
+			EACH_STRUCT(cand->exp, c1, j) {
+				if (lp = hash_fetch(need, &c1, sizeof(c1))) {
+					freeLines(*lp, 0);
+					hash_delete(need, &c1, sizeof(c1));
+				}
+				hash_delete(avoid,  &c1, sizeof(c1));
+			}
+			/*
+			 * Rather than loop over the candidates list
+			 * to remove this candidate, we can just set
+			 * its expansion to 0 and it'll be ignored and
+			 * removed in the loop below. See (I).
+			 */
+			freeLines(cand->exp, 0);
+			cand->exp = 0;
+		}
+	}
+
+	/* While we still have needed elements */
+	while (hash_count(need)) {
+		/*
+		 * Find the candidate with the minimum price.
+		 */
+		minprice = INT_MAX;
+		chosen = 0;
+		EACH_STRUCT(candidates, cand, i) {
+			/*
+			 * Count how many missing elements would be covered,
+			 * and also how many extra clones would be done.
+			 */
+			cnt = 0;     /* total number of components in alias */
+			covered = 0; /* needed comps covered by alias */
+			extra = 0;   /* extra clones brought by alias */
+			EACH_STRUCT(cand->exp, c, j) {
+				cnt++;
+				if (hash_fetch(need, &c, sizeof(c))) {
+					covered++;
+				} else if (hash_fetch(avoid, &c, sizeof(c))) {
+					extra++;
+				}
+			}
+			unless (covered) {
+				/*
+				 * If the candidate doesn't help
+				 * anything then remove it.
+				 *
+				 * (I) Note that candidates with
+				 * cand->exp set to zero fall under
+				 * this definition.
+				 */
+				removeLineN(candidates, i, freeCand);
+				i--;
+				continue;
+			}
+			/*
+			 * We are trying to avoid extras (unnecessary
+			 * clones) at all cost, even if the resulting
+			 * cover is larger than it could have been had
+			 * we accepted some.
+			 */
+			if (extra > 2000) extra = 2000; /* avoid overflow */
+			price = 1e6 * extra - 1e3 * covered + cnt;
+			if (price < minprice) {
+				minprice = price;
+				chosen = i;
+			}
+		}
+		/*
+		 * Since we pruned comps not covered by any aliases
+		 * above, we must have gotten something.
+		 */
+		assert(chosen);
+		cand = (Cand *)candidates[chosen];
+		ret = addLine(ret, strdup(cand->name));
+		/*
+		 * Remove all the comps that are covered by the
+		 * selected alias. Also remove them from the red set
+		 * since they no longer have to be avoided.
+		 */
+		EACH_STRUCT(cand->exp, c, i) {
+			if (lp = hash_fetch(need, &c, sizeof(c))) {
+				freeLines(*lp, 0);
+				hash_delete(need, &c, sizeof(c));
+			}
+			hash_delete(avoid, &c, sizeof(c));
+		}
+		/* This is now an ex-candidate. */
+		removeLineN(candidates, chosen, freeCand);
+	}
+	/* clean up */
+	freeLines(candidates, freeCand);
+	hash_free(need);
+	hash_free(avoid);
+	if (aliasdb) hash_free(aliasdb);
+	sortLines(ret, 0);
+	return (ret);
+}
+
 /*
  * Given an aliasdb and a list of aliases, set c->alias on each component
  * in 'n' that is contained in those aliases.

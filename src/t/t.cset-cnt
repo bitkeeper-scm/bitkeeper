@@ -250,6 +250,7 @@ cd ..
 echo hi > file_copy
 bk new $Q file_copy
 bk commit -S $Q -ycopy || fail
+bk portal $Q -r
 bk comps -h | grep -v www | bk here set -f $Q - || fail
 cd ../nest/gdb || fail
 echo hi > file_project

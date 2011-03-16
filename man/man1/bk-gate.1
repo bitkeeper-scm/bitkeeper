@@ -24,9 +24,12 @@ repository is part of \*[BK]'s product line functionality.
 A gate is an instance of a nested collection in which
 changesets are considered "safe", they will not be removed or
 collapsed.
-Similarly for what is is populated, that will not be unpopulated.
+Similarly the set of components that are populated will not be unpopulated.
 .LP
-The gate concept exists to allow bk pull to run in --unsafe mode.
+The gate concept exists to allow bk pull to run in --unsafe mode by
+default when pulling from a gate. This allows developers to work with
+sparse repositories (where not all components are populated) while
+guaranteeing that work will never be lost.
 .LP
 With an argument of ".", it marks the nested collection as a gate.
 With no argument, the command prints the gate status.

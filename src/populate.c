@@ -22,6 +22,7 @@ nested_populate(nested *n, popts *ops)
 	remote	*r;
 	char	*url;
 	comp	*cp;
+	int	transaction = (getenv("_BK_TRANSACTION") != 0);
 
 	/* we assume pending components are marked */
 	assert(n->pending);
@@ -34,19 +35,21 @@ nested_populate(nested *n, popts *ops)
 	 */
 	rc = 0;
 	EACH_STRUCT(n->comps, cp, j) {
-		if (!ops->force && cp->present && !cp->alias) {
-			if (nested_isPortal(0)) {
+		if (cp->present && !cp->alias) {
+			if (nested_isPortal(0) && !transaction) {
 				fprintf(stderr,
 				    "Cannot remove components in a portal.\n");
 				++rc;
 				break;
 			}
-			if (nested_isGate(0)) {
+			if (nested_isGate(0) && !transaction) {
 				fprintf(stderr,
 				    "Cannot remove components in a gate.\n");
 				++rc;
 				break;
 			}
+		}
+		if (!ops->force && cp->present && !cp->alias) {
 			if (cp->pending) {
 				fprintf(stderr,
 				    "%s: unable to remove ./%s, it contains "
@@ -256,7 +259,13 @@ unpopulate_check(popts *ops, comp *c)
 
 	flags |= URLLIST_GATEONLY;  /* require gates */
 	if (ops->quiet) flags |= SILENT;
-	if (nested_isPortal(0) || nested_isGate(0)) return (-1);
+	/*
+	 * NOTE: Belts and suspenders - already checked in the caller
+	 */
+	if ((nested_isPortal(0) || nested_isGate(0)) &&
+	    !getenv("_BK_TRANSACTION")) {
+		return (-1);
+	}
 	if (c->pending) return (-1);
 	if (chdir(c->path)) {
 		perror(c->path);
@@ -346,8 +355,8 @@ urllist_find(nested *n, comp *cp, int flags, int *idx)
 			continue;
 		}
 
-		// continue if it's a known non-gate and they only want gates
-		if (gateonly && (data->gate == 0)) continue;
+		// continue if it's not a known gate and they only want gates
+		if (gateonly && (data->gate != 1)) continue;
 
 		if (data->repoID) {
 			/* don't talk to myself */

@@ -51,7 +51,6 @@ extern	unsigned int turnTransOff;
 #define	NESTED_FIXIDCACHE	0x02000000	/* no error for bad idDB */
 
 #define	NESTED_URLLIST		"BitKeeper/log/urllist"
-#define	NESTED_URLINFO		"BitKeeper/log/urlinfo"
 
 #define	PRODUCT			"."		/* for titles */
 
@@ -183,6 +182,7 @@ void	aliasdb_free(hash *db);
 int	aliasdb_chkAliases(nested *n, hash *aliasdb,
 	    char ***paliases, char *cwd);
 int	aliasdb_caret(char **aliases);
+char	**alias_coverMissing(nested *n, char **missing, char **aliases);
 
 /* urlinfo.c */
 void	urlinfo_load(nested *n, remote *base);

@@ -596,3 +596,13 @@ touch RESYNC/.bk_nl
 bk abort -f >ERR 2>&1 && fail
 grep -q "Write locked" ERR && fail double abort... whooa... what does it mean?
 echo OK
+
+echo $N Test running abort with an undo in a product ................$NL
+cd "$HERE"
+rm -rf edit_in_gcc
+tar xf edit_in_gcc.tar
+cd edit_in_gcc
+bk gate $Q .
+bk pull $Q 2>ERR || true
+bk abort $Q -f || fail
+echo OK

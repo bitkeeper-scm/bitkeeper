@@ -12,7 +12,6 @@
 #     - ScrolledWindow::_set_hframe
 #     - ScrolledWindow::_set_vscroll
 #     - ScrolledWindow::_setData
-#     - ScrolledWindow::_setSBSize
 #     - ScrolledWindow::_realize
 # -----------------------------------------------------------------------------
 
@@ -46,22 +45,14 @@ proc ScrolledWindow::create { path args } {
     Widget::getVariable $path data
 
     set bg     [Widget::cget $path -background]
-    set sbsize [Widget::cget $path -size]
-    set sw     [eval [list frame $path \
-			  -relief flat -borderwidth 0 -background $bg \
-			  -highlightthickness 0 -takefocus 0] \
+    set sw     [eval [list ttk::frame $path \
+			  -relief flat -borderwidth 0 -takefocus 0] \
 		    [Widget::subcget $path :cmd]]
 
-    scrollbar $path.hscroll \
-	    -highlightthickness 0 -takefocus 0 \
-	    -orient	 horiz	\
-	    -relief	 sunken	\
-	    -bg	 $bg
-    scrollbar $path.vscroll \
-	    -highlightthickness 0 -takefocus 0 \
-	    -orient	 vert	\
-	    -relief	 sunken	\
-	    -bg	 $bg
+    ttk::scrollbar $path.hscroll \
+	    -orient	 horizontal
+    ttk::scrollbar $path.vscroll \
+	    -orient	 vertical
 
     set data(realized) 0
 
@@ -76,12 +67,6 @@ proc ScrolledWindow::create { path args } {
     } else {
 	set data(hsb,packed) 0
 	set data(vsb,packed) 0
-    }
-    if {$sbsize} {
-	$path.vscroll configure -width $sbsize
-	$path.hscroll configure -width $sbsize
-    } else {
-	set sbsize [$path.vscroll cget -width]
     }
     set data(ipad) [Widget::cget $path -ipad]
 

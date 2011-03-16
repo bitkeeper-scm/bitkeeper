@@ -1,3 +1,203 @@
+set -e
+echo $N Set up repositories for testing covers.......................$NL
+nested setcover
+bk setup -Cf gas
+bk alias set -C V0 PRODUCT
+bk alias set -C V1         gdb
+bk alias set -C V2     gcc
+bk alias set -C V3     gcc gdb
+bk alias set -C V4 gas
+bk alias set -C V5 gas     gdb
+bk alias set -C V6 gas gcc
+bk alias set -C V7 gas gcc gdb
+bk alias set -C CL7to0 gas gcc gdb
+bk alias set -C CR7to0 gas gcc gdb
+bk alias set -C CL1to3         gdb
+bk here set ALL
+bk commit $Q -ysetup
+bk clone $Q . ../src
+bk clone $Q -sPRODUCT ../src ../dest
+cd ../src
+bk alias set -C CR7to0 PRODUCT
+touch gcc/foo gdb/foo
+bk new $Q gcc/foo gdb/foo
+bk commit $Q -ychange
+cat <<EOF > ../dest/WANTERR
+pull: ./gcc cannot be found at a gate
+pull: ./gdb cannot be found at a gate
+EOF
+echo OK
+
+echo $N If missing comp is served only by one, use it ...............$NL
+# V1 has lower price than v7, but gcc only in v7, so pick it first.
+cd "$HERE/src"
+bk here set V1 V7
+cd ../dest
+bk pull -q 2>ERR || fail -f ERR
+cmpfiles WANTERR ERR
+bk here > GOT
+cat >WANT <<EOF
+PRODUCT
+V7
+EOF
+cmpfiles WANT GOT
+bk unpull -qf
+echo OK
+
+echo $N If cover is bigger, but contains extra, pick smaller cov ....$NL
+# V7 covers 2, but with 1 extra; V2 and V1 each cover 1, but no extra
+cd "$HERE/src"
+bk here set V7 V2 V1
+cd ../dest
+bk here set -qf PRODUCT
+bk pull -q 2>ERR || fail -f ERR
+cmpfiles WANTERR ERR
+bk here > GOT
+cat >WANT <<EOF
+PRODUCT
+V1
+V2
+EOF
+cmpfiles WANT GOT
+bk unpull -qf
+echo OK
+
+echo $N If extra is the same, pick the bigger cover .................$NL
+# V7 covers 2, with 1 extra; V6 and V5 each cover 1, with 1 extra
+cd "$HERE/src"
+bk here set V7 V6 V5
+cd ../dest
+bk here set -qf PRODUCT
+bk pull -q 2>ERR || fail -f ERR
+cmpfiles WANTERR ERR
+bk here > GOT
+cat >WANT <<EOF
+PRODUCT
+V7
+EOF
+cmpfiles WANT GOT
+bk unpull -qf
+echo OK
+
+echo $N If extra and cover are the same, pick smaller ...............$NL
+# V6 is unique (gcc), so it will bring in gas, V1 will be picked as smaller
+cd "$HERE/src"
+bk here set V6 V5 V1
+cd ../dest
+bk here set -qf PRODUCT
+bk pull -q 2>ERR || fail -f ERR
+cmpfiles WANTERR ERR
+bk here > GOT
+cat >WANT <<EOF
+PRODUCT
+V1
+V6
+EOF
+cmpfiles WANT GOT
+bk unpull -qf
+echo OK
+
+echo $N No extra, and cover are the same, pick smaller ..............$NL
+# gas(V4) is now local as opposed to extra, V1 will still be picked as smaller
+bk here set -qf V4
+bk pull -q 2>ERR || fail -f ERR
+cmpfiles WANTERR ERR
+bk here > GOT
+cat >WANT <<EOF
+PRODUCT
+V1
+V4
+V6
+EOF
+cmpfiles WANT GOT
+bk unpull -qf
+echo OK
+
+echo $N Local alias chg from all to none, bring over remote .........$NL
+# gas(V4) is now local as opposed to extra, V1 will still be picked as smaller
+bk here set $Q CR7to0
+bk pull -q 2>ERR || fail -f ERR
+cmpfiles WANTERR ERR
+bk here > GOT
+cat >WANT <<EOF
+CR7to0
+PRODUCT
+V1
+V6
+EOF
+cmpfiles WANT GOT
+bk unpull -qf
+echo OK
+
+echo $N If local alias def changes, maybe bring over comp ...........$NL
+# With no alias defined, bring over components
+cd "$HERE/src"
+bk here set CL7to0
+cd ../dest
+bk here set -qf PRODUCT
+bk alias set $Q CL7to0 PRODUCT
+bk pull -q 2>ERR || fail -f ERR
+cmpfiles WANTERR ERR
+bk here > GOT
+cat >WANT <<EOF
+./gcc
+./gdb
+PRODUCT
+EOF
+cmpfiles WANT GOT
+bk unpull -qf
+echo OK
+
+echo $N Verify what a pull failure looks like .......................$NL
+# If we can't satisfy the request, pull will fail
+# Note: this throws unique data away - put at end of test cycle
+# Also note: this can be fixed: We don't need gcc to satisfy safe,
+# but we don't know that when computing cover
+cd "$HERE/src"
+bk here set -qf CL1to3
+cd ../dest
+bk here set -qf PRODUCT
+bk alias set $Q CL1to3 gcc gdb
+bk pull -q 2>ERR && fail -f ERR
+grep -q 'pull: failed to fetch component ./gcc' ERR || fail -f ERR
+echo OK
+
+###
+echo $N Show a hard case where it fails..............................$NL
+cd "$HERE"
+nested np
+for i in 00 01 02 03 04 05 06 07 08 09 10 11 12 13
+do
+	bk setup -Cf $i
+done
+bk alias set -C A 00 01 02 03 04 05 06 07
+bk alias set -C B 08 09 10 11
+bk alias set -C C 12 13
+bk alias set -C D gcc
+bk alias set -C E gdb
+bk alias set -C F 00 02 04 06 08 10 12 gcc
+bk alias set -C G 01 03 05 07 09 11 13 gdb
+bk commit $Q -ysetup
+bk gate $Q -r
+cd "$HERE"
+bk clone $Q -sPRODUCT np np_clone
+cd "$HERE/np"
+touch foo
+bk new $Q foo
+bk commit $Q -ychange
+bk here set A B C D E F G
+cd "$HERE/np_clone"
+bk pull -q 2>ERR || fail
+bk here >GOT
+cat >WANT <<EOF
+F
+G
+EOF
+bk diff -q --ignore-trailing-cr WANT GOT >OUT && \
+	fail -f OUT you fixed a bug
+echo failed \(bug np-hard\)
+
+
 echo $N Set up repos.................................................$NL
 cd "$HERE"
 nested gate
@@ -13,7 +213,7 @@ bk commit $Q -y"add aliases"
 # clean up the here file, perhaps bk setup
 # should notice it's ALL and not add the
 # keys to the HERE file?
-bk here set all
+bk here set -f all
 cd "$HERE"
 bk clone -sGCC $Q gate child-1
 cd "$HERE/gate/gcc"
@@ -42,7 +242,7 @@ bk here > GOT
 cmpfiles WANT GOT
 bk unpull $Q -f
 # bug? unpull will not remove aliases
-bk here set $Q GCC
+bk here set -f $Q GCC
 echo OK
 
 echo $N Test pull from non-gate ok, as long as we have gate..........$NL
@@ -83,25 +283,19 @@ bk unpull $Q -f
 mv BitKeeper/log/urllist.old BitKeeper/log/urllist
 echo OK
 
-echo $N Test pull from non-gate fails, when no gate..................$NL
-bk here > WANT
+echo $N Test pull from non-gate works, when no gate..................$NL
 # clear out urllist
 rm ../project/BitKeeper/log/urllist
 mv BitKeeper/log/urllist BitKeeper/log/urllist.old
-bk pull $Q 2>ERR && fail -f ERR should have failed
-cat <<EOF > WANT2
-pull: ./doc cannot be found at a gate
-pull: ./gdb cannot be found at a gate
-pull: ./man cannot be found at a gate
-pull: failing because there are aliases that are not populated locally
-but have changesets that could not be found in any gate.
-Please run bk populate to add the following aliases:
-  DEFAULT
-EOF
-cmpfiles WANT2 ERR
+bk pull $Q 2>ERR || fail
 bk here > GOT
+cat <<EOF >WANT
+DEFAULT
+GCC
+PRODUCT
+EOF
 cmpfiles WANT GOT
-bk abort -qf
+bk unpull -qf || fail
 # restore it
 mv BitKeeper/log/urllist.old BitKeeper/log/urllist
 echo OK
@@ -109,11 +303,10 @@ echo OK
 echo $N Test pull --safe from gate...................................$NL
 cd "$HERE/child-1"
 bk here > WANT
-bk pull --safe $Q ../gate 2>ERR && fail -f ERR should have failed
-grep -q "aliases that are not populated locally" ERR || fail -f ERR wrong error
+bk pull --safe $Q ../gate 2>ERR || fail
 bk here > GOT
 cmpfiles WANT GOT
-bk abort -qf
+bk unpull -qf || fail
 echo OK
 
 echo $N Test pull --unsafe from non-gate.............................$NL
@@ -126,7 +319,9 @@ echo $N Test pull --safe when alias redefined to include all rmt ....$NL
 cd ../project
 bk alias add GCC ALL
 cd ../child-1
-bk pull $Q --safe || fail 
+bk pull $Q --safe || fail
+cd ../project
+bk undo -qsfr+
 echo OK
 
 echo $N Test pull --safe when new comp added and both sides full ....$NL
@@ -138,6 +333,8 @@ echo OK
 
 echo $N Make sure we do not bring unchanged aliases..................$NL
 cd "$HERE"
+# project needs to be a gate so that it's okay to not populate DOC
+(cd project && bk gate -q .)
 bk clone $Q -sGCC -sDOC project gcc-and-doc
 bk clone $Q -sGCC project just-gcc
 cd gcc-and-doc/gcc
@@ -147,7 +344,7 @@ bk ci -y. $Q afile
 bk commit -S -y. $Q
 bk -P commit -y. $Q
 cd "$HERE/just-gcc"
-bk pull --safe $Q ../gcc-and-doc 2>ERR || fail
+bk pull -q ../gcc-and-doc || fail
 cat >WANT <<EOF
 GCC
 PRODUCT
@@ -156,7 +353,7 @@ bk here > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N Demo that bug that I told Rick about.........................$NL
+echo $N Make sure we do the right thing when an alias changes........$NL
 cd "$HERE"
 bk clone $Q -sGCC project repo-1
 bk clone $Q -sGDB project repo-2
@@ -173,17 +370,23 @@ bk alias add $Q GCC gdb
 bk push $Q ../project
 bk here set -f $Q PRODUCT
 # now pull GCC, note there are no changes to gdb in remote
-bk pull $Q --safe ../repo-1 2>ERR && fail -f ERR
+bk pull -q ../repo-1 2>ERR || fail -f ERR
+bk here > GOT
 cat <<EOF >WANT
-pull: failing because there are aliases that are not populated locally
-but have changesets that could not be found in any gate.
-Please run bk populate to add the following aliases:
-  GCC
+GCC
+PRODUCT
 EOF
-cmpfiles WANT ERR
+cmpfiles WANT GOT
+bk comps -h > GOT
+cat <<EOF >WANT
+./gcc
+./gdb
+./tools
+EOF
+cmpfiles WANT GOT
 echo OK
 
-echo $N Do an unsafe pull after a safe pull fails ...................$NL
+echo $N Setup a pull where a remote alias changes locally ...........$NL
 cd "$HERE"
 nested nongate
 bk gate $Q -r
@@ -192,7 +395,23 @@ touch foo
 bk new $Q foo
 bk commit $Q -yremote
 cd ../just-prod
-bk pull $Q > OUT 2>&1 && fail should have failed
-grep -q "failing because there are aliases that are not" OUT || fail -f OUT
-bk pull $Q --unsafe || fail should have worked
+bk pull $Q --unsafe ../repo-1 || fail
+cd ../repo-1/tools
+echo hi > junk
+bk new $Q junk
+bk commit $Q -yjunk || fail
+cd ..
+bk commit $Q -yjunk || fail
+bk alias set $Q GCC ./gcc ./tools || fail
+cd ../repo-2
+bk alias set $Q GCC ./gcc || fail
+bk here set -f $Q GCC || fail
+bk pull $Q ../repo-1 2> ERR || fail -f ERR
+bk here >GOT
+cat <<EOF >WANT
+./tools
+GCC
+PRODUCT
+EOF
+cmpfiles WANT GOT
 echo OK

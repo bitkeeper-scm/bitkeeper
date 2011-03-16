@@ -12,8 +12,33 @@ if {[info exists ::env(BK_DEBUG_GUI)]} {
 	rename newproc proc
 }
 
+proc bk_initTheme {} \
+{
+	switch -- [tk windowingsystem] {
+		"aqua" {
+			set bg "systemSheetBackground"
+		}
+
+		"x11" {
+			ttk::setTheme bk
+		}
+	}
+
+	set bg [ttk::style lookup . -background]
+
+	. configure -background $bg
+	option add *background	$bg
+
+	option add *Listbox.background	#FFFFFF
+	option add *Entry.background	#FFFFFF
+	option add *Entry.borderWidth	1
+	option add *Text.background	#FFFFFF
+}
+
 proc bk_init {} {
 	bk_initPlatform
+
+	bk_initTheme
 
 	## Tk removes the Toplevel tag from . and replaces it with
 	## the name of the application.  We don't use this anywhere,

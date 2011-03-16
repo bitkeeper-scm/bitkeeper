@@ -373,51 +373,38 @@ proc widgets {} \
 		set py 1
 	}
 
-	option add *background $gc(BG)
-
 	set rootX [winfo screenwidth .]
 	set rootY [winfo screenheight .]
 	wm title . "BitKeeper Help"
 	set firstConfig 1
 	set sb $gc(help.scrollbars)
 
-	frame .menu -borderwidth 0 -relief flat
-	    button .menu.done -text "Quit" -font $gc(help.buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
-		-command { exit }
-	    button .menu.help -text "Help" -font $gc(help.buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
-		-command {
-			global	line
+	ttk::frame .menu
+	    ttk::button .menu.done -text "Quit" -command { exit }
+	    ttk::button .menu.help -text "Help" -command {
+		global	line
 
-			clearSearch
-			set line [topic2line helptool]
-			doSelect 1
-		}
-	    button .menu.back -text "Back" -font $gc(help.buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
-		-state disabled -command { upStack }
-	    button .menu.forw -text "Forw" -font $gc(help.buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
-		-state disabled -command { downStack }
-	    button .menu.clear -text "Clear search" -font $gc(help.buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
+		clearSearch
+		set line [topic2line helptool]
+		doSelect 1
+	    }
+	    ttk::button .menu.back -text "Back" -state disabled \
+		-command { upStack }
+	    ttk::button .menu.forw -text "Forward" -state disabled \
+		-command { downStack }
+	    ttk::button .menu.clear -text "Clear Search" \
 		-command { clearSearch }
-	    button .menu.search -text "Search:" -font $gc(help.buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
-		-command { search }
-	    entry .menu.entry -font $gc(help.fixedBoldFont) -borderwid 1 \
-		-background $gc(help.textBG) -fg $gc(help.textFG) \
-		-relief sunken -textvariable search_word
-	    grid .menu.done -row 0 -column 0 -sticky ew
-	    grid .menu.help -row 0 -column 1 -sticky ew
-	    grid .menu.back -row 0 -column 3 -sticky ew
-	    grid .menu.forw -row 0 -column 4 -sticky ew
-	    grid .menu.clear -row 0 -column 5 -sticky ew
-	    grid .menu.search -row 0 -column 6 -sticky ew
-	    grid .menu.entry -row 0 -column 7 -sticky ew
+	    ttk::button .menu.search -text "Search:" -command { search }
+	    ttk::entry .menu.entry -textvariable search_word
+	    grid .menu.done -row 0 -column 0 -sticky ew -padx 1
+	    grid .menu.help -row 0 -column 1 -sticky ew -padx 1
+	    grid .menu.back -row 0 -column 3 -sticky ew -padx 1
+	    grid .menu.forw -row 0 -column 4 -sticky ew -padx 1
+	    grid .menu.clear -row 0 -column 5 -sticky ew -padx 1
+	    grid .menu.search -row 0 -column 6 -sticky ew -padx 1
+	    grid .menu.entry -row 0 -column 7 -sticky ew -padx 1
 	    grid columnconfigure .menu 7 -weight 1
-	frame .ctrl -borderwidth 0 -relief flat
+	ttk::frame .ctrl
 	    text .ctrl.topics \
 	        -borderwidth 1 \
 		-spacing1 1 \
@@ -428,18 +415,9 @@ proc widgets {} \
 		-background "#F8F8F8" \
 		-yscrollcommand [list .ctrl.yscroll set] \
 		-xscrollcommand [list .ctrl.xscroll set]
-	    scrollbar .ctrl.yscroll \
-	        -borderwidth 1 \
-		-width $gc(help.scrollWidth) \
-		-command ".ctrl.topics yview" \
-		-background $gc(help.scrollColor) \
-		-troughcolor $gc(help.troughColor)
-	    scrollbar .ctrl.xscroll \
-	        -borderwidth 1 \
-		-troughcolor $gc(help.troughColor) \
-		-background $gc(help.scrollColor) \
-		-orient horiz \
-		-width $gc(help.scrollWidth) \
+	    ttk::scrollbar .ctrl.yscroll -orient vertical \
+		-command ".ctrl.topics yview"
+	    ttk::scrollbar .ctrl.xscroll -orient horizontal \
 		-command ".ctrl.topics xview"
 
 	    if {[string index $sb 0] eq "R"} {
@@ -454,7 +432,7 @@ proc widgets {} \
 	    grid rowconfigure    .ctrl .ctrl.topics -weight 1
 	    grid columnconfigure .ctrl .ctrl.topics -weight 1
 
-	frame .text -borderwidth 0 -relief flat
+	ttk::frame .text
 	    text .text.help \
 	        -borderwidth 1 \
 		-wrap none \
@@ -466,16 +444,9 @@ proc widgets {} \
 		-xscrollcommand [list .text.x2scroll set] \
 		-yscrollcommand [list .text.y2scroll set]
 
-	    scrollbar .text.x2scroll \
-		-orient horiz \
-		-troughcolor $gc(help.troughColor) \
-		-background $gc(help.scrollColor) \
-		-width $gc(help.scrollWidth) \
+	    ttk::scrollbar .text.x2scroll -orient horizontal \
 		-command ".text.help xview"
-	    scrollbar .text.y2scroll \
-		-width $gc(help.scrollWidth) \
-		-troughcolor $gc(help.troughColor) \
-		-background $gc(help.scrollColor) \
+	    ttk::scrollbar .text.y2scroll -orient vertical \
 		-command ".text.help yview"
 
 	    if {[string index $sb 1] eq "R"} {
@@ -491,7 +462,7 @@ proc widgets {} \
 	    grid rowconfigure    .text .text.help -weight 1
 	    grid columnconfigure .text .text.help -weight 1
 
-	grid .menu -row 0 -column 0 -columnspan 2 -sticky nsew
+	grid .menu -row 0 -column 0 -columnspan 2 -sticky nsew -pady 2
 	grid .ctrl -row 1 -column 0 -sticky nsew
 	grid .text -row 1 -column 1 -sticky nsew
 
@@ -557,7 +528,6 @@ proc widgets {} \
 	.ctrl.topics tag configure "search" -background $gc(help.topicsColor) \
 	    -relief ridge -borderwid 1
 
-	. configure -background $gc(BG)
 	after idle [list after 1 focus .menu.entry]
 }
 

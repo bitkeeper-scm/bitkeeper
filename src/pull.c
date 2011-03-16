@@ -617,6 +617,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 
 done:	unlink(probe_list);
 	if (rmt_urllist) hash_free(rmt_urllist);
+	freeLines(rmt_aliases, free);
 	if (r->type == ADDR_HTTP) disconnect(r);
 	return (rc);
 }
@@ -625,7 +626,7 @@ private int
 pull_ensemble(remote *r, char **rmt_aliases,
     hash *rmt_urllist, char ***conflicts)
 {
-	char	*url;
+	char	*url, *p;
 	char	**urls = 0;
 	popts	popts = {0};
 	char	**vp;
@@ -634,8 +635,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	nested	*n = 0;
 	comp	*c;
 	int	i, j, rc = 0, errs = 0;
-	int	which = 0;
-	hash	*aliasdb;
+	int	which = 0, updateHERE = 0;
 	project	*proj;
 
 	/* allocate r->params for later */
@@ -658,20 +658,8 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	 * bits.  Then we lookup the local HERE file in the new merged
 	 * tip of aliases to find which components should be local.
 	 */
-	aliasdb = aliasdb_init(n, n->proj, n->tip, 0, 0);
-	assert(aliasdb);
-	if (aliasdb_chkAliases(n, aliasdb, &rmt_aliases, 0)) goto out;
-	EACH(rmt_aliases) {
-		char	**comps;
-
-		comps = aliasdb_expandOne(n, aliasdb, rmt_aliases[i]);
-		EACH_STRUCT(comps, c, j) {
-			c->data = addLine(c->data, rmt_aliases[i]);
-			c->remotePresent = 1;
-		}
-		freeLines(comps, 0);
-	}
-	aliasdb_free(aliasdb);
+	nested_aliases(n, n->tip, &rmt_aliases, 0, 0);
+	EACH_STRUCT(n->comps, c, i) if (c->alias) c->remotePresent = 1;
 
 	urlinfo_setFromEnv(n, url);
 
@@ -709,6 +697,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 
 	if ((opts.safe == 1) || ((opts.safe == -1) && !getenv("BKD_GATE"))) {
 		char	**missing = 0;
+		char	**new_aliases = 0;
 		int	flags = URLLIST_GATEONLY;
 
 		if (opts.quiet) flags |= SILENT;
@@ -724,31 +713,63 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			if (!c->alias && c->remotePresent &&
 			    ((opts.safe == 1) ||
 				!urllist_find(n, c, flags, 0))) {
-				char	**alist = c->data;
-
-				EACH(alist) {
-					missing = addLine(missing,
-					    strdup(alist[i]));
-				}
+				/*
+				 * Add this component to the missing
+				 * list, we will fetch it with a cover.
+				 */
+				missing = addLine(missing, (char *)c);
 			}
 		}
+
 		if (missing) {
-			uniqLines(missing, free);
-			fprintf(stderr, "pull: failing because there are "
-			    "aliases that are not populated locally\n"
-			    "but have changesets that could not be found in "
-			    "any gate.\n"
-			    "Please run bk populate to add the following "
-			    "aliases:\n");
-			EACH(missing) fprintf(stderr, "  %s\n", missing[i]);
-			freeLines(missing, free);
-			rc = 1;
-			goto out;
+
+			/*
+			 * Find a minimum subset of the remote's alias
+			 * file that covers all the missing
+			 * components.
+			 */
+			new_aliases =
+				alias_coverMissing(n, missing, rmt_aliases);
+
+			unless (opts.quiet) {
+				fprintf(stderr,
+				    "%s: adding the following aliases:\n",
+				    prog);
+			}
+
+			/*
+			 * Add them to HERE
+			 */
+			EACH(new_aliases) {
+				n->here = addLine(n->here, new_aliases[i]);
+				unless (opts.quiet) {
+					p = new_aliases[i];
+					if (isKey(p)) {
+						c = nested_findKey(n, p);
+						assert(c);
+						p = c->path;
+					}
+					fprintf(stderr, "\t%s\n", p);
+				}
+			}
+			freeLines(new_aliases, 0);
+			uniqLines(n->here, free);
+
+			/*
+			 * This retags comps with c->alias for the
+			 * aliases we just added so populate will
+			 * update them.
+			 */
+			if (nested_aliases(n, 0, &n->here, 0, NESTED_PENDING)){
+				/* should never fail */
+				fprintf(stderr,
+				    "%s: local aliases no longer valid.\n",
+				    prog);
+				rc = 1;
+				goto out;
+			}
+			updateHERE = 1;
 		}
-	}
-	EACH_STRUCT(n->comps, c, j) {
-		freeLines((char **)c->data, 0);
-		c->data = 0;
 	}
 
 	/*
@@ -826,8 +847,9 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	if (strneq(popts.lasturl, "file://", 7)) popts.lasturl += 7;
 
 	/*
-	 * Even though we are populating, there is no change to
-	 * the HERE file.  Just leave it as it is.
+	 * We don't want populate messing with the HERE file,
+	 * resolve will updated it from the RESYNC directory
+	 * if the pull succeeds.
 	 */
 	popts.leaveHERE = 1;
 
@@ -922,7 +944,13 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	}
 
 out:	proj_cd2product();
-	unless (rc) urlinfo_write(n); /* don't write on error */
+	unless (rc) {
+		 /* don't write on error */
+		urlinfo_write(n);
+		chdir(ROOT2RESYNC);
+		if (updateHERE) nested_writeHere(n);
+		chdir(RESYNC2ROOT);
+	}
 	free(url);
 	freeLines(urls, 0);
 	sccs_free(s);

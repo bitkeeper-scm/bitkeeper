@@ -16,6 +16,7 @@ struct hashops	ops[] = {
 		wrapmdbm_next,
 		0,		/* last */
 		0,		/* prev */
+		0,		/* numelems */
 	},
 	{	"memhash",	/* type 1 */
 		memhash_new,
@@ -30,6 +31,7 @@ struct hashops	ops[] = {
 		memhash_next,
 		0,		/* last */
 		0,		/* prev */
+		memhash_count,
 	},
 };
 

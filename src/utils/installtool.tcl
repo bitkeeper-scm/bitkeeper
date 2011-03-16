@@ -47,7 +47,12 @@ proc main {} \
 
 proc initGlobals {} \
 {
-	global runtime tcl_platform
+	global runtime wizData tcl_platform
+
+	set wizData(license)  ""
+	set wizData(licsign1) ""
+	set wizData(licsign2) ""
+	set wizData(licsign3) ""
 
 	set runtime(tmpdir) [pwd]
 	set runtime(destination) ""
@@ -373,25 +378,20 @@ proc widgets {} \
 		set ::widgets(licsign2) $w.licsign2Entry
 		set ::widgets(licsign3) $w.licsign3Entry
 
-		set BKSLATEGRAY1	#deeaf4
-		label $w.keyLabel -text "License Key:"
-		entry $w.keyEntry  -textvariable wizData(license) \
-		    -background $BKSLATEGRAY1
-		button $w.fileButton -text "From file..." \
+		ttk::label $w.keyLabel -text "License Key:"
+		ttk::entry $w.keyEntry  -textvariable wizData(license)
+		ttk::button $w.fileButton -text "From file..." \
 		    -command {parseLicenseData file}
-		label $w.licsign1Label -text "Key Signature #1:"
-		entry $w.licsign1Entry -textvariable wizData(licsign1) \
-		    -background $BKSLATEGRAY1
-		label $w.licsign2Label -text "Key Signature #2:"
-		entry $w.licsign2Entry -textvariable wizData(licsign2) \
-		    -background $BKSLATEGRAY1
-		label $w.licsign3Label -text "Key Signature #3:"
-		entry $w.licsign3Entry -textvariable wizData(licsign3) \
-		    -background $BKSLATEGRAY1
+		ttk::label $w.licsign1Label -text "Key Signature #1:"
+		ttk::entry $w.licsign1Entry -textvariable wizData(licsign1)
+		ttk::label $w.licsign2Label -text "Key Signature #2:"
+		ttk::entry $w.licsign2Entry -textvariable wizData(licsign2)
+		ttk::label $w.licsign3Label -text "Key Signature #3:"
+		ttk::entry $w.licsign3Entry -textvariable wizData(licsign3)
 
 		grid $w.keyLabel       -row 0 -column 0 -sticky e
 		grid $w.keyEntry       -row 0 -column 1 -sticky ew -pady 2
-		grid $w.fileButton     -row 0 -column 2 -sticky w
+		grid $w.fileButton     -row 0 -column 2 -sticky w -padx 2
 		grid $w.licsign1Label  -row 1 -column 0 -sticky e 
 		grid $w.licsign1Entry  -row 1 -column 1 -sticky ew -pady 2
 		grid $w.licsign2Label  -row 2 -column 0 -sticky e
@@ -447,8 +447,8 @@ proc widgets {} \
 		    -takefocus 0 \
 		    -bd 1 \
 		    -width 80
-		scrollbar $w.vsb -command [list $w.text yview] -bd 1
-		scrollbar $w.hsb -command [list $w.text.xview] -bd 1
+		ttk::scrollbar $w.vsb -command [list $w.text yview]
+		ttk::scrollbar $w.hsb -command [list $w.text.xview]
 		bind all <Next> "$w.text yview scroll 1 pages"
 		bind all <Prior> "$w.text yview scroll -1 pages"
 		bind all <Down> "$w.text yview scroll 1 units"
@@ -461,14 +461,14 @@ proc widgets {} \
 			}
 		"
 
-		frame $w.radioframe -bd 0
-		radiobutton $w.radioframe.accept \
+		ttk::frame $w.radioframe
+		ttk::radiobutton $w.radioframe.accept \
 		    -text "I Agree" \
 		    -underline 2 \
 		    -variable wizData(licenseAccept) \
 		    -command [list $this configure -state normal] \
 		    -value 1
-		radiobutton $w.radioframe.dont \
+		ttk::radiobutton $w.radioframe.dont \
 		    -text "I Do Not Agree" \
 		    -underline 2 \
 		    -variable wizData(licenseAccept) \
@@ -507,7 +507,7 @@ proc widgets {} \
 			set ::runtime(destinationRB) $::runtime(destination)
 		}
 
-		label $w.label -text "Installation Directory:" -anchor w
+		ttk::label $w.label -text "Installation Directory:"
 		grid $w.label -row 0 -column 0 -columnspan 2 -sticky w
 
 		# determine how much space the radiobutton takes up so 
@@ -515,8 +515,7 @@ proc widgets {} \
 		# widget needs to use all the same options as the 
 		# ones that show up in the GUI or things won't quite line
 		# up right...
-		radiobutton $w.bogus \
-		    -text "" -borderwidth 1 -highlightthickness 0 -padx 0
+		ttk::radiobutton $w.bogus -text ""
 		set rbwidth [winfo reqwidth $w.bogus]
 		destroy $w.bogus
 
@@ -531,14 +530,10 @@ proc widgets {} \
 				set label $dir
 			}
 
-			radiobutton $w.rb-$row \
-			    -anchor w \
+			ttk::radiobutton $w.rb-$row \
 			    -text $label \
-			    -borderwidth 1 \
-			    -highlightthickness 0 \
 			    -variable ::runtime(destinationRB) \
 			    -value $dir \
-			    -padx 0 \
 			    -command [list setDestination $dir]
 
 			grid $w.rb-$row -row $row -column 0 \
@@ -556,10 +551,9 @@ proc widgets {} \
 		set ::widgets(destinationEntry) $w.destinationEntry
 		set ::widgets(destinationButton) $w.destinationButton
 
-		button $::widgets(destinationButton) \
+		ttk::button $::widgets(destinationButton) \
 		    -text "Browse..." \
 		    -state disabled \
-		    -borderwidth 1 \
 		    -command {
 			    set f $::runtime(destination)
 			    if {$f eq ""} {
@@ -578,11 +572,9 @@ proc widgets {} \
 				    setDestination $tmp
 			    }
 		    }
-		entry $widgets(destinationEntry) \
+		ttk::entry $widgets(destinationEntry) \
 		    -state normal \
-		    -textvariable ::runtime(destination) \
-		    -borderwidth 1 \
-		    -relief sunken
+		    -textvariable ::runtime(destination)
 
 		bind $widgets(destinationEntry) <Any-KeyPress> {
 			set ::runtime(destinationRB) ""
@@ -590,14 +582,13 @@ proc widgets {} \
 			. configure -state normal
 		}
 
-
 		grid $::widgets(destinationEntry) -row $row -column 1 \
 		    -sticky ew 
-		grid $::widgets(destinationButton) -row $row -column 2
+		grid $::widgets(destinationButton) -row $row -column 2 -padx 2
 
 		incr row
 		set ::widgets(dirStatus) $w.dirStatus
-		label $::widgets(dirStatus)  -anchor w -foreground red
+		label $::widgets(dirStatus) -anchor w -foreground red
 		grid $::widgets(dirStatus) -pady 10 -row $row -column 0 \
 		    -columnspan 3 -sticky ew
 
@@ -624,32 +615,30 @@ proc widgets {} \
 			    $this stepconfigure InstallDLLs \
 				-description [unwrap $::strings(InstallDLLs)]
 			    if {$runtime(shellxCheckbutton)} {
-				    checkbutton $w.shellx-local \
-					-anchor w \
-					-text "Enable Windows Explorer integration (local drives only)" \
-					-borderwidth 1 \
+				    ttk::checkbutton $w.shellx-local \
+					-text "Enable Windows Explorer\
+					    integration (local drives only)" \
 					-variable ::runtime(enableShellxLocal) \
 					-onvalue 1 \
 					-offvalue 0 
 			    }
-			    checkbutton $w.bkscc \
-				-anchor w \
+			    ttk::checkbutton $w.bkscc \
 				-text "Enable Visual Studio integration" \
-				-borderwidth 1 \
 				-variable ::runtime(enableSccDLL) \
 				-onvalue 1 \
 				-offvalue 0 
 
-			    frame $w.spacer1 -height 8 -borderwidth 0 
+			    ttk::frame $w.spacer1 -height 8
 			    pack $w.spacer1 -side top -fill x
 			    pack $w.bkscc -side top -fill x -anchor w
 			    if {$runtime(shellxCheckbutton)} {
-				    pack $w.shellx-local -side top -fill x -anchor w
+				    pack $w.shellx-local -side top -fill x \
+					-anchor w
 				    after idle [list focus $w.shellx-local]
 			    }	
 		    } else {
-			    $this stepconfigure InstallDLLs \
-				-description [unwrap $::strings(InstallDLLsNoAdmin)]
+			    $this stepconfigure InstallDLLs -description \
+				[unwrap $::strings(InstallDLLsNoAdmin)]
 		    }
 	    }
 
@@ -669,16 +658,14 @@ proc widgets {} \
 		    $this stepconfigure OverWrite -description [unwrap $d]
 
 		    catch {exec $bk version} versionInfo
-		    label $w.versionInfo -text $versionInfo
+		    ttk::label $w.versionInfo -text $versionInfo
 		    pack $w.versionInfo -side top -fill x -padx 32
 
 		    set ::runtime(upgradeCheckbutton) 0
 		    $this configure -state pending
 
-		    checkbutton $w.overwrite \
-			-anchor w \
+		    ttk::checkbutton $w.overwrite \
 			-text "Yes, remove the existing installation" \
-			-borderwidth 1 \
 			-variable ::runtime(upgradeCheckbutton) \
 			-onvalue 1 \
 			-offvalue 0 \
@@ -771,8 +758,7 @@ proc widgets {} \
 					-sticky new
 
 				    incr row
-				    button $w.moreInfo \
-					-borderwidth 1 \
+				    ttk::button $w.moreInfo \
 					-text "More info..." \
 					-command [list moreInfo symlinks]
 
@@ -816,12 +802,10 @@ proc widgets {} \
 		    -borderwidth 1 \
 		    -background #ffffff \
 		    -relief sunken
-		scrollbar $w.vsb \
-		    -borderwidth 1 \
+		ttk::scrollbar $w.vsb \
 		    -orient vertical \
 		    -command [list $w.log yview]
-		scrollbar $w.hsb \
-		    -borderwidth 1 \
+		ttk::scrollbar $w.hsb \
 		    -orient horizontal \
 		    -command [list $w.log xview]
 
@@ -1202,10 +1186,9 @@ proc moreInfo {what} \
 		    -height 2 \
 		    -relief groove
 
-		button .moreInfo.ok \
+		ttk::button .moreInfo.ok \
 		    -text Ok \
-		    -command "wm withdraw .moreInfo" \
-		    -borderwidth 1
+		    -command "wm withdraw .moreInfo"
 
 		pack .moreInfo.label -side top \
 		    -fill both -expand y -padx 8 -pady 8 -ipadx 2 -ipady 2

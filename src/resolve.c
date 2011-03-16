@@ -2824,6 +2824,21 @@ err:			unapply(applied);
 
 	if (exists("RESYNC/SCCS/d.ChangeSet")) touch("SCCS/d.ChangeSet", 0644);
 
+	/*
+	 * If the HERE file changed as a result of the pull, throw it over
+	 * the wall.
+	 */
+	if (exists("RESYNC/BitKeeper/log/HERE")) {
+		if (unlink("BitKeeper/log/HERE")) {
+			perror("unlink");
+			goto err;
+		}
+		if (fileMove("RESYNC/BitKeeper/log/HERE","BitKeeper/log/HERE")){
+			perror("move");
+			goto err;
+		}
+	}
+
  	/*
 	 * If case folding file system , make sure file name
 	 * did not change case after we copied it
