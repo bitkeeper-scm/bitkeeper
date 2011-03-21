@@ -1,5 +1,5 @@
 ============================================================================
-Release notes for BitKeeper version 5.2 (released 01-Mar-2011)
+Release notes for BitKeeper version 5.2 (released 21-Mar-2011)
 
 This is a feature release mainly focusing on extending the nested
 repository functionality and some GUI polish.   
@@ -46,7 +46,12 @@ New features:
 
  clone
     Add new --checkout=none|get|edit option to override the default
-    checkout options for a given clone.
+    checkout options for a given clone.  The clone stores this special
+    setting in BitKeeper/log/config, which has a high precedence,
+    meaning unless BK_CONFIG has checkout defined, the clone setting
+    will stick through pulls and pushes.  See 'bk help config' for
+    precedence.  The checkout setting is local only, and will not
+    propagate on a clone.
 
  cmdlog
     The formatting of the BitKeeper/log/cmd_log file has changed
@@ -70,6 +75,19 @@ New features:
     cmdlog may need to adjust.
 
     See 'bk help cmdlog' for more information.
+
+ config
+    The BitKeeper/log/config file has been raised in precedence to
+    shield repositories from picking up an individual user's config.
+    An example of how help: take a repository that has many users working
+    in it, either through a file:// url or remotely through an ssh:// or
+    rsh:// url.  Previously, each user's ~/.bk/config settings would be
+    used to determine, for example, checkout state.  By raising the
+    precedence of BitKeeper/log/config, an administrator can now put in
+    config setting "checkout: get!" into BitKeeper/log/config, and that
+    will be used instead.  See "bk help config" for details about
+    precedence.   Note, this raising in precedence also contributes
+    to the clone change mentioned above.
 
  level
     Add 'bk level -l' to just print the level to make it easier for
@@ -123,6 +141,8 @@ New features:
     The code to unpopulate a component now requires that it be found
     in a gate before removing.  This is consistent with the pull
     changes related to gates.
+    Also -f no longer overrides the restrictions if the repository
+    being a gate or portal.  The unpopulate will now fail.
 
 Bugfixes:
   - Fixed problems related to attaching and detaching components that
@@ -135,9 +155,13 @@ Bugfixes:
   - Several display issues related to progress bars have been addressed.
   - 'bk root' didn't work correctly in a standalone repository that
     happened to be below a nested repository in the filesystem.
-  - Resolved some issues with 'bk unedit' when sharing repositories between
-    multiple users.
-
+  - Fixed a problem with 'bk unedit' when sharing repositories between
+    multiple users.  Files could be owned by different users, and
+    bk unedit would fail when trying to do a chmod on a file owned
+    by a different user.  Now, it will remove the initial file and
+    create a new one.
+  - Windows explorer - leave the PATH and BK_GUI environment variables
+    untouched for anything spawned from explorer.
 ============================================================================
 Release notes for BitKeeper version 5.1.1 (released 16-Feb-2011)
 
