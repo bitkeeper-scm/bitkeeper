@@ -122,7 +122,7 @@ proc keyboard_bindings {} \
 		bind all <Command-w> exit
 	}
 	# In the search window, don't listen to "all" tags.
-	bindtags $search(text) { .menu.search Entry . }
+	bindtags $search(text) { .menu.search TEntry . }
 }
 
 proc getRev {file rev checkMods} \
