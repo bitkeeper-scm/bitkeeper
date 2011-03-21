@@ -51,7 +51,7 @@ comments_main(int ac, char **av)
 		d = comments_get(0);
 		lines = d->cmnts;
 		d->cmnts = 0;
-		sccs_freetree(d);
+		sccs_freedelta(d);
 	} else if (file) {
 		unless (lines = readFile(file)) return (1);
 	}

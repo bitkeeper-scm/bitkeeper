@@ -495,6 +495,7 @@ bk takepatch -a < ../merge.bkp
 cmpsfiles SCCS/s.file ../boston/SCCS/s.file
 echo OK
 
+true || {
 echo $N Test serial compression .....................................$NL
 cd ../boston
 bk undo $Q -sfaBOSTON
@@ -593,3 +594,4 @@ bk unpull $Q -sf
 bk takepatch -a < new.bkp
 cmpsfiles SCCS/s.ChangeSet reference
 echo OK
+}

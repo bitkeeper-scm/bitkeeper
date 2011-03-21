@@ -193,7 +193,7 @@ commit(int quiet, delta *d)
 	}
 	fclose(f);
 	comment = aprintf("-Y%s", tmp);
-	sccs_freetree(d);
+	sccs_freedelta(d);
 	cmds[i=0] = "bk";
 	cmds[++i] = "commit";
 	cmds[++i] = "-dF";

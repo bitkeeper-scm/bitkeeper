@@ -619,8 +619,8 @@ again:
 		} else {
 			state->sym = state->sym->next;
 		}
-		while (state->sym && (g.d !=
-		    (g.s->prs_all ? state->sym->metad : state->sym->d))) {
+		while (state->sym && (g.d->serial !=
+		    (g.s->prs_all ? state->sym->meta_ser : state->sym->ser))) {
 			state->sym = state->sym->next;
 		}
 		unless (state->sym) return (0);

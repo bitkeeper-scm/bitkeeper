@@ -380,7 +380,7 @@ do_checkin(char *name,
 		if ((d->flags & D_BADFORM) ||
 		    (!d->r[0] || (!d->r[1] && (d->r[0] != 1))) ||
 		    (d->r[2] && !d->r[3])) {
-			sccs_freetree(d);
+			sccs_freedelta(d);
 			fprintf(stderr, "admin: bad revision: %s for %s\n",
 			    rev, s->sfile);
 			sccs_free(s);

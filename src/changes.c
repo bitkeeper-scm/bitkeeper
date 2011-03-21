@@ -1255,7 +1255,7 @@ want(sccs *s, delta *e)
 		if (opts.tsearch) {
 			match = 0;
 			for (sym = s->symbols; sym; sym = sym->next) {
-				unless (sym->d == e) continue;
+				unless (sym->ser == e->serial) continue;
 				if (search_either(sym->symname, opts.search)) {
 					match = 1;
 					break;

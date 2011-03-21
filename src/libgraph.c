@@ -352,7 +352,6 @@ symdiff_setParent(sccs *s, delta *d, delta *new, ser_t **sd)
 		sd[d->serial] = addSerial(sd[d->serial], d->pserial);
 		sd[d->serial] = addSerial(sd[d->serial], new->serial);
 	}
-	d->parent = new;
 	d->pserial = new->serial;
 }
 
@@ -495,24 +494,24 @@ graph_kidwalk(sccs *s, walkfcn toTip, walkfcn toRoot, void *token)
 	d = s->tree;
 	while (d) {
 		/* walk down all kid pointers */
-		for (next = d; next && !TAG(next); next = d->kid) {
+		for (next = d; next && !TAG(next); next = KID(d)) {
 			d = next;
 			if (toTip && (rc = toTip(s, d, token))) goto out;
 			sortKids(d, graph_bigFirst, &karr);
 		}
 		/* now next sibling or up parent link */
-		for (; d; d = d->parent) {
+		for (; d; d = PARENT(s, d)) {
 			/* only need d->kid to be oldest */
 			sortKids(d, graph_smallFirst, &karr);
 			if (toRoot && (rc = toRoot(s, d, token))) goto out;
-			if ((next = d->siblings) && !TAG(next)) {
+			if ((next = SIBLINGS(d)) && !TAG(next)) {
 				d = next;
 				break;
 			}
 		}
 	}
 out:	if (d) {
-		while (d = d->parent) sortKids(d, graph_smallFirst, &karr);
+		while (d = PARENT(s, d)) sortKids(d, graph_smallFirst, &karr);
 	}
 	freeLines(karr, 0);
 	return (rc);
@@ -547,23 +546,25 @@ sortKids(delta *start, int (*compar)(const void *, const void *),
 	 char ***karr)
 {
 	char	**list = *karr;
-	delta	*d, **dp;
+	delta	*d;
 	int	i;
+	ser_t	*serp;
 
 	/* bail if nothing to sort */
-	unless ((d = start->kid) && !TAG(d) && d->siblings) return;
+	unless ((d = KID(start)) && !TAG(d) && SIBLINGS(d)) return;
 
 	truncLines(list, 0);
-	for (d = start->kid; d; d = d->siblings) {
+	for (d = KID(start); d; d = SIBLINGS(d)) {
 		list = addLine(list, d);
 	}
 	*karr = list;
 	sortLines(list, compar);
 
-	dp = &start->kid;
+	serp = &start->kid;
 	EACH(list) {
-		*dp = d = (delta *)list[i];
-		dp = &d->siblings;
+		d = (delta *)list[i];
+		*serp = d->serial;
+		serp = &d->siblings;
 	}
-	*dp = 0;
+	*serp = 0;
 }

@@ -51,7 +51,9 @@
 #include "range.h"
 
 private	int	fastWeave(sccs *s, FILE *out);
+#ifdef	COMPRESSION
 private	void	scompress(sccs *s, int serial);
+#endif
 
 /*
  * Initialize the structure used by cset_insert according to how
@@ -110,12 +112,14 @@ delta *
 cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 {
 	int	i, error, added = 0;
+	int	pserial = parent ? parent->serial : 0;
 	delta	*d, *e, *p;
 	ser_t	serial = 0; /* serial number for 'd' */ 
 	char	*t, *r;
 	char	**syms = 0;
 	char	key[MAXKEY];
 	int	keep;
+	symbol	*sym;
 
 	unless (iF) {	
 		/* ignore in patch: like if in skipkeys */
@@ -143,7 +147,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 			   	e->flags |= D_CSET;
 				keep = 1;
 			}
-			sccs_freetree(d);
+			sccs_freedelta(d);
 			d = keep ? e : 0;
 			serial = e->serial;
 			goto done;
@@ -151,6 +155,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	}
 	d->flags |= D_REMOTE;
 
+	TRACE("%s/%d", d->sdate, d->sum);
 	/*
 	 * Insert new delta 'd' into s->table in time sorted order
 	 */
@@ -160,9 +165,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 		 * We are propably getting the 1.0 delta
 		 * We only get here if we do "takepatch -i"
 		 */
-		s->table = d;
 		s->tree = d; /* sccs_findKey() wants this */
-		d->next = NULL;
 		serial = 1;
 	} else if (earlier(s, s->table, d)) {
 		/*
@@ -170,8 +173,6 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 		 * Just insert it at the top
 		 */
 		serial = s->nextserial;
-		d->next = s->table;
-		s->table = d;
 	} else {
 		/*
 		 * OK, We need to insert d somewhere in the middle of the list
@@ -179,56 +180,64 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 		 */
 		p = s->table;
 		while (p) {
-			e = p->next;
+			e = NEXT(p);
 			if (!e || earlier(s, e, d)) { /* got insertion point */
 				serial = p->serial;
-				d->next = e;
-				p->next = d;
 				break;
 			}
-			p = p->next;
-		}
-		/*
-		 * Update all reference to the moved serial numbers 
-		 */
-		for (e = s->table; e; e = e->next) {
-			int	i;
-
-			if (e->serial < serial) break; /* optimization */
-
-			if (e->serial >= serial) {
-				e->serial++;
-				sfind_update(s, e, e->serial - 1);
-			}
-			if (e->pserial >= serial) e->pserial++;
-			if (e->merge >= serial) e->merge++;
-			if (e->ptag >= serial) e->ptag++;
-			if (e->mtag >= serial) e->mtag++;
-			EACH(e->include) {
-				if (e->include[i] >= serial) e->include[i]++;
-			}
-			EACH(e->exclude) {
-				if (e->exclude[i] >= serial) e->exclude[i]++;
-			}
+			p = e;
 		}
 	}
+	e = d;
+	d = insertArrayN(&s->slist, serial, e);
+	d->inarray = 1;
+	free(e);
+	s->tree = SFIND(s, 1);
+	s->table = s->slist + nLines(s->slist);
 	s->nextserial++;
+
+	/*
+	 * Update all reference to the moved serial numbers
+	 */
+	for (e = d + 1; e <= s->table; e += 1) {
+		unless (e->serial) continue;
+
+		if (e->serial >= serial) {
+			e->serial++;
+			// XXX we can do this faster
+			sccs_findKeyUpdate(s, e);
+		}
+		if (e->pserial >= serial) e->pserial++;
+		if (e->merge >= serial) e->merge++;
+		if (e->ptag >= serial) e->ptag++;
+		if (e->mtag >= serial) e->mtag++;
+		EACH(e->include) {
+			if (e->include[i] >= serial) e->include[i]++;
+		}
+		EACH(e->exclude) {
+			if (e->exclude[i] >= serial) e->exclude[i]++;
+		}
+	}
+	if (d != s->table) {
+		for (sym = s->symbols; sym; sym = sym->next) {
+			if (sym->ser >= serial) sym->ser++;
+			if (sym->meta_ser >= serial) sym->meta_ser++;
+		}
+	}
+
+	TRACE("serial=%d", serial);
 
 	/*
 	 * Fix up the parent pointer & serial.
 	 * Note: this is just linked enough that we can finish takepatch,
 	 * it is NOT a fully linked tree.
 	 */
-	if (parent) {
-		d->pserial = parent->serial;
-		d->parent = parent;
-	}
+	if (pserial) d->pserial = pserial;
 
 	/*
 	 * Fix up d->serial
 	 */
 	d->serial = serial;
-	sfind_update(s, d, 0);
 	assert((d->serial == 0) || (d->serial > d->pserial));
 
 	sccs_inherit(s, d);
@@ -293,16 +302,12 @@ cset_write(sccs *s, int spinners, int fast)
 	/*
 	 * Call sccs_renumber() before writing out the new cset file.
 	 * Since the cweave code doesn't build the ->kid pointers
-	 * correctly we need to create them here. First we invalidate
-	 * the sfind() cache and then call the code used by dinsert()
-	 * to update d->kid and d->siblings.
 	 *
 	 * NOTE: kidlink uses samebranch, so needs renumber to be correct.
 	 * Conceptually, that's backwards, as kidlink should be graph
 	 * shape based and then renumber could go fast because it
 	 * could trust kid pointers.
 	 */
-	s->ser2dsize = 0;
 	if (CSET(s) && spinners) fprintf(stderr, "renumbering");
 	sccs_renumber(s, SILENT);
 	for (i = 1; i < s->nextserial; i++) {
@@ -316,7 +321,7 @@ cset_write(sccs *s, int spinners, int fast)
 	 * XXX can't we just look at s->tree and be done?
 	 */
 	if (fast) {
-		for (d = s->table; d; d = d->next) {
+		for (d = s->table; d; d = NEXT(d)) {
 			if (d->flags & D_TEXT) {
 				unless (d->flags & D_REMOTE) break;
 				if (s->text) {
@@ -358,14 +363,17 @@ err:	sccs_abortWrite(s, &f);
 private	int
 fastWeave(sccs *s, FILE *out)
 {
-	u32	i, serial;
+	u32	i;
+#ifdef	COMPRESSION
+	u32	serial, fix = 0;
+#endif
 	u32	base = 0, index = 0, offset = 0;
 	delta	*d, *e;
 	loc	*lp;
 	ser_t	*weavemap = 0;
 	char	**patchmap = 0;
 	MMAP	*fastpatch = 0;
-	int	fix = 0, rc = 1;
+	int	rc = 1;
 
 	assert(s);
 	// assert(s->state & S_CSET);
@@ -409,38 +417,43 @@ fastWeave(sccs *s, FILE *out)
 		}
 		while (index + offset < d->serial) {
 			if (e = sfind(s, index + offset)) {
-				serial = e->next ? e->next->serial + 1 : 1;
+#ifdef	COMPRESSION
+				serial = NEXT(e) ? NEXT(e)->serial + 1 : 1;
 				if (serial != e->serial) {
 					e->serial = serial;
 					fix = 1;
 				}
+#endif
 				weavemap[index - base] = e->serial;
 			}
 			index++;
 		}
-		serial = d->next ? d->next->serial + 1 : 1;
+#ifdef	COMPRESSION
+		serial = NEXT(d) ? NEXT(d)->serial + 1 : 1;
 		if (serial != d->serial) {
 			d->serial = serial;
 			fix = 1;
 		}
+#endif
 		offset++;
 	}
 	if (weavemap) {
 		while (index + offset < s->nextserial) {
 			if (e = sfind(s, index + offset)) {
-				serial = e->next ? e->next->serial + 1 : 1;
+#ifdef	COMPRESSION
+				serial = NEXT(e) ? NEXT(e)->serial + 1 : 1;
 				if (serial != e->serial) {
 					e->serial = serial;
 					fix = 1;
 				}
+#endif
 				weavemap[index - base] = e->serial;
 			}
 			index++;
 		}
-		if (fix) {
-			scompress(s, weavemap[0]+1);
-			s->ser2dsize = 0;
-		}
+#ifdef	COMPRESSION
+		if (fix) scompress(s, weavemap[0]+1);
+#endif
 	}
 	if (delta_table(s, out, 0)) {
 		perror("table");
@@ -465,6 +478,8 @@ err:	mclose(fastpatch);
 	return (rc);
 }
 
+#ifdef	COMPRESSION
+
 /* XXX: this relies on sfind table not being updated */
 private	void
 scompress(sccs *s, int serial)
@@ -475,7 +490,7 @@ scompress(sccs *s, int serial)
 	while (serial < s->nextserial) {
 		unless (d = sfind(s, serial++)) continue;
 
-		if (d->pserial) d->pserial = d->parent->serial;
+		//if (d->pserial) d->pserial = d->parent->serial;
 		if (d->ptag) d->ptag = sfind(s, d->ptag)->serial;
 		if (d->mtag) d->mtag = sfind(s, d->mtag)->serial;
 		if (d->merge) d->merge = sfind(s, d->merge)->serial;
@@ -487,3 +502,4 @@ scompress(sccs *s, int serial)
 		}
 	}
 }
+#endif

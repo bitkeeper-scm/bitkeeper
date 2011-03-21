@@ -286,7 +286,7 @@ delta_main(int ac, char **av)
 		}
 		if (mode) d = sccs_parseArg(d, 'O', mode, 0);
 		unless (s = sccs_init(name, iflags)) {
-			if (d) sccs_freetree(d);
+			if (d) sccs_freedelta(d);
 			name = sfileNext();
 			errors |= 1;
 			continue;

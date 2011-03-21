@@ -485,7 +485,7 @@ private void
 collapse(sccs *s, int verbose, delta *d, delta *m)
 {
 	delta	*b, *p, *e;
-	delta	**ep;
+	ser_t	*ep;
 
 	p = PARENT(s, d);
 	assert(m && p);
@@ -509,22 +509,21 @@ collapse(sccs *s, int verbose, delta *d, delta *m)
 	 *   1. delete b from current location in list
 	 *   2. put b where ever d was, removing d from list
 	 */
-	for (ep = &p->kid; e = *ep; ep = &e->siblings) {
+	for (ep = &p->kid; e = SFIND(s, *ep); ep = &e->siblings) {
 		if (e == b) break;
 	}
 	assert(e);
 	*ep = b->siblings;	/* delete b */
-	for (ep = &p->kid; e = *ep; ep = &e->siblings) {
+	for (ep = &p->kid; e = SFIND(s, *ep); ep = &e->siblings) {
 		if (d == e) break;
 	}
 	assert(e);
-	*ep = b;	/* put b in place of p; deleting p */
+	*ep = b->serial;	/* put b in place of p; deleting p */
 	b->siblings = d->siblings;
 
 	/* surgery at other end of graph: merge becomes parent of d */
 	d->siblings = m->kid;
-	m->kid = d;
-	d->parent = m;
+	m->kid = d->serial;
 	d->pserial = m->serial;
 	d->merge = 0;
 	assert(d->include);
@@ -638,7 +637,6 @@ fixTable(sccs *s, int verbose)
 			 * for a complete rewiring job.
 			 */
 			d->merge = d->pserial;
-			d->parent = m;
 			d->pserial = m->serial;
 		}
 	}

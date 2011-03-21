@@ -307,7 +307,7 @@ sccslog(sccs *s)
 
 	f = fmem_open();
 	if (CSET(s)) ChangeSet = 1;
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = NEXT(d)) {
 		if (SET(s) && !(d->flags & D_SET)) continue;
 		if (d->type != 'D') continue;
 

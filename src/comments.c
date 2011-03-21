@@ -139,7 +139,7 @@ comments_get(delta *d)
 		d = sccs_parseArg(d, 'C', comment, 0);
 	}
 	if (d && (d->flags & D_ERROR)) {
-		sccs_freetree(d);
+		sccs_freedelta(d);
 		return (0);
 	}
 	return (d);

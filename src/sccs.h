@@ -166,7 +166,6 @@ int	checking_rmdir(char *dir);
 #define S_READ_ONLY	0x00000800	/* force read only mode */
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
-#define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
 #define S_IMPORT	0x00080000	/* import mode */
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
@@ -460,10 +459,8 @@ typedef struct delta {
 	/* In memory only stuff */
 	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 	time_t	date;			/* date - conversion from sdate/zone */
-	struct	delta *parent;		/* parent delta above me */
-	struct	delta *kid;		/* next delta on this branch */
-	struct	delta *siblings;	/* pointer to other branches */
-	struct	delta *next;		/* all deltas in table order */
+	ser_t	kid;			/* next delta on this branch */
+	ser_t	siblings;		/* pointer to other branches */
 	u32	flags;			/* per delta flags */
 	u32	dangling:1;		/* in MONOTONIC file, ahead of chgset */
 	u32	symGraph:1;		/* if set, I'm a symbol in the graph */
@@ -471,6 +468,7 @@ typedef struct delta {
 					/* Needed for tag conflicts with 2 */
 					/* open tips, so maintained always */
 	u32	localcomment:1;		/* comments are stored locally */
+	u32	inarray:1;
 	char	type;			/* Delta or removed delta */
 } delta;
 #define	COMMENTS(d)	((d)->cmnts != 0)
@@ -480,11 +478,13 @@ typedef struct delta {
 			comments_load(s, d); \
 			EACH_INDEX(d->cmnts, i)
 
-#define	NEXT(d)		((d)->next)
-#define	PARENT(s, d)	((d)->parent)
-#define	MERGE(s, d)	sfind((s), (d)->merge)
-#define	KID(d)		((d)->kid)
-#define	SIBLINGS(d)	((d)->siblings)
+#define	SFIND(s, ser)	((ser) ? ((s)->slist + ser) : 0)
+#define	DFIND(d, ser)	((ser) ? ((d) + (ser) - (d)->serial) : 0)
+#define	NEXT(d)		slist_next(d)
+#define	PARENT(s, d)	SFIND((s), (d)->pserial)
+#define	MERGE(s, d)	SFIND((s), (d)->merge)
+#define	KID(d)		DFIND((d), (d)->kid)
+#define	SIBLINGS(d)	DFIND((d), (d)->siblings)
 
 /*
  * Macros to get at an optional hidden original path.
@@ -517,9 +517,9 @@ typedef	struct symbol {			/* symbolic tags */
 	struct	symbol *next;		/* s->symbols sorted on date list */
 	char	*symname;		/* STABLE */
 	char	*rev;			/* 1.32 */
-	delta	*d;			/* delta associated with this one */
+	ser_t	ser;			/* delta associated with this one */
 					/* only for absolute revs, not LOD */
-	delta	*metad;			/* where the symbol lives on disk */
+	ser_t	meta_ser;		/* where the symbol lives on disk */
 	u32	left:1;			/* present in left branch */
 	u32	right:1;		/* present in right branch */
 } symbol;
@@ -591,16 +591,13 @@ typedef struct loc {
 struct sccs {
 	delta	*tree;		/* the delta tree after mkgraph() */
 	delta	*table;		/* the delta table list, 1.99 .. 1.0 */
-	delta	*lastinsert;	/* pointer to the last delta inserted */
-	delta	*meta;		/* deltas in the meta data list */
+	delta	*slist;
 	symbol	*symbols;	/* symbolic tags sorted most recent to least */
 	symbol	*symTail;	/* last symbol, for tail inserts */
 	char	*defbranch;	/* defbranch, if set */
 	int	numdeltas;	/* number of entries in the graph */
 	int	nextserial;	/* next unused serial # */
 				/* due to gaps, those two may not be the same */
-	delta	**ser2delta;	/* indexed by serial, returns delta */
-	int	ser2dsize;	/* just to be sure */
 	off_t	size;		/* size of mapping */
 	FILE	*fh;		/* cached copy of the input file handle */
 	FILE	*oldfh;		/* orig fh (no ungzip layer) */
@@ -741,7 +738,7 @@ typedef struct patch {
 	MMAP	*initMmap;	/* points into mmapped patch */
 	char	*diffFile;	/* RESYNC/BitKeeper/diff-1, only if !diffMmap */
 	MMAP	*diffMmap;	/* points into mmapped patch */
-	delta	*d;		/* in cset path, save the corresponding d */
+	ser_t	serial;		/* in cset path, save the corresponding ser */
 	time_t	order;		/* ordering over the whole list, oldest first */
 	u32	local:1;	/* patch is from local file */
 	u32	remote:1;	/* patch is from remote file */
@@ -888,7 +885,7 @@ sccs	*sccs_restart(sccs *s);
 sccs	*sccs_reopen(sccs *s);
 int	sccs_open(sccs *s, struct stat *sp);
 void	sccs_free(sccs *);
-void	sccs_freetree(delta *);
+void	sccs_freedelta(delta *);
 void	sccs_close(sccs *);
 int	sccs_csetWrite(sccs *s, char **cweave);
 sccs	*sccs_csetInit(u32 flags);
@@ -947,6 +944,7 @@ delta	*sccs_findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
 void	sccs_findKeyUpdate(sccs *s, delta *d);
+void	sccs_findKeyFlush(sccs *s);
 int	isKey(char *key);
 delta	*sccs_findMD5(sccs *s, char *md5);                              
 delta	*sccs_dInit(delta *, char, sccs *, int);
@@ -989,7 +987,7 @@ int	sccs_findtips(sccs *s, delta **a, delta **b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
-void	sfind_update(sccs *s, delta *d, ser_t oldser);
+delta	*slist_next(delta *d);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
 

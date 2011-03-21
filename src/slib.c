@@ -20,7 +20,7 @@
 typedef struct weave weave;
 #define	WRITABLE_REG(s)	(WRITABLE(s) && isRegularFile((s)->mode))
 private delta	*rfind(sccs *s, char *rev);
-private void	dinsert(sccs *s, delta *d, int fixDate);
+private delta	*dinsert(sccs *s, delta *d, int fixDate);
 private int	samebranch(delta *a, delta *b);
 private char	*sccsXfile(sccs *sccs, char type);
 private int	badcksum(sccs *s, int flags);
@@ -58,7 +58,7 @@ private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
 private int	sameFileType(sccs *s, delta *d);
 private int	deflate_gfile(sccs *s, char *tmpfile);
 private int	isRegularFile(mode_t m);
-private void	sccs_freetable(delta *d);
+private void	sccs_freetable(sccs *s);
 private	delta*	getCksumDelta(sccs *s, delta *d);
 private delta	*gca(sccs *, delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
@@ -75,7 +75,6 @@ private	void	parseConfig(char *buf, MDBM *db);
 private	void	taguncolor(sccs *s, delta *d);
 private	void	prefix(sccs *s,
 		    delta *d, u32 flags, int lines, char *name, FILE *out);
-private	void	sfindRealloc(sccs *s);
 
 /*
  * returns 1 if dir is a directory that is not empty
@@ -438,7 +437,10 @@ atoiMult_p(char **p)
 	return (val);
 }
 
-/* Free one delta.  */
+/*
+ * Free the data items in a delta.  Doesn't free the delta itself.
+ * (use sccs_freedelta() for that)
+ */
 private void
 freedelta(delta *d)
 {
@@ -458,23 +460,22 @@ freedelta(delta *d)
 		free(d->csetFile);
 	}
 	if (d->hash) free(d->hash);
-	free(d);
 }
 
 
 /*
- * Free the delta tree.
+ * Free a standalone delta (not in the array).
  */
 void
-sccs_freetree(delta *tree)
+sccs_freedelta(delta *d)
 {
-	if (!tree) return;
+	if (!d) return;
 
-	debug((stderr, "freetree(%s %s %d)\n",
-	       notnull(tree->rev), notnull(tree->sdate), tree->serial));
-	sccs_freetree(SIBLINGS(tree));
-	sccs_freetree(KID(tree));
-	freedelta(tree);
+	assert(!d->inarray);
+	assert(!d->siblings);
+	assert(!d->kid);
+	freedelta(d);
+	free(d);
 }
 
 /*
@@ -482,19 +483,14 @@ sccs_freetree(delta *tree)
  * This follows the ->next pointer and is not recursive.
  */
 private void
-sccs_freetable(delta *t)
+sccs_freetable(sccs *s)
 {
-	delta *u;
+	delta	*d;
 
-	if (!t) return;
-
-	debug((stderr, "freetable():\n"));
-	for(; t; t = u) {
-		debug((stderr, "\t%s %s %d\n",
-		       notnull(t->rev), notnull(t->sdate), t->serial));
-		u = NEXT(t);
-		freedelta(t);
-	}
+	EACHP(s->slist, d) freedelta(d);
+	FREE(s->slist);
+	s->tree = s->table = 0;
+	s->nextserial = 0;
 }
 
 /*
@@ -642,7 +638,7 @@ sccs_kidlink(sccs *s, delta *d)
 	unless (p) return;
 	assert(!d->kid && !d->siblings);
 	if (!p->kid) {
-		p->kid = d;
+		p->kid = d->serial;
 		debug((stderr, " -> %s (kid)\n", p->rev));
 
 	} else if ((KID(p)->type == 'D') &&
@@ -651,14 +647,14 @@ sccs_kidlink(sccs *s, delta *d)
 		 * If there are siblings, add d at the end.
 		 */
 		for (e = KID(p); e->siblings; e = SIBLINGS(e));
-		e->siblings = d;
+		e->siblings = d->serial;
 		debug((stderr, " -> %s (sib)\n", p->rev));
 	} else {  /* else not in right place, put the new delta there. */
 		debug((stderr, "kid type %c, %d.%d.%d.%d vs %d.%d.%d.%d\n",
 		    p->kid->type, p->r[0], p->r[1], p->r[2], p->r[3],
 		    p->kid->r[0], p->kid->r[1], p->kid->r[2], p->kid->r[3]));
 		d->siblings = p->kid;
-		p->kid = d;
+		p->kid = d->serial;
 		debug((stderr, " -> %s (kid, moved sib %s)\n",
 		    p->rev, d->siblings->rev));
 	}
@@ -671,94 +667,71 @@ sccs_kidlink(sccs *s, delta *d)
  * New in Feb, '99: remove duplicate metadata fields here, maintaining the
  * invariant that a delta in the graph is always correct.
  */
-private void
+private delta *
 dinsert(sccs *s, delta *d, int fixDate)
 {
 	delta	*p;
 
 	debug((stderr, "dinsert(%s)", d->rev));
-	unless (s->tree) {
-		s->tree = d;
-		s->lastinsert = d;
+
+	/* copy delta* into s->slist */
+	unless (d->inarray) {
+		assert(!d->serial);
+		p = addArray(&s->slist, d);
+		free(d); /* not sccs_freedelta(); just free the mem */
+		d = p;
+		d->inarray = 1;
+		d->serial = nLines(s->slist); /* nextserial on autopilot */
+		s->nextserial = d->serial + 1;	/* until we get rid of it */
+	}
+	s->table = s->slist + nLines(s->slist);
+	if (s->tree) {
+		s->tree = SFIND(s, 1);
+	} else {
+		s->tree = SFIND(s, 1);
 		debug((stderr, " -> ROOT\n"));
 		if (fixDate) uniqRoot(s);
-		return;
+		return (d);
 	}
 	if (d->random) {
 		debug((stderr, "GRAFT: %s@%s\n", s->gfile, d->rev));
 		s->grafted = 1;
 	}
-	if (s->lastinsert && (s->lastinsert->serial == d->pserial)) {
-		p = s->lastinsert;
-		debug((stderr, " (fast)"));
-	} else {
-		p = sfind(s, d->pserial);
-	}
-	assert(p);
-	s->lastinsert = d;
-	d->parent = p;
 	sccs_kidlink(s, d);
 	sccs_inherit(s, d);
 	if (fixDate) {
 		uniqDelta(s);
 	}
 	sccs_findKeyUpdate(s, d);
-}
-
-void
-sfind_update(sccs *s, delta *d, ser_t oldser)
-{
-	unless (s->ser2dsize) return;
-	assert (s->ser2delta);
-	if (oldser && (oldser < s->ser2dsize)) {
-		assert(s->ser2delta[oldser] == d);
-		s->ser2delta[oldser] = 0;
-	}
-	if (d->serial < s->ser2dsize) {
-		assert(s->ser2delta[d->serial] == 0);
-		s->ser2delta[d->serial] = d;
-	}
+	return (d);
 }
 
 /*
- * Find the delta referenced by the serial number.
- * The first call will allocate but any deltas added after the
- * first call will be searched for the slow way.
+ * This is the NEXT(d) macro.
+ * Move to the next older delta in table order.
  */
 delta *
-sfind(sccs *s, ser_t serial)
+slist_next(delta *d)
 {
-	delta	*t;
+	ser_t	ser = d->serial;
 
-	unless (serial) return (0);
-	assert(serial <= s->nextserial);
-	unless (s->ser2dsize) sfindRealloc(s);
-	if (serial < s->ser2dsize) {
-		return (s->ser2delta[serial]);
+	assert(ser && d->inarray);
+	while (ser > 1) {
+		--ser;
+		--d;
+		if (d->serial) return (d);
 	}
-	for (t = s->table; t; t = t->next) {
-		unless (t->serial > serial) break;
-	}
-	if (t->serial == serial) return (t);
 	return (0);
 }
 
-private	void
-sfindRealloc(sccs *s)
+delta *
+sfind(sccs *s, ser_t serial)
 {
-	delta	*t;
+	delta	*d;
 
-	if (s->ser2delta) free(s->ser2delta);
-	s->ser2dsize = s->nextserial;
-	s->ser2delta = calloc(s->ser2dsize, sizeof(delta*));
-	for (t = s->table; t; t = t->next) {
-		if (t->serial >= s->ser2dsize) {
-			fprintf(stderr, "%s %d %d\n",
-			    s->sfile, t->serial, s->ser2dsize);
-		}
-		assert(t->serial < s->ser2dsize);
-		s->ser2delta[t->serial] = t;
-	}
+	assert(serial <= s->nextserial);
+	if (s->slist && (d = SFIND(s, serial)) && d->serial) return (d);
+	return (0);
 }
 
 /*
@@ -2580,14 +2553,14 @@ metaSyms(sccs *sc)
 	symbol	*sym;
 
 	for (sym = sc->symbols; sym; sym = sym->next) {
-		assert(sym->d);
-		if (sym->d->type == 'D') continue;
-		assert(PARENT(sc, sym->d));
-		    for (d = PARENT(sc, sym->d); d->type != 'D';
-			 d = PARENT(sc, d)) {
+		d = SFIND(sc, sym->ser);
+		assert(d);
+		if (d->type == 'D') continue;
+		assert(d->pserial);
+		for (d = PARENT(sc, d); d->type != 'D'; d = PARENT(sc, d)) {
 			assert(d);
 		}
-		sym->d = d;
+		sym->ser = d->serial;
 		d->flags |= D_SYMBOLS;
 	}
 
@@ -2613,7 +2586,7 @@ sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 	for (d = s->table; d; d = NEXT(d)) {
 		unless (d->symLeaf) continue;
 		for (sym = s->symbols; sym; sym = sym->next) {
-			if (sym->metad == d) break;
+			if (sym->meta_ser == d->serial) break;
 		}
 		unless (*l1) {
 			arev = d->rev;
@@ -2801,7 +2774,7 @@ MDBM	*
 sccs_tagConflicts(sccs *s)
 {
 	MDBM	*db = 0;
-	delta	*l1 = 0, *l2 = 0;
+	delta	*l1 = 0, *l2 = 0, *md;
 	char	buf[MAXREV*3];
 	symbol	*sy1, *sy2;
 
@@ -2815,14 +2788,16 @@ sccs_tagConflicts(sccs *s)
 	sccs_tagcolor(s, l1);
 	taguncolor(s, l2);	/* uncolor the intersection */
 	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
-		unless (sy1->metad->flags & D_RED) continue;
-		sy1->metad->flags &= ~D_RED;
+		md = SFIND(s, sy1->meta_ser);
+		unless (md->flags & D_RED) continue;
+		md->flags &= ~D_RED;
 		sy1->left = 1;
 	}
 	sccs_tagcolor(s, l2);
 	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
-		unless (sy1->metad->flags & D_RED) continue;
-		sy1->metad->flags &= ~D_RED;
+		md = SFIND(s, sy1->meta_ser);
+		unless (md->flags & D_RED) continue;
+		md->flags &= ~D_RED;
 		sy1->right = 1;
 	}
 
@@ -2855,7 +2830,7 @@ sccs_tagConflicts(sccs *s)
 			 * has later serials on both sides.
 			 */
 			sprintf(buf,
-			    "%d %d", sy1->metad->serial, sy2->metad->serial);
+			    "%d %d", sy1->meta_ser, sy2->meta_ser);
 			if (mdbm_store_str(db, sy1->symname, buf, MDBM_INSERT)) {
 				char	*old = mdbm_fetch_str(db, sy1->symname);
 				int	a = 0, b = 0;
@@ -2863,8 +2838,8 @@ sccs_tagConflicts(sccs *s)
 				assert(old);
 				sscanf(old, "%d %d", &a, &b);
 				assert(a && b);
-				if ((a > sy1->metad->serial) ||
-				    (b > sy2->metad->serial)) {
+				if ((a > sy1->meta_ser) ||
+				    (b > sy2->meta_ser)) {
 				    	continue;
 				}
 				mdbm_store_str(db,
@@ -3140,10 +3115,13 @@ mkgraph(sccs *s, int flags)
 	char	rev[100], date[9], time[9], user[100];
 	char	*p;
 	char	tmp[100];
+	u32	added, deleted, same;
 	int	i;
 	int	line = 1;
 	char	*expected = "?";
 	char	*buf;
+	ser_t	serial;
+	char	type;
 
 	rewind(s->fh);
 	sccs_nextdata(s);		/* checksum */
@@ -3165,32 +3143,23 @@ bad:
 			} else {
 				fprintf(stderr, "\n");
 			}
-			sccs_freetable(s->table);
-			s->table = 0;
+			sccs_freetable(s);
 			return;
 		}
 		line++;
 first:		if (streq(buf, "\001u")) break;
-		t = new(delta);
-		assert(t);
-		s->numdeltas++;
-		t->kid = d;
-		if (d)
-			d->next = t;
-		else
-			s->table = t;
-		d = t;
+
 		/* ^As 00001/00000/00011 */
 		if (buf[0] != '\001' || buf[1] != 's' || buf[2] != ' ') {
 			expected = "^As ";
 			goto bad;
 		}
 		p = &buf[3];
-		d->added = atoiMult_p(&p);
+		added = atoiMult_p(&p);
 		p++;
-		d->deleted = atoiMult_p(&p);
+		deleted = atoiMult_p(&p);
 		p++;
-		d->same = atoiMult_p(&p);
+		same = atoiMult_p(&p);
 		/* ^Ad D 1.2.1.1 97/05/15 23:11:46 lm 4 2 */
 		/* ^Ad R 1.2.1.1 97/05/15 23:11:46 lm 4 2 */
 		buf = sccs_nextdata(s);
@@ -3200,7 +3169,7 @@ first:		if (streq(buf, "\001u")) break;
 			goto bad;
 		}
 	    /* D|R */
-		d->type = buf[3];
+		type = buf[3];
 	    /* 1.1 or 1.2.2.2, etc. */
 		p = &buf[5];
 		for (i = 0, p = &buf[5]; *p != ' '; rev[i++] = *p++);
@@ -3228,14 +3197,31 @@ first:		if (streq(buf, "\001u")) break;
 		}
 		p++;
 	    /* 10 11 */
-		d->serial = atoi_p(&p);
+		serial = atoi_p(&p);
+		if (serial >= s->nextserial) s->nextserial = serial + 1;
+		unless (s->slist) growArray(&s->slist, serial);
+		t = SFIND(s, serial);
+		assert(t);
+		s->numdeltas++;
+		if (d) {
+			t->kid = d->serial;
+		} else {
+			s->table = t;
+		}
+		d = t;
+		d->inarray = 1;
+		d->serial = serial;
+		d->added = added;
+		d->deleted = deleted;
+		d->same = same;
+		d->type = type;
+
 		if (*p != ' ') {
 			expected = "^AD 1.1 98/03/17 18:32:39 user 12 ";
 			goto bad;
 		}
 		p++;
 		d->pserial = atoi(p);
-		if (d->serial >= s->nextserial) s->nextserial = d->serial + 1;
 		debug((stderr, "mkgraph(%s)\n", rev));
 		d->rev = strdup(rev);
 		explode_rev(d);
@@ -3342,7 +3328,7 @@ done:		if (CSET(s) && (d->type == 'R') &&
 		delta	*therest = KID(d);
 
 		d->kid = 0;
-		dinsert(s, d, 0);
+		dinsert(s, d, 0); /* don't need leading d = */
 		d = therest;
 	}
 	unless (flags & INIT_WACKGRAPH) {
@@ -3528,8 +3514,8 @@ addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
 	}
 	sym->rev = rev ? strdup(rev) : NULL;
 	sym->symname = strdup(val);
-	sym->d = d;
-	sym->metad = metad;
+	sym->ser = d->serial;
+	sym->meta_ser = metad->serial;
 	d->flags |= D_SYMBOLS;
 	metad->flags |= D_SYMBOLS;
 	DATE(d);
@@ -3538,15 +3524,17 @@ addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
 	/*
 	 * Insert in sorted order, most recent first.
 	 */
-	if (!s->symbols || !s->symbols->d) {
+	if (!s->symbols || !s->symbols->ser) {
 		sym->next = s->symbols;
 		s->symbols = sym;
-	} else if (metad->date >= s->symbols->d->date) {
+	} else if (metad->date >= SFIND(s, s->symbols->ser)->date) {
 		sym->next = s->symbols;
 		s->symbols = sym;
 	} else {
 		for (s3 = 0, s2 = s->symbols; s2; s3 = s2, s2 = s2->next) {
-			if (!s2->d || (metad->date >= s2->d->date)) {
+			delta	*d = SFIND(s, s2->ser);
+
+			if (!d || (metad->date >= d->date)) {
 				sym->next = s2;
 				s3->next = sym;
 				break;
@@ -4647,7 +4635,7 @@ sccs_free(sccs *s)
 	// No free on fullpath, proj.c maintains it.
 
 	sccsXfile(s, 0);
-	if (s->table) sccs_freetable(s->table);
+	sccs_freetable(s);
 	for (sym = s->symbols; sym; sym = t) {
 		t = sym->next;
 		if (sym->symname) free(sym->symname);
@@ -4668,7 +4656,6 @@ sccs_free(sccs *s)
 		}
 	}
 	if (s->defbranch) free(s->defbranch);
-	if (s->ser2delta) free(s->ser2delta);
 	freeLines(s->usersgroups, free);
 	freeLines(s->flags, free);
 	freeLines(s->text, free);
@@ -7543,7 +7530,7 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 		 * transitive close by marking all 1s in the
 		 * history of non patch nodes
 		 */
-		for (d = s->table; d; d = d->next) {
+		for (d = s->table; d; d = NEXT(d)) {
 			unless (pmap[d->serial]) continue;
 			if (d->pserial && !pmap[d->pserial]) {
 				pmap[d->pserial] = ~0;
@@ -7839,24 +7826,19 @@ delta_table(sccs *s, FILE *out, int willfix)
 	 */
 	syms_sorted = 1;
 	for (sym = s->symbols; sym; sym = sym->next) {
-		unless (sym->metad) { /* csetprune */
+		unless (sym->meta_ser) { /* csetprune */
 			syms_sorted = 0;
 			break;
 		}
 		unless (sym->next) break;
-		if (!sym->next->metad ||
-		    (sym->metad->serial < sym->next->metad->serial)) {
+		if (!sym->next->meta_ser ||
+		    (sym->meta_ser < sym->next->meta_ser)) {
 			syms_sorted = 0;
 			break;
 		}
 	}
 	sym = s->symbols;
 	for (d = s->table; d; d = NEXT(d)) {
-		if ((NEXT(d) == NULL) && (s->state & S_FAKE_1_0)) {
-			/* If the 1.0 delta is a fake, skip it */
-			assert(streq(s->table->rev, "1.0"));
-			break;
-		}
 		if (d->type == 'R') check_removed(s, d, strip_tags);
 		if (d->flags & D_GONE) {
 			/* This delta has been deleted - it is not to be
@@ -8046,10 +8028,10 @@ delta_table(sccs *s, FILE *out, int willfix)
 			unless (syms_sorted) sym = s->symbols;
 			for (; sym; sym = sym->next) {
 				if (syms_sorted &&
-				    (sym->metad->serial < d->serial)) {
+				    (sym->meta_ser < d->serial)) {
 					break;
 				}
-				unless (sym->metad == d) continue;
+				unless (sym->meta_ser == d->serial) continue;
 				if (!strip_tags || 
 				    streq(KEY_FORMAT2, sym->symname)) {
 					p = fmts(buf, "\001cS");
@@ -9476,7 +9458,7 @@ checkin(sccs *s,
 		    "%s not checked in, use -i flag.\n", s->gfile));
 out:		if (sfile) sccs_abortWrite(s, &sfile);
 		sccs_unlock(s, 'z');
-		if (prefilled) sccs_freetree(prefilled);
+		if (prefilled) sccs_freedelta(prefilled);
 		if (gfile && (gfile != stdin)) fclose(gfile);
 		s->state |= S_WARNED;
 		return (-1);
@@ -9549,19 +9531,15 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		 */
 		n0->rev = strdup("1.0");
 		explode_rev(n0);
-		n0->serial = s->nextserial++;
-		n0->next = 0;
-		s->table = n0;
 		if (buf[0]) pathArg(n0, buf); /* pathname */
 
 		n0 = sccs_dInit(n0, 'D', s, nodefault);
 		n0->flags |= D_CKSUM;
 		n0->sum = almostUnique();
-		dinsert(s, n0, fixDate && !(flags & DELTA_PATCH));
+		first = n0 = dinsert(s, n0, fixDate && !(flags & DELTA_PATCH));
 
 		n = prefilled ? prefilled : new(delta);
 		n->pserial = n0->serial;
-		n->next = n0;
 	}
 	assert(n);
 	if (!nodefault && buf[0]) pathArg(n, buf); /* pathname */
@@ -9620,8 +9598,6 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 			}
 		}
 	}
-	n->serial = s->nextserial++;
-	s->table = n;
 	if (n->flags & D_BADFORM) {
 		fprintf(stderr, "checkin: bad revision: %s for %s\n",
 		    n->rev, s->sfile);
@@ -9662,7 +9638,10 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 			free(t);
 		}
 	}
-	dinsert(s, n, fixDate && !(flags & DELTA_PATCH));
+	/* need to recover 'first' after a possible malloc */
+	i = first->serial;
+	n = dinsert(s, n, fixDate && !(flags & DELTA_PATCH));
+	first = i ? SFIND(s, i) : n;
 	s->numdeltas++;
 	EACH (syms) {
 		addsym(s, n, n, !(flags & DELTA_PATCH), n->rev, syms[i]);
@@ -10503,7 +10482,7 @@ symArg(sccs *s, delta *d, char *name)
 	 * This is temporary.  "d" gets reset to real delta once we
 	 * build the graph.
 	 */
-	sym->d = sym->metad = d;
+	sym->ser = sym->meta_ser = d->serial;
 	d->flags |= D_SYMBOLS;
 
 	/*
@@ -10667,8 +10646,6 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		if (trigger("tag", "pre")) goto sym_err;
 
 		n = new(delta);
-		n->next = sc->table;
-		sc->table = n;
 		n = sccs_dInit(n, 'R', sc, 0);
 		/*
 		 * n->sum = (unsigned short) almostUnique(1);
@@ -10683,11 +10660,11 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		n->rev = strdup(d->rev);
 		explode_rev(n);
 		n->pserial = d->serial;
-		n->serial = sc->nextserial++;
 		n->flags |= D_SYMBOLS;
 		d->flags |= D_SYMBOLS;
 		sc->numdeltas++;
-		dinsert(sc, n, 1);
+		n = dinsert(sc, n, 1);
+		d = SFIND(sc, n->pserial);
 		if (addsym(sc, d, n, 1, rev, sym)) {
 			verbose((stderr,
 			    "%s: won't add identical symbol %s to %s\n",
@@ -10707,8 +10684,8 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 }
 
 
-delta *
-sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
+private	delta *
+newDelta(sccs *sc, delta *p, int isNullDelta)
 {
 	delta	*n;
 	char	*rev;
@@ -10724,8 +10701,6 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	}
 
 	n = new(delta);
-	n->next = sc->table;
-	sc->table = n;
 	n = sccs_dInit(n, 'D', sc, 0);
 	unless (p) p = findrev(sc, 0);
 	rev = p->rev;
@@ -10733,7 +10708,6 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	n->rev = strdup(rev);
 	explode_rev(n);
 	n->pserial = p->serial;
-	n->serial = sc->nextserial++;
 	sc->numdeltas++;
 	if (isNullDelta) {
 		n->added = n->deleted = 0;
@@ -10741,7 +10715,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 		n->sum = almostUnique();
 		n->flags |= D_CKSUM;
 	}
-	dinsert(sc, n, 1);
+	n = dinsert(sc, n, 1);
 	return (n);
 }
 
@@ -10911,6 +10885,8 @@ adjust_serials(delta *d, int amount)
 {
 	int	i;
 
+	unless (d->serial) return;
+
 	d->serial += amount;
 	d->pserial += amount;
 	if (d->ptag) d->ptag += amount;
@@ -10934,6 +10910,7 @@ insert_1_0(sccs *s, u32 flags)
 {
 	delta	*d;
 	delta	*t;
+	symbol	*sym;
 	int	csets = 0;
 	int	len;
 	char	key[MAXKEY];
@@ -10951,23 +10928,30 @@ insert_1_0(sccs *s, u32 flags)
 	/*
 	 * First bump all the serial numbers.
 	 */
-	for (t = d = s->table; d; d = d->next) {
+	s->nextserial++;
+	d = insertArrayN(&s->slist, 1, 0);
+	d->inarray = 1;
+	s->table = s->slist + nLines(s->slist);
+
+	for (d = d + 1; d <= s->table; d += 1) {
 		if (d->flags & D_CSET) csets++;
 		adjust_serials(d, 1);
-		t = d;
 	}
+	for (sym = s->symbols; sym; sym++) {
+		if (sym->ser) sym->ser++;
+		if (sym->meta_ser) sym->meta_ser++;
+	}
+	sccs_findKeyFlush(s);
 
-	d = new(delta);
-	if (s->tree->flags & D_XFLAGS) {
+	d = SFIND(s, 1);
+	t = SFIND(s, 2);
+	if (t->flags & D_XFLAGS) {
 		/* move 1.1 xflags to new 1.0 delta */
-		d->xflags = s->tree->xflags;
+		d->xflags = t->xflags;
 		d->flags |= D_XFLAGS;
-		s->tree->flags &= ~D_XFLAGS;
+		t->flags &= ~D_XFLAGS;
 	}
-	t->next = d;		/* table is now linked */
-	t = s->tree;
-	d->kid = t;
-	t->parent = d;
+	d->kid = t->serial;
 	s->tree = d;		/* tree is now linked */
 	d->rev = strdup("1.0");
 	explode_rev(d);
@@ -10980,6 +10964,7 @@ insert_1_0(sccs *s, u32 flags)
 		d->zone = strdup("-00:00");
 	}
 	d->serial = 1;
+	t->pserial = d->serial;	/* nop as t->pserial was 0 and inc'd */
 
 	/* date needs to be 1 second earler than 1.1 */
 	/* date assuming local zone - 1 */
@@ -11021,14 +11006,26 @@ insert_1_0(sccs *s, u32 flags)
 private int
 remove_1_0(sccs *s)
 {
-	if (streq(s->tree->rev, "1.0")) {
-		delta	*d;
+	delta	*d;
+	symbol	*sym;
 
-		MK_GONE(s, s->tree);
-		for (d = s->table; d; d = d->next) adjust_serials(d, -1);
-		return (1);
+	unless (streq(s->tree->rev, "1.0")) return (0);
+
+	for (d = SFIND(s, 2); d <= s->table; d += 1) {
+		adjust_serials(d, -1);
 	}
-	return (0);
+	for (sym = s->symbols; sym; sym++) {
+		if (sym->ser) --sym->ser;
+		if (sym->meta_ser) --sym->meta_ser;
+	}
+	sccs_findKeyFlush(s);
+	freedelta(s->tree);
+	removeArrayN(s->slist, 1);
+	s->tree = SFIND(s, 1);
+	memset(s->table, 0, sizeof(delta));
+	s->table -= 1;
+	s->nextserial--;
+	return (1);
 }
 
 int
@@ -11158,7 +11155,8 @@ out:
 #define	OUT	{ error = -1; sc->state |= S_WARNED; goto out; }
 #define	ALLOC_D()	\
 	unless (d) { \
-		unless (d = sccs_newDelta(sc, p, 1)) OUT; \
+		unless (d = newDelta(sc, p, 1)) OUT; \
+		p = SFIND(sc, d->pserial); \
 		if (BITKEEPER(sc)) updatePending(sc); \
 	}
 
@@ -11538,8 +11536,9 @@ sccs_scompress(sccs *s, int flags)
 	FILE	*sfile = 0;
 	int	ser, error = 0, locked = 0, i, j;
 	char	*buf;
-	delta	*d;
+	delta	*d, *e;
 	ser_t	*remap;
+	symbol	*sym;
 
 	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr, "scompress: can't get lock on %s\n", s->sfile);
@@ -11556,16 +11555,23 @@ out:
 
 	ser = 0;
 	for (j = 1; j < s->nextserial; j++) {
-		unless (d = sfind(s, j)) continue;
+		unless (e = sfind(s, j)) continue;
 		ser++;
 		if (ser != j) {
 			unless (flags & SILENT) {
 				fprintf(stderr, "Remap %s:%d ->%d\n",
 				    s->gfile, j, ser);
 			}
+			d = SFIND(s, ser);
+			assert(d != e);
+			memcpy(d, e, sizeof(delta));
 			d->serial = ser;
+			e->serial = 0;
+			if (s->table == e) s->table = d;
+		} else {
+			d = e;
 		}
-		if (d->next) assert(d->serial == (d->next->serial + 1));
+		if (NEXT(d)) assert(d->serial == (NEXT(d)->serial + 1));
 		remap[j] = ser;
 
 		d->pserial = remap[d->pserial];
@@ -11575,6 +11581,13 @@ out:
 		EACH(d->include) d->include[i] = remap[d->include[i]];
 		EACH(d->exclude) d->exclude[i] = remap[d->exclude[i]];
 	}
+	for (sym = s->symbols; sym; sym = sym->next) {
+		if (sym->ser) sym->ser = remap[sym->ser];
+		if (sym->meta_ser) sym->meta_ser = remap[sym->meta_ser];
+	}
+	/* clear old deltas */
+	truncArray(s->slist, ser);
+	sccs_findKeyFlush(s);
 
 	unless (sfile = sccs_startWrite(s)) OUT;
 	if (delta_table(s, sfile, 0)) {
@@ -11644,7 +11657,7 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, char **patchmap,
 	}
 	unless (CSET(s)) {
 		/* transitive close if not the cset file */
-		for (d = s->table; d; d = d->next) {
+		for (d = s->table; d; d = NEXT(d)) {
 			unless (w->slist[d->serial]) continue;
 			if (d->pserial) {
 				w->slist[d->pserial] = 1;
@@ -12793,6 +12806,7 @@ skip:
 	 * s <key> - set d->mtag
 	 */
 	while (WANT('s')) {
+		TRACE("buf = %s", buf);
 		if (streq(&buf[2], "g")) {
 			if (d) d->symGraph = 1;
 		} else if (streq(&buf[2], "l")) {
@@ -12801,6 +12815,7 @@ skip:
 			delta	*e = sccs_findKey(sc, &buf[2]);
 
 			assert(e);
+			TRACE("e->serial = %d", e->serial);
 			assert(e->symGraph);
 			if (d->ptag) {
 				d->mtag = e->serial;
@@ -13053,12 +13068,9 @@ sccs_meta(char *me, sccs *s, delta *parent, MMAP *iF, int fixDate)
 	if (m->rev) free(m->rev);
 	m->rev = strdup(parent->rev);
 	memcpy(m->r, parent->r, sizeof(m->r));
-	m->serial = s->nextserial++;
 	m->pserial = parent->serial;
-	m->next = s->table;
-	s->table = m;
 	s->numdeltas++;
-	dinsert(s, m, fixDate);
+	m = dinsert(s, m, fixDate);
 	EACH (syms) {
 		addsym(s, m, m, 0, m->rev, syms[i]);
 	}
@@ -13143,7 +13155,7 @@ sccs_delta(sccs *s,
 		repository_lockers(s->proj);
 		error = -1; s->state |= S_WARNED;
 out:
-		if (prefilled) sccs_freetree(prefilled);
+		if (prefilled) sccs_freedelta(prefilled);
 		if (sfile) sccs_abortWrite(s, &sfile);
 		if (diffs) mclose(diffs);
 		free_pfile(&pf);
@@ -13380,9 +13392,6 @@ out:
 
 	unless (n->rev) n->rev = strdup(pf.newrev);
 	explode_rev(n);
-	n->serial = s->nextserial++;
-	n->next = s->table;
-	s->table = n;
 	assert(d);
 	n->pserial = d->serial;
 	if (!COMMENTS(n) && !init &&
@@ -13406,8 +13415,9 @@ out:
 			goto out;
 		}
 	}
-
-	dinsert(s, n, !(flags & DELTA_PATCH));
+	n = dinsert(s, n, !(flags & DELTA_PATCH));
+	d = SFIND(s, n->pserial);
+	assert(s->table == n);
 	unless (init || !n->pathname || !d->pathname ||
 	    streq(d->pathname, n->pathname) || getenv("_BK_MV_OK")) {
 	    	fprintf(stderr,
@@ -14724,7 +14734,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
 		for (sym = s->symbols; sym; sym = sym->next) {
-			unless (d == (s->prs_all ? sym->metad : sym->d)) {
+			unless (d->serial ==
+			    (s->prs_all ? sym->meta_ser : sym->ser)) {
 				continue;
 			}
 			j++;
@@ -14786,7 +14797,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		fc('\n');
 		unless (d && (d->flags & D_SYMBOLS)) return (strVal);
 		for (i = 0, sym = s->symbols; sym; sym = sym->next) {
-			unless (sym->d == d) continue;
+			unless (sym->ser == d->serial) continue;
 			i++;
 			fs("  TAG: ");
 			fs(sym->symname);
@@ -14952,7 +14963,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
 		for (sym = s->symbols; sym; sym = sym->next) {
-			unless (d == (s->prs_all ? sym->metad : sym->d)) {
+			unless (d->serial ==
+			    (s->prs_all ? sym->meta_ser : sym->ser)) {
 				continue;
 			}
 			j++;
@@ -15772,7 +15784,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		 * XXX: loose interpretation of history: while older, not
 		 * necessarily in the same ancestory.  Good enough for tip?!
 		 */
-		for (; d; d = d->next) {
+		for (; d; d = NEXT(d)) {
 			unless (strneq(d->pathname, "BitKeeper/deleted/", 18)) {
 				fs(d->pathname);
 				return (strVal);
@@ -16005,7 +16017,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	if (d->random) fprintf(out, "R %s\n", d->random);
 	if ((d->flags & D_SYMBOLS) || d->symGraph) {
 		for (sym = s->symbols; sym; sym = sym->next) {
-			unless (sym->metad == d) continue;
+			unless (sym->meta_ser == d->serial) continue;
 			fprintf(out, "S %s\n", sym->symname);
 		}
 		if (d->symGraph) fprintf(out, "s g\n");
@@ -16426,7 +16438,7 @@ sccs_findMD5(sccs *s, char *md5)
 	dd = strtoul(dkey, 0, 16);
 
 	unless (hash_fetch(s->findkeydb, &dd, sizeof(dd))) return (0);
-	d = *(delta **)s->findkeydb->vptr;
+	d = SFIND(s, *(ser_t *)s->findkeydb->vptr);
 	for (; d && (dd == d->date); d = NEXT(d)) {
 		sccs_md5delta(s, d, dkey);
 		if (streq(md5, dkey)) return (d);
@@ -16479,7 +16491,7 @@ sccs_findKey(sccs *s, char *key)
 
 	dd = sccs_date2time(t+1, 0);
 	unless (hash_fetch(s->findkeydb, &dd, sizeof(dd))) return (0);
-	d = *(delta **)s->findkeydb->vptr;
+	d = SFIND(s, *(ser_t *)s->findkeydb->vptr);
 	for (; d && (dd == d->date); d = NEXT(d)) {
 		sccs_sdelta(s, d, dkey);
 		if (s->keydb_nopath) {
@@ -16504,15 +16516,23 @@ sccs_findKeyUpdate(sccs *s, delta *d)
 
 	dd = d->date;
 	unless (hash_insert(s->findkeydb,
-	    &dd, sizeof(dd), &d, sizeof(delta *))) {
+	    &dd, sizeof(dd), &d->serial, sizeof(d->serial))) {
 		/* date conflict */
-		if (d->serial > (*(delta **)(s->findkeydb->vptr))->serial) {
+		if (d->serial > *(ser_t *)(s->findkeydb->vptr)) {
 			hash_store(s->findkeydb,
-			    &dd, sizeof(dd), &d, sizeof(delta *));
+			    &dd, sizeof(dd), &d->serial, sizeof(d->serial));
 		}
 	}
 }
 
+void
+sccs_findKeyFlush(sccs *s)
+{
+	if (s->findkeydb) {
+		hash_free(s->findkeydb);
+		s->findkeydb = 0;
+	}
+}
 void
 sccs_print(delta *d)
 {

@@ -135,7 +135,7 @@ sccs_d2tag(sccs *s, delta *d)
 
 	unless (d->flags & D_SYMBOLS) return (NULL);
 	for (sym = s->symbols; sym; sym = sym->next) {
-		if (d == sym->d) {
+		if (d->serial == sym->ser) {
 			assert(!strchr(sym->symname, '|'));
 			return (sym->symname);
 		}

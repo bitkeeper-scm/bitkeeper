@@ -11,7 +11,6 @@ private	int	compar(const void *a, const void *b);
 private	void	sortDelta(int flags);
 private	void	findcset(void);
 private	void	mkList(sccs *s, int fileIdx);
-private	void	freeList(void);
 private void	dumpCsetMark(void);
 private delta	*findFirstDelta(sccs *s, delta *first);
 private void	mkDeterministicKeys(void);
@@ -22,7 +21,7 @@ private int	do_patch(sccs *s, delta *d, char *tag,
 		    char *tagparent, FILE *out);
 private	void	preloadView(sccs *s, MDBM *db, delta *d);
 
-private	delta	*list, *freeme, **sorted;
+private	char	**list;
 private	char	**flist, **keylist;
 private	MDBM	*csetBoundary;
 private	int	deltaCounter;
@@ -56,8 +55,9 @@ findcset_main(int ac, char **av)
 	sccs	*s;
 	char	*name;
 	char	*tagFile = 0;
+	char	**freeme = 0;
 	char	key[MAXKEY];
-	int	save, c, flags = SILENT;
+	int	save, c, flags = SILENT|INIT_MUSTEXIST;
 	int	fileIdx;
 
 	while ((c = getopt(ac, av, "b:Bkt:T:ivu", 0)) != -1) {
@@ -115,14 +115,12 @@ findcset_main(int ac, char **av)
 		unless (s = sccs_init(name, INIT_NOCKSUM|flags)) {
 			continue;
 		}
-		unless (HASGRAPH(s)) continue;
 		unless (sccs_userfile(s) ||
 		    (opts.BKtree && !streq(name, CHANGESET))) {
 			sccs_free(s);
 			verbose((stderr, "Skipping non-user file %s.\n", name));
 			continue;
 		}
-		unless (HASGRAPH(s)) goto next;
 		save = deltaCounter;
 		sccs_sdelta(s, sccs_ino(s), key);
 		keylist = addLine(keylist, strdup(key));
@@ -131,7 +129,8 @@ findcset_main(int ac, char **av)
 		mkList(s, ++fileIdx);
 		//verbose((stderr,
 		//    "%s: %d deltas\n", s->sfile, deltaCounter - save));
-next:		sccs_free(s);
+		sccs_close(s);
+		freeme = addLine(freeme, s);
 	}
 	sfileDone();
 	verbose((stderr, "Total %d deltas\n", deltaCounter));
@@ -140,10 +139,11 @@ next:		sccs_free(s);
 		mkDeterministicKeys();
 		findcset();
 		dumpCsetMark();
-		freeList();
 	}
 	closeTags();
 	mdbm_close(csetBoundary);
+	freeLines(list, 0);
+	freeLines(freeme, (void (*)(void *))sccs_free);
 	sysio(NULL, DEVNULL_WR, DEVNULL_WR, "bk", "-R", "sfiles", "-P", SYS);
 
 	/* update rootkey embedded in files */
@@ -165,24 +165,8 @@ compar(const void *a, const void *b)
 private	void
 sortDelta(int flags)
 {
-	int	i = deltaCounter;
-	delta	*d;
-
 	verbose((stderr, "Sorting...."));
-	sorted = malloc(deltaCounter * sizeof(sorted));
-	if (!sorted) {
-		perror("malloc");
-		exit(1);
-	}
-	for (d = list; d; d = d->next) {
-		assert(i > 0);
-		unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
-			assert(d->date);
-		}
-		sorted[--i] = d;
-	}
-	assert(i == 0);
-	qsort(sorted, deltaCounter, sizeof(sorted), compar);
+	qsort(list+1, deltaCounter, sizeof(delta *), compar);
 	verbose((stderr, "done.\n"));
 }
 
@@ -711,7 +695,7 @@ mkCset(mkcs_t *cur, delta *d)
 		 */
 		memcpy(&k, kv.key.dptr, sizeof(ser_t));
 		memcpy(&v, kv.val.dptr, sizeof(int));
-		top = sorted[v];
+		top = (delta *)list[v+1];
 
 		saveCsetMark(k, top->rev);
 
@@ -787,7 +771,7 @@ mkCset(mkcs_t *cur, delta *d)
 	}
 	fputs("\n", cur->patch);
 	freeLines(lines, free);
-	if (cur->tip) sccs_freetree(cur->tip);
+	if (cur->tip) sccs_freedelta(cur->tip);
 	cur->tip = e;
 }
 
@@ -843,7 +827,7 @@ mkTag(mkcs_t *cur, char *tag)
 	if (do_patch(cur->cset, e, tag, tagparent, cur->patch)) exit(1);
 	fputs("\n\n", cur->patch);
 	sccs_sdelta(cur->cset, e, cur->tagparent);
-	sccs_freetree(e);
+	sccs_freedelta(e);
 }
 
 private	void
@@ -1033,10 +1017,10 @@ findcset(void)
 	f = stderr;
 	now = time(0);
 	for (j = 0; j < deltaCounter; ++j) {
-		d = sorted[j];
+		d = (delta *)list[j+1];
 		unless (d->type == 'D') continue;
 		if (j > 0) {
-			previous = sorted[j - 1];
+			previous = (delta *)list[j];
 			/* skip tags that are too early */
 			while (nextTag && tagDate < previous->date) {
 				free(nextTag);
@@ -1083,7 +1067,7 @@ findcset(void)
 		    "Skipping %d delta%s older than %d month.\n",
 		    skip, ((skip == 1) ? "" : "s"), opts.blackOutTime);
 	}
-	assert(d == sorted[deltaCounter - 1]);
+	assert(d == (delta *)list[deltaCounter]);
 	if (isBreakPoint(now, d)) goto done;
 	mkCset(&cur, d);
 	while (nextTag && tagDate >= d->date) {
@@ -1091,7 +1075,7 @@ findcset(void)
 		nextTag = readTag(&tagDate);
 	}
 done:	freeComment(cur.csetComment);
-	if (cur.tip) sccs_freetree(cur.tip);
+	if (cur.tip) sccs_freedelta(cur.tip);
 	fputs("\001 End\n", cur.patch);
 	pclose(cur.patch);
 	sccs_free(cur.cset);
@@ -1191,48 +1175,18 @@ mkList(sccs *s, int fileIdx)
 	for (d = s->table; d; ) {
 		/* make comments standalone */
 		comments_load(s, d);
-		e = d->next;
+		e = NEXT(d);
 		if (d->flags & D_SET) {
 			/*
 			 * Collect marked delta into "list"
 			 */
 			d->f_index = fileIdx; /* needed in findcset() */
-			d->next = list;
-			list = d;
+			list = addLine(list, d);
 			deltaCounter++;
-		} else {
-			/*
-			 * Unwanted delta;
-			 * Cannot free these here, because
-			 * d->hostname and d->zone may be shared
-			 * with node in the pending delta "list",
-			 * so stick them in a free list to be freed later
-			 */
-			d->next = freeme;
-			freeme = d;
 		}
 		d = e;
 	}
 	s->table = s->tree = 0;
-}
-
-private	void
-freeList(void)
-{
-	delta	*d;
-
-	for (d = list; d; d = list) {
-		deltaCounter--;
-		list = list->next;
-		d->siblings = d->kid = 0;
-		sccs_freetree(d);
-	}
-	for (d = freeme; d; d = freeme) {
-		freeme = freeme->next;
-		d->siblings = d->kid = 0;
-		sccs_freetree(d);
-	}
-	if (sorted) free(sorted);
 }
 
 FILE	*tf;

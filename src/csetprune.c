@@ -1252,12 +1252,13 @@ rebuildTags(sccs *s)
 	 * Move all symbols onto real deltas that are not D_GONE
 	 */
 	for (sym = s->symbols; sym; sym = sym->next) {
-		md = sym->metad;
-		d = sym->d;
-		assert(sym->symname && md && d);
+		assert(sym->symname && sym->ser && sym->meta_ser);
+		md = SFIND(s, sym->meta_ser);
+		d = SFIND(s, sym->ser);
+		assert(md && d);
 		if (mdbm_store_str(symdb, sym->symname, "", MDBM_INSERT)) {
 			/* no error, just ignoring duplicates */
-			sym->metad = sym->d = 0;
+			sym->meta_ser = sym->ser = 0;
 			continue;
 		}
 		assert(md->type != 'D' || md == d);
@@ -1265,16 +1266,18 @@ rebuildTags(sccs *s)
 		if (d->flags & D_GONE) {
 			unless (d->pserial) {
 				/* No where to move it: drop tag */
-				sym->metad = sym->d = 0;
+				sym->meta_ser = sym->ser = 0;
 				continue;
 			}
 			/* Move Tag to Parent */
 			assert(!(PARENT(s, d)->flags & D_GONE));
-			d = sym->d = PARENT(s, d);
+			d = PARENT(s, d);
+			sym->ser = d->serial;
 		}
 		/* Move all tags directly onto real delta */
 		if (md != d) {
-			md = sym->metad = d;
+			md = d;
+			sym->meta_ser = md->serial;
 		}
 		assert(md == d && d->type == 'D');
 		d->flags |= D_SYMBOLS;
@@ -1314,9 +1317,9 @@ fixTags(sccs *s)
 	 * then see if the delta is gone.
 	 */
 	for (sym = s->symbols; sym; sym = sym->next) {
-		md = sym->metad;
-		d = sym->d;
-		assert(sym->symname && md && d);
+		assert(sym->symname && sym->ser && sym->meta_ser);
+		md = SFIND(s, sym->meta_ser);
+		d = SFIND(s, sym->ser);
 		assert(md->type != 'D' || md == d);
 		/*
 		 * If tags a deleted node, (if parent) move tag to parent
@@ -1334,15 +1337,14 @@ fixTags(sccs *s)
 				    "describing what you did to get this "
 				    "message.\nThis is a warning message, "
 				    "not a failure.\n", sym->symname, d->rev);
-				sym->metad = sym->d = 0;
+				sym->meta_ser = sym->ser = 0;
 				continue;
 			}
 			/* Move Tag to Parent */
 			assert(!(PARENT(s, d)->flags & D_GONE));
 			d = PARENT(s, d);
-			sym->d = d;
+			sym->ser = d->serial;
 			d->flags |= D_SYMBOLS;
-			md->parent = d;
 			md->pserial = d->serial;
 		}
 		/* If tag is deleted node, make into a 'R' node */
@@ -1389,13 +1391,12 @@ fixTags(sccs *s)
 				    "message.\nThis is a warning message, "
 				    "not a failure.\n",
 				    d->rev, d->serial, p->rev);
-				d->parent = s->tree;
+				d->pserial = s->tree->serial;
 				continue;
 			}
 			/* Move Tag to Parent */
 			assert(!(PARENT(s, p)->flags & D_GONE));
 			p = PARENT(s, p);
-			d->parent = p;
 			d->pserial = p->serial;
 		}
 		/* If node is deleted node, make into a 'R' node */

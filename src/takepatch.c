@@ -776,7 +776,7 @@ save:	mseekto(f, off);
 		(*np)++;
 		insertPatch(p, 1);
 	}
-	sccs_freetree(d);
+	sccs_freedelta(d);
 	if ((c = mpeekc(f)) != EOF) {
 		return (c != '=');
 	}
@@ -862,13 +862,14 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	MMAP	*dF;
 	delta	*d = 0;
 	delta	*top = 0;
-	delta	*remote_tagtip = 0;
+	ser_t	remote_tagtip = 0;
 	int	n = 0;
 	int	c;
 	int	psize = *nfound;
 	int	confThisFile;
 	FILE	*csets = 0, *f;
 	hash	*cdb;
+	char	*topkey = 0;
 	char	csets_in[MAXPATH];
 	char	buf[MAXKEY];
 
@@ -903,7 +904,15 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		s->state &= ~(S_PFILE|S_ZFILE|S_GFILE);
 		/* NOTE: we leave S_SFILE set, but no sfile there */
 
-		unless (CSET(s)) top = sccs_top(s);
+		unless (CSET(s)) {
+			/* serial and therefore delta * are not stable */
+			// XXX: need a new lightweight way to track the
+			// same item as it gets moved about now that
+			// address gets altered.
+			top = sccs_top(s);
+			sccs_sdelta(s, top, buf);
+			topkey = strdup(buf);
+		}
 	} else {
 		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
 			SHOUT();
@@ -953,9 +962,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		/* passing in d = parent, setting d = new or existing */
 		if (d = cset_insert(s, iF, dF, d, opts->fast)) {
 			(*nfound)++;
-			p->d = d;
-			if (d->flags & D_REMOTE) {
-				if (d->symGraph) remote_tagtip = d;
+			p->serial = d->serial;
+			if ((d->flags & D_REMOTE) && d->symGraph) {
+				remote_tagtip = d->serial;
 			}
 		}
 		p = p->next;
@@ -972,15 +981,22 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	 * pull -r can propagate a non-tip tag element as the tip.
 	 * We have to mark it here before writing the file out.
 	 */
-	if (remote_tagtip && !remote_tagtip->symLeaf) {
-		assert(CSET(s));
-		remote_tagtip->symLeaf = 1;
-		debug((stderr,
-		    "takepatch: adding leaf to tag delta %s (serial %d)\n",
-		    remote_tagtip->rev, remote_tagtip->serial));
+	if (remote_tagtip) {
+		d = sfind(s, remote_tagtip);
+		assert(d);
+		if (!d->symLeaf) {
+			assert(CSET(s));
+			d->symLeaf = 1;
+			debug((stderr,
+				"takepatch: adding leaf to tag "
+				"delta %s (serial %d)\n",
+				d->rev, d->serial));
+		}
 	}
 	if (opts->port) for (d = 0, p = patchList; p; p = p->next) {
-		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
+		unless ((d = sfind(s, p->serial)) && (d->flags & D_REMOTE)) {
+			continue;
+		}
 		unless (d->pserial) continue;	/* rootkey untouched */
 		if (d->flags & D_DUPPATH) {
 			/*
@@ -1017,7 +1033,10 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 
 	if (cdb = loadCollapsed()) {
 		for (p = patchList; p; p = p->next) {
-			unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
+			unless ((d = sfind(s, p->serial))
+			    && (d->flags & D_REMOTE)) {
+				continue;
+			}
 			sccs_md5delta(s, d, buf);
 			if (hash_fetchStr(cdb, buf)) {
 				/* find cset that added that entry */
@@ -1070,7 +1089,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	csets = fopen(csets_in, "w");
 	assert(csets);
 	for (p = patchList; p; p = p->next) {
-		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
+		unless ((d = sfind(s, p->serial)) && (d->flags & D_REMOTE)) {
+			continue;
+		}
 		sccs_sdelta(s, d, buf);
 		fprintf(csets, "%s\n", buf);
 	}
@@ -1086,9 +1107,12 @@ markup:
 		 * just clear all of them.  And mclose works if 0 passed in.
 		 */
 		mclose(p->diffMmap); /* win32: must mclose after cset_write */
-		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
+		unless ((d = sfind(s, p->serial)) && (d->flags & D_REMOTE)) {
+			continue;
+		}
 		d->flags |= D_SET; /* for resum() */
 	}
+	if (topkey) top = sccs_findKey(s, topkey);
 	if (top && (top->dangling || !(top->flags & D_CSET))) {
 		delta	*a, *b;
 
@@ -1116,7 +1140,7 @@ markup:
 		}
 		if (echo == 3) progress_nldone();
 	} else if (!BAM(s)) {
-		for (d = s->table; d; d = d->next) {
+		for (d = s->table; d; d = NEXT(d)) {
 			unless ((d->flags & D_SET) && !TAG(d)) continue;
 			c = sccs_resum(s, d, 0, 0);
 			if (c & 2) {
@@ -1141,10 +1165,12 @@ done:	sccs_free(s);
 	s = 0;
 	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
 	freePatchList();
+	if (topkey) free(topkey);
 	patchList = 0;
 	fileNum = 0;
 	return (0);
 err:
+	if (topkey) free(topkey);
 	if (s) sccs_free(s);
 	return (-1);
 }

@@ -361,7 +361,7 @@ print(sccs *s, delta *d)
 			symbol	*sym;
 
 			for (sym = s->symbols; sym; sym = sym->next) {
-				unless (sym->d == d) continue;
+				unless (sym->ser == d->serial) continue;
 				printf("%s\n", sym->symname);
 			}
 			break;
