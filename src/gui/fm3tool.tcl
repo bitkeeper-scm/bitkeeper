@@ -217,7 +217,7 @@ proc search_keyboard_bindings {{nc {}}} \
 	bind $search(text)      <Return>        searchstring
 	bind $search(text)      <Control-u>     searchreset
 	# In the search window, don't listen to "all" tags.
-        bindtags $search(text) [list $search(text) Entry]
+        bindtags $search(text) [list $search(text) TEntry]
 }
 
 proc search_init {w s} \
@@ -1693,7 +1693,7 @@ proc keyboard_bindings {} \
 		bind all <Command-w> exit
 	}
 	# In the search window, don't listen to "all" tags.
-	bindtags $search(text) { .menu.search Entry . }
+	bindtags $search(text) { .menu.search TEntry . }
 
 	bind all <$gc(fm3.toggleAnnotations)> [list toggleAnnotations 1]
 	bind all <$gc(fm3.toggleGCA)> [list toggleGCA 1]
