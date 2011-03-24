@@ -503,7 +503,7 @@ proc widgets {} \
 		bind all <Command-w> exit
 	}
 	bind .menu.entry <Return> { search }
-	bindtags .menu.entry { all .menu.entry Entry . }
+	bindtags .menu.entry { all .menu.entry TEntry . }
  	bindtags .ctrl.topics {.ctrl.topics . all}
 	#bindtags .text.help {.text.help . all}
 	bind .text.help <Configure> {

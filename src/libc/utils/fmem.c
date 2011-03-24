@@ -19,9 +19,7 @@
  */
 typedef struct {
 	FILE	*f;		/* backpointer */
-	char	*buf;		/* user's data */
-	size_t	len;		/* length of user's data */
-	size_t	size;		/* malloc'ed size */
+	DATA	d;
 	size_t	offset;		/* current seek offset */
 } FMEM;
 
@@ -31,7 +29,6 @@ private	int	fmem_read(void *cookie, char *buf, int len);
 private	int	fmem_write(void *cookie, const char *buf, int len);
 private	fpos_t	fmem_seek(void *cookie, fpos_t offset, int whence);
 private	int	fmem_close(void *cookie);
-private	void	fmem_resize(FMEM *fm, size_t newlen);
 private	void	fmem_setvbuf(FMEM *fm);
 
 /*
@@ -46,7 +43,7 @@ fmem_open(void)
 
 	f = funopen(fm, fmem_read, fmem_write, fmem_seek, fmem_close);
 	fm->f = f;
-	fmem_resize(fm, MINSZ);	/* alloc min buffer */
+	data_resize(&fm->d, 1); /* alloc min buffer */
 	fmem_setvbuf(fm);
 	return (f);
 }
@@ -70,9 +67,9 @@ ftrunc(FILE *f, off_t offset)
 		/* this is a FMEM*, trunc but don't free memory */
 		fm = f->_cookie;
 		assert(fm);
-		fmem_resize(fm, offset);
-		fm->len = offset;
-		if (fm->offset > fm->len) fm->offset = fm->len;
+		data_resize(&fm->d, offset);
+		fm->d.len = offset;
+		if (fm->offset > fm->d.len) fm->offset = fm->d.len;
 		fmem_setvbuf(fm);
 		rc = 0;
 	} else {
@@ -96,11 +93,12 @@ fmem_getbuf(FILE *f, size_t *len)
 	assert(fm);
 	/* discard/flush any currently buffered data */
 	fflush(f);
-	if (len) *len = fm->len; /* optionally return len */
-	fmem_resize(fm, fm->len+1); /* alloc buf if null with room for null */
-	fm->buf[fm->len] = 0;	/* force trailing null (not in len) */
+	if (len) *len = fm->d.len; /* optionally return len */
+	/* alloc buf if null with room for null */
+	data_resize(&fm->d, fm->d.len+1);
+	fm->d.buf[fm->d.len] = 0;	/* force trailing null (not in len) */
 	fmem_setvbuf(fm);
-	return (fm->buf);
+	return (fm->d.buf);
 }
 
 /*
@@ -117,15 +115,15 @@ fmem_retbuf(FILE *f, size_t *len)
 	assert(fm);
 	/* discard/flush any currently buffered data */
 	fflush(f);
-	if (len) *len = fm->len;	   /* optionally return size */
-	ret = realloc(fm->buf, fm->len+1); /* shrink buffer */
-	ret[fm->len] = 0;	/* force trailing null (not in len) */
+	if (len) *len = fm->d.len;	   /* optionally return size */
+	ret = realloc(fm->d.buf, fm->d.len+1); /* shrink buffer */
+	ret[fm->d.len] = 0;	/* force trailing null (not in len) */
 	/* truncate */
-	fm->buf = 0;
-	fm->len = fm->size = fm->offset = 0;
+	fm->d.buf = 0;
+	fm->d.len = fm->d.size = fm->offset = 0;
 	fmem_setvbuf(fm);
 	/*
-	 * NOTE: It is OK to leave fm->buf==0 here.  If the user
+	 * NOTE: It is OK to leave fm->d.buf==0 here.  If the user
 	 * chooses to write again then stdio will allocate it's own
 	 * buffer and fmem_write() will allocate a new buf and copy
 	 * and free stdio's buffer
@@ -136,35 +134,15 @@ fmem_retbuf(FILE *f, size_t *len)
 private void
 fmem_setvbuf(FMEM *fm)
 {
-	char	*buf = fm->buf + fm->offset;
-	size_t	len = fm->size - fm->offset;
+	char	*buf = fm->d.buf + fm->offset;
+	size_t	len = fm->d.size - fm->offset;
 
 	setvbuf(fm->f, buf, _IOFBF, len);
 }
 
-/* grow buffer as needed */
-private void
-fmem_resize(FMEM *fm, size_t newlen)
-{
-	size_t	size = fm->size;
-
-	if (size < newlen) {
-		unless (size) size = MINSZ;
-		while (size < newlen) size *= 2;
-
-		/* buf is uninitialized */
-		if (fm->buf) {
-			fm->buf = realloc(fm->buf, size);
-		} else {
-			fm->buf = malloc(size);
-		}
-		fm->size = size;
-	}
-}
-
 /*
  * Called by stdio to read one chunk of data.  Because stdio will
- * already be setup to read from fm->buf directly it is usually only
+ * already be setup to read from fm->d.buf directly it is usually only
  * called twice.  Once to read all data and again to return 0
  * indicating that we are at EOF.
  */
@@ -177,12 +155,12 @@ fmem_read(void *cookie, char *buf, int len)
 
 	assert(fm);
 	newlen = len;
-	if (newlen + fm->offset > fm->len) newlen = fm->len - fm->offset;
+	if (newlen + fm->offset > fm->d.len) newlen = fm->d.len - fm->offset;
 	len = newlen;
 	unless (len) return (0);
 
 	assert(len >= 0);
-	ptr = fm->buf + fm->offset;
+	ptr = fm->d.buf + fm->offset;
 
 	/*
 	 * Normally this read() call doesn't do anything because the
@@ -197,7 +175,7 @@ fmem_read(void *cookie, char *buf, int len)
 
 /*
  * Called by stdio to write a chunk of data.  Usually it is writing
- * fm->buf so we don't need to copy any data, but a large write can
+ * fm->d.buf so we don't need to copy any data, but a large write can
  * bypass stdio's buffering so we may need to copy data from the
  * user's buffer.
  *
@@ -213,17 +191,19 @@ fmem_write(void *cookie, const char *buf, int len)
 
 	assert(fm);
 	newoff = fm->offset + len;
-	if (buf == fm->buf + fm->offset) {
-		assert(newoff <= fm->size);
+	if (buf == fm->d.buf + fm->offset) {
+		assert(newoff <= fm->d.size);
 	} else {
 		/* stdio can bypass the buffer for large writes */
-		if (newoff > fm->size) fmem_resize(fm, newoff + MINSZ);
-		memcpy(fm->buf + fm->offset, buf, len);
+		if (newoff > fm->d.size) data_resize(&fm->d, newoff + MINSZ);
+		memcpy(fm->d.buf + fm->offset, buf, len);
 	}
 	fm->offset = newoff;
-	if (fm->offset > fm->len) fm->len = fm->offset;
+	if (fm->offset > fm->d.len) fm->d.len = fm->offset;
 	/* need some space for next write */
-	if (fm->size - fm->offset < MINSZ) fmem_resize(fm, fm->len + MINSZ);
+	if (fm->d.size - fm->offset < MINSZ) {
+		data_resize(&fm->d, fm->d.len + MINSZ);
+	}
 	fmem_setvbuf(fm);
 	return (len);
 }
@@ -240,20 +220,20 @@ fmem_seek(void *cookie, fpos_t offset, int whence)
 	switch (whence) {
 	    case SEEK_SET: break;
 	    case SEEK_CUR: offset += fm->offset; break;
-	    case SEEK_END: offset += fm->len; break;
+	    case SEEK_END: offset += fm->d.len; break;
 	    default: assert(0);
 	}
 	assert(offset >= 0);
-	if (offset >= fm->len) {
-		fmem_resize(fm, offset + MINSZ);
-		fm->len = offset;
-	}
 	if (fm->offset != offset) {
 		/*
 		 * don't call setvbuf() if they are just calling
 		 * ftell().  That has the side effect of flushing data.
 		 */
 		fm->offset = offset;
+		if (offset >= fm->d.len) {
+			data_resize(&fm->d, offset + MINSZ);
+			fm->d.len = offset;
+		}
 		fmem_setvbuf(fm);
 	}
 	return (offset);
@@ -265,7 +245,7 @@ fmem_close(void *cookie)
 	FMEM	*fm = cookie;
 
 	assert(fm);
-	if (fm->buf) free(fm->buf);
+	if (fm->d.buf) free(fm->d.buf);
 	free(fm);
 	return (0);
 }

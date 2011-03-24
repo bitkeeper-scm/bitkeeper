@@ -61,16 +61,17 @@ uniqLines_test(void)
 void
 databuf_tests(void)
 {
-	char	**data = 0;
+	FILE	*data = fmem_open();
 	int	i;
 	char	*out;
 	char	buf[64];
 
 	for (i = 0; i < 64; i++) buf[i] = i;
 	for (i = 0; i < 140000; i++) {
-		data = data_append(data, buf, 63, 0);
+		fwrite(buf, 1, 63, data);
 	}
-	out = data_pullup(0, data);
+	out = fmem_retbuf(data, 0);
+	fclose(data);
 	free(out);
 }
 void

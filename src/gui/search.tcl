@@ -300,7 +300,7 @@ proc search_keyboard_bindings {{nc {}}} \
 	bind $search(text)      <Return>        searchstring
 	bind $search(text)      <Control-u>     searchreset
 	# In the search window, don't listen to "all" tags.
-        bindtags $search(text) [list $search(text) Entry]
+        bindtags $search(text) [list $search(text) TEntry]
 }
 
 proc search_init {w s} \

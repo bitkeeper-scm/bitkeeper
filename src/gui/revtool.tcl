@@ -2120,10 +2120,6 @@ proc widgets {} \
 	bind Bk <Shift-B1-Motion>	"[bind Text <B1-Motion>]"
 	bind Bk <ButtonRelease-1>	"[bind Text <ButtonRelease-1>]"
 		
-	# In the search window, don't listen to "all" tags. (This is now done
-	# in the search.tcl lib) <remove if all goes well> -ask
-	#bindtags $search(text) { .cmd.search Entry }
-
 	bind all <$gc(rev.quit)>	"done"
 
 	focus $w(graph)

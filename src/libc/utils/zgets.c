@@ -212,7 +212,7 @@ char	*
 zgets(zgetbuf *in)
 {
 	char	*ret;
-	char	**data = 0;
+	FILE	*data = 0;
 	int	didfill = 0;
 	int	i;
 	u32	nl;
@@ -249,7 +249,8 @@ again:
 	 * line is bigger than ZBUFSIZ !
 	 * Non-Wayne unoptimized for ease of lesser folks reading ability.
 	 */
-	data = data_append(data, in->next, in->left, 0);
+	data = fmem_open();
+	fwrite(in->next, 1, in->left, data);
 	in->left = 0;
 	nl = 0;
 	while (!nl && zfill(in)) {
@@ -260,11 +261,13 @@ again:
 				break;
 			}
 		}
-		data = data_append(data, in->next, i-nl, 0); /* chop newline */
+		fwrite(in->next, 1, i-nl, data); /* chop newline */
 		in->next += i;
 		in->left -= i;
 	}
-	return (in->line = str_pullup(0, data));
+	in->line = fmem_retbuf(data, 0);
+	fclose(data);
+	return (in->line);
 }
 
 /*

@@ -25,31 +25,6 @@
  * buf = joinLines(":", s)
  *	return one string which is all the strings glued together with ":"
  *	does not free s, caller must free s.
- *
- * ================ Arbitrarily long buffer interfaces =================
- *
- * size = data_length(data)
- *      how many bytes have accumulated
- *
- * s = str_append(s, str, gift)
- *	append str in the s lines array
- *	if gift is not set, then autoallocate a copy.
- *	if gift is set, the use of str after this call is prohibited
- *
- * s = str_nappend(s, str, len, gift)
- *	as above, length is passed in.  Use this if possible, it's faster.
- *
- * buf = str_pullup(&len, s)
- *	return a normal C string which contains all the strings
- *	strlen(buf) is in len.
- *	frees the s array as a side effect.
- *
- * s = data_append(s, data, len, gift)
- *	append len bytes of data to the array (not null terminated)
- *
- * data = data_pullup(&len, s)
- *	return the data as one large block, length is in len.
- *	frees the s array as a side effect.
  */
 #ifndef	_LIB_LINES_H
 #define	_LIB_LINES_H
@@ -163,18 +138,6 @@ void	*_catArray(void **space, void *array, int size);
 void	_sortArray(void *space,
     int (*compar)(const void *, const void *), int size);
 
-
-/* Arbitrarily long buffer interfaces */
-
-int	data_length(char **space);
-#define	str_nappend(s, str, len, gift)	data_append(s, str, len, gift)
-#define	data_pullup(p, s)		_pullup(p, s, 0)
-#define	str_pullup(p, s)		_pullup(p, s, 1)
-char	**str_append(char **space, void *str, int gift);
-char	**data_append(char **space, void *str, int len, int gift);
-char	*_pullup(u32 *bytep, char **space, int null);
-#define	str_empty(s)			(!s || !s[2])
-#define	data_empty(s)			(!s || !s[2])
 
 void	lines_tests(void);
 

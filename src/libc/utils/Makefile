@@ -4,6 +4,7 @@ utils.fake:
 UTILS_OBJS = $(patsubst %,utils/%, \
 	cleanpath.o \
 	concat_path.o \
+	data.o \
 	dirname.o dirs.o \
 	efopen.o \
 	fileops.o \
@@ -18,7 +19,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	samepath.o sig.o smartrename.o \
 	spawn.o spawnvpio.o spawn_filterpipeline.o \
 	stackdump.o str_subst.o \
-	stdioext.o sys.o system.o \
+	sys.o system.o \
 	testcode.o trace.o tty.o ttyprintf.o \
 	utils.o \
 	webencode.o \
