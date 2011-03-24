@@ -326,7 +326,7 @@ find_gca(char *file, char *left, char *right)
 	char	*sfile = name2sccs(file);
 	delta	*dl, *dr, *dg;
 	char	*inc = 0, *exc = 0;
-	char	**revlist = 0;
+	FILE	*revlist = 0;
 
 	s = sccs_init(sfile, INIT_NOCKSUM);
 	free(sfile);
@@ -347,19 +347,20 @@ find_gca(char *file, char *left, char *right)
 		exit(2);
 	}
 	dg = sccs_gca(s, dl, dr, &inc, &exc);
-	revlist = str_append(0, dg->rev, 0);
+	revlist = fmem_open();
+	fputs(dg->rev, revlist);
 	if (inc) {
-		revlist = str_append(revlist, "+", 0);
-		revlist = str_append(revlist, inc, 0);
+		fprintf(revlist, "+%s", inc);
 		free(inc);
 	}
 	if (exc) {
-		revlist = str_append(revlist, "-", 0);
-		revlist = str_append(revlist, exc, 0);
+		fprintf(revlist, "-%s", exc);
 		free(exc);
 	}
 	sccs_free(s);
-	return (str_pullup(0, revlist));
+	inc = fmem_retbuf(revlist, 0);
+	fclose(revlist);
+	return (inc);
 }
 
 /*
