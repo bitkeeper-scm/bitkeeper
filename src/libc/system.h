@@ -82,6 +82,17 @@ void	cleanPath(char *path, char cleanPath[]);
 /* concat_path.c */
 void	concat_path(char *buf, char *first, char *second);
 
+/* data.c */
+typedef struct {
+	char	*buf;		/* user's data */
+	u32	len;		/* length of user's data */
+	u32	size;		/* malloc'ed size */
+} DATA;
+
+void	data_resize(DATA *d, int newlen);
+void	data_append(DATA *d, void *data, int len);
+#define	data_appendStr(f, s)       data_append(f, (s), strlen(s))
+
 /* dirname.c */
 char	*dirname(char *path);
 char	*dirname_alloc(char *path);
@@ -257,9 +268,6 @@ int	spawn_filterPipeline(char **cmds);
 
 /* stackdump.c */
 char	*stackdump(void);
-
-/* stdioext.c */
-char	*gets_alloc(char *(*fcn)(char *buf, int size, void *arg), void *arg);
 
 /* str_subst.c */
 char	*str_subst(char *str, char *search, char *replace, char *output);

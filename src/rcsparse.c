@@ -1102,7 +1102,7 @@ eatlog(RCS *rcs, MMAP *m)
 	char	*p, *t;
 	int	l = 0;
 	char	buf[MAXLINE];
-	char	**log = 0;
+	FILE	*log = 0;
 
 	skip_white(m);
 	unless (p = mwhere(m)) return (0);
@@ -1136,12 +1136,13 @@ err:		fprintf(stderr, "EOF in log? file=%s\n", rcs->rcsfile);
 	skip_white(m);
 	unless (p = mwhere(m)) goto err;
 	unless (*p++ == '@') goto err;
+	log = fmem_open();
 	for (t = buf; p < m->end; p++) {
 		if ((*p == '@') && (p[1] != '@')) {
 			unless (t == buf || t[-1] == '\n') *t++ = '\n';
 			*t = 0;
-			log = str_append(log, buf, 0);
-			d->comments = str_pullup(0, log);
+			fputs(buf, log);
+			d->comments = fmem_retbuf(log, 0);
 			m->where = p + 1;
 			break;
 		}
@@ -1149,7 +1150,7 @@ err:		fprintf(stderr, "EOF in log? file=%s\n", rcs->rcsfile);
 		if (*p == '\n') {
 			l = 0;
 			*t = 0;
-			log = str_append(log, buf, 0);
+			fputs(buf, log);
 			t = buf;
 		}
 		if (l == 1023) {
@@ -1159,6 +1160,7 @@ err:		fprintf(stderr, "EOF in log? file=%s\n", rcs->rcsfile);
 		}
 		if (*p == '@') p++;	/* unquote it */
 	}
+	fclose(log);
 
 	unless (advance(m, '@')) goto err;
 	for (;;) {

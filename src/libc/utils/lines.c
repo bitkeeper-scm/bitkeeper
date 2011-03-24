@@ -5,11 +5,6 @@
 #include "system.h"
 #include "lines.h"
 
-#ifdef	TEST_LINES
-#undef	malloc
-#undef	calloc
-#endif
-
 /* length of array (use nLines() in code) */
 #define	LLEN(s)				(*(u32 *)(s) & LMASK)
 #define	setLLEN(s, len)	(*(u32 *)(s) = (*(u32 *)(s) & ~LMASK) | len)
@@ -26,7 +21,6 @@ _growArray_int(void *space, int add, int elemsize)
 {
 	u32	size, len;	/* len and size of array */
 	int	c;
-	void	*tmp;
 
 	if (space) {
 		len = LLEN(space) + add;
@@ -46,15 +40,8 @@ alloc:		while (len >= size) {
 			size *= 2;
 			++c;
 		}
-		tmp = malloc(size * elemsize);
-		assert(tmp);
-		if (space) {
-			memcpy((u8 *)tmp + elemsize,
-			    (u8 *)space + elemsize,
-			    (len - add) * elemsize);
-			free(space);
-		}
-		space = tmp;
+		space = realloc(space, size * elemsize);
+		assert(space);
 	}
 	*(u32 *)space = (c << LBITS) | len;
 	return (space);
@@ -754,206 +741,3 @@ out:	if (removed) {
 	}
 	return (removed);
 }
-
-/*
- * Appends a C null terminated string to a data buffer allocated in a
- * lines array.  This is just a simple alias for data_append() and any
- * decent compiler will just add a jump into data_append().
- */
-char	**
-str_append(char **space, void *str, int gift)
-{
-	return (data_append(space, str, strlen(str), gift));
-}
-
-/*
- * For an N entry lines struct the bytes used are
- *	sizeof(ptr) + 12 + N*2 + N*sizeof(ptr)
- * 4 entry array (2 data items, 32 bit arch) = 40 bytes or 10 bytes/entry.
- * 100 entry array (98 data items, 32 bit arch) = 616 bytes or 6.1 bytes/entry.
- *
- * You definitely don't want to shove 1 byte entries in here.
- */
-typedef struct {
-	char	*buf;		/* partially filled buffer */
-	u32	buflen;		/* sizeof(buf) */
-	u32	left;		/* space left */
-	u32	bytes;		/* bytes saved so far */
-	u32	nlen;		/* size of len array */
-	u32	lasti;		/* len of len array */
-	u16	len[0];		/* array of data lengths */
-} dinfo;
-
-char	**
-data_append(char **space, void *str, int len, int gift)
-{
-	dinfo	*s;
-	int	inc = 1;
-
-	unless (len) {
-		/* str_append(buf, strnonldup("\n"), 1); */
-		if (str && gift) free(str);
-		return (space);
-	}
-	assert(len < 64<<10);
-	unless (space) {
-		space = allocLines(4);
-		s = calloc(1, sizeof(*s) + (LSIZ(space) * sizeof(u16)));
-		s->nlen = LSIZ(space);
-		s->lasti = 1;
-		space = addLine(space, s);
-	}
-	s = (dinfo*)space[1];
-	assert(s);
-	s->bytes += len;
-	if (len < s->left) {
-		memcpy(&s->buf[s->buflen - s->left], str, len);
-		s->left -= len;
-		inc = 0;
-		if (gift) free(str);
-	} else if (gift && (len > 32)) {
-		s->buf = 0;
-		s->left = 0;
-		space = addLine(space, str);
-	} else {
-		if (len < 64) {
-			s->buflen = 128;
-		} else if (len < 1024) {
-			s->buflen = len * 4;
-		} else {
-			s->buflen = len;
-		}
-		s->buf = malloc(s->buflen);
-		s->left = s->buflen - len;
-		memcpy(s->buf, str, len);
-		space = addLine(space, s->buf);
-		if (gift) free(str);
-	}
-	if (s->nlen != LSIZ(space)) {
-		dinfo	*ns;
-		int	i;
-
-		ns = calloc(1, sizeof(*s) + (LSIZ(space) * sizeof(u16)));
-		*ns = *s;
-		for (i = 2; i <= s->lasti; ns->len[i] = s->len[i], i++);
-		ns->nlen = LSIZ(space);
-		space[1] = (char*)ns;
-		free(s);
-		s = ns;
-	}
-	s->lasti += inc;
-	s->len[s->lasti] += len;
-	assert(s);
-	return (space);
-}
-
-int
-data_length(char **space)
-{
-	dinfo	*s;
-
-	unless (space) return (0);
-	s = (dinfo*)space[1];
-	return (s->bytes);
-}
-
-char	*
-_pullup(u32 *bytep, char **space, int null)
-{
-	int	i, len = 0;
-	char	*data;
-	dinfo	*s;
-
-	unless (space) {
-		if (bytep) *bytep = 0;
-		return (null ? strdup("") : 0);
-	}
-	s = (dinfo*)space[1];
-	data = malloc(s->bytes + (null ? 1 : 0));
-	for (i = 2; i <= s->lasti; i++) {
-		memcpy(&data[len], space[i], s->len[i]);
-		len += s->len[i];
-	}
-	assert(len == s->bytes);
-	if (bytep) *bytep = len;
-	if (null) data[s->bytes] = 0;
-	freeLines(space, free);
-	return (data);
-}
-
-#ifdef	TEST_LINES
-#define	RAND(max)	(1 + (int)((float)max*rand()/(RAND_MAX+1.0)))
-
-int
-main()
-{
-	char	*want, *data, *buf;
-	int	biggest, inserts, iter, len, off, i;
-	int	ins = 0, bytes = 0;
-	char	**s = 0;
-	char	c;
-
-	/*
-	 * Test by generating random numbers of inserts of varying sizes.
-	 */
-	srand(0x30962 + time(0) + getpid());
-	for (iter = 1; iter <= 30000; ++iter) {
-		if (iter < 500) {
-			biggest = RAND(10000);
-			unless (iter % 10) fprintf(stderr, "%u\r", iter);
-		} else if (iter < 1000) {
-			biggest = RAND(1000);
-			unless (iter % 100) fprintf(stderr, "%u\r", iter);
-		} else if (iter < 10000) {
-			biggest = RAND(333);
-			unless (iter % 500) fprintf(stderr, "%u\r", iter);
-		} else {
-			biggest = RAND(80);
-			unless (iter % 1000) fprintf(stderr, "%u\r", iter);
-		}
-		inserts = RAND(250);
-		want = malloc(biggest * inserts + 1);
-		buf = malloc(biggest + 1);
-		c = 'a';
-		off = 0;
-		s = 0;
-		while (inserts--) {
-			len = RAND(biggest);
-			for (i = 0; i < len; buf[i++] = c, want[off++] = c);
-			buf[i] = 0;
-			c++;
-			if (c > 'z') c = 'a';
-			if (RAND(100) > 25) {
-				char	*dup = malloc(len+1);
-
-				memcpy(dup, buf, len+1);
-#ifdef	T_DATA
-				s = data_append(s, dup, len, 1);
-#else
-				s = str_nappend(s, dup, len, 1);
-#endif
-			} else {
-#ifdef	T_DATA
-				s = data_append(s, buf, len, 0);
-#else
-				s = str_nappend(s, buf, len, 0);
-#endif
-			}
-			ins++;
-			bytes += len;
-		}
-#ifdef	T_DATA
-		data = data_pullup(&len, s);
-#else
-		data = str_pullup(&len, s);
-#endif
-		assert(len == off);
-		assert(memcmp(data, want, len) == 0);
-		free(data);
-		free(want);
-		free(buf);
-	}
-	fprintf(stderr, "INS=%u bytes=%u avg=%u\n", ins, bytes, bytes/ins);
-	return (0);
-}
-#endif
