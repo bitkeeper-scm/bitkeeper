@@ -125,13 +125,13 @@ findkey(sccs *s, look l)
 		if (l.cksum) unless (d->sum == l.cksum) continue;
 		if (l.utc) unless (d->date == l.utc) continue;
 		if (l.path) unless (streq(d->pathname, l.path)) continue;
-		if (l.user) unless (streq(d->user, l.user)) continue;
+		if (l.user) unless (streq(USER(s, d), l.user)) continue;
 		if (l.host) unless (streq(d->hostname, l.host)) continue;
 		if (l.email) {
 			char	*at = strchr(l.email, '@');
 
 			*at = 0;
-			unless (streq(d->user, l.email) &&
+			unless (streq(USER(s, d), l.email) &&
 			    /* matching no host or matching host */
 			    ((!at[1] && !d->hostname) ||
 			    (d->hostname && streq(d->hostname, at+1)))) {

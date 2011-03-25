@@ -36,7 +36,7 @@
 #define	NOTICE() fputs("------------------------------------"\
 		    "---------------------------------------\n", stderr);
 
-private	delta	*getRecord(MMAP *f);
+private	delta	*getRecord(sccs *s, MMAP *f);
 private void	errorMsg(char *msg, char *arg1, char *arg2);
 private	int	extractPatch(char *name, MMAP *p);
 private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int*);
@@ -76,6 +76,8 @@ private	int	encoding;	/* encoding before we started */
 private	char	*comments;	/* -y'comments', pass to resolve. */
 private	char	**errfiles;	/* files had errors during apply */
 private	char	**edited;	/* files that were in modified state */
+
+private	sccs	*fake;
 
 typedef struct {
 	/* command line options */
@@ -347,12 +349,17 @@ loadCollapsed(void)
 	return (db);
 }
 
+/*
+ * XXX: when this function evolves to be called with a real sccs *
+ * take out the hack in sccs_getInit to check sc->version != 0xff.
+ */
 private	delta *
-getRecord(MMAP *f)
+getRecord(sccs *s, MMAP *f)
 {
 	int	e = 0;
-	delta	*d = sccs_getInit(0, 0, f, 1, &e, 0, 0);
+	delta	*d;
 
+	d = sccs_getInit(s, 0, f, DELTA_PATCH|DELTA_TAKEPATCH, &e, 0, 0);
 	if (!d || e) {
 		fprintf(stderr,
 		    "takepatch: bad delta record near line %d\n", line);
@@ -539,17 +546,24 @@ error:		if (perfile) sccs_free(perfile);
 	}
 	tableGCA = 0;
 	if (s) encoding = s->encoding;
+	unless (s) {
+		fake = new(sccs);
+		s = fake;
+		if (streq(name, CHANGESET)) s->state |= S_CSET;
+	}
 	while (extractDelta(name, s, newFile, p, &nfound)) {
 		if (newFile) newFile = 2;
 	}
 	gfile = sccs2name(name);
 	if (echo > 1) fprintf(stderr, "Updating %s", gfile);
+
 	cset = s ? CSET(s) : streq(name, CHANGESET);
 	if (opts->fast || cset) {
 		rc = applyCsetPatch(s, &nfound, perfile);
 		s = 0;		/* applyCsetPatch calls sccs_free */
 		unless (cset) nfound = 0;	/* only count csets */
 	} else {
+		if (s == fake) s = 0;
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
 		rc = applyPatch(s ? s->sfile : 0, perfile);
 		if (rc < 0) errfiles = addLine(errfiles, strdup(name));
@@ -688,7 +702,7 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int *np)
 
 	/* go get the delta table entry for this delta */
 delta1:	off = mtell(f);
-	d = getRecord(f);
+	d = getRecord(s, f);
 	sccs_sdelta(s, d, buf);
 	if (opts->fast) {
 		if (skipkey(s, buf)) ignore = 1;
@@ -746,7 +760,7 @@ save:	mseekto(f, off);
 		sccs_sortkey(s, d, buf);
 		p->sortkey = strdup(buf);
 		p->initMmap = ignore ? 0 : mrange(start, stop, "b");
-		p->localFile = s ? strdup(s->sfile) : 0;
+		p->localFile = (s && (s != fake)) ? strdup(s->sfile) : 0;
 		sprintf(buf, "RESYNC/%s", name);
 		p->resyncFile = strdup(buf);
 		p->order = parent == d ? 0 : d->date;
@@ -891,7 +905,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			return (-1);
 		}
 	}
-	if (s) {
+	if (s && (s != fake)) {
 		/* arrange for this sccs* to write into RESYNC */
 		free(s->sfile);
 		s->sfile = strdup(p->resyncFile);
@@ -920,6 +934,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			    "takepatch: can't create %s\n", p->resyncFile);
 			goto err;
 		}
+		s->heap = fake->heap;
+		FREE(fake);
 		s->bitkeeper = 1;
 		if (opts->port && CSET(s)) s->keydb_nopath = 1;
 		if (perfile) sccscopy(s, perfile);
@@ -1354,6 +1370,9 @@ apply:
 			    p->resyncFile);
 			return -1;
 		}
+		s->heap = fake->heap;
+		FREE(fake);
+		s->bitkeeper = 1;
 		if (perfile) {
 			sccscopy(s, perfile);
 			/*

@@ -582,8 +582,8 @@ newFileEnv(sccs *cset, char **user, char **host)
 	safe_putenv("BK_DATE_TIME_ZONE=%s", dtz+2);
 	free(dtz);
 
-	if (p = strchr(d->user, '/')) *p = 0;
-	safe_putenv("BK_USER=%s", d->user);
+	if (p = strchr(USER(cset, d), '/')) *p = 0;
+	safe_putenv("BK_USER=%s", USER(cset, d));
 	if (p) *p = '/';
 	if ((p = strchr(d->hostname, '/')) || (p = strchr(d->hostname, '['))) {
 		c = *p;

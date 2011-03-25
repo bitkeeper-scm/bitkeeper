@@ -5,14 +5,14 @@
 #define	MIN_GAP	(2*HOUR)
 #define	MAX_GAP	(30*DAY)
 
-#define	f_index merge		/* Overload d->merge with d->f_index */
+typedef struct dinfo dinfo;
 
 private	int	compar(const void *a, const void *b);
 private	void	sortDelta(int flags);
 private	void	findcset(void);
 private	void	mkList(sccs *s, int fileIdx);
 private void	dumpCsetMark(void);
-private delta	*findFirstDelta(sccs *s, delta *first);
+private dinfo	*findFirstDelta(sccs *s, dinfo *first);
 private void	mkDeterministicKeys(void);
 private	int	openTags(char *tagfile);
 private	char *	readTag(time_t *tagDate);
@@ -20,6 +20,8 @@ private	void	closeTags(void);
 private int	do_patch(sccs *s, delta *d, char *tag,
 		    char *tagparent, FILE *out);
 private	void	preloadView(sccs *s, MDBM *db, delta *d);
+private	void	free_dinfo(void *x);
+private	dinfo	*delta2dinfo(sccs *s, delta *d);
 
 private	char	**list;
 private	char	**flist, **keylist;
@@ -45,8 +47,24 @@ typedef	struct {
 					 */
 } fopts;
 
+/* info remembered from each delta */
+struct dinfo {
+	time_t	date;
+	int	dateFudge;
+	sum_t	sum;
+	char	*rev;
+	char	*sdate;
+	char	*zone;
+	char	*pathname;
+	char	*user;
+	char	*hostname;
+	char	**comments;
+	char	*dkey;
+	int	f_index;
+};
+
 private	fopts	opts;
-private	delta	*oldest;		/* The oldest user delta */
+private	dinfo	*oldest;		/* The oldest user delta */
 
 
 int
@@ -55,7 +73,6 @@ findcset_main(int ac, char **av)
 	sccs	*s;
 	char	*name;
 	char	*tagFile = 0;
-	char	**freeme = 0;
 	char	key[MAXKEY];
 	int	save, c, flags = SILENT|INIT_MUSTEXIST;
 	int	fileIdx;
@@ -129,8 +146,7 @@ findcset_main(int ac, char **av)
 		mkList(s, ++fileIdx);
 		//verbose((stderr,
 		//    "%s: %d deltas\n", s->sfile, deltaCounter - save));
-		sccs_close(s);
-		freeme = addLine(freeme, s);
+		sccs_free(s);
 	}
 	sfileDone();
 	verbose((stderr, "Total %d deltas\n", deltaCounter));
@@ -142,8 +158,7 @@ findcset_main(int ac, char **av)
 	}
 	closeTags();
 	mdbm_close(csetBoundary);
-	freeLines(list, 0);
-	freeLines(freeme, (void (*)(void *))sccs_free);
+	freeLines(list, free_dinfo);
 	sysio(NULL, DEVNULL_WR, DEVNULL_WR, "bk", "-R", "sfiles", "-P", SYS);
 
 	/* update rootkey embedded in files */
@@ -155,10 +170,10 @@ findcset_main(int ac, char **av)
 private	int
 compar(const void *a, const void *b)
 {
-	register	delta *d1, *d2;
+	dinfo	*d1, *d2;
 
-	d1 = *((delta**)a);
-	d2 = *((delta**)b);
+	d1 = *((dinfo**)a);
+	d2 = *((dinfo**)b);
 	return (d1->date - d2->date);
 }
 
@@ -166,7 +181,7 @@ private	void
 sortDelta(int flags)
 {
 	verbose((stderr, "Sorting...."));
-	qsort(list+1, deltaCounter, sizeof(delta *), compar);
+	qsort(list+1, deltaCounter, sizeof(dinfo *), compar);
 	verbose((stderr, "done.\n"));
 }
 
@@ -286,7 +301,8 @@ done:	return (gap);
  * c) user boundary
  */
 private int
-isCsetBoundary(delta *d1, delta *d2, time_t tagDate, time_t now, int *skip)
+isCsetBoundary(sccs *s, dinfo *d1, dinfo *d2,
+    time_t tagDate, time_t now, int *skip)
 {
 
 	assert(d1->date <= d2->date);
@@ -508,14 +524,14 @@ sameStr(char *s1, char *s2)
  * Fix up date/timezone/user/hostname of delta 'd' to match 'template'
  */
 private  void
-fix_delta(sccs *s, delta *template, delta *d, int fudge)
+fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 {
 	delta *parent;
 
 	if ((opts.verbose > 1) && (fudge != -1)) {
 		if (sameStr(template->sdate, d->sdate) &&
 		    sameStr(template->zone, d->zone) &&
-		    sameStr(template->user, d->user) &&
+		    sameStr(template->user, USER(s, d)) &&
 		    sameStr(template->hostname, d->hostname)) {
 			return;
 		}
@@ -530,7 +546,6 @@ fix_delta(sccs *s, delta *template, delta *d, int fudge)
 	 * Free old values
 	 */
 	if (d->sdate) free(d->sdate);
-	if (d->user) free(d->user);
 	if (d->hostname && !(d->flags & D_DUPHOST)) free(d->hostname);
 	if (d->zone && !(d->flags & D_DUPZONE)) free(d->zone);
 
@@ -566,8 +581,11 @@ fix_delta(sccs *s, delta *template, delta *d, int fudge)
 	 * Copy user
 	 */
 	assert(template->user);
-	d->user = strdup(template->user);
-
+	if (parent && streq(USER(s, parent), template->user)) {
+		d->user = parent->user;
+	} else {
+		d->user = sccs_addUniqStr(s, template->user);
+	}
 
 	/*
 	 * Copy hostname
@@ -626,7 +644,7 @@ typedef struct {
 	MDBM	*db;
 	MDBM	*csetComment;
 	FILE	*patch;
-	delta	*tip;
+	dinfo	*tip;
 	sum_t	sum;
 	int	rev;
 	char	parent[MAXKEY];
@@ -647,13 +665,13 @@ typedef struct {
  */
 
 private void
-mkCset(mkcs_t *cur, delta *d)
+mkCset(mkcs_t *cur, dinfo *d)
 {
 	char	**comments;
 	int	v;
 	ser_t	k;
 	kvpair	kv, vk;
-	delta	*top;
+	dinfo	*top;
 	delta	*e = new(delta);
 	char	dkey[MAXKEY];
 	char	dline[2 * MAXKEY + 4];
@@ -695,12 +713,11 @@ mkCset(mkcs_t *cur, delta *d)
 		 */
 		memcpy(&k, kv.key.dptr, sizeof(ser_t));
 		memcpy(&v, kv.val.dptr, sizeof(int));
-		top = (delta *)list[v+1];
+		top = (dinfo *)list[v+1];
 
 		saveCsetMark(k, top->rev);
 
-		sccs_sdelta(0, top, dkey);
-		sprintf(dline, "%s %s\n", keylist[k], dkey);
+		sprintf(dline, "%s %s\n", keylist[k], top->dkey);
 		lines = addLine(lines, strdup(dline));
 		linesum = 0;
 		for (ch = dline; *ch; ch++) {
@@ -771,8 +788,9 @@ mkCset(mkcs_t *cur, delta *d)
 	}
 	fputs("\n", cur->patch);
 	freeLines(lines, free);
-	if (cur->tip) sccs_freedelta(cur->tip);
-	cur->tip = e;
+	if (cur->tip) free_dinfo(cur->tip);
+	cur->tip = delta2dinfo(cur->cset, e);
+	sccs_freedelta(e);
 }
 
 private void
@@ -931,7 +949,7 @@ freeComment(MDBM *db)
 }
 
 private int
-isBreakPoint(time_t now, delta *d)
+isBreakPoint(time_t now, dinfo *d)
 {
 	if (opts.noSkip) return (0);
 
@@ -954,7 +972,7 @@ private	void
 findcset(void)
 {
 	int	j;
-	delta	*d = 0, *previous;
+	dinfo	*d = 0, *previous;
 	datum	key, val;
 	char	*p;
 	FILE	*f;
@@ -1017,16 +1035,16 @@ findcset(void)
 	f = stderr;
 	now = time(0);
 	for (j = 0; j < deltaCounter; ++j) {
-		d = (delta *)list[j+1];
-		unless (d->type == 'D') continue;
+		d = (dinfo *)list[j+1];
 		if (j > 0) {
-			previous = (delta *)list[j];
+			previous = (dinfo *)list[j];
 			/* skip tags that are too early */
 			while (nextTag && tagDate < previous->date) {
 				free(nextTag);
 				nextTag = readTag(&tagDate);
 			}
-			if (isCsetBoundary(previous, d, tagDate, now, &skip)) {
+			if (isCsetBoundary(cur.cset, previous, d,
+			    tagDate, now, &skip)) {
 				mkCset(&cur, previous);
 				while (nextTag && tagDate >= previous->date &&
 				    tagDate < d->date) {
@@ -1057,7 +1075,7 @@ findcset(void)
 		/*
 		 * Extract per file comment and copy them to cset comment
 		 */
-		p = line2str(d->cmnts);
+		p = line2str(d->comments);
 		saveComment(cur.csetComment, d->rev, p, d->pathname);
 		free(p);
 		/* pathname will be freeed in freeComment() */
@@ -1067,7 +1085,7 @@ findcset(void)
 		    "Skipping %d delta%s older than %d month.\n",
 		    skip, ((skip == 1) ? "" : "s"), opts.blackOutTime);
 	}
-	assert(d == (delta *)list[deltaCounter]);
+	assert(d == (dinfo *)list[deltaCounter]);
 	if (isBreakPoint(now, d)) goto done;
 	mkCset(&cur, d);
 	while (nextTag && tagDate >= d->date) {
@@ -1075,7 +1093,7 @@ findcset(void)
 		nextTag = readTag(&tagDate);
 	}
 done:	freeComment(cur.csetComment);
-	if (cur.tip) sccs_freedelta(cur.tip);
+	if (cur.tip) free_dinfo(cur.tip);
 	fputs("\001 End\n", cur.patch);
 	pclose(cur.patch);
 	sccs_free(cur.cset);
@@ -1091,11 +1109,51 @@ done:	freeComment(cur.csetComment);
 	unlink(cur.patchFile);
 }
 
+private	void
+free_dinfo(void *x)
+{
+	dinfo	*di = (dinfo *)x;
+
+	if (di->rev) free(di->rev);
+	if (di->sdate) free(di->sdate);
+	if (di->zone) free(di->zone);
+	if (di->user) free(di->user);
+	if (di->hostname) free(di->hostname);
+	if (di->pathname) free(di->pathname);
+	if (di->comments) free(di->comments);
+	if (di->dkey) free(di->dkey);
+	free(di);
+}
+
+private	dinfo *
+delta2dinfo(sccs *s, delta *d)
+{
+	dinfo	*di = new(dinfo);
+	char	key[MAXKEY];
+
+	assert(di);
+	di->date = d->date;
+	di->dateFudge = d->dateFudge;
+	di->sum = d->sum;
+	di->rev = strdup(d->rev);
+	di->sdate = strdup(d->sdate);
+	if (d->zone) di->zone = strdup(d->zone);
+	di->user = strdup(USER(s, d));
+	di->hostname = strdup(d->hostname);
+	di->pathname = strdup(d->pathname);
+	comments_load(s, d);
+	di->comments = d->cmnts;
+	d->cmnts = 0;
+	sccs_sdelta(s, d, key);
+	di->dkey = strdup(key);
+	return (di);
+}
+
 /*
  * Find the oldest user delta
  */
-private delta *
-findFirstDelta(sccs *s, delta *first)
+private dinfo *
+findFirstDelta(sccs *s, dinfo *first)
 {
 	delta	*d = sccs_findrev(s, "1.1");
 
@@ -1105,7 +1163,8 @@ findFirstDelta(sccs *s, delta *first)
 	 * Skip teamware dummy user
 	 * XXX - there can be more than one.
 	 */
-	if (streq(d->sdate, "70/01/01 00:00:00") && streq(d->user, "Fake")) {
+	if (streq(d->sdate, "70/01/01 00:00:00") &&
+	    streq(USER(s, d), "Fake")) {
 		d = KID(d);
 	}
 	unless (d) return (first);
@@ -1115,31 +1174,8 @@ findFirstDelta(sccs *s, delta *first)
 	 * we need to sort on sfile name
 	 */
 	if ((first == NULL) || (d->date < first->date)) {
-		unless (first) first = new(delta);
-		if (first->zone) free(first->zone);
-		if (first->sdate) free(first->sdate);
-		if (first->user) free(first->user);
-		if (first->hostname) free(first->hostname);
-
-		first->sdate = strdup(d->sdate);
-		if (d->zone) {
-			first->zone = strdup(d->zone);
-			first->flags &= ~D_NOZONE;
-		} else {
-			first->zone = NULL;
-			first->flags |= D_NOZONE;
-		}
-		first->date = sccs_date2time(first->sdate, first->zone);
-		first->dateFudge = 0;
-
-		first->user = strdup(d->user);
-		if (d->hostname) {
-			first->hostname = strdup(d->hostname);
-			first->flags &= ~D_NOHOST;
-		} else {
-			first->hostname = NULL;
-			first->flags |= D_NOHOST;
-		}
+		if (first) free_dinfo(first);
+		first = delta2dinfo(s, d);
 	}
 	return (first);
 }
@@ -1150,7 +1186,8 @@ findFirstDelta(sccs *s, delta *first)
 private	void
 mkList(sccs *s, int fileIdx)
 {
-	delta	*d, *e;
+	delta	*d;
+	dinfo	*di;
 
 	assert(fileIdx > 0);
 
@@ -1172,21 +1209,17 @@ mkList(sccs *s, int fileIdx)
 		d = PARENT(s, d);
 	}
 
-	for (d = s->table; d; ) {
-		/* make comments standalone */
-		comments_load(s, d);
-		e = NEXT(d);
+	for (d = s->table; d; d = NEXT(d)) {
 		if (d->flags & D_SET) {
 			/*
 			 * Collect marked delta into "list"
 			 */
-			d->f_index = fileIdx; /* needed in findcset() */
-			list = addLine(list, d);
+			di = delta2dinfo(s, d);
+			di->f_index = fileIdx; /* needed in findcset() */
+			list = addLine(list, di);
 			deltaCounter++;
 		}
-		d = e;
 	}
-	s->table = s->tree = 0;
 }
 
 FILE	*tf;
@@ -1246,7 +1279,7 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 	fprintf(out, "%c %s %s%s %s%s%s +%u -%u\n",
 	    type, d->rev, d->sdate,
 	    d->zone ? d->zone : "",
-	    d->user,
+	    USER(s, d),
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "",
 	    d->added, d->deleted);

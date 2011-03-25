@@ -96,7 +96,7 @@ sccs_patch(sccs *winner, sccs *loser)
 	printf("M 0.0 %s%s %s%s%s +0 -0\n",
 	    d->sdate,
 	    d->zone ? d->zone : "",
-	    d->user,
+	    USER(s, d),
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "");
 	printf("c Grafted %s into %s\n", lfile, wfile);

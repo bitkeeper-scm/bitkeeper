@@ -327,7 +327,7 @@ int
 cset_setup(int flags)
 {
 	sccs	*cset;
-	delta	*d = 0;
+	delta	*d = new(delta);
 	int	fd;
 
 	cset = sccs_init(csetFile, 0);
@@ -335,7 +335,12 @@ cset_setup(int flags)
 
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
 	unless (d = host_get(d)) goto intr;
-	unless (d = user_get(d)) goto intr;
+
+	d->user = sccs_addUniqStr(cset, sccs_getuser());
+	unless (isValidUser(USER(cset, d))) {
+		fprintf(stderr, "invalid user: \"%s\"\n", USER(cset, d));
+		goto intr;
+	}
 	cset->state |= S_CSET;
 	cset->xflags |= X_LONGKEY;
 	if (sccs_delta(cset, flags|DELTA_EMPTY|NEWFILE, d, 0, 0, 0) == -1) {
@@ -344,7 +349,6 @@ intr:		sccs_free(cset);
 		sfileDone();
 		comments_done();
 		host_done();
-		user_done();
 		return (1);
 	}
 	fd = creat(IDCACHE, GROUP_MODE);
@@ -353,7 +357,6 @@ intr:		sccs_free(cset);
 	sccs_free(cset);
 	comments_done();
 	host_done();
-	user_done();
 	sfileDone();
 	return (0);
 }

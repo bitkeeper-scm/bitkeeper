@@ -271,7 +271,7 @@ pdelta(sccs *s, delta *d, FILE *f)
 	    &(d->sdate[3]),	/* MM */
 	    &(d->sdate[6]),	/* DD */
 	    &(d->sdate[9]),	/* HH:MM:SS */
-	    d->user);
+	    USER(s, d));
 	if (d->hostname) fprintf(f, "@%s", d->hostname);
 	fprintf(f, " +%d -%d\n", d->added, d->deleted);
 	EACH_COMMENT(s, d) {

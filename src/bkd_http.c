@@ -1118,7 +1118,7 @@ http_index(char *page)
 	t2y = now - 2*YEAR;
 	t3y = now - 3*YEAR;
 	for (d = s->table; d; d = NEXT(d)) {
-		if (user && !streq(user, d->user)) continue;
+		if (user && !streq(user, USER(s, d))) continue;
 		if (d->type == 'R') continue;
 		unless (d->added > 0) {
 			unless (d == s->tree) cm++;

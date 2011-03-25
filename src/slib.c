@@ -447,7 +447,6 @@ freedelta(delta *d)
 	comments_free(d);
 	freeLines(d->text, free);
 	if (d->rev) free(d->rev);
-	if (d->user) free(d->user);
 	if (d->sdate) free(d->sdate);
 	if (d->include) free(d->include);
 	if (d->exclude) free(d->exclude);
@@ -491,6 +490,12 @@ sccs_freetable(sccs *s)
 	FREE(s->slist);
 	s->tree = s->table = 0;
 	s->nextserial = 0;
+	if (s->heap.buf) free(s->heap.buf);
+	memset(&s->heap, 0, sizeof(DATA));
+	if (s->uniqheap) {
+		hash_free(s->uniqheap);
+		s->uniqheap = 0;
+	}
 }
 
 /*
@@ -2339,18 +2344,18 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case '@':	/* user@host */
-			strcpy(t, d->user);
-			t += strlen(d->user);
+			strcpy(t, USER(s, d));
+			t += strlen(USER(s, d));
 			if (d->hostname) {
 				*t++ = '@';
 				strcpy(t, d->hostname);
 				t += strlen(d->hostname);
 			}
 			break;
-			
+
 		    case '#':	/* user */
-			strcpy(t, d->user);
-			t += strlen(d->user);
+			strcpy(t, USER(s, d));
+			t += strlen(USER(s, d));
 			break;
 
 		    default:
@@ -2643,7 +2648,7 @@ err:		if (s2) sccs_free(s2);
 		fprintf(stderr, "resolve: new tip is not a tag merge\n");
 		goto err;
 	}
-	sccs_sdelta(s2, s->table, key);
+	sccs_sdelta(s, s->table, key);
 	sccs_free(s2);
 	unless (f = fopen(CSETS_IN, "a")) {
 		fprintf(stderr,
@@ -3231,7 +3236,7 @@ first:		if (streq(buf, "\001u")) break;
 		}
 		sprintf(tmp, "%s %s", date, time);
 		d->sdate = strdup(tmp);
-		d->user = strdup(user);
+		d->user = sccs_addUniqStr(s, user);
 		for (;;) {
 			if (!(buf = sccs_nextdata(s)) || buf[0] != '\001') {
 				expected = "^A";
@@ -7170,7 +7175,7 @@ prefix(sccs *s, delta *d, u32 flags, int lines, char *name, FILE *out)
 			}
 			fprintf(out, "%8.8s ", d->sdate);
 		}
-		if (flags&GET_USER) fprintf(out, "%-*s ", s->userLen, d->user);
+		if (flags&GET_USER) fprintf(out, "%-*s ", s->userLen, USER(s, d));
 		if (flags&GET_REVNUMS) fprintf(out, "%-*s ", s->revLen, d->rev);
 		if (flags&GET_LINENUM) fprintf(out, "%6d ", lines);
 		if (flags&GET_SERIAL) fprintf(out, "%6d ", d->serial);
@@ -7188,7 +7193,7 @@ prefix(sccs *s, delta *d, u32 flags, int lines, char *name, FILE *out)
 			}
 			fprintf(out, "%8.8s\t", d->sdate);
 		}
-		if (flags&GET_USER) fprintf(out, "%s\t", d->user);
+		if (flags&GET_USER) fprintf(out, "%s\t", USER(s, d));
 		if (flags&GET_REVNUMS) fprintf(out, "%s\t", d->rev);
 		if (flags&GET_LINENUM) fprintf(out, "%d\t", lines);
 #if 0
@@ -7897,7 +7902,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		*p++ = ' ';
 		p = fmts(p, d->sdate);
 		*p++ = ' ';
-		p = fmts(p, d->user);
+		p = fmts(p, USER(s, d));
 		*p++ = ' ';
 		p = fmtd(p, d->serial);
 		*p++ = ' ';
@@ -9256,14 +9261,14 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 		}
 	}
 	if (nodefault) {
-		unless (d->user) d->user = strdup("Anon");
+		unless (d->user) d->user = sccs_addUniqStr(s, "Anon");
 	} else {
 		project	*proj = s->proj;
 
 		if (CSET(s) && proj_isComponent(proj)) {
 			proj = proj_product(proj);
 		}
-		unless (d->user) d->user = strdup(sccs_user());
+		unless (d->user) d->user = sccs_addUniqStr(s, sccs_user());
 		unless (d->hostname && sccs_gethost()) {
 			char	*imp, *h;
 
@@ -10316,20 +10321,21 @@ out:		fprintf(stderr, "sccs: can't parse date format %s at %s\n",
 #undef	move
 
 private delta *
-userArg(delta *d, char *arg)
+userArg(sccs *s, delta *d, char *arg)
 {
-	char	*save = arg;
+	char	*t;
+	delta	*p = PARENT(s, d);
 
-	if (!d) d = new(delta);
-	if (!arg || !*arg) { d->flags = D_ERROR; return (d); }
-	while (*arg && (*arg++ != '@'));
-	if (arg[-1] == '@') {
-		arg[-1] = 0;
-		if (d->hostname && !(d->flags & D_DUPHOST)) free(d->hostname);
-		d->hostname = strdup(arg);
+	if (t = strchr(arg, '@')) {
+		*t = 0;
+		d = hostArg(d, t+1);
 	}
-	assert(!d->user);
-	d->user = strdup(save);		/* has to be after we null the @ */
+	if (p && streq(arg, USER(s, p))) {
+		d->user = p->user;
+	} else {
+		d->user = sccs_addUniqStr(s, arg);
+	}
+	if (t) *t = '@';
 	return (d);
 }
 
@@ -10548,7 +10554,7 @@ revArg(delta *d, char *arg)
  * can be added to the tree and freed later.
  */
 delta *
-sccs_parseArg(delta *d, char what, char *arg, int defaults)
+sccs_parseArg(sccs *s, delta *d, char what, char *arg, int defaults)
 {
 	switch (what) {
 	    case 'A':	/* hash */
@@ -10558,7 +10564,7 @@ sccs_parseArg(delta *d, char what, char *arg, int defaults)
 	    case 'D':	/* any part of 1998/03/09 18:23:45.123-08:00 */
 		return (dateArg(d, arg, defaults));
 	    case 'U':	/* user or user@host */
-		return (userArg(d, arg));
+		return (userArg(s, d, arg));
 	    case 'H':	/* host */
 		return (hostArg(d, arg));
 	    case 'P':	/* pathname */
@@ -10955,7 +10961,7 @@ insert_1_0(sccs *s, u32 flags)
 	s->tree = d;		/* tree is now linked */
 	d->rev = strdup("1.0");
 	explode_rev(d);
-	d->user = strdup(t->user);
+	d->user = t->user;
 	if (d->hostname = t->hostname) t->flags |= D_DUPHOST;
 	if (d->pathname = t->pathname) t->flags |= D_DUPPATH;
 	if (d->zone = t->zone) {
@@ -12584,9 +12590,19 @@ sccs_hashcount(sccs *s)
  * V - file format version
  * x - exclude keys
  * X - X_flags
+ *
+ * args:
+ *   f	       the INIT file to be read
+ *   takepatch
+ *   flags     options to function:
+ *      DELTA_PATCH      INIT is from a patch ('D' has different format)
+ *      DELTA_TAKEPATCH  called from takepatch
+ *   errorp    ptr to return error output (required if errors can occur)
+ *   linesp    ptr to return number of lines read
+ *   symsp     ptr to return list of new tags
  */
 delta *
-sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp,
+sccs_getInit(sccs *sc, delta *d, MMAP *f, u32 flags, int *errorp, int *linesp,
 	     char ***symsp)
 {
 	char	*s, *t;
@@ -12596,6 +12612,9 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp,
 	int	lines = 0;
 	char	type = '?';
 	char	**syms = 0;
+
+	/* these are the only possible flags */
+	assert((flags & ~(DELTA_TAKEPATCH|DELTA_PATCH)) == 0);
 
 	unless (f) {
 		if (errorp) *errorp = 0;
@@ -12621,7 +12640,7 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp,
 	for (s = &buf[2]; *s++ != ' '; );
 	if (!d || !d->rev) {
 		s[-1] = 0;
-		d = sccs_parseArg(d, 'R', &buf[2], 0);
+		d = sccs_parseArg(sc, d, 'R', &buf[2], 0);
 	}
 	assert(d);
 	t = s;
@@ -12629,16 +12648,16 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp,
 	while (*s++ != ' ');	/* eat time */
 	unless (d->sdate) {
 		s[-1] = 0;
-		d = sccs_parseArg(d, 'D', t, 0);
+		d = sccs_parseArg(sc, d, 'D', t, 0);
 	}
 	t = s;
 	while (*s && (*s++ != ' '));	/* eat user */
 	unless (d->user) {
 		if (s[-1] == ' ') s[-1] = 0;
-		d = sccs_parseArg(d, 'U', t, 0);
+		d = sccs_parseArg(sc, d, 'U', t, 0);
 		if (!d->hostname) d->flags |= D_NOHOST;
 	}
-	if (patch) {
+	if (flags & DELTA_PATCH) {
 		if ((*s == '+') && !d->added) {
 			d->added = atoi(s+1);
 			while (*s && (*s++ != ' '));
@@ -12682,13 +12701,13 @@ skip:
 
 	/* hash hash */
 	if (WANT('A')) {
-		d = sccs_parseArg(d, 'A', &buf[2], 0);
+		d = sccs_parseArg(sc, d, 'A', &buf[2], 0);
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* Cset file ID */
 	if (WANT('B')) {
-		unless (d->csetFile) d = sccs_parseArg(d, 'B', &buf[2], 0);
+		unless (d->csetFile) d = sccs_parseArg(sc, d, 'B', &buf[2], 0);
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -12733,7 +12752,7 @@ skip:
 	 * If there is no sccs* ignore them.
 	 */
 	while (WANT('i')) {
-		if (sc) {
+		unless (flags & DELTA_TAKEPATCH) {
 			delta	*e = sccs_findKey(sc, &buf[2]);
 
 			unless (e) {
@@ -12758,7 +12777,7 @@ skip:
 
 	/* merge deltas are optional */
 	if (WANT('M')) {
-		if (sc) {
+		unless (flags & DELTA_TAKEPATCH) {
 			delta	*e = sccs_findKey(sc, &buf[2]);
 
 			unless (e) {
@@ -12811,7 +12830,7 @@ skip:
 			if (d) d->symGraph = 1;
 		} else if (streq(&buf[2], "l")) {
 			if (d) d->symLeaf = 1;
-		} else if (d && sc) {
+		} else if (!(flags & DELTA_TAKEPATCH)) {
 			delta	*e = sccs_findKey(sc, &buf[2]);
 
 			assert(e);
@@ -12840,7 +12859,7 @@ skip:
 	if (WANT('V')) {
 		unless (streq("1.0", d->rev)) {
 			fprintf(stderr, "sccs_getInit: version only on 1.0\n");
-		} else if (sc) {
+		} else {
 			int	vers = atoi(&buf[3]);
 
 			if (sc->version < vers) sc->version = vers;
@@ -12852,7 +12871,7 @@ skip:
 	 * If there is no sccs* ignore them.
 	 */
 	while (WANT('x')) {
-		if (sc) {
+		unless (flags & DELTA_TAKEPATCH) {
 			delta	*e = sccs_findKey(sc, &buf[2]);
 
 			unless (e) {
@@ -12889,7 +12908,7 @@ out:	if (d) {
 		}
 		d->type = type;
 #ifdef	GRAFT_BREAKS_LOD
-		if (patch) {
+		if (flags & DELTA_PATCH) {
 			free(d->rev);
 			d->rev = 0;
 		}
@@ -13063,7 +13082,7 @@ sccs_meta(char *me, sccs *s, delta *parent, MMAP *iF, int fixDate)
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
-	m = sccs_getInit(s, 0, iF, 1, &e, 0, &syms);
+	m = sccs_getInit(s, 0, iF, DELTA_PATCH, &e, 0, &syms);
 	mclose(iF);
 	if (m->rev) free(m->rev);
 	m->rev = strdup(parent->rev);
@@ -14381,8 +14400,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	case KW_USER: /* USER */ {
 		/* programmer */
 		if (d->user) {
-			if (p = strchr(d->user, '/')) *p = 0;
-			fs(d->user);
+			if (p = strchr(USER(s, d), '/')) *p = 0;
+			fs(USER(s, d));
 			if (p) *p = '/';
 			return (strVal);
 		}
@@ -14390,10 +14409,10 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	}
 	case KW_REALUSER: /* REALUSER */ {
 		if (d->user) {
-			if (p = strchr(d->user, '/')) {
+			if (p = strchr(USER(s, d), '/')) {
 				++p;
 			} else {
-				p = d->user;
+				p = USER(s, d);
 			}
 			fs(p);
 			return (strVal);
@@ -14402,7 +14421,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	}
 	case KW_FULLUSER: /* FULLUSER */ {
 		if (d->user) {
-			fs(d->user);
+			fs(USER(s, d));
 			return (strVal);
 		}
 		return (nullVal);
@@ -15959,7 +15978,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	fprintf(out, "%c %s %s%s %s%s%s +%u -%u",
 	    type, d->rev, d->sdate,
 	    d->zone ? d->zone : "",
-	    d->user,
+	    USER(s, d),
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "",
 	    d->added, d->deleted);
@@ -16533,18 +16552,6 @@ sccs_findKeyFlush(sccs *s)
 		s->findkeydb = 0;
 	}
 }
-void
-sccs_print(delta *d)
-{
-	fprintf(stderr, "%c %s %s%s %s%s%s %d %d %u/%u/%u %s 0x%x\n",
-	    d->type, d->rev,
-	    d->sdate, d->zone ? d->zone : "",
-	    d->user,
-	    d->hostname ? "@" : "", d->hostname ? d->hostname : "",
-	    d->serial, d->pserial,
-	    d->added, d->deleted, d->same,
-	    d->pathname ? d->pathname : "", d->flags);
-}
 
 /* return the time of the delta in UTC.
  * Do not change times without time zones to localtime.
@@ -16574,7 +16581,7 @@ sccs_pdelta(sccs *s, delta *d, FILE *out)
 {
 	assert(d);
 	fprintf(out, "%s%s%s|%s|%s|%05u",
-	    d->user,
+	    USER(s, d),
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "",
 	    d->pathname ? d->pathname : "",
@@ -16584,9 +16591,6 @@ sccs_pdelta(sccs *s, delta *d, FILE *out)
 }
 
 /* Get the checksum of the 5 digit checksum */
-/*
- * XXX why does this get an 'sccs *' ??
- */
 int
 sccs_sdelta(sccs *s, delta *d, char *buf)
 {
@@ -16595,7 +16599,7 @@ sccs_sdelta(sccs *s, delta *d, char *buf)
 
 	assert(d);
 	len = sprintf(buf, "%s%s%s|%s|%s|%05u",
-	    d->user,
+	    USER(s, d),
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "",
 	    d->pathname ? d->pathname : "",
@@ -16782,7 +16786,7 @@ sccs_shortKey(sccs *s, delta *d, char *buf)
 {
 	assert(d);
 	sprintf(buf, "%s%s%s|%s|%s",
-	    d->user,
+	    USER(s, d),
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "",
 	    d->pathname ? d->pathname : "",
@@ -16859,7 +16863,7 @@ sccs_ino(sccs *s)
 {
 	delta	*d = s->tree;
 
-	if (streq(d->sdate, "70/01/01 00:00:00") && streq(d->user, "Fake")) {
+	if (streq(d->sdate, "70/01/01 00:00:00") && streq(USER(s, d), "Fake")) {
 		d = KID(d);
 	}
 	return (d);

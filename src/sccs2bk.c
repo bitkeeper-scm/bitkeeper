@@ -373,7 +373,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 		    tp->tm_hour,
 		    tp->tm_min,
 		    tp->tm_sec,
-		    d->user,
+		    USER(s, d),
 		    d->hostname ? d->hostname : sccs_gethost());
 		fprintf(fh,
 			"B %s\n"
@@ -389,7 +389,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 			randstr);
 	} else {
 		fprintf(fh, "D %s %s %s@%s\n",
-		    d->rev, d->sdate, d->user,
+		    d->rev, d->sdate, USER(s, d),
 		    d->hostname ? d->hostname : sccs_gethost());
 		EACH_COMMENT(s, d) {
 			fprintf(fh, "c %s\n", d->cmnts[i]);
@@ -438,7 +438,7 @@ handleFake(sccs *s)
 	delta	*d;
 	int	i;
 	time_t	date = CUTOFFDATE;
-	char	*user = "BKFake";
+	u32	user = 0;
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, (ser_t) i)) continue;
@@ -450,6 +450,8 @@ handleFake(sccs *s)
 		user = d->user;
 		break;
 	}
+	/* If no user, then there's no BKFake already in heap -- it is uniq */
+	unless (user) user = sccs_addUniqStr(s, "BKFake");
 
 	/* only fix the first 'i' deltas in count down fashion */
 	while (i > 1) {
@@ -462,9 +464,8 @@ handleFake(sccs *s)
 		d->date = date;
 		strftime(d->sdate, strlen(d->sdate)+1,
 		    "%y/%m/%d %H:%M:%S", gmtime(&d->date));
-		assert(!streq(d->user, user));
-		free(d->user);
-		d->user = strdup(user);
+		assert(d->user != user);
+		d->user = user;
 	}
 }
 

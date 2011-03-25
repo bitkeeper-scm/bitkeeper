@@ -227,11 +227,11 @@ admin_main(int ac, char **av)
 				d->flags &= ~D_DUPPATH;
 			}
 			d = rev ? sccs_findrev(sc, rev) : sccs_top(sc);
-			sccs_parseArg(d, 'P', path ? path : sc->gfile, 0); 
+			sccs_parseArg(sc, d, 'P', path ? path : sc->gfile, 0);
 		}
 		if (newCset) {
 			if (bk_notLicensed(sc->proj, LIC_ADM, 0)) exit(1);
-			sccs_parseArg(sc->tree, 'B', csetFile, 0);
+			sccs_parseArg(sc, sc->tree, 'B', csetFile, 0);
 			flags |= NEWCKSUM;
 		}
 		if (rmCsets) {
@@ -376,7 +376,7 @@ do_checkin(char *name,
 		s->mode = S_IFREG | (0777 & mask);
 	}
 	if (rev) {
-		d = sccs_parseArg(d, 'R', rev, 0);
+		d = sccs_parseArg(s, d, 'R', rev, 0);
 		if ((d->flags & D_BADFORM) ||
 		    (!d->r[0] || (!d->r[1] && (d->r[0] != 1))) ||
 		    (d->r[2] && !d->r[3])) {
@@ -394,7 +394,7 @@ do_checkin(char *name,
 		flags |= DELTA_EMPTY;
 	}
 	s->state |= S_GFILE;
-	if (comment) { d = sccs_parseArg(d, 'C', comment, 0); }
+	if (comment) { d = sccs_parseArg(s, d, 'C', comment, 0); }
 	if ((error = sccs_delta(s, flags|DELTA_SAVEGFILE, d, 0, 0, 0))) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr, "admin: failed to check in %s.\n",

@@ -110,6 +110,7 @@ int	checking_rmdir(char *dir);
 #define	DELTA_NOPENDING	0x08000000	/* don't create pending marker */
 #define	DELTA_CFILE	0x00100000	/* read cfile and do not prompt */
 #define	DELTA_MONOTONIC	0x00200000	/* preserve MONOTONIC flag */
+#define	DELTA_TAKEPATCH	0x00400000	/* call sccs_getInit() from takepatch */
 
 #define	ADMIN_FORMAT	0x10000000	/* check file format (admin) */
 /* AVAILABLE		0x20000000	*/
@@ -305,6 +306,17 @@ int	checking_rmdir(char *dir);
 #define	D_MERGED	0x00020000	/* set on branch tip which is merged */
 #define	D_GONE		0x00040000	/* this delta is gone, don't print */
 #define	D_BLUE		0x00080000	/* when you need two colors */
+
+#if 0
+#define	D_DTYPE		0x00100000
+#define	D_DANGLING	0x00200000
+#define	D_SYMGRAPH	0x00400000
+#define	D_SYMLEAF	0x00800000
+#endif
+/*			0x00100000 */
+/*			0x00200000 */
+/*			0x00400000 */
+/*			0x00800000 */
 #define	D_ICKSUM	0x01000000	/* use checksum from init file */
 #define	D_MODE		0x02000000	/* permissions in d->mode are valid */
 #define	D_SET		0x04000000	/* range.c: marked as part of a set */
@@ -426,42 +438,26 @@ typedef	unsigned short	sum_t;
  * fail the init if there is no memory.
  */
 typedef struct delta {
-	/* stuff in original SCCS */
+	/* linkage */
+	ser_t	serial;			/* serial number of this delta */
+	ser_t	pserial;		/* serial number of parent */
+	ser_t	merge;			/* serial number merged into here */
+	ser_t	ptag;			/* parent in tag graph */
+	ser_t	mtag;			/* merge parent in tag graph */
+
+	/* data */
 	u32	added;			/* lines added by this delta (u32!) */
 	u32	deleted;		/* and deleted */
 	u32	same;			/* and unchanged */
-	char	*rev;			/* revision number */
-	char	*sdate;			/* ascii date in local time, i.e.,
-					 * 93/07/25 21:14:11 */
-	char	*user;			/* user name of delta owner */
-	ser_t	serial;			/* serial number of this delta */
-	ser_t	pserial;		/* serial number of parent */
-	ser_t	*include;		/* include serial #'s */
-	ser_t	*exclude;		/* exclude serial #'s */
-	char	**cmnts;		/* comment offset or lines array */
-	/* New stuff in lm's sccs */
-	ser_t	ptag;			/* parent in tag graph */
-	ser_t	mtag;			/* merge parent in tag graph */
-	char	**text;			/* descriptive text log */
-	char	*hostname;		/* hostname where revision was made */
-	char	*pathname;		/* pathname to the file */
-	char	*zone;			/* 08:00 is time relative to GMT */
-	char	*csetFile;		/* id for ChangeSet file */
-	char	*hash;			/* hash of gfile for BAM */
-	char	*random;		/* random bits for file ID */
-	ser_t	merge;			/* serial number merged into here */
 	sum_t	sum;			/* checksum of gfile */
 	sum_t	sortSum;		/* sum from sortkey */
+	time_t	date;			/* date - conversion from sdate/zone */
 	time_t	dateFudge;		/* make dates go forward */
 	mode_t	mode;			/* 0777 style modes */
-	char 	*symlink;		/* sym link target */
 	u32	xflags;			/* timesafe x flags */
-	/* In memory only stuff */
-	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
-	time_t	date;			/* date - conversion from sdate/zone */
-	ser_t	kid;			/* next delta on this branch */
-	ser_t	siblings;		/* pointer to other branches */
 	u32	flags;			/* per delta flags */
+
+// VVVV XXX need to collapse into 'flags'
 	u32	dangling:1;		/* in MONOTONIC file, ahead of chgset */
 	u32	symGraph:1;		/* if set, I'm a symbol in the graph */
 	u32	symLeaf:1;		/* if set, I'm a symbol with no kids */
@@ -470,6 +466,32 @@ typedef struct delta {
 	u32	localcomment:1;		/* comments are stored locally */
 	u32	inarray:1;
 	char	type;			/* Delta or removed delta */
+// ^^^^ XXX
+
+	/* unique heap data */
+	char	*rev;			/* revision number */
+	ser_t	*include;		/* include serial #'s */
+	ser_t	*exclude;		/* exclude serial #'s */
+	char	**cmnts;		/* comment offset or lines array */
+	char	*hash;			/* hash of gfile for BAM */
+
+	/* collapsible heap data */
+	u32	user;			/* user name of delta owner */
+	char	*hostname;		/* hostname where revision was made */
+	char	*pathname;		/* pathname to the file */
+	char	*zone;			/* 08:00 is time relative to GMT */
+	char 	*symlink;		/* sym link target */
+ 	char	*csetFile;		/* id for ChangeSet file */
+
+	/* XXX Stuff to remove */
+	char	*sdate;			/* ascii date in local time, i.e.,
+					 * 93/07/25 21:14:11 */
+
+	char	**text;			/* descriptive text log */
+	char	*random;		/* random bits for file ID */
+	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
+	ser_t	kid;			/* next delta on this branch */
+	ser_t	siblings;		/* pointer to other branches */
 } delta;
 #define	COMMENTS(d)	((d)->cmnts != 0)
 #define	TAG(d)		((d)->type != 'D')
@@ -485,6 +507,8 @@ typedef struct delta {
 #define	MERGE(s, d)	SFIND((s), (d)->merge)
 #define	KID(d)		DFIND((d), (d)->kid)
 #define	SIBLINGS(d)	DFIND((d), (d)->siblings)
+
+#define	USER(s, d)	((s)->heap.buf + (d)->user)
 
 /*
  * Macros to get at an optional hidden original path.
@@ -599,6 +623,8 @@ struct sccs {
 	int	nextserial;	/* next unused serial # */
 				/* due to gaps, those two may not be the same */
 	off_t	size;		/* size of mapping */
+	DATA	heap;		/* all strings in delta structs */
+	hash	*uniqheap;	/* help collapse unique strings in hash */
 	FILE	*fh;		/* cached copy of the input file handle */
 	FILE	*oldfh;		/* orig fh (no ungzip layer) */
 	FILE	*outfh;		/* fh for writing x.file */
@@ -791,21 +817,6 @@ typedef struct patch {
 #define	CLOCK_DRIFT	(2*24*60*60)
 
 /*
- * command struct for bk front end
- */
-struct command
-{
-        char *name;
-        int (*func)(int, char **);
-};      
-
-struct tool
-{
-	char	*prog;	/* fm3tool */
-	char	*alias;	/* fm3 or 0 */
-};
-
-/*
  * BK "URL" formats are:
  *	bk://user@host:port/pathname
  *	user@host:pathname
@@ -890,13 +901,12 @@ void	sccs_close(sccs *);
 int	sccs_csetWrite(sccs *s, char **cweave);
 sccs	*sccs_csetInit(u32 flags);
 char	**sccs_files(char **, int);
-delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
+delta	*sccs_parseArg(sccs *s, delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
 void	sccs_inherit(sccs *s, delta *d);
 int	sccs_hasDiffs(sccs *s, u32 flags, int inex);
-void	sccs_print(delta *d);
-delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, int patch,
+delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, u32 flags,
 		      int *errorp, int *linesp, char ***symsp);
 delta	*sccs_ino(sccs *);
 int	sccs_userfile(sccs *);
@@ -1075,7 +1085,6 @@ int	comments_checkStr(u8 *s);
 void	host_done(void);
 delta	*host_get(delta *);
 void	user_done(void);
-delta	*user_get(delta *);
 char	*shell(void);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
@@ -1392,6 +1401,9 @@ void	notifier_flush(void);
 
 int	sccs_defRootlog(sccs *cset);
 void	bk_setConfig(char *key, char *val);
+u32	sccs_addStr(sccs *s, char *str);
+void	sccs_appendStr(sccs *s, char *str);
+u32	sccs_addUniqStr(sccs *s, char *str);
 
 
 #define	RGCA_ALL	0x1000

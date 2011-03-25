@@ -341,7 +341,7 @@ err:		sccs_free(s);
 	} else {
 		char	*what = streq(op, "-x") ? "Exclude" : "Include";
 
-		d = sccs_parseArg(0, 'C', what, 0);
+		d = sccs_parseArg(s, 0, 'C', what, 0);
 	}
 	sccs_restart(s);
 	if (sccs_delta(s, SILENT|DELTA_FORCE, d, 0, 0, 0)) {

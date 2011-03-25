@@ -223,8 +223,8 @@ out:		sccs_free(s);
 		}
 		fprintf(stderr,
 		    "%-10.10s %-12s %-7.7s %-11.11s  %-12s %-7.7s %11.11s\n",
-		    kv.key.dptr, l->rev, l->user, l->sdate + 3,
-		    r->rev, r->user, r->sdate + 3);
+		    kv.key.dptr, l->rev, USER(s, l), l->sdate + 3,
+		    r->rev, USER(s, r), r->sdate + 3);
 		n++;
 	}
 	fprintf(stderr, "\n");

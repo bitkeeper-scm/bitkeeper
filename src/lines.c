@@ -79,7 +79,7 @@ lines_main(int ac, char **av)
 			printf("%s", e->rev);
 			if (flags & GET_USER) {
 				putchar('-');
-				puser(e->user);
+				puser(USER(s, e));
 			}
 			printf("\n");
 		} else {
@@ -164,7 +164,7 @@ pd(char *prefix, delta *d)
 	printf("%s%s", prefix, d->rev);
 	if (flags & GET_USER) {
 		putchar('-');
-		puser(d->user);
+		puser(USER(s, d));
 	}
 	if (sort) printf("-%u", d->pserial);
 	if (tags && (d->flags & D_SYMBOLS)) putchar('*');
@@ -177,7 +177,7 @@ pd(char *prefix, delta *d)
 			printf("%c%s", BK_FS, p->rev);
 			if (flags & GET_USER) {
 				putchar('-');
-				puser(p->user);
+				puser(USER(s, p));
 			}
 			if (sort) printf("-%u", p->pserial);
 			if (tags && (p->flags & D_SYMBOLS)) putchar('*');

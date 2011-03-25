@@ -141,7 +141,7 @@ OBJ =	bkver.o cmd.o \
 	contrib/test.o \
 	converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	delta.o diffs.o diffsplit.o dspec.o \
+	dataheap.o delta.o diffs.o diffsplit.o dspec.o \
 	eula.o export.o \
 	features.o \
 	find.o findcset.o findkey.o fixtool.o fsl.o fslayer.o \
@@ -196,7 +196,7 @@ OBJ =	bkver.o cmd.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
 	urlinfo.o \
-	user.o utils.o uu.o what.o which.o \
+	utils.o uu.o what.o which.o \
 	xflags.o \
 	zone.o
 SCRIPTS	= applypatch bk.script import \

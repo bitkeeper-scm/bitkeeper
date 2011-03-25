@@ -1524,7 +1524,7 @@ markCset(sccs *s, delta *d)
 				    "check: %s@%s "
 				    "(%s@%s %.8s) in multiple csets\n",
 				    s->gfile, d->rev,
-				    d->user, d->hostname, d->sdate);
+				    USER(s, d), d->hostname, d->sdate);
 			}
 		}
 		d->flags |= D_SET;

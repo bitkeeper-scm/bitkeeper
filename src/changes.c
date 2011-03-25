@@ -1265,16 +1265,18 @@ want(sccs *s, delta *e)
 		}
 	}
 	if (opts.notusers) {
-		if (p = strchr(e->user, '/')) *p = 0;
+		if (p = strchr(USER(s, e), '/')) *p = 0;
 		match = 0;
-		EACH(opts.notusers) match |= streq(opts.notusers[i], e->user);
+		EACH(opts.notusers) {
+			match |= streq(opts.notusers[i], USER(s, e));
+		}
 		if (p) *p = '/';
 		if (match) return (0);
 	}
 	if (opts.users) {
-		if (p = strchr(e->user, '/')) *p = 0;
+		if (p = strchr(USER(s, e), '/')) *p = 0;
 		match = 0;
-		EACH(opts.users) match |= streq(opts.users[i], e->user);
+		EACH(opts.users) match |= streq(opts.users[i], USER(s, e));
 		if (p) *p = '/';
 		unless (match) return (0);
 	}

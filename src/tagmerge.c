@@ -107,7 +107,7 @@ m(sccs *s, delta *l, delta *r)
 				break;
 			}
 			if ((d->date == tt) &&
-			    streq(d->user, p->user) &&
+			    streq(USER(s, d), USER(s, p)) &&
 			    streq(d->hostname, p->hostname) &&
 			    streq(d->pathname, p->pathname)) {
 			    	break;
@@ -138,7 +138,7 @@ m(sccs *s, delta *l, delta *r)
 	sprintf(zone, "%c%02d:%02d", sign, hwest, mwest);
 
 	sprintf(buf, "M %s %s%s %s@%s +0 -0\n",
-	    "0.0", tmp, zone, p->user, p->hostname);
+	    "0.0", tmp, zone, USER(s, p), p->hostname);
 	sum = doit(sum, buf);
 	sccs_sdelta(s, sccs_ino(s), key);
 	sprintf(buf, "B %s\n", key);

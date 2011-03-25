@@ -284,7 +284,7 @@ delta_main(int ac, char **av)
 		if (df & DELTA_DONTASK) {
 			unless (d = comments_get(0)) usage();
 		}
-		if (mode) d = sccs_parseArg(d, 'O', mode, 0);
+		if (mode) d = sccs_parseArg(0, d, 'O', mode, 0);
 		unless (s = sccs_init(name, iflags)) {
 			if (d) sccs_freedelta(d);
 			name = sfileNext();

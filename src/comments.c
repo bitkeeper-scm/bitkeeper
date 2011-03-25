@@ -136,7 +136,8 @@ comments_get(delta *d)
 			saved = addLine(saved, strdup(d->cmnts[i]));
 		}
 	} else {
-		d = sccs_parseArg(d, 'C', comment, 0);
+		// XXX will need sccs* in future
+		d = sccs_parseArg(0, d, 'C', comment, 0);
 	}
 	if (d && (d->flags & D_ERROR)) {
 		sccs_freedelta(d);

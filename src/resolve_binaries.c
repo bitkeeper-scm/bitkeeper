@@ -136,15 +136,15 @@ resolve_binary(resolve *rs)
 	}
 	d = sccs_findrev(rs->s, rs->revs->local);
 	assert(d);
-	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
+	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, USER(rs->s, d), d->rev);
 	n->local = strdup(buf);
 	d = sccs_findrev(rs->s, rs->revs->gca);
 	assert(d);
-	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
+	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, USER(rs->s, d), d->rev);
 	n->gca = strdup(buf);
 	d = sccs_findrev(rs->s, rs->revs->remote);
 	assert(d);
-	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
+	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, USER(rs->s, d), d->rev);
 	n->remote = strdup(buf);
 	rs->tnames = n;
 	rs->prompt = rs->s->gfile;
