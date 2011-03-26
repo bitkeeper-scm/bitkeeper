@@ -192,7 +192,7 @@ int	checking_rmdir(char *dir);
 #define	ROUNDUP	1
 #define	EXACT	0
 #define	ROUNDDOWN -1
-#define	DATE(d)		((d)->date ? (d)->date : getDate(d))
+#define	DATE(s, d)		((d)->date ? (d)->date : getDate(s, d))
 #define	CHKDATE(d) \
 	assert((d)->date || streq("70/01/01 00:00:00", (d)->sdate))
 
@@ -287,20 +287,20 @@ int	checking_rmdir(char *dir);
  * Flags (d->flags) that indicate some state on the delta.
  */
 #define	D_ERROR		0x00000001	/* from parseArg() */
-#define	D_NOHOST	0x00000002	/* don't generate a hostname */
+		/*	0x00000002 */
 #define	D_SORTSUM	0x00000004	/* generate a sortSum */
-#define	D_NOZONE	0x00000008	/* don't generate a time zone */
+		/*	0x00000008 */
 #define	D_NOCOMMENTS	0x00000010	/* don't generate comments */
-#define	D_DUPHOST	0x00000020	/* this host pointer is shared */
+		/*	0x00000020 */
 #define	D_DUPPATH	0x00000040	/* this path pointer is shared */
-#define	D_DUPZONE	0x00000080	/* this zone pointer is shared */
+		/*	0x00000080 */
 #define	D_REMOTE	0x00000100	/* for resolve; from remote repos. */
 #define	D_BADFORM	0x00000200	/* poorly formed rev */
 #define	D_BADREV	0x00000400	/* bad parent/child relationship */
 #define	D_NONEWLINE	0x00000800	/* this delta has no trailing newline */
 #define	D_META		0x00001000	/* this is a metadata removed delta */
 #define	D_SYMBOLS	0x00002000	/* delta has one or more symbols */
-#define	D_DUPCSETFILE	0x00004000	/* this changesetFile is shared */
+		/*	0x00004000 */
 #define	D_RED		0x00008000	/* marker used in graph traeversal */
 #define	D_CKSUM		0x00010000	/* delta has checksum */
 #define	D_MERGED	0x00020000	/* set on branch tip which is merged */
@@ -321,7 +321,7 @@ int	checking_rmdir(char *dir);
 #define	D_MODE		0x02000000	/* permissions in d->mode are valid */
 #define	D_SET		0x04000000	/* range.c: marked as part of a set */
 #define	D_CSET		0x08000000	/* this delta is marked in cset file */
-#define D_DUPLINK	0x10000000	/* this symlink pointer is shared */
+		/*	0x10000000 */
 #define	D_LOCAL		0x20000000	/* for resolve; this is a local delta */
 #define D_XFLAGS	0x40000000	/* delta has updated file flags */
 #define D_TEXT		0x80000000	/* delta has updated text */
@@ -469,19 +469,19 @@ typedef struct delta {
 // ^^^^ XXX
 
 	/* unique heap data */
-	char	*rev;			/* revision number */
+	u32	rev;			/* revision number */
 	ser_t	*include;		/* include serial #'s */
 	ser_t	*exclude;		/* exclude serial #'s */
 	char	**cmnts;		/* comment offset or lines array */
-	char	*hash;			/* hash of gfile for BAM */
+	u32	bamhash;		/* hash of gfile for BAM */
 
 	/* collapsible heap data */
 	u32	user;			/* user name of delta owner */
-	char	*hostname;		/* hostname where revision was made */
+	u32	hostname;		/* hostname where revision was made */
 	char	*pathname;		/* pathname to the file */
-	char	*zone;			/* 08:00 is time relative to GMT */
-	char 	*symlink;		/* sym link target */
- 	char	*csetFile;		/* id for ChangeSet file */
+	u32	zone;			/* 08:00 is time relative to GMT */
+	u32 	symlink;		/* sym link target */
+ 	u32	csetFile;		/* id for ChangeSet file */
 
 	/* XXX Stuff to remove */
 	char	*sdate;			/* ascii date in local time, i.e.,
@@ -508,7 +508,14 @@ typedef struct delta {
 #define	KID(d)		DFIND((d), (d)->kid)
 #define	SIBLINGS(d)	DFIND((d), (d)->siblings)
 
+#define	REV(s, d)	((s)->heap.buf + (d)->rev)
+#define	BAMHASH(s, d)	((s)->heap.buf + (d)->bamhash)
+
 #define	USER(s, d)	((s)->heap.buf + (d)->user)
+#define	HOSTNAME(s, d)	((s)->heap.buf + (d)->hostname)
+#define	ZONE(s,d)	((s)->heap.buf + (d)->zone)
+#define	SYMLINK(s,d)	((s)->heap.buf + (d)->symlink)
+#define	CSETFILE(s,d)	((s)->heap.buf + (d)->csetFile)
 
 /*
  * Macros to get at an optional hidden original path.
@@ -964,7 +971,7 @@ void	sccs_resethost(void);
 char	*sccs_realuser(void);
 char	*sccs_user(void);
 
-delta	*modeArg(delta *d, char *arg);
+delta	*modeArg(sccs *s, delta *d, char *arg);
 int	fileType(mode_t m);
 char	chop(char *s);
 int	atoi_p(char **p);
@@ -1009,7 +1016,7 @@ int	sccs_readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp);
 
 sccs	*sccs_unzip(sccs *s);
 sccs	*sccs_gzip(sccs *s);
-char	*sccs_utctime(delta *d);
+char	*sccs_utctime(sccs *s, delta *d);
 void	sccs_kidlink(sccs *s, delta *d);
 void	sccs_renumber(sccs *s, u32 flags);
 char 	*sccs_iskeylong(char *key);
@@ -1082,9 +1089,6 @@ void	comments_done(void);
 delta	*comments_get(delta *d);
 void	comments_writefile(char *file);
 int	comments_checkStr(u8 *s);
-void	host_done(void);
-delta	*host_get(delta *);
-void	user_done(void);
 char	*shell(void);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);

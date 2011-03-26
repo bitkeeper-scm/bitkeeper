@@ -52,15 +52,15 @@ range_main(int ac, char **av)
 			printf("%s set:", s->gfile);
 			for (e = s->table; e; e = NEXT(e)) {
 				if (e->flags & D_SET) {
-					printf(" %s", e->rev);
+					printf(" %s", REV(s, e));
 					if (e->type == 'R') printf("T");
 				}
 			}
 		} else {
 			printf("%s %s..%s:",
-			    s->gfile, s->rstop->rev, s->rstart->rev);
+			    s->gfile, REV(s, s->rstop), REV(s, s->rstart));
 			for (e = s->rstop; e; e = NEXT(e)) {
-				printf(" %s", e->rev);
+				printf(" %s", REV(s, e));
 				if (e->type == 'R') printf("T");
 				if (e == s->rstart) break;
 			}

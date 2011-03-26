@@ -585,11 +585,12 @@ newFileEnv(sccs *cset, char **user, char **host)
 	if (p = strchr(USER(cset, d), '/')) *p = 0;
 	safe_putenv("BK_USER=%s", USER(cset, d));
 	if (p) *p = '/';
-	if ((p = strchr(d->hostname, '/')) || (p = strchr(d->hostname, '['))) {
+	if ((p = strchr(HOSTNAME(cset, d), '/')) ||
+	    (p = strchr(HOSTNAME(cset, d), '['))) {
 		c = *p;
 		*p = 0;
 	}
-	safe_putenv("BK_HOST=%s", d->hostname);
+	safe_putenv("BK_HOST=%s", HOSTNAME(cset, d));
 	if (p) *p = c;
 	putenv("_BK_NO_UNIQ=1");
 	putenv("BK_IMPORT=");
@@ -1336,7 +1337,8 @@ fixTags(sccs *s)
 				    "tag.\nPlease run 'bk support' "
 				    "describing what you did to get this "
 				    "message.\nThis is a warning message, "
-				    "not a failure.\n", sym->symname, d->rev);
+				    "not a failure.\n",
+				    sym->symname, REV(s, d));
 				sym->meta_ser = sym->ser = 0;
 				continue;
 			}
@@ -1390,7 +1392,7 @@ fixTags(sccs *s)
 				    "describing what you did to get this "
 				    "message.\nThis is a warning message, "
 				    "not a failure.\n",
-				    d->rev, d->serial, p->rev);
+				    REV(s, d), d->serial, REV(s, p));
 				d->pserial = s->tree->serial;
 				continue;
 			}
@@ -1748,6 +1750,7 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 	char	*newpath;
 	char	*delpath;
 	char	*bam_new;
+	char	**bam_old;
 	char	rk[MAXKEY];
 
 	sccs_sdelta(s, sccs_ino(s), rk);
@@ -1755,12 +1758,13 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 	/*
 	 * Save all the old bam dspecs before we start mucking with anything.
 	 */
-#define	bam_old	symlink
+	bam_old = calloc(s->nextserial, sizeof(char *));
+
 	for (i = 1; BAM(s) && (i < s->nextserial); i++) {
 		unless (d = sfind(s, i)) continue;
-		if (d->hash) {
-			assert(!d->bam_old);
-			d->bam_old = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
+		if (d->bamhash) {
+			assert(!bam_old[i]);
+			bam_old[i] = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 		}
 	}
 
@@ -1781,19 +1785,19 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 			if (newpath == INVALID) {
 				fprintf(stderr, "%s: file %s delta %s "
 				    "matches a component path '%s'.\n",
-				    prog, s->gfile, d->rev, d->pathname);
+				    prog, s->gfile, REV(s, d), d->pathname);
 				goto err;
 			}
 			sccs_setPath(s, d, newpath);
 		}
 
 		// BAM stuff
-		if (d->hash) {
+		if (d->bamhash) {
 			bam_new = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 			if (opts->refProj) {
-				rc = bp_link(s->proj, d->bam_old, 0, bam_new);
+				rc = bp_link(s->proj, bam_old[i], 0, bam_new);
 			} else {
-				rc = bp_rename(s->proj, d->bam_old, bam_new);
+				rc = bp_rename(s->proj, bam_old[i], bam_new);
 			}
 			free(bam_new);
 			if (rc) goto err;
@@ -1803,12 +1807,12 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 err:
 	for (i = 1; BAM(s) && (i < s->nextserial); i++) {
 		unless (d = sfind(s, i)) continue;
-		if (d->hash) {
-			assert(d->bam_old);
-			free(d->bam_old);
-			d->bam_old = 0;
+		if (d->bamhash) {
+			assert(bam_old[i]);
+			FREE(bam_old[i]);
 		}
 	}
+	free(bam_old);
 	free(delpath);
 	return (ret);
 }

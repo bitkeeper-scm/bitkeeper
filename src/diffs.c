@@ -222,9 +222,9 @@ diffs_main(int ac, char **av)
 			if (restore) rargs.rstart = ".";
 		}
 		if (s->rstart) {
-			unless (r1 = s->rstart->rev) goto next;
+			unless (r1 = REV(s, s->rstart)) goto next;
 			if ((rargs.rstop) && (s->rstart == s->rstop)) goto next;
-			if (s->rstop) r2 = s->rstop->rev;
+			if (s->rstop) r2 = REV(s, s->rstop);
 		}
 #if	0
 		/*
@@ -269,7 +269,7 @@ diffs_main(int ac, char **av)
 			if (BAM(s)) {
 				if (flags & DIFF_HEADER) {
 					printf("===== %s %s vs edited =====\n",
-					    s->gfile, sccs_top(s)->rev);
+					    s->gfile, REV(s, sccs_top(s)));
 				}
 				printf("Binary file %s differs\n", s->gfile);
 				goto next;

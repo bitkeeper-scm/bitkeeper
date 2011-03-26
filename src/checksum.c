@@ -139,7 +139,7 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 
 	unless (d) d = sccs_top(s);
 
-	if (BAM(s) && !d->hash) return (0);
+	if (BAM(s) && !d->bamhash) return (0);
 
 	if (S_ISLNK(d->mode)) {
 		u8	*t;
@@ -150,16 +150,16 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 		e = getSymlnkCksumDelta(s, d);
 		if (!fix && !e->sum) return (0);
 
-		for (t = d->symlink; *t; sum += *t++);
+		for (t = SYMLINK(s, d); *t; sum += *t++);
 		if ((e->flags & D_CKSUM) && (e->sum == sum)) return (0);
 		unless (fix) {
 			fprintf(stderr, "Bad symlink checksum %d:%d in %s|%s\n",
-			    e->sum, sum, s->gfile, d->rev);
+			    e->sum, sum, s->gfile, REV(s, d));
 			return (2);
 		} else {
 			if (diags > 1) {
 				fprintf(stderr, "Corrected %s:%s %d->%d\n",
-				    s->sfile, d->rev, d->sum, sum);
+				    s->sfile, REV(s, d), d->sum, sum);
 			}
 			unless (d->flags & D_SORTSUM) {
 				d->sortSum = d->sum;
@@ -177,11 +177,11 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	 */
 
 	if (sccs_get(s,
-	    d->rev, 0, 0, 0, GET_SUM|GET_SHUTUP|SILENT|PRINT, "-")) {
+	    REV(s, d), 0, 0, 0, GET_SUM|GET_SHUTUP|SILENT|PRINT, "-")) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr,
 			    "get of %s:%s failed, skipping it.\n",
-			    s->gfile, d->rev);
+			    s->gfile, REV(s, d));
 		}
 		return (4);
 	}
@@ -215,7 +215,7 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 			if (diags > 1) {
 				fprintf(stderr, "Corrected a/d/s "
 					"%s:%s %s->%s\n",
-		    			s->sfile, d->rev,
+					s->sfile, REV(s, d),
 					&before[3], &after[3]);
 			}
 			d->added = s->added;
@@ -242,7 +242,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 			new = adler32(new, d->pathname, strlen(d->pathname));
 		}
 		if (d->hostname) {
-			new = adler32(new, d->hostname, strlen(d->hostname));
+			t = HOSTNAME(s, d);
+			new = adler32(new, t, strlen(t));
 		}
 		EACH_COMMENT(s, d) {
 			new = adler32(new,
@@ -250,12 +251,12 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 		}
 		unless (fix) {
 			fprintf(stderr, "%s:%s actual=<none> sum=%d\n",
-			    s->gfile, d->rev, new);
+			    s->gfile, REV(s, d), new);
 			return (2);
 		}
 		if (diags > 1) {
 			fprintf(stderr, "Derived %s:%s -> %d\n",
-			    s->sfile, d->rev, (sum_t)new);
+			    s->sfile, REV(s, d), (sum_t)new);
 		}
 		unless (d->flags & D_SORTSUM) {
 			d->sortSum = d->sum;
@@ -270,12 +271,12 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	unless (fix) {
 		fprintf(stderr,
 		    "Bad checksum %d:%d in %s|%s\n",
-		    d->sum, s->dsum, s->gfile, d->rev);
+		    d->sum, s->dsum, s->gfile, REV(s, d));
 		return (2);
 	}
 	if (diags > 1) {
 		fprintf(stderr, "Corrected %s:%s %d->%d\n",
-		    s->sfile, d->rev, d->sum, s->dsum);
+		    s->sfile, REV(s, d), d->sum, s->dsum);
 	}
 	unless (d->flags & D_SORTSUM) {
 		d->sortSum = d->sum;
@@ -534,7 +535,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 				fprintf(stderr, "%s a/d/s "
 					"%s:%s %d/%d/%d->%d/0/1\n",
 				    (fix ? "Corrected" : "Bad"),
-				    s->sfile, d->rev,
+				    s->sfile, REV(s, d),
 				    d->added, d->deleted, d->same, added);
 			}
 			if (fix) {
@@ -549,7 +550,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 			if (!fix || (diags > 1)) {
 				fprintf(stderr, "%s checksum %d:%d in %s|%s\n",
 				    (fix ? "Corrected" : "Bad"),
-				    d->sum, sum, s->gfile, d->rev);
+				    d->sum, sum, s->gfile, REV(s, d));
 			}
 			if (fix) {
 				unless (d->flags & D_SORTSUM) {

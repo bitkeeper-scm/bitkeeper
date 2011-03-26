@@ -109,7 +109,7 @@ findkey(sccs *s, look l)
 
 	if (l.key) {
 		if (d = sccs_findKey(s, l.key)) {
-			printf("%s|%s", s->gfile, d->rev);
+			printf("%s|%s", s->gfile, REV(s, d));
 			if (l.pkey) printf("\t%s", l.key);
 			printf("\n");
 		}
@@ -126,7 +126,7 @@ findkey(sccs *s, look l)
 		if (l.utc) unless (d->date == l.utc) continue;
 		if (l.path) unless (streq(d->pathname, l.path)) continue;
 		if (l.user) unless (streq(USER(s, d), l.user)) continue;
-		if (l.host) unless (streq(d->hostname, l.host)) continue;
+		if (l.host) unless (streq(HOSTNAME(s, d), l.host)) continue;
 		if (l.email) {
 			char	*at = strchr(l.email, '@');
 
@@ -134,13 +134,13 @@ findkey(sccs *s, look l)
 			unless (streq(USER(s, d), l.email) &&
 			    /* matching no host or matching host */
 			    ((!at[1] && !d->hostname) ||
-			    (d->hostname && streq(d->hostname, at+1)))) {
+			    (d->hostname && streq(HOSTNAME(s, d), at+1)))) {
 				*at = '@';
 				continue;
 			}
 			*at = '@';
 		}
-		printf("%s|%s", s->gfile, d->rev);
+		printf("%s|%s", s->gfile, REV(s, d));
 		if (l.pkey) {
 			sccs_sdelta(s, d, key);
 			printf("\t%s", key);

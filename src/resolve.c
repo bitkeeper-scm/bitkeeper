@@ -1269,7 +1269,8 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 
 	if (rs->opts->debug) {
 		fprintf(stderr, "rename_delta(%s, %s, %s, %s)\n", sfile,
-		    d->rev, d->pathname, which == LOCAL ? "local" : "remote");
+		    REV(rs->s, d), d->pathname,
+		    which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
 	t = sccs2name(sfile);
@@ -1305,8 +1306,9 @@ type_delta(resolve *rs,
 	int	loser;
 
 	if (rs->opts->debug) {
-		fprintf(stderr, "type(%s, %s, %s, %s)\n", sfile,
-		    l->rev, r->rev, winner == LOCAL ? "local" : "remote");
+		fprintf(stderr, "type(%s, %s, %s, %s)\n",
+		    sfile, REV(rs->s, l), REV(rs->s, r),
+		    winner == LOCAL ? "local" : "remote");
 	}
 
 	/*
@@ -1325,7 +1327,7 @@ type_delta(resolve *rs,
 	edit_tip(rs, sfile, o, rfile, loser);
 	if (S_ISREG(n->mode)) {
 		/* bk _get -kpqr{n->rev} sfile > g */
-		sprintf(buf, "-kpqr%s", n->rev);
+		sprintf(buf, "-kpqr%s", REV(rs->s, n));
 		if (sysio(0, g, 0, "bk", "_get", buf, sfile, SYS)) {
 			fprintf(stderr, "%s failed\n", buf);
 			resolve_cleanup(rs->opts, 0);
@@ -1333,7 +1335,7 @@ type_delta(resolve *rs,
 		chmod(g, n->mode);
 	} else if (S_ISLNK(n->mode)) {
 		assert(n->symlink);
-		if (symlink(n->symlink, g)) {
+		if (symlink(SYMLINK(rs->s, n), g)) {
 			perror(g);
 			resolve_cleanup(rs->opts, 0);
 		}
@@ -1377,7 +1379,8 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 
 	if (rs->opts->debug) {
 		fprintf(stderr, "mode(%s, %s, %s, %s)\n",
-		    sfile, d->rev, a, which == LOCAL ? "local" : "remote");
+		    sfile, REV(rs->s, d), a,
+		    which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
 	/* bk delta -[q]Py'Change mode to {a}' -M{a} sfile */
@@ -1418,13 +1421,14 @@ flags_delta(resolve *rs,
 
 	if (rs->opts->debug) {
 		fprintf(stderr, "flags(%s, %s, 0x%x, %s)\n",
-		    sfile, d->rev, bits, which == LOCAL ? "local" : "remote");
+		    sfile, REV(rs->s, d), bits,
+		    which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
 	sys("bk", "clean", sfile, SYS);
 	av[n=0] = "bk";
 	av[++n] = "admin";
-	sprintf(buf, "-qr%s", d->rev);
+	sprintf(buf, "-qr%s", REV(rs->s, d));
 	av[++n] = buf;
 
 #define	add(s)		{ sprintf(fbuf[f], "-f%s", s); av[++n] = fbuf[f]; }
@@ -1485,11 +1489,12 @@ edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 
 	if (rs->opts->debug) {
 		fprintf(stderr, "edit_tip(%s %s %s)\n",
-		    sfile, d->rev, abs(which) == LOCAL ? "local" : "remote");
+		    sfile, REV(rs->s, d),
+		    abs(which) == LOCAL ? "local" : "remote");
 	}
 	/* bk _get -e[g][q] -r{d->rev} sfile */
 	sprintf(buf, "-e%s%s", which < 0 ? "g" : "", rs->opts->log ? "" : "q");
-	sprintf(opt, "-r%s", d->rev);
+	sprintf(opt, "-r%s", REV(rs->s, d));
 	if (sys("bk", "_get", buf, opt, sfile, SYS)) {
 		syserr("failed\n");
 		resolve_cleanup(rs->opts, 0);

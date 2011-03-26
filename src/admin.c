@@ -14,6 +14,7 @@
 private	int	do_checkin(char *nm, char *cp, int fl,
 		   char *rev, char *newf, char *com);
 private	int	setMerge(sccs *sc, char *merge, char *rev);
+private	void	rootCsetFile(sccs *sc, char *csetFile);
 
 int
 admin_main(int ac, char **av)
@@ -231,7 +232,7 @@ admin_main(int ac, char **av)
 		}
 		if (newCset) {
 			if (bk_notLicensed(sc->proj, LIC_ADM, 0)) exit(1);
-			sccs_parseArg(sc, sc->tree, 'B', csetFile, 0);
+			if (csetFile) rootCsetFile(sc, csetFile);
 			flags |= NEWCKSUM;
 		}
 		if (rmCsets) {
@@ -436,4 +437,38 @@ sccs_touch(sccs *s)
 	unless(s->gfile && exists(s->gfile)) return;
 	ut.actime = ut.modtime = time(0);
 	utime(s->gfile, &ut);
+}
+
+/*
+ * Mimic the old DUP idea in changing the root value of csetfile,
+ * and rippling that out to other places that had the same value
+ * as the parent.
+ */
+private	void
+rootCsetFile(sccs *sc, char *csetFile)
+{
+	int	i, last, new_cf;
+	char	*orig;
+	delta	*d, *p;
+
+	d = sc->tree;
+	orig = CSETFILE(sc, d);
+	sccs_parseArg(sc, d, 'B', csetFile, 0);
+	new_cf = d->csetFile;
+	d->flags |= D_RED;
+	last = d->serial;
+
+	for (i = d->serial+1; i < sc->nextserial; ++i) {
+		unless (d = SFIND(sc, i)) continue;
+		unless (p = PARENT(sc, d)) continue;
+		unless (p->flags & D_RED) continue;
+		unless (streq(orig, CSETFILE(sc, d))) continue;
+		d->csetFile = new_cf;
+		d->flags |= D_RED;
+		last = i;
+	}
+	for (i = last; i > 0; --i) {
+		unless (d = SFIND(sc, i)) continue;
+		d->flags &= ~D_RED;
+	}
 }

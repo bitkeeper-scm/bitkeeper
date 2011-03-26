@@ -21,11 +21,11 @@ t_help(resolve *rs)
 	int	i;
 
 	fprintf(stderr, "Tag ``%s'' was added to two changesets.\n", t->name);
-	fprintf(stderr, "\nLocal:  ChangeSet %s\n", t->local->rev);
+	fprintf(stderr, "\nLocal:  ChangeSet %s\n", REV(rs->s, t->local));
 	EACH_COMMENT(rs->s, t->local) {
 		fprintf(stderr, "\t%s\n", t->local->cmnts[i]);
 	}
-	fprintf(stderr, "Remote: ChangeSet %s\n", t->remote->rev);
+	fprintf(stderr, "Remote: ChangeSet %s\n", REV(rs->s, t->remote));
 	EACH_COMMENT(rs->s, t->remote) {
 		fprintf(stderr, "\t%s\n", t->remote->cmnts[i]);
 	}
@@ -103,8 +103,8 @@ t_revtool(resolve *rs)
 
 	av[i=0] = "bk";
 	av[++i] = "revtool";
-	sprintf(revs[0], "-l%s", t->local->rev);
-	sprintf(revs[1], "-r%s", t->remote->rev);
+	sprintf(revs[0], "-l%s", REV(rs->s, t->local));
+	sprintf(revs[1], "-r%s", REV(rs->s, t->remote));
 	av[++i] = revs[0];
 	av[++i] = revs[1];
 	av[++i] = rs->s->gfile;
@@ -223,8 +223,9 @@ out:		sccs_free(s);
 		}
 		fprintf(stderr,
 		    "%-10.10s %-12s %-7.7s %-11.11s  %-12s %-7.7s %11.11s\n",
-		    kv.key.dptr, l->rev, USER(s, l), l->sdate + 3,
-		    r->rev, USER(s, r), r->sdate + 3);
+		    kv.key.dptr,
+		    REV(s, l), USER(s, l), l->sdate + 3,
+		    REV(s, r), USER(s, r), r->sdate + 3);
 		n++;
 	}
 	fprintf(stderr, "\n");

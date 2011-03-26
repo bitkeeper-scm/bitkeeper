@@ -669,7 +669,7 @@ chk_BAM(sccs *s, char ***missing)
 
 	unless (*missing) missing = 0;
 	for (d = s->table; d; d = NEXT(d)) {
-		unless (d->hash) continue;
+		unless (d->bamhash) continue;
 		key = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 		if (bp_check_hash(key, missing, !bp_fullcheck)) rc = 1;
 		free(key);
@@ -1200,7 +1200,7 @@ fetch_changeset(void)
 		getMsg("chk5", buf, '=', stderr);
 		exit(1);
 	}
-	if (verbose > 1) fprintf(stderr, "TIP %s %s\n", d->rev, d->sdate);
+	if (verbose > 1) fprintf(stderr, "TIP %s %s\n", REV(s, d), d->sdate);
 	s->hasgone = 1;
 	range_gone(s, d, D_SET);
 	(void)stripdel_fixTable(s, &i);
@@ -1300,7 +1300,7 @@ buildKeys(MDBM *idDB)
 					    "check: ChangeSet %s is a merge "
 					    "but is missing a required merge "
 					    "delta for this rootkey\n",
-					    sccs_top(cset)->rev);
+					    REV(cset, sccs_top(cset)));
 					fprintf(stderr, "\t%s\n",
 					    (char *)r2deltas->kptr);
 					exit(1);
@@ -1498,7 +1498,7 @@ getRev(char *root, char *key, MDBM *idDB)
 	} else unless (d = sccs_findKey(s, key)) {
 		t = strdup("|can not find key|");
 	} else {
-		t = strdup(d->rev);
+		t = strdup(REV(s, d));
 	}
 	sccs_free(s);
 	return (t);
@@ -1523,8 +1523,8 @@ markCset(sccs *s, delta *d)
 				fprintf(stderr,
 				    "check: %s@%s "
 				    "(%s@%s %.8s) in multiple csets\n",
-				    s->gfile, d->rev,
-				    USER(s, d), d->hostname, d->sdate);
+				    s->gfile, REV(s, d),
+				    USER(s, d), HOSTNAME(s, d), d->sdate);
 			}
 		}
 		d->flags |= D_SET;
@@ -1583,14 +1583,14 @@ check(sccs *s, MDBM *idDB)
 	goodkeys = 0;
 	for (d = s->table; d; d = NEXT(d)) {
 		if (verbose > 3) {
-			fprintf(stderr, "Check %s@%s\n", s->gfile, d->rev);
+			fprintf(stderr, "Check %s@%s\n", s->gfile, REV(s, d));
 		}
 		/* check for V1 LOD */
 		if (d->r[0] != 1) {
 			errors++;
 			fprintf(stderr,
 			    "Obsolete LOD data(bk help chk4): %s|%s\n",
-	    		    s->gfile, d->rev);
+	    		    s->gfile, REV(s, d));
 		}
 
 		unless (d->flags & D_CSET) continue;
@@ -1608,9 +1608,9 @@ check(sccs *s, MDBM *idDB)
 			if (stripdel) continue;
 			fprintf(stderr,
 		    "%s: marked delta %s should be in ChangeSet but is not.\n",
-			    s->gfile, d->rev);
+			    s->gfile, REV(s, d));
 			sccs_sdelta(s, d, buf);
-			fprintf(stderr, "\t%s -> %s\n", d->rev, buf);
+			fprintf(stderr, "\t%s -> %s\n", REV(s, d), buf);
 		} else {
 			++goodkeys;
 			unless (tip) tip = d;
@@ -1802,7 +1802,7 @@ chk_merges(sccs *s)
 			if (fix) return (1);
 			fprintf(stderr,
 			    "%s|%s: %s/%s need to be swapped, run with -f.\n",
-			    s->gfile, d->rev, p->rev, m->rev);
+			    s->gfile, REV(s, d), REV(s, p), REV(s, m));
 			return (1);
 		}
 	}
@@ -1908,11 +1908,11 @@ checkKeys(sccs *s, char *root)
 		} else unless (d->flags & D_CSET) {
 			fprintf(stderr,
 			    "%s@%s is in ChangeSet but not marked\n",
-			   s->gfile, d->rev);
+			    s->gfile, REV(s, d));
 			errors++;
 		} else if (verbose > 2) {
 			fprintf(stderr, "%s: found %s from ChangeSet\n",
-			    s->gfile, d->rev);
+			    s->gfile, REV(s, d));
 		}
 	}
 

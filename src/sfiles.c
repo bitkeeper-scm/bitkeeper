@@ -382,7 +382,7 @@ pending_print(sccs *s, delta *d, void *token)
 	 *
 	 * assert(!(d->flags & D_CSET));
 	 */
-	do_print(data[0], data[1], d->rev);
+	do_print(data[0], data[1], REV(s, d));
 	return (0);
 }
 
@@ -504,7 +504,7 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 		range_walkrevs(s, d, 0, 0, 0, pending_print, data);
 		printed = 1;
 	} else if (opts.Cflg) {
-		do_print(state, gfile, d->rev);
+		do_print(state, gfile, REV(s, d));
 		printed = 1;
 	}
 

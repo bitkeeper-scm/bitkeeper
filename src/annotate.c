@@ -83,7 +83,7 @@ err:			errors = 1;
 				    cdate, s->sfile);
 				goto err;
 			}
-			rev = d->rev;
+			rev = REV(s, d);
 		} else if (Rev) {
 			rev = Rev;
 		} else {

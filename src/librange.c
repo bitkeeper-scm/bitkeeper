@@ -311,7 +311,7 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 			verbose((stderr, "%s: unable to connect %s to %s\n",
 			    me,
 			    *rargs->rstart ? rargs->rstart : "ROOT",
-			    r2 ? r2->rev : "TIP"));
+			    r2 ? REV(s, r2) : "TIP"));
 			goto out;
 		}
 		/* s->rstart & s->rstop set by walkrevs */

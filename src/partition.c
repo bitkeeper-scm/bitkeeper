@@ -654,8 +654,7 @@ moveComps(Opts *opts)
 		}
 		/* fix backptr to match existing product */
 		d = sccs_ino(cset);
-		if (d->csetFile) free(d->csetFile);
-		d->csetFile = strdup(opts->rootkey);
+		sccs_parseArg(cset, d, 'B', opts->rootkey, 0);
 		/*
 		 * we needed to keep serials intact up until the fprintf
 		 * above.   Now we can compress.

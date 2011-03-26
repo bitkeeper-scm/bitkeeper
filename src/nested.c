@@ -328,7 +328,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 	n->product->deltakey = strdup(buf);
 
 	if (left) {
-		n->oldtip = strdup(left->rev);
+		n->oldtip = strdup(REV(cset, left));
 		sccs_sdelta(cset, left, buf);
 		n->product->lowerkey = strdup(buf);
 	}

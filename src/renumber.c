@@ -128,7 +128,7 @@ sccs_renumber(sccs *s, u32 flags)
 		assert(!s->defbranch);
 		unless (defisbranch) {
 			assert(d->rev);
-			s->defbranch = strdup(d->rev);
+			s->defbranch = strdup(REV(s, d));
 			continue;
 		}
 		/* restore 1 or 3 digit branch? 1 if BK or trunk */
@@ -161,11 +161,10 @@ newRev(sccs *s, int flags, MDBM *db, delta *d)
 	} else {
 		sprintf(buf, "%d.%d", d->r[0], d->r[1]);
 	}
-	unless (streq(buf, d->rev)) {
+	unless (streq(buf, REV(s, d))) {
 		verbose((stderr,
-		    "renumber %s@%s -> %s\n", s->gfile, d->rev, buf));
-		free(d->rev);
-		d->rev = strdup(buf);
+		    "renumber %s@%s -> %s\n", s->gfile, REV(s, d), buf));
+		d->rev = sccs_addStr(s, buf);
 	}
 	if (d->type == 'D') remember(db, d);
 }
@@ -233,7 +232,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 
 	/* XXX hack because not all files have 1.0, special case 1.1 */
 	p = PARENT(s, d);
-	unless (p || streq(d->rev, "1.1")) {
+	unless (p || streq(REV(s, d), "1.1")) {
 		remember(db, d);
 		return (release);
 	}

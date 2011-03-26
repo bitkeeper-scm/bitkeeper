@@ -966,7 +966,7 @@ do_symlink_unpark(MMAP *m, char *path, int force,
 		/* no gfile, but have same baseline delta */
 			rc |= symlink(newTarget, gname);
 			if (rc == 0) restore_msg = 1;
-	} else if (top->symlink && streq(top->symlink, newTarget)) {
+	} else if (top->symlink && streq(SYMLINK(s, top), newTarget)) {
 		/*
 		 * If we get here, the top delta have the same symlink as
 		 * the parked sym link, i.e no conflict
@@ -1047,7 +1047,7 @@ err:			fprintf(stderr,
 	}
 	if (HAS_SFILE(s)) {
 		assert(!HAS_GFILE(s));
-		if (sameLink(top->symlink, newTarget)) {
+		if (sameLink(SYMLINK(s, top), newTarget)) {
 			goto doit;
 		} else {
 			goto err;
@@ -1317,7 +1317,7 @@ skip_apply:
 		    "You can examine the conflict in %s.\n"
 		    "You can also get a clean upark by clone -r back to \n"
 		    "baseline version: %s\nrev : %s\n",
-		    id, PARKDIR, PARKDIR, cset_key, d ? d->rev : "");
+		    id, PARKDIR, PARKDIR, cset_key, d ? REV(s, d) : "");
 		sccs_free(s);
 	} else {
 		rmtree(PARKDIR);

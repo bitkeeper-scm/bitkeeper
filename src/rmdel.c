@@ -47,7 +47,7 @@ err:		sccs_free(s);
 		if (e->flags & D_CSET) {
 			fprintf(stderr,
 			    "rmdel: can't remove committed delta %s:%s\n",
-			    s->gfile, e->rev);
+			    s->gfile, REV(s, e));
 			goto err;
 		}
 	}

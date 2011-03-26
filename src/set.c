@@ -367,7 +367,7 @@ print(sccs *s, delta *d)
 			break;
 		}
 		/* fall through */
-	    case REV: printf("%s\n", d->rev); break;
+	    case REV: printf("%s\n", REV(s, d)); break;
 	    case KEY: sccs_pdelta(s, d, stdout); printf("\n"); break;
 	}
 }

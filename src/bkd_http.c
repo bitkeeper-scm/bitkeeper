@@ -1964,7 +1964,7 @@ any2rev(char *any, char *file)
 			return (strdup(any));
 		}
 	}
-	buf = strdup(d->rev);
+	buf = strdup(REV(s, d));
 	sccs_free(s);
 	free(sfile);
 	return (buf);

@@ -284,9 +284,9 @@ err:			sccs_free(s);
 
 			if (sccs_findtips(s, &a, &b)) {
 				if (a->r[2]) {
-					mRev = a->rev;
+					mRev = REV(s, a);
 				} else if (b->r[2]) {
-					mRev = b->rev;
+					mRev = REV(s, b);
 				} else {
 					fprintf(stderr, "%s: ERROR -M with"
 					    " neither tip on branch?\n",

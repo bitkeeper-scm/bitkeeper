@@ -42,9 +42,9 @@ merge_main(int ac, char **av)
 		unless (g = sccs_gca(s, l, r, &inc, &exc)) usage();
 		if (inc) free(inc);
 		if (exc) free(exc);
-		files[0] = getgfile(s, l->rev);
-		files[1] = getgfile(s, g->rev);
-		files[2] = getgfile(s, r->rev);
+		files[0] = getgfile(s, REV(s, l));
+		files[1] = getgfile(s, REV(s, g));
+		files[2] = getgfile(s, REV(s, r));
 		free(sname);
 		sccs_free(s);
 		freefiles = 1;

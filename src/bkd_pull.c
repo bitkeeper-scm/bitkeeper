@@ -179,7 +179,9 @@ cmd_pull_part2(int ac, char **av)
 		while (fnext(buf, f)) {
 			chomp(buf);
 			d = sccs_findKey(cset, buf);
-			if (d->type == 'D') printf("%c%s\n", BKD_DATA, d->rev);
+			if (d->type == 'D') {
+				printf("%c%s\n", BKD_DATA, REV(cset, d));
+			}
 		}
 		fclose(f);
 		printf("@END@\n");

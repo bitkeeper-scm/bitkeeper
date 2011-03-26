@@ -106,7 +106,7 @@ unpull(int force, int quiet, char *patch)
 		unless (d == chg) {
 			fprintf(stderr,
 			    "unpull: will not unpull local changeset %s\n",
-			    d->rev);
+			    REV(s, d));
 err:			sccs_free(s);
 			return (1);
 		}

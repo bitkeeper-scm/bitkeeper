@@ -106,7 +106,7 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
 	 * 3par had some BitKeeper files that Teamware had munged,
 	 * strip the root if that's the case.
 	 */
-	if (streq(s->tree->rev, "1.0")) {
+	if (streq(REV(s, s->tree), "1.0")) {
 		d = s->tree;
 		EACH_COMMENT(s, d) {
 			if (strneq("BitKeeper file", d->cmnts[i], 14)) {
@@ -142,7 +142,7 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
  * no entry if <rev> -eq <d->rev>
  */
 private char	*
-rev(MDBM *revs, delta *r)
+rev(MDBM *revs, sccs *s, delta *r)
 {
 	datum	k, v;
 
@@ -150,7 +150,7 @@ rev(MDBM *revs, delta *r)
 	k.dptr = (void*)&r->serial;
 	v = mdbm_fetch(revs, k);
 	if (v.dsize) return ((char*)v.dptr);
-	return (r->rev);
+	return (REV(s, r));
 }
 
 private void
@@ -203,25 +203,25 @@ regen(sccs *s, int verbose, char *key)
 			delta	*m = MERGE(s, d);
 
 			assert(m);
-			a1 = aprintf("-egr%s", rev(revs, PARENT(s, d)));
-			a2 = aprintf("-M%s", rev(revs, m));
+			a1 = aprintf("-egr%s", rev(revs, s, PARENT(s, d)));
+			a2 = aprintf("-M%s", rev(revs, s, m));
 			sys("bk", "_get", "-q", a1, a2, gfile, SYS);
 			free(a1);
 			free(a2);
 		} else {
 			a1 = aprintf("-egr%s",
-			    i ? rev(revs, PARENT(s, d)) : "1.0");
+			    i ? rev(revs, s, PARENT(s, d)) : "1.0");
 			sys("bk", "_get", "-q", a1, gfile, SYS);
 			free(a1);
 		}
 		if (sccs_read_pfile("sccs2bk", s, &pf)) exit(1);
-		unless (streq(d->rev, pf.newrev)) {
+		unless (streq(REV(s, d), pf.newrev)) {
 			datum	k, v;
 
 			if (verbose > 1) {
 				fprintf(stderr,
 				    "MAP %s(%d)@%s -> %s\n", gfile, d->serial,
-				    d->rev, pf.newrev);
+				    REV(s, d), pf.newrev);
 			}
 			k.dsize = sizeof(ser_t);
 			k.dptr = (void*)&d->serial;
@@ -269,7 +269,7 @@ regen(sccs *s, int verbose, char *key)
 	s2->xflags &= ~X_EOLN_NATIVE;
 	for (i = 0; i < n; ++i) {
 		d = table[i];
-		a1 = aprintf("%s", rev(revs, d));
+		a1 = aprintf("%s", rev(revs, s, d));
 		a2 = bktmp(0, "diffA");
 		assert(a2 && a2[0]);
 		if (sccs_get(s2, a1, 0, 0, 0, dest_flags, a2)) {
@@ -292,7 +292,7 @@ regen(sccs *s, int verbose, char *key)
 			assert(a1 && a1[0]);
 			if (diff(a2, a3, DF_DIFF, a1)) {
 				fprintf(stderr, "\n%s@%s != orig@%s\n",
-				    gfile, rev(revs, d), d->rev);
+				    gfile, rev(revs, s, d), REV(s, d));
 				sys("echo", "diff", a2, a3, ">", a1, SYS);
 				sys("cat", a1, SYS);
 				/* exit(1); */
@@ -302,11 +302,11 @@ regen(sccs *s, int verbose, char *key)
 			if (verbose > 2) {
 				fprintf(stderr,
 				    "%s@%s != orig@%s - <cr><lf> only\n",
-				    gfile, rev(revs, d), d->rev);
+				    gfile, rev(revs, s, d), REV(s, d));
 			}
 		}
 		if (verbose > 2) {
-			fprintf(stderr, "%s@%s OK\n", gfile, rev(revs, d));
+			fprintf(stderr, "%s@%s OK\n", gfile, rev(revs, s, d));
 		}
 		unlink(a2);
 		unlink(a3);
@@ -374,7 +374,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 		    tp->tm_min,
 		    tp->tm_sec,
 		    USER(s, d),
-		    d->hostname ? d->hostname : sccs_gethost());
+		    d->hostname ? HOSTNAME(s, d) : sccs_gethost());
 		fprintf(fh,
 			"B %s\n"
 			"c sccs2bk\n"
@@ -389,8 +389,8 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 			randstr);
 	} else {
 		fprintf(fh, "D %s %s %s@%s\n",
-		    d->rev, d->sdate, USER(s, d),
-		    d->hostname ? d->hostname : sccs_gethost());
+		    REV(s, d), d->sdate, USER(s, d),
+		    d->hostname ? HOSTNAME(s, d) : sccs_gethost());
 		EACH_COMMENT(s, d) {
 			fprintf(fh, "c %s\n", d->cmnts[i]);
 		}
@@ -413,7 +413,7 @@ ptable(sccs *s)
 			continue;
 		}
 		fprintf(stderr, "%-10.10s %10s i=%2u s=%2u d=%s f=%lu\n",
-		    s->gfile, d->rev, i, d->serial, d->sdate, d->dateFudge);
+		    s->gfile, REV(s, d), i, d->serial, d->sdate, d->dateFudge);
 	}
 }
 
@@ -502,7 +502,8 @@ collapse(sccs *s, int verbose, delta *d, delta *m)
 	if (verbose > 1) {
 		fprintf(stderr,
 		    "Inlining graph: new parent of %s(%d) => %s(%d)\n",
-		    d->rev, d->serial, m->rev, m->serial);
+		    REV(s, d), d->serial,
+		    REV(s, m), m->serial);
 	}
 
 	/*
@@ -630,7 +631,7 @@ fixTable(sccs *s, int verbose)
 			if (verbose > 1) {
 				fprintf(stderr,
 				    "Need to swap in %s => %s & %s\n",
-				    d->rev, PARENT(s, d)->rev, m->rev);
+				    REV(s, d), REV(s, PARENT(s, d)), REV(s, m));
 			}
 			/*
 			 * XXX: This is a hack of the graph optimized

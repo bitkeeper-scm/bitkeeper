@@ -260,7 +260,7 @@ do_cset(sccs *s, char *rev, char **nav)
 	cmdlog_lock(CMD_NESTED_WRLOCK|CMD_WRLOCK);
 	unless (rev) {
 		unless (d = parent_of_tip(s)) goto out;
-		rev = d->rev;
+		rev = REV(s, d);
 	}
 	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "%s: rev %s doesn't exist.\n", me, rev);
@@ -442,7 +442,7 @@ do_file(char *file, char *tiprev)
 	d = sccs_findrev(s, "+");
 	tipd = tiprev ? sccs_findrev(s, tiprev) : parent_of_tip(s);
 	unless (tipd) goto done;
-	if (streq(tipd->rev, "1.0")) tipd = 0;
+	if (streq(REV(s, tipd), "1.0")) tipd = 0;
 	/* tipd is not the delta that will be the new tip */
 	if (tipd == d) {
 		rc = 0;
@@ -622,7 +622,7 @@ savedeltas(sccs *s, delta *d, void *data)
 	*rmdeltas = addLine(*rmdeltas, d);
 	if (d->flags & D_CSET && (flags & COLLAPSE_FIX)) {
 		fprintf(stderr, "%s: can't fix committed delta %s@%s\n",
-		    me, s->gfile, d->rev);
+		    me, s->gfile, REV(s, d));
 		return (1);
 	}
 	return (0);
@@ -663,7 +663,7 @@ fix_setupcomments(sccs *s, char **rmdeltas)
 	EACH (rmdeltas) {
 		d = (delta *)rmdeltas[i];
 
-		if (streq(d->rev, "1.0")) continue;
+		if (streq(REV(s, d), "1.0")) continue;
 		unless (COMMENTS(d)) continue;
 
 		/*
@@ -706,7 +706,7 @@ parent_of_tip(sccs *s)
 	if (d->merge) {
 		fprintf(stderr,
 		    "%s: Unable to fix just %s|%s, it is a merge.\n",
-		    me, s->gfile, d->rev);
+		    me, s->gfile, REV(s, d));
 		return(0);
 	}
 	return (PARENT(s, d));

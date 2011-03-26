@@ -52,11 +52,14 @@ bp_delta(sccs *s, delta *d)
 	char	*keys;
 	int	rc;
 	char	*p = aprintf("%s/" BAM_MARKER, proj_root(s->proj));
+	char	*hash;
 	struct	utimbuf ut;
 
 	unless (exists(p)) touch(p, 0664);
 	free(p);
-	if (bp_hashgfile(s->gfile, &d->hash, &d->sum)) return (-1);
+	if (bp_hashgfile(s->gfile, &hash, &d->sum)) return (-1);
+	d->bamhash = sccs_addStr(s, hash);
+	free(hash);
 	s->dsum = d->sum;
 	keys = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 	rc = bp_insert(s->proj, s->gfile, keys, 0, d->mode);
@@ -107,7 +110,7 @@ bp_diff(sccs *s, delta *d, char *gfile)
 delta *
 bp_fdelta(sccs *s, delta *d)
 {
-	while (d && !d->hash) d = PARENT(s, d);
+	while (d && !d->bamhash) d = PARENT(s, d);
 	unless (d && PARENT(s, d)) {
 		fprintf(stderr,
 		    "BAM: unable to find BAM delta in %s\n", s->gfile);
@@ -158,12 +161,12 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 			}
 		}
 	}
-	unless (ok = (sum == strtoul(d->hash, 0, 16))) {
-		p = strchr(d->hash, '.');
+	unless (ok = (sum == strtoul(BAMHASH(s, d), 0, 16))) {
+		p = strchr(BAMHASH(s, d), '.');
 		*p = 0;
 		fprintf(stderr,
 		    "crc mismatch in %s|%s: %08x vs %s\n",
-		    s->gfile, d->rev, sum, d->hash);
+		    s->gfile, REV(s, d), sum, BAMHASH(s, d));
 		*p = '.';
 	}
 	unless (ok || (flags & GET_FORCE)) goto done;
@@ -1974,7 +1977,7 @@ bam_timestamps_main(int ac, char **av)
 				ut.modtime = want;
 				if (dryrun) {
 					printf("Would fix %s|%s\n",
-					    s->gfile, d->rev);
+					    s->gfile, REV(s, d));
 #define	CT(d)	ctime(&d) + 4
 					printf("\tdfile: %s", CT(got));
 					printf("\tdelta: %s", CT(want));
@@ -2176,7 +2179,7 @@ uu2bp(sccs *s)
 	tick = progress_start(PROGRESS_MINI, s->nextserial);
 	for (n = 0, d = s->table; d; d = NEXT(d)) {
 		assert(d->type == 'D');
-		if (sccs_get(s, d->rev, 0, 0, 0, SILENT, "-")) return (8);
+		if (sccs_get(s, REV(s, d), 0, 0, 0, SILENT, "-")) return (8);
 
 		/*
 		 * XXX - if this logic is wrong then we lose data.

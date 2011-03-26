@@ -407,7 +407,7 @@ graph_v1(sccs *s)
 	for (d = s->table; d; d = NEXT(d)) {
 		if (TAG(d)) continue;
 		printf("%s -> [%d, %d)\n",
-		    d->rev,
+		    REV(s, d),
 		    label.list[d->serial].forward,
 		    label.list[d->serial].backward);
 	}
@@ -448,8 +448,8 @@ graph_v2(sccs *s)
 private	int
 v2Right(sccs *s, delta *d, void *token)
 {
-	printf("right %s", d->rev);
-	if (d->merge) printf(" merge %s", sfind(s, d->merge)->rev);
+	printf("right %s", REV(s, d));
+	if (d->merge) printf(" merge %s", REV(s, sfind(s, d->merge)));
 	fputc('\n', stdout);
 	return (0);
 }
@@ -457,7 +457,7 @@ v2Right(sccs *s, delta *d, void *token)
 private	int
 v2Left(sccs *s, delta *d, void *token)
 {
-	printf("left %s\n", d->rev);
+	printf("left %s\n", REV(s, d));
 	return (0);
 }
 

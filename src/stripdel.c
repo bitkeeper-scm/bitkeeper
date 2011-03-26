@@ -123,7 +123,7 @@ doit(sccs *s, s_opts opts)
 		/* NOTE: if you change msg, also change SDMSG in undo.c */
 		fprintf(stderr,
     			"stripdel: can't remove committed delta %s@%s\n",
-		    s->gfile, e->rev);
+		    s->gfile, REV(s, e));
 		return (1);
 	}
 	range_markMeta(s);

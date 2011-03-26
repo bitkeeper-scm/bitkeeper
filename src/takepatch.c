@@ -719,7 +719,7 @@ delta1:	off = mtell(f);
 		if (echo > 3) {
 			fprintf(stderr,
 			    "takepatch: delta %s already in %s, skipping it.\n",
-			    tmp->rev, s->sfile);
+			    REV(s, tmp), s->sfile);
 		}
 		skip++;
 	} else if (skipkey(s, buf)) {
@@ -765,7 +765,7 @@ save:	mseekto(f, off);
 		p->resyncFile = strdup(buf);
 		p->order = parent == d ? 0 : d->date;
 		if (echo>6) fprintf(stderr, "REM: %s %s %lu\n",
-				    d->rev, p->me, p->order);
+		    REV(s, d), p->me, p->order);
 		c = line;
 		start = f->where; stop = start;
 		while ((b = mnext(f)) && (*b != '\n')) {
@@ -968,7 +968,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			}
 		}
 		if (echo>9) {
-			fprintf(stderr, "Child of %s", d ? d->rev : "none");
+			fprintf(stderr, "Child of %s", d ? REV(s, d) : "none");
 			if (p->meta) {
 				fprintf(stderr, " meta\n");
 			} else {
@@ -1006,7 +1006,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			debug((stderr,
 				"takepatch: adding leaf to tag "
 				"delta %s (serial %d)\n",
-				d->rev, d->serial));
+				REV(s, d), d->serial));
 		}
 	}
 	if (opts->port) for (d = 0, p = patchList; p; p = p->next) {
@@ -1026,7 +1026,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			sccs_setPath(s, d, PARENT(s, d)->pathname);
 		}
 		if (proj_isComponent(s->proj) &&
-		    streq(proj_rootkey(proj_product(s->proj)), d->csetFile)) {
+		    streq(proj_rootkey(proj_product(s->proj)),
+		    CSETFILE(s, d))) {
 			errorMsg("tp_portself", p->pid, s->sfile);
 			/*NOTREACHED*/
 		}
@@ -1233,7 +1234,9 @@ noupdates(char *localPath)
 		d = sccs_findKey(s, p);
 		assert(d);
 		if (d->flags & D_CSET) continue;
-		if (echo > 4) fprintf(stderr,"MARK(%s|%s)\n", s->gfile, d->rev);
+		if (echo > 4) {
+			fprintf(stderr,"MARK(%s|%s)\n", s->gfile, REV(s, d));
+		}
 		d->flags |= D_CSET;
 	}
 	pclose(f);
@@ -1320,9 +1323,9 @@ applyPatch(char *localPath, sccs *perfile)
 	assert(tableGCA->pathname);
 	if (echo > 6) {
 		fprintf(stderr,
-		    "stripdel %s from %s\n", tableGCA->rev, s->sfile);
+		    "stripdel %s from %s\n", REV(s, tableGCA), s->sfile);
 	}
-	if (d = sccs_next(s, sccs_findrev(s, tableGCA->rev))) {
+	if (d = sccs_next(s, sccs_findrev(s, REV(s, tableGCA)))) {
 		delta	*e;
 
 		for (e = s->table; e; e = NEXT(e)) {
@@ -1332,7 +1335,7 @@ applyPatch(char *localPath, sccs *perfile)
 
 				sccs_sdelta(s, e, k);
 				fprintf(stderr, "STRIP %s/%u/%c %s\n",
-				    e->rev, e->serial, e->type, k);
+				    REV(s, e), e->serial, e->type, k);
 			}
 			if (e == d) break;
 		}
@@ -1435,11 +1438,11 @@ apply:
 			/*NOTREACHED*/
 		}
 		unless (sccs_restart(s)) { perror("restart"); exit(1); }
-		if (echo > 9) fprintf(stderr, "Child of %s\n", d->rev);
+		if (echo > 9) fprintf(stderr, "Child of %s\n", REV(s, d));
 		assert(!p->meta); /* this is not the cset file */
 		newflags = GET_FORCE|GET_SKIPGET|GET_EDIT;
 		unless (echo > 6) newflags |= SILENT;
-		if (sccs_get(s, d->rev, 0, 0, 0, newflags, "-")) {
+		if (sccs_get(s, REV(s, d), 0, 0, 0, newflags, "-")) {
 			perror("get");
 			return (-1);
 		}
@@ -1537,7 +1540,7 @@ getLocals(sccs *s, delta *g, char *name)
 	assert(!CSET(s));
 	if (echo > 6) {
 		fprintf(stderr, "getlocals(%s, %s, %s)\n",
-		    s->gfile, g->rev, name);
+		    s->gfile, REV(s, g), name);
 	}
 	for (d = s->table; d != g; d = NEXT(d)) {
 		/*
@@ -1585,7 +1588,7 @@ getLocals(sccs *s, delta *g, char *name)
 		unless (d->flags & D_META) {
 			p->diffFile = strdup(tmpf);
 			sccs_restart(s);
-			if (sccs_getdiffs(s, d->rev, GET_BKDIFFS, tmpf)) {
+			if (sccs_getdiffs(s, REV(s, d), GET_BKDIFFS, tmpf)) {
 				SHOUT();
 				fprintf(stderr, "unable to create diffs");
 				cleanup(CLEAN_RESYNC);
@@ -1605,7 +1608,7 @@ getLocals(sccs *s, delta *g, char *name)
 		p->order = d->date;
 		if (echo>6) {
 			fprintf(stderr,
-			    "LOCAL: %s %s %lu\n", d->rev, p->me, p->order);
+			    "LOCAL: %s %s %lu\n", REV(s, d), p->me, p->order);
 		}
 		insertPatch(p, 0);
 		n++;

@@ -255,10 +255,10 @@ write_editfile(FILE *f, char **files, int to_stdout)
 		name = _relativeName(s->gfile, 0, 0, 0, proj);
 		if (to_stdout) {
 			fprintf(f, "### Comments for %s%c%s\n",
-			    name, BK_FS, d->rev);
+			    name, BK_FS, REV(s, d));
 		} else {
 			fprintf(f, "### Change the comments to %s%c%s below\n",
-			    name, BK_FS, d->rev);
+			    name, BK_FS, REV(s, d));
 		}
 		comments_load(s, d);
 		EACH_INDEX(d->cmnts, j) {

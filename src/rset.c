@@ -590,10 +590,10 @@ sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 		return (-1);
 	}
 	assert(p->type != 'R'); /* parent should not be a meta delta */
-	*revP = (p ? strdup(p->rev) : NULL);
+	*revP = (p ? strdup(REV(s, p)) : NULL);
 	if (d->merge) {
 		m = MERGE(s, d);
-		*revM = (m ? strdup(m->rev) : NULL);
+		*revM = (m ? strdup(REV(s, m)) : NULL);
 	}
 	return (0);
 }
@@ -609,7 +609,7 @@ fix_rev(sccs *s, char *rev)
 	}
 	assert(d);
 	FREE(rev);
-	return (strdup(d->rev)); /* ok */
+	return (strdup(REV(s, d))); /* ok */
 }
 
 private int

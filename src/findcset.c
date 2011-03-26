@@ -108,7 +108,8 @@ findcset_main(int ac, char **av)
 		s = sccs_init(CHANGESET, INIT_NOCKSUM|flags);
 		assert(s);
 		for (d = s->table; d; d = NEXT(d)) {
-			if (!streq(d->rev, "1.0") && !streq(d->rev, "1.1")) {
+			if (!streq(REV(s, d), "1.0") &&
+			    !streq(REV(s, d), "1.1")) {
 				d->flags &= ~D_CSET;
 				d->flags |= D_SET|D_GONE;
 				didone = 1;
@@ -244,7 +245,9 @@ dumpCsetMark(void)
 			d = sccs_findrev(s, revlist[i]);
 			assert(d);
 			d->flags |= D_CSET;
-			if (opts.verbose > 1) fprintf(stderr, "\t%s\n", d->rev);
+			if (opts.verbose > 1) {
+				fprintf(stderr, "\t%s\n", REV(s, d));
+			}
 		}
 		sccs_newchksum(s);
 		sccs_free(s);
@@ -530,14 +533,14 @@ fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 
 	if ((opts.verbose > 1) && (fudge != -1)) {
 		if (sameStr(template->sdate, d->sdate) &&
-		    sameStr(template->zone, d->zone) &&
+		    sameStr(template->zone, ZONE(s, d)) &&
 		    sameStr(template->user, USER(s, d)) &&
-		    sameStr(template->hostname, d->hostname)) {
+		    sameStr(template->hostname, HOSTNAME(s, d))) {
 			return;
 		}
 		fprintf(stderr,
 		    "Fixing ChangeSet rev %s to match oldest delta: %s %s",
-		    d->rev, template->sdate, template->user);
+		    REV(s, d), template->sdate, template->user);
 		fprintf(stderr, " %s\n",
 				template->hostname ? template->hostname : "");
 	}
@@ -546,25 +549,15 @@ fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 	 * Free old values
 	 */
 	if (d->sdate) free(d->sdate);
-	if (d->hostname && !(d->flags & D_DUPHOST)) free(d->hostname);
-	if (d->zone && !(d->flags & D_DUPZONE)) free(d->zone);
 
 	/*
 	 * Fix time zone and date
 	 */
 	parent = PARENT(s, d);
 	if (template->zone) {
-		if (parent && sameStr(template->zone, parent->zone)) {
-			d->zone = parent->zone;
-			d->flags |= D_DUPZONE;
-		} else {
-			d->zone = strdup(template->zone);
-			d->flags &= ~D_DUPZONE;
-		}
+		d->zone = sccs_addUniqStr(s, template->zone);
 	} else {
-		d->zone = NULL;
-		d->flags |= D_NOZONE;
-		d->flags &= ~D_DUPZONE; /* paraniod */
+		d->zone = 0;
 	}
 
 	assert(template->sdate);
@@ -574,7 +567,7 @@ fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 	} else {
 		assert(d->dateFudge == 0);
 	}
-	d->date = sccs_date2time(d->sdate, d->zone);
+	d->date = sccs_date2time(d->sdate, ZONE(s, d));
 	d->date += d->dateFudge;
 
 	/*
@@ -591,17 +584,9 @@ fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 	 * Copy hostname
 	 */
 	if (template->hostname) {
-		if (parent && sameStr(template->hostname, parent->hostname)) {
-			d->hostname = parent->hostname;
-			d->flags |= D_DUPHOST;
-		} else {
-			d->hostname = strdup(template->hostname);
-			d->flags &= ~D_DUPHOST;
-		}
+		d->hostname = sccs_addUniqStr(s, template->hostname);
 	} else {
-		d->hostname = NULL;
-		d->flags |= D_NOHOST;
-		d->flags &= ~D_DUPHOST; /* paraniod */
+		d->hostname = 0;
 	}
 }
 
@@ -758,11 +743,10 @@ mkCset(mkcs_t *cur, dinfo *d)
 	}
 	if (cur->cset->tree->zone && !e->zone) {
 		e->zone = cur->cset->tree->zone;
-		e->flags |= D_DUPZONE;
 	}
 	sprintf(dkey, "1.%u", ++cur->rev);
 	assert(!e->rev);
-	e->rev = strdup(dkey);
+	e->rev = sccs_addStr(cur->cset, dkey);
 
 	unless (cur->date < e->date) {
 		int	fudge = (cur->date - e->date) + 1;
@@ -820,11 +804,10 @@ mkTag(mkcs_t *cur, char *tag)
 	}
 	if (cur->cset->tree->zone && !e->zone) {
 		e->zone = cur->cset->tree->zone;
-		e->flags |= D_DUPZONE;
 	}
 	sprintf(dkey, "1.%u", cur->rev);
 	assert(!e->rev);
-	e->rev = strdup(dkey);
+	e->rev = sccs_addStr(cur->cset, dkey);
 
 	unless (cur->date < e->date) {
 		int	fudge = (cur->date - e->date) + 1;
@@ -855,7 +838,7 @@ preloadView(sccs *s, MDBM *db, delta *d)
 	sum_t	linesum, sumch;
 	u8	*ch;
 
-	if (sccs_get(s, d->rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+	if (sccs_get(s, REV(s, d), 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
 		assert("cannot get hash" == 0);
 	}
 	EACH_KV(s->mdbm) {
@@ -1135,11 +1118,11 @@ delta2dinfo(sccs *s, delta *d)
 	di->date = d->date;
 	di->dateFudge = d->dateFudge;
 	di->sum = d->sum;
-	di->rev = strdup(d->rev);
+	di->rev = strdup(REV(s, d));
 	di->sdate = strdup(d->sdate);
-	if (d->zone) di->zone = strdup(d->zone);
+	if (d->zone) di->zone = strdup(ZONE(s, d));
 	di->user = strdup(USER(s, d));
-	di->hostname = strdup(d->hostname);
+	di->hostname = strdup(HOSTNAME(s, d));
 	di->pathname = strdup(d->pathname);
 	comments_load(s, d);
 	di->comments = d->cmnts;
@@ -1277,17 +1260,17 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 	if (d->type == 'R') type = 'M';
 
 	fprintf(out, "%c %s %s%s %s%s%s +%u -%u\n",
-	    type, d->rev, d->sdate,
-	    d->zone ? d->zone : "",
+	    type, REV(s, d), d->sdate,
+	    ZONE(s, d),
 	    USER(s, d),
 	    d->hostname ? "@" : "",
-	    d->hostname ? d->hostname : "",
+	    d->hostname ? HOSTNAME(s, d) : "",
 	    d->added, d->deleted);
 
 	/*
 	 * Order from here down is alphabetical.
 	 */
-	if (d->csetFile) fprintf(out, "B %s\n", d->csetFile);
+	if (d->csetFile) fprintf(out, "B %s\n", CSETFILE(s, d));
 	if (d->flags & D_CSET) fprintf(out, "C\n");
 	if (d->dangling) fprintf(out, "D\n");
 	EACH_COMMENT(s, d) fprintf(out, "c %s\n", d->cmnts[i]);

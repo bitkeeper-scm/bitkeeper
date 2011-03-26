@@ -127,7 +127,7 @@ log_main(int ac, char **av)
 			unless (s->rstart = PARENT(s, s->rstart)) {
 				fprintf(stderr,
 				    "Warning: %s: %s has no parent\n",
-				    s->gfile, s->rstop->rev);
+				    s->gfile, REV(s, s->rstop));
 				goto next;
 			}
 			s->rstop->flags &= ~D_SET;
@@ -138,7 +138,7 @@ log_main(int ac, char **av)
 				goto next;
 			}
 			if (!rargs.rstart && !sfileRev() &&
-			    streq(s->tree->rev, "1.0")) {
+			    streq(REV(s, s->tree), "1.0")) {
 				/* we don't want 1.0 by default */
 				s->tree->flags &= ~D_SET;
 				if (s->rstart == s->tree) {

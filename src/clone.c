@@ -1452,7 +1452,7 @@ after(int quiet, int verbose, char *rev)
 		if (isKey(rev)) {
 			s = sccs_csetInit(SILENT|INIT_NOCKSUM);
 			if (d = sccs_findrev(s, rev)) {
-				strcpy(revbuf, d->rev);
+				strcpy(revbuf, REV(s, d));
 				rev = revbuf;
 			}
 			sccs_free(s);

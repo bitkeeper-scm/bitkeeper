@@ -95,10 +95,10 @@ sccs_patch(sccs *winner, sccs *loser)
 	d = sccs_dInit(0, 'R', loser, 0);
 	printf("M 0.0 %s%s %s%s%s +0 -0\n",
 	    d->sdate,
-	    d->zone ? d->zone : "",
+	    ZONE(s, d),
 	    USER(s, d),
 	    d->hostname ? "@" : "",
-	    d->hostname ? d->hostname : "");
+	    HOSTNAME(s, d));
 	printf("c Grafted %s into %s\n", lfile, wfile);
 	printf("K %u\n", almostUnique());
 	printf("P %s\n", lfile);
@@ -129,7 +129,7 @@ _patch(sccs *s)
 		printf("\n");
 		if (d->type == 'D') {
 			assert(!(s->state & S_CSET));
-			sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
+			sccs_getdiffs(s, REV(s, d), GET_BKDIFFS, "-");
 		}
 		printf("\n");
 	}

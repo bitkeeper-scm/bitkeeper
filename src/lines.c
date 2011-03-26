@@ -76,7 +76,7 @@ lines_main(int ac, char **av)
 				rc = 1;
 				goto next;
 			}
-			printf("%s", e->rev);
+			printf("%s", REV(s, e));
 			if (flags & GET_USER) {
 				putchar('-');
 				puser(USER(s, e));
@@ -161,7 +161,7 @@ _prevs(delta *d)
 private void
 pd(char *prefix, delta *d)
 {
-	printf("%s%s", prefix, d->rev);
+	printf("%s%s", prefix, REV(s, d));
 	if (flags & GET_USER) {
 		putchar('-');
 		puser(USER(s, d));
@@ -174,7 +174,7 @@ pd(char *prefix, delta *d)
 
 		assert(p);
 		if (p->date > tree->date) {
-			printf("%c%s", BK_FS, p->rev);
+			printf("%c%s", BK_FS, REV(s, p));
 			if (flags & GET_USER) {
 				putchar('-');
 				puser(USER(s, p));

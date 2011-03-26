@@ -79,7 +79,7 @@ strip_danglers(char *name, u32 flags)
 	s = sccs_init(name, INIT_WACKGRAPH);
 	assert(s);
 	for (d = s->table; d; d = NEXT(d)) {
-		if (d->dangling) revs = addLine(revs, strdup(d->rev));
+		if (d->dangling) revs = addLine(revs, strdup(REV(s, d)));
 	}
 	sccs_free(s);
 	p = aprintf("bk stripdel -%sdC -", (flags&SILENT) ? "q" : "");
@@ -380,7 +380,7 @@ delta_main(int ac, char **av)
 			d = s->table;
 			assert(d);
 			assert(d->type == 'D');
-			nrev = d->rev;
+			nrev = REV(s, d);
 		} else {
 			s = sccs_restart(s);
 		}

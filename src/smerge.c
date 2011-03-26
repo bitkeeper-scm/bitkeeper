@@ -348,7 +348,7 @@ find_gca(char *file, char *left, char *right)
 	}
 	dg = sccs_gca(s, dl, dr, &inc, &exc);
 	revlist = fmem_open();
-	fputs(dg->rev, revlist);
+	fputs(REV(s, dg), revlist);
 	if (inc) {
 		fprintf(revlist, "+%s", inc);
 		free(inc);

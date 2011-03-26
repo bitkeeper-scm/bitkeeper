@@ -237,7 +237,7 @@ pdelta(sccs *s, delta *d, FILE *f)
 		return;
 	}
 	if (opts.sort) {
-		fprintf(f, "%s|%s\n", d->pathname, d->rev);
+		fprintf(f, "%s|%s\n", d->pathname, REV(s, d));
 		return;
 	}
 	if (d->pathname && streq(d->pathname, "ChangeSet")) {
@@ -258,10 +258,10 @@ pdelta(sccs *s, delta *d, FILE *f)
 	if (indent) fprintf(f, "%*s", indent, "");
 	if (d->pathname) {
 		unless (opts.basenames) {
-			fprintf(f, "%s %s\n  ", d->pathname, d->rev);
+			fprintf(f, "%s %s\n  ", d->pathname, REV(s, d));
 			if (indent) fprintf(f, "%*s", indent, "");
 		} else {
-			fprintf(f, "%s %s ", basenm(d->pathname), d->rev);
+			fprintf(f, "%s %s ", basenm(d->pathname), REV(s, d));
 		}
 	}
 	y = (atoi(d->sdate) > 69) ? "19" : "20";
@@ -272,7 +272,7 @@ pdelta(sccs *s, delta *d, FILE *f)
 	    &(d->sdate[6]),	/* DD */
 	    &(d->sdate[9]),	/* HH:MM:SS */
 	    USER(s, d));
-	if (d->hostname) fprintf(f, "@%s", d->hostname);
+	if (d->hostname) fprintf(f, "@%s", HOSTNAME(s, d));
 	fprintf(f, " +%d -%d\n", d->added, d->deleted);
 	EACH_COMMENT(s, d) {
 		if (indent) fprintf(f, "%*s", indent, "");
@@ -325,8 +325,8 @@ sccslog(sccs *s)
 				nd->output =
 				    joinLines("\n", comments_load(s, d));
 				if (nd->output &&
-				    (streq(d->rev, "1.1") ||
-				     streq(d->rev, "1.0")) &&
+				    (streq(REV(s, d), "1.1") ||
+				     streq(REV(s, d), "1.0")) &&
 				    strneq(nd->output,
 					"BitKeeper file ", 15)) {
 					free(nd->output);

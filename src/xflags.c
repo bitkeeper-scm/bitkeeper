@@ -161,7 +161,7 @@ checkXflags(sccs *s, delta *d, int what)
 	// fprintf(stderr, "\n");
 	if (what & XF_STATUS) return (1);
 	if (what & XF_DRYRUN) {
-		fprintf(stderr, "%s|%s ", s->gfile, d->rev);
+		fprintf(stderr, "%s|%s ", s->gfile, REV(s, d));
 		if (new & ~want) {
 			fprintf(stderr, "should not have ");
 			fputs(xflags2a(new & ~want), stderr);

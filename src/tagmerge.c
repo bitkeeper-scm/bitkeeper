@@ -55,7 +55,7 @@ tagmerge(void)
 		return (0);
 	}
 	fprintf(stderr, "Merge tips %s/%d %s/%d (%d tips total)\n",
-	    a->rev, a->serial, b->rev, b->serial, i);
+	    REV(s, a), a->serial, REV(s, b), b->serial, i);
 	m(s, a, b);
 	return (1);
 }
@@ -108,7 +108,7 @@ m(sccs *s, delta *l, delta *r)
 			}
 			if ((d->date == tt) &&
 			    streq(USER(s, d), USER(s, p)) &&
-			    streq(d->hostname, p->hostname) &&
+			    streq(HOSTNAME(s, d), HOSTNAME(s, p)) &&
 			    streq(d->pathname, p->pathname)) {
 			    	break;
 			}
@@ -138,7 +138,7 @@ m(sccs *s, delta *l, delta *r)
 	sprintf(zone, "%c%02d:%02d", sign, hwest, mwest);
 
 	sprintf(buf, "M %s %s%s %s@%s +0 -0\n",
-	    "0.0", tmp, zone, USER(s, p), p->hostname);
+	    "0.0", tmp, zone, USER(s, p), HOSTNAME(s, p));
 	sum = doit(sum, buf);
 	sccs_sdelta(s, sccs_ino(s), key);
 	sprintf(buf, "B %s\n", key);

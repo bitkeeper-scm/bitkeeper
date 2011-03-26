@@ -334,7 +334,12 @@ cset_setup(int flags)
 	assert(cset && cset->proj);
 
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
-	unless (d = host_get(d)) goto intr;
+
+	d->hostname = sccs_addUniqStr(cset, sccs_gethost());
+	unless (isValidHost(HOSTNAME(cset, d))) {
+		fprintf(stderr, "invalid host: \"%s\"\n", HOSTNAME(cset, d));
+		goto intr;
+	}
 
 	d->user = sccs_addUniqStr(cset, sccs_getuser());
 	unless (isValidUser(USER(cset, d))) {
@@ -348,7 +353,6 @@ cset_setup(int flags)
 intr:		sccs_free(cset);
 		sfileDone();
 		comments_done();
-		host_done();
 		return (1);
 	}
 	fd = creat(IDCACHE, GROUP_MODE);
@@ -356,7 +360,6 @@ intr:		sccs_free(cset);
 	close(fd);
 	sccs_free(cset);
 	comments_done();
-	host_done();
 	sfileDone();
 	return (0);
 }
@@ -852,7 +855,7 @@ doDiff(sccs *sc, char kind)
 	}
 	e = PARENT(sc, e);
 	if (e == d) return;
-	sccs_diffs(sc, e->rev, d->rev, 0, kind, stdout);
+	sccs_diffs(sc, REV(sc, e), REV(sc, d), 0, kind, stdout);
 }
 
 #if 0
@@ -897,7 +900,7 @@ doMarks(cset_t *cs, sccs *s)
 			if (cs->force || !(d->flags & D_CSET)) {
 				if (cs->verbose > 2) {
 					fprintf(stderr, "Mark %s%c%s\n",
-					    s->gfile, BK_FS, d->rev);
+					    s->gfile, BK_FS, REV(s, d));
 				}
 				d->flags |= D_CSET;
 				cs->ndeltas++;
@@ -934,7 +937,7 @@ doSet(sccs *sc)
 				sccs_md5delta(sc, d, key);
 				printf("%c%s\n", BK_FS, key);
 			} else {
-				printf("%c%s\n", BK_FS, d->rev);
+				printf("%c%s\n", BK_FS, REV(sc, d));
 			}
 		}
 	}
@@ -1035,7 +1038,7 @@ mkChangeSet(sccs *cset, char *files, FILE *diffs)
 	 * which will cause cset -i/-L to fail since
 	 * the signiture do not match
 	 */
-	assert(d->hostname && d->hostname[0]);
+	assert(d->hostname);
 
 	fprintf(diffs, "0a0\n"); /* fake diff header */
 
@@ -1193,7 +1196,7 @@ sccs_patch(sccs *s, cset_t *cs)
 		n++;
 		unless (last) last = n;
 		list = (delta **)addLine((char **)list, d);
-		if (d->hash && BAM(s) && copts.doBAM) {
+		if (d->bamhash && BAM(s) && copts.doBAM) {
 			cs->BAM = addLine(cs->BAM,
 			    sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC));
 		}
@@ -1233,12 +1236,12 @@ sccs_patch(sccs *s, cset_t *cs)
 		d = list[i];
 		if (patchmap) patchmap[d->serial] = n - i + 1;
 		assert(d);
-		if (cs->verbose > 2) fprintf(stderr, " %s", d->rev);
+		if (cs->verbose > 2) fprintf(stderr, " %s", REV(s, d));
 		if (tick) progress(tick, 0);
 		if (i == n) {
 			unless (s->gfile) {
 				fprintf(stderr, "\n%s%c%s has no path\n",
-				    s->gfile, BK_FS, d->rev);
+				    s->gfile, BK_FS, REV(s, d));
 				cset_exit(1);
 			}
 			printf("== %s ==\n", gfile);
@@ -1283,7 +1286,8 @@ sccs_patch(sccs *s, cset_t *cs)
 			if (CSET(s)) {
 				if (d->added) rc = cset_diffs(cs, d->serial);
 			} else if (!BAM(s)) {
-				rc = sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
+				rc = sccs_getdiffs(s, REV(s, d),
+				    GET_BKDIFFS, "-");
 			}
 		}
 		if (rc) { /* sccs_getdiffs errored */
