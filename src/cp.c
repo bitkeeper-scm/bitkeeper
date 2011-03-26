@@ -32,9 +32,10 @@ private int
 cp(char *from, char *to, int force)
 {
 	sccs	*s;
+	delta	*d;
 	char	buf[100];
 	char	*sfile, *gfile, *tmp;
-	int	err;
+	int	i, err;
 
 	assert(from && to);
 	unless (proj_samerepo(from, to) || force) {
@@ -74,7 +75,11 @@ cp(char *from, char *to, int force)
 	 * Try using the new filename as the original filename.
 	 * Only necessary in long/short key trees like BitKeeper.
 	 */
-	sccs_setPath(s, s->tree, _relativeName(gfile, 0, 0, 0, 0));
+	tmp = _relativeName(gfile, 0, 0, 0, 0);
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = SFIND(s, i)) continue;
+		sccs_setPath(s, d, tmp);
+	}
 	sccs_clearbits(s, D_CSET);
 	free(s->sfile);
 	s->sfile = sfile;

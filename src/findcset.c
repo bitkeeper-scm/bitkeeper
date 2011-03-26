@@ -739,7 +739,6 @@ mkCset(mkcs_t *cur, dinfo *d)
 	cur->cset->rstart = cur->cset->rstop = e;
 	if (cur->cset->tree->pathname && !e->pathname) {
 		e->pathname = cur->cset->tree->pathname;
-		e->flags |= D_DUPPATH;
 	}
 	if (cur->cset->tree->zone && !e->zone) {
 		e->zone = cur->cset->tree->zone;
@@ -800,7 +799,6 @@ mkTag(mkcs_t *cur, char *tag)
 	cur->cset->rstart = cur->cset->rstop = e;
 	if (cur->cset->tree->pathname && !e->pathname) {
 		e->pathname = cur->cset->tree->pathname;
-		e->flags |= D_DUPPATH;
 	}
 	if (cur->cset->tree->zone && !e->zone) {
 		e->zone = cur->cset->tree->zone;
@@ -1123,7 +1121,7 @@ delta2dinfo(sccs *s, delta *d)
 	if (d->zone) di->zone = strdup(ZONE(s, d));
 	di->user = strdup(USER(s, d));
 	di->hostname = strdup(HOSTNAME(s, d));
-	di->pathname = strdup(d->pathname);
+	di->pathname = strdup(PATHNAME(s, d));
 	comments_load(s, d);
 	di->comments = d->cmnts;
 	d->cmnts = 0;
@@ -1280,7 +1278,7 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 		fprintf(out, "K %u\n", d->sum);
 	}
 	assert(!d->merge);
-	if (d->pathname) fprintf(out, "P %s\n", d->pathname);
+	if (d->pathname) fprintf(out, "P %s\n", PATHNAME(s, d));
 	if (d->random) fprintf(out, "R %s\n", d->random);
 	if (tag) {
 		fprintf(out, "S %s\n", tag);

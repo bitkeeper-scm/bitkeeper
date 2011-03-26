@@ -507,7 +507,7 @@ error:		if (perfile) sccs_free(perfile);
 		}
 		tmp = sccs_top(s);
 		unless (CSET(s)) {
-			unless (sccs_patheq(tmp->pathname, s->gfile)) {
+			unless (sccs_patheq(PATHNAME(s, tmp), s->gfile)) {
 				badpath(s, tmp);
 				goto error;
 			}
@@ -833,7 +833,7 @@ private	void
 badpath(sccs *s, delta *tot)
 {
 	SHOUT();
-	getMsg2("tp_badpath", s->gfile, tot->pathname, 0, stderr);
+	getMsg2("tp_badpath", s->gfile, PATHNAME(s, tot), 0, stderr);
 }
 
 private	void
@@ -1014,26 +1014,19 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			continue;
 		}
 		unless (d->pserial) continue;	/* rootkey untouched */
-		if (d->flags & D_DUPPATH) {
-			/*
-			 * a previous round may have broken duppath linkage;
-			 * fix it and use this as the answer.
-			 */
-			assert(d->pserial);
-			d->pathname = PARENT(s, d)->pathname;
-		} else {
-			/* Use correct handling of keeping orig path */
-			sccs_setPath(s, d, PARENT(s, d)->pathname);
-		}
+
+		d->pathname = PARENT(s, d)->pathname;
+
 		if (proj_isComponent(s->proj) &&
 		    streq(proj_rootkey(proj_product(s->proj)),
 		    CSETFILE(s, d))) {
 			errorMsg("tp_portself", p->pid, s->sfile);
 			/*NOTREACHED*/
 		}
-		if (d->merge && !streq(MERGE(s, d)->pathname, d->pathname)) {
+		if (d->merge &&
+		    !streq(PATHNAME(s, MERGE(s, d)), PATHNAME(s, d))) {
 			errorMsg("tp_portmerge",
-			    MERGE(s, d)->pathname, d->pathname);
+			    PATHNAME(s, MERGE(s, d)), PATHNAME(s, d));
 			/*NOTREACHED*/
 		}
 	}

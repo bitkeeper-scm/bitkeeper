@@ -485,7 +485,7 @@ fixFiles(Opts *opts, char **deepnest)
 		if (s = sccs_keyinit(opts->refProj, rk, INIT_MUSTEXIST, idDB)) {
 			if (do_file(opts, s, deepnest) ||
 			    !(d = sccs_top(s)) ||
-			    (opts->refProj && fixPath(s, d->pathname)) ||
+			    (opts->refProj && fixPath(s, PATHNAME(s, d))) ||
 			    sccs_newchksum(s)) {
 				fprintf(stderr,
 				    "%s: file transform failed\n  %s\n",
@@ -1580,7 +1580,6 @@ pruneEmpty(sccs *s)
 		verbose((stderr, "Rebuilding Tag Graph...\n"));
 		(flags & PRUNE_NEW_TAG_GRAPH) ? rebuildTags(s) : fixTags(s);
 	}
-	sccs_reDup(s);
 	sccs_newchksum(s);
 	sccs_free(s);
 }
@@ -1772,24 +1771,15 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 		unless (d = sfind(s, i)) continue;
 		assert(!TAG(d));
 
-		/*
-		 * Previous loop have duppath point to freed mem, so fix.
-		 * Also if duppath, no need to set up new name.
-		 */
-		if (d->flags & D_DUPPATH) {
-			assert(d->pserial);
-			d->pathname = PARENT(s, d)->pathname;
-		} else {
-			newpath = newname(
-			    delpath, opts->comppath, d->pathname, deepnest);
-			if (newpath == INVALID) {
-				fprintf(stderr, "%s: file %s delta %s "
-				    "matches a component path '%s'.\n",
-				    prog, s->gfile, REV(s, d), d->pathname);
-				goto err;
-			}
-			sccs_setPath(s, d, newpath);
+		newpath = newname(delpath, opts->comppath,
+		    PATHNAME(s, d), deepnest);
+		if (newpath == INVALID) {
+			fprintf(stderr, "%s: file %s delta %s "
+			    "matches a component path '%s'.\n",
+			    prog, s->gfile, REV(s, d), PATHNAME(s, d));
+			goto err;
 		}
+		sccs_setPath(s, d, newpath);
 
 		// BAM stuff
 		if (d->bamhash) {

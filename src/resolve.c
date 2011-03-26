@@ -853,7 +853,7 @@ pass2_renames(opts *opts)
 			if (opts->noconflicts) {
 				fprintf(stderr,
 				    "resolve: dir/file conflict for ``%s'',\n",
-				    rs->d->pathname);
+				    PATHNAME(rs->s, rs->d));
 				goto out;
 			}
 			if (resolve_create(rs, DIR_CONFLICT) != EAGAIN) {
@@ -976,7 +976,7 @@ create(resolve *rs)
 	if (opts->debug) {
 		fprintf(stderr,
 		    ">> create(%s) in pass %d.%d\n",
-		    rs->d->pathname, opts->pass, opts->resolveNames);
+		    PATHNAME(rs->s, rs->d), opts->pass, opts->resolveNames);
 	}
 
 	/* 
@@ -995,7 +995,7 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 		if (opts->noconflicts) {
 	    		fprintf(stderr,
 			    "resolve: name conflict for ``%s'',\n",
-			    rs->d->pathname);
+			    PATHNAME(rs->s, rs->d));
 	    		fprintf(stderr,
 			    "\tpathname is used by %s.\n", cnames[how]);
 			opts->errors = 1;
@@ -1020,7 +1020,7 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 	if (local) {
 		if (opts->debug) {
 			fprintf(stderr, "%s already renamed to %s\n",
-			    local->gfile, rs->d->pathname);
+			    local->gfile, PATHNAME(rs->s, rs->d));
 		}
 		/* dummy up names which make it a remote move */
 		if (rs->gnames) freenames(rs->gnames, 1);
@@ -1028,7 +1028,7 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 		rs->gnames	   = new(names);
 		rs->gnames->local  = strdup(local->gfile);
 		rs->gnames->gca    = strdup(local->gfile);
-		rs->gnames->remote = strdup(rs->d->pathname);
+		rs->gnames->remote = strdup(PATHNAME(rs->s, rs->d));
 		rs->snames	   = new(names);
 		rs->snames->local  = name2sccs(rs->gnames->local);
 		rs->snames->gca    = name2sccs(rs->gnames->gca);
@@ -1048,11 +1048,11 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 	}
 	if (rs->opts->log) {
 		fprintf(rs->opts->log, "rename(%s, %s) = %d\n", 
-		    rs->s->gfile, rs->d->pathname, ret);
+		    rs->s->gfile, PATHNAME(rs->s, rs->d), ret);
 	}
 	if (opts->debug) {
-		fprintf(stderr,
-		    "%s -> %s = %d\n", rs->s->gfile, rs->d->pathname, ret);
+		fprintf(stderr, "%s -> %s = %d\n",
+		    rs->s->gfile, PATHNAME(rs->s, rs->d), ret);
 	}
 	opts->renames2++;
 	return (ret);
@@ -1083,7 +1083,7 @@ rename_file(resolve *rs)
 again:
 	if (opts->debug) {
 		fprintf(stderr, ">> rename_file(%s - %s)\n",
-			rs->s->gfile, rs->d ? rs->d->pathname : "<conf>");
+		    rs->s->gfile, rs->d ? PATHNAME(rs->s, rs->d) : "<conf>");
 	}
 
 	/*
@@ -1150,14 +1150,14 @@ again:
 			rs->s = sccs_init(to, INIT_NOCKSUM);
 			d = sccs_findrev(rs->s, rs->revs->local);
 			assert(d);
-			t = name2sccs(d->pathname);
+			t = name2sccs(PATHNAME(rs->s, d));
 			unless (streq(t, to)) {
 				rename_delta(rs, to, d, rfile, LOCAL);
 			}
 			free(t);
 			d = sccs_findrev(rs->s, rs->revs->remote);
 			assert(d);
-			t = name2sccs(d->pathname);
+			t = name2sccs(PATHNAME(rs->s, d));
 			unless (streq(t, to)) {
 				rename_delta(rs, to, d, rfile, REMOTE);
 			}
@@ -1239,14 +1239,14 @@ move_remote(resolve *rs, char *sfile)
 		}
 		d = sccs_findrev(rs->s, rs->revs->local);
 		assert(d);
-		t = name2sccs(d->pathname);
+		t = name2sccs(PATHNAME(rs->s, d));
 		unless (streq(t, sfile)) {
 			rename_delta(rs, sfile, d, rfile, LOCAL);
 		}
 		free(t);
 		d = sccs_findrev(rs->s, rs->revs->remote);
 		assert(d);
-		t = name2sccs(d->pathname);
+		t = name2sccs(PATHNAME(rs->s, d));
 		unless (streq(t, sfile)) {
 			rename_delta(rs, sfile, d, rfile, REMOTE);
 		}
@@ -1269,12 +1269,12 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 
 	if (rs->opts->debug) {
 		fprintf(stderr, "rename_delta(%s, %s, %s, %s)\n", sfile,
-		    REV(rs->s, d), d->pathname,
+		    REV(rs->s, d), PATHNAME(rs->s, d),
 		    which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
 	t = sccs2name(sfile);
-	sprintf(buf, "-PyMerge rename: %s -> %s", d->pathname, t);
+	sprintf(buf, "-PyMerge rename: %s -> %s", PATHNAME(rs->s, d), t);
 	free(t);
 
 	/*
@@ -1364,7 +1364,7 @@ type_delta(resolve *rs,
 	rs->d = sccs_top(s);
 	assert(rs->d);
 	free(rs->dname);
-	rs->dname = name2sccs(rs->d->pathname);
+	rs->dname = name2sccs(PATHNAME(rs->s, rs->d));
 }
 
 /*
@@ -1402,7 +1402,7 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 	rs->d = sccs_top(s);
 	assert(rs->d);
 	free(rs->dname);
-	rs->dname = name2sccs(rs->d->pathname);
+	rs->dname = name2sccs(PATHNAME(rs->s, rs->d));
 }
 
 /*
@@ -1469,7 +1469,7 @@ flags_delta(resolve *rs,
 	rs->d = sccs_top(s);
 	assert(rs->d);
 	free(rs->dname);
-	rs->dname = name2sccs(rs->d->pathname);
+	rs->dname = name2sccs(PATHNAME(rs->s, rs->d));
 }
 
 /*
@@ -2268,7 +2268,7 @@ automerge(resolve *rs, names *n, int identical)
 {
 	char	cmd[MAXPATH*4];
 	int	ret;
-	char	*name = basenm(rs->d->pathname);
+	char	*name = basenm(PATHNAME(rs->s, rs->d));
 	names	tmp;
 	int	do_free = 0;
 	int	flags;

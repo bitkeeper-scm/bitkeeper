@@ -233,7 +233,7 @@ onefile:	fprintf(stderr,
 					goto err;
 				}
 				sprintf(Gout, "%s/%s", gdir,
-				    d->pathname ? d->pathname : s->gfile);
+				    d->pathname ? PATHNAME(s, d) : s->gfile);
 			}
 			unlink(Gout);
 			out = Gout;

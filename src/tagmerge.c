@@ -108,8 +108,8 @@ m(sccs *s, delta *l, delta *r)
 			}
 			if ((d->date == tt) &&
 			    streq(USER(s, d), USER(s, p)) &&
-			    streq(HOSTNAME(s, d), HOSTNAME(s, p)) &&
-			    streq(d->pathname, p->pathname)) {
+			    (d->hostname == p->hostname) &&
+			    streq(PATHNAME(s, d), PATHNAME(s, p))) {
 			    	break;
 			}
 		}

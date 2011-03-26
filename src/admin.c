@@ -223,9 +223,8 @@ admin_main(int ac, char **av)
 			for (d = sc->table; (dopath == 2) && d; d = NEXT(d)) {
 				unless (NEXT(d)) break;
 				/* ugly and inefficient temporary state */
-				if (d->pathname) free(d->pathname);
-				d->pathname = PATH_BUILD(path, "");
-				d->flags &= ~D_DUPPATH;
+				d->pathname = sccs_addUniqStr(sc, path);
+				d->sortPath = 0;
 			}
 			d = rev ? sccs_findrev(sc, rev) : sccs_top(sc);
 			sccs_parseArg(sc, d, 'P', path ? path : sc->gfile, 0);

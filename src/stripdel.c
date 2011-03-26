@@ -182,7 +182,10 @@ stripdel_fixTable(sccs *s, int *pcnt)
 		if (d->flags & D_SET) {
 			MK_GONE(s, d);
 			d->symLeaf = 0;
-			unless (d->flags & D_DUPPATH) run_names++;
+			if (!d->pserial ||
+			    !streq(PATHNAME(s, PARENT(s, d)), PATHNAME(s, d))){
+				run_names++;
+			}
 			count++;
 			continue;
 		}

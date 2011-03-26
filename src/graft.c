@@ -70,8 +70,8 @@ private	void
 sccs_patch(sccs *winner, sccs *loser)
 {
 	delta	*d = sccs_top(winner);
-	char	*wfile = d->pathname;
-	char	*lfile = sccs_top(loser)->pathname;
+	char	*wfile = PATHNAME(winner, d);
+	char	*lfile = PATHNAME(loser, sccs_top(loser));
 
 	printf(PATCH_CURRENT);
 	printf("== %s ==\n", wfile);

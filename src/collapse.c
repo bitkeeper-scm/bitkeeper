@@ -505,7 +505,7 @@ do_file(char *file, char *tiprev)
 	if (tipd) {
 		/* remember mode, path, xflags */
 		mode = d->mode;
-		pathname = strdup(d->pathname);
+		pathname = strdup(PATHNAME(s, d));
 		xflags = sccs_xflags(s, d);
 
 		if (CSET(s) || streq(s->gfile, ATTR)) {
@@ -545,7 +545,7 @@ do_file(char *file, char *tiprev)
 			}
 			tipd = sccs_findrev((s = sccs_reopen(s)), "+");
 		}
-		unless (streq(pathname, tipd->pathname)) {
+		unless (streq(pathname, PATHNAME(s, tipd))) {
 			if (sccs_admin(s,
 			    0, ADMIN_NEWPATH, 0, 0, 0, 0, 0, 0, 0)) {
 				sccs_whynot(me, s);

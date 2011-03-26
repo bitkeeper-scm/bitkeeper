@@ -1773,18 +1773,8 @@ attach_name(sccs *cset, char *name, int setmarks)
 		} else {
 			d->flags &= ~D_CSET;
 		}
-		/* previous loop may have broken duppath pointer so fix */
-		if (d->flags & D_DUPPATH) {
-			assert(p);
-			d->pathname = p->pathname;
-		}
-		unless (p) {
-			/* leave rootkey name alone */
-		} else if (!p->pserial && !TAG(d)) { /* 1.1 and siblings */
-			sccs_setPath(cset, d, name);
-		} else unless (d->flags & D_DUPPATH) {
-			sccs_setPath(cset, d, p->pathname);
-		}
+		/* leave rootkey name alone */
+		if (p) sccs_setPath(cset, d, name);
 	}
 	if (freeme && sccs_newchksum(freeme)) goto err;
 

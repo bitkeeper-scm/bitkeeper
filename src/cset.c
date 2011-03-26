@@ -932,7 +932,9 @@ doSet(sccs *sc)
 	for (d = sc->table; d; d = NEXT(d)) {
 		if (d->flags & D_SET) {
 			printf("%s", sc->gfile);
-		    	if (copts.historic) printf("%c%s", BK_FS, d->pathname);
+		    	if (copts.historic) {
+				printf("%c%s", BK_FS, PATHNAME(sc, d));
+			}
 			if (copts.md5out) {
 				sccs_md5delta(sc, d, key);
 				printf("%c%s\n", BK_FS, key);
@@ -1192,7 +1194,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	list = 0;
 	for (n = 0, d = s->table; d; d = NEXT(d)) {
 		unless (d->flags & D_SET) continue;
-		unless (gfile) gfile = CSET(s) ? GCHANGESET : d->pathname;
+		unless (gfile) gfile = CSET(s) ? GCHANGESET : PATHNAME(s, d);
 		n++;
 		unless (last) last = n;
 		list = (delta **)addLine((char **)list, d);
@@ -1246,7 +1248,7 @@ sccs_patch(sccs *s, cset_t *cs)
 			}
 			printf("== %s ==\n", gfile);
 			if (newfile) {
-				printf("New file: %s\n", d->pathname);
+				printf("New file: %s\n", PATHNAME(s, d));
 				sccs_perfile(s, stdout);
 			}
 			s->rstop = s->rstart = s->tree;

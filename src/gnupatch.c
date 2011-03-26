@@ -20,7 +20,8 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 	assert(d);
 	unless ((d->mode == 0) || S_ISREG(d->mode)) {
 		fprintf(stderr,
-    "%s is not regular file, converted to empty file\n", d->pathname);
+		    "%s is not regular file, converted to empty file\n",
+		    PATHNAME(s, d));
 		return;
 	}
 	mkdirf(tmp_path);

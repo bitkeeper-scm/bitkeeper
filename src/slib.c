@@ -43,7 +43,7 @@ private delta*	hashArg(sccs *s, delta *d, char *name);
 private delta*	csetFileArg(sccs *s, delta *d, char *name);
 private delta*	dateArg(sccs *s, delta *d, char *arg, int defaults);
 private delta*	hostArg(sccs *s, delta *d, char *arg);
-private delta*	pathArg(delta *d, char *arg);
+private delta*	pathArg(sccs *s, delta *d, char *arg);
 private delta*	randomArg(delta *d, char *arg);
 private delta*	zoneArg(sccs *s, delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
@@ -450,7 +450,6 @@ freedelta(delta *d)
 	if (d->sdate) free(d->sdate);
 	if (d->include) free(d->include);
 	if (d->exclude) free(d->exclude);
-	if (d->pathname && !(d->flags & D_DUPPATH)) free(d->pathname);
 	if (d->random) free(d->random);
 }
 
@@ -511,100 +510,26 @@ sccs_inherit(sccs *s, delta *d)
 		return;
 	}
 
-	/*
-	 * For each metadata field, check if not null, dup if null.
-	 * If it is already dupped, leave it alone.
-	 */
-#define	CHK_DUP(field, flag, str) \
-	if (d->field) { \
-		unless (d->flags & flag) { \
-			if (p->field && streq(d->field, p->field)) { \
-				free(d->field); \
-				d->field = p->field; \
-				d->flags |= flag; \
-			} \
-		} \
-	} else if (p->field) { \
-		d->field = p->field; \
-		d->flags |= flag; \
-	}
-
-#define	CHK_DUP2(field) \
+#define	CHK_DUP(field) \
 	if (!d->field && p->field) d->field = p->field;
 
-	if (d->pathname) {
-		unless (d->flags & D_DUPPATH) {
-			if (p->pathname && PATH_EQ(d->pathname, p->pathname)) {
-				free(d->pathname);
-				d->pathname = p->pathname;
-				d->flags |= D_DUPPATH;
-			}
-		}
-	} else if (p->pathname) {
-		d->pathname = p->pathname;
-		d->flags |= D_DUPPATH;
-	}
-	CHK_DUP2(hostname);
-	CHK_DUP2(zone);
-	CHK_DUP2(csetFile);
+	CHK_DUP(hostname);
+	CHK_DUP(zone);
+	CHK_DUP(csetFile);
+	CHK_DUP(pathname);
+	CHK_DUP(sortPath);
 	if ((p->flags & D_MODE) && !(d->flags & D_MODE)) {
 		d->flags |= D_MODE;
 		d->mode = p->mode;
-		CHK_DUP2(symlink);
+		CHK_DUP(symlink);
 	}
+#undef	CHK_DUP
+
 	DATE(s, d);
 	if (d->merge) {
 		d = MERGE(s, d);
 		assert(d);
 		d->flags |= D_MERGED;
-	}
-}
-
-/*
- * Reduplicate the dup information, as it might have changed
- * because of swapping parent and merge pointers (renumber()) or
- * because of D_GONE'ing some interior nodes (csetprune()).
- * The code is here so that any time a new meta data is added that
- * requires dup'ing, that code will be put here as well to unDup it.
- *
- * XXX: this isn't efficient, but is less vulnerable than trying to
- * do this in one step.  Safer to UNDUP in table order, and REDUP
- * in reverse table order.
- */
-void
-sccs_reDup(sccs *s)
-{
-	delta	*d, *p;
-	int	i;
-
-	/* undup in forward table order */
-	for (d = s->table; d; d = NEXT(d)) {
-		if (d->pathname && (d->flags & D_DUPPATH)) {
-			d->pathname = PATH_DUP(d->pathname);
-			d->flags &= ~D_DUPPATH;
-		}
-	}
-
-	/* redup in reverse table order (from sccs_renumber()) */
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, i)) continue;
-		if (d->flags & D_GONE) continue;
-		unless (p = PARENT(s, d)) continue;
-
-		if (p->flags & D_GONE) {
-			/* like an assert, but with more info */
-			fprintf(stderr, "Internal error: "
-				"Parent %s is GONE "
-				"and delta %s is not\n",
-				REV(s, p), REV(s, d));
-			exit (1);
-		}
-		if (p->pathname && d->pathname &&
-		    PATH_EQ(p->pathname, d->pathname)) {
-			free(d->pathname);
-			d->pathname = p->pathname;
-			d->flags |= D_DUPPATH;
-		}
 	}
 }
 
@@ -3025,7 +2950,7 @@ meta(sccs *s, delta *d, char *buf)
 		mergeArg(d, &buf[3]);
 		break;
 	    case 'P':
-		pathArg(d, &buf[3]);
+		pathArg(s, d, &buf[3]);
 		break;
 	    case 'O':
 		modeArg(s, d, &buf[3]);
@@ -6402,9 +6327,9 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 		namedb = mdbm_mem();
 	}
 	if (flags & GET_MODNAME) {
-		name = basenm(d ? d->pathname : s->gfile);
+		name = basenm(d ? PATHNAME(s, d) : s->gfile);
 	} else if (flags & GET_RELPATH) {
-		name = d ? d->pathname : s->gfile;
+		name = d ? PATHNAME(s, d) : s->gfile;
 	}
 
 	/*
@@ -6843,8 +6768,8 @@ get_link(sccs *s, char *printOut, int flags, delta *d, int *ln)
 			char	*name = 0;
 
 			assert(d->pathname);
-			if (flags & GET_MODNAME) name = basenm(d->pathname);
-			if (flags & GET_RELPATH) name = d->pathname;
+			if (flags & GET_MODNAME) name = basenm(PATHNAME(s, d));
+			if (flags & GET_RELPATH) name = PATHNAME(s, d);
 			prefix(s, d, flags, 1, name, out);
 			if (flags & GET_ALIGN) {
 				int	len = 0;
@@ -7756,7 +7681,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	int	first = willfix;
 	int	firstadded = 1;
 	char	buf[2*MAXPATH + 10];	/* ^AcP pathname|sortpath\n\0 */
-	char	*p, *sortpath;
+	char	*p;
 	int	bits = 0;
 	int	gonechkd = 0;
 	int	strip_tags = CSET(s) && getenv("_BK_STRIPTAGS");
@@ -7978,13 +7903,15 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 		/* XXX: O follows P */
-		if (d->pathname && !(d->flags & D_DUPPATH)) {
+		if ((d->pathname &&
+		    !(parent && streq(PATHNAME(s, parent), PATHNAME(s, d)))) ||
+		    (d->sortPath &&
+		    !(parent && streq(SORTPATH(s, parent), SORTPATH(s, d))))) {
 			p = fmts(buf, "\001cP");
-			p = fmts(p, d->pathname);
-			sortpath = PATH_SORTPATH(d->pathname);
-			if (*sortpath) {
+			p = fmts(p, PATHNAME(s, d));
+			if (d->sortPath) {
 				p = fmts(p, "|");
-				p = fmts(p, sortpath);
+				p = fmts(p, SORTPATH(s, d));
 			}
 			*p++ = '\n';
 			*p   = '\0';
@@ -8231,7 +8158,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 			proj = s->proj;
 		}
 		if ((r = _relativeName(s->gfile, 0, 1, 1, proj))
-		    && !streq(d->pathname, r)) {
+		    && !streq(PATHNAME(s, d), r)) {
 		    	RET(1);
 		}
 	}
@@ -8495,7 +8422,7 @@ diff_gmode(sccs *s, pfile *pf)
 
 		if (r) {
 			q = sccs2name(r);
-			if (!streq(d->pathname, q)) {
+			if (!streq(PATHNAME(s, d), q)) {
 				free(q);
 				return (3);
 			}
@@ -8843,7 +8770,7 @@ sccs_clean(sccs *s, u32 flags)
 			free_pfile(&pf);
 			return (1);
 		}
-		if (!(flags & CLEAN_SKIPPATH) && (!streq(t, d->pathname))) {
+		if (!(flags & CLEAN_SKIPPATH) && (!streq(t, PATHNAME(s, d)))) {
 			unless (flags & PRINT) {
 				verbose((stderr,
 				   "%s has different pathnames: %s, needs delta.\n",
@@ -8852,7 +8779,7 @@ sccs_clean(sccs *s, u32 flags)
 				printf(
 				    "===== %s (pathnames) %s vs edited =====\n",
 				    s->gfile, pf.oldrev);
-				printf("< %s\n-\n", d->pathname);
+				printf("< %s\n-\n", PATHNAME(s, d));
 				printf("> %s\n", t);
 			}
 			free_pfile(&pf);
@@ -9280,7 +9207,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 				p = _relativeName(s->sfile, 0, 0, 1, proj);
 			}
 			q = sccs2name(p);
-			pathArg(d, q);
+			pathArg(s, d, q);
 			free(q);
 		}
 		unless (d->csetFile) {
@@ -9517,7 +9444,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		 * XXX - is this the right answer?
 		 */
 		revArg(s, n0, "1.0");
-		if (buf[0]) pathArg(n0, buf); /* pathname */
+		if (buf[0]) pathArg(s, n0, buf); /* pathname */
 
 		n0 = sccs_dInit(n0, 'D', s, nodefault);
 		n0->flags |= D_CKSUM;
@@ -9528,7 +9455,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		n->pserial = n0->serial;
 	}
 	assert(n);
-	if (!nodefault && buf[0]) pathArg(n, buf); /* pathname */
+	if (!nodefault && buf[0]) pathArg(s, n, buf); /* pathname */
 	n = sccs_dInit(n, 'D', s, nodefault);
 
 	/*
@@ -10369,25 +10296,22 @@ randomArg(delta *d, char *arg)
  * d->pathname stores 2 strings: the sortpath is in the hidden string
  */
 private delta *
-pathArg(delta *d, char *arg) {
+pathArg(sccs *s, delta *d, char *arg)
+{
 	char	*p;
+	char	buf[MAXPATH];
 
 	if (!d) d = new(delta);
 	unless (!arg || !*arg) {
-		if (d->pathname && !(d->flags & D_DUPPATH)) free(d->pathname);
-		if (p = strchr(arg, '|')) {
-			/*
-			 * NOTE: arg might be a mem-mapped patch, so can't
-			 * modify it to be able to use interfaces such as:
-			 *     *p = 0; PATH_BUILD(arg, p+1); *p = '|';
-			 */
-			d->pathname = strdup(arg);
-			d->pathname[p-arg] = 0;
+		strcpy(buf, arg);
+		if (p = strchr(buf, '|')) {
+			*p++ = 0;
+			d->sortPath = sccs_addUniqStr(s, p);
 		} else {
-			d->pathname = PATH_BUILD(arg, "");
+			d->sortPath = 0;
 		}
+		d->pathname = sccs_addUniqStr(s, buf);
 	}
-	d->flags &= ~D_DUPPATH;
 	return (d);
 }
 
@@ -10567,7 +10491,7 @@ sccs_parseArg(sccs *s, delta *d, char what, char *arg, int defaults)
 	    case 'H':	/* host */
 		return (hostArg(s, d, arg));
 	    case 'P':	/* pathname */
-		return (pathArg(d, arg));
+		return (pathArg(s, d, arg));
 	    case 'O':	/* mode */
 		return (modeArg(s, d, arg));
 	    case 'C':	/* comments - one string, possibly multi line */
@@ -10963,7 +10887,7 @@ insert_1_0(sccs *s, u32 flags)
 	revArg(s, d, "1.0");
 	d->user = t->user;
 	d->hostname = t->hostname;
-	if (d->pathname = t->pathname) t->flags |= D_DUPPATH;
+	d->pathname = t->pathname;
 	if (t->zone) {
 		d->zone = t->zone;
 	} else {
@@ -11427,7 +11351,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		ALLOC_D(); /* We pick up the new path when we init the delta */
 		assert(d->pathname);
 		buf = aprintf("Rename: %s -> %s",
-		    PARENT(sc, d)->pathname, d->pathname);
+		    PATHNAME(sc, PARENT(sc, d)), PATHNAME(sc, d));
 		comments_append(d, buf);
 		flags |= NEWCKSUM;
 	}
@@ -11435,7 +11359,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	if (flags & ADMIN_DELETE) {
 		ALLOC_D(); /* We pick up the new path when we init the delta */
 		assert(d->pathname);
-		buf = aprintf("Delete: %s", PARENT(sc, d)->pathname);
+		buf = aprintf("Delete: %s", PATHNAME(sc, PARENT(sc, d)));
 		comments_append(d, buf);
 		flags |= NEWCKSUM;
 	}
@@ -11471,7 +11395,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 	/* the BitKeeper/etc files can't be obscured in normal sense */
 	if (sc->tree->pathname
-	    && strneq(sc->tree->pathname,"BitKeeper/etc/",13)) {
+	    && strneq(PATHNAME(sc, sc->tree), "BitKeeper/etc/",13)) {
 	    	obscure_it = 0;
 	}
 	if ((old_enc & E_GZIP) && (obscure_it|rmlicense)) {
@@ -12798,7 +12722,7 @@ skip:
 
 	/* pathnames are optional */
 	if (WANT('P')) {
-		unless (d->pathname) d = pathArg(d, &buf[2]);
+		unless (d->pathname) d = pathArg(sc, d, &buf[2]);
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -13206,7 +13130,7 @@ out:
 		debug((stderr, "delta got prefilled %s\n", prefilled->rev));
 		if (flags & DELTA_PATCH) {
 			if (prefilled->pathname &&
-			    streq(prefilled->pathname, "ChangeSet")) {
+			    streq(PATHNAME(s, prefilled), "ChangeSet")) {
 				s->state |= S_CSET;
 		    	}
 			if (prefilled->flags & D_TEXT) {
@@ -13430,10 +13354,10 @@ out:
 	d = SFIND(s, n->pserial);
 	assert(s->table == n);
 	unless (init || !n->pathname || !d->pathname ||
-	    streq(d->pathname, n->pathname) || getenv("_BK_MV_OK")) {
+	    streq(PATHNAME(s, d), PATHNAME(s, n)) || getenv("_BK_MV_OK")) {
 	    	fprintf(stderr,
 		    "delta: must use bk mv to rename %s to %s\n",
-		    d->pathname, n->pathname);
+		    PATHNAME(s, d), PATHNAME(s, n));
 		OUT;
 	}
 	s->numdeltas++;
@@ -15243,7 +15167,9 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_RENAME: /* RENAME */ {
 		/* per delta path name if the pathname is a rename */
-		unless (d->pathname && !(d->flags & D_DUPPATH)) {
+		unless (d->pathname &&
+		    (!d->pserial ||
+		    !streq(PATHNAME(s, d), PATHNAME(s, PARENT(s, d))))) {
 			/* same, empty */
 			return (nullVal);
 		}
@@ -15254,13 +15180,13 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		/* per delta path name */
 		if (CSET(s)) {
 			if (s->prs_indentC) {
-				fs(d->pathname);
+				fs(PATHNAME(s, d));
 			} else {
 				if (s->comppath) {
 					fs(s->comppath);
 					fc('/');
 				}
-				fs(basenm(d->pathname));
+				fs(basenm(PATHNAME(s, d)));
 			}
 			return (strVal);
 		} else if (d->pathname) {
@@ -15268,7 +15194,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 				fs(s->comppath);
 				fc('/');
 			}
-			fs(d->pathname);
+			fs(PATHNAME(s, d));
 			return (strVal);
 		}
 		return (nullVal);
@@ -15277,7 +15203,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	case KW_SPN: /* SPN */ {
 		/* per delta SCCS path name */
 		if (d->pathname) {
-			char	*p = name2sccs(d->pathname);
+			char	*p = name2sccs(PATHNAME(s, d));
 
 			fs(p);
 			free(p);
@@ -15797,8 +15723,9 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		 * necessarily in the same ancestory.  Good enough for tip?!
 		 */
 		for (; d; d = NEXT(d)) {
-			unless (strneq(d->pathname, "BitKeeper/deleted/", 18)) {
-				fs(d->pathname);
+			unless (strneq(PATHNAME(s, d),
+				"BitKeeper/deleted/", 18)) {
+				fs(PATHNAME(s, d));
 				return (strVal);
 			}
 		}
@@ -15960,7 +15887,6 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	int	i;	/* used by EACH */
 	symbol	*sym;
 	char	type;
-	char	*sortpath;
 
 	if (!d) return (0);
 	type = d->type;
@@ -16020,11 +15946,11 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	}
 	if (s->tree->pathname) assert(d->pathname);
 	if (d->pathname) {
-		sortpath = PATH_SORTPATH(d->pathname);
-		if (*sortpath) {
-			fprintf(out, "P %s|%s\n", d->pathname, sortpath);
+		if (d->sortPath) {
+			fprintf(out, "P %s|%s\n",
+			    PATHNAME(s, d), SORTPATH(s, d));
 		} else {
-			fprintf(out, "P %s\n", d->pathname);
+			fprintf(out, "P %s\n", PATHNAME(s, d));
 		}
 	}
 	if (d->random) fprintf(out, "R %s\n", d->random);
@@ -16346,7 +16272,7 @@ err:
 				break;
 			}
 		}
-		if (!p || streq(p->pathname, a->pathname)) {
+		if (!p || streq(PATHNAME(s, p), PATHNAME(s, a))) {
 			return (0);
 		}
 		b = a;
@@ -16390,15 +16316,15 @@ err:
 		    sccs_getuser(), time2date(time(0)));
 	}
 	fclose(f);
-	unless (streq(g->pathname, a->pathname) &&
-	    streq(g->pathname, b->pathname)) {
-rename:		n[1] = name2sccs(g->pathname);
+	unless (streq(PATHNAME(s, g), PATHNAME(s, a)) &&
+	    streq(PATHNAME(s, g), PATHNAME(s, b))) {
+ rename:	n[1] = name2sccs(PATHNAME(s, g));
 		unless (b->flags & D_REMOTE) {
-			n[2] = name2sccs(a->pathname);
-			n[0] = name2sccs(b->pathname);
+			n[2] = name2sccs(PATHNAME(s, a));
+			n[0] = name2sccs(PATHNAME(s, b));
 		} else {
-			n[0] = name2sccs(a->pathname);
-			n[2] = name2sccs(b->pathname);
+			n[0] = name2sccs(PATHNAME(s, a));
+			n[2] = name2sccs(PATHNAME(s, b));
 		}
 		unless (f = fopen(sccsXfile(s, 'm'), "w")) {
 			perror("m.file");
@@ -16580,7 +16506,7 @@ sccs_pdelta(sccs *s, delta *d, FILE *out)
 	    USER(s, d),
 	    d->hostname ? "@" : "",
 	    HOSTNAME(s, d),
-	    d->pathname ? d->pathname : "",
+	    d->pathname ? PATHNAME(s, d) : "",
 	    sccs_utctime(s, d),
 	    d->sum);
 	if (d->random) fprintf(out, "|%s", d->random);
@@ -16598,7 +16524,7 @@ sccs_sdelta(sccs *s, delta *d, char *buf)
 	    USER(s, d),
 	    d->hostname ? "@" : "",
 	    HOSTNAME(s, d),
-	    d->pathname ? d->pathname : "",
+	    d->pathname ? PATHNAME(s, d) : "",
 	    sccs_utctime(s, d),
 	    d->sum);
 	assert(len);
@@ -16612,16 +16538,13 @@ void
 sccs_sortkey(sccs *s, delta *d, char *buf)
 {
 	sum_t	origsum;
-	char	*origpath, *sortpath;
+	u32	origpath;
 
 	origpath = d->pathname;
 	origsum = d->sum;
 
 	unless (getenv("_BK_NO_SORTKEY")) {
-		if (origpath) {
-			sortpath = PATH_SORTPATH(origpath);
-			if (*sortpath) d->pathname = sortpath;
-		}
+		if (origpath && d->sortPath) d->pathname = d->sortPath;
 		if (d->flags & D_SORTSUM) d->sum = d->sortSum;
 	}
 	sccs_sdelta(s, d, buf);
@@ -16676,28 +16599,8 @@ sccs_key2md5(char *rootkey, char *deltakey, char *b64)
 void
 sccs_setPath(sccs *s, delta *d, char *new)
 {
-	delta	*p = PARENT(s, d);
-	char	*orig;
-
-	orig = PATH_SORTPATH(d->pathname);
-	unless (*orig) orig = d->pathname;
-	if (streq(orig, new)) orig = "";
-
-	/* new and orig are now set; just figure out how to store */
-
-	if (p && streq(new, p->pathname) &&
-	    streq(orig, PATH_SORTPATH(p->pathname))) {	/* duppath */
-		unless (d->flags & D_DUPPATH) free(d->pathname);
-		d->pathname = p->pathname;
-		d->flags |= D_DUPPATH;
-	} else unless (streq(new, d->pathname) &&
-	    streq(orig, PATH_SORTPATH(d->pathname))) {	/* new mem */
-		new = PATH_BUILD(new, orig);
-		assert(new);
-		unless (d->flags & D_DUPPATH) free(d->pathname);
-		d->pathname = new;
-		d->flags &= ~D_DUPPATH;
-	} /* else pathname is good as it is */
+	unless (d->sortPath) d->sortPath = d->pathname;
+	d->pathname = sccs_addUniqStr(s, new);
 }
 
 /*
@@ -16758,7 +16661,7 @@ sccs_userfile(sccs *s)
 	if (CSET(s) && !proj_isComponent(s->proj))		/* ChangeSet */
 		return 0;
 
-	pathname = sccs_ino(s)->pathname;
+	pathname = PATHNAME(s, sccs_ino(s));
 	if (strneq(pathname, "BitKeeper/", 10))
 		return 0;
 	return 1;
@@ -16785,7 +16688,7 @@ sccs_shortKey(sccs *s, delta *d, char *buf)
 	    USER(s, d),
 	    d->hostname ? "@" : "",
 	    d->hostname ? HOSTNAME(s, d) : "",
-	    d->pathname ? d->pathname : "",
+	    d->pathname ? PATHNAME(s, d) : "",
 	    sccs_utctime(s, d));
 }
 
@@ -17255,7 +17158,7 @@ sccs_stripdel(sccs *s, char *who)
 	}
 	assert(e);
 	if (BITKEEPER(s) && e->pathname &&
-	    strneq(e->pathname, "BitKeeper/moved/", 16)) {
+	    strneq(PATHNAME(s, e), "BitKeeper/moved/", 16)) {
 		/* csetprune creates this path */
 		fprintf(stderr,
 		    "%s: illegal to leave file in the BitKeeper/moved "

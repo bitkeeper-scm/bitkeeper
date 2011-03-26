@@ -207,7 +207,7 @@ check_main(int ac, char **av)
 			if (c->product) continue;
 			if (!cp || strneq(c->path, cp, cplen)) {
 				subrepos = addLine(subrepos,
-				    PATH_BUILD(c->path+cplen, c->rootkey));
+				    HIDDEN_BUILD(c->path+cplen, c->rootkey));
 			}
 		}
 		if (cp) free(cp);
@@ -1342,7 +1342,7 @@ buildKeys(MDBM *idDB)
 				}
 
 				pathnames = addLine(pathnames,
-				    PATH_BUILD(path, s));
+				    HIDDEN_BUILD(path, s));
 				free(path);
 			}
 		}
@@ -1375,7 +1375,7 @@ buildKeys(MDBM *idDB)
 		 * At product they are all present already.
 		 */
 		EACH(subrepos) {
-			pathnames = addLine(pathnames, PATH_DUP(subrepos[i]));
+			pathnames = addLine(pathnames, HIDDEN_DUP(subrepos[i]));
 		}
 	}
 	sortLines(pathnames, 0);
@@ -1386,8 +1386,8 @@ buildKeys(MDBM *idDB)
 			len1 = strlen(pathnames[i-1]);
 			len2 = strlen(pathnames[i]);
 			if (len1 == len2) {
-				rk1 = PATH_SORTPATH(pathnames[i-1]);
-				rk2 = PATH_SORTPATH(pathnames[i]);
+				rk1 = HIDDEN(pathnames[i-1]);
+				rk2 = HIDDEN(pathnames[i]);
 				fprintf(stderr,
 				    "check: two files are committed "
 				    "at the same pathname. (%s)\n",
@@ -1398,8 +1398,8 @@ buildKeys(MDBM *idDB)
 				exit(1);
 			} else if (pathnames[i][len1] == '/') {
 				/* subrepos can overlap each other*/
-				rk1 = PATH_SORTPATH(pathnames[i-1]);
-				rk2 = PATH_SORTPATH(pathnames[i]);
+				rk1 = HIDDEN(pathnames[i-1]);
+				rk2 = HIDDEN(pathnames[i]);
 				unless (changesetKey(rk1) &&
 				    changesetKey(rk2)) {
 					fprintf(stderr,
@@ -1662,16 +1662,16 @@ check(sccs *s, MDBM *idDB)
 		if (proj_isResync(s->proj)) str_subst(x, "/RESYNC/", "/", x);
 
 		if (proj_isProduct(0)) {
-			csetChomp(d->pathname);
-			unless (streq(x, d->pathname)) {
+			csetChomp(PATHNAME(s, d));
+			unless (streq(x, PATHNAME(s, d))) {
 			    fprintf(stderr,
 				"check: component '%s' should be '%s'\n",
-				x, d->pathname);
+				x, PATHNAME(s, d));
 			    errors++;
 			    names = 1;
 			    /* magic autofix occurrs here */
 			}
-			lines = addLine(0, d->pathname);
+			lines = addLine(0, PATHNAME(s, d));
 		} else {
 			lines = addLine(0, x);
 		}
@@ -1679,9 +1679,9 @@ check(sccs *s, MDBM *idDB)
 		    proj_fullpath(s->proj, "BitKeeper/log/COMPONENT"));
 		freeLines(lines, 0);
 		free(x);
-		if (proj_isProduct(0)) strcat(d->pathname, "/ChangeSet");
-	} else unless (resync || sccs_patheq(d->pathname, s->gfile)) {
-		x = name2sccs(d->pathname);
+		if (proj_isProduct(0)) strcat(PATHNAME(s, d), "/ChangeSet");
+	} else unless (resync || sccs_patheq(PATHNAME(s, d), s->gfile)) {
+		x = name2sccs(PATHNAME(s, d));
 		fprintf(stderr, "check: %s should be %s\n", s->sfile, x);
 		free(x);
 		errors++;
@@ -1690,12 +1690,12 @@ check(sccs *s, MDBM *idDB)
 
 	unless (CSET(s) || (d->flags & D_CSET)) {
 		EACH(subrepos) {
-			if (paths_overlap(subrepos[i], d->pathname)) {
+			if (paths_overlap(subrepos[i], PATHNAME(s, d))) {
 				/* pathname conflict */
 				fprintf(stderr,
 				    "check: %s "
 				    "conflicts with component at %s\n",
-				    d->pathname, subrepos[i]);
+				    PATHNAME(s, d), subrepos[i]);
 				errors++;
 			}
 		}
@@ -1709,7 +1709,7 @@ check(sccs *s, MDBM *idDB)
 		do {
 			sccs_sdelta(s, ino, buf);
 			if (s->grafted ||
-			    !sccs_patheq(ino->pathname, s->gfile)) {
+			    !sccs_patheq(PATHNAME(s, ino), s->gfile)) {
 				mdbm_store_str(idDB, buf, s->gfile,
 				    MDBM_REPLACE);
 				if (mixed && (t = sccs_iskeylong(buf))) {

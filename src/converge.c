@@ -111,7 +111,7 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 	/* only merge file if it is for the right pathname */
 	s = sccs_init(sfile, g->iflags);
 	sccs_close(s);
-	unless (streq(sccs_ino(s)->pathname, pathname)) {
+	unless (streq(PATHNAME(s, sccs_ino(s)), pathname)) {
 		sccs_free(s);
 		goto out;
 	}

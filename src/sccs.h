@@ -292,7 +292,7 @@ int	checking_rmdir(char *dir);
 		/*	0x00000008 */
 #define	D_NOCOMMENTS	0x00000010	/* don't generate comments */
 		/*	0x00000020 */
-#define	D_DUPPATH	0x00000040	/* this path pointer is shared */
+		/*	0x00000040 */
 		/*	0x00000080 */
 #define	D_REMOTE	0x00000100	/* for resolve; from remote repos. */
 #define	D_BADFORM	0x00000200	/* poorly formed rev */
@@ -478,7 +478,8 @@ typedef struct delta {
 	/* collapsible heap data */
 	u32	user;			/* user name of delta owner */
 	u32	hostname;		/* hostname where revision was made */
-	char	*pathname;		/* pathname to the file */
+	u32	pathname;		/* pathname to the file */
+	u32	sortPath;		/* original pathname for delta */
 	u32	zone;			/* 08:00 is time relative to GMT */
 	u32 	symlink;		/* sym link target */
  	u32	csetFile;		/* id for ChangeSet file */
@@ -516,16 +517,15 @@ typedef struct delta {
 #define	ZONE(s,d)	((s)->heap.buf + (d)->zone)
 #define	SYMLINK(s,d)	((s)->heap.buf + (d)->symlink)
 #define	CSETFILE(s,d)	((s)->heap.buf + (d)->csetFile)
+#define	PATHNAME(s,d)	((s)->heap.buf + (d)->pathname)
+#define	SORTPATH(s,d)	((s)->heap.buf + (d)->sortPath)
 
 /*
- * Macros to get at an optional hidden original path.
- * See src/Notes/SORTKEYS for more info.
+ * Macros to get at an optional hidden string after the null
  */
-#define	PATH_SORTPATH(p)	((p) + strlen(p) + 1)
-#define	PATH_BUILD(a, b)	aprintf("%s%c%s", (a), 0, (b))
-#define	PATH_DUP(p)		PATH_BUILD(p, PATH_SORTPATH(p))
-#define	PATH_EQ(a, b)	\
-    (streq((a), (b)) && streq(PATH_SORTPATH(a), PATH_SORTPATH(b)))
+#define	HIDDEN(p)		((p) + strlen(p) + 1)
+#define	HIDDEN_BUILD(a, b)	aprintf("%s%c%s", (a), 0, (b))
+#define	HIDDEN_DUP(p)		HIDDEN_BUILD(p, HIDDEN(p))
 
 /*
  * Rap on lod/symbols wrt deltas.
@@ -1200,7 +1200,6 @@ int	uuencode(FILE *in, FILE *out);
 int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
 int	sccs_needSwap(sccs *s, delta *p, delta *m);
-void	sccs_reDup(sccs *s);
 int	chk_host(void);
 int	chk_user(void);
 int	chk_nlbug(sccs *s);

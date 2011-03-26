@@ -42,7 +42,7 @@ res_diffCommon(resolve *rs,
 			return (0);
 		}
 		chdir(RESYNC2ROOT);
-		differ(rs, rs->d->pathname, right, 1);
+		differ(rs, PATHNAME(rs->s, rs->d), right, 1);
 		chdir(ROOT2RESYNC);
 		unlink(right);
 		return (0);
@@ -203,7 +203,7 @@ res_vl(resolve *rs)
 	}
 	if (rs->res_gcreate) {
 		chdir(RESYNC2ROOT);
-		more(rs, rs->d->pathname);
+		more(rs, PATHNAME(rs->s, rs->d));
 		chdir(ROOT2RESYNC);
 		return (0);
 	}
@@ -393,7 +393,8 @@ and you to continue with the rest of the patch.\n\
 Warning: choices b and d are not recorded because there is no SCCS file\n\
 associated with the local file.  So if the rest of the resolve does not\n\
 complete for some reason, it is up to you to go find that file and move it\n\
-back by hand, if that is what you want.\n\n", rs->d->pathname);
+back by hand, if that is what you want.\n\n",
+	    PATHNAME(rs->s, rs->d));
 	return (0);
 }
 
@@ -408,7 +409,7 @@ Local file: ``%s''\n\
 has a name conflict with a file with the same name in the patch.\n\
 The local file is not under revision control.\n\
 ---------------------------------------------------------------------------\n",
-	    rs->d->pathname);
+	    PATHNAME(rs->s, rs->d));
 	fprintf(stderr, "Commands are:\n\n");
 	for (i = 0; rs->funcs[i].spec; i++) {
 		fprintf(stderr, "  %-4s - %s\n", 
@@ -468,9 +469,9 @@ gc_ml(resolve *rs)
 	chdir(RESYNC2ROOT);
 	t = sccs2name(buf);
 	if (rs->opts->debug) {
-		fprintf(stderr, "rename(%s, %s)\n", rs->d->pathname, t);
+		fprintf(stderr, "rename(%s, %s)\n", PATHNAME(rs->s, rs->d), t);
 	}
-	if (rename(rs->d->pathname, t)) {
+	if (rename(PATHNAME(rs->s, rs->d), t)) {
 		perror("rename");
 		exit(1);
 	}
@@ -489,7 +490,7 @@ dc_ml(resolve *rs)
 	char	path[MAXPATH];
 
 	/* Check to see that a simple rename is possible */
-	getFileConflict(rs->d->pathname, path);
+	getFileConflict(PATHNAME(rs->s, rs->d), path);
 	chdir(RESYNC2ROOT);
 	t = aprintf("bk sfiles '%s'", path);
 	list = popen(t, "r");
@@ -525,7 +526,7 @@ gc_remove(resolve *rs)
 	char	buf[MAXPATH];
 	opts	*opts = rs->opts;
 
-	sprintf(buf, "%s/%s", RESYNC2ROOT, rs->d->pathname);
+	sprintf(buf, "%s/%s", RESYNC2ROOT, PATHNAME(rs->s, rs->d));
 	assert(!isdir(buf));
 	unless (rs->opts->force || confirm("Remove local file?")) return (0);
 	unlink(buf);
@@ -546,19 +547,20 @@ gc_sameFiles(resolve *rs)
 		return (0);
 	}
 	chdir(RESYNC2ROOT);
-	same = sameFiles(rs->d->pathname, buf);
+	same = sameFiles(PATHNAME(rs->s, rs->d), buf);
 	chdir(ROOT2RESYNC);
 	unlink(buf);
 	if (same) {
 		if (opts->log) {
-			fprintf(stdlog, "same files %s\n", rs->d->pathname);
+			fprintf(stdlog, "same files %s\n",
+			    PATHNAME(rs->s, rs->d));
 		}
-		sprintf(buf, "%s/%s", RESYNC2ROOT, rs->d->pathname);
+		sprintf(buf, "%s/%s", RESYNC2ROOT, PATHNAME(rs->s, rs->d));
 		assert(!isdir(buf));
 		if (unlink(buf)) {
 			fprintf(stderr,
 			    "Unable to remove local file %s\n",
-			    rs->d->pathname);
+			    PATHNAME(rs->s, rs->d));
 			return (0);
 		}
 		if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
@@ -606,7 +608,7 @@ dc_remove(resolve *rs)
 	unless (rs->opts->force || confirm("Remove local directory?")) {
 		return (0);
 	}
-	getFileConflict(rs->d->pathname, path);
+	getFileConflict(PATHNAME(rs->s, rs->d), path);
 	sprintf(buf, "%s/%s", RESYNC2ROOT, path);
 	ret = rmdir(buf);
 	if (opts->log) fprintf(stdlog, "rmdir(%s) = %d\n", buf, ret);
@@ -618,7 +620,7 @@ dc_explain(resolve *rs)
 {
 	char	path[MAXPATH];
 
-	getFileConflict(rs->d->pathname, path);
+	getFileConflict(PATHNAME(rs->s, rs->d), path);
 	fprintf(stderr,
 "The path of the remote file: ``%s''\n\
 conflicts with a local directory: ``%s''\n\
@@ -640,7 +642,8 @@ and you to continue with the rest of the patch.\n\
 Warning: choices b and d are not recorded because there is no SCCS file\n\
 associated with the local file.  So if the rest of the resolve does not\n\
 complete for some reason, it is up to you to go find that file and move it\n\
-back by hand, if that is what you want.\n\n", rs->d->pathname, path);
+back by hand, if that is what you want.\n\n",
+	    PATHNAME(rs->s, rs->d), path);
 	return (0);
 }
 
@@ -652,14 +655,14 @@ dc_help(resolve *rs)
 	char	path[MAXPATH];
 	char	buf[MAXKEY];
 
-	getFileConflict(rs->d->pathname, path);
+	getFileConflict(PATHNAME(rs->s, rs->d), path);
 	sccs_sdelta(rs->s, sccs_ino(rs->s), buf);
 	chdir(RESYNC2ROOT);
 	local = sccs_keyinit(0, buf, INIT_NOCKSUM, rs->opts->idDB);
 	chdir(ROOT2RESYNC);
 	fprintf(stderr,
 "---------------------------------------------------------------------------\n\
-Remote file:\n\t``%s''\n", rs->d->pathname);
+Remote file:\n\t``%s''\n", PATHNAME(rs->s, rs->d));
 	if (local) {
 		fprintf(stderr, "which matches file\n\t``%s''\n", local->gfile);
 		sccs_free(local);
@@ -695,7 +698,7 @@ d) move the local file to some other pathname.\n\
 e) move the remote file to some other pathname.\n\
 \n\
 All choices other than (a) will allow the file in the patch to be created\n\
-and you to continue with the rest of the patch.\n\n", rs->d->pathname);
+and you to continue with the rest of the patch.\n\n", PATHNAME(rs->s, rs->d));
 	return (0);
 }
 
@@ -709,7 +712,7 @@ sc_help(resolve *rs)
 Local file: ``%s''\n\
 has a name conflict with a new file with the same name in the patch.\n\
 ---------------------------------------------------------------------------\n",
-	    rs->d->pathname);
+	    PATHNAME(rs->s, rs->d));
 	fprintf(stderr, "Commands are:\n\n");
 	for (i = 0; rs->funcs[i].spec; i++) {
 		fprintf(stderr, "  %-4s - %s\n", 
@@ -911,7 +914,7 @@ rc_help(resolve *rs)
 "---------------------------------------------------------------------------\n\
 Two files want to be: ``%s''\n\
 ---------------------------------------------------------------------------\n",
-	    rs->d->pathname);
+	    PATHNAME(rs->s, rs->d));
 	fprintf(stderr, "Commands are:\n\n");
 	for (i = 0; rs->funcs[i].spec; i++) {
 		fprintf(stderr, "  %-4s - %s\n", 
@@ -1079,17 +1082,17 @@ resolve_create(resolve *rs, int type)
 	    case GFILE_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "GFILE\n");
 		if (ret = gc_sameFiles(rs)) return (ret);
-		rs->prompt = rs->d->pathname;
+		rs->prompt = PATHNAME(rs->s, rs->d);
 		rs->res_gcreate = 1;
 		return (resolve_loop("create/gfile conflict", rs, gc_funcs));
 	    case DIR_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "DIR\n");
-		rs->prompt = rs->d->pathname;
+		rs->prompt = PATHNAME(rs->s, rs->d);
 		rs->res_dirfile = 1;
 		return (resolve_loop("create/dir conflict", rs, dc_funcs));
 	    case SFILE_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "SFILE\n");
-		rs->prompt = rs->d->pathname;
+		rs->prompt = PATHNAME(rs->s, rs->d);
 		rs->res_screate = 1;
 		chdir(RESYNC2ROOT);
 		rs->opaque = (void*)sccs_init(rs->dname, 0);
@@ -1099,7 +1102,7 @@ resolve_create(resolve *rs, int type)
 		return (ret);
 	    case GONE_SFILE_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "GONE SFILE\n");
-		rs->prompt = rs->d->pathname;
+		rs->prompt = PATHNAME(rs->s, rs->d);
 		rs->res_screate = 1;
 		chdir(RESYNC2ROOT);
 		rs->opaque = (void*)sccs_init(rs->dname, 0);
@@ -1110,7 +1113,7 @@ resolve_create(resolve *rs, int type)
 		return (ret);
 	    case RESYNC_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "RESYNC\n");
-		rs->prompt = rs->d->pathname;
+		rs->prompt = PATHNAME(rs->s, rs->d);
 		rs->res_resync = 1;
 		rs->opaque = (void*)sccs_init(rs->dname, 0);
 		ret = resolve_loop("create/resync conflict", rs, rc_funcs);

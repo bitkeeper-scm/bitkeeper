@@ -237,10 +237,10 @@ pdelta(sccs *s, delta *d, FILE *f)
 		return;
 	}
 	if (opts.sort) {
-		fprintf(f, "%s|%s\n", d->pathname, REV(s, d));
+		fprintf(f, "%s|%s\n", PATHNAME(s, d), REV(s, d));
 		return;
 	}
-	if (d->pathname && streq(d->pathname, "ChangeSet")) {
+	if (d->pathname && streq(PATHNAME(s, d), "ChangeSet")) {
 		indent = 0;
 	} else {
 		indent = opts.indent;
@@ -249,7 +249,7 @@ pdelta(sccs *s, delta *d, FILE *f)
 		EACH_COMMENT(s, d) {
 			if (indent) fprintf(f, "%*s", indent, "");
 			if (d->pathname) {
-				fprintf(f, "%-8s\t", basenm(d->pathname));
+				fprintf(f, "%-8s\t", basenm(PATHNAME(s, d)));
 			}
 			fprintf(f, "%s\n", d->cmnts[i]);
 		}
@@ -258,10 +258,10 @@ pdelta(sccs *s, delta *d, FILE *f)
 	if (indent) fprintf(f, "%*s", indent, "");
 	if (d->pathname) {
 		unless (opts.basenames) {
-			fprintf(f, "%s %s\n  ", d->pathname, REV(s, d));
+			fprintf(f, "%s %s\n  ", PATHNAME(s, d), REV(s, d));
 			if (indent) fprintf(f, "%*s", indent, "");
 		} else {
-			fprintf(f, "%s %s ", basenm(d->pathname), REV(s, d));
+			fprintf(f, "%s %s ", basenm(PATHNAME(s, d)), REV(s, d));
 		}
 	}
 	y = (atoi(d->sdate) > 69) ? "19" : "20";
@@ -313,7 +313,7 @@ sccslog(sccs *s)
 
 		nd = new(data);
 		nd->date = d->date;
-		nd->pathname = strdup(d->pathname ? d->pathname : s->gfile);
+		nd->pathname = strdup(d->pathname ? PATHNAME(s, d) : s->gfile);
 		sccs_sdelta(s, d, key);
 		nd->key = strdup(key);
 

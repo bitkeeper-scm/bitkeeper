@@ -88,7 +88,7 @@ err:		if (sname) free(sname);
 
 	unless (force) {
 		d = sccs_top(s);
-		t = d->pathname;	/* where file is now */
+		t = PATHNAME(s, d);	/* where file is now */
 		if (strneq("BitKeeper/", t, 10) &&
 		    !(strneq("BitKeeper/triggers/", t, 19) ||
 		      strneq("BitKeeper/deleted/", t, 18))) {

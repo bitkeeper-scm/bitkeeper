@@ -122,7 +122,7 @@ doit(char *file, char *cvsbranch)
 		 */
 		s = sccs_init(sfile, 0);
 		d = sccs_top(s);
-		unless (sccs_patheq(d->pathname, s->gfile)) {
+		unless (sccs_patheq(PATHNAME(s, d), s->gfile)) {
 			char	*p, *q;
 			int	ret;
 
@@ -133,7 +133,7 @@ doit(char *file, char *cvsbranch)
 				exit(1);
 			}
 			sccs_close(s);
-			q = name2sccs(d->pathname);
+			q = name2sccs(PATHNAME(s, d));
 			ret = fileMove(sfile, q);
 			assert(ret == 0);
 			/*

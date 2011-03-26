@@ -239,7 +239,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 		t = USER(s, d);
 		new = adler32(new, t, strlen(t));
 		if (d->pathname) {
-			new = adler32(new, d->pathname, strlen(d->pathname));
+			t = PATHNAME(s, d);
+			new = adler32(new, t, strlen(t));
 		}
 		if (d->hostname) {
 			t = HOSTNAME(s, d);

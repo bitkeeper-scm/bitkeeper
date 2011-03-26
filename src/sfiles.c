@@ -362,7 +362,7 @@ chk_sfile(char *name, STATE state)
 			gname = sccs2name(name);
 			relp = proj_relpath(proj, gname);
 			free(gname);
-			unless (d->pathname && patheq(relp, d->pathname)) {
+			unless (d->pathname && patheq(relp, PATHNAME(sc, d))) {
 				state[NSTATE] = 'n';
 			}
 			free(relp);
@@ -1319,7 +1319,7 @@ sccsdir(winfo *wi)
 				d = sccs_top(s);
 				relp = proj_relpath(s->proj, s->gfile);
 				unless (d->pathname &&
-				    patheq(relp, d->pathname)) {
+				    patheq(relp, PATHNAME(s, d))) {
 					state[NSTATE] = 'n';
 				}
 				free(relp);
@@ -1344,7 +1344,7 @@ sccsdir(winfo *wi)
 				d = sccs_top(s);
 				relp = proj_relpath(s->proj, s->gfile);
 				unless (d->pathname &&
-				    patheq(relp, d->pathname)) {
+				    patheq(relp, PATHNAME(s, d))) {
 					state[NSTATE] = 'n';
 				}
 				free(relp);

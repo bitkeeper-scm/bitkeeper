@@ -18,7 +18,8 @@ GCA:    %s\n\
 Local:  %s\n\
 Remote: %s\n\
 ---------------------------------------------------------------------------\n",
-	    rs->d->pathname, rs->revs->gca, rs->revs->local, rs->revs->remote);
+	    PATHNAME(rs->s, rs->d),
+	    rs->revs->gca, rs->revs->local, rs->revs->remote);
 	fprintf(stderr, "Commands are:\n\n");
 	for (i = 0; rs->funcs[i].spec; i++) {
 		fprintf(stderr, "  %-4s - %s\n", 

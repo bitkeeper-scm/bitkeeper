@@ -767,15 +767,14 @@ delta_sort(const void *a, const void *b)
 }
 
 private	void
-dumplog(char **list, delta *cset, char *dspec, int flags, FILE *f)
+dumplog(char **list, sccs *sc, delta *cset, char *dspec, int flags, FILE *f)
 {
 	slog	*ll;
 	int	i;
 	char	*comppath = 0;
-	
 
-	if (strrchr(cset->pathname, '/')) {
-		comppath = strdup(cset->pathname);
+	if (strrchr(PATHNAME(sc, cset), '/')) {
+		comppath = strdup(PATHNAME(sc, cset));
 		csetChomp(comppath);
 	}
 
@@ -880,7 +879,7 @@ collectDelta(sccs *s, delta *d, char **list)
 			ll = new(slog);
 			ll->s = s;
 			ll->d = d;
-			unless (path) path = d->pathname;
+			unless (path) path = PATHNAME(s, d);
 			ll->path = path;
 			list = addLine(list, ll);
 			d->flags &= ~D_SET;	/* done using it */
@@ -1194,7 +1193,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		}
 		if (found) rc = 1; /* Remember we printed output */
 		/* sort file deltas, print it, then free it */
-		dumplog(list, e, dspec, flags, f);
+		dumplog(list, sc, e, dspec, flags, f);
 
 		/*
 		 * Foreach component delta found mark them with D_SET
