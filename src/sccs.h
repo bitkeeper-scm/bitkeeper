@@ -238,6 +238,7 @@ int	checking_rmdir(char *dir);
  * Bit 0 and 1 are data encoding
  * Bit 2 is compression mode (gzip or none)
  */
+#define	E_ALWAYS	0x1000		/* set so encoding is non-zero */
 #define E_DATAENC	0x3
 #define E_COMP		0x4
 
@@ -254,10 +255,11 @@ int	checking_rmdir(char *dir);
 #define	WRITABLE(s)	((s)->mode & 0200)
 #define EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && WRITABLE(s))
 #define LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
-#define ASCII(s)	(((s)->encoding & E_DATAENC) == E_ASCII)
-#define BINARY(s)	(((s)->encoding & E_DATAENC) != E_ASCII)
-#define BAM(s)		(((s)->encoding & E_DATAENC) == E_BAM)
-#define UUENCODE(s)	(((s)->encoding & E_DATAENC) == E_UUENCODE)
+#define	ASCII(s)	(((s)->encoding_in & E_DATAENC) == E_ASCII)
+#define	BINARY(s)	(((s)->encoding_in & E_DATAENC) != E_ASCII)
+#define	BAM(s)		(((s)->encoding_in & E_DATAENC) == E_BAM)
+#define	UUENCODE(s)	(((s)->encoding_in & E_DATAENC) == E_UUENCODE)
+#define	GZIP(s)		(((s)->encoding_in & E_COMP) == E_GZIP)
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
@@ -611,7 +613,8 @@ struct sccs {
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
 	char	**usersgroups;	/* lm, beth, staff, etc */
-	int	encoding;	/* ascii, uuencode, gzip, etc. */
+	int	encoding_in;	/* ascii, uuencode, gzip, etc. */
+	int	encoding_out;	/* encoding to write sfile */
 	char	**flags;	/* flags in the middle that we didn't grok */
 	char	**text;		/* descriptive text */
 	u32	state;		/* GFILE/SFILE etc */
@@ -864,13 +867,14 @@ typedef struct {
 	u32	usr;	/* # user files (not under BitKeeper/) */
 } filecnt;
 
-int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *compress,
+int	sccs_admin(sccs *sc, delta *d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
+int	sccs_adminFlag(sccs *sc, u32 flags);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs,
 		   char **syms);
 int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, u32 kind, FILE *);
-int	sccs_encoding(sccs *s, off_t size, char *enc, char *comp);
+int	sccs_encoding(sccs *s, off_t size, char *enc);
 int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
 int	sccs_hashcount(sccs *s);
@@ -999,8 +1003,6 @@ int	sccs_unlockfile(char *file);
 int	sccs_mylock(char *lockf);
 int	sccs_readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp);
 
-sccs	*sccs_unzip(sccs *s);
-sccs	*sccs_gzip(sccs *s);
 char	*sccs_utctime(delta *d);
 void	sccs_kidlink(sccs *s, delta *d);
 void	sccs_renumber(sccs *s, u32 flags);

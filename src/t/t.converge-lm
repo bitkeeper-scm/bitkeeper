@@ -23,6 +23,8 @@ export ME BK_USER BK_HOST BK_YEAR2
 NUM=0
 FILE=test$NUM
 
+echo compression:none > "`bk dotbk`"/config
+
 # Don't create gone in 'bk setup'
 # (use fresh_commercial so this don't effect cache)
 _BK_SETUP_NOGONE=1

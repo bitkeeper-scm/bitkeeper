@@ -190,7 +190,7 @@ regen(sccs *s, int verbose, char *key)
 	sget->xflags &= ~X_EOLN_NATIVE;
 	close(creat(gfile, 0664));
 	/* Teamware uses same uuencode flag, so read it */
-	if (mkinit(s, s->tree, tmp, key) || (sget->encoding & E_UUENCODE)) {
+	if (mkinit(s, s->tree, tmp, key) || UUENCODE(sget)) {
 		sys("bk", "delta",
 		    "-fq", "-Ebinary", "-RiISCCS/.init", gfile, SYS);
 	} else {
@@ -256,8 +256,7 @@ regen(sccs *s, int verbose, char *key)
         assert(s2);
 	unless (1 || verify) goto out;
 
-        if (sccs_admin(s2, 0,
-            ADMIN_FORMAT|ADMIN_BK|ADMIN_TIME, 0, 0, 0, 0, 0, 0, 0)) {
+        if (sccs_adminFlag(s2, ADMIN_FORMAT|ADMIN_BK|ADMIN_TIME)) {
                 perror(s->sfile);
                 exit(1);
         }

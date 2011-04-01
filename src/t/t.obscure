@@ -128,6 +128,7 @@ bk grep -qR lic baz || {
 	echo expected pattern in original file
 	exit 1
 }
+bk admin -Znone baz
 WANT=`bk _cat SCCS/s.baz | wc -c`
 bk _cp SCCS/s.baz ORIG
 BK_FORCE=1 bk admin $Q -Olicense baz || exit 1
@@ -135,6 +136,7 @@ bk grep -qR lic baz && {
 	echo expected output to be obscured
 	exit 1
 }
+bk admin -Znone baz
 GOT=`bk _cat SCCS/s.baz | wc -c`
 test $WANT -eq $GOT || {
 	echo failed
@@ -167,6 +169,7 @@ bk grep -qR '^\[some-user\]license:' baz || {
 	echo expected pattern in original file
 	exit 1
 }
+bk admin -Znone baz
 WANT=`bk _cat SCCS/s.baz | wc -c`
 bk _cp SCCS/s.baz ORIG
 BK_FORCE=1 bk admin $Q -Olicense baz || exit 1
@@ -174,6 +177,7 @@ bk grep -qR '^\[some-user\]license:' baz && {
 	echo expected output to be obscured
 	exit 1
 }
+bk admin -Znone baz
 GOT=`bk _cat SCCS/s.baz | wc -c`
 test $WANT -eq $GOT || {
 	echo failed

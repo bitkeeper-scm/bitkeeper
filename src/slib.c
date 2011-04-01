@@ -56,7 +56,7 @@ private int	write_pfile(sccs *s, int flags, delta *d,
 private time_t	date2time(char *asctime, char *z, int roundup);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
 private int	sameFileType(sccs *s, delta *d);
-private int	deflate_gfile(sccs *s, char *tmpfile);
+private int	uuexpand_gfile(sccs *s, char *tmpfile);
 private int	isRegularFile(mode_t m);
 private void	sccs_freetable(delta *d);
 private	delta*	getCksumDelta(sccs *s, delta *d);
@@ -1991,7 +1991,7 @@ sccs_rdweaveInit(sccs *s)
 	zgetbuf	*zin;
 
 	fseek(s->fh, s->data, SEEK_SET);
-	if (s->encoding & E_GZIP) {
+	if (GZIP(s)) {
 		s->oldfh = s->fh;
 		zin = zgets_initCustom(0, s->oldfh);
 		s->fh = funopen(zin,
@@ -2038,7 +2038,7 @@ sccs_rdweaveDone(sccs *s)
 		ungetc(c, s->fh);
 		ret = 1;
 	}
-	if (s->encoding & E_GZIP) {
+	if (GZIP(s)) {
 		assert(s->oldfh);
 		ret = fclose(s->fh);
 		s->fh = s->oldfh;
@@ -2064,6 +2064,9 @@ sccs_startWrite(sccs *s)
 	} else {
 		xfile = sccsXfile(s, 'x');
 		unless (sfile = fopen(xfile, "w")) perror(xfile);
+	}
+	unless (s->encoding_out) {
+		s->encoding_out = sccs_encoding(s, 0, 0);
 	}
 	return (sfile);
 }
@@ -2134,6 +2137,7 @@ sccs_finishWrite(sccs *s, FILE **f)
 		if (sccs_setStime(s, 0)) perror(s->sfile);
 		if (chmod(s->sfile, 0444)) perror(s->sfile);
 	}
+	s->encoding_in = s->encoding_out;
 out:	return (rc);
 }
 
@@ -3409,14 +3413,14 @@ misc(sccs *s)
 			    case E_UUENCODE:
 			    case E_UUENCODE|E_GZIP:
 			    case E_BAM:
-				s->encoding = atoi(&buf[5]);
+				s->encoding_in |= atoi(&buf[5]);
 				break;
 			    default:
 				fprintf(stderr,
 				    "sccs: don't know encoding %d, "
 				    "assuming ascii\n",
 				    atoi(&buf[5]));
-				s->encoding = E_ASCII;
+				s->encoding_in |= E_ASCII;
 				return (-1);
 			}
 			continue;
@@ -4245,6 +4249,7 @@ sccs_init(char *name, u32 flags)
 	s = new(sccs);
 	s->sfile = strdup(name);
 	s->gfile = sccs2name(name);
+	s->encoding_in |= E_ALWAYS;
 
 	s->initFlags = flags;
 	t = strrchr(s->sfile, '/');
@@ -5722,7 +5727,7 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 		sum += *p;
 		if (*p++ == '\n') break;
 	}
-	if (s->encoding & E_GZIP) {
+	if (s->encoding_out & E_GZIP) {
 		zputs(zput, buf, p - buf);
 	} else {
 		fwrite(buf, 1, p - buf, out);
@@ -5735,7 +5740,7 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 int
 fflushdata(sccs *s, FILE *out)
 {
-	if (s->encoding & E_GZIP) {
+	if (s->encoding_out & E_GZIP) {
 		zputs_done(zput);
 		zput = 0;
 	}
@@ -6349,7 +6354,7 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 	u8	*slist = 0;
 	int	lines = 0, print = 0, error = 0;
 	int	seq;
-	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding;
+	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding_in;
 	unsigned int sum;
 	u32	same, added, deleted, other, *counter;
 	FILE 	*out = 0;
@@ -6595,7 +6600,7 @@ out:			if (slist) free(slist);
 			} 
 
 write:
-			switch (encoding) {
+			switch (encoding & (E_COMP|E_DATAENC)) {
 			    case E_GZIP|E_UUENCODE:
 			    case E_UUENCODE: {
 				uchar	obuf[50];
@@ -7366,7 +7371,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	int	with = 0, without = 0;
 	int	count = 0, left = 0, right = 0;
 	FILE	*out = 0;
-	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding;
+	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding_in;
 	int	error = 0;
 	int	side, nextside;
 	char	*buf;
@@ -8119,9 +8124,9 @@ SCCS:
 		fputmeta(s, "\n", out);
 	}
 	fputmeta(s, "\001U\n", out);
-	if (BITKEEPER(s) || (s->encoding != E_ASCII)) {
+	if (BITKEEPER(s) || (s->encoding_out != E_ALWAYS|E_ASCII)) {
 		p = fmts(buf, "\001f e ");
-		p = fmtd(p, s->encoding);
+		p = fmtd(p, (s->encoding_out & ~E_ALWAYS));
 		*p++ = '\n';
 		*p   = '\0';
 		fputmeta(s, buf, out);
@@ -8275,7 +8280,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 		tmpfile = 1;
 		unless (bktmp(sbuf, "getU")) RET(-1);
 		name = strdup(sbuf);
-		if (deflate_gfile(s, name)) {
+		if (uuexpand_gfile(s, name)) {
 			verbose((stderr, "can't open %s\n", s->gfile));
 			RET(-1);
 		}
@@ -8476,24 +8481,18 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
  * Apply the encoding to the gfile and leave it in tmpfile.
  */
 private int
-deflate_gfile(sccs *s, char *tmpfile)
+uuexpand_gfile(sccs *s, char *tmpfile)
 {
 	FILE	*in, *out;
 
 	unless (out = fopen(tmpfile, "w")) return (-1);
-	switch (s->encoding & E_DATAENC) {
-	    case E_UUENCODE:
-		unless (in = fopen(s->gfile, "r")) {
-			fclose(out);
-			return (-1);
-		}
-		uuencode(in, out);
-		fclose(in);
+	unless (in = fopen(s->gfile, "r")) {
 		fclose(out);
-		break;
-	    default:
-		assert("Bad encoding" == 0);
+		return (-1);
 	}
+	uuencode(in, out);
+	fclose(in);
+	fclose(out);
 	return (0);
 }
 
@@ -8629,7 +8628,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	if (isRegularFile(s->mode)) {
 		if (UUENCODE(s)) {
 			unless (bktmp(new, "getU")) return (-1);
-			if (deflate_gfile(s, new)) {
+			if (uuexpand_gfile(s, new)) {
 				unlink(new);
 				return (-1);
 			}
@@ -9184,7 +9183,7 @@ ascii(char *file)
 }
 
 /*
- * Open the input for a checkin/delta.
+ * Open the input for checkin.
  * The set of options we have are:
  *	{empty, stdin, file} | {cat, gzip|uuencode|bam}
  */
@@ -9193,7 +9192,6 @@ openInput(sccs *s, int flags, FILE **inp)
 {
 	char	*file = (flags&DELTA_EMPTY) ? DEVNULL_WR : s->gfile;
 	char	*mode = "rb";	/* default mode is binary mode */
-	int 	compress, enc;
 
 	unless (flags & DELTA_EMPTY) {
 		unless (HAS_GFILE(s)) {
@@ -9201,16 +9199,12 @@ openInput(sccs *s, int flags, FILE **inp)
 			return (-1);
 		}
 	}
-	compress = s->encoding & E_GZIP;
-	enc = s->encoding & E_DATAENC;
 	/* handle auto promoting ascii to binary if needed */
-	if ((enc == E_ASCII) && !streq("-", file) && !ascii(file)) {
-		s->encoding = sccs_encoding(s, size(file), "binary", 0);
-		enc = s->encoding & E_DATAENC;
-		/* BAM doesn't support gzip */
-		if (BAM(s)) s->encoding &= ~E_GZIP;
+	if (ASCII(s) && !streq("-", file) && !ascii(file)) {
+		s->encoding_in = s->encoding_out =
+		    sccs_encoding(s, size(file), "binary");
 	}
-	switch (enc) {
+	switch (s->encoding_in & E_DATAENC) {
 	    case E_ASCII:
 		mode = "rt";
 		/* fall through, check if we are really ascii */
@@ -9701,7 +9695,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 	}
 	if (BAM(s)) goto skip_weave;
 	buf[0] = 0;
-	if (s->encoding & E_GZIP) sccs_zputs_init(s, sfile);
+	if (s->encoding_out & E_GZIP) sccs_zputs_init(s, sfile);
 	if (n0) {
 		fputdata(s, "\001I 2\n", sfile);
 	} else {
@@ -10856,10 +10850,13 @@ sccs_xflags(sccs *s, delta *d)
  * (e.g. "gzip") to a suitable value for sccs->encoding.
  */
 int
-sccs_encoding(sccs *sc, off_t size, char *encp, char *compp)
+sccs_encoding(sccs *sc, off_t size, char *encp)
 {
-	int	enc, comp;
+	int	enc;
 	int	bam;
+	int	encoding = sc ? sc->encoding_in : E_ALWAYS;
+	char	*compp;
+	int	comp;
 
 	if (encp) {
 		if (streq(encp, "text")) enc = E_ASCII;
@@ -10876,34 +10873,33 @@ sccs_encoding(sccs *sc, off_t size, char *encp, char *compp)
 		else if (streq(encp, "BAM")) enc = E_BAM;
 		else {
 			fprintf(stderr,
-			    "admin: unknown encoding format %s\n", encp);
+			    "%s: unknown encoding format %s\n",
+			    prog, encp);
 			return (-1);
 		}
-	} else if (sc) {
-		enc = (sc->encoding & E_DATAENC);
-	} else {
-		enc = 0;
+		encoding &= ~E_DATAENC;
+		encoding |= enc;
 	}
 
-	if (compp) {
-		if (streq(compp, "gzip")) {
+	if (sc) {
+		compp = proj_configval(sc->proj, "compression");
+
+		if (!*compp || streq(compp, "gzip")) {
 			comp = E_GZIP;
 		} else if (streq(compp, "none")) {
 			comp = 0;
 		} else {
-			fprintf(stderr,
-			    "admin: unknown compression format %s\n", compp);
+			fprintf(stderr, "%s: unknown compression format %s\n",
+			    prog, compp);
 			return (-1);
 		}
-		/* No gzip for BAM currently */
-		if (enc == E_BAM) comp = 0;
-	} else if (sc) {
-		comp = (sc->encoding & ~E_DATAENC);
-	} else {
-	        comp = 0;
-	}
 
-	return (enc | comp);
+		/* No gzip for BAM currently */
+		if (encoding & E_BAM) comp = 0;
+		encoding &= ~E_COMP;
+		encoding |= comp;
+	}
+	return (encoding);
 }
 
 private void
@@ -11034,7 +11030,7 @@ remove_1_0(sccs *s)
 int
 sccs_newchksum(sccs *s)
 {
-	return (sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0));
+	return (sccs_adminFlag(s, NEWCKSUM));
 }
 
 /*
@@ -11115,6 +11111,13 @@ obscure_comments(sccs *s)
 	}
 }
 
+/* call sccs_admin() with only flags */
+int
+sccs_adminFlag(sccs *sc, u32 flags)
+{
+	return (sccs_admin(sc, 0, flags, 0, 0, 0, 0, 0, 0));
+}
+
 /*
  * admin the specified file.
  *
@@ -11124,11 +11127,11 @@ obscure_comments(sccs *s)
  * For large files, this is a win.
  */
 int
-sccs_admin(sccs *sc, delta *p, u32 flags, char *new_compp,
+sccs_admin(sccs *sc, delta *p, u32 flags,
 	admin *f, admin *z, admin *u, admin *s, char *mode, char *text)
 {
 	FILE	*sfile = 0;
-	int	new_enc, error = 0, locked = 0, i, old_enc = 0;
+	int	error = 0, locked = 0, i;
 	int	rc;
 	int	flagsChanged = 0;
 	char	*buf;
@@ -11137,9 +11140,6 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_compp,
 
 	assert(!z); /* XXX used to be LOD item */
 
-	new_enc = sccs_encoding(sc, 0, 0, new_compp);
-	if (new_enc == -1) return (-1);
-	debug((stderr, "new_enc is %d\n", new_enc));
 	GOODSCCS(sc);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
 		char	z = (flags & ADMIN_FORCE) ? 'Z' : 'z';
@@ -11407,7 +11407,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			}
 		}
 	}
-	if (flagsChanged || (sc->encoding != new_enc)) flags |= NEWCKSUM;
+	if (flagsChanged) flags |= NEWCKSUM;
 
 	if (flags & ADMIN_ADD1_0) {
 		if ((rc = insert_1_0(sc, flags)) == 1) goto out;
@@ -11453,8 +11453,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		fprintf(stderr, "admin: can't create %s: ", sccsXfile(sc, 'x'));
 		OUT;
 	}
-	old_enc = sc->encoding;
-	sc->encoding = new_enc;
 	if (delta_table(sc, sfile, 0)) {
 		if (sc->io_warned) OUT;
 		goto out;	/* we don't know why so let sccs_why do it */
@@ -11472,25 +11470,17 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	    && strneq(sc->tree->pathname,"BitKeeper/etc/",13)) {
 	    	obscure_it = 0;
 	}
-	if ((old_enc & E_GZIP) && (obscure_it|rmlicense)) {
-		fprintf(stderr, "admin: cannot obscure gzipped data.\n");
-		OUT;
-	}
 	if (rmlicense) obscure_it = 1;
-	if (new_enc & E_GZIP) sccs_zputs_init(sc, sfile);
-	/* if old_enc == new_enc, this is slower but handles both cases */
-	sc->encoding = old_enc;
+	if (sc->encoding_out & E_GZIP) sccs_zputs_init(sc, sfile);
 	sccs_rdweaveInit(sc);
 	while (buf = sccs_nextdata(sc)) {
 		if (obscure_it) {
-			buf = obscure(rmlicense, old_enc & E_UUENCODE, buf);
+			buf = obscure(rmlicense, UUENCODE(sc), buf);
 		}
-		sc->encoding = new_enc;
 		if (flags & ADMIN_ADD1_0) {
 			fputbumpserial(sc, buf, 1, sfile);
 		} else if (flags & ADMIN_RM1_0) {
 			if (streq(buf, "\001I 1")) {
-				sc->encoding = old_enc;
 				buf = sccs_nextdata(sc);
 				assert(streq(buf, "\001E 1"));
 				assert(!sccs_nextdata(sc));
@@ -11501,18 +11491,15 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			fputdata(sc, buf, sfile);
 		}
 		fputdata(sc, "\n", sfile);
-		sc->encoding = old_enc;
 		if (obscure_it) free(buf);
 	}
 	sccs_rdweaveDone(sc);
 	if (flags & ADMIN_ADD1_0) {
-		sc->encoding = new_enc;
 		fputdata(sc, "\001I 1\n", sfile);
 		fputdata(sc, "\001E 1\n", sfile);
 	}
 
 	/* not really needed, we already wrote it */
-	sc->encoding = new_enc;
 	if (fflushdata(sc, sfile)) {
 		sccs_abortWrite(sc, &sfile);
 		if (sc->io_warned) OUT;
@@ -11584,7 +11571,7 @@ out:
 	assert(s->state & S_SOPEN);
 	debug((stderr, "seek to %d\n", (int)s->data));
 	sccs_rdweaveInit(s);
-	if (s->encoding & E_GZIP) sccs_zputs_init(s, sfile);
+	if (s->encoding_out & E_GZIP) sccs_zputs_init(s, sfile);
 	while (buf = sccs_nextdata(s)) {
 		if (isData(buf)) {
 			fputdata(s, buf, sfile);
@@ -11658,7 +11645,7 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, char **patchmap,
 		sccs_rdweaveInit(s);
 		w->buf = sccs_nextdata(s);	/* prime the data flow */
 	}
-	if (s->encoding & E_GZIP) sccs_zputs_init(s, out);
+	if (s->encoding_out & E_GZIP) sccs_zputs_init(s, out);
 
 	rc = doFast(w, patchmap, fastpatch);
 
@@ -12179,7 +12166,7 @@ again:
 	 * Do the actual delta.
 	 */
 	sccs_rdweaveInit(s);
-	if (s->encoding & E_GZIP) sccs_zputs_init(s, out);
+	if (s->encoding_out & E_GZIP) sccs_zputs_init(s, out);
 	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
 	assert(s->state & S_SOPEN);
@@ -12369,7 +12356,7 @@ sccs_csetWrite(sccs *s, char **cweave)
 	unless (out = sccs_startWrite(s)) goto err;
 	if (delta_table(s, out, 0)) goto err;
 
-	if (s->encoding & E_GZIP) sccs_zputs_init(s, out);
+	if (s->encoding_out & E_GZIP) sccs_zputs_init(s, out);
 	EACH(cweave) {
 		unless (cweave[i][0]) continue;	/* skip deleted entries */
 		ser = cweave[i];
@@ -12473,7 +12460,7 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	lp = s->locs;
 	i = s->iloc - 1; /* set index to final element in array */
 	assert(i > 0); /* base 1 data structure */
-	if (s->encoding & E_GZIP) sccs_zputs_init(s, f);
+	if (s->encoding_out & E_GZIP) sccs_zputs_init(s, f);
 	unless (HAS_SFILE(s)) goto skip;
 
 	sccs_rdweaveInit(s);
@@ -13076,9 +13063,7 @@ abort:		sccs_abortWrite(s, &sfile);
 		return (-1);
 	}
 	sccs_rdweaveInit(s);
-	if (s->encoding & E_GZIP) {
-		sccs_zputs_init(s, sfile);
-	}
+	if (s->encoding_out & E_GZIP) sccs_zputs_init(s, sfile);
 	assert(s->state & S_SOPEN);
 	while (buf = sccs_nextdata(s)) {
 		fputdata(s, buf, sfile);
@@ -14813,7 +14798,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	}
 
 	case KW_ENC: /* ENC */ {
-		switch (s->encoding & E_DATAENC) {
+		switch (s->encoding_in & E_DATAENC) {
 		    case E_ASCII:
 			fs("ascii"); return (strVal);
 		    case E_UUENCODE:
@@ -14825,7 +14810,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	}
 
 	case KW_COMPRESSION: /* COMPRESSION */ {
-		switch (s->encoding & E_COMP) {
+		switch (s->encoding_in & E_COMP) {
 		    case 0: 
 			fs("none"); return (strVal);
 		    case E_GZIP:
@@ -15866,9 +15851,12 @@ void
 sccs_perfile(sccs *s, FILE *out)
 {
 	int	i;
+	int	enc;
 
 	if (s->defbranch) fprintf(out, "f d %s\n", s->defbranch);
-	if (s->encoding) fprintf(out, "f e %d\n", s->encoding);
+	/* Make a patch according to env; not how this file is stored */
+	enc = sccs_encoding(s, 0, 0) & ~E_ALWAYS;
+	if (enc) fprintf(out, "f e %d\n", enc);
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
 	if (s->version) fprintf(out, "V %u\n", s->version);
 	fprintf(out, "\n");
@@ -15903,7 +15891,7 @@ err:			fprintf(stderr,
 	}
 	if (FLAG('e')) {
 		unused = 0;
-		s->encoding = atoi(&buf[4]);
+		s->encoding_in |= atoi(&buf[4]);
 		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	if (FLAG('x')) {
@@ -17166,9 +17154,7 @@ stripDeltas(sccs *s, FILE *out)
 
 	state = allocstate(0, s->nextserial);
 	sccs_rdweaveInit(s);
-	if (s->encoding & E_GZIP) {
-		sccs_zputs_init(s, out);
-	}
+	if (s->encoding_out & E_GZIP) sccs_zputs_init(s, out);
 	while (buf = sccs_nextdata(s)) {
 		if (isData(buf)) {
 			unless (print) {

@@ -1167,7 +1167,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	char	*gfile = 0;
 	ticker	*tick = 0;
 
-        if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
+        if (sccs_adminFlag(s, SILENT|ADMIN_BK)) {
 		fprintf(stderr, "Patch aborted, %s has errors\n", s->sfile);
 		fprintf(stderr,
 		    "Run ``bk -r check -a'' for more information.\n");

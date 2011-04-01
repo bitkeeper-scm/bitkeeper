@@ -2047,7 +2047,7 @@ bam_convert_main(int ac, char **av)
 			errors |= 1;
 			continue;
 		}
-		unless ((s->encoding & E_DATAENC) == E_UUENCODE) {
+		unless (UUENCODE(s)) {
 			sccs_free(s);
 			continue;
 		}
@@ -2058,6 +2058,7 @@ bam_convert_main(int ac, char **av)
 	pclose(sfiles);
 	if (sfileDone()) errors |= 2;
 	if (errors) goto out;
+	system("bk admin -Znone ChangeSet");
 	unless (in = fopen("SCCS/s.ChangeSet", "r")) {
 		perror("SCCS/s.ChangeSet");
 		exit(1);
@@ -2154,7 +2155,7 @@ uu2bp(sccs *s)
 		fprintf(stderr, "BP can't get lock on %s\n", s->gfile);
 		return (4);
 	}
-	
+
 	/*
 	 * Use the initial size to determine whether we convert or not.
 	 * It's idempotent and if we guess wrong they can bk rm the file
@@ -2171,7 +2172,14 @@ uu2bp(sccs *s)
 		if (sz < proj_configsize(s->proj, "BAM")) goto out;
 	}
 
-	if ((s->encoding & E_COMP) == E_GZIP) sccs_unzip(s);
+	if (GZIP(s)) {
+		/* uncompress file for performance */
+		s = sccs_restart(s);
+		s->encoding_out = sccs_encoding(s, 0, 0);
+		s->encoding_out &= ~E_GZIP;
+		if (sccs_adminFlag(s, ADMIN_FORCE|NEWCKSUM)) perror(s->gfile);
+		s = sccs_restart(s);
+	}
 	fprintf(stderr, "Converting %s", s->gfile);
 	tick = progress_start(PROGRESS_MINI, s->nextserial);
 	for (n = 0, d = s->table; d; d = NEXT(d)) {
@@ -2209,12 +2217,14 @@ uu2bp(sccs *s)
 	}
 	progress_done(tick, 0);
 	fprintf(stderr, "\n");
+	/* change encoding to be BAM */
+	s->encoding_out &= ~(E_UUENCODE|E_GZIP);
+	s->encoding_out |= E_BAM;
 	unless (out = sccs_startWrite(s)) {
 err:		sccs_abortWrite(s, &out);
 		sccs_unlock(s, 'z');
 		return (32);
 	}
-	s->encoding = E_BAM;
 	if (delta_table(s, out, 0)) goto err;
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001%c%05u\n", 'H', s->cksum);

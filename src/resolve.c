@@ -2703,8 +2703,8 @@ pass4_apply(opts *opts)
 			resolve_cleanup(opts, 0);
 		}
 #define	F ADMIN_FORMAT|ADMIN_TIME|ADMIN_BK
-		if (sccs_admin(r, 0, SILENT|F, 0, 0, 0, 0, 0, 0, 0)) {
-			sccs_admin(r, 0, F, 0, 0, 0, 0, 0, 0, 0);
+		if (sccs_adminFlag(r, SILENT|F)) {
+			sccs_adminFlag(r, F);
 			fprintf(stderr, "resolve: bad file %s;\n", r->sfile);
 			fprintf(stderr, "resolve: no files were applied.\n");
 			fclose(save);

@@ -396,13 +396,13 @@ bk setup -a -f --sccs-compat -cc no-blob || fail
 cd no-blob
 echo abcde > foo
 bk new $Q foo
-bk admin -Znone foo
 bk commit $Q -yfoo
 bk clone $Q . ../checksum
 bk edit $Q foo
 echo abbde > foo
 bk delta $Q -yfoo foo
 bk commit $Q -yfoo
+bk admin -Znone foo
 sed s/abbde/abcde/ < SCCS/s.foo > newfoo
 cp -f newfoo SCCS/s.foo
 chmod 444 SCCS/s.foo

@@ -72,7 +72,6 @@ private	int	noConflicts;	/* if set, abort on conflicts */
 private	char	pendingFile[MAXPATH];
 private	char	*input;		/* input file name,
 				 * either "-" or a patch file */
-private	int	encoding;	/* encoding before we started */
 private	char	*comments;	/* -y'comments', pass to resolve. */
 private	char	**errfiles;	/* files had errors during apply */
 private	char	**edited;	/* files that were in modified state */
@@ -538,7 +537,6 @@ error:		if (perfile) sccs_free(perfile);
 		}
 	}
 	tableGCA = 0;
-	if (s) encoding = s->encoding;
 	while (extractDelta(name, s, newFile, p, &nfound)) {
 		if (newFile) newFile = 2;
 	}
@@ -584,7 +582,7 @@ sccscopy(sccs *to, sccs *from)
 		to->defbranch = from->defbranch;
 		from->defbranch = 0;
 	}
-	to->encoding = from->encoding;
+	to->encoding_in = from->encoding_in;
 	unless (to->text) {
 		to->text = from->text;
 		from->text = 0;
@@ -1128,7 +1126,7 @@ markup:
 
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) goto err;
 	if (!confThisFile && (s->state & S_CSET) && 
-	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
+	    sccs_adminFlag(s, SILENT|ADMIN_BK)) {
 	    	confThisFile++;
 		/* yeah, the count is slightly off if there were conflicts */
 	}
@@ -1267,7 +1265,6 @@ applyPatch(char *localPath, sccs *perfile)
 	}
 	assert(!CSET(s));
 	/* convert to uncompressed, it's faster, we saved the mode above */
-	if (s->encoding & E_GZIP) s = sccs_unzip(s);
 	unless (s) return (-1);
 	unless (tableGCA) goto apply;
 	/*
@@ -1330,18 +1327,6 @@ apply:
 		}
 		if (perfile) {
 			sccscopy(s, perfile);
-			/*
-			 * For takepatch performance turn off
-			 * compression when we are in takepatch.
-			 *
-			 * Note: Since this is a new file from remote,
-			 * there is no local setting. We save the
-			 * compression setting of the remote file and
-			 * use that as the new local file when when
-			 * takepatch is done.
-			 */
-			encoding = s->encoding; /* save for later */
-			s->encoding &= ~E_GZIP;
 		}
 		if (p->initFile) {
 			iF = mopen(p->initFile, "b");
@@ -1424,10 +1409,6 @@ apply:
 	s = sccs_init(patchList->resyncFile, SILENT);
 	assert(s);
 
-	/*
-	 * Honor gzip on all files.
-	 */
-	if (encoding & E_GZIP) s = sccs_gzip(s);
 	for (d = 0, p = patchList; p; p = p->next) {
 		assert(p->me);
 		d = sccs_findKey(s, p->me);
@@ -1456,7 +1437,7 @@ apply:
 		return (-1);
 	}
 	if (!confThisFile && (s->state & S_CSET) && 
-	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
+	    sccs_adminFlag(s, SILENT|ADMIN_BK)) {
 	    	confThisFile++;
 		/* yeah, the count is slightly off if there were conflicts */
 	}
@@ -2246,29 +2227,6 @@ fileCopy2(char *from, char *to)
 	if (fileCopy(from, to)) cleanup(CLEAN_RESYNC);
 }
 
-sccs *
-sccs_unzip(sccs *s)
-{
-	s = sccs_restart(s);
-	if (sccs_admin(s, 0,
-	    SILENT|ADMIN_FORCE|NEWCKSUM, "none", 0, 0, 0, 0, 0, 0)) {
-		return (0);
-	}
-	s = sccs_restart(s);
-	return (s);
-}
-
-sccs *
-sccs_gzip(sccs *s)
-{
-	s = sccs_restart(s);
-	if (sccs_admin(s,
-	    0, ADMIN_FORCE|NEWCKSUM, "gzip", 0, 0, 0, 0, 0, 0)) {
-		sccs_whynot("admin", s);
-	}
-	s = sccs_restart(s);
-	return (s);
-}
 
 private	void
 cleanup(int what)

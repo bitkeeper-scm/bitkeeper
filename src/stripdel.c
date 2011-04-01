@@ -205,7 +205,7 @@ do_check(sccs *s, int flags)
 	int	f = ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE|flags;
 	int	error;
 
-	error = sccs_admin(s, 0, f, 0, 0, 0, 0, 0, 0, 0);
+	error = sccs_adminFlag(s, f);
 	return(error ? 1 : 0);
 }
 

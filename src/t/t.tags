@@ -658,6 +658,7 @@ cd ../tips
 bk tag $Q -r1.1 BAR
 bk pull $Q || exit 1
 bk undo $Q -fr+ || exit 1
+bk admin -Znone ChangeSet
 bk _cat SCCS/s.ChangeSet | grep -q '^.cS0 l' || {
 	echo 'Failed'
 	echo In problem setup, expected tag leaf to have parent 0
@@ -683,8 +684,10 @@ bk _kill $LOCKURL
 echo OK
 
 echo $N Fix tag graph by tagmerge ...................................$NL
+bk admin -Znone ChangeSet
 PREFIX=`bk _cat SCCS/s.ChangeSet | grep '^.cS[0-9][0-9]* [0-9][0-9]*' | wc -l`
 bk tagmerge > OUT 2> ERR || exit 1
+bk admin -Znone ChangeSet
 POSTFIX=`bk _cat SCCS/s.ChangeSet | grep '^.cS[0-9][0-9]* [0-9][0-9]*' | wc -l`
 test "$PREFIX" -eq 0 -a "$POSTFIX" -eq 2 || {
 	echo 'Failed'
