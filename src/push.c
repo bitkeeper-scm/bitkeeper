@@ -74,7 +74,7 @@ push_main(int ac, char **av)
 	char	**envVar = 0;
 	char	**urls = 0;
 	remote	*r;
-	int	gzip = 6;
+	int	gzip = Z_BEST_SPEED;
 	longopt	lopts[] = {
 		{ "standalone", 'S'},
 		{ 0, 0 }
@@ -125,7 +125,7 @@ push_main(int ac, char **av)
 		    	break;
 		    case 'z':					/* doc 2.0 */
 			if (optarg) gzip = atoi(optarg);
-			if ((gzip < 0) || (gzip > 9)) gzip = 6;
+			if ((gzip < 0) || (gzip > 9)) gzip = Z_BEST_SPEED;
 			break;
 		    default: bk_badArg(c, av);
 		}

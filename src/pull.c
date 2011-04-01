@@ -46,7 +46,7 @@ pull_main(int ac, char **av)
 	int	c, i, j = 1;
 	int	try = -1; /* retry forever */
 	int	rc = 0;
-	int	gzip = 6;
+	int	gzip = Z_BEST_SPEED;
 	int	print_title = 0;
 	remote	*r;
 	char	*p, *prog;
@@ -109,7 +109,7 @@ pull_main(int ac, char **av)
 		    case 'w': opts.delay = atoi(optarg); break;	/* undoc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			if (optarg) gzip = atoi(optarg);
-			if ((gzip < 0) || (gzip > 9)) gzip = 6;
+			if ((gzip < 0) || (gzip > 9)) gzip = Z_BEST_SPEED;
 			break;
 		    case 320:	/* --safe */
 			opts.safe = 1;

@@ -351,7 +351,7 @@ zputs_init(zputs_func callback, void *token, int level)
 	out->z.avail_in = 0;
 	out->callback = callback ? callback : zputs_filewrite;
 	out->token = token;
-	if (deflateInit(&out->z, (level == -1) ? 4 : level) != Z_OK) {
+	if (deflateInit(&out->z, (level == -1) ? Z_BEST_SPEED : level) != Z_OK) {
 		free(out->inbuf);
 		free(out->outbuf);
 		free(out);

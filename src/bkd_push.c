@@ -20,8 +20,8 @@ cmd_push_part1(int ac, char **av)
 	while ((c = getopt(ac, av, "dnPz|", 0)) != -1) {
 		switch (c) {
 		    case 'z': break;
-			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 0 || gzip > 9) gzip = 6;
+			gzip = optarg ? atoi(optarg) : Z_BEST_SPEED;
+			if (gzip < 0 || gzip > 9) gzip = Z_BEST_SPEED;
 			break;
 		    case 'd': debug = 1; break;
 		    case 'P': product = 1; break;
@@ -134,8 +134,8 @@ cmd_push_part2(int ac, char **av)
 	while ((c = getopt(ac, av, "dGnPqvz|", 0)) != -1) {
 		switch (c) {
 		    case 'z':
-			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 0 || gzip > 9) gzip = 6;
+			gzip = optarg ? atoi(optarg) : Z_BEST_SPEED;
+			if (gzip < 0 || gzip > 9) gzip = Z_BEST_SPEED;
 			break;
 		    case 'd': debug = 1; break;
 		    case 'G': putenv("BK_NOTTY=1"); break;
@@ -339,8 +339,8 @@ cmd_push_part3(int ac, char **av)
 	while ((c = getopt(ac, av, "dGPqvz|", 0)) != -1) {
 		switch (c) {
 		    case 'z':
-			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 0 || gzip > 9) gzip = 6;
+			gzip = optarg ? atoi(optarg) : Z_BEST_SPEED;
+			if (gzip < 0 || gzip > 9) gzip = Z_BEST_SPEED;
 			break;
 		    case 'd': debug = 1; break;
 		    case 'G': putenv("BK_NOTTY=1"); break;
