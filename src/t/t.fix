@@ -142,12 +142,7 @@ bk _test -f SCCS/c.ChangeSet || {
 }
 echo ChangeSet comments > C
 bk _cp SCCS/c.ChangeSet c.ChangeSet
-cmp -s C c.ChangeSet || {
-	echo incorrect comments
-	echo Wanted ChangeSet comments
-	echo got `bk _cat SCCS/c.ChangeSet`
-	exit 1
-}
+cmpfiles C c.ChangeSet
 rm -f c.ChangeSet
 echo OK
 

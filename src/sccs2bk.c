@@ -88,7 +88,6 @@ private int
 sccs2bk(sccs *s, int verbose, char *csetkey)
 {
 	delta	*d;
-	int	i;
 
 	if (makeMerge(s, verbose)) return (1);
 
@@ -108,15 +107,13 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
 	 */
 	if (streq(REV(s, s->tree), "1.0")) {
 		d = s->tree;
-		EACH_COMMENT(s, d) {
-			if (strneq("BitKeeper file", d->cmnts[i], 14)) {
-				d->flags |= D_SET|D_GONE;
-				break;
+		if (strneq("BitKeeper file", COMMENTS(s, d), 14)) {
+			d->flags |= D_SET|D_GONE;
+			if (verbose > 1) {
+				fprintf(stderr,
+				    "Stripping old BitKeeper data in %s\n",
+				    s->gfile);
 			}
-		}
-		if ((d->flags & D_GONE) && verbose > 1) {
-			fprintf(stderr,
-			    "Stripping old BitKeeper data in %s\n", s->gfile);
 		}
 	}
 
@@ -173,7 +170,6 @@ regen(sccs *s, int verbose, char *key)
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, (ser_t) i)) continue;
-		comments_load(s, d);
 		if (!(d->flags & D_GONE) && (d->type == 'D')) {
 			table[n++] = d;
 		}
@@ -339,8 +335,9 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 	int	size;
 	char	buf[4096];
 	u32	randbits = 0;
-	int	i;
+	int	len, i;
 	int	binary = 0;
+	char	*p, *t;
 
 	if (file) {
 		char	*p;
@@ -390,9 +387,8 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 		fprintf(fh, "D %s %s %s@%s\n",
 		    REV(s, d), d->sdate, USER(s, d),
 		    d->hostname ? HOSTNAME(s, d) : sccs_gethost());
-		EACH_COMMENT(s, d) {
-			fprintf(fh, "c %s\n", d->cmnts[i]);
-		}
+		t = COMMENTS(s, d);
+		while (p = eachline(&t, &len)) fprintf(fh, "c %.*s\n", len, p);
 		if (d->dateFudge) fprintf(fh, "F %lu\n", d->dateFudge);
 	}
 	fprintf(fh, "------------------------------------------------\n");

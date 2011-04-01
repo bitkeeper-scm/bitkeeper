@@ -98,7 +98,7 @@ checkXflags(sccs *s, delta *d, int what)
 {
 	char	*t, *f;
 	u32	old, new, want, added = 0, deleted = 0, *p;
-	int	i;
+	char	*x, *r;
 	char	key[MD5LEN];
 
 	if (d == s->tree) {
@@ -113,19 +113,20 @@ checkXflags(sccs *s, delta *d, int what)
 		}
 		return (0);
 	}
-	EACH_COMMENT(s, d) {
-		if (strneq(d->cmnts[i], "Turn on ", 8)) {
-			t = &(d->cmnts[i][8]);
+	x = COMMENTS(s, d);
+	while (r = eachline(&x, 0)) {
+		if (strneq(r, "Turn on ", 8)) {
+			t = r+8;
 			p = &added;
-		} else if (strneq(d->cmnts[i], "Turn off ", 9)) {
-			t = &(d->cmnts[i][9]);
+		} else if (strneq(r, "Turn off ", 9)) {
+			t = r+9;
 			p = &deleted;
 		} else {
 			continue;
 		}
 		f = t;
 		unless (t = strchr(f, ' ')) continue;
-		unless (streq(t, " flag")) continue;
+		unless (strneq(t, " flag", 5)) continue;
 		*t = 0; *p |= a2xflag(f); *t = ' ';
 	}
 	assert(d->pserial);

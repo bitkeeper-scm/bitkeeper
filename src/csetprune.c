@@ -1361,7 +1361,7 @@ fixTags(sccs *s)
 			md->type = 'R';
 			md->flags &= ~(D_GONE|D_CKSUM|D_CSET);
 			md->added = md->deleted = md->same = 0;
-			comments_free(md);
+			md->comments = 0;
 			assert(!md->include && !md->exclude && !md->merge);
 		}
 	}
@@ -1413,7 +1413,7 @@ fixTags(sccs *s)
 			d->type = 'R';
 			d->flags &= ~(D_GONE|D_CKSUM|D_CSET);
 			d->added = d->deleted = d->same = 0;
-			comments_free(d);
+			d->comments = 0;
 			assert(!d->include && !d->exclude && !d->merge);
 		}
 	}

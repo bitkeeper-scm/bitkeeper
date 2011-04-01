@@ -81,7 +81,6 @@ void	*removeLineN(char **space, int rm, void(*freep)(void *ptr));
 #define	unshiftLine(s, val)	insertLineN(s, 1, val)
 
 char	**splitLine(char *line, char *delim, char **tokens);
-char	**splitLineToLines(char *line, char **tokens);
 char	*joinLines(char *sep, char **space);
 void	freeLines(char **space, void(*freep)(void *ptr));
 int	removeLine(char **space, char *s, void(*freep)(void *ptr));

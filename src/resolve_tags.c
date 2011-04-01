@@ -19,16 +19,16 @@ t_help(resolve *rs)
 {
 	tags	*t = (tags *)rs->opaque;
 	int	i;
+	char	*p, *r;
+	int	len;
 
 	fprintf(stderr, "Tag ``%s'' was added to two changesets.\n", t->name);
 	fprintf(stderr, "\nLocal:  ChangeSet %s\n", REV(rs->s, t->local));
-	EACH_COMMENT(rs->s, t->local) {
-		fprintf(stderr, "\t%s\n", t->local->cmnts[i]);
-	}
+	r = COMMENTS(rs->s, t->local);
+	while (p = eachline(&r, &len)) fprintf(stderr, "\t%.*s\n", len, p);
 	fprintf(stderr, "Remote: ChangeSet %s\n", REV(rs->s, t->remote));
-	EACH_COMMENT(rs->s, t->remote) {
-		fprintf(stderr, "\t%s\n", t->remote->cmnts[i]);
-	}
+	r = COMMENTS(rs->s, t->remote);
+	while (p = eachline(&r, &len)) fprintf(stderr, "\t%.*s\n", len, p);
 	fprintf(stderr, "\n");
 	for (i = 0; rs->funcs[i].spec; i++) {
 		fprintf(stderr, "  %-4s - %s\n", 

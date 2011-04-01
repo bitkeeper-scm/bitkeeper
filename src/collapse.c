@@ -639,6 +639,7 @@ fix_setupcomments(sccs *s, char **rmdeltas)
 	delta	*d;
 	int	i;
 	char	**comments = 0;
+	char	*cmts;
 	char	*cfile = sccs_Xfile(s, 'c');
 	char	*p;
 	FILE	*f;
@@ -647,11 +648,11 @@ fix_setupcomments(sccs *s, char **rmdeltas)
 	    "^Merge rename: .* ->|"
 	    "^Delete:|"
 	    "^Change mode to|"
-	    "^Turn o[nf]+ [A-Z0-9_]+ flag$|"
-	    "^Auto merged$|"
-	    "^SCCS merged\\.*$|"
-	    "^[mM]erged*\\.*$|"  /* merge merged merge. merged. */
-	    "^auto-union$";
+	    "^Turn o[nf]+ [A-Z0-9_]+ flag\n$|"
+	    "^Auto merged\n$|"
+	    "^SCCS merged\\.*\n$|"
+	    "^[mM]erged*\\.*\n$|"  /* merge merged merge. merged. */
+	    "^auto-union\n$";
 
 	/* generate the list of delta comments we skip */
 	if (p = re_comp(skippat)) {
@@ -663,16 +664,18 @@ fix_setupcomments(sccs *s, char **rmdeltas)
 		d = (delta *)rmdeltas[i];
 
 		if (streq(REV(s, d), "1.0")) continue;
-		unless (COMMENTS(d)) continue;
+		unless (d->comments) continue;
 
 		/*
 		 * If the comments are just one line and then match our
 		 * pattern, then ignore these comments.
 		 */
-		comments_load(s, d);
-		if ((nLines(d->cmnts) == 1) && re_exec(d->cmnts[1])) continue;
+		cmts = COMMENTS(s, d);
+		if ((strcnt(cmts, '\n') == 1) && re_exec(cmts)) continue;
 
-		comments = addLine(comments, joinLines("\n", d->cmnts));
+		p = strdup(cmts);
+		chomp(p);
+		comments = addLine(comments, p);
 	}
 	if (p = loadfile(cfile, 0)) {
 		chomp(p);

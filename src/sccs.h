@@ -292,7 +292,7 @@ int	checking_rmdir(char *dir);
 		/*	0x00000002 */
 #define	D_SORTSUM	0x00000004	/* generate a sortSum */
 		/*	0x00000008 */
-#define	D_NOCOMMENTS	0x00000010	/* don't generate comments */
+		/*	0x00000010 */
 		/*	0x00000020 */
 		/*	0x00000040 */
 		/*	0x00000080 */
@@ -474,7 +474,7 @@ typedef struct delta {
 	u32	rev;			/* revision number */
 	ser_t	*include;		/* include serial #'s */
 	ser_t	*exclude;		/* exclude serial #'s */
-	char	**cmnts;		/* comment offset or lines array */
+	u32	comments;		/* delta comments (\n sep string) */
 	u32	bamhash;		/* hash of gfile for BAM */
 
 	/* collapsible heap data */
@@ -496,12 +496,8 @@ typedef struct delta {
 	ser_t	kid;			/* next delta on this branch */
 	ser_t	siblings;		/* pointer to other branches */
 } delta;
-#define	COMMENTS(d)	((d)->cmnts != 0)
 #define	TAG(d)		((d)->type != 'D')
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
-#define	EACH_COMMENT(s, d) \
-			comments_load(s, d); \
-			EACH_INDEX(d->cmnts, i)
 
 #define	SFIND(s, ser)	((ser) ? ((s)->slist + ser) : 0)
 #define	DFIND(d, ser)	((ser) ? ((d) + (ser) - (d)->serial) : 0)
@@ -513,6 +509,7 @@ typedef struct delta {
 
 #define	REV(s, d)	((s)->heap.buf + (d)->rev)
 #define	BAMHASH(s, d)	((s)->heap.buf + (d)->bamhash)
+#define	COMMENTS(s, d)	((s)->heap.buf + (d)->comments)
 
 #define	USER(s, d)	((s)->heap.buf + (d)->user)
 #define	HOSTNAME(s, d)	((s)->heap.buf + (d)->hostname)
@@ -1091,7 +1088,7 @@ void	comments_done(void);
 char	**comments_return(char *prompt);
 delta	*comments_get(char *gfile, char *rev, sccs *s, delta *d);
 void	comments_writefile(char *file);
-int	comments_checkStr(u8 *s);
+int	comments_checkStr(u8 *s, int len);
 char	*shell(void);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
@@ -1306,9 +1303,7 @@ void	dspec_printeach(sccs *s, FILE *out);
 int	kw2val(FILE *out, char *kw, int len, sccs *s, delta *d);
 void	show_s(sccs *s, FILE *out, char *data, int len);
 void	show_d(sccs *s, FILE *out, char *format, int num);
-void	comments_append(delta *d, char *line);
-char	**comments_load(sccs *s, delta *d);
-void	comments_free(delta *d);
+void	comments_set(sccs *s, delta *d, char **comments);
 void	gdb_backtrace(void);
 char	*bp_lookup(sccs *s, delta *d);
 delta	*bp_fdelta(sccs *s, delta *d);

@@ -132,7 +132,6 @@ checksum_main(int ac, char **av)
 int
 sccs_resum(sccs *s, delta *d, int diags, int fix)
 {
-	int	i;
 	int	err = 0;
 	char	before[43];	/* 4000G/4000G/4000G will fit */
 	char	after[43];
@@ -231,8 +230,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	 * NOTE: check using newly computed added and deleted (in *s)
 	 */
 	unless (s->added || s->deleted || d->include || d->exclude) {
-		int	new = 0;
-		char	*t;
+		int	len, new = 0;
+		char	*p, *t;
 
 		if (d->flags & D_CKSUM) return (err);
 		new = adler32(new, d->sdate, strlen(d->sdate));
@@ -246,10 +245,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 			t = HOSTNAME(s, d);
 			new = adler32(new, t, strlen(t));
 		}
-		EACH_COMMENT(s, d) {
-			new = adler32(new,
-			    d->cmnts[i], strlen(d->cmnts[i]));
-		}
+		t = COMMENTS(s, d);
+		while (p = eachline(&t, &len)) new = adler32(new, p, len);
 		unless (fix) {
 			fprintf(stderr, "%s:%s actual=<none> sum=%d\n",
 			    s->gfile, REV(s, d), new);

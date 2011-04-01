@@ -473,30 +473,6 @@ splitLine(char *line, char *delim, char **tokens)
 }
 
 /*
- * Split a C string for a block of text into a list of lines not containing
- * the trailing newlines.  Blank lines are not stripped.
- */
-char **
-splitLineToLines(char *line, char **tokens)
-{
-	int	len;
-	char	*p;
-
-	while (line) {
-		if (p = strchr(line, '\n')) {
-			len = p++ - line;
-			unless (*p) p = 0;
-			while (len > 0 && line[len-1] == '\r') --len;
-		} else {
-			len = strlen(line);
-		}
-		tokens = addLine(tokens, strndup(line, len));
-		line = p;
-	}
-	return (tokens);
-}
-
-/*
  * Return a malloc'ed string with quotes such that it will be parsed
  * as one argument by the shell.  If a list of strings quoted by this
  * function are joined by spaces and passed to shellSplit() above, the

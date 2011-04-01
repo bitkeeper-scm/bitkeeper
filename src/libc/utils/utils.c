@@ -25,3 +25,29 @@ chomp(char *s)
 	*p = 0;
 	return (any);
 }
+
+/*
+ * Give a string containing multiple newline separated lines, return each
+ * line one-by-line.
+ *
+ * - return any junk after last \n
+ * - an empty line must end in a \n
+ *
+ * ex:
+ * line = COMMENTS(s, d);
+ * while (p = eachline(&line, &len)) {
+ *	// do stuff
+ * }
+ */
+char *
+eachline(char **linep, int *lenp)
+{
+	char	*line, *ret = *linep;
+
+	unless (*ret) return (0);
+	for (line = ret; *line && (*line != '\n'); line++);
+	if (lenp) *lenp = line - ret;
+	if (*line == '\n') line++;
+	*linep = line;
+	return (ret);
+}

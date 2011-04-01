@@ -662,7 +662,6 @@ doit(int dash)
 		if (e->flags & D_SET) {
 			unless (dstart) dstart = e;
 			dstop = e;
-			comments_load(s, e);
 		}
 		if (e == s->rstart) break;
 	}
@@ -802,7 +801,6 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 {
 	datum	k, v;
 	sccs	*s;
-	delta	*d;
 	char	*path, *here;
 	project	*prod;
 
@@ -850,8 +848,6 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 		perror("sccs_keyinitAndCache");
 	}
 	if (s) {
-		/* capture the comments */
-		for (d = s->table; d; d = NEXT(d)) comments_load(s, d);
 		sccs_close(s); /* we don't need the delta body */
 		if (opts.doComp) s->prs_indentC = 1;
 	}
@@ -1244,7 +1240,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 private int
 want(sccs *s, delta *e)
 {
-	char	*p;
+	char	*p, *t, old;
 	int	i, match;
 	symbol	*sym;
 
@@ -1284,12 +1280,15 @@ want(sccs *s, delta *e)
 	    	return (0);
 	}
 	if (opts.doSearch) {
-		int	i;
-
-		EACH_COMMENT(s, e) {
-			if (search_either(e->cmnts[i], opts.search)) {
+		t = COMMENTS(s, e);
+		while (p = eachline(&t, &i)) {
+			old = p[i];
+			p[i] = 0;
+			if (search_either(p, opts.search)) {
+				p[i] = old;
 				return (1);
 			}
+			p[i] = old;
 		}
 		return (0);
 	}

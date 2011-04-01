@@ -509,12 +509,7 @@ bk _test -f SCCS/p.init3 && {
 	exit 1
 }
 bk prs -hr+ -d'$each(:C:){(:C:)\n}' init3 > C2
-cmp -s C C2 || {
-	echo failed to set comment
-	bk prs init3
-	diff C C2
-	exit 1
-}
+cmpfiles C C2
 bk _test -f SCCS/c.init3 && {
 	echo failed to clean up the c.file
 	exit 1

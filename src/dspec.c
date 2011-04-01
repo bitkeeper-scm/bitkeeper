@@ -591,13 +591,19 @@ getnext(datum kw, nextln *state)
 again:
 	++state->i;	/* first call has it set to 0, so now 1 */
 	if (strneq(kw.dptr, "C", kw.dsize)) {
-		comments_load(g.s, g.d);
-		unless (g.d && g.d->cmnts &&
-		    (state->i <= nLines(g.d->cmnts))) {
-			return (0);
+		char	*p, *t;
+		int	i, len;
+
+		unless (g.d && g.d->comments) return (0);
+
+		t = COMMENTS(g.s, g.d);
+		for (i = 1; p = eachline(&t, &len); i++) {
+			if (i == state->i) {
+				state->freeme = strndup(p, len);
+				break;
+			}
 		}
-		if (g.d->cmnts[state->i][0] == '\001') goto again;
-		return(g.d->cmnts[state->i]);
+		return(state->freeme);
 	}
 
 	/* XXX FD depracated */

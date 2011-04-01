@@ -58,7 +58,7 @@ struct dinfo {
 	char	*pathname;
 	char	*user;
 	char	*hostname;
-	char	**comments;
+	char	*comments;
 	char	*dkey;
 	int	f_index;
 };
@@ -393,31 +393,6 @@ str2line(char **lines, char *prefix, char *str)
 }
 
 /*
- * Convert line array into a regular string
- */
-private char *
-line2str(char **comments)
-{
-	int	i, len = 0;
-	char	*buf, *p, *q;
-
-	EACH(comments) {
-		len += strlen(comments[i]) + 1;
-	}
-
-	p = buf = malloc(++len);
-	EACH(comments) {
-		q = comments[i];
-		if (isBlank(q)) continue; /* skip blank line */
-		while (*q) *p++ = *q++;
-		*p++ = '\n';
-	}
-	*p = 0;
-	assert(buf + len > p);
-	return (buf);
-}
-
-/*
  * sort function for sorting an array of strings shortest first
  */
 private int
@@ -675,8 +650,8 @@ mkCset(mkcs_t *cur, dinfo *d)
 	e = sccs_dInit(e, 'D', cur->cset, 1);
 	e->flags |= D_CSET; /* copied from cset.c, probably redundant */
 	comments = db2line(cur->csetComment);
-	EACH(comments) comments_append(e, comments[i]);
-	freeLines(comments, 0);
+	comments_set(cur->cset, e, comments);
+	freeLines(comments, free);
 
 	/*
 	 * Need to do compute patch diff entry (and save into 'lines')
@@ -793,7 +768,7 @@ mkTag(mkcs_t *cur, char *tag)
 
 	/* More into 'e' from sccs * and by hand. */
 	e = sccs_dInit(e, 'R', cur->cset, 1);
-	comments_free(e);
+	e->comments = 0;
 
 	/* Some hacks to get sccs_prs to do some work for us */
 	cur->cset->rstart = cur->cset->rstop = e;
@@ -955,7 +930,6 @@ findcset(void)
 	int	j;
 	dinfo	*d = 0, *previous;
 	datum	key, val;
-	char	*p;
 	FILE	*f;
 	delta	*d2;
 	time_t	now, tagDate = 0;
@@ -1056,10 +1030,7 @@ findcset(void)
 		/*
 		 * Extract per file comment and copy them to cset comment
 		 */
-		p = line2str(d->comments);
-		saveComment(cur.csetComment, d->rev, p, d->pathname);
-		free(p);
-		/* pathname will be freeed in freeComment() */
+		saveComment(cur.csetComment, d->rev, d->comments, d->pathname);
 	}
 	if (skip && (opts.verbose > 1)) {
 		fprintf(stderr,
@@ -1122,9 +1093,7 @@ delta2dinfo(sccs *s, delta *d)
 	di->user = strdup(USER(s, d));
 	di->hostname = strdup(HOSTNAME(s, d));
 	di->pathname = strdup(PATHNAME(s, d));
-	comments_load(s, d);
-	di->comments = d->cmnts;
-	d->cmnts = 0;
+	di->comments = strdup(COMMENTS(s, d));
 	sccs_sdelta(s, d, key);
 	di->dkey = strdup(key);
 	return (di);
@@ -1250,7 +1219,8 @@ closeTags(void)
 private int
 do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 {
-	int	i;	/* used by EACH */
+	int	len, i;	/* used by EACH */
+	char	*p, *t;
 	char	type;
 
 	if (!d) return (0);
@@ -1271,7 +1241,8 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 	if (d->csetFile) fprintf(out, "B %s\n", CSETFILE(s, d));
 	if (d->flags & D_CSET) fprintf(out, "C\n");
 	if (d->dangling) fprintf(out, "D\n");
-	EACH_COMMENT(s, d) fprintf(out, "c %s\n", d->cmnts[i]);
+	t = COMMENTS(s, d);
+	while (p = eachline(&t, &len)) fprintf(out, "c %.*s\n", len, p);
 	if (d->dateFudge) fprintf(out, "F %d\n", (int)d->dateFudge);
 	assert(!d->include);
 	if (d->flags & D_CKSUM) {

@@ -229,8 +229,10 @@ printSortedLog(FILE *f)
 private void
 pdelta(sccs *s, delta *d, FILE *f)
 {
-	int	indent, i;
+	int	indent;
 	char	*y;
+	char	*p, *t;
+	int	len;
 
 	if (opts.dspec) {
 		sccs_prsdelta(s, d, opts.prs_flags, opts.dspec, f);
@@ -246,12 +248,13 @@ pdelta(sccs *s, delta *d, FILE *f)
 		indent = opts.indent;
 	}
 	if (opts.changeset) {
-		EACH_COMMENT(s, d) {
+		t = COMMENTS(s, d);
+		while (p = eachline(&t, &len)) {
 			if (indent) fprintf(f, "%*s", indent, "");
 			if (d->pathname) {
 				fprintf(f, "%-8s\t", basenm(PATHNAME(s, d)));
 			}
-			fprintf(f, "%s\n", d->cmnts[i]);
+			fprintf(f, "%.*s\n", len, p);
 		}
 		return;
 	}
@@ -274,9 +277,10 @@ pdelta(sccs *s, delta *d, FILE *f)
 	    USER(s, d));
 	if (d->hostname) fprintf(f, "@%s", HOSTNAME(s, d));
 	fprintf(f, " +%d -%d\n", d->added, d->deleted);
-	EACH_COMMENT(s, d) {
+	t = COMMENTS(s, d);
+	while (p = eachline(&t, &len)) {
 		if (indent) fprintf(f, "%*s", indent, "");
-		fprintf(f, "  %s\n", d->cmnts[i]);
+		fprintf(f, "  %.*s\n", len, p);
 	}
 	fprintf(f, "\n");
 }
@@ -322,8 +326,7 @@ sccslog(sccs *s)
 				nd->output = sccs_prsbuf(s, d,
 				    opts.prs_flags, opts.dspec);
 			} else {
-				nd->output =
-				    joinLines("\n", comments_load(s, d));
+				nd->output = strdup(COMMENTS(s, d));
 				if (nd->output &&
 				    (streq(REV(s, d), "1.1") ||
 				     streq(REV(s, d), "1.0")) &&

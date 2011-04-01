@@ -40,7 +40,7 @@ sccs_getComments(char *prompt)
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		if ((buf2[0] == 0) || streq(buf2, "."))
 			break;
-		if (comments_checkStr(buf2)) {
+		if (comments_checkStr(buf2, strlen(buf2))) {
 			fprintf(stderr, "Skipped.\n");
 			continue;
 		}
