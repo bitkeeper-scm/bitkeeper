@@ -101,7 +101,7 @@ bk get $S -ex+ include
 bk undos include > Y
 cmp -s big_i Y
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
-bk ci $Q -fy include
+BK_CONFIG='compression:none!' bk ci $Q -fy include
 X=`bk _cat SCCS/s.include | sed -n 4p`
 if [ "$X" != "x 11" ]; then echo Failed - bad exclude list $X; exit 1; fi
 echo OK
@@ -114,7 +114,7 @@ cmp -s big_i Y
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 rm -f SAVE
 cp include SAVE
-bk ci $Q -fy include
+BK_CONFIG='compression:none!' bk ci $Q -fy include
 X=`bk _cat SCCS/s.include | sed -n 4p`
 if [ "$X" != "i 2 3 4 5" ]; then echo Failed - bad include list $X; exit 1; fi
 echo OK

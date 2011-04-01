@@ -4,7 +4,7 @@
 private	char	*sccsname(char *path);
 private	int	rcs2bk(RCS *rcs, char *sfile);
 private	int	create(char *sfile, int flags, RCS *rcs);
-private	int	encoding(char *file);
+private	char	*encoding(char *file);
 private	mode_t	mode(char *file);
 private	int	newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags);
 private int	verifyFiles(RCS *rcs, rdelta *d, char *g);
@@ -440,7 +440,7 @@ create(char *sfile, int flags, RCS *rcs)
 {
 	sccs	*s = sccs_init(sfile, 0);
 	char	*g = sccs2name(sfile);
-	int	enc = encoding(rcs->rcsfile);
+	char	*enc = encoding(rcs->rcsfile);
 	int	expand;
 	mode_t	m = mode(rcs->rcsfile);
 	MMAP	*init;
@@ -506,7 +506,7 @@ R %.8s\n",
 	init = mrange(buf, &buf[strlen(buf)], "b");
 
 	/* bk delta $Q $enc -ciI.onezero $gfile */
-	s->encoding = enc;
+	s->encoding_in = s->encoding_out = sccs_encoding(s, 0, enc);
 	if (check_gfile(s, 0)) return (1);
 	if (sccs_delta(s,
 	    flags|NEWFILE|INIT_NOCKSUM|DELTA_PATCH, 0, init, 0, 0)) {
@@ -537,7 +537,7 @@ mode(char *file)
 	return (sbuf.st_mode & 0777);
 }
 
-private	int
+private	char *
 encoding(char *file)
 {
 	char	*av[3];
@@ -546,7 +546,7 @@ encoding(char *file)
 	av[1] = file;
 	av[2] = 0;
 	if (isascii_main(2, av) == 0) {
-		return (E_ASCII);
+		return ("ascii");
 	}
-	return (E_UUENCODE);
+	return ("uuencode");
 }

@@ -45,13 +45,8 @@ comments_main(int ac, char **av)
 		}
 	}
 	if (comment) {
-		delta	*d;
-
 		comments_save(comment);
-		d = comments_get(0);
-		lines = d->cmnts;
-		d->cmnts = 0;
-		sccs_freedelta(d);
+		lines = comments_return(0);
 	} else if (file) {
 		unless (lines = readFile(file)) return (1);
 	}

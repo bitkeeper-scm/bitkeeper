@@ -11,7 +11,7 @@
 			exit(1); \
 		    }
 
-private	int	do_checkin(char *nm, char *cp, int fl,
+private	int	do_checkin(char *nm, int fl,
 		   char *rev, char *newf, char *com);
 private	int	setMerge(sccs *sc, char *merge, char *rev);
 private	void	rootCsetFile(sccs *sc, char *csetFile);
@@ -29,7 +29,6 @@ admin_main(int ac, char **av)
 	char	*comment = 0, *text = 0, *newfile = 0;
 	char	*path = 0, *merge = 0;
 	char	*name;
-	char	*compp = 0;
 	int	error = 0;
 	int	addCsets = 0, dopath = 0, rmCsets = 0, newCset = 0;
 	int	doDates = 0, touchGfile = 0;
@@ -76,10 +75,11 @@ admin_main(int ac, char **av)
 				dopath++;
 				break;
 		/* compression */
-		    case 'Z':	compp = optarg ? optarg : "gzip"; /* doc 2.0 */
-				touchGfile++;
-		   		/* NEWCKSUM done in sccs_admin */
-				break;
+		    case 'Z':					/* doc 2.0 */
+			bk_setConfig("compression", optarg ? optarg : "gzip");
+			flags |= NEWCKSUM;
+			touchGfile++;
+			break;
 		    case 'E':	fprintf(stderr, "No longer supported.\n");
 		    		exit(1);
 		/* symbols */
@@ -188,7 +188,7 @@ admin_main(int ac, char **av)
 
 	while (name) {
 		if (flags & NEWFILE) {
-			if (do_checkin(name, compp,
+			if (do_checkin(name,
 			    flags&(SILENT|NEWFILE), rev, newfile, comment)) {
 				error  = 1;
 				name = sfileNext();
@@ -207,7 +207,7 @@ admin_main(int ac, char **av)
 			continue;
 		}
 		if (flags & ADMIN_ADD1_0) {
-			if (sccs_admin(sc, 0, flags, 0, 0, 0, 0, 0, 0, 0)) {
+			if (sccs_adminFlag(sc, flags)) {
 			    	fprintf(stderr,
 				    "admin: failed to add 1.0 to %s\n",
 				    sc->gfile);
@@ -273,7 +273,7 @@ admin_main(int ac, char **av)
 			}
 		}
 		if (rev) d = sccs_findrev(sc, rev);
-		if (sccs_admin( sc, d, flags, compp, f, 0, u, s, m, text)) {
+		if (sccs_admin( sc, d, flags, f, 0, u, s, m, text)) {
 			sccs_whynot("admin", sc);
 			error = 1;
 		}
@@ -314,7 +314,7 @@ next:		sccs_free(sc);
  */
 private	int
 do_checkin(char *name,
-	char *compp, int flags, char *rev, char *newfile, char *comment)
+	int flags, char *rev, char *newfile, char *comment)
 {
 	delta	*d = 0;
 	sccs	*s;

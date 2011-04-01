@@ -4,8 +4,8 @@
 
 private int	undoit(MDBM *m);
 private int	doit(int flags, char *file, char *op, char *revs);
-private int	commit(int quiet, delta *d);
-private	delta	*getComments(char *op, char *revs);
+private	int	commit(int quiet, char **cmts);
+private	char	**getComments(char *op, char *revs);
 private void	clean(char *file);
 private void	unedit(void);
 private int	mergeInList(sccs *s, char *revs);
@@ -27,7 +27,7 @@ cset_inex(int flags, char *op, char *revs)
 	FILE	*f;
 	char	*av[20];
 	MDBM	*m = mdbm_mem();
-	delta	*d;
+	char	**cmts;
 	char	*t;
 	char	*revarg;
 	char	buf[MAXKEY];
@@ -47,7 +47,7 @@ cset_inex(int flags, char *op, char *revs)
 		return (1);
 	}
 
-	d = getComments(op, revarg);
+	cmts = getComments(op, revarg);
 	free(revarg);
 
 	file[0] = 0;
@@ -108,7 +108,7 @@ cset_inex(int flags, char *op, char *revs)
 		free(revbuf);
 	}
 	mdbm_close(m);
-	return (commit(flags & SILENT, d));
+	return (commit(flags & SILENT, cmts));
 }
 
 private void
@@ -138,13 +138,13 @@ unedit(void)
 	spawnvp(_P_WAIT, "bk", av);
 }
 
-private	delta *
+private	char **
 getComments(char *op, char *revs)
 {
 	int	i;
 	FILE	*f;
 	char	*av[20];
-	delta	*d;
+	char	**cmts = 0;
 	char	buf[MAXKEY];
 
 	assert(strneq("-r", revs, 2));
@@ -163,8 +163,7 @@ getComments(char *op, char *revs)
 		perror("popenvp");
 		return (0);
 	}
-	d = new(delta);
-	if (comments_got()) d = comments_get(d);
+	if (comments_got()) cmts = comments_return(0);
 	if (streq(op, "-i")) {
 		strcpy(buf, "Cset include: ");
 	} else {
@@ -172,14 +171,14 @@ getComments(char *op, char *revs)
 	}
 	while (fgets(&buf[14], sizeof(buf) - 14, f)) {
 		chop(buf);
-		comments_append(d, strdup(buf));
+		cmts = addLine(cmts, strdup(buf));
 	}
 	pclose(f);
-	return (d);
+	return (cmts);
 }
 
 private int
-commit(int quiet, delta *d)
+commit(int quiet, char **cmts)
 {
 	int	i;
 	char	*comment = 0;
@@ -187,13 +186,13 @@ commit(int quiet, delta *d)
 	char	*tmp = bktmp(0, "commit");
 	FILE	*f = fopen(tmp, "w");
 
-	EACH_COMMENT(0, d) {
-		fputs(d->cmnts[i], f);
+	EACH(cmts) {
+		fputs(cmts[i], f);
 		fputc('\n', f);
 	}
+	freeLines(cmts, free);
 	fclose(f);
 	comment = aprintf("-Y%s", tmp);
-	sccs_freedelta(d);
 	cmds[i=0] = "bk";
 	cmds[++i] = "commit";
 	cmds[++i] = "-dF";
@@ -336,9 +335,7 @@ err:		sccs_free(s);
 		goto err;
 	}
 	if (flags & GET_SKIPGET) goto ok;	/* we are the cset file */
-	if (comments_got()) {
-		d = comments_get(0);
-	} else {
+	unless (comments_got()) {
 		char	*what = streq(op, "-x") ? "Exclude" : "Include";
 
 		d = sccs_parseArg(s, 0, 'C', what, 0);

@@ -5,7 +5,6 @@
 #define	MAXCMT	1020
 
 private	char	**saved;	/* saved copy of comments across files */
-private	char	*comment;	/* a placed to parse the comment from */
 private	int	gotComment;	/* seems redundant but it isn't, this is
 				 * is how we know we have a null comment.
 				 */
@@ -16,10 +15,7 @@ comments_save(char *s)
 	char	*p, **split;
 	int	i, len;
 
-	unless (s) {
-		comment = 0;
-		goto out;
-	}
+	unless (s) goto out;	/* null comment */
 
 	if (saved) freeLines(saved, free);
 	saved = 0;
@@ -52,49 +48,14 @@ out:	gotComment = 1;
 int
 comments_savefile(char *s)
 {
-	FILE	*f;
-	char	*last;
-	int	split = 0;
-	char	splitmsg[51];
-	char	buf[MAXCMT];
+	char	*str;
+	int	rc;
 
-	if (!s || !exists(s) || (size(s) <= 0)) {
-		return (-1);
-	}
-	unless (f = fopen(s, "r")) {
-		perror(s);
-		return (-1);
-	}
-	gotComment = 1;
-	comment = "";
-	while (fnext(buf, f)) {
-		last = buf;
-		while (*last && (*last != '\n')) last++;
-		while ((last > buf) && (last[-1] == '\r')) --last;
-		if (split) {
-			split = 0;
-			if (last == buf) continue;
-			fprintf(stderr,
-			    "Splitting comment line \"%s\"...\n", splitmsg);
-		}
-		if ((last == &buf[MAXCMT - 1]) && !*last) {
-			split = 1;
-			strncpy(splitmsg, buf, 50);
-			splitmsg[50] = 0;
-		}
-		*last = 0;	/* strip any trailing NL */
-		if (comments_checkStr(buf)) {
-			freeLines(saved, free);
-			saved = 0;
-			comment = "";
-			fclose(f);
-			return (-1);
-		}
-		saved = addLine(saved, strdup(buf));
-	}
-	if (saved) comment = 0;
-	fclose(f);
-	return (0);
+	unless (str = loadfile(s, 0)) return (-1);
+
+	rc = comments_save(str);
+	free(str);
+	return (rc);
 }
 
 int
@@ -106,43 +67,57 @@ comments_got(void)
 void
 comments_done(void)
 {
-	int	i;
-
-	if (!saved) return;
-	EACH(saved) free(saved[i]);
-	free(saved);
+	freeLines(saved, free);
 	saved = 0;
 	gotComment = 0;
-	comment = 0;
-	/* XXX - NULL comment as well? */
 }
 
-delta *
-comments_get(delta *d)
+/*
+ * Return the collected comments from comments_save() or comments_savefile().
+ * If nothing saved and prompt!=0 then prompt for commands and return that.
+ *
+ * return null if prompt aborted
+ */
+char **
+comments_return(char *prompt)
 {
 	int	i;
+	char	**ret = 0;
 
-	unless (d) d = new(delta);
-	if (!comment && !saved && gotComment) return (d);
-	if (!comment) {
-		if (saved) {
-			EACH(saved) comments_append(d, strdup(saved[i]));
-			return (d);
-		}
-		if (sccs_getComments("Group comments", 0, d)) {
-			return (0);
-		}
-		EACH_COMMENT(0, d) {
-			saved = addLine(saved, strdup(d->cmnts[i]));
-		}
+	if (!saved && !gotComment && prompt) {
+		unless (saved = sccs_getComments(prompt)) return (0);
+	}
+	EACH(saved) ret = addLine(ret, strdup(saved[i]));
+	unless (ret) ret = allocLines(2);
+	return (ret);
+}
+
+/*
+ * Attach saved comments to delta, prompted if needed
+ */
+delta *
+comments_get(char *file, char *rev, sccs *s, delta *d)
+{
+	int	i;
+	char	**cmts;
+	char	*prompt = 0;
+
+	if (file) {
+		prompt = aprintf("%s%s%s",
+		    file,
+		    rev ? "@" : ":",
+		    rev ? rev : "");
+	}
+	if (cmts = comments_return(prompt)) {
+		unless (d) d = new(delta);
+		/* sort of a catLines() plus setting comments metadata */
+		EACH(cmts) comments_append(d, cmts[i]);
+		freeLines(cmts, 0);
 	} else {
-		// XXX will need sccs* in future
-		d = sccs_parseArg(0, d, 'C', comment, 0);
+		if (d) sccs_freedelta(d);
+		d = 0;		/* prompt aborted */
 	}
-	if (d && (d->flags & D_ERROR)) {
-		sccs_freedelta(d);
-		return (0);
-	}
+	if (prompt) free(prompt);
 	return (d);
 }
 
@@ -214,16 +189,7 @@ comments_cleancfile(sccs *s)
 void
 comments_writefile(char *file)
 {
-	FILE	*f;
-	int	i;
-
-	if (f = fopen(file, "w")) {
-		if (comment) fprintf(f, "%s\n", comment);
-		EACH (saved) {
-			fprintf(f, "%s\n", saved[i]);
-		}
-		fclose(f);
-	}
+	lines2File(saved, file);
 }
 
 int

@@ -63,6 +63,7 @@ bk commit $Q -ywhatever
 KEY=`bk prs -hr+ -d:KEY: LS`
 MONTH=`bk prs -hr+ -d:Dm: LS`
 BADKEY=`echo "$KEY" | sed s/$MONTH/00/`
+bk admin -Znone ChangeSet
 bk _cat SCCS/s.ChangeSet | sed "s,$KEY,$BADKEY," | bk undos > X
 bk _mv X SCCS/s.ChangeSet
 bk admin -z ChangeSet

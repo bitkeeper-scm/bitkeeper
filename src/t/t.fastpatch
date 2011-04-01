@@ -13,6 +13,8 @@
 _BK_NO_PATCHSFIO=1
 export _BK_NO_PATCHSFIO
 
+echo 'compression:none!' >> "`bk dotbk`"/config
+
 # count how many fastpatchs in a patch file
 # patchcount file want-count
 patchcount() {
@@ -51,7 +53,8 @@ weavedump() {
 
 echo -------------- makepatch -F tests
 echo $N Tags only - no patch ........................................$NL
-commercial project
+# build a new one with compression off
+fresh_commercial project
 # freebsd3 is uppity about 'commercial' because of the line
 # "test -d $REPO && rm -fr $REPO" under set -e operation.
 # Try running "./doit t.rename" and you will see.  Then try running
@@ -113,6 +116,8 @@ echo OK
 
 echo $N Whole repo to this point in time -- cset and file ...........$NL
 cd ..
+cd project
+cd ..
 mkdir empty
 cd empty
 bk takepatch -ia < ../project/fullpatch || exit 1
@@ -120,7 +125,7 @@ bk -r | while read file; do
 	bk _cp $file tp
 	bk _cp ../project/$file mp
 	cmpfiles tp mp
-done
+done || fail
 echo OK
 
 echo $N sfiles end early ............................................$NL

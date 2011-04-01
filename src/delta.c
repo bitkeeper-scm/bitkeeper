@@ -106,7 +106,7 @@ strip_danglers(char *name, u32 flags)
 		comments_load(s, d);
 		comments_append(d, strdup("Turn on MONOTONIC flag"));
 	}
-	sccs_admin(s, 0, NEWCKSUM|ADMIN_FORCE, 0, 0, 0, 0, 0, 0, 0);
+	sccs_adminFlag(s, NEWCKSUM|ADMIN_FORCE);
 	sccs_free(s);
 	return (0);
 }
@@ -124,8 +124,7 @@ delta_main(int ac, char **av)
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*prog, *name;
-	char	*compp = 0, *encp = 0;
-	char	*def_compp;
+	char	*encp = 0;
 	char	*mode = 0;
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
@@ -210,24 +209,24 @@ delta_main(int ac, char **av)
 			dflags |= DELTA_DONTASK;
 			break; 	/* doc 2.0 */
 		    case 'Z': 					/* doc 2.0 */
-			compp = optarg ? optarg : "gzip"; break;
+			bk_setConfig("compression", optarg ? optarg : "gzip");
+			break;
 		    case 'E': encp = optarg; break; 		/* doc 2.0 */
 
 		    default: bk_badArg(c, av);
 		}
 	}
 
-	def_compp  = proj_configval(0, "compression");
-	unless (def_compp && *def_compp) def_compp = "gzip";
 
-	if (encp || compp) {
+	if (encp) {
 		unless (dflags & NEWFILE) {
 			fprintf(stderr,
 			    "Encoding is allowed only when creating files\n");
 			usage();
 		}
+
 		/* check that they gave us something we can parse */
-		if (sccs_encoding(0, 0, encp, compp) == -1) usage();
+		if (sccs_encoding(0, 0, encp) == -1) usage();
 	}
 
 	if (chk_host() || chk_user()) return (1);
@@ -281,9 +280,6 @@ delta_main(int ac, char **av)
 		int	reget = 0;
 		int	co;
 
-		if (df & DELTA_DONTASK) {
-			unless (d = comments_get(0)) usage();
-		}
 		if (mode) d = sccs_parseArg(0, d, 'O', mode, 0);
 		unless (s = sccs_init(name, iflags)) {
 			if (d) sccs_freedelta(d);
@@ -299,10 +295,6 @@ delta_main(int ac, char **av)
 				df |= NEWFILE;
 			}
 		}
-		if (dflags & NEWFILE) {
-			unless (ignorePreference || compp) compp = def_compp;
-		}
-
 		/*
 		 * Checkout option does not applies to ChangeSet file
 		 * see rev 1.118
@@ -334,7 +326,12 @@ delta_main(int ac, char **av)
 			}
 			nrev = pf.newrev;
 		}
-
+		if (df & DELTA_DONTASK) {
+			unless (d = comments_get(s->gfile, nrev, s, d)) {
+				errors |= 1;
+				break;
+			}
+		}
 		if (fire && proj_hasDeltaTriggers(s->proj)) {
 			win32_close(s);
 			switch (delta_trigger(s)) {
@@ -351,7 +348,8 @@ delta_main(int ac, char **av)
 
 		if (df & NEWFILE) {
 			sz = diffs ? (off_t)msize(diffs) : size(s->gfile);
-			s->encoding = sccs_encoding(s, sz, encp, compp);
+			s->encoding_in = s->encoding_out =
+			    sccs_encoding(s, sz, encp);
 		}
 
 		dangling = MONOTONIC(s) && sccs_top(s)->dangling;

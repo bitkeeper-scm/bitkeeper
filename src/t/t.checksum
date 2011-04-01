@@ -87,6 +87,7 @@ if [ $DSUM = "41232" ]
 then	NSUM="23765"
 else	NSUM="41232"
 fi
+bk admin -Znone ChangeSet
 bk _mv SCCS/s.ChangeSet scset
 # make a leading zero (LZ) 5 digit version of DSUM; NSUM is already 5 digits
 DSUMLZ=`printf "%0.5u" $DSUM`

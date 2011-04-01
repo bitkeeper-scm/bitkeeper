@@ -213,7 +213,7 @@ err:		unless (skip_lock) repository_wrunlock(0, 0);
 			}
 		}
 
-                if (sccs_admin(s, 0, ADMIN_NEWPATH, 0, 0, 0, 0, 0, 0, 0)) {
+                if (sccs_adminFlag(s, ADMIN_NEWPATH)) {
                         sccs_whynot("mvdir", s);
 			goto err;
                 }

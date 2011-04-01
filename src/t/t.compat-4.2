@@ -118,6 +118,7 @@ rm -fr project copy
 _BK_BAM_V2=1
 export _BK_BAM_V2
 _commercial_config > c
+echo compression:none >> c
 bk setup -a -f --sccs-compat -cc project.noremap || fail
 cd project.noremap
 echo BAMBAM > BAM

@@ -333,7 +333,10 @@ cset_setup(int flags)
 	cset = sccs_init(csetFile, 0);
 	assert(cset && cset->proj);
 
-	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
+	if ((flags & DELTA_DONTASK) &&
+	    !(d = comments_get(0, 0, cset, d))) {
+		goto intr;
+	}
 
 	d->hostname = sccs_addUniqStr(cset, sccs_gethost());
 	unless (isValidHost(HOSTNAME(cset, d))) {
@@ -1136,7 +1139,10 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 		close(fd0);
 		fd0 = -1;
 	}
-	if (flags & DELTA_DONTASK) d = comments_get(d);
+	if ((flags & DELTA_DONTASK) && !(d = comments_get(0, 0, cset, d))) {
+		error = -1;
+		goto out;
+	}
 	if (sccs_delta(cset, flags, d, 0, diffs, syms) == -1) {
 		sccs_whynot("cset", cset);
 		error = -1;
@@ -1175,7 +1181,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	char	*gfile = 0;
 	ticker	*tick = 0;
 
-        if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
+        if (sccs_adminFlag(s, SILENT|ADMIN_BK)) {
 		fprintf(stderr, "Patch aborted, %s has errors\n", s->sfile);
 		fprintf(stderr,
 		    "Run ``bk -r check -a'' for more information.\n");

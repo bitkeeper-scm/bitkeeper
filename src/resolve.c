@@ -2069,7 +2069,7 @@ do_delta(opts *opts, sccs *s, char *comment)
 	comments_done();
 	if (comment) {
 		comments_save(comment);
-		d = comments_get(0);
+		d = comments_get(0, 0, s, 0);
 		flags |= DELTA_DONTASK;
 	}
 	if (opts->quiet) flags |= SILENT;
@@ -2207,7 +2207,7 @@ err:		resolve_free(rs);
 		}
 		if (!LOCKED(rs->s) && edit(rs)) goto err;
 		comments_save("Auto merged");
-		e = comments_get(0);
+		e = comments_get(0, 0, rs->s, 0);
 		sccs_restart(rs->s);
 		flags = DELTA_DONTASK|DELTA_FORCE|(rs->opts->quiet? SILENT : 0);
 		if (sccs_delta(rs->s, flags, e, 0, 0, 0)) {
@@ -2350,7 +2350,7 @@ nomerge:	rs->opts->hadConflicts++;
 		}
 same:		if (!LOCKED(rs->s) && edit(rs)) return;
 		comments_save("Auto merged");
-		d = comments_get(0);
+		d = comments_get(0, 0, rs->s, 0);
 		rs->s = sccs_restart(rs->s);
 		flags = DELTA_DONTASK|DELTA_FORCE|SILENT;
 		if (sccs_delta(rs->s, flags, d, 0, 0, 0)) {
@@ -2708,8 +2708,8 @@ pass4_apply(opts *opts)
 			resolve_cleanup(opts, 0);
 		}
 #define	F ADMIN_FORMAT|ADMIN_TIME|ADMIN_BK
-		if (sccs_admin(r, 0, SILENT|F, 0, 0, 0, 0, 0, 0, 0)) {
-			sccs_admin(r, 0, F, 0, 0, 0, 0, 0, 0, 0);
+		if (sccs_adminFlag(r, SILENT|F)) {
+			sccs_adminFlag(r, F);
 			fprintf(stderr, "resolve: bad file %s;\n", r->sfile);
 			fprintf(stderr, "resolve: no files were applied.\n");
 			fclose(save);

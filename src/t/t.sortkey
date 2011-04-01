@@ -93,7 +93,7 @@ perl -pe 's/cK00059/cK00059|00059/' < Y | bk undos > X
 cmp -s X Y && fail should be different
 chmod 444 X
 bk _mv X SCCS/s.del
-bk admin -z del
+bk admin -z -Znone del
 bk _cat SCCS/s.del > X
 cmpfiles X Y
 echo OK

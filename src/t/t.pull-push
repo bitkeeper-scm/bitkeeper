@@ -13,6 +13,8 @@ PREFIX=file://"$HERE"
 BK_REMOTEBIN="`bk bin`"
 export BK_REMOTEBIN
 
+echo 'compression:none!' >> "`bk dotbk`"/config
+
 # Tests for pull, push, and clone.
 echo $N Create initial repository ...................................$NL
 commercial project
