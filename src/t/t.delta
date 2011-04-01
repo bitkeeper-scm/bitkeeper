@@ -575,7 +575,7 @@ cd "$HERE/project"
 ls > LS
 bk new $Q LS
 for i in 0 1 2 3 4 5 6 7 8 9
-do echo $N 1234567890$NL
+do echo $NX 1234567890$NXL
 done > 100
 for i in 0 1 2 3 4 5 6 7 8 9
 do cat 100
@@ -662,7 +662,7 @@ echo OK
 
 echo $N Check 1020 char comment .....................................$NL
 bk edit $Q LS
-( cat 1000; echo $N 01234567890123456789$NL ) > 1020
+( cat 1000; echo $NX 01234567890123456789$NXL ) > 1020
 bk delta -f -y`cat 1020` LS 2>ERR
 grep -q Splitting ERR && {
 	echo bad diagnostics

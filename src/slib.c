@@ -13381,7 +13381,7 @@ out:
 			if (comments_readcfile(s, 0, n)) OUT;
 		} else switch (comments_readcfile(s, 1, n)) {
 		    case -1: /* no c.file found */
-			if (sccs_getComments(s->gfile, pf.newrev, n)) {
+			unless (comments_get(s->gfile, pf.newrev, s, n)) {
 				error = -4;
 				goto out;
 			}

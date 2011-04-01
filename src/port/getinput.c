@@ -27,18 +27,15 @@ caught(char *what)
 	return (counter);
 }
 
-int
-sccs_getComments(char *file, char *rev, delta *n)
+char **
+sccs_getComments(char *prompt)
 {
+	char	**ret = allocLines(4);
 	char	buf2[1024];
 
 	fprintf(stderr, "End comments with \".\" by itself or a blank line.\n");
-	assert(file);
-	if (rev) {
-		fprintf(stderr, "%s %s>>  ", file, rev);
-	} else {
-		fprintf(stderr, "%s>>  ", file);
-	}
+	assert(prompt);
+	fprintf(stderr, "%s>>  ", prompt);
 	catch();
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		if ((buf2[0] == 0) || streq(buf2, "."))
@@ -47,14 +44,14 @@ sccs_getComments(char *file, char *rev, delta *n)
 			fprintf(stderr, "Skipped.\n");
 			continue;
 		}
-		comments_append(n, strdup(buf2));
-		if (rev) {
-			fprintf(stderr, "%s@%s>>  ", file, rev);
-		} else {
-			fprintf(stderr, "%s>>  ", file);
-		}
+		ret = addLine(ret, strdup(buf2));
+		fprintf(stderr, "%s>>  ", prompt);
 	}
-	return (caught("Check in") ? -1 : 0);
+	if (caught("Check in")) {
+		freeLines(ret, free);
+		ret = 0;
+	}
+	return (ret);
 }
 
 char **
