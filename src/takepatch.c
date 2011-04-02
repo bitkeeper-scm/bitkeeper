@@ -1315,7 +1315,7 @@ applyPatch(char *localPath, sccs *perfile)
 		fprintf(stderr,
 		    "stripdel %s from %s\n", REV(s, tableGCA), s->sfile);
 	}
-	if (d = sccs_next(s, sccs_findrev(s, REV(s, tableGCA)))) {
+	if (d = sccs_prev(s, sccs_findrev(s, REV(s, tableGCA)))) {
 		delta	*e;
 
 		for (e = s->table; e; e = NEXT(e)) {

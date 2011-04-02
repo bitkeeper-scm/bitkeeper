@@ -271,13 +271,13 @@ private	delta	*
 checkCset(sccs *s)
 {
 	delta	*d, *e;
+	int	saw_cset = 0;
 
 	for (d = s->table; d; d = NEXT(d)) {
+		if (d->flags & D_CSET) saw_cset = 1;
 		unless (d->flags & D_SET) continue;
-		for (e = d; e; e = KID(e)) {
-			if (e->flags & D_CSET) {
-				return (e);
-			}
+		if (saw_cset && (e = sccs_csetBoundary(s, d))) {
+			return (e);
 		}
 	}
 	return (0);

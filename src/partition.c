@@ -588,7 +588,7 @@ private	int
 moveComps(Opts *opts)
 {
 	sccs	*cset = 0;
-	delta	*d;
+	delta	*d, *d2;
 	int	i, j, len, ret = 1;
 	char	*newpath;
 	char	**bamdirs = 0;
@@ -637,11 +637,12 @@ moveComps(Opts *opts)
 		 * want the repo to be attached until there are user files.
 		 * This lets a file 'foo' become a component 'foo' later.
 		 */
-		d = cset->tree;
+		d = cset->tree;		 /* 1.0 */
 		assert(d);
 		d->flags &= ~D_CSET;
-		assert(KID(d));
-		KID(d)->flags &= ~D_CSET;
+		d2 = sccs_kid(cset, d); /* 1.1 */
+		assert(d2);
+		d2->flags &= ~D_CSET;
 		/*
 		 * Accumulate serial-tagged entries for product weave
 		 * bk changes -nd'$if(:CSETKEY:){:DS:\t:ROOTKEY: :KEY:}'

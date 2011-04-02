@@ -305,7 +305,6 @@ int	checking_rmdir(char *dir);
 		/*	0x00004000 */
 #define	D_RED		0x00008000	/* marker used in graph traeversal */
 #define	D_CKSUM		0x00010000	/* delta has checksum */
-#define	D_MERGED	0x00020000	/* set on branch tip which is merged */
 #define	D_GONE		0x00040000	/* this delta is gone, don't print */
 #define	D_BLUE		0x00080000	/* when you need two colors */
 
@@ -504,8 +503,8 @@ typedef struct delta {
 #define	NEXT(d)		slist_next(d)
 #define	PARENT(s, d)	SFIND((s), (d)->pserial)
 #define	MERGE(s, d)	SFIND((s), (d)->merge)
-#define	KID(d)		DFIND((d), (d)->kid)
-#define	SIBLINGS(d)	DFIND((d), (d)->siblings)
+#define	KID(s, d)	SFIND((s), (s)->kidlist[(d)->serial].kid)
+#define	SIBLINGS(s, d)	SFIND((s), (s)->kidlist[(d)->serial].siblings)
 
 #define	REV(s, d)	((s)->heap.buf + (d)->rev)
 #define	BAMHASH(s, d)	((s)->heap.buf + (d)->bamhash)
@@ -615,6 +614,11 @@ typedef struct loc {
 	ser_t	serial;
 } loc;
 
+typedef	struct {
+	ser_t	kid;
+	ser_t	siblings;
+} KIDS;
+
 /*
  * struct sccs - the delta tree, the data, and associated junk.
  */
@@ -622,6 +626,7 @@ struct sccs {
 	delta	*tree;		/* the delta tree after mkgraph() */
 	delta	*table;		/* the delta table list, 1.99 .. 1.0 */
 	delta	*slist;
+	KIDS	*kidlist;	/* optional kid/sibling data */
 	symbol	*symbols;	/* symbolic tags sorted most recent to least */
 	symbol	*symTail;	/* last symbol, for tail inserts */
 	char	*defbranch;	/* defbranch, if set */
@@ -998,14 +1003,14 @@ u32	a2xflag(char *str);
 void	sccs_mkroot(char *root);
 int	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);
 char	*sccs_setpathname(sccs *s);
-delta	*sccs_next(sccs *s, delta *d);
+delta	*sccs_prev(sccs *s, delta *d);
+delta	*slist_next(delta *d);
 int	sccs_reCache(int quiet);
 int	sccs_meta(char *m,sccs *s, delta *parent, MMAP *initFile, int fixDates);
 int	sccs_findtips(sccs *s, delta **a, delta **b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
-delta	*slist_next(delta *d);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
 
@@ -1016,7 +1021,8 @@ int	sccs_mylock(char *lockf);
 int	sccs_readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp);
 
 char	*sccs_utctime(sccs *s, delta *d);
-void	sccs_kidlink(sccs *s, delta *d);
+delta	*sccs_kid(sccs *s, delta *d);
+void	sccs_mkKidList(sccs *s);
 void	sccs_renumber(sccs *s, u32 flags);
 char 	*sccs_iskeylong(char *key);
 int	linelen(char *s);

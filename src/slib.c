@@ -462,8 +462,6 @@ sccs_freedelta(delta *d)
 	if (!d) return;
 
 	assert(!d->inarray);
-	assert(!d->siblings);
-	assert(!d->kid);
 	freedelta(d);
 	free(d);
 }
@@ -525,41 +523,57 @@ sccs_inherit(sccs *s, delta *d)
 #undef	CHK_DUP
 
 	DATE(s, d);
-	if (d->merge) {
-		d = MERGE(s, d);
-		assert(d);
-		d->flags |= D_MERGED;
+}
+
+/*
+ * Find first kid on same branch or oldest kid.
+ * Use sparingly.  If need to use much, then use sccs_mkKidList()
+ * and then use the KID() macro.
+ * The first kid will be same branch in BK, not necessarily so in teamware
+ */
+delta *
+sccs_kid(sccs *s, delta *d)
+{
+	delta	*e, *first = 0;
+
+	for (e = d + 1; e <= s->table; e++) {
+		if (e->serial && !TAG(e) && (e->pserial == d->serial)) {
+			if (samebranch(d, e)) return (e);
+			unless (first) first = e;
+		}
 	}
+	return (first);
 }
 
 void
-sccs_kidlink(sccs *s, delta *d)
+sccs_mkKidList(sccs *s)
 {
-	delta	*p = PARENT(s, d);
+	delta	*d, *p;
 	delta	*e;
+	KIDS	*pk;		/* parent's kids */
 
-	unless (p) return;
-	assert(!d->kid && !d->siblings);
-	if (!p->kid) {
-		p->kid = d->serial;
-		debug((stderr, " -> %s (kid)\n", p->rev));
 
-	} else if ((KID(p)->type == 'D') &&
-	    samebranch(p, KID(p))) { /* in right place */
-		/*
-		 * If there are siblings, add d at the end.
-		 */
-		for (e = KID(p); e->siblings; e = SIBLINGS(e));
-		e->siblings = d->serial;
-		debug((stderr, " -> %s (sib)\n", p->rev));
-	} else {  /* else not in right place, put the new delta there. */
-		debug((stderr, "kid type %c, %d.%d.%d.%d vs %d.%d.%d.%d\n",
-		    p->kid->type, p->r[0], p->r[1], p->r[2], p->r[3],
-		    p->kid->r[0], p->kid->r[1], p->kid->r[2], p->kid->r[3]));
-		d->siblings = p->kid;
-		p->kid = d->serial;
-		debug((stderr, " -> %s (kid, moved sib %s)\n",
-		    p->rev, d->siblings->rev));
+	FREE(s->kidlist);
+	growArray(&s->kidlist, s->nextserial);
+	EACHP(s->slist, d) {
+		unless (d->serial && !TAG(d)) continue;
+		unless (p = PARENT(s, d)) continue;
+
+		pk = s->kidlist + p->serial;
+		if (!pk->kid) {
+			pk->kid = d->serial;
+
+		} else if (samebranch(p, KID(s, p))) { /* in right place */
+			/*
+			 * If there are siblings, add d at the end.
+			 */
+			for (e = KID(s, p); SIBLINGS(s, e); e = SIBLINGS(s, e));
+			s->kidlist[e->serial].siblings = d->serial;
+		} else {
+			/* else not in right place, put the new delta there. */
+			s->kidlist[d->serial].siblings = pk->kid;
+			pk->kid = d->serial;
+		}
 	}
 }
 
@@ -600,7 +614,6 @@ dinsert(sccs *s, delta *d, int fixDate)
 		debug((stderr, "GRAFT: %s@%s\n", s->gfile, d->rev));
 		s->grafted = 1;
 	}
-	sccs_kidlink(s, d);
 	sccs_inherit(s, d);
 	if (fixDate) {
 		uniqDelta(s);
@@ -609,24 +622,6 @@ dinsert(sccs *s, delta *d, int fixDate)
 	return (d);
 }
 
-
-/*
- * This is the NEXT(d) macro.
- * Move to the next older delta in table order.
- */
-delta *
-slist_next(delta *d)
-{
-	ser_t	ser = d->serial;
-
-	assert(ser && d->inarray);
-	while (ser > 1) {
-		--ser;
-		--d;
-		if (d->serial) return (d);
-	}
-	return (0);
-}
 
 delta *
 sfind(sccs *s, ser_t serial)
@@ -1468,33 +1463,6 @@ samerev(ser_t a[4], ser_t b[4])
 		(a[3] == b[3]));
 }
 
-private ser_t	R[4];
-/*
- * This one uses the globals set up below.  This hack makes this library
- * !MT safe.  Which it wasn't anyway.
- * XXX: wouldn't it have been simpler to use what kid and sibling mean
- * to just walk to the place of interest?  No stack windup, no recurse
- * higher perf, simpler code, saner walk, etc.
- */
-private delta *
-_rfind(delta *d)
-{
-	delta	*t;
-
-	debug((stderr,
-	    "\t_rfind(%d.%d.%d.%d)\n", d->r[0], d->r[1], d->r[2], d->r[3]));
-	if (samerev(d->r, R) && !TAG(d)) {
-		return (d);
-	}
-	if (d->kid && (t = _rfind(KID(d)))) {
-		return (t);
-	}
-	if (d->siblings && (t = _rfind(SIBLINGS(d)))) {
-		return (t);
-	}
-	return (0);
-}
-
 /*
  * Find the delta referenced by rev.  It must be an exact match.
  */
@@ -1502,15 +1470,18 @@ private delta *
 rfind(sccs *s, char *rev)
 {
 	delta	*d;
+	ser_t	R[4];
 
 	debug((stderr, "rfind(%s) ", rev));
 	name2rev(s, &rev);
 	R[0] = R[1] = R[2] = R[3] = 0;
 	scanrev(rev, &R[0], &R[1], &R[2], &R[3]);
 	debug((stderr, "aka %d.%d.%d.%d\n", R[0], R[1], R[2], R[3]));
-	d = _rfind(s->tree);
-	debug((stderr, "rfind(%s) got %s\n", rev, d ? d->rev : "Not found"));
-	return (d);
+	for (d = s->table; d; d = NEXT(d)) {
+		unless (d->serial && !TAG(d)) continue;
+		if (samerev(d->r, R)) return (d);
+	}
+	return (0);
 }
 
 private char *
@@ -1595,11 +1566,13 @@ findrev(sccs *s, char *rev)
 			debug((stderr, "findrev(%s) =  Not found\n", rev));
 			return (0);
 		}
-		while (e->kid &&
-		    (KID(e)->type == 'D') && samebranch(e, KID(e))) {
-			e = KID(e);
+		/* find latest delta on same branch */
+		for (f = s->table; f > e; f--) {
+			if (samebranch(e, f)) {
+				e = f;
+				break;
+			}
 		}
-		debug((stderr, "findrev(%s) =  %s\n", rev, e->rev));
 		return (e);
 	    default:
 		fprintf(stderr, "Malformed revision: %s\n", rev);
@@ -1774,12 +1747,6 @@ isbranch(delta *d)
 	return (d->r[2]);
 }
 
-private inline int
-morekids(delta *d)
-{
-	return (d->kid && (KID(d)->type != 'R') && samebranch(d, KID(d)));
-}
-
 /*
  * Get the delta that is the basis for this edit.
  * Get the revision name of the new delta.
@@ -1791,6 +1758,7 @@ sccs_getedit(sccs *s, char **revp)
 	char	*rev = *revp;
 	ser_t	a = 0, b = 0, c = 0, d = 0;
 	delta	*e, *t;
+	ser_t	R[4];
 	static	char buf[MAXREV];
 
 	debug((stderr, "sccs_getedit(%s, %s)\n", s->gfile, notnull(*revp)));
@@ -1818,7 +1786,11 @@ ok:
 	 * Just continue trunk/branch
 	 * Because the kid may be a branch, we have to be extra careful here.
 	 */
-	unless (morekids(e)) {
+	for (t = e+1; t <= s->table; t++) {
+		unless (t->serial && !TAG(t)) continue;
+		if ((t->pserial == e->serial) && samebranch(t, e)) break;
+	}
+	if (t > s->table) {	/* no more kids of e */
 		a = e->r[0];
 		b = e->r[1];
 		c = e->r[2];
@@ -1840,8 +1812,7 @@ ok:
 		}
 		debug((stderr, "sccs_getedit1(%s) -> %s\n", notnull(rev), buf));
 		*revp = buf;
-	}
-	else {
+	} else {
 		/*
 		 * For whatever reason (they asked, or there is a kid in
 		 * the way), we need a branch.  Branches are all based,
@@ -1854,12 +1825,16 @@ ok:
 
 		for (t = e; isbranch(t); t = PARENT(s, t));
 		R[0] = t->r[0]; R[1] = t->r[1]; R[2] = 1; R[3] = 1;
-		while (_rfind(t)) R[2]++;
+again:		for (a = t->serial+1; a < s->nextserial; a++) {
+			if (samerev(s->slist[a].r, R)) {
+				/* found X.Y.Z.1 branch, try another */
+				++R[2];
+				goto again;
+			}
+		}
 		sprintf(buf, "%d.%d.%d.%d", R[0], R[1], R[2], R[3]);
-		debug((stderr, "sccs_getedit2(%s) -> %s\n", notnull(rev), buf));
 		*revp = buf;
 	}
-
 	return (e);
 }
 
@@ -3005,15 +2980,27 @@ meta(sccs *s, delta *d, char *buf)
  * If you pass in 1.10, this should give you 1.11.
  */
 delta	*
-sccs_next(sccs *s, delta *d)
+sccs_prev(sccs *s, delta *d)
 {
-	delta	*e;
+	unless (s && d) return (0);
+	for (d = d+1; d <= s->table; d++) {
+		if (d->serial) return (d);
+	}
+	return (0);
+}
 
-	if (!s || !d) return (0);
-	if (d == s->table) return (0);
-	for (e = d->kid ? KID(d) : s->table; NEXT(e) != d; e = NEXT(e));
-	assert(e && (NEXT(e) == d));
-	return (e);
+/*
+ * This is the NEXT(d) macro.
+ * Move to the next older delta in table order.
+ */
+delta *
+slist_next(delta *d)
+{
+	if (d->serial <= 1) return (0);
+	while (1) {
+		--d;
+		if (d->serial) return (d);
+	}
 }
 
 /*
@@ -3115,11 +3102,6 @@ first:		if (streq(buf, "\001u")) break;
 		t = SFIND(s, serial);
 		assert(t);
 		s->numdeltas++;
-		if (d) {
-			t->kid = d->serial;
-		} else {
-			s->table = t;
-		}
 		d = t;
 		d->inarray = 1;
 		d->serial = serial;
@@ -3233,21 +3215,18 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	 * XXX - the above comment is incorrect, we no longer support that.
 	 */
 	s->tree = d;
+	s->table = s->slist + nLines(s->slist);
+
 	unless (CSET(s)) s->file = 1;
 	if (CSET(s) &&
 	    proj_isComponent(s->proj) &&
 	    proj_isProduct(0)) {
 	    	s->file = 1;
     	}
-	sccs_inherit(s, d);
-	d = KID(d);
-	s->tree->kid = 0;
-	while (d) {
-		delta	*therest = KID(d);
+	EACHP(s->slist, d) {
+		unless (d->serial) continue;
 
-		d->kid = 0;
-		dinsert(s, d, 0); /* don't need leading d = */
-		d = therest;
+		sccs_inherit(s, d);
 	}
 	unless (flags & INIT_WACKGRAPH) {
 		if (checkrevs(s, 0)) s->state |= S_BADREVS|S_READ_ONLY;
@@ -4585,6 +4564,7 @@ sccs_free(sccs *s)
 	if (s->findkeydb) hash_free(s->findkeydb);
 	if (s->locs) free(s->locs);
 	if (s->proj) proj_free(s->proj);
+	if (s->kidlist) free(s->kidlist);
 	if (s->rrevs) freenames(s->rrevs, 1);
 	unblock = s->unblock;
 	bzero(s, sizeof(*s));
@@ -9721,6 +9701,8 @@ checkdups(sccs *s)
 private inline int
 isleaf(register sccs *s, register delta *d)
 {
+	delta	*t;
+
 	if (d->type != 'D') return (0);
 	/*
 	 * June 2002: ignore lod stuff, we're removing that feature.
@@ -9728,23 +9710,14 @@ isleaf(register sccs *s, register delta *d)
 	 * and then we'll need to remove this.
 	 */
 	assert(d->r[0] == 1);
+	for (t = d+1; t <= s->table; t++) {
+		unless (t->serial && !(t->flags & D_GONE)) continue;
+		if (TAG(t)) continue;
 
-	if (d->flags & D_MERGED) {
-		delta	*t;
-
-		unless (s->hasgone) return (0);
-
-		for (t = s->table; t && t != d; t = NEXT(t)) {
-			if ((t->merge == d->serial) && !(t->flags & D_GONE)) {
-				return (0);
-			}
+		if ((t->pserial == d->serial) ||
+		    (t->merge == d->serial)) {
+			return (0);
 		}
-	}
-
-	for (d = KID(d); d; d = SIBLINGS(d)) {
-		if (d->flags & D_GONE) continue;
-		if (d->type != 'D') continue;
-		return (0);
 	}
 	return (1);
 }
@@ -9982,7 +9955,7 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 {
 	int	i, error = 0;
 	int	badparent;
-	delta	*e, *p;
+	delta	*p;
 
 	if ((d->type == 'R') || (d->flags & D_GONE)) return (0);
 
@@ -10031,22 +10004,7 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 		error = 1;
 	}
 
-	/*
-	 * make sure that the parent points at us.
-	 */
-	if (p = PARENT(s, d)) {
-		for (e = KID(p); e; e = SIBLINGS(e)) {
-			if (e == d) break;
-		}
-		if (!e) {
-			unless (flags & ADMIN_SHUTUP) {
-				fprintf(stderr,
-				    "%s: parent %s does not point to %s?!?!\n",
-				    file, REV(s, p), REV(s, d));
-			}
-			error = 1;
-		}
-	} else {
+	unless (p = PARENT(s, d)) {
 		/* no parent */
 		if (BITKEEPER(s) &&
 		    !(streq(REV(s, d), "1.0") || streq(REV(s, d), "1.1"))) {
@@ -10848,8 +10806,7 @@ insert_1_0(sccs *s, u32 flags)
 
 	if (streq(REV(s, s->tree), "1.0")) {
 		unless (s->tree->random) {
-			assert(s->tree->kid);
-			len = sccs_sdelta(s, KID(s->tree), key);
+			len = sccs_sdelta(s, sccs_kid(s, s->tree), key);
 			s->tree->random = short_random(key, len);
 			return (2);
 		}
@@ -10882,7 +10839,6 @@ insert_1_0(sccs *s, u32 flags)
 		d->flags |= D_XFLAGS;
 		t->flags &= ~D_XFLAGS;
 	}
-	d->kid = t->serial;
 	s->tree = d;		/* tree is now linked */
 	revArg(s, d, "1.0");
 	d->user = t->user;
@@ -15338,7 +15294,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	}
 
 	case KW_NEXT: /* NEXT */ {
-		if (d = sccs_next(s, d)) {
+		if (d = sccs_prev(s, d)) {
 			fs(REV(s, d));
 			return (strVal);
 		}
@@ -15346,7 +15302,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	}
 
 	case KW_KID: /* KID */ {
-		if (d = KID(d)) {
+		if (d = sccs_kid(s, d)) {
 			fs(REV(s, d));
 			return (strVal);
 		}
@@ -15355,26 +15311,17 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_KIDS: /* KIDS */ {
 		int	space = 0;
+		delta	*m;
 
-		if (d->flags & D_MERGED) {
-			delta	*m;
-
-			for (m = s->table; m; m = NEXT(m)) {
-				if (m->merge == d->serial) {
-					if (space) fs(" ");
-					fs(REV(s, m));
-					space = 1;
-				}
+		for (m = s->table; m; m = NEXT(m)) {
+			if ((m->merge == d->serial) ||
+			    (m->pserial == d->serial)) {
+				if (space) fs(" ");
+				fs(REV(s, m));
+				space = 1;
 			}
 		}
-		unless (d = KID(d)) return (space ? strVal : nullVal);
-		if (space) fs(" ");
-		fs(REV(s, d));
-		while (d = SIBLINGS(d)) {
-			fs(" ");
-			fs(REV(s, d));
-		}
-		return (strVal);
+		return (space ? strVal : nullVal);
 	}
 
 	case KW_TIP: /* TIP */ {
@@ -15386,7 +15333,12 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	}
 
 	case KW_SIBLINGS: /* SIBLINGS */ {
-		if (d = SIBLINGS(d)) {
+		/*
+		 * SIBLINGS is convoluted in non-bk case
+		 * as kid in teamware is not necessarily oldest
+		 */
+		unless (s->kidlist) sccs_mkKidList(s);
+		if (d = SIBLINGS(s, d)) {
 			fs(REV(s, d));
 			return (strVal);
 		}
@@ -16612,39 +16564,28 @@ sccs_setPath(sccs *s, delta *d, char *new)
 delta	*
 sccs_csetBoundary(sccs *s, delta *d)
 {
-	delta	*e;
-	ser_t	last, ser;
+	delta	*e, *start, *end;
 
-	e = sfind(s, s->table->serial);		/* cache whole table */
-
+	start = d;
 	d->flags |= D_RED;
-	last = d->serial;
+	for (; d <= s->table; ++d) {
+		unless (d->serial && !TAG(d)) continue;
 
-	for (ser = d->serial; ser < s->nextserial; (d = 0), ser++) {
-		unless ((d = sfind(s, ser)) && (d->flags & D_RED)) continue;
-		if (d->flags & D_CSET) break;
-		d->flags &= ~D_RED;
-		for (e = KID(d); e; e = SIBLINGS(e)) {
-			if (TAG(e)) continue;
-			e->flags |= D_RED;
-			if (e->serial > last) last = e->serial;
+		if ((e = PARENT(s, d)) && (e->flags & D_RED)) {
+			d->flags |= D_RED;
 		}
-		if (d->flags & D_MERGED) {
-			for (e = s->table; e && e != d; e = NEXT(e)) {
-				if (e->merge == d->serial) {
-					e->flags |= D_RED;
-					if (e->serial > last) last = e->serial;
-				}
-			}
+		if ((e = MERGE(s, d)) && (e->flags & D_RED)) {
+			d->flags |= D_RED;
 		}
+		if ((d->flags & (D_CSET|D_RED)) == (D_CSET|D_RED)) break;
 	}
-	for (; ser < s->nextserial; ser++) {
-		if (last < ser) break;
-		unless (e = sfind(s, ser)) continue;
-		e->flags &= ~D_RED;
+	end = d;
+	if (d > s->table) {
+		end = s->table;
+		d = 0;
 	}
-	if (d && (d->flags & D_CSET)) return (d);
-	return (0);
+	for (e = start; e <= end; ++e) e->flags &= ~D_RED;
+	return (d);
 }
 
 /*
@@ -16763,7 +16704,7 @@ sccs_ino(sccs *s)
 	delta	*d = s->tree;
 
 	if (streq(d->sdate, "70/01/01 00:00:00") && streq(USER(s, d), "Fake")) {
-		d = KID(d);
+		d = sccs_kid(s, d);
 	}
 	return (d);
 }

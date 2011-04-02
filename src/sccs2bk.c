@@ -480,8 +480,7 @@ handleFake(sccs *s)
 private void
 collapse(sccs *s, int verbose, delta *d, delta *m)
 {
-	delta	*b, *p, *e;
-	ser_t	*ep;
+	delta	*b, *p;
 
 	p = PARENT(s, d);
 	assert(m && p);
@@ -501,26 +500,7 @@ collapse(sccs *s, int verbose, delta *d, delta *m)
 		    REV(s, m), m->serial);
 	}
 
-	/*
-	 * Do surgery on 'p' kids list:
-	 *   1. delete b from current location in list
-	 *   2. put b where ever d was, removing d from list
-	 */
-	for (ep = &p->kid; e = SFIND(s, *ep); ep = &e->siblings) {
-		if (e == b) break;
-	}
-	assert(e);
-	*ep = b->siblings;	/* delete b */
-	for (ep = &p->kid; e = SFIND(s, *ep); ep = &e->siblings) {
-		if (d == e) break;
-	}
-	assert(e);
-	*ep = b->serial;	/* put b in place of p; deleting p */
-	b->siblings = d->siblings;
-
 	/* surgery at other end of graph: merge becomes parent of d */
-	d->siblings = m->kid;
-	m->kid = d->serial;
 	d->pserial = m->serial;
 	d->merge = 0;
 	assert(d->include);

@@ -7,7 +7,7 @@ private	int	v1Left(sccs *s, delta *d, void *token);
 private	int	v2Right(sccs *s, delta *d, void *token);
 private	int	v2Left(sccs *s, delta *d, void *token);
 
-private	void	sortKids(delta *start,
+private	void	sortKids(sccs *s, delta *start,
     int (*compar)(const void *, const void *), char ***karr);
 
 #define	S_DIFF		0x01	/* final active states differ */
@@ -491,29 +491,33 @@ graph_kidwalk(sccs *s, walkfcn toTip, walkfcn toRoot, void *token)
 	int	rc = 0;
 	char	**karr = allocLines(32);
 
+	sccs_mkKidList(s);
 	d = s->tree;
 	while (d) {
 		/* walk down all kid pointers */
-		for (next = d; next && !TAG(next); next = KID(d)) {
+		for (next = d; next && !TAG(next); next = KID(s, d)) {
 			d = next;
 			if (toTip && (rc = toTip(s, d, token))) goto out;
-			sortKids(d, graph_bigFirst, &karr);
+			sortKids(s, d, graph_bigFirst, &karr);
 		}
 		/* now next sibling or up parent link */
 		for (; d; d = PARENT(s, d)) {
 			/* only need d->kid to be oldest */
-			sortKids(d, graph_smallFirst, &karr);
+			sortKids(s, d, graph_smallFirst, &karr);
 			if (toRoot && (rc = toRoot(s, d, token))) goto out;
-			if ((next = SIBLINGS(d)) && !TAG(next)) {
+			if ((next = SIBLINGS(s, d)) && !TAG(next)) {
 				d = next;
 				break;
 			}
 		}
 	}
 out:	if (d) {
-		while (d = PARENT(s, d)) sortKids(d, graph_smallFirst, &karr);
+		while (d = PARENT(s, d)) {
+			sortKids(s, d, graph_smallFirst, &karr);
+		}
 	}
 	freeLines(karr, 0);
+	FREE(s->kidlist);
 	return (rc);
 }
 
@@ -542,7 +546,7 @@ graph_bigFirst(const void *a, const void *b)
 }
 
 private	void
-sortKids(delta *start, int (*compar)(const void *, const void *),
+sortKids(sccs *s, delta *start, int (*compar)(const void *, const void *),
 	 char ***karr)
 {
 	char	**list = *karr;
@@ -551,20 +555,20 @@ sortKids(delta *start, int (*compar)(const void *, const void *),
 	ser_t	*serp;
 
 	/* bail if nothing to sort */
-	unless ((d = KID(start)) && !TAG(d) && SIBLINGS(d)) return;
+	unless ((d = KID(s, start)) && !TAG(d) && SIBLINGS(s, d)) return;
 
 	truncLines(list, 0);
-	for (d = KID(start); d; d = SIBLINGS(d)) {
+	for (d = KID(s, start); d; d = SIBLINGS(s, d)) {
 		list = addLine(list, d);
 	}
 	*karr = list;
 	sortLines(list, compar);
 
-	serp = &start->kid;
+	serp = &s->kidlist[start->serial].kid;
 	EACH(list) {
 		d = (delta *)list[i];
 		*serp = d->serial;
-		serp = &d->siblings;
+		serp = &s->kidlist[d->serial].siblings;
 	}
 	*serp = 0;
 }

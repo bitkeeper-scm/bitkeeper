@@ -310,11 +310,7 @@ cset_write(sccs *s, int spinners, int fast)
 	 */
 	if (CSET(s) && spinners) fprintf(stderr, "renumbering");
 	sccs_renumber(s, SILENT);
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, i)) continue;
-		d->kid = d->siblings = 0;
-		sccs_kidlink(s, d);
-	}
+
 	/*
 	 * update the title section with the time sorted newest
 	 * inner code lifted from sccs_delta in the PATCH part

@@ -55,8 +55,7 @@ private	int	newBKfiles(sccs *cset,
 private	int	rmKeys(hash *prunekeys);
 private	char	*mkRandom(char *input);
 private	int	found(sccs *s, delta *start, delta *stop);
-private	void	_pruneEmpty(sccs *s, delta *d,
-		    u8 *slist, ser_t **sd, char ***mkid);
+private	void	_pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd);
 private	void	pruneEmpty(sccs *s);
 private	hash	*getKeys(char *file);
 private	int	keeper(char *rk);
@@ -1460,18 +1459,28 @@ rmPruned(sccs *s, delta *d, ser_t **sd)
 
 /*
  * We maintain d->parent, d->merge, and d->pserial
- * We do not maintain d->kid, d->sibling, or d->flags & D_MERGED
  *
  * Which means, don't call much else after this, just get the file
  * written to disk!
  */
 private	void
-_pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd, char ***mkid)
+_pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd)
 {
 	delta	*m;
-	int	i;
 
 	debug((stderr, "%s ", d->rev));
+	/* if parent/merge nodes GONE'd, wire around them first */
+	if (d->pserial && (m = PARENT(s, d)) && (m->flags & D_GONE)) {
+		debug((stderr, "%s gets new parent %s (was %s)\n",
+		    d->rev, PARENT(s, m)->rev, m->rev));
+		symdiff_setParent(s, d, PARENT(s, m), sd);
+	}
+	if (d->merge && (m = MERGE(s, d)) && (m->flags & D_GONE)) {
+		debug((stderr, "%s gets new merge parent %s (was %s)\n",
+		    d->rev, PARENT(s, m)->rev, m->rev));
+		d->merge = m->pserial;
+	}
+	/* collapse, swap, or leave merge node alone */
 	if (d->merge) {
 		debug((stderr, "\n"));
 		/*
@@ -1527,23 +1536,10 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd, char ***mkid)
 		return;
 	}
 
-	/* Not a keeper, so re-wire around it */
+	/* Not a keeper, so re-wire around it later by marking gone now */
 	debug((stderr, "RMDELTA(%s)\n", d->rev));
 	MK_GONE(s, d);
 	assert(d->pserial);	/* never get rid of root node */
-	EACH(mkid[d->serial]) {
-		m = (delta *)mkid[d->serial][i];
-		debug((stderr,
-		    "%s gets new merge parent %s (was %s)\n",
-		    m->rev, d->parent->rev, d->rev));
-		m->merge = d->pserial;
-	}
-	for (m = KID(d); m; m = SIBLINGS(m)) {
-		unless (m->type == 'D') continue;
-		debug((stderr, "%s gets new parent %s (was %s)\n",
-			    m->rev, d->parent->rev, d->rev));
-		symdiff_setParent(s, m, PARENT(s, d), sd);
-	}
 	if (d->serial == partition_tip) partition_tip = d->pserial;
 	return;
 }
@@ -1554,26 +1550,19 @@ pruneEmpty(sccs *s)
 	int	i;
 	delta	*n;
 	u8	*slist;
-	char	***mkid;
 	ser_t	**sd;
 
 	slist = (u8 *)calloc(s->nextserial, sizeof(u8));
-	mkid = (char ***)calloc(s->nextserial, sizeof(char **));
 	assert(slist);
-	for (n = s->table; n; n = NEXT(n)) {
-		if (n->merge) mkid[n->merge] = addLine(mkid[n->merge], n);
-	}
 	sd = graph_sccs2symdiff(s);
 	for (i = 1; i < s->nextserial; i++) {
 		unless ((n = sfind(s, i)) && NEXT(n) && !TAG(n)) continue;
-		_pruneEmpty(s, n, slist, sd, mkid);
+		_pruneEmpty(s, n, slist, sd);
 	}
 	free(slist);
 	for (i = 1; i < s->nextserial; i++) {
-		if (mkid[i]) freeLines(mkid[i], 0);
 		if (sd[i]) free(sd[i]);
 	}
-	free(mkid);
 	free(sd);
 
 	unless (flags & PRUNE_NO_TAG_GRAPH) {

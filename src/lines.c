@@ -55,6 +55,7 @@ lines_main(int ac, char **av)
 
 	if (name && (s = sccs_init(name, INIT_NOCKSUM)) && HASGRAPH(s)) {
 		renumber(s);
+		sccs_mkKidList(s);
 		if (n) {
 			for (c = n, e = sccs_top(s); e && c--; e = PARENT(s, e));
 			if (e) e = ancestor(s, e);
@@ -93,7 +94,7 @@ next:		sccs_free(s);
 }
 
 /*
- * Reuse the pserial field to put in a serial number which
+ * Reuse the d->same field to put in a serial number which
  * - starts at 0, not 1
  * - increments only for real deltas, not meta
  */
@@ -106,7 +107,7 @@ renumber(sccs *s)
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, i)) continue;
-		if (d->type == 'D') d->pserial = ser++;
+		if (d->type == 'D') d->same = ser++;
 	}
 }
 
@@ -127,11 +128,11 @@ puser(char *u)
 private void
 prevs(delta *d)
 {
-	unless (d->kid) d = PARENT(s, d);
+	unless (KID(s, d)) d = PARENT(s, d);
 	tree = d;
 	pd("", d);
-	_prevs(KID(d));
-	_prevs(SIBLINGS(d));
+	_prevs(KID(s, d));
+	_prevs(SIBLINGS(s, d));
 }
 
 private void
@@ -148,12 +149,12 @@ _prevs(delta *d)
 	}
 
 	pd(" ", d);
-	if (d->kid && (KID(d)->type == 'D')) {
-		_prevs(KID(d));
+	if (KID(s, d) && !TAG(KID(s, d))) {
+		_prevs(KID(s, d));
 	} else {
 		printf("\n");
 	}
-	for (d = SIBLINGS(d); d; d = SIBLINGS(d)) {
+	for (d = SIBLINGS(s, d); d; d = SIBLINGS(s, d)) {
 		unless (d->flags & D_RED) _prevs(d);
 	}
 }
@@ -166,7 +167,7 @@ pd(char *prefix, delta *d)
 		putchar('-');
 		puser(USER(s, d));
 	}
-	if (sort) printf("-%u", d->pserial);
+	if (sort) printf("-%u", d->same);
 	if (tags && (d->flags & D_SYMBOLS)) putchar('*');
 	if (d->flags & D_BADREV) printf("-BAD");
 	if (d->merge) {
@@ -179,7 +180,7 @@ pd(char *prefix, delta *d)
 				putchar('-');
 				puser(USER(s, p));
 			}
-			if (sort) printf("-%u", p->pserial);
+			if (sort) printf("-%u", p->same);
 			if (tags && (p->flags & D_SYMBOLS)) putchar('*');
 		}
 	}
@@ -197,8 +198,8 @@ t(delta *a, delta *d)
 
 	for (p = d; p->r[2]; p = PARENT(s, p));
 	if ((p->type != 'R') && (p->date < a->date)) a = p;
-	if (d->kid) a = t(a, KID(d));
-	if (SIBLINGS(d)) a = t(a, SIBLINGS(d));
+	if (KID(s, d)) a = t(a, KID(s, d));
+	if (SIBLINGS(s, d)) a = t(a, SIBLINGS(s, d));
 	return (a);
 }
 

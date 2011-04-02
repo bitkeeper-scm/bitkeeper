@@ -142,7 +142,7 @@ log_main(int ac, char **av)
 				/* we don't want 1.0 by default */
 				s->tree->flags &= ~D_SET;
 				if (s->rstart == s->tree) {
-					s->rstart = KID(s->tree);
+					s->rstart = sccs_kid(s, s->rstart);
 				}
 			}
 		}

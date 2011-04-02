@@ -590,7 +590,7 @@ mkDeterministicKeys(void)
 	d2 = cset->tree;
 	fix_delta(cset, oldest, d2, 0);
 	d2->sum = oldest->sum;
-	d2 = KID(d2);
+	d2 = sccs_kid(cset, d2);
 	assert(d2);
 	fix_delta(cset, oldest, d2, 1);
 	sccs_newchksum(cset);
@@ -967,7 +967,7 @@ findcset(void)
 	assert(oldest);
 	d2 = cur.cset->tree;
 	fix_delta(cur.cset, oldest, d2, 0);
-	d2 = KID(d2);
+	d2 = sccs_kid(cur.cset, d2);
 	assert(d2);
 	fix_delta(cur.cset, oldest, d2, 1);
 	sccs_newchksum(cur.cset);
@@ -1115,7 +1115,7 @@ findFirstDelta(sccs *s, dinfo *first)
 	 */
 	if (streq(d->sdate, "70/01/01 00:00:00") &&
 	    streq(USER(s, d), "Fake")) {
-		d = KID(d);
+		d = sccs_kid(s, d);
 	}
 	unless (d) return (first);
 

@@ -3,7 +3,7 @@
 #include "sccs.h"
 
 private int xflagsDefault(sccs *s, int cset, int what);
-private int xflags(sccs *s, delta *d, int what);
+private int xflags(sccs *s, int what);
 
 /*
  * xflags - walk the graph looking for xflag updates and make sure
@@ -36,7 +36,7 @@ xflags_main(int ac, char **av)
 		}
 		s->state |= S_READ_ONLY;
 		ret |= xflagsDefault(s, CSET(s), what);
-		ret |= xflags(s, s->tree, what);
+		ret |= xflags(s, what);
 		unless ((what & XF_DRYRUN) || (s->state & S_READ_ONLY)) {
 		    	sccs_newchksum(s);
 		}
@@ -82,14 +82,16 @@ xflagsDefault(sccs *s, int cset, int what)
  * look at each delta and make sure the xflags match the comments.
  */
 private int
-xflags(sccs *s, delta *d, int what)
+xflags(sccs *s, int what)
 {
 	int	ret = 0;
+	delta	*d;
 
-	unless (d) return (0);
-	ret = checkXflags(s, d, what);
-	ret |= xflags(s, KID(d), what);
-	ret |= xflags(s, SIBLINGS(d), what);
+	EACHP(s->slist, d) {
+		unless (d->serial) continue;
+
+		ret |= checkXflags(s, d, what);
+	}
 	return (ret);
 }
 
