@@ -43,10 +43,15 @@ char *
 eachline(char **linep, int *lenp)
 {
 	char	*line, *ret = *linep;
+	int	len;
 
 	unless (*ret) return (0);
 	for (line = ret; *line && (*line != '\n'); line++);
-	if (lenp) *lenp = line - ret;
+	if (lenp) {
+		len = line - ret;
+		while ((len > 0) && (ret[len-1] == '\r')) --len;
+		*lenp = len;
+	}
 	if (*line == '\n') line++;
 	*linep = line;
 	return (ret);
