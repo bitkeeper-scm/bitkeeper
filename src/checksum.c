@@ -86,7 +86,7 @@ checksum_main(int ac, char **av)
 					    s->nextserial);
 				}
 				for (i = 0, d = s->table; d; d = NEXT(d)) {
-					unless (d->type == 'D') continue;
+					if (TAG(d)) continue;
 					c = sccs_resum(s, d, diags, fix);
 					if (tick) progress(tick, ++i);
 					if (c & 1) doit++;

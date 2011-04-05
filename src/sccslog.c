@@ -313,7 +313,7 @@ sccslog(sccs *s)
 	if (CSET(s)) ChangeSet = 1;
 	for (d = s->table; d; d = NEXT(d)) {
 		if (SET(s) && !(d->flags & D_SET)) continue;
-		if (d->type != 'D') continue;
+		if (TAG(d)) continue;
 
 		nd = new(data);
 		nd->date = d->date;

@@ -1261,7 +1261,7 @@ rebuildTags(sccs *s)
 			sym->meta_ser = sym->ser = 0;
 			continue;
 		}
-		assert(md->type != 'D' || md == d);
+		assert(TAG(md) || (md == d));
 		/* If tag on a deleted node, (if parent) move tag to parent */
 		if (d->flags & D_GONE) {
 			unless (d->pserial) {
@@ -1279,7 +1279,7 @@ rebuildTags(sccs *s)
 			md = d;
 			sym->meta_ser = md->serial;
 		}
-		assert(md == d && d->type == 'D');
+		assert((md == d) && !TAG(d));
 		d->flags |= D_SYMBOLS;
 	}
 	/*
@@ -1288,7 +1288,7 @@ rebuildTags(sccs *s)
 	 * and D_GONE all 'R' nodes in graph.
 	 */
 	for (d = s->table; d; d = NEXT(d)) {
-		unless (d->type == 'R') continue;
+		unless (TAG(d)) continue;
 		assert(!(d->flags & D_SYMBOLS));
 		MK_GONE(s, d);
 	}
@@ -1320,7 +1320,7 @@ fixTags(sccs *s)
 		assert(sym->symname && sym->ser && sym->meta_ser);
 		md = SFIND(s, sym->meta_ser);
 		d = SFIND(s, sym->ser);
-		assert(md->type != 'D' || md == d);
+		assert(TAG(md) || (md == d));
 		/*
 		 * If tags a deleted node, (if parent) move tag to parent
 		 * XXX: do this first, as md check can clear D_GONE flag.
@@ -1356,8 +1356,8 @@ fixTags(sccs *s)
 			 * then Ungone it.
 			 * XXX: Does the rev need to be altered?
 			 */
-			assert(md->type == 'D');
-			md->type = 'R';
+			assert(!TAG(md));
+			md->flags |= D_TAG;
 			md->flags &= ~(D_GONE|D_CKSUM|D_CSET);
 			md->added = md->deleted = md->same = 0;
 			md->comments = 0;
@@ -1377,7 +1377,7 @@ fixTags(sccs *s)
 	 * the flow is the same, the data structure being tweaked is diff.
 	 */
 	for (d = s->table; d; d = NEXT(d)) {
-		unless (d->type == 'R') continue;
+		unless (TAG(d)) continue;
 		if ((p = PARENT(s, d)) && (p->flags & D_GONE)) {
 			unless (p->pserial) {
 				/* No where to move it: root it */
@@ -1408,8 +1408,8 @@ fixTags(sccs *s)
 			 * then Ungone it.
 			 * XXX: Does the rev need to be altered?
 			 */
-			assert(d->type == 'D');
-			d->type = 'R';
+			assert(!TAG(d));
+			d->flags |= D_TAG;
 			d->flags &= ~(D_GONE|D_CKSUM|D_CSET);
 			d->added = d->deleted = d->same = 0;
 			d->comments = 0;

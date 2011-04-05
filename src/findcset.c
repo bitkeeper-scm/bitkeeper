@@ -1224,8 +1224,7 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 	char	type;
 
 	if (!d) return (0);
-	type = d->type;
-	if (d->type == 'R') type = 'M';
+	type = TAG(d) ? 'M' : 'D';
 
 	fprintf(out, "%c %s %s%s %s%s%s +%u -%u\n",
 	    type, REV(s, d), d->sdate,

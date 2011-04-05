@@ -116,7 +116,7 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 	dspec_collapse(&dspec, &begin, &end);
 	lastd = s->table;
 	for (d = s->table; d; d = NEXT(d)) {
-		if ((d->type == 'D') && !(d->flags & (D_RED|D_BLUE))) {
+		if (!TAG(d) && !(d->flags & (D_RED|D_BLUE))) {
 			if (begin) {
 				sccs_prsdelta(s, d, 0, begin, out);
 				free(begin);

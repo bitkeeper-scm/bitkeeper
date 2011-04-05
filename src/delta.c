@@ -387,7 +387,7 @@ delta_main(int ac, char **av)
 			assert(s);
 			d = s->table;
 			assert(d);
-			assert(d->type == 'D');
+			assert(!TAG(d));
 			nrev = REV(s, d);
 		} else {
 			s = sccs_restart(s);

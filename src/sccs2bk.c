@@ -170,7 +170,7 @@ regen(sccs *s, int verbose, char *key)
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, (ser_t) i)) continue;
-		if (!(d->flags & D_GONE) && (d->type == 'D')) {
+		if (!(d->flags & D_GONE) && !TAG(d)) {
 			table[n++] = d;
 		}
 	}
@@ -404,7 +404,7 @@ ptable(sccs *s)
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, (ser_t) i)) continue;
-		unless (!(d->flags & D_GONE) && (d->type == 'D')) {
+		unless (!(d->flags & D_GONE) && !TAG(d)) {
 			continue;
 		}
 		fprintf(stderr, "%-10.10s %10s i=%2u s=%2u d=%s f=%lu\n",
@@ -437,7 +437,7 @@ handleFake(sccs *s)
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, (ser_t) i)) continue;
-		unless (!(d->flags & D_GONE) && (d->type == 'D')) {
+		unless (!(d->flags & D_GONE) && !TAG(d)) {
 			continue;
 		}
 		unless (d->date >= CUTOFFDATE) continue;
@@ -452,7 +452,7 @@ handleFake(sccs *s)
 	while (i > 1) {
 		i--;
 		unless (d = sfind(s, (ser_t) i)) continue;
-		unless (!(d->flags & D_GONE) && (d->type == 'D')) {
+		unless (!(d->flags & D_GONE) && !TAG(d)) {
 			continue;
 		}
 		date--;
@@ -521,7 +521,7 @@ makeMerge(sccs *s, int verbose)
 
 	/* table order, mark things to ignore, and find merge markers */
 	for (d = s->table; d; d = NEXT(d)) {
-		if (d->type == 'R') {
+		if (TAG(d)) {
 			d->flags |= D_GONE;
 			continue;
 		}
@@ -530,7 +530,7 @@ makeMerge(sccs *s, int verbose)
 
 		j = 0;
 		EACH(d->include) {
-			if ((m = sfind(s, d->include[i])) && (m->type == 'D')) {
+			if ((m = sfind(s, d->include[i])) && !TAG(m)) {
 				if (j) d->include[j++] = d->include[i];
 			} else {	/* delete it */
 				unless (j) j = i;
@@ -544,7 +544,7 @@ makeMerge(sccs *s, int verbose)
 		}
 		mser = d->include[d->include[0] & LMASK];
 		m = sfind(s, mser);
-		assert(m && m->type == 'D');
+		assert(m && !TAG(m));
 		d->merge = mser;
 		collapse(s, verbose, d, m);
 	}
@@ -576,7 +576,7 @@ fixTable(sccs *s, int verbose)
 	/* reverse table order of just the deltas being imported */
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, (ser_t) i)) continue;
-		unless (!(d->flags & D_GONE) && (d->type == 'D')) {
+		unless (!(d->flags & D_GONE) && !TAG(d)) {
 			continue;
 		}
 		/*

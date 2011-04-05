@@ -308,13 +308,12 @@ int	checking_rmdir(char *dir);
 #define	D_GONE		0x00040000	/* this delta is gone, don't print */
 #define	D_BLUE		0x00080000	/* when you need two colors */
 
+#define	D_TAG		0x00100000	/* is tag node old d->type=='R' */
 #if 0
-#define	D_DTYPE		0x00100000
 #define	D_DANGLING	0x00200000
 #define	D_SYMGRAPH	0x00400000
 #define	D_SYMLEAF	0x00800000
 #endif
-/*			0x00100000 */
 /*			0x00200000 */
 /*			0x00400000 */
 /*			0x00800000 */
@@ -466,7 +465,6 @@ typedef struct delta {
 					/* open tips, so maintained always */
 	u32	localcomment:1;		/* comments are stored locally */
 	u32	inarray:1;
-	char	type;			/* Delta or removed delta */
 // ^^^^ XXX
 
 	/* unique heap data */
@@ -495,7 +493,8 @@ typedef struct delta {
 	ser_t	kid;			/* next delta on this branch */
 	ser_t	siblings;		/* pointer to other branches */
 } delta;
-#define	TAG(d)		((d)->type != 'D')
+
+#define	TAG(d)		((d)->flags & D_TAG)
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
 
 #define	SFIND(s, ser)	((ser) ? ((s)->slist + ser) : 0)

@@ -589,7 +589,7 @@ sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 		fprintf(stderr, "diffs: rev %s has no parent\n", rev);
 		return (-1);
 	}
-	assert(p->type != 'R'); /* parent should not be a meta delta */
+	assert(!TAG(p)); /* parent should not be a meta delta */
 	*revP = (p ? strdup(REV(s, p)) : NULL);
 	if (d->merge) {
 		m = MERGE(s, d);

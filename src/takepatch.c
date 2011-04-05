@@ -1325,7 +1325,9 @@ applyPatch(char *localPath, sccs *perfile)
 
 				sccs_sdelta(s, e, k);
 				fprintf(stderr, "STRIP %s/%u/%c %s\n",
-				    REV(s, e), e->serial, e->type, k);
+				    REV(s, e), e->serial,
+				    TAG(e) ? 'R' : 'D',
+				    k);
 			}
 			if (e == d) break;
 		}
@@ -1520,7 +1522,7 @@ getLocals(sccs *s, delta *g, char *name)
 		/*
 		 * Silently discard removed deltas, we don't support them.
 		 */
-		if ((d->type == 'R') && !(d->flags & D_META)) continue;
+		if (TAG(d) && !(d->flags & D_META)) continue;
 
 		/*
 		 * If we are dangling, don't insert the local delta if

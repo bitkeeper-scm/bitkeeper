@@ -1536,7 +1536,7 @@ findrev(sccs *s, char *rev)
 		/* get max X.Y that is on same branch or tip of biggest */
 		for (e = s->table; e; e = NEXT(e)) {
 			if (e->flags & D_GONE) continue;
-			if (e->type != 'D'
+			if (TAG(e)
 			    || (e->r[2] != 0)
 			    || (e->r[0] > a))  continue;
 
@@ -2442,9 +2442,9 @@ metaSyms(sccs *sc)
 	for (sym = sc->symbols; sym; sym = sym->next) {
 		d = SFIND(sc, sym->ser);
 		assert(d);
-		if (d->type == 'D') continue;
+		unless (TAG(d)) continue;
 		assert(d->pserial);
-		for (d = PARENT(sc, d); d->type != 'D'; d = PARENT(sc, d)) {
+		for (d = PARENT(sc, d); TAG(d); d = PARENT(sc, d)) {
 			assert(d);
 		}
 		sym->ser = d->serial;
@@ -2897,7 +2897,7 @@ checkTags(sccs *s, int flags)
 private void
 meta(sccs *s, delta *d, char *buf)
 {
-	if (d->type != 'D') d->flags |= D_META;
+	if (TAG(d)) d->flags |= D_META;
 	switch (buf[2]) {
 	    case 'A':
 		hashArg(s, d, &buf[3]);
@@ -3108,7 +3108,7 @@ first:		if (streq(buf, "\001u")) break;
 		d->added = added;
 		d->deleted = deleted;
 		d->same = same;
-		d->type = type;
+		if (type == 'R') d->flags |= D_TAG;
 
 		if (*p != ' ') {
 			expected = "^AD 1.1 98/03/17 18:32:39 user 12 ";
@@ -3202,7 +3202,7 @@ meta:			switch (buf[1]) {
 				goto bad;
 			}
 		}
-done:		if (CSET(s) && (d->type == 'R') &&
+done:		if (CSET(s) && TAG(d) &&
 		    !d->symGraph && !(d->flags & D_SYMBOLS)) {
 			MK_GONE(s, d);
 		}
@@ -5085,7 +5085,7 @@ setmap(sccs *s, int bit, int all)
 	assert(slist);
 
 	for (t = s->table; t; t = NEXT(t)) {
-		unless (all || (t->type == 'D')) continue;
+		unless (all || !TAG(t)) continue;
  		assert(t->serial <= s->nextserial);
 		if (t->flags & bit) {
 			slist[t->serial] = 1;
@@ -5165,7 +5165,7 @@ compressmap(sccs *s, delta *d, u8 *set, int useSer, void **inc, void **exc)
 	slist[d->serial] = S_PAR;	/* seed the ancestor thread */
 
 	for (t = s->table; t; t = NEXT(t)) {
-		if (t->type != 'D') continue;
+		if (TAG(t)) continue;
 
  		assert(t->serial <= s->nextserial);
 
@@ -5288,7 +5288,7 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 	slist[d->serial] |= S_PAR;
 
 	for (t = start; t; t = NEXT(t)) {
-		if (t->type != 'D') continue;
+		if (TAG(t)) continue;
 
  		assert(t->serial <= s->nextserial);
 
@@ -5836,7 +5836,7 @@ err:		s->state |= S_WARNED;
 	slist[mRev->serial] = S_PAR;
 
 	for (t = s->table; t; t = NEXT(t)) {
-		if (t->type != 'D') continue;
+		if (TAG(t)) continue;
 
  		assert(t->serial < s->nextserial);
 
@@ -7646,7 +7646,7 @@ fmttt(char *p, time_t d)
 private void
 check_removed(sccs *s, delta *d, int strip_tags)
 {
-	assert(d->type == 'R');
+	assert(TAG(d));
 	if (d->flags & D_GONE) return;
 	if (strip_tags) {
 		MK_GONE(s, d);
@@ -7740,7 +7740,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	}
 	sym = s->symbols;
 	for (d = s->table; d; d = NEXT(d)) {
-		if (d->type == 'R') check_removed(s, d, strip_tags);
+		if (TAG(d)) check_removed(s, d, strip_tags);
 		if (d->flags & D_GONE) {
 			/* This delta has been deleted - it is not to be
 			 * written out at all.
@@ -7794,7 +7794,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 		p = fmts(buf, "\001d ");
-		*p++ = d->type;
+		*p++ = TAG(d) ? 'R' : 'D';
 		*p++ = ' ';
 		p = fmts(p, REV(s, d));
 		*p++ = ' ';
@@ -7845,7 +7845,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_CSET) {
-			assert(d->type == 'D');
+			assert(!TAG(d));
 			fputmeta(s, "\001cC\n", out);
 		}
 		if (d->dangling) fputmeta(s, "\001cD\n", out);
@@ -9119,9 +9119,9 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	char	*t;
 
 	unless (d) d = new(delta);
-	d->type = type;
+	if (type == 'R') d->flags |= D_TAG;
 	assert(s);
-	if (BITKEEPER(s) && (type == 'D')) d->flags |= D_CKSUM;
+	if (BITKEEPER(s) && !TAG(d)) d->flags |= D_CKSUM;
 	unless (d->sdate) {
 		if (t = getenv("BK_DATE_TIME_ZONE")) {
 			dateArg(s, d, t, 1);
@@ -9683,7 +9683,7 @@ checkdups(sccs *s)
 	db = mdbm_open(NULL, 0, 0, 0);
 	v.dsize = sizeof(ser_t);
 	for (d = s->table; d; d = NEXT(d)) {
-		if (d->type == 'R') continue;
+		if (TAG(d)) continue;
 		k.dptr = (void*)d->r;
 		k.dsize = sizeof(d->r);
 		v.dptr = (void*)&d->serial;
@@ -9703,7 +9703,7 @@ isleaf(register sccs *s, register delta *d)
 {
 	delta	*t;
 
-	if (d->type != 'D') return (0);
+	if (TAG(d)) return (0);
 	/*
 	 * June 2002: ignore lod stuff, we're removing that feature.
 	 * We'll later add back the support for 2.x, 3.x, style numbering
@@ -9770,7 +9770,7 @@ checkOpenBranch(sccs *s, int flags)
 				symtips++;
 			}
 		}
-		if ((d->flags & D_GONE) || (d->type == 'R')) continue;
+		if ((d->flags & D_GONE) || TAG(d)) continue;
 		unless (d->flags & D_RED) {
 			if (tips) {
 				if (tips == 1) {
@@ -9810,7 +9810,7 @@ checkInvariants(sccs *s, int flags)
 	error |= checkOpenBranch(s, flags);
 	error |= checkTags(s, flags);
 	for (d = s->table; d; d = NEXT(d)) {
-		if ((d->type == 'D') && !(d->flags & D_CKSUM)) {
+		if (!TAG(d) && !(d->flags & D_CKSUM)) {
 			verbose((stderr,
 			    "%s|%s: no checksum\n", s->gfile, REV(s, d)));
 		}
@@ -9957,7 +9957,7 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 	int	badparent;
 	delta	*p;
 
-	if ((d->type == 'R') || (d->flags & D_GONE)) return (0);
+	if (TAG(d) || (d->flags & D_GONE)) return (0);
 
 	if (d->flags & D_BADFORM) {
 		fprintf(stderr, "%s: bad rev '%s'\n", file, REV(s, d));
@@ -12782,10 +12782,10 @@ out:	if (comments) {
 	}
 	if (d) {
 		if (type == 'M') {
-			d->flags |= D_META;
-			type = 'R';
+			d->flags |= D_META|D_TAG;
+		} else if (type == 'R') {
+			d->flags |= D_TAG;
 		}
-		d->type = type;
 #ifdef	GRAFT_BREAKS_LOD
 		if (flags & DELTA_PATCH) {
 			free(d->rev);
@@ -14111,10 +14111,14 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_DT: /* DT */ {
 		/* delta type */
-		if ((d->type == 'R') && d->symGraph) {
-			fc('T');
+		if (TAG(d)) {
+			if (d->symGraph) {
+				fc('T');
+			} else {
+				fc('R');
+			}
 		} else {
-			fc(d->type);
+			fc('D');
 		}
 		return (strVal);
 	}
@@ -15060,7 +15064,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 			fd((int)d->sum);
 			return (strVal);
 		}
-		if (d->type == 'R') {
+		if (TAG(d)) {
 			assert(d->sum == 0);
 			fs("0");
 			return (strVal);
@@ -15722,7 +15726,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 int
 sccs_prsdelta(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-	if (d->type != 'D' && !(flags & (PRS_ALL|PRS_FORCE))) return (0);
+	if (TAG(d) && !(flags & (PRS_ALL|PRS_FORCE))) return (0);
 	if (SET(s) && !(d->flags & D_SET) && !(flags & PRS_FORCE)) return (0);
 	s->prs_all = ((flags & PRS_ALL) != 0);
 	s->prs_output = 0;
@@ -15839,8 +15843,8 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	int	len;
 
 	if (!d) return (0);
-	type = d->type;
-	if ((d->type == 'R') &&
+	type = TAG(d) ? 'R' : 'D';
+	if ((type == 'R') &&
 	    PARENT(s, d) && streq(REV(s, d), REV(s, PARENT(s, d)))) {
 	    	type = 'M';
 	}
@@ -16104,7 +16108,7 @@ gca2(sccs *s, delta *left, delta *right)
 	slist[right->serial] |= 2;
 	d = (left->serial > right->serial) ? left : right;
 	for ( ; d ; d = NEXT(d)) {
-		unless (d->type == 'D') continue;
+		if (TAG(d)) continue;
 		unless (value = slist[d->serial]) continue;
 		if (value == 3) break;
 		if (d->pserial) slist[d->pserial] |= value;
@@ -16176,7 +16180,7 @@ sccs_findtips(sccs *s, delta **a, delta **b)
 	 * At any given point there should be exactly one of these.
 	 */
 	for (d = s->table; d; d = NEXT(d)) {
-		if (d->type != 'D') continue;
+		if (TAG(d)) continue;
 		unless (isleaf(s, d)) continue;
 		if (!*a) {
 			*a = d;
@@ -16220,7 +16224,7 @@ err:
 	 */
 	unless (sccs_findtips(s, &a, &b)) {
 		for (p = s->table; p; p = NEXT(p)) {
-			if ((p->type == 'D') && !(p->flags & D_REMOTE)) {
+			if (!TAG(p) && !(p->flags & D_REMOTE)) {
 				break;
 			}
 		}
@@ -17006,7 +17010,7 @@ void
 sccs_color(sccs *s, delta *d)
 {
         while (d && !(d->flags & D_RED)) {
-        	assert(d->type == 'D');
+        	assert(!TAG(d));
         	d->flags |= D_RED;
         	if (d->merge) sccs_color(s, MERGE(s, d));
         	d = PARENT(s, d);
@@ -17093,7 +17097,7 @@ sccs_stripdel(sccs *s, char *who)
 	 * and that's our top.
 	 */
 	for (e = s->table; e; e = NEXT(e)) {
-		if ((e->type == 'D') && !(e->flags & D_SET)) break;
+		if (!TAG(e) && !(e->flags & D_SET)) break;
 	}
 	assert(e);
 	if (BITKEEPER(s) && e->pathname &&
@@ -17139,7 +17143,7 @@ sccs_rmdel(sccs *s, delta *d, u32 flags)
 	d->flags |= D_SET;
 	if (stripChecks(s, d, "rmdel")) return (1);
 
-	d->type = 'R';	/* mark delta as Removed */
+	d->flags |= D_TAG;	/* mark delta as Removed */
 	d->flags &= ~D_CKSUM;
 
 	return (sccs_stripdel(s, "rmdel"));

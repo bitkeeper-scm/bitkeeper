@@ -22,7 +22,7 @@ lod_probekey(sccs *s, delta *d, int syncRoot, FILE *f)
 	for (i = 1; d && (d != s->tree); i *= 2) {
 		for (j = i; d && --j; d = PARENT(s, d));
 		if (d) {
-			assert(d->type == 'D');
+			assert(!TAG(d));
 			sccs_sdelta(s, d, key);
 			fprintf(f, "%s\n", key);
 		}

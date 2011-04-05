@@ -166,7 +166,7 @@ newRev(sccs *s, int flags, MDBM *db, delta *d)
 		    "renumber %s@%s -> %s\n", s->gfile, REV(s, d), buf));
 		d->rev = sccs_addStr(s, buf);
 	}
-	if (d->type == 'D') remember(db, d);
+	unless (TAG(d)) remember(db, d);
 }
 
 private	void

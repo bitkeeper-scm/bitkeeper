@@ -127,7 +127,7 @@ _patch(sccs *s)
 		s->rstop = s->rstart = d;
 		sccs_prs(s, flags, 0, NULL, stdout);
 		printf("\n");
-		if (d->type == 'D') {
+		unless (TAG(d)) {
 			assert(!(s->state & S_CSET));
 			sccs_getdiffs(s, REV(s, d), GET_BKDIFFS, "-");
 		}

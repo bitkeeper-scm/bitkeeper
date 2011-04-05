@@ -241,7 +241,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	assert((d->serial == 0) || (d->serial > d->pserial));
 
 	sccs_inherit(s, d);
-	if (!fast && (d->type == 'D') && (s->tree != d)) d->same = 1;
+	if (!fast && !TAG(d) && (s->tree != d)) d->same = 1;
 
 	/*
 	 * Fix up tag/symbols

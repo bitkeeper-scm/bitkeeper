@@ -2186,7 +2186,7 @@ uu2bp(sccs *s)
 	fprintf(stderr, "Converting %s", s->gfile);
 	tick = progress_start(PROGRESS_MINI, s->nextserial);
 	for (n = 0, d = s->table; d; d = NEXT(d)) {
-		assert(d->type == 'D');
+		assert(!TAG(d));
 		if (sccs_get(s, REV(s, d), 0, 0, 0, SILENT, "-")) return (8);
 
 		/*

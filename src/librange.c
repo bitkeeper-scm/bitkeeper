@@ -266,7 +266,7 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	if (!rargs->rstart) {
 		/* select all */
 		for (d = s->table; d; d = NEXT(d)) {
-			if (d->type == 'D') d->flags |= D_SET;
+			unless (TAG(d)) d->flags |= D_SET;
 		}
 		s->rstart = s->tree;
 		s->rstop = sccs_top(s);
@@ -459,7 +459,7 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 
 	/* compute RED - BLUE */
 	for (; d && (all || (marked > 0)); d = NEXT(d)) {
-		unless (d->type == 'D') continue;
+		if (TAG(d)) continue;
 		if (all) d->flags |= D_RED;
 		unless (color = (d->flags & mask)) continue;
 		d->flags &= ~color; /* clear bits */
@@ -583,7 +583,7 @@ range_markMeta(sccs *s)
 	 *   What's left -- Outside the region.  Mark and leave D_BLUE
 	 */
 	for (d = s->table; d; d = NEXT(d)){
-		unless (d->type == 'D') continue;
+		if (TAG(d)) continue;
 		unless (d->flags & (D_SET|D_RED)) {
 			d->flags |= D_BLUE;
 			unless (upper) upper = d;
@@ -610,10 +610,10 @@ range_markMeta(sccs *s)
 	i = (lower && (lower->serial < s->rstart->serial))
 	    ? lower->serial : s->rstart->serial;
 	for (; i < s->nextserial; i++) {
-		unless ((d = sfind(s, i)) && (d->type != 'D')) continue;
+		unless ((d = sfind(s, i)) && TAG(d)) continue;
 		if (d->flags & D_SET) continue;
 		/* e = tagged real delta */
-		for (e = PARENT(s, d); e && (e->type != 'D'); e = PARENT(s, e));
+		for (e = PARENT(s, d); e && TAG(e); e = PARENT(s, e));
 		/* filter out meta attached to nodes outside the region */
 		if ((e->flags & D_BLUE) ||
 		    (d->ptag && (sfind(s, d->ptag)->flags & D_BLUE)) ||

@@ -1423,7 +1423,7 @@ finish:
 	deltas = hash_new(HASH_MEMHASH);
 	hash_store(r2deltas, key, strlen(key) + 1, &deltas, sizeof(hash *));
 	for (d = cset->table; d; d = NEXT(d)) {
-		unless ((d->type == 'D') && (d->flags & D_CSET)) continue;
+		unless (!TAG(d) && (d->flags & D_CSET)) continue;
 		sccs_sdelta(cset, d, key);
 		unless (hash_insert(deltas, key, strlen(key)+1, 0, 0)) {
 			fprintf(stderr,

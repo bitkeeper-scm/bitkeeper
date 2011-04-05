@@ -114,7 +114,7 @@ m(sccs *s, delta *l, delta *r)
 			}
 		}
 	} while (d);
-	while (p->pserial && (p->type != 'D')) p = PARENT(s, p);
+	while (p->pserial && TAG(p)) p = PARENT(s, p);
 	sprintf(buf, "# Patch vers:\t1.3\n# Patch type:\tREGULAR\n\n");
 	sum = doit(sum, buf);
 	sprintf(buf, "== %s ==\n", s->gfile);

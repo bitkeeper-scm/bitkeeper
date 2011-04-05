@@ -899,7 +899,7 @@ doMarks(cset_t *cs, sccs *s)
 	if (cs->remark) sccs_clearbits(s, D_CSET);
 
 	for (d = s->table; d; d = NEXT(d)) {
-		if ((d->type == 'D') && (d->flags & D_SET)) {
+		if (!TAG(d) && (d->flags & D_SET)) {
 			if (cs->force || !(d->flags & D_CSET)) {
 				if (cs->verbose > 2) {
 					fprintf(stderr, "Mark %s%c%s\n",

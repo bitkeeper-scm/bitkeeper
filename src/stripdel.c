@@ -111,7 +111,7 @@ doit(sccs *s, s_opts opts)
 		verbose((stderr, 
 		    "Not stripping deltas from MONOTONIC file %s\n", s->gfile));
 		for (e = s->table; e; e = NEXT(e)) {
-			if ((e->flags & D_SET) && (e->type == 'D')) {
+			if ((e->flags & D_SET) && !TAG(e)) {
 				e->dangling = 1;
 			}
 		}

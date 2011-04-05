@@ -86,9 +86,7 @@ unpull(int force, int quiet, char *patch)
 			unlink(CSETS_IN);
 			return (1);
 		}
-		if (e->type == 'D') {
-			chg = e;
-		}
+		unless (TAG(e)) chg = e;
 		if (e->symGraph) {
 			if (!tag) tag = e;	/* first is oldest */
 			e->flags |= D_BLUE;

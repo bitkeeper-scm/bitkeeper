@@ -204,7 +204,7 @@ set_diff(sccs *s, u8 *a, u8 *b, set_pfunc p)
 		unless (a[i] && !b[i]) continue;
 		d = sfind(s, i);
 		assert(d);
-		unless (d->type == 'D') continue;
+		if (TAG(d)) continue;
 		if (opts.tags && !(d->flags & D_SYMBOLS)) continue;
 		p(s, d);
 	}
@@ -225,7 +225,7 @@ set_and(sccs *s, u8 *a, u8 *b, set_pfunc p)
 		unless (a[i] && b[i]) continue;
 		d = sfind(s, i);
 		assert(d);
-		unless (d->type == 'D') continue;
+		if (TAG(d)) continue;
 		if (opts.tags && !(d->flags & D_SYMBOLS)) continue;
 		p(s, d);
 	}
@@ -246,7 +246,7 @@ set_or(sccs *s, u8 *a, u8 *b, set_pfunc p)
 		unless (a[i] || b[i]) continue;
 		d = sfind(s, i);
 		assert(d);
-		unless (d->type == 'D') continue;
+		if (TAG(d)) continue;
 		if (opts.tags && !(d->flags & D_SYMBOLS)) continue;
 		p(s, d);
 	}
@@ -267,7 +267,7 @@ set_xor(sccs *s, u8 *a, u8 *b, set_pfunc p)
 		unless (a[i] ^ b[i]) continue;
 		d = sfind(s, i);
 		assert(d);
-		unless (d->type == 'D') continue;
+		if (TAG(d)) continue;
 		if (opts.tags && !(d->flags & D_SYMBOLS)) continue;
 		p(s, d);
 	}
@@ -311,7 +311,7 @@ set_list(sccs *s, char *rev, set_pfunc p)
 		exit(1);
 	}
 	for (e = s->table; e; e = NEXT(e)) {
-		unless (e->type == 'D') continue;
+		if (TAG(e)) continue;
 		if (e->flags & D_SET) continue;
 		if (opts.tags && !(e->flags & D_SYMBOLS)) continue;
 		map = sccs_set(s, e, 0, 0);

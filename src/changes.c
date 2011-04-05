@@ -1244,7 +1244,7 @@ want(sccs *s, delta *e)
 	int	i, match;
 	symbol	*sym;
 
-	unless (opts.all || (e->type == 'D')) return (0);
+	unless (opts.all || !TAG(e)) return (0);
 	if (opts.tagOnly) {
 		unless (e->flags & D_SYMBOLS) return (0);
 		if (opts.tsearch) {

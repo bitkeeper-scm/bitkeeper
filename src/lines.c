@@ -107,7 +107,7 @@ renumber(sccs *s)
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, i)) continue;
-		if (d->type == 'D') d->same = ser++;
+		unless (TAG(d)) d->same = ser++;
 	}
 }
 
@@ -138,7 +138,7 @@ prevs(delta *d)
 private void
 _prevs(delta *d)
 {
-	unless (d && (d->type == 'D')) return;
+	unless (d && !TAG(d)) return;
 
 	/*
 	 * If we are a branch start, then print our parent.
@@ -197,7 +197,7 @@ t(delta *a, delta *d)
 	delta	*p;
 
 	for (p = d; p->r[2]; p = PARENT(s, p));
-	if ((p->type != 'R') && (p->date < a->date)) a = p;
+	if (!TAG(p) && (p->date < a->date)) a = p;
 	if (KID(s, d)) a = t(a, KID(s, d));
 	if (SIBLINGS(s, d)) a = t(a, SIBLINGS(s, d));
 	return (a);
@@ -213,7 +213,7 @@ ancestor(sccs *s, delta *d)
 
 	/* get back to the trunk */
 	for (a = d; a && a->r[2]; a = PARENT(s, a));
-	while (a->type == 'R') a = PARENT(s, a);
+	while (TAG(a)) a = PARENT(s, a);
 	a = t(a, a);
 	return (a);
 }

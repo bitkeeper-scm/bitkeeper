@@ -53,7 +53,7 @@ range_main(int ac, char **av)
 			for (e = s->table; e; e = NEXT(e)) {
 				if (e->flags & D_SET) {
 					printf(" %s", REV(s, e));
-					if (e->type == 'R') printf("T");
+					if (TAG(e)) printf("T");
 				}
 			}
 		} else {
@@ -61,7 +61,7 @@ range_main(int ac, char **av)
 			    s->gfile, REV(s, s->rstop), REV(s, s->rstart));
 			for (e = s->rstop; e; e = NEXT(e)) {
 				printf(" %s", REV(s, e));
-				if (e->type == 'R') printf("T");
+				if (TAG(e)) printf("T");
 				if (e == s->rstart) break;
 			}
 		}

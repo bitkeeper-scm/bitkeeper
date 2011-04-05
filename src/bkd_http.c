@@ -1119,12 +1119,11 @@ http_index(char *page)
 	t3y = now - 3*YEAR;
 	for (d = s->table; d; d = NEXT(d)) {
 		if (user && !streq(user, USER(s, d))) continue;
-		if (d->type == 'R') continue;
+		if (TAG(d)) continue;
 		unless (d->added > 0) {
 			unless (d == s->tree) cm++;
 			continue;
 		}
-		assert(d->type == 'D');
 		if (NOFUDGE(d) >= t1h) c1h++;
 		if (NOFUDGE(d) >= t1d) c1d++;
 		if (NOFUDGE(d) >= t2d) c2d++;

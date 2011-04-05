@@ -480,7 +480,7 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 	 */
 	if (s->defbranch && streq(s->defbranch, "1.0")) {
 		for (d = s->table; d; d = NEXT(d)) {
-			unless ((d->type == 'D') && sccs_isleaf(s, d)) {
+			unless (!TAG(d) && sccs_isleaf(s, d)) {
 				continue;
 			}
 			unless (d->flags & D_CSET) break;
