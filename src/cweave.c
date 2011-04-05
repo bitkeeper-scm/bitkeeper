@@ -138,8 +138,8 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 		if (e = sccs_findKey(s, key)) {
 			/* We already have this delta... */
 			keep = 0;
-			if (e->dangling) {
-				e->dangling = 0;
+			if (DANGLING(e)) {
+				e->flags &= ~D_DANGLING;
 				keep = 1;
 			}
 			if (!(e->flags & D_CSET) &&
@@ -190,7 +190,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	}
 	e = d;
 	d = insertArrayN(&s->slist, serial, e);
-	d->inarray = 1;
+	d->flags |= D_INARRAY;
 	free(e);
 	s->tree = SFIND(s, 1);
 	s->table = s->slist + nLines(s->slist);

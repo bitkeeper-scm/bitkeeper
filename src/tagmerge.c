@@ -39,7 +39,7 @@ tagmerge(void)
 	 * Find the two oldest tag tips, and count up all tips.
 	 */
 	for (d = s->table, i = 0; d; d = NEXT(d)) {
-		unless (d->symGraph) continue;
+		unless (SYMGRAPH(d)) continue;
 		if (d->ptag) sfind(s, d->ptag)->flags |= D_RED;
 		if (d->mtag) sfind(s, d->mtag)->flags |= D_RED;
 		if (d->flags & D_RED) {

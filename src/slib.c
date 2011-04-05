@@ -461,7 +461,7 @@ sccs_freedelta(delta *d)
 {
 	if (!d) return;
 
-	assert(!d->inarray);
+	assert(!INARRAY(d));
 	freedelta(d);
 	free(d);
 }
@@ -592,12 +592,12 @@ dinsert(sccs *s, delta *d, int fixDate)
 	debug((stderr, "dinsert(%s)", d->rev));
 
 	/* copy delta* into s->slist */
-	unless (d->inarray) {
+	unless (INARRAY(d)) {
 		assert(!d->serial);
 		p = addArray(&s->slist, d);
 		free(d); /* not sccs_freedelta(); just free the mem */
 		d = p;
-		d->inarray = 1;
+		d->flags |= D_INARRAY;
 		d->serial = nLines(s->slist); /* nextserial on autopilot */
 		s->nextserial = d->serial + 1;	/* until we get rid of it */
 	}
@@ -2413,20 +2413,19 @@ symGraph(sccs *s, delta *d)
 	delta	*p;
 
 	if (getenv("_BK_NO_TAG_GRAPH")) {
-		assert(!d->symGraph);
-		assert(!d->symLeaf);
+		assert(!SYMGRAPH(d));
+		assert(!SYMLEAF(d));
 		assert(!d->ptag);
 		assert(!d->mtag);
 		return;
 	}
-	if (d->symGraph) return;
-	for (p = s->table; p && !p->symLeaf; p = NEXT(p));
+	if (SYMGRAPH(d)) return;
+	for (p = s->table; p && !SYMLEAF(p); p = NEXT(p));
 	if (p) {
 		d->ptag = p->serial;
-		p->symLeaf = 0;
+		p->flags &= ~D_SYMLEAF;
 	}
-	d->symLeaf = 1;
-	d->symGraph = 1;
+	d->flags |= D_SYMGRAPH | D_SYMLEAF;
 }
 
 /*
@@ -2471,7 +2470,7 @@ sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 	 */
 	aname = bname = "?";
 	for (d = s->table; d; d = NEXT(d)) {
-		unless (d->symLeaf) continue;
+		unless (SYMLEAF(d)) continue;
 		for (sym = s->symbols; sym; sym = sym->next) {
 			if (sym->meta_ser == d->serial) break;
 		}
@@ -2526,7 +2525,7 @@ resyncMeta(sccs *s, delta *d, char *buf)
 err:		if (s2) sccs_free(s2);
 		return (1);
 	}
-	unless (s2->table->symGraph) {
+	unless (SYMGRAPH(s2->table)) {
 		fprintf(stderr, "resolve: new tip is not a tag merge\n");
 		goto err;
 	}
@@ -2909,7 +2908,7 @@ meta(sccs *s, delta *d, char *buf)
 		d->flags |= D_CSET;
 		break;
 	    case 'D':
-		d->dangling = 1;
+		d->flags |= D_DANGLING;
 		break;
 	    case 'E':
 		/* OLD, ignored */
@@ -3103,7 +3102,7 @@ first:		if (streq(buf, "\001u")) break;
 		assert(t);
 		s->numdeltas++;
 		d = t;
-		d->inarray = 1;
+		d->flags |= D_INARRAY;
 		d->serial = serial;
 		d->added = added;
 		d->deleted = deleted;
@@ -3203,7 +3202,7 @@ meta:			switch (buf[1]) {
 			}
 		}
 done:		if (CSET(s) && TAG(d) &&
-		    !d->symGraph && !(d->flags & D_SYMBOLS)) {
+		    !SYMGRAPH(d) && !(d->flags & D_SYMBOLS)) {
 			MK_GONE(s, d);
 		}
 	}
@@ -7656,7 +7655,7 @@ check_removed(sccs *s, delta *d, int strip_tags)
 	/*
 	 * We don't need no skinkin' removed deltas.
 	 */
-	unless (d->symGraph || (d->flags & D_SYMBOLS) || d->comments) {
+	unless (SYMGRAPH(d) || (d->flags & D_SYMBOLS) || d->comments) {
 		MK_GONE(s, d);
 	}
 }
@@ -7848,7 +7847,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			assert(!TAG(d));
 			fputmeta(s, "\001cC\n", out);
 		}
-		if (d->dangling) fputmeta(s, "\001cD\n", out);
+		if (DANGLING(d)) fputmeta(s, "\001cD\n", out);
 		if (d->dateFudge) {
 			p = fmts(buf, "\001cF");
 			p = fmttt(p, d->dateFudge);
@@ -7951,7 +7950,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			}
 		}
 		/* automagically strip tag serials from non-csetfiles */
-		if (!strip_tags && d->symGraph && CSET(s)) {
+		if (!strip_tags && SYMGRAPH(d) && CSET(s)) {
 			p = fmts(buf, "\001cS");
 			if (d->ptag) {
 				p = fmtd(p, d->ptag);
@@ -7962,7 +7961,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			} else {
 				p = fmtd(p, 0);
 			}
-			if (d->symLeaf) {
+			if (SYMLEAF(d)) {
 				*p++ = ' ';
 				*p++ = 'l';
 			}
@@ -8351,8 +8350,8 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 		return (-1);
 	}
 	ret = _hasDiffs(s, d, flags, inex, &pf);
-	if ((ret == 1) && MONOTONIC(s) && d->dangling && !s->tree->dangling) {
-		while (NEXT(d) && (d->dangling || TAG(d))) d = NEXT(d);
+	if ((ret == 1) && MONOTONIC(s) && DANGLING(d) && !DANGLING(s->tree)) {
+		while (NEXT(d) && (DANGLING(d) || TAG(d))) d = NEXT(d);
 		assert(NEXT(d));
 		free(pf.oldrev);
 		pf.oldrev = strdup(REV(s, d));
@@ -9748,13 +9747,13 @@ checkOpenBranch(sccs *s, int flags)
 		if (streq(REV(s, d), "1.0")) continue;
 		if (CSET(s)) {
 			if (!d->added && !d->deleted && !d->same &&
-			    !(d->flags & D_SYMBOLS) && !d->symGraph) {
+			    !(d->flags & D_SYMBOLS) && !SYMGRAPH(d)) {
 				verbose((stderr,
 				    "%s: illegal removed delta %s\n",
 					s->sfile, REV(s, d)));
 				ret = 1;
 			}
-			if (d->symLeaf && !(d->flags & D_GONE)) {
+			if (SYMLEAF(d) && !(d->flags & D_GONE)) {
 				if (symtips) {
 					if (symtips == 1) {
 					    verbose((stderr,
@@ -9869,14 +9868,14 @@ checkGone(sccs *s, int bit, char *who)
 			    who, REV(s, MERGE(s, d)), s->sfile);
 			s->state |= S_WARNED;
 		}
-		if (d->symGraph && (d->ptag && slist[d->ptag])) {
+		if (SYMGRAPH(d) && (d->ptag && slist[d->ptag])) {
 			error++;
 			fprintf(stderr,
 			"%s: revision %s not at tip of tag graph in %s.\n",
 			    who, REV(s, sfind(s, d->ptag)), s->sfile);
 			s->state |= S_WARNED;
 		}
-		if (d->symGraph && (d->mtag && slist[d->mtag])) {
+		if (SYMGRAPH(d) && (d->mtag && slist[d->mtag])) {
 			error++;
 			fprintf(stderr,
 			"%s: revision %s not at tip of tag graph in %s.\n",
@@ -10338,7 +10337,7 @@ symArg(sccs *s, delta *d, char *name)
 	 * to find leaves.  See sccs_tagleaves().
 	 */
 	if (isdigit(*name)) {
-		d->symGraph = 1;
+		d->flags |= D_SYMGRAPH;
 		d->ptag = atoi(name);
 		while (isdigit(*name)) name++;
 		unless (*name++ == ' ') {
@@ -10352,7 +10351,7 @@ symArg(sccs *s, delta *d, char *name)
 			}
 		}
 		assert(*name == 'l');
-		d->symLeaf = 1;
+		d->flags |= D_SYMLEAF;
 		return;
 	}
 
@@ -10818,7 +10817,7 @@ insert_1_0(sccs *s, u32 flags)
 	 */
 	s->nextserial++;
 	d = insertArrayN(&s->slist, 1, 0);
-	d->inarray = 1;
+	d->flags |= D_INARRAY;
 	s->table = s->slist + nLines(s->slist);
 
 	for (d = d + 1; d <= s->table; d += 1) {
@@ -11190,7 +11189,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			if (v && *v == '\0') v = 0;
 
 			if ((a2xflag(fl) & X_MONOTONIC) &&
-			    sccs_top(sc)->dangling) {
+			    DANGLING(sccs_top(sc))) {
 			    	fprintf(stderr, "admin: "
 				    "must remove danglers first (monotonic)\n");
 				error = 1;
@@ -12595,7 +12594,7 @@ skip:
 
 	/* Dangle marker */
 	if ((buf[0] == 'D') && !buf[1]) {
-		d->dangling = 1;
+		d->flags |= D_DANGLING;
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -12703,21 +12702,21 @@ skip:
 	while (WANT('s')) {
 		TRACE("buf = %s", buf);
 		if (streq(&buf[2], "g")) {
-			if (d) d->symGraph = 1;
+			if (d) d->flags |= D_SYMGRAPH;
 		} else if (streq(&buf[2], "l")) {
-			if (d) d->symLeaf = 1;
+			if (d) d->flags |= D_SYMLEAF;
 		} else if (!(flags & DELTA_TAKEPATCH)) {
 			delta	*e = sccs_findKey(sc, &buf[2]);
 
 			assert(e);
 			TRACE("e->serial = %d", e->serial);
-			assert(e->symGraph);
+			assert(SYMGRAPH(e));
 			if (d->ptag) {
 				d->mtag = e->serial;
 			} else {
 				d->ptag = e->serial;
 			}
-			e->symLeaf = 0;
+			e->flags &= ~D_SYMLEAF;
 		}
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
@@ -13157,7 +13156,7 @@ out:
 	}
 
 	/* Refuse to make deltas to 100% dangling files */
-	if (s->tree->dangling && !(flags & DELTA_PATCH)) {
+	if (DANGLING(s->tree) && !(flags & DELTA_PATCH)) {
 		fprintf(stderr,
 		    "delta: entire file %s is dangling, abort.\n", s->gfile);
 		OUT;
@@ -13187,14 +13186,14 @@ out:
 		pf.newrev = strdup(rev);
 	}
 
-	if (d->dangling) {
+	if (DANGLING(d)) {
 		if (diffs && !(flags & DELTA_PATCH)) {
 			fprintf(stderr,
 			    "delta: dangling deltas may not be "
 			    "combined with diffs\n");
 			OUT;
 		}
-		while (NEXT(d) && (d->dangling || TAG(d))) d = NEXT(d);
+		while (NEXT(d) && (DANGLING(d) || TAG(d))) d = NEXT(d);
 		assert(NEXT(d));
 		strcpy(pf.oldrev, REV(s, d));
 	}
@@ -14112,7 +14111,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	case KW_DT: /* DT */ {
 		/* delta type */
 		if (TAG(d)) {
-			if (d->symGraph) {
+			if (SYMGRAPH(d)) {
 				fc('T');
 			} else {
 				fc('R');
@@ -15360,7 +15359,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_DANGLING: /* DANGLING */ {
 		/* don't clause on MONOTONIC, we had a bug there, see chgset */
-		if (d->dangling) {
+		if (DANGLING(d)) {
 			fs(REV(s, d));
 			return (strVal);
 		}
@@ -15865,7 +15864,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	if (d->bamhash) fprintf(out, "A %s\n", BAMHASH(s, d));
 	if (d->csetFile) fprintf(out, "B %s\n", CSETFILE(s, d));
 	if (d->flags & D_CSET) fprintf(out, "C\n");
-	if (d->dangling) fprintf(out, "D\n");
+	if (DANGLING(d)) fprintf(out, "D\n");
 
 	t = COMMENTS(s, d);
 	while (p = eachline(&t, &len)) fprintf(out, "c %.*s\n", len, p);
@@ -15910,13 +15909,13 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 		}
 	}
 	if (d->random) fprintf(out, "R %s\n", d->random);
-	if ((d->flags & D_SYMBOLS) || d->symGraph) {
+	if ((d->flags & D_SYMBOLS) || SYMGRAPH(d)) {
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->meta_ser == d->serial) continue;
 			fprintf(out, "S %s\n", sym->symname);
 		}
-		if (d->symGraph) fprintf(out, "s g\n");
-		if (d->symLeaf) fprintf(out, "s l\n");
+		if (SYMGRAPH(d)) fprintf(out, "s g\n");
+		if (SYMLEAF(d)) fprintf(out, "s l\n");
 		if (d->ptag) {
 			delta	*e = sfind(s, d->ptag);
 			char	buf[MAXKEY];

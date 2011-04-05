@@ -87,7 +87,7 @@ unpull(int force, int quiet, char *patch)
 			return (1);
 		}
 		unless (TAG(e)) chg = e;
-		if (e->symGraph) {
+		if (SYMGRAPH(e)) {
 			if (!tag) tag = e;	/* first is oldest */
 			e->flags |= D_BLUE;
 		}
@@ -111,7 +111,7 @@ err:			sccs_free(s);
 	}
 	if (tag) {
 		for (d = s->table; d && (d != tag); d = NEXT(d)) {
-			if (!d->symGraph || (d->flags & D_BLUE)) continue;
+			if (!SYMGRAPH(d) || (d->flags & D_BLUE)) continue;
 			if (d->ptag) {
 				e = sfind(s, d->ptag);
 				if (e->flags & D_BLUE) break;

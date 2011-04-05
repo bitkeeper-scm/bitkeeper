@@ -112,7 +112,7 @@ doit(sccs *s, s_opts opts)
 		    "Not stripping deltas from MONOTONIC file %s\n", s->gfile));
 		for (e = s->table; e; e = NEXT(e)) {
 			if ((e->flags & D_SET) && !TAG(e)) {
-				e->dangling = 1;
+				e->flags |= D_DANGLING;
 			}
 		}
 		sccs_newchksum(s);
@@ -181,7 +181,7 @@ stripdel_fixTable(sccs *s, int *pcnt)
 	for (d = s->table; d; d = NEXT(d)) {
 		if (d->flags & D_SET) {
 			MK_GONE(s, d);
-			d->symLeaf = 0;
+			d->flags &= ~D_SYMLEAF;
 			if (!d->pserial ||
 			    !streq(PATHNAME(s, PARENT(s, d)), PATHNAME(s, d))){
 				run_names++;
@@ -190,9 +190,9 @@ stripdel_fixTable(sccs *s, int *pcnt)
 			continue;
 		}
 		left++;
-		if (!leafset && d->symGraph) {
+		if (!leafset && SYMGRAPH(d)) {
 			leafset = 1;
-			d->symLeaf = 1;
+			d->flags |= D_SYMLEAF;
 		}
 	}
 	if (pcnt) *pcnt = count;

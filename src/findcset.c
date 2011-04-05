@@ -789,8 +789,7 @@ mkTag(mkcs_t *cur, char *tag)
 		e->dateFudge += fudge;
 	}
 	cur->date = e->date;
-	e->symGraph = 1;
-	e->symLeaf = 1;
+	e->flags |= D_SYMGRAPH | D_SYMLEAF;
 
 	/*
 	 * All the data has been faked into place.  Now generate a
@@ -1239,7 +1238,7 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 	 */
 	if (d->csetFile) fprintf(out, "B %s\n", CSETFILE(s, d));
 	if (d->flags & D_CSET) fprintf(out, "C\n");
-	if (d->dangling) fprintf(out, "D\n");
+	if (DANGLING(d)) fprintf(out, "D\n");
 	t = COMMENTS(s, d);
 	while (p = eachline(&t, &len)) fprintf(out, "c %.*s\n", len, p);
 	if (d->dateFudge) fprintf(out, "F %d\n", (int)d->dateFudge);
@@ -1252,8 +1251,8 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 	if (d->random) fprintf(out, "R %s\n", d->random);
 	if (tag) {
 		fprintf(out, "S %s\n", tag);
-		if (d->symGraph) fprintf(out, "s g\n");
-		if (d->symLeaf) fprintf(out, "s l\n");
+		if (SYMGRAPH(d)) fprintf(out, "s g\n");
+		if (SYMLEAF(d)) fprintf(out, "s l\n");
 		if (tagparent) {
 			fprintf(out, "s %s\n", tagparent);
 		}

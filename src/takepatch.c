@@ -713,7 +713,7 @@ delta1:	off = mtell(f);
 	 * applying the patch will clear the flag and the code paths
 	 * are all happier this way.
 	 */
-	if ((tmp = sccs_findKey(s, buf)) && !tmp->dangling) {
+	if ((tmp = sccs_findKey(s, buf)) && !DANGLING(tmp)) {
 		if (echo > 3) {
 			fprintf(stderr,
 			    "takepatch: delta %s already in %s, skipping it.\n",
@@ -977,7 +977,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		if (d = cset_insert(s, iF, dF, d, opts->fast)) {
 			(*nfound)++;
 			p->serial = d->serial;
-			if ((d->flags & D_REMOTE) && d->symGraph) {
+			if ((d->flags & D_REMOTE) && SYMGRAPH(d)) {
 				remote_tagtip = d->serial;
 			}
 		}
@@ -998,9 +998,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	if (remote_tagtip) {
 		d = sfind(s, remote_tagtip);
 		assert(d);
-		if (!d->symLeaf) {
+		if (!SYMLEAF(d)) {
 			assert(CSET(s));
-			d->symLeaf = 1;
+			d->flags |= D_SYMLEAF;
 			debug((stderr,
 				"takepatch: adding leaf to tag "
 				"delta %s (serial %d)\n",
@@ -1121,10 +1121,10 @@ markup:
 		d->flags |= D_SET; /* for resum() */
 	}
 	if (topkey) top = sccs_findKey(s, topkey);
-	if (top && (top->dangling || !(top->flags & D_CSET))) {
+	if (top && (DANGLING(top) || !(top->flags & D_CSET))) {
 		delta	*a, *b;
 
-		if (top->dangling && sccs_findtips(s, &a, &b)) {
+		if (DANGLING(top) && sccs_findtips(s, &a, &b)) {
 			fprintf(stderr, "takepatch: monotonic file %s "
 			    "has dangling deltas\n", s->sfile);
 			goto err;
@@ -1529,7 +1529,7 @@ getLocals(sccs *s, delta *g, char *name)
 		 * it is already in the patch list.  In applyPatch()
 		 * we'll undangle the delta.
 		 */
-		if (d->dangling) {
+		if (DANGLING(d)) {
 			char	key[MAXPATH];
 
 			sccs_sdelta(s, d, key);
@@ -1836,7 +1836,7 @@ sfio(MMAP *m)
 			edited = addLine(edited, sccs2name(s->sfile));
 			goto err;
 		}
-		if (s->table->dangling) {
+		if (DANGLING(s->table)) {
 			fprintf(stderr, "takepatch: monotonic file %s "
 			    "has dangling deltas\n", s->sfile);
 			goto err;

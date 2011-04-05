@@ -1603,7 +1603,7 @@ check(sccs *s, MDBM *idDB)
 			}
 		}
 		unless (t) {
-			if (MONOTONIC(s) && d->dangling) continue;
+			if (MONOTONIC(s) && DANGLING(d)) continue;
 			errors++;
 			if (stripdel) continue;
 			fprintf(stderr,

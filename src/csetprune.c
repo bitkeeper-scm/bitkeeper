@@ -1169,13 +1169,13 @@ mkTagGraph(sccs *s)
 
 		/* go from real parent to tag parent (and also for merge) */
 		if (p = PARENT(s, d)) {
-			unless (p->symGraph) {
+			unless (SYMGRAPH(p)) {
 				p = (p->ptag) ? sfind(s, p->ptag) : 0;
 			}
 		}
 		m = 0;
 		if (m = MERGE(s, d)) {
-			unless (m->symGraph) {
+			unless (SYMGRAPH(m)) {
 				m = (m->ptag) ? sfind(s, m->ptag) : 0;
 			}
 		}
@@ -1200,9 +1200,8 @@ mkTagGraph(sccs *s)
 
 		/* If this has a symbol, it is in tag graph */
 		if (d->flags & D_SYMBOLS) {
-			unless (d->symLeaf) tips++;
-			d->symGraph = 1;
-			d->symLeaf = 1;
+			unless (SYMLEAF(d)) tips++;
+			d->flags |= D_SYMGRAPH | D_SYMLEAF;
 		}
 		/*
 		 * if this has both, then make it part of the tag graph
@@ -1211,18 +1210,17 @@ mkTagGraph(sccs *s)
 		 */
 		if (m) {
 			assert(p);
-			unless (d->symLeaf) tips++;
-			d->symGraph = 1;
-			d->symLeaf = 1;
+			unless (SYMLEAF(d)) tips++;
+			d->flags |= D_SYMGRAPH | D_SYMLEAF;
 			d->mtag = m->serial;
-			if (m->symLeaf) tips--;
-			m->symLeaf = 0;
+			if (SYMLEAF(m)) tips--;
+			m->flags &= ~D_SYMLEAF;
 		}
 		if (p) {
 			d->ptag = p->serial;
-			if (d->symGraph) {
-				if (p->symLeaf) tips--;
-				p->symLeaf = 0;
+			if (SYMGRAPH(d)) {
+				if (SYMLEAF(p)) tips--;
+				p->flags &= ~D_SYMLEAF;
 			}
 		}
 	}
@@ -1242,9 +1240,7 @@ rebuildTags(sccs *s)
 	 */
 	for (d = s->table; d; d = NEXT(d)) {
 		d->ptag = d->mtag = 0;
-		d->symGraph = 0;
-		d->symLeaf = 0;
-		d->flags &= ~D_SYMBOLS;
+		d->flags &= ~(D_SYMBOLS|D_SYMGRAPH|D_SYMLEAF);
 	}
 
 	/*

@@ -309,19 +309,16 @@ int	checking_rmdir(char *dir);
 #define	D_BLUE		0x00080000	/* when you need two colors */
 
 #define	D_TAG		0x00100000	/* is tag node old d->type=='R' */
-#if 0
-#define	D_DANGLING	0x00200000
-#define	D_SYMGRAPH	0x00400000
-#define	D_SYMLEAF	0x00800000
-#endif
-/*			0x00200000 */
-/*			0x00400000 */
-/*			0x00800000 */
+#define	D_DANGLING	0x00200000	/* in MONOTONIC file, ahead of chgset */
+#define	D_SYMGRAPH	0x00400000	/* if set, I'm a symbol in the graph */
+#define	D_SYMLEAF	0x00800000	/* if set, I'm a symbol with no kids */
+					/* Needed for tag conflicts with 2 */
+					/* open tips, so maintained always */
 #define	D_ICKSUM	0x01000000	/* use checksum from init file */
 #define	D_MODE		0x02000000	/* permissions in d->mode are valid */
 #define	D_SET		0x04000000	/* range.c: marked as part of a set */
 #define	D_CSET		0x08000000	/* this delta is marked in cset file */
-		/*	0x10000000 */
+#define	D_INARRAY	0x10000000	/* part of s->slist array */
 #define	D_LOCAL		0x20000000	/* for resolve; this is a local delta */
 #define D_XFLAGS	0x40000000	/* delta has updated file flags */
 #define D_TEXT		0x80000000	/* delta has updated text */
@@ -457,16 +454,6 @@ typedef struct delta {
 	u32	xflags;			/* timesafe x flags */
 	u32	flags;			/* per delta flags */
 
-// VVVV XXX need to collapse into 'flags'
-	u32	dangling:1;		/* in MONOTONIC file, ahead of chgset */
-	u32	symGraph:1;		/* if set, I'm a symbol in the graph */
-	u32	symLeaf:1;		/* if set, I'm a symbol with no kids */
-					/* Needed for tag conflicts with 2 */
-					/* open tips, so maintained always */
-	u32	localcomment:1;		/* comments are stored locally */
-	u32	inarray:1;
-// ^^^^ XXX
-
 	/* unique heap data */
 	u32	rev;			/* revision number */
 	ser_t	*include;		/* include serial #'s */
@@ -496,6 +483,10 @@ typedef struct delta {
 
 #define	TAG(d)		((d)->flags & D_TAG)
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
+#define	DANGLING(d)	((d)->flags & D_DANGLING)
+#define	SYMGRAPH(d)	((d)->flags & D_SYMGRAPH)
+#define	SYMLEAF(d)	((d)->flags & D_SYMLEAF)
+#define	INARRAY(d)	((d)->flags & D_INARRAY)
 
 #define	SFIND(s, ser)	((ser) ? ((s)->slist + ser) : 0)
 #define	DFIND(d, ser)	((ser) ? ((d) + (ser) - (d)->serial) : 0)
