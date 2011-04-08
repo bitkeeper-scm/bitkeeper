@@ -4826,7 +4826,11 @@ name2sccs(char *name)
 
 	/* DIR_WITH_SCCS/GOTTEN screwed us up, this should fix it */
 	if (s && strneq(s, "SCCS/", 5) && ((s == name) || (s[-1] == '/'))) {
-		unless (sccs_filetype(name)) return (0);
+		unless (sccs_filetype(name)) {
+			fprintf(stderr,
+			    "%s: invalid file name %s\n", prog, name);
+			exit(1);
+		}
 		name = strdup(name);
 		s = strrchr(name, '/');
 		s[1] = 's';
