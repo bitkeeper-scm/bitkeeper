@@ -40,7 +40,7 @@
 	if ((i = (x)), (s)) for (; _TESTLEN_(s, i); i++)
 #define	EACH_INDEX(s, i)		EACH_START(1, s, i)
 #define	EACH(s)				EACH_START(1, s, i)
-
+#define	EACH_REVERSE(s)			for (i = nLines(s); i > 0; i--) 
 
 /* EACHP like EACH but walks a pointer to each array element instead of i */
 #define	EACHP(s, ptr)							\

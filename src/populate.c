@@ -205,8 +205,8 @@ nested_populate(nested *n, popts *ops)
 	 * remove the ones to be deleted.
 	 */
 	/* deeply nested first */
-	for (j = nLines(n->comps); j > 0; j--) {
-		cp = (comp *)n->comps[j];
+	EACH_REVERSE(n->comps) {
+		cp = (comp *)n->comps[i];
 		if (cp->present && !cp->alias) {
 			verbose((stderr, "%s: removing ./%s...",
 				prog, cp->path));

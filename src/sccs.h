@@ -527,17 +527,6 @@ typedef	struct symbol {			/* symbolic tags */
 } symbol;
 
 /*
- * See slib.c:allocstate() for explanation.
- */
-#define	SFREE	1
-#define	SLIST	0
-typedef struct serial {
-	struct	serial *next;		/* forward link with offset 0 */
-	ser_t	serial;			/* # we're working on */
-	char	type;			/* 'I' or 'E' */
-} serlist;
-
-/*
  * Map used by things like serial map,
  * used to calculate from graph to set
  */

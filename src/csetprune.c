@@ -521,7 +521,7 @@ whichComp(char *key, char **complist)
 	ret = ".";
 	*end = 0;	/* terminate path */
 	/* go backwards through list to find first deep nest which applies */
-	for (i = nLines(complist); i > 0; i--) {
+	EACH_REVERSE(complist) {
 		if (len = paths_overlap(path, complist[i])) {
 			unless (path[len]) {
 				*end = '|';

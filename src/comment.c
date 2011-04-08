@@ -285,7 +285,7 @@ change_comments(char *file, char *rev, char **comments)
 		    file, rev);
 		goto err;
 	}
-	for (i = nLines(comments); i > 0; i--) {
+	EACH_REVERSE(comments) {
 		unless (streq(comments[i], "")) break;
 		free(comments[i]);
 		comments[i] = 0;
