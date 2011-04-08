@@ -19,6 +19,7 @@ typedef struct {
 	u32	missing:1;	/* -m: only aliases not present */
 	u32	expand:1;	/* -e: expand list of aliases */
 	u32	force:1;	/* -f: force remove components */
+	u32	noURLprobe:1;	/* --unsafe: unpop without gate */
 	u32	verbose:8;	/* -v: be verbose */
 } aopts;
 
@@ -72,6 +73,10 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 	int	islist = 0;	/* saw an option that only goes to list */
 	int	isntlist = 0;	/* saw an option that never goes to list */
 	aopts	opts = {0};
+	longopt	lopts[] = {
+		{ "unsafe", 300 },	/* unpopulate without gate */
+		{ 0, 0 }
+	};
 	struct {
 		char	*verb;
 		int	(*fcn)(char *cmd, aopts *opts, char **av);
@@ -90,7 +95,7 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 			break;
 		}
 	}
-	while ((c = getopt(ac, av, "@|Cefkhmr;qv", 0)) != -1) {
+	while ((c = getopt(ac, av, "@|Cefkhmr;qv", lopts)) != -1) {
 		switch (c) {
 		    case '@':
 			isntlist = 1;
@@ -105,6 +110,7 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 		    case 'r': islist = 1; opts.rev = optarg; break;
 		    case 'q': opts.quiet = 1; break;
 		    case 'v': opts.verbose += 1; break;
+		    case 300: isntlist = 1; opts.noURLprobe = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -267,6 +273,7 @@ write:
 			ops.verbose = opts->verbose;
 			ops.runcheck = 1;
 			ops.force = opts->force;
+			ops.noURLprobe = opts->noURLprobe;
 			if (nested_populate(n, &ops)) {
 				goto err;
 			}

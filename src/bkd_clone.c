@@ -40,8 +40,8 @@ cmd_clone(int ac, char **av)
 			delay = atoi(optarg);
 			break;
 		    case 'z':
-			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 0 || gzip > 9) gzip = 6;
+			gzip = optarg ? atoi(optarg) : Z_BEST_SPEED;
+			if (gzip < 0 || gzip > 9) gzip = Z_BEST_SPEED;
 			break;
 		    case 'q':
 			quiet = 1;

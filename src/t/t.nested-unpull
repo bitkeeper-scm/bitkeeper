@@ -16,6 +16,19 @@ cd "$HERE"/child/gdb
 bk unpull -f $Q || fail should have worked
 echo OK
 
+echo $N Unpull that fails is product should restore components ......$NL
+cd ..
+bk pull $Q || fail
+bk edit $Q afile
+echo junk >> afile
+bk unpull -f $Q 2>ERR && fail should fail
+grep -q "undo aborted" ERR || fail
+grep -q "Reverting components" ERR || fail
+bk repocheck $Q || fail
+bk unedit $Q afile
+echo OK
+
+
 echo $N Test unpulling a port........................................$NL
 # detach so we can port later
 cd "$HERE"/child

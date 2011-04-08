@@ -32,7 +32,7 @@ int
 rclone_main(int ac, char **av)
 {
 	int	c, rc, isLocal;
-	int	gzip = 6;
+	int	gzip = Z_BEST_SPEED;
 	char	*url;
 	char    **envVar = 0;
 	remote	*l, *r;
@@ -73,7 +73,7 @@ rclone_main(int ac, char **av)
 		    case 'w': /* ignored */ break;
 		    case 'z':
 			if (optarg) gzip = atoi(optarg);
-			if ((gzip < 0) || (gzip > 9)) gzip = 6;
+			if ((gzip < 0) || (gzip > 9)) gzip = Z_BEST_SPEED;
 			break;
 		    case 300:	/* --sccs-compat */
 			opts.sendenv_flags |= SENDENV_FORCENOREMAP;

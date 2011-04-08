@@ -10,6 +10,7 @@ echo $N Setup testing scenarios......................................$NL
 # Set up the parent with gcc, gdb, and comp, all with a file called 'file'.
 cd "$HERE"
 nested parent
+bk gate -qr
 RAND > file
 bk new $Q file || fail
 bk commit $Q -yfile || fail
@@ -51,6 +52,7 @@ cd ..
 # Clone and set up the multiple scenarios (indentation added for clarity).
 # These are repos we will pull into (from parent) or push from (into parent)
 # and the operation will fail.
+bk clone $Q -sMYALIAS parent pull-R || fail
 bk clone $Q -sMYALIAS parent edit_in_product || fail
 	cd edit_in_product
 	bk edit $Q file
@@ -175,6 +177,29 @@ check_state()
 }
 
 ########## Pull tests
+echo $N Pull -R, change component, abort ............................$NL
+cd "$HERE/pull-R"
+save_state
+bk pull $Q -R || fail
+touch comp2/extra
+# XXX Should fail this abort, but is calling nested_rmcomp in abortComponents
+# And that doesn't check for work done.
+bk abort -qf || fail
+# Do it again with unpop component - this time it will fail
+bk pull $Q -R || fail
+touch comp3/extra
+bk abort -qf 2> GOT && fail should have failed
+cat <<EOF > WANT
+Extra file:         comp3/extra
+here: unable to remove ./comp3
+abort: bk here failed
+EOF
+cmpfiles WANT GOT
+rm comp3/extra
+bk abort -qf || fail
+check_state || fail $err
+echo "failed (bug in abortComponents)"
+
 echo $N Pull, edited file in product.................................$NL
 # Pull should fail in the product and leave all components unchanged,
 # no RESYNC dirs, and newcomp should not have come over.
