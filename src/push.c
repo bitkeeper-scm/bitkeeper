@@ -713,7 +713,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@TAKEPATCH INFO@")) {
 		/* with -q, save output in 'f' to print if error */
-		f = opts.quiet ? fmem_open() : stderr;
+		f = opts.quiet ? fmem() : stderr;
 		unless (opts.quiet || opts.verbose) progress_active();
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
@@ -726,7 +726,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 
 			if (remote_rc) {
 				if (opts.quiet) {
-					fputs(fmem_getbuf(f, 0), stderr);
+					fputs(fmem_peek(f, 0), stderr);
 				}
 				fprintf(stderr,
 				    "Push failed: remote takepatch exited %d\n",

@@ -2057,7 +2057,7 @@ sccs_startWrite(sccs *s)
 	char	*xfile;
 
 	if (s->mem_out) {
-		unless(s->outfh) s->outfh = fmem_open();
+		unless(s->outfh) s->outfh = fmem();
 		assert(s->outfh);
 		sfile = s->outfh;
 	} else {
@@ -2113,7 +2113,7 @@ sccs_finishWrite(sccs *s, FILE **f)
 			ftrunc(s->outfh, 0);
 		} else {
 			fclose(tmp);
-			s->outfh = fmem_open();
+			s->outfh = fmem();
 			s->mem_in = 1;
 		}
 		*f = 0;
@@ -4623,7 +4623,7 @@ sccs_free(sccs *s)
 		s->outfh = 0;
 		s->mem_in = s->mem_out = 0;
 
-		buf = fmem_getbuf(f, &len);
+		buf = fmem_peek(f, &len);
 		out = sccs_startWrite(s);
 		assert(buf);
 		fwrite(buf, 1, len, out);
@@ -15755,13 +15755,10 @@ char *
 sccs_prsbuf(sccs *s, delta *d, int flags, char *dspec)
 {
 	FILE	*f;
-	char	*ret;
 
-	f = fmem_open();
+	f = fmem();
 	sccs_prsdelta(s, d, flags, dspec, f);
-	ret = fmem_retbuf(f, 0); /* FYI: returns "" if empty */
-	fclose(f);
-	return (ret);
+	return (fmem_close(f, 0)); /* FYI: returns "" if empty */
 }
 
 

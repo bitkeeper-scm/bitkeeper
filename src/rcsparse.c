@@ -1136,13 +1136,14 @@ err:		fprintf(stderr, "EOF in log? file=%s\n", rcs->rcsfile);
 	skip_white(m);
 	unless (p = mwhere(m)) goto err;
 	unless (*p++ == '@') goto err;
-	log = fmem_open();
+	log = fmem();
 	for (t = buf; p < m->end; p++) {
 		if ((*p == '@') && (p[1] != '@')) {
 			unless (t == buf || t[-1] == '\n') *t++ = '\n';
 			*t = 0;
 			fputs(buf, log);
-			d->comments = fmem_retbuf(log, 0);
+			d->comments = fmem_dup(log, 0);
+			ftrunc(log, 0);
 			m->where = p + 1;
 			break;
 		}

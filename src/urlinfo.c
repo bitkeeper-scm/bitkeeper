@@ -475,12 +475,12 @@ urlinfo_probeURL(nested *n, char *url, FILE *out)
 	fprintf(out, "%s: searching %s...", prog, url);
 
 	/* find deltakeys found locally */
-	fin = fmem_open();
+	fin = fmem();
 	EACH_STRUCT(n->comps, c, i) {
 		fprintf(fin, "%s %s\n", c->rootkey, c->deltakey);
 	}
 	rewind(fin);
-	fout = fmem_open();
+	fout = fmem();
 	bkdEnv = hash_new(HASH_MEMHASH);
 	rc = remote_cmd(hkav, url, fin, fout, 0, bkdEnv,
 	    SILENT|REMOTE_GZ_SND|REMOTE_GZ_RCV);

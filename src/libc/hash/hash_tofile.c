@@ -105,7 +105,7 @@ hash_fromStream(hash *h, FILE *f)
 	char	*line;
 	char	*key = 0;
 	int	base64 = 0;
-	FILE	*val = fmem_open();
+	FILE	*val = fmem();
 	int	gotval = 0;
 	char	*p;
 	unsigned long len;
@@ -239,7 +239,7 @@ savekey(hash *h, int base64, char *key, FILE *val)
 	size_t	len;
 
 	unless (key) key = strdup("");
-	data = fmem_getbuf(val, &len);
+	data = fmem_peek(val, &len);
 	unless (base64) len++;
 	/* overwrite existing */
 	hash_store(h, key, strlen(key)+1, data, len);

@@ -502,7 +502,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 	 * Read the verbose status if we asked for it
 	 */
 	getline2(r, buf, sizeof(buf));
-	info = fmem_open();
+	info = fmem();
 	if (streq(buf, "@REV LIST@")) {
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (streq(buf, "@END@")) break;
@@ -526,7 +526,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 	/*
 	 * Dump the status now that we know we are going to get it.
 	 */
-	fputs(fmem_getbuf(info, 0), stderr);
+	fputs(fmem_peek(info, 0), stderr);
 	fclose(info);
 
 	/*
@@ -548,15 +548,15 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 		}
 	}
 	if (streq(buf, "@URLLIST@")) {
-		FILE	*fmem = fmem_open();
+		FILE	*f = fmem();
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (streq(buf, "@")) break;
-			fputs(buf, fmem);
-			fputc('\n', fmem);
+			fputs(buf, f);
+			fputc('\n', f);
 		}
-		rewind(fmem);
-		rmt_urllist = hash_fromStream(0, fmem);
-		fclose(fmem);
+		rewind(f);
+		rmt_urllist = hash_fromStream(0, f);
+		fclose(f);
 		getline2(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@PATCH@")) {

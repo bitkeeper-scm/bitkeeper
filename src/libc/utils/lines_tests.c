@@ -61,7 +61,7 @@ uniqLines_test(void)
 void
 databuf_tests(void)
 {
-	FILE	*data = fmem_open();
+	FILE	*data = fmem();
 	int	i;
 	char	*out;
 	char	buf[64];
@@ -70,8 +70,7 @@ databuf_tests(void)
 	for (i = 0; i < 140000; i++) {
 		fwrite(buf, 1, 63, data);
 	}
-	out = fmem_retbuf(data, 0);
-	fclose(data);
+	out = fmem_close(data, 0);
 	free(out);
 }
 void

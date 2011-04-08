@@ -238,13 +238,12 @@ changes_main(int ac, char **av)
 				    "can't read dspec and revs from stdin.\n");
 				return (1);
 			}
-			f = fmem_open();
+			f = fmem();
 			while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
 				fwrite(buf, 1, i, f);
 			}
 			free(opts.dspec);
-			opts.dspec = fmem_retbuf(f, 0);
-			fclose(f);
+			opts.dspec = fmem_close(f, 0);
 		} else if (exists(opts.dspec+1)) {
 			if (p = loadfile(opts.dspec+1, 0)) {
 				free(opts.dspec);
@@ -653,9 +652,9 @@ doit(int dash)
 	 * before we know if it will be printed.
 	 */
 	if (opts.doComp && opts.filt) {
-		opts.fmem = fmem_open();
+		opts.fmem = fmem();
 	}
-	if (opts.doComp || opts.verbose) opts.fcset = fmem_open();
+	if (opts.doComp || opts.verbose) opts.fcset = fmem();
 	/* capture the comments, for the csets we care about */
 	dstart = dstop = 0;
 	for (e = s->rstop; e; e = NEXT(e)) {
@@ -1189,7 +1188,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		if (!opts.filt ||
 		    (keys && (!opts.prodOnly || proj_isProduct(sc->proj)))) {
 			/* write cset data saved above */
-			buf = fmem_getbuf(opts.fcset, &len);
+			buf = fmem_peek(opts.fcset, &len);
 			fwrite(buf, 1, len, f);
 		}
 		if (found) rc = 1; /* Remember we printed output */
@@ -1213,7 +1212,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 				/*
 				 * we generated output so flush the saved data
 				 */
-				buf = fmem_getbuf(f, &len);
+				buf = fmem_peek(f, &len);
 				f = fsave;
 				fsave = 0;
 				fwrite(buf, 1, len, f);

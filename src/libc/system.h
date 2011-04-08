@@ -141,9 +141,10 @@ int	sameFiles(char *file1, char *file2);
 pid_t	findpid(pid_t pid);
 
 /* fmem.c */
-FILE	*fmem_open(void);
-char	*fmem_getbuf(FILE *f, size_t *len);
-char	*fmem_retbuf(FILE *f, size_t *len);
+FILE	*fmem(void);
+char	*fmem_peek(FILE *f, size_t *len);
+char	*fmem_dup(FILE *f, size_t *len);
+char	*fmem_close(FILE *f, size_t *len);
 void	fmem_tests(void);
 int	ftrunc(FILE *f, off_t offset);
 

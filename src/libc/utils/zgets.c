@@ -249,7 +249,7 @@ again:
 	 * line is bigger than ZBUFSIZ !
 	 * Non-Wayne unoptimized for ease of lesser folks reading ability.
 	 */
-	data = fmem_open();
+	data = fmem();
 	fwrite(in->next, 1, in->left, data);
 	in->left = 0;
 	nl = 0;
@@ -265,8 +265,7 @@ again:
 		in->next += i;
 		in->left -= i;
 	}
-	in->line = fmem_retbuf(data, 0);
-	fclose(data);
+	in->line = fmem_close(data, 0);
 	return (in->line);
 }
 

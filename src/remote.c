@@ -78,7 +78,7 @@ remote_bk(int quiet, int ac, char **av)
 	if (streq(av[ac-1], "-")) {
 		if (nLines(urls) > 1) {
 			/* buffer it */
-			fin = fmem_open();
+			fin = fmem();
 			while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
 				fwrite(buf, 1, i, fin);
 			}

@@ -106,7 +106,7 @@ range_urlArg(RANGE *rargs, char *url)
 	char	**urls = 0;
 
 	if (url) urls = addLine(urls, url);
-	f = fmem_open();
+	f = fmem();
 	if (repogca(urls, ":REV:\\n", RGCA_ALL, f)) goto out;
 	rewind(f);
 	rev = aprintf("@@%s", fgetline(f)); /* intentional leak (see above) */

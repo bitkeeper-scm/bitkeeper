@@ -341,7 +341,7 @@ urllist_find(nested *n, comp *cp, int flags, int *idx)
 	urlinfo	*data, *data2;
 
 	/* In quiet mode, buffer to display on error */
-	out = (flags & SILENT) ? fmem_open() : stderr;
+	out = (flags & SILENT) ? fmem() : stderr;
 
 	unless (n->urls) urlinfo_buildArray(n);
 
@@ -395,7 +395,7 @@ urllist_find(nested *n, comp *cp, int flags, int *idx)
 	}
 	if (flags & SILENT) {
 		unless (flags & URLLIST_NOERRORS) {
-			fputs(fmem_getbuf(out, 0), stderr);
+			fputs(fmem_peek(out, 0), stderr);
 		}
 		fclose(out);
 	}
