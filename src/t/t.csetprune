@@ -210,6 +210,26 @@ bk clone $Q -rTAG_B2 tag_c tag_clone 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
 echo OK
 
+echo $N Make a tag on a merge node that gets removed ................$NL
+# bk-4 csetprune by default collapsed a tag graph onto a real graph.
+# a subsequent csetprune can take the real nodes and turn them back
+# into graph nodes.  This ungone'ing was mishandled in bk-5.0 by
+# leaving include and exclude litter on gone'd nodes (merge was cleared).
+commercial tag-master
+bk clone $Q . ../tag-copy
+touch foo bar
+bk new $Q foo bar
+FOO=`bk prs -r1.0 -hnd:KEY: foo`
+BAR=`bk prs -r1.0 -hnd:KEY: bar`
+bk commit $Q -yfiles
+bk cset $Q -x+
+bk tag $Q TAG
+# collapse tag graph onto real graph
+echo "$BAR" | bk csetprune $Q --tag-csets || fail
+# tickle the bug
+echo "$FOO" | bk csetprune $Q || fail
+echo OK
+
 # have tip change 'b' and remove 'a' and check for tip reparented
 echo $N Reparent tip ................................................$NL
 cd "$HERE"

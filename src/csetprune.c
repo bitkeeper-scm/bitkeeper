@@ -117,7 +117,7 @@ csetprune_main(int ac, char **av)
 		    	opts->revfile = optarg;
 			break;
 		    case 310: /* --tag-csets */
-			flags = PRUNE_NEW_TAG_GRAPH;
+			flags |= PRUNE_NEW_TAG_GRAPH;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -1512,10 +1512,13 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd, char ***mkid)
 	 * See if node is a keeper ...
 	 * Inside knowledge: no sd entry is the same as no include
 	 * or exclude list, because of how the sd entry uses pserial too.
+	 * Clear out inc and exc -- if keeping, they'll get recomputed.
+	 * and if tossing, they are empty (no sd[serial]) but haven't
+	 * been cleared.
 	 */
+	FREE(d->include);
+	FREE(d->exclude);
 	if (d->added || d->merge || sd[d->serial]) {
-		FREE(d->include);
-		FREE(d->exclude);
 		if (sd[d->serial]) {
 			/* regen old style SCCS inc and excl lists */
 			graph_symdiff(d, PARENT(s, d), slist, sd, 0, 0);
