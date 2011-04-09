@@ -7764,10 +7764,7 @@ TclExecuteByteCode(
 	 */
 	if (needPtr) {
 	    unless (deepPtrObj) {
-		deepPtrObj = Tcl_NewObj();
-		deepPtrObj->bytes    = tclEmptyStringRep;
-		deepPtrObj->length   = 0;
-		deepPtrObj->refCount = 0;
+		TclNewObj(deepPtrObj);
 		deepPtrObj->typePtr  = &L_deepPtrType;
 		deepPtr = (L_DeepPtr *)ckalloc(sizeof(L_DeepPtr));
 		deepPtrObj->internalRep.otherValuePtr = deepPtr;
@@ -7792,6 +7789,7 @@ TclExecuteByteCode(
 	     * soon if this is the last ref to it.
 	     */
 	    toplevObj = deepPtr->topLevObj;
+	    Tcl_DecrRefCount(deepPtr->idxObj);
 	    ckfree((char *)deepPtr);
 	    Tcl_DecrRefCount(deepPtrObj);
 	}
@@ -9710,7 +9708,7 @@ L_deepDiveHash(
     hPtr = Tcl_FindHashEntry(&dict->table, (char *)idxObj);
     unless (hPtr) {
 	unless (lvalue) return (L_undefObjPtrPtr());
-	objPtr = Tcl_NewObj();
+	TclNewObj(objPtr);
 	Tcl_IncrRefCount(objPtr);
 	result = Tcl_DictObjPut(interp, obj, idxObj, objPtr);
 	Tcl_DecrRefCount(objPtr);

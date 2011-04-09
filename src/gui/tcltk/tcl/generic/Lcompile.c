@@ -350,6 +350,7 @@ parse_options(int ac, Tcl_Obj **av)
 			break;
 		    case L_WARN_UNDEF_FNS_1: case L_WARN_UNDEF_FNS_2:
 			opts |= L_OPT_WARN_UNDEF_FNS;
+			break;
 		    default:
 			ASSERT(0);
 		}
