@@ -17,6 +17,7 @@ typedef struct {
 	u32	force_unpopulate:1;
 	int	tick_cur;
 	ticker	*tick;
+	char	*patch;
 } options;
 
 private char	**getrev(options *opts, char *rev, int aflg);
@@ -53,7 +54,6 @@ undo_main(int ac,  char **av)
 	char	*cmd = 0, *rev = 0;
 	int	aflg = 0;
 	char	**checkfiles = 0;	/* list of files to check */
-	char	*patch = "BitKeeper/tmp/undo.patch";
 	char	*p;
 	char	*must_have = 0;
 	char	**nav = 0;
@@ -68,6 +68,7 @@ undo_main(int ac,  char **av)
 	};
 
 	opts = new(options);
+	opts->patch = "BitKeeper/tmp/undo.patch";
 	opts->fromclone = 0;
 	while ((c = getopt(ac, av, "a:Cfqp;r:Ssv", lopts)) != -1) {
 		/* We make sure component undo's always save a patch */
@@ -81,7 +82,7 @@ undo_main(int ac,  char **av)
 		    case 'C': opts->fromclone = 1; break;
 		    case 'f': force  =  1; break;		/* doc 2.0 */
 		    case 'q': opts->quiet = 1; break;			/* doc 2.0 */
-		    case 'p': patch = optarg; break;
+		    case 'p': opts->patch = optarg; break;
 		    case 'S': standalone = 1; break;
 		    case 's': save = 0; break;			/* doc 2.0 */
 		    case 'v': opts->verbose = 1; break;
@@ -267,10 +268,10 @@ prod:
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
 		/* like bk makepatch but skips over missing files/keys */
 		if (opts->quiet || opts->verbose) {
-			cmd = aprintf("bk cset -Bfm - > '%s'", patch);
+			cmd = aprintf("bk cset -Bfm - > '%s'", opts->patch);
 		} else {
 			cmd = aprintf("bk cset -Bfm -N%d - > '%s'",
-				      ncsetrevs, patch);
+				      ncsetrevs, opts->patch);
 			progress_inherit(opts->tick);
 			progress_nlneeded();
 		}
@@ -284,8 +285,9 @@ prod:
 			progress_inheritEnd(opts->tick, ncsetrevs);
 			opts->tick_cur += ncsetrevs;
 		}
-		if (check_patch(patch)) {
-			printf("Failed to create undo backup %s\n", patch);
+		if (check_patch(opts->patch)) {
+			printf("Failed to create undo backup %s\n",
+			    opts->patch);
 			goto err;
 		}
 	}
@@ -309,7 +311,9 @@ prod:
 	chdir(RESYNC2ROOT);
 
 	rmEmptyDirs(!opts->verbose);
-	if (opts->verbose && save) printf("Backup patch left in \"%s\".\n", patch);
+	if (opts->verbose && save) {
+		printf("Backup patch left in \"%s\".\n", opts->patch);
+	}
 
 	idcache_update(checkfiles);
 	proj_restoreAllCO(0, 0, 0);
@@ -571,7 +575,7 @@ undo_ensemble_rollback(nested *n, options *opts, char **comp_list)
 		}
 		unless (opts->verbose) progress_nlneeded();
 		if (rc = systemf("bk -?FROM_PULLPUSH=YES "
-		    "takepatch %s -afBitKeeper/tmp/undo.patch", opt)) {
+		    "takepatch %s -af'%s'", opt, opts->patch)) {
 			fprintf(stderr, "undo: restoring backup patch in %s "
 			    "failed\n", c->path);
 		}

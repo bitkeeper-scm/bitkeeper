@@ -275,6 +275,17 @@ converge(State *g, char *gfile, char *opts)
 		resolve_free(rs);
 	}
 	sccs_free(skeep);	/* done with skeep */
+	free(sfile);
+
+	if (streq(opts, "ATTR")) {
+		/*
+		 * We don't need to record these converge merges in
+		 * the attribute file.  Just pick the oldest and
+		 * delete the other file.
+		 */
+		unlink(tmp);
+		return;
+	}
 
 	/* Add other files contents as branch of 1.0 */
 	rc = sys("bk", "_get", "-egqr1.0", gfile, SYS);
@@ -301,7 +312,6 @@ converge(State *g, char *gfile, char *opts)
 		rc = sys("bk", "ci", "-qPyauto-union-files", gfile, SYS);
 		assert(!rc);
 	}
-	free(sfile);
 }
 
 /*

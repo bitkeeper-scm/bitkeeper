@@ -364,6 +364,7 @@ synckeys
 tagmerge
 takepatch
 _tclsh
+_testlines
 test
 testdates
 time

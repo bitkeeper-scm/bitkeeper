@@ -61,7 +61,7 @@ clone_main(int ac, char **av)
 {
 	int	c;
 	retrc	retrc = 0;
-	int	gzip = 6;
+	int	gzip = Z_BEST_SPEED;
 	char	**envVar = 0;
 	remote 	*r = 0, *l = 0;
 	char	*check_out = 0;		/* --checkout=none|get|edit */
@@ -137,7 +137,7 @@ clone_main(int ac, char **av)
 		    case 'w': opts->delay = atoi(optarg); break; /* undoc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			if (optarg) gzip = atoi(optarg);
-			if ((gzip < 0) || (gzip > 9)) gzip = 6;
+			if ((gzip < 0) || (gzip > 9)) gzip = Z_BEST_SPEED;
 			break;
 		    case 300: /* --sccs-compat */
 			opts->no_lclone = 1;

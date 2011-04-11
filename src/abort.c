@@ -306,7 +306,7 @@ out:	if (n) nested_free(n);
 	 * components, removed some, etc. We restore sanity by
 	 * trusting the HERE file.
 	 */
-	if (system("bk here set -q here")) {
+	if (system("bk here set --unsafe -q here")) {
 		error("abort: bk here failed\n");
 		errors++;
 	}

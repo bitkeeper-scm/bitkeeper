@@ -765,7 +765,7 @@ nested_findDir(nested *n, char *dir, int exact)
 	int	i, len;
 
 	unless (n && dir && n->comps) return (0);
-	for (i = nLines(n->comps); i > 0; i--) {
+	EACH_REVERSE(n->comps) {
 		c = (comp *)n->comps[i];
 		if (c->product) continue;	/* first or last, so punt */
 		if ((len = paths_overlap(c->path, dir)) && !c->path[len]) {

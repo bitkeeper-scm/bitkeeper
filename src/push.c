@@ -74,7 +74,7 @@ push_main(int ac, char **av)
 	char	**envVar = 0;
 	char	**urls = 0;
 	remote	*r;
-	int	gzip = 6;
+	int	gzip = Z_BEST_SPEED;
 	longopt	lopts[] = {
 		{ "standalone", 'S'},
 		{ 0, 0 }
@@ -125,7 +125,7 @@ push_main(int ac, char **av)
 		    	break;
 		    case 'z':					/* doc 2.0 */
 			if (optarg) gzip = atoi(optarg);
-			if ((gzip < 0) || (gzip > 9)) gzip = 6;
+			if ((gzip < 0) || (gzip > 9)) gzip = Z_BEST_SPEED;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -713,7 +713,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@TAKEPATCH INFO@")) {
 		/* with -q, save output in 'f' to print if error */
-		f = opts.quiet ? fmem_open() : stderr;
+		f = opts.quiet ? fmem() : stderr;
 		unless (opts.quiet || opts.verbose) progress_active();
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
@@ -726,7 +726,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 
 			if (remote_rc) {
 				if (opts.quiet) {
-					fputs(fmem_getbuf(f, 0), stderr);
+					fputs(fmem_peek(f, 0), stderr);
 				}
 				fprintf(stderr,
 				    "Push failed: remote takepatch exited %d\n",

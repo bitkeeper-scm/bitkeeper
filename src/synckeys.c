@@ -572,9 +572,9 @@ send_sync_msg(remote *r, sccs *s, int flags)
 	fprintf(f, "synckeys %s\n", (flags & PK_SYNCROOT) ? "-S" : "");
 	fclose(f);
 
-	f = fmem_open();
+	f = fmem();
 	probekey(s, 0, (flags & PK_SYNCROOT), f);
-	probe = fmem_getbuf(f, &probelen);
+	probe = fmem_peek(f, &probelen);
 	rc = send_file(r, buf, probelen);
 	unlink(buf);
 	unless (rc) {

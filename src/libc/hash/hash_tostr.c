@@ -11,13 +11,14 @@ hash_toStr(hash *h)
 {
 	char	**data = 0;
 	char	*ret;
-	FILE	*f = fmem_open();
+	FILE	*f = fmem();
 
 	EACH_HASH(h) {
 		webencode(f, h->kptr, h->klen);
 		putc('=', f);
 		webencode(f, h->vptr, h->vlen);
-		data = addLine(data, fmem_retbuf(f, 0));
+		data = addLine(data, fmem_dup(f, 0));
+		ftrunc(f, 0);
 	}
 	fclose(f);
 	sortLines(data, 0);	/* sort by keys */

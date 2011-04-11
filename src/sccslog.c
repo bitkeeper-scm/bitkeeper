@@ -309,7 +309,7 @@ sccslog(sccs *s)
 	FILE	*f;
 	char	key[MAXKEY];
 
-	f = fmem_open();
+	f = fmem();
 	if (CSET(s)) ChangeSet = 1;
 	for (d = s->table; d; d = NEXT(d)) {
 		if (SET(s) && !(d->flags & D_SET)) continue;
@@ -338,7 +338,8 @@ sccslog(sccs *s)
 			}
 		} else {
 			pdelta(s, d, f);
-			nd->output = fmem_retbuf(f, 0);
+			nd->output = fmem_dup(f, 0);
+			ftrunc(f, 0);
 		}
 
 		list = addLine(list, nd);

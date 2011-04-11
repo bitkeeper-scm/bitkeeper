@@ -249,7 +249,7 @@ again:
 	 * line is bigger than ZBUFSIZ !
 	 * Non-Wayne unoptimized for ease of lesser folks reading ability.
 	 */
-	data = fmem_open();
+	data = fmem();
 	fwrite(in->next, 1, in->left, data);
 	in->left = 0;
 	nl = 0;
@@ -265,8 +265,7 @@ again:
 		in->next += i;
 		in->left -= i;
 	}
-	in->line = fmem_retbuf(data, 0);
-	fclose(data);
+	in->line = fmem_close(data, 0);
 	return (in->line);
 }
 
@@ -354,7 +353,7 @@ zputs_init(zputs_func callback, void *token, int level)
 	out->z.avail_in = 0;
 	out->callback = callback ? callback : zputs_filewrite;
 	out->token = token;
-	if (deflateInit(&out->z, (level == -1) ? 4 : level) != Z_OK) {
+	if (deflateInit(&out->z, (level == -1) ? Z_BEST_SPEED : level) != Z_OK) {
 		free(out->inbuf);
 		free(out->outbuf);
 		free(out);

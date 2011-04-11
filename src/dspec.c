@@ -270,7 +270,7 @@ dollar(FILE *out)
 		 * and put the output into the $n fmem.
 		 */
 		if (out) {
-			FILE	*memfile = fmem_open();
+			FILE	*memfile = fmem();
 
 			stmtList(memfile);
 			if (fvars[num]) fclose(fvars[num]);
@@ -283,7 +283,7 @@ dollar(FILE *out)
 		num = g.p[1] - '0';
 		g.p += 2;
 		if (out && fvars[num]) {
-			p = fmem_getbuf(fvars[num], &len);
+			p = fmem_peek(fvars[num], &len);
 			show_s(g.s, out, p, len);
 		}
 	} else {
@@ -358,7 +358,7 @@ expr2(op *next_tok)
 		}
 		return (ret);
 	} else {
-		unless (g.flhs) g.flhs = fmem_open();
+		unless (g.flhs) g.flhs = fmem();
 		lhs = string(g.flhs, &op);
 		switch (op) {
 		    case T_RPAREN:
@@ -372,7 +372,7 @@ expr2(op *next_tok)
 		    default:
 			break;
 		}
-		unless (g.frhs) g.frhs = fmem_open();
+		unless (g.frhs) g.frhs = fmem();
 		rhs = string(g.frhs, next_tok);
 		switch (op) {
 		    case T_EQUALS:	ret =  streq(lhs, rhs); break;
@@ -474,7 +474,7 @@ string(FILE *f, op *next_tok)
 			num = g.p[1] - '0';
 			g.p += 2;
 			if (fvars[num]) {
-				p = fmem_getbuf(fvars[num], &len);
+				p = fmem_peek(fvars[num], &len);
 				show_s(g.s, f, p, len);
 			}
 			continue;
@@ -483,7 +483,7 @@ string(FILE *f, op *next_tok)
 		++g.p;
 	}
 	*next_tok = T_EOF;
-out:	return (fmem_getbuf(f, 0));
+out:	return (fmem_peek(f, 0));
 }
 
 private int
@@ -635,12 +635,11 @@ again:
 
 	/* Handle all single-line keywords. */
 	if (state->i == 1) {
-		FILE	*f = fmem_open();
+		FILE	*f = fmem();
 
 		/* First time in, get the keyword value. */
 		kw2val(f, kw.dptr, kw.dsize, g.s, g.d);
-		state->freeme = fmem_retbuf(f, 0);
-		fclose(f);
+		state->freeme = fmem_close(f, 0);
 		return (state->freeme);
 	} else {
 		/* Second time in, bail out. */
@@ -762,7 +761,7 @@ dspec_collapse(char **dspec, char **begin, char **end)
 	for (p++; *p && isspace(*p); p++);
 	unless (strneq(p, "dv2", 3) || strneq(p, "dspec-v2", 8)) return;
 
-	f = fmem_open();
+	f = fmem();
 	p = *dspec;
 	for (; *p; p++) {
 		switch (*p) {
@@ -852,8 +851,7 @@ dspec_collapse(char **dspec, char **begin, char **end)
 			break;
 		}
 	}
-	p = fmem_retbuf(f, 0);
-	fclose(f);
+	p = fmem_close(f, 0);
 	free(*dspec);
 	*dspec = p;
 }

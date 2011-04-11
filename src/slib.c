@@ -24,12 +24,11 @@ private delta	*dinsert(sccs *s, delta *d, int fixDate);
 private int	samebranch(delta *a, delta *b);
 private char	*sccsXfile(sccs *sccs, char type);
 private int	badcksum(sccs *s, int flags);
-private int	printstate(const serlist *state, u8 *slist);
-private int	delstate(ser_t ser, const serlist *state, u8 *slist);
-private int	whatstate(const serlist *state);
-private int	visitedstate(const serlist *state, u8 *slist);
-private int	changestate(register serlist *state, char type, int serial);
-private serlist *allocstate(serlist *old, int n);
+private int	printstate(ser_t *state, u8 *slist);
+private int	delstate(ser_t ser, ser_t *state, u8 *slist);
+private int	whatstate(ser_t *state);
+private int	visitedstate(ser_t *state, u8 *slist);
+private ser_t	*changestate(ser_t *state, char type, ser_t serial);
 private int	end(sccs *, delta *, FILE *, int, int, int, int);
 private void	date(sccs *s, delta *d, time_t tt);
 private int	getflags(sccs *s, char *buf);
@@ -1912,7 +1911,7 @@ sccs_startWrite(sccs *s)
 	char	*xfile;
 
 	if (s->mem_out) {
-		unless(s->outfh) s->outfh = fmem_open();
+		unless(s->outfh) s->outfh = fmem();
 		assert(s->outfh);
 		sfile = s->outfh;
 	} else {
@@ -1968,7 +1967,7 @@ sccs_finishWrite(sccs *s, FILE **f)
 			ftrunc(s->outfh, 0);
 		} else {
 			fclose(tmp);
-			s->outfh = fmem_open();
+			s->outfh = fmem();
 			s->mem_in = 1;
 		}
 		*f = 0;
@@ -4504,7 +4503,7 @@ sccs_free(sccs *s)
 		s->outfh = 0;
 		s->mem_in = s->mem_out = 0;
 
-		buf = fmem_getbuf(f, &len);
+		buf = fmem_peek(f, &len);
 		out = sccs_startWrite(s);
 		assert(buf);
 		fwrite(buf, 1, len, out);
@@ -4711,7 +4710,11 @@ name2sccs(char *name)
 
 	/* DIR_WITH_SCCS/GOTTEN screwed us up, this should fix it */
 	if (s && strneq(s, "SCCS/", 5) && ((s == name) || (s[-1] == '/'))) {
-		unless (sccs_filetype(name)) return (0);
+		unless (sccs_filetype(name)) {
+			fprintf(stderr,
+			    "%s: invalid file name %s\n", prog, name);
+			exit(1);
+		}
 		name = strdup(name);
 		s = strrchr(name, '/');
 		s[1] = 's';
@@ -5336,148 +5339,90 @@ sccs_set(sccs *s, delta *d, char *iLst, char *xLst)
 	return (serialmap(s, d, iLst, xLst, &junk));
 }
 
+
+#define	SL_MASK		0x7fffffffUL
+#define	SL_SER(x)	((x) & SL_MASK)
+#define	SL_INS(x)	((x) & ~SL_MASK)
+#define	SL_SET(ser, i)	((ser) | ((i) ? SL_MASK+1 : 0))
+
 /*
  * The weave is a pretty restrictive data structure.
  * The I-E blocks nest, -- any new I will be the largest numbered I in the
  * list.  D-E blocks span across, but are rooted in I blocks of smaller
  * number.  You can see that in the assert in the first for loop: no I
  * will be found while looping looking for the item of interest.
- * This is also behind the last loop of the function: to find the first I
- * start looking where we left off.  In the 'E' case, *pp will be the entry
- * after the deleted entry.  In the D/I case, it will be the new entry.
  */
-private	int
-changestate(register serlist *state, char type, int serial)
+private	ser_t *
+changestate(ser_t *state, char type, ser_t serial)
 {
-	register serlist *p, **pp;
-	register serlist *n;
-
-	debug2((stderr, "chg(%c, %d)\n", type, serial));
-
-	/* find place in linked list */
-	for (pp = &(state[SLIST].next), p = *pp; p; pp = &(p->next), p = *pp) {
-		if (p->serial <= serial) break;
-		assert (p->type != 'I');
-	}
-
-	/*
-	 * Delete it if it is an 'E'.
-	 */
-	if (type == 'E') {	/* free this item */
-		assert(p && (p->serial == serial));
-		*pp = p->next;
-		p->next = state[SFREE].next;
-		state[SFREE].next = p;
-		goto done;
-	}
-
-	/*
-	 * Else a 'D' or an 'I', so insert it in list
-	 */
-
-	assert(!p || (p->serial < serial));
-	assert(state[SFREE].next || ("Ran out of serial numbers" == 0));
-
-	n = state[SFREE].next;
-	state[SFREE].next = n->next;
-
-	*pp = n;
-	n->next = p;
-	n->serial = serial;
-	n->type = type;
-done:
-	verify(state);
-	for (p = *pp; p; p = p->next) {
-		if (p->type == 'I') break;
-	}
-	return ((p) ? p->serial : 0);
-}
-
-/*
- * Allocate (or realocate) a serial list array.	 The way this works is like
- * so:
- * [SLIST] is the allocated list, linked through .next and .prev.
- * [SLIST].serial is the number of allocated nodes.
- * [SFREE] is the free list, linked only through .next.
- * [SFREE].serial is the number of free nodes.
- */
-private serlist *
-allocstate(serlist *old, int n)
-{
-	serlist *s;
 	int	i;
 
-	n += 2;		/* to account for the accounting overhead */
-	n += 10;	/* XXX - I'm not sure I need this but haven't walked
-			 * all the paths to be sure I don't.  If I do need it,
-			 * it is perhaps due to metadata being added.
-			 */
-	assert(!old);	/* XXX - realloc not done */
-	s = malloc(n * sizeof(serlist));
-	assert(s);
-	for (i = 2; i < n-1; ++i) {
-		s[i].next = &s[i+1];
+	debug2((stderr, "chg(%c, %d)\n", type, serial));
+	assert(!(serial & ~SL_MASK)); /* serial doesn't overflow */
+
+	/* find place in list */
+	EACH_REVERSE(state) {
+		if (SL_SER(state[i]) <= serial) break;
+		assert (!SL_INS(state[i])); /* must be D */
 	}
-	s[i].next = 0;
-	s[SFREE].next = &s[2];
-	s[SFREE].serial = 0;
-	s[SLIST].next = 0;
-	s[SLIST].serial = 0;
-	return (s);
+
+	/*
+	 * Delete it if it is an 'E'; insert otherwise
+	 */
+	if (type == 'E') {
+		assert(SL_SER(state[i]) == serial);
+		removeArrayN(state, i);
+	} else {
+		serial = SL_SET(serial, (type == 'I'));
+		insertArrayN(&state, i+1, &serial);
+	}
+	return (state);
 }
 
 private int
-delstate(ser_t ser, const serlist *state, u8 *slist)
+delstate(ser_t ser, ser_t *state, u8 *slist)
 {
-	register serlist *s;
-	register	 int ok = 0;
+	int	ok = 0;
+	int	i;
 
 	/* To be yes, serial must delete and no others, and first I
 	 * must be active.  If any other delete active, return false.
 	 */
 	assert(slist[ser]);
-	for (s = state[SLIST].next; s; s = s->next) {
-		if (s->type != 'D') break;
-		if (s->serial == ser) {
+	EACH_REVERSE(state) {
+		if (SL_INS(state[i])) break;
+		if (SL_SER(state[i]) == ser) {
 			ok = 1;
-		}
-		else if (slist[s->serial]) {
+		} else if (slist[SL_SER(state[i])]) {
 			return (0);
 		}
 	}
-
-	if (ok && s && slist[s->serial])
-		return (s->serial);
-
-	return (0);
-}
-
-private int
-visitedstate(const serlist *state, u8 *slist)
-{
-	register serlist *s;
-
-	/* Find the first not D and return serial if it is active */
-	for (s = state[SLIST].next; s; s = s->next) {
-		if (s->type != 'D') break;
+	if (ok && i) {
+		ser = SL_SER(state[i]);
+		if (slist[ser]) return (ser);
 	}
-
-	if (s && slist[s->serial])
-		return (s->serial);
-
 	return (0);
 }
 
 private int
-whatstate(const serlist *state)
+visitedstate(ser_t *state, u8 *slist)
 {
-	register serlist *s;
+	ser_t	ser;
+
+	/* when ignoring D, is this block active? (for annotate) */
+	return (((ser = whatstate(state)) && slist[ser]) ? ser : 0);
+}
+
+private int
+whatstate(ser_t *state)
+{
+	int	i;
 
 	/* Loop until an I */
-	for (s = state[SLIST].next; s; s = s->next) {
-		if (s->type == 'I') break;
+	EACH_REVERSE(state) {
+		if (SL_INS(state[i])) break;
 	}
-	return ((s) ? s->serial : 0);
+	return (i ? SL_SER(state[i]) : 0);
 }
 
 /* calculate printstate using where we are (state)
@@ -5486,28 +5431,22 @@ whatstate(const serlist *state)
  */
 
 private int
-printstate(const serlist *state, u8 *slist)
+printstate(ser_t *state, u8 *slist)
 {
-	register serlist *s;
+	int	i, ret = 0;
+	ser_t	val;
 
 	/* Loop until any I or active D */
-	for (s = state[SLIST].next; s; s = s->next) {
-		unless (s->type == 'D' && !slist[s->serial])
+	EACH_REVERSE(state) {
+		val = SL_SER(state[i]);
+		if (SL_INS(state[i])) {
+			if (slist[val]) ret = val;
 			break;
+		} else if (slist[val]) {
+			break;
+		}
 	}
-
-	if (s) {
-		int ret = (s->type == 'I')
-			? (slist[s->serial] ? s->serial : 0)
- 			: 0;
-		debug2((stderr, "printstate {t %c s %d p %d} = %d\n", \
-			s->type, s->serial, slist[s->serial], ret));
-		return (ret);
-	}
-
-	debug2((stderr, "printstate {} = 0\n"));
-
-	return (0);
+	return (ret);
 }
 
 /*
@@ -6230,7 +6169,7 @@ private int
 get_reg(sccs *s, char *printOut, int flags, delta *d,
 		int *ln, char *iLst, char *xLst)
 {
-	serlist *state = 0;
+	u32	*state = 0;
 	u8	*slist = 0;
 	int	lines = 0, print = 0, error = 0;
 	int	seq;
@@ -6343,8 +6282,6 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 		strcat(align, "| ");
 	}
 
-	state = allocstate(0, s->nextserial);
-
 	unless (flags & (GET_HASHONLY|GET_SUM)) {
 		gfile = d ? setupOutput(s, printOut, flags, d) : printOut;
 		if ((gfile == (char *) 0) || (gfile == (char *)-1)) {
@@ -6384,8 +6321,7 @@ out:			if (slist) free(slist);
 			++seq;
 			(*counter)++;
 			if (lnum) { /* count named lines */
-				lnum[print ? print
-				    : whatstate((const serlist*)state)]++;
+				lnum[print ? print : whatstate(state)]++;
 			}
 			if (buf[0] == CNTLA_ESCAPE) {
 				assert((encoding & E_DATAENC) == E_ASCII);
@@ -6393,9 +6329,7 @@ out:			if (slist) free(slist);
 			}
 			if (!print) {
 				/* if we are skipping data from pending block */
-				if (lf_pend &&
-				    lf_pend == whatstate((const serlist*)state))
-				{
+				if (lf_pend && (lf_pend == whatstate(state))) {
 					unless (flags & GET_SUM) {
 						fputs(eol, out);
 					}
@@ -6524,8 +6458,7 @@ write:
 		 * is in there.
 		 */
 		if (buf[1] == 'E' && lf_pend == serial &&
-		    whatstate((const serlist*)state) == serial)
-		{
+		    whatstate(state) == serial) {
 			char	*n = &buf[3];
 			while (isdigit(*n)) n++;
 			if (*n != 'N') {
@@ -6536,9 +6469,9 @@ write:
 				s->has_nonl = 1;
 			}
 		}
-		changestate(state, buf[1], serial);
+		state = changestate(state, buf[1], serial);
 		if (d) {
-			print = printstate((const serlist*)state, slist);
+			print = printstate(state, slist);
 			unless (flags & NEWCKSUM) {
 				/* don't recalc add/del/same unless CKSUM */
 			}
@@ -6548,9 +6481,7 @@ write:
 			else if (print) {
 				counter = &same;
 			}
-			else if (delstate(d->serial, (const serlist*)state,
-				slist))
-			{
+			else if (delstate(d->serial, state, slist)) {
 				counter = &deleted;
 			}
 			else {
@@ -6558,7 +6489,7 @@ write:
 			}
 		}
 		else {
-			print = visitedstate((const serlist*)state, slist);
+			print = visitedstate(state, slist);
 		}
 	}
 	if (BITKEEPER(s) &&
@@ -7246,7 +7177,7 @@ int
 sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 {
 	int	type = flags & (GET_DIFFS|GET_BKDIFFS);
-	serlist *state = 0;
+	ser_t	*state = 0;
 	u8	*slist = 0;
 	ser_t	old = 0;
 	delta	*d;
@@ -7303,7 +7234,6 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		goto done2;
 	}
 	slist = serialmap(s, d, 0, 0, &error);
-	state = allocstate(0, s->nextserial);
 	sccs_rdweaveInit(s);
 	side = NEITHER;
 	nextside = NEITHER;
@@ -7319,11 +7249,11 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 				while (isdigit(*n)) n++;
 				if (*n == 'N') no_lf = 1;
 			}
-			changestate(state, buf[1], serial);
-			with = printstate((const serlist*)state, slist);
+			state = changestate(state, buf[1], serial);
+			with = printstate(state, slist);
 			old = slist[d->serial];
 			slist[d->serial] = 0;
-			without = printstate((const serlist*)state, slist);
+			without = printstate(state, slist);
 			slist[d->serial] = old;
 
 			nextside = with ? (without ? BOTH : RIGHT)
@@ -7401,7 +7331,7 @@ done2:	/* for GET_HASHDIFFS, the encoding has been handled in get_reg() */
 int
 sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 {
-	serlist *state = 0;
+	ser_t	*state = 0;
 	delta	*d;
 	char	*n, type, patchcmd;
 	u8	*sump, *buf;
@@ -7440,7 +7370,6 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 			}
 		}
 	}
-	state = allocstate(0, s->nextserial);
 	sccs_rdweaveInit(s);
 
 	fputs("F\n", out);
@@ -7464,7 +7393,8 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 				    pmap[d->serial],
 				    (lineno + ((type == 'D') ? 1 : 0)));
 			}
-			if (track = changestate(state, type, serial)) {
+			state = changestate(state, type, serial);
+			if (track = whatstate(state)) {
 				d = sfind(s, track);
 				assert(d);
 				if (track = pmap[d->serial]) {
@@ -8111,7 +8041,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	size_t	flen, glen;
 	MDBM	*ghash = 0;
 	MDBM	*shash = 0;
-	serlist *state = 0;
+	ser_t	*state = 0;
 	u8	*slist = 0;
 	int	print = 0, different;
 	char	sbuf[MAXLINE];
@@ -8191,7 +8121,6 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	assert(s->state & S_SOPEN);
 	slist = serialmap(s, d, pf->iLst, pf->xLst, &error);
 	assert(!error);
-	state = allocstate(0, s->nextserial);
 	sccs_rdweaveInit(s);
 	in_weave = 1;
 	while (fbuf = sccs_nextdata(s)) {
@@ -8200,7 +8129,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 			if (!print) {
 				/* if we are skipping data from pending block */
 				if (lf_pend &&
-				    lf_pend == whatstate((const serlist*)state))
+				    lf_pend == whatstate(state))
 				{
 					lf_pend = 0;
 				}
@@ -8278,8 +8207,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 		}
 		serial = atoi(&fbuf[3]);
 		if (fbuf[1] == 'E' && lf_pend == serial &&
-		    whatstate((const serlist*)state) == serial)
-		{
+		    whatstate(state) == serial) {
 			char	*n = &fbuf[3];
 			while (isdigit(*n)) n++;
 			if (*n == 'N') {
@@ -8292,9 +8220,9 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 			}
 			lf_pend = 0;
 		}
-		changestate(state, fbuf[1], serial);
+		state = changestate(state, fbuf[1], serial);
 		debug2((stderr, "%s\n", fbuf));
-		print = printstate((const serlist*)state, slist);
+		print = printstate(state, slist);
 	}
 	if (HASH(s)) {
 		kvpair	kv;
@@ -11505,7 +11433,7 @@ struct weave {
 	sccs	*s;		// backpointer
 	char	*buf;		// current data line
 	ser_t	*wmap;		// weave map - renumber serials in weave
-	serlist *state;		// weave state
+	ser_t	*state;		// weave state
 	u8	*slist;		// weave set
 	FILE	*out;		// print here
 	sum_t	sum;		// checksum
@@ -11526,7 +11454,6 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, char **patchmap,
 
 	w = new(weave);
 	w->s = s;
-	w->state = allocstate(0, s->nextserial);
 	w->out = out;
 	w->wmap = weavemap;
 
@@ -11642,7 +11569,8 @@ doFast(weave *w, char **patchmap, MMAP *diffs)
 			sprintf(cmdline, "\001%c %u\n", type, d->serial);
 		}
 		fputdata(w->s, cmdline, w->out);
-		if (w->print = changestate(w->state, type, d->serial)) {
+		w->state = changestate(w->state, type, d->serial);
+		if (w->print = whatstate(w->state)) {
 			unless (w->slist[w->print]) w->print = 0;
 		}
 	}
@@ -11725,7 +11653,8 @@ weaveMove(weave *w, int line, int before, ser_t patchserial)
 		}
 		sprintf(cmdline, "\001%c %u%s\n", type, serial, n);
 		fputdata(s, cmdline, w->out);
-		if (print = changestate(w->state, type, serial)) {
+		w->state = changestate(w->state, type, serial);
+		if (print = whatstate(w->state)) {
 			unless (w->slist[print]) print = 0;
 		}
 	} while (buf = sccs_nextdata(s));
@@ -11776,7 +11705,8 @@ after:	skipblock = 0;
 			assert(type == 'E');
 			skipblock = 0;
 		}
-		if (print = changestate(w->state, type, serial)) {
+		w->state = changestate(w->state, type, serial);
+		if (print = whatstate(w->state)) {
 			unless (w->slist[print]) print = 0;
 		}
 	} while (buf = sccs_nextdata(s));
@@ -11802,7 +11732,7 @@ doctrl(sccs *s, char *pre, int val, char *post, FILE *out)
 }
 
 private void
-finish(sccs *s, int *ip, int *pp, int *last, FILE *out, register serlist *state,
+finish(sccs *s, int *ip, int *pp, int *last, FILE *out, ser_t **state,
     u8 *slist)
 {
 	int	print = *pp, incr = *ip;
@@ -11826,8 +11756,7 @@ finish(sccs *s, int *ip, int *pp, int *last, FILE *out, register serlist *state,
 			if (!print) {
 				/* if we are skipping data from pending block */
 				if (lf_pend &&
-				    lf_pend == whatstate((const serlist*)state))
-				{
+				    lf_pend == whatstate(*state)) {
 					s->dsum += '\n';
 					lf_pend = 0;
 				}
@@ -11842,7 +11771,7 @@ finish(sccs *s, int *ip, int *pp, int *last, FILE *out, register serlist *state,
 		}
 		serial = atoi(&buf[3]);
 		if (buf[1] == 'E' && lf_pend == serial &&
-		    whatstate((const serlist*)state) == serial)
+		    whatstate(*state) == serial)
 		{
 			char	*n = &buf[3];
 			while (isdigit(*n)) n++;
@@ -11851,8 +11780,8 @@ finish(sccs *s, int *ip, int *pp, int *last, FILE *out, register serlist *state,
 				s->dsum += '\n';
 			}
 		}
-		changestate(state, buf[1], serial);
-		print = printstate((const serlist*)state, slist);
+		*state = changestate(*state, buf[1], serial);
+		print = printstate(*state, slist);
 	}
 	unless (lf_pend) *last = 0;
 	*ip = incr;
@@ -11861,13 +11790,13 @@ finish(sccs *s, int *ip, int *pp, int *last, FILE *out, register serlist *state,
 }
 
 #define	nextline(inc)	\
-    nxtline(s, &inc, 0, &lines, &print, &last, out, state, slist, &savenext)
+    nxtline(s, &inc, 0, &lines, &print, &last, out, &state, slist, &savenext)
 #define	beforeline(inc) \
-    nxtline(s, &inc, 1, &lines, &print, &last, out, state, slist, &savenext)
+    nxtline(s, &inc, 1, &lines, &print, &last, out, &state, slist, &savenext)
 
 private void
 nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
-	register serlist *state, u8 *slist, char ***savenext)
+    ser_t **state, u8 *slist, char ***savenext)
 {
 	int	print = *pp, incr = *ip, lines = *lp;
 	int	serial;
@@ -11910,12 +11839,12 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
 		n = &buf[3];
 		serial = atoi_p(&n);
 		if ((buf[1] == 'E') && (*last == serial) &&
-		    (whatstate((const serlist*)state) == serial) &&
+		    (whatstate(*state) == serial) &&
 		    (*n != 'N')) {
 			*last = 0;
 		}
-		changestate(state, buf[1], serial);
-		print = printstate((const serlist*)state, slist);
+		*state = changestate(*state, buf[1], serial);
+		print = printstate(*state, slist);
 	}
 	*ip = incr;
 	*lp = lines;
@@ -12028,7 +11957,7 @@ bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
 private int
 delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 {
-	serlist *state;
+	ser_t	*state;
 	u8	*slist;
 	int	print;
 	int	lines;
@@ -12077,7 +12006,6 @@ again:
 	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
 	assert(s->state & S_SOPEN);
-	state = allocstate(0, s->nextserial);
 	while (b = mnext(diffs)) {
 		int	where;
 		char	what;
@@ -12207,7 +12135,7 @@ newcmd:
 		ctrl("\001E ", n->serial, "");
 		free(addthis);
 	}
-	finish(s, &unchanged, &print, &last, out, state, slist);
+	finish(s, &unchanged, &print, &last, out, &state, slist);
 	*ap = added;
 	*dp = deleted;
 	*up = unchanged;
@@ -15741,13 +15669,10 @@ char *
 sccs_prsbuf(sccs *s, delta *d, int flags, char *dspec)
 {
 	FILE	*f;
-	char	*ret;
 
-	f = fmem_open();
+	f = fmem();
 	sccs_prsdelta(s, d, flags, dspec, f);
-	ret = fmem_retbuf(f, 0); /* FYI: returns "" if empty */
-	fclose(f);
-	return (ret);
+	return (fmem_close(f, 0)); /* FYI: returns "" if empty */
 }
 
 
@@ -17023,7 +16948,7 @@ sccs_color(sccs *s, delta *d)
 private int
 stripDeltas(sccs *s, FILE *out)
 {
-	serlist *state = 0;
+	ser_t	*state = 0;
 	u8	*slist = 0;
 	int	print = 0;
 	char	*buf;
@@ -17031,7 +16956,6 @@ stripDeltas(sccs *s, FILE *out)
 
 	slist = setmap(s, D_SET, 1);
 
-	state = allocstate(0, s->nextserial);
 	sccs_rdweaveInit(s);
 	if (s->encoding_out & E_GZIP) sccs_zputs_init(s, out);
 	while (buf = sccs_nextdata(s)) {
@@ -17048,9 +16972,8 @@ stripDeltas(sccs *s, FILE *out)
 			fputdata(s, buf, out);
 			fputdata(s, "\n", out);
 		}
-		changestate(state, buf[1], ser);
-		print =
-		    visitedstate((const serlist*)state, slist);
+		state = changestate(state, buf[1], ser);
+		print = visitedstate(state, slist);
 	}
 	free(state);
 	free(slist);

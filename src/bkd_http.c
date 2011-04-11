@@ -674,7 +674,7 @@ http_dir(char *page)
 	    " <td>:HTML_C:&nbsp;</td>"
 	    "</tr>\\n%s' '%s'",
 	    prefix, suffix, fpath);
-	out = fmem_open();
+	out = fmem();
 	f = popen(cmd, "r");
 	free(cmd);
 	while (fnext(buf, f)) {
@@ -710,7 +710,7 @@ http_dir(char *page)
 			mk_querystr();
 			ftrunc(out, 0);
 			webencode(out, gfile, strlen(gfile)+1);
-			enc = fmem_getbuf(out, 0);
+			enc = fmem_peek(out, 0);
 			printf("<td><a href=\"%s%s\"><img border=0 src="
 			    BKWWW "document_delta.png></a></td>",
 			    enc, querystr);
@@ -830,8 +830,7 @@ http_anno(char *page)
 private char *
 dl_link(void)
 {
-	char	*ret;
-	FILE	*f = fmem_open();
+	FILE	*f = fmem();
 
 	fputs("<a href=\"/", f);
 	webencode(f, root, strlen(root)+1);
@@ -845,9 +844,7 @@ dl_link(void)
 	fputs("\">", f);
 	webencode(f, fpath, strlen(fpath)+1);
 	fputs("</a>", f);
-	ret = fmem_retbuf(f, 0);
-	fclose(f);
-	return (ret);
+	return (fmem_close(f, 0));
 }
 
 #define BLACK 1
@@ -1781,7 +1778,7 @@ http_repos(char *page)
 	char	*enc;
 	time_t	now = time(0);
 	struct	stat	sb;
-	FILE	*f = fmem_open();
+	FILE	*f = fmem();
 	char	buf[MAXPATH];
 	char	buf2[MAXPATH];
 
@@ -1805,7 +1802,7 @@ http_repos(char *page)
 		concat_path(buf2, buf, "BitKeeper/etc");
 		ftrunc(f, 0);
 		webencode(f, d[i], strlen(d[i])+1);
-		enc = fmem_getbuf(f, 0);
+		enc = fmem_peek(f, 0);
 		if (isdir(buf2)) {
 			concat_path(buf, buf, "SCCS/s.ChangeSet");
 			if (lstat(buf, &sb) == -1) continue;

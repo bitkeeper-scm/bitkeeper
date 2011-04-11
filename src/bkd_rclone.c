@@ -36,8 +36,8 @@ rclone_common(int ac, char **av, opts *opts)
 		    case 'T': START_TRANSACTION(); break;
 		    case 'v': opts->verbose = 1; break;
 		    case 'z':
-			opts->gzip = optarg ? atoi(optarg) : 6;
-			if (opts->gzip < 0 || opts->gzip > 9) opts->gzip = 6;
+			opts->gzip = optarg ? atoi(optarg) : Z_BEST_SPEED;
+			if (opts->gzip < 0 || opts->gzip > 9) opts->gzip = Z_BEST_SPEED;
 			break;
 		    default: bk_badArg(c, av);
 		}
