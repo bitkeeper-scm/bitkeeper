@@ -2150,9 +2150,8 @@ uu2bp(sccs *s)
 	d = sccs_ino(s);
 	sccs_sdelta(s, d, oldroot);
 	assert(d->random);
-	t = aprintf("B:%s", d->random);
-	free(d->random);
-	d->random = t;
+	sprintf(key, "B:%s", RANDOM(s, d));
+	d->random = sccs_addStr(s, key);
 	sccs_sdelta(s, d, newroot);
 	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr, "BP can't get lock on %s\n", s->gfile);

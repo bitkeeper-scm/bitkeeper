@@ -66,10 +66,9 @@ cp(char *from, char *to, int force)
 	 */
 	randomBits(buf);
 	if (s->tree->random) {
-		assert(!streq(buf, s->tree->random));
-		free(s->tree->random);
+		assert(!streq(buf, RANDOM(s, s->tree)));
 	}
-	s->tree->random = strdup(buf);
+	s->tree->random = sccs_addStr(s, buf);
 
 	/*
 	 * Try using the new filename as the original filename.

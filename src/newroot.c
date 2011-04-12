@@ -59,6 +59,7 @@ newroot(char *ranbits, int quiet, int verbose, char *comments, char *who)
 	sccs	*s;
 	int	rc = 0;
 	char	*p, *oldbamdir;
+	char	*origrand;
 	ticker	*tick = 0;
 	char	cset[] = CHANGESET;
 	char	buf[MAXPATH];
@@ -93,21 +94,22 @@ newroot(char *ranbits, int quiet, int verbose, char *comments, char *who)
 	sccs_defRootlog(s);
 
 	if (ranbits) {
+		origrand = RANDOM(s, s->tree);
 		if (strneq(ranbits, "B:", 2)) {
-			if (strneq("B:", s->tree->random, 2)) {
+			if (strneq("B:", origrand, 2)) {
 				sccs_free(s);
 				return (0);
 			}
-			sprintf(buf, "%s%s", ranbits, s->tree->random);
+			sprintf(buf, "%s%s", ranbits, origrand);
 			assert(strlen(buf) < MAXPATH - 1);
 		} else {
 			p = buf;
-			if (strneq("B:", s->tree->random, 2)) {
-				p = strrchr(s->tree->random, ':');
+			if (strneq("B:", origrand, 2)) {
+				p = strrchr(origrand, ':');
 				assert(p);
-				strncpy(buf, s->tree->random,
-				    p - s->tree->random + 1);
-				p = buf + (p - s->tree->random + 1);
+				strncpy(buf, origrand,
+				    p - origrand + 1);
+				p = buf + (p - origrand + 1);
 			}
 			if ((p - buf + strlen(ranbits)) > (MAXPATH - 1)) {
 				fprintf(stderr, "Rootkey too long\n");
@@ -119,14 +121,13 @@ newroot(char *ranbits, int quiet, int verbose, char *comments, char *who)
 		randomBits(buf);
 	}
 	if (s->tree->random) {
-		if (streq(buf, s->tree->random)) {
+		if (streq(buf, RANDOM(s, s->tree))) {
 			fprintf(stderr,
 			    "newroot: error: new key matches old\n");
 			exit (1);
 		}
-		free(s->tree->random);
 	}
-	s->tree->random = strdup(buf);
+	s->tree->random = sccs_addStr(s, buf);
 
 	sccs_sdelta(s, sccs_ino(s), key);
 	update_rootlog(s, key, comments, who);

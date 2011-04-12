@@ -118,7 +118,7 @@ findkey(sccs *s, look l)
 	for (d = s->table; d; d = NEXT(d)) {
 		/* continues if no match, print if we get through all */
 		if (l.random) {
-			unless (d->random && streq(d->random, l.random)) {
+			unless (streq(RANDOM(s, d), l.random)) {
 				continue;
 			}
 		}

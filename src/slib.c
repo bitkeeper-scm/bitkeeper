@@ -43,7 +43,7 @@ private delta*	csetFileArg(sccs *s, delta *d, char *name);
 private delta*	dateArg(sccs *s, delta *d, char *arg, int defaults);
 private delta*	hostArg(sccs *s, delta *d, char *arg);
 private delta*	pathArg(sccs *s, delta *d, char *arg);
-private delta*	randomArg(delta *d, char *arg);
+private delta*	randomArg(sccs *s, delta *d, char *arg);
 private delta*	zoneArg(sccs *s, delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
 private delta*	sumArg(delta *d, char *arg);
@@ -446,7 +446,6 @@ freedelta(delta *d)
 	freeLines(d->text, free);
 	if (d->include) free(d->include);
 	if (d->exclude) free(d->exclude);
-	if (d->random) free(d->random);
 }
 
 
@@ -2879,7 +2878,7 @@ meta(sccs *s, delta *d, char *buf)
 		modeArg(s, d, &buf[3]);
 		break;
 	    case 'R':
-		randomArg(d, &buf[3]);
+		randomArg(s, d, &buf[3]);
 		break;
 	    case 'S':
 		symArg(s, d, &buf[3]);
@@ -7817,7 +7816,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 		if (d->random) {
 			p = fmts(buf, "\001cR");
-			p = fmts(p, d->random);
+			p = fmts(p, RANDOM(s, d));
 			*p++ = '\n';
 			*p   = '\0';
 			fputmeta(s, buf, out);
@@ -9395,17 +9394,18 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 
 		if (!d->random && !short_key) {
 			if (t = getenv("BK_RANDOM")) {
-				strcpy(buf, t);
+				strcpy(buf+2, t);
 			} else {
-				randomBits(buf);
+				randomBits(buf+2);
 			}
-			assert(buf[0]);
+			t = buf+2;
+			assert(t[0]);
 			if (BAM(s)) {
-				d->random = malloc(strlen(buf) + 3);
-				sprintf(d->random, "B:%s", buf);
-			} else {
-				d->random = strdup(buf);
+				t -= 2;
+				t[0] = 'B';
+				t[1] = ':';
 			}
+			d->random = sccs_addStr(s, t);
 		}
 	        unless (n->comments || (flags & DELTA_DONTASK)) {
 			if (flags & DELTA_CFILE) {
@@ -10141,11 +10141,10 @@ hostArg(sccs *s, delta *d, char *arg)
 }
 
 private delta *
-randomArg(delta *d, char *arg)
+randomArg(sccs *s, delta *d, char *arg)
 {
 	if (!d) d = new(delta);
-	if (d->random) free(d->random);
-	d->random = strdup(arg);
+	d->random = sccs_addStr(s, arg);
 	return (d);
 }
 
@@ -10704,7 +10703,9 @@ insert_1_0(sccs *s, u32 flags)
 	if (streq(REV(s, s->tree), "1.0")) {
 		unless (s->tree->random) {
 			len = sccs_sdelta(s, sccs_kid(s, s->tree), key);
-			s->tree->random = short_random(key, len);
+			p = short_random(key, len);
+			s->tree->random = sccs_addStr(s, p);
+			free(p);
 			return (2);
 		}
 		verbose((stderr, "admin: %s already has 1.0\n", s->gfile));
@@ -10759,7 +10760,9 @@ insert_1_0(sccs *s, u32 flags)
 			t->random = 0;
 		} else {
 			len = sccs_sdelta(s, t, key);
-			d->random = short_random(key, len);
+			p = short_random(key, len);
+			d->random = sccs_addStr(s, p);
+			free(p);
 		}
 		/*
 		 * rmshortkeys sets BK_HOST -- use it if needed
@@ -10771,7 +10774,7 @@ insert_1_0(sccs *s, u32 flags)
 
 			buf[0] = 0;
 			randomBits(buf);
-			if (buf[0]) d->random = strdup(buf);
+			if (buf[0]) d->random = sccs_addStr(s, buf);
 		}
 		d->sum = almostUnique();
 	}
@@ -12575,7 +12578,7 @@ skip:
 
 	/* Random bits are used only for 1.0 deltas in conversion scripts */
 	if (WANT('R')) {
-		d->random = strdup(&buf[2]);
+		d->random = sccs_addStr(sc, &buf[2]);
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -14549,7 +14552,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_RANDOM: /* RANDOM */ {
 		if (s->tree->random) {
-			fs(s->tree->random);
+			fs(RANDOM(s, s->tree));
 			return (strVal);
 		}
 		return nullVal;
@@ -15748,7 +15751,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 			fprintf(out, "P %s\n", PATHNAME(s, d));
 		}
 	}
-	if (d->random) fprintf(out, "R %s\n", d->random);
+	if (d->random) fprintf(out, "R %s\n", RANDOM(s, d));
 	if ((d->flags & D_SYMBOLS) || SYMGRAPH(d)) {
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->meta_ser == d->serial) continue;
@@ -16316,7 +16319,7 @@ sccs_pdelta(sccs *s, delta *d, FILE *out)
 	    d->pathname ? PATHNAME(s, d) : "",
 	    sccs_utctime(s, d),
 	    d->sum);
-	if (d->random) fprintf(out, "|%s", d->random);
+	if (d->random) fprintf(out, "|%s", RANDOM(s, d));
 }
 
 /* Get the checksum of the 5 digit checksum */
@@ -16337,7 +16340,7 @@ sccs_sdelta(sccs *s, delta *d, char *buf)
 	assert(len);
 	unless (d->random) return (len);
 	for (tail = buf; *tail; tail++);
-	len += sprintf(tail, "|%s", d->random);
+	len += sprintf(tail, "|%s", RANDOM(s, d));
 	return (len);
 }
 
@@ -16370,7 +16373,7 @@ sccs_md5delta(sccs *s, delta *d, char *b64)
 	char	key[MAXKEY+16];
 
 	sccs_sdelta(s, d, key);
-	if (s->tree->random) strcat(key, s->tree->random);
+	if (s->tree->random) strcat(key, RANDOM(s, s->tree));
 	hash = hashstr(key, strlen(key));
 	sprintf(b64, "%08x%s", (u32)d->date, hash);
 	free(hash);

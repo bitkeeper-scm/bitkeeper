@@ -1237,7 +1237,7 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 	}
 	assert(!d->merge);
 	if (d->pathname) fprintf(out, "P %s\n", PATHNAME(s, d));
-	if (d->random) fprintf(out, "R %s\n", d->random);
+	if (d->random) fprintf(out, "R %s\n", RANDOM(s, d));
 	if (tag) {
 		fprintf(out, "S %s\n", tag);
 		if (SYMGRAPH(d)) fprintf(out, "s g\n");

@@ -457,6 +457,7 @@ typedef struct delta {
 	ser_t	*exclude;		/* exclude serial #'s */
 	u32	comments;		/* delta comments (\n sep string) */
 	u32	bamhash;		/* hash of gfile for BAM */
+	u32	random;			/* random bits for file ID */
 
 	/* collapsible heap data */
 	u32	user;			/* user name of delta owner */
@@ -469,7 +470,6 @@ typedef struct delta {
 
 	/* XXX Stuff to remove */
 	char	**text;			/* descriptive text log */
-	char	*random;		/* random bits for file ID */
 	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 } delta;
 
@@ -491,6 +491,7 @@ typedef struct delta {
 #define	REV(s, d)	((s)->heap.buf + (d)->rev)
 #define	BAMHASH(s, d)	((s)->heap.buf + (d)->bamhash)
 #define	COMMENTS(s, d)	((s)->heap.buf + (d)->comments)
+#define	RANDOM(s, d)	((s)->heap.buf + (d)->random)
 
 #define	USER(s, d)	((s)->heap.buf + (d)->user)
 #define	HOSTNAME(s, d)	((s)->heap.buf + (d)->hostname)
