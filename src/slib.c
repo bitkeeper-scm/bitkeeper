@@ -49,7 +49,6 @@ private delta*	mergeArg(delta *d, char *arg);
 private delta*	sumArg(delta *d, char *arg);
 private	void	symArg(sccs *s, delta *d, char *name);
 private	delta*	revArg(sccs *s, delta *d, char *arg);
-private time_t	getDate(sccs *s, delta *d);
 private	int	unlinkGfile(sccs *s);
 private int	write_pfile(sccs *s, int flags, delta *d,
 		    char *rev, char *iLst, char *i2, char *xLst, char *mRev);
@@ -445,7 +444,6 @@ private void
 freedelta(delta *d)
 {
 	freeLines(d->text, free);
-	if (d->sdate) free(d->sdate);
 	if (d->include) free(d->include);
 	if (d->exclude) free(d->exclude);
 	if (d->random) free(d->random);
@@ -501,10 +499,7 @@ sccs_inherit(sccs *s, delta *d)
 	delta	*p;
 
 	unless (d) return;
-	unless (p = PARENT(s, d)) {
-		DATE(s, d);
-		return;
-	}
+	unless (p = PARENT(s, d)) return;
 
 #define	CHK_DUP(field) \
 	if (!d->field && p->field) d->field = p->field;
@@ -521,7 +516,6 @@ sccs_inherit(sccs *s, delta *d)
 	}
 #undef	CHK_DUP
 
-	DATE(s, d);
 }
 
 /*
@@ -640,7 +634,7 @@ sfind(sccs *s, ser_t serial)
  * Do NOT NOT NOT change this after shipping, even if it is wrong.
  *
  * Bummer.  I made the same mistake in generating this table (passing in
- * 70 intstead of 1970 to the leap your calculation) so all entries
+ * 70 instead of 1970 to the leap year calculation) so all entries
  * after 2000 were wrong.
  * What we'll do is rev the file format so that old binaries
  * won't be able to create deltas with bad time stamps.
@@ -675,7 +669,7 @@ static const int monthSecs[13] = {
 static const char days[13] =
 { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
-int
+private int
 leapYear(int year)
 {
 	return ((!((year) % 4) && ((year) % 100)) || !((year) % 400));
@@ -686,7 +680,7 @@ leapYear(int year)
  *	year, mon, hour, min, sec
  * and assumes utc time.
  */
-time_t
+private time_t
 tm2utc(struct tm *tp)
 {
 	time_t	t;
@@ -709,6 +703,9 @@ tm2utc(struct tm *tp)
 	return (t);
 }
 
+/*
+ * given a UTC time_t return a tm struct that is also in UTC
+ */
 struct	tm *
 utc2tm(time_t t)
 {
@@ -747,19 +744,9 @@ utc2tm(time_t t)
 	return (&tm);
 }
 
-private time_t
-getDate(sccs *s, delta *d)
-{
-	if (!d->date) {
-		d->date = date2time(d->sdate, ZONE(s, d), EXACT);
-		if (d->dateFudge) {
-			d->date += d->dateFudge;
-		}
-	}
-	CHKDATE(d);
-	return (d->date);
-}
-
+/*
+ * Give an ascii date and a timezone in "[-]HH:MM" return a GMT time_t
+ */
 time_t
 sccs_date2time(char *date, char *zone)
 {
@@ -779,7 +766,6 @@ sccs_fixDates(sccs *s)
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, i)) continue;
-		DATE(s, d);
 		if (prev && (prev->date <= d->date)) {
 			f = (d->date - prev->date) + 1;
 			prev->dateFudge += f;
@@ -824,7 +810,6 @@ uniqRoot(sccs *s)
 
 	assert(s->tree == s->table);
 	d = s->tree;
-	DATE(s, d);
 
 	unless (uniq_open() == 0) return;	// XXX - no error?
 	uniq_adjust(s, d);
@@ -844,7 +829,6 @@ uniqDelta(sccs *s)
 	d = s->table;
 	next = NEXT(d);
 	assert(d != s->tree);
-	DATE(s, d);
 
 	/*
 	 * This is kind of a hack.  We aren't in BK mode yet we are fudging.
@@ -862,7 +846,6 @@ uniqDelta(sccs *s)
 	}
 
 	unless (uniq_open() == 0) return;
-	CHKDATE(next);
 	if (d->date <= next->date) {
 		time_t	tdiff;
 		tdiff = next->date - d->date + 1;
@@ -892,6 +875,10 @@ monthDays(int year, int month)
 	return (28);
 }
 
+/*
+ * NOTE: because of the way this function handles timezone the tm struct
+ * cannote be used directly and is really only acceptable to pass to tm2utc().
+ */
 private void
 a2tm(struct tm *tp, char *asctime, char *z, int roundup)
 {
@@ -992,7 +979,7 @@ correct:
  * "useful" means useful to BitKeeper, not anyone else.
  * For years < 69, assume 20xx which means add 100.
  *
- * roundup is ROUNDDOWN, EXACT, or ROUNDUP.  Which do the implied
+ * roundup is EXACT or ROUNDUP.  Which do the implied
  * adjustments for the unspecified fields.  Fields which are incorrectly
  * specified, i.e., 31 for a month that has 30 days, are truncated back
  * down to legit values.
@@ -2046,7 +2033,6 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	char	*t;
 	char	*tmp;
 	time_t	now = 0;
-	struct	tm *tm = 0;
 	ser_t	a[4] = {0, 0, 0, 0};
 	int hasKeyword = 0, buf_size;
 #define EXTRA 1024
@@ -2092,32 +2078,16 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case 'D':	/* today: 97/06/22 */
-			if (!now) { time(&now); tm = localtimez(&now, 0); }
-			assert(tm);
-			if (YEAR4(s)) {
-				int	y = tm->tm_year;
-
-				if (y < 69) y += 2000; else y += 1900;
-				sprintf(t, "%4d/%02d/%02d",
-				    y, tm->tm_mon+1, tm->tm_mday);
-				t += 10;
-			} else {
-				while (tm->tm_year > 100) tm->tm_year -= 100;
-				sprintf(t, "%02d/%02d/%02d",
-				    tm->tm_year, tm->tm_mon+1, tm->tm_mday);
-				t += 8;
-			}
+			unless (now) now = time(0);
+			t += strftime(t, 12,
+			    YEAR4(s) ? "%Y/%m/%d" : "%y/%m/%d",
+			    localtimez(&now, 0));
 			break;
 
-		    case 'E':	/* most recent delta: 97/06/22 */
-			if (YEAR4(s)) {
-				if (atoi(d->sdate) > 69) {
-					*t++ = '1'; *t++ = '9';
-				} else {
-					*t++ = '2'; *t++ = '0';
-				}
-			}
-			strncpy(t, d->sdate, 8); t += 8;
+		    case 'E': 	/* most recent delta: 97/06/22 */
+			t += delta_strftime(t, 12,
+			    YEAR4(s) ? "%Y/%m/%d" : "%y/%m/%d",
+			    s, d);
 			break;
 
 		    case 'F':	/* s.file name */
@@ -2127,36 +2097,16 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case 'G':	/* most recent delta: 06/22/97 */
-			*t++ = d->sdate[3]; *t++ = d->sdate[4]; *t++ = '/';
-			*t++ = d->sdate[6]; *t++ = d->sdate[7]; *t++ = '/';
-			if (YEAR4(s)) {
-				if (atoi(d->sdate) > 69) {
-					*t++ = '1'; *t++ = '9';
-				} else {
-					*t++ = '2'; *t++ = '0';
-				}
-			}
-			*t++ = d->sdate[0]; *t++ = d->sdate[1];
+			t += delta_strftime(t, 12,
+			    YEAR4(s) ? "%m/%d/%Y" : "%m/%d/%y",
+			    s, d);
 			break;
 
 		    case 'H':	/* today: 06/22/97 */
-			if (!now) { time(&now); tm = localtimez(&now, 0); }
-			assert(tm);
-			if (YEAR4(s)) {
-				int	y = tm->tm_year;
-
-				if (y < 69) y += 2000; else y += 1900;
-				sprintf(t, "%4d/%02d/%02d",
-				    y, tm->tm_mon+1, tm->tm_mday);
-				sprintf(t, "%02d/%02d/%04d",
-				    tm->tm_mon+1, tm->tm_mday, y);
-				t += 10;
-			} else {
-				while (tm->tm_year > 100) tm->tm_year -= 100;
-				sprintf(t, "%02d/%02d/%02d",
-				    tm->tm_mon+1, tm->tm_mday, tm->tm_year);
-				t += 8;
-			}
+			unless (now) now = time(0);
+			t += strftime(t, 12,
+			    YEAR4(s) ? "%m/%d/%Y" : "%m/%d/%y",
+			    localtimez(&now, 0));
 			break;
 
 		    case 'I':	/* name of revision: 1.1 or 1.1.1.1 */
@@ -2198,15 +2148,12 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case 'T':	/* time: 23:04:04 */
-			if (!now) { time(&now); tm = localtimez(&now, 0); }
-			assert(tm);
-			sprintf(t, "%02d:%02d:%02d",
-			    tm->tm_hour, tm->tm_min, tm->tm_sec);
-			t += 8;
+			unless (now) now = time(0);
+			t += strftime(t, 10, "%H:%M:%S", localtimez(&now, 0));
 			break;
 
 		    case 'U':	/* newest delta: 23:04:04 */
-			strcpy(t, &d->sdate[9]); t += 8;
+			t += delta_strftime(t, 10, "%H:%M:%S", s, d);
 			break;
 
 		    case 'W':	/* @(#)%M% %I%: @(#)slib.c 1.1 */
@@ -3011,13 +2958,13 @@ mkgraph(sccs *s, int flags)
 	delta	*d = 0, *t;
 	char	rev[100], date[9], time[9], user[100];
 	char	*p;
-	char	tmp[100];
 	u32	added, deleted, same;
 	int	i;
 	int	line = 1;
 	char	*expected = "?";
 	char	*buf;
 	ser_t	serial;
+	char	(*dates)[20] = 0;
 	char	type;
 
 	rewind(s->fh);
@@ -3096,7 +3043,10 @@ first:		if (streq(buf, "\001u")) break;
 	    /* 10 11 */
 		serial = atoi_p(&p);
 		if (serial >= s->nextserial) s->nextserial = serial + 1;
-		unless (s->slist) growArray(&s->slist, serial);
+		unless (s->slist) {
+			growArray(&s->slist, serial);
+			dates = calloc(s->nextserial, sizeof(*dates));
+		}
 		t = SFIND(s, serial);
 		assert(t);
 		s->numdeltas++;
@@ -3120,8 +3070,7 @@ first:		if (streq(buf, "\001u")) break;
 			expected = "1.2 or 1.2.3.4, too many dots";
 			goto bad;
 		}
-		sprintf(tmp, "%s %s", date, time);
-		d->sdate = strdup(tmp);
+		sprintf(dates[serial], "%s %s", date, time);
 		d->user = sccs_addUniqStr(s, user);
 		for (;;) {
 			if (!(buf = sccs_nextdata(s)) || buf[0] != '\001') {
@@ -3207,10 +3156,6 @@ done:		if (CSET(s) && TAG(d) &&
 	}
 	/*
 	 * Convert the linear delta table into a graph.
-	 *
-	 * You would think that this is the place to adjust the times,
-	 * but it isn't because we used to store the timezones in the flags.
-	 * XXX - the above comment is incorrect, we no longer support that.
 	 */
 	s->tree = d;
 	s->table = s->slist + nLines(s->slist);
@@ -3225,7 +3170,18 @@ done:		if (CSET(s) && TAG(d) &&
 		unless (d->serial) continue;
 
 		sccs_inherit(s, d);
+		d->date = date2time(dates[d->serial], ZONE(s, d), EXACT) +
+		    d->dateFudge;
+#define	PARANOID
+#ifdef	PARANOID
+		/*
+		 * adds about 10% to the mkgraph() time, but helps
+		 * sanity
+		 */
+		assert(streq(delta_sdate(s, d), dates[d->serial]));
+#endif
 	}
+	free(dates);
 	unless (flags & INIT_WACKGRAPH) {
 		if (checkrevs(s, 0)) s->state |= S_BADREVS|S_READ_ONLY;
 	}
@@ -3413,8 +3369,6 @@ addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
 	sym->meta_ser = metad->serial;
 	d->flags |= D_SYMBOLS;
 	metad->flags |= D_SYMBOLS;
-	DATE(s, d);
-	CHKDATE(d);
 
 	/*
 	 * Insert in sorted order, most recent first.
@@ -4872,17 +4826,8 @@ sccs_Xfile(sccs *s, char type)
 private void
 date(sccs *s, delta *d, time_t tt)
 {
-	d->sdate = strdup(time2date(tt));
+	d->date = tt + d->dateFudge;
 	zoneArg(s, d, sccs_zone(tt));
-
-	DATE(s, d);
-	if ((d->date - d->dateFudge) != tt) {
-		fprintf(stderr, "Date=[%s%s] d->date=%lu tt=%lu\n",
-		    d->sdate, ZONE(s, d), d->date, tt);
-		fprintf(stderr, "Fudge = %d\n", (int)d->dateFudge);
-		fprintf(stderr, "Internal error on dates, aborting.\n");
-		assert((d->date - d->dateFudge) == tt);
-	}
 }
 
 char	*
@@ -4917,6 +4862,31 @@ time2date(time_t tt)
 	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S",
 		 localtimez(&tt, 0));
 	return (tmp);
+}
+
+/*
+ * Call strftime() on the time of a delta.  The time is converted
+ * back to the timezone of where the delta was created.
+ */
+int
+delta_strftime(char *out, int sz, char *fmt, sccs *s, delta *d)
+{
+	int	zone = 0;
+	int	neg = 1;
+	char	*p;
+	time_t	tt = d->date - d->dateFudge;
+
+	p = ZONE(s, d);
+	if (*p == '-') {
+		neg = -1;
+		++p;
+	} else if (*p == '+') {
+		++p;
+	}
+	zone = HOUR * atoi_p(&p);
+	if (*p++ == ':') zone += MINUTE * atoi_p(&p);
+	tt += neg * zone;
+	return (strftime(out, sz, fmt, gmtime(&tt)));
 }
 
  /*
@@ -6987,17 +6957,14 @@ skip_get:
 private void
 prefix(sccs *s, delta *d, u32 flags, int lines, char *name, FILE *out)
 {
+	char	buf[32];
+
 	if (flags & GET_ALIGN) {
 		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s ", name);
 		if (flags&GET_PREFIXDATE) {
-			if (YEAR4(s)) {
-				if (atoi(d->sdate) > 69) {
-					fprintf(out, "19");
-				} else {
-					fprintf(out, "20");
-				}
-			}
-			fprintf(out, "%8.8s ", d->sdate);
+			delta_strftime(buf, sizeof(buf),
+			    YEAR4(s) ? "%Y/%m/%d " : "%y/%m/%d ", s, d);
+			fputs(buf, out);
 		}
 		if (flags&GET_USER) fprintf(out, "%-*s ", s->userLen, USER(s, d));
 		if (flags&GET_REVNUMS) {
@@ -7010,14 +6977,9 @@ prefix(sccs *s, delta *d, u32 flags, int lines, char *name, FILE *out)
 		/* tab style */
 		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s\t",name);
 		if (flags&GET_PREFIXDATE) {
-			if (YEAR4(s)) {
-				if (atoi(d->sdate) > 69) {
-					fprintf(out, "19");
-				} else {
-					fprintf(out, "20");
-				}
-			}
-			fprintf(out, "%8.8s\t", d->sdate);
+			delta_strftime(buf, sizeof(buf),
+			    YEAR4(s) ? "%Y/%m/%d\t" : "%y/%m/%d\t", s, d);
+			fputs(buf, out);
 		}
 		if (flags&GET_USER) fprintf(out, "%s\t", USER(s, d));
 		if (flags&GET_REVNUMS) fprintf(out, "%s\t", REV(s, d));
@@ -7690,7 +7652,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 			continue;
 		}
 
-		CHKDATE(d);
 		parent = d->pserial ? PARENT(s, d) : 0;
 
 		/*
@@ -7727,7 +7688,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		*p++ = ' ';
 		p = fmts(p, REV(s, d));
 		*p++ = ' ';
-		p = fmts(p, d->sdate);
+		p += delta_strftime(p, 32, "%y/%m/%d %H:%M:%S", s, d);
 		*p++ = ' ';
 		p = fmts(p, USER(s, d));
 		*p++ = ' ';
@@ -9049,7 +9010,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	if (type == 'R') d->flags |= D_TAG;
 	assert(s);
 	if (BITKEEPER(s) && !TAG(d)) d->flags |= D_CKSUM;
-	unless (d->sdate) {
+	unless (d->date || nodefault) {
 		if (t = getenv("BK_DATE_TIME_ZONE")) {
 			dateArg(s, d, t, 1);
 			assert(!(d->flags & D_ERROR));
@@ -9998,9 +9959,11 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 			fprintf(stderr,
 			    "%s: time goes backwards between %s and %s\n",
 			    file, REV(s, d), REV(s, PARENT(s, d)));
-			fprintf(stderr, "\t%s: %s    %s: %s -> %d seconds\n",
-			    REV(s, d), d->sdate,
-			    REV(s, PARENT(s, d)), PARENT(s, d)->sdate,
+			fprintf(stderr, "\t%s: %s",
+			    REV(s, d), delta_sdate(s, d));
+			fprintf(stderr, "    %s: %s -> %d seconds\n",
+			    REV(s, PARENT(s, d)),
+			    delta_sdate(s, PARENT(s, d)),
 			    (int)(d->date - PARENT(s, d)->date));
 			error |= 2;
 		}
@@ -10025,6 +9988,8 @@ getval(char *arg)
  *	98/01/11 20:00:00.000-8:00	(LMSCCS fully qualified)
  *	98/01/11 20:00:00.000		(LMSCCS localtime)
  *	98/01/11 20:00:00		(SCCS, local time)
+ *
+ * XXX this could be way simpler, but it isn't used much
  */
 private delta *
 dateArg(sccs *s, delta *d, char *arg, int defaults)
@@ -10035,6 +10000,7 @@ dateArg(sccs *s, delta *d, char *arg, int defaults)
 	char	sign = ' ';
 	int	rcs = 0;
 	int	gotZone = 0;
+	char	*zone;
 
 	if (!d) d = new(delta);
 	if (!arg || !*arg) { d->flags = D_ERROR; return (d); }
@@ -10108,14 +10074,18 @@ out:		fprintf(stderr, "sccs: can't parse date format %s at %s\n",
 		hwest = seast / 3600;
 		mwest = (seast % 3600) / 60;
 	}
-	sprintf(tmp, "%02d/%02d/%02d %02d:%02d:%02d",
-	    year, month, day, hour, minute, second);
-	d->sdate = strdup(tmp);
 	if (gotZone) {
 		sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
 		d->zone = sccs_addUniqStr(s, tmp);
+		zone = ZONE(s, d);
+	} else if (s->table) {
+		zone = ZONE(s, s->table);
+	} else {
+		zone = 0;
 	}
-	DATE(s, d);
+	sprintf(tmp, "%02d/%02d/%02d %02d:%02d:%02d",
+	    year, month, day, hour, minute, second);
+	d->date = date2time(tmp, zone, EXACT) + d->dateFudge;
 	return (d);
 }
 #undef	getit
@@ -10780,12 +10750,7 @@ insert_1_0(sccs *s, u32 flags)
 	t->pserial = d->serial;	/* nop as t->pserial was 0 and inc'd */
 
 	/* date needs to be 1 second earler than 1.1 */
-	/* date assuming local zone - 1 */
-	d->date = date2time(t->sdate, sccs_zone(t->date), EXACT) - 1;
-	/* sdate assuming local zone */
-	d->sdate = strdup(time2date(d->date));
-	/* date assuming correct zone */
-	d->date = date2time(d->sdate, ZONE(s, d), EXACT);
+	d->date = t->date - 1;
 
 	if (csets) {
 		d->sum = t->sum;
@@ -12450,7 +12415,7 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, u32 flags, int *errorp, int *linesp,
 	t = s;
 	while (*s++ != ' ');	/* eat date */
 	while (*s++ != ' ');	/* eat time */
-	unless (d->sdate) {
+	unless (d->date) {
 		s[-1] = 0;
 		d = sccs_parseArg(sc, d, 'D', t, 0);
 	}
@@ -14089,114 +14054,65 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_Dy: /* Dy */ {
 		/* year */
-		if (d->sdate) {
-			char	val[512];
+		char	val[16];
 
-			if (YEAR4(s)) {
-				q = &val[2];
-			} else {
-				q = val;
-			}
-			for (p = d->sdate; *p && *p != '/'; )
-				*q++ = *p++;
-			*q = '\0';
-			if (YEAR4(s)) {
-				if (atoi(&val[2]) <= 68) {
-					val[0] = '2';
-					val[1] = '0';
-				} else {
-					val[0] = '1';
-					val[1] = '9';
-				}
-			}
-			fs(val);
-			return (strVal);
-		}
-		return (nullVal);
+		delta_strftime(val, sizeof(val), YEAR4(s) ? "%Y" : "%y", s, d);
+		fs(val);
+		return (strVal);
 	}
 
 	case KW_Dm: /* Dm */ {
 		/* month */
-		if (d->sdate) {
-			for (p = d->sdate; *p && *p != '/'; p++);
-			for (p++; *p && *p != '/'; )
-				fc(*p++);
-			return (strVal);
-		}
-		return (nullVal);
+		char	val[16];
+
+		delta_strftime(val, sizeof(val), "%m", s, d);
+		fs(val);
+		return (strVal);
 	}
 
 	case KW_DM: /* DM */ {
 		/* month in Jan, Feb format */
-		if (d->sdate) {
-			for (p = d->sdate; *p && *p != '/'; p++);
-			switch (atoi(++p)) {
-			    case 1: fs("Jan"); break;
-			    case 2: fs("Feb"); break;
-			    case 3: fs("Mar"); break;
-			    case 4: fs("Apr"); break;
-			    case 5: fs("May"); break;
-			    case 6: fs("Jun"); break;
-			    case 7: fs("Jul"); break;
-			    case 8: fs("Aug"); break;
-			    case 9: fs("Sep"); break;
-			    case 10: fs("Oct"); break;
-			    case 11: fs("Nov"); break;
-			    case 12: fs("Dec"); break;
-			    default: fs("???"); break;
-			}
-			return (strVal);
-		}
-		return (nullVal);
+		char	val[16];
+
+		delta_strftime(val, sizeof(val), "%b", s, d);
+		fs(val);
+		return (strVal);
 	}
 
 	case KW_Dd: /* Dd */ {
 		/* day */
-		if (d->sdate) {
-			for (p = d->sdate; *p && *p != '/'; p++);
-			for (p++; *p && *p != '/'; p++);
-			for (p++; *p && *p != ' '; )
-				fc(*p++);
-			return (strVal);
-		}
-		return (nullVal);
+		char	val[16];
+
+		delta_strftime(val, sizeof(val), "%d", s, d);
+		fs(val);
+		return (strVal);
 	}
 
 	case KW_Th: /* Th */ {
 		/* hour */
-		if (d->sdate)
-		{
-			for (p = d->sdate; *p && *p != ' '; p++);
-			for (p++; *p && *p != ':'; )
-				fc(*p++);
-			return (strVal);
-		}
-		return (nullVal);
+		char	val[16];
+
+		delta_strftime(val, sizeof(val), "%H", s, d);
+		fs(val);
+		return (strVal);
 	}
 
 	case KW_Tm: /* Tm */ {
 		/* minute */
-		if (d->sdate) {
-			for (p = d->sdate; *p && *p != ' '; p++);
-			for (p++; *p && *p != ':'; p++);
-			for (p++; *p && *p != ':'; )
-				fc(*p++);
-			return (strVal);
-		}
-		return (nullVal);
+		char	val[16];
+
+		delta_strftime(val, sizeof(val), "%M", s, d);
+		fs(val);
+		return (strVal);
 	}
 
 	case KW_Ts: /* Ts */ {
 		/* second */
-		if (d->sdate) {
-			for (p = d->sdate; *p && *p != ' '; p++);
-			for (p++; *p && *p != ':'; p++);
-			for (p++; *p && *p != ':'; p++);
-			for (p++; *p; )
-				fc(*p++);
-			return (strVal);
-		}
-		return (nullVal);
+		char	val[16];
+
+		delta_strftime(val, sizeof(val), "%S", s, d);
+		fs(val);
+		return (strVal);
 	}
 
 
@@ -14953,7 +14869,6 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	case KW_UTC_FUDGE: /* UTC-FUDGE */ {
 		char	*utcTime;
 
-		DATE(s, d);
 		d->date -= d->dateFudge;
 		if (utcTime = sccs_utctime(s, d)) {
 			fs(utcTime);
@@ -15774,7 +15689,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	}
 
 	fprintf(out, "%c %s %s%s %s%s%s +%u -%u",
-	    type, REV(s, d), d->sdate,
+	    type, REV(s, d), delta_sdate(s, d),
 	    ZONE(s, d),
 	    USER(s, d),
 	    d->hostname ? "@" : "",
@@ -16364,7 +16279,7 @@ sccs_utctime(sccs *s, delta *d)
 	struct	tm *tp;
 	static	char sdate[30];
 
-	tp = utc2tm(getDate(s, d));
+	tp = utc2tm(d->date);
 	sprintf(sdate, "%d%02d%02d%02d%02d%02d",
 	    tp->tm_year + 1900,
 	    tp->tm_mon + 1,
@@ -16376,8 +16291,20 @@ sccs_utctime(sccs *s, delta *d)
 }
 
 /*
- * XXX why does this get an 'sccs *' ??
+ * Return the sccs date format for the this delta.
+ *
+ * This is in the localtime of that delta.
  */
+char *
+delta_sdate(sccs *s, delta *d)
+{
+	static	char sdate[30];
+
+	delta_strftime(sdate, sizeof(sdate),
+	    "%y/%m/%d %H:%M:%S", s, d);
+	return (sdate);
+}
+
 void
 sccs_pdelta(sccs *s, delta *d, FILE *out)
 {
@@ -16631,7 +16558,7 @@ sccs_ino(sccs *s)
 {
 	delta	*d = s->tree;
 
-	if (streq(d->sdate, "70/01/01 00:00:00") && streq(USER(s, d), "Fake")) {
+	if ((d->date == 0) && streq(USER(s, d), "Fake")) {
 		d = sccs_kid(s, d);
 	}
 	return (d);

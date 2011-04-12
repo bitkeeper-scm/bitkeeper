@@ -53,7 +53,6 @@ struct dinfo {
 	int	dateFudge;
 	sum_t	sum;
 	char	*rev;
-	char	*sdate;
 	char	*zone;
 	char	*pathname;
 	char	*user;
@@ -328,10 +327,10 @@ isCsetBoundary(sccs *s, dinfo *d1, dinfo *d2,
 	/*
 	 * Ignore delta with fake user
 	 */
-	if (streq(d1->sdate, "70/01/01 00:00:00") && streq(d1->user, "Fake")) {
+	if ((d1->date == 0) && streq(d1->user, "Fake")) {
 		return (0);
 	}
-	if (streq(d2->sdate, "70/01/01 00:00:00") && streq(d2->user, "Fake")) {
+	if ((d2->date == 0) && streq(d2->user, "Fake")) {
 		return (0);
 	}
 
@@ -507,7 +506,7 @@ fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 	delta *parent;
 
 	if ((opts.verbose > 1) && (fudge != -1)) {
-		if (sameStr(template->sdate, d->sdate) &&
+		if ((template->date == d->date) &&
 		    sameStr(template->zone, ZONE(s, d)) &&
 		    sameStr(template->user, USER(s, d)) &&
 		    sameStr(template->hostname, HOSTNAME(s, d))) {
@@ -515,15 +514,10 @@ fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 		}
 		fprintf(stderr,
 		    "Fixing ChangeSet rev %s to match oldest delta: %s %s",
-		    REV(s, d), template->sdate, template->user);
+		    REV(s, d), template->rev, template->user);
 		fprintf(stderr, " %s\n",
 				template->hostname ? template->hostname : "");
 	}
-
-	/*
-	 * Free old values
-	 */
-	if (d->sdate) free(d->sdate);
 
 	/*
 	 * Fix time zone and date
@@ -535,15 +529,13 @@ fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 		d->zone = 0;
 	}
 
-	assert(template->sdate);
-	d->sdate =  strdup(template->sdate);
+	d->date = template->date;
 	if (fudge != -1) { /* -1 => do not fudge the date */
 		d->dateFudge = template->dateFudge + fudge;
+		d->date += fudge;
 	} else {
 		assert(d->dateFudge == 0);
 	}
-	d->date = sccs_date2time(d->sdate, ZONE(s, d));
-	d->date += d->dateFudge;
 
 	/*
 	 * Copy user
@@ -1066,7 +1058,6 @@ free_dinfo(void *x)
 	dinfo	*di = (dinfo *)x;
 
 	if (di->rev) free(di->rev);
-	if (di->sdate) free(di->sdate);
 	if (di->zone) free(di->zone);
 	if (di->user) free(di->user);
 	if (di->hostname) free(di->hostname);
@@ -1087,7 +1078,6 @@ delta2dinfo(sccs *s, delta *d)
 	di->dateFudge = d->dateFudge;
 	di->sum = d->sum;
 	di->rev = strdup(REV(s, d));
-	di->sdate = strdup(d->sdate);
 	if (d->zone) di->zone = strdup(ZONE(s, d));
 	di->user = strdup(USER(s, d));
 	di->hostname = strdup(HOSTNAME(s, d));
@@ -1112,8 +1102,7 @@ findFirstDelta(sccs *s, dinfo *first)
 	 * Skip teamware dummy user
 	 * XXX - there can be more than one.
 	 */
-	if (streq(d->sdate, "70/01/01 00:00:00") &&
-	    streq(USER(s, d), "Fake")) {
+	if ((d->date == 0) && streq(USER(s, d), "Fake")) {
 		d = sccs_kid(s, d);
 	}
 	unless (d) return (first);
@@ -1226,7 +1215,7 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 	type = TAG(d) ? 'M' : 'D';
 
 	fprintf(out, "%c %s %s%s %s%s%s +%u -%u\n",
-	    type, REV(s, d), d->sdate,
+	    type, REV(s, d), delta_sdate(s, d),
 	    ZONE(s, d),
 	    USER(s, d),
 	    d->hostname ? "@" : "",

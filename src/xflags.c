@@ -147,7 +147,7 @@ checkXflags(sccs *s, delta *d, int what)
 	 * XXX: this is fixed by rmshortkeys -- so safe to pull when
 	 * all repos have been converted.
 	 */
-	if (streq(s->tree->sdate, "97/05/18 16:29:28")) {
+	if (s->tree->date == 864023369) {
 		sccs_md5delta(s, s->tree, key);
 		if (streq("337f90d8qZwQGPzUrQ-3E6KGSH4k4g", key)) return (0);
 	}

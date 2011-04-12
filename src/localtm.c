@@ -1,14 +1,19 @@
-/* Copyright (c) 1999 Zack Weinberg. */
+/* Copyright (c) 2011 Bitmover, Inc */
 
-/* This file implements a wrapper around localtime() which
- * adds timezone information and makes the interface a bit
- * friendlier.
- * We copy the struct tm returned by localtime, and return the
- * timezone offset in seconds normalized to (-12h, +13h].
- * The extra hour is for daylight savings time.
- */
 #include "sccs.h"
 
+/* This is a wrapper around localtime()
+ * bk source should not call localtime() directly
+ *
+ * It does two things:
+ *   - returns the offsets from GMT in offsetp, even for
+ *     platforms that don't have tm->tm_gmtoff
+ *     timezone offset in seconds normalized to (-12h, +13h].
+ *     The extra hour is for daylight savings time.
+ *
+ *   - For machines with a weird timezone we round the gmt offset to the
+ *     nearest minute and adjust the tm struct to match.
+ */
 struct tm *
 localtimez(time_t *timep, long *offsetp)
 {

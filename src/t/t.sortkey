@@ -37,7 +37,7 @@ echo 8 >> keep
 bk delta $Q -ybranch keep
 bk commit $Q -ybranch
 # make the merge
-bk pull $Q
+bk pull $Q || fail
 # partition it up, which will remove 'del' from product and 'keep' from comp
 echo anno > comps
 bk partition $Q -Ccomps . ../partition

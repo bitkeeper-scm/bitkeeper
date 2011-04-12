@@ -192,9 +192,6 @@ int	checking_rmdir(char *dir);
 #define	ROUNDUP	1
 #define	EXACT	0
 #define	ROUNDDOWN -1
-#define	DATE(s, d)		((d)->date ? (d)->date : getDate(s, d))
-#define	CHKDATE(d) \
-	assert((d)->date || streq("70/01/01 00:00:00", (d)->sdate))
 
 /*
  * Bits for the x flag in the s.file.
@@ -471,14 +468,9 @@ typedef struct delta {
  	u32	csetFile;		/* id for ChangeSet file */
 
 	/* XXX Stuff to remove */
-	char	*sdate;			/* ascii date in local time, i.e.,
-					 * 93/07/25 21:14:11 */
-
 	char	**text;			/* descriptive text log */
 	char	*random;		/* random bits for file ID */
 	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
-	ser_t	kid;			/* next delta on this branch */
-	ser_t	siblings;		/* pointer to other branches */
 } delta;
 
 #define	TAG(d)		((d)->flags & D_TAG)
@@ -1000,6 +992,8 @@ int	sccs_mylock(char *lockf);
 int	sccs_readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp);
 
 char	*sccs_utctime(sccs *s, delta *d);
+int	delta_strftime(char *out, int sz, char *fmt, sccs *s, delta *d);
+char	*delta_sdate(sccs *s, delta *d);
 delta	*sccs_kid(sccs *s, delta *d);
 void	sccs_mkKidList(sccs *s);
 void	sccs_renumber(sccs *s, u32 flags);

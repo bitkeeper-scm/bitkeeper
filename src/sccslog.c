@@ -230,9 +230,9 @@ private void
 pdelta(sccs *s, delta *d, FILE *f)
 {
 	int	indent;
-	char	*y;
 	char	*p, *t;
 	int	len;
+	char	buf[MAXLINE];
 
 	if (opts.dspec) {
 		sccs_prsdelta(s, d, opts.prs_flags, opts.dspec, f);
@@ -267,14 +267,8 @@ pdelta(sccs *s, delta *d, FILE *f)
 			fprintf(f, "%s %s ", basenm(PATHNAME(s, d)), REV(s, d));
 		}
 	}
-	y = (atoi(d->sdate) > 69) ? "19" : "20";
-	fprintf(f, "%s%.2s-%.2s-%.2s %s %s",
-	    y,
-	    d->sdate,		/* YY */
-	    &(d->sdate[3]),	/* MM */
-	    &(d->sdate[6]),	/* DD */
-	    &(d->sdate[9]),	/* HH:MM:SS */
-	    USER(s, d));
+	delta_strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", s, d);
+	fprintf(f, "%s %s", buf, USER(s, d));
 	if (d->hostname) fprintf(f, "@%s", HOSTNAME(s, d));
 	fprintf(f, " +%d -%d\n", d->added, d->deleted);
 	t = COMMENTS(s, d);

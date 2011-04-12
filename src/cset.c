@@ -851,7 +851,7 @@ doDiff(sccs *sc, char kind)
 	if (!d) return;
 	unless (PARENT(sc, e)) {
 		printf("--- New file ---\n+++ %s\t%s\n",
-		    sc->gfile, sccs_ino(sc)->sdate);
+		    sc->gfile, delta_sdate(sc, sccs_ino(sc)));
 		sccs_get(sc, 0, 0, 0, 0, PRINT|SILENT, "-");
 		printf("\n");
 		return;

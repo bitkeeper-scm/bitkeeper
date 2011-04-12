@@ -1200,7 +1200,9 @@ fetch_changeset(void)
 		getMsg("chk5", buf, '=', stderr);
 		exit(1);
 	}
-	if (verbose > 1) fprintf(stderr, "TIP %s %s\n", REV(s, d), d->sdate);
+	if (verbose > 1) {
+		fprintf(stderr, "TIP %s %s\n", REV(s, d), delta_sdate(s, d));
+	}
 	s->hasgone = 1;
 	range_gone(s, d, D_SET);
 	(void)stripdel_fixTable(s, &i);
@@ -1524,7 +1526,8 @@ markCset(sccs *s, delta *d)
 				    "check: %s@%s "
 				    "(%s@%s %.8s) in multiple csets\n",
 				    s->gfile, REV(s, d),
-				    USER(s, d), HOSTNAME(s, d), d->sdate);
+				    USER(s, d), HOSTNAME(s, d),
+				    delta_sdate(s, d));
 			}
 		}
 		d->flags |= D_SET;

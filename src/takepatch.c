@@ -364,9 +364,6 @@ getRecord(sccs *s, MMAP *f)
 		    "takepatch: bad delta record near line %d\n", line);
 		exit(1);
 	}
-	unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
-		assert(d->date);
-	}
 	return (d);
 }
 
@@ -1571,9 +1568,6 @@ getLocals(sccs *s, delta *g, char *name)
 			}
 		} else {
 			p->meta = 1;
-		}
-		unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
-			assert(d->date);
 		}
 		sccs_sdelta(s, PARENT(s, d), tmpf);
 		p->pid = strdup(tmpf);

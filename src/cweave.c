@@ -155,7 +155,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	}
 	d->flags |= D_REMOTE;
 
-	TRACE("%s/%d", d->sdate, d->sum);
+	TRACE("%s/%d", delta_sdate(s, d), d->sum);
 	/*
 	 * Insert new delta 'd' into s->table in time sorted order
 	 */

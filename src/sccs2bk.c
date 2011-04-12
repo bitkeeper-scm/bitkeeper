@@ -385,7 +385,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 			randstr);
 	} else {
 		fprintf(fh, "D %s %s %s@%s\n",
-		    REV(s, d), d->sdate, USER(s, d),
+		    REV(s, d), delta_sdate(s, d), USER(s, d),
 		    d->hostname ? HOSTNAME(s, d) : sccs_gethost());
 		t = COMMENTS(s, d);
 		while (p = eachline(&t, &len)) fprintf(fh, "c %.*s\n", len, p);
@@ -408,7 +408,8 @@ ptable(sccs *s)
 			continue;
 		}
 		fprintf(stderr, "%-10.10s %10s i=%2u s=%2u d=%s f=%lu\n",
-		    s->gfile, REV(s, d), i, d->serial, d->sdate, d->dateFudge);
+		    s->gfile, REV(s, d), i, d->serial,
+		    delta_sdate(s, d), d->dateFudge);
 	}
 }
 
@@ -457,8 +458,6 @@ handleFake(sccs *s)
 		}
 		date--;
 		d->date = date;
-		strftime(d->sdate, strlen(d->sdate)+1,
-		    "%y/%m/%d %H:%M:%S", gmtime(&d->date));
 		assert(d->user != user);
 		d->user = user;
 	}

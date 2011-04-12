@@ -232,9 +232,11 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	unless (s->added || s->deleted || d->include || d->exclude) {
 		int	len, new = 0;
 		char	*p, *t;
+		char	*sdate;
 
 		if (d->flags & D_CKSUM) return (err);
-		new = adler32(new, d->sdate, strlen(d->sdate));
+		sdate = delta_sdate(s, d);
+		new = adler32(new, sdate, strlen(sdate));
 		t = USER(s, d);
 		new = adler32(new, t, strlen(t));
 		if (d->pathname) {

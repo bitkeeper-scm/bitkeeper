@@ -260,7 +260,7 @@ sccs_defRootlog(sccs *cset)
 		sprintf(who, "%s@%s %s%s",
 		    USER(cset, cset->tree),
 		    HOSTNAME(cset, cset->tree),
-		    cset->tree->sdate,
+		    delta_sdate(cset, cset->tree),
 		    ZONE(cset, cset->tree));
 		update_rootlog(cset, key, "original", who);
 		return (1);

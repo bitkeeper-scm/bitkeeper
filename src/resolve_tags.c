@@ -210,6 +210,7 @@ out:		sccs_free(s);
 	    "Tag", "Rev", "User", "Date", "Rev", "User", "Date");
 	for (n = 0, kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
 		delta	*l, *r;
+		char	*sdate;
 
 		sscanf(kv.val.dptr, "%d %d", &a, &b);
 		d = sfind(s, a);
@@ -221,11 +222,15 @@ out:		sccs_free(s);
 			r = d;
 			l = sfind(s, b);
 		}
+		sdate = delta_sdate(s, l);
 		fprintf(stderr,
-		    "%-10.10s %-12s %-7.7s %-11.11s  %-12s %-7.7s %11.11s\n",
+		    "%-10.10s %-12s %-7.7s %-11.11s  ",
 		    kv.key.dptr,
-		    REV(s, l), USER(s, l), l->sdate + 3,
-		    REV(s, r), USER(s, r), r->sdate + 3);
+		    REV(s, l), USER(s, l), sdate + 3);
+		sdate = delta_sdate(s, r);
+		fprintf(stderr,
+		    "%-12s %-7.7s %11.11s\n",
+		    REV(s, r), USER(s, r), sdate + 3);
 		n++;
 	}
 	fprintf(stderr, "\n");
