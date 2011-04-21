@@ -388,7 +388,8 @@ prompt_main(int ac, char **av)
 	}
 	if (((file || prog) && av[optind]) ||
 	    (!(file || prog) && !av[optind]) ||
-	    (av[optind] && av[optind+1]) || (file && prog)) {
+	    (av[optind] && av[optind+1]) || (file && prog) ||
+	    (av[optind] && !av[optind][0])) {
 		if (file == msgtmp) unlink(msgtmp);
 		usage();
 	}
