@@ -173,7 +173,7 @@ called before a changeset is committed.
 exit 0 allows the commit. 
 .li
 exit 1 fails the commit. If the commit was initiated from citool, 
-citool will not exit. This allows the user to try the commit again. 
+citool will exit.
 See example below.
 .li
 exit 2 Reserved for future use (see pre-delta) and should not be used.
@@ -618,6 +618,10 @@ fi
 # BitKeeper/trigger/pre-commit.cset_comments
 #
 
+# if this is a merge, we are in the RESYNC directory
+# since it is not a user cset, ignore
+test "`basename "$BK_ROOT"`" = "RESYNC" && exit 0
+
 grep -q 'BUGID:' $BK_COMMENTFILE && exit 0
 
 msg="A 'BUGID:' field is needed in the checkin comments"
@@ -627,10 +631,9 @@ msg="A 'BUGID:' field is needed in the checkin comments"
 
 #/opt/bugtrack/bin/bugviewer 'http://server.host.com/bugs?status=open' &
 
-# Ask user if he needs to enter a bugid.  returning a non-zero exit
-# code from the trigger will allow user to retry the commit from
-# within citool.
-bk prompt -y"Reenter bugid" -n"No bugid is required" "$msg" && exit 1
+# Complain and ask the user what they want to do.
+# Choices are drive-on or abort.
+bk prompt -y"Abort commit" -n"Force commit with no bugid" "$msg" && exit 1
 
 exit 0
 .DE
