@@ -1207,7 +1207,7 @@ closeTags(void)
 private int
 do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 {
-	int	len, i;	/* used by EACH */
+	int	len;
 	char	*p, *t;
 	char	type;
 
@@ -1246,15 +1246,6 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 			fprintf(out, "s %s\n", tagparent);
 		}
 		assert (!d->mtag);
-	}
-	if (d->flags & D_TEXT) {
-		if (d->text) {
-			EACH(d->text) {
-				fprintf(out, "T %s\n", d->text[i]);
-			}
-		} else {
-			fprintf(out, "T\n");
-		}
 	}
 	assert (!d->exclude);
 	if (d->flags & D_XFLAGS) {

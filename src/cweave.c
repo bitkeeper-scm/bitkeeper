@@ -311,27 +311,6 @@ cset_write(sccs *s, int spinners, int fast)
 	if (CSET(s) && spinners) fprintf(stderr, "renumbering");
 	sccs_renumber(s, SILENT);
 
-	/*
-	 * update the title section with the time sorted newest
-	 * inner code lifted from sccs_delta in the PATCH part
-	 * XXX can't we just look at s->tree and be done?
-	 */
-	if (fast) {
-		for (d = s->table; d; d = NEXT(d)) {
-			if (d->flags & D_TEXT) {
-				unless (d->flags & D_REMOTE) break;
-				if (s->text) {
-					freeLines(s->text, free);
-					s->text = 0;
-				}
-				EACH(d->text) {
-					s->text = addLine(
-					    s->text, strnonldup(d->text[i]));
-				}
-				break;
-			}
-		}
-	}
 	unless (f = sccs_startWrite(s)) goto err;
 	s->state |= S_ZFILE|S_PFILE;
 	if (fast) {

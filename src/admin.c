@@ -38,13 +38,17 @@ admin_main(int ac, char **av)
 	delta	*d = 0;
 	int 	was_edited = 0, new_delta = 0;
 	pfile	pf = {0};
+	longopt	lopt[] = {
+		{ "text;", 310 },
+		{ 0, 0 }
+	};
 
 	bzero(f, sizeof(f));
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;AC|d;e;E;f;F;i|M;m;O;p|P|r;S;t|y|Z|0DhHnqsTuz", 0))
-	       != -1) {
+	    getopt(ac, av, "a;AC|d;e;E;f;F;i|M;m;O;p|P|r;S;y|Z|0DhHnqsuz",
+		lopt)) != -1) {
 		switch (c) {
 		/* user|group */
 		    case 'a':	OP(u, optarg, A_ADD); break; 	/* undoc? 2.0 */
@@ -84,11 +88,6 @@ admin_main(int ac, char **av)
 		    		exit(1);
 		/* symbols */
 		    case 'S':	OP(s, optarg, A_ADD); break;	/* undoc */
-		/* text */
-		    case 't':					/* doc 2.0 */
-			text = optarg ? optarg : ""; new_delta = 1; break;
-		    case 'T':					/* doc 2.0 */	
-			text = ""; new_delta = 1; break;
 		/* singletons */
 		    case '0':					/* doc 2.0 */
 			flags |= ADMIN_ADD1_0|NEWCKSUM; break;
@@ -118,6 +117,9 @@ admin_main(int ac, char **av)
 				touchGfile++;
 				break;
 		    case 'O':	obscure = optarg; break;
+		    case 310: // --text=
+			text = optarg ? optarg : "";
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}

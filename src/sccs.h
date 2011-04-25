@@ -318,7 +318,7 @@ int	checking_rmdir(char *dir);
 #define	D_INARRAY	0x10000000	/* part of s->slist array */
 #define	D_LOCAL		0x20000000	/* for resolve; this is a local delta */
 #define D_XFLAGS	0x40000000	/* delta has updated file flags */
-#define D_TEXT		0x80000000	/* delta has updated text */
+		/*	0x80000000 */
 
 /*
  * Undo exit status for nothing to undo.
@@ -469,7 +469,6 @@ typedef struct delta {
  	u32	csetFile;		/* id for ChangeSet file */
 
 	/* XXX Stuff to remove */
-	char	**text;			/* descriptive text log */
 	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 } delta;
 

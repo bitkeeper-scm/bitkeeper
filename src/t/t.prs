@@ -825,7 +825,7 @@ if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo $N checking descriptive text :FD: ..............................$NL
 echo dtext1 > dtext
 echo dtext2 >> dtext
-bk admin -tdtext FILE
+bk admin -fRCS --text=dtext FILE
 bk undos > CMP1 <<EOF
 <dtext1>
 <dtext2>

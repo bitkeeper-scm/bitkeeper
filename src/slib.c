@@ -443,7 +443,6 @@ atoiMult_p(char **p)
 private void
 freedelta(delta *d)
 {
-	freeLines(d->text, free);
 	if (d->include) free(d->include);
 	if (d->exclude) free(d->exclude);
 }
@@ -2885,10 +2884,7 @@ meta(sccs *s, delta *d, char *buf)
 		break;
 	    case 'T':
 		assert(d);
-		d->flags |= D_TEXT;
-		if (buf[3] == ' ') {
-			d->text = addLine(d->text, strdup(&buf[4]));
-		}
+		/* ignored, used to be d->text */
 		break;
 	    case 'V':
 		s->version = atoi(&buf[3]);
@@ -7859,20 +7855,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 			*p = 0;
 			fputmeta(s, buf, out);
 		}
-		if (d->flags & D_TEXT) {
-			unless (d->text) {
-				fputmeta(s, "\001cT\n", out);
-			} else {
-				EACH(d->text) {
-					p = buf;
-					p = fmts(p, "\001cT ");
-					p = fmts(p, d->text[i]);
-					*p++ = '\n';
-					*p   = '\0';
-					fputmeta(s, buf, out);
-				}
-			}
-		}
 		if (!NEXT(d)) {
 			sprintf(buf, "\001cV%u\n", version);
 			fputmeta(s, buf, out);
@@ -11022,11 +11004,6 @@ skipmode:
 				sc->text = 0;
 				flags |= NEWCKSUM;
 			}
-			ALLOC_D();
-			comments = addLine(comments,
-			    strdup("Remove Descriptive Text"));
-			assert(d->text == 0);
-			d->flags |= D_TEXT;
 			goto user;
 		}
 		desc = fopen(text, "rt"); /* must be text mode */
@@ -11039,12 +11016,8 @@ skipmode:
 			freeLines(sc->text, free);
 			sc->text = 0;
 		}
-		ALLOC_D();
-		comments = addLine(comments, strdup("Change Descriptive Text"));
-		d->flags |= D_TEXT;
 		while (dbuf = fgetline(desc)) {
 			sc->text = addLine(sc->text, strdup(dbuf));
-			d->text = addLine(d->text, strdup(dbuf));
 		}
 		fclose(desc);
 		flags |= NEWCKSUM;
@@ -12620,10 +12593,7 @@ skip:
 	/* text are optional */
 	/* Cannot be WANT('T'), buf[1] could be null */
 	while (buf[0] == 'T') {
-		if (buf[1] == ' ') {
-			d->text = addLine(d->text, strdup(&buf[2]));
-		}
-		d->flags |= D_TEXT;
+		/* ignored, was d->text */
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -12984,16 +12954,6 @@ out:
 			    streq(PATHNAME(s, prefilled), "ChangeSet")) {
 				s->state |= S_CSET;
 		    	}
-			if (prefilled->flags & D_TEXT) {
-				if (s->text) {
-					freeLines(s->text, free);
-					s->text = 0;
-				}
-				EACH(prefilled->text) {
-					s->text = addLine(s->text,
-						strdup(prefilled->text[i]));
-				}
-			}
 			unless (flags & NEWFILE) {
 				/* except the very first delta   */
 				/* all rev are subject to rename */
@@ -15774,15 +15734,6 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 			assert(e);
 			sccs_sdelta(s, e, buf);
 			fprintf(out, "s %s\n", buf);
-		}
-	}
-	if (d->flags & D_TEXT) {
-		if (d->text) {
-			EACH(d->text) {
-				fprintf(out, "T %s\n", d->text[i]);
-			}
-		} else {
-			fprintf(out, "T\n");
 		}
 	}
 	if ((flags & PRS_GRAFT) && s->version) {
