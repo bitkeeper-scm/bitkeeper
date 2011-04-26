@@ -229,7 +229,7 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	 * from the data in the delta table.
 	 * NOTE: check using newly computed added and deleted (in *s)
 	 */
-	unless (s->added || s->deleted || d->include || d->exclude) {
+	unless (s->added || s->deleted || d->cludes) {
 		int	len, new = 0;
 		char	*p, *t;
 		char	*sdate;
@@ -407,7 +407,7 @@ setOrder(sccs *s, delta *d, void *token)
 	d->flags &= ~D_SET;
 
 	if (TAG(d)) return (0);
-	unless (d->added || d->include || d->exclude) return (0);
+	unless (d->added || d->cludes) return (0);
 
 	*order = addLine(*order, d);
 	return (0);
@@ -502,7 +502,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		d = (delta *)order[orderIndex];
 
 		/* incremental serialmap */
-		graph_symdiff(d, prev, slist, 0, -1, 0);
+		graph_symdiff(s, d, prev, slist, 0, -1, 0);
 		prev = d;
 
 		if (tick) progress(tick, ++n);

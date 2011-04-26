@@ -1231,7 +1231,7 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 	t = COMMENTS(s, d);
 	while (p = eachline(&t, &len)) fprintf(out, "c %.*s\n", len, p);
 	if (d->dateFudge) fprintf(out, "F %d\n", (int)d->dateFudge);
-	assert(!d->include);
+	assert(!d->cludes);
 	if (d->flags & D_CKSUM) {
 		fprintf(out, "K %u\n", d->sum);
 	}
@@ -1247,7 +1247,6 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 		}
 		assert (!d->mtag);
 	}
-	assert (!d->exclude);
 	if (d->flags & D_XFLAGS) {
 		assert((d->xflags & X_EOLN_UNIX) == 0);
 		fprintf(out, "X 0x%x\n", d->xflags);

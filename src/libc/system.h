@@ -356,6 +356,7 @@ void	my_perror(char *, int, char *);
 #define	perror(msg)	my_perror(__FILE__, __LINE__, msg)
 int	chomp(char *str);
 char	*eachline(char **linep, int *lenp);
+char	*eachstr(char **linep, int *lenp);
 
 /* webencode.c */
 void	webencode(FILE *out, u8 *ptr, int len);

@@ -502,9 +502,7 @@ collapse(sccs *s, int verbose, delta *d, delta *m)
 	/* surgery at other end of graph: merge becomes parent of d */
 	d->pserial = m->serial;
 	d->merge = 0;
-	assert(d->include);
-	free(d->include);
-	d->include = 0;
+	d->cludes = 0;
 }
 
 /*
@@ -515,8 +513,10 @@ private int
 makeMerge(sccs *s, int verbose)
 {
 	delta	*d, *m;
-	int	i, j;
+	int	i, sign, del;
 	ser_t	mser;
+	FILE	*f = fmem();
+	char	*p;
 
 	/* table order, mark things to ignore, and find merge markers */
 	for (d = s->table; d; d = NEXT(d)) {
@@ -524,29 +524,36 @@ makeMerge(sccs *s, int verbose)
 			d->flags |= D_GONE;
 			continue;
 		}
-		unless (d->include) continue;
+		unless (d->cludes) continue;
 		assert(!d->merge);
-
-		j = 0;
-		EACH(d->include) {
-			if ((m = sfind(s, d->include[i])) && !TAG(m)) {
-				if (j) d->include[j++] = d->include[i];
+		mser = 0;
+		del = 0;
+		p = CLUDES(s, d);
+		while (i = sccs_eachNum(&p, &sign, d->serial)) {
+			if ((m = sfind(s, i)) && !TAG(m)) {
+				if ((sign > 0) && (mser < m->serial)) {
+					mser = m->serial;
+				}
+				sccs_saveNum(f, i, sign, d->serial);
 			} else {	/* delete it */
-				unless (j) j = i;
+				del = 1;
 			}
 		}
-		if (j) d->include[0] = (d->include[0] & ~LMASK) | (j-1);
-		if (emptyLines(d->include)) {
-			free(d->include);
-			d->include = 0;
-			continue;
+		if (del) {
+			if (ftell(f) > 0) {
+				d->cludes = sccs_addStr(s, fmem_peek(f, 0));
+			} else {
+				d->cludes = 0;
+			}
 		}
-		mser = d->include[d->include[0] & LMASK];
+		ftrunc(f, 0);
+		unless (mser) continue;
 		m = sfind(s, mser);
 		assert(m && !TAG(m));
 		d->merge = mser;
 		collapse(s, verbose, d, m);
 	}
+	fclose(f);
 	return (0);
 }
 

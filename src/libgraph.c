@@ -84,15 +84,17 @@ private	void	sortKids(sccs *s, delta *start,
  */
 
 int
-graph_symdiff(delta *left, delta *right, u8 *slist,
+graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
     ser_t **sd, int count, int flags)
 {
 	ser_t	ser, lower = 0;
 	u8	bits, newbits;
 	int	marked = 0;
 	int	expand = (count < 0);
+	int	sign;
 	int	i, activeLeft, activeRight;
-	char	**list;
+	char	**list, *p;
+	ser_t	*include = 0, *exclude = 0;
 	delta	*t = 0, *x;
 
 	if (flags & SD_MERGE) {
@@ -112,14 +114,7 @@ graph_symdiff(delta *left, delta *right, u8 *slist,
 		assert(left);
 		if (sd) assert(count == 0);
 		marked = count;
-		if (left->include) {
-			free(left->include);
-			left->include = 0;
-		}
-		if (left->exclude) {
-			free(left->exclude);
-			left->exclude = 0;
-		}
+		left->cludes = 0;
 	}
 	/* init the array with the starting points */
 	EACH (list) {
@@ -194,10 +189,10 @@ graph_symdiff(delta *left, delta *right, u8 *slist,
 			sd[left->serial] = addSerial(sd[left->serial], ser);
 		} else {		/* Compute SCCS compression */
 			if (activeLeft) {
-				left->exclude = addSerial(left->exclude, ser);
+				exclude = addSerial(exclude, ser);
 				activeLeft = 0;
 			} else {
-				left->include = addSerial(left->include, ser);
+				include = addSerial(include, ser);
 				activeLeft = 1;
 			}
 		}
@@ -243,33 +238,28 @@ graph_symdiff(delta *left, delta *right, u8 *slist,
 
 		if (activeLeft || activeRight) {
 			/* alter only if item hasn't been set yet */
-			EACH(t->include) {
-				ser = t->include[i];
-				bits = slist[ser];
+			p = CLUDES(s, t);
+			while (ser = sccs_eachNum(&p, &sign, t->serial)) {
 				newbits = 0;
-				if (activeLeft && !(bits & (SL_INC|SL_EXCL))) {
-					newbits |= SL_INC;
-				}
-				if (activeRight && !(bits & (SR_INC|SR_EXCL))) {
-					newbits |= SR_INC;
-				}
-				if (newbits) {
-					if (S_DIFFERENT(bits)) marked--;
-					bits |= newbits;
-					if (S_DIFFERENT(bits)) marked++;
-					slist[ser] = bits;
-					if (lower > ser) lower = ser;
-				}
-			}
-			EACH(t->exclude) {
-				ser = t->exclude[i];
 				bits = slist[ser];
-				newbits = 0;
-				if (activeLeft && !(bits & (SL_INC|SL_EXCL))) {
-					newbits |= SL_EXCL;
-				}
-				if (activeRight && !(bits & (SR_INC|SR_EXCL))) {
-					newbits |= SR_EXCL;
+				if (sign > 0) {
+					if (activeLeft &&
+					    !(bits & (SL_INC|SL_EXCL))) {
+						newbits |= SL_INC;
+					}
+					if (activeRight &&
+					    !(bits & (SR_INC|SR_EXCL))) {
+						newbits |= SR_INC;
+					}
+				} else {
+					if (activeLeft &&
+					    !(bits & (SL_INC|SL_EXCL))) {
+						newbits |= SL_EXCL;
+					}
+					if (activeRight &&
+					    !(bits & (SR_INC|SR_EXCL))) {
+						newbits |= SR_EXCL;
+					}
 				}
 				if (newbits) {
 					if (S_DIFFERENT(bits)) marked--;
@@ -280,6 +270,16 @@ graph_symdiff(delta *left, delta *right, u8 *slist,
 				}
 			}
 		}
+	}
+	if (include || exclude) {
+		FILE	*f = fmem();
+
+		EACH(include) sccs_saveNum(f, include[i], 1, left->serial);
+		EACH(exclude) sccs_saveNum(f, exclude[i], -1, left->serial);
+		left->cludes = sccs_addStr(s, fmem_peek(f, 0));
+		fclose(f);
+		FREE(include);
+		FREE(exclude);
 	}
 	assert(!marked);
 	/* fresh slate for next round */
@@ -366,8 +366,8 @@ graph_sccs2symdiff(sccs *s)
 	assert(sd && slist);
 	for (j = 1; j < s->nextserial; j++) {
 		unless ((d = sfind(s, j)) && !TAG(d) && d->pserial) continue;
-		if (d->merge || d->include || d->exclude) {
-			graph_symdiff(d, PARENT(s, d), slist, sd, -1, 0);
+		if (d->merge || d->cludes) {
+			graph_symdiff(s, d, PARENT(s, d), slist, sd, -1, 0);
 		}
 	}
 	free(slist);

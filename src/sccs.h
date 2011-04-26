@@ -453,8 +453,7 @@ typedef struct delta {
 
 	/* unique heap data */
 	u32	rev;			/* revision number */
-	ser_t	*include;		/* include serial #'s */
-	ser_t	*exclude;		/* exclude serial #'s */
+	u32	cludes;			/* include/exclude list */
 	u32	comments;		/* delta comments (\n sep string) */
 	u32	bamhash;		/* hash of gfile for BAM */
 	u32	random;			/* random bits for file ID */
@@ -488,6 +487,7 @@ typedef struct delta {
 #define	SIBLINGS(s, d)	SFIND((s), (s)->kidlist[(d)->serial].siblings)
 
 #define	REV(s, d)	((s)->heap.buf + (d)->rev)
+#define	CLUDES(s, d)	((s)->heap.buf + (d)->cludes)
 #define	BAMHASH(s, d)	((s)->heap.buf + (d)->bamhash)
 #define	COMMENTS(s, d)	((s)->heap.buf + (d)->comments)
 #define	RANDOM(s, d)	((s)->heap.buf + (d)->random)
@@ -596,7 +596,7 @@ typedef	struct {
 struct sccs {
 	delta	*tree;		/* the delta tree after mkgraph() */
 	delta	*table;		/* the delta table list, 1.99 .. 1.0 */
-	delta	*slist;
+	delta	*slist;		/* array of delta structs */
 	KIDS	*kidlist;	/* optional kid/sibling data */
 	symbol	*symbols;	/* symbolic tags sorted most recent to least */
 	symbol	*symTail;	/* last symbol, for tail inserts */
@@ -1200,6 +1200,8 @@ char	*hashstr(char *str, int len);
 char	*hashstream(int fd);
 char	*secure_hashstr(char *str, int len, char *key);
 int	isNetworkFS(char *path);
+void	sccs_saveNum(FILE *f, int num, int sign, int serial);
+int	sccs_eachNum(char **linep, int *signp, int serial);
 
 #define	KEY_LEASE		0
 #define	KEY_BK_AUTH_HMAC	1

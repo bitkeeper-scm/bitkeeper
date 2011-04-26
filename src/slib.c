@@ -33,7 +33,6 @@ private int	end(sccs *, delta *, FILE *, int, int, int, int);
 private void	date(sccs *s, delta *d, time_t tt);
 private int	getflags(sccs *s, char *buf);
 private sum_t	fputmeta(sccs *s, u8 *buf, FILE *out);
-private void	putserlist(sccs *sc, ser_t *s, FILE *out);
 private ser_t*	getserlist(sccs *sc, int isSer, char *s, int *ep);
 private int	checkRev(sccs *s, char *file, delta *d, int flags);
 private int	checkrevs(sccs *s, int flags);
@@ -437,18 +436,6 @@ atoiMult_p(char **p)
 }
 
 /*
- * Free the data items in a delta.  Doesn't free the delta itself.
- * (use sccs_freedelta() for that)
- */
-private void
-freedelta(delta *d)
-{
-	if (d->include) free(d->include);
-	if (d->exclude) free(d->exclude);
-}
-
-
-/*
  * Free a standalone delta (not in the array).
  */
 void
@@ -457,7 +444,6 @@ sccs_freedelta(delta *d)
 	if (!d) return;
 
 	assert(!INARRAY(d));
-	freedelta(d);
 	free(d);
 }
 
@@ -468,9 +454,6 @@ sccs_freedelta(delta *d)
 private void
 sccs_freetable(sccs *s)
 {
-	delta	*d;
-
-	EACHP(s->slist, d) freedelta(d);
 	FREE(s->slist);
 	s->tree = s->table = 0;
 	s->nextserial = 0;
@@ -2952,7 +2935,7 @@ mkgraph(sccs *s, int flags)
 {
 	delta	*d = 0, *t;
 	char	rev[100], date[9], time[9], user[100];
-	char	*p;
+	char	*p, *q;
 	u32	added, deleted, same;
 	int	i;
 	int	line = 1;
@@ -2961,6 +2944,7 @@ mkgraph(sccs *s, int flags)
 	ser_t	serial;
 	char	(*dates)[20] = 0;
 	char	type;
+	FILE	*fcludes = fmem();
 
 	rewind(s->fh);
 	sccs_nextdata(s);		/* checksum */
@@ -2973,6 +2957,7 @@ mkgraph(sccs *s, int flags)
 	for (;;) {
 		unless (buf = sccs_nextdata(s)) {
 bad:
+			if (fcludes) fclose(fcludes);
 			fprintf(stderr,
 			    "%s: bad delta on line %d, expected `%s'",
 			    s->sfile, line, expected);
@@ -3088,10 +3073,18 @@ first:		if (streq(buf, "\001u")) break;
 			    case 'c':
 				goto comment;
 			    case 'i':
-				d->include = getserlist(s, 1, &buf[3], 0);
+				p = &buf[3];
+				while (q = eachstr(&p, &i)) {
+					sccs_saveNum(
+					    fcludes, atoi(q), 1, d->serial);
+				}
 				break;
 			    case 'x':
-				d->exclude = getserlist(s, 1, &buf[3], 0);
+				p = &buf[3];
+				while (q = eachstr(&p, &i)) {
+					sccs_saveNum(
+					    fcludes, atoi(q), -1, d->serial);
+				}
 				break;
 			    case 'g':
 		    		s->state |= S_READ_ONLY;
@@ -3148,7 +3141,12 @@ done:		if (CSET(s) && TAG(d) &&
 		    !SYMGRAPH(d) && !(d->flags & D_SYMBOLS)) {
 			MK_GONE(s, d);
 		}
+		if (ftell(fcludes) > 0) {
+			d->cludes = sccs_addStr(s, fmem_peek(fcludes, 0));
+			ftrunc(fcludes, 0);
+		}
 	}
+	fclose(fcludes);
 	/*
 	 * Convert the linear delta table into a graph.
 	 */
@@ -5022,24 +5020,6 @@ getserlist(sccs *sc, int isSer, char *s, int *ep)
 }
 
 /*
- * XXX - this poorly named, it doesn't use "struct serlist".
- */
-private void
-putserlist(sccs *sc, ser_t *s, FILE *out)
-{
-	int	first = 1, i;
-	char	buf[20];
-
-	if (!s) return;
-	EACH(s) {
-		sertoa(buf, s[i]);
-		if (!first) fputmeta(sc, " ", out);
-		fputmeta(sc, buf, out);
-		first = 0;
-	}
-}
-
-/*
  * Generate a list of serials marked with D_SET tag
  */
 private u8 *
@@ -5117,7 +5097,8 @@ compressmap(sccs *s, delta *d, u8 *set, int useSer, void **inc, void **exc)
 	int	inclen = 0, exclen = 0;
 	u8	*slist;
 	delta	*t;
-	int	i;
+	char	*p;
+	int	i, sign;
 	int	active;
 	ser_t	*incser = 0, *excser = 0;
 
@@ -5166,13 +5147,11 @@ compressmap(sccs *s, delta *d, u8 *set, int useSer, void **inc, void **exc)
 				inclen += insertstr(&inclist, REV(s, t));
 			}
 		}
-		EACH(t->include) {
-			unless(slist[t->include[i]] & (S_INC|S_EXCL))
-				slist[t->include[i]] |= S_INC;
-		}
-		EACH(t->exclude) {
-			unless(slist[t->exclude[i]] & (S_INC|S_EXCL))
-				slist[t->exclude[i]] |= S_EXCL;
+		p = CLUDES(s, t);
+		while (i = sccs_eachNum(&p, &sign, t->serial)) {
+			unless(slist[i] & (S_INC|S_EXCL)) {
+				slist[i] |= (sign > 0) ? S_INC : S_EXCL;
+			}
 		}
 	}
 
@@ -5204,7 +5183,8 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 {
 	u8	*slist;
 	delta	*t, *start = d;
-	int	i;
+	char	*p;
+	int	i, sign;
 
 	assert(d);
 
@@ -5270,16 +5250,13 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 		/* if an ancestor and not excluded, or if included */
 		if ( ((slist[t->serial] & (S_PAR|S_EXCL)) == S_PAR)
 		     || slist[t->serial] & S_INC) {
-
 			slist[t->serial] = 1;
-			/* alter only if item hasn't been set yet */
-			EACH(t->include) {
-				unless(slist[t->include[i]] & (S_INC|S_EXCL))
-					slist[t->include[i]] |= S_INC;
-			}
-			EACH(t->exclude) {
-				unless(slist[t->exclude[i]] & (S_INC|S_EXCL))
-					slist[t->exclude[i]] |= S_EXCL;
+			p = CLUDES(s, t);
+			while (i = sccs_eachNum(&p, &sign, t->serial)) {
+				unless(slist[i] & (S_INC|S_EXCL)) {
+					slist[i] |=
+					    (sign > 0) ? S_INC : S_EXCL;
+				}
 			}
 		}
 		else
@@ -5711,7 +5688,8 @@ sccs_impliedList(sccs *s, char *who, char *base, char *rev)
 	int	active;
 	void	*inc = 0, *exc = 0;
 	u8	*slist = 0;
-	int	i;
+	char	*p;
+	int	i, sign;
 
 	/* XXX: This can go away when serialmap does this directly
 	 */
@@ -5760,13 +5738,11 @@ err:		s->state |= S_WARNED;
 			continue;
 		}
 		slist[t->serial] = 1;
-		EACH(t->include) {
-			unless(slist[t->include[i]] & (S_INC|S_EXCL))
-				slist[t->include[i]] |= S_INC;
-		}
-		EACH(t->exclude) {
-			unless(slist[t->exclude[i]] & (S_INC|S_EXCL))
-				slist[t->exclude[i]] |= S_EXCL;
+		p = CLUDES(s, t);
+		while (i = sccs_eachNum(&p, &sign, t->serial)) {
+			unless(slist[i] & (S_INC|S_EXCL)) {
+				slist[i] |= (sign > 0) ? S_INC : S_EXCL;
+			}
 		}
 	}
 	if (compressmap(s, baseRev, slist, 0, &inc, &exc)) {
@@ -6000,7 +5976,7 @@ getCksumDelta(sccs *s, delta *d)
 	delta	*t;
 
 	for (t = d; t; t = PARENT(s, t)) {
-		if (t->include || t->exclude || t->added || t->deleted) {
+		if (t->cludes || t->added || t->deleted) {
 			return (t);
 		}
 	}
@@ -7556,6 +7532,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 {
 	delta	*d, *parent;
 	int	i;	/* used by EACH */
+	int	sign;
 	int	first = willfix;
 	int	firstadded = 1;
 	char	buf[2*MAXPATH + 10];	/* ^AcP pathname|sortpath\n\0 */
@@ -7693,15 +7670,33 @@ delta_table(sccs *s, FILE *out, int willfix)
 		*p++ = '\n';
 		*p = '\0';
 		fputmeta(s, buf, out);
-		if (d->include) {
-			fputmeta(s, "\001i ", out);
-			putserlist(s, d->include, out);
-			fputmeta(s, "\n", out);
-		}
-		if (d->exclude) {
-			fputmeta(s, "\001x ", out);
-			putserlist(s, d->exclude, out);
-			fputmeta(s, "\n", out);
+		if (d->cludes) {
+			/* include */
+			p = 0;
+			t = CLUDES(s, d);
+			while (i = sccs_eachNum(&t, &sign, d->serial)) {
+				unless (sign > 0) continue;
+				unless (p) p = fmts(buf, "\001i");
+				*p++ = ' ';
+				p = fmtd(p, i);
+				*p = 0;
+				fputmeta(s, buf, out);
+				p = buf;
+			}
+			if (p) fputmeta(s, "\n", out);
+			/* exclude */
+			p = 0;
+			t = CLUDES(s, d);
+			while (i = sccs_eachNum(&t, &sign, d->serial)) {
+				unless (sign < 0) continue;
+				unless (p) p = fmts(buf, "\001x");
+				*p++ = ' ';
+				p = fmtd(p, i);
+				*p = 0;
+				fputmeta(s, buf, out);
+				p = buf;
+			}
+			if (p) fputmeta(s, "\n", out);
 		}
 		t = COMMENTS(s, d);
 		while (p = eachline(&t, &i)) {
@@ -9721,7 +9716,8 @@ checkGone(sccs *s, int bit, char *who)
 {
 	u8	*slist = setmap(s, bit, 1);
 	delta	*d;
-	int	i, error = 0;
+	char	*p;
+	int	i, sign, error = 0;
 
 	for (d = s->table; d; d = NEXT(d)) {
 		if (d->flags & bit) continue;
@@ -9753,26 +9749,17 @@ checkGone(sccs *s, int bit, char *who)
 			    who, REV(s, sfind(s, d->mtag)), s->sfile);
 			s->state |= S_WARNED;
 		}
-		EACH(d->include) {
-			if (slist[d->include[i]]) {
-				fprintf(stderr,
-				    "%s: %s:%s includes %s\n", s->sfile,
-				    who,
-				    REV(s, d),
-				    REV(s, sfind(s, d->include[i])));
-				error++;
-				s->state |= S_WARNED;
-			}
-		}
-		EACH (d->exclude) {
-			if (slist[d->exclude[i]]) {
-				fprintf(stderr,
-				    "%s: %s:%s excludes %s\n", s->sfile,
-				    who, REV(s, d),
-				    REV(s, sfind(s, d->exclude[i])));
-				error++;
-				s->state |= S_WARNED;
-			}
+		p = CLUDES(s, d);
+		while (i = sccs_eachNum(&p, &sign, d->serial)) {
+			unless (slist[i]) continue;
+			fprintf(stderr,
+			    "%s: %s:%s %s %s\n", s->sfile,
+			    who,
+			    REV(s, d),
+			    (sign > 0) ? "includes" : "excludes",
+			    REV(s, sfind(s, i)));
+			error++;
+			s->state |= S_WARNED;
 		}
 	}
 	free(slist);
@@ -9823,7 +9810,8 @@ checkrevs(sccs *s, int flags)
 private int
 checkRev(sccs *s, char *file, delta *d, int flags)
 {
-	int	i, error = 0;
+	char	*x;
+	int	i, sign, error = 0;
 	int	badparent;
 	delta	*p;
 
@@ -9857,21 +9845,13 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 	/*
 	 * Make sure there is no garbage in the serial list[s].
 	 */
-	EACH (d->include) {
-		if (d->include[i] < d->serial) continue;
-		unless (flags & ADMIN_SHUTUP) {
-			fprintf(stderr, "%s: %s has bad include serial %d\n",
-			    file, REV(s, d), d->include[i]);
-		}
+	x = CLUDES(s, d);
+	while (i = sccs_eachNum(&x, &sign, d->serial)) {
+		if (i < d->serial) continue;
 		error = 1;
-	}
-	EACH (d->exclude) {
-		if (d->exclude[i] < d->serial) continue;
-		unless (flags & ADMIN_SHUTUP) {
-			fprintf(stderr, "%s: %s has bad exclude serial %d\n",
-			    file, REV(s, d), d->exclude[i]);
-		}
-		error = 1;
+		if (flags & ADMIN_SHUTUP) continue;
+		fprintf(stderr, "%s: %s has bad %s serial %d\n",
+		    file, REV(s, d), (sign > 0) ? "include" : "exclude", i);
 	}
 
 	unless (p = PARENT(s, d)) {
@@ -10646,20 +10626,101 @@ sccs_encoding(sccs *sc, off_t size, char *encp)
 	return (encoding);
 }
 
-private void
-adjust_serials(delta *d, int amount)
+/*
+ * two uses:
+ * if (sign == 0); print signed num
+ * else printed sign + magnitude
+ * XXX: HEAP_RELATIVE doesn't because of work sccs_getInit()
+ * runs outside of the array and doesn't know a serial number.
+ */
+void
+sccs_saveNum(FILE *f, int num, int sign, int serial)
 {
-	int	i;
+#ifdef	HEAP_RELATIVE
+	assert(serial > num);
+	fprintf(f, " %s%d", (sign < 0) ? "-" : "", serial - num);
+#else
+	fprintf(f, " %s%d", (sign < 0) ? "-" : "", num);
+#endif
+}
+
+/*
+ * Give a string of serials stored in the heap however it is stored,
+ * return the next token interpreted as a signed integer.
+ * Note: if 0 is not a legitimate number, but if it needs to be,
+ * then this can be modified.
+ * EOS is either returning 0 (or too, *linep == 0).
+ *
+ * - return any junk after number
+ *
+ * ex:
+ * line = CLUDES(s, d);
+ * while (i = sccs_eachNum(&line, &sign, d->serial)) {
+ *	// do stuff to process integer
+ * }
+ *
+ * Note: real atoi() does '-' sign handling; slib.c one doesn't
+ *
+ * XXX: HEAP_RELATIVE doesn't because of work sccs_getInit()
+ * runs outside of the array and doesn't know a serial number.
+ */
+int
+sccs_eachNum(char **linep, int *signp, int serial)
+{
+	char	*p;
+	int	neg;
+
+	unless (p = eachstr(linep, 0)) return (0);
+	if (signp) {
+		neg = 1;
+		if (*p == '-') {
+			p++;
+			*signp = -1;
+		} else {
+			*signp = 1;
+		}
+	} else {
+		if (*p == '-') {
+			p++;
+			neg = -1;
+		} else {
+			neg = 1;
+		}
+	}
+#ifdef	HEAP_RELATIVE
+	serial -= atoi(p);
+	assert(serial > 0);
+#else
+	serial = atoi(p);
+#endif
+	return (neg * serial);
+}
+
+private void
+adjust_serials(sccs *s, delta *d, int amount)
+{
+	int	ser, sign;
+	char	*p;
+	FILE	*f;
 
 	unless (d->serial) return;
+	/* Note: if HEAP_RELATIVE, then the cludes recalc does no change */
+	if (d->cludes) {
+		assert(INARRAY(d));
+		p = CLUDES(s, d);
+		f = fmem();
+		while (ser = sccs_eachNum(&p, &sign, d->serial)) {
+			sccs_saveNum(f, ser + amount, sign, d->serial + amount);
+		}
+		d->cludes = sccs_addStr(s, fmem_peek(f, 0));
+		fclose(f);
+	}
 
 	d->serial += amount;
 	d->pserial += amount;
 	if (d->ptag) d->ptag += amount;
 	if (d->mtag) d->mtag += amount;
 	if (d->merge) d->merge += amount;
-	EACH(d->include) d->include[i] += amount;
-	EACH(d->exclude) d->exclude[i] += amount;
 }
 
 /*
@@ -10696,14 +10757,9 @@ insert_1_0(sccs *s, u32 flags)
 	/*
 	 * First bump all the serial numbers.
 	 */
-	s->nextserial++;
-	d = insertArrayN(&s->slist, 1, 0);
-	d->flags |= D_INARRAY;
-	s->table = s->slist + nLines(s->slist);
-
-	for (d = d + 1; d <= s->table; d += 1) {
+	EACHP(s->slist, d) {
 		if (d->flags & D_CSET) csets++;
-		adjust_serials(d, 1);
+		adjust_serials(s, d, 1);
 	}
 	for (sym = s->symbols; sym; sym++) {
 		if (sym->ser) sym->ser++;
@@ -10711,7 +10767,11 @@ insert_1_0(sccs *s, u32 flags)
 	}
 	sccs_findKeyFlush(s);
 
-	d = SFIND(s, 1);
+	s->nextserial++;
+	d = insertArrayN(&s->slist, 1, 0);
+	s->table = s->slist + nLines(s->slist);
+	d->flags |= D_INARRAY;
+
 	t = SFIND(s, 2);
 	if (t->flags & D_XFLAGS) {
 		/* move 1.1 xflags to new 1.0 delta */
@@ -10773,14 +10833,13 @@ remove_1_0(sccs *s)
 	unless (streq(REV(s, s->tree), "1.0")) return (0);
 
 	for (d = SFIND(s, 2); d <= s->table; d += 1) {
-		adjust_serials(d, -1);
+		adjust_serials(s, d, -1);
 	}
 	for (sym = s->symbols; sym; sym++) {
 		if (sym->ser) --sym->ser;
 		if (sym->meta_ser) --sym->meta_ser;
 	}
 	sccs_findKeyFlush(s);
-	freedelta(s->tree);
 	removeArrayN(s->slist, 1);
 	s->tree = SFIND(s, 1);
 	memset(s->table, 0, sizeof(delta));
@@ -11283,9 +11342,9 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 int
 sccs_scompress(sccs *s, int flags)
 {
-	FILE	*sfile = 0;
-	int	ser, error = 0, locked = 0, i, j;
-	char	*buf;
+	FILE	*sfile = 0, *f = 0;
+	int	ser, sign, error = 0, locked = 0, i, j;
+	char	*buf, *p;
 	delta	*d, *e;
 	ser_t	*remap;
 	symbol	*sym;
@@ -11303,6 +11362,7 @@ out:
 
 	remap = calloc(sizeof(ser_t), s->nextserial);
 
+	f = fmem();
 	ser = 0;
 	for (j = 1; j < s->nextserial; j++) {
 		unless (e = sfind(s, j)) continue;
@@ -11328,9 +11388,20 @@ out:
 		if (d->ptag) d->ptag = remap[d->ptag];
 		if (d->mtag) d->mtag = remap[d->mtag];
 		if (d->merge) d->merge = remap[d->merge];
-		EACH(d->include) d->include[i] = remap[d->include[i]];
-		EACH(d->exclude) d->exclude[i] = remap[d->exclude[i]];
+
+		if (d->cludes) {
+			p = CLUDES(s, d);
+			while (i = sccs_eachNum(&p, &sign, j)) {
+				sccs_saveNum(f, remap[i], sign, ser);
+			}
+			p = fmem_peek(f, 0);
+			unless (streq(p, CLUDES(s, d))) {
+				d->cludes = sccs_addStr(s, p);
+			}
+			ftrunc(f, 0);
+		}
 	}
+	fclose(f);
 	for (sym = s->symbols; sym; sym = sym->next) {
 		if (sym->ser) sym->ser = remap[sym->ser];
 		if (sym->meta_ser) sym->meta_ser = remap[sym->meta_ser];
@@ -11820,8 +11891,7 @@ getHashSum(sccs *sc, delta *n, MMAP *diffs)
 	 * If we have a hash already and it is a simple delta, then just
 	 * use that.  Otherwise, regen from scratch.
 	 */
-	if (sc->mdbm
-	    && !n->include && !n->exclude && (d = getCksumDelta(sc, n))) {
+	if (sc->mdbm && !n->cludes && (d = getCksumDelta(sc, n))) {
 	    	sum = d->sum;
 	} else {
 		if (sc->mdbm) mdbm_close(sc->mdbm), sc->mdbm = 0;
@@ -12357,6 +12427,7 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, u32 flags, int *errorp, int *linesp,
 	int	lines = 0;
 	char	type = '?';
 	char	**syms = 0;
+	FILE	*cludes = 0;
 
 	/* these are the only possible flags */
 	assert((flags & ~(DELTA_TAKEPATCH|DELTA_PATCH)) == 0);
@@ -12506,7 +12577,8 @@ skip:
 				error++;
 				goto out;
 			} else {
-				d->include = addSerial(d->include, e->serial);
+				unless (cludes) cludes = fmem();
+				sccs_saveNum(cludes, e->serial, 1, d->serial);
 			}
 		}
 		unless (buf = mkline(mnext(f))) goto out; lines++;
@@ -12621,7 +12693,8 @@ skip:
 				sc->state |= S_WARNED;
 				error++;
 			} else {
-				d->exclude = addSerial(d->exclude, e->serial);
+				unless (cludes) cludes = fmem();
+				sccs_saveNum(cludes, e->serial, -1, d->serial);
 			}
 		}
 		unless (buf = mkline(mnext(f))) goto out; lines++;
@@ -12641,11 +12714,16 @@ skip:
 		error++;
 	}
 
-out:	if (comments) {
-		comments_set(sc, d, comments);
-		freeLines(comments, free);
-	}
+out:
 	if (d) {
+		if (comments) {
+			comments_set(sc, d, comments);
+			freeLines(comments, free);
+		}
+		if (cludes) {
+			d->cludes = sccs_addStr(sc, fmem_peek(cludes, 0));
+			fclose(cludes);
+		}
 		if (type == 'M') {
 			d->flags |= D_META|D_TAG;
 		} else if (type == 'R') {
@@ -12902,6 +12980,8 @@ sccs_delta(sccs *s,
 	int	added = 0, deleted = 0, unchanged = 0;
 	int	locked;
 	pfile	pf;
+	ser_t	*include = 0;
+	ser_t	*exclude = 0;
 
 	assert(s);
 	debug((stderr, "delta %s %x\n", s->gfile, flags));
@@ -13110,12 +13190,10 @@ out:
 		assert(n);
 	}
 	if (pf.iLst) {
-		assert(!n->include);
-		n->include = getserlist(s, 0, pf.iLst, &error);
+		include = getserlist(s, 0, pf.iLst, &error);
 	}
 	if (pf.xLst) {
-		assert(!n->exclude);
-		n->exclude = getserlist(s, 0, pf.xLst, &error);
+		exclude = getserlist(s, 0, pf.xLst, &error);
 	}
 	if (pf.mRev) {
 		delta	*e = findrev(s, pf.mRev);
@@ -13164,6 +13242,16 @@ out:
 	n = dinsert(s, n, !(flags & DELTA_PATCH));
 	d = SFIND(s, n->pserial);
 	assert(s->table == n);
+
+	if (include || exclude) {
+		FILE	*f = fmem();
+
+		EACH(include) sccs_saveNum(f, include[i], 1, n->serial);
+		EACH(exclude) sccs_saveNum(f, exclude[i], -1, n->serial);
+		n->cludes = sccs_addStr(s, fmem_peek(f, 0));
+		fclose(f);
+	}
+
 	unless (init || !n->pathname || !d->pathname ||
 	    streq(PATHNAME(s, d), PATHNAME(s, n)) || getenv("_BK_MV_OK")) {
 	    	fprintf(stderr,
@@ -13306,9 +13394,7 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 			 * but we can't do that because we use the inc/ex
 			 * in getCksumDelta().
 			 */
-			if (add || del || 
-			    n->include || n->exclude ||
-			    S_ISLNK(n->mode)) {
+			if (add || del || n->cludes || S_ISLNK(n->mode)) {
 				n->sum = s->dsum;
 			} else {
 				n->sum = almostUnique();
@@ -13828,12 +13914,10 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		/* serial number of included and excluded deltas.
 		 * :DI: = :Dn:/:Dx:/:Dg: in ATT, we do :Dn:/:Dx:
 		 */
-		unless (d->include || d->exclude) return (nullVal);
-		KW("Dn");
-		if (d->exclude) {
-			if (d->include) fc('/');
-			KW("Dx");
-		}
+		unless (d->cludes) return (nullVal);
+		p = strchr(CLUDES(s, d), '-');
+		if (KW("Dn") && p) fc('/');
+		if (p) KW("Dx");
 		return (strVal);
 	}
 
@@ -13841,39 +13925,49 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		/* rev number of included and excluded deltas.
 		 * :DR: = :Rn:/:Rx:
 		 */
-		unless (d->include || d->exclude) return (nullVal);
-		KW("Rn");
-		if (d->exclude) {
-			if (d->include) fc('/');
-			KW("Rx");
-		}
+		unless (d->cludes) return (nullVal);
+		p = strchr(CLUDES(s, d), '-');
+		if (KW("Rn") && p) fc('/');
+		if (p) KW("Rx");
 		return (strVal);
 	}
 
 	case KW_Dn: /* Dn */ {
 		/* serial number of included deltas */
-		int i;
+		int	i = 0, num, sign;
 
-		unless (d->include) return (nullVal);
-		fc('+');
-		EACH(d->include) {
-			if (i > 1) fc(',');
-			fd(d->include[i]);
+		unless (d->cludes) return (nullVal);
+		t = CLUDES(s, d);
+		while (num = sccs_eachNum(&t, &sign, d->serial)) {
+			unless (sign > 0) continue;
+			unless (i) {
+				i = 1;
+				fc('+');
+			} else {
+				fc(',');
+			}
+			fd(num);
 		}
-		return (strVal);
+		return (i ? strVal : nullVal);
 	}
 
 	case KW_Dx: /* Dx */ {
 		/* serial number of excluded deltas */
-		int i;
+		int	i = 0, num, sign;
 
-		unless (d->exclude) return (nullVal);
-		fc('-');
-		EACH(d->exclude) {
-			if (i > 1) fc(',');
-			fd(d->exclude[i]);
+		unless (d->cludes) return (nullVal);
+		t = CLUDES(s, d);
+		while (num = sccs_eachNum(&t, &sign, d->serial)) {
+			unless (sign < 0) continue;
+			unless (i) {
+				i = 1;
+				fc('-');
+			} else {
+				fc(',');
+			}
+			fd(num);
 		}
-		return (strVal);
+		return (i ? strVal : nullVal);
 	}
 
 	case KW_Dg: /* Dg */ {
@@ -13884,32 +13978,44 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	/* rev number of included deltas */
 	case KW_Rn: /* Rn */ {
-		int	i;
 		delta	*r;
+		int	ser, sign, i = 0;
 
-		unless (d->include) return (nullVal);
-		fc('+');
-		EACH(d->include) {
-			if (i > 1) fc(',');
-			r = sfind(s, d->include[i]);
+		unless (d->cludes) return (nullVal);
+		t = CLUDES(s, d);
+		while (ser = sccs_eachNum(&t, &sign, d->serial)) {
+			unless (sign > 0) continue;
+			r = sfind(s, ser);
+			unless (i) {
+				i = 1;
+				fc('+');
+			} else {
+				fc(',');
+			}
 			fs(REV(s, r));
 		}
-		return (strVal);
+		return (i ? strVal : nullVal);
 	}
 
 	/* rev number of excluded deltas */
 	case KW_Rx: /* Rx */ {
-		int	i;
 		delta	*r;
+		int	ser, sign, i = 0;
 
-		unless (d->exclude) return (nullVal);
-		fc('-');
-		EACH(d->exclude) {
-			if (i > 1) fc(',');
-			r = sfind(s, d->exclude[i]);
+		unless (d->cludes) return (nullVal);
+		t = CLUDES(s, d);
+		while (ser = sccs_eachNum(&t, &sign, d->serial)) {
+			unless (sign < 0) continue;
+			r = sfind(s, ser);
+			unless (i) {
+				i = 1;
+				fc('-');
+			} else {
+				fc(',');
+			}
 			fs(REV(s, r));
 		}
-		return (strVal);
+		return (i ? strVal : nullVal);
 	}
 
 	/* Lose this in 2008 */
@@ -15642,7 +15748,8 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	symbol	*sym;
 	char	type;
 	char	*p, *t;
-	int	len;
+	delta	*e;
+	int	len, sign;
 
 	if (!d) return (0);
 	type = TAG(d) ? 'R' : 'D';
@@ -15672,8 +15779,10 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	t = COMMENTS(s, d);
 	while (p = eachline(&t, &len)) fprintf(out, "c %.*s\n", len, p);
 	if (d->dateFudge) fprintf(out, "F %d\n", (int)d->dateFudge);
-	EACH(d->include) {
-		delta	*e = sfind(s, d->include[i]);
+	p = CLUDES(s, d);
+	while (i = sccs_eachNum(&p, &sign, d->serial)) {
+		unless (sign > 0) continue;
+		e = sfind(s, i);
 		assert(e);
 		fprintf(out, "i ");
 		sccs_pdelta(s, e, out);
@@ -15687,7 +15796,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 		fputc('\n', out);
 	}
 	if (d->merge) {
-		delta	*e = MERGE(s, d);
+		e = MERGE(s, d);
 		assert(e);
 		fprintf(out, "M ");
 		sccs_pdelta(s, e, out);
@@ -15739,8 +15848,10 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	if ((flags & PRS_GRAFT) && s->version) {
 		fprintf(out, "V %u\n", s->version);
 	}
-	EACH(d->exclude) {
-		delta	*e = sfind(s, d->exclude[i]);
+	p = CLUDES(s, d);
+	while (i = sccs_eachNum(&p, &sign, d->serial)) {
+		unless (sign < 0) continue;
+		e = sfind(s, i);
 		assert(e);
 		fprintf(out, "x ");
 		sccs_pdelta(s, e, out);
@@ -15940,7 +16051,7 @@ gca3(sccs *s, delta *left, delta *right, char **inc, char **exc)
 	gca = (delta *)glist[1];
 	if (count > 1) {
 		gmap = (u8 *)calloc(s->nextserial, sizeof(u8));
-		graph_symdiff((delta *)glist, 0, gmap, 0, -1, SD_MERGE);
+		graph_symdiff(s, (delta *)glist, 0, gmap, 0, -1, SD_MERGE);
 		if (compressmap(s, gca, gmap, 0, (void **)inc, (void **)exc)) {
 			goto bad;
 		}

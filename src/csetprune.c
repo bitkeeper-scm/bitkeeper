@@ -1357,7 +1357,7 @@ fixTags(sccs *s)
 			md->flags &= ~(D_GONE|D_CKSUM|D_CSET);
 			md->added = md->deleted = md->same = 0;
 			md->comments = 0;
-			assert(!md->include && !md->exclude && !md->merge);
+			assert(!md->cludes && !md->merge);
 		}
 	}
 	/*
@@ -1409,7 +1409,7 @@ fixTags(sccs *s)
 			d->flags &= ~(D_GONE|D_CKSUM|D_CSET);
 			d->added = d->deleted = d->same = 0;
 			d->comments = 0;
-			assert(!d->include && !d->exclude && !d->merge);
+			assert(!d->cludes && !d->merge);
 		}
 	}
 }
@@ -1525,12 +1525,11 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd)
 	 * and if tossing, they are empty (no sd[serial]) but haven't
 	 * been cleared.
 	 */
-	FREE(d->include);
-	FREE(d->exclude);
+	d->cludes = 0;
 	if (d->added || d->merge || sd[d->serial]) {
 		if (sd[d->serial]) {
 			/* regen old style SCCS inc and excl lists */
-			graph_symdiff(d, PARENT(s, d), slist, sd, 0, 0);
+			graph_symdiff(s, d, PARENT(s, d), slist, sd, 0, 0);
 		}
 		return;
 	}

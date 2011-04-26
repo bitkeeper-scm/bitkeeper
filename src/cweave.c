@@ -111,7 +111,7 @@ earlier(sccs *s, delta *a, delta *b)
 delta *
 cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 {
-	int	i, error, added = 0;
+	int	i, error, sign, added = 0;
 	int	pserial = parent ? parent->serial : 0;
 	delta	*d, *e, *p;
 	ser_t	serial = 0; /* serial number for 'd' */ 
@@ -120,6 +120,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	char	key[MAXKEY];
 	int	keep;
 	symbol	*sym;
+	FILE	*f = 0;
 
 	unless (iF) {	
 		/* ignore in patch: like if in skipkeys */
@@ -199,25 +200,34 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	/*
 	 * Update all reference to the moved serial numbers
 	 */
+	f = fmem();
 	for (e = d + 1; e <= s->table; e += 1) {
 		unless (e->serial) continue;
 
-		if (e->serial >= serial) {
-			e->serial++;
-			// XXX we can do this faster
-			sccs_findKeyUpdate(s, e);
+		if (e->cludes) {
+			assert(INARRAY(e));
+			t = CLUDES(s, e);
+			while (i = sccs_eachNum(&t, &sign, e->serial)) {
+				if (i >= serial) i++;
+				sccs_saveNum(f, i, sign, e->serial + 1);
+			}
+			t = fmem_peek(f, 0);
+			unless (streq(t, CLUDES(s, e))) {
+				e->cludes = sccs_addStr(s, t);
+			}
+			ftrunc(f, 0);
 		}
+		assert(e->serial >= serial);
+		e->serial++;
+		// XXX we can do this faster
+		sccs_findKeyUpdate(s, e);
+
 		if (e->pserial >= serial) e->pserial++;
 		if (e->merge >= serial) e->merge++;
 		if (e->ptag >= serial) e->ptag++;
 		if (e->mtag >= serial) e->mtag++;
-		EACH(e->include) {
-			if (e->include[i] >= serial) e->include[i]++;
-		}
-		EACH(e->exclude) {
-			if (e->exclude[i] >= serial) e->exclude[i]++;
-		}
 	}
+	fclose(f);
 	if (d != s->table) {
 		for (sym = s->symbols; sym; sym = sym->next) {
 			if (sym->ser >= serial) sym->ser++;
@@ -292,8 +302,6 @@ int
 cset_write(sccs *s, int spinners, int fast)
 {
 	FILE	*f = 0;
-	int	i;
-	delta	*d;
 
 	assert(s);
 	// assert(s->state & S_CSET);

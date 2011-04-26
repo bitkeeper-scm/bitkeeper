@@ -8,7 +8,7 @@ typedef int	(*walkfcn)(sccs *s, delta *d, void *token);
 int	graph_v1(sccs *s);	/* when done, graph is in v1 form */
 int	graph_v2(sccs *s);	/* when done, graph is in v2 form */
 
-int	graph_symdiff(delta *left, delta *right,
+int	graph_symdiff(sccs *s, delta *left, delta *right,
 	    u8 *slist, ser_t **sd, int count, int flags);
 ser_t	**graph_sccs2symdiff(sccs *s);
 int	graph_kidwalk(sccs *s, walkfcn toTip, walkfcn toRoot, void *token);
