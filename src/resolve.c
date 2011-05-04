@@ -1753,6 +1753,7 @@ pass3_resolve(opts *opts)
 	char	buf[MAXPATH], **conflicts, s_cset[] = CHANGESET;
 	int	n = 0, i;
 	int	mustCommit = 0, pc, pe;
+	project	*proj;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
 	opts->pass = 3;
@@ -1980,6 +1981,18 @@ nocommit:
 	 * Unless we are in textonly mode, let citool do all the work.
 	 */
 	unless (opts->textOnly) {
+		/*
+		 * if in product's RESYNC, then compute deep nest
+		 * XXX: for now, compute shallow + deep as sfiles.c:
+		 * print_components() calls uniqLines, so dups are okay.
+		 */
+		proj = proj_init(".");
+		assert(proj_isResync(proj));
+		if (proj_isProduct(proj)) {
+			system("bk sfiles -Rr > BitKeeper/log/deep-nests");
+		}
+		proj_free(proj);
+
 		if (opts->partial) {
 			char	*p, **av, **pfiles = 0;
 			int	j = 0;
