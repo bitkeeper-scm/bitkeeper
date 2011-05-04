@@ -621,16 +621,16 @@ again:
 	    strneq(kw.dptr, "TAG", kw.dsize)) {
 		if (state->i == 1) {
 			unless (g.d && (g.d->flags & D_SYMBOLS)) return (0);
-			state->sym = g.s->symbols;
+			state->sym = g.s->symlist + nLines(g.s->symlist);
 		} else {
-			state->sym = state->sym->next;
+			--state->sym;
 		}
-		while (state->sym && (g.d->serial !=
+		while ((state->sym > g.s->symlist) && (g.d->serial !=
 		    (g.s->prs_all ? state->sym->meta_ser : state->sym->ser))) {
-			state->sym = state->sym->next;
+			--state->sym;
 		}
-		unless (state->sym) return (0);
-		return (state->sym->symname);
+		if (state->sym == g.s->symlist) return (0);
+		return (SYMNAME(g.s, state->sym));
 	}
 
 	/* Handle all single-line keywords. */

@@ -1247,12 +1247,12 @@ rebuildTags(sccs *s)
 	 * Only keep newest instance of each name
 	 * Move all symbols onto real deltas that are not D_GONE
 	 */
-	for (sym = s->symbols; sym; sym = sym->next) {
+	EACHP_REVERSE(s->symlist, sym) {
 		assert(sym->symname && sym->ser && sym->meta_ser);
 		md = SFIND(s, sym->meta_ser);
 		d = SFIND(s, sym->ser);
 		assert(md && d);
-		if (mdbm_store_str(symdb, sym->symname, "", MDBM_INSERT)) {
+		if (mdbm_store_str(symdb, SYMNAME(s, sym), "", MDBM_INSERT)) {
 			/* no error, just ignoring duplicates */
 			sym->meta_ser = sym->ser = 0;
 			continue;
@@ -1312,7 +1312,7 @@ fixTags(sccs *s)
 	 * Each phase has 2 parts: see if the tagged node is gone,
 	 * then see if the delta is gone.
 	 */
-	for (sym = s->symbols; sym; sym = sym->next) {
+	EACHP_REVERSE(s->symlist, sym) {
 		assert(sym->symname && sym->ser && sym->meta_ser);
 		md = SFIND(s, sym->meta_ser);
 		d = SFIND(s, sym->ser);
@@ -1333,7 +1333,7 @@ fixTags(sccs *s)
 				    "describing what you did to get this "
 				    "message.\nThis is a warning message, "
 				    "not a failure.\n",
-				    sym->symname, REV(s, d));
+				    SYMNAME(s, sym), REV(s, d));
 				sym->meta_ser = sym->ser = 0;
 				continue;
 			}

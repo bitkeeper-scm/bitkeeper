@@ -73,6 +73,8 @@ private	void	parseConfig(char *buf, MDBM *db);
 private	void	taguncolor(sccs *s, delta *d);
 private	void	prefix(sccs *s,
 		    delta *d, u32 flags, int lines, char *name, FILE *out);
+private	int	sccs_meta(char *m, sccs *s, delta *parent,
+		    MMAP *initFile, int fixDates);
 
 /*
  * returns 1 if dir is a directory that is not empty
@@ -1372,13 +1374,14 @@ relativeName(sccs *sc, int mustHaveRmarker, project *proj)
 }
 
 private inline symbol *
-findSym(symbol *s, char *name)
+findSym(sccs *s, char *name)
 {
 	symbol	*sym;
 
 	unless (name) return (0);
-	for (sym = s; sym; sym = sym->next) {
-		if (sym->symname && streq(name, sym->symname)) return (sym);
+
+	EACHP_REVERSE(s->symlist, sym) {
+		if (streq(name, SYMNAME(s, sym))) return (sym);
 	}
 	return (0);
 }
@@ -1407,18 +1410,9 @@ name2rev(sccs *s, char **rp)
 	if (!rev) return (0);
 	if (isdigit(rev[0])) return (0);
 
-again:
-	for (sym = s->symbols; sym; sym = sym->next) {
-		if (sym->symname && streq(rev, sym->symname)) {
-			rev = sym->rev;
-			if (isdigit(rev[0])) {
-				*rp = rev;
-				return (0);
-			}
-			goto again;
-		}
-	}
-	return (-1);
+	unless (sym = findSym(s, rev)) return (-1);
+	*rp = REV(s, SFIND(s, sym->ser));
+	return (0);
 }
 
 private inline int
@@ -2334,7 +2328,7 @@ sccs_whynot(char *who, sccs *s)
  * Add this meta delta into the symbol graph.
  * Set this symbol's leaf flag and clear the parent's.
  */
-void
+private void
 symGraph(sccs *s, delta *d)
 {
 	delta	*p;
@@ -2356,34 +2350,31 @@ symGraph(sccs *s, delta *d)
 }
 
 /*
- * For each symbol, go find the real delta and point to it instead of the
- * meta delta.
+ * For each symbol saved by symArg() call addsym() to create the
+ * entry.
+ *
+ * Called at the end of mkgraph(), not used with binary sfiles
  */
 private void
 metaSyms(sccs *sc)
 {
 	delta	*d;
-	symbol	*sym;
+	int	i;
+	char	*symname;
 
-	for (sym = sc->symbols; sym; sym = sym->next) {
-		d = SFIND(sc, sym->ser);
-		assert(d);
-		unless (TAG(d)) continue;
-		assert(d->pserial);
-		for (d = PARENT(sc, d); TAG(d); d = PARENT(sc, d)) {
-			assert(d);
-		}
-		sym->ser = d->serial;
-		d->flags |= D_SYMBOLS;
+	for (i = nLines(sc->mg_symname)-1; i > 0; i -= 2) {
+		d = SFIND(sc, sc->mg_symname[i]);
+		symname = sc->heap.buf + sc->mg_symname[i+1];
+		addsym(sc, d, 0, symname);
 	}
-
+	FREE(sc->mg_symname);
 }
 
 int
 sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 {
 	delta	*d;
-	symbol	*sym;
+	symbol	*sym, *iter;
 	int	first = 1;
 	char	*arev = 0;
 	char	*brev = 0;
@@ -2398,18 +2389,22 @@ sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 	aname = bname = "?";
 	for (d = s->table; d; d = NEXT(d)) {
 		unless (SYMLEAF(d)) continue;
-		for (sym = s->symbols; sym; sym = sym->next) {
-			if (sym->meta_ser == d->serial) break;
+		sym = 0;
+		EACHP_REVERSE(s->symlist, iter) {
+			if (iter->meta_ser == d->serial) {
+				sym = iter;
+				break;
+			}
 		}
 		unless (*l1) {
 			arev = REV(s, d);
-			if (sym) aname = sym->symname;
+			if (sym) aname = SYMNAME(s, sym);
 			*l1 = d;
 			continue;
 		}
 		unless (*l2) {
 			brev = REV(s, d);
-			if (sym) bname = sym->symname;
+			if (sym) bname = SYMNAME(s, sym);
 			*l2 = d;
 			continue;
 		}
@@ -2418,12 +2413,12 @@ sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 			    "Unmerged tag tips:\n"
 			    "\t%-16s %s\n\t%-16s %s\n\t%-16s %s\n",
 			    arev, aname, brev, bname,
-			    REV(s, d), sym ? sym->symname : "<tag merge>");
+			    REV(s, d), sym ? SYMNAME(s, sym) : "<tag merge>");
 		    	first = 0;
 		} else {
 			fprintf(stderr,
 			    "\t%-16s %s\n",
-			    REV(s, d), sym ? sym->symname : "<tag merge>");
+			    REV(s, d), sym ? SYMNAME(s, sym) : "<tag merge>");
 		}
 	}
 	return (!first);	/* first == 1 means no errors */
@@ -2588,11 +2583,16 @@ sccs_tagConflicts(sccs *s)
 {
 	MDBM	*db = 0;
 	delta	*l1 = 0, *l2 = 0, *md;
-	char	buf[MAXREV*3];
 	symbol	*sy1, *sy2;
+	u8	*left, *right;
+	int	i, j;
+	char	buf[MAXREV*3];
 
 	if (sccs_tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
 	unless (l2) return (0);
+
+	left = calloc(nLines(s->symlist)+1, sizeof(u8));
+	right = calloc(nLines(s->symlist)+1, sizeof(u8));
 
 	/* We always return an MDBM even if it is just an automerge case
 	 * with nothing to merge.
@@ -2600,18 +2600,20 @@ sccs_tagConflicts(sccs *s)
 	unless (db) db = mdbm_mem();
 	sccs_tagcolor(s, l1);
 	taguncolor(s, l2);	/* uncolor the intersection */
-	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
+	EACH_REVERSE(s->symlist) {
+		sy1 = &s->symlist[i];
 		md = SFIND(s, sy1->meta_ser);
 		unless (md->flags & D_RED) continue;
 		md->flags &= ~D_RED;
-		sy1->left = 1;
+		left[i] = 1;
 	}
 	sccs_tagcolor(s, l2);
-	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
+	EACH_REVERSE(s->symlist) {
+		sy1 = &s->symlist[i];
 		md = SFIND(s, sy1->meta_ser);
 		unless (md->flags & D_RED) continue;
 		md->flags &= ~D_RED;
-		sy1->right = 1;
+		right[i] = 1;
 	}
 
 	/*
@@ -2625,18 +2627,20 @@ sccs_tagConflicts(sccs *s)
 	 *
 	 * We want to store 1.7,1.5.1.1 as the conflict.
 	 */
-	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
-		unless (sy1->left && !sy1->right) continue;
-		for (sy2 = s->symbols; sy2; sy2 = sy2->next) {
-			unless (sy2->right && !sy2->left &&
-			    streq(sy1->symname, sy2->symname)) {
+	EACH_REVERSE(s->symlist) {
+		unless (left[i] && !right[i]) continue;
+		sy1 = &s->symlist[i];
+		EACH_REVERSE_INDEX(s->symlist, j) {
+			sy2 = &s->symlist[j];
+			unless (right[j] && !left[j] &&
+			    (streq(SYMNAME(s, sy1), SYMNAME(s, sy2)))) {
 			    	continue;
 			}
 			/*
 			 * Quick check to see if they added the same symbol
 			 * twice to the same rev.
 			 */
-			if (streq(sy1->rev, sy2->rev)) continue;
+			if (sy1->ser == sy2->ser) continue;
 			/*
 			 * OK, we really have a conflict, save it.
 			 * If it is already there, make sure that our version
@@ -2644,10 +2648,12 @@ sccs_tagConflicts(sccs *s)
 			 */
 			sprintf(buf,
 			    "%d %d", sy1->meta_ser, sy2->meta_ser);
-			if (mdbm_store_str(db, sy1->symname, buf, MDBM_INSERT)) {
-				char	*old = mdbm_fetch_str(db, sy1->symname);
+			if (mdbm_store_str(db,
+			    SYMNAME(s, sy1), buf, MDBM_INSERT)) {
+				char	*old;
 				int	a = 0, b = 0;
 
+				old  = mdbm_fetch_str(db, SYMNAME(s, sy1));
 				assert(old);
 				sscanf(old, "%d %d", &a, &b);
 				assert(a && b);
@@ -2656,10 +2662,12 @@ sccs_tagConflicts(sccs *s)
 				    	continue;
 				}
 				mdbm_store_str(db,
-				    sy1->symname, buf, MDBM_REPLACE);
+				    SYMNAME(s, sy1), buf, MDBM_REPLACE);
 		    	}
 		}
 	}
+	free(left);
+	free(right);
 	return (db);
 }
 
@@ -2786,10 +2794,10 @@ checkTags(sccs *s, int flags)
 	unless (CSET(s)) return (0);
 
 	/* Make sure that tags don't contain weird characters */
-	for (sym = s->symbols; sym; sym = sym->next) {
+	EACHP_REVERSE(s->symlist, sym) {
 		unless (sym->symname) continue;
 		/* XXX - not really "check" all the time */
-		if (sccs_badTag("check", sym->symname, flags)) bad = 1;
+		if (sccs_badTag("check", SYMNAME(s, sym), flags)) bad = 1;
 	}
 	if (bad) return (128);
 
@@ -2819,6 +2827,8 @@ checkTags(sccs *s, int flags)
  * V - file format version (1.0 delta only)
  * X - Xflags
  * Z - zone (really offset from GMT)
+ *
+ * This function is only used by mkgraph()
  */
 private void
 meta(sccs *s, delta *d, char *buf)
@@ -3331,68 +3341,48 @@ getflags(sccs *s, char *buf)
 }
 
 /*
- * Add a symbol to the symbol table.
+ * Add a symbol(val) to the symbol table.
  * Return 0 if we added it, 1 if it's a dup.
+ *
+ * if graph:
+ *    this is a new symbol and create symgraph structures needed to
+ *    put this node in place
+ * else:
+ *    this is part of a patch and the tag must be added, but other
+ *    graph structures already exist
  */
 int
-addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
+addsym(sccs *s, delta *metad, int graph, char *val)
 {
-	symbol	*sym, *s2, *s3;
+	symbol	*sym;
+	int	i;
+	delta	*d;
 
-	/* If we can't find it, just pass it through */
-	if (!d && !(d = rfind(s, rev))) return (0);
-
-	sym = findSym(s->symbols, val);
+	/* find "real" delta being tagged */
+	d = metad;
+	while (d && TAG(d)) d = PARENT(s, d);
+	assert(d);		/* should always find something */
 
 	/*
-	 * If rev is NULL, it means we have a new delta with
-	 * unallocated rev, force add the symbol. Caller
-	 * is responsible to run "bk renumber" to fix up
-	 * the rev. This is used by the cweave code.
+	 * If graph, it means this is a new symgraph entry and duplicate
+	 * tags should be rejected.
 	 */
-	if (sym && rev && streq(sym->rev, rev)) {
+	if (graph && (sym = findSym(s, val)) && (d->serial == sym->ser)) {
 		return (1);
-	} else {
-		sym = new(symbol);
-		assert(sym);
 	}
-	sym->rev = rev ? strdup(rev) : NULL;
-	sym->symname = strdup(val);
+
+	EACH_REVERSE(s->symlist) {
+		if (s->symlist[i].meta_ser <= metad->serial) break;
+	}
+	/* insert after the node found */
+	sym = insertArrayN(&s->symlist, i+1, 0);
+	assert(sym);
+	sym->symname = sccs_addUniqStr(s, val);
 	sym->ser = d->serial;
 	sym->meta_ser = metad->serial;
 	d->flags |= D_SYMBOLS;
 	metad->flags |= D_SYMBOLS;
 
-	/*
-	 * Insert in sorted order, most recent first.
-	 */
-	if (!s->symbols || !s->symbols->ser) {
-		sym->next = s->symbols;
-		s->symbols = sym;
-	} else if (metad->date >= SFIND(s, s->symbols->ser)->date) {
-		sym->next = s->symbols;
-		s->symbols = sym;
-	} else {
-		for (s3 = 0, s2 = s->symbols; s2; s3 = s2, s2 = s2->next) {
-			delta	*d = SFIND(s, s2->ser);
-
-			if (!d || (metad->date >= d->date)) {
-				sym->next = s2;
-				s3->next = sym;
-				break;
-			}
-		}
-		/* insert at end */
-		if (!sym->next) {
-			if (s3) {
-				s3->next = sym;
-			} else {
-				s->symbols = sym;
-			}
-		}
-	}
-	debug((stderr, "Added symbol %s->%s (%d,%d) in %s\n",
-	    val, rev, d->serial, metad->serial, s->sfile));
 	if (graph) symGraph(s, metad);
 	return (0);
 }
@@ -4423,8 +4413,7 @@ chk_gmode(sccs *s)
 void
 sccs_free(sccs *s)
 {
-	symbol	*sym, *t;
-	int	unblock;
+ 	int	unblock;
 	char	*relpath = 0, *fullpath;
 
 	unless (s) return;
@@ -4479,12 +4468,7 @@ sccs_free(sccs *s)
 
 	sccsXfile(s, 0);
 	sccs_freetable(s);
-	for (sym = s->symbols; sym; sym = t) {
-		t = sym->next;
-		if (sym->symname) free(sym->symname);
-		if (sym->rev) free(sym->rev);
-		free(sym);
-	}
+	free(s->symlist);
 	if (s->state & S_SOPEN) sccs_close(s); /* move this up for trace */
 	if (s->sfile) free(s->sfile);
 	if (s->gfile) free(s->gfile);
@@ -7542,7 +7526,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 	int	strip_tags = CSET(s) && getenv("_BK_STRIPTAGS");
 	int	version = SCCS_VERSION;
 	symbol	*sym;
-	int	syms_sorted;
 
 	if (getenv("_BK_SCCS_VERSION")) {
 		version = atoi(getenv("_BK_SCCS_VERSION"));
@@ -7582,26 +7565,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	}
 	s->adddelOff = ftell(out);
 
-	/*
-	 * determine if the s->symbols is in order.
-	 * If so we can use an optimization to only walk the list once.
-	 * XXX In the future s->symbols should be a liblines array
-	 *     and changed to always be in order.
-	 */
-	syms_sorted = 1;
-	for (sym = s->symbols; sym; sym = sym->next) {
-		unless (sym->meta_ser) { /* csetprune */
-			syms_sorted = 0;
-			break;
-		}
-		unless (sym->next) break;
-		if (!sym->next->meta_ser ||
-		    (sym->meta_ser < sym->next->meta_ser)) {
-			syms_sorted = 0;
-			break;
-		}
-	}
-	sym = s->symbols;
+	sym = s->symlist + nLines(s->symlist);
 	for (d = s->table; d; d = NEXT(d)) {
 		if (TAG(d)) check_removed(s, d, strip_tags);
 		if (d->flags & D_GONE) {
@@ -7813,17 +7777,13 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_SYMBOLS) {
-			unless (syms_sorted) sym = s->symbols;
-			for (; sym; sym = sym->next) {
-				if (syms_sorted &&
-				    (sym->meta_ser < d->serial)) {
-					break;
-				}
+			for (; sym != s->symlist; --sym) {
+				if (sym->meta_ser < d->serial) break;
 				unless (sym->meta_ser == d->serial) continue;
 				if (!strip_tags || 
-				    streq(KEY_FORMAT2, sym->symname)) {
+				    streq(KEY_FORMAT2, SYMNAME(s, sym))) {
 					p = fmts(buf, "\001cS");
-					p = fmts(p, sym->symname);
+					p = fmts(p, SYMNAME(s, sym));
 					*p++ = '\n';
 					*p   = '\0';
 					fputmeta(s, buf, out);
@@ -8983,7 +8943,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	char	*t;
 
 	unless (d) d = new(delta);
-	if (type == 'R') d->flags |= D_TAG;
+	if (type == 'R') d->flags |= (D_META|D_TAG);
 	assert(s);
 	if (BITKEEPER(s) && !TAG(d)) d->flags |= D_CKSUM;
 	unless (d->date || nodefault) {
@@ -9404,9 +9364,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 	n = dinsert(s, n, fixDate && !(flags & DELTA_PATCH));
 	first = i ? SFIND(s, i) : n;
 	s->numdeltas++;
-	EACH (syms) {
-		addsym(s, n, n, !(flags & DELTA_PATCH), REV(s, n), syms[i]);
-	}
+	EACH(syms) addsym(s, n, !(flags & DELTA_PATCH), syms[i]);
 	if (BITKEEPER(s)) {
 		s->version = SCCS_VERSION;
 		unless (flags & DELTA_PATCH) {
@@ -10178,10 +10136,11 @@ mergeArg(delta *d, char *arg)
 }
 
 
+/* add a symbol in mkgraph(), not used with binary sfiles */
 private void
 symArg(sccs *s, delta *d, char *name)
 {
-	symbol	*sym;
+	u32	tmp;
 
 	assert(d);
 
@@ -10213,34 +10172,17 @@ symArg(sccs *s, delta *d, char *name)
 		d->flags |= D_SYMLEAF;
 		return;
 	}
+	tmp = d->serial;
+	addArray(&s->mg_symname, &tmp);
+	tmp = sccs_addUniqStr(s, name);
+	addArray(&s->mg_symname, &tmp);
+	d->flags |= D_SYMBOLS;	/* so mkgraph won't MKGONE it */
 
-	sym = new(symbol);
-	sym->rev = strdup(REV(s, d));
-	sym->symname = strdup(name);
-	if (!s->symbols) {
-		s->symbols = s->symTail = sym;
-	} else {
-		s->symTail->next = sym;
-		s->symTail = sym;
-	}
-	/*
-	 * This is temporary.  "d" gets reset to real delta once we
-	 * build the graph.
-	 */
-	sym->ser = sym->meta_ser = d->serial;
-	d->flags |= D_SYMBOLS;
-
-	/*
-	 * If this succeeds, then ALL keys must be in long key format
-	 */
-	if (CSET(s) && streq(REV(s, d), "1.0") &&
-	    streq(sym->symname, KEY_FORMAT2)) {
-	    	s->xflags |= X_LONGKEY;
-		/* get any previous xflags deltas */
-		for (d = s->table; d; d = NEXT(d)) {
+	if ((d->serial == 1) && streq(name, KEY_FORMAT2)) {
+		s->xflags |= X_LONGKEY;
+		EACHP(s->slist, d) {
 			if (d->flags & D_XFLAGS) d->xflags |= X_LONGKEY;
 		}
-		/* then meta() pushes this to all following deltas */
 	}
 }
 
@@ -10323,16 +10265,17 @@ sccs_parseArg(sccs *s, delta *d, char what, char *arg, int defaults)
  * Return true iff the most recent matching symbol is the same.
  */
 private int
-dupSym(symbol *symbols, char *s, char *rev)
+dupSym(sccs *sc, char *s, char *rev)
 {
 	symbol	*sym;
 
-	sym = findSym(symbols, s);
+	sym = findSym(sc, s);
 	/* If rev isn't set, then any name match is enough */
 	if (sym && !rev) return (1);
-	return (sym && streq(sym->rev, rev));
+	return (sym && streq(REV(sc, SFIND(sc, sym->ser)), rev));
 }
 
+/* 'bk tag' comes here */
 private int
 addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 {
@@ -10373,7 +10316,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		}
 		if (!rev || !*rev) rev = REV(sc, d);
 		if (sccs_badTag(me, sym, flags)) goto sym_err;
-		if (dupSym(sc->symbols, sym, rev)) {
+		if (dupSym(sc, sym, rev)) {
 			verbose((stderr,
 			    "%s: symbol %s exists on %s\n", me, sym, rev));
 			goto sym_err;
@@ -10404,12 +10347,9 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		n->rev = d->rev;
 		explode_rev(sc, n);
 		n->pserial = d->serial;
-		n->flags |= D_SYMBOLS;
-		d->flags |= D_SYMBOLS;
 		sc->numdeltas++;
 		n = dinsert(sc, n, 1);
-		d = SFIND(sc, n->pserial);
-		if (addsym(sc, d, n, 1, rev, sym)) {
+		if (addsym(sc, n, 1, sym)) {
 			verbose((stderr,
 			    "%s: won't add identical symbol %s to %s\n",
 			    me, sym, sc->sfile));
@@ -10761,7 +10701,7 @@ insert_1_0(sccs *s, u32 flags)
 		if (d->flags & D_CSET) csets++;
 		adjust_serials(s, d, 1);
 	}
-	for (sym = s->symbols; sym; sym++) {
+	EACHP_REVERSE(s->symlist, sym) {
 		if (sym->ser) sym->ser++;
 		if (sym->meta_ser) sym->meta_ser++;
 	}
@@ -10835,7 +10775,7 @@ remove_1_0(sccs *s)
 	for (d = SFIND(s, 2); d <= s->table; d += 1) {
 		adjust_serials(s, d, -1);
 	}
-	for (sym = s->symbols; sym; sym++) {
+	EACHP_REVERSE(s->symlist, sym) {
 		if (sym->ser) --sym->ser;
 		if (sym->meta_ser) --sym->meta_ser;
 	}
@@ -11402,7 +11342,7 @@ out:
 		}
 	}
 	fclose(f);
-	for (sym = s->symbols; sym; sym = sym->next) {
+	EACHP_REVERSE(s->symlist, sym) {
 		if (sym->ser) sym->ser = remap[sym->ser];
 		if (sym->meta_ser) sym->meta_ser = remap[sym->meta_ser];
 	}
@@ -12884,7 +12824,7 @@ isValidUser(char *u)
  * and probably other places.  I need to make a generic sccs_addDelta()
  * which can handle all of those cases.
  */
-int
+private int
 sccs_meta(char *me, sccs *s, delta *parent, MMAP *iF, int fixDate)
 {
 	delta	*m;
@@ -12911,9 +12851,7 @@ sccs_meta(char *me, sccs *s, delta *parent, MMAP *iF, int fixDate)
 	m->pserial = parent->serial;
 	s->numdeltas++;
 	m = dinsert(s, m, fixDate);
-	EACH (syms) {
-		addsym(s, m, m, 0, REV(s, m), syms[i]);
-	}
+	EACH(syms) addsym(s, m, 0, syms[i]);
 	freeLines(syms, free);
 	/*
 	 * Do the delta table & misc.
@@ -13268,9 +13206,7 @@ out:
 		n->flags |= D_XFLAGS;
 	}
 
-	EACH (syms) {
-		addsym(s, n, n, !(flags&DELTA_PATCH), REV(s, n), syms[i]);
-	}
+	EACH(syms) addsym(s, n, !(flags&DELTA_PATCH), syms[i]);
 
 	if (BAM(s)) {
 		if (!(flags & DELTA_PATCH) && bp_delta(s, n)) {
@@ -14531,14 +14467,14 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		int	j = 0;
 
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
-		for (sym = s->symbols; sym; sym = sym->next) {
+		EACHP_REVERSE(s->symlist, sym) {
 			unless (d->serial ==
 			    (s->prs_all ? sym->meta_ser : sym->ser)) {
 				continue;
 			}
 			j++;
 			fs("S ");
-			fs(sym->symname);
+			fs(SYMNAME(s, sym));
 			fc('\n');
 		}
 		if (j) return (strVal);
@@ -14573,7 +14509,6 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	}
 
 	case KW_LOG: /* LOG */ {
-		int	i;
 		symbol	*sym;
 		int	len;
 
@@ -14597,11 +14532,10 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		}
 		fc('\n');
 		unless (d && (d->flags & D_SYMBOLS)) return (strVal);
-		for (i = 0, sym = s->symbols; sym; sym = sym->next) {
+		EACHP_REVERSE(s->symlist, sym) {
 			unless (sym->ser == d->serial) continue;
-			i++;
 			fs("  TAG: ");
-			fs(sym->symname);
+			fs(SYMNAME(s, sym));
 			fc('\n');
 		}
 		fc('\n');
@@ -14763,13 +14697,13 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		int	j = 0;
 
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
-		for (sym = s->symbols; sym; sym = sym->next) {
+		EACHP_REVERSE(s->symlist, sym) {
 			unless (d->serial ==
 			    (s->prs_all ? sym->meta_ser : sym->ser)) {
 				continue;
 			}
 			j++;
-			fs(sym->symname);
+			fs(SYMNAME(s, sym));
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -15822,9 +15756,9 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	}
 	if (d->random) fprintf(out, "R %s\n", RANDOM(s, d));
 	if ((d->flags & D_SYMBOLS) || SYMGRAPH(d)) {
-		for (sym = s->symbols; sym; sym = sym->next) {
+		EACHP_REVERSE(s->symlist, sym) {
 			unless (sym->meta_ser == d->serial) continue;
-			fprintf(out, "S %s\n", sym->symname);
+			fprintf(out, "S %s\n", SYMNAME(s, sym));
 		}
 		if (SYMGRAPH(d)) fprintf(out, "s g\n");
 		if (SYMLEAF(d)) fprintf(out, "s l\n");
@@ -16990,6 +16924,7 @@ sccs_stripdel(sccs *s, char *who)
 	int	error = 0;
 	int	locked;
 	delta	*e;
+	symbol	*sym;
 
 #define	OUT	\
 	do { error = -1; s->state |= S_WARNED; goto out; } while (0)
@@ -17023,6 +16958,13 @@ sccs_stripdel(sccs *s, char *who)
 		unless (getenv("_BK_UNDO_OK")) OUT;
 	}
 	s->xflags = sccs_xflags(s, e);
+
+	/* remove deleted symbols */
+	EACHP(s->symlist, sym) {
+		unless (SFIND(s, sym->meta_ser)->flags & D_GONE) continue;
+		removeArrayN(s->symlist, (sym - s->symlist));
+		--sym;
+	}
 
 	/* write out upper half */
 	if (delta_table(s, sfile, 0)) {  /* 0 means as-is, so chksum works */

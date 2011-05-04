@@ -40,11 +40,14 @@
 	if ((i = (x)), (s)) for (; _TESTLEN_(s, i); i++)
 #define	EACH_INDEX(s, i)		EACH_START(1, s, i)
 #define	EACH(s)				EACH_START(1, s, i)
-#define	EACH_REVERSE(s)			for (i = nLines(s); i > 0; i--) 
+#define	EACH_REVERSE_INDEX(s, i)	for (i = nLines(s); i > 0; i--) 
+#define	EACH_REVERSE(s)			EACH_REVERSE_INDEX(s, i)
 
 /* EACHP like EACH but walks a pointer to each array element instead of i */
 #define	EACHP(s, ptr)							\
 	if (s) for ((ptr) = (s)+1; (ptr) <= (s)+(*(u32 *)(s) & LMASK); ++(ptr))
+#define	EACHP_REVERSE(s, ptr)						\
+	if (s) for ((ptr) = (s)+nLines(s); (ptr) > (s); --(ptr))
 
 
 #define	EACH_STRUCT(s, c, i)				\

@@ -730,3 +730,18 @@ echo $N Check that bk tag in product succeeds .......................$NL
 cd "$HERE/nested"
 bk tag $Q ok || fail
 echo OK
+
+echo $N See that mkgraph does not strip tag with no graph ...........$NL
+cd "$HERE"
+commercial not-gone
+bk edit $Q BitKeeper/etc/config
+echo 'compression:none!' >> BitKeeper/etc/config
+bk tag $Q foo
+# strip tag graph data
+bk _cat SCCS/s.ChangeSet | perl -ne 'print unless /^\001cS\d/' | bk undos > new
+bk _cp new SCCS/s.ChangeSet
+bk admin -z ChangeSet
+bk changes -rfoo -ndx > GOT || fail
+echo x > WANT
+checkfiles WANT GOT
+echo OK

@@ -360,9 +360,9 @@ print(sccs *s, delta *d)
 		if (d->flags & D_SYMBOLS) {
 			symbol	*sym;
 
-			for (sym = s->symbols; sym; sym = sym->next) {
+			EACHP_REVERSE(s->symlist, sym) {
 				unless (sym->ser == d->serial) continue;
-				printf("%s\n", sym->symname);
+				printf("%s\n", SYMNAME(s, sym));
 			}
 			break;
 		}

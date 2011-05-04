@@ -134,10 +134,10 @@ sccs_d2tag(sccs *s, delta *d)
 	symbol	*sym;
 
 	unless (d->flags & D_SYMBOLS) return (NULL);
-	for (sym = s->symbols; sym; sym = sym->next) {
+	EACHP_REVERSE(s->symlist, sym) {
 		if (d->serial == sym->ser) {
-			assert(!strchr(sym->symname, '|'));
-			return (sym->symname);
+			assert(!strchr(SYMNAME(s, sym), '|'));
+			return (SYMNAME(s, sym));
 		}
 	}
 	return (NULL); /* we should never get here */

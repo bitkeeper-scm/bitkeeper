@@ -229,7 +229,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	}
 	fclose(f);
 	if (d != s->table) {
-		for (sym = s->symbols; sym; sym = sym->next) {
+		EACHP_REVERSE(s->symlist, sym) {
 			if (sym->ser >= serial) sym->ser++;
 			if (sym->meta_ser >= serial) sym->meta_ser++;
 		}
@@ -255,16 +255,10 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 
 	/*
 	 * Fix up tag/symbols
-	 * We have not run "bk renumber" yet, remote delta 'd' may have
-	 * the same rev as a local delta, i.e. We may have two rev 1.3.
-	 * We pass in a NULL rev to addsym(), this force the symbol to be
-	 * always added. Otherwise, addsym() will skip the symbol if it finds
-	 * a local rev 1.3 tagged with the same symbol.
-	 * Passing a NULL rev means s->symbols will be in a incomplete state. 
-	 * This is ok, because delta_table() uses the s->symbols->metad pointer
-	 * to dump the sysmbol information. It does not use rev in that process.
+	 * We pass graph=0 which forces the tag to be added even if it
+	 * is a duplicate.
 	 */
-	EACH (syms) addsym(s, d, d, 0, NULL, syms[i]);
+	EACH(syms) addsym(s, d, 0, syms[i]);
 	if (syms) freeLines(syms, free);
 
 	sccs_findKeyUpdate(s, d);

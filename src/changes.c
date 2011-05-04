@@ -1248,9 +1248,10 @@ want(sccs *s, delta *e)
 		unless (e->flags & D_SYMBOLS) return (0);
 		if (opts.tsearch) {
 			match = 0;
-			for (sym = s->symbols; sym; sym = sym->next) {
+			EACHP_REVERSE(s->symlist, sym) {
 				unless (sym->ser == e->serial) continue;
-				if (search_either(sym->symname, opts.search)) {
+				if (search_either(SYMNAME(s, sym),
+					opts.search)) {
 					match = 1;
 					break;
 				}

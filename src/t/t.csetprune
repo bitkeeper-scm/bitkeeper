@@ -223,9 +223,17 @@ FOO=`bk prs -r1.0 -hnd:KEY: foo`
 BAR=`bk prs -r1.0 -hnd:KEY: bar`
 bk commit $Q -yfiles
 bk cset $Q -x+
-bk tag $Q TAG
+# While we are here, see that multiple tags can exist on a node
+bk tag $Q TAG1
+bk tag $Q TAG2
 # collapse tag graph onto real graph
 echo "$BAR" | bk csetprune $Q --tag-csets || fail
+bk changes -ar+ -d:TAGS: > GOT
+cat <<EOF > WANT
+S TAG2
+S TAG1
+EOF
+cmpfiles WANT GOT
 # tickle the bug
 echo "$FOO" | bk csetprune $Q || fail
 echo OK

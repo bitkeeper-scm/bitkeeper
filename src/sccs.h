@@ -525,15 +525,13 @@ typedef struct delta {
  * Note that these are fully specified revisions only.
  */
 typedef	struct symbol {			/* symbolic tags */
-	struct	symbol *next;		/* s->symbols sorted on date list */
-	char	*symname;		/* STABLE */
-	char	*rev;			/* 1.32 */
+	u32	symname;		/* STABLE */
 	ser_t	ser;			/* delta associated with this one */
 					/* only for absolute revs, not LOD */
 	ser_t	meta_ser;		/* where the symbol lives on disk */
-	u32	left:1;			/* present in left branch */
-	u32	right:1;		/* present in right branch */
 } symbol;
+
+#define	SYMNAME(s, sym)	((s)->heap.buf + (sym)->symname)
 
 /*
  * Map used by things like serial map,
@@ -597,9 +595,8 @@ struct sccs {
 	delta	*tree;		/* the delta tree after mkgraph() */
 	delta	*table;		/* the delta table list, 1.99 .. 1.0 */
 	delta	*slist;		/* array of delta structs */
+	symbol	*symlist;	/* array of symbols, oldest first */
 	KIDS	*kidlist;	/* optional kid/sibling data */
-	symbol	*symbols;	/* symbolic tags sorted most recent to least */
-	symbol	*symTail;	/* last symbol, for tail inserts */
 	char	*defbranch;	/* defbranch, if set */
 	int	numdeltas;	/* number of entries in the graph */
 	int	nextserial;	/* next unused serial # */
@@ -607,6 +604,7 @@ struct sccs {
 	off_t	size;		/* size of mapping */
 	DATA	heap;		/* all strings in delta structs */
 	hash	*uniqheap;	/* help collapse unique strings in hash */
+	u32	*mg_symname;	/* symbol list use by mkgraph() */
 	FILE	*fh;		/* cached copy of the input file handle */
 	FILE	*oldfh;		/* orig fh (no ungzip layer) */
 	FILE	*outfh;		/* fh for writing x.file */
@@ -977,7 +975,6 @@ char	*sccs_setpathname(sccs *s);
 delta	*sccs_prev(sccs *s, delta *d);
 delta	*slist_next(delta *d);
 int	sccs_reCache(int quiet);
-int	sccs_meta(char *m,sccs *s, delta *parent, MMAP *initFile, int fixDates);
 int	sccs_findtips(sccs *s, delta **a, delta **b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
@@ -1139,7 +1136,7 @@ char	*getCSetFile(project *p);
 int	spawn_cmd(int flag, char **av);
 pid_t	mkpager(void);
 int	getRealName(char *path, MDBM *db, char *realname);
-int	addsym(sccs *s, delta *d, delta *metad, int, char*, char*);
+int	addsym(sccs *s, delta *metad, int graph, char *tag);
 int	delta_table(sccs *s, FILE *out, int willfix);
 int	walksfiles(char *dir, walkfn fn, void *data);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
@@ -1316,7 +1313,6 @@ u64	scansize(char *bytes);
 void	idcache_update(char **files);
 int	idcache_write(project *p, MDBM *idDB);
 void	cset_savetip(sccs *s);
-void	symGraph(sccs *s, delta *d);
 void	clearCsets(sccs *s);
 void	sccs_rdweaveInit(sccs *s);
 char	*short_random(char *str, int len);
