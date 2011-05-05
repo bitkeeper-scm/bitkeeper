@@ -1311,14 +1311,6 @@ strdup_tochar(const char *s, int c)
 	return (ret);
 }
 
-int
-isLocalHost(char *h)
-{
-	unless (h) return (0);
-	return (streq("localhost", h) ||
-	    streq("localhost.localdomain", h) || streq("127.0.0.1", h));
-}
-
 char	*
 savefile(char *dir, char *prefix, char *pathname)
 {

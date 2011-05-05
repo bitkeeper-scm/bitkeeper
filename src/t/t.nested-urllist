@@ -633,6 +633,7 @@ echo OK
 
 echo $N Test ordering of multiple URLS in populate ..................$NL
 cd "$HERE"
+bk clone $Q product bkd_parent
 bk clone $Q product locked
 cd locked
 L=`bk lock -wt`
@@ -674,7 +675,6 @@ bk here add -@ssh://bad2.bitkeeper.com:1/ ./gdb 2> ERR && {
 cat <<EOF > WANT
 here: searching ssh://bad2.bitkeeper.com:1/...connect failure
 here: searching $HERE/locked...repo locked
-here: searching $HERE/junk...repo gone
 here: searching bk://localhost:1/...connect failure
 here: searching http://localhost:1/...connect failure
 here: searching bk://bad1.bitkeeper.com:1/...connect failure
@@ -684,12 +684,95 @@ here: searching http://bad.bitkeeper.com:1/...connect failure
 here: searching ssh://localhost:1/...connect failure
 here: searching rsh://bad.bitkeeper.com:1/...connect failure
 here: searching bk://!junkurl:1/...invalid url
+here: searching $HERE/junk...repo gone
 here: No other sources for ./gdb known
 EOF
 cmpfiles WANT ERR
 bk _kill $L
 bk _rm -rf "$HERE"/locked
 echo OK
+
+########################################################################
+IP_ADDR=`bk gethost -rn`
+SKIP=NO
+case X$IP_ADDR in
+    X127.0.0.1|X127.0.1.1)
+	SKIP=YES
+    	;;
+esac
+
+test $SKIP = YES || {
+set +e
+
+echo $N Show that we search the parent first on regular pull ........$NL
+cd ../bkd_parent
+bk gate $Q .
+bk bkd -d -aPORT -ikill
+PORT=`cat PORT`
+URL=bk://$IP_ADDR:$PORT
+cd "$HERE"
+bk clone $Q -sPRODUCT $URL bkd_clone
+cd bkd_clone
+bk here set ALL > OUT 2>&1
+head -2 < OUT | tail -1 > GOT
+echo "Source $URL" > WANT
+cmp -s WANT GOT || {
+	bk _kill $URL
+	cmpfiles WANT GOT
+}
+echo OK
+
+echo $N Show that we can force the search to be local ...............$NL
+BK_CONFIG='urlsearch:local' bk here set PRODUCT > OUT 2>&1
+head -1 < OUT > GOT
+grep -q "searching $HERE" GOT || {
+	bk _kill $URL
+	echo failed to search file system first
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Show that we search the source first on sideways pull .......$NL
+#
+# So what I am doing is
+# make bkd_clone a gate, populate everything, kill the the old bkd,
+# start a new one here, set up a COMPS->product (from rick),
+# clone this bkd_clone to bkd_clone2,
+# come back here and add to COMPS,
+# go back to child, set the parent to something else,
+# then do a sideways pull from bkd_clone.
+cd "$HERE/bkd_clone"
+bk gate $Q .
+bk here set ALL > OUT 2>&1 || {
+	cat OUT
+	exit 1
+}
+bk _kill $URL
+bk alias set $Q COMPS product
+bk bkd -d -aPORT -ikill
+PORT=`cat PORT`
+URL=bk://$IP_ADDR:$PORT
+cd ..
+bk clone $Q -sCOMPS $URL bkd_clone2
+cd bkd_clone
+bk alias add $Q COMPS ./gcc
+cd ../bkd_clone2
+bk parent $Q ../bkd_parent
+bk pull $URL > OUT 2>&1 
+# Here we expect no changing of the source so look for it and complain
+grep -q "Source" OUT && {
+	bk _kill $URL
+	echo failed
+	cat OUT
+	exit 1
+}
+bk _kill $URL
+echo OK
+
+set -e
+}
+########################################################################
 
 echo $N Show pull searching for gate can probe url twice ............$NL
 cd ../copy5

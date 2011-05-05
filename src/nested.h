@@ -113,6 +113,8 @@ typedef struct {
 	u32	checked:1;	/* have we actually connected? */
 	u32	checkedGood:1;	/* was URL probe successful this time? */
 	u32	noconnect:1;	/* probeURL failed for connection problem */
+	u32	from:1;		/* if set, try this one first */
+	u32	parent:1;	/* if set, try this one first (or next) */
 
 	// From URLINFO file, extras are ignored
 	time_t	time;		/* 1 time of last successful connection */

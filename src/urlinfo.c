@@ -72,6 +72,10 @@ void
 urlinfo_buildArray(nested *n)
 {
 	struct	stat sb;
+	int	i, j;
+	char	**parents = parent_pullp();
+	char	*p;
+	urlinfo	*data;
 
 	freeLines(n->urls, 0);
 	n->urls = 0;
@@ -80,7 +84,27 @@ urlinfo_buildArray(nested *n)
 		n->urls = addLine(n->urls, (char *)n->urlinfo->vptr);
 	}
 	local_dev = lstat(".", &sb) ? 0 : sb.st_dev;
+	EACH_STRUCT(n->urls, data, i) {
+		EACH_INDEX(parents, j) {
+			p = parents[j];
+			if (strneq(p, "file://", 7)) p += 7;
+			if (streq(p, data->url)) {
+				data->parent = 1;
+				break;
+			}
+		}
+	}
+	freeLines(parents, free);
 	sortLines(n->urls, sortUrls);
+	if (getenv("_BK_DEBUG_URLS")) {
+		fprintf(stderr, "URLs sorted:\n");
+		EACH_STRUCT(n->urls, data, i) {
+			fprintf(stderr, "%s %s%s\n",
+			    data->url,
+			    data->from ? "FROM " : "",
+			    data->parent ? "PARENT" : "");
+		}
+	}
 }
 
 /*
@@ -273,45 +297,67 @@ sortUrls(const void *a, const void *b)
 	remote	*r;
 	int	val[2];
 	int	i;
+	int	prefer_local = 0;
+	char	*p;
 	struct	stat	sb;
+
+	if ((p = proj_configval(0, "urlsearch")) && strieq(p, "local")) {
+		prefer_local = 1;
+	}
 
 	url[0] = *(urlinfo **)a;
 	url[1] = *(urlinfo **)b;
 
 	/*
-	 * order:		FSLH	(not)File Ssh/rsh (not)Local Http
-	 *    file		0000	lclone works
-	 *    file other device 0001	clone other disk
-	 *    bk://localhost	1000
-	 *    http://localhost	1001
-	 *    bk://host		1010
-	 *    http://host	1011
-	 *    ssh://localhost	1100
-	 *    rsh://host	1110
-	 *    ssh://host	1110	ties broken with timestamp
-	 *    badurl           10000
+	 * order:
+	 *    source (from)	0x00001
+	 *    parent		0x00002
+	 *    file		0x00004	lclone works
+	 *    file other device 0x00008	clone other disk
+	 *    bk://localhost	0x10000
+	 *    http://localhost	0x10010
+	 *    bk://host		0x10100
+	 *    http://host	0x10110
+	 *    ssh://localhost	0x11000
+	 *    rsh://host	0x11100
+	 *    ssh://host	0x11100	ties broken with timestamp
+	 *    badurl            0x20000
 	 *
 	 * Ties are broken by looking at the timestamp or
 	 * with a simple strcmp() of the URLs
 	 */
 	for (i = 0; i < 2; i++) {
 		val[i] = 0;
+		if (url[i]->from && !prefer_local) {
+			val[i] = 0x00001;
+			continue;
+		}
+		if (url[i]->parent && !prefer_local) {
+			val[i] = 0x00002;
+			continue;
+		}
 		r = remote_parse(url[i]->url, 0);
 		unless (r) {
-			val[i] |= 0x10;
+			val[i] = 0x20000;
 			continue;
 		}
 		if (r->host) {
-			val[i] |= 8;
-			if (r->type & (ADDR_RSH|ADDR_SSH|ADDR_NFS)) val[i] |= 4;
+			val[i] |= 0x10000;
+			if (r->type & (ADDR_RSH|ADDR_SSH|ADDR_NFS)) {
+				val[i] |= 0x01000;
+			}
 			unless (isLocalHost(r->host) ||
 			    streq(r->host, sccs_realhost())){
-				val[i] |= 2;
+				val[i] |= 0x00100;
 			}
-			if (r->type & ADDR_HTTP) val[i] |= 1;
+			if (r->type & ADDR_HTTP) val[i] |= 0x00010;
 		} else {
-			if (lstat(r->path, &sb) || (sb.st_dev != local_dev)) {
-				val[i] |= 1;
+			if (lstat(r->path, &sb)) {
+				val[i] = 0x20000;	// not there: bad
+			} else if (sb.st_dev == local_dev) {
+				val[i] = 0x00004;
+			} else {
+				val[i] = 0x00008;
 			}
 		}
 		remote_free(r);
@@ -349,7 +395,7 @@ urlinfo_get(nested *n, char *url)
 }
 
 /*
- * Called from clone & pull after setting with info from our parent.
+ * Called from [r]clone/pull/push after setting with info from our parent.
  * The env has the bkd information and c->remotePresent is correct
  */
 void
@@ -362,6 +408,7 @@ urlinfo_setFromEnv(nested *n, char *url)
 	urlinfo_set(n, url,
 	    (getenv("BKD_GATE") ? 1 : 0), getenv("BKD_REPO_ID"));
 	data = urlinfo_fetchAlloc(n, url);
+	data->from = 1;
 	hash_free(data->pcomps);
 	data->pcomps = hash_new(HASH_MEMHASH);
 	EACH_STRUCT(n->comps, c, i) {
