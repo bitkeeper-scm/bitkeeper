@@ -63,7 +63,7 @@ echo OK
 
 echo $N rclone to serverless domain should replicate the BAM data ...$NL
 cd "$HERE"
-rm -rf C2
+bk _rm -rf C2
 bk clone $Q -Bnone S bk://localhost:$P/C2
 cd C2
 (cd ../S && find BitKeeper/BAM -type f -print ) |
@@ -84,7 +84,7 @@ echo OK
 
 echo $N lclone should replicate the BAM data ........................$NL
 cd "$HERE"
-rm -rf C2
+bk _rm -rf C2
 BK_NO_HARDLINK_CLONE= bk clone $Q -l S C2
 cd C2
 (cd ../S && find BitKeeper/BAM -type f -print ) |
@@ -101,7 +101,7 @@ echo OK
 
 echo $N Check that pull from server to serverless gets BAM data .....$NL
 cd "$HERE"
-rm -rf C2
+bk _rm -rf C2
 bk clone $Q -Bnone -r1.1 S C2 || exit 1
 test -d C2/BitKeeper/BAM && {
 	echo should not have BAM directory yet
@@ -128,7 +128,7 @@ echo OK
 
 echo $N Check that push from server to serverless sends BAM data ....$NL
 cd "$HERE"
-rm -rf C2
+bk _rm -rf C2
 bk clone $Q -Bnone -r1.1 S C2
 test -d C2/BitKeeper/BAM && {
 	echo should not have BAM directory yet
@@ -156,7 +156,7 @@ echo OK
 
 echo $N Check that pull can recurse thru C1 to S to get BAM data ....$NL
 cd "$HERE"
-rm -rf C2
+bk _rm -rf C2
 bk clone $Q -Bnone -r1.1 S C2
 test -d C2/BitKeeper/BAM && {
 	echo should not have BAM directory yet
@@ -195,7 +195,7 @@ cd "$HERE/S"
 find BitKeeper/BAM/*/?? -type f -print >> "$HERE/BAMFILES"
 cd "$HERE"
 tar cf TAR S C1
-rm -rf C2
+bk _rm -rf C2
 bk clone $Q -Bnone -r1.1 S C2
 test -d C2/BitKeeper/BAM && {
 	echo should not have BAM directory yet
@@ -263,7 +263,7 @@ echo OK
 
 echo $N rClone C1 to C2 with part in C1 and rest in S ...............$NL
 cd "$HERE"
-rm -rf S C1 C2
+bk _rm -rf S C1 C2
 tar xf TAR
 bk clone $Q -Bnone C1 bk://localhost:$P/C2
 cd C2
@@ -330,7 +330,7 @@ echo OK
 echo ---- Serverless C2 to C1 ......................................
 echo $N Clone C2 to C1, should send unique BAM data .................$NL
 cd "$HERE"
-rm -rf C1
+bk _rm -rf C1
 cd C2
 cp "$DATA" data.c2
 echo data.c2 >> data.c2
@@ -392,7 +392,7 @@ echo OK
 
 echo $N Pull C2 to C1, should send unique BAM data ..................$NL
 cd "$HERE"
-rm -rf C1
+bk _rm -rf C1
 bk clone -Bbk://localhost:$P/S -r1.1 $Q C2 C1
 cd C1
 bk pull $Q
@@ -421,7 +421,7 @@ echo OK
 
 echo $N Pull C2 to C1, with the BAM server offline ..................$NL
 cd "$HERE"
-rm -rf C1
+bk _rm -rf C1
 bk clone -Bbk://localhost:$P/S -r1.1 $Q C2 C1
 cd C1
 bk _kill bk://localhost:$P
@@ -449,7 +449,7 @@ echo "failed (bug should fetch BAM data)"
 
 echo $N Push C2 to C1, should send unique BAM data ..................$NL
 cd "$HERE"
-rm -rf C1 || {
+bk _rm -rf C1 || {
 	echo failed rm
 	exit 12
 }
@@ -550,7 +550,7 @@ echo OK
 
 echo $N Clone C3 to other server domain, unique data should go ......$NL
 cd "$HERE"
-rm -rf C4
+bk _rm -rf C4
 bk clone $Q -Bbk://localhost:$P/S C3 C4
 cd C4
 # The data.c3 file is the only one unique to C3 repo so that's the one
@@ -610,7 +610,7 @@ echo OK
 echo $N Push across domains, unique data should go ..................$NL
 cd "$HERE/C5"
 bk undo -fsa1.1 $Q || exit 1
-rm -rf BitKeeper/BAM
+bk _rm -rf BitKeeper/BAM
 bk bam check -q 2> ERR|| exit 1
 grep -q "no BAM data" ERR || exit 1
 cd ../C3
@@ -628,7 +628,7 @@ echo OK
 echo $N Pull across domains, unique data should go ..................$NL
 cd "$HERE/C5"
 bk undo -fsa1.1 $Q
-rm -rf BitKeeper/BAM
+bk _rm -rf BitKeeper/BAM
 bk bam check -q 2> ERR|| exit 1
 grep -q "no BAM data" ERR || exit 1
 bk pull $Q ../C3
@@ -644,7 +644,7 @@ echo OK
 echo ---- Locking conflicts ........................................
 echo $N Clone C1 to C2 with part in C1 and rest in S w/ S wlocked ...$NL
 cd "$HERE"
-rm -rf S C1 C2
+bk _rm -rf S C1 C2
 tar xf TAR
 (cd C1 && bk bam server -q bk://localhost:$P/S)
 L=`cd S ; bk lock -wt`
@@ -683,7 +683,7 @@ echo $N Clone C1 to C2 with all in S with S wlocked .................$NL
 cd "$HERE"
 cd C1
 bk bam push -aq
-rm -rf BitKeeper/BAM
+bk _rm -rf BitKeeper/BAM
 cd ..
 L=`cd S ; bk lock -wt`
 bk clone -Bnone C1 C2 > OUT 2>&1
@@ -713,7 +713,7 @@ echo OK
 
 echo $N rClone C1 to C2 with part in C1 and rest in S w/ S wlocked ..$NL
 cd "$HERE"
-rm -rf S C1 C2
+bk _rm -rf S C1 C2
 tar xf TAR
 (cd C1 && bk bam server -q bk://localhost:$P/S)
 L=`cd S ; bk lock -wt`
@@ -754,12 +754,12 @@ echo OK
 
 echo $N rClone C1 to C2 with all in S with S wlocked ................$NL
 cd "$HERE"
-rm -rf S C1 C2
+bk _rm -rf S C1 C2
 tar xf TAR
 (cd C1 && bk bam server -q bk://localhost:$P/S)
 cd C1
 bk bam push -aq
-rm -rf BitKeeper/BAM
+bk _rm -rf BitKeeper/BAM
 cd ..
 L=`cd S ; bk lock -wt`
 bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
@@ -791,7 +791,7 @@ echo OK
 
 echo $N Push C1 to C2 with part in C1 and rest in S w/ S wlocked ....$NL
 cd "$HERE"
-rm -rf S C1 C2
+bk _rm -rf S C1 C2
 tar xf TAR
 (cd C1 && bk bam server -q bk://localhost:$P/S)
 bk clone -Bnone -r1.1 $Q C1 C2
@@ -833,7 +833,7 @@ echo $N Push C1 to C2 with all in S with S wlocked ..................$NL
 cd "$HERE"
 cd C1
 bk bam push -aq
-rm -rf BitKeeper/BAM
+bk _rm -rf BitKeeper/BAM
 L=`cd ../S ; bk lock -wt`
 bk push ../C2 > OUT 2>&1
 bk _kill $L
@@ -863,7 +863,7 @@ echo OK
 
 echo $N Pull C1 to C2 with part in C1 and rest in S w/ S wlocked ....$NL
 cd "$HERE"
-rm -rf S C1 C2
+bk _rm -rf S C1 C2
 tar xf TAR
 (cd C1 && bk bam server -q bk://localhost:$P/S)
 bk clone -Bnone -r1.1 $Q C1 C2
@@ -905,7 +905,7 @@ echo $N Pull C1 to C2 with all in S with S wlocked ..................$NL
 cd "$HERE"
 cd C1
 bk bam push -aq
-rm -rf BitKeeper/BAM
+bk _rm -rf BitKeeper/BAM
 L=`cd ../S ; bk lock -wt`
 cd ../C2
 bk pull ../C1 > OUT 2>&1
