@@ -196,6 +196,7 @@ echo OK
 echo $N Test a pull with no local work ..............................$NL
 cd copy
 bk resolve $Q --batch || { echo failed; exit 1; }
+test -d PENDING && fail left PENDING directory
 cd ..
 echo OK
 

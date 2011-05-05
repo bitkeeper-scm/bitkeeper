@@ -134,7 +134,7 @@ resolve_main(int ac, char **av)
 			opts.autoOnly = 1;
 			break;
 		    case 310: // --batch
-			opts.automerge = opts.autoOnly = 1;
+			opts.batch = opts.automerge = opts.autoOnly = 1;
 			break;
 		    case 320: // --progress
 			opts.progress = 1;
@@ -3014,7 +3014,9 @@ resolve_cleanup(opts *opts, int what)
 	 * interactively and the user will be give a chance to fix the
 	 * problem.
 	 */
-	if (opts->autoOnly) what &= ~(CLEAN_ABORT|CLEAN_PENDING);
+	if (!opts->batch && opts->autoOnly) {
+		what &= ~(CLEAN_ABORT|CLEAN_PENDING);
+	}
 
 	unless (exists(ROOT2RESYNC)) chdir(RESYNC2ROOT);
 	unless (exists(ROOT2RESYNC)) {

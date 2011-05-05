@@ -48,6 +48,7 @@ typedef struct {
 	u32	from_pullpush:1;/* set if we are being called from pull/push */
 	u32	partial:1;	/* partial resolve - don't commit changeset */
 	u32	autoOnly:1;	/* do as much as possible automatically &exit */
+	u32	batch:1;	/* command line version of autoOnly */
 	u32	standalone:1;	/* operate in this component only */
 	u32	nested:1;	/* is this a nested resolve? */
 	int	hadConflicts;	/* conflicts during automerge */
