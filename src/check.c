@@ -86,6 +86,7 @@ check_main(int ac, char **av)
 	sccs	*s;
 	int	ferr, errors = 0, eoln_native = 1;
 	int	i, e;
+	int	pull_inProgress = 0;
 	char	*name;
 	char	buf[MAXKEY];
 	char	*t;
@@ -196,6 +197,10 @@ check_main(int ac, char **av)
 		if (proj_isProduct(0)) {
 			cp = 0;
 			cplen = 0;
+			if (isdir(ROOT2RESYNC) &&
+			    exists(ROOT2RESYNC "/" CHANGESET)) {
+				pull_inProgress = 1;
+			}
 		} else {
 			cp = aprintf("%s/", proj_comppath(0));
 			cplen = strlen(cp);
@@ -519,6 +524,20 @@ out:
 		enableFastPendingScan();
 	}
 	if (t = getenv("_BK_RAN_CHECK")) touch(t, 0666);
+	if (errors && pull_inProgress) {
+		fprintf(stderr,
+		    "--------------------------------"
+		    "---------------------------------\n"
+		    "It looks like there was a pull in progress. "
+		    "These errors could\n"
+		    "be caused by the components being "
+		    "out-of-sync with the product.\n"
+		    "Try running 'bk resolve' to finish "
+		    "the pull, or a 'bk abort' to\n"
+		    "cancel it.\n"
+		    "--------------------------------"
+		    "---------------------------------\n");
+	}
 	return (errors);
 }
 

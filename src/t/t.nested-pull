@@ -11,6 +11,41 @@
 
 set -e
 
+echo $N Set up component collisions and abort .......................$NL
+nested bing
+touch gcc/foo gdb/bar
+bk new $Q gcc/foo gdb/bar
+bk commit $Q -yfiles
+bk clone $Q . ../bang
+bk edit $Q gcc/foo gdb/bar
+echo rem > gcc/foo
+echo rem > gdb/bar
+bk delta $Q -yremote gcc/foo gdb/bar
+bk commit $Q -yremote
+cd ../bang
+bk edit $Q gcc/foo gdb/bar
+echo loc > gcc/foo
+echo loc > gdb/bar
+bk delta $Q -ylocal gcc/foo gdb/bar
+bk commit $Q -ylocal
+# Pull and abort in a component
+printf "a\ny\n" | bk pull -q 2> OUT && fail -f OUT
+sed s/=//g < OUT > GOT
+cat <<EOF > WANT
+resolve: RESYNC directory left intact.
+
+resolve: RESYNC directory left intact.
+
+Conflicts during automerge of foo
+resolve: 1 unresolved conflicts, starting manual resolve process for:
+	gcc/foo
+(content conflict) foo>> Abort patch? (y/n) 
+Aborting
+EOF
+cmpfiles WANT GOT
+cd ..
+echo OK
+
 echo $N Create an ensemble...........................................$NL
 nested project
 touch amerge
@@ -1188,4 +1223,45 @@ pull: unable to remove ./gdb
 pull: problem populating components.
 EOF
 cmpfiles WANT OUT2
+echo OK
+
+echo $N Add a new component and pull again...........................$NL
+cd "$HERE/parent"
+bk setup -f newcomp
+cd "$HERE/child"
+bk changes -v -r+ > BEFORE
+bk here > HERE_BEFORE
+bk comps -h > COMPS_BEFORE
+(echo q; echo y) | bk pull -T $Q 2>ERR && fail -f ERR
+# the pull screws up the current repo since we pull in-place
+bk repocheck $Q 2>ERR && fail you fixed a bug
+grep -q "It looks like there was a pull in progress." ERR || fail -f ERR
+bk abort -qf
+bk repocheck $Q || fail
+bk changes -v -r+ > AFTER
+bk here > HERE_AFTER
+bk comps -h > COMPS_AFTER
+cmpfiles BEFORE AFTER
+cmpfiles HERE_BEFORE HERE_AFTER
+cmpfiles COMPS_BEFORE COMPS_AFTER
+test -d newcomp && fail
+echo OK
+
+echo $N Now do it again in pull safe mode............................$NL
+bk changes -v -r+ > BEFORE
+bk here > HERE_BEFORE
+bk comps -h > COMPS_BEFORE
+(echo q; echo y) | bk pull $Q --safe 2>ERR && fail -f ERR
+# the pull screws up the current repo since we pull in-place
+bk repocheck $Q 2>ERR && fail you fixed a bug
+grep -q "It looks like there was a pull in progress." ERR || fail -f ERR
+bk abort -qf
+bk repocheck $Q || fail
+bk changes -v -r+ > AFTER
+bk here > HERE_AFTER
+bk comps -h > COMPS_AFTER
+cmpfiles BEFORE AFTER
+cmpfiles HERE_BEFORE HERE_AFTER
+cmpfiles COMPS_BEFORE COMPS_AFTER
+test -d newcomp && fail
 echo OK

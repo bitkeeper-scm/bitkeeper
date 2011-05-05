@@ -583,6 +583,20 @@ missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 			}
 		} else {
 			/*
+			 * Check for product RESYNC and if none, assume
+			 * that a full abort has been done, and just
+			 * go home quietly. buf == full path to prod resync
+			 */
+			concat_path(buf,
+			    proj_root(proj_product(0)), ROOT2RESYNC);
+			unless (exists(buf)) {
+				proj_cd2product();
+				fprintf(stderr, "Aborting\n");
+				/* exit resolve_main() */
+				longjmp(cleanup_jmp, 1000+1);
+				/* NOT REACHED */
+			}
+			/*
 			 * No RESYNC and no ChangeSet file in the product's
 			 * RESYNC?  Just verify that the key is what we
 			 * expect.
