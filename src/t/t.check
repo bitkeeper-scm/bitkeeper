@@ -687,6 +687,27 @@ bk pull $Q 2>ERR && fail -f ERR should fail
 grep -q "check: two files are committed at the same pathname" ERR || fail
 echo OK
 
+echo $N See that an unmarked delta gets marked ......................$NL
+cd "$HERE"
+commercial nomark
+touch foo
+bk new $Q foo
+bk _cp SCCS/s.foo no-mark
+bk commit $Q -yfoo
+bk _cp no-mark SCCS/s.foo
+# Okay, what's check say?
+bk -r check -ac 2> ERR && fail -f ERR
+cat << EOF > WANT
+===============================================================================
+check: foo has pending deltas but no d.file, repairing.
+===============================================================================
+foo: adding in missing csetmarks
+EOF
+cmpfiles WANT ERR
+# All fixed
+bk -r check -acf || fail
+echo OK
+
 # sgi doesn't do the waits correctly
 test "`bk gethost -r`" != "sgi.bitmover.com" && {
 

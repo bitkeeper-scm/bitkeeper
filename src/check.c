@@ -1558,7 +1558,7 @@ check(sccs *s, MDBM *idDB)
 	static	int	haspoly = -1;
 	delta	*d, *ino, *tip = 0;
 	int	errors = 0, goodkeys;
-	int	i;
+	int	i, writefile = 0;
 	char	*t, *term, *x;
 	hash	*deltas, *shortdeltas = 0;
 	char	**lines = 0;
@@ -1593,7 +1593,6 @@ check(sccs *s, MDBM *idDB)
 	    		    s->gfile, d->rev);
 		}
 
-		unless (d->flags & D_CSET) continue;
 		sccs_sdelta(s, d, buf);
 		t = 0;
 		unless (deltas && (t = hash_fetchStr(deltas, buf))) {
@@ -1603,6 +1602,7 @@ check(sccs *s, MDBM *idDB)
 			}
 		}
 		unless (t) {
+			unless (d->flags & D_CSET) continue;
 			if (MONOTONIC(s) && d->dangling) continue;
 			errors++;
 			if (stripdel) continue;
@@ -1612,6 +1612,11 @@ check(sccs *s, MDBM *idDB)
 			sccs_sdelta(s, d, buf);
 			fprintf(stderr, "\t%s -> %s\n", d->rev, buf);
 		} else {
+			unless (d->flags & D_CSET) {
+				/* auto fix always */
+				d->flags |= D_CSET;
+				writefile = 1;
+			}
 			++goodkeys;
 			unless (tip) tip = d;
 			if (verbose > 2) {
@@ -1619,6 +1624,14 @@ check(sccs *s, MDBM *idDB)
 				    s->gfile, buf);
 			}
 		}
+	}
+	if (writefile) {
+		if (getenv("_BK_DEVELOPER")) {
+			fprintf(stderr,
+			    "%s: adding in missing csetmarks\n", s->gfile);
+		}
+		sccs_newchksum(s);
+		sccs_restart(s);
 	}
 	if (errors && !goodkeys) {
 		fprintf(stderr,
