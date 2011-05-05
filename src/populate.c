@@ -104,7 +104,9 @@ nested_populate(nested *n, popts *ops)
 				vp = addLine(vp, strdup("--no-hardlinks"));
 			}
 			vp = addLine(vp, strdup("-p"));
-			vp = addLine(vp, aprintf("-r%s", cp->deltakey));
+			vp = addLine(vp,
+			    aprintf("-r%s", cp->useLowerKey ?
+				cp->lowerkey : cp->deltakey));
 			vp = addLine(vp,
 			    aprintf("-P%u/%u %s", done, ops->comps, cp->path));
 			vp = addLine(vp, remote_unparse(r));

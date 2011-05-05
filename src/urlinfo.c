@@ -413,6 +413,12 @@ urlinfo_setFromEnv(nested *n, char *url)
 	data->pcomps = hash_new(HASH_MEMHASH);
 	EACH_STRUCT(n->comps, c, i) {
 		unless (c->remotePresent) continue;
+		/*
+		 * Optimization as long as urllist is only used
+		 * for populate.  If we have local work (only set in a pull),
+		 * then don't bother checking remote for populate.
+		 * NOTE: the pull-urllist rti has this commented out:
+		 */
 		if (c->localchanges) continue;
 
 		urlinfo_addURL(n, c, url);
@@ -459,7 +465,10 @@ urlinfo_addURL(nested *n, comp *c, char *url)
 	if (strneq(url, "file://", 7)) url += 7;
 
 	data = urlinfo_fetchAlloc(n, url);
-	hash_store(data->pcomps, &c, sizeof(comp *), "1", 2);
+
+	unless (data->checkedGood) { /* we already have the official list */
+		hash_store(data->pcomps, &c, sizeof(comp *), "1", 2);
+	}
 }
 
 
@@ -524,7 +533,8 @@ urlinfo_probeURL(nested *n, char *url, FILE *out)
 	/* find deltakeys found locally */
 	fin = fmem_open();
 	EACH_STRUCT(n->comps, c, i) {
-		fprintf(fin, "%s %s\n", c->rootkey, c->deltakey);
+		fprintf(fin, "%s %s\n", c->rootkey,
+		    c->useLowerKey ? c->lowerkey: c->deltakey);
 	}
 	rewind(fin);
 	fout = fmem_open();
@@ -607,7 +617,7 @@ urlinfo_probeURL(nested *n, char *url, FILE *out)
 		data->repoID = strdup(hash_fetchStr(bkdEnv, "BKD_REPO_ID"));
 		data->checkedGood = 1;
 
-		fprintf(out, "ok\n");
+		fprintf(out, "ok%s\n", data->gate? " (gate)": "");
 	}
 out:	fclose(fout);
 	hash_free(bkdEnv);
@@ -673,4 +683,21 @@ urlinfo_fetchAlloc(nested *n, char *url)
 		data->pcomps = hash_new(HASH_MEMHASH);
 	}
 	return (data);
+}
+
+void
+urlinfo_flushCache(nested *n)
+{
+	char	*url;
+	urlinfo	*data;
+
+	EACH_HASH(n->urlinfo) {
+		url = n->urlinfo->kptr;
+		data = (urlinfo *)n->urlinfo->vptr;
+		data->checked = 0;
+		data->checkedGood = 0;
+		EACH_HASH(data->pcomps) {
+			*(char *)data->pcomps->vptr = '1';
+		}
+	}
 }

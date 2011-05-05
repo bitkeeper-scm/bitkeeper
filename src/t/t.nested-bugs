@@ -42,7 +42,7 @@ bk unpull -fs $Q || fail
 bk here rm $Q gcc 2>ERR && fail -f ERR should fail
 sed -e 's/1.2,.*/1.2/' <ERR > ERR2
 cat <<EOF > WANT
-here: searching $HERE/product...ok
+here: searching $HERE/product...ok (gate)
 here: ./gcc cannot be found at a gate
 Local changes to ./gcc found:
 ChangeSet@1.2
@@ -50,7 +50,7 @@ ChangeSet@1.2
 
 here: unable to remove ./gcc
 EOF
-cmpfiles ERR2 WANT
+cmpfiles WANT ERR2
 echo 'failed (bug commit prunes urllist)'
 
 echo $N Demo Zahy\'s question ........................................$NL

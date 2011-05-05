@@ -918,10 +918,10 @@ perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
 cat <<EOF > WANT
 .                                  100% |==============================| OK
 pull: unable to remove ./C, it contains csets not committed in product.
-pull: searching ROOT/copy4...ok
+pull: searching ROOT/copy4...ok (gate)
 pull: problem populating components.
 EOF
-cmpfiles ERR2 WANT
+cmpfiles WANT ERR2
 bk abort -qf
 # Remove the local work in C for the subsequent tests.
 cd C
@@ -940,7 +940,8 @@ bk pull 2>ERR >OUT || fail -f ERR
 perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
 cat <<EOF > WANT
 .                                  100% |==============================| OK
-pull: searching ROOT/copy4...ok
+pull: searching ROOT/copy2...ok (gate)
+pull: searching ROOT/copy4...ok (gate)
 1/3 A                              100% |==============================| OK
 pull: searching ROOT/copy1...ok
 Source ROOT/copy1
@@ -949,7 +950,7 @@ pull: removing ./D...done
 pull: removing ./C...done
 3/3 .                                1 changeset,   no merges in   2 files
 EOF
-cmpfiles WANT ERR2
+cmpfiles ERR2 WANT
 
 bk comps -h | bk _sort > OUT
 cat <<EOF > WANT
@@ -968,13 +969,14 @@ bk pull 2>ERR > OUT && fail -f ERR
 perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
 cat << EOF > WANT
 .                                  100% |==============================| OK
-pull: searching ROOT/copy4...ok
+pull: searching ROOT/copy2...ok (gate)
+pull: searching ROOT/copy4...ok (gate)
 1/3 A                              100% |==============================| OK
 pull: searching ROOT/copy1...ok
 pull: No other sources for ./B known
 pull: problem populating components.
 EOF
-cmpfiles ERR2 WANT
+cmpfiles WANT ERR2
 
 bk comps -h | bk _sort > OUT
 cat <<EOF > WANT
@@ -994,12 +996,13 @@ bk pull 2>ERR > OUT && fail -f ERR
 perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
 cat << EOF > WANT
 .                                  100% |==============================| OK
+pull: searching ROOT/copy2...ok (gate)
 pull: searching ROOT/copy4...repo gone
 pull: ./D cannot be found at a gate
 pull: unable to remove ./D
 pull: problem populating components.
 EOF
-cmpfiles ERR2 WANT
+cmpfiles WANT ERR2
 
 bk comps -h | bk _sort > OUT
 cat <<EOF > WANT
@@ -1050,4 +1053,139 @@ bk pull $Q > OUT 2>&1 && fail should have failed
 grep -q "The following files are modified locally and " OUT || fail -f OUT
 bk unedit gcc/foo
 bk pull $Q || fail should have worked
+echo OK
+
+echo $N Pull remote and local change into missing-to-pop comp .......$NL
+cd "$HERE"
+bk _rm -rf project copy
+nested project
+bk gate $Q -r
+bk portal $Q -r
+bk alias set $Q COMPS ./gcc
+touch gdb/foo
+bk new $Q gdb/foo
+bk commit $Q -yfoo
+bk clone $Q -sCOMPS . ../copy
+bk clone $Q -sALL . ../backup
+bk undo $Q -sfr+
+touch gcc/bar gdb/bar
+bk new $Q gcc/bar gdb/bar
+bk commit $Q -yfoo
+cd ../copy
+bk here check -q@../backup || fail
+bk pull --auto-populate >OUT 2>&1 || fail -f OUT
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > OUT2
+cat <<EOF >WANT
+Pull file://ROOT/project
+  -> file://ROOT/copy
+.                                  100% |==============================| OK
+
+The following components are present in the remote, were not
+found in any gates, and will need to be populated to make
+the pull safe:
+	gdb
+Adding the following aliases/components:
+	ALL
+pull: searching ROOT/backup...ok
+Source ROOT/backup
+1/4 gdb                            100% |==============================| OK
+2/4 gcc                              1 changeset,   no merges in   3 files
+3/4 gdb                              1 changeset,    2 merges in   3 files
+4/4 .                                1 changeset,    1 merge  in   1 file
+EOF
+cmpfiles WANT OUT2
+echo OK
+
+echo $N Pull with local change into missing-to-pop comp .............$NL
+bk unpull $Q -sf
+bk here set $Q --unsafe COMPS
+cd ../project
+bk undo $Q -sfr+
+bk alias add $Q COMPS ./gdb
+cd ../copy
+bk pull >OUT 2>&1 || fail -f OUT
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > OUT2
+cat <<EOF >WANT
+Pull file://ROOT/project
+  -> file://ROOT/copy
+.                                  100% |==============================| OK
+pull: searching ROOT/project...ok
+pull: searching ROOT/backup...ok
+Source ROOT/backup
+1/2 gdb                            100% |==============================| OK
+2/2 .                                1 changeset,    1 merge  in   2 files
+EOF
+cmpfiles WANT OUT2
+echo OK
+
+echo $N Pull with local change does not get confused by gates........$NL
+bk unpull $Q -sf
+bk here set $Q --unsafe ./gcc
+cd ../project
+touch gcc/bar gdb/bar
+bk new $Q gcc/bar gdb/bar
+bk commit $Q -ybar
+cd ../backup
+bk gate $Q .
+cd ../copy
+bk here check -q@../backup || fail
+bk pull --auto-populate ../project >OUT 2>&1 || fail -f OUT
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > OUT2
+cat <<EOF >WANT
+Pull file://ROOT/project
+  -> file://ROOT/copy
+.                                  100% |==============================| OK
+pull: searching ROOT/backup...ok (gate)
+
+The following components are present in the remote, were not
+found in any gates, and will need to be populated to make
+the pull safe:
+	gdb
+Adding the following aliases/components:
+	ALL
+pull: searching ROOT/backup...ok (gate)
+Source ROOT/backup
+1/4 gdb                            100% |==============================| OK
+2/4 gcc                              1 changeset,   no merges in   3 files
+3/4 gdb                              1 changeset,    2 merges in   3 files
+4/4 .                                2 changesets,   1 merge  in   2 files
+EOF
+cmpfiles WANT OUT2
+echo OK
+
+echo $N Pull that unpopulates does not lose local work ..............$NL
+# Not a severe bug as the set-up has to color outside the lines by
+# rolling back a gate.  On the other hand, it does check.
+bk here set $Q --unsafe COMPS
+# set up the unpopulate
+bk --cd=../project alias rm $Q COMPS ./gdb
+# set up local work that is in a gate
+bk pull $Q ../backup
+bk edit $Q gdb/bar
+bk delta $Q -fyempty gdb/bar
+bk commit $Q -ylocal-gdb-work
+bk push $Q ../backup
+# color outside of the lines - remove local work from gate
+cd ../backup
+bk gate $Q -r
+bk undo $Q -sfr+
+bk gate $Q .
+cd ../copy
+bk pull ../project >OUT 2>&1 && fail -f OUT
+perl -pe "s/.*\r//;s,$HERE,ROOT,;s/,.*,/, DATE TIME,/" < OUT > OUT2
+cat <<EOF >WANT
+Pull file://ROOT/project
+  -> file://ROOT/copy
+.                                  100% |==============================| OK
+pull: searching ROOT/backup...ok (gate)
+pull: searching ROOT/backup...ok (gate)
+pull: ./gdb cannot be found at a gate
+Local changes to ./gdb found:
+ChangeSet@1.4, DATE TIME, bk@bk_regression.bk
+  local-gdb-work
+
+pull: unable to remove ./gdb
+pull: problem populating components.
+EOF
+cmpfiles WANT OUT2
 echo OK
