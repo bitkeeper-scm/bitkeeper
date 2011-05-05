@@ -1754,6 +1754,7 @@ pass3_resolve(opts *opts)
 	int	n = 0, i;
 	int	mustCommit = 0, pc, pe;
 	project	*proj;
+	char	*prefix;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
 	opts->pass = 3;
@@ -1894,9 +1895,15 @@ err:		unless (opts->autoOnly) {
 		    "resolve: %d unresolved conflicts, "
 		    "starting manual resolve process for:\n",
 		    opts->hadConflicts);
-		EACH(opts->notmerged) {
-			fprintf(stderr, "\t%s\n", opts->notmerged[i]);
+		if (proj_comppath(0)) {
+			prefix = aprintf("%s/", proj_comppath(0));
+		} else {
+			prefix = strdup("");
 		}
+		EACH(opts->notmerged) {
+			fprintf(stderr, "\t%s%s\n", prefix, opts->notmerged[i]);
+		}
+		free(prefix);
 		freeLines(opts->notmerged, free);
 		opts->notmerged = 0;
 		chdir(RESYNC2ROOT);
