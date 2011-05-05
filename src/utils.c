@@ -1675,7 +1675,9 @@ rmdir_findprocs(void)
 		for (j = 0; j < WAIT; ++j) {
 			usleep(500000);
 			if ((c = readlink(buf1, buf2, sizeof(buf2))) < 0) break;
-			if (j == 20) ttyprintf("Waiting for %s\n", buf1);
+			if ((j == 20) && getenv("_BK_DEBUG_BG")) {
+				ttyprintf("Waiting for %s\n", buf1);
+			}
 		}
 		/* we know they are gone if we broke out early */
 		if (j < WAIT) continue;
