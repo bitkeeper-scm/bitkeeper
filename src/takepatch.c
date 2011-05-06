@@ -973,9 +973,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		/* passing in d = parent, setting d = new or existing */
 		if (d = cset_insert(s, iF, dF, d, opts->fast)) {
 			(*nfound)++;
-			p->serial = d->serial;
+			p->serial = SERIAL(s, d);
 			if ((d->flags & D_REMOTE) && SYMGRAPH(d)) {
-				remote_tagtip = d->serial;
+				remote_tagtip = SERIAL(s, d);
 			}
 		}
 		p = p->next;
@@ -1001,7 +1001,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			debug((stderr,
 				"takepatch: adding leaf to tag "
 				"delta %s (serial %d)\n",
-				REV(s, d), d->serial));
+				REV(s, d), SERIAL(s, d)));
 		}
 	}
 	if (opts->port) for (d = 0, p = patchList; p; p = p->next) {
@@ -1322,7 +1322,7 @@ applyPatch(char *localPath, sccs *perfile)
 
 				sccs_sdelta(s, e, k);
 				fprintf(stderr, "STRIP %s/%u/%c %s\n",
-				    REV(s, e), e->serial,
+				    REV(s, e), SERIAL(s, e),
 				    TAG(e) ? 'R' : 'D',
 				    k);
 			}

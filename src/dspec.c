@@ -625,7 +625,7 @@ again:
 		} else {
 			--state->sym;
 		}
-		while ((state->sym > g.s->symlist) && (g.d->serial !=
+		while ((state->sym > g.s->symlist) && (SERIAL(g.s, g.d) !=
 		    (g.s->prs_all ? state->sym->meta_ser : state->sym->ser))) {
 			--state->sym;
 		}

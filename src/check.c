@@ -1234,7 +1234,7 @@ color_merge(sccs *s, delta *d)
 	assert(d->merge);	/* only works on merge */
 	d->flags |= (D_BLUE|D_RED);
 	range_walkrevs(s, MERGE(s, d), 0, PARENT(s, d), WR_BOTH, 0, 0);
-	return (s->rstart->serial);
+	return (SERIAL(s, s->rstart));
 }
 
 /*

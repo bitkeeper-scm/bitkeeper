@@ -422,7 +422,7 @@ setMerge(sccs *sc, char *merge, char *rev)
 		    merge, sc->sfile);
 		return -1;
 	}
-	d->merge = p->serial;
+	d->merge = SERIAL(sc, p);
 	return 0;
 }
 
@@ -457,9 +457,9 @@ rootCsetFile(sccs *sc, char *csetFile)
 	sccs_parseArg(sc, d, 'B', csetFile, 0);
 	new_cf = d->csetFile;
 	d->flags |= D_RED;
-	last = d->serial;
+	last = SERIAL(sc, d);
 
-	for (i = d->serial+1; i < sc->nextserial; ++i) {
+	for (i = last+1; i < sc->nextserial; ++i) {
 		unless (d = SFIND(sc, i)) continue;
 		unless (p = PARENT(sc, d)) continue;
 		unless (p->flags & D_RED) continue;

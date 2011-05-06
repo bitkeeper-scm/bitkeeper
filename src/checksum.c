@@ -510,7 +510,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		added = 0;
 		for (i = 0; i < cnt; i++) {
 			ser_t	ser;
-			ser_t	want = d->serial;
+			ser_t	want = SERIAL(s, d);
 
 			sse = map[i]->data + map[i]->last;
 			while ((sse > map[i]->data) && (sse[-1].ser <= want)) {

@@ -513,7 +513,7 @@ sccs_kid(sccs *s, delta *d)
 	delta	*e, *first = 0;
 
 	for (e = d + 1; e <= s->table; e++) {
-		if (e->serial && !TAG(e) && (e->pserial == d->serial)) {
+		if (e->flags && !TAG(e) && (e->pserial == SERIAL(s, d))) {
 			if (samebranch(d, e)) return (e);
 			unless (first) first = e;
 		}
@@ -532,23 +532,23 @@ sccs_mkKidList(sccs *s)
 	FREE(s->kidlist);
 	growArray(&s->kidlist, s->nextserial);
 	EACHP(s->slist, d) {
-		unless (d->serial && !TAG(d)) continue;
+		unless (d->flags && !TAG(d)) continue;
 		unless (p = PARENT(s, d)) continue;
 
-		pk = s->kidlist + p->serial;
+		pk = s->kidlist + SERIAL(s, p);
 		if (!pk->kid) {
-			pk->kid = d->serial;
+			pk->kid = SERIAL(s, d);
 
 		} else if (samebranch(p, KID(s, p))) { /* in right place */
 			/*
 			 * If there are siblings, add d at the end.
 			 */
 			for (e = KID(s, p); SIBLINGS(s, e); e = SIBLINGS(s, e));
-			s->kidlist[e->serial].siblings = d->serial;
+			s->kidlist[SERIAL(s, e)].siblings = SERIAL(s, d);
 		} else {
 			/* else not in right place, put the new delta there. */
-			s->kidlist[d->serial].siblings = pk->kid;
-			pk->kid = d->serial;
+			s->kidlist[SERIAL(s, d)].siblings = pk->kid;
+			pk->kid = SERIAL(s, d);
 		}
 	}
 }
@@ -569,13 +569,11 @@ dinsert(sccs *s, delta *d, int fixDate)
 
 	/* copy delta* into s->slist */
 	unless (INARRAY(d)) {
-		assert(!d->serial);
 		p = addArray(&s->slist, d);
 		free(d); /* not sccs_freedelta(); just free the mem */
 		d = p;
 		d->flags |= D_INARRAY;
-		d->serial = nLines(s->slist); /* nextserial on autopilot */
-		s->nextserial = d->serial + 1;	/* until we get rid of it */
+		s->nextserial = SERIAL(s, d) + 1; /* until we get rid of it */
 	}
 	s->table = s->slist + nLines(s->slist);
 	if (s->tree) {
@@ -605,7 +603,7 @@ sfind(sccs *s, ser_t serial)
 	delta	*d;
 
 	assert(serial <= s->nextserial);
-	if (s->slist && (d = SFIND(s, serial)) && d->serial) return (d);
+	if (s->slist && (d = SFIND(s, serial)) && d->flags) return (d);
 	return (0);
 }
 
@@ -1439,7 +1437,7 @@ rfind(sccs *s, char *rev)
 	scanrev(rev, &R[0], &R[1], &R[2], &R[3]);
 	debug((stderr, "aka %d.%d.%d.%d\n", R[0], R[1], R[2], R[3]));
 	for (d = s->table; d; d = NEXT(d)) {
-		unless (d->serial && !TAG(d)) continue;
+		unless (d->flags && !TAG(d)) continue;
 		if (samerev(d->r, R)) return (d);
 	}
 	return (0);
@@ -1748,8 +1746,8 @@ ok:
 	 * Because the kid may be a branch, we have to be extra careful here.
 	 */
 	for (t = e+1; t <= s->table; t++) {
-		unless (t->serial && !TAG(t)) continue;
-		if ((t->pserial == e->serial) && samebranch(t, e)) break;
+		unless (t->flags && !TAG(t)) continue;
+		if ((t->pserial == SERIAL(s, e)) && samebranch(t, e)) break;
 	}
 	if (t > s->table) {	/* no more kids of e */
 		a = e->r[0];
@@ -1786,7 +1784,7 @@ ok:
 
 		for (t = e; isbranch(t); t = PARENT(s, t));
 		R[0] = t->r[0]; R[1] = t->r[1]; R[2] = 1; R[3] = 1;
-again:		for (a = t->serial+1; a < s->nextserial; a++) {
+again:		for (a = SERIAL(s, t)+1; a < s->nextserial; a++) {
 			if (samerev(s->slist[a].r, R)) {
 				/* found X.Y.Z.1 branch, try another */
 				++R[2];
@@ -2343,7 +2341,7 @@ symGraph(sccs *s, delta *d)
 	if (SYMGRAPH(d)) return;
 	for (p = s->table; p && !SYMLEAF(p); p = NEXT(p));
 	if (p) {
-		d->ptag = p->serial;
+		d->ptag = SERIAL(s, p);
 		p->flags &= ~D_SYMLEAF;
 	}
 	d->flags |= D_SYMGRAPH | D_SYMLEAF;
@@ -2391,7 +2389,7 @@ sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 		unless (SYMLEAF(d)) continue;
 		sym = 0;
 		EACHP_REVERSE(s->symlist, iter) {
-			if (iter->meta_ser == d->serial) {
+			if (iter->meta_ser == SERIAL(s, d)) {
 				sym = iter;
 				break;
 			}
@@ -2714,12 +2712,12 @@ checktags(sccs *s, delta *leaf, int flags)
 	unless (e = sfind(s, d->ptag)) {
 		verbose((stderr,
 		    "Cannot find serial %u, tag parent for %s:%u, in %s\n",
-			d->ptag, REV(s, d), d->serial, s->gfile));
+			d->ptag, REV(s, d), SERIAL(s, d), s->gfile));
 	} else {
 		assert(d->mtag);
 		verbose((stderr,
 		    "Cannot find serial %u, tag parent for %s:%u, in %s\n",
-			d->mtag, REV(s, d), d->serial, s->gfile));
+			d->mtag, REV(s, d), SERIAL(s, d), s->gfile));
 	}
 	return (1);
 }
@@ -2917,7 +2915,7 @@ sccs_prev(sccs *s, delta *d)
 {
 	unless (s && d) return (0);
 	for (d = d+1; d <= s->table; d++) {
-		if (d->serial) return (d);
+		if (d->flags) return (d);
 	}
 	return (0);
 }
@@ -2929,10 +2927,10 @@ sccs_prev(sccs *s, delta *d)
 delta *
 slist_next(delta *d)
 {
-	if (d->serial <= 1) return (0);
+	unless (d->pserial) return (0);
 	while (1) {
 		--d;
-		if (d->serial) return (d);
+		if (d->flags) return (d);
 	}
 }
 
@@ -3042,7 +3040,6 @@ first:		if (streq(buf, "\001u")) break;
 		s->numdeltas++;
 		d = t;
 		d->flags |= D_INARRAY;
-		d->serial = serial;
 		d->added = added;
 		d->deleted = deleted;
 		d->same = same;
@@ -3086,14 +3083,14 @@ first:		if (streq(buf, "\001u")) break;
 				p = &buf[3];
 				while (q = eachstr(&p, &i)) {
 					sccs_saveNum(
-					    fcludes, atoi(q), 1, d->serial);
+					    fcludes, atoi(q), 1);
 				}
 				break;
 			    case 'x':
 				p = &buf[3];
 				while (q = eachstr(&p, &i)) {
 					sccs_saveNum(
-					    fcludes, atoi(q), -1, d->serial);
+					    fcludes, atoi(q), -1);
 				}
 				break;
 			    case 'g':
@@ -3170,18 +3167,22 @@ done:		if (CSET(s) && TAG(d) &&
 	    	s->file = 1;
     	}
 	EACHP(s->slist, d) {
-		unless (d->serial) continue;
+		unless (d->flags) continue;
 
 		sccs_inherit(s, d);
-		d->date = date2time(dates[d->serial], ZONE(s, d), EXACT) +
+		d->date = date2time(dates[SERIAL(s, d)], ZONE(s, d), EXACT) +
 		    d->dateFudge;
 #define	PARANOID
 #ifdef	PARANOID
 		/*
 		 * adds about 10% to the mkgraph() time, but helps
 		 * sanity
+		 * The funky number is because a very old version of rcs2bk
+		 * would use a rootkey of 70/01/01 03:09:62
 		 */
-		assert(streq(delta_sdate(s, d), dates[d->serial]));
+		if (d->date != 11399) {
+			assert(streq(delta_sdate(s, d), dates[SERIAL(s, d)]));
+		}
 #endif
 	}
 	free(dates);
@@ -3367,19 +3368,19 @@ addsym(sccs *s, delta *metad, int graph, char *val)
 	 * If graph, it means this is a new symgraph entry and duplicate
 	 * tags should be rejected.
 	 */
-	if (graph && (sym = findSym(s, val)) && (d->serial == sym->ser)) {
+	if (graph && (sym = findSym(s, val)) && (SERIAL(s, d) == sym->ser)) {
 		return (1);
 	}
 
 	EACH_REVERSE(s->symlist) {
-		if (s->symlist[i].meta_ser <= metad->serial) break;
+		if (s->symlist[i].meta_ser <= SERIAL(s, metad)) break;
 	}
 	/* insert after the node found */
 	sym = insertArrayN(&s->symlist, i+1, 0);
 	assert(sym);
 	sym->symname = sccs_addUniqStr(s, val);
-	sym->ser = d->serial;
-	sym->meta_ser = metad->serial;
+	sym->ser = SERIAL(s, d);
+	sym->meta_ser = SERIAL(s, metad);
 	d->flags |= D_SYMBOLS;
 	metad->flags |= D_SYMBOLS;
 
@@ -4998,7 +4999,7 @@ getserlist(sccs *sc, int isSer, char *s, int *ep)
 		return (l);
 	}
 	for (t = walkList(sc, s, ep); !*ep && t; t = walkList(sc, 0, ep)) {
-		l = addSerial(l, t->serial);
+		l = addSerial(l, SERIAL(sc, t));
 	}
 	return (l);
 }
@@ -5017,9 +5018,8 @@ setmap(sccs *s, int bit, int all)
 
 	for (t = s->table; t; t = NEXT(t)) {
 		unless (all || !TAG(t)) continue;
- 		assert(t->serial <= s->nextserial);
 		if (t->flags & bit) {
-			slist[t->serial] = 1;
+			slist[SERIAL(s, t)] = 1;
 		}
 	}
 	return (slist);
@@ -5085,6 +5085,7 @@ compressmap(sccs *s, delta *d, u8 *set, int useSer, void **inc, void **exc)
 	int	i, sign;
 	int	active;
 	ser_t	*incser = 0, *excser = 0;
+	ser_t	tser;
 
 	assert(d);
 	assert(set);
@@ -5094,15 +5095,14 @@ compressmap(sccs *s, delta *d, u8 *set, int useSer, void **inc, void **exc)
 	slist = calloc(s->nextserial, sizeof(u8));
 	assert(slist);
 
-	slist[d->serial] = S_PAR;	/* seed the ancestor thread */
+	slist[SERIAL(s, d)] = S_PAR;	/* seed the ancestor thread */
 
 	for (t = s->table; t; t = NEXT(t)) {
 		if (TAG(t)) continue;
-
- 		assert(t->serial <= s->nextserial);
+		tser = SERIAL(s, t);
 
 		/* Set up parent ancestory for this node */
-		if ((slist[t->serial] & S_PAR) && t->pserial) {
+		if ((slist[tser] & S_PAR) && t->pserial) {
 			slist[t->pserial] |= S_PAR;
 #ifdef MULTIPARENT
 			if (t->merge) slist[t->merge] |= S_PAR;
@@ -5110,29 +5110,29 @@ compressmap(sccs *s, delta *d, u8 *set, int useSer, void **inc, void **exc)
 		}
 
 		/* if a parent and not excluded, or if included */
-		active = (((slist[t->serial] & (S_PAR|S_EXCL)) == S_PAR)
-		     || slist[t->serial] & S_INC);
+		active = (((slist[tser] & (S_PAR|S_EXCL)) == S_PAR)
+		    || slist[tser] & S_INC);
 
 		/* exclude if active in delta set and not in desired set */
-		if (active && !set[t->serial]) {
+		if (active && !set[tser]) {
 			if (useSer) {
-				excser = addSerial(excser, t->serial);
+				excser = addSerial(excser, tser);
 			} else {
 				exclen += insertstr(&exclist, REV(s, t));
 			}
 		}
-		unless (set[t->serial])  continue;
+		unless (set[tser])  continue;
 
 		/* include if not active in delta set and in desired set */
 		if (!active) {
 			if (useSer) {
-				incser = addSerial(incser, t->serial);
+				incser = addSerial(incser, tser);
 			} else {
 				inclen += insertstr(&inclist, REV(s, t));
 			}
 		}
 		p = CLUDES(s, t);
-		while (i = sccs_eachNum(&p, &sign, t->serial)) {
+		while (i = sccs_eachNum(&p, &sign)) {
 			unless(slist[i] & (S_INC|S_EXCL)) {
 				slist[i] |= (sign > 0) ? S_INC : S_EXCL;
 			}
@@ -5169,6 +5169,7 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 	delta	*t, *start = d;
 	char	*p;
 	int	i, sign;
+	ser_t	tser;
 
 	assert(d);
 
@@ -5181,9 +5182,8 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 		for (t = walkList(s, iLst, errp);
 		    !*errp && t; t = walkList(s, 0, errp)) {
 			debug((stderr, " %s", t->rev));
-			assert(t->serial <= s->nextserial);
-			slist[t->serial] = S_INC;
-			if (t->serial > start->serial) start = t;
+			slist[SERIAL(s, t)] = S_INC;
+			if (t > start) start = t;
  		}
 		debug((stderr, "\n"));
 		if (*errp) goto bad;
@@ -5193,14 +5193,13 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 		debug((stderr, "Excluded:"));
 		for (t = walkList(s, xLst, errp);
 		    !*errp && t; t = walkList(s, 0, errp)) {
-			assert(t->serial <= s->nextserial);
 			debug((stderr, " %s", t->rev));
-			if (slist[t->serial] == S_INC)
+			if (slist[SERIAL(s, t)] == S_INC)
 				*errp = 3;
 			else {
-				slist[t->serial] = S_EXCL;
+				slist[SERIAL(s, t)] = S_EXCL;
 			}
-			if (t->serial > start->serial) start = t;
+			if (t > start) start = t;
  		}
 		debug((stderr, "\n"));
 		if (*errp) goto bad;
@@ -5216,15 +5215,14 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 	 */
 
 	/* Seed the graph thread */
-	slist[d->serial] |= S_PAR;
+	slist[SERIAL(s, d)] |= S_PAR;
 
 	for (t = start; t; t = NEXT(t)) {
 		if (TAG(t)) continue;
-
- 		assert(t->serial <= s->nextserial);
+		tser = SERIAL(s, t);
 
 		/* Set up parent ancestory for this node */
-		if ((slist[t->serial] & S_PAR) && t->pserial) {
+		if ((slist[tser] & S_PAR) && t->pserial) {
 			slist[t->pserial] |= S_PAR;
 #ifdef MULTIPARENT
 			if (t->merge) slist[t->merge] |= S_PAR;
@@ -5232,19 +5230,20 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 		}
 
 		/* if an ancestor and not excluded, or if included */
-		if ( ((slist[t->serial] & (S_PAR|S_EXCL)) == S_PAR)
-		     || slist[t->serial] & S_INC) {
-			slist[t->serial] = 1;
+		if ( ((slist[tser] & (S_PAR|S_EXCL)) == S_PAR)
+		     || slist[tser] & S_INC) {
+
+			slist[tser] = 1;
 			p = CLUDES(s, t);
-			while (i = sccs_eachNum(&p, &sign, t->serial)) {
+			while (i = sccs_eachNum(&p, &sign)) {
 				unless(slist[i] & (S_INC|S_EXCL)) {
 					slist[i] |=
 					    (sign > 0) ? S_INC : S_EXCL;
 				}
 			}
+		} else {
+			slist[tser] = 0;
 		}
-		else
-			slist[t->serial] = 0;
 	}
 	return (slist);
 bad:	free(slist);
@@ -5674,6 +5673,7 @@ sccs_impliedList(sccs *s, char *who, char *base, char *rev)
 	u8	*slist = 0;
 	char	*p;
 	int	i, sign;
+	ser_t	tser;
 
 	/* XXX: This can go away when serialmap does this directly
 	 */
@@ -5697,16 +5697,15 @@ err:		s->state |= S_WARNED;
 
 	slist = calloc(s->nextserial, sizeof(u8));
 
-	slist[baseRev->serial] = S_PAR;
-	slist[mRev->serial] = S_PAR;
+	slist[SERIAL(s, baseRev)] = S_PAR;
+	slist[SERIAL(s, mRev)] = S_PAR;
 
 	for (t = s->table; t; t = NEXT(t)) {
 		if (TAG(t)) continue;
-
- 		assert(t->serial < s->nextserial);
+		tser = SERIAL(s, t);
 
 		/* Set up parent ancestory for this node */
-		if ((slist[t->serial] & S_PAR) && t->pserial) {
+		if ((slist[tser] & S_PAR) && t->pserial) {
 			slist[t->pserial] |= S_PAR;
 #ifdef MULTIPARENT
 			if (t->merge) slist[t->merge] |= S_PAR;
@@ -5714,16 +5713,16 @@ err:		s->state |= S_WARNED;
 		}
 
 		/* if a parent and not excluded, or if included */
-		active = (((slist[t->serial] & (S_PAR|S_EXCL)) == S_PAR)
-		     || slist[t->serial] & S_INC);
+		active = (((slist[tser] & (S_PAR|S_EXCL)) == S_PAR)
+		     || slist[tser] & S_INC);
 
 		unless (active) {
-			slist[t->serial] = 0;
+			slist[tser] = 0;
 			continue;
 		}
-		slist[t->serial] = 1;
+		slist[tser] = 1;
 		p = CLUDES(s, t);
-		while (i = sccs_eachNum(&p, &sign, t->serial)) {
+		while (i = sccs_eachNum(&p, &sign)) {
 			unless(slist[i] & (S_INC|S_EXCL)) {
 				slist[i] |= (sign > 0) ? S_INC : S_EXCL;
 			}
@@ -6400,13 +6399,13 @@ write:
 			unless (flags & NEWCKSUM) {
 				/* don't recalc add/del/same unless CKSUM */
 			}
-			else if (print == d->serial) {
+			else if (print == SERIAL(s, d)) {
 				counter = &added;
 			}
 			else if (print) {
 				counter = &same;
 			}
-			else if (delstate(d->serial, state, slist)) {
+			else if (delstate(SERIAL(s, d), state, slist)) {
 				counter = &deleted;
 			}
 			else {
@@ -6926,7 +6925,7 @@ prefix(sccs *s, delta *d, u32 flags, int lines, char *name, FILE *out)
 			fprintf(out, "%-*s ", s->revLen, REV(s, d));
 		}
 		if (flags&GET_LINENUM) fprintf(out, "%6d ", lines);
-		if (flags&GET_SERIAL) fprintf(out, "%6d ", d->serial);
+		if (flags&GET_SERIAL) fprintf(out, "%6d ", SERIAL(s, d));
 		/* XXX GET_MD5KEY  */
 	} else {
 		/* tab style */
@@ -6947,7 +6946,7 @@ prefix(sccs *s, delta *d, u32 flags, int lines, char *name, FILE *out)
 			fprintf(out, "%s\t", key);
 		}
 #endif
-		if (flags&GET_SERIAL) fprintf(out, "%d\t", d->serial);
+		if (flags&GET_SERIAL) fprintf(out, "%d\t", SERIAL(s, d));
 	}
 }
 
@@ -7139,7 +7138,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	tmppat = aprintf("%s-%d", basenm(s->gfile), d->serial);
+	tmppat = aprintf("%s-%d", basenm(s->gfile), SERIAL(s, d));
 	tmpfile = bktmp(0, tmppat);
 	free(tmppat);
 	openOutput(s, encoding, printOut, &out);
@@ -7160,7 +7159,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 			debug2((stderr, "%s", buf));
 			serial = atoi(&buf[3]);
 			if (buf[1] == 'E' && serial == with &&
-			    serial == d->serial)
+			    serial == SERIAL(s, d))
 			{
 				char	*n = &buf[3];
 				while (isdigit(*n)) n++;
@@ -7168,10 +7167,10 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 			}
 			state = changestate(state, buf[1], serial);
 			with = printstate(state, slist);
-			old = slist[d->serial];
-			slist[d->serial] = 0;
+			old = slist[SERIAL(s, d)];
+			slist[SERIAL(s, d)] = 0;
 			without = printstate(state, slist);
-			slist[d->serial] = old;
+			slist[SERIAL(s, d)] = old;
 
 			nextside = with ? (without ? BOTH : RIGHT)
 					: (without ? LEFT : NEITHER);
@@ -7278,7 +7277,7 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 		 * history of non patch nodes
 		 */
 		for (d = s->table; d; d = NEXT(d)) {
-			unless (pmap[d->serial]) continue;
+			unless (pmap[SERIAL(s, d)]) continue;
 			if (d->pserial && !pmap[d->pserial]) {
 				pmap[d->pserial] = ~0;
 			}
@@ -7298,7 +7297,7 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 			serial = atoi_p(&n);
 			d = sfind(s, serial);
 			assert(d);
-			if (pmap[d->serial] && (pmap[d->serial] != ~0)) {
+			if (pmap[serial] && (pmap[serial] != ~0)) {
 				patchcmd = type;
 				if (*n == 'N') {
 					assert(type == 'E');
@@ -7307,14 +7306,14 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 				/* yes, I know ?: isn't needed */
 				fprintf(out, "%c%u %u\n",
 				    patchcmd,
-				    pmap[d->serial],
+				    pmap[serial],
 				    (lineno + ((type == 'D') ? 1 : 0)));
 			}
 			state = changestate(state, type, serial);
 			if (track = whatstate(state)) {
 				d = sfind(s, track);
 				assert(d);
-				if (track = pmap[d->serial]) {
+				if (track = pmap[track]) {
 					print = (track != ~0);
 				}
 			}
@@ -7628,7 +7627,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		*p++ = ' ';
 		p = fmts(p, USER(s, d));
 		*p++ = ' ';
-		p = fmtd(p, d->serial);
+		p = fmtd(p, SERIAL(s, d));
 		*p++ = ' ';
 		p = fmtd(p, d->pserial);
 		*p++ = '\n';
@@ -7638,7 +7637,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			/* include */
 			p = 0;
 			t = CLUDES(s, d);
-			while (i = sccs_eachNum(&t, &sign, d->serial)) {
+			while (i = sccs_eachNum(&t, &sign)) {
 				unless (sign > 0) continue;
 				unless (p) p = fmts(buf, "\001i");
 				*p++ = ' ';
@@ -7651,7 +7650,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			/* exclude */
 			p = 0;
 			t = CLUDES(s, d);
-			while (i = sccs_eachNum(&t, &sign, d->serial)) {
+			while (i = sccs_eachNum(&t, &sign)) {
 				unless (sign < 0) continue;
 				unless (p) p = fmts(buf, "\001x");
 				*p++ = ' ';
@@ -7778,8 +7777,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 		if (d->flags & D_SYMBOLS) {
 			for (; sym != s->symlist; --sym) {
-				if (sym->meta_ser < d->serial) break;
-				unless (sym->meta_ser == d->serial) continue;
+				if (sym->meta_ser < SERIAL(s, d)) break;
+				unless (sym->meta_ser == SERIAL(s, d)) continue;
 				if (!strip_tags || 
 				    streq(KEY_FORMAT2, SYMNAME(s, sym))) {
 					p = fmts(buf, "\001cS");
@@ -9258,7 +9257,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		first = n0 = dinsert(s, n0, fixDate && !(flags & DELTA_PATCH));
 
 		n = prefilled ? prefilled : new(delta);
-		n->pserial = n0->serial;
+		n->pserial = 1;
 	}
 	assert(n);
 	if (!nodefault && buf[0]) pathArg(s, n, buf); /* pathname */
@@ -9360,7 +9359,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		}
 	}
 	/* need to recover 'first' after a possible malloc */
-	i = first->serial;
+	i = (first == n) ? 0 : SERIAL(s, first);
 	n = dinsert(s, n, fixDate && !(flags & DELTA_PATCH));
 	first = i ? SFIND(s, i) : n;
 	s->numdeltas++;
@@ -9502,18 +9501,20 @@ checkdups(sccs *s)
 	delta	*d;
 	datum	k, v;
 	char	c = 0;
+	ser_t	ser;
 
 	db = mdbm_open(NULL, 0, 0, 0);
 	v.dsize = sizeof(ser_t);
 	for (d = s->table; d; d = NEXT(d)) {
 		if (TAG(d)) continue;
+		ser = SERIAL(s, d);
 		k.dptr = (void*)d->r;
 		k.dsize = sizeof(d->r);
-		v.dptr = (void*)&d->serial;
+		v.dptr = (void*)&ser;
 		if (mdbm_store(db, k, v, MDBM_INSERT)) {
 			v = mdbm_fetch(db, k);
 			fprintf(stderr, "%s: %s in use by serial %d and %d.\n",
-			    s->sfile, REV(s, d), d->serial, *(ser_t*)v.dptr);
+			    s->sfile, REV(s, d), ser, *(ser_t*)v.dptr);
 			c = 1;
 		}
 	}
@@ -9534,11 +9535,11 @@ isleaf(register sccs *s, register delta *d)
 	 */
 	assert(d->r[0] == 1);
 	for (t = d+1; t <= s->table; t++) {
-		unless (t->serial && !(t->flags & D_GONE)) continue;
+		unless (t->flags && !(t->flags & D_GONE)) continue;
 		if (TAG(t)) continue;
 
-		if ((t->pserial == d->serial) ||
-		    (t->merge == d->serial)) {
+		if ((t->pserial == SERIAL(s, d)) ||
+		    (t->merge == SERIAL(s, d))) {
 			return (0);
 		}
 	}
@@ -9708,7 +9709,7 @@ checkGone(sccs *s, int bit, char *who)
 			s->state |= S_WARNED;
 		}
 		p = CLUDES(s, d);
-		while (i = sccs_eachNum(&p, &sign, d->serial)) {
+		while (i = sccs_eachNum(&p, &sign)) {
 			unless (slist[i]) continue;
 			fprintf(stderr,
 			    "%s: %s:%s %s %s\n", s->sfile,
@@ -9804,8 +9805,8 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 	 * Make sure there is no garbage in the serial list[s].
 	 */
 	x = CLUDES(s, d);
-	while (i = sccs_eachNum(&x, &sign, d->serial)) {
-		if (i < d->serial) continue;
+	while (i = sccs_eachNum(&x, &sign)) {
+		if (i < SERIAL(s, d)) continue;
 		error = 1;
 		if (flags & ADMIN_SHUTUP) continue;
 		fprintf(stderr, "%s: %s has bad %s serial %d\n",
@@ -10172,13 +10173,13 @@ symArg(sccs *s, delta *d, char *name)
 		d->flags |= D_SYMLEAF;
 		return;
 	}
-	tmp = d->serial;
+	tmp = SERIAL(s, d);
 	addArray(&s->mg_symname, &tmp);
 	tmp = sccs_addUniqStr(s, name);
 	addArray(&s->mg_symname, &tmp);
 	d->flags |= D_SYMBOLS;	/* so mkgraph won't MKGONE it */
 
-	if ((d->serial == 1) && streq(name, KEY_FORMAT2)) {
+	if ((SERIAL(s, d) == 1) && streq(name, KEY_FORMAT2)) {
 		s->xflags |= X_LONGKEY;
 		EACHP(s->slist, d) {
 			if (d->flags & D_XFLAGS) d->xflags |= X_LONGKEY;
@@ -10346,7 +10347,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		 */
 		n->rev = d->rev;
 		explode_rev(sc, n);
-		n->pserial = d->serial;
+		n->pserial = SERIAL(sc, d);
 		sc->numdeltas++;
 		n = dinsert(sc, n, 1);
 		if (addsym(sc, n, 1, sym)) {
@@ -10390,7 +10391,7 @@ newDelta(sccs *sc, delta *p, int isNullDelta)
 	rev = REV(sc, p);
 	sccs_getedit(sc, &rev);
 	revArg(sc, n, rev);
-	n->pserial = p->serial;
+	n->pserial = SERIAL(sc, p);
 	sc->numdeltas++;
 	if (isNullDelta) {
 		n->added = n->deleted = 0;
@@ -10570,18 +10571,11 @@ sccs_encoding(sccs *sc, off_t size, char *encp)
  * two uses:
  * if (sign == 0); print signed num
  * else printed sign + magnitude
- * XXX: HEAP_RELATIVE doesn't because of work sccs_getInit()
- * runs outside of the array and doesn't know a serial number.
  */
 void
-sccs_saveNum(FILE *f, int num, int sign, int serial)
+sccs_saveNum(FILE *f, int num, int sign)
 {
-#ifdef	HEAP_RELATIVE
-	assert(serial > num);
-	fprintf(f, " %s%d", (sign < 0) ? "-" : "", serial - num);
-#else
 	fprintf(f, " %s%d", (sign < 0) ? "-" : "", num);
-#endif
 }
 
 /*
@@ -10595,17 +10589,14 @@ sccs_saveNum(FILE *f, int num, int sign, int serial)
  *
  * ex:
  * line = CLUDES(s, d);
- * while (i = sccs_eachNum(&line, &sign, d->serial)) {
+ * while (i = sccs_eachNum(&line, &sign)) {
  *	// do stuff to process integer
  * }
  *
  * Note: real atoi() does '-' sign handling; slib.c one doesn't
- *
- * XXX: HEAP_RELATIVE doesn't because of work sccs_getInit()
- * runs outside of the array and doesn't know a serial number.
  */
 int
-sccs_eachNum(char **linep, int *signp, int serial)
+sccs_eachNum(char **linep, int *signp)
 {
 	char	*p;
 	int	neg;
@@ -10627,15 +10618,13 @@ sccs_eachNum(char **linep, int *signp, int serial)
 			neg = 1;
 		}
 	}
-#ifdef	HEAP_RELATIVE
-	serial -= atoi(p);
-	assert(serial > 0);
-#else
-	serial = atoi(p);
-#endif
-	return (neg * serial);
+	return (neg * atoi(p));
 }
 
+/*
+ * this is called before the insert or remove lines, so SERIAL(s,d)
+ * is the old number.
+ */
 private void
 adjust_serials(sccs *s, delta *d, int amount)
 {
@@ -10643,20 +10632,19 @@ adjust_serials(sccs *s, delta *d, int amount)
 	char	*p;
 	FILE	*f;
 
-	unless (d->serial) return;
+	unless (d->flags) return;
 	/* Note: if HEAP_RELATIVE, then the cludes recalc does no change */
 	if (d->cludes) {
 		assert(INARRAY(d));
 		p = CLUDES(s, d);
 		f = fmem();
-		while (ser = sccs_eachNum(&p, &sign, d->serial)) {
-			sccs_saveNum(f, ser + amount, sign, d->serial + amount);
+		while (ser = sccs_eachNum(&p, &sign)) {
+			sccs_saveNum(f, ser + amount, sign);
 		}
 		d->cludes = sccs_addStr(s, fmem_peek(f, 0));
 		fclose(f);
 	}
 
-	d->serial += amount;
 	d->pserial += amount;
 	if (d->ptag) d->ptag += amount;
 	if (d->mtag) d->mtag += amount;
@@ -10729,8 +10717,7 @@ insert_1_0(sccs *s, u32 flags)
 	} else {
 		zoneArg(s, d, "-00:00");
 	}
-	d->serial = 1;
-	t->pserial = d->serial;	/* nop as t->pserial was 0 and inc'd */
+	t->pserial = 1;	/* nop as t->pserial was 0 and inc'd */
 
 	/* date needs to be 1 second earler than 1.1 */
 	d->date = t->date - 1;
@@ -11315,13 +11302,12 @@ out:
 			d = SFIND(s, ser);
 			assert(d != e);
 			memcpy(d, e, sizeof(delta));
-			d->serial = ser;
-			e->serial = 0;
+			e->flags = 0;
 			if (s->table == e) s->table = d;
 		} else {
 			d = e;
 		}
-		if (NEXT(d)) assert(d->serial == (NEXT(d)->serial + 1));
+		if (NEXT(d)) assert(d == (NEXT(d) + 1));
 		remap[j] = ser;
 
 		d->pserial = remap[d->pserial];
@@ -11331,8 +11317,8 @@ out:
 
 		if (d->cludes) {
 			p = CLUDES(s, d);
-			while (i = sccs_eachNum(&p, &sign, j)) {
-				sccs_saveNum(f, remap[i], sign, ser);
+			while (i = sccs_eachNum(&p, &sign)) {
+				sccs_saveNum(f, remap[i], sign);
 			}
 			p = fmem_peek(f, 0);
 			unless (streq(p, CLUDES(s, d))) {
@@ -11413,12 +11399,12 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, char **patchmap,
 	w->slist = calloc(s->nextserial, sizeof(u8));
 	EACH(patchmap) {
 		if ((d = (delta *)patchmap[i]) == INVALID) continue;
-		w->slist[d->serial] = 1;
+		w->slist[SERIAL(s, d)] = 1;
 	}
 	unless (CSET(s)) {
 		/* transitive close if not the cset file */
 		for (d = s->table; d; d = NEXT(d)) {
-			unless (w->slist[d->serial]) continue;
+			unless (w->slist[SERIAL(s, d)]) continue;
 			if (d->pserial) {
 				w->slist[d->pserial] = 1;
 			}
@@ -11457,6 +11443,7 @@ doFast(weave *w, char **patchmap, MMAP *diffs)
 	delta	*d;
 	int	rc = 1;
 	sum_t	sum = 0;
+	ser_t	dser;
 	char	cmdline[MAXCMD];
 
 	unless (diffs) goto done;
@@ -11503,25 +11490,26 @@ doFast(weave *w, char **patchmap, MMAP *diffs)
 		assert(!ignore);
 		assert(d);
 		unless (d->flags & D_REMOTE) continue;
+		dser = SERIAL(w->s, d);
 		unless (inpatch) {
 			assert(*p == ' ');
 			p++;
 			lineno = atoi_p(&p);
-			if (weaveMove(w, lineno, (type == 'D'), d->serial)) {
+			if (weaveMove(w, lineno, (type == 'D'), dser)) {
 				goto err;
 			}
-			if (type == 'I') inpatch = d->serial;
-		} else if (inpatch == d->serial) {
+			if (type == 'I') inpatch = dser;
+		} else if (inpatch == dser) {
 			assert(type == 'E');
 			inpatch = 0;
 		}
 		if (*b == 'N') {
-			sprintf(cmdline, "\001E %uN\n", d->serial);
+			sprintf(cmdline, "\001E %uN\n", dser);
 		} else {
-			sprintf(cmdline, "\001%c %u\n", type, d->serial);
+			sprintf(cmdline, "\001%c %u\n", type, dser);
 		}
 		fputdata(w->s, cmdline, w->out);
-		w->state = changestate(w->state, type, d->serial);
+		w->state = changestate(w->state, type, dser);
 		if (w->print = whatstate(w->state)) {
 			unless (w->slist[w->print]) w->print = 0;
 		}
@@ -12001,7 +11989,7 @@ newcmd:
 		    case 'c':
 		    case 'd':
 			beforeline(unchanged);
-			ctrl("\001D ", n->serial, "");
+			ctrl("\001D ", SERIAL(s, n), "");
 			sum = s->dsum;
 			/* howmany != 0 only for nonewline corner fixer */
 			while (howmany--) nextline(deleted);
@@ -12009,7 +11997,7 @@ newcmd:
 				if (strneq(b, "---\n", 4)) break;
 				if (strneq(b, "\\ No", 4)) continue;
 				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial, "");
+					ctrl("\001E ", SERIAL(s, n), "");
 					s->dsum = sum;
 					goto newcmd;
 				}
@@ -12018,11 +12006,11 @@ newcmd:
 			}
 			s->dsum = sum;
 			if (what != 'c') break;
-			ctrl("\001E ", n->serial, "");
+			ctrl("\001E ", SERIAL(s, n), "");
 			/* fall through to */
 		    case 'a':
 			last = 0;
-			ctrl("\001I ", n->serial, "");
+			ctrl("\001I ", SERIAL(s, n), "");
 			while (b = mnext(diffs)) {
 				if (strneq(b, "\\ No", 4)) {
 					s->dsum -= '\n';
@@ -12030,7 +12018,7 @@ newcmd:
 					break;
 				}
 				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial, "");
+					ctrl("\001E ", SERIAL(s, n), "");
 					goto newcmd;
 				}
 				fix_cntl_a(s, &b[2], out);
@@ -12044,7 +12032,7 @@ newcmd:
 		    case 'I':
 		    case 'i':
 			last = 0;
-			ctrl("\001I ", n->serial, "");
+			ctrl("\001I ", SERIAL(s, n), "");
 			while (howmany--) {
 				/* XXX: not break but error */
 				unless (b = mnext(diffs)) break;
@@ -12066,7 +12054,7 @@ newcmd:
 		    case 'D':
 		    case 'x':
 			beforeline(unchanged);
-			ctrl("\001D ", n->serial, "");
+			ctrl("\001D ", SERIAL(s, n), "");
 			sum = s->dsum;
 			while (howmany--) {
 				nextline(deleted);
@@ -12075,15 +12063,15 @@ newcmd:
 			s->dsum = sum;
 			break;
 		}
-		ctrl("\001E ", n->serial, no_lf ? "N" : "");
+		ctrl("\001E ", SERIAL(s, n), no_lf ? "N" : "");
 	}
 	if (addthis) {
 		last = 0;
-		ctrl("\001I ", n->serial, "");
+		ctrl("\001I ", SERIAL(s, n), "");
 		s->dsum += fputdata(s, addthis, out);
 		s->dsum += fputdata(s, "\n", out);
 		if (addthis[0] == CNTLA_ESCAPE) s->dsum -= CNTLA_ESCAPE;
-		ctrl("\001E ", n->serial, "");
+		ctrl("\001E ", SERIAL(s, n), "");
 		free(addthis);
 	}
 	finish(s, &unchanged, &print, &last, out, &state, slist);
@@ -12367,6 +12355,7 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, u32 flags, int *errorp, int *linesp,
 	int	lines = 0;
 	char	type = '?';
 	char	**syms = 0;
+	ser_t	serial = 0;
 	FILE	*cludes = 0;
 
 	/* these are the only possible flags */
@@ -12424,10 +12413,7 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, u32 flags, int *errorp, int *linesp,
 	}
 	t = s;
 	while (*s && (*s++ != ' '));	/* serial */
-	unless (d->serial) {
-		if (s[-1] == ' ') s[-1] = 0;
-		d->serial = atoi(t);
-	}
+	serial = atoi(t);
 	t = s;
 	while (*s && (*s++ != ' '));	/* pserial */
 	unless (d->pserial) {
@@ -12518,7 +12504,7 @@ skip:
 				goto out;
 			} else {
 				unless (cludes) cludes = fmem();
-				sccs_saveNum(cludes, e->serial, 1, d->serial);
+				sccs_saveNum(cludes, SERIAL(sc, e), 1);
 			}
 		}
 		unless (buf = mkline(mnext(f))) goto out; lines++;
@@ -12543,7 +12529,7 @@ skip:
 				error++;
 				goto out;
 			} else {
-				d->merge = e->serial;
+				d->merge = SERIAL(sc, e);
 			}
 		}
 		unless (buf = mkline(mnext(f))) goto out; lines++;
@@ -12590,12 +12576,12 @@ skip:
 			delta	*e = sccs_findKey(sc, &buf[2]);
 
 			assert(e);
-			TRACE("e->serial = %d", e->serial);
+			TRACE("e->serial = %d", SERIAL(sc, e));
 			assert(SYMGRAPH(e));
 			if (d->ptag) {
-				d->mtag = e->serial;
+				d->mtag = SERIAL(sc, e);
 			} else {
-				d->ptag = e->serial;
+				d->ptag = SERIAL(sc, e);
 			}
 			e->flags &= ~D_SYMLEAF;
 		}
@@ -12634,7 +12620,7 @@ skip:
 				error++;
 			} else {
 				unless (cludes) cludes = fmem();
-				sccs_saveNum(cludes, e->serial, -1, d->serial);
+				sccs_saveNum(cludes, SERIAL(sc, e), -1);
 			}
 		}
 		unless (buf = mkline(mnext(f))) goto out; lines++;
@@ -12848,7 +12834,7 @@ sccs_meta(char *me, sccs *s, delta *parent, MMAP *iF, int fixDate)
 	mclose(iF);
 	m->rev = parent->rev;
 	memcpy(m->r, parent->r, sizeof(m->r));
-	m->pserial = parent->serial;
+	m->pserial = SERIAL(s, parent);
 	s->numdeltas++;
 	m = dinsert(s, m, fixDate);
 	EACH(syms) addsym(s, m, 0, syms[i]);
@@ -13141,13 +13127,13 @@ out:
 			    "delta: no such rev %s in %s\n", pf.mRev, s->sfile);
 		    	OUT;
 		}
-		if (n->merge && (e->serial != n->merge)) {
+		if (n->merge && (SERIAL(s, e) != n->merge)) {
 			fprintf(stderr,
 			    "delta: conflicting merge revs: %s %s\n",
 			    REV(s, n), REV(s, e));
 			OUT;
 		}
-		n->merge = e->serial;
+		n->merge = SERIAL(s, e);
 	}
 	if (error) OUT;
 	n = sccs_dInit(n, 'D', s, init != 0);
@@ -13155,7 +13141,7 @@ out:
 
 	unless (n->rev) revArg(s, n, pf.newrev);
 	assert(d);
-	n->pserial = d->serial;
+	n->pserial = SERIAL(s, d);
 	if (!n->comments && !init &&
 	    !(flags & DELTA_DONTASK)) {
 		/*
@@ -13184,8 +13170,8 @@ out:
 	if (include || exclude) {
 		FILE	*f = fmem();
 
-		EACH(include) sccs_saveNum(f, include[i], 1, n->serial);
-		EACH(exclude) sccs_saveNum(f, exclude[i], -1, n->serial);
+		EACH(include) sccs_saveNum(f, include[i], 1);
+		EACH(exclude) sccs_saveNum(f, exclude[i], -1);
 		n->cludes = sccs_addStr(s, fmem_peek(f, 0));
 		fclose(f);
 	}
@@ -13874,7 +13860,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 		unless (d->cludes) return (nullVal);
 		t = CLUDES(s, d);
-		while (num = sccs_eachNum(&t, &sign, d->serial)) {
+		while (num = sccs_eachNum(&t, &sign)) {
 			unless (sign > 0) continue;
 			unless (i) {
 				i = 1;
@@ -13893,7 +13879,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 		unless (d->cludes) return (nullVal);
 		t = CLUDES(s, d);
-		while (num = sccs_eachNum(&t, &sign, d->serial)) {
+		while (num = sccs_eachNum(&t, &sign)) {
 			unless (sign < 0) continue;
 			unless (i) {
 				i = 1;
@@ -13919,7 +13905,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 		unless (d->cludes) return (nullVal);
 		t = CLUDES(s, d);
-		while (ser = sccs_eachNum(&t, &sign, d->serial)) {
+		while (ser = sccs_eachNum(&t, &sign)) {
 			unless (sign > 0) continue;
 			r = sfind(s, ser);
 			unless (i) {
@@ -13940,7 +13926,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 		unless (d->cludes) return (nullVal);
 		t = CLUDES(s, d);
-		while (ser = sccs_eachNum(&t, &sign, d->serial)) {
+		while (ser = sccs_eachNum(&t, &sign)) {
 			unless (sign < 0) continue;
 			r = sfind(s, ser);
 			unless (i) {
@@ -14154,7 +14140,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_DS: /* DS */ {
 		/* serial number */
-		fd(d->serial);
+		fd(SERIAL(s, d));
 		return (strVal);
 	}
 
@@ -14468,7 +14454,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
 		EACHP_REVERSE(s->symlist, sym) {
-			unless (d->serial ==
+			unless (SERIAL(s, d) ==
 			    (s->prs_all ? sym->meta_ser : sym->ser)) {
 				continue;
 			}
@@ -14533,7 +14519,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		fc('\n');
 		unless (d && (d->flags & D_SYMBOLS)) return (strVal);
 		EACHP_REVERSE(s->symlist, sym) {
-			unless (sym->ser == d->serial) continue;
+			unless (sym->ser == SERIAL(s, d)) continue;
 			fs("  TAG: ");
 			fs(SYMNAME(s, sym));
 			fc('\n');
@@ -14698,7 +14684,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
 		EACHP_REVERSE(s->symlist, sym) {
-			unless (d->serial ==
+			unless (SERIAL(s, d) ==
 			    (s->prs_all ? sym->meta_ser : sym->ser)) {
 				continue;
 			}
@@ -15163,8 +15149,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		delta	*m;
 
 		for (m = s->table; m; m = NEXT(m)) {
-			if ((m->merge == d->serial) ||
-			    (m->pserial == d->serial)) {
+			if ((m->merge == SERIAL(s, d)) ||
+			    (m->pserial == SERIAL(s, d))) {
 				if (space) fs(" ");
 				fs(REV(s, m));
 				space = 1;
@@ -15714,7 +15700,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	while (p = eachline(&t, &len)) fprintf(out, "c %.*s\n", len, p);
 	if (d->dateFudge) fprintf(out, "F %d\n", (int)d->dateFudge);
 	p = CLUDES(s, d);
-	while (i = sccs_eachNum(&p, &sign, d->serial)) {
+	while (i = sccs_eachNum(&p, &sign)) {
 		unless (sign > 0) continue;
 		e = sfind(s, i);
 		assert(e);
@@ -15757,7 +15743,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	if (d->random) fprintf(out, "R %s\n", RANDOM(s, d));
 	if ((d->flags & D_SYMBOLS) || SYMGRAPH(d)) {
 		EACHP_REVERSE(s->symlist, sym) {
-			unless (sym->meta_ser == d->serial) continue;
+			unless (sym->meta_ser == SERIAL(s, d)) continue;
 			fprintf(out, "S %s\n", SYMNAME(s, sym));
 		}
 		if (SYMGRAPH(d)) fprintf(out, "s g\n");
@@ -15783,7 +15769,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 		fprintf(out, "V %u\n", s->version);
 	}
 	p = CLUDES(s, d);
-	while (i = sccs_eachNum(&p, &sign, d->serial)) {
+	while (i = sccs_eachNum(&p, &sign)) {
 		unless (sign < 0) continue;
 		e = sfind(s, i);
 		assert(e);
@@ -15942,12 +15928,12 @@ gca2(sccs *s, delta *left, delta *right)
 	unless (s && s->nextserial && left && right) return (0);
 
 	slist = calloc(s->nextserial, sizeof(u8));
-	slist[left->serial] |= 1;
-	slist[right->serial] |= 2;
-	d = (left->serial > right->serial) ? left : right;
+	slist[SERIAL(s, left)] |= 1;
+	slist[SERIAL(s, right)] |= 2;
+	d = (left > right) ? left : right;
 	for ( ; d ; d = NEXT(d)) {
 		if (TAG(d)) continue;
-		unless (value = slist[d->serial]) continue;
+		unless (value = slist[SERIAL(s, d)]) continue;
 		if (value == 3) break;
 		if (d->pserial) slist[d->pserial] |= value;
 		if (d->merge)   slist[d->merge] |= value;
@@ -16246,16 +16232,18 @@ void
 sccs_findKeyUpdate(sccs *s, delta *d)
 {
 	u32	dd;
+	ser_t	ser;
 
 	unless (s->findkeydb) return;
 
 	dd = d->date;
+	ser = SERIAL(s, d);
 	unless (hash_insert(s->findkeydb,
-	    &dd, sizeof(dd), &d->serial, sizeof(d->serial))) {
+	    &dd, sizeof(dd), &ser, sizeof(ser))) {
 		/* date conflict */
-		if (d->serial > *(ser_t *)(s->findkeydb->vptr)) {
+		if (ser > *(ser_t *)(s->findkeydb->vptr)) {
 			hash_store(s->findkeydb,
-			    &dd, sizeof(dd), &d->serial, sizeof(d->serial));
+			    &dd, sizeof(dd), &ser, sizeof(ser));
 		}
 	}
 }
@@ -16423,7 +16411,7 @@ sccs_csetBoundary(sccs *s, delta *d)
 	start = d;
 	d->flags |= D_RED;
 	for (; d <= s->table; ++d) {
-		unless (d->serial && !TAG(d)) continue;
+		unless (d->flags && !TAG(d)) continue;
 
 		if ((e = PARENT(s, d)) && (e->flags & D_RED)) {
 			d->flags |= D_RED;

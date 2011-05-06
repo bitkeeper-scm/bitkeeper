@@ -612,10 +612,10 @@ doit(int dash)
 				goto next;
 			}
 			/* maintain the rstart->rstop range */
-			if (!s->rstart || (e->serial < s->rstart->serial)) {
+			if (!s->rstart || (e < s->rstart)) {
 				s->rstart = e;
 			}
-			if (!s->rstop || (e->serial > s->rstop->serial)) {
+			if (!s->rstop || (e > s->rstop)) {
 				s->rstop = e;
 			}
 #ifdef	CRAZY_WOW
@@ -710,14 +710,16 @@ fileFilt(sccs *s, MDBM *csetDB)
 {
 	delta	*d;
 	datum	k, v;
+	ser_t	ser;
 
 	/* Unset any csets that don't contain files from -i and -x */
 	for (d = s->table; d; d = NEXT(d)) {
 		unless (d->flags & D_SET) continue;
 		/* if cset changed nothing, keep it if not filtering by inc */
 		if (!(opts.inc || opts.BAM) && !d->added) continue;
-		k.dptr = (char *)&(d->serial);
-		k.dsize = sizeof(d->serial);
+		ser = SERIAL(s, d);
+		k.dptr = (char *)&ser;
+		k.dsize = sizeof(ser);
 		v = mdbm_fetch(csetDB, k);
 		unless (v.dptr) d->flags &= ~D_SET;
 	}
@@ -735,7 +737,7 @@ delta_sort(const void *a, const void *b)
 
 	if (d1->s == d2->s) {
 		/* comparing deltas of the same sfiles, time order */
-		cmp = (d2->d->serial - d1->d->serial);
+		cmp = (d2->d - d1->d);
 		if (opts.forwards) cmp *= -1;
 		return (cmp);
 	} else {
@@ -1011,6 +1013,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	FILE	*fsave = 0;
 	char	*buf;
 	size_t	len;
+	ser_t	ser;
 	struct	rstate	*rstate;
 
 	assert(dspec);
@@ -1110,8 +1113,9 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		}
 
 		/* get key list */
-		k.dptr = (char *)&(e->serial);
-		k.dsize = sizeof(e->serial);
+		ser = SERIAL(sc, e);
+		k.dptr = (char *)&ser;
+		k.dsize = sizeof(ser);
 		v = mdbm_fetch(rstate->csetDB, k);
 		keys = 0;
 		if (v.dptr) memcpy(&keys, v.dptr, v.dsize);
@@ -1249,7 +1253,7 @@ want(sccs *s, delta *e)
 		if (opts.tsearch) {
 			match = 0;
 			EACHP_REVERSE(s->symlist, sym) {
-				unless (sym->ser == e->serial) continue;
+				unless (sym->ser == SERIAL(s, e)) continue;
 				if (search_either(SYMNAME(s, sym),
 					opts.search)) {
 					match = 1;

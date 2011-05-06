@@ -142,9 +142,11 @@ private char	*
 rev(MDBM *revs, sccs *s, delta *r)
 {
 	datum	k, v;
+	ser_t	ser;
 
+	ser = SERIAL(s, r);
 	k.dsize = sizeof(ser_t);
-	k.dptr = (void*)&r->serial;
+	k.dptr = (void*)&ser;
 	v = mdbm_fetch(revs, k);
 	if (v.dsize) return ((char*)v.dptr);
 	return (REV(s, r));
@@ -213,20 +215,23 @@ regen(sccs *s, int verbose, char *key)
 		if (sccs_read_pfile("sccs2bk", s, &pf)) exit(1);
 		unless (streq(REV(s, d), pf.newrev)) {
 			datum	k, v;
+			ser_t	ser;
 
 			if (verbose > 1) {
 				fprintf(stderr,
-				    "MAP %s(%d)@%s -> %s\n", gfile, d->serial,
+				    "MAP %s(%d)@%s -> %s\n",
+				    gfile, SERIAL(s, d),
 				    REV(s, d), pf.newrev);
 			}
+			ser = SERIAL(s, d);
 			k.dsize = sizeof(ser_t);
-			k.dptr = (void*)&d->serial;
+			k.dptr = (void*)&ser;
 			v.dsize = strlen(pf.newrev) + 1;
 			v.dptr = (void*)pf.newrev;
 			if (mdbm_store(revs, k, v, MDBM_INSERT)) {
 				v = mdbm_fetch(revs, k);
 				fprintf(stderr, "%s: serial %d in use by "
-				    "%s and %s.\n", s->sfile, d->serial,
+				    "%s and %s.\n", s->sfile, ser,
 				    pf.newrev, (char*)v.dptr);
 				/* XXX: what should errors do? */
 				exit(1);
@@ -238,7 +243,7 @@ regen(sccs *s, int verbose, char *key)
 		 * '-r=<serial>' because some sfile have duplicate revisions
 		 * Note: if change options here, then change in loop below
 		 */
-		a1 = aprintf("=%d", d->serial);
+		a1 = aprintf("=%d", SERIAL(s, d));
 		if (sccs_get(sget, a1, 0, 0, 0, src_flags, gfile)) {
 			fprintf(stderr, "FAIL: get -kPr%s %s\n",
 			    a1, gfile);
@@ -273,7 +278,7 @@ regen(sccs *s, int verbose, char *key)
 		}
 
 		free(a1);
-		a1 = aprintf("=%d", d->serial);
+		a1 = aprintf("=%d", SERIAL(s, d));
 		a3 = bktmp(0, "diffB");
 		assert(a3 && a3[0]);
 		if (sccs_get(sget, a1, 0, 0, 0, src_flags, a3)) {
@@ -408,7 +413,7 @@ ptable(sccs *s)
 			continue;
 		}
 		fprintf(stderr, "%-10.10s %10s i=%2u s=%2u d=%s f=%lu\n",
-		    s->gfile, REV(s, d), i, d->serial,
+		    s->gfile, REV(s, d), i, SERIAL(s, d),
 		    delta_sdate(s, d), d->dateFudge);
 	}
 }
@@ -489,18 +494,18 @@ collapse(sccs *s, int verbose, delta *d, delta *m)
 	 * b == base of merge ancestory whose parent is (possibly) p
 	 */
 	for (b = m; b && b->pserial; b = PARENT(s, b)) {
-		unless (b->pserial > p->serial) break;
+		unless (b->pserial > SERIAL(s, p)) break;
 	}
-	unless (b && b->pserial == p->serial) return;
+	unless (b && b->pserial == SERIAL(s, p)) return;
 	if (verbose > 1) {
 		fprintf(stderr,
 		    "Inlining graph: new parent of %s(%d) => %s(%d)\n",
-		    REV(s, d), d->serial,
-		    REV(s, m), m->serial);
+		    REV(s, d), SERIAL(s, d),
+		    REV(s, m), SERIAL(s, m));
 	}
 
 	/* surgery at other end of graph: merge becomes parent of d */
-	d->pserial = m->serial;
+	d->pserial = SERIAL(s, m);
 	d->merge = 0;
 	d->cludes = 0;
 }
@@ -529,12 +534,12 @@ makeMerge(sccs *s, int verbose)
 		mser = 0;
 		del = 0;
 		p = CLUDES(s, d);
-		while (i = sccs_eachNum(&p, &sign, d->serial)) {
+		while (i = sccs_eachNum(&p, &sign)) {
 			if ((m = sfind(s, i)) && !TAG(m)) {
-				if ((sign > 0) && (mser < m->serial)) {
-					mser = m->serial;
+				if ((sign > 0) && (mser < i)) {
+					mser = i;
 				}
-				sccs_saveNum(f, i, sign, d->serial);
+				sccs_saveNum(f, i, sign);
 			} else {	/* delete it */
 				del = 1;
 			}
@@ -620,7 +625,7 @@ fixTable(sccs *s, int verbose)
 			 * for a complete rewiring job.
 			 */
 			d->merge = d->pserial;
-			d->pserial = m->serial;
+			d->pserial = SERIAL(s, m);
 		}
 	}
 	if (verbose > 2) ptable(s);

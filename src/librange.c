@@ -156,8 +156,7 @@ range_cutoff(char *spec)
 void
 range_cset(sccs *s, delta *d, int bit)
 {
-	delta	*e;
-	ser_t	last, clean;
+	delta	*e, *last, *clean;
 	u32	color;
 
 	unless (d = sccs_csetBoundary(s, d)) return; /* if pending */
@@ -166,7 +165,7 @@ range_cset(sccs *s, delta *d, int bit)
 	s->rstop = d;
 
 	/* walk back all children until all deltas in this cset are marked */
-	clean = last = d->serial;
+	clean = last = d;
 	for (; d; d = NEXT(d)) {
 		unless (color = (d->flags & (bit|D_RED))) continue;
 		if (color & D_RED) {
@@ -179,10 +178,10 @@ range_cset(sccs *s, delta *d, int bit)
 			} else {
 				e->flags |= color;
 				if (color == bit) {
-					if (e->serial < last) last = e->serial;
+					if (e < last) last = e;
 				}
 			}
-			if (e->serial < clean) clean = e->serial;
+			if (e < clean) clean = e;
 		}
 		if (d->merge && (e = MERGE(s, d))) {
 			if (e->flags & D_CSET) {
@@ -190,18 +189,18 @@ range_cset(sccs *s, delta *d, int bit)
 			} else {
 				e->flags |= color;
 				if (color == bit) {
-					if (e->serial < last) last = e->serial;
+					if (e < last) last = e;
 				}
 			}
-			if (e->serial < clean) clean = e->serial;
+			if (e < clean) clean = e;
 		}
-		if (d->serial == last) break;
+		if (d == last) break;
 	}
 	d = NEXT(d);		/* boundary for diffs.c (sorta wrong..) */
 	s->rstart = d ? d : s->tree;
 	if (bit & D_SET) s->state |= S_SET;
 	for ( ; d; d = NEXT(d)) {
-		if (d->serial < clean) break;
+		if (d < clean) break;
 		d->flags &= ~D_RED;
 	}
 }
@@ -278,12 +277,12 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 			d->flags |= D_SET;
 			unless (s->rstart) {
 				s->rstart = d;
-			} else if (d->serial < s->rstart->serial) {
+			} else if (d < s->rstart) {
 				s->rstart = d;
 			}
 			unless (s->rstop) {
 				s->rstop = d;
-			} else if (d->serial > s->rstop->serial) {
+			} else if (d > s->rstop) {
 				s->rstop = d;
 			}
 		}
@@ -366,7 +365,7 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 	}
 	if (flags & RANGE_SET) {
 		for (d = s->rstop;
-		    d && (d->serial >= s->rstart->serial); d = NEXT(d)) {
+		    d && (d >= s->rstart); d = NEXT(d)) {
 			unless (TAG(d)) d->flags |= D_SET;
 		}
 	}
@@ -406,10 +405,9 @@ int
 range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
     int (*fcn)(sccs *s, delta *d, void *token), void *token)
 {
-	delta	*d, *e;
+	delta	*d, *e, *last;
 	int	i = 0, ret = 0;
 	u32	color, before;
-	ser_t	last;		/* the last delta we marked (for cleanup) */
 	int	marked = 0;	/* number of BLUE or RED nodes */
 	int	all = 0;	/* set if all deltas in 'to' */
 	char	**freelist = 0;
@@ -426,7 +424,7 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 #define	MARK(x, change)	do {					\
 	    before = (x)->flags & mask;				\
 	    (x)->flags |= change;	/* after */		\
-	    if ((x)->serial < last) last = (x)->serial;		\
+	    if ((x) < last) last = (x);	\
 	    if (((x)->flags & mask) == mask) { /* after == 2 */ \
 		if (before && (before != mask)) { /* before == 1 */ \
 		    marked--;					\
@@ -448,12 +446,12 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 		to->flags |= D_RED;
 		marked++;
 	}
-	last = to->serial;
+	last = to;
 	d = to;			/* start here in table */
 	if (from) fromlist = freelist = addLine(0, from);
 	EACH(fromlist) {
 		from = (delta *)fromlist[i];
-		if (d->serial < from->serial) d = from;
+		if (d < from) d = from;
 		MARK(from, D_BLUE);
 	}
 
@@ -477,7 +475,7 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 	}
 err:
 	/* cleanup */
-	for (; d && (d->serial >= last); d = NEXT(d)) {
+	for (; d && (d >= last); d = NEXT(d)) {
 		d->flags &= ~mask;
 	}
 	if (freelist) freeLines(fromlist, 0);
@@ -607,9 +605,8 @@ range_markMeta(sccs *s)
 	 * termination point.  What was done gives a good savings by
 	 * having it be newer than the D_SET region in most cases.
 	 */
-	i = (lower && (lower->serial < s->rstart->serial))
-	    ? lower->serial : s->rstart->serial;
-	for (; i < s->nextserial; i++) {
+	d = (lower && (lower < s->rstart)) ? lower : s->rstart;
+	for (i = SERIAL(s, d); i < s->nextserial; i++) {
 		unless ((d = sfind(s, i)) && TAG(d)) continue;
 		if (d->flags & D_SET) continue;
 		/* e = tagged real delta */
@@ -619,7 +616,7 @@ range_markMeta(sccs *s)
 		    (d->ptag && (sfind(s, d->ptag)->flags & D_BLUE)) ||
 		    (d->mtag && (sfind(s, d->mtag)->flags & D_BLUE))) {
 			d->flags |= D_BLUE;
-			if (upper->serial < d->serial) upper = d;
+			if (upper < d) upper = d;
 			continue;
 		}
 		/* select meta nodes that attached to the region in some way */
@@ -627,7 +624,7 @@ range_markMeta(sccs *s)
 		    (d->ptag && (sfind(s, d->ptag)->flags & D_SET)) ||
 		    (d->mtag && (sfind(s, d->mtag)->flags & D_SET))) {
 			d->flags |= D_SET;
-			if (s->rstop->serial < d->serial) {
+			if (s->rstop < d) {
 				s->rstop = d;
 			}
 		}

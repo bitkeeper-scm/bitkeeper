@@ -88,7 +88,7 @@ xflags(sccs *s, int what)
 	delta	*d;
 
 	EACHP(s->slist, d) {
-		unless (d->serial) continue;
+		unless (d->flags) continue;
 
 		ret |= checkXflags(s, d, what);
 	}

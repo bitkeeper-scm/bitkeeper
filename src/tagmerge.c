@@ -55,7 +55,7 @@ tagmerge(void)
 		return (0);
 	}
 	fprintf(stderr, "Merge tips %s/%d %s/%d (%d tips total)\n",
-	    REV(s, a), a->serial, REV(s, b), b->serial, i);
+	    REV(s, a), SERIAL(s, a), REV(s, b), SERIAL(s, b), i);
 	m(s, a, b);
 	return (1);
 }

@@ -125,9 +125,9 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 			bits |= S_DIFF;
 			marked++;
 		}
-		ser = x->serial;
+		ser = SERIAL(s, x);
 		slist[ser] |= bits;
-		if (!t || (t->serial < ser)) t = x;
+		if (!t || (t < x)) t = x;
 		if (!lower || (lower > ser)) lower = ser;
 	}
 	if (right) {
@@ -137,16 +137,16 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 			bits |= S_DIFF;
 			marked++;
 		}
-		ser = right->serial;
+		ser = SERIAL(s, right);
 		slist[ser] |= bits;
-		if (!t || (t->serial < ser)) t = right;
+		if (!t || (t < right)) t = right;
 		if (!lower || (lower > ser)) lower = ser;
 	}
 
 	for (/* set */; t && marked; t = NEXT(t)) {
 		if (TAG(t)) continue;
 
-		ser = t->serial;
+		ser = SERIAL(s, t);
 		unless (bits = slist[ser]) continue;
 		assert(!(t->flags & D_GONE));
 
@@ -186,7 +186,8 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 		} else if (expand) {	/* Compute SD compression */
 			assert(sd);
 			bits ^= S_DIFF;
-			sd[left->serial] = addSerial(sd[left->serial], ser);
+			sd[SERIAL(s, left)] =
+			    addSerial(sd[SERIAL(s, left)], ser);
 		} else {		/* Compute SCCS compression */
 			if (activeLeft) {
 				exclude = addSerial(exclude, ser);
@@ -239,7 +240,7 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 		if (activeLeft || activeRight) {
 			/* alter only if item hasn't been set yet */
 			p = CLUDES(s, t);
-			while (ser = sccs_eachNum(&p, &sign, t->serial)) {
+			while (ser = sccs_eachNum(&p, &sign)) {
 				newbits = 0;
 				bits = slist[ser];
 				if (sign > 0) {
@@ -274,8 +275,8 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 	if (include || exclude) {
 		FILE	*f = fmem();
 
-		EACH(include) sccs_saveNum(f, include[i], 1, left->serial);
-		EACH(exclude) sccs_saveNum(f, exclude[i], -1, left->serial);
+		EACH(include) sccs_saveNum(f, include[i], 1);
+		EACH(exclude) sccs_saveNum(f, exclude[i], -1);
 		left->cludes = sccs_addStr(s, fmem_peek(f, 0));
 		fclose(f);
 		FREE(include);
@@ -284,7 +285,7 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 	assert(!marked);
 	/* fresh slate for next round */
 	if (t && lower) {
-		for (ser = t->serial; ser >= lower; ser--) {
+		for (ser = SERIAL(s, t); ser >= lower; ser--) {
 			slist[ser] &= S_DIFF;	/* clear all but S_DIFF */
 		}
 	}
@@ -297,13 +298,14 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
  * at the time this delta was made).
  */
 ser_t *
-symdiff_addBVC(ser_t **sd, ser_t *list, delta *d)
+symdiff_addBVC(ser_t **sd, ser_t *list, sccs *s, delta *d)
 {
 	int	i;
+	ser_t	*sdlist = sd[SERIAL(s, d)];
 
 	if (d->pserial) list = addSerial(list, d->pserial);
-	EACH(sd[d->serial]) {
-		list = addSerial(list, sd[d->serial][i]);
+	EACH(sdlist) {
+		list = addSerial(list, sdlist[i]);
 	}
 	return (list);
 }
@@ -346,13 +348,16 @@ symdiff_noDup(ser_t *list)
 void
 symdiff_setParent(sccs *s, delta *d, delta *new, ser_t **sd)
 {
+	ser_t	dser = SERIAL(s, d);
+	ser_t	newser = SERIAL(s, new);
+
 	assert(d->pserial);
-	if (sd[d->serial] || sd[d->pserial] ||
-	    (PARENT(s, d)->pserial != new->serial)) {
-		sd[d->serial] = addSerial(sd[d->serial], d->pserial);
-		sd[d->serial] = addSerial(sd[d->serial], new->serial);
+	if (sd[dser] || sd[d->pserial] ||
+	    (PARENT(s, d)->pserial != newser)) {
+		sd[dser] = addSerial(sd[dser], d->pserial);
+		sd[dser] = addSerial(sd[dser], newser);
 	}
-	d->pserial = new->serial;
+	d->pserial = newser;
 }
 
 ser_t	**
@@ -408,8 +413,8 @@ graph_v1(sccs *s)
 		if (TAG(d)) continue;
 		printf("%s -> [%d, %d)\n",
 		    REV(s, d),
-		    label.list[d->serial].forward,
-		    label.list[d->serial].backward);
+		    label.list[SERIAL(s, d)].forward,
+		    label.list[SERIAL(s, d)].backward);
 	}
 	free(label.list);
 	return (1);
@@ -420,7 +425,7 @@ v1Right(sccs *s, delta *d, void *token)
 {
 	labels	*label = (labels *)token;
 
-	label->list[d->serial].forward = ++label->count.forward;
+	label->list[SERIAL(s, d)].forward = ++label->count.forward;
 	label->count.backward = label->count.forward + 1;
 	return (0);
 }
@@ -430,7 +435,7 @@ v1Left(sccs *s, delta *d, void *token)
 {
 	labels	*label = (labels *)token;
 
-	label->list[d->serial].backward = label->count.backward;
+	label->list[SERIAL(s, d)].backward = label->count.backward;
 	return (0);
 }
 
@@ -530,7 +535,7 @@ graph_smallFirst(const void *a, const void *b)
 	l = *(delta **)a;
 	r = *(delta **)b;
 	if (cmp = (!TAG(r) - !TAG(l))) return (cmp);
-	return (l->serial - r->serial);
+	return (l - r);
 }
 
 int
@@ -542,7 +547,7 @@ graph_bigFirst(const void *a, const void *b)
 	l = *(delta **)a;
 	r = *(delta **)b;
 	if (cmp = (!TAG(r) - !TAG(l))) return (cmp);
-	return (r->serial - l->serial);
+	return (r - l);
 }
 
 private	void
@@ -564,11 +569,11 @@ sortKids(sccs *s, delta *start, int (*compar)(const void *, const void *),
 	*karr = list;
 	sortLines(list, compar);
 
-	serp = &s->kidlist[start->serial].kid;
+	serp = &s->kidlist[SERIAL(s, start)].kid;
 	EACH(list) {
 		d = (delta *)list[i];
-		*serp = d->serial;
-		serp = &s->kidlist[d->serial].siblings;
+		*serp = SERIAL(s, d);
+		serp = &s->kidlist[SERIAL(s, d)].siblings;
 	}
 	*serp = 0;
 }

@@ -99,7 +99,7 @@ sccs_renumber(sccs *s, u32 flags)
 	} else {
 		/* Save current default branch */
 		if (d = sccs_top(s)) {
-			defserial = d->serial;	/* serial doesn't change */
+			defserial = SERIAL(s, d); /* serial doesn't change */
 			if (s->defbranch) {
 				char	*ptr;
 				for (ptr = s->defbranch; *ptr; ptr++) {
@@ -221,7 +221,7 @@ sccs_needSwap(sccs *s, delta *p, delta *m)
 		}
 	}
 	assert(pser);	/* CA must exist */
-	return (m->serial < p->serial);
+	return (m < p);
 }
 
 private	int

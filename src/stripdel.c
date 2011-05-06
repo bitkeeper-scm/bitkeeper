@@ -249,10 +249,10 @@ strip_list(s_opts opts)
 		}
 		d->flags |= D_SET;
 		s->state |= S_SET;
-		if (!s->rstop || (s->rstop->serial < d->serial)) {
+		if (!s->rstop || (s->rstop < d)) {
 			s->rstop = d;
 		}
-		if (!s->rstart || (s->rstart->serial > d->serial)) {
+		if (!s->rstart || (s->rstart > d)) {
 			s->rstart = d;
 		}
 	}

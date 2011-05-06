@@ -134,7 +134,7 @@ k_err:			fprintf(stderr,
 		}
 	}
 	/* partition_tip works on keeping serials the same */
-	if (opts->rev && !(flags & (PRUNE_NO_NEWROOT | PRUNE_NO_SCOMPRESS))) {
+	if (opts->rev && !(flags & PRUNE_NO_NEWROOT) && !opts->who) {
 		fprintf(stderr, "%s: -r in an internal interface\n", prog);
 		goto err;
 	}
@@ -283,7 +283,7 @@ csetprune(Opts *opts)
 	}
 	if (d) {
 		/* leave just history of rev colored (assuming single tip) */
-		partition_tip = d->serial;
+		partition_tip = SERIAL(cset, d);
 		range_walkrevs(cset, d, 0, sccs_top(cset), 0,
 		    walkrevs_clrFlags, int2p(D_SET));
 	}
@@ -334,8 +334,11 @@ csetprune(Opts *opts)
 		if (partition_tip) {
 			d = sfind(cset, partition_tip);
 			assert(d);
+			sccs_sdelta(cset, d, key);
 			sccs_scompress(cset, SILENT);
-			partition_tip = d->serial;
+			d = sccs_findKey(cset, key);
+			assert(d);
+			partition_tip = SERIAL(cset, d);
 		} else {
 			sccs_scompress(cset, SILENT);
 		}
@@ -593,7 +596,7 @@ newFileEnv(sccs *cset, char **user, char **host)
 	if (p) *p = c;
 	putenv("_BK_NO_UNIQ=1");
 	putenv("BK_IMPORT=");
-	return (d->serial);
+	return (SERIAL(cset, d));
 }
 
 private	void
@@ -951,12 +954,12 @@ fixAdded(sccs *cset, char **cweave)
 		}
 		oldser = ser;
 		cnt = 1;
-		while (d->serial > ser) {
+		while (SERIAL(cset, d) > ser) {
 			if (d->added || (!TAG(d) && !d->merge)) empty++;
 			d->added = 0;
 			d = NEXT(d);
 		}
-		assert(d->serial == ser);
+		assert(SERIAL(cset, d) == ser);
 	}
 	assert(oldser);
 	d->added = cnt;
@@ -1106,16 +1109,16 @@ _clr(sccs *s, delta *d)
 }
 
 private int
-_has(sccs *s, delta *d, int stopser)
+_has(sccs *s, delta *d, delta *stop)
 {
-	for (/* set */ ; d->serial > stopser; d = PARENT(s, d)) {
+	for (/* set */ ; d > stop; d = PARENT(s, d)) {
 		if (d->flags & D_RED) return (0);
 		d->flags |= D_RED;
-		if (d->merge >= stopser) {
-			if (_has(s, MERGE(s, d), stopser)) return (1);
+		if (d->merge) {
+			if (_has(s, MERGE(s, d), stop)) return (1);
 		}
 	}
-	return (d->serial == stopser);
+	return (d == stop);
 }
 
 /*
@@ -1132,12 +1135,12 @@ found(sccs *s, delta *start, delta *stop)
 
 	assert(start && stop);
 	if (start == stop) return (1);
-	if (start->serial < stop->serial) {
+	if (start < stop) {
 		d = start;
 		start = stop;
 		stop = d;
 	}
-	ret = _has(s, start, stop->serial);
+	ret = _has(s, start, stop);
 	_clr(s, start);
 	return (ret);
 }
@@ -1192,7 +1195,7 @@ mkTagGraph(sccs *s)
 		}
 		/* if both, but one is contained in other: use newer as p */
 		if (p && m && found(s, p, m)) {
-			if (m->serial > p->serial) p = m;
+			if (m > p) p = m;
 			m = 0;
 		}
 		/* p and m are now as we would like them.  assert if not */
@@ -1212,12 +1215,12 @@ mkTagGraph(sccs *s)
 			assert(p);
 			unless (SYMLEAF(d)) tips++;
 			d->flags |= D_SYMGRAPH | D_SYMLEAF;
-			d->mtag = m->serial;
+			d->mtag = SERIAL(s, m);
 			if (SYMLEAF(m)) tips--;
 			m->flags &= ~D_SYMLEAF;
 		}
 		if (p) {
-			d->ptag = p->serial;
+			d->ptag = SERIAL(s, p);
 			if (SYMGRAPH(d)) {
 				if (SYMLEAF(p)) tips--;
 				p->flags &= ~D_SYMLEAF;
@@ -1268,12 +1271,12 @@ rebuildTags(sccs *s)
 			/* Move Tag to Parent */
 			assert(!(PARENT(s, d)->flags & D_GONE));
 			d = PARENT(s, d);
-			sym->ser = d->serial;
+			sym->ser = SERIAL(s, d);
 		}
 		/* Move all tags directly onto real delta */
 		if (md != d) {
 			md = d;
-			sym->meta_ser = md->serial;
+			sym->meta_ser = SERIAL(s, md);
 		}
 		assert((md == d) && !TAG(d));
 		d->flags |= D_SYMBOLS;
@@ -1340,9 +1343,9 @@ fixTags(sccs *s)
 			/* Move Tag to Parent */
 			assert(!(PARENT(s, d)->flags & D_GONE));
 			d = PARENT(s, d);
-			sym->ser = d->serial;
+			sym->ser = SERIAL(s, d);
 			d->flags |= D_SYMBOLS;
-			md->pserial = d->serial;
+			md->pserial = SERIAL(s, d);
 		}
 		/* If tag is deleted node, make into a 'R' node */
 		if (md->flags & D_GONE) {
@@ -1387,14 +1390,14 @@ fixTags(sccs *s)
 				    "describing what you did to get this "
 				    "message.\nThis is a warning message, "
 				    "not a failure.\n",
-				    REV(s, d), d->serial, REV(s, p));
-				d->pserial = s->tree->serial;
+				    REV(s, d), SERIAL(s, d), REV(s, p));
+				d->pserial = SERIAL(s, s->tree);
 				continue;
 			}
 			/* Move Tag to Parent */
 			assert(!(PARENT(s, p)->flags & D_GONE));
 			p = PARENT(s, p);
-			d->pserial = p->serial;
+			d->pserial = SERIAL(s, p);
 		}
 		/* If node is deleted node, make into a 'R' node */
 		if (d->flags & D_GONE) {
@@ -1426,29 +1429,28 @@ private	void
 rmPruned(sccs *s, delta *d, ser_t **sd)
 {
 	int	i;
-	ser_t	*new;
+	ser_t	*new, *sdlist = sd[SERIAL(s, d)];
 	delta	*t;
 
 	assert(d->pserial && !(PARENT(s, d)->flags & D_GONE));
-	unless (sd[d->serial]) return;
+	unless (sdlist) return;
 
 	new = 0;
-	EACH(sd[d->serial]) {
-		t = sfind(s, sd[d->serial][i]);
+	EACH(sdlist) {
+		t = sfind(s, sdlist[i]);
 		assert(t);
 		if (t->flags & D_GONE) {
-			new = symdiff_addBVC(sd, new, t);
+			new = symdiff_addBVC(sd, new, s, t);
 		} else {
-			new = addSerial(new, t->serial);
+			new = addSerial(new, SERIAL(s, t));
 		}
 	}
-	FREE(sd[d->serial]);
-	sd[d->serial] = symdiff_noDup(new);
+	free(sdlist);
+	sdlist = sd[SERIAL(s, d)] = symdiff_noDup(new);
 	free(new);
 	/* integrity check - no more gone in list */
-	new = sd[d->serial];
-	EACH(new) {
-		t = sfind(s, new[i]);
+	EACH(sdlist) {
+		t = sfind(s, sdlist[i]);
 		assert(t && !(t->flags & D_GONE));
 	}
 }
@@ -1526,8 +1528,8 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd)
 	 * been cleared.
 	 */
 	d->cludes = 0;
-	if (d->added || d->merge || sd[d->serial]) {
-		if (sd[d->serial]) {
+	if (d->added || d->merge || sd[SERIAL(s, d)]) {
+		if (sd[SERIAL(s, d)]) {
 			/* regen old style SCCS inc and excl lists */
 			graph_symdiff(s, d, PARENT(s, d), slist, sd, 0, 0);
 		}
@@ -1538,7 +1540,7 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd)
 	debug((stderr, "RMDELTA(%s)\n", d->rev));
 	MK_GONE(s, d);
 	assert(d->pserial);	/* never get rid of root node */
-	if (d->serial == partition_tip) partition_tip = d->pserial;
+	if (SERIAL(s, d) == partition_tip) partition_tip = d->pserial;
 	return;
 }
 

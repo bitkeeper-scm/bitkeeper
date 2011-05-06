@@ -5,8 +5,6 @@
 #include "system.h"
 #include "lines.h"
 
-/* length of array (use nLines() in code) */
-#define	LLEN(s)				(*(u32 *)(s) & LMASK)
 #define	setLLEN(s, len)	(*(u32 *)(s) = (*(u32 *)(s) & ~LMASK) | len)
 
 /* size of array (saves LSIZ-1 items) */
@@ -23,7 +21,7 @@ _growArray_int(void *space, int add, int elemsize)
 	int	c;
 
 	if (space) {
-		len = LLEN(space) + add;
+		len = _LLEN(space) + add;
 		c = (*(u32 *)space >> LBITS);
 		size = 1u << c;
 
@@ -58,7 +56,7 @@ _growArray(void **space, int add, int size)
 	void	*ret;
 
 	*space = _growArray_int(*space, add, size);
-	ret = *(u8 **)space + (LLEN(*space)-add+1)*size;
+	ret = *(u8 **)space + (_LLEN(*space)-add+1)*size;
 	memset(ret, 0, add * size);
 	return (ret);
 }
@@ -121,7 +119,7 @@ truncArray(void *space, int len)
 {
 	if (space) {
 		/* no growing the array at the moment */
-		assert(len <= LLEN(space));
+		assert(len <= _LLEN(space));
 		setLLEN(space, len);
 	} else {
 		assert(len == 0);
@@ -224,7 +222,7 @@ uniqLines(char **space, void(*freep)(void *ptr))
 
  dups:	/* now copy non-duped items */
 	dst = src-1;		/* last valid item in output */
-	for (; src <= LLEN(space); src++) { /* EACH() */
+	for (; src <= _LLEN(space); src++) { /* EACH() */
 		if (streq(space[src], space[dst])) {
 			if (freep) freep(space[src]);
 		} else {
@@ -276,7 +274,7 @@ removeLine(char **space, char *s, void(*freep)(void *ptr))
 
  match:	/* now copy non-matched items */
 	dst = src-1;		/* last non-matched item in output */
-	for (; src <= LLEN(space); src++) { /* EACH() */
+	for (; src <= _LLEN(space); src++) { /* EACH() */
 		if (streq(space[src], s)) {
 			n++;
 			if (freep) freep(space[src]);
@@ -316,7 +314,7 @@ _insertArrayN(void **space, int j, void *new, int size)
 void
 _removeArrayN(void *space, int rm, int size)
 {
-	int	len = LLEN(space);
+	int	len = _LLEN(space);
 
 	assert(rm <= len);
 	assert(rm > 0);
@@ -692,7 +690,7 @@ pruneLines(char **space, char **remove,
 				if (j > newj) space[newj] = space[j];
 				newj++;
 				j++;
-				unless (j <= LLEN(space)) {
+				unless (j <= _LLEN(space)) {
 					/* done with space */
 					goto out;
 				}
@@ -703,14 +701,14 @@ pruneLines(char **space, char **remove,
 			if (freep) freep(space[j]);
 			j++;
 			removed++;
-			unless (j <= LLEN(space)) {
+			unless (j <= _LLEN(space)) {
 				/* done with space */
 				goto out;
 			}
 		}
 	}
 out:	if (removed) {
-		while (j <= LLEN(space)) {
+		while (j <= _LLEN(space)) {
 			space[newj++] = space[j++];
 		}
 		truncLines(space, newj-1);

@@ -66,7 +66,7 @@ t_local(resolve *rs)
 		 * If the "right" one is later, that's what will be hit in
 		 * the symbol table anyway, don't add another node.
 		 */
-		if ((t->mlocal->serial < t->mremote->serial)
+		if ((t->mlocal < t->mremote)
 		    && (sccs_tagLeaf(rs->s, t->local, t->mlocal, t->name))) {
 			rs->opts->errors = 1;
 		}
@@ -85,7 +85,7 @@ t_remote(resolve *rs)
 		}
 	} else {
 		/* see t_local */
-		if ((t->mlocal->serial > t->mremote->serial)
+		if ((t->mlocal > t->mremote)
 		    && (sccs_tagLeaf(rs->s, t->remote, t->mremote, t->name))) {
 			rs->opts->errors = 1;
 		}

@@ -165,7 +165,7 @@ stdin_set(sccs *s)
 			sccs_free(s);
 			exit(1);
 		}
-		map[d->serial] = 1;
+		map[SERIAL(s, d)] = 1;
 	}
 	return (map);
 }
@@ -289,7 +289,7 @@ set_member(sccs *s, char *rev, u8 *map, set_pfunc p)
 		sccs_free(s);
 		exit(1);
 	}
-	unless (map[d->serial] == 1) {
+	unless (map[SERIAL(s, d)] == 1) {
 		free(map);
 		return;
 	}
@@ -315,7 +315,7 @@ set_list(sccs *s, char *rev, set_pfunc p)
 		if (e->flags & D_SET) continue;
 		if (opts.tags && !(e->flags & D_SYMBOLS)) continue;
 		map = sccs_set(s, e, 0, 0);
-		unless (map[d->serial] == 1) {
+		unless (map[SERIAL(s, d)] == 1) {
 			free(map);
 			if (e == d) break;
 			continue;
@@ -361,7 +361,7 @@ print(sccs *s, delta *d)
 			symbol	*sym;
 
 			EACHP_REVERSE(s->symlist, sym) {
-				unless (sym->ser == d->serial) continue;
+				unless (sym->ser == SERIAL(s, d)) continue;
 				printf("%s\n", SYMNAME(s, sym));
 			}
 			break;

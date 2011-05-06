@@ -135,7 +135,7 @@ sccs_d2tag(sccs *s, delta *d)
 
 	unless (d->flags & D_SYMBOLS) return (NULL);
 	EACHP_REVERSE(s->symlist, sym) {
-		if (d->serial == sym->ser) {
+		if (SERIAL(s, d) == sym->ser) {
 			assert(!strchr(SYMNAME(s, sym), '|'));
 			return (SYMNAME(s, sym));
 		}

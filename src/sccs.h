@@ -433,7 +433,6 @@ typedef	unsigned short	sum_t;
  */
 typedef struct delta {
 	/* linkage */
-	ser_t	serial;			/* serial number of this delta */
 	ser_t	pserial;		/* serial number of parent */
 	ser_t	merge;			/* serial number merged into here */
 	ser_t	ptag;			/* parent in tag graph */
@@ -478,13 +477,13 @@ typedef struct delta {
 #define	SYMLEAF(d)	((d)->flags & D_SYMLEAF)
 #define	INARRAY(d)	((d)->flags & D_INARRAY)
 
+#define	SERIAL(s, d)	(ser_t)((d) - (s)->slist)
 #define	SFIND(s, ser)	((ser) ? ((s)->slist + ser) : 0)
-#define	DFIND(d, ser)	((ser) ? ((d) + (ser) - (d)->serial) : 0)
 #define	NEXT(d)		slist_next(d)
 #define	PARENT(s, d)	SFIND((s), (d)->pserial)
 #define	MERGE(s, d)	SFIND((s), (d)->merge)
-#define	KID(s, d)	SFIND((s), (s)->kidlist[(d)->serial].kid)
-#define	SIBLINGS(s, d)	SFIND((s), (s)->kidlist[(d)->serial].siblings)
+#define	KID(s, d)	SFIND((s), (s)->kidlist[SERIAL(s, d)].kid)
+#define	SIBLINGS(s, d)	SFIND((s), (s)->kidlist[SERIAL(s, d)].siblings)
 
 #define	REV(s, d)	((s)->heap.buf + (d)->rev)
 #define	CLUDES(s, d)	((s)->heap.buf + (d)->cludes)
@@ -1197,8 +1196,8 @@ char	*hashstr(char *str, int len);
 char	*hashstream(int fd);
 char	*secure_hashstr(char *str, int len, char *key);
 int	isNetworkFS(char *path);
-void	sccs_saveNum(FILE *f, int num, int sign, int serial);
-int	sccs_eachNum(char **linep, int *signp, int serial);
+void	sccs_saveNum(FILE *f, int num, int sign);
+int	sccs_eachNum(char **linep, int *signp);
 
 #define	KEY_LEASE		0
 #define	KEY_BK_AUTH_HMAC	1

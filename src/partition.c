@@ -171,6 +171,12 @@ partition_main(int ac, char **av)
 
 	verbose((stderr, "\n### Pruning product\n"));
 
+	/*
+	 * Note: it uses no scompress.  It should be able to, though too,
+	 * it shouldn't do anything as the product won't lose any nodes
+	 * in most cases.  If it does a first round prune, then that will
+	 * do a compress.  Anyway, leaving the 'N' here for now.
+	 */
 	sprintf(buf,
 	    "bk csetprune -aNS%s -k%s -w'%s' -r'%s' -CCOMPS -c. -WPRODWEAVE -",
 	    opts->quiet, opts->random, opts->rootlog, opts->ptip);
@@ -651,7 +657,7 @@ moveComps(Opts *opts)
 			unless (d->flags & D_CSET) continue;
 			sccs_sdelta(cset, d, key);
 			fprintf(prodweave, "%u\t%s %s\n",
-			    d->serial, proj_rootkey(0), key);
+			    SERIAL(cset, d), proj_rootkey(0), key);
 		}
 		/* fix backptr to match existing product */
 		d = sccs_ino(cset);

@@ -1242,7 +1242,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	}
 	for (i = n; i > 0; i--) {
 		d = list[i];
-		if (patchmap) patchmap[d->serial] = n - i + 1;
+		if (patchmap) patchmap[SERIAL(s, d)] = n - i + 1;
 		assert(d);
 		if (cs->verbose > 2) fprintf(stderr, " %s", REV(s, d));
 		if (tick) progress(tick, 0);
@@ -1285,14 +1285,14 @@ sccs_patch(sccs *s, cset_t *cs)
 			 * pedantically, put out a patch for I1-E1
 			 * can make for better diff -r results.
 			 */
-			outdiffs += d->added + d->deleted + (d->serial == 1);
+			outdiffs += d->added + d->deleted + (SERIAL(s, d) == 1);
 			if ((i == last) && outdiffs) {
 				rc = sccs_patchDiffs(s, patchmap, "-");
 			}
 		} else unless (TAG(d)) {
 			// Nested XXX
 			if (CSET(s)) {
-				if (d->added) rc = cset_diffs(cs, d->serial);
+				if (d->added) rc = cset_diffs(cs, SERIAL(s, d));
 			} else if (!BAM(s)) {
 				rc = sccs_getdiffs(s, REV(s, d),
 				    GET_BKDIFFS, "-");

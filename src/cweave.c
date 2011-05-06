@@ -112,7 +112,7 @@ delta *
 cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 {
 	int	i, error, sign, added = 0;
-	int	pserial = parent ? parent->serial : 0;
+	int	pserial = parent ? SERIAL(s, parent) : 0;
 	delta	*d, *e, *p;
 	ser_t	serial = 0; /* serial number for 'd' */ 
 	char	*t, *r;
@@ -122,6 +122,12 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	symbol	*sym;
 	FILE	*f = 0;
 
+	/*
+	 * use pserial for parent as parent could become invalid
+	 * because of potential realloc in insertArray.
+	 * Safety so we don't use it later: mark it invalid.
+	 */
+	parent = INVALID;
 	unless (iF) {	
 		/* ignore in patch: like if in skipkeys */
 		assert(fast);
@@ -150,7 +156,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 			}
 			sccs_freedelta(d);
 			d = keep ? e : 0;
-			serial = e->serial;
+			serial = SERIAL(s, e);
 			goto done;
 		}
 	}
@@ -183,7 +189,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 		while (p) {
 			e = NEXT(p);
 			if (!e || earlier(s, e, d)) { /* got insertion point */
-				serial = p->serial;
+				serial = SERIAL(s, p);
 				break;
 			}
 			p = e;
@@ -202,14 +208,14 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	 */
 	f = fmem();
 	for (e = d + 1; e <= s->table; e += 1) {
-		unless (e->serial) continue;
+		unless (e->flags) continue;
 
 		if (e->cludes) {
 			assert(INARRAY(e));
 			t = CLUDES(s, e);
-			while (i = sccs_eachNum(&t, &sign, e->serial)) {
+			while (i = sccs_eachNum(&t, &sign)) {
 				if (i >= serial) i++;
-				sccs_saveNum(f, i, sign, e->serial + 1);
+				sccs_saveNum(f, i, sign);
 			}
 			t = fmem_peek(f, 0);
 			unless (streq(t, CLUDES(s, e))) {
@@ -217,15 +223,12 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 			}
 			ftrunc(f, 0);
 		}
-		assert(e->serial >= serial);
-		e->serial++;
-		// XXX we can do this faster
-		sccs_findKeyUpdate(s, e);
-
 		if (e->pserial >= serial) e->pserial++;
 		if (e->merge >= serial) e->merge++;
 		if (e->ptag >= serial) e->ptag++;
 		if (e->mtag >= serial) e->mtag++;
+		// XXX we can do this faster
+		sccs_findKeyUpdate(s, e);
 	}
 	fclose(f);
 	if (d != s->table) {
@@ -237,18 +240,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 
 	TRACE("serial=%d", serial);
 
-	/*
-	 * Fix up the parent pointer & serial.
-	 * Note: this is just linked enough that we can finish takepatch,
-	 * it is NOT a fully linked tree.
-	 */
-	if (pserial) d->pserial = pserial;
-
-	/*
-	 * Fix up d->serial
-	 */
-	d->serial = serial;
-	assert((d->serial == 0) || (d->serial > d->pserial));
+	d->pserial = pserial;
 
 	sccs_inherit(s, d);
 	if (!fast && !TAG(d) && (s->tree != d)) d->same = 1;
@@ -384,15 +376,15 @@ fastWeave(sccs *s, FILE *out)
 			 * allocating more than needed.  We don't know until
 			 * the end how many are wasted: it's in 'offset'.
 			 */
-			base = d->serial - 1;
+			base = SERIAL(s, d) - 1;
 			weavemap = (ser_t *)calloc(
 			    (s->nextserial - base), sizeof(ser_t));
 			assert(weavemap);
-			index = d->serial;
+			index = SERIAL(s, d);
 			weavemap[0] = base;
 			offset = 0;
 		}
-		while (index + offset < d->serial) {
+		while (index + offset < SERIAL(s, d)) {
 			if (e = sfind(s, index + offset)) {
 #ifdef	COMPRESSION
 				serial = NEXT(e) ? NEXT(e)->serial + 1 : 1;
@@ -401,7 +393,7 @@ fastWeave(sccs *s, FILE *out)
 					fix = 1;
 				}
 #endif
-				weavemap[index - base] = e->serial;
+				weavemap[index - base] = SERIAL(s, e);
 			}
 			index++;
 		}
@@ -424,7 +416,7 @@ fastWeave(sccs *s, FILE *out)
 					fix = 1;
 				}
 #endif
-				weavemap[index - base] = e->serial;
+				weavemap[index - base] = SERIAL(s, e);
 			}
 			index++;
 		}

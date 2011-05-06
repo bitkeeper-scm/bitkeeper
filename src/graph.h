@@ -15,7 +15,7 @@ int	graph_kidwalk(sccs *s, walkfcn toTip, walkfcn toRoot, void *token);
 
 void	symdiff_setParent(sccs *s, delta *d, delta *new, ser_t **sd);
 ser_t	*symdiff_noDup(ser_t *list);
-ser_t	*symdiff_addBVC(ser_t **sd, ser_t *list, delta *d);
+ser_t	*symdiff_addBVC(ser_t **sd, ser_t *list, sccs *s, delta *d);
 /* sort functions - sort by serial and put tags at the end */
 int	graph_bigFirst(const void *a, const void *b);
 int	graph_smallFirst(const void *a, const void *b);
