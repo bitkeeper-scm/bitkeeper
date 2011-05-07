@@ -499,7 +499,7 @@ echo OK
 
 echo $N Try a push of a renamed component ...........................$NL
 cd "$HERE"
-rm -fr project copy
+bk _rm -fr project copy
 nested project
 bk clone $Q . ../copy
 mv gcc gcc4

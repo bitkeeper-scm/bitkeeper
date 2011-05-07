@@ -987,7 +987,7 @@ clone2(remote *r)
 				}
 				if (pclose(f)) {
 					fprintf(stderr,
-					    "%s: --indentical failed, target "
+					    "%s: --identical failed, target "
 					    "cset not annotated with HERE "
 					    "alias.\n", prog);
 					goto nested_err;

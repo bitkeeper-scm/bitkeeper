@@ -1,0 +1,4 @@
+echo $N Show the problem that gui prompt fix was fixing .............$NL
+BK_GUI=1 bk prompt "" 2> ERR && fail -f ERR
+grep -q 'usage:	bk prompt \[<opts>\] \[<message>\]' ERR || fail
+echo OK

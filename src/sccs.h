@@ -1151,7 +1151,6 @@ void	dumpTimestampDB(project *p, hash *db);
 void	updateTimestampDB(sccs *s, hash *timestamps, int diff);
 struct tm *utc2tm(time_t t);
 int	sccs_setStime(sccs *s, time_t newest);
-int	isLocalHost(char *h);
 void	ids(void);
 void	http_hdr(void);
 int	check_rsh(char *remsh);

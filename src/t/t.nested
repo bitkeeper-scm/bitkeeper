@@ -57,7 +57,7 @@ test "`bk repotype`" = "component" || {
 	ls BitKeeper/log
 	exit 1
 }
-test -z "`bk pending || true`" || {
+test -z "`bk pending -S || true`" || {
 	echo did not clear pending marks
 	exit 1
 }
@@ -74,7 +74,7 @@ test "`bk repotype`" = "component" || {
 	ls BitKeeper/log
 	exit 1
 }
-test -z "`bk pending || true`" || {
+test -z "`bk pending -S || true`" || {
 	echo did not clear pending marks
 	exit 1
 }

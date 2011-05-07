@@ -593,7 +593,7 @@ bk portal $Q -r || fail
 bk comps | bk here set $Q -
 bk here rm $Q not-remapped > GOT 2>&1 && fail -f GOT
 cat <<EOF > WANT
-here: searching $HERE/project...ok
+here: searching $HERE/project...ok (gate)
 here: ./not-remapped cannot be found at a gate
 here: unable to remove ./not-remapped
 EOF

@@ -5,6 +5,76 @@ Release notes for BitKeeper version 5.X (released DD-MMM-2011)
    sfile is written and not just when a new sfile is created.
 
 ============================================================================
+Release notes for BitKeeper version 5.2.1 (released 6-May-2011)
+
+This is a bugfix release, mostly addressing corner cases in nested pulls.
+
+  check
+    Fix missing csetmarks in files.
+
+  config
+    Add "autopopulate" config option so that users that want pull
+    to 'just work' can do so.  See 'pull' entry below for more.
+
+  compression
+    Switch gzip to use Z_BEST_SPEED by default for better performance.
+
+  csetprune
+    Fix a bug where a tag that is made directly on a merge cset
+    that gets pruned will cause an assert.  Tags can appear directly
+    on a merge cset as a result of a prior csetprune.
+
+  attribute file
+    Simplify the converge code to work better with older releases.
+
+  mv
+    Fixed "bk mv dir1/SCCS/foo dir2/foo" which dumped core.
+    Note illegal first name (as opposed to dir1/SCCS/s.foo).
+
+  pending
+    Add -S/--standalone option to work like other commands: nested
+    by default and limited to one component with the option.
+
+  pull
+    Add an --auto-populate option and change the default safe pull
+    to not auto-populate, instead give an error message so the
+    user may choose to or not.  An exception is if an alias definition
+    gets another component, that will auto-populate by default in
+    a pull.
+
+    When needing to populate a component, try populating from pull
+    source first, then parent repository, then use the list
+    of accumulated alternatives.  It used to favor accumulated
+    alternatives that were on local disk.
+
+    Fix problem with a failed nested pull not cleaning up correctly.
+    It was after a pull which did some populates.  Since we know it
+    is okay to go to where we were, allow unpopulates to skip gate check.
+
+    In some safe pull cases, a component was populated with the
+    remote state of the component instead of the local state.
+    Fixed.
+
+    Improve error messages in some pull failure case messages.
+
+    Fix a successful pull --batch leaving a PENDING directory.
+
+  resolve
+    Use product relative names for the conflicting file message.
+
+  unpull
+    Fix a failure to restore components if undo fails in the product.
+
+  triggers
+    Fix the documentation of the pre-commit example trigger for
+    interacting with citool.
+
+Other bugfixes:
+  Make prompt not accept a null string for a message (avoid infinite loop).
+  Check fixes missing cset marks in files.
+  Fixed citool in resolver that might be missing deep nested components.
+
+============================================================================
 Release notes for BitKeeper version 5.2 (released 21-Mar-2011)
 
 This is a feature release mainly focusing on extending the nested

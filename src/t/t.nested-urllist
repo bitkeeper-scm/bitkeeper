@@ -633,6 +633,7 @@ echo OK
 
 echo $N Test ordering of multiple URLS in populate ..................$NL
 cd "$HERE"
+bk clone $Q product bkd_parent
 bk clone $Q product locked
 cd locked
 L=`bk lock -wt`
@@ -674,7 +675,6 @@ bk here add -@ssh://bad2.bitkeeper.com:1/ ./gdb 2> ERR && {
 cat <<EOF > WANT
 here: searching ssh://bad2.bitkeeper.com:1/...connect failure
 here: searching $HERE/locked...repo locked
-here: searching $HERE/junk...repo gone
 here: searching bk://localhost:1/...connect failure
 here: searching http://localhost:1/...connect failure
 here: searching bk://bad1.bitkeeper.com:1/...connect failure
@@ -684,12 +684,95 @@ here: searching http://bad.bitkeeper.com:1/...connect failure
 here: searching ssh://localhost:1/...connect failure
 here: searching rsh://bad.bitkeeper.com:1/...connect failure
 here: searching bk://!junkurl:1/...invalid url
+here: searching $HERE/junk...repo gone
 here: No other sources for ./gdb known
 EOF
 cmpfiles WANT ERR
 bk _kill $L
 bk _rm -rf "$HERE"/locked
 echo OK
+
+########################################################################
+IP_ADDR=`bk gethost -rn`
+SKIP=NO
+case X$IP_ADDR in
+    X127.0.0.1|X127.0.1.1)
+	SKIP=YES
+    	;;
+esac
+
+test $SKIP = YES || {
+set +e
+
+echo $N Show that we search the parent first on regular pull ........$NL
+cd ../bkd_parent
+bk gate $Q .
+bk bkd -d -aPORT -ikill
+PORT=`cat PORT`
+URL=bk://$IP_ADDR:$PORT
+cd "$HERE"
+bk clone $Q -sPRODUCT $URL bkd_clone
+cd bkd_clone
+bk here set ALL > OUT 2>&1
+head -2 < OUT | tail -1 > GOT
+echo "Source $URL" > WANT
+cmp -s WANT GOT || {
+	bk _kill $URL
+	cmpfiles WANT GOT
+}
+echo OK
+
+echo $N Show that we can force the search to be local ...............$NL
+BK_CONFIG='urlsearch:local' bk here set PRODUCT > OUT 2>&1
+head -1 < OUT > GOT
+grep -q "searching $HERE" GOT || {
+	bk _kill $URL
+	echo failed to search file system first
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Show that we search the source first on sideways pull .......$NL
+#
+# So what I am doing is
+# make bkd_clone a gate, populate everything, kill the the old bkd,
+# start a new one here, set up a COMPS->product (from rick),
+# clone this bkd_clone to bkd_clone2,
+# come back here and add to COMPS,
+# go back to child, set the parent to something else,
+# then do a sideways pull from bkd_clone.
+cd "$HERE/bkd_clone"
+bk gate $Q .
+bk here set ALL > OUT 2>&1 || {
+	cat OUT
+	exit 1
+}
+bk _kill $URL
+bk alias set $Q COMPS product
+bk bkd -d -aPORT -ikill
+PORT=`cat PORT`
+URL=bk://$IP_ADDR:$PORT
+cd ..
+bk clone $Q -sCOMPS $URL bkd_clone2
+cd bkd_clone
+bk alias add $Q COMPS ./gcc
+cd ../bkd_clone2
+bk parent $Q ../bkd_parent
+bk pull $URL > OUT 2>&1 
+# Here we expect no changing of the source so look for it and complain
+grep -q "Source" OUT && {
+	bk _kill $URL
+	echo failed
+	cat OUT
+	exit 1
+}
+bk _kill $URL
+echo OK
+
+set -e
+}
+########################################################################
 
 echo $N Show pull searching for gate can probe url twice ............$NL
 cd ../copy5
@@ -716,7 +799,7 @@ cat <<EOF > WANT
 Pull file://$HERE/copy4
   -> file://$HERE/product
 .                                  100% |==============================| OK
-pull: searching bk://localhost:$P/copy5...ok
+pull: searching bk://localhost:$P/copy5...ok (gate)
 Source bk://localhost:$P/copy5
 1/2 rm                             100% |==============================| OK
 2/2 .                                1 changeset,   no merges in   3 files
@@ -771,25 +854,50 @@ bk new $Q foosafe gdb/barsafe
 bk commit $Q -yfoo
 echo OK
 
-echo $N Pulls fail, populate from pull source works .................$NL
-STAT=OK
+echo $N Pull auto-populates missing local comps......................$NL
 cd ../task2
-bk pull $Q ../project2-clone
+bk pull $Q ../project2-clone 2>ERR || fail
 bk unpopulate $Q -f gdb gcc || fail
-bk pull $Q ../task1 2> ERR && fail -f ERR
-grep -q "pull: ./gcc cannot be found at a gate" ERR || fail -f ERR
-grep -q "pull: searching .*/sandbox/project2...ok" ERR || fail -f ERR
-bk pull $Q ../task1 2> ERR && fail -f ERR
-grep -q "pull: ./gcc cannot be found at a gate" ERR || fail -f ERR
-grep -q "pull: searching .*/sandbox/project2...ok" ERR || fail -f ERR
-bk populate -q ./gcc ./gdb 2> ERR || {
-	echo "populate: No other sources for ./gdb known" > WANT
-	cmpfiles ERR WANT
-	STAT="failed (bug in urllist handling)"
-	# hardcode fetching
-	bk populate $Q -@../project2 ./gcc ./gdb 2> ERR
-}
-test -s ERR && fail -f ERR
-# Now the pull works
-bk pull $Q ../task1
-echo "$STAT"
+bk pull ../task1 > OUT 2>&1 && fail -f OUT
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > OUT2
+cat >WANT <<EOF
+Pull file://ROOT/task1
+  -> file://ROOT/task2
+.                                  100% |==============================| OK
+pull: searching ROOT/project2...ok (gate)
+
+The following components are present in the remote, were not
+found in any gates, and will need to be populated to make
+the pull safe:
+	gcc
+	gdb
+Please re-run the pull using the --auto-populate option in order
+to get them automatically.
+EOF
+cmpfiles WANT OUT2
+bk pull --auto-populate ../task1 > OUT 2>&1 || fail -f OUT
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > OUT2
+cat >WANT <<EOF
+Pull file://ROOT/task1
+  -> file://ROOT/task2
+.                                  100% |==============================| OK
+pull: searching ROOT/project2...ok (gate)
+
+The following components are present in the remote, were not
+found in any gates, and will need to be populated to make
+the pull safe:
+	gcc
+	gdb
+Adding the following aliases/components:
+	gcc
+	gdb
+pull: searching ROOT/task1...ok
+1/4 gcc                            100% |==============================| OK
+pull: searching ROOT/project2...ok (gate)
+Source ROOT/project2
+2/4 gdb                            100% |==============================| OK
+3/4 gdb                              1 changeset,    1 merge  in   2 files
+4/4 .                                1 changeset,    1 merge  in   2 files
+EOF
+cmpfiles WANT OUT2
+echo OK

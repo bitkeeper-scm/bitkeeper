@@ -388,7 +388,8 @@ prompt_main(int ac, char **av)
 	}
 	if (((file || prog) && av[optind]) ||
 	    (!(file || prog) && !av[optind]) ||
-	    (av[optind] && av[optind+1]) || (file && prog)) {
+	    (av[optind] && av[optind+1]) || (file && prog) ||
+	    (av[optind] && !av[optind][0])) {
 		if (file == msgtmp) unlink(msgtmp);
 		usage();
 	}
@@ -1310,14 +1311,6 @@ strdup_tochar(const char *s, int c)
 	return (ret);
 }
 
-int
-isLocalHost(char *h)
-{
-	unless (h) return (0);
-	return (streq("localhost", h) ||
-	    streq("localhost.localdomain", h) || streq("127.0.0.1", h));
-}
-
 char	*
 savefile(char *dir, char *prefix, char *pathname)
 {
@@ -1682,7 +1675,9 @@ rmdir_findprocs(void)
 		for (j = 0; j < WAIT; ++j) {
 			usleep(500000);
 			if ((c = readlink(buf1, buf2, sizeof(buf2))) < 0) break;
-			if (j == 20) ttyprintf("Waiting for %s\n", buf1);
+			if ((j == 20) && getenv("_BK_DEBUG_BG")) {
+				ttyprintf("Waiting for %s\n", buf1);
+			}
 		}
 		/* we know they are gone if we broke out early */
 		if (j < WAIT) continue;

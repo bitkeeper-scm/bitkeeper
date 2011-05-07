@@ -309,6 +309,7 @@ void	tcp_reuse(int sock);
 void	tcp_keepalive(int sock);
 int	sockport(int s);
 char	*sockaddr(int);
+int	isLocalHost(char *h);
 char	*hostaddr(char *);
 int	tcp_pair(int fds[2]);
 char	*peeraddr(int s);

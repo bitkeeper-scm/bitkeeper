@@ -21,3 +21,30 @@ grep -q "file@1.1" OUT || {
 	exit 1
 }
 echo OK
+
+echo $N Show pending is nested aware ................................$NL
+cd "$HERE"
+nested prod
+cd gcc
+bk setup -Cf deep
+cd deep
+touch foo
+bk new $Q foo
+bk pending | perl -ne 'print if /^\S/ && s/,.*//' > GOT
+cat <<EOF > WANT
+gcc/deep/foo@1.1
+gcc/deep/foo@1.0
+gcc/deep/ChangeSet@1.1
+gcc/deep/ChangeSet@1.0
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Show pending -S .............................................$NL
+bk pending -S | perl -ne 'print if /^\S/ && s/,.*//' > GOT
+cat <<EOF > WANT
+foo@1.1
+foo@1.0
+EOF
+cmpfiles WANT GOT
+echo OK

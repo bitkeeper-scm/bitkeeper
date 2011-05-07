@@ -1,5 +1,7 @@
 set -e
 echo $N Set up repositories for testing covers.......................$NL
+BK_CONFIG="autopopulate: on"
+export BK_CONFIG
 nested setcover
 bk setup -Cf gas
 bk alias set -C V0 PRODUCT
@@ -22,10 +24,6 @@ bk alias set -C CR7to0 PRODUCT
 touch gcc/foo gdb/foo
 bk new $Q gcc/foo gdb/foo
 bk commit $Q -ychange
-cat <<EOF > ../dest/WANTERR
-pull: ./gcc cannot be found at a gate
-pull: ./gdb cannot be found at a gate
-EOF
 echo OK
 
 echo $N If missing comp is served only by one, use it ...............$NL
@@ -33,8 +31,7 @@ echo $N If missing comp is served only by one, use it ...............$NL
 cd "$HERE/src"
 bk here set V1 V7
 cd ../dest
-bk pull -q 2>ERR || fail -f ERR
-cmpfiles WANTERR ERR
+bk pull -q || fail
 bk here > GOT
 cat >WANT <<EOF
 PRODUCT
@@ -50,8 +47,7 @@ cd "$HERE/src"
 bk here set V7 V2 V1
 cd ../dest
 bk here set -qf PRODUCT
-bk pull -q 2>ERR || fail -f ERR
-cmpfiles WANTERR ERR
+bk pull -q || fail
 bk here > GOT
 cat >WANT <<EOF
 PRODUCT
@@ -68,8 +64,7 @@ cd "$HERE/src"
 bk here set V7 V6 V5
 cd ../dest
 bk here set -qf PRODUCT
-bk pull -q 2>ERR || fail -f ERR
-cmpfiles WANTERR ERR
+bk pull -q || fail
 bk here > GOT
 cat >WANT <<EOF
 PRODUCT
@@ -85,8 +80,7 @@ cd "$HERE/src"
 bk here set V6 V5 V1
 cd ../dest
 bk here set -qf PRODUCT
-bk pull -q 2>ERR || fail -f ERR
-cmpfiles WANTERR ERR
+bk pull -q || fail
 bk here > GOT
 cat >WANT <<EOF
 PRODUCT
@@ -100,8 +94,16 @@ echo OK
 echo $N No extra, and cover are the same, pick smaller ..............$NL
 # gas(V4) is now local as opposed to extra, V1 will still be picked as smaller
 bk here set -qf V4
-bk pull -q 2>ERR || fail -f ERR
-cmpfiles WANTERR ERR
+# Test that config var autopopulate is checked when in a component
+# Also check that while the autoconfig was turned off while in the
+# component, the setting that is used is the product's setting.
+cd gas
+echo "autopopulate: off" >> BitKeeper/log/config
+bk config autopopulate > GOT.conf
+echo off > WANT.conf
+cmpfiles WANT.conf GOT.conf
+bk pull -q || fail
+cd ..
 bk here > GOT
 cat >WANT <<EOF
 PRODUCT
@@ -116,8 +118,7 @@ echo OK
 echo $N Local alias chg from all to none, bring over remote .........$NL
 # gas(V4) is now local as opposed to extra, V1 will still be picked as smaller
 bk here set $Q CR7to0
-bk pull -q 2>ERR || fail -f ERR
-cmpfiles WANTERR ERR
+bk pull -q || fail
 bk here > GOT
 cat >WANT <<EOF
 CR7to0
@@ -136,8 +137,7 @@ bk here set CL7to0
 cd ../dest
 bk here set -qf PRODUCT
 bk alias set $Q CL7to0 PRODUCT
-bk pull -q 2>ERR || fail -f ERR
-cmpfiles WANTERR ERR
+bk pull -q || fail
 bk here > GOT
 cat >WANT <<EOF
 ./gcc
@@ -159,7 +159,7 @@ cd ../dest
 bk here set -qf PRODUCT
 bk alias set $Q CL1to3 gcc gdb
 bk pull -q 2>ERR && fail -f ERR
-grep -q 'pull: failed to fetch component ./gcc' ERR || fail -f ERR
+grep -q 'pull: No other sources for ./gcc known' ERR || fail -f ERR
 echo OK
 
 ###
@@ -197,6 +197,7 @@ bk diff -q --ignore-trailing-cr WANT GOT >OUT && \
 	fail -f OUT you fixed a bug
 echo failed \(bug np-hard\)
 
+unset BK_CONFIG
 
 echo $N Set up repos.................................................$NL
 cd "$HERE"
@@ -272,7 +273,7 @@ echo $N Repeat without -q ...........................................$NL
 bk pull > OUT 2>ERR || fail should work
 cat <<EOF > WANT
 .                                  100% |==============================| OK
-pull: searching $HERE/gate...ok
+pull: searching $HERE/gate...ok (gate)
 1/2 gcc                              1 changeset,   no merges in   3 files
 2/2 .                                1 changeset,   no merges in   2 files
 EOF
@@ -287,7 +288,20 @@ echo $N Test pull from non-gate works, when no gate..................$NL
 # clear out urllist
 rm ../project/BitKeeper/log/urllist
 mv BitKeeper/log/urllist BitKeeper/log/urllist.old
-bk pull $Q 2>ERR || fail
+bk pull $Q 2>ERR && fail -f ERR
+cat >WANT <<EOF
+
+The following components are present in the remote, were not
+found in any gates, and will need to be populated to make
+the pull safe:
+	doc
+	gdb
+	man
+Please re-run the pull using the --auto-populate option in order
+to get them automatically.
+EOF
+cmpfiles WANT ERR
+bk pull --auto-populate $Q 2>ERR || fail -f ERR
 bk here > GOT
 cat <<EOF >WANT
 DEFAULT
@@ -370,7 +384,7 @@ bk alias add $Q GCC gdb
 bk push $Q ../project
 bk here set -f $Q PRODUCT
 # now pull GCC, note there are no changes to gdb in remote
-bk pull -q ../repo-1 2>ERR || fail -f ERR
+bk pull --auto-populate -q ../repo-1 2>ERR || fail -f ERR
 bk here > GOT
 cat <<EOF >WANT
 GCC
@@ -406,7 +420,7 @@ bk alias set $Q GCC ./gcc ./tools || fail
 cd ../repo-2
 bk alias set $Q GCC ./gcc || fail
 bk here set -f $Q GCC || fail
-bk pull $Q ../repo-1 2> ERR || fail -f ERR
+bk pull --auto-populate $Q ../repo-1 2> ERR || fail -f ERR
 bk here >GOT
 cat <<EOF >WANT
 ./tools

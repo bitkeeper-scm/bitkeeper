@@ -4,6 +4,8 @@
 bk pending \- list deltas which need to be in a changeset
 .SH SYNOPSIS
 .B bk pending
+.[B] \-S
+.[B] \-q
 .SH DESCRIPTION
 .LP
 The
@@ -17,10 +19,28 @@ To see what needs to be committed to a change set, run:
 .DS
 $ bk pending
 .DE
+.SH OPTIONS
+.TP "\\fB\\-\\-standalone \\fP"
+.B \-S
+.tp
+.B \-\-standalone
+Limit the list to the current component.
+This has no effect in a traditional standalone repository,
+but in a nested collection, processes just the current component
+and not the entire nested collection.
+.tp
+.B \-q
+No output.  Return 0 if there are pending files or 1 if there are not.
 .SH NOTE
-This command is roughly the same as
+This command is
+.I roughly
+the same as
 .DS
-$ bk -R sfiles -pA | bk -R log -
+$ bk -e sfiles -pA | bk -P log ... -
+.DE
+or, in the presence of the \-S option,
+.DS
+$ bk -R sfiles -pA | bk -R log ... -
 .DE
 .SH "SEE ALSO"
 .SA commit
