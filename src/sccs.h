@@ -442,11 +442,11 @@ typedef struct delta {
 	u32	added;			/* lines added by this delta (u32!) */
 	u32	deleted;		/* and deleted */
 	u32	same;			/* and unchanged */
-	sum_t	sum;			/* checksum of gfile */
-	sum_t	sortSum;		/* sum from sortkey */
-	time_t	date;			/* date - conversion from sdate/zone */
-	time_t	dateFudge;		/* make dates go forward */
-	mode_t	mode;			/* 0777 style modes */
+	u32	sum;			/* checksum of gfile */
+	u32	sortSum;		/* sum from sortkey */
+	u32	date;			/* date - conversion from sdate/zone */
+	u32	dateFudge;		/* make dates go forward */
+	u32	mode;			/* 0777 style modes */
 	u32	xflags;			/* timesafe x flags */
 	u32	flags;			/* per delta flags */
 	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
@@ -1280,7 +1280,7 @@ int	getMsg2(char *msg_name, char *arg, char *arg2, char b, FILE *outf);
 int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
 void	randomBits(char *buf);
-int	almostUnique(void);
+sum_t	almostUnique(void);
 int	uninstall(char *path, int upgrade);
 int	remote_bk(int quiet, int ac, char **av);
 void	dspec_eval(FILE * out, sccs *s, delta *d, char *start);

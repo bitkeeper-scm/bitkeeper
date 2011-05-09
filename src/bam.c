@@ -53,11 +53,13 @@ bp_delta(sccs *s, delta *d)
 	int	rc;
 	char	*p = aprintf("%s/" BAM_MARKER, proj_root(s->proj));
 	char	*hash;
+	sum_t	sum;
 	struct	utimbuf ut;
 
 	unless (exists(p)) touch(p, 0664);
 	free(p);
-	if (bp_hashgfile(s->gfile, &hash, &d->sum)) return (-1);
+	if (bp_hashgfile(s->gfile, &hash, &sum)) return (-1);
+	d->sum = sum;
 	d->bamhash = sccs_addStr(s, hash);
 	free(hash);
 	s->dsum = d->sum;
