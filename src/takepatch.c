@@ -42,7 +42,7 @@ private	int	extractPatch(char *name, MMAP *p);
 private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int*);
 private	int	applyPatch(char *local, sccs *perfile);
 private	int	applyCsetPatch(sccs *s, int *nfound, sccs *perfile);
-private	int	getLocals(sccs *s, delta *d, char *name);
+private	int	getLocals(sccs *s, char *name);
 private	void	insertPatch(patch *p, int strictOrder);
 private	int	reversePatch(void);
 private	void	initProject(void);
@@ -66,7 +66,7 @@ private	int	newProject;	/* command line opt to create a new repo */
 private	int	saveDirs;	/* save directories even if errors */
 private	MDBM	*idDB;		/* key to pathname db, set by init or rebuilt */
 private	MDBM	*goneDB;	/* key to gone database */
-private	delta	*tableGCA;	/* predecessor to the oldest delta found
+private	char	*tableGCA;	/* key of predecessor to the oldest delta found
 				 * in the patch */
 private	int	noConflicts;	/* if set, abort on conflicts */
 private	char	pendingFile[MAXPATH];
@@ -559,11 +559,12 @@ error:		if (perfile) sccs_free(perfile);
 		unless (cset) nfound = 0;	/* only count csets */
 	} else {
 		if (s == fake) s = 0;
-		if (patchList && tableGCA) getLocals(s, tableGCA, name);
+		if (patchList && tableGCA) getLocals(s, name);
 		rc = applyPatch(s ? s->sfile : 0, perfile);
 		if (rc < 0) errfiles = addLine(errfiles, strdup(name));
 		nfound = 0;	/* only count csets */
 	}
+	FREE(tableGCA);
 	if (echo > 1) fputc('\n', stderr);
 	if (perfile) sccs_free(perfile);
 	if (streq(gfile, "BitKeeper/etc/config")) {
@@ -686,13 +687,15 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int *np)
 	if (strneq(b, "# Patch checksum=", 17)) return 0;
 	pid = strdup(b);
 	/*
-	 * This code assumes that the delta table order is time sorted.
-	 * We stash away the parent of the earliest delta as a "GCA".
+	 * We stash away the parent key of the earliest delta as a "GCA".
+	 * Optimally, we'd walk sccs_next() and do date and key compares.
+	 * and move up to the last one older than the current patch (for
+	 * which we haven't read in the delta struct yet).  But this
+	 * isn't used by current code (fastpatch+sfio), so this is good
+	 * enough.
 	 */
 	if (parent = sccs_findKey(s, b)) {
-		if (!tableGCA || (tableGCA->date >= parent->date)) {
-			tableGCA = parent;
-		}
+		unless (tableGCA) tableGCA = strdup(b);
 	}
 
 	/* go get the delta table entry for this delta */
@@ -1302,17 +1305,11 @@ applyPatch(char *localPath, sccs *perfile)
 	/* convert to uncompressed, it's faster, we saved the mode above */
 	unless (s) return (-1);
 	unless (tableGCA) goto apply;
-	/*
-	 * Note that tableGCA is NOT a valid pointer into the sccs tree "s".
-	 */
-	assert(tableGCA);
-	assert(tableGCA->rev);
-	assert(tableGCA->pathname);
 	if (echo > 6) {
 		fprintf(stderr,
-		    "stripdel %s from %s\n", REV(s, tableGCA), s->sfile);
+		    "stripdel %s from %s\n", tableGCA, s->sfile);
 	}
-	if (d = sccs_prev(s, sccs_findrev(s, REV(s, tableGCA)))) {
+	if (d = sccs_prev(s, sccs_findKey(s, tableGCA))) {
 		delta	*e;
 
 		for (e = s->table; e; e = NEXT(e)) {
@@ -1502,8 +1499,9 @@ apply:
  * Include up to but not including tableGCA in the list.
  */
 private	int
-getLocals(sccs *s, delta *g, char *name)
+getLocals(sccs *s, char *name)
 {
+	delta	*g = sccs_findKey(s, tableGCA);
 	FILE	*t;
 	patch	*p;
 	delta	*d;
@@ -1511,6 +1509,7 @@ getLocals(sccs *s, delta *g, char *name)
 	static	char tmpf[MAXPATH];	/* don't allocate on stack */
 
 	assert(!CSET(s));
+	assert(g);
 	if (echo > 6) {
 		fprintf(stderr, "getlocals(%s, %s, %s)\n",
 		    s->gfile, REV(s, g), name);

@@ -61,8 +61,7 @@ private	delta*	getCksumDelta(sccs *s, delta *d);
 private delta	*gca(sccs *, delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
-private int	compressmap(sccs *s, delta *d, u8 *set, int useSer,
-			void **i, void **e);
+private int	compressmap(sccs *s, delta *d, u8 *set, char **i, char **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	weaveMove(weave *w, int line, int before, ser_t patchserial);
@@ -449,6 +448,12 @@ sccs_freedelta(delta *d)
 	free(d);
 }
 
+private	void
+freeExtra(sccs *s, delta *d)
+{
+	FREE(EXTRA(s, d)->rev);
+}
+
 /*
  * Free the entire delta table.
  * This follows the ->next pointer and is not recursive.
@@ -456,7 +461,13 @@ sccs_freedelta(delta *d)
 private void
 sccs_freetable(sccs *s)
 {
+	dextra	*dx;
+
 	FREE(s->slist);
+	EACHP(s->extra, dx) {
+		free(dx->rev);	/* freeExtra(s, d) sped up */
+	}
+	FREE(s->extra);
 	s->tree = s->table = 0;
 	s->nextserial = 0;
 	if (s->heap.buf) free(s->heap.buf);
@@ -570,6 +581,7 @@ dinsert(sccs *s, delta *d, int fixDate)
 	/* copy delta* into s->slist */
 	unless (INARRAY(d)) {
 		p = addArray(&s->slist, d);
+		addArray(&s->extra, 0);
 		free(d); /* not sccs_freedelta(); just free the mem */
 		d = p;
 		d->flags |= D_INARRAY;
@@ -1133,17 +1145,43 @@ scanrev(char *s, ser_t *a, ser_t *b, ser_t *c, ser_t *d)
 }
 
 private void
-explode_rev(sccs *sc, delta *d)
+explode_rev(sccs *sc, delta *d, char *rev)
 {
-	char	*s = REV(sc, d);
-	int	dots = 0;
-
-	while (*s) { if (*s++ == '.') dots++; }
-	if (dots > 3) d->flags |= D_ERROR|D_BADFORM;
-	switch (scanrev(REV(sc, d), &d->r[0], &d->r[1], &d->r[2], &d->r[3])) {
+	if (strcnt(rev, '.') > 3) d->flags |= D_ERROR|D_BADFORM;
+	switch (scanrev(rev, &d->r[0], &d->r[1], &d->r[2], &d->r[3])) {
 	    case 1: d->r[1] = 0;	/* fall through */
 	    case 2: d->r[2] = 0;	/* fall through */
 	    case 3: d->r[3] = 0;
+	}
+}
+
+char *
+delta_rev(sccs *s, delta *d)
+{
+	dextra	*dx;
+	char	buf[MAXREV];
+
+	if (d->r[2]) {
+		sprintf(buf, "%d.%d.%d.%d",
+		    d->r[0], d->r[1], d->r[2], d->r[3]);
+	} else {
+		sprintf(buf, "%d.%d",
+		    d->r[0], d->r[1]);
+	}
+	if (INARRAY(d)) {
+		dx = EXTRA(s, d);
+		unless (dx->rev && streq(buf, dx->rev)) {
+			free(dx->rev);
+			dx->rev = strdup(buf);
+		}
+		return (dx->rev);
+	} else {
+		/*
+		 * Return non-strdup'd constant.  Any would do.
+		 * It's from a patch and will get put into the array soon.
+		 * The r[] is the definitive revision.
+		 */
+		return ("1.3.9.62"); 
 	}
 }
 
@@ -1157,21 +1195,6 @@ samebranch(delta *a, delta *b)
 	return ((a->r[0] == b->r[0]) &&
 		(a->r[1] == b->r[1]) &&
 		(a->r[2] == b->r[2]));
-}
-
-private char *
-branchname(sccs *s, delta *d)
-{
-	ser_t	a1 = 0, a2 = 0, a3 = 0, a4 = 0;
-	static	char buf[6];
-
-	scanrev(REV(s, d), &a1, &a2, &a3, &a4);
-	if (a3) {
-		sprintf(buf, "%d", a3);
-	} else {
-		sprintf(buf, "0");
-	}
-	return (buf);
 }
 
 /*
@@ -1384,35 +1407,6 @@ findSym(sccs *s, char *name)
 	return (0);
 }
 
-/*
- * Revision number/branching theory of operation:
- *	rfind() does an exact match - use this if you want a specific delta.
- *	findrev() does an inexact match - it will find top of trunk for the
- *		trunk or a branch if it is specified as -r1 or -r1.2.1.
- *		Note that -r1 will not find tot if tot is 2.1; use a null
- *		rev to get that.
- *	sccs_getedit() finds the revision and gets the new revision number for a
- *		new delta.  The find logic is findrev().  The new revision
- *		will be the next available on that line, unless there is
- *		a conflict or the forcebranch flag is set.  In either of
- *		those cases, the new revision will be a branch.
- *		If the revision is on the trunk and they wanted to bump
- *		the release, do so.
- */
-private int
-name2rev(sccs *s, char **rp)
-{
-	char	*rev = *rp;
-	symbol	*sym;
-
-	if (!rev) return (0);
-	if (isdigit(rev[0])) return (0);
-
-	unless (sym = findSym(s, rev)) return (-1);
-	*rp = REV(s, SFIND(s, sym->ser));
-	return (0);
-}
-
 private inline int
 samerev(ser_t a[4], ser_t b[4])
 {
@@ -1429,10 +1423,14 @@ private delta *
 rfind(sccs *s, char *rev)
 {
 	delta	*d;
+	symbol	*sym;
 	ser_t	R[4];
 
 	debug((stderr, "rfind(%s) ", rev));
-	name2rev(s, &rev);
+	unless (isdigit(rev[0])) {
+		if (sym = findSym(s, rev)) return (SFIND(s, sym->ser));
+		return (0);
+	}
 	R[0] = R[1] = R[2] = R[3] = 0;
 	scanrev(rev, &R[0], &R[1], &R[2], &R[3]);
 	debug((stderr, "aka %d.%d.%d.%d\n", R[0], R[1], R[2], R[3]));
@@ -1465,6 +1463,7 @@ findrev(sccs *s, char *rev)
 	ser_t	a = 0, b = 0, c = 0, d = 0;
 	ser_t	max = 0;
 	delta	*e = 0, *f = 0;
+	symbol	*sym;
 	char	buf[20];
 
 	debug((stderr,
@@ -1483,7 +1482,10 @@ findrev(sccs *s, char *rev)
 		unless (e) fprintf(stderr, "Serial %s not found\n", rev);
 		return (e);
 	}
-	if (name2rev(s, &rev)) return (0);
+	unless (isdigit(rev[0])) {
+		if (sym = findSym(s, rev)) return (SFIND(s, sym->ser));
+		return (0);
+	}
 	switch (scanrev(rev, &a, &b, &c, &d)) {
 	    case 1:
 		/* XXX: what does -r0 mean?? */
@@ -2008,7 +2010,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	time_t	now = 0;
 	ser_t	a[4] = {0, 0, 0, 0};
 	int hasKeyword = 0, buf_size;
-#define EXTRA 1024
+#define MORE 1024
 
 	a[0] = a[1] = a[2] = a[3] = 0;
 	/* pre scan the line to determine if it needs keyword expansion */
@@ -2020,7 +2022,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 		if (strchr("ABCDEFGHIKLMPQRSTUWYZ@", t[1])) hasKeyword = 1;
 	}
 	unless (hasKeyword) return (l);
-	buf_size = t - l + EXTRA; /* get extra memory for keyword expansion */
+	buf_size = t - l + MORE; /* get extra memory for keyword expansion */
 
 	/* ok, we need to expand keyword, allocate a new buffer */
 	t = buf = malloc(buf_size);
@@ -2040,10 +2042,8 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			strcpy(t, "@(#)"); t += 4;
 			break;
 
-		    case 'B':	/* branch name: XXX */
-			tmp = branchname(s, d);
-			strcpy(t, tmp);
-			t += strlen(tmp);
+		    case 'B':	/* 1.2.3.4 -> 3 (branch name) */
+			t += sprintf(t, "%d", d->r[2]);
 			break;
 
 		    case 'C':	/* line number - XXX */
@@ -2091,8 +2091,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case 'L':	/* 1.2.3.4 -> 2 */
-			scanrev(REV(s, d), &a[0], &a[1], 0, 0);
-			sprintf(t, "%d", a[1]); t += strlen(t);
+			t += sprintf(t, "%d", d->r[1]);
 			break;
 
 		    case 'M':	/* mflag or filename: slib.c */
@@ -2110,14 +2109,11 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case 'R':	/* release 1.2.3.4 -> 1 */
-			scanrev(REV(s, d), &a[0], 0, 0, 0);
-			sprintf(t, "%d", a[0]); t += strlen(t);
+			t += sprintf(t, "%d", d->r[0]);
 			break;
 
 		    case 'S':	/* rev number: 1.2.3.4 -> 4 */
-			a[3] = 0;
-			scanrev(REV(s, d), &a[0], &a[1], &a[2], &a[3]);
-			sprintf(t, "%d", a[3]); t += strlen(t);
+			t += sprintf(t, "%d", d->r[3]);
 			break;
 
 		    case 'T':	/* time: 23:04:04 */
@@ -2243,7 +2239,7 @@ rcsexpand(sccs *s, delta *d, char *line, int *expanded)
 		unless (out) {
 			char	*nl = p;
 			while (*nl) nl++;
-			outend = out = malloc(nl - line + EXTRA);
+			outend = out = malloc(nl - line + MORE);
 		}
 		*expanded = 1;
 		while (last < ke) *outend++ = *last++;
@@ -3033,6 +3029,7 @@ first:		if (streq(buf, "\001u")) break;
 		if (serial >= s->nextserial) s->nextserial = serial + 1;
 		unless (s->slist) {
 			growArray(&s->slist, serial);
+			growArray(&s->extra, serial);
 			dates = calloc(s->nextserial, sizeof(*dates));
 		}
 		t = SFIND(s, serial);
@@ -4921,7 +4918,6 @@ walkList(sccs *s, char *list, int *errp)
 		if (streq(rev, "+")) {
 			tmp = findrev(s, 0);
 		} else {
-			name2rev(s, &rev);
 			tmp = rfind(s, rev);
 		}
 		t[-1] = save;
@@ -4941,7 +4937,6 @@ walkList(sccs *s, char *list, int *errp)
 	*t++ = 0;
 	rev = next;
 	next = t;
-	name2rev(s, &rev);
 	stop = rfind(s, rev);
 	t[-1] = '-';
 	for (t = next; *t && *t != ',' && *t != '-'; t++);
@@ -4956,7 +4951,6 @@ walkList(sccs *s, char *list, int *errp)
 	if (streq(rev, "+")) {
 		d = findrev(s, 0);
 	} else {
-		name2rev(s, &rev);
 		d = rfind(s, rev);
 	}
 	t[-1] = save;
@@ -5025,67 +5019,22 @@ setmap(sccs *s, int bit, int all)
 	return (slist);
 }
 
-struct	liststr {
-	struct liststr	*next;
-	char		*str;
-};
-
-private int
-insertstr(struct liststr **list, char *str)
-{
-	struct liststr	*item = malloc(sizeof(*item));
-
-	item->next = *list;
-	item->str = str;
-	*list = item;
-	return (1 + strlen(str));	/* include room for join or term */
-}
-
-private char *
-buildstr(struct liststr *list, int len)
-{
-	struct liststr	*p;
-	char		*str;
-	int		offset = 0;
-
-	unless (len) return (0);
-	str = malloc(len + 1);
-	for (p = list; p ; p = p->next) {
-		offset += sprintf(&str[offset], "%s,", p->str);
-	}
-	assert(offset == len);
-	if (offset) str[offset - 1] = '\0';
-	return (str);
-}
-
-private void
-freestr(struct liststr *list)
-{
-	struct liststr	*p;
-
-	for ( ; list ; list = p) {
-		p = list->next;
-		free(list);
-	}
-}
-
 /* compress a set of serials.  Assume 'd' is basis version and compute
  * include and exclude strings to go with it.  The strings are a
  * comma separated list of numbers
  */
 
 private int
-compressmap(sccs *s, delta *d, u8 *set, int useSer, void **inc, void **exc)
+compressmap(sccs *s, delta *d, u8 *set, char **inc, char **exc)
 {
-	struct	liststr	*inclist = 0, *exclist = 0;
-	int	inclen = 0, exclen = 0;
 	u8	*slist;
 	delta	*t;
 	char	*p;
 	int	i, sign;
 	int	active;
 	ser_t	*incser = 0, *excser = 0;
-	ser_t	tser;
+	ser_t	tser, *tserp;
+	FILE	*f;
 
 	assert(d);
 	assert(set);
@@ -5114,23 +5063,11 @@ compressmap(sccs *s, delta *d, u8 *set, int useSer, void **inc, void **exc)
 		    || slist[tser] & S_INC);
 
 		/* exclude if active in delta set and not in desired set */
-		if (active && !set[tser]) {
-			if (useSer) {
-				excser = addSerial(excser, tser);
-			} else {
-				exclen += insertstr(&exclist, REV(s, t));
-			}
-		}
+		if (active && !set[tser]) addArray(&excser, &tser);
 		unless (set[tser])  continue;
 
 		/* include if not active in delta set and in desired set */
-		if (!active) {
-			if (useSer) {
-				incser = addSerial(incser, tser);
-			} else {
-				inclen += insertstr(&inclist, REV(s, t));
-			}
-		}
+		if (!active) addArray(&incser, &tser);
 		p = CLUDES(s, t);
 		while (i = sccs_eachNum(&p, &sign)) {
 			unless(slist[i] & (S_INC|S_EXCL)) {
@@ -5138,18 +5075,35 @@ compressmap(sccs *s, delta *d, u8 *set, int useSer, void **inc, void **exc)
 			}
 		}
 	}
-
-	if (useSer) {
-		if (incser) *inc = incser;
-		if (excser) *exc = excser;
-	} else {
-		if (inclen) *inc = buildstr(inclist, inclen);
-		if (exclen) *exc = buildstr(exclist, exclen);
-	}
-
 	if (slist)   free(slist);
-	if (exclist) freestr(exclist);
-	if (inclist) freestr(inclist);
+	if (incser) {
+		f = 0;
+		EACHP_REVERSE(incser, tserp) {
+			t = SFIND(s, *tserp);
+			if (f) {
+				fputs(",", f);
+			} else {
+				f = fmem();
+			}
+			fputs(REV(s, t), f);
+		}
+		*inc = fmem_close(f, 0);
+		free(incser);
+	}
+	if (excser) {
+		f = 0;
+		EACHP_REVERSE(excser, tserp) {
+			t = SFIND(s, *tserp);
+			if (f) {
+				fputs(",", f);
+			} else {
+				f = fmem();
+			}
+			fputs(REV(s, t), f);
+		}
+		*exc = fmem_close(f, 0);
+		free(excser);
+	}
 	return (0);
 }
 
@@ -5253,7 +5207,7 @@ bad:	free(slist);
 int
 sccs_graph(sccs *s, delta *d, u8 *map, char **inc, char **exc)
 {
-	return (compressmap(s, d, map, 0, (void **)inc, (void **)exc));
+	return (compressmap(s, d, map, inc, exc));
 }
 
 u8 *
@@ -5669,7 +5623,7 @@ sccs_impliedList(sccs *s, char *who, char *base, char *rev)
 {
 	delta	*baseRev, *t, *mRev;
 	int	active;
-	void	*inc = 0, *exc = 0;
+	char	*inc = 0, *exc = 0;
 	u8	*slist = 0;
 	char	*p;
 	int	i, sign;
@@ -5728,7 +5682,7 @@ err:		s->state |= S_WARNED;
 			}
 		}
 	}
-	if (compressmap(s, baseRev, slist, 0, &inc, &exc)) {
+	if (compressmap(s, baseRev, slist, &inc, &exc)) {
 		fprintf(stderr, "%s: cannot compress merged set\n", who);
 		goto err;
 	}
@@ -9236,7 +9190,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 	 * c) the DELTA_EMPTY flag is set
 	 */
 	if (nodefault ||
-	    (flags & DELTA_EMPTY) || (prefilled && prefilled->rev)) {
+	    (flags & DELTA_EMPTY) || (prefilled && prefilled->r[0])) {
 		first = n = prefilled ? prefilled : new(delta);
 	} else {
 		first = n0 = new(delta);
@@ -9280,8 +9234,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 	s->mode |= 0440;			/* force user/group read */
 
 	updMode(s, n, 0);
-	if (!n->rev) revArg(s, n, n0 ? "1.1" : "1.0");
-	//explode_rev(s, n);
+	if (!n->r[0]) revArg(s, n, n0 ? "1.1" : "1.0");
 	if (nodefault) {
 		if (prefilled) s->xflags |= prefilled->xflags;
 	} else if (ASCII(s)) {
@@ -10221,11 +10174,9 @@ private delta *
 revArg(sccs *s, delta *d, char *arg)
 {
 	if (!d) d = new(delta);
-	d->rev = sccs_addStr(s, arg);
-	explode_rev(s, d);
+	explode_rev(s, d, arg);
 	return (d);
 }
-#undef	ARG
 
 /*
  * Partially fill in a delta struct.  If the delta is null, allocate one.
@@ -10345,8 +10296,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		 * processing and we need to hand that info across some other
 		 * way, like in the environment or an optional trailer block.
 		 */
-		n->rev = d->rev;
-		explode_rev(sc, n);
+		memcpy(n->r, d->r, sizeof(d->r));
 		n->pserial = SERIAL(sc, d);
 		sc->numdeltas++;
 		n = dinsert(sc, n, 1);
@@ -10697,6 +10647,7 @@ insert_1_0(sccs *s, u32 flags)
 
 	s->nextserial++;
 	d = insertArrayN(&s->slist, 1, 0);
+	insertArrayN(&s->extra, 1, 0);
 	s->table = s->slist + nLines(s->slist);
 	d->flags |= D_INARRAY;
 
@@ -10768,6 +10719,8 @@ remove_1_0(sccs *s)
 	}
 	sccs_findKeyFlush(s);
 	removeArrayN(s->slist, 1);
+	freeExtra(s, SFIND(s, 1));
+	removeArrayN(s->extra, 1);
 	s->tree = SFIND(s, 1);
 	memset(s->table, 0, sizeof(delta));
 	s->table -= 1;
@@ -11302,6 +11255,8 @@ out:
 			d = SFIND(s, ser);
 			assert(d != e);
 			memcpy(d, e, sizeof(delta));
+			freeExtra(s, d);
+			memcpy(EXTRA(s, d), EXTRA(s, e), sizeof(dextra));
 			e->flags = 0;
 			if (s->table == e) s->table = d;
 		} else {
@@ -11334,6 +11289,11 @@ out:
 	}
 	/* clear old deltas */
 	truncArray(s->slist, ser);
+	EACH_REVERSE(s->extra) {
+		if (i <= ser) break;
+		freeExtra(s, SFIND(s, i));
+	}
+	truncArray(s->extra, ser);
 	sccs_findKeyFlush(s);
 
 	unless (sfile = sccs_startWrite(s)) OUT;
@@ -12383,7 +12343,7 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, u32 flags, int *errorp, int *linesp,
 	/* D 1.2 93/03/11 00:50:40[-8:00] butthead 2 1	9/2/44 */
 	assert((buf[1] == ' ') && isdigit(buf[2]));
 	for (s = &buf[2]; *s++ != ' '; );
-	if (!d || !d->rev) {
+	if (!d || !d->r[0]) {
 		s[-1] = 0;
 		d = sccs_parseArg(sc, d, 'R', &buf[2], 0);
 	}
@@ -12832,7 +12792,6 @@ sccs_meta(char *me, sccs *s, delta *parent, MMAP *iF, int fixDate)
 	}
 	m = sccs_getInit(s, 0, iF, DELTA_PATCH, &e, 0, &syms);
 	mclose(iF);
-	m->rev = parent->rev;
 	memcpy(m->r, parent->r, sizeof(m->r));
 	m->pserial = SERIAL(s, parent);
 	s->numdeltas++;
@@ -12961,7 +12920,7 @@ out:
 			unless (flags & NEWFILE) {
 				/* except the very first delta   */
 				/* all rev are subject to rename */
-				prefilled->rev = 0;
+				memset(prefilled->r, 0, sizeof(prefilled->r));
 
 				/*
 				 * If we have random bits, we are the root of
@@ -13139,7 +13098,7 @@ out:
 	n = sccs_dInit(n, 'D', s, init != 0);
 	updMode(s, n, d);
 
-	unless (n->rev) revArg(s, n, pf.newrev);
+	unless (n->r[0]) revArg(s, n, pf.newrev);
 	assert(d);
 	n->pserial = SERIAL(s, d);
 	if (!n->comments && !init &&
@@ -13533,7 +13492,7 @@ mapRev(sccs *s, u32 flags, char *r1, char *r2,
 	char *lrev, *lrevM = 0, *rrev;
 
 	if (r1 && r2) {
-		if (r1 == r2) { /* r1 == r2 means diffs against parent(s) */
+		if (streq(r1, r2)) { /* r1 == r2 means diffs against parent(s) */
 			if (sccs_parent_revs(s, r2, &lrev, &lrevM)) {
 				return (-1);
 			}
@@ -14241,7 +14200,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		/* branch flag */
 		/* BitKeeper does not have a branch flag */
 		/* but we can derive the value		 */
-		if (d->rev) {
+		if (d->r[0]) {
 			int i;
 			/* count the number of dot */
 			for (i = 0, p = REV(s, d); *p && i <= 2; p++) {
@@ -15972,7 +15931,7 @@ gca3(sccs *s, delta *left, delta *right, char **inc, char **exc)
 	if (count > 1) {
 		gmap = (u8 *)calloc(s->nextserial, sizeof(u8));
 		graph_symdiff(s, (delta *)glist, 0, gmap, 0, -1, SD_MERGE);
-		if (compressmap(s, gca, gmap, 0, (void **)inc, (void **)exc)) {
+		if (compressmap(s, gca, gmap, inc, exc)) {
 			goto bad;
 		}
 	}

@@ -19,7 +19,6 @@
 #include "sccs.h"
 #include "progress.h"
 
-private void	newRev(sccs *s, int flags, MDBM *db, delta *d);
 private void	remember(MDBM *db, delta *d);
 private int	taken(MDBM *db, delta *d);
 private int	redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release,
@@ -127,7 +126,7 @@ sccs_renumber(sccs *s, u32 flags)
 		/* Restore default branch */
 		assert(!s->defbranch);
 		unless (defisbranch) {
-			assert(d->rev);
+			assert(d->r[0]);
 			s->defbranch = strdup(REV(s, d));
 			continue;
 		}
@@ -149,24 +148,6 @@ sccs_renumber(sccs *s, u32 flags)
 	}
 	free(map);
 	mdbm_close(db);
-}
-
-private	void
-newRev(sccs *s, int flags, MDBM *db, delta *d)
-{
-	char	buf[MAXREV];
-
-	if (d->r[2]) {
-		sprintf(buf, "%d.%d.%d.%d", d->r[0], d->r[1], d->r[2], d->r[3]);
-	} else {
-		sprintf(buf, "%d.%d", d->r[0], d->r[1]);
-	}
-	unless (streq(buf, REV(s, d))) {
-		verbose((stderr,
-		    "renumber %s@%s -> %s\n", s->gfile, REV(s, d), buf));
-		d->rev = sccs_addStr(s, buf);
-	}
-	unless (TAG(d)) remember(db, d);
 }
 
 private	void
@@ -240,7 +221,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 	if (d->flags & D_META) {
 		for (p = PARENT(s, d); p->flags & D_META; p = PARENT(s, p));
 		memcpy(d->r, p->r, sizeof(d->r));
-		newRev(s, flags, db, d);
+		unless (TAG(d)) remember(db, d);
 		return (release);
 	}
 
@@ -271,7 +252,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 		d->r[2] = 0;
 		d->r[3] = 0;
 		unless (taken(db, d)) {
-			newRev(s, flags, db, d);
+			unless (TAG(d)) remember(db, d);
 			return (release);
 		}
 		d->r[1] = 0;
@@ -281,7 +262,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 			d->r[2]++;
 			assert(d->r[2] < 65535);
 		} while (taken(db, d));
-		newRev(s, flags, db, d);
+		unless (TAG(d)) remember(db, d);
 		return (release);
 	}
 
@@ -298,7 +279,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 		d->r[0] = p->r[0];
 		d->r[1] = p->r[1] + 1;
 		unless (taken(db, d)) {
-			newRev(s, flags, db, d);
+			unless (TAG(d)) remember(db, d);
 			return (release);
 		}
 		d->r[1] = p->r[1];
@@ -308,7 +289,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 			d->r[2]++;
 			assert(d->r[2] < 65535);
 		} while (taken(db, d));
-		newRev(s, flags, db, d);
+		unless (TAG(d)) remember(db, d);
 		return (release);
 	}
 	
@@ -323,7 +304,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 	d->r[2] = p->r[2];
 	d->r[3] = p->r[3] + 1;
 	if (!taken(db, d)) {
-		newRev(s, flags, db, d);
+		unless (TAG(d)) remember(db, d);
 		return (release);
 	}
 
@@ -334,6 +315,6 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 		d->r[2]++;
 		assert(d->r[2] < 65535);
 	} while (taken(db, d));
-	newRev(s, flags, db, d);
+	unless (TAG(d)) remember(db, d);
 	return (release);
 }

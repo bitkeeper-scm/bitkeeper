@@ -149,3 +149,23 @@ cmp -s src/both WANT || {
 	exit 1
 }
 echo OK
+
+echo $N Check the SCCS revision field keywords ......................$NL
+bk admin -fSCCS src/data
+bk _get $Q -e -r1.3 src/data
+bk delta $Q -fy1.3.1.1 src/data
+bk _get $Q -e -r1.3 src/data
+bk delta $Q -fy1.3.2.1 src/data
+bk _get $Q -e -r1.3.2 src/data
+bk delta $Q -fy1.3.2.2 src/data
+bk _get $Q -e -r1.3.2 src/data
+bk delta $Q -fy1.3.2.3 src/data
+bk _get $Q -e -r1.3.2 src/data
+echo "%R%.%L%.%B%.%S%" > src/data
+bk delta $Q -fy1.3.2.4 src/data
+echo 1.3.2.4 > WANT
+bk get -q -pr1.3.2 src/data > GOT
+cmpfiles WANT GOT
+bk prs -r1.3.2 -hnd:I: src/data > WANT
+cmpfiles WANT GOT
+echo OK

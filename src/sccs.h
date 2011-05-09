@@ -449,9 +449,9 @@ typedef struct delta {
 	mode_t	mode;			/* 0777 style modes */
 	u32	xflags;			/* timesafe x flags */
 	u32	flags;			/* per delta flags */
+	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 
 	/* unique heap data */
-	u32	rev;			/* revision number */
 	u32	cludes;			/* include/exclude list */
 	u32	comments;		/* delta comments (\n sep string) */
 	u32	bamhash;		/* hash of gfile for BAM */
@@ -465,10 +465,16 @@ typedef struct delta {
 	u32	zone;			/* 08:00 is time relative to GMT */
 	u32 	symlink;		/* sym link target */
  	u32	csetFile;		/* id for ChangeSet file */
-
-	/* XXX Stuff to remove */
-	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 } delta;
+
+/*
+ * Extra in-memory only delta information
+ */
+typedef struct {
+	char	*rev;		/* rev string */
+} dextra;
+
+#define	EXTRA(s, d)	((s)->extra + SERIAL(s, d))
 
 #define	TAG(d)		((d)->flags & D_TAG)
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
@@ -485,7 +491,7 @@ typedef struct delta {
 #define	KID(s, d)	SFIND((s), (s)->kidlist[SERIAL(s, d)].kid)
 #define	SIBLINGS(s, d)	SFIND((s), (s)->kidlist[SERIAL(s, d)].siblings)
 
-#define	REV(s, d)	((s)->heap.buf + (d)->rev)
+#define	REV(s, d)	delta_rev(s, d)
 #define	CLUDES(s, d)	((s)->heap.buf + (d)->cludes)
 #define	BAMHASH(s, d)	((s)->heap.buf + (d)->bamhash)
 #define	COMMENTS(s, d)	((s)->heap.buf + (d)->comments)
@@ -594,6 +600,7 @@ struct sccs {
 	delta	*tree;		/* the delta tree after mkgraph() */
 	delta	*table;		/* the delta table list, 1.99 .. 1.0 */
 	delta	*slist;		/* array of delta structs */
+	dextra	*extra;		/* array of extra delta info */
 	symbol	*symlist;	/* array of symbols, oldest first */
 	KIDS	*kidlist;	/* optional kid/sibling data */
 	char	*defbranch;	/* defbranch, if set */
@@ -944,6 +951,8 @@ void	sccs_resetuser(void);
 void	sccs_resethost(void);
 char	*sccs_realuser(void);
 char	*sccs_user(void);
+
+char	*delta_rev(sccs *s, delta *d);
 
 delta	*modeArg(sccs *s, delta *d, char *arg);
 int	fileType(mode_t m);

@@ -711,8 +711,7 @@ mkCset(mkcs_t *cur, dinfo *d)
 		e->zone = cur->cset->tree->zone;
 	}
 	sprintf(dkey, "1.%u", ++cur->rev);
-	assert(!e->rev);
-	e->rev = sccs_addStr(cur->cset, dkey);
+	sccs_parseArg(cur->cset, e, 'R', dkey, 0);
 
 	unless (cur->date < e->date) {
 		int	fudge = (cur->date - e->date) + 1;
@@ -771,8 +770,7 @@ mkTag(mkcs_t *cur, char *tag)
 		e->zone = cur->cset->tree->zone;
 	}
 	sprintf(dkey, "1.%u", cur->rev);
-	assert(!e->rev);
-	e->rev = sccs_addStr(cur->cset, dkey);
+	sccs_parseArg(cur->cset, e, 'R', dkey, 0);
 
 	unless (cur->date < e->date) {
 		int	fudge = (cur->date - e->date) + 1;

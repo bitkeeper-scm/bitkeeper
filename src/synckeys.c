@@ -276,7 +276,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 			}
 			if (nomatch) out("@LOD MATCH@\n");	/* aka first */
 			if (sndRev) {
-				assert(d->rev);
+				assert(d->r[0]);
 				OUT(REV(s, d));
 				OUT("|");
 				if (tag = sccs_d2tag(s, d)) out(tag);
@@ -300,7 +300,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 				sccs_tagcolor(s, d);
 				out("@TAG MATCH@\n");
 				if (sndRev) {
-					assert(d->rev);
+					assert(d->r[0]);
 					OUT(REV(s, d));
 					OUT("|");
 					if (tag = sccs_d2tag(s, d)) out(tag);
@@ -322,7 +322,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 	for (d = s->table; d; d = NEXT(d)) {
 		if (d->flags & D_RED) continue;
 		if (sndRev) {
-			assert(d->rev);
+			assert(d->r[0]);
 			OUT(REV(s, d));
 			OUT("|");
 			if (tag = sccs_d2tag(s, d)) {

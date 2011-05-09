@@ -197,6 +197,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	}
 	e = d;
 	d = insertArrayN(&s->slist, serial, e);
+	insertArrayN(&s->extra, serial, 0);
 	d->flags |= D_INARRAY;
 	free(e);
 	s->tree = SFIND(s, 1);
