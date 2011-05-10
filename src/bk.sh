@@ -361,7 +361,7 @@ _superset() {
 			sed -e 's/ *: no valid urls.*//' < $TMP2 >> $TMP1
 		}
 	}
-	bk pending $QUIET > $TMP2 2>&1 && {
+	test $RECURSED = NO && bk pending $QUIET > $TMP2 2>&1 && {
 		test $LIST = NO && {
 			rm -f $TMP1 $TMP2
 			exit 1
