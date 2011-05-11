@@ -458,8 +458,8 @@ extractPatch(char *name, MMAP *p)
 error:		if (perfile) sccs_free(perfile);
 		if (gfile) free(gfile);
 		if (s) sccs_free(s);
-		/* we don't free name, we pass it to errfiles */
-		errfiles = addLine(errfiles, name);
+		errfiles = addLine(errfiles, sccs2name(name));
+		free(name);
 		return (-1);
 	}
 
@@ -550,7 +550,7 @@ error:		if (perfile) sccs_free(perfile);
 	} else {
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
 		rc = applyPatch(s ? s->sfile : 0, perfile);
-		if (rc < 0) errfiles = addLine(errfiles, strdup(name));
+		if (rc < 0) errfiles = addLine(errfiles, sccs2name(name));
 		nfound = 0;	/* only count csets */
 	}
 	if (echo > 1) fputc('\n', stderr);
@@ -2280,6 +2280,7 @@ done:
 			    "Errors during update of the following files:\n");
 			EACH(errfiles) fprintf(stderr, "%s\n", errfiles[i]);
 			SHOUT2();
+			freeLines(errfiles, free);
 		}
 	}
 	exit(rc);
