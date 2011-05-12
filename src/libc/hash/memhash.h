@@ -9,3 +9,4 @@ int	memhash_delete(hash *h, void *kptr, int klen);
 void	*memhash_first(hash *h);
 void	*memhash_next(hash *h);
 
+int	memhash_count(hash *h);

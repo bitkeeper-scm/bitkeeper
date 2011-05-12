@@ -600,9 +600,9 @@ EOF
 bk parent -l > GOT
 test "$PLATFORM" = "WIN32" && {
 	tr '[a-z]' '[A-Z]' < WANT > WANT$$
-	mv -f WANT$$ WANT
+	bk _mv WANT$$ WANT
 	tr '[a-z]' '[A-Z]' < GOT > GOT$$
-	mv -f GOT$$ GOT
+	bk _mv GOT$$ GOT
 }
 cmp -s WANT GOT || {
 	echo failed short listing
@@ -616,9 +616,9 @@ EOF
 bk parent > GOT
 test "$PLATFORM" = "WIN32" && {
 	tr '[a-z]' '[A-Z]' < WANT > WANT$$
-	mv -f WANT$$ WANT
+	bk _mv WANT$$ WANT
 	tr '[a-z]' '[A-Z]' < GOT > GOT$$
-	mv -f GOT$$ GOT
+	bk _mv GOT$$ GOT
 }
 cmp -s WANT GOT || {
 	echo failed annotated listing
@@ -636,9 +636,9 @@ EOF
 bk parent -l > GOT
 test "$PLATFORM" = "WIN32" && {
 	tr '[a-z]' '[A-Z]' < WANT > WANT$$
-	mv -f WANT$$ WANT
+	bk _mv WANT$$ WANT
 	tr '[a-z]' '[A-Z]' < GOT > GOT$$
-	mv -f GOT$$ GOT
+	bk _mv GOT$$ GOT
 }
 cmp -s WANT GOT || {
 	echo failed short listing
@@ -651,9 +651,9 @@ EOF
 bk parent > GOT
 test "$PLATFORM" = "WIN32" && {
 	tr '[a-z]' '[A-Z]' < WANT > WANT$$
-	mv -f WANT$$ WANT
+	bk _mv WANT$$ WANT
 	tr '[a-z]' '[A-Z]' < GOT > GOT$$
-	mv -f GOT$$ GOT
+	bk _mv GOT$$ GOT
 }
 cmp -s WANT GOT || {
 	echo failed annotated listing
@@ -672,9 +672,9 @@ EOF
 bk parent -l > GOT
 test "$PLATFORM" = "WIN32" && {
 	tr '[a-z]' '[A-Z]' < WANT > WANT$$
-	mv -f WANT$$ WANT
+	bk _mv WANT$$ WANT
 	tr '[a-z]' '[A-Z]' < GOT > GOT$$
-	mv -f GOT$$ GOT
+	bk _mv GOT$$ GOT
 }
 cmp -s WANT GOT || {
 	echo failed short listing
@@ -687,9 +687,9 @@ EOF
 bk parent > GOT
 test "$PLATFORM" = "WIN32" && {
 	tr '[a-z]' '[A-Z]' < WANT > WANT$$
-	mv -f WANT$$ WANT
+	bk _mv WANT$$ WANT
 	tr '[a-z]' '[A-Z]' < GOT > GOT$$
-	mv -f GOT$$ GOT
+	bk _mv GOT$$ GOT
 }
 cmp -s WANT GOT || {
 	echo failed annotated listing

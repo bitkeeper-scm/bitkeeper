@@ -74,7 +74,7 @@ push_main(int ac, char **av)
 	char	**envVar = 0;
 	char	**urls = 0;
 	remote	*r;
-	int	gzip = 6;
+	int	gzip = Z_BEST_SPEED;
 	longopt	lopts[] = {
 		{ "standalone", 'S'},
 		{ 0, 0 }
@@ -125,7 +125,7 @@ push_main(int ac, char **av)
 		    	break;
 		    case 'z':					/* doc 2.0 */
 			if (optarg) gzip = atoi(optarg);
-			if ((gzip < 0) || (gzip > 9)) gzip = 6;
+			if ((gzip < 0) || (gzip > 9)) gzip = Z_BEST_SPEED;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -134,7 +134,7 @@ push_main(int ac, char **av)
 		opts.quiet = 1;
 		opts.verbose = 0;
 	}
-	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	trigger_setQuiet(opts.quiet);
 	unless (opts.quiet) progress_startMulti();
 
 	/*
@@ -146,17 +146,8 @@ push_main(int ac, char **av)
 			urls = addLine(urls, parent_normalize(av[optind++]));
 		}
 	}
-
-	if (proj_isEnsemble(0) && !getenv("_BK_TRANSACTION")) {
-		if (proj_cd2product()) {
-			fprintf(stderr, "push: cannot find product root.\n");
-			exit(1);
-		}
-		opts.product = 1;
-	} else if (proj_cd2root()) {
-		fprintf(stderr, "push: cannot find package root.\n");
-		exit(1);
-	}
+	opts.product = bk_nested2root(getenv("_BK_TRANSACTION") != 0);
+	cmdlog_lock(CMD_NESTED_RDLOCK|CMD_RDLOCK);
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "push: failed to accept license, aborting.\n");
@@ -265,7 +256,7 @@ push(char **av, remote *r, char **envVar)
 		fprintf(stderr, "Root Key = \"%s\"\n", proj_rootkey(0));
 	}
 
-	if (bkd_connect(r)) return (CONNECTION_FAILED);
+	if (bkd_connect(r, 0)) return (CONNECTION_FAILED);
 	ret = push_part1(r, rev_list, envVar);
 
 	if (opts.debug) {
@@ -286,7 +277,7 @@ push(char **av, remote *r, char **envVar)
 	    default:			assert(ret == PUSH_OK);	break;
 	}
 	if (abort) {
-		if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+		if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 			ret = CONNECTION_FAILED;
 			goto err;
 		}
@@ -297,7 +288,7 @@ push(char **av, remote *r, char **envVar)
 	if (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES"))) {
 		bp_keys = bktmp(0, "bpkeys");
 	}
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 		ret = CONNECTION_FAILED;
 		goto err;
 	}
@@ -309,7 +300,7 @@ push(char **av, remote *r, char **envVar)
 	if (r->type == ADDR_HTTP) disconnect(r);
 
 	if (bp_keys) {
-		if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+		if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 			ret = CONNECTION_FAILED;
 			goto err;
 		}
@@ -327,7 +318,7 @@ push(char **av, remote *r, char **envVar)
 		/* push_ensemble doesn't need the connection */
 		ret = push_ensemble(r, rev_list, envVar);
 
-		if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+		if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 			ret = CONNECTION_FAILED;
 			goto err;
 		}
@@ -548,23 +539,13 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		progress_nldone();
 	}
         unless (rc || opts.rev) {
-                int     flush = 0;
-                hash    *urllist;
-
-                urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
-
                 /*
                  * successful push so if we are pushing tip we
                  * can save this URL
                  * XXX pending csets in component
                  */
-                EACH_STRUCT(n->comps, c, i) {
-                        if (c->product || !c->remotePresent) continue;
-                        urllist_addURL(urllist, c->rootkey, url);
-			flush = 1;
-                }
-                if (flush) urllist_write(urllist);
-                hash_free(urllist);
+		urlinfo_setFromEnv(n, url);
+		urlinfo_write(n);
         }
 	STOP_TRANSACTION();
 out:
@@ -600,7 +581,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 		return ((ret == -2) ? REMOTE_LOCKED : PUSH_ERROR);
 	}
 	if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			return (PUSH_ERROR);
 		}
 		if (getenv("BKD_LEVEL") &&
@@ -630,7 +611,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 		exit(1);
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, opts.verbose)) return (PUSH_ERROR);
+		if (getTriggerInfoBlock(r, opts.quiet)) return (PUSH_ERROR);
 		getline2(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@HERE@")) {
@@ -732,7 +713,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@TAKEPATCH INFO@")) {
 		/* with -q, save output in 'f' to print if error */
-		f = opts.quiet ? fmem_open() : stderr;
+		f = opts.quiet ? fmem() : stderr;
 		unless (opts.quiet || opts.verbose) progress_active();
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
@@ -745,7 +726,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 
 			if (remote_rc) {
 				if (opts.quiet) {
-					fputs(fmem_getbuf(f, 0), stderr);
+					fputs(fmem_peek(f, 0), stderr);
 				}
 				fprintf(stderr,
 				    "Push failed: remote takepatch exited %d\n",
@@ -793,7 +774,7 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 		return(PUSH_ERROR);
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, opts.verbose)) {
+		if (getTriggerInfoBlock(r, opts.quiet)) {
 			return(PUSH_ERROR);
 		}
 		getline2(r, buf, sizeof(buf));
@@ -802,16 +783,17 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 		return (DELAYED_RESOLVE);
 	}
 	if (streq(buf, "@RESOLVE INFO@")) {
+		/* normally the resolve output contains a progress bar stream */
+		unless (opts.quiet || opts.verbose) progress_active();
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
 			if (buf[0] == '@') {
-				if (maybe_trigger(r)) {
-					return(PUSH_ERROR);
-				}
+				if (maybe_trigger(r)) return (PUSH_ERROR);
 			} else unless (opts.quiet) {
-				writen(2, buf, n);
+				fwrite(buf, 1, n, stderr);
 			}
 		}
+		unless (opts.quiet || opts.verbose) progress_nlneeded();
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {
 			int	ret = atoi(&buf[1]);
@@ -865,7 +847,7 @@ push_part3(char **av, remote *r, char **envVar, char *bp_keys)
 	}
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, opts.verbose)) {
+		if (getTriggerInfoBlock(r, opts.quiet)) {
 			return(PUSH_ERROR);
 		}
 		getline2(r, buf, sizeof(buf));
@@ -874,16 +856,17 @@ push_part3(char **av, remote *r, char **envVar, char *bp_keys)
 		return (DELAYED_RESOLVE);
 	}
 	if (streq(buf, "@RESOLVE INFO@")) {
+		/* normally the resolve output contains a progress bar stream */
+		unless (opts.quiet || opts.verbose) progress_active();
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
 			if (buf[0] == '@') {
-				if (maybe_trigger(r)) {
-					return(PUSH_ERROR);
-				}
+				if (maybe_trigger(r)) return (PUSH_ERROR);
 			} else unless (opts.quiet) {
-				writen(2, buf, n);
+				fwrite(buf, 1, n, stderr);
 			}
 		}
+		unless (opts.quiet || opts.verbose) progress_nlneeded();
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {
 			rc = atoi(&buf[1]);
@@ -921,26 +904,27 @@ push_finish(remote *r, push_rc status, char **envVar)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (PUSH_ERROR);
 	if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) return (PUSH_ERROR);
+		if (getServerInfo(r, 0)) return (PUSH_ERROR);
 		getline2(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, opts.verbose)) {
+		if (getTriggerInfoBlock(r, opts.quiet)) {
 			return (PUSH_ERROR);
 		}
 		getline2(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@RESOLVE INFO@")) {
+		/* normally the resolve output contains a progress bar stream */
+		unless (opts.quiet || opts.verbose) progress_active();
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
 			if (buf[0] == '@') {
-				if (maybe_trigger(r)) {
-					return (PUSH_ERROR);
-				}
+				if (maybe_trigger(r)) return (PUSH_ERROR);
 			} else unless (opts.quiet) {
-				writen(2, buf, n);
+				fwrite(buf, 1, n, stderr);
 			}
 		}
+		unless (opts.quiet || opts.verbose) progress_nlneeded();
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {
 			rc = atoi(&buf[1]);
@@ -969,7 +953,7 @@ receive_serverInfoBlock(remote *r)
 	if (remote_lock_fail(buf, opts.verbose)) {
 		return (REMOTE_LOCKED);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			return (PUSH_ERROR);
 		}
 	}
@@ -1185,7 +1169,9 @@ send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip, int quiet)
 	if (quiet) {
 		strcpy(buf, "-q");
 	} else {
+		/* enable a progress bar in sfio */
 		snprintf(buf, sizeof(buf), "-b%s", psize(bpsz));
+		progress_nlneeded();
 	}
 	sfio[3] = buf;
 
@@ -1227,7 +1213,11 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	fprintf(f, "push_part3");
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.debug) fprintf(f, " -d");
-	if (opts.quiet) fprintf(f, " -q");
+	if (opts.verbose) {
+		fprintf(f, " -v");
+	} else if (opts.quiet) {
+		fprintf(f, " -q");
+	}
 	if (opts.product) fprintf(f, " -P");
 	fputs("\n", f);
 
@@ -1333,11 +1323,11 @@ maybe_trigger(remote *r)
 		if ((read_blk(r, &buf[n], 1) != 1) ||
 		    (buf[n] != "@TRIGGER INFO@\n"[n])) {
 			buf[n] = 0;
-			if (opts.verbose) writen(2, buf, n);
+			unless (opts.quiet) fwrite(buf, 1, n, stderr);
 			return (0);
 		}
 	}
-	if (getTriggerInfoBlock(r, opts.verbose)) {
+	if (getTriggerInfoBlock(r, opts.quiet)) {
 		return (1);
 	}
 	return (0);

@@ -39,6 +39,7 @@ struct	range {
 
 int	range_process(char *me, sccs *s, u32 flags, RANGE *rargs);
 int	range_addArg(RANGE *rargs, char *arg, int isdate);
+int	range_urlArg(RANGE *rargs, char *url);
 
 void	range_cset(sccs *s, delta *d, int bit);
 time_t	range_cutoff(char *spec);

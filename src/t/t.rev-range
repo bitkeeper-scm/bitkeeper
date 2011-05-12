@@ -12,6 +12,8 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+echo compression:none > "`bk dotbk`"/config
+
 # The optional datefudge line is excluded from $BASE2
 BASE=40
 BASE2=`expr $BASE + 70`

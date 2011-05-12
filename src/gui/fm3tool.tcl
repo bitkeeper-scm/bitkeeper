@@ -217,7 +217,7 @@ proc search_keyboard_bindings {{nc {}}} \
 	bind $search(text)      <Return>        searchstring
 	bind $search(text)      <Control-u>     searchreset
 	# In the search window, don't listen to "all" tags.
-        bindtags $search(text) [list $search(text) Entry]
+        bindtags $search(text) [list $search(text) TEntry]
 }
 
 proc search_init {w s} \
@@ -248,17 +248,11 @@ proc search_widgets {w s} \
 	set nextImage [image create photo \
 			   -file $env(BK_BIN)/gui/images/next.gif]
 
-	label $search(plabel) -font $gc($app.buttonFont) -width 11 \
-	    -relief flat \
-	    -textvariable search(prompt)
+	ttk::label $search(plabel) -textvariable search(prompt)
 
 	# XXX: Make into a pulldown-menu! like is sccstool
 	set m $search(menu).m
-	menubutton $search(menu) -font $gc($app.buttonFont) \
-	    -bg $gc($app.buttonColor) -pady $gc(py) -padx $gc(px) \
-	    -borderwid $gc(bw) \
-	    -text "Search" -width 8 -state normal \
-	    -menu $m -indicatoron 1 
+	ttk::menubutton $search(menu) -text "Search" -menu $m
 	menu $m \
 	    -font $gc(fm3.buttonFont)  \
 	    -borderwidth $gc(bw)
@@ -297,37 +291,26 @@ proc search_widgets {w s} \
 		$search(menu) configure -text "Goto Line"
 		search :
 	    }
-	entry $search(text) \
-	    -width 26 \
-	    -font $gc($app.buttonFont) \
-	    -borderwidth $gc(bw)
-	button $search(prev) -font $gc($app.buttonFont) \
-	    -bg $gc($app.buttonColor) \
-	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-	    -image $prevImage \
-	    -state disabled -command {
-		    searchdir ?
-		    searchnext
-	    }
-	button $search(next) -font $gc($app.buttonFont) \
-	    -bg $gc($app.buttonColor) \
-	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-	    -image $nextImage \
-	    -state disabled -command {
-		    searchdir /
-		    searchnext
-	    }
-	label $search(status) -width 20 -font $gc($app.buttonFont) -relief flat 
+	ttk::entry $search(text)
+	ttk::button $search(prev) -image $prevImage -state disabled -command {
+	    searchdir ?
+	    searchnext
+	}
+	ttk::button $search(next) -image $nextImage -state disabled -command {
+	    searchdir /
+	    searchnext
+	}
+	ttk::label $search(status) -width 20
 
-	set separator [frame [winfo parent $search(menu)].separator1]
-	$separator configure -borderwidth 2 -relief groove -width 2
+	set separator [ttk::separator [winfo parent $search(menu)].separator1 \
+	    -orient vertical]
 	pack $separator -side left -fill y -pady 2 -padx 4
 
-	pack $search(menu) -side left -fill y
-	pack $search(text) -side left
+	pack $search(menu) -side left -fill y -padx 1
+	pack $search(text) -side left -padx 1
 	# pack $search(prev) -side left -fill y
 	# pack $search(next) -side left -fill y
-	pack $search(status) -side left 
+	pack $search(status) -side left -padx 1
 }
 # XXX - modified searchlib code ends
 
@@ -343,7 +326,7 @@ proc createDiffWidgets {w} \
 	#set w(diffwin) .diffwin
 	#set w(leftDiff) $w(diffwin).left.text
 	#set w(RightDiff) $w(diffwin).right.text
-	frame .diffs
+	ttk::frame .diffs
 	    text .diffs.left \
 		-width $gc($app.diffWidth) \
 		-height $gc($app.diffHeight) \
@@ -366,18 +349,8 @@ proc createDiffWidgets {w} \
 		-font $gc($app.fixedFont)  \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
-	    scrollbar .diffs.xscroll \
-		-wid $gc($app.scrollWidth) \
-		-troughcolor $gc($app.troughColor) \
-		-background $gc($app.scrollColor) \
-		-orient horizontal \
-		-command { xscroll }
-	    scrollbar .diffs.yscroll \
-		-wid $gc($app.scrollWidth) \
-		-troughcolor $gc($app.troughColor) \
-		-background $gc($app.scrollColor) \
-		-orient vertical \
-		-command { yscroll }
+	    ttk::scrollbar .diffs.xscroll -orient horizontal -command xscroll
+	    ttk::scrollbar .diffs.yscroll -orient vertical -command yscroll
 
 	    attachScrollbar .diffs.xscroll .diffs.left .diffs.right
 	    attachScrollbar .diffs.yscroll .diffs.left .diffs.right
@@ -1331,8 +1304,6 @@ proc widgets {} \
 "-d:I:  :Dy:-:Dm:-:Dd: :T::TZ:  :P:\\n\$each(:C:){  (:C:)\
 \\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}"
 
-	option add *background $gc(BG)
-
 	set g [wm geometry .]
 	wm title . "BitKeeper FileMerge $argv"
 
@@ -1350,12 +1321,9 @@ proc widgets {} \
 			   -file $env(BK_BIN)/gui/images/previous.gif]
 	set nextImage [image create photo \
 			   -file $env(BK_BIN)/gui/images/next.gif]
-	frame .menu -relief groove -borderwidth 2
+	ttk::frame .menu
 	    set m .menu.diffs.m
-	    menubutton .menu.diffs -font $gc(fm3.buttonFont) \
-		-bg $gc(fm3.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Goto" -menu $m
+	    ttk::menubutton .menu.diffs -text "Goto" -menu $m
 	    menu $m \
 		-font $gc(fm3.buttonFont) \
 		-borderwidth $gc(bw)
@@ -1381,46 +1349,28 @@ proc widgets {} \
 		$m add command -label "Last diff" \
 		    -accelerator [shortname $gc($app.lastDiff)] \
 		    -command lastDiff
-	    button .menu.prevdiff -font $gc(fm3.buttonFont) \
-		-bg $gc(fm3.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image $prevImage -state disabled -command {
-			searchreset
-			prev 0
+	    ttk::button .menu.prevdiff -image $prevImage -state disabled \
+		-command {
+		    searchreset
+		    prev 0
 		}
-	    button .menu.nextdiff -font $gc(fm3.buttonFont) \
-		-bg $gc(fm3.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image $nextImage -state disabled -command {
-			searchreset
-			next 0
+	    ttk::button .menu.nextdiff -image $nextImage -state disabled \
+		-command {
+		    searchreset
+		    next 0
 		}
-	    button .menu.dotdiff -bg $gc(fm3.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-font $gc(fm3.buttonFont) -text "Current diff" \
-		-width 18 -command dot
-	    button .menu.prevconflict -font $gc(fm3.buttonFont) \
-		-bg $gc(fm3.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image $prevImage -command {
-			searchreset
-			prev 1
-		}
-	    button .menu.nextconflict -font $gc(fm3.buttonFont) \
-		-bg $gc(fm3.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image $nextImage -command {
-			searchreset
-			next 1
-		}
-	    label .menu.conflict -bg $gc(fm3.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-font $gc(fm3.buttonFont) -text "Conflicts" 
+	    ttk::button .menu.dotdiff -text "Current diff" -command dot
+	    ttk::button .menu.prevconflict -image $prevImage -command {
+		searchreset
+		prev 1
+	    }
+	    ttk::button .menu.nextconflict -image $nextImage -command {
+		searchreset
+		next 1
+	    }
+	    ttk::label .menu.conflict -text "Conflicts" 
 	    set m .menu.file.m
-	    menubutton .menu.file -font $gc(fm3.buttonFont) \
-		-bg $gc(fm3.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "File" -menu $m
+	    ttk::menubutton .menu.file -text "File" -menu $m
 	    menu $m \
     		-font $gc(fm3.buttonFont) \
 		-borderwidth $gc(bw)
@@ -1437,15 +1387,13 @@ proc widgets {} \
 		    -command { csettool old }
 		$m add command -label "Run csettool on both" \
 		    -command { csettool both }
-		$m add command -label "Help" -command { exec bk helptool fm3 & }
+		$m add command -label "Help" \
+		    -command { exec bk helptool fm3tool & }
 		$m add separator
 		$m add command -label "Quit" \
 		    -command exit -accelerator $gc(fm3.quit)
 	    set m .menu.view.m
-	    menubutton .menu.view -font $gc(fm3.buttonFont) \
-		-bg $gc(fm3.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "View" -menu $m
+	    ttk::menubutton .menu.view -text "View" -menu $m
 	    menu $m \
 		-borderwidth $gc(bw) \
     		-font $gc(fm3.buttonFont) 
@@ -1465,10 +1413,7 @@ proc widgets {} \
     		    -accelerator $gc(fm3.toggleAnnotations)
 
 	    set m .menu.edit.m
-	    menubutton .menu.edit -font $gc(fm3.buttonFont) \
-		-bg $gc(fm3.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Edit" -menu $m
+	    ttk::menubutton .menu.edit -text "Edit" -menu $m
 	    menu $m \
 		-borderwidth $gc(bw) \
     		-font $gc(fm3.buttonFont) 
@@ -1487,25 +1432,21 @@ proc widgets {} \
 		    -label "Restore manual merge" -accelerator "m" \
 		    -command { edit_restore m }
 
-		set separator [frame .menu.separator2]
-		$separator configure -borderwidth 2 -relief groove -width 2
- 		checkbutton .menu.elide-gca \
-    		    -font $gc(fm3.buttonFont) \
-    		    -borderwidth 1 \
-     		    -text "GCA" \
+		set separator [ttk::separator .menu.separator2 -orient vertical]
+ 		ttk::checkbutton .menu.elide-gca -text "GCA" \
      		    -onvalue 0 \
  		    -offvalue 1 \
  		    -variable elide(gca) \
  		    -command toggleGCA
 
-	    pack .menu.file -side left -fill y
-	    pack .menu.edit -side left -fill y
-	    pack .menu.view -side left -fill y
-	    pack .menu.diffs -side left -fill y
+	    pack .menu.file -side left -fill y -padx 1
+	    pack .menu.edit -side left -fill y -padx 1
+	    pack .menu.view -side left -fill y -padx 1
+	    pack .menu.diffs -side left -fill y -padx 1
 	    pack $separator -side left -fill y -pady 2 -padx 4
-	    pack .menu.elide-gca -side left
+	    pack .menu.elide-gca -side left -padx 1
 
-	frame .merge
+	ttk::frame .merge
 	    text .merge.t -width $gc(fm3.mergeWidth) \
 		-height $gc(fm3.mergeHeight) \
 		-background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
@@ -1513,40 +1454,29 @@ proc widgets {} \
 		-xscrollcommand { .merge.xscroll set } \
 		-yscrollcommand { .merge.yscroll set } \
 		-borderwidth 0
-	    scrollbar .merge.xscroll -wid $gc(fm3.scrollWidth) \
-		-troughcolor $gc(fm3.troughColor) \
-		-background $gc(fm3.scrollColor) \
-		-orient horizontal -command { .merge.t xview }
-	    scrollbar .merge.yscroll -wid $gc(fm3.scrollWidth) \
-		-troughcolor $gc(fm3.troughColor) \
-		-background $gc(fm3.scrollColor) \
-		-orient vertical -command { mscroll }
+	    ttk::scrollbar .merge.xscroll -orient horizontal \
+		-command { .merge.t xview }
+	    ttk::scrollbar .merge.yscroll -orient vertical \
+		-command { mscroll }
 	    text .merge.hi -width 2 -height $gc(fm3.mergeHeight) \
 		-background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
 		-wrap none -font $gc($app.fixedFont) \
 		-borderwidth 0
-	    frame .merge.menu
+	    ttk::frame .merge.menu
 		set menu .merge.menu
-		    frame $menu.toolbar -highlightthickness 0 \
-    			-borderwidth 1 -relief sunken
-			button $menu.toolbar.lastDiff \
-				-image stop16 -borderwidth 1 \
-    				-command lastDiff
-			button $menu.toolbar.firstDiff \
-				-image start16 -borderwidth 1 \
-    				-command firstDiff
-			button $menu.toolbar.prevDiff \
-				-image left116 -borderwidth 1 \
-				-command [list prevDiff 0]
-			button $menu.toolbar.nextDiff \
-				-image right116 -borderwidth 1 \
-				-command [list nextDiff 0]
-			button $menu.toolbar.prevConflict \
-				-image left216 -borderwidth 1 \
-				-command [list prevDiff 1]
-			button $menu.toolbar.nextConflict \
-				-image right216 -borderwidth 1 \
-				-command [list nextDiff 1]
+		    ttk::frame $menu.toolbar
+			ttk::button $menu.toolbar.lastDiff \
+			    -image stop16 -command lastDiff
+			ttk::button $menu.toolbar.firstDiff \
+			    -image start16 -command firstDiff
+			ttk::button $menu.toolbar.prevDiff \
+			    -image left116 -command [list prevDiff 0]
+			ttk::button $menu.toolbar.nextDiff \
+			    -image right116 -command [list nextDiff 0]
+			ttk::button $menu.toolbar.prevConflict \
+			    -image left216 -command [list prevDiff 1]
+			ttk::button $menu.toolbar.nextConflict \
+			    -image right216 -command [list nextDiff 1]
 			::tooltip::enable $menu.toolbar.lastDiff \
 				"last diff"
 			::tooltip::enable $menu.toolbar.firstDiff \
@@ -1567,27 +1497,22 @@ proc widgets {} \
     			 $menu.toolbar.lastDiff \
     			-side left -fill both -expand y
 
-		label $menu.l -font $gc(fm3.buttonFont) \
-		    -bg $gc(fm3.buttonColor) \
-		    -padx 0 -pady 0 \
-		    -width 40 -relief groove -pady 2 \
-    		    -borderwidth 2
+		label $menu.l -width 40 
 		text $menu.t -width 43 -height 7 \
 		    -background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
 		    -wrap word -font $gc($app.fixedFont) \
 		    -borderwidth 2 -state disabled \
     		    -yscrollcommand [list $menu.yscroll set]
-		scrollbar $menu.yscroll -width $gc(fm3.scrollWidth) \
-		    -troughcolor $gc(fm3.troughColor) \
-		    -background $gc(fm3.scrollColor) \
-    		    -orient vertical -command [list $menu.t yview]
+		ttk::scrollbar $menu.yscroll -orient vertical \
+		    -command [list $menu.t yview]
 		set bin $env(BK_BIN)
 		set logo [file join $bin gui images "bklogo.gif"]
 		if {[file exists $logo]} {
 		    image create photo bklogo -file $logo
-		    label $menu.logo -image bklogo \
-			-background $gc($app.logoBG) -relief flat -borderwid 3
-		    grid $menu.logo -row 3 -column 0 -sticky ew
+		    ttk::label $menu.logo -image bklogo \
+			-background $gc($app.logoBG)
+		    grid $menu.logo -row 3 -column 0 -columnspan 2 \
+			-padx 2 -sticky ew
 		}
 
 		grid $menu.toolbar -row 0 -column 0 -sticky ew -columnspan 2
@@ -1602,22 +1527,19 @@ proc widgets {} \
 	    grid .merge.xscroll -row 1 -column 1 -columnspan 2 -sticky ew
 	    grid $menu -row 0 -rowspan 3 -column 3 -sticky ewns
 
-	frame .prs
+	ttk::frame .prs
 	  set prs .prs
 	    text $prs.left -width $gc(fm3.mergeWidth) \
 		-height 7 -borderwidth 0 \
 		-background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
 		-wrap word -font $gc($app.fixedFont) \
 		-yscrollcommand { .prs.cscroll set }
-	    scrollbar $prs.cscroll -wid $gc(fm3.scrollWidth) \
-		-troughcolor $gc(fm3.troughColor) \
-		-background $gc(fm3.scrollColor) \
-		-orient vertical -command { cscroll }
+	    ttk::scrollbar $prs.cscroll -orient vertical -command { cscroll }
 	    text $prs.right -width $gc(fm3.mergeWidth)  \
 		-height 7 -borderwidth 0 \
 		-background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
 		-wrap word -font $gc($app.fixedFont)
-	    frame $prs.sep -height 3 -background #000000
+	    ttk::separator $prs.sep
 	    grid $prs.left -row 0 -column 0 -sticky nsew
 	    grid $prs.cscroll -row 0 -column 1 -sticky ns
 	    grid $prs.right -row 0 -column 2 -sticky nsew
@@ -1628,7 +1550,7 @@ proc widgets {} \
 
 	    attachScrollbar $prs.cscroll $prs.left $prs.right
 
-	grid .menu -row 0 -column 0 -sticky nsew
+	grid .menu -row 0 -column 0 -sticky nsew -pady 2
 	if {$gc(fm3.comments)} {
 		grid $prs -row 1 -column 0 -sticky ewns
 		grid rowconfigure . 1 -weight 1
@@ -1693,7 +1615,6 @@ proc widgets {} \
 		    -font $gc($app.fixedBoldFont)
 	}
 	searchreset
-	. configure -background $gc(BG) -borderwidth 1 -relief flat
 	focus .
 }
 
@@ -1772,7 +1693,7 @@ proc keyboard_bindings {} \
 		bind all <Command-w> exit
 	}
 	# In the search window, don't listen to "all" tags.
-	bindtags $search(text) { .menu.search Entry . }
+	bindtags $search(text) { .menu.search TEntry . }
 
 	bind all <$gc(fm3.toggleAnnotations)> [list toggleAnnotations 1]
 	bind all <$gc(fm3.toggleGCA)> [list toggleGCA 1]
@@ -2499,11 +2420,11 @@ proc fm3tool {} \
 	global State gc
 
 	bk_init
+	loadState fm3
 	getConfig fm3
 
 	smerge
 
-	loadState fm3
 	widgets
 	restoreGeometry fm3
 

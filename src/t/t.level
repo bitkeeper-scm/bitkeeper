@@ -22,11 +22,11 @@ cores
 
 echo $N Check that the default level is 1 ...........................$NL
 bk level > OUT
-grep -q 'is 1' OUT || {
-	echo bad default
-	cat OUT
-	exit 1
-}
+echo 'Repository level is 1' > WANT
+cmpfiles OUT WANT
+bk level -l > OUT
+echo 1 > WANT
+cmpfiles OUT WANT
 echo OK
 
 echo $N Change to level 2, make sure it was recorded ................$NL

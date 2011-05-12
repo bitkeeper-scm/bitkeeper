@@ -72,6 +72,7 @@ void	progress_inheritEnd(ticker *t, u64 n);
 int	progress_isMulti(void);
 void	progress_nldone(void);
 void	progress_nlneeded(void);
+void	progress_injectnl(void);
 void	progress_pauseDelayed(void);
 void	progress_restoreStderr(void);
 void	progress_resumeDelayed(void);

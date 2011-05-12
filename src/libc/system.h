@@ -82,6 +82,17 @@ void	cleanPath(char *path, char cleanPath[]);
 /* concat_path.c */
 void	concat_path(char *buf, char *first, char *second);
 
+/* data.c */
+typedef struct {
+	char	*buf;		/* user's data */
+	u32	len;		/* length of user's data */
+	u32	size;		/* malloc'ed size */
+} DATA;
+
+void	data_resize(DATA *d, int newlen);
+void	data_append(DATA *d, void *data, int len);
+#define	data_appendStr(f, s)       data_append(f, (s), strlen(s))
+
 /* dirname.c */
 char	*dirname(char *path);
 char	*dirname_alloc(char *path);
@@ -124,14 +135,16 @@ int	cat(char *file);
 char	*loadfile(char *file, int *size);
 int	touch(char *file, int mode);
 int	hide(char *file, int on_off);
+int	sameFiles(char *file1, char *file2);
 
 /* findpid.c */
 pid_t	findpid(pid_t pid);
 
 /* fmem.c */
-FILE	*fmem_open(void);
-char	*fmem_getbuf(FILE *f, size_t *len);
-char	*fmem_retbuf(FILE *f, size_t *len);
+FILE	*fmem(void);
+char	*fmem_peek(FILE *f, size_t *len);
+char	*fmem_dup(FILE *f, size_t *len);
+char	*fmem_close(FILE *f, size_t *len);
 void	fmem_tests(void);
 int	ftrunc(FILE *f, off_t offset);
 
@@ -254,8 +267,8 @@ pid_t	spawnvp_ex(int flags, char *cmdname, char *av[]);
 pid_t	spawnvpio(int *fd0, int *fd1, int *fd2, char *av[]);
 int	spawn_filterPipeline(char **cmds);
 
-/* stdioext.c */
-char	*gets_alloc(char *(*fcn)(char *buf, int size, void *arg), void *arg);
+/* stackdump.c */
+char	*stackdump(void);
 
 /* str_subst.c */
 char	*str_subst(char *str, char *search, char *replace, char *output);
@@ -276,7 +289,11 @@ void	syserr(const char *postfix);
 #define	fclose(f)	safe_fclose(f)
 
 int	safe_system(char *cmd);
-int	safe_systemf(char *fmt, ...);
+int	safe_systemf(char *fmt, ...)
+#ifdef __GNUC__
+	    __attribute__((__format__(__printf__, 1, 2)))
+#endif
+;
 FILE *	safe_popen(char *cmd, char *type);
 FILE *	popenvp(char *av[], char *type);
 int	safe_pclose(FILE *f);
@@ -292,6 +309,7 @@ void	tcp_reuse(int sock);
 void	tcp_keepalive(int sock);
 int	sockport(int s);
 char	*sockaddr(int);
+int	isLocalHost(char *h);
 char	*hostaddr(char *);
 int	tcp_pair(int fds[2]);
 char	*peeraddr(int s);
@@ -340,7 +358,7 @@ void	my_perror(char *, int, char *);
 int	chomp(char *str);
 
 /* webencode.c */
-char	**webencode(char **buf, u8 *ptr, int len);
+void	webencode(FILE *out, u8 *ptr, int len);
 char	*webdecode(char *data, char **buf, int *sizep);
 
 /* which.c */

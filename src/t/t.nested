@@ -57,7 +57,7 @@ test "`bk repotype`" = "component" || {
 	ls BitKeeper/log
 	exit 1
 }
-test -z "`bk pending || true`" || {
+test -z "`bk pending -S || true`" || {
 	echo did not clear pending marks
 	exit 1
 }
@@ -74,7 +74,7 @@ test "`bk repotype`" = "component" || {
 	ls BitKeeper/log
 	exit 1
 }
-test -z "`bk pending || true`" || {
+test -z "`bk pending -S || true`" || {
 	echo did not clear pending marks
 	exit 1
 }
@@ -1479,8 +1479,16 @@ echo $N Components in idcache .......................................$NL
 cd "$HERE/remote" || exit 1
 GDBKEY=`bk prs -r+ -hnd:KEY: gdb/ChangeSet`
 GCCKEY=`bk prs -r+ -hnd:KEY: gcc/ChangeSet`
+echo hi > gdb/foo
+bk new $Q gdb/foo
 mkdir -p a/b/c
 mvcomp gdb a/b/c/d
+cd a/b/c/d
+bk edit $Q foo
+echo hi2 > foo
+bk ci -y2 $Q foo
+bk commit -S $Q -y2
+cd ../../../..
 # nested_init() with no PENDING - sees gdb in a/b/c/d location
 bk _nested -ldphm -r+ > OUT
 cat << EOF > WANTOUT
@@ -1520,6 +1528,19 @@ a/b|$PENDKEY|(present)
 gcc|$GCCKEY|(present)
 EOF
 cmpfiles WANTOUT OUT
+echo OK
+
+echo $N Test nested rset with renamed components ....................$NL
+GDB3=`bk prs -hnd:MD5KEY: -r@1.3 a/b/ChangeSet`
+GDB4=`bk prs -hnd:MD5KEY: -r@1.4 a/b/ChangeSet`
+FOO4=`bk prs -hnd:MD5KEY: -r@1.4 a/b/foo`
+bk rset -hr1.3..1.4 > OUT || fail
+cat <<EOF > WANT
+ChangeSet|ChangeSet|1.3|ChangeSet|1.4
+a/b/ChangeSet|gdb/ChangeSet|$GDB3|a/b/c/d/ChangeSet|$GDB4
+a/b/foo|gdb/foo|1.0|a/b/c/d/foo|$FOO4
+EOF
+cmpfiles OUT WANT
 echo OK
 
 echo $N Demonstrate citool-mode in bk comps .........................$NL

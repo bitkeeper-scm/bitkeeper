@@ -9,17 +9,18 @@
 char *
 hash_toStr(hash *h)
 {
-	char	**buf = 0;
 	char	**data = 0;
 	char	*ret;
+	FILE	*f = fmem();
 
 	EACH_HASH(h) {
-		buf = webencode(buf, h->kptr, h->klen);
-		buf = str_nappend(buf, "=", 1, 0);
-		buf = webencode(buf, h->vptr, h->vlen);
-		data = addLine(data, str_pullup(0, buf));
-		buf = 0;
+		webencode(f, h->kptr, h->klen);
+		putc('=', f);
+		webencode(f, h->vptr, h->vlen);
+		data = addLine(data, fmem_dup(f, 0));
+		ftrunc(f, 0);
 	}
+	fclose(f);
 	sortLines(data, 0);	/* sort by keys */
 	ret = joinLines("&", data);
 	freeLines(data, free);

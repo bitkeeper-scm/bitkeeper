@@ -1,3 +1,4 @@
+# dspec-v2
 # the default dspec used by 'bk changes --html -v'
 
 $begin {
@@ -17,39 +18,39 @@ $begin {
     "#f0f0f0"
   }
   "><td font size=4>"
-    &nbsp;
+    "&nbsp;"
     $if (:CHANGESET:) {
       ":Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;:USER:@:HOST:&nbsp;&nbsp;:REV:"
     } $else {
       "&nbsp;:DPN: :REV:"
     }
-  </td>
-</tr>\n
+  "</td>"
+"</tr>\n"
 $if (:TAG:) {
   "<tr bgcolor=yellow>"
-    <td>
+    "<td>"
       $each(:TAG:) {
         "&nbsp;TAG: (:TAG:)<br>\n"
       }
-    </td>
-  </tr>\n
+    "</td>"
+  "</tr>\n"
 }
 "<tr bgcolor=white>"
-  <td>
+  "<td>"
     $each(:C:) { 
       $unless(:CHANGESET:) {
-        &nbsp;&nbsp;&nbsp;&nbsp;
+        "&nbsp;&nbsp;&nbsp;&nbsp;"
       }
-      &nbsp;(:C:)<br>\n
+      "&nbsp;(:C:)<br>\n"
     }
     $unless (:C:) {
       $unless(:CHANGESET:) {
-        &nbsp;&nbsp;&nbsp;&nbsp;
+        "&nbsp;&nbsp;&nbsp;&nbsp;"
       }
       "&lt;no comments&gt;"
     }
-  </td>
-</tr>\n
+  "</td>"
+"</tr>\n"
 
 $end {
 	"</td></tr></table></table></body></html>\n"

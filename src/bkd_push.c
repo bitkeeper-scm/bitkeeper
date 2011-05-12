@@ -20,8 +20,8 @@ cmd_push_part1(int ac, char **av)
 	while ((c = getopt(ac, av, "dnPz|", 0)) != -1) {
 		switch (c) {
 		    case 'z': break;
-			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 0 || gzip > 9) gzip = 6;
+			gzip = optarg ? atoi(optarg) : Z_BEST_SPEED;
+			if (gzip < 0 || gzip > 9) gzip = Z_BEST_SPEED;
 			break;
 		    case 'd': debug = 1; break;
 		    case 'P': product = 1; break;
@@ -134,8 +134,8 @@ cmd_push_part2(int ac, char **av)
 	while ((c = getopt(ac, av, "dGnPqvz|", 0)) != -1) {
 		switch (c) {
 		    case 'z':
-			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 0 || gzip > 9) gzip = 6;
+			gzip = optarg ? atoi(optarg) : Z_BEST_SPEED;
+			if (gzip < 0 || gzip > 9) gzip = Z_BEST_SPEED;
 			break;
 		    case 'd': debug = 1; break;
 		    case 'G': putenv("BK_NOTTY=1"); break;
@@ -258,24 +258,24 @@ abort:		resync = aprintf("%s/%s", proj_root(0), ROOT2RESYNC);
 	} else if (product) {
 		printf("@DELAYING RESOLVE@\n");
 	} else {
-		rc = bkd_doResolve(av[0], verbose);
+		rc = bkd_doResolve(av[0], quiet, verbose);
 	}
 done:	return (rc);
 }
 
 int
-bkd_doResolve(char *me, int verbose)
+bkd_doResolve(char *me, int quiet, int verbose)
 {
-	int	fd2, pfd, c, rc = 0;
-	int	status, debug = 0;
-	pid_t	pid;
+	int	fd2, c, rc = 0;
+	int	debug = 0;
 	char	bkd_nul = BKD_NUL;
-	char	*resolve[] = { "bk", "resolve", "-T", "-c", 0, 0, 0};
+	char	*resolve[] = { "resolve", "-S", "-T", "-c", 0, 0, 0};
 	int	resolve_opt = 4; /* index of 0 after "-c" above */
 
 	/*
 	 * Fire up the pre-trigger
 	 */
+	trigger_setQuiet(quiet);
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
 	if (c = trigger("remote resolve",  "pre")) {
 		if (c == 2) {
@@ -294,18 +294,21 @@ bkd_doResolve(char *me, int verbose)
 	if (verbose) {
 		printf("Running resolve to apply new work...\n");
 	} else {
+		/*
+		 * NOTE: -q is selected by !verbose,
+		 * and -q only selects triggers
+		 */
 		resolve[resolve_opt++] = "-q";
-		resolve[resolve_opt] = "--progress";
 	}
+	unless (quiet || verbose) resolve[resolve_opt++] = "--progress";
+	resolve[resolve_opt] = 0;
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	putenv("FROM_PULLPUSH=YES");
-	pid = spawnvpio(&pfd, 0, 0, resolve);
+	getoptReset();
+	rc = resolve_main(resolve_opt, resolve);
 	dup2(fd2, 2); close(fd2);
-	waitpid(pid, &status, 0);
-	close(pfd);
-	rc =  WEXITSTATUS(status);
 	write(1, &bkd_nul, 1);
 	if (rc) {
 		printf("%c%d\n", BKD_RC, rc);
@@ -313,22 +316,7 @@ bkd_doResolve(char *me, int verbose)
 	}
 	fputs("@END@\n", stdout);
 	fflush(stdout);
-	if (!WIFEXITED(status)) {
-		putenv("BK_STATUS=SIGNALED");
-		rc = 1;
-		goto done;
-	}
-	if (WEXITSTATUS(status)) {
-		putenv("BK_STATUS=CONFLICTS");
-		rc = 1;
-		goto done;
-	}
-
-done:	/*
-	 * Fire up the post-trigger
-	 */
-	putenv("BK_RESYNC=FALSE");
-	trigger(me,  "post");
+	if (rc) rc = 1;
 	return (rc);
 }
 
@@ -342,6 +330,7 @@ cmd_push_part3(int ac, char **av)
 	int	status, debug = 0;
 	int	inbytes, outbytes;
 	int	gzip = 0, product = 0, verbose = 0;
+	int	quiet = 0;
 	pid_t	pid;
 	FILE	*f;
 	char	*sfio[] = {"bk", "sfio", "-iqB", "-", 0};
@@ -350,13 +339,13 @@ cmd_push_part3(int ac, char **av)
 	while ((c = getopt(ac, av, "dGPqvz|", 0)) != -1) {
 		switch (c) {
 		    case 'z':
-			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 0 || gzip > 9) gzip = 6;
+			gzip = optarg ? atoi(optarg) : Z_BEST_SPEED;
+			if (gzip < 0 || gzip > 9) gzip = Z_BEST_SPEED;
 			break;
 		    case 'd': debug = 1; break;
 		    case 'G': putenv("BK_NOTTY=1"); break;
 		    case 'P': product = 1; break;
-		    case 'q': break;
+		    case 'q': quiet = 1; break;
 		    case 'v': verbose++; break;
 		    default: break;	/* ignore and pray */
 		}
@@ -429,7 +418,7 @@ cmd_push_part3(int ac, char **av)
 	if (product) {
 		printf("@DELAYING RESOLVE@\n");
 	} else if (isdir(ROOT2RESYNC)) {
-		rc = bkd_doResolve(av[0], verbose);
+		rc = bkd_doResolve(av[0], quiet, verbose);
 	}
 done:	return (rc);
 }

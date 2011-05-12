@@ -12,8 +12,38 @@ if {[info exists ::env(BK_DEBUG_GUI)]} {
 	rename newproc proc
 }
 
+proc bk_initTheme {} \
+{
+	switch -- [tk windowingsystem] {
+		"aqua" {
+			set bg "systemSheetBackground"
+		}
+
+		"x11" {
+			ttk::setTheme bk
+		}
+	}
+
+	set bg [ttk::style lookup . -background]
+
+	. configure -background $bg
+	option add *background	$bg
+
+	option add *Listbox.background	#FFFFFF
+	option add *Entry.background	#FFFFFF
+	option add *Entry.borderWidth	1
+	option add *Text.background	#FFFFFF
+}
+
 proc bk_init {} {
 	bk_initPlatform
+
+	bk_initTheme
+
+	## Tk removes the Toplevel tag from . and replaces it with
+	## the name of the application.  We don't use this anywhere,
+	## but we do use Toplevel as a bind tag.
+	bindtags . [list . Toplevel all]
 
 	## Remove default Tk mouse wheel bindings.
 	foreach event {MouseWheel 4 5} {
@@ -232,6 +262,11 @@ proc saveState {appname} \
 	catch {::appState save $appname ::State}
 }
 
+proc getScreenSize {{w .}} \
+{
+	return [winfo vrootwidth $w]x[winfo vrootheight $w]
+}
+
 proc trackGeometry {w1 w2 width height} \
 {	
 	global	gc app
@@ -244,7 +279,7 @@ proc trackGeometry {w1 w2 width height} \
 	# XXX: Only works on MS Windows
 	if {[wm state $w1] eq "normal"} {
 		set min $gc($app.minsize)
-		set res [winfo vrootwidth $w1]x[winfo vrootheight $w1]
+		set res [getScreenSize $w1]
 		if {$width < $min || $height < $min} {
 			debugGeom "Geometry ${width}x${height} too small"
 			return
@@ -842,3 +877,113 @@ proc scrollMouseWheel {w dir x y delta} \
 		catch {$w ${dir}view scroll $delta units}
 	}
 }
+
+proc isBinary { filename } \
+{
+    global	gc
+
+    set fd [open $filename rb]
+    set x  [read $fd $gc(ci.display_bytes)]
+    catch {close $fd}
+    return [regexp {[\x00-\x08\x0b\x0e-\x1f]} $x]
+}
+
+proc displayTextSize {top w h x y} \
+{
+	if {![info exists ::textWidgets($top)]} { return }
+
+	if {$x != $::textWidgets($top,x) || $y != $::textWidgets($top,y)} {
+		## Window is moving, not resizing.
+		set ::textWidgets($top,x) $x
+		set ::textWidgets($top,y) $y
+		return
+	}
+
+	if {$w == $::textWidgets($top,w) && $h == $::textWidgets($top,h)} {
+		## Nothing has been resized.
+		return
+	}
+
+	set ::textWidgets($top,w) $w
+	set ::textWidgets($top,h) $h
+
+	update idletasks
+
+	foreach text $::textWidgets($top) {
+		if {[info exists ::textSize($text)]} {
+			after cancel $::textSize($text)
+		}
+		set w [winfo width $text]
+		set h [winfo height $text]
+
+		if {$w <= 1 && $h <= 1} { continue }
+
+		set font  [$text cget -font]
+		set fontW [font measure $font 0]
+		set fontH [dict get [font metrics $font] -linespace]
+
+		set cwidth  [expr {$w / $fontW}]
+		set cheight [expr {$h / $fontH}]
+
+		if {$cwidth <= 1 || $cheight <= 1} { continue }
+
+		set label $text.__size
+		if {![winfo exists $label]} {
+			label $text.__size -relief solid \
+			    -borderwidth 1 -background #FEFFE6
+		}
+		place $label -x 0 -y 0
+		$label configure -text "${cwidth}x${cheight}"
+
+		set ::textSize($text) \
+		    [after 2000 [list hideTextDisplaySize $text]]
+	}
+
+	update idletasks
+}
+
+proc hideTextDisplaySize {w} \
+{
+	destroy $w.__size
+}
+
+## Trace the text command to grab new text widgets as they are
+## created and add them to a list for their toplevel if the
+## toplevel has been bound to show text widget dimensions.
+proc traceTextWidget {cmd code widget event} \
+{
+	set top [winfo toplevel $widget]
+	if {[info exists ::textWidgets($top)]} {
+		lappend ::textWidgets($top) $widget
+	}
+}
+trace add exec text leave traceTextWidget
+
+## Configure toplevel widgets to display their text widget
+## dimensions as the toplevel is resized.  We do this for
+## . and .citool for now.
+proc configureTextWidgets {} \
+{
+	## We don't want to figure widgets for all of our tools, only
+	## specific ones.
+	set tool [file tail [info script]]
+	if {$tool in "csettool difftool fm3tool fmtool newdifftool revtool"} {
+		set top .
+	} elseif {$tool eq "citool"} {
+		set top .citool
+	} else {
+		return
+	}
+
+	set ::textWidgets($top)   {}
+	set ::textWidgets($top,w) 0
+	set ::textWidgets($top,h) 0
+	set ::textWidgets($top,x) 0
+	set ::textWidgets($top,y) 0
+
+	bind Toplevel <Map> {
+		bind Toplevel <Map> {}
+		bind Toplevel <Configure> "displayTextSize %%W %%w %%h %%x %%y"
+	}
+}
+configureTextWidgets

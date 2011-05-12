@@ -65,13 +65,13 @@ remoteCheck(remote *r)
 	char	buf[MAXPATH];
 	int	rc = 0;
 
-	if (bkd_connect(r)) return (1);
+	if (bkd_connect(r, 0)) return (1);
 	if (send_check_msg(r)) return (1);
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 
 	getline2(r, buf, sizeof (buf));
 	if (streq("@SERVER INFO@", buf)) {
-		if (getServerInfo(r)) return (1);
+		if (getServerInfo(r, 0)) return (1);
 		getline2(r, buf, sizeof (buf));
 	}
 	unless (streq("@CHECK INFO@", buf)) return (1); /* protocol error */

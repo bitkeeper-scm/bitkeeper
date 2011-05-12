@@ -75,6 +75,7 @@ typedef struct {
 	u32	product:1;		// this is the product
 	u32	remotePresent:1;	// scratch for remote present bit
 	u32	pending:1;		// has pending csets not in product
+	u32	useLowerKey:1;		// tell populate to use lowerkey
 } comp;
 
 struct nested {
@@ -87,15 +88,41 @@ struct nested {
 	hash	*aliasdb;	// lazy init'd aliasdb
 	hash	*compdb;	// lazy init rk lookup of &n->comp[i]
 	comp	*product;	// pointer into comps to the product
+
+	// urllist
+	u32	list_loaded:1;	// urllist file loaded
+	u32	list_dirty:1;	// urllist data changed
+	char	**urls;		// array of urlinfo *'s
+	hash	*urlinfo;	// info about urls
+
 	// bits
 	u32	alias:1;	// components tagged with c->alias
-	u32	product_first:1;// default is last in list
-	u32	undo:1;		// undo wants the -a inferred from opts.revs
-	u32	deepfirst:1;	// sort such that deeply nested comps are first
 	u32	pending:1;	// include pending component state
 	u32	freecset:1;	// do a sccs_free(cset) in nested_free()
 	u32	fix_idDB:1;	// don't complain about idDB problems
 };
+
+typedef struct {
+	// normalized url, output of remote_unparse() with any leading
+	// file:// removed
+	char	*url;
+
+	// map comp struct pointers to "1" if remote has the needed
+	// component tipkey or "0" if they have the component, but not
+	// the tipkey.
+	hash	*pcomps;	/* populated components found in this URL */
+	u32	checked:1;	/* have we actually connected? */
+	u32	checkedGood:1;	/* was URL probe successful this time? */
+	u32	noconnect:1;	/* probeURL failed for connection problem */
+	u32	from:1;		/* if set, try this one first */
+	u32	parent:1;	/* if set, try this one first (or next) */
+
+	// From URLINFO file, extras are ignored
+	time_t	time;		/* 1 time of last successful connection */
+	int	gate;		/* 2 is it a gate?*/
+	char	*repoID;	/* 3 */
+	char	**extra;	/* extra data we don't parse */
+} urlinfo;
 
 /*
  * This is the subset of the clone opts we pass down to nested_populate.
@@ -106,6 +133,7 @@ typedef struct {
 	u32	quiet:1;	// -q: quiet
 	u32	verbose:1;	// -v: verbose
 	u32	force:1;	// -f: force unpopulate with local diffs
+	u32	noURLprobe:1;	// unpopulate doesn't look for other urls
 	u32	runcheck:1;	// follow up with a partial check of prod
 	u32	leaveHERE:1;	// do not update the HERE file with our actions
 	int	comps;		// number of comps we worked on
@@ -114,10 +142,7 @@ typedef struct {
 
 	/* copy of nested_populated() args */
 	nested	*n;
-	char	**urls;
-	hash	*urllist;
-	char	*last;		/* last URL printed */
-	hash	*seen;		/* URLs processed */
+	char	*lasturl;		/* last URL printed */
 } popts;
 
 /*
@@ -160,20 +185,30 @@ void	aliasdb_free(hash *db);
 int	aliasdb_chkAliases(nested *n, hash *aliasdb,
 	    char ***paliases, char *cwd);
 int	aliasdb_caret(char **aliases);
+char	**alias_coverMissing(nested *n, char **missing, char **aliases);
 
-char	**urllist_fetchURLs(hash *h, char *rk, char **space);
-void	urllist_addURL(hash *h, char *rk, char *url);
-int	urllist_rmURL(hash *h, char *rk, char *url);
-void	urllist_dump(char *name);
-int	urllist_normalize(hash *urllist, char *url);
-int	urllist_write(hash *urllist);
+/* urlinfo.c */
+void	urlinfo_load(nested *n, remote *base);
+void	urlinfo_buildArray(nested *n);
+void	urlinfo_urlArgs(nested *n, char **urls);
 
-#define URLLIST_TRIM_NOCONNECT  0x10
-#define	URLLIST_SUPERSET	0x20
-int	urllist_check(nested *n, u32 flags, char **urls);
+void	urlinfo_addURL(nested *n, comp *c, char *url);
+void	urlinfo_rmURL(nested *n, comp *c, char *url);
+
+int	urlinfo_probeURL(nested *n, char *url, FILE *out);
+
+void	urlinfo_setFromEnv(nested *n, char *url);
+void	urlinfo_set(nested *n, char *url, int gate, char *repoID);
+urlinfo	*urlinfo_get(nested *n, char *url);
+int	urlinfo_write(nested *n);
+void	urlinfo_free(nested *n);
+void	urlinfo_flushCache(nested *n);
 
 /* clone.c */
 char	**clone_defaultAlias(nested *n);
+
+/* here_check.c */
+int	here_check_main(int ac, char **av);
 
 /* locking.c */
 
@@ -193,6 +228,10 @@ int	nested_isGate(project *comp);
 void	freeNlock(void *nl);
 
 /* populate.c */
-int	nested_populate(nested *n, char **urls, popts *ops);
+int	nested_populate(nested *n, popts *ops);
+
+#define	URLLIST_GATEONLY	0x40	/* only gates */
+#define	URLLIST_NOERRORS	0x80 	/* don't print errors to stderr */
+char	*urllist_find(nested *n, comp *cp, int flags, int *idx);
 
 #endif	// _NESTED_H

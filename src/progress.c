@@ -424,6 +424,20 @@ progress_nlneeded(void)
 	}
 }
 
+/*
+ * If nl injection is currently required then output a newline
+ * and clear the flag.  This is normally called before printing to stdout
+ * when a progress bar may be running.
+ */
+void
+progress_injectnl(void)
+{
+	if (rdProgress() == 'y') {
+		setProgress('n');
+		fputc('\n', stderr);
+	}
+}
+
 /* Call this to indicate that nl injection is no longer needed. */
 void
 progress_nldone(void)

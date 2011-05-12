@@ -25,10 +25,6 @@
 #define	RESOLVE_LOCK		(ROOT2RESYNC "/BitKeeper/tmp/resolve_lock")
 #define	AUTO_MERGE		"Auto merged"
 #define	SCCS_MERGE		"SCCS merged"
-#define	QUIT_WARNING		"If you quit out of the resolver, your pull " \
-	"will be aborted and whatever\n" \
-	"work you have already done will be lost.\n" \
-	"Are you sure you want to quit?"
 
 /* passed around everywhere to record state */
 typedef struct {
@@ -52,6 +48,9 @@ typedef struct {
 	u32	from_pullpush:1;/* set if we are being called from pull/push */
 	u32	partial:1;	/* partial resolve - don't commit changeset */
 	u32	autoOnly:1;	/* do as much as possible automatically &exit */
+	u32	batch:1;	/* command line version of autoOnly */
+	u32	standalone:1;	/* operate in this component only */
+	u32	nested:1;	/* is this a nested resolve? */
 	int	hadConflicts;	/* conflicts during automerge */
 	int	pass;		/* which pass are we in now */
 	char	*comment;	/* checkin comment for commit */
@@ -70,6 +69,8 @@ typedef struct {
 	char	**excludes;	/* list of globs indicating files to skip */
 	char	**notmerged;	/* list of files that didn't automerge */
 	char	**dirlist;	/* list of directories to delete */
+	char	**nav;		/* argv for component resolves */
+	char	**aliases;	/* aliases for nested resolve*/
 } opts;
 
 /*

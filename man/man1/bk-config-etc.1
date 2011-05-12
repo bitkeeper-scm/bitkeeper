@@ -15,14 +15,8 @@ information available in order to properly execute \*(BK commands.
 Repository configuration information is searched for in the following 
 places, in order:
 .TP "\fB`bk root -P`/BitKeeper/etc/config\fP "
-.B \`bk\ root\`/BitKeeper/log/config
-This repository's config file
-.tp
 .B \`bk\ root\`/BitKeeper/etc/config
 This repository's config file
-.tp
-.B \`bk\ root -P\`/BitKeeper/log/config
-Product repository config file
 .tp
 .B \`bk\ root -P\`/BitKeeper/etc/config
 Product repository config file
@@ -35,6 +29,12 @@ Per-machine config file
 .tp
 .B \`bk\ bin\`/config
 Per-installation config file
+.tp
+.B \`bk\ root\`/BitKeeper/log/config
+This repository's config file
+.tp
+.B \`bk\ root -P\`/BitKeeper/log/config
+Product repository config file
 .tp
 .V $BK_CONFIG
 Environment variable
@@ -184,23 +184,12 @@ will be set to gzip in your configuration as follows:
 compression:gzip
 .DE
 This results in the compression of stored
-s.files.  In other words, when you run
-.DS
-bk new
-.DE
-what really happens is
-.DS
-bk new -Zgzip
-.DE
+s.files.
 To make the repository use no compression by default, 
 change the compression line your configuration to be:
 .DS
 compression:none
 .DE
-.B Note:
-Setting this option affects
-.I only
-files created subsequently.
 See
 .B bk help admin
 for more information about the

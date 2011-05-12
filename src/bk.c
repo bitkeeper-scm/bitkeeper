@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include "range.h"
 #include "bkd.h"
 #include "cmd.h"
 #include "logging.h"
@@ -24,20 +23,24 @@ char	*start_cwd;		/* if -R or -P, where did I start? */
 unsigned int turnTransOff;	/* for transactions, see nested.h */
 
 private	char	*buffer = 0;	/* copy of stdin */
-private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
+char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
+private	int	indent_level;
 
 private	void	bk_atexit(void);
 private	void	bk_cleanup(int ret);
 private	char	cmdlog_buffer[MAXPATH*4];
 private	int	cmdlog_flags;
+private	int	cmdlog_repolog;	/* if true log to repo_log in addition */
 private	int	cmdlog_locks;
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private	void	showproc_start(char **av);
 private	void	showproc_end(char *cmdlog_buffer, int ret);
+private	void	callstack_add(int remote);
 
 #define	MAXARGS	1024
 #define	MAXPROCDEPTH	30	/* fallsafe, don't recurse deeper than this */
+#define	INDENT_SPACES	4
 
 private void
 save_gmon(void)
@@ -60,7 +63,7 @@ main(int volatile ac, char **av, char **env)
 	int	each_repo = 0, dashrdir = 0;
 	int	buf_stdin = 0;	/* -Bstdin */
 	int	from_iterator = 0;
-	char	*csp, *p, *locking = 0;
+	char	*p, *locking = 0;
 	char	*todir = 0;
 	int	toroot = 0;	/* 1==cd2root 3==cd2product */
 	char	*envargs = 0;
@@ -185,18 +188,6 @@ main(int volatile ac, char **av, char **env)
 	}
 	fslayer_enable(1);
 	unless (getenv("BK_TMP")) bktmpenv();
-
-	/*
-	 * Determine if this should be a trial version of bk.
-	 * Add versions that are not tagged will automaticly expire
-	 * in 2 weeks.
-	 */
-	if (test_release && (time(0) > (time_t)bk_build_timet + 3600*24*14)) {
-		char	*nav[] = {"version", 0};
-
-		version_main(1, nav);
-		exit(1);
-	}
 
 	/* stderr write(2) wrapper for progress bars */
 	stderr->_write = progress_syswrite;
@@ -360,6 +351,17 @@ baddir:						fprintf(stderr,
 				return (1);
 			}
 		}
+
+		/* Trial versions of bk will expire in 2 weeks. */
+		if (test_release && !streq(prog, "upgrade") &&
+		    (getenv("_BK_EXPIRED_TRIAL") ||
+			(time(0) > (time_t)bk_build_timet + 2*WEEK))) {
+			char	*nav[] = {"version", 0};
+
+			version_main(1, nav);
+			exit(1);
+		}
+
 		/* -'?VAR=val&VAR2=val2' */
 		if (envargs) {
 			hash	*h = hash_new(HASH_MEMHASH);
@@ -373,6 +375,7 @@ baddir:						fprintf(stderr,
 		}
 		if (remote) {
 			start_cwd = strdup(proj_cwd());
+			callstack_add(remote);
 			cmdlog_start(av, 0);
 			ret = remote_bk(!headers, ac, av);
 			goto out;
@@ -541,18 +544,9 @@ bad_locking:				fprintf(stderr,
 run:	trace_init(prog);	/* again 'cause we changed prog */
 
 	/*
-	 * Don't recurse too deep.
+	 * Update callstack and don't recurse too deep.
 	 */
-	if ((csp = getenv("_BK_CALLSTACK"))) {
-		if (strcnt(csp, ':') >= MAXPROCDEPTH) {
-			fprintf(stderr, "BK callstack: %s\n", csp);
-			fprintf(stderr, "BK callstack too deep, aborting.\n");
-			exit(1);
-		}
-		safe_putenv("_BK_CALLSTACK=%s:%s", csp, prog);
-	} else {
-		safe_putenv("_BK_CALLSTACK=%s", prog);
-	}
+	callstack_add(0);
 
 	/*
 	 * XXX - we could check to see if we are licensed for SAM and make
@@ -843,47 +837,50 @@ bk_cleanup(int ret)
 }
 
 /*
- * If a command is listed below, then it will be logged in
- * BitKeeper/log/repo_log, in addition to the cmd_log.
- * Also optional flags for commands can be specified.
+ * Special flags for various BK commands.  See sccs.h for definitions.
  */
 private	struct {
 	char	*name;
 	int	flags;
-} repolog[] = {
-	{"abort", CMD_COMPAT_NOSI},
-	{"attach", 0},
+} cmdtab[] = {
+	{"abort", CMD_REPOLOG|CMD_COMPAT_NOSI},
+	{"attach", CMD_REPOLOG},
 	{"bk", CMD_COMPAT_NOSI}, /* bk-remote */
 	{"check", CMD_COMPAT_NOSI},
-	{"clone", 0},		/* locking handled in clone.c */
-	{"collapse", 0},
-	{"commit", 0},
-	{"fix", 0},
+	{"clone", CMD_REPOLOG},		/* locking handled in clone.c */
+	{"collapse", CMD_REPOLOG},
+	{"commit", CMD_REPOLOG},
+	{"fix", CMD_REPOLOG},
 	{"get", CMD_COMPAT_NOSI},
 	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},
 	{"license", CMD_NOREPO},
-	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_LOCK_PRODUCT},
-	{"push", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK|CMD_LOCK_PRODUCT},
+	{"pull", CMD_REPOLOG|CMD_BYTES},
+	{"push", CMD_REPOLOG|CMD_BYTES},
 	{"remote abort",
-	     CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|CMD_IGNORE_RESYNC},
-	{"remote changes part1", CMD_RDLOCK},
-	{"remote changes part2", CMD_RDUNLOCK},
-	{"remote clone", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
-	{"remote pull part1", CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
-	{"remote pull part2", CMD_BYTES|CMD_RDLOCK},
-	{"remote push part1", CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK},
-	{"remote push part2", CMD_BYTES|CMD_WRLOCK},
-	{"remote push part3", CMD_BYTES|CMD_WRLOCK},
-	{"remote rclone part1", CMD_NOREPO|CMD_BYTES},
-	{"remote rclone part2", CMD_NOREPO|CMD_BYTES},
-	{"remote rclone part3", CMD_NOREPO|CMD_BYTES},
+	     CMD_REPOLOG|CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|
+	     CMD_IGNORE_RESYNC},
+	{"remote changes part1", CMD_REPOLOG|CMD_RDLOCK},
+	{"remote changes part2", CMD_REPOLOG|CMD_RDUNLOCK},
+	{"remote clone", CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
+	{"remote pull part1",
+	     CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
+	{"remote pull part2", CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK},
+	{"remote push part1",
+	     CMD_REPOLOG|CMD_BYTES|CMD_WRLOCK|CMD_NESTED_WRLOCK},
+	{"remote push part2", CMD_REPOLOG|CMD_BYTES|CMD_WRLOCK},
+	{"remote push part3", CMD_REPOLOG|CMD_BYTES|CMD_WRLOCK},
+	{"remote rclone part1", CMD_REPOLOG|CMD_NOREPO|CMD_BYTES},
+	{"remote rclone part2", CMD_REPOLOG|CMD_NOREPO|CMD_BYTES},
+	{"remote rclone part3", CMD_REPOLOG|CMD_NOREPO|CMD_BYTES},
 	{"remote quit", CMD_NOREPO|CMD_QUIT},
 	{"remote rdlock", CMD_RDLOCK},
 	{"remote nested", CMD_SAMELOCK},
 	{"remote wrlock", CMD_WRLOCK},
+	{"resolve", CMD_REPOLOG},
 	{"synckeys", CMD_RDLOCK},
 	{"tagmerge", CMD_WRLOCK|CMD_NESTED_WRLOCK},
-	{"undo", 0},
+	{"undo", CMD_REPOLOG},
+	{"unpull", CMD_REPOLOG},
 	{ 0, 0 },
 };
 
@@ -891,15 +888,26 @@ void
 cmdlog_start(char **av, int bkd_cmd)
 {
 	int	i, len;
+	char	*quoted;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
-	for (i = 0; repolog[i].name; i++) {
-		if (strieq(repolog[i].name, av[0])) {
-			cmdlog_flags = repolog[i].flags;
-			cmdlog_flags |= CMD_REPOLOG;
-			break;
+	cmdlog_repolog = 0;
+	for (i = 0; cmdtab[i].name; i++) {
+		unless (strieq(cmdtab[i].name, av[0])) continue;
+
+		cmdlog_flags = cmdtab[i].flags;
+		/*
+		 * set the cmd_repolog flag when it's defined in the
+		 * table above, an actual user command (indent_level
+		 * == 0) or when it's a remote command (indent_level
+		 * will be > 0 because it is spawned by a bkd)
+		 */
+		if ((cmdlog_flags & CMD_REPOLOG) &&
+		    ((indent_level == 0) || strneq(av[0], "remote ", 7))) {
+			cmdlog_repolog = 1;
 		}
+		break;
 	}
 	if (cmdlog_flags && proj_root(0)) {
 		/*
@@ -938,8 +946,13 @@ cmdlog_start(char **av, int bkd_cmd)
 		len += strlen(av[i]) + 1;
 		if (len >= sizeof(cmdlog_buffer)) continue;
 		if (i) strcat(cmdlog_buffer, " ");
-		strcat(cmdlog_buffer, av[i]);
+		quoted = shellquote(av[i]);
+		strcat(cmdlog_buffer, quoted);
+		free(quoted);
 	}
+
+	write_log("cmd_log", 0, "%s", cmdlog_buffer);
+	indent_level++;
 
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
 
@@ -981,16 +994,6 @@ cmdlog_lock(int flags)
 	char	*error_msg = 0;
 
 	cmdlog_flags = flags;
-	/*
-	 * If we want a product lock (push/pull) and we're in a component,
-	 * pop up and grab the product's proj so we lock that one.  But
-	 * only if we're not already in a nested op (_BK_TRANSACTION).
-	 */
-	if ((cmdlog_flags & CMD_LOCK_PRODUCT) && proj_isComponent(0) &&
-	    !getenv("_BK_TRANSACTION")) {
-		/* if in a product, act like a cd2product, as cmd will do it */
-		proj = proj_product(0);
-	}
 
 	/* used by "remote nested" */
 	if (cmdlog_flags & CMD_SAMELOCK) {
@@ -1037,6 +1040,7 @@ cmdlog_lock(int flags)
 		char	*p = getenv("BK_NO_REPO_LOCK");
 
 		if (p && streq(p, "YES")) {
+			TRACE("%s", "Skipping locking due to BK_NO_REPO_LOCK");
 			putenv("BK_NO_REPO_LOCK=");
 			do_lock = 0;
 		}
@@ -1057,6 +1061,7 @@ cmdlog_lock(int flags)
 		if (cmdlog_flags & CMD_IGNORE_RESYNC) {
 			putenv("_BK_IGNORE_RESYNC_LOCK=1");
 		}
+		TRACE("WRLOCK in %s", proj_cwd());
 		i = repository_wrlock(proj);
 		if (cmdlog_flags & CMD_IGNORE_RESYNC) {
 			putenv("_BK_IGNORE_RESYNC_LOCK=");
@@ -1094,6 +1099,7 @@ cmdlog_lock(int flags)
 		cmdlog_locks |= CMD_WRLOCK;
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
+		TRACE("RDLOCK in %s", proj_cwd());
 		if (i = repository_rdlock(proj)) {
 			unless ((cmdlog_flags & CMD_BKD_CMD) ||
 			    !proj_root(proj)) {
@@ -1187,8 +1193,8 @@ write_log(char *file, int rotate, char *format, ...)
 {
 	FILE	*f;
 	char	*root;
-	char	path[MAXPATH];
 	struct	stat	sb;
+	char	path[MAXPATH], nformat[MAXPATH];
 	va_list	ap;
 
 	unless (root = proj_root(0)) return (1);
@@ -1207,13 +1213,19 @@ write_log(char *file, int rotate, char *format, ...)
 			return (1);
 		}
 	}
-	fprintf(f, "%c%s %lu %s: ",
+	setvbuf(f, NULL, _IONBF, 0);
+	sprintf(nformat, "%c%s %lu %s:%*s%s\n",
 	    log_versions[LOGVER],
-	    sccs_user(), time(0), bk_vers);
+	    sccs_user(), time(0), bk_vers,
+	    indent_level * INDENT_SPACES, " ", format);
 	va_start(ap, format);
-	vfprintf(f, format, ap);
+	vfprintf(f, nformat, ap);
 	va_end(ap);
-	fputc('\n', f);
+	unless (rotate) {
+		fclose(f);
+		return (0);
+	}
+	/* do file rotation if needed */
 	if (fstat(fileno(f), &sb)) {
 		/* ignore errors */
 		sb.st_size = 0;
@@ -1223,7 +1235,7 @@ write_log(char *file, int rotate, char *format, ...)
 
 	if (sb.st_mode != 0666) chmod(path, 0666);
 #define	LOG_MAXSIZE	(1<<20)
-	if (rotate && (sb.st_size > LOG_MAXSIZE)) {
+	if (sb.st_size > LOG_MAXSIZE) {
 		char	old[MAXPATH];
 
 		sprintf(old, "%s-older", path);
@@ -1256,6 +1268,16 @@ cmdlog_end(int ret, int bkd_cmd)
 	/* If we have no project root then bail out */
 	unless (proj_root(0)) goto out;
 
+	/*
+	 * if we got here as a result of an exit() call
+	 * before indent_level was incremented then
+	 * we cannot decrement here.
+	 * (ie. this happens when you try a nested pull
+	 * without the SAM license bit)
+	 */
+	unless (ret != 0 && indent_level == 0)
+		indent_level--;
+
 	len = strlen(cmdlog_buffer) + 20;
 	EACH_KV (notes) len += kv.key.dsize + kv.val.dsize;
 	log = malloc(len);
@@ -1277,8 +1299,9 @@ cmdlog_end(int ret, int bkd_cmd)
 	assert(len < savelen);
 	mdbm_close(notes);
 	notes = 0;
-	write_log("cmd_log", 1, "%s", log);
-	if (cmdlog_flags & CMD_REPOLOG) {
+	/* only rotate logs on command boundries */
+	write_log("cmd_log", (indent_level == 0), "%s", log);
+	if (cmdlog_repolog) {
 		/*
 		 * commands in the repolog table above get written
 		 * to the repo_log in addition to the cmd_log and
@@ -1294,108 +1317,22 @@ cmdlog_end(int ret, int bkd_cmd)
 		nlid = getenv("_NESTED_LOCK");
 		assert(nlid);
 		TRACE("nlid = %s", nlid);
-		if (ret && !streq(prog, "abort")) {
-			if (nested_abort(0, nlid)) {
-				error("%s", nested_errmsg());
-			}
-		} else {
-			if (nested_unlock(0, nlid)) {
-				error("%s", nested_errmsg());
-				// XXX we need to fail command here
-				//     *ret = 1;  ?
-			}
+		if (nested_unlock(0, nlid)) {
+			error("%s", nested_errmsg());
+			// XXX we need to fail command here
+			//     *ret = 1;  ?
 		}
 	}
 
 	if (!bkd_cmd && (cmdlog_locks & (CMD_WRLOCK|CMD_RDLOCK))) {
-		project	*prod = 0;
-
-		if ((cmdlog_flags & CMD_LOCK_PRODUCT) &&
-		    proj_isComponent(0)  &&
-		    !getenv("_BK_TRANSACTION")) {
-			prod = proj_product(0);
-		}
-		repository_unlock(prod, 0);
+		TRACE("UNLOCK %s", proj_cwd());
+		repository_unlock(0, 0);
 	}
 out:
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
+	assert(indent_level >= 0);
 	return (rc);
-}
-
-int
-cmdlog_main(int ac, char **av)
-{
-	FILE	*f;
-	time_t	t, cutoff = 0;
-	char	*p;
-	char	*version;
-	char	*user;
-	char	buf[MAXPATH*3];
-	int	yelled = 0, c, all = 0;
-
-	unless (proj_root(0)) return (1);
-	while ((c = getopt(ac, av, "ac;", 0)) != -1) {
-		switch (c) {
-		    case 'a': all = 1; break;
-		    case 'c':
-			cutoff = range_cutoff(optarg + 1);
-			break;
-		    default: bk_badArg(c, av);
-		}
-	}
-	concat_path(buf, proj_root(0), "/BitKeeper/log/");
-	concat_path(buf, buf, (all ? "cmd_log" : "repo_log"));
-	f = fopen(buf, "r");
-	unless (f) return (1);
-	while (fgets(buf, sizeof(buf), f)) {
-		user = buf;
-		for (p = log_versions; *p; ++p) {
-			if (*p == buf[0]) {
-				if ((p-log_versions) > LOGVER) {
-					if (yelled) goto nextline;
-					printf("cannot display this "
-					       "log entry; please upgrade\n");
-					yelled = 1;
-					goto nextline;
-				}
-				user = buf+1;
-				break;
-			}
-		}
-
-		for (p = user; (*p != ' ') && (*p != '@'); p++);
-		*p++ = 0;
-		t = strtoul(p, &version, 0);
-		while (isspace(*version)) ++version;
-		if (*version == ':') {
-			p = version;
-			*p = 0;
-			version = 0;
-		} else {
-			char *q;
-
-			unless (p = strchr(p, ':')) continue;
-			*p = 0;
-
-			unless (isalnum(*version)) {
-				version = 0;
-			} else  {
-				for (q = 1+version; *q; ++q) {
-					if ( (*q & 0x80) || (*q < ' ') ) {
-						version = 0;
-						break;
-					}
-				}
-			}
-		}
-		unless (t >= cutoff) continue;
-		printf("%s %.19s %14s %s", user, ctime(&t),
-		    version ? version : "", 1+p);
-nextline:	;
-	}
-	fclose(f);
-	return (0);
 }
 
 int
@@ -1569,4 +1506,23 @@ showproc_end(char *cmdlog_buffer, int ret)
 	fprintf(f, " [%s]", proj_cwd());
 	fprintf(f, "\n");
 	fclose(f);
+}
+
+private void
+callstack_add(int remote)
+{
+	char *csp;
+	char *at = (remote) ? "@" : "";
+
+	if ((csp = getenv("_BK_CALLSTACK"))) {
+		if ((indent_level = strcnt(csp, ':')) >= MAXPROCDEPTH) {
+			fprintf(stderr, "BK callstack: %s\n", csp);
+			fprintf(stderr, "BK callstack too deep, aborting.\n");
+			exit(1);
+		}
+		safe_putenv("_BK_CALLSTACK=%s:%s%s", csp, at, prog);
+		indent_level++;
+	} else {
+		safe_putenv("_BK_CALLSTACK=%s%s", at, prog);
+	}
 }

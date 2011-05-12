@@ -364,6 +364,7 @@ synckeys
 tagmerge
 takepatch
 _tclsh
+_testlines
 test
 testdates
 time
@@ -438,6 +439,7 @@ renametool gui
 revtool gui
 setuptool gui
 showproc gui
+debugtool gui
 
 # gui aliases
 csetool => csettool

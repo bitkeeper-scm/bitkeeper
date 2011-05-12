@@ -145,7 +145,6 @@ libc = Library("libc", stubs + Split('''
 	utils/spawn.c
 	utils/spawn_filterpipeline.c
 	utils/spawnvpio.c
-	utils/stdioext.c
 	utils/str_subst.c
 	utils/sys.c
 	utils/system.c

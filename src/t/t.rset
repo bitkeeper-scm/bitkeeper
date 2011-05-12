@@ -5,7 +5,6 @@
 # 	u32	show_path:1;	/* -h show d->pathname */
 # 	u32	hide_cset:1;	/* -H hide ChangeSet file from file list */
 # 	u32	lflg:1;		/* -l list a rset */
-# 	u32	md5keys:1;	/* -5 use md5keys instead of revs */
 # 	u32	BAM:1;		/* -B only list BAM files */
 # 	u32	nested:1;	/* -P recurse into nested components */
 # 	char	**nav;
@@ -18,12 +17,8 @@
 # BAM files - nope
 # Binary files - nope
 
-# Not tested because it's non documented and not really done
-#
-# -B only works if -5
-# -5 does no filtering, so like -a all the time
-# -5 reads like it is setup to core dump if no End
 
+set -e
 echo $N Create initial repository ...................................$NL
 commercial project
 # make a trigger
@@ -554,7 +549,8 @@ merge|merge|1.5
 new.copy|new.copy|1.1
 new.project|new.project|1.1
 EOF
-cmpfiles WANT GOT
+perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
+cmpfiles WANT2 GOT
 echo OK
 
 echo $N Test diffs across various ranges ............................$NL
@@ -687,7 +683,8 @@ ${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
 new.project|new.project|1.0|new.project|1.1
 EOF
-cmpfiles WANT GOT1
+perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
+cmpfiles WANT2 GOT1
 echo OK
 
 echo $N Try other rev ranges ........................................$NL
@@ -698,11 +695,12 @@ ChangeSet|1.2..1.3
 merge|1.1..1.3
 new.project|1.0..1.1
 EOF
-cmpfiles OUT WANT
+perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
+cmpfiles OUT WANT2
 bk rset -rONE..TWO | bk _sort > OUT
-cmpfiles OUT WANT
+cmpfiles OUT WANT2
 bk rset -rONE -rTWO | bk _sort > OUT
-cmpfiles OUT WANT
+cmpfiles OUT WANT2
 echo OK
 
 echo $N Again, with -s. and -sHERE ..................................$NL
@@ -713,11 +711,67 @@ ChangeSet|1.2..1.3
 merge|1.1..1.3
 new.project|1.0..1.1
 EOF
-cmpfiles OUT WANT
+perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
+cmpfiles OUT WANT2
 bk rset -s. -rONE..TWO | bk _sort > OUT
-cmpfiles OUT WANT
+cmpfiles OUT WANT2
 bk rset -sHERE -rONE -rTWO | bk _sort > OUT
-cmpfiles OUT WANT
+cmpfiles OUT WANT2
 bk rset -sOTHER -rONE -rTWO 2> ERR && fail -f ERR should have failed
 grep -q 'rset: -sALIAS only allowed in product' ERR || fail -f ERR
+echo OK
+
+echo $N Test with ignoring gone delta ...............................$NL
+cd "$HERE"
+commercial gonebase
+touch foo bar
+bk new $Q foo
+FOO1=`bk prs -hnd:MD5KEY: -r1.1 foo`
+bk commit $Q -S --tag=PTAG -yfoo || fail
+bk clone $Q . ../goneclient
+bk rm foo
+FOODELETE=`bk sfiles -g BitKeeper/deleted '*foo*'`
+FOO2OLD=`bk prs -hnd:MD5KEY: -r1.2 $FOODELETE`
+bk new $Q bar
+BAR1=`bk prs -hnd:MD5KEY: -r1.1 bar`
+bk commit $Q -S --tag=TAG -yfoo || fail
+bk _rm -fr BitKeeper/deleted
+bk -r check -aggg | bk gone $Q -
+GONE1=`bk prs -hnd:MD5KEY: -r1.1 BitKeeper/etc/gone`
+GONE3=`bk prs -hnd:MD5KEY: -r1.3 BitKeeper/etc/gone`
+bk commit $Q -S -yfoo
+bk rset -HhrPTAG,TAG | bk _sort > GOT
+echo "bar|bar|1.0|bar|$BAR1" > WANT
+cmpfiles WANT GOT
+cd ../goneclient
+bk pull $Q 2> IGNORE
+bk edit $Q foo
+echo new > foo
+bk delta $Q -yfoo foo
+bk commit $Q -S -yfoo 2> IGNORE
+FOO2=`bk prs -hnd:MD5KEY: -r1.2 foo`
+bk rset -HhrTAG,+ | bk _sort > GOT
+cat <<EOF > WANT
+BitKeeper/etc/gone|BitKeeper/etc/gone|$GONE1|BitKeeper/etc/gone|$GONE3
+foo|foo|$FOO1|foo|$FOO2
+EOF
+cmpfiles WANT GOT
+bk rset -HhrPTAG,TAG | bk _sort > GOT
+echo "bar|bar|1.0|bar|$BAR1" > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Repeat gone deltas with --show-gone .........................$NL
+bk rset --show-gone -HhrTAG,+ | bk _sort > GOT
+cat <<EOF > WANT
+BitKeeper/etc/gone|BitKeeper/etc/gone|$GONE1|BitKeeper/etc/gone|$GONE3
+foo|$FOODELETE|$FOO2OLD|foo|$FOO2
+EOF
+cmpfiles WANT GOT
+bk rset --show-gone -HhrPTAG,TAG | bk _sort > GOT
+cat <<EOF > WANT
+bar|bar|1.0|bar|$BAR1
+foo|foo|$FOO1|$FOODELETE|$FOO2OLD
+EOF
+cmpfiles WANT GOT
 echo OK

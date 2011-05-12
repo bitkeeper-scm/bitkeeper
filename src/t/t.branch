@@ -60,3 +60,29 @@ bk undos branch > Y
 cmp -s  X Y
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+echo $N Test branch setting in BK mode ..............................$NL
+commercial project
+ls > branch
+bk new $Q branch
+bk admin $Q -fd1.2 branch 2> ERR && {
+	echo failed
+	exit 1
+}
+grep -q "nsupported" ERR || {
+	echo failed
+	exit 1
+}
+bk admin $Q -fd branch || {
+	echo failed
+	exit 1
+}
+bk admin $Q -Fd branch || {
+	echo failed
+	exit 1
+}
+# These may not make sense: reset with value, but they work as reset.
+bk admin $Q -Fd1.2 branch || {
+	echo failed
+	exit 1
+}
+echo OK

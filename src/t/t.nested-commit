@@ -46,3 +46,29 @@ echo 'commit: Must use -S with -l or "-"' > WANT
 cmpfiles ERR1 WANT
 cmpfiles ERR2 WANT
 echo OK
+
+echo $N Failed commit in component does not commit the product.......$NL
+OLDKEY=`bk changes -kr+`
+cd gcc
+bk edit $Q file
+echo new stuff > file
+bk ci $Q -y. file
+# make commit fail
+mkdir -p BitKeeper/triggers
+cat <<'EOF' >BitKeeper/triggers/pre-commit
+#!/bin/sh
+exit 1
+EOF
+chmod +x BitKeeper/triggers/pre-commit
+# make sure commit fails
+bk commit $Q -S -yfailed >OUT 2>&1 && fail -f OUT should have failed
+cd ../gdb
+touch afile
+bk new $Q afile
+cd ..
+touch prod_file
+bk new $Q prod_file
+bk commit $Q -yfailed >OUT 2>&1 && fail -f OUT should have failed
+NEWKEY=`bk changes -kr+`
+test "$OLDKEY" = "$NEWKEY" || fail did cset when it should not have
+echo OK

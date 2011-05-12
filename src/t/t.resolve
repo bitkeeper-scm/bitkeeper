@@ -745,12 +745,10 @@ L=`bk lock -rt`
   echo 'm'
   echo 'C'
   echo q
-) | _BK_NO_LOCK_RETRY=YES bk resolve -a > OUT 2>&1
-grep -q 'Waiting for write lock...' OUT || {
-	echo failed
-	cat OUT
+) | bk resolve -a > OUT 2>&1
+grep -q 'Entire repository is locked by:' OUT || {
 	bk _kill $L
-	exit 1
+	fail -f OUT
 }
 bk _kill $L
 echo OK
@@ -1333,4 +1331,55 @@ chmod 644 dir/foo
 echo foo >> dir/foo
 BK_CONFIG='checkout:get!;partial_check:off!' bk pull $Q ../repo2-clone 2>ERR
 test -d .bk && fail
+echo OK
+
+# Next 3 tests check to see that user doesn't lose work
+echo $N Modify a file before pulling - takepatch should fail ........$NL
+cd "$HERE"
+commercial collider
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+bk clone $Q . ../collidee
+bk edit $Q foo
+echo project > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+cd ../collidee
+bk edit $Q foo
+echo copy > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+# The actual test
+bk edit $Q foo
+echo new > foo
+bk pull -q 2> ERR1 && fail -f ERR1
+grep -q 'Pull failed: takepatch exited 1' ERR1 || fail -f ERR1
+test -d RESYNC && fail takepatch left RESYNC
+echo OK
+
+echo $N Modify after pass1 and before pass4 .........................$NL
+bk _rm -fr PENDING RESYNC
+# keep file edited, but with no change
+echo copy > foo
+# do the pull and alter contents of repo's foo during content resolve
+cat <<'EOF' | bk pull -q 2> ERR2 && fail -f ERR2
+!echo new > ../foo
+s
+C
+EOF
+grep -q 'resolve: RESYNC directory left intact' ERR2 || fail -f ERR2
+test -d RESYNC || fail no RESYNC
+echo OK
+
+echo $N Quit resolve, modify and start resolve again ................$NL
+bk abort -f
+# keep file edited, but with no change
+echo copy > foo
+# do the pull and alter contents of repo's foo during content resolve
+echo q | bk pull -q 2> ERR3
+echo new > foo
+echo q | bk resolve 2> ERR4
+grep -q 'resolve: RESYNC directory left intact' ERR4 || fail -f ERR4
+test -d RESYNC || fail no RESYNC
 echo OK

@@ -210,6 +210,26 @@ bk clone $Q -rTAG_B2 tag_c tag_clone 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
 echo OK
 
+echo $N Make a tag on a merge node that gets removed ................$NL
+# bk-4 csetprune by default collapsed a tag graph onto a real graph.
+# a subsequent csetprune can take the real nodes and turn them back
+# into graph nodes.  This ungone'ing was mishandled in bk-5.0 by
+# leaving include and exclude litter on gone'd nodes (merge was cleared).
+commercial tag-master
+bk clone $Q . ../tag-copy
+touch foo bar
+bk new $Q foo bar
+FOO=`bk prs -r1.0 -hnd:KEY: foo`
+BAR=`bk prs -r1.0 -hnd:KEY: bar`
+bk commit $Q -yfiles
+bk cset $Q -x+
+bk tag $Q TAG
+# collapse tag graph onto real graph
+echo "$BAR" | bk csetprune $Q --tag-csets || fail
+# tickle the bug
+echo "$FOO" | bk csetprune $Q || fail
+echo OK
+
 # have tip change 'b' and remove 'a' and check for tip reparented
 echo $N Reparent tip ................................................$NL
 cd "$HERE"
@@ -555,6 +575,7 @@ bk log -r+ -nd:ROOTKEY: del1 > list
 bk csetprune $Q -S < list
 bk changes -vrNODE -nd'NODE :GFILE: :I:' > ../PRUNE.GRAPH
 bk set -s ChangeSet >> ../PRUNE.SET
+bk admin -Znone ChangeSet
 bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../PRUNE.TABLE
 echo OK
 
@@ -564,6 +585,7 @@ bk pull $Q -rNODE ../work
 bk pull $Q ../work
 bk changes -vrNODE -nd'NODE :GFILE: :I:' > ../NATIVE.GRAPH
 bk set -s ChangeSet >> ../NATIVE.SET
+bk admin -Znone ChangeSet
 bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../NATIVE.TABLE
 echo OK
 
@@ -610,9 +632,11 @@ echo $N Create an exclude delta in a merge node .....................$NL
 # The dual of above
 bk log -r+ -nd:ROOTKEY: del2 > ../list2
 bk csetprune $Q -S < ../list2
+bk admin -Znone ChangeSet
 bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../NATIVE.TABLE2
 cd ../pruned
 bk csetprune $Q -S < ../list2
+bk admin -Znone ChangeSet
 bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../PRUNE.TABLE2
 diff ../NATIVE.TABLE2 ../PRUNE.TABLE2 > GOT
 cat <<EOF > WANT
@@ -663,6 +687,7 @@ echo OK
 # bk csetprune $Q -S -k123456789abcdef0 < ../list2
 # bk pull $Q -rNODE ../work2
 # bk pull $Q ../work2
+# bk admin -Znone ChangeSet
 # bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../NATIVE2.TABLE2
 # echo OK
 

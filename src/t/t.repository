@@ -67,15 +67,17 @@ bk ci $Q -ytest_cmt2 -i t.c
 bk -R sfiles -pC | bk commit $Q -ycmt3 -
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+H2=`bk prs -hnd:MD5KEY: -r1.2 h.h`
+H1=`bk prs -hnd:MD5KEY: -r1.1 h.h`
+T1=`bk prs -hnd:MD5KEY: -r1.1 t.c`
 cat > X <<EOF
 ChangeSet${BK_FS}ChangeSet${BK_FS}1.2${BK_FS}ChangeSet${BK_FS}1.3
-src/h.h${BK_FS}src/h.h${BK_FS}1.1${BK_FS}src/h.h${BK_FS}1.2
-src/t.c${BK_FS}src/t.c${BK_FS}1.0${BK_FS}src/t.c${BK_FS}1.1
+src/h.h${BK_FS}src/h.h${BK_FS}$H1${BK_FS}src/h.h${BK_FS}$H2
+src/t.c${BK_FS}src/t.c${BK_FS}1.0${BK_FS}src/t.c${BK_FS}$T1
 EOF
 bk undos X > CMP1
 bk -R rset -hr1.2,1.3 > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo failed; cat CMP2; exit 1; fi
+cmpfiles CMP1 CMP2
 echo OK
 
 echo $N Try to commit via -l ........................................$NL
@@ -89,16 +91,16 @@ bk -R sfiles -pC > "$HERE/flist"
 bk commit $Q -ycmt4 -l"$HERE/flist" 
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+H3=`bk prs -hnd:MD5KEY: -r1.3 h.h`
+Q1=`bk prs -hnd:MD5KEY: -r1.1 q.c`
 cat > X <<EOF
 ChangeSet${BK_FS}ChangeSet${BK_FS}1.3${BK_FS}ChangeSet${BK_FS}1.4
-src/h.h${BK_FS}src/h.h${BK_FS}1.2${BK_FS}src/h.h${BK_FS}1.3
-src/q.c${BK_FS}src/q.c${BK_FS}1.0${BK_FS}src/q.c${BK_FS}1.1
+src/h.h${BK_FS}src/h.h${BK_FS}$H2${BK_FS}src/h.h${BK_FS}$H3
+src/q.c${BK_FS}src/q.c${BK_FS}1.0${BK_FS}src/q.c${BK_FS}$Q1
 EOF
 bk undos X > CMP1
 bk -R rset -hr1.3,1.4 > CMP2
-bk diff -u CMP1 CMP2 
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo failed; cat CMP2; exit 1; fi
+cmpfiles CMP1 CMP2
 echo OK
 
 echo $N Check that missing edited gfile does not abort takepatch ....$NL

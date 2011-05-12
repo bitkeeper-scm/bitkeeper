@@ -258,6 +258,13 @@ setup_env()
 	esac
 	check_enclosing_repo
 
+	# Default to always creating BitKeeper/etc/attr, even in old trees
+	BK_ATTR=YES
+	export BK_ATTR
+
+	# clear callstack so bk can call doit and still pass
+	_BK_CALLSTACK=
+
 	BK_USER=bk
 	export BK_USER
 	BK_HOST=bk_regression.bk
@@ -335,28 +342,28 @@ setup_env()
 	BKL_I3=+TXE6KhXDsgvFut4axrE5RMvAN5/D6S3XtVxskbE15EMuNVowtDovnbIg3CWvw==
 
 	# Valid PRO P --airgap --bkweb --bugdb --import --bam --eula=pro --nested --nested2
-	BKL_PRO=BKL64de0731e368c808000012fdfffff42e572b43
-	BKL_P1=YgAAAo4AAAADgQAAAAKpToHPdfNR3Y3vksU1+/Q+gC/OFmTCmUVwAt09QRpklfnk
-	BKL_P2=2Tk6qJ8BQ44H/QfJQa/6MwwfVIoleegASCeP7yFibHm+ch49VxorqbvDjA1lhkod
-	BKL_P3=22nWY2QZOXPwL+/wTDxAFM7heFtTDrzitx3B8RRshJiW+IIWpn3zARs3lzgWPA==
+	BKL_PRO=BKL64f501be6368c808000012fdfffff42e572b43
+	BKL_P1=YgAAAo4AAAADgQAAAACWW/jX1L7TqqCcdsWEzCrtuCHR+1nA0CHv2dk4igDlpyaE
+	BKL_P2=appHx7oJ1TpCzFlGQYsp8GGnu075runiJbm3PftMp39N7XTKHLgSXa8w0pskgFqr
+	BKL_P3=vLjeLWHQkiPLtxCn5w0BDW0gTxt/7VAOstxsnIMNADwnFrtNH/aBPsoUqy0ZmQ==
 
 	# Valid pro p --airgap --bkweb --bugdb --import --eula=pro
-	BKL_pro=BKL64d1f3c65368c8080000121dfffff42e572b43
-	BKL_p1=YgAAAo4AAAADgQAAAAB+Jufld+ScSe2X/5/O2w9OYYcmh3AKonHdrxJ3qK/DuxtK
-	BKL_p2=h+rilVocQ8wj8gluLatQn2zZLSm18HiS4exyRCJr/dpxzrB21G0BCfq5l/suBIAT
-	BKL_p3=lU08WtZxx23WMxoJ2Z91JdvQpUgg3Rm3OtIi9iREepfGEpPSXqsGaQ6/jfdGPQ==
+	BKL_pro=BKL64f501bf0368c8080000121dfffff42e572b43
+	BKL_p1=YgAAAo4AAAADgQAAAAIbcqlw8VonCwRLRts8rBrnevfIzFjZYsl+NOTN88gt/snx
+	BKL_p2=4h2uwG95DOjruGPcmSRKZUgxdU2hsbie/l70RKD722uCI0BwZYP1+SSBaHpC4opC
+	BKL_p3=8QdzDPDyx5ZrRE8nL9LD4RwEVulByu/ZA1j+J9Lsb4dhS6T1N0g5paApi0nT3A==
 
 	# Valid ENTERPRISE E --airgap --eula=enterprise
-	BKL_ENTERPRISE=BKL64d1f3c65368c8080000121cfffff42e572b44
-	BKL_E1=YgAAAo4AAAADgQAAAAFnAw/m+45R6S5TDn4EwsCu8rdah2utsimp9jFmxWjeWeaD
-	BKL_E2=W3oRyiijTzTRcz1QQkZrLQqvH//hJrNThqOLiTFrPW/jOHKrtsVAGs6M/l7GbuE0
-	BKL_E3=zFCQTdjONJ8SVjErxJinAI9Jm/qZyP08Ueh0Lv4HVlyq/6SCkwklGQIjr3MI0g==
+	BKL_ENTERPRISE=BKL64f501bf2368c8080000121cfffff42e572b44
+	BKL_E1=YgAAAo4AAAADgQAAAAGb2OPdVLJvlt/NDFckWGhTuGVy4l2mWG/w9CnhUp5CTzJV
+	BKL_E2=4xfDaFqzxDpdA1fsvjzkePC6kVRzS4vriaTqIYirF3dHkD4qR6O+zTu4UToqbH3o
+	BKL_E3=BPYeMwOAIu19OGXTntFYnwWAoW26Hxu6vpN9EAl3i/LRQSf71FDQxk+hnXObCQ==
 
 	# Valid MLA M --airgap --eula=mla
-	BKL_MLA=BKL64d1f3c66368c8080000121cfffff42e572b45
-	BKL_M1=YgAAAo4AAAADgQAAAABnYXG1E4dmOHwpkekUfvsEPIxvfVKA3/8rVC1i2rAqpH0E
-	BKL_M2=Os9pOUveoj5XFr3Uc3RxuKoDmsL1LRdblJbUvrnPR74OBUTBQS43j6yKNabi4Jx/
-	BKL_M3=LTX+OrEVxvPf5DAvyMwYfW8kLIn6JggfjbP6F4io72gGF6du1oXF2qWViT90rA==
+	BKL_MLA=BKL64f501bf4368c8080000121cfffff42e572b45
+	BKL_M1=YgAAAo4AAAADgQAAAALMvVzx/u2HLB26E2DXNUTsMLK+zrmGwdmbde2TpONCu0ln
+	BKL_M2=DpUSUwJZv6+99dnWMyul9d/ALF0sQqQdbZUNafM2tRPBnPXfAc/GUO9nfvS12fiG
+	BKL_M3=5mI7WsHUcxi3kfADnVjL0Ru+u39MEVwTlhmRrpZt1IFj9Tz7wR48wgAwa9PRBg==
 
 	# Expired license (airgap)
 	BKL_EX=BKL63b174b80393618000001210fffff42e572b43
@@ -385,10 +392,10 @@ setup_env()
 	BKL_33=iI8hVqWnHKXORC/7v3hxpnrlq9BXSjNHntPbyHF11VAC/dLOm/mUR3c7TaqvOA==
 
 	# Valid 7 7 --bkl=7 --airgap --bkweb --eula=pro
-	BKL_7=BKL74d1f3c67368c8080000121dfffff42e572b43
-	BKL_71=YgAAAo4AAAADgQAAAADEmFd7Yu2wvHma0Z+W6RqpI9ZXL6eKlysZBzxvXQlnMwBG
-	BKL_72=YiztQzfJEL3DX3iZIi7src4YSQ5q8DyXy2tqJbLIyXAe5W3JEKYFqlgqh2S/YLqM
-	BKL_73=m0QFDFQ7GdkCsN3pr03MxZGoCKo8EvTO9qU/7Nj4xfWiAPCthaMA36kyIxqlAw==
+	BKL_7=BKL74f501bf5368c8080000121dfffff42e572b43
+	BKL_71=YgAAAo4AAAADgQAAAADubRh73fGuwJw2c7XtPYl8oSU6m4YnR/O6AhnkC58G2LKc
+	BKL_72=FT5VgBtnt13y/ylq26zuw6YPye3sLx+rP1+cL2A/CvCWyuKJyyZWRBdSn+vUtvMk
+	BKL_73=yqrJeHf55P4X/+P2aT9b0IkwP9MG3EvYqnAVNlsCnHxGDOuL9+dZME0H73XpCA==
 
 
 	test "$GUI_TEST" = YES || {

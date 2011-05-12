@@ -572,9 +572,9 @@ send_sync_msg(remote *r, sccs *s, int flags)
 	fprintf(f, "synckeys %s\n", (flags & PK_SYNCROOT) ? "-S" : "");
 	fclose(f);
 
-	f = fmem_open();
+	f = fmem();
 	probekey(s, 0, (flags & PK_SYNCROOT), f);
-	probe = fmem_getbuf(f, &probelen);
+	probe = fmem_peek(f, &probelen);
 	rc = send_file(r, buf, probelen);
 	unlink(buf);
 	unless (rc) {
@@ -598,7 +598,7 @@ synckeys(remote *r, sccs *s, int flags, FILE *fout)
 	int	rc = 1, i;
 	char	buf[MAXPATH];
 
-	if (bkd_connect(r)) return (1);
+	if (bkd_connect(r, 0)) return (1);
 	if (send_sync_msg(r, s, flags)) goto out;
 	if (r->rfd < 0) goto out;
 
@@ -608,7 +608,7 @@ synckeys(remote *r, sccs *s, int flags, FILE *fout)
 		rc = -i;		/* 2 means locked */
 		goto out;
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) goto out;
+		if (getServerInfo(r, 0)) goto out;
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));

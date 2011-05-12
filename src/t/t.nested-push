@@ -11,6 +11,7 @@
 
 # Tests for product clone.
 
+set -e
 
 echo $N Create an ensemble...........................................$NL
 nested project
@@ -32,7 +33,7 @@ do
 	bk new $Q -y"add" file$i
 	bk commit -S $Q -y"add file $i"
 done
-cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
+cd "$HERE/project" && bk commit $Q -S -y"add csets to gdb"
 echo OK
 
 echo $N Try a null push..............................................$NL
@@ -91,6 +92,33 @@ bk -e -r check -av >OUT 2>&1 || {
 }
 echo OK
 
+echo $N Push with modified files in remote uses gfiles...............$NL
+cd "$HERE"
+bk clone $Q copy2 pp1
+bk clone $Q copy pp2
+cd pp1/gcc
+bk edit $Q file1
+echo mods >> file1
+cd ../../pp2
+bk push $Q ../pp1 2>ERR && fail -f ERR should have failed
+# strip the date in the first line
+cat ERR | grep -v ^takepatch: > GOT
+cat > WANT <<EOF
+
+=================================== ERROR ====================================
+The following files are modified locally and in the patch:
+	file1
+For more information run "bk help tp1"
+==============================================================================
+Errors during update of the following files:
+file1
+==============================================================================
+Push failed: remote takepatch exited 1
+Pushing gcc failed
+EOF
+cmpfiles WANT GOT
+echo OK
+
 echo $N Try a push from a component..................................$NL
 cd "$HERE"
 bk clone $Q copy2 p1
@@ -126,7 +154,6 @@ test -d project/RESYNC && {
 echo OK
 
 echo $N Try a push -r................................................$NL
-cd "$HERE/project" && bk undo $Q -sfr+ >$DEV_NULL 2>&1
 cd "$HERE/copy"
 TIP=`bk changes -kr+`
 # add more stuff to gdb
@@ -499,7 +526,7 @@ echo OK
 
 echo $N Try a push of a renamed component ...........................$NL
 cd "$HERE"
-rm -fr project copy
+bk _rm -fr project copy
 nested project
 bk clone $Q . ../copy
 mv gcc gcc4

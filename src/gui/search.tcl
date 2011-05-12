@@ -300,7 +300,7 @@ proc search_keyboard_bindings {{nc {}}} \
 	bind $search(text)      <Return>        searchstring
 	bind $search(text)      <Control-u>     searchreset
 	# In the search window, don't listen to "all" tags.
-        bindtags $search(text) [list $search(text) Entry]
+        bindtags $search(text) [list $search(text) TEntry]
 }
 
 proc search_init {w s} \
@@ -331,18 +331,10 @@ proc search_widgets {w s} \
 			   -file $env(BK_BIN)/gui/images/previous.gif]
 	set nextImage [image create photo \
 			   -file $env(BK_BIN)/gui/images/next.gif]
-	label $search(plabel) -font $gc($app.buttonFont) -width 11 \
-	    -relief flat \
-	    -textvariable search(prompt)
+	ttk::label $search(plabel) -width 11 -textvariable search(prompt)
 
 	# XXX: Make into a pulldown-menu! like is sccstool
-	menubutton $search(menu) -font $gc($app.buttonFont) -relief raised \
-	    -indicatoron 1 \
-	    -bg $gc($app.buttonColor) -pady $gc(py) -padx $gc(px) \
-	    -borderwid $gc(bw) \
-	    -text "Search" -width $gc(search.width) -state normal \
-	    -menu $search(menu).menu
-
+	ttk::menubutton $search(menu) -text "Search" -menu $search(menu).menu
 	    set m [menu $search(menu).menu]
 	    if {$gc(aqua)} {$m configure -tearoff 0}
 	    $m add command -label "Search text" -command {
@@ -360,36 +352,25 @@ proc search_widgets {w s} \
 		search :
 		# XXX
 	    }
-	entry $search(text) -width 20 -font $gc($app.buttonFont)
-	button $search(prev) -font $gc($app.buttonFont) \
-	    -bg $gc($app.buttonColor) \
-	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-	    -image $prevImage \
-	    -state disabled -command {
-		    searchdir ?
-		    searchnext
-	    }
-	button $search(next) -font $gc($app.buttonFont) \
-	    -bg $gc($app.buttonColor) \
-	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-	    -image $nextImage \
-	    -state disabled -command {
-		    searchdir /
-		    searchnext
-	    }
-	button $search(clear) -font $gc($app.buttonFont) \
-	    -bg $gc($app.buttonColor) \
-	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-	    -width $gc(search.buttonWidth) \
-	    -text "Clear search" -state disabled -command { clearOrRecall }
-	label $search(status) -width 20 -font $gc($app.buttonFont) -relief flat
+	ttk::entry $search(text) -width 20
+	ttk::button $search(prev) -image $prevImage -state disabled -command {
+	    searchdir ?
+	    searchnext
+	}
+	ttk::button $search(next) -image $nextImage -state disabled -command {
+	    searchdir /
+	    searchnext
+	}
+	ttk::button $search(clear) -text "Clear search" -state disabled \
+	    -command { clearOrRecall }
+	ttk::label $search(status) -width 20
 
-	pack $search(menu) -side left -expand 1 -fill y
-	pack $search(text) -side left
-	pack $search(prev) -side left -fill y
-	pack $search(clear) -side left -fill y
-	pack $search(next) -side left -fill y
-	pack $search(status) -side left -expand 1 -fill x
+	pack $search(menu) -side left -anchor w
+	pack $search(text) -side left -padx 2
+	pack $search(prev) -side left -padx 1
+	pack $search(clear) -side left -padx 1
+	pack $search(next) -side left -padx 1
+	pack $search(status) -side left -expand 1 -fill x -padx {2 0}
 
 	$search(widget) tag configure search \
 	    -background $gc($app.searchColor) -font $gc($app.fixedBoldFont)

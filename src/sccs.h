@@ -88,7 +88,7 @@ int	checking_rmdir(char *dir);
 #define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
 #define	GET_LINENAME	0x00000800	/* get -O: prefix with line name */
 #define	GET_RELPATH	0x00000010	/* like GET_MODNAME but full relative */
-/* AVAILABLE		0x00000020	*/
+#define	GET_SKIPGONE	0x00000020	/* ignore gone deltas in HASH */
 #define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
 #define	GET_COMMENTS	0x00000080	/* diffs -H: prefix diffs with hist */
 #define	DIFF_COMMENTS	GET_COMMENTS
@@ -238,6 +238,7 @@ int	checking_rmdir(char *dir);
  * Bit 0 and 1 are data encoding
  * Bit 2 is compression mode (gzip or none)
  */
+#define	E_ALWAYS	0x1000		/* set so encoding is non-zero */
 #define E_DATAENC	0x3
 #define E_COMP		0x4
 
@@ -254,10 +255,11 @@ int	checking_rmdir(char *dir);
 #define	WRITABLE(s)	((s)->mode & 0200)
 #define EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && WRITABLE(s))
 #define LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
-#define ASCII(s)	(((s)->encoding & E_DATAENC) == E_ASCII)
-#define BINARY(s)	(((s)->encoding & E_DATAENC) != E_ASCII)
-#define BAM(s)		(((s)->encoding & E_DATAENC) == E_BAM)
-#define UUENCODE(s)	(((s)->encoding & E_DATAENC) == E_UUENCODE)
+#define	ASCII(s)	(((s)->encoding_in & E_DATAENC) == E_ASCII)
+#define	BINARY(s)	(((s)->encoding_in & E_DATAENC) != E_ASCII)
+#define	BAM(s)		(((s)->encoding_in & E_DATAENC) == E_BAM)
+#define	UUENCODE(s)	(((s)->encoding_in & E_DATAENC) == E_UUENCODE)
+#define	GZIP(s)		(((s)->encoding_in & E_COMP) == E_GZIP)
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
@@ -327,13 +329,13 @@ int	checking_rmdir(char *dir);
  * Don't renumber these in the future, just add to them.
  */
 typedef	enum {
-	CLONE_OK = 0,
-	CLONE_ERROR = 1,	/* other error */
-	CLONE_EXISTS = 2,	/* remote repo exists already */
-	CLONE_CONNECT = 5,	/* bkd_connect() failed */
-	CLONE_CHDIR = 6,	/* chdir failure */
-	CLONE_BADREV = 7,	/* rev not found */
-} clonerc;
+	RET_OK		= 0,
+	RET_ERROR	= 1,	/* other error */
+	RET_EXISTS	= 2,	/* remote repo exists already */
+	RET_CONNECT	= 5,	/* bkd_connect() failed */
+	RET_CHDIR	= 6,	/* chdir failure */
+	RET_BADREV	= 7,	/* rev not found */
+} retrc;
 
 /*
  * Hash behaviour.  Bitmask.
@@ -525,17 +527,6 @@ typedef	struct symbol {			/* symbolic tags */
 } symbol;
 
 /*
- * See slib.c:allocstate() for explanation.
- */
-#define	SFREE	1
-#define	SLIST	0
-typedef struct serial {
-	struct	serial *next;		/* forward link with offset 0 */
-	ser_t	serial;			/* # we're working on */
-	char	type;			/* 'I' or 'E' */
-} serlist;
-
-/*
  * Map used by things like serial map,
  * used to calculate from graph to set
  */
@@ -611,7 +602,8 @@ struct sccs {
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
 	char	**usersgroups;	/* lm, beth, staff, etc */
-	int	encoding;	/* ascii, uuencode, gzip, etc. */
+	int	encoding_in;	/* ascii, uuencode, gzip, etc. */
+	int	encoding_out;	/* encoding to write sfile */
 	char	**flags;	/* flags in the middle that we didn't grok */
 	char	**text;		/* descriptive text */
 	u32	state;		/* GFILE/SFILE etc */
@@ -632,6 +624,8 @@ struct sccs {
 	time_t	gtime;		/* gfile modidification time */
 	time_t	stime;		/* sfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
+	MDBM	*goneDB;	/* GoneDB used in the get_reg() setup */
+	MDBM	*idDB;		/* id cache used in the get_reg() setup */
 	hash	*findkeydb;	/* Cache a map of delta key to delta* */
 	project	*proj;		/* If in BK mode, pointer to project */
 	void	*rrevs;		/* If has conflicts, revs in conflict */
@@ -680,16 +674,14 @@ typedef struct {
 
 /*
  * Passed back from read_pfile().
+ * All strings are malloced and cleared by calling free_pfile(&pf);
  */
 typedef struct {
-	char	oldrev[MAXREV];		/* XXX - needs to be malloced */
-	char	newrev[MAXREV];		/* XXX - needs to be malloced */
-	char	sccsrev[MAXREV];
-	char	*user;			/* malloced - caller frees */
-	char	date[20];
-	char	*iLst;			/* malloced - caller frees */
-	char	*xLst;			/* malloced - caller frees */
-	char	*mRev;			/* malloced - caller frees */
+	char	*oldrev;	/* old tip rev */
+	char	*newrev;	/* rev to be created */
+	char	*iLst;		/* include revs for delta */
+	char	*xLst;		/* exclude revs for delta */
+	char	*mRev;		/* merge rev for delta */
 } pfile;
 
 /*
@@ -864,13 +856,14 @@ typedef struct {
 	u32	usr;	/* # user files (not under BitKeeper/) */
 } filecnt;
 
-int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *compress,
+int	sccs_admin(sccs *sc, delta *d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
+int	sccs_adminFlag(sccs *sc, u32 flags);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs,
 		   char **syms);
 int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, u32 kind, FILE *);
-int	sccs_encoding(sccs *s, off_t size, char *enc, char *comp);
+int	sccs_encoding(sccs *s, off_t size, char *enc);
 int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
 int	sccs_hashcount(sccs *s);
@@ -933,7 +926,7 @@ sccs	*sccs_getperfile(MMAP *, int *);
 char	*sccs_gethost(void);
 char	*sccs_realhost(void);
 char	*sccs_host(void);
-int	sccs_getComments(char *, char *, delta *);
+char	**sccs_getComments(char *prompt);
 int	sccs_badTag(char *, char *, int);
 MDBM    *sccs_keys2mdbm(FILE *f);
 void	sfileUnget(void);
@@ -999,8 +992,6 @@ int	sccs_unlockfile(char *file);
 int	sccs_mylock(char *lockf);
 int	sccs_readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp);
 
-sccs	*sccs_unzip(sccs *s);
-sccs	*sccs_gzip(sccs *s);
 char	*sccs_utctime(delta *d);
 void	sccs_kidlink(sccs *s, delta *d);
 void	sccs_renumber(sccs *s, u32 flags);
@@ -1021,7 +1012,6 @@ int	sccs_read_pfile(char *who, sccs *s, pfile *pf);
 int	sccs_rewrite_pfile(sccs *s, pfile *pf);
 int	sccs_isleaf(sccs *s, delta *d);
 int	emptyDir(char *dir);
-int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
 int	sccs_mv(char *, char *, int, int, int, int);
 delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x);
@@ -1072,7 +1062,8 @@ int	comments_save(char *s);
 int	comments_savefile(char *s);
 int	comments_got(void);
 void	comments_done(void);
-delta	*comments_get(delta *d);
+char	**comments_return(char *prompt);
+delta	*comments_get(char *gfile, char *rev, sccs *s, delta *d);
 void	comments_writefile(char *file);
 int	comments_checkStr(u8 *s);
 void	host_done(void);
@@ -1096,6 +1087,7 @@ int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int	cset_setup(int flags);
 char	*separator(char *);
 int	trigger(char *cmd, char *when);
+void	trigger_setQuiet(int yes);
 void	cmdlog_start(char **av, int bkd_mode);
 void	cmdlog_addnote(char *key, char *val);
 int	cmdlog_end(int ret, int bkd_mode);
@@ -1159,7 +1151,6 @@ void	dumpTimestampDB(project *p, hash *db);
 void	updateTimestampDB(sccs *s, hash *timestamps, int diff);
 struct tm *utc2tm(time_t t);
 int	sccs_setStime(sccs *s, time_t newest);
-int	isLocalHost(char *h);
 void	ids(void);
 void	http_hdr(void);
 int	check_rsh(char *remsh);
@@ -1393,6 +1384,12 @@ void	notifier_flush(void);
 #endif
 
 int	sccs_defRootlog(sccs *cset);
+void	bk_setConfig(char *key, char *val);
+
+
+#define	RGCA_ALL	0x1000
+#define	RGCA_STANDALONE	0x2000
+int	repogca(char **urls, char *dspec, u32 flags, FILE *out);
 
 extern	char	*editor;
 extern	char	*bin;
@@ -1411,6 +1408,7 @@ extern	char	*bk_build_dir;
 extern	int	test_release;
 extern	char	*prog;
 extern	char	*title;
+extern	char	*log_versions;
 
 #define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)
 #define	changesetKey(k) (strstr(k, "|ChangeSet|") != (char*)0)
@@ -1421,7 +1419,7 @@ extern	char	*title;
 #define	CMD_BYTES		0x00000001	/* log command byte count */
 #define	CMD_WRLOCK		0x00000002	/* write lock */
 #define	CMD_RDLOCK		0x00000004	/* read lock */
-#define	CMD_REPOLOG		0x00000008	/* log in repolog, all below */
+#define	CMD_REPOLOG		0x00000008	/* log in repolog */
 #define	CMD_QUIT		0x00000010	/* mark quit command */
 #define	CMD_NOREPO		0x00000020	/* don't assume in repo */
 #define	CMD_NESTED_WRLOCK	0x00000040	/* nested write lock */
@@ -1430,8 +1428,9 @@ extern	char	*title;
 						 * the nested lock we have */
 #define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
 #define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
-#define	CMD_LOCK_PRODUCT	0x00000800	/* lock product, not comp */
 #define	CMD_RDUNLOCK		0x00001000	/* unlock a previous READ */
 #define	CMD_BKD_CMD		0x00002000	/* command comes from bkd.c */
+
+#define	LOGVER			0		/* dflt idx into log_versions */
 
 #endif	/* _SCCS_H_ */

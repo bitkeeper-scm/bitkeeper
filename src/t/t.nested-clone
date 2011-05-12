@@ -34,7 +34,7 @@ echo OK
 
 echo $N See if we can override clone_default in BitKeeper/log .......$NL
 cd "$HERE/project"
-echo clone_default:PRODUCT > BitKeeper/log/config
+echo 'clone_default:PRODUCT!' > BitKeeper/log/config
 cd "$HERE"
 bk clone $Q project clone
 cd clone
@@ -739,7 +739,7 @@ bk new $Q foo
 bk commit -S $Q -yfoo
 )
 LIST=`bk comps -h`
-bk here rm $Q all 2>ERR && {
+bk here rm -q all 2>ERR && {
 	echo unpopulate should have failed
 	cat ERR
 	exit 1

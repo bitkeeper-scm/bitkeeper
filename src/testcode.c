@@ -66,17 +66,16 @@ getMsg_tests(void)
 	char	**args, *p;
 	FILE	*f;
 
-	f = fmem_open();
+	f = fmem();
 	assert(f);
 	args = addLine(0, "-one+");
 	args = addLine(args, "-two+");
 	args = addLine(args, "-three+");
 	args = addLine(args, "-four+");
 	getMsgv("test-args", args, 0, 0, f);
-	p = fmem_retbuf(f, 0);
+	p = fmem_close(f, 0);
 	assert(streq(p, "lead:-one+-one+-two+ -three+BKARG#2-one+:trail\n"));
 	free(p);
-	fclose(f);
 	freeLines(args, 0);
 }
 
@@ -167,3 +166,146 @@ recurse_main(int ac, char **av)
 	return (0);
 }
 
+private	void	testlines(FILE *f);
+private	void	testdata(FILE *f);
+private	void	testfmem(FILE *f);
+private	void	testfmemopt(FILE *f);
+
+int
+testlines_main(int ac, char **av)
+{
+	FILE	*f;
+	unless (av[1] && av[2]) exit(1);
+
+	f = fopen(av[2], "r");
+	if (streq(av[1], "lines")) {
+		testlines(f);
+	} else if (streq(av[1], "data")) {
+		testdata(f);
+	} else if (streq(av[1], "fmem")) {
+		testfmem(f);
+	} else if (streq(av[1], "fmemopt")) {
+		testfmemopt(f);
+	} else {
+		fprintf(stderr, "bad test\n");
+	}
+	fclose(f);
+	return (0);
+}
+
+/* 0.200 us/line */
+private void
+testlines(FILE *f)
+{
+	char	*p;
+	char	*out;
+	char	**lines = 0;
+	u32	sum = 0;
+	int	i, n = 0;
+
+	p = "";
+	while (p) {
+		if (++n == 30) n = 0;
+		lines = 0;
+		for (i = 0; i < n; i++) {
+			unless (p = fgetline(f)) break;
+			chomp(p);
+
+			lines = addLine(lines, strdup(p));
+		}
+		if (lines) {
+			out = joinLines(" ", lines);
+			sum = adler32(sum, out, strlen(out));
+			free(out);
+			freeLines(lines, free);
+		}
+	}
+	printf("%x\n", sum);
+}
+
+/* 0.112 us/line */
+private void
+testdata(FILE *f)
+{
+	char	*p;
+	DATA	d = {0};
+	int	i, n = 0;
+	u32	sum = 0;
+
+	p = "";
+	while (p) {
+		if (++n == 30) n = 0;
+		memset(&d, 0, sizeof(DATA));
+		for (i = 0; i < n; i++) {
+			unless (p = fgetline(f)) break;
+			chomp(p);
+
+			if (i > 0) data_append(&d, " ", 1);
+			data_appendStr(&d, p);
+		}
+		if (d.len) sum = adler32(sum, d.buf, d.len);
+		free(d.buf);
+	}
+	printf("%x\n", sum);
+}
+
+/* 0.138 us/line */
+private void
+testfmem(FILE *f)
+{
+	char	*p;
+	FILE	*f1;
+	int	i, n = 0;
+	u32	sum = 0;
+	size_t	len;
+	char	*d;
+
+	p = "";
+	while (p) {
+		if (++n == 30) n = 0;
+		f1 = fmem();
+		memset(&d, 0, sizeof(DATA));
+		for (i = 0; i < n; i++) {
+			unless (p = fgetline(f)) break;
+			chomp(p);
+
+			if (i > 0) fputc(' ', f1);
+			fputs(p, f1);
+		}
+		d = fmem_close(f1, &len);
+		sum = adler32(sum, d, len);
+		free(d);
+	}
+	printf("%x\n", sum);
+}
+
+/* 0.110 us/line */
+private void
+testfmemopt(FILE *f)
+{
+	char	*p;
+	FILE	*f1;
+	int	i, n = 0;
+	u32	sum = 0;
+	size_t	len;
+	char	*d;
+	f1 = fmem();
+
+	p = "";
+	while (p) {
+		if (++n == 30) n = 0;
+		memset(&d, 0, sizeof(DATA));
+		for (i = 0; i < n; i++) {
+			unless (p = fgetline(f)) break;
+			chomp(p);
+
+			if (i > 0) fputc(' ', f1);
+			fputs(p, f1);
+		}
+		d = fmem_peek(f1, &len);
+		sum = adler32(sum, d, len);
+		ftrunc(f1, 0);
+	}
+	fclose(f1);
+	printf("%x\n", sum);
+}

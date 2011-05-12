@@ -73,6 +73,33 @@ _repocheck() {
 	bk $EACH -r check -aBc $V
 }
 
+# Remove anything found in our main parent and repull.
+# Don't doc until 5.3ish so we can get some usage.
+_repull() {
+	__cd2product
+	bk parent | grep Push/pull |
+	    sed 's|^Push/pull parent: ||' > BitKeeper/tmp/pp$$
+	bk parent | grep 'Pull parent:' |
+	    sed 's|^Pull parent: ||' > BitKeeper/tmp/p$$
+	test `cat BitKeeper/tmp/pp$$ BitKeeper/tmp/p$$ | wc -l` -eq 1 && {
+		echo "repull: must have multiple parents"
+		exit 0
+	}
+	cat BitKeeper/tmp/pp$$ |
+	while read parent
+	do	GCA=`bk repogca "$parent"`
+		test "X$GCA" = X && {
+			echo No repogca for $parent - skipping...
+			continue
+		}
+		test `bk prs -hr+ -d:REV: ChangeSet` = $GCA && continue
+		echo "${parent}: undo after GCA $GCA"
+		bk undo -fsa$GCA
+	done
+	rm -f BitKeeper/tmp/pp$$ BitKeeper/tmp/p$$
+	bk pull
+}
+
 # shorthand to dig out renames
 _renames() {
 	standalone=""
@@ -325,16 +352,16 @@ _superset() {
 	}
 
 	test X$PRODUCT = XPRODUCT && {
-		bk here check -q --superset > $TMP2 || {
+		bk here check -q HERE ^PRODUCT 2>$TMP2 || {
 			test $LIST = NO && {
 				rm -f $TMP1 $TMP2
 				exit 1
 			}
 			echo === Components with no known sources === >> $TMP1
-			sed 's/^/    /' < $TMP2 >> $TMP1
+			sed -e 's/ *: no valid urls.*//' < $TMP2 >> $TMP1
 		}
 	}
-	bk pending $QUIET > $TMP2 2>&1 && {
+	test $RECURSED = NO && bk pending $QUIET > $TMP2 2>&1 && {
 		test $LIST = NO && {
 			rm -f $TMP1 $TMP2
 			exit 1
@@ -1782,6 +1809,9 @@ _latest() {
 	exec "$LATEST"/bk ${1+"$@"}
 }
 
+_catcomments() {
+	bk tclsh "`bk bin`/gui/lib/catcomments.l"
+}
 
 
 # ------------- main ----------------------

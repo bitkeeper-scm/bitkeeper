@@ -114,6 +114,7 @@ proc getConfig {prog} \
 	set _d(help.width) 79		;# number of columns to display
 	set _d(help.helptext) ""	;# -f<helptextfile> - undocumented
 	set _d(help.exact) 0		;# helpsearch, allows partial matches
+	set _d(help.scrollbars) RR	;# sides for each scrollbar
 
 	set _d(newdifftool.minThumbHeight) 30 ;# min height of custom scrollbar thumb
 	set _d(newdifftool.topMargin) 2
@@ -153,7 +154,7 @@ proc getConfig {prog} \
 	set _d(rev.textWidth) 92	  ;# width of text windows
 	set _d(rev.textHeight) 30	  ;# height of lower window
 	set _d(rev.showHistory) "1M"	  ;# History to show in graph on start
-	set _d(rev.showRevs) 50		  ;# Num of revs to show in graph 
+	set _d(rev.showRevs) 250	  ;# Num of revs to show in graph 
 	# XXX: not documented yet
 	set _d(rev.savehistory) 5	  ;# Max # of files to save in file list
 	set _d(rev.hlineColor) $WHITE	;# Color of highlight lines XXX:NOTDOC
@@ -279,115 +280,128 @@ proc getConfig {prog} \
                 }
         }
 
+	if {![info exists gc(rev.graphFont)]} {
+		if {$gc(fixedFont) eq "bkFixedFont"} {
+			set gc(rev.graphFont) $gc(default.fixedFont)
+		} else {
+			set gc(rev.graphFont) $gc(fixedFont)
+		}
+	}
+	if {![info exists gc(rev.graphBoldFont)]} {
+		if {$gc(fixedBoldFont) eq "bkFixedBoldFont"} {
+			set gc(rev.graphBoldFont) $gc(default.fixedBoldFont)
+		} else {
+			set gc(rev.graphBoldFont) $gc(fixedBoldFont)
+		}
+	}
+
+	configureFonts $app
+
 	option add *Text.tabStyle wordprocessor
-	option add *Text.tabs [expr \
-	    {$gc($app.tabwidth) * [font measure $gc($app.fixedFont) 0]}]
+
+	if {$gc($app.tabwidth) != 8} {
+		option add *Text.tabs \
+		    [expr {$gc($app.tabwidth) * [font measure bkFixedFont 0]}]
+	}
 }
 
 proc initFonts {app var} \
 {
+	upvar 1 $var _d
 
+	## Twiddle the default Tk fonts more to our liking.
 	switch -- [tk windowingsystem] {
-		win32	{initFonts-windows $app $var}
-		aqua	{initFonts-macosx $app $var}
-		x11	{initFonts-unix $app $var}
-		default	{puts "Unknown windowing system"; exit}
-	}
-}
-
-proc initFonts-windows {app var} \
-{
-	upvar 2 $var _d
-
-	set width [winfo screenwidth .]
-
-	if {$width <= 1024} {
-		set _d(boldFont)		{Arial 8 bold}
-		set _d(buttonFont)		{Arial 8 normal}
-		set _d(noticeFont)		{Arial 8 normal bold}
-		set _d(fixedFont)  		{{Courier New} 8 normal}
-		set _d(fixedBoldFont)	{{Courier New} 8 normal bold}
-	}  else {
-		set _d(boldFont)		{Arial 10 bold}
-		set _d(buttonFont)		{Arial 10 normal}
-		set _d(noticeFont)		{Arial 10 normal bold}
-		set _d(fixedFont)  		{{Courier New} 10 normal}
-		set _d(fixedBoldFont)	{{Courier New} 10 normal bold}
-	}
-}
-
-proc initFonts-macosx {app var} \
-{
-	upvar 2 $var _d
-
-	set _d(buttonFont)	system
-	set _d(noticeFont)	system
-	set _d(fixedFont)	{Monaco 10 normal}
-	set _d(fixedBoldFont)	{Monaco 10 normal bold}
-}
-
-proc initFonts-unix {app var} \
-{
-
-	upvar 2 $var _d
-
-	set width [winfo screenwidth .]
-
-	set singleWide 1
-	if {[lsearch -exact {cset diff fm fm3} $app] >= 0} {
-		set singleWide 0
+		"x11" {
+			font configure TkTextFont -size -14
+			font configure TkDefaultFont -size -14
+		}
+		"win32" {
+			font configure TkFixedFont -size 8
+		}
 	}
 
-	if {$width <= 1024} {
-		set _d(boldFont)   {Helvetica 10 bold}
-		set _d(buttonFont) {Helvetica 10}
-		set _d(noticeFont) {Helvetica 10 bold}
+	set font [font configure TkTextFont]
+	set bold [dict replace $font -weight bold]
+
+	set fixed     [font configure TkFixedFont]
+	set fixedBold [dict replace $fixed -weight bold]
+
+	font create bkBoldFont {*}$bold
+	font create bkButtonFont {*}$font
+	font create bkNoticeFont {*}$bold
+	font create bkFixedFont {*}$fixed
+	font create bkFixedBoldFont {*}$fixedBold
+
+	set _d(default.boldFont) $bold
+	set _d(default.buttonFont) $font
+	set _d(default.noticeFont) $bold
+	set _d(default.fixedFont) $fixed
+	set _d(default.fixedBoldFont) $fixedBold
+
+	set _d(boldFont)	bkBoldFont
+	set _d(buttonFont)	bkButtonFont
+	set _d(noticeFont)	bkNoticeFont
+	set _d(fixedFont)	bkFixedFont
+	set _d(fixedBoldFont)	bkFixedBoldFont
+
+	if {[tk windowingsystem] eq "aqua"} {
+		bind all <Command-0>     "adjustFontSizes 0"
+		bind all <Command-plus>  "adjustFontSizes 1"
+		bind all <Command-equal> "adjustFontSizes 1"
+		bind all <Command-minus> "adjustFontSizes -1"
 	} else {
-		set _d(boldFont)   {Helvetica 12 bold}
-		set _d(buttonFont) {Helvetica 12}
-		set _d(noticeFont) {Helvetica 12 bold}
+		bind all <Control-0>     "adjustFontSizes 0"
+		bind all <Control-plus>  "adjustFontSizes 1"
+		bind all <Control-equal> "adjustFontSizes 1"
+		bind all <Control-minus> "adjustFontSizes -1"
 	}
+}
 
-	# many of these are the same font, so the logic seems largely
-	# wasted. It may be that over time we find better fonts for
-	# some combinations, so the logic gives us a handy place to
-	# do just that.
-	if {$width <= 800} { 
-		if {$singleWide} {
-			set _d(fixedFont) 6x13
-			set _d(fixedBoldFont) 6x13bold
+proc configureFonts {app} \
+{
+	global	gc
+
+	set res [getScreenSize]
+	foreach font {boldFont buttonFont noticeFont fixedFont fixedBoldFont} {
+		set name bk[string toupper $font 0]
+
+		## If they have a saved state for this font, use it.
+		## Otherwise we use whatever is configured either from
+		## initFonts or potentially from config-gui.
+		if {[info exists ::State($font@$res)]} {
+			set f $::State($font@$res)
 		} else {
-			set _d(fixedFont) {lucidatypewriter 10}
-			set _d(fixedBoldFont) {lucidatypewriter 10 bold}
+			set f $gc($font)
 		}
-	} elseif {$width <= 1024} { 
-		if {$singleWide} {
-			set _d(fixedFont) 6x13
-			set _d(fixedBoldFont) 6x13bold
+		if {[string index $f 0] ne "-"} { set f [font actual $f] }
+		font configure $name {*}$f
+		set gc($font) $name
+		set gc($app.$font) $name
+	}
+}
+
+proc adjustFontSizes {n} \
+{
+	global	gc
+
+	set res [getScreenSize]
+	foreach font {fixedFont fixedBoldFont} {
+		set name bk[string toupper $font 0]
+		if {$n == 0} {
+			set opts $gc(default.$font)
 		} else {
-			set _d(fixedFont) {courier 12}
-			set _d(fixedBoldFont) {courier 12 bold}
+			set opts [font configure $name]
+			set size [dict get $opts -size]
+			if {$size >= 0} {
+				if {$size <= 6 && $n < 0} { return }
+				dict incr opts -size $n
+			} else {
+				if {$size >= -6 && $n < 0} { return }
+				dict incr opts -size [expr {-$n}]
+			}
 		}
-	} elseif {$width <= 1152} { 
-		set _d(fixedFont) {lucidatypewriter 12}
-		set _d(fixedBoldFont) {lucidatypewriter 12 bold}
-	} elseif {$width <= 1280} { 
-		set _d(fixedFont) 7x13
-		set _d(fixedBoldFont) 7x13bold
-	} elseif {$width <= 1400} {
-		if {$singleWide} {
-			set _d(fixedFont) {clean 13}
-			set _d(fixedBoldFont) {clean 13 bold}
-		} else {
-			set _d(fixedFont) 7x13
-			set _d(fixedBoldFont) 7x13bold
-		}
-	} elseif {$width <= 1600} { 
-		set _d(fixedFont) 8x13
-		set _d(fixedBoldFont) 8x13bold
-	} else {
-		set _d(fixedFont) 9x15
-		set _d(fixedBoldFont) 9x15bold
+		font configure $name {*}$opts
+		set ::State($font@$res) $opts
 	}
 }
 
@@ -434,7 +448,7 @@ proc defineSymbolicColors {} \
 		} elseif {[tk windowingsystem] eq "aqua"} {
 			set SYSTEMBUTTONFACE $WHITE
 		} else {
-			set SYSTEMBUTTONFACE #d0d0d0
+			set SYSTEMBUTTONFACE [ttk::style lookup . -background]
 		}
 
 		# these are other colors for which no official name exists;

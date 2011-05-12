@@ -27,37 +27,32 @@ is_encoded(int c)
 
 
 /*
- * Encode the data in ptr/len and add it to buf using data_append().
+ * Encode the data in ptr/len and write to stdio filehandle
  *
  * If you want to encode a string using webencode(), you should pass
  * it strlen(str)+1 for the length, otherwise you'll get a %FF on the
  * end.  This is because webencode() needs to be binary safe, since
  * it's used by hash_toStr().
  */
-char **
-webencode(char **buf, u8 *ptr, int len)
+void
+webencode(FILE *out, u8 *ptr, int len)
 {
-	char	hex[4];
-
 	while (len > 0) {
 		/* suppress trailing null (common) */
 		if ((len == 1) && !*ptr) break;
 
 		if (*ptr == ' ') {
-			hex[0] = '+';
-			buf = str_nappend(buf, hex, 1, 0);
+			putc('+', out);
 		} else if (is_encoded(*ptr)) {
-			sprintf(hex, "%%%02x", *ptr);
-			buf = str_nappend(buf, hex, 3, 0);
+			fprintf(out, "%%%02x", *ptr);
 		} else {
-			buf = str_nappend(buf, ptr, 1, 0);
+			putc(*ptr, out);
 		}
 		++ptr;
 		--len;
 	}
 	/* %FF(captials) is a special bk marker for no trailing null */
-	if (len == 0) buf = str_nappend(buf, "%FF", 3, 0);
-	return (buf);
+	if (len == 0) fputs("%FF", out);
 }
 
 /*
@@ -65,7 +60,6 @@ webencode(char **buf, u8 *ptr, int len)
  * The string ends on the first '&' '=' or '\0'.
  * If successful, returns new pointer to data and sets size.
  * Else return 0.
- * Any whitespace in the string a ignored and skipped.
  */
 char *
 webdecode(char *data, char **buf, int *sizep)
@@ -92,8 +86,6 @@ webdecode(char *data, char **buf, int *sizep)
 			unless (sscanf(p+1, "%2x", &c) == 1) goto err;
 			*t++ = c;
 			p += 2;
-			break;
-		    case ' ': case '\n': case '\r': case '\t':
 			break;
 		    case '&': case '=': case 0:
 			unless (bin) *t++ = 0; /* add trailing null */

@@ -15,7 +15,7 @@
 test -d "$HERE/home" || mkdir "$HERE/home"
 export BK_TEST_HOME="$HERE/home"
 
-echo $N Make sure we can run diffs on a file that has a merge ptr ......$NL
+echo $N Make sure we can run diffs on a file that has a merge ptr....$NL
 commercial project
 echo foo > foo
 bk new $Q -ywhatever foo
@@ -40,3 +40,22 @@ echo $N Starting difftool in \`bk bin\`\; you must quit manually........$NL
 cd "`bk bin`"
 bk difftool -r1.2 -r1.3 t/g.difftool
 echo OK
+
+echo $N Testing Japanese.............................................$NL
+echo "encoding system utf-8" > "`bk dotbk`/config-gui"
+cd "$HERE/project"
+cat >jp.txt <<EOF
+私は　日本語が　分かります
+そうですか？
+はい、本当です
+EOF
+bk new $Q jp.txt
+bk edit $Q jp.txt
+cat >jp.txt <<EOF
+私は　日本語が　分かります
+そうですか？
+本当です、どうもう　ありがとう　ございます
+EOF
+bk difftool jp.txt
+echo OK
+

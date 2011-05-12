@@ -20,8 +20,8 @@ echo OK
 
 echo $N Check that bk cmdlog works with a missing repo_log ..........$NL
 cd "$HERE/project/BitKeeper/log"
+test -f repo_log && fail repo_log exists
 bk cmdlog -a > $$ 2>$$.err
-rm -f $$
 test -s $$.err && {
 	echo "Failed"
 	rm -f $$.err
@@ -51,13 +51,30 @@ test "$OUT" || {
 }
 echo OK
 
-echo $N Verify that repoids are saved in cmdlogs on pull ............$NL
-project_repoid="`bk identity -r`"
+echo $N Verify the pull gets logged in both cmd_log and repo_log ....$NL
 cd "$HERE"
 bk clone $Q project copy
 cd copy
-copy_repoid="`bk identity -r`"
 bk pull $Q || exit 1
+tail -1 BitKeeper/log/repo_log | grep -q ": pull" || {
+	echo pull was not logged in repo_log
+	tail -1 BitKeeper/log/repo_log
+	exit 1
+}
+# Pull will be the second last line because of the
+# read unlock
+tail -2 BitKeeper/log/cmd_log | grep -q ": pull" || {
+	echo pull was not logged in cmd_log
+	tail -1 BitKeeper/log/cmd_log
+	exit 1
+}
+echo OK
+
+echo $N Verify that repoids are saved in cmdlogs on pull ............$NL
+cd "$HERE/project"
+project_repoid="`bk identity -r`"
+cd "$HERE/copy"
+copy_repoid="`bk identity -r`"
 tail -1 BitKeeper/log/repo_log | grep -q rmts="$project_repoid" || {
 	echo wrong repid in log 1
 	tail -1 BitKeeper/log/repo_log

@@ -79,6 +79,18 @@ if [ ${DPATH}X != "B/file2"X ]; then echo failed; exit 1; fi
 bk -r check -a || exit 1
 echo OK
 
+echo $N Make sure we do not dump core if a bad file name is given ...$NL
+bk mv C/SCCS/file3 B/file2 2> ERR && fail
+sed 's/orphan lock file .*/orphan lock file/' ERR > GOT
+cat <<EOF > WANT
+mv: invalid file name C/SCCS/file3
+WARNING: deleting orphan lock file
+WARNING: deleting orphan lock file
+EOF
+cmpfiles WANT GOT
+rm WANT GOT ERR
+echo OK
+
 echo $N Test sccsmv to directory ....................................$NL
 bk mv B/file1 B/file4 C
 if bk _test ! -f C/SCCS/s.file1; then echo failed; exit 1; fi

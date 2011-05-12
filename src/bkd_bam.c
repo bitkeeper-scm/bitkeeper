@@ -4,6 +4,7 @@
 #include "nested.h"
 
 private FILE	*server(int recurse);
+private	int	havekeys_deltas(void);
 
 /*
  * Simple key sync.
@@ -20,19 +21,17 @@ private FILE	*server(int recurse);
 int
 havekeys_main(int ac, char **av)
 {
-	char	*dfile, *key, *rootkey;
-	sccs	*s;
+	char	*dfile, *key;
 	int	c;
-	int	rc = 0, BAM = 0, recurse = 1, DELTA = 0, found = 0;
+	int	rc = 0, BAM = 0, recurse = 1, DELTA = 0;
 	FILE	*f = 0;
-	MDBM	*idDB;
 	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "BDFlq", 0)) != -1) {
 		switch (c) {
 		    case 'B': BAM = 1; break;
 		    case 'D': DELTA = 1; break;
-		    case 'F': found = 1; break;
+		    case 'F': break; /* ignored, was 'print found' */
 		    case 'l': recurse = 0; break;
 		    case 'q': break;	/* ignored for now */
 		    default: bk_badArg(c, av);
@@ -53,36 +52,7 @@ havekeys_main(int ac, char **av)
 		return (33);	/* see comment before remote_bk() for info */
 	}
 
-	if (DELTA) {
-		/*
-		 * read 'rootkey deltakey' on stdin and return the
-		 * list of keys that can't be found.
-		 */
-        	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-		while (rootkey = fgetline(stdin)) {
-			if (key = separator(rootkey)) *key++ = 0;
-			s = sccs_keyinit(0, rootkey, SILENT|INIT_NOCKSUM, idDB);
-
-			if (key && s && sccs_findKey(s, key)) {
-				c = 0; /* found the key */
-			} else {
-				/* didn't find deltakey locally */
-				c = 1;
-			}
-			if (found) {
-				c = !c;
-				if (!c && key && s) {
-					/* found rootkey, but not deltakey */
-					printf("%s\n", rootkey);
-				}
-			}
-			if (key) key[-1] = ' ';
-			if (c) printf("%s\n", rootkey);
-			if (s) sccs_free(s);
-		}
-		mdbm_close(idDB);
-		return (0);
-	}
+	if (DELTA) return (havekeys_deltas());
 
 	/*
 	 * What this should do is on the first missing key, popen another
@@ -112,17 +82,13 @@ havekeys_main(int ac, char **av)
 			key = buf;
 		}
 		if (dfile = bp_lookupkeys(0, key)) {
-			c = 0;
+			free(dfile);
 		} else {
-			c = 1;	/* not here */
-		}
-		if (found) c = !c;
-		if (c) {
+			/* not here */
 			unless (f) f = server(recurse);
 			// XXX - need to check error status.
 			fprintf(f, "%s\n", buf);
 		}
-		free(dfile);
 	}
 	if (f && (f != stdout) && pclose(f)) {
 		// XXX - should send all the keys we don't have.
@@ -155,6 +121,115 @@ server(int recurse)
 	return (f ? f : stdout);
 }
 
+
+private int
+havekeys_deltas(void)
+{
+	sccs	*s;
+	MDBM	*idDB;
+	char	*rootkey, *key;
+	char	*path, *t;
+	char	**pcsets = 0;	/* product csets */
+	hash	*ccsets;	/* component csets */
+	int	ncsets = 0;	/* count in ccsets */
+	int	i;
+
+	ccsets = hash_new(HASH_MEMHASH);
+
+	/*
+	 * read 'rootkey deltakey' on stdin and return the list of
+	 * keys that _can_ be found.
+	 * Note: this is the reverse of 'bk havekeys -B'
+	 */
+	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	while (rootkey = fgetline(stdin)) {
+		if (key = separator(rootkey)) *key++ = 0;
+		path = key2path(rootkey, 0);
+		if (streq(basenm(path), GCHANGESET)) {
+			free(path);
+			if (streq(proj_rootkey(0), rootkey)) {
+				key[-1] = ' ';
+				pcsets = addLine(pcsets, strdup(rootkey));
+				continue;
+			}
+			unless (path = mdbm_fetch_str(idDB, rootkey)) continue;
+			path = name2sccs(path);
+			if (exists(path)) {
+				/* only save present files */
+				key[-1] = ' ';
+				hash_storeStr(ccsets, rootkey, 0);
+				++ncsets;
+			}
+			free(path);
+			continue;
+		}
+		free(path);
+
+		/* must be the rootkey for a normal file */
+		s = sccs_keyinit(0, rootkey, SILENT|INIT_NOCKSUM, idDB);
+		if (s) {
+			if (key && sccs_findKey(s, key)) {
+				/* found rootkey & deltakey */
+				key[-1] = ' ';
+				printf("%s\n", rootkey);
+			} else {
+				/* found rootkey, but not deltakey */
+				printf("%s\n", rootkey);
+			}
+			sccs_free(s);
+		}
+	}
+	mdbm_close(idDB);
+
+	unless (pcsets || ncsets) return (0);
+
+	/* product cset file */
+	s = sccs_csetInit(SILENT|INIT_NOCKSUM);
+	EACH(pcsets) {
+		rootkey = pcsets[i];
+		if (key = separator(rootkey)) *key++ = 0;
+
+		if (sccs_findKey(s, key)) {
+			/* found rootkey & deltakey */
+			key[-1] = ' ';
+			printf("%s\n", rootkey);
+		} else {
+			/* found rootkey, but not deltakey */
+			printf("%s\n", rootkey);
+		}
+	}
+	freeLines(pcsets, free);
+
+	if (ncsets) {
+		sccs_rdweaveInit(s);
+		while (t = sccs_nextdata(s)) {
+			if (*t == '\001') continue;
+
+			/* find component deltas */
+			if (hash_fetchStr(ccsets, t)) {
+				printf("%s\n", t);
+				hash_deleteStr(ccsets, t);
+				unless (--ncsets) break; /* found all? */
+			}
+		}
+		sccs_rdweaveDone(s);
+
+		/*
+		 * For any remaining lines, we have the component, but
+		 * not the delta
+		 */
+		EACH_HASH(ccsets) {
+			rootkey = ccsets->kptr;
+			if (key = separator(rootkey)) *key++ = 0;
+			printf("%s\n", rootkey);
+			if (key) key[-1] = ' ';
+		}
+		hash_free(ccsets);
+	}
+	sccs_free(s);
+	return (0);
+}
+
 /*
  * An optional last part of the bkd connection for clone and pull that
  * examines the incoming data and requests BAM keys that are missing.
@@ -173,7 +248,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 	char	cmd_file[MAXPATH];
 	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 		return (-1);
 	}
 	bktmp(cmd_file, "BAMmsg");
@@ -205,7 +280,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 
 	getline2(r, buf, sizeof (buf));
 	if (streq("@SERVER INFO@", buf)) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			rc = 1;
 			goto done;
 		}

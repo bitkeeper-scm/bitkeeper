@@ -104,8 +104,8 @@ cmd_pull_part2(int ac, char **av)
 	while ((c = getopt(ac, av, "dlnNqr|uw|z|", 0)) != -1) {
 		switch (c) {
 		    case 'z':
-			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 0 || gzip > 9) gzip = 6;
+			gzip = optarg ? atoi(optarg) : Z_BEST_SPEED;
+			if (gzip < 0 || gzip > 9) gzip = Z_BEST_SPEED;
 			break;
 		    case 'd': debug = 1; break;
 		    case 'q': verbose = 0; break;
@@ -116,6 +116,7 @@ cmd_pull_part2(int ac, char **av)
 		    default:  /* ignore and pray */ break;
 		}
 	}
+	trigger_setQuiet(!verbose);
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");

@@ -140,6 +140,7 @@ $0${0=x}$0$0			# xx
 $0${1=x}$0$0			# <nonl>
 $0${0=x}$0$1			# x
 $0${0=x}$0$1$0			# xx
+$0${0=1.1}:REV|$0:		# 1.1
 a${0=x}b$0c			# abxc
 a$0b${0=x}c$0d			# abcxd
 a$0b${0=x}c$0d$0e		# abcxdxe
@@ -907,7 +908,7 @@ echo OK
 
 echo $N checking prs -C on branch side of merge .....................$NL
 cd "$HERE"
-rm -fr project copy
+bk _rm -fr project copy
 commercial project
 echo XXX > bar
 bk new $Q bar

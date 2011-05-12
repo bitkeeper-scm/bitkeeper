@@ -86,6 +86,7 @@ check_main(int ac, char **av)
 	sccs	*s;
 	int	ferr, errors = 0, eoln_native = 1;
 	int	i, e;
+	int	pull_inProgress = 0;
 	char	*name;
 	char	buf[MAXKEY];
 	char	*t;
@@ -196,6 +197,10 @@ check_main(int ac, char **av)
 		if (proj_isProduct(0)) {
 			cp = 0;
 			cplen = 0;
+			if (isdir(ROOT2RESYNC) &&
+			    exists(ROOT2RESYNC "/" CHANGESET)) {
+				pull_inProgress = 1;
+			}
 		} else {
 			cp = aprintf("%s/", proj_comppath(0));
 			cplen = strlen(cp);
@@ -502,14 +507,37 @@ out:
 		progress_restoreStderr();
 	}
 	if (all && !errors && !(flags & INIT_NOCKSUM)) {
-		unlink(CHECKED);
-		touch(CHECKED, 0666);
+		FILE	*f;
+
+		/* update timestamp of CHECKED file */
+		unless (f = fopen(CHECKED, "w")) {
+			unlink(CHECKED);
+			f = fopen(CHECKED, "w");
+		}
+		if (f) {
+			fprintf(f, "%u\n", (u32)time(0));
+			fclose(f);
+		}
 	}
 	if (all && !errors) {
 		/* clean check so we can update dfile marker */
 		enableFastPendingScan();
 	}
 	if (t = getenv("_BK_RAN_CHECK")) touch(t, 0666);
+	if (errors && pull_inProgress) {
+		fprintf(stderr,
+		    "--------------------------------"
+		    "---------------------------------\n"
+		    "It looks like there was a pull in progress. "
+		    "These errors could\n"
+		    "be caused by the components being "
+		    "out-of-sync with the product.\n"
+		    "Try running 'bk resolve' to finish "
+		    "the pull, or a 'bk abort' to\n"
+		    "cancel it.\n"
+		    "--------------------------------"
+		    "---------------------------------\n");
+	}
 	return (errors);
 }
 
@@ -695,7 +723,7 @@ private int
 writable_gfile(sccs *s)
 {
 	if (!HAS_PFILE(s) && S_ISREG(s->mode) && WRITABLE(s)) {
-		pfile pf = { "+", "?", "?", NULL, "?", NULL, NULL, NULL };
+		pfile	pf = { "+", "?", NULL, NULL, NULL };
 
 		if (badWritable) {
 			printf("%s\n", s->gfile);
@@ -781,15 +809,15 @@ gfile_unchanged(sccs *s)
 		fprintf(stderr, "%s: cannot read pfile\n", s->gfile);
 		return (1);
 	}
-	rc = diff_gfile(s, &pf, 0, DEVNULL_WR);
-	if (rc == 1) return (1); /* no changed */
-	if (rc != 0) return (rc); /* error */
-
-	/*
-	 * If RCS/SCCS keyword enabled, try diff it with keyword expanded
-	 */
-	if (SCCS(s) || RCS(s)) return (diff_gfile(s, &pf, 1, DEVNULL_WR));
-	return (0); /* changed */
+	unless (rc = diff_gfile(s, &pf, 0, DEVNULL_WR)) {
+		/*
+		 * If RCS/SCCS keyword enabled, try diff it with
+		 * keyword expanded
+		 */
+		if (SCCS(s) || RCS(s)) rc = diff_gfile(s, &pf, 1, DEVNULL_WR);
+	}
+	free_pfile(&pf);
+	return (rc); /* changed */
 }
 
 private int
@@ -1549,7 +1577,7 @@ check(sccs *s, MDBM *idDB)
 	static	int	haspoly = -1;
 	delta	*d, *ino, *tip = 0;
 	int	errors = 0, goodkeys;
-	int	i;
+	int	i, writefile = 0;
 	char	*t, *term, *x;
 	hash	*deltas, *shortdeltas = 0;
 	char	**lines = 0;
@@ -1584,7 +1612,6 @@ check(sccs *s, MDBM *idDB)
 	    		    s->gfile, d->rev);
 		}
 
-		unless (d->flags & D_CSET) continue;
 		sccs_sdelta(s, d, buf);
 		t = 0;
 		unless (deltas && (t = hash_fetchStr(deltas, buf))) {
@@ -1594,6 +1621,7 @@ check(sccs *s, MDBM *idDB)
 			}
 		}
 		unless (t) {
+			unless (d->flags & D_CSET) continue;
 			if (MONOTONIC(s) && d->dangling) continue;
 			errors++;
 			if (stripdel) continue;
@@ -1603,6 +1631,11 @@ check(sccs *s, MDBM *idDB)
 			sccs_sdelta(s, d, buf);
 			fprintf(stderr, "\t%s -> %s\n", d->rev, buf);
 		} else {
+			unless (d->flags & D_CSET) {
+				/* auto fix always */
+				d->flags |= D_CSET;
+				writefile = 1;
+			}
 			++goodkeys;
 			unless (tip) tip = d;
 			if (verbose > 2) {
@@ -1610,6 +1643,14 @@ check(sccs *s, MDBM *idDB)
 				    s->gfile, buf);
 			}
 		}
+	}
+	if (writefile) {
+		if (getenv("_BK_DEVELOPER")) {
+			fprintf(stderr,
+			    "%s: adding in missing csetmarks\n", s->gfile);
+		}
+		sccs_newchksum(s);
+		sccs_restart(s);
 	}
 	if (errors && !goodkeys) {
 		fprintf(stderr,
@@ -1724,12 +1765,12 @@ check(sccs *s, MDBM *idDB)
 	 */
 #define	FL	ADMIN_BK|ADMIN_FORMAT|ADMIN_TIME
 #define	RFL	ADMIN_FORMAT|ADMIN_TIME
-	if (resync && sccs_admin(s, 0, SILENT|RFL, 0, 0, 0, 0, 0, 0, 0)) {
-		sccs_admin(s, 0, RFL, 0, 0, 0, 0, 0, 0, 0);
+	if (resync && sccs_adminFlag(s, SILENT|RFL)) {
+		sccs_adminFlag(s, RFL);
 		errors++;
 	}
-	if (!resync && sccs_admin(s, 0, SILENT|FL, 0, 0, 0, 0, 0, 0, 0)) {
-		sccs_admin(s, 0, FL, 0, 0, 0, 0, 0, 0, 0);
+	if (!resync && sccs_adminFlag(s, SILENT|FL)) {
+		sccs_adminFlag(s, FL);
 	    	errors++;
 	}
 

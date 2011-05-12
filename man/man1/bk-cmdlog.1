@@ -5,7 +5,9 @@ bk cmdlog \- show the log of commands executed in this repository
 .SH SYNOPSIS
 .B bk cmdlog
 .[B] \-a
+.[B] \-v
 .[OPTreq] \-c cutoff
+[pattern]
 .SH DESCRIPTION
 List the history of repository level commands run in repository of
 current directory.
@@ -27,6 +29,16 @@ commands.
 .OPTreq \-c cutoff
 List commands which happened during the date range specified by
 .ARG cutoff .
+.tp
+.B \-v
+Each line of output is
+prefixed with userid, timestamp and BK version.  Combined with
+the
+.B \-a
+option, everything is listed, including commands run by BK itself.
+.tp
+.B pattern
+Limit the output to lines matching (regexp) pattern.
 .SH EXIT STATUS
 .B bk cmdlog
 returns exit status 0.
@@ -38,6 +50,14 @@ directory.
 contains all repository level commands ever run in that repository.
 .B cmd_log
 contains recent commands run in that repository.
+.PP
+In the cmd_log file, commands are logged at the time they start and at
+the time they finish.  By default, cmdlog output is limited to
+the latter.
+Using the
+.B \-av
+options, both the start and finish of commands is listed (as well
+as other events such as trigger launches).
 .SH "SEE ALSO"
 .SA range
 .SH CATEGORY

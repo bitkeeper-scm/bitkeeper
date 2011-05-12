@@ -17,6 +17,7 @@ unbk_main(int ac, char **av)
 		    "usage: bk _unbk --I-know-this-destroys-my-bk-repo\n");
 		return (1);
 	}
+	bk_setConfig("compression", "none");
 
 	for (name = sfileFirst("_unbk", &av[2], 0);
 	    name; name = sfileNext()) {
@@ -28,8 +29,7 @@ unbk_main(int ac, char **av)
 			continue;
 		}
 		s->bitkeeper = 0;
-		sccs_admin(s,
-		    0, NEWCKSUM|ADMIN_RM1_0, "none", 0, 0, 0, 0, 0, 0);
+		sccs_adminFlag(s, NEWCKSUM|ADMIN_RM1_0);
 		sccs_free(s);
 	}
 	if (sfileDone()) errors |= 2;

@@ -135,6 +135,7 @@ OBJ =	bkver.o cmd.o \
 	bkusers.o \
 	cat.o cfile.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
+	cmdlog.o \
 	collapse.o comment.o comments.o commit.o comps.o compress.o \
 	contrib/cat.o \
 	contrib/test.o \
@@ -147,7 +148,7 @@ OBJ =	bkver.o cmd.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o \
-	help.o here.o host.o hostme.o http.o \
+	help.o here.o here_check.o host.o hostme.o http.o \
 	idcache.o isascii.o inskeys.o \
 	key2rev.o key2path.o kill.o kv.o kvfile.o \
 	lease.o level.o \
@@ -194,6 +195,7 @@ OBJ =	bkver.o cmd.o \
 	testdates.o time.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
+	urlinfo.o \
 	user.o utils.o uu.o what.o which.o \
 	xflags.o \
 	zone.o
@@ -328,7 +330,7 @@ srcs: $(SRCS) $(HDRS) FORCE
 
 tags: $(patsubst %,%/tags.local, $(SUBDIRS)) tags.local
 	@bk get -Sq tags.skippats
-	@sort $^ | grep -v -ftags.skippats > $@
+	@bk _sort -u $^ | grep -v -ftags.skippats > $@
 	@echo ctags completed
 
 tags.local: $(SRCS) $(HDRS)

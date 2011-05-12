@@ -72,7 +72,6 @@ private	int	noConflicts;	/* if set, abort on conflicts */
 private	char	pendingFile[MAXPATH];
 private	char	*input;		/* input file name,
 				 * either "-" or a patch file */
-private	int	encoding;	/* encoding before we started */
 private	char	*comments;	/* -y'comments', pass to resolve. */
 private	char	**errfiles;	/* files had errors during apply */
 private	char	**edited;	/* files that were in modified state */
@@ -295,14 +294,13 @@ takepatch_main(int ac, char **av)
 	getChangeSet();
 
 	if (resolve) {
-		char 	*resolve[] = {"bk", "resolve", 0, 0, 0, 0, 0, 0};
-		int 	i;
+		char	*resolve[] = {"bk", "resolve", "-S", 0, 0, 0, 0, 0, 0};
+		int	i = 2;
 
 		if (echo) {
 			fprintf(stderr,
 			    "Running resolve to apply new work...\n");
 		}
-		i = 1;
 		unless (echo) resolve[++i] = "-q";
 		if (textOnly) resolve[++i] = "-T";
 		if (noConflicts) resolve[++i] = "-c";
@@ -460,8 +458,8 @@ extractPatch(char *name, MMAP *p)
 error:		if (perfile) sccs_free(perfile);
 		if (gfile) free(gfile);
 		if (s) sccs_free(s);
-		/* we don't free name, we pass it to errfiles */
-		errfiles = addLine(errfiles, name);
+		errfiles = addLine(errfiles, sccs2name(name));
+		free(name);
 		return (-1);
 	}
 
@@ -539,7 +537,6 @@ error:		if (perfile) sccs_free(perfile);
 		}
 	}
 	tableGCA = 0;
-	if (s) encoding = s->encoding;
 	while (extractDelta(name, s, newFile, p, &nfound)) {
 		if (newFile) newFile = 2;
 	}
@@ -553,7 +550,7 @@ error:		if (perfile) sccs_free(perfile);
 	} else {
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
 		rc = applyPatch(s ? s->sfile : 0, perfile);
-		if (rc < 0) errfiles = addLine(errfiles, strdup(name));
+		if (rc < 0) errfiles = addLine(errfiles, sccs2name(name));
 		nfound = 0;	/* only count csets */
 	}
 	if (echo > 1) fputc('\n', stderr);
@@ -585,7 +582,7 @@ sccscopy(sccs *to, sccs *from)
 		to->defbranch = from->defbranch;
 		from->defbranch = 0;
 	}
-	to->encoding = from->encoding;
+	to->encoding_in = from->encoding_in;
 	unless (to->text) {
 		to->text = from->text;
 		from->text = 0;
@@ -1129,7 +1126,7 @@ markup:
 
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) goto err;
 	if (!confThisFile && (s->state & S_CSET) && 
-	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
+	    sccs_adminFlag(s, SILENT|ADMIN_BK)) {
 	    	confThisFile++;
 		/* yeah, the count is slightly off if there were conflicts */
 	}
@@ -1268,7 +1265,6 @@ applyPatch(char *localPath, sccs *perfile)
 	}
 	assert(!CSET(s));
 	/* convert to uncompressed, it's faster, we saved the mode above */
-	if (s->encoding & E_GZIP) s = sccs_unzip(s);
 	unless (s) return (-1);
 	unless (tableGCA) goto apply;
 	/*
@@ -1331,18 +1327,6 @@ apply:
 		}
 		if (perfile) {
 			sccscopy(s, perfile);
-			/*
-			 * For takepatch performance turn off
-			 * compression when we are in takepatch.
-			 *
-			 * Note: Since this is a new file from remote,
-			 * there is no local setting. We save the
-			 * compression setting of the remote file and
-			 * use that as the new local file when when
-			 * takepatch is done.
-			 */
-			encoding = s->encoding; /* save for later */
-			s->encoding &= ~E_GZIP;
 		}
 		if (p->initFile) {
 			iF = mopen(p->initFile, "b");
@@ -1425,10 +1409,6 @@ apply:
 	s = sccs_init(patchList->resyncFile, SILENT);
 	assert(s);
 
-	/*
-	 * Honor gzip on all files.
-	 */
-	if (encoding & E_GZIP) s = sccs_gzip(s);
 	for (d = 0, p = patchList; p; p = p->next) {
 		assert(p->me);
 		d = sccs_findKey(s, p->me);
@@ -1457,7 +1437,7 @@ apply:
 		return (-1);
 	}
 	if (!confThisFile && (s->state & S_CSET) && 
-	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
+	    sccs_adminFlag(s, SILENT|ADMIN_BK)) {
 	    	confThisFile++;
 		/* yeah, the count is slightly off if there were conflicts */
 	}
@@ -1726,6 +1706,10 @@ resync_lock(void)
 		cleanup(CLEAN_RESYNC);
 	}
 	fprintf(f, "%u\n", getpid());
+	if (proj_isProduct(0)) {
+		mkdirp("RESYNC/BitKeeper/log");
+		touch("RESYNC/BitKeeper/log/PRODUCT", 0644);
+	}
 	fclose(f);
 }
 
@@ -2243,29 +2227,6 @@ fileCopy2(char *from, char *to)
 	if (fileCopy(from, to)) cleanup(CLEAN_RESYNC);
 }
 
-sccs *
-sccs_unzip(sccs *s)
-{
-	s = sccs_restart(s);
-	if (sccs_admin(s, 0,
-	    SILENT|ADMIN_FORCE|NEWCKSUM, "none", 0, 0, 0, 0, 0, 0)) {
-		return (0);
-	}
-	s = sccs_restart(s);
-	return (s);
-}
-
-sccs *
-sccs_gzip(sccs *s)
-{
-	s = sccs_restart(s);
-	if (sccs_admin(s,
-	    0, ADMIN_FORCE|NEWCKSUM, "gzip", 0, 0, 0, 0, 0, 0)) {
-		sccs_whynot("admin", s);
-	}
-	s = sccs_restart(s);
-	return (s);
-}
 
 private	void
 cleanup(int what)
@@ -2319,6 +2280,7 @@ done:
 			    "Errors during update of the following files:\n");
 			EACH(errfiles) fprintf(stderr, "%s\n", errfiles[i]);
 			SHOUT2();
+			freeLines(errfiles, free);
 		}
 	}
 	exit(rc);

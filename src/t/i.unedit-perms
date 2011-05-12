@@ -1,0 +1,136 @@
+# This is an i.test because there is a 'sudo' in here.
+# This is expected to run on 'work.bitmover.com', or some
+# host which has a 'bkd' user.
+
+# The test checks what happens when files owned by another user
+# get a 'bk unedit' on them.  There were two failure modes, related
+# to the same bug.  Each needs 'keywords: none' which is why we
+# did not hit it.  In once case, checkout: get and the file is
+# edited and owned by another user, the pfile is deleted, but
+# the writable file is left owned by the other user.
+# The other case is checkout: edit, and the file is read-only owned
+# by another user.  The 'bk unedit' adds a pfile, but just tries
+# a chmod +w which fails.  The file is left read-only with a pfile.
+
+# Rider:
+# There is a comment in sccs_unedit() about a fix_gmode() that
+# says it is needed.
+# You can test.  make the test if (0 && fix_gmode()), compile and
+# run this test.  foo will get a new inode and the test will fail.
+
+# 'myfail' is a choke point to run all tests even if they fail
+# Good for getting peace of mind that bugs are reproducable
+myfail() {
+	# uncomment echo and comment fail to run all tests
+	# echo failing ${1+$@}
+	fail ${1+$@}
+}
+
+echo $N Test out keeping inode when we can ..........................$NL
+umask 002
+printf 'checkout: get!\nkeyword: none!\n' >> "$BK_DOTBK"/config
+commercial project
+touch foo bar bar2
+bk new $Q foo bar bar2
+bk clean bar
+# Why this is not a regressions: different user on work
+sudo -u bkd sh -c 'bk edit -q foo; bk get -q bar bar2'
+# get inode inf and test state
+bk _test -f SCCS/p.foo -a ! -f SCCS/p.bar || myfail
+bk _stat foo > foo.stat || myfail
+bk _stat bar > bar.stat || myfail
+# first bug - unedit write to make read only
+bk unedit foo
+bk _test ! -f SCCS/p.foo || myfail
+bk _stat foo > foo.stat2 || myfail
+# New inode, new user - note: new inode may be the same inode - no testing
+cat foo.stat foo.stat2 | perl -e '
+	$_ = <STDIN>;
+	chomp;
+	@oldstat = split(/\|/, $_);
+	$_ = <STDIN>;
+	chomp;
+	@newstat = split(/\|/, $_);
+	($e++), print STDERR "file $oldstat[11] was not writable\n"
+	    unless $oldstat[2] eq "100664";
+	($e++), print STDERR "file $oldstat[11] is not read-only\n"
+	    unless $newstat[2] eq "100444";
+	($e++), print STDERR "file $oldstat[11] has same owner\n"
+	    if $oldstat[4] eq $newstat[4];
+	($e++), print STDERR "file $oldstat[11] has diff name\n"
+	    unless $oldstat[11] eq $newstat[11];
+	die "$e errors\n" if defined($e);
+' || myfail
+#
+# second bug - unedit read-only to make writable
+# also check inode for foo stays stable
+# see the comment in slib.c:sccs_unedit about
+#    "With GET_SKIPGET, sccs_get will unlink"
+# The foo check fails if commenting out that fix_gmode()
+printf 'checkout: edit!\n' >> "$BK_DOTBK"/config
+bk unedit foo bar
+bk _stat foo > foo.stat3 || myfail
+bk _stat bar > bar.stat2 || myfail
+bk _test -f SCCS/p.foo -a -f SCCS/p.bar || myfail
+# Test foo: must be same inode
+cat foo.stat2 foo.stat3 | perl -e '
+	$_ = <STDIN>;
+	chomp;
+	@oldstat = split(/\|/, $_);
+	$_ = <STDIN>;
+	chomp;
+	@newstat = split(/\|/, $_);
+	($e++), print STDERR "file $oldstat[11] has diff inode\n"
+	    unless $oldstat[1] eq $newstat[1];
+	($e++), print STDERR "file $oldstat[11] is not read-only\n"
+	    unless $oldstat[2] eq "100444";
+	($e++), print STDERR "file $oldstat[11] was not writable\n"
+	    unless $newstat[2] eq "100664";
+	($e++), print STDERR "file $oldstat[11] has diff owner\n"
+	    unless $oldstat[4] eq $newstat[4];
+	($e++), print STDERR "file $oldstat[11] has diff name\n"
+	    unless $oldstat[11] eq $newstat[11];
+	die "$e errors\n" if defined($e);
+' || myfail
+# Test bar: New inode, new user - note: new inode may be the same inode
+cat bar.stat bar.stat2 | perl -e '
+	$_ = <STDIN>;
+	chomp;
+	@oldstat = split(/\|/, $_);
+	$_ = <STDIN>;
+	chomp;
+	@newstat = split(/\|/, $_);
+	($e++), print STDERR "file $oldstat[11] is not read-only\n"
+	    unless $oldstat[2] eq "100444";
+	($e++), print STDERR "file $oldstat[11] was not writable\n"
+	    unless $newstat[2] eq "100664";
+	($e++), print STDERR "file $oldstat[11] has same owner\n"
+	    if $oldstat[4] eq $newstat[4];
+	($e++), print STDERR "file $oldstat[11] has diff name\n"
+	    unless $oldstat[11] eq $newstat[11];
+	die "$e errors\n" if defined($e);
+' || myfail
+echo OK
+
+echo $N Demonstrate get -S on a file with no write perms ............$NL
+bk _stat bar2 > bar2.stat1 || myfail
+bk get $Q -e -S bar2 || myfail
+bk _stat bar2 > bar2.stat2 || myfail
+cat bar2.stat1 bar2.stat2 | perl -e '
+	$_ = <STDIN>;
+	chomp;
+	@oldstat = split(/\|/, $_);
+	$_ = <STDIN>;
+	chomp;
+	@newstat = split(/\|/, $_);
+	($e++), print STDERR "file $oldstat[11] is not read-only\n"
+	    unless $oldstat[2] eq "100444";
+	($e++), print STDERR "file $oldstat[11] was not writable\n"
+	    unless $newstat[2] eq "100664";
+	($e++), print STDERR "file $oldstat[11] has same owner\n"
+	    if $oldstat[4] eq $newstat[4];
+	($e++), print STDERR "file $oldstat[11] has diff name\n"
+	    unless $oldstat[11] eq $newstat[11];
+	die "$e errors\n" if defined($e);
+' || myfail
+echo OK

@@ -1,6 +1,7 @@
+# dspec-v2
 # The original dspec that shipped with the bk-4.0 release
 
-:INDENT:
+":INDENT:"
 ":DPN:@:REV:, :Dy:-:Dm:-:Dd: :T::TZ:, :USER:@:HOST: +:LI: -:LD:\n"
 $each(:C:) {
 	":INDENT:  (:C:)\n"
@@ -11,4 +12,4 @@ $each(:TAG:) {
 $if (:MERGE:) {
 	":INDENT:  MERGE: :MPARENT:\n"
 }
-\n
+"\n"

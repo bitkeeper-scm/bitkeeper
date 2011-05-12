@@ -439,6 +439,10 @@ echo $N diffs -u should emit the same relative path for both sides ..$NL
 cd "$HERE"
 rm -rf project
 commercial project
+bk clone $Q . ../copy
+echo hi > junk
+bk new $Q -b junk
+bk commit $Q -yjunk
 mkdir -p sub/dir
 cd sub/dir
 cat <<EOF > file
@@ -454,6 +458,48 @@ bk diffs -u -N | fgrep '+++ edited/file' > /dev/null && {
 	bk diffs -u -N
 	exit 1
 }
+echo OK
+
+echo $N Demonstrate diffs -@repo ....................................$NL
+bk -U diffs -@"$HERE"/copy > OUT || fail
+cat <<EOF > WANT
+===== ../../junk 1.0 vs 1.1 =====
+0a1
+> hi
+===== file 1.0 vs edited =====
+0a1,2
+> This is a file
+> Some new stuff
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Check -@ error messages .....................................$NL
+bk -U diffs -@../junk 2>ERR && fail -f ERR should fail
+sed 's/cd to .*\/junk/cd to PATH\/junk/' ERR > ERR2
+cat <<EOF > WANT
+ERROR-cannot cd to PATH/junk (illegal, nonexistent, or not package root)
+diffs: connection to parent failed
+EOF
+cmpfiles ERR2 WANT
+
+# not perfect, but OK
+bk parent $Q -r || fail
+bk -U diffs -@ 2> ERR && fail -f ERR should fail
+cat <<EOF > WANT
+This repository has no parent.  You must set a parent with "bk parent" or
+specify a repository on the command line for this command to work.
+diffs: connection to parent failed
+EOF
+cmpfiles ERR WANT
+
+cd "$HERE"
+bk diffs -@ copy/junk 2>ERR && fail -f ERR should fail
+cat <<EOF > WANT
+diffs: must be run in a repository
+EOF
+cmpfiles ERR WANT
+cd "$HERE"/project/sub/dir
 echo OK
 
 if [ X$PLATFORM != XWIN32 ]

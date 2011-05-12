@@ -1350,7 +1350,7 @@ proj_hasDeltaTriggers(project *p)
  * Keep most recent cset2rev caches
  */
 private void
-pruneCsetCache(project *p)
+pruneCsetCache(project *p, char *new)
 {
 	char	**files;
 	char	**keep = 0;
@@ -1365,6 +1365,7 @@ pruneCsetCache(project *p)
 	t = buf + strlen(buf);
 	*t++ = '/';
 	EACH (files) {
+		if (streq(files[i], new)) continue; /* keep one just created */
 		if (strneq(files[i], "csetkeycache.", 13) ||
 		    strneq(files[i], "csetcache.", 10)) {
 			strcpy(t, files[i]);
@@ -1405,7 +1406,8 @@ pruneCsetCache(project *p)
 char *
 proj_cset2key(project *p, char *csetrev, char *rootkey)
 {
-	char	*mpath = 0;
+	char	*mpath;
+	char	*mtmp = 0;
 	MDBM	*m = 0;
 	char	*deltakey = 0;
 	int	key;
@@ -1434,7 +1436,6 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 	if (m &&
 	    (!(x = mdbm_fetch_str(m, "REV")) || !streq(x, csetrev))) {
 		mdbm_close(m);
-		unlink(mpath);
 		m = 0;
 	}
 	if (m && !key) {
@@ -1445,7 +1446,6 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 		    (strtoul(x, &x, 16) != (unsigned long)p->cset_mtime) ||
 		    (strtoul(x, 0, 16) != (unsigned long)p->cset_size)) {
 			mdbm_close(m);
-			unlink(mpath);
 			m = 0;
 		}
 	}
@@ -1463,13 +1463,16 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 			sc->mdbm = 0;
 		}
 		sccs_free(sc);
+		unless (csetm) goto ret; /* bad cset rev */
 
-		pruneCsetCache(p);	/* save newest */
+		pruneCsetCache(p, basenm(mpath));	/* save newest */
 
 		/* write new MDBM */
-		m = mdbm_open(mpath, O_RDWR|O_CREAT|O_TRUNC, 0666, 0);
+		mtmp = aprintf("%s.tmp.%u", mpath, getpid());
+		m = mdbm_open(mtmp, O_RDWR|O_CREAT|O_TRUNC, 0666, 0);
 		unless (m) {
 			if (csetm) mdbm_close(csetm);
+			FREE(mtmp);
 			goto ret;
 		}
 		if (csetm) {
@@ -1489,9 +1492,22 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 		mdbm_store_str(m, "REV", csetrev, MDBM_REPLACE);
 	}
 	deltakey = mdbm_fetch_str(m, rootkey);
-	if (deltakey) deltakey = strdup(deltakey);
+	if (deltakey) {
+		deltakey = strdup(deltakey);
+	} else {
+		/*
+		 * We found the cset but this rookey didn't exist
+		 * then.  Have @REV expand to 1.0 in this case.
+		 */
+		deltakey = strdup(rootkey);
+	}
 	mdbm_close(m);
  ret:
+	if (mtmp) {
+		if (m) rename(mtmp, mpath);
+		free(mtmp);
+
+	}
 	if (mpath) free(mpath);
 	return (deltakey);
 }

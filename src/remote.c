@@ -2,12 +2,7 @@
 #include "sccs.h"
 #include "bkd.h"
 
-#define	GZ_TOBKD	1	/* gzip the stdin we send */
-#define	GZ_FROMBKD	2	/* ungzip the stdout we receive */
-
-private int	doit(char **av,
-		    char *url, int quiet, u32 bytes, char *input, int gzip);
-private	void	stream_stdin(remote *r, int gzip);
+private	void	rgzip(FILE *fin, FILE *fout, int opts);
 
 /*
  * Turn
@@ -38,12 +33,12 @@ private	void	stream_stdin(remote *r, int gzip);
 int
 remote_bk(int quiet, int ac, char **av)
 {
-	int	i, ret = 0, gzip = GZ_TOBKD|GZ_FROMBKD;
-	u32	bytes = 0;
+	int	i, ret = 0, gzip = REMOTE_GZ_SND|REMOTE_GZ_RCV;
+	FILE	*fin = 0;
+	int	opts = 0;
 	char	*p;
-	char	**urls = 0, *input = 0;
-	char	**data = 0;
-	char	buf[63<<10];
+	char	**urls = 0;
+	char	buf[8<<10];
 
 	setmode(0, _O_BINARY);	/* need to be able to read binary data */
 	putenv("BKD_NESTED_LOCK="); /* don't inherit nested lock */
@@ -70,57 +65,64 @@ remote_bk(int quiet, int ac, char **av)
 
 		/* look for -z for compression, but pass it on */
 		if (streq(av[i], "-z0")) gzip = 0;
-		if (streq(av[i], "-zi0")) gzip &= ~GZ_TOBKD;
-		if (streq(av[i], "-zo0")) gzip &= ~GZ_FROMBKD;
+		if (streq(av[i], "-zi0")) gzip &= ~REMOTE_GZ_SND;
+		if (streq(av[i], "-zo0")) gzip &= ~REMOTE_GZ_RCV;
 	}
 	assert(urls);
 	if (p = getenv("_BK_REMOTEGZIP")) gzip = atoi(p);
 
+	opts = (quiet ? SILENT : 0) | gzip | REMOTE_BKDERRS;
 	/*
-	 * If we have multiple URLs or are talking to a http server
-	 * then we need to buffer up stdin.
-	 * sizeof(buf) is 63k above, it can't be 64K or data_append()
-	 * will crash on a 16-bit limitation.
+	 * If we have multiple URLs then we need to buffer up stdin.
 	 */
-	if (streq(av[ac-1], "-") &&
-	    ((nLines(urls) > 1) || strneq(urls[1], "http", 4))) {
-		while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
-			data = data_append(data, buf, i, 0);
+	if (streq(av[ac-1], "-")) {
+		if (nLines(urls) > 1) {
+			/* buffer it */
+			fin = fmem();
+			while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
+				fwrite(buf, 1, i, fin);
+			}
+		} else {
+			/* stream it */
+			fin = stdin;
+			opts |= REMOTE_STREAM;
 		}
-		input = data_pullup(&bytes, data);
 	}
 
 	EACH(urls) {
-		ret |= doit(av, urls[i], quiet, bytes, input, gzip);
+		if (fin && (fin != stdin)) rewind(fin);
+
+		ret |= remote_cmd(av, urls[i], fin, stdout, stderr, 0, opts);
 
 		/* see if our output is gone, they may have paged output */
 		if (fflush(stdout)) {
-			ttyprintf("Exiting early\n");
 			break;
 		}
 	}
-	if (input) free(input);
-out:	freeLines(urls, free);
+out:	if (fin && (fin != stdin)) fclose(fin);
+	freeLines(urls, free);
 	return (ret);
 }
 
-private int
-doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
+int
+remote_cmd(char **av, char *url, FILE *in, FILE *out, FILE *err,
+    hash *bkdEnv, int opts)
 {
 	remote	*r = remote_parse(url, REMOTE_BKDURL);
-	FILE	*f;
+	FILE	*f, *wf;
 	int	i, rc, fd, did_header = 0;
+	int	stream = (in && (opts & REMOTE_STREAM));
+	int	bytes;
 	char	*u = 0;
 	char	*p, *tmpf;
 	u8	*line;
-	int	dostream;
 	zgetbuf	*zin = 0;
-	zputbuf	*zout = 0;
 	char	buf[BSIZE];	/* must match bkd_misc.c:cmd_bk()/buf */
 
 	unless (r) return (1<<2);
 	r->remote_cmd = 1;
-	if (bkd_connect(r)) return (1<<3);
+	if (r->type == ADDR_HTTP) stream = 0;
+	if (bkd_connect(r, (opts & REMOTE_BKDERRS) ? 0: SILENT)) return (1<<3);
 	u = remote_unparse(r);
 	tmpf = bktmp(0, "rcmd");
 	f = fopen(tmpf, "w");
@@ -134,54 +136,48 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 		free(p);
 	}
 	fprintf(f, "\n");
-	dostream = (!input && streq(av[i-1], "-"));
-	if ((gzip & GZ_TOBKD) && !dostream) {
-		zout = zputs_init(zputs_hfwrite, f, -1);
-	}
-	if (input) {
-		assert(bytes > 0);
-		while (bytes > 0) {
-			i = min(bytes, sizeof(buf));
-			sprintf(buf, "@STDIN=%u@\n", i);
-			if (zout) {
-				zputs(zout, buf, strlen(buf));
-				zputs(zout, input, i);
-			} else {
-				fputs(buf, f);
-				fwrite(input, 1, i, f);
-			}
-			input += i;
-			bytes -= i;
-		}
-	}
-	unless (dostream) {
-		strcpy(buf, "@STDIN=0@\n");
-		if (zout) {
-			zputs(zout, buf, strlen(buf));
-		} else {
-			fputs(buf, f);
-		}
-	}
-	if (zout) zputs_done(zout);
+	unless (stream) rgzip(in, f, opts);
 	fclose(f);
-	if (r->type == ADDR_HTTP) assert(!dostream);
-	rc = send_file(r, tmpf, dostream ? 1 : 0);
+	rc = send_file(r, tmpf, stream ? 1 : 0);
 	unlink(tmpf);
 	free(tmpf);
 	if (rc) {
 		i = 1<<5;
 		goto out;
 	}
-	if (dostream) {
-		stream_stdin(r, gzip);
+	if (stream) {
+		/*
+		 * write directly from 'in' to the socket.
+		 *
+		 * XXX Evenutally this needs to be a loop using
+		 *     select() so that this code can start processing
+		 *     the data coming from the bkd interleaved with
+		 *     sending data.  For now we needs to always add
+		 *     -Bstdin to remote commands that read and write
+		 *     more than 1k of data.
+		 */
+
+		/* dup() so fclose leaves r->wfd open */
+		f = fdopen(dup(r->wfd), "w");
+
+		rgzip(in, f, opts);
+		fclose(f);
 		send_file_extra_done(r);
 	}
+
 	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	line = (getline2(r, buf, sizeof(buf)) > 0) ? buf : 0;
+	unless (line) {
+		/* no data at all? connect failure */
+		i = 1<<3;
+		if (err) fprintf(err, "##### %s #####\n", u);
+		if (err) fprintf(err, "Connection fail, aborting.\n");
+		goto out;
+	}
 	if (streq("@SERVER INFO@", buf)) {
-		if (getServerInfo(r)) {
-			rc = 1;
+		if (getServerInfo(r, bkdEnv)) {
+			i = 1<<5;
 			goto out;
 		}
 		line = (getline2(r, buf, sizeof(buf)) > 0) ? buf : 0;
@@ -189,28 +185,28 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 
 	unless (line) {
 		i = 1<<5;
-		fprintf(stderr, "##### %s #####\n", u);
-		fprintf(stderr, "Protocol error, aborting.\n");
+		if (err) fprintf(err, "##### %s #####\n", u);
+		if (err) fprintf(err, "Protocol error, aborting.\n");
 		goto out;
 	}
 	if (strneq(buf, "ERROR-cannot use key", 20 ) ||
 	    strneq(buf, "ERROR-cannot cd to ", 19)) {
 		i = 1<<4;
-		fprintf(stderr, "##### %s #####\n", u);
-		fprintf(stderr, "Repository doesn\'t exist.\n");
+		if (err) fprintf(err, "##### %s #####\n", u);
+		if (err) fprintf(err, "Repository doesn\'t exist.\n");
 		goto out;
 	}
 	if (strneq("ERROR-BAD CMD: bk", line, 17)) {
-		fprintf(stderr,
+		if (err) fprintf(err,
 		    "error: bkd does not support remote commands (%s)\n",
 		    url);
 		i = 63;
 		goto out;
 	}
 	if (strneq("ERROR-", line, 6)) {
-err:		fprintf(stderr, "##### %s #####\n", u);
+err:		if (err) fprintf(err, "##### %s #####\n", u);
 		if (p = strchr(line+6, '\n')) *p = 0; /* terminate line */
-		fprintf(stderr, "%s\n", &line[6]);
+		if (err) fprintf(err, "%s\n", &line[6]);
 		i = 1<<5;
 		goto out;
 	}
@@ -223,6 +219,8 @@ err:		fprintf(stderr, "##### %s #####\n", u);
 		}
 	}
 	while (strneq(line, "@STDOUT=", 8) || strneq(line, "@STDERR=", 8)) {
+		wf = out;
+		if (strneq(line, "@STDERR=", 8)) wf = err;
 		bytes = atoi(&line[8]);
 		assert(bytes <= sizeof(buf));
 		fd = strneq(line, "@STDOUT=", 8) ? 1 : 2;
@@ -232,15 +230,15 @@ err:		fprintf(stderr, "##### %s #####\n", u);
 			i = read_blk(r, buf, bytes);
 		}
 		if (i == bytes) {
-			unless (quiet || did_header) {
-				printf("##### %s #####\n", u);
-				if (fflush(stdout)) {
+			unless ((opts & SILENT) || did_header) {
+				if (wf) fprintf(wf, "##### %s #####\n", u);
+				if (wf && fflush(wf)) {
 					i = 1<<6;
 					goto out;
 				}
 				did_header = 1;
 			}
-			writen(fd, buf, i);
+			if (wf) fwrite(buf, 1, i, wf);
 			bytes -= i;
 		} else {
 			perror("read/recv in bk -@");
@@ -264,33 +262,38 @@ out:	if (zin) zgets_done(zin);
 	disconnect(r);
 	return (i);
 }
+
 private void
-stream_stdin(remote *r, int gzip)
+rgzip(FILE *fin, FILE *fout, int opts)
 {
-	int	i;
-	FILE	*f;
+	int	i, fd = 0;
 	zputbuf	*zout = 0;
 	char	line[64];
 	char	buf[BSIZE];
 
-	f = fdopen(dup(r->wfd), "w"); /* dup() so fclose leaves r->wfd open */
-	if (gzip & GZ_TOBKD) zout = zputs_init(zputs_hfwrite, f, -1);
-	while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
-		sprintf(line, "@STDIN=%u@\n", i);
-		if (zout) {
-			zputs(zout, line, strlen(line));
-			zputs(zout, buf, i);
-		} else {
-			writen(r->wfd, line, strlen(line));
-			writen(r->wfd, buf, i);
+	if (opts & REMOTE_GZ_SND) {
+		zout = zputs_init(zputs_hfwrite, fout, -1);
+	} else {
+		fflush(fout);
+		fd = fileno(fout);
+	}
+	if (fin) {
+		while ((i = fread(buf, 1, sizeof(buf), fin)) > 0) {
+			sprintf(line, "@STDIN=%u@\n", i);
+			if (zout) {
+				zputs(zout, line, strlen(line));
+				zputs(zout, buf, i);
+			} else {
+				writen(fd, line, strlen(line));
+				writen(fd, buf, i);
+			}
 		}
 	}
 	sprintf(line, "@STDIN=0@\n");
 	if (zout) {
 		zputs(zout, line, strlen(line));
 	} else {
-		writen(r->wfd, line, strlen(line));
+		writen(fd, line, strlen(line));
 	}
 	if (zout) zputs_done(zout);
-	fclose(f);
 }

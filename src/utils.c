@@ -388,7 +388,8 @@ prompt_main(int ac, char **av)
 	}
 	if (((file || prog) && av[optind]) ||
 	    (!(file || prog) && !av[optind]) ||
-	    (av[optind] && av[optind+1]) || (file && prog)) {
+	    (av[optind] && av[optind+1]) || (file && prog) ||
+	    (av[optind] && !av[optind][0])) {
 		if (file == msgtmp) unlink(msgtmp);
 		usage();
 	}
@@ -545,29 +546,6 @@ isCsetFile(char *spath)
 	/* test if pathname contains BKROOT */
 	sprintf(buf, "%.*s/" BKROOT, (int)(q - spath), spath);
 	return (isdir(buf));					/* case ' e' */
-}
-
-int
-bkd_connect(remote *r)
-{
-	assert((r->rfd == -1) && (r->wfd == -1));
-	r->pid = bkd(r);
-	if (r->trace) {
-		fprintf(stderr,
-		    "bkd_connect: r->rfd = %d, r->wfd = %d\n", r->rfd, r->wfd);
-	}
-	if (r->wfd >= 0) return (0);
-	if (r->badhost) {
-		fprintf(stderr, "Cannot resolve host '%s'.\n", r->host);
-	} else if (r->badconnect) {
-		fprintf(stderr, "Unable to connect to host '%s'.\n", r->host);
-	} else {
-		char	*rp = remote_unparse(r);
-
-		perror(rp);
-		free(rp);
-	}
-	return (-1);
 }
 
 private int
@@ -969,19 +947,21 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
  * ERROR- message that should be expanded for the user.
  */
 int
-getServerInfo(remote *r)
+getServerInfo(remote *r, hash *bkdEnv)
 {
 	int	ret = 1; /* protocol error, never saw @END@ */
 	int	gotseed = 0;
 	int	i;
-	char	*newseed;
+	char	*newseed, *p, *key;
 	char	buf[4096];
 
-	/* clear previous values for stuff that is set conditionally */
-	putenv("BKD_BAM=");
-	putenv("BKD_BAM_SERVER_URL=");
-	putenv("BKD_PRODUCT_ROOTKEY=");
-	putenv("BKD_REMAP=");
+	unless (bkdEnv) {
+		/* clear previous values for stuff that is set conditionally */
+		putenv("BKD_BAM=");
+		putenv("BKD_BAM_SERVER_URL=");
+		putenv("BKD_PRODUCT_ROOTKEY=");
+		putenv("BKD_REMAP=");
+	}
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq(buf, "@END@")) {
 			ret = 0; /* ok */
@@ -1000,9 +980,28 @@ getServerInfo(remote *r)
 			return (1);
 		}
 		if (strneq(buf, "PROTOCOL", 8)) {
-			safe_putenv("BK_REMOTE_%s", buf);
+			if (bkdEnv) {
+				p = strchr(buf, '=');
+				assert(p);
+				*p++ = 0;
+				key = aprintf("BK_REMOTE_%s", buf);
+				hash_storeStrStr(bkdEnv, key, p);
+				free(key);
+			} else {
+				safe_putenv("BK_REMOTE_%s", buf);
+			}
 		} else {
-			safe_putenv("BKD_%s", buf);
+			if (bkdEnv) {
+				p = strchr(buf, '=');
+				assert(p);
+				*p++ = 0;
+				key = aprintf("BKD_%s", buf);
+				hash_storeStrStr(bkdEnv, key, p);
+				free(key);
+				*(--p) = '=';
+			} else {
+				safe_putenv("BKD_%s", buf);
+			}
 			if (strneq(buf, "REPO_ID=", 8)) {
 				cmdlog_addnote("rmts", buf+8);
 			}
@@ -1016,20 +1015,23 @@ getServerInfo(remote *r)
 		i = 0;
 		newseed = 0;
 	}
-	safe_putenv("BKD_SEED_OK=%d", i);
+	unless (bkdEnv) {
+		safe_putenv("BKD_SEED_OK=%d", i);
+	}
 	if (r->seed) free(r->seed);
 	r->seed = newseed;
 	if (ret) {
 		fprintf(stderr, "%s: premature disconnect\n", prog);
 	} else if (bk_featureChk(0, r->noLocalRepo)) {
 		/* cleanup stale nested lock */
-		if (getenv("BKD_NESTED_LOCK")) {
+		if ((bkdEnv && hash_fetchStr(bkdEnv, "BKD_NESTED_LOCK")) ||
+		    getenv("BKD_NESTED_LOCK")) {
 			FILE	*f;
 			char	buf[MAXPATH];
 
 			if (r->type == ADDR_HTTP) {
 				disconnect(r);
-				bkd_connect(r);
+				bkd_connect(r, 0);
 			}
 			bktmp(buf, "abort");
 			f = fopen(buf, "w");
@@ -1307,14 +1309,6 @@ strdup_tochar(const char *s, int c)
 		ret = strdup(s);
 	}
 	return (ret);
-}
-
-int
-isLocalHost(char *h)
-{
-	unless (h) return (0);
-	return (streq("localhost", h) ||
-	    streq("localhost.localdomain", h) || streq("127.0.0.1", h));
 }
 
 char	*
@@ -1681,7 +1675,9 @@ rmdir_findprocs(void)
 		for (j = 0; j < WAIT; ++j) {
 			usleep(500000);
 			if ((c = readlink(buf1, buf2, sizeof(buf2))) < 0) break;
-			if (j == 20) ttyprintf("Waiting for %s\n", buf1);
+			if ((j == 20) && getenv("_BK_DEBUG_BG")) {
+				ttyprintf("Waiting for %s\n", buf1);
+			}
 		}
 		/* we know they are gone if we broke out early */
 		if (j < WAIT) continue;
@@ -1883,7 +1879,7 @@ bk_searchFile(char *base)
 int
 bk_urlArg(char ***urls, char *arg)
 {
-	char	**list;
+	char	**list = 0;
 
 	if (arg && (arg[0] == '@')) {
 		unless (list = file2Lines(0, arg+1)) {
@@ -1902,6 +1898,7 @@ bk_urlArg(char ***urls, char *arg)
 		}
 		*urls = catLines(*urls, list);
 	}
+	if (list) freeLines(list, free);
 	return (0);
 }
 
@@ -1997,3 +1994,20 @@ usage(void)
 	}
 	exit(3);
 }
+
+/*
+ * Override bk config in this process by setting BK_CONFIG in the
+ * environment.
+ */
+void
+bk_setConfig(char *key, char *val)
+{
+	char	*p = getenv("BK_CONFIG");
+
+	if (p) {
+		safe_putenv("BK_CONFIG=%s;%s:%s!", p, key, val);
+	} else {
+		safe_putenv("BK_CONFIG=%s:%s!", key, val);
+	}
+}
+

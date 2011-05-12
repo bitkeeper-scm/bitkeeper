@@ -119,16 +119,17 @@ part.
 .B fixedFont
 Font used in all of the text widgets such as file lists,
 entry boxes, and text widgets showing contents of files.
-Default:\ {fixed 12 roman}
+Defaults to values that match appropriate system defaults.
 .tp
 .B fixedBoldFont
 Bold font used to highlight text such as difference within
 lines in
 .BR "bk difftool" .
-Default:\ {fixed 12 roman bold}
+Defaults to values that match appropriate system defaults.
 .tp
 .B buttonFont
-Font used in buttons.  Default:\ {times 12 roman bold}
+Font used in buttons.
+Defaults to values that match appropriate system defaults.
 .tp
 .B scrollWidth
 Width of the scrollbar widget in pixels. Default:\ 12
@@ -417,6 +418,13 @@ Default:\ \*(lqu\*(rq.
 Color of the hyperlinks in
 .BR "bk helptool" .
 Default:\ blue
+.tp
+.B help.scrollbars
+The location of the two scrollbars in helptool.  The value should be two
+characters with each one being L or R.  The first character indicates the
+position of the topic list scrollbars as Left or Right, while the second
+character specifies the position of the content scrollbar.
+Default:\ RR
 .tp
 .B help.topicsColor
 Highlight color for topic search matches.

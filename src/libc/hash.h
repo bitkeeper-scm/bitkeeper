@@ -47,6 +47,7 @@ struct hashops {
 	void	*(*next)(hash *h);
 	void	*(*last)(hash *h);
 	void	*(*prev)(hash *h);
+	int	(*count)(hash *h);
 };
 
 
@@ -204,7 +205,24 @@ hash_prev(hash *h)
  * Walk all items in hash
  */
 #define EACH_HASH(h) \
-        for (hash_first(h); (h)->kptr; hash_next(h))
+        if (h) for (hash_first(h); (h)->kptr; hash_next(h))
+
+/*
+ * return the number of nodes in
+ * a hash
+ */
+private inline int
+hash_count(hash *h)
+{
+	int	sum = 0;
+
+	if (h->ops->count) {
+		sum = h->ops->count(h);
+	} else {
+		EACH_HASH(h) sum++;
+	}
+	return (sum);
+}
 
 char	*hash_toStr(hash *h);
 int	hash_fromStr(hash *h, char *str);
@@ -232,6 +250,7 @@ int	hash_keyDiff(hash *A, hash *B);
  *   Mem  start/len  like memcpy
  *   I64  i64
  *   Num  int stored as a decimal string
+ *   Set  no data, hash is a set of keys-only
  *
  * Only the combinations we actually use are implemented below, but others
  * can be added as needed.
@@ -252,6 +271,7 @@ hash_fetchStrStr(hash *h, char *key)
 	return (h->ops->fetch(h, key, strlen(key) + 1));
 }
 #define	hash_fetchStr	hash_fetchStrStr
+#define	hash_fetchStrSet	hash_fetchStrStr
 
 private inline void *
 hash_fetchStrPtr(hash *h, char *key)
@@ -339,8 +359,14 @@ hash_storeStrNum(hash *h, char *key, int val)
 	int	vlen;
 	char	buf[64];
 
-	vlen = sprintf(buf, "%ld", val) + 1;
+	vlen = sprintf(buf, "%d", val) + 1;
 	return (h->ops->store(h, key, strlen(key)+1, buf, vlen));
+}
+
+private inline int
+hash_storeStrSet(hash *h, char *key)
+{
+	return (h->ops->store(h, key, strlen(key)+1, 0, 0) != 0);
 }
 
 private inline char *
@@ -376,8 +402,14 @@ hash_insertStrNum(hash *h, char *key, int val)
 	int	vlen;
 	char	buf[64];
 
-	vlen = sprintf(buf, "%ld", val) + 1;
+	vlen = sprintf(buf, "%d", val) + 1;
 	return (h->ops->insert(h, key, strlen(key)+1, buf, vlen));
+}
+
+private inline int
+hash_insertStrSet(hash *h, char *key)
+{
+	return (h->ops->insert(h, key, strlen(key)+1, 0, 0) != 0);
 }
 
 private inline int

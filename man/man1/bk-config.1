@@ -14,12 +14,12 @@ key-value pairs, associated with a \*(BK repository.
 .LP
 Repository configuration information is searched for in the following 
 places, in order:
-.TP "\fB`bk root`/BitKeeper/etc/config\fP"
-.B \`bk\ root\`/BitKeeper/log/config
-Repository level config file
-.tp
+.TP "\fB`bk root -P`/BitKeeper/etc/config\fP "
 .B \`bk\ root\`/BitKeeper/etc/config
-Repository level config file
+This repository's config file
+.tp
+.B \`bk\ root -P\`/BitKeeper/etc/config
+Product repository config file
 .tp
 .B \`bk\ dotbk\`/config
 Personal config file
@@ -29,6 +29,12 @@ Per-machine config file
 .tp
 .B \`bk\ bin\`/config
 Per-installation config file
+.tp
+.B \`bk\ root\`/BitKeeper/log/config
+This repository's config file
+.tp
+.B \`bk\ root -P\`/BitKeeper/log/config
+Product repository config file
 .tp
 .V $BK_CONFIG
 Environment variable

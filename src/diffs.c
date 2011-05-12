@@ -61,7 +61,8 @@ diffs_main(int ac, char **av)
 	char	*Rev = 0, *boundaries = 0;
 	RANGE	rargs = {0};
 
-	while ((c = getopt(ac, av, "a;A;bBcC|d;efhHIl|m|nNpr|R|suvw", 0)) != -1) {
+	while ((c = getopt(ac, av,
+		    "@|a;A;bBcC|d;efhHIl|m|nNpr;R|suvw", 0)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -103,6 +104,9 @@ diffs_main(int ac, char **av)
 			break;
 		    case 'r':
 			if (range_addArg(&rargs, optarg, 0)) usage();
+			break;
+		    case '@':
+			if (range_urlArg(&rargs, optarg)) return (1);
 			break;
 		    default: bk_badArg(c, av);
 		}

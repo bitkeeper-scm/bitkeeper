@@ -61,11 +61,11 @@ setkv_main(int ac, char **av)
 	h = hash_new(HASH_MEMHASH);
 	h = hash_fromFile(h, file);
 
-	f = fmem_open();
+	f = fmem();
 	while ((i = read(0, buf, sizeof(buf))) > 0) {
 		fwrite(buf, 1, i, f);
 	}
-	t = fmem_getbuf(f, &len);
+	t = fmem_peek(f, &len);
 	hash_store(h, key, strlen(key)+1, t, len+1);
 	fclose(f);
 

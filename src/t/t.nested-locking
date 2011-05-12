@@ -131,6 +131,20 @@ P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
 echo OK
 
+# no perms repo
+NPR="$TESTDATA/nested_locking_no_perms"
+test -d "$NPR" && {
+echo ---- Demo Zahy\'s bug
+echo $N Clone with wrong perms in source.............................$NL
+# repository lock the source with wrong perms
+cd "$HERE"
+bk clone $Q "$NPR" npr_clone >OUT 2>&1 && fail -f OUT should have failed
+grep -iq "assertion" OUT && fail -f OUT assert popped
+grep -iq "permission denied" OUT || fail -f OUT wrong error
+echo OK
+}
+true
+
 echo ---- While clone to destination in progress
 repo_setup csets-in-components
 # Clone clone1 to clone but cause the clone to spin in
@@ -166,6 +180,7 @@ cd "$HERE/clone"
 # achtung! don't use bk portal, see delta comments
 touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+rm -f BitKeeper/log/PORTAL
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -267,6 +282,7 @@ echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+rm -f BitKeeper/log/PORTAL
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -363,6 +379,7 @@ echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+rm -f BitKeeper/log/PORTAL
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -464,6 +481,7 @@ echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+rm -f BitKeeper/log/PORTAL
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -493,7 +511,7 @@ echo OK
 echo $N delta in locked component should fail........................$NL
 cd "$HERE/clone/gcc"
 echo new >new10
-bk new $Q new10 >ERR 2>&1 && fail should have failed
+bk new $Q new10 >ERR 2>&1 && fail -f ERR should have failed
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
@@ -562,6 +580,7 @@ echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+rm -f BitKeeper/log/PORTAL
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -591,7 +610,7 @@ echo OK
 echo $N delta in locked component should fail........................$NL
 cd "$HERE/clone/gcc"
 echo new >new10
-bk new $Q new10 >ERR 2>&1 && fail should have failed
+bk new $Q new10 >ERR 2>&1 && fail -f ERR should have failed
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
 echo OK
 
@@ -657,6 +676,7 @@ echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+rm -f BitKeeper/log/PORTAL
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -754,6 +774,7 @@ echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+rm -f BitKeeper/log/PORTAL
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -851,6 +872,7 @@ echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 touch BitKeeper/log/PORTAL
 bk attach "$HERE/standalone" >ERR 2>&1 && fail
+rm -f BitKeeper/log/PORTAL
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 
@@ -940,6 +962,7 @@ echo $N Attaching should fail........................................$NL
 cd "$HERE/clone"
 touch BitKeeper/log/PORTAL
 bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+rm -f BitKeeper/log/PORTAL
 grep -q "Could not lock product" ERR || fail -f ERR wrong error
 echo OK
 

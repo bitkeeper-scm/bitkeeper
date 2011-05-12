@@ -262,20 +262,28 @@ cat <<EOF >in
 @has	tab
 value
 EOF
-bk _hashfile_test w in >got 2>err || exit 1
-grep -q 'has	tab invalid' err || exit 2
+bk _hashfile_test w in >got || fail
+cat <<EOF > WANT
+@has%09tab
+value
+EOF
+cmpfiles got WANT
 echo OK
 
 echon key with unprintable character error ........................
 printf "@has\001ctrlA\n" >in
 echo value >>in
-bk _hashfile_test w in >got 2>err || exit 1
-grep -q 'invalid' err || exit 2
+bk _hashfile_test w in >got || fail
+cat <<EOF > WANT
+@has%01ctrlA
+value
+EOF
+cmpfiles got WANT
 echo OK
 
 echon key with null error .........................................
 bk _hashfile_test n out >got 2>err || exit 1
-grep -q 'no null' err || exit 2
+grep -q 'not C string' err || fail
 echo OK
 
 echon check that written hash is sorted ...........................

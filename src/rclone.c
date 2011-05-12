@@ -8,6 +8,7 @@ private	struct {
 	u32	quiet:1;		/* -q shut up */
 	u32	verbose:1;		/* -v old style noise */
 	u32	detach:1;		/* is detach command? */
+	u32	transaction:1;		/* is _BK_TRANSACTION set */
 	u32	sendenv_flags;		/* flags for sendEnv(); */
 	char	*rev;
 	char	*bam_url;		/* -B URL */
@@ -31,7 +32,7 @@ int
 rclone_main(int ac, char **av)
 {
 	int	c, rc, isLocal;
-	int	gzip = 6;
+	int	gzip = Z_BEST_SPEED;
 	char	*url;
 	char    **envVar = 0;
 	remote	*l, *r;
@@ -72,7 +73,7 @@ rclone_main(int ac, char **av)
 		    case 'w': /* ignored */ break;
 		    case 'z':
 			if (optarg) gzip = atoi(optarg);
-			if ((gzip < 0) || (gzip > 9)) gzip = 6;
+			if ((gzip < 0) || (gzip > 9)) gzip = Z_BEST_SPEED;
 			break;
 		    case 300:	/* --sccs-compat */
 			opts.sendenv_flags |= SENDENV_FORCENOREMAP;
@@ -85,6 +86,8 @@ rclone_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
+
+	if (getenv("_BK_TRANSACTION")) opts.transaction = 1;
 
 	/*
 	 * Validate arguments
@@ -100,16 +103,11 @@ rclone_main(int ac, char **av)
 		perror(av[optind]);
 		exit(1);
 	}
-	/*
-	 * XXX
-	 * rclone doesn't get a repository lock or a nested lock
-	 * on the source side of the transfer.
-	 */
 	unless (exists(BKROOT)) {
 		fprintf(stderr, "%s is not a BitKeeper root\n", av[optind]);
 		exit(1);
 	}
-	if (!getenv("_BK_TRANSACTION") && proj_isComponent(0) && !opts.detach) {
+	if (!opts.transaction && proj_isComponent(0) && !opts.detach) {
 		fprintf(stderr,
 		    "clone: clone of a component is not allowed, use -s\n");
 		exit(1);
@@ -151,9 +149,11 @@ rclone_main(int ac, char **av)
 		return (1);
 	}
 
-	if (!getenv("_BK_TRANSACTION") && proj_isEnsemble(0) && !opts.detach) {
+	if (!opts.transaction && proj_isEnsemble(0) && !opts.detach) {
+		cmdlog_lock(CMD_NESTED_RDLOCK);
 		rc = rclone_ensemble(r);
 	} else {
+		cmdlog_lock(CMD_RDLOCK);
 		rc = rclone(av, r, envVar);
 	}
 	freeLines(envVar, free);
@@ -174,12 +174,10 @@ rclone_ensemble(remote *r)
 	int	errs;
 	int	i, j, status, which = 0, k = 0, rc = 0;
 	u32	flags = NESTED_PRODUCTFIRST;
-	hash	*urllist;
 
 	url = remote_unparse(r);
 
 	START_TRANSACTION();
-	urllist = hash_fromFile(hash_new(HASH_MEMHASH), NESTED_URLLIST);
 	n = nested_init(0, opts.rev, 0, flags);
 	assert(n);
 	unless (opts.aliases) {
@@ -193,6 +191,7 @@ rclone_ensemble(remote *r)
 	n->product->alias = 1;
 	errs = 0;
 	EACH_STRUCT(n->comps, c, i) {
+		c->remotePresent = c->alias;	/* used in setFromEnv() */
 		if (c->alias && !c->present) {
 			fprintf(stderr,
 			    "%s: component %s not present.\n",
@@ -206,6 +205,7 @@ rclone_ensemble(remote *r)
 		rc = 1;
 		goto out;
 	}
+	urlinfo_setFromEnv(n, url);
 	EACH_STRUCT(n->comps, c, j) {
 		unless (c->included && c->alias) continue;
 		proj_cd2product();
@@ -241,9 +241,6 @@ rclone_ensemble(remote *r)
 			vp = addLine(vp, aprintf("%s/%s", url,
 				dirname(dstpath)));
 			free(dstpath);
-
-			/* new place to find this component */
-			urllist_addURL(urllist, c->rootkey, url);
 		}
 		vp = addLine(vp, 0);
 		if (opts.verbose) printf("#### %s ####\n", name);
@@ -262,13 +259,12 @@ rclone_ensemble(remote *r)
 		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
 	}
 
-	unless (rc) urllist_write(urllist);
+	unless (rc) urlinfo_write(n);
 	/*
 	 * XXX - put code in here to finish the transaction.
 	 */
 
 out:	free(url);
-	hash_free(urllist);
 	nested_free(n);
 	STOP_TRANSACTION();
 	return (rc);
@@ -332,19 +328,19 @@ rclone_part1(remote *r, char **envVar)
 	char	*p;
 	char	buf[MAXPATH];
 
-	if (bkd_connect(r)) return (-1);
+	if (bkd_connect(r, 0)) return (-1);
 	if (send_part1_msg(r, envVar)) return (-1);
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 	if (streq(buf, "@SERVER INFO@"))  {
-		if (getServerInfo(r)) return (-1);
+		if (getServerInfo(r, 0)) return (-1);
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
 		exit(1);
 	}
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
+		if (getTriggerInfoBlock(r, opts.quiet)) return (-1);
 	}
 	if (strneq(buf, "ERROR-BAM server URL \"", 22)) {
 		if (p = strchr(buf + 22, '"')) *p = 0;
@@ -387,7 +383,7 @@ send_part1_msg(remote *r, char **envVar)
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.verbose) fprintf(f, " -v");
-	if (getenv("_BK_TRANSACTION")) {
+	if (opts.transaction) {
 		if (proj_isProduct(0)) {
 			fprintf(f, " -P");
 		} else {
@@ -414,7 +410,7 @@ rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 	u32	bytes;
 	char	buf[MAXPATH];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 		rc = 1;
 		goto done;
 	}
@@ -425,7 +421,7 @@ rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			rc = 1;
 			goto done;
 		}
@@ -587,6 +583,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.debug) fprintf(f, " -d");
+	if (opts.detach) fprintf(f, " -D");
 	unless (opts.quiet) fprintf(f, " -v");
 	EACH(opts.aliases) fprintf(f, " '-s%s'", opts.aliases[i]);
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
@@ -653,7 +650,7 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 	int	n, rc = 0;
 	char	buf[4096];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 		rc = 1;
 		goto done;
 	}
@@ -665,7 +662,7 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 		rc = 1;
 		goto done;
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			rc = 1;
 			goto done;
 		}

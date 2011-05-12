@@ -54,7 +54,7 @@ sccslog_main(int ac, char **av)
 	int	c, flags = SILENT;
 	RANGE	rargs = {0};
 	longopt	lopts[] = {
-		{ "dspec-file;", 300 },		/* let user pass in dspec */
+		{ "dspecf;", 300 },		/* let user pass in dspec */
 		{ 0, 0 }
 	};
 
@@ -83,7 +83,7 @@ sccslog_main(int ac, char **av)
 		    case 'r':
 			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
-		    case 300:	/* --dspec-file */
+		    case 300:	/* --dspecf */
 			if (opts.dspec) usage();
 			unless (opts.dspec = loadfile(optarg, 0)) {
 				fprintf(stderr,
@@ -305,7 +305,7 @@ sccslog(sccs *s)
 	FILE	*f;
 	char	key[MAXKEY];
 
-	f = fmem_open();
+	f = fmem();
 	if (CSET(s)) ChangeSet = 1;
 	for (d = s->table; d; d = d->next) {
 		if (SET(s) && !(d->flags & D_SET)) continue;
@@ -335,7 +335,8 @@ sccslog(sccs *s)
 			}
 		} else {
 			pdelta(s, d, f);
-			nd->output = fmem_retbuf(f, 0);
+			nd->output = fmem_dup(f, 0);
+			ftrunc(f, 0);
 		}
 
 		list = addLine(list, nd);

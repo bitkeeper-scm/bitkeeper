@@ -25,31 +25,6 @@
  * buf = joinLines(":", s)
  *	return one string which is all the strings glued together with ":"
  *	does not free s, caller must free s.
- *
- * ================ Arbitrarily long buffer interfaces =================
- *
- * size = data_length(data)
- *      how many bytes have accumulated
- *
- * s = str_append(s, str, gift)
- *	append str in the s lines array
- *	if gift is not set, then autoallocate a copy.
- *	if gift is set, the use of str after this call is prohibited
- *
- * s = str_nappend(s, str, len, gift)
- *	as above, length is passed in.  Use this if possible, it's faster.
- *
- * buf = str_pullup(&len, s)
- *	return a normal C string which contains all the strings
- *	strlen(buf) is in len.
- *	frees the s array as a side effect.
- *
- * s = data_append(s, data, len, gift)
- *	append len bytes of data to the array (not null terminated)
- *
- * data = data_pullup(&len, s)
- *	return the data as one large block, length is in len.
- *	frees the s array as a side effect.
  */
 #ifndef	_LIB_LINES_H
 #define	_LIB_LINES_H
@@ -59,12 +34,18 @@
 #define	LMASK				0x07ffffff
 
 /* sub-macro for EACH */
-#define	_TESTLEN_(s, i)			(i <= (p2uint(s[0]) & LMASK))
+#define	_TESTLEN_(s, i)			(i <= (*(u32 *)(s) & LMASK))
 
 #define	EACH_START(x, s, i)				\
 	if ((i = (x)), (s)) for (; _TESTLEN_(s, i); i++)
 #define	EACH_INDEX(s, i)		EACH_START(1, s, i)
 #define	EACH(s)				EACH_START(1, s, i)
+#define	EACH_REVERSE(s)			for (i = nLines(s); i > 0; i--) 
+
+/* EACHP like EACH but walks a pointer to each array element instead of i */
+#define	EACHP(s, ptr)							\
+	if (s) for ((ptr) = (s)+1; (ptr) <= (s)+(*(u32 *)(s) & LMASK); ++(ptr))
+
 
 #define	EACH_STRUCT(s, c, i)				\
 	if (((c) = 0), (i = 1), (s))			\
@@ -77,26 +58,35 @@
 
 
 /* return number of lines in array */
-#define	nLines(s)			((s) ? (p2uint(s[0]) & LMASK) : 0)
+#define	nLines(s)			((s) ? (*(u32 *)(s) & LMASK) : 0)
 #define	emptyLines(s)			(nLines(s) == 0)
 
 char	**addLine(char **space, void *line);
 char	**allocLines(int n);
-void	truncLines(char **space, int len);
-char	**catLines(char **space, char **array);
+#define	truncLines(s, len)	truncArray(s, len)
+#define	insertLineN(space, n, val) \
+	({ void	*str = (val);			\
+	   char **_a = (space);			\
+	   _insertArrayN((void **)&_a, n, &str, sizeof(char *));	\
+	   _a; })
+void	*removeLineN(char **space, int rm, void(*freep)(void *ptr));
+#define	catLines(space, array)	\
+	({ char **_a = (space); \
+	   _catArray((void **)&_a, (array), sizeof(char *));	\
+	   _a; })
+
+#define	pushLine(s, l)		addLine(s, l)
+#define	popLine(s)		removeLineN(s, nLines(s), 0)
+#define	shiftLine(s)		removeLineN(s, 1, 0)
+#define	unshiftLine(s, val)	insertLineN(s, 1, val)
+
 char	**splitLine(char *line, char *delim, char **tokens);
 char	**splitLineToLines(char *line, char **tokens);
 char	*joinLines(char *sep, char **space);
-void	*popLine(char **space);
-#define	pushLine(s, l)	addLine(s, l)
-char	**unshiftLine(char **space, void *line);
-void	*shiftLine(char **space);
 void	freeLines(char **space, void(*freep)(void *ptr));
 int	removeLine(char **space, char *s, void(*freep)(void *ptr));
-void	removeLineN(char **space, int rm, void(*freep)(void *ptr));
 void	reverseLines(char **space);
-void	sortLines(char **space, int (*compar)(const void *, const void *));
-char	**mapLines(char **space, void *(*fn)(void *), void(*freep)(void *ptr));
+#define	sortLines(s, compar)	_sortArray(s, compar, sizeof(char *))
 int	string_sort(const void *a, const void *b);
 int	string_sortrev(const void *a, const void *b);
 int	number_sort(const void *a, const void *b);
@@ -110,17 +100,44 @@ int	pruneLines(char **space, char **remove,
 int	sameLines(char **p, char **p2);
 char	*shellquote(char *in);
 
-/* Arbitrarily long buffer interfaces */
+/* arrays of arbitrary sized data */
 
-int	data_length(char **space);
-#define	str_nappend(s, str, len, gift)	data_append(s, str, len, gift)
-#define	data_pullup(p, s)		_pullup(p, s, 0)
-#define	str_pullup(p, s)		_pullup(p, s, 1)
-char	**str_append(char **space, void *str, int gift);
-char	**data_append(char **space, void *str, int len, int gift);
-char	*_pullup(u32 *bytep, char **space, int null);
-#define	str_empty(s)			(!s || !s[2])
-#define	data_empty(s)			(!s || !s[2])
+/* TYPE *growArray(TYPE **space, int n) */
+#define	growArray(space, n)					\
+	({ typeof(*space) _ret;					\
+	   _ret = _growArray((void **)space, n, sizeof(*_ret));	\
+	   _ret; })
+
+/* TYPE *addArray(TYPE **space, TYPE *new) */
+#define	addArray(space, x)				\
+	({ typeof(*space) _arg = (x), _ret;			\
+	   _ret = _addArray((void **)space, _arg, sizeof(*_ret));	\
+	   _ret; })
+
+/* TYPE *insertArrayN(TYPE **space, int n, TYPE *x) */
+#define	insertArrayN(space, n, x)			\
+	({ typeof(*space) _arg = (x), _ret;			\
+	   _ret = _insertArrayN((void **)space, n, _arg,  sizeof(*_ret)); \
+	   _ret; })
+
+/* void removeArrayN(TYPE *space, int n); */
+#define	removeArrayN(s, n)	_removeArrayN((s), (n), sizeof((s)[0]))
+
+/* void catArray(TYPE **space, TYPE *array) */
+#define	catArray(s, a)		_catArray((s), (a), sizeof((s)[0]))
+
+/* void sortArray(TYPE *space, cmpfn); */
+#define	sortArray(s, compar)	_sortArray((s), (compar), sizeof((s)[0]))
+
+void	*_growArray(void **space, int add, int size);
+void	*_addArray(void **space, void *x, int size);
+void	truncArray(void *space, int len);
+void	*_insertArrayN(void **space, int j, void *line, int size);
+void	_removeArrayN(void *space, int rm, int size);
+void	*_catArray(void **space, void *array, int size);
+void	_sortArray(void *space,
+    int (*compar)(const void *, const void *), int size);
+
 
 void	lines_tests(void);
 

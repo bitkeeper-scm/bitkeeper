@@ -92,7 +92,7 @@ changes_main(int ac, char **av)
 		{ "no-meta", 300 },		/* don't show meta files */
 		{ "html", 301 },		/* old -h */
 		{ "same-component", 302 },
-		{ "dspec-file;", 303 },		/* let user pass in dspec */
+		{ "dspecf;", 303 },		/* let user pass in dspec */
 		{ "standalone", 'S' },		/* treat comps as standalone */
 		{ 0, 0 }
 	};
@@ -175,7 +175,7 @@ changes_main(int ac, char **av)
 		    case 302: /* --same-component */
 			opts.sameComp = 1;
 			break;
-		    case 303: /* --dspec-file */
+		    case 303: /* --dspecf */
 			opts.dspecfile = optarg;
 			break;
 		    default: bk_badArg(c, av);
@@ -238,13 +238,12 @@ changes_main(int ac, char **av)
 				    "can't read dspec and revs from stdin.\n");
 				return (1);
 			}
-			f = fmem_open();
+			f = fmem();
 			while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
 				fwrite(buf, 1, i, f);
 			}
 			free(opts.dspec);
-			opts.dspec = fmem_retbuf(f, 0);
-			fclose(f);
+			opts.dspec = fmem_close(f, 0);
 		} else if (exists(opts.dspec+1)) {
 			if (p = loadfile(opts.dspec+1, 0)) {
 				free(opts.dspec);
@@ -284,7 +283,8 @@ changes_main(int ac, char **av)
 			if (opts.remote) rurls = parent_pullp();
 			unless (lurls || rurls) {
 				getMsg("missing_parent", 0, 0, stderr);
-				usage();
+				rc = 1;
+				goto out;
 			}
 		}
 		unless (lurls || rurls) usage();
@@ -565,9 +565,13 @@ doit(int dash)
 			    "dspec-changes-hv" :
 			    "dspec-changes-h";
 		} else {
-			spec = opts.diffs ?
-			    "dspec-changes-vv" :
-			    "dspec-changes";
+			if (!opts.diffs && getenv("BK_4X_DSPEC_COMPAT")) {
+				spec = "dspec-changes-4.0";
+			} else {
+				spec = opts.diffs ?
+				    "dspec-changes-vv" :
+				    "dspec-changes";
+			}
 		}
 		specf = bk_searchFile(spec);
 		TRACE("Reading dspec from %s", specf ? specf : "(not found)");
@@ -648,9 +652,9 @@ doit(int dash)
 	 * before we know if it will be printed.
 	 */
 	if (opts.doComp && opts.filt) {
-		opts.fmem = fmem_open();
+		opts.fmem = fmem();
 	}
-	if (opts.doComp || opts.verbose) opts.fcset = fmem_open();
+	if (opts.doComp || opts.verbose) opts.fcset = fmem();
 	/* capture the comments, for the csets we care about */
 	dstart = dstop = 0;
 	for (e = s->rstop; e; e = NEXT(e)) {
@@ -1184,7 +1188,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		if (!opts.filt ||
 		    (keys && (!opts.prodOnly || proj_isProduct(sc->proj)))) {
 			/* write cset data saved above */
-			buf = fmem_getbuf(opts.fcset, &len);
+			buf = fmem_peek(opts.fcset, &len);
 			fwrite(buf, 1, len, f);
 		}
 		if (found) rc = 1; /* Remember we printed output */
@@ -1208,7 +1212,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 				/*
 				 * we generated output so flush the saved data
 				 */
-				buf = fmem_getbuf(f, &len);
+				buf = fmem_peek(f, &len);
 				f = fsave;
 				fsave = 0;
 				fwrite(buf, 1, len, f);
@@ -1419,7 +1423,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	int	flags, fd, rc, rcsets = 0, rtags = 0;
 	char	buf[MAXPATH];
 
-	if (bkd_connect(r)) return (-1);
+	if (bkd_connect(r, 0)) return (-1);
 	if (send_part1_msg(r, av)) return (-1);
 	if (r->rfd < 0) return (-1);
 
@@ -1429,7 +1433,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	if ((rc = remote_lock_fail(buf, 1))) {
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) return (-1);
+		if (getServerInfo(r, 0)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
@@ -1489,7 +1493,7 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 	int	rc_lock;
 	char	buf[MAXLINE];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 		return (1);
 	}
 
@@ -1507,7 +1511,7 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 		rc = rc_lock;
 		goto done;
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) {
+		if (getServerInfo(r, 0)) {
 			rc = -1; /* protocol error */
 			goto done;
 		}

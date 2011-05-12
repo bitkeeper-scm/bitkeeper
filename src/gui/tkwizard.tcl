@@ -1437,10 +1437,15 @@ proc ::tkwizard::layout-default::build {name} \
 	-background $background \
 	-anchor c
 
-    array set labelfont [font actual [$widget(title) cget -font]]
-    set labelfont(-weight) bold
-    incr labelfont(-size) 6
-    $widget(title) configure -font [array get labelfont]
+    set font [font configure TkDefaultFont]
+    switch -- [tk windowingsystem] {
+	"win32" { set size  18 }
+	"aqua"  { set size  24 }
+	"x11"   { set size -24 }
+    }
+    dict set font -size $size
+    dict set font -weight bold
+    $widget(title) configure -font $font
 
     set tf $widget(frame).titleframe
     grid $widget(title)    -in $tf -row 0 -column 0 -sticky nsew
@@ -1622,43 +1627,30 @@ proc ::tkwizard::style-default::init {name} \
     set widget(cancelButton) $prefix.buttonFrame.cancelButton
     set widget(finishButton) $prefix.buttonFrame.finishButton
 
-    button $widget(backButton) \
+    ttk::button $widget(backButton) \
         -text "< Back" \
         -default normal \
-        -width 6 \
-        -bd 1 \
-        -relief raised \
         -command [list event generate $name <<WizBackStep>>]
 
-    button $widget(nextButton) \
+    ttk::button $widget(nextButton) \
         -text "Next >" \
         -default normal \
-        -width 6 \
-        -bd 1 \
-        -relief raised \
         -command [list event generate $name <<WizNextStep>>]
 
-    button $widget(finishButton) \
+    ttk::button $widget(finishButton) \
         -text "Finish" \
         -default normal \
-        -width 6 \
-        -bd 1 \
-        -relief raised \
         -command [list event generate $name <<WizFinish>>]
 
-    button $widget(cancelButton) \
-        -text Cancel   \
+    ttk::button $widget(cancelButton) \
+        -text "Cancel"   \
         -default normal \
-        -width 6 \
-        -bd 1  \
-        -relief raised \
         -command [list event generate $name <<WizCancel>>]
 
-
-    pack $widget(cancelButton) -side right -pady 4 -padx 4 
-    pack $widget(finishButton) -side right -pady 4 -padx 2
-    pack $widget(nextButton)   -side right -pady 4
-    pack $widget(backButton)   -side right -pady 4
+    pack $widget(cancelButton) -side right -pady 4 -padx 5 
+    pack $widget(finishButton) -side right -pady 4 -padx 1
+    pack $widget(nextButton)   -side right -pady 4 -padx 1
+    pack $widget(backButton)   -side right -pady 4 -padx 1
 
     # return the name of the layout frame
     return $prefix.layoutFrame

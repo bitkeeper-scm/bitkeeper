@@ -293,7 +293,7 @@ proc test_getMenus {path menu} \
 		# associated with the toplevel
 		foreach w [info commands .*] {
 			if {[catch {winfo class $w} class]} continue
-			if {$class eq "Menubutton"} {
+			if {$class in "Menubutton TMenubutton"} {
 				set text [$w cget -text]
 				set menu [$w cget -menu]
 				test_getMenus $text $menu

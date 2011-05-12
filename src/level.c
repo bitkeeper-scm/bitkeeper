@@ -7,16 +7,23 @@ int
 level_main(int ac,  char **av)
 {
 	int	c;
+	int	justlist = 0;
 
-	while ((c = getopt(ac, av, "", 0)) != -1) bk_badArg(c, av);
-	(void)proj_cd2product();
-	unless (av[1]) {
-		printf("Repository level is %d\n", getlevel());
-		exit(0);
+	while ((c = getopt(ac, av, "l", 0)) != -1) {
+		switch (c) {
+		    case 'l': justlist = 1; break;
+		    default: bk_badArg(c, av);
+		}
 	}
-
-	unless (isdigit(av[1][0])) usage();
-	exit(setlevel(atoi(av[1])));
+	bk_nested2root(0);
+	unless (av[optind]) {
+		unless (justlist) printf("Repository level is ");
+		printf("%d\n", getlevel());
+		return (0);
+	}
+	if (justlist) usage();
+	unless (isdigit(av[optind][0])) usage();
+	return (setlevel(atoi(av[optind])));
 }
 
 int

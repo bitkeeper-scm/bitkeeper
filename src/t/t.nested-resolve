@@ -1,0 +1,162 @@
+echo $N Set up the repos.............................................$NL
+nested parent
+cd gcc
+echo a > afile
+bk new $Q afile
+bk commit $Q -yafile
+cd ../gdb
+echo b > bfile
+bk new $Q bfile
+bk commit $Q -ybfile
+bk -P commit $Q -yadd
+cd "$HERE"
+bk clone $Q parent child
+cd parent
+cd gcc
+bk edit $Q afile
+echo b > afile
+bk ci $Q -y.
+bk commit $Q -y.
+cd ../gdb
+bk edit $Q bfile
+echo c > bfile
+bk ci $Q -y.
+bk commit $Q -y.
+bk -P commit $Q -y.
+echo OK
+
+echo $N Simple pull w/resolve should work............................$NL
+cd "$HERE"/child
+bk pull $Q >OUT 2>&1 || fail -f OUT
+bk unpull -f $Q
+echo OK
+
+echo $N conflict in one comp still transfers the other...............$NL
+cd "$HERE"/child
+cd gcc
+bk edit $Q afile
+echo conflicts > afile
+bk ci $Q -y. afile
+bk commit $Q -y.
+bk -P commit $Q -y.
+cd ../gdb
+TIP=`bk changes -Snd:KEY: -r+`
+cd ..
+echo q | bk pull $Q >OUT 2>&1 && fail -f OUT
+test -d RESYNC || fail did not leave RESYNC in product
+test -d gcc/RESYNC || fail did not leave RESYNC in gcc
+test -d gdb/RESYNC && fail left RESYNC in gdb
+NTIP=`bk changes -Snd:KEY: -r+`
+test "$TIP" = "$NTIP" && fail did not resolve gdb
+echo OK
+
+echo $N Now finish the resolve.......................................$NL
+cd "$HERE"/child
+cd gcc
+bk resolve $Q -T >OUT 2>&1 <<EOF || fail -f OUT resolve failed
+s
+C
+.
+EOF
+echo OK
+
+echo $N Failed component resolve should fail product resolve.........$NL
+cd "`bk root -P`"
+bk unpull $Q -f || fail
+echo q | bk pull $Q -T >OUT 2>&1 && fail -f OUT
+# make resolve of gcc fail
+cd gcc
+mkdir -p BitKeeper/triggers
+cat <<EOF >BitKeeper/triggers/pre-apply
+#!/bin/sh
+echo FORCED FAILURE
+exit 1
+EOF
+chmod +x BitKeeper/triggers/pre-apply
+bk resolve $Q -S <<EOF >OUT 2>&1 && fail -f OUT should have failed
+s
+C
+.
+EOF
+grep -q "FORCED FAILURE" OUT || fail -f OUT wrong failure
+test -d RESYNC && fail left comp RESYNC
+cd ..
+test -d RESYNC && fail left prod RESYNC
+echo OK
+
+echo $N Again, but leaving RESYNC....................................$NL
+bk pull $Q -R >OUT 2>&1 || fail -f OUT pull failed
+cd gcc
+# modify trigger
+cat <<EOF >BitKeeper/triggers/pre-apply
+#!/bin/sh
+echo FORCED FAILURE
+exit 3
+EOF
+chmod +x BitKeeper/triggers/pre-apply
+bk resolve $Q -S <<EOF >OUT 2>&1 && fail -f OUT should have failed
+s
+C
+.
+EOF
+grep -q "FORCED FAILURE" OUT || fail -f OUT wrong failure
+cd ..
+test -d RESYNC && fail left prod RESYNC
+echo OK
+
+echo $N Try a port and see if resolve works..........................$NL
+cd "$HERE/parent"
+bk detach $Q gcc "$HERE/gcc"
+cd "$HERE/gcc"
+echo stuff > stuff
+bk new $Q stuff
+bk commit $Q -y.
+cd "$HERE"
+bk clone $Q parent child2
+cd child2
+bk portal $Q .
+cd gcc
+bk port $Q -R "$HERE/gcc" || fail
+bk resolve >OUT 2>&1 || fail
+grep -q "Nothing to resolve." OUT || fail -f OUT wrong error
+bk resolve -S $Q -S >OUT 2>&1 || fail -f OUT should have worked
+echo OK
+
+echo $N Test pull -i only prompts once ..............................$NL
+nested project
+echo line > gcc/foo
+bk new $Q gcc/foo
+bk $Q -e commit $Q -yline
+bk clone $Q . ../copy
+bk edit $Q gcc/foo
+printf "before\nline\n" > gcc/foo
+bk delta $Q -ybefore gcc/foo
+bk $Q -e commit $Q -ybefore
+cd ../copy
+bk edit $Q gcc/foo
+echo after >> gcc/foo
+bk delta $Q -yafter gcc/foo
+bk $Q -e commit $Q -yafter
+echo q | bk pull -i -T -q 2>ERR && fail -f ERR
+cat <<EOF > WANT
+resolve: RESYNC directory left intact.
+====================================================
+(content conflict) foo>> 1 unresolved component:
+ gcc
+pull: Unresolved components.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles ERR WANT
+echo OK
+
+echo $N Test pull -i does not automerge .............................$NL
+bk abort -f
+(echo ul ; echo C) | bk pull -i -T 1>ERR 2>&1 || fail -f ERR
+bk cat gcc/foo >GOT
+cat >WANT <<EOF
+line
+after
+EOF
+cmpfiles WANT GOT
+echo OK

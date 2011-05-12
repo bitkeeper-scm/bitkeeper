@@ -91,6 +91,36 @@ range_addArg(RANGE *rargs, char *arg, int isdate)
 	return (0);
 }
 
+/*
+ * XXX range_addArg saves 'rev' in rargs->rstart and such, so we cannot
+ * free the 'rev' mem here as it lives on.  The rargs are a stack struct
+ * and have no rargs_free() function to do the free'ing of dynamic
+ * elements.  So it will be leaked.
+ */
+int
+range_urlArg(RANGE *rargs, char *url)
+{
+	FILE	*f;
+	char	*rev;
+	int	rc = -1;
+	char	**urls = 0;
+
+	if (url) urls = addLine(urls, url);
+	f = fmem();
+	if (repogca(urls, ":REV:\\n", RGCA_ALL, f)) goto out;
+	rewind(f);
+	rev = aprintf("@@%s", fgetline(f)); /* intentional leak (see above) */
+	if (fgetline(f)) {
+		fprintf(stderr, "%s: non-unique baseline revision\n", prog);
+		goto out;
+	}
+	rc = range_addArg(rargs, rev, 0);
+out:	fclose(f);
+	freeLines(urls, 0);
+	return (rc);
+}
+
+
 private void
 rangeReset(sccs *sc)
 {

@@ -62,8 +62,58 @@ to remove the changesets introduced by the pull.
 Please read the 
 .B bk unpull
 man page for important information about what is and is not unpulled.
+.SH SAFETY
+.LP
+In non-nested BitKeeper, after you have pulled from a given
+repository, it is safe to delete the sending side as all the changes
+it contained have been transferred. This is not necessarily true in a
+nested collection since the set of components populated in the sending
+side and the set of components populated in the receiving side might
+not be the same.
+.LP
+In order to solve this problem, BitKeeper utilizes gates, which are
+repositories that you set up as permanent (e.g. integration
+repositories or masters). The URLs for the gates are remembered by
+BitKeeper and used when pulling from non-gate repositories.
+.LP
+When pulling from a nested repository, if the sending side of the pull
+is not a gate, BitKeeper will default to 'safe' mode. In safe mode,
+all components populated in the sending side that are not found in
+gates are transferred to the receiving side. This preserves the
+attribute that pulling from a repository transfers all unique
+information thus allowing the sending side of the pull to be
+deleted.
+.LP
+When pulling from a gate, BitKeeper defaults to unsafe mode. In this
+mode, only the components that are populated in the receiving side are
+included in the pull. ChangeSets made to components in the sending
+side (the gate) that are not populated in the receiving side will not
+be transferred. In this case, removing the sending side (the gate)
+could result in lost work. Only mark as gates repositories that you
+know are not going to be deleted.
+.LP
+When pulling in safe mode, BitKeeper will try hard not to break the
+aliases in the sending side while at the same time minimizing the
+amount of information that needs to be transferred to the receiving
+side. This means that if the sending side has many aliases populated,
+and only some of those would be sufficient to account for all the
+components with unique work, only those aliases would be transferred.
+.LP
+An example: suppose the sending side has components A and B, with new
+work in both.  Suppose the receiving repository just has A.  Pulling
+from the sending side is considered "unsafe" when only the A csets are
+sent but "safe" when the A csets and B component are sent.
 .SH OPTIONS
 .TP \-E\*<env\*>=\*<val\*>
+.B \-\-batch
+Pass 
+.Q \-\-batch
+to resolve (\c
+.Q \-\-batch
+means do not do interactive resolve of any conflicts, leave that for later.)
+Mutually exclusive with
+.QR \-i .
+.tp
 .OPTreq \-c n
 try to get the remote lock
 .ARG n
@@ -96,23 +146,13 @@ Pull up to and including this revision, but exclude later changes.
 .B bk help terms
 under 'rev argument')
 .tp
-.B \-\-batch
-Pass 
-.Q \-\-batch
-to resolve (\c
-.Q \-\-batch
-means do not do interactive resolve of any conflicts, leave that for later.)
-Mutually exclusive with
-.QR \-i .
-.tp
 .B \-\-safe
 In a nested collection, using this option means that the source
 repository may be safely removed after a successful pull.  
 Either the destination received everything that the source had,
-or the non-pulled components were found in a safe location (a gate
-or a portal).
+or the non-pulled components were found in a safe location (a gate).
 This option is implied when pulling from a nested collection that
-is not a gate or a portal.
+is not a gate.
 This option has no effect in a traditional standalone repository.
 See also
 .B \-\-unsafe
@@ -136,7 +176,7 @@ repository may contain work that is not pulled into the destination.
 means pull updates only to the components and/or aliases populated
 in the destination.
 This option has no effect in a traditional standalone repository.
-This option is implied when pulling from a gate or a portal.
+This option is implied when pulling from a gate.
 See also
 .B \-\-safe
 above.
@@ -145,9 +185,10 @@ above.
 Be verbose by listing each file.
 .SH "SEE ALSO"
 .SA bkd
+.SA changes
+.SA gate
 .SA parent
 .SA push
-.SA changes
 .SA resolve
 .SA triggers
 .SA unpull

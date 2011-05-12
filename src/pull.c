@@ -11,6 +11,7 @@ private struct {
 	u32	automerge:1;		/* -i: turn off automerge */
 	u32	quiet:1;		/* -q: shut up */
 	u32	fullPatch:1;		/* -F force fullpatch */
+	u32	product:1;		/* nested pull in the product? */
 	u32	noresolve:1;		/* -R: don't run resolve at all */
 	u32	textOnly:1;		/* -T: pass -T to resolve */
 	u32	autoOnly:1;		/* -s: pass --batch to resolve */
@@ -22,6 +23,7 @@ private struct {
 	u32	port:1;			/* is port command? */
 	u32	transaction:1;		/* is $_BK_TRANSACTION set? */
 	u32	local:1;		/* set if we find local work */
+	u32	autoPopulate:1;		/* automatically populate missing comps */
 	int	safe;			/* require all involved comps to be here */
 	int	n;			/* number of components */
 	int	delay;			/* -w<delay> */
@@ -32,7 +34,8 @@ private struct {
 } opts;
 
 private int	pull(char **av, remote *r, char **envVar);
-private int	pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist);
+private	int	pull_ensemble(remote *r, char **rmt_aliases,
+    hash *rmt_urllist, char ***conflicts);
 private int	pull_finish(remote *r, int status, char **envVar);
 private void	resolve_comments(remote *r);
 private	int	resolve(void);
@@ -44,7 +47,7 @@ pull_main(int ac, char **av)
 	int	c, i, j = 1;
 	int	try = -1; /* retry forever */
 	int	rc = 0;
-	int	gzip = 6;
+	int	gzip = Z_BEST_SPEED;
 	int	print_title = 0;
 	remote	*r;
 	char	*p, *prog;
@@ -53,6 +56,7 @@ pull_main(int ac, char **av)
 		{ "batch", 310},	/* pass -s to resolve */
 		{ "safe", 320 },	/* require all comps to be here */
 		{ "unsafe", 330 },	/* turn off safe above */
+		{ "auto-populate", 340},/* just work */
 
 		/* aliases */
 		{ "standalone", 'S'},
@@ -107,13 +111,16 @@ pull_main(int ac, char **av)
 		    case 'w': opts.delay = atoi(optarg); break;	/* undoc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			if (optarg) gzip = atoi(optarg);
-			if ((gzip < 0) || (gzip > 9)) gzip = 6;
+			if ((gzip < 0) || (gzip > 9)) gzip = Z_BEST_SPEED;
 			break;
 		    case 320:	/* --safe */
 			opts.safe = 1;
 			break;
 		    case 330:	/* --unsafe */
 			opts.safe = 0;
+			break;
+		    case 340:  /* --auto-populate */
+			opts.autoPopulate = 1;
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -122,7 +129,7 @@ pull_main(int ac, char **av)
 		opts.quiet = 1;
 		opts.verbose = 0;
 	}
-	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	trigger_setQuiet(opts.quiet);
 	unless (opts.quiet || opts.verbose) progress_startMulti();
 	if (opts.autoOnly && !opts.automerge) {
 		fprintf(stderr, "pull: -s and -i cannot be used together\n");
@@ -153,15 +160,10 @@ pull_main(int ac, char **av)
 		}
 	}
 
-	if (proj_isComponent(0) && !opts.transaction && !opts.port) {
-		if (proj_cd2product()) {
-			fprintf(stderr, "pull: cannot find product root.\n");
-			exit(1);
-		}
-	} else if (proj_cd2root()) {
-		fprintf(stderr, "pull: cannot find package root.\n");
-		exit(1);
+	if (opts.product = bk_nested2root(opts.transaction || opts.port)) {
+		if (proj_configbool(0, "autopopulate")) opts.autoPopulate = 1;
 	}
+	cmdlog_lock(opts.port ? CMD_WRLOCK : CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
 		exit(1);
@@ -197,7 +199,7 @@ err:		freeLines(envVar, free);
 
 	if (opts.verbose) {
 		print_title = 1;
-	} else if (!opts.quiet && proj_isProduct(0)) {
+	} else if (!opts.quiet && !opts.transaction) {
 		print_title = 1;
 	}
 
@@ -310,7 +312,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	if (bkd_connect(r)) return (-1);
+	if (bkd_connect(r, 0)) return (-1);
 	if (send_part1_msg(r, envVar)) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
@@ -321,7 +323,7 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 	if ((rc = remote_lock_fail(buf, opts.verbose))) {
 		return (rc); /* -2 means lock busy */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) return (-1);
+		if (getServerInfo(r, 0)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	} else if (getenv("_BK_TRANSACTION") &&
 	    (strneq(buf, "ERROR-cannot use key", 20 ) ||
@@ -471,7 +473,8 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 }
 
 private int
-pull_part2(char **av, remote *r, char probe_list[], char **envVar)
+pull_part2(char **av, remote *r, char probe_list[], char **envVar,
+    char ***conflicts)
 {
 	int	rc = 0, i;
 	FILE	*info;
@@ -479,7 +482,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 	hash	*rmt_urllist = 0;
 	char	buf[MAXPATH * 2];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) {
 		return (-1);
 	}
 	if (send_keys_msg(r, probe_list, envVar)) {
@@ -493,7 +496,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 	if (remote_lock_fail(buf, opts.verbose)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) goto err;
+		if (getServerInfo(r, 0)) goto err;
 		getline2(r, buf, sizeof(buf));
 	}
 	if (get_ok(r, buf, 1)) {
@@ -506,7 +509,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 	 * Read the verbose status if we asked for it
 	 */
 	getline2(r, buf, sizeof(buf));
-	info = fmem_open();
+	info = fmem();
 	if (streq(buf, "@REV LIST@")) {
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (streq(buf, "@END@")) break;
@@ -530,14 +533,14 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 	/*
 	 * Dump the status now that we know we are going to get it.
 	 */
-	fputs(fmem_getbuf(info, 0), stderr);
+	fputs(fmem_peek(info, 0), stderr);
 	fclose(info);
 
 	/*
 	 * check remote trigger
 	 */
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, !opts.quiet)) {
+		if (getTriggerInfoBlock(r, opts.quiet)) {
 			putenv("BK_STATUS=REMOTE TRIGGER FAILURE");
 			rc = 2;
 			goto done;
@@ -552,15 +555,15 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		}
 	}
 	if (streq(buf, "@URLLIST@")) {
-		FILE	*fmem = fmem_open();
+		FILE	*f = fmem();
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (streq(buf, "@")) break;
-			fputs(buf, fmem);
-			fputc('\n', fmem);
+			fputs(buf, f);
+			fputc('\n', f);
 		}
-		rewind(fmem);
-		rmt_urllist = hash_fromStream(0, fmem);
-		fclose(fmem);
+		rewind(f);
+		rmt_urllist = hash_fromStream(0, f);
+		fclose(f);
 		getline2(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@PATCH@")) {
@@ -573,14 +576,23 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			goto done;
 		}
 		if (opts.port) touch("RESYNC/SCCS/d.ChangeSet", 0666);
-		if (proj_isProduct(0)) {
+		if (opts.product) {
 			unless (opts.verbose || opts.quiet || title) {
 				/* Finish the takepatch progress bar. */
 				title = PRODUCT;
 				progress_end(PROGRESS_BAR, "OK", PROGRESS_MSG);
 				title = 0;
 			}
-			if (rc = pull_ensemble(r, rmt_aliases, rmt_urllist)) goto done;
+			/*
+			 * pull_ensemble doesn't do conflict resolution, just
+			 * transfers the data and auto-resolves if possible.
+			 */
+			rc = pull_ensemble(r, rmt_aliases,
+			    rmt_urllist, conflicts);
+			if (rc) {
+				system("bk -?BK_NO_REPO_LOCK=YES abort -qf");
+				goto done;
+			}
 		}
 		if (exists(ROOT2RESYNC)){
 			putenv("BK_STATUS=OK");
@@ -611,14 +623,17 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 	}
 
 done:	unlink(probe_list);
+	if (rmt_urllist) hash_free(rmt_urllist);
+	freeLines(rmt_aliases, free);
 	if (r->type == ADDR_HTTP) disconnect(r);
 	return (rc);
 }
 
 private int
-pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
+pull_ensemble(remote *r, char **rmt_aliases,
+    hash *rmt_urllist, char ***conflicts)
 {
-	char	*url;
+	char	*url, *p;
 	char	**urls = 0;
 	popts	popts = {0};
 	char	**vp;
@@ -627,9 +642,7 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	nested	*n = 0;
 	comp	*c;
 	int	i, j, rc = 0, errs = 0;
-	int	which = 0;
-	hash	*urllist;
-	hash	*aliasdb;
+	int	which = 0, updateHERE = 0, flushCache = 0;
 	project	*proj;
 
 	/* allocate r->params for later */
@@ -644,11 +657,6 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	sccs_close(s);		/* win32 */
 	freeLines(revs, free);
 	unless (n->tip) goto out;	/* tags only */
-	unless (urllist = hash_fromFile(0, NESTED_URLLIST)) {
-		urllist = hash_new(HASH_MEMHASH);
-	}
-	/* enable if we use rmt_urllist */
-	urllist_normalize(rmt_urllist, url);
 
 	/*
 	 * Now takepatch should have merged the aliases file in the RESYNC
@@ -657,20 +665,30 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	 * bits.  Then we lookup the local HERE file in the new merged
 	 * tip of aliases to find which components should be local.
 	 */
-	aliasdb = aliasdb_init(n, n->proj, n->tip, 0, 0);
-	assert(aliasdb);
-	if (aliasdb_chkAliases(n, aliasdb, &rmt_aliases, 0)) goto out;
-	EACH(rmt_aliases) {
-		char	**comps;
+	nested_aliases(n, n->tip, &rmt_aliases, 0, 0);
+	EACH_STRUCT(n->comps, c, i) if (c->alias) c->remotePresent = 1;
 
-		comps = aliasdb_expandOne(n, aliasdb, rmt_aliases[i]);
-		EACH_STRUCT(comps, c, j) {
-			c->data = addLine(c->data, rmt_aliases[i]);
-			c->remotePresent = 1;
+	urlinfo_setFromEnv(n, url);
+
+	EACH_HASH(rmt_urllist) {
+		char	*rk = (char *)rmt_urllist->kptr;
+		char	**urls;
+		char	*url, *t;
+
+		unless (c = nested_findKey(n, rk)) continue;
+
+		urls = splitLine(rmt_urllist->vptr, "\n", 0);
+		EACH(urls) {
+			/* strip old timestamps */
+			if (t = strchr(urls[i], '|')) *t = 0;
+
+			// These are urls of the parent, so we normalize
+			url = remoteurl_normalize(r, urls[i]);
+			urlinfo_addURL(n, c, url);
+			free(url);
 		}
-		freeLines(comps, 0);
+		freeLines(urls, free);
 	}
-	aliasdb_free(aliasdb);
 
 	if (nested_aliases(n, 0, &n->here, 0, NESTED_PENDING)) {
 		/*
@@ -685,32 +703,106 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 
 	if ((opts.safe == 1) || ((opts.safe == -1) && !getenv("BKD_GATE"))) {
 		char	**missing = 0;
+		char	**new_aliases = 0;
+		int	flags = URLLIST_GATEONLY | URLLIST_NOERRORS;
+
+		if (opts.quiet) flags |= SILENT;
 
 		EACH_STRUCT(n->comps, c, j) {
-			if (!c->present && !c->alias && c->remotePresent) {
-				char	**alist = c->data;
-
-				EACH(alist) {
-					missing = addLine(missing,
-					    strdup(alist[i]));
-				}
+			/*
+			 * !c->alias           = I'm not going have it
+			 * c->remotePresent    = Remote has it
+			 * (opts.safe == 1 &&  = user explicitly asked for
+			 *                       --safe
+			 * || !urllist_find()) = we can't find it in a gate
+			 */
+			if (!c->alias && c->remotePresent &&
+			    ((opts.safe == 1) ||
+				!urllist_find(n, c, flags, 0))) {
+				/*
+				 * Add this component to the missing
+				 * list, we will fetch it with a cover.
+				 */
+				missing = addLine(missing, (char *)c);
 			}
 		}
+
 		if (missing) {
-			uniqLines(missing, free);
-			fprintf(stderr, "pull: failing because populated "
-			    "aliases are different between remote and local.\n"
-			    "Please run bk populate to add the following "
-			    "aliases:\n");
-			EACH(missing) fprintf(stderr, "  %s\n", missing[i]);
-			freeLines(missing, free);
-			rc = 1;
-			goto out;
+			char	**msg = 0;
+
+			unless (opts.quiet && opts.autoPopulate) {
+				fprintf(stderr, "\nThe following components "
+				    "are present in the remote, were not\n"
+				    "found in any gates, and will need to "
+				    "be populated to make\n"
+				    "the pull safe:\n");
+				EACH_STRUCT(missing, c, j) {
+					fprintf(stderr, "\t%s\n", c->path);
+				}
+			}
+
+			unless (opts.autoPopulate) {
+				fprintf(stderr, "Please re-run the pull "
+				    "using the --auto-populate option "
+				    "in order\nto get them automatically.\n");
+				freeLines(missing, 0);
+				rc = 1;
+				goto out;
+			}
+
+			/*
+			 * Find a minimum subset of the remote's alias
+			 * file that covers all the missing
+			 * components.
+			 */
+			new_aliases =
+				alias_coverMissing(n, missing, rmt_aliases);
+			freeLines(missing, 0);
+			unless (opts.quiet) {
+				fprintf(stderr,
+				    "Adding the following "
+				    "aliases/components:\n");
+			}
+
+			/*
+			 * Add them to HERE
+			 */
+			EACH(new_aliases) {
+				n->here = addLine(n->here, new_aliases[i]);
+				unless (opts.quiet) {
+					p = new_aliases[i];
+					if (isKey(p)) {
+						c = nested_findKey(n, p);
+						assert(c);
+						p = c->path;
+					}
+					msg = addLine(msg,
+					    aprintf("\t%s\n", p));
+				}
+			}
+			unless (opts.quiet) {
+				sortLines(msg, 0);
+				EACH(msg) fprintf(stderr, "%s", msg[i]);
+			}
+			freeLines(msg, free);
+			freeLines(new_aliases, 0);
+			uniqLines(n->here, free);
+
+			/*
+			 * This retags comps with c->alias for the
+			 * aliases we just added so populate will
+			 * update them.
+			 */
+			if (nested_aliases(n, 0, &n->here, 0, NESTED_PENDING)){
+				/* should never fail */
+				fprintf(stderr,
+				    "%s: local aliases no longer valid.\n",
+				    prog);
+				rc = 1;
+				goto out;
+			}
+			updateHERE = 1;
 		}
-	}
-	EACH_STRUCT(n->comps, c, j) {
-		freeLines((char **)c->data, 0);
-		c->data = 0;
 	}
 
 	/*
@@ -729,17 +821,10 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 			/* this component is included in pull */
 			if (c->alias) {
 				/* and we will need those new csets */
-				if (c->present) opts.n++;
+				if (c->present || c->localchanges) opts.n++;
 				if (!c->remotePresent && c->present) {
 					/*
-					 * Since this component has
-					 * new csets coming and we
-					 * have it populated, it will
-					 * need a pull. But the remote
-					 * doesn't the component so it
-					 * will need to be pulled from
-					 * a 3rd party.  We don't
-					 * support that yet.
+					 * XXX: I plan to fix this with pull-urllist.
 					 */
 					fprintf(stderr,
 					    "pull: %s is missing in %s\n",
@@ -749,7 +834,7 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 			} else {
 				/* we don't want this component */
 				if (c->localchanges) {
-					/* merge in gone component */
+					/* XXX: I plan to fix this with pull-urllist */
 					fprintf(stderr,
 					    "%s: Unable to resolve conflict "
 					    "in non-present component '%s'.\n",
@@ -758,41 +843,26 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 				}
 			}
 		}
-		/* now update the urllist */
-		unless (c->localchanges) {
-			if (c->included) {
+		if (c->alias && !c->present) {
+			if (c->localchanges) {
 				/*
-				 * We are updating this component so
-				 * discard any existing saved URLs
+				 * We do both, populate c->lowerkey
+				 * and then pull c->deltakey. Also,
+				 * flush the cache *before* calling
+				 * nested_populate since we have
+				 * probbed with deltakey before and
+				 * now we have to probe with lowerkey.
 				 */
-				urllist_rmURL(urllist, c->rootkey, 0);
+				c->useLowerKey = 1;
+				flushCache = 1;
+			} else {
+				c->new = 1;
 			}
-			if (c->remotePresent) {
-				/*
-				 * If the remote side has a component
-				 * and we don't have any local work in
-				 * that component, then they become a
-				 * new source for that componet.
-				 * Doesn't matter if we have it
-				 * populated or not.
-				 */
-				urllist_addURL(urllist, c->rootkey, url);
-			}
-			/* now add any URL's remembered by the remote side */
-			if (rmt_urllist &&
-			    hash_fetchStr(rmt_urllist, c->rootkey)) {
-				char	*new;
-
-				if (hash_fetchStr(urllist, c->rootkey)) {
-					new = aprintf("%s\n%s",
-						urllist->vptr,
-						rmt_urllist->vptr);
-				} else {
-					new = strdup(rmt_urllist->vptr);
-				}
-				hash_storeStr(urllist, c->rootkey, new);
-				free(new);
-			}
+			++which;
+		}
+		if (!c->alias && c->present) {	// unpopulate local
+			c->useLowerKey = 1;
+			flushCache = 1;
 		}
 	}
 	if (errs) {
@@ -802,7 +872,6 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 		rc = 1;
 		goto out;
 	}
-	urllist_write(urllist);
 	/*
 	 * We are about to populate new components so clear all
 	 * mappings of directories to the product.
@@ -816,24 +885,23 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 	popts.quiet = opts.quiet;
 	popts.verbose = opts.verbose;
 	popts.runcheck = 0;	/* we'll check after pull */
+
 	/*
-	 * Even though we are populating, there is no change to
-	 * the HERE file.  Just leave it as it is.
+	 * suppress the "Source URL" line if components come
+	 * from the same pull URL
+	 */
+	popts.lasturl = url;
+	if (strneq(popts.lasturl, "file://", 7)) popts.lasturl += 7;
+
+	/*
+	 * We don't want populate messing with the HERE file,
+	 * resolve will updated it from the RESYNC directory
+	 * if the pull succeeds.
 	 */
 	popts.leaveHERE = 1;
 
-	/*
-	 * Remember which components we populated so we don't try
-	 * to pull them in the next loop.
-	 */
-	EACH_STRUCT(n->comps, c, j) {
-		c->remotePresent = 0; /* populate reuses this */
-		if (c->alias && !c->present) {
-			c->new = 1;
-			++which;
-		}
-	}
-	if (nested_populate(n, 0, &popts)) {
+	if (flushCache) urlinfo_flushCache(n);
+	if (nested_populate(n, &popts)) {
 		fprintf(stderr,
 		    "pull: problem populating components.\n");
 		rc = 1;
@@ -872,20 +940,56 @@ pull_ensemble(remote *r, char **rmt_aliases, hash *rmt_urllist)
 		hash_deleteStr(r->params, "ROOTKEY");
 		vp = addLine(vp, 0);
 		if (rc = spawnvp(_P_WAIT, "bk", &vp[1])) {
-			fprintf(stderr, "Pulling %s failed %x\n", c->path, rc);
-			rc = 1;
+			/*
+			 * Resolve doesn't tell us whether it failed because
+			 * of conflicts or some other reason, so we need to
+			 * check for a RESYNC here.
+			 */
+			unless (isdir(ROOT2RESYNC)) {
+				/*
+				 * Pull really failed, who knows why
+				 */
+				fprintf(stderr, "Pulling %s failed %x\n", c->path, rc);
+				rc = 1;
+				freeLines(vp, free);
+				break;
+			}
+			/* we're still ok */
+			rc = 0;
+			title = aprintf("%d/%d %s", which, opts.n, c->path);
+			*conflicts = addLine(*conflicts, strdup(c->path));
+			unless (opts.quiet || opts.verbose) {
+				progress_end(PROGRESS_BAR,
+				    "CONFLICTS", PROGRESS_SUM);
+			}
+			FREE(title);
+			freeLines(vp, free);
+			continue; /* avoid progress bar */
 		} else {
 			if (opts.noresolve && (proj = proj_init(c->path))) {
 				nested_updateIdcache(proj);
 				proj_free(proj);
+			}
+			unless (opts.quiet || opts.verbose) {
+				title = aprintf("%d/%d %s", which, opts.n, c->path);
+				progress_end(PROGRESS_BAR, "OK", PROGRESS_SUM);
+				FREE(title);
 			}
 		}
 		freeLines(vp, free);
 		progress_nldone();
 		if (rc) break;
 	}
-	proj_cd2product();
-out:	free(url);
+
+out:	proj_cd2product();
+	unless (rc) {
+		 /* don't write on error */
+		urlinfo_write(n);
+		chdir(ROOT2RESYNC);
+		if (updateHERE) nested_writeHere(n);
+		chdir(RESYNC2ROOT);
+	}
+	free(url);
 	freeLines(urls, 0);
 	sccs_free(s);
 	nested_free(n);
@@ -899,13 +1003,14 @@ pull(char **av, remote *r, char **envVar)
 	int	rc, i, marker;
 	char	*p;
 	char	*freeme = 0;
+	char	**conflicts = 0;
 	int	got_patch;
 	char	key_list[MAXPATH];
 
 	assert(r);
 	putenv("BK_STATUS=");
 	if (rc = pull_part1(av, r, key_list, envVar)) return (rc);
-	rc = pull_part2(av, r, key_list, envVar);
+	rc = pull_part2(av, r, key_list, envVar, &conflicts);
 	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));
 	marker = bp_hasBAM();
 	if (!rc && got_patch &&
@@ -914,7 +1019,7 @@ pull(char **av, remote *r, char **envVar)
 		chdir(ROOT2RESYNC);
 		rc = bkd_BAM_part3(r, envVar, opts.quiet,
 		    "- < " CSETS_IN);
-		if ((r->type == ADDR_HTTP) && proj_isProduct(0)) {
+		if ((r->type == ADDR_HTTP) && opts.product) {
 			disconnect(r);
 		}
 		chdir(RESYNC2ROOT);
@@ -930,7 +1035,18 @@ pull(char **av, remote *r, char **envVar)
 	 * trigger failure. In both cases the remote side (if nested)
 	 * has already unlocked, so no need for push_finish().
 	 */
-	if (proj_isProduct(0) && (rc != 2)) rc = pull_finish(r, rc, envVar);
+	if (opts.product && (rc != 2)) rc = pull_finish(r, rc, envVar);
+
+	/*
+	 * We don't need the remote side anymore, all the data has been
+	 * transferred so disconnect to unlock the bkd side.
+	 *
+	 * Wait for remote to disconnect
+	 * This is important when trigger/error condition
+	 * short circuit the code path
+	 */
+	wait_eof(r, opts.debug);
+	disconnect(r);
 
 	if (got_patch) {
 		/*
@@ -949,19 +1065,19 @@ pull(char **av, remote *r, char **envVar)
 		}
 		resolve_comments(r);
 		unless (opts.noresolve) {
+			/*
+			 * We allow interaction based on whether we are
+			 * the toplevel pull or not.
+			 */
 			putenv("FROM_PULLPUSH=YES");
-			if (resolve()) {
-				rc = 1;
-				putenv("BK_STATUS=CONFLICTS");
-				goto done;
-			}
+			if (resolve()) rc = 1;
 		}
 	}
-done:	putenv("BK_RESYNC=FALSE");
+done:	freeLines(conflicts, free);
 	unless (opts.quiet || rc ||
 	    ((p = getenv("BK_STATUS")) && streq(p, "NOTHING"))) {
 		unless (title) {
-			if (proj_isProduct(0)) {
+			if (opts.product) {
 				freeme = title =
 				    aprintf("%d/%d %s",
 				    opts.n, opts.n, PRODUCT);
@@ -969,19 +1085,17 @@ done:	putenv("BK_RESYNC=FALSE");
 				freeme = title = strdup("pull");
 			}
 		}
-		progress_end(PROGRESS_BAR, "OK", PROGRESS_SUM);
+		unless (opts.transaction) {
+			/* pull_ensemble handles the progress bars */
+			progress_end(PROGRESS_BAR, "OK", PROGRESS_SUM);
+		}
 		if (freeme) free(freeme);
 		title = 0;
 	}
-	unless (opts.noresolve) trigger(av[0], "post");
-
-	/*
-	 * Wait for remote to disconnect
-	 * This is important when trigger/error condition 
-	 * short circuit the code path
-	 */
-	wait_eof(r, opts.debug);
-	disconnect(r);
+	unless (got_patch || opts.noresolve) {
+		/* we run a post trigger only if we didn't call resolve */
+		trigger(av[0], "post");
+	}
 	return (rc);
 }
 
@@ -991,7 +1105,7 @@ pull_finish(remote *r, int status, char **envVar)
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r)) return (1);
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) return (1);
 	bktmp(buf, "pull_finish");
 	f = fopen(buf, "w");
 	assert(f);
@@ -1004,7 +1118,7 @@ pull_finish(remote *r, int status, char **envVar)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (1);
 	if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfo(r)) return (1);
+		if (getServerInfo(r, 0)) return (1);
 		getline2(r, buf, sizeof(buf));
 	}
 	unless (streq(buf, "@OK@")) {
@@ -1107,14 +1221,19 @@ resolve(void)
 	int	i, status;
 	char	*cmd[20];
 
-	cmd[i = 0] = "bk";
-	cmd[++i] = "resolve";
+	cmd[i = 0] = "resolve";
+	if (opts.transaction || opts.port) cmd[++i] = "-S";
 	unless (opts.verbose) cmd[++i] = "-q";
 	if (opts.textOnly) cmd[++i] = "-T";
 	if (opts.autoOnly) cmd[++i] = "--batch";
-	if (opts.automerge) cmd[++i] = "-a";
+	if (opts.transaction) cmd[++i] = "--auto-only";
+	if (opts.automerge) {
+		cmd[++i] = "-a";
+	} else if (opts.transaction) {
+		cmd[++i] = "-c";
+	}
 	if (opts.debug) cmd[++i] = "-d";
-	unless (opts.quiet) cmd[++i] = "--progress";
+	unless (opts.quiet || opts.verbose) cmd[++i] = "--progress";
 	cmd[++i] = 0;
 	if (opts.verbose) {
 		fprintf(stderr, "Running resolve to apply new work ...\n");
@@ -1124,11 +1243,8 @@ resolve(void)
 	 * while it is running so that no one hits ^C and leaves it
 	 * orphaned.
 	 */
-	sig_ignore();
-	status = spawnvp(_P_WAIT, "bk", cmd);
-	sig_default();
+	getoptReset();
+	status = resolve_main(i, cmd);
 	unless (opts.quiet) progress_nlneeded();
-	unless (WIFEXITED(status)) return (100);
-	return (WEXITSTATUS(status));
-	return (0);
+	return (status);
 }

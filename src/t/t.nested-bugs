@@ -1,3 +1,5 @@
+set -e
+
 echo $N Setup .......................................................$NL
 cd "$HERE"
 nested product
@@ -38,16 +40,17 @@ bk unpull -fs $Q || fail
 # Larry thinks this should work
 
 bk here rm $Q gcc 2>ERR && fail -f ERR should fail
-sed 's/1.2,.*/1.2/' <ERR > ERR2
+sed -e 's/1.2,.*/1.2/' <ERR > ERR2
 cat <<EOF > WANT
-here: No other sources for ./gcc known
+here: searching $HERE/product...ok (gate)
+here: ./gcc cannot be found at a gate
 Local changes to ./gcc found:
 ChangeSet@1.2
   foo
 
 here: unable to remove ./gcc
 EOF
-cmpfiles ERR2 WANT
+cmpfiles WANT ERR2
 echo 'failed (bug commit prunes urllist)'
 
 echo $N Demo Zahy\'s question ........................................$NL

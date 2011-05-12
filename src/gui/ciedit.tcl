@@ -9,7 +9,7 @@ proc eat {fd} \
 		puts $buf
 	} elseif {[eof $fd]} {
 		set edit_busy 0
-		close $fd
+		catch {close $fd}
 	}
 }
 

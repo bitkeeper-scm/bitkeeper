@@ -9,6 +9,43 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+set -e
+
+echo $N Set up component collisions and abort .......................$NL
+nested bing
+touch gcc/foo gdb/bar
+bk new $Q gcc/foo gdb/bar
+bk commit $Q -yfiles
+bk clone $Q . ../bang
+bk edit $Q gcc/foo gdb/bar
+echo rem > gcc/foo
+echo rem > gdb/bar
+bk delta $Q -yremote gcc/foo gdb/bar
+bk commit $Q -yremote
+cd ../bang
+bk edit $Q gcc/foo gdb/bar
+echo loc > gcc/foo
+echo loc > gdb/bar
+bk delta $Q -ylocal gcc/foo gdb/bar
+bk commit $Q -ylocal
+# Pull and abort in a component
+printf "a\ny\n" | bk pull -q 2> OUT && fail -f OUT
+sed s/=//g < OUT > GOT
+cat <<EOF > WANT
+resolve: RESYNC directory left intact.
+
+resolve: RESYNC directory left intact.
+
+Conflicts during automerge of foo
+resolve: 1 unresolved conflicts, starting manual resolve process for:
+	gcc/foo
+(content conflict) foo>> Abort patch? (y/n) 
+Aborting
+EOF
+cmpfiles WANT GOT
+cd ..
+echo OK
+
 echo $N Create an ensemble...........................................$NL
 nested project
 touch amerge
@@ -387,19 +424,7 @@ echo $N Do it again, but in two steps: bk pull -R and bk resolve -a .$NL
 cd "$HERE"/local
 bk unpull $Q -sf || exit 1
 bk pull $Q -R
-bk resolve $Q -a 2>ERR && {
-	echo should fail
-	cat ERR
-	exit 1
-}
-cat <<EOF > WANT
-resolve: product resolve cannot start until all components have completed.
-Missing:
-	gcc/RESYNC
-	x/y/z/comp/RESYNC
-EOF
-cmpfiles ERR WANT
-bk $Q -e resolve $Q -a || fail
+bk resolve $Q -a 2>ERR || fail -f ERR did not resolve
 bk lock -q || fail
 # gcc/ChangeSet is in product's changeset
 cd "$HERE"/local
@@ -448,43 +473,33 @@ echo $N Pull with committed new-file conflict in component...........$NL
 cd "$HERE"
 nested project2
 cd ..
-bk clone $Q project2 copy2 || exit 1
+bk clone $Q project2 copy2 || fail clone
 # Add a new file to project2/gcc.
 cd project2/gcc
 echo "from project2" >conflict-test
-bk new $Q conflict-test || exit 2
-bk commit -S $Q -y'add conflict-test in project2' || exit 3
-bk -P commit $Q -y'add conflict-test in project2/gcc' || exit 4
+bk new $Q conflict-test || fail new
+bk commit $Q -S -y'add conflict-test in project2' || fail commit
+bk -P commit $Q -y'add conflict-test in project2/gcc' || fail prod commit
 # Add a new file with the same name to copy2/gcc.
 cd ../../copy2/gcc
 echo "from copy2" >conflict-test
-bk new $Q conflict-test || exit 5
-bk commit -S $Q -y'add conflict-test in copy2' || exit 6
-bk -P commit $Q -y'add conflict-test in copy2/gcc' || exit 7
+bk new $Q conflict-test || fail new
+bk commit -S $Q -y'add conflict-test in copy2' || fail commit
+bk -P commit $Q -y'add conflict-test in copy2/gcc' || fail prod commit
 cd ..
 # Pull project2 into copy2 but do not resolve.
-bk pull $Q -R ../project2 || exit 8
-# Product-level resolve should issue error at this point.
-bk resolve $Q -a 2> GOT && exit 9
-grep -q "product resolve cannot start" GOT || exit 10
-# Resolve in the component -- rr is to remove remote file.
-cd gcc
+bk pull $Q -R ../project2 || fail pull
+# Resolve in the Product -- rr is to remove remote file.
 bk resolve -a $Q <<EOF > OUT 2>&1 || exit 11
 rr
 y
 EOF
 # Should get the new-file cset and a merge cset.
-bk changes -Sfr1.2,1.3 -nd:KEY: > WANT || exit 12
+bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || exit 12
 cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.3 -nd:MERGE:`" = "1.3" || exit 14
-bk cat conflict-test | grep -q 'from copy2' || exit 15
-# Resolve in the product should work now.
-cd ..
-bk resolve -a $Q || exit 16
-# The product should get the new-file cset and a merge cset.
-bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || exit 17
-cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.4 -nd:MERGE:`" = "1.4" || exit 19
+test "`bk log -r1.4 -nd:MERGE:`" = "1.4" || exit 14
+bk cat gcc/conflict-test >OUT
+grep -q 'from copy2' OUT || fail -f OUT
 cd "$HERE"
 rm -rf project2 copy2
 echo OK
@@ -507,27 +522,15 @@ bk new $Q conflict-test || exit 5
 cd ..
 # Pull project2 into copy2 but do not resolve.
 bk pull $Q -R ../project2 || exit 6
-# Product-level resolve should issue error at this point.
-bk resolve $Q -a 2> GOT && exit 7
-grep -q "product resolve cannot start" GOT || exit 8
-# Resolve in the component -- rr is to remove remote file.
-cd gcc
 bk resolve -a $Q <<EOF > OUT 2>&1 || exit 9
 rr
 y
 EOF
 # Should get the new-file cset and a merge cset.
-bk changes -Sfr1.2,1.3 -nd:KEY: > WANT || exit 10
+bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || exit 10
 cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.3 -nd:MERGE:`" = "" || exit 12
-bk cat conflict-test | grep -q 'from copy2' || exit 13
-# Resolve in the product should work now.
-cd ..
-bk resolve -a $Q || exit 14
-# The product should get the new-file cset and another cset.
-bk changes -Sfr1.3,1.4 -nd:KEY: > WANT || exit 15
-cmpfiles WANT BitKeeper/etc/csets-in
-test "`bk log -r1.4 -nd:MERGE:`" = "" || exit 16
+test "`bk log -r1.4 -nd:MERGE:`" = "" || exit 12
+bk cat gcc/conflict-test | grep -q 'from copy2' || exit 13
 cd "$HERE"
 rm -rf project2 copy2
 echo OK
@@ -585,7 +588,7 @@ do	for c in gcc gdb
 		bk commit -S $Q -ywhatever
 	done
 	cd "$HERE/$i"
-	bk commit $Q -ywhatever
+	bk commit $Q -S -ywhatever
 done
 echo OK
 
@@ -597,7 +600,7 @@ touch sparse
 bk new $Q sparse
 bk commit -S $Q -ywhatever
 cd ..
-bk commit $Q -ywhatever
+bk commit $Q -S -ywhatever
 bk pull $Q ../project || {
 	echo pull failed
 	exit 1
@@ -615,6 +618,7 @@ grep -q "Unable to resolve conflict in non-present component 'gdb'." OUT || {
 	cat OUT
 	exit 1
 }
+bk abort -qf || fail
 echo OK
 
 echo $N Setup N-way pull where a later pull fails ...................$NL
@@ -630,7 +634,7 @@ cat <<EOF > WANT
 pull: Unable to resolve conflict in non-present component 'gdb'.
 pull: update aborted due to errs with 1 components.
 EOF
-cmpfiles ERR WANT
+cmpfiles WANT ERR
 echo OK
 
 echo $N Try a pull where source did rm -rf component ................$NL
@@ -860,6 +864,7 @@ bk commit $Q -ychild
 
 bk changes -v -r+ > BEFORE
 (echo q; echo y) | bk pull $Q 2>ERR && fail
+bk abort -qf
 bk -e -r check -ac || fail
 bk changes -v -r+ > AFTER
 # this shouldn't change
@@ -868,7 +873,7 @@ echo OK
 
 echo $N Now repeat conflicting pull with abort ......................$NL
 (echo a; echo y) | bk pull $Q 2>ERR && fail
-bk -e -r check -ac || fail
+bk -e -r check -ac || fail -f ERR
 bk changes -v -r+ > AFTER
 # this shouldn't change
 cmpfiles BEFORE AFTER
@@ -877,9 +882,9 @@ echo OK
 echo $N Now do the pull in two steps with resolve -c ................$NL
 bk pull -R $Q || fail
 cd gcc
-bk resolve -c $Q 2>ERR || fail
+bk resolve -S -c $Q 2>ERR || fail
 cd ..
-bk resolve -c $Q 2>ERR && fail
+bk resolve -S -c $Q 2>ERR && fail
 bk -e -r check -ac || fail
 echo OK
 
@@ -894,6 +899,7 @@ rm BitKeeper/log/urllist
 bk clone -sA -sC $Q . ../copy2 || fail
 bk here set $Q B D || fail
 cd ../copy2
+bk gate $Q . || fail
 bk alias new TRACK C D || fail
 bk clone $Q -sTRACK . ../copy3 || fail
 bk alias set TRACK A B || fail
@@ -913,14 +919,20 @@ cat <<EOF > WANT
 ./D
 EOF
 cmpfiles OUT WANT
+cd ..
+bk clone $Q -sD project copy4 || fail
+cd copy4
+bk gate $Q . || fail
+cd ../copy3
 
 echo OK
 
 echo $N Ensure pull fails unpopulate if pending local work present ..$NL
 # Now:
 #    copy1: B,D
-#    copy2: A,C TRACK=A,B
+#    copy2: A,C TRACK=A,B gate
 #    copy3: C,D HERE=TRACK=C,D
+#    copy4: D gate
 # A pull of copy2 into copy3 should fail if there is pending local work in
 # C because C then cannot be unpopulated.
 cd C
@@ -928,15 +940,24 @@ date >new-file
 bk new $Q new-file || fail
 bk commit -S $Q -ynew-file || fail
 cd ..
+# record that ./D can be found in copy4
+bk here check -q -@../copy4 ALL 2>ERR && fail -f ERR should fail
+cat <<'EOF' > WANT
+C  : no valid urls found (present)
+gcc: no valid urls found (missing)
+gdb: no valid urls found (missing)
+EOF
+cmpfiles WANT ERR
 bk pull >OUT 2>ERR && fail -f ERR should have failed
 perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
 cat <<EOF > WANT
 .                                  100% |==============================| OK
 pull: unable to remove ./C, it contains csets not committed in product.
-pull: searching ROOT/copy1...ok
+pull: searching ROOT/copy4...ok (gate)
 pull: problem populating components.
 EOF
-cmpfiles ERR2 WANT
+cmpfiles WANT ERR2
+bk abort -qf
 # Remove the local work in C for the subsequent tests.
 cd C
 bk undo -Sfr+ $Q || fail
@@ -947,17 +968,17 @@ echo $N Demonstrate urllist pull populates ..........................$NL
 # Magic pull that updates TRACK in the HERE alias from C D to A B
 # and only A and C are populated in my parent and B and D have to be found
 # in a different URL:
-bk pull 2>ERR >OUT || fail
+bk pull 2>ERR >OUT || fail -f ERR
 # Now:
 #    copy3: A,B HERE=TRACK=A,B
 
 perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
 cat <<EOF > WANT
 .                                  100% |==============================| OK
-pull: searching ROOT/copy2...ok
-pull: searching ROOT/copy1...ok
-Source ROOT/copy2
+pull: searching ROOT/copy2...ok (gate)
+pull: searching ROOT/copy4...ok (gate)
 1/3 A                              100% |==============================| OK
+pull: searching ROOT/copy1...ok
 Source ROOT/copy1
 2/3 B                              100% |==============================| OK
 pull: removing ./D...done
@@ -983,14 +1004,14 @@ bk pull 2>ERR > OUT && fail -f ERR
 perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
 cat << EOF > WANT
 .                                  100% |==============================| OK
-pull: searching ROOT/copy2...ok
-pull: searching ROOT/copy1...ok
-Source ROOT/copy2
+pull: searching ROOT/copy2...ok (gate)
+pull: searching ROOT/copy4...ok (gate)
 1/3 A                              100% |==============================| OK
+pull: searching ROOT/copy1...ok
 pull: No other sources for ./B known
 pull: problem populating components.
 EOF
-cmpfiles ERR2 WANT
+cmpfiles WANT ERR2
 
 bk comps -h | bk _sort > OUT
 cat <<EOF > WANT
@@ -998,23 +1019,25 @@ cat <<EOF > WANT
 ./D
 EOF
 cmpfiles OUT WANT
+bk abort -qf
 echo OK
 
 echo $N Show when pull can\'t find a component to unpopulate .........$NL
 cd ../copy1
 bk here set $Q ./B || fail
 cd ../copy3
+bk _rm -rf ../copy4
 bk pull 2>ERR > OUT && fail -f ERR
 perl -pe "s/.*\r//;s,$HERE,ROOT," < ERR > ERR2
 cat << EOF > WANT
 .                                  100% |==============================| OK
-pull: searching ROOT/copy2...ok
-pull: searching ROOT/copy1...ok
-pull: No other sources for ./D known
+pull: searching ROOT/copy2...ok (gate)
+pull: searching ROOT/copy4...repo gone
+pull: ./D cannot be found at a gate
 pull: unable to remove ./D
 pull: problem populating components.
 EOF
-cmpfiles ERR2 WANT
+cmpfiles WANT ERR2
 
 bk comps -h | bk _sort > OUT
 cat <<EOF > WANT
@@ -1047,3 +1070,198 @@ grep -q "Merge .*/C" GOT || fail -f GOT wrong remote path
 grep -q "into .*/C" GOT || fail -f GOT wrong local path
 echo OK
 
+echo $N Create a component conflict and see that cleanup works ......$NL
+cd "$HERE"
+nested repo
+touch gcc/foo
+bk new $Q gcc/foo
+bk commit $Q -yfiles
+bk clone $Q . ../repocopy
+bk edit $Q gcc/foo
+echo remote > gcc/foo
+bk delta $Q -fyfiles gcc/foo
+bk commit $Q -yremote
+cd ../repocopy
+bk edit $Q gcc/foo
+echo local > gcc/foo
+bk pull $Q > OUT 2>&1 && fail should have failed
+grep -q "The following files are modified locally and " OUT || fail -f OUT
+bk unedit gcc/foo
+bk pull $Q || fail should have worked
+echo OK
+
+echo $N Pull remote and local change into missing-to-pop comp .......$NL
+cd "$HERE"
+bk _rm -rf project copy
+nested project
+bk gate $Q -r
+bk portal $Q -r
+bk alias set $Q COMPS ./gcc
+touch gdb/foo
+bk new $Q gdb/foo
+bk commit $Q -yfoo
+bk clone $Q -sCOMPS . ../copy
+bk clone $Q -sALL . ../backup
+bk undo $Q -sfr+
+touch gcc/bar gdb/bar
+bk new $Q gcc/bar gdb/bar
+bk commit $Q -yfoo
+cd ../copy
+bk here check -q@../backup || fail
+bk pull --auto-populate >OUT 2>&1 || fail -f OUT
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > OUT2
+cat <<EOF >WANT
+Pull file://ROOT/project
+  -> file://ROOT/copy
+.                                  100% |==============================| OK
+
+The following components are present in the remote, were not
+found in any gates, and will need to be populated to make
+the pull safe:
+	gdb
+Adding the following aliases/components:
+	ALL
+pull: searching ROOT/backup...ok
+Source ROOT/backup
+1/4 gdb                            100% |==============================| OK
+2/4 gcc                              1 changeset,   no merges in   3 files
+3/4 gdb                              1 changeset,    2 merges in   3 files
+4/4 .                                1 changeset,    1 merge  in   1 file
+EOF
+cmpfiles WANT OUT2
+echo OK
+
+echo $N Pull with local change into missing-to-pop comp .............$NL
+bk unpull $Q -sf
+bk here set $Q --unsafe COMPS
+cd ../project
+bk undo $Q -sfr+
+bk alias add $Q COMPS ./gdb
+cd ../copy
+bk pull >OUT 2>&1 || fail -f OUT
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > OUT2
+cat <<EOF >WANT
+Pull file://ROOT/project
+  -> file://ROOT/copy
+.                                  100% |==============================| OK
+pull: searching ROOT/project...ok
+pull: searching ROOT/backup...ok
+Source ROOT/backup
+1/2 gdb                            100% |==============================| OK
+2/2 .                                1 changeset,    1 merge  in   2 files
+EOF
+cmpfiles WANT OUT2
+echo OK
+
+echo $N Pull with local change does not get confused by gates........$NL
+bk unpull $Q -sf
+bk here set $Q --unsafe ./gcc
+cd ../project
+touch gcc/bar gdb/bar
+bk new $Q gcc/bar gdb/bar
+bk commit $Q -ybar
+cd ../backup
+bk gate $Q .
+cd ../copy
+bk here check -q@../backup || fail
+bk pull --auto-populate ../project >OUT 2>&1 || fail -f OUT
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > OUT2
+cat <<EOF >WANT
+Pull file://ROOT/project
+  -> file://ROOT/copy
+.                                  100% |==============================| OK
+pull: searching ROOT/backup...ok (gate)
+
+The following components are present in the remote, were not
+found in any gates, and will need to be populated to make
+the pull safe:
+	gdb
+Adding the following aliases/components:
+	ALL
+pull: searching ROOT/backup...ok (gate)
+Source ROOT/backup
+1/4 gdb                            100% |==============================| OK
+2/4 gcc                              1 changeset,   no merges in   3 files
+3/4 gdb                              1 changeset,    2 merges in   3 files
+4/4 .                                2 changesets,   1 merge  in   2 files
+EOF
+cmpfiles WANT OUT2
+echo OK
+
+echo $N Pull that unpopulates does not lose local work ..............$NL
+# Not a severe bug as the set-up has to color outside the lines by
+# rolling back a gate.  On the other hand, it does check.
+bk here set $Q --unsafe COMPS
+# set up the unpopulate
+bk --cd=../project alias rm $Q COMPS ./gdb
+# set up local work that is in a gate
+bk pull $Q ../backup
+bk edit $Q gdb/bar
+bk delta $Q -fyempty gdb/bar
+bk commit $Q -ylocal-gdb-work
+bk push $Q ../backup
+# color outside of the lines - remove local work from gate
+cd ../backup
+bk gate $Q -r
+bk undo $Q -sfr+
+bk gate $Q .
+cd ../copy
+bk pull ../project >OUT 2>&1 && fail -f OUT
+perl -pe "s/.*\r//;s,$HERE,ROOT,;s/,.*,/, DATE TIME,/" < OUT > OUT2
+cat <<EOF >WANT
+Pull file://ROOT/project
+  -> file://ROOT/copy
+.                                  100% |==============================| OK
+pull: searching ROOT/backup...ok (gate)
+pull: searching ROOT/backup...ok (gate)
+pull: ./gdb cannot be found at a gate
+Local changes to ./gdb found:
+ChangeSet@1.4, DATE TIME, bk@bk_regression.bk
+  local-gdb-work
+
+pull: unable to remove ./gdb
+pull: problem populating components.
+EOF
+cmpfiles WANT OUT2
+echo OK
+
+echo $N Add a new component and pull again...........................$NL
+cd "$HERE/parent"
+bk setup -f newcomp
+cd "$HERE/child"
+bk changes -v -r+ > BEFORE
+bk here > HERE_BEFORE
+bk comps -h > COMPS_BEFORE
+(echo q; echo y) | bk pull -T $Q 2>ERR && fail -f ERR
+# the pull screws up the current repo since we pull in-place
+bk repocheck $Q 2>ERR && fail you fixed a bug
+grep -q "It looks like there was a pull in progress." ERR || fail -f ERR
+bk abort -qf
+bk repocheck $Q || fail
+bk changes -v -r+ > AFTER
+bk here > HERE_AFTER
+bk comps -h > COMPS_AFTER
+cmpfiles BEFORE AFTER
+cmpfiles HERE_BEFORE HERE_AFTER
+cmpfiles COMPS_BEFORE COMPS_AFTER
+test -d newcomp && fail
+echo OK
+
+echo $N Now do it again in pull safe mode............................$NL
+bk changes -v -r+ > BEFORE
+bk here > HERE_BEFORE
+bk comps -h > COMPS_BEFORE
+(echo q; echo y) | bk pull $Q --safe 2>ERR && fail -f ERR
+# the pull screws up the current repo since we pull in-place
+bk repocheck $Q 2>ERR && fail you fixed a bug
+grep -q "It looks like there was a pull in progress." ERR || fail -f ERR
+bk abort -qf
+bk repocheck $Q || fail
+bk changes -v -r+ > AFTER
+bk here > HERE_AFTER
+bk comps -h > COMPS_AFTER
+cmpfiles BEFORE AFTER
+cmpfiles HERE_BEFORE HERE_AFTER
+cmpfiles COMPS_BEFORE COMPS_AFTER
+test -d newcomp && fail
+echo OK

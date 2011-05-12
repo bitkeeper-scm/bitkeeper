@@ -8,10 +8,11 @@
 private	void	exclude(char *cmd, int verbose);
 private void	unexclude(char **list, char *cmd);
 private	int	findcmd(int ac, char **av);
-private	int	getav(int *acp, char ***avp);
+private	int	getav(FILE *f, int *acp, char ***avp);
 private	void	log_cmd(char *peer, int ac, char **av, int);
 private	int	do_cmds(void);
 private int	svc_uninstall(void);
+private int	nextbyte(void *unused, char *buf, int size);
 
 char		*bkd_getopt = "a:cCdDeE:hi:l|p:P:qRSt:UV:x:";
 private char	**exCmds;
@@ -231,7 +232,9 @@ do_cmds(void)
 	int	debug = getenv("BK_DEBUG") != 0;
 	char	*peer = 0;
 	int	logged_peer = 0;
+	FILE	*f = 0;
 
+	f = funopen(0, nextbyte, 0, 0, 0);
 	unless (peer = getenv("BKD_PEER")) {
 		peer = "local";
 		logged_peer = 1;
@@ -247,6 +250,8 @@ do_cmds(void)
 	putenv("BK_REMAP=");
 	putenv("BK_FEATURES=");
 	putenv("BK_FEATURES_REQUIRED=");
+	putenv("BK_QUIET_TRIGGERS=");
+
 	lease_inbkd();		/* enable bkd-mode in lease code */
 
 	/*
@@ -270,7 +275,7 @@ do_cmds(void)
 	putenv("_NESTED_LOCK=");
 	putenv("BKD_NESTED_LOCK=");
 
-	while (getav(&ac, &av)) {
+	while (getav(f, &ac, &av)) {
 		if (debug) {
 			for (i = 0; av[i]; ++i) {
 				ttyprintf("[%2d] = %s\n", i, av[i]);
@@ -316,6 +321,7 @@ do_cmds(void)
 			out("ERROR-Try help\n");
 		}
 	}
+	fclose(f);
 	repository_unlock(0, 0);
 	drain();
 	return (ret);
@@ -486,8 +492,8 @@ bad:
 
 static	int	content_len = -1;	/* content-length from http header */
 
-private char *
-nextbyte(char *buf, int size, void *unused)
+private int
+nextbyte(void *unused, char *buf, int size)
 {
 	int	ret;
 	char	*h;
@@ -510,11 +516,11 @@ nextbyte(char *buf, int size, void *unused)
 	}
 	buf[0] = (char)ret;
 	buf[1] = 0;
-	return (buf);
+	return (1);	/* returning 1 char */
 }
 
 private	int
-getav(int *acp, char ***avp)
+getav(FILE *f, int *acp, char ***avp)
 {
 #define	MAX_AV	50
 #define	QUOTE(c)	(((c) == '\'') || ((c) == '"'))
@@ -529,8 +535,7 @@ getav(int *acp, char ***avp)
 
 nextline:
 	/* read a line into a malloc'ed buffer */
-	if (buf) free(buf);
-	unless ((buf = gets_alloc(nextbyte, 0)) && *buf) return (0);
+	unless ((buf = fgetline(f)) && *buf) return (0);
 
 	/*
 	 * XXX TODO need to handle escaped quote character in args

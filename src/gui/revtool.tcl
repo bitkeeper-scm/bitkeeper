@@ -273,11 +273,11 @@ proc doDiff {{difftool 0}} \
 	set b ""
 	if {![info exists anchor] || $anchor == ""} return
 
-	set r $anchor
 	if {[string match *-* $anchor]} {
 		# anchor is wrong (1.223-lm) instead of just 1.223
-		set r [lindex [split $anchor -] 0]
+		set anchor [lindex [split $anchor -] 0]
 	}
+	set r $anchor
 
 	# No second rev? Get the parent
 	if {![info exists rev2] || "$rev2" == "$rev1" || "$rev2" == ""} {
@@ -377,7 +377,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 			set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
 			filltext $w(ctext) $prs 1 "ctext"
 			set wht [winfo height $w(cframe)]
-			set cht [font metrics $gc(rev.fixedFont) -linespace]
+			set cht [font metrics $gc(rev.graphFont) -linespace]
 			set adjust [expr {int($wht) / $cht}]
 			#puts "cheight=($wht) char_height=($cht) adj=($adjust)"
 			if {($curLine > $adjust) && ($comments_mapped == 0)} {
@@ -656,7 +656,7 @@ proc dateSeparate { } \
 				    -fill $gc(rev.dateColor) \
 				    -justify center \
 				    -anchor n -text "$date" \
-				    -font $gc(rev.fixedFont) \
+				    -font $gc(rev.graphFont) \
 				    -tags date_text
 			}
 			set prevday $curday
@@ -674,7 +674,7 @@ proc dateSeparate { } \
 	set tx [expr {$screen(maxx) - (($screen(maxx) - $x)/2) + 20}]
 	$w(graph) create text $tx $ty -anchor n \
 		-fill $gc(rev.dateColor) \
-		-text "$date" -font $gc(rev.fixedFont) \
+		-text "$date" -font $gc(rev.graphFont) \
 		-tags date_text
 }
 
@@ -725,13 +725,15 @@ proc addline {y xspace ht l} \
 			set id [$w(graph) create text $x $y \
 			    -fill $gc(rev.badColor) \
 			    -anchor sw -text "$txt" -justify center \
-			    -font $gc(rev.fixedBoldFont) -tags "$trev revtext"]
+			    -font $gc(rev.graphBoldFont) \
+			    -tags "$trev revtext"]
 			highlight $id "bad" $trev
 			incr bad
 		} else {
 			set id [$w(graph) create text $x $y -fill #241e56 \
 			    -anchor sw -text "$txt" -justify center \
-			    -font $gc(rev.fixedBoldFont) -tags "$rev revtext"]
+			    -font $gc(rev.graphBoldFont) \
+			    -tags "$rev revtext"]
 			#ballon_setup $trev
 			if {![info exists firstnode]} { 
 				set firstnode $id 
@@ -999,12 +1001,17 @@ proc listRevs {r file} \
 
 	set errorCode [list]
 	if {$gc(rev.tagOutline) == ""} {
-		set tagopt ""
+		set opt ""
 	} else {
-		set tagopt "-T"
+		set opt "-T"
 	}
-	set d [open "| bk _lines $Opts(line) $tagopt \"$r\" \"$file\"" "r"]
-	# puts "bk _lines $Opts(line) $r $tagopt \"$file\" 2>$dev_null"
+	set nopt " -n$gc(rev.showRevs)"
+	if {[regexp -- {^-[cn]} $r] || [regexp -- {^-R} $r]} {
+		set nopt ""
+	}
+	set opt "$opt$nopt"
+	set d [open "| bk _lines $Opts(line) $opt \"$r\" \"$file\"" "r"]
+	# puts "bk _lines $Opts(line) $r $opt \"$file\" 2>$dev_null"
 	set len 0
 	set big ""
 	while {[gets $d s] >= 0} {
@@ -1052,9 +1059,9 @@ proc listRevs {r file} \
 		exit 1
     	}
 
-	set len [font measure $gc(rev.fixedBoldFont) "$big"]
-	set ht [font metrics $gc(rev.fixedBoldFont) -ascent]
-	incr ht [font metrics $gc(rev.fixedBoldFont) -descent]
+	set len [font measure $gc(rev.graphBoldFont) "$big"]
+	set ht [font metrics $gc(rev.graphBoldFont) -ascent]
+	incr ht [font metrics $gc(rev.graphBoldFont) -descent]
 
 	set ht [expr {$ht * 2}]
 	set len [expr {$len + 10}]
@@ -1773,151 +1780,9 @@ proc done {} \
 	exit
 }
 
-# All of the pane code is from Brent Welch.  He rocks.
-proc PaneCreate {} \
-{
-	global	percent gc paned
-
-	# Figure out the sizes of the two windows and set the
-	# master's size and calculate the percent.
-	set x1 [winfo reqwidth .p.top]
-	set x2 [winfo reqwidth .p.b]
-	if {$x1 > $x2} {
-		set xsize $x1
-	} else {
-		set xsize $x2
-	}
-	set ysize [expr {[winfo reqheight .p.top] + [winfo reqheight .p.b.p]}]
-	set percent [expr {[winfo reqheight .p.b] / double($ysize)}]
-	.p configure -height $ysize -width $xsize -background $gc(rev.sashBG)
-	frame .p.fakesb -height $gc(rev.scrollWidth) -background $gc(rev.BG) \
-	    -borderwid 1 -relief sunken
-	    scrollbar .p.fakesb.x\
-	    	    -wid $gc(rev.scrollWidth) \
-		    -orient horiz \
-		    -background $gc(rev.scrollColor) \
-		    -troughcolor $gc(rev.troughColor)
-	    frame .p.fakesb.y -width $gc(rev.scrollWidth) \
-	    	-background $gc(rev.BG) -bd 2
-	    grid .p.fakesb.x -row 0 -column 0 -sticky ew
-	    grid .p.fakesb.y -row 0 -column 1 -sticky ns -padx 2
-	    grid columnconfigure .p.fakesb 0 -weight 1
-	place .p.fakesb -in .p -relx .5 -rely $percent -y -2 \
-	    -relwidth 1 -anchor s
-	frame .p.sash -height 2 -background $gc(rev.sashBG)
-	place .p.sash -in .p -relx .5 -rely $percent -relwidth 1 \
-	    -anchor center
-	frame .p.grip -background $gc(rev.BG) \
-		-width 13 -height 13 -bd 2 -relief raised -cursor double_arrow
-	place .p.grip -in .p -relx 1 -x -50 -rely $percent -anchor center
-	place .p.top -in .p -x 0 -rely 0.0 -anchor nw -relwidth 1.0 -height -2
-	place .p.b -in .p -x 0 -rely 1.0 -anchor sw -relwidth 1.0 -height -2
-
-	# Set up bindings for resize, <Configure>, and
-	# for dragging the grip.
-	bind .p <Configure> PaneResize
-	bind .p.grip <ButtonPress-1> "PaneDrag %Y"
-	bind .p.grip <B1-Motion> "PaneDrag %Y"
-	bind .p.grip <ButtonRelease-1> "PaneStop"
-
-	set paned 1
-}
-
-proc PaneResize {} \
-{
-	global	percent preferredGraphSize
-
-	if {[info exists preferredGraphSize]} {
-		set max [expr {double([winfo height .p])}]
-		set percent [expr {double($preferredGraphSize) / $max}]
-		if {$percent > 1.0} {set percent 1.0}
-	} else {
-		set ht [expr {[ht all] + 29.0}]
-		set y [winfo height .p]
-		set y1 [winfo height .p.top]
-		set y2 [winfo height .p.b]
-		if {$y1 >= $ht} {
-			set y1 $ht
-			set percent [expr {$y1 / double($y)}]
-		}
-		if {$y > $ht && $y1 < $ht} {
-			set y1 $ht
-			set percent [expr {$y1 / double($y)}]
-		}
-
-		# Make sure default graph size is never more than
-		# 40% of the GUI as a whole.
-		if {$percent > .40} {set percent .40}
-
-	}
-
-	# The plan is, the very first time this proc is called should
-	# be when the window first comes up. We want to set the
-	# preferred size then. All other times this proc is called 
-	# should be in response to the user interactively resizing the
-	# window, in which case we definitely do not want to change
-	# the preferred size of the graph. 
-	PaneGeometry [expr {![info exists preferredGraphSize]}]
-}
-
-proc PaneGeometry {{saveSize 0}} \
-{
-	global	percent psize preferredGraphSize
-
-	if {$saveSize} {
-		set preferredGraphSize \
-		    [expr {double([winfo height .p]) * $percent}]
-	}
-
-	place .p.top -relheight $percent
-	place .p.b -relheight [expr {1.0 - $percent}]
-	place .p.grip -rely $percent
-	place .p.fakesb -rely $percent -y -2
-	place .p.sash -rely $percent
-	raise .p.sash
-	raise .p.grip
-	lower .p.fakesb
-	set psize [winfo height .p]
-}
-
-proc PaneDrag {D} \
-{
-	global	lastD percent psize
-
-	# sync the fake scrollbar with the real one, to promote the
-	# illusion that we're dragging the actual scrollbar
-	eval .p.fakesb.x set [.p.top.xscroll get]
-
-	if {[info exists lastD]} {
-		set delta [expr {double($lastD - $D) / $psize}]
-		set percent [expr {$percent - $delta}]
-		if {$percent < 0.0} {
-			set percent 0.0
-		} elseif {$percent > 1.0} {
-			set percent 1.0
-		}
-		place .p.fakesb -rely $percent -y -2
-		place .p.sash -rely $percent
-		place .p.grip -rely $percent
-		raise .p.fakesb
-		raise .p.sash
-		raise .p.grip
-	}
-	set lastD $D
-}
-
-proc PaneStop {} \
-{
-	global	lastD
-
-	PaneGeometry 1
-	catch {unset lastD}
-}
-
-
 proc busy {busy} \
 {
-	global	paned w currentBusyState
+	global	w currentBusyState
 
 	# No reason to do any work if the state isn't changing. This
 	# actually makes a subtle performance boost.
@@ -1936,7 +1801,6 @@ proc busy {busy} \
 		$w(graph) configure -cursor left_ptr
 		$w(aptext) configure -cursor left_ptr
 	}
-	if {$paned == 0} { return }
 
 	# only need to call update if we are transitioning to the
 	# busy state; becoming "unbusy" will take care of itself
@@ -1946,7 +1810,7 @@ proc busy {busy} \
 
 proc widgets {} \
 {
-	global	search Opts gc stacked d w dspec wish yspace paned 
+	global	search Opts gc stacked d w dspec wish yspace
 	global  fname app ttype sem chgdspec
 
 	set sem "start"
@@ -1975,7 +1839,6 @@ proc widgets {} \
 	set stacked 1
 
 	getConfig "rev"
-	option add *background $gc(BG)
 
 	set gc(bw) 1
 	if {$gc(windows)} {
@@ -1990,21 +1853,12 @@ proc widgets {} \
 	}
 	set Opts(line_time)  "-c-$gc(rev.showHistory)"
 
-	frame .menus
-	    button .menus.quit -font $gc(rev.buttonFont) -relief raised \
-		-bg $gc(rev.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Quit" -command done
-	    button .menus.help -font $gc(rev.buttonFont) -relief raised \
-		-bg $gc(rev.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Help" -command { exec bk helptool revtool & }
-	    menubutton .menus.mb -font $gc(rev.buttonFont) -relief raised \
-	        -indicatoron 1 \
-		-bg $gc(rev.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Select Range" -width 15 -state normal \
-		-menu .menus.mb.menu
+	ttk::frame .menus
+	    ttk::button .menus.quit -text "Quit" -command done
+	    ttk::button .menus.help -text "Help" -command {
+		exec bk helptool revtool &
+	    }
+	    ttk::menubutton .menus.mb -text "Select Range" -menu .menus.mb.menu
 		set m [menu .menus.mb.menu]
 		if {$gc(aqua)} {$m configure -tearoff 0}
 		$m add command -label "Last Day" \
@@ -2043,20 +1897,11 @@ proc widgets {} \
 		    -command {revtool $fname -1Y}
 		$m add command -label "All Changes" \
 		    -command {revtool $fname ..}
-	    button .menus.cset -font $gc(rev.buttonFont) -relief raised \
-		-bg $gc(rev.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "View Changeset " -width 15 -command r2c -state disabled
-	    button .menus.difftool -font $gc(rev.buttonFont) -relief raised \
-		-bg $gc(rev.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Diff tool" -command "doDiff 1" -state disabled
-	    menubutton .menus.fmb -font $gc(rev.buttonFont) -relief raised \
-	        -indicatoron 1 \
-		-bg $gc(rev.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Select File" -width 12 -state normal \
-		-menu .menus.fmb.menu
+	    ttk::button .menus.cset -text "View Changeset " -command r2c \
+		-state disabled
+	    ttk::button .menus.difftool -text "Diff tool" -command "doDiff 1" \
+		-state disabled
+	    ttk::menubutton .menus.fmb -text "Select File" -menu .menus.fmb.menu
 		set gc(fmenu) [menu .menus.fmb.menu]
 		if {$gc(aqua)} {$gc(fmenu) configure -tearoff 0}
 		set gc(current) $gc(fmenu).current
@@ -2071,23 +1916,19 @@ proc widgets {} \
 	    if {"$fname" == "ChangeSet"} {
 		    #.menus.cset configure -command csettool
 		    pack .menus.quit .menus.help .menus.mb .menus.cset \
-			.menus.fmb -side left -fill y
+			.menus.fmb -side left -fill y -padx 1
 	    } else {
 		    pack .menus.quit .menus.help .menus.difftool \
-			.menus.mb .menus.cset .menus.fmb -side left -fill y
+			.menus.mb .menus.cset .menus.fmb \
+			-side left -fill y -padx 1
 	    }
 
-	frame .p
-	    frame .p.top -borderwidth 1 -relief sunken
-		scrollbar .p.top.xscroll -wid $gc(rev.scrollWidth) \
-		    -orient horiz \
-		    -command "$w(graph) xview" \
-		    -background $gc(rev.scrollColor) \
-		    -troughcolor $gc(rev.troughColor)
-		scrollbar .p.top.yscroll -wid $gc(rev.scrollWidth)  \
-		    -command "$w(graph) yview" \
-		    -background $gc(rev.scrollColor) \
-		    -troughcolor $gc(rev.troughColor)
+	ttk::panedwindow .p
+	    ttk::frame .p.top
+		ttk::scrollbar .p.top.xscroll -orient horizontal \
+		    -command "$w(graph) xview"
+		ttk::scrollbar .p.top.yscroll -orient vertical \
+		    -command "$w(graph) yview"
 		canvas $w(graph) -width 500 \
 	    	    -borderwidth 1 \
 		    -background $gc(rev.canvasBG) \
@@ -2102,9 +1943,9 @@ proc widgets {} \
 		grid columnconfigure .p.top 0 -weight 1
 		grid columnconfigure .p.top 1 -weight 0
 		
-	    frame .p.b -borderwidth 1 -relief sunken
+	    ttk::frame .p.b
 	    	# prs and annotation window
-		frame .p.b.p
+		ttk::frame .p.b.p
 		    text .p.b.p.t -width $gc(rev.textWidth) \
 			-borderwidth 1 \
 			-height $gc(rev.textHeight) \
@@ -2112,17 +1953,12 @@ proc widgets {} \
 			-xscrollcommand { .p.b.p.xscroll set } \
 			-yscrollcommand { .p.b.p.yscroll set } \
 			-bg $gc(rev.textBG) -fg $gc(rev.textFG) -wrap none 
-		    scrollbar .p.b.p.xscroll -orient horizontal \
-			-wid $gc(rev.scrollWidth) -command { .p.b.p.t xview } \
-			-background $gc(rev.scrollColor) \
-			-troughcolor $gc(rev.troughColor)
-		    scrollbar .p.b.p.yscroll -orient vertical \
-			-wid $gc(rev.scrollWidth) \
-			-command { .p.b.p.t yview } \
-			-background $gc(rev.scrollColor) \
-			-troughcolor $gc(rev.troughColor)
+		    ttk::scrollbar .p.b.p.xscroll -orient horizontal \
+			-command { .p.b.p.t xview }
+		    ttk::scrollbar .p.b.p.yscroll -orient vertical \
+			-command { .p.b.p.t yview }
 		# change comment window
-		frame .p.b.c
+		ttk::frame .p.b.c
 		    text .p.b.c.t -width $gc(rev.textWidth) \
 			-borderwidth 1 \
 			-height $gc(rev.commentHeight) \
@@ -2130,15 +1966,10 @@ proc widgets {} \
 			-xscrollcommand { .p.b.c.xscroll set } \
 			-yscrollcommand { .p.b.c.yscroll set } \
 			-bg $gc(rev.commentBG) -fg $gc(rev.textFG) -wrap none 
-		    scrollbar .p.b.c.xscroll -orient horizontal \
-			-wid $gc(rev.scrollWidth) -command { .p.b.c.t xview } \
-			-background $gc(rev.scrollColor) \
-			-troughcolor $gc(rev.troughColor)
-		    scrollbar .p.b.c.yscroll -orient vertical \
-			-wid $gc(rev.scrollWidth) \
-			-command { .p.b.c.t yview } \
-			-background $gc(rev.scrollColor) \
-			-troughcolor $gc(rev.troughColor)
+		    ttk::scrollbar .p.b.c.xscroll -orient horizontal \
+			-command { .p.b.c.t xview }
+		    ttk::scrollbar .p.b.c.yscroll -orient vertical \
+			-command { .p.b.c.t yview }
 
 		grid .p.b.c.yscroll -row 0 -column 1 -sticky ns
 		grid .p.b.c.xscroll -row 1 -column 0 -sticky ew
@@ -2159,18 +1990,17 @@ proc widgets {} \
 		pack .p.b.p -expand true -fill both -anchor s
 		pack .p.b -expand true -fill both -anchor s
 
-	set paned 0
-	after idle {
-	    PaneCreate
-	}
-	frame .cmd 
+	.p add .p.top
+	.p add .p.b -weight 1
+
+	ttk::frame .cmd 
 	search_widgets .cmd $w(aptext)
 	# Make graph the default window to have the focus
 	set search(focus) $w(graph)
 
-	grid .menus -row 0 -column 0 -sticky ew
+	grid .menus -row 0 -column 0 -sticky ew -pady 2
 	grid .p -row 1 -column 0 -sticky ewns
-	grid .cmd -row 2 -column 0 -sticky w
+	grid .cmd -row 2 -column 0 -sticky ew -pady 2
 	grid rowconfigure . 1 -weight 1
 	grid columnconfigure . 0 -weight 1
 	grid columnconfigure .cmd 0 -weight 1
@@ -2216,7 +2046,6 @@ proc widgets {} \
 	bind $w(graph) <t>		"history tags"
 	bind $w(graph) <d>		"doDiff"
 	bind $w(graph) <Button-2>	{ history; break }
-	bind $w(graph) <$gc(rev.quit)>	"done"
 	bind $w(graph) <s>		"sfile"
 	bind $w(graph) <c>		"annotate"
 	bind $w(graph) <Prior>		"$w(aptext) yview scroll -1 pages"
@@ -2291,12 +2120,9 @@ proc widgets {} \
 	bind Bk <Shift-B1-Motion>	"[bind Text <B1-Motion>]"
 	bind Bk <ButtonRelease-1>	"[bind Text <ButtonRelease-1>]"
 		
-	# In the search window, don't listen to "all" tags. (This is now done
-	# in the search.tcl lib) <remove if all goes well> -ask
-	#bindtags $search(text) { .cmd.search Entry }
+	bind all <$gc(rev.quit)>	"done"
 
 	focus $w(graph)
-	. configure -background $gc(BG)
 } ;# proc widgets
 
 proc commentsWindow {action} \

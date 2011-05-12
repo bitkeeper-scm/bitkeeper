@@ -3,6 +3,7 @@
 private remote	*file_parse(char *p);
 private	remote	*nfs_parse(char *p, int flags);
 private	remote	*url_parse(char *p, int default_port);
+private	pid_t	bkd(remote *r);
 
 /*
  * Turn either
@@ -386,6 +387,33 @@ bkd_tcp_connect(remote *r)
 	return ((pid_t)0);
 }
 
+int
+bkd_connect(remote *r, int opts)
+{
+	assert((r->rfd == -1) && (r->wfd == -1));
+	r->pid = bkd(r);
+	if (r->trace) {
+		fprintf(stderr,
+		    "bkd_connect: r->rfd = %d, r->wfd = %d\n", r->rfd, r->wfd);
+	}
+	if (r->wfd >= 0) return (0);
+	unless (opts & SILENT) {
+		if (r->badhost) {
+			fprintf(stderr,
+			    "Cannot resolve host '%s'.\n", r->host);
+		} else if (r->badconnect) {
+			fprintf(stderr,
+			    "Unable to connect to host '%s'.\n", r->host);
+		} else {
+			char	*rp = remote_unparse(r);
+
+			perror(rp);
+			free(rp);
+		}
+	}
+	return (-1);
+}
+
 /*
  * Return the pid of a connected to daemon with stdin/out put in fds[].
  * Stderr is left alone, we don't want to touch that - ssh needs it for
@@ -393,7 +421,7 @@ bkd_tcp_connect(remote *r)
  * 
  * **Win32 note: ssh does not work with BitKeeper when CYGWIN=tty is set,
  */
-pid_t
+private pid_t
 bkd(remote *r)
 {
 	char	*t, *freeme = 0, *freeme2 = 0;

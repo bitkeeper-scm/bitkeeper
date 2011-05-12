@@ -139,7 +139,8 @@ gaterr:			fprintf(stderr, "collapse: not allowed in a gate\n");
 	}
 	s = sccs_csetInit(0);
 	if (after && strchr(after, ',')) {
-		fprintf(stderr, "%s: rev passed to -a (%s) is not singular\n");
+		fprintf(stderr,
+		    "%s: rev passed to -a (%s) is not singular\n", prog, after);
 		goto out;
 	}
 	if (fromurl) {
@@ -274,7 +275,7 @@ do_cset(sccs *s, char *rev, char **nav)
 	range_walkrevs(s, d, 0, 0, 0, walkrevs_printmd5key, f);
 	fclose(f);
 	if (size(csetfile) == 0) {
-		fprintf(stderr, "Nothing to collapse.\n", me);
+		fprintf(stderr, "Nothing to collapse.\n");
 		rc = 0;
 		goto out;
 	}
@@ -439,12 +440,9 @@ do_file(char *file, char *tiprev)
 	gfile = strdup(s->gfile);
 	pfile = strdup(s->pfile);
 	d = sccs_findrev(s, "+");
-	if (tiprev) {
-		tipd = sccs_findrev(s, tiprev);
-	} else {
-		unless (tipd = parent_of_tip(s)) goto done;
-		if (streq(tipd->rev, "1.0")) tipd = 0;
-	}
+	tipd = tiprev ? sccs_findrev(s, tiprev) : parent_of_tip(s);
+	unless (tipd) goto done;
+	if (streq(tipd->rev, "1.0")) tipd = 0;
 	/* tipd is not the delta that will be the new tip */
 	if (tipd == d) {
 		rc = 0;
@@ -541,15 +539,14 @@ do_file(char *file, char *tiprev)
 		tipd = sccs_findrev((s = sccs_reopen(s)), "+");
 		unless (S_ISLNK(mode) || (mode == tipd->mode)) {
 			if (sccs_admin(s,
-			    0, 0, 0, 0, 0, 0, 0, mode2a(mode), 0)) {
+			    0, 0, 0, 0, 0, 0, mode2a(mode), 0)) {
 				sccs_whynot(me, s);
 				goto done;
 			}
 			tipd = sccs_findrev((s = sccs_reopen(s)), "+");
 		}
 		unless (streq(pathname, tipd->pathname)) {
-			if (sccs_admin(s,
-			    0, ADMIN_NEWPATH, 0, 0, 0, 0, 0, 0, 0)) {
+			if (sccs_adminFlag(s, ADMIN_NEWPATH)) {
 				sccs_whynot(me, s);
 				goto done;
 			}

@@ -162,3 +162,43 @@ EOF
 bk undos < foo > GOT
 checkfiles WANT GOT
 echo OK
+
+echo $N Testing Japanese, click on left line, then type s............$NL
+cd "$HERE/project"
+cat >jp.txt <<EOF
+私は　日本語が　分かります
+そうですか？
+はい、そうですよう！
+EOF
+bk new $Q jp.txt
+bk commit $Q -y"added jp.txt"
+cd "$HERE"
+bk clone $Q project copy
+cd project
+bk edit $Q jp.txt
+cat >jp.txt <<EOF
+私は　日本語が　分かります
+そうですか？
+はい、本当です
+EOF
+bk ci $Q -y"modified one line"
+bk commit $Q -y"changed jp.txt"
+cd "$HERE/copy"
+bk edit $Q jp.txt
+cat >jp.txt <<EOF
+私は　日本語が　分かります
+そうですか？
+本当です、どうもう　ありがとう　ございます
+EOF
+cp jp.txt save.txt
+bk ci $Q -y"modified last line"
+bk commit $Q -y"changed jp.txt"
+bk pull -R $Q >OUT 2>&1 || fail -f OUT
+cd RESYNC
+bk edit $Q -M1.1.1.1 jp.txt
+echo "encoding system utf-8" > "`bk dotbk`/config-gui"
+echo en_US.UTF-8 > "`bk dotbk`/LANG"
+bk fm3tool -f -r1.2 -l1.1.1.1 jp.txt
+bk get $Q -S jp.txt
+cmpfiles jp.txt ../save.txt
+echo OK

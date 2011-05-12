@@ -9,6 +9,7 @@ typedef struct {
 	u32	checkOnly:1;
 	u32	quiet:1;
 	u32	forward:1;
+	u32	sawRev:1;
 	u32	iflags;
 	u32	nfiles;
 	ticker	*tick;
@@ -42,12 +43,14 @@ stripdel_main(int ac, char **av)
 		    case 'N': opts.quiet = 1; opts.nfiles = atoi(optarg); break;
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r':
+			opts.sawRev = 1;
 			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
 		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind] && streq(av[optind], "-")) {
+		if (opts.sawRev) usage();
 		rc = strip_list(opts);
 		goto done;
 	}
@@ -202,7 +205,7 @@ do_check(sccs *s, int flags)
 	int	f = ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE|flags;
 	int	error;
 
-	error = sccs_admin(s, 0, f, 0, 0, 0, 0, 0, 0, 0);
+	error = sccs_adminFlag(s, f);
 	return(error ? 1 : 0);
 }
 

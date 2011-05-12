@@ -52,7 +52,7 @@ The
 command can take an optional argument which specifies an alternate
 patch to reapply.
 .SH OPTIONS
-.TP "\\fB\\-\\-standalone \\fP"
+.TP "\\fB\\-\\-force\\-unpopulate \\fP"
 .OPTreq \-a rev
 Remove all changesets which occurred after 
 .ARG rev .
@@ -64,6 +64,11 @@ use this option.
 .B \-f
 Force the undo to complete if it can.  Normally, undo will
 prompt with a list of deltas which will be removed.
+.tp
+.B \-\-force\-unpopulate
+If the undo results in a component being removed, undo will first check
+that the component can be found in a gate.
+Use this option to disable the gate check and just remove the component.
 .tp
 .B \-q
 Run quietly; do not list files.

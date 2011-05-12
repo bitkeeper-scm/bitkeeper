@@ -122,7 +122,8 @@ void	remote_free(remote *r);
 void	remote_print(remote *r, FILE *f);
 void	remote_error(remote *r, char *msg);
 int	remote_valid(char *url);
-pid_t	bkd(remote *r);
+char	*remoteurl_normalize(remote *r, char *url);
+
 int	gzipAll2fh(int rfd, FILE *wf, int level, int *in, int *out,
     int verbose);
 int	gunzipAll2fh(int rfd, FILE *wf, int *in, int *out);
@@ -138,8 +139,8 @@ int	get_ok(remote *r, char *read_ahead, int verbose);
 int	send_file(remote *r, char *file, int extra);
 int	send_file_extra_done(remote *r);
 int	skip_hdr(remote *r);
-int	getTriggerInfoBlock(remote *r, int verbose); 
-int	bkd_connect(remote *r);
+int	getTriggerInfoBlock(remote *r, int quiet);
+int	bkd_connect(remote *r, int opts);
 void	disconnect(remote *r);
 void	drain(void);
 char	**getClientInfoBlock(void);
@@ -150,7 +151,7 @@ int	prunekey(sccs *, remote *, hash *, int, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
-int	getServerInfo(remote *r);
+int	getServerInfo(remote *r, hash *bkdEnv);
 char	*vpath_translate(char *path);
 
 #define	SENDENV_NOREPO	   1 /* don't assume we are called from a repo */
@@ -171,5 +172,18 @@ int	bkd_seed(char *oldseed, char *newval, char **newout);
 void	bkd_saveSeed(char *repoid, char *seed);
 char	*bkd_restoreSeed(char *repoid);
 
-int	bkd_doResolve(char *me, int verbose);
+int	bkd_doResolve(char *me, int quiet, int verbose);
+
+// like sccs.h -- use high bits to leave low bits for things like SILENT
+#define	REMOTE_GZ_SND	0x1000	/* gzip the stdin we send */
+#define	REMOTE_GZ_RCV	0x2000	/* ungzip the stdout we receive */
+#define	REMOTE_STREAM	0x4000	/* whether to send the input as part of
+				 * the send_file() message, or as a second
+				 * stream.
+				 */
+#define	REMOTE_BKDERRS	0x8000	/* print bkd_connect() errors to stderr */
+
+int	remote_cmd(char **av, char *url,
+    FILE *in, FILE *out, FILE *err, hash *bkdEnv, int opts);
+
 #endif

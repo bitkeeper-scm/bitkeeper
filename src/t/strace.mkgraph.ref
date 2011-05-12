@@ -1,10 +1,10 @@
 # baseline data for t.strace-cnt
 _getdir 1
 chmod 1
-close 5
-fstat 8
-lseek 37
+close 6
+fstat 7
+lseek 38
 lstat 17
-open 6
+open 7
 read 148
-write 91
+write 92

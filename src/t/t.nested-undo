@@ -78,7 +78,7 @@ bk alias set FOO all || exit 1
 bk alias set $Q HERE FOO || exit 1
 bk undo -q -fsr+ 2>ERR && fail -f ERR
 cat <<EOF > WANT
-undo: No other sources for ./gdb known
+undo: ./gdb cannot be found at a gate
 undo: unable to remove ./gdb
 EOF
 cmpfiles WANT ERR
@@ -88,6 +88,10 @@ bk undo -q -fsr+ 2>ERR && fail -f ERR
 cmpfiles WANT ERR
 # update src repo urllist, then undo works
 bk _rclone $Q . ../backup || fail
+bk undo -fsr+ 2>ERR && fail -f ERR should fail
+grep -q "undo: ./gdb cannot be found at a gate" ERR || fail -f ERR
+(cd ../backup; bk gate $Q .)
+bk here check $Q ALL # notice that ../backup is a gate now
 bk undo $Q -fsr+ || fail
 echo OK
 

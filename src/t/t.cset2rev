@@ -33,14 +33,14 @@ echo OK
 
 echo $N Check -r@ options ...........................................$NL
 x=`bk prs -r@1.2 -hd:GFILE::REV: file1 file2 file3`
-if [ "$x" != "file11.1file21.1" ]
+if [ "$x" != "file11.1file21.1file31.0" ]
 then	echo wrong: $x
 	bk changes -v -r1.2 | cat
 	exit 1
 fi
 key=`bk prs -r1.2 -hd:KEY: ChangeSet`
 x=`bk prs -r@"$key" -hd:GFILE::REV: file1 file2 file3`
-if [ "$x" != "file11.1file21.1" ]
+if [ "$x" != "file11.1file21.1file31.0" ]
 then	echo wrong: $x
 	bk changes -v -r"$key" | cat
 	exit 1
@@ -70,11 +70,8 @@ bk prs -r@1.1..@t2 -hnd:GFILE:@:REV: file1 file2 file3 > GOT || exit 1
 cat <<EOF > WANT
 file1@1.2
 file1@1.1
-file1@1.0
 file2@1.1
-file2@1.0
 file3@1.1
-file3@1.0
 EOF
 cmpfiles GOT WANT
 echo OK

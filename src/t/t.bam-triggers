@@ -239,15 +239,9 @@ chmod +x BitKeeper/triggers/post-commit-noisy
 bk edit $Q somefile
 echo whatever >> somefile
 bk delta $Q -ywhatever somefile
-bk commit -ywhatever > OUT 2>&1 || {
-	echo commit failed unexpectedly
-	cat OUT
-	exit 1
-}
+bk commit -ywhatever > OUT 2>&1 || fail -f OUT commit failed unexpectedly
 grep -q 'Hi there, I am a trigger.' OUT && grep -q 'Hi there to stderr' OUT || {
-	echo wrong trigger outout
-	cat OUT
-	exit 1
+	fail -f OUT wrong trigger outout
 }
 echo OK
 
@@ -284,9 +278,7 @@ bk pull > OUT 2>ERR || {
 	exit 1
 }
 grep -q 'Hi there, I am a trigger.' ERR && grep -q 'Hi there to stderr' ERR || {
-	echo wrong trigger outout
-	cat OUT
-	exit 1
+	fail -f ERR wrong trigger outout
 }
 echo OK
 

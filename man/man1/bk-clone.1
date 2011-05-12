@@ -67,7 +67,7 @@ Changes made in the child can be pushed back into the parent by running
 Only completed changesets are cloned.  Any pending deltas are removed
 from the child before the clone completes.
 .SH OPTIONS
-.TP \-\-no-hardlinks
+.TP \-\-checkout=<mode>
 .OPTreq \-@ base_url
 Use a local repository as a baseline for the clone so that only the
 changes need to be transferred from a remote location.
@@ -76,6 +76,21 @@ changes need to be transferred from a remote location.
 Set the BAM server url to 
 .ARG url
 in the destination repository.
+.tp
+\fB\-\-checkout\fB=\fR\*<\fImode\fP\*>\fR
+Override any previous setting for the checkout mode.  
+Valid values for
+.ARG mode
+are
+.IR none ,
+.IR get ,
+or
+.IR edit .
+Note that this mode becomes "sticky" in that the checkout mode will
+added to 
+.BR \`bk\ root\`/BitKeeper/log/config .
+If no other config overrides that, then this mode will "stick"
+for subsequent updates.
 .tp
 .OPTequal \-E env val
 Export an environment variable to the 

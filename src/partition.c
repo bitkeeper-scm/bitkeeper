@@ -228,18 +228,13 @@ clone(Opts *opts, char *from, char *to, int fullcheck)
 	int	rc = 0;
 	int	flags = opts->flags;
 	char	*oconf = 0;
-	char	*conf = "partial_check: off!";
 	char	**cmd;
 
 	if (fullcheck) {
 		// Could use bk -?BK_CONFIG, but then we'd need to
 		// convert the thing to a hash, then to a str.
-		if (oconf = getenv("BK_CONFIG")) {
-			oconf = strdup(oconf);
-			safe_putenv("BK_CONFIG=%s; %s", oconf, conf);
-		} else {
-			safe_putenv("BK_CONFIG=%s", conf);
-		}
+		if (oconf = getenv("BK_CONFIG")) oconf = strdup(oconf);
+		bk_setConfig("partial_check", "off");
 	}
 	cmd = addLine(0, "bk");
 	cmd = addLine(cmd, "clone");
@@ -254,12 +249,8 @@ clone(Opts *opts, char *from, char *to, int fullcheck)
 		rc = 1;
 	}
 	if (fullcheck) {
-		if (oconf) {
-			safe_putenv("BK_CONFIG=%s", oconf);
-			free(oconf);
-		} else {
-			putenv("BK_CONFIG=");
-		}
+		safe_putenv("BK_CONFIG=%s", oconf ? oconf : "");
+		FREE(oconf);
 	}
 	return (rc);
 }
@@ -271,15 +262,11 @@ private	void
 setEnv(Opts *opts)
 {
 	char	*p;
-	char	*conf = "nosync: yes!; checkout: none!; partial_check: on!";
 
-	if (p = getenv("BK_CONFIG")) {
-		opts->oconfig = strdup(p);
-		safe_putenv("BK_CONFIG=%s; %s", p, conf);
-	} else {
-		opts->oconfig = strdup("");
-		safe_putenv("BK_CONFIG=%s", conf);
-	}
+	if (p = getenv("BK_CONFIG")) opts->oconfig = strdup(p);
+	bk_setConfig("nosync", "yes");
+	bk_setConfig("checkout", "none");
+	bk_setConfig("partial_check", "on");
 	putenv("BK_NO_TRIGGERS=1");
 	putenv("BK_GONE=");		/* no surprises -- ignore env */
 }
@@ -290,10 +277,8 @@ setEnv(Opts *opts)
 private	void
 restoreEnv(Opts *opts)
 {
-	assert(opts->oconfig);
-	safe_putenv("BK_CONFIG=%s", opts->oconfig);
-	free(opts->oconfig);
-	opts->oconfig = 0;
+	safe_putenv("BK_CONFIG=%s", opts->oconfig ? opts->oconfig : "");
+	FREE(opts->oconfig);
 }
 
 /*
@@ -615,7 +600,7 @@ moveComps(Opts *opts)
 	char	key[MAXKEY];
 
 	unless (prodweave = fopen("PRODWEAVE", "wb")) {
-		fprintf(stderr, "%s: could not create prod weave\n");
+		fprintf(stderr, "%s: could not create prod weave\n", prog);
 		goto err;
 	}
 	prod = proj_init(".");

@@ -710,7 +710,7 @@ getLID(char kind)
 	http = getenv("_BKD_HTTP") ? 'h' : 'n';
 	return(aprintf("%c|%c|%s|%s|%s|%d|%u|%u|%s|%s",
 		kind, http, user, host, prog,
-		time(0), getpid(), random, ruser, rhost));
+		(u32)time(0), getpid(), random, ruser, rhost));
 }
 
 /*
@@ -730,7 +730,14 @@ nested_isStale(char *file)
 		TRACE("stat(%s) failed", file);
 		return (stale);
 	}
-	nlid = loadfile(file, 0);
+	unless (nlid = loadfile(file, 0)) {
+		/*
+		 * If we can't read the file, it's probably a
+		 * permission problem. We're counting on whoever
+		 * locked to unlock so we call it not stale.
+		 */
+		return (0);
+	}
 	chomp(nlid);
 	/* garbage == stale lock */
 	unless (nl = explodeNLID(nlid)) {
@@ -1051,7 +1058,14 @@ nested_lockers(project *p, int listStale, int removeStale)
 			if (nested_isStale(fn)) {
 				if (listStale) {
 					nl = new(nlock);
-					nl->nlid = loadfile(fn, 0);
+					unless (nl->nlid = loadfile(fn, 0)) {
+rderr:						error(READER_LOCK_DIR
+						    "/%s: %s\n",
+						    files[i], strerror(errno));
+						free(nl);
+						free(fn);
+						continue;
+					}
 					chomp(nl->nlid);
 					nl->stale = 1;
 					lockers = addLine(lockers, nl);
@@ -1069,7 +1083,7 @@ nested_lockers(project *p, int listStale, int removeStale)
 				continue;
 			}
 			nl = new(nlock);
-			nl->nlid = loadfile(fn, 0);
+			unless (nl->nlid = loadfile(fn, 0)) goto rderr;
 			chomp(nl->nlid);
 			lockers = addLine(lockers, nl);
 			free(fn);
@@ -1080,13 +1094,19 @@ nested_lockers(project *p, int listStale, int removeStale)
 	/* now check for a writer */
 	writer = aprintf("%s/" NESTED_WRITER_LOCK, proj_root(p));
 	if (exists(writer)) {
-		unless (nested_isStale(writer) && !listStale) {
+		int	stale = nested_isStale(writer);
+		unless (stale && !listStale) {
 
 			nl = new(nlock);
-			nl->nlid = loadfile(writer, 0);
-			chomp(nl->nlid);
-			nl->stale = 1;
-			lockers = addLine(lockers, nl);
+			if (nl->nlid = loadfile(writer, 0)) {
+				chomp(nl->nlid);
+				nl->stale = stale;
+				lockers = addLine(lockers, nl);
+			} else {
+				error(NESTED_WRITER_LOCK
+				    ": %s\n", strerror(errno));
+				free(nl);
+			}
 		}
 	}
 	free(writer);
@@ -1123,6 +1143,7 @@ nested_mine(project *p, char *nested_lock, int write)
 			goto out;
 		}
 		t = loadfile(tfile, 0);
+		assert(t);
 		chomp(t);
 		unless (rc = streq(nested_lock, t)) nl_errno = NL_MISMATCH;
 		free(t);
@@ -1302,36 +1323,43 @@ char *
 nested_errmsg(void)
 {
 	static	char	*msg;
+	int	i;
 	char	*lines;
-	char	**lockers;
+	char	**lockers = 0, **plockers = 0;
 
 	assert(errMsgs[nl_errno]);
 	if (msg) free(msg);
 	lockers = nested_lockers(0, 1, 0);
-	msg = aprintf("%s\n%s\n",
-	    errMsgs[nl_errno],
-	    ((lines = joinLines("\n",
-		    mapLines(lockers, (void*)prettyNlock, freeNlock)))
-		? lines : "No lockers found"));
+	EACH(lockers) {
+		plockers = addLine(plockers, prettyNlock((nlock *)lockers[i]));
+	}
+	freeLines(lockers, freeNlock);
+	lines = joinLines("\n", plockers);
+	msg = aprintf("%s\n%s\n", errMsgs[nl_errno],
+	    lines ? lines : "No lockers found");
+	free(lines);
 	/*
 	 * It's free and not freeNlock here because the mapLines
 	 * changes the items to strings.
 	 */
-	freeLines(lockers, free);
+	freeLines(plockers, free);
 	return (msg);
 }
 
 void
 nested_printLockers(project *p, FILE *out)
 {
-	char	**lockers;
+	char	**lockers = 0, **plockers = 0;
 	int	i;
 
-	lockers = mapLines(nested_lockers(p, 1, 0),
-	    (void*)prettyNlock, freeNlock);
-	repository_lockers(p);
-	EACH (lockers) {
-		fprintf(out, "%s\n", lockers[i]);
+	lockers = nested_lockers(p, 1, 0);
+	EACH(lockers) {
+		plockers = addLine(plockers, prettyNlock((nlock *)lockers[i]));
 	}
-	freeLines(lockers, free);
+	freeLines(lockers, freeNlock);
+	repository_lockers(p);
+	EACH (plockers) {
+		fprintf(out, "%s\n", plockers[i]);
+	}
+	freeLines(plockers, free);
 }

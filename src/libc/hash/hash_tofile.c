@@ -7,7 +7,7 @@
 
 private	int binaryField(u8 *data, int len);
 private	int goodkey(u8 *key, int len);
-private	void savekey(hash *h, int base64, char *key, char **val);
+private	void savekey(hash *h, int base64, char *key, FILE *val);
 private	void writeField(FILE *f, char *key, u8 *data, int len);
 
 /* These are from tomcrypt... */
@@ -105,7 +105,8 @@ hash_fromStream(hash *h, FILE *f)
 	char	*line;
 	char	*key = 0;
 	int	base64 = 0;
-	char	**val = 0;
+	FILE	*val = fmem();
+	int	gotval = 0;
 	char	*p;
 	unsigned long len;
 	char	data[256];
@@ -114,12 +115,12 @@ hash_fromStream(hash *h, FILE *f)
 	while (line = fgetline(f)) {
 		if ((line[0] == '@') && (line[1] != '@')) {
 			unless (line[1]) break; /* @ == end of record */
-			if (key || val) {
+			if (key || gotval) {
 				/* save old key */
 				unless (h) h = hash_new(HASH_MEMHASH);
 				savekey(h, base64, key, val);
 				key = 0;
-				val = 0;
+				gotval = 0;
 			}
 			base64 =
 			    ((p = strchr(line, ' ')) && streq(p, " base64"));
@@ -131,23 +132,30 @@ hash_fromStream(hash *h, FILE *f)
 				}
 				*p = 0;
 			}
-			key = strdup(line+1);
+			webdecode(line+1, &key, 0);
 		} else {
 			if (*line == '@') ++line; /* skip escaped @ */
 			if (base64) {
 				len = sizeof(data);
 				base64_decode(line, strlen(line), data, &len);
-				val = data_append(val, data, len, 0);
+				if (len) {
+					fwrite(data, 1, len, val);
+					gotval = 1;
+				}
 			} else {
-				if (val) val = str_append(val, "\n", 0);
-				val = str_append(val, line, 0);
+				if (gotval) fputc('\n', val);
+				if (*line) {
+					fputs(line, val);
+					gotval = 1;
+				}
 			}
 		}
 	}
-	if (key || val) {
+	if (key || gotval) {
 		unless (h) h = hash_new(HASH_MEMHASH);
 		savekey(h, base64, key, val);
 	}
+	fclose(val);
 	return (h);
 }
 
@@ -155,16 +163,8 @@ hash_fromStream(hash *h, FILE *f)
 private int
 goodkey(u8 *key, int len)
 {
-	int	i;
-
-	for (i = 0; i < (len-1); i++) {
-		unless (isprint(key[i]) && !isspace(key[i])) {
-			fprintf(stderr, "%s invalid: %c\n", key, key[i]);
-			return (0);
-		}
-	}
-	unless (key[len-1] == 0) {
-		fprintf(stderr, "%s, no null\n", key);
+	if ((len == 0) || (key[len-1] != 0)) {
+		fprintf(stderr, "not C string\n");
 		return (0);
 	}
 	return (1);
@@ -203,7 +203,7 @@ writeField(FILE *f, char *key, u8 *data, int len)
 	char	out[128];
 
 	fputc('@', f);
-	fputs(key, f);
+	webencode(f, key, strlen(key)+1);
 	if (binaryField(data, len)) {
 		fputs(" base64\n", f);
 		while (len) {
@@ -233,21 +233,18 @@ writeField(FILE *f, char *key, u8 *data, int len)
 }
 
 private void
-savekey(hash *h, int base64, char *key, char **val)
+savekey(hash *h, int base64, char *key, FILE *val)
 {
 	u8	*data;
-	int	len;
+	size_t	len;
 
 	unless (key) key = strdup("");
-	if (base64) {
-		data = data_pullup(&len, val);
-	} else {
-		data = str_pullup(&len, val);
-		++len;
-	}
-	hash_store(h, key, strlen(key)+1, data, len); /* overwrite existing */
+	data = fmem_peek(val, &len);
+	unless (base64) len++;
+	/* overwrite existing */
+	hash_store(h, key, strlen(key)+1, data, len);
 	free(key);
-	free(data);
+	ftrunc(val, 0);
 }
 
 int

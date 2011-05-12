@@ -113,12 +113,12 @@ then	echo Wrong encoding. $ENC
 fi
 echo OK
 
-echo $N Make sure -Z allowed only with -i ...........................$NL
+echo $N Make sure -Z is allowed without -i ..........................$NL
 bk get $Q -e data || exit 1
 echo '! @ # $ % ^ & * ( )' >>data
-bk delta $Q -Znone -y data 2>  d.out
-grep -q 'Encoding is allowed only when creating files' d.out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+test `bk prs -r+ -hnd:COMPRESSION: data` = gzip || fail
+bk delta $Q -Znone -y data || fail
+test `bk prs -r+ -hnd:COMPRESSION: data` = none || fail
 echo OK
 
 echo $N Trying to change some gzipped data ..........................$NL

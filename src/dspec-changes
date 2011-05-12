@@ -1,8 +1,9 @@
+# dspec-v2
 # The default dspec used by 'bk changes' and 'bk changes -v'
 
-:INDENT:		# 2 spaces + 2 in component
-:DPN:@:REV:
-${1=:USER:$if(:HOST:){@:HOST:}}		# 1 == user@host
+":INDENT:"		# 2 spaces + 2 in component
+":DPN:@:REV:"
+${1=":USER:" $if(:HOST:){"@:HOST:"}}		# 1 == user@host
 $if (:CHANGESET: && !:COMPONENT_V:) {
 	", :Dy:-:Dm:-:Dd: :T::TZ:, $1"
 	${0=$1}		   	        # 0 == user of last cset
@@ -14,7 +15,7 @@ $if (:CHANGESET: && !:COMPONENT_V:) {
 $unless (:CHANGESET:) {
 	" +:LI: -:LD:"			# lines added/deleted
 }
-\n
+"\n"
 $each(:C:) {				# comments
 	":INDENT:  (:C:)\n"
 }
@@ -24,4 +25,4 @@ $each(:TAG:) {
 $if (:MERGE:) {
 	":INDENT:  MERGE: :MPARENT:\n"
 }
-\n
+"\n"

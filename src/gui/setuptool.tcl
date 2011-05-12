@@ -164,11 +164,11 @@ proc app_init {} \
 	# Presently we don't support setup.BG, because the wizard widget
 	# isn't graceful about accepting anything other than default colors.
 	# Bummer, huh?
-	option add *Checkbutton.font      $gc(setup.noticeFont)  startupFile
-	option add *Radiobutton.font      $gc(setup.noticeFont)  startupFile
-	option add *Menubutton.font       $gc(setup.noticeFont)  startupFile
+	option add *Checkbutton.font      $gc(setup.buttonFont)  startupFile
+	option add *Radiobutton.font      $gc(setup.buttonFont)  startupFile
+	option add *Menubutton.font       $gc(setup.buttonFont)  startupFile
 	option add *Button.font           $gc(setup.buttonFont)  startupFile
-	option add *Label.font            $gc(setup.noticeFont)  startupFile
+	option add *Label.font            $gc(setup.buttonFont)  startupFile
 	option add *Entry.background      $gc(setup.entryColor)  startupFile
 	option add *Text*background       $gc(setup.textBG)      startupFile
 	option add *Text*foreground       $gc(setup.textFG)      startupFile
@@ -188,6 +188,12 @@ proc app_init {} \
 		keyword,rcs   0
 		keyword,expand1 0
 		keyword       "none"
+
+		license		""
+		licsign1	""
+		licsign2	""
+		licsign3	""
+		repository	""
 	}
 
 	# Override those with the config.template
@@ -284,7 +290,7 @@ proc computeSize {wvar hvar} \
 	# vertically we need enough space to show 28 or so lines of
 	# text in the label/button font. We'll do the same sort of 
 	# dance again, but with the label/button font
-	.bogus configure -font $gc(setup.noticeFont)
+	.bogus configure -font $gc(setup.buttonFont)
 	set height [winfo reqheight .bogus]
 	destroy .bogus
 
@@ -418,17 +424,17 @@ proc widgets {} \
 		    -takefocus 0 \
 		    -bd 1 \
 		    -width 80
-		scrollbar $w.vsb -command [list $w.text yview] -bd 1
-		scrollbar $w.hsb -command [list $w.text.xview] -bd 1
+		ttk::scrollbar $w.vsb -command [list $w.text yview]
+		ttk::scrollbar $w.hsb -command [list $w.text.xview]
 
-		frame $w.radioframe -bd 0
-		radiobutton $w.radioframe.accept \
+		ttk::frame $w.radioframe
+		ttk::radiobutton $w.radioframe.accept \
 		    -text "I Agree" \
 		    -underline 2 \
 		    -variable wizData(licenseAccept) \
 		    -command [list $this configure -state normal] \
 		    -value 1
-		radiobutton $w.radioframe.dont \
+		ttk::radiobutton $w.radioframe.dont \
 		    -text "I Do Not Agree" \
 		    -underline 2 \
 		    -variable wizData(licenseAccept) \
@@ -470,24 +476,20 @@ proc widgets {} \
 		set ::widgets(licsign2) $w.licsign2Entry
 		set ::widgets(licsign3) $w.licsign3Entry
 
-		label $w.keyLabel -text "License Key:"
-		entry $w.keyEntry  -textvariable wizData(license) \
-		    -background $gc(setup.mandatoryColor)
-		button $w.fileButton -text "From file..." \
+		ttk::label $w.keyLabel -text "License Key:"
+		ttk::entry $w.keyEntry  -textvariable wizData(license)
+		ttk::button $w.fileButton -text "From file..." \
 		    -command {parseLicenseData file}
-		label $w.licsign1Label -text "Key Signature #1:"
-		entry $w.licsign1Entry -textvariable wizData(licsign1) \
-		    -background $gc(setup.mandatoryColor)
-		label $w.licsign2Label -text "Key Signature #2:"
-		entry $w.licsign2Entry -textvariable wizData(licsign2) \
-		    -background $gc(setup.mandatoryColor)
-		label $w.licsign3Label -text "Key Signature #3:"
-		entry $w.licsign3Entry -textvariable wizData(licsign3) \
-		    -background $gc(setup.mandatoryColor)
+		ttk::label $w.licsign1Label -text "Key Signature #1:"
+		ttk::entry $w.licsign1Entry -textvariable wizData(licsign1)
+		ttk::label $w.licsign2Label -text "Key Signature #2:"
+		ttk::entry $w.licsign2Entry -textvariable wizData(licsign2)
+		ttk::label $w.licsign3Label -text "Key Signature #3:"
+		ttk::entry $w.licsign3Entry -textvariable wizData(licsign3)
 
 		grid $w.keyLabel       -row 0 -column 0 -sticky e
 		grid $w.keyEntry       -row 0 -column 1 -sticky ew -pady 2
-		grid $w.fileButton     -row 0 -column 2 -sticky w
+		grid $w.fileButton     -row 0 -column 2 -sticky w -padx 2
 		grid $w.licsign1Label  -row 1 -column 0 -sticky e 
 		grid $w.licsign1Entry  -row 1 -column 1 -sticky ew -pady 2
 		grid $w.licsign2Label  -row 2 -column 0 -sticky e
@@ -534,26 +536,28 @@ proc widgets {} \
 
 		trace variable wizData(repository) w {validate repoInfo}
 
-		label $w.repoPathLabel -text "Repository Path:"
-		label $w.descLabel     -text "Repository description:"
-		label $w.emailLabel    -text "Contact email address:"
-		entry $w.repoPathEntry \
-		    -textvariable wizData(repository) \
-		    -background $gc(setup.mandatoryColor)
-		entry $w.descEntry     \
+		ttk::label $w.repoPathLabel -text "Repository Path:"
+		ttk::label $w.descLabel     -text "Repository description:"
+		ttk::label $w.emailLabel    -text "Contact email address:"
+		ttk::entry $w.repoPathEntry \
+		    -textvariable wizData(repository)
+		ttk::entry $w.descEntry     \
 		    -textvariable wizData(description)
-		entry $w.emailEntry    \
+		ttk::entry $w.emailEntry    \
 		    -textvariable wizData(email)
-		button $w.moreInfoRepoInfo -bd 1 \
+		ttk::button $w.moreInfoRepoInfo \
 		    -text "More info" \
 		    -command [list moreInfo repoinfo "CONTACT INFORMATION"]
 
-		grid $w.repoPathLabel -row 0 -column 0 -sticky e
-		grid $w.repoPathEntry -row 0 -column 1 -sticky ew -columnspan 2 
-		grid $w.descLabel     -row 1 -column 0 -sticky e
-		grid $w.descEntry     -row 1 -column 1 -sticky ew -columnspan 2 
-		grid $w.emailLabel    -row 2 -column 0 -sticky e
-		grid $w.emailEntry    -row 2 -column 1 -sticky ew -columnspan 2 
+		grid $w.repoPathLabel -row 0 -column 0 -sticky e -pady 2
+		grid $w.repoPathEntry -row 0 -column 1 -sticky ew -pady 2 \
+		    -columnspan 2 
+		grid $w.descLabel     -row 1 -column 0 -sticky e -pady 2
+		grid $w.descEntry     -row 1 -column 1 -sticky ew -pady 2 \
+		    -columnspan 2 
+		grid $w.emailLabel    -row 2 -column 0 -sticky e -pady 2
+		grid $w.emailEntry    -row 2 -column 1 -sticky ew -pady 2 \
+		    -columnspan 2 
 		grid $w.moreInfoRepoInfo -row 3 -column 0 -sticky e -pady 8
 
 		grid columnconfigure $w 0 -weight 0
@@ -616,27 +620,26 @@ proc widgets {} \
 			}
 		}
 
-		label $w.keywordLabel -text "Keyword Expansion:"
-		checkbutton $w.sccsCheckbutton \
+		ttk::label $w.keywordLabel -text "Keyword Expansion:"
+		ttk::checkbutton $w.sccsCheckbutton \
 		    -text "SCCS" \
 		    -onvalue 1 \
 		    -offvalue 0 \
 		    -variable wizData(keyword,sccs) \
 		    -command updateKeyword
-		checkbutton $w.rcsCheckbutton \
+		ttk::checkbutton $w.rcsCheckbutton \
 		    -text "RCS" \
 		    -onvalue 1 \
 		    -offvalue 0 \
 		    -variable wizData(keyword,rcs) \
 		    -command updateKeyword
-		checkbutton $w.expand1Checkbutton \
+		ttk::checkbutton $w.expand1Checkbutton \
 		    -text "EXPAND1" \
 		    -onvalue 1 \
 		    -offvalue 0 \
 		    -variable wizData(keyword,expand1) \
 		    -command updateKeyword
-		button $w.moreInfoKeywords \
-		    -bd 1 \
+		ttk::button $w.moreInfoKeywords \
 		    -text "More info" \
 		    -command [list moreInfo keywords]
 
@@ -670,12 +673,10 @@ proc widgets {} \
 
 		$this configure -defaultbutton next
 
-		label $w.checkoutLabel -text "Checkout Mode:"
-		tk_optionMenu $w.checkoutOptionMenu wizData(checkout) \
-		    "none" "get" "edit"
-		$w.checkoutOptionMenu configure -width 4 -borderwidth 1
-		button $w.checkoutMoreInfo \
-		    -bd 1 \
+		ttk::label $w.checkoutLabel -text "Checkout Mode:"
+		ttk::combobox $w.checkoutOptionMenu -state readonly -width 10 \
+		    -textvariable wizData(checkout) -values {none get edit}
+		ttk::button $w.checkoutMoreInfo \
 		    -text "More info" \
 		    -command [list moreInfo checkout "CHECKOUT MODE"]
 
@@ -701,12 +702,10 @@ proc widgets {} \
 
 		$this configure -defaultbutton next
 
-		label $w.clock_skewLabel -text "Timestamp Database:"
-		tk_optionMenu $w.clock_skewOptionMenu wizData(clock_skew) \
-		    "on" "off"
-		$w.clock_skewOptionMenu configure -width 4 -borderwidth 1
-		button $w.clock_skewMoreInfo \
-		    -bd 1 \
+		ttk::label $w.clock_skewLabel -text "Timestamp Database:"
+		ttk::combobox $w.clock_skewOptionMenu -state readonly -width 5 \
+		    -textvariable wizData(clock_skew) -values {on off}
+		ttk::button $w.clock_skewMoreInfo \
 		    -text "More info" \
 		    -command [list moreInfo clock_skew CLOCK]
 
@@ -732,12 +731,11 @@ proc widgets {} \
 
 		$this configure -defaultbutton next
 
-		label $w.partial_checkLabel -text "Partial Check:"
-		tk_optionMenu $w.partial_checkOptionMenu \
-		    wizData(partial_check) "on" "off"
-		$w.partial_checkOptionMenu configure -width 4 -borderwidth 1
-		button $w.partial_checkMoreInfo \
-		    -bd 1 \
+		ttk::label $w.partial_checkLabel -text "Partial Check:"
+		ttk::combobox $w.partial_checkOptionMenu -state readonly \
+		    -width 5 -textvariable wizData(partial_check) \
+		    -values {on off}
+		ttk::button $w.partial_checkMoreInfo \
 		    -text "More info" \
 		    -command [list moreInfo partial_check "PARTIAL CHECK"]
 
@@ -763,12 +761,11 @@ proc widgets {} \
 
 		$this configure -defaultbutton next
 
-		label $w.compressionLabel -text "Compression Mode:"
-		tk_optionMenu $w.compressionOptionMenu wizData(compression) \
-		    "none" "gzip"
-		$w.compressionOptionMenu configure -width 4 -borderwidth 1
-		button $w.compressionMoreInfo \
-		    -bd 1 \
+		ttk::label $w.compressionLabel -text "Compression Mode:"
+		ttk::combobox $w.compressionOptionMenu -state readonly \
+		    -width 10 -textvariable wizData(compression) \
+		    -values {none gzip}
+		ttk::button $w.compressionMoreInfo \
 		    -text "More info" \
 		    -command [list moreInfo compression COMPRESSION]
 
@@ -798,10 +795,10 @@ proc widgets {} \
 		set w [$this info workarea]
 		set widgets(Finish) $w
 		text $w.text
-		scrollbar $w.vsb -command [list $w.text yview]
+		ttk::scrollbar $w.vsb -command [list $w.text yview]
 		$w.text configure -yscrollcommand [list $w.vsb set]
-		checkbutton $w.closeOnFinish \
-		    -text "Keep this window open after creating the repository" \
+		ttk::checkbutton $w.closeOnFinish -text \
+		    "Keep this window open after creating the repository" \
 		    -onvalue 0 \
 		    -offvalue 1 \
 		    -variable wizData(closeOnCreate)
