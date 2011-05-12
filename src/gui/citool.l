@@ -489,6 +489,7 @@ addSfilesLines(string lines[])
 	int	extra, modified, pending, hasComments;
 
 	foreach (line in lines) {
+		file = join(" ", split(/ /, line)[1..END]);
 		file = getRelativePath(file, self.root);
 		extra = line[0] eq "x";
 		modified = line[2] eq "c";
@@ -535,7 +536,7 @@ readSfilesOutput(string file, int pos)
 
 	self.sfiles_reading = 1;
 	seek(fd, pos, "start");
-	read(fd, &data, -1);
+	read(fd, &data);
 	unless (defined(data)) {
 		fclose(fd);
 		return (-1);
@@ -1381,12 +1382,14 @@ void
 readBackupComments()
 {
 	FILE	fp;
+	string	data;
 	string	backup = joinpath(self.dotbk, "citool.comments");
 
 	unless (exists(backup)) return;
 
 	unless (fp = fopen(backup, "r")) return;
-	self.oldcomments = (string{string}[])freadn(fp, -1);
+	read(fp, &data);
+	self.oldcomments = (string{string}[])data;
 	fclose(fp);
 }
 
@@ -1658,7 +1661,7 @@ showFileContents(sfile sf)
 			FILE	fd;
 
 			fd = fopen(sf.file, "r");
-			contents = freadn(fd, bytes);
+			read(fd, &contents, bytes);
 			fclose(fd);
 		}
 
