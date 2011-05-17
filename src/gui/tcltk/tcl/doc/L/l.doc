@@ -67,6 +67,10 @@ L code are undefined.
 You can combine this with --norun to do this check even when no
 code is run.
 
+=item B<--version>
+
+Print the L build version and immediately exit.
+
 =back
 
 The optional [args] is a white-space separated list of arguments that
@@ -1407,6 +1411,42 @@ A trivial cat implementation:
     	while (buf = <>) print(buf);
     }
 
+=proto string <"filename">
+
+=proto string <"command|">
+
+=proto string <string_expression>
+
+The first form gets the next line from "filenanme", opening it if
+not already open and closing it upon reading EOF.
+The second form gets the next line of output from running "command"
+instead of from a file.
+In the third form the file or command name is in a string variable or
+arbitrary string expression; in this form, you must not change the
+name while reading.
+In all forms, trailing newlines are removed, and
+undef is returned upon error or EOF.
+To distinguish between EOF and error, check
+the global variable C<stdio_status> (see system()).
+
+This loop
+
+    while (s = <"filename">) t .= s;
+
+is equivalent to
+
+    FILE f;
+    if (f = fopen("filename", "r")) {
+        while (s = <f>) t .= s;
+        fclose(f);
+    }
+
+You can read through the file more than once; it is re-opened, read,
+and re-closed each time.
+Because the compiler allocates a hidden file handle for
+each such <> operator, another <"filename"> later in
+the code does not pick up where a previous one left off.
+
 =item `command`
 
 Execute the command (the string enclosed within back-ticks) and
@@ -1541,6 +1581,11 @@ Format and print a string to the given FILE handle.  The FILE handles
 C<stdin>, C<stdout>, and C<stderr> are pre-defined.
 
 Return 0 on success, -1 on error.
+
+=proto int Fprintf(string filename, string fmt, ...args)
+
+Like fprintf but write to the given file name.  The file is
+overwritten if it already exists.  Return 0 on success, -1 on error.
 
 =proto string ftype(string path)
 
@@ -1981,8 +2026,12 @@ a FILE variable which must be an open file handle, or
 a string literal which is interpreted as a file path name.
 If you want to specify a file name from a variable, use the string
 literal "${filename}".
-You should not try to re-direct stdin, stdout, or stderr in the command
-string itself, as that will be ignored.
+It is an error to both re-direct input/output in the command string
+and to specify the corresponding input/output argument; in such a
+case, the command is not run and C<undef> is returned.
+
+If stdout or stderr are sent to strings or string arrays and no output
+is produced, then C<out> or C<err> are C<undef> upon return.
 
 The optional last argument is a reference to the following structure:
 

@@ -51,6 +51,11 @@ proc %%check_L_fns {} {
 	}
 }
 
+# This loads the Lversion() command created by the build.
+if {[file exists [file join $::tcl_library Lver.tcl]]} {
+	source [file join $::tcl_library Lver.tcl]
+}
+
 #lang L
 #file "libl.tcl"
 #pragma fntrace(off)
@@ -202,6 +207,31 @@ fclose(_mustbetype FILE f)
 	}
 }
 
+/*
+ * Handle the <"filename"> or <"cmd|"> slow-path cases where the file
+ * handle hasn't yet been opened or is now at EOF.
+ */
+string
+fgetlineOpenClose_(string arg, FILE &tmpf)
+{
+	unless (arg) return (undef);
+	unless (tmpf) {
+		if (arg[END] eq "|") {
+			tmpf = popen(arg[0..END-1], "r");
+		} else {
+			tmpf = fopen(arg, "r");
+		}
+		return (tmpf ? <tmpf> : undef);
+	}
+	if (arg[END] eq "|") {
+		pclose(tmpf);
+	} else {
+		fclose(tmpf);
+	}
+	tmpf = undef;
+	return (undef);
+}
+
 FILE
 fopen(string path, string mode)
 {
@@ -239,7 +269,7 @@ Fprintf(string fname, string fmt, ...args)
 	FILE	f;
 
 	unless (f = fopen(fname, "w")) return (-1);
-	ret = fprintf(f, fmt, args);
+	ret = fprintf(f, fmt, (expand)args);
 	fclose(f);
 	return (ret);
 }
@@ -738,9 +768,9 @@ int
 system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 	int flags)
 {
-	int	ret = 0;
+	int	ret = 0, userErrRedirect = 0, userOutRedirect = 0;
 	int	spawn = (flags & SYSTEM_BACKGROUND__);
-	string	err, nmErr, nmIn, nmOut, out, path, res;
+	string	arg, err, nmErr, nmIn, nmOut, out, path, res;
 	FILE	chErr, chIn, chOut, f;
 	STATUS	status;
 
@@ -771,6 +801,38 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 		status.path = undef;
 		ret = undef;
 		goto out;
+	}
+
+	/* Check for user I/O re-direction. */
+	foreach (arg in (string[])argv) {
+		switch (arg) {
+		    case /^</:
+			if (flags & (SYSTEM_IN_HANDLE__ | SYSTEM_IN_FILENAME__ |
+				     SYSTEM_IN_STRING__ | SYSTEM_IN_ARRAY__)) {
+				stdio_lasterr = "cannot both specify and re-direct stdin";
+				ret = undef;
+				goto out;
+			}
+			break;
+		    case /^>/:
+			userOutRedirect = 1;
+			if (flags & (SYSTEM_OUT_HANDLE__ | SYSTEM_OUT_FILENAME__ |
+				     SYSTEM_OUT_STRING__ | SYSTEM_OUT_ARRAY__)) {
+				stdio_lasterr = "cannot both specify and re-direct stdout";
+				ret = undef;
+				goto out;
+			}
+			break;
+		    case /^2>/:
+			userErrRedirect = 1;
+			if (flags & (SYSTEM_ERR_HANDLE__ | SYSTEM_ERR_FILENAME__ |
+				     SYSTEM_ERR_STRING__ | SYSTEM_ERR_ARRAY__)) {
+				stdio_lasterr = "cannot both specify and re-direct stderr";
+				ret = undef;
+				goto out;
+			}
+			break;
+		}
 	}
 
 	if (flags & (SYSTEM_IN_ARRAY__ | SYSTEM_IN_STRING__)) {
@@ -804,7 +866,7 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 		}
 	} else if (flags & SYSTEM_OUT_HANDLE__) {
 		chOut = out;
-	} else {
+	} else unless (userOutRedirect) {
 		chOut = "stdout";
 	}
 	if (flags & (SYSTEM_ERR_STRING__ | SYSTEM_ERR_ARRAY__)) {
@@ -818,7 +880,7 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 		}
 	} else if (flags & SYSTEM_ERR_HANDLE__) {
 		chErr = err;
-	} else {
+	} else unless (userErrRedirect) {
 		chErr = "stderr";
 	}
 
@@ -872,11 +934,13 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 	if (flags & (SYSTEM_OUT_STRING__ | SYSTEM_OUT_ARRAY__)) {
 		close(chOut);
 		if (defined(chOut = fopen(nmOut, "r"))) {
-			if (read(chOut, &out_ref, -1) < 0) {
+			int n = read(chOut, &out_ref, -1);
+			if (n < 0) {
 				ret = undef;
 				goto out;
-			}
-			if (flags & SYSTEM_OUT_ARRAY__) {
+			} else if (n == 0) {
+				out_ref = undef;
+			} else if (flags & SYSTEM_OUT_ARRAY__) {
 				// Chomp and split.  Use Tcl's split since L's
 				// strips trailing null fields.
 				if (length((string)out_ref) &&
@@ -893,11 +957,13 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 	if (flags & (SYSTEM_ERR_STRING__ | SYSTEM_ERR_ARRAY__)) {
 		close(chErr);
 		if (defined(chErr = fopen(nmErr, "r"))) {
-			if (read(chErr, &err_ref, -1) < 0) {
+			int n = read(chErr, &err_ref, -1);
+			if (n < 0) {
 				ret = undef;
 				goto out;
-			}
-			if (flags & SYSTEM_ERR_ARRAY__) {
+			} else if (n == 0) {
+				err_ref = undef;
+			} else if (flags & SYSTEM_ERR_ARRAY__) {
 				// Chomp and split.  Use Tcl's split since L's
 				// strips trailing null fields.
 				if (length((string)err_ref) &&

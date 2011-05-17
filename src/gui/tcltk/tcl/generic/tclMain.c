@@ -302,6 +302,19 @@ Tcl_Main(
 		    argc -= i;
 		    argv += i;
 		    break;
+		} else if (!strcmp(argv[i], "--version") ||
+			   !strcmp(argv[i], "-version")) {
+		    if (strlen(L_VER_TAG)) {
+			printf("L version is %s %s for %s\n",
+			       L_VER_TAG, L_VER_UTC, L_VER_PLATFORM);
+		    } else {
+			printf("L version is %s for %s\n",
+			       L_VER_UTC, L_VER_PLATFORM);
+		    }
+		    printf("Built by: %s\n", L_VER_USER);
+		    printf("Built in: %s\n", L_VER_PWD);
+		    printf("Built on: %s\n", L_VER_BUILD_TIME);
+		    exit(0);
 		}
 	    }
 	}

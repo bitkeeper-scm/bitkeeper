@@ -13,6 +13,9 @@ if {$::tcl_platform(platform) eq "windows"} {
     set _windows 0
 }
 
+# This causes L to keep running L code even after a compile error.
+set ::env(_L_TEST) 1
+
 test angle-1 {test <f>} -setup {
 	set fname1 [makeFile "linea1\n" angle1 .]
 	set fname2 [makeFile "lineb1\nlineb2\n" angle2 .]
@@ -130,12 +133,12 @@ void angle4()
 	<st>;
 	<hsh>;
 }
-} -returnCodes error -match regexp -result {.*8: L Error: must use FILE in <>
-.*9: L Error: must use FILE in <>
-.*10: L Error: must use FILE in <>
-.*11: L Error: must use FILE in <>
-.*12: L Error: must use FILE in <>
-.*13: L Error: must use FILE in <>
+} -returnCodes error -match regexp -result {.*8: L Error: expect FILE or string in <>
+.*9: L Error: expect FILE or string in <>
+.*10: L Error: expect FILE or string in <>
+.*11: L Error: expect FILE or string in <>
+.*12: L Error: expect FILE or string in <>
+.*13: L Error: expect FILE or string in <>
 }
 
 test angle-5 {test <> file-open errors} -setup {
@@ -170,6 +173,90 @@ couldn't open "bad4": no such file or directory
 couldn't open "bad5": no such file or directory
 couldn't open "bad6": no such file or directory
 }
+
+test angle-6 {test <"filename"> and <"cmd|">} -setup {
+	makeFile "angle1\nangle2\nangle3\n" angle6-1.txt .
+	makeFile "angle4\nangle5\nangle6\n" angle6-2.txt .
+} -body {
+#lang L
+void angle6()
+{
+	int	i;
+	string	s, t;
+	string	cmd = 'perl -e \'print "angle7\nangle8\nangle9\n"\'|';
+	string	args[] = { "angle6-1.txt", cmd, "angle6-2.txt" };
+
+	t = "";
+	while (s = <"angle6-1.txt">) t .= s;
+	unless (t eq "angle1angle2angle3") puts("bad 1.1");
+
+	t = "";
+	while (s = <"angle6-1.txt">) t .= s;
+	unless (t eq "angle1angle2angle3") puts("bad 1.2");
+
+	t = "";
+	while (s = <"angle6-1.txt">) t .= s;
+	unless (t eq "angle1angle2angle3") puts("bad 1.3");
+
+	t = "";
+	while (s = <cmd>) t .= s;
+	unless (t eq "angle7angle8angle9") puts("bad 2.1");
+
+	t = "";
+	while (s = <cmd>) t .= s;
+	unless (t eq "angle7angle8angle9") puts("bad 2.2");
+
+	t = "";
+	while (s = <cmd>) t .= s;
+	unless (t eq "angle7angle8angle9") puts("bad 2.3");
+
+	for (i = 0; i < 3; ++i) {
+		t = "";
+		while (s = <args[i]>) t .= s;
+		switch (i) {
+		    case 0:
+			unless (t eq "angle1angle2angle3") puts("bad 3.1");
+			break;
+		    case 1:
+			unless (t eq "angle7angle8angle9") puts("bad 3.2");
+			break;
+		    case 2:
+			unless (t eq "angle4angle5angle6") puts("bad 3.3");
+			break;
+		}
+	}
+}
+angle6();
+} -output {}
+
+test angle-7 {test <"filename"> and <"cmd|"> errors} -body {
+#lang L
+void angle7()
+{
+	stdio_lasterr = "";
+	if (<"bad">) puts("bad 1.1");
+	unless (stdio_lasterr =~ /.*open "bad": no such file or directory/) {
+		puts("bad 1.2");
+	}
+	stdio_lasterr = "";
+	if (<"bad">) puts("bad 1.3");
+	unless (stdio_lasterr =~ /.*open "bad": no such file or directory/) {
+		puts("bad 1.4");
+	}
+
+	stdio_lasterr = "";
+	if (<"bad|">) puts("bad 2.1");
+	unless (stdio_lasterr =~ /.*execute "bad": no such file or directory/) {
+		puts("bad 2.2");
+	}
+	stdio_lasterr = "";
+	if (<"bad|">) puts("bad 2.3");
+	unless (stdio_lasterr =~ /.*execute "bad": no such file or directory/) {
+		puts("bad 2.4");
+	}
+}
+angle7();
+} -output {}
 
 test assert-1 {test assert} -setup {
 	set fname [makeFile {
@@ -528,12 +615,20 @@ void Fprintf1()
 {
 	FILE	f;
 
-	unless (Fprintf("/this/is/bad", "bad")) puts("bad 1.1");
+	unless (Fprintf("/this/is/bad", "bad") < 0) puts("bad 1.1");
 
 	unless (Fprintf("fprintf-tst", "hello Fprintf\n") == 0) puts("bad 2.1");
 	unless (f = fopen("fprintf-tst", "r")) puts("bad 2.2");
 	unless (<f> eq "hello Fprintf") puts("bad 2.3");
 	if (<f>) puts("bad 2.4");
+	fclose(f);
+
+	unless (Fprintf("fprintf-tst", "%s %s %s", "a", "b", "c") == 0) {
+		puts("bad 3.1");
+	}
+	unless (f = fopen("fprintf-tst", "r")) puts("bad 3.2");
+	unless (<f> eq "a b c") puts("bad 3.3");
+	if (<f>) puts("bad 3.4");
 	fclose(f);
 }
 Fprintf1();
@@ -1983,7 +2078,7 @@ void system4()
 	unless ((tcl)out eq (tcl){"THIS IS LINE 1", "AND LINE 2", "LINE 3"}) {
 		puts("bad 1.2");
 	}
-	unless (defined(err) && !length(err)) puts("bad 1.3");
+	if (err) puts("bad 1.3");
 
 	/* Same, with stdin coming from a list. */
 	cmd  = "perl -e 'print uc $_ while (<>)'";
@@ -1993,7 +2088,7 @@ void system4()
 	unless ((tcl)out eq (tcl){"THIS IS LINE 1", "AND LINE 2", "LINE 3"}) {
 		puts("bad 1.5");
 	}
-	unless (defined(err) && !length(err)) puts("bad 1.6");
+	if (err) puts("bad 1.6");
 
 	/* Same, with the command in av[]. */
 	av   = { "perl", "-e", "print uc $_ while (<>)" };
@@ -2003,7 +2098,7 @@ void system4()
 	unless ((tcl)out eq (tcl){"THIS IS LINE 1", "AND LINE 2", "LINE 3"}) {
 		puts("bad 2.2");
 	}
-	unless (defined(err) && !length(err)) puts("bad 2.3");
+	if (err) puts("bad 2.3");
 
 	/* Same, reading and writing to files. */
 	av = { "perl", "-e", "print uc $_ while (<>)" };
@@ -2085,7 +2180,7 @@ void system4()
 	ret   = system(av, strIn, &strOut, &strErr);
 	unless (ret == 0) puts("bad 5.1");
 	unless (strOut eq "THIS IS LINE 1\nAND LINE 2\nLINE 3") puts("bad 5.2");
-	unless (strErr eq "") puts("bad 5.3");
+	if (strErr) puts("bad 5.3");
 
 	/* Same, using spawn() with input from a string variable. */
 	av    = { "perl", "-e", "print uc $_ while (<>)" };
@@ -2110,7 +2205,7 @@ void system4()
 	in   = { "this is line 1", "and line 2", "line 3" };
 	ret  = system(cmd, in, &out, &err);
 	unless (ret == 0) puts("bad 10.1");
-	unless (defined(out) && !length(out)) puts("bad 10.2");
+	if (out) puts("bad 10.2");
 	unless ((tcl)err eq (tcl){"THIS IS LINE 1", "AND LINE 2", "LINE 3"}) {
 		puts("bad 10.3");
 	}
@@ -2120,7 +2215,7 @@ void system4()
 	in   = { "this is line 1", "and line 2", "line 3" };
 	ret  = system(cmd, in, &out, &err);
 	unless (ret == 0) puts("bad 11.1");
-	unless (defined(out) && !length(out)) puts("bad 11.2");
+	if (out) puts("bad 11.2");
 	unless ((tcl)err eq (tcl){"THIS IS LINE 1", "AND LINE 2", "LINE 3"}) {
 		puts("bad 11.3");
 	}
@@ -2204,7 +2299,7 @@ void system4()
 	strIn = "this is line 1\nand line 2\nline 3";
 	ret   = system(cmd, strIn, &strOut, &strErr);
 	unless (ret == 0) puts("bad 14.1");
-	unless (defined(strOut) && (strOut eq "")) puts("bad 14.2");
+	if (strOut) puts("bad 14.2");
 	unless (strErr eq "THIS IS LINE 1\nAND LINE 2\nLINE 3") {
 		puts("bad 14.3");
 	}
@@ -2368,7 +2463,7 @@ END
 		unless (out eq a[END]) {
 			puts("for ${a[0..END-1]} got ${out} want ${a[END]}");
 		}
-		unless (err eq "") puts("bad 2");
+		if (err) puts("bad 2");
 	}
 }
 system5();
@@ -2478,6 +2573,94 @@ void system7()
 	unlink("out7");
 }
 system7();
+} -output {}
+
+test system-8 {test system output re-direction} -body {
+#lang L
+string sys8_file(string filename)
+{
+	string	ret;
+	FILE	f;
+
+	unless (f = fopen(filename, "r")) return ("fopen ${filename}");
+	ret = <f>;
+	fclose(f);
+	return (ret);
+}
+void system8()
+{
+	int	ret;
+	string	cmd_in   = "perl -e 'print $_ while (<>)' <in";
+	string	cmd_out  = "perl -e 'print \"OUT8\"' >out";
+	string	cmd_err  = "perl -e 'print STDERR \"ERR8\"' 2>err";
+	string	cmd_both = "perl -e 'print \"BOTH8o\"; print STDERR \"BOTH8e\"' >out 2>err";
+	string	err, out;
+
+	Fprintf("in", "sys8 in");
+	ret = system(cmd_in, undef, &out, &err);
+	unless (ret == 0) puts("bad 1.1");
+	unless (out eq "sys8 in") puts("bad 1.2");
+	if (err) puts("bad 1.3");
+
+	unlink("out");
+	ret = system(cmd_out);
+	unless (ret == 0) puts("bad 2.1");
+	unless (sys8_file("out") eq "OUT8") puts("bad 2.2");
+
+	unlink("out");
+	ret = system(cmd_out, undef, undef, undef);
+	unless (ret == 0) puts("bad 3.1");
+	unless (sys8_file("out") eq "OUT8") puts("bad 3.2");
+
+	unlink("err");
+	ret = system(cmd_err);
+	unless (ret == 0) puts("bad 4.1");
+	unless (sys8_file("err") eq "ERR8") puts("bad 4.2");
+
+	unlink("err");
+	ret = system(cmd_err, undef, undef, undef);
+	unless (ret == 0) puts("bad 5.1");
+	unless (sys8_file("err") eq "ERR8") puts("bad 5.2");
+
+	unlink("out"); unlink("err");
+	ret = system(cmd_both);
+	unless (ret == 0) puts("bad 6.1");
+	unless (sys8_file("out") eq "BOTH8o") puts("bad 6.2");
+	unless (sys8_file("err") eq "BOTH8e") puts("bad 6.3");
+
+	unlink("out"); unlink("err");
+	ret = system(cmd_both, undef, undef, undef);
+	unless (ret == 0) puts("bad 7.1");
+	unless (sys8_file("out") eq "BOTH8o") puts("bad 7.2");
+	unless (sys8_file("err") eq "BOTH8e") puts("bad 7.3");
+
+	unlink("out"); unlink("err");
+
+	ret = system(cmd_in, "in", "out", undef);
+	if (defined(ret)) puts("bad 10.1");
+	unless (stdio_lasterr eq "cannot both specify and re-direct stdin") {
+		puts("bad 10.2");
+	}
+	if (exists("out")) puts("bad 10.3");
+
+	ret = system(cmd_out, undef, "out", undef);
+	if (defined(ret)) puts("bad 11.1");
+	unless (stdio_lasterr eq "cannot both specify and re-direct stdout") {
+		puts("bad 11.2");
+	}
+	if (exists("out")) puts("bad 11.3");
+
+	ret = system(cmd_err, undef, undef, "err2");
+	if (defined(ret)) puts("bad 12.1");
+	unless (stdio_lasterr eq "cannot both specify and re-direct stderr") {
+		puts("bad 12.2");
+	}
+	if (exists("err2")) puts("bad 12.3");
+	unlink("err2");
+
+	unlink("in");
+}
+system8();
 } -output {}
 
 test symlink-1 {test symlink} -setup {

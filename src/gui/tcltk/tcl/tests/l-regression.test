@@ -6,6 +6,8 @@ if {[lsearch [namespace children] ::tcltest] == -1} {
     namespace import -force ::tcltest::*
 }
 
+# This causes L to keep running L code even after a compile error.
+set ::env(_L_TEST) 1
 
 test empty-1.0 {empty code blocks} -body {
 #lang L

@@ -8,6 +8,7 @@
 #include "tclInt.h"
 #include "tclCompile.h"
 #include "Last.h"
+#include "Lver.h"
 
 #ifndef TRUE
 #define TRUE 1
@@ -119,6 +120,7 @@ typedef struct {
 	Type	*type_list;	// list of all type descriptors
 	void	*ast;		// ptr to AST root, set by parser
 	Tcl_Obj	*errs;
+	int	err;		// =1 if there was any compile error
 	char	*file;
 	int	line;
 	int	prev_token_len;

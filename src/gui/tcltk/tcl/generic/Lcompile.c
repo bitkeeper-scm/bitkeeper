@@ -123,6 +123,7 @@ private int	compile_clsDeref(Expr *expr, Expr_f flags);
 private int	compile_clsInstDeref(Expr *expr, Expr_f flags);
 private void	compile_condition(Expr *cond);
 private void	compile_continue(Stmt *stmt);
+private void	compile_defined(Expr *expr);
 private int	compile_die(Expr *expr);
 private void	compile_do(Loop *loop);
 private void	compile_for_while(Loop *loop);
@@ -267,6 +268,16 @@ Tcl_LObjCmd(ClientData clientData, Tcl_Interp *interp, int objc,
 	/* Extract the L state from the interp. */
 	L = Tcl_GetAssocData(interp, "L", NULL);
 
+	/*
+	 * Verify that lib L was loaded.  L fails badly if lib L isn't
+	 * there, and this catches cases where the user overrides the
+	 * Tcl library path.
+	 */
+	unless (Tcl_GetVar(L->interp, "::L_libl_initted", 0)) {
+		Tcl_SetResult(L->interp, "fatal -- libl.tcl not found", 0);
+		return (TCL_ERROR);
+	}
+
 	if (objc < 2) {
 		Tcl_WrongNumArgs(interp, 1, objv, "?options? l-program");
 		return (TCL_ERROR);
@@ -298,9 +309,9 @@ Tcl_LObjCmd(ClientData clientData, Tcl_Interp *interp, int objc,
 	}
 
 #ifdef TCL_COMPILE_DEBUG
-	if (getenv("L_TRACE")) {
+	if (getenv("_L_TRACE")) {
 		extern int tclTraceExec;
-		tclTraceExec = atoi(getenv("L_TRACE"));
+		tclTraceExec = atoi(getenv("_L_TRACE"));
 	}
 #endif
 
@@ -474,7 +485,7 @@ L_CompileScript(void *ast)
 		return (TCL_ERROR);
 	}
 
-	if (L->options & L_OPT_NORUN) {
+	if ((L->options & L_OPT_NORUN) || (L->err && !getenv("_L_TEST"))) {
 		/* Still check for undefined functions if requested. */
 		if ((L->options & L_OPT_WARN_UNDEF_FNS) &&
 		    sym_lookup(mkId("main"), L_NOWARN)) {
@@ -964,7 +975,7 @@ frame_pop()
 	if (frame->flags & FUNC) {
 		TclInitByteCodeObj(proc->bodyPtr, frame->envPtr);
 #ifdef TCL_COMPILE_DEBUG
-		if (getenv("L_DISASSEMBLE")) {
+		if (getenv("_L_DISASSEMBLE")) {
 			printf("Bytecode for %s:\n", frame->name);
 			TclPrintByteCodeObj(L->interp, proc->bodyPtr);
 		}
@@ -2607,10 +2618,6 @@ push_parms(Expr *actuals, VarDecl *formals)
 private int
 compile_unOp(Expr *expr)
 {
-	Expr	*var;
-	Sym	*sym;
-	char	*name;
-
 	switch (expr->op) {
 	    case L_OP_BANG:
 	    case L_OP_BITNOT:
@@ -2627,34 +2634,8 @@ compile_unOp(Expr *expr)
 		expr->type = expr->a->type;
 		break;
 	    case L_OP_DEFINED:
-		/*
-		 * There are two kinds of defined():
-		 *   defined(&var) - var is a call-by-reference formal
-		 *   defined(expr) - otherwise
-		 */
+		compile_defined(expr->a);
 		expr->type = L_int;
-		if (isaddrof(expr->a)) {
-			unless (expr->a->a->kind == L_EXPR_ID) {
-				L_errf(expr, "%s not a call-by-reference parm",
-				       expr->a->a->str);
-				break;
-			}
-			name = cksprintf("&%s", expr->a->a->str);
-			var = mkId(name);
-			ckfree(name);
-			sym = sym_lookup(var, L_NOWARN);
-			unless (sym && (sym->decl->flags & DECL_REF)) {
-				L_errf(expr, "%s undeclared or not a "
-				       "call-by-reference parm",
-				       expr->a->a->str);
-				break;
-			}
-			emit_load_scalar(sym->idx);
-		} else {
-			compile_expr(expr->a, L_PUSH_VAL);
-			L_typeck_deny(L_VOID, expr->a);
-		}
-		TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
 		break;
 	    case L_OP_ADDROF:
 		/*
@@ -2704,10 +2685,30 @@ compile_unOp(Expr *expr)
 		if (expr->a) {
 			push_str("fgetline");
 			compile_expr(expr->a, L_PUSH_VAL);
-			unless (typeisf(expr->a, "FILE") || ispoly(expr->a)) {
-				L_errf(expr->a, "must use FILE in <>");
+			if (typeisf(expr->a, "FILE")) {
+				emit_invoke(2);
+			} else if (isstring(expr->a) || ispoly(expr->a)) {
+				/*
+				 * For <"filename"> or <"cmd|">, alloc
+				 * a local tmp initialized to undef
+				 * for the FILE handle, and pass to
+				 * fgetline its name (so it can be set) and
+				 * value (so fgetline need not look it up in
+				 * its fast path).
+				 */
+				Tmp *tmp = tmp_get();
+				frame_resumePrologue();
+				TclEmitOpcode(INST_L_PUSH_UNDEF,
+					      L->frame->envPtr);
+				emit_store_scalar(tmp->idx);
+				emit_pop();
+				frame_resumeBody();
+				push_str(tmp->name);
+				emit_load_scalar(tmp->idx);
+				emit_invoke(4);
+			} else {
+				L_errf(expr->a, "expect FILE or string in <>");
 			}
-			emit_invoke(2);
 		} else {
 			push_str("angle_read_");
 			emit_invoke(1);
@@ -2793,7 +2794,15 @@ compile_binOp(Expr *expr, Expr_f flags)
 		if (isid(e=expr->a, "undef") || isid(e=expr->b, "undef")) {
 			L_errf(e, "undef illegal in compare; use defined()");
 		}
-		/* FALLTHRU */
+		compile_expr(expr->a, L_PUSH_VAL);
+		compile_expr(expr->b, L_PUSH_VAL);
+		L_typeck_expect(L_INT|L_FLOAT, expr->a,
+				"in arithmetic comparison");
+		L_typeck_expect(L_INT|L_FLOAT, expr->b,
+				"in arithmetic comparison");
+		emit_instrForLOp(expr);
+		expr->type = L_int;
+		return (1);
 	    case L_OP_PLUS:
 	    case L_OP_MINUS:
 	    case L_OP_STAR:
@@ -3036,6 +3045,41 @@ compile_trinOp(Expr *expr)
 	return (n);  // stack effect
 }
 
+
+/*
+ * There are two kinds of defined():
+ *   defined(&var) - var is a call-by-reference formal
+ *   defined(expr) - otherwise
+ */
+private void
+compile_defined(Expr *expr)
+{
+	Expr	*var;
+	Sym	*sym;
+	char	*name;
+
+	if (isaddrof(expr)) {
+		unless (expr->a->kind == L_EXPR_ID) {
+			L_errf(expr, "arg to & not a call-by-reference parm");
+			return;
+		}
+		name = cksprintf("&%s", expr->a->str);
+		var = mkId(name);
+		ckfree(name);
+		sym = sym_lookup(var, L_NOWARN);
+		unless (sym && (sym->decl->flags & DECL_REF)) {
+			L_errf(expr, "%s undeclared or not a "
+			       "call-by-reference parm", expr->a->str);
+			return;
+		}
+		emit_load_scalar(sym->idx);
+	} else {
+		compile_expr(expr, L_PUSH_VAL);
+		L_typeck_deny(L_VOID, expr);
+	}
+	TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
+}
+
 /*
  * Estimate how many submatches are in the given regexp.  These are
  * the sub-expressions within parens.  If the regexp includes an
@@ -3269,13 +3313,16 @@ compile_condition(Expr *cond)
 		push_str("1");
 		return;
 	}
-	compile_expr(cond, L_PUSH_VAL);
-	if (isvoid(cond)) {
-		L_errf(cond, "void type illegal in predicate");
-	} else if (isstring(cond) || iswidget(cond)) {
-		TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
-	} else unless (isscalar(cond)) {
-		L_errf(cond, "predicate must be scalar");
+	if (isaddrof(cond)) {
+		compile_defined(cond);
+	} else {
+		compile_expr(cond, L_PUSH_VAL);
+		if (isvoid(cond)) {
+			L_errf(cond, "void type illegal in predicate");
+		}
+		unless (isint(cond) || isfloat(cond) || ispoly(cond)) {
+			TclEmitOpcode(INST_L_DEFINED, L->frame->envPtr);
+		}
 	}
 	cond->type = L_int;
 }
@@ -5310,6 +5357,7 @@ L_synerr(const char *s)
 
 	unless (L->errs) {
 		L->errs = Tcl_NewObj();
+		L->err  = 1;
 	}
 	Tcl_AppendPrintfToObj(L->errs, "%s:%d: L Error: %s\n",
 			      L->file, L->line, s);
@@ -5366,7 +5414,10 @@ L_warnf(void *node, const char *format, ...)
 		len *= 2;
 	}
 	va_end(ap);
-	unless (L->errs) L->errs = Tcl_NewObj();
+	unless (L->errs) {
+		L->errs = Tcl_NewObj();
+		L->err  = 1;
+	}
 	Tcl_AppendToObj(L->errs, buf, -1);
 	ckfree(fmt);
 	ckfree(buf);
@@ -5387,7 +5438,10 @@ L_err(const char *format, ...)
 		len *= 2;
 	}
 	va_end(ap);
-	unless (L->errs) L->errs = Tcl_NewObj();
+	unless (L->errs) {
+		L->errs = Tcl_NewObj();
+		L->err  = 1;
+	}
 	Tcl_AppendToObj(L->errs, buf, -1);
 	ckfree(fmt);
 	ckfree(buf);
@@ -5413,7 +5467,10 @@ L_errf(void *node, const char *format, ...)
 		len *= 2;
 	}
 	va_end(ap);
-	unless (L->errs) L->errs = Tcl_NewObj();
+	unless (L->errs) {
+		L->errs = Tcl_NewObj();
+		L->err  = 1;
+	}
 	Tcl_AppendToObj(L->errs, buf, -1);
 	ckfree(fmt);
 }
@@ -6317,6 +6374,21 @@ do_getline(Tcl_Interp *interp, Tcl_Channel chan)
 	return (ret);
 }
 
+private int
+fgetline_openClose(Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
+{
+	Tcl_Obj	*argv[3];
+
+	/* Call function in lib L with first two args. */
+	argv[0] = Tcl_NewStringObj("fgetlineOpenClose_", 18);
+	Tcl_IncrRefCount(argv[0]);
+	argv[1] = objv[1];
+	argv[2] = objv[2];
+	Tcl_EvalObjv(interp, 3, argv, 0);
+	Tcl_DecrRefCount(argv[0]);
+	return (TCL_OK);
+}
+
 int
 Tcl_FGetlineObjCmd(
     ClientData dummy,		/* Not used. */
@@ -6326,24 +6398,45 @@ Tcl_FGetlineObjCmd(
 {
 	int		mode;
 	Tcl_Channel	chan;
+	Tcl_Obj		*ret;
 
-	if (objc != 2) {
-		Tcl_WrongNumArgs(interp, 1, objv, "channelId");
+	if ((objc != 2) && (objc != 4)) {
+		Tcl_WrongNumArgs(interp, 1, objv,
+				 "?fileOrCmdName ?channelIdVarName channelId");
 		return (TCL_ERROR);
 	}
-	if (TclGetChannelFromObj(interp, objv[1], &chan, &mode, 0) != TCL_OK) {
-		goto err;
+	if (objc == 4) {
+		/*
+		 * Handle <"filename"> or <"cmd|">.  If the file
+		 * handle is not yet open, call into lib L, otherwise
+		 * fall through to the fast path.
+		 */
+		if (objv[3]->undef) {
+			return (fgetline_openClose(interp, objc, objv));
+		}
+		if (TclGetChannelFromObj(interp, objv[3], &chan,
+					 &mode, 0) != TCL_OK) {
+			goto err;
+		}
+	} else {
+		/* Handle <FILE_HANDLE>. */
+		if (TclGetChannelFromObj(interp, objv[1], &chan,
+					&mode, 0) != TCL_OK) {
+			goto err;
+		}
 	}
 	unless (mode & TCL_READABLE) {
 		Tcl_AppendResult(interp, "channel \"", TclGetString(objv[1]),
 				 "\" wasn't opened for reading", NULL);
 		goto err;
 	}
-	unless (do_getline(interp, chan)) {
+	unless (ret = do_getline(interp, chan)) {
 		goto err;
 	}
+	if ((objc == 4) && ret->undef) fgetline_openClose(interp, objc, objv);
 	return (TCL_OK);
  err:
+	if (objc == 4) fgetline_openClose(interp, objc, objv);
 	Tcl_SetVar2Ex(interp, "::stdio_lasterr", NULL,
 		      Tcl_GetObjResult(interp),
 		      TCL_GLOBAL_ONLY);

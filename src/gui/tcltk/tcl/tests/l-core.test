@@ -7,6 +7,34 @@ if {[lsearch [namespace children] ::tcltest] == -1} {
     testConstraint exec [llength [info commands exec]]
 }
 
+# Run these tests first, before setting the _L_TEST env variable.
+
+test err-1.1 {test that syntax err causes no code to be run} -body {
+catch {L { syntax error }} try {}
+L { puts("this should not be run"); }
+} -output {}
+
+test err-1.2 {test that compiler warning causes no code to be run} -body {
+catch {L { int err_not_used; }} try {}
+L { puts("this should not be run"); }
+} -output {}
+
+test err-1.3 {test that compiler error causes no code to be run} -body {
+catch {L { int err_illegal_type = "bad"; }} try {}
+L { puts("this should not be run"); }
+} -output {}
+
+test err-1.4 {test that compiler error causes no code to be run 2} -body {
+catch {L {
+typedef int err1_4;
+class err1_4;  // caught in parser; calls L_err() instead of L_errf()
+}} try {}
+L { puts("this should not be run"); }
+} -output {}
+
+# This causes L to keep running L code even after a compile error.
+set ::env(_L_TEST) 1
+
 test lfile-1.0 {Test autowrapping of empty .l file} -setup {
 	set fname [makeFile {} lfile-1.0.l]
 } -constraints {
@@ -281,6 +309,37 @@ test opts-8 {test -poly command-line option} -setup {
 } -cleanup {
 	removeFile $file
 } -output "4\n4\n4\n"
+
+test opts-8.1 {test -version command-line option} -setup {
+	set fname [makeFile { puts("bad"); } opts8.1.l .]
+} -body {
+#lang L
+void opts_8_1()
+{
+	int	ret;
+	string	cmd, err, out;
+
+	cmd = "\"${eval('interpreter')}\" --version opts8.1.l";
+	ret = system(cmd, undef, &out, &err);
+	unless (ret == 0) puts("bad 1.1");
+	if (err) puts("bad 1.2");
+	if (out =~ /bad/) puts("bad 1.3");
+	unless (out =~ /L version is/) puts("bad 1.4");
+	unless (out =~ /Built by:/) puts("bad 1.5");
+	unless (out =~ /Built in:/) puts("bad 1.6");
+	unless (out =~ /Built on:/) puts("bad 1.7");
+
+	cmd = "\"${eval('interpreter')}\" -version opts8.1.l";
+	ret = system(cmd, undef, &out, &err);
+	unless (ret == 0) puts("bad 1.1");
+	if (err) puts("bad 1.2");
+	if (out =~ /bad/) puts("bad 1.3");
+	unless (out =~ /L version is/) puts("bad 1.4");
+	unless (out =~ /Built by:/) puts("bad 1.5");
+	unless (out =~ /Built on:/) puts("bad 1.6");
+}
+opts_8_1();
+} -output {}
 
 test opts-9 {test multiple command-line options} -setup {
 	set file [makeFile {
@@ -9930,6 +9989,7 @@ void defined_1_13()
 	defined(&obj->not_a_ref_parm4);
 	defined(&not_a_ref_parm5);
 	defined(&defined_1_13);  // fn ptr
+	defined(&3);
 }
 defined_1_13();
 } -returnCodes error -match regexp -result {.*15: L Error:.*not a call-by-reference parm
@@ -9939,25 +9999,45 @@ defined_1_13();
 .*19: L Error:.*not a call-by-reference parm
 .*20: L Error:.*not a call-by-reference parm
 .*21: L Error:.*not a call-by-reference parm
+.*22: L Error:.*not a call-by-reference parm
 }
 
 test defined-1.14 {check that undef is false} -body {
 #lang L
+string defined_1_14fn(_argused string &s)
+{
+	if (&s) {
+		return ("def");
+	} else {
+		return ("undef");
+	}
+}
 void defined_1_14()
 {
 	int	i;
 	string	s;
+	string	a[];
+	string	h{string};
+	struct { int i; int j; } st;
 	poly	p;
 
 	if (undef) puts("bad 1");
 	if (i) puts("bad 2");
 	if (s) puts("bad 3");
-	if (p) puts("bad 4");
+	if (p) puts("bad 4.1");
+	if (a) puts("bad 4.2");
+	if (h) puts("bad 4.3");
+	if (st) puts("bad 4.4");
+	unless (defined_1_14fn(&s) eq "def") puts("bad 4.5");
+	unless (defined_1_14fn(undef) eq "undef") puts("bad 4.6");
 
 	/* Check that Tcl code does the same thing. */
 	eval('if {$i} {puts "bad 5"}');
 	eval('if {$s} {puts "bad 6"}');
 	eval('if {$p} {puts "bad 7"}');
+	eval('if {$a} {puts "bad 8"}');
+	eval('if {$h} {puts "bad 8"}');
+	eval('if {$st} {puts "bad 10"}');
 }
 defined_1_14();
 } -output {}
@@ -10914,18 +10994,18 @@ typecheck_3_10()
 .*21: L Error: expected type.*but got void in string comparison
 .*22: L Error: expected type.*but got void in string comparison
 .*23: L Error: expected type.*but got void in string comparison
-.*24: L Error: expected type.*but got void in arithmetic operator
-.*25: L Error: expected type.*but got void in arithmetic operator
-.*26: L Error: expected type.*but got void in arithmetic operator
-.*27: L Error: expected type.*but got void in arithmetic operator
-.*28: L Error: expected type.*but got void in arithmetic operator
-.*29: L Error: expected type.*but got void in arithmetic operator
-.*30: L Error: expected type.*but got void in arithmetic operator
-.*31: L Error: expected type.*but got void in arithmetic operator
-.*32: L Error: expected type.*but got void in arithmetic operator
-.*33: L Error: expected type.*but got void in arithmetic operator
-.*34: L Error: expected type.*but got void in arithmetic operator
-.*35: L Error: expected type.*but got void in arithmetic operator
+.*24: L Error: expected type.*but got void in arithmetic comparison
+.*25: L Error: expected type.*but got void in arithmetic comparison
+.*26: L Error: expected type.*but got void in arithmetic comparison
+.*27: L Error: expected type.*but got void in arithmetic comparison
+.*28: L Error: expected type.*but got void in arithmetic comparison
+.*29: L Error: expected type.*but got void in arithmetic comparison
+.*30: L Error: expected type.*but got void in arithmetic comparison
+.*31: L Error: expected type.*but got void in arithmetic comparison
+.*32: L Error: expected type.*but got void in arithmetic comparison
+.*33: L Error: expected type.*but got void in arithmetic comparison
+.*34: L Error: expected type.*but got void in arithmetic comparison
+.*35: L Error: expected type.*but got void in arithmetic comparison
 .*36: L Error: expected type.*but got void in arithmetic operator
 .*37: L Error: expected type.*but got void in arithmetic operator
 .*38: L Error: expected type.*but got void in arithmetic operator
@@ -11094,27 +11174,6 @@ typecheck_4_2()
 .*23: L Error: loop index type incompatible with array element type
 .*23: L Error: loop index type incompatible with array element type
 .*23: L Error: loop index type incompatible with array element type
-}
-
-test typecheck-4.3 {type errors in conditional expressions} -body {
-#lang L
-void
-typecheck_4_3()
-{
-	/* Conditional expressions must be of scalar type. */
-
-	int	a[];
-	int	h{int};
-	struct { int i,j; } st;
-
-	if (a) puts("bad");
-	if (h) puts("bad");
-	if (st) puts("bad");
-}
-#lang tcl
-} -returnCodes error -match regexp -result {.*10: L Error: predicate must be scalar
-.*11: L Error: predicate must be scalar
-.*12: L Error: predicate must be scalar
 }
 
 test typecheck-4.4 {scalars as condition expressions} -body {
@@ -12071,24 +12130,24 @@ void typecheck_10_2()
 	s gt i;
 	i gt i;  // line 42
 }
-} -returnCodes error -match regexp -result {.*6: L Error: expected type int or float but got string in arithmetic operator
-.*7: L Error: expected type int or float but got string in arithmetic operator
-.*8: L Error: expected type int or float but got string in arithmetic operator
-.*9: L Error: expected type int or float but got string in arithmetic operator
-.*10: L Error: expected type int or float but got string in arithmetic operator
-.*11: L Error: expected type int or float but got string in arithmetic operator
-.*12: L Error: expected type int or float but got string in arithmetic operator
-.*13: L Error: expected type int or float but got string in arithmetic operator
-.*14: L Error: expected type int or float but got string in arithmetic operator
-.*15: L Error: expected type int or float but got string in arithmetic operator
-.*16: L Error: expected type int or float but got string in arithmetic operator
-.*17: L Error: expected type int or float but got string in arithmetic operator
-.*18: L Error: expected type int or float but got string in arithmetic operator
-.*19: L Error: expected type int or float but got string in arithmetic operator
-.*20: L Error: expected type int or float but got string in arithmetic operator
-.*21: L Error: expected type int or float but got string in arithmetic operator
-.*22: L Error: expected type int or float but got string in arithmetic operator
-.*23: L Error: expected type int or float but got string in arithmetic operator
+} -returnCodes error -match regexp -result {.*6: L Error: expected type int or float but got string in arithmetic comparison
+.*7: L Error: expected type int or float but got string in arithmetic comparison
+.*8: L Error: expected type int or float but got string in arithmetic comparison
+.*9: L Error: expected type int or float but got string in arithmetic comparison
+.*10: L Error: expected type int or float but got string in arithmetic comparison
+.*11: L Error: expected type int or float but got string in arithmetic comparison
+.*12: L Error: expected type int or float but got string in arithmetic comparison
+.*13: L Error: expected type int or float but got string in arithmetic comparison
+.*14: L Error: expected type int or float but got string in arithmetic comparison
+.*15: L Error: expected type int or float but got string in arithmetic comparison
+.*16: L Error: expected type int or float but got string in arithmetic comparison
+.*17: L Error: expected type int or float but got string in arithmetic comparison
+.*18: L Error: expected type int or float but got string in arithmetic comparison
+.*19: L Error: expected type int or float but got string in arithmetic comparison
+.*20: L Error: expected type int or float but got string in arithmetic comparison
+.*21: L Error: expected type int or float but got string in arithmetic comparison
+.*22: L Error: expected type int or float but got string in arithmetic comparison
+.*23: L Error: expected type int or float but got string in arithmetic comparison
 .*25: L Error: expected type string or widget but got int in string comparison
 .*26: L Error: expected type string or widget but got int in string comparison
 .*27: L Error: expected type string or widget but got int in string comparison
@@ -12130,15 +12189,15 @@ void typecheck_10_3()
 }
 } -returnCodes error -match regexp -result {.*7: L Error: expected type string or widget but got int in string comparison
 .*8: L Error: expected type string or widget but got float in string comparison
-.*9: L Error: expected type int or float but got string in arithmetic operator
-.*10: L Error: expected type int or float but got widget in arithmetic operator
-.*11: L Error: expected type int or float but got void in arithmetic operator
-.*12: L Error: expected type int or float but got hash in arithmetic operator
-.*13: L Error: expected type int or float but got struct in arithmetic operator
-.*14: L Error: expected type int or float but got array in arithmetic operator
-.*15: L Error: expected type int or float but got list in arithmetic operator
-.*16: L Error: expected type int or float but got nameof in arithmetic operator
-.*17: L Error: expected type int or float but got class in arithmetic operator
+.*9: L Error: expected type int or float but got string in arithmetic comparison
+.*10: L Error: expected type int or float but got widget in arithmetic comparison
+.*11: L Error: expected type int or float but got void in arithmetic comparison
+.*12: L Error: expected type int or float but got hash in arithmetic comparison
+.*13: L Error: expected type int or float but got struct in arithmetic comparison
+.*14: L Error: expected type int or float but got array in arithmetic comparison
+.*15: L Error: expected type int or float but got list in arithmetic comparison
+.*16: L Error: expected type int or float but got nameof in arithmetic comparison
+.*17: L Error: expected type int or float but got class in arithmetic comparison
 }
 
 test fnptr-1 {function pointers 1} -body {

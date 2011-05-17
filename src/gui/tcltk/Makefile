@@ -301,8 +301,10 @@ install: ./version.sh
 		chmod 666 "$$TCLVER"; \
 	fi
 
-bin/tclsh$(EXE): tcl/$S/Makefile
+bin/tclsh$(EXE): tcl/$S/Makefile Lversion-L.sh Lversion-C.sh
 	rm -rf bin/tclsh$(EXE) lib/tcl*
+	cd tcl && ../Lversion-L.sh >library/Lver.tcl
+	cd tcl && ../Lversion-C.sh >generic/Lver.h
 	cd tcl/$S && \
 	$(MAKE) Q=$(Q) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS="$(LIBTOMCRYPT)" \

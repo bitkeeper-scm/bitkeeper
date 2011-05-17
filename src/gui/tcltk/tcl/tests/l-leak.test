@@ -24,6 +24,9 @@ if {$haveMem} {
     set lam [list {} {set a 1}]
 }
 
+# This causes L to keep running L code even after a compile error.
+set ::env(_L_TEST) 1
+
 test leak-1.1 {leaks in a simple L-loop} -body {
 #lang L
     void leak_1_1() {

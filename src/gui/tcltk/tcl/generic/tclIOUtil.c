@@ -26,12 +26,12 @@
 #   include "tclWinInt.h"
 #endif
 #include "tclFileSystem.h"
+#include "Lcompile.h"
 #ifdef	BK
 #include "blowfish.h"
 #include "tclkey.h"
 #include "tomcrypt.h"
 #include "randseed.h"
-#include "Lcompile.h"
 
 extern	char *keydecode(char *key);
 int	enable_secure_bk_calls = -1;
