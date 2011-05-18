@@ -119,7 +119,9 @@ typedef struct {
 
 	// From URLINFO file, extras are ignored
 	time_t	time;		/* 1 time of last successful connection */
-	int	gate;		/* 2 is it a gate?*/
+	int	gate;		/* 2 do we think it's a gate? (checked == 0)
+				 * or do we know it's a gate (checked == 1)
+				 */
 	char	*repoID;	/* 3 */
 	char	**extra;	/* extra data we don't parse */
 } urlinfo;

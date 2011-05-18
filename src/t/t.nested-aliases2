@@ -404,4 +404,22 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-#exit 1
+echo $N Test rm works when pointed to a gate ........................$NL
+cd "$HERE"
+nested rmalias
+bk gate $Q -r
+bk alias add COMP ./gcc
+bk clone $Q -sCOMP . ../A
+bk clone $Q -sCOMP . ../B
+bk gate $Q .
+cd ../A
+bk alias rm $Q COMP ./gcc || fail
+cd ../B
+bk parent $Q -r
+rm -f BitKeeper/log/urllist
+# verify that the command fails running defaults
+bk alias rm $Q COMP ./gcc 2> ERR && fail -f ERR
+grep -q "gcc cannot be found at a gate" ERR || fail -f ERR
+# now point to it
+bk alias rm $Q -@../rmalias COMP ./gcc || fail
+echo OK

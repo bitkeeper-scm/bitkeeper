@@ -129,7 +129,10 @@ urlinfo_urlArgs(nested *n, char **urls)
 	EACH(urls) {
 		data = urlinfo_fetchAlloc(n, urls[i]);
 
+		/* XXX: how can a probe (ie, checked set) have happened? */
 		unless (data->checked) {
+			/* Assume command line might be gates */
+			data->gate = 1;
 			/* mark all components */
 			EACH_STRUCT(n->comps, c, j) {
 				urlinfo_addURL(n, c, urls[i]);
@@ -151,7 +154,10 @@ urlinfo_urlArgs(nested *n, char **urls)
 	EACH(urls) {
 		data = urlinfo_fetchAlloc(n, urls[i]);
 
+		/* XXX: how can a probe (ie, checked set) have happened? */
 		unless (data->checked) {
+			/* assume parents might be gates */
+			data->gate = 1;
 			/* mark all components */
 			EACH_STRUCT(n->comps, c, j) {
 				urlinfo_addURL(n, c, urls[i]);
