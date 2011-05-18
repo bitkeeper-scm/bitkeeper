@@ -1264,18 +1264,22 @@ want(sccs *s, delta *e)
 		}
 	}
 	if (opts.notusers) {
-		if (p = strchr(USER(s, e), '/')) *p = 0;
+		char	*u = USER(s, e);
+
+		if (p = strchr(u, '/')) *p = 0;
 		match = 0;
 		EACH(opts.notusers) {
-			match |= streq(opts.notusers[i], USER(s, e));
+			match |= streq(opts.notusers[i], u);
 		}
 		if (p) *p = '/';
 		if (match) return (0);
 	}
 	if (opts.users) {
-		if (p = strchr(USER(s, e), '/')) *p = 0;
+		char	*u = USER(s, e);
+
+		if (p = strchr(u, '/')) *p = 0;
 		match = 0;
-		EACH(opts.users) match |= streq(opts.users[i], USER(s, e));
+		EACH(opts.users) match |= streq(opts.users[i], u);
 		if (p) *p = '/';
 		unless (match) return (0);
 	}

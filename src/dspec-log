@@ -2,7 +2,7 @@
 # dspec used by the 'bk log' command
 
 ":DPN: :REV:\n"
-"  :D_: :T::TZ: :USER:" $if(:HOST:){@:HOST:} " +:LI: -:LD:\n"
+"  :D_: :T::TZ: :USERHOST: +:LI: -:LD:\n"
 $each(:C:) {		# comments
 	"  (:C:)\n"
 }

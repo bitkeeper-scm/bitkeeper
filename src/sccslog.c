@@ -268,8 +268,7 @@ pdelta(sccs *s, delta *d, FILE *f)
 		}
 	}
 	delta_strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", s, d);
-	fprintf(f, "%s %s", buf, USER(s, d));
-	if (d->hostname) fprintf(f, "@%s", HOSTNAME(s, d));
+	fprintf(f, "%s %s", buf, USERHOST(s, d));
 	fprintf(f, " +%d -%d\n", d->added, d->deleted);
 	t = COMMENTS(s, d);
 	while (p = eachline(&t, &len)) {

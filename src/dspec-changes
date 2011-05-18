@@ -3,7 +3,7 @@
 
 ":INDENT:"		# 2 spaces + 2 in component
 ":DPN:@:REV:"
-${1=":USER:" $if(:HOST:){"@:HOST:"}}		# 1 == user@host
+${1=:USERHOST:}		# 1 == user || user@host
 $if (:CHANGESET: && !:COMPONENT_V:) {
 	", :Dy:-:Dm:-:Dd: :T::TZ:, $1"
 	${0=$1}		   	        # 0 == user of last cset

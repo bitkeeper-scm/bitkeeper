@@ -1523,10 +1523,10 @@ markCset(sccs *s, delta *d)
 			if ((now - d->date) < (45 * 24 * 60 * 60)) poly = 1;
 			if (polyList) {
 				fprintf(stderr,
-				    "check: %s@%s "
+				    "check: %s "
 				    "(%s@%s %.8s) in multiple csets\n",
 				    s->gfile, REV(s, d),
-				    USER(s, d), HOSTNAME(s, d),
+				    USERHOST(s, d),
 				    delta_sdate(s, d));
 			}
 		}

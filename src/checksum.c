@@ -243,10 +243,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 			t = PATHNAME(s, d);
 			new = adler32(new, t, strlen(t));
 		}
-		if (d->hostname) {
-			t = HOSTNAME(s, d);
-			new = adler32(new, t, strlen(t));
-		}
+		t = HOSTNAME(s, d);
+		new = adler32(new, t, strlen(t));
 		t = COMMENTS(s, d);
 		while (p = eachline(&t, &len)) new = adler32(new, p, len);
 		unless (fix) {

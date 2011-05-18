@@ -745,6 +745,13 @@ bk sccs2bk -cx co_edit_foo >OUT 2>ERR || {
 	cat ERR
 	exit 1
 }
+T_OLD=`bk prs -r+ -hnd:UTC: "$HERE/co_edit_foo"`
+T_NEW=`bk prs -r+ -hnd:UTC-FUDGE: co_edit_foo`
+FT_NEW=`bk prs -r+ -hnd:UTC: co_edit_foo`
+test "$T_OLD" = "$T_NEW" || fail "$T_OLD not matching $T_NEW"
+echo "$BK_USER/`bk getuser -r`@`bk gethost`|co_edit_foo|$FT_NEW|00741" > WANT
+bk prs -r+ -hnd:KEY: co_edit_foo > GOT
+checkfiles WANT GOT
 echo OK
 
 echo $N Import SCCS binary file with null in 1.2 ....................$NL

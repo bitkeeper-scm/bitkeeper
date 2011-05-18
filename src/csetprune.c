@@ -572,6 +572,7 @@ private	int
 newFileEnv(sccs *cset, char **user, char **host)
 {
 	char	c = 0, *p, *dtz;
+	char	*u;
 	delta	*d;
 
 	if (p = getenv("BK_USER")) p = strdup(p);
@@ -584,8 +585,9 @@ newFileEnv(sccs *cset, char **user, char **host)
 	safe_putenv("BK_DATE_TIME_ZONE=%s", dtz+2);
 	free(dtz);
 
-	if (p = strchr(USER(cset, d), '/')) *p = 0;
-	safe_putenv("BK_USER=%s", USER(cset, d));
+	u = USER(cset, d);
+	if (p = strchr(u, '/')) *p = 0;
+	safe_putenv("BK_USER=%s", u);
 	if (p) *p = '/';
 	if ((p = strchr(HOSTNAME(cset, d), '/')) ||
 	    (p = strchr(HOSTNAME(cset, d), '['))) {

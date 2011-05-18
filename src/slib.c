@@ -40,6 +40,7 @@ private int	stripChecks(sccs *s, delta *d, char *who);
 private delta*	hashArg(sccs *s, delta *d, char *name);
 private delta*	csetFileArg(sccs *s, delta *d, char *name);
 private delta*	dateArg(sccs *s, delta *d, char *arg, int defaults);
+private delta*	userArg(sccs *s, delta *d, char *arg);
 private delta*	hostArg(sccs *s, delta *d, char *arg);
 private delta*	pathArg(sccs *s, delta *d, char *arg);
 private delta*	randomArg(sccs *s, delta *d, char *arg);
@@ -491,6 +492,8 @@ void
 sccs_inherit(sccs *s, delta *d)
 {
 	delta	*p;
+	char	*phost;
+	char	buf[MAXLINE];
 
 	unless (d) return;
 	unless (p = PARENT(s, d)) return;
@@ -498,11 +501,11 @@ sccs_inherit(sccs *s, delta *d)
 #define	CHK_DUP(field) \
 	if (!d->field && p->field) d->field = p->field;
 
-	CHK_DUP(hostname);
 	CHK_DUP(zone);
 	CHK_DUP(csetFile);
 	CHK_DUP(pathname);
 	CHK_DUP(sortPath);
+
 	if ((p->flags & D_MODE) && !(d->flags & D_MODE)) {
 		d->flags |= D_MODE;
 		d->mode = p->mode;
@@ -510,6 +513,15 @@ sccs_inherit(sccs *s, delta *d)
 	}
 #undef	CHK_DUP
 
+	if (p->userhost) {
+		assert(d->userhost);
+		if (!strchr(USERHOST(s, d), '@') &&
+		    (phost = HOSTNAME(s, p)) && *phost) {
+			/* user but no @host, so get host from parent */
+			sprintf(buf, "%s@%s", USERHOST(s, d), phost);
+			d->userhost = sccs_addUniqStr(s, buf);
+		}
+	}
 }
 
 /*
@@ -1182,6 +1194,39 @@ delta_rev(sccs *s, delta *d)
 		 * The r[] is the definitive revision.
 		 */
 		return ("1.3.9.62"); 
+	}
+}
+
+/*
+ * Return the user for this delta.  Used by USER() macro
+ */
+char *
+delta_user(sccs *s, delta *d)
+{
+	char	*u, *h;
+	static	char	buf[MAXLINE];
+
+	u = USERHOST(s, d);
+	if (h = strchr(u, '@')) {
+		strncpy(buf, u, h-u);
+		buf[h-u] = 0;
+		u = buf;
+	}
+	return (u);
+}
+
+/*
+ * Return the hostname for this delta.  Used by HOSTNAME() macro
+ */
+char *
+delta_host(sccs *s, delta *d)
+{
+	char	*h;
+
+	if (d->userhost && (h = strchr(USERHOST(s, d), '@'))) {
+		return (h+1);
+	} else {
+		return ("");
 	}
 }
 
@@ -2141,13 +2186,8 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case '@':	/* user@host */
-			strcpy(t, USER(s, d));
-			t += strlen(USER(s, d));
-			if (d->hostname) {
-				*t++ = '@';
-				strcpy(t, HOSTNAME(s, d));
-				t += strlen(t);
-			}
+			strcpy(t, USERHOST(s, d));
+			t += strlen(USERHOST(s, d));
 			break;
 
 		    case '#':	/* user */
@@ -3055,7 +3095,9 @@ first:		if (streq(buf, "\001u")) break;
 			goto bad;
 		}
 		sprintf(dates[serial], "%s %s", date, time);
-		d->user = sccs_addUniqStr(s, user);
+
+		/* this is just user, we add host later */
+		d->userhost = sccs_addUniqStr(s, user);
 		for (;;) {
 			if (!(buf = sccs_nextdata(s)) || buf[0] != '\001') {
 				expected = "^A";
@@ -7654,12 +7696,9 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 
-		if (d->hostname &&
-		    !(parent && (d->hostname == parent->hostname))) {
-			p = fmts(buf, "\001cH");
-			p = fmts(p, HOSTNAME(s, d));
-			*p++ = '\n';
-			*p   = '\0';
+		if (((t = HOSTNAME(s, d)) && *t) &&
+		    (!parent || !streq(t, HOSTNAME(s, parent)))) {
+			sprintf(buf, "\001cH%s\n", t);
 			fputmeta(s, buf, out);
 		}
 
@@ -8930,24 +8969,34 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 		}
 	}
 	if (nodefault) {
-		unless (d->user) d->user = sccs_addUniqStr(s, "Anon");
+		unless ((t = USER(s, d)) && *t) userArg(s, d, "Anon");
 	} else {
 		project	*proj = s->proj;
+		char	*imp, *user, *host;
+		int	changed = 0;
 
 		if (CSET(s) && proj_isComponent(proj)) {
 			proj = proj_product(proj);
 		}
-		unless (d->user) d->user = sccs_addUniqStr(s, sccs_user());
-		unless (d->hostname && sccs_gethost()) {
-			char	*imp, *h;
-
+		unless ((user = USER(s, d)) && *user) {
+			user = sccs_user();
+			changed = 1;
+		}
+		unless ((host = HOSTNAME(s, d)) && *host) {
 			if (imp = getenv("BK_IMPORTER")) {
-				h = aprintf("%s[%s]", sccs_gethost(), imp);
-				hostArg(s, d, h);
-				free(h);
+				user = aprintf("%s@%s[%s]",
+				    user, sccs_gethost(), imp);
 			} else {
-				hostArg(s, d, sccs_host());
+				user = aprintf("%s@%s",
+				    user, sccs_host());
 			}
+			changed = 1;
+		} else if (changed) {
+			user = aprintf("%s@%s", user, host);
+		}
+		if (changed) {
+			userArg(s, d, user);
+			free(user);
 		}
 		unless (d->pathname) {
 			char *p, *q;
@@ -9968,19 +10017,24 @@ out:		fprintf(stderr, "sccs: can't parse date format %s at %s\n",
 private delta *
 userArg(sccs *s, delta *d, char *arg)
 {
-	char	*t;
 	delta	*p = PARENT(s, d);
+	char	*host;
+	char	buf[MAXLINE];
 
-	if (t = strchr(arg, '@')) {
-		*t = 0;
-		d = hostArg(s, d, t+1);
+	if (!strchr(arg, '@')) {
+		/* if missing host then keep existing or use parent */
+		if ((d->userhost && (host = HOSTNAME(s, d)) && *host) ||
+		    (p && (host = HOSTNAME(s, p)) && *host)) {
+			sprintf(buf, "%s@%s", arg, host);
+			arg = buf;
+		}
 	}
-	if (p && streq(arg, USER(s, p))) {
-		d->user = p->user;
+	unless (p) p = s->table; /* XXX for perf or correct functioning? */
+	if (p && streq(arg, USERHOST(s, p))) {
+		d->userhost = p->userhost;
 	} else {
-		d->user = sccs_addUniqStr(s, arg);
+		d->userhost = sccs_addUniqStr(s, arg);
 	}
-	if (t) *t = '@';
 	return (d);
 }
 
@@ -10006,11 +10060,21 @@ hashArg(sccs *s, delta *d, char *arg)
 	return (d);
 }
 
+/*
+ * we want to avoid calling this if possible, but
+ * it changes the hostname in d->userhost
+ */
 private delta *
 hostArg(sccs *s, delta *d, char *arg)
 {
+	char	buf[MAXLINE];
+
 	unless (d) d = new(delta);
-	d->hostname = sccs_addUniqStr(s, arg);
+	assert(arg && *arg);
+	sprintf(buf, "%s@%s", USER(s, d), arg);
+	unless (streq(USERHOST(s, d), buf)) {
+		d->userhost = sccs_addUniqStr(s, buf);
+	}
 	return (d);
 }
 
@@ -10660,8 +10724,7 @@ insert_1_0(sccs *s, u32 flags)
 	}
 	s->tree = d;		/* tree is now linked */
 	revArg(s, d, "1.0");
-	d->user = t->user;
-	d->hostname = t->hostname;
+	d->userhost = t->userhost;
 	d->pathname = t->pathname;
 	if (t->zone) {
 		d->zone = t->zone;
@@ -10687,7 +10750,9 @@ insert_1_0(sccs *s, u32 flags)
 		/*
 		 * rmshortkeys sets BK_HOST -- use it if needed
 		 */
-		if (!d->hostname && (p = getenv("BK_HOST"))) hostArg(s, d, p);
+		unless (strchr(USERHOST(s, d), '@')) {
+			hostArg(s, d, sccs_gethost());
+		}
 	} else {
 		unless (d->random) {
 			char	buf[20];
@@ -12356,8 +12421,8 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, u32 flags, int *errorp, int *linesp,
 		d = sccs_parseArg(sc, d, 'D', t, 0);
 	}
 	t = s;
-	while (*s && (*s++ != ' '));	/* eat user */
-	unless (d->user) {
+	while (*s && (*s++ != ' '));	/* eat user@host */
+	unless (d->userhost) {
 		if (s[-1] == ' ') s[-1] = 0;
 		d = sccs_parseArg(sc, d, 'U', t, 0);
 	}
@@ -14069,29 +14134,45 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	case KW_P: /* P */
 	case KW_USER: /* USER */ {
 		/* programmer */
-		if (d->user) {
-			if (p = strchr(USER(s, d), '/')) *p = 0;
-			fs(USER(s, d));
-			if (p) *p = '/';
+		if ((p = USER(s, d)) && *p) {
+			if (q = strchr(p, '/')) *q = 0;
+			fs(p);
+			if (q) *q = '/';
 			return (strVal);
 		}
 		return (nullVal);
 	}
+	case KW_USERHOST: /* USERHOST */
+		KW("USER");
+		if (strchr(USERHOST(s, d), '@')) {
+			fc('@');
+			KW("HOST");
+		}
+		return (strVal);
+
+	case KW_REALUSERHOST: /* REALUSERHOST */
+		KW("REALUSER");
+		if (strchr(USERHOST(s, d), '@')) {
+			fc('@');
+			KW("REALHOST");
+		}
+		return (strVal);
+
+	case KW_FULLUSERHOST: /* FULLUSERHOST */
+		fs(USERHOST(s, d));
+		return (strVal);
+
 	case KW_REALUSER: /* REALUSER */ {
-		if (d->user) {
-			if (p = strchr(USER(s, d), '/')) {
-				++p;
-			} else {
-				p = USER(s, d);
-			}
+		if ((p = USER(s, d)) && *p) {
+			if (q = strchr(p, '/')) p = q + 1;
 			fs(p);
 			return (strVal);
 		}
 		return (nullVal);
 	}
 	case KW_FULLUSER: /* FULLUSER */ {
-		if (d->user) {
-			fs(USER(s, d));
+		if ((p = USER(s, d)) && *p) {
+			fs(p);
 			return (strVal);
 		}
 		return (nullVal);
@@ -14387,10 +14468,10 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	}
 
 	case KW_DSUMMARY: /* DSUMMARY */ {
-	/* :DT: :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu: */
+	/* :DT: :I: :D: :T::TZ: :USERHOST: :DS: :DP: :Li:/:Ld:/:Lu: */
 	 	KW("DT"); fc(' '); KW("I"); fc(' '); KW("D"); fc(' ');
-		KW("T"); KW("TZ"); fc(' '); KW("P");
-		if (d->hostname) { fc('@'); fs(HOSTNAME(s, d)); } fc(' ');
+		KW("T"); KW("TZ"); fc(' '); KW("USERHOST");
+		fc(' ');
 	 	KW("DS"); fc(' '); KW("DP"); fc(' '); KW("DL");
 		return (strVal);
 	}
@@ -14466,8 +14547,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		KW("REV");
 		fs("\n  ");
 		KW("D_"); fc(' '); KW("T"); KW("TZ");
-		fc(' '); KW("P");
-		if (d->hostname) { fc('@'); fs(HOSTNAME(s, d)); } fc(' ');
+		fc(' '); KW("USERHOST");
+		fc(' ');
 		fc('+'); KW("LI"); fs(" -"); KW("LD"); fc('\n');
 		t = COMMENTS(s, d);
 		while (p = eachline(&t, &len)) {
@@ -14704,45 +14785,45 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	case KW_HT: /* HT */
 	case KW_HOST: /* HOST */ {
 		/* host without any importer name */
-		if (d->hostname) {
-			if (p = strchr(HOSTNAME(s, d), '/')) {
+		if ((q = HOSTNAME(s, d)) && *q) {
+			if (p = strchr(q, '/')) {
 				*p = 0;
-				fs(HOSTNAME(s, d));
+				fs(q);
 				*p = '/';
-			} else if (p = strchr(HOSTNAME(s, d), '[')) {
+			} else if (p = strchr(q, '[')) {
 				*p = 0;
-				fs(HOSTNAME(s, d));
+				fs(q);
 				*p = '[';
 			} else {
-				fs(HOSTNAME(s, d));
+				fs(q);
 			}
 			return (strVal);
 		}
 		return (nullVal);
 	}
 	case KW_REALHOST: /* REALHOST */ {
-		if (d->hostname) {
-			if (p = strchr(HOSTNAME(s, d), '/')) {
+		if ((q = HOSTNAME(s, d)) && *q) {
+			if (p = strchr(q, '/')) {
 				fs(p+1);
-			} else if (p = strchr(HOSTNAME(s, d), '[')) {
+			} else if (p = strchr(q, '[')) {
 				*p = 0;
-				fs(HOSTNAME(s, d));
+				fs(q);
 				*p = '[';
 			} else {
-				fs(HOSTNAME(s, d));
+				fs(q);
 			}
 			return (strVal);
 		}
 		return (nullVal);
 	}
 	case KW_FULLHOST: /* FULLHOST */ {
-		if (d->hostname) {
-			if (p = strchr(HOSTNAME(s, d), '[')) {
+		if ((q = HOSTNAME(s, d)) && *q) {
+			if (p = strchr(q, '[')) {
 				*p = 0;
-				fs(HOSTNAME(s, d));
+				fs(q);
 				*p = '[';
 			} else {
-				fs(HOSTNAME(s, d));
+				fs(q);
 			}
 			return (strVal);
 		}
@@ -14751,12 +14832,9 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_IMPORTER: /* IMPORTER */ {
 		/* importer name */
-		if (d->hostname) {
-			for (p = HOSTNAME(s, d); *p && (*p != '['); p++);
-			if (*p) {
-				while (*(++p) != ']') fc(*p);
-				return (strVal);
-			}
+		if ((p = HOSTNAME(s, d)) && (p = strchr(p, '['))) {
+			while (*(++p) != ']') fc(*p);
+			return (strVal);
 		}
 		return (nullVal);
 	}
@@ -14772,11 +14850,9 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		 * significant.  This heuristic is not always right
 		 * (consider .to) but works most of the time.
 		 */
-		char *p, *q;
 		int i;
-		
-		if (!d->hostname) return (nullVal);
-		q = HOSTNAME(s, d);
+
+		unless ((q = HOSTNAME(s, d)) && *q) return (nullVal);
 		p = &q[strlen(q)];
 		do {
 			i = 0;
@@ -15637,12 +15713,10 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	    	type = 'M';
 	}
 
-	fprintf(out, "%c %s %s%s %s%s%s +%u -%u",
+	fprintf(out, "%c %s %s%s %s +%u -%u",
 	    type, REV(s, d), delta_sdate(s, d),
 	    ZONE(s, d),
-	    USER(s, d),
-	    d->hostname ? "@" : "",
-	    d->hostname ? HOSTNAME(s, d) : "",
+	    USERHOST(s, d),
 	    d->added, d->deleted);
 	if (flags & PRS_FASTPATCH) fprintf(out, " =%u", d->same);
 	fputs("\n", out);
@@ -16255,11 +16329,9 @@ void
 sccs_pdelta(sccs *s, delta *d, FILE *out)
 {
 	assert(d);
-	fprintf(out, "%s%s%s|%s|%s|%05u",
-	    USER(s, d),
-	    d->hostname ? "@" : "",
-	    HOSTNAME(s, d),
-	    d->pathname ? PATHNAME(s, d) : "",
+	fprintf(out, "%s|%s|%s|%05u",
+	    USERHOST(s, d),
+	    PATHNAME(s, d),
 	    sccs_utctime(s, d),
 	    d->sum);
 	if (d->random) fprintf(out, "|%s", RANDOM(s, d));
@@ -16273,11 +16345,9 @@ sccs_sdelta(sccs *s, delta *d, char *buf)
 	int	len;
 
 	assert(d);
-	len = sprintf(buf, "%s%s%s|%s|%s|%05u",
-	    USER(s, d),
-	    d->hostname ? "@" : "",
-	    HOSTNAME(s, d),
-	    d->pathname ? PATHNAME(s, d) : "",
+	len = sprintf(buf, "%s|%s|%s|%05u",
+	    USERHOST(s, d),
+	    PATHNAME(s, d),
 	    sccs_utctime(s, d),
 	    d->sum);
 	assert(len);
@@ -16426,11 +16496,9 @@ void
 sccs_shortKey(sccs *s, delta *d, char *buf)
 {
 	assert(d);
-	sprintf(buf, "%s%s%s|%s|%s",
-	    USER(s, d),
-	    d->hostname ? "@" : "",
-	    d->hostname ? HOSTNAME(s, d) : "",
-	    d->pathname ? PATHNAME(s, d) : "",
+	sprintf(buf, "%s|%s|%s",
+	    USERHOST(s, d),
+	    PATHNAME(s, d),
 	    sccs_utctime(s, d));
 }
 

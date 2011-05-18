@@ -107,8 +107,7 @@ m(sccs *s, delta *l, delta *r)
 				break;
 			}
 			if ((d->date == tt) &&
-			    streq(USER(s, d), USER(s, p)) &&
-			    (d->hostname == p->hostname) &&
+			    streq(USERHOST(s, d), USERHOST(s, p)) &&
 			    streq(PATHNAME(s, d), PATHNAME(s, p))) {
 			    	break;
 			}
@@ -137,8 +136,8 @@ m(sccs *s, delta *l, delta *r)
 	mwest = (seast % 3600) / 60;
 	sprintf(zone, "%c%02d:%02d", sign, hwest, mwest);
 
-	sprintf(buf, "M %s %s%s %s@%s +0 -0\n",
-	    "0.0", tmp, zone, USER(s, p), HOSTNAME(s, p));
+	sprintf(buf, "M %s %s%s %s +0 -0\n",
+	    "0.0", tmp, zone, USERHOST(s, p));
 	sum = doit(sum, buf);
 	sccs_sdelta(s, sccs_ino(s), key);
 	sprintf(buf, "B %s\n", key);

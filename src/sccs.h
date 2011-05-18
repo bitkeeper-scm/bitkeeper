@@ -458,8 +458,7 @@ typedef struct delta {
 	u32	random;			/* random bits for file ID */
 
 	/* collapsible heap data */
-	u32	user;			/* user name of delta owner */
-	u32	hostname;		/* hostname where revision was made */
+	u32	userhost;		/* user/realuser@host/realhost */
 	u32	pathname;		/* pathname to the file */
 	u32	sortPath;		/* original pathname for delta */
 	u32	zone;			/* 08:00 is time relative to GMT */
@@ -497,8 +496,9 @@ typedef struct {
 #define	COMMENTS(s, d)	((s)->heap.buf + (d)->comments)
 #define	RANDOM(s, d)	((s)->heap.buf + (d)->random)
 
-#define	USER(s, d)	((s)->heap.buf + (d)->user)
-#define	HOSTNAME(s, d)	((s)->heap.buf + (d)->hostname)
+#define	USER(s, d)	delta_user(s, d)
+#define	HOSTNAME(s, d)	delta_host(s, d)
+#define	USERHOST(s, d)	((s)->heap.buf + (d)->userhost)
 #define	ZONE(s,d)	((s)->heap.buf + (d)->zone)
 #define	SYMLINK(s,d)	((s)->heap.buf + (d)->symlink)
 #define	CSETFILE(s,d)	((s)->heap.buf + (d)->csetFile)
@@ -953,6 +953,8 @@ char	*sccs_realuser(void);
 char	*sccs_user(void);
 
 char	*delta_rev(sccs *s, delta *d);
+char	*delta_user(sccs *s, delta *d);
+char	*delta_host(sccs *s, delta *d);
 
 delta	*modeArg(sccs *s, delta *d, char *arg);
 int	fileType(mode_t m);

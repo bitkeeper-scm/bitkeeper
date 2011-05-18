@@ -1,5 +1,6 @@
 # dspec-v2
 # the default dspec used by 'bk changes --html -v'
+# Note: Do not use :USERHOST: as :USER:@:HOST will print @ if no host
 
 $begin {
 	"<html><body bgcolor=white>\n"

@@ -485,13 +485,13 @@ db2line(MDBM *db)
 private int
 sameStr(char *s1, char *s2)
 {
-	if (s1 == NULL) {
-		if (s2 == NULL) return (1);
+	unless (s1 && *s1) {
+		unless (s2 && *s2) return (1);
 		return (0);
 	}
 
 	/* When we get here, s1 != NULL */
-	if (s2 == NULL) return (0);
+	unless (s2 && *s2) return (0);
 
 	/* When we get here, s1 != NULL && s2 != NULL */
 	return (streq(s1, s2));
@@ -504,6 +504,7 @@ private  void
 fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 {
 	delta *parent;
+	char	buf[MAXLINE];
 
 	if ((opts.verbose > 1) && (fudge != -1)) {
 		if ((template->date == d->date) &&
@@ -538,23 +539,15 @@ fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 	}
 
 	/*
-	 * Copy user
+	 * Copy user[@host]
 	 */
 	assert(template->user);
-	if (parent && streq(USER(s, parent), template->user)) {
-		d->user = parent->user;
-	} else {
-		d->user = sccs_addUniqStr(s, template->user);
-	}
-
-	/*
-	 * Copy hostname
-	 */
 	if (template->hostname) {
-		d->hostname = sccs_addUniqStr(s, template->hostname);
+		sprintf(buf, "%s@%s", template->user, template->hostname);
 	} else {
-		d->hostname = 0;
+		sprintf(buf, "%s", template->user);
 	}
+	sccs_parseArg(s, d, 'U', buf, 0);
 }
 
 /*
@@ -841,7 +834,7 @@ saveComment(MDBM *db, char *rev, char *comment_str, char *gfile)
 #define	SCCS_REV_1_1_DEFAULT_COMMENT	"date and time created "
 #define	CODE_MGR_DEFAULT_COMMENT	"CodeManager Uniquification: "
 
-	if (isBlank(comment_str)) return;
+	if (!comment_str || isBlank(comment_str)) return;
 	if (streq(CVS_NULL_COMMENT, comment_str)) return;
 	if ((streq("1.1", rev) || streq(rev, "1.2")) &&
 	    strneq(SCCS_REV_1_1_DEFAULT_COMMENT, comment_str, 22)) {
@@ -1078,9 +1071,10 @@ delta2dinfo(sccs *s, delta *d)
 	di->rev = strdup(REV(s, d));
 	if (d->zone) di->zone = strdup(ZONE(s, d));
 	di->user = strdup(USER(s, d));
-	di->hostname = strdup(HOSTNAME(s, d));
-	di->pathname = strdup(PATHNAME(s, d));
-	di->comments = strdup(COMMENTS(s, d));
+	assert(*di->user);
+	if (strchr(USERHOST(s, d), '@')) di->hostname = strdup(HOSTNAME(s, d));
+	if (d->pathname) di->pathname = strdup(PATHNAME(s, d));
+	if (d->comments) di->comments = strdup(COMMENTS(s, d));
 	sccs_sdelta(s, d, key);
 	di->dkey = strdup(key);
 	return (di);
@@ -1212,12 +1206,10 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 	if (!d) return (0);
 	type = TAG(d) ? 'M' : 'D';
 
-	fprintf(out, "%c %s %s%s %s%s%s +%u -%u\n",
+	fprintf(out, "%c %s %s%s %s +%u -%u\n",
 	    type, REV(s, d), delta_sdate(s, d),
 	    ZONE(s, d),
-	    USER(s, d),
-	    d->hostname ? "@" : "",
-	    d->hostname ? HOSTNAME(s, d) : "",
+	    USERHOST(s, d),
 	    d->added, d->deleted);
 
 	/*

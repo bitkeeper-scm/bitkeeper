@@ -127,19 +127,7 @@ findkey(sccs *s, look l)
 		if (l.path) unless (streq(PATHNAME(s, d), l.path)) continue;
 		if (l.user) unless (streq(USER(s, d), l.user)) continue;
 		if (l.host) unless (streq(HOSTNAME(s, d), l.host)) continue;
-		if (l.email) {
-			char	*at = strchr(l.email, '@');
-
-			*at = 0;
-			unless (streq(USER(s, d), l.email) &&
-			    /* matching no host or matching host */
-			    ((!at[1] && !d->hostname) ||
-			    (d->hostname && streq(HOSTNAME(s, d), at+1)))) {
-				*at = '@';
-				continue;
-			}
-			*at = '@';
-		}
+		if (l.email) unless (streq(USERHOST(s, d), l.email)) continue;
 		printf("%s|%s", s->gfile, REV(s, d));
 		if (l.pkey) {
 			sccs_sdelta(s, d, key);

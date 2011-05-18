@@ -342,7 +342,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 	u32	randbits = 0;
 	int	len, i;
 	int	binary = 0;
-	char	*p, *t;
+	char	*p, *t, *host;
 
 	if (file) {
 		char	*p;
@@ -362,6 +362,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 		sprintf(randstr, "%08x", randbits);
 		chksum = randbits & 0xffff;
 	}
+	unless ((host = HOSTNAME(s, d)) && *host) host = sccs_gethost();
 	fh = fopen("SCCS/.init", "w");
 	if (file) {
 		struct	tm *tp = utc2tm(d->date - 1);
@@ -375,7 +376,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 		    tp->tm_min,
 		    tp->tm_sec,
 		    USER(s, d),
-		    d->hostname ? HOSTNAME(s, d) : sccs_gethost());
+		    host);
 		fprintf(fh,
 			"B %s\n"
 			"c sccs2bk\n"
@@ -391,7 +392,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 	} else {
 		fprintf(fh, "D %s %s %s@%s\n",
 		    REV(s, d), delta_sdate(s, d), USER(s, d),
-		    d->hostname ? HOSTNAME(s, d) : sccs_gethost());
+		    host);
 		t = COMMENTS(s, d);
 		while (p = eachline(&t, &len)) fprintf(fh, "c %.*s\n", len, p);
 		if (d->dateFudge) fprintf(fh, "F %u\n", d->dateFudge);
@@ -439,7 +440,7 @@ handleFake(sccs *s)
 	delta	*d;
 	int	i;
 	time_t	date = CUTOFFDATE;
-	u32	user = 0;
+	char	*user = 0;
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, (ser_t) i)) continue;
@@ -448,11 +449,12 @@ handleFake(sccs *s)
 		}
 		unless (d->date >= CUTOFFDATE) continue;
 		date = d->date;
-		user = d->user;
+		user = USER(s, d);
 		break;
 	}
 	/* If no user, then there's no BKFake already in heap -- it is uniq */
-	unless (user) user = sccs_addUniqStr(s, "BKFake");
+	/* Note: there is no host in a non bk file */
+	unless (user) user = "BKFake";
 
 	/* only fix the first 'i' deltas in count down fashion */
 	while (i > 1) {
@@ -463,8 +465,8 @@ handleFake(sccs *s)
 		}
 		date--;
 		d->date = date;
-		assert(d->user != user);
-		d->user = user;
+		assert(!streq(USER(s, d), user));
+		(void)sccs_parseArg(s, d, 'U', user, 0);
 	}
 }
 

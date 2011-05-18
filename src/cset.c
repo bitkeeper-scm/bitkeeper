@@ -329,6 +329,8 @@ cset_setup(int flags)
 	sccs	*cset;
 	delta	*d = new(delta);
 	int	fd;
+	char	*user, *host;
+	char	buf[MAXPATH];
 
 	cset = sccs_init(csetFile, 0);
 	assert(cset && cset->proj);
@@ -338,17 +340,21 @@ cset_setup(int flags)
 		goto intr;
 	}
 
-	d->hostname = sccs_addUniqStr(cset, sccs_gethost());
-	unless (isValidHost(HOSTNAME(cset, d))) {
-		fprintf(stderr, "invalid host: \"%s\"\n", HOSTNAME(cset, d));
+	host = sccs_gethost();
+	unless (isValidHost(host)) {
+		fprintf(stderr, "invalid host: \"%s\"\n", host);
+		free(d);
 		goto intr;
 	}
 
-	d->user = sccs_addUniqStr(cset, sccs_getuser());
-	unless (isValidUser(USER(cset, d))) {
-		fprintf(stderr, "invalid user: \"%s\"\n", USER(cset, d));
+	user = sccs_getuser();
+	unless (isValidUser(user)) {
+		fprintf(stderr, "invalid user: \"%s\"\n", user);
+		free(d);
 		goto intr;
 	}
+	sprintf(buf, "%s@%s", user, host);
+	sccs_parseArg(cset, d, 'U', buf, 0);
 	cset->state |= S_CSET;
 	cset->xflags |= X_LONGKEY;
 	if (sccs_delta(cset, flags|DELTA_EMPTY|NEWFILE, d, 0, 0, 0) == -1) {
@@ -1037,13 +1043,6 @@ mkChangeSet(sccs *cset, char *files, FILE *diffs)
 		}
 	}
 	d = sccs_dInit(0, 'D', cset, 0);
-	/*
-	 * XXX we need to insist d->hostname is non-null here,
-	 * otherwise it will inherit hostname from its ancestor
-	 * which will cause cset -i/-L to fail since
-	 * the signiture do not match
-	 */
-	assert(d->hostname);
 
 	fprintf(diffs, "0a0\n"); /* fake diff header */
 

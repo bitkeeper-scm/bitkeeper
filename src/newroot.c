@@ -258,9 +258,8 @@ sccs_defRootlog(sccs *cset)
 	unless (i == -1) {
 		cset->text = addLine(cset->text, strdup("@ROOTLOG"));
 		sccs_sdelta(cset, sccs_ino(cset), key);
-		sprintf(who, "%s@%s %s%s",
-		    USER(cset, cset->tree),
-		    HOSTNAME(cset, cset->tree),
+		sprintf(who, "%s %s%s",
+		    USERHOST(cset, cset->tree),
 		    delta_sdate(cset, cset->tree),
 		    ZONE(cset, cset->tree));
 		update_rootlog(cset, key, "original", who);
