@@ -4,7 +4,7 @@
 bk conflicts \- list unresolved files which contain conflicts
 .SH SYNOPSIS
 .B bk conflicts
-.[B] \-dDfvr
+.[B] \-dDfrvS
 .FILES
 .SH DESCRIPTION
 .LP
@@ -40,6 +40,10 @@ file.
 .tp
 .B \-r
 Invoke revtool, highlighting the GCA, LOCAL, and REMOTE versions in the file.
+.tp
+.B \-S
+When  used in a nested collection, treat the repository
+as if it were detached rather than as part of the  collection.
 .tp
 .B \-v
 Verbose listing.  The output lists the files that match the filenames or
