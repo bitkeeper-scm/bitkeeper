@@ -682,14 +682,15 @@ nameOK(opts *opts, sccs *s)
 	if (streq(path, realname) &&
 	    (local = sccs_init(path, INIT_NOCKSUM|INIT_MUSTEXIST)) &&
 	    HAS_SFILE(local) && (local->proj == proj)) {
-		if (EDITED(local) && sccs_hasDiffs(local, SILENT, 1)) {
-			fprintf(stderr,
-			    "Warning: %s is modified, will not overwrite it.\n",
+		sccs_sdelta(local, sccs_ino(local), path);
+		sccs_sdelta(s, sccs_ino(s), buf);
+		if (EDITED(local) && streq(path, buf) &&
+		    sccs_hasDiffs(local, SILENT, 1)) {
+			fprintf(stderr, "Warning: "
+			    "%s is modified, will not overwrite it.\n",
 			    local->gfile);
 			opts->edited = 1;
 		}
-		sccs_sdelta(local, sccs_ino(local), path);
-		sccs_sdelta(s, sccs_ino(s), buf);
 		if (opts->debug) {
 		    fprintf(stderr,
 			"nameOK(%s) => paths match, keys %smatch\n",

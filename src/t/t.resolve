@@ -1332,3 +1332,31 @@ echo foo >> dir/foo
 BK_CONFIG='checkout:get!;partial_check:off!' bk pull $Q ../repo2-clone 2>ERR
 test -d .bk && fail
 echo OK
+
+echo $N Show that remote rename does not conflict with local edit ...$NL
+# via support email
+# From: Dave Hart <hart@ntp.org>
+# Subject: "bk pull oddity"
+# Date: May 16, 2011
+cd "$HERE"
+commercial ntp-stable
+echo stable > info
+bk new $Q info
+bk commit $Q -f
+cd ..
+bk clone $Q ntp-stable ntp-dev
+cd ntp-stable
+bk edit $Q info
+echo modified-stable > info
+bk ci $Q -y'modified stable' info
+bk commit $Q -f
+cd ../ntp-dev
+bk rm info
+bk commit $Q -f
+echo dev > info
+bk new $Q info
+bk commit $Q -f
+bk edit $Q info
+echo modified-dev > info
+bk pull $Q || fail should have worked
+echo OK
