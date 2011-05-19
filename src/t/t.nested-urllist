@@ -98,6 +98,7 @@ cd ..
 rm -rf cloneA/gcc
 cd cloneB
 bk alias set $Q HERE `bk comps -h` || fail 7
+bk parent -qr
 bk here rm $Q gcc 2>ERR && fail 8
 cat <<EOF > WANT
 here: ./gcc cannot be found at a gate
