@@ -1151,9 +1151,13 @@ echo OK
 echo $N Make sure that the changeset got the alias create comments ..$NL
 bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
 cat > WANT <<EOF
-Create alias B
-Create alias C
-Create alias A
+Create alias "B" containing:
+	./gcc4
+Create alias "C" containing:
+	./gdb
+Create alias "A" containing:
+	B
+	C
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -1198,9 +1202,8 @@ echo OK
 echo $N If we remove all components an alias should be empty ........$NL
 bk alias rm A B C
 bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
-echo Delete alias A > WANT
+echo 'Delete alias "A"' > WANT
 cmpfiles WANT GOT
-bk alias list A
 bk alias set A B C
 echo OK
 

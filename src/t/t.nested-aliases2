@@ -404,6 +404,65 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Test alias cset comments describe what happened .............$NL
+# Customer requested seeing what component dirs were add/rm in comment
+bk here set $Q all
+bk alias add $Q -C MR_ROCKET ./gcc
+bk alias set $Q -C libiberty ./gcc
+bk alias rm $Q libcpp ./gcc/libcpp
+BK_PAGER=cat bk changes -mr1.12.. | perl -pe 's/^(ChangeSet\S+).*/$1/' > GOT
+cat <<EOF > WANT
+ChangeSet@1.18,
+  Create alias "MR_ROCKET" containing:
+  	./gcc
+  Set alias "libiberty" to:
+  	./gcc
+  Delete from alias "libcpp":
+  	./gcc/libcpp
+
+ChangeSet@1.17,
+  Create alias "libcpp" containing:
+  	./gcc/libcpp
+  	./gcc/libcpp/deep
+  Create alias "libiberty" containing:
+  	./gcc/libiberty
+  Create alias "nm" containing:
+  	./gcc/nm
+  Create alias "gcc" containing:
+  	./gcc
+  	libcpp
+  	libiberty
+  	nm
+  Create alias "dev" containing:
+  	gcc
+  	./gdb
+  Create alias "enchilada_grande" containing:
+  	dev
+  	./man
+
+ChangeSet@1.16,
+  Delete alias "dev"
+  Delete alias "gcc"
+  Delete alias "nm"
+
+ChangeSet@1.15,
+  Attach ./gcc/libcpp/deep
+
+ChangeSet@1.11.1.2,
+  Add to alias "dev":
+  	./gcc/libcpp
+
+ChangeSet@1.11.1.1,
+  Attach ./gcc/libcpp
+
+ChangeSet@1.13,
+  Add to alias "dev":
+  	./gcc/gcov
+
+EOF
+cmpfiles WANT GOT
+echo OK
+
 echo $N Test rm works when pointed to a gate ........................$NL
 cd "$HERE"
 nested rmalias
