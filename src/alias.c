@@ -255,18 +255,13 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 		if (dbAdd(aliasdb, alias, aliases)) goto err;
 	} else if (streq(cmd, "rm")) {
 		if (dbRemove(aliasdb, alias, aliases)) goto err;
-		if (aliases && hash_fetchStr(aliasdb, alias)) {
+		// LMXXX - I think this coude is not quite correct, if
+		// aliases has all values then we should just say we 
+		// deleted the alias, no?
+		if (aliases) {
 			fprintf(fcmt, "Delete from alias \"%s\":\n", alias);
 		} else {
 			fprintf(fcmt, "Delete alias \"%s\"\n", alias);
-			/*
-			 * If we deleted them all, free them here so
-			 * we don't list them all below.
-			 */
-			if (aliases) {
-				EACH(aliases) free(aliases[i]);
-				truncLines(aliases, 0);
-			}
 		}
 	} else {
 		error("%s: unknown command %s", cmd ? cmd : "null");
@@ -543,12 +538,8 @@ dbRemove(hash *aliasdb, char *alias, char **aliases)
 			goto err;
 		}
 		p = joinLines("\n", list);
-	} else {
-		p = 0;
-	}
-	if (p) {
-		hash_storeStr(aliasdb, alias, p);
-		free(p);
+		hash_storeStr(aliasdb, alias, p ? p : "");
+		if (p) free(p);
 	} else {
 		hash_deleteStr(aliasdb, alias);
 	}

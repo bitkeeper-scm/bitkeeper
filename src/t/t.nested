@@ -1202,8 +1202,14 @@ echo OK
 echo $N If we remove all components an alias should be empty ........$NL
 bk alias rm A B C
 bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
-echo 'Delete alias "A"' > WANT
+# LMXXX - shouldn't this be "Delete alias "A"" ?
+cat > WANT << EOF
+Delete from alias "A":
+	B
+	C
+EOF
 cmpfiles WANT GOT
+bk alias list A
 bk alias set A B C
 echo OK
 
