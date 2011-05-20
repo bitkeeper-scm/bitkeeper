@@ -24,7 +24,7 @@ typedef struct {
     int flags;			/* Operations for which Tcl command is to be
 				 * invoked. */
     size_t length;		/* Number of non-NUL chars. in command. */
-    char command[4];		/* Space for Tcl command to invoke. Actual
+    char command[];		/* Space for Tcl command to invoke. Actual
 				 * size will be as large as necessary to hold
 				 * command. This field must be the last in the
 				 * structure, so that it can be larger than 4
@@ -902,7 +902,7 @@ TraceVariableObjCmd(
 	if ((enum traceOptions) optionIndex == TRACE_ADD) {
 	    CombinedTraceVarInfo *ctvarPtr = (CombinedTraceVarInfo *)
 		    ckalloc((unsigned) (sizeof(CombinedTraceVarInfo)
-		    + length + 1 - sizeof(ctvarPtr->traceCmdInfo.command)));
+		    + length + 1));
 	    ctvarPtr->traceCmdInfo.flags = flags;
 	    if (objv[0] == NULL) {
 		ctvarPtr->traceCmdInfo.flags |= TCL_TRACE_OLD_STYLE;
