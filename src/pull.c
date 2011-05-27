@@ -307,7 +307,7 @@ send_part1_msg(remote *r, char **envVar)
 private int
 pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 {
-	char	*p;
+	char	*p, *t;
 	int	rc;
 	FILE	*f;
 	char	buf[MAXPATH];
@@ -339,9 +339,16 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 	if ((p = getenv("BKD_LEVEL")) && (atoi(p) > getlevel())) {
 	    	fprintf(stderr, "pull: cannot pull to lower level "
 		    "repository (remote level == %s)\n", getenv("BKD_LEVEL"));
+		if ((t = getenv("BKD_REPOTYPE")) && streq(t, "product")) {
+			pull_finish(r, 1, envVar);
+		}
 		disconnect(r);
 		return (1);
 	}
+	/*
+	 * FEAT_pull_r shipped in 4.0 and BAMv2 in 4.1.1.
+	 * The BKDs that don't have those can't be serving a product
+	 */
 	if (opts.rev && !bkd_hasFeature(FEAT_pull_r)) {
 		notice("no-pull-dash-r", 0, "-e");
 		disconnect(r);
