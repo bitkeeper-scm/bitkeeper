@@ -761,7 +761,14 @@ dspec_collapse(char **dspec, char **begin, char **end)
 	for (; *p; p++) {
 		switch (*p) {
 		    case '#':	/* comment to end of line */
-			while (*p && (*p != '\n')) ++p;
+			for (++p; *p; ++p) {
+				if (*p == '\n') break;
+				if (*p == '\\') {
+					++p;
+					if (!*p || (*p == 'n')) break;
+				}
+			}
+			unless (*p) --p; /* outer for loop needs to see end */
 			break;
 		    case '\\':
 			fputc(*p, f);

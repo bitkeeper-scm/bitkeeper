@@ -14038,10 +14038,15 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		rev = strndup(p, len - (p-kw));
 		if ((rev[0] == '$') && isdigit(rev[1]) && !rev[2]) {
 			/* substitute for a $\d variable */
-			if (t = sccs_prsbuf(s, d, PRS_FORCE, rev)) {
+			FILE	*f = fmem_open();
+
+			dspec_eval(f, s, d, rev);
+			if (t = fmem_retbuf(f, 0)) {
+				/* FYI: returns "" if empty */
 				free(rev);
 				rev = t;
 			}
+			fclose(f);
 		}
 		if (streq(rev, "PARENT")) {
 			if (d) e = PARENT(s, d);
