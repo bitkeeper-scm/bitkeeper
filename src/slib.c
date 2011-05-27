@@ -6942,7 +6942,9 @@ get_link(sccs *s, char *printOut, int flags, delta *d, int *ln)
 		mkdirf(f);
 		unless (symlink(d->symlink, f) == 0 ) {
 #ifdef WIN32
-			getMsg("symlink", s->gfile, '=', stderr);
+			if (getenv("BK_WARN_SYMLINK")) {
+				getMsg("symlink", s->gfile, '=', stderr);
+			}
 #else
 			perror(f);
 #endif
