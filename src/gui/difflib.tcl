@@ -75,6 +75,8 @@ proc createDiffWidgets {w} \
 	    .diffs.right tag configure d -background $gc($app.activeDiffColor)
 	    .diffs.left  tag configure highlight -background $gc($app.highlight)
 	    .diffs.right tag configure highlight -background $gc($app.highlight)
+	    .diffs.right tag configure empty -background black
+	    .diffs.left  tag configure empty -background black
 	    bind .diffs <Configure> { computeHeight "diffs" }
 }
 
@@ -428,10 +430,12 @@ proc readFiles {L R {O {}}} \
 		    "<" {
 			## left
 			$left  insert end [gets $l]\n diff
+			$right  insert end " " empty
 			$right insert end \n diff
 		    }
 		    ">" {
 			## right
+			$left  insert end " " empty
 			$left  insert end \n diff
 			$right insert end [gets $r]\n diff
 		    }
