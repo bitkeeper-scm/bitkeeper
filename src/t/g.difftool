@@ -26,7 +26,6 @@ echo OK
 echo $N Simple startup with no args and nothing to diff..............$NL
 bk guitest difftool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    test_die 99
 EOF
 err=$?
 test "X$PLATFORM" != XWIN32 && {
@@ -50,7 +49,6 @@ echo "this is file 1" > file1
 echo "this is file 2" > file2
 bk guitest difftool file1 file2 >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    test_die 99
 EOF
 err=$?
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
@@ -59,22 +57,12 @@ echo "OK"
 
 echo $N Proper count of diffs and files when there is only 1.........$NL
 bk guitest difftool file1 file2 >"$OUT" 2>&1 <<'EOF'
-    global diffCount
-    set files [.menu.fmb cget -text]
-    puts "$files diffCount=$diffCount"
+    test_diffCount 1
     test_buttonPress Quit
-    test_die 99
 EOF
 err=$?
-if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
-expected='Files (1) diffCount=1'
-grep -q "$expected" "$OUT"
-if [ $? -ne 0 ]; then 
-    echo failed
-    echo "expected: '$expected'"
-    echo "  actual: '`cat "$OUT"`'" 
-    exit 1 
-fi
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
 echo "OK"
 
 ## Create two revisions for testing and make a local change to test out the
@@ -96,7 +84,6 @@ echo "foo" > foo
 echo $N "Testing command line (<file>) ...............................$NL"
 bk guitest difftool foo >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
@@ -106,7 +93,6 @@ echo "OK"
 echo $N "Testing command line (bk difftool .) ........................$NL"
 bk guitest difftool . >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
@@ -118,17 +104,16 @@ bk edit $Q gcc/file1
 echo FOO >> gcc/file1
 bk guitest difftool gcc >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+bk unedit $Q gcc/file1
 echo "OK"
 
 echo $N "Testing command line (-r<rev> <file>) .......................$NL"
 bk guitest difftool -r1.1 foo >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
@@ -138,7 +123,6 @@ echo "OK"
 echo $N "Testing command line (-r<rev1> -r<rev2> <file>) .............$NL"
 bk guitest difftool -r1.1 -r1.2 foo >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
@@ -148,7 +132,6 @@ echo "OK"
 echo $N "Testing command line (<file1 <file2>) .......................$NL"
 bk guitest difftool foo bar >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
@@ -158,7 +141,6 @@ echo "OK"
 echo $N "Testing command line (<path/file1 <path/file2>) .............$NL"
 bk guitest difftool "$PWD/foo" "$PWD/bar" >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
@@ -168,7 +150,6 @@ echo "OK"
 echo $N "Testing command line (-r<rev1> -r<rev2>) ....................$NL"
 bk guitest difftool -r1.1 -r1.2 >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
@@ -178,11 +159,237 @@ echo "OK"
 echo $N "Testing command line (-r@<rev1>..@<rev2>) ...................$NL"
 bk guitest difftool -r@1.1..@1.2 >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ]; then echo failed; cat "$OUT"; exit 1; fi
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+echo "OK"
+
+echo $N "Testing key bindings (N) ....................................$NL"
+bk unedit foo
+bk edit $Q file3 file4
+echo foo >> file3
+echo bar >> file4
+bk guitest difftool >"$OUT" 2>&1 <<'EOF'
+	## Make sure N moves to the next file.
+	test_currentFile "file3"
+	test_inputString "N"
+	test_currentFile "file4"
+
+	## N again should do nothing since there are no more files.
+	test_inputString "N"
+	test_currentFile "file4"
+
+	test_buttonPress Quit
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo "OK"
+
+echo $N "Testing key bindings (P) ....................................$NL"
+bk edit $Q file3 file4
+echo foo >> file3
+echo bar >> file4
+bk guitest difftool >"$OUT" 2>&1 <<'EOF'
+	## N moves to the next file.
+	test_currentFile "file3"
+	test_inputString "N"
+	test_currentFile "file4"
+
+	## P should move us back.
+	test_inputString "P"
+	test_currentFile "file3"
+
+	## P again should do nothing since we're on the first file.
+	test_inputString "P"
+	test_currentFile "file3"
+
+	test_buttonPress Quit
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo "OK"
+
+echo $N "Testing key bindings (Control-n) ............................$NL"
+bk edit $Q file3 file4
+echo foo >> file3
+echo bar >> file4
+bk guitest difftool >"$OUT" 2>&1 <<'EOF'
+	## Make sure N moves to the next file.
+	test_currentFile "file3"
+	test_inputString "^n"
+	test_currentFile "file4"
+
+	## N again should do nothing since there are no more files.
+	test_inputString "^n"
+	test_currentFile "file4"
+
+	test_buttonPress Quit
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo "OK"
+
+echo $N "Testing key bindings (Control-p) ............................$NL"
+bk edit $Q file3 file4
+echo foo >> file3
+echo bar >> file4
+bk guitest difftool >"$OUT" 2>&1 <<'EOF'
+	## Make sure N moves to the next file.
+	test_currentFile "file3"
+	test_inputString "^n"
+	test_currentFile "file4"
+
+	## P should move us back.
+	test_inputString "^p"
+	test_currentFile "file3"
+
+	## P again should do nothing since we're on the first file.
+	test_inputString "^p"
+	test_currentFile "file3"
+
+	test_buttonPress Quit
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo "OK"
+
+## Create a couple of long dummy files for testing moving around in the diffs.
+bk help config-gui | head -99 > long1
+bk help config-gui | head -99 > long2
+echo "	FOO" >> long1
+echo "        FOO" >> long2
+bk help config-gui | head -9 >> long1
+bk help config-gui | head -9 >> long2
+echo "testing subline highlighting on char *foo" >> long1
+echo "testing subline highlighting on const char *foo" >> long2
+bk help config-gui | head -99 >> long1
+bk help config-gui | head -99 >> long2
+echo "This is a subline highlight test" >> long1
+echo "This is a subline highlighting test" >> long2
+bk help config-gui | head -100 >> long1
+bk help config-gui | head -100 >> long2
+
+## Set the top margin to 0 so that our diffs are always right up against
+## the top line of the view instead of scrolled down a few lines.  This
+## gives us an easier line count to work with.
+echo "set gc(diff.topMargin) 0" >> "$BK_DOTBK/config-gui"
+
+echo $N "Testing key bindings (n) ....................................$NL"
+bk guitest difftool long1 long2 >"$OUT" 2>&1 <<'EOF'
+	test_currentDiff 1
+	test_inputString "n"
+	test_currentDiff 2
+	test_inputString "n"
+	test_currentDiff 3
+	test_buttonPress Quit
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo "OK"
+
+echo $N "Testing key bindings (p) ....................................$NL"
+bk guitest difftool long1 long2 >"$OUT" 2>&1 <<'EOF'
+	test_currentDiff 1
+	test_inputString "n"
+	test_currentDiff 2
+	test_inputString "n"
+	test_currentDiff 3
+	test_inputString "p"
+	test_currentDiff 2
+	test_inputString "p"
+	test_currentDiff 1
+	test_buttonPress Quit
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo "OK"
+
+echo $N "Testing key bindings (space) ................................$NL"
+bk guitest difftool long1 long2 >"$OUT" 2>&1 <<'EOF'
+	test_currentDiff 1
+	test_inputString " "
+	test_currentDiff 2
+	test_inputString " "
+	test_currentDiff 3
+	test_buttonPress Quit
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo "OK"
+
+echo $N "Testing key bindings (.) ....................................$NL"
+bk guitest difftool long1 long2 >"$OUT" 2>&1 <<'EOF'
+	test_currentDiff 1
+	test_topLine 100
+	test_keyPress "PageDown"
+	test_inputString "."
+	test_topLine 100
+	test_buttonPress Quit
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo "OK"
+
+echo $N "Testing centering diffs .....................................$NL"
+bk guitest difftool long1 long2 >"$OUT" 2>&1 <<'EOF'
+	## Test to see which line is at the top of the view.
+	## Should be 101, the first diff.
+	test_topLine 100
+	test_currentDiff 1
+
+	## Move to the next diff, but since it's on the same screen
+	## as the first, the top line should not move.
+	test_inputString "n"
+	test_topLine 100
+	test_currentDiff 2
+
+	## Move to the next one.  This one should shift the view and
+	## bring the next diff to the top of the view.
+	test_inputString "n"
+	test_topLine 210
+	test_currentDiff 3
+
+	test_inputString "p"
+	test_topLine 110
+	test_currentDiff 2
+
+	test_inputString "p"
+	test_topLine 100
+	test_currentDiff 1
+
+	test_buttonPress Quit
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo "OK"
+
+echo $N "Testing subline highlighting ................................$NL"
+bk guitest difftool long1 long2 >"$OUT" 2>&1 <<'EOF'
+	## Test to see if the proper strings are highlighted in the
+	## diffs.  We pass a list of strings that should be highlighted,
+	## in order, and they are compared against the highlighted
+	## strings in the text widget.
+	test_sublineHighlight left  {"\t"}
+	test_sublineHighlight right {
+	    "        "
+	    " const"
+	    "ing"
+	}
+	test_buttonPress Quit
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
 echo "OK"
 
 if [ "$PLATFORM" = "WIN32" ]; then

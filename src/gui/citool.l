@@ -887,6 +887,8 @@ gui()
 	    background: gc("ci.warnColor"));
 	Text_tag(self.w_diffs, "configure", "notice",
 	    background: gc("ci.noticeColor"));
+	Text_tagConfigure(self.w_diffs, "highlight",
+	    background: gc("ci.highlight"));
 
 	if (gc("aqua")) {
 		StatusBar(self.w_statusF, showresize: 0);
@@ -1820,6 +1822,7 @@ showFile(sfile sf)
 		Text_insert(self.w_diffs, "end", "${line}\n", tag);
 	}
 	fclose(fd);
+	highlightStacked(self.w_diffs, "1.0", "end", 1);
 	Text_configure(self.w_diffs, state: "disabled");
 }
 
