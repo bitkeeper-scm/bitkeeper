@@ -312,7 +312,7 @@ sfio_out(void)
 			continue;
 		}
 		if (opts->key2path) {
-			unless (gfile = key2path(buf, idDB)) continue;
+			unless (gfile = key2path(buf, idDB, 0)) continue;
 			sfile = name2sccs(gfile);
 			strcpy(buf, sfile);
 			free(sfile);

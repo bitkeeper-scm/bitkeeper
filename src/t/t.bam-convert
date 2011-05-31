@@ -15,9 +15,13 @@ cp BitKeeper/etc/config c
 grep -v BAM c > BitKeeper/etc/config
 
 echo $N Trying to check in some binary data .........................$NL
-cp ${BIN1} data
-chmod u+w data
-bk new $Q data || exit 1
+cp "$BIN1" data
+perl -e 'sysread(STDIN, $buf, 10240);
+syswrite(STDOUT, $buf, 10240);' < data > data2
+chmod u+w data data2
+touch zero
+printf "x" > one
+bk new $Q -b zero one data data2 || exit 1
 bk commit -ywhatever $Q
 test -d BitKeeper/BAM && {
 	echo should not have created BAM dir
@@ -42,17 +46,23 @@ bk get -kpq data > ../data-1.3
 bk clean data || exit 1
 test -f data && exit 1
 bk co $Q data || exit 1
-cmp -s ${BIN1} data || {
+cmp -s "$BIN1" data || {
 	echo failed to retrieve the data
 	exit 1
 }
+# for later -- look for GONE
+bk clone $Q . ../gone
+bk clone $Q . ../notgone
 echo OK
 
 echo $N Now try and BAM convert it and see what we get ..............$NL
-# bk clone -q ../proj ../save
 # Restore BAM to config file
-cp c BitKeeper/etc/config
-bk bam convert > OUT 2>&1 || {
+echo "BAM:on" >> BitKeeper/etc/config
+bk delta $Q -yBAM BitKeeper/etc/config
+bk commit $Q -yBAM 
+# Compressed cset files had a bug, make sure it doesn't come back.
+bk admin -Zgzip ChangeSet
+bk bam convert 16k > OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -66,4 +76,159 @@ test -f busted && {
 	ls -l data-* ../data-*
 	exit 1
 }
+echo OK
+
+echo $N Make sure that it actually converted data ...................$NL
+bk encoding data > GOT
+echo data BAM > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check id in file, bk id, dspec ..............................$NL
+grep -q 'B:4000:' BitKeeper/log/ROOTKEY || fail -f BitKeeper/log/ROOTKEY
+X=`bk id`
+case $X in
+    *|B:4000:*) ;;
+    *) fail;;
+esac
+X=`bk changes -r+ -nd:ROOTKEY:`
+case $X in
+    *|B:4000:*) ;;
+    *) fail;;
+esac
+echo OK
+
+echo $N Try and convert to a bigger BAM size, should fail ...........$NL
+cd ..
+bk clone $Q proj convert
+cd convert
+bk bam convert 100000 > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q 'BAM size must be less than 16384.' OUT || fail -f OUT
+echo OK
+
+echo $N Try and convert a clone to a smaller BAM size than default ..$NL
+bk bam convert 8192 > OUT 2>&1 || {
+	echo should have worked
+	fail -f OUT
+}       
+echo OK
+
+echo $N Make sure that it actually converted data2 ..................$NL
+bk encoding data2 > GOT
+echo data2 BAM > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check id in file, bk id, dspec ..............................$NL
+grep -q 'B:2000:' BitKeeper/log/ROOTKEY || fail 
+X=`bk id`
+case $X in
+    *|B:2000:*) ;;
+    *) fail;;
+esac
+X=`bk changes -r+ -nd:ROOTKEY:`
+case $X in
+    *|B:2000:*) ;;
+    *) fail;;
+esac
+echo OK
+
+echo $N Check that pull tells us we have a bam convert mismatch .....$NL
+cd ../proj
+bk pull ../convert > OUT 2>&1 && {
+	echo should have failed
+	fail -f OUT
+}
+grep -q 'destination needs to convert down to 8192' OUT || fail -f OUT
+echo OK
+
+echo $N Same thing other direction ..................................$NL
+cd ../convert
+bk pull ../proj > OUT 2>&1 && {
+	echo should have failed
+	fail -f OUT
+}
+grep -q 'source needs to convert down to 8192' OUT || fail -f OUT
+echo OK
+
+echo $N Check that push tells us we have a bam convert mismatch .....$NL
+cd ../convert
+bk push ../proj > OUT 2>&1 && {
+	echo should have failed
+	fail -f OUT
+}
+grep -q 'destination needs to convert down to 8192' OUT || fail -f OUT
+echo OK
+
+echo $N Same thing, other direction .................................$NL
+cd ../proj
+bk push ../convert > OUT 2>&1 && {
+	echo should have failed
+	fail -f OUT
+}
+grep -q 'source needs to convert down to 8192' OUT || fail -f OUT
+echo OK
+
+# This also tests that we don't look at the BAM config
+echo $N Do the conversion down, try the push, should be nothing .....$NL
+BK_CONFIG='BAM:off!' bk bam convert 8K > OUT 2>&1 || fail -f OUT
+bk push ../convert > OUT 2>&1 || fail -f OUT
+grep -q 'Nothing to push' OUT || fail -f OUT
+# boundary check - one side to 1
+bk bam convert 1 > OUT 2>&1 || fail -f OUT
+bk push ../convert > OUT 2>&1 && fail -f OUT
+grep -q 'destination needs to convert down to 1' OUT || fail -f OUT
+# drop other side to one
+bk --cd=../convert bam convert 1 > OUT 2>&1 || fail -f OUT
+bk push ../convert > OUT 2>&1 || fail -f OUT
+grep -q 'Nothing to push' OUT || fail -f OUT
+# drop to zero
+bk bam convert 0 > OUT 2>&1 || fail -f OUT
+bk push ../convert > OUT 2>&1 && fail -f OUT
+grep -q 'destination needs to convert down to 0' OUT || fail -f OUT
+# drop other side to one
+bk --cd=../convert bam convert 0 > OUT 2>&1 || fail -f OUT
+bk push ../convert > OUT 2>&1 || fail -f OUT
+grep -q 'Nothing to push' OUT || fail -f OUT
+echo OK
+
+echo $N Gone file present at the time of the convert should fail ....$NL
+cd "$HERE"/gone
+bk edit $Q BitKeeper/etc/gone
+# stick the key for a present file to be converted into the gone file
+bk prs -r+ -hnd:ROOTKEY: data data2 >> BitKeeper/etc/gone
+# add bogus things that are in customer's gone file: paths, random delta keys
+echo file >> BitKeeper/etc/gone
+bk changes -kr+ >> BitKeeper/etc/gone
+# add in some works in progress
+bk edit $Q data2
+echo alkjad > data2
+bk bam convert 2k 2> LOG && fail -f LOG
+cat <<EOF > WANT
+data would be converted but is marked as gone, conversion aborted.
+data2 has been modified, needs delta.
+EOF
+cmpfiles WANT LOG
+# This touches timestamp of s.gone in other repos.  XXX in sccs_unedit()
+bk unedit BitKeeper/etc/gone data2
+echo OK
+
+echo $N Gone file present and absent in convert .....................$NL
+# GONE repos gone and notgone created ealier before any converts
+bk rm data
+bk commit $Q -yrm
+# unedit can cause this push to fail -- disable trap
+_BK_DEVELOPER= bk push $Q ../notgone || fail
+bk _rm -fr BitKeeper/deleted
+bk -r check -ag | bk gone $Q -
+bk commit $Q -y'mark gone'
+bk bam convert 2k 2> LOG || fail -f LOG
+cd ../notgone
+bk bam convert 2k 2> LOG || fail -f LOG
+bk pull -q ../gone 2> ERR && fail -f ERR
+grep -q "has had a different transformation" ERR || fail -f ERR
 echo OK

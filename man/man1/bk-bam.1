@@ -10,6 +10,7 @@ bk bam \- BAM utility routines
 .[B] \-an
 .br
 .B bk bam convert
+.[ARG] size
 .br
 .B bk bam pull
 .[B] \-aq
@@ -77,10 +78,14 @@ be run in a BAM server since the server may have BAM files referenced
 only by clients.
 .tp
 .B convert
-Convert the set of specified files from traditional binary encoding to BAM
-encoding.
+Convert all files from traditional binary encoding to BAM encoding.
 Only files greater than a certain size are converted since small files 
 perform better with the traditional encoding.
+The size, which defaults to 64K, is compared against the initial version
+of each binary file, and if that version is greater than the size the file
+is converted.
+Note that the conversion may be run more than once, but the size used
+can only decrease, it may not increase.
 .tp
 .B pull
 This interface is used to transfer any BAM data that is missing from the

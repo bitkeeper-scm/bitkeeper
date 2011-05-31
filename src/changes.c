@@ -830,7 +830,7 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 		here = strdup(proj_cwd());
 		chdir(proj_root(prod));
 		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-		if (path = key2path(proj_rootkey(proj), idDB)) {
+		if (path = key2path(proj_rootkey(proj), idDB, 0)) {
 			mdbm_close(idDB);
 			proj = proj_init(path);
 			chdir(path);
@@ -1482,7 +1482,8 @@ changes_part1(remote *r, char **av, char *key_list)
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:
-			getMsg("unrelated_repos", 0, '=', stderr);
+			getMsg("unrelated_repos",
+			    "synchronize with", '=', stderr);
 			break;
 		    case -3:
 			getMsg("no_repo", 0, '=', stderr);

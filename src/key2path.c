@@ -4,13 +4,19 @@
 #include "system.h"
 #include "sccs.h"
 
+MDBM	*md5key2key(void);
+
+/*
+ * LMXXX - needs an option (default?) to verify that the file is there and
+ * is that key.  Perhaps that's the default and -F is fast and just prints
+ * where it should be?
+ */
 int
 key2path_main(int ac, char **av)
 {
-	
 	char	*path;
 	char	key[MAXKEY];
-	MDBM	*idDB;
+	MDBM	*idDB, *m2k = 0;
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "key2path: cannot find package root.\n");
@@ -24,8 +30,7 @@ key2path_main(int ac, char **av)
 
 	while (fnext(key, stdin)) {
 		chomp(key);
-
-		unless (path = key2path(key, idDB)) {
+		unless (path = key2path(key, idDB, &m2k)) {
 			fprintf(stderr, "Can't find path for key %s\n",key);
 			mdbm_close(idDB);
 			return (1);
@@ -33,23 +38,59 @@ key2path_main(int ac, char **av)
 		printf("%s\n", path);
 		free(path);
 	}
-
+	if (m2k) mdbm_close(m2k);
 	mdbm_close(idDB);
 	return (0);
 }
 
 char *
-key2path(char *key, MDBM *idDB)
+key2path(char *key, MDBM *idDB, MDBM **m2k)
 {
 	char	*path, *t;
 
 	if (path = mdbm_fetch_str(idDB, key)) return (strdup(path));
 
-	unless (path = strchr(key, '|')) return (0);
+	unless (path = strchr(key, '|')) {
+		unless (isKey(key)) return (0);
+		if (m2k && !*m2k) *m2k = md5key2key();
+		unless (key = mdbm_fetch_str(*m2k, key)) return (0);
+		return (key2path(key, idDB, 0));
+	}
 	path++;
 	unless (t = strchr(path, '|')) return (0);
 	*t = 0;
 	path = strdup(path);
 	*t = '|';
 	return (path);
+}
+
+/*
+ * Return a pointer to a read only MDBM that maps md5root -> longroot key.
+ */
+MDBM *
+md5key2key(void)
+{
+	MDBM	*m2k, *cache;
+	kvpair	kv;
+	char	*rootkey, *mpath;
+	char	buf[MD5LEN];
+
+	rootkey = backtick("bk -R prs -hr+ -nd:ROOTKEY: BitKeeper/etc/config");
+	(void)proj_cset2key(0, "+", rootkey);
+	free(rootkey);
+	mpath = aprintf("%s/BitKeeper/tmp/csetcache.%x",
+	    proj_root(0), (u32)adler32(0, "+", 1));
+	unless (cache = mdbm_open(mpath, O_RDONLY, 0600, 0)) {
+		free(mpath);
+		return (0);
+	}
+	free(mpath);
+	m2k = mdbm_mem();
+	for (kv = mdbm_first(cache); kv.key.dsize != 0; kv = mdbm_next(cache)) {
+		unless (isKey(kv.key.dptr)) continue;
+		sccs_key2md5(kv.key.dptr, kv.key.dptr, buf);
+		mdbm_store_str(m2k, buf, kv.key.dptr, MDBM_INSERT);
+	}
+	mdbm_close(cache);
+	return (m2k);
 }

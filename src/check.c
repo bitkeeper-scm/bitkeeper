@@ -1353,7 +1353,7 @@ buildKeys(MDBM *idDB)
 		    smap[ser] && !mdbm_fetch_str(goneDB, t)) {
 			rkd->mask |= 8;
 			unless (mdbm_fetch_str(goneDB, s)) {
-				char	*path = key2path(t, 0);
+				char	*path = key2path(t, 0, 0);
 
 				/* strip /ChangeSet from components */
 				if (streq(basenm(path), "ChangeSet")) {

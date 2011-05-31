@@ -461,9 +461,9 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 	    case 0:
 		break;
 	    case 1:
-		fprintf(stderr,
-		    "You are trying to pull from an unrelated package.\n"
-		    "Please check the pathnames and try again.\n");
+		unless (bam_converted(1)) {
+			getMsg("unrelated_repos", "pull from", 0, stderr);
+		}
 		/*FALLTHROUGH*/
 	    default:
 		unlink(msg_file);

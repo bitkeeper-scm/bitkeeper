@@ -38,7 +38,7 @@
 private	char*	hash2path(project *p, char *hash);
 private int	bp_insert(project *proj, char *file, char *keys,
 		    int canmv, mode_t mode);
-private	int	uu2bp(sccs *s);
+private	int	uu2bp(sccs *s, int bam_size, char ***keysp);
 
 #define	INDEX_DELETE	"----delete----"
 
@@ -1692,6 +1692,9 @@ bam_index_main(int ac, char **av)
 	return (bp_index_check(0));
 }
 
+/*
+ * Return {:BAMHASH:}->db/db38bc33.d1
+ */
 private int
 load_logfile(MDBM *m, FILE *f)
 {
@@ -1756,7 +1759,7 @@ sfiles_bam_main(int ac, char **av)
 			if (changesetKey(buf)) continue;
 			while ((--p > buf) && (*p != '|'));
 			unless (strneq(p, "|B:", 3)) continue;
-			unless (p = key2path(buf, idDB)) continue;
+			unless (p = key2path(buf, idDB, 0)) continue;
 			sfile = name2sccs(p);
 			if (exists(sfile) || !mdbm_fetch_str(goneDB, buf)) {
 				puts(p);
@@ -1990,32 +1993,25 @@ bam_timestamps_main(int ac, char **av)
 	return (errors);
 }
 
-
-char	**keys;
-
 private int
 bam_convert_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*p;
-	int	c, i, j, n, bam_size;
-	int	matched = 0, errors = 0;
+	char	**keys = 0;
+	char	**gone;
+	int	c, i, j, n, sz, old_size;
+	int	matched = 0, errors = 0, bam_size = 0;
 	FILE	*in, *out, *sfiles;
+	MDBM	*idDB = 0;
 	char	buf[MAXKEY * 2];
 
 #undef	ERROR
 #define	ERROR(x)	{ fprintf(stderr, "BAM convert: "); fprintf x ; }
 
-	// XXX - locking
+	// XXX - locking?  Nested?
 	if (proj_cd2root()) {
 		ERROR((stderr, "not in a repository.\n"));
-		exit(1);
-	}
-	p = proj_rootkey(0);
-	assert(p);
-	if (strneq(p, "B:", 2)) {
-		ERROR((stderr,
-		    "this repository has already been converted.\n"));
 		exit(1);
 	}
 	while ((c = getopt(ac, av, "", 0)) != -1) {
@@ -2023,41 +2019,94 @@ bam_convert_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
-	unless (proj_configsize(0, "BAM")) {
-		ERROR((stderr, "turning on BAM in your config file.\n"));
-		get("BitKeeper/etc/config", SILENT|GET_EDIT, "-");
-		system("echo 'BAM:on' >> BitKeeper/etc/config");
-		system("bk delta -qy'Add BAM' BitKeeper/etc/config");
-		system("echo 'BitKeeper/etc/SCCS/s.config|+' | "
-		    "bk commit -S -qy'Add BAM' -");
-		proj_reset(0);
+
+	/*
+	 * Check the specified size (if any) against the root key.
+	 * It may shrink, not grow, because we aren't going implement
+	 * a way to go from BAM to uuencode.
+	 */
+	bam_size = BAM_SIZE;
+	if (av[optind]) {
+		bam_size = atoi(av[optind]);
+		assert (bam_size >= 0); /* parsing -1 looks like an option */
+		for (p = av[optind]; *p && isdigit(*p); p++);
+		switch (*p) {
+		    case 'k': case 'K': bam_size <<= 10; break;
+		    case 'm': case 'M': bam_size <<= 20; break;
+		    case 0: break;
+		    default:
+			ERROR((stderr, "unknown size modifier '%c'\n", *p));
+			exit(1);
+		}
 	}
+	old_size = 0;	// in case sscanf doesn't zero it
+	p = strrchr(proj_rootkey(0), '|');
+	sscanf(p, "|B:%x:", &old_size);
+	unless ((old_size == 0) || (old_size > bam_size)) {
+		fprintf(stderr, "BAM size must be less than %u.\n", old_size);
+		exit(1);
+	}
+
+	/*
+	 * Look for all files marked as gone and if we would convert any,
+	 * refuse.
+	 * LMXXX - be nice to have a better error message.
+	 */
+	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	unless (exists(GONE)) get(GONE, SILENT, "-");
+	gone = file2Lines(0, GONE);
+	EACH(gone) {
+		s = sccs_keyinit(0, gone[i], INIT_NOCKSUM|INIT_MUSTEXIST, idDB);
+		unless (s) continue;
+		unless ((s->encoding & E_DATAENC) == E_UUENCODE) {
+			sccs_free(s);
+			continue;
+		}
+		if (sccs_clean(s, SILENT)) {
+			errors |= 1;
+			sccs_free(s);
+			continue;
+		}
+		if (sccs_get(s, "1.1", 0, 0, 0, SILENT, "-")) return (8);
+		sz = size(s->gfile);
+		unlink(s->gfile);
+		if (sz >= bam_size) {
+			fprintf(stderr,
+			    "%s would be converted but is marked as gone, "
+			    "conversion aborted.\n", s->gfile);
+			errors |= 1;
+		}
+		sccs_free(s);
+	}
+	mdbm_close(idDB);
+	freeLines(gone, free);
+	if (errors) goto out;
+
 	sfiles = popen("bk sfiles", "r");
-	bam_size = proj_configsize(0, "BAM");
 	while (fnext(buf, sfiles)) {
 		chomp(buf);
 		/*
 		 * Tried
 	         * 	if (size(buf) < bam_size) continue;
-		 * but compressed sfiles make this test fail and skip files it shouldn't.
+		 * but compressed sfiles make this test fail
+		 * and skip files it shouldn't.
 		 */
-		unless (s = sccs_init(buf, 0)) continue;
-		unless (HASGRAPH(s)) {
-			sccs_free(s);
-			errors |= 1;
-			continue;
-		}
+		unless (s = sccs_init(buf, INIT_MUSTEXIST)) continue;
 		unless ((s->encoding & E_DATAENC) == E_UUENCODE) {
 			sccs_free(s);
 			continue;
 		}
 
-		errors |= uu2bp(s);
+		errors |= uu2bp(s, bam_size, &keys);
 		sccs_free(s);
 	}
-	pclose(sfiles);
-	if (sfileDone()) errors |= 2;
+	if (pclose(sfiles)) errors |= 2;
 	if (errors) goto out;
+	unless (keys) {
+		ERROR((stderr, "no files needing conversion found.\n"));
+		goto out;
+	}
+	system("bk admin -Znone ChangeSet");
 	unless (in = fopen("SCCS/s.ChangeSet", "r")) {
 		perror("SCCS/s.ChangeSet");
 		exit(1);
@@ -2088,7 +2137,8 @@ bam_convert_main(int ac, char **av)
 			i++;
 		}
 		if (j) {
-			ERROR((stderr, "found %d of %d\r", matched, n));
+			ERROR((stderr,
+			    "found %d of %d converted keys\r", matched, n));
 			removeLineN(keys, j, free);
 			removeLineN(keys, j, free);
 		} else {
@@ -2098,21 +2148,31 @@ bam_convert_main(int ac, char **av)
 	fprintf(stderr, "\n");
 	fclose(in);
 	fclose(out);
-	// LMXXX - why is this here?
-	EACH(keys) {
-		fprintf(stderr, "%s", keys[i]);
+	if (nLines(keys)) {
+		ERROR((stderr, "some keys not found (shortkeys?)\n"));
+		EACH(keys) {
+			fprintf(stderr, "%s", keys[i]);
+		}
+		ERROR((stderr, "conversion failed.\n"));
+		mkdir("RESYNC", 0775);
+		exit(1);
 	}
 	rename("SCCS/s.ChangeSet", "BitKeeper/tmp/s.ChangeSet");
 	rename("SCCS/x.ChangeSet", "SCCS/s.ChangeSet");
 	system("bk admin -z ChangeSet");
-	system("bk checksum -fp ChangeSet");
-	ERROR((stderr, "redoing ChangeSet ids ...\n"));
+	ERROR((stderr, "fixing changeset checksums ...\n"));
+	system("bk checksum -f ChangeSet");
+	ERROR((stderr, "changing repo id ...\n"));
 	/* The proj_reset() is to close BAM_DB so newroot can rename dir */
 	proj_reset(0);
-	sprintf(buf, "bk newroot -y'bam convert B:%x:' -kB:%x:",
-	    proj_configsize(0, "BAM"), proj_configsize(0, "BAM"));
-	system(buf);
-	if (errors || system("bk -r check -accv")) {
+	sprintf(buf,
+	    "bk newroot -y'bam convert B:%x:' -kB:%x:", bam_size, bam_size);
+	if (system(buf) || errors) {
+		ERROR((stderr, "failed\n"));
+		exit(1);
+	}
+	ERROR((stderr, "running final integrity check ...\n"));
+	if (system("bk -r check -accv")) {
 		ERROR((stderr, "failed\n"));
 		exit(1);
 	} else {
@@ -2130,7 +2190,7 @@ out:	return (errors);
  * - kill the weave.
  */
 private	int
-uu2bp(sccs *s)
+uu2bp(sccs *s, int bam_size, char ***keysp)
 {
 	delta	*d;
 	FILE	*out;
@@ -2138,11 +2198,12 @@ uu2bp(sccs *s)
 	int	n = 0;
 	off_t	sz;
 	char	*t;
-	ticker	*tick = 0;
+	char	**keys = *keysp;
 	char	oldroot[MAXKEY], newroot[MAXKEY];
 	char	key[MAXKEY];
 
-	if (sccs_clean(s, 0)) return (4);
+	if (sccs_clean(s, SILENT)) return (4);
+	if ((s->encoding & E_COMP) == E_GZIP) sccs_unzip(s);
 	d = sccs_ino(s);
 	sccs_sdelta(s, d, oldroot);
 	assert(d->random);
@@ -2168,12 +2229,9 @@ uu2bp(sccs *s)
 		if (sccs_get(s, "1.1", 0, 0, 0, SILENT, "-")) return (8);
 		sz = size(s->gfile);
 		unlink(s->gfile);
-		if (sz < proj_configsize(s->proj, "BAM")) goto out;
+		if (sz < bam_size) goto out;
 	}
-
-	if ((s->encoding & E_COMP) == E_GZIP) sccs_unzip(s);
-	fprintf(stderr, "Converting %s", s->gfile);
-	tick = progress_start(PROGRESS_MINI, s->nextserial);
+	fprintf(stderr, "Converting %s ", s->gfile);
 	for (n = 0, d = s->table; d; d = NEXT(d)) {
 		assert(d->type == 'D');
 		if (sccs_get(s, d->rev, 0, 0, 0, SILENT, "-")) return (8);
@@ -2200,17 +2258,17 @@ uu2bp(sccs *s)
 			keys = addLine(keys, aprintf("%s %s\n", oldroot, key));
 		}
 		if (bp_delta(s, d)) return (16);
-		progress(tick, ++n);
 		if (d->flags & D_CSET) {
 			sccs_sdelta(s, d, key);
 			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
 		}
 		unlink(s->gfile);
+		fprintf(stderr, ".");
+		++n;
 	}
-	progress_done(tick, 0);
-	fprintf(stderr, "\n");
+	*keysp = keys;
 	unless (out = sccs_startWrite(s)) {
-err:		sccs_abortWrite(s, &out);
+err:		if (out) sccs_abortWrite(s, &out);
 		sccs_unlock(s, 'z');
 		return (32);
 	}
@@ -2219,7 +2277,7 @@ err:		sccs_abortWrite(s, &out);
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001%c%05u\n", 'H', s->cksum);
 	if (sccs_finishWrite(s, &out)) goto err;
-	fprintf(stderr, "Converted %d deltas in %s\n", n, s->gfile);
+	fprintf(stderr, "\rConverted %d deltas in %s\n", n, s->gfile);
 out:	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -2328,6 +2386,192 @@ rm:
 	return (rc);
 }
 
+/*
+ * List the pathname of the gfile[s] that use the files in the BAM dir
+ * (or what is specified).  So this is fd/fd4a9fe4.d1 -> ico.gif
+ */
+private int
+bam_names_main(int ac, char **av)
+{
+	int	i, j, first, not;
+	int	total = 0, used = 0;
+	char	**bamfiles = 0;
+	char	**notused = 0;
+	char	*dir, **dirs, **tmp;
+	char	*file, *p, *path;
+	MDBM	*m2k = 0;
+	FILE	*f = 0;			// lint
+	MDBM	*log, *idDB;
+	kvpair	kv;
+	char	buf[MAXPATH];
+
+	if (proj_cd2root()) {
+		fprintf(stderr, "Must be in repository.\n");
+		return (-1);
+	}
+	if (av[1] && !av[2] && streq(av[1], "-")) {
+		while (fgets(buf, sizeof(buf), f)) {
+			chomp(buf);
+			bamfiles = addLine(bamfiles, strdup(buf));
+		}
+	} else {
+		for (i = 1; av[i]; i++) {
+			bamfiles = addLine(bamfiles, strdup(av[i]));
+		}
+	}
+	unless (bamfiles) {
+		dir = bp_dataroot(0, 0);
+		chdir(dir);
+		dirs = getdir(dir);
+		EACH(dirs) {
+			sprintf(buf, "%s/%s", dir, dirs[i]);
+			unless (isdir(buf)) continue;
+			tmp = getdir(buf);
+			EACH_INDEX(tmp, j) {
+				sprintf(buf, "%s/%s/%s",
+				    bp_dataroot(0, 0),
+				    dirs[i],
+				    tmp[j]);
+				bamfiles = addLine(bamfiles, strdup(buf));
+			}
+		}
+		freeLines(dirs, free);
+		free(dir);
+		proj_cd2root();
+	}
+	bp_indexfile(0, buf);
+	unless (f = fopen(buf, "r")) {
+		freeLines(bamfiles, free);
+		return (1);
+	}
+	load_logfile(log = mdbm_mem(), f);
+	fclose(f);
+	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	/*
+	 * lm3di - it's really slow.
+	 */
+	EACH(bamfiles) {
+		total++;
+		file = strrchr(bamfiles[i], '/');
+		assert(file);
+		file -= 2;
+		assert(file >= bamfiles[i]);
+		first = 1;
+		not = 1;
+		for (kv = mdbm_first(log); kv.key.dsize; kv = mdbm_next(log)) {
+ 			// {:BAMHASH: :KEY: :MD5KEY|1.0:}->db/db38bc33.d1
+			unless (streq(kv.val.dptr, file)) continue;
+			p = strrchr(kv.key.dptr, ' ');
+			assert(p);
+			p++;
+			/*
+			 * So there is an entry in our tree for
+			 * 4cfbc7eaHNS8nVhTI8qYbMCbjEvx5Q
+			 * but that root key doesn't seem to exist,
+			 * bk -r prs -h -nd:MD5KEY: | grep $KEY
+			 * returns nothing.
+			 * Ideas?  For now, skip it if not found.
+			 */
+			if (path = key2path(p, idDB, &m2k)) {
+				not = 0;
+				if (first) {
+					used++;
+					first = 0;
+				}
+				printf("%s used by %s\n", file, path);
+			}
+			if (path) free(path);
+		}
+		if (not) notused = addLine(notused, bamfiles[i]);
+	}
+	printf("%d/%d in use by 1 or more deltas.\n", used, total);
+	if (notused) {
+		printf("BAM files not used by any delta here:\n");
+		EACH(notused) printf("%s\n", notused[i]);
+	}
+	freeLines(notused, 0);
+	freeLines(bamfiles, free);
+	mdbm_close(idDB);
+	mdbm_close(m2k);
+	mdbm_close(log);
+	return (0);
+}
+
+/*
+ * US:   lm@lm.bitmover.com|ChangeSet|19990319224848|02682|B:c00:
+ * THEM: lm@lm.bitmover.com|ChangeSet|19990319224848|02682
+ *
+ * is what our tree looks like w/ no random bits.
+ */
+int
+bam_converted(int ispull)
+{
+	char	**them = splitLine(getenv("BKD_ROOTKEY"), "|", 0);
+	char	**us = splitLine(proj_rootkey(0), "|", 0);
+	char	*t, *u;
+	char	*t2, *u2;
+	char	*src, *dest;
+	int	i;
+	int	rc = 1, tbam = -1, ubam = -1; /* 0 is a valid bam_size */
+
+	for (i = 1; i < 5; ++i) {
+		unless (streq(them[i], us[i])) {
+			rc = 0;
+			goto out;
+		}
+	}
+
+	/*
+	 * When we are done with this, t2 and u2 point at the random
+	 * bits or ""
+	 */
+	t = nLines(them) == 5 ? them[5] : "";
+	if (t2 = strrchr(t, ':')) {
+		*t2++ = 0;
+		tbam = strtoul(&t[2], 0, 16);
+	} else {
+		t2 = t;
+	}
+	u = nLines(us) == 5 ? us[5] : "";
+	if (u2 = strrchr(u, ':')) {
+		*u2++ = 0;
+		ubam = strtoul(&u[2], 0, 16);
+	} else {
+		u2 = u;
+	}
+	unless (strneq(t, "B:", 2) || strneq(u, "B:", 2)) {
+		rc = 0;
+		goto out;
+	}
+
+//fprintf(stderr, "t=%s t2=%s tbam=%u u=%s u2=%s ubam=%d\n",t,t2,tbam,u,u2,ubam);
+	/*
+	 * If this pops it has to be BAM on one side and not (or diff)
+	 * on the other.
+	 */
+    	if (ispull) {
+		src = "source";
+		dest = "destination";
+	} else {
+		dest = "source";
+		src = "destination";
+	}
+	if (rc && streq(t2, u2)) {
+		fprintf(stderr, "BAM conversion mismatch, ");
+		if ((ubam >= 0) && ((tbam < 0) || (ubam < tbam))) {
+			fprintf(stderr,
+			    "%s needs to convert down to %d\n", src, ubam);
+		} else {
+			fprintf(stderr,
+			    "%s needs to convert down to %d\n", dest, tbam);
+		}
+	}
+out:	freeLines(them, free);
+	freeLines(us, free);
+	return (rc);
+}
+
+
 int
 bam_main(int ac, char **av)
 {
@@ -2340,6 +2584,7 @@ bam_main(int ac, char **av)
 		{"clean", bam_clean_main },
 		{"convert", bam_convert_main },
 		{"index", bam_index_main },
+		{"names", bam_names_main },
 		{"pull", bam_pull_main },
 		{"push", bam_push_main },
 		{"reattach", bam_reattach_main },

@@ -9059,7 +9059,16 @@ sccs_unedit(sccs *s, u32 flags)
 		getFlags |= GET_SKIPGET;
 	} else {
 reget:		unlinkGfile(s);
-		/* For make, foo.o may be more recent than s.foo.c */
+		/*
+		 * For make, foo.o may be more recent than s.foo.c
+		 *
+		 * XXX causes problems when running BK_DEVELOPER and having
+		 * hardlinks as it messes with other repos time stamps,
+		 * possibly making the other repos sfile with a time
+		 * newer than its gfile.  See use of turning off developer
+		 * in t.bam-convert as a case when unedit in one repo
+		 * causes push to fail in a different repo.
+		 */
 		utime(s->sfile, 0);
 	}
 	if (getFlags) {
@@ -17107,6 +17116,15 @@ sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB)
 	char	buf[MAXKEY];
 
 	/*
+	 * We call this with the crap people put in the gone file,
+	 * do a little sanity check.
+	 * x@y|K|19990319224848|02682|x
+	 * 1234567890123456789012345678
+	 * so 28 bytes, and MD5KEYS are longer, so we're good @ 28.
+	 */
+	unless (key && *key && (strlen(key) >= 28)) return (0);
+
+	/*
 	 * Id cache contains both long and short keys
 	 * so we don't need to look things up as long then short.
 	 */
@@ -17127,9 +17145,9 @@ sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB)
 		    	return (0);
 		}
 
-		for (t = k.dptr; *t++ != '|'; );
-		for (r = t; *r != '|'; r++);
-		assert(*r == '|');
+		unless (t = strchr(k.dptr, '|')) return (0);
+		t++;
+		unless (r = strchr(t, '|')) return (0);
 		*r = 0;
 		p = name2sccs(t);
 		*r = '|';
