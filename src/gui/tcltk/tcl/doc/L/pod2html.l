@@ -1,44 +1,37 @@
 #!../../unix/tclsh
 
 int
-main(int ac, string av[])
+main(string av[])
 {
 	FILE	f;
 	int	i, ul;
 	int	space = 0, dd = 0, p = 0, pre = 0;
-	string	buf, tmp, title, trim, all[];
-
-	// lint
-	if (0) ac++;
+	string	buf, c, tmp, title, trim, all[];
 
 	/*
 	 * -t<title> or --title=<title>
 	 */
-	for (i = 1; defined(av[i]) && (av[i] =~ /^-/); i++) {
-		if (av[i] eq "--") {
-			i++;
+	while (c = getopt(av, "t:", {"title:"})) {
+		switch (c) {
+		    case "t":
+		    case "title":
+			title = optarg;
 			break;
 		}
-		if ((av[i] =~ /--title=(.*)/) || (av[i] =~ /-t(.*)/)) {
-			title = $1;
-		} else {
-			die("usage: ${av[0]} [--title=whatever]");
-		}
 	}
-	if (!defined(av[i]) ||
-	    defined(av[i+1]) || !defined(f = fopen(av[i], "r"))) {
+	unless (av[optind] && (f = fopen(av[optind], "r"))) {
 		die("usage: ${av[0]} filename");
 	}
-	unless (defined(title)) title = av[i];
+	unless (title) title = av[optind];
 
 	header(title);
-	
+
 	/*
 	 * Load up the whole file in all[] and spit out the index.
 	 */
 	puts("<ul>");
 	ul = 1;
-	while (defined(buf = fgetline(f))) {
+	while (buf = <f>) {
 		push(&all, buf);
 		if (buf =~ /^=head(\d+)\s+(.*)/) {
 			i = (int)$1;
@@ -62,7 +55,7 @@ main(int ac, string av[])
 	/*
 	 * Now walk all[] and process the markup.  We currently handle:
 	 * =head%d title
-	 * =over 
+	 * =over
 	 * =item name
 	 * =proto return_type func(args)
 	 * =back
@@ -71,6 +64,8 @@ main(int ac, string av[])
 	 * C<some code>
 	 * I<italics>
 	 */
+	// The <= is intentional to run an empty string through at the end
+	// to kick out any final </pre> etc.
 	for (i = 0; i <= length(all); i++) {
 		buf = inline(all[i]);
 		if (buf =~ /^=head(\d+)\s+(.*)/) {
@@ -185,11 +180,12 @@ EOF
 string
 inline(string buf)
 {
-	string	c, prev, result, link, stack[];
+	string	c, prev, result = "", link, stack[];
 	int	B = 0, C = 0, I = 0, L = 0, S = 0;
 
+	unless (buf) buf = "";
 	foreach (c in buf) {
-		if ((c eq "<") && defined(prev)) {
+		if ((c eq "<") && prev) {
 			if (prev eq "B") {
 				if (B++) die("Nested B<> unsupported: ${buf}");
 				result[END] = "";
@@ -235,7 +231,7 @@ inline(string buf)
 				S--;
 				c = undef;
 			}
-			if (defined(c)) {
+			if (c) {
 				result .= "</" . c . ">";
 			}
 			prev = undef;

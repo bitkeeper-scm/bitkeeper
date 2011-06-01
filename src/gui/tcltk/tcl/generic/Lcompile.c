@@ -147,6 +147,7 @@ private int	compile_keys(Expr *expr);
 private void	compile_label(Stmt *stmt);
 private int	compile_length(Expr *expr);
 private void	compile_loop(Loop *loop);
+private int	compile_min_max(Expr *expr);
 private int	compile_fnParms(VarDecl *decl);
 private void	compile_pragma(Stmt *stmt);
 private int	compile_pop(Expr *expr);
@@ -238,6 +239,8 @@ static struct {
 	{ "join",	compile_join },
 	{ "keys",	compile_keys },
 	{ "length",	compile_length },
+	{ "max",	compile_min_max },
+	{ "min",	compile_min_max },
 	{ "pop",	compile_pop },
 	{ "push",	compile_push },
 	{ "read",	compile_read },
@@ -1620,6 +1623,26 @@ compile_length(Expr *expr)
 }
 
 private int
+compile_min_max(Expr *expr)
+{
+	push_str("::tcl::mathfunc::%s", expr->a->str);
+	unless (compile_exprs(expr->b, L_PUSH_VAL) == 2) {
+		L_errf(expr, "incorrect # args to %s", expr->a->str);
+		expr->type = L_poly;
+		return (0);
+	}
+	L_typeck_expect(L_INT|L_FLOAT, expr->b, "in min/max");
+	L_typeck_expect(L_INT|L_FLOAT, expr->b->next, "in min/max");
+	emit_invoke(3);
+	if (isfloat(expr->b) || isfloat(expr->b->next)) {
+		expr->type = L_float;
+	} else {
+		expr->type = L_int;
+	}
+	return (1);  // stack effect
+}
+
+private int
 compile_sort(Expr *expr)
 {
 	int	i, n;
@@ -2917,6 +2940,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 		return (1);
 	    case L_OP_CAST:
 		type = (Type *)expr->a;
+		flags &= ~L_DISCARD;
 		if (flags & L_LVALUE) {
 			compile_expr(expr->b, flags);
 		} else {

@@ -3222,6 +3222,8 @@ test cast-1.0 { Casts to integer and float } -body {
 void cast_1_0() {
     printf("%d\n", (int)1.9);
     printf("%f\n", (float)5);
+    (int)1.9;
+    (float)5;
 }
 #lang tcl
 cast_1_0
@@ -15936,6 +15938,42 @@ void builtin_18()
 } -returnCodes {error} -match regexp -result {.*5: L Error: argument to typeof\(\) not a variable
 .*6: L Error: argument to typeof\(\) not a variable
 .*7: L Error: argument to typeof\(\) not a variable
+}
+
+test builtin-19.1 {check min/max built-ins} -body {
+#lang L
+void builtin_19_1()
+{
+	unless (min(-1, 1) == -1) puts("bad 1");
+	unless (min(2, 1) == 1) puts("bad 2");
+
+	unless (min(-1.0, 1.0) == -1.0) puts("bad 3");
+	unless (min(2.0, 1.0) == 1.0) puts("bad 4");
+}
+builtin_19_1();
+} -output {}
+
+test builtin-19.2 {check min/max built-in errors} -body {
+#lang L
+void builtin_19_2()
+{
+	min();
+	min(1);
+	min(1,2,3);
+	max();
+	max(1);
+	max(1,2,3);
+	min("bad","bad");
+	max("bad","bad");
+}
+} -returnCodes {error} -match regexp -result {.*3: L Error: incorrect # args to min
+.*4: L Error: incorrect # args to min
+.*5: L Error: incorrect # args to min
+.*6: L Error: incorrect # args to max
+.*7: L Error: incorrect # args to max
+.*8: L Error: incorrect # args to max
+.*9: L Error: expected type int or float but got string in min/max
+.*10: L Error: expected type int or float but got string in min/max
 }
 
 test line-file-1 {test __LINE__ and __FILE__} -body {

@@ -644,8 +644,8 @@ the caller's variable.
 
 Only variables can be passed by reference, not elements of arrays,
 hashes, or structs.  This is one significant difference from C.
-Passing an array, hash, or struct element with C<&> uses C<copy
-in/out>, not a true reference.  The element value is copied
+Passing an array, hash, or struct element with C<&> uses C<copy in/out>,
+not a true reference.  The element value is copied
 into a temp variable and the temp is passed by reference.  Then when
 the function returns, any changes to the temp are copied back into the
 array, hash, or struct element.  In most cases this behaves like
@@ -775,9 +775,18 @@ And the compare function looks like this:
 
 L has most of the usual conditional and looping constructs.
 
-A conditional expression can be any L expression of type int or
-string.  Any non-zero int value is TRUE, and zero is FALSE.  Any
-non-empty string value is TRUE, and the empty string ("") is FALSE.
+A variable of any type will evaluate to false if it is undefined.
+An int or a float with a value of 0 is also false.
+All other values are true.
+
+    int undefined = undef;
+    int zero = 0;
+    int one = 1;
+
+    if (undefined)          // false
+    if (zero)               // false
+    if (one)                // true
+    if (defined(zero))      // true
 
 See the list of operators in the next section for information on
 comparison and logic operators, which are commonly used in conditional
@@ -812,7 +821,7 @@ version of C<if (!I<condition>)>.
 
     do {
         ...
-    while ( condition )
+    } while ( condition )
 
 =item for
 
@@ -1382,23 +1391,23 @@ is specified, it is not closed by this function.
 The form without a file handle
 
     while (buf = <>) {
-	    ...
+        ...
     }
 
 means
 
     unless (argv[1]) {
-	    while (buf = <stdin>) {
-		    ...
-	    }
+        while (buf = <stdin>) {
+            ...
+        }
     } else for (i = 1; argv[i]; i++) {
-	    unless (f = open(argv[i], "r")) {
-                perror(argv[i]);
-                continue;
-            }
-	    while (buf = <f>) {
-		    ...
-	    }
+        unless (f = open(argv[i], "r")) {
+            perror(argv[i]);
+            continue;
+        }
+        while (buf = <f>) {
+            ...
+        }
     }
 
 A trivial cat implementation:
@@ -1406,9 +1415,9 @@ A trivial cat implementation:
     void
     main(int ac, string argv[])
     {
-    	string	buf;
+        string  buf;
 
-    	while (buf = <>) print(buf);
+        while (buf = <>) print(buf);
     }
 
 =proto string <"filename">
@@ -1765,6 +1774,14 @@ The C<struct stat> type is defined as follows:
 where C<st_type> is a string giving the type of file name, which will
 be one of file, directory, characterSpecial, blockSpecial, fifo, link,
 or socket.
+
+=proto int|float max(int|float, int|float)
+
+=proto int|float min(int|float, int|float)
+
+Return the maximum or minimum of two numbers.  The return type is
+float if either of the arguments is a float, otherwise the return type
+is int.
 
 =proto int mkdir(string path)
 
