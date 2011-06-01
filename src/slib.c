@@ -9457,8 +9457,10 @@ toobig(sccs *s)
 {
 	u64	sz;
 
-	sz = 0x7fffffff;	/* 2GB - 1, always positive */
-	sz *= 2;		/* 4294967294 or fffffffe */
+	/*
+	 * largest signed 32 bit value that is positive.
+	 */
+	sz = 0x7fffffff;
 	if (BAM(s) && exists(s->gfile) && (size(s->gfile) > sz)) {
 		fprintf(stderr,
 		    "%s is too large for this version of BitKeeper\n",
