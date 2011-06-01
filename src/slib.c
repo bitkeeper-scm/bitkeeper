@@ -14031,6 +14031,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 #define	KW(x)	kw2val(out, x, strlen(x), s, d)
 #define	fc(c)	show_d(s, out, "%c", c)
 #define	fd(n)	show_d(s, out, "%d", n)
+#define	fu(n)	show_d(s, out, "%u", n)
 #define	fx(n)	show_d(s, out, "0x%x", n)
 #define	f5d(n)	show_d(s, out, "%05d", n)
 #define	fs(str)	show_s(s, out, str, -1)
@@ -15722,7 +15723,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_BAMSIZE: /* BAMSIZE */
 		if (d->hash) {
-			fd(d->added);
+			// XXX - BAMSIZE could be much bigger than 4G
+			fu(d->added);
 			return (strVal);
 		}
 		return (nullVal);
