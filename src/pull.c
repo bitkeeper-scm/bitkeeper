@@ -834,7 +834,11 @@ pull_ensemble(remote *r, char **rmt_aliases,
 					 * XXX: I plan to fix this with pull-urllist.
 					 */
 					fprintf(stderr,
-					    "pull: %s is missing in %s\n",
+					    "pull: %s is missing in %s\n"
+					    "and is needed because that "
+					    "component has work on both "
+					    "sides and needs\n"
+					    "to be merged.\n",
 					    c->path, url);
 					++errs;
 				}
