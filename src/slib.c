@@ -3888,6 +3888,9 @@ loadConfig(project *p, int forcelocal)
 	MDBM	*db = mdbm_mem();
 	char	*t;
 	project	*prod = 0;
+	char	**empty = 0;
+	int	i;
+	kvpair	kv;
 
 	/*
 	 * Support for a magic way to set clone default
@@ -3916,6 +3919,12 @@ loadConfig(project *p, int forcelocal)
 		loadRepologConfig(db, proj_root(prod));
 	}
 	loadEnvConfig(db);
+
+	/* now remove any empty keys */
+	EACH_KV(db) if (kv.val.dsize == 1) empty = addLine(empty, kv.key.dptr);
+	EACH(empty) mdbm_delete_str(db, empty[i]);
+	freeLines(empty, 0);
+
 	return (db);
 }
 
@@ -3951,8 +3960,7 @@ printconfig(char *file, MDBM *db, MDBM *cfg)
 		k = keys[i];
 		v1 = mdbm_fetch_str(db, k);
 		assert(v1);
-		v2 = mdbm_fetch_str(cfg, k);
-		assert(v2);
+		unless (v2 = mdbm_fetch_str(cfg, k)) v2 = ""; /* deleted is empty for this */
 
 		/* mark the config that doesn't get used */
 		if (!*v1 || streq(v1, "!")) {
