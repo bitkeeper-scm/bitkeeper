@@ -459,14 +459,14 @@ cd  "$HERE"
 rm -rf "$HERE/copy"
 tar xmf chkpoint.tar
 cd "$HERE/project/src"
-cp $BIN1 bdata
+cp "$BIN1" bdata
 bk new $Q -Ebinary bdata
 bk get $Q -r1.1 -Gbdata bdata
-cmp -s bdata $BIN1
-if [ $? -ne 0 ]; then echo failed test 1; cmp bdata $BIN1; exit 1; fi
+cmp -s bdata "$BIN1"
+if [ $? -ne 0 ]; then echo failed test 1; cmp bdata "$BIN1"; exit 1; fi
 bk commit $S --tag=binary1 -ybinary1
 bk get $Q -e bdata
-cp $BIN2 bdata
+cp "$BIN2" bdata
 bk ci $Q -y bdata
 bk commit $S --tag=binary2 -ybinary2
 cd  "$HERE/copy/src"
@@ -477,7 +477,7 @@ test -d RESYNC && {
 	exit 1
 }
 bk get $Q bdata
-cmp -s bdata $BIN2
+cmp -s bdata "$BIN2"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk clone $Q -rbinary1 "$HERE/copy" "$HERE/copy2" || {
 	cd "$HERE/copy2"
@@ -486,13 +486,13 @@ bk clone $Q -rbinary1 "$HERE/copy" "$HERE/copy2" || {
 }
 cd "$HERE/copy2/src"
 bk get $Q bdata
-cmp -s bdata $BIN1
+cmp -s bdata "$BIN1"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 (cd "$HERE/copy" && bk cset -B -mbinary2) | (cd "$HERE/copy2" && bk takepatch)
 bk resolve $L $Q "$HERE/copy2"
 bk get $Q bdata
-cmp -s bdata $BIN2
-if [ $? -ne 0 ]; then echo failed test 4; cmp bdata $BIN2; exit 1; fi
+cmp -s bdata "$BIN2"
+if [ $? -ne 0 ]; then echo failed test 4; cmp bdata "$BIN2"; exit 1; fi
 echo OK
 cores
 echo $N Check resolve w/ merge and delete event .....................$NL

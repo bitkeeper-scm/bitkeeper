@@ -32,8 +32,8 @@ appropriate for those screens:
 .DS
 if {[winfo screenwidth .] <= 1024} {
 	# These show up better on LCD displays.
-	set gc(oldColor) lightseagreen
-	set gc(newColor) gray
+	set gc(diffColor) gray
+	set gc(activeDiffColor) lightseagreen
 	set gc(fm3.handColor) yellow
 }
 .DE
@@ -44,13 +44,13 @@ file is to change configuration options.
 A typical line looks like this:
 .ft R
 .DS
-set gc(oldColor) #f0f0f0
+set gc(diffColor) #f0f0f0
 .DE
 and the meanings for each part of that line are:
 .DS
 .ta +1.4i
 set	tcl syntax for assigning variables
-gc(oldColor)	configuration option
+gc(diffColor)	configuration option
 #f0f0f0	hexadecimal color value
 .DE
 Each variable in the config file may take one of two forms, 
@@ -144,13 +144,13 @@ Color of button when in an unselected state. Default:\ #d0d0d0
 Color for the help topic widget and list backgrounds
 Default:\ #e8e8e8
 .tp
-.B newColor
-Color of the newer revision or diff.
-Default:\ #a8d8e0
+.B diffColor
+Color of the changed lines in a diff view.
+Default:\ #E0E0E0
 .tp
-.B oldColor
-Color of the older revision or diff.
-Default:\ #b48cff
+.B activeDiffColor
+Color of the selected diff block in a diff view.
+Default:\ #2FEDAD
 .tp
 .B noticeColor
 Color for warnings and messages.  Default:\ #b0b0e0

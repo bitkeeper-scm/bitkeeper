@@ -26,7 +26,7 @@ SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 	  fm3tool.tcl fmtool.tcl helptool.tcl msgtool.tcl progress.tcl \
 	  renametool.tcl revtool.tcl search.tcl setuptool.tcl \
 	  ../port/$(SYS)_platform.tcl supportform.tcl supportlib.tcl \
-	  newdifftool.tcl showproc.tcl debugtool.l
+	  newdifftool.tcl showproc.tcl debugtool.l fmlib.tcl
 
 default: notes/BUILD
 	@cat notes/BUILD
@@ -117,7 +117,7 @@ csettool: $(COMMON) search.tcl appState.tcl difflib.tcl csettool.tcl
 difftool: $(COMMON) search.tcl appState.tcl difflib.tcl difftool.tcl
 	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/difftool
 
-fmtool: $(COMMON) appState.tcl difflib.tcl fmtool.tcl
+fmtool: $(COMMON) appState.tcl difflib.tcl fmlib.tcl fmtool.tcl
 	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/fmtool
 
 fm3tool: $(COMMON) appState.tcl tooltip.tcl fm3tool.tcl

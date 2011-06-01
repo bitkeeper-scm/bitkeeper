@@ -1051,7 +1051,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 
 				unless (changesetKey(key)) continue;
 
-				t = key2path(key, idDB);
+				t = key2path(key, idDB, 0);
 				if (sccs_isPending(t)) {
 					dirname(t); /* strip /ChangeSet */
 					getMsg("tp_uncommitted",

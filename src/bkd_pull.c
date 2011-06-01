@@ -29,6 +29,11 @@ cmd_pull_part1(int ac, char **av)
 		}
 	}
 
+	if ((p = getenv("BK_LEVEL")) && (atoi(p) < getlevel())) {
+		/* they got sent the level so they are exiting already */
+		return (1);
+	}
+
 	if (getenv("BK_PORT_ROOTKEY")) {
 		port = 1;
 		probekey_av = addLine(probekey_av, strdup("-S"));

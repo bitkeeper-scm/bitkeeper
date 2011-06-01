@@ -127,8 +127,8 @@ echo $N Modify the binary in both, resync it, check merge ...........$NL
 cd "$HERE"
 rm -rf */RESYNC */PENDING
 bk edit $Q copy/binary project/binary || exit 1
-cp -f $BIN2 copy/binary
-cp -f $BIN3 project/binary
+cp -f "$BIN2" copy/binary
+cp -f "$BIN3" project/binary
 for i in copy project
 do	cd "$HERE"/$i
 	chmod +w binary
@@ -161,7 +161,7 @@ test -d RESYNC && {
 	cat OUT
 	exit 1
 }
-bk cat binary | cmp - $BIN2 || {
+bk cat binary | cmp - "$BIN2" || {
 	echo failed to use local version of binary
 	exit 1
 }
@@ -193,7 +193,7 @@ test -d RESYNC && {
 	cat OUT
 	exit 1
 }
-bk cat binary | cmp - $BIN3 || {
+bk cat binary | cmp - "$BIN3" || {
 	echo failed to use remote version
 	exit 1
 }
@@ -224,7 +224,7 @@ test -d RESYNC && {
 	echo failed to complete resolve
 	exit 1
 }
-bk cat binary | cmp - $BIN2 || {
+bk cat binary | cmp - "$BIN2" || {
 	echo failed to use local version
 	exit 1
 }
@@ -255,7 +255,7 @@ test -d RESYNC && {
 	echo failed to complete resolve
 	exit 1
 }
-bk cat binary | cmp - $BIN3 || {
+bk cat binary | cmp - "$BIN3" || {
 	echo failed to use remote version
 	exit 1
 }
@@ -287,7 +287,7 @@ test -d RESYNC && {
 	cat OUT
 	exit 1
 }
-bk cat binary | cmp - $BIN3 || {
+bk cat binary | cmp - "$BIN3" || {
 	echo failed to use remote version
 	exit 1
 }

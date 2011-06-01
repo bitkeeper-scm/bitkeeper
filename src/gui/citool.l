@@ -72,6 +72,7 @@ struct {
 	string[] filelist;	    // list of files from the command line
 	string	clipboard;	    // contents of the cut-and-paste clipboard
 	string	trigger_sock;	    // open socket to accept trigger output
+	string	trigger_output;	    // Output from triggers during a commit
 	string[] allComponents;	    // a list of all components in the repo
 	string[] components{string}; // a hash indexed by component path of
 				     // components in a product
@@ -887,6 +888,8 @@ gui()
 	    background: gc("ci.warnColor"));
 	Text_tag(self.w_diffs, "configure", "notice",
 	    background: gc("ci.noticeColor"));
+	Text_tagConfigure(self.w_diffs, "highlight",
+	    background: gc("ci.highlight"));
 
 	if (gc("aqua")) {
 		StatusBar(self.w_statusF, showresize: 0);
@@ -1820,6 +1823,7 @@ showFile(sfile sf)
 		Text_insert(self.w_diffs, "end", "${line}\n", tag);
 	}
 	fclose(fd);
+	highlightStacked(self.w_diffs, "1.0", "end", 1);
 	Text_configure(self.w_diffs, state: "disabled");
 }
 
@@ -1959,9 +1963,21 @@ doCommit()
 		}
 	}
 
-	commitComponent(self.root);
-	deletePendingComments();
 	self.committing = 0;
+	self.commitSwitch = 0;
+	unless (commitComponent(self.root)) {
+		ListBox_configure(self.w_files, state: "normal");
+		updateButtons();
+		/*
+		 * rescan needed because files and components
+		 * may have been delta'ed commited before
+		 * the pre-commit trigger failure/rejection
+		 */
+		After_idle("rescan");
+		return;
+	}
+
+	deletePendingComments();
 
 	if (String_isTrue(strict:, gc("ci.rescan")) && !self.resolve) {
 		After_idle("rescan");
@@ -1970,9 +1986,10 @@ doCommit()
 	}
 }
 
-void
+int
 commitComponent(string comp)
 {
+	int	res = 1;
 	sfile	sf, cset;
 	int	csetExcluded, csetCommented;
 	string	file, comments;
@@ -2044,7 +2061,7 @@ commitComponent(string comp)
 
 	if (csetCommented && !csetExcluded && length(commit)) {
 		FILE	fd;
-		string	err;
+		int	err;
 		string	line;
 		string	list[];
 		string	msg;
@@ -2071,6 +2088,7 @@ commitComponent(string comp)
 		}
 		fclose(fd);
 
+		self.trigger_output = "";
 		self.trigger_sock = socket(myaddr: "localhost",
 		    server: "triggerAccept", 0);
 		list = fconfigure(self.trigger_sock, sockname:);
@@ -2098,7 +2116,7 @@ commitComponent(string comp)
 			string	type;
 			string	message = "bk commit";;
 
-			if ((int)err != 0 && (int)err != 100) {
+			if (err != 0 && err != 100) {
 				type = "-E";
 				message .= " failed with error ${err}:";
 			} else {
@@ -2118,12 +2136,18 @@ commitComponent(string comp)
 				message .= trim(bgExecInfo("stdout"));
 			}
 
-			popupMessage(type, message);
+			if ((self.trigger_output =~ /pre-commit failed/)
+			    && (err == 2)) {
+				res = 0;
+			} else {
+				popupMessage(type, message);
+			}
 		}
 
-		deleteCommentFile(cset.file);
+		if (res) deleteCommentFile(cset.file);
 	}
 	chdir(self.root);
+	return (res);
 }
 
 void
@@ -2145,6 +2169,7 @@ triggerRead(string sock)
 		close(sock);
 	} else {
 		insertBottomText("${line}\n", 0);
+		self.trigger_output .= line . "\n";
 	}
 }
 

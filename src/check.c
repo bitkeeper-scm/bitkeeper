@@ -690,7 +690,9 @@ chk_BAM(sccs *s, char ***missing)
 	for (d = s->table; d; d = NEXT(d)) {
 		unless (d->hash) continue;
 		key = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
-		if (bp_check_hash(key, missing, !bp_fullcheck)) rc = 1;
+		if (bp_check_hash(key, missing, !bp_fullcheck, 0)) {
+			rc = 1;
+		}
 		free(key);
 	}
 	return (rc);
@@ -1353,7 +1355,7 @@ buildKeys(MDBM *idDB)
 		    smap[ser] && !mdbm_fetch_str(goneDB, t)) {
 			rkd->mask |= 8;
 			unless (mdbm_fetch_str(goneDB, s)) {
-				char	*path = key2path(t, 0);
+				char	*path = key2path(t, 0, 0);
 
 				/* strip /ChangeSet from components */
 				if (streq(basenm(path), "ChangeSet")) {

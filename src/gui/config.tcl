@@ -50,6 +50,10 @@ proc getConfig {prog} \
 	set _d(quit)	Control-q	;# binding to exit tool
 	set _d(compat_4x) 0		;# maintain compatibility with 4x
 					;# quirky bindings
+	set _d(highlight) $YELLOW	;# subline highlight color in diffs
+	set _d(topMargin) 2		;# top margin for diffs in a diff view
+	set _d(diffColor) $GRAY88	;# color of diff lines
+	set _d(activeDiffColor) $BKGREEN1 ;# active diff color
 
 	set _d(bug.popupBG) $BLUE
 	set _d(support.popupBG) $BLUE

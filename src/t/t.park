@@ -147,15 +147,15 @@ cmp -s new_me new_me.ref || { echo failed; exit 1; }
 echo OK
 
 echo $N Should not unpark binary over changed file ..................$NL
-cp $BIN1 binary
+cp "$BIN1" binary
 bk new $Q -lb binary
-cp $BIN2 binary
+cp "$BIN2" binary
 echo "I am a extra file" > extra
 cp extra "$HERE/extra.ref"
 bk park -y -a 2> /dev/null
 if [ -f extra ]; then echo failed 0; exit 1; fi
 bk edit $Q binary
-cp $BIN3 binary
+cp "$BIN3" binary
 bk unpark 2> unpark.out 1>&2
 grep -q "unsafe to unpark over changed binary file" unpark.out || {
 							echo failed 1; exit 1; }
@@ -166,7 +166,7 @@ rm -f binary
 bk mv binary binary_moved || exit 1
 bk unpark  2>/dev/null 1>&2 || exit 1
 if [ -f binary ]; then echo failed; exit 1; fi
-cmp -s $BIN2 binary_moved || { echo failed; exit 1; }
+cmp -s "$BIN2" binary_moved || { echo failed; exit 1; }
 if [ ! -f extra ]; then echo failed; exit 1; fi
 cmp -s extra "$HERE/extra.ref" || { echo failed 3; exit 1; }
 echo OK
@@ -174,7 +174,7 @@ echo OK
 echo $N Should failed unpark binary changed delta ...................$NL
 bk park -y -a 2> /dev/null || exit 1
 bk edit $Q binary_moved
-cp $BIN3 binary_moved
+cp "$BIN3" binary_moved
 bk delta  $Q -uy"new" binary_moved || exit 1
 if [ ! -f binary_moved ]; then echo failed; exit 1; fi
 bk unpark 2> unpark.out 1>&2
@@ -185,7 +185,7 @@ echo OK
 echo $N Unpark \-f should overide local changed delta  ................$NL
 bk unpark -cf 2> /dev/null 1>&2
 if [ ! -f binary_moved ]; then echo failed; exit 1; fi
-cmp -s $BIN2 binary_moved || { echo failed; exit 1; }
+cmp -s "$BIN2" binary_moved || { echo failed; exit 1; }
 echo OK
 
 if [ "$PLATFORM" = "WIN32" ]

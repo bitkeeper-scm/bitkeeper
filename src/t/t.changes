@@ -536,6 +536,20 @@ bk extras | bk new $Q -
 bk commit $Q -ywhatever
 echo OK
 
+echo $N Demonstrate using dv2 on one line ...........................$NL
+bk changes -r+ -nd'#dv2\n${1=+}$1' > GOT
+echo "+" > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test a dspec of only dv2 line does not use data after null ..$NL
+# bug where code would pick up stuff after the null.
+# which would be junk.  For the test, make it not junk.
+perl -e 'print "#dv2\\x\0\n:I:\n"' > dspecf
+bk changes -r+ -n --dspecf=dspecf > GOT || fail -f GOT
+test -s GOT && fail -f GOT
+echo OK
+
 echo $N Demonstrate saving data across csets ........................$NL
 bk changes -r..1.2 -vf -d'#dv2
 $if (:CHANGESET:) {

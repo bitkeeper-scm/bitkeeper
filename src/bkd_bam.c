@@ -144,7 +144,7 @@ havekeys_deltas(void)
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	while (rootkey = fgetline(stdin)) {
 		if (key = separator(rootkey)) *key++ = 0;
-		path = key2path(rootkey, 0);
+		path = key2path(rootkey, 0, 0);
 		if (streq(basenm(path), GCHANGESET)) {
 			free(path);
 			if (streq(proj_rootkey(0), rootkey)) {

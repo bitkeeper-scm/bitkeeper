@@ -5,7 +5,7 @@ echo $N Setup master and clone ......................................$NL
 commercial pmaster
 bk bam server $Q . || exit 1
 
-cp $BIN2 bin2
+cp "$BIN2" bin2
 bk new $Q bin2 || exit 1
 bk commit -ybin $Q || exit 1
 bk clone $Q . pcopy || exit 1

@@ -38,7 +38,11 @@
 private	char*	hash2path(project *p, char *hash);
 private int	bp_insert(project *proj, char *file, char *keys,
 		    int canmv, mode_t mode);
-private	int	uu2bp(sccs *s);
+private	int	uu2bp(sccs *s, int bam_size, char ***keysp);
+private int	fetch_bad(char **servers, char **bad, u64 todo, int quiet);
+private int	load_logfile(MDBM *m, FILE *f);
+
+private	int	warned;
 
 #define	INDEX_DELETE	"----delete----"
 
@@ -72,6 +76,7 @@ bp_delta(sccs *s, delta *d)
 	ut.modtime = (d->date - d->dateFudge);
 	ut.actime = time(0);
 	utime(p, &ut);
+	free(p);
 	return (0);
 }
 
@@ -160,11 +165,20 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	}
 	unless (ok = (sum == strtoul(d->hash, 0, 16))) {
 		p = strchr(d->hash, '.');
-		*p = 0;
-		fprintf(stderr,
-		    "crc mismatch in %s|%s: %08x vs %s\n",
-		    s->gfile, d->rev, sum, d->hash);
-		*p = '.';
+		if (getenv("_BK_DEBUG")) {
+			*p = 0;
+			fprintf(stderr,
+			    "BAM file hash mismatch for\n%s|%s\n"
+			    "\twant:\t%s\n\tgot:\t%x\n",
+			    s->gfile, d->rev, d->hash, sum);
+			*p = '.';
+		} else unless (warned) {
+			warned = 1;
+			fprintf(stderr,
+			"BitKeeper has detected corruption in your BAM data.\n"
+			"Please run \"bk bam repair [-@<url> ...]\" "
+			"to try and repair your data.\n\n");
+		}
 	}
 	unless (ok || (flags & GET_FORCE)) goto done;
 	if (flags & GET_SUM) {
@@ -420,6 +434,7 @@ bp_link(project *oproj, char *old, project *nproj, char *new)
 	if (bp_insert(nproj, bpfile, new, 2, 0)) goto err;
 	ret = 0;
 err:
+	free(bpfile);
 	return (ret);
 }
 
@@ -573,7 +588,7 @@ bp_fetch(sccs *s, delta *din)
 	unless (din = bp_fdelta(s, din)) return (-1);
 	keys = addLine(0, sccs_prsbuf(s, din, PRS_FORCE, BAM_DSPEC));
 
-	if (rc = bp_fetchkeys("sccs_get", s->proj, SILENT, keys, din->added)) {
+	if (rc = bp_fetchkeys("sccs_get", s->proj, 0, keys, din->added)) {
 		fprintf(stderr, "bp_fetch: failed to fetch delta for %s\n",
 		    s->gfile);
 	}
@@ -585,7 +600,7 @@ bp_fetch(sccs *s, delta *din)
  * called from get.c when fetching multiple BAM files at once
  */
 int
-bp_fetchkeys(char *me, project *proj, int quiet, char **keys, u64 todo)
+bp_fetchkeys(char *me, project *proj, int verbose, char **keys, u64 todo)
 {
 	int	i;
 	int	rc = 1;
@@ -600,9 +615,10 @@ bp_fetchkeys(char *me, project *proj, int quiet, char **keys, u64 todo)
 		fprintf(stderr, "%s: no server for BAM data.\n", me);
 		goto out;
 	}
-	unless (quiet) {
+	if (verbose) {
 		fprintf(stderr,
-		    "Fetching %u BAM files from %s...\n",
+		    "%s %u BAM files from %s...\n",
+		    verbose == 2 ? "Attempting repair of" : "Fetching",
 		    nLines(keys), server);
 	}
 	/*
@@ -614,7 +630,7 @@ bp_fetchkeys(char *me, project *proj, int quiet, char **keys, u64 todo)
 	sprintf(buf,
 	    "bk -q@'%s' -zo0 -Lr -Bstdin sfio -qoBl - |"
 	    "bk -R sfio -%siBb%s - ",
-	    server, quiet ? "q" : "", psize(todo));
+	    server, verbose ? "" : "q", psize(todo));
 	free(server);
 	f = popen(buf, "w");
 	EACH(keys) fprintf(f, "%s\n", keys[i]);
@@ -971,27 +987,20 @@ bp_fetchData(void)
 	}
 	// ttyprintf("Their serverID is %s\n", remote_repoID);
 
-	/* if the local server matches my repoid, we're our own server */
-	if (local_repoID &&
-	    streq(local_repoID, proj_repoID(proj_product(0)))) {
-		return (1);
-	}
-
-	/* if we both have the same server, nothing to do */
-	if (local_repoID && streq(local_repoID, remote_repoID)) {
-		// ttyprintf("No fetch\n");
-		return (0);
-	}
-
 	/*
 	 * If we have no local server then we pretend we are it,
 	 * that's what they do.
 	 */
 	unless (local_repoID) local_repoID = proj_repoID(proj_product(0));
 
-	/* if the local server matches their repoid, we're their server */
 	if (streq(local_repoID, remote_repoID)) {
-		return (1);
+		/* we're our own server and their server */
+		if (streq(local_repoID, proj_repoID(proj_product(0)))) {
+			return (1);
+		}
+		/* if we both have the same server, nothing to do */
+		// ttyprintf("No fetch\n");
+		return (0);
 	}
 
 	return (2);	// unshared servers
@@ -1363,7 +1372,7 @@ bam_clean_main(int ac, char **av)
 }
 
 int
-bp_check_hash(char *want, char ***missing, int fast)
+bp_check_hash(char *want, char ***missing, int fast, int quiet)
 {
 	char	*dfile;
 	char	*hval;
@@ -1383,10 +1392,22 @@ bp_check_hash(char *want, char ***missing, int fast)
 			assert(0);	/* shouldn't happen */
 		}
 		unless (streq(want, hval)) {
-			fprintf(stderr,
-			    "BAM file %s has a hash mismatch.\n"
-			    "want: %s got: %s\n", dfile, want, hval);
 			rc = 1;
+			if (quiet) {
+				// be quiet
+			} else if (getenv("_BK_DEBUG")) {
+				fprintf(stderr,
+				    "BAM file hash mismatch for\n%s\n"
+				    "\twant:\t%s\n\tgot:\t%s\n",
+				    dfile, want, hval);
+			} else unless (warned) {
+				warned = 1;
+				fprintf(stderr,
+				"BitKeeper has detected corruption "
+				"in your BAM data.\n"
+				"Please run \"bk bam repair [-@<url> ...]\" "
+				"to try and repair your data.\n\n");
+			}
 		}
 		free(hval);
 	}
@@ -1470,16 +1491,21 @@ bp_check_findMissing(int quiet, char **missing)
 private int
 bam_check_main(int ac, char **av)
 {
-	int	rc = 0, quiet = 0, fast = 0, i;
-	u64	bytes = 0, missing_bytes = 0, done = 0;
+	int	i;
+	int	rc = 0, verbose = 2, fast = 0, loose = 0, fetch = 1;
+	int	iamserver = 0;
+	int	repair = streq(av[0], "repair");
+	u64	bytes = 0, done = 0, bad_todo = 0;
 	FILE	*f;
-	char	*p;
+	char	*p, *q;
 	ticker	*tick = 0;
-	char	**missing = 0, **lines = 0;
+	char	**missing = 0, **lines = 0, **servers = 0, **bad = 0;
+	MDBM	*logDB = 0;
+	kvpair	kv;
 	char	buf[MAXLINE];
 
 #undef	ERROR
-#define	ERROR(x)	{ fprintf(stderr, "BAM check: "); fprintf x ; }
+#define	ERROR(x)	{ fprintf(stderr, "BAM %s: ", av[0]); fprintf x ; }
 
 	if (proj_cd2root()) {
 		ERROR((stderr, "not in a repository.\n"));
@@ -1489,12 +1515,42 @@ bam_check_main(int ac, char **av)
 none:		ERROR((stderr, "no BAM data in this repository\n"));
 		return (0);
 	}
-	while ((i = getopt(ac, av, "Fq", 0)) != -1) {
+	while ((i = getopt(ac, av, "@;Fq", 0)) != -1) {
 		switch (i) {
+		    case '@': servers = addLine(servers, strdup(optarg)); break;
 		    case 'F': fast = 1; break;
-		    case 'q': quiet = 1; break;
+		    case 'q': verbose = 0; break;
 		    default: bk_badArg(i, av);
 		}
+	}
+	if (bp_index_check(!verbose)) return (1);
+
+	bp_indexfile(0, buf);
+	logDB = mdbm_mem();	/* mdbm_delete_str() can't take null mdbm */
+	if (f = fopen(buf, "r")) {
+		load_logfile(logDB, f);
+		fclose(f);
+	}
+
+	/*
+	 * If we are the server and there is nowhere else to look
+	 * then don't go looking to fetch corrupted data.
+	 * If we aren't the server, then add the server to the list of
+	 * servers.
+	 */
+	if (bp_serverID(buf, 1) && (p = bp_serverURL(0))) {
+		servers = addLine(servers, p);
+	} else {
+		p = bp_serverID(buf, 0);
+		if (p && streq(p, proj_repoID(0))) {
+			iamserver = 1;
+		}
+	}
+	unless (servers && repair) fetch = 0;
+	if (repair && !fetch) {
+		fprintf(stderr,
+		    "bam repair: no BAM sources found, use -@<url>?\n");
+		exit(1);
 	}
 
 	/* load BAM deltas and hashs (BAM_DSPEC + :BAMSIZE:) */
@@ -1502,7 +1558,7 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 	    "'$if(:BAMHASH:){:BAMSIZE: :BAMHASH: :KEY: :MD5KEY|1.0:}' -", "r");
 	assert(f);
 	i = 0;
-	unless (quiet) {
+	if (verbose) {
 		fprintf(stderr, "Loading list of BAM deltas");
 		tick = progress_start(PROGRESS_SPIN, 0);
 	}
@@ -1510,36 +1566,89 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 		if (tick) progress(tick, 1);
 		chomp(buf);
 		p = strchr(buf, ' ') + 1;
-		if (bp_lookupkeys(0, p)) {
+		if (q = bp_lookupkeys(0, p)) {
+			free(q);
+			assert(mdbm_fetch_str(logDB, p));
 			lines = addLine(lines, strdup(buf));
 			bytes += atoi(buf);
 			i++;
 		} else {
+			/* in db and not in fs, or not in db */
 			missing = addLine(missing, strdup(p));
-			missing_bytes += atoi(buf);
+		}
+		mdbm_delete_str(logDB, p);
+	}
+	if (pclose(f)) {
+		rc = 1;
+		mdbm_close(logDB);
+		goto err;
+	}
+
+	/*
+	 * Now add in any loose data found in the BAM dir.
+	 * BAM servers can have data not pointed to by any delta.
+	 */
+	for (kv = mdbm_first(logDB); kv.key.dsize; kv = mdbm_next(logDB)) {
+		if (tick) progress(tick, 1);
+		if (p = bp_lookupkeys(0, kv.key.dptr)) {
+			// XXX - BAMSIZE could be much bigger than 4G
+			sprintf(buf,
+			    "%u %s", (u32)size(p), kv.key.dptr);
+			lines = addLine(lines, strdup(buf));
+			bytes += atoi(buf);
+			i++;
+			loose++;
+			free(p);
+		} else {
+			// It's in the log but not here
+			missing = addLine(missing, strdup(kv.key.dptr));
 		}
 	}
-	if (pclose(f)) return (1);
+	mdbm_close(logDB);
 	if (tick) {
 		progress_done(tick, 0);
 		progress_nldone();  /* don't inject a newline */
-		fprintf(stderr,
-		    ", %d found using %sB.\n", i, psize(bytes));
+		fprintf(stderr, ", %d found ", i);
+		if (loose) fprintf(stderr, "(%d loose) ", loose);
+		fprintf(stderr, "using %sB.\n", psize(bytes));
 	}
 	unless (lines || missing) {	/* No BAM data in repo */
-		unlink(BAM_MARKER);
+		unlink(BAM_MARKER);	// XXX what if this is a BAM server?
 		goto none;
 	}
 	done = 0;
-	unless (quiet) tick = progress_start(PROGRESS_BAR, bytes);
+	if (verbose) tick = progress_start(PROGRESS_BAR, bytes);
 	EACH(lines) {
 		done += atoi(lines[i]);
 		p = strchr(lines[i], ' ') + 1;
-		if (bp_check_hash(p, 0, fast)) rc = 1;
-		unless (quiet) progress(tick, done);
+		if (bp_check_hash(p, 0, fast, repair)) {
+			bad = addLine(bad, p);
+			bad_todo += atoi(lines[i]);
+		}
+		if (verbose) progress(tick, done);
 	}
-	freeLines(lines, free);
-	unless (quiet) progress_done(tick, rc ? "FAILED" : "OK");
+	if (verbose) {
+		tick->multi = 0;
+		if (bad && fetch) {
+			progress_done(tick, "NEEDS REPAIR");
+		} else {
+			progress_done(tick, bad ? "FAILED" : "OK");
+		}
+	}
+	if (iamserver && missing) {
+		/* we are the server -- treat missing as bad */
+		EACH(missing) bad = addLine(bad, missing[i]);
+		lines = catLines(lines, missing); // to later free items
+		missing = 0;
+	}
+	if (bad) {
+		if (fetch) {
+			rc = fetch_bad(servers, bad, bad_todo, verbose);
+		} else {
+			rc = 1;
+		}
+		freeLines(bad, 0);
+	}
 
 	/*
 	 * if we are missing some data make sure it is not covered by the
@@ -1547,10 +1656,67 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 	 * XXX - there is no way to pass through the -F.  There needs to be,
 	 * if they asked to check the data we should do so.
 	 */
-	unless ((rc |= bp_check_findMissing(quiet, missing)) || quiet) {
-		fprintf(stderr, "All BAM data was found, check passed.\n");
+	unless ((rc |= bp_check_findMissing(!verbose, missing)) || !verbose) {
+		fprintf(stderr,
+		    "All BAM data was found%s, %s passed.\n",
+		    bad ? " and repaired" : "", av[0]);
 	}
+
+err:
+	freeLines(lines, free);
+	freeLines(servers, free);
+	freeLines(missing, free);
 	return (rc);
+}
+
+private int
+fetch_bad(char **servers, char **bad, u64 todo, int verbose)
+{
+	int	i, j;
+	int	n = nLines(bad);
+	int	repaired = 0;
+	char	*p;
+	char	*q;
+	char	**renamed = 0;
+
+	EACH(bad) {
+		unless (p = bp_lookupkeys(0, bad[i])) continue;
+		q = aprintf("%s~BAD", p);
+		rename(p, q);
+		renamed = addLine(renamed, q);
+		free(p);
+	}
+	EACH_INDEX(servers, j) {
+		bp_forceServer(servers[j]);
+		(void)bp_fetchkeys("bam check", 0, verbose, bad, todo);
+		EACH(bad) {
+			if (p = bp_lookupkeys(0, bad[i])) {
+				repaired++;
+				q = aprintf("%s~BAD", p);
+				(void)unlink(q); // might not be there
+				free(p);
+				free(q);
+				removeLineN(bad, i, 0);
+				i--;
+			}
+		}
+	}
+	EACH(renamed) {
+		unless (exists(renamed[i])) {
+			continue;
+		}
+		p = strrchr(renamed[i], '~');
+		*p = 0;
+		q = strdup(renamed[i]);
+		*p = '~';
+		rename(renamed[i], q);
+	}
+	if (verbose) {
+		fprintf(stderr, "\n%d/%d BAM files repaired.\n", repaired, n);
+	}
+	putenv("_BK_FORCE_BAM_URL=");
+	putenv("_BK_FORCE_BAM_REPOID=");
+	return (n - repaired);
 }
 
 /*
@@ -1692,6 +1858,9 @@ bam_index_main(int ac, char **av)
 	return (bp_index_check(0));
 }
 
+/*
+ * Return {:BAMHASH:}->db/db38bc33.d1
+ */
 private int
 load_logfile(MDBM *m, FILE *f)
 {
@@ -1756,7 +1925,7 @@ sfiles_bam_main(int ac, char **av)
 			if (changesetKey(buf)) continue;
 			while ((--p > buf) && (*p != '|'));
 			unless (strneq(p, "|B:", 3)) continue;
-			unless (p = key2path(buf, idDB)) continue;
+			unless (p = key2path(buf, idDB, 0)) continue;
 			sfile = name2sccs(p);
 			if (exists(sfile) || !mdbm_fetch_str(goneDB, buf)) {
 				puts(p);
@@ -1983,6 +2152,7 @@ bam_timestamps_main(int ac, char **av)
 					errors |= 4;
 				}
 			}
+			free(dfile);
 		}
 		sccs_free(s);
 	}
@@ -1990,32 +2160,25 @@ bam_timestamps_main(int ac, char **av)
 	return (errors);
 }
 
-
-char	**keys;
-
 private int
 bam_convert_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*p;
-	int	c, i, j, n, bam_size;
-	int	matched = 0, errors = 0;
+	char	**keys = 0;
+	char	**gone;
+	int	c, i, j, n, sz, old_size;
+	int	matched = 0, errors = 0, bam_size = 0;
 	FILE	*in, *out, *sfiles;
+	MDBM	*idDB = 0;
 	char	buf[MAXKEY * 2];
 
 #undef	ERROR
 #define	ERROR(x)	{ fprintf(stderr, "BAM convert: "); fprintf x ; }
 
-	// XXX - locking
+	// XXX - locking?  Nested?
 	if (proj_cd2root()) {
 		ERROR((stderr, "not in a repository.\n"));
-		exit(1);
-	}
-	p = proj_rootkey(0);
-	assert(p);
-	if (strneq(p, "B:", 2)) {
-		ERROR((stderr,
-		    "this repository has already been converted.\n"));
 		exit(1);
 	}
 	while ((c = getopt(ac, av, "", 0)) != -1) {
@@ -2023,41 +2186,93 @@ bam_convert_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
-	unless (proj_configsize(0, "BAM")) {
-		ERROR((stderr, "turning on BAM in your config file.\n"));
-		get("BitKeeper/etc/config", SILENT|GET_EDIT, "-");
-		system("echo 'BAM:on' >> BitKeeper/etc/config");
-		system("bk delta -qy'Add BAM' BitKeeper/etc/config");
-		system("echo 'BitKeeper/etc/SCCS/s.config|+' | "
-		    "bk commit -S -qy'Add BAM' -");
-		proj_reset(0);
+
+	/*
+	 * Check the specified size (if any) against the root key.
+	 * It may shrink, not grow, because we aren't going implement
+	 * a way to go from BAM to uuencode.
+	 */
+	bam_size = BAM_SIZE;
+	if (av[optind]) {
+		bam_size = atoi(av[optind]);
+		assert (bam_size >= 0); /* parsing -1 looks like an option */
+		for (p = av[optind]; *p && isdigit(*p); p++);
+		switch (*p) {
+		    case 'k': case 'K': bam_size <<= 10; break;
+		    case 'm': case 'M': bam_size <<= 20; break;
+		    case 0: break;
+		    default:
+			ERROR((stderr, "unknown size modifier '%c'\n", *p));
+			exit(1);
+		}
 	}
+	old_size = 0;	// in case sscanf doesn't zero it
+	p = strrchr(proj_rootkey(0), '|');
+	sscanf(p, "|B:%x:", &old_size);
+	unless ((old_size == 0) || (old_size > bam_size)) {
+		fprintf(stderr, "BAM size must be less than %u.\n", old_size);
+		exit(1);
+	}
+
+	/*
+	 * Look for all files marked as gone and if we would convert any,
+	 * refuse.
+	 * LMXXX - be nice to have a better error message.
+	 */
+	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	unless (exists(GONE)) get(GONE, SILENT, "-");
+	gone = file2Lines(0, GONE);
+	EACH(gone) {
+		s = sccs_keyinit(0, gone[i], INIT_NOCKSUM|INIT_MUSTEXIST, idDB);
+		unless (s) continue;
+		unless (UUENCODE(s)) {
+			sccs_free(s);
+			continue;
+		}
+		if (sccs_clean(s, SILENT)) {
+			errors |= 1;
+			sccs_free(s);
+			continue;
+		}
+		if (sccs_get(s, "1.1", 0, 0, 0, SILENT, "-")) return (8);
+		sz = size(s->gfile);
+		unlink(s->gfile);
+		if (sz >= bam_size) {
+			fprintf(stderr,
+			    "%s would be converted but is marked as gone, "
+			    "conversion aborted.\n", s->gfile);
+			errors |= 1;
+		}
+		sccs_free(s);
+	}
+	mdbm_close(idDB);
+	freeLines(gone, free);
+	if (errors) goto out;
+
 	sfiles = popen("bk sfiles", "r");
-	bam_size = proj_configsize(0, "BAM");
 	while (fnext(buf, sfiles)) {
 		chomp(buf);
 		/*
 		 * Tried
 	         * 	if (size(buf) < bam_size) continue;
-		 * but compressed sfiles make this test fail and skip files it shouldn't.
+		 * but compressed sfiles make this test fail
+		 * and skip files it shouldn't.
 		 */
-		unless (s = sccs_init(buf, 0)) continue;
-		unless (HASGRAPH(s)) {
-			sccs_free(s);
-			errors |= 1;
-			continue;
-		}
+		unless (s = sccs_init(buf, INIT_MUSTEXIST)) continue;
 		unless (UUENCODE(s)) {
 			sccs_free(s);
 			continue;
 		}
 
-		errors |= uu2bp(s);
+		errors |= uu2bp(s, bam_size, &keys);
 		sccs_free(s);
 	}
-	pclose(sfiles);
-	if (sfileDone()) errors |= 2;
+	if (pclose(sfiles)) errors |= 2;
 	if (errors) goto out;
+	unless (keys) {
+		ERROR((stderr, "no files needing conversion found.\n"));
+		goto out;
+	}
 	system("bk admin -Znone ChangeSet");
 	unless (in = fopen("SCCS/s.ChangeSet", "r")) {
 		perror("SCCS/s.ChangeSet");
@@ -2089,7 +2304,8 @@ bam_convert_main(int ac, char **av)
 			i++;
 		}
 		if (j) {
-			ERROR((stderr, "found %d of %d\r", matched, n));
+			ERROR((stderr,
+			    "found %d of %d converted keys\r", matched, n));
 			removeLineN(keys, j, free);
 			removeLineN(keys, j, free);
 		} else {
@@ -2099,21 +2315,31 @@ bam_convert_main(int ac, char **av)
 	fprintf(stderr, "\n");
 	fclose(in);
 	fclose(out);
-	// LMXXX - why is this here?
-	EACH(keys) {
-		fprintf(stderr, "%s", keys[i]);
+	if (nLines(keys)) {
+		ERROR((stderr, "some keys not found (shortkeys?)\n"));
+		EACH(keys) {
+			fprintf(stderr, "%s", keys[i]);
+		}
+		ERROR((stderr, "conversion failed.\n"));
+		mkdir("RESYNC", 0775);
+		exit(1);
 	}
 	rename("SCCS/s.ChangeSet", "BitKeeper/tmp/s.ChangeSet");
 	rename("SCCS/x.ChangeSet", "SCCS/s.ChangeSet");
 	system("bk admin -z ChangeSet");
-	system("bk checksum -fp ChangeSet");
-	ERROR((stderr, "redoing ChangeSet ids ...\n"));
+	ERROR((stderr, "fixing changeset checksums ...\n"));
+	system("bk checksum -f ChangeSet");
+	ERROR((stderr, "changing repo id ...\n"));
 	/* The proj_reset() is to close BAM_DB so newroot can rename dir */
 	proj_reset(0);
-	sprintf(buf, "bk newroot -y'bam convert B:%x:' -kB:%x:",
-	    proj_configsize(0, "BAM"), proj_configsize(0, "BAM"));
-	system(buf);
-	if (errors || system("bk -r check -accv")) {
+	sprintf(buf,
+	    "bk newroot -y'bam convert B:%x:' -kB:%x:", bam_size, bam_size);
+	if (system(buf) || errors) {
+		ERROR((stderr, "failed\n"));
+		exit(1);
+	}
+	ERROR((stderr, "running final integrity check ...\n"));
+	if (system("bk -r check -accv")) {
 		ERROR((stderr, "failed\n"));
 		exit(1);
 	} else {
@@ -2131,7 +2357,7 @@ out:	return (errors);
  * - kill the weave.
  */
 private	int
-uu2bp(sccs *s)
+uu2bp(sccs *s, int bam_size, char ***keysp)
 {
 	delta	*d;
 	FILE	*out;
@@ -2139,11 +2365,11 @@ uu2bp(sccs *s)
 	int	n = 0;
 	off_t	sz;
 	char	*t;
-	ticker	*tick = 0;
+	char	**keys = *keysp;
 	char	oldroot[MAXKEY], newroot[MAXKEY];
 	char	key[MAXKEY];
 
-	if (sccs_clean(s, 0)) return (4);
+	if (sccs_clean(s, SILENT)) return (4);
 	d = sccs_ino(s);
 	sccs_sdelta(s, d, oldroot);
 	assert(d->random);
@@ -2169,9 +2395,8 @@ uu2bp(sccs *s)
 		if (sccs_get(s, "1.1", 0, 0, 0, SILENT, "-")) return (8);
 		sz = size(s->gfile);
 		unlink(s->gfile);
-		if (sz < proj_configsize(s->proj, "BAM")) goto out;
+		if (sz < bam_size) goto out;
 	}
-
 	if (GZIP(s)) {
 		/* uncompress file for performance */
 		s = sccs_restart(s);
@@ -2180,8 +2405,7 @@ uu2bp(sccs *s)
 		if (sccs_adminFlag(s, ADMIN_FORCE|NEWCKSUM)) perror(s->gfile);
 		s = sccs_restart(s);
 	}
-	fprintf(stderr, "Converting %s", s->gfile);
-	tick = progress_start(PROGRESS_MINI, s->nextserial);
+	fprintf(stderr, "Converting %s ", s->gfile);
 	for (n = 0, d = s->table; d; d = NEXT(d)) {
 		assert(d->type == 'D');
 		if (sccs_get(s, d->rev, 0, 0, 0, SILENT, "-")) return (8);
@@ -2208,20 +2432,20 @@ uu2bp(sccs *s)
 			keys = addLine(keys, aprintf("%s %s\n", oldroot, key));
 		}
 		if (bp_delta(s, d)) return (16);
-		progress(tick, ++n);
 		if (d->flags & D_CSET) {
 			sccs_sdelta(s, d, key);
 			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
 		}
 		unlink(s->gfile);
+		fprintf(stderr, ".");
+		++n;
 	}
-	progress_done(tick, 0);
-	fprintf(stderr, "\n");
+	*keysp = keys;
 	/* change encoding to be BAM */
 	s->encoding_out &= ~(E_UUENCODE|E_GZIP);
 	s->encoding_out |= E_BAM;
 	unless (out = sccs_startWrite(s)) {
-err:		sccs_abortWrite(s, &out);
+err:		if (out) sccs_abortWrite(s, &out);
 		sccs_unlock(s, 'z');
 		return (32);
 	}
@@ -2229,7 +2453,7 @@ err:		sccs_abortWrite(s, &out);
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001%c%05u\n", 'H', s->cksum);
 	if (sccs_finishWrite(s, &out)) goto err;
-	fprintf(stderr, "Converted %d deltas in %s\n", n, s->gfile);
+	fprintf(stderr, "\rConverted %d deltas in %s\n", n, s->gfile);
 out:	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -2326,6 +2550,7 @@ rm:
 		unless (quiet) printf("Set BAM server to %s\n", server);
 		free(server);
 		free(repoid);
+		touch(BAM_MARKER, 0444);
 	}
 	if (!nosync && old_server[0] && !streq(old_server, ".")) {
 		/* fetch any missing data from old URL */
@@ -2337,6 +2562,192 @@ rm:
 	}
 	return (rc);
 }
+
+/*
+ * List the pathname of the gfile[s] that use the files in the BAM dir
+ * (or what is specified).  So this is fd/fd4a9fe4.d1 -> ico.gif
+ */
+private int
+bam_names_main(int ac, char **av)
+{
+	int	i, j, first, not;
+	int	total = 0, used = 0;
+	char	**bamfiles = 0;
+	char	**notused = 0;
+	char	*dir, **dirs, **tmp;
+	char	*file, *p, *path;
+	MDBM	*m2k = 0;
+	FILE	*f = 0;			// lint
+	MDBM	*log, *idDB;
+	kvpair	kv;
+	char	buf[MAXPATH];
+
+	if (proj_cd2root()) {
+		fprintf(stderr, "Must be in repository.\n");
+		return (-1);
+	}
+	if (av[1] && !av[2] && streq(av[1], "-")) {
+		while (fgets(buf, sizeof(buf), f)) {
+			chomp(buf);
+			bamfiles = addLine(bamfiles, strdup(buf));
+		}
+	} else {
+		for (i = 1; av[i]; i++) {
+			bamfiles = addLine(bamfiles, strdup(av[i]));
+		}
+	}
+	unless (bamfiles) {
+		dir = bp_dataroot(0, 0);
+		chdir(dir);
+		dirs = getdir(dir);
+		EACH(dirs) {
+			sprintf(buf, "%s/%s", dir, dirs[i]);
+			unless (isdir(buf)) continue;
+			tmp = getdir(buf);
+			EACH_INDEX(tmp, j) {
+				sprintf(buf, "%s/%s/%s",
+				    bp_dataroot(0, 0),
+				    dirs[i],
+				    tmp[j]);
+				bamfiles = addLine(bamfiles, strdup(buf));
+			}
+		}
+		freeLines(dirs, free);
+		free(dir);
+		proj_cd2root();
+	}
+	bp_indexfile(0, buf);
+	unless (f = fopen(buf, "r")) {
+		freeLines(bamfiles, free);
+		return (1);
+	}
+	load_logfile(log = mdbm_mem(), f);
+	fclose(f);
+	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	/*
+	 * lm3di - it's really slow.
+	 */
+	EACH(bamfiles) {
+		total++;
+		file = strrchr(bamfiles[i], '/');
+		assert(file);
+		file -= 2;
+		assert(file >= bamfiles[i]);
+		first = 1;
+		not = 1;
+		for (kv = mdbm_first(log); kv.key.dsize; kv = mdbm_next(log)) {
+ 			// {:BAMHASH: :KEY: :MD5KEY|1.0:}->db/db38bc33.d1
+			unless (streq(kv.val.dptr, file)) continue;
+			p = strrchr(kv.key.dptr, ' ');
+			assert(p);
+			p++;
+			/*
+			 * So there is an entry in our tree for
+			 * 4cfbc7eaHNS8nVhTI8qYbMCbjEvx5Q
+			 * but that root key doesn't seem to exist,
+			 * bk -r prs -h -nd:MD5KEY: | grep $KEY
+			 * returns nothing.
+			 * Ideas?  For now, skip it if not found.
+			 */
+			if (path = key2path(p, idDB, &m2k)) {
+				not = 0;
+				if (first) {
+					used++;
+					first = 0;
+				}
+				printf("%s used by %s\n", file, path);
+			}
+			if (path) free(path);
+		}
+		if (not) notused = addLine(notused, bamfiles[i]);
+	}
+	printf("%d/%d in use by 1 or more deltas.\n", used, total);
+	if (notused) {
+		printf("BAM files not used by any delta here:\n");
+		EACH(notused) printf("%s\n", notused[i]);
+	}
+	freeLines(notused, 0);
+	freeLines(bamfiles, free);
+	mdbm_close(idDB);
+	mdbm_close(m2k);
+	mdbm_close(log);
+	return (0);
+}
+
+/*
+ * US:   lm@lm.bitmover.com|ChangeSet|19990319224848|02682|B:c00:
+ * THEM: lm@lm.bitmover.com|ChangeSet|19990319224848|02682
+ *
+ * is what our tree looks like w/ no random bits.
+ */
+int
+bam_converted(int ispull)
+{
+	char	**them = splitLine(getenv("BKD_ROOTKEY"), "|", 0);
+	char	**us = splitLine(proj_rootkey(0), "|", 0);
+	char	*t, *u;
+	char	*t2, *u2;
+	char	*src, *dest;
+	int	i;
+	int	rc = 1, tbam = -1, ubam = -1; /* 0 is a valid bam_size */
+
+	for (i = 1; i < 5; ++i) {
+		unless (streq(them[i], us[i])) {
+			rc = 0;
+			goto out;
+		}
+	}
+
+	/*
+	 * When we are done with this, t2 and u2 point at the random
+	 * bits or ""
+	 */
+	t = nLines(them) == 5 ? them[5] : "";
+	if (t2 = strrchr(t, ':')) {
+		*t2++ = 0;
+		tbam = strtoul(&t[2], 0, 16);
+	} else {
+		t2 = t;
+	}
+	u = nLines(us) == 5 ? us[5] : "";
+	if (u2 = strrchr(u, ':')) {
+		*u2++ = 0;
+		ubam = strtoul(&u[2], 0, 16);
+	} else {
+		u2 = u;
+	}
+	unless (strneq(t, "B:", 2) || strneq(u, "B:", 2)) {
+		rc = 0;
+		goto out;
+	}
+
+//fprintf(stderr, "t=%s t2=%s tbam=%u u=%s u2=%s ubam=%d\n",t,t2,tbam,u,u2,ubam);
+	/*
+	 * If this pops it has to be BAM on one side and not (or diff)
+	 * on the other.
+	 */
+    	if (ispull) {
+		src = "source";
+		dest = "destination";
+	} else {
+		dest = "source";
+		src = "destination";
+	}
+	if (rc && streq(t2, u2)) {
+		fprintf(stderr, "BAM conversion mismatch, ");
+		if ((ubam >= 0) && ((tbam < 0) || (ubam < tbam))) {
+			fprintf(stderr,
+			    "%s needs to convert down to %d\n", src, ubam);
+		} else {
+			fprintf(stderr,
+			    "%s needs to convert down to %d\n", dest, tbam);
+		}
+	}
+out:	freeLines(them, free);
+	freeLines(us, free);
+	return (rc);
+}
+
 
 int
 bam_main(int ac, char **av)
@@ -2350,9 +2761,11 @@ bam_main(int ac, char **av)
 		{"clean", bam_clean_main },
 		{"convert", bam_convert_main },
 		{"index", bam_index_main },
+		{"names", bam_names_main },
 		{"pull", bam_pull_main },
 		{"push", bam_push_main },
 		{"reattach", bam_reattach_main },
+		{"repair", bam_check_main },
 		{"reload", bam_reload_main },
 		{"server", bam_server_main },
 		{"sizes", bam_sizes_main },
