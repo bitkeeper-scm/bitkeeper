@@ -1,76 +1,61 @@
 #!../../unix/tclsh
 
-string	body[];
-string	template;
-
 int
-main(int ac, string av[])
+main(string av[])
 {
 	FILE	f;
 	int	i, ul;
 	int	space = 0, dd = 0, p = 0, pre = 0;
-	string	buf, tmp, title, trim, all[], toc[];
-
-	// lint
-	if (0) ac++;
+	string	buf, c, tmp, title, trim, all[];
 
 	/*
 	 * -t<title> or --title=<title>
 	 */
-	for (i = 1; defined(av[i]) && (av[i] =~ /^-/); i++) {
-		if (av[i] eq "--") {
-			i++;
+	while (c = getopt(av, "t:", {"title:"})) {
+		switch (c) {
+		    case "t":
+		    case "title":
+			title = optarg;
 			break;
 		}
-		if ((av[i] =~ /^--title=(.*)/) || (av[i] =~ /^-t(.*)/)) {
-			title = $1;
-		} else if (av[i] =~ /^--template=(.*)/) {
-			template = $1;
-		} else {
-			die("usage: ${av[0]} [--title=whatever]");
-		}
 	}
-	if (!defined(av[i]) ||
-	    defined(av[i+1]) || !defined(f = fopen(av[i], "r"))) {
+	unless (av[optind] && (f = fopen(av[optind], "r"))) {
 		die("usage: ${av[0]} filename");
 	}
-	unless (defined(title)) title = av[i];
+	unless (title) title = av[optind];
 
-	if (template eq "") {
-		header(title);
-	}
-	
+	header(title);
+
 	/*
 	 * Load up the whole file in all[] and spit out the index.
 	 */
-	push(&toc, "<ul id=\"toc\">");
+	puts("<ul>");
 	ul = 1;
-	while (defined(buf = fgetline(f))) {
+	while (buf = <f>) {
 		push(&all, buf);
 		if (buf =~ /^=head(\d+)\s+(.*)/) {
 			i = (int)$1;
 			while (ul > i) {
-				push(&toc, "</ul>");
+				puts("</ul>");
 				ul--;
 			}
 			while (i > ul) {
-				push(&toc, "<ul>");
+				puts("<ul>");
 				ul++;
 			}
 			tmp = $2;
 			tmp =~ s/\s+/_/g;
 			buf =~ s/^=head(\d+)\s+//;
-			push(&toc, "<li class=\"tocitem\">"
-			    "<a href=\"#${tmp}\">${buf}</a></li>");
+			puts("<li><a href=\"#${tmp}\">${buf}</a></li>");
 		}
 	}
-	while (ul--) push(&toc, "</ul>");
+	while (ul--) puts("</ul>");
 	fclose(f);
 
 	/*
 	 * Now walk all[] and process the markup.  We currently handle:
 	 * =head%d title
-	 * =over 
+	 * =over
 	 * =item name
 	 * =proto return_type func(args)
 	 * =back
@@ -79,55 +64,41 @@ main(int ac, string av[])
 	 * C<some code>
 	 * I<italics>
 	 */
+	// The <= is intentional to run an empty string through at the end
+	// to kick out any final </pre> etc.
 	for (i = 0; i <= length(all); i++) {
 		buf = inline(all[i]);
-		if (buf =~ /^=toc/) {
-			output(join("\n", toc));
-		} else if (buf =~ /^=head(\d+)\s+(.*)/) {
-			if ((int)$1 == 1) output("<hr>");
+		if (buf =~ /^=head(\d+)\s+(.*)/) {
+			if ((int)$1 == 1) puts("<HR>");
 			tmp = $2;
 			tmp =~ s/\s+/_/g;
-			tmp = sprintf("<h%d><a name=\"%s\">%s</a></h%d>\n",
+			printf("<H%d><a name=\"%s\">%s</a></H%d>\n",
 			    $1, tmp, $2, $1);
-			output(tmp);
 		} else if (buf =~ /^=over/) {
-			output("<dl>");
+			puts("<dl>");
 		} else if (buf =~ /^=item\s+(.*)/) {
 			if (dd) {
-				output("</dd>");
+				puts("</dd>");
 				dd--;
 			}
-			output("<dt><strong>${$1}</strong></dt><dd>");
+			puts("<dt><strong>${$1}</strong></dt><dd>");
 			dd++;
 		} else if (buf =~ /^=proto\s+([^ \t]+)\s+(.*)/) {
 			if (dd) {
-				output("</dd>");
+				puts("</dd>");
 				dd--;
 			}
-			output("<dt><b>${$1}<br>${$2}</b></dt><dd>");
+			puts("<dt><b>${$1} ${$2}</b></dt><dd>");
 			dd++;
-		} else if (buf =~ /=table/) {
-			
 		} else if (buf =~ /^=back/) {
 			if (dd) {
-				output("</dd>");
+				puts("</dd>");
 				dd--;
 			}
-			output("</dl>");
-		} else if (buf =~ /^=include\s+(.*)/) {
-			string	file = $1;
-
-			unless (exists(file)) {
-				puts(stderr, "file not found: ${file}");
-				exit(1);
-			}
-
-			f = fopen(file, "r");
-			output(freadn(f, -1));
-			fclose(f);
+			puts("</dl>");
 		} else if (buf =~ /^\s*$/) {
 			if (p) {
-				output("</p>");
+				puts("</p>");
 				p = 0;
 			}
 			if (pre) {
@@ -138,10 +109,10 @@ main(int ac, string av[])
 				 * So peek ahead.
 				 */
 				if (defined(buf = all[i+1]) && (buf =~ /^\s/)) {
-					output("");
+					puts("");
 					continue;
 				}
-				output("</pre>");
+				puts("</pre>");
 				pre = 0;
 				trim = undef;
 			}
@@ -150,48 +121,20 @@ main(int ac, string av[])
 			if (space) {
 				if (buf =~ /^(\s+)[^ \t]+/) {
 					trim = $1;
-					output("<pre class=\"code\">");
+					puts("<pre>");
 					pre = 1;
 				} else {
-					output("<p>");
+					puts("<p>");
 					p = 1;
 				}
 				space = 0;
 			}
 			if (defined(trim)) buf =~ s/^${trim}//;
-			output(buf);
+			puts(buf);
 		}
 	}
-
-	if (template eq "") {
-		output("</body></html>");
-	} else {
-		string	t, map[];
-
-		f = fopen(template, "r");
-		t = freadn(f, -1);
-		fclose(f);
-
-		push(&map, "%TITLE%");
-		push(&map, title);
-		push(&map, "%TOC%");
-		push(&map, join("\n", toc));
-		push(&map, "%BODY%");
-		push(&map, join("\n", body));
-		puts(String_map(map, t));
-	}
-
+	puts("</body></html>");
 	return (0);
-}
-
-void
-output(string s)
-{
-	if (template eq "") {
-		puts(s);
-	} else {
-		push(&body, s);
-	}
 }
 
 /*
@@ -214,6 +157,9 @@ pre {
 	font-family: monospace;
 	font-weight: bolder;
 }
+body {
+	padding-left: 10px;
+}
 dt {
 	font-size: large;
 }
@@ -222,6 +168,7 @@ dt {
 <body>
 EOF
 	puts(head);
+	puts("<h1>${title}</h1>");
 }
 
 /*
@@ -233,14 +180,12 @@ EOF
 string
 inline(string buf)
 {
-	string	c, prev, result, link, stack[];
+	string	c, prev, result = "", link, stack[];
 	int	B = 0, C = 0, I = 0, L = 0, S = 0;
 
-	unless (buf =~ /[BCFILS]<.+>/) {
-		return (buf);
-	}
+	unless (buf) buf = "";
 	foreach (c in buf) {
-		if ((c eq "<") && defined(prev)) {
+		if ((c eq "<") && prev) {
 			if (prev eq "B") {
 				if (B++) die("Nested B<> unsupported: ${buf}");
 				result[END] = "";
@@ -267,7 +212,7 @@ inline(string buf)
 				result[END] = "";
 				push(&stack, "S");
 			} else {
-				result .= c;
+				result .= "&lt;";
 				prev = c;
 			}
 		} else if ((c eq ">") && length(stack)) {
@@ -286,13 +231,17 @@ inline(string buf)
 				S--;
 				c = undef;
 			}
-			if (defined(c)) {
+			if (c) {
 				result .= "</" . c . ">";
 			}
 			prev = undef;
 		} else {
 			if (S && isspace(c)) {
 				result .= "&nbsp;";
+			} else if (c eq "<") {
+				result .= "&lt;";
+			} else if (c eq ">") {
+				result .= "&gt;";
 			} else {
 				result .= c;
 			}

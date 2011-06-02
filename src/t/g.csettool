@@ -36,7 +36,10 @@ bk guitest csettool >"$OUT" 2>&1 <<'EOF'
     test_die 99
 EOF
 err=$?
-if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+test $err -eq 0 || {
+	echo exited $err expected 0
+	fail -f "$OUT"
+}
 if [ -s "$OUT" ] ; then
     echo failed $err
     echo "unexpected output:"

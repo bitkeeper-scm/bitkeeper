@@ -1039,11 +1039,11 @@ void
 highlightSideBySide(widget left, widget right, string start, string stop)
 {
 	int	i, line;
-	string	llines[] = split((string)Text_get(left, start, stop), "\n");
-	string	rlines[] = split((string)Text_get(right, start, stop), "\n");
+	string	llines[] = split(/\n/, (string)Text_get(left, start, stop));
+	string	rlines[] = split(/\n/, (string)Text_get(right, start, stop));
 	string	idxs[];
 
-	line = (int)split(start, ".")[0];
+	line = (int)split(/\./, start)[0];
 	for (i = 0; i < length(llines); ++i) {
 		idxs = highlightLine(llines[i], rlines[i], line, line);
 		++line;
@@ -1061,7 +1061,7 @@ highlightStacked(widget w, string start, string stop, int prefix)
 	int	l = 0, hunkstart = 0;
 	string	addlines[], sublines[];
 
-	foreach (line in split((string)Text_get(w, start, stop), "\n")) {
+	foreach (line in split(/\n/, (string)Text_get(w, start, stop))) {
 		++l;
 		if (line[0] eq "+") {
 			push(&addlines, line[prefix..END]);
