@@ -2377,10 +2377,6 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 	free(d->random);
 	d->random = t;
 	sccs_sdelta(s, d, newroot);
-	unless (locked = sccs_lock(s, 'z')) {
-		fprintf(stderr, "BP can't get lock on %s\n", s->gfile);
-		return (4);
-	}
 
 	/*
 	 * Use the initial size to determine whether we convert or not.
@@ -2404,6 +2400,11 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 		s->encoding_out &= ~E_GZIP;
 		if (sccs_adminFlag(s, ADMIN_FORCE|NEWCKSUM)) perror(s->gfile);
 		s = sccs_restart(s);
+	}
+	unless (locked = sccs_lock(s, 'z')) {
+		fprintf(stderr,
+		    "bam convert: can't get lock on %s\n", s->gfile);
+		return (4);
 	}
 	fprintf(stderr, "Converting %s ", s->gfile);
 	for (n = 0, d = s->table; d; d = NEXT(d)) {
