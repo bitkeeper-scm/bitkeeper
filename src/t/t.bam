@@ -192,7 +192,7 @@ bk get -p -r1.0 subdir/data3 2> OUT && {
 }
 cat <<EOF > WANT
 BAM: unable to find BAM delta in subdir/data3
-get of subdir/SCCS/s.data3 failed, skipping it.
+get of subdir/data3 failed, skipping it.
 EOF
 cmpfiles OUT WANT
 echo OK

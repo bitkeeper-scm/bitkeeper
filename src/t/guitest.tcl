@@ -137,6 +137,28 @@ proc test_focus {} \
 	}
 }
 
+proc test_keyPress {key {w ""}} \
+{
+	set map {
+		"PgUp"		"Prior"
+		"PageUp"	"Prior"
+		"PgDown"	"Next"
+		"PageDown"	"Next"
+	}
+	set key [string map $map $key]
+
+	if {$w eq ""} {
+		set w [focus]
+	} else {
+		focus -force $w
+		event generate $w <FocusIn>
+	}
+
+	event generate $w <KeyPress-$key>
+	event generate $w <KeyRelease-$key>
+	update
+}
+
 # simulates input into a widget by generating the appropriate keypress
 # and keyrelease events for each character in the string. If a character
 # is preceeded by ^ it is treated as a control character (eg: ^c). To 
@@ -258,6 +280,11 @@ proc test_evalScript {args} \
 # of the script so you can interact with the program. Useful when debugging
 # test scripts
 proc test_pause {} {
+	catch {
+		package require tkcon
+		tkcon show
+	}
+
 	toplevel .__test
 	wm title .__test "Testing has been paused..."
 	text .__test.text -borderwidth 2 -relief groove \
@@ -278,6 +305,7 @@ proc test_pause {} {
 	bell
 	# now wait for it to be destroyed...
 	catch {tkwait visibility .__test}
+	catch {tkcon close}
 }
 
 # this builds up a global array named test_menuitems. Each element

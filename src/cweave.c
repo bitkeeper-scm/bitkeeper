@@ -95,6 +95,17 @@ earlier(sccs *s, delta *a, delta *b)
 	}
         if (ret < 0)   return 1;
         if (ret > 0)   return 0;
+	// sortkeys compares sortSum. Look at current sum for hints.
+	unless (a->sum == b->sum) {
+		fprintf(stderr, "The source repository has had a different "
+		    "transformation,\nlikely involving the presence or "
+		    "absence of a file that\nhas been marked gone.\n"
+		    "Please write support@bitmover.com for assistance.\n\n");
+		fprintf(stderr, "File: %s\n", s->gfile);
+		fprintf(stderr, "sortkey: %s\n", keya);
+		fprintf(stderr, "sum: %u %u\n", a->sum, b->sum);
+		exit (1);
+	}
         assert("Can't figure out the order of deltas\n" == 0);
         return (-1); /* shut off VC++ comipler warning */
 }

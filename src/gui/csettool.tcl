@@ -507,11 +507,6 @@ proc widgets {} \
 	    pack .menu.next -side left -padx 1
 	    # Add the search widgets to the menu bar
 	    search_widgets .menu .diffs.right
-
-	    # We put status info in the diff status window that is larger
-	    # than that expeced by difflib; so, make the label a bit wider 
-	    # to keep the display from jiggling
-	    .diffs.status.middle configure -width 25
 	
 	# smaller than this doesn't look good.
 	#wm minsize . $x 400

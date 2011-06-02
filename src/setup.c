@@ -295,6 +295,7 @@ defaultFiles(int product)
 		fclose(f);
 		touch("BitKeeper/log/PRODUCT", 0444);
 		system("bk portal -q .");
+		system("bk gate -q .");
 		proj_reset(0);		/* created product */
 	}
 	attr_update();

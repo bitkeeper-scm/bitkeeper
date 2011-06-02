@@ -3891,6 +3891,9 @@ loadConfig(project *p, int forcelocal)
 	MDBM	*db = mdbm_mem();
 	char	*t;
 	project	*prod = 0;
+	char	**empty = 0;
+	int	i;
+	kvpair	kv;
 
 	/*
 	 * Support for a magic way to set clone default
@@ -3919,6 +3922,12 @@ loadConfig(project *p, int forcelocal)
 		loadRepologConfig(db, proj_root(prod));
 	}
 	loadEnvConfig(db);
+
+	/* now remove any empty keys */
+	EACH_KV(db) if (kv.val.dsize == 1) empty = addLine(empty, kv.key.dptr);
+	EACH(empty) mdbm_delete_str(db, empty[i]);
+	freeLines(empty, 0);
+
 	return (db);
 }
 
@@ -3954,8 +3963,7 @@ printconfig(char *file, MDBM *db, MDBM *cfg)
 		k = keys[i];
 		v1 = mdbm_fetch_str(db, k);
 		assert(v1);
-		v2 = mdbm_fetch_str(cfg, k);
-		assert(v2);
+		unless (v2 = mdbm_fetch_str(cfg, k)) v2 = ""; /* deleted is empty for this */
 
 		/* mark the config that doesn't get used */
 		if (!*v1 || streq(v1, "!")) {
@@ -6840,7 +6848,9 @@ get_link(sccs *s, char *printOut, int flags, delta *d, int *ln)
 		mkdirf(f);
 		unless (symlink(d->symlink, f) == 0 ) {
 #ifdef WIN32
-			getMsg("symlink", s->gfile, '=', stderr);
+			if (getenv("BK_WARN_SYMLINK")) {
+				getMsg("symlink", s->gfile, '=', stderr);
+			}
 #else
 			perror(f);
 #endif
@@ -8946,7 +8956,16 @@ sccs_unedit(sccs *s, u32 flags)
 		getFlags |= GET_SKIPGET;
 	} else {
 reget:		unlinkGfile(s);
-		/* For make, foo.o may be more recent than s.foo.c */
+		/*
+		 * For make, foo.o may be more recent than s.foo.c
+		 *
+		 * XXX causes problems when running BK_DEVELOPER and having
+		 * hardlinks as it messes with other repos time stamps,
+		 * possibly making the other repos sfile with a time
+		 * newer than its gfile.  See use of turning off developer
+		 * in t.bam-convert as a case when unedit in one repo
+		 * causes push to fail in a different repo.
+		 */
 		utime(s->sfile, 0);
 	}
 	if (getFlags) {
@@ -9330,8 +9349,10 @@ toobig(sccs *s)
 {
 	u64	sz;
 
-	sz = 0x7fffffff;	/* 2GB - 1, always positive */
-	sz *= 2;		/* 4294967294 or fffffffe */
+	/*
+	 * largest signed 32 bit value that is positive.
+	 */
+	sz = 0x7fffffff;
 	if (BAM(s) && exists(s->gfile) && (size(s->gfile) > sz)) {
 		fprintf(stderr,
 		    "%s is too large for this version of BitKeeper\n",
@@ -13895,6 +13916,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 #define	KW(x)	kw2val(out, x, strlen(x), s, d)
 #define	fc(c)	show_d(s, out, "%c", c)
 #define	fd(n)	show_d(s, out, "%d", n)
+#define	fu(n)	show_d(s, out, "%u", n)
 #define	fx(n)	show_d(s, out, "0x%x", n)
 #define	f5d(n)	show_d(s, out, "%05d", n)
 #define	fs(str)	show_s(s, out, str, -1)
@@ -13913,7 +13935,11 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		rev = strndup(p, len - (p-kw));
 		if ((rev[0] == '$') && isdigit(rev[1]) && !rev[2]) {
 			/* substitute for a $\d variable */
-			if (t = sccs_prsbuf(s, d, PRS_FORCE, rev)) {
+			FILE	*f = fmem();
+
+			dspec_eval(f, s, d, rev);
+			if (t = fmem_close(f, 0)) {
+				/* FYI: returns "" if empty */
 				free(rev);
 				rev = t;
 			}
@@ -15581,7 +15607,8 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_BAMSIZE: /* BAMSIZE */
 		if (d->hash) {
-			fd(d->added);
+			// XXX - BAMSIZE could be much bigger than 4G
+			fu(d->added);
 			return (strVal);
 		}
 		return (nullVal);
@@ -16975,6 +17002,15 @@ sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB)
 	char	buf[MAXKEY];
 
 	/*
+	 * We call this with the crap people put in the gone file,
+	 * do a little sanity check.
+	 * x@y|K|19990319224848|02682|x
+	 * 1234567890123456789012345678
+	 * so 28 bytes, and MD5KEYS are longer, so we're good @ 28.
+	 */
+	unless (key && *key && (strlen(key) >= 28)) return (0);
+
+	/*
 	 * Id cache contains both long and short keys
 	 * so we don't need to look things up as long then short.
 	 */
@@ -16995,9 +17031,9 @@ sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB)
 		    	return (0);
 		}
 
-		for (t = k.dptr; *t++ != '|'; );
-		for (r = t; *r != '|'; r++);
-		assert(*r == '|');
+		unless (t = strchr(k.dptr, '|')) return (0);
+		t++;
+		unless (r = strchr(t, '|')) return (0);
 		*r = 0;
 		p = name2sccs(t);
 		*r = '|';

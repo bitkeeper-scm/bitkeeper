@@ -717,20 +717,12 @@ cmpfiles WANT GOT
 
 bk config | grep '^t' > GOT
 cat <<EOF > WANT
-t00: 
-t01: 
-t02: 
 t03: bar
-t10: 
-t11: 
-t12: 
 t13: bar
 t20: foo
-t21: 
 t22: foo
 t23: bar
 t30: foo
-t31: 
 t32: foo
 t33: bar
 EOF

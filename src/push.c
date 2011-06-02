@@ -6,6 +6,7 @@
 #include "range.h"
 #include "nested.h"
 #include "progress.h"
+#include "bam.h"
 
 private	struct {
 	u32	quiet:1;		/* -q */
@@ -637,7 +638,9 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 
 		switch (ret) {
 		    case -2:
-			getMsg("unrelated_repos", 0, 0, stderr);
+			unless (bam_converted(0)) {
+				getMsg("unrelated_repos", "push to", 0, stderr);
+			}
 			break;
 		    case -3:
 			unless (opts.forceInit) {

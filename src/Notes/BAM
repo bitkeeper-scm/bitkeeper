@@ -1,3 +1,21 @@
+[Thu May 26 15:43:09 PDT 2011]
+
+bam convert notes
+
+Invariants
+    - bam conversions are shrink only
+    - after a bam conversion of size X
+      ChangeSet rootkey is B:$X:randombits
+      All uuencoded files that had a size of $X or less are now BAM files
+    - bam convert does not care about, or modify, the BAM: setting in
+      the config file.  In fact, it could be BAM:off and bam convert will
+      still do what it said it would.
+
+That last one points out that the BAM:on or BAM:<size> setting is for new
+file creates.  bam convert is for existing files.  So the size in the 
+rootkey is there only so that all other repos can run bam convert $size
+and get a result that will interoperate.
+
 -----------------------------------------------------------------------
 How the url to the current BAM server is maintained:
 

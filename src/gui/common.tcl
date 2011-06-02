@@ -987,3 +987,113 @@ proc configureTextWidgets {} \
 	}
 }
 configureTextWidgets
+
+#lang L
+string[]
+highlightLine(string l, string r, int lline, int rline)
+{
+	int	i, llen, rlen, lmin, si, sl, sr, el, er;
+
+	llen = length(l);
+	rlen = length(r);
+	lmin = tcl::mathfunc::min(llen, rlen);
+	for (i = 0; i < lmin; ++i) {
+		if (l[i] ne r[i]) break;
+	}
+	si = i;
+
+	for (i = 0; i < (lmin - si); ++i) {
+		if (l[END-i] ne r[END-i]) break;
+	}
+
+	// sl = start left, sr = start right
+	// el = end left, er = end right
+	sl = sr = si;
+	el = llen - i;
+	er = rlen - i;
+
+	// Skip it if it highlights more than half the total line.
+	// and it's not just spaces
+
+	if (((el - si) > (llen / 2)) && !isspace(l[si..el-1])) return (undef);
+	if (((er - si) > (rlen / 2)) && !isspace(r[si..er-1])) return (undef);
+
+	// Fix a problem where if we match "const char *" vs "char *"
+	// we'll highlight "const c|char *" rather than
+	// "|const |char *"
+	while ((sl > 0) && l[sl-1] eq l[el-1]) {
+		--sl;
+		--el;
+	}
+	while ((sr > 0) && r[sr-1] eq r[er-1]) {
+		--sr;
+		--er;
+	}
+
+	return({"${lline}.${sl}", "${lline}.${el}",
+		"${rline}.${sr}", "${rline}.${er}"});
+}
+
+// Do subline highlighting on two side-by-side diff widgets.
+void
+highlightSideBySide(widget left, widget right, string start, string stop)
+{
+	int	i, line;
+	string	llines[] = split((string)Text_get(left, start, stop), "\n");
+	string	rlines[] = split((string)Text_get(right, start, stop), "\n");
+	string	idxs[];
+
+	line = (int)split(start, ".")[0];
+	for (i = 0; i < length(llines); ++i) {
+		idxs = highlightLine(llines[i], rlines[i], line, line);
+		++line;
+		unless (defined(idxs)) continue;
+		Text_tagAdd(left,  "highlight", (expand)idxs[0..1]);
+		Text_tagAdd(right, "highlight", (expand)idxs[2..3]);
+	}
+}
+
+// Do subline highlighting on stacked diff output in a single text widget.
+void
+highlightStacked(widget w, string start, string stop, int prefix)
+{
+	string	line;
+	int	l = 0, hunkstart = 0;
+	string	addlines[], sublines[];
+
+	foreach (line in split((string)Text_get(w, start, stop), "\n")) {
+		++l;
+		if (line[0] eq "+") {
+			push(&addlines, line[prefix..END]);
+			unless (hunkstart) hunkstart = l;
+		} else if (line[0] eq "-") {
+			push(&sublines, line[prefix..END]);
+			unless (hunkstart) hunkstart = l;
+		} else {
+			if (defined(addlines) && defined(sublines)) {
+				int	i = 0;
+				string	idx1, idx2, idxs[];
+
+				for (; hunkstart < l; ++hunkstart) {
+					unless (defined(addlines[i])) break;
+					unless (defined(sublines[i])) break;
+					idxs = highlightLine(sublines[i],
+					    addlines[i], hunkstart,
+					    hunkstart + length(sublines));
+					++i;
+					unless (defined(idxs)) continue;
+
+					foreach (idx1, idx2 in idxs) {
+						Text_tagAdd(w, "highlight",
+						    "${idx1}+${prefix}c",
+						    "${idx2}+${prefix}c");
+					}
+				}
+			}
+			hunkstart = 0;
+			addlines = undef;
+			sublines = undef;
+		}
+	}
+}
+#lang tcl

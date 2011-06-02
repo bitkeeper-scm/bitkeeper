@@ -553,7 +553,7 @@ fresh_nested n1
 cd "$HERE"
 fresh_nested n2
 bk push $Q "$HERE/n1" 2>ERR && fail -f ERR should have failed
-grep -q "You are trying to synchronize with an unrelated package." ERR \
+grep -q "You are trying to push to an unrelated package." ERR \
 	|| fail -f ERR wrong error msg
 echo OK
 
@@ -561,14 +561,14 @@ echo $N Try pushing from non-nested to nested........................$NL
 cd "$HERE"
 fresh_commercial nn
 bk push $Q "$HERE/n1" 2>ERR && fail -f ERR should have failed
-grep -q "You are trying to synchronize with an unrelated package." ERR \
+grep -q "You are trying to push to an unrelated package." ERR \
 	|| fail -f ERR wrong error msg
 echo OK
 
 echo $N Try pushing from nested to non-nested........................$NL
 cd "$HERE/n1"
 bk push $Q "$HERE/nn" 2>ERR && fail -f ERR should have failed
-grep -q "You are trying to synchronize with an unrelated package." ERR \
+grep -q "You are trying to push to an unrelated package." ERR \
 	|| fail -f ERR wrong error msg
 echo OK
 

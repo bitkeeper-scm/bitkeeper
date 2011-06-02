@@ -114,10 +114,15 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Check a gca based range a,b..c ..............................$NL
-# A GCA can be a set of delta, 
-bk prs -r1.1.1.1,1.2.1.1..1.4 -hd' :I:' foo > GOT
-echo >> GOT
-echo " 1.4 1.3" > WANT
+bk edit $Q foo
+bk delta $Q -fynull foo
+# A GCA can be a set of delta; also test $1 not clearing global state 
+bk prs -r1.1.1.1,1.2.1.1..1.5 -hnd':I:-${1=:MPARENT:}:I|$1:' foo > GOT
+cat <<EOF > WANT
+1.5-1.5
+1.4-1.2.1.1
+1.3-1.1.1.1
+EOF
 cmpfiles WANT GOT
 echo OK
 

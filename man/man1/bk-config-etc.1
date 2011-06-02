@@ -66,6 +66,20 @@ or disable autofix, one of the following should be in your configuration:
 autofix:yes
 autofix:no
 .DE
+.SS BAM SIZE
+.LP
+If you are licensed for the Binary Asset Management feature, the optional
+BAM variable controls how large a binary needs to be to be stored in BAM.
+The size is compared to the size of the initial checkin only.
+Example values the variable may hold are:
+.DS
+BAM: on
+BAM: off
+BAM: 1K
+BAM: 64K
+.DE
+A "K" suffix means multiply by 1024, a "M" suffix means multiply by 1024^2.
+The default size, if not specified, is 64K.
 .SS BK/WEB PREFERENCES
 .LP
 BK/Web preferences can be specified your configuration.
@@ -263,6 +277,11 @@ If you wish to limit access to a particular set of users, either on
 read-only or read-write basis, you may do so using a pre-lease-proxy
 trigger.
 See 'bk help triggers' for more information.
+.LP
+If you wish to disable this variable, set in your configuration:
+.DS
+licenseurl:none
+.DE
 .SS LINE TERMINATION
 .br
 The \*[UN] and Windows operating systems use different characters to

@@ -32,20 +32,30 @@ proc widgets {} \
 		searchreset
 		next
 	    }
-	    ttk::button .menu.quit -text "Quit" -command exit 
-	    ttk::button .menu.reread -text "Reread" -command reread
-	    ttk::button .menu.help -text "Help" -command {
+	    ttk::button .menu.quit -text "Quit" -command exit \
+		-takefocus 0
+	    ttk::button .menu.reread -text "Reread" -command reread \
+		-takefocus 0
+	    ttk::button .menu.help -text "Help" -takefocus 0 -command {
 		exec bk helptool difftool &
 	    }
 	    ttk::button .menu.dot -text "Current diff" -command dot
             ttk::button .menu.filePrev -image $prevImage -command { prevFile } \
-		-state disabled
-            ttk::button .menu.fileNext -image $nextImage -command { nextFile }
+		-takefocus 0 -state disabled
+            ttk::button .menu.fileNext -image $nextImage -command { nextFile } \
+		-takefocus 0
 	    ttk::button .menu.discard -text "Discard" -command { discard } \
-		-state disabled
-	    ttk::button .menu.revtool -text "Revtool" -command { revtool }
+		-takefocus 0 -state disabled
+	    ttk::button .menu.revtool -text "Revtool" -command { revtool } \
+		-takefocus 0
 	        
-            ttk::menubutton .menu.fmb -text "Files" -menu .menu.fmb.menu
+	    ttk::combobox .menu.files -text "Files" -width 10 -state readonly \
+		-postcommand postFilesCombo
+	    bind .menu.files <<ComboboxSelected>> "selectFile"
+
+	    ## Configure the combobox to add some width so that it's
+	    ## actually bigger than the entry when it posts.
+	    ttk::style configure TCombobox -postoffset {0 0 100 0}
 
 	    pack .menu.quit -side left -padx 1
 	    pack .menu.help -side left -padx 1
@@ -86,13 +96,13 @@ proc keyboard_bindings {} \
 {
 	global	search gc
 
-	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
-	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
-	bind all <Up> { if {[Page "yview" -1 1] == 1} { break } }
-	bind all <Down> { if {[Page "yview" 1 1] == 1} { break } }
-	bind all <Left> { if {[Page "xview" -1 1] == 1} { break } }
-	bind all <Right> { if {[Page "xview" 1 1] == 1} { break } }
-	bind all <Home> {
+	bind . <Prior> { if {[Page "yview" -1 0] == 1} { break } }
+	bind . <Next> { if {[Page "yview" 1 0] == 1} { break } }
+	bind . <Up> { if {[Page "yview" -1 1] == 1} { break } }
+	bind . <Down> { if {[Page "yview" 1 1] == 1} { break } }
+	bind . <Left> { if {[Page "xview" -1 1] == 1} { break } }
+	bind . <Right> { if {[Page "xview" 1 1] == 1} { break } }
+	bind . <Home> {
 		global	lastDiff
 
 		set lastDiff 1
@@ -100,7 +110,7 @@ proc keyboard_bindings {} \
 		.diffs.left yview -pickplace 1.0
 		.diffs.right yview -pickplace 1.0
 	}
-	bind all <End> {
+	bind . <End> {
 		global	lastDiff diffCount
 
 		set lastDiff $diffCount
@@ -108,15 +118,15 @@ proc keyboard_bindings {} \
 		.diffs.left yview -pickplace end
 		.diffs.right yview -pickplace end
 	}
-	bind all	<$gc(diff.quit)>	exit
-	bind all	<N>			nextFile
-	bind all	<P>			prevFile
-	bind all	<Control-n>		nextFile
-	bind all	<Control-p>		prevFile
-	bind all	<n>			next
-	bind all	<space>			next
-	bind all	<p>			prev
-	bind all	<period>		dot
+	bind .	<$gc(diff.quit)>	exit
+	bind .	<N>			nextFile
+	bind .	<P>			prevFile
+	bind .	<Control-n>		nextFile
+	bind .	<Control-p>		prevFile
+	bind .	<n>			next
+	bind .	<space>			next
+	bind .	<p>			prev
+	bind .	<period>		dot
 	if {$gc(aqua)} {
 		bind all <Command-q> exit
 		bind all <Command-w> exit
@@ -154,9 +164,9 @@ proc getRev {file rev checkMods} \
 
 proc reread {} \
 {
-	global menu
+	global	selected
 
-	$menu(widget) invoke $menu(selected)
+	selectFile $selected
 }
 
 proc usage {} \
@@ -212,7 +222,8 @@ proc readInput {in} \
 proc getFiles {} \
 {
 	global argv argc dev_null lfile rfile unique
-	global gc menu rev1 rev2 Diffs DiffsEnd filepath
+	global gc rev1 rev2 Diffs DiffsEnd filepath
+	global	fileInfo
 
 	if {$argc > 3} { usage }
 	set files [list]
@@ -273,7 +284,7 @@ proc getFiles {} \
 			if {[regexp -- {-r(.*)} $b - rev2]} {
 				# rset mode
 				cd2root
-				set f [open "| bk rset -r$rev1..$rev2" r]
+				set f [open "|bk rset -r$rev1..$rev2 | bk sort"]
 				set files [readInput $f]
 				if {[catch {close $f} err]} {
 					puts $err
@@ -332,36 +343,17 @@ proc getFiles {} \
 	}
 	# Now add the menubutton items if necessary
 	if {[llength $files] >= 1} {
-		.menu.fmb configure -text "Files ([llength $files])"
-		set menu(widget) [menu .menu.fmb.menu]
-		if {$gc(aqua)} {
-			# fake a menu entry so that the indices match
-			# this is so lame
-			$menu(widget) add command -label "" \
-			    -command "" -state disabled
-		}
-		set item 1
+		.menu.files set "Files ([llength $files])"
+
 		foreach e $files {
-			set lf [lindex $e 0]; set rf [lindex $e 1]
-			set fn [lindex $e 2]; set lr [lindex $e 3]
-			set rr [lindex $e 4]
-			#displayMessage "rf=($rf) lf=($lf)"
-			$menu(widget) add command \
-			    -label $fn \
-			    -command \
-				"pickFile \"$lf\" \"$rf\" \"$fn\" $item $lr $rr"
-			incr item
+			set file [lindex $e 2]
+			dict set fileInfo $file $e
 		}
-		if {$gc(aqua)} {
-			# can't disable tearoff because the logic is tied
-			# to the indices of the menu array
-			.menu.fmb.menu entryconfigure 0 -state disabled
-		}
-		pack configure .menu.filePrev .menu.fmb .menu.fileNext \
+		.menu.files configure -values [dict keys $fileInfo] \
+		    -height [expr {min(20,[llength $files])}]
+
+		pack configure .menu.filePrev .menu.files .menu.fileNext \
 		    -side left -after .menu.revtool
-		set menu(max) [$menu(widget) index last]
-		set menu(selected) 1
-		$menu(widget) invoke 1
 	} else {
 		# didn't find any valid arguments or there weren't any
 		# files that needed diffing...
@@ -395,24 +387,24 @@ proc checkFiles {lfile rfile} \
 	return 0
 }
 
-# Called from the menubutton -- updates the arrows and reads the correct file
-proc pickFile {lf rf fname item {lr {}} {rr {}}} \
-{
-	global menu lfile rfile lname rname
+## Called when a file is selected from the combobox.
+proc selectFile {{file ""}} {
+	global	lfile rfile lname rname selected fileInfo
 
-	# Set globals so that 'proc reread' knows which file to reread
-	set lfile $lf 
-	set rfile $rf
+	if {$file eq ""} { set file [.menu.files get] }
+	configureFilesCombo
 
-	set menu(selected) $item
-	set next [findNextMenuitem 1 $item]
-	set prev [findNextMenuitem -1 $item]
-	if {$next != -1} {
+	if {![dict exists $fileInfo $file]} { return }
+	lassign [dict get $fileInfo $file] lfile rfile fname lr rr
+	set selected $fname
+
+	if {[getNextFile] ne ""} {
 		.menu.fileNext configure -state normal
 	} else {
 		.menu.fileNext configure -state disabled
 	}
-	if {$prev != -1} {
+
+	if {[getPrevFile] ne ""} {
 		.menu.filePrev configure -state normal
 	} else {
 		.menu.filePrev configure -state disabled
@@ -422,10 +414,9 @@ proc pickFile {lf rf fname item {lr {}} {rr {}}} \
 	# assume that we aren't
 	if {$lr != ""} {
 		lassign [displayInfo $fname $fname $lr $rr] lfname rfname
-		#displayMessage "$lf $rf fname=($fname) lr=$lr rr=$rr"
 		set lname "$lfname|$lr"
 		set rname "$rfname|$rr"
-		readFiles $lf $rf
+		readFiles $lfile $rfile
 		.menu.revtool configure -state normal
 		if {[string match $rr "checked_out"]} {
 			.menu.discard configure -state normal
@@ -433,71 +424,50 @@ proc pickFile {lf rf fname item {lr {}} {rr {}}} \
 			.menu.discard configure -state disabled
 		}
 	} else {
-		displayInfo $lf $rf $lr $rr
-		set lname "$lf"
-		set rname "$rf"
-		readFiles $lf $rf
+		displayInfo $lfile $rfile $lr $rr
+		set lname $lfile
+		set rname $rfile
+		readFiles $lfile $rfile
 		.menu.revtool configure -state disabled
 		.menu.discard configure -state disabled
 	}
-	return
+	after idle [list focus -force .]
 }
 
-# incr must be -1 or 1, and indicates the direction to search
-proc findNextMenuitem {incr i} \
+proc getNextFile {} \
 {
-	global menu
+	global	fileInfo selected
 
-	if {$incr == -1} {
-		set limit 1
-	} else {
-		set limit $menu(max)
-	}
+	set files [dict keys $fileInfo]
+	if {![info exists selected]} { return }
+	set x [lsearch -exact $files $selected]
+	if {[incr x] >= [llength $files]} { return }
+	return [lindex $files $x]
+}
 
-	set i [expr {$i < 1 ? 1 : $i}]
-	set i [expr {$i > $menu(max) ? $menu(max) : $i}]
-	if {$i == $limit} {return -1}
+proc getPrevFile {} \
+{
+	global	fileInfo selected
 
-	set tries 0
-	for {set i [expr {$i + $incr}]} {$i != $limit} {incr i $incr} {
-		if {[$menu(widget) entrycget $i -state] == "normal"} {
-			break
-		}
-		# bail if we've tries as many times as their are menu
-		# entries
-		if {[incr tries] >= $menu(max)} break
-	}
-
-	if {[$menu(widget) entrycget $i -state] == "normal"} {
-		return $i
-	} else {
-		return -1
-	}
+	set files [dict keys $fileInfo]
+	if {![info exists selected]} { return }
+	set x [lsearch -exact $files $selected]
+	if {[incr x -1] < 0} { return }
+	return [lindex $files $x]
 }
 
 # Get the previous file when the button is selected
 proc prevFile {} \
 {
-	global menu lastFile
-
-	set i [findNextMenuitem -1 $menu(selected)]
-	if {$i != -1} {
-		set menu(selected) $i
-		.menu.fmb.menu invoke $menu(selected)
-	}
+	set file [getPrevFile]
+	if {$file ne ""} { selectFile $file }
 }
 
 # Get the next file when the button is selected
-proc nextFile {{i -1}} \
+proc nextFile {} \
 {
-	global menu lastFile
-
-	if {$i == -1} {set i [findNextMenuitem 1 $menu(selected)]}
-
-	if {$i != -1} {
-		set menu(selected) $i
-		.menu.fmb.menu invoke $menu(selected)
-	}
+	set file [getNextFile]
+	if {$file ne ""} { selectFile $file }
 }
 
 # Override searchsee definition so we scroll both windows
@@ -508,7 +478,6 @@ proc searchsee {location} \
 
 proc discard {{what firstClick} args} \
 {
-	global menu
 	global lname rname
 
 	set tmp [split $lname @|]
@@ -564,24 +533,21 @@ proc discard {{what firstClick} args} \
 # clears the display since there's nothing left to diff.
 proc doDiscard {file} \
 {
-	global menu
+	global	fileInfo
 
 	if {[catch {exec bk unedit $file} message]} {
 		exec bk msgtool -E "error performing the unedit:\n\n$message\n"
 		return
 	}
 
-	# disable this file's menu item and attempt to select
-	# the "next" file (next being, the next one forward if
-	# there is one, or next one backward if there is one.
-	$menu(widget) entryconfigure $menu(selected) -state disabled
-	set i [findNextMenuitem 1 $menu(selected)]
-	if {$i == -1} {
-		set i [findNextMenuitem -1 $menu(selected)]
-	}
+	dict unset fileInfo $file
+	configureFilesCombo
 
-	if {$i != -1} {
-		nextFile $i
+	set next [getNextFile]
+	if {$next eq ""} { set next [getPrevFile] }
+
+	if {$next ne ""} {
+		nextFile
 	} else {
 		clearDisplay
 	}
@@ -596,7 +562,6 @@ proc clearDisplay {} \
 	.menu.dot configure -state disabled
 	.menu.discard configure -state disabled
 	.menu.revtool configure -state disabled
-	.menu.fmb configure -state disabled
 	.menu.prev configure -state disabled
 	.menu.next configure -state disabled
 	.menu.reread configure -state disabled
@@ -621,7 +586,6 @@ proc clearDisplay {} \
 proc revtool {} \
 {
 	global lname rname filepath
-	global menu
 
 	# These regular expressions come straight from revtool, and are
 	# what it uses to validate passed-in revision numbers. We'll use
@@ -651,8 +615,77 @@ proc revtool {} \
 	eval exec $command &
 }
 
+proc postFilesCombo {} \
+{
+	global	selected
+
+	if {[info exists selected]} {
+		set cb .menu.files
+		$cb set $selected
+	}
+}
+
+proc configureFilesCombo {} \
+{
+	global	fileInfo
+
+	set cb .menu.files
+	$cb selection clear
+	$cb set "Files ([llength [dict keys $fileInfo]])"
+}
+
+proc test_diffCount {n} \
+{
+	global	diffCount
+	if {$n != $diffCount} {
+		puts "Expected diff count of $n but got $diffCount"
+		exit 1
+	}
+}
+
+proc test_topLine {n} \
+{
+	set top [topLine]
+	if {$n != $top} {
+		puts "$top is the top visible line, but it should be $n"
+		exit 1
+	}
+}
+
+proc test_currentDiff {diff} \
+{
+	global	lastDiff
+
+	if {$diff != $lastDiff} {
+		puts "$lastDiff is the current diff, but it should be $diff"
+		exit 1
+	}
+}
+
+proc test_currentFile {file} \
+{
+	global	selected
+
+	if {$file ne $selected} {
+		puts "$selected is the current file, but it should be $file"
+		exit 1
+	}
+}
+
+proc test_sublineHighlight {which strings} {
+	set w .diffs.$which
+	foreach a $strings {r s} [$w tag ranges highlight] {
+	    if {$a ne [$w get $r $s]} {
+		    puts "$a is highlighted, but it should be $b"
+		    exit 1
+	    }
+	}
+}
+
 proc main {} \
 {
+	global	fileInfo
+
 	wm title . "Diff Tool - initializing..."
 
 	bk_init
@@ -671,7 +704,6 @@ proc main {} \
 	wm deiconify .
 	update 
 
-#	after idle [list after 1 getFiles]
 	after idle [list focus -force .]
 	getFiles
 
@@ -687,6 +719,9 @@ proc main {} \
 	}
 
 	wm title . "Diff Tool"
+
+	## Select the first file in the file list.
+	selectFile [lindex [dict keys $fileInfo] 0]
 }
 
 main

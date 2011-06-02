@@ -101,3 +101,101 @@ grep -q 'cannot pull to lower level repository (remote level == 100)' OUT || {
 	exit 1
 }
 echo OK
+
+echo $N Push to a lower level nested repo should fail ...............$NL
+cd "$HERE"
+nested prod
+bk level 2
+cd "$HERE"
+bk clone $Q prod copy2
+cd "$HERE/copy2/gcc"
+bk level 3
+touch foo
+bk new $Q foo
+bk commit $Q -y'added foo'
+bk push $Q 2>OUT && fail -f OUT should have failed
+grep -q "cannot push to lower level repository" OUT || fail -f OUT bad error message
+echo OK
+
+echo $N Pull to a lower level nested repo should fail ...............$NL
+cd "$HERE/prod/gcc"
+bk pull $Q "$HERE/copy2" 2>OUT && fail -f OUT should have failed
+grep -q "cannot pull to lower level repository" OUT || fail -f OUT bad error message
+echo OK
+
+echo $N Pull to a higher level nested repo should work ..............$NL
+# Sort of bork copy2, by putting 2 into the component level file
+cd "$HERE/copy2/gcc"
+cat > BitKeeper/etc/level <<EOF
+# This is the repository level, as edited by regressions
+2
+EOF
+cd "$HERE"
+bk clone $Q prod copy3
+cd copy3/gcc
+bk level 4
+# This should work because the comparison is of the product level
+# file (the only one that should matter)
+bk pull $Q "$HERE/copy2" 2>OUT || fail -f OUT should have worked
+echo OK
+
+echo $N Make sure detach sets level .................................$NL
+cd "$HERE/prod"
+bk detach $Q gcc "$HERE/gcc-detached" || fail
+cd "$HERE/gcc-detached"
+LEV=`bk level -l`
+test $LEV -eq 2 || fail level should be 2
+echo OK
+
+# Setup bkd and try pulls and pushes again
+trap 'test -n "$P" && bk _kill bk://localhost:$P' 0
+cd "$HERE"
+bk bkd -dq -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+P=`cat PORT`
+
+echo $N Pull to a lower level nested repo through bkd should fail ...$NL
+cd "$HERE/copy2/gcc"
+bk push $Q bk://localhost:$P/prod 2>OUT && fail -f OUT should have failed
+grep -q "cannot push to lower level repository" OUT || \
+	fail -f OUT bad error message
+echo OK
+
+echo $N Push to a lower level nested repo through bkd should fail ...$NL
+cd "$HERE/prod/gcc"
+bk pull $Q bk://localhost:$P/copy2 2>OUT && fail -f OUT should have failed
+echo OK
+
+echo $N Pull to a higher level nested repo should work ..............$NL
+cd "$HERE/copy3/gcc"
+bk undo $Q -fr+
+bk level 4
+bk pull $Q bk://localhost:$P/copy2 2>OUT || fail -f OUT should have worked
+echo OK
+
+echo $N Check port to a lower level .................................$NL
+# Setup new portal sharing gcc
+cd "$HERE"
+bk cat prod/BitKeeper/etc/config > c
+bk setup -fPcc other-prod		# defaults to level 1
+cd other-prod
+bk attach $Q ../gcc-detached other-gcc	# this is level 2
+cd "$HERE/prod/gcc"
+touch bar
+bk new $Q bar
+bk commit $Q -f
+cd "$HERE/other-prod/other-gcc"
+bk port $Q bk://localhost:$P/prod/gcc 2>OUT && fail -f OUT should have failed
+grep -q 'cannot pull to lower level repository (remote level == 2)' OUT || \
+	fail -f OUT wrong error message
+echo OK
+
+echo $N Check port to a higher level ................................$NL
+cd "$HERE/prod/gcc"
+cat > BitKeeper/etc/level <<EOF
+# regressions wrote this
+5
+EOF
+cd "$HERE/other-prod/other-gcc"
+bk level 6
+bk port $Q bk://localhost:$P/prod/gcc 2>OUT || fail -f OUT should have worked
+echo OK

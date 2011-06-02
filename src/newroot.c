@@ -91,14 +91,14 @@ newroot(char *ranbits, int quiet, int verbose, char *comments, char *who)
 		}
 	}
 	sccs_defRootlog(s);
+	unless (s->tree->random) s->tree->random = strdup("");
 
 	if (ranbits) {
+		/* We're called from BAM convert, append the random bits */
 		if (strneq(ranbits, "B:", 2)) {
-			if (strneq("B:", s->tree->random, 2)) {
-				sccs_free(s);
-				return (0);
-			}
-			sprintf(buf, "%s%s", ranbits, s->tree->random);
+			p = s->tree->random;
+			if (strneq("B:",p, 2)) p = strrchr(p, ':') + 1;
+			sprintf(buf, "%s%s", ranbits, p);
 			assert(strlen(buf) < MAXPATH - 1);
 		} else {
 			p = buf;

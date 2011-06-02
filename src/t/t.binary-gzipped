@@ -20,14 +20,14 @@ grep -v BAM c > BitKeeper/etc/config
 cp BitKeeper/etc/config c
 
 echo $N Trying to check in some binary data .........................$NL
-cp ${BIN1} data
+cp "$BIN1" data
 chmod u+w data
 # This makes sure we aren't expanding keywords.
 echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@@' | sed s/@/%/g >> data
 cp data saved_bin
 BIN1=saved_bin
-cp $BIN1 uuencode1
-cp $BIN1 uuencode1z
+cp "$BIN1" uuencode1
+cp "$BIN1" uuencode1z
 # test old auto-binary
 bk new $Q uuencode1 || exit 1
 # test old auto-binary zipped
@@ -37,14 +37,14 @@ cp c BitKeeper/etc/config
 echo BAM:1 >> BitKeeper/etc/config
 cp data uuencode2
 bk new $Q -Euuencode uuencode2 || exit 1
-cp $BIN1 bam1
-cp $BIN1 bam2
+cp "$BIN1" bam1
+cp "$BIN1" bam2
 # test auto-binary
 bk new $Q bam1 || exit 1
 bk new $Q -EBAM bam2 || exit 1
 for f in uuencode1 uuencode1z uuencode2 bam1 bam2
 do	bk co $Q -l $f
-	cmp -s ${BIN1} $f || {
+	cmp -s "$BIN1" $f || {
 		echo failed $f
 		exit 1
 	}
@@ -76,17 +76,17 @@ echo OK
 
 echo $N Trying to change some binary data ...........................$NL
 for f in uuencode1 bam1
-do	cp ${BIN2} $f
+do	cp "$BIN2" $f
 	bk ci $Q -y $f || exit 1
 	bk co $Q $f || exit 1
-	checkfiles ${BIN2} $f
+	checkfiles "$BIN2" $f
 done
 echo OK
 
 echo $N Checking that revision 1.1 is still OK ......................$NL
 for f in uuencode1 bam1
 do	bk co -r1.1 $Q -G$f $f || exit 1
-	checkfiles ${BIN1} $f
+	checkfiles "$BIN1" $f
 done
 echo OK
 
@@ -101,7 +101,7 @@ echo OK
 echo $N Trying to compress uuencoded data ...........................$NL
 bk admin -Z uuencode1
 bk co -r1.1 $Q -Guuencode1 uuencode1 || exit 1
-checkfiles ${BIN1} uuencode1
+checkfiles "$BIN1" uuencode1
 echo OK
 
 echo $N Check in gzipped data with delta -Z .........................$NL
