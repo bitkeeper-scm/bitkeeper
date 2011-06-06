@@ -248,6 +248,7 @@ _gzip
 _hashstr_test
 _hashfile_test
 havekeys remote
+_heapdump
 help
 helpsearch
 helptopics

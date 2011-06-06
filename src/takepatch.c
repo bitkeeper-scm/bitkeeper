@@ -422,7 +422,7 @@ extractPatch(char *name, MMAP *p)
 	name = name2sccs(name);
 	if (strneq("New file: ", t, 10)) {
 		reallyNew = newFile = 1;
-		perfile = sccs_getperfile(p, &line);
+		perfile = sccs_getperfile(0, p, &line);
 		t = mkline(mnext(p));
 		line++;
 	}
@@ -432,6 +432,7 @@ extractPatch(char *name, MMAP *p)
 	}
 	if (newProject && !newFile) errorMsg("tp_notfirst", 0, 0);
 
+	t = strdup(t);
 	if (echo>4) fprintf(stderr, "%s\n", t);
 	s = sccs_keyinit(0, t, SILENT, idDB);
 	if (s && !s->cksumok) goto error;
@@ -461,6 +462,7 @@ extractPatch(char *name, MMAP *p)
 		    "takepatch: can't find key '%s' in id cache\n", t);
 error:		if (perfile) sccs_free(perfile);
 		if (gfile) free(gfile);
+		free(t);
 		if (s) sccs_free(s);
 		/* we don't free name, we pass it to errfiles */
 		errfiles = addLine(errfiles, name);
@@ -577,6 +579,7 @@ error:		if (perfile) sccs_free(perfile);
 	}
 	free(gfile);
 	free(name);
+	free(t);
 	if (s) sccs_free(s);
 	if (rc < 0) {
 		cleanup(CLEAN_RESYNC);

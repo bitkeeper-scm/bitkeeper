@@ -26,8 +26,7 @@ echo "xx" > file
 ln -s file symlink
 mv file file.tmp
 bk ci $Q -i symlink textfile
-bk _cat SCCS/s.symlink | grep -q '^.cOlrwxrwxrwx file'
-if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
+test `bk prs -hnd:RWXMODE:-:SYMLINK: -r+ symlink` = lrwxrwxrwx-file || fail
 bk admin -h symlink 2> ${DEV_NULL}
 if [ $? -ne 0 ]; then echo bad sfile.; exit 1; fi
 echo OK
@@ -42,8 +41,7 @@ fi
 if bk _test ! -f SCCS/s.link-name
 then	echo failed to create link; exit 1
 fi
-bk _cat SCCS/s.link-name | grep -q '^.cOlrwxrwxrwx /what/ever'
-if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
+test `bk prs -hnd:SYMLINK: -r+ link-name` = /what/ever || fail
 bk admin -h link-name 2> ${DEV_NULL}
 if [ $? -ne 0 ]; then echo bad sfile.; exit 1; fi
 echo OK
@@ -72,8 +70,7 @@ if [ $? -ne 0 ]; then echo clean Failed.; exit 1; fi
 mv file2 file2.tmp
 bk ci $Q -y symlink
 rm -f symlink
-bk _cat SCCS/s.symlink | grep -q '^.cOlrwxrwxrwx file2'
-if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
+test `bk prs -hnd:RWXMODE:-:SYMLINK: -r+ symlink` = lrwxrwxrwx-file2 || fail
 bk admin -h symlink 2> ${DEV_NULL}
 if [ $? -ne 0 ]; then echo bad sfile.; exit 1; fi
 cat > CMP1 << EOF
@@ -128,8 +125,7 @@ bk unedit symlink
 bk edit -g $Q symlink
 ln -s dir1 symlink
 bk ci $Q -y symlink
-bk _cat SCCS/s.symlink | grep -q '^.cOlrwxrwxrwx dir1'
-if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
+test `bk prs -hnd:RWXMODE:-:SYMLINK: -r+ symlink` = lrwxrwxrwx-dir1 || fail
 echo OK
 
 echo $N Check dangling symlink ......................................$NL
@@ -137,8 +133,8 @@ bk co $Q -l symlink
 rm -f symlink
 ln -f -s this_file_does_not_exist symlink
 bk ci $Q -y symlink
-bk _cat SCCS/s.symlink | grep -q '^.cOlrwxrwxrwx this_file_does_not_exist'
-if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
+OUT=`bk prs -hnd:RWXMODE:-:SYMLINK: -r+ symlink`
+test "$OUT" = lrwxrwxrwx-this_file_does_not_exist || fail
 echo OK
 
 echo $N Check clean on symlink directory ............................$NL
@@ -306,8 +302,8 @@ echo "xx" > file
 ln -s file symlink
 mv file file.tmp
 bk ci $Q -i symlink textfile
-bk _cat SCCS/s.symlink | grep -q '^.cOlrwxrwxrwx file'
-if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
+OUT=`bk prs -hnd:RWXMODE:-:SYMLINK: -r+ symlink`
+test "$OUT" = lrwxrwxrwx-file || fail
 bk admin -h symlink 2> ${DEV_NULL}
 bk clean symlink
 bk get $Q -e -g symlink

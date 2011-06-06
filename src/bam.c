@@ -2063,7 +2063,7 @@ bam_convert_main(int ac, char **av)
 	pclose(sfiles);
 	if (sfileDone()) errors |= 2;
 	if (errors) goto out;
-	system("bk admin -Znone ChangeSet");
+	system("bk admin -Znone -Bnone ChangeSet");
 	unless (in = fopen("SCCS/s.ChangeSet", "r")) {
 		perror("SCCS/s.ChangeSet");
 		exit(1);
@@ -2175,8 +2175,7 @@ uu2bp(sccs *s)
 		unlink(s->gfile);
 		if (sz < proj_configsize(s->proj, "BAM")) goto out;
 	}
-
-	if (GZIP(s)) {
+	if (!BFILE(s) && GZIP(s)) {
 		/* uncompress file for performance */
 		s = sccs_restart(s);
 		s->encoding_out = sccs_encoding(s, 0, 0);
@@ -2230,8 +2229,6 @@ err:		sccs_abortWrite(s, &out);
 		return (32);
 	}
 	if (delta_table(s, out, 0)) goto err;
-	fseek(out, 0L, SEEK_SET);
-	fprintf(out, "\001%c%05u\n", 'H', s->cksum);
 	if (sccs_finishWrite(s, &out)) goto err;
 	fprintf(stderr, "Converted %d deltas in %s\n", n, s->gfile);
 out:	sccs_unlock(s, 'z');

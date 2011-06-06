@@ -24,6 +24,7 @@ NUM=0
 FILE=test$NUM
 
 echo compression:none > "`bk dotbk`"/config
+echo binfile:no\! >> "`bk dotbk`"/config	# edits sfiles
 
 # Don't create gone in 'bk setup'
 # (use fresh_commercial so this don't effect cache)

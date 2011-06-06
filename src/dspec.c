@@ -589,22 +589,22 @@ getnext(datum kw, nextln *state)
 		state->freeme = 0;
 	}
 again:
-	++state->i;	/* first call has it set to 0, so now 1 */
 	if (strneq(kw.dptr, "C", kw.dsize)) {
 		char	*p, *t;
-		int	i, len;
+		int	len;
 
 		unless (g.d && g.d->comments) return (0);
 
 		t = COMMENTS(g.s, g.d);
-		for (i = 1; p = eachline(&t, &len); i++) {
-			if (i == state->i) {
-				state->freeme = strndup(p, len);
-				break;
-			}
+		t += state->i;
+		if (*t && (p = strchr(t, '\n'))) {
+			len = p-t;
+			state->freeme = strndup(t, len);
+			state->i += len+1;
 		}
 		return(state->freeme);
 	}
+	++state->i;	/* first call has it set to 0, so now 1 */
 
 	/* XXX FD depracated */
 	if (strneq(kw.dptr, "FD", kw.dsize)) {

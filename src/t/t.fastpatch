@@ -13,7 +13,7 @@
 _BK_NO_PATCHSFIO=1
 export _BK_NO_PATCHSFIO
 
-echo 'compression:none!' >> "`bk dotbk`"/config
+printf 'binfile:no!\ncompression:none!\n' >> "`bk dotbk`"/config
 
 # count how many fastpatchs in a patch file
 # patchcount file want-count
@@ -46,8 +46,7 @@ patchdump() {
 }
 
 weavedump() {
-	bk _cat $1 | perl -e \
-	    'while(<>){last if /^.T/}while(<>){s/\001//;print}'
+	bk _heapdump $1 | perl -ne 's/^\^A//; print unless 1 .. /^weave:/'   
 }
 
 
@@ -91,6 +90,7 @@ echo OK
 echo $N Corrupted file checksum and makepatch does not core dump ....$NL
 bk makepatch -F -r+ > patch || exit 1
 # put in something greater than 16 bit so it will never collide
+bk admin -Bnone foo || fail
 bk _cat SCCS/s.foo | perl -pe 's/^\001H...../\001H83452/' > x
 bk _mv SCCS/s.foo save
 bk _mv x SCCS/s.foo
@@ -116,14 +116,16 @@ echo OK
 
 echo $N Whole repo to this point in time -- cset and file ...........$NL
 cd ..
-cd project
+bk clone $Q project project.sfiles || fail
+cd project.sfiles
+bk -r admin -Bnone -Znone
 cd ..
 mkdir empty
 cd empty
 bk takepatch -ia < ../project/fullpatch || exit 1
 bk -r | while read file; do
 	bk _cp $file tp
-	bk _cp ../project/$file mp
+	bk _cp ../project.sfiles/$file mp
 	cmpfiles tp mp
 done || fail
 echo OK
@@ -154,6 +156,7 @@ bk delta $Q -yinsert foo
 bk commit $Q -yfoo
 bk makepatch -F -r+ > ../bork/append
 cd ../bork || exit 1
+bk admin -Bnone -Znone foo || fail
 bk _mv SCCS/s.foo sfile
 # chop at ^AT -- no weave body
 chopfile sfile SCCS/s.foo 0
@@ -271,7 +274,7 @@ echo $N Test all stopping conditions in a fastpatch weave ...........$NL
 #  2. a D token in active region with larger serial
 #
 cd "$HERE"
-commercial chicago
+fresh_commercial chicago
 cat <<EOF > file
 base 1
 base 2

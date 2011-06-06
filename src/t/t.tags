@@ -107,14 +107,14 @@ cd "$HERE"
 cp -rp project tags
 cd tags
 _BK_NO_TAG_GRAPH=YES bk tag $Q OLD
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS l' && {
+sccscat SCCS/s.ChangeSet | grep -q '^.cS l' && {
 	echo added a leaf
-	bk _cat SCCS/s.ChangeSet
+	sccscat SCCS/s.ChangeSet
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS[0-9]' && {
+sccscat SCCS/s.ChangeSet | grep -q '^.cS[0-9]' && {
 	echo added a tag graph node
-	bk _cat SCCS/s.ChangeSet
+	sccscat SCCS/s.ChangeSet
 	exit 1
 }
 bk admin -hhhq || exit 1
@@ -122,30 +122,30 @@ echo OK
 
 echo $N Add new style tags ..........................................$NL
 bk tag $Q NEW
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS0' || {
+sccscat SCCS/s.ChangeSet | grep -q '^.cS0' || {
 	echo did not add tag pointing to the root node
-	bk _cat SCCS/s.ChangeSet | egrep '^.cS|^.d '
+	sccscat SCCS/s.ChangeSet | egrep '^.cS|^.d '
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS0 l' || {
+sccscat SCCS/s.ChangeSet | grep -q '^.cS0 l' || {
 	echo did not add leaf flag
-	bk _cat SCCS/s.ChangeSet | egrep '^.cS|^.d '
+	sccscat SCCS/s.ChangeSet | egrep '^.cS|^.d '
 	exit 1
 }
 bk tag $Q 'NEW TAG'
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS0' || {
+sccscat SCCS/s.ChangeSet | grep -q '^.cS0' || {
 	echo lost tag pointing to the root node
-	bk _cat SCCS/s.ChangeSet | egrep '^.cS|^.d '
+	sccscat SCCS/s.ChangeSet | egrep '^.cS|^.d '
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS0 l' && {
+sccscat SCCS/s.ChangeSet | grep -q '^.cS0 l' && {
 	echo Root tag is still marked as leaf
-	bk _cat SCCS/s.ChangeSet | egrep '^.cS|^.d '
+	sccscat SCCS/s.ChangeSet | egrep '^.cS|^.d '
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS5 l' || {
+sccscat SCCS/s.ChangeSet | grep -q '^.cS5 l' || {
 	echo Did not add tag pointing to previous tag
-	bk _cat SCCS/s.ChangeSet | egrep '^.cS|^.d '
+	sccscat SCCS/s.ChangeSet | egrep '^.cS|^.d '
 	exit 1
 }
 bk _cp SCCS/s.ChangeSet SAVE
@@ -188,16 +188,16 @@ echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -fywhatever 'F!O#O$ B%A^R&RR(R)RR'
 _BK_NO_TAG_GRAPH=YES bk commit $Q -yopull_cset --tag='NOT IN TAG GRAPH'
 cd ..
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS[0-9]' && {
+sccscat SCCS/s.ChangeSet | grep -q '^.cS[0-9]' && {
 	echo added a tag graph node
-	bk _cat SCCS/s.ChangeSet
+	sccscat SCCS/s.ChangeSet
 	exit 1
 }
 bk admin -hhhq || exit 1
 bk admin -z
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS[0-9]' && {
+sccscat SCCS/s.ChangeSet | grep -q '^.cS[0-9]' && {
 	echo added a tag graph node after the admin -z
-	bk _cat SCCS/s.ChangeSet
+	sccscat SCCS/s.ChangeSet
 	exit 1
 }
 echo OK
@@ -207,7 +207,7 @@ cd "$HERE/copy2"
 bk pull $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
-bk _cat SCCS/s.ChangeSet | grep -q 'NOT IN TAG' || { echo did not propogate tag; exit 1; }
+sccscat SCCS/s.ChangeSet | grep -q 'NOT IN TAG' || { echo did not propogate tag; exit 1; }
 bk admin -hhhq || exit 1
 echo OK
 
@@ -240,7 +240,7 @@ echo r
 test -d RESYNC && {
 	echo resolve failed
 	cat OUT
-	bk _cat RESYNC/SCCS/s.ChangeSet | egrep '^.cS|^.d '
+	sccscat RESYNC/SCCS/s.ChangeSet | egrep '^.cS|^.d '
 	exit 1
 }
 KEY=`bk prs -hrTAG -d:KEY: ChangeSet`
@@ -341,15 +341,15 @@ bk pull $Q || {
 	echo pull failed
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q 'd R 1.2 ' || {
+sccscat SCCS/s.ChangeSet | grep -q 'd R 1.2 ' || {
 	echo failed to send removed delta
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q 'STAG' || {
+sccscat SCCS/s.ChangeSet | grep -q 'STAG' || {
 	echo failed to send tag
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q 'S0 l' || {
+sccscat SCCS/s.ChangeSet | grep -q 'S0 l' || {
 	echo failed to mark tag in tag graph correctly
 	exit 1
 }
@@ -365,15 +365,15 @@ bk pull $Q || {
 	echo pull failed
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q 'STAG_NO_2' || {
+sccscat SCCS/s.ChangeSet | grep -q 'STAG_NO_2' || {
 	echo failed to send tag
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q 'S4 l' || {
+sccscat SCCS/s.ChangeSet | grep -q 'S4 l' || {
 	echo failed to mark leaf tag in tag graph correctly
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q 'S0$' || {
+sccscat SCCS/s.ChangeSet | grep -q 'S0$' || {
 	echo failed to mark root tag in tag graph correctly
 	exit 1
 }
@@ -392,15 +392,15 @@ bk _test -f SCCS/t.ChangeSet && {
 	echo failed to remove t.ChangeSet after commit
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q '^.cSt.tag' || {
+sccscat SCCS/s.ChangeSet | grep -q '^.cSt.tag' || {
 	echo failed to add tag to ChangeSet file
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q '^.cSt.tag2' || {
+sccscat SCCS/s.ChangeSet | grep -q '^.cSt.tag2' || {
 	echo failed to add tag2 to ChangeSet file
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q '^.cSI am a tag with spaces' || {
+sccscat SCCS/s.ChangeSet | grep -q '^.cSI am a tag with spaces' || {
 	echo failed to add I am a tag with spaces to ChangeSet file
 	exit 1
 }
@@ -659,13 +659,13 @@ bk tag $Q -r1.1 BAR
 bk pull $Q || exit 1
 bk undo $Q -fr+ || exit 1
 bk admin -Znone ChangeSet
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS0 l' || {
+sccscat SCCS/s.ChangeSet | grep -q '^.cS0 l' || {
 	echo 'Failed'
 	echo In problem setup, expected tag leaf to have parent 0
 	exit 1
 }
-ROOTS=`bk _cat SCCS/s.ChangeSet | grep '^.cS0' | wc -l`
-MEMBERS=`bk _cat SCCS/s.ChangeSet | grep '^.cS[0-9]' | wc -l`
+ROOTS=`sccscat SCCS/s.ChangeSet | grep '^.cS0' | wc -l`
+MEMBERS=`sccscat SCCS/s.ChangeSet | grep '^.cS[0-9]' | wc -l`
 test "$ROOTS" -eq 3 -a "$ROOTS" = "$MEMBERS" || {
 	echo 'Failed'
 	echo In problem setup, expected 4 tags to have parent 0
@@ -685,10 +685,10 @@ echo OK
 
 echo $N Fix tag graph by tagmerge ...................................$NL
 bk admin -Znone ChangeSet
-PREFIX=`bk _cat SCCS/s.ChangeSet | grep '^.cS[0-9][0-9]* [0-9][0-9]*' | wc -l`
+PREFIX=`sccscat SCCS/s.ChangeSet | grep '^.cS[0-9][0-9]* [0-9][0-9]*' | wc -l`
 bk tagmerge > OUT 2> ERR || exit 1
 bk admin -Znone ChangeSet
-POSTFIX=`bk _cat SCCS/s.ChangeSet | grep '^.cS[0-9][0-9]* [0-9][0-9]*' | wc -l`
+POSTFIX=`sccscat SCCS/s.ChangeSet | grep '^.cS[0-9][0-9]* [0-9][0-9]*' | wc -l`
 test "$PREFIX" -eq 0 -a "$POSTFIX" -eq 2 || {
 	echo 'Failed'
 	echo In fixing graph, expected 3 merge node in tag graph

@@ -26,7 +26,7 @@ bk commit $Q -yfirst || exit 1
 bk edit $Q file
 echo line4 >> file
 BK_DATE_TIME_ZONE="04/08/23 14:14:14-8:00" BK_USER=jane BK_HOST=shoes.com \
-    bk delta -ywhatever $Q file
+    bk delta -ywhatever $Q file || fail
 bk commit $Q -ysecond || exit 1
 echo OK
 
@@ -142,6 +142,15 @@ cat <<EOF > WANT
 2	line2
 3	line3
 4	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -Ar -R+ ...................................$NL
+# This verifies revLen calculated
+bk annotate -Ar -R+ file > GOT
+cat <<EOF > WANT
+1.2   | line4
 EOF
 cmpfiles WANT GOT
 echo OK

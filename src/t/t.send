@@ -13,6 +13,9 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+# this test does a binary compare of repos=
+echo 'binfile:no!' >> "`bk dotbk`"/config
+
 IDCACHE=BitKeeper/log/x.id_cache
 
 echo $N Create initial repository ...................................$NL

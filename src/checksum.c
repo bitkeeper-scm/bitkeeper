@@ -177,11 +177,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 
 	if (sccs_get(s,
 	    REV(s, d), 0, 0, 0, GET_SUM|GET_SHUTUP|SILENT|PRINT, "-")) {
-		unless (BEEN_WARNED(s)) {
-			fprintf(stderr,
-			    "get of %s:%s failed, skipping it.\n",
-			    s->gfile, REV(s, d));
-		}
+		fprintf(stderr, "get of %s:%s failed, skipping it.\n",
+		    s->gfile, REV(s, d));
 		return (4);
 	}
 
@@ -205,8 +202,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 			 * are working, would all of a sudden start gakking
 			 */
 			fprintf(stderr,
-		    		"Bad a/d/s %s:%s in %s|%s\n",
-		    		&before[3], &after[3], s->gfile, d->rev);
+			    "Bad a/d/s %s:%s in %s|%s\n",
+			    &before[3], &after[3], s->gfile, REV(s, d));
 			err = 2;
 #endif
 		}

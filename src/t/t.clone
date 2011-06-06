@@ -50,7 +50,7 @@ rm -f "$HERE/file"
 echo OK
 
 echo $N Test clone to existing directory ............................$NL
-bk clone $Q project copy 2>ERR && fail -f ERR should have failed
+bk clone -q project copy 2>ERR && fail -f ERR should have failed
 test $? = 2 || fail
 cat <<EOF > WANT
 clone: $HERE/copy exists and is not empty
@@ -59,7 +59,7 @@ cmpfiles ERR WANT
 echo OK
 
 echo $N Test clone from bogus directory .............................$NL
-bk clone $Q project33 copy2 2>ERR && fail -f ERR should have failed
+bk clone -q project33 copy2 2>ERR && fail -f ERR should have failed
 test $? = 6 || fail
 cat <<EOF > WANT
 clone: can't find repository
@@ -68,7 +68,7 @@ cmpfiles ERR WANT
 echo OK
 
 echo $N Test clone from bogus URL ...................................$NL
-bk clone $Q bk://bad.bitkeeper.com:1/foo copy2 2>ERR && \
+bk clone -q bk://bad.bitkeeper.com:1/foo copy2 2>ERR && \
    fail -f ERR should have failed
 test $? = 5 || fail -f ERR
 cat <<EOF > WANT
@@ -200,7 +200,7 @@ bk delta $Q -fybar src/bar.c
 bk commit $Q -ybar
 cd ../project
 bk pull $Q ../cmbase
-bk pull $Q ../nullclonemod
+bk pull $Q ../nullclonemod || fail
 cd ../cmbase
 bk pull $Q ../nullclonemod
 cd ..

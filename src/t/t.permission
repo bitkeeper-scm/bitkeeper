@@ -37,22 +37,23 @@ echo $N Check in an executable file .................................$NL
 touch prog
 chmod 0751 prog
 bk ci -i $Q prog
-bk _cat SCCS/s.prog | grep -q '^.cO-rwxrwx--x'
-if [ $? -ne 0 ]; then echo Failed to add permissions; exit 1; fi
+test `bk prs -hnd:RWXMODE: prog` = -rwxrwx--x || fail
 echo OK
+
 echo $N Check permissions on checked out file .......................$NL
 bk co $Q prog
 checkperm -r-xr-x--x prog
 echo OK
+
 echo $N Check permissions on locked file ............................$NL
 bk co -l $Q prog
 checkperm -rwxrwx--x prog
 echo OK
+
 echo $N Change permissions and check in .............................$NL
 chmod 777 prog
-bk delta $S -fyperms prog
-bk _cat SCCS/s.prog | grep -q '^.cO-rwxrwxrwx'
-if [ $? -eq 0 ]; then echo added permissions and should not have; exit 1; fi
+bk delta $S -fyperms prog	# XXX doesn't change perms
+test `bk prs -r+ -hnd:RWXMODE: prog` = -rwxrwx--x || fail
 if bk _test -f "SCCS/p.prog"; then echo Failed to remove p.prog; exit 1; fi
 echo OK
 
@@ -64,8 +65,7 @@ REV=`bk prs -h -r+ -d":I:" prog`
 if [ "$REV" != "1.3" ]; then echo fail to create a new delta; exit 1; fi 
 COMMENT=`bk prs -h -r+ -d":C:" prog`
 if [ "$COMMENT" != "Change mode to -rwx------" ]; then echo fail; exit 1; fi 
-bk _cat SCCS/s.prog | grep -q '^.cO-rwx------'
-if [ $? -ne 0 ]; then echo failed to add permissions; exit 1; fi
+test `bk prs -hnd:RWXMODE: -r+ prog` = -rwx------ || fail
 echo OK
 
 echo $N Make sure null change is not delta-ed .......................$NL
@@ -78,14 +78,17 @@ echo $N Check new permissions on checked out file ...................$NL
 bk co $Q prog
 checkperm -r-x------ prog
 echo OK
+
 echo $N Check old permissions on checked out file ...................$NL
 bk co -r1.1 $Q -Gprog prog
 checkperm -r-xr-x--x prog
 echo OK
+
 echo $N Check permissions on locked file ............................$NL
 bk co -l $Q prog
 checkperm -rwx------ prog
 echo OK
+
 echon Check changing permissions on locked file ...................
 bk admin -m-rwxrw---x prog
 checkperm -rwxrw---x prog

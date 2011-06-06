@@ -75,6 +75,7 @@ EOF
 ls > init_test
 bk delta $Q -i -IINITX init_test
 if [ $? != 0 ]; then echo Failed - delta returned an error; exit 1; fi
+bk admin -Bnone init_test
 bk _cat SCCS/s.init_test | grep -q '^.c This is revision 1.1$'
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
 bk _cat SCCS/s.init_test | grep -q '^.cPthis/is/the/pathname$'
@@ -105,6 +106,7 @@ c This is the line after the blank line.
 EOF
 bk delta $Q -IINITX init_test
 if [ $? != 0 ]; then echo Failed - delta returned an error; exit 1; fi
+bk admin -Bnone init_test
 bk _cat SCCS/s.init_test | grep -q '^.c This is revision 1.2$'
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
 bk _cat SCCS/s.init_test | grep -q '^.c $'
@@ -123,6 +125,7 @@ echo $N Make sure delta prompts for comments ........................$NL
 rm -f T
 bk get $S -e T
 echo "I am the comment" | bk delta $S -f T 2> ${DEV_NULL}
+bk admin -Bnone T
 bk _cat SCCS/s.T | grep -q '^.c I am the comment$'
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
 echo OK
@@ -132,6 +135,7 @@ bk get $S -e T
 bk get $S -e init
 (echo "first comment"; echo ".";
 echo "second comment"; echo ".") | bk delta $S -fY 2>${DEV_NULL}
+bk admin -Bnone T init
 bk _cat SCCS/s.T | grep -q '^.c first comment$'
 if [ $? -ne 0 ]; then echo Failed to add first comment to T; exit 1; fi
 bk _cat SCCS/s.init | grep -q '^.c first comment$'

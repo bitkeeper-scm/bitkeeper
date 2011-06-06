@@ -10,11 +10,12 @@ for x in 1 2; do
 	bk edit $Q b$x
 	echo that > b$x
 	bk delta $Q -yokay b$x
+	bk admin -Bnone b$x
 	bk _mv SCCS/s.b$x sb$x
 	perl -pe 's/K00450/K00451/' sb$x | bk undos > tmp
 	chmod 444 tmp
 	bk _mv tmp SCCS/s.b$x
-	bk admin -z b$x
+	bk admin -z b$x || fail
 done
 # Make g1 - g2 with good checksums
 for x in 1 2; do
@@ -87,7 +88,7 @@ if [ $DSUM = "41232" ]
 then	NSUM="23765"
 else	NSUM="41232"
 fi
-bk admin -Znone ChangeSet
+bk admin -Znone -Bnone ChangeSet
 bk _mv SCCS/s.ChangeSet scset
 # make a leading zero (LZ) 5 digit version of DSUM; NSUM is already 5 digits
 DSUMLZ=`printf "%0.5u" $DSUM`

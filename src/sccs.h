@@ -234,6 +234,7 @@ int	checking_rmdir(char *dir);
  * Encoding flags.
  * Bit 0 and 1 are data encoding
  * Bit 2 is compression mode (gzip or none)
+ * Bit 3 is binary file format
  */
 #define	E_ALWAYS	0x1000		/* set so encoding is non-zero */
 #define E_DATAENC	0x3
@@ -243,6 +244,7 @@ int	checking_rmdir(char *dir);
 #define	E_UUENCODE	1		/* uuenecode it (traditional) */
 #define	E_BAM		2		/* store data in BAM pool */
 #define	E_GZIP		4		/* gzip the data */
+#define	E_BFILE		8		/* use binary sfile format */
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
@@ -257,6 +259,9 @@ int	checking_rmdir(char *dir);
 #define	BAM(s)		(((s)->encoding_in & E_DATAENC) == E_BAM)
 #define	UUENCODE(s)	(((s)->encoding_in & E_DATAENC) == E_UUENCODE)
 #define	GZIP(s)		(((s)->encoding_in & E_COMP) == E_GZIP)
+#define	GZIP_OUT(s)	(((s)->encoding_out & E_COMP) == E_GZIP)
+#define	BFILE(s)	(((s)->encoding_in & E_BFILE) != 0)
+#define	BFILE_OUT(s)	(((s)->encoding_out & E_BFILE) != 0)
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
@@ -285,40 +290,38 @@ int	checking_rmdir(char *dir);
 /*
  * Flags (d->flags) that indicate some state on the delta.
  */
-#define	D_ERROR		0x00000001	/* from parseArg() */
-		/*	0x00000002 */
-#define	D_SORTSUM	0x00000004	/* generate a sortSum */
-		/*	0x00000008 */
-		/*	0x00000010 */
-		/*	0x00000020 */
-		/*	0x00000040 */
-		/*	0x00000080 */
-#define	D_REMOTE	0x00000100	/* for resolve; from remote repos. */
-#define	D_BADFORM	0x00000200	/* poorly formed rev */
-#define	D_BADREV	0x00000400	/* bad parent/child relationship */
-#define	D_NONEWLINE	0x00000800	/* this delta has no trailing newline */
-#define	D_META		0x00001000	/* this is a metadata removed delta */
-#define	D_SYMBOLS	0x00002000	/* delta has one or more symbols */
-		/*	0x00004000 */
-#define	D_RED		0x00008000	/* marker used in graph traeversal */
-#define	D_CKSUM		0x00010000	/* delta has checksum */
-#define	D_GONE		0x00040000	/* this delta is gone, don't print */
-#define	D_BLUE		0x00080000	/* when you need two colors */
+/* flags that are written to disk */
+#define	D_INARRAY	0x00000001	/* part of s->slist array */
+#define	D_NONEWLINE	0x00000002	/* this delta has no trailing newline */
+#define	D_CKSUM		0x00000004	/* delta has checksum */
+#define	D_SORTSUM	0x00000008	/* generate a sortSum */
+#define	D_META		0x00000010	/* this is a metadata removed delta */
+#define	D_SYMBOLS	0x00000020	/* delta has one or more symbols */
 
-#define	D_TAG		0x00100000	/* is tag node old d->type=='R' */
-#define	D_DANGLING	0x00200000	/* in MONOTONIC file, ahead of chgset */
-#define	D_SYMGRAPH	0x00400000	/* if set, I'm a symbol in the graph */
-#define	D_SYMLEAF	0x00800000	/* if set, I'm a symbol with no kids */
+#define	D_DANGLING	0x00000080	/* in MONOTONIC file, ahead of chgset */
+#define	D_TAG		0x00000100	/* is tag node old d->type=='R' */
+#define	D_SYMGRAPH	0x00000200	/* if set, I'm a symbol in the graph */
+#define	D_SYMLEAF	0x00000400	/* if set, I'm a symbol with no kids */
 					/* Needed for tag conflicts with 2 */
 					/* open tips, so maintained always */
-#define	D_ICKSUM	0x01000000	/* use checksum from init file */
-#define	D_MODE		0x02000000	/* permissions in d->mode are valid */
-#define	D_SET		0x04000000	/* range.c: marked as part of a set */
-#define	D_CSET		0x08000000	/* this delta is marked in cset file */
-#define	D_INARRAY	0x10000000	/* part of s->slist array */
-#define	D_LOCAL		0x20000000	/* for resolve; this is a local delta */
-#define D_XFLAGS	0x40000000	/* delta has updated file flags */
-		/*	0x80000000 */
+#define	D_MODE		0x00000800	/* permissions in d->mode are valid */
+#define	D_CSET		0x00001000	/* this delta is marked in cset file */
+#define D_XFLAGS	0x00002000	/* delta has updated file flags */
+	/* D_NPARENT	0x00004000 */
+
+
+/* flags that are in memory only and not written to disk */
+#define	D_REMOTE	0x00400000	/* for resolve; from remote repos. */
+#define	D_LOCAL		0x00800000	/* for resolve; this is a local delta */
+#define	D_ERROR		0x01000000	/* from parseArg() */
+#define	D_BADFORM	0x02000000	/* poorly formed rev */
+#define	D_BADREV	0x04000000	/* bad parent/child relationship */
+#define	D_RED		0x08000000	/* marker used in graph traeversal */
+#define	D_GONE		0x10000000	/* this delta is gone, don't print */
+#define	D_BLUE		0x20000000	/* when you need two colors */
+#define	D_ICKSUM	0x40000000	/* use checksum from init file */
+#define	D_SET		0x80000000	/* range.c: marked as part of a set */
+
 
 /*
  * Undo exit status for nothing to undo.
@@ -611,6 +614,7 @@ struct sccs {
 	DATA	heap;		/* all strings in delta structs */
 	hash	*uniqheap;	/* help collapse unique strings in hash */
 	u32	*mg_symname;	/* symbol list use by mkgraph() */
+	char	**mapping;
 	FILE	*fh;		/* cached copy of the input file handle */
 	FILE	*oldfh;		/* orig fh (no ungzip layer) */
 	FILE	*outfh;		/* fh for writing x.file */
@@ -924,7 +928,7 @@ int	cset_byserials(const void *a, const void *b);
 int	sccs_newchksum(sccs *s);
 ser_t	*addSerial(ser_t *space, ser_t s);
 void	sccs_perfile(sccs *, FILE *);
-sccs	*sccs_getperfile(MMAP *, int *);
+sccs	*sccs_getperfile(sccs *, MMAP *, int *);
 char	*sccs_gethost(void);
 char	*sccs_realhost(void);
 char	*sccs_host(void);
@@ -955,6 +959,7 @@ char	*sccs_user(void);
 char	*delta_rev(sccs *s, delta *d);
 char	*delta_user(sccs *s, delta *d);
 char	*delta_host(sccs *s, delta *d);
+void	delta_print(sccs *s, delta *d);
 
 delta	*modeArg(sccs *s, delta *d, char *arg);
 int	fileType(mode_t m);
@@ -1315,8 +1320,6 @@ int	detach(int quiet, int verbose);
 int	zgets_hread(void *token, u8 **buf);
 int	zgets_hfread(void *token, u8 **buf);
 void	zputs_hfwrite(void *token, u8 *data, int len);
-void	sccs_zputs_init(sccs *s, FILE *fout);
-int	fflushdata(sccs *s, FILE *out);
 sum_t	fputdata(sccs *s, u8 *buf, FILE *out);
 char	*psize(u64 bytes);
 u64	scansize(char *bytes);
@@ -1392,6 +1395,9 @@ void	bk_setConfig(char *key, char *val);
 u32	sccs_addStr(sccs *s, char *str);
 void	sccs_appendStr(sccs *s, char *str);
 u32	sccs_addUniqStr(sccs *s, char *str);
+typedef	struct MAP MAP;
+MAP	*datamap(void *start, int len, FILE *f, long off);
+void	dataunmap(MAP *map);
 
 
 #define	RGCA_ALL	0x1000

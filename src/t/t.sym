@@ -31,17 +31,11 @@ fi
 echo OK
 echo $N Make sure added tags do not get zapped as removed deltas ....$NL
 bk tag -q FOOBAR
-bk _cat SCCS/s.ChangeSet | grep -q '^.d R ' || {
-	echo failed to add tag
-	bk _cat SCCS/s.ChangeSet
-	exit 1
-}
+bk changes -rFOOBAR > /dev/null || fail
 bk -r admin -z
-bk _cat SCCS/s.ChangeSet | grep -q '^.d R ' || {
-	echo admin -z removed tag
-	exit 1
-}
+bk changes -rFOOBAR > /dev/null || fail
 echo OK
+
 echo $N Clone and create tags in each of the repositories ...........$NL
 cd "$HERE"
 bk clone $Q project copy

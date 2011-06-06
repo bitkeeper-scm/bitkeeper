@@ -75,6 +75,7 @@ keyword: sccs
 BAM: 1
 lockwait: 0
 partial_check: off
+binfile: yes
 EOF
 }
 
@@ -307,6 +308,14 @@ verbose() {
 islink() {
 	# test -L is not portable - freebsd[34] and mac102 do not support
 	perl -e "exit ((-l '$1') ? 0 : 1)"
+}
+
+# sccscat SCCS/s.ChangeSet | grep ...
+sccscat() {
+	  bk _cp "$1" "$1".junk
+	  bk admin -Znone -Bnone "$1"
+	  bk _cat "$1"
+	  bk _mv "$1".junk "$1"
 }
 
 _mtime() {

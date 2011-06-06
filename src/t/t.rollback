@@ -63,7 +63,7 @@ bk commit $Q -ywhatever
 KEY=`bk prs -hr+ -d:KEY: LS`
 MONTH=`bk prs -hr+ -d:Dm: LS`
 BADKEY=`echo "$KEY" | sed s/$MONTH/00/`
-bk admin -Znone ChangeSet
+bk admin -Znone -Bnone ChangeSet
 bk _cat SCCS/s.ChangeSet | sed "s,$KEY,$BADKEY," | bk undos > X
 bk _mv X SCCS/s.ChangeSet
 bk admin -z ChangeSet
@@ -102,6 +102,7 @@ cd "$HERE"
 rm -rf copy
 tar xmf copy.tar
 cd copy
+bk admin -Bnone RESYNC/LS
 bk _cat RESYNC/SCCS/s.LS > X
 echo foo >> X
 bk _mv X RESYNC/SCCS/s.LS

@@ -240,7 +240,6 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	}
 
 	TRACE("serial=%d", serial);
-
 	d->pserial = pserial;
 
 	sccs_inherit(s, d);
@@ -317,8 +316,6 @@ cset_write(sccs *s, int spinners, int fast)
 		}
 		if (sccs_csetPatchWeave(s, f)) goto err;
 	}
-	fseek(f, 0L, SEEK_SET);
-	fprintf(f, "\001H%05u\n", s->cksum);
 	if (sccs_finishWrite(s, &f)) goto err;
 	return (0);
 

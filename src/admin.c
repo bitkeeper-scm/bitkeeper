@@ -47,7 +47,7 @@ admin_main(int ac, char **av)
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;AC|d;e;E;f;F;i|M;m;O;p|P|r;S;y|Z|0DhHnqsuz",
+	    getopt(ac, av, "a;AB|C|d;e;E;f;F;i|M;m;O;p|P|r;S;y|Z|0DhHnqsuz",
 		lopt)) != -1) {
 		switch (c) {
 		/* user|group */
@@ -86,6 +86,13 @@ admin_main(int ac, char **av)
 			break;
 		    case 'E':	fprintf(stderr, "No longer supported.\n");
 		    		exit(1);
+		    case 'B': /* binfile */
+			bk_setConfig("binfile",
+			    optarg && streq(optarg, "none") ? "no" : "yes");
+			flags |= NEWCKSUM;
+			touchGfile++;
+			break;
+
 		/* symbols */
 		    case 'S':	OP(s, optarg, A_ADD); break;	/* undoc */
 		/* singletons */

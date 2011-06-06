@@ -18,6 +18,7 @@ unbk_main(int ac, char **av)
 		return (1);
 	}
 	bk_setConfig("compression", "none");
+	bk_setConfig("binfile", "no");
 
 	for (name = sfileFirst("_unbk", &av[2], 0);
 	    name; name = sfileNext()) {

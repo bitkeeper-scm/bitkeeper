@@ -13,6 +13,7 @@
 # %K%
 
 echo compression:none > "`bk dotbk`"/config
+echo 'binfile:no!' >> "`bk dotbk`"/config
 
 # The optional datefudge line is excluded from $BASE2
 BASE=40
@@ -28,7 +29,7 @@ Hi there, this is file foo.
 Hi there, this is file foo.
 Hi there, this is file foo.
 EOF
-commercial project
+fresh_commercial project
 echo $N Creating an empty file ......................................$NL
 bk admin $Q -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi

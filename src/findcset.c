@@ -503,7 +503,6 @@ sameStr(char *s1, char *s2)
 private  void
 fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 {
-	delta *parent;
 	char	buf[MAXLINE];
 
 	if ((opts.verbose > 1) && (fudge != -1)) {
@@ -523,7 +522,6 @@ fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 	/*
 	 * Fix time zone and date
 	 */
-	parent = PARENT(s, d);
 	if (template->zone) {
 		d->zone = sccs_addUniqStr(s, template->zone);
 	} else {

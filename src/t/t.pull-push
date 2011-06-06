@@ -409,6 +409,7 @@ test "$sum" = "$newsum" && {
 	echo newsum should be different $sum $newsum
 	exit 1
 }
+bk admin -Bnone ChangeSet
 bk _cp SCCS/s.ChangeSet s.ChangeSet
 sed "s/K$sum/K$newsum/" s.ChangeSet > s.NEW_ChangeSet
 cmp -s s.ChangeSet s.NEW_ChangeSet && {
