@@ -4,23 +4,24 @@
 #include "bam.h"
 #include "progress.h"
 
-private int	newroot(char *ranbits, int q, int v, char *comment, char *who);
+private int	newroot(char *ranbits, int bk4, char *comment, char *who);
 private void	update_rootlog(sccs *s, char *key, char *comment, char *who);
 
 int
 newroot_main(int ac, char **av)
 {
-	int	c, quiet = 0, verbose = 0;
+	int	c, bk4 = 0;
 	char	*ranbits = 0;
 	char	*comments = 0;
 	char	*who = 0;
 	u8	*p;
 
-	while ((c = getopt(ac, av, "k:qvw:y:", 0)) != -1) {
+	while ((c = getopt(ac, av, "4k:qvw:y:", 0)) != -1) {
 		switch (c) {
+		    case '4': bk4 = 1; break;
 		    case 'k': ranbits = optarg; break;
-		    case 'q': quiet = 1; break;
-		    case 'v': verbose = 1; break;
+		    case 'q': /* nop */; break;
+		    case 'v': /* nop */; break;
 		    case 'w': who = optarg; break;
 		    case 'y': comments = optarg; break;
 		    default: bk_badArg(c, av);
@@ -44,7 +45,7 @@ k_err:			fprintf(stderr,
 		}
 		if (*p) goto k_err;
 	}
-	return (newroot(ranbits, quiet, verbose, comments, who));
+	return (newroot(ranbits, bk4, comments, who));
 }
 
 /*
@@ -54,7 +55,7 @@ k_err:			fprintf(stderr,
  * Prolly not.
  */
 private int
-newroot(char *ranbits, int quiet, int verbose, char *comments, char *who)
+newroot(char *ranbits, int bk4, char *comments, char *who)
 {
 	sccs	*s;
 	int	rc = 0;
@@ -90,7 +91,7 @@ newroot(char *ranbits, int quiet, int verbose, char *comments, char *who)
 			return (1);
 		}
 	}
-	sccs_defRootlog(s);
+	unless (bk4) sccs_defRootlog(s);
 	unless (s->tree->random) s->tree->random = strdup("");
 
 	if (ranbits) {
@@ -129,7 +130,7 @@ newroot(char *ranbits, int quiet, int verbose, char *comments, char *who)
 	s->tree->random = strdup(buf);
 
 	sccs_sdelta(s, sccs_ino(s), key);
-	update_rootlog(s, key, comments, who);
+	unless (bk4) update_rootlog(s, key, comments, who);
 	sccs_newchksum(s);
 	sccs_free(s);
 	unlink("BitKeeper/log/ROOTKEY");
@@ -143,6 +144,13 @@ newroot(char *ranbits, int quiet, int verbose, char *comments, char *who)
 		free(p);
 	}
 	free(oldbamdir);
+	if (bk4) {
+		if (systemf("bk -r admin -C'%s'", key)) {
+			fprintf(stderr,
+			    "%s: admin -C failed\n", prog);
+			rc = 1;
+		}
+	}
 
 	if (tick) progress_done(tick, rc ? "FAILED" : "OK");
 	return (rc);

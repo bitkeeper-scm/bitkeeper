@@ -41,6 +41,7 @@ typedef struct {
 	char	*revfile;	// where to put the corresponding rev key
 	project	*refProj;
 	u32	standalone:1;	// --standalone
+	u32	bk4:1;		// --bk4
 } Opts;
 
 private	int	csetprune(Opts *opts);
@@ -91,6 +92,7 @@ csetprune_main(int ac, char **av)
 	longopt	lopts[] = {
 		{ "revfile;", 300 },	/* file to store rev key */
 		{ "tag-csets", 310 },	/* collapse tag graph onto D graph */
+		{ "bk4", 320},		/* bk4 compat on a standalone */
 		{ "standalone", 'S'},
 		{ 0, 0 }
 	};
@@ -119,8 +121,15 @@ csetprune_main(int ac, char **av)
 		    case 310: /* --tag-csets */
 			flags |= PRUNE_NEW_TAG_GRAPH;
 			break;
+		    case 320: /* --bk4 */
+			opts->bk4 = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
+	}
+	if ((flags & PRUNE_ALL) && opts->bk4) {
+		fprintf(stderr, "%s: Cannot prune all in bk4 mode\n", prog);
+		goto err;
 	}
 	if (opts->ranbits) {
 		u8	*p;
@@ -268,7 +277,7 @@ csetprune(Opts *opts)
 		fprintf(stderr, "csetinit failed\n");
 		goto err;
 	}
-	bk_featureSet(cset->proj, FEAT_SORTKEY, 1);
+	unless (opts->bk4) bk_featureSet(cset->proj, FEAT_SORTKEY, 1);
 	unless (!opts->rev || (d = sccs_findrev(cset, opts->rev))) {
 		fprintf(stderr,
 		    "%s: Revision must be present in repository\n  %s\n",
@@ -348,11 +357,12 @@ finish:
 	// sometimes want to skip this to save another sfile write/walk.
 	unless (flags & PRUNE_NO_NEWROOT) {
 		verbose((stderr, "Regenerating ChangeSet file checksums...\n"));
-		sys("bk", "checksum", "-f", "ChangeSet", SYS);
+		sys("bk", "checksum",
+		    opts->bk4 ? "-f4" : "-f", "ChangeSet", SYS);
 		unless (opts->ranbits) {
 			randomBits(buf);
 			opts->ranbits = buf;
-		} else unless (opts->comppath) {
+		} else unless (opts->bk4 || opts->comppath) {
 			p = aprintf("SALT %s\n", opts->ranbits);
 			p1 = mkRandom(p);
 			free(p);
@@ -385,8 +395,9 @@ finish:
 			p1 = strdup("-q");
 		}
 		verbose((stderr,
-		    "Generating a new root key and updating files...\n"));
-		if (sys("bk", "newroot", p, p1, "-k", opts->ranbits, SYS)) {
+		    "Generating a new root key ...\n"));
+		if (sys("bk", "newroot", p, p1,
+		    (opts->bk4 ? "-4k" : "-k"), opts->ranbits, SYS)) {
 			free(p);
 			free(p1);
 			goto err;
@@ -1786,7 +1797,12 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 				    prog, s->gfile, d->rev, d->pathname);
 				goto err;
 			}
-			sccs_setPath(s, d, newpath);
+			if (opts->bk4) {
+				if (d->pathname) free(d->pathname);
+				d->pathname = strdup(newpath);
+			} else {
+				sccs_setPath(s, d, newpath);
+			}
 		}
 
 		// BAM stuff

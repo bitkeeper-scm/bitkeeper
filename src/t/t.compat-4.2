@@ -381,8 +381,9 @@ bk commit $Q -ybranch
 # make the merge
 bk pull $Q
 $OLDBK/bk clone $Q . ../diamond-old
+$OLDBK/bk clone $Q . ../diamond-new4
 bk prs -r+ -hnd:ROOTKEY: del > ../PRUNELIST
-bk csetprune $Q -S -k1234567890abcdef < ../PRUNELIST
+bk csetprune $Q -k1234567890abcdef < ../PRUNELIST
 cd ../diamond-old
 $OLDBK/bk csetprune $Q -S -k1234567890abcdef 2> NOISE < ../PRUNELIST 
 bk check ChangeSet 2> GOT && fail
@@ -391,10 +392,30 @@ SCCS/s.ChangeSet: 1.3 is not earlier than 1.2.1.1
 SCCS/s.ChangeSet: 1.3 is not earlier than 1.2.1.1
 EOF
 cmpfiles WANT GOT
+# clean up for diff in next test
+rm WANT GOT NOISE SCCS/b.ChangeSet
+# run bk5 in bk4 mode and it should fail just like bk4
+cd ../diamond-new4
+bk csetprune $Q --bk4 -k1234567890abcdef 2> GOT < ../PRUNELIST && fail -f GOT
+cat > WANT <<EOF
+SCCS/s.ChangeSet: 1.3 is not earlier than 1.2.1.1
+SCCS/s.ChangeSet: 1.3 is not earlier than 1.2.1.1
+csetprune: failed
+EOF
+cmpfiles WANT GOT
+# clean up for diff in next test
+rm WANT GOT
+echo OK
+
+echo $N Show that csetprune --bk4 is same as bk4 csetprune ..........$NL
+cd ..
+bk --cd=diamond-old -r admin -Znone
+bk --cd=diamond-new4 -r admin -Znone
+diff -xBitKeeper -qr diamond-old diamond-new4 || fail
 echo OK
 
 echo $N Show that an writing erases meta data .......................$NL
-cd ../diamond
+cd diamond
 bk check ChangeSet || fail
 
 # show old bk can't read repo
