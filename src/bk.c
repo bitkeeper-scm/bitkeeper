@@ -79,6 +79,7 @@ main(int volatile ac, char **av, char **env)
 		{ "from-iterator", 304 },
 		{ "sigpipe", 305 },     // allow SIGPIPE
 		{ "sfiles-opts;", 306 },// --sfiles-opts=vcg
+		{ "config;", 307 },	// override config options
 
 		/* long aliases for some options */
 		{ "all-files", 'A' },
@@ -292,6 +293,15 @@ baddir:						fprintf(stderr,
 			    case 305:  // --sigpipe
 				signal(SIGPIPE, SIG_DFL);
 				break;
+			    case 307: { // --config=key:val
+				char	*key, *val;
+
+				unless (val = strchr(optarg, ':')) usage();
+				key = strndup(optarg, val-optarg);
+				bk_setConfig(key, val+1);
+				free(key);
+				break;
+			    }
 			    default: bk_badArg(c, av);
 			}
 		}
