@@ -253,10 +253,12 @@ nested nest
 bk detach $Q --sccs-compat gcc ../newgcc || fail
 cd ../newgcc
 bk clone $Q . bk://localhost:$OLDP/oldgcc 2> ERR && fail -f ERR
+grep -q "The current repository has a feature" ERR || fail -f ERR
 echo OK
 
 echo $N Nested detached repo running behind new bkd with old client .$NL
-$OLDBK/bk clone $Q . bk://localhost:$NEWP/newgcc2
+# even with feature mangled ChangeSet file, clone works.
+$OLDBK/bk clone $Q . bk://localhost:$NEWP/newgcc2 || fail
 # XXX put back more tests
 echo OK
 
