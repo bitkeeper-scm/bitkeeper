@@ -11,7 +11,7 @@ Lversion()
 	string  user = "`bk getuser`@`bk gethost -r`";
 	string  dir = "`pwd`";
 
-	if (tag ne "") {
+	if (tag != "") {
 		puts("L version is \${tag} \${utc} for \${platform}");
 	} else {
 		puts("L version is \${utc} for \${platform}");

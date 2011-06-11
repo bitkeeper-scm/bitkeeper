@@ -24,6 +24,7 @@ typedef enum {
 	L_OPT_NOWARN		= 0x0004,
 	L_OPT_POLY		= 0x0008,
 	L_OPT_WARN_UNDEF_FNS	= 0x0010,
+	L_OPT_ALLOW_EQ_OPS	= 0x0020,
 } Lopt_f;
 
 /* For jump fix-ups. */

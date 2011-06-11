@@ -178,7 +178,7 @@ main(_argused int ac, string av[])
 		// There are cases where we rewalk list, so reset total
 		if ((s =~ /^clone: failed to fetch/)
 		    || (s =~ /^Could not undo/)) {
-		    	total = undef;
+			total = undef;
 		}
 //		printf("Checking <%s>\n", s);
 		// Check for output interleaved with progress bar updates.
@@ -220,7 +220,7 @@ main(_argused int ac, string av[])
 	unless (defined(f = fopen("x", "r"))) die("fopen 2");
 	unless (read(f, &s, -1) >= 0) die("read");
 	fclose(f);
-	unless (!length(s) || (s[END] eq "\n")) {
+	unless (!length(s) || (s[END] == "\n")) {
 		puts("no trailing newline");
 		exit(5);
 	}

@@ -158,11 +158,11 @@ chown(string owner, string group, _argused string path)
 	string	res;
 	string	cmd = "file attributes $path";
 
-	if ((owner eq "") && (group eq "")) return (0);
-	unless (owner eq "") {
+	if ((owner == "") && (group == "")) return (0);
+	unless (owner == "") {
 		cmd = cmd . " -owner $owner";
 	}
-	unless (group eq "") {
+	unless (group == "") {
 		cmd = cmd . " -group $group";
 	}
 	if (catch(cmd, &res)) {
@@ -216,14 +216,14 @@ fgetlineOpenClose_(string arg, FILE &tmpf)
 {
 	unless (arg) return (undef);
 	unless (tmpf) {
-		if (arg[END] eq "|") {
+		if (arg[END] == "|") {
 			tmpf = popen(arg[0..END-1], "r");
 		} else {
 			tmpf = fopen(arg, "r");
 		}
 		return (tmpf ? <tmpf> : undef);
 	}
-	if (arg[END] eq "|") {
+	if (arg[END] == "|") {
 		pclose(tmpf);
 	} else {
 		fclose(tmpf);
@@ -376,7 +376,7 @@ isreg(string path)
 int
 islink(string path)
 {
-	return (ftype(path) eq "link");
+	return (ftype(path) == "link");
 }
 
 int
@@ -637,7 +637,7 @@ strchr(string s, string c)
 int
 streq(string a, string b)
 {
-	return (a eq b);
+	return (a == b);
 }
 
 int
@@ -649,7 +649,7 @@ strlen(string s)
 int
 strneq(string a, string b, int n)
 {
-	return (String_equal(length: n, a, b) ne "0");
+	return (String_equal(length: n, a, b) != "0");
 }
 
 int
@@ -944,7 +944,7 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 				// Chomp and split.  Use Tcl's split since L's
 				// strips trailing null fields.
 				if (length((string)out_ref) &&
-				    ((string)out_ref)[END] eq "\n") {
+				    ((string)out_ref)[END] == "\n") {
 					((string)out_ref)[END] = "";
 				}
 				out_ref = ::split(out_ref, "\n");
@@ -967,7 +967,7 @@ system_(poly argv, poly in, poly &out_ref, poly &err_ref, STATUS &status_ref,
 				// Chomp and split.  Use Tcl's split since L's
 				// strips trailing null fields.
 				if (length((string)err_ref) &&
-				    ((string)err_ref)[END] eq "\n") {
+				    ((string)err_ref)[END] == "\n") {
 					((string)err_ref)[END] = "";
 				}
 				err_ref = ::split(err_ref, "\n");
@@ -1088,7 +1088,7 @@ warn_(string func, int line, string fmt, ...args)
 {
 	string	out = format(fmt, (expand)args);
 
-	unless (length(out) && (out[END] eq "\n")) {
+	unless (length(out) && (out[END] == "\n")) {
 		out .= " in ${func}:${line}\n";
 	}
 	puts(nonewline:, stderr, out);

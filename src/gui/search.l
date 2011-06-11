@@ -3,7 +3,7 @@ bk_initSearch()
 {
 	widget	bar = "${_bk.w_top}.__searchBar";
 
-	if (_bk.w_search eq "") return;
+	if (_bk.w_search == "") return;
 
 	_bk.w_searchBar = bar;
 	_bk.search_case = 0;
@@ -87,8 +87,8 @@ toggleGoto(widget w, int force)
 	string	wclass = winfo("class", w);
 
 	if (!force
-	    && (wclass eq "Entry" || wclass eq "TEntry" || wclass eq "Text")
-	    && Widget_cget(w, state:) eq "normal") return;
+	    && (wclass == "Entry" || wclass == "TEntry" || wclass == "Text")
+	    && Widget_cget(w, state:) == "normal") return;
 
 	popupSearchBar("Go To Line:", 0);
 }
@@ -99,8 +99,8 @@ toggleSearch(widget w, int force)
 	string	wclass = winfo("class", w);
 
 	if (!force
-	    && (wclass eq "Entry" || wclass eq "TEntry" || wclass eq "Text")
-	    && Widget_cget(w, state:) eq "normal") return;
+	    && (wclass == "Entry" || wclass == "TEntry" || wclass == "Text")
+	    && Widget_cget(w, state:) == "normal") return;
 
 	popupSearchBar("Find:", 1);
 }
@@ -147,7 +147,7 @@ searchTypeAhead()
 	Text_tag(_bk.w_search, "remove", "searchMatch", 1.0, "end");
 	Label_configure((widget)"${_bk.w_searchBar}.msg", text: "");
 
-	if (search eq "") return;
+	if (search == "") return;
 
 	if (_bk_search_case) {
 		opts[3] = "--";
@@ -197,7 +197,7 @@ searchSearch(int dir)
 	Text_tag(_bk.w_search, "remove", "searchMatch", 1.0, "end");
 	Label_configure((widget)"${_bk.w_searchBar}.msg", text: "");
 
-	if (search eq "") return;
+	if (search == "") return;
 
 	i = llength(opts);
 	if (dir < 0) {

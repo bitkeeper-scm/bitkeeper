@@ -27,6 +27,10 @@ if {$haveMem} {
 # This causes L to keep running L code even after a compile error.
 set ::env(_L_TEST) 1
 
+# This tells L to run in a backwards compatibility mode for
+# the old eq/ne/le/lt/ge/gt string-comparison operators.
+set ::env(_L_ALLOW_EQ_OPS) 1
+
 test leak-1.1 {leaks in a simple L-loop} -body {
 #lang L
     void leak_1_1() {

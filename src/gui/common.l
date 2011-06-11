@@ -35,11 +35,11 @@ bgExecInfo(string opt)
 void
 bk_init()
 {
-	if (_bk.tool eq "") {
+	if (_bk.tool == "") {
 		bk_dieError("_bk.tool must be set before bk_init()", 1);
 	}
 
-	if ((string)_bk.w_top eq "") {
+	if ((string)_bk.w_top == "") {
 		bk_dieError("_bk.w_top must be set before bk_init()", 1);
 	}
 
@@ -75,7 +75,7 @@ bk_initBindings()
 		bindtags(w, "BK ${tags}");
 	}
 
-	if (_bk.wm eq "aqua") {
+	if (_bk.wm == "aqua") {
 		bind("BK", "<Control-p>", "${_bk.cmd_prev}; break");
 		bind("BK", "<Control-n>", "${_bk.cmd_next}; break");
 		bind("BK", "<Command-q>", "${_bk.cmd_quit}; break");
@@ -94,7 +94,7 @@ bk_initBindings()
 	bind("BK", "<${quit}>", _bk.cmd_quit);
 
 	// Mouse wheel bindings
-	if (_bk.wm eq "x11") {
+	if (_bk.wm == "x11") {
 		bind("BK", "<4>", "scrollMouseWheel %W y %X %Y -1; break");
 		bind("BK", "<5>", "scrollMouseWheel %W y %X %Y  1; break");
 		bind("BK", "<Shift-4>","scrollMouseWheel %W x %X %Y -1; break");
@@ -106,7 +106,7 @@ bk_initBindings()
 		    "scrollMouseWheel %W x %X %Y %D; break");
 	}
 
-	if (_bk.wm eq "aqua") {
+	if (_bk.wm == "aqua") {
 		// On OS X, we want to create a special proc that
 		// is called when the user selects Quit from the
 		// application menu.
@@ -136,8 +136,8 @@ bk_exit(...args)
 void
 bk_message(string title, string message)
 {
-	if ((Tk_windowingsystem() eq "win32")
-	    && (getenv("BK_REGRESSION") eq "")) {
+	if ((Tk_windowingsystem() == "win32")
+	    && (getenv("BK_REGRESSION") == "")) {
 		tk_messageBox(title: title, message: message);
 	} else {
 		puts("stdout", message);
@@ -147,8 +147,8 @@ bk_message(string title, string message)
 void
 bk_error(string title, string message)
 {
-	if ((Tk_windowingsystem() eq "win32")
-	    && (getenv("BK_REGRESSION") eq "")) {
+	if ((Tk_windowingsystem() == "win32")
+	    && (getenv("BK_REGRESSION") == "")) {
 		tk_messageBox(title: title, message: message);
 	} else {
 		puts("stderr", message);
@@ -206,7 +206,7 @@ attachScrollbar(string sb, ...args)
 	foreach (w in args) {
 		widgets[i++] = w;
 	}
-	if (orient eq "horizontal") {
+	if (orient == "horizontal") {
 		Scrollbar_configure(sb, command: "${widgets[0]} xview");
 		foreach (widg in widgets) {
 			_bk.w_scrollbars{widg} = widgets;
@@ -237,7 +237,7 @@ setScrollbar(string sb, string w, float first, float last)
 	x = xview[0];
 	y = yview[0];
 	foreach (widg in _bk.w_scrollbars{w}) {
-		if (widg eq w) continue;
+		if (widg == w) continue;
 		Widget_xview(widg, "moveto", x);
 		Widget_yview(widg, "moveto", y);
 	}
@@ -249,12 +249,12 @@ scrollMouseWheel(string w, string dir, int x, int y, int delta)
 	int	d = delta;
 	string	widg = Winfo_containing(x, y);
 
-	if (widg eq "") widg = w;
-	if (_bk.wm eq "aqua") {
+	if (widg == "") widg = w;
+	if (_bk.wm == "aqua") {
 		d = -delta;
-	} else if (_bk.wm eq "x11") {
+	} else if (_bk.wm == "x11") {
 		d = delta * 3;
-	} else if (_bk.wm eq "win32") {
+	} else if (_bk.wm == "win32") {
 		d = (delta / 120) * -3;
 	}
 	// If we fail to scroll the widget the mouse is
@@ -268,7 +268,7 @@ scrollMouseWheel(string w, string dir, int x, int y, int delta)
 void
 scrollTextY(widget w, float i, string what)
 {
-	if ((i != -1) && (i != 1) && ((what eq "page") || (what eq "pages"))) {
+	if ((i != -1) && (i != 1) && ((what == "page") || (what == "pages"))) {
 		// Scroll by fractions of a page.
 		int	wh, lh;
 
@@ -280,9 +280,9 @@ scrollTextY(widget w, float i, string what)
 		what = "units";
 	}
 
-	if (what eq "top") {
+	if (what == "top") {
 		Text_yviewMoveto(w, 0.0);
-	} else if (what eq "bottom") {
+	} else if (what == "bottom") {
 		Text_yviewMoveto(w, 1.0);
 	} else {
 		Text_yviewScroll(w, (int)i, what);

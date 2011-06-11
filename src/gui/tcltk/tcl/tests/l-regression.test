@@ -9,6 +9,10 @@ if {[lsearch [namespace children] ::tcltest] == -1} {
 # This causes L to keep running L code even after a compile error.
 set ::env(_L_TEST) 1
 
+# This tells L to run in a backwards compatibility mode for
+# the old eq/ne/le/lt/ge/gt string-comparison operators.
+set ::env(_L_ALLOW_EQ_OPS) 1
+
 test empty-1.0 {empty code blocks} -body {
 #lang L
 void empty_1_0() {
