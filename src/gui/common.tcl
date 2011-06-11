@@ -998,12 +998,12 @@ highlightLine(string l, string r, int lline, int rline)
 	rlen = length(r);
 	lmin = tcl::mathfunc::min(llen, rlen);
 	for (i = 0; i < lmin; ++i) {
-		if (l[i] ne r[i]) break;
+		if (l[i] != r[i]) break;
 	}
 	si = i;
 
 	for (i = 0; i < (lmin - si); ++i) {
-		if (l[END-i] ne r[END-i]) break;
+		if (l[END-i] != r[END-i]) break;
 	}
 
 	// sl = start left, sr = start right
@@ -1021,11 +1021,11 @@ highlightLine(string l, string r, int lline, int rline)
 	// Fix a problem where if we match "const char *" vs "char *"
 	// we'll highlight "const c|char *" rather than
 	// "|const |char *"
-	while ((sl > 0) && l[sl-1] eq l[el-1]) {
+	while ((sl > 0) && l[sl-1] == l[el-1]) {
 		--sl;
 		--el;
 	}
-	while ((sr > 0) && r[sr-1] eq r[er-1]) {
+	while ((sr > 0) && r[sr-1] == r[er-1]) {
 		--sr;
 		--er;
 	}
@@ -1063,10 +1063,10 @@ highlightStacked(widget w, string start, string stop, int prefix)
 
 	foreach (line in split(/\n/, (string)Text_get(w, start, stop))) {
 		++l;
-		if (line[0] eq "+") {
+		if (line[0] == "+") {
 			push(&addlines, line[prefix..END]);
 			unless (hunkstart) hunkstart = l;
-		} else if (line[0] eq "-") {
+		} else if (line[0] == "-") {
 			push(&sublines, line[prefix..END]);
 			unless (hunkstart) hunkstart = l;
 		} else {

@@ -598,7 +598,7 @@ putenv(string var_fmt, ...args)
 			die("fatal error in putenv()");
 		}
 	}
-	if (::L_putenv_bug && ($2[0] eq "=")) {
+	if (::L_putenv_bug && ($2[0] == "=")) {
 		ret = set("::env(${$1})", format("=${$2}", (expand)args));
 		undef(ret[0]);  // strip leading =
 	} else {

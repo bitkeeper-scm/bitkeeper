@@ -185,29 +185,29 @@ inline(string buf)
 
 	unless (buf) buf = "";
 	foreach (c in buf) {
-		if ((c eq "<") && prev) {
-			if (prev eq "B") {
+		if ((c == "<") && prev) {
+			if (prev == "B") {
 				if (B++) die("Nested B<> unsupported: ${buf}");
 				result[END] = "";
 				result .= "<B>";
 				push(&stack, "B");
-			} else if (prev eq "C") {
+			} else if (prev == "C") {
 				if (C++) die("Nested C<> unsupported: ${buf}");
 				result[END] = "";
 				result .= "<CODE>";
 				push(&stack, "CODE");
-			} else if (prev eq "I" || prev eq "F") {
+			} else if (prev == "I" || prev == "F") {
 				if (I++) die("Nested I<> unsupported: ${buf}");
 				result[END] = "";
 				result .= "<I>";
 				push(&stack, "I");
-			} else if (prev eq "L") {
+			} else if (prev == "L") {
 				if (L++) die("Nested L<> unsupported: ${buf}");
 				result[END] = "";
 				result .= "<a href=\"";
 				link = "";
 				push(&stack, "L");
-			} else if (prev eq "S") {
+			} else if (prev == "S") {
 				if (S++) die("Nested S<> unsupported: ${buf}");
 				result[END] = "";
 				push(&stack, "S");
@@ -215,15 +215,15 @@ inline(string buf)
 				result .= "&lt;";
 				prev = c;
 			}
-		} else if ((c eq ">") && length(stack)) {
+		} else if ((c == ">") && length(stack)) {
 			c = pop(&stack);
-			if (c eq "B") {
+			if (c == "B") {
 				B--;
-			} else if (c eq "CODE") {
+			} else if (c == "CODE") {
 				C--;
-			} else if (c eq "I") {
+			} else if (c == "I") {
 				I--;
-			} else if (c eq "L") {
+			} else if (c == "L") {
 				L--;
 				result .= "\">${link}</a>";
 				c = undef;
@@ -238,9 +238,9 @@ inline(string buf)
 		} else {
 			if (S && isspace(c)) {
 				result .= "&nbsp;";
-			} else if (c eq "<") {
+			} else if (c == "<") {
 				result .= "&lt;";
-			} else if (c eq ">") {
+			} else if (c == ">") {
 				result .= "&gt;";
 			} else {
 				result .= c;
