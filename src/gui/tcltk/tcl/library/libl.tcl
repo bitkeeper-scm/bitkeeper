@@ -8,6 +8,7 @@
 
 if {[info exists ::L_libl_initted]} { return }
 set ::L_libl_initted 1
+set ::L_putenv_bug -1
 
 set ::%%suppress_calling_main 0
 
@@ -575,11 +576,35 @@ perror(...args)
 	}
 }
 
+extern int ::L_putenv_bug;
+
 string
 putenv(string var_fmt, ...args)
 {
+	string	ret;
+
 	unless (var_fmt =~ /([^=]+)=(.*)/) return (undef);
-	return (set("::env(${$1})", format($2, (expand)args)));
+	if (::L_putenv_bug == -1) {
+		// test for macos-x86's putenv bug
+		eval("set ::env(_L_ENV_TEST) =====");
+		switch ((string)getenv("_L_ENV_TEST")) {
+		    case "=====":
+			::L_putenv_bug = 0;
+			break;
+		    case "====":
+			::L_putenv_bug = 1;
+			break;
+		    default:
+			die("fatal error in putenv()");
+		}
+	}
+	if (::L_putenv_bug && ($2[0] eq "=")) {
+		ret = set("::env(${$1})", format("=${$2}", (expand)args));
+		undef(ret[0]);  // strip leading =
+	} else {
+		ret = set("::env(${$1})", format($2, (expand)args));
+	}
+	return (ret);
 }
 
 int
