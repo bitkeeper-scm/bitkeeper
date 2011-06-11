@@ -1001,6 +1001,10 @@ expr:
 	{
 		$$ = ast_mkBinOp(L_OP_EQUALEQUAL, $1, $3, @1, @3);
 	}
+	| T_EQ "(" expr "," expr ")"
+	{
+		$$ = ast_mkBinOp(L_OP_EQUALEQUAL, $3, $5, @1, @6);
+	}
 	| expr T_NOTEQUAL expr
 	{
 		$$ = ast_mkBinOp(L_OP_NOTEQUAL, $1, $3, @1, @3);

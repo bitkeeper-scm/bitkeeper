@@ -35,6 +35,26 @@ L { puts("this should not be run"); }
 # This causes L to keep running L code even after a compile error.
 set ::env(_L_TEST) 1
 
+test no-eq-ops-1 {test that old eq ops are now errors} -body {
+#lang L
+"s" eq "s";
+"s" ne "s";
+"s" lt "s";
+"s" le "s";
+"s" gt "s";
+"s" ge "s";
+} -returnCodes error -match regexp -result {.*1: L Error: illegal comparison operator
+.*2: L Error: illegal comparison operator
+.*3: L Error: illegal comparison operator
+.*4: L Error: illegal comparison operator
+.*5: L Error: illegal comparison operator
+.*6: L Error: illegal comparison operator
+}
+
+# This tells L to run in a backwards compatibility mode for
+# the old eq/ne/le/lt/ge/gt string-comparison operators.
+set ::env(_L_ALLOW_EQ_OPS) 1
+
 test lfile-1.0 {Test autowrapping of empty .l file} -setup {
 	set fname [makeFile {} lfile-1.0.l]
 } -constraints {
@@ -2599,42 +2619,243 @@ void op_1_2() {
 op_1_2
 } -output "-2\n-102\n306\n-6\n2\n102\n306\n6\n"
 
-test op-1.3 {numeric comparison operators} -body {
+test op-1.3.1 {numeric comparison operators} -body {
 #lang L
-void op_1_3() {
-        if (-1 < 1) { puts("1okay"); } else { puts("1broken"); }
-        if (1 > -1) { puts("2okay"); } else { puts("2broken"); }
-        if (1 == 1) { puts("3okay"); } else { puts("3broken"); }
-        if (1 <= 1) { puts("4okay"); } else { puts("4broken"); }
-        if (-1 <= 1) { puts("5okay"); } else { puts("5broken"); }
-        if (1 >= -1) { puts("6okay"); } else { puts("6broken"); }
-        if (1 >= 0) { puts("7okay"); } else { puts("7broken"); }
-        if (0 != 1) { puts("8okay"); } else { puts("8broken"); }
-        // now from the other side
-        puts("--");
-        if (1 < 1) { puts("1broken"); } else { puts("1okay"); }
-        if (1 > 1) { puts("2broken"); } else { puts("2okay"); }
-        if (1 == 0) { puts("3broken"); } else { puts("3okay"); }
-        if (1 != 1) { puts("4broken"); } else { puts("4okay"); }
-        if (1 <= -1) { puts("5broken"); } else { puts("5okay"); }
-        if (-1 >= 1) { puts("6broken"); } else { puts("6okay"); }
+void op_1_3_1()
+{
+	unless (-1 < 1) puts("bad 1.1");
+	unless (1 > -1) puts("bad 1.2");
+	unless (1 == 1) puts("bad 1.3");
+	unless (1 <= 1) puts("bad 1.4");
+	unless (-1 <= 1) puts("bad 1.5");
+	unless (1 >= -1) puts("bad 1.6");
+	unless (1 >= 0) puts("bad 1.7");
+	unless (0 != 1) puts("bad 1.8");
+
+	if (1 < 1) puts("bad 2.1");
+	if (1 > 1) puts("bad 2.2");
+	if (1 == 0) puts("bad 2.3");
+	if (1 != 1) puts("bad 2.4");
+	if (1 <= -1) puts("bad 2.5");
+	if (-1 >= 1) puts("bad 2.6");
 
 	// Verify that these are numeric compares, not lexicographic.
-	unless ((int)"1" == (int)"01") puts("bad 1");
-	if ((int)"1" != (int)"01") puts("bad 2");
-	if ((int)"1" > (int)"01") puts("bad 3");
-	if ((int)"01" < (int)"1") puts("bad 4");
-	if ((int)" 2" <= (int)"1") puts("bad 5");  // note: it's space 2
-	if ((int)"1" >= (int)" 2") puts("bad 6");
+	unless ((int)"1" == (int)"01") puts("bad 3.1");
+	if ((int)"1" != (int)"01") puts("bad 3.2");
+	if ((int)"1" > (int)"01") puts("bad 3.3");
+	if ((int)"01" < (int)"1") puts("bad 3.4");
+	if ((int)" 2" <= (int)"1") puts("bad 3.5");  // note: it's space 2
+	if ((int)"1" >= (int)" 2") puts("bad 3.6");
+	unless ((int)"00" == (int)"0") puts("bad 3.7");
 }
-#lang tcl
-op_1_3
-} -output "1okay\n2okay\n3okay\n4okay\n5okay\n6okay\n7okay\n8okay
---\n1okay\n2okay\n3okay\n4okay\n5okay\n6okay\n"
+op_1_3_1();
+} -output {}
+
+test op-1.3.2 {string comparison operators} -body {
+#lang L
+void op_1_3_2()
+{
+	if ("0" == "00") puts("bad 1.1");
+	if ("1" == "01") puts("bad 1.2");
+	if (" 1" == "1") puts("bad 1.3");
+
+	unless ("0" < "1") puts("bad 2.1");
+	unless ("a" < "b") puts("bad 2.2");
+	unless ("2" > "1") puts("bad 2.3");
+	unless (" 2" < "1") puts("bad 2.4");
+	unless ("b" > "a") puts("bad 2.5");
+
+	unless ("0" <= "0") puts("bad 3.1");
+	unless ("0" <= "1") puts("bad 3.2");
+	unless ("a" <= "a") puts("bad 3.3");
+	unless ("a" <= "b") puts("bad 3.4");
+	unless ("1" >= "1") puts("bad 3.5");
+	unless ("2" >= "1") puts("bad 3.6");
+	unless ("a" >= "a") puts("bad 3.7");
+	unless ("b" >= "a") puts("bad 3.8");
+}
+op_1_3_2();
+} -output {}
+
+test op-1.3.3 {composite equality operator} -body {
+#lang L
+void op_1_3_3()
+{
+	string	as1[], as2[];
+	int	ai1[], ai2[];
+	string	hs1{string}, hs2{string};
+	int	hi1{string}, hi2{string};
+	struct {
+		string	a;
+		string	b;
+	} sts1, sts2;
+	struct {
+		int	a;
+		int	b;
+	} sti1, sti2;
+
+	/*
+	 * Cases to test:
+	 * - Type contains only strings.
+	 * - Type contains non-strings and that a numeric compare is done.
+	 * - Array or hash w/same size, but same or different elts.
+	 * - Array or hash that differs in size (w/fewer or greater elts).
+	 */
+
+	as1 = { "one", "two", "three" };
+	as2 = { "one", "two", "three" };
+	unless (eq(as1,as2)) puts("bad 1.1");
+	as2 = { "one", "two" };
+	if (eq(as1,as2)) puts("bad 1.2");
+	as2 = { "one", "two", "three", "four" };
+	if (eq(as1,as2)) puts("bad 1.3");
+	as2 = { "one", "two", "four" };
+	if (eq(as1,as2)) puts("bad 1.4");
+
+	ai1 = { 1, 2, 3 };
+	ai2 = { 1, 2, 3 };
+	unless (eq(ai1,ai2)) puts("bad 2.1");
+	ai2 = { 1, 2 };
+	if (eq(ai1,ai2)) puts("bad 2.2");
+	ai2 = { 1, 2, 3, 4 };
+	if (eq(ai1,ai2)) puts("bad 2.3");
+	ai2 = { 1, 2, 4 };
+	if (eq(ai1,ai2)) puts("bad 2.4");
+	/* Check that a numeric compare is done. */
+	ai2 = (poly)"01 2 003";
+	unless (eq(ai1,ai2)) puts("bad 2.5");
+
+	hs1 = { "k1"=>"v1", "k2"=>"v2", "k3"=>"v3" };
+	hs2 = { "k1"=>"v1", "k2"=>"v2", "k3"=>"v3" };
+	unless (eq(hs1,hs2)) puts("bad 10.1");
+	hs2 = { "k1"=>"v1", "k2"=>"v2" };
+	if (eq(hs1,hs2)) puts("bad 10.2");
+	hs2 = { "k1"=>"v1", "k2"=>"v2", "k3"=>"v3", "k4"=>"v4" };
+	if (eq(hs1,hs2)) puts("bad 10.3");
+	hs2 = { "k1"=>"v1", "k2"=>"v2", "k4"=>"v4" };
+	if (eq(hs1,hs2)) puts("bad 10.4");
+
+	hi1 = { "1"=>1, "2"=>2, "3"=>3 };
+	hi2 = { "1"=>1, "2"=>2, "3"=>3 };
+	unless (eq(hi1,hi2)) puts("bad 11.1");
+	hi2 = { "1"=>1, "2"=>2, "3"=>3, "4"=>4 };
+	if (eq(hi1,hi2)) puts("bad 11.2");
+	hi2 = { "1"=>1, "2"=>2 };
+	if (eq(hi1,hi2)) puts("bad 11.3");
+	hi2 = { "1"=>1, "2"=>2, "4"=>4 };
+	if (eq(hi1,hi2)) puts("bad 11.4");
+	/* Check that a numeric compare is done. */
+	hi2 = (poly)"1 01 2 2 3 003";
+	unless (eq(hi1,hi2)) puts("bad 11.5");
+
+	sts1 = { "a", "b" };
+	sts2 = { "a", "b" };
+	unless (eq(sts1,sts2)) puts("bad 20.1");
+	sts2 = { "a", "c" };
+	if (eq(sts1,sts2)) puts("bad 20.1");
+
+	sti1 = { 1, 2 };
+	sti2 = { 1, 2 };
+	unless (eq(sti1,sti2)) puts("bad 21.1");
+	sti2 = { 1, 3 };
+	if (eq(sti1,sti2)) puts("bad 21.2");
+	/* Check that a numeric compare is done. */
+	sti2 = (poly)"01 002";
+	unless (eq(sti1,sti2)) puts("bad 21.3");
+}
+op_1_3_3();
+} -output {}
+
+test op-1.3.4 {composite equality operator 2} -body {
+#lang L
+void op_1_3_4()
+{
+	/*
+	 * Test a composite type w/numerics that contains a composite
+	 * type without them.  The outer type must be compared element
+	 * by element but the inner type can be compared with a single
+	 * string comparison of its string rep.
+	 */
+
+	struct {
+		int	i;
+		struct {
+			string	a[];
+			string	b[];
+		} st;
+		int	j;
+	} st1, st2;
+
+	st1 = { 1, { {"a","b"}, {"c","d"} }, 2 };
+	st2 = { 1, { {"a","b"}, {"c","d"} }, 2 };
+	unless (eq(st1,st2)) puts("bad 1.1");
+
+	st1 = { 1, { {"a","b"}, {"c","d"} }, 2 };
+	st2 = { 1, { {"a","b"}, {"c","e"} }, 2 };
+	if (eq(st1,st2)) puts("bad 1.2");
+
+	st1 = { 1, { {"a","b"}, {"c","d"} }, 2 };
+	st2 = { 1, { {"a","b"}, {"c","d"} }, 3 };
+	if (eq(st1,st2)) puts("bad 1.3");
+
+	st1 = { 1, { {"a","b"}, {"c","d"} }, 2 };
+	st2 = (poly)"1 {{a b} {c d}} 2";
+	unless (eq(st1,st2)) puts("bad 1.4");
+}
+op_1_3_4();
+} -output {}
+
+test op-1.3.5 {composite comparison errors} -body {
+#lang L
+void op_1_3_5()
+{
+	string	sa[];
+	string	ha{string};
+	struct {
+		int	i, j;
+	} st;
+
+	sa != sa;
+	sa < sa;
+	sa <= sa;
+	sa > sa;
+	sa >= sa;
+
+	ha != ha;
+	ha < ha;
+	ha <= ha;
+	ha > ha;
+	ha >= ha;
+
+	st != st;
+	st < st;
+	st <= st;
+	st > st;
+	st >= st;
+}
+} -returnCodes {error} -match regexp -result {.*9: L Error: only eq\(\) allowed on non-scalar types
+.*10: L Error: only eq\(\) allowed on non-scalar types
+.*11: L Error: only eq\(\) allowed on non-scalar types
+.*12: L Error: only eq\(\) allowed on non-scalar types
+.*13: L Error: only eq\(\) allowed on non-scalar types
+.*15: L Error: only eq\(\) allowed on non-scalar types
+.*16: L Error: only eq\(\) allowed on non-scalar types
+.*17: L Error: only eq\(\) allowed on non-scalar types
+.*18: L Error: only eq\(\) allowed on non-scalar types
+.*19: L Error: only eq\(\) allowed on non-scalar types
+.*21: L Error: only eq\(\) allowed on non-scalar types
+.*22: L Error: only eq\(\) allowed on non-scalar types
+.*23: L Error: only eq\(\) allowed on non-scalar types
+.*24: L Error: only eq\(\) allowed on non-scalar types
+.*25: L Error: only eq\(\) allowed on non-scalar types
+}
 
 test op-1.4 {lexicographic comparison operators} -body {
 #lang L
 void op_1_4() {
+	// These operators are now obsolete, but with the _L_ALLOW_EQ_OPS env
+	// variable set, the compiler will allow them.
+
         if ("aa" lt "ab") { puts("1okay"); } else { puts("1broken"); }
         if ("ab" gt "aa") { puts("2okay"); } else { puts("2broken"); }
         if ("aa" eq "aa") { puts("3okay"); } else { puts("3broken"); }
@@ -10379,42 +10600,42 @@ void undef_6()
 	undef ge undef;
 	undef gt undef;  // line 43
 }
-} -returnCodes error -match regexp -result {.*6: L Error: undef illegal in compare; use defined\(\)
-.*7: L Error: undef illegal in compare; use defined\(\)
-.*8: L Error: undef illegal in compare; use defined\(\)
-.*9: L Error: undef illegal in compare; use defined\(\)
-.*10: L Error: undef illegal in compare; use defined\(\)
-.*11: L Error: undef illegal in compare; use defined\(\)
-.*12: L Error: undef illegal in compare; use defined\(\)
-.*13: L Error: undef illegal in compare; use defined\(\)
-.*14: L Error: undef illegal in compare; use defined\(\)
-.*15: L Error: undef illegal in compare; use defined\(\)
-.*16: L Error: undef illegal in compare; use defined\(\)
-.*17: L Error: undef illegal in compare; use defined\(\)
-.*19: L Error: undef illegal in compare; use defined\(\)
-.*20: L Error: undef illegal in compare; use defined\(\)
-.*21: L Error: undef illegal in compare; use defined\(\)
-.*22: L Error: undef illegal in compare; use defined\(\)
-.*23: L Error: undef illegal in compare; use defined\(\)
-.*24: L Error: undef illegal in compare; use defined\(\)
-.*25: L Error: undef illegal in compare; use defined\(\)
-.*26: L Error: undef illegal in compare; use defined\(\)
-.*27: L Error: undef illegal in compare; use defined\(\)
-.*28: L Error: undef illegal in compare; use defined\(\)
-.*29: L Error: undef illegal in compare; use defined\(\)
-.*30: L Error: undef illegal in compare; use defined\(\)
-.*32: L Error: undef illegal in compare; use defined\(\)
-.*33: L Error: undef illegal in compare; use defined\(\)
-.*34: L Error: undef illegal in compare; use defined\(\)
-.*35: L Error: undef illegal in compare; use defined\(\)
-.*36: L Error: undef illegal in compare; use defined\(\)
-.*37: L Error: undef illegal in compare; use defined\(\)
-.*38: L Error: undef illegal in compare; use defined\(\)
-.*39: L Error: undef illegal in compare; use defined\(\)
-.*40: L Error: undef illegal in compare; use defined\(\)
-.*41: L Error: undef illegal in compare; use defined\(\)
-.*42: L Error: undef illegal in compare; use defined\(\)
-.*43: L Error: undef illegal in compare; use defined\(\)
+} -returnCodes error -match regexp -result {.*6: L Error: undef illegal in comparison
+.*7: L Error: undef illegal in comparison
+.*8: L Error: undef illegal in comparison
+.*9: L Error: undef illegal in comparison
+.*10: L Error: undef illegal in comparison
+.*11: L Error: undef illegal in comparison
+.*12: L Error: undef illegal in comparison
+.*13: L Error: undef illegal in comparison
+.*14: L Error: undef illegal in comparison
+.*15: L Error: undef illegal in comparison
+.*16: L Error: undef illegal in comparison
+.*17: L Error: undef illegal in comparison
+.*19: L Error: undef illegal in comparison
+.*20: L Error: undef illegal in comparison
+.*21: L Error: undef illegal in comparison
+.*22: L Error: undef illegal in comparison
+.*23: L Error: undef illegal in comparison
+.*24: L Error: undef illegal in comparison
+.*25: L Error: undef illegal in comparison
+.*26: L Error: undef illegal in comparison
+.*27: L Error: undef illegal in comparison
+.*28: L Error: undef illegal in comparison
+.*29: L Error: undef illegal in comparison
+.*30: L Error: undef illegal in comparison
+.*32: L Error: undef illegal in comparison
+.*33: L Error: undef illegal in comparison
+.*34: L Error: undef illegal in comparison
+.*35: L Error: undef illegal in comparison
+.*36: L Error: undef illegal in comparison
+.*37: L Error: undef illegal in comparison
+.*38: L Error: undef illegal in comparison
+.*39: L Error: undef illegal in comparison
+.*40: L Error: undef illegal in comparison
+.*41: L Error: undef illegal in comparison
+.*42: L Error: undef illegal in comparison
+.*43: L Error: undef illegal in comparison
 }
 
 test toplevel-1.0 {Toplevel code in L} -body {
@@ -10996,18 +11217,18 @@ typecheck_3_10()
 .*21: L Error: expected type.*but got void in string comparison
 .*22: L Error: expected type.*but got void in string comparison
 .*23: L Error: expected type.*but got void in string comparison
-.*24: L Error: expected type.*but got void in arithmetic comparison
-.*25: L Error: expected type.*but got void in arithmetic comparison
-.*26: L Error: expected type.*but got void in arithmetic comparison
-.*27: L Error: expected type.*but got void in arithmetic comparison
-.*28: L Error: expected type.*but got void in arithmetic comparison
-.*29: L Error: expected type.*but got void in arithmetic comparison
-.*30: L Error: expected type.*but got void in arithmetic comparison
-.*31: L Error: expected type.*but got void in arithmetic comparison
-.*32: L Error: expected type.*but got void in arithmetic comparison
-.*33: L Error: expected type.*but got void in arithmetic comparison
-.*34: L Error: expected type.*but got void in arithmetic comparison
-.*35: L Error: expected type.*but got void in arithmetic comparison
+.*24: L Error: type void illegal
+.*25: L Error: type void illegal
+.*26: L Error: type void illegal
+.*27: L Error: type void illegal
+.*28: L Error: type void illegal
+.*29: L Error: type void illegal
+.*30: L Error: type void illegal
+.*31: L Error: type void illegal
+.*32: L Error: type void illegal
+.*33: L Error: type void illegal
+.*34: L Error: type void illegal
+.*35: L Error: type void illegal
 .*36: L Error: expected type.*but got void in arithmetic operator
 .*37: L Error: expected type.*but got void in arithmetic operator
 .*38: L Error: expected type.*but got void in arithmetic operator
@@ -11028,6 +11249,74 @@ typecheck_3_10()
 .*53: L Error: expected type.*but got void in arithmetic operator
 .*54: L Error: expected type.*but got void in arithmetic operator
 .*55: L Error: expected type.*but got void in arithmetic operator
+}
+
+test typecheck-3.10.2 {void illegal in binary operators 2} -body {
+#lang L
+void t310_2v() { return; }
+void
+typecheck_3_10_2()
+{
+	int	i;
+
+	/*
+	 * Similar to typecheck-3.10 but testing void as both lhs and
+	 * rhs.  The earlier test was getting too big which makes it
+	 * hard to update for changes in error messages or error
+	 * checking in the compiler.
+	 */
+
+	if (t310_2v() && t310_2v()) return;
+	if (t310_2v() || t310_2v()) return;
+	if (t310_2v() =~ /bad/) return;
+	if (t310_2v() eq t310_2v()) return;
+	if (t310_2v() ne t310_2v()) return;
+	if (t310_2v() gt t310_2v()) return;
+	if (t310_2v() ge t310_2v()) return;
+	if (t310_2v() lt t310_2v()) return;
+	if (t310_2v() le t310_2v()) return;
+	if (t310_2v() == t310_2v()) return;
+	if (t310_2v() != t310_2v()) return;
+	if (t310_2v() > t310_2v())  return;
+	if (t310_2v() >= t310_2v()) return;
+	if (t310_2v() < t310_2v())  return;
+	if (t310_2v() <= t310_2v()) return;
+	i = t310_2v() + t310_2v();
+	i = t310_2v() - t310_2v();
+	i = t310_2v() * t310_2v();
+	i = t310_2v() / t310_2v();
+	i = t310_2v() % t310_2v();
+	i = t310_2v() & t310_2v();
+	i = t310_2v() | t310_2v();
+	i = t310_2v() ^ t310_2v();
+	i = t310_2v() << t310_2v();
+	i = t310_2v() >> t310_2v();
+}
+} -returnCodes error -match regexp -result {.*14: L Error: void type illegal in predicate
+.*15: L Error: void type illegal in predicate
+.*16: L Error: expected type.*but got void in =~
+.*17: L Error: expected type.*but got void in string comparison
+.*18: L Error: expected type.*but got void in string comparison
+.*19: L Error: expected type.*but got void in string comparison
+.*20: L Error: expected type.*but got void in string comparison
+.*21: L Error: expected type.*but got void in string comparison
+.*22: L Error: expected type.*but got void in string comparison
+.*23: L Error: type void illegal
+.*24: L Error: type void illegal
+.*25: L Error: type void illegal
+.*26: L Error: type void illegal
+.*27: L Error: type void illegal
+.*28: L Error: type void illegal
+.*29: L Error: expected type.*but got void in arithmetic operator
+.*30: L Error: expected type.*but got void in arithmetic operator
+.*31: L Error: expected type.*but got void in arithmetic operator
+.*32: L Error: expected type.*but got void in arithmetic operator
+.*33: L Error: expected type.*but got void in arithmetic operator
+.*34: L Error: expected type.*but got void in arithmetic operator
+.*35: L Error: expected type.*but got void in arithmetic operator
+.*36: L Error: expected type.*but got void in arithmetic operator
+.*37: L Error: expected type.*but got void in arithmetic operator
+.*38: L Error: expected type.*but got void in arithmetic operator
 }
 
 test typecheck-3.11 {void illegal in casts and unary operators} -body {
@@ -12096,22 +12385,22 @@ void typecheck_10_2()
 
 	s == i;  // line 6
 	i == s;
-	s == s;
+
 	s != i;
 	i != s;  // line 10
-	s != s;
+
 	s <= i;
 	i <= s;
-	s <= s;
+
 	s >= i;  // line 15
 	i >= s;
-	s >= s;
+
 	s <  i;
 	i <  s;
-	s <  s;  // line 20
+	// line 20
 	s >  i;
 	i >  s;
-	s >  s;  // line 23
+
 
 	i eq s;  // line 25
 	s eq i;
@@ -12132,24 +12421,17 @@ void typecheck_10_2()
 	s gt i;
 	i gt i;  // line 42
 }
-} -returnCodes error -match regexp -result {.*6: L Error: expected type int or float but got string in arithmetic comparison
-.*7: L Error: expected type int or float but got string in arithmetic comparison
-.*8: L Error: expected type int or float but got string in arithmetic comparison
-.*9: L Error: expected type int or float but got string in arithmetic comparison
-.*10: L Error: expected type int or float but got string in arithmetic comparison
-.*11: L Error: expected type int or float but got string in arithmetic comparison
-.*12: L Error: expected type int or float but got string in arithmetic comparison
-.*13: L Error: expected type int or float but got string in arithmetic comparison
-.*14: L Error: expected type int or float but got string in arithmetic comparison
-.*15: L Error: expected type int or float but got string in arithmetic comparison
-.*16: L Error: expected type int or float but got string in arithmetic comparison
-.*17: L Error: expected type int or float but got string in arithmetic comparison
-.*18: L Error: expected type int or float but got string in arithmetic comparison
-.*19: L Error: expected type int or float but got string in arithmetic comparison
-.*20: L Error: expected type int or float but got string in arithmetic comparison
-.*21: L Error: expected type int or float but got string in arithmetic comparison
-.*22: L Error: expected type int or float but got string in arithmetic comparison
-.*23: L Error: expected type int or float but got string in arithmetic comparison
+} -returnCodes error -match regexp -result {.*6: L Error: incompatible types in comparison
+.*7: L Error: incompatible types in comparison
+.*9: L Error: incompatible types in comparison
+.*10: L Error: incompatible types in comparison
+.*12: L Error: incompatible types in comparison
+.*15: L Error: incompatible types in comparison
+.*16: L Error: incompatible types in comparison
+.*18: L Error: incompatible types in comparison
+.*19: L Error: incompatible types in comparison
+.*21: L Error: incompatible types in comparison
+.*22: L Error: incompatible types in comparison
 .*25: L Error: expected type string or widget but got int in string comparison
 .*26: L Error: expected type string or widget but got int in string comparison
 .*27: L Error: expected type string or widget but got int in string comparison
@@ -12191,15 +12473,15 @@ void typecheck_10_3()
 }
 } -returnCodes error -match regexp -result {.*7: L Error: expected type string or widget but got int in string comparison
 .*8: L Error: expected type string or widget but got float in string comparison
-.*9: L Error: expected type int or float but got string in arithmetic comparison
-.*10: L Error: expected type int or float but got widget in arithmetic comparison
-.*11: L Error: expected type int or float but got void in arithmetic comparison
-.*12: L Error: expected type int or float but got hash in arithmetic comparison
-.*13: L Error: expected type int or float but got struct in arithmetic comparison
-.*14: L Error: expected type int or float but got array in arithmetic comparison
-.*15: L Error: expected type int or float but got list in arithmetic comparison
-.*16: L Error: expected type int or float but got nameof in arithmetic comparison
-.*17: L Error: expected type int or float but got class in arithmetic comparison
+.*9: L Error: incompatible types in comparison
+.*10: L Error: incompatible types in comparison
+.*11: L Error: type void illegal
+.*12: L Error: incompatible types in comparison
+.*13: L Error: incompatible types in comparison
+.*14: L Error: incompatible types in comparison
+.*15: L Error: incompatible types in comparison
+.*16: L Error: incompatible types in comparison
+.*17: L Error: incompatible types in comparison
 }
 
 test fnptr-1 {function pointers 1} -body {

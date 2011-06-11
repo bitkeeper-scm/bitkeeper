@@ -1224,13 +1224,11 @@ hash element.
 
 =item String comparison
 
-    eq  equality
-    ne  inequality
-    lt  less than
-    gt  greater than
-    le  less than or equal
-    ge  greater than or equal
     =~  regexp match or substitute
+
+=item Comparison of composite types (array, hash, struct)
+
+    eq(a,b)
 
 =item Bit operations
 
@@ -1529,6 +1527,11 @@ line <linenum>\n".
 =proto string dirname(string path)
 
 Return the directory portion of a pathname.
+
+=proto int eq(compositeType a, compositeType b)
+
+Compare two arrays, hashes, structs, or lists for equality.
+The two arguments are compared recursively element by element.
 
 =proto int exists(string path)
 

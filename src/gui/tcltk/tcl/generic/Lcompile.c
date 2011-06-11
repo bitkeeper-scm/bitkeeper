@@ -108,6 +108,7 @@ extern void	L__delete_buffer(void *buf);
 
 private int	L_ParseScript(CONST char *str, Ast **L_ast);
 private int	L_CompileScript(void *ast);
+private int	any_nums(Type *type);
 private void	ast_free(Ast *ast_list);
 private int	compile_abs(Expr *expr);
 private int	compile_assert(Expr *expr);
@@ -126,6 +127,7 @@ private void	compile_continue(Stmt *stmt);
 private void	compile_defined(Expr *expr);
 private int	compile_die(Expr *expr);
 private void	compile_do(Loop *loop);
+private void	compile_eq_stack(Expr *expr, Type *type);
 private void	compile_for_while(Loop *loop);
 private int	compile_idxOp(Expr *expr, Expr_f flags);
 private int	compile_idxOp2(Expr *expr, Expr_f flags);
@@ -178,7 +180,7 @@ private int	compile_warn(Expr *expr);
 private int	compile_write(Expr *expr);
 private Tcl_Obj	*do_getline(Tcl_Interp *interp, Tcl_Channel chan);
 private void	emit_globalUpvar(Sym *sym);
-private void	emit_instrForLOp(Expr *expr);
+private void	emit_instrForLOp(Expr *expr, Type *type);
 private void	emit_jmp_back(TclJumpType jmp_type, int offset);
 private Jmp	*emit_jmp_fwd(int op, Jmp *next);
 private void	fixup_jmps(Jmp **jumps);
@@ -369,6 +371,7 @@ parse_options(int ac, Tcl_Obj **av)
 			ASSERT(0);
 		}
 	}
+	if (getenv("_L_ALLOW_EQ_OPS")) opts |= L_OPT_ALLOW_EQ_OPS;
 	return (opts);
 }
 
@@ -1563,6 +1566,209 @@ compile_pop(Expr *expr)
 	return (1);  // stack effect
 }
 
+/* Return 1 if a type has an int or float anywhere inside it. */
+private int
+any_nums(Type *type)
+{
+	VarDecl	*v;
+
+	switch (type->kind) {
+	    case L_INT:
+	    case L_FLOAT:
+		return (1);
+	    case L_ARRAY:
+	    case L_HASH:
+		return (any_nums(type->base_type));
+	    case L_STRUCT:
+		for (v = type->u.struc.members; v; v = v->next) {
+			if (any_nums(v->type)) return (1);
+		}
+		return (0);
+	    default:
+		return (0);
+	}
+}
+
+private void
+compile_eq_stack(Expr *expr, Type *type)
+{
+	int	i, top_off;
+	Tmp	*itmp, *ltmp, *rtmp;
+	Jmp	*out = NULL;
+	Jmp	*out_false = NULL, *out_false2 = NULL, *out_true = NULL;
+	VarDecl	*v;
+
+	unless (type->kind & (L_ARRAY|L_STRUCT|L_HASH)) {
+		/* Scalar -- just need a single bytecode. */
+		emit_instrForLOp(expr, type);
+		return;
+	}
+
+	/*
+	 * If there are no ints or floats anywhere in the type, a
+	 * string compare of their string reps suffices.  Otherwise,
+	 * we have to compare any sub-types with numerics element by
+	 * element.
+	 */
+	ASSERT(expr->op == L_OP_EQUALEQUAL);
+	unless (any_nums(type)) {
+		TclEmitOpcode(INST_STR_EQ, L->frame->envPtr);
+		return;
+	}
+
+	/* Put lhs and rhs into temps. */
+	ltmp = tmp_get();
+	rtmp = tmp_get();
+	emit_store_scalar(rtmp->idx);
+	emit_pop();
+	emit_store_scalar(ltmp->idx);
+	emit_pop();
+
+	switch (type->kind) {
+	    case L_ARRAY:
+		itmp = tmp_get();
+		/*
+		 *     if (length(lhs) != length(rhs)) goto out_false
+		 *     itmp = length(rhs)
+		 * top_off:
+		 *     if (itmp == 0) goto out_true
+		 *     --itmp
+		 *     if (lhs[itmp] != rhs[itmp]) goto out_false
+		 *     goto top_off
+		 * out_true:
+		 *     push 1
+		 *     goto out
+		 * out_false:
+		 *     push 0
+		 * out:
+		 */
+		emit_load_scalar(ltmp->idx);
+		TclEmitOpcode(INST_LIST_LENGTH, L->frame->envPtr);
+		emit_load_scalar(rtmp->idx);
+		TclEmitOpcode(INST_LIST_LENGTH, L->frame->envPtr);
+		emit_store_scalar(itmp->idx);
+		TclEmitOpcode(INST_EQ, L->frame->envPtr);
+		out_false = emit_jmp_fwd(INST_JUMP_FALSE4, out_false);
+		top_off = currOffset(L->frame->envPtr);
+		emit_load_scalar(itmp->idx);
+		out_true = emit_jmp_fwd(INST_JUMP_FALSE4, out_true);
+		TclEmitInstInt1(INST_INCR_SCALAR1_IMM, itmp->idx,
+				L->frame->envPtr);
+		TclEmitInt1(-1, L->frame->envPtr);
+		emit_pop();
+		emit_load_scalar(ltmp->idx);
+		emit_load_scalar(itmp->idx);
+		TclEmitOpcode(INST_LIST_INDEX, L->frame->envPtr);
+		emit_load_scalar(rtmp->idx);
+		emit_load_scalar(itmp->idx);
+		TclEmitOpcode(INST_LIST_INDEX, L->frame->envPtr);
+		compile_eq_stack(expr, type->base_type);
+		out_false = emit_jmp_fwd(INST_JUMP_FALSE4, out_false);
+		emit_jmp_back(TCL_UNCONDITIONAL_JUMP, top_off);
+		fixup_jmps(&out_true);
+		push_str("1");
+		out = emit_jmp_fwd(INST_JUMP1, out);
+		fixup_jmps(&out_false);
+		push_str("0");
+		fixup_jmps(&out);
+		tmp_free(itmp);
+		break;
+	    case L_STRUCT:
+		/*
+		 * The structs are of compatible types, so we know
+		 * they have the same number of members.  Compare
+		 * them one by one.
+		 */
+		i = 0;
+		for (v = type->u.struc.members; v; v = v->next) {
+			emit_load_scalar(ltmp->idx);
+			TclEmitInstInt4(INST_LIST_INDEX_IMM, i,
+					L->frame->envPtr);
+			emit_load_scalar(rtmp->idx);
+			TclEmitInstInt4(INST_LIST_INDEX_IMM, i,
+					L->frame->envPtr);
+			++i;
+			compile_eq_stack(expr, v->type);
+			out_false = emit_jmp_fwd(INST_JUMP_FALSE4, out_false);
+		}
+		push_str("1");
+		out = emit_jmp_fwd(INST_JUMP1, out);
+		fixup_jmps(&out_false);
+		push_str("0");
+		fixup_jmps(&out);
+		break;
+	    case L_HASH:
+		/*
+		 *     if (length(lhs) != length(rhs)) goto out_false2
+		 *     itmp = length(rhs)
+		 *     if [dict first lhs] goto out_true
+		 * top_off:
+		 *     // stack: key val
+		 *     unless [::dict exists rhs key] goto out_false
+		 *     unless [::dict get rhs key] == val goto out_false
+		 *     unless [dict next] goto top_off
+		 * out_true:
+		 *     pop   // pop key
+		 *     pop   // pop val
+		 *     push 1
+		 *     goto out
+		 * out_false:
+		 *     pop   // pop key
+		 *     pop   // pop val
+		 * out_false2:
+		 *     push 0
+		 * out:
+		 */
+		itmp = tmp_get();
+		push_str("::dict");
+		push_str("size");
+		emit_load_scalar(ltmp->idx);
+		emit_invoke(3);
+		push_str("::dict");
+		push_str("size");
+		emit_load_scalar(rtmp->idx);
+		emit_invoke(3);
+		TclEmitOpcode(INST_EQ, L->frame->envPtr);
+		out_false2 = emit_jmp_fwd(INST_JUMP_FALSE4, out_false2);
+		emit_load_scalar(ltmp->idx);
+		TclEmitInstInt4(INST_DICT_FIRST, itmp->idx, L->frame->envPtr);
+		out_true = emit_jmp_fwd(INST_JUMP_TRUE4, out_true);
+		top_off = currOffset(L->frame->envPtr);
+		TclEmitOpcode(INST_DUP, L->frame->envPtr);
+		push_str("::dict");
+		push_str("exists");
+		emit_load_scalar(rtmp->idx);
+		TclEmitInstInt1(INST_ROT, 3, L->frame->envPtr);
+		emit_invoke(4);
+		out_false = emit_jmp_fwd(INST_JUMP_FALSE4, out_false);
+		push_str("::dict");
+		push_str("get");
+		emit_load_scalar(rtmp->idx);
+		TclEmitInstInt1(INST_ROT, 3, L->frame->envPtr);
+		emit_invoke(4);
+		compile_eq_stack(expr, type->base_type);
+		out_false = emit_jmp_fwd(INST_JUMP_FALSE4, out_false);
+		TclEmitInstInt4(INST_DICT_NEXT, itmp->idx, L->frame->envPtr);
+		emit_jmp_back(TCL_FALSE_JUMP, top_off);
+		fixup_jmps(&out_true);
+		emit_pop();
+		emit_pop();
+		push_str("1");
+		out = emit_jmp_fwd(INST_JUMP1, out);
+		fixup_jmps(&out_false);
+		emit_pop();
+		emit_pop();
+		fixup_jmps(&out_false2);
+		push_str("0");
+		fixup_jmps(&out);
+		tmp_free(itmp);
+		break;
+	    default: ASSERT(0);
+	}
+	tmp_free(ltmp);
+	tmp_free(rtmp);
+}
+
 private int
 compile_keys(Expr *expr)
 {
@@ -2646,14 +2852,14 @@ compile_unOp(Expr *expr)
 	    case L_OP_BITNOT:
 		compile_expr(expr->a, L_PUSH_VAL);
 		L_typeck_expect(L_INT, expr->a, "in unary ! or ~");
-		emit_instrForLOp(expr);
+		emit_instrForLOp(expr, expr->type);
 		expr->type = expr->a->type;
 		break;
 	    case L_OP_UPLUS:
 	    case L_OP_UMINUS:
 		compile_expr(expr->a, L_PUSH_VAL);
 		L_typeck_expect(L_INT|L_FLOAT, expr->a, "in unary +/-");
-		emit_instrForLOp(expr);
+		emit_instrForLOp(expr, expr->type);
 		expr->type = expr->a->type;
 		break;
 	    case L_OP_DEFINED:
@@ -2794,9 +3000,12 @@ compile_binOp(Expr *expr, Expr_f flags)
 	    case L_OP_STR_GE:
 	    case L_OP_STR_LT:
 	    case L_OP_STR_LE:
+		unless (L->options & L_OPT_ALLOW_EQ_OPS) {
+			L_errf(expr, "illegal comparison operator");
+		}
 		/* Warn on things like "s eq undef". */
 		if (isid(e=expr->a, "undef") || isid(e=expr->b, "undef")) {
-			L_errf(e, "undef illegal in compare; use defined()");
+			L_errf(e, "undef illegal in comparison");
 		}
 		compile_expr(expr->a, L_PUSH_VAL);
 		compile_expr(expr->b, L_PUSH_VAL);
@@ -2804,7 +3013,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 				"in string comparison");
 		L_typeck_expect(L_STRING|L_WIDGET, expr->b,
 				"in string comparison");
-		emit_instrForLOp(expr);
+		emit_instrForLOp(expr, expr->type);
 		expr->type = L_int;
 		return (1);
 	    case L_OP_EQUALEQUAL:
@@ -2813,19 +3022,26 @@ compile_binOp(Expr *expr, Expr_f flags)
 	    case L_OP_GREATEREQ:
 	    case L_OP_LESSTHAN:
 	    case L_OP_LESSTHANEQ:
+		expr->type = L_int;
 		/* Warn on things like "i == undef". */
 		if (isid(e=expr->a, "undef") || isid(e=expr->b, "undef")) {
-			L_errf(e, "undef illegal in compare; use defined()");
+			L_errf(e, "undef illegal in comparison");
 		}
 		compile_expr(expr->a, L_PUSH_VAL);
 		compile_expr(expr->b, L_PUSH_VAL);
-		L_typeck_expect(L_INT|L_FLOAT, expr->a,
-				"in arithmetic comparison");
-		L_typeck_expect(L_INT|L_FLOAT, expr->b,
-				"in arithmetic comparison");
-		emit_instrForLOp(expr);
-		expr->type = L_int;
-		return (1);
+		L_typeck_deny(L_VOID, expr->a);
+		L_typeck_deny(L_VOID, expr->b);
+		unless (L_typeck_compat(expr->a->type, expr->b->type) ||
+			L_typeck_compat(expr->b->type, expr->a->type)) {
+			L_errf(expr, "incompatible types in comparison");
+			return (0);
+		}
+		if (!isscalar(expr->a) && (expr->op != L_OP_EQUALEQUAL)) {
+			L_errf(expr, "only eq() allowed on non-scalar types");
+			return (0);
+		}
+		compile_eq_stack(expr, expr->a->type);
+		return (1);  // stack effect
 	    case L_OP_PLUS:
 	    case L_OP_MINUS:
 	    case L_OP_STAR:
@@ -2836,7 +3052,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 				"in arithmetic operator");
 		L_typeck_expect(L_INT|L_FLOAT, expr->b,
 				"in arithmetic operator");
-		emit_instrForLOp(expr);
+		emit_instrForLOp(expr, expr->type);
 		if (isfloat(expr->a) || isfloat(expr->b)) {
 			expr->type = L_float;
 		} else {
@@ -2853,7 +3069,7 @@ compile_binOp(Expr *expr, Expr_f flags)
 		compile_expr(expr->b, L_PUSH_VAL);
 		L_typeck_expect(L_INT, expr->a, "in arithmetic operator");
 		L_typeck_expect(L_INT, expr->b, "in arithmetic operator");
-		emit_instrForLOp(expr);
+		emit_instrForLOp(expr, expr->type);
 		expr->type = L_int;
 		return (1);
 	    case L_OP_ARRAY_INDEX:
@@ -4521,7 +4737,7 @@ compile_assignFromStack(Expr *lhs, Type *rhs_type, Expr *expr, int flags)
 			// <rval> <lhs-val> <lhs-ptr>
 			TclEmitInstInt4(INST_REVERSE, 3, L->frame->envPtr);
 			// <lhs-ptr> <lhs-val> <rval>
-			emit_instrForLOp(expr);
+			emit_instrForLOp(expr, expr->type);
 			// <lhs-ptr> <new-val>
 			TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
 		}
@@ -4537,7 +4753,7 @@ compile_assignFromStack(Expr *lhs, Type *rhs_type, Expr *expr, int flags)
 			// <rval> <old-val>
 			TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
 			// <old-val> <rval>
-			emit_instrForLOp(expr);
+			emit_instrForLOp(expr, expr->type);
 			// <new-val>
 		}
 		// <rval>   or   <new-val>
@@ -4672,29 +4888,83 @@ push_regexpModifiers(Expr *regexp)
 }
 
 private void
-emit_instrForLOp(Expr *expr)
+emit_instrForLOp(Expr *expr, Type *type)
 {
 	int	arg = 0;
 	int	op  = 0;
 
 	switch (expr->op) {
 	    case L_OP_EQUALEQUAL:
-		op = INST_EQ;
-		break;
 	    case L_OP_NOTEQUAL:
-		op = INST_NEQ;
-		break;
 	    case L_OP_GREATER:
-		op = INST_GT;
-		break;
 	    case L_OP_GREATEREQ:
-		op = INST_GE;
-		break;
 	    case L_OP_LESSTHAN:
-		op = INST_LT;
-		break;
 	    case L_OP_LESSTHANEQ:
-		op = INST_LE;
+		switch (type->kind) {
+		    case L_INT:
+		    case L_FLOAT:
+		    case L_POLY:
+			switch (expr->op) {
+			    case L_OP_EQUALEQUAL:
+				op = INST_EQ;
+				break;
+			    case L_OP_NOTEQUAL:
+				op = INST_NEQ;
+				break;
+			    case L_OP_GREATER:
+				op = INST_GT;
+				break;
+			    case L_OP_GREATEREQ:
+				op = INST_GE;
+				break;
+			    case L_OP_LESSTHAN:
+				op = INST_LT;
+				break;
+			    case L_OP_LESSTHANEQ:
+				op = INST_LE;
+				break;
+			    default: ASSERT(0);
+			}
+			break;
+		    case L_STRING:
+		    case L_WIDGET:
+			switch (expr->op) {
+			    case L_OP_EQUALEQUAL:
+				op = INST_STR_EQ;
+				break;
+			    case L_OP_NOTEQUAL:
+				op = INST_STR_NEQ;
+				break;
+			    default:
+				TclEmitOpcode(INST_STR_CMP, L->frame->envPtr);
+				switch (expr->op) {
+				    case L_OP_GREATER:
+					push_str("1");
+					op = INST_EQ;
+					break;
+				    case L_OP_LESSTHAN:
+					push_str("-1");
+					op = INST_EQ;
+					break;
+				    case L_OP_GREATEREQ:
+					push_str("0");
+					op = INST_GE;
+					break;
+				    case L_OP_LESSTHANEQ:
+					push_str("0");
+					op = INST_LE;
+					break;
+				    default: ASSERT(0);
+				}
+				break;
+			}
+			break;
+		    default:
+			// We get here only for eq() of a composite type
+			// w/no numerics.
+			op = INST_STR_EQ;
+			break;
+		}
 		break;
 	    case L_OP_STR_EQ:
 		op = INST_STR_EQ;

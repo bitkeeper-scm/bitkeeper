@@ -16,6 +16,10 @@ if {$::tcl_platform(platform) eq "windows"} {
 # This causes L to keep running L code even after a compile error.
 set ::env(_L_TEST) 1
 
+# This tells L to run in a backwards compatibility mode for
+# the old eq/ne/le/lt/ge/gt string-comparison operators.
+set ::env(_L_ALLOW_EQ_OPS) 1
+
 test angle-1 {test <f>} -setup {
 	set fname1 [makeFile "linea1\n" angle1 .]
 	set fname2 [makeFile "lineb1\nlineb2\n" angle2 .]
