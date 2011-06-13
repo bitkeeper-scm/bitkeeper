@@ -234,42 +234,13 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	}
 
 	/*
-	 * If there is no content change, then if no checksum, cons one up
-	 * from the data in the delta table.
+	 * If there is no content change, then it should have a random
+	 * checksum which is correct by default.
 	 * NOTE: check using newly computed added and deleted (in *s)
 	 */
 	unless (s->added || s->deleted || d->include || d->exclude) {
-		int	new = 0;
-
-		if (d->flags & D_CKSUM) return (err);
-		new = adler32(new, d->sdate, strlen(d->sdate));
-		new = adler32(new, d->user, strlen(d->user));
-		if (d->pathname) {
-			new = adler32(new, d->pathname, strlen(d->pathname));
-		}
-		if (d->hostname) {
-			new = adler32(new, d->hostname, strlen(d->hostname));
-		}
-		EACH_COMMENT(s, d) {
-			new = adler32(new,
-			    d->cmnts[i], strlen(d->cmnts[i]));
-		}
-		unless (fix) {
-			fprintf(stderr, "%s:%s actual=<none> sum=%d\n",
-			    s->gfile, d->rev, new);
-			return (2);
-		}
-		if (diags > 1) {
-			fprintf(stderr, "Derived %s:%s -> %d\n",
-			    s->sfile, d->rev, (sum_t)new);
-		}
-		unless (d->flags & D_SORTSUM) {
-			d->sortSum = d->sum;
-			d->flags |= D_SORTSUM;
-		}
-		d->sum = (sum_t)new;
-		d->flags |= D_CKSUM;
-		return (1);
+		assert(d->flags & D_CKSUM);
+		return (err);
 	}
 
 	if ((d->flags & D_CKSUM) && (d->sum == s->dsum)) return (err);
