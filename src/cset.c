@@ -636,7 +636,12 @@ cset_byserials(const void *a, const void *b)
 		rc = keycmp(p1+1, p2+1);
 		*d1 = ' ';
 		*d2 = ' ';
-		assert(rc);
+		unless (rc) {
+			fprintf(stderr,
+			    "cset changes same rootkey twice\n%s\n%s\n",
+			    s1, s2);
+			exit (1);
+		}
 	}
 	return (rc);
 }
