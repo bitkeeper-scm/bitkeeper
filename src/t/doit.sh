@@ -115,15 +115,10 @@ unix_common_setup()
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
 	export DO_REMOTE
 
-	BIN1=/bin/ls
-	test -r $BIN1 || BIN1=/usr/gnu/bin/od
-	test -r $BIN1 || exit 1
-	BIN2=/bin/rm
-	test -r $BIN2 || BIN2=/usr/gnu/bin/m4
-	test -r $BIN2 || exit 1
-	BIN3=/bin/cat
-	test -r $BIN3 || BIN3=/usr/gnu/bin/wc
-	test -r $BIN3 || exit 1
+	B=`bk bin`
+	BIN1="$B/bk"
+	BIN2="$B/gnu/bin/diff"
+	BIN3="$B/gnu/bin/diff3"
 	export BIN1 BIN2 BIN3
 
 	test `uname` = SCO_SV && return
@@ -289,6 +284,22 @@ setup_env()
 	BK_DOTBK="$HERE/.bk"
 	export BK_DOTBK
 	TMPDIR="$TST_DIR/.tmp $USER"
+
+	# Make the binaries not too large, sco hangs on large diffs.
+	cd ..
+	DOTBIN="`bk pwd -s`/.bin"
+	cd t
+	test -d "$DOTBIN" || mkdir "$DOTBIN"
+	perl -e 'sysread(STDIN, $buf, 100*1024*1);
+	syswrite(STDOUT, $buf, 100*1024*1);' < $BIN1 > "$DOTBIN/binary1"
+	perl -e 'sysread(STDIN, $buf, 100*1024*2);
+	syswrite(STDOUT, $buf, 100*1024*2);' < $BIN2 > "$DOTBIN/binary2"
+	perl -e 'sysread(STDIN, $buf, 100*1024*3);
+	syswrite(STDOUT, $buf, 100*1024*3);' < $BIN3 > "$DOTBIN/binary3"
+	BIN1="$DOTBIN/binary1"
+	BIN2="$DOTBIN/binary2"
+	BIN3="$DOTBIN/binary3"
+	export BIN1 BIN2 BIN3
 
 	# Valid bkcl (old style, pre eula bits) license
 	#BKL_BKCL=BKL643168ad03d719ed00001200ffffe000000000

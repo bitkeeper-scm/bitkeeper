@@ -18,7 +18,7 @@ checksum_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*d;
-	int	doit = 0;
+	int	doit = 0, bk4 = 0;
 	char	*name;
 	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0, spin = 0;
 	int	c, i;
@@ -26,8 +26,9 @@ checksum_main(int ac, char **av)
 	char	*rev = 0;
 	ticker	*tick = 0;
 
-	while ((c = getopt(ac, av, "cfpr;s|v", 0)) != -1) {
+	while ((c = getopt(ac, av, "4cfpr;s|v", 0)) != -1) {
 		switch (c) {
+		    case '4': bk4 = 1; break;	/* obsolete */
 		    case 'c': break;	/* obsolete */
 		    case 'f': fix = 1; break;			/* doc 2.0 */
 		    case 'r': rev = optarg; break;
@@ -37,6 +38,8 @@ checksum_main(int ac, char **av)
 		    default: bk_badArg(c, av);
 		}
 	}
+
+	if (bk4 && diags) fprintf(stderr, "Running checksum in bk4\n");
 
 	if (do_sccs) return (chksum_sccs(&av[optind], off));
 
@@ -111,6 +114,11 @@ checksum_main(int ac, char **av)
 		}
 		if ((doit || !s->cksumok) && fix) {
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
+			if (bk4) for (d = s->table; d; d = NEXT(d)) {
+				if (d->flags & D_SORTSUM) {
+					d->flags &= ~D_SORTSUM;
+				}
+			}
 			if (sccs_newchksum(s)) {
 			    	unless (ret) ret = 2;
 				unless (BEEN_WARNED(s)) {
@@ -119,7 +127,7 @@ checksum_main(int ac, char **av)
 					    s->sfile);
 				}
 			}
-			bk_featureSet(s->proj, FEAT_SORTKEY, 1);
+			unless (bk4) bk_featureSet(s->proj, FEAT_SORTKEY, 1);
 		}
 		if (bad && !ret) ret = 1;
 		sccs_free(s);
@@ -222,44 +230,13 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	}
 
 	/*
-	 * If there is no content change, then if no checksum, cons one up
-	 * from the data in the delta table.
+	 * If there is no content change, then it should have a random
+	 * checksum which is correct by default.
 	 * NOTE: check using newly computed added and deleted (in *s)
 	 */
 	unless (s->added || s->deleted || d->cludes) {
-		int	len, new = 0;
-		char	*p, *t;
-		char	*sdate;
-
-		if (d->flags & D_CKSUM) return (err);
-		sdate = delta_sdate(s, d);
-		new = adler32(new, sdate, strlen(sdate));
-		t = USER(s, d);
-		new = adler32(new, t, strlen(t));
-		if (d->pathname) {
-			t = PATHNAME(s, d);
-			new = adler32(new, t, strlen(t));
-		}
-		t = HOSTNAME(s, d);
-		new = adler32(new, t, strlen(t));
-		t = COMMENTS(s, d);
-		while (p = eachline(&t, &len)) new = adler32(new, p, len);
-		unless (fix) {
-			fprintf(stderr, "%s:%s actual=<none> sum=%d\n",
-			    s->gfile, REV(s, d), new);
-			return (2);
-		}
-		if (diags > 1) {
-			fprintf(stderr, "Derived %s:%s -> %d\n",
-			    s->sfile, REV(s, d), (sum_t)new);
-		}
-		unless (d->flags & D_SORTSUM) {
-			d->sortSum = d->sum;
-			d->flags |= D_SORTSUM;
-		}
-		d->sum = (sum_t)new;
-		d->flags |= D_CKSUM;
-		return (1);
+		assert(d->flags & D_CKSUM);
+		return (err);
 	}
 
 	if ((d->flags & D_CKSUM) && (d->sum == s->dsum)) return (err);

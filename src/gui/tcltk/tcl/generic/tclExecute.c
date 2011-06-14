@@ -7932,12 +7932,12 @@ TclExecuteByteCode(
 	oldvalObj = *(deepPtr->elemPtrPtr);
 	if (deepPtr->flags & L_IDX_STRING) {
 	    int len, str_idx;
-	    char *oldstr, *tmp;
+	    Tcl_UniChar *tmp;
 	    Tcl_Obj *newStr;
 	    Tcl_Obj *target = deepPtr->parentObj;
 
 	    TclGetIntFromObj(NULL, deepPtr->idxObj, &str_idx);
-	    oldstr = TclGetStringFromObj(target, &len);
+	    len = Tcl_GetCharLength(target);
 	    if (str_idx > len) {
 		Tcl_ResetResult(interp);
 		Tcl_AppendResult(interp,
@@ -7955,11 +7955,12 @@ TclExecuteByteCode(
 	    }
 	    /* Append to newStr all chars after the given index. */
 	    if (str_idx < len) {
-		Tcl_AppendToObj(newStr, oldstr+str_idx+1, len-str_idx-1);
+		Tcl_AppendObjToObj(newStr,
+		  Tcl_GetRange(target, str_idx+1, len-1));
 	    }
 	    /* Assign newStr to target. */
-	    tmp = TclGetStringFromObj(newStr, &len);
-	    Tcl_SetStringObj(target, tmp, len);
+	    tmp = Tcl_GetUnicodeFromObj(newStr, &len);
+	    Tcl_SetUnicodeObj(target, tmp, len);
 	    Tcl_DecrRefCount(newStr);
 	} else if (flags & L_APPEND) {
 	    /*
@@ -8145,7 +8146,7 @@ TclExecuteByteCode(
 	    valuePtr = *deepPtr->elemPtrPtr;
 	}
 
-	Tcl_GetStringFromObj(valuePtr, &length);
+	Tcl_GetUnicodeFromObj(valuePtr, &length);
 	L_sizes_push(length - 1);
 	TRACE(("%.20s => %d on L sizes stack\n", O2S(valuePtr), length));
 	NEXT_INST_F(1, 0, 0);
@@ -9776,8 +9777,8 @@ L_deepDiveString(
     Expr_f flags)
 {
     int idx, len;
-    const unsigned char *s;
     Tcl_Obj *newObj;
+    Tcl_UniChar	ch;
 
     if (L_isUndef(idxObj)) {
 	if (flags & L_LVALUE) {
@@ -9795,14 +9796,22 @@ L_deepDiveString(
 	return (NULL);
     }
 
-    s = Tcl_GetByteArrayFromObj(obj, &len);
-
     if (idx < 0) {
 	Tcl_ResetResult(interp);
 	Tcl_AppendResult(interp, "negative string index illegal", NULL);
 	return (NULL);
-    } else if (idx < len) {
-	newObj = Tcl_NewByteArrayObj(s + idx, 1);
+    } else if (idx < Tcl_GetCharLength(obj)) {
+	ch = Tcl_GetUniChar(obj, idx);
+	if (obj->typePtr == &tclByteArrayType) {
+	    unsigned char uch = (unsigned char) ch;
+
+	    newObj = Tcl_NewByteArrayObj(&uch, 1);
+	} else {
+	    char buf[TCL_UTF_MAX];
+
+	    len = Tcl_UniCharToUtf(ch, buf);
+	    newObj = Tcl_NewStringObj(buf, len);
+	}
 	Tcl_IncrRefCount(newObj);
 	newObj->internalRep.twoPtrValue.ptr2 = newObj;
 	return (Tcl_Obj **)(void *)&(newObj->internalRep.twoPtrValue.ptr2);

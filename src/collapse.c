@@ -743,7 +743,7 @@ fix_genlist(char *rev)
 		unless (p = separator(buf)) continue;
 		unless (hash_insert(h, buf, p-buf, 0, 0)) continue;
 		*p = 0;
-		p = key2path(buf, idDB);
+		p = key2path(buf, idDB, 0);
 		flist = addLine(flist, name2sccs(p));
 		free(p);
 	}

@@ -27,16 +27,17 @@ A=`bk changes -r+ -nd:RANDOM:`
 test "X$A" = "XB:2323:ab29387" || { echo failed; exit 1; }
 echo OK
 
-echo $N Test newroot ignoring new BAM marker after switching ........$NL
-bk newroot $Q -kB:75: || exit 1
-A=`bk changes -r+ -nd:RANDOM:`
-test "X$A" = "XB:2323:ab29387" || { echo failed; exit 1; }
-echo OK
-
 echo $N Test newroot changing random bits after BAM marker ..........$NL
 bk newroot $Q -k27 || exit 1
 A=`bk changes -r+ -nd:RANDOM:`
 test "X$A" = "XB:2323:27" || { echo failed; exit 1; }
+echo OK
+
+# LMXXX - I didn't test here for it only going down, I do test in bam
+echo $N Test newroot allowing new BAM marker ........................$NL
+bk newroot $Q -kB:75: || exit 1
+A=`bk changes -r+ -nd:RANDOM:`
+test "X$A" = "XB:75:27" || { echo failed; exit 1; }
 echo OK
 
 echo $N Test newroot failing if the comment has a newline in it .....$NL
@@ -46,7 +47,7 @@ echo OK
 
 echo $N Test newroot log after a blank comment has 3 more lines .....$NL
 LEN1=`bk changes -r+ -d:ROOTLOG: | wc -l`
-test "$LEN1" -eq 15 || { echo wrong number of start lines: "$LEN1"; exit 1; }
+test "$LEN1" -eq 18 || { echo wrong number of start lines: "$LEN1"; exit 1; }
 bk newroot $Q -y "" || exit 1
 LEN2=`bk changes -r+ -d:ROOTLOG: | wc -l`
 LEN3=`expr $LEN2 - $LEN1`

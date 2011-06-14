@@ -596,7 +596,7 @@ key2Gpath(char *key, MDBM **idDB)
 	char	*gpath;
 	int	try = 0;
 
-retry:	gpath = key2path(key, *idDB);
+retry:	gpath = key2path(key, *idDB, 0);
 	if (badSpath(PARK2ROOT, gpath)) {
 		if (try == 0) {
 			chdir(PARK2ROOT);

@@ -15,6 +15,12 @@
 test -d "$HERE/home" || mkdir "$HERE/home"
 export BK_TEST_HOME="$HERE/home"
 
+echo $N Sub diff highlighting to the rescue .........................$NL
+echo aohf932hrqw9fqhfn2180f qn831n128qquew2ehff293fu2i32uf2 > A
+echo aohf932hrqw9fqhfn2I80f qn831n128qquew2ehff293fu2i32uf2 > B
+bk difftool A B
+echo OK
+
 echo $N Make sure we can run diffs on a file that has a merge ptr....$NL
 commercial project
 echo foo > foo
@@ -46,14 +52,18 @@ echo "encoding system utf-8" > "`bk dotbk`/config-gui"
 cd "$HERE/project"
 cat >jp.txt <<EOF
 私は　日本語が　分かります
+私は　日本語が　分かります 私は　日本語が　分かります 私は　日本語が　分かります
 そうですか？
+ab abcd abcde ab ab abcd acbde ab ab abcd abcde ab
 はい、本当です
 EOF
 bk new $Q jp.txt
 bk edit $Q jp.txt
 cat >jp.txt <<EOF
 私は　日本語が　分かります
+私は　日本語が　分かります 私は　本日語が　分かります 私は　日本語が　分かります
 そうですか？
+ab abcd abcde ab ab abcd abcde ab ab abcd abcde ab
 本当です、どうもう　ありがとう　ございます
 EOF
 bk difftool jp.txt

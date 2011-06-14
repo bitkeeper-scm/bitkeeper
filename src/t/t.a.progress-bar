@@ -442,39 +442,6 @@ cd ..
 bk _rm -rf clone
 echo OK
 
-echo $N pull w/rename-edited conflict ...............................$NL
-cd "$HERE"
-bk clone $Q standalone clone || fail
-cd "$HERE/standalone"
-add edited-modif-1 || fail
-add edited-modif-2 || fail
-cd "$HERE/clone"
-bk pull $Q ../standalone || fail
-cd "$HERE/standalone"
-bk mv edited-modif-1 edited-modif-1-renamed || fail
-bk mv edited-modif-2 edited-modif-2-renamed || fail
-bk sfiles -c | bk delta $Q -yrenames - || fail
-bk commit $Q -yrenames
-cd "$HERE/clone"
-add edited-modif-1-renamed || fail
-add edited-modif-2-renamed || fail
-bk sfiles -c | bk delta $Q -yconflicts - || fail
-bk commit $Q -ycontent
-bk edit $Q edited-modif-1-renamed || fail
-echo 2 >edited-modif-1-renamed
-bk edit $Q edited-modif-2-renamed || fail
-echo 2 >edited-modif-2-renamed
-bk pull -s ../standalone >OUT 2>&1 && fail -f OUT
-bk grep -q 'edited-modif-1-renamed is modified' OUT || fail -f OUT
-bk grep -q 'edited-modif-2-renamed is modified' OUT || fail -f OUT
-chkoutput OUT || fail $msg
-chkpasses OUT 'takepatch' || fail -f OUT $msg
-chknumbars OUT 1 || fail $msg
-chkblanks OUT 0 || fail $msg
-cd "$HERE"
-bk _rm -rf clone
-echo OK
-
 echo $N pull w/content merge conflicts ..............................$NL
 cd "$HERE/standalone"
 add for-content-conflict-1 || fail
@@ -907,38 +874,6 @@ cd ..
 bk _rm -rf clone
 echo OK
 
-echo $N pull w/rename-edited conflict ...............................$NL
-cd "$HERE"
-bk clone $Q standalone clone || fail
-cd "$HERE/standalone"
-add edited-modif-q-1 || fail
-add edited-modif-q-2 || fail
-cd "$HERE/clone"
-bk pull $Q ../standalone || fail
-cd "$HERE/standalone"
-bk mv edited-modif-q-1 edited-modif-q-1-renamed || fail
-bk mv edited-modif-q-2 edited-modif-q-2-renamed || fail
-bk sfiles -c | bk delta $Q -yrenames - || fail
-bk commit $Q -yrenames
-cd "$HERE/clone"
-add edited-modif-q-1-renamed || fail
-add edited-modif-q-2-renamed || fail
-bk sfiles -c | bk delta $Q -yconflicts - || fail
-bk commit $Q -ycontent
-bk edit $Q edited-modif-q-1-renamed || fail
-echo 2 >edited-modif-q-1-renamed
-bk edit $Q edited-modif-q-2-renamed || fail
-echo 2 >edited-modif-q-2-renamed
-bk pull -q -s ../standalone >OUT 2>&1 && fail -f OUT
-bk grep -q 'edited-modif-q-1-renamed is modified' OUT || fail -f OUT
-bk grep -q 'edited-modif-q-2-renamed is modified' OUT || fail -f OUT
-chkoutput OUT || fail $msg
-chknumbars OUT 0 || fail $msg
-chkblanks OUT 0 || fail $msg
-cd "$HERE"
-bk _rm -rf clone
-echo OK
-
 echo $N pull w/content merge conflicts ..............................$NL
 cd "$HERE/standalone"
 add for-content-conflict-q-1 || fail
@@ -1280,38 +1215,6 @@ bk grep -q '(create/sfile conflict) for-name-conflict-v-3' OUT || fail -f OUT
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 cd ..
-bk _rm -rf clone
-echo OK
-
-
-echo $N pull w/rename-edited conflict ...............................$NL
-cd "$HERE"
-bk clone $Q standalone clone || fail
-cd "$HERE/standalone"
-add edited-modif-v-1 || fail
-add edited-modif-v-2 || fail
-cd "$HERE/clone"
-bk pull $Q ../standalone || fail
-cd "$HERE/standalone"
-bk mv edited-modif-v-1 edited-modif-v-1-renamed || fail
-bk mv edited-modif-v-2 edited-modif-v-2-renamed || fail
-bk sfiles -c | bk delta $Q -yrenames - || fail
-bk commit $Q -yrenames
-cd "$HERE/clone"
-add edited-modif-v-1-renamed || fail
-add edited-modif-v-2-renamed || fail
-bk sfiles -c | bk delta $Q -yconflicts - || fail
-bk commit $Q -ycontent
-bk edit $Q edited-modif-v-1-renamed || fail
-echo 2 >edited-modif-v-1-renamed
-bk edit $Q edited-modif-v-2-renamed || fail
-echo 2 >edited-modif-v-2-renamed
-bk pull -v -s ../standalone >OUT 2>&1 && fail -f OUT
-bk grep -q 'edited-modif-v-1-renamed is modified' OUT || fail -f OUT
-bk grep -q 'edited-modif-v-2-renamed is modified' OUT || fail -f OUT
-chkoutput OUT || fail $msg
-chkblanks OUT 0 || fail $msg
-cd "$HERE"
 bk _rm -rf clone
 echo OK
 
@@ -3075,7 +2978,7 @@ cd ..
 mv product3 product3-renamed
 bk clone -v clone3 clone3-clone >OUT 2>&1 && fail -f OUT
 grep -q 'No other sources for ./comp1 known' OUT || fail -f OUT
-chkoutput OUT $PRODUCT comp1 || fail -f OUT $msg
+chkoutput OUT $PRODUCT || fail -f OUT $msg
 chkblanks OUT 0 || fail -f OUT $msg
 mv product3-renamed product3 || fail
 echo OK

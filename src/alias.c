@@ -148,7 +148,8 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 	comp	*cp;
 	hash	*aliasdb = 0;
 	char	*p, *alias = 0;
-	char	*comment = 0;
+	char	*cmtfile = 0;
+	FILE	*fcmt = 0;
 	char	**aliases = 0, *nlid = 0;
 	int	c, i;
 	int	reserved = 0, rc = 1, needunedit = 0;
@@ -228,6 +229,9 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 		goto write;
 
 	}
+	cmtfile = bktmp(0, "aliascmt");
+	fcmt = fopen(cmtfile, "wb");
+	assert(fcmt);
 	if (streq(cmd, "new") || streq(cmd, "set")) {
 		if (hash_fetchStr(aliasdb, alias)) {
 			if (streq(cmd, "new")) {
@@ -235,25 +239,48 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 				goto err;
 			}
 			if (dbRemove(aliasdb, alias, 0)) goto err;
-			comment = aprintf("Replace alias %s", alias);
+			fprintf(fcmt, "Set alias \"%s\" to:\n", alias);
 		} else {
-			comment = aprintf("Create alias %s", alias);
+			fprintf(fcmt,
+			    "Create alias \"%s\" containing:\n", alias);
 		}
 		if (dbAdd(aliasdb, alias, aliases)) goto err;
 	} else if (streq(cmd, "add")) {
 		unless (hash_fetchStr(aliasdb, alias)) {
-			comment = aprintf("Create alias %s", alias);
+			fprintf(fcmt,
+			    "Create alias \"%s\" containing:\n", alias);
 		} else {
-			comment = aprintf("Modify alias %s", alias);
+			fprintf(fcmt, "Add to alias \"%s\":\n", alias);
 		}
 		if (dbAdd(aliasdb, alias, aliases)) goto err;
 	} else if (streq(cmd, "rm")) {
 		if (dbRemove(aliasdb, alias, aliases)) goto err;
-		comment = aprintf("Delete alias %s", alias);
+		// LMXXX - I think this coude is not quite correct, if
+		// aliases has all values then we should just say we 
+		// deleted the alias, no?
+		if (aliases) {
+			fprintf(fcmt, "Delete from alias \"%s\":\n", alias);
+		} else {
+			fprintf(fcmt, "Delete alias \"%s\"\n", alias);
+		}
 	} else {
 		error("%s: unknown command %s", cmd ? cmd : "null");
 		goto err;
 	}
+	EACH(aliases) {
+		p = aliases[i];
+		if (isKey(p) && strchr(p, '|')) {
+			unless (cp = nested_findKey(n, p)) {
+				error("%s: no component: %s\n", prog, p);
+				goto err;
+			}
+			fprintf(fcmt, "\t./%s\n", cp->path);
+		} else {
+			fprintf(fcmt, "\t%s\n", p);
+		}
+	}
+	fclose(fcmt);
+	fcmt = 0;
 	/*
 	 * Write aliases file now before we try populating so that
 	 * consistancy checks will work when reading the file.
@@ -284,10 +311,12 @@ write:
 	if (strieq(alias, "HERE")) {
 		nested_writeHere(n);
 	} else {
-		if (dbWrite(n, aliasdb, comment, !opts->nocommit)) goto err;
+		if (dbWrite(n, aliasdb, cmtfile, !opts->nocommit)) goto err;
 	}
 	rc = 0;
 err:
+	if (fcmt) fclose(fcmt);
+	if (cmtfile) unlink(cmtfile);
 	if (nlid) {
 		if (nested_unlock(0, nlid)) {
 			error("%s", nested_errmsg());
@@ -303,7 +332,6 @@ err:
 	nested_free(n);
 	aliasdb_free(aliasdb);
 	freeLines(aliases, free);
-	if (comment) free(comment);
 	return (rc);
 }
 
@@ -537,13 +565,14 @@ dbWrite(nested *n, hash *aliasdb, char *comment, int commit)
 	hash_toFile(aliasdb, ALIASES);
 	sprintf(buf, "bk -P clean -q %s", ALIASES);
 	unless (ret = system(buf)) return (0); // if clean, okay
-	sprintf(buf, "bk -P delta -aqy'%s' %s", comment, ALIASES);
+	sprintf(buf, "bk -P delta -aqY'%s' %s", comment, ALIASES);
 	if (ret = system(buf)) return (ret);
 	if (commit) {
 		tmpfile = bktmp(0, "cmt");
 		sprintf(buf,
 		    "bk -P sfiles -pAC %s |"
-		    "bk -P sccslog -A -f -nd:C: - >'%s'", ALIASES, tmpfile);
+		    "bk -P sccslog -A -f -d'$each(:C:){(:C:)\n}' - >'%s'",
+		    ALIASES, tmpfile);
 		if (ret = system(buf)) return (ret);
 		sprintf(buf,
 		    "bk -P sfiles -pC %s |"

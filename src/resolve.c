@@ -134,7 +134,7 @@ resolve_main(int ac, char **av)
 			opts.autoOnly = 1;
 			break;
 		    case 310: // --batch
-			opts.automerge = opts.autoOnly = 1;
+			opts.batch = opts.automerge = opts.autoOnly = 1;
 			break;
 		    case 320: // --progress
 			opts.progress = 1;
@@ -583,6 +583,20 @@ missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 			}
 		} else {
 			/*
+			 * Check for product RESYNC and if none, assume
+			 * that a full abort has been done, and just
+			 * go home quietly. buf == full path to prod resync
+			 */
+			concat_path(buf,
+			    proj_root(proj_product(0)), ROOT2RESYNC);
+			unless (exists(buf)) {
+				proj_cd2product();
+				fprintf(stderr, "Aborting\n");
+				/* exit resolve_main() */
+				longjmp(cleanup_jmp, 1000+1);
+				/* NOT REACHED */
+			}
+			/*
 			 * No RESYNC and no ChangeSet file in the product's
 			 * RESYNC?  Just verify that the key is what we
 			 * expect.
@@ -668,14 +682,15 @@ nameOK(opts *opts, sccs *s)
 	if (streq(path, realname) &&
 	    (local = sccs_init(path, INIT_NOCKSUM|INIT_MUSTEXIST)) &&
 	    HAS_SFILE(local) && (local->proj == proj)) {
-		if (EDITED(local) && sccs_hasDiffs(local, SILENT, 1)) {
-			fprintf(stderr,
-			    "Warning: %s is modified, will not overwrite it.\n",
+		sccs_sdelta(local, sccs_ino(local), path);
+		sccs_sdelta(s, sccs_ino(s), buf);
+		if (EDITED(local) && streq(path, buf) &&
+		    sccs_hasDiffs(local, SILENT, 1)) {
+			fprintf(stderr, "Warning: "
+			    "%s is modified, will not overwrite it.\n",
 			    local->gfile);
 			opts->edited = 1;
 		}
-		sccs_sdelta(local, sccs_ino(local), path);
-		sccs_sdelta(s, sccs_ino(s), buf);
 		if (opts->debug) {
 		    fprintf(stderr,
 			"nameOK(%s) => paths match, keys %smatch\n",
@@ -1758,6 +1773,8 @@ pass3_resolve(opts *opts)
 	char	buf[MAXPATH], **conflicts, s_cset[] = CHANGESET;
 	int	n = 0, i;
 	int	mustCommit = 0, pc, pe;
+	project	*proj;
+	char	*prefix;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
 	opts->pass = 3;
@@ -1898,9 +1915,15 @@ err:		unless (opts->autoOnly) {
 		    "resolve: %d unresolved conflicts, "
 		    "starting manual resolve process for:\n",
 		    opts->hadConflicts);
-		EACH(opts->notmerged) {
-			fprintf(stderr, "\t%s\n", opts->notmerged[i]);
+		if (proj_comppath(0)) {
+			prefix = aprintf("%s/", proj_comppath(0));
+		} else {
+			prefix = strdup("");
 		}
+		EACH(opts->notmerged) {
+			fprintf(stderr, "\t%s%s\n", prefix, opts->notmerged[i]);
+		}
+		free(prefix);
 		freeLines(opts->notmerged, free);
 		opts->notmerged = 0;
 		chdir(RESYNC2ROOT);
@@ -1985,6 +2008,18 @@ nocommit:
 	 * Unless we are in textonly mode, let citool do all the work.
 	 */
 	unless (opts->textOnly) {
+		/*
+		 * if in product's RESYNC, then compute deep nest
+		 * XXX: for now, compute shallow + deep as sfiles.c:
+		 * print_components() calls uniqLines, so dups are okay.
+		 */
+		proj = proj_init(".");
+		assert(proj_isResync(proj));
+		if (proj_isProduct(proj)) {
+			system("bk sfiles -Rr > BitKeeper/log/deep-nests");
+		}
+		proj_free(proj);
+
 		if (opts->partial) {
 			char	*p, **av, **pfiles = 0;
 			int	j = 0;
@@ -2985,7 +3020,9 @@ resolve_cleanup(opts *opts, int what)
 	 * interactively and the user will be give a chance to fix the
 	 * problem.
 	 */
-	if (opts->autoOnly) what &= ~(CLEAN_ABORT|CLEAN_PENDING);
+	if (!opts->batch && opts->autoOnly) {
+		what &= ~(CLEAN_ABORT|CLEAN_PENDING);
+	}
 
 	unless (exists(ROOT2RESYNC)) chdir(RESYNC2ROOT);
 	unless (exists(ROOT2RESYNC)) {

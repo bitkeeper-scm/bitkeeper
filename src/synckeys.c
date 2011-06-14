@@ -625,7 +625,8 @@ synckeys(remote *r, sccs *s, int flags, FILE *fout)
 	if (i < 0) {
 		switch (i) {
 		    case -2:	/* needed to force bkd unlock */
-			getMsg("unrelated_repos", 0, '=', stderr);
+			getMsg("unrelated_repos",
+			    "synchronize with", '=', stderr);
 			i = -4;	/* -2 used for locking already */
 			break;
 		    case -3:	/* empty dir */

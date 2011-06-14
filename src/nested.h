@@ -75,6 +75,7 @@ typedef struct {
 	u32	product:1;		// this is the product
 	u32	remotePresent:1;	// scratch for remote present bit
 	u32	pending:1;		// has pending csets not in product
+	u32	useLowerKey:1;		// tell populate to use lowerkey
 } comp;
 
 struct nested {
@@ -113,10 +114,14 @@ typedef struct {
 	u32	checked:1;	/* have we actually connected? */
 	u32	checkedGood:1;	/* was URL probe successful this time? */
 	u32	noconnect:1;	/* probeURL failed for connection problem */
+	u32	from:1;		/* if set, try this one first */
+	u32	parent:1;	/* if set, try this one first (or next) */
 
 	// From URLINFO file, extras are ignored
 	time_t	time;		/* 1 time of last successful connection */
-	int	gate;		/* 2 is it a gate?*/
+	int	gate;		/* 2 do we think it's a gate? (checked == 0)
+				 * or do we know it's a gate (checked == 1)
+				 */
 	char	*repoID;	/* 3 */
 	char	**extra;	/* extra data we don't parse */
 } urlinfo;
@@ -199,6 +204,7 @@ void	urlinfo_set(nested *n, char *url, int gate, char *repoID);
 urlinfo	*urlinfo_get(nested *n, char *url);
 int	urlinfo_write(nested *n);
 void	urlinfo_free(nested *n);
+void	urlinfo_flushCache(nested *n);
 
 /* clone.c */
 char	**clone_defaultAlias(nested *n);

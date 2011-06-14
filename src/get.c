@@ -318,7 +318,7 @@ err:			sccs_free(s);
 			if (s->cachemiss && !recursed) {
 				if (bp_proj && (s->proj != bp_proj)) {
 					if (bp_fetchkeys(prog, bp_proj,
-						(flags & SILENT),
+						(flags & SILENT) ? 0 : 1,
 						bp_keys, bp_todo)) {
 						fprintf(stderr,
 						    "%s: failed to fetch "
@@ -345,7 +345,7 @@ err:			sccs_free(s);
 			unless (BEEN_WARNED(s)) {
 				verbose((stderr,
 				    "%s of %s failed, skipping it.\n",
-				    prog, name));
+				    prog, s->gfile));
 			}
 			errors = 1;
 		}
@@ -366,7 +366,7 @@ next:		sccs_free(s);
 	if (realNameCache) mdbm_close(realNameCache);
 	if (bp_proj) {
 		if (bp_fetchkeys(prog, bp_proj,
-			(flags & SILENT), bp_keys, bp_todo)) {
+			(flags & SILENT) ? 0 : 1, bp_keys, bp_todo)) {
 			fprintf(stderr, "%s: failed to fetch BAM data\n", prog);
 			return (1);
 		}

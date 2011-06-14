@@ -5,24 +5,31 @@ int
 pending_main(int ac, char **av)
 {
 	char	buf[MAXLINE], *tmp;
-	int	c, quiet = 0;
+	int	c, nested, quiet = 0, standalone = 0;
 	char	*dspec =
-":COMPONENT::DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\\n\
+":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\\n\
 $each(:C:){  (:C:)\\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n";
+	longopt	lopts[] = {
+		{ "standalone", 'S' },		/* new -S option */
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "q", 0)) != -1) { 
+	while ((c = getopt(ac, av, "qS", lopts)) != -1) { 
 		switch (c) {
+		    case 'S': standalone = 1; break;
 		    case 'q': quiet = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
 	if (av[optind]) chdir(av[optind]);
-	if (proj_cd2root()) {
-		fprintf(stderr, "pending: cannot find project root\n");
-		exit(1);
-	}
+	nested = bk_nested2root(standalone);
 	tmp = bktmp(0, "pending");
-	sysio(0, tmp, 0, "bk", "sfiles", "-pCA", SYS);
+	unless (nested) {
+		sysio(0, tmp, 0, "bk", "sfiles", "-pA", SYS);
+	} else {
+		sprintf(buf, "--relpath=%s", proj_root(0));
+		sysio(0, tmp, 0, "bk", "-e", "sfiles", "-pA", buf, SYS);
+	}
 	unless (size(tmp) > 0) {
 		unlink(tmp);
 		free(tmp);
@@ -30,7 +37,8 @@ $each(:C:){  (:C:)\\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n";
 	}
 	unless (quiet) {
 		sprintf(buf,
-		    "bk prs -h '-d%s' - < '%s' | %s", dspec, tmp, pager());
+		    "bk prs -h '-d%s%s' - < '%s' | %s",
+		    (nested ? ":COMPONENT:" : ""), dspec, tmp, pager());
 		system(buf);
 	}
 	unlink(tmp);

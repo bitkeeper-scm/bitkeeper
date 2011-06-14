@@ -173,10 +173,12 @@ called before a changeset is committed.
 exit 0 allows the commit. 
 .li
 exit 1 fails the commit. If the commit was initiated from citool, 
-citool will not exit. This allows the user to try the commit again. 
+citool will exit.
 See example below.
 .li
-exit 2 Reserved for future use (see pre-delta) and should not be used.
+exit 2 also fails the commit.  However, if it was initiated from citool,
+citool will not exit.  This allows the user to try the commit again.
+See example below.
 .EV post-commit
 called after a changeset is committed or attempted to be committed.
 .li
@@ -618,6 +620,14 @@ fi
 # BitKeeper/trigger/pre-commit.cset_comments
 #
 
+# only run in the product (or a traditional repo)
+bk repotype -q
+test $? -eq 1 && exit 0
+
+# if this is a merge, we are in the RESYNC directory
+# since it is not a user cset, ignore
+test "`basename "$BK_ROOT"`" = "RESYNC" && exit 0
+
 grep -q 'BUGID:' $BK_COMMENTFILE && exit 0
 
 msg="A 'BUGID:' field is needed in the checkin comments"
@@ -627,10 +637,14 @@ msg="A 'BUGID:' field is needed in the checkin comments"
 
 #/opt/bugtrack/bin/bugviewer 'http://server.host.com/bugs?status=open' &
 
-# Ask user if he needs to enter a bugid.  returning a non-zero exit
-# code from the trigger will allow user to retry the commit from
+
+# Ask user if he needs to enter a bugid.  returning an exit code of 2
+# from the trigger will allow user to retry the commit from
 # within citool.
-bk prompt -y"Reenter bugid" -n"No bugid is required" "$msg" && exit 1
+bk prompt -y"Reenter bugid" -n"Force commit with no bugid" "$msg" && exit 2
+
+# If you wish to provide the option to fail out of citool, use this.
+#bk prompt -y"Abort commit" -n"Force commit with no bugid" "$msg" && exit 1
 
 exit 0
 .DE

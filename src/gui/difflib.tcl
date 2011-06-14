@@ -10,51 +10,28 @@ proc createDiffWidgets {w} \
 	#set w(diffwin) .diffwin
 	#set w(leftDiff) $w(diffwin).left.text
 	#set w(RightDiff) $w(diffwin).right.text
-	frame .diffs
-	    frame .diffs.status
-		frame .diffs.status.lstat
-		frame .diffs.status.llnum
-		frame .diffs.status.mstat
-		frame .diffs.status.rstat
-		frame .diffs.status.rlnum
+	ttk::frame .diffs
+	    ttk::frame .diffs.status
+		ttk::separator .diffs.status.topsep -orient horizontal
+		ttk::label .diffs.status.l -font $gc($app.fixedFont) -anchor c
+		ttk::separator .diffs.status.s1 -orient vertical
+		ttk::label .diffs.status.r -font $gc($app.fixedFont)  -anchor c
+		ttk::separator .diffs.status.s2 -orient vertical
+		ttk::label .diffs.status.middle -font $gc($app.fixedFont)
+		ttk::separator .diffs.status.bottomsep -orient horizontal
 
-		label .diffs.status.l \
-		    -background $gc($app.oldColor) \
-		    -font $gc($app.fixedFont) \
-		    -relief sunken -borderwid 2
-		label .diffs.status.l_lnum \
-		    -background $gc($app.oldColor) \
-		    -font $gc($app.fixedFont) \
-		    -relief sunken -borderwid 2
-		label .diffs.status.r \
-		    -background $gc($app.newColor) \
-		    -font $gc($app.fixedFont) \
-		    -relief sunken -borderwid 2
-		label .diffs.status.r_lnum \
-		    -background $gc($app.oldColor) \
-		    -font $gc($app.fixedFont) \
-		    -relief sunken -borderwid 2
-		label .diffs.status.middle \
-		    -foreground $gc($app.textFG) \
-		    -background $gc($app.statusColor) \
-		    -font $gc($app.fixedFont) \
-		    -wid 15 \
-		    -relief sunken -borderwid 2
-		pack .diffs.status \
-		    .diffs.status.lstat \
-		    .diffs.status.mstat \
-		    .diffs.status.rstat \
-		    -side left -expand true -fill x
-		pack configure .diffs.status.lstat -anchor w
-		pack configure .diffs.status.rstat -anchor e
-		pack .diffs.status.l -in .diffs.status.lstat \
-		    -expand 1 -fill x -anchor w
-		pack .diffs.status.middle -in .diffs.status.mstat \
-		    -expand 1 -fill x
-		pack .diffs.status.r -in .diffs.status.rstat \
-		    -expand 1 -fill x -anchor e
-		pack propagate .diffs.status.lstat 0
-		pack propagate .diffs.status.rstat 0
+		grid .diffs.status.topsep -row 0 -column 0 -sticky ew \
+		    -columnspan 5
+		grid .diffs.status.l -row 1 -column 0 -sticky ew
+		grid .diffs.status.s1 -row 1 -column 1 -sticky ns
+		grid .diffs.status.middle -row 1 -column 2 -padx 10
+		grid .diffs.status.s2 -row 1 -column 3 -sticky ns
+		grid .diffs.status.r -row 1 -column 4 -sticky ew
+		grid .diffs.status.bottomsep -row 2 -column 0 -sticky ew \
+		    -columnspan 5
+
+		grid columnconfigure .diffs.status .diffs.status.l -weight 1
+		grid columnconfigure .diffs.status .diffs.status.r -weight 1
 
 	    text .diffs.left \
 		-width $gc($app.diffWidth) \
@@ -79,24 +56,28 @@ proc createDiffWidgets {w} \
 	    ttk::scrollbar .diffs.xscroll -orient horizontal -command xscroll
 	    ttk::scrollbar .diffs.yscroll -orient vertical -command yscroll
 
-	    grid .diffs.status -row 0 -column 0 -columnspan 5 -stick ew
+	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
 	    grid .diffs.left -row 1 -column 0 -sticky nsew
 	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
 	    grid .diffs.right -row 1 -column 2 -sticky nsew
-	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
-	    grid .diffs.xscroll -columnspan 5
-	    grid columnconfigure .diffs.status 0 -weight 1
-	    grid columnconfigure .diffs.status 2 -weight 1
-	    grid columnconfigure .diffs 0 -weight 1
-	    grid columnconfigure .diffs 2 -weight 1
+	    grid .diffs.xscroll -row 2 -column 0 -sticky ew -columnspan 3
+
+	    grid rowconfigure    .diffs .diffs.left -weight 1
+	    grid columnconfigure .diffs .diffs.left -weight 1
+	    grid columnconfigure .diffs .diffs.right -weight 1
 
 	    attachScrollbar .diffs.xscroll .diffs.left .diffs.right
 	    attachScrollbar .diffs.yscroll .diffs.left .diffs.right
 
-	    .diffs.left tag configure diff -background $gc($app.oldColor)
-	    .diffs.right tag configure diff -background $gc($app.newColor)
+	    .diffs.left  tag configure diff -background $gc($app.diffColor)
+	    .diffs.right tag configure diff -background $gc($app.diffColor)
+	    .diffs.left  tag configure d -background $gc($app.activeDiffColor)
+	    .diffs.right tag configure d -background $gc($app.activeDiffColor)
+	    .diffs.left  tag configure highlight -background $gc($app.highlight)
+	    .diffs.right tag configure highlight -background $gc($app.highlight)
+	    .diffs.right tag configure empty -background black
+	    .diffs.left  tag configure empty -background black
 	    bind .diffs <Configure> { computeHeight "diffs" }
-	    bind .diffs.status <Configure> { reconfigureStatus }
 }
 
 proc next {} \
@@ -110,11 +91,6 @@ proc next {} \
 	}
 	if {$diffCount == 0} {
 		nextFile
-		return
-	}
-	if {[info exists DiffsEnd($lastDiff)] &&
-	    ([visible $DiffsEnd($lastDiff)] == 0)} {
-		Page "yview" 1 0
 		return
 	}
 	if {$lastDiff >= $diffCount} {
@@ -139,19 +115,12 @@ proc prev {} \
 		prevFile
 		return
 	}
-	if {[info exists Diffs($lastDiff)] && 
-	    ([visible $Diffs($lastDiff)] == 0)} {
-		Page "yview" -1 0
-		return
-	}
 	if {$lastDiff <= 1} {
 		if {[prevFile] == 0} {return}
 		set lastDiff $diffCount
 		dot
-		while {[info exists Diffs($lastDiff)] &&
-		       ([visible $DiffsEnd($lastDiff)] == 0)} {
-			Page "yview" 1 0
-		}
+		.diffs.left  see $DiffsEnd($lastDiff)
+		.diffs.right see $DiffsEnd($lastDiff)
 		return
 	}
 	incr lastDiff -1
@@ -196,12 +165,10 @@ proc highlightDiffs {start stop} \
 {
 	global	gc app
 
-	.diffs.left tag delete d
-	.diffs.right tag delete d
-	.diffs.left tag add d $start $stop
-	.diffs.right tag add d $start $stop
-	.diffs.left tag configure d -font $gc($app.fixedBoldFont)
-	.diffs.right tag configure d -font $gc($app.fixedBoldFont)
+	.diffs.left tag remove d 1.0 end
+	.diffs.right tag remove d 1.0 end
+	.diffs.left tag add d $start $stop+1c
+	.diffs.right tag add d $start $stop+1c
 }
 
 proc topLine {} \
@@ -214,127 +181,19 @@ proc scrollDiffs {start stop} \
 {
 	global	gc app
 
-	# Either put the diff beginning at the top of the window (if it is
-	# too big to fit or fits exactly) or
-	# center the diff in the window (if it is smaller than the window).
-	set Diff [lindex [split $start .] 0]
-	set End [lindex [split $stop .] 0]
-	set size [expr {$End - $Diff}]
-	# Center it.
-	if {$size < $gc($app.diffHeight)} {
-		set j [expr {$gc($app.diffHeight) - $size}]
-		set j [expr {$j / 2}]
-		set i [expr {$Diff - $j}]
-		if {$i < 0} {
-			set want 1
-		} else {
-			set want $i
-		}
-	} else {
-		set want $Diff
-	}
+	if {[visible $start-1line] && [visible $stop+1line]} { return }
 
-	set top [topLine]
-	set move [expr {$want - $top}]
-	.diffs.left yview scroll $move units
-	.diffs.right yview scroll $move units
+	# Put the diff at the top minus the top margin.
+	set top   [topLine]
+	set line  [lindex [split $start .] 0]
+	set delta [expr {$line - $top - $gc($app.topMargin)}]
+
+	.diffs.left yview scroll $delta units
+	.diffs.right yview scroll $delta units
 	.diffs.right xview moveto 0
 	.diffs.left xview moveto 0
 	.diffs.right see $start
 	.diffs.left see $start
-}
-
-proc chunks {n} \
-{
-	global	Diffs DiffsEnd nextDiff
-
-	if {![info exists nextDiff]} {return}
-	set l [.diffs.left index "end - 1 char linestart"]
-	set Diffs($nextDiff) $l
-	set e [expr {$n + [lindex [split $l .] 0]}]
-	set DiffsEnd($nextDiff) "$e.0"
-	incr nextDiff
-}
-
-proc same {r l n} \
-{
-	global diffCount
-
-	set lines {}
-	while {$n > 0} {
-		gets $l line
-		lappend lines $line
-		gets $r line
-		incr n -1
-	}
-	set l [join $lines "\n"]
-	.diffs.left insert end "$l\n"
-	.diffs.right insert end "$l\n";
-}
-
-proc changed {r l n} \
-{
-	global diffCount
-
-	chunks $n
-	set llines {}
-	set rlines {}
-	while {$n > 0} {
-		gets $l line
-		lappend llines $line
-		gets $r line
-		lappend rlines $line
-		incr n -1
-	}
-	set lc [join $llines "\n"]
-	set rc [join $rlines "\n"]
-	.diffs.left insert end "$lc\n" diff
-	.diffs.right insert end "$rc\n" diff
-	set loc [.diffs.right index end]
-	.diffs.right mark set diff-${diffCount} "$loc - 1 line"
-	.diffs.right mark gravity diff-${diffCount} left
-}
-
-proc left {r l n} \
-{
-	global diffCount
-
-	chunks $n
-	set lines {}
-	set newlines ""
-	while {$n > 0} {
-		gets $l line
-		lappend lines $line
-		set newlines "$newlines\n"
-		incr n -1
-	}
-	set lc [join $lines "\n"]
-	.diffs.left insert end "$lc\n" diff
-	.diffs.right insert end "$newlines" 
-	set loc [.diffs.right index end]
-	.diffs.right mark set diff-${diffCount} "$loc - 1 line"
-	.diffs.right mark gravity diff-${diffCount} left
-}
-
-proc right {r l n} \
-{
-	global diffCount
-
-	chunks $n
-	set lines {}
-	set newlines ""
-	while {$n > 0} {
-		gets $r line
-		lappend lines $line
-		set newlines "$newlines\n"
-		incr n -1
-	}
-	set rc [join $lines "\n"]
-	.diffs.left insert end "$newlines" 
-	.diffs.right insert end "$rc\n" diff
-	set loc [.diffs.right index end]
-	.diffs.right mark set diff-${diffCount} "$loc - 1 line"
-	.diffs.right mark gravity diff-${diffCount} left
 }
 
 # Get the sdiff output. Make sure it contains no \r's from fucking DOS.
@@ -385,28 +244,6 @@ proc sdiff {L R} \
 	return [open "| $sdiffw \"$dotL\" \"$dotR\""]
 }
 
-#
-# Show the selected line from the left and the right diff 
-# windows above and below one another in the bottom frame
-# so that it is easy to see how the lines differ
-#
-proc stackedDiff {win x y b} \
-{
-	set curLine [$win index "@$x,$y linestart"]
-	#displayMessage "In stackedDiff win=($win) x=($x) y=($y) c=($curLine)"
-	if {$curLine == ""} {return}
-	set lline [.diffs.left get $curLine "$curLine lineend"]
-	set rline [.diffs.right get $curLine "$curLine lineend"]
-	set lnum [lindex [split $curLine "."] 0]
-	.line.diff configure -state normal
-	.line.diff delete 1.0 end
-	.line.diff insert end "line $lnum:\n"
-	.line.diff insert end "< $lline\n"
-	.line.diff insert end "> $rline\n"
-	.line.diff configure -state disabled
-	return
-}
-
 # Displays the flags, modes, and path for files so that the
 # user can tell whether the left and right file have been 
 # modified, even when the diffs line shows 0 diffs
@@ -416,7 +253,10 @@ proc stackedDiff {win x y b} \
 proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 {
 	
-	global app gc
+	global	app gc diffInfo
+
+	set diffInfo(lfile) $lfile
+	set diffInfo(rfile) $rfile
 
 	# Use to keep track of whether a file is a bk file or not so that 
 	# we don't bother trying to diff the info lines if not needed.
@@ -484,6 +324,12 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	return [list $fnames(left) $fnames(right)]
 }
 
+proc md52rev {file md5} \
+{
+	if {[catch {exec bk prs -r$md5 -d:REV: $file} res]} { return $md5 }
+	return [lindex [split $res \n] end]
+}
+
 # L and R: Names of the left and right files. Might be a temporary
 #          file name with the form like: '/tmp/difftool.tcl@1.30-1284'
 #
@@ -491,10 +337,9 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 #
 proc readFiles {L R {O {}}} \
 {
-	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
 	global  lname rname finfo app gc
-	global  rBoth rDiff rSame nextBoth nextSame maxBoth maxDiff maxSame
-	global  types saved done Marks nextMark outputFile
+	global	diffCount lastDiff rmList
+	global	Diffs DiffsEnd diffInfo
 
 	if {![file exists $L]} {
 		displayMessage "Left file ($L) does not exist"
@@ -518,8 +363,14 @@ proc readFiles {L R {O {}}} \
 	} elseif {[info exists lname] && ($lname != "")} {
 		set lt [clock format [file mtime $L] -format "%X %d%b%y"]
 		set rt [clock format [file mtime $R] -format "%X %d%b%y"]
-		.diffs.status.l configure -text "$lname ($lt)"
-		.diffs.status.r configure -text "$rname ($rt)"
+		lassign [split $lname @|] file rev
+		if {[info exists diffInfo(lfile)]} { set file $diffInfo(lfile) }
+		set rev [md52rev $file $rev]
+		.diffs.status.l configure -text "$file $rev ($lt)"
+		lassign [split $rname @|] file rev
+		if {[info exists diffInfo(rfile)]} { set file $diffInfo(rfile) }
+		set rev [md52rev $file $rev]
+		.diffs.status.r configure -text "$file $rev ($rt)"
 		balloon_help .diffs.status.l "$lname\n($lt)"
 		balloon_help .diffs.status.r "$rname\n($rt)"
 		.diffs.status.middle configure -text "... Diffing ..."
@@ -532,106 +383,92 @@ proc readFiles {L R {O {}}} \
 		.diffs.status.r configure -text "$r"
 		.diffs.status.middle configure -text "... Diffing ..."
 	}
-	# fmtool stuff
-	if {![catch {.merge.t delete 1.0 end} err]} {
-		    .merge.menu.restart config -state normal
-		    .merge.menu.skip config -state normal
-		    .merge.menu.left config -state normal
-		    .merge.menu.right config -state normal
-		    # difflib does the delete in displayInfo
-		    .diffs.left delete 1.0 end
-		    .diffs.right delete 1.0 end
-	}; #end fmtool stuff
 
 	. configure -cursor watch
 	update idletasks
-	set lineNo 1; set diffCount 0; set nextDiff 1; set saved 0
-	array set DiffsEnd {}
-	array set Diffs {}
-	set Marks {}; set nextMark 0
-	set rBoth {}; set rDiff {}; set rSame {}
-	set types {}
-	set n 1
-	set done 0
-	set l [open $L r]
-	set r [open $R r]
-	set d [sdiff $L $R]
-	if {$O != ""} {set outputFile $O}
 
-	gets $d last
-	if {[regexp {^Binary files.*differ$} $last]} {
+	set d [sdiff $L $R]
+	set data [read $d]
+	catch {close $d}
+
+	set lastDiff 0
+	if {[regexp {^Binary files.*differ} $data]} {
 		.diffs.left tag configure warn -background $gc($app.warnColor)
 		.diffs.right tag configure warn -background $gc($app.warnColor)
 		.diffs.left insert end "Binary Files Differ\n" warn
 		.diffs.right insert end "Binary Files Differ\n" warn
 		. configure -cursor left_ptr
-		set lastDiff 0
-		set done 0
 		.diffs.status.middle configure -text "Differences"
-		catch {close $d}
+		.diffs.left configure -state disabled
+		.diffs.right configure -state disabled
 		return
 	}
-	if {$last == "" || $last == " "} { set last "S" }
-	while { [gets $d diff] >= 0 } {
-		incr lineNo 1
-		if {$diff == "" || $diff == " "} { set diff "S" }
-		if {$diff == $last} {
-			incr n 1
-		} else {
-			switch $last {
-			    "S"	{ same $r $l $n }
-			    "|"	{ incr diffCount 1; changed $r $l $n }
-			    "<"	{ incr diffCount 1; left $r $l $n }
-			    ">"	{ incr diffCount 1; right $r $l $n }
-			}
-			lappend types $last
-			# rBoth is built up this way because the tags stuff
-			# collapses adjacent tags together.
-			set start [expr {$lineNo - $n}]
-			lappend rBoth "$start.0" "$lineNo.0"
-			# Ditto for diffs
-			if {$last != "S"} {
-				lappend rDiff "$start.0" "$lineNo.0"
-			} else {
-				lappend rSame "$start.0" "$lineNo.0"
-			}
-			set n 1
-			set last $diff
+
+	set l [open $L r]
+	set r [open $R r]
+	set left  .diffs.left
+	set right .diffs.right
+
+	set lineNo 1
+	set diffCount 0
+	set blockStart 1
+	set lineCount [lindex [split [$left index end-1c] .] 0]
+	foreach diff [split $data \n] {
+		if {$diff eq "" || $diff eq " "} { set diff "S" }
+
+		switch -- $diff {
+		    "S" {
+			## same
+			$left  insert end [gets $l]\n
+			$right insert end [gets $r]\n
+		    }
+		    "|" {
+			## changed
+			$left  insert end [gets $l]\n diff
+			$right insert end [gets $r]\n diff
+		    }
+		    "<" {
+			## left
+			$left  insert end [gets $l]\n diff
+			$right  insert end " " empty
+			$right insert end \n diff
+		    }
+		    ">" {
+			## right
+			$left  insert end " " empty
+			$left  insert end \n diff
+			$right insert end [gets $r]\n diff
+		    }
 		}
+
+		if {![info exists last]} { set last $diff }
+		if {($diff ne $last) && ($diff eq "S" || $last eq "S")} {
+			## We've changed diff blocks.  We only want to
+			## mark the previous block if it wasn't a Same block.
+			if {$last ne "S"} {
+				incr diffCount
+				set blockEnd [expr {$lineCount - 1}]
+				set Diffs($diffCount) $blockStart.0
+				set DiffsEnd($diffCount) $blockEnd.end
+				highlightSideBySide .diffs.left .diffs.right \
+				    $blockStart.0 $blockEnd.end
+			}
+			set blockStart $lineCount
+		}
+
+		incr lineNo
+		incr lineCount
+		set last $diff
 	}
-	switch $last {
-	    "S"	{ same $r $l $n }
-	    "|"	{ incr diffCount 1; changed $r $l $n }
-	    "<"	{ incr diffCount 1; left $r $l $n }
-	    ">"	{ incr diffCount 1; right $r $l $n }
-	}
-	lappend types $last
-	incr lineNo 1
-	# rBoth is built up this way because the tags stuff
-	# collapses adjacent tags together.
-	set start [expr {$lineNo - $n}]
-	lappend rBoth "$start.0" "$lineNo.0"
-	# Ditto for diffs
-	if {$last != "S"} {
-		lappend rDiff "$start.0" "$lineNo.0"
-	} else {
-		lappend rSame "$start.0" "$lineNo.0"
-	}
-	catch {.merge.menu.l configure -text "$done / $diffCount resolved"}
+
 	catch {close $r}
 	catch {close $l}
-	catch {close $d}
-	if {"$rmList" != ""} {
+
+	if {[llength $rmList]} {
 		foreach rm $rmList {
 			catch {file delete $rm}
 		}
 	}
-	set nextSame 0
-	set nextDiff 0
-	set nextBoth 0
-	set maxSame [expr {[llength $rSame] - 2}]
-	set maxDiff [expr {[llength $rDiff] - 2}]
-	set maxBoth [expr {[llength $rBoth] - 2}]
 
 	.diffs.left configure -state disabled
 	.diffs.right configure -state disabled
@@ -643,11 +480,6 @@ proc readFiles {L R {O {}}} \
 		set lastDiff 1
 		dot
 	} else {
-		set lastDiff 0
-		set done 0
-		#displayMessage "done=($done) diffCount=($diffCount)"
-		# XXX: Really should check to see whether status lines
-		# are different
 		.diffs.status.middle configure -text "No differences"
 	}
 } ;# readFiles
@@ -767,24 +599,6 @@ proc page {w xy dir one} \
 proc fontHeight {f} \
 {
 	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
-}
-
-proc reconfigureStatus {} \
-{
-	global gc app
-
-	set w [winfo width .diffs.status]
-	set mw [winfo width .diffs.status.mstat]
-	set w [expr {$w - $mw}]
-	set linfo [expr $w * .45]
-	set rinfo [expr $w * .45]
-	set minfo [expr $w * .10]
-	set fh [expr [fontHeight [.diffs.status.l cget -font]] + 6]
-	#puts stderr "mw=($mw) w=$w linfo=($linfo) rinfo=$rinfo minfo=($minfo)"
-	#puts [pack info .diffs.status.lstat]
-	.diffs.status.lstat configure -width $linfo -height $fh
-	#.diffs.status.mstat configure $minfo -height 20
-	.diffs.status.rstat configure -width $rinfo -height $fh
 }
 
 proc computeHeight {w} \

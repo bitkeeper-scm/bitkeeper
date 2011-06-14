@@ -237,7 +237,7 @@ rclone_ensemble(remote *r)
 		} else {
 			name = c->path;
 			vp = addLine(vp, strdup(c->path));
-			dstpath = key2path(c->deltakey, 0);
+			dstpath = key2path(c->deltakey, 0, 0);
 			vp = addLine(vp, aprintf("%s/%s", url,
 				dirname(dstpath)));
 			free(dstpath);

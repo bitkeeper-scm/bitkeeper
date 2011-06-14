@@ -1,0 +1,93 @@
+echo $N Set up the repos.............................................$NL
+nested parent
+cd gcc
+touch a b c real-collide null-collide
+bk new $Q a b c real-collide null-collide
+cd ..
+bk commit $Q -yfiles
+bk clone $Q . ../copy
+cd gcc
+bk edit $Q real-collide null-collide
+echo parent > real-collide
+bk delta $Q -fynull real-collide null-collide
+bk mv c d
+bk mv b c
+bk mv a b
+bk mv d a
+cd ..
+bk commit $Q -yfiles
+cd ../copy
+cd gcc
+bk edit $Q real-collide null-collide
+echo copy > real-collide
+bk delta $Q -fynull real-collide null-collide
+bk mv a d
+bk mv b a
+bk mv c b
+bk mv d c
+cd ..
+bk commit $Q -yfiles
+bk pull $Q -R 
+echo OK
+
+echo $N Test out conflicts with various verbosity ...................$NL
+REAL=`bk getuser -r`
+bk conflicts > GOT
+cat <<EOF > WANT
+gcc/a (renamed) LOCAL=c REMOTE=b
+gcc/b (renamed) LOCAL=a REMOTE=c
+gcc/c (renamed) LOCAL=b REMOTE=a
+gcc/real-collide
+EOF
+cmpfiles WANT GOT
+#
+bk conflicts -v > GOT
+cat <<EOF > WANT
+    GCA path:     gcc/a
+    Local path:   gcc/c
+    Remote path:  gcc/b
+    GCA path:     gcc/b
+    Local path:   gcc/a
+    Remote path:  gcc/c
+    GCA path:     gcc/c
+    Local path:   gcc/b
+    Remote path:  gcc/a
+gcc/real-collide has 1 conflict block
+EOF
+cmpfiles WANT GOT
+#
+bk conflicts -vv > GOT
+cat <<EOF > WANT
+    GCA path:     gcc/a
+    Local path:   gcc/c
+    Remote path:  gcc/b
+    GCA path:     gcc/b
+    Local path:   gcc/a
+    Remote path:  gcc/c
+    GCA path:     gcc/c
+    Local path:   gcc/b
+    Remote path:  gcc/a
+gcc/real-collide has 1 conflict block
+   1 local lines by bk/$REAL
+   1 remote lines by bk/$REAL
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test out conflicts with command line file named .............$NL
+# The argument is probed in each component as though path relative
+# from the component root.  That's odd.  It is also the remote's
+# name space.  Anyway, demo it:
+bk conflicts a > GOT
+cat <<EOF > WANT
+gcc/c (renamed) LOCAL=b REMOTE=a
+EOF
+cmpfiles WANT GOT
+bk conflicts -v a > GOT
+cat <<EOF > WANT
+    GCA path:     gcc/c
+    Local path:   gcc/b
+    Remote path:  gcc/a
+EOF
+cmpfiles WANT GOT
+echo OK

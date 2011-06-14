@@ -218,8 +218,8 @@ proc skip {} \
 	.merge.t see $Here
 }
 
-proc useLeft {} { global gc; useDiff "left" $gc(fm.oldColor) }
-proc useRight {} { global gc; useDiff "right" $gc(fm.newColor) }
+proc useLeft {} { global gc; useDiff "left" $gc(fm.diffColor) }
+proc useRight {} { global gc; useDiff "right" $gc(fm.diffColor) }
 
 proc saveMark {which} \
 {
@@ -276,24 +276,19 @@ proc highlightDiffs {} \
 {
 	global	rDiff gc app
 
-	.diffs.left tag delete d
-	.diffs.right tag delete d
 	foreach {Diff End} $rDiff {
-		.diffs.left tag add d $Diff $End
-		.diffs.right tag add d $Diff $End
-		.diffs.left tag add diff $Diff $End
+		.diffs.left  tag add diff $Diff $End
 		.diffs.right tag add diff $Diff $End
+		highlightSideBySide .diffs.left .diffs.right $Diff $End
 	}
-	.diffs.left tag configure d \
-	    -foreground $gc($app.textFG) \
-	    -font $gc(fm.activeOldFont)
-	.diffs.right tag configure d \
-	    -foreground $gc($app.textFG) \
-	    -font $gc(fm.activeNewFont)
-	.diffs.left tag configure diff \
-	    -background $gc(fm.oldColor)
-	.diffs.right tag configure diff \
-	    -background $gc(fm.newColor)
+	.diffs.left  tag configure d -background $gc(fm.activeDiffColor)
+	.diffs.right tag configure d -background $gc(fm.activeDiffColor)
+	.diffs.left  tag configure diff -background $gc(fm.diffColor)
+	.diffs.right tag configure diff -background $gc(fm.diffColor)
+	.diffs.left  tag configure highlight -background $gc(fm.highlight)
+	.diffs.right tag configure highlight -background $gc(fm.highlight)
+	.diffs.left  tag raise highlight
+	.diffs.right tag raise highlight
 }
 
 # overrides 'dot' from difflib.tcl
@@ -340,14 +335,10 @@ proc scrollDiffs {where} \
 	}
 
 	# Highlight the diff in question so that we can see it.
-	.diffs.left tag delete highLight
-	.diffs.right tag delete highLight
-	.diffs.left tag add highLight $Diff $End
-	.diffs.right tag add highLight $Diff $End
-	.diffs.left tag configure highLight -font $gc(fm.fixedBoldFont) \
-	    -foreground $gc($app.textFG) -background $gc(fm.activeLeftColor)
-	.diffs.right tag configure highLight -font $gc(fm.fixedBoldFont) \
-	    -foreground $gc($app.textFG) -background $gc(fm.activeRightColor)
+	.diffs.left  tag remove d 1.0 end
+	.diffs.right tag remove d 1.0 end
+	.diffs.left  tag add d $Diff $End
+	.diffs.right tag add d $Diff $End
 }
 
 proc resolved {n} \

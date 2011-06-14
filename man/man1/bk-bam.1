@@ -10,6 +10,7 @@ bk bam \- BAM utility routines
 .[B] \-an
 .br
 .B bk bam convert
+.[ARG] size
 .br
 .B bk bam pull
 .[B] \-aq
@@ -19,11 +20,15 @@ bk bam \- BAM utility routines
 .[B] \-q
 .[ARG] URL
 .br
-.B bk bam reload
-.br
 .B bk bam reattach
 .[B] \-q
 .ARG -
+.br
+.B bk bam reload
+.br
+.B bk bam repair
+.[B] \-q
+.[OPTreq] \-@ URL
 .br
 .B bk bam server
 .[B] \-flqrs
@@ -77,10 +82,14 @@ be run in a BAM server since the server may have BAM files referenced
 only by clients.
 .tp
 .B convert
-Convert the set of specified files from traditional binary encoding to BAM
-encoding.
+Convert all files from traditional binary encoding to BAM encoding.
 Only files greater than a certain size are converted since small files 
 perform better with the traditional encoding.
+The size, which defaults to 64K, is compared against the initial version
+of each binary file, and if that version is greater than the size the file
+is converted.
+Note that the conversion may be run more than once, but the size used
+can only decrease, it may not increase.
 .tp
 .B pull
 This interface is used to transfer any BAM data that is missing from the
@@ -100,13 +109,6 @@ have been created locally but not sent to the server.
 In general, this command is not needed because the BAM server is automatically
 updated if the local BAM files are either cloned or pulled to another repo.
 .tp
-.B reload
-The BAM pool has an on disk binary index in BitKeeper/BAM/index.db that is
-used for fast lookups.
-The data in the index is also stored in BitKeeper/log/BAM.index in text
-format.
-Should the index get corrupted, it may be recreated running this command.
-.tp
 .B reattach
 Used to try and reinsert data into the BAM directory.
 If your disk crashed and some files were lost from the BAM directory
@@ -117,6 +119,27 @@ For each file specified on standard input, see if the hash of the file matches
 one of the missing files.
 If so, reinsert that file.
 .\" XXX - tell them that it may be wrong?
+.tp
+.B reload
+The BAM pool has an on disk binary index that is used for fast lookups
+stored in:
+.DS
+BitKeeper/BAM/\*<repo-rootkey\*>/index.db
+.DE
+The data is also stored in a text format index:
+.DS
+BitKeeper/BAM/\*<repo-rootkey\*>/BAM.index
+.DE
+Should the binary index get corrupted, it may be recreated running this command.
+.tp
+.B repair
+Similar to 
+.B bk bam check
+except that it will attempt to repair any corrupted data.
+By default, it will look for good data in the BAM server, but you may
+specify a different location with
+.[OPTreq] \-@ URL
+(which may be repeated).
 .tp
 .B server
 Used to report or, with the optional 

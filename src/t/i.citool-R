@@ -1,0 +1,40 @@
+set -e
+echo $N Press commit twice ..........................................$NL
+# Currently, resolve uses sfiles -r to ferret out deep nested comp cset
+# files in the prod RESYNC repo, but citool uses normal sfiles.
+# There is no deep nest file in the RESYNC.  Possibly that's the bug.
+# Too, but not having one, it doesn't need to be maintained when we
+# support renames.  Or maybe it can be setup before calling citool.
+# Anyway, on to the bug setup ...
+# 
+# Create a case where there is a deep nest in the prod RESYNC
+#
+nested project
+bk setup -f gcc/deepnest
+touch foo bar gcc/foo gcc/deepnest/foo
+bk new $Q foo bar gcc/foo gcc/deepnest/foo
+bk commit $Q -yfoo
+bk clone $Q . ../copy
+bk edit $Q foo bar gcc/foo gcc/deepnest/foo
+echo project > foo
+bk delta $Q -fyremote foo bar gcc/foo gcc/deepnest/foo
+bk commit $Q -yremote
+cd ../copy
+bk edit $Q foo bar gcc/foo gcc/deepnest/foo
+echo local > foo
+bk delta $Q -fylocal foo bar gcc/foo gcc/deepnest/foo
+bk commit $Q -ycopy
+#
+# do the pull and resolve the local conflict, setting up citool -R
+#
+bk pull $Q -R
+cd RESYNC
+bk edit $Q -M foo
+echo merge > foo
+echo do the merge | bk cfile save foo
+cd ..
+echo OK
+echo Press commit twice
+set -x
+bk resolve $Q -a
+bk repocheck

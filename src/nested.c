@@ -365,7 +365,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 				c->path = strdup(c->path);
 				inCache = 1;
 			} else {
-				c->path = key2path(v, 0);
+				c->path = key2path(v, 0, 0);
 				inCache = 0;
 			}
 			dirname(c->path); /* strip /ChangeSet */
@@ -408,7 +408,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 			/* c->path is local path */
 			unless (c->present) {
 				free(c->path);
-				c->path = key2path(v, 0);
+				c->path = key2path(v, 0, 0);
 				dirname(c->path);
 			}
 			assert(!c->lowerkey);
@@ -427,7 +427,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 				/* c->path is local path */
 				unless (c->present) {
 					free(c->path);
-					c->path = key2path(v, 0);
+					c->path = key2path(v, 0, 0);
 					dirname(c->path);
 				}
 			}
@@ -608,7 +608,7 @@ nestedLoadCache(nested *n, MDBM *idDB)
 			c->path = strdup(c->path);
 			inCache = 1;
 		} else {
-			c->path = key2path(c->deltakey, 0);
+			c->path = key2path(c->deltakey, 0, 0);
 			inCache = 0;
 		}
 		dirname(c->path); /* strip /ChangeSet */

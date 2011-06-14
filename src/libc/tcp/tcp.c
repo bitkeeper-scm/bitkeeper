@@ -167,15 +167,39 @@ issock(int s)
         return (1);
 }
 
+int
+isLocalHost(char *h)
+{
+	unless (h) return (0);
+	return (streq("localhost", h) ||
+	    streq("localhost.localdomain", h) ||
+	    strneq("127.", h, 4)); /* localhost == 127.0.0.0/8 */
+}
+
+
 char	*
 hostaddr(char *host)
 {
 	struct	hostent *h;
 	struct	in_addr a;
+#ifdef	h_addr
+	int	i;
+#endif
 
 	if (!(h = gethostbyname(host))) return (0);
-	memmove((void *)&a, (void*)h->h_addr, h->h_length);
+#ifndef	h_addr
+	memmove(&a, h->h_addr, h->h_length);
 	return (inet_ntoa(a));
+#else
+	for (i = 0; h->h_addr_list[i]; i++) {
+		char	*p;
+
+		memmove(&a, h->h_addr_list[i], h->h_length);
+		p = inet_ntoa(a);
+		unless (isLocalHost(p)) return (p);
+	}
+	return (inet_ntoa(a));	// shrug, have to do something.
+#endif
 }
 
 /*

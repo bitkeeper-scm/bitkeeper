@@ -57,7 +57,7 @@ test "`bk repotype`" = "component" || {
 	ls BitKeeper/log
 	exit 1
 }
-test -z "`bk pending || true`" || {
+test -z "`bk pending -S || true`" || {
 	echo did not clear pending marks
 	exit 1
 }
@@ -74,7 +74,7 @@ test "`bk repotype`" = "component" || {
 	ls BitKeeper/log
 	exit 1
 }
-test -z "`bk pending || true`" || {
+test -z "`bk pending -S || true`" || {
 	echo did not clear pending marks
 	exit 1
 }
@@ -918,6 +918,7 @@ echo OK
 
 cd "$HERE"/project
 bk portal -r $Q || fail
+bk gate -r $Q || fail
 cd ..
 tar cf TAR project
 cd project
@@ -1150,9 +1151,13 @@ echo OK
 echo $N Make sure that the changeset got the alias create comments ..$NL
 bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
 cat > WANT <<EOF
-Create alias B
-Create alias C
-Create alias A
+Create alias "B" containing:
+	./gcc4
+Create alias "C" containing:
+	./gdb
+Create alias "A" containing:
+	B
+	C
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -1197,7 +1202,12 @@ echo OK
 echo $N If we remove all components an alias should be empty ........$NL
 bk alias rm A B C
 bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
-echo Delete alias A > WANT
+# LMXXX - shouldn't this be "Delete alias "A"" ?
+cat > WANT << EOF
+Delete from alias "A":
+	B
+	C
+EOF
 cmpfiles WANT GOT
 bk alias list A
 bk alias set A B C
@@ -1628,4 +1638,12 @@ bk cset -qx"$CSET" 2>&1 | grep -q "Operation not supported" || fail
 # cd ../liberty
 # bk changes -nd':COMMENTS:' -r+ | grep -q "Cset exclude" || fail
 # bk -e -Ur. grep -n lineb > OUT || fail -f OUT exclude did not work
+echo OK
+
+echo $N Test that newly created product is a portal and a gate ......$NL
+cd "$HERE"
+bk setup -P -fc"$BK_CACHE/commercial.config" prod-empty
+cd prod-empty
+bk portal -q || fail should be a portal
+bk gate -q || fail should be a gate
 echo OK

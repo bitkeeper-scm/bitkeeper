@@ -1771,8 +1771,12 @@ proc diffs {diffs l} \
 			$w(aptext) tag \
 			    add "oldTag" $l.0 "$l.0 lineend + 1 char"
 		}
+		set line $str
 	}
 	catch { close $diffs; }
+
+	set x [string first "|" $line]
+	highlightStacked $w(aptext) 1.0 end [incr x]
 }
 
 proc done {} \
@@ -2108,6 +2112,7 @@ proc widgets {} \
 	$w(aptext) tag configure "newTag" -background $gc(rev.newColor)
 	$w(aptext) tag configure "oldTag" -background $gc(rev.oldColor)
 	$w(aptext) tag configure "select" -background $gc(rev.selectColor)
+	$w(aptext) tag configure "highlight" -background $gc(rev.highlight)
 
 	bindtags $w(aptext) {Bk .p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}

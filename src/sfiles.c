@@ -371,21 +371,6 @@ chk_sfile(char *name, STATE state)
 	return (sc);
 }
 
-private int
-pending_print(sccs *s, delta *d, void *token)
-{
-	char	**data = token;
-
-	/*
-	 * XXX This assert should be true, but nested components
-	 *     are not always marked correctly.
-	 *
-	 * assert(!(d->flags & D_CSET));
-	 */
-	do_print(data[0], data[1], REV(s, d));
-	return (0);
-}
-
 /*
  * return true if a sfile has pending deltas
  *
@@ -494,14 +479,28 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 	assert(!(d->flags & D_CSET));
 	state[PSTATE] = 'p';
 	if (opts.Aflg) {
-		char	*data[2] = {state, gfile};
+		int	marked;
+		delta	*e;
+		
+		d->flags |= D_RED;
+		marked = 1;
 
-		/* find latest cset mark */
-		for (d = s->table; d; d = NEXT(d)) {
-			if (d->flags & D_CSET) break;
+		for (/* set */; marked && d; d = NEXT(d)) {
+			unless (d->flags & D_RED) continue;
+			d->flags &= ~D_RED;
+			marked--;
+			do_print(state, gfile, d->rev);
+			if ((e = PARENT(s,d)) &&
+			    !(e->flags & (D_CSET|D_RED))) {
+				e->flags |= D_RED;
+				marked++;
+			}
+			if ((e = MERGE(s,d)) &&
+			    !(e->flags & (D_CSET|D_RED))) {
+				e->flags |= D_RED;
+				marked++;
+			}
 		}
-		/* and walk all revs not included in that... */
-		range_walkrevs(s, d, 0, 0, 0, pending_print, data);
 		printed = 1;
 	} else if (opts.Cflg) {
 		do_print(state, gfile, REV(s, d));
@@ -754,8 +753,7 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 
 	if (S_ISDIR(sb->st_mode)) {
 		if (p && patheq(p, "/SCCS")) return (0);
-		if (!opts.recurse && p &&((p-file) > wi->rootlen) &&
-		    patheq(p+1, "BitKeeper")) {
+		if (p &&((p-file) > wi->rootlen) && patheq(p+1, "BitKeeper")) {
 			/*
 			 * Do not cross into other package roots
 			 * (e.g. RESYNC).
@@ -765,8 +763,10 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 				*p = 0;
 				do_print("R      ", file, 0);
 				*p = '/';
-				winfo_free(wi);
-				return (-2);
+				unless (opts.recurse) {
+					winfo_free(wi);
+					return (-2);
+				}
 			}
 		}
 		if (proj) {

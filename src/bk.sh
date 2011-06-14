@@ -73,6 +73,33 @@ _repocheck() {
 	bk $EACH -r check -aBc $V
 }
 
+# Remove anything found in our main parent and repull.
+# Don't doc until 5.3ish so we can get some usage.
+_repull() {
+	__cd2product
+	bk parent | grep Push/pull |
+	    sed 's|^Push/pull parent: ||' > BitKeeper/tmp/pp$$
+	bk parent | grep 'Pull parent:' |
+	    sed 's|^Pull parent: ||' > BitKeeper/tmp/p$$
+	test `cat BitKeeper/tmp/pp$$ BitKeeper/tmp/p$$ | wc -l` -eq 1 && {
+		echo "repull: must have multiple parents"
+		exit 0
+	}
+	cat BitKeeper/tmp/pp$$ |
+	while read parent
+	do	GCA=`bk repogca "$parent"`
+		test "X$GCA" = X && {
+			echo No repogca for $parent - skipping...
+			continue
+		}
+		test `bk prs -hr+ -d:REV: ChangeSet` = $GCA && continue
+		echo "${parent}: undo after GCA $GCA"
+		bk undo -fsa$GCA
+	done
+	rm -f BitKeeper/tmp/pp$$ BitKeeper/tmp/p$$
+	bk pull
+}
+
 # shorthand to dig out renames
 _renames() {
 	standalone=""
@@ -334,7 +361,7 @@ _superset() {
 			sed -e 's/ *: no valid urls.*//' < $TMP2 >> $TMP1
 		}
 	}
-	bk pending $QUIET > $TMP2 2>&1 && {
+	test $RECURSED = NO && bk pending $QUIET > $TMP2 2>&1 && {
 		test $LIST = NO && {
 			rm -f $TMP1 $TMP2
 			exit 1
@@ -1649,23 +1676,47 @@ _conflicts() {
 	DIFF=0
 	DIFFTOOL=0
 	VERBOSE=0
-	while getopts dDfprv opt
+	SINGLE=0
+	ITERATING=0
+	while getopts dDefprSv opt
 	do
 		case "$opt" in
 		d) DIFF=1;;
 		D) DIFFTOOL=1;;
+		e) ITERATING=1;;
 		f) FM3TOOL=1;;
 		v) test $VERBOSE -eq 1 && VERBOSE=2 || VERBOSE=1;;
 		p|r) REVTOOL=1;;
+		S) SINGLE=1;;
 		*)	bk help -s conflicts
 			exit 1;;
 		esac
 	done
-	shift `expr $OPTIND - 1`
 
 	ROOTDIR=`bk root -R 2>/dev/null`
 	test $? -ne 0 && { echo "You must be in a BK repository" 1>&2; exit 1; }
 	cd "$ROOTDIR" > /dev/null
+
+	# Handle nested trees
+	test $SINGLE -eq 0 -a \
+	    $ITERATING -eq 0 -a \
+	    `bk repotype` != traditional && {
+		bk -e conflicts -e "$@"
+		exit $?
+	}
+
+	shift `expr $OPTIND - 1`
+
+	# Silently exit when no RESYNC in a component
+	# Set up a prefix otherwise
+	PREFIX=
+	test $ITERATING -eq 1 && {
+		test `bk repotype` = component && {
+			test ! -d RESYNC && exit 0
+			PREFIX="`bk pwd -P`/"
+		}
+	}
+		
 	test -d RESYNC || { echo "No files are in conflict"; exit 0; }
 	cd RESYNC > /dev/null
 
@@ -1675,16 +1726,28 @@ _conflicts() {
 	do	if [ "$GFILE" != "$LPN" ]
 		then	PATHS="$GPN (renamed) LOCAL=$LPN REMOTE=$RPN"
 		else	test "$GFILE" = "$LPN" || {
-				echo GFILE=$GFILE LOCALPATH=$LPN 1>&2
+				echo "GFILE=$PREFIX$GFILE LOCALPATH=$LPN" 1>&2
 				echo "This is unexpected; paths are unknown" 1>&2
 				exit 1
 			}
 			PATHS="$GFILE"
 		fi
 		if [ $VERBOSE -eq 0 ]; then
-			echo $PATHS
+			if [ "$PATHS" = "$GFILE" ] &&
+			    bk smerge -Iu -l$LOCAL -r$REMOTE "$GFILE" \
+			    > /dev/null
+			then
+				: # conflict already resolved: do nothing
+			else
+				echo "$PREFIX$PATHS"
+			fi
 		else
 			__conflict $VERBOSE
+			test "$GFILE" = "$LPN" -a "$GFILE" = "$RPN" || {
+				echo "    GCA path:     $PREFIX$GPN"
+				echo "    Local path:   $PREFIX$LPN"
+				echo "    Remote path:  $PREFIX$RPN"
+			}
 		fi
 		if [ $DIFF -eq 1 ]; then
 			bk diffs -r${LOCAL}..${REMOTE} "$GFILE"
@@ -1696,7 +1759,7 @@ _conflicts() {
 			bk revtool -l$LOCAL -r$REMOTE "$GFILE"
 		fi
 		if [ $FM3TOOL -eq 1 ]; then
-			echo "NOTICE: read-only merge of $GFILE"
+			echo "NOTICE: read-only merge of $PREFIX$GFILE"
 			echo "        No changes will be written."
 			bk fm3tool -n -l$LOCAL -r$REMOTE "$GFILE"
 		fi
@@ -1720,7 +1783,7 @@ __conflict() {
 		rm -f /tmp/awk$$
 		return
 	}
-	awk -v FILE="$GFILE" -v VERBOSE=$VERBOSE '
+	awk -v FILE="$PREFIX$GFILE" -v VERBOSE=$VERBOSE '
 		BEGIN { in_conflict = 0 }
 		/^<<<<<<< gca /		{ n++; next; }
 		/^>>>>>>>$/		{ in_conflict = 0; next; }
@@ -1742,11 +1805,6 @@ __conflict() {
 		}
 	' /tmp/awk$$
 	rm -f /tmp/awk$$
-	test "$GFILE" = "$LPN" -a "$GFILE" = "$RPN" || {
-		echo "    GCA path:     $GPN"
-		echo "    Local path:   $LPN"
-		echo "    Remote path:  $RPN"
-	}
 }
 
 # run command with the 'latest' version of bk

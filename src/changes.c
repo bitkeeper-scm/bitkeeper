@@ -829,7 +829,7 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 		here = strdup(proj_cwd());
 		chdir(proj_root(prod));
 		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-		if (path = key2path(proj_rootkey(proj), idDB)) {
+		if (path = key2path(proj_rootkey(proj), idDB, 0)) {
 			mdbm_close(idDB);
 			proj = proj_init(path);
 			chdir(path);
@@ -1053,9 +1053,20 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		/*
 		 * loads all file key pairs for csets marked D_SET
 		 * Has the side-effect of unD_SETing when testing BAM||inc||exc
+		 *
+		 * Careful: loadcset walks the cset data, so only do
+		 * it if it is needed: verbose, components, and BAM|inc|exc.
+		 *
+		 * Note that noMeta doesn't count as a filt, but it's
+		 * filtering from the print list doesn't seems to impact
+		 * logic such as empty merge node detection.  If it did,
+		 * we'd need to walk the weave by default because of noMeta
+		 * and empty merge node removal are on by default.
 		 */
-		rstate->csetDB = loadcset(sc);
-		assert(rstate->csetDB);
+		if (opts.doComp || opts.verbose || opts.filt) {
+			rstate->csetDB = loadcset(sc);
+			assert(rstate->csetDB);
+		}
 		if (dkey) {
 			for (e = sc->table; e; e = NEXT(e)) {
 				e->flags &= ~D_SET;
@@ -1091,7 +1102,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	EACH_INDEX(csets, j) {
 		e = (delta *)csets[j];
 
-		if (fflush(f)) break;		/* abort when stdout is closed */
+		if (ferror(f)) break;	/* abort when stdout is closed */
 		if (opts.doComp || opts.verbose) {
 			ftrunc(opts.fcset, 0);
 			if (opts.keys) {
@@ -1480,7 +1491,8 @@ changes_part1(remote *r, char **av, char *key_list)
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:
-			getMsg("unrelated_repos", 0, '=', stderr);
+			getMsg("unrelated_repos",
+			    "synchronize with", '=', stderr);
 			break;
 		    case -3:
 			getMsg("no_repo", 0, '=', stderr);

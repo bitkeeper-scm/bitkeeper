@@ -479,33 +479,33 @@ chmod u+w BitKeeper/BAM/$RK/01/01d700a5.d1
 echo 1 > BitKeeper/BAM/$RK/01/01d700a5.d1
 bk BAM check -q 2>ERR && {
 	echo should have failed
-	exit 1
+	fail
 }
-grep -q 'has a hash mismatch' ERR || exit 1
-test `wc -l < ERR` -eq 2 || exit 1
+grep -q 'BitKeeper has detected corruption in your BAM data.' ERR || fail -f ERR
+test `wc -l < ERR` -eq 3 || fail -f ERR
 bk -r check -acc 2>ERR && {
 	echo should have failed
-	exit 1
+	fail
 }
-grep -q 'has a hash mismatch' ERR || exit 1
-test `wc -l < ERR` -eq 2 || exit 1
+grep -q 'BitKeeper has detected corruption in your BAM data.' ERR || fail -f ERR
+test `wc -l < ERR` -eq 3 || fail -f ERR
 rm BitKeeper/BAM/$RK/01/01d700a5.d1
 bk BAM check -q 2>ERR && {
 	echo should have failed
 	cat ERR
-	exit 1
+	fail
 }
-grep -q 'Failed to locate' ERR || exit 1
-test `wc -l < ERR` -eq 2 || exit 1
-bk -r check -a || exit 1
+grep -q 'Failed to locate' ERR || fail -f ERR
+test `wc -l < ERR` -eq 2 || fail -f ERR
+bk -r check -a || fail
 bk -r check -aB 2>ERR && {
 	echo should have failed
-	exit 1
+	fail
 }
-grep -q 'Failed to locate' ERR || exit 1
-test `wc -l < ERR` -eq 2 || exit 1
+grep -q 'Failed to locate' ERR || fail -f ERR
+test `wc -l < ERR` -eq 2 || fail
 echo 155 > BitKeeper/BAM/$RK/01/01d700a5.d1
-bk BAM check $Q || exit 1
+bk BAM check $Q || fail
 echo OK
 
 echo $N Test BAM push ...............................................$NL
@@ -751,4 +751,92 @@ echo OK
 echo $N Fetch from 2 different projects .............................$NL
 mv aside project
 bk get $Q copy/bam copy2/bam || exit 1
+echo OK
+
+echo $N Create setup - bam server and client and copy ...............$NL
+cd "$HERE"
+commercial bamserver
+bk bam server $Q .
+test -f BitKeeper/log/BAM || fail
+bk clone --no-hardlinks $Q . ../client
+cd ../client
+echo bam > bam
+bk new $Q -b bam
+bk commit $Q -ybam
+bk clone --no-hardlinks $Q . ../client-copy
+echo OK
+
+echo $N Check that the bam file made it to the server ...............$NL
+cd ../bamserver/BitKeeper/BAM
+test `find . -type f -print | grep -v index | wc -l` -eq 1 || {
+	echo failed
+	find . -type f -print
+	exit 1
+}
+echo OK
+
+echo $N Clone -B. copy bork - no recursion to bam server ............$NL
+cd "$HERE"
+bk clone $Q -B. client-copy bork || fail
+echo OK
+
+echo $N Corrupt the copy BAM data and see if get tells you ..........$NL
+cd "$HERE"/client-copy
+bk bam pull $Q -a
+bamfile="BitKeeper/BAM/`bk id | sed 's/|/-/g'`/03/038f013a.d1"
+rm -f $bamfile
+echo corrupt > $bamfile
+chmod 444 $bamfile
+bk -r clean
+bk -U get > OUT 2>&1
+grep -q 'BitKeeper has detected corruption in your BAM data.' OUT || fail -f OUT
+echo OK
+
+echo $N See if bam repair repairs it ................................$NL
+bk bam repair > OUT 2>&1 || fail -f OUT
+grep -q 'All BAM data was found and repaired, repair passed.' OUT || fail -f OUT
+echo OK
+
+echo $N Corrupt data in server and try and repair, should fail ......$NL
+cd "$HERE"/bamserver
+bamfile="BitKeeper/BAM/`bk id | sed 's/|/-/g'`/03/038f013a.d1"
+rm -f $bamfile
+echo corrupt > $bamfile
+chmod 444 $bamfile
+bk bam repair > OUT 2>&1
+grep -q 'bam repair: no BAM sources found' OUT || fail -f OUT
+echo OK
+
+echo $N Bam check in clients looking for bam server corruption ......$NL
+cd ../client
+bk bam check $Q || fail
+cd ../client-copy
+bk bam check $Q || fail
+echo "failed (bug server corruption undetected)"
+
+echo $N bam repair -@../copy should fix it ..........................$NL
+cd ../bamserver
+bk bam repair -@../client-copy > OUT 2>&1
+grep -q 'All BAM data was found and repaired, repair passed.' OUT || fail -f OUT
+echo OK
+
+echo $N bam repair -@../copy should fix missing server file too .....$NL
+rm -f $bamfile
+bk bam repair -@../client-copy > OUT 2>&1
+grep -q 'All BAM data was found and repaired, repair passed.' OUT || fail -f OUT
+echo OK
+
+echo $N Fetch and detect corrupt data ...............................$NL
+cd ../client-copy
+bamfile="BitKeeper/BAM/`bk id | sed 's/|/-/g'`/03/038f013a.d1"
+rm -f $bamfile
+echo corrupt > $bamfile
+chmod 444 $bamfile
+bk get bam > OUT 2>&1 && fail -f ERR
+grep -q 'BitKeeper has detected corruption in your BAM data.' OUT || fail -f OUT
+echo OK
+
+echo $N bk check -cc should see it too ..............................$NL
+bk -r check -accv > OUT 2>&1 
+grep -q 'BitKeeper has detected corruption in your BAM data.' OUT || fail -f OUT
 echo OK

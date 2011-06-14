@@ -987,7 +987,7 @@ clone2(remote *r)
 				}
 				if (pclose(f)) {
 					fprintf(stderr,
-					    "%s: --indentical failed, target "
+					    "%s: --identical failed, target "
 					    "cset not annotated with HERE "
 					    "alias.\n", prog);
 					goto nested_err;
@@ -1874,7 +1874,7 @@ attach(void)
 	nested_updateIdcache(0);
 	unless (opts->nocommit) {
 		sprintf(buf,
-			"bk -P commit -S -y'attach %s' %s -",
+			"bk -P commit -S -y'Attach ./%s' %s -",
 			relpath,
 			opts->verbose ? "" : "-q");
 		if (f = popen(buf, "w")) {

@@ -23,6 +23,7 @@ private struct {
 	u32	port:1;			/* is port command? */
 	u32	transaction:1;		/* is $_BK_TRANSACTION set? */
 	u32	local:1;		/* set if we find local work */
+	u32	autoPopulate:1;		/* automatically populate missing comps */
 	int	safe;			/* require all involved comps to be here */
 	int	n;			/* number of components */
 	int	delay;			/* -w<delay> */
@@ -55,6 +56,7 @@ pull_main(int ac, char **av)
 		{ "batch", 310},	/* pass -s to resolve */
 		{ "safe", 320 },	/* require all comps to be here */
 		{ "unsafe", 330 },	/* turn off safe above */
+		{ "auto-populate", 340},/* just work */
 
 		/* aliases */
 		{ "standalone", 'S'},
@@ -117,6 +119,9 @@ pull_main(int ac, char **av)
 		    case 330:	/* --unsafe */
 			opts.safe = 0;
 			break;
+		    case 340:  /* --auto-populate */
+			opts.autoPopulate = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -155,7 +160,9 @@ pull_main(int ac, char **av)
 		}
 	}
 
-	opts.product = bk_nested2root(opts.transaction || opts.port);
+	if (opts.product = bk_nested2root(opts.transaction || opts.port)) {
+		if (proj_configbool(0, "autopopulate")) opts.autoPopulate = 1;
+	}
 	cmdlog_lock(opts.port ? CMD_WRLOCK : CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
@@ -300,7 +307,7 @@ send_part1_msg(remote *r, char **envVar)
 private int
 pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 {
-	char	*p;
+	char	*p, *t;
 	int	rc;
 	FILE	*f;
 	char	buf[MAXPATH];
@@ -332,9 +339,16 @@ pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 	if ((p = getenv("BKD_LEVEL")) && (atoi(p) > getlevel())) {
 	    	fprintf(stderr, "pull: cannot pull to lower level "
 		    "repository (remote level == %s)\n", getenv("BKD_LEVEL"));
+		if ((t = getenv("BKD_REPOTYPE")) && streq(t, "product")) {
+			pull_finish(r, 1, envVar);
+		}
 		disconnect(r);
 		return (1);
 	}
+	/*
+	 * FEAT_pull_r shipped in 4.0 and BAMv2 in 4.1.1.
+	 * The BKDs that don't have those can't be serving a product
+	 */
 	if (opts.rev && !bkd_hasFeature(FEAT_pull_r)) {
 		notice("no-pull-dash-r", 0, "-e");
 		disconnect(r);
@@ -447,9 +461,9 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 	    case 0:
 		break;
 	    case 1:
-		fprintf(stderr,
-		    "You are trying to pull from an unrelated package.\n"
-		    "Please check the pathnames and try again.\n");
+		unless (bam_converted(1)) {
+			getMsg("unrelated_repos", "pull from", 0, stderr);
+		}
 		/*FALLTHROUGH*/
 	    default:
 		unlink(msg_file);
@@ -635,7 +649,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	nested	*n = 0;
 	comp	*c;
 	int	i, j, rc = 0, errs = 0;
-	int	which = 0, updateHERE = 0;
+	int	which = 0, updateHERE = 0, flushCache = 0;
 	project	*proj;
 
 	/* allocate r->params for later */
@@ -669,7 +683,6 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		char	*url, *t;
 
 		unless (c = nested_findKey(n, rk)) continue;
-		if (c->localchanges) continue;
 
 		urls = splitLine(rmt_urllist->vptr, "\n", 0);
 		EACH(urls) {
@@ -698,7 +711,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	if ((opts.safe == 1) || ((opts.safe == -1) && !getenv("BKD_GATE"))) {
 		char	**missing = 0;
 		char	**new_aliases = 0;
-		int	flags = URLLIST_GATEONLY;
+		int	flags = URLLIST_GATEONLY | URLLIST_NOERRORS;
 
 		if (opts.quiet) flags |= SILENT;
 
@@ -706,7 +719,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			/*
 			 * !c->alias           = I'm not going have it
 			 * c->remotePresent    = Remote has it
-			 * (opts.safe != 1 &&  = user explicitly asked for
+			 * (opts.safe == 1 &&  = user explicitly asked for
 			 *                       --safe
 			 * || !urllist_find()) = we can't find it in a gate
 			 */
@@ -722,6 +735,27 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		}
 
 		if (missing) {
+			char	**msg = 0;
+
+			unless (opts.quiet && opts.autoPopulate) {
+				fprintf(stderr, "\nThe following components "
+				    "are present in the remote, were not\n"
+				    "found in any gates, and will need to "
+				    "be populated to make\n"
+				    "the pull safe:\n");
+				EACH_STRUCT(missing, c, j) {
+					fprintf(stderr, "\t%s\n", c->path);
+				}
+			}
+
+			unless (opts.autoPopulate) {
+				fprintf(stderr, "Please re-run the pull "
+				    "using the --auto-populate option "
+				    "in order\nto get them automatically.\n");
+				freeLines(missing, 0);
+				rc = 1;
+				goto out;
+			}
 
 			/*
 			 * Find a minimum subset of the remote's alias
@@ -730,11 +764,11 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			 */
 			new_aliases =
 				alias_coverMissing(n, missing, rmt_aliases);
-
+			freeLines(missing, 0);
 			unless (opts.quiet) {
 				fprintf(stderr,
-				    "%s: adding the following aliases:\n",
-				    prog);
+				    "Adding the following "
+				    "aliases/components:\n");
 			}
 
 			/*
@@ -749,9 +783,15 @@ pull_ensemble(remote *r, char **rmt_aliases,
 						assert(c);
 						p = c->path;
 					}
-					fprintf(stderr, "\t%s\n", p);
+					msg = addLine(msg,
+					    aprintf("\t%s\n", p));
 				}
 			}
+			unless (opts.quiet) {
+				sortLines(msg, 0);
+				EACH(msg) fprintf(stderr, "%s", msg[i]);
+			}
+			freeLines(msg, free);
 			freeLines(new_aliases, 0);
 			uniqLines(n->here, free);
 
@@ -788,27 +828,24 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			/* this component is included in pull */
 			if (c->alias) {
 				/* and we will need those new csets */
-				if (c->present) opts.n++;
+				if (c->present || c->localchanges) opts.n++;
 				if (!c->remotePresent && c->present) {
 					/*
-					 * Since this component has
-					 * new csets coming and we
-					 * have it populated, it will
-					 * need a pull. But the remote
-					 * doesn't the component so it
-					 * will need to be pulled from
-					 * a 3rd party.  We don't
-					 * support that yet.
+					 * XXX: I plan to fix this with pull-urllist.
 					 */
 					fprintf(stderr,
-					    "pull: %s is missing in %s\n",
+					    "pull: %s is missing in %s\n"
+					    "and is needed because that "
+					    "component has work on both "
+					    "sides and needs\n"
+					    "to be merged.\n",
 					    c->path, url);
 					++errs;
 				}
 			} else {
 				/* we don't want this component */
 				if (c->localchanges) {
-					/* merge in gone component */
+					/* XXX: I plan to fix this with pull-urllist */
 					fprintf(stderr,
 					    "%s: Unable to resolve conflict "
 					    "in non-present component '%s'.\n",
@@ -816,6 +853,27 @@ pull_ensemble(remote *r, char **rmt_aliases,
 					++errs;
 				}
 			}
+		}
+		if (c->alias && !c->present) {
+			if (c->localchanges) {
+				/*
+				 * We do both, populate c->lowerkey
+				 * and then pull c->deltakey. Also,
+				 * flush the cache *before* calling
+				 * nested_populate since we have
+				 * probbed with deltakey before and
+				 * now we have to probe with lowerkey.
+				 */
+				c->useLowerKey = 1;
+				flushCache = 1;
+			} else {
+				c->new = 1;
+			}
+			++which;
+		}
+		if (!c->alias && c->present) {	// unpopulate local
+			c->useLowerKey = 1;
+			flushCache = 1;
 		}
 	}
 	if (errs) {
@@ -853,16 +911,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	 */
 	popts.leaveHERE = 1;
 
-	/*
-	 * Remember which components we populated so we don't try
-	 * to pull them in the next loop.
-	 */
-	EACH_STRUCT(n->comps, c, j) {
-		if (c->alias && !c->present) {
-			c->new = 1;
-			++which;
-		}
-	}
+	if (flushCache) urlinfo_flushCache(n);
 	if (nested_populate(n, &popts)) {
 		fprintf(stderr,
 		    "pull: problem populating components.\n");

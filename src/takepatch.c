@@ -436,7 +436,7 @@ extractPatch(char *name, MMAP *p)
 	if (echo>4) fprintf(stderr, "%s\n", t);
 	s = sccs_keyinit(0, t, SILENT, idDB);
 	if (s && !s->cksumok) goto error;
-	if (opts->port && CSET(s)) s->keydb_nopath = 1;
+	if (s && opts->port && CSET(s)) s->keydb_nopath = 1;
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
@@ -464,8 +464,8 @@ error:		if (perfile) sccs_free(perfile);
 		if (gfile) free(gfile);
 		free(t);
 		if (s) sccs_free(s);
-		/* we don't free name, we pass it to errfiles */
-		errfiles = addLine(errfiles, name);
+		errfiles = addLine(errfiles, sccs2name(name));
+		free(name);
 		return (-1);
 	}
 
@@ -563,7 +563,7 @@ error:		if (perfile) sccs_free(perfile);
 		if (s == fake) s = 0;
 		if (patchList && tableGCA) getLocals(s, name);
 		rc = applyPatch(s ? s->sfile : 0, perfile);
-		if (rc < 0) errfiles = addLine(errfiles, strdup(name));
+		if (rc < 0) errfiles = addLine(errfiles, sccs2name(name));
 		nfound = 0;	/* only count csets */
 	}
 	FREE(tableGCA);
@@ -1010,7 +1010,11 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 				REV(s, d), SERIAL(s, d)));
 		}
 	}
-	if (opts->port) for (d = 0, p = patchList; p; p = p->next) {
+	/*
+	 * When porting in a csetfile, need to ignore path names
+	 * XXX: component moves looks will break this.
+	 */
+	if (opts->port && CSET(s)) for (d = 0, p = patchList; p; p = p->next) {
 		unless ((d = sfind(s, p->serial)) && (d->flags & D_REMOTE)) {
 			continue;
 		}
@@ -1083,7 +1087,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 
 				unless (changesetKey(key)) continue;
 
-				t = key2path(key, idDB);
+				t = key2path(key, idDB, 0);
 				if (sccs_isPending(t)) {
 					dirname(t); /* strip /ChangeSet */
 					getMsg("tp_uncommitted",
@@ -2319,6 +2323,7 @@ done:
 			    "Errors during update of the following files:\n");
 			EACH(errfiles) fprintf(stderr, "%s\n", errfiles[i]);
 			SHOUT2();
+			freeLines(errfiles, free);
 		}
 	}
 	exit(rc);

@@ -1031,7 +1031,7 @@ You can only attach one file to the bug report. Attaching directories or
 symbolic links is not supported.
 $
 #unrelated_repos
-You are trying to synchronize with an unrelated package.
+You are trying to #BKARG# an unrelated package.
 Please check the names and try again.
 $
 #no_repo

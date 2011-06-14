@@ -86,6 +86,7 @@ check_main(int ac, char **av)
 	sccs	*s;
 	int	ferr, errors = 0, eoln_native = 1;
 	int	i, e;
+	int	pull_inProgress = 0;
 	char	*name;
 	char	buf[MAXKEY];
 	char	*t;
@@ -196,6 +197,10 @@ check_main(int ac, char **av)
 		if (proj_isProduct(0)) {
 			cp = 0;
 			cplen = 0;
+			if (isdir(ROOT2RESYNC) &&
+			    exists(ROOT2RESYNC "/" CHANGESET)) {
+				pull_inProgress = 1;
+			}
 		} else {
 			cp = aprintf("%s/", proj_comppath(0));
 			cplen = strlen(cp);
@@ -519,6 +524,20 @@ out:
 		enableFastPendingScan();
 	}
 	if (t = getenv("_BK_RAN_CHECK")) touch(t, 0666);
+	if (errors && pull_inProgress) {
+		fprintf(stderr,
+		    "--------------------------------"
+		    "---------------------------------\n"
+		    "It looks like there was a pull in progress. "
+		    "These errors could\n"
+		    "be caused by the components being "
+		    "out-of-sync with the product.\n"
+		    "Try running 'bk resolve' to finish "
+		    "the pull, or a 'bk abort' to\n"
+		    "cancel it.\n"
+		    "--------------------------------"
+		    "---------------------------------\n");
+	}
 	return (errors);
 }
 
@@ -671,7 +690,9 @@ chk_BAM(sccs *s, char ***missing)
 	for (d = s->table; d; d = NEXT(d)) {
 		unless (d->bamhash) continue;
 		key = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
-		if (bp_check_hash(key, missing, !bp_fullcheck)) rc = 1;
+		if (bp_check_hash(key, missing, !bp_fullcheck, 0)) {
+			rc = 1;
+		}
 		free(key);
 	}
 	return (rc);
@@ -1336,7 +1357,7 @@ buildKeys(MDBM *idDB)
 		    smap[ser] && !mdbm_fetch_str(goneDB, t)) {
 			rkd->mask |= 8;
 			unless (mdbm_fetch_str(goneDB, s)) {
-				char	*path = key2path(t, 0);
+				char	*path = key2path(t, 0, 0);
 
 				/* strip /ChangeSet from components */
 				if (streq(basenm(path), "ChangeSet")) {
@@ -1561,7 +1582,7 @@ check(sccs *s, MDBM *idDB)
 	static	int	haspoly = -1;
 	delta	*d, *ino, *tip = 0;
 	int	errors = 0, goodkeys;
-	int	i;
+	int	i, writefile = 0;
 	char	*t, *term, *x;
 	hash	*deltas, *shortdeltas = 0;
 	char	**lines = 0;
@@ -1596,7 +1617,6 @@ check(sccs *s, MDBM *idDB)
 	    		    s->gfile, REV(s, d));
 		}
 
-		unless (d->flags & D_CSET) continue;
 		sccs_sdelta(s, d, buf);
 		t = 0;
 		unless (deltas && (t = hash_fetchStr(deltas, buf))) {
@@ -1606,6 +1626,7 @@ check(sccs *s, MDBM *idDB)
 			}
 		}
 		unless (t) {
+			unless (d->flags & D_CSET) continue;
 			if (MONOTONIC(s) && DANGLING(d)) continue;
 			errors++;
 			if (stripdel) continue;
@@ -1615,6 +1636,11 @@ check(sccs *s, MDBM *idDB)
 			sccs_sdelta(s, d, buf);
 			fprintf(stderr, "\t%s -> %s\n", REV(s, d), buf);
 		} else {
+			unless (d->flags & D_CSET) {
+				/* auto fix always */
+				d->flags |= D_CSET;
+				writefile = 1;
+			}
 			++goodkeys;
 			unless (tip) tip = d;
 			if (verbose > 2) {
@@ -1622,6 +1648,14 @@ check(sccs *s, MDBM *idDB)
 				    s->gfile, buf);
 			}
 		}
+	}
+	if (writefile) {
+		if (getenv("_BK_DEVELOPER")) {
+			fprintf(stderr,
+			    "%s: adding in missing csetmarks\n", s->gfile);
+		}
+		sccs_newchksum(s);
+		sccs_restart(s);
 	}
 	if (errors && !goodkeys) {
 		fprintf(stderr,
