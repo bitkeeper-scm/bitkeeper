@@ -535,13 +535,27 @@ echo OK
 echo $N Test name mapping of file names in other components .........$NL
 cd "$HERE"
 commercial normal 
-touch foo~bar
-bk new $Q foo~bar
-bk mv foo~bar src/file
+mkdir -p dir1/dir2
+touch dir1/dir2/foo~bar
+bk new $Q dir1/dir2/foo~bar
+bk mv dir1/dir2/foo~bar src/file
 bk commit $Q -yfile
 echo src > comps
 bk partition $Q -Ccomps . ../nested-movedtest
 cd ../nested-movedtest/src
+GOT=`bk log -r1.0 -nd:DPN: file`
+WANT="BitKeeper/moved/dir1/dir2/foo~bar"
+test "$WANT" = "$GOT" || {
+	echo WANT: $WANT
+	echo GOT: $GOT
+	exit 1
+}
+echo OK
+
+echo $N Same thing, version 1 .......................................$NL
+cd "$HERE/normal"
+bk partition $Q --version=1 -Ccomps . ../nested-movedtest.v1
+cd ../nested-movedtest.v1/src
 bk rm -f file
 # write a test and run it
 # We know it is the deleted path with deleted replaced by moved
@@ -565,4 +579,28 @@ echo all > WANT
 # note .. no -n as I want to get the original file without extra newline
 bk changes -qr1.1 -d:ATTR_HERE: > GOT
 cmpfiles WANT GOT
+echo OK
+
+echo $N Demonstrate a name collision using version 1 ................$NL
+cd "$HERE"
+commercial import.sa
+# random bits same
+BK_RANDOM=123456789abced0f
+export BK_RANDOM
+# lifted from t.timestamps
+DTZ21="98/09/22 16:23:31+00:00"
+mkdir a b
+touch a/foo b/foo
+BK_DATE_TIME_ZONE=$DTZ21 bk new $Q a/foo b/foo
+bk mv a/foo c/a/foo
+bk mv b/foo c/b/foo
+bk commit $Q -y'a whole lot of foo'
+echo c > comps
+bk partition $Q --version=1 -Ccomps . ../import.nested 2> ERR && fail -f ERR
+grep -q "cset changes same rootkey twice" ERR || fail -f ERR
+rm -fr ../import.nested
+echo OK
+
+echo $N Show that it is now fixed ...................................$NL
+bk partition $Q -Ccomps . ../import.nested
 echo OK

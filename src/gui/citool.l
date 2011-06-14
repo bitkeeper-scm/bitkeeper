@@ -840,6 +840,7 @@ gui()
 	tags[END+1] = "Comments";
 	bindtags(self.w_comments, tags);
 	bind("Comments", "<KeyRelease>", "commentChanged");
+	bind("Comments", "<<PasteSelection>>", "commentChanged");
 	Text_tag(self.w_comments, "configure", "message",
 	    background: gc("ci.noticeColor"));
 	Text_tag(self.w_comments, "configure", "warning",

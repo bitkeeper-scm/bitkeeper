@@ -431,7 +431,7 @@ extractPatch(char *name, MMAP *p)
 	if (echo>4) fprintf(stderr, "%s\n", t);
 	s = sccs_keyinit(0, t, SILENT, idDB);
 	if (s && !s->cksumok) goto error;
-	if (opts->port && CSET(s)) s->keydb_nopath = 1;
+	if (s && opts->port && CSET(s)) s->keydb_nopath = 1;
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
@@ -977,7 +977,11 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		    "takepatch: adding leaf to tag delta %s (serial %d)\n",
 		    remote_tagtip->rev, remote_tagtip->serial));
 	}
-	if (opts->port) for (d = 0, p = patchList; p; p = p->next) {
+	/*
+	 * When porting in a csetfile, need to ignore path names
+	 * XXX: component moves looks will break this.
+	 */
+	if (opts->port && CSET(s)) for (d = 0, p = patchList; p; p = p->next) {
 		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
 		unless (d->pserial) continue;	/* rootkey untouched */
 		if (d->flags & D_DUPPATH) {

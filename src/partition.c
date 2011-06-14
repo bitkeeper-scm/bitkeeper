@@ -22,6 +22,7 @@ typedef struct {
 	char	*md5rootkey;	/* original rootkey */
 	char	*parent;	/* normalized reference url */
 	char	*ptip;		/* tip after product prune */
+	char	*pver;		/* prune version option to pass to prune */
 	int	flags;		/* SILENT for now */
 
 	/* data from partition KV */
@@ -29,6 +30,7 @@ typedef struct {
 	char	**compprune;	/* files to prune from every component */
 	char	**prodprune;	/* files to prune from product */
 	char	**prune;	/* rootkeys to prune from all */
+	char	*prunever;	/* csetprune version */
 	char	**feature;	/* a list of feature used in partition */
 	char	*random;	/* new random bits */
 	char	*rootkey;	/* original rootkey */
@@ -51,6 +53,7 @@ const struct {
 	{"FEATURE",  1, offsetof(Opts, feature)},
 	{"PRODPRUNE",1, offsetof(Opts, prodprune)},
 	{"PRUNE",    1, offsetof(Opts, prune)},
+	{"PRUNEVER", 0, offsetof(Opts, prunever)},
 	{"RAND",     0, offsetof(Opts, random)},
 	{"ROOTKEY",  0, offsetof(Opts, rootkey)},
 	{"ROOTLOG",  0, offsetof(Opts, rootlog)},
@@ -86,17 +89,25 @@ partition_main(int ac, char **av)
 	Opts	*opts;
 	FILE	*f;
 	char	buf[MAXLINE];
+	longopt	lopts[] = {
+		{ "version:", 310 },	/* --version=%d for old trees */
+		{ 0, 0 }
+	};
 
 	opts = new(Opts);
 	opts->quiet = "";
 	opts->parallel = 1;
-	while ((c = getopt(ac, av, "@;C;j;P;q", 0)) != -1) {
+	opts->pver = "2";
+	while ((c = getopt(ac, av, "@;C;j;P;q", lopts)) != -1) {
 		switch (c) {
 		    case '@': opts->referenceurl = optarg; break;
 		    case 'C': opts->compsfile = optarg; break;
 		    case 'j': opts->parallel = strtol(optarg, 0, 10); break;
 		    case 'P': opts->prunefile = optarg; break;
 		    case 'q': opts->flags |= SILENT; opts->quiet = "q"; break;
+		    case 310: /* --version=%s */
+			opts->pver = optarg;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -171,9 +182,10 @@ partition_main(int ac, char **av)
 
 	verbose((stderr, "\n### Pruning product\n"));
 
-	sprintf(buf,
-	    "bk csetprune -aNS%s -k%s -w'%s' -r'%s' -CCOMPS -c. -WPRODWEAVE -",
-	    opts->quiet, opts->random, opts->rootlog, opts->ptip);
+	sprintf(buf, "bk csetprune "
+	    "--version=%s -aNS%s -k%s -w'%s' -r'%s' -CCOMPS -c. -WPRODWEAVE -",
+	    opts->pver, opts->quiet,
+	    opts->random, opts->rootlog, opts->ptip);
 	f = popen(buf, "w");
 	EACH(opts->prodprune) fprintf(f, "%s\n", opts->prodprune[i]);
 	if (pclose(f)) goto err;
@@ -386,6 +398,7 @@ setupWorkArea(Opts *opts, char *repo)
 		assert(streq(opts->rootkey, proj_rootkey(0)));
 	} else {
 		opts->version = strdup(PARTITION_VER);
+		opts->pver = opts->prunever = strdup(opts->pver);
 		/* pumps up the prune list with gone files and deltas */
 		if (cleanMissing(opts)) goto err;
 		/* Collapsed keys don't apply to post-partition: prune 'em */
@@ -534,6 +547,7 @@ mkComps(Opts *opts)
 		cmd = addLine(0, strdup("bk"));
 		cmd = addLine(cmd, aprintf("--cd=%s", repo));
 		cmd = addLine(cmd, strdup("csetprune"));
+		cmd = addLine(cmd, aprintf("--version=%s", opts->pver));
 		cmd = addLine(cmd, strdup("-I../" WA2PROD));
 		cmd = addLine(cmd, aprintf("-atNS%s", opts->quiet));
 		cmd = addLine(cmd, aprintf("-r%s", opts->ptip));
@@ -726,7 +740,7 @@ doAttach(Opts *opts)
 	int	ret = 1;
 	int	i, flags = opts->flags;
 
-	unless (opts->referenceurl && nLines(opts->attach)) {
+	if (!opts->referenceurl && nLines(opts->attach)) {
 		verbose((stderr, "\n### Attaching components\n"));
 		system("bk portal -q .");
 		EACH(opts->attach) {
@@ -739,8 +753,7 @@ doAttach(Opts *opts)
 				goto err;
 			}
 		}
-		if (nLines(opts->attach) &&
-		    systemf("bk commit -S -%sy'attaching new components'",
+		if (systemf("bk commit -S -%sy'attaching new components'",
 		    opts->quiet)) {
 			goto err;
 		}
@@ -808,6 +821,11 @@ readPartitionKV(Opts *opts, hash *ref)
 		    prog, PARTITION_VER, opts->version);
 		goto err;
 	}
+	/*
+	 * don't change prunever because existing prunes don't know
+	 * about prunever.  pver is used in the options.
+	 */
+	opts->pver = opts->prunever ? opts->prunever : "1";
 	ret = 0;
 err:
 	return (ret);
@@ -878,8 +896,9 @@ firstPrune(Opts *opts)
 	char	buf[MAXPATH];
 
 	bktmp(tmpf, "revfile");
-	sprintf(buf, "bk csetprune -aSK%s -r'%s' --revfile='%s' -CCOMPS -",
-	    opts->quiet, opts->tip, tmpf);
+	sprintf(buf,
+	    "bk csetprune --version=%s -aSK%s -r'%s' --revfile='%s' -CCOMPS -",
+	    opts->pver, opts->quiet, opts->tip, tmpf);
 	f = popen(buf, "w");
 	EACH(opts->prune) fprintf(f, "%s\n", opts->prune[i]);
 	if (pclose(f)) {

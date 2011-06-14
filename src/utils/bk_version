@@ -1386,7 +1386,11 @@ case $OS in
 		echo $OS | sed s/linux/static-linux/
 		exit 0
 	}
-	if [ -d /lib64 ]
+	if [ -d /lib/x86_64-linux-gnu ]
+	then	LIBC=`echo /lib/x86_64-linux-gnu/libc-*`
+	elif [ -d /lib/i386-linux-gnu ]
+	then    LIBC=`echo /lib/i386-linux-gnu/libc-*`
+	elif [ -d /lib64 ]
 	then	LIBC=`echo /lib64/libc-*`
 	else	LIBC=`echo /lib/libc-*`
 	fi

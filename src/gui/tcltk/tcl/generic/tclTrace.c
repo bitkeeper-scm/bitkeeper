@@ -24,7 +24,7 @@ typedef struct {
     int flags;			/* Operations for which Tcl command is to be
 				 * invoked. */
     size_t length;		/* Number of non-NUL chars. in command. */
-    char command[4];		/* Space for Tcl command to invoke. Actual
+    char command[0];		/* Space for Tcl command to invoke. Actual
 				 * size will be as large as necessary to hold
 				 * command. This field must be the last in the
 				 * structure, so that it can be larger than 4
@@ -464,8 +464,7 @@ TraceExecutionObjCmd(
 	length = (size_t) commandLength;
 	if ((enum traceOptions) optionIndex == TRACE_ADD) {
 	    TraceCommandInfo *tcmdPtr = (TraceCommandInfo *)
-		    ckalloc((unsigned) (sizeof(TraceCommandInfo)
-			    - sizeof(tcmdPtr->command) + length + 1));
+		    ckalloc((unsigned) (sizeof(TraceCommandInfo) + length + 1));
 
 	    tcmdPtr->flags = flags;
 	    tcmdPtr->stepTrace = NULL;
@@ -478,7 +477,7 @@ TraceExecutionObjCmd(
 		    TCL_TRACE_LEAVE_DURING_EXEC)) {
 		flags |= (TCL_TRACE_ENTER_EXEC | TCL_TRACE_LEAVE_EXEC);
 	    }
-	    strcpy(tcmdPtr->command, command);
+	    memcpy(tcmdPtr->command, command, length+1);
 	    name = Tcl_GetString(objv[3]);
 	    if (Tcl_TraceCommand(interp, name, flags, TraceCommandProc,
 		    tcmdPtr) != TCL_OK) {
@@ -701,8 +700,7 @@ TraceCommandObjCmd(
 	length = (size_t) commandLength;
 	if ((enum traceOptions) optionIndex == TRACE_ADD) {
 	    TraceCommandInfo *tcmdPtr = (TraceCommandInfo *)
-		    ckalloc((unsigned) (sizeof(TraceCommandInfo)
-			    - sizeof(tcmdPtr->command) + length + 1));
+		    ckalloc((unsigned) (sizeof(TraceCommandInfo) + length + 1));
 
 	    tcmdPtr->flags = flags;
 	    tcmdPtr->stepTrace = NULL;
@@ -711,7 +709,7 @@ TraceCommandObjCmd(
 	    tcmdPtr->length = length;
 	    tcmdPtr->refCount = 1;
 	    flags |= TCL_TRACE_DELETE;
-	    strcpy(tcmdPtr->command, command);
+	    memcpy(tcmdPtr->command, command, length+1);
 	    name = Tcl_GetString(objv[3]);
 	    if (Tcl_TraceCommand(interp, name, flags, TraceCommandProc,
 		    tcmdPtr) != TCL_OK) {
@@ -901,15 +899,14 @@ TraceVariableObjCmd(
 	length = (size_t) commandLength;
 	if ((enum traceOptions) optionIndex == TRACE_ADD) {
 	    CombinedTraceVarInfo *ctvarPtr = (CombinedTraceVarInfo *)
-		    ckalloc((unsigned) (sizeof(CombinedTraceVarInfo)
-		    + length + 1 - sizeof(ctvarPtr->traceCmdInfo.command)));
+	      ckalloc((unsigned) (sizeof(CombinedTraceVarInfo) + length + 1));
 	    ctvarPtr->traceCmdInfo.flags = flags;
 	    if (objv[0] == NULL) {
 		ctvarPtr->traceCmdInfo.flags |= TCL_TRACE_OLD_STYLE;
 	    }
 	    ctvarPtr->traceCmdInfo.length = length;
 	    flags |= TCL_TRACE_UNSETS | TCL_TRACE_RESULT_OBJECT;
-	    strcpy(ctvarPtr->traceCmdInfo.command, command);
+	    memcpy(ctvarPtr->traceCmdInfo.command, command, length+1);
 	    ctvarPtr->traceInfo.traceProc = TraceVarProc;
 	    ctvarPtr->traceInfo.clientData = &ctvarPtr->traceCmdInfo;
 	    ctvarPtr->traceInfo.flags = flags;
