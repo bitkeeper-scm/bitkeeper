@@ -93,7 +93,6 @@ newroot(char *ranbits, int bk4, char *comments, char *who)
 		}
 	}
 	unless (bk4) sccs_defRootlog(s);
-	unless (s->tree->random) s->tree->random = strdup("");
 
 	if (ranbits) {
 		/* We're called from BAM convert, append the random bits */
@@ -121,15 +120,11 @@ newroot(char *ranbits, int bk4, char *comments, char *who)
 	} else {
 		randomBits(buf);
 	}
-	if (s->tree->random) {
-		if (streq(buf, RANDOM(s, s->tree))) {
-			fprintf(stderr,
-			    "newroot: error: new key matches old\n");
-			exit (1);
-		}
+	if (streq(buf, RANDOM(s, s->tree))) {
+		fprintf(stderr, "newroot: error: new key matches old\n");
+		exit (1);
 	}
 	s->tree->random = sccs_addStr(s, buf);
-
 	sccs_sdelta(s, sccs_ino(s), key);
 	unless (bk4) update_rootlog(s, key, comments, who);
 	sccs_newchksum(s);

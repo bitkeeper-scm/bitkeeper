@@ -489,7 +489,7 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 			unless (d->flags & D_RED) continue;
 			d->flags &= ~D_RED;
 			marked--;
-			do_print(state, gfile, d->rev);
+			do_print(state, gfile, REV(s, d));
 			if ((e = PARENT(s,d)) &&
 			    !(e->flags & (D_CSET|D_RED))) {
 				e->flags |= D_RED;
