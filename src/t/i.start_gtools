@@ -85,3 +85,10 @@ echo $N Test csettool ...............................................$NL
 cd "$HERE/project/src"
 bk csettool -r1.2 > /dev/null 2>&1
 echo OK
+echo $N Test old color scheme........................................$NL
+echo 'set gc(classicColors) 1' > "`bk dotbk`"/config-gui
+bk revtool
+bk citool
+bk fmtool foo foobar out > /dev/null 2>&1
+bk fm3tool -l1.2 -r1.1.1.1 foobaz
+echo OK

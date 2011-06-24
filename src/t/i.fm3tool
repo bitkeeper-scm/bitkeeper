@@ -60,7 +60,8 @@ bk commit $Q -y"introduced conflicts in file1"
 cd "$HERE/local/src"
 bk get $Q -e file1
 sed '4s/this.*/expect to see a conflict through line 10/;
-5,10s/this.*$/this was changed in the local/;
+5,6s/this.*$/this was changed in the local/;
+10s/this.*$/this was changed in the local/;
 29s/this.*/expect to see a conflict through line 45/;
 30,45s/this.*$/this was changed in the local/;
 70s/this.*/this is a single line change in the local/;

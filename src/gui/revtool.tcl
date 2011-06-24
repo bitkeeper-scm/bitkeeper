@@ -1760,6 +1760,7 @@ proc diffs {diffs l} \
 		set lexp {^>}
 		set rexp {^<}
 	}
+	set line ""
 	while { [gets $diffs str] >= 0 } {
 		$w(aptext) insert end "$str\n"
 		incr l

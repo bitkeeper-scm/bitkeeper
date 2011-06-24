@@ -364,27 +364,35 @@ proc createDiffWidgets {w} \
 	    grid columnconfigure .diffs 0 -weight 1
 	    grid columnconfigure .diffs 2 -weight 1
 
-	    .diffs.left tag configure diff -background $gc($app.newColor)
-	    .diffs.left tag configure diffline -background $gc($app.newColor)
-	    .diffs.left tag configure gca -background $gc($app.oldColor)
-	    .diffs.left tag configure gcaline -background $gc($app.oldColor)
-	    .diffs.left tag configure un -background $gc($app.sameColor)
-	    .diffs.left tag configure unline -background $gc($app.sameColor)
-	    .diffs.left tag configure space -background $gc($app.spaceColor)
-	    .diffs.left tag configure reverse -background $gc($app.charColor)
-	    .diffs.left tag configure hand -background $gc($app.handColor)
-
+	    .diffs.left  tag configure diff -background $gc($app.newColor)
 	    .diffs.right tag configure diff -background $gc($app.newColor)
+
+	    .diffs.left  tag configure diffline -background $gc($app.newColor)
 	    .diffs.right tag configure diffline -background $gc($app.newColor)
+
+	    .diffs.left  tag configure gca -background $gc($app.oldColor)
 	    .diffs.right tag configure gca -background $gc($app.oldColor)
+
+	    .diffs.left  tag configure gcaline -background $gc($app.oldColor)
 	    .diffs.right tag configure gcaline -background $gc($app.oldColor)
+
+	    .diffs.left  tag configure un -background $gc($app.sameColor)
 	    .diffs.right tag configure un -background $gc($app.sameColor)
+
+	    .diffs.left  tag configure unline -background $gc($app.sameColor)
 	    .diffs.right tag configure unline -background $gc($app.sameColor)
+
+	    .diffs.left  tag configure space -background $gc($app.spaceColor)
 	    .diffs.right tag configure space -background $gc($app.spaceColor)
+
+	    .diffs.left  tag configure reverse -background $gc($app.charColor)
 	    .diffs.right tag configure reverse -background $gc($app.charColor)
+
+	    .diffs.left  tag configure hand -background $gc($app.handColor)
 	    .diffs.right tag configure hand -background $gc($app.handColor)
 
 	    bind .diffs <Configure> { computeHeight "diffs" }
+
 }
 
 proc next {conflict} \
