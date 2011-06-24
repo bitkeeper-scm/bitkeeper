@@ -1775,8 +1775,10 @@ proc diffs {diffs l} \
 	}
 	catch { close $diffs; }
 
-	set x [string first "|" $line]
-	highlightStacked $w(aptext) 1.0 end [incr x]
+	if {[info exists line]} {
+		set x [string first "|" $line]
+		highlightStacked $w(aptext) 1.0 end [incr x]
+	}
 }
 
 proc done {} \
