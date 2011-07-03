@@ -1036,20 +1036,24 @@ highlightLine(string l, string r, int lline, int rline)
 
 // Do subline highlighting on two side-by-side diff widgets.
 void
-highlightSideBySide(widget left, widget right, string start, string stop)
+highlightSideBySide(widget left, widget right,
+    string start, string stop, int prefix)
 {
 	int	i, line;
 	string	llines[] = split((string)Text_get(left, start, stop), "\n");
 	string	rlines[] = split((string)Text_get(right, start, stop), "\n");
 	string	idxs[];
 
-	line = (int)split(start, ".")[0];
+	line = idx2line(start);
 	for (i = 0; i < length(llines); ++i) {
-		idxs = highlightLine(llines[i], rlines[i], line, line);
+		idxs = highlightLine(llines[i][prefix..END],
+		    rlines[i][prefix..END], line, line);
 		++line;
 		unless (defined(idxs)) continue;
-		Text_tagAdd(left,  "highlight", (expand)idxs[0..1]);
-		Text_tagAdd(right, "highlight", (expand)idxs[2..3]);
+		Text_tagAdd(left,  "highlight", "${idxs[0]}+${prefix}c",
+		    "${idxs[1]}+${prefix}c");
+		Text_tagAdd(right, "highlight", "${idxs[2]}+${prefix}c",
+		    "${idxs[3]}+${prefix}c");
 	}
 }
 
@@ -1095,5 +1099,14 @@ highlightStacked(widget w, string start, string stop, int prefix)
 			sublines = undef;
 		}
 	}
+}
+
+/*
+ * given "line.col" return just line
+ */
+int
+idx2line(string idx)
+{
+	return ((int)split(idx, ".")[0]);
 }
 #lang tcl

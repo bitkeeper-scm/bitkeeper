@@ -16,6 +16,10 @@ proc getConfig {prog} \
 
 	initFonts $app _d
 
+	# colorscheme
+
+	set gc(classicColors) 0		;# default to the new color scheme.
+
 	set _d(tabwidth) 8		;# default width of a tab
 	set _d(backup) ""		;# Make backups in ciedit: XXX NOTDOC 
 	set _d(balloonTime) 1000	;# XXX: NOTDOC
@@ -26,10 +30,10 @@ proc getConfig {prog} \
 	set _d(listBG) $GRAY91		;# topics / lists background
 	set _d(mergeHeight) 24		;# height of a merge window
 	set _d(mergeWidth) 80		;# width of a merge window
-	set _d(newColor) $BKBLUE2		;# color of new revision/diff
-	set _d(noticeColor) $BKBLUE1	;# messages, warnings
-	set _d(oldColor) $BKVIOLET1	;# color of old revision/diff
-	set _d(searchColor) $YELLOW	;# highlight for search matches
+	set _d(newColor) #c4d7c5	;# color of new revision/diff
+	set _d(noticeColor) #dbdfe6	;# messages, warnings
+	set _d(oldColor) $GRAY88	;# color of old revision/diff
+	set _d(searchColor) orange	;# highlight for search matches
 	set _d(selectColor) $LIGHTBLUE	;# current file/item/topic
 	set _d(statusColor) $LIGHTBLUE	;# various status windows
 	set _d(minsize) 300		;# won't remember geometry if smaller
@@ -40,20 +44,20 @@ proc getConfig {prog} \
 	set _d(selectBG) $NAVY		;# useful for highlighting text
 	set _d(selectFG) $WHITE		;# useful for highlighting text
 	set _d(altColumnBG) $BEIGE		;# alternate column background
-	set _d(infoColor) $POWDERBLUE	;# color of info line in difflib
+	set _d(infoColor) $LIGHTYELLOW	;# color of info line in difflib
 	set _d(textBG) $WHITE			;# text background
 	set _d(textFG) $BLACK			;# text color
 	set _d(scrollColor) $GRAY85		;# scrollbar bars
 	set _d(troughColor) $LIGHTBLUE	;# scrollbar troughs
-	set _d(warnColor) $YELLOW		;# error messages
+	set _d(warnColor) yellow		;# error messages
 
 	set _d(quit)	Control-q	;# binding to exit tool
 	set _d(compat_4x) 0		;# maintain compatibility with 4x
 					;# quirky bindings
-	set _d(highlight) $YELLOW	;# subline highlight color in diffs
+	set _d(highlight) #fffd56	;# subline highlight color in diffs
 	set _d(topMargin) 2		;# top margin for diffs in a diff view
-	set _d(diffColor) $GRAY88	;# color of diff lines
-	set _d(activeDiffColor) $BKGREEN1 ;# active diff color
+	set _d(diffColor) #ededed	;# color of diff lines
+	set _d(activeDiffColor) #2fedad ;# active diff color
 
 	set _d(bug.popupBG) $BLUE
 	set _d(support.popupBG) $BLUE
@@ -90,22 +94,22 @@ proc getConfig {prog} \
 	set _d(fm.activeNewFont) $_d(fixedBoldFont)
 	set _d(fm.activeLeftColor) $ORANGE	;# Color of active left region
 	set _d(fm.activeRightColor) $YELLOW	;# Color of active right region
-	set _d(fm3.conflictBG) $RED		;# Color for conflict message
-	set _d(fm3.unmergeBG) $LIGHTYELLOW	;# Color for unmerged message
+	set _d(fm3.conflictBG) gray		;# Color for conflict message
+	set _d(fm3.unmergeBG) gray	;# Color for unmerged message
 	set _d(fm3.annotate) 1		;# show annotations
-	set _d(fm3.charColor) $ORANGE	;# color of changes in a line
+	set _d(fm3.charColor) $_d(highlight)	;# color of changes in a line
 	set _d(fm3.comments) 1		;# show comments window
 	set _d(fm3.escapeButtonFG) $YELLOW	;# foreground of escape button
 	set _d(fm3.escapeButtonBG) $BLACK	;# background of escape button
 	set _d(fm3.firstDiff) minus
 	set _d(fm3.lastDiff) plus
-	set _d(fm3.mergeColor) $LIGHTBLUE	;# color of merge choices in merge win
-	set _d(fm3.handColor) $LIGHTYELLOW	;# color of hand merged choices
+	set _d(fm3.mergeColor) #b4b6cb	;# color of merge choices in merge win
+	set _d(fm3.handColor) $_d(fm3.mergeColor) ;# color of hand merged choices
 	set _d(fm3.nextConflict) braceright
 	set _d(fm3.nextDiff) bracketright
 	set _d(fm3.prevConflict) braceleft
 	set _d(fm3.prevDiff) bracketleft
-	set _d(fm3.sameColor) $BKTURQUOISE1	;# color of unchanged line
+	set _d(fm3.sameColor) #efefef	;# color of unchanged line
 	set _d(fm3.showEscapeButton) 1	;# show escape button?
 	set _d(fm3.spaceColor) $BLACK	;# color of spacer lines
 	set _d(fm3.toggleGCA) x		;# key to toggle GCA info
@@ -126,7 +130,7 @@ proc getConfig {prog} \
 	set _d(newdifftool.newColor) $BKGREEN1
 	set _d(newdifftool.oldColor) $BKGREEN1
 	set _d(newdifftool.diffColor) $GRAY88
-	set _d(newdifftool.highlight) $YELLOW
+	set _d(newdifftool.highlight) $_d(highlight)
 
 	set _d(rename.listHeight) 8
 
@@ -252,6 +256,29 @@ proc getConfig {prog} \
 
 	set gc(bkdir) [file dirname $rcfile]
 	if {[file readable $rcfile]} { source $rcfile }
+
+	if {$gc(classicColors)} {
+		# set "classic" color scheme. Setting it this way
+		# still lets users override individual colors by
+		# setting both gc(classicColors) _and_ the color they
+		# want to change
+		set _d(newColor) $BKBLUE2
+		set _d(noticeColor) $BKBLUE1
+		set _d(oldColor) $BKVIOLET1
+		set _d(searchColor) $YELLOW
+		set _d(infoColor) $POWDERBLUE
+		set _d(warnColor) $YELLOW
+		set _d(highlight) $YELLOW
+		set _d(diffColor) $GRAY88
+		set _d(activeDiffColor) $BKGREEN1
+		set _d(fm3.conflictBG) $RED
+		set _d(fm3.unmergeBG) $LIGHTYELLOW
+		set _d(fm3.charColor) $ORANGE
+		set _d(fm3.mergeColor) $LIGHTBLUE
+		set _d(fm3.handColor) $LIGHTYELLOW
+		set _d(fm3.sameColor) $BKTURQUOISE1
+		set _d(newdifftool.highlight) $YELLOW
+	}
 
 	# Pass one just copies all the defaults into gc unless they are set
 	# already by the config file
@@ -464,14 +491,15 @@ proc defineSymbolicColors {} \
 		set BKBLUE1		#b0b0e0
 		set BKBLUE2		#a8d8e0
 		set BKBLUE3		#b4e0ff
-		set BKCADETBLUE	#9fb6b8
+		set BKCADETBLUE		#9fb6b8
 		set BKGREEN1		#2fedad
-		set BKPALEOLIVE	#e8f8a6 
+		set BKGREEN2		#a2dec3
+		set BKPALEOLIVE		#e8f8a6
 		set BKPLUM		#dfafdf
 		set BKSLATEBLUE1	#a0a0ff
 		set BKSLATEBLUE2	#c0c0ff
 		set BKSLATEGRAY1	#deeaf4
-		set BKSTEELBLUE	#adb8f6
+		set BKSTEELBLUE		#adb8f6
 		set BKTURQUOISE1	#1cc7d0
 		set BKVIOLET1		#b48cff
 	}

@@ -651,3 +651,16 @@ grep -q "error expanding alias 'DEFAULT' because 'junk' is not present" ERR || {
 }
 # I say this is a ...
 echo "failed (bug )"
+
+echo $N 'Test converge assert (gca is empty) .........................'$NL
+cd "$HERE"
+nested prod
+# creates an empty alias file because GCA must be empty
+bk alias rm $Q DEFAULT
+# override clone_default since DEFAULT is gone
+bk clone $Q -sALL . ../prod-clone
+bk alias new STUFF gcc
+cd ../prod-clone
+bk alias new STUFF2 gdb
+bk pull $Q 2>ERR || fail -f ERR
+echo OK

@@ -4692,6 +4692,7 @@ sccs_free(sccs *s)
 	if (s->locs) free(s->locs);
 	if (s->proj) proj_free(s->proj);
 	if (s->rrevs) freenames(s->rrevs, 1);
+	if (s->fastsum) freeLines(s->fastsum, 0);
 	unblock = s->unblock;
 	bzero(s, sizeof(*s));
 	free(s);
@@ -5508,6 +5509,15 @@ changestate(ser_t *state, char type, ser_t serial)
 }
 
 private int
+topstate(const serlist *state)
+{
+	serlist	*s;
+
+	s = state[SLIST].next;
+	return (s ? s->serial : 0);
+}
+
+private int
 delstate(ser_t ser, ser_t *state, u8 *slist)
 {
 	int	ok = 0;
@@ -6293,6 +6303,208 @@ get_lineName(sccs *s, ser_t ser, MDBM *db, u32 lnum, char *buf)
 	return (buf);
 }
 
+/*
+ * Array contents:
+ *   31 = set if command ; not if data
+ * CMD
+ *   30,29
+ *    0  0 - D
+ *    0  1 - E (only for D)
+ *    1  0 - I (all I-E pairs translated to I<cur> - I<prev>)
+ *    1  1 - N (E (now I) with nonewline tag)
+ *   0-28 = serial
+ * DATA
+ *   30-16 = block line count
+ *   0-15 = block checksum
+ */
+
+/* command defines */
+#define	SUM_CMD		0x80000000
+#define	SUM_I		0x40000000
+#define	SUM_E		0x20000000
+#define	SUM_N		0x20000000
+
+#define	SUM_LAST	0x20000000
+#define	SUM_MAXSER	(SUM_LAST - 1)
+
+/* data defines - 1 bit CMD; 15 bits linecount; 16 bits sum */
+#define	SUM_SIZE	(sizeof(sum_t) * 8)
+#define	SUM_MAXCOUNT	((1 << (32 - SUM_SIZE - 1)) - 1)
+#define	SUM_MASK	((1 << SUM_SIZE) - 1)
+
+private	int
+fastsum_load(sccs *s)
+{
+	sum_t	sum = 0;
+	u32	linecount = 0;
+	serlist *state = 0;
+	char	**fast = 0;	/* really u32 array */
+	u8	*buf, *p;	/* need u8 for summing so no sign extend */
+	char	type, *n;	/* u8 but get api type matching */
+	/* really serials */
+	u32	ser, cur = 0, last = SUM_MAXSER + 1;
+	/* u32 array entries */
+	u32	x, top = 0;
+
+	state = allocstate(0, s->nextserial);
+	sccs_rdweaveInit(s);
+	while (buf = (u8 *)sccs_nextdata(s)) {
+		if (isData(buf)) {
+			p = buf;
+			if (*p == CNTLA_ESCAPE) p++;
+			while (*p) sum += *p++;
+			sum += '\n';
+			linecount++;
+			if (linecount < SUM_MAXCOUNT) continue;
+		}
+		if (linecount) {
+			x = (linecount << SUM_SIZE) | sum;
+			fast = addLine(fast, uint2p(x));
+			top = x;
+			sum = 0;
+			linecount = 0;
+			if (isData(buf)) continue;
+			last = SUM_MAXSER + 1;	/* all "data ^AI" okay */
+		}
+		type = buf[1];
+		n = &buf[3];
+		ser = atoi_p(&n);
+		assert(ser <= SUM_MAXSER);
+		/* pack command into array */
+		x = SUM_CMD;
+		switch (type) {
+		    case 'E':
+			if (ser == cur) {
+				last = cur;
+				/* change I<cur>-E<cur> to I<cur>-I<prev> */
+				ser = changestate(state, 'E', cur);
+				assert(ser < cur);
+				cur = ser;
+				x |= SUM_I;
+				if (*n == 'N') {
+					x |= SUM_N;
+					/* for check.c to know to check */
+					s->has_nonl = 1;
+				}
+			} else {
+				x |= SUM_E;
+			}
+			break;
+		    case 'I':
+			assert(cur < ser);
+			assert(ser < last); /* Ia..EaIb..Eb -> b < a */
+			cur = changestate(state, 'I', ser);
+			x |= SUM_I;
+			break;
+		    case 'D':
+			/* D == (!E && !I) so nothing set */
+		    	break;
+		}
+		x |= ser;
+		/* compress I - if top of cache is also I (and N matches) */
+		if ((x & SUM_I) &&
+		    ((x & (SUM_CMD|SUM_I|SUM_N)) ==
+		    (top & (SUM_CMD|SUM_I|SUM_N)))) {
+			fast[nLines(fast)] = uint2p(x);
+		} else {
+			fast = addLine(fast, uint2p(x));
+		}
+		top = x;
+	}
+	assert(!linecount && !sum);
+	free(state);
+	if (sccs_rdweaveDone(s)) {
+		freeLines(fast, 0);
+		s->io_error = s->io_warned = 1;
+		return (1);
+	}
+	s->fastsum = fast;
+	return (0);
+}
+
+private int
+fastsum(sccs *s, u8 *slist, int this)
+{
+	serlist *state = 0;
+	sum_t	sum = 0;
+	u32	linecount = 0, added = 0, deleted = 0, same = 0;
+	u32	x;
+	char	type;
+	int	i;
+	int	no_lf = 0;	/* boolean */
+	/* serials */
+	u32	dstate = 0, cur = 0, lf_pend = 0;
+	u32	ser;
+
+	if (!s->fastsum && fastsum_load(s)) return (1);
+	state = allocstate(0, s->nextserial);
+
+	EACH(s->fastsum) {
+		x = p2uint(s->fastsum[i]);
+		unless (x & SUM_CMD) {
+			unless (slist[cur]) continue;
+
+			linecount = (x >> SUM_SIZE);
+			if (dstate < cur) {
+				no_lf = 0;
+				lf_pend = cur;
+				sum += (x & SUM_MASK);
+				if (cur == this) {
+					added += linecount;
+				} else {
+					same += linecount;
+				}
+			} else {
+				if (cur == lf_pend) lf_pend = 0;
+				/* delstate() on steroids */
+				if ((dstate == this) &&
+				    (topstate(state) < cur)) {
+					deleted += linecount;
+				}
+			}
+			continue;
+		}
+		ser = x & SUM_MAXSER;
+		if (x & SUM_I) {
+			/* a step down means the block ended */
+			if (ser < lf_pend) {
+				lf_pend = 0;
+				if (x & SUM_N) no_lf = 1;
+			}
+			cur = ser;
+		} else if (slist[ser]) {
+			/*
+			 * Ignore inactive deletes.  Only process active.
+			 * dstate has newest; state has rest.
+			 * that adds complex logic below and pays off
+			 * with fewer changestate calls and with the
+			 * simple deleted linecount logic above.
+			 */
+			type = (x & SUM_E) ? 'E' : 'D';
+			if (ser > dstate) {
+				assert(type == 'D');	/* push */
+				if (dstate) changestate(state, 'D', dstate);
+				dstate = ser;
+			} else if (ser == dstate) { 
+				assert(type == 'E');	/* pop */
+				if (dstate = topstate(state)) {
+					changestate(state, 'E', dstate);
+				}
+			} else {
+				/* non-top insert and rm */
+				changestate(state, type, ser);
+			}
+		}
+	}
+	if (no_lf) sum -= '\n';
+	s->dsum = sum;
+	s->added = added;
+	s->deleted = deleted;
+	s->same = same;
+	free(state);
+	return (0);
+}
+
 private int
 get_reg(sccs *s, char *printOut, int flags, delta *d,
 		int *ln, char *iLst, char *xLst)
@@ -6316,6 +6528,7 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 	char	lnamebuf[MD5LEN+32]; /* md5sum + '.' + linenumber */
 	MDBM	*namedb = 0;
 	u32	*lnum = 0;
+	u32	fastflags = (NEWCKSUM|GET_SUM|GET_SHUTUP|SILENT|PRINT);
 
 	assert(!BAM(s));
 	if (EOLN_WINDOWS(s)) eol = "\r\n";
@@ -6372,6 +6585,18 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 			goto out;
 		}
 		assert(proj_root(s->proj));
+	}
+
+	/*
+	 * Performance shortcut for sccs_renum(). See Notes/FASTSUM.
+	 */
+	if (!hash &&
+	    ((flags & (fastflags|GET_HASHONLY)) == fastflags) &&
+	    ((encoding & E_DATAENC) == E_ASCII)) {
+		int	rc = fastsum(s, slist, d->serial);
+
+		free(slist);
+		return (rc);
 	}
 
 	/* Think carefully before changing this */
