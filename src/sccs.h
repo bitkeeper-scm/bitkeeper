@@ -635,6 +635,7 @@ struct sccs {
 	MDBM	*goneDB;	/* GoneDB used in the get_reg() setup */
 	MDBM	*idDB;		/* id cache used in the get_reg() setup */
 	hash	*findkeydb;	/* Cache a map of delta key to delta* */
+	char	**fastsum;	/* Cache a lines array of the weave sums */
 	project	*proj;		/* If in BK mode, pointer to project */
 	void	*rrevs;		/* If has conflicts, revs in conflict */
 				/* Actually is of type "name *" in resolve.h */

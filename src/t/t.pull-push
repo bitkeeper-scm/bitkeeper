@@ -547,3 +547,14 @@ grep -q "can't connect to same repo_id" ERR || {
 	exit 1
 }
 echo OK
+
+test -d "$TESTDATA/commercial" && {
+echo $N Try pulling in a big patch to tickle fastsum boundary .......$NL
+cd "$HERE"
+bk clone $Q "$TESTDATA/commercial"
+cd commercial
+_BK_NO_PATCHSFIO=1 bk pull $Q "$TESTDATA/repo-32klines" || fail
+echo OK
+}
+
+true
