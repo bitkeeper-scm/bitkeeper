@@ -4692,7 +4692,7 @@ sccs_free(sccs *s)
 	if (s->locs) free(s->locs);
 	if (s->proj) proj_free(s->proj);
 	if (s->rrevs) freenames(s->rrevs, 1);
-	if (s->fastsum) freeLines(s->fastsum, 0);
+	if (s->fastsum) free(s->fastsum);
 	unblock = s->unblock;
 	bzero(s, sizeof(*s));
 	free(s);
@@ -5509,12 +5509,12 @@ changestate(ser_t *state, char type, ser_t serial)
 }
 
 private int
-topstate(const serlist *state)
+topstate(ser_t *state)
 {
-	serlist	*s;
+	int	i;
 
-	s = state[SLIST].next;
-	return (s ? s->serial : 0);
+	i = nLines(state);
+	return (i ? SL_SER(state[i]): 0);
 }
 
 private int
@@ -6337,8 +6337,8 @@ fastsum_load(sccs *s)
 {
 	sum_t	sum = 0;
 	u32	linecount = 0;
-	serlist *state = 0;
-	char	**fast = 0;	/* really u32 array */
+	ser_t	*state = 0;
+	u32	*fast = 0;
 	u8	*buf, *p;	/* need u8 for summing so no sign extend */
 	char	type, *n;	/* u8 but get api type matching */
 	/* really serials */
@@ -6346,7 +6346,6 @@ fastsum_load(sccs *s)
 	/* u32 array entries */
 	u32	x, top = 0;
 
-	state = allocstate(0, s->nextserial);
 	sccs_rdweaveInit(s);
 	while (buf = (u8 *)sccs_nextdata(s)) {
 		if (isData(buf)) {
@@ -6359,7 +6358,7 @@ fastsum_load(sccs *s)
 		}
 		if (linecount) {
 			x = (linecount << SUM_SIZE) | sum;
-			fast = addLine(fast, uint2p(x));
+			addArray(&fast, &x);
 			top = x;
 			sum = 0;
 			linecount = 0;
@@ -6377,7 +6376,8 @@ fastsum_load(sccs *s)
 			if (ser == cur) {
 				last = cur;
 				/* change I<cur>-E<cur> to I<cur>-I<prev> */
-				ser = changestate(state, 'E', cur);
+				state = changestate(state, 'E', cur);
+				ser = whatstate(state);
 				assert(ser < cur);
 				cur = ser;
 				x |= SUM_I;
@@ -6393,7 +6393,8 @@ fastsum_load(sccs *s)
 		    case 'I':
 			assert(cur < ser);
 			assert(ser < last); /* Ia..EaIb..Eb -> b < a */
-			cur = changestate(state, 'I', ser);
+			state = changestate(state, 'I', ser);
+			cur = ser;
 			x |= SUM_I;
 			break;
 		    case 'D':
@@ -6405,16 +6406,16 @@ fastsum_load(sccs *s)
 		if ((x & SUM_I) &&
 		    ((x & (SUM_CMD|SUM_I|SUM_N)) ==
 		    (top & (SUM_CMD|SUM_I|SUM_N)))) {
-			fast[nLines(fast)] = uint2p(x);
+			fast[nLines(fast)] = x;
 		} else {
-			fast = addLine(fast, uint2p(x));
+			addArray(&fast, &x);
 		}
 		top = x;
 	}
 	assert(!linecount && !sum);
 	free(state);
 	if (sccs_rdweaveDone(s)) {
-		freeLines(fast, 0);
+		free(fast);
 		s->io_error = s->io_warned = 1;
 		return (1);
 	}
@@ -6425,7 +6426,7 @@ fastsum_load(sccs *s)
 private int
 fastsum(sccs *s, u8 *slist, int this)
 {
-	serlist *state = 0;
+	ser_t	*state = 0;
 	sum_t	sum = 0;
 	u32	linecount = 0, added = 0, deleted = 0, same = 0;
 	u32	x;
@@ -6437,10 +6438,9 @@ fastsum(sccs *s, u8 *slist, int this)
 	u32	ser;
 
 	if (!s->fastsum && fastsum_load(s)) return (1);
-	state = allocstate(0, s->nextserial);
 
 	EACH(s->fastsum) {
-		x = p2uint(s->fastsum[i]);
+		x = s->fastsum[i];
 		unless (x & SUM_CMD) {
 			unless (slist[cur]) continue;
 
@@ -6483,16 +6483,20 @@ fastsum(sccs *s, u8 *slist, int this)
 			type = (x & SUM_E) ? 'E' : 'D';
 			if (ser > dstate) {
 				assert(type == 'D');	/* push */
-				if (dstate) changestate(state, 'D', dstate);
+				if (dstate) {
+					state =
+					    changestate(state, 'D', dstate);
+				}
 				dstate = ser;
 			} else if (ser == dstate) { 
 				assert(type == 'E');	/* pop */
 				if (dstate = topstate(state)) {
-					changestate(state, 'E', dstate);
+					state =
+					    changestate(state, 'E', dstate);
 				}
 			} else {
 				/* non-top insert and rm */
-				changestate(state, type, ser);
+				state = changestate(state, type, ser);
 			}
 		}
 	}
