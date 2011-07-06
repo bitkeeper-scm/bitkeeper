@@ -1,12 +1,12 @@
 ============================================================================
-Release notes for BitKeeper version 5.4 (Unreleased)
+Release notes for BitKeeper version 5.3 (Unreleased)
 
-  GUI tools
+GUI tools
     Add subline-highlighting to side-by-side and stacked diffs.
     
-  citool
-  fm3tool
-  revtool
+citool
+fm3tool
+revtool
     The color scheme was changed to better match the difftool colors. If you
     want to go back to the old color scheme, put this in your .bk/config-gui
     file:
@@ -17,14 +17,17 @@ Release notes for BitKeeper version 5.4 (Unreleased)
     reworked and thus won't be affected by this setting. They will retain
     the new color scheme.
 
-============================================================================
-Release notes for BitKeeper version 5.3 (released 1-Jun-2011)
-
-This is a minor feature release.
-
 bk bam convert 
     This command may be used to re-convert a BAM enabled repository to
     a smaller size.  See bk help bam, bk help config-etc.
+
+bk clone
+    Performance improvement when using paritial_check.
+    If the source repository needs an integrity check and the destination
+    repository does a full integrity check that is clean, the destination
+    will try and pass back that information to the source repository so 
+    that the next clone skips the check.  Note: if going through a bkd or
+    ssh, then bk-5.3 needs to be running on the remote side as well as local.
 
 ============================================================================
 Release notes for BitKeeper version 5.2.1 (released 6-May-2011)

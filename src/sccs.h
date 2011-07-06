@@ -960,6 +960,7 @@ char	*sccs_user(void);
 delta	*modeArg(delta *d, char *arg);
 int	fileType(mode_t m);
 char	chop(char *s);
+void	touch_checked(void);
 int	atoi_p(char **p);
 char	*p2str(void *p);
 int	sccs_filetype(char *name);
