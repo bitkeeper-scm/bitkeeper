@@ -372,13 +372,13 @@ proc readFiles {L R {O {}}} \
 		balloon_help .diffs.status.r "$finfo(r)\n($finfo(rt))"
 		.diffs.status.middle configure -text "... Diffing ..."
 	} elseif {[info exists lname] && ($lname != "")} {
-		set lt [clock format [file mtime $L] -format "%X %d%b%y"]
-		set rt [clock format [file mtime $R] -format "%X %d%b%y"]
-		lassign [split $lname @|] file rev
+		set lt [clock format [file mtime $L] -format "%X %d %b %y"]
+		set rt [clock format [file mtime $R] -format "%X %d %b %y"]
+		lassign [split $lname |] file rev
 		if {[info exists diffInfo(lfile)]} { set file $diffInfo(lfile) }
 		set rev [md52rev $file $rev]
 		.diffs.status.l configure -text "$file $rev ($lt)"
-		lassign [split $rname @|] file rev
+		lassign [split $rname |] file rev
 		if {[info exists diffInfo(rfile)]} { set file $diffInfo(rfile) }
 		set rev [md52rev $file $rev]
 		.diffs.status.r configure -text "$file $rev ($rt)"
