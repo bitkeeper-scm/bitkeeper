@@ -835,10 +835,9 @@ pull_ensemble(remote *r, char **rmt_aliases,
 					 */
 					fprintf(stderr,
 					    "pull: %s is missing in %s\n"
-					    "and is needed because that "
-					    "component has work on both "
-					    "sides and needs\n"
-					    "to be merged.\n",
+					    "and has work that needs to "
+					    "be pulled, please populate "
+					    "it in the remote side.\n",
 					    c->path, url);
 					++errs;
 				}
