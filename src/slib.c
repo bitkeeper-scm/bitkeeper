@@ -9276,8 +9276,6 @@ sccs_unedit(sccs *s, u32 flags)
 			if (HAS_GFILE(s)) currState = GET_EXPAND;
 		}
 	}
-	unlink(s->pfile);
-	s->state &= ~S_PFILE;
 	if (!modified && getFlags &&
 	    (getFlags == currState ||
 		(currState != 0 && !(SCCS(s) || RCS(s))))) {
@@ -9291,7 +9289,7 @@ sccs_unedit(sccs *s, u32 flags)
 		}
 		getFlags |= GET_SKIPGET;
 	} else {
-reget:		unlinkGfile(s);
+reget:		if (unlinkGfile(s)) return (1);
 		/*
 		 * For make, foo.o may be more recent than s.foo.c
 		 *
@@ -9304,6 +9302,8 @@ reget:		unlinkGfile(s);
 		 */
 		utime(s->sfile, 0);
 	}
+	unlink(s->pfile);
+	s->state &= ~S_PFILE;
 	if (getFlags) {
 		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
 			return (1);
