@@ -108,13 +108,13 @@ exists_main(int ac, char **av)
 	while (fgets(buf, sizeof(buf), stdin)) {
 		unless ((c = chop(buf)) == '\n') {
 			fprintf(stderr, "Bad filename '%s%c'\n", buf, c);
-			exit(2);
+			return (2);
 		}
 		if (exists(buf)) {
 			printf("%s\n", buf);
-			exit(0);
+			return (0);
 		}
 	}
-	exit(1);
+	return (1);
 }
 

@@ -174,15 +174,14 @@ clock_skew: off         # disable trusting of time stamps
 .if \n[NESTED] \{\
 .SS CLONE DEFAULT
 .br
-When cloning a product is the
+When cloning a nested collection, if the
 .B \-s
-option is not passed to select which aliases to product in the resulting
-clone, then the
+option is not used, then the
 .Q clone_default
-option gives the default alias.
+option specifies the default set of components/aliases to clone.
 If
 .Q clone_default
-is not set then "ALL" will be used.
+is not set then "ALL" is implied.
 .DS
 clone_default: THERE    # always match remote repository
 clone_default: PRODUCT  # only the product, no components

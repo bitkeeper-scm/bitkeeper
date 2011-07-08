@@ -107,4 +107,13 @@ bk sfiles -cg | grep -q foo.c && {
 }
 echo OK
 
+echo $N Unedit a file that is locked ................................$NL
+export BK_WIN_NORETRY=0
+URL=`bk lock -tkffoo.c`
+trap "bk _kill $URL" 0
+bk unedit $Q foo.c 2> ERR && fail -f ERR
+bk test -f foo.c || fail foo.c should still be here
+bk test -f SCCS/p.foo.c || fail SCCS/p.foo.c should still be here
+echo OK
+
 fi

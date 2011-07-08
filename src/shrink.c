@@ -85,7 +85,7 @@ shrink_main(int ac, char **av)
 	}
 	end = size(".weave") + size(".encode");
 	fprintf(stderr, "%d -> %d, %.2fX shrinkage\n", start, end, (float)start/end);
-	exit(0);
+	return (0);
 }
 
 private void

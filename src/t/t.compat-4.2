@@ -187,8 +187,8 @@ echo $N Start new and old bkds ......................................$NL
 cd "$HERE"
 OLDP=`port 54500`
 # old bkd will have "No root for triggers!" ttyprintf
-BK_TTYPRINTF= $OLDBK/bk bkd -d -p$OLDP -ikill 2> OLDERR || fail
-bk bkd -d -aPORT -ikill 2> NEWERR || fail
+BK_TTYPRINTF= $OLDBK/bk bkd -d -p$OLDP -ikill 2> OLDERR || fail -f OLDERR
+bk bkd -d -aPORT -ikill 2> NEWERR || fail -f NEWERR
 NEWP=`cat PORT`
 trap "bk _kill bk://localhost:$OLDP; bk _kill bk://localhost:$NEWP" 0
 echo OK

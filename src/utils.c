@@ -1534,9 +1534,11 @@ unsafe_path(char *s)
 int
 full_check(void)
 {
-	struct	stat sb;
+	FILE	*f;
+	char	*t;
 	time_t	now = time(0);
 	time_t	window;
+	time_t	checkt = 0;	/* time of last full check */
 
 	unless (proj_configbool(0, "partial_check")) return (1);
 	if (window = proj_configsize(0, "check_frequency")) {
@@ -1545,7 +1547,11 @@ full_check(void)
 		window = DAY;
 	}
 	if (window > 2*WEEK) window = 2*WEEK;
-	return (lstat(CHECKED, &sb) || ((now - sb.st_mtime) > window));
+	if (f = fopen(CHECKED, "r")) {
+		if (t = fgetline(f)) checkt = strtoul(t, 0, 10);
+		fclose(f);
+	}
+	return ((now - checkt) > window);
 }
 
 /*

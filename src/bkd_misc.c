@@ -156,13 +156,61 @@ cmd_check(int ac, char **av)
 	int	status, rc;
 	
 	out("@CHECK INFO@\n");
-	status = system("bk -r check -a 2>&1");
+	status = system("bk -r check -ac 2>&1");
 	rc = WEXITSTATUS(status); 
 	fputc(BKD_NUL, stdout);
 	fputc('\n', stdout);
 	if (rc) printf("%c%d\n", BKD_RC, rc);
 	fflush(stdout);
 	out("@END@\n");
+	return (rc);
+}
+
+int
+checked_main(int ac, char **av)
+{
+	char	**tips = 0;
+	int	i;
+
+	unless (av[1]) {
+		fprintf(stderr, "usage: checked <tiprev>\n");
+		return (1);
+	}
+	if (proj_cd2root()) {
+		fprintf(stderr, "Not in a repository\n");
+		return (1);
+	}
+	tips = file2Lines(0, "BitKeeper/log/TIP");
+	EACH(tips) {
+		if (streq(av[1], tips[i])) {
+			touch_checked();
+			break;
+		}
+	}
+	freeLines(tips, free);
+	return (0);
+}
+
+/*
+ * Client side of cmd_checked()
+ * XXX - this is bogus if we haven't updated the tip but somewhat harmless,
+ * the other side won't match.  But it makes this useless if that is the case.
+ * Since bk check updates it we should be fine.
+ */
+int
+remote_checked(char *url)
+{
+	char	*at;
+	char	**tips;
+	int	rc;
+
+	// I don't care about errors and
+	// this needed to be sync or the repo disappears in regressions.
+	unless (tips = file2Lines(0, "BitKeeper/log/TIP")) return (1);
+	at = aprintf("-@%s", url);
+	rc = sysio(0, DEVNULL_WR, DEVNULL_WR, "bk", at, "checked", tips[1],SYS);
+	free(at);
+	freeLines(tips, free);
 	return (rc);
 }
 

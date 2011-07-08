@@ -122,6 +122,42 @@ grep -q "Nothing to resolve." OUT || fail -f OUT wrong error
 bk resolve -S $Q -S >OUT 2>&1 || fail -f OUT should have worked
 echo OK
 
+echo $N Make sure bk conflicts works with nested.....................$NL
+cd "$HERE/gcc"
+bk edit $Q stuff afile
+echo some line > stuff
+echo more line > afile
+bk ci $Q -ygcc stuff afile
+bk commit $Q -ygcc
+cd "$HERE/child2/gcc"
+bk edit $Q stuff afile
+echo totally different line > stuff
+echo more different stuff > afile
+bk ci $Q -ynested stuff afile
+bk commit $Q -ynested
+bk port $Q -R "$HERE/gcc" || fail
+cat >WANT <<EOF
+gcc/afile
+gcc/stuff
+EOF
+bk conflicts > GOT
+test $? = 1 || fail wrong exit status
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test again after resolving the conflict......................$NL
+bk resolve -S $Q -T >$DEV_NULL 2>&1 <<EOF
+s
+q
+EOF
+cat >WANT <<EOF
+gcc/stuff
+EOF
+bk conflicts > GOT
+cmpfiles WANT GOT
+echo OK
+
+
 echo $N Test pull -i only prompts once ..............................$NL
 nested project
 echo line > gcc/foo

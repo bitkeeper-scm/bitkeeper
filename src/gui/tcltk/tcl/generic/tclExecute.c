@@ -7955,8 +7955,10 @@ TclExecuteByteCode(
 	    }
 	    /* Append to newStr all chars after the given index. */
 	    if (str_idx < len) {
-		Tcl_AppendObjToObj(newStr,
-		  Tcl_GetRange(target, str_idx+1, len-1));
+		Tcl_Obj *r = Tcl_GetRange(target, str_idx+1, len-1);
+		Tcl_IncrRefCount(r);
+		Tcl_AppendObjToObj(newStr, r);
+		Tcl_DecrRefCount(r);
 	    }
 	    /* Assign newStr to target. */
 	    tmp = Tcl_GetUnicodeFromObj(newStr, &len);

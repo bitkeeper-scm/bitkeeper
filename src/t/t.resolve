@@ -191,6 +191,7 @@ dir2/space file
 file (renamed) LOCAL=file.copy3 REMOTE=file.proj
 EOF
 bk conflicts > GOT
+test $? = 1 || fail
 cmpfiles WANT GOT
 # test ordering of prs options: sfile gfile REMOTE LOCAL GCA
 cd RESYNC > /dev/null
@@ -217,6 +218,7 @@ BitKeeper/RENAMES/1 has 1 conflict block
     Remote path:  file.proj
 EOF
 bk conflicts -v > GOT
+test $? = 1 || fail
 cmpfiles WANT GOT
 echo OK
 
@@ -239,6 +241,7 @@ BitKeeper/RENAMES/1 has 1 conflict block
     Remote path:  file.proj
 EOF
 bk conflicts -vv > GOT
+test $? = 1 || fail
 cmpfiles WANT GOT
 echo OK
 
@@ -264,6 +267,7 @@ this is the comment
 q
 EOF
 bk conflicts > GOT
+test $? = 1 || fail
 cmpfiles WANT GOT
 echo OK
 
@@ -291,6 +295,7 @@ file.proj has 1 conflict block
     Remote path:  file.proj
 EOF
 bk conflicts -v > GOT
+test $? = 1 || fail
 cmpfiles WANT GOT
 # l - resolves file.copy3 rename conflict
 # ul - resolves dir2/gg content conflict
@@ -306,6 +311,7 @@ dir2/space file has 1 conflict block
 file.copy3 has 1 conflict block
 EOF
 bk conflicts -v > GOT
+test $? = 1 || fail
 cmpfiles WANT GOT
 grep -q 'Commands are:' OUT && {
 	echo failed to exit resolver when it should have
@@ -330,6 +336,7 @@ dir2/space file has 1 conflict block
 file.copy3 has 1 conflict block
 EOF
 bk conflicts -v > GOT
+test $? = 1 || fail
 cmpfiles WANT GOT
 grep -q 'Commands are:' OUT && {
 	echo failed to exit resolver when it should have
@@ -354,6 +361,7 @@ dir2/gg has 1 conflict block
 dir2/space file has 1 conflict block
 EOF
 bk conflicts -v > GOT
+test $? = 1 || fail
 cmpfiles WANT GOT
 grep -q 'Commands are:' OUT && {
 	echo failed to exit resolver when it should have
@@ -380,6 +388,7 @@ dir2/gg has 1 conflict block
 dir2/space file has 1 conflict block
 EOF
 bk conflicts -v > GOT
+test $? = 1 || fail
 cmpfiles WANT GOT
 grep -q 'Commands are:' OUT && {
 	echo failed to exit resolver when it should have
