@@ -1107,6 +1107,6 @@ highlightStacked(widget w, string start, string stop, int prefix)
 int
 idx2line(string idx)
 {
-	return ((int)split(idx, ".")[0]);
+	return ((int)split(/\./, idx)[0]);
 }
 #lang tcl
