@@ -64,8 +64,9 @@ echo OK
 
 echo $N Port csets from standalone repo to component ................$NL
 cd "$HERE"/standalone
-echo hi > file1
-bk new $Q file1 || exit 1
+echo hi > file0
+bk new $Q file0 || exit 1
+bk mv file0 file1
 bk commit $Q -y'add file1' || exit 1
 cd ../project2/sa2
 bk portal $Q -r || exit 1
@@ -100,7 +101,7 @@ grep -q 'port: destination is not a portal.' ERR || {
 	exit 1
 }
 bk portal $Q . || exit 1
-bk port $Q ../../standalone || exit 1
+_BK_NO_PATCHSFIO=1 bk port $Q ../../standalone || exit 1
 cd ..
 test "`bk prs -hnd:SPN: -r+ sa2/ChangeSet`" = sa2/SCCS/s.ChangeSet || {
      echo wrong pathnname after port

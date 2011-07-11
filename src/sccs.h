@@ -627,6 +627,7 @@ struct sccs {
 	MDBM	*goneDB;	/* GoneDB used in the get_reg() setup */
 	MDBM	*idDB;		/* id cache used in the get_reg() setup */
 	hash	*findkeydb;	/* Cache a map of delta key to delta* */
+	u32	*fastsum;	/* Cache a lines array of the weave sums */
 	project	*proj;		/* If in BK mode, pointer to project */
 	void	*rrevs;		/* If has conflicts, revs in conflict */
 				/* Actually is of type "name *" in resolve.h */
@@ -952,6 +953,7 @@ char	*sccs_user(void);
 delta	*modeArg(delta *d, char *arg);
 int	fileType(mode_t m);
 char	chop(char *s);
+void	touch_checked(void);
 int	atoi_p(char **p);
 char	*p2str(void *p);
 int	sccs_filetype(char *name);

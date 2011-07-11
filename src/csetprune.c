@@ -40,7 +40,9 @@ typedef struct {
 	char	*who;
 	char	*revfile;	// where to put the corresponding rev key
 	project	*refProj;
+	int	version;	// currently 2, --version=1
 	u32	standalone:1;	// --standalone
+	u32	bk4:1;		// --bk4
 } Opts;
 
 private	int	csetprune(Opts *opts);
@@ -65,10 +67,11 @@ private	int	do_file(Opts *opts, sccs *s, char **deepnest);
 private	char	**deepPrune(char **map, char *path);
 private	char	*newname( char *delpath, char *comp, char *path, char **deep);
 private	char	*getPath(char *key, char **term);
-private	char	*key2delName(char *rk);
+private	char	*key2moved(char *rk);
 
 private	int	flags;
 private	ser_t	partition_tip;
+private	Opts	*opts;
 
 #define	DELCOMP		"BitKeeper/delcomp"	/* component for deleted */
 
@@ -86,16 +89,18 @@ csetprune_main(int ac, char **av)
 	char	*compfile = 0;
 	char	*sfilePath = 0;
 	char	*weavefile = 0;
-	Opts	*opts;
 	int	i, c, ret = 1;
 	longopt	lopts[] = {
 		{ "revfile;", 300 },	/* file to store rev key */
 		{ "tag-csets", 310 },	/* collapse tag graph onto D graph */
+		{ "bk4", 320},		/* bk4 compat on a standalone */
 		{ "standalone", 'S'},
+		{ "version:", 311 },	/* --version=%d for old trees */
 		{ 0, 0 }
 	};
 
 	opts = new(Opts);
+	opts->version = 2;
 	while ((c = getopt(ac, av, "ac:C:I;k:KNqr:sStw:W:", lopts)) != -1) {
 		switch (c) {
 		    case 'a': flags |= PRUNE_ALL; break;
@@ -119,8 +124,18 @@ csetprune_main(int ac, char **av)
 		    case 310: /* --tag-csets */
 			flags |= PRUNE_NEW_TAG_GRAPH;
 			break;
+		    case 311: /* --version=%d */
+			opts->version = atoi(optarg);
+			break;
+		    case 320: /* --bk4 */
+			opts->bk4 = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
+	}
+	if ((flags & PRUNE_ALL) && opts->bk4) {
+		fprintf(stderr, "%s: Cannot prune all in bk4 mode\n", prog);
+		goto err;
 	}
 	if (opts->ranbits) {
 		u8	*p;
@@ -139,6 +154,12 @@ k_err:			fprintf(stderr,
 		fprintf(stderr, "%s: -r in an internal interface\n", prog);
 		goto err;
 	}
+	unless ((opts->version > 0) && (opts->version < 3)) {
+		fprintf(stderr,
+		    "%s: unknown version %d\n", av[0], opts->version);
+		usage();
+	}
+
 	/*
 	 * Backward compat -- fake '-' if no new stuff specified
 	 */
@@ -268,7 +289,7 @@ csetprune(Opts *opts)
 		fprintf(stderr, "csetinit failed\n");
 		goto err;
 	}
-	bk_featureSet(cset->proj, FEAT_SORTKEY, 1);
+	unless (opts->bk4) bk_featureSet(cset->proj, FEAT_SORTKEY, 1);
 	unless (!opts->rev || (d = sccs_findrev(cset, opts->rev))) {
 		fprintf(stderr,
 		    "%s: Revision must be present in repository\n  %s\n",
@@ -348,11 +369,12 @@ finish:
 	// sometimes want to skip this to save another sfile write/walk.
 	unless (flags & PRUNE_NO_NEWROOT) {
 		verbose((stderr, "Regenerating ChangeSet file checksums...\n"));
-		sys("bk", "checksum", "-f", "ChangeSet", SYS);
+		sys("bk", "checksum",
+		    opts->bk4 ? "-f4" : "-f", "ChangeSet", SYS);
 		unless (opts->ranbits) {
 			randomBits(buf);
 			opts->ranbits = buf;
-		} else unless (opts->comppath) {
+		} else unless (opts->bk4 || opts->comppath) {
 			p = aprintf("SALT %s\n", opts->ranbits);
 			p1 = mkRandom(p);
 			free(p);
@@ -385,8 +407,9 @@ finish:
 			p1 = strdup("-q");
 		}
 		verbose((stderr,
-		    "Generating a new root key and updating files...\n"));
-		if (sys("bk", "newroot", p, p1, "-k", opts->ranbits, SYS)) {
+		    "Generating a new root key ...\n"));
+		if (sys("bk", "newroot", p, p1,
+		    (opts->bk4 ? "-4k" : "-k"), opts->ranbits, SYS)) {
 			free(p);
 			free(p1);
 			goto err;
@@ -898,7 +921,7 @@ prune:
 
 		unless (rnew && dnew) {
 			/* compute lazily: most files don't need a delpath */
-			delpath = key2delName(rk);
+			delpath = key2moved(rk);
 			unless (rnew) rnew = delpath;
 			unless (dnew) dnew = delpath;
 		}
@@ -1753,7 +1776,7 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 	char	rk[MAXKEY];
 
 	sccs_sdelta(s, sccs_ino(s), rk);
-	delpath = key2delName(rk);
+	delpath = key2moved(rk);
 	/*
 	 * Save all the old bam dspecs before we start mucking with anything.
 	 */
@@ -1786,7 +1809,12 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 				    prog, s->gfile, d->rev, d->pathname);
 				goto err;
 			}
-			sccs_setPath(s, d, newpath);
+			if (opts->bk4) {
+				if (d->pathname) free(d->pathname);
+				d->pathname = strdup(newpath);
+			} else {
+				sccs_setPath(s, d, newpath);
+			}
 		}
 
 		// BAM stuff
@@ -1815,11 +1843,37 @@ err:
 	return (ret);
 }
 
+/*
+ * Given a rootkey, extract the path, return BitKeeper/moved/$path
+ * user@host|path|...
+ */
 private	char *
-key2delName(char *rk)
+key2movedV2(char *rk)
+{
+	char	*p, *e;
+
+	p = getPath(rk, &e);
+	*e = 0;
+	p = aprintf("BitKeeper/moved/%s", p);
+	*e = '|';
+	return (p);
+}
+
+private	char *
+key2movedV1(char *rk)
 {
 	char	*delName = key2rmName(rk);
 
 	str_subst(delName, "/deleted/", "/moved/", delName);
 	return (delName);
+}
+
+private char *
+key2moved(char *rk)
+{
+	switch (opts->version) {
+	    case 1: return (key2movedV1(rk));
+	    case 2: return (key2movedV2(rk));
+	    default: assert("bad version" == 0);
+    	}
 }

@@ -1760,6 +1760,7 @@ proc diffs {diffs l} \
 		set lexp {^>}
 		set rexp {^<}
 	}
+	set line ""
 	while { [gets $diffs str] >= 0 } {
 		$w(aptext) insert end "$str\n"
 		incr l
@@ -1775,8 +1776,10 @@ proc diffs {diffs l} \
 	}
 	catch { close $diffs; }
 
-	set x [string first "|" $line]
-	highlightStacked $w(aptext) 1.0 end [incr x]
+	if {[info exists line]} {
+		set x [string first "|" $line]
+		highlightStacked $w(aptext) 1.0 end [incr x]
+	}
 }
 
 proc done {} \

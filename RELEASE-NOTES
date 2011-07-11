@@ -1,11 +1,111 @@
 ============================================================================
-Release notes for BitKeeper version 5.3 (released 1-Jun-2011)
+Release notes for BitKeeper version 5.3RC1 (released 8-July-2011)
 
-This is a minor feature release.
+This release features GUI improvements, such as subline difference
+highlighting and enhanced consistency.
 
-bk bam convert 
-    This command may be used to re-convert a BAM enabled repository to
-    a smaller size.  See bk help bam, bk help config-etc.
+It also features a number of bugfixes and a few performance enhancements.
+
+  citool
+  fm3tool
+  revtool
+    The color scheme was changed to better match the difftool colors. If you
+    want to go back to the old color scheme, put this in your .bk/config-gui
+    file:
+
+    set gc(classicColors)      1
+
+    Note that difftool and csettool's side-by-side diffs have been considerably
+    reworked and thus won't be affected by this setting. They will retain
+    the new color scheme.
+
+  difftool
+  csettool
+  revtool
+  fmtool
+    Combine diff chunks together and add subline highlighting.
+    Give all the diff tools a new color scheme.
+    
+  difftool
+    Print dates in status bar as "30 Jun 11" rather than "30Jun11"
+    Fix a bug where if difftool was being run as:
+      bk difftool -r@bk-5.2.1 -r@+ slib.c
+    the revision numbers weren't being printed in the status bar.
+
+  citool and triggers
+    Fix so that a pre-commit trigger failure drop back into citool
+    to run again.  See example 3 in 'bk help triggers'
+
+non GUI changes
+
+  alias
+    Have csets which modify aliases record the modification
+    in the cset comment.
+
+  bam convert 
+    This command may be now be used to re-convert a BAM enabled
+    repository to a smaller size.  See bk help bam, bk help config-etc.
+
+  bam repair
+    Similar to bk bam check except that it will attempt to repair any
+    corrupted data.  By default, it will look for good data in the BAM
+    server, but you may specify a different location with [-@<URL>] (which
+    may be repeated). 
+
+  changes
+    Has faster output as the initialization time has been reduced
+    in a number of cases.
+
+  clone
+    In 'bk clone -B. source dest', fetch bam data from source's bam server,
+    instead of just from source.  This fixes a bug.
+
+    Performance improvement when using partial_check.
+    If the source repository needs an integrity check and the destination
+    repository does a full integrity check that is clean, the destination
+    will try and pass back that information to the source repository so 
+    that the next clone skips the check.  Note: if going through a bkd or
+    ssh, then bk-5.3 needs to be running on the remote side as well as local.
+
+  conflicts
+    Now nested aware.  And fix a bug that was causing resolved files
+    to be listed as not yet resolved.
+
+  get
+    On windows, Stop warning about checking out symlinks.
+    If you want the warning, please set BK_WARN_SYMLINK=YES.
+
+  level
+    Fixed to now work in a nested collection.
+
+  partition
+    Fix bug when partitioning a BK repository that was created
+    by importing from a non BK repository.
+
+  pull
+    Fix a nested case where a repository named on the command line
+    wasn't checked as a safe source for components if had previously
+    been seen as an unsafe source.
+
+    Fix a bug with automatic converge of BitKeeper files, like 'gone'.
+
+    Make large pulls go faster by improving performance of
+    verification, while keeping the integrity of the verification.
+
+  resolve
+    Fix a case where a new file is modified and has the same name as
+    a remote file which was moved in the local repository
+
+  superset - bug fix its use of bk pending
+
+  setup
+    New nested product repositories are now gates by default.
+    (see bk help gate)
+
+  unedit
+    On windows, if the file was held open by another program, BK
+    would remove the pfile leaving the writable file with no pfile.
+    Fixed to not delete the pfile unless the file is deleted.
 
 The 'compression:gzip' config option now takes effect whenever an
 sfile is written and not just when a new sfile is created.

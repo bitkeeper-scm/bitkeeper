@@ -185,6 +185,7 @@ _cat_partition remote
 cfile
 changes
 check
+checked remote
 checksum
 clean
 _cleanpath

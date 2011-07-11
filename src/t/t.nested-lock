@@ -4,11 +4,13 @@ NLOCK=`bk lock -Ppidfile -Wt`
 PID=`cat pidfile`
 test "X$PID" = X && fail no PID
 test -f BitKeeper/writer/nested_lock || fail
-bk lock -l 2>&1 | tee X | grep -q "Write locked" || fail -f X
+bk lock -l 2> X
+grep -q "Write locked" X || fail -f X
 grep -q "$PID" X || fail -f X
 bk _kill $NLOCK
 test -f BitKeeper/writer/nested_lock && fail
-bk lock -l 2>&1 | tee X | grep -q "No active lock in repository" || fail -f X
+bk lock -l 2> X
+grep -q "No active lock in repository" X || fail -f X
 test -d RESYNC && fail
 NLOCK=`bk lock -Ppidfile -Rt`
 PID=`cat pidfile`
@@ -16,20 +18,24 @@ test "X$PID" = X && fail no PID
 test -d BitKeeper/readers || fail
 test 1 = `ls BitKeeper/readers | wc -l` || fail
 test -d RESYNC || fail
-bk lock -l 2>&1 | tee X | grep -q "Read locked" || fail -f X
+bk lock -l 2> X
+grep -q "Read locked" X || fail -f X
 grep -q "$PID" X || fail -f X
 # Grab another one
 NLOCK2=`bk lock -Ppidfile -Rt`
 PID2=`cat pidfile`
 test 2 = `ls BitKeeper/readers | wc -l` || fail `ls BitKeeper/readers`
-bk lock -l 2>&1 | tee X | grep -q "$PID2" || fail -f X
+bk lock -l 2> X
+grep -q "$PID2" X || fail -f X
 grep -q "$PID" X || fail -f X
 bk _kill $NLOCK2
 test 1 = `ls BitKeeper/readers | wc -l` || fail
-bk lock -l 2>&1 | tee X | grep -q "$PID2" && fail -f X
+bk lock -l 2> X
+grep -q "$PID2" X && fail -f X
 bk _kill $NLOCK
 test -d RESYNC && fail
-bk lock -l 2>&1 | tee X | grep -q "No active lock in repository" || fail -f X
+bk lock -l 2> X
+grep -q "No active lock in repository" X || fail -f X
 echo OK
 
 echo $N Test corrupt lock gets staled................................$NL
@@ -40,7 +46,8 @@ test -f BitKeeper/writer/nested_lock || fail
 echo "corrupt lock" > BitKeeper/writer/nested_lock
 NLOCK2=`bk lock -Ppidfile -Wt`
 PID2=`cat pidfile`
-bk lock -l 2>&1 | tee X | grep -q "$PID" | grep -q "(stale)" && fail -f X
+bk lock -l 2> X
+grep "$PID" X | grep -q "(stale)" && fail -f X
 grep -q "$PID2" X || fail -f X
 # nested unlock should refuse to unlock the wrong lock
 bk _kill $NLOCK
@@ -101,7 +108,8 @@ do	bk _usleep 10000
 done
 test -f BitKeeper/writer/nested_lock || fail did not leave locked
 bk unlock -w
-bk -P abort -qf 2>&1 | tee LOUT | grep -q "$PID" && fail did not clear stale lock
+bk -P abort -qf 2> LOUT
+grep -q "$PID" LOUT && fail did not clear stale lock
 grep -q "Forced Shutdown. Recursed too deep." LOUT && \
 	fail -f LOUT infinite loop killed bk
 _BK_LEAVE_LOCKED=

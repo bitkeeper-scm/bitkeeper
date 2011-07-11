@@ -51,3 +51,10 @@ nav[20] = --longz=argz
 EOF
 cmpfiles OUT WANT
 echo OK
+
+echo $N Test --config ...............................................$NL
+bk --config 2>ERR && fail
+bk --config=foo 2>ERR && fail
+bk --config=foo:bar config foo > OUT || fail
+test `cat OUT` = bar || fail
+echo OK

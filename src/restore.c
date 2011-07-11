@@ -3,7 +3,7 @@
 int
 restore_main(int ac,  char **av)
 {
-	exit (restore_backup(av[1], 0));
+	return (restore_backup(av[1], 0));
 }
 
 int
