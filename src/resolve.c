@@ -3050,7 +3050,9 @@ resolve_cleanup(opts *opts, int what)
 			fprintf(stderr, "resolve: rmtree failed\n");
 		}
 	} else if (what & CLEAN_ABORT) {
-		if (system("bk -?BK_NO_REPO_LOCK=YES abort -qfp")) {
+		strcpy(buf, "bk -?BK_NO_REPO_LOCK=YES abort -qfp");
+		if (exists("RESYNC/BitKeeper/log/port")) strcat(buf, "S");
+		if (system(buf)) {
 			fprintf(stderr, "Abort failed\n");
 		}
 	} else if (what & CLEAN_MVRESYNC) {
@@ -3075,7 +3077,9 @@ resolve_cleanup(opts *opts, int what)
 		    dir);
 		if (system(cmd)) perror("dircopy");
 		free(cmd);
-		if (system("bk -?BK_NO_REPO_LOCK=YES abort -fp")) {
+		strcpy(buf, "bk -?BK_NO_REPO_LOCK=YES abort -fp");
+		if (exists("RESYNC/BitKeeper/log/port")) strcat(buf, "S");
+		if (system(buf)) {
 			fprintf(stderr, "Abort failed\n");
 		}
 		free(dir);
