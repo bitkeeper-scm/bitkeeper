@@ -1,5 +1,5 @@
 set -e
-echo $N Press commit twice ..........................................$NL
+echo $N Press checkin twice .........................................$NL
 # Currently, resolve uses sfiles -r to ferret out deep nested comp cset
 # files in the prod RESYNC repo, but citool uses normal sfiles.
 # There is no deep nest file in the RESYNC.  Possibly that's the bug.
@@ -34,7 +34,14 @@ echo merge > foo
 echo do the merge | bk cfile save foo
 cd ..
 echo OK
-echo Press commit twice
+
 set -x
+bk --cd=RESYNC changes -end:I: > WANT
+bk resolve $Q -a foo
+bk --cd=RESYNC changes -end:I: > GOT
+cmpfiles WANT GOT
+echo This will fail and it should. It gives a message that work is in progress
+bk repocheck || true
 bk resolve $Q -a
+echo This should work
 bk repocheck
