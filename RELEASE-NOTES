@@ -1,5 +1,5 @@
 ============================================================================
-Release notes for BitKeeper version 5.3-RC2 (released 18-July-2011)
+Release notes for BitKeeper version 5.3 (released 19-July-2011)
 
 This release features GUI improvements, such as subline difference
 highlighting and enhanced consistency.
@@ -106,6 +106,10 @@ non GUI changes
     On windows, if the file was held open by another program, BK
     would remove the pfile leaving the writable file with no pfile.
     Fixed to not delete the pfile unless the file is deleted.
+
+Windows Explorer changes
+
+  Fix a case where bkshellx.dll would accumulate open file handles.
 
 ============================================================================
 Release notes for BitKeeper version 5.2.1 (released 6-May-2011)
