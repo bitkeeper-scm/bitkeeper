@@ -6483,7 +6483,7 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 	if (!hash &&
 	    ((flags & (fastflags|GET_HASHONLY)) == fastflags) &&
 	    ((encoding & E_DATAENC) == E_ASCII)) {
-		int	rc = fastsum(s, slist, d->serial);
+		int	rc = fastsum(s, slist, SERIAL(s, d));
 
 		free(slist);
 		return (rc);
