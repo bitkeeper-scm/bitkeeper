@@ -247,14 +247,13 @@ cd ..
 echo OK
 
 echo $N Test clonemod without a remote basename .....................$NL
-cd "$HERE"/project
+cd "$HERE"
 bk bkd -q -aPORT -ikill || exit 1
 P=`cat PORT`
 trap "bk _kill bk://localhost:$P" 0
-cd ..
 mkdir foo
 cd foo
-bk clone $Q -@../localcset bk://localhost:$P || fail
+bk clone $Q -@../localcset bk://localhost:$P/project || fail
 test -d project || fail
 echo OK
 
@@ -335,4 +334,71 @@ echo OK
 
 echo $N Test clone with @ in filename ...............................$NL
 bk clone $Q "$HERE/project" test@dir || fail
+echo OK
+
+echo $N Show that a rclone blocks partial check altering remote .....$NL
+cd "$HERE"
+rm -f project/BitKeeper/log/checked
+BK_CONFIG='partial_check:yes!' \
+    bk clone $Q project bk://localhost:$P/checked.rclone || fail
+test -f project/BitKeeper/log/checked && fail 
+echo OK
+
+echo $N Show that a bkd allows partial_check altering remote ........$NL
+cd "$HERE"
+rm -f project/BitKeeper/log/checked
+BK_CONFIG='partial_check:yes!' \
+    bk clone $Q bk://localhost:$P/project checked.bkd || fail
+test -f project/BitKeeper/log/checked || fail 
+echo OK
+
+echo $N Show that a partial_check clone creates checked file ........$NL
+cd "$HERE"
+rm -f project/BitKeeper/log/checked
+BK_CONFIG='partial_check:yes!' bk clone $Q project checked1 || fail
+test -f project/BitKeeper/log/checked || fail 
+echo OK
+
+echo $N Show that a partial_check clone updates old checked file ....$NL
+cd "$HERE"
+echo 100000 > WANT
+cp WANT project/BitKeeper/log/checked
+# Do at least a test with no hardlinks in case code path different
+BK_CONFIG='partial_check:yes!' \
+    bk clone $Q --no-hardlinks project checked2 || fail
+cmp -s WANT project/BitKeeper/log/checked && fail
+echo OK
+
+echo $N Show that a partial_check clone -r does not do so ...........$NL
+cd "$HERE"
+rm -f project/BitKeeper/log/checked
+BK_CONFIG='partial_check:yes!' bk clone $Q -r1.2 project checked3 || fail
+test -f project/BitKeeper/log/checked && fail 
+echo OK
+
+echo $N Show that a partial_check clone -r does not update ..........$NL
+cd "$HERE"
+cp WANT project/BitKeeper/log/checked
+BK_CONFIG='partial_check:yes!' bk clone $Q -r1.2 project checked4 || fail
+cmpfiles WANT project/BitKeeper/log/checked
+echo OK
+
+echo $N Show that a partial_check pull does not create checked ......$NL
+cd "$HERE"
+rm -f project/BitKeeper/log/checked
+rm -f checked3/BitKeeper/log/checked
+cd checked3
+BK_CONFIG='partial_check:yes!' bk pull $Q || fail
+cd "$HERE"
+test -f "project/BitKeeper/log/checked" && fail 
+echo OK
+
+echo $N Show that a partial_check pull does not update checked ......$NL
+cd "$HERE"
+cp WANT project/BitKeeper/log/checked
+rm -f checked4/BitKeeper/log/checked
+cd checked4
+BK_CONFIG='partial_check:yes!' bk pull $Q || fail
+cd "$HERE"
+cmpfiles WANT project/BitKeeper/log/checked
 echo OK

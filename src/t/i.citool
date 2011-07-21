@@ -109,7 +109,7 @@ do
 done
 touch newfile
 bk new $Q newfile
-bk collapse -eda`bk repogca`
+bk collapse $Q -eda`bk repogca`
 bk citool
 echo OK
 

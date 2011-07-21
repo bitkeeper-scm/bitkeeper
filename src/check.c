@@ -506,19 +506,7 @@ out:
 		progress_done(tick, errors ? "FAILED":"OK");
 		progress_restoreStderr();
 	}
-	if (all && !errors && !(flags & INIT_NOCKSUM)) {
-		FILE	*f;
-
-		/* update timestamp of CHECKED file */
-		unless (f = fopen(CHECKED, "w")) {
-			unlink(CHECKED);
-			f = fopen(CHECKED, "w");
-		}
-		if (f) {
-			fprintf(f, "%u\n", (u32)time(0));
-			fclose(f);
-		}
-	}
+	if (all && !errors && !(flags & INIT_NOCKSUM)) touch_checked();
 	if (all && !errors) {
 		/* clean check so we can update dfile marker */
 		enableFastPendingScan();
@@ -539,6 +527,26 @@ out:
 		    "---------------------------------\n");
 	}
 	return (errors);
+}
+
+/*
+ * From an early cset by Wayne, moved so that cmd_checked() could use it.
+ * Timestamp read by full_check() in utils.c.
+ */
+void
+touch_checked(void)
+{
+	FILE	*f;
+
+	/* update timestamp of CHECKED file */
+	unless (f = fopen(CHECKED, "w")) {
+		unlink(CHECKED);
+		f = fopen(CHECKED, "w");
+	}
+	if (f) {
+		fprintf(f, "%u\n", (u32)time(0));
+		fclose(f);
+	}
 }
 
 private sccs *

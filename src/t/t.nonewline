@@ -92,6 +92,7 @@ bk delta $Q -ymerge foo.c bar.c
 bk get $Q foo.c bar.c
 cmp -s foo.c X || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
 cmp -s bar.c Y || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
+bk checksum foo.c bar.c || fail
 echo OK
 
 bk commit $S -ywhatever
@@ -145,6 +146,7 @@ cp afterdel WANT
 bk delta $Q -y1.4 afterdel
 bk get $Q afterdel
 checkfiles WANT afterdel
+bk checksum afterdel || fail
 # run through it again, with gzipped sfile
 bk _cp afterdel.bkup SCCS/s.afterdel
 bk admin -Zgzip afterdel
@@ -153,6 +155,7 @@ printf "a\nb\n" > afterdel
 bk delta $Q -y1.4 afterdel
 bk get $Q afterdel
 checkfiles WANT afterdel
+bk checksum afterdel || fail
 echo OK
 
 echo $N No newline corner case with closing E before delete .........$NL
@@ -175,6 +178,7 @@ cp beforedel WANT
 bk delta $Q -y'merge and delete end' beforedel
 bk get $Q beforedel
 checkfiles WANT beforedel
+bk checksum beforedel || fail
 # run through it again, with gzipped sfile
 bk _cp beforedel.bkup SCCS/s.beforedel
 bk admin -Zgzip beforedel
@@ -183,4 +187,5 @@ printf "a\n\001c\n" > beforedel
 bk delta $Q -y'merge and delete end' beforedel
 bk get $Q beforedel
 checkfiles WANT beforedel
+bk checksum beforedel || fail
 echo OK

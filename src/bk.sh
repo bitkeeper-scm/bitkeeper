@@ -1678,7 +1678,8 @@ _conflicts() {
 	VERBOSE=0
 	SINGLE=0
 	ITERATING=0
-	while getopts dDefprSv opt
+	RC=0;
+	while getopts :dDefprSv opt
 	do
 		case "$opt" in
 		d) DIFF=1;;
@@ -1688,21 +1689,25 @@ _conflicts() {
 		v) test $VERBOSE -eq 1 && VERBOSE=2 || VERBOSE=1;;
 		p|r) REVTOOL=1;;
 		S) SINGLE=1;;
-		*)	bk help -s conflicts
-			exit 1;;
+		?|*)	echo "Invalid option '-$OPTARG'" 1>&2
+			bk help -s conflicts
+			exit 2;;
 		esac
 	done
 
 	ROOTDIR=`bk root -R 2>/dev/null`
-	test $? -ne 0 && { echo "You must be in a BK repository" 1>&2; exit 1; }
+	test $? -ne 0 && { echo "You must be in a BK repository" 1>&2; exit 2; }
 	cd "$ROOTDIR" > /dev/null
 
 	# Handle nested trees
 	test $SINGLE -eq 0 -a \
 	    $ITERATING -eq 0 -a \
 	    `bk repotype` != traditional && {
-		bk -e conflicts -e "$@"
-		exit $?
+		# Need env var to check product even if error in comps
+		_BK_PRODUCT_ALWAYS=1 bk -e conflicts -e "$@"
+		RC=$?
+		test "$RC" = 0 && echo "No files are in conflict"
+		exit $RC
 	}
 
 	shift `expr $OPTIND - 1`
@@ -1716,54 +1721,67 @@ _conflicts() {
 			PREFIX="`bk pwd -P`/"
 		}
 	}
-		
-	test -d RESYNC || { echo "No files are in conflict"; exit 0; }
+
+	test -d RESYNC || {
+		test $ITERATING -eq 0 && echo "No files are in conflict"
+		exit 0
+	}
 	cd RESYNC > /dev/null
 
 	bk gfiles "$@" | grep -v '^ChangeSet$' | bk prs -hnr+ \
 	-d'$if(:RREV:){:GPN:|:LPN:|:RPN:|:GFILE:|:LREV:|:RREV:|:GREV:}' - | \
-	bk sort | while IFS='|' read GPN LPN RPN GFILE LOCAL REMOTE GCA
-	do	if [ "$GFILE" != "$LPN" ]
-		then	PATHS="$GPN (renamed) LOCAL=$LPN REMOTE=$RPN"
-		else	test "$GFILE" = "$LPN" || {
-				echo "GFILE=$PREFIX$GFILE LOCALPATH=$LPN" 1>&2
-				echo "This is unexpected; paths are unknown" 1>&2
-				exit 1
-			}
-			PATHS="$GFILE"
-		fi
-		if [ $VERBOSE -eq 0 ]; then
-			if [ "$PATHS" = "$GFILE" ] &&
-			    bk smerge -Iu -l$LOCAL -r$REMOTE "$GFILE" \
-			    > /dev/null
-			then
-				: # conflict already resolved: do nothing
-			else
-				echo "$PREFIX$PATHS"
+	bk sort | {
+		while IFS='|' read GPN LPN RPN GFILE LOCAL REMOTE GCA
+		do	if [ "$GFILE" != "$LPN" ]
+			then	PATHS="$GPN (renamed) LOCAL=$LPN REMOTE=$RPN"
+				RC=1
+			else	PATHS="$GFILE"
 			fi
-		else
-			__conflict $VERBOSE
-			test "$GFILE" = "$LPN" -a "$GFILE" = "$RPN" || {
-				echo "    GCA path:     $PREFIX$GPN"
-				echo "    Local path:   $PREFIX$LPN"
-				echo "    Remote path:  $PREFIX$RPN"
-			}
-		fi
-		if [ $DIFF -eq 1 ]; then
-			bk diffs -r${LOCAL}..${REMOTE} "$GFILE"
-		fi
-		if [ $DIFFTOOL -eq 1 ]; then
-			bk difftool -r$LOCAL -r$REMOTE "$GFILE"
-		fi
-		if [ $REVTOOL -eq 1 ]; then
-			bk revtool -l$LOCAL -r$REMOTE "$GFILE"
-		fi
-		if [ $FM3TOOL -eq 1 ]; then
-			echo "NOTICE: read-only merge of $PREFIX$GFILE"
-			echo "        No changes will be written."
-			bk fm3tool -n -l$LOCAL -r$REMOTE "$GFILE"
-		fi
-	done
+			if [ $VERBOSE -eq 0 ]; then
+				if [ "$PATHS" = "$GFILE" ] &&
+					bk smerge -Iu \
+						-l$LOCAL -r$REMOTE "$GFILE" \
+						> /dev/null
+				then
+					: # conflict already resolved:
+					  # do nothing
+				else
+					if [ ! -f "$GFILE" ] ||
+						grep -q "<<<<<<" "$GFILE"
+					then
+						echo "$PREFIX$PATHS"
+						RC=1
+					else
+						: # conflict already resolved:
+						  # do nothing
+					fi
+				fi
+			else
+				__conflict $VERBOSE || RC=$?
+				test "$GFILE" = "$LPN" -a "$GFILE" = "$RPN" || {
+					echo "    GCA path:     $PREFIX$GPN"
+					echo "    Local path:   $PREFIX$LPN"
+					echo "    Remote path:  $PREFIX$RPN"
+				}
+			fi
+			if [ $DIFF -eq 1 ]; then
+				bk diffs -r${LOCAL}..${REMOTE} "$GFILE"
+			fi
+			if [ $DIFFTOOL -eq 1 ]; then
+				bk difftool -r$LOCAL -r$REMOTE "$GFILE"
+			fi
+			if [ $REVTOOL -eq 1 ]; then
+				bk revtool -l$LOCAL -r$REMOTE "$GFILE"
+			fi
+			if [ $FM3TOOL -eq 1 ]; then
+				echo "NOTICE: read-only merge of $PREFIX$GFILE"
+				echo "        No changes will be written."
+				bk fm3tool -n -l$LOCAL -r$REMOTE "$GFILE"
+			fi
+		done
+		exit $RC
+	}
+	## The above pipeline *MUST* be the last command
 }
 
 __fmt() {
@@ -1781,7 +1799,7 @@ __fmt() {
 __conflict() {
 	bk smerge -Iu -l$LOCAL -r$REMOTE "$GFILE" > /tmp/awk$$ && {
 		rm -f /tmp/awk$$
-		return
+		return 0
 	}
 	awk -v FILE="$PREFIX$GFILE" -v VERBOSE=$VERBOSE '
 		BEGIN { in_conflict = 0 }
@@ -1805,6 +1823,7 @@ __conflict() {
 		}
 	' /tmp/awk$$
 	rm -f /tmp/awk$$
+	return 1
 }
 
 # run command with the 'latest' version of bk

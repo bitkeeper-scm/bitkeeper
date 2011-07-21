@@ -18,10 +18,10 @@ int
 create_main(int ac, char **av)
 {
 	av[0] = "add";
-	if (delta_main(ac, av)) exit(1);
+	if (delta_main(ac, av)) return (1);
 	av[0] = "get";
-	if (get_main(ac, av)) exit(1);
-	exit(0);
+	if (get_main(ac, av)) return (1);
+	return (0);
 }
 
 int

@@ -582,7 +582,10 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar,
 			rc = 1;
 			goto done;
 		}
-		if (opts.port) touch("RESYNC/SCCS/d.ChangeSet", 0666);
+		if (opts.port) {
+			touch("RESYNC/SCCS/d.ChangeSet", 0666);
+			touch("RESYNC/BitKeeper/log/port", 0666);
+		}
 		if (opts.product) {
 			unless (opts.verbose || opts.quiet || title) {
 				/* Finish the takepatch progress bar. */
@@ -835,10 +838,9 @@ pull_ensemble(remote *r, char **rmt_aliases,
 					 */
 					fprintf(stderr,
 					    "pull: %s is missing in %s\n"
-					    "and is needed because that "
-					    "component has work on both "
-					    "sides and needs\n"
-					    "to be merged.\n",
+					    "and has work that needs to "
+					    "be pulled, please populate "
+					    "it in the remote side.\n",
 					    c->path, url);
 					++errs;
 				}
@@ -928,10 +930,6 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			printf("#### %s ####\n", c->path);
 			fflush(stdout);
 		}
-		vp = addLine(0, strdup("bk"));
-		vp = addLine(vp,
-		    aprintf("--title=%d/%d %s",
-			++which, opts.n, c->path));
 		if (chdir(c->path)) {
 			fprintf(stderr, "Could not chdir to "
 			    " component '%s'\n", c->path);
@@ -939,6 +937,23 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			rc = 1;
 			break;
 		}
+		if (isdir(ROOT2RESYNC)) {
+			fprintf(stderr, "Existing RESYNC directory in"
+			    " component '%s'\n", c->path);
+			if (exists("RESYNC/BitKeeper/log/port")) {
+				fprintf(stderr, "Port in progress\n"
+				    "Please run 'bk resolve -S "
+				    "or 'bk abort -S'\n"
+				"in the '%s' component\n", c->path);
+			}
+			fprintf(stderr, "pull: update aborted.\n");
+			rc = 1;
+			break;
+		}
+		vp = addLine(0, strdup("bk"));
+		vp = addLine(vp,
+		    aprintf("--title=%d/%d %s",
+			++which, opts.n, c->path));
 		vp = addLine(vp, strdup("pull"));
 		EACH(opts.av_pull) {
 			vp = addLine(vp, strdup(opts.av_pull[i]));

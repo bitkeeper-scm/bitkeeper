@@ -29,6 +29,8 @@ echo OK
 echo $N 'Show sort order with gdb unpopulated. Press quit (save) .....'$NL
 cd ..
 bk alias -e here | bk alias set here -
+bk gate $Q -r
+bk portal $Q -r
 bk here rm -qf gdb
 test -d gdb && fail
 bk citool

@@ -279,7 +279,7 @@ proc highlightDiffs {} \
 	foreach {Diff End} $rDiff {
 		.diffs.left  tag add diff $Diff $End
 		.diffs.right tag add diff $Diff $End
-		highlightSideBySide .diffs.left .diffs.right $Diff $End
+		highlightSideBySide .diffs.left .diffs.right $Diff $End 0
 	}
 	.diffs.left  tag configure d -background $gc(fm.activeDiffColor)
 	.diffs.right tag configure d -background $gc(fm.activeDiffColor)

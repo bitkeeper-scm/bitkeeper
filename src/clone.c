@@ -1067,6 +1067,10 @@ nested_err:		fprintf(stderr, "clone: component fetch failed, "
 			fprintf(stderr, "Consistency check failed, "
 			    "repository left locked.\n");
 			return (RET_ERROR);
+		} else unless (partial) {
+			p = remote_unparse(r);
+			remote_checked(p);
+			free(p);
 		}
 	}
 	freeLines(checkfiles, free);
@@ -1517,8 +1521,6 @@ rmEmptyDirs(int quiet)
 private void
 lclone(char *from)
 {
-	struct	stat sb;
-	struct	utimbuf tb;
 	project	*srcproj;
 	char	buf[MAXPATH];
 	char	dstidx[MAXPATH];
@@ -1540,15 +1542,6 @@ lclone(char *from)
 			fileCopy(buf, dstidx);
 			system("bk bam reload");
 		}
-	}
-
-	/* copy timestamp on CHECKED file */
-	concat_path(buf, from, CHECKED);
-	unless (lstat(buf, &sb)) {
-		touch(CHECKED, GROUP_MODE);
-		tb.actime = sb.st_atime;
-		tb.modtime = sb.st_mtime;
-		utime(CHECKED, &tb);
 	}
 }
 

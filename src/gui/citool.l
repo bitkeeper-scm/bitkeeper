@@ -569,7 +569,7 @@ addFiles(string files[])
 	unlink(tmp);
 	addSfilesLines(lines);
 	if (self.sfiles_pending > 0) insertPendingNode(self.root);
-	insertCsetFile(self.root);
+	unless (self.partial) insertCsetFile(self.root);
 }
 
 void
@@ -647,6 +647,16 @@ processFiles(string files[])
 	// and select the ChangeSet now.
 	if (!defined(getSelectedFile()) && defined(self.files{"ChangeSet"})) {
 		selectFile(self.files{"ChangeSet"}.node);
+	}
+
+	if (!defined(getSelectedFile())) {
+		// We don't have a ChangeSet file or any uncommented files,
+		// so we'll just select the first file in the root component.
+		string	file = self.components{self.root}[0];
+
+		if (defined(self.files{file})) {
+			selectFile(self.files{file}.node);
+		}
 	}
 
 	Progressbar_configure(self.w_progress, value: 100);
@@ -1001,8 +1011,8 @@ selectFile(string node)
 		Tree_selectionSet(self.w_files, node);
 		Tree_see(self.w_files, node);
 		configureFile(sel); // redraw the previous file's icon
-		updateButtons();
 		showFile(sf);
+		updateButtons();
 	}
 
 	return (1);
@@ -1211,6 +1221,7 @@ updateButtons()
 {
 	sfile	cset;
 	sfile	sf = getSelectedFile();
+	int	commit = 0;
 	string	state = "normal";
 	widget	b, buttons[] = winfo_children(self.w_buttons);
 
@@ -1232,6 +1243,14 @@ updateButtons()
 	configureButton("rescan", text: "Rescan");
 	configureButton("checkin", text: "Checkin");
 	configureButton("history", text: "History", command: "launchRevtool");
+
+	cset = self.files{"ChangeSet"};
+	if (self.cnt_commented && defined(cset)
+	    && isCommented(cset) && !isExcluded(cset)) {
+		commit = 1;
+		configureButton("checkin", text: "Commit");
+	}
+
 	if (defined(sf)) {
 		if (sf.type eq "pending") {
 			configureButton("edit", state: "disabled");
@@ -1246,11 +1265,7 @@ updateButtons()
 			configureButton("history", text: "Unignore",
 			    command: "unignoreFile");
 		}
-		cset = self.files{"ChangeSet"};
-		if (self.cnt_commented && isCommented(cset)
-		    && !isExcluded(cset)) {
-			configureButton("checkin", text: "Commit");
-		} else if (sf.type eq "pending") {
+		if (sf.type eq "pending" && !commit) {
 			configureButton("checkin", state: "disabled");
 		}
 	} else {
@@ -1941,7 +1956,9 @@ doCommit()
 
 	unless (self.commitSwitch) {
 		self.commitSwitch = 1;
-		if (isCommented(cset) && !isExcluded(cset)) {
+		if (self.partial) {
+			topMessage(msgs{"noCsetOK"}, "message");
+		} else if (isCommented(cset) && !isExcluded(cset)) {
 			topMessage(msgs{"gotCset"}, "message");
 		} else {
 			topMessage(msgs{"noCset"}, "message");
@@ -2060,7 +2077,7 @@ commitComponent(string comp)
 		}
 	}
 
-	if (csetCommented && !csetExcluded && length(commit)) {
+	if (!self.partial && csetCommented && !csetExcluded && length(commit)) {
 		FILE	fd;
 		int	err;
 		string	line;

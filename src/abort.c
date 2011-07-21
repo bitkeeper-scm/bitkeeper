@@ -253,6 +253,8 @@ abortComponents(options *opts)
 			errors++;
 			continue;
 		}
+		/* not part of this pull */
+		if (exists("RESYNC/BitKeeper/log/port")) continue;
 		if (c->new) {
 			unless (streq(proj_rootkey(0), c->rootkey)) {
 				TRACE("wrong rootkey in %s\n", c->path);

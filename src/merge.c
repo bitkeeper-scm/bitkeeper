@@ -163,14 +163,18 @@ private int
 do_hashmerge(Opts *opts, char *files[3])
 {
 	hash	*h[3], *hout;
+	FILE	*f;
 	int	i;
 
 	for (i = 0; i < 3; i++) {
-		unless (h[i] = hash_fromFile(0, files[i])) {
+		unless (f = fopen(files[i], "r")) {
 			fprintf(stderr, "%s: unable to open %s\n",
 			    prog, files[i]);
 			return (2);
 		}
+		h[i] = hash_new(HASH_MEMHASH);
+		hash_fromStream(h[i], f);
+		fclose(f);
 	}
 	hout = hash_new(HASH_MEMHASH);
 	EACH_HASH(h[0]) {

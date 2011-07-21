@@ -77,6 +77,13 @@ proc createDiffWidgets {w} \
 	    .diffs.right tag configure highlight -background $gc($app.highlight)
 	    .diffs.right tag configure empty -background black
 	    .diffs.left  tag configure empty -background black
+	    .diffs.left  tag configure same -background white
+	    .diffs.right tag configure same -background white
+	    .diffs.left  tag configure changed -background gray
+	    .diffs.right tag configure changed -background gray
+	    .diffs.left  tag configure minus -background white
+	    .diffs.left  tag configure plus -background white
+
 	    bind .diffs <Configure> { computeHeight "diffs" }
 }
 
@@ -167,8 +174,12 @@ proc highlightDiffs {start stop} \
 
 	.diffs.left tag remove d 1.0 end
 	.diffs.right tag remove d 1.0 end
-	.diffs.left tag add d $start $stop+1c
-	.diffs.right tag add d $start $stop+1c
+	set line1 [idx2line $start]
+	set line2 [idx2line $stop]
+	for {set i $line1} {$i <= $line2} {incr i} {
+		.diffs.left tag add d $i.1 $i.end+1c
+		.diffs.right tag add d $i.1 $i.end+1c
+	}
 }
 
 proc topLine {} \
@@ -361,13 +372,13 @@ proc readFiles {L R {O {}}} \
 		balloon_help .diffs.status.r "$finfo(r)\n($finfo(rt))"
 		.diffs.status.middle configure -text "... Diffing ..."
 	} elseif {[info exists lname] && ($lname != "")} {
-		set lt [clock format [file mtime $L] -format "%X %d%b%y"]
-		set rt [clock format [file mtime $R] -format "%X %d%b%y"]
-		lassign [split $lname @|] file rev
+		set lt [clock format [file mtime $L] -format "%X %d %b %y"]
+		set rt [clock format [file mtime $R] -format "%X %d %b %y"]
+		lassign [split $lname |] file rev
 		if {[info exists diffInfo(lfile)]} { set file $diffInfo(lfile) }
 		set rev [md52rev $file $rev]
 		.diffs.status.l configure -text "$file $rev ($lt)"
-		lassign [split $rname @|] file rev
+		lassign [split $rname |] file rev
 		if {[info exists diffInfo(rfile)]} { set file $diffInfo(rfile) }
 		set rev [md52rev $file $rev]
 		.diffs.status.r configure -text "$file $rev ($rt)"
@@ -419,16 +430,21 @@ proc readFiles {L R {O {}}} \
 		switch -- $diff {
 		    "S" {
 			## same
+			$left  insert end " " same
 			$left  insert end [gets $l]\n
+			$right  insert end " " same
 			$right insert end [gets $r]\n
 		    }
 		    "|" {
 			## changed
+			$left  insert end " " changed
 			$left  insert end [gets $l]\n diff
+			$right  insert end " " changed
 			$right insert end [gets $r]\n diff
 		    }
 		    "<" {
 			## left
+			$left  insert end "-" minus
 			$left  insert end [gets $l]\n diff
 			$right  insert end " " empty
 			$right insert end \n diff
@@ -437,6 +453,7 @@ proc readFiles {L R {O {}}} \
 			## right
 			$left  insert end " " empty
 			$left  insert end \n diff
+			$right  insert end "+" plus
 			$right insert end [gets $r]\n diff
 		    }
 		}
@@ -451,7 +468,7 @@ proc readFiles {L R {O {}}} \
 				set Diffs($diffCount) $blockStart.0
 				set DiffsEnd($diffCount) $blockEnd.end
 				highlightSideBySide .diffs.left .diffs.right \
-				    $blockStart.0 $blockEnd.end
+				    $blockStart.0 $blockEnd.end 1
 			}
 			set blockStart $lineCount
 		}

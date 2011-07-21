@@ -1387,12 +1387,15 @@ case $OS in
 		exit 0
 	}
 	if [ -d /lib/x86_64-linux-gnu ]
-	then	LIBC=`echo /lib/x86_64-linux-gnu/libc-*`
+	then	LIBC=`ls /lib/x86_64-linux-gnu/libc-* 2> /dev/null`
 	elif [ -d /lib/i386-linux-gnu ]
-	then    LIBC=`echo /lib/i386-linux-gnu/libc-*`
+	then    LIBC=`ls /lib/i386-linux-gnu/libc-* 2> /dev/null`
+	fi
+	if [ -n "$LIBC" ]
+	then	: # do nothing
 	elif [ -d /lib64 ]
-	then	LIBC=`echo /lib64/libc-*`
-	else	LIBC=`echo /lib/libc-*`
+	then	LIBC=`ls /lib64/libc-* 2> /dev/null`
+	else	LIBC=`ls /lib/libc-* 2> /dev/null`
 	fi
 	LIBC=`echo $LIBC | \
 	    sed -n 's/.*\/libc-\([2-9]\)\.\([0-9][0-9]*\)\..*/glibc\1\2/p' -`

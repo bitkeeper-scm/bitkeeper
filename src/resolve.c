@@ -187,6 +187,12 @@ resolve_main(int ac, char **av)
 		freeStuff(&opts);
 		return (0);
 	}
+	unless (writable(".")) {
+		fprintf(stderr,
+		    "resolve: repository root directory is not writable.\n");
+		freeStuff(&opts);
+		return (1);
+	}
 	if (proj_isCaseFoldingFS(0)) {
 		localDB = mdbm_mem();
 		resyncDB = mdbm_mem();
@@ -490,7 +496,7 @@ resolve_components(opts *opts)
 {
 	char	**unresolved = 0, **revs = 0;
 	char	*compCset = 0, *resync = 0, *compCset2 = 0;
-	char	*cwd;
+	char	*cwd, *p;
 	comp	*c;
 	int	errors = 0, status = 0;
 	int	i;
@@ -567,6 +573,20 @@ missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 		FREE(compCset2);
 		compCset2 = aprintf("%s/" CHANGESET, c->path);
 		if (exists(compCset)) {
+			p = strrchr(compCset, '/');
+			assert(p);
+			p[1] = 'd';
+			unless (exists(compCset)) {
+				/*
+				 * A component's ChangeSet file is here
+				 * with no dfile means that this
+				 * component is no longer pending.
+				 * The sameFiles() won't match
+				 * because this copy has a cset mark.
+				 */
+				continue;
+			}
+			p[1] = 's';
 			/*
 			 * Already resolved with merge. Verify that
 			 * the component's actual ChangeSet file
@@ -3055,7 +3075,9 @@ resolve_cleanup(opts *opts, int what)
 			fprintf(stderr, "resolve: rmtree failed\n");
 		}
 	} else if (what & CLEAN_ABORT) {
-		if (system("bk -?BK_NO_REPO_LOCK=YES abort -qfp")) {
+		strcpy(buf, "bk -?BK_NO_REPO_LOCK=YES abort -qfp");
+		if (exists("RESYNC/BitKeeper/log/port")) strcat(buf, "S");
+		if (system(buf)) {
 			fprintf(stderr, "Abort failed\n");
 		}
 	} else if (what & CLEAN_MVRESYNC) {
@@ -3080,7 +3102,9 @@ resolve_cleanup(opts *opts, int what)
 		    dir);
 		if (system(cmd)) perror("dircopy");
 		free(cmd);
-		if (system("bk -?BK_NO_REPO_LOCK=YES abort -fp")) {
+		strcpy(buf, "bk -?BK_NO_REPO_LOCK=YES abort -fp");
+		if (exists("RESYNC/BitKeeper/log/port")) strcat(buf, "S");
+		if (system(buf)) {
 			fprintf(stderr, "Abort failed\n");
 		}
 		free(dir);

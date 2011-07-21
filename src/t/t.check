@@ -481,24 +481,23 @@ echo partial_check:yes! >> BitKeeper/etc/config
 echo hi > foo
 bk new $Q -ycomment foo || exit 1
 bk commit $Q -ycomment || exit 1
-touch BitKeeper/log/checked
-perl -e 'utime 1, 1, "BitKeeper/log/checked";'
-ls -l BitKeeper/log/checked > WANT
+perl -le 'print scalar(time)' > BitKeeper/log/checked
+echo 1 > WANT
+cp WANT BitKeeper/log/checked
 bk admin -pbusted foo
 bk -r check -ac 2>ERR && {
 	echo check should have failed
 	cat ERR
 	exit 1
 }
-ls -l BitKeeper/log/checked > GOT
-cmpfiles WANT GOT
+cmpfiles WANT BitKeeper/log/checked
 echo OK
 
 echo $N Ancient check file should be needs check ....................$NL
-perl -e 'utime 1, 1, "BitKeeper/log/checked";'
+echo 1 > BitKeeper/log/checked
 bk needscheck || {
 	echo failed, WTF
-	ls -l BitKeeper/log/checked
+	cat BitKeeper/log/checked
 	exit 1
 }
 echo OK
@@ -512,10 +511,10 @@ bk needscheck || {
 echo OK
 
 echo $N Up to date check file should be no check ....................$NL
-touch BitKeeper/log/checked
+perl -le 'print scalar(time)' > BitKeeper/log/checked
 bk needscheck && {
 	echo failed, WTF
-	ls -l BitKeeper/log/checked
+	cat BitKeeper/log/checked
 	exit 1
 }
 echo OK
@@ -536,17 +535,16 @@ echo OK
 
 echo $N bk check with no errors should update checked file ..........$NL
 cd "$HERE/proj4"
-touch BitKeeper/log/checked
-perl -e 'utime 1, 1, "BitKeeper/log/checked";'
-ls -l BitKeeper/log/checked > WANT
+perl -le 'print scalar(time)' > BitKeeper/log/checked
+echo 1 > WANT
+cp WANT BitKeeper/log/checked
 bk admin -pfoo foo
 bk -r check -ac 2>ERR || {
 	echo check should not have failed
 	cat ERR
 	exit 1
 }
-ls -l BitKeeper/log/checked > GOT
-cmp -s WANT GOT && {
+cmp -s WANT BitKeeper/log/checked && {
 	echo should have updated the file
 	cat GOT
 	exit 1

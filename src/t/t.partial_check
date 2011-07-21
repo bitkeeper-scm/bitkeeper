@@ -78,7 +78,7 @@ rm -fr project
 tar xf TAR
 cd project
 THEN=`expr $CUR - \( 25 \* 3600 \)`
-bk _touch -t $THEN $CHECKED
+echo $THEN > $CHECKED
 bk takepatch -af PATCH 2> ERR && exit 1
 grep -q "Missing file.*keywords" ERR || exit 1
 echo OK
@@ -89,7 +89,7 @@ rm -fr project
 tar xf TAR
 cd project
 THEN=`expr $CUR - \( 13 \* 24 \* 3600 \) + 3600`
-bk _touch -t $THEN $CHECKED
+echo $THEN > $CHECKED
 BK_CONFIG="check_frequency: 13! " bk takepatch -af PATCH || exit 1
 echo OK
 
@@ -99,7 +99,7 @@ rm -fr project
 tar xf TAR
 cd project
 THEN=`expr $CUR - \( 13 \* 24 \* 3600 \) - 3600`
-bk _touch -t $THEN $CHECKED
+echo $THEN > $CHECKED
 BK_CONFIG="check_frequency: 13! " bk takepatch -af PATCH 2> ERR && exit 1
 grep -q "Missing file.*keywords" ERR || exit 1
 echo OK
@@ -110,7 +110,7 @@ rm -fr project
 tar xf TAR
 cd project
 THEN=`expr $CUR - \( 14 \* 24 \* 3600 \) + 3600`
-bk _touch -t $THEN $CHECKED
+echo $THEN > $CHECKED
 BK_CONFIG="check_frequency: 15! " bk takepatch -af PATCH || exit 1
 echo OK
 
@@ -120,7 +120,7 @@ rm -fr project
 tar xf TAR
 cd project
 THEN=`expr $CUR - \( 14 \* 24 \* 3600 \) - 3600`
-bk _touch -t $THEN $CHECKED
+echo $THEN > $CHECKED
 BK_CONFIG="check_frequency: 15! " bk takepatch -af PATCH 2> ERR && exit 1
 grep -q "Missing file.*keywords" ERR || exit 1
 echo OK

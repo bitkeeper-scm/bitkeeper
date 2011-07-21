@@ -855,7 +855,9 @@ nested_each(int quiet, char **av, char **aliases)
 
 	EACH_STRUCT(n->comps, cp, i) {
 		unless (cp->alias && cp->present) continue;
-		if (errors && cp->product) break;
+		if (errors && cp->product && !getenv("_BK_PRODUCT_ALWAYS")) {
+			break;
+		}
 		if (quiet) {
 			safe_putenv("_BK_TITLE=%s",
 			    cp->product ? PRODUCT : cp->path);

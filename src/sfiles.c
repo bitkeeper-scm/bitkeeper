@@ -1598,6 +1598,7 @@ walksfiles(char *dir, walkfn fn, void *data)
 	rc = walkdir(dir, findsfiles, &si);
 	if (proj) free(si.proj_prefix);
 	freeLines(components, free);	/* set by walk_deepComponents() */
+	components = 0;
 	free_project();
 	return (rc);
 }
