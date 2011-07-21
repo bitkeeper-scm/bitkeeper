@@ -551,7 +551,7 @@ fi
 
 echo $N Test sfile -cGjlnvxyp with s.file w no pathname .............$NL
 # create a s.file which has no pathname
-bk _cat SCCS/s.foo | perl -ne 'print unless /^.cP/' | bk undos > s.bad
+bk _scat SCCS/s.foo | perl -ne 'print unless /^.cP/' | bk undos > s.bad
 bk _mv s.bad SCCS/s.bad
 bk admin -z  SCCS/s.bad
 bk _rm -f SCCS/s.impostor SCCS/d.impostor

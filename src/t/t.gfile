@@ -92,7 +92,7 @@ test keywords = `cat keywords` || {
 	echo ======= flags ========
 	bk flags keywords
 	echo ======= sfile ========
-	bk _cat SCCS/s.keywords
+	bk _scat SCCS/s.keywords
 	exit 1
 }
 test '%M%' = `cat none` || {

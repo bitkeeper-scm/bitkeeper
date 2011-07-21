@@ -13,8 +13,6 @@
 _BK_NO_PATCHSFIO=1
 export _BK_NO_PATCHSFIO
 
-printf 'binfile:no!\ncompression:none!\n' >> "`bk dotbk`"/config
-
 # count how many fastpatchs in a patch file
 # patchcount file want-count
 patchcount() {
@@ -90,8 +88,7 @@ echo OK
 echo $N Corrupted file checksum and makepatch does not core dump ....$NL
 bk makepatch -F -r+ > patch || exit 1
 # put in something greater than 16 bit so it will never collide
-bk admin -Bnone foo || fail
-bk _cat SCCS/s.foo | perl -pe 's/^\001H...../\001H83452/' > x
+bk _scat SCCS/s.foo | perl -pe 's/^\001H...../\001H83452/' | bk undos > x
 bk _mv SCCS/s.foo save
 bk _mv x SCCS/s.foo
 bk _chmod 444 SCCS/s.foo
@@ -118,14 +115,13 @@ echo $N Whole repo to this point in time -- cset and file ...........$NL
 cd ..
 bk clone $Q project project.sfiles || fail
 cd project.sfiles
-bk -r admin -Bnone -Znone
 cd ..
 mkdir empty
 cd empty
 bk takepatch -ia < ../project/fullpatch || exit 1
 bk -r | while read file; do
-	bk _cp $file tp
-	bk _cp ../project.sfiles/$file mp
+	bk _scat $file > tp
+	bk _scat ../project.sfiles/$file > mp
 	cmpfiles tp mp
 done || fail
 echo OK
@@ -156,8 +152,7 @@ bk delta $Q -yinsert foo
 bk commit $Q -yfoo
 bk makepatch -F -r+ > ../bork/append
 cd ../bork || exit 1
-bk admin -Bnone -Znone foo || fail
-bk _mv SCCS/s.foo sfile
+bk _scat SCCS/s.foo > sfile
 # chop at ^AT -- no weave body
 chopfile sfile SCCS/s.foo 0
 # This puts a patch at the head of the weave, so we notice a problem
@@ -171,7 +166,7 @@ grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || exit 4
 test -d RESYNC && exit 10
 # chop off after the two:
 chopfile sfile SCCS/s.foo 3 
-test `bk _cat SCCS/s.foo | tail -1` = two || exit 5
+test `bk _scat SCCS/s.foo | tail -1` = two || exit 5
 bk takepatch < insert 2> ERR && exit 6
 grep -q "Unexpected EOF in RESYNC/SCCS/s.foo" ERR || exit 7
 test -d RESYNC && exit 10
@@ -220,7 +215,7 @@ bk delta $Q -yone-liner foo
 bk commit $Q -yone-liner
 # now mess up a line that is not part of the patch, nor part of the delta
 # checksum, as it is from a deleted line in the delta
-bk _cat SCCS/s.foo | perl -pe 's/control/tame/' | bk undos > newfoo
+bk _scat SCCS/s.foo | perl -pe 's/control/tame/' | bk undos > newfoo
 bk _mv newfoo SCCS/s.foo
 bk _chmod 444 SCCS/s.foo
 bk admin -z foo

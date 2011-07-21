@@ -64,16 +64,16 @@ if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 echo $N Check stripdel TOT ..........................................$NL
 bk stripdel $Q -r1.5 FILE
-bk _cat SCCS/s.FILE | grep -q "^.d D 1.5"
+bk _scat SCCS/s.FILE | grep -q "^.d D 1.5"
 if [ $? -eq 0 ]; then echo Failed to remove delta table entry.; exit 1; fi
-bk _cat SCCS/s.FILE | grep -q '^1.5$'
+bk _scat SCCS/s.FILE | grep -q '^1.5$'
 if [ $? -eq 0 ]; then echo Failed to remove delta body entry.; exit 1; fi
 echo OK
 echo $N Check stripdel TOB ..........................................$NL
 bk stripdel $Q -r1.3.1.1,1.3.1.2 FILE
-bk _cat SCCS/s.FILE | grep -q '^.d D 1.3.1.[12]'
+bk _scat SCCS/s.FILE | grep -q '^.d D 1.3.1.[12]'
 if [ $? -eq 0 ]; then echo Failed to remove delta table entry.; exit 1; fi
-bk _cat SCCS/s.FILE | grep -q '^added in 1.3.1.[12]'
+bk _scat SCCS/s.FILE | grep -q '^added in 1.3.1.[12]'
 if [ $? -eq 0 ]; then echo Failed to remove delta body entry.; exit 1; fi
 echo OK
 # Make a graph with a cset merged twice, and those merged

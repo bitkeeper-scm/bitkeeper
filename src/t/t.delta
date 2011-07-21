@@ -46,11 +46,11 @@ echo OK
 
 echo $N Make sure delta -l works ....................................$NL
 bk _cp SCCS/s.init SCCS/s.T
-X=`bk _cat SCCS/s.T | wc -c`
+X=`bk _scat SCCS/s.T | wc -c`
 bk get $S -e T
 if writable T; then :; else echo Get failed to get file writeable; exit 1; fi
 _BK_MV_OK=1 bk delta $S -fly T
-if [ "`bk _cat SCCS/s.T | wc -c`" = "$X" ]; then echo Failed to create delta; exit 1; fi
+if [ "`bk _scat SCCS/s.T | wc -c`" = "$X" ]; then echo Failed to create delta; exit 1; fi
 if bk _test ! -f SCCS/p.T; then echo Failed to leave file locked; exit 1; fi
 if [ ! -f T ]; then echo Failed to get file; exit 1; fi
 if writable T; then :; else echo Failed to leave file writeable; exit 1; fi
@@ -75,10 +75,9 @@ EOF
 ls > init_test
 bk delta $Q -i -IINITX init_test
 if [ $? != 0 ]; then echo Failed - delta returned an error; exit 1; fi
-bk admin -Bnone init_test
-bk _cat SCCS/s.init_test | grep -q '^.c This is revision 1.1$'
+bk _scat SCCS/s.init_test | grep -q '^.c This is revision 1.1$'
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
-bk _cat SCCS/s.init_test | grep -q '^.cPthis/is/the/pathname$'
+bk _scat SCCS/s.init_test | grep -q '^.cPthis/is/the/pathname$'
 if [ $? -ne 0 ]; then echo Failed to add path; exit 1; fi
 echo OK
 
@@ -106,12 +105,11 @@ c This is the line after the blank line.
 EOF
 bk delta $Q -IINITX init_test
 if [ $? != 0 ]; then echo Failed - delta returned an error; exit 1; fi
-bk admin -Bnone init_test
-bk _cat SCCS/s.init_test | grep -q '^.c This is revision 1.2$'
+bk _scat SCCS/s.init_test | grep -q '^.c This is revision 1.2$'
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
-bk _cat SCCS/s.init_test | grep -q '^.c $'
+bk _scat SCCS/s.init_test | grep -q '^.c $'
 if [ $? -ne 0 ]; then echo Failed to add blank comment line.; exit 1; fi
-bk _cat SCCS/s.init_test | grep -q '^.c This is the line after the blank line.$'
+bk _scat SCCS/s.init_test | grep -q '^.c This is the line after the blank line.$'
 if [ $? -ne 0 ]; then echo Failed to add last line in comment; exit 1; fi
 echo OK
 
@@ -125,8 +123,7 @@ echo $N Make sure delta prompts for comments ........................$NL
 rm -f T
 bk get $S -e T
 echo "I am the comment" | bk delta $S -f T 2> ${DEV_NULL}
-bk admin -Bnone T
-bk _cat SCCS/s.T | grep -q '^.c I am the comment$'
+bk _scat SCCS/s.T | grep -q '^.c I am the comment$'
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
 echo OK
 
@@ -135,14 +132,13 @@ bk get $S -e T
 bk get $S -e init
 (echo "first comment"; echo ".";
 echo "second comment"; echo ".") | bk delta $S -fY 2>${DEV_NULL}
-bk admin -Bnone T init
-bk _cat SCCS/s.T | grep -q '^.c first comment$'
+bk _scat SCCS/s.T | grep -q '^.c first comment$'
 if [ $? -ne 0 ]; then echo Failed to add first comment to T; exit 1; fi
-bk _cat SCCS/s.init | grep -q '^.c first comment$'
+bk _scat SCCS/s.init | grep -q '^.c first comment$'
 if [ $? -ne 0 ]; then echo Failed to add first comment to init; exit 1; fi
-bk _cat SCCS/s.T | grep -q '^.c second comment$'
+bk _scat SCCS/s.T | grep -q '^.c second comment$'
 if [ $? -eq 0 ]; then echo Added unwanted second comment to T; exit 1; fi
-bk _cat SCCS/s.init | grep -q '^.c second comment$'
+bk _scat SCCS/s.init | grep -q '^.c second comment$'
 if [ $? -eq 0 ]; then echo Added unwanted second comment to init; exit 1; fi
 echo OK
 

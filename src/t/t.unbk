@@ -16,7 +16,6 @@ echo $N Unbk and make sure the end of the file is as expected .......$NL
 commercial project
 touch foo
 bk new $Q foo
-bk admin -Znone foo
 # keep the date, drop the time zone and host, shift serials
 bk prs -h foo \
     | perl -ne 'print if s?^(D[^-]*)-.*?\1 bk 1 0 0/0/0? or /^[-C]/' > WANT.prs
@@ -27,7 +26,7 @@ T
 I 1
 E 1
 EOF
-bk _cat SCCS/s.foo | tail -4 | sed s/.// > GOT
+bk _scat SCCS/s.foo | tail -4 | sed s/.// > GOT
 checkfiles WANT GOT
 bk prs -h foo > GOT
 cmpfiles WANT.prs GOT

@@ -24,7 +24,7 @@ do	bk co -l $Q branch
 	bk delta -fy'foo' $S branch
 done
 bk admin $Q -fd1.2 branch
-bk _cat SCCS/s.branch | grep -q '^.f d 1.2'
+bk _scat SCCS/s.branch | grep -q '^.f d 1.2'
 if [ $? -ne 0 ]; then echo Failed to add default branch; exit 1; fi
 echo OK
 echo $N Make sure that it creates a new branch ......................$NL

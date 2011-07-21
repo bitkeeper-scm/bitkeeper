@@ -751,7 +751,7 @@ if [ '02/22/2001' != "`cat YEAR4`" ]
 then	echo Failed on 1.5.
 	cat YEAR4
 	bk prs -h -nd:FLAGS: YEAR4
-	bk _cat SCCS/s.YEAR4
+	bk _scat SCCS/s.YEAR4
 	exit 1
 fi
 echo OK

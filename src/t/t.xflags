@@ -161,7 +161,7 @@ if [ X"$REV1" != X"$REV2" ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Rip out all the flags, put them back, check it ..............$NL
-bk _cat SCCS/s.xflags | perl -ne 'print unless /^.cX/ || /^.f x /' | bk undos > s.bad
+bk _scat SCCS/s.xflags | perl -ne 'print unless /^.cX/ || /^.f x /' | bk undos > s.bad
 bk _mv s.bad SCCS/s.bad
 bk admin -z 
 bk xflags bad

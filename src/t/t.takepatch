@@ -402,10 +402,8 @@ bk edit $Q foo
 echo abbde > foo
 bk delta $Q -yfoo foo
 bk commit $Q -yfoo
-bk admin -Znone foo
-sed s/abbde/abcde/ < SCCS/s.foo > newfoo
-cp -f newfoo SCCS/s.foo
-chmod 444 SCCS/s.foo
+bk _scat foo | sed s/abbde/abcde/ > newfoo
+bk _mv newfoo SCCS/s.foo
 bk admin -z foo
 cd ../checksum
 bk pull $Q -R 2> ERR && exit 1

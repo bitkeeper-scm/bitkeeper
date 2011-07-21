@@ -128,16 +128,15 @@ bk grep -qR lic baz || {
 	echo expected pattern in original file
 	exit 1
 }
-bk admin -Znone baz
-WANT=`bk _cat SCCS/s.baz | wc -c`
-bk _cp SCCS/s.baz ORIG
+bk _scat baz > ORIG
+WANT=`wc -c < ORIG`
 BK_FORCE=1 bk admin $Q -Olicense baz || exit 1
 bk grep -qR lic baz && {
 	echo expected output to be obscured
 	exit 1
 }
-bk admin -Znone baz
-GOT=`bk _cat SCCS/s.baz | wc -c`
+bk _scat baz > NEW
+GOT=`wc -c < NEW`
 test $WANT -eq $GOT || {
 	echo failed
 	echo Size changed from $WANT to $GOT
@@ -145,7 +144,6 @@ test $WANT -eq $GOT || {
 }
 bk get $Q baz
 grep -q "description: BitKeeper Test repository" baz || exit 1
-bk _cp SCCS/s.baz NEW
 bk diff -a ORIG NEW > DIFF
 test `wc -l < DIFF` -eq 10 || exit 1
 test `grep "^< lic" DIFF | wc -l` -eq 4 || exit 1
@@ -154,7 +152,7 @@ echo OK
 
 echo $N Obscure a license for a user that is buried in history ......$NL
 cd "$HERE/project"
-bk _rm baz ORIG SCCS/s.baz
+bk _rm baz ORIG NEW SCCS/s.baz
 bk cp BitKeeper/etc/config baz > OUT 2> ERR || exit 1
 bk edit $Q baz
 # stick in a comment line and a user on the description and a user
@@ -169,23 +167,21 @@ bk grep -qR '^\[some-user\]license:' baz || {
 	echo expected pattern in original file
 	exit 1
 }
-bk admin -Znone baz
-WANT=`bk _cat SCCS/s.baz | wc -c`
-bk _cp SCCS/s.baz ORIG
+bk _scat baz > ORIG
+WANT=`wc -c < ORIG`
 BK_FORCE=1 bk admin $Q -Olicense baz || exit 1
 bk grep -qR '^\[some-user\]license:' baz && {
 	echo expected output to be obscured
 	exit 1
 }
-bk admin -Znone baz
-GOT=`bk _cat SCCS/s.baz | wc -c`
+bk _scat baz > NEW
+GOT=`wc -c < NEW`
 test $WANT -eq $GOT || {
 	echo failed
 	echo Size changed from $WANT to $GOT
 	exit 1
 }
 bk get $Q baz
-bk _cp SCCS/s.baz NEW
 bk diff -a ORIG NEW > DIFF
 test `wc -l < DIFF` -eq 16 || exit 1
 test `grep "^< lic" DIFF | wc -l` -eq 4 || exit 1

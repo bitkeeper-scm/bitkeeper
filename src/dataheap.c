@@ -20,7 +20,7 @@ sccs_addStr(sccs *s, char *str)
 	off = s->heap.len;
 
 	/* can't add a string from the heap to it again (may realloc) */
-	assert((str < s->heap.buf) || (str > s->heap.buf + s->heap.size));
+	assert((str < s->heap.buf) || (str >= s->heap.buf + s->heap.size));
 
 	data_append(&s->heap, str, strlen(str)+1);
 	return (off);

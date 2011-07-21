@@ -8057,6 +8057,7 @@ bin_deltaTable(sccs *s, FILE *out)
 	    ((u8*)&s->table->added - (u8*)s->tree);
 	s->sumOff = off_d +
 	    ((u8*)&s->table->sum - (u8*)s->tree);
+	if (BITKEEPER(s)) s->modified = 1;
 	return (0);
 }
 

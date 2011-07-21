@@ -478,8 +478,7 @@ cd ..
 rm -rf facetime
 cd project
 bk tag $Q this_tag_should_be_there || exit 1
-bk admin -Bnone ChangeSet
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS0 l$' || {
+bk _scat SCCS/s.ChangeSet | grep -q '^.cS0 l$' || {
 	echo no leaf marker in the tag graph
 	exit 1
 }
@@ -505,8 +504,7 @@ test X`bk prs -hnd:REV: -rnnn` = "X" || {
 	echo tag shouldn\'t exist
 	exit 1
 }
-bk admin -Bnone ChangeSet
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS0 l$' || {
+bk _scat SCCS/s.ChangeSet | grep -q '^.cS0 l$' || {
 	echo no leaf marker in the tag graph after fix -c
 	exit 1
 }

@@ -414,14 +414,12 @@ test $KSRC = $KDST || {
      echo failed to restore pre-moved delta
      exit 1
 }
-bk admin -z -Bnone "$HERE/project/src/SCCS/s.b.c" "$HERE/copy/src/SCCS/s.b.c"
-bk _cp "$HERE/project/src/SCCS/s.b.c" A
-bk _cp "$HERE/copy/src/SCCS/s.b.c" B
-diff A B || fail
-bk admin -z -Bnone "$HERE/project/src/SCCS/s.c.c" "$HERE/copy/src/SCCS/s.c.c"
-bk _cp "$HERE/project/src/SCCS/s.c.c" A
-bk _cp "$HERE/copy/src/SCCS/s.c.c" B
-diff A B || fail
+bk _scat "$HERE/project/src/SCCS/s.b.c" > A
+bk _scat "$HERE/copy/src/SCCS/s.b.c" > B
+cmpfiles A B
+bk _scat "$HERE/project/src/SCCS/s.c.c" > A
+bk _scat "$HERE/copy/src/SCCS/s.c.c" > B
+cmpfiles A B
 rm A B
 echo OK
 cores

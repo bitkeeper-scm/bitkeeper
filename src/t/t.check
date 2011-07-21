@@ -326,11 +326,8 @@ echo "foobar" > ff
 bk new $Q ff
 bk edit $Q ff
 bk delta -yfoobar $Q ff
-bk admin -Znone ff || exit 1
-bk _mv SCCS/s.ff ff.tmp
-sed 's/foobar/foobaz/' < ff.tmp > ff.tmp2
+bk _scat ff | sed 's/foobar/foobaz/' > ff.tmp2
 bk _mv ff.tmp2 SCCS/s.ff
-rm -f ff.tmp
 bk check -c ff 2> /dev/null && {
 	echo check should have failed
 	exit 1

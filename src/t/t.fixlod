@@ -57,10 +57,7 @@ fi
 bk delta $Q -fy'new lod' d1/a || exit 1
 bk commit $S -ynew-lod || exit 1
 rev=`bk prs -r+ -hnd:I: ChangeSet`
-bk admin -Bnone ChangeSet
-bk _cp SCCS/s.ChangeSet tmp
-perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" tmp > tmp2
-bk _cp SCCS/s.ChangeSet old-s.ChangeSet
+bk _scat ChangeSet | perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" > tmp2
 chmod 444 tmp2
 bk _cp tmp2 SCCS/s.ChangeSet
 bk admin -z SCCS/s.ChangeSet 2> ERR && fail

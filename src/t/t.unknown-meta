@@ -17,11 +17,9 @@ commercial project
 # create a sfile with unknown field "c?"
 echo data > GOOD
 bk ci $Q -l -i GOOD
-bk admin -Znone GOOD
 echo more data >> GOOD
 bk ci $Q -y GOOD
-bk admin -Znone -Bnone GOOD
-bk _cat SCCS/s.GOOD | perl -pe 's/^.cZ/c?/' | bk undos >  tmp
+bk _scat SCCS/s.GOOD | perl -pe 's/^.cZ/c?/' | bk undos >  tmp
 OLDSUM=`sed -n 1p  < tmp | sed 's/^.[hH]//'`
 #adjust checksum
 NEWSUM=`expr $OLDSUM - 27`

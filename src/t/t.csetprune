@@ -589,8 +589,7 @@ bk log -r+ -nd:ROOTKEY: del1 > list
 bk csetprune $Q -S < list
 bk changes -vrNODE -nd'NODE :GFILE: :I:' > ../PRUNE.GRAPH
 bk set -s ChangeSet >> ../PRUNE.SET
-bk admin -Znone -Bnone ChangeSet
-bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../PRUNE.TABLE
+bk _scat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../PRUNE.TABLE
 echo OK
 
 echo $N Create a particular graph natively ..........................$NL
@@ -599,8 +598,7 @@ bk pull $Q -rNODE ../work
 bk pull $Q ../work
 bk changes -vrNODE -nd'NODE :GFILE: :I:' > ../NATIVE.GRAPH
 bk set -s ChangeSet >> ../NATIVE.SET
-bk admin -Znone -Bnone ChangeSet
-bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../NATIVE.TABLE
+bk _scat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../NATIVE.TABLE
 echo OK
 
 echo $N The graphs are the same .....................................$NL
@@ -646,12 +644,10 @@ echo $N Create an exclude delta in a merge node .....................$NL
 # The dual of above
 bk log -r+ -nd:ROOTKEY: del2 > ../list2
 bk csetprune $Q -S < ../list2
-bk admin -Znone -Bnone ChangeSet
-bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../NATIVE.TABLE2
+bk _scat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../NATIVE.TABLE2
 cd ../pruned
 bk csetprune $Q -S < ../list2
-bk admin -Znone -Bnone ChangeSet
-bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../PRUNE.TABLE2
+bk _scat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../PRUNE.TABLE2
 diff ../NATIVE.TABLE2 ../PRUNE.TABLE2 > GOT
 cat <<EOF > WANT
 3d2
@@ -701,8 +697,7 @@ echo OK
 # bk csetprune $Q -S -k123456789abcdef0 < ../list2
 # bk pull $Q -rNODE ../work2
 # bk pull $Q ../work2
-# bk admin -Znone -Bnone ChangeSet
-# bk _cat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../NATIVE2.TABLE2
+# bk _scat SCCS/s.ChangeSet | perl -ne "$PERLFILT" > ../NATIVE2.TABLE2
 # echo OK
 
 # Create a graph that has a unique file in every cset, then

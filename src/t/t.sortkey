@@ -87,14 +87,14 @@ echo OK
 
 echo $N Test that sortkeys do not store sortSum if the same .........$NL
 cd "$HERE/copy/anno"
-bk admin -Znone -Bnone del
-bk _cat SCCS/s.del > Y
+bk _scat SCCS/s.del > Y
 perl -pe 's/cK00059/cK00059|00059/' < Y | bk undos > X
 cmp -s X Y && fail should be different
 chmod 444 X
 bk _mv X SCCS/s.del
+# Keep this admin -Bnone -- as it testing ascii path
 bk admin -z -Znone -Bnone del
-bk _cat SCCS/s.del > X
+bk _cp SCCS/s.del X
 cmpfiles X Y
 echo OK
 
