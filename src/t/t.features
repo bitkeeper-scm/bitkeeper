@@ -60,3 +60,9 @@ bk getmsg -= bk_missing_feature HORSE > WANT
 cmpfiles ERR2 WANT
 bk lock -lq nest || fail
 echo OK
+
+echo $N Test new nested comp does not set sortkey ...................$NL
+cd "$HERE/nest"
+bk setup -f comp
+grep -q sortkey comp/BitKeeper/log/features && fail comp has sortkey
+echo OK

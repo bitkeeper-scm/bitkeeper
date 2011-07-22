@@ -16951,8 +16951,12 @@ sccs_setPath(sccs *s, delta *d, char *new)
 	char	*orig;
 
 	orig = PATH_SORTPATH(d->pathname);
-	unless (*orig) orig = d->pathname;
-	if (streq(orig, new)) orig = "";
+	if (*orig) {
+		if (streq(orig, new)) orig = "";
+	} else if (!streq(d->pathname, new)) {
+		orig = d->pathname;
+		bk_featureSet(s->proj, FEAT_SORTKEY, 1);
+	}
 
 	/* new and orig are now set; just figure out how to store */
 

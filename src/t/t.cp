@@ -21,7 +21,9 @@ do
 	echo "This is file 1, rev 1.$i" > file1
 	bk delta $Q -y"comment $i" file1
 done
+grep -q sortkey BitKeeper/log/features && fail has sortkey
 bk cp file1 file2 2> /dev/null
+grep -q sortkey BitKeeper/log/features || fail no sortkey
 if bk _test ! -f SCCS/s.file2; then echo Failed to create an s.file; exit 1; fi
 bk get $Q file1 file2 
 diff file1 file2
