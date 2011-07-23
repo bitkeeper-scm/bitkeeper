@@ -805,7 +805,7 @@ gui()
 
 	toplevel(top);
 	wm("withdraw", top);
-	wm("title", top, "Check In Tool");
+	wm("title", top, "Check In Tool - ${self.root}");
 	wm("minsize", top, 500, 480);
 
 	grid("rowconfigure", top, 1, weight: 1);

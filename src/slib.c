@@ -16850,15 +16850,14 @@ sccs_key2md5(char *rootkey, char *deltakey, char *b64)
 void
 sccs_setPath(sccs *s, delta *d, char *new)
 {
-	if (streq(new, PATHNAME(s, d))) return;		// NOP: rename (A, A)
-
-	unless (d->sortPath) {
-		d->sortPath = d->pathname;
-		bk_featureSet(s->proj, FEAT_SORTKEY, 1);
-	} else if (streq(new, SORTPATH(s, d))) {
-		d->sortPath = 0;
+	unless (streq(new, PATHNAME(s, d))) {
+		unless (d->sortPath) {
+			d->sortPath = d->pathname;
+			bk_featureSet(s->proj, FEAT_SORTKEY, 1);
+		}
+		d->pathname = sccs_addUniqStr(s, new);
 	}
-	d->pathname = sccs_addUniqStr(s, new);
+	if (d->sortPath && streq(new, SORTPATH(s, d))) d->sortPath = 0;
 }
 
 /*
