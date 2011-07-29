@@ -159,9 +159,13 @@ resolve_main(int ac, char **av)
 	}
 	if (opts.partial) opts.pass4 = 0;
 
-	unless (opts.textOnly) putenv("BK_GUI=WANT_CITOOL");
-	if (opts.pass3 && !opts.textOnly && !gui_useDisplay()) {
-		opts.textOnly = 1; 
+	unless (opts.textOnly) {
+		char	*p = getenv("BK_GUI");
+
+		/* use citool for commit if environment allows it */
+		unless (p) putenv("BK_GUI=1");
+		unless (gui_useDisplay()) opts.textOnly = 1; 
+		unless (p) putenv("BK_GUI=");
 	}
 
 	/*
@@ -1907,8 +1911,9 @@ err:		unless (opts->autoOnly) {
 			progress_done(tick, "OK");
 			progress_restoreStderr();
 		}
+		/* no textOnly means gui is supported - useDisplay() passed */
 		if (!opts->textOnly &&
-		    !opts->quiet && !win32() && gui_useDisplay()) {
+		    !opts->quiet && !win32()) {
 			fprintf(stderr,
 			    "Using %s as graphical display\n",
 			    gui_displayName());
