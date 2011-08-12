@@ -1724,6 +1724,38 @@ test -s OUT && {
 }
 echo OK
 
+echo $N Check sfiles --gui ..........................................$NL
+cd "$HERE/project"
+bk sfiles --gui -vgcyp -x > GOT
+cat > WANT <<EOF
+F|x------ GOT
+F|x------ OUT
+F|x------ WANT
+P|1 3 0 0
+F|slc-G-- BitKeeper/etc/ignore
+P|6 3 0 1
+F|x------ skip/1
+P|6 4 0 1
+F|x------ sub/skip/2
+P|6 5 0 1
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check sfiles --gui --no-progress ............................$NL
+cd "$HERE/project"
+bk sfiles --gui --no-progress -vgcyp -x > GOT
+cat > WANT <<EOF
+F|x------ GOT
+F|x------ OUT
+F|x------ WANT
+F|slc-G-- BitKeeper/etc/ignore
+F|x------ skip/1
+F|x------ sub/skip/2
+EOF
+cmpfiles WANT GOT
+echo OK
+
 test $PLATFORM != WIN32 && {
 
 echo $N Check sfiles -v does not dump core on an unreadable binary ..$NL

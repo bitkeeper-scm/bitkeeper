@@ -1,5 +1,5 @@
 
-echo $N Run citool with a bad set of command line arguments ......$NL
+echo $N Run citool with a bad set of command line arguments .........$NL
 nested project
 # The only command line error at the moment is a dir if more than one arg
 bk citool gcc gdb 2> ERR && {
@@ -18,8 +18,6 @@ echo $N Run in only gdb - go ahead and commit .......................$NL
 echo old > gcc/file
 echo old > gdb/file
 bk new $Q gcc/file gdb/file
-(cd gcc; bk commit $Q -f)
-(cd gdb; bk commit $Q -f)
 bk commit $Q -f
 bk edit $Q gcc/file gdb/file
 echo new > gcc/file

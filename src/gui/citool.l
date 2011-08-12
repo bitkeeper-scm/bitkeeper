@@ -243,6 +243,7 @@ insertFile(sfile sf)
 	} else if (sf.type eq "pending") {
 		++self.cnt_total;
 		++self.cnt_commented;
+		++self.sfiles_pending;
 	} else if (sf.type eq "modified") {
 		++self.cnt_modified;
 		++self.cnt_total;
@@ -262,7 +263,6 @@ insertFile(sfile sf)
 	    && (sf.type eq "modified") && !isCommented(sf)) {
 		selectFile(sf.node);
 	}
-	updateGUI();
 }
 
 void
@@ -309,24 +309,6 @@ removeFile(sfile sf)
 		ListBox_delete(self.w_files, cset.node);
 		moveNext();
 	}
-}
-
-void
-insertPending(sfile sf)
-{
-	FILE	fd = popen("bk sfiles -gpA \"${sf.file}\"", "r");
-	string	line;
-	string	name = sf.name;
-
-	while (defined(line = fgetline(fd))) {
-		line =~ /(.*)\|(.*)/;
-		sf.rev = $2;
-		sf.name = "${name}@${sf.rev}";
-		++self.sfiles_pending;
-		insertFile(sf);
-	}
-
-	pclose(fd);
 }
 
 void
@@ -429,50 +411,29 @@ configureFile(sfile sf)
 }
 
 void
-readSfilesProgress(FILE fd, string file, int pos)
+readSfiles(FILE fd)
 {
 	string	line;
 
-	if (defined(line = fgetline(fd))) {
-		// list = {sfiles, extras, dirs, changed}
-		int	list[4] = (int[])line;
+	unless (defined(line = fgetline(fd))) {
+		fclose(fd);
+		self.sfiles_last = 0;
+		_done = 1;
+	}
 
-		if (list[0] != self.sfiles_last) {
-			self.sfiles_done += list[0] - self.sfiles_last;
-			self.sfiles_last = list[0];
+	if (line[0] eq "F") {
+		addSfilesLines({line[2..END]});
+	} else if (line[0] eq "P") {
+		int	nums[] = (int[])split(line[2..END]);
+
+		if (nums[0] != self.sfiles_last) {
+			self.sfiles_done += nums[0] - self.sfiles_last;
+			self.sfiles_last = nums[0];
 			if (self.nfiles > 0) {
 				Progressbar_configure(self.w_progress, value:
 				    (100 * self.sfiles_done) / self.nfiles);
 			}
-			if (!self.sfiles_reading && (size(file) > pos)) {
-				// Kill the read event before we read the
-				// output file so that we don't accidentally
-				// get another event from the progress output
-				// while we're reading.
-				fileevent(fd, "readable", "");
-				pos = readSfilesOutput(file, pos);
-				updateGUI();
-				// Re-establish the read event with the new
-				// position in the output file.
-				fileevent(fd, "readable",
-				    {"readSfilesProgress", fd, file, pos});
-			}
 		}
-	} else {
-		fclose(fd);
-		readSfilesOutput(file, pos);
-		updateGUI();
-		self.sfiles_last = 0;
-		_done = 1;
-	}
-}
-
-void
-updateGUI()
-{
-	if ((Clock_milliseconds() - self.last_update) >= 250) {
-		update();
-		self.last_update = Clock_milliseconds();
 	}
 }
 
@@ -500,8 +461,15 @@ addSfilesLines(string lines[])
 		if (pending) {
 			sf.type = "pending";
 			sf.icon = img_done;
-			insertPending(sf);
-			if (!modified) continue;
+			sf.name =~ /(.*)\|(.*)/;
+			sf.file = self.root . "/" . $1;
+			sf.rev  = $2;
+			sf.name = $1 . "@" . $2;
+			insertFile(sf);
+
+			if (!modified || defined(self.files{$1})) continue;
+			sf.name = $1;
+			sf.rev  = undef;
 		}
 		if (modified) {
 			sf.type = "modified";
@@ -515,39 +483,6 @@ addSfilesLines(string lines[])
 
 		insertFile(sf);
 	}
-}
-
-int
-readSfilesOutput(string file, int pos)
-{
-	int	len;
-	string	data, lines[];
-	FILE	fd = fopen(file, "r");
-
-	unless (defined(fd)) {
-		puts("ERROR: ${stdio_lasterr}");
-		return (-1);
-	}
-
-	self.sfiles_reading = 1;
-	seek(fd, pos, "start");
-	data = freadn(fd, -1);
-	unless (defined(data)) {
-		fclose(fd);
-		return (-1);
-	}
-	lines = split(data, "\n");
-	len = llength(lines);
-	if ((data ne "") && (data[END] ne "\n")) {
-		seek(fd, length(lines[len-1]) * -1, "current");
-		lines = lines[0..END-1];
-	}
-	pos = tell(fd);
-	fclose(fd);
-	addSfilesLines(lines);
-	self.sfiles_reading = 0;
-	updateStatus();
-	return (pos);
 }
 
 void
@@ -670,10 +605,11 @@ void
 findFiles()
 {
 	FILE	fd;
-	string	comp, tmp, cmd;
-	string	opts = "-vgcyp";
+	string	comp, cmd;
+	string	opts = "--gui -vgcypA";
 
-	if (defined(self.dir)) opts = "-1vgcyp";
+	// Don't recurse if a directory is named on the command line
+	if (defined(self.dir)) opts .= " -1";
 	foreach (comp in self.allComponents) {
 		if (defined(self.dir)) {
 			chdir(self.dir);
@@ -684,15 +620,14 @@ findFiles()
 		self.sfiles_pending = 0;
 		self.sfiles_component = comp;
 		self.showPending{comp} = 0;
-		tmp = tmpfile("citool");
-		cmd = "bk sfiles ${opts} {--relpath=${self.root}} {-o${tmp}}";
+		cmd = "bk sfiles ${opts} {--relpath=${self.root}}";
 		unless (self.resolve) {
 			// Look for extra files when we're not in the resolver.
 			cmd .= " -x";
 		}
 		fd = popen(cmd, "r");
 		fconfigure(fd, blocking: 0, buffering: "line");
-		fileevent(fd, "readable", {"readSfilesProgress", fd, tmp, 0});
+		fileevent(fd, "readable", {"readSfiles", fd});
 		vwait(&_done);
 
 		if (self.sfiles_pending) insertPendingNode(comp);
@@ -2581,6 +2516,8 @@ main(_unused int argc, string argv[])
 	string	compscmd = "bk comps -ch";
 	int	includeProduct = 1;
 
+	debug_init(getenv("BK_DEBUG_CITOOL"));
+
 	arg = bk("sane 2>@1");
 	if (arg ne "") bk_dieError(arg, 1);
 
@@ -2704,3 +2641,53 @@ main(_unused int argc, string argv[])
 	readBackupComments();
 }
 
+private int	debug{string};
+private	FILE	debugf = undef;
+
+void
+debug_enter(string cmd, string op)
+{
+	op = op;
+	debug{cmd} = Clock_microseconds();
+	fprintf(debugf, "ENTER ${cmd}\n");
+}
+
+void
+debug_leave(string cmd, int code, string result, string op)
+{
+	float	t;
+
+	op = op;
+	code = code;
+	result = result;
+	if (defined(debug{cmd})) {
+		t = Clock_microseconds() - debug{cmd};
+		undef(debug{cmd});
+	}
+
+	if (defined(t)) {
+		fprintf(debugf, "LEAVE ${cmd} (${t} usecs)\n");
+	} else {
+		fprintf(debugf, "LEAVE ${cmd}\n");
+	}
+}
+
+void
+debug_init(string var)
+{
+	string	proc, procs[];
+
+	unless (defined(var) && length(var)) return;
+	if (var =~ m|^/|) debugf = fopen(var, "w");
+	unless (defined(debugf)) debugf = stderr;
+
+	procs = Info_procs("::*");
+	foreach (proc in procs) {
+		if (proc =~ /^::auto_/) continue;
+		if (proc =~ /^::debug_/) continue;
+		if (proc =~ /^::unknown/) continue;
+		if (proc =~ /^::fprintf/) continue;
+		Trace_addExec(proc, "enter", &debug_enter);
+		Trace_addExec(proc, "leave", &debug_leave);
+	}
+}
