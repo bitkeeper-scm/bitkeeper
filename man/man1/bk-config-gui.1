@@ -59,24 +59,11 @@ to the named tool, have the tool
 name as a prefix, i.e.,
 .DS
 set gc(cset.fixedFont)  {fixed 12 roman}
-set gc(buttonColor)     blue
 .DE
 whereas global variables, which apply to all tools unless there is a
 tool specific version defined as well, look like
 .DS
 set gc(fixedBoldFont) {fixed 12 roman bold}
-.DE
-As an example, if you
-want pink buttons in 
-.BR "bk citool" ,
-yellow buttons in
-.BR "bk helptool" ,
-and blue in all of the rest of the tools, add the 
-following to your config file:
-.DS
-set gc(buttonColor) blue
-set gc(ci.buttonColor) pink
-set gc(help.buttonColor) yellow
 .DE
 .LP
 The tool names used to get to tool specific
@@ -127,40 +114,28 @@ lines in
 .BR "bk difftool" .
 Defaults to values that match appropriate system defaults.
 .tp
-.B buttonFont
-Font used in buttons.
-Defaults to values that match appropriate system defaults.
-.tp
-.B scrollWidth
-Width of the scrollbar widget in pixels. Default:\ 12
-in everything except 
-.B bk helptool
-where the default is 14.
-.tp
-.B buttonColor
-Color of button when in an unselected state. Default:\ #d0d0d0
-.tp
 .B listBG
 Color for the help topic widget and list backgrounds
-Default:\ #e8e8e8
+Default:\ #E8E8E8
 .tp
 .B diffColor
 Color of the changed lines in a diff view.
-Default:\ #E0E0E0
+Default:\ #EDEDED
 .tp
 .B activeDiffColor
 Color of the selected diff block in a diff view.
 Default:\ #2FEDAD
 .tp
 .B noticeColor
-Color for warnings and messages.  Default:\ #b0b0e0
+Color for warnings and messages.
+Default:\ #DBDFE6
 .tp
 .B searchColor
 Highlight color for search matches. Used in
 .B bk difftool
 and
 .BR "bk revtool" .
-Default:\ yellow
+Default:\ #FFA500
 .tp
 .B selectColor
 Color of the current file in
@@ -169,7 +144,7 @@ and
 .BR "bk csettool" .
 Color of the current topic in
 .BR "bk helptool" .
-Default:\ yellow
+Default:\ #ADD8E6
 .tp
 .B statusColor
 Status windows in
@@ -177,7 +152,7 @@ Status windows in
 .BR "bk difftool" ,
 and
 .BR "bk renametool" .
-Default:\ lightblue
+Default:\ #ADD8E6
 .tp
 .B warnColor
 Color of the error messages. Used in
@@ -185,26 +160,21 @@ Color of the error messages. Used in
 .BR "bk difftool"
 and
 .BR "bk csettool" .
-Default:\ yellow
+Default:\ #FFFF00
 .tp
 .B textBG
 Background color for text windows. Used in all of
 the tools.
-Default:\ white
+Default:\ #FFFFFF
 .tp
 .B textFG
-Text color.  Used in all of the tools, Default:\ black
-.tp
-.B scrollColor
-Color of the scrollbar slider and end arrows.
-Default:\ #d9d9d9
-.tp
-.B troughColor
-Color of the scrollbar troughs.  Default:\ lightblue
+Text color.  Used in all of the tools.
+Default:\ #000000
 .tp
 .B BG
 Background color for miscellaneous widgets not listed
-above. Default:\ #f0f0f0
+above.
+Defaults to values that match appropriate system defaults.
 .tp
 .B diffHeight
 Height of a difference window in number of lines. Used
@@ -261,19 +231,20 @@ Default:\ none
 .B mergeHeight
 Height of a merge window. Used in
 .BR "bk fmtool" .
-Default 20
+Default:\ 20
 .tp
 .B mergeWidth
 Width of a merge window. Used in
 .BR "bk fmtool" .
-Default 80
+Default:\ 80
 .tp
 .B tabwidth
 The width of a tab in average sized characters. 
 Default:\ 8.
 .tp
 .B quit
-Key used to exit from the gui tools. Default:\ <Control-q>
+Key used to exit from the gui tools.
+Default:\ <Control-q>
 .SS CITOOL CONFIGURATION
 .TP \fBci.commentsHeight\fP
 .B ci.commentsHeight
@@ -285,17 +256,20 @@ height of the diffs window (the lower window).
 .B ci.display_bytes
 Number of bytes to show in new files in
 .BR "bk citool" .
-If set to 0, the entire
-file is displayed. Default:\ 8192
+If set to 0, the entire file is displayed.
+Default:\ 8192
 .tp
 .B ci.editHeight
-Height of the popup editor.  Default:\ 30
+Height of the popup editor.
+Default:\ 30
 .tp
 .B ci.editWidth
-Width of the popup editor.  Default:\ 80
+Width of the popup editor.
+Default:\ 80
 .tp
 .B ci.excludeColor
-Color of the exclude icon (X character). Default:\ red
+Color of the exclude icon (X character).
+Default:\ #FF0000
 .tp
 .B ci.filesHeight
 number of files in the top window.
@@ -309,7 +283,8 @@ manner where you modify many files that logically belong to separate
 changesets. This option then allows you to stay in
 .B bk citool
 and create different changesets for the files without restarting
-citool each time. Default:\ 0
+citool each time.
+Default:\ 0
 .SS CSETTOOL CONFIGURATION
 .TP \fBci.commentsHeight\fP
 .B cset.annotation
@@ -333,91 +308,83 @@ Default:\ 50
 .tp
 .B diff.searchColor
 Highlight color for search matches.
-Default:\ lightblue
+Default:\ #ADD8E6
 .SS FM3TOOL CONFIGURATION
 .TP \fBfm3.toggleAnnotations\fPn
 .B fm3.charColor
 Color used to highlight portions of a line which has changed.
-Default:\ orange
+Default:\ #FFA500
 .tp
 .B fm3.comments
 Boolean which controls the display of the comments window at the top.
-Default:\ 1 (on).
-.tp
-.B fm3.escapeButtonBG
-Background color of the edit mode escape button.
-Default:\ black.
-.tp
-.B fm3.escapeButtonFG
-Foreground color of the edit mode escape button.
-Default:\ yellow.
+Default:\ 1 (on)
 .tp
 .B fm3.firstDiff
 Keyboard accelerator for going to the first change.
-Default:\ \*(lq\-\*(rq.
+Default:\ \*(lq\-\*(rq
 .tp
 .B fm3.handColor
 Color used to highlight hand selected merge choices in the side by side 
 local and remote diff windows.
-Default:\ lightyellow.
+Default:\ #B4B6CB
 .tp
 .B fm3.lastDiff
 Keyboard accelerator for going to the last change.
-Default:\ \*(lq+\*(rq.
+Default:\ \*(lq+\*(rq
 .tp
 .B fm3.mergeColor
 Color used to highlight merge choices, both manual and automatic, in the 
 lower merge window.
-Default:\ lightblue.
+Default:\ #B4B6CB
 .tp
 .B fm3.nextConflict
 Keyboard accelerator for going to the next conflict (skips automerged changes).
-Default:\ \*(lq}\*(rq.
+Default:\ \*(lq}\*(rq
 .tp
 .B fm3.nextDiff
 Keyboard accelerator for going to the next change.
-Default:\ \*(lq]\*(rq.
+Default:\ \*(lq]\*(rq
 .tp
 .B fm3.prevConflict
 Keyboard accelerator for going to the previous conflict
 (skips automerged changes).
-Default:\ \*(lq{\*(rq.
+Default:\ \*(lq{\*(rq
 .tp
 .B fm3.prevDiff
 Keyboard accelerator for going to the previous change.
-Default:\ \*(lq[\*(rq.
+Default:\ \*(lq[\*(rq
 .tp
 .B fm3.sameColor
 Color used to highlight the portion of a conflict consisting of unchanged lines.
-Default:\ #1cc7d0.
+Default:\ #EFEFEF
 .tp
 .B fm3.showEscapeButton
 When entering edit mode, if this variable is set to 1 a button will be
 displayed that you can click on to exit edit mode.
-Default:\ 1.
+Default:\ 1
 .tp
 .B fm3.spaceColor
 Color used to highlight the beginnings of lines which are 
 \*(lqspacers\*(rq inserted to make the changes line up horizontally.
-Default:\ black.
+Default:\ #000000
 .tp
 .B fm3.toggleAnnotations
 Keyboard accelerator for toggling the display of annotations.
-Default:\ \*(lqz\*(rq.
+Default:\ \*(lqz\*(rq
 .tp
 .B fm3.toggleGCA
 Keyboard accelerator for toggling the display of the GCA.
-Default:\ \*(lqx\*(rq.
+Default:\ \*(lqx\*(rq
 .tp
 .B fm3.undo
 Keyboard accelerator for undoing the last merge selection.
-Default:\ \*(lqu\*(rq.
+Default:\ \*(lqu\*(rq
 .SS HELPTOOL CONFIGURATION
 .TP \fBrev.commentHeight\fP
 .B help.linkColor
 Color of the hyperlinks in
 .BR "bk helptool" .
-Default:\ blue
+Default:\ #0000FF
 .tp
 .B help.scrollbars
 The location of the two scrollbars in helptool.  The value should be two
@@ -428,7 +395,7 @@ Default:\ RR
 .tp
 .B help.topicsColor
 Highlight color for topic search matches.
-Default:\ orange
+Default:\ #FFA500
 .tp
 .B help.height
 Number of rows to display in
@@ -437,56 +404,65 @@ Default:\ 50
 .tp
 .B help.width
 Number of columns to display in
-.BR "bk helptool" . Default:\ 72
+.BR "bk helptool" .
+Default:\ 72
 .tp
 .B help.exact
 Only return full word/phrase matches.
-Default:\ 0, set to 1 to enable.
+Default:\ 0, set to 1 to enable
 .SS RENAMETOOL CONFIGURATION
 .TP \fBrev.commentHeight\fP
 .B rename.listHeight
 Height of the file list widget in
 .B bk renametool
-(in lines). Default:\ 8
+(in lines).
+Default:\ 8
 .SS REVTOOL CONFIGURATION
 .TP \fBrev.commentHeight\fP
 .B rev.canvasBG
-Color of the graph background. Default:\ #9fb6b8
+Color of the graph background.
+Default:\ #9FB6B8
 .tp 
 .B rev.commentBG
 Background color of the comment window in the annotated listing. 
-Default:\ lightblue
+Default:\ #ADDD8E6
 .tp
 .B rev.arrowColor
 Color of the arrows connecting the revision boxes.
-Default:\ darkblue
+Default:\ #00008B
 .tp
 .B rev.mergeOutline
 Color of the box surrounding the merge revisions.
-Default:\ darkblue
+Default:\ #00008B
 .tp
 .B rev.revOutline
 Color of the box surrounding the regular revisions.
-Default:\ darkblue
+Default:\ #00008B
 .tp
 .B rev.revColor
-Fill color of the unselected node. Default:\ #9fb6b8
+Fill color of the unselected node.
+Default:\ #9FB6B8
 .tp
 .B rev.selectColor
-Highlight color for the selected annotated line. Default:\ #adb8f6
+Highlight color for the selected annotated line.
+Default:\ #ADDD8E6
 .tp
 .B rev.commentHeight
-Height of the comment window above the annotated file listing. Default:\ 5
+Height of the comment window above the annotated file listing.
+Default:\ 5
 .tp
 .B rev.textWidth
-Width of widget that displays the file content. Default:\ 92
+Width of widget that displays the file content.
+Default:\ 92
 .tp
 .B rev.annotate
-Arguments to the annotate command. Default:
+Arguments to the annotate command.
+Default:
 .QR \-Aur .
 .tp
 .B rev.textHeight
-Height of widget that displays the file content. Default:\ 50
+Height of widget that displays the file content.
+Default:\ 50
 .tp
 .B rev.showHistory
 The time period of revisions that are shown. The value needs to be a
@@ -500,7 +476,7 @@ Default:\ 1M
 Color of the outline around nodes in the ChangeSet graph that have
 a tag associated with them. If this value is the empty string no
 outline will be drawn.
-Default:\ yellow
+Default:\ #FFFF00
 .tp
 .B rev.dateColor
 Color of the date text at the bottom of graph.

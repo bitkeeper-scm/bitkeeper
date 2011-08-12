@@ -827,6 +827,9 @@ proc inRESYNC {} {
     return [string equal $dir "RESYNC"]
 }
 
+## Attach any number of widgets (usually 2 diff widgets) to a single scrollbar.
+## We remember the list of widgets for a given scrollbar and then make sure
+## those widgets stay in sync when one of them is scrolled.
 proc attachScrollbar {sb args} \
 {
 	global	gc
@@ -834,25 +837,53 @@ proc attachScrollbar {sb args} \
 	set xy x
 	if {[$sb cget -orient]  eq "vertical"} { set xy y }
 
-	$sb configure -command [list [lindex $args 0] ${xy}view]
+	## Configure the scrollbar to call our custom scrolling function.
+	$sb configure -command [list scrollWidgets $sb ${xy}view]
 
+	## Keep track of which widgets are attached to this scrollbar
+	## and then tell each widget what its new X/Y scrollcommand is.
+	dict set gc(scrollbar.widgets) $sb $args
 	foreach w $args {
-		dict set gc(scrollbars) $w $args
 		$w configure -${xy}scrollcommand [list setScrollbar $sb $w]
 	}
 }
 
+## This gets called when you actually manipulate the scrollbar itself.  We
+## just take the scrollbar, grab the list of widgets associated with it
+## and scroll them all with the command given.
+proc scrollWidgets {sb args} \
+{
+	global	gc
+
+	## Just scroll everyone attached to the scrollbar with the same
+	## command.
+	foreach widg [dict get $gc(scrollbar.widgets) $sb] {
+		$widg {*}$args
+	}
+}
+
+## This gets called by an attached widget anytime something in the widget
+## view has changed and it wants to update the scrollbar to tell it where
+## it should be.  This happens on things like mousewheel movement and drag
+## scrolling.
+##
+## Since the widget being controlled will already be moving by the proper
+## amount, we just take any other widget in our list and make it match the
+## exact coordinates that the primary widget is already at.
 proc setScrollbar {sb w first last} \
 {
 	global	gc
 
+	## Tell the scrollbar what to look like.
 	$sb set $first $last
-	if {![dict exists $gc(scrollbars) $w]} { return }
+	if {![dict exists $gc(scrollbar.widgets) $sb]} { return }
 
+	## Grab the current coordinates for the primary widget being scrolled.
 	set x [lindex [$w xview] 0]
 	set y [lindex [$w yview] 0]
 
-	foreach widg [dict get $gc(scrollbars) $w] {
+	## Move all widgets that aren't the primary widget to the same point.
+	foreach widg [dict get $gc(scrollbar.widgets) $sb] {
 		if {$widg eq $w} { continue }
 		$widg xview moveto $x
 		$widg yview moveto $y

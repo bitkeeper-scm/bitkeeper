@@ -112,6 +112,7 @@ range_urlArg(RANGE *rargs, char *url)
 	rev = aprintf("@@%s", fgetline(f)); /* intentional leak (see above) */
 	if (fgetline(f)) {
 		fprintf(stderr, "%s: non-unique baseline revision\n", prog);
+		free(rev);
 		goto out;
 	}
 	rc = range_addArg(rargs, rev, 0);
