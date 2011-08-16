@@ -96,15 +96,15 @@ doit(sccs *s, s_opts opts)
 	char	*p;
 	int	left, n;
 	int	flags = 0;
+	int	cleanflags = SILENT;
 
 	if (opts.quiet) flags |= SILENT;
+	if (opts.checkOnly) flags |= CLEAN_CHECKONLY;
 
-	if (HAS_PFILE(s)) {
-		if (!HAS_GFILE(s) || sccs_hasDiffs(s, SILENT, 1)) {
-			fprintf(stderr, 
-			    "stripdel: can't strip an edited file.\n");
-			return (1);
-		}
+	if (sccs_clean(s, cleanflags)) {
+		fprintf(stderr,
+		    "stripdel: can't strip an edited file: %s\n", s->gfile);
+		return (1);
 	}
 
 	if (MONOTONIC(s) && !opts.forward) {
@@ -130,11 +130,6 @@ doit(sccs *s, s_opts opts)
 	left = stripdel_fixTable(s, &n);
 	if (opts.checkOnly) return (do_check(s, flags));
 	unless (left) {
-		if (sccs_clean(s, SILENT)) {
-			fprintf(stderr,
-			    "stripdel: can't remove edited %s\n", s->gfile);
-			return (1);
-		}
 		/* see ya! */
 		verbose((stderr, "stripdel: remove file %s\n", s->sfile));
 		sccs_close(s); /* for win32 */
