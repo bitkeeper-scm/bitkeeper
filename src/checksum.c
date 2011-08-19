@@ -140,7 +140,6 @@ checksum_main(int ac, char **av)
 int
 sccs_resum(sccs *s, delta *d, int diags, int fix)
 {
-	int	i;
 	int	err = 0;
 	char	before[43];	/* 4000G/4000G/4000G will fit */
 	char	after[43];

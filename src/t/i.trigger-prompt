@@ -1,0 +1,37 @@
+# Remember to run with ./doit -g to enable gui testing.
+
+echo $N Run commit in text mode, should not see gui prompts .........$NL
+echo "this should be a text mode prompt" > "$HERE/MSG"
+nested prod
+mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/pre-commit <<EOF
+#!/bin/bash
+bk prompt -i "BK_GUI=\$BK_GUI and \`cat "$HERE/MSG"\`"
+EOF
+chmod +x BitKeeper/triggers/pre-commit
+bk new $Q BitKeeper/triggers/pre-commit
+BK_NO_TRIGGERS=1 bk commit $Q -y'Added trigger'
+cd gcc
+touch foo
+bk new $Q foo
+BK_NO_TRIGGERS=1 bk commit $Q -y'added foo'
+cd "$HERE"
+bk clone $Q prod clone
+cd prod/gcc
+bk edit $Q foo
+echo foo > foo
+bk ci $Q -y'added foo to foo'
+cd ..
+BK_NO_TRIGGERS=1 bk commit $Q -y'Added foo to foo'
+cd "$HERE/clone/gcc"
+bk edit $Q foo
+echo foo > foo
+bk ci $Q -y'added bar to foo'
+BK_NO_TRIGGERS=1 bk commit $Q -y'Added bar to foo'
+bk pull $Q
+echo OK
+echo $N Unpull and repull, should see gui prompts ...................$NL
+bk unpull $Q -f
+echo "this should be a gui mode prompt" > "$HERE/MSG"
+BK_GUI=1 bk pull $Q
+echo OK

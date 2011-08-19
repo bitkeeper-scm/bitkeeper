@@ -159,9 +159,13 @@ resolve_main(int ac, char **av)
 	}
 	if (opts.partial) opts.pass4 = 0;
 
-	unless (opts.textOnly) putenv("BK_GUI=WANT_CITOOL");
-	if (opts.pass3 && !opts.textOnly && !gui_useDisplay()) {
-		opts.textOnly = 1; 
+	unless (opts.textOnly) {
+		char	*p = getenv("BK_GUI");
+
+		/* use citool for commit if environment allows it */
+		unless (p) putenv("BK_GUI=1");
+		unless (gui_useDisplay()) opts.textOnly = 1; 
+		unless (p) putenv("BK_GUI=");
 	}
 
 	/*
@@ -186,6 +190,12 @@ resolve_main(int ac, char **av)
 		}
 		freeStuff(&opts);
 		return (0);
+	}
+	unless (writable(".")) {
+		fprintf(stderr,
+		    "resolve: repository root directory is not writable.\n");
+		freeStuff(&opts);
+		return (1);
 	}
 	if (proj_isCaseFoldingFS(0)) {
 		localDB = mdbm_mem();
@@ -490,7 +500,7 @@ resolve_components(opts *opts)
 {
 	char	**unresolved = 0, **revs = 0;
 	char	*compCset = 0, *resync = 0, *compCset2 = 0;
-	char	*cwd;
+	char	*cwd, *p;
 	comp	*c;
 	int	errors = 0, status = 0;
 	int	i;
@@ -567,6 +577,20 @@ missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 		FREE(compCset2);
 		compCset2 = aprintf("%s/" CHANGESET, c->path);
 		if (exists(compCset)) {
+			p = strrchr(compCset, '/');
+			assert(p);
+			p[1] = 'd';
+			unless (exists(compCset)) {
+				/*
+				 * A component's ChangeSet file is here
+				 * with no dfile means that this
+				 * component is no longer pending.
+				 * The sameFiles() won't match
+				 * because this copy has a cset mark.
+				 */
+				continue;
+			}
+			p[1] = 's';
 			/*
 			 * Already resolved with merge. Verify that
 			 * the component's actual ChangeSet file
@@ -1887,8 +1911,9 @@ err:		unless (opts->autoOnly) {
 			progress_done(tick, "OK");
 			progress_restoreStderr();
 		}
+		/* no textOnly means gui is supported - useDisplay() passed */
 		if (!opts->textOnly &&
-		    !opts->quiet && !win32() && gui_useDisplay()) {
+		    !opts->quiet && !win32()) {
 			fprintf(stderr,
 			    "Using %s as graphical display\n",
 			    gui_displayName());
@@ -3050,7 +3075,9 @@ resolve_cleanup(opts *opts, int what)
 			fprintf(stderr, "resolve: rmtree failed\n");
 		}
 	} else if (what & CLEAN_ABORT) {
-		if (system("bk -?BK_NO_REPO_LOCK=YES abort -qfp")) {
+		strcpy(buf, "bk -?BK_NO_REPO_LOCK=YES abort -qfp");
+		if (exists("RESYNC/BitKeeper/log/port")) strcat(buf, "S");
+		if (system(buf)) {
 			fprintf(stderr, "Abort failed\n");
 		}
 	} else if (what & CLEAN_MVRESYNC) {
@@ -3075,7 +3102,9 @@ resolve_cleanup(opts *opts, int what)
 		    dir);
 		if (system(cmd)) perror("dircopy");
 		free(cmd);
-		if (system("bk -?BK_NO_REPO_LOCK=YES abort -fp")) {
+		strcpy(buf, "bk -?BK_NO_REPO_LOCK=YES abort -fp");
+		if (exists("RESYNC/BitKeeper/log/port")) strcat(buf, "S");
+		if (system(buf)) {
 			fprintf(stderr, "Abort failed\n");
 		}
 		free(dir);

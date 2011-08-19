@@ -117,6 +117,8 @@ bk --cd=project commit $Q -ya
 bk --cd=copy commit $Q -yb
 cd copy
 bk pull $Q
+grep -q sortkey BitKeeper/log/features && fail has sortkey
 bk cp b c 2>ERR
+grep -q sortkey BitKeeper/log/features || fail no sortkey
 bk check c || fail
 echo OK

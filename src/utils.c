@@ -360,7 +360,7 @@ prompt_main(int ac, char **av)
 	int	i, c, ret, ask = 1, nogui = 0, gui = 0;
 	char	*prog = 0, *file = 0, *no = "NO", *yes = "OK", *title = 0;
 	char	*type = 0;
-	char	*cmd;
+	char	*cmd, *p;
 	FILE	*in;
 	char	msgtmp[MAXPATH];
 	char	buf[1024];
@@ -441,7 +441,9 @@ err:			if (file == msgtmp) unlink(msgtmp);
 	}
 
 	/* in trigger and in text mode */
-	if (getenv("BK_EVENT") && ((i = open(DEV_TTY, O_RDWR, 0)) >= 0)) {
+	if ((p = getenv("BK_EVENT")) &&
+	    !streq(p, "lease-proxy") &&
+	    ((i = open(DEV_TTY, O_RDWR, 0)) >= 0)) {
 		dup2(i, 0);
 		dup2(i, 1);
 		dup2(i, 2);

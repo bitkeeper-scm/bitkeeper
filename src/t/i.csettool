@@ -12,6 +12,18 @@
 # Copyright (c) 2004 Larry McVoy
 # %K%
 
+echo $N Run csettool with a long line and scroll the bottom bar .....$NL
+commercial project
+printf "This is a long long long long " > c
+printf "long long long long long long long long long long long long " >> c
+printf "long long long long long long long long long long long long " >> c
+printf "long long long long long long long long long long long long " >> c
+echo line. >> c
+bk new $Q c
+bk commit $Q -ylong
+bk csettool -r+
+echo OK
+
 test -d "$HERE/home" || mkdir "$HERE/home"
 export BK_TEST_HOME="$HERE/home"
 

@@ -5,6 +5,11 @@
 
 set -a
 
+test -d SCCS && {
+	echo CRANK does not work in repo with SCCS dirs
+	exit 1
+}
+
 test "X$REMOTE" = X && {
 	echo You need to set \$REMOTE before cranking
 	exit 1

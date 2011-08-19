@@ -4,7 +4,7 @@
 #include "range.h"
 #include "nested.h"
 
-#define	COLLAPSE_BACKUP_SFIO "BitKeeper/tmp/collpase_backup_sfio"
+#define	COLLAPSE_BACKUP_SFIO "BitKeeper/tmp/collapse_backup_sfio"
 #define	COLLAPSE_BACKUP_PATCH "BitKeeper/tmp/collapse.patch"
 
 /*

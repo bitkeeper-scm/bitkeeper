@@ -495,3 +495,72 @@ cmpfiles GOT WANT
 bk -P commit $Q -yprod
 test "`bk changes -S -r$BRANCHTIP -nd:CSETREV:`" = "1.4" || fail
 echo OK
+
+echo $N Test that abort of a port is abort -S .......................$NL
+cd "$HERE/project"
+bk detach $Q bash ../bash-port
+cd ../bash-port
+bk edit $Q foo
+echo bash-port >> foo
+bk ci -ywhatever $Q foo
+bk commit -ywhatever $Q
+cd ../project/bash
+bk edit $Q foo
+echo project >> foo
+bk ci -ywhatever $Q foo
+bk commit -ywhatever $Q
+echo q | bk port ../../bash-port > OUT 2>&1 
+test -d RESYNC || {
+	echo failed to leave RESYNC
+	cat OUT
+	exit 1
+}
+bk abort -fS
+(echo a
+ echo y
+) | bk port ../../bash-port > OUT 2>&1
+test -d RESYNC && {
+	echo failed to remove comp RESYNC
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test port -R followed by pull fails..........................$NL
+rm -f "HERE/project" "$HERE/gcc" "$HERE/copy"
+nested project
+touch gcc/foo
+bk new $Q gcc/foo
+bk commit $Q -yfoo
+bk clone $Q . ../copy
+cd ../copy
+touch gcc/bar
+bk new $Q gcc/bar
+bk commit $Q -ybar
+cd ../project
+bk detach $Q gcc ../gcc
+cd ../gcc
+bk edit $Q foo
+echo france > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+cd ../project/gcc
+bk edit $Q foo
+echo spain > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+bk port $Q -R ../../gcc || fail
+bk pull $Q -R ../../copy >ERR 2>&1 && fail should have failed
+cat <<EOF > WANT
+Existing RESYNC directory in component 'gcc'
+Port in progress
+Please run 'bk resolve -S or 'bk abort -S'
+in the 'gcc' component
+pull: update aborted.
+EOF
+cmpfiles WANT ERR
+test -f RESYNC/BitKeeper/log/port || fail
+# finish the resolve
+printf "s\nC\n" | bk resolve $Q -S 2>ERR || fail
+test -f RESYNC/BitKeeper/log/port && fail
+echo OK

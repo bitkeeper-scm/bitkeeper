@@ -25,7 +25,7 @@ private void	do_print(char state[6], char *gfile, char *rev);
 private void	file(char *f);
 private void	print_it(STATE state, char *file, char *rev);
 private	void	print_summary(void);
-private void	uprogress(int force);
+private void	uprogress(void);
 private	void	sccsdir(winfo *wi);
 private void	walk(char *dir);
 private	void	load_project(char *dir);
@@ -48,6 +48,7 @@ typedef struct {
 	u32	gfile:1;		/* -g: print gfile name */
 	u32	gotten:1;		/* -G: list checked out files */
 	u32	notgotten:1;		/* -^G: only non-checked out sfiles */
+	u32	gui:1;			/* --gui: interleaved progress/files */
 	u32	ignored:1;		/* -i: list ignored (extra) files */
 	u32	junk:1;			/* -j: list junk in SCCS dirs */
 	u32	locked:1;		/* -l: list locked files */
@@ -85,7 +86,7 @@ private	char	**prunedirs;	/* set of dirs to prune */
 private	char	**components;	/* list of subcomponents */
 
 private u32	d_count, s_count, x_count; /* progress counter */
-private u32	s_last, x_last; /* progress counter */
+private u32	d_last, c_last, s_last, x_last; /* progress counter */
 private u32	R_count, D_count, C_count, c_count, n_count, p_count, i_count;
 
 private char *
@@ -140,6 +141,8 @@ sfiles_main(int ac, char **av)
 	char	*path, *s, buf[MAXPATH];
 	longopt	lopts[] = {
 		{ "relpath:", 300 },
+		{ "gui", 301 },
+		{ "no-progress", 302 },	// use after --gui for no P|
 		{ 0, 0 },
 	};
 
@@ -222,6 +225,12 @@ sfiles_main(int ac, char **av)
 		    case 300: /* --relpath */
 			opts.relpath = fullname(optarg, 0);
 			break;
+		    case 301: /* --gui */
+		        opts.gui = opts.progress = 1;
+			break;
+		    case 302: /* --no-progress */
+		        opts.progress = 0;
+			break;
 		    default: bk_badArg(c, av);
 		}
 		if (not && (c != '^')) {
@@ -238,6 +247,7 @@ sfiles_main(int ac, char **av)
 	}
 
 	unless (opts.out) opts.out = stdout;
+	if (opts.progress || opts.gui) setlinebuf(stdout);
 	fflush(opts.out); /* for win32 */
 	C_count = c_count = p_count = d_count = s_count = x_count = 0;
 	if (opts.summarize) opts.verbose = 0;
@@ -311,7 +321,7 @@ sfiles_main(int ac, char **av)
                 }
 	}
 	if (opts.out != stdout) fclose(opts.out);
-	if (opts.progress) uprogress(1);
+	if (opts.progress) uprogress();
 	if (opts.relpath) free(opts.relpath);
 	free_project();
 	return (0);
@@ -997,16 +1007,22 @@ walk(char *indir)
 }
 
 private void
-uprogress(int force)
+uprogress(void)
 {
 	char	buf[100];
 
-	if (!force && (s_last == s_count) && (x_last == x_count)) return;
-	sprintf(buf, "%d %d %d %d\n", s_count, x_count, d_count, c_count);
+	if ((s_last == s_count) && (x_last == x_count) &&
+	    (d_last == d_count) && (c_last == c_count)) {
+	    	return;
+	}
+	sprintf(buf, "%s%d %d %d %d\n",
+	    opts.gui ? "P|" : "", s_count, x_count, d_count, c_count);
 	/* If we get an error, it usually means that we are to die */
 	if (write(1, buf, strlen(buf)) != strlen(buf)) exit(1);
 	s_last = s_count;
 	x_last = x_count;
+	d_last = d_count;
+	c_last = c_count;
 }
 
 private int
@@ -1107,6 +1123,7 @@ print_file(char *name)
 	} else {
 		rel = name;
 	}
+	if (opts.gui && !opts.verbose) fputs("F|", opts.out);
 	rc = fputs(rel, opts.out);
 	if (aname) free(aname);
 	return (rc);
@@ -1122,6 +1139,7 @@ print_it(STATE state, char *gfile, char *rev)
 	if ((opts.useronly) && isBkFile(gfile)) return;
 
 	if (opts.verbose) {
+		if (opts.gui) fputs("F|", opts.out);
 		if (state[TSTATE] == 'j') {
 			assert(streq(state, "j      "));
 			if (fprintf(opts.out, "j------ ") != 8) {
@@ -1204,7 +1222,7 @@ do_print(STATE buf, char *gfile, char *rev)
 	}
 	if (opts.progress &&
 	    (((s_count - s_last) > 100) || ((x_count - x_last) > 100))) {
-		uprogress(1);
+		uprogress();
 	}
 	if (opts.summarize) return; /* skip the detail */
 
@@ -1255,7 +1273,7 @@ sccsdir(winfo *wi)
 	char	buf[MAXPATH];
 	char	buf1[MAXPATH];
 
-	if (opts.progress) uprogress(1);
+	if (opts.progress) uprogress();
 
 	/*
 	 * First eliminate as much as we can from SCCS dir;
@@ -1598,6 +1616,7 @@ walksfiles(char *dir, walkfn fn, void *data)
 	rc = walkdir(dir, findsfiles, &si);
 	if (proj) free(si.proj_prefix);
 	freeLines(components, free);	/* set by walk_deepComponents() */
+	components = 0;
 	free_project();
 	return (rc);
 }

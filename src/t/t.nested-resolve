@@ -196,3 +196,44 @@ after
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N Test that product pass4 does not trip up on comps check .....$NL
+# This was getting tripped up on comparing changeset files in the prod
+# RESYNC and in the component.  Normally they are the same, but after
+# the cset is made, they differ by cset marks.  Don't check if no
+# r.ChangeSet file.  This happened when pass4 failed because of
+# read only product root directory, then the owner of the repo ran resolve
+cd "$HERE"/parent
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+bk clone $Q . ../copy
+touch gcc/project
+bk new $Q gcc/project
+bk edit $Q foo
+echo project > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yproject
+cd ../copy
+touch gcc/copy
+bk new $Q gcc/copy
+bk edit $Q foo
+echo copy > foo
+bk delta $Q -yfoo foo
+bk commit $Q -ycopy
+echo q | bk pull $Q 2> PULL
+bk _test -f RESYNC/gcc/SCCS/d.ChangeSet || fail dfile not there
+# This will complete pass3 which makes the merge cset
+printf "s\nC\n" | bk resolve $Q -4 2> RESOLVE1
+bk _test -f RESYNC/gcc/SCCS/d.ChangeSet && fail dfile there
+# Do pass 4 now
+bk resolve $Q || fail
+echo OK
+
+echo $N Test that a resolve on a read only repo root fails ..........$NL
+bk unpull $Q -f
+echo q | bk pull $Q 2> PULL2
+chmod 555 .
+printf "s\nC\n" | bk resolve $Q 2> ../ERR && fail -f ../ERR
+grep -q 'repository root directory is not writable.' ../ERR || fail -f ../ERR
+echo OK
