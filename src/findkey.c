@@ -104,7 +104,7 @@ utc(char *date)
 private void
 findkey(sccs *s, look l)
 {
-	delta	*d;
+	ser_t	d;
 	char	key[MAXKEY];
 
 	if (l.key) {
@@ -115,15 +115,15 @@ findkey(sccs *s, look l)
 		}
 		return;
 	}
-	for (d = s->table; d; d = NEXT(d)) {
+	for (d = s->table; d; d = NEXT(s, d)) {
 		/* continues if no match, print if we get through all */
 		if (l.random) {
 			unless (streq(RANDOM(s, d), l.random)) {
 				continue;
 			}
 		}
-		if (l.cksum) unless (d->sum == l.cksum) continue;
-		if (l.utc) unless (d->date == l.utc) continue;
+		if (l.cksum) unless (SUM(s, d) == l.cksum) continue;
+		if (l.utc) unless (DATE(s, d) == l.utc) continue;
 		if (l.path) unless (streq(PATHNAME(s, d), l.path)) continue;
 		if (l.user) unless (streq(USER(s, d), l.user)) continue;
 		if (l.host) unless (streq(HOSTNAME(s, d), l.host)) continue;

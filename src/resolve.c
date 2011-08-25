@@ -29,7 +29,7 @@
 private	void	commit(opts *opts);
 private	void	conflict(opts *opts, char *rfile);
 private	int	create(resolve *rs);
-private	void	edit_tip(resolve *rs, char *sf, delta *d, char *rf, int which);
+private	void	edit_tip(resolve *rs, char *sf, ser_t d, char *rf, int which);
 private	void	freeStuff(opts *opts);
 private	int	nameOK(opts *opts, sccs *s);
 private	void	pass1_renames(opts *opts, sccs *s);
@@ -41,7 +41,7 @@ private	int	pending(int checkComments);
 private	int	pendingEdits(void);
 private	int	pendingRenames(void);
 private void	checkins(opts *opts, char *comment);
-private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
+private	void	rename_delta(resolve *rs, char *sf, ser_t d, char *rf, int w);
 private	int	rename_file(resolve *rs);
 private void	resolve_post(opts *o, int c);
 private void	unapply(char **applied);
@@ -1169,7 +1169,7 @@ again:
 		}
 		mfile = strdup(sccs_Xfile(rs->s, 'm'));
 		if (rs->revs) {
-			delta	*d;
+			ser_t	d;
 			char	rfile[MAXPATH];
 			char	*t = strrchr(to, '/');
 
@@ -1243,7 +1243,7 @@ int
 move_remote(resolve *rs, char *sfile)
 {
 	int	ret;
-	delta	*d;
+	ser_t	d;
 	char	rfile[MAXPATH];
 
 	if (rs->opts->debug) {
@@ -1301,7 +1301,7 @@ move_remote(resolve *rs, char *sfile)
  * Add a null rename delta to the specified tip.
  */
 private	void
-rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
+rename_delta(resolve *rs, char *sfile, ser_t d, char *rfile, int which)
 {
 	char	*t;
 	char	buf[MAXPATH+100];
@@ -1336,11 +1336,11 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
  */
 void
 type_delta(resolve *rs,
-	char *sfile, delta *l, delta *r, char *rfile, int winner)
+	char *sfile, ser_t l, ser_t r, char *rfile, int winner)
 {
 	char	buf[MAXPATH+100];
 	char	*g = sccs2name(sfile);
-	delta	*o, *n;		/* old -> new */
+	ser_t	o, n;		/* old -> new */
 	sccs	*s;
 	int	loser;
 
@@ -1364,29 +1364,29 @@ type_delta(resolve *rs,
 		n = r;
 	}
 	edit_tip(rs, sfile, o, rfile, loser);
-	if (S_ISREG(n->mode)) {
+	if (S_ISREG(MODE(rs->s, n))) {
 		/* bk _get -kpqr{n->rev} sfile > g */
 		sprintf(buf, "-kpqr%s", REV(rs->s, n));
 		if (sysio(0, g, 0, "bk", "_get", buf, sfile, SYS)) {
 			fprintf(stderr, "%s failed\n", buf);
 			resolve_cleanup(rs->opts, 0);
 		}
-		chmod(g, n->mode);
-	} else if (S_ISLNK(n->mode)) {
-		assert(n->symlink);
+		chmod(g, MODE(rs->s, n));
+	} else if (S_ISLNK(MODE(rs->s, n))) {
+		assert(HAS_SYMLINK(rs->s, n));
 		if (symlink(SYMLINK(rs->s, n), g)) {
 			perror(g);
 			resolve_cleanup(rs->opts, 0);
 		}
 	} else {
 		fprintf(stderr,
-		    "type_delta called on unknown file type %o\n", n->mode);
+		    "type_delta called on unknown file type %o\n", MODE(rs->s, n));
 		resolve_cleanup(rs->opts, 0);
 	}
 	free(g);
-	/* bk delta -qPy'Merge file types: {o->mode} {n->mode} sfile */
+	/* bk delta -qPy'Merge file types: {MODE(rs->s, o)} {MODE(rs->s, n)} sfile */
 	sprintf(buf, "-qPyMerge file types: %s -> %s", 
-	    mode2FileType(o->mode), mode2FileType(n->mode));
+	    mode2FileType(MODE(rs->s, o)), mode2FileType(MODE(rs->s, n)));
 	if (sys("bk", "delta", "-f", buf, sfile, SYS)) {
 		syserr("failed\n");
 		resolve_cleanup(rs->opts, 0);
@@ -1410,7 +1410,7 @@ type_delta(resolve *rs,
  * Add a null permissions delta to the specified tip.
  */
 void
-mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
+mode_delta(resolve *rs, char *sfile, ser_t d, mode_t m, char *rfile, int which)
 {
 	char	*a = mode2a(m);
 	char	buf[MAXPATH], opt[100];
@@ -1449,7 +1449,7 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
  */
 void
 flags_delta(resolve *rs,
-	char *sfile, delta *d, int flags, char *rfile, int which)
+	char *sfile, ser_t d, int flags, char *rfile, int which)
 {
 	char	*av[40];
 	char	buf[MAXPATH];
@@ -1518,7 +1518,7 @@ flags_delta(resolve *rs,
  * If the which value is negative, it means don't get the data.
  */
 private	void
-edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
+edit_tip(resolve *rs, char *sfile, ser_t d, char *rfile, int which)
 {
 	char	buf[MAXPATH+100];
 	char	opt[100];
@@ -2124,7 +2124,7 @@ void
 do_delta(opts *opts, sccs *s, char *comment)
 {
 	int     flags = DELTA_FORCE;
-	delta	*d = 0;
+	ser_t	d = 0;
 
 	comments_done();
 	if (comment) {
@@ -2194,7 +2194,7 @@ conflict(opts *opts, char *sfile)
 	 * The annoyed programmer will note that the resolver may
 	 * replace the sccs pointer.
 	 */
-	unless (fileType(d.local->mode) == fileType(d.remote->mode)) {
+	unless (fileType(MODE(s, d.local)) == fileType(MODE(s, d.remote))) {
 		rs->opaque = (void*)&d;
 		if (resolve_filetypes(rs) == EAGAIN) {
 			resolve_free(rs);
@@ -2208,7 +2208,7 @@ conflict(opts *opts, char *sfile)
 		d.remote = sccs_findrev(s, rs->revs->remote);
 	}
 
-	unless (d.local->mode == d.remote->mode) {
+	unless (MODE(s, d.local) == MODE(s, d.remote)) {
 		rs->opaque = (void*)&d;
 		if (resolve_modes(rs) == EAGAIN) {
 			resolve_free(rs);
@@ -2256,11 +2256,11 @@ err:		resolve_free(rs);
 	 * See if we merged some symlink conflicts, if so
 	 * there can't be any conflict left.
 	 */
-	if (S_ISLNK(fileType(d.local->mode))) {
+	if (S_ISLNK(fileType(MODE(s, d.local)))) {
 		int	flags;
-		delta	*e;
+		ser_t	e;
 
-		assert(d.local->mode == d.remote->mode);
+		assert(MODE(s, d.local) == MODE(s, d.remote));
 		if (sccs_get(rs->s, 0, 0, 0, 0, SILENT, "-")) {
 			sccs_whynot("delta", rs->s);
 			goto err;
@@ -2332,7 +2332,7 @@ automerge(resolve *rs, names *n, int identical)
 	names	tmp;
 	int	do_free = 0;
 	int	flags;
-	delta	*a, *b;
+	ser_t	a, b;
 
 	unless (sccs_findtips(rs->s, &a, &b)) {
 		unless (rs->opts->quiet) {
@@ -2402,7 +2402,7 @@ nomerge:	rs->opts->hadConflicts++;
 		freenames(&tmp, 0);
 	}
 	if (ret == 0) {
-		delta	*d;
+		ser_t	d;
 
 		unless (rs->opts->quiet) {
 			fprintf(stderr,

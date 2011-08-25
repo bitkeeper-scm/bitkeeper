@@ -53,7 +53,7 @@ private int
 unpull(int force, int quiet, char *patch)
 {
 	sccs	*s;
-	delta	*d, *e, *tag, *chg;
+	ser_t	d, e, tag, chg;
 	FILE	*f;
 	char	*av[10];
 	int	i;
@@ -86,10 +86,10 @@ unpull(int force, int quiet, char *patch)
 			unlink(CSETS_IN);
 			return (1);
 		}
-		unless (TAG(e)) chg = e;
-		if (SYMGRAPH(e)) {
+		unless (TAG(s, e)) chg = e;
+		if (SYMGRAPH(s, e)) {
 			if (!tag) tag = e;	/* first is oldest */
-			e->flags |= D_BLUE;
+			FLAGS(s, e) |= D_BLUE;
 		}
 	}
 	fclose(f);
@@ -110,15 +110,15 @@ err:			sccs_free(s);
 		}
 	}
 	if (tag) {
-		for (d = s->table; d && (d != tag); d = NEXT(d)) {
-			if (!SYMGRAPH(d) || (d->flags & D_BLUE)) continue;
-			if (d->ptag) {
-				e = sfind(s, d->ptag);
-				if (e->flags & D_BLUE) break;
+		for (d = s->table; d && (d != tag); d = NEXT(s, d)) {
+			if (!SYMGRAPH(s, d) || (FLAGS(s, d) & D_BLUE)) continue;
+			if (PTAG(s, d)) {
+				e = sfind(s, PTAG(s, d));
+				if (FLAGS(s, e) & D_BLUE) break;
 			}
-			if (d->mtag) {
-				e = sfind(s, d->mtag);
-				if (e->flags & D_BLUE) break;
+			if (MTAG(s, d)) {
+				e = sfind(s, MTAG(s, d));
+				if (FLAGS(s, e) & D_BLUE) break;
 			}
 		}
 		unless (d == tag) {

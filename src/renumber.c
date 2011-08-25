@@ -19,9 +19,9 @@
 #include "sccs.h"
 #include "progress.h"
 
-private void	remember(MDBM *db, delta *d);
-private int	taken(MDBM *db, delta *d);
-private int	redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release,
+private void	remember(MDBM *db, sccs *s, ser_t d);
+private int	taken(MDBM *db, sccs *s, ser_t d);
+private int	redo(sccs *s, ser_t d, MDBM *db, int flags, ser_t release,
 		    ser_t *map);
 
 int
@@ -83,7 +83,7 @@ renumber_main(int ac, char **av)
 void
 sccs_renumber(sccs *s, u32 flags)
 {
-	delta	*d;
+	ser_t	d;
 	ser_t	i;
 	ser_t	release = 0;
 	MDBM	*db = mdbm_open(NULL, 0, 0, 128);
@@ -98,7 +98,7 @@ sccs_renumber(sccs *s, u32 flags)
 	} else {
 		/* Save current default branch */
 		if (d = sccs_top(s)) {
-			defserial = SERIAL(s, d); /* serial doesn't change */
+			defserial = d; /* serial doesn't change */
 			if (s->defbranch) {
 				char	*ptr;
 				for (ptr = s->defbranch; *ptr; ptr++) {
@@ -126,17 +126,17 @@ sccs_renumber(sccs *s, u32 flags)
 		/* Restore default branch */
 		assert(!s->defbranch);
 		unless (defisbranch) {
-			assert(d->r[0]);
+			assert(R0(s, d));
 			s->defbranch = strdup(REV(s, d));
 			continue;
 		}
 		/* restore 1 or 3 digit branch? 1 if BK or trunk */
-		if (d->r[2] == 0) {
-			sprintf(def, "%u", d->r[0]);
+		if (R2(s, d) == 0) {
+			sprintf(def, "%u", R0(s, d));
 			s->defbranch = strdup(def);
 			continue;
 		}
-		sprintf(def, "%d.%d.%d", d->r[0], d->r[1], d->r[2]);
+		sprintf(def, "%d.%d.%d", R0(s, d), R1(s, d), R2(s, d));
 		s->defbranch = strdup(def);
 	}
 	if (s->defbranch) {
@@ -151,24 +151,34 @@ sccs_renumber(sccs *s, u32 flags)
 }
 
 private	void
-remember(MDBM *db, delta *d)
+remember(MDBM *db, sccs *s, ser_t d)
 {
 	datum	key, val;
+	ser_t	R[4];
 
-	key.dptr = (void *)d->r;
-	key.dsize = sizeof(d->r);
+	R[0] = R0(s, d);
+	R[1] = R1(s, d);
+	R[2] = R2(s, d);
+	R[3] = R3(s, d);
+	key.dptr = (void*)R;
+	key.dsize = sizeof(R);
 	val.dptr = "1";
 	val.dsize = 1;
 	mdbm_store(db, key, val, 0);
 }
 
 private	int
-taken(MDBM *db, delta *d)
+taken(MDBM *db, sccs *s, ser_t d)
 {
 	datum	key, val;
+	ser_t	R[4];
 
-	key.dptr = (void *)d->r;
-	key.dsize = sizeof(d->r);
+	R[0] = R0(s, d);
+	R[1] = R1(s, d);
+	R[2] = R2(s, d);
+	R[3] = R3(s, d);
+	key.dptr = (void*)R;
+	key.dsize = sizeof(R);
 	val = mdbm_fetch(db, key);
 	return (val.dsize == 1);
 }
@@ -184,21 +194,21 @@ taken(MDBM *db, delta *d)
  * then make a copy of this in sccs2bk.c first.
  */
 int
-sccs_needSwap(sccs *s, delta *p, delta *m)
+sccs_needSwap(sccs *s, ser_t p, ser_t m)
 {
 	int	pser, mser;
 
-	pser = p->pserial;
-	mser = m->pserial;
+	pser = PARENT(s, p);
+	mser = PARENT(s, m);
 	while (pser != mser) {
 		if (mser < pser) {
 			p = PARENT(s, p);
 			assert(p);
-			pser = p->pserial;
+			pser = PARENT(s, p);
 		} else {
 			m = PARENT(s, m);
 			assert(m);
-			mser = m->pserial;
+			mser = PARENT(s, m);
 		}
 	}
 	assert(pser);	/* CA must exist */
@@ -206,22 +216,25 @@ sccs_needSwap(sccs *s, delta *p, delta *m)
 }
 
 private	int
-redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
+redo(sccs *s, ser_t d, MDBM *db, int flags, ser_t release, ser_t *map)
 {
-	delta	*p;
-	delta	*m;
+	ser_t	p;
+	ser_t	m;
 
 	/* XXX hack because not all files have 1.0, special case 1.1 */
 	p = PARENT(s, d);
 	unless (p || streq(REV(s, d), "1.1")) {
-		remember(db, d);
+		remember(db, s, d);
 		return (release);
 	}
 
-	if (d->flags & D_META) {
-		for (p = PARENT(s, d); p->flags & D_META; p = PARENT(s, p));
-		memcpy(d->r, p->r, sizeof(d->r));
-		unless (TAG(d)) remember(db, d);
+	if (FLAGS(s, d) & D_META) {
+		for (p = PARENT(s, d); FLAGS(s, p) & D_META; p = PARENT(s, p));
+		R0_SET(s, d, R0(s, p));
+		R1_SET(s, d, R1(s, p));
+		R2_SET(s, d, R2(s, p));
+		R3_SET(s, d, R3(s, p));
+		unless (TAG(s, d)) remember(db, s, d);
 		return (release);
 	}
 
@@ -230,7 +243,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 	 * If merge was on the trunk at time of merge, then swap
 	 */
 	m = MERGE(s, d);
-	if (m && (m->r[0] == p->r[0])) {
+	if (m && (R0(s, m) == R0(s, p))) {
 		assert((p != m) && BITKEEPER(s));
 		if (sccs_needSwap(s, p, m)) {
 			fprintf(stderr, "Renumber: corrupted sfile:\n  %s\n"
@@ -243,53 +256,56 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 	 * Release root (LOD root) in the form X.1 or X.0.Y.1
 	 * Sort so X.1 is printed first.
 	 */
-	if ((!d->r[2] && d->r[1] == 1) || (!d->r[1] && d->r[3] == 1)) {
-		unless (map[d->r[0]]) {
-			map[d->r[0]] = ++(release);
+	if ((!R2(s, d) && R1(s, d) == 1) || (!R1(s, d) && R3(s, d) == 1)) {
+		unless (map[R0(s, d)]) {
+			map[R0(s, d)] = ++(release);
 		}
-		d->r[0] = map[d->r[0]];
-		d->r[1] = 1;
-		d->r[2] = 0;
-		d->r[3] = 0;
-		unless (taken(db, d)) {
-			unless (TAG(d)) remember(db, d);
+		R0_SET(s, d, map[R0(s, d)]);
+		R1_SET(s, d, 1);
+		R2_SET(s, d, 0);
+		R3_SET(s, d, 0);
+		unless (taken(db, s, d)) {
+			unless (TAG(s, d)) remember(db, s, d);
 			return (release);
 		}
-		d->r[1] = 0;
-		d->r[2] = 0;
-		d->r[3] = 1;
+		R1_SET(s, d, 0);
+		R2_SET(s, d, 0);
+		R3_SET(s, d, 1);
 		do {
-			d->r[2]++;
-			assert(d->r[2] < 65535);
-		} while (taken(db, d));
-		unless (TAG(d)) remember(db, d);
+			R2_SET(s, d, R2(s, d)+1);
+			assert(R2(s, d) < 65535);
+		} while (taken(db, s, d));
+		unless (TAG(s, d)) remember(db, s, d);
 		return (release);
 	}
 
 	/*
 	 * Everything else we can rewrite.
 	 */
-	bzero(d->r, sizeof(d->r));
+	R0_SET(s, d, 0);
+	R1_SET(s, d, 0);
+	R2_SET(s, d, 0);
+	R3_SET(s, d, 0);
 
 	/*
 	 * My parent is a trunk node, I'm either continuing the trunk
 	 * or starting a new branch.
 	 */
-	unless (p->r[2]) {
-		d->r[0] = p->r[0];
-		d->r[1] = p->r[1] + 1;
-		unless (taken(db, d)) {
-			unless (TAG(d)) remember(db, d);
+	unless (R2(s, p)) {
+		R0_SET(s, d, R0(s, p));
+		R1_SET(s, d, R1(s, p) + 1);
+		unless (taken(db, s, d)) {
+			unless (TAG(s, d)) remember(db, s, d);
 			return (release);
 		}
-		d->r[1] = p->r[1];
-		d->r[2] = 0;
-		d->r[3] = 1;
+		R1_SET(s, d, R1(s, p));
+		R2_SET(s, d, 0);
+		R3_SET(s, d, 1);
 		do {
-			d->r[2]++;
-			assert(d->r[2] < 65535);
-		} while (taken(db, d));
-		unless (TAG(d)) remember(db, d);
+			R2_SET(s, d, R2(s, d)+1);
+			assert(R2(s, d) < 65535);
+		} while (taken(db, s, d));
+		unless (TAG(s, d)) remember(db, s, d);
 		return (release);
 	}
 	
@@ -299,22 +315,22 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 	 * Yes, this code is essentially the same as the above code but it is
 	 * more clear to leave it like this.
 	 */
-	d->r[0] = p->r[0];
-	d->r[1] = p->r[1];
-	d->r[2] = p->r[2];
-	d->r[3] = p->r[3] + 1;
-	if (!taken(db, d)) {
-		unless (TAG(d)) remember(db, d);
+	R0_SET(s, d, R0(s, p));
+	R1_SET(s, d, R1(s, p));
+	R2_SET(s, d, R2(s, p));
+	R3_SET(s, d, R3(s, p) + 1);
+	if (!taken(db, s, d)) {
+		unless (TAG(s, d)) remember(db, s, d);
 		return (release);
 	}
 
 	/* Try a new branch */
-	d->r[2] = p->r[2];
-	d->r[3] = 1;
+	R2_SET(s, d, R2(s, p));
+	R3_SET(s, d, 1);
 	do {
-		d->r[2]++;
-		assert(d->r[2] < 65535);
-	} while (taken(db, d));
-	unless (TAG(d)) remember(db, d);
+		R2_SET(s, d, R2(s, d)+1);
+		assert(R2(s, d) < 65535);
+	} while (taken(db, s, d));
+	unless (TAG(s, d)) remember(db, s, d);
 	return (release);
 }

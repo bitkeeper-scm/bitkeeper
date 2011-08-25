@@ -1,14 +1,16 @@
 #include	"sccs.h"
 #include	"graph.h"
 
-private	int	v1Right(sccs *s, delta *d, void *token);
-private	int	v1Left(sccs *s, delta *d, void *token);
+private	int	v1Right(sccs *s, ser_t d, void *token);
+private	int	v1Left(sccs *s, ser_t d, void *token);
 
-private	int	v2Right(sccs *s, delta *d, void *token);
-private	int	v2Left(sccs *s, delta *d, void *token);
+private	int	v2Right(sccs *s, ser_t d, void *token);
+private	int	v2Left(sccs *s, ser_t d, void *token);
 
-private	void	sortKids(sccs *s, delta *start,
-    int (*compar)(const void *, const void *), char ***karr);
+private	void	sortKids(sccs *s, ser_t start,
+    int (*compar)(const void *, const void *), ser_t **karr);
+private	int	smallFirst(const void *a, const void *b);
+private	int	bigFirst(const void *a, const void *b);
 
 #define	S_DIFF		0x01	/* final active states differ */
 #define	SR_PAR		0x02	/* Right side parent lineage */
@@ -84,7 +86,7 @@ private	void	sortKids(sccs *s, delta *start,
  */
 
 int
-graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
+graph_symdiff(sccs *s, ser_t left, ser_t right, ser_t *list, u8 *slist,
     ser_t **sd, int count, int flags)
 {
 	ser_t	ser, lower = 0;
@@ -93,19 +95,19 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 	int	expand = (count < 0);
 	int	sign;
 	int	i, activeLeft, activeRight;
-	char	**list, *p;
+	char	*p;
 	ser_t	*include = 0, *exclude = 0;
-	delta	*t = 0, *x;
+	ser_t	t = 0, x;
 
 	if (flags & SD_MERGE) {
-		assert(!right);
-		list = (char **)left;
-		left = nLines(list) ? (delta *)list[1] : 0;
+		assert(!left && !right);
+		left = nLines(list) ? list[1] : 0;
 	} else if (left == right) {	/* X symdiff X = {} */
 		assert(expand);
 		return (0);
 	} else {
-		list = addLine(0, left);
+		assert(!list);
+		addArray(&list, &left);
 	}
 
 	if (expand) {
@@ -114,18 +116,18 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 		assert(left);
 		if (sd) assert(count == 0);
 		marked = count;
-		left->cludes = 0;
+		CLUDES_SET(s, left, 0);
 	}
 	/* init the array with the starting points */
 	EACH (list) {
-		x = (delta *)list[i];
+		x = list[i];
 		bits = SL_PAR;
 		marked++;
 		if (sd) {
 			bits |= S_DIFF;
 			marked++;
 		}
-		ser = SERIAL(s, x);
+		ser = x;
 		slist[ser] |= bits;
 		if (!t || (t < x)) t = x;
 		if (!lower || (lower > ser)) lower = ser;
@@ -137,18 +139,18 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 			bits |= S_DIFF;
 			marked++;
 		}
-		ser = SERIAL(s, right);
+		ser = right;
 		slist[ser] |= bits;
 		if (!t || (t < right)) t = right;
 		if (!lower || (lower > ser)) lower = ser;
 	}
 
-	for (/* set */; t && marked; t = NEXT(t)) {
-		if (TAG(t)) continue;
+	for (/* set */; t && marked; t = NEXT(s, t)) {
+		if (TAG(s, t)) continue;
 
-		ser = SERIAL(s, t);
+		ser = t;
 		unless (bits = slist[ser]) continue;
-		assert(!(t->flags & D_GONE));
+		assert(!(FLAGS(s, t) & D_GONE));
 
 		if (expand && !sd) {
 			slist[ser] = bits & S_DIFF;
@@ -186,8 +188,8 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 		} else if (expand) {	/* Compute SD compression */
 			assert(sd);
 			bits ^= S_DIFF;
-			sd[SERIAL(s, left)] =
-			    addSerial(sd[SERIAL(s, left)], ser);
+			sd[left] =
+			    addSerial(sd[left], ser);
 		} else {		/* Compute SCCS compression */
 			if (activeLeft) {
 				exclude = addSerial(exclude, ser);
@@ -203,8 +205,8 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 			 * Save allocating lists for most nodes by making
 			 * use of parent serial.
 			 */
-			if (t->pserial) {
-				if ((slist[t->pserial] ^= S_DIFF) & S_DIFF) {
+			if (PARENT(s, t)) {
+				if ((slist[PARENT(s, t)] ^= S_DIFF) & S_DIFF) {
 					marked++;
 				} else {
 					marked--;
@@ -221,7 +223,7 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 
 		/* Set up parent ancestory for this node */
 		if (newbits = (bits & (SL_PAR|SR_PAR))) {
-			if (ser = t->pserial) {
+			if (ser = PARENT(s, t)) {
 				bits = slist[ser];
 				/* XXX if !MULTIPARENT, same as if (1) */
 				if ((bits & newbits) != newbits) {
@@ -277,7 +279,7 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 
 		EACH(include) sccs_saveNum(f, include[i], 1);
 		EACH(exclude) sccs_saveNum(f, exclude[i], -1);
-		left->cludes = sccs_addStr(s, fmem_peek(f, 0));
+		CLUDES_SET(s, left, fmem_peek(f, 0));
 		fclose(f);
 		FREE(include);
 		FREE(exclude);
@@ -285,7 +287,7 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
 	assert(!marked);
 	/* fresh slate for next round */
 	if (t && lower) {
-		for (ser = SERIAL(s, t); ser >= lower; ser--) {
+		for (ser = t; ser >= lower; ser--) {
 			slist[ser] &= S_DIFF;	/* clear all but S_DIFF */
 		}
 	}
@@ -298,12 +300,12 @@ graph_symdiff(sccs *s, delta *left, delta *right, u8 *slist,
  * at the time this delta was made).
  */
 ser_t *
-symdiff_addBVC(ser_t **sd, ser_t *list, sccs *s, delta *d)
+symdiff_addBVC(ser_t **sd, ser_t *list, sccs *s, ser_t d)
 {
 	int	i;
-	ser_t	*sdlist = sd[SERIAL(s, d)];
+	ser_t	*sdlist = sd[d];
 
-	if (d->pserial) list = addSerial(list, d->pserial);
+	if (PARENT(s, d)) list = addSerial(list, PARENT(s, d));
 	EACH(sdlist) {
 		list = addSerial(list, sdlist[i]);
 	}
@@ -338,41 +340,41 @@ symdiff_noDup(ser_t *list)
 
 /*
  * Just like most nodes have one parent and no d->include or d->exclude,
- * the sd lists will mostly have one entry, which is the same as d->pserial.
+ * the sd lists will mostly have one entry, which is the same as PARENT(s, d).
  * To save lots of lists from being created, just treat the list as though
- * d->pserial is in it, and if it ever is not, have a d->pserial in the
+ * PARENT(s, d) is in it, and if it ever is not, have a PARENT(s, d) in the
  * list.  That means when code wants to change the parent pointer, it
  * needs to call here to keep the bookkeeping lined up.
  * This routine works hard to not create a list if one isn't needed.
  */
 void
-symdiff_setParent(sccs *s, delta *d, delta *new, ser_t **sd)
+symdiff_setParent(sccs *s, ser_t d, ser_t new, ser_t **sd)
 {
-	ser_t	dser = SERIAL(s, d);
-	ser_t	newser = SERIAL(s, new);
+	ser_t	dser = d;
+	ser_t	newser = new;
 
-	assert(d->pserial);
-	if (sd[dser] || sd[d->pserial] ||
-	    (PARENT(s, d)->pserial != newser)) {
-		sd[dser] = addSerial(sd[dser], d->pserial);
+	assert(PARENT(s, d));
+	if (sd[dser] || sd[PARENT(s, d)] ||
+	    (PARENT(s, PARENT(s, d)) != newser)) {
+		sd[dser] = addSerial(sd[dser], PARENT(s, d));
 		sd[dser] = addSerial(sd[dser], newser);
 	}
-	d->pserial = newser;
+	PARENT_SET(s, d, newser);
 }
 
 ser_t	**
 graph_sccs2symdiff(sccs *s)
 {
 	int	j;
-	delta	*d;
+	ser_t	d;
 	ser_t	**sd = (ser_t **)calloc(s->nextserial, sizeof(ser_t *));
 	u8	*slist = (u8 *)calloc(s->nextserial, sizeof(u8));
 
 	assert(sd && slist);
 	for (j = 1; j < s->nextserial; j++) {
-		unless ((d = sfind(s, j)) && !TAG(d) && d->pserial) continue;
-		if (d->merge || d->cludes) {
-			graph_symdiff(s, d, PARENT(s, d), slist, sd, -1, 0);
+		unless ((d = sfind(s, j)) && !TAG(s, d) && PARENT(s, d)) continue;
+		if (MERGE(s, d) || HAS_CLUDES(s, d)) {
+			graph_symdiff(s, d, PARENT(s, d), 0, slist, sd, -1, 0);
 		}
 	}
 	free(slist);
@@ -403,39 +405,39 @@ int
 graph_v1(sccs *s)
 {
 	labels	label;
-	delta	*d;
+	ser_t	d;
 
 	bzero(&label, sizeof(label));
 	label.list = (reach *)calloc(s->nextserial, sizeof(reach));
 	printf("Demo reachability v1\n");
 	graph_kidwalk(s, v1Right, v1Left, &label);
-	for (d = s->table; d; d = NEXT(d)) {
-		if (TAG(d)) continue;
+	for (d = s->table; d; d = NEXT(s, d)) {
+		if (TAG(s, d)) continue;
 		printf("%s -> [%d, %d)\n",
 		    REV(s, d),
-		    label.list[SERIAL(s, d)].forward,
-		    label.list[SERIAL(s, d)].backward);
+		    label.list[d].forward,
+		    label.list[d].backward);
 	}
 	free(label.list);
 	return (1);
 }
 
 private	int
-v1Right(sccs *s, delta *d, void *token)
+v1Right(sccs *s, ser_t d, void *token)
 {
 	labels	*label = (labels *)token;
 
-	label->list[SERIAL(s, d)].forward = ++label->count.forward;
+	label->list[d].forward = ++label->count.forward;
 	label->count.backward = label->count.forward + 1;
 	return (0);
 }
 
 private	int
-v1Left(sccs *s, delta *d, void *token)
+v1Left(sccs *s, ser_t d, void *token)
 {
 	labels	*label = (labels *)token;
 
-	label->list[SERIAL(s, d)].backward = label->count.backward;
+	label->list[d].backward = label->count.backward;
 	return (0);
 }
 
@@ -451,16 +453,16 @@ graph_v2(sccs *s)
 }
 
 private	int
-v2Right(sccs *s, delta *d, void *token)
+v2Right(sccs *s, ser_t d, void *token)
 {
 	printf("right %s", REV(s, d));
-	if (d->merge) printf(" merge %s", REV(s, sfind(s, d->merge)));
+	if (MERGE(s, d)) printf(" merge %s", REV(s, sfind(s, MERGE(s, d))));
 	fputc('\n', stdout);
 	return (0);
 }
 
 private	int
-v2Left(sccs *s, delta *d, void *token)
+v2Left(sccs *s, ser_t d, void *token)
 {
 	printf("left %s\n", REV(s, d));
 	return (0);
@@ -492,25 +494,26 @@ v2Left(sccs *s, delta *d, void *token)
 int
 graph_kidwalk(sccs *s, walkfcn toTip, walkfcn toRoot, void *token)
 {
-	delta	*d, *next;
+	ser_t	d, next;
 	int	rc = 0;
-	char	**karr = allocLines(32);
+	ser_t	*karr = 0;
 
+	growArray(&karr, 32);
 	sccs_mkKidList(s);
 	d = s->tree;
 	while (d) {
 		/* walk down all kid pointers */
-		for (next = d; next && !TAG(next); next = KID(s, d)) {
+		for (next = d; next && !TAG(s, next); next = KID(s, d)) {
 			d = next;
 			if (toTip && (rc = toTip(s, d, token))) goto out;
-			sortKids(s, d, graph_bigFirst, &karr);
+			sortKids(s, d, bigFirst, &karr);
 		}
 		/* now next sibling or up parent link */
 		for (; d; d = PARENT(s, d)) {
 			/* only need d->kid to be oldest */
-			sortKids(s, d, graph_smallFirst, &karr);
+			sortKids(s, d, smallFirst, &karr);
 			if (toRoot && (rc = toRoot(s, d, token))) goto out;
-			if ((next = SIBLINGS(s, d)) && !TAG(next)) {
+			if ((next = SIBLINGS(s, d)) && !TAG(s, next)) {
 				d = next;
 				break;
 			}
@@ -518,62 +521,72 @@ graph_kidwalk(sccs *s, walkfcn toTip, walkfcn toRoot, void *token)
 	}
 out:	if (d) {
 		while (d = PARENT(s, d)) {
-			sortKids(s, d, graph_smallFirst, &karr);
+			sortKids(s, d, smallFirst, &karr);
 		}
 	}
-	freeLines(karr, 0);
+	FREE(karr);
 	FREE(s->kidlist);
 	return (rc);
 }
 
-int
-graph_smallFirst(const void *a, const void *b)
+private	sccs	*sortfile;
+
+void
+graph_sortLines(sccs *s, ser_t *list)
 {
-	delta	*l, *r;
+	sortfile = s;
+	sortArray(list, bigFirst);
+}
+
+private	int
+smallFirst(const void *a, const void *b)
+{
+	ser_t	l, r;
 	int	cmp;
 
-	l = *(delta **)a;
-	r = *(delta **)b;
-	if (cmp = (!TAG(r) - !TAG(l))) return (cmp);
+	l = *(ser_t *)a;
+	r = *(ser_t *)b;
+	if (cmp = (!TAG(sortfile, r) - !TAG(sortfile, l))) return (cmp);
 	return (l - r);
 }
 
-int
-graph_bigFirst(const void *a, const void *b)
+private	int
+bigFirst(const void *a, const void *b)
 {
-	delta	*l, *r;
+	ser_t	l, r;
 	int	cmp;
 
-	l = *(delta **)a;
-	r = *(delta **)b;
-	if (cmp = (!TAG(r) - !TAG(l))) return (cmp);
+	l = *(ser_t *)a;
+	r = *(ser_t *)b;
+	if (cmp = (!TAG(sortfile, r) - !TAG(sortfile, l))) return (cmp);
 	return (r - l);
 }
 
 private	void
-sortKids(sccs *s, delta *start, int (*compar)(const void *, const void *),
-	 char ***karr)
+sortKids(sccs *s, ser_t start, int (*compar)(const void *, const void *),
+	 ser_t **karr)
 {
-	char	**list = *karr;
-	delta	*d;
+	ser_t	*list = *karr;
+	ser_t	d;
 	int	i;
 	ser_t	*serp;
 
 	/* bail if nothing to sort */
-	unless ((d = KID(s, start)) && !TAG(d) && SIBLINGS(s, d)) return;
+	unless ((d = KID(s, start)) && !TAG(s, d) && SIBLINGS(s, d)) return;
 
+	sortfile = s;
 	truncLines(list, 0);
 	for (d = KID(s, start); d; d = SIBLINGS(s, d)) {
-		list = addLine(list, d);
+		addArray(&list, &d);
 	}
 	*karr = list;
-	sortLines(list, compar);
+	sortArray(list, compar);
 
-	serp = &s->kidlist[SERIAL(s, start)].kid;
+	serp = &s->kidlist[start].kid;
 	EACH(list) {
-		d = (delta *)list[i];
-		*serp = SERIAL(s, d);
-		serp = &s->kidlist[SERIAL(s, d)].siblings;
+		d = list[i];
+		*serp = d;
+		serp = &s->kidlist[d].siblings;
 	}
 	*serp = 0;
 }

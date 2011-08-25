@@ -47,7 +47,7 @@ private struct {
 
 typedef struct slog {
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	char	*path;
 } slog;
 
@@ -60,7 +60,7 @@ struct rstate {
 };
 
 private int	doit(int dash);
-private int	want(sccs *s, delta *e);
+private int	want(sccs *s, ser_t e);
 private int	send_part1_msg(remote *r, char **av);
 private int	send_end_msg(remote *r, char *msg);
 private int	send_part2_msg(remote *r, char **av, char *key_list);
@@ -551,7 +551,7 @@ doit(int dash)
 	char	*spec, *specf;
 	pid_t	pid;
 	sccs	*s = 0;
-	delta	*e, *dstart, *dstop;
+	ser_t	e, dstart, dstop;
 	int	rc = 1;
 	hash	*state;
 	struct	rstate *rstate;
@@ -593,9 +593,9 @@ doit(int dash)
 		if (range_process("changes", s, RANGE_SET, &opts.rargs)) {
 			goto next;
 		}
-		for (e = s->rstop; e; e = NEXT(e)) {
-			if ((e->flags & D_SET) && !want(s, e)) {
-				e->flags &= ~D_SET;
+		for (e = s->rstop; e; e = NEXT(s, e)) {
+			if ((FLAGS(s, e) & D_SET) && !want(s, e)) {
+				FLAGS(s, e) &= ~D_SET;
 			}
 			if (e == s->rstart) break;
 		}
@@ -632,12 +632,12 @@ doit(int dash)
 				assert(e);
 			}
 #endif
-			if (want(s, e)) e->flags |= D_SET;
+			if (want(s, e)) FLAGS(s, e) |= D_SET;
 		}
 	} else {
 		s->rstop = s->table;
-		for (e = s->table; e; e = NEXT(e)) {
-			if (want(s, e)) e->flags |= D_SET;
+		for (e = s->table; e; e = NEXT(s, e)) {
+			if (want(s, e)) FLAGS(s, e) |= D_SET;
 		}
 	}
 	/*
@@ -657,8 +657,8 @@ doit(int dash)
 	if (opts.doComp || opts.verbose) opts.fcset = fmem();
 	/* capture the comments, for the csets we care about */
 	dstart = dstop = 0;
-	for (e = s->rstop; e; e = NEXT(e)) {
-		if (e->flags & D_SET) {
+	for (e = s->rstop; e; e = NEXT(s, e)) {
+		if (FLAGS(s, e) & D_SET) {
 			unless (dstart) dstart = e;
 			dstop = e;
 		}
@@ -708,20 +708,20 @@ next:
 private	void
 fileFilt(sccs *s, MDBM *csetDB)
 {
-	delta	*d;
+	ser_t	d;
 	datum	k, v;
 	ser_t	ser;
 
 	/* Unset any csets that don't contain files from -i and -x */
-	for (d = s->table; d; d = NEXT(d)) {
-		unless (d->flags & D_SET) continue;
+	for (d = s->table; d; d = NEXT(s, d)) {
+		unless (FLAGS(s, d) & D_SET) continue;
 		/* if cset changed nothing, keep it if not filtering by inc */
-		if (!(opts.inc || opts.BAM) && !d->added) continue;
-		ser = SERIAL(s, d);
+		if (!(opts.inc || opts.BAM) && !ADDED(s, d)) continue;
+		ser = d;
 		k.dptr = (char *)&ser;
 		k.dsize = sizeof(ser);
 		v = mdbm_fetch(csetDB, k);
-		unless (v.dptr) d->flags &= ~D_SET;
+		unless (v.dptr) FLAGS(s, d) &= ~D_SET;
 	}
 }
 
@@ -742,7 +742,8 @@ delta_sort(const void *a, const void *b)
 		return (cmp);
 	} else {
 		/* comparing different sfiles */
-		if (opts.timesort && (cmp = d2->d->date - d1->d->date)) {
+		if (opts.timesort &&
+		    (cmp = DATE(d2->s, d2->d) - DATE(d1->s, d1->d))) {
 			if (opts.forwards) cmp *= -1;
 			return (cmp);
 		}
@@ -767,7 +768,7 @@ delta_sort(const void *a, const void *b)
 }
 
 private	void
-dumplog(char **list, sccs *sc, delta *cset, char *dspec, int flags, FILE *f)
+dumplog(char **list, sccs *sc, ser_t cset, char *dspec, int flags, FILE *f)
 {
 	slog	*ll;
 	int	i;
@@ -860,7 +861,7 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
  * It collect all the deltas inside a changeset and stuff them to "list".
  */
 private char **
-collectDelta(sccs *s, delta *d, char **list)
+collectDelta(sccs *s, ser_t d, char **list)
 {
 	slog	*ll;
 	char	*path = 0;	/* The most recent :DPN: for this file */
@@ -870,8 +871,8 @@ collectDelta(sccs *s, delta *d, char **list)
 	 * changes output.
 	 */
 	range_cset(s, d, D_SET);
-	for (d = s->rstop; d; d = NEXT(d)) {
-		if (d->flags & D_SET) {
+	for (d = s->rstop; d; d = NEXT(s, d)) {
+		if (FLAGS(s, d) & D_SET) {
 			/* add delta to list */
 			ll = new(slog);
 			ll->s = s;
@@ -879,7 +880,7 @@ collectDelta(sccs *s, delta *d, char **list)
 			unless (path) path = PATHNAME(s, d);
 			ll->path = path;
 			list = addLine(list, ll);
-			d->flags &= ~D_SET;	/* done using it */
+			FLAGS(s, d) &= ~D_SET;	/* done using it */
 		}
 		if (d == s->rstart) break;
 	}
@@ -912,7 +913,7 @@ loadcset(sccs *cset)
 	MDBM	*db;
 	int	print = 0;
 	ser_t	ser = 0;
-	delta	*d;
+	ser_t	d;
 	char	*pathp;
 	char	path[MAXPATH];
 
@@ -941,7 +942,7 @@ loadcset(sccs *cset)
 				ser = atoi(p+3);
 				d = sfind(cset, ser);
 				assert(d);
-				print = (d->flags & D_SET);
+				print = (FLAGS(cset, d) & D_SET);
 			} else if (p[1] == 'E') {
 				if (keylist) {
 					saveKey(db, ser, keylist);
@@ -1002,10 +1003,11 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	int	flags = PRS_FORCE; /* skip checks in sccs_prsdelta(), no D_SET*/
 	int	iflags = INIT_NOCKSUM;
 	int	i, j, found;
-	char	**keys, **csets = 0;
+	char	**keys;
+	ser_t	*csets = 0;
 	char	**list;
 	sccs	*s;
-	delta	*d, *e;
+	ser_t	d, e;
 	char	*rkey;
 	datum	k, v;
 	char	**complist;
@@ -1046,8 +1048,8 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			 * cset && the component cset need to pass
 			 * the want() test.  Is anding useful?
 			 */
-			for (e = sc->table; e; e = NEXT(e)) {
-				if (want(sc, e)) e->flags |= D_SET;
+			for (e = sc->table; e; e = NEXT(sc, e)) {
+				if (want(sc, e)) FLAGS(sc, e) |= D_SET;
 			}
 		}
 		/*
@@ -1068,8 +1070,8 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			assert(rstate->csetDB);
 		}
 		if (dkey) {
-			for (e = sc->table; e; e = NEXT(e)) {
-				e->flags &= ~D_SET;
+			for (e = sc->table; e; e = NEXT(sc, e)) {
+				FLAGS(sc, e) &= ~D_SET;
 			}
 		}
 	}
@@ -1086,21 +1088,21 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	 * repo the cset file is in. If the repo is the product repo,
 	 * these will be the same.
 	 */
-	for (e = sc->rstop; e; e = NEXT(e)) {
-		if (e->flags & D_SET) {
-			e->flags &= ~D_SET;
-			if (!dkey || want(sc, e)) csets = addLine(csets, e);
+	for (e = sc->rstop; e; e = NEXT(sc, e)) {
+		if (FLAGS(sc, e) & D_SET) {
+			FLAGS(sc, e) &= ~D_SET;
+			if (!dkey || want(sc, e)) addArray(&csets, &e);
 		}
 		if (e == sc->rstart) break;
 	}
-	if (opts.forwards) reverseLines(csets);
+	if (opts.forwards) reverseArray(csets);
 
 	/*
 	 * Walk the ordered cset list and dump the file deltas contain in
 	 * each cset. The file deltas are also sorted on the fly in dumplog().
 	 */
 	EACH_INDEX(csets, j) {
-		e = (delta *)csets[j];
+		e = csets[j];
 
 		if (ferror(f)) break;	/* abort when stdout is closed */
 		if (opts.doComp || opts.verbose) {
@@ -1124,7 +1126,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		}
 
 		/* get key list */
-		ser = SERIAL(sc, e);
+		ser = e;
 		k.dptr = (char *)&ser;
 		k.dsize = sizeof(ser);
 		v = mdbm_fetch(rstate->csetDB, k);
@@ -1243,28 +1245,28 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	 * The above loop may break out prematurely if pager exit
 	 * We need to account for it.
 	 */
-	freeLines(csets, 0);
+	free(csets);
 
 	/* clear marks */
-	for (e = sc->rstop; e; e = NEXT(e)) e->flags &= ~D_SET;
+	for (e = sc->rstop; e; e = NEXT(sc, e)) FLAGS(sc, e) &= ~D_SET;
 
 	return (rc);
 }
 
 private int
-want(sccs *s, delta *e)
+want(sccs *s, ser_t e)
 {
 	char	*p, *t, old;
 	int	i, match;
 	symbol	*sym;
 
-	unless (opts.all || !TAG(e)) return (0);
+	unless (opts.all || !TAG(s, e)) return (0);
 	if (opts.tagOnly) {
-		unless (e->flags & D_SYMBOLS) return (0);
+		unless (FLAGS(s, e) & D_SYMBOLS) return (0);
 		if (opts.tsearch) {
 			match = 0;
 			EACHP_REVERSE(s->symlist, sym) {
-				unless (sym->ser == SERIAL(s, e)) continue;
+				unless (sym->ser == e) continue;
 				if (search_either(SYMNAME(s, sym),
 					opts.search)) {
 					match = 1;
@@ -1294,8 +1296,8 @@ want(sccs *s, delta *e)
 		if (p) *p = '/';
 		unless (match) return (0);
 	}
-	if (opts.nomerge && (e->merge || e->mtag)) return (0);
-	if (opts.noempty && e->merge && !e->added && !(e->flags & D_SYMBOLS)) {
+	if (opts.nomerge && (MERGE(s, e) || MTAG(s, e))) return (0);
+	if (opts.noempty && MERGE(s, e) && !ADDED(s, e) && !(FLAGS(s, e) & D_SYMBOLS)) {
 	    	return (0);
 	}
 	if (opts.doSearch) {

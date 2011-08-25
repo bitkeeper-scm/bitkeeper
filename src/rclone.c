@@ -282,7 +282,7 @@ rclone(char **av, remote *r, char **envVar)
 
 	if (opts.rev) {
 		sccs	*s;
-		delta	*d;
+		ser_t	d;
 
 		s = sccs_csetInit(SILENT);
 		d = sccs_findrev(s, opts.rev);

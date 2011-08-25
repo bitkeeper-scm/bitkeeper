@@ -75,13 +75,13 @@ cweave_init(sccs *s, int extras)
  * Return true if 'a' is earlier than 'b'
  */
 int
-earlier(sccs *s, delta *a, delta *b)
+earlier(sccs *s, ser_t a, ser_t b)
 {
         int ret;
 	char	keya[MAXKEY], keyb[MAXKEY];
 
-        if (a->date < b->date) return 1;
-        if (a->date > b->date) return 0;
+        if (DATE(s, a) < DATE(s, b)) return 1;
+        if (DATE(s, a) > DATE(s, b)) return 0;
 
 	sccs_sortkey(s, a, keya);
 	sccs_sortkey(s, b, keyb);
@@ -98,14 +98,14 @@ earlier(sccs *s, delta *a, delta *b)
         if (ret < 0)   return 1;
         if (ret > 0)   return 0;
 	// sortkeys compares sortSum. Look at current sum for hints.
-	unless (a->sum == b->sum) {
+	unless (SUM(s, a) == SUM(s, b)) {
 		fprintf(stderr, "The source repository has had a different "
 		    "transformation,\nlikely involving the presence or "
 		    "absence of a file that\nhas been marked gone.\n"
 		    "Please write support@bitmover.com for assistance.\n\n");
 		fprintf(stderr, "File: %s\n", s->gfile);
 		fprintf(stderr, "sortkey: %s\n", keya);
-		fprintf(stderr, "sum: %u %u\n", a->sum, b->sum);
+		fprintf(stderr, "sum: %u %u\n", SUM(s, a), SUM(s, b));
 		exit (1);
 	}
         assert("Can't figure out the order of deltas\n" == 0);
@@ -119,12 +119,12 @@ earlier(sccs *s, delta *a, delta *b)
  *
  * XXX Do we need any special processing for meta delta?
  */
-delta *
-cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
+ser_t
+cset_insert(sccs *s, MMAP *iF, MMAP *dF, ser_t parent, int fast)
 {
 	int	i, error, sign, added = 0;
-	int	pserial = parent ? SERIAL(s, parent) : 0;
-	delta	*d, *e, *p;
+	int	pserial = parent ? parent : 0;
+	ser_t	d, e, p;
 	ser_t	serial = 0; /* serial number for 'd' */ 
 	char	*t, *r;
 	char	**syms = 0;
@@ -138,7 +138,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	 * because of potential realloc in insertArray.
 	 * Safety so we don't use it later: mark it invalid.
 	 */
-	parent = INVALID;
+	parent = D_INVALID;
 	unless (iF) {	
 		/* ignore in patch: like if in skipkeys */
 		assert(fast);
@@ -156,24 +156,24 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 		if (e = sccs_findKey(s, key)) {
 			/* We already have this delta... */
 			keep = 0;
-			if (DANGLING(e)) {
-				e->flags &= ~D_DANGLING;
+			if (DANGLING(s, e)) {
+				FLAGS(s, e) &= ~D_DANGLING;
 				keep = 1;
 			}
-			if (!(e->flags & D_CSET) &&
-			   (d->flags & D_CSET)) {
-			   	e->flags |= D_CSET;
+			if (!(FLAGS(s, e) & D_CSET) &&
+			   (FLAGS(s, d) & D_CSET)) {
+			   	FLAGS(s, e) |= D_CSET;
 				keep = 1;
 			}
-			sccs_freedelta(d);
+			sccs_freedelta(s, d);
 			d = keep ? e : 0;
-			serial = SERIAL(s, e);
+			serial = e;
 			goto done;
 		}
 	}
-	d->flags |= D_REMOTE;
+	FLAGS(s, d) |= D_REMOTE;
 
-	TRACE("%s/%d", delta_sdate(s, d), d->sum);
+	TRACE("%s/%d", delta_sdate(s, d), SUM(s, d));
 	/*
 	 * Insert new delta 'd' into s->table in time sorted order
 	 */
@@ -198,32 +198,25 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 		 */
 		p = s->table;
 		while (p) {
-			e = NEXT(p);
+			e = NEXT(s, p);
 			if (!e || earlier(s, e, d)) { /* got insertion point */
-				serial = SERIAL(s, p);
+				serial = p;
 				break;
 			}
 			p = e;
 		}
 	}
-	e = d;
-	d = insertArrayN(&s->slist, serial, e);
-	insertArrayN(&s->extra, serial, 0);
-	d->flags |= D_INARRAY;
-	free(e);
-	s->tree = SFIND(s, 1);
-	s->table = s->slist + nLines(s->slist);
-	s->nextserial++;
+	d = sccs_insertdelta(s, d, serial);
 
 	/*
 	 * Update all reference to the moved serial numbers
 	 */
 	f = fmem();
 	for (e = d + 1; e <= s->table; e += 1) {
-		unless (e->flags) continue;
+		unless (FLAGS(s, e)) continue;
 
-		if (e->cludes) {
-			assert(INARRAY(e));
+		if (HAS_CLUDES(s, e)) {
+			assert(INARRAY(s, e));
 			t = CLUDES(s, e);
 			while (i = sccs_eachNum(&t, &sign)) {
 				if (i >= serial) i++;
@@ -231,14 +224,14 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 			}
 			t = fmem_peek(f, 0);
 			unless (streq(t, CLUDES(s, e))) {
-				e->cludes = sccs_addStr(s, t);
+				CLUDES_SET(s, e, t);
 			}
 			ftrunc(f, 0);
 		}
-		if (e->pserial >= serial) e->pserial++;
-		if (e->merge >= serial) e->merge++;
-		if (e->ptag >= serial) e->ptag++;
-		if (e->mtag >= serial) e->mtag++;
+		if (PARENT(s, e) >= serial) PARENT_SET(s, e, PARENT(s, e)+1);
+		if (MERGE(s, e) >= serial) MERGE_SET(s, e, MERGE(s, e)+1);
+		if (PTAG(s, e) >= serial) PTAG_SET(s, e, PTAG(s, e)+1);
+		if (MTAG(s, e) >= serial) MTAG_SET(s, e, MTAG(s, e)+1);
 		// XXX we can do this faster
 		sccs_findKeyUpdate(s, e);
 	}
@@ -251,10 +244,10 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast)
 	}
 
 	TRACE("serial=%d", serial);
-	d->pserial = pserial;
+	PARENT_SET(s, d, pserial);
 
 	sccs_inherit(s, d);
-	if (!fast && !TAG(d) && (s->tree != d)) d->same = 1;
+	if (!fast && !TAG(s, d) && (s->tree != d)) SAME_SET(s, d, 1);
 
 	/*
 	 * Fix up tag/symbols
@@ -280,12 +273,12 @@ done:
 
 		unless (fast) {
 			/*
-			 * Fix up d->added
+			 * Fix up ADDED(s, d)
 			 */
 			t = dF->where;
 			r = t + dF->size - 1;
 			while ( t <= r) if (*t++ == '\n') added++;
-			d->added = added - 1;
+			ADDED_SET(s, d, added - 1);
 		}
 	}
 	s->iloc++;
@@ -346,10 +339,10 @@ fastWeave(sccs *s, FILE *out)
 	u32	serial, fix = 0;
 #endif
 	u32	base = 0, index = 0, offset = 0;
-	delta	*d, *e;
+	ser_t	d, e;
 	loc	*lp;
 	ser_t	*weavemap = 0;
-	char	**patchmap = 0;
+	ser_t	*patchmap = 0;
 	MMAP	*fastpatch = 0;
 	int	rc = 1;
 
@@ -373,41 +366,42 @@ fastWeave(sccs *s, FILE *out)
 	 */
 	for (i = 1; i < s->iloc; i++) {
 		unless (lp[i].serial) {
-			patchmap = addLine(patchmap, INVALID);
+			d = D_INVALID;
+			addArray(&patchmap, &d);
 			continue;
 		}
 		d = sfind(s, lp[i].serial);
 		assert(d);
-		patchmap = addLine(patchmap, d);
-		unless (d->flags & D_REMOTE) continue;
+		addArray(&patchmap, &d);
+		unless (FLAGS(s, d) & D_REMOTE) continue;
 		unless (weavemap) {
 			/*
 			 * allocating more than needed.  We don't know until
 			 * the end how many are wasted: it's in 'offset'.
 			 */
-			base = SERIAL(s, d) - 1;
+			base = d - 1;
 			weavemap = (ser_t *)calloc(
 			    (s->nextserial - base), sizeof(ser_t));
 			assert(weavemap);
-			index = SERIAL(s, d);
+			index = d;
 			weavemap[0] = base;
 			offset = 0;
 		}
-		while (index + offset < SERIAL(s, d)) {
+		while (index + offset < d) {
 			if (e = sfind(s, index + offset)) {
 #ifdef	COMPRESSION
-				serial = NEXT(e) ? NEXT(e)->serial + 1 : 1;
+				serial = NEXT(s, e) ? NEXT(s, e)->serial + 1 : 1;
 				if (serial != e->serial) {
 					e->serial = serial;
 					fix = 1;
 				}
 #endif
-				weavemap[index - base] = SERIAL(s, e);
+				weavemap[index - base] = e;
 			}
 			index++;
 		}
 #ifdef	COMPRESSION
-		serial = NEXT(d) ? NEXT(d)->serial + 1 : 1;
+		serial = NEXT(s, d) ? NEXT(s, d)->serial + 1 : 1;
 		if (serial != d->serial) {
 			d->serial = serial;
 			fix = 1;
@@ -419,13 +413,13 @@ fastWeave(sccs *s, FILE *out)
 		while (index + offset < s->nextserial) {
 			if (e = sfind(s, index + offset)) {
 #ifdef	COMPRESSION
-				serial = NEXT(e) ? NEXT(e)->serial + 1 : 1;
+				serial = NEXT(s, e) ? NEXT(s, e)->serial + 1 : 1;
 				if (serial != e->serial) {
 					e->serial = serial;
 					fix = 1;
 				}
 #endif
-				weavemap[index - base] = SERIAL(s, e);
+				weavemap[index - base] = e;
 			}
 			index++;
 		}
@@ -451,7 +445,7 @@ fastWeave(sccs *s, FILE *out)
 	/* doit */
 	rc = sccs_fastWeave(s, weavemap, patchmap, fastpatch, out);
 err:	mclose(fastpatch);
-	freeLines(patchmap, 0);
+	free(patchmap);
 	if (weavemap) free(weavemap);
 	return (rc);
 }
@@ -462,16 +456,16 @@ err:	mclose(fastpatch);
 private	void
 scompress(sccs *s, int serial)
 {
-	delta	*d;
+	ser_t	d;
 	int	i;
 
 	while (serial < s->nextserial) {
 		unless (d = sfind(s, serial++)) continue;
 
-		//if (d->pserial) d->pserial = d->parent->serial;
-		if (d->ptag) d->ptag = sfind(s, d->ptag)->serial;
-		if (d->mtag) d->mtag = sfind(s, d->mtag)->serial;
-		if (d->merge) d->merge = sfind(s, d->merge)->serial;
+		//if (PARENT(s, d)) PARENT_SET(s, d, d->parent->serial);
+		if (PTAG(s, d)) PTAG_SET(s, d, sfind(s, PTAG(s, d))->serial);
+		if (MTAG(s, d)) MTAG_SET(s, d, sfind(s, MTAG(s, d))->serial);
+		if (MERGE(s, d)) MERGE_SET(s, d, sfind(s, MERGE(s, d))->serial);
 		EACH(d->include) {
 			d->include[i] = sfind(s, d->include[i])->serial;
 		}

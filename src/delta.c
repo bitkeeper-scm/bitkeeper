@@ -12,7 +12,7 @@ hasKeyword(sccs *s)
 int
 fix_gmode(sccs *s, int gflags)
 {
-	delta	*d;
+	ser_t	d;
 
 	/*
 	 * Do not fix mode of symlink target, the file may not be 
@@ -24,7 +24,7 @@ fix_gmode(sccs *s, int gflags)
 	if (!(gflags&GET_EDIT) && !WRITABLE(s))  return (0);
 
 	d = sccs_top(s);
-	if (d->mode) s->mode = d->mode;
+	if (MODE(s, d)) s->mode = MODE(s, d);
 	unless (gflags&GET_EDIT) {
 		s->mode &= ~0222;	/* turn off write mode */
 	}
@@ -73,13 +73,13 @@ strip_danglers(char *name, u32 flags)
 	char	*p, **revs = 0;
 	int	i;
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	FILE	*f;
 
 	s = sccs_init(name, INIT_WACKGRAPH);
 	assert(s);
-	for (d = s->table; d; d = NEXT(d)) {
-		if (DANGLING(d)) revs = addLine(revs, strdup(REV(s, d)));
+	for (d = s->table; d; d = NEXT(s, d)) {
+		if (DANGLING(s, d)) revs = addLine(revs, strdup(REV(s, d)));
 	}
 	sccs_free(s);
 	p = aprintf("bk stripdel -%sdC -", (flags&SILENT) ? "q" : "");
@@ -102,12 +102,12 @@ strip_danglers(char *name, u32 flags)
 	 * have it, make a note of that.
 	 */
 	d = sccs_top(s);
-	if ((d->xflags & X_MONOTONIC) &&
-	    !(PARENT(s, d)->xflags & X_MONOTONIC)) {
+	if ((XFLAGS(s, d) & X_MONOTONIC) &&
+	    !(XFLAGS(s, PARENT(s, d)) & X_MONOTONIC)) {
 		char	**comments = 0;
 		char	*c;
 
-		if (d->comments) {
+		if (HAS_COMMENTS(s, d)) {
 			c = strdup(COMMENTS(s, d));
 			chomp(c);
 			comments = addLine(comments, c);
@@ -283,20 +283,19 @@ delta_main(int ac, char **av)
 	if (fire = (getenv("_IN_DELTA") == 0)) putenv("_IN_DELTA=YES");
 
 	while (name) {
-		delta	*d = 0;
+		ser_t	d = 0;
 		char	*nrev;
 		int	df = dflags;
 		int	gf = gflags;
 		int	reget = 0;
 		int	co;
 
-		if (mode) d = sccs_parseArg(0, d, 'O', mode, 0);
 		unless (s = sccs_init(name, iflags)) {
-			if (d) sccs_freedelta(d);
 			name = sfileNext();
 			errors |= 1;
 			continue;
 		}
+		if (mode) d = sccs_parseArg(s, d, 'O', mode, 0);
 		lease_check(s->proj, O_WRONLY, s);
 		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
@@ -362,7 +361,7 @@ delta_main(int ac, char **av)
 			    sccs_encoding(s, sz, encp);
 		}
 
-		dangling = MONOTONIC(s) && DANGLING(sccs_top(s));
+		dangling = MONOTONIC(s) && DANGLING(s, sccs_top(s));
 		if (dangling) df |= DELTA_MONOTONIC;
 		rc = sccs_delta(s, df, d, init, diffs, 0);
 		if (rc == -4) {	/* interrupt in comment prompt */
@@ -387,7 +386,7 @@ delta_main(int ac, char **av)
 			assert(s);
 			d = s->table;
 			assert(d);
-			assert(!TAG(d));
+			assert(!TAG(s, d));
 			nrev = REV(s, d);
 		} else {
 			s = sccs_restart(s);

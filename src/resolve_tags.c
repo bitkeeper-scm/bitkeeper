@@ -7,10 +7,10 @@
 
 typedef struct	tags {
 	char	*name;
-	delta	*local;		/* delta associated with the tag */
-	delta	*mlocal;	/* metadata delta for the tag */
-	delta	*remote;	/* delta associated with the tag */
-	delta	*mremote;	/* metadata delta for the tag */
+	ser_t	local;		/* delta associated with the tag */
+	ser_t	mlocal;	/* metadata delta for the tag */
+	ser_t	remote;	/* delta associated with the tag */
+	ser_t	mremote;	/* metadata delta for the tag */
 } tags;
 private	int	n;		/* number of tags still to resolve */
 
@@ -169,7 +169,7 @@ resolve_tags(opts *opts)
 	sccs	*s = sccs_init(s_cset, 0);
 	MDBM	*m = sccs_tagConflicts(s);
 	sccs	*local;
-	delta	*d;
+	ser_t	d;
 	resolve	*rs;
 	kvpair	kv;
 	int	i = 0;
@@ -209,7 +209,7 @@ out:		sccs_free(s);
 	fprintf(stderr, "%-10s %-12s %-7s %-11s  %-12s %-7s %s\n",
 	    "Tag", "Rev", "User", "Date", "Rev", "User", "Date");
 	for (n = 0, kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
-		delta	*l, *r;
+		ser_t	l, r;
 		char	*sdate;
 
 		sscanf(kv.val.dptr, "%d %d", &a, &b);
@@ -250,9 +250,9 @@ out:		sccs_free(s);
 			t.mlocal = sfind(s, b);
 		}
 		assert(t.mlocal && t.mremote);
-		for (d = t.mlocal; TAG(d); d = PARENT(s, d));
+		for (d = t.mlocal; TAG(s, d); d = PARENT(s, d));
 		t.local = d;
-		for (d = t.mremote; TAG(d); d = PARENT(s, d));
+		for (d = t.mremote; TAG(s, d); d = PARENT(s, d));
 		t.remote = d;
 
 		if (rs->opts->debug) {

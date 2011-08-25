@@ -494,7 +494,7 @@ resolve_contents(resolve *rs)
 {
 	names	*n;
 	char	*nm;
-	delta	*d;
+	ser_t	d;
 	int	ret;
 	char	buf[MAXPATH];
 

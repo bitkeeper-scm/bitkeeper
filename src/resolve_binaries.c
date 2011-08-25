@@ -126,7 +126,7 @@ int
 resolve_binary(resolve *rs)
 {
 	names	*n = new(names);
-	delta	*d;
+	ser_t	d;
 	char	*nm = basenm(rs->s->gfile);
 	int	ret;
 	char	buf[MAXPATH];

@@ -10,7 +10,7 @@ int
 key2rev_main(int ac, char **av)
 {
 	char	*name;
-	delta	*d;
+	ser_t	d;
 	sccs	*s;
 	char	buf[MAXPATH];
 

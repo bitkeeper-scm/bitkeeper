@@ -21,7 +21,7 @@ merge_main(int ac, char **av)
 	int	freefiles = 0;
 	int	c, i, ret;
 	sccs	*s;
-	delta	*l, *g, *r;
+	ser_t	l, g, r;
 	char	*inc, *exc;
 	char	*sname;
 	Opts	*opts;

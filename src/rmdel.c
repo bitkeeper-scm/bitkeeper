@@ -8,7 +8,7 @@ rmdel_main(int ac, char **av)
 	sccs	*s;
 	int	c, flags = 0;
 	char	*name, *rev = 0;
-	delta	*d, *e;
+	ser_t	d, e;
 
 	while ((c = getopt(ac, av, "qr;", 0)) != -1) {
 		switch (c) {

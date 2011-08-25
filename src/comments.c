@@ -91,8 +91,8 @@ comments_return(char *prompt)
 /*
  * Attach saved comments to delta, prompted if needed
  */
-delta *
-comments_get(char *file, char *rev, sccs *s, delta *d)
+ser_t
+comments_get(char *file, char *rev, sccs *s, ser_t d)
 {
 	char	**cmts;
 	char	*prompt = 0;
@@ -104,11 +104,11 @@ comments_get(char *file, char *rev, sccs *s, delta *d)
 		    rev ? rev : "");
 	}
 	if (cmts = comments_return(prompt)) {
-		unless (d) d = new(delta);
+		unless (d) d = sccs_newdelta(s);
 		comments_set(s, d, cmts);
 		freeLines(cmts, free);
 	} else {
-		if (d) sccs_freedelta(d);
+		if (d) sccs_freedelta(s, d);
 		d = 0;		/* prompt aborted */
 	}
 	if (prompt) free(prompt);
@@ -152,7 +152,7 @@ comments_prompt(char *file)
 }
 
 int
-comments_readcfile(sccs *s, int prompt, delta *d)
+comments_readcfile(sccs *s, int prompt, ser_t d)
 {
 	char	*cfile = sccs_Xfile(s, 'c');
 	FILE	*f;
@@ -207,11 +207,11 @@ comments_checkStr(u8 *s, int len)
  * Replace the comments on a delta with a new set
  */
 void
-comments_set(sccs *s, delta *d, char **comments)
+comments_set(sccs *s, ser_t d, char **comments)
 {
 	int	i;
 
-	d->comments = sccs_addStr(s, "");
+	COMMENTS_SET(s, d, "");
 	EACH(comments) {
 		sccs_appendStr(s, comments[i]);
 		sccs_appendStr(s, "\n");

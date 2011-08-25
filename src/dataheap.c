@@ -17,6 +17,7 @@ sccs_addStr(sccs *s, char *str)
 
 	assert(s);
 	unless (s->heap.buf) data_append(&s->heap, "", 1);
+	unless (str) return (0);
 	off = s->heap.len;
 
 	/* can't add a string from the heap to it again (may realloc) */
@@ -48,23 +49,25 @@ sccs_addUniqStr(sccs *s, char *str)
 {
 	u32	off;
 	hash	*h;
-	delta	*d;
+	ser_t	d;
 	symbol	*sym;
 
+	unless (str) return (0);
 	unless (h = s->uniqheap) {
 		h = s->uniqheap = hash_new(HASH_MEMHASH);
 
-#define	addField(x) if (d->x) hash_insertStrI32(h, s->heap.buf + d->x, d->x)
+#define	addField(x) if (x##_INDEX(s, d)) \
+    hash_insertStrI32(h, s->heap.buf + x##_INDEX(s, d), x##_INDEX(s, d))
 
 		/* add existing data to heap */
-		EACHP(s->slist, d) {
-			unless (d->flags) continue;
-			addField(userhost);
-			addField(pathname);
-			addField(sortPath);
-			addField(zone);
-			addField(symlink);
-			addField(csetFile);
+		for (d = 1; d < s->nextserial; d++) {
+			unless (FLAGS(s, d)) continue;
+			addField(USERHOST);
+			addField(PATHNAME);
+			addField(SORTPATH);
+			addField(ZONE);
+			addField(SYMLINK);
+			addField(CSETFILE);
 		}
 #undef addField
 		EACHP(s->symlist, sym) {
@@ -200,7 +203,7 @@ heapdump_main(int ac, char **av)
 	int	stats = 0;
 	char	*name;
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	char	*t;
 	symbol	*sym;
 
@@ -224,7 +227,7 @@ heapdump_main(int ac, char **av)
 			continue;
 		}
 
-		EACHP_REVERSE(s->slist, d) {
+		for (d = s->table; d; d = NEXT(s, d)) {
 			delta_print(s, d);
 			printf("\n");
 		}
@@ -236,12 +239,12 @@ heapdump_main(int ac, char **av)
 			}
 			if (sym->ser) {
 				printf("ser: %d (%s)\n",
-				    sym->ser, REV(s, SFIND(s, sym->ser)));
+				    sym->ser, REV(s, sym->ser));
 			}
 			if (sym->meta_ser) {
 				printf("meta_rev: %d (%s)\n",
 				    sym->meta_ser,
-				    REV(s, SFIND(s, sym->meta_ser)));
+				    REV(s, sym->meta_ser));
 			}
 			printf("\n");
 		}
@@ -303,41 +306,42 @@ const	char	const *delta_flagNames[] = {
  * This is useful in gdb with 'call delta_print(s, d)
  */
 void
-delta_print(sccs *s, delta *d)
+delta_print(sccs *s, ser_t d)
 {
 	int	i, c;
 
-	unless (d->flags) {
-		printf("serial %d unused\n", SERIAL(s, d));
+	unless (FLAGS(s, d)) {
+		printf("serial %d unused\n", d);
 		return;
 	}
 
-	printf("serial: %d (%s)\n", SERIAL(s, d), REV(s, d));
+	printf("serial: %d (%s)\n", d, REV(s, d));
 
 	/* serial print */
-#define SPRINT(f) if (d->f) \
-		printf(#f ": %d (%s)\n", d->f, REV(s, SFIND(s, d->f)))
-	SPRINT(pserial);
-	SPRINT(merge);
-	SPRINT(ptag);
-	SPRINT(mtag);
+#define SPRINT(f) if (f(s, d)) \
+		printf(#f ": %d (%s)\n", \
+		f(s, d), REV(s, f(s, d)))
+	SPRINT(PARENT);
+	SPRINT(MERGE);
+	SPRINT(PTAG);
+	SPRINT(MTAG);
 #undef	SPRINT
 
-	printf("a/d/s: %d/%d/%d\n", d->added, d->deleted, d->same);
-	printf("sum: %u\n", d->sum);
+	printf("a/d/s: %d/%d/%d\n", ADDED(s, d), DELETED(s, d), SAME(s, d));
+	printf("sum: %u\n", SUM(s, d));
 
-	printf("date: %u", (u32)d->date);
-	if (d->dateFudge) printf("-%d", (u32)d->dateFudge);
+	printf("date: %u", (u32)DATE(s, d));
+	if (DATE_FUDGE(s, d)) printf("-%d", (u32)DATE_FUDGE(s, d));
 	printf(" (%s)\n", delta_sdate(s, d));
 
-	if (d->mode) printf("mode: %o\n", d->mode);
-	if (d->xflags) {
-		printf("xflags: %x (%s)\n", d->xflags, xflags2a(d->xflags));
+	if (MODE(s, d)) printf("mode: %o\n", MODE(s, d));
+	if (XFLAGS(s, d)) {
+		printf("xflags: %x (%s)\n", XFLAGS(s, d), xflags2a(XFLAGS(s, d)));
 	}
-	printf("flags: %x (", d->flags);
+	printf("flags: %x (", FLAGS(s, d));
 	c = 0;
 	for (i = 1; i < 32; i++) { /* skip INARRAY */
-		if (d->flags & (1 << i)) {
+		if (FLAGS(s, d) & (1 << i)) {
 			if (c) printf(",");
 			c = 1;
 			printf("%s", delta_flagNames[i]);
@@ -346,18 +350,19 @@ delta_print(sccs *s, delta *d)
 	printf(")\n");
 
 	/* heap print */
-#define HPRINT(f) if (d->f) printf(#f ": %s\n", s->heap.buf+(d->f))
-	HPRINT(cludes);
-	HPRINT(bamhash);
-	HPRINT(random);
-	HPRINT(userhost);
-	HPRINT(pathname);
-	HPRINT(sortPath);
-	HPRINT(zone);
-	HPRINT(symlink);
-	HPRINT(csetFile);
+#define HPRINT(f) \
+    if (f##_INDEX(s, d)) printf(#f ": %s\n", f(s, d))
+	HPRINT(CLUDES);
+	HPRINT(BAMHASH);
+	HPRINT(RANDOM);
+	HPRINT(USERHOST);
+	HPRINT(PATHNAME);
+	HPRINT(SORTPATH);
+	HPRINT(ZONE);
+	HPRINT(SYMLINK);
+	HPRINT(CSETFILE);
 #undef	HPRINT
-	if (d->comments) printf("comments: %s", COMMENTS(s, d));
+	if (HAS_COMMENTS(s, d)) printf("comments: %s", COMMENTS(s, d));
 }
 
 private void
@@ -366,7 +371,7 @@ dumpStats(sccs *s)
 	int	size;
 	int	i, off;
 	char	*t;
-	delta	*d;
+	ser_t	d;
 	char	*names[] = {
 		"cludes", "comments", "bamhash", "random",
 		"userhost", "pathname", "sortPath", "zone",
@@ -379,9 +384,9 @@ dumpStats(sccs *s)
 	printf("filesize: %7s\n", psize(s->size));
 	printf("    heap: %7s\n", psize(s->heap.len));
 
-	EACHP(s->slist, d) {
+	for (d = s->tree; d < s->nextserial; d++) {
 		for (i = 0; i < 10; i++) {
-			unless (off = *(&d->cludes + i)) continue;
+			unless (off = *(&CLUDES_INDEX(s, d) + i)) continue;
 			if (hash_insert(seen, &off, sizeof(off), 0, 0)) {
 				htotal[i] += strlen(s->heap.buf + off) + 1;
 			}
@@ -402,7 +407,7 @@ dumpStats(sccs *s)
 		    (100.0 * size) / s->heap.len);
 	}
 
-	printf("   table: %7s\n", psize(sizeof(delta) * s->nextserial));
+	printf("   table: %7s\n", psize(sizeof(d_t) * s->nextserial));
 	if (nLines(s->symlist)) {
 		printf(" symlist: %7s\n",
 		    psize(nLines(s->symlist) * sizeof(symbol)));

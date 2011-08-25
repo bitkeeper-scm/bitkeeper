@@ -267,7 +267,7 @@ int	checking_rmdir(char *dir);
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
 #define	SET(s)		((s)->state & S_SET)
 #define	IMPORT(s)	((s)->state & S_IMPORT)
-#define	MK_GONE(s, d)	do {(s)->hasgone = 1; (d)->flags |= D_GONE;} while (0)
+#define	MK_GONE(s, d)	do {(s)->hasgone = 1; FLAGS(s, d) |= D_GONE;} while (0)
 
 #define	GOODSCCS(s)	assert(s); unless ((s)->tree&&(s)->cksumok) return (-1)
 #define	HASGRAPH(s)	((s)->tree)
@@ -288,7 +288,7 @@ int	checking_rmdir(char *dir);
 #define	EOLN_WINDOWS(s)	((s)->xflags & X_EOLN_WINDOWS)
 
 /*
- * Flags (d->flags) that indicate some state on the delta.
+ * Flags (FLAGS(s, d)) that indicate some state on the delta.
  */
 /* flags that are written to disk */
 #define	D_INARRAY	0x00000001	/* part of s->slist array */
@@ -304,7 +304,7 @@ int	checking_rmdir(char *dir);
 #define	D_SYMLEAF	0x00000400	/* if set, I'm a symbol with no kids */
 					/* Needed for tag conflicts with 2 */
 					/* open tips, so maintained always */
-#define	D_MODE		0x00000800	/* permissions in d->mode are valid */
+#define	D_MODE		0x00000800	/* permissions in MODE(s, d) are valid */
 #define	D_CSET		0x00001000	/* this delta is marked in cset file */
 #define D_XFLAGS	0x00002000	/* delta has updated file flags */
 	/* D_NPARENT	0x00004000 */
@@ -322,6 +322,7 @@ int	checking_rmdir(char *dir);
 #define	D_ICKSUM	0x40000000	/* use checksum from init file */
 #define	D_SET		0x80000000	/* range.c: marked as part of a set */
 
+#define	D_INVALID	((ser_t)~0u)	/* invalid delta */
 
 /*
  * Undo exit status for nothing to undo.
@@ -436,7 +437,7 @@ typedef	unsigned short	sum_t;
  */
 typedef struct delta {
 	/* linkage */
-	ser_t	pserial;		/* serial number of parent */
+	ser_t	parent;		/* serial number of parent */
 	ser_t	merge;			/* serial number merged into here */
 	ser_t	ptag;			/* parent in tag graph */
 	ser_t	mtag;			/* merge parent in tag graph */
@@ -467,7 +468,79 @@ typedef struct delta {
 	u32	zone;			/* 08:00 is time relative to GMT */
 	u32 	symlink;		/* sym link target */
  	u32	csetFile;		/* id for ChangeSet file */
-} delta;
+} d_t;
+
+#define	XFLAGS(s, d)		((s)->slist[d].xflags)
+#define	FLAGS(s, d)		((s)->slist[d].flags)
+
+#define	PARENT(s, d)		(0 + (s)->slist[d].parent)
+#define	MERGE(s, d)		(0 + (s)->slist[d].merge)
+#define	PTAG(s, d)		(0 + (s)->slist[d].ptag)
+#define	MTAG(s, d)		(0 + (s)->slist[d].mtag)
+#define	ADDED(s, d)		(0 + (s)->slist[d].added)
+#define	DELETED(s, d)		(0 + (s)->slist[d].deleted)
+#define	SAME(s, d)		(0 + (s)->slist[d].same)
+#define	SUM(s, d)		(0 + (s)->slist[d].sum)
+#define	SORTSUM(s, d)		(0 + (s)->slist[d].sortSum)
+#define	DATE(s, d)		(0 + (s)->slist[d].date)
+#define	DATE_FUDGE(s, d)	(0 + (s)->slist[d].dateFudge)
+#define	MODE(s, d)		(0 + (s)->slist[d].mode)
+#define	R0(s, d)		(0 + (s)->slist[d].r[0])
+#define	R1(s, d)		(0 + (s)->slist[d].r[1])
+#define	R2(s, d)		(0 + (s)->slist[d].r[2])
+#define	R3(s, d)		(0 + (s)->slist[d].r[3])
+
+#define	PARENT_SET(s, d, v)	((s)->slist[d].parent = (v))
+#define	MERGE_SET(s, d, v)	((s)->slist[d].merge = (v))
+#define	PTAG_SET(s, d, v)	((s)->slist[d].ptag = (v))
+#define	MTAG_SET(s, d, v)	((s)->slist[d].mtag = (v))
+#define	ADDED_SET(s, d, v)	((s)->slist[d].added = (v))
+#define	DELETED_SET(s, d, v)	((s)->slist[d].deleted = (v))
+#define	SAME_SET(s, d, v)	((s)->slist[d].same = (v))
+#define	SUM_SET(s, d, v)	((s)->slist[d].sum = (v))
+#define	SORTSUM_SET(s, d, v)	((s)->slist[d].sortSum = (v))
+#define	DATE_SET(s, d, v)	((s)->slist[d].date = (v))
+#define	DATE_FUDGE_SET(s, d, v)	((s)->slist[d].dateFudge = (v))
+#define	MODE_SET(s, d, v)	((s)->slist[d].mode = (v))
+#define	XFLAGS_SET(s, d, v)	((s)->slist[d].xflags = (v))
+#define	FLAGS_SET(s, d, v)	((s)->slist[d].flags = (v))
+#define	R0_SET(s, d, v)		((s)->slist[d].r[0] = (v))
+#define	R1_SET(s, d, v)		((s)->slist[d].r[1] = (v))
+#define	R2_SET(s, d, v)		((s)->slist[d].r[2] = (v))
+#define	R3_SET(s, d, v)		((s)->slist[d].r[3] = (v))
+
+#define	HAS_CLUDES(s, d)	((s)->slist[d].cludes != 0)
+#define	HAS_COMMENTS(s, d)	((s)->slist[d].comments != 0)
+#define	HAS_BAMHASH(s, d)	((s)->slist[d].bamhash != 0)
+#define	HAS_RANDOM(s, d)	((s)->slist[d].random != 0)
+#define	HAS_USERHOST(s, d)	((s)->slist[d].userhost != 0)
+#define	HAS_PATHNAME(s, d)	((s)->slist[d].pathname != 0)
+#define	HAS_SORTPATH(s, d)	((s)->slist[d].sortPath != 0)
+#define	HAS_ZONE(s, d)		((s)->slist[d].zone != 0)
+#define	HAS_SYMLINK(s, d)	((s)->slist[d].symlink != 0)
+#define	HAS_CSETFILE(s, d)	((s)->slist[d].csetFile != 0)
+
+#define	CLUDES_INDEX(s, d)	((s)->slist[d].cludes)
+#define	COMMENTS_INDEX(s, d)	((s)->slist[d].comments)
+#define	BAMHASH_INDEX(s, d)	((s)->slist[d].bamhash)
+#define	RANDOM_INDEX(s, d)	((s)->slist[d].random)
+#define	USERHOST_INDEX(s, d)	((s)->slist[d].userhost)
+#define	PATHNAME_INDEX(s, d)	((s)->slist[d].pathname)
+#define	SORTPATH_INDEX(s, d)	((s)->slist[d].sortPath)
+#define	ZONE_INDEX(s, d)	((s)->slist[d].zone)
+#define	SYMLINK_INDEX(s, d)	((s)->slist[d].symlink)
+#define	CSETFILE_INDEX(s, d)	((s)->slist[d].csetFile)
+
+#define	CLUDES_SET(s, d, val)	(CLUDES_INDEX(s, d) = sccs_addStr((s), val))
+#define	COMMENTS_SET(s, d, val)	(COMMENTS_INDEX(s, d) = sccs_addStr((s), val))
+#define	BAMHASH_SET(s, d, val)	(BAMHASH_INDEX(s, d) = sccs_addStr((s), val))
+#define	RANDOM_SET(s, d, val)	(RANDOM_INDEX(s, d) = sccs_addStr((s), val))
+#define	USERHOST_SET(s, d, val)	(USERHOST_INDEX(s, d) = sccs_addUniqStr((s), val))
+#define	PATHNAME_SET(s, d, val)	(PATHNAME_INDEX(s, d) = sccs_addUniqStr((s), val))
+#define	SORTPATH_SET(s, d, val)	(SORTPATH_INDEX(s, d) = sccs_addUniqStr((s), val))
+#define	ZONE_SET(s, d, val)	(ZONE_INDEX(s, d) = sccs_addUniqStr((s), val))
+#define	SYMLINK_SET(s, d, val)	(SYMLINK_INDEX(s, d) = sccs_addUniqStr((s), val))
+#define	CSETFILE_SET(s, d, val)	(CSETFILE_INDEX(s, d) = sccs_addUniqStr((s), val))
 
 /*
  * Extra in-memory only delta information
@@ -476,37 +549,33 @@ typedef struct {
 	char	*rev;		/* rev string */
 } dextra;
 
-#define	EXTRA(s, d)	((s)->extra + SERIAL(s, d))
+#define	EXTRA(s, d)	((s)->extra + d)
 
-#define	TAG(d)		((d)->flags & D_TAG)
-#define	NOFUDGE(d)	(d->date - d->dateFudge)
-#define	DANGLING(d)	((d)->flags & D_DANGLING)
-#define	SYMGRAPH(d)	((d)->flags & D_SYMGRAPH)
-#define	SYMLEAF(d)	((d)->flags & D_SYMLEAF)
-#define	INARRAY(d)	((d)->flags & D_INARRAY)
+#define	TAG(s, d)	(FLAGS(s, d) & D_TAG)
+#define	NOFUDGE(s, d)	(DATE(s, d) - DATE_FUDGE(s, d))
+#define	DANGLING(s, d)	(FLAGS(s, d) & D_DANGLING)
+#define	SYMGRAPH(s, d)	(FLAGS(s, d) & D_SYMGRAPH)
+#define	SYMLEAF(s, d)	(FLAGS(s, d) & D_SYMLEAF)
+#define	INARRAY(s, d)	(FLAGS(s, d) & D_INARRAY)
 
-#define	SERIAL(s, d)	(ser_t)((d) - (s)->slist)
-#define	SFIND(s, ser)	((ser) ? ((s)->slist + ser) : 0)
-#define	NEXT(d)		slist_next(d)
-#define	PARENT(s, d)	SFIND((s), (d)->pserial)
-#define	MERGE(s, d)	SFIND((s), (d)->merge)
-#define	KID(s, d)	SFIND((s), (s)->kidlist[SERIAL(s, d)].kid)
-#define	SIBLINGS(s, d)	SFIND((s), (s)->kidlist[SERIAL(s, d)].siblings)
+#define	NEXT(s, d)	slist_next(s, d)
+#define	KID(s, d)	(s)->kidlist[d].kid
+#define	SIBLINGS(s, d)	(s)->kidlist[d].siblings
 
 #define	REV(s, d)	delta_rev(s, d)
-#define	CLUDES(s, d)	((s)->heap.buf + (d)->cludes)
-#define	BAMHASH(s, d)	((s)->heap.buf + (d)->bamhash)
-#define	COMMENTS(s, d)	((s)->heap.buf + (d)->comments)
-#define	RANDOM(s, d)	((s)->heap.buf + (d)->random)
+#define	CLUDES(s, d)	((s)->heap.buf + CLUDES_INDEX(s, d))
+#define	BAMHASH(s, d)	((s)->heap.buf + BAMHASH_INDEX(s, d))
+#define	COMMENTS(s, d)	((s)->heap.buf + COMMENTS_INDEX(s, d))
+#define	RANDOM(s, d)	((s)->heap.buf + RANDOM_INDEX(s, d))
 
 #define	USER(s, d)	delta_user(s, d)
 #define	HOSTNAME(s, d)	delta_host(s, d)
-#define	USERHOST(s, d)	((s)->heap.buf + (d)->userhost)
-#define	ZONE(s,d)	((s)->heap.buf + (d)->zone)
-#define	SYMLINK(s,d)	((s)->heap.buf + (d)->symlink)
-#define	CSETFILE(s,d)	((s)->heap.buf + (d)->csetFile)
-#define	PATHNAME(s,d)	((s)->heap.buf + (d)->pathname)
-#define	SORTPATH(s,d)	((s)->heap.buf + (d)->sortPath)
+#define	USERHOST(s, d)	((s)->heap.buf + USERHOST_INDEX(s, d))
+#define	ZONE(s,d)	((s)->heap.buf + ZONE_INDEX(s, d))
+#define	SYMLINK(s,d)	((s)->heap.buf + SYMLINK_INDEX(s, d))
+#define	CSETFILE(s,d)	((s)->heap.buf + CSETFILE_INDEX(s, d))
+#define	PATHNAME(s,d)	((s)->heap.buf + PATHNAME_INDEX(s, d))
+#define	SORTPATH(s,d)	((s)->heap.buf + SORTPATH_INDEX(s, d))
 
 /*
  * Macros to get at an optional hidden string after the null
@@ -600,9 +669,9 @@ typedef	struct {
  * struct sccs - the delta tree, the data, and associated junk.
  */
 struct sccs {
-	delta	*tree;		/* the delta tree after mkgraph() */
-	delta	*table;		/* the delta table list, 1.99 .. 1.0 */
-	delta	*slist;		/* array of delta structs */
+	ser_t	tree;		/* the delta tree after mkgraph() */
+	ser_t	table;		/* the delta table list, 1.99 .. 1.0 */
+	d_t	*slist;		/* array of delta structs */
 	dextra	*extra;		/* array of extra delta info */
 	symbol	*symlist;	/* array of symbols, oldest first */
 	KIDS	*kidlist;	/* optional kid/sibling data */
@@ -632,10 +701,10 @@ struct sccs {
 	u32	xflags;		/* cache of sccs_top()->xflags */
 	mode_t	mode;		/* mode of the gfile */
 	off_t	data;		/* offset to data in file */
-	delta	*rstart;	/* start of a range (1.1 - oldest) */
-	delta	*rstop;		/* end of range (1.5 - youngest) */
-	delta	*remote;	/* sccs_resolveFiles() sets this */
-	delta	*local;		/* sccs_resolveFiles() sets this */
+	ser_t	rstart;	/* start of a range (1.1 - oldest) */
+	ser_t	rstop;		/* end of range (1.5 - youngest) */
+	ser_t	remote;	/* sccs_resolveFiles() sets this */
+	ser_t	local;		/* sccs_resolveFiles() sets this */
 	sum_t	 cksum;		/* SCCS chksum */
 	sum_t	 dsum;		/* SCCS delta chksum */
 	u32	added;		/* lines added by this delta (u32!) */
@@ -864,11 +933,11 @@ typedef struct {
 	u32	usr;	/* # user files (not under BitKeeper/) */
 } filecnt;
 
-int	sccs_admin(sccs *sc, delta *d, u32 flgs,
+int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_adminFlag(sccs *sc, u32 flags);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
-int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs,
+int	sccs_delta(sccs *s, u32 flags, ser_t d, MMAP *init, MMAP *diffs,
 		   char **syms);
 int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, u32 kind, FILE *);
 int	sccs_encoding(sccs *s, off_t size, char *enc);
@@ -879,49 +948,51 @@ int	sccs_clean(sccs *s, u32 flags);
 int	sccs_unedit(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
-int	sccs_prsdelta(sccs *s, delta *d, int flags, char *dspec, FILE *out);
-char	*sccs_prsbuf(sccs *s, delta *d, int flags, char *dspec);
-delta	*sccs_findDate(sccs *s, char *date, int roundup);
+int	sccs_prsdelta(sccs *s, ser_t d, int flags, char *dspec, FILE *out);
+char	*sccs_prsbuf(sccs *s, ser_t d, int flags, char *dspec);
+ser_t	sccs_findDate(sccs *s, char *date, int roundup);
 int	sccs_patheq(char *file1, char *file2);
-delta	*sccs_findDelta(sccs *s, delta *d);
+ser_t	sccs_findDelta(sccs *s, ser_t d);
 sccs	*sccs_init(char *filename, u32 flags);
 sccs	*sccs_restart(sccs *s);
 sccs	*sccs_reopen(sccs *s);
 int	sccs_open(sccs *s, struct stat *sp);
 void	sccs_free(sccs *);
-void	sccs_freedelta(delta *);
+ser_t	sccs_newdelta(sccs *s);
+void	sccs_freedelta(sccs *s, ser_t d);
+ser_t	sccs_insertdelta(sccs *s, ser_t d, ser_t serial);
 void	sccs_close(sccs *);
 int	sccs_csetWrite(sccs *s, char **cweave);
 sccs	*sccs_csetInit(u32 flags);
 char	**sccs_files(char **, int);
-delta	*sccs_parseArg(sccs *s, delta *d, char what, char *arg, int defaults);
+ser_t	sccs_parseArg(sccs *s, ser_t d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
-void	sccs_inherit(sccs *s, delta *d);
+void	sccs_inherit(sccs *s, ser_t d);
 int	sccs_hasDiffs(sccs *s, u32 flags, int inex);
-delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, u32 flags,
+ser_t	sccs_getInit(sccs *s, ser_t d, MMAP *f, u32 flags,
 		      int *errorp, int *linesp, char ***symsp);
-delta	*sccs_ino(sccs *);
+ser_t	sccs_ino(sccs *);
 int	sccs_userfile(sccs *);
 int	sccs_metafile(char *file);
-int	sccs_rmdel(sccs *s, delta *d, u32 flags);
+int	sccs_rmdel(sccs *s, ser_t d, u32 flags);
 int	sccs_stripdel(sccs *s, char *who);
 int	stripdel_fixTable(sccs *s, int *pcnt);
 int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
 int	sccs_patchDiffs(sccs *s, ser_t *patchmap, char *printOut);
-void	sccs_pdelta(sccs *s, delta *d, FILE *out);
-delta	*sccs_key2delta(sccs *sc, char *key);
+void	sccs_pdelta(sccs *s, ser_t d, FILE *out);
+ser_t	sccs_key2delta(sccs *sc, char *key);
 int	sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs, u32 flags);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
-int	sccs_sdelta(sccs *s, delta *, char *);
-void	sccs_md5delta(sccs *s, delta *d, char *b64);
-void	sccs_sortkey(sccs *s, delta *d, char *buf);
+int	sccs_sdelta(sccs *s, ser_t, char *);
+void	sccs_md5delta(sccs *s, ser_t d, char *b64);
+void	sccs_sortkey(sccs *s, ser_t d, char *buf);
 void	sccs_key2md5(char *rootkey, char *deltakey, char *b64);
-void	sccs_setPath(sccs *s, delta *d, char *newpath);
+void	sccs_setPath(sccs *s, ser_t d, char *newpath);
 void	sccs_syncRoot(sccs *s, char *key);
-delta	*sccs_csetBoundary(sccs *s, delta *);
-void	sccs_shortKey(sccs *s, delta *, char *);
-int	sccs_resum(sccs *s, delta *d, int diags, int dont);
+ser_t	sccs_csetBoundary(sccs *s, ser_t);
+void	sccs_shortKey(sccs *s, ser_t, char *);
+int	sccs_resum(sccs *s, ser_t d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
 char	**cset_mkList(sccs *cset);
 int	cset_bykeys(const void *a, const void *b);
@@ -943,26 +1014,26 @@ char	*sfileFirst(char *cmd, char **Av, int Flags);
 int	sfileDone(void);
 int	sfiles(char **av);
 int	sfilesDied(int killit);
-delta	*sccs_findrev(sccs *, char *);
-delta	*sccs_top(sccs *);
-delta	*sccs_findKey(sccs *, char *);
-void	sccs_findKeyUpdate(sccs *s, delta *d);
+ser_t	sccs_findrev(sccs *, char *);
+ser_t	sccs_top(sccs *);
+ser_t	sccs_findKey(sccs *, char *);
+void	sccs_findKeyUpdate(sccs *s, ser_t d);
 void	sccs_findKeyFlush(sccs *s);
 int	isKey(char *key);
-delta	*sccs_findMD5(sccs *s, char *md5);                              
-delta	*sccs_dInit(delta *, char, sccs *, int);
+ser_t	sccs_findMD5(sccs *s, char *md5);                              
+ser_t	sccs_dInit(ser_t, char, sccs *, int);
 char	*sccs_getuser(void);
 void	sccs_resetuser(void);
 void	sccs_resethost(void);
 char	*sccs_realuser(void);
 char	*sccs_user(void);
 
-char	*delta_rev(sccs *s, delta *d);
-char	*delta_user(sccs *s, delta *d);
-char	*delta_host(sccs *s, delta *d);
-void	delta_print(sccs *s, delta *d);
+char	*delta_rev(sccs *s, ser_t d);
+char	*delta_user(sccs *s, ser_t d);
+char	*delta_host(sccs *s, ser_t d);
+void	delta_print(sccs *s, ser_t d);
 
-delta	*modeArg(sccs *s, delta *d, char *arg);
+ser_t	modeArg(sccs *s, ser_t d, char *arg);
 int	fileType(mode_t m);
 char	chop(char *s);
 void	touch_checked(void);
@@ -979,23 +1050,23 @@ int	check_gfile(sccs*, int);
 char	*lock_dir(void);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
-delta 	*mkOneZero(sccs *s);
+ser_t 	mkOneZero(sccs *s);
 int	isCsetFile(char *);
 int	cset_inex(int flags, char *op, char *revs);
 void	sccs_fixDates(sccs *);
-int	sccs_xflags(sccs *s, delta *d);
+int	sccs_xflags(sccs *s, ser_t d);
 char	*xflags2a(u32 flags);
 u32	a2xflag(char *str);
 void	sccs_mkroot(char *root);
 int	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);
 char	*sccs_setpathname(sccs *s);
-delta	*sccs_prev(sccs *s, delta *d);
-delta	*slist_next(delta *d);
+ser_t	sccs_prev(sccs *s, ser_t d);
+ser_t	slist_next(sccs *s, ser_t d);
 int	sccs_reCache(int quiet);
-int	sccs_findtips(sccs *s, delta **a, delta **b);
+int	sccs_findtips(sccs *s, ser_t *a, ser_t *b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
-delta	*sfind(sccs *s, ser_t ser);
+ser_t	sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
 
@@ -1005,10 +1076,10 @@ int	sccs_unlockfile(char *file);
 int	sccs_mylock(char *lockf);
 int	sccs_readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp);
 
-char	*sccs_utctime(sccs *s, delta *d);
-int	delta_strftime(char *out, int sz, char *fmt, sccs *s, delta *d);
-char	*delta_sdate(sccs *s, delta *d);
-delta	*sccs_kid(sccs *s, delta *d);
+char	*sccs_utctime(sccs *s, ser_t d);
+int	delta_strftime(char *out, int sz, char *fmt, sccs *s, ser_t d);
+char	*delta_sdate(sccs *s, ser_t d);
+ser_t	sccs_kid(sccs *s, ser_t d);
 void	sccs_mkKidList(sccs *s);
 void	sccs_renumber(sccs *s, u32 flags);
 char 	*sccs_iskeylong(char *key);
@@ -1026,11 +1097,11 @@ void	explodeKey(char *key, char *parts[6]);
 void	free_pfile(pfile *pf);
 int	sccs_read_pfile(char *who, sccs *s, pfile *pf);
 int	sccs_rewrite_pfile(sccs *s, pfile *pf);
-int	sccs_isleaf(sccs *s, delta *d);
+int	sccs_isleaf(sccs *s, ser_t d);
 int	emptyDir(char *dir);
 int	gone(char *key, MDBM *db);
 int	sccs_mv(char *, char *, int, int, int, int);
-delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x);
+ser_t	sccs_gca(sccs *, ser_t l, ser_t r, char **i, char **x);
 char	*_relativeName(char *gName, int isDir,
 	    int mustHaveRmarker, int wantRealName, project *proj);
 char	*findBin(void);
@@ -1040,7 +1111,7 @@ char	*sccs_Xfile(sccs *s, char type);
 FILE	*sccs_startWrite(sccs *s);
 int	sccs_finishWrite(sccs *s, FILE **f);
 void	sccs_abortWrite(sccs *s, FILE **f);
-int	uniq_adjust(sccs *s, delta *d);
+int	uniq_adjust(sccs *s, ser_t d);
 char	*uniq_keysHome(void);
 int	uniq_lock(void);
 int	uniq_unlock(void);
@@ -1079,7 +1150,7 @@ int	comments_savefile(char *s);
 int	comments_got(void);
 void	comments_done(void);
 char	**comments_return(char *prompt);
-delta	*comments_get(char *gfile, char *rev, sccs *s, delta *d);
+ser_t	comments_get(char *gfile, char *rev, sccs *s, ser_t d);
 void	comments_writefile(char *file);
 int	comments_checkStr(u8 *s, int len);
 char	*shell(void);
@@ -1117,10 +1188,10 @@ char	*age(time_t secs, char *space);
 char	*time2date(time_t tt);
 char	*sccs_zone(time_t tt);
 MDBM	*sccs_tagConflicts(sccs *s);
-int	sccs_tagMerge(sccs *s, delta *d, char *tag);
-int	sccs_tagleaves(sccs *, delta **, delta **);
-u8	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
-int	sccs_graph(sccs *s, delta *d, u8 *map, char **inc, char **exc);
+int	sccs_tagMerge(sccs *s, ser_t d, char *tag);
+int	sccs_tagleaves(sccs *, ser_t *, ser_t *);
+u8	*sccs_set(sccs *, ser_t, char *iLst, char *xLst);
+int	sccs_graph(sccs *s, ser_t d, u8 *map, char **inc, char **exc);
 int	sccs_isPending(char *gfile);
 int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
 
@@ -1153,10 +1224,10 @@ char	*getCSetFile(project *p);
 int	spawn_cmd(int flag, char **av);
 pid_t	mkpager(void);
 int	getRealName(char *path, MDBM *db, char *realname);
-int	addsym(sccs *s, delta *metad, int graph, char *tag);
+int	addsym(sccs *s, ser_t metad, int graph, char *tag);
 int	delta_table(sccs *s, FILE *out, int willfix);
 int	walksfiles(char *dir, walkfn fn, void *data);
-delta	*getSymlnkCksumDelta(sccs *s, delta *d);
+ser_t	getSymlnkCksumDelta(sccs *s, ser_t d);
 hash	*generateTimestampDB(project *p);
 int	timeMatch(project *proj, char *gfile, char *sfile, hash *timestamps);
 void	dumpTimestampDB(project *p, hash *db);
@@ -1166,10 +1237,10 @@ int	sccs_setStime(sccs *s, time_t newest);
 void	ids(void);
 void	http_hdr(void);
 int	check_rsh(char *remsh);
-void	sccs_color(sccs *s, delta *d);
+void	sccs_color(sccs *s, ser_t d);
 int	out(char *buf);
 int	getlevel(void);
-delta	*cset_insert(sccs *s, MMAP *iF, MMAP *dF, delta *parent, int fast);
+ser_t	cset_insert(sccs *s, MMAP *iF, MMAP *dF, ser_t parent, int fast);
 int	cset_write(sccs *s, int spinners, int fast);
 sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);
@@ -1177,12 +1248,12 @@ int	isNullFile(char *rev, char *file);
 unsigned long	ns_sock_host2ip(char *host, int trace);
 unsigned long	host2ip(char *host, int trace);
 int	fileTypeOk(mode_t m);
-int	sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag);
+int	sccs_tagLeaf(sccs *s, ser_t d, ser_t md, char *tag);
 int	sccs_scompress(sccs *s, int flags);
 int	mkBkRootIcon(char *path);
 int	unmkBkRootIcon(char *path);
-void	sccs_tagcolor(sccs *s, delta *d);
-int	checkXflags(sccs *s, delta *d, int what);
+void	sccs_tagcolor(sccs *s, ser_t d);
+int	checkXflags(sccs *s, ser_t d, int what);
 void	metaUnionResync1(void);
 void	metaUnionResync2(void);
 int	sccs_istagkey(char *key);
@@ -1191,7 +1262,7 @@ void	putroot(char *where);
 int	uuencode(FILE *in, FILE *out);
 int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
-int	sccs_needSwap(sccs *s, delta *p, delta *m);
+int	sccs_needSwap(sccs *s, ser_t p, ser_t m);
 int	chk_host(void);
 int	chk_user(void);
 int	chk_nlbug(sccs *s);
@@ -1201,7 +1272,7 @@ int	do_checkout(sccs *s);
 int	unsafe_path(char *s);
 int	hasTriggers(char *cmd, char *when);
 void	comments_cleancfile(sccs *s);
-int	comments_readcfile(sccs *s, int prompt, delta *d);
+int	comments_readcfile(sccs *s, int prompt, ser_t d);
 int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
@@ -1229,7 +1300,7 @@ int	attach_name(sccs *cset, char *name, int setmarks);
 void	notice(char *key, char *arg, char *type);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
-delta	*sccs_getedit(sccs *s, char **revp);
+ser_t	sccs_getedit(sccs *s, char **revp);
 void	line2av(char *cmd, char **av);
 void	smerge_saveseq(u32 seq);
 void	mk_repoID(project *proj, char *repoid);
@@ -1257,7 +1328,7 @@ void	close_gaps(u8 *vec, int n, int (*compare)(int a, int b));
 int	diff_algor(int m, int n, u8 *lchg, u8 *rchg,
 int	(*compare)(int a, int b));
 int	diffline(char *left, char *right);
-typedef	void (*set_pfunc)(sccs *, delta *);
+typedef	void (*set_pfunc)(sccs *, ser_t);
 u8	*set_get(sccs *s, char *rev);
 void	set_list(sccs *s, char *rev, set_pfunc p);
 void	set_member(sccs *s, char *rev, u8 *map, set_pfunc p);
@@ -1276,7 +1347,7 @@ u32	crc(char *s);
 int	annotate_args(int flags, char *args);
 void	platformInit(char **av);
 int	sccs_csetPatchWeave(sccs *s, FILE *f);
-int	sccs_fastWeave(sccs *s, ser_t *weavemap, char **patchmap,
+int	sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
 	    MMAP *fastpatch, FILE *out);
 void	sccs_clearbits(sccs *s, u32 flags);
 MDBM	*loadkv(char *file);
@@ -1291,22 +1362,22 @@ void	randomBits(char *buf);
 sum_t	almostUnique(void);
 int	uninstall(char *path, int upgrade);
 int	remote_bk(int quiet, int ac, char **av);
-void	dspec_eval(FILE * out, sccs *s, delta *d, char *start);
+void	dspec_eval(FILE * out, sccs *s, ser_t d, char *start);
 void	dspec_printline(sccs *s, FILE *out);
 void	dspec_printeach(sccs *s, FILE *out);
-int	kw2val(FILE *out, char *kw, int len, sccs *s, delta *d);
+int	kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d);
 void	show_s(sccs *s, FILE *out, char *data, int len);
 void	show_d(sccs *s, FILE *out, char *format, int num);
-void	comments_set(sccs *s, delta *d, char **comments);
+void	comments_set(sccs *s, ser_t d, char **comments);
 void	gdb_backtrace(void);
-char	*bp_lookup(sccs *s, delta *d);
-delta	*bp_fdelta(sccs *s, delta *d);
-int	bp_fetch(sccs *s, delta *din);
+char	*bp_lookup(sccs *s, ser_t d);
+ser_t	bp_fdelta(sccs *s, ser_t d);
+int	bp_fetch(sccs *s, ser_t din);
 int	bp_fetchData(void);
 int	bp_fetchkeys(char *me, project *p, int quiet, char **keys, u64 todo);
-int	bp_get(sccs *s, delta *d, u32 flags, char *out);
-int	bp_delta(sccs *s, delta *d);
-int	bp_diff(sccs *s, delta *d, char *gfile);
+int	bp_get(sccs *s, ser_t d, u32 flags, char *out);
+int	bp_delta(sccs *s, ser_t d);
+int	bp_diff(sccs *s, ser_t d, char *gfile);
 int	bp_updateServer(char *range, char *list, int quiet);
 int	bp_sharedServer(void);
 char	*bp_serverURL(char *out);
@@ -1338,7 +1409,7 @@ char	*sgoneFile(void);
 int	keycmp(const void *k1, const void *k2);
 int	keycmp_nopath(char *k1, char *k2);
 int	key_sort(const void *a, const void *b);
-int	earlier(sccs *s, delta *a, delta *b);
+int	earlier(sccs *s, ser_t a, ser_t b);
 int	startmenu_list(u32, char *);
 int	startmenu_rm(u32, char *);
 int	startmenu_get(u32, char *path);

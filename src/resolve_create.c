@@ -729,7 +729,7 @@ has a name conflict with a new file with the same name in the patch.\n\
 int
 ok_local(sccs *s, int check_pending)
 {
-	delta	*d;
+	ser_t	d;
 	int	rc = 0;
 
 	unless (s) {
@@ -744,7 +744,7 @@ ok_local(sccs *s, int check_pending)
 	}
 	unless (check_pending) goto good;
 	d = sccs_top(s);
-	unless (d->flags & D_CSET) {
+	unless (FLAGS(s, d) & D_CSET) {
 		fprintf(stderr,
 		    "Cannot [re]move uncommitted local file %s\n", s->gfile);
 		goto done;

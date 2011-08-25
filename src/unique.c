@@ -192,10 +192,11 @@ uniq_open(void)
  * Adjust the timestamp on a delta so that it is unique.
  */
 int
-uniq_adjust(sccs *s, delta *d)
+uniq_adjust(sccs *s, ser_t d)
 {
 	char	*p1, *p2, *extra;
 	datum	k, v;
+	time_t	date;
 	char	key[MAXKEY];
 
 	unless (db) return (1);
@@ -236,15 +237,16 @@ uniq_adjust(sccs *s, delta *d)
 			}
 		}
 		/* keydup, try again */
-		d->date++;
-		d->dateFudge++;
+		DATE_SET(s, d, DATE(s, d)+1);
+		DATE_FUDGE_SET(s, d, DATE_FUDGE(s, d)+1);
 	}
 	if (extra) {
 		*extra = '|';
 		k.dsize = strlen(key) + 1;
 	}
+	date = DATE(s, d);
 	v.dsize = sizeof(time_t);
-	v.dptr = (char *)&d->date;
+	v.dptr = (char *)&date;
 	if (mdbm_store(db, k, v, MDBM_INSERT)) {
 		perror("mdbm key store");
 		return (-1);

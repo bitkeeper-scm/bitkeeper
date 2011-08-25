@@ -128,6 +128,9 @@ char	*shellquote(char *in);
 /* void catArray(TYPE **space, TYPE *array) */
 #define	catArray(s, a)		_catArray((s), (a), sizeof((s)[0]))
 
+/* void reverseArray(TYPE *space); */
+#define	reverseArray(s)		_reverseArray((s), sizeof((s)[0]))
+
 /* void sortArray(TYPE *space, cmpfn); */
 #define	sortArray(s, compar)	_sortArray((s), (compar), sizeof((s)[0]))
 
@@ -137,6 +140,7 @@ void	truncArray(void *space, int len);
 void	*_insertArrayN(void **space, int j, void *line, int size);
 void	_removeArrayN(void *space, int rm, int size);
 void	*_catArray(void **space, void *array, int size);
+void	_reverseArray(void *space, int size);
 void	_sortArray(void *space,
     int (*compar)(const void *, const void *), int size);
 

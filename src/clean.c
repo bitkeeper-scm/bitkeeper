@@ -76,7 +76,7 @@ hasLocalWork(char *gfile)
 
 	unless (s = sccs_init(sfile, SILENT)) return (-1);
 	if (HASGRAPH(s)) {
-		if ((sccs_top(s)->flags & D_CSET)
+		if ((FLAGS(s, sccs_top(s)) & D_CSET)
 		    && !sccs_clean(s, CLEAN_CHECKONLY|SILENT)) {
 			rc = 0;
 		}

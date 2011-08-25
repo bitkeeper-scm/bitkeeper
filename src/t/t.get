@@ -131,14 +131,14 @@ echo OK
 echo $N Check hosts in file .........................................$NL
 hostname=bk_regression.bk
 test `bk prs -hnd:HOST: -r+ date` = $hostname || fail
-X=`bk _heapdump date | grep ^userhost | sort -u | wc -l`
+X=`bk _heapdump date | grep ^USERHOST | sort -u | wc -l`
 if [ $X -ne 1 ]; then echo Duplicate hosts.; exit 1; fi
 echo OK
 
 echo $N Check zones in file .........................................$NL
 zone=`bk zone`
 test `bk prs -hnd:TZ: -r+ date` = $zone || fail
-X=`bk _heapdump date | grep ^zone | sort -u | wc -l`
+X=`bk _heapdump date | grep ^ZONE | sort -u | wc -l`
 if [ $X -ne 1 ]; then echo Duplicate zones; exit 1; fi
 echo OK
 

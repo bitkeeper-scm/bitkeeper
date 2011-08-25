@@ -608,7 +608,7 @@ private	int
 moveComps(Opts *opts)
 {
 	sccs	*cset = 0;
-	delta	*d, *d2;
+	ser_t	d, d2;
 	int	i, j, len, ret = 1;
 	char	*newpath;
 	char	**bamdirs = 0;
@@ -659,19 +659,19 @@ moveComps(Opts *opts)
 		 */
 		d = cset->tree;		 /* 1.0 */
 		assert(d);
-		d->flags &= ~D_CSET;
+		FLAGS(cset, d) &= ~D_CSET;
 		d2 = sccs_kid(cset, d); /* 1.1 */
 		assert(d2);
-		d2->flags &= ~D_CSET;
+		FLAGS(cset, d2) &= ~D_CSET;
 		/*
 		 * Accumulate serial-tagged entries for product weave
 		 * bk changes -nd'$if(:CSETKEY:){:DS:\t:ROOTKEY: :KEY:}'
 		 */
-		for (d = cset->table; d; d = NEXT(d)) {
-			unless (d->flags & D_CSET) continue;
+		for (d = cset->table; d; d = NEXT(cset, d)) {
+			unless (FLAGS(cset, d) & D_CSET) continue;
 			sccs_sdelta(cset, d, key);
 			fprintf(prodweave, "%u\t%s %s\n",
-			    SERIAL(cset, d), proj_rootkey(0), key);
+			    d, proj_rootkey(0), key);
 		}
 		/* fix backptr to match existing product */
 		d = sccs_ino(cset);

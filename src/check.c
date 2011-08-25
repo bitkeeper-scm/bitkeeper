@@ -565,7 +565,7 @@ fix_merges(sccs *s)
 private int
 chk_dfile(sccs *s)
 {
-	delta	*d;
+	ser_t	d;
 	char	*p, *dfile;
 	int	hasdfile;
 	int	rc = 0;
@@ -587,7 +587,7 @@ chk_dfile(sccs *s)
 	p = basenm(dfile);
 	*p = 'd';
 	hasdfile = exists(dfile);
-	if (d->flags & D_CSET) {
+	if (FLAGS(s, d) & D_CSET) {
 		/* nothing pending, cleanup any extra dfiles */
 		if (hasdfile) unlink(dfile);
 	} else {
@@ -639,7 +639,7 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 	}
 	if (((checkout == CO_EDIT) && !EDITED(s)) ||
 	     ((checkout == CO_GET) && !HAS_GFILE(s))) {
-		if (win32() && S_ISLNK(sccs_top(s)->mode)) {
+		if (win32() && S_ISLNK(MODE(s, sccs_top(s)))) {
 			/* do nothing, no symlinks on windows */
 		} else if (!force && (p = getenv("_BK_DEVELOPER"))) {
 			// flags both missing and ro when we want rw
@@ -690,13 +690,13 @@ err:		getMsg2("file_dir_conflict", buf, type, '=', stderr);
 private int
 chk_BAM(sccs *s, char ***missing)
 {
-	delta	*d;
+	ser_t	d;
 	char	*key;
 	int	rc = 0;
 
 	unless (*missing) missing = 0;
-	for (d = s->table; d; d = NEXT(d)) {
-		unless (d->bamhash) continue;
+	for (d = s->table; d; d = NEXT(s, d)) {
+		unless (HAS_BAMHASH(s, d)) continue;
 		key = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 		if (bp_check_hash(key, missing, !bp_fullcheck, 0)) {
 			rc = 1;
@@ -1199,7 +1199,7 @@ fetch_changeset(void)
 {
 	FILE	*f;
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	int	i;
 	char	buf[MAXKEY];	/* overkill, key should be md5key */
 
@@ -1258,12 +1258,12 @@ fetch_changeset(void)
  * Returns the largest serial that is older than all colored nodes.
  */
 private int
-color_merge(sccs *s, delta *d)
+color_merge(sccs *s, ser_t d)
 {
-	assert(d->merge);	/* only works on merge */
-	d->flags |= (D_BLUE|D_RED);
+	assert(MERGE(s, d));	/* only works on merge */
+	FLAGS(s, d) |= (D_BLUE|D_RED);
 	range_walkrevs(s, MERGE(s, d), 0, PARENT(s, d), WR_BOTH, 0, 0);
-	return (SERIAL(s, s->rstart));
+	return (s->rstart);
 }
 
 /*
@@ -1276,7 +1276,7 @@ buildKeys(MDBM *idDB)
 {
 	char	*s, *t;
 	int	e = 0;
-	delta	*d;
+	ser_t	d;
 	hash	*deltas;
 	char	**pathnames = 0; /* lines array of "path\0rootkey\0" */
 	int	i, len1, len2;
@@ -1296,7 +1296,8 @@ buildKeys(MDBM *idDB)
 	} *rkd;
 	char	key[MAXKEY];
 
-	if ((d = sccs_top(cset))->merge) {
+	d = sccs_top(cset);
+	if (MERGE(cset, d)) {
 		/* cset tip is a merge, do extra checks */
 		oldest = color_merge(cset, d);
 		assert(oldest > 0);
@@ -1347,11 +1348,11 @@ buildKeys(MDBM *idDB)
 		rkd = (struct rkdata *)r2deltas->vptr;
 		unless (rkd->deltas) rkd->deltas = hash_new(HASH_MEMHASH);
 		if (oldest) {
-			if ((d->flags & (D_RED|D_BLUE)) == (D_RED|D_BLUE)) {
+			if ((FLAGS(cset, d) & (D_RED|D_BLUE)) == (D_RED|D_BLUE)) {
 				rkd->mask |= 4;
-			} else if (d->flags & D_RED) {
+			} else if (FLAGS(cset, d) & D_RED) {
 				rkd->mask |= 2;
-			} else if (d->flags & D_BLUE) {
+			} else if (FLAGS(cset, d) & D_BLUE) {
 				rkd->mask |= 1;
 			}
 		}
@@ -1453,8 +1454,8 @@ finish:
 	sccs_sdelta(cset, sccs_ino(cset), key);
 	deltas = hash_new(HASH_MEMHASH);
 	hash_store(r2deltas, key, strlen(key) + 1, &deltas, sizeof(hash *));
-	for (d = cset->table; d; d = NEXT(d)) {
-		unless (!TAG(d) && (d->flags & D_CSET)) continue;
+	for (d = cset->table; d; d = NEXT(cset, d)) {
+		unless (!TAG(cset, d) && (FLAGS(cset, d) & D_CSET)) continue;
 		sccs_sdelta(cset, d, key);
 		unless (hash_insert(deltas, key, strlen(key)+1, 0, 0)) {
 			fprintf(stderr,
@@ -1521,7 +1522,7 @@ private char	*
 getRev(char *root, char *key, MDBM *idDB)
 {
 	sccs	*s = sccs_keyinit(0, root, flags, idDB);
-	delta	*d;
+	ser_t	d;
 	char	*t;
 
 	unless (s && s->cksumok) {
@@ -1540,16 +1541,16 @@ getRev(char *root, char *key, MDBM *idDB)
  * Flag an error if delta already in cset.
  */
 private void
-markCset(sccs *s, delta *d)
+markCset(sccs *s, ser_t d)
 {
 	static time_t	now;
 
 	unless (now) now = time(0);
 
 	do {
-		if (d->flags & D_SET) {
+		if (FLAGS(s, d) & D_SET) {
 			/* warn if in the last 1.5 months */
-			if ((now - d->date) < (45 * 24 * 60 * 60)) poly = 1;
+			if ((now - DATE(s, d)) < (45 * 24 * 60 * 60)) poly = 1;
 			if (polyList) {
 				fprintf(stderr,
 				    "check: %s "
@@ -1559,15 +1560,15 @@ markCset(sccs *s, delta *d)
 				    delta_sdate(s, d));
 			}
 		}
-		d->flags |= D_SET;
-		if (d->merge) {
-			delta	*e = MERGE(s, d);
+		FLAGS(s, d) |= D_SET;
+		if (MERGE(s, d)) {
+			ser_t	e = MERGE(s, d);
 
 			assert(e);
-			unless (e->flags & D_CSET) markCset(s, e);
+			unless (FLAGS(s, e) & D_CSET) markCset(s, e);
 		}
 		d = PARENT(s, d);
-	} while (d && !(d->flags & D_CSET));
+	} while (d && !(FLAGS(s, d) & D_CSET));
 }
 
 /*
@@ -1588,7 +1589,7 @@ private int
 check(sccs *s, MDBM *idDB)
 {
 	static	int	haspoly = -1;
-	delta	*d, *ino, *tip = 0;
+	ser_t	d, ino, tip = 0;
 	int	errors = 0, goodkeys;
 	int	i, writefile = 0;
 	char	*t, *term, *x;
@@ -1613,12 +1614,12 @@ check(sccs *s, MDBM *idDB)
 	 * Make sure that all marked deltas are found in the ChangeSet
 	 */
 	goodkeys = 0;
-	for (d = s->table; d; d = NEXT(d)) {
+	for (d = s->table; d; d = NEXT(s, d)) {
 		if (verbose > 3) {
 			fprintf(stderr, "Check %s@%s\n", s->gfile, REV(s, d));
 		}
 		/* check for V1 LOD */
-		if (d->r[0] != 1) {
+		if (R0(s, d) != 1) {
 			errors++;
 			fprintf(stderr,
 			    "Obsolete LOD data(bk help chk4): %s|%s\n",
@@ -1634,8 +1635,8 @@ check(sccs *s, MDBM *idDB)
 			}
 		}
 		unless (t) {
-			unless (d->flags & D_CSET) continue;
-			if (MONOTONIC(s) && DANGLING(d)) continue;
+			unless (FLAGS(s, d) & D_CSET) continue;
+			if (MONOTONIC(s) && DANGLING(s, d)) continue;
 			errors++;
 			if (stripdel) continue;
 			fprintf(stderr,
@@ -1644,9 +1645,9 @@ check(sccs *s, MDBM *idDB)
 			sccs_sdelta(s, d, buf);
 			fprintf(stderr, "\t%s -> %s\n", REV(s, d), buf);
 		} else {
-			unless (d->flags & D_CSET) {
+			unless (FLAGS(s, d) & D_CSET) {
 				/* auto fix always */
-				d->flags |= D_CSET;
+				FLAGS(s, d) |= D_CSET;
 				writefile = 1;
 			}
 			++goodkeys;
@@ -1733,7 +1734,7 @@ check(sccs *s, MDBM *idDB)
 		names = 1;
 	}
 
-	unless (CSET(s) || (d->flags & D_CSET)) {
+	unless (CSET(s) || (FLAGS(s, d) & D_CSET)) {
 		EACH(subrepos) {
 			if (paths_overlap(subrepos[i], PATHNAME(s, d))) {
 				/* pathname conflict */
@@ -1765,8 +1766,8 @@ check(sccs *s, MDBM *idDB)
 				}
 			}
 			unless (s->grafted) break;
-			while (ino = NEXT(ino)) {
-				if (ino->random) break;
+			while (ino = NEXT(s, ino)) {
+				if (HAS_RANDOM(s, ino)) break;
 			}
 		} while (ino);
 	}
@@ -1825,8 +1826,8 @@ check(sccs *s, MDBM *idDB)
 	if (haspoly == -1) haspoly = (exists(POLY) != 0);
 	if (!haspoly && CSETMARKED(s)) {
 		sccs_clearbits(s, D_SET);
-		for (d = s->table; d; d = NEXT(d)) {
-			if (d->flags & D_CSET) markCset(s, d);
+		for (d = s->table; d; d = NEXT(s, d)) {
+			if (FLAGS(s, d) & D_CSET) markCset(s, d);
 		}
 	}
 	return (errors);
@@ -1835,10 +1836,10 @@ check(sccs *s, MDBM *idDB)
 private int
 chk_merges(sccs *s)
 {
-	delta	*p, *m, *d;
+	ser_t	p, m, d;
 
-	for (d = s->table; d; d = NEXT(d)) {
-		unless (d->merge) continue;
+	for (d = s->table; d; d = NEXT(s, d)) {
+		unless (MERGE(s, d)) continue;
 		p = PARENT(s, d);
 		assert(p);
 		m = MERGE(s, d);
@@ -1869,7 +1870,7 @@ checkKeys(sccs *s, char *root)
 {
 	int	errors = 0;
 	char	*a, *dkey;
-	delta	*d;
+	ser_t	d;
 	char	*p;
 	hash	*findkey;
 	hash	*deltas;
@@ -1879,8 +1880,8 @@ checkKeys(sccs *s, char *root)
 	deltas = *(hash **)p;
 
 	findkey = hash_new(HASH_MEMHASH);
-	for (d = s->table; d; d = NEXT(d)) {
-		unless (d->flags & D_CSET) continue;
+	for (d = s->table; d; d = NEXT(s, d)) {
+		unless (FLAGS(s, d) & D_CSET) continue;
 		sccs_sdelta(s, d, key);
 		unless (hash_insert(findkey, key, strlen(key)+1, &d, sizeof(d))) {
 			fprintf(stderr, "check: insert error for %s\n", key);
@@ -1902,7 +1903,7 @@ checkKeys(sccs *s, char *root)
 		 * in the ChangeSet file.
 		 */
 		unless ((p = hash_fetchStr(findkey, dkey)) &&
-		    (d = *(delta **)p)) {
+		    (d = *(ser_t *)p)) {
 			/* skip if the delta is marked as being OK to be gone */
 			if (isGone(s, dkey)) continue;
 
@@ -1950,7 +1951,7 @@ checkKeys(sccs *s, char *root)
 			fprintf(stderr,
 			    "\tkey: %s in ChangeSet|%s\n", dkey, a);
 			free(a);
-		} else unless (d->flags & D_CSET) {
+		} else unless (FLAGS(s, d) & D_CSET) {
 			fprintf(stderr,
 			    "%s@%s is in ChangeSet but not marked\n",
 			    s->gfile, REV(s, d));

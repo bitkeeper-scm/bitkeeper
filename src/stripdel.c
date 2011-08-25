@@ -15,7 +15,7 @@ typedef struct {
 	ticker	*tick;
 } s_opts;
 
-private	delta	*checkCset(sccs *s);
+private	ser_t	checkCset(sccs *s);
 private	int	doit(sccs *, s_opts);
 private	int	do_check(sccs *s, int flags);
 private	int	strip_list(s_opts);
@@ -92,7 +92,7 @@ done:
 private int
 doit(sccs *s, s_opts opts)
 {
-	delta	*e;
+	ser_t	e;
 	char	*p;
 	int	left, n;
 	int	flags = 0;
@@ -110,9 +110,9 @@ doit(sccs *s, s_opts opts)
 	if (MONOTONIC(s) && !opts.forward) {
 		verbose((stderr, 
 		    "Not stripping deltas from MONOTONIC file %s\n", s->gfile));
-		for (e = s->table; e; e = NEXT(e)) {
-			if ((e->flags & D_SET) && !TAG(e)) {
-				e->flags |= D_DANGLING;
+		for (e = s->table; e; e = NEXT(s, e)) {
+			if ((FLAGS(s, e) & D_SET) && !TAG(s, e)) {
+				FLAGS(s, e) |= D_DANGLING;
 			}
 		}
 		sccs_newchksum(s);
@@ -151,7 +151,7 @@ doit(sccs *s, s_opts opts)
 	}
 
 	/* work with bluearc Cunning Plan */
-	s->tree->flags &= ~(D_SET|D_GONE);
+	FLAGS(s, s->tree) &= ~(D_SET|D_GONE);
 
 	if (sccs_stripdel(s, "stripdel")) {
 		unless (BEEN_WARNED(s)) {
@@ -174,15 +174,15 @@ doit(sccs *s, s_opts opts)
 int
 stripdel_fixTable(sccs *s, int *pcnt)
 {
-	delta	*d;
+	ser_t	d;
 	int	leafset = 0;
 	int	count = 0, left = 0, run_names = 0;
 
-	for (d = s->table; d; d = NEXT(d)) {
-		if (d->flags & D_SET) {
+	for (d = s->table; d; d = NEXT(s, d)) {
+		if (FLAGS(s, d) & D_SET) {
 			MK_GONE(s, d);
-			d->flags &= ~D_SYMLEAF;
-			if (!d->pserial ||
+			FLAGS(s, d) &= ~D_SYMLEAF;
+			if (!PARENT(s, d) ||
 			    !streq(PATHNAME(s, PARENT(s, d)), PATHNAME(s, d))){
 				run_names++;
 			}
@@ -190,9 +190,9 @@ stripdel_fixTable(sccs *s, int *pcnt)
 			continue;
 		}
 		left++;
-		if (!leafset && SYMGRAPH(d)) {
+		if (!leafset && SYMGRAPH(s, d)) {
 			leafset = 1;
-			d->flags |= D_SYMLEAF;
+			FLAGS(s, d) |= D_SYMLEAF;
 		}
 	}
 	if (pcnt) *pcnt = count;
@@ -218,7 +218,7 @@ strip_list(s_opts opts)
 	char	*rev, *name;
 	char	*av[2] = {"-", 0};
 	sccs	*s = 0;
-	delta	*d;
+	ser_t	d;
 	int 	n = 0, rc = 1;
 	int	iflags = opts.iflags|SILENT;
 
@@ -247,7 +247,7 @@ strip_list(s_opts opts)
 			    "stripdel: can't find rev %s in %s\n", rev, name);
 			goto fail;
 		}
-		d->flags |= D_SET;
+		FLAGS(s, d) |= D_SET;
 		s->state |= S_SET;
 		if (!s->rstop || (s->rstop < d)) {
 			s->rstop = d;
@@ -267,15 +267,15 @@ fail:	if (s) sccs_free(s);
 	return (rc);
 }
 
-private	delta	*
+private	ser_t
 checkCset(sccs *s)
 {
-	delta	*d, *e;
+	ser_t	d, e;
 	int	saw_cset = 0;
 
-	for (d = s->table; d; d = NEXT(d)) {
-		if (d->flags & D_CSET) saw_cset = 1;
-		unless (d->flags & D_SET) continue;
+	for (d = s->table; d; d = NEXT(s, d)) {
+		if (FLAGS(s, d) & D_CSET) saw_cset = 1;
+		unless (FLAGS(s, d) & D_SET) continue;
 		if (saw_cset && (e = sccs_csetBoundary(s, d))) {
 			return (e);
 		}

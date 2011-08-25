@@ -36,7 +36,7 @@
 #define	NOTICE() fputs("------------------------------------"\
 		    "---------------------------------------\n", stderr);
 
-private	delta	*getRecord(sccs *s, MMAP *f);
+private	ser_t	getRecord(sccs *s, MMAP *f);
 private void	errorMsg(char *msg, char *arg1, char *arg2);
 private	int	extractPatch(char *name, MMAP *p);
 private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int*);
@@ -50,7 +50,7 @@ private	MMAP	*init(char *file);
 private	void	cleanup(int what);
 private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
-private	void	badpath(sccs *s, delta *tot);
+private	void	badpath(sccs *s, ser_t tot);
 private	int	skipPatch(MMAP *p);
 private	void	getChangeSet(void);
 private	void	loadskips(void);
@@ -352,11 +352,11 @@ loadCollapsed(void)
  * XXX: when this function evolves to be called with a real sccs *
  * take out the hack in sccs_getInit to check sc->version != 0xff.
  */
-private	delta *
+private	ser_t
 getRecord(sccs *s, MMAP *f)
 {
 	int	e = 0;
-	delta	*d;
+	ser_t	d;
 
 	d = sccs_getInit(s, 0, f, DELTA_PATCH|DELTA_TAKEPATCH, &e, 0, 0);
 	if (!d || e) {
@@ -385,7 +385,7 @@ shout(void)
 private	int
 extractPatch(char *name, MMAP *p)
 {
-	delta	*tmp;
+	ser_t	tmp;
 	sccs	*s = 0;
 	sccs	*perfile = 0;
 	int	newFile = 0;
@@ -673,7 +673,7 @@ skipkey(sccs *s, char *dkey)
 private	int
 extractDelta(char *name, sccs *s, int newFile, MMAP *f, int *np)
 {
-	delta	*d, *parent = 0, *tmp;
+	ser_t	d, parent = 0, tmp;
 	char	buf[MAXPATH];
 	char	*b;
 	char	*pid = 0;
@@ -716,7 +716,7 @@ delta1:	off = mtell(f);
 	 * applying the patch will clear the flag and the code paths
 	 * are all happier this way.
 	 */
-	if ((tmp = sccs_findKey(s, buf)) && !DANGLING(tmp)) {
+	if ((tmp = sccs_findKey(s, buf)) && !DANGLING(s, tmp)) {
 		if (echo > 3) {
 			fprintf(stderr,
 			    "takepatch: delta %s already in %s, skipping it.\n",
@@ -764,7 +764,7 @@ save:	mseekto(f, off);
 		p->localFile = (s && (s != fake)) ? strdup(s->sfile) : 0;
 		sprintf(buf, "RESYNC/%s", name);
 		p->resyncFile = strdup(buf);
-		p->order = parent == d ? 0 : d->date;
+		p->order = parent == d ? 0 : DATE(s, d);
 		if (echo>6) fprintf(stderr, "REM: %s %s %lu\n",
 		    REV(s, d), p->me, p->order);
 		c = line;
@@ -776,11 +776,11 @@ save:	mseekto(f, off);
 		}
 		if (opts->fast) {
 			/* header and diff are not connected */
-			if (d->flags & D_META) p->meta = 1;
+			if (FLAGS(s, d) & D_META) p->meta = 1;
 			if (start != stop) {
 				p->diffMmap = mrange(start, stop, "b");
 			}
-		} else if (d->flags & D_META) {
+		} else if (FLAGS(s, d) & D_META) {
 			p->meta = 1;
 			assert(c == line);
 		} else {
@@ -791,7 +791,7 @@ save:	mseekto(f, off);
 		(*np)++;
 		insertPatch(p, 1);
 	}
-	sccs_freedelta(d);
+	sccs_freedelta(s, d);
 	if ((c = mpeekc(f)) != EOF) {
 		return (c != '=');
 	}
@@ -831,7 +831,7 @@ errorMsg(char *msg, char *arg1, char *arg2)
 }
 
 private	void
-badpath(sccs *s, delta *tot)
+badpath(sccs *s, ser_t tot)
 {
 	SHOUT();
 	getMsg2("tp_badpath", s->gfile, PATHNAME(s, tot), 0, stderr);
@@ -875,8 +875,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	patch	*p;
 	MMAP	*iF;
 	MMAP	*dF;
-	delta	*d = 0;
-	delta	*top = 0;
+	ser_t	d = 0;
+	ser_t	top = 0;
 	ser_t	remote_tagtip = 0;
 	int	n = 0;
 	int	c;
@@ -979,9 +979,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		/* passing in d = parent, setting d = new or existing */
 		if (d = cset_insert(s, iF, dF, d, opts->fast)) {
 			(*nfound)++;
-			p->serial = SERIAL(s, d);
-			if ((d->flags & D_REMOTE) && SYMGRAPH(d)) {
-				remote_tagtip = SERIAL(s, d);
+			p->serial = d;
+			if ((FLAGS(s, d) & D_REMOTE) && SYMGRAPH(s, d)) {
+				remote_tagtip = d;
 			}
 		}
 		p = p->next;
@@ -1001,13 +1001,13 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	if (remote_tagtip) {
 		d = sfind(s, remote_tagtip);
 		assert(d);
-		if (!SYMLEAF(d)) {
+		if (!SYMLEAF(s, d)) {
 			assert(CSET(s));
-			d->flags |= D_SYMLEAF;
+			FLAGS(s, d) |= D_SYMLEAF;
 			debug((stderr,
 				"takepatch: adding leaf to tag "
 				"delta %s (serial %d)\n",
-				REV(s, d), SERIAL(s, d)));
+				REV(s, d), d));
 		}
 	}
 	/*
@@ -1015,12 +1015,12 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	 * XXX: component moves looks will break this.
 	 */
 	if (opts->port && CSET(s)) for (d = 0, p = patchList; p; p = p->next) {
-		unless ((d = sfind(s, p->serial)) && (d->flags & D_REMOTE)) {
+		unless ((d = sfind(s, p->serial)) && (FLAGS(s, d) & D_REMOTE)) {
 			continue;
 		}
-		unless (d->pserial) continue;	/* rootkey untouched */
+		unless (PARENT(s, d)) continue;	/* rootkey untouched */
 
-		d->pathname = PARENT(s, d)->pathname;
+		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, PARENT(s, d));
 
 		if (proj_isComponent(s->proj) &&
 		    streq(proj_rootkey(proj_product(s->proj)),
@@ -1028,7 +1028,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			errorMsg("tp_portself", p->pid, s->sfile);
 			/*NOTREACHED*/
 		}
-		if (d->merge &&
+		if (MERGE(s, d) &&
 		    !streq(PATHNAME(s, MERGE(s, d)), PATHNAME(s, d))) {
 			errorMsg("tp_portmerge",
 			    PATHNAME(s, MERGE(s, d)), PATHNAME(s, d));
@@ -1049,7 +1049,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	if (cdb = loadCollapsed()) {
 		for (p = patchList; p; p = p->next) {
 			unless ((d = sfind(s, p->serial))
-			    && (d->flags & D_REMOTE)) {
+			    && (FLAGS(s, d) & D_REMOTE)) {
 				continue;
 			}
 			sccs_md5delta(s, d, buf);
@@ -1104,7 +1104,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	csets = fopen(csets_in, "w");
 	assert(csets);
 	for (p = patchList; p; p = p->next) {
-		unless ((d = sfind(s, p->serial)) && (d->flags & D_REMOTE)) {
+		unless ((d = sfind(s, p->serial)) && (FLAGS(s, d) & D_REMOTE)) {
 			continue;
 		}
 		sccs_sdelta(s, d, buf);
@@ -1122,21 +1122,21 @@ markup:
 		 * just clear all of them.  And mclose works if 0 passed in.
 		 */
 		mclose(p->diffMmap); /* win32: must mclose after cset_write */
-		unless ((d = sfind(s, p->serial)) && (d->flags & D_REMOTE)) {
+		unless ((d = sfind(s, p->serial)) && (FLAGS(s, d) & D_REMOTE)) {
 			continue;
 		}
-		d->flags |= D_SET; /* for resum() */
+		FLAGS(s, d) |= D_SET; /* for resum() */
 	}
 	if (topkey) top = sccs_findKey(s, topkey);
-	if (top && (DANGLING(top) || !(top->flags & D_CSET))) {
-		delta	*a, *b;
+	if (top && (DANGLING(s, top) || !(FLAGS(s, top) & D_CSET))) {
+		ser_t	a, b;
 
-		if (DANGLING(top) && sccs_findtips(s, &a, &b)) {
+		if (DANGLING(s, top) && sccs_findtips(s, &a, &b)) {
 			fprintf(stderr, "takepatch: monotonic file %s "
 			    "has dangling deltas\n", s->sfile);
 			goto err;
 		}
-		if (!(top->flags & D_CSET) && sccs_isleaf(s, top)) {
+		if (!(FLAGS(s, top) & D_CSET) && sccs_isleaf(s, top)) {
 			/* uncommitted error for dangling is backward compat */
 			SHOUT();
 			getMsg("tp_uncommitted", s->gfile, 0, stderr);
@@ -1155,8 +1155,8 @@ markup:
 		}
 		if (echo == 3) progress_nldone();
 	} else if (!BAM(s)) {
-		for (d = s->table; d; d = NEXT(d)) {
-			unless ((d->flags & D_SET) && !TAG(d)) continue;
+		for (d = s->table; d; d = NEXT(s, d)) {
+			unless ((FLAGS(s, d) & D_SET) && !TAG(s, d)) continue;
 			c = sccs_resum(s, d, 0, 0);
 			if (c & 2) {
 				getMsg("takepatch-chksum", 0, '=', stderr);
@@ -1201,7 +1201,7 @@ noupdates(char *localPath)
 	char    *resync = aprintf("RESYNC/%s", localPath);
 	int	rc = 0, i = 0;
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	FILE	*f;
 	char	*p, buf[MAXKEY*2], key[MAXKEY];
 	
@@ -1231,14 +1231,14 @@ noupdates(char *localPath)
 		unless (streq(key, buf)) continue;
 		d = sccs_findKey(s, p);
 		assert(d);
-		if (d->flags & D_CSET) continue;
+		if (FLAGS(s, d) & D_CSET) continue;
 		if (echo > 4) {
 			fprintf(stderr,"MARK(%s|%s)\n", s->gfile, REV(s, d));
 		}
-		d->flags |= D_CSET;
+		FLAGS(s, d) |= D_CSET;
 	}
 	pclose(f);
-	unless (sccs_top(s)->flags & D_CSET) {
+	unless (FLAGS(s, sccs_top(s)) & D_CSET) {
 		SHOUT();
 		getMsg("tp_uncommitted",
 		    s->gfile + strlen(ROOT2RESYNC) + 1, 0, stderr);
@@ -1264,7 +1264,7 @@ applyPatch(char *localPath, sccs *perfile)
 	MMAP	*iF;
 	MMAP	*dF;
 	sccs	*s = 0;
-	delta	*d = 0;
+	ser_t	d = 0;
 	int	newflags;
 	int	pending = 0;
 	int	n = 0;
@@ -1317,17 +1317,17 @@ applyPatch(char *localPath, sccs *perfile)
 		    "stripdel %s from %s\n", tableGCA, s->sfile);
 	}
 	if (d = sccs_prev(s, sccs_findKey(s, tableGCA))) {
-		delta	*e;
+		ser_t	e;
 
-		for (e = s->table; e; e = NEXT(e)) {
-			e->flags |= D_SET|D_GONE;
+		for (e = s->table; e; e = NEXT(s, e)) {
+			FLAGS(s, e) |= D_SET|D_GONE;
 		    	if (echo>7) {
 				char	k[MAXKEY];
 
 				sccs_sdelta(s, e, k);
 				fprintf(stderr, "STRIP %s/%u/%c %s\n",
-				    REV(s, e), SERIAL(s, e),
-				    TAG(e) ? 'R' : 'D',
+				    REV(s, e), e,
+				    TAG(s, e) ? 'R' : 'D',
 				    k);
 			}
 			if (e == d) break;
@@ -1466,9 +1466,9 @@ apply:
 		 */
 		if (!d && p->meta) continue;
 		assert(d);
-		if (p->remote) d->flags |= D_REMOTE;
+		if (p->remote) FLAGS(s, d) |= D_REMOTE;
 		if (CSET(s)) continue;
-		if (sccs_isleaf(s, d) && !(d->flags & D_CSET)) pending++;
+		if (sccs_isleaf(s, d) && !(FLAGS(s, d) & D_CSET)) pending++;
 	}
 	if (pending) {
 		sccs_free(s);
@@ -1508,10 +1508,10 @@ apply:
 private	int
 getLocals(sccs *s, char *name)
 {
-	delta	*g = sccs_findKey(s, tableGCA);
+	ser_t	g = sccs_findKey(s, tableGCA);
 	FILE	*t;
 	patch	*p;
-	delta	*d;
+	ser_t	d;
 	int	n = 0;
 	static	char tmpf[MAXPATH];	/* don't allocate on stack */
 
@@ -1521,18 +1521,18 @@ getLocals(sccs *s, char *name)
 		fprintf(stderr, "getlocals(%s, %s, %s)\n",
 		    s->gfile, REV(s, g), name);
 	}
-	for (d = s->table; d != g; d = NEXT(d)) {
+	for (d = s->table; d != g; d = NEXT(s, d)) {
 		/*
 		 * Silently discard removed deltas, we don't support them.
 		 */
-		if (TAG(d) && !(d->flags & D_META)) continue;
+		if (TAG(s, d) && !(FLAGS(s, d) & D_META)) continue;
 
 		/*
 		 * If we are dangling, don't insert the local delta if
 		 * it is already in the patch list.  In applyPatch()
 		 * we'll undangle the delta.
 		 */
-		if (DANGLING(d)) {
+		if (DANGLING(s, d)) {
 			char	key[MAXPATH];
 
 			sccs_sdelta(s, d, key);
@@ -1564,7 +1564,7 @@ getLocals(sccs *s, char *name)
 		sprintf(tmpf, "RESYNC/%s", name);
 		p->resyncFile = strdup(tmpf);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", fileNum);
-		unless (d->flags & D_META) {
+		unless (FLAGS(s, d) & D_META) {
 			p->diffFile = strdup(tmpf);
 			sccs_restart(s);
 			if (sccs_getdiffs(s, REV(s, d), GET_BKDIFFS, tmpf)) {
@@ -1581,7 +1581,7 @@ getLocals(sccs *s, char *name)
 		p->me = strdup(tmpf);
 		sccs_sortkey(s, d, tmpf);
 		p->sortkey = strdup(tmpf);
-		p->order = d->date;
+		p->order = DATE(s, d);
 		if (echo>6) {
 			fprintf(stderr,
 			    "LOCAL: %s %s %lu\n", REV(s, d), p->me, p->order);
@@ -1765,7 +1765,7 @@ sfio(MMAP *m)
 	char	*t;
 	FILE	*f = 0;
 	sccs	*s = 0, *sr = 0;
-	delta	*d;
+	ser_t	d;
 	size_t	left, n;
 	char	*flist;
 	int	rc = -1, rlen;
@@ -1836,7 +1836,7 @@ sfio(MMAP *m)
 			edited = addLine(edited, sccs2name(s->sfile));
 			goto err;
 		}
-		if (DANGLING(s->table)) {
+		if (DANGLING(s, s->table)) {
 			fprintf(stderr, "takepatch: monotonic file %s "
 			    "has dangling deltas\n", s->sfile);
 			goto err;
@@ -1854,7 +1854,7 @@ sfio(MMAP *m)
 			 */
 
 			/* because of pending deltas? */
-			unless (s->table->flags & D_CSET) {
+			unless (FLAGS(s, s->table) & D_CSET) {
 				SHOUT();
 				getMsg("tp_uncommitted", s->sfile, 0, stderr);
 			} else {
@@ -1868,11 +1868,11 @@ sfio(MMAP *m)
 		range_walkrevs(sr, d, 0, 0, 0,
 		    walkrevs_setFlags, (void*)D_REMOTE);
 		/*
-		 * techically, d->flags |= D_LOCAL, but D_LOCAL goes away
+		 * techically, FLAGS(s, d) |= D_LOCAL, but D_LOCAL goes away
 		 * in /home/bk/bk and the way resolveFiles is written, it
 		 * does the right thing with or without D_LOCAL.
 		 */
-		d->flags |= D_LOCAL;
+		FLAGS(s, d) |= D_LOCAL;
 		if (sccs_resolveFiles(sr) < 0) goto err;
 		sccs_free(s);
 		sccs_free(sr);

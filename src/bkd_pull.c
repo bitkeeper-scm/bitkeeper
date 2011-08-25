@@ -100,7 +100,7 @@ cmd_pull_part2(int ac, char **av)
 	int	i;
 	FILE	*f;
 	sccs	*cset;
-	delta	*d;
+	ser_t	d;
 	int	pkflags = PK_LKEY;
 	remote	r;
 	pid_t	pid;
@@ -184,7 +184,7 @@ cmd_pull_part2(int ac, char **av)
 		while (fnext(buf, f)) {
 			chomp(buf);
 			d = sccs_findKey(cset, buf);
-			unless (TAG(d)) {
+			unless (TAG(cset, d)) {
 				printf("%c%s\n", BKD_DATA, REV(cset, d));
 			}
 		}

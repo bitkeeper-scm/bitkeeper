@@ -53,25 +53,25 @@ next:		sccs_free(s);
 private int
 xflagsDefault(sccs *s, int cset, int what)
 {
-	int	xf = s->tree->xflags;
+	int	xf = XFLAGS(s, s->tree);
 	int	ret = 0;
 
 	unless (xf) {
 		unless (what & XF_DRYRUN) s->state &= ~S_READ_ONLY;
-		s->tree->flags |= D_XFLAGS;
-		s->tree->xflags = X_DEFAULT;
+		FLAGS(s, s->tree) |= D_XFLAGS;
+		XFLAGS(s, s->tree) = X_DEFAULT;
 		ret = 1;
 	}
 	/* for old binaries */
 	unless ((xf & X_REQUIRED) == X_REQUIRED) {
 		unless (what & XF_DRYRUN) s->state &= ~S_READ_ONLY;
-		s->tree->xflags |= X_REQUIRED;
+		XFLAGS(s, s->tree) |= X_REQUIRED;
 		ret = 1;
 	}
 	if (cset && ((xf & (X_SCCS|X_RCS)) || !(xf & X_HASH))) {
 		unless (what & XF_DRYRUN) s->state &= ~S_READ_ONLY;
-		s->tree->xflags &= ~(X_SCCS|X_RCS);
-		s->tree->xflags |= X_HASH;
+		XFLAGS(s, s->tree) &= ~(X_SCCS|X_RCS);
+		XFLAGS(s, s->tree) |= X_HASH;
 		ret = 1;
 	}
 	return (ret);
@@ -85,10 +85,10 @@ private int
 xflags(sccs *s, int what)
 {
 	int	ret = 0;
-	delta	*d;
+	ser_t	d;
 
-	EACHP(s->slist, d) {
-		unless (d->flags) continue;
+	for (d = s->tree; d < s->nextserial; d++) {
+		unless (FLAGS(s, d)) continue;
 
 		ret |= checkXflags(s, d, what);
 	}
@@ -96,7 +96,7 @@ xflags(sccs *s, int what)
 }
 
 int
-checkXflags(sccs *s, delta *d, int what)
+checkXflags(sccs *s, ser_t d, int what)
 {
 	char	*t, *f;
 	u32	old, new, want, added = 0, deleted = 0, *p;
@@ -104,11 +104,11 @@ checkXflags(sccs *s, delta *d, int what)
 	char	key[MD5LEN];
 
 	if (d == s->tree) {
-		unless ((d->xflags & X_REQUIRED) == X_REQUIRED) {
+		unless ((XFLAGS(s, d) & X_REQUIRED) == X_REQUIRED) {
 			if (what & XF_STATUS) return (1);
 			fprintf(stderr,
 			    "%s: missing required flag[s]: ", s->gfile);
-			want = ~(d->xflags & X_REQUIRED) & X_REQUIRED;
+			want = ~(XFLAGS(s, d) & X_REQUIRED) & X_REQUIRED;
 			fputs(xflags2a(want), stderr);
 			fprintf(stderr, "\n");
 			return (1);
@@ -131,7 +131,7 @@ checkXflags(sccs *s, delta *d, int what)
 		unless (strneq(t, " flag", 5)) continue;
 		*t = 0; *p |= a2xflag(f); *t = ' ';
 	}
-	assert(d->pserial);
+	assert(PARENT(s, d));
 	old = sccs_xflags(s, PARENT(s, d));
 	new = sccs_xflags(s, d);
 	want = old | added;
@@ -147,7 +147,7 @@ checkXflags(sccs *s, delta *d, int what)
 	 * XXX: this is fixed by rmshortkeys -- so safe to pull when
 	 * all repos have been converted.
 	 */
-	if (s->tree->date == 864023369) {
+	if (DATE(s, s->tree) == 864023369) {
 		sccs_md5delta(s, s->tree, key);
 		if (streq("337f90d8qZwQGPzUrQ-3E6KGSH4k4g", key)) return (0);
 	}
@@ -178,8 +178,8 @@ checkXflags(sccs *s, delta *d, int what)
 		return (1);
 	}
 	s->state &= ~S_READ_ONLY;
-	d->flags |= D_XFLAGS;
-	d->xflags = want;
+	FLAGS(s, d) |= D_XFLAGS;
+	XFLAGS(s, d) = want;
 	return (1);
 }
 

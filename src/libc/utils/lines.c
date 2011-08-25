@@ -163,6 +163,23 @@ reverseLines(char **space)
 }
 
 void
+_reverseArray(void *space, int size)
+{
+	int	i, end;
+	u8	tmp[size], *arr = (u8 *)space;
+
+	end = nLines(space);
+	i = 1;
+	while (i < end) {
+		memcpy(&tmp, &arr[i * size], size);
+		memcpy(&arr[i * size], &arr[end * size], size);
+		memcpy(&arr[end * size], &tmp, size);
+		++i;
+		--end;
+	}
+}
+
+void
 _sortArray(void *space, int (*compar)(const void *, const void *), int size)
 {
 	if (!space) return;

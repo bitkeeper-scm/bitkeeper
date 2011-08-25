@@ -76,7 +76,7 @@ doit(char *file, char *cvsbranch)
 	RCS	*r;
 	char	*sfile;
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 
 	sfile = sccsname(file);
 	if (exists(sfile)) {

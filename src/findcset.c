@@ -17,11 +17,11 @@ private void	mkDeterministicKeys(void);
 private	int	openTags(char *tagfile);
 private	char *	readTag(time_t *tagDate);
 private	void	closeTags(void);
-private int	do_patch(sccs *s, delta *d, char *tag,
+private int	do_patch(sccs *s, ser_t d, char *tag,
 		    char *tagparent, FILE *out);
-private	void	preloadView(sccs *s, MDBM *db, delta *d);
+private	void	preloadView(sccs *s, MDBM *db, ser_t d);
 private	void	free_dinfo(void *x);
-private	dinfo	*delta2dinfo(sccs *s, delta *d);
+private	dinfo	*delta2dinfo(sccs *s, ser_t d);
 
 private	char	**list;
 private	char	**flist, **keylist;
@@ -101,16 +101,16 @@ findcset_main(int ac, char **av)
 	 * b) strip for all delta after 1.1 in the ChangeSet file
 	 */
 	if (opts.ignoreCsetMarker) {
-		delta	*d;
+		ser_t	d;
 		int	didone = 0;
 
 		s = sccs_init(CHANGESET, INIT_NOCKSUM|flags);
 		assert(s);
-		for (d = s->table; d; d = NEXT(d)) {
+		for (d = s->table; d; d = NEXT(s, d)) {
 			if (!streq(REV(s, d), "1.0") &&
 			    !streq(REV(s, d), "1.1")) {
-				d->flags &= ~D_CSET;
-				d->flags |= D_SET|D_GONE;
+				FLAGS(s, d) &= ~D_CSET;
+				FLAGS(s, d) |= D_SET|D_GONE;
 				didone = 1;
 			}
 		}
@@ -220,7 +220,7 @@ dumpCsetMark(void)
 	char	**revlist;
 	char	*gfile;
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	int	flags = INIT_NOCKSUM|SILENT;
 	int	i;
 	ser_t	findex;
@@ -243,7 +243,7 @@ dumpCsetMark(void)
 		EACH(revlist) {
 			d = sccs_findrev(s, revlist[i]);
 			assert(d);
-			d->flags |= D_CSET;
+			FLAGS(s, d) |= D_CSET;
 			if (opts.verbose > 1) {
 				fprintf(stderr, "\t%s\n", REV(s, d));
 			}
@@ -501,12 +501,12 @@ sameStr(char *s1, char *s2)
  * Fix up date/timezone/user/hostname of delta 'd' to match 'template'
  */
 private  void
-fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
+fix_delta(sccs *s, dinfo *template, ser_t d, int fudge)
 {
 	char	buf[MAXLINE];
 
 	if ((opts.verbose > 1) && (fudge != -1)) {
-		if ((template->date == d->date) &&
+		if ((template->date == DATE(s, d)) &&
 		    sameStr(template->zone, ZONE(s, d)) &&
 		    sameStr(template->user, USER(s, d)) &&
 		    sameStr(template->hostname, HOSTNAME(s, d))) {
@@ -523,17 +523,17 @@ fix_delta(sccs *s, dinfo *template, delta *d, int fudge)
 	 * Fix time zone and date
 	 */
 	if (template->zone) {
-		d->zone = sccs_addUniqStr(s, template->zone);
+		ZONE_SET(s, d, template->zone);
 	} else {
-		d->zone = 0;
+		ZONE_SET(s, d, 0);
 	}
 
-	d->date = template->date;
+	DATE_SET(s, d, template->date);
 	if (fudge != -1) { /* -1 => do not fudge the date */
-		d->dateFudge = template->dateFudge + fudge;
-		d->date += fudge;
+		DATE_FUDGE_SET(s, d, template->dateFudge + fudge);
+		DATE_SET(s, d, (DATE(s, d) + fudge));
 	} else {
-		assert(d->dateFudge == 0);
+		assert(DATE_FUDGE(s, d) == 0);
 	}
 
 	/*
@@ -558,7 +558,7 @@ mkDeterministicKeys(void)
 {
 	int	iflags = INIT_NOCKSUM|INIT_MUSTEXIST|SILENT;
 	sccs	*cset;
-	delta	*d2;
+	ser_t	d2;
 
 	cset = sccs_init(CHANGESET, iflags);
 	assert(cset);
@@ -572,7 +572,7 @@ mkDeterministicKeys(void)
 	assert(oldest);
 	d2 = cset->tree;
 	fix_delta(cset, oldest, d2, 0);
-	d2->sum = oldest->sum;
+	SUM_SET(cset, d2, oldest->sum);
 	d2 = sccs_kid(cset, d2);
 	assert(d2);
 	fix_delta(cset, oldest, d2, 1);
@@ -599,7 +599,7 @@ typedef struct {
 
 /*
  * output a cset to cur->patch to similate a makepatch entry
- * Build up a delta *e with enough data to get sccs_prs() to do the
+ * Build up a delta e with enough data to get sccs_prs() to do the
  * heavy lifting.  Manually generate all the other patch info.
  *
  * NOTE: e is never woven into the cset graph, no parent or kid set.
@@ -615,7 +615,7 @@ mkCset(mkcs_t *cur, dinfo *d)
 	ser_t	k;
 	kvpair	kv, vk;
 	dinfo	*top;
-	delta	*e = new(delta);
+	ser_t	e = sccs_newdelta(cur->cset);
 	char	dkey[MAXKEY];
 	char	dline[2 * MAXKEY + 4];
 	char	**lines;
@@ -631,7 +631,7 @@ mkCset(mkcs_t *cur, dinfo *d)
 
 	/* More into 'e' from sccs * and by hand. */
 	e = sccs_dInit(e, 'D', cur->cset, 1);
-	e->flags |= D_CSET; /* copied from cset.c, probably redundant */
+	FLAGS(cur->cset, e) |= D_CSET; /* copied from cset.c, probably redundant */
 	comments = db2line(cur->csetComment);
 	comments_set(cur->cset, e, comments);
 	freeLines(comments, free);
@@ -690,27 +690,31 @@ mkCset(mkcs_t *cur, dinfo *d)
 		}
 		added++;
 	}
-	e->added = added;
-	e->sum = cur->sum;
+	ADDED_SET(cur->cset, e, added);
+	SUM_SET(cur->cset, e, cur->sum);
 //  fprintf(stderr, "SUM=%u\n", e->sum);
 	/* Some hacks to get sccs_prs to do some work for us */
 	cur->cset->rstart = cur->cset->rstop = e;
-	if (cur->cset->tree->pathname && !e->pathname) {
-		e->pathname = cur->cset->tree->pathname;
+	if (HAS_PATHNAME(cur->cset, cur->cset->tree) &&
+	    !HAS_PATHNAME(cur->cset, e)) {
+		PATHNAME_INDEX(cur->cset, e) =
+		    PATHNAME_INDEX(cur->cset, cur->cset->tree);
 	}
-	if (cur->cset->tree->zone && !e->zone) {
-		e->zone = cur->cset->tree->zone;
+	if (HAS_ZONE(cur->cset, cur->cset->tree) &&
+	    !HAS_ZONE(cur->cset, e)) {
+		ZONE_INDEX(cur->cset, e) =
+		    ZONE_INDEX(cur->cset, cur->cset->tree);
 	}
 	sprintf(dkey, "1.%u", ++cur->rev);
 	sccs_parseArg(cur->cset, e, 'R', dkey, 0);
 
-	unless (cur->date < e->date) {
-		int	fudge = (cur->date - e->date) + 1;
+	unless (cur->date < DATE(cur->cset, e)) {
+		int	fudge = (cur->date - DATE(cur->cset, e)) + 1;
 
-		e->date += fudge;
-		e->dateFudge += fudge;
+		DATE_SET(cur->cset, e, (DATE(cur->cset, e) + fudge));
+		DATE_FUDGE_SET(cur->cset, e, (DATE_FUDGE(cur->cset, e) + fudge));
 	}
-	cur->date = e->date;
+	cur->date = DATE(cur->cset, e);
 
 	/*
 	 * All the data has been faked into place.  Now generate a
@@ -730,13 +734,13 @@ mkCset(mkcs_t *cur, dinfo *d)
 	freeLines(lines, free);
 	if (cur->tip) free_dinfo(cur->tip);
 	cur->tip = delta2dinfo(cur->cset, e);
-	sccs_freedelta(e);
+	sccs_freedelta(cur->cset, e);
 }
 
 private void
 mkTag(mkcs_t *cur, char *tag)
 {
-	delta	*e = new(delta);
+	ser_t	e = sccs_newdelta(cur->cset);
 	char	dkey[MAXKEY];
 	char	*tagparent = cur->tagparent[0] ? cur->tagparent : 0;
 
@@ -750,27 +754,31 @@ mkTag(mkcs_t *cur, char *tag)
 
 	/* More into 'e' from sccs * and by hand. */
 	e = sccs_dInit(e, 'R', cur->cset, 1);
-	e->comments = 0;
+	COMMENTS_SET(cur->cset, e, 0);
 
 	/* Some hacks to get sccs_prs to do some work for us */
 	cur->cset->rstart = cur->cset->rstop = e;
-	if (cur->cset->tree->pathname && !e->pathname) {
-		e->pathname = cur->cset->tree->pathname;
+	if (HAS_PATHNAME(cur->cset, cur->cset->tree) &&
+	    !HAS_PATHNAME(cur->cset, e)) {
+		PATHNAME_INDEX(cur->cset, e) =
+		    PATHNAME_INDEX(cur->cset, cur->cset->tree);
 	}
-	if (cur->cset->tree->zone && !e->zone) {
-		e->zone = cur->cset->tree->zone;
+	if (HAS_ZONE(cur->cset, cur->cset->tree) &&
+	    !HAS_ZONE(cur->cset, e)) {
+		ZONE_INDEX(cur->cset, e) =
+		    ZONE_INDEX(cur->cset, cur->cset->tree);
 	}
 	sprintf(dkey, "1.%u", cur->rev);
 	sccs_parseArg(cur->cset, e, 'R', dkey, 0);
 
-	unless (cur->date < e->date) {
-		int	fudge = (cur->date - e->date) + 1;
+	unless (cur->date < DATE(cur->cset, e)) {
+		int	fudge = (cur->date - DATE(cur->cset, e)) + 1;
 
-		e->date += fudge;
-		e->dateFudge += fudge;
+		DATE_SET(cur->cset, e, (DATE(cur->cset, e) + fudge));
+		DATE_FUDGE_SET(cur->cset, e, (DATE_FUDGE(cur->cset, e) + fudge));
 	}
-	cur->date = e->date;
-	e->flags |= D_SYMGRAPH | D_SYMLEAF;
+	cur->date = DATE(cur->cset, e);
+	FLAGS(cur->cset, e) |= D_SYMGRAPH | D_SYMLEAF;
 
 	/*
 	 * All the data has been faked into place.  Now generate a
@@ -781,11 +789,11 @@ mkTag(mkcs_t *cur, char *tag)
 	if (do_patch(cur->cset, e, tag, tagparent, cur->patch)) exit(1);
 	fputs("\n\n", cur->patch);
 	sccs_sdelta(cur->cset, e, cur->tagparent);
-	sccs_freedelta(e);
+	sccs_freedelta(cur->cset, e);
 }
 
 private	void
-preloadView(sccs *s, MDBM *db, delta *d)
+preloadView(sccs *s, MDBM *db, ser_t d)
 {
 	kvpair	kv;
 	sum_t	linesum, sumch;
@@ -911,7 +919,7 @@ findcset(void)
 	dinfo	*d = 0, *previous;
 	datum	key, val;
 	FILE	*f;
-	delta	*d2;
+	ser_t	d2;
 	time_t	now, tagDate = 0;
 	char	*nextTag;
 	int	ret;
@@ -961,8 +969,8 @@ findcset(void)
 
 	d2 = sccs_top(cur.cset);
 	sccs_sdelta(cur.cset, d2, cur.parent);
-	cur.sum = d2->sum;
-	cur.date = d2->date;
+	cur.sum = SUM(cur.cset, d2);
+	cur.date = DATE(cur.cset, d2);
 	preloadView(cur.cset, cur.view, d2);
 
 	nextTag = readTag(&tagDate);
@@ -1057,22 +1065,22 @@ free_dinfo(void *x)
 }
 
 private	dinfo *
-delta2dinfo(sccs *s, delta *d)
+delta2dinfo(sccs *s, ser_t d)
 {
 	dinfo	*di = new(dinfo);
 	char	key[MAXKEY];
 
 	assert(di);
-	di->date = d->date;
-	di->dateFudge = d->dateFudge;
-	di->sum = d->sum;
+	di->date = DATE(s, d);
+	di->dateFudge = DATE_FUDGE(s, d);
+	di->sum = SUM(s, d);
 	di->rev = strdup(REV(s, d));
-	if (d->zone) di->zone = strdup(ZONE(s, d));
+	if (HAS_ZONE(s, d)) di->zone = strdup(ZONE(s, d));
 	di->user = strdup(USER(s, d));
 	assert(*di->user);
 	if (strchr(USERHOST(s, d), '@')) di->hostname = strdup(HOSTNAME(s, d));
-	if (d->pathname) di->pathname = strdup(PATHNAME(s, d));
-	if (d->comments) di->comments = strdup(COMMENTS(s, d));
+	if (HAS_PATHNAME(s, d)) di->pathname = strdup(PATHNAME(s, d));
+	if (HAS_COMMENTS(s, d)) di->comments = strdup(COMMENTS(s, d));
 	sccs_sdelta(s, d, key);
 	di->dkey = strdup(key);
 	return (di);
@@ -1084,7 +1092,7 @@ delta2dinfo(sccs *s, delta *d)
 private dinfo *
 findFirstDelta(sccs *s, dinfo *first)
 {
-	delta	*d = sccs_findrev(s, "1.1");
+	ser_t	d = sccs_findrev(s, "1.1");
 
 	unless (d) return (first);
 
@@ -1092,7 +1100,7 @@ findFirstDelta(sccs *s, dinfo *first)
 	 * Skip teamware dummy user
 	 * XXX - there can be more than one.
 	 */
-	if ((d->date == 0) && streq(USER(s, d), "Fake")) {
+	if ((DATE(s, d) == 0) && streq(USER(s, d), "Fake")) {
 		d = sccs_kid(s, d);
 	}
 	unless (d) return (first);
@@ -1101,7 +1109,7 @@ findFirstDelta(sccs *s, dinfo *first)
 	 * XXX TODO If d->date == first->date
 	 * we need to sort on sfile name
 	 */
-	if ((first == NULL) || (d->date < first->date)) {
+	if ((first == NULL) || (DATE(s, d) < first->date)) {
 		if (first) free_dinfo(first);
 		first = delta2dinfo(s, d);
 	}
@@ -1114,7 +1122,7 @@ findFirstDelta(sccs *s, dinfo *first)
 private	void
 mkList(sccs *s, int fileIdx)
 {
-	delta	*d;
+	ser_t	d;
 	dinfo	*di;
 
 	assert(fileIdx > 0);
@@ -1124,8 +1132,8 @@ mkList(sccs *s, int fileIdx)
 	 */
 	d = sccs_top(s);
 	while (d) {
-		assert(!d->r[2]);
-		if (d->flags & D_CSET) break;
+		assert(!R2(s, d));
+		if (FLAGS(s, d) & D_CSET) break;
 
 		/*
 		 * Skip 1.0 delta, we do not want a 1.0 delta
@@ -1133,12 +1141,12 @@ mkList(sccs *s, int fileIdx)
 		 * delta in a cset should be 1.1 or higher.
 		 */
 		if (d == s->tree) break;
-		d->flags |= D_SET;
+		FLAGS(s, d) |= D_SET;
 		d = PARENT(s, d);
 	}
 
-	for (d = s->table; d; d = NEXT(d)) {
-		if (d->flags & D_SET) {
+	for (d = s->table; d; d = NEXT(s, d)) {
+		if (FLAGS(s, d) & D_SET) {
 			/*
 			 * Collect marked delta into "list"
 			 */
@@ -1195,49 +1203,49 @@ closeTags(void)
  */
 
 private int
-do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
+do_patch(sccs *s, ser_t d, char *tag, char *tagparent, FILE *out)
 {
 	int	len;
 	char	*p, *t;
 	char	type;
 
 	if (!d) return (0);
-	type = TAG(d) ? 'M' : 'D';
+	type = TAG(s, d) ? 'M' : 'D';
 
 	fprintf(out, "%c %s %s%s %s +%u -%u\n",
 	    type, REV(s, d), delta_sdate(s, d),
 	    ZONE(s, d),
 	    USERHOST(s, d),
-	    d->added, d->deleted);
+	    ADDED(s, d), DELETED(s, d));
 
 	/*
 	 * Order from here down is alphabetical.
 	 */
-	if (d->csetFile) fprintf(out, "B %s\n", CSETFILE(s, d));
-	if (d->flags & D_CSET) fprintf(out, "C\n");
-	if (DANGLING(d)) fprintf(out, "D\n");
+	if (HAS_CSETFILE(s, d)) fprintf(out, "B %s\n", CSETFILE(s, d));
+	if (FLAGS(s, d) & D_CSET) fprintf(out, "C\n");
+	if (DANGLING(s, d)) fprintf(out, "D\n");
 	t = COMMENTS(s, d);
 	while (p = eachline(&t, &len)) fprintf(out, "c %.*s\n", len, p);
-	if (d->dateFudge) fprintf(out, "F %d\n", (int)d->dateFudge);
-	assert(!d->cludes);
-	if (d->flags & D_CKSUM) {
-		fprintf(out, "K %u\n", d->sum);
+	if (DATE_FUDGE(s, d)) fprintf(out, "F %d\n", (int)DATE_FUDGE(s, d));
+	assert(!HAS_CLUDES(s, d));
+	if (FLAGS(s, d) & D_CKSUM) {
+		fprintf(out, "K %u\n", SUM(s, d));
 	}
-	assert(!d->merge);
-	if (d->pathname) fprintf(out, "P %s\n", PATHNAME(s, d));
-	if (d->random) fprintf(out, "R %s\n", RANDOM(s, d));
+	assert(!MERGE(s, d));
+	if (HAS_PATHNAME(s, d)) fprintf(out, "P %s\n", PATHNAME(s, d));
+	if (HAS_RANDOM(s, d)) fprintf(out, "R %s\n", RANDOM(s, d));
 	if (tag) {
 		fprintf(out, "S %s\n", tag);
-		if (SYMGRAPH(d)) fprintf(out, "s g\n");
-		if (SYMLEAF(d)) fprintf(out, "s l\n");
+		if (SYMGRAPH(s, d)) fprintf(out, "s g\n");
+		if (SYMLEAF(s, d)) fprintf(out, "s l\n");
 		if (tagparent) {
 			fprintf(out, "s %s\n", tagparent);
 		}
-		assert (!d->mtag);
+		assert (!MTAG(s, d));
 	}
-	if (d->flags & D_XFLAGS) {
-		assert((d->xflags & X_EOLN_UNIX) == 0);
-		fprintf(out, "X 0x%x\n", d->xflags);
+	if (FLAGS(s, d) & D_XFLAGS) {
+		assert((XFLAGS(s, d) & X_EOLN_UNIX) == 0);
+		fprintf(out, "X 0x%x\n", XFLAGS(s, d));
 	}
 	fprintf(out, "------------------------------------------------\n");
 	return (0);

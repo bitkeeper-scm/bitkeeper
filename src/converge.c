@@ -236,8 +236,8 @@ converge(State *g, char *gfile, char *opts)
 	sccs_clean(srm, SILENT);
 
 	/* pick the older sfile */
-	if ((sccs_ino(srm)->date < sccs_ino(skeep)->date) ||
-	    ((sccs_ino(srm)->date == sccs_ino(skeep)->date) &&
+	if ((DATE(srm, sccs_ino(srm)) < DATE(skeep, sccs_ino(skeep))) ||
+	    ((DATE(srm, sccs_ino(srm)) == DATE(skeep, sccs_ino(skeep))) &&
 		(strcmp(key_rm, key_keep) < 0))) {
 		s = skeep;
 		skeep = srm;

@@ -42,7 +42,7 @@ sccs_mv(char	*name,
 	char	*sname = 0, *gfile = 0, *sfile = 0, *ogfile = 0, *osfile = 0;
 	char	**xlist = NULL;
 	sccs	*s = 0;
-	delta	*d;
+	ser_t	d;
 	int	error = 0, was_edited = 0, has_diffs = 0;
 	int	i, flags;
 	pfile   pf;

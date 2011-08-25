@@ -332,7 +332,7 @@ private sccs *
 chk_sfile(char *name, STATE state)
 {
 	char	*s, *relp, *gname;
-	delta	*d;
+	ser_t	d;
 	sccs	*sc = 0;
 
 	s = strrchr(name, '/');
@@ -372,7 +372,7 @@ chk_sfile(char *name, STATE state)
 			gname = sccs2name(name);
 			relp = proj_relpath(proj, gname);
 			free(gname);
-			unless (d->pathname && patheq(relp, PATHNAME(sc, d))) {
+			unless (HAS_PATHNAME(sc, d) && patheq(relp, PATHNAME(sc, d))) {
 				state[NSTATE] = 'n';
 			}
 			free(relp);
@@ -402,7 +402,7 @@ sccs_isPending(char *gfile)
 	unless (s = sccs_init(sfile, SILENT|INIT_NOCKSUM|INIT_MUSTEXIST)) {
 		goto out;
 	}
-	unless (sccs_top(s)->flags & D_CSET) rc = 1;
+	unless (FLAGS(s, sccs_top(s)) & D_CSET) rc = 1;
 	sccs_free(s);
 out:	free(sfile);
 	return (rc);
@@ -411,7 +411,7 @@ out:	free(sfile);
 private void
 chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 {
-	delta	*d;
+	ser_t	d;
 	int	local_s = 0, printed = 0;
 	char	buf[MAXPATH], *dfile = 0, *p;
 
@@ -467,18 +467,18 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 	 */
 	state[PSTATE] = ' ';
 	unless (d = sccs_top(s))  goto out;	
-	if (d->flags & D_CSET) goto out;
+	if (FLAGS(s, d) & D_CSET) goto out;
 
 	/*
 	 * If it is out of view, we need to look at all leaves and see if
 	 * there is a problem or not.
 	 */
 	if (s->defbranch && streq(s->defbranch, "1.0")) {
-		for (d = s->table; d; d = NEXT(d)) {
-			unless (!TAG(d) && sccs_isleaf(s, d)) {
+		for (d = s->table; d; d = NEXT(s, d)) {
+			unless (!TAG(s, d) && sccs_isleaf(s, d)) {
 				continue;
 			}
-			unless (d->flags & D_CSET) break;
+			unless (FLAGS(s, d) & D_CSET) break;
 		}
 		unless (d) goto out;
 		fprintf(stderr,
@@ -486,28 +486,28 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 		goto out;
 	}
 
-	assert(!(d->flags & D_CSET));
+	assert(!(FLAGS(s, d) & D_CSET));
 	state[PSTATE] = 'p';
 	if (opts.Aflg) {
 		int	marked;
-		delta	*e;
+		ser_t	e;
 		
-		d->flags |= D_RED;
+		FLAGS(s, d) |= D_RED;
 		marked = 1;
 
-		for (/* set */; marked && d; d = NEXT(d)) {
-			unless (d->flags & D_RED) continue;
-			d->flags &= ~D_RED;
+		for (/* set */; marked && d; d = NEXT(s, d)) {
+			unless (FLAGS(s, d) & D_RED) continue;
+			FLAGS(s, d) &= ~D_RED;
 			marked--;
 			do_print(state, gfile, REV(s, d));
 			if ((e = PARENT(s,d)) &&
-			    !(e->flags & (D_CSET|D_RED))) {
-				e->flags |= D_RED;
+			    !(FLAGS(s, e) & (D_CSET|D_RED))) {
+				FLAGS(s, e) |= D_RED;
 				marked++;
 			}
 			if ((e = MERGE(s,d)) &&
-			    !(e->flags & (D_CSET|D_RED))) {
-				e->flags |= D_RED;
+			    !(FLAGS(s, e) & (D_CSET|D_RED))) {
+				FLAGS(s, e) |= D_RED;
 				marked++;
 			}
 		}
@@ -1268,7 +1268,7 @@ sccsdir(winfo *wi)
 	char	*relp, *p, *gfile;
 	kvpair  kv;
 	sccs	*s = 0;
-	delta	*d;
+	ser_t	d;
 	int	i;
 	char	buf[MAXPATH];
 	char	buf1[MAXPATH];
@@ -1336,7 +1336,7 @@ sccsdir(winfo *wi)
 				unless (s) s = init(buf, flags, sDB, 0);
 				d = sccs_top(s);
 				relp = proj_relpath(s->proj, s->gfile);
-				unless (d->pathname &&
+				unless (HAS_PATHNAME(s, d) &&
 				    patheq(relp, PATHNAME(s, d))) {
 					state[NSTATE] = 'n';
 				}
@@ -1361,7 +1361,7 @@ sccsdir(winfo *wi)
 			    (s = init(buf, flags, sDB, 0))) {
 				d = sccs_top(s);
 				relp = proj_relpath(s->proj, s->gfile);
-				unless (d->pathname &&
+				unless (HAS_PATHNAME(s, d) &&
 				    patheq(relp, PATHNAME(s, d))) {
 					state[NSTATE] = 'n';
 				}

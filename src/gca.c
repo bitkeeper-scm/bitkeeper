@@ -11,7 +11,7 @@ gca_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name, *r1 = 0, *r2 = 0;
-	delta	*d1, *d2;
+	ser_t	d1, d2;
 	int	c;
 	char	*inc = 0, *exc = 0;
 

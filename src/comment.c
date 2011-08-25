@@ -233,7 +233,7 @@ write_editfile(FILE *f, char **files, int to_stdout)
 
 	EACH(files) {
 		sccs	*s;
-		delta	*d;
+		ser_t	d;
 		char	*t, *name;
 
 		name = files[i];
@@ -269,7 +269,7 @@ private int
 change_comments(char *file, char *rev, char **comments)
 {
 	sccs	*s = 0;
-	delta	*d;
+	ser_t	d;
 	char	*sfile = 0;
 	int	i;
 	int	rc = 1;

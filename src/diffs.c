@@ -154,7 +154,7 @@ diffs_main(int ac, char **av)
 	while (name) {
 		int	ex = 0;
 		sccs	*s = 0;
-		delta	*d;
+		ser_t	d;
 		char	*r1 = 0, *r2 = 0;
 
 		/*

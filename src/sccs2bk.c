@@ -15,9 +15,9 @@
 private int sccs2bk(sccs *s, int verbose, char *csetkey);
 private void regen(sccs *s, int verbose, char *key);
 private int verify = 1;
-private	int mkinit(sccs *s, delta *d, char *file, char *key);
+private	int mkinit(sccs *s, ser_t d, char *file, char *key);
 private int makeMerge(sccs *s, int verbose);
-private void collapse(sccs *s, int verbose, delta *d, delta *m);
+private void collapse(sccs *s, int verbose, ser_t d, ser_t m);
 private void fixTable(sccs *s, int verbose);
 private void handleFake(sccs *s);
 private void ptable(sccs *s);
@@ -87,7 +87,7 @@ sccs2bk_main(int ac, char **av)
 private int
 sccs2bk(sccs *s, int verbose, char *csetkey)
 {
-	delta	*d;
+	ser_t	d;
 
 	if (makeMerge(s, verbose)) return (1);
 
@@ -96,9 +96,9 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
 	 * then losing anything which is not marked.
 	 */
 	sccs_color(s, sccs_top(s));
-	for (d = s->table; d; d = NEXT(d)) {
-		if (d->flags & D_RED) continue;
-		d->flags |= D_SET|D_GONE;
+	for (d = s->table; d; d = NEXT(s, d)) {
+		if (FLAGS(s, d) & D_RED) continue;
+		FLAGS(s, d) |= D_SET|D_GONE;
 	}
 
 	/*
@@ -108,7 +108,7 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
 	if (streq(REV(s, s->tree), "1.0")) {
 		d = s->tree;
 		if (strneq("BitKeeper file", COMMENTS(s, d), 14)) {
-			d->flags |= D_SET|D_GONE;
+			FLAGS(s, d) |= D_SET|D_GONE;
 			if (verbose > 1) {
 				fprintf(stderr,
 				    "Stripping old BitKeeper data in %s\n",
@@ -139,12 +139,12 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
  * no entry if <rev> -eq <d->rev>
  */
 private char	*
-rev(MDBM *revs, sccs *s, delta *r)
+rev(MDBM *revs, sccs *s, ser_t r)
 {
 	datum	k, v;
 	ser_t	ser;
 
-	ser = SERIAL(s, r);
+	ser = r;
 	k.dsize = sizeof(ser_t);
 	k.dptr = (void*)&ser;
 	v = mdbm_fetch(revs, k);
@@ -155,8 +155,8 @@ rev(MDBM *revs, sccs *s, delta *r)
 private void
 regen(sccs *s, int verbose, char *key)
 {
-	delta	*d;
-	delta	**table = malloc(s->nextserial * sizeof(delta*));
+	ser_t	d;
+	ser_t	*table = malloc(s->nextserial * sizeof(ser_t*));
 	int	n = 0;
 	int	i;
 	int	src_flags = PRINT|GET_FORCE|SILENT;
@@ -172,7 +172,7 @@ regen(sccs *s, int verbose, char *key)
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, (ser_t) i)) continue;
-		if (!(d->flags & D_GONE) && !TAG(d)) {
+		if (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			table[n++] = d;
 		}
 	}
@@ -197,8 +197,8 @@ regen(sccs *s, int verbose, char *key)
 	for (i = 0; i < n; ++i) {
 		d = table[i];
 		mkinit(s, d, 0, 0);
-		if (d->merge) {
-			delta	*m = MERGE(s, d);
+		if (MERGE(s, d)) {
+			ser_t	m = MERGE(s, d);
 
 			assert(m);
 			a1 = aprintf("-egr%s", rev(revs, s, PARENT(s, d)));
@@ -220,10 +220,10 @@ regen(sccs *s, int verbose, char *key)
 			if (verbose > 1) {
 				fprintf(stderr,
 				    "MAP %s(%d)@%s -> %s\n",
-				    gfile, SERIAL(s, d),
+				    gfile, d,
 				    REV(s, d), pf.newrev);
 			}
-			ser = SERIAL(s, d);
+			ser = d;
 			k.dsize = sizeof(ser_t);
 			k.dptr = (void*)&ser;
 			v.dsize = strlen(pf.newrev) + 1;
@@ -243,7 +243,7 @@ regen(sccs *s, int verbose, char *key)
 		 * '-r=<serial>' because some sfile have duplicate revisions
 		 * Note: if change options here, then change in loop below
 		 */
-		a1 = aprintf("=%d", SERIAL(s, d));
+		a1 = aprintf("=%d", d);
 		if (sccs_get(sget, a1, 0, 0, 0, src_flags, gfile)) {
 			fprintf(stderr, "FAIL: get -kPr%s %s\n",
 			    a1, gfile);
@@ -278,7 +278,7 @@ regen(sccs *s, int verbose, char *key)
 		}
 
 		free(a1);
-		a1 = aprintf("=%d", SERIAL(s, d));
+		a1 = aprintf("=%d", d);
 		a3 = bktmp(0, "diffB");
 		assert(a3 && a3[0]);
 		if (sccs_get(sget, a1, 0, 0, 0, src_flags, a3)) {
@@ -332,7 +332,7 @@ out:	unlink("SCCS/.init");
  * From Wayne.
  */
 private int
-mkinit(sccs *s, delta *d, char *file, char *key)
+mkinit(sccs *s, ser_t d, char *file, char *key)
 {
 	char	randstr[17];
 	int	chksum = 0;
@@ -365,7 +365,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 	unless ((host = HOSTNAME(s, d)) && *host) host = sccs_gethost();
 	fh = fopen("SCCS/.init", "w");
 	if (file) {
-		struct	tm *tp = utc2tm(d->date - 1);
+		struct	tm *tp = utc2tm(DATE(s, d) - 1);
 
 		assert(key);
 		fprintf(fh, "D 1.0 %02d/%02d/%02d %02d:%02d:%02d %s@%s\n",
@@ -395,7 +395,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 		    host);
 		t = COMMENTS(s, d);
 		while (p = eachline(&t, &len)) fprintf(fh, "c %.*s\n", len, p);
-		if (d->dateFudge) fprintf(fh, "F %u\n", d->dateFudge);
+		if (DATE_FUDGE(s, d)) fprintf(fh, "F %u\n", DATE_FUDGE(s, d));
 	}
 	fprintf(fh, "------------------------------------------------\n");
 	fclose(fh);
@@ -405,17 +405,17 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 private void
 ptable(sccs *s)
 {
-	delta	*d;
+	ser_t	d;
 	int	i;
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, (ser_t) i)) continue;
-		unless (!(d->flags & D_GONE) && !TAG(d)) {
+		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
 		fprintf(stderr, "%-10.10s %10s i=%2u s=%2u d=%s f=%u\n",
-		    s->gfile, REV(s, d), i, SERIAL(s, d),
-		    delta_sdate(s, d), d->dateFudge);
+		    s->gfile, REV(s, d), i, d,
+		    delta_sdate(s, d), DATE_FUDGE(s, d));
 	}
 }
 
@@ -437,18 +437,18 @@ ptable(sccs *s)
 private void
 handleFake(sccs *s)
 {
-	delta	*d;
+	ser_t	d;
 	int	i;
 	time_t	date = CUTOFFDATE;
 	char	*user = 0;
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, (ser_t) i)) continue;
-		unless (!(d->flags & D_GONE) && !TAG(d)) {
+		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
-		unless (d->date >= CUTOFFDATE) continue;
-		date = d->date;
+		unless (DATE(s, d) >= CUTOFFDATE) continue;
+		date = DATE(s, d);
 		user = USER(s, d);
 		break;
 	}
@@ -460,18 +460,18 @@ handleFake(sccs *s)
 	while (i > 1) {
 		i--;
 		unless (d = sfind(s, (ser_t) i)) continue;
-		unless (!(d->flags & D_GONE) && !TAG(d)) {
+		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
 		date--;
-		d->date = date;
+		DATE_SET(s, d, date);
 		assert(!streq(USER(s, d), user));
 		(void)sccs_parseArg(s, d, 'U', user, 0);
 	}
 }
 
 /*
- * See if d->merge ancestory of d contains d->parent.
+ * See if MERGE(s, d) ancestory of d contains d->parent.
  * If yes, collapse merge branch onto same branch as d
  * 
  * fixes problem of non bk structure (note: 1.1.1.1 is older than 1.2):
@@ -484,9 +484,9 @@ handleFake(sccs *s)
  * The numbering gets fixed as we export this and import into a bk setup.
  */
 private void
-collapse(sccs *s, int verbose, delta *d, delta *m)
+collapse(sccs *s, int verbose, ser_t d, ser_t m)
 {
-	delta	*b, *p;
+	ser_t	b, p;
 
 	p = PARENT(s, d);
 	assert(m && p);
@@ -495,21 +495,21 @@ collapse(sccs *s, int verbose, delta *d, delta *m)
 	 * See if merge ancestory contains parent.
 	 * b == base of merge ancestory whose parent is (possibly) p
 	 */
-	for (b = m; b && b->pserial; b = PARENT(s, b)) {
-		unless (b->pserial > SERIAL(s, p)) break;
+	for (b = m; b && PARENT(s, b); b = PARENT(s, b)) {
+		unless (PARENT(s, b) > p) break;
 	}
-	unless (b && b->pserial == SERIAL(s, p)) return;
+	unless (b && PARENT(s, b) == p) return;
 	if (verbose > 1) {
 		fprintf(stderr,
 		    "Inlining graph: new parent of %s(%d) => %s(%d)\n",
-		    REV(s, d), SERIAL(s, d),
-		    REV(s, m), SERIAL(s, m));
+		    REV(s, d), d,
+		    REV(s, m), m);
 	}
 
 	/* surgery at other end of graph: merge becomes parent of d */
-	d->pserial = SERIAL(s, m);
-	d->merge = 0;
-	d->cludes = 0;
+	PARENT_SET(s, d, m);
+	MERGE_SET(s, d, 0);
+	CLUDES_SET(s, d, 0);
 }
 
 /*
@@ -519,25 +519,25 @@ collapse(sccs *s, int verbose, delta *d, delta *m)
 private int
 makeMerge(sccs *s, int verbose)
 {
-	delta	*d, *m;
+	ser_t	d, m;
 	int	i, sign, del;
 	ser_t	mser;
 	FILE	*f = fmem();
 	char	*p;
 
 	/* table order, mark things to ignore, and find merge markers */
-	for (d = s->table; d; d = NEXT(d)) {
-		if (TAG(d)) {
-			d->flags |= D_GONE;
+	for (d = s->table; d; d = NEXT(s, d)) {
+		if (TAG(s, d)) {
+			FLAGS(s, d) |= D_GONE;
 			continue;
 		}
-		unless (d->cludes) continue;
-		assert(!d->merge);
+		unless (HAS_CLUDES(s, d)) continue;
+		assert(!MERGE(s, d));
 		mser = 0;
 		del = 0;
 		p = CLUDES(s, d);
 		while (i = sccs_eachNum(&p, &sign)) {
-			if ((m = sfind(s, i)) && !TAG(m)) {
+			if ((m = sfind(s, i)) && !TAG(s, m)) {
 				if ((sign > 0) && (mser < i)) {
 					mser = i;
 				}
@@ -548,16 +548,16 @@ makeMerge(sccs *s, int verbose)
 		}
 		if (del) {
 			if (ftell(f) > 0) {
-				d->cludes = sccs_addStr(s, fmem_peek(f, 0));
+				CLUDES_SET(s, d, fmem_peek(f, 0));
 			} else {
-				d->cludes = 0;
+				CLUDES_SET(s, d, 0);
 			}
 		}
 		ftrunc(f, 0);
 		unless (mser) continue;
 		m = sfind(s, mser);
-		assert(m && !TAG(m));
-		d->merge = mser;
+		assert(m && !TAG(s, m));
+		MERGE_SET(s, d, mser);
 		collapse(s, verbose, d, m);
 	}
 	fclose(f);
@@ -582,14 +582,14 @@ makeMerge(sccs *s, int verbose)
 private void
 fixTable(sccs *s, int verbose)
 {
-	delta	*d = 0, *e = 0, *m = 0;
+	ser_t	d = 0, e = 0, m = 0;
 	int	i;
 	u32	maxfudge = 0;
 
 	/* reverse table order of just the deltas being imported */
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, (ser_t) i)) continue;
-		unless (!(d->flags & D_GONE) && !TAG(d)) {
+		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
 		/*
@@ -599,11 +599,11 @@ fixTable(sccs *s, int verbose)
 		 * Don't worry about keys here, because we are setting time
 		 * always going forward.
 		 */
-		if (e && d->date <= e->date) {
-			int	f = (e->date - d->date) + 1;
+		if (e && DATE(s, d) <= DATE(s, e)) {
+			int	f = (DATE(s, e) - DATE(s, d)) + 1;
 
-			d->dateFudge += f;
-			d->date += f;
+			DATE_FUDGE_SET(s, d, (DATE_FUDGE(s, d) + f));
+			DATE_SET(s, d, (DATE(s, d) + f));
 			if (f > maxfudge) maxfudge = f;
 		}
 		e = d;
@@ -612,7 +612,7 @@ fixTable(sccs *s, int verbose)
 		 * The outcome is to keep the trunk tip
 		 * on the trunk after import.
 		 */
-		unless (d && d->merge) continue;
+		unless (d && MERGE(s, d)) continue;
 		m = MERGE(s, d);
 		assert(m);
 		if (sccs_needSwap(s, PARENT(s, d), m)) {
@@ -626,13 +626,13 @@ fixTable(sccs *s, int verbose)
 			 * for our needs.  See renumber.c:parentSwap()
 			 * for a complete rewiring job.
 			 */
-			d->merge = d->pserial;
-			d->pserial = SERIAL(s, m);
+			MERGE_SET(s, d, PARENT(s, d));
+			PARENT_SET(s, d, m);
 		}
 	}
 	if (verbose > 2) ptable(s);
 	if (verbose > 1 && e) {
 		fprintf(stderr, "%s: maxfudge=%u lastfudge=%u\n",
-		    s->gfile, maxfudge, e->dateFudge);
+		    s->gfile, maxfudge, DATE_FUDGE(s, e));
 	}
 }

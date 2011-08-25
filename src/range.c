@@ -6,7 +6,7 @@ int
 range_main(int ac, char **av)
 {
 	sccs	*s = 0;
-	delta	*e;
+	ser_t	e;
 	char	*name;
 	int	expand = 1;
 	int	quiet = 0;
@@ -50,18 +50,18 @@ range_main(int ac, char **av)
 		if (all) range_markMeta(s);
 		if (s->state & S_SET) {
 			printf("%s set:", s->gfile);
-			for (e = s->table; e; e = NEXT(e)) {
-				if (e->flags & D_SET) {
+			for (e = s->table; e; e = NEXT(s, e)) {
+				if (FLAGS(s, e) & D_SET) {
 					printf(" %s", REV(s, e));
-					if (TAG(e)) printf("T");
+					if (TAG(s, e)) printf("T");
 				}
 			}
 		} else {
 			printf("%s %s..%s:",
 			    s->gfile, REV(s, s->rstop), REV(s, s->rstart));
-			for (e = s->rstop; e; e = NEXT(e)) {
+			for (e = s->rstop; e; e = NEXT(s, e)) {
 				printf(" %s", REV(s, e));
-				if (TAG(e)) printf("T");
+				if (TAG(s, e)) printf("T");
 				if (e == s->rstart) break;
 			}
 		}

@@ -24,11 +24,11 @@
 
 private	int	do_cset(sccs *s, char *rev, char **nav);
 private	int	do_file(char *file, char *tiprev);
-private	int	savedeltas(sccs *s, delta *d, void *data);
-private	delta	*parent_of_tip(sccs *s);
+private	int	savedeltas(sccs *s, ser_t d, void *data);
+private	ser_t	parent_of_tip(sccs *s);
 private	char	**fix_genlist(char *rev);
 private	int	fix_savesfio(char **flist, char *file);
-private	int	fix_setupcomments(sccs *s, char **rmdeltas);
+private	int	fix_setupcomments(sccs *s, ser_t *rmdeltas);
 private	int	update_collapsed_file(char *newcsets);
 
 private	int	flags;		/* global to pass to callbacks */
@@ -242,7 +242,7 @@ fix_main(int ac,  char **av)
 private int
 do_cset(sccs *s, char *rev, char **nav)
 {
-	delta	*d;
+	ser_t	d;
 	int	i;
 	char	*csetrev = 0;
 	char	**flist = 0;
@@ -421,12 +421,12 @@ private int
 do_file(char *file, char *tiprev)
 {
 	sccs	*s;
-	delta	*d, *e, *tipd;
+	ser_t	d, e, tipd;
 	char	*pathname, *savefile = 0, *cmd;
 	mode_t	mode;
 	u32	xflags, flagdiffs;
 	int	rc = 1;
-	char	**rmdeltas = 0;
+	ser_t	*rmdeltas = 0;
 	int	i;
 	char	*sfile = 0, *gfile = 0, *pfile = 0;
 	time_t	gtime = 0;
@@ -451,7 +451,7 @@ do_file(char *file, char *tiprev)
 
 	/* save deltas to remove in rmdeltas */
 	if (range_walkrevs(s, tipd, 0, d, 0, savedeltas, &rmdeltas)) goto done;
-	reverseLines(rmdeltas);	/* oldest first (for comments) */
+	reverseArray(rmdeltas);	/* oldest first (for comments) */
 
 	/*
 	 * Edit the file if it is not edited already.  (This should
@@ -477,8 +477,8 @@ do_file(char *file, char *tiprev)
 		 * file.
 		 */
 		EACH(rmdeltas) {
-			e = (delta *)rmdeltas[i];
-			e->flags &= ~D_CSET;
+			e = rmdeltas[i];
+			FLAGS(s, e) &= ~D_CSET;
 		}
 		updatePending(s);
 		sccs_newchksum(s);
@@ -492,8 +492,8 @@ do_file(char *file, char *tiprev)
 		 * pending in the product.
 		 */
 		EACH(rmdeltas) {
-			e = (delta *)rmdeltas[i];
-			if (e->flags & D_CSET) {
+			e = rmdeltas[i];
+			if (FLAGS(s, e) & D_CSET) {
 				fprintf(stderr,
 "%s: cannot strip component cset that are still part of product\n", me);
 				goto done;
@@ -504,7 +504,7 @@ do_file(char *file, char *tiprev)
 
 	if (tipd) {
 		/* remember mode, path, xflags */
-		mode = d->mode;
+		mode = MODE(s, d);
 		pathname = strdup(PATHNAME(s, d));
 		xflags = sccs_xflags(s, d);
 
@@ -521,8 +521,8 @@ do_file(char *file, char *tiprev)
 
 		/* mark deltas to remove. */
 		EACH(rmdeltas) {
-			e = (delta *)rmdeltas[i];
-			e->flags |= D_SET;
+			e = rmdeltas[i];
+			FLAGS(s, e) |= D_SET;
 		}
 		range_markMeta(s);
 		stripdel_fixTable(s, &i);
@@ -537,7 +537,7 @@ do_file(char *file, char *tiprev)
 
 		/* restore mode, path, xflags */
 		tipd = sccs_findrev((s = sccs_reopen(s)), "+");
-		unless (S_ISLNK(mode) || (mode == tipd->mode)) {
+		unless (S_ISLNK(mode) || (mode == MODE(s, tipd))) {
 			if (sccs_admin(s,
 			    0, 0, 0, 0, 0, 0, mode2a(mode), 0)) {
 				sccs_whynot(me, s);
@@ -597,7 +597,7 @@ do_file(char *file, char *tiprev)
 	rc = 0;
  done:
 	if (s) sccs_free(s);
-	if (rmdeltas) freeLines(rmdeltas, 0);
+	if (rmdeltas) free(rmdeltas);
 	if (savefile) {
 		rename(savefile, gfile);
 		free(savefile);
@@ -614,12 +614,12 @@ do_file(char *file, char *tiprev)
  * We also check for deltas with CSET marks for the single file case.
  */
 private int
-savedeltas(sccs *s, delta *d, void *data)
+savedeltas(sccs *s, ser_t d, void *data)
 {
-	char	***rmdeltas = data;
+	ser_t	**rmdeltas = data;
 
-	*rmdeltas = addLine(*rmdeltas, d);
-	if (d->flags & D_CSET && (flags & COLLAPSE_FIX)) {
+	addArray(rmdeltas, &d);
+	if (FLAGS(s, d) & D_CSET && (flags & COLLAPSE_FIX)) {
 		fprintf(stderr, "%s: can't fix committed delta %s@%s\n",
 		    me, s->gfile, REV(s, d));
 		return (1);
@@ -634,9 +634,9 @@ savedeltas(sccs *s, delta *d, void *data)
  * presevered at the end.
  */
 private int
-fix_setupcomments(sccs *s, char **rmdeltas)
+fix_setupcomments(sccs *s, ser_t *rmdeltas)
 {
-	delta	*d;
+	ser_t	d;
 	int	i;
 	char	**comments = 0;
 	char	*cmts;
@@ -661,10 +661,10 @@ fix_setupcomments(sccs *s, char **rmdeltas)
 		return (1);
 	}
 	EACH (rmdeltas) {
-		d = (delta *)rmdeltas[i];
+		d = rmdeltas[i];
 
 		if (streq(REV(s, d), "1.0")) continue;
-		unless (d->comments) continue;
+		unless (HAS_COMMENTS(s, d)) continue;
 
 		/*
 		 * If the comments are just one line and then match our
@@ -699,13 +699,13 @@ fix_setupcomments(sccs *s, char **rmdeltas)
 }
 
 /* Return the parent of the tip delta if the tip is not a merge. */
-private delta *
+private ser_t
 parent_of_tip(sccs *s)
 {
-	delta	*d;
+	ser_t	d;
 
 	d = sccs_findrev(s, "+");
-	if (d->merge) {
+	if (MERGE(s, d)) {
 		fprintf(stderr,
 		    "%s: Unable to fix just %s|%s, it is a merge.\n",
 		    me, s->gfile, REV(s, d));

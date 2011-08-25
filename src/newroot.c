@@ -124,7 +124,7 @@ newroot(char *ranbits, int bk4, char *comments, char *who)
 		fprintf(stderr, "newroot: error: new key matches old\n");
 		exit (1);
 	}
-	s->tree->random = sccs_addStr(s, buf);
+	RANDOM_SET(s, s->tree, buf);
 	sccs_sdelta(s, sccs_ino(s), key);
 	unless (bk4) update_rootlog(s, key, comments, who);
 	sccs_newchksum(s);

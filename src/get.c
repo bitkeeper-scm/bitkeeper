@@ -16,7 +16,7 @@ get_main(int ac, char **av)
 	char	*gfile = 0, *pfile = 0, *p;
 	char	*prog;
 	char	*mRev = 0, *Rev = 0;
-	delta	*d;
+	ser_t	d;
 	int	recursed = 0;
 	int	getdiff = 0;
 	int	sf_flags = 0;
@@ -233,7 +233,7 @@ onefile:	fprintf(stderr,
 					goto err;
 				}
 				sprintf(Gout, "%s/%s", gdir,
-				    d->pathname ? PATHNAME(s, d) : s->gfile);
+				    HAS_PATHNAME(s, d) ? PATHNAME(s, d) : s->gfile);
 			}
 			unlink(Gout);
 			out = Gout;
@@ -280,12 +280,12 @@ err:			sccs_free(s);
 		}
 		/* -M with no args means to close the open tip */
 		if (closetips) {
-			delta	*a, *b;
+			ser_t	a, b;
 
 			if (sccs_findtips(s, &a, &b)) {
-				if (a->r[2]) {
+				if (R2(s, a)) {
 					mRev = REV(s, a);
-				} else if (b->r[2]) {
+				} else if (R2(s, b)) {
 					mRev = REV(s, b);
 				} else {
 					fprintf(stderr, "%s: ERROR -M with"
@@ -338,7 +338,7 @@ err:			sccs_free(s);
 				bp_files = addLine(bp_files, strdup(name));
 				bp_keys = addLine(bp_keys,
 				    sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC));
-				bp_todo += d->added;	// XXX - not all of it
+				bp_todo += ADDED(s, d);	// XXX - not all of it
 				goto next;
 			}
 			if (s->io_error) return (1);
@@ -417,7 +417,7 @@ get_rollback(sccs *s, char *rev, char **iLst, char **xLst, char *me)
 {
 	char	*inc = *iLst, *exc = *xLst;
 	u8	*map;
-	delta	*d;
+	ser_t	d;
 
 	*iLst = *xLst = 0;
 	unless (d = sccs_findrev(s, rev)) {

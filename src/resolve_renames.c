@@ -223,7 +223,7 @@ int
 resolve_renames(resolve *rs)
 {
 	names	*n = 0;
-	delta	*d;
+	ser_t	d;
 	char	*nm = basenm(rs->s->gfile);
 	int	ret;
 	char	buf[MAXPATH];

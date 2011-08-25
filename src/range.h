@@ -41,20 +41,20 @@ int	range_process(char *me, sccs *s, u32 flags, RANGE *rargs);
 int	range_addArg(RANGE *rargs, char *arg, int isdate);
 int	range_urlArg(RANGE *rargs, char *url);
 
-void	range_cset(sccs *s, delta *d, int bit);
+void	range_cset(sccs *s, ser_t d, int bit);
 time_t	range_cutoff(char *spec);
 void	range_markMeta(sccs *s);
-int	range_gone(sccs *s, delta *d, u32 dflags);
-void	range_unrange(sccs *s, delta **left, delta **right, int all);
+int	range_gone(sccs *s, ser_t d, u32 dflags);
+void	range_unrange(sccs *s, ser_t *left, ser_t *right, int all);
 
-int	range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to,
-    int flags, int (*fcn)(sccs *s, delta *d, void *token), void *token);
-int	walkrevs_setFlags(sccs *s, delta *d, void *token);
-int	walkrevs_clrFlags(sccs *s, delta *d, void *token);
-int	walkrevs_printkey(sccs *s, delta *d, void *token);
-int	walkrevs_printmd5key(sccs *s, delta *d, void *token);
-int	walkrevs_addLine(sccs *s, delta *d, void *token);
+int	range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to,
+    int flags, int (*fcn)(sccs *s, ser_t d, void *token), void *token);
+int	walkrevs_setFlags(sccs *s, ser_t d, void *token);
+int	walkrevs_clrFlags(sccs *s, ser_t d, void *token);
+int	walkrevs_printkey(sccs *s, ser_t d, void *token);
+int	walkrevs_printmd5key(sccs *s, ser_t d, void *token);
+int	walkrevs_addLine(sccs *s, ser_t d, void *token);
 
-char	**range_gcalist(sccs *s, char **list);
+ser_t	*range_gcalist(sccs *s, ser_t *list);
 
 #endif

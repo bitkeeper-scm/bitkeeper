@@ -19,7 +19,7 @@ private	int	compar(const void *a, const void *b);
 private	void	printConsolidatedLog(FILE *);
 private	void	printSortedLog(FILE *);
 private	void	printlog(FILE *);
-private	void	pdelta(sccs *s, delta *d, FILE *f);
+private	void	pdelta(sccs *s, ser_t d, FILE *f);
 private	void	sccslog(sccs *s);
 private	void	freelog(void);
 private	int	isBlank(char *p);
@@ -105,11 +105,11 @@ next:			sccs_free(s);
 		}
 		do {
 			if (opts.uncommitted) {
-				delta	*d;
+				ser_t	d;
 
 				/* find latest cset mark */
-				for (d = s->table; d; d = NEXT(d)) {
-					if (d->flags & D_CSET) break;
+				for (d = s->table; d; d = NEXT(s, d)) {
+					if (FLAGS(s, d) & D_CSET) break;
 				}
 				/* and walk all revs not included in that... */
 				range_walkrevs(s, d, 0, 0, 0,
@@ -227,7 +227,7 @@ printSortedLog(FILE *f)
 }
 
 private void
-pdelta(sccs *s, delta *d, FILE *f)
+pdelta(sccs *s, ser_t d, FILE *f)
 {
 	int	indent;
 	char	*p, *t;
@@ -242,7 +242,7 @@ pdelta(sccs *s, delta *d, FILE *f)
 		fprintf(f, "%s|%s\n", PATHNAME(s, d), REV(s, d));
 		return;
 	}
-	if (d->pathname && streq(PATHNAME(s, d), "ChangeSet")) {
+	if (HAS_PATHNAME(s, d) && streq(PATHNAME(s, d), "ChangeSet")) {
 		indent = 0;
 	} else {
 		indent = opts.indent;
@@ -251,7 +251,7 @@ pdelta(sccs *s, delta *d, FILE *f)
 		t = COMMENTS(s, d);
 		while (p = eachline(&t, &len)) {
 			if (indent) fprintf(f, "%*s", indent, "");
-			if (d->pathname) {
+			if (HAS_PATHNAME(s, d)) {
 				fprintf(f, "%-8s\t", basenm(PATHNAME(s, d)));
 			}
 			fprintf(f, "%.*s\n", len, p);
@@ -259,7 +259,7 @@ pdelta(sccs *s, delta *d, FILE *f)
 		return;
 	}
 	if (indent) fprintf(f, "%*s", indent, "");
-	if (d->pathname) {
+	if (HAS_PATHNAME(s, d)) {
 		unless (opts.basenames) {
 			fprintf(f, "%s %s\n  ", PATHNAME(s, d), REV(s, d));
 			if (indent) fprintf(f, "%*s", indent, "");
@@ -269,7 +269,7 @@ pdelta(sccs *s, delta *d, FILE *f)
 	}
 	delta_strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", s, d);
 	fprintf(f, "%s %s", buf, USERHOST(s, d));
-	fprintf(f, " +%d -%d\n", d->added, d->deleted);
+	fprintf(f, " +%d -%d\n", ADDED(s, d), DELETED(s, d));
 	t = COMMENTS(s, d);
 	while (p = eachline(&t, &len)) {
 		if (indent) fprintf(f, "%*s", indent, "");
@@ -297,20 +297,21 @@ printlog(FILE *f)
 private	void
 sccslog(sccs *s)
 {
-	delta	*d;
+	ser_t	d;
 	data	*nd;
 	FILE	*f;
 	char	key[MAXKEY];
 
 	f = fmem();
 	if (CSET(s)) ChangeSet = 1;
-	for (d = s->table; d; d = NEXT(d)) {
-		if (SET(s) && !(d->flags & D_SET)) continue;
-		if (TAG(d)) continue;
+	for (d = s->table; d; d = NEXT(s, d)) {
+		if (SET(s) && !(FLAGS(s, d) & D_SET)) continue;
+		if (TAG(s, d)) continue;
 
 		nd = new(data);
-		nd->date = d->date;
-		nd->pathname = strdup(d->pathname ? PATHNAME(s, d) : s->gfile);
+		nd->date = DATE(s, d);
+		nd->pathname =
+		    strdup(HAS_PATHNAME(s, d) ? PATHNAME(s, d) : s->gfile);
 		sccs_sdelta(s, d, key);
 		nd->key = strdup(key);
 

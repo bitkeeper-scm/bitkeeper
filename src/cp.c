@@ -32,7 +32,7 @@ private int
 cp(char *from, char *to, int force)
 {
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	char	buf[100];
 	char	*sfile, *gfile, *tmp;
 	int	i, err;
@@ -65,10 +65,10 @@ cp(char *from, char *to, int force)
 	 * delta.  XXX - need to fix this if/when we support grafting.
 	 */
 	randomBits(buf);
-	if (s->tree->random) {
+	if (HAS_RANDOM(s, s->tree)) {
 		assert(!streq(buf, RANDOM(s, s->tree)));
 	}
-	s->tree->random = sccs_addStr(s, buf);
+	RANDOM_SET(s, s->tree, buf);
 
 	/*
 	 * Try using the new filename as the original filename.
@@ -76,7 +76,7 @@ cp(char *from, char *to, int force)
 	 */
 	tmp = _relativeName(gfile, 0, 0, 0, 0);
 	for (i = 1; i < s->nextserial; i++) {
-		unless (d = SFIND(s, i)) continue;
+		unless (d = i) continue;
 		sccs_setPath(s, d, tmp);
 	}
 	sccs_clearbits(s, D_CSET);

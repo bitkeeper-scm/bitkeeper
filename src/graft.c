@@ -47,10 +47,10 @@ sccs_graft(sccs *s1, sccs *s2)
 {
 	sccs	*winner, *loser;
 
-	if (s1->tree->date < s2->tree->date) {
+	if (DATE(s1, s1->tree) < DATE(s2, s2->tree)) {
 		winner = s1;
 		loser = s2;
-	} else if (s1->tree->date > s2->tree->date) {
+	} else if (DATE(s1, s1->tree) > DATE(s2, s2->tree)) {
 		loser = s1;
 		winner = s2;
 	} else {
@@ -69,7 +69,7 @@ sccs_graft(sccs *s1, sccs *s2)
 private	void
 sccs_patch(sccs *winner, sccs *loser)
 {
-	delta	*d = sccs_top(winner);
+	ser_t	d = sccs_top(winner);
 	char	*wfile = PATHNAME(winner, d);
 	char	*lfile = PATHNAME(loser, sccs_top(loser));
 
@@ -113,12 +113,12 @@ private void
 _patch(sccs *s)
 {
 	int	i;
-	delta	*d;
+	ser_t	d;
 	int	flags = PRS_PATCH|SILENT;
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, i)) continue;
-		if (d->pserial) {
+		if (PARENT(s, d)) {
 			sccs_pdelta(s, PARENT(s, d), stdout);
 			printf("\n");
 		} else {
@@ -127,7 +127,7 @@ _patch(sccs *s)
 		s->rstop = s->rstart = d;
 		sccs_prs(s, flags, 0, NULL, stdout);
 		printf("\n");
-		unless (TAG(d)) {
+		unless (TAG(s, d)) {
 			assert(!(s->state & S_CSET));
 			sccs_getdiffs(s, REV(s, d), GET_BKDIFFS, "-");
 		}

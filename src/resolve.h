@@ -87,9 +87,9 @@ typedef struct {
  * Used for differences other than contents or renames, i.e., perms.
  */
 typedef struct {
-	delta	*local;
-	delta	*gca;
-	delta	*remote;
+	ser_t	local;
+	ser_t	gca;
+	ser_t	remote;
 } deltas;
 
 typedef struct resolve resolve;
@@ -111,8 +111,8 @@ struct resolve {
 	opts	*opts;		/* so we don't have to pass both */
 	sccs	*s;		/* the sccs file we are resolving */
 	char	*key;		/* root key of this sfile */
-	delta	*d;		/* Top of LOD of the sccs file */
-	char	*dname;		/* name2sccs(d->pathname) */
+	ser_t	d;		/* Top of LOD of the sccs file */
+	char	*dname;		/* name2sccs(PATHNAME(s, d)) */
 	names	*revs;		/* revisions being resolved */
 	names	*rnames;	/* tmpfile names for revisions being resolved */
 	names	*gnames;	/* gfile names being resolved */
@@ -141,14 +141,14 @@ resolve	*resolve_init(opts *opts, sccs *s);
 void	automerge(resolve *rs, names *n, int identical);
 int	c_revtool(resolve *rs);
 int	c_merge(resolve *rs);
-void 	flags_delta(resolve *,char *, delta *, int, char *, int);
+void 	flags_delta(resolve *,char *, ser_t, int, char *, int);
 int	edit(resolve *rs);
 void	freenames(names *names, int free_struct);
 int	get_revs(resolve *rs, names *n);
-void	mode_delta(resolve*, char *, delta *d, mode_t, char *rfile, int which);
+void	mode_delta(resolve*, char *, ser_t d, mode_t, char *rfile, int which);
 int	move_remote(resolve *rs, char *sfile);
 int	ok_local(sccs *s, int check_pending);
-void	type_delta(resolve *, char *, delta *, delta *, char *, int);
+void	type_delta(resolve *, char *, ser_t, ser_t, char *, int);
 int	res_abort(resolve *rs);
 int	res_clear(resolve *rs);
 int	res_diff(resolve *rs);

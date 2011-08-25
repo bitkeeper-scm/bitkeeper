@@ -45,7 +45,7 @@ typedef	struct cset {
 
 private	void	csetlist(cset_t *cs, sccs *cset);
 private	int	marklist(char *file);
-private	delta	*mkChangeSet(sccs *cset, char *files, FILE *diffs);
+private	ser_t	mkChangeSet(sccs *cset, char *files, FILE *diffs);
 private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
 private	void	doDiff(sccs *sc, char kind);
@@ -327,13 +327,14 @@ int
 cset_setup(int flags)
 {
 	sccs	*cset;
-	delta	*d = new(delta);
+	ser_t	d;
 	int	fd;
 	char	*user, *host;
 	char	buf[MAXPATH];
 
 	cset = sccs_init(csetFile, 0);
 	assert(cset && cset->proj);
+	d = sccs_newdelta(cset);
 
 	if ((flags & DELTA_DONTASK) &&
 	    !(d = comments_get(0, 0, cset, d))) {
@@ -343,14 +344,14 @@ cset_setup(int flags)
 	host = sccs_gethost();
 	unless (isValidHost(host)) {
 		fprintf(stderr, "invalid host: \"%s\"\n", host);
-		free(d);
+		sccs_freedelta(cset, d);
 		goto intr;
 	}
 
 	user = sccs_getuser();
 	unless (isValidUser(user)) {
 		fprintf(stderr, "invalid user: \"%s\"\n", user);
-		free(d);
+		sccs_freedelta(cset, d);
 		goto intr;
 	}
 	sprintf(buf, "%s@%s", user, host);
@@ -424,10 +425,10 @@ header(sccs *cset, int diffs)
  * just mark the cset boundry.
  */
 private void
-markThisCset(cset_t *cs, sccs *s, delta *d)
+markThisCset(cset_t *cs, sccs *s, ser_t d)
 {
-	if (cs->mark || TAG(d)) {
-		d->flags |= D_SET;
+	if (cs->mark || TAG(s, d)) {
+		FLAGS(s, d) |= D_SET;
 		return;
 	}
 	/*
@@ -435,10 +436,10 @@ markThisCset(cset_t *cs, sccs *s, delta *d)
 	 * so color blue, then accumulate D_SET
 	 */
 	range_cset(s, d, D_BLUE);
-	for (; d; d = NEXT(d)) {
-		if (d->flags & D_BLUE) {
-			d->flags &= ~D_BLUE;
-			d->flags |= D_SET;
+	for (; d; d = NEXT(s, d)) {
+		if (FLAGS(s, d) & D_BLUE) {
+			FLAGS(s, d) &= ~D_BLUE;
+			FLAGS(s, d) |= D_SET;
 		}
 		if (d == s->rstart) break;
 	}
@@ -471,7 +472,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 	static	MDBM *idDB;
 	static	sccs *sc;
 	static	char *lastkey;
-	delta	*d;
+	ser_t	d;
 
 	/*
 	 * Cleanup code, called to reset state.
@@ -672,7 +673,7 @@ csetlist(cset_t *cs, sccs *cset)
 	char	buf[MAXPATH*2];
 	char	*csetid;
 	int	status, i, n;
-	delta	*d;
+	ser_t	d;
 	MDBM	*goneDB = 0;
 	ticker	*tick = 0;
 
@@ -690,7 +691,7 @@ csetlist(cset_t *cs, sccs *cset)
 				    buf, cset->gfile);
 				cset_exit(1);
 			}
-			d->flags |= D_SET;
+			FLAGS(cset, d) |= D_SET;
 		}
 	}
 
@@ -848,17 +849,17 @@ fail:
 private void
 doDiff(sccs *sc, char kind)
 {
-	delta	*d, *e = 0;
+	ser_t	d, e = 0;
 
 	if (CSET(sc)) return;		/* no changeset diffs */
-	for (d = sc->table; d; d = NEXT(d)) {
-		if (d->flags & D_SET) {
+	for (d = sc->table; d; d = NEXT(sc, d)) {
+		if (FLAGS(sc, d) & D_SET) {
 			e = d;
 		} else if (e) {
 			break;
 		}
 	}
-	for (d = sc->table; d && !(d->flags & D_SET); d = NEXT(d));
+	for (d = sc->table; d && !(FLAGS(sc, d) & D_SET); d = NEXT(sc, d));
 	if (!d) return;
 	unless (PARENT(sc, e)) {
 		printf("--- New file ---\n+++ %s\t%s\n",
@@ -880,11 +881,11 @@ doDiff(sccs *sc, char kind)
 private void
 doEndpoints(cset_t *cs, sccs *sc)
 {
-	delta	*d, *earlier = 0, *later = 0;
+	ser_t	d, earlier = 0, later = 0;
 
 	if (CSET(sc)) return;		
-	for (d = sc->table; d; d = NEXT(d)) {
-		unless (d->flags & D_SET) continue;
+	for (d = sc->table; d; d = NEXT(sc, d)) {
+		unless (FLAGS(s, d) & D_SET) continue;
 		unless (later) {
 			later = d;
 		} else {
@@ -901,7 +902,7 @@ doEndpoints(cset_t *cs, sccs *sc)
 private void
 doMarks(cset_t *cs, sccs *s)
 {
-	delta	*d;
+	ser_t	d;
 	int	did = 0;
 
 	/*
@@ -909,14 +910,14 @@ doMarks(cset_t *cs, sccs *s)
 	 */
 	if (cs->remark) sccs_clearbits(s, D_CSET);
 
-	for (d = s->table; d; d = NEXT(d)) {
-		if (!TAG(d) && (d->flags & D_SET)) {
-			if (cs->force || !(d->flags & D_CSET)) {
+	for (d = s->table; d; d = NEXT(s, d)) {
+		if (!TAG(s, d) && (FLAGS(s, d) & D_SET)) {
+			if (cs->force || !(FLAGS(s, d) & D_CSET)) {
 				if (cs->verbose > 2) {
 					fprintf(stderr, "Mark %s%c%s\n",
 					    s->gfile, BK_FS, REV(s, d));
 				}
-				d->flags |= D_CSET;
+				FLAGS(s, d) |= D_CSET;
 				cs->ndeltas++;
 				did++;
 			}
@@ -940,11 +941,11 @@ doMarks(cset_t *cs, sccs *s)
 private void
 doSet(sccs *sc)
 {
-	delta	*d;
+	ser_t	d;
 	char	key[MD5LEN];
 
-	for (d = sc->table; d; d = NEXT(d)) {
-		if (d->flags & D_SET) {
+	for (d = sc->table; d; d = NEXT(sc, d)) {
+		if (FLAGS(sc, d) & D_SET) {
 			printf("%s", sc->gfile);
 		    	if (copts.historic) {
 				printf("%c%s", BK_FS, PATHNAME(sc, d));
@@ -970,7 +971,7 @@ add(FILE *diffs, char *buf)
 {
 	sccs	*s;
 	char	*p, *rev = 0;	/* lint */
-	delta	*d;
+	ser_t	d;
 
 	unless (chomp(buf) && (rev = strrchr(buf, BK_FS))) {
 		fprintf(stderr, "cset: bad file:rev format: %s\n", buf);
@@ -1025,10 +1026,10 @@ add(FILE *diffs, char *buf)
  * leave the file sorted.
  * Close the cset sccs* when done.
  */
-private delta	*
+private ser_t
 mkChangeSet(sccs *cset, char *files, FILE *diffs)
 {
-	delta	*d;
+	ser_t	d;
 	FILE	*f = fopen(files, "rt");
 	char	buf[MAXPATH];
 
@@ -1077,9 +1078,10 @@ mkChangeSet(sccs *cset, char *files, FILE *diffs)
 	 * same second.  It's OK that we adjust it here, we are going to use
 	 * this delta * as part of the checkin on this changeset.
 	 */
-	if (d->date <= cset->table->date) {
-		d->dateFudge = (cset->table->date - d->date) + 1;
-		d->date += d->dateFudge;
+	if (DATE(cset, d) <= DATE(cset, table)) {
+		DATE_FUDGE(cset, d) =
+		    (DATE(cset, table) - DATE(csets, d)) + 1;
+		DATE_SET(cset, d, (DATE(cset, d) + DATE_FUDGE(cset, d)));
 	}
 	/* Add ChangeSet entry */
 	sccs_sdelta(cset, sccs_ino(cset), buf);
@@ -1093,7 +1095,7 @@ mkChangeSet(sccs *cset, char *files, FILE *diffs)
 int
 csetCreate(sccs *cset, int flags, char *files, char **syms)
 {
-	delta	*d;
+	ser_t	d;
 	int	error = 0;
 	int	fd0;
 	MMAP	*diffs;
@@ -1126,7 +1128,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	if (proj_isComponent(cset->proj)) {
 		touch("SCCS/d.ChangeSet", 0644);
 	} else {
-		d->flags |= D_CSET;
+		FLAGS(cset, d) |= D_CSET;
 	}
 
 
@@ -1174,14 +1176,14 @@ out:	unlink(filename);
 private	void
 sccs_patch(sccs *s, cset_t *cs)
 {
-	delta	*d;
+	ser_t	d;
 	ser_t	*patchmap = 0;	/* patch map */
 	int	rc = 0;
 	int	deltas = 0, csets = 0, last = 0;
 	int	outdiffs = 0;
 	int	prs_flags = (PRS_PATCH|SILENT);
 	int	i, n, newfile, hastip;
-	delta	**list;
+	ser_t	*list;
 	char	*gfile = 0;
 	ticker	*tick = 0;
 
@@ -1199,20 +1201,20 @@ sccs_patch(sccs *s, cset_t *cs)
 	 * Clear the D_SET flag because we need to be able to do one at
 	 * a time when sending the cset diffs.
 	 */
-	newfile = s->tree->flags & D_SET;
-	hastip = s->table->flags & D_SET;
+	newfile = FLAGS(s, s->tree) & D_SET;
+	hastip = FLAGS(s, s->table) & D_SET;
 	list = 0;
-	for (n = 0, d = s->table; d; d = NEXT(d)) {
-		unless (d->flags & D_SET) continue;
+	for (n = 0, d = s->table; d; d = NEXT(s, d)) {
+		unless (FLAGS(s, d) & D_SET) continue;
 		unless (gfile) gfile = CSET(s) ? GCHANGESET : PATHNAME(s, d);
 		n++;
 		unless (last) last = n;
-		list = (delta **)addLine((char **)list, d);
-		if (d->bamhash && BAM(s) && copts.doBAM) {
+		addArray(&list, &d);
+		if (HAS_BAMHASH(s, d) && BAM(s) && copts.doBAM) {
 			cs->BAM = addLine(cs->BAM,
 			    sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC));
 		}
-		d->flags &= ~D_SET;
+		FLAGS(s, d) &= ~D_SET;
 	}
 	unless (n) return;
 	assert(gfile);
@@ -1246,7 +1248,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	}
 	for (i = n; i > 0; i--) {
 		d = list[i];
-		if (patchmap) patchmap[SERIAL(s, d)] = n - i + 1;
+		if (patchmap) patchmap[d] = n - i + 1;
 		assert(d);
 		if (cs->verbose > 2) fprintf(stderr, " %s", REV(s, d));
 		if (tick) progress(tick, 0);
@@ -1273,11 +1275,11 @@ sccs_patch(sccs *s, cset_t *cs)
 		/*
 		 * For each file, also eject the parent of the rev.
 		 */
-		if (d->pserial) {
+		if (PARENT(s, d)) {
 			sccs_pdelta(s, PARENT(s, d), stdout);
 			printf("\n");
 		}
-		if (copts.csetkey && CSET(s)) d->flags &= ~D_CSET;
+		if (copts.csetkey && CSET(s)) FLAGS(s, d) &= ~D_CSET;
 		s->rstop = s->rstart = d;
 		if (sccs_prs(s, prs_flags, 0, NULL, stdout)) cset_exit(1);
 		printf("\n");
@@ -1289,14 +1291,14 @@ sccs_patch(sccs *s, cset_t *cs)
 			 * pedantically, put out a patch for I1-E1
 			 * can make for better diff -r results.
 			 */
-			outdiffs += d->added + d->deleted + (SERIAL(s, d) == 1);
+			outdiffs += ADDED(s, d) + DELETED(s, d) + (d == 1);
 			if ((i == last) && outdiffs) {
 				rc = sccs_patchDiffs(s, patchmap, "-");
 			}
-		} else unless (TAG(d)) {
+		} else unless (TAG(s, d)) {
 			// Nested XXX
 			if (CSET(s)) {
-				if (d->added) rc = cset_diffs(cs, SERIAL(s, d));
+				if (ADDED(s, d)) rc = cset_diffs(cs, d);
 			} else if (!BAM(s)) {
 				rc = sccs_getdiffs(s, REV(s, d),
 				    GET_BKDIFFS, "-");

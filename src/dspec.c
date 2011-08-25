@@ -34,7 +34,7 @@ private struct {
 	int	line;		/* current line in $each iteration */
 	int	tcl;		/* whether we are inside a $tcl construct */
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	FILE	*flhs, *frhs;	/* tmp fmem handles to hold expressions */
 } _g[2];
 private	int	gindex;
@@ -55,7 +55,7 @@ private void	stmtList(FILE *out);
 private char	*string(FILE *out, op *next_tok);
 
 void
-dspec_eval(FILE * out, sccs *s, delta *d, char *dspec)
+dspec_eval(FILE * out, sccs *s, ser_t d, char *dspec)
 {
 	gindex = gindex ? 0 : 1;	// flip flop
 	g.out = out;
@@ -593,7 +593,7 @@ again:
 		char	*p, *t;
 		int	len;
 
-		unless (g.d && g.d->comments) return (0);
+		unless (g.d && HAS_COMMENTS(g.s, g.d)) return (0);
 
 		t = COMMENTS(g.s, g.d);
 		t += state->i;
@@ -620,12 +620,12 @@ again:
 	if (strneq(kw.dptr, "SYMBOL", kw.dsize) ||
 	    strneq(kw.dptr, "TAG", kw.dsize)) {
 		if (state->i == 1) {
-			unless (g.d && (g.d->flags & D_SYMBOLS)) return (0);
+			unless (g.d && (FLAGS(g.s, g.d) & D_SYMBOLS)) return (0);
 			state->sym = g.s->symlist + nLines(g.s->symlist);
 		} else {
 			--state->sym;
 		}
-		while ((state->sym > g.s->symlist) && (SERIAL(g.s, g.d) !=
+		while ((state->sym > g.s->symlist) && (g.d !=
 		    (g.s->prs_all ? state->sym->meta_ser : state->sym->ser))) {
 			--state->sym;
 		}

@@ -13,13 +13,13 @@
 
 private	 void	pass1(sccs *s);
 private	 void	pass2(u32 flags);
-private	 int	try_rename(sccs *s, delta *d, int dopass1, u32 flags);
+private	 int	try_rename(sccs *s, ser_t d, int dopass1, u32 flags);
 
 int
 names_main(int ac, char **av)
 {
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	char	*p;
 	int	nfiles = 0, n = 0;
 	int	c, todo = 0, error = 0;
@@ -102,7 +102,7 @@ pass2(u32 flags)
 {
 	char	path[MAXPATH];
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	int	worked = 0, failed = 0;
 	int	i;
 	
@@ -151,7 +151,7 @@ pass2(u32 flags)
  * If not, just move it there.  We should be clean so just do the s.file.
  */
 private	int
-try_rename(sccs *s, delta *d, int dopass1, u32 flags)
+try_rename(sccs *s, ser_t d, int dopass1, u32 flags)
 {
 	int	ret;
 	char	*sfile;

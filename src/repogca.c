@@ -55,7 +55,7 @@ int
 repogca(char **urls, char *dspec, u32 flags, FILE *out)
 {
 	sccs	*s = 0;
-	delta	*d, *p, *lastd;
+	ser_t	d, p, lastd;
 	FILE	*f;
 	int	i, status;
 	int	rc = 1;
@@ -104,7 +104,7 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 	while (key = fgetline(f)) {
 		d = sccs_findKey(s, key);
 		assert(d);
-		d->flags |= D_RED;
+		FLAGS(s, d) |= D_RED;
 	}
 	status = pclose(f);
 	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
@@ -115,8 +115,8 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 	unless (dspec) dspec = strdup("#dv2\n:JOIN::REV:\n$end{\\n}");
 	dspec_collapse(&dspec, &begin, &end);
 	lastd = s->table;
-	for (d = s->table; d; d = NEXT(d)) {
-		if (!TAG(d) && !(d->flags & (D_RED|D_BLUE))) {
+	for (d = s->table; d; d = NEXT(s, d)) {
+		if (!TAG(s, d) && !(FLAGS(s, d) & (D_RED|D_BLUE))) {
 			if (begin) {
 				sccs_prsdelta(s, d, 0, begin, out);
 				free(begin);
@@ -126,11 +126,11 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 			sccs_prsdelta(s, d, 0, dspec, out);
 			rc = 0;
 			unless (flags & RGCA_ALL) break;
-			d->flags |= D_BLUE;
+			FLAGS(s, d) |= D_BLUE;
 		}
-		if (d->flags & D_BLUE) {
-			if (p = PARENT(s, d)) p->flags |= D_BLUE;
-			if (p = MERGE(s, d)) p->flags |= D_BLUE;
+		if (FLAGS(s, d) & D_BLUE) {
+			if (p = PARENT(s, d)) FLAGS(s, p) |= D_BLUE;
+			if (p = MERGE(s, d)) FLAGS(s, p) |= D_BLUE;
 		}
 	}
 	if (end) {

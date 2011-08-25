@@ -7,7 +7,7 @@ void
 do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
 {
 	sccs *s;
-	delta *d;
+	ser_t d;
 
 	s = sccs_init(file, INIT_NOCKSUM);
 	assert(s);

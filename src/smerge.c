@@ -324,7 +324,7 @@ find_gca(char *file, char *left, char *right)
 {
 	sccs	*s;
 	char	*sfile = name2sccs(file);
-	delta	*dl, *dr, *dg;
+	ser_t	dl, dr, dg;
 	char	*inc = 0, *exc = 0;
 	FILE	*revlist = 0;
 

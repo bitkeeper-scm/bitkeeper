@@ -56,8 +56,8 @@ private	int	newBKfiles(sccs *cset,
 		    char *comp, hash *prunekeys, char ***cweavep);
 private	int	rmKeys(hash *prunekeys);
 private	char	*mkRandom(char *input);
-private	int	found(sccs *s, delta *start, delta *stop);
-private	void	_pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd);
+private	int	found(sccs *s, ser_t start, ser_t stop);
+private	void	_pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd);
 private	void	pruneEmpty(sccs *s);
 private	hash	*getKeys(char *file);
 private	int	keeper(char *rk);
@@ -264,7 +264,7 @@ csetprune(Opts *opts)
 {
 	int	empty_nodes = 0, ret = 1;
 	int	status;
-	delta	*d = 0;
+	ser_t	d = 0;
 	sccs	*cset = 0;
 	char	*p, *p1;
 	char	**cweave = 0;
@@ -304,7 +304,7 @@ csetprune(Opts *opts)
 	}
 	if (d) {
 		/* leave just history of rev colored (assuming single tip) */
-		partition_tip = SERIAL(cset, d);
+		partition_tip = d;
 		range_walkrevs(cset, d, 0, sccs_top(cset), 0,
 		    walkrevs_clrFlags, int2p(D_SET));
 	}
@@ -359,7 +359,7 @@ csetprune(Opts *opts)
 			sccs_scompress(cset, SILENT);
 			d = sccs_findKey(cset, key);
 			assert(d);
-			partition_tip = SERIAL(cset, d);
+			partition_tip = d;
 		} else {
 			sccs_scompress(cset, SILENT);
 		}
@@ -491,7 +491,7 @@ fixFiles(Opts *opts, char **deepnest)
 	MDBM	*idDB = 0;
 	char	*rk;
 	sccs	*s = 0;
-	delta	*d;
+	ser_t	d;
 	int	i, ret = 1;
 
 	idcache = aprintf("%s/%s",
@@ -596,7 +596,7 @@ newFileEnv(sccs *cset, char **user, char **host)
 {
 	char	c = 0, *p, *dtz;
 	char	*u;
-	delta	*d;
+	ser_t	d;
 
 	if (p = getenv("BK_USER")) p = strdup(p);
 	*user = p;
@@ -621,7 +621,7 @@ newFileEnv(sccs *cset, char **user, char **host)
 	if (p) *p = c;
 	putenv("_BK_NO_UNIQ=1");
 	putenv("BK_IMPORT=");
-	return (SERIAL(cset, d));
+	return (d);
 }
 
 private	void
@@ -649,7 +649,7 @@ newFile(char *path, char *comp, int ser)
 	char	*ret = 0, *randin = 0, *line = 0, *cmt = 0;
 	char	*spath;
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	char	rk[MAXKEY];
 	char	dk[MAXKEY];
 
@@ -708,10 +708,10 @@ newFile(char *path, char *comp, int ser)
 	 * influenced by environment (BK_CONFIG, umask) so that prunes
 	 * everywhere will generate the same bits.
 	 */
-	s->tree->flags |= D_XFLAGS;
-	s->tree->xflags = X_DEFAULT;
+	FLAGS(s, s->tree) |= D_XFLAGS;
+	XFLAGS(s, s->tree) = X_DEFAULT;
 	d = sccs_top(s);
-	d->flags |= D_CSET;
+	FLAGS(s, d) |= D_CSET;
 	sccs_sdelta(s, d, dk);
 	sccs_sdelta(s, sccs_ino(s), rk);
 	sccs_newchksum(s);
@@ -851,7 +851,7 @@ del:		hash_storeStr(opts->prunekeys, rk, 0);
 		ser = atoi_p(&dk);
 		dk += skip;
 		if (hash_fetchStr(opts->prunekeys, dk)) continue;
-		unless (sfind(cset, ser)->flags & D_SET) continue;;
+		unless (FLAGS(cset, sfind(cset, ser)) & D_SET) continue;;
 
 		which = whichComp(dk, opts->complist);
 		if (which == INVALID) goto err;
@@ -894,7 +894,7 @@ prune:
 		 */
 		cur = whichComp(dk, opts->complist);
 		if (cur == INVALID) goto err;
-		unless (gotTip || sfind(cset, ser)->flags & D_SET) {
+		unless (gotTip || FLAGS(cset, sfind(cset, ser)) & D_SET) {
 			unless (streq(which, cur) ||
 			    streq(cur, "|deleted")) {
 				ret |= whereError(ret, which, dk);
@@ -962,7 +962,7 @@ done:	if (delpath) free(delpath);
 private	int
 fixAdded(sccs *cset, char **cweave)
 {
-	delta	*d = cset->table;
+	ser_t	d = cset->table;
 	int	i, ser;
 	int	oldser = 0, cnt = 0, empty = 0;
 
@@ -974,23 +974,23 @@ fixAdded(sccs *cset, char **cweave)
 			continue;
 		}
 		if (oldser) {
-			d->added = cnt;
-			d = NEXT(d);
+			ADDED_SET(cset, d, cnt);
+			d = NEXT(cset, d);
 		}
 		oldser = ser;
 		cnt = 1;
-		while (SERIAL(cset, d) > ser) {
-			if (d->added || (!TAG(d) && !d->merge)) empty++;
-			d->added = 0;
-			d = NEXT(d);
+		while (d > ser) {
+			if (ADDED(cset, d) || (!TAG(cset, d) && !MERGE(cset, d))) empty++;
+			ADDED_SET(cset, d, 0);
+			d = NEXT(cset, d);
 		}
-		assert(SERIAL(cset, d) == ser);
+		assert(d == ser);
 	}
 	assert(oldser);
-	d->added = cnt;
-	while (d = NEXT(d)) { 
-		if (d->added || (!TAG(d) && !d->merge)) empty++;
-		d->added = 0;
+	ADDED_SET(cset, d, cnt);
+	while (d = NEXT(cset, d)) { 
+		if (ADDED(cset, d) || (!TAG(cset, d) && !MERGE(cset, d))) empty++;
+		ADDED_SET(cset, d, 0);
 	}
 	debug((stderr, "%d empty deltas\n", empty));
 	return (empty);
@@ -1125,21 +1125,21 @@ err:
  */
 
 private void
-_clr(sccs *s, delta *d)
+_clr(sccs *s, ser_t d)
 {
-	for (/* set */ ; d->flags & D_RED; d = PARENT(s, d)) {
-		d->flags &= ~D_RED;
-		if (d->merge) _clr(s, MERGE(s, d));
+	for (/* set */ ; FLAGS(s, d) & D_RED; d = PARENT(s, d)) {
+		FLAGS(s, d) &= ~D_RED;
+		if (MERGE(s, d)) _clr(s, MERGE(s, d));
 	}
 }
 
 private int
-_has(sccs *s, delta *d, delta *stop)
+_has(sccs *s, ser_t d, ser_t stop)
 {
 	for (/* set */ ; d > stop; d = PARENT(s, d)) {
-		if (d->flags & D_RED) return (0);
-		d->flags |= D_RED;
-		if (d->merge) {
+		if (FLAGS(s, d) & D_RED) return (0);
+		FLAGS(s, d) |= D_RED;
+		if (MERGE(s, d)) {
 			if (_has(s, MERGE(s, d), stop)) return (1);
 		}
 	}
@@ -1153,9 +1153,9 @@ _has(sccs *s, delta *d, delta *stop)
  * node iteratively check many nodes can chew up resource.
  */
 private int
-found(sccs *s, delta *start, delta *stop)
+found(sccs *s, ser_t start, ser_t stop)
 {
-	delta	*d;
+	ser_t	d;
 	int	ret;
 
 	assert(start && stop);
@@ -1175,7 +1175,7 @@ found(sccs *s, delta *start, delta *stop)
  * All symbols are on 'D' deltas, so wire them together
  * based on that graph.  This means making some of the merge
  * deltas into merge deltas on the tag graph.
- * Algorithm uses d->ptag on deltas not in the tag graph
+ * Algorithm uses PTAG(s, d) on deltas not in the tag graph
  * to cache graph information.
  * These settings are ignored elsewhere unless d->symGraph is set.
  */
@@ -1183,28 +1183,29 @@ found(sccs *s, delta *start, delta *stop)
 private int
 mkTagGraph(sccs *s)
 {
-	delta	*d, *p, *m;
+	ser_t	d, p, m;
 	int	i;
 	int	tips = 0;
 
 	/* in reverse table order */
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, i)) continue;
-		if (d->flags & D_GONE) continue;
+		if (FLAGS(s, d) & D_GONE) continue;
 
 		/* initialize that which might be inherited later */
-		d->mtag = d->ptag = 0;
+		MTAG_SET(s, d, 0);
+		PTAG_SET(s, d, 0);
 
 		/* go from real parent to tag parent (and also for merge) */
 		if (p = PARENT(s, d)) {
-			unless (SYMGRAPH(p)) {
-				p = (p->ptag) ? sfind(s, p->ptag) : 0;
+			unless (SYMGRAPH(s, p)) {
+				p = (PTAG(s, p)) ? sfind(s, PTAG(s, p)) : 0;
 			}
 		}
 		m = 0;
 		if (m = MERGE(s, d)) {
-			unless (SYMGRAPH(m)) {
-				m = (m->ptag) ? sfind(s, m->ptag) : 0;
+			unless (SYMGRAPH(s, m)) {
+				m = (PTAG(s, m)) ? sfind(s, PTAG(s, m)) : 0;
 			}
 		}
 
@@ -1227,9 +1228,9 @@ mkTagGraph(sccs *s)
 		assert(p || !m);
 
 		/* If this has a symbol, it is in tag graph */
-		if (d->flags & D_SYMBOLS) {
-			unless (SYMLEAF(d)) tips++;
-			d->flags |= D_SYMGRAPH | D_SYMLEAF;
+		if (FLAGS(s, d) & D_SYMBOLS) {
+			unless (SYMLEAF(s, d)) tips++;
+			FLAGS(s, d) |= D_SYMGRAPH | D_SYMLEAF;
 		}
 		/*
 		 * if this has both, then make it part of the tag graph
@@ -1238,17 +1239,17 @@ mkTagGraph(sccs *s)
 		 */
 		if (m) {
 			assert(p);
-			unless (SYMLEAF(d)) tips++;
-			d->flags |= D_SYMGRAPH | D_SYMLEAF;
-			d->mtag = SERIAL(s, m);
-			if (SYMLEAF(m)) tips--;
-			m->flags &= ~D_SYMLEAF;
+			unless (SYMLEAF(s, d)) tips++;
+			FLAGS(s, d) |= D_SYMGRAPH | D_SYMLEAF;
+			MTAG_SET(s, d, m);
+			if (SYMLEAF(s, m)) tips--;
+			FLAGS(s, m) &= ~D_SYMLEAF;
 		}
 		if (p) {
-			d->ptag = SERIAL(s, p);
-			if (SYMGRAPH(d)) {
-				if (SYMLEAF(p)) tips--;
-				p->flags &= ~D_SYMLEAF;
+			PTAG_SET(s, d, p);
+			if (SYMGRAPH(s, d)) {
+				if (SYMLEAF(s, p)) tips--;
+				FLAGS(s, p) &= ~D_SYMLEAF;
 			}
 		}
 	}
@@ -1258,7 +1259,7 @@ mkTagGraph(sccs *s)
 private void
 rebuildTags(sccs *s)
 {
-	delta	*d, *md;
+	ser_t	d, md;
 	symbol	*sym;
 	MDBM	*symdb = mdbm_mem();
 	int	tips;
@@ -1266,9 +1267,10 @@ rebuildTags(sccs *s)
 	/*
 	 * clean house
 	 */
-	for (d = s->table; d; d = NEXT(d)) {
-		d->ptag = d->mtag = 0;
-		d->flags &= ~(D_SYMBOLS|D_SYMGRAPH|D_SYMLEAF);
+	for (d = s->table; d; d = NEXT(s, d)) {
+		PTAG_SET(s, d, 0);
+		MTAG_SET(s, d, 0);
+		FLAGS(s, d) &= ~(D_SYMBOLS|D_SYMGRAPH|D_SYMLEAF);
 	}
 
 	/*
@@ -1277,43 +1279,43 @@ rebuildTags(sccs *s)
 	 */
 	EACHP_REVERSE(s->symlist, sym) {
 		assert(sym->symname && sym->ser && sym->meta_ser);
-		md = SFIND(s, sym->meta_ser);
-		d = SFIND(s, sym->ser);
+		md = sym->meta_ser;
+		d = sym->ser;
 		assert(md && d);
 		if (mdbm_store_str(symdb, SYMNAME(s, sym), "", MDBM_INSERT)) {
 			/* no error, just ignoring duplicates */
 			sym->meta_ser = sym->ser = 0;
 			continue;
 		}
-		assert(TAG(md) || (md == d));
+		assert(TAG(s, md) || (md == d));
 		/* If tag on a deleted node, (if parent) move tag to parent */
-		if (d->flags & D_GONE) {
-			unless (d->pserial) {
+		if (FLAGS(s, d) & D_GONE) {
+			unless (PARENT(s, d)) {
 				/* No where to move it: drop tag */
 				sym->meta_ser = sym->ser = 0;
 				continue;
 			}
 			/* Move Tag to Parent */
-			assert(!(PARENT(s, d)->flags & D_GONE));
+			assert(!(FLAGS(s, PARENT(s, d)) & D_GONE));
 			d = PARENT(s, d);
-			sym->ser = SERIAL(s, d);
+			sym->ser = d;
 		}
 		/* Move all tags directly onto real delta */
 		if (md != d) {
 			md = d;
-			sym->meta_ser = SERIAL(s, md);
+			sym->meta_ser = md;
 		}
-		assert((md == d) && !TAG(d));
-		d->flags |= D_SYMBOLS;
+		assert((md == d) && !TAG(s, d));
+		FLAGS(s, d) |= D_SYMBOLS;
 	}
 	/*
 	 * Symbols are now marked, but not connected.
 	 * Prepare structure for building symbol graph.
 	 * and D_GONE all 'R' nodes in graph.
 	 */
-	for (d = s->table; d; d = NEXT(d)) {
-		unless (TAG(d)) continue;
-		assert(!(d->flags & D_SYMBOLS));
+	for (d = s->table; d; d = NEXT(s, d)) {
+		unless (TAG(s, d)) continue;
+		assert(!(FLAGS(s, d) & D_SYMBOLS));
 		MK_GONE(s, d);
 	}
 	tips = mkTagGraph(s);
@@ -1330,7 +1332,7 @@ rebuildTags(sccs *s)
 private void
 fixTags(sccs *s)
 {
-	delta	*d, *md, *p;
+	ser_t	d, md, p;
 	symbol	*sym;
 
 	/*
@@ -1342,15 +1344,15 @@ fixTags(sccs *s)
 	 */
 	EACHP_REVERSE(s->symlist, sym) {
 		assert(sym->symname && sym->ser && sym->meta_ser);
-		md = SFIND(s, sym->meta_ser);
-		d = SFIND(s, sym->ser);
-		assert(TAG(md) || (md == d));
+		md = sym->meta_ser;
+		d = sym->ser;
+		assert(TAG(s, md) || (md == d));
 		/*
 		 * If tags a deleted node, (if parent) move tag to parent
 		 * XXX: do this first, as md check can clear D_GONE flag.
 		 */
-		if (d->flags & D_GONE) {
-			unless (d->pserial) {
+		if (FLAGS(s, d) & D_GONE) {
+			unless (PARENT(s, d)) {
 				/* No where to move it: drop tag */
 				/* XXX: Can this ever happen?? */
 				fprintf(stderr,
@@ -1366,26 +1368,28 @@ fixTags(sccs *s)
 				continue;
 			}
 			/* Move Tag to Parent */
-			assert(!(PARENT(s, d)->flags & D_GONE));
+			assert(!(FLAGS(s, PARENT(s, d)) & D_GONE));
 			d = PARENT(s, d);
-			sym->ser = SERIAL(s, d);
-			d->flags |= D_SYMBOLS;
-			md->pserial = SERIAL(s, d);
+			sym->ser = d;
+			FLAGS(s, d) |= D_SYMBOLS;
+			PARENT_SET(s, md, d);
 		}
 		/* If tag is deleted node, make into a 'R' node */
-		if (md->flags & D_GONE) {
+		if (FLAGS(s, md) & D_GONE) {
 			/*
 			 * Convert a real delta to a meta delta
 			 * by removing info about the real delta.
 			 * then Ungone it.
 			 * XXX: Does the rev need to be altered?
 			 */
-			assert(!TAG(md));
-			md->flags |= D_TAG;
-			md->flags &= ~(D_GONE|D_CKSUM|D_CSET);
-			md->added = md->deleted = md->same = 0;
-			md->comments = 0;
-			assert(!md->cludes && !md->merge);
+			assert(!TAG(s, md));
+			FLAGS(s, md) |= D_TAG;
+			FLAGS(s, md) &= ~(D_GONE|D_CKSUM|D_CSET);
+			ADDED_SET(s, md, 0);
+			DELETED_SET(s, md, 0);
+			SAME_SET(s, md, 0);
+			COMMENTS_SET(s, md, 0);
+			assert(!HAS_CLUDES(s, md) && !MERGE(s, md));
 		}
 	}
 	/*
@@ -1400,10 +1404,10 @@ fixTags(sccs *s)
 	 * This looks similar to the above but it is not the same.
 	 * the flow is the same, the data structure being tweaked is diff.
 	 */
-	for (d = s->table; d; d = NEXT(d)) {
-		unless (TAG(d)) continue;
-		if ((p = PARENT(s, d)) && (p->flags & D_GONE)) {
-			unless (p->pserial) {
+	for (d = s->table; d; d = NEXT(s, d)) {
+		unless (TAG(s, d)) continue;
+		if ((p = PARENT(s, d)) && (FLAGS(s, p) & D_GONE)) {
+			unless (PARENT(s, p)) {
 				/* No where to move it: root it */
 				/* XXX: Can this ever happen?? */
 				fprintf(stderr,
@@ -1415,29 +1419,31 @@ fixTags(sccs *s)
 				    "describing what you did to get this "
 				    "message.\nThis is a warning message, "
 				    "not a failure.\n",
-				    REV(s, d), SERIAL(s, d), REV(s, p));
-				d->pserial = SERIAL(s, s->tree);
+				    REV(s, d), d, REV(s, p));
+				PARENT_SET(s, d, s->tree);
 				continue;
 			}
 			/* Move Tag to Parent */
-			assert(!(PARENT(s, p)->flags & D_GONE));
+			assert(!(FLAGS(s, PARENT(s, p)) & D_GONE));
 			p = PARENT(s, p);
-			d->pserial = SERIAL(s, p);
+			PARENT_SET(s, d, p);
 		}
 		/* If node is deleted node, make into a 'R' node */
-		if (d->flags & D_GONE) {
+		if (FLAGS(s, d) & D_GONE) {
 			/*
 			 * Convert a real delta to a meta delta
 			 * by removing info about the real delta.
 			 * then Ungone it.
 			 * XXX: Does the rev need to be altered?
 			 */
-			assert(!TAG(d));
-			d->flags |= D_TAG;
-			d->flags &= ~(D_GONE|D_CKSUM|D_CSET);
-			d->added = d->deleted = d->same = 0;
-			d->comments = 0;
-			assert(!d->cludes && !d->merge);
+			assert(!TAG(s, d));
+			FLAGS(s, d) |= D_TAG;
+			FLAGS(s, d) &= ~(D_GONE|D_CKSUM|D_CSET);
+			ADDED_SET(s, d, 0);
+			DELETED_SET(s, d, 0);
+			SAME_SET(s, d, 0);
+			COMMENTS_SET(s, d, 0);
+			assert(!HAS_CLUDES(s, d) && !MERGE(s, d));
 		}
 	}
 }
@@ -1451,60 +1457,60 @@ fixTags(sccs *s)
  * to symdiff_setParent(), as the call to this is after calls to setParent.
  */
 private	void
-rmPruned(sccs *s, delta *d, ser_t **sd)
+rmPruned(sccs *s, ser_t d, ser_t **sd)
 {
 	int	i;
-	ser_t	*new, *sdlist = sd[SERIAL(s, d)];
-	delta	*t;
+	ser_t	*new, *sdlist = sd[d];
+	ser_t	t;
 
-	assert(d->pserial && !(PARENT(s, d)->flags & D_GONE));
+	assert(PARENT(s, d) && !(FLAGS(s, PARENT(s, d)) & D_GONE));
 	unless (sdlist) return;
 
 	new = 0;
 	EACH(sdlist) {
 		t = sfind(s, sdlist[i]);
 		assert(t);
-		if (t->flags & D_GONE) {
+		if (FLAGS(s, t) & D_GONE) {
 			new = symdiff_addBVC(sd, new, s, t);
 		} else {
-			new = addSerial(new, SERIAL(s, t));
+			new = addSerial(new, t);
 		}
 	}
 	free(sdlist);
-	sdlist = sd[SERIAL(s, d)] = symdiff_noDup(new);
+	sdlist = sd[d] = symdiff_noDup(new);
 	free(new);
 	/* integrity check - no more gone in list */
 	EACH(sdlist) {
 		t = sfind(s, sdlist[i]);
-		assert(t && !(t->flags & D_GONE));
+		assert(t && !(FLAGS(s, t) & D_GONE));
 	}
 }
 
 /*
- * We maintain d->parent, d->merge, and d->pserial
+ * We maintain MERGE(s, d) and PARENT(s, d)
  *
  * Which means, don't call much else after this, just get the file
  * written to disk!
  */
 private	void
-_pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd)
+_pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd)
 {
-	delta	*m;
+	ser_t	m;
 
 	debug((stderr, "%s ", d->rev));
 	/* if parent/merge nodes GONE'd, wire around them first */
-	if (d->pserial && (m = PARENT(s, d)) && (m->flags & D_GONE)) {
+	if ((m = PARENT(s, d)) && (FLAGS(s, m) & D_GONE)) {
 		debug((stderr, "%s gets new parent %s (was %s)\n",
 		    d->rev, PARENT(s, m)->rev, m->rev));
 		symdiff_setParent(s, d, PARENT(s, m), sd);
 	}
-	if (d->merge && (m = MERGE(s, d)) && (m->flags & D_GONE)) {
+	if ((m = MERGE(s, d)) && (FLAGS(s, m) & D_GONE)) {
 		debug((stderr, "%s gets new merge parent %s (was %s)\n",
 		    d->rev, PARENT(s, m)->rev, m->rev));
-		d->merge = m->pserial;
+		MERGE_SET(s, d, PARENT(s, m));
 	}
 	/* collapse, swap, or leave merge node alone */
-	if (d->merge) {
+	if (MERGE(s, d)) {
 		debug((stderr, "\n"));
 		/*
 		 * cases which can happen:
@@ -1527,14 +1533,14 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd)
 		 */
 		m = MERGE(s, d);
 		if (found(s, PARENT(s, d), m)) {	/* merge collapses */
-			if (d->merge > d->pserial) {
+			if (MERGE(s, d) > PARENT(s, d)) {
 				symdiff_setParent(s, d, m, sd);
 			}
-			d->merge = 0;
+			MERGE_SET(s, d, 0);
 		}
 		/* else if merge .. (chk case d and e) */
 		else if (sccs_needSwap(s, PARENT(s, d), m)) {
-			d->merge = d->pserial;
+			MERGE_SET(s, d, PARENT(s, d));
 			symdiff_setParent(s, d, m, sd);
 		}
 	}
@@ -1552,11 +1558,11 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd)
 	 * and if tossing, they are empty (no sd[serial]) but haven't
 	 * been cleared.
 	 */
-	d->cludes = 0;
-	if (d->added || d->merge || sd[SERIAL(s, d)]) {
-		if (sd[SERIAL(s, d)]) {
+	CLUDES_SET(s, d, 0);
+	if (ADDED(s, d) || MERGE(s, d) || sd[d]) {
+		if (sd[d]) {
 			/* regen old style SCCS inc and excl lists */
-			graph_symdiff(s, d, PARENT(s, d), slist, sd, 0, 0);
+			graph_symdiff(s, d, PARENT(s, d), 0, slist, sd, 0, 0);
 		}
 		return;
 	}
@@ -1564,8 +1570,8 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd)
 	/* Not a keeper, so re-wire around it later by marking gone now */
 	debug((stderr, "RMDELTA(%s)\n", d->rev));
 	MK_GONE(s, d);
-	assert(d->pserial);	/* never get rid of root node */
-	if (SERIAL(s, d) == partition_tip) partition_tip = d->pserial;
+	assert(PARENT(s, d));	/* never get rid of root node */
+	if (d == partition_tip) partition_tip = PARENT(s, d);
 	return;
 }
 
@@ -1573,7 +1579,7 @@ private void
 pruneEmpty(sccs *s)
 {
 	int	i;
-	delta	*n;
+	ser_t	n;
 	u8	*slist;
 	ser_t	**sd;
 
@@ -1581,7 +1587,7 @@ pruneEmpty(sccs *s)
 	assert(slist);
 	sd = graph_sccs2symdiff(s);
 	for (i = 1; i < s->nextserial; i++) {
-		unless ((n = sfind(s, i)) && NEXT(n) && !TAG(n)) continue;
+		unless ((n = sfind(s, i)) && NEXT(s, n) && !TAG(s, n)) continue;
 		_pruneEmpty(s, n, slist, sd);
 	}
 	free(slist);
@@ -1757,7 +1763,7 @@ getPath(char *key, char **term)
 private	int
 do_file(Opts *opts, sccs *s, char **deepnest)
 {
-	delta	*d;
+	ser_t	d;
 	int	i;
 	int	ret = 1, rc;
 	char	*newpath;
@@ -1775,7 +1781,7 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 
 	for (i = 1; BAM(s) && (i < s->nextserial); i++) {
 		unless (d = sfind(s, i)) continue;
-		if (d->bamhash) {
+		if (HAS_BAMHASH(s, d)) {
 			assert(!bam_old[i]);
 			bam_old[i] = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 		}
@@ -1783,7 +1789,7 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, i)) continue;
-		assert(!TAG(d));
+		assert(!TAG(s, d));
 
 		newpath = newname(delpath, opts->comppath,
 		    PATHNAME(s, d), deepnest);
@@ -1794,10 +1800,10 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 			goto err;
 		}
 		sccs_setPath(s, d, newpath);
-		if (opts->bk4) d->sortPath = 0;
+		if (opts->bk4) SORTPATH_SET(s, d, 0);
 
 		// BAM stuff
-		if (d->bamhash) {
+		if (HAS_BAMHASH(s, d)) {
 			bam_new = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 			if (opts->refProj) {
 				rc = bp_link(s->proj, bam_old[i], 0, bam_new);
@@ -1812,7 +1818,7 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 err:
 	for (i = 1; BAM(s) && (i < s->nextserial); i++) {
 		unless (d = sfind(s, i)) continue;
-		if (d->bamhash) {
+		if (HAS_BAMHASH(s, d)) {
 			assert(bam_old[i]);
 			FREE(bam_old[i]);
 		}

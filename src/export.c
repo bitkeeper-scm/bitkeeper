@@ -25,7 +25,7 @@ export_main(int ac,  char **av)
 	char	*src, *dst;
 	char	src_path[MAXPATH], dst_path[MAXPATH];
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	FILE	*f;
 	char	*type = 0;
 	char	**rav;

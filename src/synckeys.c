@@ -10,7 +10,7 @@
  * Design supports multiple LODs.
  */
 private void
-lod_probekey(sccs *s, delta *d, int syncRoot, FILE *f)
+lod_probekey(sccs *s, ser_t d, int syncRoot, FILE *f)
 {
 	int	i, j;
 	char	key[MAXKEY];
@@ -22,7 +22,7 @@ lod_probekey(sccs *s, delta *d, int syncRoot, FILE *f)
 	for (i = 1; d && (d != s->tree); i *= 2) {
 		for (j = i; d && --j; d = PARENT(s, d));
 		if (d) {
-			assert(!TAG(d));
+			assert(!TAG(s, d));
 			sccs_sdelta(s, d, key);
 			fprintf(f, "%s\n", key);
 		}
@@ -47,22 +47,22 @@ lod_probekey(sccs *s, delta *d, int syncRoot, FILE *f)
 private void
 tag_probekey(sccs *s, FILE *f)
 {
-	delta	*d;
+	ser_t	d;
 	int	i, j;
 	char	key[MAXKEY];
 
-	for (d = s->table; d; d = NEXT(d)) {
+	for (d = s->table; d; d = NEXT(s, d)) {
 		/* Optimization: only tagprobe if tag with parent tag */
-		if (d->ptag && !(d->flags & D_GONE)) break;
+		if (PTAG(s, d) && !(FLAGS(s, d) & D_GONE)) break;
 	}
 	unless (d) return;
 
 	fputs("@TAG PROBE@\n", f);
 	for (i = 1; d; i *= 2) {
-		for (j = i; d->ptag && --j; d = sfind(s, d->ptag));
+		for (j = i; PTAG(s, d) && --j; d = sfind(s, PTAG(s, d)));
 		sccs_sdelta(s, d, key);
 		fprintf(f, "%s\n", key);
-		unless (d->ptag) return;
+		unless (PTAG(s, d)) return;
 	}
 }
 
@@ -92,7 +92,7 @@ probekey_main(int ac, char **av)
 int
 probekey(sccs *s, char *rev, int syncRoot, FILE *f)
 {
-	delta	*d;
+	ser_t	d;
 
 	if (rev) {
 		unless (d = sccs_findrev(s, rev)) {
@@ -116,26 +116,26 @@ probekey(sccs *s, char *rev, int syncRoot, FILE *f)
  * a regular and/or a tag node.
  */
 void
-sccs_tagcolor(sccs *s, delta *d)
+sccs_tagcolor(sccs *s, ser_t d)
 {
-	if (d->flags & D_BLUE) return;
-	d->flags |= D_BLUE;
-	if (d->ptag) sccs_tagcolor(s, sfind(s, d->ptag));
-	if (d->mtag) sccs_tagcolor(s, sfind(s, d->mtag));
-	d->flags |= D_RED;
+	if (FLAGS(s, d) & D_BLUE) return;
+	FLAGS(s, d) |= D_BLUE;
+	if (PTAG(s, d)) sccs_tagcolor(s, sfind(s, PTAG(s, d)));
+	if (MTAG(s, d)) sccs_tagcolor(s, sfind(s, MTAG(s, d)));
+	FLAGS(s, d) |= D_RED;
 }
 
 /*
  * Given a delta pointer 'd', return the tag
  */
 private char *
-sccs_d2tag(sccs *s, delta *d)
+sccs_d2tag(sccs *s, ser_t d)
 {
 	symbol	*sym;
 
-	unless (d->flags & D_SYMBOLS) return (NULL);
+	unless (FLAGS(s, d) & D_SYMBOLS) return (NULL);
 	EACHP_REVERSE(s->symlist, sym) {
-		if (SERIAL(s, d) == sym->ser) {
+		if (d == sym->ser) {
 			assert(!strchr(SYMNAME(s, sym), '|'));
 			return (SYMNAME(s, sym));
 		}
@@ -159,7 +159,7 @@ int
 listkey_main(int ac, char **av)
 {
 	sccs	*s;
-	delta	*d = 0;
+	ser_t	d = 0;
 	int	i, c, debug = 0, quiet = 0, nomatch = 1;
 	int	sndRev = 0;
 	int	ForceFullPatch = 0; /* force a "makepatch -r.." */
@@ -276,7 +276,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 			}
 			if (nomatch) out("@LOD MATCH@\n");	/* aka first */
 			if (sndRev) {
-				assert(d->r[0]);
+				assert(R0(s, d));
 				OUT(REV(s, d));
 				OUT("|");
 				if (tag = sccs_d2tag(s, d)) out(tag);
@@ -300,7 +300,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 				sccs_tagcolor(s, d);
 				out("@TAG MATCH@\n");
 				if (sndRev) {
-					assert(d->r[0]);
+					assert(R0(s, d));
 					OUT(REV(s, d));
 					OUT("|");
 					if (tag = sccs_d2tag(s, d)) out(tag);
@@ -319,10 +319,10 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 	 * Phase 2, send the non marked keys.
 	 */
 	sum = i = 0;
-	for (d = s->table; d; d = NEXT(d)) {
-		if (d->flags & D_RED) continue;
+	for (d = s->table; d; d = NEXT(s, d)) {
+		if (FLAGS(s, d) & D_RED) continue;
 		if (sndRev) {
-			assert(d->r[0]);
+			assert(R0(s, d));
 			OUT(REV(s, d));
 			OUT("|");
 			if (tag = sccs_d2tag(s, d)) {
@@ -383,7 +383,7 @@ int
 prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	int quiet, int *local_only, int *remote_csets, int *remote_tags)
 {
-	delta	*d;
+	ser_t	d;
 	int	rc = 0, rcsets = 0, rtags = 0, local = 0;
 	char	*k;
 	char	key[MAXKEY + 512] = ""; /* rev + tag + key */
@@ -475,7 +475,7 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 		if (streq("@END@", key)) break;
 		k = get_key(key, flags);
 		if (d = sccs_findKey(s, k)) {
-			d->flags |= D_RED;
+			FLAGS(s, d) |= D_RED;
 		} else if (!skipit(skip, k)) { 
 			if (sccs_istagkey(k)) {
 				rtags++;
@@ -490,11 +490,11 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	}
 
 
-empty:	for (d = s->table; d; d = NEXT(d)) {
+empty:	for (d = s->table; d; d = NEXT(s, d)) {
 		/* reset sccs_tagcolor D_BLUE markings*/
-		if (d->flags & D_BLUE) d->flags &= ~D_BLUE;
-		if (d->flags & D_RED) {
-			d->flags &= ~D_RED;
+		if (FLAGS(s, d) & D_BLUE) FLAGS(s, d) &= ~D_BLUE;
+		if (FLAGS(s, d) & D_RED) {
+			FLAGS(s, d) &= ~D_RED;
 			continue;
 		}
 		if (flags & PK_LKEY) {
@@ -523,7 +523,7 @@ prunekey_main(int ac, char **av)
 {
 	remote	r;
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	char	*dspec =
 		    "$if(:DT:=D){C}$unless(:DT:=D){:DT:} "
 		    ":I: :D: :T::TZ: :P:@:HOST:"
@@ -544,11 +544,11 @@ prunekey_main(int ac, char **av)
 	}
 	prunekey(s, &r, NULL, -1, 0, 0, 0, 0, 0);
 	s->state &= ~S_SET;
-	for (d = s->table; d; d = NEXT(d)) {
-		if (d->flags & D_RED) continue;
+	for (d = s->table; d; d = NEXT(s, d)) {
+		if (FLAGS(s, d) & D_RED) continue;
 		s->rstart = s->rstop = d;
 		sccs_prs(s, PRS_ALL, 0, dspec, stdout);
-		d->flags &= ~D_SET;
+		FLAGS(s, d) &= ~D_SET;
 	}
 	sccs_free(s);
 	return (0);

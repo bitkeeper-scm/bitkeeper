@@ -35,7 +35,7 @@ admin_main(int ac, char **av)
 	char	*m = 0;
 	char	*csetFile = 0;
 	char	*obscure = 0;
-	delta	*d = 0;
+	ser_t	d = 0;
 	int 	was_edited = 0, new_delta = 0;
 	pfile	pf = {0};
 	longopt	lopt[] = {
@@ -227,13 +227,13 @@ admin_main(int ac, char **av)
 			continue;
 		}
 		if (dopath) {
-			delta	*d;
+			ser_t	d;
 
-			for (d = sc->table; (dopath == 2) && d; d = NEXT(d)) {
-				unless (NEXT(d)) break;
+			for (d = sc->table; (dopath == 2) && d; d = NEXT(sc, d)) {
+				unless (NEXT(sc, d)) break;
 				/* ugly and inefficient temporary state */
-				d->pathname = sccs_addUniqStr(sc, path);
-				d->sortPath = 0;
+				PATHNAME_SET(sc, d, path);
+				SORTPATH_SET(sc, d, 0);
 			}
 			d = rev ? sccs_findrev(sc, rev) : sccs_top(sc);
 			sccs_parseArg(sc, d, 'P', path ? path : sc->gfile, 0);
@@ -253,12 +253,12 @@ admin_main(int ac, char **av)
 		 * detaching a component repo.
 		 */
 		if (addCsets) {
-			delta	*d;
+			ser_t	d;
 
-			for (d = sc->table; d; d = NEXT(d)) {
-				unless (NEXT(d)) break;
-				if (TAG(d)) continue;
-				d->flags |= D_CSET;
+			for (d = sc->table; d; d = NEXT(sc, d)) {
+				unless (NEXT(sc, d)) break;
+				if (TAG(sc, d)) continue;
+				FLAGS(sc, d) |= D_CSET;
 			}
 		}
 		if (doDates) sccs_fixDates(sc);
@@ -325,7 +325,7 @@ private	int
 do_checkin(char *name,
 	int flags, char *rev, char *newfile, char *comment)
 {
-	delta	*d = 0;
+	ser_t	d = 0;
 	sccs	*s;
 	int	error;
 	struct	stat sb;
@@ -386,10 +386,10 @@ do_checkin(char *name,
 	}
 	if (rev) {
 		d = sccs_parseArg(s, d, 'R', rev, 0);
-		if ((d->flags & D_BADFORM) ||
-		    (!d->r[0] || (!d->r[1] && (d->r[0] != 1))) ||
-		    (d->r[2] && !d->r[3])) {
-			sccs_freedelta(d);
+		if ((FLAGS(s, d) & D_BADFORM) ||
+		    (!R0(s, d) || (!R1(s, d) && (R0(s, d) != 1))) ||
+		    (R2(s, d) && !R3(s, d))) {
+			sccs_freedelta(s, d);
 			fprintf(stderr, "admin: bad revision: %s for %s\n",
 			    rev, s->sfile);
 			sccs_free(s);
@@ -417,7 +417,7 @@ do_checkin(char *name,
 private	int
 setMerge(sccs *sc, char *merge, char *rev)
 {
-	delta *d, *p;
+	ser_t	d, p;
 
 	unless (d = sccs_findrev(sc, rev)) {
 		fprintf(stderr, "admin: can't find %s in %s\n",
@@ -429,7 +429,7 @@ setMerge(sccs *sc, char *merge, char *rev)
 		    merge, sc->sfile);
 		return -1;
 	}
-	d->merge = SERIAL(sc, p);
+	MERGE_SET(sc, d, p);
 	return 0;
 }
 
@@ -457,26 +457,26 @@ rootCsetFile(sccs *sc, char *csetFile)
 {
 	int	i, last, new_cf;
 	char	*orig;
-	delta	*d, *p;
+	ser_t	d, p;
 
 	d = sc->tree;
 	orig = CSETFILE(sc, d);
 	sccs_parseArg(sc, d, 'B', csetFile, 0);
-	new_cf = d->csetFile;
-	d->flags |= D_RED;
-	last = SERIAL(sc, d);
+	new_cf = CSETFILE_INDEX(sc, d);
+	FLAGS(sc, d) |= D_RED;
+	last = d;
 
 	for (i = last+1; i < sc->nextserial; ++i) {
-		unless (d = SFIND(sc, i)) continue;
+		unless (d = i) continue;
 		unless (p = PARENT(sc, d)) continue;
-		unless (p->flags & D_RED) continue;
+		unless (FLAGS(sc, p) & D_RED) continue;
 		unless (streq(orig, CSETFILE(sc, d))) continue;
-		d->csetFile = new_cf;
-		d->flags |= D_RED;
+		CSETFILE_INDEX(sc, d) = new_cf;
+		FLAGS(sc, d) |= D_RED;
 		last = i;
 	}
 	for (i = last; i > 0; --i) {
-		unless (d = SFIND(sc, i)) continue;
-		d->flags &= ~D_RED;
+		unless (d = i) continue;
+		FLAGS(sc, d) &= ~D_RED;
 	}
 }

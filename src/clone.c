@@ -1449,7 +1449,7 @@ after(int quiet, int verbose, char *rev)
 	char	*p;
 	int	i;
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	char	revbuf[MAXREV];
 
 	if (verbose) {
@@ -1743,7 +1743,7 @@ attach_name(sccs *cset, char *name, int setmarks)
 {
 	int	ret = 1;
 	sccs	*freeme = 0;
-	delta	*d, *p;
+	ser_t	d, p;
 	int	j;
 
 	unless (cset || (freeme = cset = sccs_csetInit(INIT_MUSTEXIST))) {
@@ -1761,10 +1761,10 @@ attach_name(sccs *cset, char *name, int setmarks)
 	for (j = 1; j < cset->nextserial; j++) {
 		unless (d = sfind(cset, j)) continue;
 		p = PARENT(cset, d);
-		if (setmarks && !TAG(d) && p) {
-			d->flags |= D_CSET;
+		if (setmarks && !TAG(cset, d) && p) {
+			FLAGS(cset, d) |= D_CSET;
 		} else {
-			d->flags &= ~D_CSET;
+			FLAGS(cset, d) &= ~D_CSET;
 		}
 		/* leave rootkey name alone */
 		if (p) sccs_setPath(cset, d, name);
@@ -1964,7 +1964,7 @@ clonemod_part2(char **envVar)
 	char	**av;
 	char	*t;
 	sccs	*cset;
-	delta	*d;
+	ser_t	d;
 	FILE	*f;
 	char	**strip = 0;
 	char	buf[MAXLINE];
@@ -1979,20 +1979,20 @@ clonemod_part2(char **envVar)
 	while (t = fgetline(f)) {
 		d = sccs_findKey(cset, t);
 		assert(d);
-		d->flags |= D_SET;
+		FLAGS(cset, d) |= D_SET;
 	}
 	pclose(f);
-	for (d = cset->table; d; d = NEXT(d)) {
-		if (d->flags & D_SET) continue;
-		if (TAG(d)) continue;
+	for (d = cset->table; d; d = NEXT(cset, d)) {
+		if (FLAGS(cset, d) & D_SET) continue;
+		if (TAG(cset, d)) continue;
 
 		/* newest gca tip */
 		sccs_color(cset, d);
 		break;
 	}
-	for (d = cset->table; d; d = NEXT(d)) {
-		if ((d->flags & D_SET) ||
-		    (!(d->flags & D_RED) && !TAG(d))) {
+	for (d = cset->table; d; d = NEXT(cset, d)) {
+		if ((FLAGS(cset, d) & D_SET) ||
+		    (!(FLAGS(cset, d) & D_RED) && !TAG(cset, d))) {
 			sccs_sdelta(cset, d, buf);
 			strip = addLine(strip, strdup(buf));
 		}
