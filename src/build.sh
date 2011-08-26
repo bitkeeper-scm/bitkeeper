@@ -53,30 +53,17 @@ case "X`uname -s`" in
 	XDarwin)
 		CC=cc
 		LD=cc
-		export CC LD 
+		export CC LD
 		CCXTRA="-DHAVE_GMTOFF -DNOPROC -no-cpp-precomp"
+		XLIBS="-lresolv"
 		PATH="/usr/local/bin:${PATH}:/usr/X11R6/bin"
 		case "X`uname -r`" in
-			X6.*)	CCXTRA="$CCXTRA -DMACOS_VER=1020"
-				;;
-			X7.*)	CCXTRA="$CCXTRA -DMACOS_VER=1030"
+			X7.*)
 				XLIBS="-lresolv"
 				;;
-			X8.*)	CCXTRA="$CCXTRA -DMACOS_VER=1040"
-				XLIBS="-lresolv"
-				;;
-			X9.*)	CCXTRA="$CCXTRA -DMACOS_VER=1050"
-				XLIBS="-lresolv"
-				;;
-			X10.*)	CCXTRA="$CCXTRA -DMACOS_VER=1060 -m32"
+			*)	CCXTRA="$CCXTRA -m32"
 				LD="$LD -m32"
 				XLIBS="-lresolv"
-				;;
-			X11.*)	CCXTRA="$CCXTRA -DMACOS_VER=1070"
-				XLIBS="-lresolv"
-				;;
-			*)	echo "** Unknown version of Mac OS X"
-				exit 1
 				;;
 		esac
 		;;
