@@ -185,7 +185,10 @@ diffs_main(int ac, char **av)
 				    boundaries, s->gfile);
 				goto next;
 			}
-			range_cset(s, d, D_SET);
+			range_cset(s, d);
+			if (s->rstart && PARENT(s, s->rstart)) {
+				s->rstart = PARENT(s, s->rstart);
+			}
 		} else if (Rev) {
 			/* r1 == r2  means diff against the parent(s)(s)  */
 			/* XXX TODO: probably needs to support -R+	  */

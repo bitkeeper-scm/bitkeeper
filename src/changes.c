@@ -872,7 +872,7 @@ collectDelta(sccs *s, delta *d, char **list)
 	 * Walk all deltas included in this cset and capture the
 	 * changes output.
 	 */
-	range_cset(s, d, D_SET);
+	range_cset(s, d);
 	for (d = s->rstop; d; d = NEXT(d)) {
 		if (d->flags & D_SET) {
 			/* add delta to list */
@@ -1078,7 +1078,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	if (dkey) {
 		d = sccs_findKey(sc, dkey);
 		assert(d);
-		range_cset(sc, d, D_SET);
+		range_cset(sc, d);
 	}
 
 	/*
