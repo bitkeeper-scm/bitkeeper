@@ -13,6 +13,7 @@ struct	range {
 
 #define	WR_BOTH		0x01	/* keep RED and BLUE; callback on both */
 #define	WR_GCA		0x02	/* Callback only on the gca deltas */
+#define	WR_STOP		0x04	/* Callback controls stopping point (gca) */
 
 /*
  *  1.1 -- 1.2 -- 1.3 -- 1.4 -- 1.5
@@ -41,7 +42,7 @@ int	range_process(char *me, sccs *s, u32 flags, RANGE *rargs);
 int	range_addArg(RANGE *rargs, char *arg, int isdate);
 int	range_urlArg(RANGE *rargs, char *url);
 
-void	range_cset(sccs *s, ser_t d, int bit);
+void	range_cset(sccs *s, ser_t d);
 time_t	range_cutoff(char *spec);
 void	range_markMeta(sccs *s);
 int	range_gone(sccs *s, ser_t d, u32 dflags);

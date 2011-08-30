@@ -542,7 +542,7 @@ bkd(remote *r)
 			 */
 			if ((t = getenv("BK_REMOTEBIN")) &&
 			    (r->type & (ADDR_NFS|ADDR_RSH|ADDR_SSH))) {
-				rpath = aprintf("%s/bk bkd", t);
+				rpath = aprintf("\"%s/bk\" bkd", t);
 				cmd[++i] = rpath;
 			} else {
 				cmd[++i] = "bk bkd";

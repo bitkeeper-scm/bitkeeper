@@ -381,6 +381,16 @@ chk_sfile(char *name, STATE state)
 	return (sc);
 }
 
+private int
+pending_print(sccs *s, ser_t d, void *token)
+{
+	char	**data = token;
+
+	if (FLAGS(s, d) & D_CSET) return (1);	/* stopping condition */
+	do_print(data[0], data[1], REV(s, d));
+	return (0);
+}
+
 /*
  * return true if a sfile has pending deltas
  *
@@ -489,28 +499,10 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 	assert(!(FLAGS(s, d) & D_CSET));
 	state[PSTATE] = 'p';
 	if (opts.Aflg) {
-		int	marked;
-		ser_t	e;
-		
-		FLAGS(s, d) |= D_RED;
-		marked = 1;
+		char	*data[2] = {state, gfile};
 
-		for (/* set */; marked && d; d = NEXT(s, d)) {
-			unless (FLAGS(s, d) & D_RED) continue;
-			FLAGS(s, d) &= ~D_RED;
-			marked--;
-			do_print(state, gfile, REV(s, d));
-			if ((e = PARENT(s,d)) &&
-			    !(FLAGS(s, e) & (D_CSET|D_RED))) {
-				FLAGS(s, e) |= D_RED;
-				marked++;
-			}
-			if ((e = MERGE(s,d)) &&
-			    !(FLAGS(s, e) & (D_CSET|D_RED))) {
-				FLAGS(s, e) |= D_RED;
-				marked++;
-			}
-		}
+		/* get the nodes not covered by D_CSET */
+		range_walkrevs(s, 0, 0, d, WR_STOP, pending_print, data);
 		printed = 1;
 	} else if (opts.Cflg) {
 		do_print(state, gfile, REV(s, d));

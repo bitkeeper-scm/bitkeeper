@@ -289,7 +289,7 @@ platformextra(void)
 	char	*ret = 0;
 	char	buf[256];
 
-#ifdef	MACOS_VER
+#if	defined(__APPLE__)
 	if (fp = popen("/usr/bin/sw_vers -productVersion", "r")) {
 #else
 	if (fp = popen("uname -r", "r")) {

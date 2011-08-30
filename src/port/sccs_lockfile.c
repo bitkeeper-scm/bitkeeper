@@ -442,7 +442,7 @@ getstat(char *file, struct stat *sb)
 	int	ret;
 	int	retry = 0;
 
-#ifdef  MACOS_VER
+#if	defined(__APPLE__)
 	retry = 100;
 #endif
 	while (((ret = lstat(file, sb)) || (sb->st_nlink == 0)) && retry--) {

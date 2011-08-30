@@ -1785,12 +1785,16 @@ touch foo bar
 bk new $Q foo
 bk commit $Q -yfoo
 bk clone $Q . ../local
+bk rm -f BitKeeper/etc/gone
+echo info@bitmover.com > BitKeeper/etc/gone
+bk new $Q BitKeeper/etc/gone
 bk edit $Q foo
 bk delta $Q -fyfoo foo
 bk commit $Q -yfoo
 cd ../local
-bk edit $Q foo
-bk delta $Q -fyfoo foo
+bk edit $Q foo BitKeeper/etc/gone
+echo data@bitmover.com > BitKeeper/etc/gone
+bk delta $Q -fyfoo foo BitKeeper/etc/gone
 bk commit $Q -yfoo
 mkdir BitKeeper/triggers
 cat <<EOF > BitKeeper/triggers/pre-commit
@@ -1801,7 +1805,15 @@ chmod +x BitKeeper/triggers/pre-commit
 bk pull $Q 2> ERR && fail -f ERR
 grep -q 'Trigger "pre-commit"' ERR || fail -f ERR
 cd RESYNC
-bk sfiles -pA foo > GOT
-echo 'SCCS/s.foo|1.3' > WANT
+bk sfiles -pA foo BitKeeper/etc/gone > GOT
+cat <<EOF > WANT
+SCCS/s.foo|1.3
+BitKeeper/etc/SCCS/s.gone|1.6
+BitKeeper/etc/SCCS/s.gone|1.0.1.1
+BitKeeper/etc/SCCS/s.gone|1.5
+BitKeeper/etc/SCCS/s.gone|1.4
+BitKeeper/etc/SCCS/s.gone|1.3
+BitKeeper/etc/SCCS/s.gone|1.1.1.2
+EOF
 cmpfiles WANT GOT
 echo OK

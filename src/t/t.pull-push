@@ -10,7 +10,7 @@
 #    modifications under any license.
 
 PREFIX=file://"$HERE"
-BK_REMOTEBIN="`bk bin`"
+BK_REMOTEBIN="$BK_BIN"
 export BK_REMOTEBIN
 
 echo 'compression:none!' >> "`bk dotbk`"/config

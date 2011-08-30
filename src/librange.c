@@ -154,56 +154,20 @@ range_cutoff(char *spec)
 	return (time(0) - (mult * units));
 }
 
-void
-range_cset(sccs *s, ser_t d, int bit)
+private	int
+csetStop(sccs *s, ser_t d, void *token)
 {
-	ser_t	e, last, clean;
-	u32	color;
+	if ((*(ser_t *)token != d) && (FLAGS(s, d) & D_CSET)) return (1);
+	FLAGS(s, d) |= D_SET;
+	return (0);
+}
 
+void
+range_cset(sccs *s, ser_t d)
+{
 	unless (d = sccs_csetBoundary(s, d)) return; /* if pending */
-
-	FLAGS(s, d) |= bit;
-	s->rstop = d;
-
-	/* walk back all children until all deltas in this cset are marked */
-	clean = last = d;
-	for (; d; d = NEXT(s, d)) {
-		unless (color = (FLAGS(s, d) & (bit|D_RED))) continue;
-		if (color & D_RED) {
-			FLAGS(s, d) &= ~color;
-			color = D_RED;
-		}
-		if (e = PARENT(s, d)) {
-			if (FLAGS(s, e) & D_CSET) {
-				FLAGS(s, e) |= D_RED;
-			} else {
-				FLAGS(s, e) |= color;
-				if (color == bit) {
-					if (e < last) last = e;
-				}
-			}
-			if (e < clean) clean = e;
-		}
-		if (e = MERGE(s, d)) {
-			if (FLAGS(s, e) & D_CSET) {
-				FLAGS(s, e) |= D_RED;
-			} else {
-				FLAGS(s, e) |= color;
-				if (color == bit) {
-					if (e < last) last = e;
-				}
-			}
-			if (e < clean) clean = e;
-		}
-		if (d == last) break;
-	}
-	d = NEXT(s, d);		/* boundary for diffs.c (sorta wrong..) */
-	s->rstart = d ? d : s->tree;
-	if (bit & D_SET) s->state |= S_SET;
-	for ( ; d; d = NEXT(s, d)) {
-		if (d < clean) break;
-		FLAGS(s, d) &= ~D_RED;
-	}
+	range_walkrevs(s, 0, 0, d, WR_STOP, csetStop, &d);
+	s->state |= S_SET;
 }
 
 private ser_t
@@ -467,16 +431,20 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 		unless (color = (FLAGS(s, d) & mask)) continue;
 		FLAGS(s, d) &= ~color; /* clear bits */
 		if (color != mask) marked--;
+		if (!(flags & WR_GCA) &&
+		    ((color == D_RED) ||
+		    ((flags & WR_BOTH) && (color != mask)))) {
+			if (flags & WR_BOTH) FLAGS(s, d) |= color;
+			if (fcn && (ret = fcn(s, d, token))) {
+				unless (flags & WR_STOP) break;
+				color = mask;
+			} else {
+				unless (s->rstop) s->rstop = d;
+				s->rstart = d;
+			}
+		}
 		if (e = PARENT(s, d)) MARK(e, color);
 		if (e = MERGE(s, d)) MARK(e, color);
-		if (flags & WR_GCA) continue;
-		if ((color == D_RED) ||
-		    ((flags & WR_BOTH) && (color != mask))) {
-			if (flags & WR_BOTH) FLAGS(s, d) |= color;
-			if (fcn && (ret = fcn(s, d, token))) break;
-			unless (s->rstop) s->rstop = d;
-			s->rstart = d;
-		}
 	}
 err:
 	/* cleanup */
