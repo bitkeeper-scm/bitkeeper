@@ -1247,9 +1247,6 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	 */
 	free(csets);
 
-	/* clear marks */
-	for (e = sc->rstop; e; e = NEXT(sc, e)) FLAGS(sc, e) &= ~D_SET;
-
 	return (rc);
 }
 
