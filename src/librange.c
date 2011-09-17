@@ -230,10 +230,11 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	s->state |= S_SET;
 	if (!rargs->rstart) {
 		/* select all */
-		for (d = s->table; d; d = NEXT(s, d)) {
+		for (d = TABLE(s); d >= TREE(s); d--) {
+			unless (FLAGS(s, d)) continue;
 			unless (TAG(s, d)) FLAGS(s, d) |= D_SET;
 		}
-		s->rstart = s->tree;
+		s->rstart = TREE(s);
 		s->rstop = sccs_top(s);
 	} else if (!rargs->rstop) {
 		/* list of revs */
@@ -317,7 +318,7 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 			return (1);
 		}
 	} else {
-		s->rstart = s->tree;
+		s->rstart = TREE(s);
 	}
 	unless (rstop) rstop = rstart;
 	if (*rstop) {
@@ -331,7 +332,8 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 	}
 	if (flags & RANGE_SET) {
 		for (d = s->rstop;
-		    d && (d >= s->rstart); d = NEXT(s, d)) {
+		    d && (d >= s->rstart); d--) {
+			unless (FLAGS(s, d)) continue;
 			unless (TAG(s, d)) FLAGS(s, d) |= D_SET;
 		}
 	}
@@ -407,7 +409,7 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 	s->rstop = 0;
 	unless (to) {		/* no upper bound - get all tips */
 		all = 1;
-		to = s->table;	/* could be a tag; that's okay */
+		to = TABLE(s);	/* could be a tag; that's okay */
 	} else {
 		FLAGS(s, to) |= D_RED;
 		marked++;
@@ -425,7 +427,8 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 	}
 
 	/* compute RED - BLUE */
-	for (; d && (all || (marked > 0)); d = NEXT(s, d)) {
+	for (; d && (all || (marked > 0)); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (TAG(s, d)) continue;
 		if (all) FLAGS(s, d) |= D_RED;
 		unless (color = (FLAGS(s, d) & mask)) continue;
@@ -448,7 +451,8 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 	}
 err:
 	/* cleanup */
-	for (; d && (d >= last); d = NEXT(s, d)) {
+	for (; d && (d >= last); d--) {
+		unless (FLAGS(s, d)) continue;
 		FLAGS(s, d) &= ~mask;
 	}
 	if (freelist) free(freelist);
@@ -543,7 +547,6 @@ range_gcalist(sccs *s, ser_t *list)
 void
 range_markMeta(sccs *s)
 {
-	int	i;
 	ser_t	d, e;
 	ser_t	lower = 0, upper = 0;	/* region to clean up D_BLUE */
 	
@@ -554,7 +557,8 @@ range_markMeta(sccs *s)
 	 *   Ancestor of D_SET - Inside the region. Mark D_RED, leave cleared
 	 *   What's left -- Outside the region.  Mark and leave D_BLUE
 	 */
-	for (d = s->table; d; d = NEXT(s, d)){
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (TAG(s, d)) continue;
 		unless (FLAGS(s, d) & (D_SET|D_RED)) {
 			FLAGS(s, d) |= D_BLUE;
@@ -579,23 +583,23 @@ range_markMeta(sccs *s)
 	 * having it be newer than the D_SET region in most cases.
 	 */
 	d = (lower && (lower < s->rstart)) ? lower : s->rstart;
-	for (i = d; i < s->nextserial; i++) {
-		unless ((d = sfind(s, i)) && TAG(s, d)) continue;
+	for (/* d */; d <= TABLE(s); d++) {
+		unless (FLAGS(s, d) && TAG(s, d)) continue;
 		if (FLAGS(s, d) & D_SET) continue;
 		/* e = tagged real delta */
 		for (e = PARENT(s, d); e && TAG(s, e); e = PARENT(s, e));
 		/* filter out meta attached to nodes outside the region */
 		if ((FLAGS(s, e) & D_BLUE) ||
-		    (PTAG(s, d) && (FLAGS(s, sfind(s, PTAG(s, d))) & D_BLUE)) ||
-		    (MTAG(s, d) && (FLAGS(s, sfind(s, MTAG(s, d))) & D_BLUE))) {
+		    (PTAG(s, d) && (FLAGS(s, PTAG(s, d)) & D_BLUE)) ||
+		    (MTAG(s, d) && (FLAGS(s, MTAG(s, d)) & D_BLUE))) {
 			FLAGS(s, d) |= D_BLUE;
 			if (upper < d) upper = d;
 			continue;
 		}
 		/* select meta nodes that attached to the region in some way */
 		if ((FLAGS(s, e) & D_SET) ||
-		    (PTAG(s, d) && (FLAGS(s, sfind(s, PTAG(s, d))) & D_SET)) ||
-		    (MTAG(s, d) && (FLAGS(s, sfind(s, MTAG(s, d))) & D_SET))) {
+		    (PTAG(s, d) && (FLAGS(s, PTAG(s, d)) & D_SET)) ||
+		    (MTAG(s, d) && (FLAGS(s, MTAG(s, d)) & D_SET))) {
 			FLAGS(s, d) |= D_SET;
 			if (s->rstop < d) {
 				s->rstop = d;
@@ -604,7 +608,8 @@ range_markMeta(sccs *s)
 	}
 
 	/* cleanup */
-	for (d = upper; d; d = NEXT(s, d)) {
+	for (d = upper; d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		FLAGS(s, d) &= ~D_BLUE;
 		if (d == lower) break;
 	}
@@ -617,7 +622,8 @@ range_gone(sccs *s, ser_t d, u32 dflags)
 
 	range_walkrevs(s, d, 0, 0, 0, walkrevs_setFlags, (void*)D_SET);
 	range_markMeta(s);
-	for (d = s->rstop; d; d = NEXT(s, d)) {
+	for (d = s->rstop; d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_SET) {
 			count++;
 			FLAGS(s, d) &= ~D_SET;
@@ -659,7 +665,8 @@ range_unrange(sccs *s, ser_t *left, ser_t *right, int all)
 
 	assert(left && right);
 	*left = *right = 0;
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (TAG(s, d)) continue;
 		color = (FLAGS(s, d) & (D_SET|D_RED|D_BLUE));
 		/* parent region of left does not intersect D_SET region */

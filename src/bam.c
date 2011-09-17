@@ -2412,7 +2412,8 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 		return (4);
 	}
 	fprintf(stderr, "Converting %s ", s->gfile);
-	for (n = 0, d = s->table; d; d = NEXT(s, d)) {
+	for (n = 0, d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		assert(!TAG(s, d));
 		if (sccs_get(s, REV(s, d), 0, 0, 0, SILENT, "-")) return (8);
 
@@ -2422,7 +2423,7 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 		 * anyway, it's an extra tuple but the data will collapse.
 		 * Review carefully.
 		 */
-		if (d == s->tree) {
+		if (d == TREE(s)) {
 			DELETED_SET(s, d, 0);
 			SAME_SET(s, d, 0);
 			ADDED_SET(s, d, size(s->gfile));

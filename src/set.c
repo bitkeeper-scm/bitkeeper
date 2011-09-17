@@ -156,7 +156,7 @@ stdin_set(sccs *s)
 	u8	*map;
 	char	buf[MAXKEY];
 
-	map = calloc(s->nextserial, sizeof(u8));
+	map = calloc(TABLE(s) + 1, sizeof(u8));
 	while (fnext(buf, stdin)) {
 		chop(buf);
 		unless (d = sccs_findrev(s, buf)) {
@@ -175,7 +175,6 @@ set_get(sccs *s, char *rev)
 {
 	ser_t	d;
 	u8	*map;
-	int	i;
 
 	unless (rev) return (stdin_set(s));
 
@@ -185,8 +184,8 @@ set_get(sccs *s, char *rev)
 		exit(1);
 	}
 	map = sccs_set(s, d, 0, 0);
-	for (i = 0; i < s->nextserial; ++i) {
-		map[i] &= 1;
+	for (d = TREE(s); d <= TABLE(s); ++d) {
+		map[d] &= 1;
 	}
 	return (map);
 }
@@ -197,13 +196,11 @@ set_get(sccs *s, char *rev)
 void
 set_diff(sccs *s, u8 *a, u8 *b, set_pfunc p)
 {
-	int	i;
 	ser_t	d;
 
-	for (i = 1; i < s->nextserial; ++i) {
-		unless (a[i] && !b[i]) continue;
-		d = sfind(s, i);
-		assert(d);
+	for (d = TREE(s); d <= TABLE(s); ++d) {
+		unless (a[d] && !b[d]) continue;
+		assert(FLAGS(s, d));
 		if (TAG(s, d)) continue;
 		if (opts.tags && !(FLAGS(s, d) & D_SYMBOLS)) continue;
 		p(s, d);
@@ -218,13 +215,11 @@ set_diff(sccs *s, u8 *a, u8 *b, set_pfunc p)
 void
 set_and(sccs *s, u8 *a, u8 *b, set_pfunc p)
 {
-	int	i;
 	ser_t	d;
 
-	for (i = 1; i < s->nextserial; ++i) {
-		unless (a[i] && b[i]) continue;
-		d = sfind(s, i);
-		assert(d);
+	for (d = TREE(s); d <= TABLE(s); ++d) {
+		unless (a[d] && !b[d]) continue;
+		assert(FLAGS(s, d));
 		if (TAG(s, d)) continue;
 		if (opts.tags && !(FLAGS(s, d) & D_SYMBOLS)) continue;
 		p(s, d);
@@ -239,13 +234,11 @@ set_and(sccs *s, u8 *a, u8 *b, set_pfunc p)
 void
 set_or(sccs *s, u8 *a, u8 *b, set_pfunc p)
 {
-	int	i;
 	ser_t	d;
 
-	for (i = 1; i < s->nextserial; ++i) {
-		unless (a[i] || b[i]) continue;
-		d = sfind(s, i);
-		assert(d);
+	for (d = TREE(s); d <= TABLE(s); ++d) {
+		unless (a[d] && !b[d]) continue;
+		assert(FLAGS(s, d));
 		if (TAG(s, d)) continue;
 		if (opts.tags && !(FLAGS(s, d) & D_SYMBOLS)) continue;
 		p(s, d);
@@ -260,13 +253,11 @@ set_or(sccs *s, u8 *a, u8 *b, set_pfunc p)
 void
 set_xor(sccs *s, u8 *a, u8 *b, set_pfunc p)
 {
-	int	i;
 	ser_t	d;
 
-	for (i = 1; i < s->nextserial; ++i) {
-		unless (a[i] ^ b[i]) continue;
-		d = sfind(s, i);
-		assert(d);
+	for (d = TREE(s); d <= TABLE(s); ++d) {
+		unless (a[d] && !b[d]) continue;
+		assert(FLAGS(s, d));
 		if (TAG(s, d)) continue;
 		if (opts.tags && !(FLAGS(s, d) & D_SYMBOLS)) continue;
 		p(s, d);
@@ -310,7 +301,8 @@ set_list(sccs *s, char *rev, set_pfunc p)
 		sccs_free(s);
 		exit(1);
 	}
-	for (e = s->table; e; e = NEXT(s, e)) {
+	for (e = TABLE(s); e >= TREE(s); e--) {
+		unless (FLAGS(s, e)) continue;
 		if (TAG(s, e)) continue;
 		if (FLAGS(s, e) & D_SET) continue;
 		if (opts.tags && !(FLAGS(s, e) & D_SYMBOLS)) continue;
@@ -334,7 +326,6 @@ set_set(sccs *s, char *rev, set_pfunc p)
 {
 	ser_t	d;
 	u8	*map;
-	int	i;
 
 	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "set: cannot find %s in %s\n", rev, s->gfile);
@@ -342,8 +333,8 @@ set_set(sccs *s, char *rev, set_pfunc p)
 		exit(1);
 	}
 	map = sccs_set(s, d, 0, 0);
-	for (i = 1; i < s->nextserial; ++i) {
-		if (map[i]) p(s, sfind(s, i));
+	for (d = TREE(s); d <= TABLE(s); ++d) {
+		if (map[d]) p(s, d);
 	}
 	free(map);
 }

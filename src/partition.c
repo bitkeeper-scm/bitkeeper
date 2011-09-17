@@ -657,7 +657,7 @@ moveComps(Opts *opts)
 		 * want the repo to be attached until there are user files.
 		 * This lets a file 'foo' become a component 'foo' later.
 		 */
-		d = cset->tree;		 /* 1.0 */
+		d = TREE(cset);		 /* 1.0 */
 		assert(d);
 		FLAGS(cset, d) &= ~D_CSET;
 		d2 = sccs_kid(cset, d); /* 1.1 */
@@ -667,7 +667,8 @@ moveComps(Opts *opts)
 		 * Accumulate serial-tagged entries for product weave
 		 * bk changes -nd'$if(:CSETKEY:){:DS:\t:ROOTKEY: :KEY:}'
 		 */
-		for (d = cset->table; d; d = NEXT(cset, d)) {
+		for (d = TABLE(cset); d >= TREE(cset); d--) {
+			unless (FLAGS(cset, d)) continue;
 			unless (FLAGS(cset, d) & D_CSET) continue;
 			sccs_sdelta(cset, d, key);
 			fprintf(prodweave, "%u\t%s %s\n",

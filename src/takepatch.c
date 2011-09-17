@@ -691,7 +691,7 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int *np)
 	pid = strdup(b);
 	/*
 	 * We stash away the parent key of the earliest delta as a "GCA".
-	 * Optimally, we'd walk sccs_next() and do date and key compares.
+	 * Optimally, we'd walk sccs_prev() and do date and key compares.
 	 * and move up to the last one older than the current patch (for
 	 * which we haven't read in the delta struct yet).  But this
 	 * isn't used by current code (fastpatch+sfio), so this is good
@@ -999,8 +999,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	 * We have to mark it here before writing the file out.
 	 */
 	if (remote_tagtip) {
-		d = sfind(s, remote_tagtip);
-		assert(d);
+		d = remote_tagtip;
+		assert(FLAGS(s, d));
 		if (!SYMLEAF(s, d)) {
 			assert(CSET(s));
 			FLAGS(s, d) |= D_SYMLEAF;
@@ -1014,10 +1014,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	 * When porting in a csetfile, need to ignore path names
 	 * XXX: component moves looks will break this.
 	 */
-	if (opts->port && CSET(s)) for (d = 0, p = patchList; p; p = p->next) {
-		unless ((d = sfind(s, p->serial)) && (FLAGS(s, d) & D_REMOTE)) {
-			continue;
-		}
+	if (opts->port && CSET(s)) for (p = patchList; p; p = p->next) {
+		d = p->serial;
+		unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
 		unless (PARENT(s, d)) continue;	/* rootkey untouched */
 
 		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, PARENT(s, d));
@@ -1048,10 +1047,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 
 	if (cdb = loadCollapsed()) {
 		for (p = patchList; p; p = p->next) {
-			unless ((d = sfind(s, p->serial))
-			    && (FLAGS(s, d) & D_REMOTE)) {
-				continue;
-			}
+			d = p->serial;
+			unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
 			sccs_md5delta(s, d, buf);
 			if (hash_fetchStr(cdb, buf)) {
 				/* find cset that added that entry */
@@ -1104,9 +1101,8 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	csets = fopen(csets_in, "w");
 	assert(csets);
 	for (p = patchList; p; p = p->next) {
-		unless ((d = sfind(s, p->serial)) && (FLAGS(s, d) & D_REMOTE)) {
-			continue;
-		}
+		d = p->serial;
+		unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
 		sccs_sdelta(s, d, buf);
 		fprintf(csets, "%s\n", buf);
 	}
@@ -1122,9 +1118,8 @@ markup:
 		 * just clear all of them.  And mclose works if 0 passed in.
 		 */
 		mclose(p->diffMmap); /* win32: must mclose after cset_write */
-		unless ((d = sfind(s, p->serial)) && (FLAGS(s, d) & D_REMOTE)) {
-			continue;
-		}
+		d = p->serial;
+		unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
 		FLAGS(s, d) |= D_SET; /* for resum() */
 	}
 	if (topkey) top = sccs_findKey(s, topkey);
@@ -1155,7 +1150,8 @@ markup:
 		}
 		if (echo == 3) progress_nldone();
 	} else if (!BAM(s)) {
-		for (d = s->table; d; d = NEXT(s, d)) {
+		for (d = TABLE(s); d >= TREE(s); d--) {
+			unless (FLAGS(s, d)) continue;
 			unless ((FLAGS(s, d) & D_SET) && !TAG(s, d)) continue;
 			c = sccs_resum(s, d, 0, 0);
 			if (c & 2) {
@@ -1316,10 +1312,11 @@ applyPatch(char *localPath, sccs *perfile)
 		fprintf(stderr,
 		    "stripdel %s from %s\n", tableGCA, s->sfile);
 	}
-	if (d = sccs_prev(s, sccs_findKey(s, tableGCA))) {
+	if (d = sccs_next(s, sccs_findKey(s, tableGCA))) {
 		ser_t	e;
 
-		for (e = s->table; e; e = NEXT(s, e)) {
+		for (e = TABLE(s); e >= TREE(s); e--) {
+			unless (FLAGS(s, e)) continue;
 			FLAGS(s, e) |= D_SET|D_GONE;
 		    	if (echo>7) {
 				char	k[MAXKEY];
@@ -1521,7 +1518,8 @@ getLocals(sccs *s, char *name)
 		fprintf(stderr, "getlocals(%s, %s, %s)\n",
 		    s->gfile, REV(s, g), name);
 	}
-	for (d = s->table; d != g; d = NEXT(s, d)) {
+	for (d = TABLE(s); d != g; d--) {
+		unless (FLAGS(s, d)) continue;
 		/*
 		 * Silently discard removed deltas, we don't support them.
 		 */
@@ -1836,12 +1834,12 @@ sfio(MMAP *m)
 			edited = addLine(edited, sccs2name(s->sfile));
 			goto err;
 		}
-		if (DANGLING(s, s->table)) {
+		if (DANGLING(s, TABLE(s))) {
 			fprintf(stderr, "takepatch: monotonic file %s "
 			    "has dangling deltas\n", s->sfile);
 			goto err;
 		}
-		sccs_sdelta(s, s->table, key); /* local tipkey */
+		sccs_sdelta(s, TABLE(s), key); /* local tipkey */
 
 		unless (d = sccs_findKey(sr, key)) {
 			/*
@@ -1854,7 +1852,7 @@ sfio(MMAP *m)
 			 */
 
 			/* because of pending deltas? */
-			unless (FLAGS(s, s->table) & D_CSET) {
+			unless (FLAGS(s, TABLE(s)) & D_CSET) {
 				SHOUT();
 				getMsg("tp_uncommitted", s->sfile, 0, stderr);
 			} else {

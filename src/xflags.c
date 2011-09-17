@@ -53,25 +53,25 @@ next:		sccs_free(s);
 private int
 xflagsDefault(sccs *s, int cset, int what)
 {
-	int	xf = XFLAGS(s, s->tree);
+	int	xf = XFLAGS(s, TREE(s));
 	int	ret = 0;
 
 	unless (xf) {
 		unless (what & XF_DRYRUN) s->state &= ~S_READ_ONLY;
-		FLAGS(s, s->tree) |= D_XFLAGS;
-		XFLAGS(s, s->tree) = X_DEFAULT;
+		FLAGS(s, TREE(s)) |= D_XFLAGS;
+		XFLAGS(s, TREE(s)) = X_DEFAULT;
 		ret = 1;
 	}
 	/* for old binaries */
 	unless ((xf & X_REQUIRED) == X_REQUIRED) {
 		unless (what & XF_DRYRUN) s->state &= ~S_READ_ONLY;
-		XFLAGS(s, s->tree) |= X_REQUIRED;
+		XFLAGS(s, TREE(s)) |= X_REQUIRED;
 		ret = 1;
 	}
 	if (cset && ((xf & (X_SCCS|X_RCS)) || !(xf & X_HASH))) {
 		unless (what & XF_DRYRUN) s->state &= ~S_READ_ONLY;
-		XFLAGS(s, s->tree) &= ~(X_SCCS|X_RCS);
-		XFLAGS(s, s->tree) |= X_HASH;
+		XFLAGS(s, TREE(s)) &= ~(X_SCCS|X_RCS);
+		XFLAGS(s, TREE(s)) |= X_HASH;
 		ret = 1;
 	}
 	return (ret);
@@ -87,7 +87,7 @@ xflags(sccs *s, int what)
 	int	ret = 0;
 	ser_t	d;
 
-	for (d = s->tree; d < s->nextserial; d++) {
+	for (d = TREE(s); d <= TABLE(s); d++) {
 		unless (FLAGS(s, d)) continue;
 
 		ret |= checkXflags(s, d, what);
@@ -103,7 +103,7 @@ checkXflags(sccs *s, ser_t d, int what)
 	char	*x, *r;
 	char	key[MD5LEN];
 
-	if (d == s->tree) {
+	if (d == TREE(s)) {
 		unless ((XFLAGS(s, d) & X_REQUIRED) == X_REQUIRED) {
 			if (what & XF_STATUS) return (1);
 			fprintf(stderr,
@@ -147,8 +147,8 @@ checkXflags(sccs *s, ser_t d, int what)
 	 * XXX: this is fixed by rmshortkeys -- so safe to pull when
 	 * all repos have been converted.
 	 */
-	if (DATE(s, s->tree) == 864023369) {
-		sccs_md5delta(s, s->tree, key);
+	if (DATE(s, TREE(s)) == 864023369) {
+		sccs_md5delta(s, TREE(s), key);
 		if (streq("337f90d8qZwQGPzUrQ-3E6KGSH4k4g", key)) return (0);
 	}
 

@@ -59,7 +59,7 @@ lines_main(int ac, char **av)
 		if (n) {
 			for (c = n, e = sccs_top(s); e && c--; e = PARENT(s, e));
 			if (e) e = ancestor(s, e);
-			prevs(e ? e : s->tree);
+			prevs(e ? e : TREE(s));
 		} else if (rargs.rstart) {
 			if (range_process("lines", s,
 				RANGE_ENDPOINTS, &rargs)) {
@@ -84,7 +84,7 @@ lines_main(int ac, char **av)
 			}
 			printf("\n");
 		} else {
-			prevs(s->tree);
+			prevs(TREE(s));
 		}
 		rc = 0;
 next:		sccs_free(s);
@@ -102,11 +102,10 @@ private void
 renumber(sccs *s)
 {
 	ser_t	d;
-	int	i;
 	int	ser = 0;
 
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, i)) continue;
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
 		unless (TAG(s, d)) SAME_SET(s, d, ser++);
 	}
 }

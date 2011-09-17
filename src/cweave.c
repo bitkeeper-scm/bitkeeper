@@ -175,30 +175,29 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, ser_t parent, int fast)
 
 	TRACE("%s/%d", delta_sdate(s, d), SUM(s, d));
 	/*
-	 * Insert new delta 'd' into s->table in time sorted order
+	 * Insert new delta 'd' into TABLE(s) in time sorted order
 	 */
-	if (!s->table) {
+	if (!TABLE(s)) {
 		/*
 	 	 * Easy case, this is a empty cset file
 		 * We are propably getting the 1.0 delta
 		 * We only get here if we do "takepatch -i"
 		 */
-		s->tree = d; /* sccs_findKey() wants this */
 		serial = 1;
-	} else if (earlier(s, s->table, d)) {
+	} else if (earlier(s, TABLE(s), d)) {
 		/*
 	 	 * Easy case, this is the newest delta
 		 * Just insert it at the top
 		 */
-		serial = s->nextserial;
+		serial = TABLE(s) + 1;
 	} else {
 		/*
 		 * OK, We need to insert d somewhere in the middle of the list
 		 * find the insertion point...
 		 */
-		p = s->table;
+		p = TABLE(s);
 		while (p) {
-			e = NEXT(s, p);
+			e = sccs_prev(s, p);
 			if (!e || earlier(s, e, d)) { /* got insertion point */
 				serial = p;
 				break;
@@ -212,7 +211,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, ser_t parent, int fast)
 	 * Update all reference to the moved serial numbers
 	 */
 	f = fmem();
-	for (e = d + 1; e <= s->table; e += 1) {
+	for (e = d + 1; e <= TABLE(s); e += 1) {
 		unless (FLAGS(s, e)) continue;
 
 		if (HAS_CLUDES(s, e)) {
@@ -236,7 +235,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, ser_t parent, int fast)
 		sccs_findKeyUpdate(s, e);
 	}
 	fclose(f);
-	if (d != s->table) {
+	if (d != TABLE(s)) {
 		EACHP_REVERSE(s->symlist, sym) {
 			if (sym->ser >= serial) sym->ser++;
 			if (sym->meta_ser >= serial) sym->meta_ser++;
@@ -247,7 +246,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, ser_t parent, int fast)
 	PARENT_SET(s, d, pserial);
 
 	sccs_inherit(s, d);
-	if (!fast && !TAG(s, d) && (s->tree != d)) SAME_SET(s, d, 1);
+	if (!fast && !TAG(s, d) && (TREE(s) != d)) SAME_SET(s, d, 1);
 
 	/*
 	 * Fix up tag/symbols
@@ -365,13 +364,11 @@ fastWeave(sccs *s, FILE *out)
 	 * a dangling delta pointer or cset mark.
 	 */
 	for (i = 1; i < s->iloc; i++) {
-		unless (lp[i].serial) {
+		unless (d = lp[i].serial) {
 			d = D_INVALID;
 			addArray(&patchmap, &d);
 			continue;
 		}
-		d = sfind(s, lp[i].serial);
-		assert(d);
 		addArray(&patchmap, &d);
 		unless (FLAGS(s, d) & D_REMOTE) continue;
 		unless (weavemap) {
@@ -381,14 +378,15 @@ fastWeave(sccs *s, FILE *out)
 			 */
 			base = d - 1;
 			weavemap = (ser_t *)calloc(
-			    (s->nextserial - base), sizeof(ser_t));
+			    (TABLE(s) + 1 - base), sizeof(ser_t));
 			assert(weavemap);
 			index = d;
 			weavemap[0] = base;
 			offset = 0;
 		}
 		while (index + offset < d) {
-			if (e = sfind(s, index + offset)) {
+			e = index + offset;
+			if (FLAGS(s, e)) {
 #ifdef	COMPRESSION
 				serial = NEXT(s, e) ? NEXT(s, e)->serial + 1 : 1;
 				if (serial != e->serial) {
@@ -410,8 +408,9 @@ fastWeave(sccs *s, FILE *out)
 		offset++;
 	}
 	if (weavemap) {
-		while (index + offset < s->nextserial) {
-			if (e = sfind(s, index + offset)) {
+		while (index + offset <= TABLE(s)) {
+			e = index + offset;
+			if (FLAGS(s, e)) {
 #ifdef	COMPRESSION
 				serial = NEXT(s, e) ? NEXT(s, e)->serial + 1 : 1;
 				if (serial != e->serial) {
@@ -459,7 +458,7 @@ scompress(sccs *s, int serial)
 	ser_t	d;
 	int	i;
 
-	while (serial < s->nextserial) {
+	while (serial <= TABLE(s)) {
 		unless (d = sfind(s, serial++)) continue;
 
 		//if (PARENT(s, d)) PARENT_SET(s, d, d->parent->serial);

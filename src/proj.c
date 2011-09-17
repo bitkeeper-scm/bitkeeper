@@ -590,11 +590,11 @@ proj_rootkey(project *p)
 	concat_path(buf, p->root, CHANGESET);
 	if (exists(buf)) {
 		sc = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT|INIT_WACKGRAPH);
-		assert(sc->tree);
-		sccs_sdelta(sc, sc->tree, buf);
+		assert(TREE(sc));
+		sccs_sdelta(sc, TREE(sc), buf);
 		if (p->rootkey) free(p->rootkey);
 		p->rootkey = strdup(buf);
-		sccs_md5delta(sc, sc->tree, buf);
+		sccs_md5delta(sc, TREE(sc), buf);
 		if (p->md5rootkey) free(p->md5rootkey);
 		p->md5rootkey = strdup(buf);
 		sccs_free(sc);

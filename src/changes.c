@@ -593,7 +593,8 @@ doit(int dash)
 		if (range_process("changes", s, RANGE_SET, &opts.rargs)) {
 			goto next;
 		}
-		for (e = s->rstop; e; e = NEXT(s, e)) {
+		for (e = s->rstop; e; e--) {
+			unless (FLAGS(s, e)) continue;
 			if ((FLAGS(s, e) & D_SET) && !want(s, e)) {
 				FLAGS(s, e) &= ~D_SET;
 			}
@@ -635,8 +636,9 @@ doit(int dash)
 			if (want(s, e)) FLAGS(s, e) |= D_SET;
 		}
 	} else {
-		s->rstop = s->table;
-		for (e = s->table; e; e = NEXT(s, e)) {
+		s->rstop = TABLE(s);
+		for (e = TABLE(s); e >= TREE(s); e--) {
+			unless (FLAGS(s, e)) continue;
 			if (want(s, e)) FLAGS(s, e) |= D_SET;
 		}
 	}
@@ -657,7 +659,8 @@ doit(int dash)
 	if (opts.doComp || opts.verbose) opts.fcset = fmem();
 	/* capture the comments, for the csets we care about */
 	dstart = dstop = 0;
-	for (e = s->rstop; e; e = NEXT(s, e)) {
+	for (e = s->rstop; e; e--) {
+		unless (FLAGS(s, e)) continue;
 		if (FLAGS(s, e) & D_SET) {
 			unless (dstart) dstart = e;
 			dstop = e;
@@ -713,7 +716,8 @@ fileFilt(sccs *s, MDBM *csetDB)
 	ser_t	ser;
 
 	/* Unset any csets that don't contain files from -i and -x */
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		unless (FLAGS(s, d) & D_SET) continue;
 		/* if cset changed nothing, keep it if not filtering by inc */
 		if (!(opts.inc || opts.BAM) && !ADDED(s, d)) continue;
@@ -871,7 +875,8 @@ collectDelta(sccs *s, ser_t d, char **list)
 	 * changes output.
 	 */
 	range_cset(s, d);
-	for (d = s->rstop; d; d = NEXT(s, d)) {
+	for (d = s->rstop; d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_SET) {
 			/* add delta to list */
 			ll = new(slog);
@@ -912,8 +917,7 @@ loadcset(sccs *cset)
 	char	*p, *t;
 	MDBM	*db;
 	int	print = 0;
-	ser_t	ser = 0;
-	ser_t	d;
+	ser_t	d = 0;
 	char	*pathp;
 	char	path[MAXPATH];
 
@@ -939,13 +943,11 @@ loadcset(sccs *cset)
 	while (p = sccs_nextdata(cset)) {
 		unless (isData(p)) {
 			if (p[1] == 'I') {
-				ser = atoi(p+3);
-				d = sfind(cset, ser);
-				assert(d);
+				d = atoi(p+3);
 				print = (FLAGS(cset, d) & D_SET);
 			} else if (p[1] == 'E') {
 				if (keylist) {
-					saveKey(db, ser, keylist);
+					saveKey(db, d, keylist);
 					keylist = 0;
 				}
 			}
@@ -1048,7 +1050,8 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			 * cset && the component cset need to pass
 			 * the want() test.  Is anding useful?
 			 */
-			for (e = sc->table; e; e = NEXT(sc, e)) {
+			for (e = TABLE(sc); e >= TREE(sc); e--) {
+				unless (FLAGS(sc, e)) continue;
 				if (want(sc, e)) FLAGS(sc, e) |= D_SET;
 			}
 		}
@@ -1070,7 +1073,8 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			assert(rstate->csetDB);
 		}
 		if (dkey) {
-			for (e = sc->table; e; e = NEXT(sc, e)) {
+			for (e = TABLE(sc); e >= TREE(sc); e--) {
+				unless (FLAGS(sc, e)) continue;
 				FLAGS(sc, e) &= ~D_SET;
 			}
 		}
@@ -1088,7 +1092,8 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	 * repo the cset file is in. If the repo is the product repo,
 	 * these will be the same.
 	 */
-	for (e = sc->rstop; e; e = NEXT(sc, e)) {
+	for (e = sc->rstop; e; e--) {
+		unless (FLAGS(sc, e)) continue;
 		if (FLAGS(sc, e) & D_SET) {
 			FLAGS(sc, e) &= ~D_SET;
 			if (!dkey || want(sc, e)) addArray(&csets, &e);

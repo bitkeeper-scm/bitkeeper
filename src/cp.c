@@ -35,7 +35,7 @@ cp(char *from, char *to, int force)
 	ser_t	d;
 	char	buf[100];
 	char	*sfile, *gfile, *tmp;
-	int	i, err;
+	int	err;
 
 	assert(from && to);
 	unless (proj_samerepo(from, to) || force) {
@@ -65,18 +65,18 @@ cp(char *from, char *to, int force)
 	 * delta.  XXX - need to fix this if/when we support grafting.
 	 */
 	randomBits(buf);
-	if (HAS_RANDOM(s, s->tree)) {
-		assert(!streq(buf, RANDOM(s, s->tree)));
+	if (HAS_RANDOM(s, TREE(s))) {
+		assert(!streq(buf, RANDOM(s, TREE(s))));
 	}
-	RANDOM_SET(s, s->tree, buf);
+	RANDOM_SET(s, TREE(s), buf);
 
 	/*
 	 * Try using the new filename as the original filename.
 	 * Only necessary in long/short key trees like BitKeeper.
 	 */
 	tmp = _relativeName(gfile, 0, 0, 0, 0);
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = i) continue;
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
 		sccs_setPath(s, d, tmp);
 	}
 	sccs_clearbits(s, D_CSET);

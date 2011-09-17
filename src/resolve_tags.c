@@ -213,14 +213,13 @@ out:		sccs_free(s);
 		char	*sdate;
 
 		sscanf(kv.val.dptr, "%d %d", &a, &b);
-		d = sfind(s, a);
-		sccs_sdelta(s, d, key);
+		sccs_sdelta(s, a, key);
 		if (sccs_findKey(local, key)) {
-			l = d;
-			r = sfind(s, b);
+			l = a;
+			r = b;
 		} else {
-			r = d;
-			l = sfind(s, b);
+			r = a;
+			l = b;
 		}
 		sdate = delta_sdate(s, l);
 		fprintf(stderr,
@@ -239,15 +238,13 @@ out:		sccs_free(s);
 		t.name = kv.key.dptr;
 		rs->prompt = aprintf("\"%s\"", t.name);
 		sscanf(kv.val.dptr, "%d %d", &a, &b);
-		d = sfind(s, a);
-		assert(d);
-		sccs_sdelta(s, d, key);
+		sccs_sdelta(s, a, key);
 		if (sccs_findKey(local, key)) {
-			t.mlocal = d;
-			t.mremote = sfind(s, b);
+			t.mlocal = a;
+			t.mremote = b;
 		} else {
-			t.mremote = d;
-			t.mlocal = sfind(s, b);
+			t.mremote = a;
+			t.mlocal = b;
 		}
 		assert(t.mlocal && t.mremote);
 		for (d = t.mlocal; TAG(s, d); d = PARENT(s, d));

@@ -27,7 +27,7 @@ private int
 tagmerge(void)
 {
 	sccs	*s;
-	ser_t	d, a = 0, b = 0;
+	ser_t	d, e, a = 0, b = 0;
 	int	i = 0;
 	char	cset[] = CHANGESET;
 
@@ -38,10 +38,11 @@ tagmerge(void)
 	/*
 	 * Find the two oldest tag tips, and count up all tips.
 	 */
-	for (d = s->table, i = 0; d; d = NEXT(s, d)) {
+	for (d = TABLE(s), i = 0; d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		unless (SYMGRAPH(s, d)) continue;
-		if (PTAG(s, d)) FLAGS(s, sfind(s, PTAG(s, d))) |= D_RED;
-		if (MTAG(s, d)) FLAGS(s, sfind(s, MTAG(s, d))) |= D_RED;
+		if (e = PTAG(s, d)) FLAGS(s, e) |= D_RED;
+		if (e = MTAG(s, d)) FLAGS(s, e) |= D_RED;
 		if (FLAGS(s, d) & D_RED) {
 			FLAGS(s, d) &= ~D_RED;
 			continue;
@@ -101,7 +102,8 @@ m(sccs *s, ser_t l, ser_t r)
 	i = 1;
 	do {
 		tt = DATE(s, p) + i++;
-		for (d = s->table; d; d = NEXT(s, d)) {
+		for (d = TABLE(s); d >= TREE(s); d--) {
+			unless (FLAGS(s, d)) continue;
 			if (DATE(s, d) < tt) {
 				d = 0;
 				break;

@@ -47,10 +47,10 @@ sccs_graft(sccs *s1, sccs *s2)
 {
 	sccs	*winner, *loser;
 
-	if (DATE(s1, s1->tree) < DATE(s2, s2->tree)) {
+	if (DATE(s1, TREE(s1)) < DATE(s2, TREE(s2))) {
 		winner = s1;
 		loser = s2;
-	} else if (DATE(s1, s1->tree) > DATE(s2, s2->tree)) {
+	} else if (DATE(s1, TREE(s1)) > DATE(s2, TREE(s2))) {
 		loser = s1;
 		winner = s2;
 	} else {
@@ -76,9 +76,9 @@ sccs_patch(sccs *winner, sccs *loser)
 	printf(PATCH_CURRENT);
 	printf("== %s ==\n", wfile);
 	printf("Grafted file: %s\n", lfile);
-	sccs_pdelta(winner, winner->tree, stdout);
+	sccs_pdelta(winner, TREE(winner), stdout);
 	printf("\n");
-	sccs_pdelta(winner, winner->tree, stdout);
+	sccs_pdelta(winner, TREE(winner), stdout);
 	printf("\n");
 	_patch(loser);
 
@@ -90,7 +90,7 @@ sccs_patch(sccs *winner, sccs *loser)
 	 * ChangeSet.  What needs to happen is that we add this symbol
 	 * in the resolver after grafting the files together.
 	 */
-	sccs_pdelta(loser, loser->tree, stdout);
+	sccs_pdelta(loser, TREE(loser), stdout);
 	printf("\n");
 	d = sccs_dInit(0, 'R', loser, 0);
 	printf("M 0.0 %s%s %s%s%s +0 -0\n",
@@ -112,12 +112,11 @@ sccs_patch(sccs *winner, sccs *loser)
 private void
 _patch(sccs *s)
 {
-	int	i;
 	ser_t	d;
 	int	flags = PRS_PATCH|SILENT;
 
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, i)) continue;
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
 		if (PARENT(s, d)) {
 			sccs_pdelta(s, PARENT(s, d), stdout);
 			printf("\n");

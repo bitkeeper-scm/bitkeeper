@@ -240,7 +240,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	bktmp(tmp, "smerge");
 	f->tmpfile = strdup(tmp);
 	s = sccs_init(sfile, 0);
-	unless (s && s->tree) return (-1);
+	unless (s && TREE(s)) return (-1);
 	free(sfile);
 	rev = strdup(rev);
 	if (inc = strchr(rev, '+')) *inc++ = 0;

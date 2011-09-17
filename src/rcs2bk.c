@@ -240,12 +240,12 @@ rcs2bk(RCS *rcs, char *sfile)
 			return (1);
 		}
 		sccs_restart(s);
-		d->sccsrev = strdup(REV(s, s->table));
+		d->sccsrev = strdup(REV(s, TABLE(s)));
 		if (verbose > 1) {
 			while (len--) putchar('\b');
-			printf("%s", REV(s, s->table));
+			printf("%s", REV(s, TABLE(s)));
 			fflush(stdout);
-			len = strlen(REV(s, s->table));
+			len = strlen(REV(s, TABLE(s)));
 		}
 	}
 	sccs_free(s);

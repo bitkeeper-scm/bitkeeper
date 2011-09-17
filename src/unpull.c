@@ -110,14 +110,13 @@ err:			sccs_free(s);
 		}
 	}
 	if (tag) {
-		for (d = s->table; d && (d != tag); d = NEXT(s, d)) {
+		for (d = TABLE(s); (d >= TREE(s)) && (d != tag); d--) {
+			unless (FLAGS(s, d)) continue;
 			if (!SYMGRAPH(s, d) || (FLAGS(s, d) & D_BLUE)) continue;
-			if (PTAG(s, d)) {
-				e = sfind(s, PTAG(s, d));
+			if (e = PTAG(s, d)) {
 				if (FLAGS(s, e) & D_BLUE) break;
 			}
-			if (MTAG(s, d)) {
-				e = sfind(s, MTAG(s, d));
+			if (e = MTAG(s, d)) {
 				if (FLAGS(s, e) & D_BLUE) break;
 			}
 		}

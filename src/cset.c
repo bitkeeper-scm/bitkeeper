@@ -670,7 +670,9 @@ csetlist(cset_t *cs, sccs *cset)
 		while(fgets(buf, sizeof(buf), stdin)) {
 			chop(buf);
 			if (copts.serial) {
-				d = sfind(cset, atoi(buf));
+				d = atoi(buf);
+				assert((d > 0) && (d <= TABLE(cset)));
+				unless (FLAGS(cset, d)) d = 0;
 			} else {
 				d = sccs_findrev(cset, buf);
 			}
@@ -841,14 +843,15 @@ doDiff(sccs *sc, char kind)
 	ser_t	d, e = 0;
 
 	if (CSET(sc)) return;		/* no changeset diffs */
-	for (d = sc->table; d; d = NEXT(sc, d)) {
+	for (d = TABLE(sc); d >= TREE(sc); d--) {
+		unless (FLAGS(sc, d)) continue;
 		if (FLAGS(sc, d) & D_SET) {
 			e = d;
 		} else if (e) {
 			break;
 		}
 	}
-	for (d = sc->table; d && !(FLAGS(sc, d) & D_SET); d = NEXT(sc, d));
+	for (d = TABLE(sc); (d >= TREE(sc)) && !(FLAGS(sc, d) & D_SET); d--);
 	if (!d) return;
 	unless (PARENT(sc, e)) {
 		printf("--- New file ---\n+++ %s\t%s\n",
@@ -873,7 +876,8 @@ doEndpoints(cset_t *cs, sccs *sc)
 	ser_t	d, earlier = 0, later = 0;
 
 	if (CSET(sc)) return;		
-	for (d = sc->table; d; d = NEXT(sc, d)) {
+	for (d = TABLE(sc); d >= TREE(sc); d--) {
+		unless (FLAGS(sc, d)) continue;
 		unless (FLAGS(s, d) & D_SET) continue;
 		unless (later) {
 			later = d;
@@ -899,7 +903,8 @@ doMarks(cset_t *cs, sccs *s)
 	 */
 	if (cs->remark) sccs_clearbits(s, D_CSET);
 
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (!TAG(s, d) && (FLAGS(s, d) & D_SET)) {
 			if (cs->force || !(FLAGS(s, d) & D_CSET)) {
 				if (cs->verbose > 2) {
@@ -933,7 +938,8 @@ doSet(sccs *sc)
 	ser_t	d;
 	char	key[MD5LEN];
 
-	for (d = sc->table; d; d = NEXT(sc, d)) {
+	for (d = TABLE(sc); d >= TREE(sc); d--) {
+		unless (FLAGS(sc, d)) continue;
 		if (FLAGS(sc, d) & D_SET) {
 			printf("%s", sc->gfile);
 		    	if (copts.historic) {
@@ -1091,7 +1097,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	FILE	*fdiffs;
 	char	filename[MAXPATH];
 
-	if ((cset->nextserial > 200) && getenv("BK_REGRESSION")) {
+	if ((TABLE(cset) + 1 > 200) && getenv("BK_REGRESSION")) {
 		fprintf(stderr, "Too many changesets for regressions.\n");
 		exit(1);
 	}
@@ -1190,10 +1196,10 @@ sccs_patch(sccs *s, cset_t *cs)
 	 * Clear the D_SET flag because we need to be able to do one at
 	 * a time when sending the cset diffs.
 	 */
-	newfile = FLAGS(s, s->tree) & D_SET;
-	hastip = FLAGS(s, s->table) & D_SET;
+	newfile = FLAGS(s, TREE(s)) & D_SET;
+	hastip = FLAGS(s, TABLE(s)) & D_SET;
 	list = 0;
-	for (n = 0, d = s->table; d; d = NEXT(s, d)) {
+	for (n = 0, d = TABLE(s); d >= TREE(s); d--) {
 		unless (FLAGS(s, d) & D_SET) continue;
 		unless (gfile) gfile = CSET(s) ? GCHANGESET : PATHNAME(s, d);
 		n++;
@@ -1233,7 +1239,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	}
 	if (cs->fastpatch) {
 		prs_flags |= PRS_FASTPATCH;
-		patchmap = calloc(s->nextserial, sizeof(ser_t));
+		patchmap = calloc(TABLE(s) + 1, sizeof(ser_t));
 	}
 	for (i = n; i > 0; i--) {
 		d = list[i];
@@ -1252,7 +1258,7 @@ sccs_patch(sccs *s, cset_t *cs)
 				printf("New file: %s\n", PATHNAME(s, d));
 				sccs_perfile(s, stdout);
 			}
-			s->rstop = s->rstart = s->tree;
+			s->rstop = s->rstart = TREE(s);
 			if (copts.csetkey && CSET(s)) {
 				fputs(copts.csetkey, stdout);
 			} else {

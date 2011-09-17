@@ -342,7 +342,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 	d = 0;
 	while (t = sccs_nextdata(cset)) {
 		unless (isData(t)) {
-			if (t[1] == 'I') d = sfind(cset, atoi(&t[3]));
+			if (t[1] == 'I') d = atoi(&t[3]);
 			continue;
 		}
 		v = separator(t);		/* delta key */

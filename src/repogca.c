@@ -114,8 +114,9 @@ repogca(char **urls, char *dspec, u32 flags, FILE *out)
 	}
 	unless (dspec) dspec = strdup("#dv2\n:JOIN::REV:\n$end{\\n}");
 	dspec_collapse(&dspec, &begin, &end);
-	lastd = s->table;
-	for (d = s->table; d; d = NEXT(s, d)) {
+	lastd = TABLE(s);
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (!TAG(s, d) && !(FLAGS(s, d) & (D_RED|D_BLUE))) {
 			if (begin) {
 				sccs_prsdelta(s, d, 0, begin, out);

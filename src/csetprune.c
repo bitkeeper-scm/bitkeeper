@@ -353,13 +353,10 @@ csetprune(Opts *opts)
 	} else {
 		verbose((stderr, "Serial compressing ChangeSet file...\n"));
 		if (partition_tip) {
-			d = sfind(cset, partition_tip);
-			assert(d);
-			sccs_sdelta(cset, d, key);
+			sccs_sdelta(cset, partition_tip, key);
 			sccs_scompress(cset, SILENT);
-			d = sccs_findKey(cset, key);
-			assert(d);
-			partition_tip = d;
+			partition_tip = sccs_findKey(cset, key);
+			assert(partition_tip);
 		} else {
 			sccs_scompress(cset, SILENT);
 		}
@@ -394,9 +391,7 @@ finish:
 		if (partition_tip) {
 			/* must be after checksum */
 			cset = sccs_csetInit(INIT_MUSTEXIST);
-			d = sfind(cset, partition_tip);
-			assert(d);
-			sccs_sdelta(cset, d, key);
+			sccs_sdelta(cset, partition_tip, key);
 			p = aprintf("-ycsetprune command: %s", key);
 			sccs_free(cset);
 			cset = 0;
@@ -420,9 +415,7 @@ finish:
 		free(p1);
 	} else if (partition_tip && opts->revfile) {
 		cset = sccs_csetInit(INIT_MUSTEXIST);
-		d = sfind(cset, partition_tip);
-		assert(d);
-		sccs_sdelta(cset, d, key);
+		sccs_sdelta(cset, partition_tip, key);
 		Fprintf(opts->revfile, "%s", key);
 		sccs_free(cset);
 		cset = 0;
@@ -708,8 +701,8 @@ newFile(char *path, char *comp, int ser)
 	 * influenced by environment (BK_CONFIG, umask) so that prunes
 	 * everywhere will generate the same bits.
 	 */
-	FLAGS(s, s->tree) |= D_XFLAGS;
-	XFLAGS(s, s->tree) = X_DEFAULT;
+	FLAGS(s, TREE(s)) |= D_XFLAGS;
+	XFLAGS(s, TREE(s)) = X_DEFAULT;
 	d = sccs_top(s);
 	FLAGS(s, d) |= D_CSET;
 	sccs_sdelta(s, d, dk);
@@ -851,7 +844,7 @@ del:		hash_storeStr(opts->prunekeys, rk, 0);
 		ser = atoi_p(&dk);
 		dk += skip;
 		if (hash_fetchStr(opts->prunekeys, dk)) continue;
-		unless (FLAGS(cset, sfind(cset, ser)) & D_SET) continue;;
+		unless (FLAGS(cset, ser) & D_SET) continue;
 
 		which = whichComp(dk, opts->complist);
 		if (which == INVALID) goto err;
@@ -894,7 +887,7 @@ prune:
 		 */
 		cur = whichComp(dk, opts->complist);
 		if (cur == INVALID) goto err;
-		unless (gotTip || FLAGS(cset, sfind(cset, ser)) & D_SET) {
+		unless (gotTip || FLAGS(cset, ser) & D_SET) {
 			unless (streq(which, cur) ||
 			    streq(cur, "|deleted")) {
 				ret |= whereError(ret, which, dk);
@@ -962,7 +955,7 @@ done:	if (delpath) free(delpath);
 private	int
 fixAdded(sccs *cset, char **cweave)
 {
-	ser_t	d = cset->table;
+	ser_t	d = TABLE(cset);
 	int	i, ser;
 	int	oldser = 0, cnt = 0, empty = 0;
 
@@ -975,21 +968,28 @@ fixAdded(sccs *cset, char **cweave)
 		}
 		if (oldser) {
 			ADDED_SET(cset, d, cnt);
-			d = NEXT(cset, d);
+			d = sccs_prev(cset, d);
 		}
 		oldser = ser;
 		cnt = 1;
 		while (d > ser) {
-			if (ADDED(cset, d) || (!TAG(cset, d) && !MERGE(cset, d))) empty++;
+			if (ADDED(cset, d) ||
+			    (!TAG(cset, d) && !MERGE(cset, d))) {
+				empty++;
+			}
 			ADDED_SET(cset, d, 0);
-			d = NEXT(cset, d);
+			d = sccs_prev(cset, d);
 		}
 		assert(d == ser);
 	}
 	assert(oldser);
 	ADDED_SET(cset, d, cnt);
-	while (d = NEXT(cset, d)) { 
-		if (ADDED(cset, d) || (!TAG(cset, d) && !MERGE(cset, d))) empty++;
+	while (--d >= TREE(cset)) { 
+		unless (FLAGS(cset, d)) continue;
+		if (ADDED(cset, d) ||
+		    (!TAG(cset, d) && !MERGE(cset, d))) {
+			empty++;
+		}
 		ADDED_SET(cset, d, 0);
 	}
 	debug((stderr, "%d empty deltas\n", empty));
@@ -1184,12 +1184,11 @@ private int
 mkTagGraph(sccs *s)
 {
 	ser_t	d, p, m;
-	int	i;
 	int	tips = 0;
 
 	/* in reverse table order */
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, i)) continue;
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_GONE) continue;
 
 		/* initialize that which might be inherited later */
@@ -1198,15 +1197,11 @@ mkTagGraph(sccs *s)
 
 		/* go from real parent to tag parent (and also for merge) */
 		if (p = PARENT(s, d)) {
-			unless (SYMGRAPH(s, p)) {
-				p = (PTAG(s, p)) ? sfind(s, PTAG(s, p)) : 0;
-			}
+			unless (SYMGRAPH(s, p)) p = PTAG(s, p);
 		}
 		m = 0;
 		if (m = MERGE(s, d)) {
-			unless (SYMGRAPH(s, m)) {
-				m = (PTAG(s, m)) ? sfind(s, PTAG(s, m)) : 0;
-			}
+			unless (SYMGRAPH(s, m)) m = PTAG(s, m);
 		}
 
 		/*
@@ -1267,7 +1262,8 @@ rebuildTags(sccs *s)
 	/*
 	 * clean house
 	 */
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		PTAG_SET(s, d, 0);
 		MTAG_SET(s, d, 0);
 		FLAGS(s, d) &= ~(D_SYMBOLS|D_SYMGRAPH|D_SYMLEAF);
@@ -1313,7 +1309,8 @@ rebuildTags(sccs *s)
 	 * Prepare structure for building symbol graph.
 	 * and D_GONE all 'R' nodes in graph.
 	 */
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		unless (TAG(s, d)) continue;
 		assert(!(FLAGS(s, d) & D_SYMBOLS));
 		MK_GONE(s, d);
@@ -1404,7 +1401,8 @@ fixTags(sccs *s)
 	 * This looks similar to the above but it is not the same.
 	 * the flow is the same, the data structure being tweaked is diff.
 	 */
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		unless (TAG(s, d)) continue;
 		if ((p = PARENT(s, d)) && (FLAGS(s, p) & D_GONE)) {
 			unless (PARENT(s, p)) {
@@ -1420,7 +1418,7 @@ fixTags(sccs *s)
 				    "message.\nThis is a warning message, "
 				    "not a failure.\n",
 				    REV(s, d), d, REV(s, p));
-				PARENT_SET(s, d, s->tree);
+				PARENT_SET(s, d, TREE(s));
 				continue;
 			}
 			/* Move Tag to Parent */
@@ -1468,7 +1466,7 @@ rmPruned(sccs *s, ser_t d, ser_t **sd)
 
 	new = 0;
 	EACH(sdlist) {
-		t = sfind(s, sdlist[i]);
+		t = sdlist[i];
 		assert(t);
 		if (FLAGS(s, t) & D_GONE) {
 			new = symdiff_addBVC(sd, new, s, t);
@@ -1481,7 +1479,7 @@ rmPruned(sccs *s, ser_t d, ser_t **sd)
 	free(new);
 	/* integrity check - no more gone in list */
 	EACH(sdlist) {
-		t = sfind(s, sdlist[i]);
+		t = sdlist[i];
 		assert(t && !(FLAGS(s, t) & D_GONE));
 	}
 }
@@ -1578,21 +1576,20 @@ _pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd)
 private void
 pruneEmpty(sccs *s)
 {
-	int	i;
 	ser_t	n;
 	u8	*slist;
 	ser_t	**sd;
 
-	slist = (u8 *)calloc(s->nextserial, sizeof(u8));
+	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 	assert(slist);
 	sd = graph_sccs2symdiff(s);
-	for (i = 1; i < s->nextserial; i++) {
-		unless ((n = sfind(s, i)) && NEXT(s, n) && !TAG(s, n)) continue;
+	for (n = TREE(s); n <= TABLE(s); n++) {
+		unless (FLAGS(s, n) && (n > TREE(s)) && !TAG(s, n)) continue;
 		_pruneEmpty(s, n, slist, sd);
 	}
 	free(slist);
-	for (i = 1; i < s->nextserial; i++) {
-		if (sd[i]) free(sd[i]);
+	for (n = TREE(s); n <= TABLE(s); n++) {
+		if (sd[n]) free(sd[n]);
 	}
 	free(sd);
 
@@ -1764,7 +1761,6 @@ private	int
 do_file(Opts *opts, sccs *s, char **deepnest)
 {
 	ser_t	d;
-	int	i;
 	int	ret = 1, rc;
 	char	*newpath;
 	char	*delpath;
@@ -1777,18 +1773,18 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 	/*
 	 * Save all the old bam dspecs before we start mucking with anything.
 	 */
-	bam_old = calloc(s->nextserial, sizeof(char *));
+	bam_old = calloc(TABLE(s) + 1, sizeof(char *));
 
-	for (i = 1; BAM(s) && (i < s->nextserial); i++) {
-		unless (d = sfind(s, i)) continue;
+	for (d = TREE(s); BAM(s) && (d <= TABLE(s)); d++) {
+		unless (FLAGS(s, d)) continue;
 		if (HAS_BAMHASH(s, d)) {
-			assert(!bam_old[i]);
-			bam_old[i] = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
+			assert(!bam_old[d]);
+			bam_old[d] = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 		}
 	}
 
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, i)) continue;
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
 		assert(!TAG(s, d));
 
 		newpath = newname(delpath, opts->comppath,
@@ -1806,9 +1802,9 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 		if (HAS_BAMHASH(s, d)) {
 			bam_new = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 			if (opts->refProj) {
-				rc = bp_link(s->proj, bam_old[i], 0, bam_new);
+				rc = bp_link(s->proj, bam_old[d], 0, bam_new);
 			} else {
-				rc = bp_rename(s->proj, bam_old[i], bam_new);
+				rc = bp_rename(s->proj, bam_old[d], bam_new);
 			}
 			free(bam_new);
 			if (rc) goto err;
@@ -1816,11 +1812,11 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 	}
 	ret = 0;
 err:
-	for (i = 1; BAM(s) && (i < s->nextserial); i++) {
-		unless (d = sfind(s, i)) continue;
+	for (d = TREE(s); BAM(s) && (d <= TABLE(s)); d++) {
+		unless (FLAGS(s, d)) continue;
 		if (HAS_BAMHASH(s, d)) {
-			assert(bam_old[i]);
-			FREE(bam_old[i]);
+			assert(bam_old[d]);
+			FREE(bam_old[d]);
 		}
 	}
 	free(bam_old);

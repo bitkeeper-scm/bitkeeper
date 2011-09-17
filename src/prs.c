@@ -138,10 +138,10 @@ log_main(int ac, char **av)
 				goto next;
 			}
 			if (!rargs.rstart && !sfileRev() &&
-			    streq(REV(s, s->tree), "1.0")) {
+			    streq(REV(s, TREE(s)), "1.0")) {
 				/* we don't want 1.0 by default */
-				FLAGS(s, s->tree) &= ~D_SET;
-				if (s->rstart == s->tree) {
+				FLAGS(s, TREE(s)) &= ~D_SET;
+				if (s->rstart == TREE(s)) {
 					s->rstart = sccs_kid(s, s->rstart);
 				}
 			}

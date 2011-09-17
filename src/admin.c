@@ -229,8 +229,10 @@ admin_main(int ac, char **av)
 		if (dopath) {
 			ser_t	d;
 
-			for (d = sc->table; (dopath == 2) && d; d = NEXT(sc, d)) {
-				unless (NEXT(sc, d)) break;
+			for (d = TABLE(sc);
+			    (dopath == 2) && (d >= TREE(sc)); d--) {
+				unless (FLAGS(sc, d)) continue;
+				if (d == TREE(sc)) break;
 				/* ugly and inefficient temporary state */
 				PATHNAME_SET(sc, d, path);
 				SORTPATH_SET(sc, d, 0);
@@ -255,8 +257,9 @@ admin_main(int ac, char **av)
 		if (addCsets) {
 			ser_t	d;
 
-			for (d = sc->table; d; d = NEXT(sc, d)) {
-				unless (NEXT(sc, d)) break;
+			for (d = TABLE(sc); d >= TREE(sc); --d) {
+				unless (FLAGS(sc, d)) continue;
+				if (d == TREE(sc)) break;
 				if (TAG(sc, d)) continue;
 				FLAGS(sc, d) |= D_CSET;
 			}
@@ -455,28 +458,28 @@ sccs_touch(sccs *s)
 private	void
 rootCsetFile(sccs *sc, char *csetFile)
 {
-	int	i, last, new_cf;
+	int	last, new_cf;
 	char	*orig;
 	ser_t	d, p;
 
-	d = sc->tree;
+	d = TREE(sc);
 	orig = CSETFILE(sc, d);
 	sccs_parseArg(sc, d, 'B', csetFile, 0);
 	new_cf = CSETFILE_INDEX(sc, d);
 	FLAGS(sc, d) |= D_RED;
 	last = d;
 
-	for (i = last+1; i < sc->nextserial; ++i) {
-		unless (d = i) continue;
+	for (++d; d <= TABLE(sc); ++d) {
+		unless (FLAGS(sc, d)) continue;
 		unless (p = PARENT(sc, d)) continue;
 		unless (FLAGS(sc, p) & D_RED) continue;
 		unless (streq(orig, CSETFILE(sc, d))) continue;
 		CSETFILE_INDEX(sc, d) = new_cf;
 		FLAGS(sc, d) |= D_RED;
-		last = i;
+		last = d;
 	}
-	for (i = last; i > 0; --i) {
-		unless (d = i) continue;
+	for (d = last; d >= TREE(sc); --d) {
+		unless (FLAGS(sc, d)) continue;
 		FLAGS(sc, d) &= ~D_RED;
 	}
 }

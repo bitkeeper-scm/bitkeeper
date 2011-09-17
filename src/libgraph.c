@@ -48,7 +48,7 @@ private	int	bigFirst(const void *a, const void *b);
  * Return the number of nodes altered where a 1->0 transition is -1 
  * and 0->1 transition is +1.  That means
  *
- *   slist = (u8 *)calloc(s->nextserial, sizeof(u8));
+ *   slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
  *   count = 0;
  *   count += graph_symdiff(a, b, slist, 0, -1, 0);
  *   count += graph_symdiff(c, d, slist, 0, -1, 0);
@@ -59,7 +59,7 @@ private	int	bigFirst(const void *a, const void *b);
  * In particular, starting with empty list, and passing in previous
  * left as right (or right as left) will compute serialmap incrementally:
  *
- *   slist = (u8 *)calloc(s->nextserial, sizeof(u8));
+ *   slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
  *   count = 0;
  *   count += graph_symdiff(a, 0, slist, 0, -1, 0);	// slist = CV(a)
  *   count += graph_symdiff(b, a, slist, 0, -1, 0);	// slist = CV(b)
@@ -145,8 +145,8 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, ser_t *list, u8 *slist,
 		if (!lower || (lower > ser)) lower = ser;
 	}
 
-	for (/* set */; t && marked; t = NEXT(s, t)) {
-		if (TAG(s, t)) continue;
+	for (/* set */; t && marked; t--) {
+		if (!FLAGS(s, t) || TAG(s, t)) continue;
 
 		ser = t;
 		unless (bits = slist[ser]) continue;
@@ -365,14 +365,13 @@ symdiff_setParent(sccs *s, ser_t d, ser_t new, ser_t **sd)
 ser_t	**
 graph_sccs2symdiff(sccs *s)
 {
-	int	j;
 	ser_t	d;
-	ser_t	**sd = (ser_t **)calloc(s->nextserial, sizeof(ser_t *));
-	u8	*slist = (u8 *)calloc(s->nextserial, sizeof(u8));
+	ser_t	**sd = (ser_t **)calloc(TABLE(s) + 1, sizeof(ser_t *));
+	u8	*slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 
 	assert(sd && slist);
-	for (j = 1; j < s->nextserial; j++) {
-		unless ((d = sfind(s, j)) && !TAG(s, d) && PARENT(s, d)) continue;
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d) && !TAG(s, d) && PARENT(s, d)) continue;
 		if (MERGE(s, d) || HAS_CLUDES(s, d)) {
 			graph_symdiff(s, d, PARENT(s, d), 0, slist, sd, -1, 0);
 		}
@@ -408,10 +407,11 @@ graph_v1(sccs *s)
 	ser_t	d;
 
 	bzero(&label, sizeof(label));
-	label.list = (reach *)calloc(s->nextserial, sizeof(reach));
+	label.list = (reach *)calloc(TABLE(s) + 1, sizeof(reach));
 	printf("Demo reachability v1\n");
 	graph_kidwalk(s, v1Right, v1Left, &label);
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (TAG(s, d)) continue;
 		printf("%s -> [%d, %d)\n",
 		    REV(s, d),
@@ -455,8 +455,10 @@ graph_v2(sccs *s)
 private	int
 v2Right(sccs *s, ser_t d, void *token)
 {
+	ser_t	m;
+
 	printf("right %s", REV(s, d));
-	if (MERGE(s, d)) printf(" merge %s", REV(s, sfind(s, MERGE(s, d))));
+	if (m = MERGE(s, d)) printf(" merge %s", REV(s, m));
 	fputc('\n', stdout);
 	return (0);
 }
@@ -487,7 +489,7 @@ v2Left(sccs *s, ser_t d, void *token)
  * R 1.2.1.2 , R 1.2.1.1 , T 1.2 , T 1.3 , T 1.4 , T 1.5 , R 1.5
  * R 1.4 , R 1.3 , R 1.2 , R 1.1
  *
- * Tags are skipped because s->tree is not a tag; d->parent is not
+ * Tags are skipped because TREE(s) is not a tag; d->parent is not
  * a tag if d is not a tag; kid/siblings list sorted so tags are
  * at the end, and read until tag or empty.
  */
@@ -500,7 +502,7 @@ graph_kidwalk(sccs *s, walkfcn toTip, walkfcn toRoot, void *token)
 
 	growArray(&karr, 32);
 	sccs_mkKidList(s);
-	d = s->tree;
+	d = TREE(s);
 	while (d) {
 		/* walk down all kid pointers */
 		for (next = d; next && !TAG(s, next); next = KID(s, d)) {

@@ -142,7 +142,7 @@ caches(char *file, struct stat *sb, void *data)
 			*t = '|';
 		}
 		unless (sc->grafted) break;
-		while (ino = NEXT(sc, ino)) {
+		while (ino = sccs_prev(sc, ino)) {
 			if (HAS_RANDOM(sc, ino)) break;
 		}
 	} while (ino);

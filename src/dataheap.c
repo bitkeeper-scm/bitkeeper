@@ -60,7 +60,7 @@ sccs_addUniqStr(sccs *s, char *str)
     hash_insertStrI32(h, s->heap.buf + x##_INDEX(s, d), x##_INDEX(s, d))
 
 		/* add existing data to heap */
-		for (d = 1; d < s->nextserial; d++) {
+		for (d = TREE(s); d <= TABLE(s); d++) {
 			unless (FLAGS(s, d)) continue;
 			addField(USERHOST);
 			addField(PATHNAME);
@@ -227,7 +227,8 @@ heapdump_main(int ac, char **av)
 			continue;
 		}
 
-		for (d = s->table; d; d = NEXT(s, d)) {
+		for (d = TABLE(s); d >= TREE(s); d--) {
+			unless (FLAGS(s, d)) continue;
 			delta_print(s, d);
 			printf("\n");
 		}
@@ -384,7 +385,7 @@ dumpStats(sccs *s)
 	printf("filesize: %7s\n", psize(s->size));
 	printf("    heap: %7s\n", psize(s->heap.len));
 
-	for (d = s->tree; d < s->nextserial; d++) {
+	for (d = TREE(s); d <= TABLE(s); d++) {
 		for (i = 0; i < 10; i++) {
 			unless (off = *(&CLUDES_INDEX(s, d) + i)) continue;
 			if (hash_insert(seen, &off, sizeof(off), 0, 0)) {
@@ -407,7 +408,7 @@ dumpStats(sccs *s)
 		    (100.0 * size) / s->heap.len);
 	}
 
-	printf("   table: %7s\n", psize(sizeof(d_t) * s->nextserial));
+	printf("   table: %7s\n", psize(sizeof(d_t) * (TABLE(s) + 1)));
 	if (nLines(s->symlist)) {
 		printf(" symlist: %7s\n",
 		    psize(nLines(s->symlist) * sizeof(symbol)));

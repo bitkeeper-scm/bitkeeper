@@ -1744,7 +1744,6 @@ attach_name(sccs *cset, char *name, int setmarks)
 	int	ret = 1;
 	sccs	*freeme = 0;
 	ser_t	d, p;
-	int	j;
 
 	unless (cset || (freeme = cset = sccs_csetInit(INIT_MUSTEXIST))) {
 		fprintf(stderr, "failed to init cset\n");
@@ -1758,8 +1757,8 @@ attach_name(sccs *cset, char *name, int setmarks)
 	 */
 	(void)sccs_defRootlog(cset);
 
-	for (j = 1; j < cset->nextserial; j++) {
-		unless (d = sfind(cset, j)) continue;
+	for (d = TREE(cset); d <= TABLE(cset); d++) {
+		unless (FLAGS(cset, d)) continue;
 		p = PARENT(cset, d);
 		if (setmarks && !TAG(cset, d) && p) {
 			FLAGS(cset, d) |= D_CSET;
@@ -1982,7 +1981,8 @@ clonemod_part2(char **envVar)
 		FLAGS(cset, d) |= D_SET;
 	}
 	pclose(f);
-	for (d = cset->table; d; d = NEXT(cset, d)) {
+	for (d = TABLE(cset); d >= TREE(cset); d--) {
+		unless (FLAGS(cset, d)) continue;
 		if (FLAGS(cset, d) & D_SET) continue;
 		if (TAG(cset, d)) continue;
 
@@ -1990,7 +1990,8 @@ clonemod_part2(char **envVar)
 		sccs_color(cset, d);
 		break;
 	}
-	for (d = cset->table; d; d = NEXT(cset, d)) {
+	for (d = TABLE(cset); d >= TREE(cset); d--) {
+		unless (FLAGS(cset, d)) continue;
 		if ((FLAGS(cset, d) & D_SET) ||
 		    (!(FLAGS(cset, d) & D_RED) && !TAG(cset, d))) {
 			sccs_sdelta(cset, d, buf);

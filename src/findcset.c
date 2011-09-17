@@ -106,7 +106,8 @@ findcset_main(int ac, char **av)
 
 		s = sccs_init(CHANGESET, INIT_NOCKSUM|flags);
 		assert(s);
-		for (d = s->table; d; d = NEXT(s, d)) {
+		for (d = TABLE(s); d >= TREE(s); d--) {
+			unless (FLAGS(s, d)) continue;
 			if (!streq(REV(s, d), "1.0") &&
 			    !streq(REV(s, d), "1.1")) {
 				FLAGS(s, d) &= ~D_CSET;
@@ -570,7 +571,7 @@ mkDeterministicKeys(void)
 	 * the ChangeSet file
 	 */
 	assert(oldest);
-	d2 = cset->tree;
+	d2 = TREE(cset);
 	fix_delta(cset, oldest, d2, 0);
 	SUM_SET(cset, d2, oldest->sum);
 	d2 = sccs_kid(cset, d2);
@@ -695,15 +696,15 @@ mkCset(mkcs_t *cur, dinfo *d)
 //  fprintf(stderr, "SUM=%u\n", e->sum);
 	/* Some hacks to get sccs_prs to do some work for us */
 	cur->cset->rstart = cur->cset->rstop = e;
-	if (HAS_PATHNAME(cur->cset, cur->cset->tree) &&
+	if (HAS_PATHNAME(cur->cset, TREE(cur->cset)) &&
 	    !HAS_PATHNAME(cur->cset, e)) {
 		PATHNAME_INDEX(cur->cset, e) =
-		    PATHNAME_INDEX(cur->cset, cur->cset->tree);
+		    PATHNAME_INDEX(cur->cset, TREE(cur->cset));
 	}
-	if (HAS_ZONE(cur->cset, cur->cset->tree) &&
+	if (HAS_ZONE(cur->cset, TREE(cur->cset)) &&
 	    !HAS_ZONE(cur->cset, e)) {
 		ZONE_INDEX(cur->cset, e) =
-		    ZONE_INDEX(cur->cset, cur->cset->tree);
+		    ZONE_INDEX(cur->cset, TREE(cur->cset));
 	}
 	sprintf(dkey, "1.%u", ++cur->rev);
 	sccs_parseArg(cur->cset, e, 'R', dkey, 0);
@@ -758,15 +759,15 @@ mkTag(mkcs_t *cur, char *tag)
 
 	/* Some hacks to get sccs_prs to do some work for us */
 	cur->cset->rstart = cur->cset->rstop = e;
-	if (HAS_PATHNAME(cur->cset, cur->cset->tree) &&
+	if (HAS_PATHNAME(cur->cset, TREE(cur->cset)) &&
 	    !HAS_PATHNAME(cur->cset, e)) {
 		PATHNAME_INDEX(cur->cset, e) =
-		    PATHNAME_INDEX(cur->cset, cur->cset->tree);
+		    PATHNAME_INDEX(cur->cset, TREE(cur->cset));
 	}
-	if (HAS_ZONE(cur->cset, cur->cset->tree) &&
+	if (HAS_ZONE(cur->cset, TREE(cur->cset)) &&
 	    !HAS_ZONE(cur->cset, e)) {
 		ZONE_INDEX(cur->cset, e) =
-		    ZONE_INDEX(cur->cset, cur->cset->tree);
+		    ZONE_INDEX(cur->cset, TREE(cur->cset));
 	}
 	sprintf(dkey, "1.%u", cur->rev);
 	sccs_parseArg(cur->cset, e, 'R', dkey, 0);
@@ -946,14 +947,14 @@ findcset(void)
 
 	unless (opts.verbose) flags |= SILENT;
 	cur.cset = sccs_init(CHANGESET, INIT_NOCKSUM|flags);
-	assert(cur.cset && cur.cset->tree);
+	assert(cur.cset && TREE(cur.cset));
 
 	/*
 	 * Force 1.0 and 1.1 cset delta to match oldest
 	 * delta in the repository. Warning; this changes the cset root key!
 	 */
 	assert(oldest);
-	d2 = cur.cset->tree;
+	d2 = TREE(cur.cset);
 	fix_delta(cur.cset, oldest, d2, 0);
 	d2 = sccs_kid(cur.cset, d2);
 	assert(d2);
@@ -1140,12 +1141,13 @@ mkList(sccs *s, int fileIdx)
 		 * show up as the top delta in a cset. A top
 		 * delta in a cset should be 1.1 or higher.
 		 */
-		if (d == s->tree) break;
+		if (d == TREE(s)) break;
 		FLAGS(s, d) |= D_SET;
 		d = PARENT(s, d);
 	}
 
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_SET) {
 			/*
 			 * Collect marked delta into "list"

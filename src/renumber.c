@@ -84,10 +84,9 @@ void
 sccs_renumber(sccs *s, u32 flags)
 {
 	ser_t	d;
-	ser_t	i;
 	ser_t	release = 0;
 	MDBM	*db = mdbm_open(NULL, 0, 0, 128);
-	ser_t	*map = calloc(s->nextserial, sizeof(ser_t));
+	ser_t	*map = calloc(TABLE(s) + 1, sizeof(ser_t));
 	ser_t	defserial = 0;
 	int	defisbranch = 1;
 	ser_t	maxrel = 0;
@@ -111,8 +110,8 @@ sccs_renumber(sccs *s, u32 flags)
 		s->defbranch=0;
 	}
 
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, i)) {
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) {
 			/*
 			 * We don't complain about this, because we cause
 			 * these gaps when we strip.  They'll go away when
@@ -122,7 +121,7 @@ sccs_renumber(sccs *s, u32 flags)
 		}
 		release = redo(s, d, db, flags, release, map);
 		if (maxrel < release) maxrel = release;
-		if (!defserial || defserial != i) continue;
+		if (!defserial || defserial != d) continue;
 		/* Restore default branch */
 		assert(!s->defbranch);
 		unless (defisbranch) {

@@ -110,7 +110,8 @@ doit(sccs *s, s_opts opts)
 	if (MONOTONIC(s) && !opts.forward) {
 		verbose((stderr, 
 		    "Not stripping deltas from MONOTONIC file %s\n", s->gfile));
-		for (e = s->table; e; e = NEXT(s, e)) {
+		for (e = TABLE(s); e >= TREE(s); e--) {
+			unless (FLAGS(s, e)) continue;
 			if ((FLAGS(s, e) & D_SET) && !TAG(s, e)) {
 				FLAGS(s, e) |= D_DANGLING;
 			}
@@ -146,7 +147,7 @@ doit(sccs *s, s_opts opts)
 	}
 
 	/* work with bluearc Cunning Plan */
-	FLAGS(s, s->tree) &= ~(D_SET|D_GONE);
+	FLAGS(s, TREE(s)) &= ~(D_SET|D_GONE);
 
 	if (sccs_stripdel(s, "stripdel")) {
 		unless (BEEN_WARNED(s)) {
@@ -173,7 +174,8 @@ stripdel_fixTable(sccs *s, int *pcnt)
 	int	leafset = 0;
 	int	count = 0, left = 0, run_names = 0;
 
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_SET) {
 			MK_GONE(s, d);
 			FLAGS(s, d) &= ~D_SYMLEAF;
@@ -268,7 +270,8 @@ checkCset(sccs *s)
 	ser_t	d, e;
 	int	saw_cset = 0;
 
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_CSET) saw_cset = 1;
 		unless (FLAGS(s, d) & D_SET) continue;
 		if (saw_cset && (e = sccs_csetBoundary(s, d))) {

@@ -19,7 +19,7 @@ lod_probekey(sccs *s, ser_t d, int syncRoot, FILE *f)
 	 * Phase 1, send the probe keys.
 	 * NB: must be in most recent to least recent order.
 	 */
-	for (i = 1; d && (d != s->tree); i *= 2) {
+	for (i = 1; d && (d != TREE(s)); i *= 2) {
 		for (j = i; d && --j; d = PARENT(s, d));
 		if (d) {
 			assert(!TAG(s, d));
@@ -51,7 +51,8 @@ tag_probekey(sccs *s, FILE *f)
 	int	i, j;
 	char	key[MAXKEY];
 
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		/* Optimization: only tagprobe if tag with parent tag */
 		if (PTAG(s, d) && !(FLAGS(s, d) & D_GONE)) break;
 	}
@@ -59,7 +60,7 @@ tag_probekey(sccs *s, FILE *f)
 
 	fputs("@TAG PROBE@\n", f);
 	for (i = 1; d; i *= 2) {
-		for (j = i; PTAG(s, d) && --j; d = sfind(s, PTAG(s, d)));
+		for (j = i; PTAG(s, d) && --j; d = PTAG(s, d));
 		sccs_sdelta(s, d, key);
 		fprintf(f, "%s\n", key);
 		unless (PTAG(s, d)) return;
@@ -118,10 +119,12 @@ probekey(sccs *s, char *rev, int syncRoot, FILE *f)
 void
 sccs_tagcolor(sccs *s, ser_t d)
 {
+	ser_t	e;
+
 	if (FLAGS(s, d) & D_BLUE) return;
 	FLAGS(s, d) |= D_BLUE;
-	if (PTAG(s, d)) sccs_tagcolor(s, sfind(s, PTAG(s, d)));
-	if (MTAG(s, d)) sccs_tagcolor(s, sfind(s, MTAG(s, d)));
+	if (e = PTAG(s, d)) sccs_tagcolor(s, e);
+	if (e = MTAG(s, d)) sccs_tagcolor(s, e);
 	FLAGS(s, d) |= D_RED;
 }
 
@@ -319,7 +322,8 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 	 * Phase 2, send the non marked keys.
 	 */
 	sum = i = 0;
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_RED) continue;
 		if (sndRev) {
 			assert(R0(s, d));
@@ -490,7 +494,8 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	}
 
 
-empty:	for (d = s->table; d; d = NEXT(s, d)) {
+empty:	for (d = TABLE(s); d >= TREE(s); d--) {
+			unless (FLAGS(s, d)) continue;
 		/* reset sccs_tagcolor D_BLUE markings*/
 		if (FLAGS(s, d) & D_BLUE) FLAGS(s, d) &= ~D_BLUE;
 		if (FLAGS(s, d) & D_RED) {
@@ -544,7 +549,8 @@ prunekey_main(int ac, char **av)
 	}
 	prunekey(s, &r, NULL, -1, 0, 0, 0, 0, 0);
 	s->state &= ~S_SET;
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_RED) continue;
 		s->rstart = s->rstop = d;
 		sccs_prs(s, PRS_ALL, 0, dspec, stdout);

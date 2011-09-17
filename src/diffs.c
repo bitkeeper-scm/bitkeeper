@@ -220,7 +220,7 @@ diffs_main(int ac, char **av)
 			}
 			if (range_process("diffs", s, RANGE_ENDPOINTS,&rargs)) {
 				unless (empty) goto next;
-				s->rstart = s->tree;
+				s->rstart = TREE(s);
 			}
 			if (restore) rargs.rstart = ".";
 		}

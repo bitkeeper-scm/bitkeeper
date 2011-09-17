@@ -86,9 +86,10 @@ checksum_main(int ac, char **av)
 				if (spin) {
 					fputs(s->gfile, stderr);
 					tick = progress_start(PROGRESS_MINI,
-					    s->nextserial);
+					    TABLE(s) + 1);
 				}
-				for (i = 0, d = s->table; d; d = NEXT(s, d)) {
+				for (i = 0, d = TABLE(s); d >= TREE(s); d--) {
+					unless (FLAGS(s, d)) continue;
 					if (TAG(s, d)) continue;
 					c = sccs_resum(s, d, diags, fix);
 					if (tick) progress(tick, ++i);
@@ -114,7 +115,7 @@ checksum_main(int ac, char **av)
 		}
 		if ((doit || !s->cksumok) && fix) {
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
-			if (bk4) for (d = s->table; d; d = NEXT(s, d)) {
+			if (bk4) for (d = TABLE(s); d >= TREE(s); d--) {
 				if (FLAGS(s, d) & D_SORTSUM) {
 					FLAGS(s, d) &= ~D_SORTSUM;
 				}
@@ -467,7 +468,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		tick = progress_start(PROGRESS_MINI, nLines(order));
 	}
 
-	slist = (u8 *)calloc(s->nextserial, sizeof(u8));
+	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 	prev = 0;
 	n = 0;
 	EACH_INDEX(order, orderIndex) {

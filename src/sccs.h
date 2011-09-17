@@ -268,9 +268,12 @@ int	checking_rmdir(char *dir);
 #define	SET(s)		((s)->state & S_SET)
 #define	IMPORT(s)	((s)->state & S_IMPORT)
 #define	MK_GONE(s, d)	do {(s)->hasgone = 1; FLAGS(s, d) |= D_GONE;} while (0)
+#define	TREE(s)		(1)			// s->tree serial
+#define	TABLE(s)	(0 + (s)->tip)		// s->table serial
+#define	TABLE_SET(s, v)	((s)->tip = (v))	// s->table serial
 
-#define	GOODSCCS(s)	assert(s); unless ((s)->tree&&(s)->cksumok) return (-1)
-#define	HASGRAPH(s)	((s)->tree)
+#define	GOODSCCS(s)	assert(s); unless (TABLE(s)&&(s)->cksumok) return (-1)
+#define	HASGRAPH(s)	(TABLE(s))
 
 #define	BITKEEPER(s)	((s)->bitkeeper)
 #define	RCS(s)		((s)->xflags & X_RCS)
@@ -558,7 +561,6 @@ typedef struct {
 #define	SYMLEAF(s, d)	(FLAGS(s, d) & D_SYMLEAF)
 #define	INARRAY(s, d)	(FLAGS(s, d) & D_INARRAY)
 
-#define	NEXT(s, d)	slist_next(s, d)
 #define	KID(s, d)	(s)->kidlist[d].kid
 #define	SIBLINGS(s, d)	(s)->kidlist[d].siblings
 
@@ -669,16 +671,13 @@ typedef	struct {
  * struct sccs - the delta tree, the data, and associated junk.
  */
 struct sccs {
-	ser_t	tree;		/* the delta tree after mkgraph() */
-	ser_t	table;		/* the delta table list, 1.99 .. 1.0 */
+	ser_t	tip;		/* the delta table list, 1.99 .. 1.0 */
 	d_t	*slist;		/* array of delta structs */
 	dextra	*extra;		/* array of extra delta info */
 	symbol	*symlist;	/* array of symbols, oldest first */
 	KIDS	*kidlist;	/* optional kid/sibling data */
 	char	*defbranch;	/* defbranch, if set */
 	int	numdeltas;	/* number of entries in the graph */
-	int	nextserial;	/* next unused serial # */
-				/* due to gaps, those two may not be the same */
 	off_t	size;		/* size of mapping */
 	DATA	heap;		/* all strings in delta structs */
 	hash	*uniqheap;	/* help collapse unique strings in hash */
@@ -1061,12 +1060,11 @@ void	sccs_mkroot(char *root);
 int	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);
 char	*sccs_setpathname(sccs *s);
 ser_t	sccs_prev(sccs *s, ser_t d);
-ser_t	slist_next(sccs *s, ser_t d);
+ser_t	sccs_next(sccs *s, ser_t d);
 int	sccs_reCache(int quiet);
 int	sccs_findtips(sccs *s, ser_t *a, ser_t *b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
-ser_t	sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
 

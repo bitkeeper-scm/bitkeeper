@@ -96,7 +96,8 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
 	 * then losing anything which is not marked.
 	 */
 	sccs_color(s, sccs_top(s));
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_RED) continue;
 		FLAGS(s, d) |= D_SET|D_GONE;
 	}
@@ -105,8 +106,8 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
 	 * 3par had some BitKeeper files that Teamware had munged,
 	 * strip the root if that's the case.
 	 */
-	if (streq(REV(s, s->tree), "1.0")) {
-		d = s->tree;
+	if (streq(REV(s, TREE(s)), "1.0")) {
+		d = TREE(s);
 		if (strneq("BitKeeper file", COMMENTS(s, d), 14)) {
 			FLAGS(s, d) |= D_SET|D_GONE;
 			if (verbose > 1) {
@@ -156,7 +157,7 @@ private void
 regen(sccs *s, int verbose, char *key)
 {
 	ser_t	d;
-	ser_t	*table = malloc(s->nextserial * sizeof(ser_t*));
+	ser_t	*table = malloc((TABLE(s) + 1) * sizeof(ser_t*));
 	int	n = 0;
 	int	i;
 	int	src_flags = PRINT|GET_FORCE|SILENT;
@@ -170,8 +171,8 @@ regen(sccs *s, int verbose, char *key)
 	pfile	pf;
 	int	crnl;
 
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, (ser_t) i)) continue;
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
 		if (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			table[n++] = d;
 		}
@@ -188,7 +189,7 @@ regen(sccs *s, int verbose, char *key)
 	sget->xflags &= ~X_EOLN_NATIVE;
 	close(creat(gfile, 0664));
 	/* Teamware uses same uuencode flag, so read it */
-	if (mkinit(s, s->tree, tmp, key) || UUENCODE(sget)) {
+	if (mkinit(s, TREE(s), tmp, key) || UUENCODE(sget)) {
 		sys("bk", "delta",
 		    "-fq", "-Ebinary", "-RiISCCS/.init", gfile, SYS);
 	} else {
@@ -406,15 +407,14 @@ private void
 ptable(sccs *s)
 {
 	ser_t	d;
-	int	i;
 
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, (ser_t) i)) continue;
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
 		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
 		fprintf(stderr, "%-10.10s %10s i=%2u s=%2u d=%s f=%u\n",
-		    s->gfile, REV(s, d), i, d,
+		    s->gfile, REV(s, d), d, d,
 		    delta_sdate(s, d), DATE_FUDGE(s, d));
 	}
 }
@@ -438,12 +438,11 @@ private void
 handleFake(sccs *s)
 {
 	ser_t	d;
-	int	i;
 	time_t	date = CUTOFFDATE;
 	char	*user = 0;
 
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, (ser_t) i)) continue;
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
 		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
@@ -457,9 +456,9 @@ handleFake(sccs *s)
 	unless (user) user = "BKFake";
 
 	/* only fix the first 'i' deltas in count down fashion */
-	while (i > 1) {
-		i--;
-		unless (d = sfind(s, (ser_t) i)) continue;
+	while (d > 1) {
+		d--;
+		unless (FLAGS(s, d)) continue;
 		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
@@ -520,13 +519,14 @@ private int
 makeMerge(sccs *s, int verbose)
 {
 	ser_t	d, m;
-	int	i, sign, del;
+	int	sign, del;
 	ser_t	mser;
 	FILE	*f = fmem();
 	char	*p;
 
 	/* table order, mark things to ignore, and find merge markers */
-	for (d = s->table; d; d = NEXT(s, d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		if (TAG(s, d)) {
 			FLAGS(s, d) |= D_GONE;
 			continue;
@@ -536,12 +536,12 @@ makeMerge(sccs *s, int verbose)
 		mser = 0;
 		del = 0;
 		p = CLUDES(s, d);
-		while (i = sccs_eachNum(&p, &sign)) {
-			if ((m = sfind(s, i)) && !TAG(s, m)) {
-				if ((sign > 0) && (mser < i)) {
-					mser = i;
+		while (m = sccs_eachNum(&p, &sign)) {
+			if (FLAGS(s, m) && !TAG(s, m)) {
+				if ((sign > 0) && (mser < m)) {
+					mser = m;
 				}
-				sccs_saveNum(f, i, sign);
+				sccs_saveNum(f, m, sign);
 			} else {	/* delete it */
 				del = 1;
 			}
@@ -555,10 +555,9 @@ makeMerge(sccs *s, int verbose)
 		}
 		ftrunc(f, 0);
 		unless (mser) continue;
-		m = sfind(s, mser);
-		assert(m && !TAG(s, m));
+		assert(FLAGS(s, mser) && !TAG(s, mser));
 		MERGE_SET(s, d, mser);
-		collapse(s, verbose, d, m);
+		collapse(s, verbose, d, mser);
 	}
 	fclose(f);
 	return (0);
@@ -583,12 +582,11 @@ private void
 fixTable(sccs *s, int verbose)
 {
 	ser_t	d = 0, e = 0, m = 0;
-	int	i;
 	u32	maxfudge = 0;
 
 	/* reverse table order of just the deltas being imported */
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, (ser_t) i)) continue;
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
 		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}

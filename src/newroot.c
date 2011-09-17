@@ -96,7 +96,7 @@ newroot(char *ranbits, int bk4, char *comments, char *who)
 
 	if (ranbits) {
 		/* We're called from BAM convert, append the random bits */
-		origrand = RANDOM(s, s->tree);
+		origrand = RANDOM(s, TREE(s));
 		if (strneq(ranbits, "B:", 2)) {
 			p = origrand;
 			if (strneq("B:",p, 2)) p = strrchr(p, ':') + 1;
@@ -120,11 +120,11 @@ newroot(char *ranbits, int bk4, char *comments, char *who)
 	} else {
 		randomBits(buf);
 	}
-	if (streq(buf, RANDOM(s, s->tree))) {
+	if (streq(buf, RANDOM(s, TREE(s)))) {
 		fprintf(stderr, "newroot: error: new key matches old\n");
 		exit (1);
 	}
-	RANDOM_SET(s, s->tree, buf);
+	RANDOM_SET(s, TREE(s), buf);
 	sccs_sdelta(s, sccs_ino(s), key);
 	unless (bk4) update_rootlog(s, key, comments, who);
 	sccs_newchksum(s);
@@ -262,9 +262,9 @@ sccs_defRootlog(sccs *cset)
 		cset->text = addLine(cset->text, strdup("@ROOTLOG"));
 		sccs_sdelta(cset, sccs_ino(cset), key);
 		sprintf(who, "%s %s%s",
-		    USERHOST(cset, cset->tree),
-		    delta_sdate(cset, cset->tree),
-		    ZONE(cset, cset->tree));
+		    USERHOST(cset, TREE(cset)),
+		    delta_sdate(cset, TREE(cset)),
+		    ZONE(cset, TREE(cset)));
 		update_rootlog(cset, key, "original", who);
 		return (1);
 	}
