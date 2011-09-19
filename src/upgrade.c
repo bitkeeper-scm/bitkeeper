@@ -80,6 +80,16 @@ upgrade_main(int ac, char **av)
 	} else {
 		urlbase = UPGRADEBASE;
 	}
+	if (streq(bk_platform, "powerpc-macosx") &&
+	    (!platform || streq(platform, "x86-macosx"))) {
+		/*
+		 * Check to see if they are running a powerpc bk on an
+		 * intel mac under rosetta.
+		 */
+		if ((p = backtick("uname -p")) && streq(p, "i386")) {
+			bk_platform = "x86-macosx";
+		}
+	}
 	if (platform) {
 		if (install && !streq(platform, bk_platform)) {
 			notice("upgrade-install-other-platform", 0, "-e");
