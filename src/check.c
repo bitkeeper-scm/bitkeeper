@@ -1324,6 +1324,10 @@ buildKeys(MDBM *idDB)
 					unless ((rk->mask & 7) == 3) {
 						continue;
 					}
+					if (mdbm_fetch_str(goneDB,
+						(char *)r2deltas->kptr)) {
+						goto next;
+					}
 					/* problem found */
 					fprintf(stderr,
 					    "check: ChangeSet %s is a merge "
@@ -1337,6 +1341,7 @@ buildKeys(MDBM *idDB)
 				oldest = 0;
 			}
 			if (oldest) d = sfind(cset, ser);
+next:
 			continue;
 		}
 		t = separator(s);
