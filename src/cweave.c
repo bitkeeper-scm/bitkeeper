@@ -231,8 +231,6 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, ser_t parent, int fast)
 		if (MERGE(s, e) >= serial) MERGE_SET(s, e, MERGE(s, e)+1);
 		if (PTAG(s, e) >= serial) PTAG_SET(s, e, PTAG(s, e)+1);
 		if (MTAG(s, e) >= serial) MTAG_SET(s, e, MTAG(s, e)+1);
-		// XXX we can do this faster
-		sccs_findKeyUpdate(s, e);
 	}
 	fclose(f);
 	if (d != TABLE(s)) {
@@ -256,7 +254,6 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, ser_t parent, int fast)
 	EACH(syms) addsym(s, d, 0, syms[i]);
 	if (syms) freeLines(syms, free);
 
-	sccs_findKeyUpdate(s, d);
 done:
 	/*
 	 * Save dF info, used by cset_write() later

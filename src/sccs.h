@@ -716,7 +716,6 @@ struct sccs {
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
 	MDBM	*goneDB;	/* GoneDB used in the get_reg() setup */
 	MDBM	*idDB;		/* id cache used in the get_reg() setup */
-	hash	*findkeydb;	/* Cache a map of delta key to delta* */
 	u32	*fastsum;	/* Cache a lines array of the weave sums */
 	project	*proj;		/* If in BK mode, pointer to project */
 	void	*rrevs;		/* If has conflicts, revs in conflict */
@@ -1016,10 +1015,8 @@ int	sfilesDied(int killit);
 ser_t	sccs_findrev(sccs *, char *);
 ser_t	sccs_top(sccs *);
 ser_t	sccs_findKey(sccs *, char *);
-void	sccs_findKeyUpdate(sccs *s, ser_t d);
-void	sccs_findKeyFlush(sccs *s);
 int	isKey(char *key);
-ser_t	sccs_findMD5(sccs *s, char *md5);                              
+ser_t	sccs_findMD5(sccs *s, char *md5);
 ser_t	sccs_dInit(ser_t, char, sccs *, int);
 char	*sccs_getuser(void);
 void	sccs_resetuser(void);

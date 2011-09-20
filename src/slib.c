@@ -661,7 +661,6 @@ dinsert(sccs *s, ser_t d, int fixDate)
 	if (fixDate) {
 		uniqDelta(s);
 	}
-	sccs_findKeyUpdate(s, d);
 	return (d);
 }
 
@@ -4689,7 +4688,6 @@ sccs_free(sccs *s)
 	if (s->mdbm) mdbm_close(s->mdbm);
 	if (s->goneDB) mdbm_close(s->goneDB);
 	if (s->idDB) mdbm_close(s->idDB);
-	if (s->findkeydb) hash_free(s->findkeydb);
 	if (s->locs) free(s->locs);
 	if (s->proj) proj_free(s->proj);
 	if (s->kidlist) free(s->kidlist);
@@ -11226,7 +11224,6 @@ insert_1_0(sccs *s, u32 flags)
 		if (sym->ser) sym->ser++;
 		if (sym->meta_ser) sym->meta_ser++;
 	}
-	sccs_findKeyFlush(s);
 
 	insertArrayN(&s->slist, 1, 0);
 	d = 1;
@@ -11300,7 +11297,6 @@ remove_1_0(sccs *s)
 		if (sym->ser) --sym->ser;
 		if (sym->meta_ser) --sym->meta_ser;
 	}
-	sccs_findKeyFlush(s);
 	removeArrayN(s->slist, 1);
 	freeExtra(s, 1);
 	removeArrayN(s->extra, 1);
@@ -11868,7 +11864,6 @@ out:
 	}
 	truncArray(s->extra, d);
 	TABLE_SET(s, nLines(s->slist));
-	sccs_findKeyFlush(s);
 
 	unless (sfile = sccs_startWrite(s)) OUT;
 	if (delta_table(s, sfile, 0)) {
@@ -13343,7 +13338,6 @@ sccs_meta(char *me, sccs *s, ser_t parent, MMAP *iF, int fixDate)
 {
 	ser_t	m;
 	int	i, e = 0;
-	ser_t	pser;
 	FILE	*sfile = 0;
 	char	*buf;
 	char	**syms;
@@ -13359,14 +13353,13 @@ sccs_meta(char *me, sccs *s, ser_t parent, MMAP *iF, int fixDate)
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
-	pser = parent;
 	m = sccs_getInit(s, 0, iF, DELTA_PATCH, &e, 0, &syms);
 	mclose(iF);
 	R0_SET(s, m, R0(s, parent));
 	R1_SET(s, m, R1(s, parent));
 	R2_SET(s, m, R2(s, parent));
 	R3_SET(s, m, R3(s, parent));
-	PARENT_SET(s, m, pser);
+	PARENT_SET(s, m, parent);
 	s->numdeltas++;
 	m = dinsert(s, m, fixDate);
 	EACH(syms) addsym(s, m, 0, syms[i]);
@@ -16677,32 +16670,46 @@ sccs_istagkey(char *key)
 	return (0);
 }
 
+/* compare for bsearch() in sccs_findKey() */
+private int
+fk_datecmp(const void *a, const void *b)
+{
+	int	dd = p2int(a);
+	d_t	*dp = (d_t *)b;
+
+	/* assume missing deltas have date of earlier delta */
+	while (!dp->flags) --dp; /* 1.0 always has ->flags */
+
+	return (dd - dp->date);
+}
+
 /*
- * Find an MD5 based key. Uses the findkeydb to be fast.
+ * Find an MD5 based key.
  */
 ser_t
 sccs_findMD5(sccs *s, char *md5)
 {
-	ser_t	d;
+	ser_t	d, n;
 	u32	dd;
+	d_t	*dp;
 	char	dkey[MAXKEY];
 
 	unless (s && HASGRAPH(s)) return (0);
-
-	unless (s->findkeydb) {
-		s->findkeydb = hash_new(HASH_MEMHASH);
-		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
-			sccs_findKeyUpdate(s, d);
-		}
-	}
 
 	strncpy(dkey, md5, 8);
 	dkey[8] = 0;
 	dd = strtoul(dkey, 0, 16);
 
-	unless (hash_fetch(s->findkeydb, &dd, sizeof(dd))) return (0);
-	for (d = *(ser_t *)s->findkeydb->vptr; d >= TREE(s); d--) {
+	dp = bsearch(int2p(dd),
+	    s->slist + TREE(s), TABLE(s), sizeof(d_t),
+	    fk_datecmp);
+	unless (dp) return (0);
+	d = (dp - s->slist);
+
+	/* find first match */
+	while ((n = sccs_prev(s, d)) && (dd == DATE(s, n))) d = n;
+
+	for (; d <= TABLE(s); ++d) {
 		unless (FLAGS(s, d)) continue;
 		if (dd != DATE(s, d)) break;
 		sccs_md5delta(s, d, dkey);
@@ -16735,8 +16742,9 @@ isKey(char *key)
 ser_t
 sccs_findKey(sccs *s, char *key)
 {
-	ser_t	d;
+	ser_t	d, n;
 	char	*t;
+	d_t	*dp;
 	u32	dd;
 	char	dkey[MAXKEY];
 
@@ -16744,20 +16752,21 @@ sccs_findKey(sccs *s, char *key)
 	debug((stderr, "findkey(%s)\n", key));
 	unless (strchr(key, '|')) return (sccs_findMD5(s, key));
 
-	unless (s->findkeydb) {
-		s->findkeydb = hash_new(HASH_MEMHASH);
-		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
-			sccs_findKeyUpdate(s, d);
-		}
-	}
-
 	unless (t = strchr(key, '|')) return (0);	/* path */
 	unless (t = strchr(t+1, '|')) return (0);	/* date */
 
 	dd = sccs_date2time(t+1, 0);
-	unless (hash_fetch(s->findkeydb, &dd, sizeof(dd))) return (0);
-	for (d = *(ser_t *)s->findkeydb->vptr; d >= TREE(s); d--) {
+
+	dp = bsearch(int2p(dd),
+	    s->slist + TREE(s), TABLE(s), sizeof(d_t),
+	    fk_datecmp);
+	unless (dp) return (0);
+	d = (dp - s->slist);
+
+	/* find first match */
+	while ((n = sccs_prev(s, d)) && (dd == DATE(s, n))) d = n;
+
+	for (; d <= TABLE(s); ++d) {
 		unless (FLAGS(s, d)) continue;
 		if (dd != DATE(s, d)) break;
 		sccs_sdelta(s, d, dkey);
@@ -16772,35 +16781,6 @@ sccs_findKey(sccs *s, char *key)
 		}
 	}
 	return (0);
-}
-
-void
-sccs_findKeyUpdate(sccs *s, ser_t d)
-{
-	u32	dd;
-	ser_t	ser;
-
-	unless (s->findkeydb) return;
-
-	dd = DATE(s, d);
-	ser = d;
-	unless (hash_insert(s->findkeydb,
-	    &dd, sizeof(dd), &ser, sizeof(ser))) {
-		/* date conflict */
-		if (ser > *(ser_t *)(s->findkeydb->vptr)) {
-			hash_store(s->findkeydb,
-			    &dd, sizeof(dd), &ser, sizeof(ser));
-		}
-	}
-}
-
-void
-sccs_findKeyFlush(sccs *s)
-{
-	if (s->findkeydb) {
-		hash_free(s->findkeydb);
-		s->findkeydb = 0;
-	}
 }
 
 /* return the time of the delta in UTC.
