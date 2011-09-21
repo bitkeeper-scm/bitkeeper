@@ -12,7 +12,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://math.libtomcrypt.com
+ * Tom St Denis, tomstdenis@gmail.com, http://libtom.org
  */
 
 /* makes a truly random prime of a given size (bits),
@@ -120,6 +120,6 @@ error:
 
 #endif
 
-/* $Source: /cvs/libtom/libtommath/bn_mp_prime_random_ex.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2006/03/31 14:18:44 $ */
+/* $Source$ */
+/* $Revision: 0.41 $ */
+/* $Date: 2007-04-18 09:58:18 +0000 $ */
