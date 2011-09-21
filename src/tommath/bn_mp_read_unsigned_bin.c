@@ -12,7 +12,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://math.libtomcrypt.com
+ * Tom St Denis, tomstdenis@gmail.com, http://libtom.org
  */
 
 /* reads a unsigned char array, assumes the msb is stored first [big endian] */
@@ -50,6 +50,6 @@ int mp_read_unsigned_bin (mp_int * a, const unsigned char *b, int c)
 }
 #endif
 
-/* $Source: /cvs/libtom/libtommath/bn_mp_read_unsigned_bin.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2006/03/31 14:18:44 $ */
+/* $Source$ */
+/* $Revision: 0.41 $ */
+/* $Date: 2007-04-18 09:58:18 +0000 $ */

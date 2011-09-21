@@ -12,14 +12,19 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://math.libtomcrypt.com
+ * Tom St Denis, tomstdenis@gmail.com, http://libtom.org
  */
 
 static int s_is_power_of_two(mp_digit b, int *p)
 {
    int x;
 
-   for (x = 1; x < DIGIT_BIT; x++) {
+   /* fast return if no power of two */
+   if ((b==0) || (b & (b-1))) {
+      return 0;
+   }
+
+   for (x = 0; x < DIGIT_BIT; x++) {
       if (b == (((mp_digit)1)<<x)) {
          *p = x;
          return 1;
@@ -105,6 +110,6 @@ int mp_div_d (mp_int * a, mp_digit b, mp_int * c, mp_digit * d)
 
 #endif
 
-/* $Source: /cvs/libtom/libtommath/bn_mp_div_d.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2006/03/31 14:18:44 $ */
+/* $Source$ */
+/* $Revision: 0.41 $ */
+/* $Date: 2007-04-18 09:58:18 +0000 $ */

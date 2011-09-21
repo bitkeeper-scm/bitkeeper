@@ -12,7 +12,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://math.libtomcrypt.com
+ * Tom St Denis, tomstdenis@gmail.com, http://libtom.org
  */
 
 /* the jist of squaring...
@@ -109,6 +109,6 @@ int fast_s_mp_sqr (mp_int * a, mp_int * b)
 }
 #endif
 
-/* $Source: /cvs/libtom/libtommath/bn_fast_s_mp_sqr.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2006/03/31 14:18:44 $ */
+/* $Source$ */
+/* $Revision: 0.41 $ */
+/* $Date: 2007-04-18 09:58:18 +0000 $ */
