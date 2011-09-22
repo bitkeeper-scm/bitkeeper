@@ -37,6 +37,7 @@ private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private	void	showproc_start(char **av);
 private	void	showproc_end(char *cmdlog_buffer, int ret);
 private	void	callstack_add(int remote);
+private int	launch_L(char *script, char **av);
 
 #define	MAXARGS	1024
 #define	MAXPROCDEPTH	30	/* fallsafe, don't recurse deeper than this */
@@ -676,6 +677,9 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 
 	    case CMD_GUI:		/* Handle Gui script */
 		return (launch_wish(cmd->name, av+1));
+
+	    case CMD_LSCRIPT:		/* Handle L scripts */
+		return (launch_L(cmd->name, av+1));
 
 	    case CMD_SHELL:		/* Handle shell scripts */
 		argv[0] = shell();
@@ -1343,6 +1347,49 @@ out:
 	cmdlog_flags = 0;
 	assert(indent_level >= 0);
 	return (rc);
+}
+
+private int
+launch_L(char *script, char **av)
+{
+	int	ret, j;
+	int	i = 0;
+	pid_t	pid;
+	char	*argv[MAXARGS];
+	char	tclcmd[MAXPATH];
+	char	cmd[MAXPATH];
+
+	sprintf(tclcmd, "%s/gui/bin/tclsh", bin);
+	unless(executable(tclcmd)) {
+		fprintf(stderr, "Cannot find the L interpreter.\n");
+		exit(1);
+	}
+
+	sprintf(cmd, "%s/lscripts/%s.l", bin, script);
+
+	argv[i++] = tclcmd;
+	argv[i++] = "--L";
+	argv[i++] = cmd;
+	for (j = 0; av[j]; i++, j++) {
+		if (i >= (MAXARGS-10)) {
+			fprintf(stderr, "bk: too many args\n");
+			return (1);
+		}
+		argv[i] = av[j];
+	}
+	argv[i] = 0;
+	spawn_tcl = 1;
+	if ((pid = spawnvp(_P_NOWAIT, argv[0], argv)) < 0) {
+		fprintf(stderr, "bk: cannot spawn %s\n", argv[0]);
+	}
+	spawn_tcl = 0;
+	if (waitpid(pid, &ret, 0) < 0) {
+		return (126);
+	} else if (!WIFEXITED(ret)) {
+		return (127);
+	} else {
+		return (WEXITSTATUS(ret));
+	}
 }
 
 int

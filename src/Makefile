@@ -202,6 +202,7 @@ OBJ =	bkver.o cmd.o \
 SCRIPTS	= applypatch bk.script import \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
+LSCRIPTS = lscripts/hello.l
 LOCALSCR= build \
 	www/arrow.gif www/bkpowered.gif www/back.gif \
 	www/trailer.gif \
@@ -217,7 +218,7 @@ DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	dspec-changes dspec-changes-vv dspec-changes-h dspec-changes-hv \
 	dspec-changes-3.2 dspec-changes-4.0 dspec-prs dspec-log
 CONTRIB = gui/ide/emacs/vc-bk.el
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LSCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
 	$(PROGS) GUI
 
 CFLAGS	= $(CC_DEBUG)
@@ -238,7 +239,8 @@ SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
 	  port/win32_platform.perl port/win32_platform.sh \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh \
 	  substvars.sh b64wrap.sh gzip_b64wrap.sh \
-	  unb64wrap.sh ungzip_b64wrap.sh
+	  unb64wrap.sh ungzip_b64wrap.sh \
+	  lscripts/hello.l
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 
 export	GET
@@ -302,7 +304,7 @@ clean: FORCE
 	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" Q=$(Q) $@; \
 	done
 	$(Q)$(RM) $(OBJ) bk.o inskeys.o inskeys_main.o $(BINS) $(SCRIPTS) \
-	    $(LOCALSRC) $(PSRC) $(PROGS)
+	    $(LSCRIPTS) $(LOCALSRC) $(PSRC) $(PROGS)
 	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		tclkey.h core *.bb *.bbg *.da *.gcov \
 		bk.ico \
@@ -434,6 +436,9 @@ bkver.o: bkver.c
 	$(Q)cp $< $@
 	$(Q)chmod +x $@
 
+%: %.l
+	$(if $(Q),@echo Not lexing $@,)
+
 import: import.sh port/$(SYS)_platform.sh
 	cat port/$(SYS)_platform.sh import.sh > import.T
 	chmod +x import.T
@@ -454,9 +459,10 @@ install: installdir
 installdir: utils/registry.tcl
 	rm -rf $(IMGDIR) || exit 1
 	mkdir -p $(IMGDIR)/contrib
+	mkdir -p $(IMGDIR)/lscripts
 	bk get -S www
 	bk get -S $(CONTRIB)
-	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib gui/images \
+	tar cf - $(BINS) $(SCRIPTS) lscripts gui/bin gui/lib gui/images \
 		www/*.gif www/*.png | (cd $(IMGDIR) && tar xf -)
 	cp -f $(DATA) $(IMGDIR)
 	cp -f $(CONTRIB) $(IMGDIR)/contrib

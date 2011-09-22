@@ -39,6 +39,7 @@ enum {
     CMD_CPROG,			/* executable in `bk bin` */
     CMD_ALIAS,			/* alias for another symbol */
     CMD_BK_SH,			/* function in bk.script */
+    CMD_LSCRIPT,		/* L script */
 };
 
 typedef struct CMD {
@@ -70,6 +71,7 @@ while (<DATA>) {
     $type = "CMD_GUI" if s/\s+gui//;
     $type = "CMD_SHELL" if s/\s+shell//;
     $type = "CMD_CPROG" if s/\s+cprog//;
+    $type = "CMD_LSCRIPT" if s/\s+lscript//;
 
     $r = $pro = $remote = 0;
     $r = 1 if s/\s+restricted//;
@@ -155,6 +157,7 @@ foreach (qw(cmd.c cmd.h)) {
 #    gui		is a GUI script
 #    cprog		is an executable in the `bk bin` directory
 #    shell		is a shell script in the `bk bin` directory
+#    lscript		is an L script in the `bk bin` directory
 #
 # Command aliases can be given with this syntax:
 #     XXX => YYY
@@ -462,3 +465,6 @@ cmp cprog
 diff cprog
 diff3 cprog
 sdiff cprog
+
+# L scripts
+hello lscript
