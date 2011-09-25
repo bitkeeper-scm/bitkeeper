@@ -151,7 +151,7 @@ L requires that they be the same "type", all interpolated ("") or
 all not interpolated ('') but the dot operator comes the rescue
 in this contrived example:
 
-    'Hi there. ${USER} = ' . "$USER";
+    'Hi there. ${USER} is ' . "${USER} today";
 
 =head1 NAME SCOPING
 

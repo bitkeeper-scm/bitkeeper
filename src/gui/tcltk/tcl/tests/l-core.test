@@ -984,6 +984,40 @@ void scan_1_16()
 scan_1_16();
 } -output {}
 
+test scan-1.17 {check \u escapes in strings} -body {
+#lang L
+void scan_1_17()
+{
+	string	s;
+
+	s = "\u3";
+	unless (ord(s) == 0x3) puts("bad 1.1");
+	s = "\u34";
+	unless (ord(s) == 0x34) puts("bad 1.2");
+	s = "\u345";
+	unless (ord(s) == 0x345) puts("bad 1.3");
+	s = "\u3456";
+	unless (ord(s) == 0x3456) puts("bad 1.4");
+
+	s = "xy\u3z";
+	unless (length(s) == 4) puts("bad 2.1");
+	unless ((ord(s[2]) == 0x3) && (s[3] eq "z")) puts("bad 2.2");
+	s = "xy\u34z";
+	unless (length(s) == 4) puts("bad 2.3");
+	unless ((ord(s[2]) == 0x34) && (s[3] eq "z")) puts("bad 2.4");
+	s = "xy\u345z";
+	unless (length(s) == 4) puts("bad 2.5");
+	unless ((ord(s[2]) == 0x345) && (s[3] eq "z")) puts("bad 2.6");
+	s = "xy\u3456z";
+	unless (length(s) == 4) puts("bad 2.7");
+	unless ((ord(s[2]) == 0x3456) && (s[3] eq "z")) puts("bad 2.8");
+	s = "xy\u34567";
+	unless (length(s) == 4) puts("bad 2.9");
+	unless ((ord(s[2]) == 0x3456) && (s[3] eq "7")) puts("bad 2.10");
+}
+scan_1_17();
+} -output {}
+
 test scan-2.1 {test #file directive} -body {
 #lang L
 #file "scan2-1.l"
@@ -1076,6 +1110,283 @@ unless (scan_2_3b == 4) puts("bad 10.4");
 	removeFile $fname1
 	removeFile $fname2
 	removeFile $fname3
+} -output {}
+
+test unicode-1 {test unicode in string constants and here documents} -body {
+#lang L
+void unicode_1()
+{
+	string	h, j, s;
+
+	// This has twelve Hebrew characters including two ASCII spaces
+	// in an interpolated string (double quotes).
+	h = "זו השפה שלנו";
+	unless (length(h) == 12) puts("bad 1.1");
+	unless (ord(h[0]) == 0x05d6) puts("bad 1.2");	// Zayen
+	unless (ord(h[1]) == 0x05d5) puts("bad 1.3");	// Vav
+	unless (ord(h[2]) == 0x0020) puts("bad 1.4");	// space
+	unless (ord(h[3]) == 0x05d4) puts("bad 1.5");	// He
+	unless (ord(h[4]) == 0x05e9) puts("bad 1.6");	// Shin
+	unless (ord(h[5]) == 0x05e4) puts("bad 1.7");	// Pe
+	unless (ord(h[6]) == 0x05d4) puts("bad 1.8");	// He
+	unless (ord(h[7]) == 0x0020) puts("bad 1.9");	// space
+	unless (ord(h[8]) == 0x05e9) puts("bad 1.10");	// Shin
+	unless (ord(h[9]) == 0x05dc) puts("bad 1.11");	// Lamed
+	unless (ord(h[10]) == 0x05e0) puts("bad 1.12");	// Hun
+	unless (ord(h[11]) == 0x05d5) puts("bad 1.13");	// Vav
+	if (defined(h[12])) puts("bad 1.14");
+
+	// Same string as above except in an interpolated here
+	// document (and therefore with a trailing ASCII newline.
+	h = <<END
+זו השפה שלנו
+END
+	unless (length(h) == 13) puts("bad 2.1");
+	unless (ord(h[0]) == 0x05d6) puts("bad 2.2");	// Zayen
+	unless (ord(h[1]) == 0x05d5) puts("bad 2.3");	// Vav
+	unless (ord(h[2]) == 0x0020) puts("bad 2.4");	// space
+	unless (ord(h[3]) == 0x05d4) puts("bad 2.5");	// He
+	unless (ord(h[4]) == 0x05e9) puts("bad 2.6");	// Shin
+	unless (ord(h[5]) == 0x05e4) puts("bad 2.7");	// Pe
+	unless (ord(h[6]) == 0x05d4) puts("bad 2.8");	// He
+	unless (ord(h[7]) == 0x0020) puts("bad 2.9");	// space
+	unless (ord(h[8]) == 0x05e9) puts("bad 2.10");	// Shin
+	unless (ord(h[9]) == 0x05dc) puts("bad 2.11");	// Lamed
+	unless (ord(h[10]) == 0x05e0) puts("bad 2.12");	// Hun
+	unless (ord(h[11]) == 0x05d5) puts("bad 2.13");	// Vav
+	unless (ord(h[12]) == 0x0a)   puts("bad 2.14");	// newline
+	if (defined(h[13])) puts("bad 2.15");
+
+	// This has 14 Kanji characters including two Kanji (0x3000) spaces
+	// in an uninterpolated string (single quotes).
+	j = '私は　日本語が　分かります';
+	unless (length(j) == 13) puts("bad 3.1");
+	unless (ord(j[0]) == 0x79c1) puts("bad 3.2");
+	unless (ord(j[1]) == 0x306f) puts("bad 3.3");
+	unless (ord(j[2]) == 0x3000) puts("bad 3.4");
+	unless (ord(j[3]) == 0x65e5) puts("bad 3.5");
+	unless (ord(j[4]) == 0x672c) puts("bad 3.6");
+	unless (ord(j[5]) == 0x8a9e) puts("bad 3.7");
+	unless (ord(j[6]) == 0x304c) puts("bad 3.8");
+	unless (ord(j[7]) == 0x3000) puts("bad 3.9");
+	unless (ord(j[8]) == 0x5206) puts("bad 3.10");
+	unless (ord(j[9]) == 0x304b) puts("bad 3.11");
+	unless (ord(j[10]) == 0x308a) puts("bad 3.12");
+	unless (ord(j[11]) == 0x307e) puts("bad 3.13");
+	unless (ord(j[12]) == 0x3059) puts("bad 3.14");
+	if (defined(j[13])) puts("bad 3.15");
+
+	// Same as above, but an uninterpolated here document.
+	j = <<'END'
+私は　日本語が　分かります
+END
+	unless (length(j) == 14) puts("bad 4.1");
+	unless (ord(j[0]) == 0x79c1) puts("bad 4.2");
+	unless (ord(j[1]) == 0x306f) puts("bad 4.3");
+	unless (ord(j[2]) == 0x3000) puts("bad 4.4");
+	unless (ord(j[3]) == 0x65e5) puts("bad 4.5");
+	unless (ord(j[4]) == 0x672c) puts("bad 4.6");
+	unless (ord(j[5]) == 0x8a9e) puts("bad 4.7");
+	unless (ord(j[6]) == 0x304c) puts("bad 4.8");
+	unless (ord(j[7]) == 0x3000) puts("bad 4.9");
+	unless (ord(j[8]) == 0x5206) puts("bad 4.10");
+	unless (ord(j[9]) == 0x304b) puts("bad 4.11");
+	unless (ord(j[10]) == 0x308a) puts("bad 4.12");
+	unless (ord(j[11]) == 0x307e) puts("bad 4.13");
+	unless (ord(j[12]) == 0x3059) puts("bad 4.14");
+	unless (ord(j[13]) == 0x0a)   puts("bad 4.15");
+	if (defined(j[14])) puts("bad 4.16");
+
+	// Some diacritics.
+	s = "Algunos signos diacríticos del español";
+	unless (length(s) == 38) puts("bad 5.1");
+	unless (ord(s[20]) == 0x00ed) puts("bad 5.2");
+	unless (ord(s[35]) == 0x00f1) puts("bad 5.3");
+}
+unicode_1();
+} -output {}
+
+test unicode-2 {test manipulation of unicode strings} -body {
+#lang L
+void unicode_2()
+{
+	string	h = "זו השפה שלנו";
+	string	j = '私は　日本語が　分かります';
+
+	h .= j;
+	unless (h eq "זו השפה שלנו私は　日本語が　分かります") puts("bad 1.0");
+	unless (length(h) == 25) puts("bad 1.1");
+	unless (ord(h[0]) == 0x05d6) puts("bad 1.2");
+	unless (ord(h[1]) == 0x05d5) puts("bad 1.3");
+	unless (ord(h[2]) == 0x0020) puts("bad 1.4");
+	unless (ord(h[3]) == 0x05d4) puts("bad 1.5");
+	unless (ord(h[4]) == 0x05e9) puts("bad 1.6");
+	unless (ord(h[5]) == 0x05e4) puts("bad 1.7");
+	unless (ord(h[6]) == 0x05d4) puts("bad 1.8");
+	unless (ord(h[7]) == 0x0020) puts("bad 1.9");
+	unless (ord(h[8]) == 0x05e9) puts("bad 1.10");
+	unless (ord(h[9]) == 0x05dc) puts("bad 1.11");
+	unless (ord(h[10]) == 0x05e0) puts("bad 1.12");
+	unless (ord(h[11]) == 0x05d5) puts("bad 1.13");
+	unless (ord(h[12]) == 0x79c1) puts("bad 1.14");
+	unless (ord(h[13]) == 0x306f) puts("bad 1.15");
+	unless (ord(h[14]) == 0x3000) puts("bad 1.16");
+	unless (ord(h[15]) == 0x65e5) puts("bad 1.17");
+	unless (ord(h[16]) == 0x672c) puts("bad 1.18");
+	unless (ord(h[17]) == 0x8a9e) puts("bad 1.19");
+	unless (ord(h[18]) == 0x304c) puts("bad 1.20");
+	unless (ord(h[19]) == 0x3000) puts("bad 1.21");
+	unless (ord(h[20]) == 0x5206) puts("bad 1.22");
+	unless (ord(h[21]) == 0x304b) puts("bad 1.23");
+	unless (ord(h[22]) == 0x308a) puts("bad 1.24");
+	unless (ord(h[23]) == 0x307e) puts("bad 1.25");
+	unless (ord(h[24]) == 0x3059) puts("bad 1.26");
+	if (defined(h[25])) puts("bad 1.27");
+
+	// Delete one of the Kanji characters.
+	undef(h[12]);
+	unless (h eq "זו השפה שלנוは　日本語が　分かります") puts("bad 2.0");
+	unless (length(h) == 24) puts("bad 2.1");
+	unless (ord(h[0]) == 0x05d6) puts("bad 2.2");
+	unless (ord(h[11]) == 0x05d5) puts("bad 2.3");
+	unless (ord(h[12]) == 0x306f) puts("bad 2.4");
+	unless (ord(h[23]) == 0x3059) puts("bad 2.5");
+	if (defined(h[24])) puts("bad 2.6");
+
+	// Now delete the first space.
+	undef(h[2]);
+	unless (h eq "זוהשפה שלנוは　日本語が　分かります") puts("bad 3.0");
+	unless (length(h) == 23) puts("bad 3.1");
+	unless (ord(h[0]) == 0x05d6) puts("bad 3.2");
+	unless (ord(h[2]) == 0x05d4) puts("bad 3.3");
+	unless (ord(h[22]) == 0x3059) puts("bad 3.4");
+	if (defined(h[23])) puts("bad 3.5");
+}
+unicode_2();
+} -output {}
+
+test unicode-3 {test unicode strings in regexp and substitution} -body {
+#lang L
+void unicode_3()
+{
+	string	h = "זו השפה שלנו";
+	string	r;
+
+	unless (h =~ /זו/) puts("bad 1.1");
+	if (h =~ /ך/) puts("bad 1.2");
+	unless (h =~ /זו השפה שלנו/) puts("bad 1.3");
+	unless (h =~ /השפה שלנו/) puts("bad 1.4");
+	if (h =~ /^השפה שלנו/) puts("bad 1.5");
+	unless (h =~ /זו.*שלנו/) puts("bad 1.6");
+
+	h =~ s/ש//;
+	unless (length(h) == 11) puts("bad 2.1");
+	unless (h eq "זו הפה שלנו") puts("bad 2.2");
+	h = "זו השפה שלנו";
+	h =~ s/ש//g;
+	unless (length(h) == 10) puts("bad 2.3");
+	unless (h eq "זו הפה לנו") puts("bad 2.4");
+
+	h = "זו השפה שלנו";
+	r = "ש";
+	h =~ s/${r}//;
+	unless (length(h) == 11) puts("bad 3.1");
+	unless (h eq "זו הפה שלנו") puts("bad 3.2");
+	h = "זו השפה שלנו";
+	h =~ s/${r}//g;
+	unless (length(h) == 10) puts("bad 3.3");
+	unless (h eq "זו הפה לנו") puts("bad 3.4");
+
+	h = "זו השפה שלנו";
+	unless (h =~ /זו (השפ)ה שלנו/) puts("bad 4.1");
+	unless (length($1) == 3) puts("bad 4.2");
+	unless ($1 eq "השפ") puts("bad 4.3");
+}
+unicode_3();
+} -output {}
+
+test unicode-4 {test file I/O with unicode strings} -body {
+#lang L
+void unicode_4()
+{
+	string	h = "זו השפה שלנו";
+	string	j = '私は　日本語が　分かります';
+	string	s;
+	FILE	f;
+
+	unless (f = fopen("unicode4", "w")) puts("bad 0.1");
+	fconfigure(f, encoding: "utf-8");
+	write(f, h, String_bytelength(h));
+	write(f, "\n", 1);
+	fprintf(f, "%s\n", j);
+	fclose(f);
+
+	unless (f = fopen("unicode4", "r")) puts("bad 0.2");
+	fconfigure(f, encoding: "utf-8");
+	s = <f>;
+	unless (length(s) == 12) puts("bad 1.1");
+	unless (ord(s[0]) == 0x05d6) puts("bad 1.2");
+	unless (ord(s[1]) == 0x05d5) puts("bad 1.3");
+	unless (ord(s[2]) == 0x0020) puts("bad 1.4");
+	unless (ord(s[3]) == 0x05d4) puts("bad 1.5");
+	unless (ord(s[4]) == 0x05e9) puts("bad 1.6");
+	unless (ord(s[5]) == 0x05e4) puts("bad 1.7");
+	unless (ord(s[6]) == 0x05d4) puts("bad 1.8");
+	unless (ord(s[7]) == 0x0020) puts("bad 1.9");
+	unless (ord(s[8]) == 0x05e9) puts("bad 1.10");
+	unless (ord(s[9]) == 0x05dc) puts("bad 1.11");
+	unless (ord(s[10]) == 0x05e0) puts("bad 1.12");
+	unless (ord(s[11]) == 0x05d5) puts("bad 1.13");
+	if (defined(s[12])) puts("bad 1.14");
+	s = <f>;
+	unless (length(s) == 13) puts("bad 3.1");
+	unless (ord(s[0]) == 0x79c1) puts("bad 3.2");
+	unless (ord(s[1]) == 0x306f) puts("bad 3.3");
+	unless (ord(s[2]) == 0x3000) puts("bad 3.4");
+	unless (ord(s[3]) == 0x65e5) puts("bad 3.5");
+	unless (ord(s[4]) == 0x672c) puts("bad 3.6");
+	unless (ord(s[5]) == 0x8a9e) puts("bad 3.7");
+	unless (ord(s[6]) == 0x304c) puts("bad 3.8");
+	unless (ord(s[7]) == 0x3000) puts("bad 3.9");
+	unless (ord(s[8]) == 0x5206) puts("bad 3.10");
+	unless (ord(s[9]) == 0x304b) puts("bad 3.11");
+	unless (ord(s[10]) == 0x308a) puts("bad 3.12");
+	unless (ord(s[11]) == 0x307e) puts("bad 3.13");
+	unless (ord(s[12]) == 0x3059) puts("bad 3.14");
+	if (defined(s[13])) puts("bad 3.15");
+	fclose(f);
+	unlink("unicode4");
+}
+unicode_4();
+} -output {}
+
+test unicode-5 {test split built-in with unicode strings} -body {
+#lang L
+void unicode_5()
+{
+	string	a[];
+
+	// This contains ASCII spaces.
+	a = split("זו השפה שלנו");
+	unless (length(a) == 3) puts("bad 1.1");
+	unless (a[0] eq "זו") puts("bad 1.2");
+	unless (a[1] eq "השפה") puts("bad 1.3");
+	unless (a[2] eq "שלנו") puts("bad 1.4");
+
+	// Note that these aren't ASCII spaces.
+	a = split("私は　日本語が　分かります");
+	unless (length(a) == 3) puts("bad 2.1");
+	unless (a[0] eq "私は") puts("bad 2.2");
+	unless (a[1] eq "日本語が") puts("bad 2.3");
+	unless (a[2] eq "分かります") puts("bad 2.4");
+
+	a = split(/ש/, "זו השפה שלנו");
+	unless (length(a) == 3) puts("bad 3.1");
+	unless (a[0] eq "זו ה") puts("bad 3.2");
+	unless (a[1] eq "פה ") puts("bad 3.3");
+	unless (a[2] eq "לנו") puts("bad 3.4");
+}
+unicode_5();
 } -output {}
 
 test cmdsubst-1 {test command substitution} -body {

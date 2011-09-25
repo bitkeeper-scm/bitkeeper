@@ -830,7 +830,7 @@ test: binaries $(TCLTEST) test-packages
 	set ::reglib [file normalize ${REG_DLL_FILE}]" | ./$(CAT32)
 
 l-test l-tests test-l test-L:
-	$(MAKE) test TESTFLAGS="-file l-*"
+	TCLTEST_SHELL_OPTIONS='-encoding utf-8' $(MAKE) test TESTFLAGS+="-file l-*.test"
 
 # Useful target to launch a built tcltest with the proper path,...
 runtest: binaries $(TCLTEST)

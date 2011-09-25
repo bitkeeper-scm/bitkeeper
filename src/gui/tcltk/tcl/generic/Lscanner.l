@@ -14,6 +14,7 @@
 %x here_doc_nointerp
 %x eat_through_eol
 ID	([a-zA-Z_]|::)([0-9a-zA-Z_]|::)*
+HEX	[a-fA-F0-9]
 %{
 /*
  * Copyright (c) 2006-2008 BitMover, Inc.
@@ -670,6 +671,15 @@ canonical_num(char *num)
 	\\r		STRBUF_ADD("\r", 1);
 	\\n		STRBUF_ADD("\n", 1);
 	\\t		STRBUF_ADD("\t", 1);
+	\\u{HEX}		|
+	\\u{HEX}{HEX}		|
+	\\u{HEX}{HEX}{HEX}	|
+	\\u{HEX}{HEX}{HEX}{HEX}	{
+				char		buf[TCL_UTF_MAX];
+				Tcl_UniChar	ch;
+				TclParseHex(yytext+2, 4, &ch);
+				STRBUF_ADD(buf, Tcl_UniCharToUtf(ch, buf));
+			}
 	\\(.|\n)	STRBUF_ADD(yytext+1, 1);
 	"$"		STRBUF_ADD("$", 1);
 	\n		{

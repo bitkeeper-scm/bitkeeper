@@ -6257,13 +6257,14 @@ Tcl_Obj *
 L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	Tcl_Obj *limobj, Expr_f flags)
 {
-	int		i, leading, len, lim, matches, off, ret;
+	int		chlen, i, leading, len, lim, matches, off, ret, wlen;
 	int		trim = (flags & L_EXPR_RE_T);
 	int		delimlen = 0, onspace = 0;
 	int		start = 0, end = 0;
 	Tcl_RegExp	regExpr = NULL;
 	Tcl_RegExpInfo	info;
 	Tcl_Obj		**elems, *resultPtr, *objPtr, *listPtr;
+	Tcl_UniChar	ch, *wstr;
 	char		*delimstr = NULL, *str;
 
 	if (limobj) {
@@ -6311,16 +6312,17 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	 */
 	if (onspace) {
 		int letters = 0, skip = 0;
-		for (start = 0; (off < len) && (matches < lim); ++off) {
+		for (start = 0; (off < len) && (matches < lim); off += chlen) {
+			chlen = TclUtfToUniChar(str+off, &ch);
 			if (skip) {
-				unless (isspace(str[off])) {
+				unless (Tcl_UniCharIsSpace(ch)) {
 					start   = off;
 					letters = 1;
 					skip    = 0;
 					++matches;
 				}
 			} else {
-				if (isspace(str[off])) {
+				if (Tcl_UniCharIsSpace(ch)) {
 					/* Suppress leading null field
 					 * in result. */
 					if (off || start) {
@@ -6351,10 +6353,12 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 		listPtr = NULL;
 		goto done;
 	}
-	while ((off < len) && (matches < lim)) {
+	wstr = Tcl_GetUnicodeFromObj(objPtr, &wlen);
+	while ((off < wlen) && (matches < lim)) {
 		ret = Tcl_RegExpExecObj(interp, regExpr, objPtr, off,
 					10 /* matches */,
-					((off>0 && (str[off-1]!='\n'))
+					((off>0 &&
+					  (wstr[off-1]!=(Tcl_UniChar)'\n'))
 					 ? TCL_REG_NOTBOL : 0));
 		if (ret < 0) goto done;
 		if (ret == 0) break;
@@ -6376,10 +6380,10 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 		}
 		if (start == end) {
 			ASSERT(start == 0);
-			resultPtr = Tcl_NewStringObj(str+off, 1);
+			resultPtr = Tcl_NewUnicodeObj(wstr+off, 1);
 			++off;
 		} else {
-			resultPtr = Tcl_NewStringObj(str+off, start);
+			resultPtr = Tcl_NewUnicodeObj(wstr+off, start);
 		}
 		leading = 0;
 		Tcl_ListObjAppendElement(NULL, listPtr, resultPtr);
@@ -6389,8 +6393,8 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	 * Copy to the result list the portion of the source string after
 	 * the last match, unless we matched the last char.
 	 */
-	if (off < len) {
-		resultPtr = Tcl_NewStringObj(str+off, len-off);
+	if (off < wlen) {
+		resultPtr = Tcl_NewUnicodeObj(wstr+off, wlen-off);
 		Tcl_ListObjAppendElement(NULL, listPtr, resultPtr);
 	}
 
@@ -6406,7 +6410,7 @@ L_split(Tcl_Interp *interp, Tcl_Obj *strobj, Tcl_Obj *delimobj,
 	 */
 	TclListObjGetElements(NULL, listPtr, &len, &elems);
 	for (i = len-1; i >= 0; --i) {
-		if (elems[i]->length) break;
+		if (Tcl_GetCharLength(elems[i])) break;
 		Tcl_ListObjReplace(interp, listPtr, i, 1, 0, NULL);
 	}
 	return (listPtr);

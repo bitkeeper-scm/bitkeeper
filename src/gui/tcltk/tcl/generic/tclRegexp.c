@@ -454,7 +454,7 @@ Tcl_RegExpExecObj(
     int flags)			/* Regular expression execution flags. */
 {
     TclRegexp *regexpPtr = (TclRegexp *) re;
-    int length;
+    int i, length;
     int reflags = regexpPtr->flags;
     /* We could allow TCL_REG_PCRE to accept glob-fallback as well */
 #define TCL_REG_GLOBOK_FLAGS (TCL_REG_ADVANCED | TCL_REG_NOSUB | TCL_REG_NOCASE)
@@ -489,6 +489,8 @@ Tcl_RegExpExecObj(
 #ifdef HAVE_PCRE
 	const char *matchstr;
 	int match, pcreeflags, nm = (regexpPtr->re.re_nsub + 1) * 3;
+	int byteOffset, wlen;
+	unsigned long pcreopts;
 
 	if (textObj->typePtr == &tclByteArrayType) {
 	    matchstr = (const char*)Tcl_GetByteArrayFromObj(textObj, &length);
@@ -496,18 +498,44 @@ Tcl_RegExpExecObj(
 	    matchstr = (const char*)Tcl_GetStringFromObj(textObj, &length);
 	}
 
-	if (offset > length) {
-	    offset = length;
-	}
-
 	pcreeflags = 0;
 	if (flags & TCL_REG_NOTBOL) {
 	    pcreeflags |= PCRE_NOTBOL;
 	}
+	pcre_fullinfo(regexpPtr->pcre, NULL, PCRE_INFO_OPTIONS, &pcreopts);
+
+	/* For UTF8, convert offset from a char index to a byte offset. */
+	if (pcreopts & PCRE_UTF8) {
+	    wlen = Tcl_GetCharLength(textObj);
+	    if (offset > wlen) {
+		offset = wlen;
+	    }
+	    byteOffset = Tcl_UtfAtIndex(matchstr, offset) - matchstr;
+	    if (byteOffset > length) {
+		byteOffset = length;
+	    }
+	} else {
+	    if (offset > length) {
+		offset = length;
+	    }
+	    byteOffset = offset;
+	}
 
 	match = pcre_exec(regexpPtr->pcre, regexpPtr->study,
-		matchstr, length, offset, pcreeflags,
+		matchstr, length, byteOffset, pcreeflags,
 		(int *) regexpPtr->matches, nm);
+
+	/*
+	 * For UTF8, we need the matches array as char offsets, but pcre
+	 * returns byte offsets.  Do the conversion.
+	 */
+	if (pcreopts & PCRE_UTF8) {
+	    // This could be sped up for lots of matches.
+	    for (i = 0; i < 2*match; ++i) {
+		int *p = &((int *)regexpPtr->matches)[i];
+		*p = Tcl_NumUtfChars(matchstr, *p);
+	    }
+	}
 
 	/*
 	 * Store last offset to support Tcl_RegExpGetInfo translation.
