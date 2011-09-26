@@ -1119,7 +1119,7 @@ goto find_rule; \
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
 char *L_text;
-#line 1 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 1 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 
 
@@ -1132,7 +1132,7 @@ char *L_text;
 
 
 
-#line 19 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 19 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 /*
  * Copyright (c) 2006-2008 BitMover, Inc.
  */
@@ -1217,6 +1217,8 @@ yy_user_action()
 
 	tally_newlines(L_text, L_leng, 1);
 	L_lloc.line = L->line;
+
+	L_lloc.file = L->file;
 
 	/*
 	 * Build up in L->script the text that the scanner scans.
@@ -1458,7 +1460,7 @@ canonical_num(char *num)
 #undef optarg
 #undef optind
 
-#line 1462 "Lscanner.c"
+#line 1464 "Lscanner.c"
 
 #define INITIAL 0
 #define re_modifier 1
@@ -1663,9 +1665,9 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 345 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 347 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 
-#line 1669 "Lscanner.c"
+#line 1671 "Lscanner.c"
 
 	if ( !(yy_init) )
 		{
@@ -1762,458 +1764,458 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 347 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 349 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LPAREN;
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 348 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 350 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RPAREN;
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 349 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 351 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 interpol_lbrace(); return T_LBRACE;
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 350 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 352 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LBRACKET;
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 351 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 353 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RBRACKET;
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 352 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 354 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_COMMA;
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 353 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 355 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BANG;
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 354 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 356 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PLUS;
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 355 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 357 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_MINUS;
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 356 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 358 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STAR;
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 357 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 359 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SLASH;
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 358 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 360 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PERC;
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 359 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 361 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQPLUS;
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 360 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 362 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQMINUS;
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 361 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 363 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQSTAR;
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 362 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 364 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQSLASH;
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 363 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 365 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQPERC;
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 364 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 366 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQBITAND;
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 365 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 367 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQBITOR;
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 366 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 368 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQBITXOR;
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 367 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 369 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQLSHIFT;
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 368 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 370 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQRSHIFT;
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 369 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 371 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQDOT;
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 370 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 372 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PLUSPLUS;
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 371 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 373 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_MINUSMINUS;
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 372 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 374 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ANDAND;
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 373 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 375 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_OROR;
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 374 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 376 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITAND;
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 375 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 377 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITOR;
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 376 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 378 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITXOR;
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 377 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 379 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BITNOT;
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 378 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 380 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LSHIFT;
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 379 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 381 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RSHIFT;
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 380 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 382 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQUALS;
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 381 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 383 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SEMI;
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 382 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 384 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DOT;
 	YY_BREAK
 case 37:
 /* rule 37 can match eol */
 YY_RULE_SETUP
-#line 383 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 385 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STRCAT;
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 384 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 386 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DOTDOT;
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 385 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 387 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ELLIPSIS;
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 386 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 388 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CLASS;
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 387 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 389 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EXTERN;
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 388 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 390 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RETURN;
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 389 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 391 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_VOID;
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 390 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 392 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STRING;
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 391 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 393 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_WIDGET;
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 392 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 394 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_INT;
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 393 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 395 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_FLOAT;
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 394 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 396 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_POLY;
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 395 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 397 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SPLIT;
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 396 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 398 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_IF;
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 397 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 399 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ELSE;
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 398 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 400 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_UNLESS;
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 399 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 401 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_WHILE;
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 400 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 402 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DO;
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 401 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 403 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_FOR;
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 402 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 404 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_STRUCT;
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 403 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 405 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_TYPEDEF;
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 404 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 406 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DEFINED;
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 405 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 407 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_FOREACH;
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 406 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 408 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_BREAK;
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 407 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 409 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CONTINUE;
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 408 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 410 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_INSTANCE;
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 409 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 411 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PRIVATE;
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 410 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 412 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PUBLIC;
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 411 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 413 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CONSTRUCTOR;
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 412 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 414 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DESTRUCTOR;
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 413 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 415 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EXPAND;
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 414 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 416 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ARGUSED;
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 415 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 417 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_OPTIONAL;
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 416 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 418 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_MUSTBETYPE;
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 417 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 419 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GOTO;
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 418 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 420 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_SWITCH;
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 419 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 421 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_CASE;
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 420 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 422 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_DEFAULT;
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 421 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 423 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_ARROW;
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
-#line 422 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 424 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQ;
 	YY_BREAK
 case 77:
 YY_RULE_SETUP
-#line 423 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 425 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_NE;
 	YY_BREAK
 case 78:
 YY_RULE_SETUP
-#line 424 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 426 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LT;
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 425 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 427 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LE;
 	YY_BREAK
 case 80:
 YY_RULE_SETUP
-#line 426 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 428 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GT;
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 427 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 429 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GE;
 	YY_BREAK
 case 82:
 YY_RULE_SETUP
-#line 428 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 430 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_EQUALEQUAL;
 	YY_BREAK
 case 83:
 YY_RULE_SETUP
-#line 429 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 431 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_NOTEQUAL;
 	YY_BREAK
 case 84:
 YY_RULE_SETUP
-#line 430 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 432 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GREATER;
 	YY_BREAK
 case 85:
 YY_RULE_SETUP
-#line 431 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 433 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_GREATEREQ;
 	YY_BREAK
 case 86:
 YY_RULE_SETUP
-#line 432 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 434 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LESSTHAN;
 	YY_BREAK
 case 87:
 YY_RULE_SETUP
-#line 433 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 435 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_LESSTHANEQ;
 	YY_BREAK
 case 88:
 YY_RULE_SETUP
-#line 434 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 436 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_POINTS;
 	YY_BREAK
 case 89:
 YY_RULE_SETUP
-#line 435 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 437 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_COLON;
 	YY_BREAK
 case 90:
 YY_RULE_SETUP
-#line 436 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 438 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_QUESTION;
 	YY_BREAK
 case 91:
 YY_RULE_SETUP
-#line 437 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 439 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				Type *t = L_typedef_lookup(L_text);
 				if (t) {
@@ -2228,7 +2230,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 92:
 YY_RULE_SETUP
-#line 448 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 450 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Push back the : and return a T_ID
@@ -2246,7 +2248,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 93:
 YY_RULE_SETUP
-#line 462 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 464 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				return T_PATTERN;
@@ -2254,7 +2256,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 94:
 YY_RULE_SETUP
-#line 466 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 468 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/* Regular expression submatches */
 				L_lval.s = ckstrdup(L_text);
@@ -2263,7 +2265,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 95:
 YY_RULE_SETUP
-#line 471 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 473 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Skip any leading 0's which would
@@ -2277,7 +2279,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 96:
 YY_RULE_SETUP
-#line 481 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 483 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Create a leading 0 so it looks like
@@ -2290,7 +2292,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 97:
 YY_RULE_SETUP
-#line 490 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 492 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = canonical_num(L_text);
 				return T_INT_LITERAL;
@@ -2298,7 +2300,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 98:
 YY_RULE_SETUP
-#line 494 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 496 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				return T_FLOAT_LITERAL;
@@ -2307,7 +2309,7 @@ YY_RULE_SETUP
 case 99:
 /* rule 99 can match eol */
 YY_RULE_SETUP
-#line 498 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 500 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	line = strtoul(L_text+5, NULL, 10);
 
@@ -2323,7 +2325,7 @@ YY_RULE_SETUP
 case 100:
 /* rule 100 can match eol */
 YY_RULE_SETUP
-#line 509 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 511 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				int	line  = strtoul(L_text+5, NULL, 10);
 				char	*beg  = strchr(L_text, '"') + 1;
@@ -2343,7 +2345,7 @@ YY_RULE_SETUP
 case 101:
 /* rule 101 can match eol */
 YY_RULE_SETUP
-#line 524 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 526 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("malformed #line");
@@ -2352,7 +2354,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 102:
 YY_RULE_SETUP
-#line 529 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 531 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*beg  = strchr(L_text, '"') + 1;
 				char	*end  = strrchr(L_text, '"');
@@ -2370,7 +2372,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 103:
 YY_RULE_SETUP
-#line 543 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 545 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char	*beg  = strchr(L_text, '<') + 1;
 				char	*end  = strrchr(L_text, '>');
@@ -2390,7 +2392,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 104:
 YY_RULE_SETUP
-#line 559 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 561 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("malformed #include");
 				yy_push_state(eat_through_eol);
@@ -2398,13 +2400,13 @@ YY_RULE_SETUP
 	YY_BREAK
 case 105:
 YY_RULE_SETUP
-#line 563 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 565 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_PRAGMA;
 	YY_BREAK
 case 106:
 /* rule 106 can match eol */
 YY_RULE_SETUP
-#line 564 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 566 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * Rather than using a start condition
@@ -2431,7 +2433,7 @@ YY_RULE_SETUP
 case 107:
 /* rule 107 can match eol */
 YY_RULE_SETUP
-#line 586 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 588 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				unless (L->line == 1) {
@@ -2446,44 +2448,44 @@ YY_RULE_SETUP
 case 108:
 /* rule 108 can match eol */
 YY_RULE_SETUP
-#line 596 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 598 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 109:
 YY_RULE_SETUP
-#line 597 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 599 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 110:
 /* rule 110 can match eol */
 YY_RULE_SETUP
-#line 598 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 600 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 111:
 YY_RULE_SETUP
-#line 599 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 601 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(str_double); STRBUF_START(L->token_off);
 	YY_BREAK
 case 112:
 YY_RULE_SETUP
-#line 600 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 602 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(str_single); STRBUF_START(L->token_off);
 	YY_BREAK
 case 113:
 YY_RULE_SETUP
-#line 601 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 603 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(str_backtick); STRBUF_START(L->token_off);
 	YY_BREAK
 case 114:
 YY_RULE_SETUP
-#line 602 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 604 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_push_state(comment);
 	YY_BREAK
 case 115:
 /* rule 115 can match eol */
 YY_RULE_SETUP
-#line 603 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 605 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2497,7 +2499,7 @@ YY_RULE_SETUP
 case 116:
 /* rule 116 can match eol */
 YY_RULE_SETUP
-#line 612 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 614 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2511,7 +2513,7 @@ YY_RULE_SETUP
 case 117:
 /* rule 117 can match eol */
 YY_RULE_SETUP
-#line 621 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 623 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(subst_re);
@@ -2526,7 +2528,7 @@ YY_RULE_SETUP
 case 118:
 /* rule 118 can match eol */
 YY_RULE_SETUP
-#line 631 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 633 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2539,7 +2541,7 @@ YY_RULE_SETUP
 case 119:
 /* rule 119 can match eol */
 YY_RULE_SETUP
-#line 639 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 641 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		int	len;
 		char	*p;
@@ -2561,7 +2563,7 @@ YY_RULE_SETUP
 case 120:
 /* rule 120 can match eol */
 YY_RULE_SETUP
-#line 656 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 658 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		int	len;
 		char	*p;
@@ -2583,7 +2585,7 @@ YY_RULE_SETUP
 case 121:
 /* rule 121 can match eol */
 YY_RULE_SETUP
-#line 673 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 675 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal here-document delimeter");
 	}
@@ -2591,7 +2593,7 @@ YY_RULE_SETUP
 case 122:
 /* rule 122 can match eol */
 YY_RULE_SETUP
-#line 676 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 678 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		L_synerr("illegal here-document delimeter");
 	}
@@ -2605,7 +2607,7 @@ YY_RULE_SETUP
 case 123:
 /* rule 123 can match eol */
 YY_RULE_SETUP
-#line 686 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 688 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2616,7 +2618,7 @@ YY_RULE_SETUP
 case 124:
 /* rule 124 can match eol */
 YY_RULE_SETUP
-#line 692 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 694 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 		yy_push_state(re_modifier);
 		yy_push_state(glob_re);
@@ -2628,14 +2630,14 @@ YY_RULE_SETUP
 
 case 125:
 YY_RULE_SETUP
-#line 701 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 703 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 return T_RBRACE;
 	YY_BREAK
 
 
 case 126:
 YY_RULE_SETUP
-#line 705 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 707 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_rbrace()) {
 					STRBUF_START(L_lloc.end);
@@ -2650,28 +2652,28 @@ YY_RULE_SETUP
 
 case 127:
 YY_RULE_SETUP
-#line 717 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 719 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\r", 1);
 	YY_BREAK
 case 128:
 YY_RULE_SETUP
-#line 718 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 720 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\n", 1);
 	YY_BREAK
 case 129:
 YY_RULE_SETUP
-#line 719 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 721 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\t", 1);
 	YY_BREAK
 case 130:
-#line 721 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 723 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 131:
-#line 722 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 724 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 132:
-#line 723 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 725 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 133:
 YY_RULE_SETUP
-#line 723 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 725 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				char		buf[TCL_UTF_MAX];
 				Tcl_UniChar	ch;
@@ -2682,18 +2684,18 @@ YY_RULE_SETUP
 case 134:
 /* rule 134 can match eol */
 YY_RULE_SETUP
-#line 729 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 731 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text+1, 1);
 	YY_BREAK
 case 135:
 YY_RULE_SETUP
-#line 730 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 732 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("$", 1);
 	YY_BREAK
 case 136:
 /* rule 136 can match eol */
 YY_RULE_SETUP
-#line 731 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 733 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("missing string terminator \"");
 				STRBUF_ADD("\n", 1);
@@ -2701,12 +2703,12 @@ YY_RULE_SETUP
 	YY_BREAK
 case 137:
 YY_RULE_SETUP
-#line 735 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 737 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 138:
 YY_RULE_SETUP
-#line 736 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 738 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -2717,12 +2719,12 @@ YY_RULE_SETUP
 case 139:
 /* rule 139 can match eol */
 YY_RULE_SETUP
-#line 742 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 744 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 140:
 YY_RULE_SETUP
-#line 743 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 745 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -2734,45 +2736,45 @@ YY_RULE_SETUP
 
 case 141:
 YY_RULE_SETUP
-#line 752 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 754 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\\", 1);
 	YY_BREAK
 case 142:
 YY_RULE_SETUP
-#line 753 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 755 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("'", 1);
 	YY_BREAK
 case 143:
 /* rule 143 can match eol */
 YY_RULE_SETUP
-#line 754 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 756 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\n", 1);
 	YY_BREAK
 case 144:
 /* rule 144 can match eol */
 YY_RULE_SETUP
-#line 755 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 757 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("missing string terminator \'");
 				STRBUF_ADD("\n", 1);
 			}
 	YY_BREAK
 case 145:
-#line 760 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 762 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 146:
 YY_RULE_SETUP
-#line 760 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 762 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 147:
 /* rule 147 can match eol */
 YY_RULE_SETUP
-#line 761 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 763 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 148:
 YY_RULE_SETUP
-#line 762 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 764 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -2784,28 +2786,28 @@ YY_RULE_SETUP
 
 case 149:
 YY_RULE_SETUP
-#line 771 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 773 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text+1, 1);
 	YY_BREAK
 case 150:
 /* rule 150 can match eol */
 YY_RULE_SETUP
-#line 772 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 774 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 /* ignore \<newline> */
 	YY_BREAK
 case 151:
-#line 774 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 776 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 152:
-#line 775 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 777 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 case 153:
 YY_RULE_SETUP
-#line 775 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 777 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, L_leng);
 	YY_BREAK
 case 154:
 /* rule 154 can match eol */
 YY_RULE_SETUP
-#line 776 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 778 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_err("missing string terminator `");
 				STRBUF_ADD("\n", 1);
@@ -2813,7 +2815,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 155:
 YY_RULE_SETUP
-#line 780 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 782 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -2823,7 +2825,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 156:
 YY_RULE_SETUP
-#line 786 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 788 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				yy_pop_state();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -2841,7 +2843,7 @@ case 157:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up L_text again */
 YY_RULE_SETUP
-#line 798 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 800 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (strcmp(L_text, here_delim)) {
 					STRBUF_ADD(L_text, L_leng);
@@ -2862,7 +2864,7 @@ case 158:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up L_text again */
 YY_RULE_SETUP
-#line 811 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 813 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * This is an error check -- look for a
@@ -2893,35 +2895,35 @@ YY_RULE_SETUP
 case 159:
 /* rule 159 can match eol */
 YY_RULE_SETUP
-#line 837 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 839 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, 1);
 	YY_BREAK
 
 
 case 160:
 YY_RULE_SETUP
-#line 841 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 843 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("\\", 1);
 	YY_BREAK
 case 161:
 YY_RULE_SETUP
-#line 842 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 844 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("$", 1);
 	YY_BREAK
 case 162:
 YY_RULE_SETUP
-#line 843 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 845 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD("`", 1);
 	YY_BREAK
 case 163:
 /* rule 163 can match eol */
 YY_RULE_SETUP
-#line 844 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 846 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 // ignore \<newline>
 	YY_BREAK
 case 164:
 YY_RULE_SETUP
-#line 845 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 847 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -2931,7 +2933,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 165:
 YY_RULE_SETUP
-#line 851 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 853 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(STRBUF_STRING());
 				STRBUF_STOP(L_lloc.beg);
@@ -2945,7 +2947,7 @@ case 166:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up L_text again */
 YY_RULE_SETUP
-#line 858 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 860 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (strcmp(L_text, here_delim)) {
 					STRBUF_ADD(L_text, L_leng);
@@ -2966,7 +2968,7 @@ case 167:
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up L_text again */
 YY_RULE_SETUP
-#line 871 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 873 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/*
 				 * This is an error check -- look for a
@@ -2997,7 +2999,7 @@ YY_RULE_SETUP
 case 168:
 /* rule 168 can match eol */
 YY_RULE_SETUP
-#line 897 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 899 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 STRBUF_ADD(L_text, 1);
 	YY_BREAK
 
@@ -3005,24 +3007,24 @@ STRBUF_ADD(L_text, 1);
 case 169:
 /* rule 169 can match eol */
 YY_RULE_SETUP
-#line 901 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 903 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 170:
 YY_RULE_SETUP
-#line 902 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 904 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 171:
 YY_RULE_SETUP
-#line 903 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 905 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_pop_state();
 	YY_BREAK
 
 
 case 172:
 YY_RULE_SETUP
-#line 907 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 909 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (interpol_push()) yyterminate();
 				L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3032,7 +3034,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 173:
 YY_RULE_SETUP
-#line 913 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 915 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (L_text[1] == re_quote_char) {
 					STRBUF_ADD(L_text+1, 1);
@@ -3044,7 +3046,7 @@ YY_RULE_SETUP
 case 174:
 /* rule 174 can match eol */
 YY_RULE_SETUP
-#line 920 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 922 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				--L->line;  // since \n already scanned
 				L_err("run-away regular expression");
@@ -3054,7 +3056,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 175:
 YY_RULE_SETUP
-#line 926 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 928 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				if (*(L_text) == re_quote_char) {
 					L_lval.s = ckstrdup(STRBUF_STRING());
@@ -3078,7 +3080,7 @@ YY_RULE_SETUP
 
 case 176:
 YY_RULE_SETUP
-#line 947 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 949 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				L_lval.s = ckstrdup(L_text);
 				yy_pop_state();
@@ -3087,7 +3089,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 177:
 YY_RULE_SETUP
-#line 952 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 954 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				unput(L_text[0]);
 				undo_yy_user_action();
@@ -3100,19 +3102,19 @@ YY_RULE_SETUP
 
 case 178:
 YY_RULE_SETUP
-#line 962 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 964 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 	YY_BREAK
 case 179:
 /* rule 179 can match eol */
 YY_RULE_SETUP
-#line 963 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 965 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 yy_pop_state();
 	YY_BREAK
 
 case 180:
 YY_RULE_SETUP
-#line 966 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 968 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				/* This rule matches a char if no other does. */
 				L_err("illegal character '%c'", *L_text);
@@ -3132,17 +3134,17 @@ case YY_STATE_EOF(interpol):
 case YY_STATE_EOF(here_doc_interp):
 case YY_STATE_EOF(here_doc_nointerp):
 case YY_STATE_EOF(eat_through_eol):
-#line 971 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 973 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 {
 				unless (include_pop()) yyterminate();
 			}
 	YY_BREAK
 case 181:
 YY_RULE_SETUP
-#line 974 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 976 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 ECHO;
 	YY_BREAK
-#line 3146 "Lscanner.c"
+#line 3148 "Lscanner.c"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -4154,7 +4156,7 @@ void L_free (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 974 "/Users/rob/bk/bk-L-err-msgs/src/gui/tcltk/tcl/generic/Lscanner.l"
+#line 976 "/Users/rob/bk/bk-L-july-bugs/src/gui/tcltk/tcl/generic/Lscanner.l"
 
 
 void

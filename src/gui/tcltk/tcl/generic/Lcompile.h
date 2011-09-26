@@ -136,7 +136,7 @@ typedef struct {
 	Ast	*mains_ast;	// root of AST when main() last seen
 	Tcl_HashTable	*include_table;
 	Tcl_Interp	*interp;
-	int	idx_nesting;	// current depth of nested []'s
+	Op_k	idx_op;		// kind of enclosing index (. -> [] {})
 	int	tmpnum;		// for creating tmp variables
 	char	*toplev;	// name of toplevel proc
 	jmp_buf	jmp;		// for syntax error longjmp bail out
@@ -462,7 +462,7 @@ emit_store_scalar(int idx)
 	}
 }
 static inline void
-push_str(const char *str, ...)
+push_litf(const char *str, ...)
 {
 	va_list ap;
 	int	len = 64;
@@ -486,11 +486,11 @@ push_str(const char *str, ...)
 	ckfree(buf);
 }
 static inline void
-push_cstr(const char *str, int len)
+push_lit(const char *str)
 {
 	/* See comment above about registering in the body CompileEnv. */
-	TclEmitPush(TclRegisterNewLiteral(L->frame->bodyEnvPtr, str, len),
-		    L->frame->envPtr);
+	TclEmitPush(TclRegisterNewLiteral(L->frame->bodyEnvPtr, str,
+					  strlen(str)), L->frame->envPtr);
 }
 static inline void
 emit_invoke(int size)
@@ -573,6 +573,7 @@ extern YYLTYPE L_lloc;
 			(c).end = YYRHSLOC(r,0).end;	\
 		}					\
 		(c).line = L->line;			\
+		(c).file = L->file;			\
 	} while (0)
 
 #ifdef TCL_COMPILE_DEBUG

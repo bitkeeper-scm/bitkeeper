@@ -446,6 +446,63 @@ chown1 $fname4
 	  removeFile $fname4
 } -output {}
 
+test die-1 {test die} -setup {
+	makeFile {
+		die("die: %s\n", "s1");
+	} die1-1.l
+	makeFile {
+		die("die: %s %s\n", "s1", "s2");
+	} die1-2.l
+	makeFile {
+		die("die: %s", "s1");
+	} die1-3.l
+	makeFile {
+		die("die: %s %s", "s1", "s2");
+	} die1-4.l
+
+} -body {
+#lang L
+void die1()
+{
+	int	ret;
+	string	err, out;
+	string	tclsh = eval("interpreter");
+
+	ret = system({tclsh, "die1-1.l"}, undef, &out, &err);
+	unless (ret == 1) puts("bad 1.1");
+	if (out) puts("bad 1.2");
+	unless (err == "die: s1\n") puts("bad 1.3");
+
+	ret = system({tclsh, "die1-2.l"}, undef, &out, &err);
+	unless (ret == 1) puts("bad 2.1");
+	if (out) puts("bad 2.2");
+	unless (err == "die: s1 s2\n") puts("bad 2.3");
+
+	ret = system({tclsh, "die1-3.l"}, undef, &out, &err);
+	unless (ret == 1) puts("bad 3.1");
+	if (out) puts("bad 3.2");
+	unless (err =~ /die: s1 in \d+%l_toplevel:2\n/) puts("bad 3.3");
+
+	ret = system({tclsh, "die1-4.l"}, undef, &out, &err);
+	unless (ret == 1) puts("bad 4.1");
+	if (out) puts("bad 4.2");
+	unless (err =~ /die: s1 s2 in \d+%l_toplevel:2\n/) puts("bad 4.3");
+}
+die1();
+} -output {}
+
+test die-2 {test die errors} -body {
+#lang L
+void die2()
+{
+	die("%s");
+	die("%s", "bad", "bad");
+}
+die2();
+} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
+.*4: L Warning: too many format specifiers
+}
+
 test dirname-1 {test dirname} -body {
 #lang L
 void dirname1()
@@ -613,6 +670,18 @@ fopen1();
 fopen(bad3, r) = couldn't open "bad3": no such file or directory
 } -output {}
 
+test fprintf-1 {test fprintf errors} -body {
+#lang L
+void fprintf1()
+{
+	fprintf(stderr, "%s");
+	fprintf(stderr, "%s", "bad", "bad");
+}
+fprintf1();
+} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
+.*4: L Warning: too many format specifiers
+}
+
 test Fprintf-1 {test Fprintf} -body {
 #lang L
 void Fprintf1()
@@ -637,6 +706,18 @@ void Fprintf1()
 }
 Fprintf1();
 } -output {}
+
+test Fprintf-2 {test Fprintf errors} -body {
+#lang L
+void Fprintf2()
+{
+	Fprintf("fname", "%s");
+	Fprintf("fname", "%s", "bad", "bad");
+}
+Fprintf2();
+} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
+.*4: L Warning: too many format specifiers
+}
 
 test ftype-1 {test ftpye} -setup {
 	set fname1 [makeFile {test} ftype_test1 .]
@@ -871,6 +952,33 @@ void here2()
 }
 } -returnCodes error -match regexp -result {.*3: L Error: here\(\) takes no arguments
 }
+
+test here-3 {test here with #includes} -setup {
+	set fname1 [makeFile {here();
+#include "here3b.l"
+here();
+	} here3a.l]
+	set fname2 [makeFile {here();
+#include "here3c.l"
+here();
+	} here3b.l]
+	set fname3 [makeFile {here();
+	} here3c.l]
+} -body {
+#lang L
+#include "here3a.l"
+void here3()
+{
+	here();
+}
+here3();
+} -match regexp -errorOutput {\d+%l_toplevel\(\) in here3a.l:1
+\d+%l_toplevel\(\) in here3b.l:1
+\d+%l_toplevel\(\) in here3c.l:1
+\d+%l_toplevel\(\) in here3b.l:3
+\d+%l_toplevel\(\) in here3a.l:3
+here3\(\) in l-libl.test:4
+} -output {}
 
 test is-1 {test isdir/isreg/islink} -setup {
 	set fdirname1 istestdir1
@@ -1391,6 +1499,30 @@ void printf2()
 printf2();
 } -output {}
 
+test printf-3 {test printf errors} -body {
+#lang L
+void printf3()
+{
+	printf("%s");
+	printf("%s", "bad", "bad");
+}
+printf3();
+} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
+.*4: L Warning: too many format specifiers
+}
+
+test putenv-1 {test putenv errors} -body {
+#lang L
+void putenv1()
+{
+	putenv("BAD=%s");
+	putenv("BAD=%s", "bad", "bad");
+}
+putenv1();
+} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
+.*4: L Warning: too many format specifiers
+}
+
 test read-1 {test read} -setup {
 	set fname [makeFile "012345678901234567\n" read_test .]
 } -body {
@@ -1779,6 +1911,18 @@ void sprintf1()
 }
 sprintf1();
 } -output {}
+
+test sprintf-2 {test sprintf errors} -body {
+#lang L
+void sprintf2()
+{
+	sprintf("%s");
+	sprintf("%s", "bad", "bad");
+}
+sprintf2();
+} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
+.*4: L Warning: too many format specifiers
+}
 
 test stat-1 {test lstat and stat} -setup {
 	# put 33 digits into the files
@@ -2734,6 +2878,24 @@ void system7()
 	unless (<f> eq "SYSTEM7") puts("bad 2.3");
 	fclose(f);
 	unlink("out7");
+
+	out = undef;
+	ret = undef;
+	ret = system({'perl', '-e', 'print "SYSTEM7"'}, undef, &out, undef,
+		     undef);
+	unless (defined(ret)) puts("bad 3.1");
+	unless (out eq "SYSTEM7") puts("bad 3.2");
+
+	out = undef;
+	ret = undef;
+	ret = spawn({'perl', '-e', 'print "SYSTEM7"'}, undef, "out7", undef,
+		    undef);
+	unless (defined(ret) && (ret > 0)) puts("bad 4.1");
+	waitpid(ret, undef, 0);
+	unless (f = fopen("out7", "r")) puts("bad 4.2");
+	unless (<f> eq "SYSTEM7") puts("bad 4.3");
+	fclose(f);
+	unlink("out7");
 }
 system7();
 } -output {}
@@ -2865,6 +3027,9 @@ void backtick1()
 	/* Check error case. */
 	s = `what-the-heck bad-command`;
 	if (defined(s)) puts("bad 2");
+
+	s = `perl -e 'print "%s"'`;
+	unless (s == "%s") puts("bad 3");
 }
 backtick1();
 } -output {}
@@ -3109,7 +3274,6 @@ void warn1()
 {
 	string	s1 = "s1", s2 = "s2";
 
-
 	warn("warning: %s\n", s1);
 	warn("warning: %s %s\n", s1, s2);
 
@@ -3121,8 +3285,8 @@ void warn1()
 warn1();
 } -errorOutput {warning: s1
 warning: s1 s2
-warning: s1 in warn1:11
-warning: s1 s2 in warn1:12
+warning: s1 in warn1:10
+warning: s1 s2 in warn1:11
 } -output {}
 
 test warn-2 {test warn errors} -body {
@@ -3130,9 +3294,12 @@ test warn-2 {test warn errors} -body {
 void warn2()
 {
 	warn("%s");
+	warn("%s", "bad", "bad");
 }
 warn2();
-} -returnCodes error -result {not enough arguments for all format specifiers}
+} -returnCodes error -match regexp -result {.*3: L Warning: too few format specifiers
+.*4: L Warning: too many format specifiers
+}
 
 test write-1 {test write} -body {
 #lang L

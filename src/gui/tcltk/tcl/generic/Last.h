@@ -35,6 +35,7 @@ typedef struct {
 	int	beg;	// source offset of first char
 	int	end;	// source offset of last char + 1
 	int	line;	// line # of first char adjusted for any #include's
+	char	*file;	// file name
 } YYLTYPE;
 #define YYLTYPE YYLTYPE
 
@@ -155,7 +156,6 @@ struct Type {
 struct Ast {
 	Node_k	type;
 	Ast	*next;	// links all nodes in an AST
-	char	*file;
 	YYLTYPE	loc;
 };
 

@@ -18,28 +18,31 @@ proc %%call_main_if_defined {} {
 		incr ::argc
 		if {![info exists ::argv]}  { set ::argv {} }
 		if {![info exists ::argv0]} { set ::argv0 "L" }
-		set  ::argv [linsert $::argv 0 $::argv0]
+		set ::argv [linsert $::argv 0 $::argv0]
 		switch [llength [info args main]] {
 		    0 {
 			set ::%%suppress_calling_main 1
-			main
+			set ret [main]
 		    }
 		    1 {
 			set ::%%suppress_calling_main 1
-			main $::argv
+			set ret [main $::argv]
 		    }
 		    2 {
 			set ::%%suppress_calling_main 1
-			main $::argc $::argv
+			set ret [main $::argc $::argv]
 		    }
 		    3 {
 			set ::%%suppress_calling_main 1
-			main $::argc $::argv [dict create {*}[array get ::env]]
+			set ret [main $::argc $::argv [dict create {*}[array get ::env]]]
 		    }
 		    default {
 			error "Too many parameters for main()."
+			set ret 1
 		    }
 		}
+		if {$ret == ""} { set ret 0 }
+		if {$ret != 0}  { exit $ret }
 	}
 }
 
@@ -69,6 +72,7 @@ typedef	poly	hash{poly};
 typedef	poly	tcl;
 
 typedef	string	FILE;
+typedef	string	FMT;
 typedef void	&fnhook_t(int pre, int ac, poly av[], poly ret);
 
 struct	stat {
@@ -184,7 +188,7 @@ chown(string owner, string group, _argused string path)
 }
 
 void
-die_(string func, int line, string fmt, ...args)
+die_(string func, int line, FMT fmt, ...args)
 {
 	warn_(func, line, fmt, (expand)args);
 	exit(1);
@@ -273,7 +277,7 @@ fopen(string path, string mode)
 }
 
 int
-Fprintf(string fname, string fmt, ...args)
+Fprintf(string fname, FMT fmt, ...args)
 {
 	int	ret;
 	FILE	f;
@@ -285,7 +289,7 @@ Fprintf(string fname, string fmt, ...args)
 }
 
 int
-fprintf(_mustbetype _argused FILE f, _argused string fmt, _argused ...args)
+fprintf(_mustbetype _argused FILE f, _argused FMT fmt, _argused ...args)
 {
 	string	res;
 
@@ -664,7 +668,7 @@ popen(string cmd, string mode, _optional void &stderr_cb(string cmd, FILE f))
 }
 
 void
-printf(string fmt, ...args)
+printf(FMT fmt, ...args)
 {
 	puts(nonewline:, format(fmt, (expand)args));
 }
@@ -709,7 +713,7 @@ perror(...args)
 extern int ::L_putenv_bug;
 
 string
-putenv(string var_fmt, ...args)
+putenv(FMT var_fmt, ...args)
 {
 	string	ret;
 
@@ -756,7 +760,7 @@ sleep(float seconds)
 }
 
 string
-sprintf(string fmt, ...args)
+sprintf(FMT fmt, ...args)
 {
 	return (format(fmt, (expand)args));
 }
@@ -1239,7 +1243,7 @@ waitpid(int pid, STATUS &status, int nohang)
 }
 
 void
-warn_(string func, int line, string fmt, ...args)
+warn_(string func, int line, FMT fmt, ...args)
 {
 	string	out = format(fmt, (expand)args);
 

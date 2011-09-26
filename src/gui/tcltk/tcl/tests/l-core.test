@@ -4836,13 +4836,16 @@ void END() {}  // err -- cannot declare function w/name "END"
 void end_6()
 {
 	int	END, i;  // err -- cannot declare variable w/name "END"
+	string	h{int};
 
 	i = END;  // err -- cannot use END outside of an array or string index
+	h{END};   // err -- cannot use END in a hash index
 }
 } -returnCodes error -match regexp -result {.*1: L Error: cannot use END.*
 .*2: L Error: cannot use END.*
 .*5: L Error: cannot use END.*
-.*7: L Error: END illegal.*
+.*8: L Error: END illegal.*
+.*9: L Error: END illegal.*
 }
 
 test end-7 {test END in string slices} -body {
@@ -5764,6 +5767,21 @@ void loop_1_2_7()
 .*14: L Error: loop index not of string type
 .*15: L Error: loop index not of string type
 .*16: L Error: loop index not of string type
+}
+
+test loop-1.2.7.1 {test foreach over <> error} -body {
+#lang L
+void loop_1_2_7_1()
+{
+	string	s;
+	FILE	f;
+
+	foreach(s in <>) {}
+	foreach(s in <f>) {}
+}
+loop_1_2_7_1();
+} -returnCodes error -match regexp -result {.*6: L Warning: this will get only one line from <F>, did you mean while \(buf = <F>\)\?
+.*7: L Warning: this will get only one line from <F>, did you mean while \(buf = <F>\)\?
 }
 
 test loop-1.2.8 {test foreach type errors} -body {
@@ -10243,6 +10261,48 @@ test main-2.3 {test main() with three parameters} -setup {
 	removeFile main-2.3.l
 } -result {<4><arg1><arg2><arg3><YES>}
 
+test main-3 {check that main() return value is tclsh exit status} -setup {
+	set fname1 [makeFile {
+			int main(string av[])
+			{
+				puts("main here");
+				return (int)av[1];
+			}
+	} main-3-int.l]
+	set fname2 [makeFile {
+			void main()
+			{
+				puts("main here");
+			}
+	} main-3-void.l]
+} -body {
+#lang L
+void main3()
+{
+	int	ret;
+	string	out;
+	string	tclsh = eval("interpreter");
+
+	ret = system({tclsh, "main-3-int.l", 0}, undef, &out, undef);
+	unless (ret == 0) puts("1.1");
+	unless (out == "main here\n") puts("bad 1.2");
+
+	ret = system({tclsh, "main-3-int.l", 1}, undef, &out, undef);
+	unless (ret == 1) puts("bad 2.1");
+	unless (out == "main here\n") puts("bad 2.2");
+
+	ret = system({tclsh, "main-3-int.l", 123}, undef, &out, undef);
+	unless (ret == 123) puts("bad 3.1");
+	unless (out == "main here\n") puts("bad 3.2");
+
+	/* Check that a void main() gives an exit status of 0. */
+	ret = system({tclsh, "main-3-void.l", 123}, undef, &out, undef);
+	unless (ret == 0) puts("bad 4.1");
+	unless (out == "main here\n") puts("bad 4.2");
+}
+main3();
+} -output {}
+
 test defined-1.2 {defined operator on scalars} -body {
 #lang L
 int d12_fint() { return 0; }
@@ -11797,7 +11857,7 @@ typecheck_3_11()
 .*11: L Error: type void illegal
 .*12: L Error: type void illegal
 .*13: L Error: type void illegal
-.*14: L Error: expected type int.*
+.*14: L Error: void type illegal in predicate
 .*15: L Error: expected type int.*
 .*16: L Error: expected type int or float.*
 .*17: L Error: expected type int or float.*
@@ -11940,6 +12000,11 @@ typecheck_4_4()
 	/* Strings as conditionals get checked for defined. */
 	if (s1) puts("bad 3");
 	unless (s2) puts("bad 4");
+
+	/* !condition should work too. */
+	unless (!s1) puts("bad 4.1");
+	if (!s2) puts("bad 4.2");
+	if (s1 || !s2) puts("bad 4.3");
 
 	if (w) puts("bad 5");
 	if (p) puts("bad 6");
@@ -12934,6 +12999,95 @@ void typecheck_10_3()
 .*16: L Error: incompatible types in comparison
 .*17: L Error: incompatible types in comparison
 }
+
+test typecheck-11.1 {check FMT errors} -body {
+#lang L
+void typeck_11_1_foo0(_argused FMT fmt, _argused ...args) {}
+void typeck_11_1_foo1(_argused int a, _argused FMT fmt, _argused ...args) {}
+void typeck_11_1_foo2(_argused int a, _argused int b, _argused FMT fmt,
+		      _argused ...args) {}
+void typecheck_11_1()
+{
+	typeck_11_1_foo0("fmt", "bad");
+	typeck_11_1_foo0("fmt", "bad", "bad");
+
+	typeck_11_1_foo1(1, "fmt", "bad");
+	typeck_11_1_foo1(1, "fmt", "bad", "bad");
+
+	typeck_11_1_foo2(1, 2, "fmt", "bad");
+	typeck_11_1_foo2(1, 2, "fmt", "bad", "bad");
+	typeck_11_1_foo2(1, 2, "fmt", "bad", "bad", "bad");
+
+	typeck_11_1_foo0("%s");
+	typeck_11_1_foo0("%s", "bad", "bad");
+
+	typeck_11_1_foo0("%s %s");
+	typeck_11_1_foo0("%s %s", "bad");
+	typeck_11_1_foo0("%s %s", "bad", "bad", "bad");
+
+	typeck_11_1_foo0("%%s", "bad");
+	typeck_11_1_foo0("%%s %s");
+	typeck_11_1_foo0("%s %s", "bad");
+	typeck_11_1_foo0("%s %s", "bad", "bad", "bad");
+
+	// With some unicode.
+	typeck_11_1_foo0("זו ה%%sשפה שלנו", "bad");
+	typeck_11_1_foo0("%s זו ה%%sשפה שלנו");
+
+}
+typecheck_11_1();
+} -returnCodes error -match regexp -result {.*7: L Warning: too many format specifiers
+.*8: L Warning: too many format specifiers
+.*10: L Warning: too many format specifiers
+.*11: L Warning: too many format specifiers
+.*13: L Warning: too many format specifiers
+.*14: L Warning: too many format specifiers
+.*15: L Warning: too many format specifiers
+.*17: L Warning: too few format specifiers
+.*18: L Warning: too many format specifiers
+.*20: L Warning: too few format specifiers
+.*21: L Warning: too few format specifiers
+.*22: L Warning: too many format specifiers
+.*24: L Warning: too many format specifiers
+.*25: L Warning: too few format specifiers
+.*26: L Warning: too few format specifiers
+.*27: L Warning: too many format specifiers
+.*30: L Warning: too many format specifiers
+.*31: L Warning: too few format specifiers
+}
+
+test typecheck-11.2 {check FMT errors 2} -body {
+#lang L
+void typeck_11_2_foo0(_argused FMT fmt, _argused int bad) {}
+void typeck_11_2_foo1(_argused FMT fmt) {}
+} -returnCodes error -match regexp -result {.*1: L Error: rest argument must follow FMT
+.*2: L Error: rest argument must follow FMT
+}
+
+test typecheck-11.3 {check FMT cases where compile-time checks cannot be done} -body {
+#lang L
+void typeck_11_3_foo0(_argused FMT fmt, _argused ...args) {}
+void typecheck_11_3()
+{
+	string	fmt = "%s";
+
+	typeck_11_3_foo0("${fmt}", "bad", "but", "no", "error");
+	typeck_11_3_foo0(fmt, "bad", "but", "no", "error");
+}
+typecheck_11_3();
+} -output {}
+
+test typecheck-11.4 {check that unicode does not confuse FMT checking} -body {
+#lang L
+void typecheck_11_4()
+{
+	string	s;
+
+	s = sprintf("זו ה%sשפה שלנו %s", "is", "meaningless");
+	unless (s == "זו הisשפה שלנו meaningless") puts("bad 1");
+}
+typecheck_11_4();
+} -output {}
 
 test fnptr-1 {function pointers 1} -body {
 #lang L

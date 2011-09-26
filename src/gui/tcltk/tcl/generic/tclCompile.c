@@ -439,6 +439,8 @@ InstructionDesc const tclInstructionTable[] = {
 	/* Insert into list local var. Operands are local slot index,
 	 * flags, and list index to insert before (0 means prepend,
 	 * -1 means append). */
+    {"unsetLocal",	 5,    0,	  1,	{OPERAND_LVT4}},
+	/* Unset the local variable at index op1. */
     {0}
 };
 

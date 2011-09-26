@@ -729,10 +729,10 @@ If main() is present, it is called after all of the top-level statements
 have executed.  The main() function may defined in any of the following
 ways:
 
-   void main() {}
-   void main(string argv[]) {}
-   void main(int argc, string argv[]) {}
-   void main(int argc, string argv[], string env{string}) {}
+   void|int main() {}
+   void|int main(string argv[]) {}
+   void|int main(int argc, string argv[]) {}
+   void|int main(int argc, string argv[], string env{string}) {}
 
 The C<argv> array is populated from the script name and any arguments
 that appear after the name on the L command line.
@@ -748,6 +748,10 @@ C<putenv> library function.
 
 Only a C<main> written in L is automatically called.
 You can write a C<main> in Tcl but L will not call it automatically.
+
+If C<main> is declared to have return type C<int> and it returns
+a non-zero value, L will exit with an exit status equal to
+the return value.
 
 =head2 Function Pointers
 

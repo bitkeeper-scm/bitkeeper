@@ -101,6 +101,8 @@ yy_user_action()
 	tally_newlines(yytext, yyleng, 1);
 	L_lloc.line = L->line;
 
+	L_lloc.file = L->file;
+
 	/*
 	 * Build up in L->script the text that the scanner scans.
 	 * The compiler later passes this on to tcl as the script

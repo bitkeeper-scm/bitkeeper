@@ -8,9 +8,10 @@
 #include "Lcompile.h"
 #include "Lgrammar.h"
 
-private int	typeck_decls(VarDecl *a, VarDecl *b);
-private int	typeck_list(Type *a, Type *b);
 private int	typeck_declType(Type *type, VarDecl *decl, int nameof_ok);
+private int	typeck_decls(VarDecl *a, VarDecl *b);
+private void	typeck_fmt(Expr *actuals);
+private int	typeck_list(Type *a, Type *b);
 
 /* Create the pre-defined types. */
 void
@@ -146,6 +147,9 @@ L_typeck_fncall(VarDecl *formals, Expr *call)
 		unless (type_ok || rest_arg) {
 			L_errf(call, "parameter %d has incompatible type", i);
 		}
+		if (typeis(formals->type, "FMT")) {
+			typeck_fmt(actuals);
+		}
 		actuals = actuals->next;
 		formals = formals->next;
 	}
@@ -159,6 +163,43 @@ L_typeck_fncall(VarDecl *formals, Expr *call)
 		    L_errf(call, "not enough arguments for function %s",
 			   call->a->str);
 	    }
+	}
+}
+
+/*
+ * Type check a FMT arg, like
+ *    printf(FMT format, ...args)
+ * by checking that the number of % format specifiers in "format" matches the
+ * number of actuals in ...args.  We can do this only if "format" is a
+ * string constant.
+ */
+private void
+typeck_fmt(Expr *actuals)
+{
+	char	*s;
+	int	nargs = -1, nperc = 0;
+	Expr	*a;
+
+	unless (isconst(actuals) && isstring(actuals)) return;
+
+	for (s = actuals->str; *s; ++s) {
+		switch (*s) {
+		    case '%':
+			if (s[1] && (s[1] == '%')) {
+				++s;
+			} else {
+				++nperc;
+			}
+			break;
+		    default:
+			break;
+		}
+	}
+	for (a = actuals; a; a = a->next) ++nargs;
+
+	unless (nperc == nargs) {
+		L_warnf(actuals, "too %s format specifiers",
+			(nperc < nargs) ? "many" : "few");
 	}
 }
 

@@ -8223,6 +8223,21 @@ TclExecuteByteCode(
 	NEXT_INST_F(9, 1, 0);
     }
 
+    case INST_UNSET_LOCAL: {
+	unsigned int opnd = TclGetUInt4AtPtr(pc+1);
+	Var *varPtr = &compiledLocals[opnd];
+
+	/*
+	 * This is intended to delete L's local temp variables, which are
+	 * always scalars and never traced.
+	 */
+	unless (TclIsVarUndefined(varPtr)) {
+	    TclDecrRefCount(varPtr->value.objPtr);
+	    TclSetVarUndefined(varPtr);
+	}
+	NEXT_INST_F(5, 0, 0);
+    }
+
     default:
 	Tcl_Panic("TclExecuteByteCode: unrecognized opCode %u", *pc);
     } /* end of switch on opCode */
