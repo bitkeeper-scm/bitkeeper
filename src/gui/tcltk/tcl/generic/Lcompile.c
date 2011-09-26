@@ -1261,6 +1261,7 @@ proc_mkArg(Proc *proc, VarDecl *decl)
 
 	local->flags = VAR_ARGUMENT;
 	if (decl->flags & DECL_REST_ARG) local->flags |= VAR_IS_ARGS;
+	if (decl->flags & DECL_OPTIONAL) local->defValuePtr = *L_undefObjPtrPtr();
 }
 
 /*
@@ -2842,10 +2843,6 @@ push_parms(Expr *actuals, VarDecl *formals)
 		    /* ends with "variable" */
 		    !strcmp("variable", s + (strlen(s) - strlen_of_variable)));
 		if (formals) formals = formals->next;
-	}
-	if (formals && (formals->flags & DECL_OPTIONAL)) {
-		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
-		++i;
 	}
 	return (i);
 }
@@ -6709,15 +6706,16 @@ private int
 fgetline_openClose(Tcl_Interp *interp, int objc, Tcl_Obj *const objv[])
 {
 	Tcl_Obj	*argv[3];
+	int	rc;
 
 	/* Call function in lib L with first two args. */
 	argv[0] = Tcl_NewStringObj("fgetlineOpenClose_", 18);
 	Tcl_IncrRefCount(argv[0]);
 	argv[1] = objv[1];
 	argv[2] = objv[2];
-	Tcl_EvalObjv(interp, 3, argv, 0);
+	rc = Tcl_EvalObjv(interp, 3, argv, 0);
 	Tcl_DecrRefCount(argv[0]);
-	return (TCL_OK);
+	return (rc);
 }
 
 int
@@ -6728,6 +6726,7 @@ Tcl_FGetlineObjCmd(
     Tcl_Obj *const objv[])	/* Argument objects. */
 {
 	int		mode;
+	int		rc = TCL_OK;
 	Tcl_Channel	chan;
 	Tcl_Obj		*ret;
 
@@ -6764,15 +6763,17 @@ Tcl_FGetlineObjCmd(
 	unless (ret = do_getline(interp, chan)) {
 		goto err;
 	}
-	if ((objc == 4) && ret->undef) fgetline_openClose(interp, objc, objv);
-	return (TCL_OK);
+	if ((objc == 4) && ret->undef) {
+		rc = fgetline_openClose(interp, objc, objv);
+	}
+	return (rc);
  err:
-	if (objc == 4) fgetline_openClose(interp, objc, objv);
+	if (objc == 4) rc = fgetline_openClose(interp, objc, objv);
 	Tcl_SetVar2Ex(interp, "::stdio_lasterr", NULL,
 		      Tcl_GetObjResult(interp),
 		      TCL_GLOBAL_ONLY);
 	Tcl_SetObjResult(interp, *L_undefObjPtrPtr());
-	return (TCL_OK);
+	return (rc);
 }
 
 int

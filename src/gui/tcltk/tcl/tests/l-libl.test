@@ -1085,6 +1085,25 @@ void pclose1()
 .*9: L Error: parameter 1 has incompatible type
 }
 
+test pclose-2 {test pclose with errors} -body {
+#lang L
+void pclose2()
+{
+	FILE	fd;
+	string	cmd;
+	STATUS	st;
+
+	cmd = "perl -e 'print STDERR \"to err\"; exit 0;'";
+	fd = popen(cmd, "r", undef);
+	fconfigure(fd, blocking: 0);
+
+	pclose(fd, &st);
+	puts(stdio_lasterr);
+}
+pclose2();
+} -output {to err
+}
+
 test popen-1 {test popen/pclose} -setup {
 	set fname [makeFile "line1\nline2\nline3\n" popen_file .]
 } -body {
@@ -1189,6 +1208,146 @@ void popen4()
 popen4();
 } -cleanup {
 	removeFile "p4err"
+} -output {}
+
+test popen-5.1 {test popen stderr callback 1} -body {
+#lang L
+string p51cmd = <<'END'
+perl -e 'print STDERR "to err1\n";
+	 print "to out\n";
+	 print STDERR "to err2\n";'
+END
+int p51cb_lines = 0;
+int p51cb_eof   = 0;
+void p51cb(string cmd, FILE f)
+{
+	string	s;
+
+	unless (cmd == p51cmd) puts("bad 2.1");
+
+	if (Chan_names(f) == "") puts("bad 2.1.1");
+	while (s = <f>) {
+		switch (++p51cb_lines) {
+		    case 1:
+			unless (s == "to err1") puts("bad 2.2 ${s}");
+			break;
+		    case 2:
+			unless (s == "to err2") puts("bad 2.3 ${s}");
+			break;
+		    default:
+			puts("bad 2.4");
+			break;
+		}
+	}
+	if (eof(f)) ++p51cb_eof;
+}
+void popen5_1()
+{
+	FILE	f;
+
+	/*
+	 * This test tries to get the popen()'d process to complete
+	 * before we call pclose();
+	 */
+
+	f = popen(p51cmd, "r", &p51cb);
+	unless (f) puts("bad 1.1");
+	unless (<f> == "to out") puts("bad 1.2");
+	/*
+	 * Let the process complete so we get a call to the p51cb where
+	 * EOF if seen, then call pclose().
+	 */
+	sleep(1);
+	update();
+	pclose(f);
+	if (<f>) puts("bad 1.2.1");
+	unless (p51cb_lines == 2) puts("bad 1.3 ${p51cb_lines}");
+	unless (p51cb_eof) puts("bad 1.4 ${p51cb_eof}");
+}
+popen5_1();
+} -output {}
+
+test popen-5.2 {test popen stderr callback 2} -body {
+#lang L
+string p52cmd = <<'END'
+perl -e 'print STDERR "to err1\n";
+	 print "to out\n";
+	 print STDERR "to err2\n";'
+END
+int p52cb_lines = 0;
+int p52cb_eof   = 0;
+void p52cb(string cmd, FILE f)
+{
+	string	s;
+
+	unless (cmd == p52cmd) puts("bad 2.1");
+
+	if (Chan_names(f) == "") puts("bad 2.1.1");
+	while (s = <f>) {
+		switch (++p52cb_lines) {
+		    case 1:
+			unless (s == "to err1") puts("bad 2.2 ${s}");
+			break;
+		    case 2:
+			unless (s == "to err2") puts("bad 2.3 ${s}");
+			// Delay so pclose() below is called before we exit.
+			sleep(1);
+			break;
+		    default:
+			puts("bad 2.4");
+			break;
+		}
+	}
+	if (eof(f)) ++p52cb_eof;
+}
+void popen5_2()
+{
+	FILE	f;
+
+	/*
+	 * This test tries to call pclose() before the popen()'d
+	 * process exits.
+	 */
+
+	f = popen(p52cmd, "r", &p52cb);
+	unless (f) puts("bad 1.1");
+	unless (<f> == "to out") puts("bad 1.2");
+	pclose(f);
+	if (<f>) puts("bad 1.2.1");
+	unless (p52cb_lines == 2) puts("bad 1.3 ${p52cb_lines}");
+	unless (p52cb_eof) puts("bad 1.4 ${p52cb_eof}");
+}
+popen5_2();
+} -output {}
+
+test popen-6 {test popen stderr ignore} -setup {
+	set fname [makeFile {
+		string	cmd;
+		FILE	f;
+
+		cmd = "perl -e 'print \"to out\"; print STDERR \"to err\";'";
+		f = popen(cmd, "r", undef);
+		unless (defined(f)) die("popen");
+		unless (<f> eq "to out") puts("bad stdout");
+		pclose(f);
+	} popen6.l]
+} -body {
+#lang L
+/*
+ * This is like popen3() but stderr should be ignored.
+ */
+void popen6()
+{
+	int	ret;
+	string	tclsh = eval('interpreter');
+	string	err[], out[];
+
+	ret = system({tclsh, "popen6.l"}, undef, &out, &err);
+	unless (ret == 0) puts("bad status ${ret}");
+	if (out) puts("bad 2");
+	if (err) puts("bad 3: ${err}");
+}
+popen6();
 } -output {}
 
 test printf-1 {test printf} -body {

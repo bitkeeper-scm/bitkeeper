@@ -1831,6 +1831,8 @@ Return undef if the array is already empty.
 
 =proto FILE popen(string cmd, string mode)
 
+=proto FILE popen(string cmd, string mode, void &stderr_callback(string cmd, FILE f))
+
 Open a pipe to the command C<cmd>.
 The command string undergoes bash-style quoting instead of Tcl quoting.
 The returned FILE handle may be
@@ -1840,9 +1842,28 @@ pipe, depending on the value of C<mode>.  If write-only access is used
 current standard output unless overridden by the command.  If
 read-only access is used ("r"), standard input for the pipeline is
 taken from the current standard input unless overridden by the
-command.  Unless re-directed by the command, any stderr output is
-passed through to the calling script's stderr and is not considered an
-error.  Return the FILE handle on success, or undef on error.
+command.
+
+The optional third argument is a callback function that is
+invoked by Tcl's event loop when the command's stderr pipe has data
+available to be read.
+The second argument of the callback is a non-blocking FILE for the
+read end of this pipe.
+Care must be taken to ensure that the event loop is run often enough
+for the callback to reap data from the pipe often enough to avoid deadlock.
+In console apps, this may mean calling Tcl's C<update()> function.
+The pclose() function also invokes the callback, so it is guaranteed to
+be called at least once.
+
+If the third argument to C<popen> is C<undef>, the command's stderr
+output is ignored.  Otherwise, unless re-directed by the command, any
+stderr output is passed through to the calling script's stderr and is
+not considered an error.
+
+If Tk is being used, there is a default callback that pops up a window
+with any output the command writes to stderr.
+
+Return the FILE handle on success, or undef on error.
 
 =proto void printf(string fmt, ...args)
 

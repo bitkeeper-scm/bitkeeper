@@ -91,6 +91,7 @@ typedef struct {
 			// if not defined, the executable was not found
 	int	exit;	// if defined, the process exited with this val
 	int	signal;	// if defined, the signal that killed the process
+	string	error;	// if defined, an error message or output from stderr
 } STATUS;
 
 FILE    stdin  = "stdin";
@@ -108,7 +109,15 @@ extern	string	optarg, optopt;
 extern string	getopt(string av[], string opts, string lopts[]);
 extern void	getoptReset(void);
 
-private int	signame_to_num(string signame);
+/* Used internally by popen() and pclose() for stderr callbacks. */
+typedef struct {
+	FILE	pipe;
+	string	cmd;
+	string	cb;
+} stderr_ctxt_t;
+
+private stderr_ctxt_t	callbacks{FILE};
+private int		signame_to_num(string signame);
 
 string
 basename(string path)
@@ -473,8 +482,13 @@ pclose(_mustbetype _argused FILE f, _optional STATUS &status_ref)
 	string	res;
 	STATUS	status;
 
+	// Put the pipe in blocking mode so that Tcl knows to throw
+	// an error if the program exited with exit_code != 0.
+	fconfigure(f, blocking: 1);
+
+	status.exit = 0;
 	if (catch("close $f", &res)) {
-	    stdio_lasterr = res;
+	    status.error = stdio_lasterr = res;
 	    switch (errorCode[0]) {
 		case "CHILDSTATUS":
 		    status.exit = (int)errorCode[2];
@@ -483,9 +497,15 @@ pclose(_mustbetype _argused FILE f, _optional STATUS &status_ref)
 		    status.signal = signame_to_num(errorCode[2]);
 		    break;
 	    }
-	} else {
-		status.exit = 0;
 	}
+
+	// Call the user's callback.
+	if (callbacks{f}) {
+		stderr_cb_(callbacks{f});
+		undef(callbacks{f});
+	}
+
+	stdio_status = status;
 	if (defined(&status_ref)) status_ref = status;
 	return ((status.exit == 0) ? 0 : -1);
 }
@@ -499,17 +519,87 @@ platform()
 	return (p);
 }
 
-FILE
-popen(string cmd, string mode)
+private void
+stderr_cb_(stderr_ctxt_t ctxt)
 {
-	int	v = 0;
-	FILE	f;
-	string	arg, argv[], err;
+	if (Chan_names(ctxt.pipe) == "") return;  // if closed
+	eval({ctxt.cb, ctxt.cmd, ctxt.pipe});
+	if (eof(ctxt.pipe)) {
+		::close(ctxt.pipe);
+	}
+}
+
+private void
+stderr_gui_cb_(_argused string cmd, FILE fd)
+{
+	string	data;
+	widget	top = ".__stderr";
+	widget	f = top . ".f";
+	widget	t = f . ".t";
+	widget	vs = f . ".vs";
+	widget	hs = f . ".hs";
+
+	unless (read(fd, &data)) return;
+
+	unless (Winfo_exists((string)top)) {
+		tk_make_readonly_tag_();
+
+		toplevel(top);
+		Wm_title((string)top, "Error Output");
+		Wm_protocol((string)top, "WM_DELETE_WINDOW",
+		    "wm withdraw ${top}");
+		ttk::frame(f);
+		text(t, wrap: "none", highlightthickness: 0, insertwidth: 0,
+		    xscrollcommand: "${hs} set",
+		    yscrollcommand: "${vs} set");
+		bindtags(t, {t, "ReadonlyText", "all"});
+		ttk::scrollbar(vs, orient: "vertical", command: "${t} yview");
+		ttk::scrollbar(hs, orient: "horizontal", command: "${t} xview");
+		grid(t,  row: 0, column: 0, sticky: "nesw");
+		grid(vs, row: 0, column: 1, sticky: "ns");
+		grid(hs, row: 1, column: 0, sticky: "ew");
+		Grid_rowconfigure((string)f, t, weight: 1);
+		Grid_columnconfigure((string)f, t, weight: 1);
+
+		ttk::frame("${top}.buttons");
+		    ttk::button("${top}.buttons.close",
+			text: "Close", command: "wm withdraw ${top}");
+		    pack("${top}.buttons.close", side: "right", padx: "5 15");
+		    ttk::button("${top}.buttons.save",
+			text: "Save to Log", command: "tk_save_to_log_ ${t}");
+		    pack("${top}.buttons.save", side: "right");
+
+		grid("${top}.buttons", row: 1, column: 0, sticky: "esw");
+
+		grid(f,  row: 0, column: 0, sticky: "nesw");
+		Grid_rowconfigure((string)top, f, weight: 1);
+		Grid_columnconfigure((string)top, f, weight: 1);
+	}
+
+	unless(Winfo_viewable((string)top)) {
+		Wm_deiconify((string)top);
+	}
+
+	/* Make sure the error is not obscured by other windows. */
+	After_idle("raise ${top}");
+	Text_insertEnd(t, data);
+	Update_idletasks();
+}
+
+FILE
+popen(string cmd, string mode, _optional void &stderr_cb(string cmd, FILE f))
+{
+	int		v = 0;
+	int		redir, numargs;
+	FILE		f, rdPipe, wrPipe;
+	string		arg, argv[], err;
+	stderr_ctxt_t	ctxt;
 
 	if (mode =~ /v/) {
 		mode =~ s/v//g;
 		v = 1;
 	}
+
 	if (catch("set argv [shsplit $cmd]", &err)) {
 		stdio_lasterr = err;
 		return (undef);
@@ -517,18 +607,58 @@ popen(string cmd, string mode)
 
 	/*
 	 * Re-direct stderr to this process' stderr unless the caller
-	 * redirected it inside their command.
+	 * redirected it inside their command or specified a callback.
 	 */
+	redir = 0;
 	foreach (arg in argv) {
-		if (arg =~ /^2>/) break;
+		if (arg =~ /^2>/) {
+			redir = 1;
+			break;
+		}
 	}
-	unless (defined(arg)) push(&argv, "2>@stderr");
+
+	/*
+	 * Info_level(0) will return a list like {"popen", "arg1", "arg2"}
+	 */
+	numargs = length(Info_level(0)) - 1;
+
+	unless (redir) {
+		/* Caller did not redirect stderr */
+		if (numargs < 3) {
+			/* or give us a callback */
+			if (tk_loaded_()) {
+				stderr_cb = &stderr_gui_cb_;
+			} else {
+				push(&argv, "2>@stderr");
+			}
+		}
+		if (stderr_cb) {
+			if (catch("lassign [chan pipe] rdPipe wrPipe", &err)) {
+				stdio_lasterr = err;
+				return (undef);
+			}
+			fconfigure(rdPipe, blocking: "off", buffering: "line");
+			push(&argv, "2>@${wrPipe}");
+			ctxt.pipe = rdPipe;
+			ctxt.cmd  = cmd;
+			ctxt.cb   = (string)stderr_cb;
+			fileevent(rdPipe, "readable", {&stderr_cb_, ctxt});
+		}
+
+		/*
+		 * If they didn't redirect, and they passed us undef as the
+		 * callback argument, we end up doing nothing and just let
+		 * Tcl eat stderr.
+		 */
+	}
 
 	if (catch("set f [open |$argv $mode]", &err)) {
 		stdio_lasterr = err;
 		if (v) fprintf(stderr, "popen(%s, %s) = %s\n", cmd, mode, err);
 		return (undef);
 	} else {
+		if (wrPipe) ::close(wrPipe);
+		if (stderr_cb) callbacks{f} = ctxt;
 		return (f);
 	}
 }
@@ -1153,6 +1283,47 @@ L_def_fn_hook(int pre, int ac, poly av[], poly ret)
 	}
 	unless (pre) fprintf(stderr, " ret '%s'", ret);
 	fprintf(stderr, "\n");
+}
+
+/*
+ * Some GUI helper functions
+ */
+
+int
+tk_loaded_()
+{
+	return (Info_exists("::tk_patchLevel"));
+}
+
+void
+tk_make_readonly_tag_()
+{
+	string	script, event, events[];
+
+	events = bind("Text");
+	foreach (event in events) {
+		script = bind("Text", event);
+		if (script =~ /%W (insert|delete|edit)/) continue;
+		if (script =~ /text(paste|insert|transpose)/i) continue;
+		script =~ s/tk_textCut/tk_textCopy/g;
+		bind("ReadonlyText", event, script);
+	}
+}
+
+void
+tk_save_to_log_(widget t)
+{
+	FILE	fp;
+	string	file, data;
+
+	file = tk_getSaveFile(parent: Winfo_toplevel((string)t));
+	if (file == "") return;
+	
+	data = trim(Text_get(t, 1.0, "end"));
+
+	fp = fopen(file, "w");
+	puts(fp, data);
+	fclose(fp);
 }
 
 /*
