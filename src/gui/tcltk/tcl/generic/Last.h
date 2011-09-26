@@ -399,7 +399,7 @@ typedef enum {
 	SCOPE_CLASS		= 0x00000008, //   visible in a class
 	DECL_GLOBAL_VAR		= 0x00000010, // the kind of declaration
 	DECL_LOCAL_VAR		= 0x00000020,
-	DECL_TEMP		= 0x00000040, //   temp variable
+	DECL_ERR		= 0x00000040, //   added on undeclared var
 	DECL_FN			= 0x00000080, //   regular function
 	DECL_CLASS_VAR		= 0x00000100, //   class variable
 	DECL_CLASS_INST_VAR	= 0x00000200, //   class instance variable

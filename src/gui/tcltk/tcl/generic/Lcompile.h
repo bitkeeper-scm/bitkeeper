@@ -67,6 +67,7 @@ typedef struct Frame {
 	char		*name;
 	Tcl_HashTable	*symtab;
 	Tcl_HashTable	*labeltab;
+	ClsDecl		*clsdecl;
 	Frame_f		flags;
 	// When a compile frame corresponds to a block in the code, we
 	// store the AST node of the block here.

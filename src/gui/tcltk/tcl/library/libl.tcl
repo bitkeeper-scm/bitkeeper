@@ -58,7 +58,7 @@ if {[file exists [file join $::tcl_library Lver.tcl]]} {
 }
 
 #lang L
-#file "libl.tcl"
+#line 1 "libl.tcl"
 #pragma fntrace(off)
 /*
  * Types for compatibility with older versions of the compiler.

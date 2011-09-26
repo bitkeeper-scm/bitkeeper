@@ -588,6 +588,36 @@ void scan_1_4_3()
 }
 } -returnCodes {error} -match regexp -result {.*missing string terminator `\n}
 
+test scan-1.4.4 {test detection of run-away regexp 1} -body {
+#lang L
+void scan_1_4_4()
+{
+	string	s = "x";
+
+	s =~ /xbad_no_terminator;
+}
+} -returnCodes {error} -match regexp -result {.*run-away regular expression\n}
+
+test scan-1.4.5 {test detection of run-away regexp 2} -body {
+#lang L
+void scan_1_4_5()
+{
+	string	s = "x";
+
+	s =~ s/x/bad_no_terminator;
+}
+} -returnCodes {error} -match regexp -result {.*run-away regular expression\n}
+
+test scan-1.4.6 {test detection of run-away regexp 3} -body {
+#lang L
+void scan_1_4_6()
+{
+	string	s = "x";
+
+	s =~ s/xbad_no_terminator/x;
+}
+} -returnCodes {error} -match regexp -result {.*run-away regular expression\n}
+
 test scan-1.5 {check escapes in single-quoted strings} -body {
 #lang L
 void scan_1_5()
@@ -1018,15 +1048,15 @@ void scan_1_17()
 scan_1_17();
 } -output {}
 
-test scan-2.1 {test #file directive} -body {
+test scan-2.1 {test #line directive} -body {
 #lang L
-#file "scan2-1.l"
+#line 1 "scan2-1.l"
 void scan_2_a()
 {
 	bad1;
 }
 
-#file "scan2-2.l"
+#line 2 "scan2-2.l"
 void scan_2_b()
 {
 	bad2;
@@ -1037,19 +1067,19 @@ void scan_2_b()
 
 
 
-#file "scan2-3.l"
+#line 13 "scan2-3.l"
 void scan_2_c()
 {
 	bad3;
 }
 } -returnCodes {error} -match regexp -result {scan2-1.l:3: L Error: undeclared variable: bad1
-scan2-2.l:3: L Error: undeclared variable: bad2
-scan2-3.l:3: L Error: undeclared variable: bad3
+scan2-2.l:4: L Error: undeclared variable: bad2
+scan2-3.l:15: L Error: undeclared variable: bad3
 }
 
-# This is test include-1.0 with #file's thrown in.
-test scan-2.2 {test #file directive with include files} -setup {
-	set fname [makeFile {#file "foo.l"
+# This is test include-1.0 with #line's thrown in.
+test scan-2.2 {test #line directive with include files} -setup {
+	set fname [makeFile {#line 1 "foo.l"
 			++scan_2_2;
 			unless (basename(__FILE__) eq "foo.l") puts("bad 1");
 			unless (__LINE__ == 3) puts("bad 2");
@@ -1074,18 +1104,18 @@ puts(scan_2_2);
 1
 }
 
-# This is test include-1.1 with #file's thrown in.
-test scan-2.3 {test #file directive with nested include files} -setup {
+# This is test include-1.1 with #line's thrown in.
+test scan-2.3 {test #line directive with nested include files} -setup {
 #
 # The code for these files isn't indented because L recognizes
 # include() only when it starts at the beginning of the line.
 #
-	set fname1 [makeFile {#file "foo1.l"
+	set fname1 [makeFile {#line 1 "foo1.l"
 #include "scan-2.3-2.l"
 unless (basename(__FILE__) eq "foo1.l") puts("bad 1");
 unless (__LINE__ == 3) puts("bad 2 ${__LINE__}");
 } scan-2.3-1.l .]
-	set fname2 [makeFile {#file "foo2.l"
+	set fname2 [makeFile {#line 1 "foo2.l"
 int scan_2_3a = 3;
 unless (basename(__FILE__) eq "foo2.l") puts("bad 3");
 unless (__LINE__ == 3) puts("bad 4");
@@ -1093,14 +1123,14 @@ unless (__LINE__ == 3) puts("bad 4");
 unless (basename(__FILE__) eq "foo2.l") puts("bad 5");
 unless (__LINE__ == 6) puts("bad 6 ${__LINE__}");
 } scan-2.3-2.l .]
-	set fname3 [makeFile {#file "foo3.l"
+	set fname3 [makeFile {#line 1 "foo3.l"
 int scan_2_3b = 4;
 unless (basename(__FILE__) eq "foo3.l") puts("bad 7");
 unless (__LINE__ == 3) puts("bad 8");
 } scan-2.3-3.l .]
 } -body {
 #lang L
-#file "foo4.l"
+#line 1 "foo4.l"
 unless (__FILE__ eq "foo4.l") puts("bad 10.1");
 #include "scan-2.3-1.l"
 unless (__FILE__ eq "foo4.l") puts("bad 10.2");
@@ -1387,6 +1417,52 @@ void unicode_5()
 	unless (a[2] eq "לנו") puts("bad 3.4");
 }
 unicode_5();
+} -output {}
+
+test scan-2.4 {test malformed #line directives} -body {
+#lang L
+#line 0
+#line
+#line xyx
+} -returnCodes error -match regexp -result {.*1: L Error: malformed #line
+.*2: L Error: malformed #line
+.*3: L Error: malformed #line
+}
+
+test scan-3.1 {test that run-time err msgs honor #line directive} -setup {
+	set fname1 [makeFile {void scan_3_1_foo()
+			{
+				int	i;
+				i = (poly)"";
+				puts(__LINE__); ++i;  // line 5 scan_3_1_foo()
+			}
+	} scan-3.1-foo.l .]
+	set fname2 [makeFile {#include "scan-3.1-foo.l"
+			void main()
+			{
+				scan_3_1_foo();
+			}
+	} scan-3.1.l .]
+} -body {
+#lang L
+void scan_3_1()
+{
+	int	ret;
+	string	err[], out;
+	string	tclsh = eval("interpreter");
+
+	ret = system({tclsh, "scan-3.1.l"}, undef, &out, &err);
+	unless (ret == 1) puts("bad 1.1");
+	unless (out == "5\n") puts("bad 2.1");
+	unless (err[0] == 'expected integer but got ""') puts("bad 3.1");
+	unless (err[1] =~ /\s*while executing/) puts("bad 3.2");
+	unless (err[2] == '"++i"') puts("bad 3.3");
+	unless (err[3] =~ /\s*\(procedure "scan_3_1_foo" line 5\)/) {
+		puts("bad 3.4");
+	}
+	unless (err[6] =~ /\s*\(procedure "main" line 4\)/) puts("bad 3.5");
+}
+scan_3_1();
 } -output {}
 
 test cmdsubst-1 {test command substitution} -body {
@@ -2817,6 +2893,68 @@ void syntax_1_4() {
 #lang tcl
 syntax_1_4
 } -output "thesestringssticktogether.\n"
+
+test errmsg-1 {check cascading err msg avoidance, local var} -body {
+#lang L
+void errmsg_1()
+{
+	errmsg_1_i = 0;
+	++errmsg_1_i;
+	++errmsg_1_i;
+	++errmsg_1_i;
+}
+int errmsg_1_i;  // should *not* produce a multiply declared variable err
+} -returnCodes {error} -match regexp -result {^.*3: L Error: undeclared variable: errmsg_1_i
+\s*$}
+
+test errmsg-2 {check cascading err msg avoidance, global var} -body {
+#lang L
+++errmsg_2_g;
+++errmsg_2_g;
+++errmsg_2_g;
+int errmsg_2_g;  // should *not* produce a multiply declared variable err
+} -returnCodes {error} -match regexp -result {^.*1: L Error: undeclared variable: errmsg_2_g
+\s*$}
+
+test errmsg-3 {check cascading err msg avoidance, class var} -body {
+#lang L
+class errmsg_3
+{
+	private	int	v1 = errmsg_3_undecl1+1;
+	public	int	errmsg_3_undecl1;
+	private	int	v2 = errmsg_3_undecl1+1;
+
+	private	int	v3 = errmsg_3_undecl2+1;
+	private	int	v4 = errmsg_3_undecl2+1;
+	public	int	errmsg_3_undecl2;
+	private	int	v5 = errmsg_3_undecl2+1;
+}
+int errmsg_3_undecl1;
+int errmsg_3_undecl2;
+} -returnCodes {error} -match regexp -result {^.*3: L Error: undeclared variable: errmsg_3_undecl1
+[^\n]+7: L Error: undeclared variable: errmsg_3_undecl2
+\s*$}
+
+test errmsg-4 {check cascading err msg avoidance, class instance var} -body {
+#lang L
+class errmsg_4
+{
+	instance {
+		private	int	v1 = errmsg_4_undecl1+1;
+		public	int	errmsg_4_undecl1;
+		private	int	v2 = errmsg_4_undecl1+1;
+
+		private	int	v3 = errmsg_4_undecl2+1;
+		private	int	v4 = errmsg_4_undecl2+1;
+		public	int	errmsg_4_undecl2;
+		private	int	v5 = errmsg_4_undecl2+1;
+	};
+}
+int errmsg_4_undecl1;
+int errmsg_4_undecl2;
+} -returnCodes {error} -match regexp -result {^.*4: L Error: undeclared variable: errmsg_4_undecl1
+[^\n]+8: L Error: undeclared variable: errmsg_4_undecl2
+\s*$}
 
 test op-1.0 {increment and decrement operators} -body {
 #lang L
@@ -17207,10 +17345,15 @@ class class_2_10
 	{
 		int	self;
 	}
+	private void class_2_10_priv()
+	{
+		int	self;
+	}
 }
 } -returnCodes {error} -match regexp -result {.*5: L Error: multiple declaration.*
 .*9: L Error: multiple declaration.*
 .*13: L Error: multiple declaration.*
+.*17: L Error: multiple declaration.*
 }
 
 test class-2.11 {check return stmt in class destructor 1} -body {
@@ -17377,6 +17520,19 @@ void class_2_21_main()
 }
 class_2_21_main();
 } -output {}
+
+test class-2.22 {check self in private member function} -body {
+#lang L
+class class_2_22 {
+	constructor class_2_22_init() {
+		some_method(self);
+	}
+	private void some_method(class_2_22 self) {}
+	private void some_method2(int ok, class_2_22 self) {}
+}
+} -returnCodes {error} -match regexp -result {.*5: L Error: 'self' parameter illegal in private function
+.*6: L Error: 'self' parameter illegal in private function
+}
 
 test class-3.1 {check scoping of class vars and class instance vars 1} -body {
 #lang L

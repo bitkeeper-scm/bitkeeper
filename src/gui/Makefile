@@ -107,7 +107,7 @@ citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) citool.l
 		cat $(filter %.tcl,$^) ;	\
 		echo ; echo 'L {' ; echo ;	\
 		for f in $(filter %.l,$^) ; do	\
-			echo "#file \"$$f\"" ;	\
+			echo "#line 1 \"$$f\"";	\
 			cat $$f ;		\
 		done ;				\
 		echo '}' ; 		\

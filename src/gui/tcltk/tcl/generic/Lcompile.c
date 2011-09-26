@@ -561,6 +561,7 @@ compile_clsDecl(ClsDecl *clsdecl)
 	frame_push(NULL, NULL, CLS_OUTER|SEARCH|KEEPSYMS);
 	clsdecl->symtab = L->frame->symtab;
 	frame_push(NULL, NULL, CLS_TOPLEV|SKIP);
+	L->frame->clsdecl = clsdecl;
 
 	frame_resumePrologue();
 	push_str("::namespace");
@@ -1341,6 +1342,11 @@ compile_fnParms(VarDecl *decl)
 		if (isClsConstructor(decl) && isid(p->id, "self")) {
 			L_errf(p,
 			       "'self' parameter illegal in class constructor");
+			continue;
+		}
+		if (isClsFnPrivate(decl) && isid(p->id, "self")) {
+			L_errf(p,
+			       "'self' parameter illegal in private function");
 			continue;
 		}
 		if ((p->flags & DECL_REST_ARG) && (p->next)) {
@@ -4609,9 +4615,7 @@ compile_clsDeref(Expr *expr, Expr_f flags)
 	}
 
 	tmp = tmp_get();
-	tmpsym = sym_mk(tmp->name,
-			sym->type,
-			SCOPE_LOCAL | DECL_LOCAL_VAR | DECL_TEMP);
+	tmpsym = sym_mk(tmp->name, sym->type, SCOPE_LOCAL | DECL_LOCAL_VAR);
 	ASSERT(tmpsym);  // cannot be multiply declared
 	tmpsym->used_p = TRUE;
 
@@ -4680,9 +4684,7 @@ compile_clsInstDeref(Expr *expr, Expr_f flags)
 	}
 
 	tmp = tmp_get();
-	tmpsym = sym_mk(tmp->name,
-			sym->type,
-			SCOPE_LOCAL | DECL_LOCAL_VAR | DECL_TEMP);
+	tmpsym = sym_mk(tmp->name, sym->type, SCOPE_LOCAL | DECL_LOCAL_VAR);
 	ASSERT(tmpsym);  // cannot be multiply declared
 	tmpsym->used_p = TRUE;
 
@@ -5341,6 +5343,7 @@ sym_store(VarDecl *decl)
 			if (hPtr) Tcl_DeleteHashEntry(hPtr);
 			L->mains_ast = L->ast;
 		} else if (hPtr) {
+			sym2 = (Sym *)Tcl_GetHashValue(hPtr);
 			if (decl->flags & DECL_EXTERN) {
 				sym = (Sym *)Tcl_GetHashValue(hPtr);
 				if (L_typeck_same(decl->type, sym->type)) {
@@ -5350,6 +5353,8 @@ sym_store(VarDecl *decl)
 				       "extern re-declaration type does not "
 				       "match other declaration");
 				return (NULL);
+			} else if (sym2->decl->flags & DECL_ERR) {
+				Tcl_DeleteHashEntry(hPtr);
 			} else {
 				L_errf(decl,
 				    "multiple declaration of global %s", name);
@@ -5362,9 +5367,14 @@ sym_store(VarDecl *decl)
 		for (frame = L->frame; frame; frame = frame->prevFrame) {
 			hPtr = Tcl_FindHashEntry(frame->symtab, name);
 			if (hPtr) {
-				L_errf(decl, "multiple declaration of %s",
-				       name);
-				return (NULL);
+				sym2 = (Sym *)Tcl_GetHashValue(hPtr);
+				if (sym2->decl->flags & DECL_ERR) {
+					Tcl_DeleteHashEntry(hPtr);
+				} else {
+					L_errf(decl, "multiple declaration of %s",
+					       name);
+					return (NULL);
+				}
 			}
 			if (frame->flags & CLS_OUTER) break;
 		}
@@ -5560,11 +5570,34 @@ sym_lookup(Expr *id, Expr_f flags)
 		id->type = sym->type;
 		return (sym);
 	} else {
-		unless (flags & L_NOWARN) {
-			L_errf(id, "undeclared variable: %s", name);
-		}
 		ASSERT(id->sym == NULL);
-		id->type = L_poly;  // to minimize cascading errors
+		unless (flags & L_NOWARN) {
+			/*
+			 * Add the undeclared variable to the symtab to avoid
+			 * cascading errors.
+			 */
+			YYLTYPE	loc = id->node.loc;
+			VarDecl	*decl = ast_mkVarDecl(L_poly, id, loc, loc);
+			decl->flags = DECL_ERR | DECL_ARGUSED;
+			switch (L->frame->flags & (FUNC|CLS_TOPLEV|TOPLEV)) {
+			    case TOPLEV | FUNC:
+				decl->flags |= SCOPE_GLOBAL | DECL_GLOBAL_VAR;
+				break;
+			    case CLS_TOPLEV:
+				decl->flags |= SCOPE_CLASS | DECL_CLASS_VAR;
+				ASSERT(L->frame->clsdecl);
+				decl->clsdecl = L->frame->clsdecl;
+				break;
+			    case FUNC:
+			    case 0:  // stmt block
+				decl->flags |= SCOPE_LOCAL | DECL_LOCAL_VAR;
+				break;
+			    default: ASSERT(0);
+			}
+			L_errf(id, "undeclared variable: %s", name);
+			id->sym = sym_store(decl);
+		}
+		id->type = L_poly;
 		return (NULL);
 	}
 }

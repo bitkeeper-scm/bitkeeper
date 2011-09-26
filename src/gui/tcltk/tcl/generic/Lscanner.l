@@ -30,12 +30,13 @@ private int	include_pop();
 private int	include_push(FILE *f, char *name);
 private FILE *	include_search(char *file, char **path, int pwdOnly);
 private FILE *	include_try(Tcl_Obj *fileObj, int *found);
-private void	put_back(char c);
-private void	tally_newlines(char *s, int len, int tally);
+private void	inject(char *s);
 private void	interpol_lbrace();
 private void	interpol_pop();
 private int	interpol_push();
 private int	interpol_rbrace();
+private void	put_back(char c);
+private void	tally_newlines(char *s, int len, int tally);
 
 // Max nesting depth of string interpolations.
 #define INTERPOL_STACK_SZ	10
@@ -128,6 +129,23 @@ undo_yy_user_action()
 
 	L->script_len -= yyleng;
 	Tcl_SetObjLength(L->script, L->script_len);
+}
+
+/*
+ * Inject the given string into the L script text, but do not give it
+ * to the scanner.  This is useful for inserting #line directives (for
+ * #include's) which need to remain in the script so Tcl can see them
+ * but which aren't parsed.
+ */
+private void
+inject(char *s)
+{
+	int	len = strlen(s);
+
+	L->prev_token_len += len;
+
+	Tcl_AppendToObj(L->script, s, len);
+	L->script_len += len;
 }
 
 /*
@@ -268,6 +286,7 @@ include_push(FILE *f, char *name)
 		yy_switch_to_buffer(buf);
 		L->file = name;
 		L->line = 1;
+		inject("#line 1\n");
 		return (1);
 	}
 }
@@ -275,6 +294,8 @@ include_push(FILE *f, char *name)
 private int
 include_pop()
 {
+	char	*s;
+
 	if (include_top >= 0) {
 		L->file = include_stk[include_top].name;
 		L->line = include_stk[include_top].line;
@@ -282,6 +303,9 @@ include_pop()
 		yy_delete_buffer(YY_CURRENT_BUFFER);
 		yy_switch_to_buffer(include_stk[include_top].buf);
 		--include_top;
+		s = cksprintf("#line %d\n", L->line);
+		inject(s);
+		ckfree(s);
 		return (1);
 	} else {
 		return (0);
@@ -471,15 +495,36 @@ canonical_num(char *num)
 				L_lval.s = ckstrdup(yytext);
 				return T_FLOAT_LITERAL;
 			}
-	^#file\ \"[^\"\n]*\"\n {
-				char *name = ckstrndup(yytext + 7, yyleng - 9);
-				/*
-				 * Make like the #file wasn't there in the
-				 * input, and reset the line # to 1.
-				 */
-				undo_yy_user_action();
-				L->file = name;
-				L->line = 1;
+	^#line[ \t]+[0-9]+\n {
+				int	line = strtoul(yytext+5, NULL, 10);
+
+				if (line <= 0) {
+					--L->line;  // since \n already scanned
+					L_err("malformed #line");
+					++L->line;
+				} else {
+					L->line = line;
+				}
+			}
+	^#line[ \t]+[0-9]+[ \t]+\"[^\"\n]*\"\n {
+				int	line  = strtoul(yytext+5, NULL, 10);
+				char	*beg  = strchr(yytext, '"') + 1;
+				char	*end  = strrchr(yytext, '"');
+				char	*name = ckstrndup(beg, end-beg);
+
+				if (line <= 0) {
+					--L->line;  // since \n already scanned
+					L_err("malformed #line");
+					++L->line;
+				} else {
+					L->file = name;
+					L->line = line;
+				}
+			}
+	^#line.*\n	{
+				--L->line;  // since \n already scanned
+				L_err("malformed #line");
+				++L->line;
 			}
 	^#include[ \t]*\"[^\"\n]+\"	{
 				char	*beg  = strchr(yytext, '"') + 1;
@@ -519,10 +564,11 @@ canonical_num(char *num)
 	^#.*("\r"|"\n"|"\r\n")	{
 				/*
 				 * Rather than using a start condition
-				 * to separate out all the ^# usages,
-				 * this is simpler.  If it's not a comment,
-				 * REJECT it so that flex then takes the
-				 * second best rule (those above).
+				 * to separate out all the ^# patterns
+				 * that don't end in \n, this is
+				 * simpler.  If it's not a comment,
+				 * REJECT it so that flex then takes
+				 * the second best rule (those above).
 				 */
 				if (!strncmp(yytext, "#pragma ",  8) ||
 				    !strncmp(yytext, "#pragma\t", 8)) {
@@ -530,7 +576,7 @@ canonical_num(char *num)
 					REJECT;
 				} else if (!strncmp(yytext, "#include", 8)) {
 					undo_yy_user_action();
-					REJECT
+					REJECT;
 				} else unless (L->line == 2) {
 					--L->line;  // since \n already scanned
 					L_err("# comment valid only on line 1");
@@ -870,6 +916,12 @@ canonical_num(char *num)
 				} else {
 					STRBUF_ADD(yytext, yyleng);
 				}
+			}
+	\n		{
+				--L->line;  // since \n already scanned
+				L_err("run-away regular expression");
+				++L->line;
+				STRBUF_ADD(yytext, yyleng);
 			}
 	.		{
 				if (*(yytext) == re_quote_char) {
