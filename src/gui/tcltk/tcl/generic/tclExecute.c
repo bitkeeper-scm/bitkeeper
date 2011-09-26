@@ -7857,20 +7857,32 @@ TclExecuteByteCode(
 	 * dive, this used to be done with an extra instruction.
 	 */
 
-	int	ret;
-	Tcl_Obj *deepPtrObj, *oldvalObj, *rvalObj;
+	int	arrayIdx = 0, ret;
+	Tcl_Obj *arrayIdxObj, *deepPtrObj, *oldvalObj, *rvalObj;
 	Tcl_Obj *currTopLevObj, *newTopLevObj;
 	Var	*varPtr;
 	L_DeepPtr *deepPtr;
 	unsigned int flags, idx;
 
+	idx   = TclGetUInt4AtPtr(pc+1);
+	flags = TclGetUInt4AtPtr(pc+5);
+
+	if (flags & (L_INSERT_ELT | L_INSERT_LIST)) {
+	    arrayIdxObj = POP_OBJECT();
+	    if (TclGetIntFromObj(NULL, arrayIdxObj, &arrayIdx) != TCL_OK) {
+		Tcl_ResetResult(interp);
+		Tcl_AppendResult(interp, "cannot convert index to integer",
+				 NULL);
+		result = TCL_ERROR;
+		goto checkForCatch;
+	    }
+	    Tcl_DecrRefCount(arrayIdxObj);
+	    if (arrayIdx == -1) arrayIdx = INT_MAX;
+	}
 	deepPtrObj   = POP_OBJECT();
 	rvalObj      = OBJ_AT_TOS;
 	deepPtr      = (L_DeepPtr *)(deepPtrObj->internalRep.otherValuePtr);
 	newTopLevObj = deepPtr->topLevObj;
-
-	idx   = TclGetUInt4AtPtr(pc+1);
-	flags = TclGetUInt4AtPtr(pc+5);
 
 #ifdef TCL_COMPILE_DEBUG
 	if (!deepPtrObj->typePtr || (deepPtrObj->typePtr != &L_deepPtrType)) {
@@ -7931,7 +7943,7 @@ TclExecuteByteCode(
 	    tmp = Tcl_GetUnicodeFromObj(newStr, &len);
 	    Tcl_SetUnicodeObj(target, tmp, len);
 	    Tcl_DecrRefCount(newStr);
-	} else if (flags & L_APPEND) {
+	} else if (flags & L_INSERT_ELT) {
 	    /*
 	     * The deep ptr has a ref to oldvalObj, so drop that ref so we can
 	     * append to it, then restore that ref (it's dropped later).  And
@@ -7939,11 +7951,22 @@ TclExecuteByteCode(
 	     * ref since the code below assumes we're deleting.
 	     */
 	    Tcl_DecrRefCount(oldvalObj);
-	    Tcl_ListObjAppendElement(interp, oldvalObj, rvalObj);
+	    Tcl_ListObjReplace(interp, oldvalObj, arrayIdx, 0, 1, &rvalObj);
+	    Tcl_IncrRefCount(oldvalObj);
+	    Tcl_IncrRefCount(oldvalObj);
+	} else if (flags & L_INSERT_LIST) {
+	    /* See above comment. */
+	    int		objc;
+	    Tcl_Obj	**objv;
+
+	    Tcl_DecrRefCount(oldvalObj);
+	    Tcl_ListObjGetElements(interp, rvalObj, &objc, &objv);
+	    Tcl_ListObjReplace(interp, oldvalObj, arrayIdx, 0, objc, objv);
 	    Tcl_IncrRefCount(oldvalObj);
 	    Tcl_IncrRefCount(oldvalObj);
 	} else {
 	    if (flags & L_DELETE) {
+		/* Must push here b/c L_DELETE doesn't take an rvalObj. */
 		if (flags & L_PUSH_OLD) PUSH_OBJECT(oldvalObj);
 		if (deepPtr->flags & L_IDX_HASH) {
 		    ret = Tcl_DictObjRemove(interp, deepPtr->parentObj,
@@ -8020,6 +8043,11 @@ TclExecuteByteCode(
 		TRACE_WITH_OBJ(("L_PUSH_NEW => "), OBJ_AT_TOS);
 		break;
 	    case L_DISCARD:
+		/* Don't pop if L_DELETE b/c no rvalObj was on the stack. */
+		unless (flags & L_DELETE) {
+		    POP_OBJECT();
+		    Tcl_DecrRefCount(oldvalObj);
+		}
 		TRACE(("L_DISCARD =>\n"));
 		break;
 	    default:
@@ -8154,6 +8182,45 @@ TclExecuteByteCode(
 	    objResultPtr = *L_undefObjPtrPtr();
 	}
 	NEXT_INST_F(2, 0, 1);
+    }
+
+    case INST_L_LIST_INSERT: {
+	int index, objc;
+	Tcl_Obj **objv;
+	Tcl_Obj *listPtr;
+	Tcl_Obj *indexPtr = POP_OBJECT();
+	Tcl_Obj *elemPtr = OBJ_AT_TOS;
+	unsigned int opnd = TclGetUInt4AtPtr(pc+1);
+	unsigned int flags = TclGetUInt4AtPtr(pc+5);
+	Var *varPtr = &(compiledLocals[opnd]);
+
+	while (TclIsVarLink(varPtr)) {
+	    varPtr = varPtr->value.linkPtr;
+	}
+	listPtr = varPtr->value.objPtr;
+	if (Tcl_IsShared(listPtr)) {
+	    listPtr = Tcl_DuplicateObj(listPtr);
+	    TclPtrSetVar(interp, varPtr, NULL, NULL, NULL, listPtr, 0, opnd);
+	}
+	if (TclGetIntFromObj(NULL, indexPtr, &index) != TCL_OK) {
+	    Tcl_ResetResult(interp);
+	    Tcl_AppendResult(interp, "cannot convert index to integer", NULL);
+	    result = TCL_ERROR;
+	    goto checkForCatch;
+	}
+	Tcl_DecrRefCount(indexPtr);
+	if (index == -1) index = INT_MAX;  // -1 means append
+	if (flags & L_INSERT_ELT) {
+	    result = Tcl_ListObjReplace(interp, listPtr, index, 0, 1, &elemPtr);
+	} else {
+	    ASSERT(flags & L_INSERT_LIST);
+	    Tcl_ListObjGetElements(interp, elemPtr, &objc, &objv);
+	    result = Tcl_ListObjReplace(interp, listPtr, index, 0, objc, objv);
+	}
+	if (result != TCL_OK) {
+	    goto checkForCatch;
+	}
+	NEXT_INST_F(9, 1, 0);
     }
 
     default:

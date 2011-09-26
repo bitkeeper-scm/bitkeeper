@@ -144,6 +144,7 @@ private void	compile_goto(Stmt *stmt);
 private int	compile_here(Expr *expr);
 private void	compile_ifUnless(Cond *cond);
 private void	compile_incdec(Expr *expr);
+private int	compile_insert_unshift(Expr *expr);
 private int	compile_join(Expr *expr);
 private int	compile_keys(Expr *expr);
 private void	compile_label(Stmt *stmt);
@@ -152,7 +153,7 @@ private void	compile_loop(Loop *loop);
 private int	compile_min_max(Expr *expr);
 private int	compile_fnParms(VarDecl *decl);
 private void	compile_pragma(Stmt *stmt);
-private int	compile_pop(Expr *expr);
+private int	compile_pop_shift(Expr *expr);
 private int	compile_push(Expr *expr);
 private void	compile_reMatch(Expr *re);
 private int	compile_read(Expr *expr);
@@ -238,21 +239,24 @@ static struct {
 	{ "assert",	compile_assert },
 	{ "die",	compile_die },
 	{ "here",	compile_here },
+	{ "insert",	compile_insert_unshift },
 	{ "join",	compile_join },
 	{ "keys",	compile_keys },
 	{ "length",	compile_length },
 	{ "max",	compile_min_max },
 	{ "min",	compile_min_max },
-	{ "pop",	compile_pop },
+	{ "pop",	compile_pop_shift },
 	{ "push",	compile_push },
 	{ "read",	compile_read },
 	{ "rename",	compile_rename },
+	{ "shift",	compile_pop_shift },
 	{ "sort",	compile_sort },
 	{ "split",	compile_split },
 	{ "spawn",	compile_spawn_system },
 	{ "system",	compile_spawn_system },
 	{ "typeof",	compile_typeof },
 	{ "undef",	compile_undef },
+	{ "unshift",	compile_insert_unshift },
 	{ "warn",	compile_warn },
 	{ "write",	compile_write },
 };
@@ -1476,7 +1480,7 @@ compile_split(Expr *expr)
 private int
 compile_push(Expr *expr)
 {
-	int	i, idx;
+	int	flags, i, idx;
 	Expr	*arg, *array;
 	Type	*base_type;
 
@@ -1492,77 +1496,96 @@ compile_push(Expr *expr)
 	ASSERT(expr->b->a);
 	array = expr->b->a;
 	arg   = expr->b->next;
-	compile_expr(array, L_PUSH_PTR | L_LVALUE);
-	unless (isarray(array) || ispoly(array)) {
-		L_errf(expr, "first arg to push not an array reference (&)");
-		return (0);
-	}
-	unless (array->sym) {
-		L_errf(expr, "invalid l-value in push");
-		return (0);
-	}
-	idx = array->sym->idx;  // local slot # for array
-	if (isarray(array)) {
-		base_type = array->type->base_type;
-	} else {
-		base_type = L_poly;
-	}
 	for (i = 2; arg; arg = arg->next, ++i) {
+		compile_expr(array, L_PUSH_PTR | L_LVALUE);
+		unless (isarray(array) || ispoly(array)) {
+			L_errf(expr,
+			       "first arg to push not an array reference (&)");
+			return (0);
+		}
+		unless (array->sym) {
+			L_errf(expr, "invalid l-value in push");
+			return (0);
+		}
+		idx = array->sym->idx;  // local slot # for array
+		if (isarray(array)) {
+			base_type = array->type->base_type;
+		} else {
+			base_type = L_poly;
+		}
 		compile_expr(arg, L_PUSH_VAL);
-		unless (L_typeck_compat(base_type, arg->type)) {
+		/*
+		 * For each arg, we allow base_type or an array of base_type.
+		 */
+		unless (L_typeck_compat(base_type, arg->type) ||
+			L_typeck_compat(array->type, arg->type)) {
 			L_errf(expr, "arg #%d to push has type incompatible "
 			       "with array", i);
 		}
+		if (isarray(arg) || islist(arg)) {
+			flags = L_INSERT_LIST;
+		} else {
+			flags = L_INSERT_ELT;
+		}
 		if (array->flags & L_EXPR_DEEP) {
 			TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
+			push_str("-1");  // -1 means append
 			TclEmitInstInt4(INST_L_DEEP_WRITE, idx,
 					L->frame->envPtr);
-			TclEmitInt4(L_APPEND | L_PUSH_NEW, L->frame->envPtr);
+			TclEmitInt4(flags | L_DISCARD, L->frame->envPtr);
 		} else {
-			if (idx <= 255) {
-				TclEmitInstInt1(INST_LAPPEND_SCALAR1, idx,
-						L->frame->envPtr);
-			} else {
-				TclEmitInstInt4(INST_LAPPEND_SCALAR4, idx,
-						L->frame->envPtr);
-			}
+			push_str("-1");  // -1 means append
+			TclEmitInstInt4(INST_L_LIST_INSERT, idx,
+					L->frame->envPtr);
+			TclEmitInt4(flags, L->frame->envPtr);
 		}
 	}
-	emit_pop();
 	return (0);  // stack effect
 }
 
 private int
-compile_pop(Expr *expr)
+compile_pop_shift(Expr *expr)
 {
 	int	idx;
 	Expr	*arg = NULL;
+	char	*opNm = expr->a->str;
+	Expr	*toDelete;
+	YYLTYPE	loc;
 
 	expr->type = L_poly;
 	unless (expr->b && !expr->b->next) {
-		L_errf(expr, "incorrect # arguments to pop");
+		L_errf(expr, "incorrect # arguments to %s", opNm);
 		return (0);
 	}
 	unless (isaddrof(expr->b)) {
-		L_errf(expr, "arg to pop not an array reference (&)");
+		L_errf(expr, "arg to %s not an array reference (&)", opNm);
 		return (0);
 	}
-	/* Change arg from &arr to &arr[END] and then delete that element. */
+	/*
+	 * For pop, change arg from &arr to &arr[END] and then delete
+	 * that element.  For shift, use &arr[0].
+	 */
 	ASSERT(expr->b->a);
+	loc = expr->b->a->node.loc;
+	if (!strcmp(opNm, "pop")) {
+		toDelete = mkId("END");
+	} else {
+		toDelete = ast_mkConst(L_int, "0", loc, loc);
+	}
 	arg = ast_mkBinOp(L_OP_ARRAY_INDEX,
 			  expr->b->a,
-			  mkId("END"),
-			  expr->b->a->node.loc,
-			  expr->b->a->node.loc);
+			  toDelete,
+			  loc,
+			  loc);
 	expr->b->a = arg;
 	/* L_DELETE here permits indexing element -1 (array already empty). */
 	compile_expr(arg, L_PUSH_PTR | L_DELETE | L_LVALUE);
 	unless (isarray(arg->a) || ispoly(arg->a)) {
-		L_errf(expr, "arg to pop not an array reference (&)");
+		L_errf(expr, "arg to %s not an array reference (&)", opNm);
 		return (0);
 	}
 	unless (arg->sym) {
-		L_errf(expr, "invalid l-value in pop");
+		L_errf(expr, "invalid l-value in %s", opNm);
 		return (0);
 	}
 	idx = arg->sym->idx;  // local slot # for array
@@ -1571,6 +1594,144 @@ compile_pop(Expr *expr)
 	TclAdjustStackDepth(1, L->frame->envPtr);
 	expr->type = arg->type;
 	return (1);  // stack effect
+}
+
+private int
+compile_insert_unshift(Expr *expr)
+{
+	int	flags, i, idx;
+	Expr	*arg, *array, *index;
+	Type	*base_type;
+	Tmp	*argTmp = NULL, *idxTmp = NULL;
+	char	*opNm = expr->a->str;
+
+	/*
+	 * Make unshift(arg1, arg2, ...) look like insert(arg1, "0", arg2, ...)
+	 */
+	if (!strcmp(opNm, "unshift")) {
+		if (expr->b) {
+			arg = ast_mkConst(L_int, "0", expr->node.loc,
+					  expr->node.loc);
+			arg->next = expr->b->next;
+			expr->b->next = arg;
+		}
+		i = 2;  // where data args start
+	} else {
+		i = 3;  // where data args start
+	}
+
+	expr->type = L_void;
+	unless (expr->b && expr->b->next && expr->b->next->next) {
+		L_errf(expr, "too few arguments to %s", opNm);
+		return (0);
+	}
+	ASSERT(expr->b->a);
+	array = expr->b->a;
+	index = expr->b->next;
+	arg   = expr->b->next->next;
+	unless (isaddrof(expr->b)) {
+		L_errf(expr, "first arg to %s not an array reference (&)", opNm);
+		return (0);
+	}
+	unless (isint(index)) {
+		L_errf(expr, "second arg to %s not an int", opNm);
+		return (0);
+	}
+	compile_expr(array, L_PUSH_PTR | L_LVALUE);
+	unless (isarray(array) || ispoly(array)) {
+		L_errf(expr,
+		       "first arg to %s not an array reference (&)", opNm);
+		return (0);
+	}
+	unless (array->sym) {
+		L_errf(expr, "invalid l-value in %s", opNm);
+		return (0);
+	}
+	idx = array->sym->idx;  // local slot # for array
+	if (isarray(array)) {
+		base_type = array->type->base_type;
+	} else {
+		base_type = L_poly;
+	}
+
+	/*
+	 * If >1 arg, concat them all into a temp and insert that.  We
+	 * can't just insert them one by one like we do in
+	 * compile_push(), since that would insert them backwards.
+	 * We could reverse the arg list, but building the temp is
+	 * about as fast as re-indexing into the array for each element.
+	 */
+	if (arg->next) {
+		idxTmp = tmp_get();
+		compile_expr(index, L_PUSH_VAL);
+		emit_store_scalar(idxTmp->idx);
+		emit_pop();
+		argTmp = tmp_get();
+		push_str("");
+		emit_store_scalar(argTmp->idx);
+		emit_pop();
+		for (; arg; arg = arg->next, ++i) {
+			compile_expr(arg, L_PUSH_VAL);
+			/* For an arg, allow base_type or array of base_type. */
+			unless (L_typeck_compat(base_type, arg->type) ||
+				L_typeck_compat(array->type, arg->type)) {
+				L_errf(expr, "arg #%d to %s has type "
+				       "incompatible with array", i, opNm);
+			}
+			if (isarray(arg) || islist(arg)) {
+				flags = L_INSERT_LIST;
+			} else {
+				flags = L_INSERT_ELT;
+			}
+			push_str("-1");  // -1 means append
+			TclEmitInstInt4(INST_L_LIST_INSERT, argTmp->idx,
+					L->frame->envPtr);
+			TclEmitInt4(flags, L->frame->envPtr);
+		}
+		if (array->flags & L_EXPR_DEEP) {
+			emit_load_scalar(argTmp->idx);
+			TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
+			emit_load_scalar(idxTmp->idx);
+			TclEmitInstInt4(INST_L_DEEP_WRITE, idx,
+					L->frame->envPtr);
+			TclEmitInt4(L_INSERT_LIST | L_DISCARD,
+				    L->frame->envPtr);
+		} else {
+			emit_load_scalar(argTmp->idx);
+			emit_load_scalar(idxTmp->idx);
+			TclEmitInstInt4(INST_L_LIST_INSERT, idx,
+					L->frame->envPtr);
+			TclEmitInt4(L_INSERT_LIST, L->frame->envPtr);
+		}
+	} else {
+		compile_expr(arg, L_PUSH_VAL);
+		/* For the arg, we allow base_type or an array of base_type. */
+		unless (L_typeck_compat(base_type, arg->type) ||
+			L_typeck_compat(array->type, arg->type)) {
+			L_errf(expr, "arg #%d to %s has type incompatible "
+			       "with array", i, opNm);
+		}
+		if (isarray(arg) || islist(arg)) {
+			flags = L_INSERT_LIST;
+		} else {
+			flags = L_INSERT_ELT;
+		}
+		if (array->flags & L_EXPR_DEEP) {
+			TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
+			compile_expr(index, L_PUSH_VAL);
+			TclEmitInstInt4(INST_L_DEEP_WRITE, idx,
+					L->frame->envPtr);
+			TclEmitInt4(flags | L_DISCARD, L->frame->envPtr);
+		} else {
+			compile_expr(index, L_PUSH_VAL);
+			TclEmitInstInt4(INST_L_LIST_INSERT, idx,
+					L->frame->envPtr);
+			TclEmitInt4(flags, L->frame->envPtr);
+		}
+	}
+	tmp_free(idxTmp);
+	tmp_free(argTmp);
+	return (0);  // stack effect
 }
 
 /* Return 1 if a type has an int or float anywhere inside it. */
@@ -5633,7 +5794,7 @@ tmp_get()
 private void
 tmp_free(Tmp *tmp)
 {
-	tmp->free = 1;
+	if (tmp) tmp->free = 1;
 }
 
 void

@@ -10999,6 +10999,11 @@ void undef_5()
 	if (defined(a)) puts("bad 4.1");
 	a[10] = "x";
 	unless (defined(a)) puts("bad 4.2");
+
+	a = undef;
+	if (defined(a)) puts("bad 5.1");
+	push(&a, {"x","y"});
+	unless (defined(a)) puts("bad 5.2");
 }
 undef_5();
 } -output {}
@@ -12272,11 +12277,11 @@ void typecheck_6_2_v() { }
 void
 typecheck_6_2()
 {
-	int	ai[];
+	int	ai[], i;
 	string	as[], s;
 	widget	aw[], w;
 	float	af[], f;
-	int	aa[][], a[];		// array of array, and an array
+	int	aa[][];			// array of array
 	int	ah[]{int}, h{int};	// array of hash, and a hash
 	struct { int i,j; } ast[], st;	// array of struct, and a struct
 
@@ -12290,7 +12295,7 @@ typecheck_6_2()
 
 	push(&ai, f);
 	push(&ai, s);
-	push(&ai, a);
+
 	push(&ai, aa);
 	push(&ai, as);
 	push(&ai, af);
@@ -12303,8 +12308,8 @@ typecheck_6_2()
 
 	push(&aa[0], f);
 	push(&aa[0], s);
-	push(&aa[0], a);
-	push(&aa[0], aa);
+
+
 	push(&aa[0], as);
 	push(&aa[0], af);
 	push(&aa[0], h);
@@ -12322,7 +12327,6 @@ typecheck_6_2();
 } -returnCodes {error} -match regexp -result {.*:19: L Error: arg #2 to push has type incompatible with array
 .*:21: L Error: arg #2 to push has type incompatible with array
 .*:22: L Error: arg #2 to push has type incompatible with array
-.*:23: L Error: arg #2 to push has type incompatible with array
 .*:24: L Error: arg #2 to push has type incompatible with array
 .*:25: L Error: arg #2 to push has type incompatible with array
 .*:26: L Error: arg #2 to push has type incompatible with array
@@ -12334,8 +12338,6 @@ typecheck_6_2();
 .*:32: L Error: arg #2 to push has type incompatible with array
 .*:34: L Error: arg #2 to push has type incompatible with array
 .*:35: L Error: arg #2 to push has type incompatible with array
-.*:36: L Error: arg #2 to push has type incompatible with array
-.*:37: L Error: arg #2 to push has type incompatible with array
 .*:38: L Error: arg #2 to push has type incompatible with array
 .*:39: L Error: arg #2 to push has type incompatible with array
 .*:40: L Error: arg #2 to push has type incompatible with array
@@ -16526,28 +16528,239 @@ void builtin_11_3()
 builtin_11_3();
 } -output {}
 
-test builtin-12 {check assert built-in errors} -body {
+test builtin-11.4 {check push built-in with list args} -body {
 #lang L
-void builtin_12_foo();
-void builtin_12()
+void builtin_11_4()
 {
-	string	s;
+	int	a[];
+	struct {
+		int	a[];
+	} st;
 
-	assert();
-	assert(1,2);
-	assert(builtin_12_foo());
-	s = assert(0);
-	/*
-	 * This tests that the compiler does not assert due to assert()
-	 * not getting a type even though the call has an error.
-	 */
-	assert() + 1;
+	/* Check pushing to a plain variable. */
+
+	push(&a, 1);
+	unless (eq(a,{1})) puts("bad 1.1");
+
+	push(&a, {2});
+	unless (eq(a,{1,2})) puts("bad 1.2");
+
+	push(&a, {3,4});
+	unless (eq(a,{1,2,3,4})) puts("bad 1.3");
+
+	push(&a, {5,6,7});
+	unless (eq(a,{1,2,3,4,5,6,7})) puts("bad 1.4");
+
+	push(&a, 8, {9,10});
+	unless (eq(a,{1,2,3,4,5,6,7,8,9,10})) puts("bad 1.5");
+
+	push(&a, {11,12}, 13);
+	unless (eq(a,{1,2,3,4,5,6,7,8,9,10,11,12,13})) puts("bad 1.6");
+
+	push(&a, 14, {15}, 16, {17,18});
+	unless (eq(a,{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18})) {
+		puts("bad 1.7");
+	}
+
+	/* Check pushing to a struct member (deep dive). */
+
+	push(&st.a, 1);
+	unless (eq(st.a,{1})) puts("bad 2.1");
+
+	push(&st.a, {2});
+	unless (eq(st.a,{1,2})) puts("bad 2.2");
+
+	push(&st.a, {3,4});
+	unless (eq(st.a,{1,2,3,4})) puts("bad 2.3");
+
+	push(&st.a, {5,6,7});
+	unless (eq(st.a,{1,2,3,4,5,6,7})) puts("bad 2.4");
+
+	push(&st.a, 8, {9,10});
+	unless (eq(st.a,{1,2,3,4,5,6,7,8,9,10})) puts("bad 2.5");
+
+	push(&st.a, {11,12}, 13);
+	unless (eq(st.a,{1,2,3,4,5,6,7,8,9,10,11,12,13})) puts("bad 2.6");
+
+	push(&st.a, 14, {15}, 16, {17,18});
+	unless (eq(st.a,{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18})) {
+		puts("bad 2.7");
+	}
 }
-} -returnCodes {error} -match regexp -result {.*6: L Error: incorrect # args to assert
-.*7: L Error: incorrect # args to assert
-.*8: L Error: void type illegal in predicate
-.*9: L Error: type void illegal
+builtin_11_4();
+} -output {}
+
+test builtin-11.5 {check insert built-in} -body {
+#lang L
+void builtin_11_5()
+{
+	int	a[];
+	struct {
+		int	a[];
+	} st;
+
+	/* Check inserting into a plain variable, scalar args. */
+
+	a = {};
+	insert(&a, 0, 1);
+	unless (eq(a, {1})) puts("bad 1.1");
+	insert(&a, 0, 2);
+	unless (eq(a, {2,1})) puts("bad 1.2");
+	insert(&a, 0, 3, 4);
+	unless (eq(a, {3,4,2,1})) puts("bad 1.3");
+	insert(&a, 0, 5, 6, 7);
+	unless (eq(a, {5,6,7,3,4,2,1})) puts("bad 1.4");
+
+	/* Check inserting into a struct member (deep dive), scalar args. */
+
+	st.a = {};
+	insert(&st.a, 0, 1);
+	unless (eq(st.a, {1})) puts("bad 2.1");
+	insert(&st.a, 1, 2);
+	unless (eq(st.a, {1,2})) puts("bad 2.2");
+	insert(&st.a, 1, 3, 4);
+	unless (eq(st.a, {1,3,4,2})) puts("bad 2.3");
+	insert(&st.a, 0, 5, 6, 7);
+	unless (eq(st.a, {5,6,7,1,3,4,2})) puts("bad 2.4");
+	insert(&st.a, 2, 8);
+	unless (eq(st.a, {5,6,8,7,1,3,4,2})) puts("bad 2.5");
+	insert(&st.a, 0, 9);
+	unless (eq(st.a, {9,5,6,8,7,1,3,4,2})) puts("bad 2.6");
+
+	/* Check inserting into a plain variable, scalar and list args. */
+
+	a = {};
+	insert(&a, 0, 1);
+	unless (eq(a, {1})) puts("bad 3.1");
+	insert(&a, 0, {2});
+	unless (eq(a, {2,1})) puts("bad 3.2");
+	insert(&a, 0, 3, {4,5});
+	unless (eq(a, {3,4,5,2,1})) puts("bad 3.3");
+	insert(&a, 0, {5,6,7}, 8, {9,10});
+	unless (eq(a, {5,6,7,8,9,10,3,4,5,2,1})) puts("bad 3.4 ${a}");
+
+	/* Check with a struct member (deep dive), scalar and list args. */
+
+	st.a = {};
+	insert(&st.a, 0, 1);
+	unless (eq(st.a, {1})) puts("bad 4.1");
+	insert(&st.a, 0, {2});
+	unless (eq(st.a, {2,1})) puts("bad 4.2");
+	insert(&st.a, 0, 3, {4,5});
+	unless (eq(st.a, {3,4,5,2,1})) puts("bad 4.3");
+	insert(&st.a, 0, {5,6,7}, 8, {9,10});
+	unless (eq(st.a, {5,6,7,8,9,10,3,4,5,2,1})) puts("bad 4.4 ${a}");
 }
+builtin_11_5();
+} -output {}
+
+test builtin-11.6 {check unshift built-in} -body {
+#lang L
+void builtin_11_6()
+{
+	int	a[];
+	struct {
+		int	a[];
+	} st;
+
+	/* Check unshifting into a plain variable, scalar args. */
+
+	a = {};
+	unshift(&a, 0);
+	unless (eq(a, {0})) puts("bad 1.1");
+	unshift(&a, 1);
+	unless (eq(a, {1,0})) puts("bad 1.2");
+	unshift(&a, 2, 3);
+	unless (eq(a, {2,3,1,0})) puts("bad 1.3");
+	unshift(&a, 4, 5, 6);
+	unless (eq(a, {4,5,62,3,1,0})) puts("bad 1.4");
+
+	/* Check unshifting into a struct member (deep dive), scalar args. */
+
+	st.a = {};
+	unshift(&st.a, 1);
+	unless (eq(st.a, {1})) puts("bad 2.1");
+	unshift(&st.a, 2);
+	unless (eq(st.a, {2,1})) puts("bad 2.2");
+	unshift(&st.a, 3, 4);
+	unless (eq(st.a, {3,4,2,1})) puts("bad 2.3");
+	unshift(&st.a, 5, 6, 7);
+	unless (eq(st.a, {5,6,7,3,4,2,1})) puts("bad 2.4");
+	unshift(&st.a, 8);
+	unless (eq(st.a, {8,5,6,7,3,4,2,1})) puts("bad 2.5");
+	unshift(&st.a, 9);
+	unless (eq(st.a, {9,8,6,7,8,3,4,2,1})) puts("bad 2.6");
+
+	/* Check unshifting into a plain variable, scalar and list args. */
+
+	a = {};
+	unshift(&a, 1);
+	unless (eq(a, {1})) puts("bad 3.1");
+	unshift(&a, {2});
+	unless (eq(a, {2,1})) puts("bad 3.2");
+	unshift(&a, 3, {4,5});
+	unless (eq(a, {3,4,5,2,1})) puts("bad 3.3");
+	unshift(&a, {5,6,7}, 8, {9,10});
+	unless (eq(a, {5,6,7,8,9,10,3,4,5,2,1})) puts("bad 3.4 ${a}");
+
+	/* Check with a struct member (deep dive), scalar and list args. */
+
+	st.a = {};
+	unshift(&st.a, 1);
+	unless (eq(st.a, {1})) puts("bad 4.1");
+	unshift(&st.a, {2});
+	unless (eq(st.a, {2,1})) puts("bad 4.2");
+	unshift(&st.a, 3, {4,5});
+	unless (eq(st.a, {3,4,5,2,1})) puts("bad 4.3");
+	unshift(&st.a, {5,6,7}, 8, {9,10});
+	unless (eq(st.a, {5,6,7,8,9,10,3,4,5,2,1})) puts("bad 4.4 ${a}");
+}
+} -output {}
+
+
+test builtin-11.7 {check shift built-in} -body {
+#lang L
+void builtin_11_7()
+{
+	int	a[];
+	struct {
+		int	a[];
+	} st;
+
+	a = { 1,2,3,4,5 };
+	unless (shift(&a) == 1) puts("bad 1.1");
+	unless (eq(a, {2,3,4,5})) puts("bad 1.2");
+	unless (shift(&a) == 2) puts("bad 1.3");
+	unless (eq(a, {3,4,5})) puts("bad 1.4");
+	unless (shift(&a) == 3) puts("bad 1.5");
+	unless (eq(a, {4,5})) puts("bad 1.6");
+	unless (shift(&a) == 4) puts("bad 1.7");
+	unless (eq(a, {5})) puts("bad 1.8");
+	unless (shift(&a) == 5) puts("bad 1.9");
+	unless (eq(a, {})) puts("bad 1.10");
+	unless (defined(a)) puts("bad 1.11");
+	if (defined(shift(&a))) puts("bad 1.12");
+	unless (eq(a, {})) puts("bad 1.13");
+	unless (defined(a)) puts("bad 1.14");
+
+	st.a = { 1,2,3,4,5 };
+	unless (shift(&st.a) == 1) puts("bad 2.1");
+	unless (eq(st.a, {2,3,4,5})) puts("bad 2.2");
+	unless (shift(&st.a) == 2) puts("bad 2.3");
+	unless (eq(st.a, {3,4,5})) puts("bad 2.4");
+	unless (shift(&st.a) == 3) puts("bad 2.5");
+	unless (eq(st.a, {4,5})) puts("bad 2.6");
+	unless (shift(&st.a) == 4) puts("bad 2.7");
+	unless (eq(st.a, {5})) puts("bad 2.8");
+	unless (shift(&st.a) == 5) puts("bad 2.9");
+	unless (eq(st.a, {})) puts("bad 2.10");
+	unless (defined(st.a)) puts("bad 2.11");
+	if (defined(shift(&st.a))) puts("bad 2.12");
+	unless (eq(st.a, {})) puts("bad 2.13");
+	unless (defined(st.a)) puts("bad 2.14");
+}
+builtin_11_7();
+} -output {}
 
 test builtin-14 {check errors in push and pop built-ins} -body {
 #lang L
@@ -16579,6 +16792,108 @@ void builtin_14()
 .*13: L Error: arg to pop not an array reference.*
 .*14: L Error: incorrect # arguments to pop
 .*15: L Error: incorrect # arguments to pop
+}
+
+test builtin-14.2 {check errors in insert built-in} -body {
+#lang L
+int[] builtin_14_2_array() { return {1,2,3}; }
+void builtin_14_2()
+{
+	int	i, a[];
+	string	s;
+
+	/* The first arg has array type, but it's not an l-value. */
+	insert(&(builtin_14_2_array()), 0, 0);
+
+	insert(&3, 0, 0) + 1;	// 1st arg not an array reference
+	insert(&i, 0, 0) + 1;	// 1st arg not an array reference
+	insert(&s, 0, 0) + 1;	// 1st arg not an array reference
+	insert(&a, "s", 0) + 1;	// 2nd arg not an int
+	insert(&a, 1.0, 0) + 1;	// 2nd arg not an int
+	insert(&a, a, 0) + 1;	// 2nd arg not an int
+	insert(&a, &i, 0) + 1;	// 2nd arg not an int
+	insert() + 1;		// too few args
+	insert(&a, 0) + 1;	// too few args
+	/*
+	 * We add 1 above to test that the compiler does not assert
+	 * due to insert() not getting a type even though there is an
+	 * error.
+	 */
+}
+} -returnCodes {error} -match regexp -result {.*8: L Error: invalid l-value in insert
+.*10: L Error: first arg to insert not an array reference.*
+.*11: L Error: first arg to insert not an array reference.*
+.*12: L Error: first arg to insert not an array reference.*
+.*13: L Error: second arg to insert not an int
+.*14: L Error: second arg to insert not an int
+.*15: L Error: second arg to insert not an int
+.*16: L Error: second arg to insert not an int
+.*17: L Error: too few arguments to insert
+.*18: L Error: too few arguments to insert
+}
+
+test builtin-14_3 {check errors in unshift built-in} -body {
+#lang L
+int[] builtin_14_3_array() { return {1,2,3}; }
+void builtin_14_3()
+{
+	int	i, a[];
+	string	s;
+
+	/* The first arg has array type, but it's not an l-value. */
+	unshift(&(builtin_14_3_array()), 0);
+
+	unshift(&3, 0) + 1;	// 1st arg not an array reference
+	unshift(&i, 0) + 1;	// 1st arg not an array reference
+	unshift(&s, 0) + 1;	// 1st arg not an array reference
+	unshift(&a, "s") + 1;	// 2nd arg not an int
+	unshift(&a, 1.0) + 1;	// 2nd arg not an int
+	unshift(&a, &i) + 1;	// 2nd arg not an int
+	unshift() + 1;		// too few args
+	/*
+	 * We add 1 above to test that the compiler does not assert
+	 * due to pop() not getting a type even though there is an
+	 * error.
+	 */
+}
+} -returnCodes {error} -match regexp -result {.*8: L Error: invalid l-value in unshift
+.*10: L Error: first arg to unshift not an array reference.*
+.*11: L Error: first arg to unshift not an array reference.*
+.*12: L Error: first arg to unshift not an array reference.*
+.*13: L Error: arg #2 to unshift has type incompatible with array
+.*14: L Error: arg #2 to unshift has type incompatible with array
+.*15: L Error: arg #2 to unshift has type incompatible with array
+.*16: L Error: too few arguments to unshift
+}
+
+test builtin-14_4 {check errors in shift built-in} -body {
+#lang L
+int[] builtin_14_4_array() { return {1,2,3}; }
+void builtin_14_4()
+{
+	int	i;
+	string	s;
+
+	/* The first arg has array type, but it's not an l-value. */
+	shift(&(builtin_14_array()));
+
+	shift(&3) + 1;	// not an array reference
+	shift(&i) + 1;	// not an array reference
+	shift(&s) + 1;	// not an array reference
+	shift() + 1;	// bad # args
+	shift(1,2) + 1;	// bad # args
+	/*
+	 * We add 1 above to test that the compiler does not assert
+	 * due to pop() not getting a type even though there is an
+	 * error.
+	 */
+}
+} -returnCodes {error} -match regexp -result {.*8: L Error: invalid l-value in shift
+.*10: L Error: arg to shift not an array reference.*
+.*11: L Error: arg to shift not an array reference.*
+.*12: L Error: arg to shift not an array reference.*
+.*13: L Error: incorrect # arguments to shift
+.*14: L Error: incorrect # arguments to shift
 }
 
 test builtin-15 {check abs built-in} -body {

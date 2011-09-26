@@ -435,6 +435,10 @@ InstructionDesc const tclInstructionTable[] = {
     {"l-lindex-stk",	 2,    1,	  1,	{OPERAND_UINT1}},
 	/* push(listindex stktop opnd) except if opnd is <0 or
 	 * > # list elements then push the L undef object. */
+    {"l-list-insert",    9,    0,         3,    {OPERAND_LVT4, OPERAND_UINT4}},
+	/* Insert into list local var. Operands are local slot index,
+	 * flags, and list index to insert before (0 means prepend,
+	 * -1 means append). */
     {0}
 };
 

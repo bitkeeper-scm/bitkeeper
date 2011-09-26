@@ -803,6 +803,7 @@ Tcl_ListObjReplace(
 	    if (objc) {
 		Tcl_SetListObj(listPtr, objc, NULL);
 	    } else {
+		listPtr->undef = 0;
 		return TCL_OK;
 	    }
 	} else {
@@ -970,6 +971,7 @@ Tcl_ListObjReplace(
      */
 
     Tcl_InvalidateStringRep(listPtr);
+    listPtr->undef = 0;
     return TCL_OK;
 }
 

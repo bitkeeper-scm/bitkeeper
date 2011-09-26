@@ -273,8 +273,9 @@ typedef enum {
 	L_SPLIT_RE    = 0x00200000, // split on a regexp
 	L_SPLIT_STR   = 0x00400000, // split on a string
 	L_SPLIT_LIM   = 0x00800000, // enforce split limit
-	L_APPEND      = 0x01000000, // append to deep list obj
-	L_WAS_DUPD    = 0x02000000, // obj was dup'd to make an unshared copy
+	L_INSERT_ELT  = 0x01000000, // insert a single elt into a list
+	L_INSERT_LIST = 0x02000000, // insert a list into a list
+	L_WAS_DUPD    = 0x04000000, // obj was dup'd to make an unshared copy
 } Expr_f;
 
 struct Expr {
