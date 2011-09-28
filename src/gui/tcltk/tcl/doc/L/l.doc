@@ -151,7 +151,7 @@ L requires that they be the same "type", all interpolated ("") or
 all not interpolated ('') but the dot operator comes the rescue
 in this contrived example:
 
-    'Hi there. ${USER} = ' . "$USER";
+    'Hi there. ${USER} is ' . "${USER} today";
 
 =head1 NAME SCOPING
 
@@ -255,8 +255,8 @@ to get a character or range of characters, or to change a character
     s1[1] = "x";    // changes s1 to "hxllo"
     s1[END+1] = "there";    // changes s1 to "hxllothere"
 
-The pre-defined identifier C<END> is index of the last character,
-or -1 is the string is empty.  You always can write to one past the end
+The pre-defined identifier C<END> is the index of the last character,
+or is -1 if the string is empty.  You always can write to one past the end
 of a string to append to it, but writing beyond END+1 is an error.
 
 You delete a character within a string by indexing the string and
@@ -326,8 +326,8 @@ Arrays are zero-indexed.  Here's how you get at elements in an array:
     puts(animals[0]);              // prints "camel"
     puts(animals[1]);              // prints "llama"
 
-The pre-defined identifier C<END> is index of the last element
-of an array, unless the array is empty and then END is -1:
+The pre-defined identifier C<END> is the index of the last element
+of an array, or is -1 if the array is empty.
 
     puts(animals[END]);       // last element, prints "owl"
 
@@ -350,25 +350,45 @@ In this last example where END is used, you must be careful, because if
 the array is empty, END will be -1, and an array slice where the
 second index is less than the first causes a run-time error.
 
-You can add on to the end of an array no matter how many elements
-it already has:
+You can add and remove from an array with C<push> and C<pop>,
+C<unshift> and C<shift>, and C<insert>.
+The C<push> and C<pop> functions add and remove from the end:
 
-    push(&animals, "tiger");
-    push(&animals, "lion", "bear", "badger");
+    string birds[], next;
 
-The & means that animals is passed by reference, because it will
+    push(&birds, "robin");
+    push(&birds, "dove", "cardinal", "bluejay");
+    next = pop(&birds);   // next gets "bluejay"
+    // birds is now { "robin", "dove", "cardinal" }
+
+The & means that birds is passed by reference, because it will
 be changed.  This is discussed more later.
 
 Another way to append:
 
-    animals[END+1] = "tiger";
+    birds[END+1] = "towhee";
 
-You can remove an element from the end of an array with C<pop>:
+The C<unshift> and C<shift> functions are similar but they add
+and remove from the beginning of the array.
 
-    string birds[] = { "robin", "dove", "cardinal" };
-    string next = pop(&birds);   // next gets "cardinal"
+You can insert anywhere in an array with C<insert>:
 
-Or you can remove from anywhere in an array with C<undef>:
+    insert(&birds, 2, "crow");  // insert crow before birds[2]
+    insert(&birds, 3, "hawk", "eagle");
+
+In these examples we inserted one or more single elements but
+whereever you can put an element you also can splice in a list:
+
+    string new_birds[] = { "chickadee", "turkey" };
+    push(&birds, new_birds);  // appends chickadee and turkey
+
+The variable is not required; the constant could have been passed instead.
+There is an ambiguity, resolved by the type of the first argument, as to
+whether it is two strings being pushed as two new entries in the array, or if
+it is a single item being pushed.  You have to know the type of the 
+first argument to know which is which.
+
+You can remove from anywhere in an array with C<undef>:
 
     string dev_team[] = { "larry", "curly", "mo" };
     undef(dev_team[0]);  // delete "larry" from dev_team
@@ -709,10 +729,10 @@ If main() is present, it is called after all of the top-level statements
 have executed.  The main() function may defined in any of the following
 ways:
 
-   void main() {}
-   void main(string argv[]) {}
-   void main(int argc, string argv[]) {}
-   void main(int argc, string argv[], string env{string}) {}
+   void|int main() {}
+   void|int main(string argv[]) {}
+   void|int main(int argc, string argv[]) {}
+   void|int main(int argc, string argv[], string env{string}) {}
 
 The C<argv> array is populated from the script name and any arguments
 that appear after the name on the L command line.
@@ -728,6 +748,10 @@ C<putenv> library function.
 
 Only a C<main> written in L is automatically called.
 You can write a C<main> in Tcl but L will not call it automatically.
+
+If C<main> is declared to have return type C<int> and it returns
+a non-zero value, L will exit with an exit status equal to
+the return value.
 
 =head2 Function Pointers
 
@@ -1705,6 +1729,16 @@ contains the file name, line number, and currently executing function
 name.
 Typically used for debugging.
 
+=proto void insert(type &array[], int index, type element1 | type elements1[], ...)
+
+Insert one or more elements into C<array> before the element specified
+by C<index>.
+If C<index> is 0, the elements are inserted at the beginning of the
+array; this is what C<unshift()> does.
+If C<index> is -1 or larger than or equal to the number of elements in
+the array, the elements are inserted at the end; this is what C<push> does.
+You can insert single elements or arrays of elements.
+
 =proto int isdir(string path)
 
 Return 1 if the given path exists and is a directory, else return 0.
@@ -1831,6 +1865,8 @@ Return undef if the array is already empty.
 
 =proto FILE popen(string cmd, string mode)
 
+=proto FILE popen(string cmd, string mode, void &stderr_callback(string cmd, FILE f))
+
 Open a pipe to the command C<cmd>.
 The command string undergoes bash-style quoting instead of Tcl quoting.
 The returned FILE handle may be
@@ -1840,18 +1876,38 @@ pipe, depending on the value of C<mode>.  If write-only access is used
 current standard output unless overridden by the command.  If
 read-only access is used ("r"), standard input for the pipeline is
 taken from the current standard input unless overridden by the
-command.  Unless re-directed by the command, any stderr output is
-passed through to the calling script's stderr and is not considered an
-error.  Return the FILE handle on success, or undef on error.
+command.
+
+The optional third argument is a callback function that is
+invoked by Tcl's event loop when the command's stderr pipe has data
+available to be read.
+The second argument of the callback is a non-blocking FILE for the
+read end of this pipe.
+Care must be taken to ensure that the event loop is run often enough
+for the callback to reap data from the pipe often enough to avoid deadlock.
+In console apps, this may mean calling Tcl's C<update()> function.
+The pclose() function also invokes the callback, so it is guaranteed to
+be called at least once.
+
+If the third argument to C<popen> is C<undef>, the command's stderr
+output is ignored.  Otherwise, unless re-directed by the command, any
+stderr output is passed through to the calling script's stderr and is
+not considered an error.
+
+If Tk is being used, there is a default callback that pops up a window
+with any output the command writes to stderr.
+
+Return the FILE handle on success, or undef on error.
 
 =proto void printf(string fmt, ...args)
 
 Format arguments and print to stdout, as in printf(3).
 Return 0 on success, -1 on error.
 
-=proto void push(type &array[], type element1, ...)
+=proto void push(type &array[], type element1 | type elements1[], ...)
 
 Push one or more elements onto the end of C<array>.
+You can insert single elements or arrays of elements.
 
 =proto string putenv(string var_fmt, ...args)
 
@@ -1885,6 +1941,11 @@ string of the package loaded on success, and undef on error.
 
 Delete the given directory.
 Return 0 on success, -1 on error.
+
+=proto type shift(type &array[])
+
+Remove and return the element at the beginning of C<array>.
+Return undef if the array is already empty.
 
 =proto int size(string path)
 
@@ -2148,6 +2209,11 @@ freed (unless they were shared with some other variable).
 
 Delete the named file.
 Return 0 on success, -1 on failure.
+
+=proto void unshift(type &array[], type element1 | type elements1[], ...)
+
+Add one or more elements onto the beginning of C<array>.
+You can insert single elements or arrays of elements.
 
 =proto int waitpid(int pid, STATUS &status, int nohang)
 

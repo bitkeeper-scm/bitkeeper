@@ -35,6 +35,7 @@ typedef struct {
 	int	beg;	// source offset of first char
 	int	end;	// source offset of last char + 1
 	int	line;	// line # of first char adjusted for any #include's
+	char	*file;	// file name
 } YYLTYPE;
 #define YYLTYPE YYLTYPE
 
@@ -155,7 +156,6 @@ struct Type {
 struct Ast {
 	Node_k	type;
 	Ast	*next;	// links all nodes in an AST
-	char	*file;
 	YYLTYPE	loc;
 };
 
@@ -273,8 +273,9 @@ typedef enum {
 	L_SPLIT_RE    = 0x00200000, // split on a regexp
 	L_SPLIT_STR   = 0x00400000, // split on a string
 	L_SPLIT_LIM   = 0x00800000, // enforce split limit
-	L_APPEND      = 0x01000000, // append to deep list obj
-	L_WAS_DUPD    = 0x02000000, // obj was dup'd to make an unshared copy
+	L_INSERT_ELT  = 0x01000000, // insert a single elt into a list
+	L_INSERT_LIST = 0x02000000, // insert a list into a list
+	L_WAS_DUPD    = 0x04000000, // obj was dup'd to make an unshared copy
 } Expr_f;
 
 struct Expr {
@@ -399,7 +400,7 @@ typedef enum {
 	SCOPE_CLASS		= 0x00000008, //   visible in a class
 	DECL_GLOBAL_VAR		= 0x00000010, // the kind of declaration
 	DECL_LOCAL_VAR		= 0x00000020,
-	DECL_TEMP		= 0x00000040, //   temp variable
+	DECL_ERR		= 0x00000040, //   added on undeclared var
 	DECL_FN			= 0x00000080, //   regular function
 	DECL_CLASS_VAR		= 0x00000100, //   class variable
 	DECL_CLASS_INST_VAR	= 0x00000200, //   class instance variable

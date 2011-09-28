@@ -173,7 +173,7 @@ $(LIBPCRE): pcre/Makefile Makefile
 pcre/Makefile: pcre/configure Makefile
 	$(if $(Q), @echo Configuring PCRE,)
 	$(Q)(cd pcre && \
-	    ./configure $(QUIET) --disable-cpp --disable-shared  --prefix=)
+	    ./configure $(QUIET) --disable-cpp --disable-shared --enable-utf8=yes --prefix=)
 
 pcre/configure: Makefile pcre/ChangeLog
 	$(Q)(cd pcre && bk -Ur get -qS)

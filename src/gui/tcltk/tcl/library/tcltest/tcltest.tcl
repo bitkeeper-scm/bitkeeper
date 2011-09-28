@@ -2676,6 +2676,7 @@ proc tcltest::GetMatchingDirectories {rootdir} {
 #
 # Arguments:
 #	shell being tested
+#	arguments to pass to shell
 #
 # Results:
 #	None.
@@ -2683,7 +2684,7 @@ proc tcltest::GetMatchingDirectories {rootdir} {
 # Side effects:
 #	None.
 
-proc tcltest::runAllTests { {shell ""} } {
+proc tcltest::runAllTests { {shell ""} {shellArgs ""} } {
     variable testSingleFile
     variable numTestFiles
     variable numTests
@@ -2755,7 +2756,7 @@ proc tcltest::runAllTests { {shell ""} } {
 		if {[string equal $opt -outfile]} {continue}
 		lappend childargv $opt [Configure $opt]
 	    }
-	    set cmd [linsert $childargv 0 | $shell $file]
+	    set cmd [linsert $childargv 0 | $shell {*}$shellArgs $file]
 	    if {[catch {
 		incr numTestFiles
 		set pipeFd [open $cmd "r"]

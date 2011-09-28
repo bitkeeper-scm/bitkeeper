@@ -10,11 +10,11 @@ ast_init(void *node, Node_k type, YYLTYPE beg, YYLTYPE end)
 {
 	Ast	*ast = (Ast *)node;
 
-	ast->file     = L->file;
 	ast->type     = type;
 	ast->loc.beg  = beg.beg;
 	ast->loc.end  = end.end;
 	ast->loc.line = beg.line;
+	ast->loc.file = beg.file;
 	ast->next     = L->ast_list;
 	L->ast_list   = (void *)ast;
 }
