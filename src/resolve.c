@@ -3035,13 +3035,25 @@ resolve_cleanup(opts *opts, int what)
 	if (opts->progress) progress_restoreStderr();
 
 	/*
-	 * If pull requested --auto-only, then we shouldn't
-	 * automatically abort on a failure.  Resolve will be rerun
-	 * interactively and the user will be give a chance to fix the
-	 * problem.
+	 * When resolve succeeds (defined by pass4_apply() running
+	 * to successful completion), we'll be called with the
+	 * CLEAN_OK bit set and you can ignore the rest of this
+	 * comment.
+	 *
+	 * In general, on failure, this function is called
+	 * with what == 0.
+	 *
+	 * However, if we have a pass2 failure, we'll get called
+	 * with CLEAN_ABORT|CLEAN_PENDING.
+	 *
+	 * Now, if pull requested --auto-only, then we shouldn't
+	 * automatically abort.  Resolve will be rerun interactively
+	 * and the user will be give a chance to fix the problem.
 	 */
-	if (!opts->batch && opts->autoOnly) {
-		what &= ~(CLEAN_ABORT|CLEAN_PENDING);
+	unless (what & CLEAN_OK) {
+		if (!opts->batch && opts->autoOnly) {
+			what &= ~(CLEAN_ABORT|CLEAN_PENDING);
+		}
 	}
 
 	unless (exists(ROOT2RESYNC)) chdir(RESYNC2ROOT);
