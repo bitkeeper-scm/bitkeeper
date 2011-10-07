@@ -173,7 +173,6 @@ proc app_init {} \
 	option add *Text*background       $gc(setup.textBG)      startupFile
 	option add *Text*foreground       $gc(setup.textFG)      startupFile
 	option add *Text*font             $gc(setup.fixedFont)   startupFile
-	option add *Scrollbar.width       $gc(setup.scrollWidth) startupFile
 
 	# These are base-level defaults. Some will get overridden.
 	# All of these will end up in the config file.

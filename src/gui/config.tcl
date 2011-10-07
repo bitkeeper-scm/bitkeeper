@@ -1,3 +1,8 @@
+proc gc {var} \
+{
+	return $::gc($var)
+}
+
 proc getConfig {prog} \
 {
 	global gc app env
@@ -18,7 +23,7 @@ proc getConfig {prog} \
 
 	# colorscheme
 
-	set gc(classicColors) 0		;# default to the new color scheme.
+	set _d(classicColors) 1		;# default to the old color scheme.
 
 	set _d(tabwidth) 8		;# default width of a tab
 	set _d(backup) ""		;# Make backups in ciedit: XXX NOTDOC 
@@ -57,7 +62,13 @@ proc getConfig {prog} \
 	set _d(highlight) #fffd56	;# subline highlight color in diffs
 	set _d(topMargin) 2		;# top margin for diffs in a diff view
 	set _d(diffColor) #ededed	;# color of diff lines
-	set _d(activeDiffColor) #2fedad ;# active diff color
+	set _d(activeDiffColor) $BKGREEN1 ;# active diff color
+	set _d(activeOldColor) $_d(activeDiffColor)
+	set _d(activeNewColor) $_d(activeDiffColor)
+	set _d(newFont) bkFixedFont
+	set _d(oldFont) bkFixedFont
+	set _d(activeOldFont) bkFixedFont
+	set _d(activeNewFont) bkFixedFont
 
 	set _d(bug.popupBG) $BLUE
 	set _d(support.popupBG) $BLUE
@@ -90,10 +101,6 @@ proc getConfig {prog} \
 	set _d(diff.searchColor) $LIGHTBLUE	;# highlight for search matches
 
 	set _d(fm.redoBG) $PINK
-	set _d(fm.activeOldFont) $_d(fixedBoldFont)
-	set _d(fm.activeNewFont) $_d(fixedBoldFont)
-	set _d(fm.activeLeftColor) $ORANGE	;# Color of active left region
-	set _d(fm.activeRightColor) $YELLOW	;# Color of active right region
 	set _d(fm3.conflictBG) gray		;# Color for conflict message
 	set _d(fm3.unmergeBG) gray	;# Color for unmerged message
 	set _d(fm3.annotate) 1		;# show annotations
@@ -163,6 +170,7 @@ proc getConfig {prog} \
 	set _d(rev.textHeight) 30	  ;# height of lower window
 	set _d(rev.showHistory) "1M"	  ;# History to show in graph on start
 	set _d(rev.showRevs) 250	  ;# Num of revs to show in graph 
+	set _d(rev.showCsetRevs) 50	  ;# Num of revs to show for a cset
 	# XXX: not documented yet
 	set _d(rev.savehistory) 5	  ;# Max # of files to save in file list
 	set _d(rev.hlineColor) $WHITE	;# Color of highlight lines XXX:NOTDOC
@@ -257,27 +265,76 @@ proc getConfig {prog} \
 	set gc(bkdir) [file dirname $rcfile]
 	if {[file readable $rcfile]} { source $rcfile }
 
-	if {$gc(classicColors)} {
+	if {[info exists gc(classicColors)]} {
+		set _d(classicColors) $gc(classicColors)
+	}
+	set _d($app.classicColors) $_d(classicColors)
+	foreach p [list "" "$prog."] {
+		if {[info exists gc(${p}classicColors)]} {
+			set _d(${p}classicColors) $gc(${p}classicColors)
+		}
+	}
+
+	if {[string is true -strict $_d($app.classicColors)]} {
 		# set "classic" color scheme. Setting it this way
 		# still lets users override individual colors by
 		# setting both gc(classicColors) _and_ the color they
 		# want to change
-		set _d(newColor) $BKBLUE2
+		set _d(oldColor) #C8A0FF
+		set _d(newColor) #BDEDF5
+		set _d(activeOldColor) $_d(oldColor)
+		set _d(activeNewColor) $_d(newColor)
+		set _d(activeOldFont) bkFixedBoldFont
+		set _d(activeNewFont) bkFixedBoldFont
 		set _d(noticeColor) $BKBLUE1
-		set _d(oldColor) $BKVIOLET1
 		set _d(searchColor) $YELLOW
 		set _d(infoColor) $POWDERBLUE
 		set _d(warnColor) $YELLOW
-		set _d(highlight) $YELLOW
+		set _d(highlight) $ORANGE
 		set _d(diffColor) $GRAY88
 		set _d(activeDiffColor) $BKGREEN1
 		set _d(fm3.conflictBG) $RED
 		set _d(fm3.unmergeBG) $LIGHTYELLOW
-		set _d(fm3.charColor) $ORANGE
+		set _d(fm3.charColor) $_d(highlight)
 		set _d(fm3.mergeColor) $LIGHTBLUE
 		set _d(fm3.handColor) $LIGHTYELLOW
 		set _d(fm3.sameColor) $BKTURQUOISE1
 		set _d(newdifftool.highlight) $YELLOW
+	}
+
+	## If the user specified showRevs but not showCsetRevs, use showRevs
+	## for both values for backward compatibility.
+	foreach p [list "" "$prog."] {
+		if {[info exists gc(${p}showRevs)]
+		    && ![info exists gc(${p}showCsetRevs)]} {
+			set _d(${p}showCsetRevs) $gc(${p}showRevs)
+		}
+	}
+
+	if {$prog eq "fm3"} {
+		## For backward compatibility, if the user has specified
+		## charColor in fm3tool, we'll use that as our subline
+		## highlight color if they haven't also specified a
+		## highlight color to use.
+		foreach p [list "" "$prog."] {
+			if {[info exists gc(${p}charColor)]
+			    && ![info exists gc(${p}highlight)]} {
+				set _d(${p}highlight) $gc(${p}charColor)
+			}
+		}
+	}
+
+	## If the user specified activeDiffColor but didn't give us anything
+	## for activeNewColor or activeOldColor, fill in the activeDiffColor
+	## for those values.
+	foreach p [list "" "$prog."] {
+		if {![info exists gc(${p}activeDiffColor)]} { continue }
+		if {![info exists gc(${p}activeOldColor)]} {
+			set _d(${p}activeOldColor) $gc(${p}activeDiffColor)
+		}
+		if {![info exists gc(${p}activeNewColor)]} {
+			set _d(${p}activeNewColor) $gc(${p}activeDiffColor)
+		}
 	}
 
 	# Pass one just copies all the defaults into gc unless they are set
@@ -299,17 +356,6 @@ proc getConfig {prog} \
 			}
 		}
     	}
-
-        # final pass to exclude some options (for now just on windows)
-        # can be defeated by setting gc(app.useFullGc)
-        if {![info exists gc($app.useFullGC)]} {
-                if {[tk windowingsystem] eq "win32" ||
-		    [tk windowingsystem] eq "aqua"} {
-                        scrollbar ._dummy_
-                        set width [._dummy_ cget -width]
-                        set gc($app.scrollWidth) $width
-                }
-        }
 
 	if {![info exists gc(rev.graphFont)]} {
 		if {$gc(fixedFont) eq "bkFixedFont"} {
@@ -357,11 +403,22 @@ proc initFonts {app var} \
 	set fixed     [font configure TkFixedFont]
 	set fixedBold [dict replace $fixed -weight bold]
 
-	font create bkBoldFont {*}$bold
-	font create bkButtonFont {*}$font
-	font create bkNoticeFont {*}$bold
-	font create bkFixedFont {*}$fixed
-	font create bkFixedBoldFont {*}$fixedBold
+	set fonts [font names]
+	if {"bkBoldFont" ni $fonts} {
+		font create bkBoldFont {*}$bold
+	}
+	if {"bkButtonFont" ni $fonts} {
+		font create bkButtonFont {*}$font
+	}
+	if {"bkNoticeFont" ni $fonts} {
+		font create bkNoticeFont {*}$bold
+	}
+	if {"bkFixedFont" ni $fonts} {
+		font create bkFixedFont {*}$fixed
+	}
+	if {"bkFixedBoldFont" ni $fonts} {
+		font create bkFixedBoldFont {*}$fixedBold
+	}
 
 	set _d(default.boldFont) $bold
 	set _d(default.buttonFont) $font

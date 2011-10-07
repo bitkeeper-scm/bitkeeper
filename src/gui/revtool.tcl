@@ -1005,7 +1005,11 @@ proc listRevs {r file} \
 	} else {
 		set opt "-T"
 	}
-	set nopt " -n$gc(rev.showRevs)"
+	if {[file tail $file] eq "ChangeSet"} {
+		set nopt " -n$gc(rev.showCsetRevs)"
+	} else {
+		set nopt " -n$gc(rev.showRevs)"
+	}
 	if {[regexp -- {^-[cn]} $r] || [regexp -- {^-R} $r]} {
 		set nopt ""
 	}
@@ -1524,8 +1528,8 @@ proc displayDiff {rev1 rev2} \
 	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 	$w(aptext) insert end "- $file version $rev1\n"
 	$w(aptext) insert end "+ $file version $rev2\n\n"
-	$w(aptext) tag add "oldTag" 1.0 "1.0 lineend + 1 char"
-	$w(aptext) tag add "newTag" 2.0 "2.0 lineend + 1 char"
+	$w(aptext) tag add "oldDiff" 1.0 "1.0 lineend + 1 char"
+	$w(aptext) tag add "newDiff" 2.0 "2.0 lineend + 1 char"
 	diffs $diffs $l
 	$w(aptext) configure -state disabled
 	searchreset
@@ -1766,11 +1770,11 @@ proc diffs {diffs l} \
 		incr l
 		if {[regexp $lexp $str]} {
 			$w(aptext) tag \
-			    add "newTag" $l.0 "$l.0 lineend + 1 char"
+			    add "newDiff" $l.0 "$l.0 lineend + 1 char"
 		}
 		if {[regexp $rexp $str]} {
 			$w(aptext) tag \
-			    add "oldTag" $l.0 "$l.0 lineend + 1 char"
+			    add "oldDiff" $l.0 "$l.0 lineend + 1 char"
 		}
 		set line $str
 	}
@@ -2111,11 +2115,7 @@ proc widgets {} \
 		bind $w(aptext) <Command-1> {selectTag %W %x %y "B3"; break}
 	}
 
-	# highlighting.
-	$w(aptext) tag configure "newTag" -background $gc(rev.newColor)
-	$w(aptext) tag configure "oldTag" -background $gc(rev.oldColor)
-	$w(aptext) tag configure "select" -background $gc(rev.selectColor)
-	$w(aptext) tag configure "highlight" -background $gc(rev.highlight)
+	configureDiffWidget $app $w(aptext)
 
 	bindtags $w(aptext) {Bk .p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}

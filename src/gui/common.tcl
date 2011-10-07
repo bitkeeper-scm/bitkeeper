@@ -1140,4 +1140,50 @@ idx2line(string idx)
 {
 	return ((int)split(idx, ".")[0]);
 }
+
+void
+configureDiffWidget(string app, widget w, ...args)
+{
+	// Old diff tag.
+	Text_tagConfigure(w, "oldDiff",
+	    font: gc("${app}.oldFont"),
+	    background: gc("${app}.oldColor"));
+
+	// New diff tag.
+	Text_tagConfigure(w, "newDiff",
+	    font: gc("${app}.newFont"),
+	    background: gc("${app}.newColor"));
+
+	if (length(args)) {
+		string	oldOrNew = args[0];
+
+		// Standard diff tag.
+		Text_tagConfigure(w, "diff",
+		    font: gc("${app}.${oldOrNew}Font"),
+		    background: gc("${app}.${oldOrNew}Color"));
+
+		// Active diff tag.
+		oldOrNew[0] = toupper(oldOrNew[0]);
+		Text_tagConfigure(w, "d",
+		    font: gc("${app}.active${oldOrNew}Font"),
+		    background: gc("${app}.active${oldOrNew}Color"));
+	}
+
+	// Highlighting tags.
+	Text_tagConfigure(w, "select", background: gc("${app}.selectColor"));
+	Text_tagConfigure(w, "highlight", background: gc("${app}.highlight"));
+
+	// Message tags.
+	Text_tagConfigure(w, "warning", background: gc("${app}.warnColor"));
+	Text_tagConfigure(w, "notice", background: gc("${app}.noticeColor"));
+
+	// Various other diff tags.
+	Text_tagConfigure(w, "empty", background: "black");
+	Text_tagConfigure(w, "same", background: "white");
+	Text_tagConfigure(w, "changed", background: "gray");
+	Text_tagConfigure(w, "minus", background: "white");
+	Text_tagConfigure(w, "plus", background: "white");
+
+	Text_tagRaise(w, "highlight");
+}
 #lang tcl

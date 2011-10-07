@@ -21,12 +21,6 @@ int	_bk_search_case = 0;
 int	_bk_search_highlight = 0;
 
 string
-gc(string opt)
-{
-	return(::set("::gc(${opt})"));
-}
-
-string
 bgExecInfo(string opt)
 {
 	return(::set("::bgExec(${opt})"));

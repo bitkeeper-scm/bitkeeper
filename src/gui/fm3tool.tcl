@@ -385,8 +385,8 @@ proc createDiffWidgets {w} \
 	    .diffs.left  tag configure space -background $gc($app.spaceColor)
 	    .diffs.right tag configure space -background $gc($app.spaceColor)
 
-	    .diffs.left  tag configure reverse -background $gc($app.charColor)
-	    .diffs.right tag configure reverse -background $gc($app.charColor)
+	    .diffs.left  tag configure reverse -background $gc($app.highlight)
+	    .diffs.right tag configure reverse -background $gc($app.highlight)
 
 	    .diffs.left  tag configure hand -background $gc($app.handColor)
 	    .diffs.right tag configure hand -background $gc($app.handColor)
@@ -1591,7 +1591,7 @@ proc widgets {} \
 	.merge.menu.t tag configure diff -background $gc($app.newColor)
 	.merge.menu.t tag configure gca -background $gc($app.oldColor)
 	.merge.menu.t tag configure un -background $gc($app.sameColor)
-	.merge.menu.t tag configure reverse -background $gc($app.charColor)
+	.merge.menu.t tag configure reverse -background $gc($app.highlight)
 	.merge.menu.t tag configure hand -background $gc($app.handColor)
 
 	foreach w {.diffs.left .diffs.right} {

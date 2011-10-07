@@ -281,14 +281,8 @@ proc highlightDiffs {} \
 		.diffs.right tag add diff $Diff $End
 		highlightSideBySide .diffs.left .diffs.right $Diff $End 0
 	}
-	.diffs.left  tag configure d -background $gc(fm.activeDiffColor)
-	.diffs.right tag configure d -background $gc(fm.activeDiffColor)
-	.diffs.left  tag configure diff -background $gc(fm.diffColor)
-	.diffs.right tag configure diff -background $gc(fm.diffColor)
-	.diffs.left  tag configure highlight -background $gc(fm.highlight)
-	.diffs.right tag configure highlight -background $gc(fm.highlight)
-	.diffs.left  tag raise highlight
-	.diffs.right tag raise highlight
+	configureDiffWidget $app .diffs.left  old
+	configureDiffWidget $app .diffs.right new
 }
 
 # overrides 'dot' from difflib.tcl

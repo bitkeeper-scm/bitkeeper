@@ -826,16 +826,7 @@ gui()
 	    background: gc("ci.textBG"), foreground: gc("ci.textFG"),
 	    width: 81, height: gc("ci.diffHeight"), state: "disabled");
 	ScrolledWindow_setwidget(self.w_lowerF, self.w_diffs);
-	Text_tag(self.w_diffs, "configure", "newTag",
-	    background: gc("ci.newColor"));
-	Text_tag(self.w_diffs, "configure", "oldTag",
-	    background: gc("ci.oldColor"));
-	Text_tag(self.w_diffs, "configure", "warning",
-	    background: gc("ci.warnColor"));
-	Text_tag(self.w_diffs, "configure", "notice",
-	    background: gc("ci.noticeColor"));
-	Text_tagConfigure(self.w_diffs, "highlight",
-	    background: gc("ci.highlight"));
+	configureDiffWidget("ci", self.w_diffs);
 
 	if (gc("aqua")) {
 		StatusBar(self.w_statusF, showresize: 0);
@@ -1767,9 +1758,9 @@ showFile(sfile sf)
 		c = line[0];
 		tag = "";
 		if (c eq "+") {
-			tag = "newTag";
+			tag = "newDiff";
 		} else if (c eq "-") {
-			tag = "oldTag";
+			tag = "oldDiff";
 		}
 		Text_insert(self.w_diffs, "end", "${line}\n", tag);
 	}

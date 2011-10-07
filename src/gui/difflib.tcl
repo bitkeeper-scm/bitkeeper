@@ -69,20 +69,8 @@ proc createDiffWidgets {w} \
 	    attachScrollbar .diffs.xscroll .diffs.left .diffs.right
 	    attachScrollbar .diffs.yscroll .diffs.left .diffs.right
 
-	    .diffs.left  tag configure diff -background $gc($app.diffColor)
-	    .diffs.right tag configure diff -background $gc($app.diffColor)
-	    .diffs.left  tag configure d -background $gc($app.activeDiffColor)
-	    .diffs.right tag configure d -background $gc($app.activeDiffColor)
-	    .diffs.left  tag configure highlight -background $gc($app.highlight)
-	    .diffs.right tag configure highlight -background $gc($app.highlight)
-	    .diffs.right tag configure empty -background black
-	    .diffs.left  tag configure empty -background black
-	    .diffs.left  tag configure same -background white
-	    .diffs.right tag configure same -background white
-	    .diffs.left  tag configure changed -background gray
-	    .diffs.right tag configure changed -background gray
-	    .diffs.left  tag configure minus -background white
-	    .diffs.left  tag configure plus -background white
+	    configureDiffWidget $app .diffs.left  old
+	    configureDiffWidget $app .diffs.right new
 
 	    bind .diffs <Configure> { computeHeight "diffs" }
 }
@@ -278,9 +266,9 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	set fnames(left) "$lfile"
 	set fnames(right) "$rfile"
 
-	.diffs.left tag configure "select" -background $gc($app.infoColor) \
+	.diffs.left tag configure "select" -background $gc($app.oldColor) \
 	    -borderwidth 1 -relief solid -lmargin1 5 -spacing1 2 -spacing3 2
-	.diffs.right tag configure "select" -background $gc($app.infoColor) \
+	.diffs.right tag configure "select" -background $gc($app.newColor) \
 	    -borderwidth 1 -relief solid -lmargin1 5 -spacing1 2 -spacing3 2
 	# 1.0 files do not have a mode line. 
 	# XXX: Ask lm if x.0 files have mode lines...

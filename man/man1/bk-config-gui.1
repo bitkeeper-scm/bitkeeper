@@ -126,6 +126,32 @@ Default:\ #EDEDED
 Color of the selected diff block in a diff view.
 Default:\ #2FEDAD
 .tp
+.B oldColor
+Color of the older revision or diff.
+.br
+Overrides diffColor.
+Default:\ #B48CFF
+.tp
+.B newColor
+Color of the newer revision or diff.
+.br
+Overrides diffColor.
+Default:\ #A8D8E0
+.tp
+.B activeOldColor
+Color of the older selected diff block in a diff view.
+Overrides activeDiffColor.
+Default:\ #2FEDAD
+.tp
+.B activeNewColor
+Color of the newer selected diff block in a diff view.
+Overrides activeDiffColor.
+Default:\ #2FEDAD
+.tp
+.B highlight
+Color of the subline highlighting for changed lines in a diff.
+Default:\ #FFA500
+.tp
 .B noticeColor
 Color for warnings and messages.
 Default:\ #DBDFE6
@@ -311,10 +337,6 @@ Highlight color for search matches.
 Default:\ #ADD8E6
 .SS FM3TOOL CONFIGURATION
 .TP \fBfm3.toggleAnnotations\fPn
-.B fm3.charColor
-Color used to highlight portions of a line which has changed.
-Default:\ #FFA500
-.tp
 .B fm3.comments
 Boolean which controls the display of the comments window at the top.
 Default:\ 1 (on)

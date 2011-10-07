@@ -960,12 +960,12 @@ proc widgets {} \
 		-state disabled -wrap none -font $gc(rename.fixedFont) \
 		-xscrollcommand { .files.xsl set } \
 		-yscrollcommand { .files.ysl set }
-	    scrollbar .files.xsl -wid $gc(rename.scrollWidth) \
+	    scrollbar .files.xsl \
 		-troughcolor $gc(rename.troughColor) \
 		-background $gc(rename.scrollColor) \
 		-orient horizontal \
 		-command ".files.l xview"
-	    scrollbar .files.ysl -wid $gc(rename.scrollWidth) \
+	    scrollbar .files.ysl \
 		-troughcolor $gc(rename.troughColor) \
 		-background $gc(rename.scrollColor) \
 		-orient vertical \
@@ -975,12 +975,12 @@ proc widgets {} \
 		-state disabled -wrap none -font $gc(rename.fixedFont) \
 		-xscrollcommand { .files.xsr set } \
 		-yscrollcommand { .files.ysr set }
-	    scrollbar .files.xsr -wid $gc(rename.scrollWidth) \
+	    scrollbar .files.xsr \
 		-troughcolor $gc(rename.troughColor) \
 		-background $gc(rename.scrollColor) \
 		-orient horizontal \
 		-command ".files.r xview"
-	    scrollbar .files.ysr -wid $gc(rename.scrollWidth) \
+	    scrollbar .files.ysr \
 		-troughcolor $gc(rename.troughColor) \
 		-background $gc(rename.scrollColor) \
 		-orient vertical \
@@ -990,12 +990,12 @@ proc widgets {} \
 		-state disabled -wrap none -font $gc(rename.fixedFont) \
 		-xscrollcommand { .files.xssh set } \
 		-yscrollcommand { .files.yssh set }
-	    scrollbar .files.xssh -wid $gc(rename.scrollWidth) \
+	    scrollbar .files.xssh \
 		-troughcolor $gc(rename.troughColor) \
 		-background $gc(rename.scrollColor) \
 		-orient horizontal \
 		-command ".files.sh xview"
-	    scrollbar .files.yssh -wid $gc(rename.scrollWidth) \
+	    scrollbar .files.yssh \
 		-troughcolor $gc(rename.troughColor) \
 		-background $gc(rename.scrollColor) \
 		-orient vertical \
@@ -1038,11 +1038,11 @@ proc widgets {} \
 		-bg $gc(rename.textBG) -fg $gc(rename.textFG) \
 		-height $gc(rename.diffHeight) \
 		-state disabled -wrap none -font $gc(rename.fixedFont)
-	    scrollbar .diffs.xscroll -wid $gc(rename.scrollWidth) \
+	    scrollbar .diffs.xscroll \
 		-troughcolor $gc(rename.troughColor) \
 		-background $gc(rename.scrollColor) \
 		-orient horizontal -command { xscroll }
-	    scrollbar .diffs.yscroll -wid $gc(rename.scrollWidth) \
+	    scrollbar .diffs.yscroll \
 		-troughcolor $gc(rename.troughColor) \
 		-background $gc(rename.scrollColor) \
 		-orient vertical -command { yscroll }
