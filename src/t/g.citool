@@ -702,6 +702,26 @@ EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
 
+echo $N Test that rescan writes comments to disk ....................$NL
+cd "$HERE/project"
+bk unedit $Q src/file1
+bk cfile rm src/file1
+bk edit $Q src/file1
+echo FOO > src/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "src/file1"
+	test_inputComment "src/file1 comment"
+	test_buttonPress "Rescan"
+	test_selectFile "src/file1"
+	if {[test_getComments] ne "src/file1 comment"} {
+		puts "Comments were not written to disk."
+		exit 1
+	}
+	test_buttonPress "Quit"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK
+
 echo $N Test that cut/paste does not leave an empty comment .........$NL
 cd "$HERE/project"
 # clean up from previous tests

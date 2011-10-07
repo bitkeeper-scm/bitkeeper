@@ -2218,6 +2218,7 @@ rescan()
 {
 	string	comp;
 
+	saveComments();
 	init();
 	self.files = undef;
 	self.components = undef;
