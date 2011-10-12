@@ -1302,3 +1302,31 @@ bk find . -name PENDING > OUT
 GOT=`wc -l < OUT`
 test $WANT -eq $GOT || fail -f OUT there should only be $WANT PENDING dirs
 echo OK
+
+echo $N Repro abcdr key mismatch problem ............................$NL
+nested iprod
+cd "$HERE"
+bk clone $Q iprod icopy
+cd iprod
+touch gcc/foo gdb/foo
+bk new $Q gcc/foo gdb/foo
+bk commit $Q -f
+cd "$HERE/icopy"
+touch gcc/foo gdb/foo
+bk new $Q gcc/foo gdb/foo
+bk commit $Q -f
+touch gdb/bar
+bk new $Q gdb/bar
+bk commit $Q -f
+test -f gdb/bar && chmod +w gdb/bar
+echo blart >> gdb/bar
+# this fails so set -e not so much
+set +e
+printf "q\nrl\ny\n" | bk pull $Q >OUT 2>&1
+# Do what the error message said to do
+bk edit $Q -g gdb/bar
+# Run resolve again
+printf "q\n" | bk resolve >OUT2 2>&1
+grep -q "KEY MISMATCH" OUT2 && fail -f OUT2
+set -e
+echo OK

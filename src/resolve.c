@@ -2091,7 +2091,6 @@ nocommit:
 				    "all files, aborting.\n");
 				resolve_cleanup(opts, 0);
 			}
-			opts->didCommit = 1;
 		}
 		return (0);
 	}
@@ -2575,10 +2574,7 @@ commit(opts *opts)
 	cmds[++i] = 0;
 	i = spawnvp(_P_WAIT, "bk", cmds);
 	if (cmt) free(cmt);
-	if (WIFEXITED(i) && !WEXITSTATUS(i)) {
-		opts->didCommit = 1;
-		return;
-	}
+	if (WIFEXITED(i) && !WEXITSTATUS(i)) return;
 	fprintf(stderr, "Commit aborted, no changes applied.\n");
 	resolve_cleanup(opts, 0);
 }
@@ -2929,7 +2925,7 @@ err:			unapply(applied);
 		system("bk clean BitKeeper/etc");
 		goto err;
 	}
-	if (opts->didCommit && proj_isComponent(0)) {
+	if (exists("SCCS/d.ChangeSet") && proj_isComponent(0)) {
 		if (moveupComponent()) goto err;
 	}
 	unlink(BACKUP_LIST);
