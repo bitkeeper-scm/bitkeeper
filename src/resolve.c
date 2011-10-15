@@ -776,7 +776,7 @@ pass1_renames(opts *opts, sccs *s)
 		return;
 	}
 
-	unless (filenum) {
+	unless (isdir("BitKeeper/RENAMES/SCCS")) {
 		mkdir("BitKeeper/RENAMES", 0777);
 		mkdir("BitKeeper/RENAMES/SCCS", 0777);
 	}

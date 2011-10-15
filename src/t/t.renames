@@ -1527,3 +1527,22 @@ if [ $? != 0 ]
 then	echo failed; exit 1
 fi
 echo OK
+
+echo $N Check that multi-parent pull handles renames correctly ......$NL
+cd "$HERE"
+commercial parent1
+touch foo bar
+bk new $Q foo bar
+bk commit $Q -f
+bk clone $Q . ../parent2
+bk clone $Q . ../stage
+bk mv foo foo1
+bk commit $Q -f
+cd ../parent2
+bk mv bar bar1
+bk commit $Q -f
+cd ../stage
+# parent1 already a parent
+bk parent $Q -ai ../parent2
+bk pull $Q >OUT 2>&1 || fail -f OUT
+echo OK
