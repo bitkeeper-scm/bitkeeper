@@ -425,9 +425,9 @@ proc readFiles {L R {O {}}} \
 		    }
 		    "|" {
 			## changed
-			$left  insert end " " changed
+			$left  insert end "-" minus
 			$left  insert end [gets $l]\n diff
-			$right  insert end " " changed
+			$right  insert end "+" plus
 			$right insert end [gets $r]\n diff
 		    }
 		    "<" {
