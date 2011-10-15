@@ -219,7 +219,7 @@ _filtertest2
 _find
 _findcset
 _findhashdup
-findkey
+findkey remote
 fix
 fixtool
 _fslchmod

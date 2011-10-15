@@ -31,7 +31,7 @@ private int	chk_eoln(sccs *s, int eoln_unix);
 private int	chk_merges(sccs *s);
 private sccs*	fix_merges(sccs *s);
 private	int	update_idcache(MDBM *idDB, hash *keys);
-private	void	fetch_changeset(void);
+private	void	fetch_changeset(int forceCsetFetch);
 private	int	repair(hash *db);
 
 private	int	verbose;
@@ -94,10 +94,15 @@ check_main(int ac, char **av)
 	char	**bp_missing = 0;
 	int	BAM = 0;
 	int	doBAM = 0;
+	int	forceCsetFetch = 0;
 	ticker	*tick = 0;
+	longopt	lopts[] = {
+		{ "use-older-changeset", 300 },
+		{ 0, 0 }
+	};
 
 	timestamps = 0;
-	while ((c = getopt(ac, av, "@|aBcdefgpN;RsTvw", 0)) != -1) {
+	while ((c = getopt(ac, av, "@|aBcdefgpN;RsTvw", lopts)) != -1) {
 		switch (c) {
 			/* XXX: leak - free parent freeLines(parent, 0) */
 		    case '@': if (bk_urlArg(&parent, optarg)) return (1);break;
@@ -118,6 +123,8 @@ check_main(int ac, char **av)
 		    case 'T': timestamps = GET_DTIME; break;
 		    case 'v': verbose++; break;			/* doc 2.0 */
 		    case 'w': badWritable++; break;		/* doc 2.0 */
+		    case 300:	/* --use-older-changeset */
+			forceCsetFetch++; break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -144,7 +151,7 @@ check_main(int ac, char **av)
 	}
 	/* Go get the ChangeSet file if it is missing */
 	if (!exists(CHANGESET) && (fix > 1)) {
-		fetch_changeset();
+		fetch_changeset(forceCsetFetch);
 		/*
 		 * Restart because we're in a bk -r and the ChangeSet
 		 * was not in that list.
@@ -1038,19 +1045,23 @@ listFound(hash *db)
 }
 
 private FILE *
-sfiocmd(int in_repair)
+sfiocmd(int in_repair, int index)
 {
 	int	i, len;
 	char	*buf;
 	FILE	*f;
 
-	unless(parent) parent = addLine(parent, ""); /* force default */
+	unless(parent) parent = addLine(parent, strdup("")); /* force default */
 	len = 100;	/* prefix/postfix */
 	EACH(parent) len += strlen(parent[i]) + 5;
 	buf = malloc(len);
 	strcpy(buf, "bk -q -Bstdin");
 	len = strlen(buf);
-	EACH(parent) len += sprintf(&buf[len], " -@'%s'", parent[i]);
+	if (index) {
+		len += sprintf(&buf[len], " -@'%s'", parent[index]);
+	} else {
+		EACH(parent) len += sprintf(&buf[len], " -@'%s'", parent[i]);
+	}
 	if (verbose) {
 		strcpy(&buf[len], " sfio -Kqo - | bk sfio -i");
 	} else {
@@ -1165,7 +1176,7 @@ repair(hash *db)
 
 	sortLines(sorted, key_sort);
 	if (verbose) fprintf(stderr, "Attempting to fetch %d files...\n", n);
-	f = sfiocmd(1);
+	f = sfiocmd(1, 0);
 	EACH(sorted) {
 		fprintf(f, "%s\n", sorted[i]);
 		if (verbose > 2) fprintf(stderr, "Missing: %s\n", sorted[i]);
@@ -1195,38 +1206,57 @@ out:	rmtree("BitKeeper/repair");
  * Either get a ChangeSet file from the parent or exit.
  */
 private void
-fetch_changeset(void)
+fetch_changeset(int forceCsetFetch)
 {
 	FILE	*f;
 	sccs	*s;
 	delta	*d;
 	int	i;
-	char	buf[MAXKEY];	/* overkill, key should be md5key */
+	char	*cmd, *tip = 0, *found_it = 0;
 
+	unless (parent) parent = addLine(parent, strdup("")); /* parents */
 	fprintf(stderr, "Missing ChangeSet file, attempting restoration...\n");
 	unless (exists("BitKeeper/log/ROOTKEY")) {
 		fprintf(stderr, "Don't have original cset rootkey, sorry,\n");
 		exit(0x40);
 	}
-	f = sfiocmd(0);
+	unless ((f = fopen("BitKeeper/log/TIP", "r")) &&
+	    (tip = fgetline(f))) {
+		fprintf(stderr, "Unable to load BitKeeper/log/TIP\n");
+		exit(1);
+	}
+	tip = strdup(tip);
+	fclose(f);
+
+	EACH(parent) {
+		cmd = aprintf("bk -@'%s' findkey '%s'", parent[i], tip);
+		found_it = backtick(cmd);
+		free(cmd);
+		if (found_it && strneq(found_it, "ChangeSet|", 10)) break;
+		if (found_it) free(found_it);
+		found_it = 0;
+	}
+	unless (found_it) {
+		if (forceCsetFetch) {
+			i = 0;
+			fprintf(stderr, "Forcing ChangeSet fetch\n");
+		} else {
+			getMsg("chk6", tip, '=', stderr);
+			exit(1);
+		}
+	}
+	f = sfiocmd(0, i);
 	fprintf(f, "%s\n", proj_rootkey(0));
 	if (pclose(f) != 0) {
 		fprintf(stderr, "Unable to retrieve ChangeSet, sorry.\n");
 		exit(0x40);
 	}
-	unless (f = fopen("BitKeeper/log/TIP", "r")) {
-		fprintf(stderr, "Unable to open BitKeeper/log/TIP\n");
-		exit(1);
-	}
-	fgets(buf, sizeof(buf), f);
-	chomp(buf);
-	fclose(f);
 	unless (s = sccs_init(CHANGESET, INIT_MUSTEXIST)) {
 		fprintf(stderr, "Can't initialize ChangeSet file\n");
 		exit(1);
 	}
-	unless (d = sccs_findrev(s, buf)) {
-		getMsg("chk5", buf, '=', stderr);
+	unless (d = sccs_findrev(s, tip)) {
+		getMsg("chk5", 0, '=', stderr);
 		exit(1);
 	}
 	if (verbose > 1) fprintf(stderr, "TIP %s %s\n", d->rev, d->sdate);
@@ -1235,7 +1265,7 @@ fetch_changeset(void)
 	(void)stripdel_fixTable(s, &i);
 	unless (i) {
 		sccs_free(s);
-		return;
+		goto done;
 	}
 	if (verbose > 1) fprintf(stderr, "Stripping %d csets/tags\n", i);
 	if (sccs_stripdel(s, "repair")) {
@@ -1248,6 +1278,9 @@ fetch_changeset(void)
 		exit(0x40);
 	}
 	fprintf(stderr, "ChangeSet restoration complete.\n");
+done:
+	if (tip) free(tip);
+	if (found_it) free(found_it);
 }
 
 /*
@@ -2056,16 +2089,23 @@ int
 repair_main(int ac, char **av)
 {
 	int	c, i, status;
+	longopt	lopts[] = {
+		{ "use-older-changeset", 300 },
+		{ 0, 0 }
+	};
 	char	*nav[20];
 
 	nav[i=0] = "bk";
 	nav[++i] = "-r";
 	nav[++i] = "check";
 	nav[++i] = "-acffv";
-	while ((c = getopt(ac, av, "@|", 0)) != -1) {
+	while ((c = getopt(ac, av, "@|", lopts)) != -1) {
 		switch (c) {
 		    case '@':
 			nav[++i] = aprintf("-@%s", optarg);
+			break;
+		    case 300: /* --use-older-changeset */
+			nav[++i] = "--use-older-changeset";	/* undoc */
 			break;
 		    default: bk_badArg(c, av);
 		}
