@@ -520,7 +520,7 @@ resolve_components(opts *opts)
 	freeLines(revs, free);
 	unless (opts->aliases) opts->aliases = addLine(0, strdup("HERE"));
 
-	nested_aliases(n, n->tip, &opts->aliases, start_cwd, n->pending);
+	nested_aliases(n, 0, &opts->aliases, start_cwd, NESTED_PENDING);
 	assert(n->alias);
 	opts->nav = unshiftLine(opts->nav, strdup("-S"));
 	opts->nav = unshiftLine(opts->nav, strdup("resolve"));
