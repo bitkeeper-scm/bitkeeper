@@ -51,12 +51,13 @@ L_undefObjPtrPtr()
 
 	unless (undef_obj) {
 		undef_obj = Tcl_NewObj();
-		undef_obj->bytes   = tclEmptyStringRep;
-		undef_obj->typePtr = &L_undefType;
-		undef_obj->undef   = 1;
+		undef_obj->bytes    = tclEmptyStringRep;
+		undef_obj->typePtr  = &L_undefType;
+		undef_obj->undef    = 1;
+		undef_obj->refCount = 1234;  // arbitrary; to be recognizable
 	}
+	++undef_obj->refCount;
 	ASSERT(undef_obj->undef);
-	undef_obj->refCount = 1234;  // arbitrary; chosen to be recognizable
 	return (&undef_obj);
 }
 
