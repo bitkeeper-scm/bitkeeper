@@ -9584,6 +9584,35 @@ void undef_6()
 .*43: L Error: undef illegal in compare; use defined\(\)
 }
 
+test undef-7 {check for bug with undef object ref count} -body {
+#lang L
+void undef_7()
+{
+	string	a[];
+
+	/*
+	 * This used to trip a bug in undef (and assert or core dump)
+	 * where the undef object's ref count would be reset to 1234
+	 * in Lcompile.c every time a reference to the undef object
+	 * was given out.  If undef propagated more than this # of
+	 * times, the wheels could fall off while freeing an object
+	 * that had these undefs in it.
+	 */
+
+	// This creates 3000 Tcl_Obj's that point to undef, and when
+	// they are added to the array, the undef ref count is
+	// incremented as expected.
+	a[3000] = "";
+
+	// Now create one more ref to undef (when it is pushed onto
+	// the Tcl run-time stack).  This used to reset the ref count
+	// back to 1234, then when the locals were freed which includes
+	// the 3000 undefs above, we used to assert or core dump.
+	undef;
+}
+undef_7();
+} -output {}
+
 test toplevel-1.0 {Toplevel code in L} -body {
 #lang L
 int toplevel_1_0_i = 2;
