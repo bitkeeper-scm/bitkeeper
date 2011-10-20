@@ -6969,7 +6969,13 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 			return (1);
 		}
 	}
-	if (error = bp_get(s, d, flags, gfile)) {
+	if (d == s->tree) {
+		assert(d->added == 0);
+		unless (streq(printOut, "-")) {
+			/* technically there are no recorded modes for 1.0 */
+			touch(gfile, 0664);
+		}
+	} else if (error = bp_get(s, d, flags, gfile)) {
 		unless (error == EAGAIN) return (1);
 		if (flags & GET_NOREMOTE) {
 			s->cachemiss = 1;
@@ -7295,7 +7301,7 @@ err:		if (i2) free(i2);
 		char	*fname = (flags&PRINT) ? printOut : s->gfile;
 		mode_t	mode;
 
-		mode = d->mode ? d->mode : 0666;
+		mode = d->mode ? d->mode : 0664;
 		unless (flags & GET_EDIT) mode &= ~0222;
 
 		if (chmod(fname, mode)) {
