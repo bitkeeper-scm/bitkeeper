@@ -433,6 +433,7 @@ next:		if (init) mclose(init);
 		 */
 		sccs_free(s);
 		free_pfile(&pf);
+		unless (df & DELTA_DONTASK) comments_done();
 		name = sfileNext();
 	}
 	if (sfileDone()) errors |= 64;
