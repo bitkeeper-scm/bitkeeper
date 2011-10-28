@@ -79,6 +79,25 @@ getMsg_tests(void)
 	freeLines(args, 0);
 }
 
+void
+signal_tests(void)
+{
+	char	*av[] = { "bk", "_usleep", "2000000", 0 };
+	time_t	now = time(0);
+	pid_t	p;
+
+	sig_ignore();
+	p = spawnvp(_P_NOWAIT, "bk", av);
+	assert(p != (pid_t)-1);
+	usleep(50000);		// let it start
+	kill(p, SIGINT);
+	while (waitpid(p, 0, 0) != p) usleep(50000);
+	if ((time(0) - now) <= 1) {
+		fprintf(stderr, "Whoops, managed to kill w/ blocked sig.\n");
+		exit(1);
+	}
+}
+
 /* run specialized code tests */
 int
 unittests_main(int ac, char **av)
@@ -97,6 +116,7 @@ unittests_main(int ac, char **av)
 	assert(t);
 	free(t);
 #endif
+	signal_tests();
 	return (0);
 }
 

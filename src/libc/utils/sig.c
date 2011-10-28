@@ -77,7 +77,10 @@ sig(int what, int sig)
 	return (0);
 }
 
-/* Ignore all the signals we might get */
+/*
+ * Ignore all the signals we might get,
+ * and make it be so that child processes do so as well.
+ */
 int
 sig_ignore(void)
 {
@@ -87,6 +90,7 @@ sig_ignore(void)
 	for (i = 0; i < sizeof(sigs)/sizeof(int); ++i) {
 		sig(SIG_IGNORE, sigs[i]);
 	}
+	putenv("_BK_IGNORE_SIGS=YES");
 	return (0);
 }
 

@@ -346,8 +346,15 @@ confirm(char *msg)
 int
 usleep_main(int ac, char **av)
 {
+	u32	left;
+
 	unless (av[1]) return (1);
-	usleep(atoi(av[1]));
+	left = atoi(av[1]);
+	while (left > 999999) {
+		usleep(999999);
+		left -= 999999;
+	}
+	if (left) usleep(left);
 	return (0);
 }
 
