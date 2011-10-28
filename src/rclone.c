@@ -705,10 +705,11 @@ send_sfio(remote *r, int gzip)
 	char	*sfiocmd;
 	FILE	*fout;
 	char	title[MAXPATH];
+	char	*marg = (bkd_hasFeature(FEAT_mSFIO) ? "-m" : "");
 	char	buf[200] = { "" };
 
 	tmpf = bktmp(0, "rclone_sfiles");
-	status = sysio(0, tmpf, 0, "bk", "_sfiles_clone", SYS);
+	status = systemf("bk _sfiles_clone %s > '%s'", marg, tmpf);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
 
 	if (opts.quiet) {

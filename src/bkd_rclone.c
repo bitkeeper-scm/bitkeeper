@@ -219,6 +219,8 @@ cmd_rclone_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	rc = getsfio(parallel);
+	/* clone needs the remote HERE as RMT_HERE; rclone doesn't */
+	if (opts.product) unlink("BitKeeper/log/HERE");
 	if (opts.detach) unlink("BitKeeper/log/COMPONENT");
 
 	/*
@@ -382,11 +384,12 @@ cmd_rclone_part3(int ac, char **av)
 private int
 rclone_end(opts *opts)
 {
-	int	rc;
+	int	rc = 0;
 	int	quiet = !opts->verbose;
+	char	**checkfiles = 0;
 
 	/* remove any uncommited stuff */
-	sccs_rmUncommitted(quiet, 0);
+	sccs_rmUncommitted(quiet, &checkfiles);
 
 	if (opts->detach) {
 		/*
@@ -404,8 +407,12 @@ rclone_end(opts *opts)
 		if (rc == UNDO_SKIP) goto docheck;
 	} else {
 docheck:	/* undo already runs check so we only need this case */
-		rc = run_check(0, 0, quiet? "-fT" : "-fvT", 0);
+		if (checkfiles || full_check()) {
+			rc = run_check(0, checkfiles, quiet? "-fT" : "-fvT", 0);
+		}
 	}
+	freeLines(checkfiles, free);
+
 	/*
 	 * Save the HERE file.  chmod because sfio w/o perms doesn't
 	 * leave it RW.

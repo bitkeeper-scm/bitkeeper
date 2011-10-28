@@ -791,3 +791,17 @@ EOF
 bk here > GOT
 cmpfiles GOT WANT
 echo OK
+
+echo $N Check that partial check and -s. gets correct HERE file .....$NL
+cd "$HERE/project"
+bk repocheck -q
+cd ..
+BK_CONFIG='partial_check:on!;checkout:none!'
+export BK_CONFIG
+bk clone -s. $Q project just_product
+cmp -s project/BitKeeper/log/HERE just_product/BitKeeper/log/HERE && {
+	echo failed, same HERE files
+	head -100 project/BitKeeper/log/HERE just_product/BitKeeper/log/HERE
+	exit 1
+}
+echo OK
