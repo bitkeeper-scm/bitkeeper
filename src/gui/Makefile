@@ -102,7 +102,7 @@ supportform: $(COMMON) search.tcl appState.tcl supportlib.tcl supportform.tcl
 oldcitool: $(COMMON) search.tcl appState.tcl progress.tcl ciedit.tcl citool.tcl
 	@(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > $(LIBDIR)/oldcitool
 
-citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) citool.l
+citool: $(COMMON) appState.tcl ciedit.tcl $(LCOMMON) listbox.l citool.l
 	@(	echo 'wm withdraw .' ;		\
 		cat $(filter %.tcl,$^) ;	\
 		echo ; echo 'L {' ; echo ;	\

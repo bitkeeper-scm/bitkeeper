@@ -572,7 +572,7 @@ bk sfiles -x | xargs rm -f
 bk edit $Q src/file1
 bk delta $Q -f -y'forced delta' src/file1
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	test_fileIsInList "Show (1) pending delta"
+	test_fileIsInList "Show 1 pending delta"
 	test_buttonPress "Quit" then "Quit without saving*"
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
@@ -580,7 +580,7 @@ test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 bk edit $Q src/file2
 bk delta $Q -f -y'forced delta' src/file2
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	test_fileIsInList "Show (2) pending deltas"
+	test_fileIsInList "Show 2 pending deltas"
 	test_buttonPress "Quit" then "Quit without saving*"
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
