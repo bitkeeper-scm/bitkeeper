@@ -1790,7 +1790,6 @@ err:
 private retrc
 attach(void)
 {
-	retrc	retrc = 0;
 	int	rc;
 	char	*tmp;
 	char	*nlid = 0;
@@ -1870,7 +1869,7 @@ attach(void)
 	}
 	if (!f || fclose(f)) {
 		fprintf(stderr, "attach: failed to write HERE file\n");
-		retrc = RET_ERROR;
+		rc = RET_ERROR;
 		goto end;
 	}
 	nested_check();
@@ -1883,7 +1882,7 @@ attach(void)
 		if (f = popen(buf, "w")) {
 			fprintf(f, "%s/SCCS/s.ChangeSet|+\n", relpath);
 		}
-		retrc = (!f || pclose(f)) ? RET_ERROR : RET_OK;
+		rc = (!f || pclose(f)) ? RET_ERROR : RET_OK;
 	}
 	if (nlid) {
 		if (nested_unlock(0, nlid)) {

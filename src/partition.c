@@ -501,7 +501,6 @@ mkComps(Opts *opts)
 	int	running, status = 0;
 	pid_t	pid;
 	int	flags = opts->flags;
-	int	joinlen;
 	char	**cmd = 0;
 	char	repo[MAXPATH];
 
@@ -537,7 +536,7 @@ mkComps(Opts *opts)
 		verbose((stderr,
 			"\n### Pruning component %u/%u: %s\n",
 			i, total, opts->comps[i]));
-		joinlen = sprintf(repo, "repo%u", i);
+		sprintf(repo, "repo%u", i);
 		/* csetprune -I will fill in the empty directory */
 		if (mkdirp(repo)) {
 			perror(repo);

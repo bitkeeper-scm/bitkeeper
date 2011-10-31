@@ -4897,12 +4897,11 @@ int
 sccs_lock(sccs *s, char type)
 {
 	char	*t;
-	int	lockfd, verbose;
+	int	lockfd;
 	int	do_sigs = 0;
 
 	if (READ_ONLY(s)) return (0);
 
-	verbose = (s->state & SILENT) ? 0 : 1;
 	if (type == 'z') {
 		if (repository_locked(s->proj)) return (0);
 		do_sigs++;
@@ -9641,7 +9640,6 @@ checkin(sccs *s,
 	int	i;
 	char	*t;
 	char	buf[MAXLINE];
-	admin	l[2];
 	int	no_lf = 0;
 	int	error = 0;
 	int	short_key = 0;
@@ -9807,8 +9805,6 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		fprintf(stderr, "checkin: bad revision: %s for %s\n",
 		    n->rev, s->sfile);
 		goto out;
-	} else {
-		l[0].flags = 0;
 	}
 	/* need random set before the call to sccs_sdelta */
 	/* XXX: changes n, so must be after syms stuff */

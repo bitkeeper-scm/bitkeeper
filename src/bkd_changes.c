@@ -137,5 +137,6 @@ cmd_chg_part2(int ac, char **av)
 	unless (newline) out("\n");
 	out("@END@\n");
 	unlink(cmd);
-skip:	return (0);
+	rc = 0;
+skip:	return (rc);
 }

@@ -110,7 +110,7 @@ remote_cmd(char **av, char *url, FILE *in, FILE *out, FILE *err,
 {
 	remote	*r = remote_parse(url, REMOTE_BKDURL);
 	FILE	*f, *wf;
-	int	i, rc, fd, did_header = 0;
+	int	i, rc, did_header = 0;
 	int	stream = (in && (opts & REMOTE_STREAM));
 	int	bytes;
 	char	*u = 0;
@@ -223,7 +223,6 @@ err:		if (err) fprintf(err, "##### %s #####\n", u);
 		if (strneq(line, "@STDERR=", 8)) wf = err;
 		bytes = atoi(&line[8]);
 		assert(bytes <= sizeof(buf));
-		fd = strneq(line, "@STDOUT=", 8) ? 1 : 2;
 		if (zin) {
 			i = zread(zin, buf, bytes);
 		} else {

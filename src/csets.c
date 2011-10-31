@@ -13,7 +13,6 @@ f2csets_main(int argc, char **argv)
 	char	*sfile;
 	char	buf[MAXPATH+100];
 	char	key[MAXKEY*2];
-	int	i;
 	int	keylen;
 	char	*p;
 	sccs	*s;
@@ -33,7 +32,7 @@ f2csets_main(int argc, char **argv)
 	sccs_sdelta(s, sccs_ino(s), rootkey);
 	sccs_free(s);
 
-	i = sprintf(buf, "bk -R annotate -R -ar -h " CHANGESET);
+	sprintf(buf, "bk -R annotate -R -ar -h " CHANGESET);
 
 	unless (f = popen(buf, "r")) {
 		perror(buf);

@@ -774,7 +774,6 @@ private int
 in_symlink(char *file, int pathlen, int extract)
 {
 	char	buf[MAXPATH];
-	mode_t	mode = 0;
 	u32	sum = 0, sum2 = 0;
 	unsigned int imode;  /* mode_t might be a short */
 
@@ -812,7 +811,6 @@ in_symlink(char *file, int pathlen, int extract)
 	}
 	buf[3] = 0;
 	sscanf(buf, "%03o", &imode);
-	mode = imode;
 	if (extract) {
 		/*
 		 * This is trying to chmod what is pointed to, which

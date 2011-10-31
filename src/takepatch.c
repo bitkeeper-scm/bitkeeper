@@ -385,7 +385,6 @@ extractPatch(char *name, MMAP *p)
 	sccs	*s = 0;
 	sccs	*perfile = 0;
 	int	newFile = 0;
-	int	reallyNew = 0;
 	int	cset;
 	char	*gfile = 0;
 	int	nfound = 0, rc;
@@ -417,7 +416,7 @@ extractPatch(char *name, MMAP *p)
 	line++;
 	name = name2sccs(name);
 	if (strneq("New file: ", t, 10)) {
-		reallyNew = newFile = 1;
+		newFile = 1;
 		perfile = sccs_getperfile(p, &line);
 		t = mkline(mnext(p));
 		line++;
@@ -468,7 +467,6 @@ error:		if (perfile) sccs_free(perfile);
 	 * new file.  But if we have a match, we want to use it.
 	 */
 	if (s) {
-		reallyNew = 0;
 		if (newFile && (echo > 4)) {
 			fprintf(stderr,
 			    "takepatch: new file %s already exists.\n", name);
@@ -1886,7 +1884,6 @@ init(char *inputFile)
 		u32	diffsblank:1;	/* previous line was \n after diffs */
 		u32	sfiopatch:1;	/* previous line was SFIO marker */
 	}	st;
-	int	line = 0;
 	char	*note;
 	ticker	*tick = 0;
 	char	incoming[MAXPATH];
@@ -2220,7 +2217,6 @@ missing:
 
 	mseekto(m, 0);
 	mnext(m);		/* skip version number */
-	line = 1;
 
 	return (m);
 }

@@ -379,7 +379,6 @@ check_licensesig(char *key, char *sign, int version)
 	unsigned long	hashlen, signbinlen;
 	rsa_key		rsakey;
 	u8		*pubkey;
-	int		pubkeylen;
 	int		err, i;
 	int		stat;
 	u8		hbuf[32];
@@ -387,10 +386,8 @@ check_licensesig(char *key, char *sign, int version)
 
 	if (version <= 5) {
 		pubkey = (u8 *)pubkey5;
-		pubkeylen = sizeof(pubkey5);
 	} else {
 		pubkey = (u8 *)pubkey6;
-		pubkeylen = sizeof(pubkey6);
 	}
 	if (err = oldrsa_import(pubkey, &rsakey)) {
 err:		fprintf(stderr, "check_licensesig: %s\n",
