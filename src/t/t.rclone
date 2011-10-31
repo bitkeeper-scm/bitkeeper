@@ -49,13 +49,25 @@ echo OK
 # In this test we call the rclone code via the bk clone interface
 echo $N rClone via bk:// ............................................$NL
 cd "$HERE"
+(cd project && bk repocheck -q)
+test -f project/BitKeeper/log/checked || fail
 rm -rf copy copy2
-bk bkd -q -aPORT -ikill || exit 1
+BK_CONFIG='partial_check:on!' bk bkd -q -aPORT -ikill || exit 1
 P=`cat PORT`
 bk clone $Q "$HERE/project" bk://localhost:$P/"$HERE/copy"
 bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
 cd "$HERE/copy"
 if [ "`bk level`" != "Repository level is 3" ]; then echo failed; exit 1; fi
+echo OK
+
+echo $N Make sure we honored partial check ..........................$NL
+bk cmdlog -av > GOT
+grep -q check GOT && {
+	bk _kill http://localhost:$P 
+	echo failed
+	cat GOT
+	exit 1
+}
 echo OK
 
 echo $N rClone via http:// ..........................................$NL

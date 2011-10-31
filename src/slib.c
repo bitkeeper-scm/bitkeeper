@@ -4420,8 +4420,6 @@ sccs_init(char *name, u32 flags)
 	unless (_YEAR4) _YEAR4 = getenv("BK_YEAR2") ? -1 : 1;
 	if (_YEAR4 == 1) s->xflags |= X_YEAR4;
 
-	if (sig_ignore() == 0) s->unblock = 1;
-
 	if (CSET(s)) {
 		int i, in_log = 0;
 
@@ -4900,11 +4898,15 @@ sccs_lock(sccs *s, char type)
 {
 	char	*t;
 	int	lockfd, verbose;
+	int	do_sigs = 0;
 
 	if (READ_ONLY(s)) return (0);
 
 	verbose = (s->state & SILENT) ? 0 : 1;
-	if ((type == 'z') && repository_locked(s->proj)) return (0);
+	if (type == 'z') {
+		if (repository_locked(s->proj)) return (0);
+		do_sigs++;
+	}
 
 	/* get -e does Z lock so we can skip past the repository locks */
 	if (type == 'Z') type = 'z';
@@ -4931,6 +4933,7 @@ again:	lockfd =
 		s->state |= S_ZFILE;
 	}
 	close(lockfd);
+	if (do_sigs) sig_ignore();
 	return (1);
 }
 
@@ -6969,7 +6972,13 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 			return (1);
 		}
 	}
-	if (error = bp_get(s, d, flags, gfile)) {
+	if (d == s->tree) {
+		assert(d->added == 0);
+		unless (streq(printOut, "-")) {
+			/* technically there are no recorded modes for 1.0 */
+			touch(gfile, 0664);
+		}
+	} else if (error = bp_get(s, d, flags, gfile)) {
 		unless (error == EAGAIN) return (1);
 		if (flags & GET_NOREMOTE) {
 			s->cachemiss = 1;
@@ -7295,7 +7304,7 @@ err:		if (i2) free(i2);
 		char	*fname = (flags&PRINT) ? printOut : s->gfile;
 		mode_t	mode;
 
-		mode = d->mode ? d->mode : 0666;
+		mode = d->mode ? d->mode : 0664;
 		unless (flags & GET_EDIT) mode &= ~0222;
 
 		if (chmod(fname, mode)) {

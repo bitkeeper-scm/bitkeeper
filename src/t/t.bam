@@ -35,6 +35,14 @@ echo OK
 # find BitKeeper/BAM -type f 
 # find BitKeeper/BAM -type f -name '*.a1' | xargs cat
 
+echo $N Make sure we get an empty file for 1.0 ......................$NL
+bk get -qkp -r1.0 data > data-1.0 || fail
+test -s data-1.0 && fail
+rm data-1.0
+bk get $Q -r1.0 -Gdata-1.0 data || fail
+test -f data-1.0 -a ! -s data-1.0 || fail
+echo OK
+
 echo $N Check encoding for large/small binaries .....................$NL
 test `bk prs -hr+ -nd:ENC: data` = BAM || {
 	echo data should have been BAM
@@ -184,17 +192,6 @@ bk commit $Q -ywhatever || exit 1
 bk co $Q ChangeSet || exit 1
 awk -F'|' '$2 == "data" && $5 ~ /^B:/ { print; }' < ChangeSet > OUT
 test -s OUT || exit 1
-echo OK
-
-echo $N Fetch the 1.0 delta .........................................$NL
-bk get -p -r1.0 subdir/data3 2> OUT && {
-	exit 1
-}
-cat <<EOF > WANT
-BAM: unable to find BAM delta in subdir/data3
-get of subdir/data3 failed, skipping it.
-EOF
-cmpfiles OUT WANT
 echo OK
 
 echo $N Make a patch, check for BAM data ............................$NL

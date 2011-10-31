@@ -1546,6 +1546,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 				if (exists(file)) si->fn(file, sb, si->data);
 				strcpy(p+5, "checked");
 				if (exists(file)) si->fn(file, sb, si->data);
+				// unlinked or renamed RMT_HERE in (r)clone
 				strcpy(p+5, "HERE");
 				if (exists(file)) si->fn(file, sb, si->data);
 			}
