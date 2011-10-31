@@ -98,6 +98,21 @@ signal_tests(void)
 	}
 }
 
+void
+tmp_tests(void)
+{
+	char	*template = malloc(500);
+	char	*p;
+	int	i;
+	
+	for (i = 0; i < 480; i++) template[i] = 'B';
+	template[i] = 0;
+	p = bktmp(0, template);
+	assert(p);
+	free(p);
+	free(template);
+}
+
 /* run specialized code tests */
 int
 unittests_main(int ac, char **av)
@@ -117,6 +132,7 @@ unittests_main(int ac, char **av)
 	free(t);
 #endif
 	signal_tests();
+	tmp_tests();
 	return (0);
 }
 

@@ -224,7 +224,8 @@ bk commit $Q -ycopy
 echo q | bk pull $Q 2> PULL
 bk _test -f RESYNC/gcc/SCCS/d.ChangeSet || fail dfile not there
 # This will complete pass3 which makes the merge cset
-printf "s\nC\n" | bk resolve $Q -4 2> RESOLVE1
+printf "s\nC\n" > IN 
+bk resolve $Q -4 <IN 2> RESOLVE1
 bk _test -f RESYNC/gcc/SCCS/d.ChangeSet && fail dfile there
 # Do pass 4 now
 bk resolve $Q || fail
@@ -234,6 +235,7 @@ echo $N Test that a resolve on a read only repo root fails ..........$NL
 bk unpull $Q -f
 echo q | bk pull $Q 2> PULL2
 chmod 555 .
-printf "s\nC\n" | bk resolve $Q 2> ../ERR && fail -f ../ERR
+printf "s\nC\n" > IN
+bk resolve $Q <IN 2> ../ERR && fail -f ../ERR
 grep -q 'repository root directory is not writable.' ../ERR || fail -f ../ERR
 echo OK
