@@ -581,6 +581,13 @@ bk changes -qr1.1 -d:ATTR_HERE: > GOT
 cmpfiles WANT GOT
 echo OK
 
+echo $N No core dump when PRUNEVER is not set .......................$NL
+cd "$HERE"
+bk partition $Q -Cmapfile --version=1 project copy.v1
+grep -q PRUNEVER copy.v1/BitKeeper/log/partition && fail
+bk partition $Q -@copy.v1 project copy.v2 || fail
+echo OK
+
 echo $N Demonstrate a name collision using version 1 ................$NL
 cd "$HERE"
 commercial import.sa

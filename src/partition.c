@@ -398,7 +398,9 @@ setupWorkArea(Opts *opts, char *repo)
 		assert(streq(opts->rootkey, proj_rootkey(0)));
 	} else {
 		opts->version = strdup(PARTITION_VER);
-		opts->pver = opts->prunever = strdup(opts->pver);
+		opts->pver = strdup(opts->pver);
+		/* don't write out orig so old bk's can read */
+		unless (streq(opts->pver, "1")) opts->prunever = opts->pver;
 		/* pumps up the prune list with gone files and deltas */
 		if (cleanMissing(opts)) goto err;
 		/* Collapsed keys don't apply to post-partition: prune 'em */
@@ -852,10 +854,11 @@ dumpPartitionKV(Opts *opts)
 		if (kvdata[i].islist) {
 			entry = joinLines("\n", *(char ***)ptr);
 		} else {
-			entry = strdup(*(char **)ptr);
+			entry = *(char **)ptr;
 		}
+		unless (entry) continue;
 		hash_insertStr(ref, kvdata[i].key, entry);
-		free(entry);
+		if (kvdata[i].islist) free(entry);
 	}
 	hash_toFile(ref, WA2PROD "/" PARTITION_KV);
 	hash_free(ref);
