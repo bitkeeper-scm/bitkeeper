@@ -120,7 +120,7 @@ difftool: $(COMMON) search.tcl appState.tcl difflib.tcl difftool.tcl
 fmtool: $(COMMON) appState.tcl difflib.tcl fmlib.tcl fmtool.tcl
 	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/fmtool
 
-fm3tool: $(COMMON) appState.tcl tooltip.tcl fm3tool.tcl
+fm3tool: $(COMMON) appState.tcl tooltip.tcl difflib.tcl fm3tool.tcl
 	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/fm3tool
 
 helptool: $(COMMON) appState.tcl helptool.tcl

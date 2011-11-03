@@ -74,6 +74,8 @@ bk_initBindings()
 		bind("BK", "<Control-n>", "${_bk.cmd_next}; break");
 		bind("BK", "<Command-q>", "${_bk.cmd_quit}; break");
 		bind("BK", "<Command-w>", "${_bk.cmd_quit}; break");
+
+		Event_add("<<Redo>>", "<Command-Shift-z>", "<Command-Shift-Z>");
 	} else {
 		bind("BK", "<Control-p>", "${_bk.cmd_prev}; break");
 		bind("BK", "<Control-n>", "${_bk.cmd_next}; break");

@@ -33,17 +33,28 @@ proc bk_initTheme {} \
 	option add *Entry.background	#FFFFFF
 	option add *Entry.borderWidth	1
 	option add *Text.background	#FFFFFF
+
+	## Make the ReadOnly tag
+	foreach event [bind Text] {
+		set script [bind Text $event]
+		if {[regexp -nocase {text(paste|insert|transpose)} $script]
+		    || [regexp -nocase {%W (insert|delete|edit)} $script]} {
+			continue
+		}
+		set script [string map {tk_textCut tk_textCopy} $script]
+		bind ReadonlyText $event $script
+	}
 }
 
 proc bk_init {} {
+	set tool [file tail [info script]]
+
 	bk_initPlatform
 
 	bk_initTheme
 
-	## Tk removes the Toplevel tag from . and replaces it with
-	## the name of the application.  We don't use this anywhere,
-	## but we do use Toplevel as a bind tag.
-	bindtags . [list . Toplevel all]
+	## Include our tool name and Toplevel tags for .
+	bindtags . [list $tool . Toplevel all]
 
 	## Remove default Tk mouse wheel bindings.
 	foreach event {MouseWheel 4 5} {
@@ -70,6 +81,10 @@ proc bk_init {} {
 
 		bind wheel <MouseWheel> {scrollMouseWheel %W y %X %Y %D}
 		bind wheel <Shift-MouseWheel> {scrollMouseWheel %W x %X %Y %D}
+	}
+
+	if {[tk windowingsystem] eq "aqua"} {
+		event add <<Redo>> <Command-Shift-z> <Command-Shift-Z>
 	}
 }
 
@@ -1076,15 +1091,18 @@ highlightSideBySide(widget left, widget right,
 	string	idxs[];
 
 	line = idx2line(start);
-	for (i = 0; i < length(llines); ++i) {
+	for (i = 0; i < length(llines); ++i, ++line) {
 		idxs = highlightLine(llines[i][prefix..END],
 		    rlines[i][prefix..END], line, line);
-		++line;
 		unless (defined(idxs)) continue;
-		Text_tagAdd(left,  "highlight", "${idxs[0]}+${prefix}c",
-		    "${idxs[1]}+${prefix}c");
-		Text_tagAdd(right, "highlight", "${idxs[2]}+${prefix}c",
-		    "${idxs[3]}+${prefix}c");
+		unless (Text_tagNames(right, "${line}.0") =~ /empty/) {
+			Text_tagAdd(left,  "highlight","${idxs[0]}+${prefix}c",
+			    "${idxs[1]}+${prefix}c");
+		}
+		unless (Text_tagNames(left, "${line}.0") =~ /empty/) {
+			Text_tagAdd(right, "highlight","${idxs[2]}+${prefix}c",
+			    "${idxs[3]}+${prefix}c");
+		}
 	}
 }
 
@@ -1144,6 +1162,8 @@ idx2line(string idx)
 void
 configureDiffWidget(string app, widget w, ...args)
 {
+	string	which = args[0];
+
 	// Old diff tag.
 	Text_tagConfigure(w, "oldDiff",
 	    font: gc("${app}.oldFont"),
@@ -1154,8 +1174,8 @@ configureDiffWidget(string app, widget w, ...args)
 	    font: gc("${app}.newFont"),
 	    background: gc("${app}.newColor"));
 
-	if (length(args)) {
-		string	oldOrNew = args[0];
+	if (defined(which)) {
+		string	oldOrNew = which;
 
 		// Standard diff tag.
 		Text_tagConfigure(w, "diff",
@@ -1163,10 +1183,12 @@ configureDiffWidget(string app, widget w, ...args)
 		    background: gc("${app}.${oldOrNew}Color"));
 
 		// Active diff tag.
-		oldOrNew[0] = toupper(oldOrNew[0]);
-		Text_tagConfigure(w, "d",
-		    font: gc("${app}.active${oldOrNew}Font"),
-		    background: gc("${app}.active${oldOrNew}Color"));
+		if (!gc("${app}.activeNewOnly") || oldOrNew eq "new") {
+			oldOrNew[0] = toupper(oldOrNew[0]);
+			Text_tagConfigure(w, "d",
+			    font: gc("${app}.active${oldOrNew}Font"),
+			    background: gc("${app}.active${oldOrNew}Color"));
+		}
 	}
 
 	// Highlighting tags.
@@ -1180,10 +1202,71 @@ configureDiffWidget(string app, widget w, ...args)
 	// Various other diff tags.
 	Text_tagConfigure(w, "empty", background: "black");
 	Text_tagConfigure(w, "same", background: "white");
+	Text_tagConfigure(w, "space", background: "white");
 	Text_tagConfigure(w, "changed", background: "gray");
-	Text_tagConfigure(w, "minus", background: "white");
-	Text_tagConfigure(w, "plus", background: "white");
+
+	if (defined(which)) {
+		Text_tagConfigure(w, "minus",
+		    background: gc("${app}.${which}Color"));
+		Text_tagConfigure(w, "plus",
+		    background: gc("${app}.${which}Color"));
+		if (!gc("${app}.activeNewOnly") || which eq "new") {
+			Text_tagRaise(w, "d");
+		}
+	}
 
 	Text_tagRaise(w, "highlight");
+	Text_tagRaise(w, "sel");
+}
+
+private int	debug{string};
+private	FILE	debugf = undef;
+
+void
+debug_enter(string cmd, string op)
+{
+	op = op;
+	debug{cmd} = Clock_microseconds();
+	fprintf(debugf, "ENTER ${cmd}\n");
+}
+
+void
+debug_leave(string cmd, int code, string result, string op)
+{
+	float	t;
+
+	op = op;
+	code = code;
+	result = result;
+	if (defined(debug{cmd})) {
+		t = Clock_microseconds() - debug{cmd};
+		undef(debug{cmd});
+	}
+
+	if (defined(t)) {
+		fprintf(debugf, "LEAVE ${cmd} (${t} usecs)\n");
+	} else {
+		fprintf(debugf, "LEAVE ${cmd}\n");
+	}
+}
+
+void
+debug_init(string var)
+{
+	string	proc, procs[];
+
+	unless (defined(var) && length(var)) return;
+	if (var =~ m|^/|) debugf = fopen(var, "w");
+	unless (defined(debugf)) debugf = stderr;
+
+	procs = Info_procs("::*");
+	foreach (proc in procs) {
+		if (proc =~ /^::auto_/) continue;
+		if (proc =~ /^::debug_/) continue;
+		if (proc =~ /^::unknown/) continue;
+		if (proc =~ /^::fprintf/) continue;
+		Trace_addExec(proc, "enter", &debug_enter);
+		Trace_addExec(proc, "leave", &debug_leave);
+	}
 }
 #lang tcl

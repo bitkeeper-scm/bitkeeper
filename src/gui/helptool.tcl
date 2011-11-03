@@ -192,8 +192,23 @@ proc highlight {tag index len} \
 	set index2 [.text.help index "$index + $len chars"]
 	.text.help tag add $tag $index $index2
 	.text.help tag add seealso $index $index2
-	.text.help tag bind \
-	    $tag <Button-1> "getSelection $tag; stackReset; doSelect 1"
+	.text.help tag bind $tag <ButtonPress-1> "buttonPress1"
+	.text.help tag bind $tag <ButtonRelease-1> [list buttonRelease1 $tag]
+}
+
+proc buttonPress1 {} \
+{
+	set ::selection [.text.help tag ranges sel]
+}
+
+proc buttonRelease1 {tag} \
+{
+	if {[llength $::selection] || [llength [.text.help tag ranges sel]]} {
+		return
+	}
+	getSelection $tag
+	stackReset
+	doSelect 1
 }
 
 # Look for each <bk> word, then find the next word,
@@ -311,8 +326,9 @@ proc search {} \
 		if {$last != $key} {
 			set last $key
 			.text.help insert end "$key\n" "$key seealso"
-			.text.help tag bind $key <Button-1> \
-			    "getSelection $key; stackReset; doSelect 1; break"
+			.text.help tag bind $key <ButtonPress-1> "buttonPress1"
+			.text.help tag bind $key <ButtonRelease-1> \
+			    [list buttonRelease1 $key]
 			set l [topic2line $key]
 			if {"$l" != ""} {
 				.ctrl.topics tag add "search" \
@@ -440,6 +456,8 @@ proc widgets {} \
 		-width $gc(help.width) \
 		-height $gc(help.height) \
 		-padx 4 \
+		-insertwidth 0 \
+		-highlightthickness 0 \
 		-background $gc(help.textBG) -fg $gc(help.textFG) \
 		-xscrollcommand [list .text.x2scroll set] \
 		-yscrollcommand [list .text.y2scroll set]

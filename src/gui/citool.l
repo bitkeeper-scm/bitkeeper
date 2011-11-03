@@ -691,14 +691,11 @@ void
 insertBottomText(string text, int clearTextBox)
 {
 	widget	textbox = self.w_diffs;
-	string	state = Text_cget(textbox, state:);
 
-	Text_configure(textbox, state: "normal");
 	if (clearTextBox) {
 		Text_delete(textbox, 1.0, "end");
 	}
 	Text_insert(textbox, "end", text);
-	Text_configure(textbox, state: state);
 }
 
 void
@@ -720,13 +717,9 @@ topMessage(string message, string tag)
 void
 bottomMessage(string message, string tag)
 {
-	string	state = Text_cget(self.w_diffs, state:);
-
-	Text_configure(self.w_diffs, state: "normal");
 	Text_delete(self.w_diffs, 1.0, "end");
 	Text_insert(self.w_diffs, "end", message, tag);
 	Text_insert(self.w_diffs, "end", "\n", tag);
-	Text_configure(self.w_diffs, state: state);
 }
 
 void
@@ -784,7 +777,7 @@ gui()
 
 	text(self.w_comments, relief: "sunken", borderwidth: 1,
 	    font: gc("ci.fixedFont"), wrap: "none", highlightthickness: 0,
-	    background: gc("ci.textBG"), foreground: gc("ci.textFG"),
+	    background: gc("ci.textBG"), foreground: gc("ci.textFG"), undo: 1,
 	    width: 70, height: gc("ci.commentsHeight"), state: "disabled");
 	ScrolledWindow_setwidget(self.w_commentF, self.w_comments);
 	tags = bindtags(self.w_comments);
@@ -830,7 +823,8 @@ gui()
 	text(self.w_diffs, relief: "sunken", borderwidth: 1,
 	    font: gc("ci.fixedFont"), wrap: "none", highlightthickness: 0,
 	    background: gc("ci.textBG"), foreground: gc("ci.textFG"),
-	    width: 81, height: gc("ci.diffHeight"), state: "disabled");
+	    width: 81, height: gc("ci.diffHeight"), insertwidth: 0);
+	bindtags(self.w_diffs, {self.w_diffs, "ReadonlyText", top, "all"});
 	ScrolledWindow_setwidget(self.w_lowerF, self.w_diffs);
 	configureDiffWidget("ci", self.w_diffs);
 
@@ -850,7 +844,8 @@ gui()
 	    separator: 0, sticky: "e");
 	setStatus("Initializing...");
 
-	bind(top, "<FocusIn>", "focus ${self.w_comments}");
+	bind(top, "<FocusIn>", "handle_focus %W");
+	bind(self.w_diffs, "<ButtonRelease-1>", "handle_release %W");
 	bind("BK", "<Control-l>", "refreshSelectedFile; break");
 	bind("BK", "<Control-t>", "toggleSelectedFile; break");
 	bind("BK", "<Control-Shift-x>", "cutComments; break");
@@ -898,7 +893,7 @@ gui()
 		    "%W tag add sel insert {insert display lineend};"
 		    "%W mark set insert {insert display lineend}; break");
 		bind(w, "<Command-BackSpace>",
-		    "%W delete {insert display linestart + 1 char} insert;"
+		    "%W delete {insert display linestart} insert;"
 		    "break");
 	} else {
 		bind(w, "<Control-a>", "%W tag add sel 1.0 end; break");
@@ -1579,7 +1574,6 @@ void
 showFileContents(sfile sf)
 {
 	string	type = ftype(sf.file);
-	string	state = Text_cget(self.w_diffs, state:);
 
 	unless (exists(sf.file)) {
 		puts("Removing non-existent file \"${sf.name}\" from list box");
@@ -1587,7 +1581,6 @@ showFileContents(sfile sf)
 		return;
 	}
 
-	Text_configure(self.w_diffs, state: "normal");
 	if (type eq "link") {
 		Text_insert(self.w_diffs, "end",
 		    "${sf.name}:\t(new file) type: ${type}");
@@ -1620,7 +1613,6 @@ showFileContents(sfile sf)
 		Text_insert(self.w_diffs, "end",
 		    "${sf.name}:\tUNSUPPORTED FILE TYPE (${type})");
 	}
-	Text_configure(self.w_diffs, state: state);
 }
 
 void
@@ -1634,7 +1626,6 @@ showCsetContents(sfile sf)
 	if (sf.inProduct && self.cnt_commented == 0) {
 		// Product ChangeSet file and no comments at all.
 		bottomMessage(msgs{"noFileComments"}, "warning");
-		Text_configure(textBox, state: "disabled");
 		disableComments();
 		return;
 	}
@@ -1643,13 +1634,11 @@ showCsetContents(sfile sf)
 		// Component ChangeSet and no comments on any files
 		// in this component.
 		bottomMessage(msgs{"noFileComments"}, "warning");
-		Text_configure(textBox, state: "disabled");
 		disableComments();
 		return;
 	}
 
 	comments = getComments(sf);
-	Text_configure(textBox, state: "normal");
 	if (isProductCsetComment(sf, comments)) {
 		// If this is a cset comment inherited from the
 		// product, select the whole thing within the
@@ -1709,8 +1698,6 @@ showCsetContents(sfile sf)
 			Text_insert(textBox, "end", "\n");
 		}
 	}
-
-	Text_configure(textBox, state: "disabled");
 }
 
 void
@@ -1724,7 +1711,6 @@ showFile(sfile sf)
 	enableComments();
 	comments = self.comments;
 	insertTopText(comments, 1);
-	Text_configure(self.w_diffs, state: "normal");
 	Text_delete(self.w_diffs, 1.0, "end");
 	after("idle", "focus ${self.w_comments}");
 
@@ -1733,7 +1719,6 @@ showFile(sfile sf)
 		return;
 	} else if (sf.type eq "new") {
 		showFileContents(sf);
-		Text_configure(self.w_diffs, state: "disabled");
 		return;
 	}
 
@@ -1756,7 +1741,6 @@ showFile(sfile sf)
 			Text_insert(self.w_diffs, "end", "\n");
 			Text_insert(self.w_diffs, "end",
 			    bk("changes -S -v -r${sf.rev} \"${dir}\""), "");
-			Text_configure(self.w_diffs, state: "disabled");
 			return;
 		}
 		Text_insert(self.w_diffs, "end",
@@ -1778,7 +1762,6 @@ showFile(sfile sf)
 	}
 	fclose(fd);
 	highlightStacked(self.w_diffs, "1.0", "end", 1);
-	Text_configure(self.w_diffs, state: "disabled");
 }
 
 void
@@ -2247,6 +2230,20 @@ rescan()
 }
 
 void
+handle_release(widget w)
+{
+	if (length(Text_tagRanges(w, "sel"))) return;
+	focus(self.w_comments);
+}
+
+void
+handle_focus(widget w)
+{
+	if (w eq self.w_diffs || w eq self.w_lowerF) return;
+	focus(self.w_comments);
+}
+
+void
 initMsgs()
 {
 // Don't make comments wider than 65 chars
@@ -2646,58 +2643,4 @@ main(_unused int argc, string argv[])
 	createImages();
 	processFiles(self.filelist);
 	readBackupComments();
-}
-
-private int	debug{string};
-private	FILE	debugf = undef;
-
-void
-debug_enter(string cmd, string op)
-{
-	op = op;
-	debug{cmd} = Clock_microseconds();
-	puts(debugf, "ENTER  ${cmd}\n");
-}
-
-void
-debug_leave(string cmd, int code, string result, string op)
-{
-	float	t;
-
-	op = op;
-	code = code;
-	result = result;
-	if (defined(debug{cmd})) {
-		t = Clock_microseconds() - debug{cmd};
-		undef(debug{cmd});
-	}
-
-	if (defined(t)) {
-		puts(debugf, "LEAVE  ${cmd} (${t} usecs)");
-	} else {
-		puts(debugf, "LEAVE  ${cmd}");
-	}
-	puts(debugf, "RESULT ${result}\n");
-}
-
-void
-debug_init(string var)
-{
-	string	proc, procs[];
-	string	pattern, patterns[] = {"::*"};
-
-	unless (defined(var) && length(var)) return;
-	if (var =~ m|^/|) debugf = fopen(var, "w");
-	unless (defined(debugf)) debugf = stderr;
-
-	foreach (pattern in patterns) {
-		procs = Info_procs(pattern);
-		foreach (proc in procs) {
-			if (proc =~ /^::auto_/) continue;
-			if (proc =~ /^::debug_/) continue;
-			if (proc =~ /^::unknown/) continue;
-			Trace_addExec(proc, "enter", &debug_enter);
-			Trace_addExec(proc, "leave", &debug_leave);
-		}
-	}
 }

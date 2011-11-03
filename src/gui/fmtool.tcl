@@ -58,7 +58,7 @@ proc undo {} \
 			.merge.menu.redo configure -state normal
 		}
 	}
-	scrollDiffs [currentLine rBoth nextBoth]
+	selectDiff $rBoth $nextBoth
 	#dumpLists Undo ""
 }
 
@@ -105,7 +105,7 @@ proc next {} \
 	if {$nextBoth > $maxBoth} { return }
 
 	# OK, there is a diff, slide down to it.
-	scrollDiffs [currentLine rDiff nextDiff]
+	selectDiff $rDiff $nextDiff
 }
 
 proc dumpLists {A B} {
@@ -241,10 +241,8 @@ proc selectFiles {} \
 	if {("$lfile" == "")} return;
  	set t [clock format [file mtime $lfile] -format "%r %D"]
 	.diffs.status.l configure -text "$lfile ($t)"
-	.diffs.left configure -state normal
 	set fd [open $lfile r]
 	.diffs.left insert end  [read $fd]
-	.diffs.left configure -state disabled
 	close $fd
 	set rfile [tk_getOpenFile -title "Select Right File"];
 	if {("$rfile" == "")} return;
@@ -261,14 +259,12 @@ proc selectOutFile {} \
 	.merge.l config -text "$outputFile"
 }
 
-proc currentLine {array index} \
-{
-	upvar	$array	a
-	upvar	$index	i
+proc diffStart {list idx} {
+	return [lindex $list $idx]
+}
 
-	set tmp [lindex $a $i]
-	set tmp [lindex [split $tmp .] 0]
-	return $tmp
+proc diffEnd {list idx} {
+	return [lindex $list [incr idx]]
 }
 
 # overrides proc from difflib.tcl
@@ -293,46 +289,20 @@ proc dot {} \
 	.diffs.status.middle configure -text ""
 }
 
-# This works much better than that 0..1 shit.
-# overrides 'dot' from difflib.tcl, but I think it can be merged in later
-proc scrollDiffs {where} \
+proc selectDiff {list diff} \
 {
 	global	rDiff nextDiff gc app
 
-	if {$where == ""} { return }
-	.diffs.left see "$where.0"
-	.diffs.right see "$where.0"
+	set start [diffStart $list $diff]
+	set end   [diffEnd $list $diff]
 
-	# Either put the diff beginning at the top of the window (if it is
-	# too big to fit or fits exactly) or
-	# center the diff in the window (if it is smaller than the window).
-	set Diff [lindex $rDiff $nextDiff]
-	set End [lindex $rDiff [expr {1 + $nextDiff}]]
-	set size [lindex [split [expr {$End - $Diff}] "."] 0]
-	if {$size >= $gc(fm.diffHeight)} {
-		set i $where
-	} else {
-		# Center it.
-		set j [expr {$gc(fm.diffHeight) - $size}]
-		set j [expr {$j / 2}]
-		if {$j > 0} { incr j -1 }
-		set i [expr {$where - $j}]
-	}
-	set l [topLine]
-	while {($l < $i) && ($i > $gc(fm.diffHeight))} {
-		.diffs.left yview scroll 1 units
-		.diffs.right yview scroll 1 units
-		# Handles a bug at the end.
-		set j [topLine]
-		if {$j == $l} { break }
-		set l $j
-	}
+	scrollDiffs $start $end
 
 	# Highlight the diff in question so that we can see it.
-	.diffs.left  tag remove d 1.0 end
-	.diffs.right tag remove d 1.0 end
-	.diffs.left  tag add d $Diff $End
-	.diffs.right tag add d $Diff $End
+	foreach w {.diffs.left .diffs.right} {
+		$w tag remove d 1.0 end
+		$w tag add d $start $end
+	}
 }
 
 proc resolved {n} \
@@ -492,13 +462,15 @@ proc widgets {L R O} \
 	    text .diffs.left -width $gc(fm.diffWidth) \
 		-height $gc(fm.diffHeight) \
 		-background $gc(fm.textBG) -fg $gc(fm.textFG) \
-		-state disabled -wrap none -font $gc(fm.fixedFont) \
+		-wrap none -font $gc(fm.fixedFont) \
+		-insertwidth 0 -highlightthickness 0 \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    text .diffs.right -width $gc(fm.diffWidth) \
 		-height $gc(fm.diffHeight) \
 		-background $gc(fm.textBG) -fg $gc(fm.textFG) \
-		-state disabled -wrap none -font $gc(fm.fixedFont)
+		-wrap none -font $gc(fm.fixedFont) \
+		-insertwidth 0 -highlightthickness 0
 	    ttk::scrollbar .diffs.xscroll -orient horizontal -command xscroll
 	    ttk::scrollbar .diffs.yscroll -orient vertical -command yscroll
 	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
@@ -598,9 +570,8 @@ proc widgets {L R O} \
 	    "(Control-Right)  Use the highlighted change from the right"
 	.merge.menu.redo configure -state disabled
 	foreach w {.diffs.left .diffs.right .merge.t} {
-		bindtags $w {all Text .}
+		bindtags $w [list $w ReadonlyText . all]
 	}
-	set foo [bindtags .diffs.left]
 	computeHeight "diffs"
 	computeHeight "merge"
 	wm protocol . WM_DELETE_WINDOW { cmd_done }

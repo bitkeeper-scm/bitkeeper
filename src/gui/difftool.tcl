@@ -34,8 +34,12 @@ proc widgets {} \
 	    }
 	    ttk::button .menu.quit -text "Quit" -command exit \
 		-takefocus 0
-	    ttk::button .menu.reread -text "Reread" -command reread \
-		-takefocus 0
+	    set ws_text "Ignore Whitespace"
+	    if ($gc(ignoreWhitespace)) {
+		    set ws_text "Honor Whitespace"
+	    }
+	    ttk::button .menu.whitespace -text $ws_text \
+	    -command whitespace -takefocus 0
 	    ttk::button .menu.help -text "Help" -takefocus 0 -command {
 		exec bk helptool difftool &
 	    }
@@ -61,7 +65,7 @@ proc widgets {} \
 	    pack .menu.help -side left -padx 1
 	    pack .menu.discard -side left -padx 1
 	    pack .menu.revtool -side left -padx 1
-	    pack .menu.reread -side left -padx 1
+	    pack .menu.whitespace -side left -padx 1
 	    pack .menu.prev -side left -padx 1
 	    pack .menu.dot -side left -padx 1
 	    pack .menu.next -side left -padx 1
@@ -78,9 +82,6 @@ proc widgets {} \
 	# smaller than this doesn't look good.
 	wm minsize . 300 300
 
-	foreach w {.diffs.left .diffs.right} {
-		bindtags $w {all Text .}
-	}
 	computeHeight "diffs"
 
 	$search(widget) tag configure search \
@@ -124,8 +125,11 @@ proc keyboard_bindings {} \
 	bind .	<Control-n>		nextFile
 	bind .	<Control-p>		prevFile
 	bind .	<n>			next
+	bind .  <bracketright>		next
 	bind .	<space>			next
+	bind .  <Shift-space>		prev
 	bind .	<p>			prev
+	bind .  <bracketleft>		prev
 	bind .	<period>		dot
 	if {$gc(aqua)} {
 		bind all <Command-q> exit
@@ -162,10 +166,19 @@ proc getRev {file rev checkMods} \
 	return $tmp
 }
 
-proc reread {} \
+proc whitespace {} \
 {
-	global	selected
+	global	selected gc
 
+	# selectFile respects gc(ignoreWhitespace) and the value
+	# has already been toggled by the checkbutton.
+	if {$gc(ignoreWhitespace)} {
+		set gc(ignoreWhitespace) 0
+		.menu.whitespace configure -text "Ignore Whitespace"
+	} else {
+		set gc(ignoreWhitespace) 1
+		.menu.whitespace configure -text "Honor Whitespace"
+	}
 	selectFile $selected
 }
 
@@ -460,14 +473,22 @@ proc getPrevFile {} \
 proc prevFile {} \
 {
 	set file [getPrevFile]
-	if {$file ne ""} { selectFile $file }
+	if {$file ne ""} {
+		selectFile $file
+		return 1
+	}
+	return 0
 }
 
 # Get the next file when the button is selected
 proc nextFile {} \
 {
 	set file [getNextFile]
-	if {$file ne ""} { selectFile $file }
+	if {$file ne ""} {
+		selectFile $file
+		return 1
+	}
+	return 0
 }
 
 # Override searchsee definition so we scroll both windows
@@ -564,14 +585,10 @@ proc clearDisplay {} \
 	.menu.revtool configure -state disabled
 	.menu.prev configure -state disabled
 	.menu.next configure -state disabled
-	.menu.reread configure -state disabled
+	.menu.whitespace configure -state disabled
 
-	.diffs.left configure -state normal
-	.diffs.right configure -state normal
 	.diffs.left delete 1.0 end
 	.diffs.right delete 1.0 end
-	.diffs.left configure -state disabled
-	.diffs.right configure -state disabled
 	.diffs.status.l configure -text ""
 	.diffs.status.l_lnum configure -text ""
 	.diffs.status.r configure -text ""
