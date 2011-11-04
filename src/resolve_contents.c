@@ -402,7 +402,7 @@ c_ul(resolve *rs)
 	names	*n = rs->tnames;
 
 	unless (sys("cp", "-f", n->local, rs->s->gfile, SYS)) {
-		return (commit(rs, 1, 0));
+		return (c_commit(rs));
 	}
 	return (0);
 }
@@ -414,7 +414,7 @@ c_ur(resolve *rs)
 	names	*n = rs->tnames;
 
 	unless (sys("cp", "-f", n->remote, rs->s->gfile, SYS)) {
-		return (commit(rs, 1, 0));
+		return (c_commit(rs));
 	}
 	return (0);
 }
