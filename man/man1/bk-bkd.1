@@ -228,6 +228,23 @@ Include
 .ARG cmd
 from the by default excluded command list.
 .tp
+.B \-S
+Run in "symlinks are allowed" safe mode.
+This is similar to -C, with the addition of allowing paths that are
+symlinks under the bkd root and resolve to outside of the bkd root.
+This is useful to be able to run this sequence of commands:
+.DS
+mkdir /repos
+ln -s /mnt/disk1/repos/myrepo /repos/myrepo
+cd /repos
+bk bkd -S
+cd $HOME
+bk clone bk://machine/myrepo
+.DE
+Note: a user could check in a symlink to anywhere, then push their
+repo to the master, then follow that symlink.  This option is useful
+for organizations where that is acceptable.
+.tp
 .B \-U
 Run in "unsafe" mode.
 Any non-interactive \*[BK] command may be run remotely.

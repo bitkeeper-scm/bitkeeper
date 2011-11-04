@@ -392,8 +392,68 @@ bk pull bk://localhost:$P/sub/../../project > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
 if [ $? -ne 0 ]; then echo failed 3; cat pull.out; exit 1 ; fi
 bk lock -U "$HERE/project"
-bk _kill bk://localhost:$P || exit 1
 echo OK
+
+## Symlink tests do not run on Windows
+test "$PLATFORM" != "WIN32" && {
+echo $N Make sure bkd -C disallows cd through a symlink if outside ..$NL
+cd "$HERE/project/src"
+mkdir repos
+cd repos
+commercial subrepo
+cd ..
+ln -s "$HERE/project" proj.symlink
+ln -s subrepo subrepo.symlink
+cd "$HERE"
+ln -s project symlink
+# test symlink to outside
+bk changes -q -r+ -ndx bk://localhost:$P/repos/proj.symlink 2> chg.out \
+    && fail -f chg.out
+grep -q "ERROR-cannot cd to" chg.out || fail -f chg.out
+# test relative symlink to inside
+bk changes -q -r+ -ndx bk://localhost:$P/repos/subrepo.symlink > chg.out \
+    || fail -f chg.out
+echo x > WANT
+cmpfiles WANT chg.out
+# test absolute symlink with symlink before bkd root
+bk changes -q -r+ -ndx \
+    bk://localhost:$P/"$HERE/symlink/src/repos/proj.symlink" 2> chg.out \
+    && fail -f chg.out
+grep -q "ERROR-cannot cd to" chg.out || fail -f chg.out
+bk changes -q -r+ -ndx \
+    bk://localhost:$P/"$HERE/symlink/src/repos/subrepo.symlink" > chg.out \
+    || fail -f chg.out
+cmpfiles WANT chg.out
+echo OK
+
+echo $N Make sure bkd -S lets internal symlink go outside ...........$NL
+cd "$HERE/project/src"
+bk _kill bk://localhost:$P || exit 1
+bk bkd -q -d -S -aPORT -ikill || exit 1
+P=`cat PORT`
+cd "$HERE"
+# test symlink to outside
+bk changes -q -r+ -ndx bk://localhost:$P/repos/proj.symlink > chg.out \
+    || fail -f chg.out
+cmpfiles WANT chg.out
+# test relative symlink to inside
+bk changes -q -r+ -ndx bk://localhost:$P/repos/subrepo.symlink > chg.out \
+    || fail -f chg.out
+cmpfiles WANT chg.out
+# XXX - absolute path with symlink is currently broken
+# test absolute symlink with symlink before bkd root
+bk changes -q -r+ -ndx \
+    bk://localhost:$P/"$HERE/symlink/src/repos/proj.symlink" 2> chg.out \
+    && fail -f chg.out
+grep -q "ERROR-cannot cd to" chg.out || fail -f chg.out
+bk changes -q -r+ -ndx \
+    bk://localhost:$P/"$HERE/symlink/src/repos/subrepo.symlink" > chg.out \
+    || fail -f chg.out
+cmpfiles WANT chg.out
+echo OK
+
+} # end of not WIN32
+bk _kill bk://localhost:$P || exit 1
 
 echo $N Make sure bkd logs requests under the remote user name ......$NL
 cd "$HERE/project"

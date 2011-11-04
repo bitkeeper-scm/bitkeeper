@@ -44,8 +44,6 @@
 #define GetShortPathName(p, q, s) 	/* Unlike win32, 
 					 * Unix has no short path name
 					 */
-#define	fullname	full_name	/* Darwin libc collision */
-
 /* These functions are a "no-op" on unix */
 #define localName2bkName(x, y)		(void)1
 #define	make_fd_uninheritable(fd)  fcntl(fd, F_SETFD, 1)

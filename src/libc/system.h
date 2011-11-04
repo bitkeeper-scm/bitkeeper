@@ -149,7 +149,8 @@ void	fmem_tests(void);
 int	ftrunc(FILE *f, off_t offset);
 
 /* fullname.c */
-char    *fullname(char *path, char *out);
+char    *fullLink(char *path, char *out, int followLink);
+#define	fullname(path, out)	fullLink(path, out, 1)
 
 /* getnull.c */
 char	*getNull(void);

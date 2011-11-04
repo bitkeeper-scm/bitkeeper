@@ -35,11 +35,17 @@ unsafe_cd(char *path)
 	if (chdir(path)) return (1);
 	unless (Opts.safe_cd || ((p = getenv("BKD_DAEMON")) && *p)) return (0);
 	strcpy(b, proj_cwd());
-	unless ((strlen(b) >= strlen(a)) && pathneq(a, b, strlen(a))) {
-		send_cderror(path);
-		return (1);
-	}
-	return (0);
+	if ((strlen(b) >= strlen(a)) && pathneq(a, b, strlen(a))) return (0);
+	unless (Opts.symlink_ok) goto err;
+
+	if (chdir(start_cwd)) return (1);
+	fullLink(path, b, 0);
+	if (chdir(path)) return (1);
+	if ((strlen(b) >= strlen(a)) && pathneq(a, b, strlen(a))) return (0);
+	unless (IsFullPath(path)) goto err;
+
+err:	send_cderror(path);
+	return (1);
 }
 
 int

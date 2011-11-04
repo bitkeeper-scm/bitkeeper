@@ -37,7 +37,7 @@ hasSymlink(char *path)
  * Filename written to tmp, if tmp==0 then a new buf is malloced
  */
 char	*
-fullname(char *xfile, char *tmp)
+fullLink(char *xfile, char *tmp, int followLink)
 {
 	char	buf[MAXPATH];
 	char	tailbuf[MAXPATH], cpath[MAXPATH];
@@ -51,7 +51,7 @@ fullname(char *xfile, char *tmp)
 	 */
 	cleanPath(xfile, cpath);
 
-	if (hasSymlink(cpath)) {
+	if (followLink && hasSymlink(cpath)) {
 		here[0] = '\0';
 		strcpy(tmp, cpath);
 		d = dirname(tmp);
@@ -118,7 +118,7 @@ fullname(char *xfile, char *tmp)
  * Filename written to new, if new==0 then a new buf is malloced
  */
 char *
-fullname(char *gfile, char *new)
+fullLink(char *gfile, char *new, int followLink)
 {
 	char	pwd[MAXPATH];
 	char	buf[MAXPATH];

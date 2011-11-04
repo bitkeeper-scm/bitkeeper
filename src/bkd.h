@@ -90,6 +90,7 @@ typedef struct {
 	u32	http_hdr_out:1;		/* print http header to output */
 	u32	quiet:1;		/* quiet mode */
 	u32	safe_cd:1;		/* do not allow chdir up */
+	u32	symlink_ok:1;		/* follow symlinks into unsafe */
 	u32	kill_ok:1;		/* enable kill socket */
 	u32	unsafe:1;		/* allow unsafe (aka remote) commands */
 	u32	use_stdio:1;		/* read stdin from stdio in bkd */

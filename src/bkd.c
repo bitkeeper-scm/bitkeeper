@@ -80,7 +80,8 @@ bkd_main(int ac, char **av)
 			break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
 		    case 'S': 					/* undoc 2.0 */
-		    	usage();
+			Opts.symlink_ok = 1;
+			break;
 		    case 'R': 					/* doc 2.0 */
 			if (getenv("BKD_SERVICE")) break;	/* ignore it */
 			return (svc_uninstall());
