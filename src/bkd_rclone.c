@@ -215,8 +215,12 @@ cmd_rclone_part2(int ac, char **av)
 		bp_setBAMserver(0, p, getenv("BK_BAM_SERVER_ID"));
 	}
 	printf("@SFIO INFO@\n");
-	fflush(stdout);
+
+	/* rclone doesn't need to bother with zlocks */
+	putenv("_BK_NO_ZLOCK=1");
+
 	/* Arrange to have stderr go to stdout */
+	fflush(stdout);
 	fd2 = dup(2); dup2(1, 2);
 	rc = getsfio(parallel);
 	/* clone needs the remote HERE as RMT_HERE; rclone doesn't */

@@ -660,6 +660,9 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 	after_create = 1;
 
+	/* clone doesn't need to bother with zlocks */
+	putenv("_BK_NO_ZLOCK=1");
+
 	/*
 	 * Now that we know where we are going, go see if it is a network
 	 * fs and if so, go parallel for better perf.

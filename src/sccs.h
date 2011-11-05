@@ -986,7 +986,7 @@ sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
 void	sfind_update(sccs *s, delta *d, ser_t oldser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
-int	sccs_unlock(sccs *, char);
+void	sccs_unlock(sccs *, char);
 
 int	sccs_lockfile(char *lockfile, int wait, int quiet);
 int	sccs_stalelock(char *lockfile, int discard);

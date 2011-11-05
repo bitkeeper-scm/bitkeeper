@@ -4898,59 +4898,42 @@ sccs_lock(sccs *s, char type)
 {
 	char	*t;
 	int	lockfd;
-	int	do_sigs = 0;
+	char	*h;
+	char	buf[MAXLINE];
 
 	if (READ_ONLY(s)) return (0);
-
-	if (type == 'z') {
-		if (repository_locked(s->proj)) return (0);
-		do_sigs++;
-	}
+	if (getenv("_BK_NO_ZLOCK")) goto out;
 
 	/* get -e does Z lock so we can skip past the repository locks */
-	if (type == 'Z') type = 'z';
-	t = sccsXfile(s, type);
-again:	lockfd =
-	    open(t, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : GROUP_MODE);
-	debug((stderr, "lock(%s) = %d\n", s->sfile, lockfd >= 0));
-	if ((lockfd == -1) && stale(t)) goto again;
+	if (type == 'z') {
+		if (repository_locked(s->proj)) return (0);
+	} else {
+		assert(type == 'Z');
+	}
+	t = sccsXfile(s, 'z');
+again:	lockfd = open(t, O_CREAT|O_WRONLY|O_EXCL, 0444);
 	if (lockfd == -1) {
+		if (stale(t)) goto again;
 		return (0);
 	}
-	if (type == 'z') {
-		char	buf[20];
-		char	*h = sccs_gethost();
-
-		sprintf(buf, "%u ", getpid());
-		write(lockfd, buf, strlen(buf));
-		if (h) {
-			write(lockfd, h, strlen(h));
-		} else {
-			write(lockfd, "?", 1);
-		}
-		write(lockfd, "\n", 1);
-		s->state |= S_ZFILE;
-	}
+	sprintf(buf, "%u %s\n", getpid(),
+	    (h = sccs_gethost()) ? h : "?");
+	write(lockfd, buf, strlen(buf));
 	close(lockfd);
-	if (do_sigs) sig_ignore();
+out:	s->state |= S_ZFILE;
+	sig_ignore();
 	return (1);
 }
 
 /*
  * Take SCCS/s.foo.c and unlink SCCS/<type>.foo.c
  */
-int
+void
 sccs_unlock(sccs *sccs, char type)
 {
-	char	*s;
-	int	failed;
+	unlink(sccsXfile(sccs, type));
 
-	debug((stderr, "unlock(%s, %c)\n", sccs->sfile, type));
-	s = sccsXfile(sccs, type);
-	failed  = unlink(s);
-	// XXX This seems to a bug, we should only reset S_ZFILE if type == 'z'
-	unless (failed) sccs->state &= ~S_ZFILE;
-	return (failed);
+	if (type == 'z') sccs->state &= ~S_ZFILE;
 }
 
 /*
