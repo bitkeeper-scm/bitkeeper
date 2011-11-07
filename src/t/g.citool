@@ -797,3 +797,19 @@ grep -q "$expected" "$OUT" || {
 	exit 1
 }
 echo OK
+
+echo $N Test that toggling a selected new file works ................$NL
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+
+echo FOO > foo
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "foo"
+	test_toggleFile "foo"
+	test_fileHasIcon "foo" done
+	test_toggleFile "foo"
+	test_fileHasIcon "foo" excluded
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK

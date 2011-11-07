@@ -1065,7 +1065,12 @@ toggleFile(string node)
 
 	sf = self.files{file};
 	if ((sf.type eq "new") && (getComments(sf) eq "")) {
-		writeComments(sf, "New BitKeeper file ``${sf.name}''");
+		string	comment = "New BitKeeper file ``${sf.name}''";
+
+		self.commented = 1;
+		self.comments  = comment;
+		insertTopText(comment, 1);
+		writeComments(sf, comment);
 	} else {
 		self.files{file}.excluded = !sf.excluded;
 	}
