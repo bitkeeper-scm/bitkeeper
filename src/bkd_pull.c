@@ -2,6 +2,9 @@
 #include "range.h"
 #include "nested.h"
 
+
+private	int	checkAlias(sccs *cset, char *rev, char ***comps);
+
 int
 cmd_pull_part1(int ac, char **av)
 {
@@ -227,6 +230,13 @@ cmd_pull_part2(int ac, char **av)
 		char	**comps = nested_here(0);
 		char	**list;
 
+		if (rev) {
+			if (checkAlias(0, rev, &comps)) {
+				rc = 1;
+				goto done;
+			}
+		}
+
 		printf("@HERE@\n");
 		EACH(comps) printf("%s\n", comps[i]);
 		freeLines(comps, free);
@@ -334,5 +344,64 @@ done:	fflush(stdout);
 	unless (triggers_failed) trigger(av[0], "post");
 	if (delay > 0) sleep(delay);
 	free(keys);
+	return (rc);
+}
+
+private	int
+checkAlias(sccs *cset, char *rev, char ***comps)
+{
+	nested	*n = 0;
+	char	*old = 0;
+	comp	*c;
+	int	i, hereRev, failed, rc = 1;
+
+	unless (n = nested_init(0, rev, 0, 0)) goto err;
+
+	/*
+	 * We'd like to pass something like NO_WARN to nested_alias
+	 * but it doesn't have that and it is a few calls down in
+	 * the set of apis used.  Hack instead to silence error() output
+	 */
+	old = getenv("_BK_IN_BKD");
+	if (old) {
+		old = strdup(old);
+		putenv("_BK_IN_BKD=QUIET");
+	}
+	failed = nested_aliases(n, rev, comps, 0, 0);
+	if (old) safe_putenv("_BK_IN_BKD=%s", old);
+
+	unless (failed) {
+		/*
+		 * If we did set alias to comps that are here and rolled
+		 * back to rev:  bk comps -h | bk here set - ; bk undo -a$REV
+		 * then does it match the comps in orig alias at $REV?
+		 */
+		EACH_STRUCT(n->comps, c, i) {
+			// included == existed at the time of $REV
+			// present == here now
+			hereRev = (c->included & c->present);
+			if ((hereRev && !c->alias) || (!hereRev && c->alias)) {
+				failed = 1;
+				break;
+			}
+		}
+	}
+	if (failed) {
+		/*
+		 * Alias @ $REV does not represent the comps here at $REV
+		 * so just send the comps here at $REV
+		 */
+		freeLines(*comps, free);
+		*comps = 0;
+		EACH_STRUCT(n->comps, c, i) {
+			if (c->included && c->present) {
+				*comps = addLine(*comps, strdup(c->rootkey));
+			}
+		}
+	}
+	rc = 0;
+
+err:	nested_free(n);
+	free(old);
 	return (rc);
 }

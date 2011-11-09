@@ -720,7 +720,11 @@ echo $N Now unpull and setup a conflict in aliases ..................$NL
 bk unpull $Q -f || exit 1
 bk alias new GCC ./gdb || exit 1
 bk here add $Q GCC || exit 1
-echo q | bk pull $Q || exit 1
+bk pull $Q || exit 1
+# show that GCC alias is now the merge of both sides
+bk alias -k GCC > GOT
+(bk --cd=gcc4 id -S; bk --cd=gdb id -S) | bk _sort > WANT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Now that HERE has GCC alias, pull any cset ..................$NL
@@ -1290,24 +1294,10 @@ test -d gcc/PENDING && {
 }
 echo OK
 
-# Belt and suspenders:
-# This test should be last
-# Some of the above tests involve pull failing and PENDING
-# dirs being left behind is OK.  Any more than that warrants
-# investigation.
-echo $N Ensure that most of the above tests cleaned up PENDING dirs .$NL
-WANT=5
-cd "$HERE"
-bk find . -name PENDING > OUT
-GOT=`wc -l < OUT`
-test $WANT -eq $GOT || fail -f OUT there should only be $WANT PENDING dirs
-echo OK
-
 echo $N Repro abcdr key mismatch problem ............................$NL
-nested iprod
 cd "$HERE"
-bk clone $Q iprod icopy
-cd iprod
+nested iprod
+bk clone $Q . ../icopy
 touch gcc/foo gdb/foo
 bk new $Q gcc/foo gdb/foo
 bk commit $Q -f
@@ -1321,12 +1311,93 @@ bk commit $Q -f
 test -f gdb/bar && chmod +w gdb/bar
 echo blart >> gdb/bar
 # this fails so set -e not so much
-set +e
-printf "q\nrl\ny\n" | bk pull $Q >OUT 2>&1
+printf "q\nrl\ny\n" | bk pull $Q 2>OUT && fail -f OUT
 # Do what the error message said to do
 bk edit $Q -g gdb/bar
 # Run resolve again
-printf "q\n" | bk resolve >OUT2 2>&1
+printf "q\n" | bk resolve $Q 2>OUT2 && fail -f OUT2
 grep -q "KEY MISMATCH" OUT2 && fail -f OUT2
-set -e
+bk abort $Q -f
+echo OK
+
+stripHere() {
+	# extract the HERE information from the protocol
+	perl -ne '
+		($doit = /\@HERE\@/), next unless $doit;
+		($doit = 0), next if / \[\@/;
+		s/.* \[//;
+		s/\]$//;
+		print;
+	' | bk _sort
+}
+
+echo $N Try to pull -rREV when a new component has been created .....$NL
+cd ../remote
+bk portal $Q .
+bk alias new $Q GTOOLS ./gcc ./gdb
+bk here set $Q GTOOLS
+bk edit $Q foo
+echo 4 >> foo
+bk ci -y4 $Q foo
+bk commit -y4 $Q
+KEY=`bk prs -hnd:MD5KEY: -r+ ChangeSet`
+bk -e id -S | bk _sort > ../THREE-KEYS
+bk setup -f gas
+cd ../local
+BK_GETLINE=1 bk pull -q -r$KEY 2>&1 | stripHere > GOT
+cmpfiles ../THREE-KEYS GOT
+bk unpull $Q -sf
+echo OK
+
+echo $N Try to pull -rREV when a new component is part of alias .....$NL
+cd ../remote
+# This should work without altering HERE list
+bk alias add GTOOLS ./gas
+bk here set $Q GTOOLS
+cd ../local
+BK_GETLINE=1 bk pull -q -r$KEY 2>&1 | stripHere > GOT
+# Straight up -- not translated to keys
+printf "GTOOLS\nPRODUCT\n" > WANT
+cmpfiles WANT GOT
+bk unpull $Q -sf
+echo OK
+
+echo $N Try to pull -rREV when HERE contains aliases after REV ......$NL
+cd ../remote
+bk edit $Q foo
+echo 4 >> foo
+bk ci -y4 $Q foo
+bk commit -y4 $Q
+bk alias new JUNK ./gcc || exit 3
+bk here add JUNK
+cd ../local
+BK_GETLINE=1 bk pull -q -r$KEY 2>&1 | stripHere > GOT
+cmpfiles ../THREE-KEYS GOT
+bk unpull $Q -sf
+echo OK
+
+echo $N Try to pull -rREV when HERE@REV has comps not here now ......$NL
+cd ../remote
+bk portal $Q -r
+bk alias set $Q -f GTOOLS ./gas
+bk here set $Q -f GTOOLS
+cd ../local
+BK_GETLINE=1 bk pull -q -r$KEY 2>&1 | stripHere > GOT
+# only PRODUCT:
+bk id > WANT
+cmpfiles WANT GOT
+bk unpull $Q -sf
+echo OK
+
+# Belt and suspenders:
+# This test should be last
+# Some of the above tests involve pull failing and PENDING
+# dirs being left behind is OK.  Any more than that warrants
+# investigation.
+echo $N Ensure that most of the above tests cleaned up PENDING dirs .$NL
+WANT=5
+cd "$HERE"
+bk find . -name PENDING > OUT
+GOT=`wc -l < OUT`
+test $WANT -eq $GOT || fail -f OUT there should only be $WANT PENDING dirs
 echo OK

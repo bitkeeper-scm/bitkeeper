@@ -72,16 +72,16 @@ void
 error(const char *fmt, ...)
 {
 	va_list	ap;
-	char	*retval;
+	char	*p, *retval;
 
 	va_start(ap, fmt);
 	if (vasprintf(&retval, fmt, ap) < 0) retval = 0;
 	va_end(ap);
 	if (retval) {
-		if (getenv("_BK_IN_BKD")) {
+		if ((p = getenv("_BK_IN_BKD")) && !streq(p, "QUIET")) {
 			out("ERROR-");
 			out(retval);
-		} else {
+		} else if (p == 0) {
 			fputs(retval, stderr);
 		}
 		free(retval);
