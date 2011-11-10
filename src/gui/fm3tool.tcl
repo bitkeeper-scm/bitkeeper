@@ -526,22 +526,23 @@ proc dot {{move 1}} \
 \"$gc($app.toggleAnnotations)\" to toggle display of annotations,
 \"space\" is an alias for \"$gc($app.nextConflict)\"."
 
+	set colors ""
+	lappend colors "\n\n" ""
+	lappend colors " -Deleted lines start with \"-\".\n" gca
+	lappend colors " +Added lines start with \"+\".\n" diff
+	lappend colors "  Unchanged lines start with \" \".\n" un
+	lappend colors " +The changed parts have " diff
+	lappend colors "this color." reverse
+	lappend colors "\n" diff
+
 	if {[isConflict $lastDiff]} {
+		lappend colors "  Your selections have this color.\n" hand
 		set buf [.merge.t get $d $e]
 		if {$buf == $UNMERGED} {
 			.merge.menu.l configure -bg $gc($app.conflictBG)
 			$w insert end "Merge this conflict by clicking on\n"
-			$w insert end "the lines that you want.\n"
-			$w insert end "-Deleted lines start with \"-\".\n" gca
-			$w insert end "+Added lines start with \"+\".\n" diff
-			$w insert end " Unchanged lines start with \" \".\n" un
-			$w insert end "+" reverse
-			$w insert end "The " diff
-			$w insert end "changed parts" reverse
-			$w insert end " have " diff
-			$w insert end "this color." reverse
-			$w insert end "\n" diff
-			$w insert end "Hand merges have this color.\n" hand
+			$w insert end "the lines that you want."
+			$w insert end {*}$colors
 			$w insert end \
 "
 Left-mouse selects a block,
@@ -559,6 +560,7 @@ To hand edit, click the merge window.
 \"$gc($app.toggleAnnotations)\" to toggle display of annotations.
 \"space\" is an alias for \"$gc($app.nextConflict)\""
 			set msg ""
+			set colors ""
 		} else {
 			.merge.menu.l configure -bg $gc($app.handColor)
 			$w insert end \
@@ -579,6 +581,7 @@ To hand edit, click the merge window.}
 To hand edit, click the merge window.}
 	}
 	$w insert end "$msg"
+	if {[llength $colors]} { $w insert end {*}$colors }
 	$w configure -state disabled
 }
 
