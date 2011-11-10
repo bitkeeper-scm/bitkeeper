@@ -44,6 +44,7 @@ ListBox_init(widget pathName, ...args)
 	    multiline: 0, selecttype: "row", selectmode: "single",
 	    resizeborders: "none", titlerows: 0, state: "disabled",
 	    highlightthickness: 0, command: "ListBox_GetText ${self} %r %c",
+	    exportselection: 0, 
 	    rowtagcommand: "ListBox_DrawRow ${self}",
 	    xscrollcommand: {w_hscroll, "set"},
 	    yscrollcommand: {w_vscroll, "set"});
