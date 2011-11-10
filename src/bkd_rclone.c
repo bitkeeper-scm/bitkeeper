@@ -13,7 +13,7 @@ typedef	struct {
 	char	**aliases;
 } opts;
 
-private int	getsfio(int parallel);
+private int	getsfio(int jobs);
 private int	rclone_end(opts *opts);
 
 private char *
@@ -170,15 +170,11 @@ cmd_rclone_part2(int ac, char **av)
 	opts	opts;
 	char	buf[MAXPATH];
 	char	*path, *p;
-	int	fd2, parallel = 0, rc = 0;
+	int	fd2, jobs, rc = 0;
 	project	*proj;
 	u64	sfio;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
-	if (isNetworkFS(path)) {
-		p = getenv("BK_PARALLEL");
-		parallel = p ? min(atoi(p), PARALLEL_MAX) : PARALLEL_DEFAULT;
-	}
 	if (unsafe_cd(path)) {
 		p = aprintf("ERROR-cannot chdir to \"%s\"\n", path);
 		out(p);
@@ -186,6 +182,7 @@ cmd_rclone_part2(int ac, char **av)
 		free(path);
 		return (1);
 	}
+	jobs = parallel(path);
 	free(path);
 
 	getline(0, buf, sizeof(buf));
@@ -222,7 +219,7 @@ cmd_rclone_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fflush(stdout);
 	fd2 = dup(2); dup2(1, 2);
-	rc = getsfio(parallel);
+	rc = getsfio(jobs);
 	/* clone needs the remote HERE as RMT_HERE; rclone doesn't */
 	if (opts.product) unlink("BitKeeper/log/HERE");
 	if (opts.detach) unlink("BitKeeper/log/COMPONENT");
@@ -433,7 +430,7 @@ docheck:	/* undo already runs check so we only need this case */
 
 
 private int
-getsfio(int parallel)
+getsfio(int jobs)
 {
 	int	status, pfd;
 	u32	in, out;
@@ -442,8 +439,8 @@ getsfio(int parallel)
 	char	j[20];
 	pid_t	pid;
 
-	if (parallel) {
-		sprintf(j, "-j%d", parallel);
+	if (jobs) {
+		sprintf(j, "-j%d", jobs);
 		assert(cmds[4] == 0);
 		cmds[4] = j;
 		cmds[5] = 0;

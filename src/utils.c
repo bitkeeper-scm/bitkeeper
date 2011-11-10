@@ -1551,7 +1551,7 @@ full_check(void)
 	if (window = proj_configsize(0, "check_frequency")) {
 		window *= DAY;
 	} else {
-		window = DAY;
+		window = WEEK;
 	}
 	if (window > 2*WEEK) window = 2*WEEK;
 	if (f = fopen(CHECKED, "r")) {
@@ -2024,3 +2024,25 @@ bk_setConfig(char *key, char *val)
 	}
 }
 
+/*
+ * Return reasonable values for parallel sfio/checkouts/etc.
+ */
+int
+parallel(char *path)
+{
+	char	*p;
+	int	val = 0;
+
+#ifdef	WIN32
+	return (0);
+#endif
+	if ((p = proj_configval(0, "parallel")) && isdigit(*p)) {
+		unless (val = atoi(p)) return (0);
+		if (val) return (min(val, PARALLEL_MAX));
+	}
+	if (isNetworkFS(path)) {
+		return (PARALLEL_NET);
+	} else {
+		return (PARALLEL_LOCAL);
+	}
+}

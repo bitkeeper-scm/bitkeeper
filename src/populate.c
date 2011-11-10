@@ -104,6 +104,7 @@ nested_populate(nested *n, popts *ops)
 				vp = addLine(vp, strdup("--no-hardlinks"));
 			}
 			vp = addLine(vp, strdup("-p"));
+			vp = addLine(vp, aprintf("-j%d", ops->parallel));
 			vp = addLine(vp,
 			    aprintf("-r%s", cp->useLowerKey ?
 				cp->lowerkey : cp->deltakey));

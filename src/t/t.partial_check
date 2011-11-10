@@ -72,12 +72,23 @@ cd project
 bk takepatch -af PATCH || exit 1
 echo OK
 
-echo $N Make sure partial check is full at 25 hours old .............$NL
+echo $N check_frequency = 1 days and test 25 hours - F ..............$NL
 cd "$HERE"
 rm -fr project
 tar xf TAR
 cd project
 THEN=`expr $CUR - \( 25 \* 3600 \)`
+echo $THEN > $CHECKED
+BK_CONFIG="check_frequency: 1! " bk takepatch -af PATCH 2> ERR && exit 1
+grep -q "Missing file.*keywords" ERR || exit 1
+echo OK
+
+echo $N Make sure partial check is full at 7+ days old - F ..........$NL
+cd "$HERE"
+rm -fr project
+tar xf TAR
+cd project
+THEN=`expr $CUR - \( 7 \* 24 \* 3600 + 100 \)`
 echo $THEN > $CHECKED
 bk takepatch -af PATCH 2> ERR && exit 1
 grep -q "Missing file.*keywords" ERR || exit 1

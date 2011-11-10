@@ -270,7 +270,7 @@ echo $N "clone (checkout:edit)........................................$NL"
 cd "$HERE"
 BK_CONFIG='partial_check:on!;checkout:edit!' bk clone standalone clone-edit >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'file xfer' 'checkout' || fail $msg
+chkpasses OUT 'file xfer' || fail $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone-edit
@@ -290,7 +290,7 @@ echo $N "clone -j (checkout:edit) ....................................$NL"
 cd "$HERE"
 BK_CONFIG='partial_check:on!;checkout:edit!' bk clone -j3 standalone clone-j >OUT 2>&1 || fail -f OUT
 chkoutput OUT || fail $msg
-chkpasses OUT 'file xfer' 'checkout' || fail $msg
+chkpasses OUT 'file xfer' || fail $msg
 chknumbars OUT 1 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone-j
@@ -1410,7 +1410,7 @@ echo $N "clone, 0 components (checkout:edit) .........................$NL"
 cd "$HERE"
 BK_CONFIG='partial_check:on!;checkout:edit!' bk clone product0 clone0-edit >OUT 2>&1 || fail -f OUT
 chkoutput OUT $PRODUCT || fail $msg
-chkpasses OUT checkout || fail $msg
+chkpasses OUT || fail $msg
 chknumbars OUT 2 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone0-edit
@@ -1427,7 +1427,7 @@ echo OK
 echo $N "clone, 1 component (checkout:edit) ..........................$NL"
 BK_CONFIG='partial_check:on!;checkout:edit!' bk clone product1 clone1-edit >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 $PRODUCT || fail $msg
-chkpasses OUT checkout || fail $msg
+chkpasses OUT || fail $msg
 chknumbars OUT 3 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone1-edit
@@ -1444,7 +1444,7 @@ echo OK
 echo $N "clone, 3 components (checkout:edit) .........................$NL"
 BK_CONFIG='partial_check:on!;checkout:edit!' bk clone product3 clone3-edit >OUT 2>&1 || fail -f OUT
 chkoutput OUT comp1 comp2 comp3 $PRODUCT || fail $msg
-chkpasses OUT checkout || fail $msg
+chkpasses OUT || fail $msg
 chknumbars OUT 5 || fail $msg
 chkblanks OUT 0 || fail $msg
 bk _rm -rf clone3-edit

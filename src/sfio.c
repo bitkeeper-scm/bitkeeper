@@ -50,7 +50,7 @@
 #include "progress.h"
 #endif
 
-#define	SFIO_BSIZ	4096
+#define	SFIO_BSIZ	(16<<10)
 #define	SFIO_NOMODE	"SFIO v 1.4"	/* must be 10 bytes exactly */
 #define	SFIO_MODE	"SFIO vm1.4"	/* must be 10 bytes exactly */
 #define	SFIO_VERS	(opts->doModes ? SFIO_MODE : SFIO_NOMODE)
@@ -70,7 +70,7 @@ private int	out_bptuple(char *tuple, off_t *byte_count);
 private int	out_symlink(char *file, struct stat *, off_t *byte_count);
 private int	out_hardlink(char *file,
 		    struct stat *, off_t *byte_count, char *linkMe);
-private	int	sfio_in(int extract);
+private	int	sfio_in(int extract, int justone);
 private int	in_bptuple(char *file, char *datalen, int extract);
 private int	in_symlink(char *file, int todo, int extract);
 private int	in_hardlink(char *file, int todo, int extract);
@@ -94,6 +94,8 @@ private	struct {
 	u32	lclone:1;	/* lclone-mode, hardlink everything */
 	u32	index:1;	/* -I generate index info sfio */
 	u32	mark_no_dfiles:1;
+	u32	checkout:1;	/* --checkout: do sccs checkouts in parallel */
+	u32	seen_config:1;	/* Have we unpacked BitKeeper/etc/config yet? */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	**more;		/* additional list of files to send */
 	char	*prefix;	/* dir prefix to put on the file listing */
@@ -120,7 +122,9 @@ sfio_main(int ac, char **av)
 	int	c, rc;
 	int	parallel = 0;
 	longopt	lopts[] = {
-		{ "mark-no-dfiles", 300 },
+		{ "checkout", 310 },
+		{ "mark-no-dfiles", 320 },
+		{ "Nway", 330 },
 		{ 0, 0 }
 	};
 
@@ -177,8 +181,14 @@ sfio_main(int ac, char **av)
 		    case 'P': opts->prefix = optarg; break;
 		    case 'm': opts->doModes = 1; break; 	/* doc 2.0 */
 		    case 'q': opts->quiet = 1; break; 		/* doc 2.0 */
-		    case 300:	/* --mark-no-dfiles */
+		    case 310:	/* --checkout */
+		    	opts->checkout = 1;
+			break;
+		    case 320:	/* --mark-no-dfiles */
 			opts->mark_no_dfiles = 1;
+			break;
+		    case 330:	/* --Nway */
+			opts->seen_config = 1; /* don't wait for config file */
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -225,9 +235,16 @@ sfio_main(int ac, char **av)
 	if (opts->mode == M_OUT) {
 		rc = sfio_out();
 	} else if (opts->mode == M_IN) {
-		rc = (parallel > 0) ? sfio_in_Nway(parallel) : sfio_in(1);
+		if (parallel > 1) {
+			rc = sfio_in(1, 1); /* unpack BitKeeper/etc */
+			if (rc == SFIO_MORE) {
+				rc = sfio_in_Nway(parallel); /* do the rest in parallel */
+			}
+		} else {
+			rc = sfio_in(1, 0);
+		}
 	} else if (opts->mode == M_LIST) {
-		rc = sfio_in(0);
+		rc = sfio_in(0, 0);
 	} else {
 		goto usage;
 	}
@@ -304,6 +321,14 @@ sfio_out(void)
 	byte_count = 10;
 	while (nextfile(buf)) {
 		chomp(buf);
+		if (streq(buf, "||")) {
+			/*
+			 * Insert a sfio separator and skip this file.
+			 */
+			send_eof(SFIO_MORE);
+			fputs(SFIO_VERS, stdout);
+			continue;
+		}
 		if (opts->bp_tuple && strchr(buf, '|')) {
 			if (n = out_bptuple(buf, &byte_count)) {
 				send_eof(n);
@@ -588,13 +613,16 @@ send_eof(int error)
  * Nota bene: changes to here should do the same change in sfio_in_Nway().
  */
 int
-sfio_in(int extract)
+sfio_in(int extract, int justone)
 {
-	char	buf[MAXPATH];
-	char	datalen[11];
-	int	len, n;
+	int	len, n, i;
 	u32	ulen;
 	off_t	byte_count = 0;
+	FILE	*co = 0;
+	char	**save = 0;
+	char	*p;
+	char	buf[MAXPATH];
+	char	datalen[11];
 
 	bzero(buf, sizeof(buf));
 	if (fread(buf, 1, 10, stdin) != 10) {
@@ -616,7 +644,10 @@ sfio_in(int extract)
 	}
 	for (;;) {
 		n = fread(buf, 1, 4, stdin);
-		if (n == 0) return (0);
+		if (n == 0) {
+			len = 0;
+			goto eof;
+		}
 		if (n != 4) {
 			perror("fread");
 			return (1);
@@ -626,9 +657,18 @@ sfio_in(int extract)
 		len = 0;
 		sscanf(buf, "%04d", &len);
 		if (len <= 0) {
+eof:			if (co) {
+				assert(!save);
+				if (pclose(co)) {
+					fprintf(stderr,
+					    "checkout: checkouts failed\n");
+					return (1);
+				}
+			}
 			if (len < 0) {
 				if (-len == SFIO_MORE) {
-					return (sfio_in(extract));
+					if (justone) return (SFIO_MORE);
+					return (sfio_in(extract, 0));
 				}
 				fprintf(stderr, "Incomplete archive: ");
 				switch (-len) {
@@ -684,11 +724,59 @@ sfio_in(int extract)
 			sscanf(datalen, "%010u", &ulen);
 			if (in_file(buf, ulen, extract)) return (1);
 		}
+#ifndef	SFIO_STANDALONE
+		if (extract && opts->checkout && !justone) {
+			if ((!strneq("BitKeeper/", buf, 10) ||
+				strneq("BitKeeper/triggers/", buf,  19)) &&
+			    !streq(CHANGESET, buf)) {
+				/* Skip the d.files and other crud */
+			    	p = strrchr(buf, '/');
+				assert(p);
+				unless ((p[1] == 's') && (p[2] == '.')) {
+					continue;
+				}
+				if (opts->seen_config && !co) {
+					/*
+					 * defer spawning checkout
+					 * until the first user file
+					 * in checkout mode
+					 */
+					if (proj_checkout(0) & (CO_GET|CO_EDIT)){
+						co = popen(
+			     "bk checkout -Tq --skip-bam -", "w");
+						assert(co);
+						setlinebuf(co);
+						EACH(save) {
+							fprintf(co,
+							    "%s\n", save[i]);
+						}
+					} else {
+						opts->checkout = 0;
+					}
+					freeLines(save, free);
+					save = 0;
+				}
+				/*
+				 * Add code to buffer up file names
+				 * until BitKeeper/etc/config has been
+				 * seen so that we will get the
+				 * correct checkout modes This is only
+				 * needed when cloning from an old
+				 * bkd.
+				 */
+				if (co) {
+					fprintf(co, "%s\n", buf);
+				} else if (!opts->seen_config) {
+					save = addLine(save, strdup(buf));
+				}
+			} else if (streq("BitKeeper/etc/SCCS/s.config", buf)) {
+				opts->seen_config = 1;
+			}
+		}
+#endif
 		if (opts->echo) printf("%s\n", buf);
 	}
-#ifndef SFIO_STANDALONE
-	save_byte_count(byte_count);
-#endif
+	assert(0);
 }
 
 private int
@@ -1086,8 +1174,9 @@ sfio_in_Nway(int n)
 
 	f = calloc(n, sizeof(FILE *));
 	sent = calloc(n, sizeof(int));
-	cmd = aprintf("bk sfio -i%s",
-		(opts->quiet || opts->todo || opts->nfiles)? "q" : "");
+	cmd = aprintf("bk sfio -i%s --Nway %s",
+		(opts->quiet || opts->todo || opts->nfiles)? "q" : "",
+		opts->checkout ? "--checkout" : "");
 	for (i = 0; i < n; i++) {
 		f[i] = popen(cmd, "w");
 	}
@@ -1113,7 +1202,7 @@ header:
 		goto out;
 	}
 	for (i = 0; i < n; i++) {
-		sent[i] += fwrite(buf, 1, 10, f[i]);
+		fwrite(buf, 1, 10, f[i]);
 	}
 	for (;;) {
 		i = fread(buf, 1, 4, stdin);
@@ -1171,21 +1260,21 @@ header:
 			fprintf(stderr, "Bad length in sfio\n");
 			goto out;
 		}
-		sent[cur] += fwrite(buf, 1, 4, f[cur]);
+		fwrite(buf, 1, 4, f[cur]);
 		if (fread(buf, 1, len, stdin) != len) {
 			perror("fread");
 			goto out;
 		}
 		byte_count += len;
 		buf[len] = 0;
-		sent[cur] += fwrite(buf, 1, len, f[cur]);
+		fwrite(buf, 1, len, f[cur]);
 		perfile(buf);
 		if (fread(datalen, 1, 10, stdin) != 10) {
 			perror("fread");
 			goto out;
 		}
 		datalen[10] = 0;
-		sent[cur] += fwrite(datalen, 1, 10, f[cur]);
+		fwrite(datalen, 1, 10, f[cur]);
 		if (strneq("LNK00", datalen + 1, 5)) {
 			/* match HLNK00 && SLNK00 */
 			len = strtoul(datalen + 6, 0, 10);
@@ -1194,21 +1283,25 @@ header:
 		}
 		len += 10;	/* checksum */
 		if (opts->doModes) len += 3;
-                /*
-                 * Stdio will bypass buffering if the data to be
-                 * written after the current buffer is empty is >= the
-                 * size of a buffer.  We make that happen more often
-                 * by flushing when a big file is about to be
-                 * transferred.
-                 */
-		if (len >= 2*sizeof(data)) fflush(f[cur]);
+		/*
+		 * Let's run sent[] in units of milliseconds.
+		 *
+		 * Let's assume that we're going burn 10 milliseconds/create.
+		 * We do one create for the file, if in edit, another for the
+		 * p.file, so we are at 20 milliseconds/file with no data.
+		 *
+		 * Let's assume that we get 25MB/sec over the network.  That's
+		 * roughly 25K/millisecond.
+		 */
+		sent[cur] += 20;
+		sent[cur] += len / (25<<10);
 		while (len > 0) {
 			i = fread(data, 1, min(len, sizeof(data)), stdin);
 			if (i <= 0) {
 				perror("fread");
 				goto out;
 			}
-			sent[cur] += fwrite(data, 1, i, f[cur]);
+			fwrite(data, 1, i, f[cur]);
 			len -= i;
 		}
 #ifndef SFIO_STANDALONE
@@ -1218,6 +1311,7 @@ header:
 			progress(opts->tick, ++nticks);
 		}
 #endif
+		fflush(f[cur]);
 		len = 0;
 		/* select next subprocess to use */
 		for (i = 0; i < n; i++) {

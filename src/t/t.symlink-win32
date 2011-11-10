@@ -8,15 +8,15 @@ echo $N Setup ......................................................$NL
 commercial project # no-op to accept eula
 echo OK
 
-echo $N Checking symlink get on Windows fails but is quiet .........$NL
+echo $N Checking symlink get on Windows passes, but is quiet .......$NL
 cd "$HERE"
 bk clone $Q bk://data.bitmover.com/test_data/symlink
 cd symlink
-bk get $Q foo 2>OUT && fail -f OUT should have failed
+bk get $Q foo 2>OUT || fail -f OUT should have passed
 test -s OUT && fail -f OUT OUT file should be empty
 echo OK
 
 echo $N Checking symlink get on Windows with env var set ...........$NL
-BK_WARN_SYMLINK=1 bk get $Q foo 2>OUT && fail -f OUT should have failed
-grep -q "attempting to create this symlink on a win32" OUT || fail -f OUT
+BK_WARN_SYMLINK=1 bk get $Q foo 2>OUT || fail -f OUT should have worked
+grep -q "warning: foo is a symlink, skipping it" OUT || fail -f OUT
 echo OK

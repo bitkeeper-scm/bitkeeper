@@ -47,7 +47,6 @@ private	void	lclone(char *from);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private	retrc	clone_finish(remote *r, retrc status, char **envVar);
-private	void	checkout(int quiet, int verbose, int parallel);
 private	int	chkAttach(char *dir);
 private	retrc	clonemod_part1(remote **r);
 private	int	clonemod_part2(char **envVar);
@@ -112,8 +111,8 @@ clone_main(int ac, char **av)
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'j':
-			if ((opts->parallel = atoi(optarg)) <= 0) {
-				/* if they set it to 0 then disable */
+			if ((opts->parallel = atoi(optarg)) <= 1) {
+				/* if they set it to <= 1 then disable */
 				opts->parallel = -1;
 			} else if (opts->parallel > PARALLEL_MAX) {
 				opts->parallel = PARALLEL_MAX;	/* cap it */
@@ -663,17 +662,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	/* clone doesn't need to bother with zlocks */
 	putenv("_BK_NO_ZLOCK=1");
 
-	/*
-	 * Now that we know where we are going, go see if it is a network
-	 * fs and if so, go parallel for better perf.
-	 * abcdefghijklmtZ 6 is the knee of the curve and I tend to agree.
-	 * I suspect you can do better with more but only slightly.
-	 */
-	if ((opts->parallel == 0) && isNetworkFS(".")) {
-		p = getenv("BK_PARALLEL");
-		opts->parallel =
-		    p ? min(atoi(p), PARALLEL_MAX) : PARALLEL_DEFAULT;
-	}
+	if (opts->parallel == 0) opts->parallel = parallel(".");
 	retrc = RET_ERROR;
 
 	/* eat the data */
@@ -853,7 +842,7 @@ clone2(remote *r)
 	char	**checkfiles = 0;
 	int	i, undorc, rc;
 	int	didcheck = 0;		/* ran check in undo*/
-	int	partial = 1;		/* partial check needs checkout run */
+	int	partial = 1;		/* did we only do a partial check? */
 	int	do_after = 0;
 	char	*parent;
 	popts	ops;
@@ -1028,6 +1017,7 @@ clone2(remote *r)
 		ops.quiet = opts->quiet;
 		ops.verbose = opts->verbose;
 		ops.comps = 1; // product
+		ops.parallel = opts->parallel;
 
 		/*
 		 * suppress the "Source URL" line if components come
@@ -1078,97 +1068,11 @@ nested_err:		fprintf(stderr, "clone: component fetch failed, "
 	}
 	freeLines(checkfiles, free);
 
-	/*
-	 * clone brings the CHECKED file over, meaning a partial_check
-	 * might actually be partial.  Normally check is relied on to
-	 * checkout all files.  But it might not happen in
-	 * partial_check mode.  If we actually did a partial check,
-	 * get the rest of the files.
-	 */
-	if (partial &&
-	    (proj_checkout(0) & (CO_GET|CO_EDIT|CO_BAM_GET|CO_BAM_EDIT))) {
-		checkout(opts->quiet, opts->verbose, opts->parallel);
+	if (partial && bp_hasBAM() &&
+	    (proj_checkout(0) && (CO_BAM_GET|CO_BAM_EDIT))) {
+		system("bk _sfiles_bam | bk checkout -Tq -");
 	}
 	return (0);
-}
-
-/*
- * We may make this public for rclone.
- */
-private void
-checkout(int quiet, int verbose, int parallel)
-{
-	FILE	*in;
-	int	fdin[PARALLEL_MAX], fdout[PARALLEL_MAX], pid[PARALLEL_MAX];
-	int	i, nfds, ret, ndone = 0, ntodo = 0;
-	char	buf[MAXPATH];
-	char	*cmd[] = { "bk", "checkout", "-TUq", "-", 0 };
-	fd_set	rfds, wfds;
-	ticker	*tick = 0;
-	filecnt	nf;
-
-	repo_nfiles(0, &nf);
-	if (verbose) fprintf(stderr, "Checking out files...\n");
-	if (parallel <= 0) {
-		unless (quiet || verbose) {
-			sprintf(buf, "-N%u", nf.usr);
-			sys("bk", "-U^Gr", "checkout", "-Tq", buf, SYS);
-			progress_nlneeded();
-		} else {
-			sys("bk", "-U^Gr", "checkout", "-Tq", SYS);
-		}
-		return;
-	}
-	/*
-	 * The parallel case follows.  Feed kids work as their stdins
-	 * have buffer space to accept it, and collect progress status
-	 * from their stdouts by passing -U to have them output only a
-	 * "." after processing each file.
-	 */
-	assert(parallel <= PARALLEL_MAX);
-	unless (quiet || verbose) {
-		title = " [checkout]";
-		tick = progress_start(PROGRESS_BAR, nf.usr);
-	}
-	for (i = 0; i < parallel; i++) {
-		pid[i] = spawnvpio(&fdin[i], &fdout[i], 0, cmd);
-	}
-	in = popen("bk -R sfiles -U^G", "r");
-	while (!feof(in) || (ndone < ntodo)) {
-		FD_ZERO(&rfds);
-		FD_ZERO(&wfds);
-		nfds = 0;
-		for (i = 0; i < parallel; ++i) {
-			unless (feof(in)) {
-				FD_SET(fdin[i], &wfds);
-				nfds = max(nfds, fdin[i]) + 1;
-			}
-			FD_SET(fdout[i], &rfds);
-			nfds = max(nfds, fdout[i]) + 1;
-		}
-		if ((ret = select(nfds, &rfds, &wfds, 0, 0)) < 0) {
-			if (errno == EINTR) continue;
-			break;
-		}
-		for (i = 0; i < parallel; ++i) {
-			if (FD_ISSET(fdin[i], &wfds) && fnext(buf, in)) {
-				write(fdin[i], buf, strlen(buf));
-				++ntodo;
-			}
-			if (FD_ISSET(fdout[i], &rfds)) {
-				read(fdout[i], &buf, 1);
-				++ndone;
-				unless (quiet || verbose) progress(tick, ndone);
-			}
-		}
-	}
-	unless (quiet || verbose) progress_done(tick, ret?"FAILED":"OK");
-	for (i = 0; i < parallel; i++) {
-		close(fdin[i]);
-		close(fdout[i]);
-		waitpid(pid[i], &ret, 0);
-	}
-	pclose(in);
 }
 
 /*
@@ -1328,6 +1232,7 @@ sfio(remote *r, char *prefix)
 		cmds[++n] = tmp;
 	}
 	cmds[++n] = "--mark-no-dfiles";
+	cmds[++n] = "--checkout";
 	if (opts->quiet) {
 		cmds[++n] = "-q";
 	} else {
@@ -1453,8 +1358,10 @@ after(int quiet, int verbose, char *rev)
 	int	i;
 	sccs	*s;
 	delta	*d;
+	int	co;
 	char	revbuf[MAXREV];
 
+	co = proj_checkout(0);
 	if (verbose) {
 		if (isKey(rev)) {
 			s = sccs_csetInit(SILENT|INIT_NOCKSUM);
@@ -1479,6 +1386,22 @@ after(int quiet, int verbose, char *rev)
 	i = spawnvp(_P_WAIT, "bk", cmds);
 	free(p);
 	unless (quiet) progress_nlneeded();
+
+	/*
+	 * This is a hack for the very rare case where a clone -rREV
+	 * changes the checkout mode and the files fetched from sfio
+	 * are not necessarly correct.
+	 */
+	proj_reset(0);
+	if (co != proj_checkout(0)) {
+		// XXX dead time in this rare case vs noise ?
+		system("bk -Ur clean");
+		if (proj_checkout(0) != (CO_NONE|CO_BAM_NONE)) {
+			// XXX dead time in the non -v case.
+			systemf("bk -Ur checkout -T%s", verbose ? "" : "q");
+		}
+	}
+
 	unless (WIFEXITED(i))  return (-1);
 	return (WEXITSTATUS(i));
 }

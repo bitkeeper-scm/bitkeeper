@@ -1,0 +1,23 @@
+echo $N Create initial repository and data ..........................$NL
+commercial project
+BK="`bk bin`/bk"
+test $PLATFORM = WIN32 && BK=${BK}.exe
+DATA="$HERE"/data
+perl -e 'sysread(STDIN, $buf, 81920);
+syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
+cp "$DATA" data
+bk new $Q data || exit 1
+test -d BitKeeper/BAM || exit 1
+bk commit $Q -ywhatever
+bk repocheck -q
+bk bam server -q .
+echo OK
+
+echo $N Check that we fetch the data in a clone .....................$NL
+cd ..
+# BK_SHOWPROC=YES \
+BK_CONFIG='partial_check:on!;checkout:get!' \
+bk clone $Q --no-hardlinks project clone
+cd clone
+test -f data -a -s data || fail
+echo OK

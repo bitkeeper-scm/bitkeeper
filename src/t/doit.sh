@@ -47,7 +47,8 @@ win32_common_setup()
 
 	# test data loaded on this machine
 	TESTDATA=/c/test_data
-	export TESTDATA
+	BKTESTDATA=bk://data.bitmover.com/test_data
+	export TESTDATA BKTESTDATA
 
 	B=`bk bin`
 	BIN1="$B/bk.exe"

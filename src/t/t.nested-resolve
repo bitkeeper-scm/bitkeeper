@@ -235,7 +235,7 @@ echo $N Test that a resolve on a read only repo root fails ..........$NL
 bk unpull $Q -f
 echo q | bk pull $Q 2> PULL2
 chmod 555 .
-printf "s\nC\n" > IN
-bk resolve $Q <IN 2> ../ERR && fail -f ../ERR
+printf "s\nC\n" > ../IN
+bk resolve $Q < ../IN 2> ../ERR && fail -f ../ERR
 grep -q 'repository root directory is not writable.' ../ERR || fail -f ../ERR
 echo OK

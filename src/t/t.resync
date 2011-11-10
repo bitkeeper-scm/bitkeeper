@@ -456,7 +456,7 @@ bk _rm "$HERE/project/src/SCCS/s.dup.c" "$HERE/copy/src/SCCS/s.dup.c"
 
 echo $N Check resync with binary file ...............................$NL
 cd  "$HERE"
-rm -rf "$HERE/copy"
+bk _rm -rf "$HERE/copy"
 tar xmf chkpoint.tar
 cd "$HERE/project/src"
 cp "$BIN1" bdata
@@ -477,8 +477,7 @@ test -d RESYNC && {
 	exit 1
 }
 bk get $Q bdata
-cmp -s bdata "$BIN2"
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+cmp -s bdata "$BIN2" || fail
 bk clone $Q -rbinary1 "$HERE/copy" "$HERE/copy2" || {
 	cd "$HERE/copy2"
 	bk lock -l

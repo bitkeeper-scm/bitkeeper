@@ -35,7 +35,7 @@ echo OK
 
 echo $N "Count the syscalls for a 'bk clone'.........................."$NL
 rm -f "$FILE"
-BK_STRACE="$FILE" bk clone $Q ../project ../copy || exit 1
+BK_STRACE="$FILE" bk clone -j1 $Q ../project ../copy || exit 1
 "$DO_CNT" clone "$FILE" || exit 1
 echo OK
 
