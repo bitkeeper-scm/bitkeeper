@@ -29,7 +29,6 @@ private	int	indent_level;
 
 private	void	bk_atexit(void);
 private	void	bk_cleanup(int ret);
-private	void	bk_interrupted(int sig);
 private	char	cmdlog_buffer[MAXPATH*4];
 private	int	cmdlog_flags;
 private	int	cmdlog_repolog;	/* if true log to repo_log in addition */
@@ -97,11 +96,7 @@ main(int volatile ac, char **av, char **env)
 	 * screws it up we have a small window where a signal could sneak
 	 * in.  Not sure we can do much about that)
 	 */
-	if (getenv("_BK_IGNORE_SIGS")) {
-		sig_ignore();
-	} else {
-		sig_catch(bk_interrupted);
-	}
+	if (getenv("_BK_IGNORE_SIGS")) sig_ignore();
 
 	trace_init(av[0]);
 	ltc_mp = ltm_desc;
@@ -858,13 +853,6 @@ bk_cleanup(int ret)
 #endif
 	bktmpcleanup();
 	trace_free();
-}
-
-private void
-bk_interrupted(int sig)
-{
-	bk_atexit();
-	(exit)(101);
 }
 
 /*
