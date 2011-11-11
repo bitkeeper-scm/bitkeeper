@@ -113,6 +113,11 @@ tmp_tests(void)
 	p = bktmp(0, template);
 	assert(p);
 	free(p);
+	if (isdir(BKTMP)) {
+		    p = bktmp_local(0, template);
+		    assert(p);
+		    free(p);
+	}
 	free(template);
 }
 

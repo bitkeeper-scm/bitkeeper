@@ -7536,7 +7536,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	int	error = 0;
 	int	side, nextside;
 	char	*buf;
-	char	*tmpfile = 0, *tmppat = 0;
+	char	*tmpfile = 0;
 	FILE	*lbuf = 0;
 	int	no_lf = 0;
 	ser_t	serial;
@@ -7570,9 +7570,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	tmppat = aprintf("%s-%d", basenm(s->gfile), d->serial);
-	tmpfile = bktmp(0, tmppat);
-	free(tmppat);
+	tmpfile = bktmp(0, "getdiffs");
 	openOutput(s, encoding, printOut, &out);
 	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
 	unless (lbuf = fopen(tmpfile, "w+")) {
@@ -13986,15 +13984,11 @@ private int
 mkDiffTarget(sccs *s,
 	char *rev, char *revM, u32 flags, char *target, pfile *pf)
 {
-	char	*pat;
-
 	if (streq(rev, "1.0")) {
 		strcpy(target, DEVNULL_RD);
 		return (0);
 	}
-	pat = aprintf("%s-%s", basenm(s->gfile), rev);
-	bktmp(target, pat);
-	free(pat);
+	bktmp(target, "mkDiffTarget");
 
 	if ((streq(rev, "edited") || streq(rev, "?")) && !findrev(s, rev)) {
 		assert(HAS_GFILE(s));

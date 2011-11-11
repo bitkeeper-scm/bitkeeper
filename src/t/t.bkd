@@ -542,7 +542,7 @@ cp /home/bk/test_data/ppfree .
 chmod 600 ppfree
 echo 1.1 > WANT
 # Save the ERR because some machines complain about psuedo tty
-BK_RSH="ssh -i ppfree -o StrictHostKeyChecking=no" \
+BK_RSH="ssh -i ppfree -o StrictHostKeyChecking=no -o Compression=no" \
     bk changes -q -r+ -nd:I: \
     bk://bkdshell@work/empty > GOT 2> ERR || {
 	echo failed
@@ -554,7 +554,7 @@ echo OK
 
 echo $N make sure ssh url works with a bkd login shell ..............$NL
 cd "$HERE/project"
-BK_RSH="ssh -i ppfree -o StrictHostKeyChecking=no" \
+BK_RSH="ssh -i ppfree -o StrictHostKeyChecking=no -o Compression=no" \
     bk changes -q -r+ -nd:I: \
     ssh://bkdshell@work/empty > GOT 2> ERR || {
 	echo failed
@@ -565,7 +565,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Choose bk path on remote side of ssh using BK_REMOTEBIN .....$NL
-BK_RSH="ssh -i ppfree -o StrictHostKeyChecking=no" \
+BK_RSH="ssh -i ppfree -o StrictHostKeyChecking=no -o Compression=no" \
 BK_TRACE_REMOTE=1 \
 BK_REMOTEBIN=/home/bk/releases/4.0.2d \
     bk changes -q -r+ -nd:I: \

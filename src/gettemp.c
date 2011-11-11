@@ -62,7 +62,7 @@ bktmp(char *buf, const char *template)
 	unless (tmpdirs_len) setup_tmpdirs();
 	unless (template) template = "none";
 	tmp = strdup(template);
-	if (strlen(tmp) > 240) tmp[240] = 0;
+	if (strlen(tmp) > 64) tmp[64] = 0;
 	while (p = strchr(tmp, '?')) *p = '_';
 	unless (buf) buf = malloc(tmpdirs_max + strlen(tmp) + 12);
 
@@ -126,7 +126,7 @@ bktmp_local(char *buf, const char *template)
 
 	unless (template) template = "none";
 	tmp = strdup(template);
-	if (strlen(tmp) > 240) tmp[240] = 0;
+	if (strlen(tmp) > 64) tmp[64] = 0;
 	unless (buf) buf = malloc(strlen(BKTMP) + strlen(tmp) + 17);
 	sprintf(buf, BKTMP "/bklocal_%s_XXXXXX", tmp);
 	free(tmp);

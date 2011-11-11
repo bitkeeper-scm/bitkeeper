@@ -1229,7 +1229,8 @@ fetch_changeset(int forceCsetFetch)
 	fclose(f);
 
 	EACH(parent) {
-		cmd = aprintf("bk -@'%s' findkey '%s'", parent[i], tip);
+		cmd =
+		    aprintf("bk -@'%s' findkey '%s' ChangeSet", parent[i], tip);
 		found_it = backtick(cmd);
 		free(cmd);
 		if (found_it && strneq(found_it, "ChangeSet|", 10)) break;

@@ -1,6 +1,7 @@
 
 echo $N Run C-based unit tests ......................................$NL
-bk _unittests || exit 1
+commercial project
+bk -R _unittests || exit 1
 echo OK
 
 echo $N Test getopt parsing .........................................$NL
