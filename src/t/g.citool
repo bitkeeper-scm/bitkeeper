@@ -573,7 +573,7 @@ bk sfiles -x | xargs rm -f
 bk edit $Q src/file1
 bk delta $Q -f -y'forced delta' src/file1
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	test_fileIsInList "Show (1) pending delta"
+	test_fileIsInList "Show 1 pending delta"
 	test_buttonPress "Quit" then "Quit without saving*"
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
@@ -581,7 +581,7 @@ test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 bk edit $Q src/file2
 bk delta $Q -f -y'forced delta' src/file2
 bk guitest citool > "$OUT" 2>&1 <<'EOF'
-	test_fileIsInList "Show (2) pending deltas"
+	test_fileIsInList "Show 2 pending deltas"
 	test_buttonPress "Quit" then "Quit without saving*"
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
@@ -703,6 +703,26 @@ EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
 
+echo $N Test that rescan writes comments to disk ....................$NL
+cd "$HERE/project"
+bk unedit $Q src/file1
+bk cfile rm src/file1
+bk edit $Q src/file1
+echo FOO > src/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "src/file1"
+	test_inputComment "src/file1 comment"
+	test_buttonPress "Rescan"
+	test_selectFile "src/file1"
+	if {[test_getComments] ne "src/file1 comment"} {
+		puts "Comments were not written to disk."
+		exit 1
+	}
+	test_buttonPress "Quit"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK
+
 echo $N Test that cut/paste does not leave an empty comment .........$NL
 cd "$HERE/project"
 # clean up from previous tests
@@ -777,4 +797,20 @@ grep -q "$expected" "$OUT" || {
 	echo "  actual: '`cat "$OUT"`'"
 	exit 1
 }
+echo OK
+
+echo $N Test that toggling a selected new file works ................$NL
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+
+echo FOO > foo
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "foo"
+	test_toggleFile "foo"
+	test_fileHasIcon "foo" done
+	test_toggleFile "foo"
+	test_fileHasIcon "foo" excluded
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK

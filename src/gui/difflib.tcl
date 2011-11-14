@@ -38,9 +38,11 @@ proc createDiffWidgets {w} \
 		-height $gc($app.diffHeight) \
 		-bg $gc($app.textBG) \
 		-fg $gc($app.textFG) \
-		-state disabled \
+		-pady 0 \
 		-borderwidth 0\
 		-wrap none \
+		-insertwidth 0 \
+		-highlightthickness 0 \
 		-font $gc($app.fixedFont) \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
@@ -49,12 +51,17 @@ proc createDiffWidgets {w} \
 		-height $gc($app.diffHeight) \
 		-bg $gc($app.textBG) \
 		-fg $gc($app.textFG) \
-		-state disabled \
+		-pady 0 \
 		-borderwidth 0 \
+		-insertwidth 0 \
+		-highlightthickness 0 \
 		-wrap none \
 		-font $gc($app.fixedFont)
 	    ttk::scrollbar .diffs.xscroll -orient horizontal -command xscroll
 	    ttk::scrollbar .diffs.yscroll -orient vertical -command yscroll
+
+	    bindtags .diffs.left  [list .diffs.left ReadonlyText . all]
+	    bindtags .diffs.right [list .diffs.right ReadonlyText . all]
 
 	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
 	    grid .diffs.left -row 1 -column 0 -sticky nsew
@@ -69,27 +76,20 @@ proc createDiffWidgets {w} \
 	    attachScrollbar .diffs.xscroll .diffs.left .diffs.right
 	    attachScrollbar .diffs.yscroll .diffs.left .diffs.right
 
-	    .diffs.left  tag configure diff -background $gc($app.diffColor)
-	    .diffs.right tag configure diff -background $gc($app.diffColor)
-	    .diffs.left  tag configure d -background $gc($app.activeDiffColor)
-	    .diffs.right tag configure d -background $gc($app.activeDiffColor)
-	    .diffs.left  tag configure highlight -background $gc($app.highlight)
-	    .diffs.right tag configure highlight -background $gc($app.highlight)
-	    .diffs.right tag configure empty -background black
-	    .diffs.left  tag configure empty -background black
-	    .diffs.left  tag configure same -background white
-	    .diffs.right tag configure same -background white
-	    .diffs.left  tag configure changed -background gray
-	    .diffs.right tag configure changed -background gray
-	    .diffs.left  tag configure minus -background white
-	    .diffs.left  tag configure plus -background white
+	    configureDiffWidget $app .diffs.left  old
+	    configureDiffWidget $app .diffs.right new
 
 	    bind .diffs <Configure> { computeHeight "diffs" }
+
+	    foreach w {.diffs.left .diffs.right} {
+		    bind $w <<Copy>> "diff_textCopy %W;break"
+		    selection handle -t UTF8_STRING $w [list GetXSelection $w]
+	    }
 }
 
 proc next {} \
 {
-	global	diffCount lastDiff DiffsEnd search
+	global	diffCount lastDiff Diffs DiffsEnd search
 
 	if {[searchactive]} {
 		set search(dir) "/"
@@ -100,10 +100,20 @@ proc next {} \
 		nextFile
 		return
 	}
+
+	set win   .diffs.left
+	set start $Diffs($lastDiff)
+	set stop  $DiffsEnd($lastDiff)
+	if {![visible $stop] && [inView $win $start $stop]} {
+		yscroll page 1
+		return
+	}
+
 	if {$lastDiff >= $diffCount} {
 		nextFile
 		return
 	}
+
 	incr lastDiff
 	dot
 }
@@ -122,24 +132,49 @@ proc prev {} \
 		prevFile
 		return
 	}
+
+	set win   .diffs.left
+	set start $Diffs($lastDiff)
+	set stop  $DiffsEnd($lastDiff)
+	if {![visible $start] && [inView $win $start $stop]} {
+		yscroll page -1
+		return
+	}
+
 	if {$lastDiff <= 1} {
 		if {[prevFile] == 0} {return}
 		set lastDiff $diffCount
 		dot
-		.diffs.left  see $DiffsEnd($lastDiff)
-		.diffs.right see $DiffsEnd($lastDiff)
+		yscroll see $DiffsEnd($lastDiff)
 		return
 	}
 	incr lastDiff -1
 	dot
+	yscroll see $DiffsEnd($lastDiff)
 }
 
-proc visible {index} \
+proc visible {args} \
 {
-	if {[llength [.diffs.right bbox $index]] > 0} {
-		return 1
+	if {[llength $args] == 2} {
+		lassign $args win index
+	} elseif {[llength $args] == 1} {
+		set win .diffs.left
+		set index [lindex $args 0]
 	}
+
+	if {[llength [$win bbox $index]] > 0} { return 1 }
 	return 0
+}
+
+proc inView {win first last} {
+	set top [topLine $win]
+	set bot [bottomLine $win]
+	set l1  [idx2line [$win index $first]]
+	set l2  [idx2line [$win index $last]]
+
+	if {$l1 < $top && $l2 < $top} { return 0 }
+	if {$l1 > $bot && $l2 > $bot} { return 0 }
+	return 1
 }
 
 proc dot {} \
@@ -182,29 +217,60 @@ proc highlightDiffs {start stop} \
 	}
 }
 
-proc topLine {} \
+proc topLine {{win ".diffs.left"}} \
 {
-	return [lindex [split [.diffs.left index @1,1] "."] 0]
+	return [lindex [split [$win index @1,1] "."] 0]
 }
 
+proc bottomLine {{win ".diffs.left"}} \
+{
+	set h [expr {[winfo height $win] - 1}]
+	return [lindex [split [$win index @1,$h] "."] 0]
+}
 
-proc scrollDiffs {start stop} \
+proc scrollDiffs {start stop args} \
+{
+	set force 0
+	if {[dict exists $args -force]} { set force [dict get $args -force] }
+
+	set main .diffs.left
+	if {[dict exists $args -win]} { set main [dict get $args -win] }
+	set other .diffs.[expr {$main eq ".diffs.left" ? "right" : "left"}]
+
+	if {$force
+	    || ![visible $main $start-1line] || ![visible $main $stop+1line]} {
+		scrollToTop $main $start
+		syncTextWidgets $main $other
+	}
+}
+
+proc scrollToTop {win index {withMargin 1}} \
+{
+	# Put the index at the top of the text widget minus the top margin.
+	set line [idx2line [$win index $index]]
+	$win xview moveto 0
+	scrollLineToTop $win $line $withMargin
+}
+
+proc scrollLineToTop {win line {withMargin 0}} \
 {
 	global	gc app
 
-	if {[visible $start-1line] && [visible $stop+1line]} { return }
+	set top   [topLine $win]
+	set delta [expr {$line - $top}]
+	if {$withMargin} { set delta [expr {$delta - $gc($app.topMargin)}] }
 
-	# Put the diff at the top minus the top margin.
-	set top   [topLine]
-	set line  [lindex [split $start .] 0]
-	set delta [expr {$line - $top - $gc($app.topMargin)}]
+	$win yview scroll $delta units
+}
 
-	.diffs.left yview scroll $delta units
-	.diffs.right yview scroll $delta units
-	.diffs.right xview moveto 0
-	.diffs.left xview moveto 0
-	.diffs.right see $start
-	.diffs.left see $start
+proc syncTextWidgets {master args} \
+{
+	set x [lindex [$master xview] 0]
+	set y [lindex [$master yview] 0]
+	foreach slave $args {
+		$slave xview moveto $x
+		$slave yview moveto $y
+	}
 }
 
 # Get the sdiff output. Make sure it contains no \r's from fucking DOS.
@@ -213,6 +279,11 @@ proc sdiff {L R} \
 	global	rmList sdiffw gc
 
 	set rmList ""
+	set ignore_ws ""
+
+	if {$gc(ignoreWhitespace) == 1} {
+		set ignore_ws "-b"
+	}
 
 	# On windows, our diff always read in text mode
 	# (and write in binary mode). So no need to call bk undos
@@ -223,7 +294,7 @@ proc sdiff {L R} \
 	# XXX For some reason, Larry's diff --ignore-trailing-cr option
 	# XXX have no effect when used in sdiff, need to figure out why.
 	if {$gc(windows)} {
-		return [open "| $sdiffw \"$L\" \"$R\"" r]
+		return [open "| $sdiffw $ignore_ws -- \"$L\" \"$R\"" r]
 	}
 
 	set a [open "| grep {\r$} \"$L\"" r]
@@ -231,7 +302,7 @@ proc sdiff {L R} \
 	if { ([gets $a dummy] < 0) && ([gets $b dummy] < 0)} {
 		catch { close $a }
 		catch { close $b }
-		return [open "| $sdiffw \"$L\" \"$R\"" r]
+		return [open "| $sdiffw $ignore_ws -- \"$L\" \"$R\"" r]
 	}
 	catch { close $a }
 	catch { close $b }
@@ -252,7 +323,7 @@ proc sdiff {L R} \
 	}
 	catch {exec bk undos $R > $dotR}
 	set rmList [list $dotL $dotR]
-	return [open "| $sdiffw \"$dotL\" \"$dotR\""]
+	return [open "| $sdiffw $ignore_ws -- \"$dotL\" \"$dotR\""]
 }
 
 # Displays the flags, modes, and path for files so that the
@@ -278,9 +349,9 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	set fnames(left) "$lfile"
 	set fnames(right) "$rfile"
 
-	.diffs.left tag configure "select" -background $gc($app.infoColor) \
+	.diffs.left tag configure "select" -background $gc($app.oldColor) \
 	    -borderwidth 1 -relief solid -lmargin1 5 -spacing1 2 -spacing3 2
-	.diffs.right tag configure "select" -background $gc($app.infoColor) \
+	.diffs.right tag configure "select" -background $gc($app.newColor) \
 	    -borderwidth 1 -relief solid -lmargin1 5 -spacing1 2 -spacing3 2
 	# 1.0 files do not have a mode line. 
 	# XXX: Ask lm if x.0 files have mode lines...
@@ -323,13 +394,11 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 		}
 		catch {close $fd}
 	}
-	.diffs.left configure -state normal
-	.diffs.right configure -state normal
 	.diffs.left delete 1.0 end
 	.diffs.right delete 1.0 end
 	if {$bkfile(left) == 1 && $bkfile(right) == 1} {
-		.diffs.left insert end "$text(left)\n" select
-		.diffs.right insert end "$text(right)\n" select
+		.diffs.left insert end "$text(left)\n" {select junk}
+		.diffs.right insert end "$text(right)\n" {select junk}
 	}
 	# XXX: Check differences between the info lines
 	return [list $fnames(left) $fnames(right)]
@@ -360,8 +429,6 @@ proc readFiles {L R {O {}}} \
 		displayMessage "Right file ($R) does not exist"
 		return 1
 	}
-	.diffs.left configure -state normal
-	.diffs.right configure -state normal
 
 	# append time to filename when called by csettool
 	# XXX: Probably OK to use same code for difftool, fmtool and csettool???
@@ -406,12 +473,10 @@ proc readFiles {L R {O {}}} \
 	if {[regexp {^Binary files.*differ} $data]} {
 		.diffs.left tag configure warn -background $gc($app.warnColor)
 		.diffs.right tag configure warn -background $gc($app.warnColor)
-		.diffs.left insert end "Binary Files Differ\n" warn
-		.diffs.right insert end "Binary Files Differ\n" warn
+		.diffs.left insert end "Binary Files Differ\n" {warn junk}
+		.diffs.right insert end "Binary Files Differ\n" {warn junk}
 		. configure -cursor left_ptr
 		.diffs.status.middle configure -text "Differences"
-		.diffs.left configure -state disabled
-		.diffs.right configure -state disabled
 		return
 	}
 
@@ -430,30 +495,30 @@ proc readFiles {L R {O {}}} \
 		switch -- $diff {
 		    "S" {
 			## same
-			$left  insert end " " same
+			$left  insert end " " {space junk}
 			$left  insert end [gets $l]\n
-			$right  insert end " " same
+			$right insert end " " {space junk}
 			$right insert end [gets $r]\n
 		    }
 		    "|" {
 			## changed
-			$left  insert end " " changed
+			$left  insert end "-" {minus junk}
 			$left  insert end [gets $l]\n diff
-			$right  insert end " " changed
+			$right insert end "+" {plus junk}
 			$right insert end [gets $r]\n diff
 		    }
 		    "<" {
 			## left
-			$left  insert end "-" minus
+			$left  insert end "-" {minus junk}
 			$left  insert end [gets $l]\n diff
-			$right  insert end " " empty
-			$right insert end \n diff
+			$right insert end " " {empty junk}
+			$right insert end \n same
 		    }
 		    ">" {
 			## right
-			$left  insert end " " empty
-			$left  insert end \n diff
-			$right  insert end "+" plus
+			$left  insert end " " {empty junk}
+			$left  insert end \n same
+			$right insert end "+" {plus junk}
 			$right insert end [gets $r]\n diff
 		    }
 		}
@@ -487,11 +552,14 @@ proc readFiles {L R {O {}}} \
 		}
 	}
 
-	.diffs.left configure -state disabled
-	.diffs.right configure -state disabled
 	. configure -cursor left_ptr
 	.diffs.left configure -cursor left_ptr
 	.diffs.right configure -cursor left_ptr
+
+	foreach tag {select space empty plus minus} {
+	    .diffs.left  tag raise $tag sel
+	    .diffs.right tag raise $tag sel
+	}
 
 	if {$diffCount > 0} {
 		set lastDiff 1
@@ -538,8 +606,33 @@ proc diffView {{viewData {}}} \
 
 proc yscroll { a args } \
 {
-	eval { .diffs.left yview $a } $args
-	eval { .diffs.right yview $a } $args
+	if {$a eq "see"} {
+		.diffs.left  see {*}$args
+		.diffs.right see {*}$args
+	} elseif {$a eq "page"} {
+		set win .diffs.left
+		set top [topLine $win]
+		set bot [bottomLine $win]
+		set h   [winfo height $win]
+
+		lassign [$win bbox @1,1] x y w lineHeight
+		set pageHeight [expr {$bot - $top + 1}]
+
+		## If the window height is not an exact multiple of the
+		## height of the visible lines, we'll determine whether
+		## the last visible line is visible enough to count.
+		## If not, we'll move one less line.
+		if {($pageHeight * $lineHeight) >= ($h + ($lineHeight / 3))} {
+		    incr pageHeight -1
+		}
+
+		set n [lindex $args 0]
+		set scroll [expr {(($pageHeight - 2) * $lineHeight) * $n}]
+		yscroll scroll $scroll pixels
+	} else {
+		.diffs.left  yview $a {*}$args
+		.diffs.right yview $a {*}$args
+	}
 }
 
 proc xscroll { a args } \
@@ -634,4 +727,31 @@ proc computeHeight {w} \
 		set gc($app.mergeHeight) [expr {$p / $fh}]
 	}
 	return
+}
+
+proc getTextSelection {w} \
+{
+	## Hide all the diff junk, get the characters that are actually
+	## displayed and then put the diff junk back.  Without doing an
+	## update in between, the text widget will never even show that
+	## anything is happening.
+	if {[catch {
+		$w tag configure junk -elide 1
+		set data [$w get -displaychars -- sel.first sel.last]
+		$w tag configure junk -elide 0
+	} err]} { return -code error $err }
+	return $data
+}
+
+proc GetXSelection {w offset max} {
+    if {![catch {getTextSelection $w} data]} { return $data }
+}
+
+proc diff_textCopy {w} \
+{
+	if {[catch {getTextSelection $w} data]} { return }
+
+	## Set it in the clipboard.
+	clipboard clear  -displayof $w
+	clipboard append -displayof $w $data
 }

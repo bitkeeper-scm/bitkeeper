@@ -68,12 +68,47 @@ get /file2.c?PAGE=anno
 EOF
 grep '<a name=' OUT | tr -s ' ' > GOT
 U=`bk getuser -r`
-cat <<EOF > WANT
+cat <<EOF > WANT2
 <a name="sub">bk/$U 1.1 | int sub2(int a, int b) {</a>
 EOF
-cmp -s GOT WANT && {
+cmp -s GOT WANT2 && {
 	echo fixme
 	echo Congratulations, you fixed a bug. Now fix the testcase.
 	exit 1
 }
 echo failed \(bug \)
+
+# Symlinks not on windows.
+if [ "$PLATFORM" != "WIN32" ]; then
+
+echo $N Demonstrate symlink to outside of bkd will error ............$NL
+cd ..
+mkdir repos
+cd repos
+ln -s ../project project
+bk bkd > OUT << EOF && fail
+get /project/file1.c?PAGE=anno
+EOF
+echo "HTTP/1.0 503 Error" > WANT
+head -1 OUT > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Demonstrate a .. to outside of bkd will error with -S .......$NL
+bk bkd -S > OUT << EOF && fail
+get /../project/file1.c?PAGE=anno
+EOF
+echo "HTTP/1.0 503 Error" > WANT
+head -1 OUT > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Demonstrate symlink to outside of bkd will work with -S .....$NL
+bk bkd -S > OUT << EOF || fail
+get /project/file1.c?PAGE=anno
+EOF
+grep '<a name=' OUT | tr -s ' ' > GOT
+cmpfiles project/WANT GOT
+echo OK
+
+fi # end of everything but on Windows tests

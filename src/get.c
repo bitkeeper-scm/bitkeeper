@@ -27,6 +27,7 @@ get_main(int ac, char **av)
 	int	skip_bin = 0;
 	int	checkout = 0;
 	int	tickout = 0;
+	int	skip_bam = 0;
 	int	n = 0, nfiles = -1;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	ac_optend;
@@ -42,6 +43,10 @@ get_main(int ac, char **av)
 	char	*gdir = 0;	/* if -Gdir, the directory name */
 	char	Gout[MAXPATH];	/* current file being written by -G */
 	char	realname[MAXPATH];
+	longopt	lopt[] = {
+		{ "skip-bam", 310 },
+		{ 0, 0 }
+	};
 
 	if (prog = strrchr(av[0], '/')) {
 		prog++;
@@ -57,8 +62,8 @@ get_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|N;pPqr;RSstTUx;", 0)) != -1) {
-		if (checkout && !strchr("NqRTU", c)) {
+	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|N;pPqr;RSstTUx;", lopt)) != -1) {
+		if (checkout && (c != 310) && !strchr("NqRTU", c)) {
 			fprintf(stderr, "checkout: no options allowed\n");
 			exit(1);
 		}
@@ -100,6 +105,7 @@ get_main(int ac, char **av)
 		    case 'T': flags |= GET_DTIME; break;	/* doc 2.0 */
 		    case 'U': tickout = 1; break;
 		    case 'x': xLst = optarg; break;		/* doc 2.0 */
+		    case 310: skip_bam++; break;		// --skip-bam
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -205,6 +211,18 @@ onefile:	fprintf(stderr,
 			if (c) continue;
 		}
 		unless (s = sccs_init(name, iflags)) continue;
+#ifdef	WIN32
+		d = sccs_top(s);
+		if (d && S_ISLNK(d->mode)) {
+			if (getenv("BK_WARN_SYMLINK")) {
+				fprintf(stderr,
+				    "warning: %s is a symlink, skipping it.\n",
+				    s->gfile);
+			}
+			sccs_free(s);
+			continue;
+		}
+#endif
 		if (checkout) {
 			flags &= ~(GET_EDIT|GET_EXPAND);
 			switch (CO(s)) {
@@ -316,6 +334,7 @@ err:			sccs_free(s);
 		    ? sccs_getdiffs(s, rev, flags, out)
 		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
 			if (s->cachemiss && !recursed) {
+				if (skip_bam) goto next;
 				if (bp_proj && (s->proj != bp_proj)) {
 					if (bp_fetchkeys(prog, bp_proj,
 						(flags & SILENT) ? 0 : 1,

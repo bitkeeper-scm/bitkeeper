@@ -367,11 +367,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		$w(aptext) configure -height 15
 		$w(ctext) configure -height $gc(rev.commentHeight) 
 		$w(aptext) configure -height 50
-		if {[winfo ismapped $w(ctext)]} {
-			set comments_mapped 1
-		} else {
-			set comments_mapped 0
-		}
+		set comments_mapped [winfo ismapped $w(ctext)]
 		if {$bindtype == "B1"} {
 			commentsWindow show
 			set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
@@ -1005,7 +1001,11 @@ proc listRevs {r file} \
 	} else {
 		set opt "-T"
 	}
-	set nopt " -n$gc(rev.showRevs)"
+	if {[file tail $file] eq "ChangeSet"} {
+		set nopt " -n$gc(rev.showCsetRevs)"
+	} else {
+		set nopt " -n$gc(rev.showRevs)"
+	}
 	if {[regexp -- {^-[cn]} $r] || [regexp -- {^-R} $r]} {
 		set nopt ""
 	}
@@ -1307,7 +1307,6 @@ proc filltext {win f clear {msg {}}} \
 	global search w file
 	#puts stderr "filltext win=($win) f=($f) clear=($clear) msg=($msg)"
 
-	$win configure -state normal
 	if {$clear == 1} { $win delete 1.0 end }
 	set noOutput 1
 	while { [gets $f str] >= 0 } {
@@ -1318,7 +1317,6 @@ proc filltext {win f clear {msg {}}} \
 	if {$clear == 1 && $noOutput} {
 		$win insert end $msg
 	}
-	$win configure -state disabled
 	if {$clear == 1 } { busy 0 }
 	searchreset
 	set search(prompt) "Welcome"
@@ -1521,13 +1519,12 @@ proc displayDiff {rev1 rev2} \
 	catch {exec bk get $Aur -kPr$rev2 $file >$r2}
 	set diffs [open "| diff $Opts(diff) $r1 $r2"]
 	set l 3
-	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
+	$w(aptext) delete 1.0 end
 	$w(aptext) insert end "- $file version $rev1\n"
 	$w(aptext) insert end "+ $file version $rev2\n\n"
-	$w(aptext) tag add "oldTag" 1.0 "1.0 lineend + 1 char"
-	$w(aptext) tag add "newTag" 2.0 "2.0 lineend + 1 char"
+	$w(aptext) tag add "oldDiff" 1.0 "1.0 lineend + 1 char"
+	$w(aptext) tag add "newDiff" 2.0 "2.0 lineend + 1 char"
 	diffs $diffs $l
-	$w(aptext) configure -state disabled
 	searchreset
 	file delete -force $r1 $r2
 	busy 0
@@ -1678,7 +1675,7 @@ proc csetdiff2 {{rev {}}} \
 			set revs $rev1..$rev2
 		}
 	}
-	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
+	$w(aptext) delete 1.0 end
 	$w(aptext) insert end "ChangeSet history for $revs\n\n"
 
 	set S ""
@@ -1766,11 +1763,11 @@ proc diffs {diffs l} \
 		incr l
 		if {[regexp $lexp $str]} {
 			$w(aptext) tag \
-			    add "newTag" $l.0 "$l.0 lineend + 1 char"
+			    add "newDiff" $l.0 "$l.0 lineend + 1 char"
 		}
 		if {[regexp $rexp $str]} {
 			$w(aptext) tag \
-			    add "oldTag" $l.0 "$l.0 lineend + 1 char"
+			    add "oldDiff" $l.0 "$l.0 lineend + 1 char"
 		}
 		set line $str
 	}
@@ -1838,11 +1835,13 @@ proc widgets {} \
 	# ctext		- comment text window (pops open)
 	# apframe	- annotation/prs frame
 	# aptext	- annotation window
+	set w(panes)	.p
 	set w(graph)	.p.top.c
-	set w(cframe)	.p.b.c
-	set w(ctext)	.p.b.c.t
-	set w(apframe)	.p.b.p
-	set w(aptext)	.p.b.p.t
+	set w(cframe)	.p.c
+	set w(ctext)	.p.c.t
+	set w(cclose)	.p.c.t.close
+	set w(apframe)	.p.b
+	set w(aptext)	.p.b.t
 	set stacked 1
 
 	getConfig "rev"
@@ -1859,6 +1858,8 @@ proc widgets {} \
 		set gc(histfile) [file join $gc(bkdir) ".bkhistory"]
 	}
 	set Opts(line_time)  "-c-$gc(rev.showHistory)"
+
+	image create photo iconClose -file $::env(BK_BIN)/gui/images/close.png
 
 	ttk::frame .menus
 	    ttk::button .menus.quit -text "Quit" -command done
@@ -1938,6 +1939,7 @@ proc widgets {} \
 		    -command "$w(graph) yview"
 		canvas $w(graph) -width 500 \
 	    	    -borderwidth 1 \
+	    	    -highlightthickness 0 \
 		    -background $gc(rev.canvasBG) \
 		    -xscrollcommand ".p.top.xscroll set" \
 		    -yscrollcommand ".p.top.yscroll set"
@@ -1950,52 +1952,53 @@ proc widgets {} \
 		grid columnconfigure .p.top 0 -weight 1
 		grid columnconfigure .p.top 1 -weight 0
 		
+	    # change comment window
+	    ttk::frame .p.c
+		text .p.c.t -width $gc(rev.textWidth) \
+		    -cursor "" \
+		    -borderwidth 1 \
+		    -height $gc(rev.commentHeight) \
+		    -font $gc(rev.fixedFont) \
+		    -xscrollcommand { .p.c.xscroll set } \
+		    -yscrollcommand { .p.c.yscroll set } \
+		    -bg $gc(rev.commentBG) -fg $gc(rev.textFG) -wrap none \
+		    -insertwidth 0 -highlightthickness 0
+		ttk::scrollbar .p.c.xscroll -orient horizontal \
+		    -command { .p.c.t xview }
+		ttk::scrollbar .p.c.yscroll -orient vertical \
+		    -command { .p.c.t yview }
+		grid .p.c.t       -row 0 -column 0 -sticky nsew
+		grid .p.c.yscroll -row 0 -column 1 -sticky ns
+		grid .p.c.xscroll -row 1 -column 0 -sticky ew
+		grid rowconfigure    .p.c .p.c.t -weight 1
+		grid columnconfigure .p.c .p.c.t -weight 1
+	    label $w(cclose) -background $gc(rev.commentBG) \
+		-image iconClose -cursor ""
+	    bind $w(cclose) <1> "commentsWindow hide"
+	    bind .p.c <Enter> "commentsWindow showButton"
+	    bind .p.c <Leave> "commentsWindow hideButton"
+
+	    # prs and annotation window
 	    ttk::frame .p.b
-	    	# prs and annotation window
-		ttk::frame .p.b.p
-		    text .p.b.p.t -width $gc(rev.textWidth) \
-			-borderwidth 1 \
-			-height $gc(rev.textHeight) \
-			-font $gc(rev.fixedFont) \
-			-xscrollcommand { .p.b.p.xscroll set } \
-			-yscrollcommand { .p.b.p.yscroll set } \
-			-bg $gc(rev.textBG) -fg $gc(rev.textFG) -wrap none 
-		    ttk::scrollbar .p.b.p.xscroll -orient horizontal \
-			-command { .p.b.p.t xview }
-		    ttk::scrollbar .p.b.p.yscroll -orient vertical \
-			-command { .p.b.p.t yview }
-		# change comment window
-		ttk::frame .p.b.c
-		    text .p.b.c.t -width $gc(rev.textWidth) \
-			-borderwidth 1 \
-			-height $gc(rev.commentHeight) \
-			-font $gc(rev.fixedFont) \
-			-xscrollcommand { .p.b.c.xscroll set } \
-			-yscrollcommand { .p.b.c.yscroll set } \
-			-bg $gc(rev.commentBG) -fg $gc(rev.textFG) -wrap none 
-		    ttk::scrollbar .p.b.c.xscroll -orient horizontal \
-			-command { .p.b.c.t xview }
-		    ttk::scrollbar .p.b.c.yscroll -orient vertical \
-			-command { .p.b.c.t yview }
+		text .p.b.t -width $gc(rev.textWidth) \
+		    -borderwidth 1 \
+		    -height $gc(rev.textHeight) \
+		    -font $gc(rev.fixedFont) \
+		    -xscrollcommand { .p.b.xscroll set } \
+		    -yscrollcommand { .p.b.yscroll set } \
+		    -bg $gc(rev.textBG) -fg $gc(rev.textFG) -wrap none \
+		    -insertwidth 0 -highlightthickness 0
+		ttk::scrollbar .p.b.xscroll -orient horizontal \
+		    -command { .p.b.t xview }
+		ttk::scrollbar .p.b.yscroll -orient vertical \
+		    -command { .p.b.t yview }
 
-		grid .p.b.c.yscroll -row 0 -column 1 -sticky ns
-		grid .p.b.c.xscroll -row 1 -column 0 -sticky ew
-		grid .p.b.c.t       -row 0 -column 0 -sticky nsew
-		grid rowconfigure    .p.b.c 0 -weight 1
-		grid rowconfigure    .p.b.c 1 -weight 0
-		grid columnconfigure .p.b.c 0 -weight 1
-		grid columnconfigure .p.b.c 1 -weight 0
 
-		grid .p.b.p.yscroll -row 0 -column 1 -sticky ns
-		grid .p.b.p.xscroll -row 1 -column 0 -sticky ew
-		grid .p.b.p.t       -row 0 -column 0 -sticky nsew
-		grid rowconfigure    .p.b.p 0 -weight 1
-		grid rowconfigure    .p.b.p 1 -weight 0
-		grid columnconfigure .p.b.p 0 -weight 1
-		grid columnconfigure .p.b.p 1 -weight 0
-
-		pack .p.b.p -expand true -fill both -anchor s
-		pack .p.b -expand true -fill both -anchor s
+		grid .p.b.t       -row 0 -column 0 -sticky nsew
+		grid .p.b.yscroll -row 0 -column 1 -sticky ns
+		grid .p.b.xscroll -row 1 -column 0 -sticky ew
+		grid rowconfigure    .p.b .p.b.t -weight 1
+		grid columnconfigure .p.b .p.b.t -weight 1
 
 	.p add .p.top
 	.p add .p.b -weight 1
@@ -2047,37 +2050,41 @@ proc widgets {} \
 	if {$gc(aqua)} {
 		bind $w(graph) <Command-1>  { diff2 0; currentMenu; break}
 	}
-	bind $w(graph) <a>		{ selectNode "id" ; break }
-	bind $w(graph) <C>		{ r2c; break }
-	bind $w(graph) <h>		"history"
-	bind $w(graph) <t>		"history tags"
-	bind $w(graph) <d>		"doDiff"
 	bind $w(graph) <Button-2>	{ history; break }
-	bind $w(graph) <s>		"sfile"
-	bind $w(graph) <c>		"annotate"
-	bind $w(graph) <Prior>		"$w(aptext) yview scroll -1 pages"
-	bind $w(graph) <Next>		"$w(aptext) yview scroll  1 pages"
-	bind $w(graph) <space>		"$w(aptext) yview scroll  1 pages"
-	bind $w(graph) <Up>		"$w(aptext) yview scroll -1 units"
-	bind $w(graph) <Down>		"$w(aptext) yview scroll  1 units"
-	bind $w(graph) <Home>		"$w(aptext) yview -pickplace 1.0"
-	bind $w(graph) <End>		"$w(aptext) yview -pickplace end"
-	bind $w(graph) <Control-b>	"$w(aptext) yview scroll -1 pages"
-	bind $w(graph) <Control-f>	"$w(aptext) yview scroll  1 pages"
-	bind $w(graph) <Control-e>	"$w(aptext) yview scroll  1 units"
-	bind $w(graph) <Control-y>	"$w(aptext) yview scroll -1 units"
 
-	bind $w(graph) <Shift-Prior>	"$w(graph) yview scroll -1 pages"
-	bind $w(graph) <Shift-Next>	"$w(graph) yview scroll  1 pages"
-	bind $w(graph) <Shift-Up>	"$w(graph) yview scroll -1 units"
-	bind $w(graph) <Shift-Down>	"$w(graph) yview scroll  1 units"
-	bind $w(graph) <Shift-Left>	"$w(graph) xview scroll -1 pages"
-	bind $w(graph) <Shift-Right>	"$w(graph) xview scroll  1 pages"
-	bind $w(graph) <Left>		"$w(graph) xview scroll -1 units"
-	bind $w(graph) <Right>		"$w(graph) xview scroll  1 units"
-	bind $w(graph) <Shift-Home>	"$w(graph) xview moveto 0"
-	bind $w(graph) <Shift-End>	"$w(graph) xview moveto 1.0"
+	# global bindings
+	bind BK <a>		{ selectNode "id" ; break }
+	bind BK <C>		{ r2c; break }
+	bind BK <h>		"history"
+	bind BK <t>		"history tags"
+	bind BK <d>		"doDiff"
+	bind BK <s>		"sfile"
+	bind BK <c>		"annotate"
+	bind BK <Prior>		"$w(aptext) yview scroll -1 pages"
+	bind BK <Next>		"$w(aptext) yview scroll  1 pages"
+	bind BK <space>		"$w(aptext) yview scroll  1 pages"
+	bind BK <Up>		"$w(aptext) yview scroll -1 units"
+	bind BK <Down>		"$w(aptext) yview scroll  1 units"
+	bind BK <Home>		"$w(aptext) yview -pickplace 1.0"
+	bind BK <End>		"$w(aptext) yview -pickplace end"
+	bind BK <Control-b>	"$w(aptext) yview scroll -1 pages"
+	bind BK <Control-f>	"$w(aptext) yview scroll  1 pages"
+	bind BK <Control-e>	"$w(aptext) yview scroll  1 units"
+	bind BK <Control-y>	"$w(aptext) yview scroll -1 units"
+
+	bind BK <Shift-Prior>	"$w(graph) yview scroll -1 pages"
+	bind BK <Shift-Next>	"$w(graph) yview scroll  1 pages"
+	bind BK <Shift-Up>	"$w(graph) yview scroll -1 units"
+	bind BK <Shift-Down>	"$w(graph) yview scroll  1 units"
+	bind BK <Shift-Left>	"$w(graph) xview scroll -1 pages"
+	bind BK <Shift-Right>	"$w(graph) xview scroll  1 pages"
+	bind BK <Left>		"$w(graph) xview scroll -1 units"
+	bind BK <Right>		"$w(graph) xview scroll  1 units"
+	bind BK <Shift-Home>	"$w(graph) xview moveto 0"
+	bind BK <Shift-End>	"$w(graph) xview moveto 1.0"
+	bind BK <Control-c>	"#"
 	if {$gc(aqua)} {
+		bind BK <Command-c> "#"
 		bind . <Command-q> done
 		bind . <Command-w> done
 	}
@@ -2094,60 +2101,84 @@ proc widgets {} \
 	}
 	searchreset
 
-	bind $w(aptext) <Button-1> {
-		set ::afterId [after $gc(rev.doubleclick) [format {
-			selectTag %W %x %y B1
-		}]]
-	}
-	bind $w(aptext) <Double-1> {
-		if {[info exists ::afterId]} {
-			after cancel $::afterId
-			unset ::afterId
-		}
-		selectTag %W %x %y D1
-	}
-	bind $w(aptext) <Button-3> { selectTag %W %x %y "B3"; break}
+	bind $w(aptext) <Double-1> "break"
+	bind $w(aptext) <Double-ButtonRelease-1> "textDoubleButton1 %W %x %y"
+	bind $w(aptext) <ButtonPress-1> "textButtonPress1 %W %x %y"
+	bind $w(aptext) <ButtonRelease-1> "textButtonRelease1 %W %x %y"
+
 	if {$gc(aqua)} {
+		bind $w(aptext) <Button-2> { selectTag %W %x %y "B3"; break}
 		bind $w(aptext) <Command-1> {selectTag %W %x %y "B3"; break}
+	} else {
+		bind $w(aptext) <Button-3> { selectTag %W %x %y "B3"; break}
 	}
 
-	# highlighting.
-	$w(aptext) tag configure "newTag" -background $gc(rev.newColor)
-	$w(aptext) tag configure "oldTag" -background $gc(rev.oldColor)
-	$w(aptext) tag configure "select" -background $gc(rev.selectColor)
-	$w(aptext) tag configure "highlight" -background $gc(rev.highlight)
+	configureDiffWidget $app $w(aptext)
+               
+	bindtags $w(graph) [concat BK [bindtags $w(graph)]]
+	bindtags $w(aptext) [list BK $w(aptext) ReadonlyText . all]
+	bindtags $w(ctext)  [list BK $w(ctext) ReadonlyText . all]
 
-	bindtags $w(aptext) {Bk .p.b.p.t . all}
-	bindtags $w(ctext) {.p.b.c.t . all}
-
-	# standard text widget mouse button 1 events are overridden to
-	# do other things, which makes selection of text impossible.
-	# These bindings move the standard selection bindings to a
-	# shifted button 1.  Bug 1999-06-04-001.
-	bind Bk <Shift-Button-1>	"[bind Text <Button-1>];break"
-	bind Bk <Shift-B1-Motion>	"[bind Text <B1-Motion>]"
-	bind Bk <ButtonRelease-1>	"[bind Text <ButtonRelease-1>]"
-		
+	# In the search window, don't listen to "all" tags. (This is now done
+	# in the search.tcl lib) <remove if all goes well> -ask
+	#bindtags $search(text) { .cmd.search Entry }
 	bind all <$gc(rev.quit)>	"done"
 
 	focus $w(graph)
 } ;# proc widgets
 
+proc textButtonPress1 {w x y} \
+{
+	set ::selection [$w tag ranges sel]
+}
+
+proc textButtonRelease1 {w x y} \
+{
+	global	gc
+
+	## If there was a selection when they first clicked, don't
+	## fire the click event.  This will clear the selection without
+	## accidentally firing our button event and pulling the rug out
+	## from under them.
+	if {[info exists ::selection] && [llength $::selection]} { return }
+
+	## If they selected any text, don't fire the click event.
+	if {[llength [$w tag ranges sel]]} { return }
+	set ::afterId [after $gc(rev.doubleclick) [list selectTag $w $x $y B1]]
+}
+
+proc textDoubleButton1 {w x y} \
+{
+	if {[info exists ::afterId]} {
+		after cancel $::afterId
+		unset ::afterId
+	}
+	selectTag $w $x $y D1
+	return -code break
+}
+
 proc commentsWindow {action} \
 {
 	global w comments_mapped
-	if {$action == "hide"} {
-		catch {pack forget $w(cframe); set comments_mapped 0}
-	} else {
-		pack configure $w(cframe) \
-		    -fill x \
-		    -expand false \
-		    -anchor n \
-		    -before $w(apframe)
-		pack configure $w(apframe) \
-		    -fill both \
-		    -expand true \
-		    -anchor n
+
+	switch -- $action {
+		"hide" {
+			catch {$w(panes) forget $w(cframe)}
+			set comments_mapped 0
+		}
+
+		"show" {
+			$w(panes) insert 1 $w(cframe)
+			set comments_mapped 1
+		}
+
+		"hideButton" {
+			place forget $w(cclose)
+		}
+
+		"showButton" {
+			place $w(cclose) -relx 1.0 -y 0 -anchor ne
+		}
 	}
 }
 
@@ -2275,7 +2306,7 @@ select a new file to view"
 		catch {set ago [exec bk prs -hr+ -d:AGE: $lfname]}
 		if {[lindex $::errorCode 2] != 0} {exit [lindex $::errorCode 2]}
 		# XXX: Highlight this in a different color? Yellow?
-		$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
+		$w(aptext) delete 1.0 end
 		$w(aptext) insert end  "Error: No data within the given time\
 period; please choose a longer amount of time.\n
 The file $lfname was last modified ($ago) ago."

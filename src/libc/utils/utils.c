@@ -5,7 +5,15 @@
 void
 my_perror(char *file, int line, char *msg)
 {
-	fprintf(stderr, "%s:%d: ", file, line);
+	char		*p = 0;
+
+	if (p = getenv("_BK_VERSION")) {
+		if (strneq(p, "bk-", 3)) p += 3;
+		fprintf(stderr, "%s:%d (%s): ", file, line, p);
+	} else {
+		fprintf(stderr, "%s:%d: ", file, line);
+	}
+
 	perror(msg);
 }
 

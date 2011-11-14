@@ -14,6 +14,11 @@
 # Copyright (c) 1999-2006 BitMover, Inc.
 # %K%
 
+trap 'test -n "$PORT" && bk _kill bk://localhost:$PORT' 0
+cd "$HERE"
+bk bkd -dq -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+PORT=`cat PORT`
+
 echo $N Make sure we can restore an identical ChangeSet file ........$NL
 commercial repair1
 for i in foo bar blech whatsit
@@ -120,15 +125,34 @@ bk repair > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-grep -q 'The ChangeSet file retrieved from your parent appears to be' OUT || {
+grep -q 'Your repository tip was not found in any of the specified ' OUT || {
 	echo failed
 	cat OUT
 	exit 1
 }
 echo OK
 
+echo $N Sane error message if the remote ChangeSet is behind ........$NL
+bk repair -@bk://localhost:$PORT/repair1 > OUT 2>&1 && {
+	echo failed
+	cat OUT
+	exit 1
+}
+grep -q 'Your repository tip was not found in any of the specified ' OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Force fetch of remote ChangeSet even if behind ..............$NL
+bk repair --use-older-changeset -@bk://localhost:$PORT/repair1 > OUT 2>&1 && \
+    fail -f OUT
+grep -q 'The repair was NOT complete.' OUT || fail -f OUT wrong error
+echo OK
+
 echo $N Make sure we can repair with a different parent .............$NL
-bk _rm SCCS/s.ChangeSet
+bk _rm SCCS/s.ChangeSet # remove the forced changeset from test above
 bk repair -@"$HERE"/repair3 > OUT 2>&1 || {
 	echo failed
 	cat OUT

@@ -973,7 +973,6 @@ findcset(void)
 	delta	*d = 0, *previous;
 	datum	key, val;
 	char	*p;
-	FILE	*f;
 	delta	*d2;
 	time_t	now, tagDate = 0;
 	char	*nextTag;
@@ -1030,7 +1029,6 @@ findcset(void)
 
 	nextTag = readTag(&tagDate);
 
-	f = stderr;
 	now = time(0);
 	for (j = 0; j < deltaCounter; ++j) {
 		d = sorted[j];

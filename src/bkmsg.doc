@@ -102,16 +102,26 @@ files in this repository.  If this repository had changesets that were
 committed here but not pulled elsewhere then the changeset will need to
 be recreated, contact BitMover for assistance.
 
-If the tip mentioned in the error message can be found in some other 
-repository by running the following command:
+The repair was NOT complete.
+$
+#chk6
+Your repository tip was not found in any of the specified repositories
+(or your parent[s] if no repositories were specified).
 
-	bk findkey #BKARG# ChangeSet
+This probably is because the ChangeSet files in those repositories are
+older (behind) the files in this repository.
 
-then you should run 
+If you search in another repository <url> with
+
+	bk -@<url> findkey #BKARG# ChangeSet
+
+and it finds the key, then you should run
 
 	bk repair -@<url>
 
 where <url> is the BK url to that repository.
+
+Your repository should be unchanged.
 $
 #cset1
 An attempt was made to include or exclude a merge changeset.

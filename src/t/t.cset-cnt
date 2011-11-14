@@ -233,7 +233,7 @@ bk pull $Q || exit 1
 check_cnt
 echo OK
 
-CNT=35
+CNT=34
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
 bk push $Q || exit 1

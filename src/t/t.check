@@ -669,6 +669,24 @@ bk unedit BitKeeper/etc/gone
 bk undo $Q -fsr+ || fail
 echo OK
 
+echo $N Setup what looks like missing merge but all are gone ........$NL
+# take a repo with a 'foo', clone, rm and gone foo in both, pull
+cd ../other
+bk clone $Q . ../other2
+bk rm foo
+bk commit $Q -yno-foo
+bk _rm -fr BitKeeper/deleted
+bk -r check -ag | bk gone $Q -
+bk commit $Q -yno-foo
+cd ../other2
+bk rm foo
+bk commit $Q -yno-foo
+bk _rm -fr BitKeeper/deleted
+bk -r check -ag | bk gone $Q -
+bk commit $Q -yno-foo
+bk pull $Q || fail
+echo OK
+
 echo $N Setup a path conflict in resolve ............................$NL
 cd ..
 bk clone $Q project copy || fail

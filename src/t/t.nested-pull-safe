@@ -402,6 +402,7 @@ echo OK
 
 echo $N Setup a pull where a remote alias changes locally ...........$NL
 cd "$HERE"
+# XXX relies on nongate being a cached clone of repo-1 and -2
 nested nongate
 bk gate $Q -r
 bk clone $Q -s. . ../just-prod
@@ -413,10 +414,9 @@ bk pull $Q --unsafe ../repo-1 || fail
 cd ../repo-1/tools
 echo hi > junk
 bk new $Q junk
-bk commit $Q -yjunk || fail
 cd ..
 bk commit $Q -yjunk || fail
-bk alias set $Q GCC ./gcc ./tools || fail
+bk alias set $Q GCC ./gcc ./gdb ./tools || fail
 cd ../repo-2
 bk alias set $Q GCC ./gcc || fail
 bk here set -f $Q GCC || fail
@@ -425,6 +425,19 @@ bk here >GOT
 cat <<EOF >WANT
 ./tools
 GCC
+PRODUCT
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test again with pull -r auto-pop to see comps listed ........$NL
+bk here set -f $Q ./tools || fail
+bk unpull $Q -sf
+BK_GETLINE=1 bk pull $Q -r1.7 --auto-populate ../repo-1 2> ERR || fail -f ERR
+bk here >GOT
+cat <<EOF >WANT
+./gcc
+./tools
 PRODUCT
 EOF
 cmpfiles WANT GOT

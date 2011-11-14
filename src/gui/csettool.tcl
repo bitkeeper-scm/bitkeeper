@@ -6,9 +6,10 @@ proc nextFile {} \
 {
 	global	fileCount lastFile
 
-	if {$lastFile == $fileCount} { return }
+	if {$lastFile == $fileCount} { return 0 }
 	incr lastFile
 	dotFile
+	return 1
 }
 
 proc redoFile {} \
@@ -118,7 +119,6 @@ proc dotFile {{line {}}} \
 		set buf [.l.filelist.t get "$line.0" "$line.0 lineend"]
 	}
 	set currentCset [lindex [split $buf] 1]
-	.l.sccslog.t configure -state normal
 	.l.sccslog.t delete 1.0 end
 
 	set dspec \
@@ -154,7 +154,6 @@ proc dotFile {{line {}}} \
 	while {[.l.sccslog.t get "end - 2 char" end] == "\n\n"} {
 		.l.sccslog.t delete "end - 1 char" end
 	}
-	.l.sccslog.t configure -state disabled
 	.l.sccslog.t see end
 	.l.sccslog.t xview moveto 0
 	update idletasks
@@ -316,15 +315,9 @@ proc clearInfo {{message ""}} \
 	.diffs.status.middle configure -text $message
 	.diffs.status.l configure -text ""
 	.diffs.status.r configure -text ""
-	.diffs.left configure -state normal
-	.diffs.right configure -state normal
-	.l.sccslog.t configure -state normal
 	.diffs.left delete 1.0 end
 	.diffs.right delete 1.0 end
 	.l.sccslog.t delete 1.0 end
-	.diffs.left configure -state disabled
-	.diffs.right configure -state disabled
-	.l.sccslog.t configure -state disabled
 }
 
 proc busy {busy} \
@@ -430,8 +423,8 @@ proc widgets {} \
 
 	ttk::frame .l.sccslog
 	    text .l.sccslog.t -height $gc(cset.listHeight) -width 80 \
-		-state disabled -wrap none -font $gc(cset.fixedFont) \
-		-setgrid true \
+		-wrap none -font $gc(cset.fixedFont) \
+		-setgrid true -insertwidth 0 -highlightthickness 0 \
 		-xscrollcommand { .l.sccslog.xscroll set } \
 		-yscrollcommand { .l.sccslog.yscroll set } \
 		-background $gc(cset.listBG) -foreground $gc(cset.textFG)
@@ -444,6 +437,7 @@ proc widgets {} \
 	    grid .l.sccslog.xscroll -row 1 -column 0 -sticky ew
 	    grid rowconfigure    .l.sccslog .l.sccslog.t -weight 1
 	    grid columnconfigure .l.sccslog .l.sccslog.t -weight 1
+	    bindtags .l.sccslog.t [list .l.sccslog.t ReadonlyText . all]
 
 	    createDiffWidgets .diffs
 
@@ -536,9 +530,6 @@ proc widgets {} \
 	keyboard_bindings
 	search_keyboard_bindings
 	searchreset
-	foreach w {.diffs.left .diffs.right} {
-		bindtags $w {all Text .}
-	}
 
 	computeHeight "diffs"
 
@@ -548,6 +539,7 @@ proc widgets {} \
 	    -background $gc(cset.listBG) -foreground $gc(cset.textFG)
 	.l.sccslog.t tag configure cset -background $gc(cset.selectColor) 
 	.l.sccslog.t tag configure file_tag -background $gc(cset.selectColor) 
+	.l.sccslog.t tag raise sel
 	. configure -cursor left_ptr
 	.l.sccslog.t configure -cursor left_ptr
 	.l.filelist.t configure -cursor left_ptr
@@ -590,8 +582,11 @@ proc keyboard_bindings {} \
 	bind all <Alt-Down> { adjustHeight -1 1 }
 	bind all <$gc(cset.quit)>	exit
 	bind all <space>		next
+	bind all <Shift-space>		prev
 	bind all <n>			next
+	bind all <bracketright>		next
 	bind all <p>			prev
+	bind all <bracketleft>		prev
 	bind all <r>			file_history
 	bind all <period>		dot
 	bind all <Control-n>		nextFile

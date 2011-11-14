@@ -694,11 +694,9 @@ urlinfo_fetchAlloc(nested *n, char *url)
 void
 urlinfo_flushCache(nested *n)
 {
-	char	*url;
 	urlinfo	*data;
 
 	EACH_HASH(n->urlinfo) {
-		url = n->urlinfo->kptr;
 		data = (urlinfo *)n->urlinfo->vptr;
 		data->checked = 0;
 		data->checkedGood = 0;

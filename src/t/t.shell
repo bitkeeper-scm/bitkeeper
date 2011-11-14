@@ -187,7 +187,8 @@ cd copy
   echo ur
   echo Use remote file
   echo .
-  echo q ) | bk resolve $Q -ywhatever > OUT 2>&1
+  echo q ) > IN
+bk resolve $Q -ywhatever < IN > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
 	cat OUT

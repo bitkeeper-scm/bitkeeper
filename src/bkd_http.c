@@ -1482,8 +1482,17 @@ parseurl(char *url)
 			root = strdup(".");
 		} else {
 			unless (strneq(proot, cwd, i) && (proot[i] == '/')) {
-				/* followed symlink? */
-				http_error(503, "Can't find project root");
+				unless (Opts.symlink_ok) {
+err:					http_error(503,
+					    "Can't find project root");
+				}
+				page = fullLink(url, 0, 0);
+				unless ((strneq(page, cwd, i)
+				    && (page[i] == '/'))) {
+					free(page);
+					goto err;
+				}
+				free(page);
 			}
 			root = strdup(proot + i + 1);
 		}

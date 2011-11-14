@@ -7,6 +7,10 @@
 OLDVER=4.2
 OLDBK=/build/bitkeeper-$OLDVER
 
+# use new parallel clone in tests
+_BK_FORCE_NETFS=YES
+export _BK_FORCE_NETFS
+
 echo $N Check bitkeeper 4.2 installation ............................$NL
 if [ -n "$BK_DEV_SKIPTEST" ]; then echo skipped; exit 0; fi
 # Skip this test for Windows VISTA

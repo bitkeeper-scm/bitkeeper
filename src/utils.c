@@ -72,16 +72,16 @@ void
 error(const char *fmt, ...)
 {
 	va_list	ap;
-	char	*retval;
+	char	*p, *retval;
 
 	va_start(ap, fmt);
 	if (vasprintf(&retval, fmt, ap) < 0) retval = 0;
 	va_end(ap);
 	if (retval) {
-		if (getenv("_BK_IN_BKD")) {
+		if ((p = getenv("_BK_IN_BKD")) && !streq(p, "QUIET")) {
 			out("ERROR-");
 			out(retval);
-		} else {
+		} else if (p == 0) {
 			fputs(retval, stderr);
 		}
 		free(retval);
@@ -346,8 +346,15 @@ confirm(char *msg)
 int
 usleep_main(int ac, char **av)
 {
+	u32	left;
+
 	unless (av[1]) return (1);
-	usleep(atoi(av[1]));
+	left = atoi(av[1]);
+	while (left > 999999) {
+		usleep(999999);
+		left -= 999999;
+	}
+	if (left) usleep(left);
 	return (0);
 }
 
@@ -1546,7 +1553,7 @@ full_check(void)
 	if (window = proj_configsize(0, "check_frequency")) {
 		window *= DAY;
 	} else {
-		window = DAY;
+		window = WEEK;
 	}
 	if (window > 2*WEEK) window = 2*WEEK;
 	if (f = fopen(CHECKED, "r")) {
@@ -2019,3 +2026,25 @@ bk_setConfig(char *key, char *val)
 	}
 }
 
+/*
+ * Return reasonable values for parallel sfio/checkouts/etc.
+ */
+int
+parallel(char *path)
+{
+	char	*p;
+	int	val = 0;
+
+#ifdef	WIN32
+	return (0);
+#endif
+	if ((p = proj_configval(0, "parallel")) && isdigit(*p)) {
+		unless (val = atoi(p)) return (0);
+		if (val) return (min(val, PARALLEL_MAX));
+	}
+	if (isNetworkFS(path)) {
+		return (PARALLEL_NET);
+	} else {
+		return (PARALLEL_LOCAL);
+	}
+}

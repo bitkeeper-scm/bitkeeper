@@ -138,6 +138,7 @@ typedef struct {
 	u32	noURLprobe:1;	// unpopulate doesn't look for other urls
 	u32	runcheck:1;	// follow up with a partial check of prod
 	u32	leaveHERE:1;	// do not update the HERE file with our actions
+	int	parallel;	// -j%d
 	int	comps;		// number of comps we worked on
 
 	/* internal state */

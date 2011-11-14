@@ -184,8 +184,8 @@ echo OK
 
 echo $N Unpark \-f should overide local changed delta  ................$NL
 bk unpark -cf 2> /dev/null 1>&2
-if [ ! -f binary_moved ]; then echo failed; exit 1; fi
-cmp -s "$BIN2" binary_moved || { echo failed; exit 1; }
+test -f binary_moved || fail
+cmp -s "$BIN2" binary_moved || fail
 echo OK
 
 if [ "$PLATFORM" = "WIN32" ]

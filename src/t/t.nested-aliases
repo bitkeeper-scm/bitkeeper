@@ -664,3 +664,27 @@ cd ../prod-clone
 bk alias new STUFF2 gdb
 bk pull $Q 2>ERR || fail -f ERR
 echo OK
+
+echo $N Check that resolve uses updated local alias db ..............$NL
+cd "$HERE"/project
+bk alias new $Q MUST gcc
+bk clone $Q -sMUST -s./gdb . ../copy-alias
+bk edit $Q gdb/file1
+bk delta $Q -fynull gdb/file1
+bk commit $Q -y'mod gdb'
+cd ../copy-alias
+bk alias rm $Q MUST gcc
+# set up the next test
+bk clone $Q -sHERE . ../copy-alias-merge
+# back to this test
+bk pull $Q -R
+bk resolve $Q || fail
+echo OK
+
+echo $N Check that resolve uses merged alias db .....................$NL
+cd "$HERE"/project
+bk alias new $Q BOTH gcc gdb
+cd ../copy-alias-merge
+bk pull $Q -R ../project
+bk resolve $Q || fail
+echo OK

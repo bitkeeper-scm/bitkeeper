@@ -387,8 +387,9 @@ typedef	enum {
  * Constants for running some parallel processes, sfio, checkout,
  * to overcome NFS latency.
  */
-#define	PARALLEL_DEFAULT	8
-#define	PARALLEL_MAX		20
+#define	PARALLEL_NET		8
+#define	PARALLEL_LOCAL		3
+#define	PARALLEL_MAX		64
 
 #define	MINUTE	(60)
 #define	HOUR	(60*MINUTE)
@@ -986,7 +987,7 @@ sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
 void	sfind_update(sccs *s, delta *d, ser_t oldser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
-int	sccs_unlock(sccs *, char);
+void	sccs_unlock(sccs *, char);
 
 int	sccs_lockfile(char *lockfile, int wait, int quiet);
 int	sccs_stalelock(char *lockfile, int discard);
@@ -1022,6 +1023,7 @@ char	*_relativeName(char *gName, int isDir,
 char	*findBin(void);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
+int	parallel(char *path);
 char	*sccs_Xfile(sccs *s, char type);
 FILE	*sccs_startWrite(sccs *s);
 int	sccs_finishWrite(sccs *s, FILE **f);

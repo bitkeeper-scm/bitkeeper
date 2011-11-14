@@ -1420,3 +1420,30 @@ bk edit $Q info
 echo modified-dev > info
 bk pull $Q || fail should have worked
 echo OK
+
+echo $N Test resolve -r can see conflict resolve with ul and ur .....$NL
+cd "$HERE"/copy4
+bk abort -qf
+bk pull $Q -R
+# Note: resolve -r only works in gui environment, so hack one in
+BK_NO_GUI_PROMPT= DISPLAY=:1 bk resolve $Q <<EOF 2> OUT
+ul
+q
+EOF
+# This both tests that ul worked in that the already done file
+# is listed first, and it sets up the test for ur
+BK_NO_GUI_PROMPT= DISPLAY=:1 bk resolve $Q -r <<EOF 2> OUT
+ur
+q
+EOF
+printf \
+  "(content conflict) dir1-proj/ff>> (content conflict) dir2/space file>> " \
+  > WANT
+cmpfiles WANT OUT
+# verify ur can be redone by the file being named first
+BK_NO_GUI_PROMPT= DISPLAY=:1 bk resolve $Q -r <<EOF 2> OUT
+q
+EOF
+printf "(content conflict) dir1-proj/ff>> " > WANT
+cmpfiles WANT OUT
+echo OK

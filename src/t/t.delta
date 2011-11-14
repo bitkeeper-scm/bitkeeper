@@ -127,6 +127,19 @@ bk _cat SCCS/s.T | grep -q '^.c I am the comment$'
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
 echo OK
 
+echo $N Make sure delta prompts for comments for all files ..........$NL
+touch foo bar
+bk new $Q foo bar
+bk edit $Q foo bar
+echo foo >> foo
+echo bar >> bar
+(echo "foo comment"; echo ".";
+echo "bar comment"; echo ".") | bk delta $S foo bar 2> ${DEV_NULL}
+bk _cat SCCS/s.foo | grep -q '^.c foo comment$' || fail
+bk _cat SCCS/s.bar | grep -q '^.c bar comment$' || fail
+bk _rm -f foo bar SCCS/s.foo SCCS/s.bar
+echo OK
+
 echo $N Make sure delta prompts once with -Y ........................$NL
 bk get $S -e T
 bk get $S -e init

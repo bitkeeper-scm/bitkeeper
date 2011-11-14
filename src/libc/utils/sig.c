@@ -12,8 +12,6 @@ handler	save[3];
 #define	_NSIG	32
 #endif
 
-private int	handled;
-
 private handler
 SIGNAL(int sig, handler new)
 {
@@ -65,28 +63,28 @@ sig(int what, int sig)
 	assert(sig < _NSIG);
 	switch (what) {
 	    case SIG_IGNORE:
-		if (handled) return (1);	/* first guy wins */
 		SIGNAL(sig, SIG_IGN);
-		handled = 1;
 		return (0);
 	    case SIG_DEFAULT:
-		handled = 0;
 		SIGNAL(sig, SIG_DFL);
 		break;
 	}
 	return (0);
 }
 
-/* Ignore all the signals we might get */
+/*
+ * Ignore all the signals we might get,
+ * and make it be so that child processes do so as well.
+ */
 int
 sig_ignore(void)
 {
 	int	i;
 
-	if (handled) return (1);	/* done already */
 	for (i = 0; i < sizeof(sigs)/sizeof(int); ++i) {
 		sig(SIG_IGNORE, sigs[i]);
 	}
+	putenv("_BK_IGNORE_SIGS=YES");
 	return (0);
 }
 

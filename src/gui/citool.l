@@ -95,11 +95,12 @@ struct {
 	int	doDiscard;	    // switch to require clicking discard twice
 	int	committing;	    // true if we're in the middle of committing
 	string	afterId;	    // store an after event ID
+	string	selected;	    // the selected file node
 	widget	w_top;		    // toplevel window widget
 	widget	w_upperF;	    // upper frame widget
 	widget	w_lowerF;	    // lower frame widget
-	widget	w_fileF;	    // scrolled window that holds the file list
-	widget	w_files;	    // file list box
+	ListBox	o_files;	    // file listbox object
+	widget	w_files;	    // file list box widget
 	widget	w_commentF;	    // scrolled window that holds the comments
 	widget	w_comments;	    // comments text box
 	widget	w_diffs;	    // diffs (lower) text box
@@ -166,16 +167,13 @@ nested()
 string[]
 getAllNodes()
 {
-	return (ListBox_items(self.w_files));
+	return (ListBox_items(self.o_files));
 }
 
 string
 getSelectedNode()
 {
-	string	sel = Tree_selectionGet(self.w_files);
-
-	if (sel == "") return (undef);
-	return (sel);
+	return (self.selected);
 }
 
 sfile
@@ -187,7 +185,7 @@ getSelectedFile()
 	node = getSelectedNode();
 	unless (defined(node)) return (undef);
 
-	file = Tree_itemcget(self.w_files, node, data:);
+	file = ListBox_itemcget(self.o_files, node, data:);
 	return (self.files{file});
 }
 
@@ -255,7 +253,7 @@ insertFile(sfile sf)
 	}
 
 	unless (sf.type == "pending") {
-		sf.node = ListBox_insert(self.w_files, "end", "#auto",
+		sf.node = ListBox_itemInsert(self.o_files, "end",
 		    text: sf.name, data: sf.name);
 		configureFile(sf);
 	}
@@ -268,6 +266,7 @@ insertFile(sfile sf)
 	    && (sf.type == "modified") && !isCommented(sf)) {
 		selectFile(sf.node);
 	}
+	updateGUI();
 }
 
 void
@@ -303,7 +302,8 @@ removeFile(sfile sf)
 		++i;
 	}
 
-	ListBox_delete(self.w_files, sf.node);
+	ListBox_itemDelete(self.o_files, sf.node);
+	ListBox_select(self.o_files, self.selected);
 
 	undef(self.files{sf.name});
 	if (!sf.inProduct && length(self.components{component}) <= 1) {
@@ -311,7 +311,7 @@ removeFile(sfile sf)
 
 		undef(self.files{cset.name});
 		undef(self.components{component});
-		ListBox_delete(self.w_files, cset.node);
+		ListBox_itemDelete(self.o_files, cset.node);
 		moveNext();
 	}
 }
@@ -327,7 +327,7 @@ configureFile(sfile sf)
 	node = sf.node;
 	if (!defined(node) || node == "") return;
 
-	old = ListBox_itemcget(self.w_files, node, image:);
+	old = ListBox_itemcget(self.o_files, node, image:);
 	if (old == img_done) {
 		if (sf.type == "new") {
 			--self.cnt_newC;
@@ -341,18 +341,18 @@ configureFile(sfile sf)
 	}
 
 	// Clear the item back to a normal state.
-	Tree_itemconfigure(self.w_files, node, foreground: "black",
+	ListBox_itemconfigure(self.o_files, node, foreground: "black",
 	    font: self.font_normal);
 
 	if (sf.excluded || sf.ignored) {
 		// Excluded or ignored.  Mark it with a red X.
 		++self.cnt_excluded;
-		Tree_itemconfigure(self.w_files, node, image: img_exclude);
+		ListBox_itemconfigure(self.o_files, node, image: img_exclude);
 		if (sf.ignored) {
-			Tree_itemconfigure(self.w_files, node,
+			ListBox_itemconfigure(self.o_files, node,
 			    foreground: "gray");
 		} else {
-			Tree_itemconfigure(self.w_files, node,
+			ListBox_itemconfigure(self.o_files, node,
 			    font: self.font_overstrike);
 		}
 		return;
@@ -360,7 +360,7 @@ configureFile(sfile sf)
 
 	unless (isCommented(sf)) {
 		// No comment, so just draw its original icon.
-		Tree_itemconfigure(self.w_files, node, image: sf.icon);
+		ListBox_itemconfigure(self.o_files, node, image: sf.icon);
 		return;
 	}
 
@@ -374,7 +374,7 @@ configureFile(sfile sf)
 			++self.cnt_modifiedC;
 			++self.cnt_commented;
 		}
-		Tree_itemconfigure(self.w_files, node, image: img_done);
+		ListBox_itemconfigure(self.o_files, node, image: img_done);
 		return;
 	}
 
@@ -408,10 +408,10 @@ configureFile(sfile sf)
 		}
 	}
 
-	Tree_itemconfigure(self.w_files, node, image: img);
+	ListBox_itemconfigure(self.o_files, node, image: img);
 
 	if (img == img_notincluded) {
-		Tree_itemconfigure(self.w_files, node, foreground: "gray");
+		ListBox_itemconfigure(self.o_files, node, foreground: "gray");
 	}
 }
 
@@ -420,11 +420,14 @@ readSfiles(FILE fd)
 {
 	string	line;
 
-	unless (defined(line = fgetline(fd))) {
+	if (eof(fd)) {
 		fclose(fd);
 		self.sfiles_last = 0;
 		_done = 1;
+		return;
 	}
+
+	unless (defined(line = fgetline(fd))) return;
 
 	if (line[0] == "F") {
 		addSfilesLines({line[2..END]});
@@ -439,6 +442,16 @@ readSfiles(FILE fd)
 				    (100 * self.sfiles_done) / self.nfiles);
 			}
 		}
+	}
+}
+
+void
+updateGUI()
+{
+	if ((Clock_milliseconds() - self.last_update) >= 300) {
+		ListBox_redraw(self.o_files);
+		Update_idletasks();
+		self.last_update = Clock_milliseconds();
 	}
 }
 
@@ -542,7 +555,7 @@ insertPendingNode(string comp)
 	string	txt;
 	string	img = img_done;
 
-	txt = "Show (${self.sfiles_pending}) pending delta";
+	txt = "Show ${self.sfiles_pending} pending delta";
 	if (self.sfiles_pending != 1) txt .= "s";
 	if (self.nested) {
 		txt .= " in ";
@@ -554,9 +567,8 @@ insertPendingNode(string comp)
 	}
 	self.showPending{comp} = 0;
 	self.pendingNodes{comp} =
-	    ListBox_insert(
-		self.w_files,
-		"end", "pending#auto",
+	    ListBox_itemInsert(self.o_files, "end",
+		id: "pending-${comp}",
 		image: img, data: comp,
 		font: self.font_underline,
 		fill: "blue", text: txt);
@@ -685,14 +697,11 @@ void
 insertBottomText(string text, int clearTextBox)
 {
 	widget	textbox = self.w_diffs;
-	string	state = Text_cget(textbox, state:);
 
-	Text_configure(textbox, state: "normal");
 	if (clearTextBox) {
 		Text_delete(textbox, 1.0, "end");
 	}
 	Text_insert(textbox, "end", text);
-	Text_configure(textbox, state: state);
 }
 
 void
@@ -714,13 +723,9 @@ topMessage(string message, string tag)
 void
 bottomMessage(string message, string tag)
 {
-	string	state = Text_cget(self.w_diffs, state:);
-
-	Text_configure(self.w_diffs, state: "normal");
 	Text_delete(self.w_diffs, 1.0, "end");
 	Text_insert(self.w_diffs, "end", message, tag);
 	Text_insert(self.w_diffs, "end", "\n", tag);
-	Text_configure(self.w_diffs, state: state);
 }
 
 void
@@ -733,8 +738,7 @@ gui()
 
 	self.w_top      = top;
 	self.w_upperF   = "${top}.upper";
-	self.w_fileF    = "${top}.upper.files";
-	self.w_files    = "${top}.upper.files.l";
+	self.w_files    = "${top}.upper.files";
 	self.w_commentF = "${top}.upper.comments";
 	self.w_comments = "${top}.upper.comments.t";
 	self.w_buttons  = "${top}.upper.buttons";
@@ -758,21 +762,16 @@ gui()
 	grid("rowconfigure", self.w_upperF, 0, weight: 1);
 	grid("columnconfigure", self.w_upperF, 0, weight: 1);
 
-	ScrolledWindow(self.w_fileF, auto: "none");
-	grid(self.w_fileF, row: 0, column: 0, sticky: "nesw");
-
-	ListBox(self.w_files,
-	    background: gc("ci.listBG"),
-	    height: gc("ci.filesHeight"), padx: 20, deltay: 20,
-	    selectfill: 1, selectforeground: "white",
+	self.o_files = ListBox_init(self.w_files,
+	    background: gc("ci.listBG"), height: gc("ci.filesHeight"),
 	    font: gc("ci.fixedFont"));
-	ScrolledWindow_setwidget(self.w_fileF, self.w_files);
-	// grid("configure", "${self.w_fileF}.vscroll", rowspan: 2);
-	::ListBox::bindText(self.w_files, "<1>", "selectFile");
-	::ListBox::bindImage(self.w_files, "<1>", "toggleFile");
+	ListBox_grid(self.o_files, row: 0, column: 0, sticky: "nesw");
+	ListBox_bind(self.o_files, "<<ClickIcon>>",  "toggleFile %d");
+	ListBox_bind(self.o_files, "<<SelectItem>>", "selectFile %d");
+
 	bind("all", "<Return>", "togglePending {}");
 
-	f = ListBox_cget(self.w_files, font:);
+	f = ListBox_cget(self.o_files, font:);
 	self.font_normal = f;
 	self.font_underline = Font_configure(f);
 	self.font_overstrike = Font_configure(f);
@@ -784,7 +783,7 @@ gui()
 
 	text(self.w_comments, relief: "sunken", borderwidth: 1,
 	    font: gc("ci.fixedFont"), wrap: "none", highlightthickness: 0,
-	    background: gc("ci.textBG"), foreground: gc("ci.textFG"),
+	    background: gc("ci.textBG"), foreground: gc("ci.textFG"), undo: 1,
 	    width: 70, height: gc("ci.commentsHeight"), state: "disabled");
 	ScrolledWindow_setwidget(self.w_commentF, self.w_comments);
 	tags = bindtags(self.w_comments);
@@ -830,18 +829,10 @@ gui()
 	text(self.w_diffs, relief: "sunken", borderwidth: 1,
 	    font: gc("ci.fixedFont"), wrap: "none", highlightthickness: 0,
 	    background: gc("ci.textBG"), foreground: gc("ci.textFG"),
-	    width: 81, height: gc("ci.diffHeight"), state: "disabled");
+	    width: 81, height: gc("ci.diffHeight"), insertwidth: 0);
+	bindtags(self.w_diffs, {self.w_diffs, "ReadonlyText", top, "all"});
 	ScrolledWindow_setwidget(self.w_lowerF, self.w_diffs);
-	Text_tag(self.w_diffs, "configure", "newTag",
-	    background: gc("ci.newColor"));
-	Text_tag(self.w_diffs, "configure", "oldTag",
-	    background: gc("ci.oldColor"));
-	Text_tag(self.w_diffs, "configure", "warning",
-	    background: gc("ci.warnColor"));
-	Text_tag(self.w_diffs, "configure", "notice",
-	    background: gc("ci.noticeColor"));
-	Text_tagConfigure(self.w_diffs, "highlight",
-	    background: gc("ci.highlight"));
+	configureDiffWidget("ci", self.w_diffs);
 
 	if (gc("aqua")) {
 		StatusBar(self.w_statusF, showresize: 0);
@@ -859,7 +850,8 @@ gui()
 	    separator: 0, sticky: "e");
 	setStatus("Initializing...");
 
-	bind(top, "<FocusIn>", "focus ${self.w_comments}");
+	bind(top, "<FocusIn>", "handle_focus %W");
+	bind(self.w_diffs, "<ButtonRelease-1>", "handle_release %W");
 	bind("BK", "<Control-l>", "refreshSelectedFile; break");
 	bind("BK", "<Control-t>", "toggleSelectedFile; break");
 	bind("BK", "<Control-Shift-x>", "cutComments; break");
@@ -907,7 +899,7 @@ gui()
 		    "%W tag add sel insert {insert display lineend};"
 		    "%W mark set insert {insert display lineend}; break");
 		bind(w, "<Command-BackSpace>",
-		    "%W delete {insert display linestart + 1 char} insert;"
+		    "%W delete {insert display linestart} insert;"
 		    "break");
 	} else {
 		bind(w, "<Control-a>", "%W tag add sel 1.0 end; break");
@@ -927,35 +919,39 @@ gui()
 int
 selectFile(string node)
 {
+	sfile	sf;
 	sfile	sel = getSelectedFile();
 	string	file;
 
-	unless (ListBox_exists(self.w_files, node)) return (0);
-	file = Tree_itemcget(self.w_files, node, data:);
+	unless (ListBox_exists(self.o_files, node)) return (0);
+	file = ListBox_itemcget(self.o_files, node, data:);
 
 	saveComments();
 	filename = file;
-	self.commitSwitch = 0;
 	self.doDiscard = 0;
-	ListBox_selectionClear(self.w_files);
+	self.commitSwitch = 0;
+	self.selected = undef;
+	ListBox_selectionClear(self.o_files);
 	if (node =~ /pending/) {
 		togglePending(node);
-	} else {
-		sfile	sf = self.files{file};
-
-		self.comments = getComments(sf);
-		self.commented = 0;
-		if ((self.comments != "")
-		    && !isTemplateComment(sf, self.comments)) {
-			self.commented = 1;
-		}
-		Tree_selectionSet(self.w_files, node);
-		Tree_see(self.w_files, node);
-		configureFile(sel); // redraw the previous file's icon
-		showFile(sf);
-		updateButtons();
+		return (1);
 	}
 
+	ListBox_select(self.o_files, node);
+	ListBox_see(self.o_files, node);
+	Update_idletasks();
+
+	sf = self.files{file};
+	self.comments = getComments(sf);
+	self.commented = 0;
+	if ((self.comments != "")
+	    && !isTemplateComment(sf, self.comments)) {
+		self.commented = 1;
+	}
+	self.selected = node;
+	configureFile(sel); // redraw the previous file's icon
+	showFile(sf);
+	updateButtons();
 	return (1);
 }
 
@@ -1017,7 +1013,7 @@ redrawFile(string node)
 	string	file;
 	
 	if (node == "") return;
-	file = Tree_itemcget(self.w_files, node, data:);
+	file = ListBox_itemcget(self.o_files, node, data:);
 	configureFile(self.files{file});
 	updateStatus();
 	updateButtons();
@@ -1027,7 +1023,7 @@ void
 toggleFile(string node)
 {
 	sfile	sf;
-	string	file = Tree_itemcget(self.w_files, node, data:);
+	string	file = ListBox_itemcget(self.o_files, node, data:);
 
 	saveComments();
 	if (node =~ /pending/) {
@@ -1039,7 +1035,7 @@ toggleFile(string node)
 		// same state as the rest, the toggle is ignored.
 		int	toggle = 1;
 		string	comp = file;
-		string	img = Tree_itemcget(self.w_files, node, image:);
+		string	img = ListBox_itemcget(self.o_files, node, image:);
 		string	pending[];
 
 		foreach (file in self.components{comp}) {
@@ -1066,7 +1062,7 @@ toggleFile(string node)
 				self.files{file}.excluded = exclude;
 				configureFile(self.files{file});
 			}
-			ListBox_itemconfigure(self.w_files, node, image: img);
+			ListBox_itemconfigure(self.o_files, node, image: img);
 		}
 		return;
 	}
@@ -1075,13 +1071,18 @@ toggleFile(string node)
 
 	sf = self.files{file};
 	if ((sf.type == "new") && (getComments(sf) == "")) {
-		writeComments(sf, "New BitKeeper file ``${sf.name}''");
+		string	comment = "New BitKeeper file ``${sf.name}''";
+
+		self.commented = 1;
+		self.comments  = comment;
+		insertTopText(comment, 1);
+		writeComments(sf, comment);
 	} else {
 		self.files{file}.excluded = !sf.excluded;
 	}
 
 	if (node == getSelectedNode()) {
-		Tree_selectionClear(self.w_files);
+		ListBox_selectionClear(self.o_files);
 		selectFile(node);
 	} else {
 		sf = getSelectedFile();
@@ -1124,20 +1125,20 @@ togglePending(string node)
 	if (node == "") node = getSelectedNode();
 	unless (node =~ /pending/) return;
 
-	idx = Listbox_index(self.w_files, node);
+	idx = ListBox_index(self.o_files, node);
 	if (idx == -1) return;
 
-	comp = ListBox_itemcget(self.w_files, node, data:);
+	comp = ListBox_itemcget(self.o_files, node, data:);
 	unless (defined(self.showPending{comp})) return;
 
-	text = ListBox_itemcget(self.w_files, node, text:);
+	text = ListBox_itemcget(self.o_files, node, text:);
 	if (self.showPending{comp}) {
 		self.showPending{comp} = 0;
 		text =~ s/^Hide/Show/;
 		foreach (file in self.components{comp}) {
 			sf = self.files{file};
 			unless (sf.type == "pending") continue;
-			Listbox_delete(self.w_files, sf.node);
+			ListBox_itemDelete(self.o_files, sf.node);
 			self.files{file}.node = "";
 		}
 	} else {
@@ -1146,14 +1147,15 @@ togglePending(string node)
 		foreach (file in self.components{comp}) {
 			sf = self.files{file};
 			unless (sf.type == "pending") continue;
-			sf.node = ListBox_insert(self.w_files, ++idx, "#auto",
-			    text: sf.name, data: sf.name, indent: 16);
+			sf.node = ListBox_itemInsert(self.o_files,
+			    (string)++idx, text: sf.name, data: sf.name);
 			self.files{sf.name}.node = sf.node;
 			configureFile(sf);
 			unless (defined(sel)) sel = sf.node;
 		}
 	}
-	ListBox_itemconfigure(self.w_files, node, text: text);
+	ListBox_itemconfigure(self.o_files, node, text: text);
+	updateGUI();
 	selectPendingNode(node);
 }
 
@@ -1369,8 +1371,9 @@ selectPendingNode(string node)
 	disableComments();
 	insertTopText("", 1);
 	insertBottomText("", 1);
-	ListBox_see(self.w_files, node);
-	Listbox_selectionSet(self.w_files, node);
+	self.selected = node;
+	ListBox_see(self.o_files, node);
+	ListBox_select(self.o_files, node);
 	updateButtons();
 }
 
@@ -1379,10 +1382,10 @@ moveNext()
 {
 	string	node;
 	string	sel = getSelectedNode();
-	int	idx = Tree_index(self.w_files, sel);
+	int	idx = ListBox_index(self.o_files, sel);
 
-	node = ListBox_items(self.w_files, ++idx);
-	unless (Tree_exists(self.w_files, node)) return;
+	node = ListBox_item(self.o_files, ++idx);
+	unless (ListBox_exists(self.o_files, node)) return;
 	if (node =~ /pending/) {
 		selectPendingNode(node);
 	} else {
@@ -1395,10 +1398,10 @@ movePrevious()
 {
 	string	node;
 	string	sel = getSelectedNode();
-	int	idx = Tree_index(self.w_files, sel);
+	int	idx = ListBox_index(self.o_files, sel);
 
-	node = ListBox_items(self.w_files, --idx);
-	unless (Tree_exists(self.w_files, node)) return;
+	node = ListBox_item(self.o_files, --idx);
+	unless (ListBox_exists(self.o_files, node)) return;
 	if (node =~ /pending/) {
 		selectPendingNode(node);
 	} else {
@@ -1557,7 +1560,7 @@ int
 isExcluded(sfile sf)
 {
 	if (sf.excluded) return (1);
-	if (ListBox_itemcget(self.w_files, sf.node, image:)
+	if (ListBox_itemcget(self.o_files, sf.node, image:)
 	    == img_notincluded) return (1);
 	return (0);
 }
@@ -1584,7 +1587,6 @@ void
 showFileContents(sfile sf)
 {
 	string	type = ftype(sf.file);
-	string	state = Text_cget(self.w_diffs, state:);
 
 	unless (exists(sf.file)) {
 		puts("Removing non-existent file \"${sf.name}\" from list box");
@@ -1592,7 +1594,6 @@ showFileContents(sfile sf)
 		return;
 	}
 
-	Text_configure(self.w_diffs, state: "normal");
 	if (type == "link") {
 		Text_insert(self.w_diffs, "end",
 		    "${sf.name}:\t(new file) type: ${type}");
@@ -1625,7 +1626,6 @@ showFileContents(sfile sf)
 		Text_insert(self.w_diffs, "end",
 		    "${sf.name}:\tUNSUPPORTED FILE TYPE (${type})");
 	}
-	Text_configure(self.w_diffs, state: state);
 }
 
 void
@@ -1639,7 +1639,6 @@ showCsetContents(sfile sf)
 	if (sf.inProduct && self.cnt_commented == 0) {
 		// Product ChangeSet file and no comments at all.
 		bottomMessage(msgs{"noFileComments"}, "warning");
-		Text_configure(textBox, state: "disabled");
 		disableComments();
 		return;
 	}
@@ -1648,13 +1647,11 @@ showCsetContents(sfile sf)
 		// Component ChangeSet and no comments on any files
 		// in this component.
 		bottomMessage(msgs{"noFileComments"}, "warning");
-		Text_configure(textBox, state: "disabled");
 		disableComments();
 		return;
 	}
 
 	comments = getComments(sf);
-	Text_configure(textBox, state: "normal");
 	if (isProductCsetComment(sf, comments)) {
 		// If this is a cset comment inherited from the
 		// product, select the whole thing within the
@@ -1714,8 +1711,6 @@ showCsetContents(sfile sf)
 			Text_insert(textBox, "end", "\n");
 		}
 	}
-
-	Text_configure(textBox, state: "disabled");
 }
 
 void
@@ -1729,7 +1724,6 @@ showFile(sfile sf)
 	enableComments();
 	comments = self.comments;
 	insertTopText(comments, 1);
-	Text_configure(self.w_diffs, state: "normal");
 	Text_delete(self.w_diffs, 1.0, "end");
 	after("idle", "focus ${self.w_comments}");
 
@@ -1738,7 +1732,6 @@ showFile(sfile sf)
 		return;
 	} else if (sf.type == "new") {
 		showFileContents(sf);
-		Text_configure(self.w_diffs, state: "disabled");
 		return;
 	}
 
@@ -1753,7 +1746,6 @@ showFile(sfile sf)
 			Text_insert(self.w_diffs, "end", "\n");
 			Text_insert(self.w_diffs, "end",
 			    bk("changes -S -v -r${sf.rev} '${dir}'"), "");
-			Text_configure(self.w_diffs, state: "disabled");
 			return;
 		}
 		Text_insert(self.w_diffs, "end",
@@ -1775,15 +1767,14 @@ showFile(sfile sf)
 		c = line[0];
 		tag = "";
 		if (c == "+") {
-			tag = "newTag";
+			tag = "newDiff";
 		} else if (c == "-") {
-			tag = "oldTag";
+			tag = "oldDiff";
 		}
 		Text_insert(self.w_diffs, "end", "${line}\n", tag);
 	}
 	fclose(fd);
 	highlightStacked(self.w_diffs, "1.0", "end", 1);
-	Text_configure(self.w_diffs, state: "disabled");
 }
 
 void
@@ -1806,7 +1797,7 @@ pasteComments()
 	sfile	sf;
 	string	node, file;
 	string	sel = getSelectedNode();
-	int	idx = Tree_index(self.w_files, sel);
+	int	idx = ListBox_index(self.o_files, sel);
 
 	if (Text_cget(self.w_comments, state:) == "normal") {
 		insertTopText(self.clipboard, 1);
@@ -1816,10 +1807,10 @@ pasteComments()
 
 	// Find the next uncommented file and skip down.
 	while (1) {
-		node = ListBox_items(self.w_files, ++idx);
+		node = ListBox_item(self.o_files, ++idx);
 		if (node =~ /pending/) continue;
-		unless (Tree_exists(self.w_files, node)) return;
-		file = Listbox_itemcget(self.w_files, node, data:);
+		unless (ListBox_exists(self.o_files, node)) return;
+		file = ListBox_itemcget(self.o_files, node, data:);
 		sf = self.files{file};
 		if (isCommented(sf)) continue;
 		break;
@@ -1910,8 +1901,9 @@ doCommit()
 	}
 
 	self.committing = 1;
-	ListBox_selectionClear(self.w_files);
-	ListBox_configure(self.w_files, state: "disabled");
+	self.selected = undef;
+	ListBox_selectionClear(self.o_files);
+	ListBox_configure(self.o_files, state: "disabled");
 	disableComments();
 	updateButtons();
 	update();
@@ -1927,7 +1919,7 @@ doCommit()
 	self.committing = 0;
 	self.commitSwitch = 0;
 	unless (commitComponent(self.root)) {
-		ListBox_configure(self.w_files, state: "normal");
+		ListBox_configure(self.o_files, state: "normal");
 		updateButtons();
 		/*
 		 * rescan needed because files and components
@@ -2118,6 +2110,7 @@ triggerAccept(string sock, string addr, int port)
 		port = 0;
 		addr = "";
 	}
+	fconfigure(sock, blocking: 0, buffering: "line");
 	fileevent(sock, "readable", "triggerRead ${sock}");
 }
 
@@ -2126,12 +2119,14 @@ triggerRead(string sock)
 {
 	string	line;
 
-	if (!defined(line = fgetline(sock)) || eof(sock)) {
+	if (eof(sock)) {
 		close(sock);
-	} else {
-		insertBottomText("${line}\n", 0);
-		self.trigger_output .= line . "\n";
+		return;
 	}
+
+	unless(defined(line = fgetline(sock))) return;
+	insertBottomText("${line}\n", 0);
+	self.trigger_output .= line . "\n";
 }
 
 void
@@ -2141,7 +2136,6 @@ deleteAllComments()
 	string	file;
 
 	foreach (file => sf in self.files) {
-		if (sf.type == "pending") append(&file, "@", sf.rev);
 		deleteCommentFile(sf.file);
 	}
 }
@@ -2226,6 +2220,7 @@ rescan()
 {
 	string	comp;
 
+	saveComments();
 	init();
 	self.files = undef;
 	self.components = undef;
@@ -2238,13 +2233,27 @@ rescan()
 		if (String_isInteger(strict: n)) self.nfiles += n;
 	}
 
-	ListBox_configure(self.w_files, state: "normal");
-	ListBox_delete(self.w_files, (expand)getAllNodes());
+	ListBox_configure(self.o_files, state: "normal");
+	ListBox_itemDelete(self.o_files, (expand)getAllNodes());
 	Progressbar_configure(self.w_progress, value: 0);
 	StatusBar_add(self.w_statusF, self.w_progress,
 	    separator: 0, sticky: "e");
 	update();
 	processFiles(self.filelist);
+}
+
+void
+handle_release(widget w)
+{
+	if (length(Text_tagRanges(w, "sel"))) return;
+	focus(self.w_comments);
+}
+
+void
+handle_focus(widget w)
+{
+	if (w == self.w_diffs || w == self.w_lowerF) return;
+	focus(self.w_comments);
 }
 
 void
@@ -2321,7 +2330,7 @@ test_getFiles()
 
 	nodes = getAllNodes();
 	foreach (node in nodes) {
-		text = Tree_itemcget(self.w_files, node, text:);
+		text = ListBox_itemcget(self.o_files, node, text:);
 		data .= text . "\n";
 	}
 	return (data);
@@ -2368,7 +2377,7 @@ test_findFileInList(string file, sfile &sf)
 
 	nodes = getAllNodes();
 	foreach (node in nodes) {
-		if (Tree_itemcget(self.w_files, node, text:) == file) {
+		if (ListBox_itemcget(self.o_files, node, text:) == file) {
 			sf = self.files{file};
 			return (node);
 		}
@@ -2381,7 +2390,7 @@ test_fileIsSelected(string file)
 {
 	string	sel = getSelectedNode();
 
-	if (ListBox_itemcget(self.w_files, sel, text:) == file) return;
+	if (ListBox_itemcget(self.o_files, sel, text:) == file) return;
 	puts("${file} is not the selected file, but it should be");
 	exit(1);
 }
@@ -2421,7 +2430,7 @@ test_fileHasIcon(string file, string want)
 	}
 
 	if (defined(node)) {
-		string	img = Tree_itemcget(self.w_files, node, image:);
+		string	img = ListBox_itemcget(self.o_files, node, image:);
 
 		if (img == img_new) {
 			icon = "extra";
@@ -2524,15 +2533,15 @@ main(_argused int argc, string argv[])
 	string	compscmd = "bk comps -ch";
 	int	includeProduct = 1;
 
-	debug_init(getenv("BK_DEBUG_CITOOL"));
-
 	arg = bk("sane 2>@1");
 	if (arg != "") bk_dieError(arg, 1);
 
-	bk_init();
-
 	require("BWidget");
 	Widget::theme(1);
+
+	debug_init(getenv("BK_DEBUG_CITOOL"));
+
+	bk_init();
 
 	init();
 	self.cwd = pwd();
@@ -2647,55 +2656,4 @@ main(_argused int argc, string argv[])
 	createImages();
 	processFiles(self.filelist);
 	readBackupComments();
-}
-
-private int	debug{string};
-private	FILE	debugf = undef;
-
-void
-debug_enter(string cmd, string op)
-{
-	op = op;
-	debug{cmd} = Clock_microseconds();
-	fprintf(debugf, "ENTER ${cmd}\n");
-}
-
-void
-debug_leave(string cmd, int code, string result, string op)
-{
-	float	t;
-
-	op = op;
-	code = code;
-	result = result;
-	if (defined(debug{cmd})) {
-		t = Clock_microseconds() - debug{cmd};
-		undef(debug{cmd});
-	}
-
-	if (defined(t)) {
-		fprintf(debugf, "LEAVE ${cmd} (${t} usecs)\n");
-	} else {
-		fprintf(debugf, "LEAVE ${cmd}\n");
-	}
-}
-
-void
-debug_init(string var)
-{
-	string	proc, procs[];
-
-	unless (defined(var) && length(var)) return;
-	if (var =~ m|^/|) debugf = fopen(var, "w");
-	unless (defined(debugf)) debugf = stderr;
-
-	procs = Info_procs("::*");
-	foreach (proc in procs) {
-		if (proc =~ /^::auto_/) continue;
-		if (proc =~ /^::debug_/) continue;
-		if (proc =~ /^::unknown/) continue;
-		if (proc =~ /^::fprintf/) continue;
-		Trace_addExec(proc, "enter", &debug_enter);
-		Trace_addExec(proc, "leave", &debug_leave);
-	}
 }

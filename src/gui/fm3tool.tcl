@@ -207,13 +207,13 @@ proc search_keyboard_bindings {{nc {}}} \
 	global search
 
 	if {$nc == ""} {
-		bind .                <g>             "search g"
-		bind .                <colon>         "search :"
-		bind .                <slash>         "search /"
-		bind .                <question>      "search ?"
+		dobind .                <g>             "search g"
+		dobind .                <colon>         "search :"
+		dobind .                <slash>         "search /"
+		dobind .                <question>      "search ?"
 	}
-	bind .                <Control-u>     searchreset
-	bind .                <Control-r>     searchrecall
+	dobind .                <Control-u>     searchreset
+	dobind .                <Control-r>     searchrecall
 	bind $search(text)      <Return>        searchstring
 	bind $search(text)      <Control-u>     searchreset
 	# In the search window, don't listen to "all" tags.
@@ -332,10 +332,11 @@ proc createDiffWidgets {w} \
 		-height $gc($app.diffHeight) \
 		-bg $gc($app.textBG) \
 		-fg $gc($app.textFG) \
-		-state disabled \
 		-borderwidth 0\
 		-wrap none \
 		-font $gc($app.fixedFont) \
+		-insertwidth 0 \
+		-highlightthickness 0 \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    text .diffs.right \
@@ -343,10 +344,11 @@ proc createDiffWidgets {w} \
 		-height $gc($app.diffHeight) \
 		-bg $gc($app.textBG) \
 		-fg $gc($app.textFG) \
-		-state disabled \
 		-borderwidth 0 \
 		-wrap none \
 		-font $gc($app.fixedFont)  \
+		-insertwidth 0 \
+		-highlightthickness 0 \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    ttk::scrollbar .diffs.xscroll -orient horizontal -command xscroll
@@ -385,14 +387,26 @@ proc createDiffWidgets {w} \
 	    .diffs.left  tag configure space -background $gc($app.spaceColor)
 	    .diffs.right tag configure space -background $gc($app.spaceColor)
 
-	    .diffs.left  tag configure reverse -background $gc($app.charColor)
-	    .diffs.right tag configure reverse -background $gc($app.charColor)
+	    .diffs.left  tag configure reverse -background $gc($app.highlight)
+	    .diffs.right tag configure reverse -background $gc($app.highlight)
 
 	    .diffs.left  tag configure hand -background $gc($app.handColor)
 	    .diffs.right tag configure hand -background $gc($app.handColor)
 
-	    bind .diffs <Configure> { computeHeight "diffs" }
+	    foreach w {.diffs.left .diffs.right} {
+		    $w tag configure diff-junk -background white
+		    foreach tag {diff gca space un} {
+			    set opts [list]
+			    foreach list [$w tag configure $tag] {
+				    lappend opts [lindex $list 0]
+				    lappend opts [lindex $list end]
+			    }
+			    $w tag configure diff-junk-$tag {*}$opts
+		    }
+	    }
 
+	    bind .diffs.left  <<Copy>> "fm3tool_textCopy %W;break"
+	    bind .diffs.right <<Copy>> "fm3tool_textCopy %W;break"
 }
 
 proc next {conflict} \
@@ -422,19 +436,29 @@ proc prev {conflict} \
 
 proc status {} \
 {
-	global	diffCount lastDiff conf_todo conflicts
+	global	diffCount lastDiff lastHunk conf_todo conflicts
 
 	if {[info exists conflicts($lastDiff)]} {
 		set c $conflicts($lastDiff)
 		.merge.menu.l configure -text \
 		    "Conflict $c, diff $lastDiff/$diffCount ($conf_todo unresolved)"
+
+		if {$conflicts($lastDiff,hunks) == 1} {
+			set word "hunk"
+		} else {
+			set word "hunks"
+		}
+		.merge.menu.lh configure -text \
+		    "$conflicts($lastDiff,hunksSelected) of\
+			$conflicts($lastDiff,hunks) $word selected"
 	} else {
 		.merge.menu.l configure -text \
 		    "Diff $lastDiff/ $diffCount ($conf_todo unresolved)"
+		.merge.menu.lh configure -text ""
 	}
 }
 
-proc dot {} \
+proc dot {{move 1}} \
 {
 	global	diffCount lastDiff conf_todo nowrite
 	global	app gc UNMERGED restore undo
@@ -465,10 +489,14 @@ proc dot {} \
 
 	set e "e$lastDiff"
 	set d "d$lastDiff"
-	foreach t {.diffs.left .diffs.right .merge.t .merge.hi} {
-		$t see $e
-		$t see $d
+	if {$move} {
+		foreach t {.diffs.left .diffs.right .merge.t .merge.hi} {
+			$t see $e
+			$t see $d
+		}
+		scrollDiffs $d $e
 	}
+
 	# sanity check; make sure .diffs.right is scrolled identically to
 	# .diffs.left
 	set yview [lindex [.diffs.left yview] 0]
@@ -498,22 +526,23 @@ proc dot {} \
 \"$gc($app.toggleAnnotations)\" to toggle display of annotations,
 \"space\" is an alias for \"$gc($app.nextConflict)\"."
 
+	set colors ""
+	lappend colors "\n\n" ""
+	lappend colors " -Deleted lines start with \"-\".\n" gca
+	lappend colors " +Added lines start with \"+\".\n" diff
+	lappend colors "  Unchanged lines start with \" \".\n" un
+	lappend colors " +The changed parts have " diff
+	lappend colors "this color." reverse
+	lappend colors "\n" diff
+
 	if {[isConflict $lastDiff]} {
+		lappend colors "  Your selections have this color.\n" hand
 		set buf [.merge.t get $d $e]
 		if {$buf == $UNMERGED} {
 			.merge.menu.l configure -bg $gc($app.conflictBG)
 			$w insert end "Merge this conflict by clicking on\n"
-			$w insert end "the lines that you want.\n"
-			$w insert end "-Deleted lines start with \"-\".\n" gca
-			$w insert end "+Added lines start with \"+\".\n" diff
-			$w insert end " Unchanged lines start with \" \".\n" un
-			$w insert end "+" reverse
-			$w insert end "The " diff
-			$w insert end "changed parts" reverse
-			$w insert end " have " diff
-			$w insert end "this color." reverse
-			$w insert end "\n" diff
-			$w insert end "Hand merges have this color.\n" hand
+			$w insert end "the lines that you want."
+			$w insert end {*}$colors
 			$w insert end \
 "
 Left-mouse selects a block,
@@ -531,6 +560,7 @@ To hand edit, click the merge window.
 \"$gc($app.toggleAnnotations)\" to toggle display of annotations.
 \"space\" is an alias for \"$gc($app.nextConflict)\""
 			set msg ""
+			set colors ""
 		} else {
 			.merge.menu.l configure -bg $gc($app.handColor)
 			$w insert end \
@@ -551,6 +581,7 @@ To hand edit, click the merge window.}
 To hand edit, click the merge window.}
 	}
 	$w insert end "$msg"
+	if {[llength $colors]} { $w insert end {*}$colors }
 	$w configure -state disabled
 }
 
@@ -618,65 +649,19 @@ proc updateButtons {{mode "normal"}} \
 	.menu.elide-gca configure -state $state(gca)
 }
 
-proc topLine {} \
-{
-	return [lindex [split [.diffs.left index @1,1] "."] 0]
-}
-
-
-proc scrollDiffs {start stop} \
-{
-	global	gc app
-
-	# Either put the diff beginning at the top of the window (if it is
-	# too big to fit or fits exactly) or
-	# center the diff in the window (if it is smaller than the window).
-	set Diff [lindex [split $start .] 0]
-	set End [lindex [split $stop .] 0]
-	set size [expr {$End - $Diff}]
-
-	# If the diff is completely visible and at least 10% of the window
-	# is exposed above/below the diff, then don't bother.
-	set top [topLine]
-	set ok1 [expr $top + $gc($app.diffHeight) * .1]
-	set ok2 [expr $top + $gc($app.diffHeight) - $gc($app.diffHeight) * .1]
-	if {$size < $gc($app.diffHeight) && $ok1 <= $Diff && $ok2 >= $End} {
-		.diffs.right xview moveto 0
-		.diffs.left xview moveto 0
-		return
-	}
-
-	# Center it.
-	if {$size < $gc($app.diffHeight)} {
-		set j [expr {$gc($app.diffHeight) - $size}]
-		set j [expr {$j / 2}]
-		set i [expr {$Diff - $j}]
-		if {$i < 0} {
-			set want 1
-		} else {
-			set want $i
-		}
-	} else {
-		set want $Diff
-	}
-
-	set move [expr {$want - $top}]
-# puts "SD: size=$size ht=$gc($app.diffHeight) start=$Diff stop=$End top=$top move=$move want=$want start=$start"
-	foreach t {.diffs.left .diffs.right .merge.t .merge.hi} {
-		$t yview scroll $move units
-		$t xview moveto 0
-		$t see $start
-	}
-}
-
 proc diffstart {conflict} \
 {
-	global	diffCount conf_todo conflicts
+	global	diffCount last hunk conf_todo conflicts
 
 	incr diffCount
+	set hunk(left)  1
+	set hunk(right) 1
+	unset -nocomplain last(left) last(right)
 	if {$conflict} {
 		incr conf_todo
 		set conflicts($diffCount) $conf_todo
+		set conflicts($diffCount,hunks) 0
+		set conflicts($diffCount,hunksSelected) 0
 		set marks [list "d$diffCount" "c$diffCount"]
 	} else {
 		set marks [list "d$diffCount"]
@@ -709,9 +694,6 @@ proc hideGCA {diff} \
 	# if we get called and there's already some hidden GCA data,
 	# restore it before continuing
 	if {[info exists savedGCAdata]} restoreGCA
-
-	.diffs.left configure -state normal
-	.diffs.right configure -state normal
 
 	set d "d$diff"
 	set e "e$diff"
@@ -782,9 +764,6 @@ proc hideGCA {diff} \
 	.diffs.right mark set $e insert
 
 	highlightAnnotations $d $e
-
-	.diffs.left configure -state disabled
-	.diffs.right configure -state disabled
 }
 
 # w should be .diffs.left or .diffs.right; data is output from a 
@@ -847,10 +826,16 @@ proc toggleAnnotations {{toggle 0}} \
 		set elide(annotations) [expr {$elide(annotations) ? 0 : 1}]
 	}
 
-	.diffs.left tag configure elide-annotations \
-	    -elide $elide(annotations)
-	.diffs.right tag configure elide-annotations \
-	    -elide $elide(annotations)
+	foreach w {.diffs.left .diffs.right} {
+		$w tag configure elide-annotations -elide $elide(annotations)
+		$w tag raise sel
+
+		$w tag raise diff-junk
+		foreach tag {diff gca space un} {
+			$w tag raise diff-junk-$tag
+		}
+		$w tag raise elide-annotations
+	}
 }
 
 # toggle=1 means to actually toggle it. Otherwise simply do what the
@@ -887,6 +872,7 @@ proc both {both off} \
 proc readSmerge {} \
 {
 	global	UNMERGED conf_todo errorCode smerge annotate conflicts
+	global	diffCount hunk last
 
 	catch {unset gcaLines}
 	set fd [open $smerge r]
@@ -908,6 +894,8 @@ proc readSmerge {} \
 	set xxcount 0
 	set left {}
 	set right {}
+	set hunk(left)  1
+	set hunk(right) 1
 	while { [gets $fd line] >= 0 } {
 		incr xxcount
 		set what [string index $line 0]
@@ -965,17 +953,26 @@ proc readSmerge {} \
 		}
 		set c [string index $line 0]
 		set l [string range $line 1 end]
+
+		if {[info exists last($side)] && $what ne $last($side)} {
+			incr hunk($side)
+			if {!$merged} { incr conflicts($diffCount,hunks) }
+		}
+		set tags hunk$diffCount.$hunk($side)
+
 		if {$what == "-"} {
-			$text insert end " $c" gca
+			set tag gca
 		} elseif {$what == "+"} {
-			$text insert end " $c" diff
+			set tag diff
 		} elseif {$what == "s"} {
-			$text insert end " $c" {space}
+			set tag space
 			append l "                "
 		} elseif {$what == " "} {
-			$text insert end " $c" un
+			set tag un
 		}
-		$text insert end "$l\n"
+		lappend tags $tag
+		$text insert end " " $tags $c $tag "$l\n"
+		set last($side) $what
 	}
 	if {[llength $both]} { both $both $off }
 	close $fd
@@ -983,7 +980,7 @@ proc readSmerge {} \
 	.menu.conflict configure -text "$conf_todo conf_todo"
 
 	highlightAnnotations $off
-
+	.merge.t edit reset
 }
 
 # usage: 
@@ -1014,9 +1011,15 @@ proc highlightAnnotations {args} \
 	set end [expr {int($end)}]
 
 	incr offset 1
-	for {set i $start} {$i <= $end} {incr i} {
-		.diffs.left tag add elide-annotations $i.2 $i.$offset
-		.diffs.right tag add elide-annotations $i.2 $i.$offset
+	foreach w {.diffs.left .diffs.right} {
+		for {set i $start} {$i <= $end} {incr i} {
+			set dtag diff-junk
+			set tag [lindex [$w tag names $i.0] 0]
+			if {$tag ne ""} { append dtag "-$tag" }
+
+			$w tag add $dtag $i.0 $i.$offset
+			$w tag add elide-annotations $i.2 $i.$offset
+		}
 	}
 }
 
@@ -1126,8 +1129,6 @@ proc readFile {} \
 	set lastDiff 0
 	readSmerge 
 
-	.diffs.left configure -state disabled
-	.diffs.right configure -state disabled
 	. configure -cursor left_ptr
 	.diffs.left configure -cursor xterm
 	.diffs.right configure -cursor xterm
@@ -1235,7 +1236,7 @@ proc page {w xy dir one} \
 
 	if {$w == ".diffs"} {
 		if {$xy == "yview"} {
-			set lines [expr {$dir * $gc($app.diffHeight)}]
+			set lines [expr {$dir * [getDiffHeight]}]
 		} else {
 			# XXX - should be width.
 			set lines 16
@@ -1267,23 +1268,15 @@ proc fontHeight {f} \
 	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
 }
 
-proc computeHeight {w} \
+proc getDiffHeight {} \
 {
 	global gc app
 
-	update
-	if {$w == "diffs"} {
-		set fh [fontHeight [.diffs.left cget -font]]
-		set p [winfo height .diffs.left]
-		set w [winfo width .]
-		set gc($app.diffHeight) [expr {$p / $fh}]
-	} else {
-		set fh [fontHeight [.merge.t cget -font]]
-		set p [winfo height .merge.t]
-		set gc($app.mergeHeight) [expr {$p / $fh}]
-	}
-	return
+	set font [.diffs.left cget -font]
+	set fh [fontHeight [.diffs.left cget -font]]
+	return [expr {[winfo height .diffs.left] / [fontHeight $font]}]
 }
+
 # difftool - view differences; loosely based on fmtool
 # Copyright (c) 1999-2000 by Larry McVoy; All rights reserved
 # @(#) difftool.tcl 1.48@(#) akushner@disks.bitmover.com
@@ -1324,6 +1317,8 @@ proc widgets {} \
 		set gc(py) 1; set gc(px) 4
 	}
 	createDiffWidgets .diffs
+
+	ttk::panedwindow .panes -orient vertical
 
 	set prevImage [image create photo \
 			   -file $env(BK_BIN)/gui/images/previous.gif]
@@ -1461,7 +1456,7 @@ proc widgets {} \
 		-wrap none -font $gc($app.fixedFont) \
 		-xscrollcommand { .merge.xscroll set } \
 		-yscrollcommand { .merge.yscroll set } \
-		-borderwidth 0
+		-borderwidth 0 -undo 1 -highlightthickness 0
 	    ttk::scrollbar .merge.xscroll -orient horizontal \
 		-command { .merge.t xview }
 	    ttk::scrollbar .merge.yscroll -orient vertical \
@@ -1469,7 +1464,8 @@ proc widgets {} \
 	    text .merge.hi -width 2 -height $gc(fm3.mergeHeight) \
 		-background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
 		-wrap none -font $gc($app.fixedFont) \
-		-borderwidth 0
+		-borderwidth 0 -highlightthickness 0
+	    attachScrollbar .merge.yscroll .merge.t .merge.hi
 	    ttk::frame .merge.menu
 		set menu .merge.menu
 		    ttk::frame $menu.toolbar
@@ -1506,6 +1502,7 @@ proc widgets {} \
     			-side left -fill both -expand y
 
 		label $menu.l -width 40 
+		label $menu.lh -width 40
 		text $menu.t -width 43 -height 7 \
 		    -background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
 		    -wrap word -font $gc($app.fixedFont) \
@@ -1519,32 +1516,35 @@ proc widgets {} \
 		    image create photo bklogo -file $logo
 		    ttk::label $menu.logo -image bklogo \
 			-background $gc($app.logoBG)
-		    grid $menu.logo -row 3 -column 0 -columnspan 2 \
+		    grid $menu.logo -row 4 -column 0 -columnspan 2 \
 			-padx 2 -sticky ew
 		}
 
 		grid $menu.toolbar -row 0 -column 0 -sticky ew -columnspan 2
 		grid $menu.l -row 1 -column 0 -sticky ew -columnspan 2
-		grid $menu.t -row 2 -column 0 -sticky nsew
-		grid $menu.yscroll -row 2 -column 1 -sticky ns
-		grid rowconfigure $menu 2 -weight 1
-		grid columnconfigure $menu 0 -weight 1
-	    grid .merge.hi -row 0 -column 0 -sticky nsew
-	    grid .merge.t -row 0 -column 1 -sticky nsew
-	    grid .merge.yscroll -row 0 -column 2 -sticky ns
-	    grid .merge.xscroll -row 1 -column 1 -columnspan 2 -sticky ew
-	    grid $menu -row 0 -rowspan 3 -column 3 -sticky ewns
+		#grid $menu.lh -row 2 -column 0 -sticky ew -columnspan 2
+		grid $menu.t -row 3 -column 0 -sticky nsew
+		grid $menu.yscroll -row 3 -column 1 -sticky ns
+		grid rowconfigure $menu $menu.t -weight 1
+		grid columnconfigure $menu $menu.t -weight 1
+	    grid .merge.hi -row 1 -column 0 -sticky nsew
+	    grid .merge.t -row 1 -column 1 -sticky nsew
+	    grid .merge.yscroll -row 1 -column 2 -sticky ns
+	    grid .merge.xscroll -row 2 -column 1 -columnspan 2 -sticky ew
+	    grid $menu -row 1 -rowspan 3 -column 3 -sticky ewns
 
 	ttk::frame .prs
 	  set prs .prs
 	    text $prs.left -width $gc(fm3.mergeWidth) \
 		-height 7 -borderwidth 0 \
+		-insertwidth 0 -highlightthickness 0 \
 		-background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
 		-wrap word -font $gc($app.fixedFont) \
 		-yscrollcommand { .prs.cscroll set }
 	    ttk::scrollbar $prs.cscroll -orient vertical -command { cscroll }
 	    text $prs.right -width $gc(fm3.mergeWidth)  \
 		-height 7 -borderwidth 0 \
+		-insertwidth 0 -highlightthickness 0 \
 		-background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
 		-wrap word -font $gc($app.fixedFont)
 	    ttk::separator $prs.sep
@@ -1558,18 +1558,34 @@ proc widgets {} \
 
 	    attachScrollbar $prs.cscroll $prs.left $prs.right
 
-	grid .menu -row 0 -column 0 -sticky nsew -pady 2
+	grid .menu  -row 0 -column 0 -sticky ew -pady 2
+	grid .panes -row 1 -column 0 -sticky nesw
 	if {$gc(fm3.comments)} {
-		grid $prs -row 1 -column 0 -sticky ewns
-		grid rowconfigure . 1 -weight 1
+		.panes add $prs
 	}
-	grid .diffs -row 2 -column 0 -sticky nsew
-	grid .merge -row 3 -column 0 -sticky nsew
-	grid rowconfigure .merge 0 -weight 1
-	grid columnconfigure .merge 1 -weight 1
-	grid rowconfigure . 2 -weight 5
-	grid rowconfigure . 3 -weight 5
-	grid columnconfigure . 0 -weight 1
+
+	.panes add .diffs -weight 1
+	.panes add .merge -weight 1
+	raise .diffs
+
+	if {[string is true $gc(fm3.showEscapeButton)]} {
+		label .merge.escape \
+		    -background $gc(fm3.escapeButtonBG) \
+		    -foreground $gc(fm3.escapeButtonFG) \
+		    -borderwidth 1 \
+		    -relief raised \
+		    -text "Click here or press <escape> to finish editing" \
+		    -padx 4 -pady 4
+		bind .merge.escape <1> edit_done
+		grid .merge.escape -row 0 -column 0 -columnspan 4 -sticky ew
+		grid remove .merge.escape
+	}
+
+	grid rowconfigure    . .panes -weight 1
+	grid columnconfigure . .panes -weight 1
+
+	grid rowconfigure    .merge .merge.t -weight 1
+	grid columnconfigure .merge .merge.t -weight 1
 	search_widgets .menu .merge.t
 
 	# smaller than this doesn't look good.
@@ -1591,26 +1607,32 @@ proc widgets {} \
 	.merge.menu.t tag configure diff -background $gc($app.newColor)
 	.merge.menu.t tag configure gca -background $gc($app.oldColor)
 	.merge.menu.t tag configure un -background $gc($app.sameColor)
-	.merge.menu.t tag configure reverse -background $gc($app.charColor)
+	.merge.menu.t tag configure reverse -background $gc($app.highlight)
 	.merge.menu.t tag configure hand -background $gc($app.handColor)
 
+	$prs.left  tag raise sel
+	$prs.right tag raise sel
+
+	set rc 3
+	if {$gc(aqua)} { set rc 2 }
 	foreach w {.diffs.left .diffs.right} {
-		bind $w <Button-1> {click %W 1 0; break}
-		bind $w <Button-3> {click %W 0 0; break}
-		bind $w <Shift-Button-1> {click %W 1 1; break}
-		bind $w <Shift-Button-3> {click %W 0 1; break}
+		dobind $w <ButtonPress-1> {buttonPress1 %W}
+		dobind $w <ButtonRelease-1> {click %W 1 0; break}
+		dobind $w <ButtonRelease-$rc> {click %W 0 0; break}
+		dobind $w <Shift-ButtonRelease-1> {click %W 1 1; break}
+		dobind $w <Shift-ButtonRelease-$rc> {click %W 0 1; break}
 		if {$gc(aqua)} {
-			bind $w <Command-1> {click %W 0 0; break}
+			dobind $w <Command-1> {click %W 0 0; break}
 			bind $w <Shift-Command-1> {click %W 0 1; break}
 		}
-		bindtags $w [list $w wheel]
+		bindtags $w [list $w ReadonlyText . all]
 	}
 	foreach w {.merge.menu.t .prs.left .prs.right} {
-		bindtags $w {wheel}
+		bindtags $w [list ReadonlyText]
 	}
-	bind .merge.t <Button-1> { edit_merge %x %y; break }
-	bindtags .merge.t {.merge.t wheel}
-	computeHeight "diffs"
+	bind .merge.t <Button-1> { edit_merge %x %y }
+	bind .merge.t <Control-Escape> {catch {grid remove .merge.escape}}
+	bindtags .merge.t [list .merge.t all]
 
 	$search(widget) tag configure search \
 	    -background $gc(fm3.searchColor) -font $gc(fm3.fixedBoldFont)
@@ -1621,9 +1643,15 @@ proc widgets {} \
 		$t tag configure search \
 		    -background $gc($app.searchColor) \
 		    -font $gc($app.fixedBoldFont)
+		$t tag raise sel
+		selection handle -t UTF8_STRING $t [list GetXSelection $t]
 	}
 	searchreset
 	focus .
+}
+
+proc GetXSelection {w offset max} {
+	if {![catch {getTextSelection $w} data]} { return $data }
 }
 
 proc shortname {long} \
@@ -1645,13 +1673,13 @@ proc keyboard_bindings {} \
 {
 	global	search app gc
 
-	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
-	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
-	bind all <Up> { if {[Page "yview" -1 1] == 1} { break } }
-	bind all <Down> { if {[Page "yview" 1 1] == 1} { break } }
-	bind all <Left> { if {[Page "xview" -1 1] == 1} { break } }
-	bind all <Right> { if {[Page "xview" 1 1] == 1} { break } }
-	bind all <Home> {
+	dobind . <Prior> { if {[Page "yview" -1 0] == 1} { break } }
+	dobind . <Next> { if {[Page "yview" 1 0] == 1} { break } }
+	dobind . <Up> { if {[Page "yview" -1 1] == 1} { break } }
+	dobind . <Down> { if {[Page "yview" 1 1] == 1} { break } }
+	dobind . <Left> { if {[Page "xview" -1 1] == 1} { break } }
+	dobind . <Right> { if {[Page "xview" 1 1] == 1} { break } }
+	dobind . <Home> {
 		global	lastDiff
 
 		set lastDiff 1
@@ -1660,7 +1688,7 @@ proc keyboard_bindings {} \
 		.diffs.right yview -pickplace 1.0
 		break
 	}
-	bind all <End> {
+	dobind . <End> {
 		global	lastDiff diffCount
 
 		set lastDiff $diffCount
@@ -1669,21 +1697,22 @@ proc keyboard_bindings {} \
 		.diffs.right yview -pickplace end
 		break
 	}
-	bind all	<$gc($app.quit)>		{ exit }
-	bind all	<$gc($app.nextDiff)>		{ next 0; break }
-	bind all	<$gc($app.prevDiff)>		{ prev 0; break }
-	bind all	<$gc($app.nextConflict)>	{ next 1; break }
-	bind all	<$gc($app.prevConflict)>	{ prev 1; break }
-	bind all	<$gc($app.firstDiff)>		{ firstDiff }
-	bind all	<$gc($app.lastDiff)>		{ lastDiff }
+	dobind .	<$gc($app.quit)>		{ exit }
+	dobind .	<$gc($app.nextDiff)>		{ next 0; break }
+	dobind .	<$gc($app.prevDiff)>		{ prev 0; break }
+	dobind .	<$gc($app.nextConflict)>	{ next 1; break }
+	dobind .	<$gc($app.prevConflict)>	{ prev 1; break }
+	dobind .	<$gc($app.firstDiff)>		{ firstDiff }
+	dobind .	<$gc($app.lastDiff)>		{ lastDiff }
 	foreach f {firstDiff lastDiff nextDiff prevDiff nextConflict prevConflict} {
 		set gc($app.$f) [shortname $gc($app.$f)]
 	}
-	bind all	<space>				{ next 1; break }
-	bind all	<c>				{ edit_clear }
-	bind all	<a>				{ edit_restore a }
-	bind all	<m>				{ edit_restore m }
-	bind all	<s>				{
+	dobind .	<space>				{ next 1; break }
+	dobind .	<Shift-space>			{ prev 1; break }
+	dobind .	<c>				{ edit_clear }
+	dobind .	<a>				{ edit_restore a }
+	dobind .	<m>				{ edit_restore m }
+	dobind .	<s>				{
 	    global conf_todo nowrite
 
 	    if {$nowrite} break
@@ -1694,38 +1723,30 @@ proc keyboard_bindings {} \
 	    	save
 	    }
 	}
-	bind all	<u>				{ undo }
-	bind all	<period>			{ dot; break }
+	dobind .	<u>				{ undo }
+	dobind .	<period>			{ dot; break }
 	if {$gc(aqua)} {
 		bind all <Command-q> exit
 		bind all <Command-w> exit
 	}
-	# In the search window, don't listen to "all" tags.
-	bindtags $search(text) { .menu.search TEntry . }
 
-	bind all <$gc(fm3.toggleAnnotations)> [list toggleAnnotations 1]
-	bind all <$gc(fm3.toggleGCA)> [list toggleGCA 1]
+	bind all <Escape> { edit_done }
+
+	# In the search window, don't listen to "all" tags.
+	bindtags $search(text) [list $search(text) TEntry all]
+
+	dobind . <$gc(fm3.toggleAnnotations)> [list toggleAnnotations 1]
+	dobind . <$gc(fm3.toggleGCA)> [list toggleGCA 1]
 }
 
 proc edit_merge {x y} \
 {
 	global gc
 
-	if {![winfo exists .escape] && 
-	    [string equal $gc(fm3.showEscapeButton) 1]} {
-		label .escape \
-		    -background $gc(fm3.escapeButtonBG) \
-		    -foreground $gc(fm3.escapeButtonFG) \
-		    -borderwidth 1 \
-		    -relief raised \
-		    -text "Click here or press <escape> to finish editing" \
-		    -padx 4 -pady 4
-	}
+	if {$gc(inMergeMode)} { return }
+	set gc(inMergeMode) 1
 
-	if {[string equal $gc(fm3.showEscapeButton) 1]} {
-		place .escape -in .diffs \
-		    -x 0 -rely 1.0 -anchor sw -relwidth 1 -bordermode outside
-	}
+	catch {grid .merge.escape}
 
 	updateButtons "edit"
 	set msg [string trim "
@@ -1746,20 +1767,12 @@ Useful keyboard shortcuts:
 	.merge.menu.t delete 1.0 end
 	.merge.menu.t insert 1.0 $msg
 	.merge.menu.t configure -state disabled
-	grab .merge.t
 	.merge.menu.l configure \
 	    -text "Edit Mode" \
 	    -background $gc(fm3.buttonColor)
+
 	focus .merge.t
-	bind .merge.t <Button-1> {
-		if {[string equal [winfo containing %X %Y] .escape]} {
-			edit_done
-			break
-		}
-	}
-	bind .merge.t <Escape> { edit_done }
-	bind .merge.t <Control-Escape> {catch {place forget .escape}}
-	bindtags .merge.t {.merge.t Text wheel}
+	bindtags .merge.t [list .merge.t Text all]
 	.merge.t mark set insert [.merge.t index @$x,$y]
 	edit_save
 }
@@ -1768,14 +1781,14 @@ Useful keyboard shortcuts:
 # but that gets a bit complicated.
 proc edit_done {} \
 {
-	global	lastDiff diffCount conf_todo UNMERGED
+	global	gc lastDiff diffCount conf_todo UNMERGED
 
-	grab release .merge.t
-	catch {place forget .escape}
-	bind .merge.t <Escape> {}
-	bind .merge.t <Button-1> { edit_merge %x %y; break }
-	bindtags .merge.t {}
-	bindtags .merge.t {.merge.t all}
+	if {!$gc(inMergeMode)} { return }
+	set gc(inMergeMode) 0
+
+	saveView .merge.t
+	catch {grid remove .merge.escape}
+	bindtags .merge.t [list .merge.t all]
 
 	# This code handles it as long as the changes are inside a merge
 	if {[.merge.t compare d$lastDiff != "d$lastDiff linestart"]} {
@@ -1796,7 +1809,7 @@ proc edit_done {} \
 		lappend lines "$buf"
 		incr l
 	}
-	change $lines 1 0 0
+	change $lines 1 0 0 0
 
 	# This code is supposed to adjust the marks in .hi
 	set i 1
@@ -1829,8 +1842,10 @@ proc edit_done {} \
 	}
 	set conf_todo $n
 
-	dot
+	dot 0
 	focus .
+	restoreView .merge.t .merge.hi
+	return -code break
 }
 
 proc save {} \
@@ -1963,48 +1978,48 @@ proc prevDiff {conflict} \
 	nextCommon
 }
 
-proc nextPart {diff start lines} \
+proc scrollToNextHunk {win} \
 {
-	set top [.diffs.left index @1,1]
-	set next [.diffs.left index "$start + $lines lines"]
-	set maxscroll [expr {int($next - $top)-1}]
+	global	lastDiff lastHunk
 
-	set count 1
-	set scroll 0
-	set done 0
-	while 1 {
-		if {[visible .diffs.left "e$diff"]} {
-			set done 1
-			break
+	## If we don't find our diff.hunk tag in the widget at all,
+	## it means we've reached the end of the conflict.  If the
+	## tag exists but isn't tagged anywhere, increment and look
+	## for the next hunk.
+	set curr hunk$lastDiff.$lastHunk
+	while {1} {
+		set tag hunk$lastDiff.[incr lastHunk]
+		if {$tag in [$win tag names]} {
+			## We found the next tag, but it may not be used
+			## anywhere.  If we fail to get the index, skip
+			## ahead to the next hunk.
+			if {[catch {$win index $tag.first} idx]} { continue }
+		} else {
+			## The next hunk tag isn't in our text widget, which
+			## means it doesn't exist.  We'll just scroll to the
+			## bottom of the current hunk.  If we can't get the
+			## index, we'll just return and do nothing.
+			if {[catch {$win index $curr.last} idx]} { return }
 		}
-		set index [.diffs.left index "$next + $count lines"]
-		if {![visible .diffs.left "$index + 1 line"]} {
-			.diffs.left yview scroll 1 units
-			.diffs.right yview scroll 1 units
-			# the after is so there's a visible scroll effect
-			update idletasks; after 5
-			if {[incr scroll] >= $maxscroll} break
-		}
-		incr count
+		break
 	}
-	return $done
-}
 
-# test if a line is fully visible. This assumes that the line at
-# the top of the widget is fully visible (which I think is always
-# true if the widget itself is visible)
-proc visible {w i} \
-{
-	set dl [$w dlineinfo $i]
-	if {$dl eq ""} {return 0}
-	# dlineinfo will report only the height of the visible portion;
-	# if the first line has a greater height than the line in 
-	# question we can assume the line in question is only partially
-	# visible since all lines should be of the same height
-	set h1 [lindex [$w dlineinfo @1,1] 3]
-	set h2 [lindex $dl 3]
-	if {$h1 == $h2} {return 1}
-	return 0
+	if {[gc fm3.animateScrolling]} {
+		set n    0
+		set top  [topLine $win]
+		set last [idx2line $idx]
+		while {![visible $win $idx]} {
+			incr n 10
+			if {([topLine $win] + $n) > $last} { break }
+			yscroll scroll $n unit
+			update idletasks
+			after 5
+		}
+		scrollDiffs $idx $idx -win $win
+	} else {
+		scrollDiffs $tag.first $tag.last -win $win
+	}
+	status
 }
 
 proc nextDiff {conflict} \
@@ -2024,8 +2039,10 @@ proc nextDiff {conflict} \
 
 proc nextCommon {} \
 {
-	global	lastDiff diffCount undo click
+	global	lastDiff lastHunk diffCount undo click
 	global savedGCAdata
+
+	set lastHunk 1
 
 	searchreset
 	catch {
@@ -2088,10 +2105,11 @@ proc nextCommon {} \
 	} elseif {$llines > $rlines} {
 	    .prs.right insert end [string repeat \n [expr {$llines - $rlines}]]
 	}
-	update
+	update idletasks
 	dot
 	# Has to be after dot, for the horizontal positioning
 	foreach t $text { difflight $t $d $e }
+	status
 	return 1
 }
 
@@ -2238,7 +2256,7 @@ proc edit_restore {c} \
 
 proc undo {} \
 {
-	global	lastDiff undo click
+	global	lastDiff undo click conflicts
 
 	if {$undo == 0} { return }
 	.merge.hi configure -state normal
@@ -2266,9 +2284,11 @@ proc undo {} \
 			}
 		}
 	}
+	incr conflicts($lastDiff,hunksSelected) -1
+	status
 }
 
-proc change {lines replace orig pipe} \
+proc change {lines replace orig pipe {move 1}} \
 {
 	global	lastDiff diffCount UNMERGED conf_todo restore undo annotate
 	global gc app nowrite
@@ -2315,8 +2335,10 @@ proc change {lines replace orig pipe} \
 	foreach t {.merge.hi .merge.t} {
 		$t mark gravity $e left
 		catch { $t mark gravity $nextd left }
-		$t see $d
-		$t see $e
+		if {$move} {
+			$t see $d
+			$t see $e
+		}
 	}
 	.merge.hi configure -state disabled
 	if {[.merge.t get $d $e] == $UNMERGED} {
@@ -2325,17 +2347,26 @@ proc change {lines replace orig pipe} \
 	edit_save
 }
 
+proc buttonPress1 {w} \
+{
+	set ::selection [$w tag ranges sel]
+}
+
 proc click {win block replace} \
 {
-	global	lastDiff annotate click undo
+	global	lastDiff lastHunk annotate click undo conflicts
+
+	if {[llength $::selection] || [llength [$win tag ranges sel]]} {
+		set ::selection [$win tag ranges sel]
+		return
+	}
 
 	set here [$win index current]
-	foreach t [$win tag names $here] {
-		if {$t == "hand"} {
-			puts "Already selected"
-			return
-		}
+	if {"hand" in [$win tag names $here]} {
+		puts "Already selected"
+		return
 	}
+
 	set d "d$lastDiff"
 	set e "e$lastDiff"
 	if {[$win compare $here < $d] || \
@@ -2361,66 +2392,80 @@ proc click {win block replace} \
 		change $lines $replace 0 $annotate
 		return
 	}
-	# Figure out the leading character ('+', '-', or ' '), 
-	# walk backwards as long as is the same (same diff), save that 
-	# location, walk forwards printing as we go.
-	set char [$win get "$here linestart + 1 chars"]
-	set line $here
-	set lines [list]
-	while {$line >= 2.0} {
-		set tmp [$win index "$line - 1 lines linestart + 1 chars"]
-		set c [$win get $tmp]
-		if {$c != $char} { break }
-		# Break out if we hit stuff that we already selected
-		set ok 1
-		set tagged 0
-		# look at the tags of the _last_ character
-		set tmp [$win index "$tmp lineend - 1 char"]
-		foreach t [$win tag names $tmp] {
-			set tagged 1
-			if {$t == "hand"} { set ok 0 }
-		}
-		if {$ok == 0 || $tagged == 0} { break }
-		set line $tmp
+
+	set hunk [lsearch -inline [$win tag names "$here linestart"] hunk*]
+	if {$hunk ne ""} {
+		set lastHunk [lindex [split $hunk .] end]
+		incr conflicts($lastDiff,hunksSelected)
+		status
 	}
-	set l 1
-	while {1} {
-		set o [expr $l - 1]
-		set buf [$win get \
-		    "$line linestart + 2 chars + $o lines" \
-		    "$line + $o lines lineend"]
-		lappend lines "$buf"
-		set tmp [$win index "$line + $l lines linestart + 1 chars"]
-		set c [$win get $tmp]
-		if {$c != $char} { break }
-		# Break out if we hit stuff that we already selected
-		set ok 1
-		set tagged 0
-		# look at the tags of the _last_ character
-		set tmp [$win index "$tmp lineend - 1 char"]
-		foreach t [$win tag names $tmp] {
-			set tagged 1
-			if {$t == "hand"} { set ok 0 }
-		}
-		if {$ok == 0 || $tagged == 0} { break }
-		incr l
+
+	set ranges [$win tag ranges $hunk]
+	set first  [$win index "[lindex $ranges 0] linestart"]
+	set last   [$win index "[lindex $ranges end] lineend"]
+
+	set lines ""
+	foreach line [split [$win get $first $last] \n] {
+	    lappend lines [string range $line 2 end]
 	}
-	set a [$win index "$line linestart"]
-	set b [$win index "$line + $l lines linestart"]
-	$win tag add hand $a $b
-	set click("u$undo") $a
-	set click("U$undo") $b
-	set a [.diffs.left index "d$lastDiff"]
-	set b [.diffs.left index "$line linestart"]
-	if {$a == $b} {
-		.diffs.left see "$line + $l lines"
-		.diffs.right see "$line + $l lines"
-	} else {
-		.diffs.left see $b
-		.diffs.right see $b
-	}
+
+	## Grab the newline too.
+	set last [$win index "$last + 1 char"]
+
+	$win tag add hand $first $last
+	set click("u$undo") $first
+	set click("U$undo") $last
 	change $lines $replace 0 $annotate
-	nextPart $lastDiff $b $l
+	scrollToNextHunk $win
+}
+
+proc getTextSelection {w} \
+{
+	## Hide all the diff junk, get the characters that are actually
+	## displayed and then put the diff junk back.  Without doing an
+	## update in between, the text widget will never even show that
+	## anything is happening.
+	if {[catch {
+		$w tag configure diff-junk -elide 1
+		foreach tag {diff gca space un} {
+			$w tag configure diff-junk-$tag -elide 1
+		}
+		set data [$w get -displaychars -- sel.first sel.last]
+		$w tag configure diff-junk -elide 0
+		foreach tag {diff gca space un} {
+			$w tag configure diff-junk-$tag -elide 0
+		}
+	} err]} { return -code error $err }
+	return $data
+}
+
+proc fm3tool_textCopy {w} \
+{
+	if {[catch {getTextSelection $w} data]} { return }
+
+	## Set it in the clipboard.
+	clipboard clear  -displayof $w
+	clipboard append -displayof $w $data
+}
+
+proc dobind {tag event body} {
+    set script {if {$gc(inMergeMode)} { continue }}
+    append script "\n$body"
+    bind $tag $event $script
+}
+
+proc saveView {win} \
+{
+	global	views
+
+	set views($win) [topLine $win]
+}
+
+proc restoreView {win args} \
+{
+	global	views
+	scrollLineToTop $win $views($win) 0
+	syncTextWidgets $win {*}$args
 }
 
 proc fm3tool {} \
@@ -2430,6 +2475,9 @@ proc fm3tool {} \
 	bk_init
 	loadState fm3
 	getConfig fm3
+
+	set ::selection ""
+	set gc(inMergeMode) 0
 
 	smerge
 
@@ -2449,11 +2497,7 @@ proc fm3tool {} \
 	trace variable ::lastDiff w [list toggleGCA 0]
 
 	wm protocol . WM_DELETE_WINDOW exit
-	bind . <Destroy> {
-		if {[string match %W .]} {
-			saveState fm3
-		}
-	}
+	bind fm3tool <Destroy> {saveState fm3}
 
 	set ::elide(annotations) $gc(fm3.annotate)
 	set ::elide(gca) 0

@@ -18,8 +18,6 @@ proc readFiles {L R {O {}}} \
 		displayMessage "Right file ($R) does not exist"
 		return 1
 	}
-	.diffs.left configure -state normal
-	.diffs.right configure -state normal
 
 	# append time to filename when called by csettool
 	# XXX: Probably OK to use same code for difftool, fmtool and csettool???
@@ -80,8 +78,6 @@ proc readFiles {L R {O {}}} \
 		set lastDiff 0
 		set done 0
 		.diffs.status.middle configure -text "Differences"
-		.diffs.left configure -state disabled
-		.diffs.right configure -state disabled
 		catch {close $d}
 		return
 	}
@@ -150,8 +146,6 @@ proc readFiles {L R {O {}}} \
 	set maxDiff [expr {[llength $rDiff] - 2}]
 	set maxBoth [expr {[llength $rBoth] - 2}]
 
-	.diffs.left configure -state disabled
-	.diffs.right configure -state disabled
 	. configure -cursor left_ptr
 	.diffs.left configure -cursor left_ptr
 	.diffs.right configure -cursor left_ptr

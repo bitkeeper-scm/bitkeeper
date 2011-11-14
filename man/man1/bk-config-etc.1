@@ -327,27 +327,43 @@ In general, the default of native line terminations is the right answer and
 for exceptions the
 .B bk admin 
 command may be used to set this option on a per file basis.
+.SS PARALLEL
+By default, BitKeeper runs some processes in parallel to gain performance.
+The defaults are 8 way parallel for NFS and 3 way parallel for local file
+systems.  
+You may override the defaults for all cases like so:
+.DS
+parallel:12
+.DE
+Setting the value to 0 will disable parallelism.
 .SS PARTIAL CHECK
 .LP
-By default, BitKeeper does a full repository integrity check after
+BitKeeper may be configured to do a full repository integrity check after
 each update.
 The integrity check validates both internal BitKeeper metadata and
 file checksums.
 The integrity checks have been shown to catch hardware problems
 such as bad memory chips, bad disk drives, and software problems
 such as NFS inserting blocks of nulls in the middle of files.
-If you have a larger repository (more than 5,000 files and/or more
-than 100MB) then you might want to trade off safety for
-performance.
+Unless you have a larger repository (more than 5,000 files and/or more
+than 100MB) then you may want to enable full checks all the time.
 .LP
-The following will enable a partial check mode in which BitKeeper only
-does full checks once every 24 hours.
+By default, BitKeeper will run in partial_check mode, which means
+a full check is performed no more than once per week and only 
+partial checks are performed when the repository is updated.
+.LP
+You may control the frequency of the full checks with the 
+following variable, units are in days.  To force a full check
+every two days:
 .DS
-partial_check: on
+check_frequency: 2
 .DE
-Within the 24 hours from the last full check, BitKeeper
-will validate the metadata and file integrity only
-for the subset of files that were updated.
+The following will disable the partial_check mode and force
+BitKeeper to perform full intregrity checks on every update
+(safest but at a performance cost):
+.DS
+partial_check: off
+.DE
 .SS SYNC
 In some environments it may be safer to have
 BitKeeper do an fsync(2) after each update of a history file.

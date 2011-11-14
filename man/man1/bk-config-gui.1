@@ -114,10 +114,6 @@ lines in
 .BR "bk difftool" .
 Defaults to values that match appropriate system defaults.
 .tp
-.B listBG
-Color for the help topic widget and list backgrounds
-Default:\ #E8E8E8
-.tp
 .B diffColor
 Color of the changed lines in a diff view.
 Default:\ #EDEDED
@@ -125,6 +121,32 @@ Default:\ #EDEDED
 .B activeDiffColor
 Color of the selected diff block in a diff view.
 Default:\ #2FEDAD
+.tp
+.B oldColor
+Color of the older revision or diff.
+.br
+Overrides diffColor.
+Default:\ #B48CFF
+.tp
+.B newColor
+Color of the newer revision or diff.
+.br
+Overrides diffColor.
+Default:\ #A8D8E0
+.tp
+.B activeOldColor
+Color of the older selected diff block in a diff view.
+Overrides activeDiffColor.
+Default:\ #2FEDAD
+.tp
+.B activeNewColor
+Color of the newer selected diff block in a diff view.
+Overrides activeDiffColor.
+Default:\ #2FEDAD
+.tp
+.B highlight
+Color of the subline highlighting for changed lines in a diff.
+Default:\ #FFA500
 .tp
 .B noticeColor
 Color for warnings and messages.
@@ -137,29 +159,9 @@ and
 .BR "bk revtool" .
 Default:\ #FFA500
 .tp
-.B selectColor
-Color of the current file in
-.B bk citool
-and
-.BR "bk csettool" .
-Color of the current topic in
-.BR "bk helptool" .
-Default:\ #ADD8E6
-.tp
-.B statusColor
-Status windows in
-.BR "bk csettool" ,
-.BR "bk difftool" ,
-and
-.BR "bk renametool" .
-Default:\ #ADD8E6
-.tp
 .B warnColor
 Color of the error messages. Used in
-.BR "bk citool" ,
-.BR "bk difftool"
-and
-.BR "bk csettool" .
+.BR "bk citool" .
 Default:\ #FFFF00
 .tp
 .B textBG
@@ -170,73 +172,6 @@ Default:\ #FFFFFF
 .B textFG
 Text color.  Used in all of the tools.
 Default:\ #000000
-.tp
-.B BG
-Background color for miscellaneous widgets not listed
-above.
-Defaults to values that match appropriate system defaults.
-.tp
-.B diffHeight
-Height of a difference window in number of lines. Used
-in
-.BR "bk citool" ,
-.BR "bk csettool" ,
-.BR "bk difftool" ,
-.BR "bk fmtool" ,
-and
-.BR "bk renametool" .
-Default:\ 30 in everything except
-.B bk difftool 
-where it is 50 lines.
-.tp
-.B diffWidth
-Width of a difference window in number of characters.
-Used in
-.BR "bk csettool" ,
-.BR "bk difftool" ,
-and
-.BR "bk fmtool" ,
-and
-.BR "bk renametool" .
-Default:\ 65
-.tp
-.B geometry
-Default size/location. Follows the standard X11 notation.
-See 
-.BR X (1).
-Geometry is WIDTHxHEIGHT+XOFF+YOFF.
-.RS
-.TP \fB+XOFF\fP
-.B +XOFF
-The left edge is to be placed XOFF
-pixels from the left edge of the screen
-.tp
-.B \-XOFF
-The right edge is to be placed XOFF
-pixels from the right edge of the screen
-.tp
-.B +YOFF
-The top edge of the window is to be
-placed YOFF pixels from the top of the screen
-.tp
-.B \-YOFF
-The bottom edge of the window is to be
-placed YOFF pixels from the bottom of the screen
-.LP
-For example, a value of \*(lq+0+0\*(rq indicates that the tool
-should be placed at the upper left of the screen.
-Default:\ none
-.RE
-.tp
-.B mergeHeight
-Height of a merge window. Used in
-.BR "bk fmtool" .
-Default:\ 20
-.tp
-.B mergeWidth
-Width of a merge window. Used in
-.BR "bk fmtool" .
-Default:\ 80
 .tp
 .B tabwidth
 The width of a tab in average sized characters. 
@@ -311,10 +246,6 @@ Highlight color for search matches.
 Default:\ #ADD8E6
 .SS FM3TOOL CONFIGURATION
 .TP \fBfm3.toggleAnnotations\fPn
-.B fm3.charColor
-Color used to highlight portions of a line which has changed.
-Default:\ #FFA500
-.tp
 .B fm3.comments
 Boolean which controls the display of the comments window at the top.
 Default:\ 1 (on)

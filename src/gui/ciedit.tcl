@@ -134,12 +134,10 @@ proc edit_widgets {} \
 		    -xscrollcommand { .edit.t.x1scroll set } \
 		    -yscrollcommand { .edit.t.y1scroll set }
 		    scrollbar .edit.t.x1scroll -orient horiz \
-			-width $gc(ci.scrollWidth) \
 			-command ".edit.t.t xview" \
 			-troughcolor $gc(ci.troughColor) \
 			-background $gc(ci.scrollColor)
 		    scrollbar .edit.t.y1scroll \
-			-width $gc(ci.scrollWidth) \
 			-command ".edit.t.t yview" \
 			-troughcolor $gc(ci.troughColor) \
 			-background $gc(ci.scrollColor)

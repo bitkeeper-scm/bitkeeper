@@ -1,0 +1,81 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Larry McVoy
+# %K%
+
+## This isn't really meant to test anything so much as demo fm3tool with
+## a bunch of data that's nice to play around with.
+
+echo $N demo slowness in fm3tool.....................................$NL
+commercial project
+mkdir "$HERE/project/src"
+cd "$HERE/project/src"
+perl -e '
+for ($i = 1; $i <= 600; $i++) {
+   printf "%3s: this is part of the original file\n", $i;
+}' > file1
+bk ci $Q -i file1 || exit 1
+bk commit $Q -y"initial checkin"
+# create clones
+cd "$HERE"
+bk clone $Q "$HERE/project" "$HERE/remote"
+bk clone $Q "$HERE/project" "$HERE/local"
+# introduce conflicts
+cd "$HERE/remote/src"
+bk get $Q -e file1
+perl -e '
+for ($i = 1; $i <= 200; $i++) {
+   printf "%3s: this is part of the original file\n", $i;
+}
+for ($i = 1; $i <= 800; $i++) {
+   printf "%3s: this is part of the remote file\n", $i;
+}
+for ($i = 201; $i <= 400; $i++) {
+   printf "%3s: this is part of the original file\n", $i;
+}
+printf "gratuitous diff in remote\n";
+for ($i = 401; $i <= 600; $i++) {
+   printf "%3s: this is part of the original file\n", $i;
+}
+' > file1
+bk ci $Q -y"introduced conflicts" file1
+bk commit $Q -y"introduced conflicts in file1"
+cd "$HERE/local/src"
+bk get $Q -e file1
+perl -e '
+for ($i = 1; $i <= 200; $i++) {
+   printf "%3s: this is part of the original file\n", $i;
+}
+for ($i = 1; $i <= 800; $i++) {
+   printf "%3s: this is part of the local file\n", $i;
+}
+for ($i = 201; $i <= 400; $i++) {
+   printf "%3s: this is part of the original file\n", $i;
+}
+printf "gratuitous diff in local\n";
+for ($i = 401; $i <= 600; $i++) {
+   printf "%3s: this is part of the original file\n", $i;
+}
+' > file1
+bk ci $Q -y"introduced conflicts" file1
+bk commit $Q -y"introduced conflicts in file1"
+# pushing remote changes to parent
+cd "$HERE/remote"
+bk push $Q
+# pulling changes to local
+cd "$HERE/local"
+bk pull $Q -s 2>pull.err
+if [ ! -d RESYNC ]; then echo failed to create RESYNC directory; exit 1; fi
+cd RESYNC
+bk fm3tool -geometry 800x600 -o merge.raw -f -l1.1.1.1 -r1.2 src/file1
+bk fm3tool -geometry 800x600 -o merge.raw -f -r1.1.1.1 -l1.2 src/file1
+echo OK

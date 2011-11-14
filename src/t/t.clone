@@ -402,3 +402,15 @@ BK_CONFIG='partial_check:yes!' bk pull $Q || fail
 cd "$HERE"
 cmpfiles WANT project/BitKeeper/log/checked
 echo OK
+
+echo $N clone -r uses final config file for checkout ................$NL
+cd project
+TIP=`bk changes -nd:MD5KEY: -r+`
+bk edit $Q BitKeeper/etc/config || fail
+echo checkout:edit >> BitKeeper/etc/config
+bk ci $Q -yedit BitKeeper/etc/config || fail
+bk commit $Q -yedit || fail
+bk clone $Q -r$TIP . ../new-noedit || fail
+cd ../new-noedit
+test -f src/bar.c && fail
+echo OK

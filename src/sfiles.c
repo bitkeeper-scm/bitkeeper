@@ -1465,6 +1465,7 @@ struct sinfo {
 	char	*proj_prefix;	/* the prefix needed to make a relpath */
 	hash	*dfiles;	/* remember dfiles seen in this dir */
 	u32	is_clone:1;	/* special clone walkfn */
+	u32	skip_etc:1;	/* skip BitKeeper/etc */
 	u32	is_modes:1;	/* -m in clone walkfn */
 };
 
@@ -1508,42 +1509,8 @@ findsfiles(char *file, struct stat *sb, void *data)
 				return (-2);
 			}
 		}
-		if (si->is_clone && streq(file + 2, "BitKeeper/etc/SCCS")) {
-			/*
-			 * when doing a clone here are a couple more files to
-			 * include from the BitKeeper/etc/SCCS dir
-			 */
-			p[5] = '/';
-			strcpy(p+6, "x.cmark");
-			if (exists(file)) si->fn(file, sb, si->data);
-			strcpy(p+6, "x.dfile");
-			if (exists(file)) si->fn(file, sb, si->data);
-		}
-		if (si->is_clone && streq(file + 2, "BitKeeper/log")) {
-			/*
-			 * when doing a clone here are a couple more files to
-			 * include from the BitKeeper/log dir
-			 */
-			p[4] = '/';
-			strcpy(p+5, "COMPONENT");
-			if (exists(file)) si->fn(file, sb, si->data);
-			strcpy(p+5, "urllist");
-			if (exists(file)) si->fn(file, sb, si->data);
-			if (si->is_modes) {
-				strcpy(p+5, "NFILES");
-				if (exists(file)) si->fn(file, sb, si->data);
-				strcpy(p+5, "ROOTKEY");
-				if (exists(file)) si->fn(file, sb, si->data);
-				strcpy(p+5, "TIP");
-				if (exists(file)) si->fn(file, sb, si->data);
-				strcpy(p+5, "checked");
-				if (exists(file)) si->fn(file, sb, si->data);
-				strcpy(p+5, "HERE");
-				if (exists(file)) si->fn(file, sb, si->data);
-			}
-			/* just send whatever IDCACHE is local */
-			sprintf(buf, "./%s", IDCACHE);
-			if (exists(buf)) si->fn(buf, sb, si->data);
+		if (si->is_clone && si->skip_etc && streq(file + 2, "BitKeeper/etc")) {
+			return (-1);
 		}
 		if (prunedirs) {
 			concat_path(buf, si->proj_prefix,
@@ -1552,6 +1519,9 @@ findsfiles(char *file, struct stat *sb, void *data)
 		}
 	} else {
 		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
+			if (si->is_clone && patheq(p - 4, CHANGESET)) {
+				return (0);
+			}
 			if (si->dfiles && hash_fetchStr(si->dfiles, p+3)) {
 				/* clone includes d.files too */
 				p[1] = 'd';
@@ -1617,14 +1587,26 @@ walksfiles(char *dir, walkfn fn, void *data)
 int
 sfiles_clone_main(int ac, char **av)
 {
-	int	c;
+	int	i, c;
 	int	lclone = 0;
 	int	modes = 0;	/* sfio sets modes so more stuff is ok */
+	int	mark2 = 0;	/* stick a || between BK files and the rest */
 	int	rc = 2;
 	sinfo	si = {0};
+	char	buf[MAXPATH];
+	char	*logfiles[] = {	/* files from BitKeeper/log to ship */
+		"COMPONENT",
+		"urllist",
+		"NFILES",  // only with -m from here down
+		"ROOTKEY",
+		"TIP",
+		"checked",
+		"HERE"		// unlinked or renamed RMT_HERE in (r)clone
+	};
 
-	while ((c = getopt(ac, av, "Lm", 0)) != -1) {
+	while ((c = getopt(ac, av, "2Lm", 0)) != -1) {
 		switch (c) {
+		    case '2': mark2 = 1; break;
 		    case 'L': lclone = 1; break;
 		    case 'm': modes = 1; break;
 		    default: bk_badArg(c, av);
@@ -1639,7 +1621,33 @@ sfiles_clone_main(int ac, char **av)
 	si.proj_prefix = "/";
 	si.is_clone = 1;
 	if (modes) si.is_modes = 1;
-	rc = walkdir(".", findsfiles, &si);
+
+	for (i = 0; i < sizeof(logfiles)/sizeof(char *); i++) {
+		if (!modes && (i == 2)) break;
+		concat_path(buf, "BitKeeper/log", logfiles[i]);
+		if (exists(buf)) puts(buf);
+	}
+	/* just send whatever IDCACHE is local
+	 * (may be BitKeeper/log or BitKeeper/etc)
+	 */
+	strcpy(buf, IDCACHE);
+	if (exists(buf)) puts(buf);
+
+	/*
+	 * when doing a clone here are a couple more files to include
+	 * from the BitKeeper/etc/SCCS dir
+	 */
+	concat_path(buf, "BitKeeper/etc/SCCS", "x.cmark");
+	if (exists(buf)) puts(buf);
+	concat_path(buf, "BitKeeper/etc/SCCS", "x.dfile");
+	if (exists(buf)) puts(buf);
+
+	rc = walkdir("./BitKeeper/etc", findsfiles, &si);
+	if (bk_hasFeature(FEAT_mSFIO)) mark2 = 1;
+	if (mark2) puts("||");
+	puts(CHANGESET);
+	si.skip_etc = 1;
+	unless (rc) rc = walkdir(".", findsfiles, &si);
 	free_project();
 	return (rc);
 }

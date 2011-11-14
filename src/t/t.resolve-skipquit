@@ -154,13 +154,12 @@ echo $N Automerge 3 and use local on 4 -- gui env ...................$NL
 bk abort -f
 bk pull $Q -R
 # This should loop through all once, and then sccs resolve file 2
-# XXX: even though this is a gui environment, ul still checks in the file
-_dores "S,S,ul,comment,." "-a"
+_dores "S,S,ul" "-a"
 cd RESYNC
-test ! -f 1 -a ! -f 2 -a ! -f 3 -a ! -f 4 || exit 1
+# 4 still there because ul does not check in the file in gui mode
+test ! -f 1 -a ! -f 2 -a ! -f 3 -a -f 4 || exit 1
 # no a.files, because no edited files are created.
 bk _test ! -f SCCS/a.1 -a ! -f SCCS/a.2 -a ! -f SCCS/a.3 -a ! -f SCCS/a.4 || exit 2
 cd ..
-bk get $Q -p RESYNC/4 > GOT
-cmpfiles WANT GOT
+cmpfiles WANT RESYNC/4
 echo OK

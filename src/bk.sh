@@ -1180,6 +1180,7 @@ _remerge()
 			    echo remerge: conflicts during merge of "$i"
 		else	bk fm3tool -o "$i" -l$MPARENT -r$PARENT "$i"
 		fi
+		bk checkout -q "$i"
 	done
 }
 

@@ -90,6 +90,15 @@ main(int volatile ac, char **av, char **env)
 		{ 0, 0 },
 	};
 
+	/*
+	 * On any reasonable OS this is unnecessary, ignored signals remain
+	 * ignored across process creation.  So maybe it's overkill but we
+	 * do it anyway, it's harmless (other than if we are on an OS that
+	 * screws it up we have a small window where a signal could sneak
+	 * in.  Not sure we can do much about that)
+	 */
+	if (getenv("_BK_IGNORE_SIGS")) sig_ignore();
+
 	trace_init(av[0]);
 	ltc_mp = ltm_desc;
 	for (i = 3; i < 20; i++) close(i);
@@ -1411,6 +1420,12 @@ launch_wish(char *script, char **av)
 			{ "-visual", 1 },
 			{ 0, 0 }
 		};
+	char	*readwrite[] = {	// these all disable ^C
+		"citool",
+		"fmtool",
+		"fm3tool",
+		0
+		};
 	char	cmd_path[MAXPATH];
 	char	*argv[MAXARGS];
 
@@ -1444,7 +1459,12 @@ launch_wish(char *script, char **av)
 		    "Cannot find a display to use (set $DISPLAY?).\n");
 		exit(1);
 	}
-	sig_catch(SIG_IGN);
+	for (i = 0; readwrite[i]; i++) {
+		if (streq(script, readwrite[i])) {
+			sig_ignore();
+			break;
+		}
+	}
 	argv[ac=0] = path;
 	if (strchr(script, '/')) {
 		strcpy(cmd_path, script);

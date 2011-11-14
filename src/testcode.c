@@ -79,6 +79,48 @@ getMsg_tests(void)
 	freeLines(args, 0);
 }
 
+void
+signal_tests(void)
+{
+	char	*av[] = { "bk", "-Lw", "_usleep", "2000000", 0 };
+	time_t	now = time(0);
+	pid_t	p;
+
+	p = spawnvp(_P_NOWAIT, "bk", av);
+	assert(p != (pid_t)-1);
+	usleep(50000);		// let it start
+	kill(p, SIGINT);
+#ifndef	WIN32
+	kill(p, SIGQUIT);
+	kill(p, SIGTERM);
+#endif
+	while (waitpid(p, 0, 0) != p) usleep(50000);
+	if ((time(0) - now) <= 1) {
+		fprintf(stderr, "Whoops, managed to kill w/ blocked sig.\n");
+		exit(1);
+	}
+}
+
+void
+tmp_tests(void)
+{
+	char	*template = malloc(500);
+	char	*p;
+	int	i;
+	
+	for (i = 0; i < 480; i++) template[i] = 'B';
+	template[i] = 0;
+	p = bktmp(0, template);
+	assert(p);
+	free(p);
+	if (isdir(BKTMP)) {
+		    p = bktmp_local(0, template);
+		    assert(p);
+		    free(p);
+	}
+	free(template);
+}
+
 /* run specialized code tests */
 int
 unittests_main(int ac, char **av)
@@ -97,6 +139,8 @@ unittests_main(int ac, char **av)
 	assert(t);
 	free(t);
 #endif
+	signal_tests();
+	tmp_tests();
 	return (0);
 }
 

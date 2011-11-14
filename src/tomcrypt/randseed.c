@@ -166,7 +166,6 @@ static void
 mangle(u8 *rand, unsigned int rlen, u8 *buf, int len)
 {
 	int	cipher = register_cipher(&rijndael_desc);
-	long	blklen;
 	unsigned int	i;
 	int	err;
 	symmetric_CTR	ctr;
@@ -177,7 +176,6 @@ mangle(u8 *rand, unsigned int rlen, u8 *buf, int len)
 		0x50, 0x42, 0x15, 0xe5, 0x38, 0x9f, 0x4d, 0x02
 	};
 
-	blklen = cipher_descriptor[cipher].block_length;
 	zeromem(sym_IV, sizeof(sym_IV));
 	assert(rlen + sizeof(key) == sizeof(skey));
 	for (i = 0; i < rlen; i++) skey[i] = rand[i];

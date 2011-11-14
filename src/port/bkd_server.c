@@ -218,7 +218,7 @@ argv_save(int ac, char **av, char **nav, int j)
 		/*
 		 * skip all options which don't make sense for a short lived bkd
 		 */
-		if (strchr("acdeEgpPRStu", c)) continue;
+		if (strchr("acdeEgpPRtu", c)) continue;
 		if (p = strchr(bkd_getopt, c)) {
 			if ((p[1] == ':') || (p[1] == '|')) {
 				p = optarg ? optarg : "";

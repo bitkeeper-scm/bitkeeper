@@ -1,6 +1,11 @@
+proc gc {var} \
+{
+	return $::gc($var)
+}
+
 proc getConfig {prog} \
 {
-	global gc app env
+	global gc app env usergc
 
 	# this causes variables like _RED_, _WHITE_, to exist in this proc
 	defineSymbolicColors
@@ -18,7 +23,7 @@ proc getConfig {prog} \
 
 	# colorscheme
 
-	set gc(classicColors) 0		;# default to the new color scheme.
+	set _d(classicColors) 1		;# default to the old color scheme.
 
 	set _d(tabwidth) 8		;# default width of a tab
 	set _d(backup) ""		;# Make backups in ciedit: XXX NOTDOC 
@@ -33,7 +38,7 @@ proc getConfig {prog} \
 	set _d(newColor) #c4d7c5	;# color of new revision/diff
 	set _d(noticeColor) #dbdfe6	;# messages, warnings
 	set _d(oldColor) $GRAY88	;# color of old revision/diff
-	set _d(searchColor) orange	;# highlight for search matches
+	set _d(searchColor) $ORANGE	;# highlight for search matches
 	set _d(selectColor) $LIGHTBLUE	;# current file/item/topic
 	set _d(statusColor) $LIGHTBLUE	;# various status windows
 	set _d(minsize) 300		;# won't remember geometry if smaller
@@ -54,10 +59,16 @@ proc getConfig {prog} \
 	set _d(quit)	Control-q	;# binding to exit tool
 	set _d(compat_4x) 0		;# maintain compatibility with 4x
 					;# quirky bindings
-	set _d(highlight) #fffd56	;# subline highlight color in diffs
+	set _d(highlight) $YELLOW2	;# subline highlight color in diffs
 	set _d(topMargin) 2		;# top margin for diffs in a diff view
 	set _d(diffColor) #ededed	;# color of diff lines
-	set _d(activeDiffColor) #2fedad ;# active diff color
+	set _d(activeDiffColor) $BKGREEN1 ;# active diff color
+	set _d(activeOldColor) $_d(activeDiffColor)
+	set _d(activeNewColor) $_d(activeDiffColor)
+	set _d(newFont) bkFixedFont
+	set _d(oldFont) bkFixedFont
+	set _d(activeOldFont) bkFixedFont
+	set _d(activeNewFont) bkFixedFont
 
 	set _d(bug.popupBG) $BLUE
 	set _d(support.popupBG) $BLUE
@@ -90,14 +101,9 @@ proc getConfig {prog} \
 	set _d(diff.searchColor) $LIGHTBLUE	;# highlight for search matches
 
 	set _d(fm.redoBG) $PINK
-	set _d(fm.activeOldFont) $_d(fixedBoldFont)
-	set _d(fm.activeNewFont) $_d(fixedBoldFont)
-	set _d(fm.activeLeftColor) $ORANGE	;# Color of active left region
-	set _d(fm.activeRightColor) $YELLOW	;# Color of active right region
 	set _d(fm3.conflictBG) gray		;# Color for conflict message
 	set _d(fm3.unmergeBG) gray	;# Color for unmerged message
 	set _d(fm3.annotate) 1		;# show annotations
-	set _d(fm3.charColor) $_d(highlight)	;# color of changes in a line
 	set _d(fm3.comments) 1		;# show comments window
 	set _d(fm3.escapeButtonFG) $YELLOW	;# foreground of escape button
 	set _d(fm3.escapeButtonBG) $BLACK	;# background of escape button
@@ -115,6 +121,8 @@ proc getConfig {prog} \
 	set _d(fm3.toggleGCA) x		;# key to toggle GCA info
 	set _d(fm3.toggleAnnotations) z	;# key to toggle annotations
 	set _d(fm3.undo) u
+	set _d(fm3.animateScrolling) 1	;# Use an animated scrolling effect
+					;# when jumping conflict diff blocks.
 
 	set _d(help.linkColor) $BLUE	;# hyperlinks
 	set _d(help.topicsColor) $ORANGE	;# highlight for topic search matches
@@ -163,6 +171,7 @@ proc getConfig {prog} \
 	set _d(rev.textHeight) 30	  ;# height of lower window
 	set _d(rev.showHistory) "1M"	  ;# History to show in graph on start
 	set _d(rev.showRevs) 250	  ;# Num of revs to show in graph 
+	set _d(rev.showCsetRevs) 50	  ;# Num of revs to show for a cset
 	# XXX: not documented yet
 	set _d(rev.savehistory) 5	  ;# Max # of files to save in file list
 	set _d(rev.hlineColor) $WHITE	;# Color of highlight lines XXX:NOTDOC
@@ -176,6 +185,8 @@ proc getConfig {prog} \
 
 	set _d(search.width)		15
 	set _d(search.buttonWidth)	15
+
+	set _d(ignoreWhitespace)	0
 
 	set _d(windows) 0
 	set _d(aqua) 0
@@ -254,30 +265,108 @@ proc getConfig {prog} \
 	    }
 	}
 
+	set gc(activeNewOnly) 1
+
 	set gc(bkdir) [file dirname $rcfile]
 	if {[file readable $rcfile]} { source $rcfile }
 
-	if {$gc(classicColors)} {
+	## Save a copy of the gc array exactly as the user specified it.
+	array set usergc [array get gc]
+
+	## If the user specified some global option in their config-gui
+	## file, write that same value into the app-specific value for
+	## the current tool.  This ensures that all values from the user
+	## overwrite any values we've set in here.
+	foreach var [array names usergc] {
+		if {[string match "*.*" $var]} { continue }
+		set gc($app.$var) $usergc($var)
+	}
+
+	if {[info exists gc(classicColors)]} {
+		set _d(classicColors) $gc(classicColors)
+	}
+	set _d($app.classicColors) $_d(classicColors)
+	foreach p [list "" "$prog."] {
+		if {[info exists gc(${p}classicColors)]} {
+			set _d(${p}classicColors) $gc(${p}classicColors)
+		}
+	}
+
+	if {[string is true -strict $_d($app.classicColors)]} {
 		# set "classic" color scheme. Setting it this way
 		# still lets users override individual colors by
 		# setting both gc(classicColors) _and_ the color they
 		# want to change
-		set _d(newColor) $BKBLUE2
+		set _d(oldColor) #C8A0FF
+		set _d(newColor) #BDEDF5
+		set _d(activeOldColor) $_d(oldColor)
+		set _d(activeNewColor) $_d(newColor)
+		set _d(activeOldFont) bkFixedBoldFont
+		set _d(activeNewFont) bkFixedBoldFont
 		set _d(noticeColor) $BKBLUE1
-		set _d(oldColor) $BKVIOLET1
 		set _d(searchColor) $YELLOW
 		set _d(infoColor) $POWDERBLUE
 		set _d(warnColor) $YELLOW
-		set _d(highlight) $YELLOW
+		set _d(highlight) $YELLOW2
 		set _d(diffColor) $GRAY88
 		set _d(activeDiffColor) $BKGREEN1
 		set _d(fm3.conflictBG) $RED
 		set _d(fm3.unmergeBG) $LIGHTYELLOW
-		set _d(fm3.charColor) $ORANGE
 		set _d(fm3.mergeColor) $LIGHTBLUE
 		set _d(fm3.handColor) $LIGHTYELLOW
 		set _d(fm3.sameColor) $BKTURQUOISE1
 		set _d(newdifftool.highlight) $YELLOW
+	}
+
+	## Set these colors regardless of classic or not.
+	set _d(diff.activeOldColor) $_d(activeDiffColor)
+	set _d(diff.activeNewColor) $_d(activeDiffColor)
+	set _d(diff.activeOldFont) bkFixedFont
+	set _d(diff.activeNewFont) bkFixedFont
+
+	set _d(cset.activeOldColor) $_d(activeDiffColor)
+	set _d(cset.activeNewColor) $_d(activeDiffColor)
+	set _d(cset.activeOldFont) bkFixedFont
+	set _d(cset.activeNewFont) bkFixedFont
+
+	set _d(fm.activeOldColor) $_d(activeDiffColor)
+	set _d(fm.activeNewColor) $_d(activeDiffColor)
+	set _d(fm.activeOldFont) bkFixedFont
+	set _d(fm.activeNewFont) bkFixedFont
+
+	## If the user specified showRevs but not showCsetRevs, use showRevs
+	## for both values for backward compatibility.
+	foreach p [list "" "$prog."] {
+		if {[info exists gc(${p}showRevs)]
+		    && ![info exists gc(${p}showCsetRevs)]} {
+			set _d(${p}showCsetRevs) $gc(${p}showRevs)
+		}
+	}
+
+	if {$prog eq "fm3"} {
+		## For backward compatibility, if the user has specified
+		## charColor in fm3tool, we'll use that as our subline
+		## highlight color if they haven't also specified a
+		## highlight color to use.
+		foreach p [list "" "$prog."] {
+			if {[info exists gc(${p}charColor)]
+			    && ![info exists gc(${p}highlight)]} {
+				set _d(${p}highlight) $gc(${p}charColor)
+			}
+		}
+	}
+
+	## If the user specified activeDiffColor but didn't give us anything
+	## for activeNewColor or activeOldColor, fill in the activeDiffColor
+	## for those values.
+	foreach p [list "" "$prog."] {
+		if {![info exists gc(${p}activeDiffColor)]} { continue }
+		if {![info exists gc(${p}activeOldColor)]} {
+			set _d(${p}activeOldColor) $gc(${p}activeDiffColor)
+		}
+		if {![info exists gc(${p}activeNewColor)]} {
+			set _d(${p}activeNewColor) $gc(${p}activeDiffColor)
+		}
 	}
 
 	# Pass one just copies all the defaults into gc unless they are set
@@ -300,17 +389,6 @@ proc getConfig {prog} \
 		}
     	}
 
-        # final pass to exclude some options (for now just on windows)
-        # can be defeated by setting gc(app.useFullGc)
-        if {![info exists gc($app.useFullGC)]} {
-                if {[tk windowingsystem] eq "win32" ||
-		    [tk windowingsystem] eq "aqua"} {
-                        scrollbar ._dummy_
-                        set width [._dummy_ cget -width]
-                        set gc($app.scrollWidth) $width
-                }
-        }
-
 	if {![info exists gc(rev.graphFont)]} {
 		if {$gc(fixedFont) eq "bkFixedFont"} {
 			set gc(rev.graphFont) $gc(default.fixedFont)
@@ -323,6 +401,23 @@ proc getConfig {prog} \
 			set gc(rev.graphBoldFont) $gc(default.fixedBoldFont)
 		} else {
 			set gc(rev.graphBoldFont) $gc(fixedBoldFont)
+		}
+	}
+
+	foreach var [array names gc *Font] {
+		switch -- $gc($var) {
+			"default" {
+				set gc($var) bkButtonFont
+			}
+			"default bold" {
+				set gc($var) bkBoldFont
+			}
+			"fixed" {
+				set gc($var) bkFixedFont
+			}
+			"fixed bold" {
+				set gc($var) bkFixedBoldFont
+			}
 		}
 	}
 
@@ -357,11 +452,22 @@ proc initFonts {app var} \
 	set fixed     [font configure TkFixedFont]
 	set fixedBold [dict replace $fixed -weight bold]
 
-	font create bkBoldFont {*}$bold
-	font create bkButtonFont {*}$font
-	font create bkNoticeFont {*}$bold
-	font create bkFixedFont {*}$fixed
-	font create bkFixedBoldFont {*}$fixedBold
+	set fonts [font names]
+	if {"bkBoldFont" ni $fonts} {
+		font create bkBoldFont {*}$bold
+	}
+	if {"bkButtonFont" ni $fonts} {
+		font create bkButtonFont {*}$font
+	}
+	if {"bkNoticeFont" ni $fonts} {
+		font create bkNoticeFont {*}$bold
+	}
+	if {"bkFixedFont" ni $fonts} {
+		font create bkFixedFont {*}$fixed
+	}
+	if {"bkFixedBoldFont" ni $fonts} {
+		font create bkFixedBoldFont {*}$fixedBold
+	}
 
 	set _d(default.boldFont) $bold
 	set _d(default.buttonFont) $font
@@ -390,7 +496,7 @@ proc initFonts {app var} \
 
 proc configureFonts {app} \
 {
-	global	gc
+	global	gc usergc
 
 	set res [getScreenSize]
 	foreach font {boldFont buttonFont noticeFont fixedFont fixedBoldFont} {
@@ -399,7 +505,9 @@ proc configureFonts {app} \
 		## If they have a saved state for this font, use it.
 		## Otherwise we use whatever is configured either from
 		## initFonts or potentially from config-gui.
-		if {[info exists ::State($font@$res)]} {
+		if {[info exists usergc($font)]} {
+			set f $usergc($font)
+		} elseif {[info exists ::State($font@$res)]} {
 			set f $::State($font@$res)
 		} else {
 			set f $gc($font)
@@ -470,6 +578,7 @@ proc defineSymbolicColors {} \
 		set RED		#ff0000
 		set WHITE		#ffffff
 		set YELLOW		#ffff00
+		set YELLOW2		#fffd56
 
 		# This is used for menubuttons, and is based on the
 		# "SystemButtonFace" on windows. 

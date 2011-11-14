@@ -128,7 +128,8 @@ BINS	= $(BK) inskeys$(EXE)
 OBJ =	bkver.o cmd.o \
 	abort.o adler32.o alias.o admin.o annotate.o attributes.o \
 	bam.o bkd.o bkd_bam.o bkd_cd.o \
-	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
+	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o \
+	bkd_findkey.o bkd_http.o \
 	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o bkd_nested.o \
 	bkd_partition.o bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
@@ -144,7 +145,7 @@ OBJ =	bkver.o cmd.o \
 	delta.o diffs.o diffsplit.o dspec.o \
 	eula.o export.o \
 	features.o \
-	find.o findcset.o findkey.o fixtool.o fsl.o fslayer.o \
+	find.o findcset.o fixtool.o fsl.o fslayer.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o \

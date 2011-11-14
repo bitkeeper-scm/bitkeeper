@@ -23,3 +23,10 @@ bk version -s bk://localhost:$P > remver
 bk version -s > locver
 cmpfiles remver locver
 echo OK
+
+echo $N Check that perror reports version ...........................$NL
+cd "$HERE"
+bk cset bogus 2> ERR && fail -f ERR "should fail"
+grep -q 'cset.c:[0-9]* (.*): bogus: No such file or directory' ERR || \
+	fail -f ERR "wrong message"
+echo OK

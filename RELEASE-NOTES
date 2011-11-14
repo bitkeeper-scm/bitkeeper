@@ -1,4 +1,150 @@
 ============================================================================
+Release notes for BitKeeper version 5.4 (released 11-November-2011)
+
+GUI changes:
+
+  Restore the original color scheme, the new one was not well received.
+  Minor fixes to cut & paste.
+
+  bk citool
+    Fix a performance problem when there were thousands of extra files.
+
+  bk csettool
+  bk difftool
+    Display diff hunks such that it is more clear was added,
+    subtracted or never there at all (such as when vertical space is
+    made on one side to make room for code added on the other side).
+
+  bk difftool
+    Added a button to ignore whitespace changes.
+
+  bk fm3tool
+    fm3tool performance improvements (making it more pleasant to run
+    remote X/RDP/VNC through a WAN)
+
+    Added ability to cut-n-paste from left & right panes into merge
+    window.
+
+    Add ability to resize all panes.
+
+    When leaving edit mode, do not scroll/warp the merge window.
+
+    Change scrolling behavior when blocks are chosen to be friendlier
+    on slow (remote) links.
+
+    Add undo capability (ctrl/cmd Z) while in edit mode.
+
+  bk revtool
+    Add ability to select lines of code for cut/paste to other programs.
+
+Non-GUI changes:
+  BAM
+    Make the 1.0 version of a BAM file be the empty file.  Fixes
+    higher level functions such as:
+
+      bk difftool -r@bk-4.6 -r@+
+
+    (where a binary file is created somewhere in that time)
+
+  bk bkd
+    Added -S option that allows symlinks on the server that point to
+    directories outside of the tree in which the bkd is running.
+
+  bk clone
+    Optimization to make clones faster in checkout:get or checkout:edit.
+    This is turned on by default, it uses multiple processes to do the
+    checkouts.  The level of parallelism may be controlled, see 
+    bk help config-etc
+    bk help clone (see the -j option).
+  
+  bk check / partial_check
+    We increased the default check_frequency window to 7 days from 1 day.
+
+    Fix an obscure bug where check would complain about missing merge
+    deltas in files marked gone.
+
+  bk ci
+    Fix a bug where command line checkins would prompt for the first file
+    and then reuse that comment rather than prompt for each file.
+
+  bk co
+    On Windows, silently ignore any symbolic links.  If you want to see
+    the errors set BK_WARN_SYMLINK=YES
+
+  bk diffs
+    Document that the width of side by side diffs may be controlled with
+    the COLUMNS environment variable.
+
+  bk lease
+    Fix to allow refreshes of valid leases even when the user's
+    system clock is set in the future (beyond the license's expiry
+    date).  BK will now emit a message that the clock is incorrectly
+    set rather than telling the user they do not have a valid license.
+
+  bk pull
+    Fix a bug in which a single pull from multiple parents could fail
+    with an error message like:
+
+      Unable to rename(SCCS/s.bar1, BitKeeper/RENAMES/SCCS/s.2)
+ 
+    Fix a bug where PENDING could be left behind in component
+    repositories.
+
+    Fix a bug where a nested pull would complain:
+    pull: component <comp_name> is missing!
+    pull: Unresolved components.
+
+  bk pull / bk resolve
+    Fix to prevent BK_GUI from being set unconditionally by resolve
+    (interesting only to trigger writers using bk prompt).
+
+  bk repair
+    Older versions of bk repair would fetch a missing ChangeSet file 
+    even if it was incomplete (missing the last few commits).  The 
+    idea was that you could finish up the repair by hand but customers
+    found that confusing so repair now will refuse to restore the
+    ChangeSet file unless it is complete.
+
+  bk resolve
+    Fix a problem that can arise when different alias changes are
+    being merged.
+
+  Signals
+    Change the signal handling such that read-only operations may be
+    interrupted.  Note that if you interrupt BK it may leave tmp files
+    behind.
+
+  Tmp files
+    Fix a problem where very long file names could overflow the max
+    file name length.
+
+Mac only:
+
+  bk upgrade
+    If you run bk upgrade using the powerpc version (under Rosetta) we
+    will now download the correct x86 version.
+
+Error message format:
+
+  If you have scripts that parse our error messages, you may
+  need to adjust.
+
+  Some of our error messages came with a file and line number
+  reference to our source code.  Of course, those "co-ordinates"
+  can change from version to version of BK.  Those error messages
+  now include a version string.
+
+  This change is limited to error messages from perror(), so messages
+  that might look like:
+
+    uu.c:20: foo: No such file or directory
+
+  now look like:
+
+    uu.c:20 (bk-5.3.1): foo: No such file or directory
+
+
+============================================================================
 Release notes for BitKeeper version 5.3 (released 12-August-2011)
 
 This release features GUI improvements, such as subline difference

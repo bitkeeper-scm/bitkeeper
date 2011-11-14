@@ -520,7 +520,7 @@ resolve_components(opts *opts)
 	freeLines(revs, free);
 	unless (opts->aliases) opts->aliases = addLine(0, strdup("HERE"));
 
-	nested_aliases(n, n->tip, &opts->aliases, start_cwd, n->pending);
+	nested_aliases(n, 0, &opts->aliases, start_cwd, NESTED_PENDING);
 	assert(n->alias);
 	opts->nav = unshiftLine(opts->nav, strdup("-S"));
 	opts->nav = unshiftLine(opts->nav, strdup("resolve"));
@@ -776,7 +776,7 @@ pass1_renames(opts *opts, sccs *s)
 		return;
 	}
 
-	unless (filenum) {
+	unless (isdir("BitKeeper/RENAMES/SCCS")) {
 		mkdir("BitKeeper/RENAMES", 0777);
 		mkdir("BitKeeper/RENAMES/SCCS", 0777);
 	}
@@ -2091,7 +2091,6 @@ nocommit:
 				    "all files, aborting.\n");
 				resolve_cleanup(opts, 0);
 			}
-			opts->didCommit = 1;
 		}
 		return (0);
 	}
@@ -2575,10 +2574,7 @@ commit(opts *opts)
 	cmds[++i] = 0;
 	i = spawnvp(_P_WAIT, "bk", cmds);
 	if (cmt) free(cmt);
-	if (WIFEXITED(i) && !WEXITSTATUS(i)) {
-		opts->didCommit = 1;
-		return;
-	}
+	if (WIFEXITED(i) && !WEXITSTATUS(i)) return;
 	fprintf(stderr, "Commit aborted, no changes applied.\n");
 	resolve_cleanup(opts, 0);
 }
@@ -2929,7 +2925,7 @@ err:			unapply(applied);
 		system("bk clean BitKeeper/etc");
 		goto err;
 	}
-	if (opts->didCommit && proj_isComponent(0)) {
+	if (exists("SCCS/d.ChangeSet") && proj_isComponent(0)) {
 		if (moveupComponent()) goto err;
 	}
 	unlink(BACKUP_LIST);
@@ -3035,13 +3031,25 @@ resolve_cleanup(opts *opts, int what)
 	if (opts->progress) progress_restoreStderr();
 
 	/*
-	 * If pull requested --auto-only, then we shouldn't
-	 * automatically abort on a failure.  Resolve will be rerun
-	 * interactively and the user will be give a chance to fix the
-	 * problem.
+	 * When resolve succeeds (defined by pass4_apply() running
+	 * to successful completion), we'll be called with the
+	 * CLEAN_OK bit set and you can ignore the rest of this
+	 * comment.
+	 *
+	 * In general, on failure, this function is called
+	 * with what == 0.
+	 *
+	 * However, if we have a pass2 failure, we'll get called
+	 * with CLEAN_ABORT|CLEAN_PENDING.
+	 *
+	 * Now, if pull requested --auto-only, then we shouldn't
+	 * automatically abort.  Resolve will be rerun interactively
+	 * and the user will be give a chance to fix the problem.
 	 */
-	if (!opts->batch && opts->autoOnly) {
-		what &= ~(CLEAN_ABORT|CLEAN_PENDING);
+	unless (what & CLEAN_OK) {
+		if (!opts->batch && opts->autoOnly) {
+			what &= ~(CLEAN_ABORT|CLEAN_PENDING);
+		}
 	}
 
 	unless (exists(ROOT2RESYNC)) chdir(RESYNC2ROOT);

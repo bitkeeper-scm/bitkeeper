@@ -1654,11 +1654,6 @@ lines_modified(diffln *diff)
 private int
 are_unmodified(diffln *diff, u32 *lines)
 {
-	int	lcnt;
-	u32	s;
-
-	lcnt = 0;
-	s = lines[lcnt];
 	while (diff->ld) {
 		if (*lines < diff->ld->seq) return (0);
 		if (*lines == diff->ld->seq) {

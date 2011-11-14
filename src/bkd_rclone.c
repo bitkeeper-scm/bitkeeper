@@ -13,7 +13,7 @@ typedef	struct {
 	char	**aliases;
 } opts;
 
-private int	getsfio(int parallel);
+private int	getsfio(int jobs);
 private int	rclone_end(opts *opts);
 
 private char *
@@ -170,15 +170,11 @@ cmd_rclone_part2(int ac, char **av)
 	opts	opts;
 	char	buf[MAXPATH];
 	char	*path, *p;
-	int	fd2, parallel = 0, rc = 0;
+	int	fd2, jobs, rc = 0;
 	project	*proj;
 	u64	sfio;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
-	if (isNetworkFS(path)) {
-		p = getenv("BK_PARALLEL");
-		parallel = p ? min(atoi(p), PARALLEL_MAX) : PARALLEL_DEFAULT;
-	}
 	if (unsafe_cd(path)) {
 		p = aprintf("ERROR-cannot chdir to \"%s\"\n", path);
 		out(p);
@@ -186,6 +182,7 @@ cmd_rclone_part2(int ac, char **av)
 		free(path);
 		return (1);
 	}
+	jobs = parallel(path);
 	free(path);
 
 	getline(0, buf, sizeof(buf));
@@ -215,10 +212,16 @@ cmd_rclone_part2(int ac, char **av)
 		bp_setBAMserver(0, p, getenv("BK_BAM_SERVER_ID"));
 	}
 	printf("@SFIO INFO@\n");
-	fflush(stdout);
+
+	/* rclone doesn't need to bother with zlocks */
+	putenv("_BK_NO_ZLOCK=1");
+
 	/* Arrange to have stderr go to stdout */
+	fflush(stdout);
 	fd2 = dup(2); dup2(1, 2);
-	rc = getsfio(parallel);
+	rc = getsfio(jobs);
+	/* clone needs the remote HERE as RMT_HERE; rclone doesn't */
+	if (opts.product) unlink("BitKeeper/log/HERE");
 	if (opts.detach) unlink("BitKeeper/log/COMPONENT");
 
 	/*
@@ -382,11 +385,12 @@ cmd_rclone_part3(int ac, char **av)
 private int
 rclone_end(opts *opts)
 {
-	int	rc;
+	int	rc = 0;
 	int	quiet = !opts->verbose;
+	char	**checkfiles = 0;
 
 	/* remove any uncommited stuff */
-	sccs_rmUncommitted(quiet, 0);
+	sccs_rmUncommitted(quiet, &checkfiles);
 
 	if (opts->detach) {
 		/*
@@ -404,8 +408,12 @@ rclone_end(opts *opts)
 		if (rc == UNDO_SKIP) goto docheck;
 	} else {
 docheck:	/* undo already runs check so we only need this case */
-		rc = run_check(0, 0, quiet? "-fT" : "-fvT", 0);
+		if (checkfiles || full_check()) {
+			rc = run_check(0, checkfiles, quiet? "-fT" : "-fvT", 0);
+		}
 	}
+	freeLines(checkfiles, free);
+
 	/*
 	 * Save the HERE file.  chmod because sfio w/o perms doesn't
 	 * leave it RW.
@@ -422,7 +430,7 @@ docheck:	/* undo already runs check so we only need this case */
 
 
 private int
-getsfio(int parallel)
+getsfio(int jobs)
 {
 	int	status, pfd;
 	u32	in, out;
@@ -431,8 +439,8 @@ getsfio(int parallel)
 	char	j[20];
 	pid_t	pid;
 
-	if (parallel) {
-		sprintf(j, "-j%d", parallel);
+	if (jobs) {
+		sprintf(j, "-j%d", jobs);
 		assert(cmds[4] == 0);
 		cmds[4] = j;
 		cmds[5] = 0;

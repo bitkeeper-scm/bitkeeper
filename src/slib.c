@@ -4420,8 +4420,6 @@ sccs_init(char *name, u32 flags)
 	unless (_YEAR4) _YEAR4 = getenv("BK_YEAR2") ? -1 : 1;
 	if (_YEAR4 == 1) s->xflags |= X_YEAR4;
 
-	if (sig_ignore() == 0) s->unblock = 1;
-
 	if (CSET(s)) {
 		int i, in_log = 0;
 
@@ -4899,56 +4897,43 @@ int
 sccs_lock(sccs *s, char type)
 {
 	char	*t;
-	int	lockfd, verbose;
+	int	lockfd;
+	char	*h;
+	char	buf[MAXLINE];
 
 	if (READ_ONLY(s)) return (0);
-
-	verbose = (s->state & SILENT) ? 0 : 1;
-	if ((type == 'z') && repository_locked(s->proj)) return (0);
+	if (getenv("_BK_NO_ZLOCK")) goto out;
 
 	/* get -e does Z lock so we can skip past the repository locks */
-	if (type == 'Z') type = 'z';
-	t = sccsXfile(s, type);
-again:	lockfd =
-	    open(t, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : GROUP_MODE);
-	debug((stderr, "lock(%s) = %d\n", s->sfile, lockfd >= 0));
-	if ((lockfd == -1) && stale(t)) goto again;
+	if (type == 'z') {
+		if (repository_locked(s->proj)) return (0);
+	} else {
+		assert(type == 'Z');
+	}
+	t = sccsXfile(s, 'z');
+again:	lockfd = open(t, O_CREAT|O_WRONLY|O_EXCL, 0444);
 	if (lockfd == -1) {
+		if (stale(t)) goto again;
 		return (0);
 	}
-	if (type == 'z') {
-		char	buf[20];
-		char	*h = sccs_gethost();
-
-		sprintf(buf, "%u ", getpid());
-		write(lockfd, buf, strlen(buf));
-		if (h) {
-			write(lockfd, h, strlen(h));
-		} else {
-			write(lockfd, "?", 1);
-		}
-		write(lockfd, "\n", 1);
-		s->state |= S_ZFILE;
-	}
+	sprintf(buf, "%u %s\n", getpid(),
+	    (h = sccs_gethost()) ? h : "?");
+	write(lockfd, buf, strlen(buf));
 	close(lockfd);
+out:	s->state |= S_ZFILE;
+	sig_ignore();
 	return (1);
 }
 
 /*
  * Take SCCS/s.foo.c and unlink SCCS/<type>.foo.c
  */
-int
+void
 sccs_unlock(sccs *sccs, char type)
 {
-	char	*s;
-	int	failed;
+	unlink(sccsXfile(sccs, type));
 
-	debug((stderr, "unlock(%s, %c)\n", sccs->sfile, type));
-	s = sccsXfile(sccs, type);
-	failed  = unlink(s);
-	// XXX This seems to a bug, we should only reset S_ZFILE if type == 'z'
-	unless (failed) sccs->state &= ~S_ZFILE;
-	return (failed);
+	if (type == 'z') sccs->state &= ~S_ZFILE;
 }
 
 /*
@@ -6969,7 +6954,13 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 			return (1);
 		}
 	}
-	if (error = bp_get(s, d, flags, gfile)) {
+	if (d == s->tree) {
+		assert(d->added == 0);
+		unless (streq(printOut, "-")) {
+			/* technically there are no recorded modes for 1.0 */
+			touch(gfile, 0664);
+		}
+	} else if (error = bp_get(s, d, flags, gfile)) {
 		unless (error == EAGAIN) return (1);
 		if (flags & GET_NOREMOTE) {
 			s->cachemiss = 1;
@@ -7295,7 +7286,7 @@ err:		if (i2) free(i2);
 		char	*fname = (flags&PRINT) ? printOut : s->gfile;
 		mode_t	mode;
 
-		mode = d->mode ? d->mode : 0666;
+		mode = d->mode ? d->mode : 0664;
 		unless (flags & GET_EDIT) mode &= ~0222;
 
 		if (chmod(fname, mode)) {
@@ -7545,7 +7536,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	int	error = 0;
 	int	side, nextside;
 	char	*buf;
-	char	*tmpfile = 0, *tmppat = 0;
+	char	*tmpfile = 0;
 	FILE	*lbuf = 0;
 	int	no_lf = 0;
 	ser_t	serial;
@@ -7579,9 +7570,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	tmppat = aprintf("%s-%d", basenm(s->gfile), d->serial);
-	tmpfile = bktmp(0, tmppat);
-	free(tmppat);
+	tmpfile = bktmp(0, "getdiffs");
 	openOutput(s, encoding, printOut, &out);
 	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
 	unless (lbuf = fopen(tmpfile, "w+")) {
@@ -9632,7 +9621,6 @@ checkin(sccs *s,
 	int	i;
 	char	*t;
 	char	buf[MAXLINE];
-	admin	l[2];
 	int	no_lf = 0;
 	int	error = 0;
 	int	short_key = 0;
@@ -9798,8 +9786,6 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		fprintf(stderr, "checkin: bad revision: %s for %s\n",
 		    n->rev, s->sfile);
 		goto out;
-	} else {
-		l[0].flags = 0;
 	}
 	/* need random set before the call to sccs_sdelta */
 	/* XXX: changes n, so must be after syms stuff */
@@ -13998,15 +13984,11 @@ private int
 mkDiffTarget(sccs *s,
 	char *rev, char *revM, u32 flags, char *target, pfile *pf)
 {
-	char	*pat;
-
 	if (streq(rev, "1.0")) {
 		strcpy(target, DEVNULL_RD);
 		return (0);
 	}
-	pat = aprintf("%s-%s", basenm(s->gfile), rev);
-	bktmp(target, pat);
-	free(pat);
+	bktmp(target, "mkDiffTarget");
 
 	if ((streq(rev, "edited") || streq(rev, "?")) && !findrev(s, rev)) {
 		assert(HAS_GFILE(s));
