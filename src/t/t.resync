@@ -414,16 +414,12 @@ test $KSRC = $KDST || {
      echo failed to restore pre-moved delta
      exit 1
 }
-bk admin -z "$HERE/project/src/SCCS/s.b.c" "$HERE/copy/src/SCCS/s.b.c"
-bk _cp "$HERE/project/src/SCCS/s.b.c" A
-bk _cp "$HERE/copy/src/SCCS/s.b.c" B
-diff A B
-if [ $? -ne 0 ]; then echo failed on b.c; exit 1; fi;
-bk admin -z "$HERE/project/src/SCCS/s.c.c" "$HERE/copy/src/SCCS/s.c.c"
-bk _cp "$HERE/project/src/SCCS/s.c.c" A
-bk _cp "$HERE/copy/src/SCCS/s.c.c" B
-diff A B
-if [ $? -ne 0 ]; then echo failed on c.c; exit 1; fi;
+bk _scat "$HERE/project/src/SCCS/s.b.c" > A
+bk _scat "$HERE/copy/src/SCCS/s.b.c" > B
+cmpfiles A B
+bk _scat "$HERE/project/src/SCCS/s.c.c" > A
+bk _scat "$HERE/copy/src/SCCS/s.c.c" > B
+cmpfiles A B
 rm A B
 echo OK
 cores
@@ -569,8 +565,7 @@ bk commit $S -y"symbol test" --tag='symbol test'
 cd "$HERE/copy"
 bk pull $Q "$HERE/project"
 if bk _test ! -f src/SCCS/s.symbol_test; then echo failed to send file; exit 1; fi
-bk _cat SCCS/s.ChangeSet | grep -q 'Ssymbol test'
-if [ $? != 0 ]; then echo failed; exit 1; fi
+bk changes -r'symbol test' > /dev/null || fail
 echo OK
 cores
 
@@ -590,8 +585,7 @@ grep -q 'S later symbol' "$HERE/copy/PENDING/"* || {
 cp "$HERE/copy/PENDING/"* "$HERE"
 bk resolve -a $Q "$HERE/copy"
 cd "$HERE/copy"
-bk _cat SCCS/s.ChangeSet | grep -q 'Slater symbol'
-if [ $? != 0 ]; then echo failed to send symbol; exit 1; fi
+bk changes -r'later symbol' > /dev/null || fail
 echo OK
 
 echo $N Test propagation of a symbol added later and unrelated data..$NL
@@ -603,16 +597,16 @@ bk ci $Q -m'additional' dummy
 bk commit $S -y'additional symbol test 2'
 cd "$HERE/copy"
 bk pull $Q "$HERE/project"
-bk _cat SCCS/s.ChangeSet | grep -q 'Sadditional symbol'
-if [ $? != 0 ]; then echo failed; exit 1; else echo OK; fi
+bk changes -r'additional symbol:1.1' > /dev/null || fail
+echo OK
 
 echo $N Test propagation of a symbol added later by itself ..........$NL
 cd "$HERE/project"
 bk admin $Q -S'YAsymbol:1.5' ChangeSet
 cd "$HERE/copy"
 bk pull $Q "$HERE/project"
-bk _cat SCCS/s.ChangeSet | grep -q 'YAsymbol'
-if [ $? != 0 ]; then echo failed; exit 1; else echo OK; fi
+bk changes -r'YAsymbol:1.5' > /dev/null || fail
+echo OK
 cores
 
 # TEST: Check for parallel work winds up losing a file

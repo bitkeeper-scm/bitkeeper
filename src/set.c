@@ -33,7 +33,7 @@
  *	-n	prefix output with the filename, i.e., ChangeSet|1.3
  */
 
-private void	print(sccs *s, delta *d);
+private void	print(sccs *s, ser_t d);
 
 enum {
 	AND,		/* intersection:		A & B */
@@ -152,11 +152,11 @@ set_main(int ac, char **av)
 private	u8 *
 stdin_set(sccs *s)
 {
-	delta	*d;
+	ser_t	d;
 	u8	*map;
 	char	buf[MAXKEY];
 
-	map = calloc(s->nextserial, sizeof(u8));
+	map = calloc(TABLE(s) + 1, sizeof(u8));
 	while (fnext(buf, stdin)) {
 		chop(buf);
 		unless (d = sccs_findrev(s, buf)) {
@@ -165,7 +165,7 @@ stdin_set(sccs *s)
 			sccs_free(s);
 			exit(1);
 		}
-		map[d->serial] = 1;
+		map[d] = 1;
 	}
 	return (map);
 }
@@ -173,9 +173,8 @@ stdin_set(sccs *s)
 u8 *
 set_get(sccs *s, char *rev)
 {
-	delta	*d;
+	ser_t	d;
 	u8	*map;
-	int	i;
 
 	unless (rev) return (stdin_set(s));
 
@@ -185,8 +184,8 @@ set_get(sccs *s, char *rev)
 		exit(1);
 	}
 	map = sccs_set(s, d, 0, 0);
-	for (i = 0; i < s->nextserial; ++i) {
-		map[i] &= 1;
+	for (d = TREE(s); d <= TABLE(s); ++d) {
+		map[d] &= 1;
 	}
 	return (map);
 }
@@ -197,15 +196,13 @@ set_get(sccs *s, char *rev)
 void
 set_diff(sccs *s, u8 *a, u8 *b, set_pfunc p)
 {
-	int	i;
-	delta	*d;
+	ser_t	d;
 
-	for (i = 1; i < s->nextserial; ++i) {
-		unless (a[i] && !b[i]) continue;
-		d = sfind(s, i);
-		assert(d);
-		unless (d->type == 'D') continue;
-		if (opts.tags && !(d->flags & D_SYMBOLS)) continue;
+	for (d = TREE(s); d <= TABLE(s); ++d) {
+		unless (a[d] && !b[d]) continue;
+		assert(FLAGS(s, d));
+		if (TAG(s, d)) continue;
+		if (opts.tags && !(FLAGS(s, d) & D_SYMBOLS)) continue;
 		p(s, d);
 	}
 	free(a);
@@ -218,15 +215,13 @@ set_diff(sccs *s, u8 *a, u8 *b, set_pfunc p)
 void
 set_and(sccs *s, u8 *a, u8 *b, set_pfunc p)
 {
-	int	i;
-	delta	*d;
+	ser_t	d;
 
-	for (i = 1; i < s->nextserial; ++i) {
-		unless (a[i] && b[i]) continue;
-		d = sfind(s, i);
-		assert(d);
-		unless (d->type == 'D') continue;
-		if (opts.tags && !(d->flags & D_SYMBOLS)) continue;
+	for (d = TREE(s); d <= TABLE(s); ++d) {
+		unless (a[d] && !b[d]) continue;
+		assert(FLAGS(s, d));
+		if (TAG(s, d)) continue;
+		if (opts.tags && !(FLAGS(s, d) & D_SYMBOLS)) continue;
 		p(s, d);
 	}
 	free(a);
@@ -239,15 +234,13 @@ set_and(sccs *s, u8 *a, u8 *b, set_pfunc p)
 void
 set_or(sccs *s, u8 *a, u8 *b, set_pfunc p)
 {
-	int	i;
-	delta	*d;
+	ser_t	d;
 
-	for (i = 1; i < s->nextserial; ++i) {
-		unless (a[i] || b[i]) continue;
-		d = sfind(s, i);
-		assert(d);
-		unless (d->type == 'D') continue;
-		if (opts.tags && !(d->flags & D_SYMBOLS)) continue;
+	for (d = TREE(s); d <= TABLE(s); ++d) {
+		unless (a[d] && !b[d]) continue;
+		assert(FLAGS(s, d));
+		if (TAG(s, d)) continue;
+		if (opts.tags && !(FLAGS(s, d) & D_SYMBOLS)) continue;
 		p(s, d);
 	}
 	free(a);
@@ -260,15 +253,13 @@ set_or(sccs *s, u8 *a, u8 *b, set_pfunc p)
 void
 set_xor(sccs *s, u8 *a, u8 *b, set_pfunc p)
 {
-	int	i;
-	delta	*d;
+	ser_t	d;
 
-	for (i = 1; i < s->nextserial; ++i) {
-		unless (a[i] ^ b[i]) continue;
-		d = sfind(s, i);
-		assert(d);
-		unless (d->type == 'D') continue;
-		if (opts.tags && !(d->flags & D_SYMBOLS)) continue;
+	for (d = TREE(s); d <= TABLE(s); ++d) {
+		unless (a[d] && !b[d]) continue;
+		assert(FLAGS(s, d));
+		if (TAG(s, d)) continue;
+		if (opts.tags && !(FLAGS(s, d) & D_SYMBOLS)) continue;
 		p(s, d);
 	}
 	free(a);
@@ -282,14 +273,14 @@ set_xor(sccs *s, u8 *a, u8 *b, set_pfunc p)
 void
 set_member(sccs *s, char *rev, u8 *map, set_pfunc p)
 {
-	delta	*d;
+	ser_t	d;
 
 	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "set: cannot find %s in %s\n", rev, s->gfile);
 		sccs_free(s);
 		exit(1);
 	}
-	unless (map[d->serial] == 1) {
+	unless (map[d] == 1) {
 		free(map);
 		return;
 	}
@@ -302,7 +293,7 @@ set_member(sccs *s, char *rev, u8 *map, set_pfunc p)
 void
 set_list(sccs *s, char *rev, set_pfunc p)
 {
-	delta	*d, *e;
+	ser_t	d, e;
 	u8	*map;
 
 	unless (d = sccs_findrev(s, rev)) {
@@ -310,12 +301,13 @@ set_list(sccs *s, char *rev, set_pfunc p)
 		sccs_free(s);
 		exit(1);
 	}
-	for (e = s->table; e; e = NEXT(e)) {
-		unless (e->type == 'D') continue;
-		if (e->flags & D_SET) continue;
-		if (opts.tags && !(e->flags & D_SYMBOLS)) continue;
+	for (e = TABLE(s); e >= TREE(s); e--) {
+		unless (FLAGS(s, e)) continue;
+		if (TAG(s, e)) continue;
+		if (FLAGS(s, e) & D_SET) continue;
+		if (opts.tags && !(FLAGS(s, e) & D_SYMBOLS)) continue;
 		map = sccs_set(s, e, 0, 0);
-		unless (map[d->serial] == 1) {
+		unless (map[d] == 1) {
 			free(map);
 			if (e == d) break;
 			continue;
@@ -332,9 +324,8 @@ set_list(sccs *s, char *rev, set_pfunc p)
 void
 set_set(sccs *s, char *rev, set_pfunc p)
 {
-	delta	*d;
+	ser_t	d;
 	u8	*map;
-	int	i;
 
 	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "set: cannot find %s in %s\n", rev, s->gfile);
@@ -342,14 +333,14 @@ set_set(sccs *s, char *rev, set_pfunc p)
 		exit(1);
 	}
 	map = sccs_set(s, d, 0, 0);
-	for (i = 1; i < s->nextserial; ++i) {
-		if (map[i]) p(s, sfind(s, i));
+	for (d = TREE(s); d <= TABLE(s); ++d) {
+		if (map[d]) p(s, d);
 	}
 	free(map);
 }
 
 private void
-print(sccs *s, delta *d)
+print(sccs *s, ser_t d)
 {
 	if (opts.name) {
 		assert(opts.format != TAG);
@@ -357,17 +348,17 @@ print(sccs *s, delta *d)
 	}
 	switch (opts.format) {
 	    case TAG:
-		if (d->flags & D_SYMBOLS) {
+		if (FLAGS(s, d) & D_SYMBOLS) {
 			symbol	*sym;
 
-			for (sym = s->symbols; sym; sym = sym->next) {
-				unless (sym->d == d) continue;
-				printf("%s\n", sym->symname);
+			EACHP_REVERSE(s->symlist, sym) {
+				unless (sym->ser == d) continue;
+				printf("%s\n", SYMNAME(s, sym));
 			}
 			break;
 		}
 		/* fall through */
-	    case REV: printf("%s\n", d->rev); break;
+	    case REV: printf("%s\n", REV(s, d)); break;
 	    case KEY: sccs_pdelta(s, d, stdout); printf("\n"); break;
 	}
 }

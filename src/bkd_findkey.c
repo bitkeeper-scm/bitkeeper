@@ -104,43 +104,32 @@ utc(char *date)
 private void
 findkey(sccs *s, look l)
 {
-	delta	*d;
+	ser_t	d;
 	char	key[MAXKEY];
 
 	if (l.key) {
 		if (d = sccs_findKey(s, l.key)) {
-			printf("%s|%s", s->gfile, d->rev);
+			printf("%s|%s", s->gfile, REV(s, d));
 			if (l.pkey) printf("\t%s", l.key);
 			printf("\n");
 		}
 		return;
 	}
-	for (d = s->table; d; d = NEXT(d)) {
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
 		/* continues if no match, print if we get through all */
 		if (l.random) {
-			unless (d->random && streq(d->random, l.random)) {
+			unless (streq(RANDOM(s, d), l.random)) {
 				continue;
 			}
 		}
-		if (l.cksum) unless (d->sum == l.cksum) continue;
-		if (l.utc) unless (d->date == l.utc) continue;
-		if (l.path) unless (streq(d->pathname, l.path)) continue;
-		if (l.user) unless (streq(d->user, l.user)) continue;
-		if (l.host) unless (streq(d->hostname, l.host)) continue;
-		if (l.email) {
-			char	*at = strchr(l.email, '@');
-
-			*at = 0;
-			unless (streq(d->user, l.email) &&
-			    /* matching no host or matching host */
-			    ((!at[1] && !d->hostname) ||
-			    (d->hostname && streq(d->hostname, at+1)))) {
-				*at = '@';
-				continue;
-			}
-			*at = '@';
-		}
-		printf("%s|%s", s->gfile, d->rev);
+		if (l.cksum) unless (SUM(s, d) == l.cksum) continue;
+		if (l.utc) unless (DATE(s, d) == l.utc) continue;
+		if (l.path) unless (streq(PATHNAME(s, d), l.path)) continue;
+		if (l.user) unless (streq(USER(s, d), l.user)) continue;
+		if (l.host) unless (streq(HOSTNAME(s, d), l.host)) continue;
+		if (l.email) unless (streq(USERHOST(s, d), l.email)) continue;
+		printf("%s|%s", s->gfile, REV(s, d));
 		if (l.pkey) {
 			sccs_sdelta(s, d, key);
 			printf("\t%s", key);

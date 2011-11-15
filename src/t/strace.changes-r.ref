@@ -4,11 +4,11 @@ access 25
 chmod 2
 close 104
 fstat 64
-lseek 24
+lseek 23
 lstat 80
 mkdir 2
 open 94
-read 2956
+read 2954
 stat 8
 unlink 10
 write 134

@@ -2,25 +2,25 @@
 #include "sccs.h"
 #include "range.h"
 
-private void	prevs(delta *d);
-private void	_prevs(delta *d);
+private void	prevs(ser_t d);
+private void	_prevs(ser_t d);
 private void	puser(char *u);
-private void	pd(char *prefix, delta *d);
+private void	pd(char *prefix, ser_t d);
 private void	renumber(sccs *s);
-private	delta	*ancestor(sccs *s, delta *d);
+private	ser_t	ancestor(sccs *s, ser_t d);
 private int	flags;
 private sccs	*s;
 private int	sort;	/* append -timet */
 private int	tags;	/* append '*' to tagged revisions */
 private	char	*rev;
-private	delta	*tree;	/* oldest node we're displaying */
+private	ser_t	tree;	/* oldest node we're displaying */
 
 int
 lines_main(int ac, char **av)
 {
 	int	n = 0, c, rc = 1;
 	char	*name;
-	delta	*e;
+	ser_t	e;
 	RANGE	rargs = {0};
 
 	while ((c = getopt(ac, av, "c;n;ur;R;tT", 0)) != -1) {
@@ -55,10 +55,11 @@ lines_main(int ac, char **av)
 
 	if (name && (s = sccs_init(name, INIT_NOCKSUM)) && HASGRAPH(s)) {
 		renumber(s);
+		sccs_mkKidList(s);
 		if (n) {
 			for (c = n, e = sccs_top(s); e && c--; e = PARENT(s, e));
 			if (e) e = ancestor(s, e);
-			prevs(e ? e : s->tree);
+			prevs(e ? e : TREE(s));
 		} else if (rargs.rstart) {
 			if (range_process("lines", s,
 				RANGE_ENDPOINTS, &rargs)) {
@@ -67,7 +68,7 @@ lines_main(int ac, char **av)
 			}
 			unless (s->rstart) goto next;
 			e = ancestor(s, s->rstart);
-			e->merge = 0;
+			MERGE_SET(s, e, 0);
 			prevs(e);
 		} else if (rev) {
 			e = sccs_findrev(s, rev);
@@ -76,14 +77,14 @@ lines_main(int ac, char **av)
 				rc = 1;
 				goto next;
 			}
-			printf("%s", e->rev);
+			printf("%s", REV(s, e));
 			if (flags & GET_USER) {
 				putchar('-');
-				puser(e->user);
+				puser(USER(s, e));
 			}
 			printf("\n");
 		} else {
-			prevs(s->tree);
+			prevs(TREE(s));
 		}
 		rc = 0;
 next:		sccs_free(s);
@@ -93,20 +94,19 @@ next:		sccs_free(s);
 }
 
 /*
- * Reuse the pserial field to put in a serial number which
+ * Reuse the SAME(s, d) field to put in a serial number which
  * - starts at 0, not 1
  * - increments only for real deltas, not meta
  */
 private void
 renumber(sccs *s)
 {
-	delta	*d;
-	int	i;
+	ser_t	d;
 	int	ser = 0;
 
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, i)) continue;
-		if (d->type == 'D') d->pserial = ser++;
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
+		unless (TAG(s, d)) SAME_SET(s, d, ser++);
 	}
 }
 
@@ -125,94 +125,94 @@ puser(char *u)
 }
 
 private void
-prevs(delta *d)
+prevs(ser_t d)
 {
-	unless (d->kid) d = PARENT(s, d);
+	unless (KID(s, d)) d = PARENT(s, d);
 	tree = d;
 	pd("", d);
-	_prevs(KID(d));
-	_prevs(SIBLINGS(d));
+	_prevs(KID(s, d));
+	_prevs(SIBLINGS(s, d));
 }
 
 private void
-_prevs(delta *d)
+_prevs(ser_t d)
 {
-	unless (d && (d->type == 'D')) return;
+	unless (d && !TAG(s, d)) return;
 
 	/*
 	 * If we are a branch start, then print our parent.
 	 */
-	if ((d->r[3] == 1) ||
-	    ((d->r[0] > 1) && (d->r[1] == 1) && !d->r[2])) {
+	if ((R3(s, d) == 1) ||
+	    ((R0(s, d) > 1) && (R1(s, d) == 1) && !R2(s, d))) {
 	    	pd("", PARENT(s, d));
 	}
 
 	pd(" ", d);
-	if (d->kid && (KID(d)->type == 'D')) {
-		_prevs(KID(d));
+	if (KID(s, d) && !TAG(s, KID(s, d))) {
+		_prevs(KID(s, d));
 	} else {
 		printf("\n");
 	}
-	for (d = SIBLINGS(d); d; d = SIBLINGS(d)) {
-		unless (d->flags & D_RED) _prevs(d);
+	for (d = SIBLINGS(s, d); d; d = SIBLINGS(s, d)) {
+		unless (FLAGS(s, d) & D_RED) _prevs(d);
 	}
 }
 
 private void
-pd(char *prefix, delta *d)
+pd(char *prefix, ser_t d)
 {
-	printf("%s%s", prefix, d->rev);
+	printf("%s%s", prefix, REV(s, d));
 	if (flags & GET_USER) {
 		putchar('-');
-		puser(d->user);
+		puser(USER(s, d));
 	}
-	if (sort) printf("-%u", d->pserial);
-	if (tags && (d->flags & D_SYMBOLS)) putchar('*');
-	if (d->flags & D_BADREV) printf("-BAD");
-	if (d->merge) {
-		delta	*p = MERGE(s, d);
+	if (sort) printf("-%u", SAME(s, d));
+	if (tags && (FLAGS(s, d) & D_SYMBOLS)) putchar('*');
+	if (FLAGS(s, d) & D_BADREV) printf("-BAD");
+	if (MERGE(s, d)) {
+		ser_t	p = MERGE(s, d);
 
 		assert(p);
-		if (p->date > tree->date) {
-			printf("%c%s", BK_FS, p->rev);
+		if (DATE(s, p) > DATE(s, tree)) {
+			printf("%c%s", BK_FS, REV(s, p));
 			if (flags & GET_USER) {
 				putchar('-');
-				puser(p->user);
+				puser(USER(s, p));
 			}
-			if (sort) printf("-%u", p->pserial);
-			if (tags && (p->flags & D_SYMBOLS)) putchar('*');
+			if (sort) printf("-%u", SAME(s, p));
+			if (tags && (FLAGS(s, p) & D_SYMBOLS)) putchar('*');
 		}
 	}
-	d->flags |= D_RED;
+	FLAGS(s, d) |= D_RED;
 }
 
 /*
  * For each delta, if it is based on a node earlier than our ancestor,
  * adjust backwards so we get a complete graph.
  */
-private delta	*
-t(delta *a, delta *d)
+private ser_t
+t(ser_t a, ser_t d)
 {
-	delta	*p;
+	ser_t	p;
 
-	for (p = d; p->r[2]; p = PARENT(s, p));
-	if ((p->type != 'R') && (p->date < a->date)) a = p;
-	if (d->kid) a = t(a, KID(d));
-	if (SIBLINGS(d)) a = t(a, SIBLINGS(d));
+	for (p = d; R2(s, p); p = PARENT(s, p));
+	if (!TAG(s, p) && (DATE(s, p) < DATE(s, a))) a = p;
+	if (KID(s, d)) a = t(a, KID(s, d));
+	if (SIBLINGS(s, d)) a = t(a, SIBLINGS(s, d));
 	return (a);
 }
 
 /*
  * Find a common trunk based ancestor for everything from d onward.
  */
-private delta *
-ancestor(sccs *s, delta *d)
+private ser_t
+ancestor(sccs *s, ser_t d)
 {
-	delta	*a;
+	ser_t	a;
 
 	/* get back to the trunk */
-	for (a = d; a && a->r[2]; a = PARENT(s, a));
-	while (a->type == 'R') a = PARENT(s, a);
+	for (a = d; a && R2(s, a); a = PARENT(s, a));
+	while (TAG(s, a)) a = PARENT(s, a);
 	a = t(a, a);
 	return (a);
 }

@@ -182,6 +182,12 @@ partition_main(int ac, char **av)
 
 	verbose((stderr, "\n### Pruning product\n"));
 
+	/*
+	 * Note: it uses no scompress.  It should be able to, though too,
+	 * it shouldn't do anything as the product won't lose any nodes
+	 * in most cases.  If it does a first round prune, then that will
+	 * do a compress.  Anyway, leaving the 'N' here for now.
+	 */
 	sprintf(buf, "bk csetprune "
 	    "--version=%s -aNS%s -k%s -w'%s' -r'%s' -CCOMPS -c. -WPRODWEAVE -",
 	    opts->pver, opts->quiet,
@@ -603,7 +609,7 @@ private	int
 moveComps(Opts *opts)
 {
 	sccs	*cset = 0;
-	delta	*d;
+	ser_t	d, d2;
 	int	i, j, len, ret = 1;
 	char	*newpath;
 	char	**bamdirs = 0;
@@ -652,25 +658,26 @@ moveComps(Opts *opts)
 		 * want the repo to be attached until there are user files.
 		 * This lets a file 'foo' become a component 'foo' later.
 		 */
-		d = cset->tree;
+		d = TREE(cset);		 /* 1.0 */
 		assert(d);
-		d->flags &= ~D_CSET;
-		assert(KID(d));
-		KID(d)->flags &= ~D_CSET;
+		FLAGS(cset, d) &= ~D_CSET;
+		d2 = sccs_kid(cset, d); /* 1.1 */
+		assert(d2);
+		FLAGS(cset, d2) &= ~D_CSET;
 		/*
 		 * Accumulate serial-tagged entries for product weave
 		 * bk changes -nd'$if(:CSETKEY:){:DS:\t:ROOTKEY: :KEY:}'
 		 */
-		for (d = cset->table; d; d = NEXT(d)) {
-			unless (d->flags & D_CSET) continue;
+		for (d = TABLE(cset); d >= TREE(cset); d--) {
+			unless (FLAGS(cset, d)) continue;
+			unless (FLAGS(cset, d) & D_CSET) continue;
 			sccs_sdelta(cset, d, key);
 			fprintf(prodweave, "%u\t%s %s\n",
-			    d->serial, proj_rootkey(0), key);
+			    d, proj_rootkey(0), key);
 		}
 		/* fix backptr to match existing product */
 		d = sccs_ino(cset);
-		if (d->csetFile) free(d->csetFile);
-		d->csetFile = strdup(opts->rootkey);
+		sccs_parseArg(cset, d, 'B', opts->rootkey, 0);
 		/*
 		 * we needed to keep serials intact up until the fprintf
 		 * above.   Now we can compress.

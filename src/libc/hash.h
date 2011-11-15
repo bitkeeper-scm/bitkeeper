@@ -248,6 +248,7 @@ int	hash_keyDiff(hash *A, hash *B);
  *   Str  C string, including the trailing null
  *   Ptr  void* pointer
  *   Mem  start/len  like memcpy
+ *   I32  i32
  *   I64  i64
  *   Num  int stored as a decimal string
  *   Set  no data, hash is a set of keys-only
@@ -388,6 +389,12 @@ private inline void *
 hash_insertStrMem(hash *h, char *key, void *val, int vlen)
 {
 	return (h->ops->insert(h, key, strlen(key)+1, val, vlen));
+}
+
+private inline i32 *
+hash_insertStrI32(hash *h, char *key, i32 val)
+{
+	return (h->ops->insert(h, key, strlen(key)+1, &val, sizeof(val)));
 }
 
 private inline i64 *

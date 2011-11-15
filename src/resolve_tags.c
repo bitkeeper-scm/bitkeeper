@@ -7,10 +7,10 @@
 
 typedef struct	tags {
 	char	*name;
-	delta	*local;		/* delta associated with the tag */
-	delta	*mlocal;	/* metadata delta for the tag */
-	delta	*remote;	/* delta associated with the tag */
-	delta	*mremote;	/* metadata delta for the tag */
+	ser_t	local;		/* delta associated with the tag */
+	ser_t	mlocal;	/* metadata delta for the tag */
+	ser_t	remote;	/* delta associated with the tag */
+	ser_t	mremote;	/* metadata delta for the tag */
 } tags;
 private	int	n;		/* number of tags still to resolve */
 
@@ -19,16 +19,16 @@ t_help(resolve *rs)
 {
 	tags	*t = (tags *)rs->opaque;
 	int	i;
+	char	*p, *r;
+	int	len;
 
 	fprintf(stderr, "Tag ``%s'' was added to two changesets.\n", t->name);
-	fprintf(stderr, "\nLocal:  ChangeSet %s\n", t->local->rev);
-	EACH_COMMENT(rs->s, t->local) {
-		fprintf(stderr, "\t%s\n", t->local->cmnts[i]);
-	}
-	fprintf(stderr, "Remote: ChangeSet %s\n", t->remote->rev);
-	EACH_COMMENT(rs->s, t->remote) {
-		fprintf(stderr, "\t%s\n", t->remote->cmnts[i]);
-	}
+	fprintf(stderr, "\nLocal:  ChangeSet %s\n", REV(rs->s, t->local));
+	r = COMMENTS(rs->s, t->local);
+	while (p = eachline(&r, &len)) fprintf(stderr, "\t%.*s\n", len, p);
+	fprintf(stderr, "Remote: ChangeSet %s\n", REV(rs->s, t->remote));
+	r = COMMENTS(rs->s, t->remote);
+	while (p = eachline(&r, &len)) fprintf(stderr, "\t%.*s\n", len, p);
 	fprintf(stderr, "\n");
 	for (i = 0; rs->funcs[i].spec; i++) {
 		fprintf(stderr, "  %-4s - %s\n", 
@@ -66,7 +66,7 @@ t_local(resolve *rs)
 		 * If the "right" one is later, that's what will be hit in
 		 * the symbol table anyway, don't add another node.
 		 */
-		if ((t->mlocal->serial < t->mremote->serial)
+		if ((t->mlocal < t->mremote)
 		    && (sccs_tagLeaf(rs->s, t->local, t->mlocal, t->name))) {
 			rs->opts->errors = 1;
 		}
@@ -85,7 +85,7 @@ t_remote(resolve *rs)
 		}
 	} else {
 		/* see t_local */
-		if ((t->mlocal->serial > t->mremote->serial)
+		if ((t->mlocal > t->mremote)
 		    && (sccs_tagLeaf(rs->s, t->remote, t->mremote, t->name))) {
 			rs->opts->errors = 1;
 		}
@@ -103,8 +103,8 @@ t_revtool(resolve *rs)
 
 	av[i=0] = "bk";
 	av[++i] = "revtool";
-	sprintf(revs[0], "-l%s", t->local->rev);
-	sprintf(revs[1], "-r%s", t->remote->rev);
+	sprintf(revs[0], "-l%s", REV(rs->s, t->local));
+	sprintf(revs[1], "-r%s", REV(rs->s, t->remote));
 	av[++i] = revs[0];
 	av[++i] = revs[1];
 	av[++i] = rs->s->gfile;
@@ -169,7 +169,7 @@ resolve_tags(opts *opts)
 	sccs	*s = sccs_init(s_cset, 0);
 	MDBM	*m = sccs_tagConflicts(s);
 	sccs	*local;
-	delta	*d;
+	ser_t	d;
 	resolve	*rs;
 	kvpair	kv;
 	int	i = 0;
@@ -209,22 +209,27 @@ out:		sccs_free(s);
 	fprintf(stderr, "%-10s %-12s %-7s %-11s  %-12s %-7s %s\n",
 	    "Tag", "Rev", "User", "Date", "Rev", "User", "Date");
 	for (n = 0, kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
-		delta	*l, *r;
+		ser_t	l, r;
+		char	*sdate;
 
 		sscanf(kv.val.dptr, "%d %d", &a, &b);
-		d = sfind(s, a);
-		sccs_sdelta(s, d, key);
+		sccs_sdelta(s, a, key);
 		if (sccs_findKey(local, key)) {
-			l = d;
-			r = sfind(s, b);
+			l = a;
+			r = b;
 		} else {
-			r = d;
-			l = sfind(s, b);
+			r = a;
+			l = b;
 		}
+		sdate = delta_sdate(s, l);
 		fprintf(stderr,
-		    "%-10.10s %-12s %-7.7s %-11.11s  %-12s %-7.7s %11.11s\n",
-		    kv.key.dptr, l->rev, l->user, l->sdate + 3,
-		    r->rev, r->user, r->sdate + 3);
+		    "%-10.10s %-12s %-7.7s %-11.11s  ",
+		    kv.key.dptr,
+		    REV(s, l), USER(s, l), sdate + 3);
+		sdate = delta_sdate(s, r);
+		fprintf(stderr,
+		    "%-12s %-7.7s %11.11s\n",
+		    REV(s, r), USER(s, r), sdate + 3);
 		n++;
 	}
 	fprintf(stderr, "\n");
@@ -233,20 +238,18 @@ out:		sccs_free(s);
 		t.name = kv.key.dptr;
 		rs->prompt = aprintf("\"%s\"", t.name);
 		sscanf(kv.val.dptr, "%d %d", &a, &b);
-		d = sfind(s, a);
-		assert(d);
-		sccs_sdelta(s, d, key);
+		sccs_sdelta(s, a, key);
 		if (sccs_findKey(local, key)) {
-			t.mlocal = d;
-			t.mremote = sfind(s, b);
+			t.mlocal = a;
+			t.mremote = b;
 		} else {
-			t.mremote = d;
-			t.mlocal = sfind(s, b);
+			t.mremote = a;
+			t.mlocal = b;
 		}
 		assert(t.mlocal && t.mremote);
-		for (d = t.mlocal; d->type == 'R'; d = PARENT(s, d));
+		for (d = t.mlocal; TAG(s, d); d = PARENT(s, d));
 		t.local = d;
-		for (d = t.mremote; d->type == 'R'; d = PARENT(s, d));
+		for (d = t.mremote; TAG(s, d); d = PARENT(s, d));
 		t.remote = d;
 
 		if (rs->opts->debug) {

@@ -12,8 +12,6 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-echo compression:none > "`bk dotbk`"/config
-
 # The optional datefudge line is excluded from $BASE2
 BASE=40
 BASE2=`expr $BASE + 70`
@@ -28,12 +26,12 @@ Hi there, this is file foo.
 Hi there, this is file foo.
 Hi there, this is file foo.
 EOF
-commercial project
+fresh_commercial project
 echo $N Creating an empty file ......................................$NL
 bk admin $Q -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 if bk _test ! -f SCCS/s.empty; then echo Failed.; exit 1; fi
-set `bk _cat SCCS/s.empty | wc -w`
+set `bk _scat SCCS/s.empty | wc -w`
 if [ $1 -ne $BASE ]; then echo Failed - wrong size $1 wanted $BASE.; exit 1; fi
 echo OK
 echo $N Creating the same file '(should fail)' ........................$NL
@@ -46,13 +44,13 @@ cp "$HERE/SAVE" foo_init
 bk admin $Q -ifoo_init foo
 if bk _test ! -f SCCS/s.foo; then echo Failed.; exit 1; fi
 if [ ! -f foo_init ]; then echo Failed - gfile was removed.; exit 1; fi
-set `bk _cat SCCS/s.foo | grep -v "^.cF" | wc -w`
+set `bk _scat SCCS/s.foo | grep -v "^.cF" | wc -w`
 if [ $1 -ne $BASE2 ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 echo $N Creating an empty file from /dev/null .......................$NL
 bk admin $Q -i${DEV_NULL} empty2
 if bk _test ! -f SCCS/s.empty2; then echo Failed.; exit 1; fi
-set `bk _cat SCCS/s.empty2 | grep -v "^.cF" | wc -w`
+set `bk _scat SCCS/s.empty2 | grep -v "^.cF" | wc -w`
 # Accomodate Sun's stupid symlink and the space in Windows tmp path
 if [ -h /dev/null -o "x$PLATFORM" = "xWIN32" ]
 then	FUDGE=16
@@ -63,7 +61,7 @@ echo OK
 echo $N Creating a file from stdin ..................................$NL
 bk admin $Q -i stdin < "$HERE/SAVE"
 if bk _test ! -f SCCS/s.stdin; then echo Failed.; exit 1; fi
-set `bk _cat SCCS/s.stdin | grep -v "^.cF" | wc -w`
+set `bk _scat SCCS/s.stdin | grep -v "^.cF" | wc -w`
 if [ $1 -ne $BASE2 ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 cd "$HERE"; rm -rf project; mkdir project; cd project
@@ -76,7 +74,7 @@ echo $N Creating an empty file with rel 3.1 .........................$NL
 bk admin $Q -r3.1 -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 if bk _test ! -f SCCS/s.empty; then echo Failed.; exit 1; fi
-bk _cat SCCS/s.empty | grep -q 'd D 3.1 '
+bk _scat SCCS/s.empty | grep -q 'd D 3.1 '
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 
@@ -85,7 +83,7 @@ echo $N Creating an empty file with rel 1.2.3.4 .....................$NL
 bk admin $Q -r1.2.3.4 -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 if bk _test ! -f SCCS/s.empty; then echo Failed.; exit 1; fi
-bk _cat SCCS/s.empty | grep -q 'd D 1.2.3.4 '
+bk _scat SCCS/s.empty | grep -q 'd D 1.2.3.4 '
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 
@@ -106,27 +104,28 @@ commercial project
 
 echo This is the description. > "$HERE/D"
 echo $N Creating a file with description ............................$NL
-bk admin $Q -n -t"$HERE/D" foo
+bk admin $Q -n --text="$HERE/D" foo
 if bk _test ! -f SCCS/s.foo; then echo Failed.; exit 1; fi
 # If the second clock ticked over, we didn't need the fudge.
-set `bk _cat SCCS/s.foo | grep -v '^.cF' | wc -w`
-if [ $1 -ne `expr $BASE + 25` ]; then echo Failed - wrong size $1.; exit 1; fi
-bk _cat SCCS/s.foo | grep -q "`cat "$HERE/D"`"
+set `bk _scat SCCS/s.foo | grep -v '^.cF' | wc -w`
+if [ $1 -ne `expr $BASE + 4` ]; then echo Failed - wrong size $1.; exit 1; fi
+bk _scat SCCS/s.foo | grep -q "`cat "$HERE/D"`"
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
+
 echo $N Removing description ........................................$NL
-bk admin $Q -n -t"$HERE/D" bar
-bk admin $Q -t foo
-bk admin $Q -T bar
-set `bk _cat SCCS/s.foo | grep -v "^.cF" | wc -w`
-if [ $1 -ne `expr $BASE + 38` ]; then echo Failed - wrong size $1 ; exit 1; fi
-set `bk _cat SCCS/s.bar | grep -v "^.cF" | wc -w`
-if [ $1 -ne `expr $BASE + 38` ]; then echo Failed - wrong size $1 ; exit 1; fi
+bk admin $Q -n --text="$HERE/D" bar
+bk admin $Q --text= foo
+bk admin $Q --text= bar
+set `bk _scat SCCS/s.foo | grep -v "^.cF" | wc -w`
+if [ $1 -ne $BASE ]; then echo Failed - wrong size $1 ; exit 1; fi
+set `bk _scat SCCS/s.bar | grep -v "^.cF" | wc -w`
+if [ $1 -ne $BASE ]; then echo Failed - wrong size $1 ; exit 1; fi
 echo OK
 echo $N And putting it back .........................................$NL
-bk admin $Q -t"$HERE/D" bar
-set `bk _cat SCCS/s.bar | grep -v "^.cF" | wc -w`
-if [ $1 -ne `expr $BASE + 63` ]; then echo Failed - wrong size $1.; exit 1; fi
+bk admin $Q --text="$HERE/D" bar
+set `bk _scat SCCS/s.bar | grep -v "^.cF" | wc -w`
+if [ $1 -ne `expr $BASE + 4` ]; then echo Failed - wrong size $1.; exit 1; fi
 echo OK
 echo $N One last text test ..........................................$NL
 bk admin $Q -n -t junk 2>ERR
@@ -137,16 +136,16 @@ cd "$HERE"; rm -rf project; commercial project
 cp "$HERE/SAVE" foo_init
 echo $N Creating a file with a comment ..............................$NL
 bk admin $Q -n -y'THIS IS THE COMMENT' -ifoo_init foo
-bk _cat SCCS/s.foo | grep -q "c THIS IS THE COMMENT"
+bk _scat SCCS/s.foo | grep -q "c THIS IS THE COMMENT"
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 
 cd "$HERE"; rm -rf project; mkdir project; cd project
 echo $N File w/ comment, text, release ..............................$NL
-bk admin $Q -n -t"$HERE/D" -r1.2 -y'THIS IS THE COMMENT' foo
-bk _cat SCCS/s.foo | grep -q "c THIS IS THE COMMENT"
+bk admin $Q -n --text="$HERE/D" -r1.2 -y'THIS IS THE COMMENT' foo
+bk _scat SCCS/s.foo | grep -q "c THIS IS THE COMMENT"
 if [ $? -ne 0 ]; then echo Bad comment.; exit 1; fi
-bk _cat SCCS/s.foo | grep -q "`cat "$HERE/D"`"
+bk _scat SCCS/s.foo | grep -q "`cat "$HERE/D"`"
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 echo $N Making sure that admin -r1.2 -z fails .......................$NL

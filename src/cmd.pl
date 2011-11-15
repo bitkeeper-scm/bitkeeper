@@ -252,6 +252,7 @@ _gzip
 _hashstr_test
 _hashfile_test
 havekeys remote
+_heapdump
 help
 helpsearch
 helptopics
@@ -341,6 +342,7 @@ root
 rset
 sane
 sccs2bk
+_scat
 sccslog
 _scompress
 send pro

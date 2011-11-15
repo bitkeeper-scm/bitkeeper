@@ -33,3 +33,65 @@ chomp(char *s)
 	*p = 0;
 	return (any);
 }
+
+/*
+ * Give a string containing multiple newline separated lines, return each
+ * line one-by-line.
+ *
+ * - return any junk after last \n
+ * - an empty line must end in a \n
+ *
+ * ex:
+ * line = COMMENTS(s, d);
+ * while (p = eachline(&line, &len)) {
+ *	// do stuff
+ * }
+ */
+char *
+eachline(char **linep, int *lenp)
+{
+	char	*line, *ret = *linep;
+	int	len;
+
+	unless (*ret) return (0);
+	for (line = ret; *line && (*line != '\n'); line++);
+	if (lenp) {
+		len = line - ret;
+		while ((len > 0) && (ret[len-1] == '\r')) --len;
+		*lenp = len;
+	}
+	if (*line == '\n') line++;
+	*linep = line;
+	return (ret);
+}
+
+/*
+ * Give a string containing white space separated tokens, give the
+ * next token and its length.
+ *
+ * - returns pointer after token
+ * - no such thing as null token
+ *
+ * ex:
+ * line = CLUDES(s, d);
+ * while (p = eachstr(&line, &len)) {
+ *	// do stuff to process token
+ * }
+ */
+char *
+eachstr(char **linep, int *lenp)
+{
+	char	*line, *ret = *linep;
+
+	unless (ret) return (0);
+	while (*ret && isspace(*ret)) ret++;
+	unless (*ret) {
+		*linep = 0;
+		if (lenp) *lenp = 0;
+		return (0);
+	}
+	for (line = ret; *line && !isspace(*line); line++);
+	if (lenp) *lenp = line - ret;
+	*linep = line;
+	return (ret);
+}

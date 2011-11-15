@@ -17,7 +17,7 @@ int
 checksum_main(int ac, char **av)
 {
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	int	doit = 0, bk4 = 0;
 	char	*name;
 	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0, spin = 0;
@@ -86,10 +86,11 @@ checksum_main(int ac, char **av)
 				if (spin) {
 					fputs(s->gfile, stderr);
 					tick = progress_start(PROGRESS_MINI,
-					    s->nextserial);
+					    TABLE(s) + 1);
 				}
-				for (i = 0, d = s->table; d; d = NEXT(d)) {
-					unless (d->type == 'D') continue;
+				for (i = 0, d = TABLE(s); d >= TREE(s); d--) {
+					unless (FLAGS(s, d)) continue;
+					if (TAG(s, d)) continue;
 					c = sccs_resum(s, d, diags, fix);
 					if (tick) progress(tick, ++i);
 					if (c & 1) doit++;
@@ -114,9 +115,9 @@ checksum_main(int ac, char **av)
 		}
 		if ((doit || !s->cksumok) && fix) {
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
-			if (bk4) for (d = s->table; d; d = NEXT(d)) {
-				if (d->flags & D_SORTSUM) {
-					d->flags &= ~D_SORTSUM;
+			if (bk4) for (d = TABLE(s); d >= TREE(s); d--) {
+				if (FLAGS(s, d) & D_SORTSUM) {
+					FLAGS(s, d) &= ~D_SORTSUM;
 				}
 			}
 			if (sccs_newchksum(s)) {
@@ -138,7 +139,7 @@ checksum_main(int ac, char **av)
 }
 
 int
-sccs_resum(sccs *s, delta *d, int diags, int fix)
+sccs_resum(sccs *s, ser_t d, int diags, int fix)
 {
 	int	err = 0;
 	char	before[43];	/* 4000G/4000G/4000G will fit */
@@ -146,34 +147,34 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 
 	unless (d) d = sccs_top(s);
 
-	if (BAM(s) && !d->hash) return (0);
+	if (BAM(s) && !HAS_BAMHASH(s, d)) return (0);
 
-	if (S_ISLNK(d->mode)) {
+	if (S_ISLNK(MODE(s, d))) {
 		u8	*t;
 		sum_t	sum = 0;
-		delta	*e;
+		ser_t	e;
 
 		/* don't complain about these, old BK binaries did this */
 		e = getSymlnkCksumDelta(s, d);
-		if (!fix && !e->sum) return (0);
+		if (!fix && !SUM(s, e)) return (0);
 
-		for (t = d->symlink; *t; sum += *t++);
-		if ((e->flags & D_CKSUM) && (e->sum == sum)) return (0);
+		for (t = SYMLINK(s, d); *t; sum += *t++);
+		if ((FLAGS(s, e) & D_CKSUM) && (SUM(s, e) == sum)) return (0);
 		unless (fix) {
 			fprintf(stderr, "Bad symlink checksum %d:%d in %s|%s\n",
-			    e->sum, sum, s->gfile, d->rev);
+			    SUM(s, e), sum, s->gfile, REV(s, d));
 			return (2);
 		} else {
 			if (diags > 1) {
 				fprintf(stderr, "Corrected %s:%s %d->%d\n",
-				    s->sfile, d->rev, d->sum, sum);
+				    s->sfile, REV(s, d), SUM(s, d), sum);
 			}
-			unless (d->flags & D_SORTSUM) {
-				d->sortSum = d->sum;
-				d->flags |= D_SORTSUM;
+			unless (FLAGS(s, d) & D_SORTSUM) {
+				SORTSUM_SET(s, d, SUM(s, d));
+				FLAGS(s, d) |= D_SORTSUM;
 			}
-			d->sum = sum;
-			d->flags |= D_CKSUM;
+			SUM_SET(s, d, sum);
+			FLAGS(s, d) |= D_CKSUM;
 			return (1);
 		}
 	}
@@ -184,16 +185,13 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	 */
 
 	if (sccs_get(s,
-	    d->rev, 0, 0, 0, GET_SUM|GET_SHUTUP|SILENT|PRINT, "-")) {
-		unless (BEEN_WARNED(s)) {
-			fprintf(stderr,
-			    "get of %s:%s failed, skipping it.\n",
-			    s->gfile, d->rev);
-		}
+	    REV(s, d), 0, 0, 0, GET_SUM|GET_SHUTUP|SILENT|PRINT, "-")) {
+		fprintf(stderr, "get of %s:%s failed, skipping it.\n",
+		    s->gfile, REV(s, d));
 		return (4);
 	}
 
-	sprintf(before, "\001s %d/%d/%d\n", d->added, d->deleted, d->same);
+	sprintf(before, "\001s %d/%d/%d\n", ADDED(s, d), DELETED(s, d), SAME(s, d));
 	sprintf(after, "\001s %d/%d/%d\n", s->added, s->deleted, s->same);
 	unless (streq(before, after)) {
 		size_t	n;
@@ -213,8 +211,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 			 * are working, would all of a sudden start gakking
 			 */
 			fprintf(stderr,
-		    		"Bad a/d/s %s:%s in %s|%s\n",
-		    		&before[3], &after[3], s->gfile, d->rev);
+			    "Bad a/d/s %s:%s in %s|%s\n",
+			    &before[3], &after[3], s->gfile, REV(s, d));
 			err = 2;
 #endif
 		}
@@ -222,12 +220,12 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 			if (diags > 1) {
 				fprintf(stderr, "Corrected a/d/s "
 					"%s:%s %s->%s\n",
-		    			s->sfile, d->rev,
+					s->sfile, REV(s, d),
 					&before[3], &after[3]);
 			}
-			d->added = s->added;
-			d->deleted = s->deleted;
-			d->same = s->same;
+			ADDED_SET(s, d, s->added);
+			DELETED_SET(s, d, s->deleted);
+			SAME_SET(s, d, s->same);
 			err = 1;
 		}
 	}
@@ -237,28 +235,28 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	 * checksum which is correct by default.
 	 * NOTE: check using newly computed added and deleted (in *s)
 	 */
-	unless (s->added || s->deleted || d->include || d->exclude) {
-		assert(d->flags & D_CKSUM);
+	unless (s->added || s->deleted || HAS_CLUDES(s, d)) {
+		assert(FLAGS(s, d) & D_CKSUM);
 		return (err);
 	}
 
-	if ((d->flags & D_CKSUM) && (d->sum == s->dsum)) return (err);
+	if ((FLAGS(s, d) & D_CKSUM) && (SUM(s, d) == s->dsum)) return (err);
 	unless (fix) {
 		fprintf(stderr,
 		    "Bad checksum %d:%d in %s|%s\n",
-		    d->sum, s->dsum, s->gfile, d->rev);
+		    SUM(s, d), s->dsum, s->gfile, REV(s, d));
 		return (2);
 	}
 	if (diags > 1) {
 		fprintf(stderr, "Corrected %s:%s %d->%d\n",
-		    s->sfile, d->rev, d->sum, s->dsum);
+		    s->sfile, REV(s, d), SUM(s, d), s->dsum);
 	}
-	unless (d->flags & D_SORTSUM) {
-		d->sortSum = d->sum;
-		d->flags |= D_SORTSUM;
+	unless (FLAGS(s, d) & D_SORTSUM) {
+		SORTSUM_SET(s, d, SUM(s, d));
+		FLAGS(s, d) |= D_SORTSUM;
 	}
-	d->sum = s->dsum;
-	d->flags |= D_CKSUM;
+	SUM_SET(s, d, s->dsum);
+	FLAGS(s, d) |= D_CKSUM;
 	return (1);
 	assert("Not reached" == 0);
 }
@@ -374,17 +372,17 @@ add_ins(MDBM *h, char *root, int len, ser_t ser, u16 sum)
 }
 
 private	int
-setOrder(sccs *s, delta *d, void *token)
+setOrder(sccs *s, ser_t d, void *token)
 {
-	char	***order = (char ***)token;
+	ser_t	**order = (ser_t **)token;
 
-	if (SET(s) && !(d->flags & D_SET)) return (0);
-	d->flags &= ~D_SET;
+	if (SET(s) && !(FLAGS(s, d) & D_SET)) return (0);
+	FLAGS(s, d) &= ~D_SET;
 
-	if (TAG(d)) return (0);
-	unless (d->added || d->include || d->exclude) return (0);
+	if (TAG(s, d)) return (0);
+	unless (ADDED(s, d) || HAS_CLUDES(s, d)) return (0);
 
-	*order = addLine(*order, d);
+	addArray(order, &d);
 	return (0);
 }
 
@@ -412,9 +410,9 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	int	cnt, i, added, orderIndex;
 	serset	**map;
 	u8	*slist = 0;
-	char	**order = 0;
+	ser_t	*order = 0;
 	struct	_sse *sse;
-	delta	*d, *prev;
+	ser_t	d, prev;
 	int	found = 0;
 	int	n = 0;
 	kvpair	kv;
@@ -470,14 +468,14 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		tick = progress_start(PROGRESS_MINI, nLines(order));
 	}
 
-	slist = (u8 *)calloc(s->nextserial, sizeof(u8));
+	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 	prev = 0;
 	n = 0;
 	EACH_INDEX(order, orderIndex) {
-		d = (delta *)order[orderIndex];
+		d = order[orderIndex];
 
 		/* incremental serialmap */
-		graph_symdiff(d, prev, slist, 0, -1, 0);
+		graph_symdiff(s, d, prev, 0, slist, 0, -1, 0);
 		prev = d;
 
 		if (tick) progress(tick, ++n);
@@ -485,7 +483,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		added = 0;
 		for (i = 0; i < cnt; i++) {
 			ser_t	ser;
-			ser_t	want = d->serial;
+			ser_t	want = d;
 
 			sse = map[i]->data + map[i]->last;
 			while ((sse > map[i]->data) && (sse[-1].ser <= want)) {
@@ -501,7 +499,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 			map[i]->last = (sse - map[i]->data);
 		}
 
-		if ((d->added != added) || d->deleted || (d->same != 1)) {
+		if ((ADDED(s, d) != added) || DELETED(s, d) || (SAME(s, d) != 1)) {
 			/*
 			 * We dont report bad counts if we are not fixing.
 			 * We have not been consistant about this in the past.
@@ -510,30 +508,30 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 				fprintf(stderr, "%s a/d/s "
 					"%s:%s %d/%d/%d->%d/0/1\n",
 				    (fix ? "Corrected" : "Bad"),
-				    s->sfile, d->rev,
-				    d->added, d->deleted, d->same, added);
+				    s->sfile, REV(s, d),
+				    ADDED(s, d), DELETED(s, d), SAME(s, d), added);
 			}
 			if (fix) {
-				d->added = added;
-				d->deleted = 0;
-				d->same = 1;
+				ADDED_SET(s, d, added);
+				DELETED_SET(s, d, 0);
+				SAME_SET(s, d, 1);
 				++found;
 			}
 		}
 
-		if (d->sum != sum) {
+		if (SUM(s, d) != sum) {
 			if (!fix || (diags > 1)) {
 				fprintf(stderr, "%s checksum %d:%d in %s|%s\n",
 				    (fix ? "Corrected" : "Bad"),
-				    d->sum, sum, s->gfile, d->rev);
+				    SUM(s, d), sum, s->gfile, REV(s, d));
 			}
 			if (fix) {
-				unless (d->flags & D_SORTSUM) {
-					d->sortSum = d->sum;
-					d->flags |= D_SORTSUM;
+				unless (FLAGS(s, d) & D_SORTSUM) {
+					SORTSUM_SET(s, d, SUM(s, d));
+					FLAGS(s, d) |= D_SORTSUM;
 				}
-				d->sum = sum;
-				d->flags |= D_CKSUM;
+				SUM_SET(s, d, sum);
+				FLAGS(s, d) |= D_CKSUM;
 			}
 			++found;
 		}

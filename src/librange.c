@@ -155,25 +155,25 @@ range_cutoff(char *spec)
 }
 
 private	int
-csetStop(sccs *s, delta *d, void *token)
+csetStop(sccs *s, ser_t d, void *token)
 {
-	if (((delta *)token != d) && (d->flags & D_CSET)) return (1);
-	d->flags |= D_SET;
+	if ((*(ser_t *)token != d) && (FLAGS(s, d) & D_CSET)) return (1);
+	FLAGS(s, d) |= D_SET;
 	return (0);
 }
 
 void
-range_cset(sccs *s, delta *d)
+range_cset(sccs *s, ser_t d)
 {
 	unless (d = sccs_csetBoundary(s, d)) return; /* if pending */
-	range_walkrevs(s, 0, 0, d, WR_STOP, csetStop, d);
+	range_walkrevs(s, 0, 0, d, WR_STOP, csetStop, &d);
 	s->state |= S_SET;
 }
 
-private delta *
+private ser_t
 getrev(char *me, sccs *s, int flags, char *rev)
 {
-	delta	*d;
+	ser_t	d;
 
 	unless (d = sccs_findrev(s, rev)) {
 		verbose((stderr, "%s: no such delta ``%s'' in %s\n",
@@ -191,8 +191,9 @@ int
 range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 {
 	char	*rev;
-	delta	*d, *r1, *r2;
-	char	**revs = 0, **dlist = 0;
+	ser_t	d, r1, r2;
+	char	**revs = 0;
+	ser_t	*dlist = 0;
 	int	i, restore = 0, rc = 1;
 	RANGE	save = {0};
 
@@ -229,25 +230,26 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	s->state |= S_SET;
 	if (!rargs->rstart) {
 		/* select all */
-		for (d = s->table; d; d = NEXT(d)) {
-			if (d->type == 'D') d->flags |= D_SET;
+		for (d = TABLE(s); d >= TREE(s); d--) {
+			unless (FLAGS(s, d)) continue;
+			unless (TAG(s, d)) FLAGS(s, d) |= D_SET;
 		}
-		s->rstart = s->tree;
+		s->rstart = TREE(s);
 		s->rstop = sccs_top(s);
 	} else if (!rargs->rstop) {
 		/* list of revs */
 		revs = splitLine(rargs->rstart, ",", 0);
 		EACH(revs) {
 			unless (d = getrev(me, s, flags, revs[i])) goto out;
-			d->flags |= D_SET;
+			FLAGS(s, d) |= D_SET;
 			unless (s->rstart) {
 				s->rstart = d;
-			} else if (d->serial < s->rstart->serial) {
+			} else if (d < s->rstart) {
 				s->rstart = d;
 			}
 			unless (s->rstop) {
 				s->rstop = d;
-			} else if (d->serial > s->rstop->serial) {
+			} else if (d > s->rstop) {
 				s->rstop = d;
 			}
 		}
@@ -262,7 +264,7 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 				    (rargs->rstart[0] == '@')) {
 					goto out;
 				}
-				dlist = addLine(dlist, (char *)r1);
+				addArray(&dlist, &r1);
 			}
 		}
 		if (*rargs->rstop) {
@@ -275,7 +277,7 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 			verbose((stderr, "%s: unable to connect %s to %s\n",
 			    me,
 			    *rargs->rstart ? rargs->rstart : "ROOT",
-			    r2 ? r2->rev : "TIP"));
+			    r2 ? REV(s, r2) : "TIP"));
 			goto out;
 		}
 		/* s->rstart & s->rstop set by walkrevs */
@@ -283,14 +285,14 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	rc = 0;
  out:	if (restore) memcpy(rargs, &save, sizeof(save));
 	freeLines(revs, free);
-	freeLines(dlist, 0);
+	free(dlist);
 	return (rc);
 }
 
 private int
 range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 {
-	delta	*d;
+	ser_t	d;
 	char	*rstart = rargs->rstart;
 	char	*rstop = rargs->rstop;
 
@@ -316,7 +318,7 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 			return (1);
 		}
 	} else {
-		s->rstart = s->tree;
+		s->rstart = TREE(s);
 	}
 	unless (rstop) rstop = rstart;
 	if (*rstop) {
@@ -330,8 +332,9 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 	}
 	if (flags & RANGE_SET) {
 		for (d = s->rstop;
-		    d && (d->serial >= s->rstart->serial); d = NEXT(d)) {
-			unless (TAG(d)) d->flags |= D_SET;
+		    d && (d >= s->rstart); d--) {
+			unless (FLAGS(s, d)) continue;
+			unless (TAG(s, d)) FLAGS(s, d) |= D_SET;
 		}
 	}
 	return (0);
@@ -367,16 +370,15 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
  * as it is outside the region of interest, it may never be visited.
  */
 int
-range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
-    int (*fcn)(sccs *s, delta *d, void *token), void *token)
+range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
+    int (*fcn)(sccs *s, ser_t d, void *token), void *token)
 {
-	delta	*d, *e;
+	ser_t	d, e, last;
 	int	i = 0, ret = 0;
 	u32	color, before;
-	ser_t	last;		/* the last delta we marked (for cleanup) */
 	int	marked = 0;	/* number of BLUE or RED nodes */
 	int	all = 0;	/* set if all deltas in 'to' */
-	char	**freelist = 0;
+	ser_t	*freelist = 0;
 	const int	mask = (D_BLUE|D_RED);
 
 	/*
@@ -388,10 +390,10 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 	 * When marked hits 0, no more single color nodes in graph: DONE!
 	 */
 #define	MARK(x, change)	do {					\
-	    before = (x)->flags & mask;				\
-	    (x)->flags |= change;	/* after */		\
-	    if ((x)->serial < last) last = (x)->serial;		\
-	    if (((x)->flags & mask) == mask) { /* after == 2 */ \
+	    before = FLAGS(s, (x)) & mask;				\
+	    FLAGS(s, (x)) |= change;	/* after */		\
+	    if ((x) < last) last = (x);	\
+	    if ((FLAGS(s, (x)) & mask) == mask) { /* after == 2 */ \
 		if (before && (before != mask)) { /* before == 1 */ \
 		    marked--;					\
 		    if ((flags & WR_GCA) && (change != mask)) {/* chg == 1 */ \
@@ -407,31 +409,35 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 	s->rstop = 0;
 	unless (to) {		/* no upper bound - get all tips */
 		all = 1;
-		to = s->table;	/* could be a tag; that's okay */
+		to = TABLE(s);	/* could be a tag; that's okay */
 	} else {
-		to->flags |= D_RED;
+		FLAGS(s, to) |= D_RED;
 		marked++;
 	}
-	last = to->serial;
+	last = to;
 	d = to;			/* start here in table */
-	if (from) fromlist = freelist = addLine(0, from);
+	if (from) {
+		addArray(&freelist, &from);
+		fromlist = freelist;
+	}
 	EACH(fromlist) {
-		from = (delta *)fromlist[i];
-		if (d->serial < from->serial) d = from;
+		from = fromlist[i];
+		if (d < from) d = from;
 		MARK(from, D_BLUE);
 	}
 
 	/* compute RED - BLUE */
-	for (; d && (all || (marked > 0)); d = NEXT(d)) {
-		unless (d->type == 'D') continue;
-		if (all) d->flags |= D_RED;
-		unless (color = (d->flags & mask)) continue;
-		d->flags &= ~color; /* clear bits */
+	for (; d && (all || (marked > 0)); d--) {
+		unless (FLAGS(s, d)) continue;
+		if (TAG(s, d)) continue;
+		if (all) FLAGS(s, d) |= D_RED;
+		unless (color = (FLAGS(s, d) & mask)) continue;
+		FLAGS(s, d) &= ~color; /* clear bits */
 		if (color != mask) marked--;
 		if (!(flags & WR_GCA) &&
 		    ((color == D_RED) ||
 		    ((flags & WR_BOTH) && (color != mask)))) {
-			if (flags & WR_BOTH) d->flags |= color;
+			if (flags & WR_BOTH) FLAGS(s, d) |= color;
 			if (fcn && (ret = fcn(s, d, token))) {
 				unless (flags & WR_STOP) break;
 				color = mask;
@@ -445,29 +451,30 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 	}
 err:
 	/* cleanup */
-	for (; d && (d->serial >= last); d = NEXT(d)) {
-		d->flags &= ~mask;
+	for (; d && (d >= last); d--) {
+		unless (FLAGS(s, d)) continue;
+		FLAGS(s, d) &= ~mask;
 	}
-	if (freelist) freeLines(fromlist, 0);
+	if (freelist) free(freelist);
 	return (ret);
 }
 
 int
-walkrevs_clrFlags(sccs *s, delta *d, void *token)
+walkrevs_clrFlags(sccs *s, ser_t d, void *token)
 {
-	d->flags &= ~p2int(token);
+	FLAGS(s, d) &= ~p2int(token);
 	return (0);
 }
 
 int
-walkrevs_setFlags(sccs *s, delta *d, void *token)
+walkrevs_setFlags(sccs *s, ser_t d, void *token)
 {
-	d->flags |= p2int(token);
+	FLAGS(s, d) |= p2int(token);
 	return (0);
 }
 
 int
-walkrevs_printkey(sccs *s, delta *d, void *token)
+walkrevs_printkey(sccs *s, ser_t d, void *token)
 {
         sccs_pdelta(s, d, (FILE *)token);
         fputc('\n', (FILE *)token);
@@ -475,7 +482,7 @@ walkrevs_printkey(sccs *s, delta *d, void *token)
 }
 
 int
-walkrevs_printmd5key(sccs *s, delta *d, void *token)
+walkrevs_printmd5key(sccs *s, ser_t d, void *token)
 {
         char    buf[MAXKEY];
 
@@ -485,11 +492,11 @@ walkrevs_printmd5key(sccs *s, delta *d, void *token)
 }
 
 int
-walkrevs_addLine(sccs *s, delta *d, void *token)
+walkrevs_addLine(sccs *s, ser_t d, void *token)
 {
-	char	***line = (char ***)token;
+	ser_t	**line = (ser_t **)token;
 
-	*line = addLine(*line, d);
+	addArray(line, &d);
 	return (0);
 }
 
@@ -499,17 +506,18 @@ walkrevs_addLine(sccs *s, delta *d, void *token)
  * In each round of the loop, gca will be the list of what is common
  * to all the deltas processed so far.
  */
-char **
-range_gcalist(sccs *s, char **list)
+ser_t *
+range_gcalist(sccs *s, ser_t *list)
 {
-	char	**gca = 0, **fromlist = 0, **tmp;
-	delta	*to;
+	ser_t	*gca = 0, *fromlist = 0, *tmp;
+	ser_t	to;
 	int	i;
 
-	EACH_STRUCT(list, to, i) {
+	EACH(list) {
+		to = list[i];
 		unless (gca) {
 			/* first round: just set tip as gca */
-			gca = addLine(0, to);
+			addArray(&gca, &to);
 			continue;
 		}
 		/* gca from previous round is fromlist this round */
@@ -522,8 +530,8 @@ range_gcalist(sccs *s, char **list)
 			assert("What can fail?" == 0);
 		}
 	}
-	freeLines(fromlist, 0);
-	sortLines(gca, graph_bigFirst);
+	free(fromlist);
+	graph_sortLines(s, gca);
 	return (gca);
 }
 
@@ -539,9 +547,8 @@ range_gcalist(sccs *s, char **list)
 void
 range_markMeta(sccs *s)
 {
-	int	i;
-	delta	*d, *e;
-	delta	*lower = 0, *upper = 0;	/* region to clean up D_BLUE */
+	ser_t	d, e;
+	ser_t	lower = 0, upper = 0;	/* region to clean up D_BLUE */
 	
 	unless (s->rstart && s->rstop) return;	/* no D_SET */
 	/*
@@ -550,21 +557,21 @@ range_markMeta(sccs *s)
 	 *   Ancestor of D_SET - Inside the region. Mark D_RED, leave cleared
 	 *   What's left -- Outside the region.  Mark and leave D_BLUE
 	 */
-	for (d = s->table; d; d = NEXT(d)){
-		unless (d->type == 'D') continue;
-		unless (d->flags & (D_SET|D_RED)) {
-			d->flags |= D_BLUE;
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
+		if (TAG(s, d)) continue;
+		unless (FLAGS(s, d) & (D_SET|D_RED)) {
+			FLAGS(s, d) |= D_BLUE;
 			unless (upper) upper = d;
 			lower = d;
 			continue;
 		}
-		d->flags &= ~D_RED;
-		if ((e = PARENT(s, d)) && !(e->flags & (D_SET|D_RED))) {
-			e->flags |= D_RED;
+		FLAGS(s, d) &= ~D_RED;
+		if ((e = PARENT(s, d)) && !(FLAGS(s, e) & (D_SET|D_RED))) {
+			FLAGS(s, e) |= D_RED;
 		}
-		if (d->merge && (e = MERGE(s, d))
-		    && !(e->flags & (D_SET|D_RED))) {
-			e->flags |= D_RED;
+		if ((e = MERGE(s, d)) && !(FLAGS(s, e) & (D_SET|D_RED))) {
+			FLAGS(s, e) |= D_RED;
 		}
 	}
 	/*
@@ -575,51 +582,52 @@ range_markMeta(sccs *s)
 	 * termination point.  What was done gives a good savings by
 	 * having it be newer than the D_SET region in most cases.
 	 */
-	i = (lower && (lower->serial < s->rstart->serial))
-	    ? lower->serial : s->rstart->serial;
-	for (; i < s->nextserial; i++) {
-		unless ((d = sfind(s, i)) && (d->type != 'D')) continue;
-		if (d->flags & D_SET) continue;
+	d = (lower && (lower < s->rstart)) ? lower : s->rstart;
+	for (/* d */; d <= TABLE(s); d++) {
+		unless (FLAGS(s, d) && TAG(s, d)) continue;
+		if (FLAGS(s, d) & D_SET) continue;
 		/* e = tagged real delta */
-		for (e = PARENT(s, d); e && (e->type != 'D'); e = PARENT(s, e));
+		for (e = PARENT(s, d); e && TAG(s, e); e = PARENT(s, e));
 		/* filter out meta attached to nodes outside the region */
-		if ((e->flags & D_BLUE) ||
-		    (d->ptag && (sfind(s, d->ptag)->flags & D_BLUE)) ||
-		    (d->mtag && (sfind(s, d->mtag)->flags & D_BLUE))) {
-			d->flags |= D_BLUE;
-			if (upper->serial < d->serial) upper = d;
+		if ((FLAGS(s, e) & D_BLUE) ||
+		    (PTAG(s, d) && (FLAGS(s, PTAG(s, d)) & D_BLUE)) ||
+		    (MTAG(s, d) && (FLAGS(s, MTAG(s, d)) & D_BLUE))) {
+			FLAGS(s, d) |= D_BLUE;
+			if (upper < d) upper = d;
 			continue;
 		}
 		/* select meta nodes that attached to the region in some way */
-		if ((e->flags & D_SET) ||
-		    (d->ptag && (sfind(s, d->ptag)->flags & D_SET)) ||
-		    (d->mtag && (sfind(s, d->mtag)->flags & D_SET))) {
-			d->flags |= D_SET;
-			if (s->rstop->serial < d->serial) {
+		if ((FLAGS(s, e) & D_SET) ||
+		    (PTAG(s, d) && (FLAGS(s, PTAG(s, d)) & D_SET)) ||
+		    (MTAG(s, d) && (FLAGS(s, MTAG(s, d)) & D_SET))) {
+			FLAGS(s, d) |= D_SET;
+			if (s->rstop < d) {
 				s->rstop = d;
 			}
 		}
 	}
 
 	/* cleanup */
-	for (d = upper; d; d = NEXT(d)) {
-		d->flags &= ~D_BLUE;
+	for (d = upper; d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
+		FLAGS(s, d) &= ~D_BLUE;
 		if (d == lower) break;
 	}
 }
 
 int
-range_gone(sccs *s, delta *d, u32 dflags)
+range_gone(sccs *s, ser_t d, u32 dflags)
 {
 	int	count = 0;
 
 	range_walkrevs(s, d, 0, 0, 0, walkrevs_setFlags, (void*)D_SET);
 	range_markMeta(s);
-	for (d = s->rstop; d; d = NEXT(d)) {
-		if (d->flags & D_SET) {
+	for (d = s->rstop; d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
+		if (FLAGS(s, d) & D_SET) {
 			count++;
-			d->flags &= ~D_SET;
-			d->flags |= dflags;
+			FLAGS(s, d) &= ~D_SET;
+			FLAGS(s, d) |= dflags;
 		}
 		if (d == s->rstart) break;
 	}
@@ -650,34 +658,35 @@ range_gone(sccs *s, delta *d, u32 dflags)
  * D_RED is left cleared.
  */
 void
-range_unrange(sccs *s, delta **left, delta **right, int all)
+range_unrange(sccs *s, ser_t *left, ser_t *right, int all)
 {
-	delta	*d, *p;
+	ser_t	d, p;
 	int	color;
 
 	assert(left && right);
 	*left = *right = 0;
-	for (d = s->table; d; d = NEXT(d)) {
-		if (TAG(d)) continue;
-		color = (d->flags & (D_SET|D_RED|D_BLUE));
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
+		if (TAG(s, d)) continue;
+		color = (FLAGS(s, d) & (D_SET|D_RED|D_BLUE));
 		/* parent region of left does not intersect D_SET region */
 		assert((color & (D_SET|D_RED)) != (D_SET|D_RED));
 		unless (all || color) continue;
 		/*
 		 * Color this node to its final value
 		 */
-		d->flags &= ~color;	/* turn all off */
+		FLAGS(s, d) &= ~color;	/* turn all off */
 		if (color & D_SET) {
-			d->flags |= D_RED;
+			FLAGS(s, d) |= D_RED;
 		} else if (color & D_BLUE) {
-			d->flags |= D_BLUE;
+			FLAGS(s, d) |= D_BLUE;
 		}
 
 		/* grab first tip in D_SET and non D_SET regions */
 		if (color & D_SET) {
-			unless (color & D_BLUE) *right = *right ? INVALID : d;
+			unless (color & D_BLUE) *right = *right ? D_INVALID : d;
 		} else {
-			unless (color & D_RED) *left = *left ? INVALID : d;
+			unless (color & D_RED) *left = *left ? D_INVALID : d;
 		}
 		/*
 		 * color parents of D_SET => D_BLUE, and
@@ -689,10 +698,10 @@ range_unrange(sccs *s, delta **left, delta **right, int all)
 
 		/* Color parents */
 		if (p = PARENT(s, d)) {
-			p->flags |= color;
+			FLAGS(s, p) |= color;
 		}
 		if (p = MERGE(s, d)) {
-			p->flags |= color;
+			FLAGS(s, p) |= color;
 		}
 	}
 }

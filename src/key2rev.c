@@ -10,7 +10,7 @@ int
 key2rev_main(int ac, char **av)
 {
 	char	*name;
-	delta	*d;
+	ser_t	d;
 	sccs	*s;
 	char	buf[MAXPATH];
 
@@ -27,7 +27,7 @@ key2rev_main(int ac, char **av)
 			fprintf(stderr, "Can't find %s in %s\n", buf, s->sfile);
 			exit(1);
 		}
-		printf("%s\n", d->rev);
+		printf("%s\n", REV(s, d));
 	}
 	sccs_free(s);
 	return (0);

@@ -1,6 +1,11 @@
 #include "system.h"
 #include "sccs.h"
 
+/*
+ * Return the local timezone as a string "[-]HH:MM"
+ * The current GMT time_t is passed to because the zone changes
+ * with daylight savings time.
+ */
 char	*
 sccs_zone(time_t tt)
 {

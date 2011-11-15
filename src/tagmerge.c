@@ -2,7 +2,7 @@
 #include "sccs.h"
 #define	NTAGS	50
 
-private void	m(sccs *s, delta *l, delta *r);
+private void	m(sccs *s, ser_t l, ser_t r);
 private	int	tagmerge(void);
 
 /*
@@ -27,7 +27,7 @@ private int
 tagmerge(void)
 {
 	sccs	*s;
-	delta	*d, *a = 0, *b = 0;
+	ser_t	d, e, a = 0, b = 0;
 	int	i = 0;
 	char	cset[] = CHANGESET;
 
@@ -38,12 +38,13 @@ tagmerge(void)
 	/*
 	 * Find the two oldest tag tips, and count up all tips.
 	 */
-	for (d = s->table, i = 0; d; d = NEXT(d)) {
-		unless (d->symGraph) continue;
-		if (d->ptag) sfind(s, d->ptag)->flags |= D_RED;
-		if (d->mtag) sfind(s, d->mtag)->flags |= D_RED;
-		if (d->flags & D_RED) {
-			d->flags &= ~D_RED;
+	for (d = TABLE(s), i = 0; d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
+		unless (SYMGRAPH(s, d)) continue;
+		if (e = PTAG(s, d)) FLAGS(s, e) |= D_RED;
+		if (e = MTAG(s, d)) FLAGS(s, e) |= D_RED;
+		if (FLAGS(s, d) & D_RED) {
+			FLAGS(s, d) &= ~D_RED;
 			continue;
 		}
 		i++;
@@ -55,7 +56,7 @@ tagmerge(void)
 		return (0);
 	}
 	fprintf(stderr, "Merge tips %s/%d %s/%d (%d tips total)\n",
-	    a->rev, a->serial, b->rev, b->serial, i);
+	    REV(s, a), a, REV(s, b), b, i);
 	m(s, a, b);
 	return (1);
 }
@@ -85,9 +86,9 @@ doit(u32 sum, char *buf)
 }
 
 private void
-m(sccs *s, delta *l, delta *r)
+m(sccs *s, ser_t l, ser_t r)
 {
-	delta	*d, *p;
+	ser_t	d, p;
 	char	key[MAXKEY];
 	char	zone[20];
 	int	i, sign, hwest, mwest;
@@ -97,24 +98,24 @@ m(sccs *s, delta *l, delta *r)
 	u32	sum = 0;
 	char	tmp[20], buf[MAXKEY];
 
-	p = (l->date < r->date) ? r : l;
+	p = (DATE(s, l) < DATE(s, r)) ? r : l;
 	i = 1;
 	do {
-		tt = p->date + i++;
-		for (d = s->table; d; d = NEXT(d)) {
-			if (d->date < tt) {
+		tt = DATE(s, p) + i++;
+		for (d = TABLE(s); d >= TREE(s); d--) {
+			unless (FLAGS(s, d)) continue;
+			if (DATE(s, d) < tt) {
 				d = 0;
 				break;
 			}
-			if ((d->date == tt) &&
-			    streq(d->user, p->user) &&
-			    streq(d->hostname, p->hostname) &&
-			    streq(d->pathname, p->pathname)) {
+			if ((DATE(s, d) == tt) &&
+			    streq(USERHOST(s, d), USERHOST(s, p)) &&
+			    streq(PATHNAME(s, d), PATHNAME(s, p))) {
 			    	break;
 			}
 		}
 	} while (d);
-	while (p->pserial && (p->type != 'D')) p = PARENT(s, p);
+	while (PARENT(s, p) && TAG(s, p)) p = PARENT(s, p);
 	sprintf(buf, "# Patch vers:\t1.3\n# Patch type:\tREGULAR\n\n");
 	sum = doit(sum, buf);
 	sprintf(buf, "== %s ==\n", s->gfile);
@@ -137,8 +138,8 @@ m(sccs *s, delta *l, delta *r)
 	mwest = (seast % 3600) / 60;
 	sprintf(zone, "%c%02d:%02d", sign, hwest, mwest);
 
-	sprintf(buf, "M %s %s%s %s@%s +0 -0\n",
-	    "0.0", tmp, zone, p->user, p->hostname);
+	sprintf(buf, "M %s %s%s %s +0 -0\n",
+	    "0.0", tmp, zone, USERHOST(s, p));
 	sum = doit(sum, buf);
 	sccs_sdelta(s, sccs_ino(s), key);
 	sprintf(buf, "B %s\n", key);

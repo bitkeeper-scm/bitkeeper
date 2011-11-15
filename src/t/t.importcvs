@@ -154,7 +154,7 @@ cat <<EOF > WANT_TAGS
 1.3 tag_next1 branch2_BASE
 1.2 tag_start
 EOF
-bk diff -u TAGS WANT_TAGS
+cmpfiles TAGS WANT_TAGS
 bk renumber ChangeSet 2> ERR
 test -s ERR && {
 	echo failed

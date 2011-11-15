@@ -240,7 +240,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	bktmp(tmp, "smerge");
 	f->tmpfile = strdup(tmp);
 	s = sccs_init(sfile, 0);
-	unless (s && s->tree) return (-1);
+	unless (s && TREE(s)) return (-1);
 	free(sfile);
 	rev = strdup(rev);
 	if (inc = strchr(rev, '+')) *inc++ = 0;
@@ -324,7 +324,7 @@ find_gca(char *file, char *left, char *right)
 {
 	sccs	*s;
 	char	*sfile = name2sccs(file);
-	delta	*dl, *dr, *dg;
+	ser_t	dl, dr, dg;
 	char	*inc = 0, *exc = 0;
 	FILE	*revlist = 0;
 
@@ -348,7 +348,7 @@ find_gca(char *file, char *left, char *right)
 	}
 	dg = sccs_gca(s, dl, dr, &inc, &exc);
 	revlist = fmem();
-	fputs(dg->rev, revlist);
+	fputs(REV(s, dg), revlist);
 	if (inc) {
 		fprintf(revlist, "+%s", inc);
 		free(inc);

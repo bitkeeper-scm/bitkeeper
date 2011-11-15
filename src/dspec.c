@@ -34,7 +34,7 @@ private struct {
 	int	line;		/* current line in $each iteration */
 	int	tcl;		/* whether we are inside a $tcl construct */
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	FILE	*flhs, *frhs;	/* tmp fmem handles to hold expressions */
 } _g[2];
 private	int	gindex;
@@ -55,7 +55,7 @@ private void	stmtList(FILE *out);
 private char	*string(FILE *out, op *next_tok);
 
 void
-dspec_eval(FILE * out, sccs *s, delta *d, char *dspec)
+dspec_eval(FILE * out, sccs *s, ser_t d, char *dspec)
 {
 	gindex = gindex ? 0 : 1;	// flip flop
 	g.out = out;
@@ -589,16 +589,22 @@ getnext(datum kw, nextln *state)
 		state->freeme = 0;
 	}
 again:
-	++state->i;	/* first call has it set to 0, so now 1 */
 	if (strneq(kw.dptr, "C", kw.dsize)) {
-		comments_load(g.s, g.d);
-		unless (g.d && g.d->cmnts &&
-		    (state->i <= nLines(g.d->cmnts))) {
-			return (0);
+		char	*p, *t;
+		int	len;
+
+		unless (g.d && HAS_COMMENTS(g.s, g.d)) return (0);
+
+		t = COMMENTS(g.s, g.d);
+		t += state->i;
+		if (*t && (p = strchr(t, '\n'))) {
+			len = p-t;
+			state->freeme = strndup(t, len);
+			state->i += len+1;
 		}
-		if (g.d->cmnts[state->i][0] == '\001') goto again;
-		return(g.d->cmnts[state->i]);
+		return(state->freeme);
 	}
+	++state->i;	/* first call has it set to 0, so now 1 */
 
 	/* XXX FD depracated */
 	if (strneq(kw.dptr, "FD", kw.dsize)) {
@@ -614,17 +620,17 @@ again:
 	if (strneq(kw.dptr, "SYMBOL", kw.dsize) ||
 	    strneq(kw.dptr, "TAG", kw.dsize)) {
 		if (state->i == 1) {
-			unless (g.d && (g.d->flags & D_SYMBOLS)) return (0);
-			state->sym = g.s->symbols;
+			unless (g.d && (FLAGS(g.s, g.d) & D_SYMBOLS)) return (0);
+			state->sym = g.s->symlist + nLines(g.s->symlist);
 		} else {
-			state->sym = state->sym->next;
+			--state->sym;
 		}
-		while (state->sym && (g.d !=
-		    (g.s->prs_all ? state->sym->metad : state->sym->d))) {
-			state->sym = state->sym->next;
+		while ((state->sym > g.s->symlist) && (g.d !=
+		    (g.s->prs_all ? state->sym->meta_ser : state->sym->ser))) {
+			--state->sym;
 		}
-		unless (state->sym) return (0);
-		return (state->sym->symname);
+		if (state->sym == g.s->symlist) return (0);
+		return (SYMNAME(g.s, state->sym));
 	}
 
 	/* Handle all single-line keywords. */

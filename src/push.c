@@ -19,7 +19,7 @@ private	struct {
 	int	n;			/* # of comps, including product */
 	u32	inBytes, outBytes;	/* stats */
 	u64	bpsz;			/* size of BAM data */
-	delta	*d;			/* -r tip delta to push */
+	ser_t	d;			/* -r tip delta to push */
 	char	*rev;			/* -r */
 	char	**av_push;		/* for ensemble push */
 	char	**av_clone;		/* for ensemble clone */

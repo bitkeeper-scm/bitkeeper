@@ -142,14 +142,14 @@ OBJ =	bkver.o cmd.o \
 	contrib/test.o \
 	converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	delta.o diffs.o diffsplit.o dspec.o \
+	dataheap.o delta.o diffs.o diffsplit.o dspec.o \
 	eula.o export.o \
 	features.o \
 	find.o findcset.o fixtool.o fsl.o fslayer.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o \
-	help.o here.o here_check.o host.o hostme.o http.o \
+	help.o here.o here_check.o hostme.o http.o \
 	idcache.o isascii.o inskeys.o \
 	key2rev.o key2path.o kill.o kv.o kvfile.o \
 	lease.o level.o \
@@ -187,7 +187,7 @@ OBJ =	bkver.o cmd.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
 	resolve_renames.o resolve_tags.o restore.o review.o \
 	rm.o rmdel.o rmshortkeys.o \
-	root.o rset.o scompress.o sane.o sccs.o sccs2bk.o \
+	root.o rset.o scompress.o sane.o scat.o sccs.o sccs2bk.o \
 	sccslog.o sccs_mv.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o startmenu.o \
@@ -197,7 +197,7 @@ OBJ =	bkver.o cmd.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
 	urlinfo.o \
-	user.o utils.o uu.o what.o which.o \
+	utils.o uu.o what.o which.o \
 	xflags.o \
 	zone.o
 SCRIPTS	= applypatch bk.script import \

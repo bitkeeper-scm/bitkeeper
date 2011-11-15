@@ -154,7 +154,7 @@ diffs_main(int ac, char **av)
 	while (name) {
 		int	ex = 0;
 		sccs	*s = 0;
-		delta	*d;
+		ser_t	d;
 		char	*r1 = 0, *r2 = 0;
 
 		/*
@@ -220,14 +220,14 @@ diffs_main(int ac, char **av)
 			}
 			if (range_process("diffs", s, RANGE_ENDPOINTS,&rargs)) {
 				unless (empty) goto next;
-				s->rstart = s->tree;
+				s->rstart = TREE(s);
 			}
 			if (restore) rargs.rstart = ".";
 		}
 		if (s->rstart) {
-			unless (r1 = s->rstart->rev) goto next;
+			unless (r1 = REV(s, s->rstart)) goto next;
 			if ((rargs.rstop) && (s->rstart == s->rstop)) goto next;
-			if (s->rstop) r2 = s->rstop->rev;
+			if (s->rstop) r2 = REV(s, s->rstop);
 		}
 #if	0
 		/*
@@ -272,7 +272,7 @@ diffs_main(int ac, char **av)
 			if (BAM(s)) {
 				if (flags & DIFF_HEADER) {
 					printf("===== %s %s vs edited =====\n",
-					    s->gfile, sccs_top(s)->rev);
+					    s->gfile, REV(s, sccs_top(s)));
 				}
 				printf("Binary file %s differs\n", s->gfile);
 				goto next;

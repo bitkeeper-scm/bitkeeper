@@ -233,9 +233,8 @@ write_editfile(FILE *f, char **files, int to_stdout)
 
 	EACH(files) {
 		sccs	*s;
-		delta	*d;
+		ser_t	d;
 		char	*t, *name;
-		int	j;
 
 		name = files[i];
 		t = strchr(name, BK_FS);
@@ -250,15 +249,12 @@ write_editfile(FILE *f, char **files, int to_stdout)
 		name = _relativeName(s->gfile, 0, 0, 0, proj);
 		if (to_stdout) {
 			fprintf(f, "### Comments for %s%c%s\n",
-			    name, BK_FS, d->rev);
+			    name, BK_FS, REV(s, d));
 		} else {
 			fprintf(f, "### Change the comments to %s%c%s below\n",
-			    name, BK_FS, d->rev);
+			    name, BK_FS, REV(s, d));
 		}
-		comments_load(s, d);
-		EACH_INDEX(d->cmnts, j) {
-			fprintf(f, "%s\n", d->cmnts[j]);
-		}
+		fputs(COMMENTS(s, d), f);
 		fprintf(f, "\n");
 next:		if (s) sccs_free(s);
 	}
@@ -273,7 +269,7 @@ private int
 change_comments(char *file, char *rev, char **comments)
 {
 	sccs	*s = 0;
-	delta	*d;
+	ser_t	d;
 	char	*sfile = 0;
 	int	i;
 	int	rc = 1;
@@ -285,16 +281,13 @@ change_comments(char *file, char *rev, char **comments)
 		    file, rev);
 		goto err;
 	}
-	EACH_REVERSE(comments) {
-		unless (streq(comments[i], "")) break;
-		free(comments[i]);
-		comments[i] = 0;
+	/* trim trailing blank lines */
+	while ((i = nLines(comments)) && streq(comments[i], "")) {
+		removeLineN(comments, i, free);
 	}
-	if (i < nLines(comments)) truncLines(comments, i);
 	if (emptyLines(comments)) goto err;
-	comments_free(d);
-	EACH(comments) comments_append(d, comments[i]);
-	freeLines(comments, 0);
+	comments_set(s, d, comments);
+	freeLines(comments, free);
 	sccs_newchksum(s);
 	rc = 0;
  err:	if (s) sccs_free(s);

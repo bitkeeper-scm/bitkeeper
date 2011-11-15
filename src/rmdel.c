@@ -8,7 +8,7 @@ rmdel_main(int ac, char **av)
 	sccs	*s;
 	int	c, flags = 0;
 	char	*name, *rev = 0;
-	delta	*d, *e;
+	ser_t	d, e;
 
 	while ((c = getopt(ac, av, "qr;", 0)) != -1) {
 		switch (c) {
@@ -43,13 +43,11 @@ err:		sccs_free(s);
 		return (1);
 	}
 
-	for (e = d; e; e = KID(e)) {
-		if (e->flags & D_CSET) {
-			fprintf(stderr,
-			    "rmdel: can't remove committed delta %s:%s\n",
-			    s->gfile, e->rev);
-			goto err;
-		}
+	if (e = sccs_csetBoundary(s, d)) {
+		fprintf(stderr,
+		    "rmdel: can't remove committed delta %s:%s\n",
+		    s->gfile, REV(s, e));
+		goto err;
 	}
 
 	if (sccs_clean(s, SILENT)) {

@@ -1357,7 +1357,7 @@ after(int quiet, int verbose, char *rev)
 	char	*p;
 	int	i;
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	int	co;
 	char	revbuf[MAXREV];
 
@@ -1366,7 +1366,7 @@ after(int quiet, int verbose, char *rev)
 		if (isKey(rev)) {
 			s = sccs_csetInit(SILENT|INIT_NOCKSUM);
 			if (d = sccs_findrev(s, rev)) {
-				strcpy(revbuf, d->rev);
+				strcpy(revbuf, REV(s, d));
 				rev = revbuf;
 			}
 			sccs_free(s);
@@ -1669,8 +1669,7 @@ attach_name(sccs *cset, char *name, int setmarks)
 {
 	int	ret = 1;
 	sccs	*freeme = 0;
-	delta	*d, *p;
-	int	j;
+	ser_t	d, p;
 
 	unless (cset || (freeme = cset = sccs_csetInit(INIT_MUSTEXIST))) {
 		fprintf(stderr, "failed to init cset\n");
@@ -1684,26 +1683,16 @@ attach_name(sccs *cset, char *name, int setmarks)
 	 */
 	(void)sccs_defRootlog(cset);
 
-	for (j = 1; j < cset->nextserial; j++) {
-		unless (d = sfind(cset, j)) continue;
+	for (d = TREE(cset); d <= TABLE(cset); d++) {
+		unless (FLAGS(cset, d)) continue;
 		p = PARENT(cset, d);
-		if (setmarks && !TAG(d) && p) {
-			d->flags |= D_CSET;
+		if (setmarks && !TAG(cset, d) && p) {
+			FLAGS(cset, d) |= D_CSET;
 		} else {
-			d->flags &= ~D_CSET;
+			FLAGS(cset, d) &= ~D_CSET;
 		}
-		/* previous loop may have broken duppath pointer so fix */
-		if (d->flags & D_DUPPATH) {
-			assert(p);
-			d->pathname = p->pathname;
-		}
-		unless (p) {
-			/* leave rootkey name alone */
-		} else if (!p->pserial && !TAG(d)) { /* 1.1 and siblings */
-			sccs_setPath(cset, d, name);
-		} else unless (d->flags & D_DUPPATH) {
-			sccs_setPath(cset, d, p->pathname);
-		}
+		/* leave rootkey name alone */
+		if (p) sccs_setPath(cset, d, name);
 	}
 	if (freeme && sccs_newchksum(freeme)) goto err;
 
@@ -1899,7 +1888,7 @@ clonemod_part2(char **envVar)
 	char	**av;
 	char	*t;
 	sccs	*cset;
-	delta	*d;
+	ser_t	d;
 	FILE	*f;
 	char	**strip = 0;
 	char	buf[MAXLINE];
@@ -1914,20 +1903,22 @@ clonemod_part2(char **envVar)
 	while (t = fgetline(f)) {
 		d = sccs_findKey(cset, t);
 		assert(d);
-		d->flags |= D_SET;
+		FLAGS(cset, d) |= D_SET;
 	}
 	pclose(f);
-	for (d = cset->table; d; d = NEXT(d)) {
-		if (d->flags & D_SET) continue;
-		if (TAG(d)) continue;
+	for (d = TABLE(cset); d >= TREE(cset); d--) {
+		unless (FLAGS(cset, d)) continue;
+		if (FLAGS(cset, d) & D_SET) continue;
+		if (TAG(cset, d)) continue;
 
 		/* newest gca tip */
 		sccs_color(cset, d);
 		break;
 	}
-	for (d = cset->table; d; d = NEXT(d)) {
-		if ((d->flags & D_SET) ||
-		    (!(d->flags & D_RED) && !TAG(d))) {
+	for (d = TABLE(cset); d >= TREE(cset); d--) {
+		unless (FLAGS(cset, d)) continue;
+		if ((FLAGS(cset, d) & D_SET) ||
+		    (!(FLAGS(cset, d) & D_RED) && !TAG(cset, d))) {
 			sccs_sdelta(cset, d, buf);
 			strip = addLine(strip, strdup(buf));
 		}

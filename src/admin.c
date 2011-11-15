@@ -14,6 +14,7 @@
 private	int	do_checkin(char *nm, int fl,
 		   char *rev, char *newf, char *com);
 private	int	setMerge(sccs *sc, char *merge, char *rev);
+private	void	rootCsetFile(sccs *sc, char *csetFile);
 
 int
 admin_main(int ac, char **av)
@@ -34,16 +35,20 @@ admin_main(int ac, char **av)
 	char	*m = 0;
 	char	*csetFile = 0;
 	char	*obscure = 0;
-	delta	*d = 0;
+	ser_t	d = 0;
 	int 	was_edited = 0, new_delta = 0;
 	pfile	pf = {0};
+	longopt	lopt[] = {
+		{ "text;", 310 },
+		{ 0, 0 }
+	};
 
 	bzero(f, sizeof(f));
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;AC|d;e;E;f;F;i|M;m;O;p|P|r;S;t|y|Z|0DhHnqsTuz", 0))
-	       != -1) {
+	    getopt(ac, av, "a;AB|C|d;e;E;f;F;i|M;m;O;p|P|r;S;y|Z|0DhHnqsuz",
+		lopt)) != -1) {
 		switch (c) {
 		/* user|group */
 		    case 'a':	OP(u, optarg, A_ADD); break; 	/* undoc? 2.0 */
@@ -81,13 +86,15 @@ admin_main(int ac, char **av)
 			break;
 		    case 'E':	fprintf(stderr, "No longer supported.\n");
 		    		exit(1);
+		    case 'B': /* binfile */
+			bk_setConfig("binfile",
+			    optarg && streq(optarg, "none") ? "no" : "yes");
+			flags |= NEWCKSUM;
+			touchGfile++;
+			break;
+
 		/* symbols */
 		    case 'S':	OP(s, optarg, A_ADD); break;	/* undoc */
-		/* text */
-		    case 't':					/* doc 2.0 */
-			text = optarg ? optarg : ""; new_delta = 1; break;
-		    case 'T':					/* doc 2.0 */	
-			text = ""; new_delta = 1; break;
 		/* singletons */
 		    case '0':					/* doc 2.0 */
 			flags |= ADMIN_ADD1_0|NEWCKSUM; break;
@@ -117,6 +124,9 @@ admin_main(int ac, char **av)
 				touchGfile++;
 				break;
 		    case 'O':	obscure = optarg; break;
+		    case 310: // --text=
+			text = optarg ? optarg : "";
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -217,21 +227,22 @@ admin_main(int ac, char **av)
 			continue;
 		}
 		if (dopath) {
-			delta	*d;
+			ser_t	d;
 
-			for (d = sc->table; (dopath == 2) && d; d = NEXT(d)) {
-				unless (NEXT(d)) break;
+			for (d = TABLE(sc);
+			    (dopath == 2) && (d >= TREE(sc)); d--) {
+				unless (FLAGS(sc, d)) continue;
+				if (d == TREE(sc)) break;
 				/* ugly and inefficient temporary state */
-				if (d->pathname) free(d->pathname);
-				d->pathname = PATH_BUILD(path, "");
-				d->flags &= ~D_DUPPATH;
+				PATHNAME_SET(sc, d, path);
+				SORTPATH_SET(sc, d, 0);
 			}
 			d = rev ? sccs_findrev(sc, rev) : sccs_top(sc);
-			sccs_parseArg(d, 'P', path ? path : sc->gfile, 0); 
+			sccs_parseArg(sc, d, 'P', path ? path : sc->gfile, 0);
 		}
 		if (newCset) {
 			if (bk_notLicensed(sc->proj, LIC_ADM, 0)) exit(1);
-			sccs_parseArg(sc->tree, 'B', csetFile, 0);
+			if (csetFile) rootCsetFile(sc, csetFile);
 			flags |= NEWCKSUM;
 		}
 		if (rmCsets) {
@@ -244,12 +255,13 @@ admin_main(int ac, char **av)
 		 * detaching a component repo.
 		 */
 		if (addCsets) {
-			delta	*d;
+			ser_t	d;
 
-			for (d = sc->table; d; d = NEXT(d)) {
-				unless (NEXT(d)) break;
-				if (TAG(d)) continue;
-				d->flags |= D_CSET;
+			for (d = TABLE(sc); d >= TREE(sc); --d) {
+				unless (FLAGS(sc, d)) continue;
+				if (d == TREE(sc)) break;
+				if (TAG(sc, d)) continue;
+				FLAGS(sc, d) |= D_CSET;
 			}
 		}
 		if (doDates) sccs_fixDates(sc);
@@ -316,7 +328,7 @@ private	int
 do_checkin(char *name,
 	int flags, char *rev, char *newfile, char *comment)
 {
-	delta	*d = 0;
+	ser_t	d = 0;
 	sccs	*s;
 	int	error;
 	struct	stat sb;
@@ -376,11 +388,11 @@ do_checkin(char *name,
 		s->mode = S_IFREG | (0777 & mask);
 	}
 	if (rev) {
-		d = sccs_parseArg(d, 'R', rev, 0);
-		if ((d->flags & D_BADFORM) ||
-		    (!d->r[0] || (!d->r[1] && (d->r[0] != 1))) ||
-		    (d->r[2] && !d->r[3])) {
-			sccs_freetree(d);
+		d = sccs_parseArg(s, d, 'R', rev, 0);
+		if ((FLAGS(s, d) & D_BADFORM) ||
+		    (!R0(s, d) || (!R1(s, d) && (R0(s, d) != 1))) ||
+		    (R2(s, d) && !R3(s, d))) {
+			sccs_freedelta(s, d);
 			fprintf(stderr, "admin: bad revision: %s for %s\n",
 			    rev, s->sfile);
 			sccs_free(s);
@@ -394,7 +406,7 @@ do_checkin(char *name,
 		flags |= DELTA_EMPTY;
 	}
 	s->state |= S_GFILE;
-	if (comment) { d = sccs_parseArg(d, 'C', comment, 0); }
+	if (comment) { d = sccs_parseArg(s, d, 'C', comment, 0); }
 	if ((error = sccs_delta(s, flags|DELTA_SAVEGFILE, d, 0, 0, 0))) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr, "admin: failed to check in %s.\n",
@@ -408,7 +420,7 @@ do_checkin(char *name,
 private	int
 setMerge(sccs *sc, char *merge, char *rev)
 {
-	delta *d, *p;
+	ser_t	d, p;
 
 	unless (d = sccs_findrev(sc, rev)) {
 		fprintf(stderr, "admin: can't find %s in %s\n",
@@ -420,7 +432,7 @@ setMerge(sccs *sc, char *merge, char *rev)
 		    merge, sc->sfile);
 		return -1;
 	}
-	d->merge = p->serial;
+	MERGE_SET(sc, d, p);
 	return 0;
 }
 
@@ -436,4 +448,38 @@ sccs_touch(sccs *s)
 	unless(s->gfile && exists(s->gfile)) return;
 	ut.actime = ut.modtime = time(0);
 	utime(s->gfile, &ut);
+}
+
+/*
+ * Mimic the old DUP idea in changing the root value of csetfile,
+ * and rippling that out to other places that had the same value
+ * as the parent.
+ */
+private	void
+rootCsetFile(sccs *sc, char *csetFile)
+{
+	int	last, new_cf;
+	char	*orig;
+	ser_t	d, p;
+
+	d = TREE(sc);
+	orig = CSETFILE(sc, d);
+	sccs_parseArg(sc, d, 'B', csetFile, 0);
+	new_cf = CSETFILE_INDEX(sc, d);
+	FLAGS(sc, d) |= D_RED;
+	last = d;
+
+	for (++d; d <= TABLE(sc); ++d) {
+		unless (FLAGS(sc, d)) continue;
+		unless (p = PARENT(sc, d)) continue;
+		unless (FLAGS(sc, p) & D_RED) continue;
+		unless (streq(orig, CSETFILE(sc, d))) continue;
+		CSETFILE_INDEX(sc, d) = new_cf;
+		FLAGS(sc, d) |= D_RED;
+		last = d;
+	}
+	for (d = last; d >= TREE(sc); --d) {
+		unless (FLAGS(sc, d)) continue;
+		FLAGS(sc, d) &= ~D_RED;
+	}
 }

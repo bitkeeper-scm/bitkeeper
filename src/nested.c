@@ -209,7 +209,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 {
 	nested	*n = 0;
 	comp	*c = 0;
-	delta	*d, *left, *right;
+	ser_t	d, left, right;
 	int	i;
 	int	inCache;
 	char	*t, *v;
@@ -290,8 +290,8 @@ err:				if (revsDB) mdbm_close(revsDB);
 				free(cwd);
 				return (0);
 			}
-			if (TAG(d)) continue;
-			d->flags |= D_SET;
+			if (TAG(cset, d)) continue;
+			FLAGS(cset, d) |= D_SET;
 			nontag = 1;
 		}
 		unless (nontag) goto prod; /* tag only push, pull, undo */
@@ -310,11 +310,11 @@ err:				if (revsDB) mdbm_close(revsDB);
 	 * right colored BLUE.
 	 */
 	range_unrange(cset, &left, &right, (flags & NESTED_PULL));
-	if (left == INVALID) {
+	if (left == D_INVALID) {
 		fprintf(stderr, "nested: rev list has more than one base\n");
 		goto err;
 	}
-	if (right == INVALID) {
+	if (right == D_INVALID) {
 		fprintf(stderr, "nested: rev list has more than one tip\n");
 		goto err;
 	}
@@ -328,7 +328,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 	n->product->deltakey = strdup(buf);
 
 	if (left) {
-		n->oldtip = strdup(left->rev);
+		n->oldtip = strdup(REV(cset, left));
 		sccs_sdelta(cset, left, buf);
 		n->product->lowerkey = strdup(buf);
 	}
@@ -342,7 +342,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 	d = 0;
 	while (t = sccs_nextdata(cset)) {
 		unless (isData(t)) {
-			if (t[1] == 'I') d = sfind(cset, atoi(&t[3]));
+			if (t[1] == 'I') d = atoi(&t[3]);
 			continue;
 		}
 		v = separator(t);		/* delta key */
@@ -379,7 +379,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 			n->comps = addLine(n->comps, c);
 		}
 		/* RED or BLUE, but never both */
-		assert((d->flags & (D_RED|D_BLUE)) != (D_RED|D_BLUE));
+		assert((FLAGS(cset, d) & (D_RED|D_BLUE)) != (D_RED|D_BLUE));
 
 		/*
 		 * The #define names only make sense when thinking about PULL
@@ -391,9 +391,9 @@ err:				if (revsDB) mdbm_close(revsDB);
 		 *     like when undo is done
 		 */
 
-#define	IN_GCA(d)	((d)->flags & D_BLUE)
-#define	IN_REMOTE(d)	((d)->flags & D_RED)
-#define	IN_LOCAL(d)	!((d)->flags & (D_RED | D_BLUE))
+#define	IN_GCA(d)	(FLAGS(cset, (d)) & D_BLUE)
+#define	IN_REMOTE(d)	(FLAGS(cset, (d)) & D_RED)
+#define	IN_LOCAL(d)	!(FLAGS(cset, (d)) & (D_RED | D_BLUE))
 
 		if (!c->included && IN_REMOTE(d)) {
 			/* lastest delta included in revs or under tip */
@@ -496,14 +496,14 @@ pending:
 			concat_path(buf, c->path, "SCCS/d.ChangeSet");
 			if (exists(buf)) {
 				sccs	*s;
-				delta	*d;
+				ser_t	d;
 
 				concat_path(buf, c->path, CHANGESET);
 				s = sccs_init(buf,
 				    SILENT|INIT_NOCKSUM|INIT_MUSTEXIST);
 				assert(s);
 				d = sccs_top(s);
-				unless (d->flags & D_CSET) {
+				unless (FLAGS(s, d) & D_CSET) {
 					c->pending = 1;
 					if (c->deltakey) free(c->deltakey);
 					sccs_sdelta(s, d, buf);

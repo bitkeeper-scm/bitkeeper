@@ -23,8 +23,6 @@ export ME BK_USER BK_HOST BK_YEAR2
 NUM=0
 FILE=test$NUM
 
-echo compression:none > "`bk dotbk`"/config
-
 # Don't create gone in 'bk setup'
 # (use fresh_commercial so this don't effect cache)
 _BK_SETUP_NOGONE=1
@@ -168,13 +166,14 @@ bk gone $Q copy55
 bk commit $Q -ywhatever2 >/dev/null 2>&1 < ../Y
 JUNK=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/gone`
 J_UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/gone`
-bk _mv BitKeeper/etc/SCCS/s.gone OLD
-perl -pe "s|$JUNK BBB/|$DATE BBB/|" < OLD | bk undos > tmp
+bk _scat BitKeeper/etc/SCCS/s.gone \
+    | perl -pe "s|$JUNK BBB/|$DATE BBB/|" | bk undos > tmp
 bk _mv tmp BitKeeper/etc/SCCS/s.gone
 bk admin -z BitKeeper/etc/gone
-bk _mv SCCS/s.ChangeSet OLD2
-sed "s?BitKeeper/etc/gone|$J_UTC?BitKeeper/etc/gone|$UTC?" < OLD2 >  X
-bk undos X > tmp
+# XXX sed doesn't need undos, just perl
+bk _scat SCCS/s.ChangeSet \
+    | sed "s?BitKeeper/etc/gone|$J_UTC?BitKeeper/etc/gone|$UTC?" \
+    | bk undos > tmp
 bk _mv tmp SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk checksum -f ChangeSet 2> /dev/null
@@ -248,7 +247,7 @@ echo $N Force cset derived root key, clone ..........................$NL
 BK_USER=user
 BK_HOST=bk_regression.host.bk
 cd BitKeeper/etc
-bk _cat ../../SCCS/s.ChangeSet | perl -ne 's,cPChangeSet,cPBitKeeper/etc/gone,; print unless /^.cC$/ || /^.cS/ || /^.cX/ || /^.f x 0x/;' | bk undos > X
+bk _scat ../../SCCS/s.ChangeSet | perl -ne 's,cPChangeSet,cPBitKeeper/etc/gone,; print unless /^.cC$/ || /^.cS/ || /^.cX/ || /^.f x 0x/;' | bk undos > X
 bk _mv X SCCS/s.gone
 bk admin -z gone
 bk stripdel $Q -r1.0.. gone

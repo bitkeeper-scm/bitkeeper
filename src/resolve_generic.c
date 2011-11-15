@@ -44,11 +44,11 @@ resolve_init(opts *opts, sccs *s)
 		assert(rs->d);
 	}
 	if (rs->d) {
-		rs->dname = name2sccs(rs->d->pathname);
+		rs->dname = name2sccs(PATHNAME(rs->s, rs->d));
 	}
 	if (opts->debug) {
 		fprintf(stderr, "rs_init(%s - %s)",
-			rs->s->gfile, rs->d ? rs->d->pathname : "<conf>");
+			rs->s->gfile, rs->d ? PATHNAME(rs->s, rs->d) : "<conf>");
 		if (rs->snames) fprintf(stderr, " snames");
 		if (rs->revs) fprintf(stderr, " revs");
 		fprintf(stderr, "\n");
@@ -74,7 +74,7 @@ resolve_dump(resolve *rs)
 	if (rs->prompt) fprintf(stderr, "prompt: %s\n", rs->prompt);
 	if (rs->s) fprintf(stderr, "sfile: %s\n", rs->s->sfile);
 	if (rs->key) fprintf(stderr, "key: %s\n", rs->key);
-	if (rs->d) fprintf(stderr, "delta: %s\n", rs->d->rev);
+	if (rs->d) fprintf(stderr, "delta: %s\n", REV(rs->s, rs->d));
 	if (rs->dname) fprintf(stderr, "dname: %s\n", rs->dname);
 	if (rs->revs) pnames("revs", rs->revs);
 	if (rs->rnames) pnames("rnames", rs->rnames);
@@ -115,7 +115,7 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 		fprintf(stderr, "\tsccs: %s\n", rs->s->gfile);
 		if (rs->d) {
 			fprintf(stderr, "\ttot: %s@%s\n",
-			    rs->d->pathname, rs->d->rev);
+			    PATHNAME(rs->s, rs->d), REV(rs->s, rs->d));
 		}
 	}
 

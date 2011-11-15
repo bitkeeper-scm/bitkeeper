@@ -12,23 +12,23 @@ ft_help(resolve *rs)
 	deltas	*d = (deltas *)rs->opaque;
 	char	*l, *r;
 
-	if ((fileType(d->gca->mode) == fileType(d->local->mode)) &&
-	    (fileType(d->gca->mode) != fileType(d->remote->mode))) {
+	if ((fileType(MODE(rs->s, d->gca)) == fileType(MODE(rs->s, d->local))) &&
+	    (fileType(MODE(rs->s, d->gca)) != fileType(MODE(rs->s, d->remote)))) {
 		l = aprintf(
-		    	"unchanged type  %s", mode2FileType(d->local->mode));
+		    	"unchanged type  %s", mode2FileType(MODE(rs->s, d->local)));
 		r = aprintf(
-		    	"changed type to %s", mode2FileType(d->remote->mode));
-	} else if ((fileType(d->gca->mode) != fileType(d->local->mode)) &&
-	    (fileType(d->gca->mode) == fileType(d->remote->mode))) {
+		    	"changed type to %s", mode2FileType(MODE(rs->s, d->remote)));
+	} else if ((fileType(MODE(rs->s, d->gca)) != fileType(MODE(rs->s, d->local))) &&
+	    (fileType(MODE(rs->s, d->gca)) == fileType(MODE(rs->s, d->remote)))) {
 		l = aprintf(
-			"changed type to %s", mode2FileType(d->local->mode));
+			"changed type to %s", mode2FileType(MODE(rs->s, d->local)));
 		r = aprintf(
-		    	"unchanged type  %s", mode2FileType(d->remote->mode));
+		    	"unchanged type  %s", mode2FileType(MODE(rs->s, d->remote)));
 	} else {
 		l = aprintf(
-		    	"changed type to %s", mode2FileType(d->local->mode));
+		    	"changed type to %s", mode2FileType(MODE(rs->s, d->local)));
 		r = aprintf(
-		    	"changed type to %s", mode2FileType(d->remote->mode));
+		    	"changed type to %s", mode2FileType(MODE(rs->s, d->remote)));
 	}
 
 	fprintf(stderr,
@@ -67,8 +67,8 @@ Your choices are to either choose the local or remote type.\n\
 int
 ft_local(resolve *rs)
 {
-	delta	*l = sccs_findrev(rs->s, rs->revs->local);
-	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
+	ser_t	l = sccs_findrev(rs->s, rs->revs->local);
+	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s);	/* for windows */
 	type_delta(rs, rs->s->sfile, l, r, sccs_Xfile(rs->s, 'r'), LOCAL);
@@ -79,8 +79,8 @@ ft_local(resolve *rs)
 int
 ft_remote(resolve *rs)
 {
-	delta	*l = sccs_findrev(rs->s, rs->revs->local);
-	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
+	ser_t	l = sccs_findrev(rs->s, rs->revs->local);
+	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s);	/* for windows */
 	type_delta(rs, rs->s->sfile, l, r, sccs_Xfile(rs->s, 'r'), REMOTE);
@@ -123,14 +123,14 @@ resolve_filetypes(resolve *rs)
 		resolve_dump(rs);
 	}
 	if (rs->opts->automerge) {
-#define	SAME(a, b)	(fileType(a) == fileType(b))
-		if (SAME(d->gca->mode, d->local->mode) &&
-		    !SAME(d->gca->mode, d->remote->mode)) {
+#define	SAMETYPE(a, b)	(fileType(a) == fileType(b))
+		if (SAMETYPE(MODE(rs->s, d->gca), MODE(rs->s, d->local)) &&
+		    !SAMETYPE(MODE(rs->s, d->gca), MODE(rs->s, d->remote))) {
 		    	/* remote only change, use remote */
 			ft_remote(rs);
 			return (1);
-		} else if (!SAME(d->gca->mode, d->local->mode) &&
-		    SAME(d->gca->mode, d->remote->mode)) {
+		} else if (!SAMETYPE(MODE(rs->s, d->gca), MODE(rs->s, d->local)) &&
+		    SAMETYPE(MODE(rs->s, d->gca), MODE(rs->s, d->remote))) {
 		    	/* local only change, use local */
 			ft_local(rs);
 			return (1);

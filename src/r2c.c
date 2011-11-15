@@ -67,7 +67,7 @@ r2c(char *file, char *rev)
 {
 	int	len;
 	char	*name, *t;
-	delta	*e;
+	ser_t	e;
 	FILE	*f = 0;
 	sccs	*s = 0, *cset = 0;
 	char	*ret = 0, *key = 0, *shortkey = 0;

@@ -12,17 +12,17 @@ m_help(resolve *rs)
 	deltas	*d = (deltas *)rs->opaque;
 	char	*l, *r;
 
-	if ((d->gca->mode == d->local->mode) &&
-	    (d->gca->mode != d->remote->mode)) {
-		l = aprintf("unchanged mode  %s", mode2a(d->local->mode));
-		r = aprintf("changed mode to %s", mode2a(d->remote->mode));
-	} else if ((d->gca->mode != d->local->mode) &&
-	    (d->gca->mode == d->remote->mode)) {
-		l = aprintf("changed mode to %s", mode2a(d->local->mode));
-		r = aprintf("unchanged mode  %s", mode2a(d->remote->mode));
+	if ((MODE(rs->s, d->gca) == MODE(rs->s, d->local)) &&
+	    (MODE(rs->s, d->gca) != MODE(rs->s, d->remote))) {
+		l = aprintf("unchanged mode  %s", mode2a(MODE(rs->s, d->local)));
+		r = aprintf("changed mode to %s", mode2a(MODE(rs->s, d->remote)));
+	} else if ((MODE(rs->s, d->gca) != MODE(rs->s, d->local)) &&
+	    (MODE(rs->s, d->gca) == MODE(rs->s, d->remote))) {
+		l = aprintf("changed mode to %s", mode2a(MODE(rs->s, d->local)));
+		r = aprintf("unchanged mode  %s", mode2a(MODE(rs->s, d->remote)));
 	} else {
-		l = aprintf("changed mode to %s", mode2a(d->local->mode));
-		r = aprintf("changed mode to %s", mode2a(d->remote->mode));
+		l = aprintf("changed mode to %s", mode2a(MODE(rs->s, d->local)));
+		r = aprintf("changed mode to %s", mode2a(MODE(rs->s, d->remote)));
 	}
 
 	fprintf(stderr,
@@ -63,12 +63,12 @@ finish the resolve, and then do a \"bk chmod <mode> file\".\n\
 int
 m_local(resolve *rs)
 {
-	delta	*l = sccs_findrev(rs->s, rs->revs->local);
-	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
+	ser_t	l = sccs_findrev(rs->s, rs->revs->local);
+	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s); /* for win32 */
 	mode_delta(rs,
-	    rs->s->sfile, r, l->mode, sccs_Xfile(rs->s, 'r'), REMOTE);
+	    rs->s->sfile, r, MODE(rs->s, l), sccs_Xfile(rs->s, 'r'), REMOTE);
 	return (1);
 }
 
@@ -76,11 +76,11 @@ m_local(resolve *rs)
 int
 m_remote(resolve *rs)
 {
-	delta	*l = sccs_findrev(rs->s, rs->revs->local);
-	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
+	ser_t	l = sccs_findrev(rs->s, rs->revs->local);
+	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s); /* for win32 */
-	mode_delta(rs, rs->s->sfile, l, r->mode, sccs_Xfile(rs->s, 'r'), LOCAL);
+	mode_delta(rs, rs->s->sfile, l, MODE(rs->s, r), sccs_Xfile(rs->s, 'r'), LOCAL);
 	return (1);
 }
 
@@ -111,13 +111,13 @@ resolve_modes(resolve *rs)
 		resolve_dump(rs);
 	}
 	if (rs->opts->automerge) {
-		if ((d->gca->mode == d->local->mode) &&
-		    (d->gca->mode != d->remote->mode)) {
+		if ((MODE(rs->s, d->gca) == MODE(rs->s, d->local)) &&
+		    (MODE(rs->s, d->gca) != MODE(rs->s, d->remote))) {
 		    	/* remote only change, use remote */
 			m_remote(rs);
 			return (1);
-		} else if ((d->gca->mode != d->local->mode) &&
-		    (d->gca->mode == d->remote->mode)) {
+		} else if ((MODE(rs->s, d->gca) != MODE(rs->s, d->local)) &&
+		    (MODE(rs->s, d->gca) == MODE(rs->s, d->remote))) {
 		    	/* local only change, use local */
 			m_local(rs);
 			return (1);

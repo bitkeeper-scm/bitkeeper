@@ -1082,7 +1082,7 @@ private void
 http_index(char *page)
 {
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	time_t	now, t1h, t1d, t2d, t3d, t4d, t1w, t2w, t3w;
 	time_t	t4w, t8w, t12w, t6m, t9m, t1y, t2y, t3y;
 	int	c1h=0, c1d=0, c2d=0, c3d=0, c4d=0;
@@ -1114,30 +1114,30 @@ http_index(char *page)
 	t1y = now - YEAR;
 	t2y = now - 2*YEAR;
 	t3y = now - 3*YEAR;
-	for (d = s->table; d; d = NEXT(d)) {
-		if (user && !streq(user, d->user)) continue;
-		if (d->type == 'R') continue;
-		unless (d->added > 0) {
-			unless (d == s->tree) cm++;
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
+		if (user && !streq(user, USER(s, d))) continue;
+		if (TAG(s, d)) continue;
+		unless (ADDED(s, d) > 0) {
+			unless (d == TREE(s)) cm++;
 			continue;
 		}
-		assert(d->type == 'D');
-		if (NOFUDGE(d) >= t1h) c1h++;
-		if (NOFUDGE(d) >= t1d) c1d++;
-		if (NOFUDGE(d) >= t2d) c2d++;
-		if (NOFUDGE(d) >= t3d) c3d++;
-		if (NOFUDGE(d) >= t4d) c4d++;
-		if (NOFUDGE(d) >= t1w) c1w++;
-		if (NOFUDGE(d) >= t2w) c2w++;
-		if (NOFUDGE(d) >= t3w) c3w++;
-		if (NOFUDGE(d) >= t4w) c4w++;
-		if (NOFUDGE(d) >= t8w) c8w++;
-		if (NOFUDGE(d) >= t12w) c12w++;
-		if (NOFUDGE(d) >= t6m) c6m++;
-		if (NOFUDGE(d) >= t9m) c9m++;
-		if (NOFUDGE(d) >= t1y) c1y++;
-		if (NOFUDGE(d) >= t2y) c2y++;
-		if (NOFUDGE(d) >= t3y) c3y++;
+		if (NOFUDGE(s, d) >= t1h) c1h++;
+		if (NOFUDGE(s, d) >= t1d) c1d++;
+		if (NOFUDGE(s, d) >= t2d) c2d++;
+		if (NOFUDGE(s, d) >= t3d) c3d++;
+		if (NOFUDGE(s, d) >= t4d) c4d++;
+		if (NOFUDGE(s, d) >= t1w) c1w++;
+		if (NOFUDGE(s, d) >= t2w) c2w++;
+		if (NOFUDGE(s, d) >= t3w) c3w++;
+		if (NOFUDGE(s, d) >= t4w) c4w++;
+		if (NOFUDGE(s, d) >= t8w) c8w++;
+		if (NOFUDGE(s, d) >= t12w) c12w++;
+		if (NOFUDGE(s, d) >= t6m) c6m++;
+		if (NOFUDGE(s, d) >= t9m) c9m++;
+		if (NOFUDGE(s, d) >= t1y) c1y++;
+		if (NOFUDGE(s, d) >= t2y) c2y++;
+		if (NOFUDGE(s, d) >= t3y) c3y++;
 		c++;
 	}
 	sccs_free(s);
@@ -1551,7 +1551,7 @@ http_related(char *page)
 	int	i;
 	FILE	*f;
 	int	count = 0;
-	delta	*d;
+	ser_t	d;
 	sccs	*s = sccs_csetInit(INIT_NOCKSUM|INIT_NOSTAT);
 	char	buf[2048];
 	char    dspec[MAXPATH];
@@ -1581,7 +1581,7 @@ http_related(char *page)
 
 	while (fnext(buf, f)) {
 		chomp(buf);
-		if (d = sccs_findrev(s, buf)) d->flags |= D_SET;
+		if (d = sccs_findrev(s, buf)) FLAGS(s, d) |= D_SET;
 		++count;
 	}
 	s->state |= S_SET;
@@ -1956,7 +1956,7 @@ private char *
 any2rev(char *any, char *file)
 {
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	char	*buf;
 	char	*sfile;
 
@@ -1970,7 +1970,7 @@ any2rev(char *any, char *file)
 			return (strdup(any));
 		}
 	}
-	buf = strdup(d->rev);
+	buf = strdup(REV(s, d));
 	sccs_free(s);
 	free(sfile);
 	return (buf);

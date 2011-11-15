@@ -7,8 +7,8 @@
 private int
 f_local(resolve *rs)
 {
-	delta	*l = sccs_findrev(rs->s, rs->revs->local);
-	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
+	ser_t	l = sccs_findrev(rs->s, rs->revs->local);
+	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s); /* for win32 */
 	flags_delta(rs, rs->s->sfile,
@@ -20,8 +20,8 @@ f_local(resolve *rs)
 private int
 f_remote(resolve *rs)
 {
-	delta	*l = sccs_findrev(rs->s, rs->revs->local);
-	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
+	ser_t	l = sccs_findrev(rs->s, rs->revs->local);
+	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s); /* for win32 */
 	flags_delta(rs, rs->s->sfile,
@@ -50,9 +50,9 @@ f_remote(resolve *rs)
 int
 resolve_flags(resolve *rs)
 {
-	delta	*l = sccs_findrev(rs->s, rs->revs->local);
-	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
-	delta	*g = sccs_findrev(rs->s, rs->revs->gca);
+	ser_t	l = sccs_findrev(rs->s, rs->revs->local);
+	ser_t	r = sccs_findrev(rs->s, rs->revs->remote);
+	ser_t	g = sccs_findrev(rs->s, rs->revs->gca);
 	int	lf, rf, gf, newflags;
 
         if (rs->opts->debug) {

@@ -47,10 +47,10 @@ sccs_graft(sccs *s1, sccs *s2)
 {
 	sccs	*winner, *loser;
 
-	if (s1->tree->date < s2->tree->date) {
+	if (DATE(s1, TREE(s1)) < DATE(s2, TREE(s2))) {
 		winner = s1;
 		loser = s2;
-	} else if (s1->tree->date > s2->tree->date) {
+	} else if (DATE(s1, TREE(s1)) > DATE(s2, TREE(s2))) {
 		loser = s1;
 		winner = s2;
 	} else {
@@ -69,16 +69,16 @@ sccs_graft(sccs *s1, sccs *s2)
 private	void
 sccs_patch(sccs *winner, sccs *loser)
 {
-	delta	*d = sccs_top(winner);
-	char	*wfile = d->pathname;
-	char	*lfile = sccs_top(loser)->pathname;
+	ser_t	d = sccs_top(winner);
+	char	*wfile = PATHNAME(winner, d);
+	char	*lfile = PATHNAME(loser, sccs_top(loser));
 
 	printf(PATCH_CURRENT);
 	printf("== %s ==\n", wfile);
 	printf("Grafted file: %s\n", lfile);
-	sccs_pdelta(winner, winner->tree, stdout);
+	sccs_pdelta(winner, TREE(winner), stdout);
 	printf("\n");
-	sccs_pdelta(winner, winner->tree, stdout);
+	sccs_pdelta(winner, TREE(winner), stdout);
 	printf("\n");
 	_patch(loser);
 
@@ -90,15 +90,15 @@ sccs_patch(sccs *winner, sccs *loser)
 	 * ChangeSet.  What needs to happen is that we add this symbol
 	 * in the resolver after grafting the files together.
 	 */
-	sccs_pdelta(loser, loser->tree, stdout);
+	sccs_pdelta(loser, TREE(loser), stdout);
 	printf("\n");
 	d = sccs_dInit(0, 'R', loser, 0);
 	printf("M 0.0 %s%s %s%s%s +0 -0\n",
 	    d->sdate,
-	    d->zone ? d->zone : "",
-	    d->user,
+	    ZONE(s, d),
+	    USER(s, d),
 	    d->hostname ? "@" : "",
-	    d->hostname ? d->hostname : "");
+	    HOSTNAME(s, d));
 	printf("c Grafted %s into %s\n", lfile, wfile);
 	printf("K %u\n", almostUnique());
 	printf("P %s\n", lfile);
@@ -112,13 +112,12 @@ sccs_patch(sccs *winner, sccs *loser)
 private void
 _patch(sccs *s)
 {
-	int	i;
-	delta	*d;
+	ser_t	d;
 	int	flags = PRS_PATCH|SILENT;
 
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, i)) continue;
-		if (d->pserial) {
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
+		if (PARENT(s, d)) {
 			sccs_pdelta(s, PARENT(s, d), stdout);
 			printf("\n");
 		} else {
@@ -127,9 +126,9 @@ _patch(sccs *s)
 		s->rstop = s->rstart = d;
 		sccs_prs(s, flags, 0, NULL, stdout);
 		printf("\n");
-		if (d->type == 'D') {
+		unless (TAG(s, d)) {
 			assert(!(s->state & S_CSET));
-			sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
+			sccs_getdiffs(s, REV(s, d), GET_BKDIFFS, "-");
 		}
 		printf("\n");
 	}

@@ -13,7 +13,7 @@ int
 log_main(int ac, char **av)
 {
 	sccs	*s;
-	delta	*e;
+	ser_t	e;
 	int	log = streq(av[0], "log");
 	int	reverse = 0, doheader = !log;
 	int	init_flags = INIT_NOCKSUM;
@@ -118,7 +118,7 @@ log_main(int ac, char **av)
 				goto next;
 			}
 			unless (s->rstart && (s->rstart == s->rstop)
-			    && !s->rstart->merge) {
+			    && !MERGE(s, s->rstart)) {
 				fprintf(stderr,
 				    "Warning: %s: -p requires a single "
 				    "non-merge revision\n", s->gfile);
@@ -127,22 +127,22 @@ log_main(int ac, char **av)
 			unless (s->rstart = PARENT(s, s->rstart)) {
 				fprintf(stderr,
 				    "Warning: %s: %s has no parent\n",
-				    s->gfile, s->rstop->rev);
+				    s->gfile, REV(s, s->rstop));
 				goto next;
 			}
-			s->rstop->flags &= ~D_SET;
-			s->rstart->flags |= D_SET;
+			FLAGS(s, s->rstop) &= ~D_SET;
+			FLAGS(s, s->rstart) |= D_SET;
 			s->rstop = s->rstart;
 		} else {
 			if (range_process(av[0], s, rflags, &rargs)) {
 				goto next;
 			}
 			if (!rargs.rstart && !sfileRev() &&
-			    streq(s->tree->rev, "1.0")) {
+			    streq(REV(s, TREE(s)), "1.0")) {
 				/* we don't want 1.0 by default */
-				s->tree->flags &= ~D_SET;
-				if (s->rstart == s->tree) {
-					s->rstart = KID(s->tree);
+				FLAGS(s, TREE(s)) &= ~D_SET;
+				if (s->rstart == TREE(s)) {
+					s->rstart = sccs_kid(s, s->rstart);
 				}
 			}
 		}

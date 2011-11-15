@@ -304,10 +304,10 @@ bk edit $Q f2
 bk delta -f $Q -y'Rev 11' f2 || fail
 bk -r sccslog -AD > GOT
 cat <<EOF > WANT
-Data, f2:
-  Rev 11
 f1, f2:
   new file
+Data, f2:
+  Rev 11
 EOF
 cmpfiles GOT WANT
 echo OK

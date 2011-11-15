@@ -119,9 +119,8 @@ bk new $Q x
 bk edit $Q x
 echon "" >> x
 bk delta $Q -ynone x
-bk admin -Znone x
 # XXX nice to have a better test.  When we get the check in the code: use it.
-bk _cat SCCS/s.x | grep -q '^.E [0-9][0-9]*N$' && {
+bk _scat SCCS/s.x | grep -q '^.E [0-9][0-9]*N$' && {
 	echo Fail
 	echo Blank line tagged no newline
 	exit 1

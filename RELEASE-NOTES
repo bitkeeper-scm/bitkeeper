@@ -1,3 +1,8 @@
+The default prs output has been changed in the case where BK_HOST has
+been set.  The original DSUMMARY (which is part of the default prs output)
+uses user@host/realhost
+Now it does user@host
+
 ============================================================================
 Release notes for BitKeeper version 5.4 (released 11-November-2011)
 

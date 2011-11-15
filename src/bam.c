@@ -51,29 +51,35 @@ private	int	warned;
  * the correct information.
  */
 int
-bp_delta(sccs *s, delta *d)
+bp_delta(sccs *s, ser_t d)
 {
 	char	*keys;
 	int	rc;
 	char	*p = aprintf("%s/" BAM_MARKER, proj_root(s->proj));
+	char	*hash;
+	sum_t	sum;
 	struct	utimbuf ut;
 
 	unless (exists(p)) touch(p, 0664);
 	free(p);
-	if (bp_hashgfile(s->gfile, &d->hash, &d->sum)) return (-1);
-	s->dsum = d->sum;
+	if (bp_hashgfile(s->gfile, &hash, &sum)) return (-1);
+	SUM_SET(s, d, sum);
+	BAMHASH_SET(s, d, hash);
+	free(hash);
+	s->dsum = SUM(s, d);
 	keys = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
-	rc = bp_insert(s->proj, s->gfile, keys, 0, d->mode);
+	rc = bp_insert(s->proj, s->gfile, keys, 0, MODE(s, d));
 	free(keys);
 	if (rc) return (-1);
-	d->added = size(s->gfile);
-	unless (d->added) d->added = 1; /* added = 0 is bad */
-	d->same = d->deleted = 0;
+	ADDED_SET(s, d, size(s->gfile));
+	unless (ADDED(s, d)) ADDED_SET(s, d, 1); /* added = 0 is bad */
+	SAME_SET(s, d, 0);
+	DELETED_SET(s, d, 0);
 
 	/* fix up timestamps so that hardlinks work */
 	p = bp_lookup(s, d);
 	assert(p);
-	ut.modtime = (d->date - d->dateFudge);
+	ut.modtime = (DATE(s, d) - DATE_FUDGE(s, d));
 	ut.actime = time(0);
 	utime(p, &ut);
 	free(p);
@@ -91,7 +97,7 @@ bp_delta(sccs *s, delta *d)
  *     XXX: bp_get() uses EAGAIN to "mean not in local BAM storage"
  */
 int
-bp_diff(sccs *s, delta *d, char *gfile)
+bp_diff(sccs *s, ser_t d, char *gfile)
 {
 	char	*dfile;
 	int	same;
@@ -109,10 +115,10 @@ bp_diff(sccs *s, delta *d, char *gfile)
 /*
  * Find the BAM delta where the data actually changed.
  */
-delta *
-bp_fdelta(sccs *s, delta *d)
+ser_t
+bp_fdelta(sccs *s, ser_t d)
 {
-	while (d && !d->hash) d = PARENT(s, d);
+	while (d && !HAS_BAMHASH(s, d)) d = PARENT(s, d);
 	unless (d && PARENT(s, d)) {
 		fprintf(stderr,
 		    "BAM: unable to find BAM delta in %s\n", s->gfile);
@@ -126,9 +132,9 @@ bp_fdelta(sccs *s, delta *d)
  * return EAGAIN if not in BAM storage
  */
 int
-bp_get(sccs *s, delta *din, u32 flags, char *gfile)
+bp_get(sccs *s, ser_t din, u32 flags, char *gfile)
 {
-	delta	*d;
+	ser_t	d;
 	char	*dfile, *p;
 	u32	sum;
 	MMAP	*m;
@@ -163,14 +169,14 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 			}
 		}
 	}
-	unless (ok = (sum == strtoul(d->hash, 0, 16))) {
-		p = strchr(d->hash, '.');
+	unless (ok = (sum == strtoul(BAMHASH(s, d), 0, 16))) {
+		p = strchr(BAMHASH(s, d), '.');
 		if (getenv("_BK_DEBUG")) {
 			*p = 0;
 			fprintf(stderr,
 			    "BAM file hash mismatch for\n%s|%s\n"
 			    "\twant:\t%s\n\tgot:\t%x\n",
-			    s->gfile, d->rev, d->hash, sum);
+			    s->gfile, REV(s, d), BAMHASH(s, d), sum);
 			*p = '.';
 		} else unless (warned) {
 			warned = 1;
@@ -208,26 +214,26 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 
 		/* fix up mtime/modes if there are no aliases */
 		if (linkcount(dfile, &statbuf) == 1) {
-			if (statbuf.st_mtime != (din->date - din->dateFudge)) {
-				ut.modtime = (din->date - din->dateFudge);
+			if (statbuf.st_mtime != (DATE(s, din) - DATE_FUDGE(s, din))) {
+				ut.modtime = (DATE(s, din) - DATE_FUDGE(s, din));
 				ut.actime = time(0);
 				unless (utime(dfile, &ut)) {
 					statbuf.st_mtime = ut.modtime;
 				}
 			}
-			if ((statbuf.st_mode & 0555) != (din->mode & 0555)) {
-				unless (chmod(dfile, din->mode & 0555)) {
-					statbuf.st_mode = din->mode & 0555;
+			if ((statbuf.st_mode & 0555) != (MODE(s, din) & 0555)) {
+				unless (chmod(dfile, MODE(s, din) & 0555)) {
+					statbuf.st_mode = MODE(s, din) & 0555;
 				}
 			}
 		}
 
 		if ((flags & GET_DTIME) &&
-		    (statbuf.st_mtime != (din->date - din->dateFudge))) {
+		    (statbuf.st_mtime != (DATE(s, din) - DATE_FUDGE(s, din)))) {
 		    	goto copy;
 		}
 		/* Hardlink only if the local copy matches perms */
-		if ((statbuf.st_mode & 0555) == (din->mode & 0555)) {
+		if ((statbuf.st_mode & 0555) == (MODE(s, din) & 0555)) {
 			/* win2k can't link while the file is open.  Sigh. */
 			if (win32()) mclose(m);
 			unless (link(dfile, gfile)) {
@@ -242,15 +248,15 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	}
 
 copy:	/* try copying the file */
-	assert(din->mode);
+	assert(MODE(s, din));
 	use_stdout = ((flags & PRINT) && streq(gfile, "-"));
 	if (use_stdout) {
 		fd = 1;
 	} else {
 		unlink(gfile);
-		assert(din->mode & 0200);
+		assert(MODE(s, din) & 0200);
 		(void)mkdirf(gfile);
-		fd = open(gfile, O_WRONLY|O_CREAT, din->mode);
+		fd = open(gfile, O_WRONLY|O_CREAT, MODE(s, din));
 	}
 	if (fd == -1) {
 		perror(gfile);
@@ -468,7 +474,7 @@ bp_lookupkeys(project *proj, char *keys)
  * Find the pathname to the BAM file for the gfile.
  */
 char *
-bp_lookup(sccs *s, delta *d)
+bp_lookup(sccs *s, ser_t d)
 {
 	char	*keys;
 	char	*ret = 0;
@@ -578,7 +584,7 @@ hash2path(project *proj, char *hash)
  * called from slib.c:get_bp() when a BAM file can't be found.
  */
 int
-bp_fetch(sccs *s, delta *din)
+bp_fetch(sccs *s, ser_t din)
 {
 	char	**keys;
 	int	rc;
@@ -588,7 +594,7 @@ bp_fetch(sccs *s, delta *din)
 	unless (din = bp_fdelta(s, din)) return (-1);
 	keys = addLine(0, sccs_prsbuf(s, din, PRS_FORCE, BAM_DSPEC));
 
-	if (rc = bp_fetchkeys("sccs_get", s->proj, 0, keys, din->added)) {
+	if (rc = bp_fetchkeys("sccs_get", s->proj, 0, keys, ADDED(s, din))) {
 		fprintf(stderr, "bp_fetch: failed to fetch delta for %s\n",
 		    s->gfile);
 	}
@@ -2052,7 +2058,7 @@ private int
 bam_sizes_main(int ac, char **av)
 {
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	char	*name;
 	int	errors = 0;
 	u32	bytes;
@@ -2074,7 +2080,7 @@ err:			sccs_free(s);
 		}
 		unless (d = bp_fdelta(s, sccs_top(s))) goto err;
 		if (bytes = size(s->gfile)) {
-			d->added = bytes;
+			ADDED_SET(s, d, bytes);
 			sccs_newchksum(s);
 		}
 		sccs_free(s);
@@ -2092,7 +2098,7 @@ private int
 bam_timestamps_main(int ac, char **av)
 {
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	char	*name, *dfile;
 	int	c;
 	int	dryrun = 0, errors = 0;
@@ -2126,24 +2132,24 @@ bam_timestamps_main(int ac, char **av)
 		 */
 		sfile = mtime(s->sfile);
 		d = sccs_top(s);
-		unless (sfile <= (d->date - (d->dateFudge + 2))) {
+		unless (sfile <= (DATE(s, d) - (DATE_FUDGE(s, d) + 2))) {
 			if (dryrun) {
 				printf("Would fix sfile %s\n", s->sfile);
 			} else {
 				ut.actime = time(0);
-				ut.modtime = (d->date - (d->dateFudge + 2));
+				ut.modtime = (DATE(s, d) - (DATE_FUDGE(s, d) + 2));
 				if (utime(s->sfile, &ut)) errors |= 2;
 			}
 		}
 		if (dfile = bp_lookup(s, d)) {
 			got = mtime(dfile);
-			want = (d->date - d->dateFudge);
+			want = (DATE(s, d) - DATE_FUDGE(s, d));
 			unless (got == want) {
 				ut.actime = time(0);
 				ut.modtime = want;
 				if (dryrun) {
 					printf("Would fix %s|%s\n",
-					    s->gfile, d->rev);
+					    s->gfile, REV(s, d));
 #define	CT(d)	ctime(&d) + 4
 					printf("\tdfile: %s", CT(got));
 					printf("\tdelta: %s", CT(want));
@@ -2273,7 +2279,7 @@ bam_convert_main(int ac, char **av)
 		ERROR((stderr, "no files needing conversion found.\n"));
 		goto out;
 	}
-	system("bk admin -Znone ChangeSet");
+	system("bk admin -Znone -Bnone ChangeSet");
 	unless (in = fopen("SCCS/s.ChangeSet", "r")) {
 		perror("SCCS/s.ChangeSet");
 		exit(1);
@@ -2359,7 +2365,7 @@ out:	return (errors);
 private	int
 uu2bp(sccs *s, int bam_size, char ***keysp)
 {
-	delta	*d;
+	ser_t	d;
 	FILE	*out;
 	int	locked;
 	int	n = 0;
@@ -2372,10 +2378,9 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 	if (sccs_clean(s, SILENT)) return (4);
 	d = sccs_ino(s);
 	sccs_sdelta(s, d, oldroot);
-	assert(d->random);
-	t = aprintf("B:%s", d->random);
-	free(d->random);
-	d->random = t;
+	assert(HAS_RANDOM(s, d));
+	sprintf(key, "B:%s", RANDOM(s, d));
+	RANDOM_SET(s, d, key);
 	sccs_sdelta(s, d, newroot);
 
 	/*
@@ -2393,7 +2398,7 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 		unlink(s->gfile);
 		if (sz < bam_size) goto out;
 	}
-	if (GZIP(s)) {
+	if (!BFILE(s) && GZIP(s)) {
 		/* uncompress file for performance */
 		s = sccs_restart(s);
 		s->encoding_out = sccs_encoding(s, 0, 0);
@@ -2407,9 +2412,10 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 		return (4);
 	}
 	fprintf(stderr, "Converting %s ", s->gfile);
-	for (n = 0, d = s->table; d; d = NEXT(d)) {
-		assert(d->type == 'D');
-		if (sccs_get(s, d->rev, 0, 0, 0, SILENT, "-")) return (8);
+	for (n = 0, d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
+		assert(!TAG(s, d));
+		if (sccs_get(s, REV(s, d), 0, 0, 0, SILENT, "-")) return (8);
 
 		/*
 		 * XXX - if this logic is wrong then we lose data.
@@ -2417,23 +2423,24 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 		 * anyway, it's an extra tuple but the data will collapse.
 		 * Review carefully.
 		 */
-		if (d == s->tree) {
-			d->deleted = d->same = 0;
-			d->added = size(s->gfile);
+		if (d == TREE(s)) {
+			DELETED_SET(s, d, 0);
+			SAME_SET(s, d, 0);
+			ADDED_SET(s, d, size(s->gfile));
 			unlink(s->gfile);
-			unless (d->flags & D_CSET) continue;
+			unless (FLAGS(s, d) & D_CSET) continue;
 			sccs_sdelta(s, d, key);
 			keys = addLine(keys, aprintf("%s %s\n", oldroot, key));
 			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
 			continue;
 		}
 
-		if (d->flags & D_CSET) {
+		if (FLAGS(s, d) & D_CSET) {
 			sccs_sdelta(s, d, key);
 			keys = addLine(keys, aprintf("%s %s\n", oldroot, key));
 		}
 		if (bp_delta(s, d)) return (16);
-		if (d->flags & D_CSET) {
+		if (FLAGS(s, d) & D_CSET) {
 			sccs_sdelta(s, d, key);
 			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
 		}
@@ -2451,8 +2458,6 @@ err:		if (out) sccs_abortWrite(s, &out);
 		return (32);
 	}
 	if (delta_table(s, out, 0)) goto err;
-	fseek(out, 0L, SEEK_SET);
-	fprintf(out, "\001%c%05u\n", 'H', s->cksum);
 	if (sccs_finishWrite(s, &out)) goto err;
 	fprintf(stderr, "\rConverted %d deltas in %s\n", n, s->gfile);
 out:	sccs_unlock(s, 'z');

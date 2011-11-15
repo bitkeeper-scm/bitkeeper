@@ -11,10 +11,10 @@
 
 private int listParkFile(void);
 private int purgeParkFile(int);
-private int diffable_text(sccs *, delta *);
+private int diffable_text(sccs *, ser_t);
 private int unsupported_file_type(sccs *);
 private int append(char *, char *);
-private int parkfile_header(sccs *, delta *, char *, FILE *);
+private int parkfile_header(sccs *, ser_t, char *, FILE *);
 private	char *name2tname(char *);
 private char *tname2sname(char *);
 
@@ -135,7 +135,7 @@ err:		if (s) sccs_free(s);
 	assert(f); assert(f2);
 	while (fnext(buf, f)) {
 		char	tmp[MAXPATH];
-		delta	*top;
+		ser_t	top;
 		FILE	*out;
 
 		chomp(buf);
@@ -781,15 +781,15 @@ do_text_diffs_unpark(MMAP *m, char *path, MDBM **idDB, FILE *unpark_list)
 private int
 isBaselineKey(sccs *s, char *key)
 {
-	delta	*d;
+	ser_t	d;
 	char 	baselineKey[MAXKEY];
 
 	d = sccs_top(s);
 
-	while ((d->added == 0) && (d->deleted == 0)) {
+	while ((ADDED(s, d) == 0) && (DELETED(s, d) == 0)) {
 		sccs_sdelta(s, d, baselineKey);
 		if (streq(key, baselineKey)) return (1);
-		unless (d->pserial) break;
+		unless (PARENT(s, d)) break;
 		d = PARENT(s, d);
 	}
 	sccs_sdelta(s, d, baselineKey);
@@ -933,7 +933,7 @@ do_symlink_unpark(MMAP *m, char *path, int force,
 	char	key2[MAXKEY];
 	int	rc = 0, restore_msg = 0;
 	sccs 	*s;
-	delta	*top;
+	ser_t	top;
 
 	buf = mkline(mnext(m)); /* get root key */
 	assert(strneq("# ROOTKEY: ", buf, 11));
@@ -966,7 +966,7 @@ do_symlink_unpark(MMAP *m, char *path, int force,
 		/* no gfile, but have same baseline delta */
 			rc |= symlink(newTarget, gname);
 			if (rc == 0) restore_msg = 1;
-	} else if (top->symlink && streq(top->symlink, newTarget)) {
+	} else if (HAS_SYMLINK(s, top) && streq(SYMLINK(s, top), newTarget)) {
 		/*
 		 * If we get here, the top delta have the same symlink as
 		 * the parked sym link, i.e no conflict
@@ -1008,7 +1008,7 @@ do_extra_symlink_unpark(MMAP *m, char *path, int force,
 	char 	*newTarget;
 	int	rc = 0;
 	sccs	*s = 0;
-	delta	*top;
+	ser_t	top;
 
 	copyGSPfile(path, NULL, idDB, unpark_list);
 
@@ -1047,7 +1047,7 @@ err:			fprintf(stderr,
 	}
 	if (HAS_SFILE(s)) {
 		assert(!HAS_GFILE(s));
-		if (sameLink(top->symlink, newTarget)) {
+		if (sameLink(SYMLINK(s, top), newTarget)) {
 			goto doit;
 		} else {
 			goto err;
@@ -1308,7 +1308,7 @@ skip_apply:
 	if (error && !force) {
 		char	s_cset[] = CHANGESET;
 		sccs	*s;
-		delta 	*d;
+		ser_t 	d;
 
 		s = sccs_init(s_cset, 0);
 		d = sccs_findKey(s, cset_key);
@@ -1317,7 +1317,7 @@ skip_apply:
 		    "You can examine the conflict in %s.\n"
 		    "You can also get a clean upark by clone -r back to \n"
 		    "baseline version: %s\nrev : %s\n",
-		    id, PARKDIR, PARKDIR, cset_key, d ? d->rev : "");
+		    id, PARKDIR, PARKDIR, cset_key, d ? REV(s, d) : "");
 		sccs_free(s);
 	} else {
 		rmtree(PARKDIR);
@@ -1380,10 +1380,10 @@ empty:		fprintf(stderr, "No parkfile found\n");
  * Return ture if we can run diff over the baseline delta and the gfile
  */
 private int
-diffable_text(sccs *s, delta *top)
+diffable_text(sccs *s, ser_t top)
 {
 	return (HAS_SFILE(s) && HAS_GFILE(s) &&
-		S_ISREG(s->mode) && ((top->mode == 0) || S_ISREG(top->mode)) &&
+		S_ISREG(s->mode) && ((MODE(s, top) == 0) || S_ISREG(MODE(s, top))) &&
 	    	ASCII(s) && ascii(s->gfile));
 }
 
@@ -1394,7 +1394,7 @@ unsupported_file_type(sccs *s)
 }
 
 private int
-parkfile_header(sccs *s, delta *top, char *type, FILE *out)
+parkfile_header(sccs *s, ser_t top, char *type, FILE *out)
 {
 	FILE	*f;
 	char	buf[MAXLINE];

@@ -11,7 +11,7 @@ gca_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name, *r1 = 0, *r2 = 0;
-	delta	*d1, *d2;
+	ser_t	d1, d2;
 	int	c;
 	char	*inc = 0, *exc = 0;
 
@@ -49,7 +49,7 @@ gca_main(int ac, char **av)
 		return (1);
 	}
 	d1 = sccs_gca(s, d1, d2, &inc, &exc);
-	fputs(d1->rev, stdout);
+	fputs(REV(s, d1), stdout);
 	if (inc) printf(" -i%s", inc);
 	if (exc) printf(" -x%s", exc);
 	putchar('\n');

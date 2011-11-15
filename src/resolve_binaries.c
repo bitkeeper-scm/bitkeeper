@@ -18,7 +18,8 @@ GCA:    %s\n\
 Local:  %s\n\
 Remote: %s\n\
 ---------------------------------------------------------------------------\n",
-	    rs->d->pathname, rs->revs->gca, rs->revs->local, rs->revs->remote);
+	    PATHNAME(rs->s, rs->d),
+	    rs->revs->gca, rs->revs->local, rs->revs->remote);
 	fprintf(stderr, "Commands are:\n\n");
 	for (i = 0; rs->funcs[i].spec; i++) {
 		fprintf(stderr, "  %-4s - %s\n", 
@@ -125,7 +126,7 @@ int
 resolve_binary(resolve *rs)
 {
 	names	*n = new(names);
-	delta	*d;
+	ser_t	d;
 	char	*nm = basenm(rs->s->gfile);
 	int	ret;
 	char	buf[MAXPATH];
@@ -136,15 +137,18 @@ resolve_binary(resolve *rs)
 	}
 	d = sccs_findrev(rs->s, rs->revs->local);
 	assert(d);
-	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
+	sprintf(buf, "BitKeeper/tmp/%s_%s@%s",
+	    nm, USER(rs->s, d), REV(rs->s, d));
 	n->local = strdup(buf);
 	d = sccs_findrev(rs->s, rs->revs->gca);
 	assert(d);
-	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
+	sprintf(buf, "BitKeeper/tmp/%s_%s@%s",
+	    nm, USER(rs->s, d), REV(rs->s, d));
 	n->gca = strdup(buf);
 	d = sccs_findrev(rs->s, rs->revs->remote);
 	assert(d);
-	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
+	sprintf(buf, "BitKeeper/tmp/%s_%s@%s",
+	    nm, USER(rs->s, d), REV(rs->s, d));
 	n->remote = strdup(buf);
 	rs->tnames = n;
 	rs->prompt = rs->s->gfile;

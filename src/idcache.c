@@ -114,7 +114,7 @@ caches(char *file, struct stat *sb, void *data)
 {
 	MDBM	*idDB = (MDBM *)data;
 	sccs	*sc;
-	delta	*ino;
+	ser_t	ino;
 	char	*t;
 	char	buf[MAXPATH*2];
 
@@ -133,7 +133,7 @@ caches(char *file, struct stat *sb, void *data)
 	 * Add entries for any grafted in roots as well.
 	 */
 	do {
-		assert(ino->pathname);
+		assert(HAS_PATHNAME(sc, ino));
 		sccs_sdelta(sc, ino, buf);
 		save(sc, idDB, buf);
 		if (mixed && (t = sccs_iskeylong(buf))) {
@@ -142,8 +142,8 @@ caches(char *file, struct stat *sb, void *data)
 			*t = '|';
 		}
 		unless (sc->grafted) break;
-		while (ino = NEXT(ino)) {
-			if (ino->random) break;
+		while (ino = sccs_prev(sc, ino)) {
+			if (HAS_RANDOM(sc, ino)) break;
 		}
 	} while (ino);
 	sccs_free(sc);

@@ -19,7 +19,7 @@ private	int	compar(const void *a, const void *b);
 private	void	printConsolidatedLog(FILE *);
 private	void	printSortedLog(FILE *);
 private	void	printlog(FILE *);
-private	void	pdelta(sccs *s, delta *d, FILE *f);
+private	void	pdelta(sccs *s, ser_t d, FILE *f);
 private	void	sccslog(sccs *s);
 private	void	freelog(void);
 private	int	isBlank(char *p);
@@ -105,11 +105,12 @@ next:			sccs_free(s);
 		}
 		do {
 			if (opts.uncommitted) {
-				delta	*d;
+				ser_t	d;
 
 				/* find latest cset mark */
-				for (d = s->table; d; d = NEXT(d)) {
-					if (d->flags & D_CSET) break;
+				for (d = TABLE(s); d >= TREE(s); d--) {
+					unless (FLAGS(s, d)) continue;
+					if (FLAGS(s, d) & D_CSET) break;
 				}
 				/* and walk all revs not included in that... */
 				range_walkrevs(s, d, 0, 0, 0,
@@ -227,56 +228,53 @@ printSortedLog(FILE *f)
 }
 
 private void
-pdelta(sccs *s, delta *d, FILE *f)
+pdelta(sccs *s, ser_t d, FILE *f)
 {
-	int	indent, i;
-	char	*y;
+	int	indent;
+	char	*p, *t;
+	int	len;
+	char	buf[MAXLINE];
 
 	if (opts.dspec) {
 		sccs_prsdelta(s, d, opts.prs_flags, opts.dspec, f);
 		return;
 	}
 	if (opts.sort) {
-		fprintf(f, "%s|%s\n", d->pathname, d->rev);
+		fprintf(f, "%s|%s\n", PATHNAME(s, d), REV(s, d));
 		return;
 	}
-	if (d->pathname && streq(d->pathname, "ChangeSet")) {
+	if (HAS_PATHNAME(s, d) && streq(PATHNAME(s, d), "ChangeSet")) {
 		indent = 0;
 	} else {
 		indent = opts.indent;
 	}
 	if (opts.changeset) {
-		EACH_COMMENT(s, d) {
+		t = COMMENTS(s, d);
+		while (p = eachline(&t, &len)) {
 			if (indent) fprintf(f, "%*s", indent, "");
-			if (d->pathname) {
-				fprintf(f, "%-8s\t", basenm(d->pathname));
+			if (HAS_PATHNAME(s, d)) {
+				fprintf(f, "%-8s\t", basenm(PATHNAME(s, d)));
 			}
-			fprintf(f, "%s\n", d->cmnts[i]);
+			fprintf(f, "%.*s\n", len, p);
 		}
 		return;
 	}
 	if (indent) fprintf(f, "%*s", indent, "");
-	if (d->pathname) {
+	if (HAS_PATHNAME(s, d)) {
 		unless (opts.basenames) {
-			fprintf(f, "%s %s\n  ", d->pathname, d->rev);
+			fprintf(f, "%s %s\n  ", PATHNAME(s, d), REV(s, d));
 			if (indent) fprintf(f, "%*s", indent, "");
 		} else {
-			fprintf(f, "%s %s ", basenm(d->pathname), d->rev);
+			fprintf(f, "%s %s ", basenm(PATHNAME(s, d)), REV(s, d));
 		}
 	}
-	y = (atoi(d->sdate) > 69) ? "19" : "20";
-	fprintf(f, "%s%.2s-%.2s-%.2s %s %s",
-	    y,
-	    d->sdate,		/* YY */
-	    &(d->sdate[3]),	/* MM */
-	    &(d->sdate[6]),	/* DD */
-	    &(d->sdate[9]),	/* HH:MM:SS */
-	    d->user);
-	if (d->hostname) fprintf(f, "@%s", d->hostname);
-	fprintf(f, " +%d -%d\n", d->added, d->deleted);
-	EACH_COMMENT(s, d) {
+	delta_strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", s, d);
+	fprintf(f, "%s %s", buf, USERHOST(s, d));
+	fprintf(f, " +%d -%d\n", ADDED(s, d), DELETED(s, d));
+	t = COMMENTS(s, d);
+	while (p = eachline(&t, &len)) {
 		if (indent) fprintf(f, "%*s", indent, "");
-		fprintf(f, "  %s\n", d->cmnts[i]);
+		fprintf(f, "  %.*s\n", len, p);
 	}
 	fprintf(f, "\n");
 }
@@ -300,20 +298,22 @@ printlog(FILE *f)
 private	void
 sccslog(sccs *s)
 {
-	delta	*d;
+	ser_t	d;
 	data	*nd;
 	FILE	*f;
 	char	key[MAXKEY];
 
 	f = fmem();
 	if (CSET(s)) ChangeSet = 1;
-	for (d = s->table; d; d = d->next) {
-		if (SET(s) && !(d->flags & D_SET)) continue;
-		if (d->type != 'D') continue;
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
+		if (SET(s) && !(FLAGS(s, d) & D_SET)) continue;
+		if (TAG(s, d)) continue;
 
 		nd = new(data);
-		nd->date = d->date;
-		nd->pathname = strdup(d->pathname ? d->pathname : s->gfile);
+		nd->date = DATE(s, d);
+		nd->pathname =
+		    strdup(HAS_PATHNAME(s, d) ? PATHNAME(s, d) : s->gfile);
 		sccs_sdelta(s, d, key);
 		nd->key = strdup(key);
 
@@ -322,11 +322,10 @@ sccslog(sccs *s)
 				nd->output = sccs_prsbuf(s, d,
 				    opts.prs_flags, opts.dspec);
 			} else {
-				nd->output =
-				    joinLines("\n", comments_load(s, d));
+				nd->output = strdup(COMMENTS(s, d));
 				if (nd->output &&
-				    (streq(d->rev, "1.1") ||
-				     streq(d->rev, "1.0")) &&
+				    (streq(REV(s, d), "1.1") ||
+				     streq(REV(s, d), "1.0")) &&
 				    strneq(nd->output,
 					"BitKeeper file ", 15)) {
 					free(nd->output);

@@ -11,16 +11,17 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 					int fix_mod_time, MDBM *db)
 {
 	char	tmp_path[MAXPATH];
-	delta	*d;
+	ser_t	d;
 	int	flags = SILENT|PRINT;
 
 	sprintf(tmp_path, "%s/%s/%s", tmpdir, tag, path);
 	if (isNullFile(rev, path))  return;
 	d = sccs_findrev(s, rev);
 	assert(d);
-	unless ((d->mode == 0) || S_ISREG(d->mode)) {
+	unless ((MODE(s, d) == 0) || S_ISREG(MODE(s, d))) {
 		fprintf(stderr,
-    "%s is not regular file, converted to empty file\n", d->pathname);
+		    "%s is not regular file, converted to empty file\n",
+		    PATHNAME(s, d));
 		return;
 	}
 	mkdirf(tmp_path);

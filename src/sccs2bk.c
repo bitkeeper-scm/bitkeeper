@@ -15,9 +15,9 @@
 private int sccs2bk(sccs *s, int verbose, char *csetkey);
 private void regen(sccs *s, int verbose, char *key);
 private int verify = 1;
-private	int mkinit(sccs *s, delta *d, char *file, char *key);
+private	int mkinit(sccs *s, ser_t d, char *file, char *key);
 private int makeMerge(sccs *s, int verbose);
-private void collapse(sccs *s, int verbose, delta *d, delta *m);
+private void collapse(sccs *s, int verbose, ser_t d, ser_t m);
 private void fixTable(sccs *s, int verbose);
 private void handleFake(sccs *s);
 private void ptable(sccs *s);
@@ -87,8 +87,7 @@ sccs2bk_main(int ac, char **av)
 private int
 sccs2bk(sccs *s, int verbose, char *csetkey)
 {
-	delta	*d;
-	int	i;
+	ser_t	d;
 
 	if (makeMerge(s, verbose)) return (1);
 
@@ -97,26 +96,25 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
 	 * then losing anything which is not marked.
 	 */
 	sccs_color(s, sccs_top(s));
-	for (d = s->table; d; d = NEXT(d)) {
-		if (d->flags & D_RED) continue;
-		d->flags |= D_SET|D_GONE;
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
+		if (FLAGS(s, d) & D_RED) continue;
+		FLAGS(s, d) |= D_SET|D_GONE;
 	}
 
 	/*
 	 * 3par had some BitKeeper files that Teamware had munged,
 	 * strip the root if that's the case.
 	 */
-	if (streq(s->tree->rev, "1.0")) {
-		d = s->tree;
-		EACH_COMMENT(s, d) {
-			if (strneq("BitKeeper file", d->cmnts[i], 14)) {
-				d->flags |= D_SET|D_GONE;
-				break;
+	if (streq(REV(s, TREE(s)), "1.0")) {
+		d = TREE(s);
+		if (strneq("BitKeeper file", COMMENTS(s, d), 14)) {
+			FLAGS(s, d) |= D_SET|D_GONE;
+			if (verbose > 1) {
+				fprintf(stderr,
+				    "Stripping old BitKeeper data in %s\n",
+				    s->gfile);
 			}
-		}
-		if ((d->flags & D_GONE) && verbose > 1) {
-			fprintf(stderr,
-			    "Stripping old BitKeeper data in %s\n", s->gfile);
 		}
 	}
 
@@ -142,22 +140,24 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
  * no entry if <rev> -eq <d->rev>
  */
 private char	*
-rev(MDBM *revs, delta *r)
+rev(MDBM *revs, sccs *s, ser_t r)
 {
 	datum	k, v;
+	ser_t	ser;
 
+	ser = r;
 	k.dsize = sizeof(ser_t);
-	k.dptr = (void*)&r->serial;
+	k.dptr = (void*)&ser;
 	v = mdbm_fetch(revs, k);
 	if (v.dsize) return ((char*)v.dptr);
-	return (r->rev);
+	return (REV(s, r));
 }
 
 private void
 regen(sccs *s, int verbose, char *key)
 {
-	delta	*d;
-	delta	**table = malloc(s->nextserial * sizeof(delta*));
+	ser_t	d;
+	ser_t	*table = malloc((TABLE(s) + 1) * sizeof(ser_t*));
 	int	n = 0;
 	int	i;
 	int	src_flags = PRINT|GET_FORCE|SILENT;
@@ -171,10 +171,9 @@ regen(sccs *s, int verbose, char *key)
 	pfile	pf;
 	int	crnl;
 
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, (ser_t) i)) continue;
-		comments_load(s, d);
-		if (!(d->flags & D_GONE) && (d->type == 'D')) {
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
+		if (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			table[n++] = d;
 		}
 	}
@@ -190,7 +189,7 @@ regen(sccs *s, int verbose, char *key)
 	sget->xflags &= ~X_EOLN_NATIVE;
 	close(creat(gfile, 0664));
 	/* Teamware uses same uuencode flag, so read it */
-	if (mkinit(s, s->tree, tmp, key) || UUENCODE(sget)) {
+	if (mkinit(s, TREE(s), tmp, key) || UUENCODE(sget)) {
 		sys("bk", "delta",
 		    "-fq", "-Ebinary", "-RiISCCS/.init", gfile, SYS);
 	} else {
@@ -199,38 +198,41 @@ regen(sccs *s, int verbose, char *key)
 	for (i = 0; i < n; ++i) {
 		d = table[i];
 		mkinit(s, d, 0, 0);
-		if (d->merge) {
-			delta	*m = MERGE(s, d);
+		if (MERGE(s, d)) {
+			ser_t	m = MERGE(s, d);
 
 			assert(m);
-			a1 = aprintf("-egr%s", rev(revs, PARENT(s, d)));
-			a2 = aprintf("-M%s", rev(revs, m));
+			a1 = aprintf("-egr%s", rev(revs, s, PARENT(s, d)));
+			a2 = aprintf("-M%s", rev(revs, s, m));
 			sys("bk", "_get", "-q", a1, a2, gfile, SYS);
 			free(a1);
 			free(a2);
 		} else {
 			a1 = aprintf("-egr%s",
-			    i ? rev(revs, PARENT(s, d)) : "1.0");
+			    i ? rev(revs, s, PARENT(s, d)) : "1.0");
 			sys("bk", "_get", "-q", a1, gfile, SYS);
 			free(a1);
 		}
 		if (sccs_read_pfile("sccs2bk", s, &pf)) exit(1);
-		unless (streq(d->rev, pf.newrev)) {
+		unless (streq(REV(s, d), pf.newrev)) {
 			datum	k, v;
+			ser_t	ser;
 
 			if (verbose > 1) {
 				fprintf(stderr,
-				    "MAP %s(%d)@%s -> %s\n", gfile, d->serial,
-				    d->rev, pf.newrev);
+				    "MAP %s(%d)@%s -> %s\n",
+				    gfile, d,
+				    REV(s, d), pf.newrev);
 			}
+			ser = d;
 			k.dsize = sizeof(ser_t);
-			k.dptr = (void*)&d->serial;
+			k.dptr = (void*)&ser;
 			v.dsize = strlen(pf.newrev) + 1;
 			v.dptr = (void*)pf.newrev;
 			if (mdbm_store(revs, k, v, MDBM_INSERT)) {
 				v = mdbm_fetch(revs, k);
 				fprintf(stderr, "%s: serial %d in use by "
-				    "%s and %s.\n", s->sfile, d->serial,
+				    "%s and %s.\n", s->sfile, ser,
 				    pf.newrev, (char*)v.dptr);
 				/* XXX: what should errors do? */
 				exit(1);
@@ -242,7 +244,7 @@ regen(sccs *s, int verbose, char *key)
 		 * '-r=<serial>' because some sfile have duplicate revisions
 		 * Note: if change options here, then change in loop below
 		 */
-		a1 = aprintf("=%d", d->serial);
+		a1 = aprintf("=%d", d);
 		if (sccs_get(sget, a1, 0, 0, 0, src_flags, gfile)) {
 			fprintf(stderr, "FAIL: get -kPr%s %s\n",
 			    a1, gfile);
@@ -268,7 +270,7 @@ regen(sccs *s, int verbose, char *key)
 	s2->xflags &= ~X_EOLN_NATIVE;
 	for (i = 0; i < n; ++i) {
 		d = table[i];
-		a1 = aprintf("%s", rev(revs, d));
+		a1 = aprintf("%s", rev(revs, s, d));
 		a2 = bktmp(0, "diffA");
 		assert(a2 && a2[0]);
 		if (sccs_get(s2, a1, 0, 0, 0, dest_flags, a2)) {
@@ -277,7 +279,7 @@ regen(sccs *s, int verbose, char *key)
 		}
 
 		free(a1);
-		a1 = aprintf("=%d", d->serial);
+		a1 = aprintf("=%d", d);
 		a3 = bktmp(0, "diffB");
 		assert(a3 && a3[0]);
 		if (sccs_get(sget, a1, 0, 0, 0, src_flags, a3)) {
@@ -291,7 +293,7 @@ regen(sccs *s, int verbose, char *key)
 			assert(a1 && a1[0]);
 			if (diff(a2, a3, DF_DIFF, a1)) {
 				fprintf(stderr, "\n%s@%s != orig@%s\n",
-				    gfile, rev(revs, d), d->rev);
+				    gfile, rev(revs, s, d), REV(s, d));
 				sys("echo", "diff", a2, a3, ">", a1, SYS);
 				sys("cat", a1, SYS);
 				/* exit(1); */
@@ -301,11 +303,11 @@ regen(sccs *s, int verbose, char *key)
 			if (verbose > 2) {
 				fprintf(stderr,
 				    "%s@%s != orig@%s - <cr><lf> only\n",
-				    gfile, rev(revs, d), d->rev);
+				    gfile, rev(revs, s, d), REV(s, d));
 			}
 		}
 		if (verbose > 2) {
-			fprintf(stderr, "%s@%s OK\n", gfile, rev(revs, d));
+			fprintf(stderr, "%s@%s OK\n", gfile, rev(revs, s, d));
 		}
 		unlink(a2);
 		unlink(a3);
@@ -331,7 +333,7 @@ out:	unlink("SCCS/.init");
  * From Wayne.
  */
 private int
-mkinit(sccs *s, delta *d, char *file, char *key)
+mkinit(sccs *s, ser_t d, char *file, char *key)
 {
 	char	randstr[17];
 	int	chksum = 0;
@@ -339,8 +341,9 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 	int	size;
 	char	buf[4096];
 	u32	randbits = 0;
-	int	i;
+	int	len, i;
 	int	binary = 0;
+	char	*p, *t, *host;
 
 	if (file) {
 		char	*p;
@@ -360,9 +363,10 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 		sprintf(randstr, "%08x", randbits);
 		chksum = randbits & 0xffff;
 	}
+	unless ((host = HOSTNAME(s, d)) && *host) host = sccs_gethost();
 	fh = fopen("SCCS/.init", "w");
 	if (file) {
-		struct	tm *tp = utc2tm(d->date - 1);
+		struct	tm *tp = utc2tm(DATE(s, d) - 1);
 
 		assert(key);
 		fprintf(fh, "D 1.0 %02d/%02d/%02d %02d:%02d:%02d %s@%s\n",
@@ -372,8 +376,8 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 		    tp->tm_hour,
 		    tp->tm_min,
 		    tp->tm_sec,
-		    d->user,
-		    d->hostname ? d->hostname : sccs_gethost());
+		    USER(s, d),
+		    host);
 		fprintf(fh,
 			"B %s\n"
 			"c sccs2bk\n"
@@ -388,12 +392,11 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 			randstr);
 	} else {
 		fprintf(fh, "D %s %s %s@%s\n",
-		    d->rev, d->sdate, d->user,
-		    d->hostname ? d->hostname : sccs_gethost());
-		EACH_COMMENT(s, d) {
-			fprintf(fh, "c %s\n", d->cmnts[i]);
-		}
-		if (d->dateFudge) fprintf(fh, "F %lu\n", d->dateFudge);
+		    REV(s, d), delta_sdate(s, d), USER(s, d),
+		    host);
+		t = COMMENTS(s, d);
+		while (p = eachline(&t, &len)) fprintf(fh, "c %.*s\n", len, p);
+		if (DATE_FUDGE(s, d)) fprintf(fh, "F %u\n", DATE_FUDGE(s, d));
 	}
 	fprintf(fh, "------------------------------------------------\n");
 	fclose(fh);
@@ -403,16 +406,16 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 private void
 ptable(sccs *s)
 {
-	delta	*d;
-	int	i;
+	ser_t	d;
 
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, (ser_t) i)) continue;
-		unless (!(d->flags & D_GONE) && (d->type == 'D')) {
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
+		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
-		fprintf(stderr, "%-10.10s %10s i=%2u s=%2u d=%s f=%lu\n",
-		    s->gfile, d->rev, i, d->serial, d->sdate, d->dateFudge);
+		fprintf(stderr, "%-10.10s %10s i=%2u s=%2u d=%s f=%u\n",
+		    s->gfile, REV(s, d), d, d,
+		    delta_sdate(s, d), DATE_FUDGE(s, d));
 	}
 }
 
@@ -434,41 +437,40 @@ ptable(sccs *s)
 private void
 handleFake(sccs *s)
 {
-	delta	*d;
-	int	i;
+	ser_t	d;
 	time_t	date = CUTOFFDATE;
-	char	*user = "BKFake";
+	char	*user = 0;
 
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, (ser_t) i)) continue;
-		unless (!(d->flags & D_GONE) && (d->type == 'D')) {
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
+		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
-		unless (d->date >= CUTOFFDATE) continue;
-		date = d->date;
-		user = d->user;
+		unless (DATE(s, d) >= CUTOFFDATE) continue;
+		date = DATE(s, d);
+		user = USER(s, d);
 		break;
 	}
+	/* If no user, then there's no BKFake already in heap -- it is uniq */
+	/* Note: there is no host in a non bk file */
+	unless (user) user = "BKFake";
 
 	/* only fix the first 'i' deltas in count down fashion */
-	while (i > 1) {
-		i--;
-		unless (d = sfind(s, (ser_t) i)) continue;
-		unless (!(d->flags & D_GONE) && (d->type == 'D')) {
+	while (d > 1) {
+		d--;
+		unless (FLAGS(s, d)) continue;
+		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
 		date--;
-		d->date = date;
-		strftime(d->sdate, strlen(d->sdate)+1,
-		    "%y/%m/%d %H:%M:%S", gmtime(&d->date));
-		assert(!streq(d->user, user));
-		free(d->user);
-		d->user = strdup(user);
+		DATE_SET(s, d, date);
+		assert(!streq(USER(s, d), user));
+		(void)sccs_parseArg(s, d, 'U', user, 0);
 	}
 }
 
 /*
- * See if d->merge ancestory of d contains d->parent.
+ * See if MERGE(s, d) ancestory of d contains d->parent.
  * If yes, collapse merge branch onto same branch as d
  * 
  * fixes problem of non bk structure (note: 1.1.1.1 is older than 1.2):
@@ -481,10 +483,9 @@ handleFake(sccs *s)
  * The numbering gets fixed as we export this and import into a bk setup.
  */
 private void
-collapse(sccs *s, int verbose, delta *d, delta *m)
+collapse(sccs *s, int verbose, ser_t d, ser_t m)
 {
-	delta	*b, *p, *e;
-	delta	**ep;
+	ser_t	b, p;
 
 	p = PARENT(s, d);
 	assert(m && p);
@@ -493,42 +494,21 @@ collapse(sccs *s, int verbose, delta *d, delta *m)
 	 * See if merge ancestory contains parent.
 	 * b == base of merge ancestory whose parent is (possibly) p
 	 */
-	for (b = m; b && b->pserial; b = PARENT(s, b)) {
-		unless (b->pserial > p->serial) break;
+	for (b = m; b && PARENT(s, b); b = PARENT(s, b)) {
+		unless (PARENT(s, b) > p) break;
 	}
-	unless (b && b->pserial == p->serial) return;
+	unless (b && PARENT(s, b) == p) return;
 	if (verbose > 1) {
 		fprintf(stderr,
 		    "Inlining graph: new parent of %s(%d) => %s(%d)\n",
-		    d->rev, d->serial, m->rev, m->serial);
+		    REV(s, d), d,
+		    REV(s, m), m);
 	}
-
-	/*
-	 * Do surgery on 'p' kids list:
-	 *   1. delete b from current location in list
-	 *   2. put b where ever d was, removing d from list
-	 */
-	for (ep = &p->kid; e = *ep; ep = &e->siblings) {
-		if (e == b) break;
-	}
-	assert(e);
-	*ep = b->siblings;	/* delete b */
-	for (ep = &p->kid; e = *ep; ep = &e->siblings) {
-		if (d == e) break;
-	}
-	assert(e);
-	*ep = b;	/* put b in place of p; deleting p */
-	b->siblings = d->siblings;
 
 	/* surgery at other end of graph: merge becomes parent of d */
-	d->siblings = m->kid;
-	m->kid = d;
-	d->parent = m;
-	d->pserial = m->serial;
-	d->merge = 0;
-	assert(d->include);
-	free(d->include);
-	d->include = 0;
+	PARENT_SET(s, d, m);
+	MERGE_SET(s, d, 0);
+	CLUDES_SET(s, d, 0);
 }
 
 /*
@@ -538,39 +518,48 @@ collapse(sccs *s, int verbose, delta *d, delta *m)
 private int
 makeMerge(sccs *s, int verbose)
 {
-	delta	*d, *m;
-	int	i, j;
+	ser_t	d, m;
+	int	sign, del;
 	ser_t	mser;
+	FILE	*f = fmem();
+	char	*p;
 
 	/* table order, mark things to ignore, and find merge markers */
-	for (d = s->table; d; d = NEXT(d)) {
-		if (d->type == 'R') {
-			d->flags |= D_GONE;
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
+		if (TAG(s, d)) {
+			FLAGS(s, d) |= D_GONE;
 			continue;
 		}
-		unless (d->include) continue;
-		assert(!d->merge);
-
-		j = 0;
-		EACH(d->include) {
-			if ((m = sfind(s, d->include[i])) && (m->type == 'D')) {
-				if (j) d->include[j++] = d->include[i];
+		unless (HAS_CLUDES(s, d)) continue;
+		assert(!MERGE(s, d));
+		mser = 0;
+		del = 0;
+		p = CLUDES(s, d);
+		while (m = sccs_eachNum(&p, &sign)) {
+			if (FLAGS(s, m) && !TAG(s, m)) {
+				if ((sign > 0) && (mser < m)) {
+					mser = m;
+				}
+				sccs_saveNum(f, m, sign);
 			} else {	/* delete it */
-				unless (j) j = i;
+				del = 1;
 			}
 		}
-		if (j) d->include[0] = (d->include[0] & ~LMASK) | (j-1);
-		if (emptyLines(d->include)) {
-			free(d->include);
-			d->include = 0;
-			continue;
+		if (del) {
+			if (ftell(f) > 0) {
+				CLUDES_SET(s, d, fmem_peek(f, 0));
+			} else {
+				CLUDES_SET(s, d, 0);
+			}
 		}
-		mser = d->include[d->include[0] & LMASK];
-		m = sfind(s, mser);
-		assert(m && m->type == 'D');
-		d->merge = mser;
-		collapse(s, verbose, d, m);
+		ftrunc(f, 0);
+		unless (mser) continue;
+		assert(FLAGS(s, mser) && !TAG(s, mser));
+		MERGE_SET(s, d, mser);
+		collapse(s, verbose, d, mser);
 	}
+	fclose(f);
 	return (0);
 }
 
@@ -592,14 +581,13 @@ makeMerge(sccs *s, int verbose)
 private void
 fixTable(sccs *s, int verbose)
 {
-	delta	*d = 0, *e = 0, *m = 0;
-	int	i;
+	ser_t	d = 0, e = 0, m = 0;
 	u32	maxfudge = 0;
 
 	/* reverse table order of just the deltas being imported */
-	for (i = 1; i < s->nextserial; i++) {
-		unless (d = sfind(s, (ser_t) i)) continue;
-		unless (!(d->flags & D_GONE) && (d->type == 'D')) {
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
+		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
 		/*
@@ -609,11 +597,11 @@ fixTable(sccs *s, int verbose)
 		 * Don't worry about keys here, because we are setting time
 		 * always going forward.
 		 */
-		if (e && d->date <= e->date) {
-			int	f = (e->date - d->date) + 1;
+		if (e && DATE(s, d) <= DATE(s, e)) {
+			int	f = (DATE(s, e) - DATE(s, d)) + 1;
 
-			d->dateFudge += f;
-			d->date += f;
+			DATE_FUDGE_SET(s, d, (DATE_FUDGE(s, d) + f));
+			DATE_SET(s, d, (DATE(s, d) + f));
 			if (f > maxfudge) maxfudge = f;
 		}
 		e = d;
@@ -622,28 +610,27 @@ fixTable(sccs *s, int verbose)
 		 * The outcome is to keep the trunk tip
 		 * on the trunk after import.
 		 */
-		unless (d && d->merge) continue;
+		unless (d && MERGE(s, d)) continue;
 		m = MERGE(s, d);
 		assert(m);
 		if (sccs_needSwap(s, PARENT(s, d), m)) {
 			if (verbose > 1) {
 				fprintf(stderr,
 				    "Need to swap in %s => %s & %s\n",
-				    d->rev, PARENT(s, d)->rev, m->rev);
+				    REV(s, d), REV(s, PARENT(s, d)), REV(s, m));
 			}
 			/*
 			 * XXX: This is a hack of the graph optimized
 			 * for our needs.  See renumber.c:parentSwap()
 			 * for a complete rewiring job.
 			 */
-			d->merge = d->pserial;
-			d->parent = m;
-			d->pserial = m->serial;
+			MERGE_SET(s, d, PARENT(s, d));
+			PARENT_SET(s, d, m);
 		}
 	}
 	if (verbose > 2) ptable(s);
 	if (verbose > 1 && e) {
-		fprintf(stderr, "%s: maxfudge=%u lastfudge=%lu\n",
-		    s->gfile, maxfudge, e->dateFudge);
+		fprintf(stderr, "%s: maxfudge=%u lastfudge=%u\n",
+		    s->gfile, maxfudge, DATE_FUDGE(s, e));
 	}
 }

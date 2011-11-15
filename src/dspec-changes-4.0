@@ -1,5 +1,6 @@
 # dspec-v2
 # The original dspec that shipped with the bk-4.0 release
+# Note: Do not use :USERHOST: as :USER:@:HOST will print @ if no host
 
 ":INDENT:"
 ":DPN:@:REV:, :Dy:-:Dm:-:Dd: :T::TZ:, :USER:@:HOST: +:LI: -:LD:\n"

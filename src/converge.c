@@ -111,7 +111,7 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 	/* only merge file if it is for the right pathname */
 	s = sccs_init(sfile, g->iflags);
 	sccs_close(s);
-	unless (streq(sccs_ino(s)->pathname, pathname)) {
+	unless (streq(PATHNAME(s, sccs_ino(s)), pathname)) {
 		sccs_free(s);
 		goto out;
 	}
@@ -236,8 +236,8 @@ converge(State *g, char *gfile, char *opts)
 	sccs_clean(srm, SILENT);
 
 	/* pick the older sfile */
-	if ((sccs_ino(srm)->date < sccs_ino(skeep)->date) ||
-	    ((sccs_ino(srm)->date == sccs_ino(skeep)->date) &&
+	if ((DATE(srm, sccs_ino(srm)) < DATE(skeep, sccs_ino(skeep))) ||
+	    ((DATE(srm, sccs_ino(srm)) == DATE(skeep, sccs_ino(skeep))) &&
 		(strcmp(key_rm, key_keep) < 0))) {
 		s = skeep;
 		skeep = srm;

@@ -142,12 +142,7 @@ bk _test -f SCCS/c.ChangeSet || {
 }
 echo ChangeSet comments > C
 bk _cp SCCS/c.ChangeSet c.ChangeSet
-cmp -s C c.ChangeSet || {
-	echo incorrect comments
-	echo Wanted ChangeSet comments
-	echo got `bk _cat SCCS/c.ChangeSet`
-	exit 1
-}
+cmpfiles C c.ChangeSet
 rm -f c.ChangeSet
 echo OK
 
@@ -483,7 +478,7 @@ cd ..
 rm -rf facetime
 cd project
 bk tag $Q this_tag_should_be_there || exit 1
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS0 l$' || {
+bk _scat SCCS/s.ChangeSet | grep -q '^.cS0 l$' || {
 	echo no leaf marker in the tag graph
 	exit 1
 }
@@ -509,7 +504,7 @@ test X`bk prs -hnd:REV: -rnnn` = "X" || {
 	echo tag shouldn\'t exist
 	exit 1
 }
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS0 l$' || {
+bk _scat SCCS/s.ChangeSet | grep -q '^.cS0 l$' || {
 	echo no leaf marker in the tag graph after fix -c
 	exit 1
 }

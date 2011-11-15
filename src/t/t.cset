@@ -23,7 +23,7 @@ bk prs -hr1.0 -nd:FLAGS: ChangeSet | grep -q LONGKEY || {
 	echo no LONGKEY flag in the ChangeSet file
 	bk prs -hr1.0 -nd:FLAGS: ChangeSet
 	bk prs -hr1.0 -nd:XFLAGS: ChangeSet
-	bk _cat SCCS/s.ChangeSet
+	bk _scat SCCS/s.ChangeSet
 	exit 1
 }
 echo OK

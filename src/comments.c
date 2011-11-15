@@ -12,35 +12,31 @@ private	int	gotComment;	/* seems redundant but it isn't, this is
 int
 comments_save(char *s)
 {
-	char	*p, **split;
-	int	i, len;
+	char	*p;
+	int	len;
 
 	unless (s) goto out;	/* null comment */
 
 	if (saved) freeLines(saved, free);
 	saved = 0;
-	split = splitLineToLines(s, 0);
-	EACH(split) {
-		if (comments_checkStr(split[i])) {
-			freeLines(split, free);
+	while (p = eachline(&s, &len)) {
+		if (comments_checkStr(p, len)) {
 			freeLines(saved, free);
 			saved = 0;
 			return (-1);
 		}
-		len = strlen(split[i]);
 		if (len <= MAXCMT) {
-			saved = addLine(saved, strdup(split[i]));
+			saved = addLine(saved, strndup(p, len));
 		} else {
-			for (p = split[i]; len > MAXCMT; len -= MAXCMT) {
+			for (/* p */; len > MAXCMT; len -= MAXCMT) {
 				saved = addLine(saved, strndup(p, MAXCMT));
 				p += MAXCMT;
 				fprintf(stderr,
 				    "Splitting comment line \"%.50s\"...\n", p);
 			}
-			saved = addLine(saved, strdup(p));
+			saved = addLine(saved, strndup(p, len));
 		}
 	}
-	freeLines(split, free);
 out:	gotComment = 1;
 	return (0);
 }
@@ -95,10 +91,9 @@ comments_return(char *prompt)
 /*
  * Attach saved comments to delta, prompted if needed
  */
-delta *
-comments_get(char *file, char *rev, sccs *s, delta *d)
+ser_t
+comments_get(char *file, char *rev, sccs *s, ser_t d)
 {
-	int	i;
 	char	**cmts;
 	char	*prompt = 0;
 
@@ -109,12 +104,11 @@ comments_get(char *file, char *rev, sccs *s, delta *d)
 		    rev ? rev : "");
 	}
 	if (cmts = comments_return(prompt)) {
-		unless (d) d = new(delta);
-		/* sort of a catLines() plus setting comments metadata */
-		EACH(cmts) comments_append(d, cmts[i]);
-		freeLines(cmts, 0);
+		unless (d) d = sccs_newdelta(s);
+		comments_set(s, d, cmts);
+		freeLines(cmts, free);
 	} else {
-		if (d) sccs_freetree(d);
+		if (d) sccs_freedelta(s, d);
 		d = 0;		/* prompt aborted */
 	}
 	if (prompt) free(prompt);
@@ -158,11 +152,12 @@ comments_prompt(char *file)
 }
 
 int
-comments_readcfile(sccs *s, int prompt, delta *d)
+comments_readcfile(sccs *s, int prompt, ser_t d)
 {
 	char	*cfile = sccs_Xfile(s, 'c');
 	FILE	*f;
 	char	*p;
+	char	**comments = 0;
 	char	tmp[MAXPATH];
 
 	unless (access(cfile, W_OK) == 0) return (-1);
@@ -172,9 +167,9 @@ comments_readcfile(sccs *s, int prompt, delta *d)
 	if (fileMove(tmp, cfile)) perror(tmp);
 	unless (f = fopen(cfile, "r")) return (-1);
 	s->used_cfile = 1;
-	while (p = fgetline(f)) {
-		comments_append(d, strdup(p));
-	}
+	while (p = fgetline(f)) comments = addLine(comments, strdup(p));
+	comments_set(s, d, comments);
+	freeLines(comments, free);
 	fclose(f);
 	return (0);
 }
@@ -193,10 +188,10 @@ comments_writefile(char *file)
 }
 
 int
-comments_checkStr(u8 *s)
+comments_checkStr(u8 *s, int len)
 {
 	assert(s);
-	for (; *s; s++) {
+	for (; *s && (len > 0); s++, len--) {
 		/* disallow control characters, but still allow UTF-8 */
 		if ((*s < 0x20) && (*s != '\t')) {
 			fprintf(stderr,
@@ -209,43 +204,16 @@ comments_checkStr(u8 *s)
 }
 
 /*
- * Append 1 line to the comments for a delta.
- * A newline is added to the line.
+ * Replace the comments on a delta with a new set
  */
 void
-comments_append(delta *d, char *line)
+comments_set(sccs *s, ser_t d, char **comments)
 {
-	assert(d->localcomment || (d->cmnts == 0));
+	int	i;
 
-	d->localcomment = 1;
-	d->cmnts = addLine(d->cmnts, line);
-}
-
-/* force comments to be allocated locally */
-char **
-comments_load(sccs *s, delta *d)
-{
-	char	**lines = 0;
-	char	buf[MAXCMT+6];	/* "^Ac " (3) + "\n\0" (2) + 1 slop = 6 */
-
-	if (d->localcomment) goto out;
-	d->localcomment = 1;
-	unless (d->cmnts) goto out;
-	assert(s && (s->state & S_SOPEN));
-	fseek(s->fh, p2int(d->cmnts), SEEK_SET);
-	while (fnext(buf, s->fh)) {
-		chomp(buf);
-		unless (strneq(buf, "\001c ", 3)) break;
-		lines = addLine(lines, strdup(buf+3));
+	COMMENTS_SET(s, d, "");
+	EACH(comments) {
+		sccs_appendStr(s, comments[i]);
+		sccs_appendStr(s, "\n");
 	}
-	d->cmnts = lines;
-out:	return (d->cmnts);
-}
-
-void
-comments_free(delta *d)
-{
-	if (d->localcomment) freeLines(d->cmnts, free);
-	d->cmnts = 0;
-	d->localcomment = 0;
 }

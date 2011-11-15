@@ -266,7 +266,7 @@ private int
 mergeInList(sccs *s, char *revs)
 {
 	char	*p, *t;
-	delta	*d;
+	ser_t	d;
 
 	assert(CSET(s));
 	unless (revs) return (0);
@@ -275,7 +275,7 @@ mergeInList(sccs *s, char *revs)
 	while (t && *t) {
 		if (p = strchr(t, ',')) *p = 0;
 		d = sccs_findrev(s, t);
-		if (d && d->merge) {
+		if (d && MERGE(s, d)) {
 			fprintf(stderr,
 			    "cset: Merge cset found in revision list: (%s).  "
 			    "Aborting. (cset1)\n", t);
@@ -292,7 +292,7 @@ private int
 doit(int flags, char *file, char *op, char *revs)
 {
 	sccs	*s;
-	delta	*d = 0;
+	ser_t	d = 0;
 	char	*sfile;
 	int	ret;
 
@@ -315,7 +315,7 @@ err:		sccs_free(s);
 	 * XXX - if we ever make marks in normal repos optional this breaks.
 	 */
 	unless ((CSET(s) && proj_isProduct(s->proj)) ||
-	    (sccs_top(s)->flags & D_CSET)) {
+	    (FLAGS(s, sccs_top(s)) & D_CSET)) {
 		fprintf(stderr,
 		    "cset: %s has uncommitted deltas, aborting.\n", s->gfile);
 		goto err;
@@ -338,7 +338,7 @@ err:		sccs_free(s);
 	unless (comments_got()) {
 		char	*what = streq(op, "-x") ? "Exclude" : "Include";
 
-		d = sccs_parseArg(0, 'C', what, 0);
+		d = sccs_parseArg(s, 0, 'C', what, 0);
 	}
 	sccs_restart(s);
 	if (sccs_delta(s, SILENT|DELTA_FORCE, d, 0, 0, 0)) {

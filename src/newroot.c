@@ -60,6 +60,7 @@ newroot(char *ranbits, int bk4, char *comments, char *who)
 	sccs	*s;
 	int	rc = 0;
 	char	*p, *oldbamdir;
+	char	*origrand;
 	ticker	*tick = 0;
 	char	cset[] = CHANGESET;
 	char	buf[MAXPATH];
@@ -92,23 +93,23 @@ newroot(char *ranbits, int bk4, char *comments, char *who)
 		}
 	}
 	unless (bk4) sccs_defRootlog(s);
-	unless (s->tree->random) s->tree->random = strdup("");
 
 	if (ranbits) {
 		/* We're called from BAM convert, append the random bits */
+		origrand = RANDOM(s, TREE(s));
 		if (strneq(ranbits, "B:", 2)) {
-			p = s->tree->random;
+			p = origrand;
 			if (strneq("B:",p, 2)) p = strrchr(p, ':') + 1;
 			sprintf(buf, "%s%s", ranbits, p);
 			assert(strlen(buf) < MAXPATH - 1);
 		} else {
 			p = buf;
-			if (strneq("B:", s->tree->random, 2)) {
-				p = strrchr(s->tree->random, ':');
+			if (strneq("B:", origrand, 2)) {
+				p = strrchr(origrand, ':');
 				assert(p);
-				strncpy(buf, s->tree->random,
-				    p - s->tree->random + 1);
-				p = buf + (p - s->tree->random + 1);
+				strncpy(buf, origrand,
+				    p - origrand + 1);
+				p = buf + (p - origrand + 1);
 			}
 			if ((p - buf + strlen(ranbits)) > (MAXPATH - 1)) {
 				fprintf(stderr, "Rootkey too long\n");
@@ -119,16 +120,11 @@ newroot(char *ranbits, int bk4, char *comments, char *who)
 	} else {
 		randomBits(buf);
 	}
-	if (s->tree->random) {
-		if (streq(buf, s->tree->random)) {
-			fprintf(stderr,
-			    "newroot: error: new key matches old\n");
-			exit (1);
-		}
-		free(s->tree->random);
+	if (streq(buf, RANDOM(s, TREE(s)))) {
+		fprintf(stderr, "newroot: error: new key matches old\n");
+		exit (1);
 	}
-	s->tree->random = strdup(buf);
-
+	RANDOM_SET(s, TREE(s), buf);
 	sccs_sdelta(s, sccs_ino(s), key);
 	unless (bk4) update_rootlog(s, key, comments, who);
 	sccs_newchksum(s);
@@ -265,9 +261,10 @@ sccs_defRootlog(sccs *cset)
 	unless (i == -1) {
 		cset->text = addLine(cset->text, strdup("@ROOTLOG"));
 		sccs_sdelta(cset, sccs_ino(cset), key);
-		sprintf(who, "%s@%s %s%s",
-		    cset->tree->user, cset->tree->hostname,
-		    cset->tree->sdate, cset->tree->zone);
+		sprintf(who, "%s %s%s",
+		    USERHOST(cset, TREE(cset)),
+		    delta_sdate(cset, TREE(cset)),
+		    ZONE(cset, TREE(cset)));
 		update_rootlog(cset, key, "original", who);
 		return (1);
 	}

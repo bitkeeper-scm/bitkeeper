@@ -21,10 +21,7 @@ printf "bam\0data\0" > bam
 bk new $Q date bam
 
 echo $N Check for path in initial checkin ...........................$NL
-bk _cat SCCS/s.date | grep -q '^.cP.*date$'
-if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
-bk _cat SCCS/s.date | grep -q '^.cPdate$'
-if [ $? -ne 0 ]; then echo Wrong path found.; exit 1; fi
+test `bk prs -hnd:DPN: -r+ date` = date || fail
 echo OK
 mkdir -p aa/bb/cc/dd
 cd aa/bb/cc/dd
@@ -32,21 +29,16 @@ echo Hallo > date
 bk new $Q date
 
 echo $N Check for path in sub dir1 ..................................$NL
-bk _cat SCCS/s.date | grep -q '^.cP.*date$'
-if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
-bk _cat SCCS/s.date | grep -q '^.cPaa/bb/cc/dd/date$'
-if [ $? -ne 0 ]; then echo Wrong path found.; exit 1; fi
+test `bk prs -hnd:DPN: -r+ date` = aa/bb/cc/dd/date || fail
 echo OK
+
+echo $N Check for path in sub dir2 ..................................$NL
 cd ../../../..
 echo Hallo > aa/bb/cc/dd/date2
 bk new $Q  aa/bb/cc/dd/date2
-
-echo $N Check for path in sub dir2 ..................................$NL
-bk _cat aa/bb/cc/dd/SCCS/s.date2 | grep -q '^.cP.*date2$' 
-if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
-bk _cat aa/bb/cc/dd/SCCS/s.date2 | grep -q '^.cPaa/bb/cc/dd/date2$' 
-if [ $? -ne 0 ]; then echo Wrong path found.; exit 1; fi
+test `bk prs -hnd:DPN: -r+ aa/bb/cc/dd/date2` = aa/bb/cc/dd/date2 || fail
 echo OK
+
 bk co $Q -l date
 echo Hi >> date
 bk ci $Q -y date
@@ -133,23 +125,20 @@ if [ $? -ne 0 ]; then echo Wrong error msg; exit 1; fi
 echo OK
 
 echo $N Check paths in file .........................................$NL
-bk _cat SCCS/s.date | grep -q '^.cP.*date$'
-if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
+test `bk prs -hnd:DPN: -r+ date` = date || fail
 echo OK
 
 echo $N Check hosts in file .........................................$NL
 hostname=bk_regression.bk
-bk _cat SCCS/s.date | grep -q "^.cH.*$hostname/"
-if [ $? -ne 0 ]; then echo No host found.; exit 1; fi
-X=`bk _cat SCCS/s.date | grep -c "^.cH.*$hostname/"`
+test `bk prs -hnd:HOST: -r+ date` = $hostname || fail
+X=`bk _heapdump date | grep ^USERHOST | sort -u | wc -l`
 if [ $X -ne 1 ]; then echo Duplicate hosts.; exit 1; fi
 echo OK
 
 echo $N Check zones in file .........................................$NL
 zone=`bk zone`
-bk _cat SCCS/s.date | grep -q "^.cZ.*$zone\$"
-if [ $? -ne 0 ]; then echo No zone found.; exit 1; fi
-X=`bk _cat SCCS/s.date | grep -c "^.cZ.*$zone\$"`
+test `bk prs -hnd:TZ: -r+ date` = $zone || fail
+X=`bk _heapdump date | grep ^ZONE | sort -u | wc -l`
 if [ $X -ne 1 ]; then echo Duplicate zones; exit 1; fi
 echo OK
 
@@ -157,10 +146,7 @@ echo $N Check paths in moved file ...................................$NL
 bk _cp SCCS/s.date SCCS/s.moved
 bk get $Q -e moved
 _BK_MV_OK=1 bk delta $Q -y moved
-bk _cat SCCS/s.moved | grep -q '^.cP.*date$'
-if [ $? -ne 0 ]; then echo Lost old path.; exit 1; fi
-bk _cat SCCS/s.moved | grep -q '^.cP.*moved$'
-if [ $? -ne 0 ]; then echo Did not add new path.; exit 1; fi
+test `bk prs -hnd':DPN|PARENT:-:DPN:' -r+ moved` = 'date-moved' || fail
 echo OK
 
 echo $N Make sure get -g does not get file ..........................$NL

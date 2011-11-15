@@ -3,7 +3,7 @@
 #include "sccs.h"
 
 private int xflagsDefault(sccs *s, int cset, int what);
-private int xflags(sccs *s, delta *d, int what);
+private int xflags(sccs *s, int what);
 
 /*
  * xflags - walk the graph looking for xflag updates and make sure
@@ -36,7 +36,7 @@ xflags_main(int ac, char **av)
 		}
 		s->state |= S_READ_ONLY;
 		ret |= xflagsDefault(s, CSET(s), what);
-		ret |= xflags(s, s->tree, what);
+		ret |= xflags(s, what);
 		unless ((what & XF_DRYRUN) || (s->state & S_READ_ONLY)) {
 		    	sccs_newchksum(s);
 		}
@@ -53,25 +53,25 @@ next:		sccs_free(s);
 private int
 xflagsDefault(sccs *s, int cset, int what)
 {
-	int	xf = s->tree->xflags;
+	int	xf = XFLAGS(s, TREE(s));
 	int	ret = 0;
 
 	unless (xf) {
 		unless (what & XF_DRYRUN) s->state &= ~S_READ_ONLY;
-		s->tree->flags |= D_XFLAGS;
-		s->tree->xflags = X_DEFAULT;
+		FLAGS(s, TREE(s)) |= D_XFLAGS;
+		XFLAGS(s, TREE(s)) = X_DEFAULT;
 		ret = 1;
 	}
 	/* for old binaries */
 	unless ((xf & X_REQUIRED) == X_REQUIRED) {
 		unless (what & XF_DRYRUN) s->state &= ~S_READ_ONLY;
-		s->tree->xflags |= X_REQUIRED;
+		XFLAGS(s, TREE(s)) |= X_REQUIRED;
 		ret = 1;
 	}
 	if (cset && ((xf & (X_SCCS|X_RCS)) || !(xf & X_HASH))) {
 		unless (what & XF_DRYRUN) s->state &= ~S_READ_ONLY;
-		s->tree->xflags &= ~(X_SCCS|X_RCS);
-		s->tree->xflags |= X_HASH;
+		XFLAGS(s, TREE(s)) &= ~(X_SCCS|X_RCS);
+		XFLAGS(s, TREE(s)) |= X_HASH;
 		ret = 1;
 	}
 	return (ret);
@@ -82,53 +82,56 @@ xflagsDefault(sccs *s, int cset, int what)
  * look at each delta and make sure the xflags match the comments.
  */
 private int
-xflags(sccs *s, delta *d, int what)
+xflags(sccs *s, int what)
 {
 	int	ret = 0;
+	ser_t	d;
 
-	unless (d) return (0);
-	ret = checkXflags(s, d, what);
-	ret |= xflags(s, KID(d), what);
-	ret |= xflags(s, SIBLINGS(d), what);
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		unless (FLAGS(s, d)) continue;
+
+		ret |= checkXflags(s, d, what);
+	}
 	return (ret);
 }
 
 int
-checkXflags(sccs *s, delta *d, int what)
+checkXflags(sccs *s, ser_t d, int what)
 {
 	char	*t, *f;
 	u32	old, new, want, added = 0, deleted = 0, *p;
-	int	i;
+	char	*x, *r;
 	char	key[MD5LEN];
 
-	if (d == s->tree) {
-		unless ((d->xflags & X_REQUIRED) == X_REQUIRED) {
+	if (d == TREE(s)) {
+		unless ((XFLAGS(s, d) & X_REQUIRED) == X_REQUIRED) {
 			if (what & XF_STATUS) return (1);
 			fprintf(stderr,
 			    "%s: missing required flag[s]: ", s->gfile);
-			want = ~(d->xflags & X_REQUIRED) & X_REQUIRED;
+			want = ~(XFLAGS(s, d) & X_REQUIRED) & X_REQUIRED;
 			fputs(xflags2a(want), stderr);
 			fprintf(stderr, "\n");
 			return (1);
 		}
 		return (0);
 	}
-	EACH_COMMENT(s, d) {
-		if (strneq(d->cmnts[i], "Turn on ", 8)) {
-			t = &(d->cmnts[i][8]);
+	x = COMMENTS(s, d);
+	while (r = eachline(&x, 0)) {
+		if (strneq(r, "Turn on ", 8)) {
+			t = r+8;
 			p = &added;
-		} else if (strneq(d->cmnts[i], "Turn off ", 9)) {
-			t = &(d->cmnts[i][9]);
+		} else if (strneq(r, "Turn off ", 9)) {
+			t = r+9;
 			p = &deleted;
 		} else {
 			continue;
 		}
 		f = t;
 		unless (t = strchr(f, ' ')) continue;
-		unless (streq(t, " flag")) continue;
+		unless (strneq(t, " flag", 5)) continue;
 		*t = 0; *p |= a2xflag(f); *t = ' ';
 	}
-	assert(d->pserial);
+	assert(PARENT(s, d));
 	old = sccs_xflags(s, PARENT(s, d));
 	new = sccs_xflags(s, d);
 	want = old | added;
@@ -144,8 +147,8 @@ checkXflags(sccs *s, delta *d, int what)
 	 * XXX: this is fixed by rmshortkeys -- so safe to pull when
 	 * all repos have been converted.
 	 */
-	if (streq(s->tree->sdate, "97/05/18 16:29:28")) {
-		sccs_md5delta(s, s->tree, key);
+	if (DATE(s, TREE(s)) == 864023369) {
+		sccs_md5delta(s, TREE(s), key);
 		if (streq("337f90d8qZwQGPzUrQ-3E6KGSH4k4g", key)) return (0);
 	}
 
@@ -161,7 +164,7 @@ checkXflags(sccs *s, delta *d, int what)
 	// fprintf(stderr, "\n");
 	if (what & XF_STATUS) return (1);
 	if (what & XF_DRYRUN) {
-		fprintf(stderr, "%s|%s ", s->gfile, d->rev);
+		fprintf(stderr, "%s|%s ", s->gfile, REV(s, d));
 		if (new & ~want) {
 			fprintf(stderr, "should not have ");
 			fputs(xflags2a(new & ~want), stderr);
@@ -175,8 +178,8 @@ checkXflags(sccs *s, delta *d, int what)
 		return (1);
 	}
 	s->state &= ~S_READ_ONLY;
-	d->flags |= D_XFLAGS;
-	d->xflags = want;
+	FLAGS(s, d) |= D_XFLAGS;
+	XFLAGS(s, d) = want;
 	return (1);
 }
 

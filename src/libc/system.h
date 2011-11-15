@@ -38,6 +38,24 @@
 #include "mdbm/mdbm.h"
 #include "zlib/zlib.h"
 
+u32	_le32toh(u32 x);
+u32	_he32toh(u32 x);
+#if defined(__BYTE_ORDER) && (__BYTE_ORDER == __LITTLE_ENDIAN)
+# ifndef le32toh
+#  define le32toh(x) (x)
+# endif
+# ifndef htole32
+#  define htole32(x) (x)
+# endif
+#else
+# ifndef le32toh
+#  define le32toh(x) _le32toh(x)
+# endif
+# ifndef htole32
+#  define htole32(x) _htole32(x)
+# endif
+#endif
+
 #define	FREE(x)	do { if (x) { free(x); (x) = 0; } } while (0)
 #ifndef	isascii
 #define	isascii(x)	(((x) & ~0x7f) == 0)
@@ -357,6 +375,8 @@ void	ttyprintf(char *fmt, ...)
 void	my_perror(char *, int, char *);
 #define	perror(msg)	my_perror(__FILE__, __LINE__, msg)
 int	chomp(char *str);
+char	*eachline(char **linep, int *lenp);
+char	*eachstr(char **linep, int *lenp);
 
 /* webencode.c */
 void	webencode(FILE *out, u8 *ptr, int len);

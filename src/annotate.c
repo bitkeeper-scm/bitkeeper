@@ -14,7 +14,7 @@ int
 annotate_main(int ac, char **av)
 {
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	int	flags = BASE_FLAGS, errors = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	c;
@@ -83,7 +83,7 @@ err:			errors = 1;
 				    cdate, s->sfile);
 				goto err;
 			}
-			rev = d->rev;
+			rev = REV(s, d);
 		} else if (Rev) {
 			rev = Rev;
 		} else {

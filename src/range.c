@@ -6,7 +6,7 @@ int
 range_main(int ac, char **av)
 {
 	sccs	*s = 0;
-	delta	*e;
+	ser_t	e;
 	char	*name;
 	int	expand = 1;
 	int	quiet = 0;
@@ -50,18 +50,20 @@ range_main(int ac, char **av)
 		if (all) range_markMeta(s);
 		if (s->state & S_SET) {
 			printf("%s set:", s->gfile);
-			for (e = s->table; e; e = NEXT(e)) {
-				if (e->flags & D_SET) {
-					printf(" %s", e->rev);
-					if (e->type == 'R') printf("T");
+			for (e = TABLE(s); e >= TREE(s); e--) {
+				unless (FLAGS(s, e)) continue;
+				if (FLAGS(s, e) & D_SET) {
+					printf(" %s", REV(s, e));
+					if (TAG(s, e)) printf("T");
 				}
 			}
 		} else {
 			printf("%s %s..%s:",
-			    s->gfile, s->rstop->rev, s->rstart->rev);
-			for (e = s->rstop; e; e = NEXT(e)) {
-				printf(" %s", e->rev);
-				if (e->type == 'R') printf("T");
+			    s->gfile, REV(s, s->rstop), REV(s, s->rstart));
+			for (e = s->rstop; e; e--) {
+				unless (FLAGS(s, e)) continue;
+				printf(" %s", REV(s, e));
+				if (TAG(s, e)) printf("T");
 				if (e == s->rstart) break;
 			}
 		}

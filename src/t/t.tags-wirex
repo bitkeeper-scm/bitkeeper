@@ -38,7 +38,7 @@ echo OK
 echo $N Pull and make sure it automerged the tag graph ..............$NL
 cd "$HERE/tags"
 bk pull $Q
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS8 6 l' || {
+bk _scat SCCS/s.ChangeSet | grep -q '^.cS8 6 l' || {
 	echo expected serials 8 and 6 to be merged and a tag leaf
 	exit 1
 }
@@ -67,9 +67,9 @@ echo $N Pull and make sure it automerged the tag graph ..............$NL
 cd "$HERE/tags"
 bk pull $Q || exit 1
 bk admin -hhh || exit 1
-bk _cat SCCS/s.ChangeSet | grep -q '^.cS14 9 l' || {
+bk _scat SCCS/s.ChangeSet | grep -q '^.cS14 9 l' || {
 	echo expected serials 14 and 9 to be merged and a tag leaf
-	bk _cat SCCS/s.ChangeSet | grep '^.cS'
+	bk _scat SCCS/s.ChangeSet | grep '^.cS'
 	exit 1
 }
 echo OK

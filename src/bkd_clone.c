@@ -95,7 +95,7 @@ cmd_clone(int ac, char **av)
 	/* moved down here because we're caching the sccs* */
 	if (rev) {
 		sccs	*s = sccs_csetInit(SILENT);
-		delta	*d;
+		ser_t	d;
 
 		assert(s && HASGRAPH(s));
 		if (rev) {

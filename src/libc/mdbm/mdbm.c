@@ -1172,14 +1172,16 @@ mdbm_truncate(MDBM *db)
 {
 	ubig	dbsize, shift;
 	char	*pg0; /* page zero */
-	int	i;
+	int	i, rc;
 
 	if (db->m_db) {
 		if (db->m_fd >= 0) {
-			ftruncate(db->m_fd, sizeof(MDBM_hdr));
+			rc = ftruncate(db->m_fd, sizeof(MDBM_hdr));
+			assert(!rc);
 
 			dbsize = DATA_SIZE(0, db->m_pshift);
-			ftruncate(db->m_fd, (off_t) dbsize);
+			rc = ftruncate(db->m_fd, (off_t) dbsize);
+			assert(!rc);
 
 			db->m_toffset = (1<<db->m_pshift) - 2;
 			db->m_max_free = (uint32) (PAGE_SIZE(db) - INO_SIZE);

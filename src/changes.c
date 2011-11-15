@@ -47,7 +47,7 @@ private struct {
 
 typedef struct slog {
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	char	*path;
 } slog;
 
@@ -60,7 +60,7 @@ struct rstate {
 };
 
 private int	doit(int dash);
-private int	want(sccs *s, delta *e);
+private int	want(sccs *s, ser_t e);
 private int	send_part1_msg(remote *r, char **av);
 private int	send_end_msg(remote *r, char *msg);
 private int	send_part2_msg(remote *r, char **av, char *key_list);
@@ -551,7 +551,7 @@ doit(int dash)
 	char	*spec, *specf;
 	pid_t	pid;
 	sccs	*s = 0;
-	delta	*e, *dstart, *dstop;
+	ser_t	e, dstart, dstop;
 	int	rc = 1;
 	hash	*state;
 	struct	rstate *rstate;
@@ -593,9 +593,10 @@ doit(int dash)
 		if (range_process("changes", s, RANGE_SET, &opts.rargs)) {
 			goto next;
 		}
-		for (e = s->rstop; e; e = NEXT(e)) {
-			if ((e->flags & D_SET) && !want(s, e)) {
-				e->flags &= ~D_SET;
+		for (e = s->rstop; e; e--) {
+			unless (FLAGS(s, e)) continue;
+			if ((FLAGS(s, e) & D_SET) && !want(s, e)) {
+				FLAGS(s, e) &= ~D_SET;
 			}
 			if (e == s->rstart) break;
 		}
@@ -612,10 +613,10 @@ doit(int dash)
 				goto next;
 			}
 			/* maintain the rstart->rstop range */
-			if (!s->rstart || (e->serial < s->rstart->serial)) {
+			if (!s->rstart || (e < s->rstart)) {
 				s->rstart = e;
 			}
-			if (!s->rstop || (e->serial > s->rstop->serial)) {
+			if (!s->rstop || (e > s->rstop)) {
 				s->rstop = e;
 			}
 #ifdef	CRAZY_WOW
@@ -632,12 +633,13 @@ doit(int dash)
 				assert(e);
 			}
 #endif
-			if (want(s, e)) e->flags |= D_SET;
+			if (want(s, e)) FLAGS(s, e) |= D_SET;
 		}
 	} else {
-		s->rstop = s->table;
-		for (e = s->table; e; e = NEXT(e)) {
-			if (want(s, e)) e->flags |= D_SET;
+		s->rstop = TABLE(s);
+		for (e = TABLE(s); e >= TREE(s); e--) {
+			unless (FLAGS(s, e)) continue;
+			if (want(s, e)) FLAGS(s, e) |= D_SET;
 		}
 	}
 	/*
@@ -657,11 +659,11 @@ doit(int dash)
 	if (opts.doComp || opts.verbose) opts.fcset = fmem();
 	/* capture the comments, for the csets we care about */
 	dstart = dstop = 0;
-	for (e = s->rstop; e; e = NEXT(e)) {
-		if (e->flags & D_SET) {
+	for (e = s->rstop; e; e--) {
+		unless (FLAGS(s, e)) continue;
+		if (FLAGS(s, e) & D_SET) {
 			unless (dstart) dstart = e;
 			dstop = e;
-			comments_load(s, e);
 		}
 		if (e == s->rstart) break;
 	}
@@ -709,18 +711,21 @@ next:
 private	void
 fileFilt(sccs *s, MDBM *csetDB)
 {
-	delta	*d;
+	ser_t	d;
 	datum	k, v;
+	ser_t	ser;
 
 	/* Unset any csets that don't contain files from -i and -x */
-	for (d = s->table; d; d = NEXT(d)) {
-		unless (d->flags & D_SET) continue;
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
+		unless (FLAGS(s, d) & D_SET) continue;
 		/* if cset changed nothing, keep it if not filtering by inc */
-		if (!(opts.inc || opts.BAM) && !d->added) continue;
-		k.dptr = (char *)&(d->serial);
-		k.dsize = sizeof(d->serial);
+		if (!(opts.inc || opts.BAM) && !ADDED(s, d)) continue;
+		ser = d;
+		k.dptr = (char *)&ser;
+		k.dsize = sizeof(ser);
 		v = mdbm_fetch(csetDB, k);
-		unless (v.dptr) d->flags &= ~D_SET;
+		unless (v.dptr) FLAGS(s, d) &= ~D_SET;
 	}
 }
 
@@ -736,12 +741,13 @@ delta_sort(const void *a, const void *b)
 
 	if (d1->s == d2->s) {
 		/* comparing deltas of the same sfiles, time order */
-		cmp = (d2->d->serial - d1->d->serial);
+		cmp = (d2->d - d1->d);
 		if (opts.forwards) cmp *= -1;
 		return (cmp);
 	} else {
 		/* comparing different sfiles */
-		if (opts.timesort && (cmp = d2->d->date - d1->d->date)) {
+		if (opts.timesort &&
+		    (cmp = DATE(d2->s, d2->d) - DATE(d1->s, d1->d))) {
 			if (opts.forwards) cmp *= -1;
 			return (cmp);
 		}
@@ -766,15 +772,14 @@ delta_sort(const void *a, const void *b)
 }
 
 private	void
-dumplog(char **list, delta *cset, char *dspec, int flags, FILE *f)
+dumplog(char **list, sccs *sc, ser_t cset, char *dspec, int flags, FILE *f)
 {
 	slog	*ll;
 	int	i;
 	char	*comppath = 0;
-	
 
-	if (strrchr(cset->pathname, '/')) {
-		comppath = strdup(cset->pathname);
+	if (strrchr(PATHNAME(sc, cset), '/')) {
+		comppath = strdup(PATHNAME(sc, cset));
 		csetChomp(comppath);
 	}
 
@@ -802,7 +807,6 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 {
 	datum	k, v;
 	sccs	*s;
-	delta	*d;
 	char	*path, *here;
 	project	*prod;
 
@@ -850,8 +854,6 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 		perror("sccs_keyinitAndCache");
 	}
 	if (s) {
-		/* capture the comments */
-		for (d = s->table; d; d = NEXT(d)) comments_load(s, d);
 		sccs_close(s); /* we don't need the delta body */
 		if (opts.doComp) s->prs_indentC = 1;
 	}
@@ -863,7 +865,7 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
  * It collect all the deltas inside a changeset and stuff them to "list".
  */
 private char **
-collectDelta(sccs *s, delta *d, char **list)
+collectDelta(sccs *s, ser_t d, char **list)
 {
 	slog	*ll;
 	char	*path = 0;	/* The most recent :DPN: for this file */
@@ -873,16 +875,17 @@ collectDelta(sccs *s, delta *d, char **list)
 	 * changes output.
 	 */
 	range_cset(s, d);
-	for (d = s->rstop; d; d = NEXT(d)) {
-		if (d->flags & D_SET) {
+	for (d = s->rstop; d >= TREE(s); d--) {
+		unless (FLAGS(s, d)) continue;
+		if (FLAGS(s, d) & D_SET) {
 			/* add delta to list */
 			ll = new(slog);
 			ll->s = s;
 			ll->d = d;
-			unless (path) path = d->pathname;
+			unless (path) path = PATHNAME(s, d);
 			ll->path = path;
 			list = addLine(list, ll);
-			d->flags &= ~D_SET;	/* done using it */
+			FLAGS(s, d) &= ~D_SET;	/* done using it */
 		}
 		if (d == s->rstart) break;
 	}
@@ -914,8 +917,7 @@ loadcset(sccs *cset)
 	char	*p, *t;
 	MDBM	*db;
 	int	print = 0;
-	ser_t	ser = 0;
-	delta	*d;
+	ser_t	d = 0;
 	char	*pathp;
 	char	path[MAXPATH];
 
@@ -941,13 +943,11 @@ loadcset(sccs *cset)
 	while (p = sccs_nextdata(cset)) {
 		unless (isData(p)) {
 			if (p[1] == 'I') {
-				ser = atoi(p+3);
-				d = sfind(cset, ser);
-				assert(d);
-				print = (d->flags & D_SET);
+				d = atoi(p+3);
+				print = (FLAGS(cset, d) & D_SET);
 			} else if (p[1] == 'E') {
 				if (keylist) {
-					saveKey(db, ser, keylist);
+					saveKey(db, d, keylist);
 					keylist = 0;
 				}
 			}
@@ -1005,10 +1005,11 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	int	flags = PRS_FORCE; /* skip checks in sccs_prsdelta(), no D_SET*/
 	int	iflags = INIT_NOCKSUM;
 	int	i, j, found;
-	char	**keys, **csets = 0;
+	char	**keys;
+	ser_t	*csets = 0;
 	char	**list;
 	sccs	*s;
-	delta	*d, *e;
+	ser_t	d, e;
 	char	*rkey;
 	datum	k, v;
 	char	**complist;
@@ -1016,6 +1017,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	FILE	*fsave = 0;
 	char	*buf;
 	size_t	len;
+	ser_t	ser;
 	struct	rstate	*rstate;
 
 	assert(dspec);
@@ -1048,8 +1050,9 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			 * cset && the component cset need to pass
 			 * the want() test.  Is anding useful?
 			 */
-			for (e = sc->table; e; e = NEXT(e)) {
-				if (want(sc, e)) e->flags |= D_SET;
+			for (e = TABLE(sc); e >= TREE(sc); e--) {
+				unless (FLAGS(sc, e)) continue;
+				if (want(sc, e)) FLAGS(sc, e) |= D_SET;
 			}
 		}
 		/*
@@ -1070,8 +1073,9 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			assert(rstate->csetDB);
 		}
 		if (dkey) {
-			for (e = sc->table; e; e = NEXT(e)) {
-				e->flags &= ~D_SET;
+			for (e = TABLE(sc); e >= TREE(sc); e--) {
+				unless (FLAGS(sc, e)) continue;
+				FLAGS(sc, e) &= ~D_SET;
 			}
 		}
 	}
@@ -1088,21 +1092,22 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	 * repo the cset file is in. If the repo is the product repo,
 	 * these will be the same.
 	 */
-	for (e = sc->rstop; e; e = NEXT(e)) {
-		if (e->flags & D_SET) {
-			e->flags &= ~D_SET;
-			if (!dkey || want(sc, e)) csets = addLine(csets, e);
+	for (e = sc->rstop; e; e--) {
+		unless (FLAGS(sc, e)) continue;
+		if (FLAGS(sc, e) & D_SET) {
+			FLAGS(sc, e) &= ~D_SET;
+			if (!dkey || want(sc, e)) addArray(&csets, &e);
 		}
 		if (e == sc->rstart) break;
 	}
-	if (opts.forwards) reverseLines(csets);
+	if (opts.forwards) reverseArray(csets);
 
 	/*
 	 * Walk the ordered cset list and dump the file deltas contain in
 	 * each cset. The file deltas are also sorted on the fly in dumplog().
 	 */
 	EACH_INDEX(csets, j) {
-		e = (delta *)csets[j];
+		e = csets[j];
 
 		if (ferror(f)) break;	/* abort when stdout is closed */
 		if (opts.doComp || opts.verbose) {
@@ -1126,8 +1131,9 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		}
 
 		/* get key list */
-		k.dptr = (char *)&(e->serial);
-		k.dsize = sizeof(e->serial);
+		ser = e;
+		k.dptr = (char *)&ser;
+		k.dsize = sizeof(ser);
 		v = mdbm_fetch(rstate->csetDB, k);
 		keys = 0;
 		if (v.dptr) memcpy(&keys, v.dptr, v.dsize);
@@ -1204,7 +1210,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		}
 		if (found) rc = 1; /* Remember we printed output */
 		/* sort file deltas, print it, then free it */
-		dumplog(list, e, dspec, flags, f);
+		dumplog(list, sc, e, dspec, flags, f);
 
 		/*
 		 * Foreach component delta found mark them with D_SET
@@ -1244,29 +1250,27 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	 * The above loop may break out prematurely if pager exit
 	 * We need to account for it.
 	 */
-	freeLines(csets, 0);
-
-	/* clear marks */
-	for (e = sc->rstop; e; e = NEXT(e)) e->flags &= ~D_SET;
+	free(csets);
 
 	return (rc);
 }
 
 private int
-want(sccs *s, delta *e)
+want(sccs *s, ser_t e)
 {
-	char	*p;
+	char	*p, *t, old;
 	int	i, match;
 	symbol	*sym;
 
-	unless (opts.all || (e->type == 'D')) return (0);
+	unless (opts.all || !TAG(s, e)) return (0);
 	if (opts.tagOnly) {
-		unless (e->flags & D_SYMBOLS) return (0);
+		unless (FLAGS(s, e) & D_SYMBOLS) return (0);
 		if (opts.tsearch) {
 			match = 0;
-			for (sym = s->symbols; sym; sym = sym->next) {
-				unless (sym->d == e) continue;
-				if (search_either(sym->symname, opts.search)) {
+			EACHP_REVERSE(s->symlist, sym) {
+				unless (sym->ser == e) continue;
+				if (search_either(SYMNAME(s, sym),
+					opts.search)) {
 					match = 1;
 					break;
 				}
@@ -1275,30 +1279,39 @@ want(sccs *s, delta *e)
 		}
 	}
 	if (opts.notusers) {
-		if (p = strchr(e->user, '/')) *p = 0;
+		char	*u = USER(s, e);
+
+		if (p = strchr(u, '/')) *p = 0;
 		match = 0;
-		EACH(opts.notusers) match |= streq(opts.notusers[i], e->user);
+		EACH(opts.notusers) {
+			match |= streq(opts.notusers[i], u);
+		}
 		if (p) *p = '/';
 		if (match) return (0);
 	}
 	if (opts.users) {
-		if (p = strchr(e->user, '/')) *p = 0;
+		char	*u = USER(s, e);
+
+		if (p = strchr(u, '/')) *p = 0;
 		match = 0;
-		EACH(opts.users) match |= streq(opts.users[i], e->user);
+		EACH(opts.users) match |= streq(opts.users[i], u);
 		if (p) *p = '/';
 		unless (match) return (0);
 	}
-	if (opts.nomerge && (e->merge || e->mtag)) return (0);
-	if (opts.noempty && e->merge && !e->added && !(e->flags & D_SYMBOLS)) {
+	if (opts.nomerge && (MERGE(s, e) || MTAG(s, e))) return (0);
+	if (opts.noempty && MERGE(s, e) && !ADDED(s, e) && !(FLAGS(s, e) & D_SYMBOLS)) {
 	    	return (0);
 	}
 	if (opts.doSearch) {
-		int	i;
-
-		EACH_COMMENT(s, e) {
-			if (search_either(e->cmnts[i], opts.search)) {
+		t = COMMENTS(s, e);
+		while (p = eachline(&t, &i)) {
+			old = p[i];
+			p[i] = 0;
+			if (search_either(p, opts.search)) {
+				p[i] = old;
 				return (1);
 			}
+			p[i] = old;
 		}
 		return (0);
 	}

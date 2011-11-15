@@ -6,7 +6,7 @@ typedef struct {
 	u32 	show_all:1;	/* -a show deleted files */
 	u32	show_gone:1;	/* --show-gone: display gone files */
 	u32	show_diffs:1;	/* -r output in rev diff format */
-	u32	show_path:1;	/* -h show d->pathname */
+	u32	show_path:1;	/* -h show PATHNAME(s, d) */
 	u32	hide_bk:1;	/* --hide-bk: hide BitKeeper/ files */
 	u32	hide_cset:1;	/* -H hide ChangeSet file from file list */
 	u32	hide_comp:1;	/* -H also hide component csets */
@@ -183,7 +183,7 @@ rset_main(int ac, char **av)
 	 * current-but-missing paths.
 	 */
 	if (opts->show_gone) {
-		delta	*d, *tip = sccs_top(s);
+		ser_t	d, tip = sccs_top(s);
 
 		unless (revM) {
 			d = sccs_findrev(s, rev1);
@@ -575,7 +575,7 @@ rel_list(Opts *opts, MDBM *db, MDBM *idDB, char *rev)
 int
 sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 {
-	delta	*d, *p, *m;
+	ser_t	d, p, m;
 
 	d = sccs_findrev(s, rev);
 	unless (d) {
@@ -589,11 +589,11 @@ sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 		fprintf(stderr, "diffs: rev %s has no parent\n", rev);
 		return (-1);
 	}
-	assert(p->type != 'R'); /* parent should not be a meta delta */
-	*revP = (p ? strdup(p->rev) : NULL);
-	if (d->merge) {
+	assert(!TAG(s, p)); /* parent should not be a meta delta */
+	*revP = (p ? strdup(REV(s, p)) : NULL);
+	if (MERGE(s, d)) {
 		m = MERGE(s, d);
-		*revM = (m ? strdup(m->rev) : NULL);
+		*revM = (m ? strdup(REV(s, m)) : NULL);
 	}
 	return (0);
 }
@@ -601,7 +601,7 @@ sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 private char *
 fix_rev(sccs *s, char *rev)
 {
-	delta	*d;
+	ser_t	d;
 
 	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "Cannot find revision \"%s\"\n", rev);
@@ -609,7 +609,7 @@ fix_rev(sccs *s, char *rev)
 	}
 	assert(d);
 	FREE(rev);
-	return (strdup(d->rev)); /* ok */
+	return (strdup(REV(s, d))); /* ok */
 }
 
 private int

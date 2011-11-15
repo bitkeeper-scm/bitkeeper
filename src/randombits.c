@@ -22,7 +22,7 @@ int	in_rcs_import = 0;
  *    - 1.0 deltas
  *    - null deltas in files
  */
-int
+sum_t
 almostUnique(void)
 {
         u32     val;

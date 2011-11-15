@@ -6,6 +6,8 @@
 
 OLDVER=4.2
 OLDBK=/build/bitkeeper-$OLDVER
+BK_CONFIG='binfile:no!'
+export BK_CONFIG
 
 # use new parallel clone in tests
 _BK_FORCE_NETFS=YES
@@ -55,7 +57,7 @@ echo OK
 
 echo -------------- gone file automerge tests
 echo $N Test auto-merge on gone files works with new del format .....$NL
-commercial project
+fresh_commercial project
 bk clone $Q --sccs-compat . ../copy
 bk edit $Q BitKeeper/etc/gone
 echo "a@b.c|d|20001010101010|63920|1fea66be52324149" >> BitKeeper/etc/gone
@@ -253,7 +255,7 @@ echo OK
 
 echo $N Nested detached repo running behind old bkd .................$NL
 cd "$HERE"
-nested nest
+fresh_nested nest
 bk detach $Q --sccs-compat gcc ../newgcc || fail
 cd ../newgcc
 bk clone $Q . bk://localhost:$OLDP/oldgcc 2> ERR && fail -f ERR

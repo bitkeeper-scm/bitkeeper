@@ -34,31 +34,34 @@
 #define	LMASK				0x07ffffff
 
 /* sub-macro for EACH */
-#define	_TESTLEN_(s, i)			(i <= (*(u32 *)(s) & LMASK))
+/* length of array (use nLines() in code) */
+#define	_LLEN(s)			(*(u32 *)(s) & LMASK)
 
 #define	EACH_START(x, s, i)				\
-	if ((i = (x)), (s)) for (; _TESTLEN_(s, i); i++)
+	if ((i = (x)), (s)) for (; (i) <= _LLEN(s); i++)
 #define	EACH_INDEX(s, i)		EACH_START(1, s, i)
 #define	EACH(s)				EACH_START(1, s, i)
-#define	EACH_REVERSE(s)			for (i = nLines(s); i > 0; i--) 
+#define	EACH_REVERSE_INDEX(s, i)	for (i = nLines(s); i > 0; i--)
+#define	EACH_REVERSE(s)			EACH_REVERSE_INDEX(s, i)
 
 /* EACHP like EACH but walks a pointer to each array element instead of i */
 #define	EACHP(s, ptr)							\
-	if (s) for ((ptr) = (s)+1; (ptr) <= (s)+(*(u32 *)(s) & LMASK); ++(ptr))
-
+	if (s) for ((ptr) = (s)+1; (ptr) <= (s)+_LLEN(s); ++(ptr))
+#define	EACHP_REVERSE(s, ptr)						\
+	if (s) for ((ptr) = (s)+_LLEN(s); (ptr) > (s); --(ptr))
 
 #define	EACH_STRUCT(s, c, i)				\
 	if (((c) = 0), (i = 1), (s))			\
 		for (((c) = (void *)(s)[i]);		\
-		     _TESTLEN_(s, i) && ((c) = (void *)(s)[i]); \
-		     ++i)
+		     ((i) <= _LLEN(s)) && ((c) = (void *)(s)[i]);	\
+		     ++(i))
 
 #define	LNEXT(s)					\
-	((s) && _TESTLEN_(s, i) ? (s)[i++] : 0)
+	((s) && ((i) <= _LLEN(s)) ? (s)[i++] : 0)
 
 
 /* return number of lines in array */
-#define	nLines(s)			((s) ? (*(u32 *)(s) & LMASK) : 0)
+#define	nLines(s)			((s) ? _LLEN(s) : 0)
 #define	emptyLines(s)			(nLines(s) == 0)
 
 char	**addLine(char **space, void *line);
@@ -81,7 +84,6 @@ void	*removeLineN(char **space, int rm, void(*freep)(void *ptr));
 #define	unshiftLine(s, val)	insertLineN(s, 1, val)
 
 char	**splitLine(char *line, char *delim, char **tokens);
-char	**splitLineToLines(char *line, char **tokens);
 char	*joinLines(char *sep, char **space);
 void	freeLines(char **space, void(*freep)(void *ptr));
 int	removeLine(char **space, char *s, void(*freep)(void *ptr));
@@ -126,6 +128,9 @@ char	*shellquote(char *in);
 /* void catArray(TYPE **space, TYPE *array) */
 #define	catArray(s, a)		_catArray((s), (a), sizeof((s)[0]))
 
+/* void reverseArray(TYPE *space); */
+#define	reverseArray(s)		_reverseArray((s), sizeof((s)[0]))
+
 /* void sortArray(TYPE *space, cmpfn); */
 #define	sortArray(s, compar)	_sortArray((s), (compar), sizeof((s)[0]))
 
@@ -135,6 +140,7 @@ void	truncArray(void *space, int len);
 void	*_insertArrayN(void **space, int j, void *line, int size);
 void	_removeArrayN(void *space, int rm, int size);
 void	*_catArray(void **space, void *array, int size);
+void	_reverseArray(void *space, int size);
 void	_sortArray(void *space,
     int (*compar)(const void *, const void *), int size);
 

@@ -6,7 +6,7 @@
 private	int	eatlog(RCS *rcs, MMAP *m);
 private	int	eatdelta(RCS *rcs, MMAP *m);
 private	int	eatsym(RCS *rcs, MMAP *m);
-private	void	mkgraph(RCS *rcs);
+private	void	rcsmkgraph(RCS *rcs);
 private	void	dates(RCS *rcs);
 private	void	select_branch(RCS *rcs, char *branch);
 private	void	doit(RCS *r);
@@ -605,7 +605,7 @@ acc:	skip_white(m);
 
 	while (eatlog(rcs, m));
 	mclose(m);
-	mkgraph(rcs);
+	rcsmkgraph(rcs);
 	dates(rcs);
 	select_branch(rcs, cvsbranch);
 	rcs_rootkey(rcs);
@@ -661,7 +661,7 @@ rcs_defbranch(const RCS *rcs)
  * Put the deltas into a graph
  */
 private	void
-mkgraph(RCS *rcs)
+rcsmkgraph(RCS *rcs)
 {
 	rdelta	*d, *k, *p, *start;
 	int	n = rcs->n;

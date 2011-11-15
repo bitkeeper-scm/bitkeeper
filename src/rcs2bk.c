@@ -76,7 +76,7 @@ doit(char *file, char *cvsbranch)
 	RCS	*r;
 	char	*sfile;
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 
 	sfile = sccsname(file);
 	if (exists(sfile)) {
@@ -122,7 +122,7 @@ doit(char *file, char *cvsbranch)
 		 */
 		s = sccs_init(sfile, 0);
 		d = sccs_top(s);
-		unless (sccs_patheq(d->pathname, s->gfile)) {
+		unless (sccs_patheq(PATHNAME(s, d), s->gfile)) {
 			char	*p, *q;
 			int	ret;
 
@@ -133,7 +133,7 @@ doit(char *file, char *cvsbranch)
 				exit(1);
 			}
 			sccs_close(s);
-			q = name2sccs(d->pathname);
+			q = name2sccs(PATHNAME(s, d));
 			ret = fileMove(sfile, q);
 			assert(ret == 0);
 			/*
@@ -240,12 +240,12 @@ rcs2bk(RCS *rcs, char *sfile)
 			return (1);
 		}
 		sccs_restart(s);
-		d->sccsrev = strdup(s->table->rev);
+		d->sccsrev = strdup(REV(s, TABLE(s)));
 		if (verbose > 1) {
 			while (len--) putchar('\b');
-			printf("%s", s->table->rev);
+			printf("%s", REV(s, TABLE(s)));
 			fflush(stdout);
-			len = strlen(s->table->rev);
+			len = strlen(REV(s, TABLE(s)));
 		}
 	}
 	sccs_free(s);

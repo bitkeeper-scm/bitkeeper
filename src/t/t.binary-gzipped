@@ -140,8 +140,11 @@ echo OK
 
 echo $N Make a gzipped file ascii ...................................$NL
 bk admin -Znone gzipped
-bk _cat SCCS/s.gzipped | grep -q '^.f e 0$'
-if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
+ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: gzipped`
+if [ X$ENC != X"none,ascii" ]
+then	echo Wrong encoding. $ENC
+	exit 1
+fi
 echo OK
 
 echo $N Make sure it still has the same data ........................$NL
@@ -152,8 +155,11 @@ echo OK
 
 echo $N Make it gzipped again .......................................$NL
 bk admin -Z gzipped
-bk _cat SCCS/s.gzipped | grep -q '^.f e 4$'
-if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
+ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: gzipped`
+if [ X$ENC != X"gzip,ascii" ]
+then	echo Wrong encoding. $ENC
+	exit 1
+fi
 echo OK
 
 echo $N Make sure it still has the same data ........................$NL

@@ -75,6 +75,7 @@ keyword: sccs
 BAM: 1
 lockwait: 0
 partial_check: off
+binfile: yes
 EOF
 }
 

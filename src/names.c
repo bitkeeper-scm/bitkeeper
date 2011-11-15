@@ -13,13 +13,13 @@
 
 private	 void	pass1(sccs *s);
 private	 void	pass2(u32 flags);
-private	 int	try_rename(sccs *s, delta *d, int dopass1, u32 flags);
+private	 int	try_rename(sccs *s, ser_t d, int dopass1, u32 flags);
 
 int
 names_main(int ac, char **av)
 {
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	char	*p;
 	int	nfiles = 0, n = 0;
 	int	c, todo = 0, error = 0;
@@ -47,7 +47,7 @@ names_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
-		if (sccs_patheq(d->pathname, s->gfile)) {
+		if (sccs_patheq(PATHNAME(s, d), s->gfile)) {
 			sccs_free(s);
 			continue;
 		}
@@ -102,7 +102,7 @@ pass2(u32 flags)
 {
 	char	path[MAXPATH];
 	sccs	*s;
-	delta	*d;
+	ser_t	d;
 	int	worked = 0, failed = 0;
 	int	i;
 	
@@ -130,7 +130,7 @@ pass2(u32 flags)
 		sccs_close(s); /* for Win32 NTFS */
 		if (try_rename(s, d, 0, flags)) {
 			fprintf(stderr, "Can't rename %s -> %s\n",
-			    s->gfile, d->pathname);
+			    s->gfile, PATHNAME(s, d));
 			fprintf(stderr, "ERROR: File left in %s\n", path);
 			sccs_free(s);
 			failed++;
@@ -151,7 +151,7 @@ pass2(u32 flags)
  * If not, just move it there.  We should be clean so just do the s.file.
  */
 private	int
-try_rename(sccs *s, delta *d, int dopass1, u32 flags)
+try_rename(sccs *s, ser_t d, int dopass1, u32 flags)
 {
 	int	ret;
 	char	*sfile;
@@ -159,26 +159,27 @@ try_rename(sccs *s, delta *d, int dopass1, u32 flags)
 	/* Handle components */
 	if (CSET(s) && proj_isComponent(s->proj)) {
 		csetChomp(s->gfile);
-		csetChomp(d->pathname);
+		csetChomp(PATHNAME(s, d));
 		s->state |= S_READ_ONLY;	// don't put those names back
-		if (exists(d->pathname)) {
+		if (exists(PATHNAME(s, d))) {
 			/* circular or deadlock */
 			if (dopass1) pass1(s);
 			return (1);
 		}
-		mkdirf(d->pathname);
-		if (rename(s->gfile, d->pathname)) {
+		mkdirf(PATHNAME(s, d));
+		if (rename(s->gfile, PATHNAME(s, d))) {
 			fprintf(stderr,
-			    "%s->%s failed?\n", s->gfile, d->pathname);
+			    "%s->%s failed?\n", s->gfile, PATHNAME(s, d));
 			// dunno, we'll try later
 			if (dopass1) pass1(s);
 			return (1);
 		}
-		verbose((stderr, "names: %s -> %s\n", s->gfile, d->pathname));
+		verbose((stderr, "names: %s -> %s\n",
+			s->gfile, PATHNAME(s, d)));
 		return (0);
 	}
 
-	sfile = name2sccs(d->pathname);
+	sfile = name2sccs(PATHNAME(s, d));
 	assert(sfile);
 	if (exists(sfile)) {
 		/* circular or deadlock */
