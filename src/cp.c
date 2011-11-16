@@ -76,7 +76,6 @@ cp(char *from, char *to, int force)
 	 */
 	tmp = _relativeName(gfile, 0, 0, 0, 0);
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) continue;
 		sccs_setPath(s, d, tmp);
 	}
 	sccs_clearbits(s, D_CSET);

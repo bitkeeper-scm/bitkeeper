@@ -109,7 +109,6 @@ next:			sccs_free(s);
 
 				/* find latest cset mark */
 				for (d = TABLE(s); d >= TREE(s); d--) {
-					unless (FLAGS(s, d)) continue;
 					if (FLAGS(s, d) & D_CSET) break;
 				}
 				/* and walk all revs not included in that... */
@@ -306,7 +305,6 @@ sccslog(sccs *s)
 	f = fmem();
 	if (CSET(s)) ChangeSet = 1;
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (SET(s) && !(FLAGS(s, d) & D_SET)) continue;
 		if (TAG(s, d)) continue;
 

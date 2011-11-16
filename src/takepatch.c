@@ -1149,7 +1149,6 @@ markup:
 		if (echo == 3) progress_nldone();
 	} else if (!BAM(s)) {
 		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
 			unless ((FLAGS(s, d) & D_SET) && !TAG(s, d)) continue;
 			c = sccs_resum(s, d, 0, 0);
 			if (c & 2) {
@@ -1314,8 +1313,8 @@ applyPatch(char *localPath, sccs *perfile)
 		ser_t	e;
 
 		for (e = TABLE(s); e >= TREE(s); e--) {
-			unless (FLAGS(s, e)) continue;
-			FLAGS(s, e) |= D_SET|D_GONE;
+			FLAGS(s, e) |= D_SET;
+			MK_GONE(s, e);
 		    	if (echo>7) {
 				char	k[MAXKEY];
 
@@ -1517,7 +1516,6 @@ getLocals(sccs *s, char *name)
 		    s->gfile, REV(s, g), name);
 	}
 	for (d = TABLE(s); d != g; d--) {
-		unless (FLAGS(s, d)) continue;
 		/*
 		 * Silently discard removed deltas, we don't support them.
 		 */

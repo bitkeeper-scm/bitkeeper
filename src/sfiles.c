@@ -485,7 +485,6 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 	 */
 	if (s->defbranch && streq(s->defbranch, "1.0")) {
 		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
 			unless (!TAG(s, d) && sccs_isleaf(s, d)) {
 				continue;
 			}

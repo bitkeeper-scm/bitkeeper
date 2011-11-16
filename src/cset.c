@@ -844,7 +844,6 @@ doDiff(sccs *sc, char kind)
 
 	if (CSET(sc)) return;		/* no changeset diffs */
 	for (d = TABLE(sc); d >= TREE(sc); d--) {
-		unless (FLAGS(sc, d)) continue;
 		if (FLAGS(sc, d) & D_SET) {
 			e = d;
 		} else if (e) {
@@ -877,7 +876,6 @@ doEndpoints(cset_t *cs, sccs *sc)
 
 	if (CSET(sc)) return;		
 	for (d = TABLE(sc); d >= TREE(sc); d--) {
-		unless (FLAGS(sc, d)) continue;
 		unless (FLAGS(s, d) & D_SET) continue;
 		unless (later) {
 			later = d;
@@ -904,7 +902,6 @@ doMarks(cset_t *cs, sccs *s)
 	if (cs->remark) sccs_clearbits(s, D_CSET);
 
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (!TAG(s, d) && (FLAGS(s, d) & D_SET)) {
 			if (cs->force || !(FLAGS(s, d) & D_CSET)) {
 				if (cs->verbose > 2) {
@@ -939,7 +936,6 @@ doSet(sccs *sc)
 	char	key[MD5LEN];
 
 	for (d = TABLE(sc); d >= TREE(sc); d--) {
-		unless (FLAGS(sc, d)) continue;
 		if (FLAGS(sc, d) & D_SET) {
 			printf("%s", sc->gfile);
 		    	if (copts.historic) {

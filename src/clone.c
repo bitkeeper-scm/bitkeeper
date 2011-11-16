@@ -1684,7 +1684,6 @@ attach_name(sccs *cset, char *name, int setmarks)
 	(void)sccs_defRootlog(cset);
 
 	for (d = TREE(cset); d <= TABLE(cset); d++) {
-		unless (FLAGS(cset, d)) continue;
 		p = PARENT(cset, d);
 		if (setmarks && !TAG(cset, d) && p) {
 			FLAGS(cset, d) |= D_CSET;
@@ -1907,7 +1906,6 @@ clonemod_part2(char **envVar)
 	}
 	pclose(f);
 	for (d = TABLE(cset); d >= TREE(cset); d--) {
-		unless (FLAGS(cset, d)) continue;
 		if (FLAGS(cset, d) & D_SET) continue;
 		if (TAG(cset, d)) continue;
 
@@ -1916,7 +1914,6 @@ clonemod_part2(char **envVar)
 		break;
 	}
 	for (d = TABLE(cset); d >= TREE(cset); d--) {
-		unless (FLAGS(cset, d)) continue;
 		if ((FLAGS(cset, d) & D_SET) ||
 		    (!(FLAGS(cset, d) & D_RED) && !TAG(cset, d))) {
 			sccs_sdelta(cset, d, buf);

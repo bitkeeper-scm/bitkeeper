@@ -116,7 +116,6 @@ _patch(sccs *s)
 	int	flags = PRS_PATCH|SILENT;
 
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) continue;
 		if (PARENT(s, d)) {
 			sccs_pdelta(s, PARENT(s, d), stdout);
 			printf("\n");

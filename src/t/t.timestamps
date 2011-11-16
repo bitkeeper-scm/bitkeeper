@@ -340,10 +340,9 @@ echo OK
 
 # resolve -- what does pass 4 do?
 
-echo $N Test scompress modifies sfile only ..........................$NL
-# scompress
+echo $N Test admin -z modifies sfile only ...........................$NL
 bk _touch -r now SCCS/s.keyword
-bk _scompress keyword
+bk admin -z keyword
 test $T12 -ge `_mtime SCCS/s.keyword` || { echo failed; exit 1; }
 echo OK
 

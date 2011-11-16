@@ -231,7 +231,6 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	if (!rargs->rstart) {
 		/* select all */
 		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
 			unless (TAG(s, d)) FLAGS(s, d) |= D_SET;
 		}
 		s->rstart = TREE(s);
@@ -333,7 +332,6 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 	if (flags & RANGE_SET) {
 		for (d = s->rstop;
 		    d && (d >= s->rstart); d--) {
-			unless (FLAGS(s, d)) continue;
 			unless (TAG(s, d)) FLAGS(s, d) |= D_SET;
 		}
 	}
@@ -428,7 +426,6 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 
 	/* compute RED - BLUE */
 	for (; d && (all || (marked > 0)); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (TAG(s, d)) continue;
 		if (all) FLAGS(s, d) |= D_RED;
 		unless (color = (FLAGS(s, d) & mask)) continue;
@@ -452,7 +449,6 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 err:
 	/* cleanup */
 	for (; d && (d >= last); d--) {
-		unless (FLAGS(s, d)) continue;
 		FLAGS(s, d) &= ~mask;
 	}
 	if (freelist) free(freelist);
@@ -558,7 +554,6 @@ range_markMeta(sccs *s)
 	 *   What's left -- Outside the region.  Mark and leave D_BLUE
 	 */
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (TAG(s, d)) continue;
 		unless (FLAGS(s, d) & (D_SET|D_RED)) {
 			FLAGS(s, d) |= D_BLUE;
@@ -584,7 +579,7 @@ range_markMeta(sccs *s)
 	 */
 	d = (lower && (lower < s->rstart)) ? lower : s->rstart;
 	for (/* d */; d <= TABLE(s); d++) {
-		unless (FLAGS(s, d) && TAG(s, d)) continue;
+		unless (TAG(s, d)) continue;
 		if (FLAGS(s, d) & D_SET) continue;
 		/* e = tagged real delta */
 		for (e = PARENT(s, d); e && TAG(s, e); e = PARENT(s, e));
@@ -609,7 +604,6 @@ range_markMeta(sccs *s)
 
 	/* cleanup */
 	for (d = upper; d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		FLAGS(s, d) &= ~D_BLUE;
 		if (d == lower) break;
 	}
@@ -623,7 +617,6 @@ range_gone(sccs *s, ser_t d, u32 dflags)
 	range_walkrevs(s, d, 0, 0, 0, walkrevs_setFlags, (void*)D_SET);
 	range_markMeta(s);
 	for (d = s->rstop; d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_SET) {
 			count++;
 			FLAGS(s, d) &= ~D_SET;
@@ -666,7 +659,6 @@ range_unrange(sccs *s, ser_t *left, ser_t *right, int all)
 	assert(left && right);
 	*left = *right = 0;
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (TAG(s, d)) continue;
 		color = (FLAGS(s, d) & (D_SET|D_RED|D_BLUE));
 		/* parent region of left does not intersect D_SET region */

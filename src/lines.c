@@ -105,7 +105,6 @@ renumber(sccs *s)
 	int	ser = 0;
 
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) continue;
 		unless (TAG(s, d)) SAME_SET(s, d, ser++);
 	}
 }

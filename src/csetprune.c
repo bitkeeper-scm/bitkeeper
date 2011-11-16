@@ -34,7 +34,7 @@ typedef struct {
 	char	*comppath;
 	char	**complist;
 	hash	*prunekeys;
-	char	**addweave;
+	char	*addweave;
 	char	**filelist;	// the list of files to put in this comp
 	char	*rev;
 	char	*who;
@@ -67,9 +67,9 @@ private	char	**deepPrune(char **map, char *path);
 private	char	*newname( char *delpath, char *comp, char *path, char **deep);
 private	char	*getPath(char *key, char **term);
 private	char	*key2moved(char *rk);
+private	char	**fixupWeave(sccs *cset, char **cweave, char *addweave);
 
 private	int	flags;
-private	ser_t	partition_tip;
 private	Opts	*opts;
 
 #define	DELCOMP		"BitKeeper/delcomp"	/* component for deleted */
@@ -77,7 +77,7 @@ private	Opts	*opts;
 /* 'flags' bits */
 #define	PRUNE_DELCOMP		0x10000000	/* prune deleted to a comp */
 #define	PRUNE_NEW_TAG_GRAPH	0x20000000	/* move tags to real deltas */
-#define	PRUNE_NO_SCOMPRESS	0x40000000	/* leave serials alone */
+// 	open			0x40000000
 #define	PRUNE_NO_TAG_GRAPH	0x80000000	/* ignore tag graph */
 #define	PRUNE_ALL		0x02000000	/* prune all user says to */
 #define	PRUNE_NO_NEWROOT	0x08000000	/* leave backpointers alone */
@@ -100,7 +100,7 @@ csetprune_main(int ac, char **av)
 
 	opts = new(Opts);
 	opts->version = 2;
-	while ((c = getopt(ac, av, "ac:C:I;k:KNqr:sStw:W:", lopts)) != -1) {
+	while ((c = getopt(ac, av, "ac:C:I;k:Kqr:sStw:W:", lopts)) != -1) {
 		switch (c) {
 		    case 'a': flags |= PRUNE_ALL; break;
 		    case 'c': opts->comppath = optarg; break;
@@ -108,7 +108,6 @@ csetprune_main(int ac, char **av)
 		    case 'I': sfilePath = optarg; break;
 		    case 'k': opts->ranbits = optarg; break;
 		    case 'K': flags |= PRUNE_NO_NEWROOT; break;
-		    case 'N': flags |= PRUNE_NO_SCOMPRESS; break;
 		    case 'q': flags |= SILENT; break;
 		    case 'r': opts->rev = optarg; break;
 		    case 'S': /* -- standalone */
@@ -148,7 +147,6 @@ k_err:			fprintf(stderr,
 			if (!isxdigit(*p) || isupper(*p)) goto k_err;
 		}
 	}
-	/* partition_tip works on keeping serials the same */
 	if (opts->rev && !(flags & PRUNE_NO_NEWROOT) && !opts->who) {
 		fprintf(stderr, "%s: -r in an internal interface\n", prog);
 		goto err;
@@ -201,7 +199,7 @@ k_err:			fprintf(stderr,
 			fprintf(stderr, "%s: missing weave file\n", prog);
 			goto err;
 		}
-		opts->addweave = file2Lines(0, weavefile);
+		opts->addweave = fullname(weavefile, 0);
 	}
 	if (sfilePath) {
 		unless (opts->refProj = proj_init(sfilePath)) {
@@ -223,7 +221,6 @@ k_err:			fprintf(stderr,
 		    "%s: csetprune not supported in a component\n", prog);
 		goto err;
 	}
-	if (flags & PRUNE_NO_TAG_GRAPH) putenv("_BK_STRIPTAGS=1");
 	if (csetprune(opts)) {
 		fprintf(stderr, "%s: failed\n", prog);
 		goto err;
@@ -233,7 +230,7 @@ k_err:			fprintf(stderr,
 err:
 	if (opts->refProj) proj_free(opts->refProj);
 	if (opts->prunekeys) hash_free(opts->prunekeys);
-	if (opts->addweave) freeLines(opts->addweave, free);
+	if (opts->addweave) free(opts->addweave);
 	if (opts->complist) freeLines(opts->complist, free);
 	return (ret);
 }
@@ -265,6 +262,7 @@ csetprune(Opts *opts)
 	int	empty_nodes = 0, ret = 1;
 	int	status;
 	ser_t	d = 0;
+	char	*partition_key = 0;
 	sccs	*cset = 0;
 	char	*p, *p1;
 	char	**cweave = 0;
@@ -273,6 +271,7 @@ csetprune(Opts *opts)
 	char	key[MAXKEY];
 
 	if (opts->refProj) {
+		// Note: no config file but valid lease so things work
 		verbose((stderr, "Processing all files...\n"));
 		sccs_mkroot(".");
 		strcpy(buf, CHANGESET);
@@ -283,6 +282,13 @@ csetprune(Opts *opts)
 		}
 	} else {
 		verbose((stderr, "Processing ChangeSet file...\n"));
+	}
+	if (flags & PRUNE_NO_TAG_GRAPH) {
+		if (sys("bk", "stripdel",
+		    "-q", "--strip-tags", "ChangeSet", SYS)) {
+			fprintf(stderr, "%s: failed stripping tags\n", prog);
+			goto err;
+		}
 	}
 	unless (cset = sccs_csetInit(0)) {
 		fprintf(stderr, "csetinit failed\n");
@@ -304,7 +310,8 @@ csetprune(Opts *opts)
 	}
 	if (d) {
 		/* leave just history of rev colored (assuming single tip) */
-		partition_tip = d;
+		sccs_sortkey(cset, d, key);
+		partition_key = strdup(key);
 		range_walkrevs(cset, d, 0, sccs_top(cset), 0,
 		    walkrevs_clrFlags, int2p(D_SET));
 	}
@@ -313,9 +320,9 @@ csetprune(Opts *opts)
 	if (filterWeave(opts, cset, cweave, deepnest)) {
 		goto err;
 	}
-	cweave = catLines(cweave, opts->addweave);
-	freeLines(opts->addweave, free);
-	opts->addweave = 0;
+	unless (cweave = fixupWeave(cset, cweave, opts->addweave)) {
+		goto err;
+	}
 
 	/* possibly inject new files into the weave, so do before sort */
 	if (newBKfiles(cset, opts->comppath, opts->prunekeys, &cweave)) {
@@ -340,27 +347,23 @@ csetprune(Opts *opts)
 		goto err;
 	}
 	verbose((stderr, "Pruning ChangeSet file...\n"));
-	pruneEmpty(cset);	/* does a sccs_free(cset) */
-	unless ((cset = sccs_csetInit(INIT_WACKGRAPH|INIT_NOCKSUM)) &&
-	    HASGRAPH(cset)) {
-		fprintf(stderr, "Whoops, can't reinit ChangeSet\n");
-		goto err;	 /* leave it locked! */
+	pruneEmpty(cset);
+	if (partition_key) {
+		/* See if pruneEmpty deleted key; if so, grab valid parent */
+		d = sccs_findSortKey(cset, partition_key);
+		assert(d);
+		if (FLAGS(cset, d) & D_GONE) {
+			d = PARENT(cset, d);
+			assert(!(FLAGS(cset, d) & D_GONE));
+			free(partition_key);
+			sccs_sortkey(cset, d, key);
+			partition_key = strdup(key);
+		}
 	}
 	verbose((stderr, "Renumbering ChangeSet file...\n"));
 	sccs_renumber(cset, SILENT);
-	if (flags & PRUNE_NO_SCOMPRESS) {
-		sccs_newchksum(cset);
-	} else {
-		verbose((stderr, "Serial compressing ChangeSet file...\n"));
-		if (partition_tip) {
-			sccs_sdelta(cset, partition_tip, key);
-			sccs_scompress(cset, SILENT);
-			partition_tip = sccs_findKey(cset, key);
-			assert(partition_tip);
-		} else {
-			sccs_scompress(cset, SILENT);
-		}
-	}
+	sccs_clearbits(cset, D_SET);
+	sccs_stripdel(cset, "csetprune");
 	sccs_free(cset);
 	cset = 0;
 finish:
@@ -388,10 +391,16 @@ finish:
 			free(p1);
 			opts->ranbits = buf;
 		}
-		if (partition_tip) {
+		if (partition_key) {
 			/* must be after checksum */
 			cset = sccs_csetInit(INIT_MUSTEXIST);
-			sccs_sdelta(cset, partition_tip, key);
+			d = sccs_findSortKey(cset, partition_key);
+			unless (d) {
+				fprintf(stderr,
+				    "bad sort key %s\n", partition_key);
+				exit (1);
+			}
+			sccs_sdelta(cset, d, key);
 			p = aprintf("-ycsetprune command: %s", key);
 			sccs_free(cset);
 			cset = 0;
@@ -413,9 +422,10 @@ finish:
 		}
 		free(p);
 		free(p1);
-	} else if (partition_tip && opts->revfile) {
+	} else if (partition_key && opts->revfile) {
 		cset = sccs_csetInit(INIT_MUSTEXIST);
-		sccs_sdelta(cset, partition_tip, key);
+		d = sccs_findSortKey(cset, partition_key);
+		sccs_sdelta(cset, d, key);
 		Fprintf(opts->revfile, "%s", key);
 		sccs_free(cset);
 		cset = 0;
@@ -447,6 +457,63 @@ statuschk:	unless (WIFEXITED(status)) goto err;
 err:	if (cset) sccs_free(cset);
 	/* ptrs into complist, don't free */
 	if (deepnest) freeLines(deepnest, 0);
+	if (partition_key) free(partition_key);
+	return (ret);
+}
+
+/*
+ * Inject component csetkeys into the product weave.
+ *
+ * convert :SORTKEY:\t:ROOTKEY: :KEY: to :DS:\t:ROOTKEY: KEY:
+ *
+ * Note: The addweave file is csetkeys from all components and could
+ * be a big file.  Doing a sccs_findSortKey() would be a binary search
+ * on all keys possibly multiple times; instead build a hash lookup.
+ */
+private	char **
+fixupWeave(sccs *cset, char **cweave, char *addweave)
+{
+	FILE	*f = 0;
+	hash	*skdb = 0;	// sort key db
+	ser_t	d;
+	char	*sortkey, *line;
+	char	**ret = 0;
+	char	serstring[10];	// serial as decimal ascii string
+	char	buf[MAXKEY];	// place to build a sortkey
+
+	assert(cweave);
+	unless (addweave) return (cweave);	// short-circuit
+
+	// build hash(sortkey) => ascii serial string
+	skdb = hash_new(HASH_MEMHASH);
+	for (d = TABLE(cset); d >= TREE(s); d--) {
+		if (TAG(cset, d)) continue;
+		sprintf(serstring, "%u", d);
+		sccs_sortkey(cset, d, buf);
+		unless (hash_insertStr(skdb, buf, serstring)) {
+			fprintf(stderr, "Duplicate sortkey %s\n", buf);
+			goto err;
+		}
+	}
+	unless (f = fopen(addweave, "r")) {
+		perror("fixupWeave");
+		goto err;
+	}
+	while (sortkey = fgetline(f)) {
+		line = strchr(sortkey, '\t');
+		assert(line);
+		*line++ = 0;
+		unless (hash_fetchStr(skdb, sortkey)) {
+			fprintf(stderr, "Cannot find sortkey %s\n", sortkey);
+			goto err;
+		}
+		cweave = addLine(cweave,
+		    aprintf("%s\t%s", (char *)skdb->vptr, line));
+	}
+	ret = cweave;
+err:
+	if (f) fclose(f);
+	hash_free(skdb);
 	return (ret);
 }
 
@@ -985,7 +1052,6 @@ fixAdded(sccs *cset, char **cweave)
 	assert(oldser);
 	ADDED_SET(cset, d, cnt);
 	while (--d >= TREE(cset)) { 
-		unless (FLAGS(cset, d)) continue;
 		if (ADDED(cset, d) ||
 		    (!TAG(cset, d) && !MERGE(cset, d))) {
 			empty++;
@@ -1188,7 +1254,6 @@ mkTagGraph(sccs *s)
 
 	/* in reverse table order */
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_GONE) continue;
 
 		/* initialize that which might be inherited later */
@@ -1263,7 +1328,6 @@ rebuildTags(sccs *s)
 	 * clean house
 	 */
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		PTAG_SET(s, d, 0);
 		MTAG_SET(s, d, 0);
 		FLAGS(s, d) &= ~(D_SYMBOLS|D_SYMGRAPH|D_SYMLEAF);
@@ -1310,7 +1374,6 @@ rebuildTags(sccs *s)
 	 * and D_GONE all 'R' nodes in graph.
 	 */
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		unless (TAG(s, d)) continue;
 		assert(!(FLAGS(s, d) & D_SYMBOLS));
 		MK_GONE(s, d);
@@ -1402,7 +1465,6 @@ fixTags(sccs *s)
 	 * the flow is the same, the data structure being tweaked is diff.
 	 */
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		unless (TAG(s, d)) continue;
 		if ((p = PARENT(s, d)) && (FLAGS(s, p) & D_GONE)) {
 			unless (PARENT(s, p)) {
@@ -1569,7 +1631,6 @@ _pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd)
 	debug((stderr, "RMDELTA(%s)\n", d->rev));
 	MK_GONE(s, d);
 	assert(PARENT(s, d));	/* never get rid of root node */
-	if (d == partition_tip) partition_tip = PARENT(s, d);
 	return;
 }
 
@@ -1583,8 +1644,8 @@ pruneEmpty(sccs *s)
 	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 	assert(slist);
 	sd = graph_sccs2symdiff(s);
-	for (n = TREE(s); n <= TABLE(s); n++) {
-		unless (FLAGS(s, n) && (n > TREE(s)) && !TAG(s, n)) continue;
+	for (n = TREE(s) + 1; n <= TABLE(s); n++) {
+		if (TAG(s, n)) continue;
 		_pruneEmpty(s, n, slist, sd);
 	}
 	free(slist);
@@ -1597,8 +1658,6 @@ pruneEmpty(sccs *s)
 		verbose((stderr, "Rebuilding Tag Graph...\n"));
 		(flags & PRUNE_NEW_TAG_GRAPH) ? rebuildTags(s) : fixTags(s);
 	}
-	sccs_newchksum(s);
-	sccs_free(s);
 }
 
 /*
@@ -1776,7 +1835,6 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 	bam_old = calloc(TABLE(s) + 1, sizeof(char *));
 
 	for (d = TREE(s); BAM(s) && (d <= TABLE(s)); d++) {
-		unless (FLAGS(s, d)) continue;
 		if (HAS_BAMHASH(s, d)) {
 			assert(!bam_old[d]);
 			bam_old[d] = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
@@ -1784,7 +1842,6 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 	}
 
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) continue;
 		assert(!TAG(s, d));
 
 		newpath = newname(delpath, opts->comppath,
@@ -1813,7 +1870,6 @@ do_file(Opts *opts, sccs *s, char **deepnest)
 	ret = 0;
 err:
 	for (d = TREE(s); BAM(s) && (d <= TABLE(s)); d++) {
-		unless (FLAGS(s, d)) continue;
 		if (HAS_BAMHASH(s, d)) {
 			assert(bam_old[d]);
 			FREE(bam_old[d]);

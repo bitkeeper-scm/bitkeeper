@@ -116,7 +116,6 @@ findkey(sccs *s, look l)
 		return;
 	}
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		/* continues if no match, print if we get through all */
 		if (l.random) {
 			unless (streq(RANDOM(s, d), l.random)) {

@@ -34,6 +34,10 @@ rmdel_main(int ac, char **av)
 		fprintf(stderr, "rmdel: can't init %s\n", name);
 		return (1);
 	}
+	if (BITKEEPER(s)) {
+		fprintf(stderr, "rmdel: does not work on BitKeeper files\n");
+		goto err;
+	}
 	
 	name = rev ? rev : sfileRev();
 	unless (d = sccs_findrev(s, name)) {

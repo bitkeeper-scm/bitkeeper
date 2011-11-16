@@ -2413,7 +2413,6 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 	}
 	fprintf(stderr, "Converting %s ", s->gfile);
 	for (n = 0, d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		assert(!TAG(s, d));
 		if (sccs_get(s, REV(s, d), 0, 0, 0, SILENT, "-")) return (8);
 

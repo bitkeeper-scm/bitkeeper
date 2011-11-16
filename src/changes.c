@@ -594,7 +594,6 @@ doit(int dash)
 			goto next;
 		}
 		for (e = s->rstop; e; e--) {
-			unless (FLAGS(s, e)) continue;
 			if ((FLAGS(s, e) & D_SET) && !want(s, e)) {
 				FLAGS(s, e) &= ~D_SET;
 			}
@@ -638,7 +637,6 @@ doit(int dash)
 	} else {
 		s->rstop = TABLE(s);
 		for (e = TABLE(s); e >= TREE(s); e--) {
-			unless (FLAGS(s, e)) continue;
 			if (want(s, e)) FLAGS(s, e) |= D_SET;
 		}
 	}
@@ -660,7 +658,6 @@ doit(int dash)
 	/* capture the comments, for the csets we care about */
 	dstart = dstop = 0;
 	for (e = s->rstop; e; e--) {
-		unless (FLAGS(s, e)) continue;
 		if (FLAGS(s, e) & D_SET) {
 			unless (dstart) dstart = e;
 			dstop = e;
@@ -717,7 +714,6 @@ fileFilt(sccs *s, MDBM *csetDB)
 
 	/* Unset any csets that don't contain files from -i and -x */
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		unless (FLAGS(s, d) & D_SET) continue;
 		/* if cset changed nothing, keep it if not filtering by inc */
 		if (!(opts.inc || opts.BAM) && !ADDED(s, d)) continue;
@@ -876,7 +872,6 @@ collectDelta(sccs *s, ser_t d, char **list)
 	 */
 	range_cset(s, d);
 	for (d = s->rstop; d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_SET) {
 			/* add delta to list */
 			ll = new(slog);
@@ -1051,7 +1046,6 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			 * the want() test.  Is anding useful?
 			 */
 			for (e = TABLE(sc); e >= TREE(sc); e--) {
-				unless (FLAGS(sc, e)) continue;
 				if (want(sc, e)) FLAGS(sc, e) |= D_SET;
 			}
 		}
@@ -1074,7 +1068,6 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		}
 		if (dkey) {
 			for (e = TABLE(sc); e >= TREE(sc); e--) {
-				unless (FLAGS(sc, e)) continue;
 				FLAGS(sc, e) &= ~D_SET;
 			}
 		}
@@ -1093,7 +1086,6 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	 * these will be the same.
 	 */
 	for (e = sc->rstop; e; e--) {
-		unless (FLAGS(sc, e)) continue;
 		if (FLAGS(sc, e) & D_SET) {
 			FLAGS(sc, e) &= ~D_SET;
 			if (!dkey || want(sc, e)) addArray(&csets, &e);

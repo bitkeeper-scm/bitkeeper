@@ -107,11 +107,11 @@ findcset_main(int ac, char **av)
 		s = sccs_init(CHANGESET, INIT_NOCKSUM|flags);
 		assert(s);
 		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
 			if (!streq(REV(s, d), "1.0") &&
 			    !streq(REV(s, d), "1.1")) {
 				FLAGS(s, d) &= ~D_CSET;
-				FLAGS(s, d) |= D_SET|D_GONE;
+				FLAGS(s, d) |= D_SET;
+				MK_GONE(s, d);
 				didone = 1;
 			}
 		}
@@ -1145,7 +1145,6 @@ mkList(sccs *s, int fileIdx)
 	}
 
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_SET) {
 			/*
 			 * Collect marked delta into "list"

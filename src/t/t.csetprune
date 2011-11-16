@@ -43,7 +43,7 @@ bk commit $Q -F -yempty || exit 1
 OLD=`bk id`
 bk admin -Zgzip ChangeSet
 bk csetprune $Q -r+ -w'demo' < ../KEYS
-if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed; exit 1; fi
 tip=`bk prs -h -r+ -d':I:\n' ChangeSet`
 if [ "$tip" != 1.3 ]; then echo Failed; exit 1; fi
 echo OK

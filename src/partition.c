@@ -182,14 +182,8 @@ partition_main(int ac, char **av)
 
 	verbose((stderr, "\n### Pruning product\n"));
 
-	/*
-	 * Note: it uses no scompress.  It should be able to, though too,
-	 * it shouldn't do anything as the product won't lose any nodes
-	 * in most cases.  If it does a first round prune, then that will
-	 * do a compress.  Anyway, leaving the 'N' here for now.
-	 */
 	sprintf(buf, "bk csetprune "
-	    "--version=%s -aNS%s -k%s -w'%s' -r'%s' -CCOMPS -c. -WPRODWEAVE -",
+	    "--version=%s -aS%s -k%s -w'%s' -r'%s' -CCOMPS -c. -WPRODWEAVE -",
 	    opts->pver, opts->quiet,
 	    opts->random, opts->rootlog, opts->ptip);
 	f = popen(buf, "w");
@@ -249,8 +243,9 @@ clone(Opts *opts, char *from, char *to, int fullcheck)
 	char	**cmd;
 
 	if (fullcheck) {
-		// Could use bk -?BK_CONFIG, but then we'd need to
-		// convert the thing to a hash, then to a str.
+		// BIKESHED Could use bk --config=partial_check:off
+		// and skip the restore
+		// but this code is currently working.
 		if (oconf = getenv("BK_CONFIG")) oconf = strdup(oconf);
 		bk_setConfig("partial_check", "off");
 	}
@@ -556,7 +551,7 @@ mkComps(Opts *opts)
 		cmd = addLine(cmd, strdup("csetprune"));
 		cmd = addLine(cmd, aprintf("--version=%s", opts->pver));
 		cmd = addLine(cmd, strdup("-I../" WA2PROD));
-		cmd = addLine(cmd, aprintf("-atNS%s", opts->quiet));
+		cmd = addLine(cmd, aprintf("-atS%s", opts->quiet));
 		cmd = addLine(cmd, aprintf("-r%s", opts->ptip));
 		cmd = addLine(cmd, aprintf("-k%s", opts->random));
 		cmd = addLine(cmd, aprintf("-w%s", opts->rootlog));
@@ -666,14 +661,14 @@ moveComps(Opts *opts)
 		FLAGS(cset, d2) &= ~D_CSET;
 		/*
 		 * Accumulate serial-tagged entries for product weave
-		 * bk changes -nd'$if(:CSETKEY:){:DS:\t:ROOTKEY: :KEY:}'
+		 * bk changes -nd'$if(:CSETKEY:){:SORTKEY:\t:ROOTKEY: :KEY:}'
 		 */
 		for (d = TABLE(cset); d >= TREE(cset); d--) {
-			unless (FLAGS(cset, d)) continue;
 			unless (FLAGS(cset, d) & D_CSET) continue;
+			sccs_sortkey(cset, d, key);
+			fputs(key, prodweave);
 			sccs_sdelta(cset, d, key);
-			fprintf(prodweave, "%u\t%s %s\n",
-			    d, proj_rootkey(0), key);
+			fprintf(prodweave, "\t%s %s\n", proj_rootkey(0), key);
 		}
 		/* fix backptr to match existing product */
 		d = sccs_ino(cset);
@@ -683,7 +678,7 @@ moveComps(Opts *opts)
 		 * above.   Now we can compress.
 		 * if want to keep sers: if (sccs_newchksum(cset)) goto err;
 		 */
-		if (sccs_scompress(cset, SILENT)) goto err;
+		sccs_newchksum(cset);
 		sccs_free(cset);
 		cset = 0;
 		if (Fprintf("BitKeeper/log/COMPONENT",

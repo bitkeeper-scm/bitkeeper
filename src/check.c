@@ -703,7 +703,6 @@ chk_BAM(sccs *s, char ***missing)
 
 	unless (*missing) missing = 0;
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		unless (HAS_BAMHASH(s, d)) continue;
 		key = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 		if (bp_check_hash(key, missing, !bp_fullcheck, 0)) {
@@ -1495,7 +1494,6 @@ finish:
 	deltas = hash_new(HASH_MEMHASH);
 	hash_store(r2deltas, key, strlen(key) + 1, &deltas, sizeof(hash *));
 	for (d = TABLE(cset); d >= TREE(cset); d--) {
-		unless (FLAGS(cset, d)) continue;
 		unless (!TAG(cset, d) && (FLAGS(cset, d) & D_CSET)) continue;
 		sccs_sdelta(cset, d, key);
 		unless (hash_insert(deltas, key, strlen(key)+1, 0, 0)) {
@@ -1656,7 +1654,6 @@ check(sccs *s, MDBM *idDB)
 	 */
 	goodkeys = 0;
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (verbose > 3) {
 			fprintf(stderr, "Check %s@%s\n", s->gfile, REV(s, d));
 		}
@@ -1869,7 +1866,6 @@ check(sccs *s, MDBM *idDB)
 	if (!haspoly && CSETMARKED(s)) {
 		sccs_clearbits(s, D_SET);
 		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
 			if (FLAGS(s, d) & D_CSET) markCset(s, d);
 		}
 	}
@@ -1882,7 +1878,6 @@ chk_merges(sccs *s)
 	ser_t	p, m, d;
 
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		unless (MERGE(s, d)) continue;
 		p = PARENT(s, d);
 		assert(p);
@@ -1925,7 +1920,6 @@ checkKeys(sccs *s, char *root)
 
 	findkey = hash_new(HASH_MEMHASH);
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		unless (FLAGS(s, d) & D_CSET) continue;
 		sccs_sdelta(s, d, key);
 		unless (hash_insert(findkey, key, strlen(key)+1, &d, sizeof(d))) {

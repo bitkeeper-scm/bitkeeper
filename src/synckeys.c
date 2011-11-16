@@ -52,7 +52,6 @@ tag_probekey(sccs *s, FILE *f)
 	char	key[MAXKEY];
 
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		/* Optimization: only tagprobe if tag with parent tag */
 		if (PTAG(s, d) && !(FLAGS(s, d) & D_GONE)) break;
 	}
@@ -323,7 +322,6 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 	 */
 	sum = i = 0;
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_RED) continue;
 		if (sndRev) {
 			assert(R0(s, d));
@@ -495,7 +493,6 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 
 
 empty:	for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
 		/* reset sccs_tagcolor D_BLUE markings*/
 		if (FLAGS(s, d) & D_BLUE) FLAGS(s, d) &= ~D_BLUE;
 		if (FLAGS(s, d) & D_RED) {
@@ -550,7 +547,6 @@ prunekey_main(int ac, char **av)
 	prunekey(s, &r, NULL, -1, 0, 0, 0, 0, 0);
 	s->state &= ~S_SET;
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_RED) continue;
 		s->rstart = s->rstop = d;
 		sccs_prs(s, PRS_ALL, 0, dspec, stdout);

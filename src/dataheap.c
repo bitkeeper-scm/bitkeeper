@@ -61,7 +61,6 @@ sccs_addUniqStr(sccs *s, char *str)
 
 		/* add existing data to heap */
 		for (d = TREE(s); d <= TABLE(s); d++) {
-			unless (FLAGS(s, d)) continue;
 			addField(USERHOST);
 			addField(PATHNAME);
 			addField(SORTPATH);
@@ -228,7 +227,6 @@ heapdump_main(int ac, char **av)
 		}
 
 		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
 			delta_print(s, d);
 			printf("\n");
 		}
@@ -311,6 +309,7 @@ delta_print(sccs *s, ser_t d)
 {
 	int	i, c;
 
+	// XXX: Not supposed to be able to be unused 
 	unless (FLAGS(s, d)) {
 		printf("serial %d unused\n", d);
 		return;

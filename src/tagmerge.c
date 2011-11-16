@@ -39,7 +39,6 @@ tagmerge(void)
 	 * Find the two oldest tag tips, and count up all tips.
 	 */
 	for (d = TABLE(s), i = 0; d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		unless (SYMGRAPH(s, d)) continue;
 		if (e = PTAG(s, d)) FLAGS(s, e) |= D_RED;
 		if (e = MTAG(s, d)) FLAGS(s, e) |= D_RED;
@@ -103,7 +102,6 @@ m(sccs *s, ser_t l, ser_t r)
 	do {
 		tt = DATE(s, p) + i++;
 		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
 			if (DATE(s, d) < tt) {
 				d = 0;
 				break;

@@ -67,7 +67,6 @@ bk commit $Q -ymoveit
 # two files each originally src/a, each moved out of component
 # should be not deleted in simple
 bk mv src/a doc/fromsrc
-# use for scompress verification
 touch doc/tip
 bk new $Q doc/tip
 bk commit $Q -ydoc-tip
@@ -155,7 +154,7 @@ cd copy
 TOP=`bk changes -r+ -nd:DS:`
 COMP=`bk --cd=doc changes -S -r+ -nd:DS:`
 test "$TOP" -gt "$COMP" || {
-	echo failed scompress $TOP $COMP
+	echo failed partition $TOP $COMP
 	exit 1
 }
 bk _test -f BitKeeper/www/SCCS/s.index.html || fail no web in product

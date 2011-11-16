@@ -51,9 +51,6 @@
 #include "range.h"
 
 private	int	fastWeave(sccs *s, FILE *out);
-#ifdef	COMPRESSION
-private	void	scompress(sccs *s, int serial);
-#endif
 
 /*
  * Initialize the structure used by cset_insert according to how
@@ -212,7 +209,6 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, ser_t parent, int fast)
 	 */
 	f = fmem();
 	for (e = d + 1; e <= TABLE(s); e += 1) {
-		unless (FLAGS(s, e)) continue;
 
 		if (HAS_CLUDES(s, e)) {
 			assert(INARRAY(s, e));
@@ -331,9 +327,6 @@ private	int
 fastWeave(sccs *s, FILE *out)
 {
 	u32	i;
-#ifdef	COMPRESSION
-	u32	serial, fix = 0;
-#endif
 	u32	base = 0, index = 0, offset = 0;
 	ser_t	d, e;
 	loc	*lp;
@@ -383,45 +376,17 @@ fastWeave(sccs *s, FILE *out)
 		}
 		while (index + offset < d) {
 			e = index + offset;
-			if (FLAGS(s, e)) {
-#ifdef	COMPRESSION
-				serial = NEXT(s, e) ? NEXT(s, e)->serial + 1 : 1;
-				if (serial != e->serial) {
-					e->serial = serial;
-					fix = 1;
-				}
-#endif
-				weavemap[index - base] = e;
-			}
+			weavemap[index - base] = e;
 			index++;
 		}
-#ifdef	COMPRESSION
-		serial = NEXT(s, d) ? NEXT(s, d)->serial + 1 : 1;
-		if (serial != d->serial) {
-			d->serial = serial;
-			fix = 1;
-		}
-#endif
 		offset++;
 	}
 	if (weavemap) {
 		while (index + offset <= TABLE(s)) {
 			e = index + offset;
-			if (FLAGS(s, e)) {
-#ifdef	COMPRESSION
-				serial = NEXT(s, e) ? NEXT(s, e)->serial + 1 : 1;
-				if (serial != e->serial) {
-					e->serial = serial;
-					fix = 1;
-				}
-#endif
-				weavemap[index - base] = e;
-			}
+			weavemap[index - base] = e;
 			index++;
 		}
-#ifdef	COMPRESSION
-		if (fix) scompress(s, weavemap[0]+1);
-#endif
 	}
 	if (delta_table(s, out, 0)) {
 		perror("table");
@@ -445,29 +410,3 @@ err:	mclose(fastpatch);
 	if (weavemap) free(weavemap);
 	return (rc);
 }
-
-#ifdef	COMPRESSION
-
-/* XXX: this relies on sfind table not being updated */
-private	void
-scompress(sccs *s, int serial)
-{
-	ser_t	d;
-	int	i;
-
-	while (serial <= TABLE(s)) {
-		unless (d = sfind(s, serial++)) continue;
-
-		//if (PARENT(s, d)) PARENT_SET(s, d, d->parent->serial);
-		if (PTAG(s, d)) PTAG_SET(s, d, sfind(s, PTAG(s, d))->serial);
-		if (MTAG(s, d)) MTAG_SET(s, d, sfind(s, MTAG(s, d))->serial);
-		if (MERGE(s, d)) MERGE_SET(s, d, sfind(s, MERGE(s, d))->serial);
-		EACH(d->include) {
-			d->include[i] = sfind(s, d->include[i])->serial;
-		}
-		EACH(d->exclude) {
-			d->exclude[i] = sfind(s, d->exclude[i])->serial;
-		}
-	}
-}
-#endif

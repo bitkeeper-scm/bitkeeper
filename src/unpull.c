@@ -111,7 +111,6 @@ err:			sccs_free(s);
 	}
 	if (tag) {
 		for (d = TABLE(s); (d >= TREE(s)) && (d != tag); d--) {
-			unless (FLAGS(s, d)) continue;
 			if (!SYMGRAPH(s, d) || (FLAGS(s, d) & D_BLUE)) continue;
 			if (e = PTAG(s, d)) {
 				if (FLAGS(s, e) & D_BLUE) break;

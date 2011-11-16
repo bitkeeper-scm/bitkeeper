@@ -51,7 +51,6 @@ range_main(int ac, char **av)
 		if (s->state & S_SET) {
 			printf("%s set:", s->gfile);
 			for (e = TABLE(s); e >= TREE(s); e--) {
-				unless (FLAGS(s, e)) continue;
 				if (FLAGS(s, e) & D_SET) {
 					printf(" %s", REV(s, e));
 					if (TAG(s, e)) printf("T");
@@ -61,7 +60,6 @@ range_main(int ac, char **av)
 			printf("%s %s..%s:",
 			    s->gfile, REV(s, s->rstop), REV(s, s->rstart));
 			for (e = s->rstop; e; e--) {
-				unless (FLAGS(s, e)) continue;
 				printf(" %s", REV(s, e));
 				if (TAG(s, e)) printf("T");
 				if (e == s->rstart) break;

@@ -88,8 +88,6 @@ xflags(sccs *s, int what)
 	ser_t	d;
 
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) continue;
-
 		ret |= checkXflags(s, d, what);
 	}
 	return (ret);

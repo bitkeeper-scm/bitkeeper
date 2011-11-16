@@ -1,0 +1,33 @@
+
+set -e
+
+echo $N Scompress a hole ............................................$NL
+commercial project
+cd ..
+bk clone $Q bk://data.bitmover.com/test_data/scompress
+cd scompress
+bk changes -and:I:-:DS: > GOT
+cat <<EOF > WANT
+1.7-12
+1.7-11
+1.6-10
+1.6-9
+1.5-8
+1.4-7
+1.4-6
+1.3-5
+1.3-4
+1.2-3
+1.1-2
+1.0-1
+EOF
+cmpfiles WANT GOT
+bk repocheck $Q
+echo OK
+
+echo $N Scompress a csetprune in the presense of a hole .............$NL
+bk clone $Q . ../prune
+cd ../prune
+bk prs -r+ -hnd:ROOTKEY: foo > fookey
+bk csetprune $Q fookey || fail
+echo OK

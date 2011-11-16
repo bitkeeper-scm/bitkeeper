@@ -111,7 +111,7 @@ sccs_renumber(sccs *s, u32 flags)
 	}
 
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) {
+		if (!FLAGS(s, d) || (FLAGS(s, d) & D_GONE)) {
 			/*
 			 * We don't complain about this, because we cause
 			 * these gaps when we strip.  They'll go away when

@@ -79,7 +79,6 @@ strip_danglers(char *name, u32 flags)
 	s = sccs_init(name, INIT_WACKGRAPH);
 	assert(s);
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (DANGLING(s, d)) revs = addLine(revs, strdup(REV(s, d)));
 	}
 	sccs_free(s);

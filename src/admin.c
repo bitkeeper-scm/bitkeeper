@@ -231,7 +231,6 @@ admin_main(int ac, char **av)
 
 			for (d = TABLE(sc);
 			    (dopath == 2) && (d >= TREE(sc)); d--) {
-				unless (FLAGS(sc, d)) continue;
 				if (d == TREE(sc)) break;
 				/* ugly and inefficient temporary state */
 				PATHNAME_SET(sc, d, path);
@@ -258,7 +257,6 @@ admin_main(int ac, char **av)
 			ser_t	d;
 
 			for (d = TABLE(sc); d >= TREE(sc); --d) {
-				unless (FLAGS(sc, d)) continue;
 				if (d == TREE(sc)) break;
 				if (TAG(sc, d)) continue;
 				FLAGS(sc, d) |= D_CSET;
@@ -470,7 +468,6 @@ rootCsetFile(sccs *sc, char *csetFile)
 	last = d;
 
 	for (++d; d <= TABLE(sc); ++d) {
-		unless (FLAGS(sc, d)) continue;
 		unless (p = PARENT(sc, d)) continue;
 		unless (FLAGS(sc, p) & D_RED) continue;
 		unless (streq(orig, CSETFILE(sc, d))) continue;
@@ -479,7 +476,6 @@ rootCsetFile(sccs *sc, char *csetFile)
 		last = d;
 	}
 	for (d = last; d >= TREE(sc); --d) {
-		unless (FLAGS(sc, d)) continue;
 		FLAGS(sc, d) &= ~D_RED;
 	}
 }

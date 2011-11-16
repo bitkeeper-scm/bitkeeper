@@ -80,6 +80,7 @@ private	void	sccs_zputs_init(sccs *s, FILE *fout);
 private	void	sccs_zputs_done(sccs *s);
 private	int	bin_deltaTable(sccs *s, FILE *out);
 private	off_t	bin_data(char *header);
+private	ser_t	*scompressGraph(sccs *s);
 
 /*
  * returns 1 if dir is a directory that is not empty
@@ -590,7 +591,7 @@ sccs_kid(sccs *s, ser_t d)
 	ser_t	e, first = 0;
 
 	for (e = d + 1; e <= TABLE(s); e++) {
-		if (FLAGS(s, e) && !TAG(s, e) && (PARENT(s, e) == d)) {
+		if (!TAG(s, e) && (PARENT(s, e) == d)) {
 			if (samebranch(s, d, e)) return (e);
 			unless (first) first = e;
 		}
@@ -609,7 +610,7 @@ sccs_mkKidList(sccs *s)
 	FREE(s->kidlist);
 	growArray(&s->kidlist, TABLE(s) + 1);
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d) && !TAG(s, d)) continue;
+		if (TAG(s, d)) continue;
 		unless (p = PARENT(s, d)) continue;
 
 		pk = s->kidlist + p;
@@ -803,7 +804,6 @@ sccs_fixDates(sccs *s)
 	ser_t	d, prev = 0;
 
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) continue;
 		if (prev && (DATE(s, prev) <= DATE(s, d))) {
 			f = (DATE(s, d) - DATE(s, prev)) + 1;
 			DATE_FUDGE_SET(s, prev, (DATE_FUDGE(s, prev) + f));
@@ -1089,7 +1089,6 @@ sccs_setStime(sccs *s, time_t newest)
 	 * modify the gfile.
 	 */
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (MERGE(s, d)) break;
 		unless (TAG(s, d) || (FLAGS(s, d) & D_XFLAGS)) break;
 	}
@@ -1516,8 +1515,7 @@ rfind(sccs *s, char *rev)
 	scanrev(rev, &R[0], &R[1], &R[2], &R[3]);
 	debug((stderr, "aka %d.%d.%d.%d\n", R[0], R[1], R[2], R[3]));
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
-		unless (FLAGS(s, d) && !TAG(s, d)) continue;
+		if (TAG(s, d)) continue;
 		if (samerev(s, d, R)) return (d);
 	}
 	return (0);
@@ -1561,7 +1559,7 @@ findrev(sccs *s, char *rev)
 
 	if (*rev == '=') {
 		e = atoi(++rev);
-		unless (FLAGS(s, e)) {
+		unless ((e >= TREE(s)) && (e <= TABLE(s))) {
 			fprintf(stderr, "Serial %s not found\n", rev);
 			return (0);
 		}
@@ -1581,7 +1579,6 @@ findrev(sccs *s, char *rev)
 		}
 		/* get max X.Y that is on same branch or tip of biggest */
 		for (e = TABLE(s); e >= TREE(s); e--) {
-			unless (FLAGS(s, e)) continue;
 			if (FLAGS(s, e) & D_GONE) continue;
 			if (TAG(s, e)
 			    || (R2(s, e) != 0)
@@ -1835,7 +1832,7 @@ ok:
 	 * Because the kid may be a branch, we have to be extra careful here.
 	 */
 	for (t = e+1; t <= TABLE(s); t++) {
-		unless (FLAGS(s, t) && !TAG(s, t)) continue;
+		if (TAG(s, t)) continue;
 		if ((PARENT(s, t) == e) && samebranch(s, t, e)) break;
 	}
 	if (t > TABLE(s)) {	/* no more kids of e */
@@ -1874,7 +1871,6 @@ ok:
 		for (t = e; isbranch(s, t); t = PARENT(s, t));
 		R[0] = R0(s, t); R[1] = R1(s, t); R[2] = 1; R[3] = 1;
 again:		for (x = t+1; x <= TABLE(s); x++) {
-			unless (FLAGS(s, x)) continue;
 			if (samerev(s, x, R)) {
 				/* found X.Y.Z.1 branch, try another */
 				++R[2];
@@ -1905,6 +1901,25 @@ sccs_rdweaveInit(sccs *s)
 }
 
 /*
+ * remap is always smaller, so can overlay memory because it is
+ * our stdio doing it, and it never grows.
+ */
+private	void
+_remap(ser_t *remap, char *buf)
+{
+	char	*p, c = buf[1];
+	ser_t	old;
+
+	unless ((c == 'D') || (c == 'I') || (c == 'E')) return;
+
+	p = &buf[3];
+	old = atoi_p(&p);
+	assert(old && remap[old]);
+
+	sprintf(&buf[3], "%u%s", remap[old], p);
+}
+
+/*
  * Returns a line from the sfile with the trailing NL stripped. It is
  * expected that all sfiles end in a trailing newline so this function
  * asserts if that is not true.  For any lines that contain a CRLF the
@@ -1925,6 +1940,7 @@ sccs_nextdata(sccs *s)
 		abort();
 	}
 	buf[i] = 0;
+	if (s->remap && !isData(buf)) _remap(s->remap, buf);
 	return (buf);
 }
 
@@ -1993,6 +2009,7 @@ sccs_abortWrite(sccs *s, FILE **f)
 		unlink(sccsXfile(s, 'x'));
 	}
 	*f = 0;
+	FREE(s->remap);
 	sccs_close(s);
 }
 
@@ -2046,6 +2063,7 @@ sccs_finishWrite(sccs *s, FILE **f)
 		if (chmod(s->sfile, 0444)) perror(s->sfile);
 	}
 	s->encoding_in = s->encoding_out;
+	FREE(s->remap);
 out:	return (rc);
 }
 
@@ -2470,7 +2488,6 @@ sccs_tagleaves(sccs *s, ser_t *l1, ser_t *l2)
 	 */
 	aname = bname = "?";
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		unless (SYMLEAF(s, d)) continue;
 		sym = 0;
 		EACHP_REVERSE(s->symlist, iter) {
@@ -2646,7 +2663,6 @@ taguncolor(sccs *s, ser_t d)
 	assert(d);
 	FLAGS(s, d) |= D_BLUE;
 	for (; d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		unless (FLAGS(s, d) & D_BLUE) continue;
 		if (FLAGS(s, d) & D_RED) {
 			FLAGS(s, d) &= ~D_RED;
@@ -3000,8 +3016,10 @@ ser_t
 sccs_next(sccs *s, ser_t d)
 {
 	unless (s && d) return (0);
-	for (d = d+1; d <= TABLE(s); d++) {
-		if (FLAGS(s, d)) return (d);
+	d++;
+	if (d <= TABLE(s)) {
+		assert(FLAGS(s, d));
+		return (d);
 	}
 	return (0);
 }
@@ -3107,9 +3125,13 @@ bin_mkgraph(sccs *s, char *header)
 ser_t
 sccs_prev(sccs *s, ser_t d)
 {
-	unless (s && d && (d > TREE(s))) return (0);
-	while (--d && !FLAGS(s, d));
-	return (d);
+	unless (s && d) return (0);
+	d--;
+	if (d >= TREE(s)) {
+		assert(FLAGS(s, d));
+		return (d);
+	}
+	return (0);
 }
 
 /*
@@ -3124,6 +3146,7 @@ mkgraph(sccs *s, int flags)
 	char	*p, *q;
 	u32	added, deleted, same;
 	int	i;
+	int	scompress_it = 0;
 	int	line = 1;
 	char	*expected = "?";
 	char	*buf;
@@ -3347,10 +3370,13 @@ done:		if (CSET(s) && TAG(s, d) &&
 	    	s->file = 1;
     	}
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) continue;
-
+		unless (FLAGS(s, d)) {
+			scompress_it = 1;	// fix the hole later.
+			continue;
+		}
 		sccs_inherit(s, d);
-		DATE_SET(s, d, date2time(dates[d], ZONE(s, d), EXACT) + DATE_FUDGE(s, d));
+		DATE_SET(s, d,
+		    date2time(dates[d], ZONE(s, d), EXACT) + DATE_FUDGE(s, d));
 #define	PARANOID
 #ifdef	PARANOID
 		/*
@@ -3365,9 +3391,6 @@ done:		if (CSET(s) && TAG(s, d) &&
 #endif
 	}
 	free(dates);
-	unless (flags & INIT_WACKGRAPH) {
-		if (checkrevs(s, 0)) s->state |= S_BADREVS|S_READ_ONLY;
-	}
 
 	/*
 	 * For all the metadata nodes, go through and propogate the data up to
@@ -3376,8 +3399,14 @@ done:		if (CSET(s) && TAG(s, d) &&
 	if (CSET(s)) metaSyms(s);
 
 	if (misc(s)) {
-		sccs_freetable(s);
+err:		sccs_freetable(s);
 		return;
+	}
+	if (scompress_it) {
+		unless (s->remap = scompressGraph(s)) goto err;
+	}
+	unless (flags & INIT_WACKGRAPH) {
+		if (checkrevs(s, 0)) s->state |= S_BADREVS|S_READ_ONLY;
 	}
 
 	debug((stderr, "mkgraph() done\n"));
@@ -4691,6 +4720,7 @@ sccs_free(sccs *s)
 	if (s->kidlist) free(s->kidlist);
 	if (s->rrevs) freenames(s->rrevs, 1);
 	if (s->fastsum) free(s->fastsum);
+	if (s->remap) free(s->remap);
 	unblock = s->unblock;
 	bzero(s, sizeof(*s));
 	free(s);
@@ -5196,7 +5226,6 @@ setmap(sccs *s, int bit, int all)
 	assert(slist);
 
 	for (t = TABLE(s); t >= TREE(s); t--) {
-		unless (FLAGS(s, t)) continue;
 		unless (all || !TAG(s, t)) continue;
 		if (FLAGS(s, t) & bit) {
 			slist[t] = 1;
@@ -5233,7 +5262,6 @@ compressmap(sccs *s, ser_t d, u8 *set, char **inc, char **exc)
 	slist[d] = S_PAR;	/* seed the ancestor thread */
 
 	for (t = TABLE(s); t >= TREE(s); t--) {
-		unless (FLAGS(s, t)) continue;
 		if (TAG(s, t)) continue;
 		tser = t;
 
@@ -5359,7 +5387,6 @@ serialmap(sccs *s, ser_t d, char *iLst, char *xLst, int *errp)
 	slist[d] |= S_PAR;
 
 	for (t = start; t; t--) {
-		unless (FLAGS(s, t)) continue;
 		if (TAG(s, t)) continue;
 		tser = t;
 
@@ -5598,7 +5625,7 @@ fputbumpserial(sccs *s, u8 *buf, int inc, FILE *out)
 	u8	*t;
 	ser_t	ser, sum;
 
-	unless (buf[0] == '\001') return (fputdata(s, buf, out));
+	if (isData(buf) || !inc) return (fputdata(s, buf, out));
 	/* ^AI ddd\n
 	 * ^AE ddd\n
 	 * ^AE dddN\n
@@ -5844,7 +5871,6 @@ err:		s->state |= S_WARNED;
 	slist[mRev] = S_PAR;
 
 	for (t = TABLE(s); t >= TREE(s); t--) {
-		unless (FLAGS(s, t)) continue;
 		if (TAG(s, t)) continue;
 		tser = t;
 
@@ -6558,7 +6584,6 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 
 		s->revLen = s->userLen = 0;
 		for (d2 = TREE(s); d2 <= TABLE(s); d2++) {
-			unless (FLAGS(s, d2)) continue;
 			len = strlen(REV(s, d2));
 			if (len > s->revLen) s->revLen = len;
 			len = strlen(USER(s, d2));
@@ -7657,7 +7682,6 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 		 * history of non patch nodes
 		 */
 		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
 			unless (pmap[d]) continue;
 			if (PARENT(s, d) && !pmap[PARENT(s, d)]) {
 				pmap[PARENT(s, d)] = D_INVALID;
@@ -7870,24 +7894,6 @@ fmttt(char *p, time_t d)
 	return p + 21 - (x - tmp);
 }
 
-private void
-check_removed(sccs *s, ser_t d, int strip_tags)
-{
-	assert(TAG(s, d));
-	if (FLAGS(s, d) & D_GONE) return;
-	if (strip_tags) {
-		MK_GONE(s, d);
-		return;
-	}
-
-	/*
-	 * We don't need no skinkin' removed deltas.
-	 */
-	unless (SYMGRAPH(s, d) || (FLAGS(s, d) & D_SYMBOLS) || HAS_COMMENTS(s, d)) {
-		MK_GONE(s, d);
-	}
-}
-
 /*
  * The table is all here in order, just print it.
  * New in Feb, '99: remove duplicates of metadata.
@@ -7903,10 +7909,16 @@ delta_table(sccs *s, FILE *out, int willfix)
 	char	buf[2*MAXPATH + 10];	/* ^AcP pathname|sortpath\n\0 */
 	char	*p, *t, old;
 	int	bits = 0;
-	int	gonechkd = 0;
-	int	strip_tags = CSET(s) && getenv("_BK_STRIPTAGS");
 	int	version = SCCS_VERSION;
 	symbol	*sym;
+	static int chkd_striptags;
+
+	if (!chkd_striptags++ && getenv("_BK_STRIPTAGS")) {
+		fprintf(stderr,
+		    "_BK_STRIPTAGS is deprecated\n"
+		    "Please run: bk stripdel --strip-tags <file>\n");
+		return (1);
+	}
 
 	if (getenv("_BK_SCCS_VERSION")) {
 		version = atoi(getenv("_BK_SCCS_VERSION"));
@@ -7953,29 +7965,14 @@ delta_table(sccs *s, FILE *out, int willfix)
 
 	sym = s->symlist + nLines(s->symlist);
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
-		if (TAG(s, d)) check_removed(s, d, strip_tags);
-		if (FLAGS(s, d) & D_GONE) {
-			/* This delta has been deleted - it is not to be
-			 * written out at all.
-			 *
-			 * All the children (d->kid) of this delta on
-			 * the same branch must also have been deleted.
-			 * If this branch was merged, the merge node and
-			 * all its children must have been deleted too.
-			 *
-			 * This check is expensive, but D_GONE nodes should
-			 * be extremely rare.
-			 */
-			unless (!gonechkd) {
-				assert(!checkGone(s, D_GONE, "delta_table"));
-				gonechkd = 1;
-			}
-
-			continue;
-		}
-
+		assert(FLAGS(s, d) && !(FLAGS(s, d) & D_GONE));
 		parent = PARENT(s, d);
+		if (BITKEEPER(s) && TAG(s, d) &&
+		    (!CSET(s) || !(FLAGS(s, d) & (D_SYMBOLS|D_SYMGRAPH)))) {
+			fprintf(stderr, "Illegal tag/removed deltas in %s\n"
+			    "Please write support@bitmover.com\n", s->gfile);
+			exit (1);
+		}
 
 		/*
 		 * XXX Whoa, nelly.  This is wrong, we must allow these if
@@ -8108,9 +8105,11 @@ delta_table(sccs *s, FILE *out, int willfix)
 			 * Leaving this fixed means we can diff the
 			 * s.files easily.
 			 */
-			if ((FLAGS(s, d) & D_SORTSUM) && (SUM(s, d) != SORTSUM(s, d))) {
+			if ((FLAGS(s, d) & D_SORTSUM) &&
+			    (SUM(s, d) != SORTSUM(s, d))) {
 				sprintf(buf,
-				    "\001cK%05u|%05u\n", SUM(s, d), SORTSUM(s, d));
+				    "\001cK%05u|%05u\n",
+				    SUM(s, d), SORTSUM(s, d));
 			} else {
 				sprintf(buf, "\001cK%05u\n", SUM(s, d));
 			}
@@ -8164,18 +8163,15 @@ delta_table(sccs *s, FILE *out, int willfix)
 			for (; sym != s->symlist; --sym) {
 				if (sym->meta_ser < d) break;
 				unless (sym->meta_ser == d) continue;
-				if (!strip_tags || 
-				    streq(KEY_FORMAT2, SYMNAME(s, sym))) {
-					p = fmts(buf, "\001cS");
-					p = fmts(p, SYMNAME(s, sym));
-					*p++ = '\n';
-					*p   = '\0';
-					fputmeta(s, buf, out);
-				}
+				p = fmts(buf, "\001cS");
+				p = fmts(p, SYMNAME(s, sym));
+				*p++ = '\n';
+				*p   = '\0';
+				fputmeta(s, buf, out);
 			}
 		}
-		/* automagically strip tag serials from non-csetfiles */
-		if (!strip_tags && SYMGRAPH(s, d) && CSET(s)) {
+		if (SYMGRAPH(s, d)) {
+			assert(CSET(s));
 			p = fmts(buf, "\001cS");
 			if (PTAG(s, d)) {
 				p = fmtd(p, PTAG(s, d));
@@ -8289,6 +8285,7 @@ bin_deltaTable(sccs *s, FILE *out)
 	int	i;
 	FILE	*perfile;
 
+	assert(BITKEEPER(s));
 	perfile = fmem();
 	sccs_perfile(s, perfile);
 
@@ -8316,14 +8313,18 @@ bin_deltaTable(sccs *s, FILE *out)
 
 	if (fseek(out, off_d, SEEK_SET)) perror("second");
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		if (FLAGS(s, d) && !(FLAGS(s, d) & D_GONE)) {
-			i = FLAGS(s, d);
-			FLAGS(s, d) &= 0x000FFFFF; /* only write some flags */
-			fwrite(&s->slist[d], sizeof(d_t), 1, out);
-			FLAGS(s, d) = i;
-		} else {
-			fseek(out, sizeof(d_t), SEEK_CUR);
+		i = FLAGS(s, d);
+		assert (i && !(i & D_GONE));
+		if (TAG(s, d) &&
+		    (!CSET(s) || !(i & (D_SYMBOLS|D_SYMGRAPH)))) {
+			fprintf(stderr,
+			    "Illegal tag/removed deltas in a binary sfile %s\n"
+			    "Please write support@bitmover.com\n", s->gfile);
+			return (1);
 		}
+		FLAGS(s, d) &= 0x000FFFFF; /* only write some flags */
+		fwrite(&s->slist[d], sizeof(d_t), 1, out);
+		FLAGS(s, d) = i;
 	}
 
 	fseek(out, off_s, SEEK_SET);
@@ -9994,7 +9995,6 @@ checkdups(sccs *s)
 	db = mdbm_open(NULL, 0, 0, 0);
 	v.dsize = sizeof(ser_t);
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (TAG(s, d)) continue;
 		ser = d;
 		R[0] = R0(s, d);
@@ -10028,7 +10028,7 @@ isleaf(register sccs *s, register ser_t d)
 	 */
 	assert(R0(s, d) == 1);
 	for (t = d+1; t <= TABLE(s); t++) {
-		unless (FLAGS(s, t) && !(FLAGS(s, t) & D_GONE)) continue;
+		if (FLAGS(s, t) & D_GONE) continue;
 		if (TAG(s, t)) continue;
 
 		if ((PARENT(s, t) == d) ||
@@ -10128,7 +10128,6 @@ checkInvariants(sccs *s, int flags)
 	error |= checkOpenBranch(s, flags);
 	error |= checkTags(s, flags);
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (!TAG(s, d) && !(FLAGS(s, d) & D_CKSUM)) {
 			verbose((stderr,
 			    "%s|%s: no checksum\n", s->gfile, REV(s, d)));
@@ -10174,7 +10173,6 @@ checkGone(sccs *s, int bit, char *who)
 	int	i, sign, error = 0;
 
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & bit) continue;
 		if (PARENT(s, d) && (FLAGS(s, PARENT(s, d)) & bit)) {
 			error++;
@@ -10241,7 +10239,6 @@ checkrevs(sccs *s, int flags)
 
 	prev = 0;
 	for (e = 0, d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		e |= checkRev(s, s->sfile, d, flags);
 		if ((flags & ADMIN_TIME) && prev && !earlier(s, d, prev)) {
 			fprintf(stderr, "%s: %s is not earlier than %s\n",
@@ -10684,7 +10681,7 @@ symArg(sccs *s, ser_t d, char *name)
 	addArray(&s->mg_symname, &tmp);
 	tmp = sccs_addUniqStr(s, name);
 	addArray(&s->mg_symname, &tmp);
-	FLAGS(s, d) |= D_SYMBOLS;	/* so mkgraph won't MKGONE it */
+	FLAGS(s, d) |= D_SYMBOLS;	/* so stripdel won't MKGONE it */
 
 	if ((d == 1) && streq(name, KEY_FORMAT2)) {
 		s->xflags |= X_LONGKEY;
@@ -11149,7 +11146,7 @@ adjust_serials(sccs *s, ser_t d, int amount)
 	char	*p;
 	FILE	*f;
 
-	unless (FLAGS(s, d)) return;
+	assert(FLAGS(s, d));
 	/* Note: if HEAP_RELATIVE, then the cludes recalc does no change */
 	if (HAS_CLUDES(s, d)) {
 		assert(INARRAY(s, d));
@@ -11369,7 +11366,6 @@ obscure_comments(sccs *s)
 	char	**comments = 0;
 
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		unless (buf = COMMENTS(s, d)) continue;
 		while (p = eachline(&buf, 0)) {
 			comments = addLine(comments, obscure(0, 0, p));
@@ -11720,7 +11716,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		OUT;
 	}
 	if (delta_table(sc, sfile, 0)) {
-		if (sc->io_warned) OUT;
+		unless (sc->io_warned) OUT;
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
 	assert(sc->state & S_SOPEN);
@@ -11776,59 +11772,43 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 }
 
 /*
- * Remve any gaps in the serial numbers.
- * Should be called after a stripdel.
+ * Compress holes and gone in graph and return a map from old to new ser_t
  */
-int
-sccs_scompress(sccs *s, int flags)
+private	ser_t *
+scompressGraph(sccs *s)
 {
-	FILE	*sfile = 0, *f = 0;
-	int	sign, error = 0, locked = 0, i;
-	char	*buf, *p;
-	ser_t	d, e;
-	ser_t	*remap;
+	FILE	*f = fmem();
 	symbol	*sym;
+	char	*p;
+	int	sign;
+	ser_t	d, e, x;
+	ser_t	*remap = 0;
 
-	unless (locked = sccs_lock(s, 'z')) {
-		fprintf(stderr, "scompress: can't get lock on %s\n", s->sfile);
-		error = -1; s->state |= S_WARNED;
-out:
-		if (sfile) sccs_abortWrite(s, &sfile);
-		if (locked) sccs_unlock(s, 'z');
-		debug((stderr, "scompress returns %d\n", error));
-		return (error);
-	}
-#define	OUT	{ error = -1; s->state |= S_WARNED; goto out; }
-
-	remap = calloc(sizeof(ser_t), TABLE(s) + 1);
-
-	f = fmem();
-	for ((d = TREE(s) - 1), e = TREE(s); e <= TABLE(s); e++) {
-		unless (FLAGS(s, e)) continue;
-		d++;
-		if (d != e) {
-			unless (flags & SILENT) {
-				fprintf(stderr, "Remap %s:%d ->%d\n",
-				    s->gfile, e, d);
-			}
-			memcpy(&s->slist[d],
-			    &s->slist[e], sizeof(d_t));
-			freeExtra(s, d);
-			memcpy(EXTRA(s, d), EXTRA(s, e), sizeof(dextra));
-			FLAGS(s, e) = 0;
+	growArray(&remap, TABLE(s));
+	assert(f && remap);
+	for (e = TREE(s), d = e - 1; e <= TABLE(s); e++) {
+		unless (FLAGS(s, e)) /* <- keep this test */ continue;
+		if (FLAGS(s, e) & D_GONE) {
+			freeExtra(s, e);
+			continue;
 		}
+		d++;
 		if (d > TREE(s)) assert(FLAGS(s, d-1));
 		remap[e] = d;
+		if (d == e) continue;	/* wait until there is a hole */
 
-		PARENT_SET(s, d, remap[PARENT(s, d)]);
-		if (PTAG(s, d)) PTAG_SET(s, d, remap[PTAG(s, d)]);
-		if (MTAG(s, d)) MTAG_SET(s, d, remap[MTAG(s, d)]);
-		if (MERGE(s, d)) MERGE_SET(s, d, remap[MERGE(s, d)]);
+		memcpy(&s->slist[d], &s->slist[e], sizeof(d_t));
+		memcpy(EXTRA(s, d), EXTRA(s, e), sizeof(dextra));
+
+		if (x = PARENT(s, d)) PARENT_SET(s, d, remap[x]);
+		if (x = MERGE(s, d)) MERGE_SET(s, d, remap[x]);
+		if (x = PTAG(s, d)) PTAG_SET(s, d, remap[x]);
+		if (x = MTAG(s, d)) MTAG_SET(s, d, remap[x]);
 
 		if (HAS_CLUDES(s, d)) {
 			p = CLUDES(s, d);
-			while (i = sccs_eachNum(&p, &sign)) {
-				sccs_saveNum(f, remap[i], sign);
+			while (x = sccs_eachNum(&p, &sign)) {
+				sccs_saveNum(f, remap[x], sign);
 			}
 			p = fmem_peek(f, 0);
 			unless (streq(p, CLUDES(s, d))) {
@@ -11838,42 +11818,22 @@ out:
 		}
 	}
 	fclose(f);
-	EACHP_REVERSE(s->symlist, sym) {
-		if (sym->ser) sym->ser = remap[sym->ser];
-		if (sym->meta_ser) sym->meta_ser = remap[sym->meta_ser];
-	}
 	/* clear old deltas */
+	TABLE_SET(s, d);
 	truncArray(s->slist, d);
-	EACH_REVERSE(s->extra) {
-		if (i <= d) break;
-		freeExtra(s, i);
-	}
 	truncArray(s->extra, d);
-	TABLE_SET(s, nLines(s->slist));
 
-	unless (sfile = sccs_startWrite(s)) OUT;
-	if (delta_table(s, sfile, 0)) {
-		if (s->io_warned) OUT;
-		goto out;	/* we don't know why so let sccs_why do it */
-	}
-	assert(s->state & S_SOPEN);
-	debug((stderr, "seek to %d\n", (int)s->data));
-	sccs_rdweaveInit(s);
-	if (GZIP_OUT(s)) sccs_zputs_init(s, sfile);
-	while (buf = sccs_nextdata(s)) {
-		if (isData(buf)) {
-			fputdata(s, buf, sfile);
+	/* By using reverse, no pointer adjustment needed after removeN() */
+	EACHP_REVERSE(s->symlist, sym) {
+		assert(sym->meta_ser && sym->ser);
+		if (x = remap[sym->meta_ser]) {
+			sym->meta_ser = x;
+			sym->ser = remap[sym->ser];
 		} else {
-			e = atoi(&buf[3]);
-			fputbumpserial(s, buf, remap[e] - e, sfile);
+			removeArrayN(s->symlist, (sym - s->symlist));
 		}
-		fputdata(s, "\n", sfile);
 	}
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
-	sccs_rdweaveDone(s);
-	if (sccs_finishWrite(s, &sfile)) OUT;
-	goto out;
-#undef	OUT
+	return (remap);
 }
 
 #define	MAXCMD	20
@@ -11914,7 +11874,6 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
 	unless (CSET(s)) {
 		/* transitive close if not the cset file */
 		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
 			unless (w->slist[d]) continue;
 			if (PARENT(s, d)) {
 				w->slist[PARENT(s, d)] = 1;
@@ -15666,7 +15625,6 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		ser_t	m;
 
 		for (m = TABLE(s); m >= TREE(s); m--) {
-			unless (FLAGS(s, m)) continue;
 			if ((MERGE(s, m) == d) ||
 			    (PARENT(s, m) == d)) {
 				if (space) fs(" ");
@@ -16022,7 +15980,6 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		 * necessarily in the same ancestory.  Good enough for tip?!
 		 */
 		for (; d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
 			unless (strneq(PATHNAME(s, d),
 				"BitKeeper/deleted/", 18)) {
 				fs(PATHNAME(s, d));
@@ -16342,7 +16299,6 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 	}
 	unless (SET(s)) {
 		for (d = s->rstop; d >= TREE(s); d--) {
-			unless (FLAGS(s, d)) continue;
 			FLAGS(s, d) |= D_SET;
 			if (d == s->rstart) break;
 		}
@@ -16519,7 +16475,6 @@ sccs_findtips(sccs *s, ser_t *a, ser_t *b)
 	 * At any given point there should be exactly one of these.
 	 */
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (TAG(s, d)) continue;
 		unless (isleaf(s, d)) continue;
 		if (!*a) {
@@ -16564,7 +16519,6 @@ err:
 	 */
 	unless (sccs_findtips(s, &a, &b)) {
 		for (p = TABLE(s); p >= TREE(s); p--) {
-			unless (FLAGS(s, p)) continue;
 			if (!TAG(s, p) && !(FLAGS(s, p) & D_REMOTE)) {
 				break;
 			}
@@ -16665,22 +16619,11 @@ fk_datecmp(const void *a, const void *b)
 	return (dd - dp->date);
 }
 
-/*
- * Find an MD5 based key.
- */
-ser_t
-sccs_findMD5(sccs *s, char *md5)
+private ser_t
+date2delta(sccs *s, u32 dd)
 {
-	ser_t	d, n;
-	u32	dd;
 	d_t	*dp;
-	char	dkey[MAXKEY];
-
-	unless (s && HASGRAPH(s)) return (0);
-
-	strncpy(dkey, md5, 8);
-	dkey[8] = 0;
-	dd = strtoul(dkey, 0, 16);
+	ser_t	d, n;
 
 	dp = bsearch(int2p(dd),
 	    s->slist + TREE(s), TABLE(s), sizeof(d_t),
@@ -16690,10 +16633,26 @@ sccs_findMD5(sccs *s, char *md5)
 
 	/* find first match */
 	while ((n = sccs_prev(s, d)) && (dd == DATE(s, n))) d = n;
+	return (d);
+}
 
-	for (; d <= TABLE(s); ++d) {
-		unless (FLAGS(s, d)) continue;
-		if (dd != DATE(s, d)) break;
+/*
+ * Find an MD5 based key.
+ */
+ser_t
+sccs_findMD5(sccs *s, char *md5)
+{
+	ser_t	d;
+	u32	dd;
+	char	dkey[MAXKEY];
+
+	unless (s && HASGRAPH(s)) return (0);
+
+	strncpy(dkey, md5, 8);
+	dkey[8] = 0;
+	dd = strtoul(dkey, 0, 16);
+	for (d = date2delta(s, dd);
+	     d && (d <= TABLE(s)) && (dd == DATE(s, d)); ++d) {
 		sccs_md5delta(s, d, dkey);
 		if (streq(md5, dkey)) return (d);
 	}
@@ -16718,15 +16677,27 @@ isKey(char *key)
 	return (0);
 }
 
+private u32
+key2date(char *key)
+{
+	char	*t;
+	u32	dd;
+
+	unless (t = strchr(key, '|')) return (0);	/* path */
+	unless (t = strchr(t+1, '|')) return (0);	/* date */
+
+	dd = sccs_date2time(t+1, 0);
+	return (dd);
+}
+
 /*
  * Take a key like sccs_sdelta makes and find it in the tree.
  */
 ser_t
 sccs_findKey(sccs *s, char *key)
 {
-	ser_t	d, n;
+	ser_t	d;
 	char	*t;
-	d_t	*dp;
 	u32	dd;
 	char	dkey[MAXKEY];
 
@@ -16734,23 +16705,9 @@ sccs_findKey(sccs *s, char *key)
 	debug((stderr, "findkey(%s)\n", key));
 	unless (strchr(key, '|')) return (sccs_findMD5(s, key));
 
-	unless (t = strchr(key, '|')) return (0);	/* path */
-	unless (t = strchr(t+1, '|')) return (0);	/* date */
-
-	dd = sccs_date2time(t+1, 0);
-
-	dp = bsearch(int2p(dd),
-	    s->slist + TREE(s), TABLE(s), sizeof(d_t),
-	    fk_datecmp);
-	unless (dp) return (0);
-	d = (dp - s->slist);
-
-	/* find first match */
-	while ((n = sccs_prev(s, d)) && (dd == DATE(s, n))) d = n;
-
-	for (; d <= TABLE(s); ++d) {
-		unless (FLAGS(s, d)) continue;
-		if (dd != DATE(s, d)) break;
+	dd = key2date(key);
+	for (d = date2delta(s, dd);
+	     d && (d <= TABLE(s)) && (dd == DATE(s, d)); ++d) {
 		sccs_sdelta(s, d, dkey);
 		if (s->keydb_nopath) {
 			if (!keycmp_nopath(key, dkey)) return (d);
@@ -16761,6 +16718,28 @@ sccs_findKey(sccs *s, char *key)
 			*t = 0;
 			if (streq(key, dkey)) return (d);
 		}
+	}
+	return (0);
+}
+
+/*
+ * Take a key like sccs_sortkey makes and find it in the tree.
+ */
+ser_t
+sccs_findSortKey(sccs *s, char *sortkey)
+{
+	ser_t	d;
+	u32	dd;
+	char	dkey[MAXKEY];
+
+	unless (s && HASGRAPH(s)) return (0);
+	debug((stderr, "findsortkey(%s)\n", sortkey));
+
+	dd = key2date(sortkey);
+	for (d = date2delta(s, dd);
+	     d && (d <= TABLE(s)) && (dd == DATE(s, d)); ++d) {
+		sccs_sortkey(s, d, dkey);
+		if (streq(sortkey, dkey)) return (d);
 	}
 	return (0);
 }
@@ -16842,7 +16821,9 @@ sccs_sortkey(sccs *s, ser_t d, char *buf)
 	origsum = SUM(s, d);
 
 	unless (getenv("_BK_NO_SORTKEY")) {
-		if (origpath && HAS_SORTPATH(s, d)) PATHNAME_INDEX(s, d) = SORTPATH_INDEX(s, d);
+		if (origpath && HAS_SORTPATH(s, d)) {
+			PATHNAME_INDEX(s, d) = SORTPATH_INDEX(s, d);
+		}
 		if (FLAGS(s, d) & D_SORTSUM) SUM_SET(s, d, SORTSUM(s, d));
 	}
 	sccs_sdelta(s, d, buf);
@@ -16923,7 +16904,7 @@ sccs_csetBoundary(sccs *s, ser_t d)
 	start = d;
 	FLAGS(s, d) |= D_RED;
 	for (; d <= TABLE(s); ++d) {
-		unless (FLAGS(s, d) && !TAG(s, d)) continue;
+		if (TAG(s, d)) continue;
 
 		if ((e = PARENT(s, d)) && (FLAGS(s, e) & D_RED)) {
 			FLAGS(s, d) |= D_RED;
@@ -17376,12 +17357,17 @@ sccs_color(sccs *s, ser_t d)
 
 /*
  * Given an SCCS structure with a list of marked deltas, strip them from
- * the delta table and place the striped body in out
+ * the delta table, then come here and strip the weave.
+ * That is, the weave uses old serial and graph is already compressed to new.
+ * Pass in remap[old serial] -> new serial
+ * if new == 0, then it was stripped out of the graph (D_GONE or closed hole).
+ * D_SET is for the old ATT rmdel which leaves a removed 'R' delta
+ * in the graph.
  */
 private int
-stripDeltas(sccs *s, FILE *out)
+stripDeltas(sccs *s, ser_t *remap, FILE *out)
 {
-	ser_t	*state = 0;
+	ser_t	d, *state = 0;
 	int	prune = 0;
 	char	*buf;
 	int	ser;
@@ -17398,15 +17384,18 @@ stripDeltas(sccs *s, FILE *out)
 		}
 		debug2((stderr, "%s", buf));
 		ser = atoi(&buf[3]);
-		unless (FLAGS(s, ser) & D_SET) {
-			fputdata(s, buf, out);
+		d = (remap && ser) ? remap[ser] : ser;
+		unless (!d || (FLAGS(s, d) & D_SET)) {
+			fputbumpserial(s, buf, d - ser, out);
 			fputdata(s, "\n", out);
 		}
 		state = changestate(state, buf[1], ser);
 		ser = whatstate(state);
-		prune = (ser && (FLAGS(s, ser) & D_SET));
+		d = (remap && ser) ? remap[ser] : ser;
+		prune = (!d || (FLAGS(s, d) & D_SET));
 	}
 	free(state);
+	free(remap);
 	if (GZIP_OUT(s)) sccs_zputs_done(s);
 	if (sccs_rdweaveDone(s)) return (1);
 	if (sccs_finishWrite(s, &out)) return (1);
@@ -17415,7 +17404,7 @@ stripDeltas(sccs *s, FILE *out)
 
 /*
  * Strip out the deltas marked with D_SET and D_GONE.
- * Note: rmdel doesn't strip, so only sets D_SET
+ * Note: rmdel doesn't strip from graph, so only sets D_SET
  * E.g. to remove top rev: 
  * ser_t d = sccs_top(s); MK_GONE(s, d); FLAGS(s, d) |= D_SET;
  * sccs_stripdel(s, "die");
@@ -17426,8 +17415,7 @@ sccs_stripdel(sccs *s, char *who)
 	FILE	*sfile = 0;
 	int	error = 0;
 	int	locked;
-	ser_t	e;
-	symbol	*sym;
+	ser_t	e, *remap = 0;
 
 #define	OUT	\
 	do { error = -1; s->state |= S_WARNED; goto out; } while (0)
@@ -17449,7 +17437,6 @@ sccs_stripdel(sccs *s, char *who)
 	 * and that's our top.
 	 */
 	for (e = TABLE(s); e >= TREE(s); e--) {
-		unless (FLAGS(s, e)) continue;
 		if (!TAG(s, e) && !(FLAGS(s, e) & D_SET)) break;
 	}
 	assert(e);
@@ -17463,21 +17450,7 @@ sccs_stripdel(sccs *s, char *who)
 	}
 	s->xflags = sccs_xflags(s, e);
 
-	/* remove deleted symbols */
-	EACHP(s->symlist, sym) {
-		unless (FLAGS(s, sym->meta_ser) & D_GONE) continue;
-		removeArrayN(s->symlist, (sym - s->symlist));
-		--sym;
-	}
-
- 	/* fix things up so that nothing after the tip is written */
-	for (e = TABLE(s); e >= TREE(s); e--) {
-		unless (FLAGS(s, e)) continue;
-		/* include tags in the search; not D_SET because keep rmdel */
-		unless (FLAGS(s, e) & D_GONE) break;
-	}
-	truncArray(s->slist, e);
-	TABLE_SET(s, nLines(s->slist));
+	remap = scompressGraph(s);	/* Pull gone stuff out */
 
 	/* write out upper half */
 	if (delta_table(s, sfile, 0)) {  /* 0 means as-is, so chksum works */
@@ -17487,7 +17460,7 @@ sccs_stripdel(sccs *s, char *who)
 	}
 
 	/* write out the lower half */
-	if (stripDeltas(s, sfile)) {
+	if (stripDeltas(s, remap, sfile)) {
 		fprintf(stderr,
 		    "%s: can't write delta body for %s\n", who, s->sfile);
 		OUT;
@@ -17667,7 +17640,6 @@ sccs_clearbits(sccs *s, u32 flags)
 
 	unless (s) return;
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		FLAGS(s, d) &= ~flags;
 	}
 	if (flags & D_GONE) s->hasgone = 0;

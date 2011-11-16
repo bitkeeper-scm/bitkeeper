@@ -705,6 +705,7 @@ struct sccs {
 	ser_t	rstop;		/* end of range (1.5 - youngest) */
 	ser_t	remote;	/* sccs_resolveFiles() sets this */
 	ser_t	local;		/* sccs_resolveFiles() sets this */
+	ser_t	*remap;		/* scompress remap old ser to new ser */
 	sum_t	 cksum;		/* SCCS chksum */
 	sum_t	 dsum;		/* SCCS delta chksum */
 	u32	added;		/* lines added by this delta (u32!) */
@@ -1016,6 +1017,7 @@ int	sfilesDied(int killit);
 ser_t	sccs_findrev(sccs *, char *);
 ser_t	sccs_top(sccs *);
 ser_t	sccs_findKey(sccs *, char *);
+ser_t	sccs_findSortKey(sccs *s, char *sortkey);
 int	isKey(char *key);
 ser_t	sccs_findMD5(sccs *s, char *md5);
 ser_t	sccs_dInit(ser_t, char, sccs *, int);
@@ -1246,7 +1248,6 @@ unsigned long	ns_sock_host2ip(char *host, int trace);
 unsigned long	host2ip(char *host, int trace);
 int	fileTypeOk(mode_t m);
 int	sccs_tagLeaf(sccs *s, ser_t d, ser_t md, char *tag);
-int	sccs_scompress(sccs *s, int flags);
 int	mkBkRootIcon(char *path);
 int	unmkBkRootIcon(char *path);
 void	sccs_tagcolor(sccs *s, ser_t d);

@@ -592,10 +592,6 @@ bk pull $Q ../project
 # save old style and new style patches
 bk makepatch -rDOIT.. > old.bkp
 bk makepatch -F -rDOIT.. > new.bkp
-# save baseline and verify it is compressed
-bk _cp SCCS/s.ChangeSet reference
-bk _scompress ChangeSet
-cmpsfiles SCCS/s.ChangeSet reference
 # takeout patch and verify it is not compressed
 bk unpull $Q -sf
 # show old style patch inflates things

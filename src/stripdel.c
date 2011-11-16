@@ -10,6 +10,7 @@ typedef struct {
 	u32	quiet:1;
 	u32	forward:1;
 	u32	sawRev:1;
+	u32	stripTags:1;
 	u32	iflags;
 	u32	nfiles;
 	ticker	*tick;
@@ -19,6 +20,7 @@ private	ser_t	checkCset(sccs *s);
 private	int	doit(sccs *, s_opts);
 private	int	do_check(sccs *s, int flags);
 private	int	strip_list(s_opts);
+private	void	checkStripTags(sccs *s, s_opts);
 
 int
 stripdel_main(int ac, char **av)
@@ -28,8 +30,13 @@ stripdel_main(int ac, char **av)
 	int	c, rc;
 	s_opts	opts = {1, 0, 0, 0, 0};
 	RANGE	rargs = {0};
+	char	nullrange[] = "+..+";
+	longopt	lopts[] = {
+		{ "strip-tags", 300 },		/* remove tag graph */
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "bcCN;dqr;", 0)) != -1) {
+	while ((c = getopt(ac, av, "bcCN;dqr;", lopts)) != -1) {
 		switch (c) {
 		    case 'b':
 			fprintf(stderr, "ERROR: stripdel -b obsolete\n");
@@ -46,6 +53,11 @@ stripdel_main(int ac, char **av)
 			opts.sawRev = 1;
 			if (range_addArg(&rargs, optarg, 0)) usage();
 			break;
+		    case 300: /* --strip-tags */
+			if (opts.sawRev) usage();
+			if (range_addArg(&rargs, nullrange, 0)) usage();
+			opts.stripTags = 1;
+		    	break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -111,7 +123,6 @@ doit(sccs *s, s_opts opts)
 		verbose((stderr, 
 		    "Not stripping deltas from MONOTONIC file %s\n", s->gfile));
 		for (e = TABLE(s); e >= TREE(s); e--) {
-			unless (FLAGS(s, e)) continue;
 			if ((FLAGS(s, e) & D_SET) && !TAG(s, e)) {
 				FLAGS(s, e) |= D_DANGLING;
 			}
@@ -146,6 +157,8 @@ doit(sccs *s, s_opts opts)
 		return (0);
 	}
 
+	checkStripTags(s, opts);
+
 	/* work with bluearc Cunning Plan */
 	FLAGS(s, TREE(s)) &= ~(D_SET|D_GONE);
 
@@ -175,7 +188,6 @@ stripdel_fixTable(sccs *s, int *pcnt)
 	int	count = 0, left = 0, run_names = 0;
 
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_SET) {
 			MK_GONE(s, d);
 			FLAGS(s, d) &= ~D_SYMLEAF;
@@ -271,7 +283,6 @@ checkCset(sccs *s)
 	int	saw_cset = 0;
 
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_CSET) saw_cset = 1;
 		unless (FLAGS(s, d) & D_SET) continue;
 		if (saw_cset && (e = sccs_csetBoundary(s, d))) {
@@ -279,4 +290,52 @@ checkCset(sccs *s)
 		}
 	}
 	return (0);
+}
+
+/*
+ * Long ago, delta_table() used to, on the fly, strip out TAGS from
+ * files, just leaving them as skipped serials.  Now those serials
+ * need to get compressed.  This moves that logic out of old delta_table
+ * and into here.  That means it also works on binary delta which may or
+ * may not be a good thing.
+ *
+ * Strip tags out of files (and out of ChangeSet if requested) by marking
+ * nodes D_GONE.  And then if things marked D_GONE, scompress them out.
+ * This is graph only.  No data stripped from weave (unlike sccs_stripdel).
+ */
+private	void
+checkStripTags(sccs *s, s_opts opts)
+{
+	ser_t	d;
+
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		assert(FLAGS(s, d));
+		if (TAG(s, d) && !(FLAGS(s, d) & D_GONE)) {
+			/* always strip removed tags; sometimes all tags */
+			if (opts.stripTags ||
+			    !(SYMGRAPH(s, d) ||
+			    (FLAGS(s, d) & D_SYMBOLS) ||
+			    HAS_COMMENTS(s, d))) {
+				MK_GONE(s, d);
+			}
+		}
+		unless (opts.stripTags || !CSET(s)) continue;
+		if (opts.stripTags) FLAGS(s, d) &= ~D_SYMBOLS;
+		FLAGS(s, d) &= ~(D_SYMGRAPH | D_SYMLEAF);
+		MTAG_SET(s, d, 0);
+		PTAG_SET(s, d, 0);
+	}
+	if (opts.stripTags) {
+		symbol	*sym;
+
+		EACHP_REVERSE(s->symlist, sym) {
+			if (streq(KEY_FORMAT2, SYMNAME(s, sym))) {
+				FLAGS(s, sym->meta_ser) |= D_SYMBOLS;
+			} else {
+				removeArrayN(s->symlist, (sym - s->symlist));
+			}
+		}
+		unless (nLines(s->symlist)) FREE(s->symlist);
+	}
+	return;
 }

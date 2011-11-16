@@ -344,7 +344,6 @@ sane
 sccs2bk
 _scat
 sccslog
-_scompress
 send pro
 sendbug
 set

@@ -89,7 +89,6 @@ checksum_main(int ac, char **av)
 					    TABLE(s) + 1);
 				}
 				for (i = 0, d = TABLE(s); d >= TREE(s); d--) {
-					unless (FLAGS(s, d)) continue;
 					if (TAG(s, d)) continue;
 					c = sccs_resum(s, d, diags, fix);
 					if (tick) progress(tick, ++i);

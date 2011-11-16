@@ -371,7 +371,6 @@ graph_sccs2symdiff(sccs *s)
 
 	assert(sd && slist);
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d) && !TAG(s, d) && PARENT(s, d)) continue;
 		if (MERGE(s, d) || HAS_CLUDES(s, d)) {
 			graph_symdiff(s, d, PARENT(s, d), 0, slist, sd, -1, 0);
 		}
@@ -411,7 +410,6 @@ graph_v1(sccs *s)
 	printf("Demo reachability v1\n");
 	graph_kidwalk(s, v1Right, v1Left, &label);
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (TAG(s, d)) continue;
 		printf("%s -> [%d, %d)\n",
 		    REV(s, d),

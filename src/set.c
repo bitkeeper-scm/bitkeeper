@@ -302,7 +302,6 @@ set_list(sccs *s, char *rev, set_pfunc p)
 		exit(1);
 	}
 	for (e = TABLE(s); e >= TREE(s); e--) {
-		unless (FLAGS(s, e)) continue;
 		if (TAG(s, e)) continue;
 		if (FLAGS(s, e) & D_SET) continue;
 		if (opts.tags && !(FLAGS(s, e) & D_SYMBOLS)) continue;

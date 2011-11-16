@@ -97,9 +97,9 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
 	 */
 	sccs_color(s, sccs_top(s));
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (FLAGS(s, d) & D_RED) continue;
-		FLAGS(s, d) |= D_SET|D_GONE;
+		FLAGS(s, d) |= D_SET;
+		MK_GONE(s, d);
 	}
 
 	/*
@@ -109,7 +109,8 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
 	if (streq(REV(s, TREE(s)), "1.0")) {
 		d = TREE(s);
 		if (strneq("BitKeeper file", COMMENTS(s, d), 14)) {
-			FLAGS(s, d) |= D_SET|D_GONE;
+			FLAGS(s, d) |= D_SET;
+			MK_GONE(s, d);
 			if (verbose > 1) {
 				fprintf(stderr,
 				    "Stripping old BitKeeper data in %s\n",
@@ -172,7 +173,6 @@ regen(sccs *s, int verbose, char *key)
 	int	crnl;
 
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) continue;
 		if (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			table[n++] = d;
 		}
@@ -409,7 +409,6 @@ ptable(sccs *s)
 	ser_t	d;
 
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) continue;
 		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
@@ -442,7 +441,6 @@ handleFake(sccs *s)
 	char	*user = 0;
 
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) continue;
 		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
@@ -458,7 +456,6 @@ handleFake(sccs *s)
 	/* only fix the first 'i' deltas in count down fashion */
 	while (d > 1) {
 		d--;
-		unless (FLAGS(s, d)) continue;
 		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
@@ -526,9 +523,8 @@ makeMerge(sccs *s, int verbose)
 
 	/* table order, mark things to ignore, and find merge markers */
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d)) continue;
 		if (TAG(s, d)) {
-			FLAGS(s, d) |= D_GONE;
+			MK_GONE(s, d);
 			continue;
 		}
 		unless (HAS_CLUDES(s, d)) continue;
@@ -586,7 +582,6 @@ fixTable(sccs *s, int verbose)
 
 	/* reverse table order of just the deltas being imported */
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		unless (FLAGS(s, d)) continue;
 		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
