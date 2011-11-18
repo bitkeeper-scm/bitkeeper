@@ -549,7 +549,7 @@ if test $tk_aqua = no; then
 	    CFLAGS="$CFLAGS $XINCLUDES $XFT_CFLAGS"
 	    tk_oldLibs=$LIBS
 	    LIBS="$tk_oldLIBS $XFT_LIBS $XLIBSW"
-	    AC_CHECK_LIB(Xft, FT_New_Face, [], [
+	    AC_CHECK_LIB(Xft, XftFontOpen, [], [
 		found_xft=no
 	    ])
 	    CFLAGS=$tk_oldCFlags
