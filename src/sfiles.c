@@ -1527,7 +1527,11 @@ findsfiles(char *file, struct stat *sb, void *data)
 		}
 	} else {
 		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
-			if (si->is_clone && patheq(p - 4, CHANGESET)) {
+			/*
+			 * skip SCCS/s.ChangeSet at root of
+			 * repo in clone (we insert it manually)
+			 */
+			if (si->is_clone && patheq(file+2, CHANGESET)) {
 				return (0);
 			}
 			if (si->dfiles && hash_fetchStr(si->dfiles, p+3)) {
