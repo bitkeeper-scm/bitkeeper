@@ -327,12 +327,16 @@ void	trace_msg(char *fmt, char *file, int line, const char *function, ...)
      __attribute__((format (__printf__, 1, 5)))
 #endif
 	;
+int	trace_this(char *file, int line, const char *function);
 void	trace_free(void);
 
 #define	TRACE(format, args...)	\
 	do { if (bk_trace) \
 		trace_msg(format, __FILE__, __LINE__, __FUNCTION__, ##args); \
 	} while (0)
+
+#define	IF_TRACE \
+	if (bk_trace && trace_this(__FILE__, __LINE__, __FUNCTION__))
 
 #define	HERE()	TRACE("%s", "")
 
