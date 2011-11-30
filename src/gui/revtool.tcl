@@ -1001,15 +1001,6 @@ proc listRevs {r file} \
 	} else {
 		set opt "-T"
 	}
-	if {[file tail $file] eq "ChangeSet"} {
-		set nopt " -n$gc(rev.showCsetRevs)"
-	} else {
-		set nopt " -n$gc(rev.showRevs)"
-	}
-	if {[regexp -- {^-[cn]} $r] || [regexp -- {^-R} $r]} {
-		set nopt ""
-	}
-	set opt "$opt$nopt"
 	set d [open "| bk _lines $Opts(line) $opt \"$r\" \"$file\"" "r"]
 	# puts "bk _lines $Opts(line) $r $opt \"$file\" 2>$dev_null"
 	set len 0
@@ -1857,7 +1848,6 @@ proc widgets {} \
 		set gc(py) 1; set gc(px) 4
 		set gc(histfile) [file join $gc(bkdir) ".bkhistory"]
 	}
-	set Opts(line_time)  "-c-$gc(rev.showHistory)"
 
 	image create photo iconClose -file $::env(BK_BIN)/gui/images/close.png
 
@@ -2288,6 +2278,8 @@ select a new file to view"
 	if {$R == ""} {
 		if {$gca != ""} {
 			set R "-c$gca.."
+		} elseif {[file tail $file] eq "ChangeSet"} {
+			set R "-n$gc(rev.showCsetRevs)"
 		} else {
 			set R "-n$gc(rev.showRevs)"
 		}
