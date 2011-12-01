@@ -247,7 +247,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	} else {
 		n->proj = proj_init(".");
 	}
-	n->here = nested_here(0);	/* cd2product, so get our 'HERE' */
+	n->here = nested_here(n->proj);	/* cd2product, so get our 'HERE' */
 
 	n->product = c = new(comp);
 	c->n = n;
@@ -662,9 +662,13 @@ char **
 nested_here(project *p)
 {
 	char	buf[MAXPATH];
+	project	*q;
 
 	assert(proj_isProduct(p));
 	concat_path(buf, proj_root(p), "BitKeeper/log/HERE");
+	if (!exists(buf) && (q = proj_isResync(p))) {
+		concat_path(buf, proj_root(q), "BitKeeper/log/HERE");
+	}
 	return (nested_fixHere(file2Lines(0, buf)));
 }
 
