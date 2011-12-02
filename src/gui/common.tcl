@@ -109,8 +109,10 @@ proc cd2root { {startpath {}} } \
 	return -1
 }
 
-proc cd2product {} {
-	if {[catch { cd [exec bk root] } err]} {
+proc cd2product {{path ""}} {
+	set cmd [list exec bk root]
+	if {$path ne ""} { lappend cmd $path }
+	if {[catch { cd [{*}$cmd] } err]} {
 		puts "Could not change directory to product root."
 		exit 1
 	}
