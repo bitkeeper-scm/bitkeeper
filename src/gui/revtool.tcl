@@ -762,45 +762,6 @@ proc addline {y xspace ht l} \
 	if {![info exists merges]} { set merges [list] }
 }
 
-proc balloon_setup {rev} \
-{
-	global gc app
-
-	$w(graph) bind $rev <Enter> \
-	    "after 500 \"balloon_aux_s %W [list $msg]\""
-	$w(graph) bind $rev <Leave> \
-	    "after cancel \"balloon_aux_s %W [list $msg]\"
-	    after 100 {catch {destroy .balloon_help}}"
-}
-
-proc balloon_aux_s {w rev1} \
-{
-	global gc dspec dev_null file
-
-	set t .balloon_help
-	catch {destroy $t}
-	toplevel $t
-	wm overrideredirect $t 1
-	set dspec \
-"-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\\n\$each(:C:){  (:C:)\\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n" 
-
-	catch { exec bk prs $dspec -r$rev1 "$file" 2>$dev_null } msg
-
-	label $t.l \
-	    -text $msg \
-	    -relief solid \
-	    -padx 5 -pady 2 \
-	    -borderwidth 1 \
-	    -justify left \
-	    -background $gc(rev.balloonColor)
-	pack $t.l -fill both
-	set x [expr [winfo rootx $w]+6+[winfo width $w]/2]
-	set y [expr [winfo rooty $w]+6+[winfo height $w]/2]
-	wm geometry $t +$x\+$y
-	bind $t <Enter> {after cancel {catch {destroy .balloon_help}}}
-	bind $t <Leave> "catch {destroy .balloon_help}"
-}
-
 # print the line of revisions in the graph.
 # Each node is anchored with its sw corner at x/y
 # The saved locations in rev{X,Y} are the southwest corner.

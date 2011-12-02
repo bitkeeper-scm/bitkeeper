@@ -598,8 +598,8 @@ proc clearDisplay {} \
 	.diffs.status.r configure -text ""
 	.diffs.status.r_lnum  configure -text ""
 	.diffs.status.middle configure -text "no files"
-	balloon_help .diffs.status.l ""
-	balloon_help .diffs.status.r ""
+	tooltip::tooltip .diffs.status.l ""
+	tooltip::tooltip .diffs.status.r ""
 
 	searchdisable
 }

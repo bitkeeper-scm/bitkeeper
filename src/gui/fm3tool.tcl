@@ -1481,17 +1481,17 @@ proc widgets {} \
 			    -image left216 -command [list prevDiff 1]
 			ttk::button $menu.toolbar.nextConflict \
 			    -image right216 -command [list nextDiff 1]
-			::tooltip::enable $menu.toolbar.lastDiff \
+			::tooltip::tooltip $menu.toolbar.lastDiff \
 				"last diff"
-			::tooltip::enable $menu.toolbar.firstDiff \
+			::tooltip::tooltip $menu.toolbar.firstDiff \
 				"first diff"
-			::tooltip::enable $menu.toolbar.prevDiff \
+			::tooltip::tooltip $menu.toolbar.prevDiff \
 				"previous diff"
-			::tooltip::enable $menu.toolbar.nextDiff \
+			::tooltip::tooltip $menu.toolbar.nextDiff \
 				"next diff"
-			::tooltip::enable $menu.toolbar.prevConflict \
+			::tooltip::tooltip $menu.toolbar.prevConflict \
 				"previous conflict"
-			::tooltip::enable $menu.toolbar.nextConflict \
+			::tooltip::tooltip $menu.toolbar.nextConflict \
 				"next conflict"
 		    pack $menu.toolbar.firstDiff \
 			 $menu.toolbar.prevConflict \

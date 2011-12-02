@@ -435,8 +435,6 @@ proc readFiles {L R {O {}}} \
 	if {[info exists finfo(lt)] && ($finfo(lt)!= "")} {
 		.diffs.status.l configure -text "$finfo(l) ($finfo(lt))"
 		.diffs.status.r configure -text "$finfo(r) ($finfo(rt))"
-		balloon_help .diffs.status.l "$finfo(l)\n($finfo(lt))"
-		balloon_help .diffs.status.r "$finfo(r)\n($finfo(rt))"
 		.diffs.status.middle configure -text "... Diffing ..."
 	} elseif {[info exists lname] && ($lname != "")} {
 		set lt [clock format [file mtime $L] -format "%X %d %b %y"]
@@ -449,15 +447,11 @@ proc readFiles {L R {O {}}} \
 		if {[info exists diffInfo(rfile)]} { set file $diffInfo(rfile) }
 		set rev [md52rev $file $rev]
 		.diffs.status.r configure -text "$file $rev ($rt)"
-		balloon_help .diffs.status.l "$lname\n($lt)"
-		balloon_help .diffs.status.r "$rname\n($rt)"
 		.diffs.status.middle configure -text "... Diffing ..."
 	} else {
 		set l [file tail $L]
 		.diffs.status.l configure -text "$l"
-		balloon_help .diffs.status.l "$l"
 		set r [file tail $R]
-		balloon_help .diffs.status.r "$r"
 		.diffs.status.r configure -text "$r"
 		.diffs.status.middle configure -text "... Diffing ..."
 	}

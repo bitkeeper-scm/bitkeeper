@@ -50,7 +50,6 @@ proc getConfig {prog} \
 
 	set _d(tabwidth) 8		;# default width of a tab
 	set _d(backup) ""		;# Make backups in ciedit: XXX NOTDOC 
-	set _d(balloonTime) 1000	;# XXX: NOTDOC
 	set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
 	set _d(diffHeight) 30		;# height of a diff window
 	set _d(diffWidth) 65		;# width of side by side diffs
@@ -68,7 +67,6 @@ proc getConfig {prog} \
 					 # than this width or height
 	#XXX: Not documented yet
 	set _d(logoBG) $WHITE		;# background for widget with logo
-	set _d(balloonBG) $LIGHTYELLOW	;# balloon help background
 	set _d(selectBG) $NAVY		;# useful for highlighting text
 	set _d(selectFG) $WHITE		;# useful for highlighting text
 	set _d(altColumnBG) $BEIGE		;# alternate column background
