@@ -800,6 +800,7 @@ bk_cleanup(int ret)
 		buffer = 0;
 	}
 	notifier_flush();
+	uniq_close();
 	lockfile_cleanup();
 
 	/*

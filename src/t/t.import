@@ -15,6 +15,7 @@
 unset _BK_DEVELOPER
 
 export BK_YEAR2=YES
+export _BK_SHUTUP=YES
 
 echo $N Test import of a plain file .................................$NL
 commercial project

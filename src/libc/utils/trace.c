@@ -58,7 +58,7 @@ trace_msg(char *format, char *file, int line, const char *function, ...)
 	unless (f) {
 		/*
 		 * The only way we can be here and have efopen() fail is
-		 * if we were called from the HERE() macro, so just do what
+		 * if we were called from TRACE("%s", ""), so just do what
 		 * ttyprintf does.
 		 */
 		unless (f = fopen(DEV_TTY, "w")) f = fdopen(2, "w");

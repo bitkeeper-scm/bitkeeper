@@ -956,7 +956,7 @@ uniqRoot(sccs *s)
 
 	unless (uniq_open() == 0) return;	// XXX - no error?
 	uniq_adjust(s, d);
-	uniq_close();
+	/* leave uniq db open... */
 }
 
 /*
@@ -989,7 +989,6 @@ uniqDelta(sccs *s)
 		return;
 	}
 
-	unless (uniq_open() == 0) return;
 	CHKDATE(next);
 	if (d->date <= next->date) {
 		time_t	tdiff;
@@ -1001,15 +1000,13 @@ uniqDelta(sccs *s)
 	/*
 	 * We want the import convertor to produce the same tree
 	 * when ran multiple times. Do not enforce unique key
-	 * across different repository; 
+	 * across different repository;
 	 */
-	if (IMPORT(s)) {
-		uniq_close();
-		return;
-	}
+	if (IMPORT(s)) return;
+	unless (uniq_open() == 0) return;
 
 	uniq_adjust(s, d);
-	uniq_close();
+	/* leave uniq db open... */
 }
 
 private int

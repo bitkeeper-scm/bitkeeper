@@ -785,7 +785,7 @@ typedef struct patch {
 /*
  * The amount of clock drift we handle when generating keys.
  */
-#define	CLOCK_DRIFT	(2*24*60*60)
+#define	CLOCK_DRIFT	(2*DAY)
 
 /*
  * command struct for bk front end
@@ -965,7 +965,6 @@ char	*sccs2name(char *);
 char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, u32 kind, char *out);
 int	check_gfile(sccs*, int);
-char	*lock_dir(void);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 delta 	*mkOneZero(sccs *s);
@@ -1030,8 +1029,6 @@ int	sccs_finishWrite(sccs *s, FILE **f);
 void	sccs_abortWrite(sccs *s, FILE **f);
 int	uniq_adjust(sccs *s, delta *d);
 char	*uniq_keysHome(void);
-int	uniq_lock(void);
-int	uniq_unlock(void);
 int	uniq_open(void);
 time_t	uniq_drift(void);
 int	uniq_close(void);

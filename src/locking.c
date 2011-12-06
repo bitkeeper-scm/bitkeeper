@@ -124,7 +124,6 @@ repository_mine(project *p, char type)
 {
 	char path[MAXPATH];
 
-	HERE();
 	if (type == 'r') {
 		rdlockfile(proj_root(p), path);
 		return (exists(path));

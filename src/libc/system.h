@@ -338,8 +338,6 @@ void	trace_free(void);
 #define	IF_TRACE \
 	if (bk_trace && trace_this(__FILE__, __LINE__, __FUNCTION__))
 
-#define	HERE()	TRACE("%s", "")
-
 /* tty.c */
 #define	isatty		myisatty
 int	tty_init(void);
