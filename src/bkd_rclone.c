@@ -405,7 +405,10 @@ rclone_end(opts *opts)
 	/* remove any later stuff */
 	if (opts->rev) {
 		rc = after(quiet, 0, opts->rev);
-		if (rc == UNDO_SKIP) goto docheck;
+		if (rc == UNDO_SKIP) {
+			rc = 0;
+			goto docheck;
+		}
 	} else {
 docheck:	/* undo already runs check so we only need this case */
 		if (checkfiles || full_check()) {

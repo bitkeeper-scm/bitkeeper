@@ -162,6 +162,24 @@ echo OK
 
 bk _kill http://localhost:$P || exit 1
 
+echo $N Stress rclone in part2 ......................................$NL
+cd "$HERE"/project
+bk --config='partial_check:on' _rclone $Q -r+ . ../bork-part2 || fail
+echo OK
+
+echo $N Stress rclone in part3 ......................................$NL
+# Mimic Oscar's setup more or less: nested always -r<rev> so just send -r+
+cd "$HERE"/EMPTY/REPO
+bk edit $Q BitKeeper/etc/config
+echo "checkout: edit" >> BitKeeper/etc/config
+bk delta $Q -yedit BitKeeper/etc/config
+echo bam > bam
+bk new $Q -b bam
+bk commit $Q -f
+bk bam server $Q "$HERE/project"
+bk --config='partial_check:on' _rclone $Q -r+ . ../bork-part3 || fail
+echo OK
+
 echo $N Make sure rclone respect checkout preference ................$NL
 cd "$HERE/project/BitKeeper/etc"
 bk edit $Q config

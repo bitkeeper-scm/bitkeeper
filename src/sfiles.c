@@ -1474,7 +1474,6 @@ struct sinfo {
 	hash	*dfiles;	/* remember dfiles seen in this dir */
 	u32	is_clone:1;	/* special clone walkfn */
 	u32	skip_etc:1;	/* skip BitKeeper/etc */
-	u32	is_modes:1;	/* -m in clone walkfn */
 };
 
 private int
@@ -1632,7 +1631,6 @@ sfiles_clone_main(int ac, char **av)
 	si.rootlen = 1;
 	si.proj_prefix = "/";
 	si.is_clone = 1;
-	if (modes) si.is_modes = 1;
 
 	for (i = 0; i < sizeof(logfiles)/sizeof(char *); i++) {
 		if (!modes && (i == 2)) break;
