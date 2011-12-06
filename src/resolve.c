@@ -2925,7 +2925,8 @@ err:			unapply(applied);
 		system("bk clean BitKeeper/etc");
 		goto err;
 	}
-	if (exists("SCCS/d.ChangeSet") && proj_isComponent(0)) {
+	if (exists("SCCS/d.ChangeSet") && proj_isComponent(0) &&
+	    !exists("RESYNC/BitKeeper/log/port")) {
 		if (moveupComponent()) goto err;
 	}
 	unlink(BACKUP_LIST);

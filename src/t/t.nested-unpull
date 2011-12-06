@@ -41,7 +41,7 @@ bk commit $Q -ylocal
 cd "$HERE"/child
 bk portal $Q .
 cd gcc
-bk port $Q "$HERE"/gcc-detached || fail
+bk port -C $Q "$HERE"/gcc-detached || fail
 # now unpull
 bk unpull $Q -Sf || fail unpull should have worked
 test -z "`bk changes  -qaL`" || fail

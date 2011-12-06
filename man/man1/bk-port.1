@@ -5,7 +5,7 @@
 bk port \- pull changes from a different nested collection or standalone
 .SH SYNOPSIS
 .B bk port
-.[B] \-iqRsTu
+.[B] \-CiqRsTu
 .[OPTreq] \-c n
 .[OPTequal] \-E env var
 .[OPTreq] \-r rev
@@ -29,10 +29,15 @@ touched the same line in the same file).
 .LP
 To see what would be ported run
 .DS
-bk changes -R <from>
+bk changes -SR <from>
 .DE
 .SH OPTIONS
 .TP \-E\*<env\*>=\*<val\*>
+.B \-C
+Do not commit the ported changeset[s] to the product.
+Use this option when you
+wish to combine the port event with other changes to the product.
+.tp
 .OPTreq \-c n
 try to get the remote lock
 .ARG n

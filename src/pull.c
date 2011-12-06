@@ -21,6 +21,7 @@ private struct {
 	u32	gotsome:1;		/* we got some csets */
 	u32	collapsedups:1;		/* -D: pass to takepatch (collapse dups) */
 	u32	port:1;			/* is port command? */
+	u32	portNoCommit:1;		/* don't commit on port */
 	u32	transaction:1;		/* is $_BK_TRANSACTION set? */
 	u32	local:1;		/* set if we find local work */
 	u32	autoPopulate:1;		/* automatically populate missing comps */
@@ -52,6 +53,9 @@ pull_main(int ac, char **av)
 	remote	*r;
 	char	*p, *prog;
 	char	**envVar = 0, **urls = 0;
+	char	*tmpfile = 0;
+	FILE	*tmpf = 0;
+	int	portCsets;
 	longopt	lopts[] = {
 		{ "batch", 310},	/* pass -s to resolve */
 		{ "safe", 320 },	/* require all comps to be here */
@@ -71,7 +75,7 @@ pull_main(int ac, char **av)
 	}
 	opts.automerge = 1;
 	opts.safe = -1;	/* -1 == not set on command line */
-	while ((c = getopt(ac, av, "c:DdE:Fiqr;RsStTuvw|z|", lopts)) != -1) {
+	while ((c = getopt(ac, av, "c:CDdE:Fiqr;RsStTuvw|z|", lopts)) != -1) {
 		unless (c == 'r' || c >= 300) {
 			opts.av_pull = bk_saveArg(opts.av_pull, av, c);
 		}
@@ -102,6 +106,7 @@ pull_main(int ac, char **av)
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
+		    case 'C': opts.portNoCommit = 1; break;
 		    case 'S':
 			fprintf(stderr,
 			    "%s: -S unsupported, try port.\n", prog);
@@ -163,7 +168,8 @@ pull_main(int ac, char **av)
 	if (opts.product = bk_nested2root(opts.transaction || opts.port)) {
 		if (proj_configbool(0, "autopopulate")) opts.autoPopulate = 1;
 	}
-	cmdlog_lock(opts.port ? CMD_WRLOCK : CMD_WRLOCK|CMD_NESTED_WRLOCK);
+	cmdlog_lock((opts.port && opts.portNoCommit) ?
+	    CMD_WRLOCK : CMD_WRLOCK|CMD_NESTED_WRLOCK);
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
 		exit(1);
@@ -195,6 +201,11 @@ err:		freeLines(envVar, free);
 			return (1);
 		}
 		free(p);
+		tmpfile = bktmp(0, "cmt");
+		tmpf = fopen(tmpfile, "w");
+		assert(tmpf);
+		fprintf(tmpf, "%s:\n", proj_comppath(0));
+		portCsets = 0;
 	}
 
 	if (opts.verbose) {
@@ -244,10 +255,63 @@ err:		freeLines(envVar, free);
 		}
 		if (rc == -2) rc = 1; /* if retry failed, set exit code to 1 */
 		if (rc) break;
+		if (opts.port && proj_isComponent(0) &&
+		    streq(getenv("BK_STATUS"), "OK")) {
+			char	**csets_in;
+			int	merged = 0;
+			/*
+			 * See how many csets we ported
+			 */
+			merged = strtol(
+				backtick("bk changes -Sr+ -nd'$if(:MERGE:){1}$else{0}'"),
+				0, 10);
+			csets_in = file2Lines(0, "BitKeeper/etc/csets-in");
+			fprintf(tmpf, "  Ported%s %d cset%s from %s\n",
+			    merged ? " and merged" : "",
+			    nLines(csets_in) - merged,
+			    (nLines(csets_in) - merged > 1) ? "s":"",
+			    urls[i]);
+			freeLines(csets_in, free);
+			portCsets++;
+		}
 	}
 	freeLines(urls, free);
 	freeLines(opts.av_pull, free);
 	freeLines(opts.av_clone, free);
+	if (opts.port && proj_isComponent(0)) {
+		fclose(tmpf);
+		if (rc || !portCsets) {
+			unlink(tmpfile);
+			return (rc);
+		}
+		if (opts.portNoCommit) {
+			FILE	*f1, *f2;
+			/*
+			 * Just append the comments to the ChangeSet file's
+			 * comments
+			 */
+			p = aprintf("%s/SCCS/c.ChangeSet",
+			    proj_root(proj_product(0)));
+			f1 = fopen(p, "a");
+			free(p);
+			f2 = fopen(tmpfile, "r");
+			assert(f1 && f2);
+			while (p = fgetline(f2)) fprintf(f1, "%s\n", p);
+			fclose(f2);
+			fclose(f1);
+		} else {
+			char	buf[MAXPATH];
+			/*
+			 * Commit
+			 */
+			sprintf(buf, "bk -P sfiles -pC '%s' |"
+			    "bk -P -?_BK_NO_ZLOCK=1 commit -S -qfY'%s' -",
+			    proj_comppath(0),
+			    tmpfile);
+			rc = system(buf);
+		}
+		unlink(tmpfile);
+	}
 	return (rc);
 }
 
