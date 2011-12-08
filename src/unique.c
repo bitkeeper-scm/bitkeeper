@@ -1,21 +1,21 @@
 /*
  * In order to ensure that delta keys are unique, we're going to try the
  * following:
- * 
- * Create in $HOME/.bk_keys an mdbm where db{ROOTKEY} = timestamp
- * of TOT if the timestamp is less than CLOCK_DRIFT seconds ago, again only
- * for those keys created on this host.
- * 
- * The database is updated whenever we create a delta, and whenever a new
+ *
+ * Create in `bk dotbk`/bk_keys/`bk gethost -r` a file with a list of
+ * keys created on this machine.  Only keys created in the last CLOCK_DRIFT
+ * seconds (default 2 days) are kept in the file.
+ *
+ * The list is updated whenever we create a delta, and whenever a new
  * TOT is added by takepatch.
- * 
- * The database is consulted in slib.c:checkin() to make sure we are not
- * creating a new root key which matches some other root key.  
- * 
+ *
+ * The list is consulted in slib.c:checkin() to make sure we are not
+ * creating a new root key which matches some other root key.
+ *
  * Note that the list is not going to grow without bound - we are only
  * interested in keys which were created on this host, by this user,
  * and for timestamp values in the last CLOCK_DRIFT seconds.
- * 
+ *
  * W A R N I N G
  * -------------
  *	This code must never core dump or have any fatal error.  This code is
@@ -23,63 +23,68 @@
  *
  * LOCKING
  * -------
- * 
- * The rules for locking are:
- * 
- *     1) the lock file is /tmp/.bk_kl$USER  so that it is in a local file
- *	  system (locking is busted over NFS).  It's different for each
- *	  user so that we don't have unlink problems in sticky bit /tmp's.
- *     2) the lock file contains the pid (in ascii) of the locking process
- *     3) if the pid is gone, the lock is broken
  *
- * Copyright (c) 1999-2000 Larry McVoy
+ * The rules for locking are:
+ *
+ *     1) the lock file is /tmp/.uniq_keys_$USER
+ *     2) the lock is maintained with sccs_lockfile()
+ *
+ * Copyright (c) 1999-2011 Bitmover, Inc.
  */
 #include "system.h"
 #include "sccs.h"
 
-private	char	*lockHome(void);
 private	char	*keysHome(void);
 
 private	int	dirty;			/* set if we updated the db */
 private	MDBM	*db;
-private	char	*lockFile;		/* cache it */
+private	int	is_open;
+private	int	dbg;
 
-private char	*
-lockHome(void)
-{
-	char	path[MAXPATH];
-
-	if (lockFile) return (lockFile);
-	sprintf(path, "%s/.bk_kl%s", lock_dir(), sccs_realuser());
-	return (lockFile = (strdup)(path));
-}
-
-/*
- * Use BK_TMP first, we set that for the regression tests.
- */
 private char	*
 keysHome(void)
 {
-	char	path[MAXPATH];
+	static	char	*keysFile = 0;
 
-	return (strdup(findDotFile(".bk_keys", "bk_keys", path)));
+	if (keysFile) return (keysFile);
+	// leaks one per process, not sure why to fix that
+	keysFile = aprintf("%s/bk-keys/%s", getDotBk(), sccs_realhost());
+	unless (exists(keysFile)) mkdirf(keysFile);
+	return (keysFile);
 }
 
-/*
- * Turn this on and then watch tmp/keys - it should stay small.
- */
-#if 0
-#	undef		CLOCK_DRIFT
-#	define		CLOCK_DRIFT 1
-#endif
+private int
+uniq_lock(void)
+{
+	char    *lock;
+	int     quiet = 0;
+	int     rc;
+
+	lock = aprintf("%s/.uniq_keys_%s", TMP_PATH, sccs_realuser());
+
+	if (getenv("_BK_SHUTUP")) quiet = 1;
+	rc = sccs_lockfile(lock, -1, quiet);
+	free(lock);
+	return (rc);
+}
+
+private int
+uniq_unlock(void)
+{
+	char	*lock;
+	int	rc;
+
+	lock = aprintf("%s/.uniq_keys_%s", TMP_PATH, sccs_realuser());
+	rc = sccs_unlockfile(lock);
+	free(lock);
+	return (rc);
+}
 
 /*
  * When do import scripts, we slam the drift to a narrow window, it makes
  * for much better performance.
  *
  * Do NOT do this in any shipped scripts.
- * XXX - the real fix is to have the keys db be saved across calls in the
- * project struct.
  */
 time_t
 uniq_drift(void)
@@ -110,15 +115,22 @@ uniq_open(void)
 		db = 0;
 		return (0);
 	}
-	if (sccs_lockfile(lockHome(), -1, getenv("_BK_SHUT_UP") != 0)) {
-		return (-1);
+	dbg = (getenv("_BK_UNIQ_DEBUG") != 0);
+	if (is_open) return (0);
+	is_open = 1;
+#ifdef DEBUG
+	if ((s = getenv("HAS_UNIQLOCK")) && !streq(s, "NO")) {
+		fprintf(stderr,
+		    "uniq_open deadlock! Pid %s already has lock\n", s);
+	} else {
+		safe_putenv("HAS_UNIQLOCK=%u", getpid());
 	}
+#endif
+	if (uniq_lock()) return (-1);
 	unless (tmp = keysHome()) return (-1);
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	unless (f = fopen(tmp, "r")) {
-		free(tmp);
-		return (0);
-	}
+	if (dbg) fprintf(stderr, "UNIQ OPEN: %s\n", tmp);
+	unless (f = fopen(tmp, "r")) return (0);
 	while (fnext(buf, f)) {
 		/*
 		 * expected format:
@@ -166,6 +178,7 @@ uniq_open(void)
 		k.dsize = strlen(buf) + 1;
 		v.dptr = (char *)&t;
 		v.dsize = sizeof(time_t);
+		if (dbg) fprintf(stderr, "UNIQ LOAD: %s\n", buf);
 
 		/*
 		 * This shouldn't happen, but if it does, use the later one.
@@ -184,7 +197,6 @@ uniq_open(void)
 		}
 	}
 	fclose(f);
-	free(tmp);
 	return (0);
 }
 
@@ -251,6 +263,7 @@ uniq_adjust(sccs *s, ser_t d)
 		perror("mdbm key store");
 		return (-1);
 	}
+	if (dbg) fprintf(stderr, "UNIQ NEW:  %s\n", key);
 	dirty = 1;
 	return (0);
 }
@@ -268,7 +281,8 @@ uniq_close(void)
 	char	key[MAXKEY];
 	char	tmpf[MAXPATH];
 
-	unless (db) return (0);
+	unless (is_open) return (0);
+	TRACE("closing uniq %d %s", dirty, prog);
 	unless (dirty) goto close;
 	unless (keyf = keysHome()) {
 		fprintf(stderr, "uniq_close:  cannot find keyHome");
@@ -278,11 +292,9 @@ uniq_close(void)
 	unless (f = fopen(tmpf, "w")) {
 		fprintf(stderr, "unique_close: fopen %s failed\n", tmpf);
 		perror(tmpf);
-		free(keyf);
 		return (-1);
 	}
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
-
 		strcpy(key, kv.key.dptr);
 		if (strcnt(key, '|') > 2) {
 
@@ -296,13 +308,17 @@ uniq_close(void)
 		fprintf(f, "%s %lu", key, t);
 		if (rand) fprintf(f, " %s", rand);
 		fputc('\n', f);
+		if (dbg) fprintf(stderr, "UNIQ SAVE: %s\n", key);
 	}
 	fclose(f);
 	if (rename(tmpf, keyf)) perror(tmpf);
-	free(keyf);
 close:  mdbm_close(db);
 	db = 0;
 	dirty = 0;
-	sccs_unlockfile(lockHome());
+	uniq_unlock();
+	is_open = 0;
+#ifdef DEBUG
+	putenv("HAS_UNIQLOCK=NO");
+#endif
 	return (0);
 }

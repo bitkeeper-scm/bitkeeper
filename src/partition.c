@@ -74,7 +74,6 @@ private	hash	*getPartitionHash(char *url);
 private	int	loadComps(Opts *opts);
 private	int	cleanMissing(Opts *opts);
 private	int	firstPrune(Opts *opts);
-private	char	*getTipkey(project *proj);
 private	int	commitPending(Opts *opts);
 private	int	dumpPartitionKV(Opts *opts);
 private	int	readPartitionKV(Opts *opts, hash *ref);
@@ -408,7 +407,7 @@ setupWorkArea(Opts *opts, char *repo)
 		opts->prune = addLine(
 		    opts->prune, strdup("BitKeeper/etc/collapsed"));
 		uniqLines(opts->prune, free);	/* sort and no dups */
-		opts->tip = getTipkey(0);
+		opts->tip = strdup(proj_tipkey(0));
 
 		/* ATTR1 corresponds to the data csetprune writes to attr */
 		opts->feature = addLine(opts->feature, strdup("ATTR1"));
@@ -929,18 +928,4 @@ firstPrune(Opts *opts)
 err:
 	unlink(tmpf);
 	return (ret);
-}
-
-private	char *
-getTipkey(project *proj)
-{
-	char	**line = 0;
-	char	*tipkey = 0;
-
-	line = file2Lines(0, proj_fullpath(proj, "BitKeeper/log/TIP"));
-	assert(nLines(line) >= 3);
-	tipkey = line[2];		/* md5, _key_, rev */
-	removeLineN(line, 2, 0);
-	freeLines(line, free);
-	return (tipkey);
 }

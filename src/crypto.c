@@ -761,6 +761,15 @@ bk_preSpawnHook(int flags, char *av[])
 		 */
 		putenv("RANDSEED=");
 	}
+
+	/*
+	 * list commands that have a permssion to keep uniq file open
+	 * in order to keep perf up:
+	 *   diff - sccs_delta forks diff and diff does not cause probs
+	 */
+	unless (streq(av[0], "diff")) {
+		uniq_close();
+	}
 }
 
 

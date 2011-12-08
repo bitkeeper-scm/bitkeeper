@@ -2,6 +2,19 @@ The default prs output has been changed in the case where BK_HOST has
 been set.  The original DSUMMARY (which is part of the default prs output)
 uses user@host/realhost
 Now it does user@host
+============================================================================
+Release notes for BitKeeper version 5.4.1 (released XXX)
+
+Interface changes
+
+  bk port -C
+    Bring bk port into line with other interfaces (alias, attach, etc)
+    such that it commits the ported changes by default.  -C blocks the
+    commit.
+
+    We do not make a habit of changing interfaces in minor releases, that
+    is a no-no.  port is new enough that it is very unlikely that there
+    are scripts built up around it.  Let us know if we are mistaken.
 
 ============================================================================
 Release notes for BitKeeper version 5.4 (released 11-November-2011)

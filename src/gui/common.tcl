@@ -109,8 +109,10 @@ proc cd2root { {startpath {}} } \
 	return -1
 }
 
-proc cd2product {} {
-	if {[catch { cd [exec bk root] } err]} {
+proc cd2product {{path ""}} {
+	set cmd [list exec bk root]
+	if {$path ne ""} { lappend cmd $path }
+	if {[catch { cd [{*}$cmd] } err]} {
 		puts "Could not change directory to product root."
 		exit 1
 	}
@@ -142,52 +144,6 @@ proc displayMessage {msg {exit {}}} \
 	} else {
 		return
 	}
-}
-
-# The balloon stuff was taken from the tcl wiki pages and modified by
-# ask so that it can take a command pipe to display
-proc balloon_help {w msg {cmd {}}} \
-{
-
-	global gc app
-
-	set tmp ""
-	if {$cmd != ""} {
-		set msg ""
-		set fid [open "|$cmd" r]
-		while {[gets $fid tmp] >= 0} {
-		#	lappend msg $tmp
-			set msg "$msg\n$tmp"
-		}
-	}
-	bind $w <Enter> \
-	    "after $gc($app.balloonTime) \"balloon_aux %W [list $msg]\""
-	bind $w <Leave> \
-	    "after cancel \"balloon_aux %W [list $msg]\"
-	    after 100 {catch {destroy .balloon_help}}"
-    }
-
-proc balloon_aux {w msg} \
-{
-	global gc app
-
-	set t .balloon_help
-	catch {destroy $t}
-	toplevel $t
-	wm overrideredirect $t 1
-	label $t.l \
-	    -text $msg \
-	    -relief solid \
-	    -padx 5 -pady 2 \
-	    -borderwidth 1 \
-	    -justify left \
-	    -background $gc($app.balloonBG)
-	pack $t.l -fill both
-	set x [expr [winfo rootx $w]+6+[winfo width $w]/2]
-	set y [expr [winfo rooty $w]+6+[winfo height $w]/2]
-	wm geometry $t +$x\+$y
-	bind $t <Enter> {after cancel {catch {destroy .balloon_help}}}
-	bind $t <Leave> "catch {destroy .balloon_help}"
 }
 
 # usage: centerWindow pathName ?width height?

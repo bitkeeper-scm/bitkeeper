@@ -687,7 +687,7 @@ proc main {} \
 			exit 0
 		}
 	}  else {
-		cd2product
+		cd2product $file_rev
 	}
 
 	loadState cset

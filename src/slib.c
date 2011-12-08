@@ -851,7 +851,7 @@ uniqRoot(sccs *s)
 
 	unless (uniq_open() == 0) return;	// XXX - no error?
 	uniq_adjust(s, d);
-	uniq_close();
+	/* leave uniq db open... */
 }
 
 /*
@@ -882,7 +882,6 @@ uniqDelta(sccs *s)
 		return;
 	}
 
-	unless (uniq_open() == 0) return;
 	if (DATE(s, d) <= DATE(s, prev)) {
 		time_t	tdiff;
 		tdiff = DATE(s, prev) - DATE(s, d) + 1;
@@ -893,15 +892,13 @@ uniqDelta(sccs *s)
 	/*
 	 * We want the import convertor to produce the same tree
 	 * when ran multiple times. Do not enforce unique key
-	 * across different repository; 
+	 * across different repository;
 	 */
-	if (IMPORT(s)) {
-		uniq_close();
-		return;
-	}
+	if (IMPORT(s)) return;
+	unless (uniq_open() == 0) return;
 
 	uniq_adjust(s, d);
-	uniq_close();
+	/* leave uniq db open... */
 }
 
 private int
@@ -2061,6 +2058,7 @@ sccs_finishWrite(sccs *s, FILE **f)
 		/* Always set the time on the s.file behind the g.file or now */
 		if (sccs_setStime(s, 0)) perror(s->sfile);
 		if (chmod(s->sfile, 0444)) perror(s->sfile);
+		if (CSET(s)) cset_savetip(s);
 	}
 	s->encoding_in = s->encoding_out;
 	FREE(s->remap);
@@ -8344,21 +8342,52 @@ cset_savetip(sccs *s)
 	FILE	*f;
 	ser_t	d;
 	char	*tmp, *tip;
+	struct	stat sb;
 	char	md5[MD5LEN];
 	char	key[MAXKEY];
 
 	assert(s->proj);
-	tip = aprintf("%s/BitKeeper/log/TIP", proj_root(s->proj));
+	tmp = dirname_alloc(s->gfile);
+	tip = aprintf("%s/BitKeeper/log/TIP", tmp);
+	free(tmp);
 	tmp = aprintf("%s.new.%u", tip, getpid());
-	f = fopen(tmp, "w");
-	assert(f);
+	unless (f = fopen(tmp, "w")) {	/* maybe not our repo: t.bam3 */
+		free(tip);
+		return;
+	}
 	sccs_md5delta(s, d = sccs_top(s), md5);
 	sccs_sdelta(s, d, key);
 	fprintf(f, "%s\n%s\n%s\n", md5, key, REV(s, d));
+
+	if (lstat(s->sfile, &sb)) {
+		sb.st_mtime = 0;
+		sb.st_size = 0;
+	}
+	fprintf(f, "%u\n%u\n", (u32)sb.st_mtime, (u32)sb.st_size);
 	fclose(f);
 	if (rename(tmp, tip)) perror(tmp);
 	free(tmp);
 	free(tip);
+}
+
+/*
+ * used after clone to update the cset timestamp in the TIP file
+ */
+void
+cset_updatetip(void)
+{
+	char	**lines;
+	struct	stat sb;
+
+	lines = file2Lines(0, "BitKeeper/log/TIP");
+	if ((nLines(lines) == 5) &&
+	    !lstat(CHANGESET, &sb) &&
+	    (sb.st_size == strtoul(lines[5], 0, 0))) {
+		free(lines[4]);
+		lines[4] = aprintf("%d", (u32)sb.st_mtime);
+		lines2File(lines, "BitKeeper/log/TIP");
+	}
+	freeLines(lines, free);
 }
 
 /*
@@ -14103,8 +14132,6 @@ mkDiffTarget(sccs *s,
 		    pf ? pf->xLst : 0, flags|SILENT|PRINT|GET_DTIME, target)) {
 		return (-1);
 	}
-	/* Assumes that we only delta the ChangeSet file from the root */
-	if (CSET(s)) cset_savetip(s);
 	return (0);
 }
 

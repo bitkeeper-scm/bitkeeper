@@ -1466,7 +1466,6 @@ struct sinfo {
 	hash	*dfiles;	/* remember dfiles seen in this dir */
 	u32	is_clone:1;	/* special clone walkfn */
 	u32	skip_etc:1;	/* skip BitKeeper/etc */
-	u32	is_modes:1;	/* -m in clone walkfn */
 };
 
 private int
@@ -1519,7 +1518,11 @@ findsfiles(char *file, struct stat *sb, void *data)
 		}
 	} else {
 		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
-			if (si->is_clone && patheq(p - 4, CHANGESET)) {
+			/*
+			 * skip SCCS/s.ChangeSet at root of
+			 * repo in clone (we insert it manually)
+			 */
+			if (si->is_clone && patheq(file+2, CHANGESET)) {
 				return (0);
 			}
 			if (si->dfiles && hash_fetchStr(si->dfiles, p+3)) {
@@ -1620,7 +1623,6 @@ sfiles_clone_main(int ac, char **av)
 	si.rootlen = 1;
 	si.proj_prefix = "/";
 	si.is_clone = 1;
-	if (modes) si.is_modes = 1;
 
 	for (i = 0; i < sizeof(logfiles)/sizeof(char *); i++) {
 		if (!modes && (i == 2)) break;

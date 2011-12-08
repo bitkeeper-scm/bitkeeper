@@ -246,12 +246,12 @@ proc getFiles {} \
 	set DiffsEnd(0) 1.0
 	set unique 0
 
-	# try doing 'bk sfiles -gc | bk difftool -' to see how this works
-	#puts "argc=($argc) argv=($argv)"
 	if {$argc == 0 || ($argc == 1 && [file isdir [lindex $argv 0]])} {
 		if {$argc == 0} {
+			## bk difftool
 			set fd [open "|bk -U --sfiles-opts=cgv"]
 		} else {
+			## bk difftool <dir>
 			cd [lindex $argv 0]
 			set fd [open "|bk -Ur. --sfiles-opts=cgv"]
 		}
@@ -261,7 +261,6 @@ proc getFiles {} \
 		while {[gets $fd str] >= 0} {
 			set index [expr {1 + [string first " " $str]}]
 			set fname [string range $str $index end]
-			#puts "fname=($fname)"
 			set rfile $fname
 			set lfile [getRev $rfile "+" 1]
 			set t "{$lfile} {$rfile} {$fname} + checked_out"
@@ -269,17 +268,21 @@ proc getFiles {} \
 		}
 		close $fd
 	} elseif {$argc == 1} {
-		if {$argv == "-"} { ;# typically from sfiles pipe
+		if {$argv == "-"} {
+			## bk difftool -
+			## Typically files from an sfiles or rset pipe.
 			set files [readInput stdin]
 		} elseif {[regexp -- {-r(@.*)..(@.*)} $argv - - -]} {
-			cd2root
+			## bk diffool -r@<rev>..@<rev>
+			cd2product
 			set f [open "| bk rset $argv" r]
 			set files [readInput $f]
 			if {[catch {close $f} err]} {
 				puts $err
 				exit 1
 			}
-		} else { ;# bk difftool file
+		} else {
+			## bk difftool <file>
 			set filepath [lindex $argv 0]
 			set rfile [normalizePath $filepath]
 			set lfile [getRev $rfile "+" 1]
@@ -290,13 +293,13 @@ proc getFiles {} \
 				lappend files $t
 			}
 		}
-	} elseif {$argc == 2} { ;# bk difftool -r<rev> file
+	} elseif {$argc == 2} { ;# bk difftool -r<rev> <file>
 		set a [lindex $argv 0]
 		set b [lindex $argv 1]
 		if {[regexp -- {-r(.*)} $a junk rev1]} {
 			if {[regexp -- {-r(.*)} $b - rev2]} {
-				# rset mode
-				cd2root
+				## bk difftool -r<rev> -r<rev>
+				cd2product
 				set f [open "|bk rset -r$rev1..$rev2 | bk sort"]
 				set files [readInput $f]
 				if {[catch {close $f} err]} {
@@ -304,14 +307,13 @@ proc getFiles {} \
 					exit 1
 				}
 			} else {
+				## bk difftool -r<rev> <file>
 				set filepath [lindex $argv 1]
 				set rfile [normalizePath $filepath]
 				set lfile [getRev $rfile $rev1 0]
-				# If bk file and not checked out, check it out ro
-				#displayMessage "lfile=($lfile) rfile=($rfile)"
+				# If bk file and not checked out, check it out
 				if {[exec bk sfiles -g "$rfile"] != ""} {
 					if {![file exists $rfile]} {
-						#displayMessage "checking out $rfile"
 						catch {exec bk get "$rfile"} err
 					}
 				}
@@ -322,7 +324,8 @@ proc getFiles {} \
 				lappend tmps $lfile
 				if {[file exists $rfile] != 1} { usage }
 			}
-		} else { ;# bk difftool file file2"
+		} else {
+			## bk difftool <file1> <file2>
 			set lfile [normalizePath [lindex $argv 0]]
 			set rfile [normalizePath [lindex $argv 1]]
 
@@ -340,7 +343,8 @@ proc getFiles {} \
 				lappend files $t
 			}
 		}
-	} else { ;# bk difftool -r<rev> -r<rev2> file
+	} else {
+		## bk difftool -r<rev> -r<rev2> <file>
 		set filepath [lindex $argv 2]
 		set file [normalizePath $filepath]
 		set a [lindex $argv 0]
@@ -594,36 +598,24 @@ proc clearDisplay {} \
 	.diffs.status.r configure -text ""
 	.diffs.status.r_lnum  configure -text ""
 	.diffs.status.middle configure -text "no files"
-	balloon_help .diffs.status.l ""
-	balloon_help .diffs.status.r ""
+	tooltip::tooltip .diffs.status.l ""
+	tooltip::tooltip .diffs.status.r ""
 
 	searchdisable
 }
 
 proc revtool {} \
 {
-	global lname rname filepath
+	global	selected filepath fileInfo
 
-	# These regular expressions come straight from revtool, and are
-	# what it uses to validate passed-in revision numbers. We'll use
-	# them here to make sure we don't feed revtool bogus arguments.
-	set r2 {^([1-9][0-9]*)\.([1-9][0-9]*)$}
-	set r4 {^([1-9][0-9]*)\.([1-9][0-9]*)\.([1-9][0-9]*)\.([1-9][0-9]*)$}
+	if {![info exists selected]} { return }
 
 	set command [list bk revtool]
 
-	set tmp [split $rname @|]
-	set file [lindex $tmp 0]
-	set rev [lindex $tmp 1]
-	if {[regexp $r2 $rev] || [regexp $r4 $rev]} {
-		lappend command "-r$rev"
+	lassign [dict get $fileInfo $selected] lfile rfile file lrev rrev
+	lappend command "-l$lrev"
+	lappend command "-r$rrev"
 
-		set tmp [split $lname @|]
-		set rev [lindex $tmp 1]
-		if {[regexp $r2 $rev] || [regexp $r4 $rev]} {
-			lappend command "-l$rev"
-		}
-	}
 	if {[info exists filepath]} {
 		lappend command $filepath
 	} else {

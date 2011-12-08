@@ -223,6 +223,7 @@ cmd_rclone_part2(int ac, char **av)
 	/* clone needs the remote HERE as RMT_HERE; rclone doesn't */
 	if (opts.product) unlink("BitKeeper/log/HERE");
 	if (opts.detach) unlink("BitKeeper/log/COMPONENT");
+	cset_updatetip();
 
 	/*
 	 * After unpacking sfio we need to reset proj because it might
@@ -405,7 +406,10 @@ rclone_end(opts *opts)
 	/* remove any later stuff */
 	if (opts->rev) {
 		rc = after(quiet, 0, opts->rev);
-		if (rc == UNDO_SKIP) goto docheck;
+		if (rc == UNDO_SKIP) {
+			rc = 0;
+			goto docheck;
+		}
 	} else {
 docheck:	/* undo already runs check so we only need this case */
 		if (checkfiles || full_check()) {

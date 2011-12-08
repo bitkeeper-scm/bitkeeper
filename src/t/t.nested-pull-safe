@@ -1,4 +1,23 @@
 set -e
+
+echo $N Demo the auto-populate problem ..............................$NL
+# The essence of Oscar's pull
+nested baseline
+bk clone $Q -s./gcc . ../all
+touch gcc/foo
+bk new $Q gcc/foo
+bk commit $Q -f
+bk clone $Q -s. . ../prod
+cd ../all
+touch gcc/foo
+bk new $Q gcc/foo
+bk commit $Q -f
+cd ../prod
+printf "rr\ny\n" | bk pull -q --auto-populate ../all 2> ERR || fail
+grep -q "(create/sfile conflict) foo>>" ERR || fail -f ERR
+cd "$HERE"
+echo OK
+
 echo $N Set up repositories for testing covers.......................$NL
 BK_CONFIG="autopopulate: on"
 export BK_CONFIG

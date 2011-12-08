@@ -1,0 +1,97 @@
+
+echo $N Create initial repositories .................................$NL
+commercial project
+bk clone $Q ../project ../clone
+echo OK
+
+echo $N Create the same file in both repositories ...................$NL
+cd "`bk dotbk`"
+rm -rf bk-keys
+cd "$HERE"
+for i in project clone
+do	
+	(cd $i
+	echo foo > foo
+	BK_DATE_TIME_ZONE="2037-02-02 02:02:02-02" bk new $Q foo
+	)
+done
+echo OK
+
+echo $N Make sure the keys are different ............................$NL
+A=`bk log -r+ -nd:KEY: project/foo`
+B=`bk log -r+ -nd:KEY: clone/foo`
+test "$A" = "$B" && fail 
+echo OK
+
+# Make sure that we don't close uniq file too much - good perf on NFS
+
+echo $N Test number of uniq_close for bk new of 2 files .............$NL
+cd "$HERE"
+commercial remote
+mkdir -p BitKeeper/triggers
+cat <<EOF > BitKeeper/triggers/pre-delta
+#!/bin/sh
+exit 0
+EOF
+chmod +x BitKeeper/triggers/pre-delta
+bk new $Q BitKeeper/triggers/pre-delta
+touch foo f1 f2 f3
+BK_TRACE="$HERE/new-trig.log" BK_TRACE_FUNCS="uniq_close" \
+    bk new $Q foo f1
+BK_NO_TRIGGERS=1 BK_TRACE="$HERE/new-no-trig.log" BK_TRACE_FUNCS="uniq_close" \
+    bk new $Q f2 f3
+bk commit $Q -f
+bk clone $Q . ../local
+# Two files, no triggers, one real close of uniq
+sed "s/[^']*//" < ../new-no-trig.log > GOT
+echo "'closing uniq 1 new'" > WANT
+cmpfiles WANT GOT
+# Two files, with triggers, two real close of uniq
+sed "s/[^']*//" < ../new-trig.log > GOT
+echo "'closing uniq 1 new'" >> WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test number of uniq_close for bk delta of 2 files ...........$NL
+bk edit $Q foo f1 f2 f3
+BK_TRACE="$HERE/ci-trig.log" BK_TRACE_FUNCS="uniq_close" \
+    bk delta $Q -fynull foo f1
+BK_NO_TRIGGERS=1 BK_TRACE="$HERE/ci-no-trig.log" BK_TRACE_FUNCS="uniq_close" \
+    bk delta $Q -fynull f2 f3
+# Two files, no triggers, one real close of uniq
+sed "s/[^']*//" < ../ci-no-trig.log > GOT
+echo "'closing uniq 1 delta'" > WANT
+cmpfiles WANT GOT
+# Two files, with triggers, two real close of uniq
+sed "s/[^']*//" < ../ci-trig.log > GOT
+echo "'closing uniq 1 delta'" >> WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test number of uniq_close for bk pull of 2 files ............$NL
+# Throw in some other tests of resolve changing permission and renaming
+bk chmod +x foo
+bk mv foo bar
+bk commit $Q -f
+cd ../local
+bk edit $Q foo f1 f2 f3
+bk delta $Q -fynone foo f1 f2 f3
+bk commit $Q -f
+BK_TRACE="$HERE/pull-trig.log" BK_TRACE_FUNCS="uniq_close" \
+    bk pull $Q
+bk unpull $Q -sf
+BK_NO_TRIGGERS=1 BK_TRACE="$HERE/pull-no-trig.log" BK_TRACE_FUNCS="uniq_close" \
+    bk pull $Q
+# The two deltas are because each rename/perm change calls bk delta
+sed "s/[^']*//" < ../pull-no-trig.log > GOT
+cat <<EOF > WANT
+'closing uniq 1 delta'
+'closing uniq 1 delta'
+'closing uniq 1 pull'
+'closing uniq 1 commit'
+EOF
+cmpfiles WANT GOT
+# Pull does not run pre-delta triggers in the automated part of resolver
+sed "s/[^']*//" < ../pull-trig.log > GOT
+cmpfiles WANT GOT
+echo OK

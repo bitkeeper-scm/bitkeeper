@@ -875,7 +875,7 @@ typedef struct patch {
 /*
  * The amount of clock drift we handle when generating keys.
  */
-#define	CLOCK_DRIFT	(2*24*60*60)
+#define	CLOCK_DRIFT	(2*DAY)
 
 /*
  * BK "URL" formats are:
@@ -1046,7 +1046,6 @@ char	*sccs2name(char *);
 char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, u32 kind, char *out);
 int	check_gfile(sccs*, int);
-char	*lock_dir(void);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 ser_t 	mkOneZero(sccs *s);
@@ -1112,8 +1111,6 @@ int	sccs_finishWrite(sccs *s, FILE **f);
 void	sccs_abortWrite(sccs *s, FILE **f);
 int	uniq_adjust(sccs *s, ser_t d);
 char	*uniq_keysHome(void);
-int	uniq_lock(void);
-int	uniq_unlock(void);
 int	uniq_open(void);
 time_t	uniq_drift(void);
 int	uniq_close(void);
@@ -1396,6 +1393,7 @@ u64	scansize(char *bytes);
 void	idcache_update(char **files);
 int	idcache_write(project *p, MDBM *idDB);
 void	cset_savetip(sccs *s);
+void	cset_updatetip(void);
 void	clearCsets(sccs *s);
 void	sccs_rdweaveInit(sccs *s);
 char	*short_random(char *str, int len);

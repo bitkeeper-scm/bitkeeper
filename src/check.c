@@ -1220,6 +1220,11 @@ fetch_changeset(int forceCsetFetch)
 		fprintf(stderr, "Don't have original cset rootkey, sorry,\n");
 		exit(0x40);
 	}
+	/*
+	 * Find old TIP from cache.
+	 * Can't call proj_tipkey(0) because the ChangeSet file is
+	 * missing.
+	 */
 	unless ((f = fopen("BitKeeper/log/TIP", "r")) &&
 	    (tip = fgetline(f))) {
 		fprintf(stderr, "Unable to load BitKeeper/log/TIP\n");

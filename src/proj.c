@@ -45,6 +45,9 @@ struct project {
 	int	noremap;	/* true == old style SCCS dirs */
 	size_t	cset_size;
 	time_t	cset_mtime;
+	char	*tipkey;	/* key/md5key/rev of tip cset rev */
+	char	*tipmd5key;
+	char	*tiprev;
 
 	/* checkout state */
 	u32	co;		/* cache of proj_checkout() return */
@@ -735,27 +738,17 @@ proj_reset(project *p)
 		proj_free(p2);
 	}
 	if (p) {
-		if (p->rootkey) {
-			free(p->rootkey);
-			p->rootkey = 0;
-			free(p->md5rootkey);
-			p->md5rootkey = 0;
-		}
-		if (p->comppath) {
-			free(p->comppath);
-			p->comppath = 0;
-		}
-		if (p->repoID) {
-			free(p->repoID);
-			p->repoID = 0;
-		}
+		FREE(p->rootkey);
+		FREE(p->md5rootkey);
+		FREE(p->comppath);
+		FREE(p->repoID);
+		FREE(p->bkl);
+		FREE(p->tipkey);
+		FREE(p->tipmd5key);
+		FREE(p->tiprev);
 		if (p->config) {
 			mdbm_close(p->config);
 			p->config = 0;
-		}
-		if (p->bkl) {
-			free(p->bkl);
-			p->bkl = 0;
 		}
 		p->bklbits = 0;
 		p->casefolding = -1;
@@ -1510,4 +1503,78 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 	}
 	if (mpath) free(mpath);
 	return (deltakey);
+}
+
+char *
+proj_tipkey(project *p)
+{
+	sccs	*s;
+	char	**lines;
+	struct	stat sb;
+	char	buf[MAXPATH];
+
+	unless (p || (p = curr_proj())) return (0);
+
+	if (p->tipkey) return (p->tipkey);
+
+	/* read TIP file */
+	concat_path(buf, p->root, "BitKeeper/log/TIP");
+	lines = file2Lines(0, buf);
+
+	concat_path(buf, p->root, CHANGESET);
+
+	/*
+	 * History of TIP file:
+	 * 1 line - deltakey
+	 * 2 lines - deltakey, md5key, rev
+	 * 5 lines - deltakey, md5key, rev, mtime, size
+	 */
+	if ((nLines(lines) < 5) ||
+	    lstat(buf, &sb) ||
+	    (sb.st_mtime != strtoul(lines[4], 0, 0)) ||
+	    (sb.st_size != strtoul(lines[5], 0, 0))) {
+		/* regenerate TIP file */
+#if 0
+		fprintf(stderr, "buf=%s\nmtime=%d/%s size=%d/%s\n",
+		    buf, (u32)sb.st_mtime, lines[4],
+		    (u32)sb.st_size, lines[5]);
+		//assert(0);
+		//fprintf(stderr, "Regenerting TIP file\n");
+#endif
+		// should only happen when talking to older bks
+		unless (s = sccs_init(buf, SILENT|INIT_NOCKSUM)) goto out;
+		cset_savetip(s);
+		sccs_free(s);
+		concat_path(buf, p->root, "BitKeeper/log/TIP");
+		freeLines(lines, free);
+		lines = file2Lines(0, buf);
+		if (nLines(lines) < 5) goto out;
+	}
+	p->tipmd5key = lines[1];
+	lines[1] = 0;
+	p->tipkey = lines[2];
+	lines[2] = 0;
+	p->tiprev = lines[3];
+	lines[3] = 0;
+out:	freeLines(lines, free);
+	return (p->tipkey);
+
+}
+
+char *
+proj_tiprev(project *p)
+{
+	unless (p || (p = curr_proj())) return (0);
+
+	unless (p->tiprev) proj_tipkey(p);
+	return (p->tiprev);
+}
+
+char *
+proj_tipmd5key(project *p)
+{
+	unless (p || (p = curr_proj())) return (0);
+
+	unless (p->tipmd5key) proj_tipkey(p);
+	return (p->tipmd5key);
 }

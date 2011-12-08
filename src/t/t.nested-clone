@@ -770,8 +770,12 @@ done
 echo OK
 
 echo $N Show a clone with a local baseline ..........................$NL
+cd "$HERE"/mynewgcc3/gcc
+echo hi > file
+bk new $Q file || fail
+bk commit $Q -yjunk || fail
 cd "$HERE"
-bk clone $Q -s./gdb -@project bk://$M/mynewgcc3 clonemod || fail
+bk clone $Q -s./gdb -@mynewgcc bk://$M/mynewgcc3 clonemod || fail
 cd clonemod || fail
 bk comps -h > GOT
 echo ./gdb > WANT

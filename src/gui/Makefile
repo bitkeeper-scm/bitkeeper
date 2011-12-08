@@ -19,7 +19,8 @@ DOIT	= ../t/doit
 GUITEST = ../t/guitest.tcl
 BK	= $(REPO)/src/bk
 T	= $(REPO)/src/t
-COMMON	= ../port/$(SYS)_platform.tcl config.tcl bktheme.tcl common.tcl
+COMMON	= ../port/$(SYS)_platform.tcl config.tcl bktheme.tcl tooltip.tcl \
+	  common.tcl
 LCOMMON = common.l search.l
 SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 	  common.tcl config.tcl csettool.tcl difflib.tcl difftool.tcl \
@@ -141,7 +142,7 @@ setuptool: $(COMMON) tkwizard.tcl setuptool.tcl
 	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/setuptool
 
 newdifftool: $(COMMON) search.tcl appState.tcl newdifflib.tcl \
-	comm.tcl bktalk.tcl actions.tcl tooltip.tcl appState.tcl \
+	comm.tcl bktalk.tcl actions.tcl appState.tcl \
 	 newsearchlib.tcl newdifftool.tcl
 	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/newdifftool
 

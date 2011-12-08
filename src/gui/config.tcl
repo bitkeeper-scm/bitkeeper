@@ -3,6 +3,29 @@ proc gc {var} \
 	return $::gc($var)
 }
 
+## An array of deprecated options and the warning to display to the
+## user if they are found to be using said option.
+array set deprecated {
+"rev.showHistory"
+
+"The rev.showHistory config option has been removed.
+Please see 'bk help config-gui' for rev.showRevs and
+rev.showCsetRevs for new options."
+}
+
+proc warn_deprecated_options {app} \
+{
+	global	gc deprecated
+
+	foreach {opt desc} [array get deprecated $app.*] {
+		if {![info exists gc($opt)]} { continue }
+		puts ""
+		foreach line [split $desc \n] {
+			puts [string trim $line]
+		}
+	}
+}
+
 proc getConfig {prog} \
 {
 	global gc app env usergc
@@ -27,7 +50,6 @@ proc getConfig {prog} \
 
 	set _d(tabwidth) 8		;# default width of a tab
 	set _d(backup) ""		;# Make backups in ciedit: XXX NOTDOC 
-	set _d(balloonTime) 1000	;# XXX: NOTDOC
 	set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
 	set _d(diffHeight) 30		;# height of a diff window
 	set _d(diffWidth) 65		;# width of side by side diffs
@@ -45,7 +67,6 @@ proc getConfig {prog} \
 					 # than this width or height
 	#XXX: Not documented yet
 	set _d(logoBG) $WHITE		;# background for widget with logo
-	set _d(balloonBG) $LIGHTYELLOW	;# balloon help background
 	set _d(selectBG) $NAVY		;# useful for highlighting text
 	set _d(selectFG) $WHITE		;# useful for highlighting text
 	set _d(altColumnBG) $BEIGE		;# alternate column background
@@ -169,7 +190,6 @@ proc getConfig {prog} \
 	set _d(rev.commentHeight) 5       ;# height of comment text widget
 	set _d(rev.textWidth) 92	  ;# width of text windows
 	set _d(rev.textHeight) 30	  ;# height of lower window
-	set _d(rev.showHistory) "1M"	  ;# History to show in graph on start
 	set _d(rev.showRevs) 250	  ;# Num of revs to show in graph 
 	set _d(rev.showCsetRevs) 50	  ;# Num of revs to show for a cset
 	# XXX: not documented yet
@@ -268,7 +288,10 @@ proc getConfig {prog} \
 	set gc(activeNewOnly) 1
 
 	set gc(bkdir) [file dirname $rcfile]
-	if {[file readable $rcfile]} { source $rcfile }
+	if {[file readable $rcfile]} {
+		source $rcfile
+		warn_deprecated_options $app
+	}
 
 	## Save a copy of the gc array exactly as the user specified it.
 	array set usergc [array get gc]

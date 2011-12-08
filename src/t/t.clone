@@ -20,8 +20,8 @@ mkdir src
 cd src
 echo foo > 'F!O#O$ B%A^R&RR(R)RR'
 echo bar > bar.c
-echo h > h.h
-bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
+echo h > CHANGESET
+bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c CHANGESET
 if bk _test ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR'; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
@@ -225,9 +225,9 @@ bk edit $Q src/bar.c
 bk delta $Q -fybar src/bar.c
 bk commit $Q -ybar
 cd ../project
-bk edit $Q src/h.h
-bk delta $Q -fybar src/h.h
-bk commit $Q -yh.h
+bk edit $Q src/CHANGESET
+bk delta $Q -fybar src/CHANGESET
+bk commit $Q -yCHANGESET
 bk tag $Q TAGPROJECT
 cd ../tagbase
 # create a tag on a cset which will be undone, leaving 2 tips in tag graph
@@ -315,7 +315,7 @@ BK_CONFIG='checkout:edit!;partial_check:yes!' \
 	bk clone -r1.5 $Q project checkout || fail
 cd checkout
 test -w src/bar.c || fail
-test -w src/h.h || fail
+test -w src/CHANGESET || fail
 echo OK
 
 echo $N Show that a partial_check clone transfers id_cache ..........$NL

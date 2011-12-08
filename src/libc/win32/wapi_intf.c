@@ -1535,6 +1535,7 @@ nt_rename(const char *oldf, const char *newf)
 	HANDLE	from, to;
 	int	i, err = 0, rc = 0;
 	DWORD	in, out, attribs;
+	FILETIME ctime, atime, wtime;
 	char	buf[BUFSIZ];
 
 	if (streq(oldf, newf)) return (0);
@@ -1591,6 +1592,9 @@ fail:			errno = EBUSY;
 			rc = -1;
 			break;
 		}
+	}
+	if (GetFileTime(from, &ctime, &atime, &wtime)) {
+		SetFileTime(to, &ctime, &atime, &wtime);
 	}
 	safeCloseHandle(to);
 	safeCloseHandle(from);	/* src deleted here */
