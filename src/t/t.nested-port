@@ -101,6 +101,15 @@ grep -q 'port: destination is not a portal.' ERR || {
 	exit 1
 }
 bk portal $Q . || exit 1
+(cd "`bk -P pwd`"
+mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/pre-incoming <<EOF
+#!/bin/sh
+set > "$HERE/ENV"
+exit 0
+EOF
+chmod +x BitKeeper/triggers/pre-incoming
+)
 _BK_NO_PATCHSFIO=1 bk port -C $Q ../../standalone || exit 1
 cd ..
 test "`bk prs -hnd:SPN: -r+ sa2/ChangeSet`" = sa2/SCCS/s.ChangeSet || {
@@ -125,6 +134,11 @@ bk port $Q ../../standalone || exit 1
 test "`bk changes -S -r+ -nd':REV: :GFILE:'`" = "1.3 ChangeSet" || exit 1
 bk port $Q -r+ ../../standalone || exit 1
 test "`bk changes -S -r+ -nd':REV: :GFILE:'`" = "1.3 ChangeSet" || exit 1
+echo OK
+
+echo $N Make sure the pre-incoming trigger has the right event ......$NL
+grep BK_EVENT < "$HERE/ENV" > "$HERE/EVENT"
+grep -q 'incoming port' "$HERE/EVENT" || fail
 echo OK
 
 echo $N Port csets from component in portal to standalone repo ......$NL

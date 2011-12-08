@@ -725,7 +725,7 @@ eof:			if (co) {
 			if (in_file(buf, ulen, extract)) return (1);
 		}
 #ifndef	SFIO_STANDALONE
-		if (extract && opts->checkout && !justone) {
+		if (extract && opts->checkout) {
 			if ((!strneq("BitKeeper/", buf, 10) ||
 				strneq("BitKeeper/triggers/", buf,  19)) &&
 			    !streq(CHANGESET, buf)) {
@@ -735,7 +735,7 @@ eof:			if (co) {
 				unless ((p[1] == 's') && (p[2] == '.')) {
 					continue;
 				}
-				if (opts->seen_config && !co) {
+dump:				if (opts->seen_config && !co) {
 					/*
 					 * defer spawning checkout
 					 * until the first user file
@@ -771,6 +771,11 @@ eof:			if (co) {
 				}
 			} else if (streq("BitKeeper/etc/SCCS/s.config", buf)) {
 				opts->seen_config = 1;
+				// In case config is the last file, flush
+				if (save && (p = popLine(save))) {
+					strcpy(buf, p);
+					goto dump;
+				}
 			}
 		}
 #endif
