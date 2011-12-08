@@ -1,0 +1,24 @@
+# Check to make sure that if we have a bad tip before a clone, it
+# gets repaired as part of a clone (sendServerInfo) and checked gets marked
+echo $N Create initial repository ...................................$NL
+commercial project
+bk repocheck -q
+rm BitKeeper/log/checked
+echo foo > BitKeeper/log/TIP
+mkdir BitKeeper/triggers
+cat <<EOF > BitKeeper/triggers/pre-outgoing
+#!/bin/sh
+cat BitKeeper/log/TIP > new.tip
+EOF
+chmod +x BitKeeper/triggers/pre-outgoing
+echo OK
+
+echo $N Clone and see if we update the checked file .................$NL
+cd "$HERE"
+bk clone $Q project copy || exit 1
+cd project
+test -f BitKeeper/log/checked || fail
+# This is TIP file at the pre-outgoing trigger, after sendServerInfo
+# has repaired it.  It was set to be one line above.
+test -f new.tip -a `wc -l < new.tip` -eq 5 || fail -f new.tip
+echo OK

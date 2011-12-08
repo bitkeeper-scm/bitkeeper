@@ -707,6 +707,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 			return (-1);
 		}
 	}
+	cset_updatetip();
 	if (opts->product) {
 		char	*nlid = 0;
 

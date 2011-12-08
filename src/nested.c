@@ -576,27 +576,20 @@ nestedLoadCache(nested *n, MDBM *idDB)
 	char	*s, *t;
 	int	inCache;
 	FILE	*f;
-	struct	stat	sb;
-	char	buf[256];
 
 	if (proj_isResync(n->proj)) return (1);
-	if (lstat(CHANGESET, &sb)) return (1);
-	sprintf(buf, "%x %x", (u32)sb.st_size, (u32)sb.st_mtime);
 	f = fopen(NESTED_CACHE, "r");
 	unless (f && (t = fgetline(f))) return (1);
-	unless (streq(t, buf)) {
+	unless (streq(t, proj_tipkey(n->proj))) {
 		fclose(f);
 		return (1);
 	}
+	n->tip = strdup(proj_tipkey(n->proj));
+	n->product->deltakey = strdup(proj_tipkey(n->proj));
 	while (t = fgetline(f)) {
 		s = separator(t);
 		*s++ = 0;
 
-		if (streq(t, n->product->rootkey)) {
-			n->product->deltakey = strdup(s);
-			n->tip = strdup(s);
-			continue;
-		}
 		c = new(comp);
 		c->n = n;
 		c->included = 1;
@@ -636,17 +629,13 @@ nestedSaveCache(nested *n)
 	comp	*c;
 	int	i;
 	FILE	*f;
-	struct	stat	sb;
 	char	tmp[MAXPATH];
 
 	if (proj_isResync(n->proj)) return;
-	if (lstat(CHANGESET, &sb)) return;
 
 	sprintf(tmp, NESTED_CACHE ".tmp.%u", getpid());
 	if (f = fopen(tmp, "w")) {
-		fprintf(f, "%x %x\n", (u32)sb.st_size, (u32)sb.st_mtime);
-		fprintf(f, "%s %s\n",
-		    n->product->rootkey, n->product->deltakey);
+		fprintf(f, "%s\n", proj_tipkey(n->proj));
 		EACH_STRUCT(n->comps, c, i) {
 			fprintf(f, "%s %s\n", c->rootkey, c->deltakey);
 		}

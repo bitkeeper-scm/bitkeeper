@@ -223,6 +223,7 @@ cmd_rclone_part2(int ac, char **av)
 	/* clone needs the remote HERE as RMT_HERE; rclone doesn't */
 	if (opts.product) unlink("BitKeeper/log/HERE");
 	if (opts.detach) unlink("BitKeeper/log/COMPONENT");
+	cset_updatetip();
 
 	/*
 	 * After unpacking sfio we need to reset proj because it might

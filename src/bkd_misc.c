@@ -180,8 +180,15 @@ checked_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository\n");
 		return (1);
 	}
+
+	/*
+	 * 1 line - deltakey
+	 * 3 lines - deltakey, md5key, rev
+	 * 5 lines - deltakey, md5key, rev, mtime, size
+	 */
 	tips = file2Lines(0, "BitKeeper/log/TIP");
 	EACH(tips) {
+		if (i > 3) break;	// just the :KEY:, :MD5KEY:, and :I:
 		if (streq(av[1], tips[i])) {
 			touch_checked();
 			break;

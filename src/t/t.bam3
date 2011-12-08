@@ -226,6 +226,7 @@ echo "binary data" > WANT
 # BAM server repo on work: /home/bk/test_data/bk-url-only
 # has 700 perms and is owned by user bkd (which owns the bkd process on work)
 # It can only be accessed through bkd even though it is NFS mounted.
+# XXX: not true - perms are not 700 and BAM serves fine with file://
 #
 # The /home/bk/test_data file-url* repos have file urls pointing to
 # bk-url-only since they were made with a file clone by user bkd.
