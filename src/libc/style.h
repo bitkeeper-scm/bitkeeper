@@ -52,5 +52,6 @@ typedef	signed long long	i64;
 #else
 #	define	WHATSTR(X)	static const char what[] = X
 #endif
+#define	HERE()	fprintf(stderr, "%s:%d\n", __FILE__, __LINE__)
 
 #endif

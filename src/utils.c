@@ -1068,7 +1068,6 @@ int
 sendServerInfo(int no_repo)
 {
 	char	*repoid, *rootkey, *p, *errs = 0;
-	char	**v;
 	project	*prod = 0;	/* product project* (if we have a product) */
 	char	buf[MAXPATH];
 	char	bp[MAXLINE];
@@ -1150,21 +1149,11 @@ sendServerInfo(int no_repo)
 		sprintf(buf,
 		    "CLONE_DEFAULT=%s\n", proj_configval(0, "clone_default"));
 		out(buf);
-		if (v = file2Lines(0, "BitKeeper/log/TIP")) {
-			/* old repos, compat. */
-			if (nLines(v) >= 1) {
-				sprintf(buf, "TIP_MD5=%s\n", v[1]);
-				out(buf);
-			}
-			/* new repos, md5, key, rev */
-			if (nLines(v) == 3) {
-				sprintf(buf, "TIP_KEY=%s\n", v[2]);
-				out(buf);
-				sprintf(buf, "TIP_REV=%s\n", v[3]);
-				out(buf);
-			}
-			freeLines(v, free);
-		}
+		sprintf(buf, "TIP_MD5=%s\n", proj_tipmd5key(0));
+		out(buf);
+		sprintf(buf, "TIP_KEY=%s\n", proj_tipkey(0));
+		out(buf);
+		sprintf(buf, "TIP_REV=%s\n", proj_tiprev(0));
 	}
 	out("ROOT=");
 	strcpy(buf, proj_cwd());

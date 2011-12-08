@@ -911,6 +911,9 @@ move_file(char ***checkfiles)
 		}
 	}
 	pclose(f);
+	if (exists("BitKeeper/log/TIP")) {
+		fileMove("BitKeeper/log/TIP", RESYNC2ROOT "/BitKeeper/log/TIP");
+	}
 	return (rc);
 }
 

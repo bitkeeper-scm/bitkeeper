@@ -20,7 +20,8 @@ trace_init(char *p)
 	} else if (getenv("BK_TTRACE")) {
 		bk_trace = 2;
 		milli();
-	} else unless (getenv("BK_TRACE")) {
+	} else unless (getenv("BK_TRACE") || getenv("BK_TRACE_PROGS") ||
+	    getenv("BK_TRACE_FUNCS") || getenv("BK_TRACE_FILES")) {
 		bk_trace = 0;
 	}
 	if (t = getenv("BK_TRACE_PROGS")) {
@@ -41,11 +42,7 @@ trace_msg(char *format, char *file, int line, const char *function, ...)
 	va_list	ap;
 	char	extra[20];
 
-	/* if either, then one must have pattern match */
-	unless ((!files && !funcs) ||
-	    (files && match_globs(file, files, 0)) ||
-	    (funcs && match_globs((char*)function, funcs, 0)))
-		return;
+	unless (trace_this(file, line, function)) return;
 	extra[0] = 0;
 	if (terse) {
 		f = efopen("BK_DTRACE");
@@ -61,7 +58,7 @@ trace_msg(char *format, char *file, int line, const char *function, ...)
 	unless (f) {
 		/*
 		 * The only way we can be here and have efopen() fail is
-		 * if we were called from the HERE() macro, so just do what
+		 * if we were called from TRACE("%s", ""), so just do what
 		 * ttyprintf does.
 		 */
 		unless (f = fopen(DEV_TTY, "w")) f = fdopen(2, "w");
@@ -78,6 +75,17 @@ trace_msg(char *format, char *file, int line, const char *function, ...)
 		    prog, extra, file, function, line);
 	}
 	fclose(f);
+}
+
+int
+trace_this(char *file, int line, const char *function)
+{
+	/* if either, then one must have pattern match */
+	unless ((!files && !funcs) ||
+	    (files && match_globs(file, files, 0)) ||
+	    (funcs && match_globs((char*)function, funcs, 0)))
+		return (0);
+	return (1);
 }
 
 void

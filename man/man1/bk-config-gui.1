@@ -395,13 +395,13 @@ Default:
 Height of widget that displays the file content.
 Default:\ 50
 .tp
-.B rev.showHistory
-The time period of revisions that are shown. The value needs to be a
-valid entry for the
-.Q \-R
-option to
-.BR bk log .
-Default:\ 1M
+.B rev.showRevs
+The number of revs to show when running revtool against a single file.
+Default:\ 250
+.tp
+.B rev.showCsetRevs
+The number of revs to show when running revtool against a ChangeSet file.
+Default:\ 50
 .tp
 .B rev.tagOutline
 Color of the outline around nodes in the ChangeSet graph that have

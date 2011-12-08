@@ -14,7 +14,7 @@ test "X$BK_TMP" = X && {
 	exit 0
 }
 
-KEYS="`bk dotbk`/bk_keys"
+KEYS="`bk dotbk`/bk-keys/`bk gethost -r`"
 
 echo $N Create initial repository ...................................$NL
 rm -f "$KEYS"

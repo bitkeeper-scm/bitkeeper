@@ -424,8 +424,6 @@ do_commit(char **av,
 			hash_free(urllist);
 		}
 	}
-	/* Also update the TIP file */
-	cset_savetip(cset);
 	putenv("BK_STATUS=OK");
 	if (rc) putenv("BK_STATUS=FAILED");
 	trigger(opts.resync ? "merge" : av[0], "post");

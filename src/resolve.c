@@ -2879,6 +2879,9 @@ err:			unapply(applied);
 	fclose(f);
 
 	if (exists("RESYNC/SCCS/d.ChangeSet")) touch("SCCS/d.ChangeSet", 0644);
+	if (exists("RESYNC/BitKeeper/log/TIP")) {
+		fileLink("RESYNC/BitKeeper/log/TIP", "BitKeeper/log/TIP");
+	}
 
 	/*
 	 * If the HERE file changed as a result of the pull, throw it over
@@ -2925,7 +2928,8 @@ err:			unapply(applied);
 		system("bk clean BitKeeper/etc");
 		goto err;
 	}
-	if (exists("SCCS/d.ChangeSet") && proj_isComponent(0)) {
+	if (exists("SCCS/d.ChangeSet") && proj_isComponent(0) &&
+	    !exists("RESYNC/BitKeeper/log/port")) {
 		if (moveupComponent()) goto err;
 	}
 	unlink(BACKUP_LIST);
@@ -3294,6 +3298,12 @@ moveupComponent(void)
 		rc = 1;
 	} else {
 		if (exists(dfile_from)) touch(dfile_to, 0644);
+		free(from);
+		from = aprintf("%s/%s/BitKeeper/log/TIP", RESYNC2ROOT,
+		    cpath);
+		free(to);
+		to = aprintf("%s/BitKeeper/log/TIP", cpath);
+		if (exists(from)) fileLink(from, to);
 	}
 	free(dfile_from);
 	free(dfile_to);

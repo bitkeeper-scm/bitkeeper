@@ -44,6 +44,7 @@ sccs_lockfile(char *file, int waitsecs, int quiet)
 	int	uslp = 500;
 	u64	waited = 0;
 	int	rc = -1;
+	int	bark = 10;
 	int	fs_en = fslayer_enable(0); /* turn off fslayer */
 
 	p = dirname_alloc((char*)file);
@@ -162,9 +163,13 @@ err:			unlink(uniq);
 			}
 			goto err;
 		}
-		if (!quiet && ((quiet*1000000) > waited)) {
-			fprintf(stderr,
-			    "%d: waiting for lock %s\n", getpid(), file);
+		unless (quiet) {
+			if ((waited / 1000000) == bark) {
+				fprintf(stderr,
+				    "%d: waiting for lock %s\n",
+				    getpid(), file);
+				bark += 10;
+			}
 		}
 		waited += uslp;
 		/*
