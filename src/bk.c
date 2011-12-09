@@ -393,6 +393,13 @@ baddir:						fprintf(stderr,
 			hash_free(h);
 		}
 		if (remote) {
+			if (streq(prog, "pull") ||
+			    streq(prog, "push") ||
+			    streq(prog, "resolve")) {
+				fprintf(stderr, "Cannot run interactive commands "
+				    "on a remote repository\n");
+				return (1);
+			}
 			start_cwd = strdup(proj_cwd());
 			callstack_add(remote);
 			cmdlog_start(av, 0);

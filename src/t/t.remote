@@ -190,3 +190,18 @@ echo $KEY | \
      true
 bk -Lw30 version > /dev/null || fail didn\'t release lock
 echo OK
+
+echo $N Make sure bk -@ pull fails ..................................$NL
+bk -@foo pull >ERR 2>&1 && fail -f ERR should have failed
+grep -q "Cannot run interactive commands on a remote" ERR || fail -f wrong error
+echo OK
+
+echo $N Make sure bk -@ push fails ..................................$NL
+bk -@foo push >ERR 2>&1 && fail -f ERR should have failed
+grep -q "Cannot run interactive commands on a remote" ERR || fail -f wrong error
+echo OK
+
+echo $N Make sure bk -@ resolve fails ...............................$NL
+bk -@foo resolve >ERR 2>&1 && fail -f ERR should have failed
+grep -q "Cannot run interactive commands on a remote" ERR || fail -f wrong error
+echo OK
