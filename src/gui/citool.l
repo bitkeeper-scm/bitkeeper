@@ -1067,9 +1067,11 @@ toggleFile(string node)
 	if ((sf.type eq "new") && (getComments(sf) eq "")) {
 		string	comment = "New BitKeeper file ``${sf.name}''";
 
-		self.commented = 1;
-		self.comments  = comment;
-		insertTopText(comment, 1);
+		if (node eq getSelectedNode()) {
+			self.commented = 1;
+			self.comments  = comment;
+			insertTopText(comment, 1);
+		}
 		writeComments(sf, comment);
 	} else {
 		self.files{file}.excluded = !sf.excluded;
