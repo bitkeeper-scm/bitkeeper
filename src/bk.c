@@ -70,7 +70,7 @@ main(int volatile ac, char **av, char **env)
 	char	**sopts = 0;
 	char	**aliases = 0;
 	char	**nav = 0;
-	longopt	lopts[] = {
+	static longopt	lopts[] = {
 		/* Note: remote_bk() won't like "option:" with a space */
 		/* none of these are passed to --each commands */
 		{ "title;", 300 },	// title for progress bar
@@ -80,6 +80,8 @@ main(int volatile ac, char **av, char **env)
 		{ "sigpipe", 305 },     // allow SIGPIPE
 		{ "sfiles-opts;", 306 },// --sfiles-opts=vcg
 		{ "config;", 307 },	// override config options
+		{ "ibuf;", 310 },
+		{ "obuf;", 320 },
 
 		/* long aliases for some options */
 		{ "all-files", 'A' },
@@ -310,6 +312,18 @@ baddir:						fprintf(stderr,
 				bk_setConfig(key, val+1);
 				free(key);
 				break;
+			    }
+			    case 310:   // --ibuf=line|<size>|0
+			    case 320: { // --obuf=line|<size>|0
+				    FILE *f = (c == 310) ? stdin : stdout;
+				    if (streq(optarg, "line")) {
+					    setvbuf(f, 0, _IOLBF, 0);
+				    } else if (i = atoi(optarg)) {
+					    setvbuf(f, 0, _IOFBF, i);
+				    } else {
+					    setvbuf(f, 0, _IONBF, 0);
+				    }
+				    break;
 			    }
 			    default: bk_badArg(c, av);
 			}

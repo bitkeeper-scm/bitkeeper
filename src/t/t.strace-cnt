@@ -33,6 +33,30 @@ bk ci -yignore1 -u $Q BitKeeper/etc/ignore
 bk commit $Q -yignore1 || exit 1
 echo OK
 
+# I couldn't get Wayne's counter to work for this stuff so I went to strace(1)
+echo $N "Count the syscalls for a 'bk --obuf=0 sfiles' ..............."$NL
+rm -f "$FILE"
+strace -c -o "$FILE" -e write \
+    bk --obuf=0 sfiles "$TESTDATA"/bitcluster > /dev/null
+OBUF_0=`tail -1 < "$FILE" | awk '{print $3}'`
+echo OK
+
+echo $N "Count the syscalls for a 'bk --obuf=line sfiles' ............"$NL
+rm -f "$FILE"
+strace -c -o "$FILE" -e write \
+    bk --obuf=line sfiles "$TESTDATA"/bitcluster > /dev/null
+OBUF_LINE=`tail -1 < "$FILE" | awk '{print $3}'`
+test $OBUF_0 -gt $OBUF_LINE || fail
+echo OK
+
+echo $N "Count the syscalls for a 'bk --obuf=10240 sfiles' ..........."$NL
+rm -f "$FILE"
+strace -c -o "$FILE" -e write \
+    bk --obuf=10240 sfiles "$TESTDATA"/bitcluster > /dev/null
+OBUF_BIG=`tail -1 < "$FILE" | awk '{print $3}'`
+test $OBUF_LINE -gt $OBUF_BIG || fail
+echo OK
+
 echo $N "Count the syscalls for a 'bk clone'.........................."$NL
 rm -f "$FILE"
 BK_STRACE="$FILE" bk clone -j1 $Q ../project ../copy || exit 1
