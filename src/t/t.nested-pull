@@ -608,16 +608,20 @@ bk pull $Q ../project || {
 echo OK
 
 echo $N Pull of second one should fail ..............................$NL
-bk pull --unsafe ../copy > OUT 2>&1 && {
+bk pull --unsafe -q ../copy > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
 	exit 1
 }
-grep -q "Unable to resolve conflict in non-present component 'gdb'." OUT || {
-	echo bad error message
-	cat OUT
-	exit 1
-}
+cat <<EOF >WANT
+
+The following components need to be merged, are not present in this
+repository, and will need to be populated to complete the pull:
+	gdb
+Please re-run the pull using the --auto-populate option in order
+to get them automatically.
+EOF
+cmpfiles WANT OUT
 bk abort -qf || fail
 echo OK
 
@@ -631,8 +635,12 @@ bk commit $Q -yjunk || fail
 cd ../sparse
 bk pull --unsafe -q ../ponly ../copy 2>ERR && fail
 cat <<EOF > WANT
-pull: Unable to resolve conflict in non-present component 'gdb'.
-pull: update aborted due to errs with 1 components.
+
+The following components need to be merged, are not present in this
+repository, and will need to be populated to complete the pull:
+	gdb
+Please re-run the pull using the --auto-populate option in order
+to get them automatically.
 EOF
 cmpfiles WANT ERR
 echo OK
@@ -1119,12 +1127,12 @@ Pull file://ROOT/project
   -> file://ROOT/copy
 .                                  100% |==============================| OK
 
-The following components are present in the remote, were not
-found in any gates, and will need to be populated to make
-the pull safe:
+The following components need to be merged, are not present in this
+repository, and will need to be populated to complete the pull:
 	gdb
 Adding the following aliases/components:
 	ALL
+pull: searching ROOT/project...ok
 pull: searching ROOT/backup...ok
 Source ROOT/backup
 1/4 gdb                            100% |==============================| OK
@@ -1174,14 +1182,13 @@ cat <<EOF >WANT
 Pull file://ROOT/project
   -> file://ROOT/copy
 .                                  100% |==============================| OK
-pull: searching ROOT/backup...ok (gate)
 
-The following components are present in the remote, were not
-found in any gates, and will need to be populated to make
-the pull safe:
+The following components need to be merged, are not present in this
+repository, and will need to be populated to complete the pull:
 	gdb
 Adding the following aliases/components:
 	ALL
+pull: searching ROOT/project...ok
 pull: searching ROOT/backup...ok (gate)
 Source ROOT/backup
 1/4 gdb                            100% |==============================| OK

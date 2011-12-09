@@ -716,7 +716,12 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	nested	*n = 0;
 	comp	*c;
 	int	i, j, rc = 0, errs = 0;
+	int	pull, clone, unpopulate;
+	int	safe;
 	int	which = 0, updateHERE = 0, flushCache = 0;
+	char	**missing = 0;
+	char	**new_aliases = 0;
+	int	flags = URLLIST_GATEONLY | URLLIST_NOERRORS;
 	project	*proj;
 
 	/* allocate r->params for later */
@@ -774,109 +779,134 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		goto out;
 	}
 
+	safe = (opts.safe == 1) || ((opts.safe == -1) && !getenv("BKD_GATE"));
 
-	if ((opts.safe == 1) || ((opts.safe == -1) && !getenv("BKD_GATE"))) {
-		char	**missing = 0;
-		char	**new_aliases = 0;
-		int	flags = URLLIST_GATEONLY | URLLIST_NOERRORS;
+	if (opts.quiet) flags |= SILENT;
 
-		if (opts.quiet) flags |= SILENT;
+	missing = 0;
 
-		EACH_STRUCT(n->comps, c, j) {
-			/*
-			 * !c->alias           = I'm not going have it
-			 * c->remotePresent    = Remote has it
-			 * (opts.safe == 1 &&  = user explicitly asked for
-			 *                       --safe
-			 * || !urllist_find()) = we can't find it in a gate
-			 */
-			if (!c->alias && c->remotePresent &&
-			    ((opts.safe == 1) ||
-				!urllist_find(n, c, flags, 0))) {
-				/*
-				 * Add this component to the missing
-				 * list, we will fetch it with a cover.
-				 */
-				missing = addLine(missing, (char *)c);
-			}
+	EACH_STRUCT(n->comps, c, j) {
+		/*
+		 * !c->alias           = I'm not going have it
+		 *
+		 * does it need a merge?
+		 * c->localchanges     = local changes
+		 * c->included	       = remote changes
+		 *
+		 * safe		       = okay to delete remote repo after pull
+		 * c->remotePresent    = remote has it
+		 * !urllist_find()     = we can't find it in a gate
+		 */
+		c->data = 0;
+		if (c->alias) continue;
+		if ((c->localchanges && c->included)) {
+			missing = addLine(missing, (char *)c);
+			c->data = (void *)2;
+		} else if (safe &&
+		    c->remotePresent && !urllist_find(n, c, flags,0)) {
+			missing = addLine(missing, (char *)c);
+			c->data = (void *)1;
 		}
+	}
 
-		if (missing) {
-			char	**msg = 0;
+	if (missing) {
+		char	**msg = 0;
+		char	**safelist = 0;
+		char	**mergelist = 0;
 
-			unless (opts.quiet && opts.autoPopulate) {
+		unless (opts.quiet && opts.autoPopulate) {
+			EACH_STRUCT(missing, c, j) {
+				if (c->data == (void *)1) {
+					safelist = addLine(safelist, c->path);
+				} else if (c->data == (void *)2) {
+					mergelist = addLine(mergelist, c->path);
+				}
+			}
+			if (safelist) {
 				fprintf(stderr, "\nThe following components "
 				    "are present in the remote, were not\n"
 				    "found in any gates, and will need to "
 				    "be populated to make\n"
 				    "the pull safe:\n");
-				EACH_STRUCT(missing, c, j) {
-					fprintf(stderr, "\t%s\n", c->path);
+				EACH(safelist) {
+					fprintf(stderr, "\t%s\n", safelist[i]);
 				}
+				freeLines(safelist, 0);
 			}
-
-			unless (opts.autoPopulate) {
-				fprintf(stderr, "Please re-run the pull "
-				    "using the --auto-populate option "
-				    "in order\nto get them automatically.\n");
-				freeLines(missing, 0);
-				rc = 1;
-				goto out;
-			}
-
-			/*
-			 * Find a minimum subset of the remote's alias
-			 * file that covers all the missing
-			 * components.
-			 */
-			new_aliases =
-				alias_coverMissing(n, missing, rmt_aliases);
-			freeLines(missing, 0);
-			unless (opts.quiet) {
+			if (mergelist) {
 				fprintf(stderr,
-				    "Adding the following "
-				    "aliases/components:\n");
-			}
-
-			/*
-			 * Add them to HERE
-			 */
-			EACH(new_aliases) {
-				n->here = addLine(n->here, new_aliases[i]);
-				unless (opts.quiet) {
-					p = new_aliases[i];
-					if (isKey(p)) {
-						c = nested_findKey(n, p);
-						assert(c);
-						p = c->path;
-					}
-					msg = addLine(msg,
-					    aprintf("\t%s\n", p));
+				    "\nThe following components need to be "
+				    "merged, are not present in this\n"
+				    "repository, and will need to be "
+				    "populated to complete the pull:\n");
+				EACH(mergelist) {
+					fprintf(stderr, "\t%s\n", mergelist[i]);
 				}
+				freeLines(mergelist, 0);
 			}
-			unless (opts.quiet) {
-				sortLines(msg, 0);
-				EACH(msg) fprintf(stderr, "%s", msg[i]);
-			}
-			freeLines(msg, free);
-			freeLines(new_aliases, 0);
-			uniqLines(n->here, free);
-
-			/*
-			 * This retags comps with c->alias for the
-			 * aliases we just added so populate will
-			 * update them.
-			 */
-			if (nested_aliases(n, 0, &n->here, 0, NESTED_PENDING)){
-				/* should never fail */
-				fprintf(stderr,
-				    "%s: local aliases no longer valid.\n",
-				    prog);
-				rc = 1;
-				goto out;
-			}
-			updateHERE = 1;
 		}
+
+		unless (opts.autoPopulate) {
+			fprintf(stderr, "Please re-run the pull "
+			    "using the --auto-populate option "
+			    "in order\nto get them automatically.\n");
+			freeLines(missing, 0);
+			rc = 1;
+			goto out;
+		}
+
+		/*
+		 * Find a minimum subset of the remote's alias
+		 * file that covers all the missing
+		 * components.
+		 */
+		new_aliases =
+			alias_coverMissing(n, missing, rmt_aliases);
+		freeLines(missing, 0);
+		unless (opts.quiet) {
+			fprintf(stderr,
+			    "Adding the following "
+			    "aliases/components:\n");
+		}
+
+		/*
+		 * Add them to HERE
+		 */
+		EACH(new_aliases) {
+			n->here = addLine(n->here, new_aliases[i]);
+			unless (opts.quiet) {
+				p = new_aliases[i];
+				if (isKey(p)) {
+					c = nested_findKey(n, p);
+					assert(c);
+					p = c->path;
+				}
+				msg = addLine(msg,
+				    aprintf("\t%s\n", p));
+			}
+		}
+		unless (opts.quiet) {
+			sortLines(msg, 0);
+			EACH(msg) fprintf(stderr, "%s", msg[i]);
+		}
+		freeLines(msg, free);
+		freeLines(new_aliases, 0);
+		uniqLines(n->here, free);
+
+		/*
+		 * This retags comps with c->alias for the
+		 * aliases we just added so populate will
+		 * update them.
+		 */
+		if (nested_aliases(n, 0, &n->here, 0, NESTED_PENDING)){
+			/* should never fail */
+			fprintf(stderr,
+			    "%s: local aliases no longer valid.\n",
+			    prog);
+			rc = 1;
+			goto out;
+		}
+		updateHERE = 1;
 	}
 
 	/*
@@ -891,53 +921,48 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	opts.n = 1;		/* for product */
 	EACH_STRUCT(n->comps, c, i) {
 		if (c->product) continue;
-		if (c->included) {
-			/* this component is included in pull */
-			if (c->alias) {
-				/* and we will need those new csets */
-				if (c->present || c->localchanges) opts.n++;
-				if (!c->remotePresent && c->present) {
-					/*
-					 * XXX: I plan to fix this with pull-urllist.
-					 */
-					fprintf(stderr,
-					    "pull: %s is missing in %s\n"
-					    "and has work that needs to "
-					    "be pulled, please populate "
-					    "it in the remote side.\n",
-					    c->path, url);
-					++errs;
-				}
-			} else {
-				/* we don't want this component */
-				if (c->localchanges) {
-					/* XXX: I plan to fix this with pull-urllist */
-					fprintf(stderr,
-					    "%s: Unable to resolve conflict "
-					    "in non-present component '%s'.\n",
-					    prog, c->path);
-					++errs;
-				}
+
+		/* what happens to this comp?  Can be both pull and clone. */
+		clone = (c->alias && !c->present);
+		pull = (c->alias && c->included &&
+		    (c->present || c->localchanges));
+		unpopulate = (!c->alias && c->present);
+
+		if (pull) {
+			opts.n++;
+			unless (c->remotePresent) {
+				/*
+				 * XXX: I plan to fix this with pull-urllist.
+				 */
+				fprintf(stderr,
+				    "pull: %s is missing in %s\n"
+				    "and has work that needs to "
+				    "be pulled, please populate "
+				    "it in the remote side.\n",
+				    c->path, url);
+				++errs;
 			}
 		}
-		if (c->alias && !c->present) {
+		if (clone) {
 			if (c->localchanges) {
 				/*
-				 * We do both, populate c->lowerkey
-				 * and then pull c->deltakey. Also,
-				 * flush the cache *before* calling
+				 * Either a clone and pull or a populate
+				 * when there is no remote work means
+				 * just populate the local tip: c->lowerkey
+				 * Also flush the cache *before* calling
 				 * nested_populate since we have
-				 * probbed with deltakey before and
+				 * probed with deltakey before and
 				 * now we have to probe with lowerkey.
 				 */
 				c->useLowerKey = 1;
 				flushCache = 1;
 			} else {
+				/* mark that we have remote. Used below */
 				c->new = 1;
 			}
 			++which;
 		}
-		if (!c->alias && c->present) {	// unpopulate local
+		if (unpopulate) {	// unpopulate local
 			c->useLowerKey = 1;
 			flushCache = 1;
 		}
