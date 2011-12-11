@@ -192,3 +192,19 @@ bk annotate -R1.2 -h ChangeSet > GOT
 bk prs -hr1.1 -nd':ROOTKEY: :KEY:' subdir/file > WANT
 cmpfiles WANT GOT
 echo OK
+
+echo $N Check that bk annotate -aS ChangeSet works ..................$NL
+# this annotates the hash output, which is new in this cset
+# Just take the file name out of the deltakey
+bk annotate -aS ChangeSet \
+    | sed 's/	.* .*|\([a-zA-Z][^|]*\).*/	\1/' | bk _sort > GOT
+cat <<EOF > WANT
+2	BitKeeper/etc/attr
+2	BitKeeper/etc/collapsed
+2	BitKeeper/etc/config
+2	BitKeeper/etc/gone
+2	BitKeeper/etc/ignore
+4	subdir/file
+EOF
+cmpfiles WANT GOT
+echo OK

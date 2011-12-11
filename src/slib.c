@@ -6558,7 +6558,7 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 	}
 
 	/* Think carefully before changing this */
-	if (BINARY(s) || hash) {
+	if (BINARY(s) || (hash && !(flags & (PRINT|GET_HASHONLY)))) {
 		flags &= ~(GET_EXPAND|GET_PREFIX);
 	}
 	unless (SCCS(s) || RCS(s)) flags &= ~GET_EXPAND;
@@ -6659,19 +6659,7 @@ out:			if (slist) free(slist);
 				}
 				continue;
 			}
-			if (hash) {
-				if (getKey(s, DB, buf, flags) == 1) {
-					unless (flags &
-					    (GET_HASHONLY|GET_SUM)) {
-						fputs(buf, out);
-						fputc('\n', out);
-					}
-					if (flags & NEWCKSUM) {
-						for (e = buf; *e; sum += *e++);
-						sum += '\n';
-					}
-					lines++;
-				}
+			if (hash && getKey(s, DB, buf, flags) != 1) {
 				continue;
 			}
 			lines++;
@@ -6703,6 +6691,13 @@ out:			if (slist) free(slist);
 				} else {
 					if (p) fprintf(out, "%s\t", p);
 				}
+			}
+			if (hash) {
+				unless (flags & (GET_HASHONLY|GET_SUM)) {
+					fputs(buf, out);
+					fputc('\n', out);
+				}
+				continue;
 			}
 
 			e = buf;
