@@ -469,6 +469,7 @@ echo OK
 echo $N Check compresssion: gzip preference .........................$NL
 cd "$HERE/project/BitKeeper/etc"
 bk edit $Q config
+echo "binfile: no!" >> config		# binfile doesn't use gzip
 echo "compression: gzip" >> config
 echo checkout:none >> config
 cd "$HERE/project"

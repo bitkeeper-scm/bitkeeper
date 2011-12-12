@@ -19,6 +19,26 @@ echo compression:none >> c
 grep -v BAM c > BitKeeper/etc/config
 cp BitKeeper/etc/config c
 
+echo $N Run some raw data through the hopper ........................$NL
+mkdir test
+cd test
+touch empty
+echo 0 > empty.size
+cp "$BIN2" data
+bk _stat data | perl -ne '@_ = split(/\|/); print "$_[7]\n"' > data.size
+for mode in c z cz; do
+	for file in empty data; do
+		bk _fgzip -$mode < $file > $file.store.$mode
+		bk _fgzip -d -$mode < $file.store.$mode > $file.orig.$mode
+		cmpfiles $file $file.orig.$mode
+		bk _fgzip -Sd -$mode < $file.store.$mode > $file.test.size
+		cmpfiles $file.size $file.test.size
+	done
+done
+cd ..
+rm -fr test
+echo OK
+
 echo $N Trying to check in some binary data .........................$NL
 cp "$BIN1" data
 chmod u+w data
@@ -53,7 +73,7 @@ bk prs -hnr+ -d:COMPRESSION:,:ENC: uuencode1 uuencode1z uuencode2 bam1 bam2 \
     > OUT
 cat <<EOF >WANT
 none,uuencode
-gzip,uuencode
+none,uuencode
 none,uuencode
 none,BAM
 none,BAM
@@ -94,7 +114,7 @@ echo $N Trying to clean an encoded file .............................$NL
 for f in uuencode1 bam1
 do	bk co $Q -l $f || exit 1
 	bk clean $f || exit 1
-	test -f uuencode && { echo Clean failed ; exit 1; }
+	test -f $f && { echo Clean failed ; exit 1; }
 done
 echo OK
 
@@ -105,7 +125,7 @@ checkfiles "$BIN1" uuencode1
 echo OK
 
 echo $N Check in gzipped data with delta -Z .........................$NL
-bk delta $Q -Euuencode -i -Z data || exit 1
+BK_CONFIG='binfile:no!' bk delta $Q -Euuencode -i -Z data || exit 1
 ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: data`
 if [ X$ENC != X"gzip,uuencode" ]
 then	echo Wrong encoding. $ENC
@@ -154,7 +174,7 @@ if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 
 echo $N Make it gzipped again .......................................$NL
-bk admin -Z gzipped
+bk admin -Bnone -Z gzipped || fail
 ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: gzipped`
 if [ X$ENC != X"gzip,ascii" ]
 then	echo Wrong encoding. $ENC

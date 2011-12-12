@@ -117,10 +117,11 @@ commercial commercial
 echo a > x
 bk new $Q x
 bk edit $Q x
-echon "" >> x
-bk delta $Q -ynone x
+printf "\r" >> x
+bk delta $Q -fynone x || fail
+SER=`bk prs -r+ -hnd:DS: x`
 # XXX nice to have a better test.  When we get the check in the code: use it.
-bk _scat SCCS/s.x | grep -q '^.E [0-9][0-9]*N$' && {
+bk _scat x | grep -q '^.E '$SER'$' || {
 	echo Fail
 	echo Blank line tagged no newline
 	exit 1
@@ -133,17 +134,17 @@ printf "a\nb" > afterdel
 bk new $Q afterdel
 bk edit $Q afterdel
 printf "a\nc\n" > afterdel
-bk delta $Q -y1.2 afterdel
+bk delta $Q -y1.2 afterdel || fail
 bk edit $Q afterdel
 printf "a\nc\nd\n" > afterdel
-bk delta $Q -y1.3 afterdel
+bk delta $Q -y1.3 afterdel || fail
 bk edit $Q -x1.2 afterdel
-bk delta $Q -y1.4 afterdel
+bk delta $Q -y1.4 afterdel || fail
 bk _cp SCCS/s.afterdel afterdel.bkup
 bk edit $Q afterdel
 printf "a\nb\n" > afterdel
 cp afterdel WANT
-bk delta $Q -y1.4 afterdel
+bk delta $Q -y1.4 afterdel || fail
 bk get $Q afterdel
 checkfiles WANT afterdel
 bk checksum afterdel || fail
@@ -152,7 +153,7 @@ bk _cp afterdel.bkup SCCS/s.afterdel
 bk admin -Zgzip afterdel
 bk edit $Q afterdel
 printf "a\nb\n" > afterdel
-bk delta $Q -y1.4 afterdel
+bk delta $Q -y1.4 afterdel || fail
 bk get $Q afterdel
 checkfiles WANT afterdel
 bk checksum afterdel || fail

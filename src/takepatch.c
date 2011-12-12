@@ -1389,10 +1389,8 @@ apply:
 		mclose(iF);	/* dF done by delta() */
 		sccs_free(s);
 		s = sccs_init(p->resyncFile, INIT_NOCKSUM|SILENT);
-		if (p = p->next) s->mem_out = 1;
+		p = p->next;
 	}
-	/* enable in-memory mode, if more than one patch */
-	if (p && p->next) s->mem_out = 1;
 	while (p) {
 		assert(p->pid);
 		n++;

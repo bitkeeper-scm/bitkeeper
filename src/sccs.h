@@ -311,7 +311,7 @@ int	checking_rmdir(char *dir);
 #define	D_CSET		0x00001000	/* this delta is marked in cset file */
 #define D_XFLAGS	0x00002000	/* delta has updated file flags */
 	/* D_NPARENT	0x00004000 */
-
+#define	D_FIXUPS	0x00008000	/* fixups to tip delta at end of file */
 
 /* flags that are in memory only and not written to disk */
 #define	D_REMOTE	0x00400000	/* for resolve; from remote repos. */
@@ -754,6 +754,7 @@ struct sccs {
 	u32	mem_in:1;	/* s->fh is in-memory FILE* */
 	u32	mem_out:1;	/* s->outfh is in-memory FILE* */
 	u32	file:1;		/* treat as a file in DSPECS */
+	u32	rdweaveEOF:1;	/* at EOF in rdWEAVE */
 };
 
 typedef struct {

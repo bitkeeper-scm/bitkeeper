@@ -169,10 +169,7 @@ cmd_check(int ac, char **av)
 int
 checked_main(int ac, char **av)
 {
-	char	**tips = 0;
-	int	i;
-
-	unless (av[1]) {
+	unless (av[1] && !av[2]) {
 		fprintf(stderr, "usage: checked <tiprev>\n");
 		return (1);
 	}
@@ -181,20 +178,11 @@ checked_main(int ac, char **av)
 		return (1);
 	}
 
-	/*
-	 * 1 line - deltakey
-	 * 3 lines - deltakey, md5key, rev
-	 * 5 lines - deltakey, md5key, rev, mtime, size
-	 */
-	tips = file2Lines(0, "BitKeeper/log/TIP");
-	EACH(tips) {
-		if (i > 3) break;	// just the :KEY:, :MD5KEY:, and :I:
-		if (streq(av[1], tips[i])) {
-			touch_checked();
-			break;
-		}
+	if (streq(av[1], proj_tipkey(0)) ||
+	    streq(av[1], proj_tipmd5key(0)) ||
+	    streq(av[1], proj_tiprev(0))) {
+		touch_checked();
 	}
-	freeLines(tips, free);
 	return (0);
 }
 

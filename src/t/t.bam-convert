@@ -22,7 +22,7 @@ chmod u+w data data2
 touch zero
 printf "x" > one
 bk new $Q -b zero one data data2 || exit 1
-bk commit -ywhatever $Q
+bk commit -ywhatever $Q || fail
 test -d BitKeeper/BAM && {
 	echo should not have created BAM dir
 	exit 1

@@ -335,6 +335,45 @@ bk check -c ff 2> /dev/null && {
 bk _rm SCCS/s.ff
 echo OK
 
+echo $N Make sure check detects checksum problems \(binfile\)..........$NL
+cd "$HERE/project"
+echo "foobar" > ff
+bk new $Q ff
+bk edit $Q ff
+bk delta -yfoobar $Q ff
+bk _mv SCCS/s.ff ff.tmp
+chmod +w ff.tmp
+perl - <<'EOF' || fail
+$/ = undef;
+open(F, "ff.tmp");
+$ff = <F>;
+close (F);
+$/ = "\n";
+$bad = 0;
+foreach $i (8 .. length($ff)-1) {
+	$new = $ff;
+	substr($new, $i, 1) = "X";
+	open(F, "> .bk/SCCS/ff,s");
+	binmode(F);
+	print F $new;
+	close(f);
+     	open(C, "bk check -c ff 2>&1 |");
+	$s = '';
+	while (<C>) {
+	      $s .= $_;
+	      $bad = 1 unless /^(checksum error |correctable|offset $i was 58 should)/;
+	}
+	if ($bad) {
+	   	print "bad output at $i\n";
+		print $s;
+		exit 1;
+	}
+	close(C);
+}
+EOF
+bk _rm SCCS/s.ff ff.tmp
+echo OK
+
 echo $N Make sure check complains is cset marks are missing .........$NL
 cd "$HERE"
 bk clone $Q project bad || exit 1

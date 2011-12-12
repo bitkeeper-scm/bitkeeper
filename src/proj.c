@@ -43,8 +43,6 @@ struct project {
 	int	sync;		/* sync/fsync data? */
 	int	idxsock;	/* sock to index server for this repo */
 	int	noremap;	/* true == old style SCCS dirs */
-	size_t	cset_size;
-	time_t	cset_mtime;
 	char	*tipkey;	/* key/md5key/rev of tip cset rev */
 	char	*tipmd5key;
 	char	*tiprev;
@@ -593,7 +591,7 @@ proj_rootkey(project *p)
 	concat_path(buf, p->root, CHANGESET);
 	if (exists(buf)) {
 		sc = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT|INIT_WACKGRAPH);
-		assert(TREE(sc));
+		assert(HASGRAPH(sc));
 		sccs_sdelta(sc, TREE(sc), buf);
 		if (p->rootkey) free(p->rootkey);
 		p->rootkey = strdup(buf);
@@ -1405,7 +1403,6 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 	char	*deltakey = 0;
 	int	key;
 	char	*x;
-	struct	stat sb;
 	char	buf[MAXLINE];
 
 	unless (p || (p = curr_proj())) return (0);
@@ -1416,14 +1413,6 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 	    key ? "key" : "",
 	    (u32)adler32(0, csetrev, strlen(csetrev)));
 
-	unless (key || p->cset_size) {
-		/* stat cset file once per process */
-		concat_path(buf, p->root, CHANGESET);
-		unless (lstat(buf, &sb)) {
-			p->cset_size = sb.st_size;
-			p->cset_mtime = sb.st_mtime;
-		}
-	}
 	if (exists(mpath)) m = mdbm_open(mpath, O_RDONLY, 0600, 0);
 	/* validate it still matches rev */
 	if (m &&
@@ -1435,9 +1424,8 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 		/* validate it still matches cset file */
 		char	*x;
 
-		if (!(x = mdbm_fetch_str(m, "STAT")) ||
-		    (strtoul(x, &x, 16) != (unsigned long)p->cset_mtime) ||
-		    (strtoul(x, 0, 16) != (unsigned long)p->cset_size)) {
+		if (!(x = mdbm_fetch_str(m, "TIPKEY")) ||
+		    !streq(x, proj_tipkey(p))) {
 			mdbm_close(m);
 			m = 0;
 		}
@@ -1476,12 +1464,7 @@ proj_cset2key(project *p, char *csetrev, char *rootkey)
 			}
 			mdbm_close(csetm);
 		}
-		unless (key) {
-			sprintf(buf, "%lx %lx",
-			    (unsigned long)p->cset_mtime,
-			    (unsigned long)p->cset_size);
-			mdbm_store_str(m, "STAT", buf, MDBM_REPLACE);
-		}
+		mdbm_store_str(m, "TIPKEY", proj_tipkey(p), MDBM_REPLACE);
 		mdbm_store_str(m, "REV", csetrev, MDBM_REPLACE);
 	}
 	deltakey = mdbm_fetch_str(m, rootkey);

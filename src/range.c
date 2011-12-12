@@ -59,7 +59,7 @@ range_main(int ac, char **av)
 		} else {
 			printf("%s %s..%s:",
 			    s->gfile, REV(s, s->rstop), REV(s, s->rstart));
-			for (e = s->rstop; e; e--) {
+			for (e = s->rstop; e >= TREE(s); e--) {
 				printf(" %s", REV(s, e));
 				if (TAG(s, e)) printf("T");
 				if (e == s->rstart) break;

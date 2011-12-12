@@ -331,7 +331,7 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 	}
 	if (flags & RANGE_SET) {
 		for (d = s->rstop;
-		    d && (d >= s->rstart); d--) {
+		     (d >= TREE(s)) && (d >= s->rstart); d--) {
 			unless (TAG(s, d)) FLAGS(s, d) |= D_SET;
 		}
 	}
@@ -425,7 +425,7 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 	}
 
 	/* compute RED - BLUE */
-	for (; d && (all || (marked > 0)); d--) {
+	for (; (d >= TREE(s)) && (all || (marked > 0)); d--) {
 		if (TAG(s, d)) continue;
 		if (all) FLAGS(s, d) |= D_RED;
 		unless (color = (FLAGS(s, d) & mask)) continue;
@@ -448,7 +448,7 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 	}
 err:
 	/* cleanup */
-	for (; d && (d >= last); d--) {
+	for (; (d >= TREE(s)) && (d >= last); d--) {
 		FLAGS(s, d) &= ~mask;
 	}
 	if (freelist) free(freelist);

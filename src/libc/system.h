@@ -38,9 +38,18 @@
 #include "mdbm/mdbm.h"
 #include "zlib/zlib.h"
 
+u16	_le16toh(u16 x);
+u16	_htole16(u16 x);
 u32	_le32toh(u32 x);
-u32	_he32toh(u32 x);
-#if defined(__BYTE_ORDER) && (__BYTE_ORDER == __LITTLE_ENDIAN)
+u32	_htole32(u32 x);
+#if defined(WIN32) || \
+    (defined(__BYTE_ORDER) && (__BYTE_ORDER == __LITTLE_ENDIAN))
+# ifndef le16toh
+#  define le16toh(x) (x)
+# endif
+# ifndef htole16
+#  define htole16(x) (x)
+# endif
 # ifndef le32toh
 #  define le32toh(x) (x)
 # endif
@@ -48,6 +57,12 @@ u32	_he32toh(u32 x);
 #  define htole32(x) (x)
 # endif
 #else
+# ifndef le16toh
+#  define le16toh(x) _le16toh(x)
+# endif
+# ifndef htole16
+#  define htole16(x) _htole16(x)
+# endif
 # ifndef le32toh
 #  define le32toh(x) _le32toh(x)
 # endif
@@ -128,6 +143,12 @@ int	 efprintf(char *env, char *fmt, ...)
      __attribute__((format (__printf__, 2, 3)))
 #endif
 ;
+
+/* fchksum.c */
+FILE	*fchksum_open(FILE *f, char *mode, int est_size);
+
+/* fgzip.c */
+FILE	*fgzip_open(FILE *fin, char *mode);
 
 /* fileops.c */
 int	fileCopy(char *from, char *to);

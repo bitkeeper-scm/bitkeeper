@@ -4,7 +4,7 @@ access 25
 chmod 3
 close 84
 fstat 49
-lseek 27
+lseek 22
 lstat 80
 mkdir 2
 open 71

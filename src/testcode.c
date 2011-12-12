@@ -353,3 +353,67 @@ testfmemopt(FILE *f)
 	fclose(f1);
 	printf("%x\n", sum);
 }
+
+int
+fgzip_main(int ac, char **av)
+{
+	int	est_size = 0;
+	FILE	*f;
+	int	c;
+	int	expand = 0;
+	int	chksums = 0;
+	int	gzip = 0;
+	int	fsize = 0;
+	char	buf[MAXLINE];
+
+	while ((c = getopt(ac, av, "cdSs;z", 0)) != -1) {
+		switch (c) {
+		    case 'c':
+			chksums = 1;
+			break;
+		    case 'd':
+			expand = 1;
+			break;
+		    case 'S':
+			fsize = 1;
+			break;
+		    case 's':
+			est_size = atoi(optarg);
+			break;
+		    case 'z':
+			gzip = 1;
+			break;
+		    default:
+			bk_badArg(c, av);
+		}
+	}
+	if (av[optind]) usage();
+
+	setmode(0, _O_BINARY);
+	if (expand) {
+		f = stdin;
+		if (chksums) f = fchksum_open(f, "r", 0);
+		if (gzip) f = fgzip_open(f, "r");
+		if (fsize) {
+			c = fseek(f, 0, SEEK_END);
+			assert(c == 0);
+			printf("%d\n", (u32)ftell(f));
+			assert(ferror(f) == 0);
+			assert(fgetc(f) == EOF);
+			assert(ferror(f) == 0);
+		} else {
+			while ((c = fread(buf, 1, sizeof(buf), f)) > 0) {
+				fwrite(buf, 1, c, stdout);
+			}
+		}
+	} else {
+		f = stdout;
+		if (chksums) f = fchksum_open(f, "w", est_size);
+		if (gzip) f = fgzip_open(f, "w");
+		while ((c = fread(buf, 1, sizeof(buf), stdin)) > 0) {
+			fwrite(buf, 1, c, f);
+		}
+	}
+	fclose(f);
+	return (0);
+}

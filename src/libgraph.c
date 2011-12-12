@@ -145,7 +145,7 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, ser_t *list, u8 *slist,
 		if (!lower || (lower > ser)) lower = ser;
 	}
 
-	for (/* set */; t && marked; t--) {
+	for (/* set */; (t >= TREE(s)) && marked; t--) {
 		if (!FLAGS(s, t) || TAG(s, t)) continue;
 
 		ser = t;

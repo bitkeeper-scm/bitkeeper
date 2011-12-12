@@ -5,11 +5,11 @@ chmod 12
 close 275
 fstat 163
 link 2
-lseek 144
+lseek 117
 lstat 375
 mkdir 18
 open 249
-read 4873
+read 4872
 rename 7
 rmdir 1
 stat 19

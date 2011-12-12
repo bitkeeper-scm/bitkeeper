@@ -217,6 +217,7 @@ _eula
 _exists
 export
 f2csets
+_fgzip
 _filtertest1
 _filtertest2
 _find

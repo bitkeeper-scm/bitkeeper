@@ -59,6 +59,28 @@ _htonl(uint32 s)
 	return (u.f);
 }
 
+uint16
+_le16toh(uint16 s)
+{
+	uchar	*p = (uchar *)&s;
+
+	return	(p[0] | p[1] << 8);
+}
+
+uint16
+_htole16(uint16 s)
+{
+	union {
+		uchar	p[2];
+		uint16	f;
+	} u;
+
+	u.p[0] = (s)       & 0xff;
+	u.p[1] = (s >> 8)  & 0xff;
+
+	return	(u.f);
+}
+
 uint32
 _le32toh(uint32 s)
 {

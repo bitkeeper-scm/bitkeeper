@@ -88,8 +88,8 @@ bk pull $Q || {
 	echo failed
 	exit 1
 }
-bk _cp SCCS/s.ChangeSet A
-bk _cp ../copy/SCCS/s.ChangeSet B
+bk _scat SCCS/s.ChangeSet > A
+bk _scat ../copy/SCCS/s.ChangeSet > B
 checkfiles A B
 rm A B
 echo OK

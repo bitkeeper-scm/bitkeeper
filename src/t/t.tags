@@ -148,9 +148,9 @@ bk _scat SCCS/s.ChangeSet | grep -q '^.cS5 l' || {
 	bk _scat SCCS/s.ChangeSet | egrep '^.cS|^.d '
 	exit 1
 }
-bk _cp SCCS/s.ChangeSet SAVE
+bk _scat SCCS/s.ChangeSet > SAVE
 bk admin -z ChangeSet
-bk _cp SCCS/s.ChangeSet SAVE2
+bk _scat SCCS/s.ChangeSet > SAVE2
 cmp -s SAVE2 SAVE || {
 	echo admin -z stomped on tags
 	diff SAVE2 SAVE

@@ -1886,6 +1886,7 @@ sccs_rdweaveInit(sccs *s)
 {
 	zgetbuf	*zin;
 
+	s->rdweaveEOF = 0;
 	fseek(s->fh, s->data, SEEK_SET);
 	if (GZIP(s)) {
 		s->oldfh = s->fh;
@@ -1929,7 +1930,11 @@ sccs_nextdata(sccs *s)
 	char	*buf;
 	size_t	i;
 
-	unless (buf = fgetln(s->fh, &i)) return (0);
+	if (!(buf = fgetln(s->fh, &i)) ||
+	    ((i == 3) && (buf[0] == '\001') && (buf[1] == 'Z'))) {
+		s->rdweaveEOF = 1;
+		return (0);
+	}
 	--i;
 	unless (buf[i] == '\n') {
 		fprintf(stderr, "error, truncated sccs file '%s', exiting.\n",
@@ -1948,12 +1953,9 @@ sccs_nextdata(sccs *s)
 int
 sccs_rdweaveDone(sccs *s)
 {
-	int	c, ret = 0;
+	int	ret = 0;
 
-	unless ((c = fgetc(s->fh)) == EOF) {
-		ungetc(c, s->fh);
-		ret = 1;
-	}
+	unless (s->rdweaveEOF) ret = 1;
 	if (GZIP(s)) {
 		assert(s->oldfh);
 		ret = fclose(s->fh);
@@ -1972,18 +1974,31 @@ sccs_startWrite(sccs *s)
 {
 	FILE	*sfile;
 	char	*xfile;
+	int	est_size;
 
-	if (s->mem_out) {
+	unless (s->encoding_out) {
+		s->encoding_out = sccs_encoding(s, 0, 0);
+	}
+	xfile = sccsXfile(s, 'x');
+	if (BFILE_OUT(s)) {
+		assert(!s->mem_out); /* for now */
+		if (s->size) {
+			est_size = s->size;
+		} else {
+			est_size = s->heap.len + (TABLE(s) + 1) * sizeof(d_t);
+			if (HAS_GFILE(s)) est_size += size(s->gfile);
+		}
+		sfile = fopen(xfile, "w");
+		sfile = fchksum_open(sfile, "w", est_size);
+		sfile = fgzip_open(sfile, "w"); /* conditional? */
+	} else if (s->mem_out) {
 		unless(s->outfh) s->outfh = fmem();
 		assert(s->outfh);
 		sfile = s->outfh;
 	} else {
-		xfile = sccsXfile(s, 'x');
-		unless (sfile = fopen(xfile, "w")) perror(xfile);
+		sfile = fopen(xfile, "w");
 	}
-	unless (s->encoding_out) {
-		s->encoding_out = sccs_encoding(s, 0, 0);
-	}
+	unless (sfile) perror(xfile);
 	return (sfile);
 }
 
@@ -1996,6 +2011,7 @@ sccs_abortWrite(sccs *s, FILE **f)
 	unless (s) return;
 	if (*f) fclose(*f);	/* before the unlink */
 	if (s->mem_out) {
+		assert(!BFILE_OUT(s));
 		s->mem_in = 0;
 		if (s->outfh) {
 			if (*f != s->outfh) fclose(s->outfh);
@@ -2027,6 +2043,7 @@ sccs_finishWrite(sccs *s, FILE **f)
 	}
 	rc = ferror(*f);
 	if (s->mem_out) {
+		assert(!BFILE_OUT(s));
 		tmp = s->fh;
 		assert(s->state & S_SOPEN);
 		s->fh = s->outfh;
@@ -3026,8 +3043,11 @@ private	void
 bin_header(char *header, u32 *off_h, u32 *heapsz,
     u32 *off_d, u32 *deltasz, u32 *off_s, u32 *symsz)
 {
-	sscanf(header, "B %x/%x %x/%x %x/%x",
-	    off_h, heapsz, off_d, deltasz, off_s, symsz);
+	if (!header || sscanf(header, "B %x/%x %x/%x %x/%x",
+		off_h, heapsz, off_d, deltasz, off_s, symsz) != 6) {
+		fprintf(stderr, "%s: failed to parse: %s\n", prog, header);
+		exit(1);
+	}
 }
 
 private	off_t
@@ -3037,11 +3057,15 @@ bin_data(char *header)
 
 	bin_header(header,
 	    &ignore, &ignore, &ignore, &ignore, &off_s, &symsz);
-	
+
 	return (off_s + symsz);	/* weave after sym table */
 }
 
 /*
+ * Binary sfiles are written in the format described below, but are then
+ * wrapped with fgzip_open() and then fchksum_open().  So see those files
+ * to see the descriptions of those layers.
+ *
  * Binary file layout from bin_deltaTable()
  * Header - 1 text line with offsets and size for others. Details below.
  * Per file data - same format as makepatch/takepatch
@@ -3051,35 +3075,43 @@ bin_data(char *header)
  * [<page alignment skip>]
  * Symbol Table - array of symbol structs
  * Weave - s->data
+ * \001Z
+ * Added/chksum fixups for tip delta (see D_FIXUPS)
  *
  * Header is:
  *   first char is B and not H - that is how mkgraph() knows to call here.
  *   The line is sscanf(header, "B %x/%x %x/%x %x/%x",...)  Args are:
  *   offset to the heap / heap size - implies size of perfile.
- *   offset to the delta table / delta table size - could be page aligned
- *   offset to the symbol table / symbol table size - could be page aligned
+ *   offset to the delta table / delta table size
+ *   offset to the symbol table / symbol table size
  *   Note: the weave begins at syml offset + sym table size
  *
- * Note: symbol array and delta array contain only 32 bit things,
- * so that the code read and writing the mem can do endian alignment
- * for each thing without needing to know the details of the structure.
- * XXX: this version doesn't have the endian swapper.
+ * Note: symbol array and delta array contain only 32-bit things.
+ * These are stored on disk in little endian order and big endian
+ * hosts need to do byte swapping when reading and writing.
+ * (see fchksum.c for examples)
+ *
+ * XXX: this version doesn't have the endian swapper, so big endian
+ *      machines do pass regressions, but are writing an incompatible
+ *      disk format.
  */
 private void
-bin_mkgraph(sccs *s, char *header)
+bin_mkgraph(sccs *s)
 {
 	u32	heapsz, deltasz, symsz;
 	u32	off_h, off_d, off_s;
-	int	deltas;
+	int	deltas, rc;
 	int	line = 1, len;
-	char	*perfile;
+	char	*perfile, *header;
+	ser_t	d;
 	MMAP	*pf;
 
+	header = fgetline(s->fh);
 	bin_header(header, &off_h, &heapsz, &off_d, &deltasz, &off_s, &symsz);
 	s->data = off_s + symsz;	/* weave after sym table */
 
 	perfile = malloc(off_h);
-	len = off_h - strlen(header);
+	len = off_h - strlen(header) - 1;
 	fread(perfile, 1, len, s->fh);
 	pf = mrange(perfile, perfile+len, "b");
 	unless (sccs_getperfile(s, pf, &line)) {
@@ -3103,9 +3135,30 @@ bin_mkgraph(sccs *s, char *header)
 	s->mapping = addLine(s->mapping,
 	    datamap(s->slist+1, deltasz, s->fh, off_d));
 
-	growArray(&s->symlist, symsz/sizeof(symbol));
-	s->mapping = addLine(s->mapping,
-	    datamap(s->symlist+1, symsz, s->fh, off_s));
+	if (symsz) {
+		growArray(&s->symlist, symsz/sizeof(symbol));
+		s->mapping = addLine(s->mapping,
+		    datamap(s->symlist+1, symsz, s->fh, off_s));
+	}
+
+	d = TABLE(s);
+	if (FLAGS(s, d) & D_FIXUPS) {
+		u32	tmp[3];
+		/* fixups at end of file */
+		rc = fseek(s->fh, -4*sizeof(u32), SEEK_END);
+		assert(rc == 0);
+		rc = fread(tmp, sizeof(u32), 3, s->fh);
+		ADDED_SET(s, d, tmp[0]);
+		DELETED_SET(s, d, tmp[1]);
+		SAME_SET(s, d, tmp[2]);
+		assert(rc == 3);
+		rc = fread(tmp, sizeof(u32), 1, s->fh);
+		SUM_SET(s, d, tmp[0]);
+		assert(rc == 1);
+		FLAGS(s, d) &= ~D_FIXUPS;
+
+		//fprintf(stderr, "%s: loaded fixups a/d/s=%d/%d/%d sum=%d\n", s->gfile, ADDED(s, d), DELETED(s, d), SAME(s, d), SUM(s, d));
+	}
 
 	/* XXX should move to common code. */
 	unless (CSET(s)) s->file = 1;
@@ -3154,11 +3207,11 @@ mkgraph(sccs *s, int flags)
 	FILE	*fcludes = fmem();
 
 	rewind(s->fh);
-	buf = sccs_nextdata(s);		/* checksum */
-	if (buf[0] == 'B') {
-		bin_mkgraph(s, buf);
+	if (BFILE(s)) {
+		bin_mkgraph(s);
 		return;
 	}
+	buf = sccs_nextdata(s);		/* checksum */
 	line++;
 	debug((stderr, "mkgraph(%s)\n", s->sfile));
 	unless (buf = sccs_nextdata(s)) goto bad;
@@ -4490,13 +4543,18 @@ bad:			sccs_free(s);
 		s->size = fseek(s->fh, 0, SEEK_END);
 		goto skip;
 	}
-	unless ((s->state & S_SOPEN) && (s->size == sbuf.st_size)) {
+	if ((s->state & S_SOPEN) && (s->size != sbuf.st_size)) {
+		// shouldn't happen
+		if (getenv("_BK_DEVELOPER")) assert(0);
+		sccs_close(s);
+	}
+	unless (s->state & S_SOPEN) {
 		sccs_close(s);
 		if (sccs_open(s, &sbuf)) return (s);
 skip:
 		rewind(s->fh);
-		header = fgetline(s->fh);
-		if (header[0] == 'B') {
+		if (BFILE(s)) {
+			header = fgetline(s->fh);
 			s->data = bin_data(header);
 		} else {
 			/* XXX need data-offset in header */
@@ -4554,13 +4612,24 @@ sccs_open(sccs *s, struct stat *sp)
 	} else {
 		assert(s->fh == 0);
 	}
-	unless (s->fh = fopen(s->sfile, "rb")) return (-1);
+	unless (s->fh = fopen(s->sfile, "r")) return (-1);
 	unless (sp) {
 		sp = &sbuf;
 		fstat(fileno(s->fh), sp);
 	}
+	if (fgetc(s->fh) == '\001') {
+		s->encoding_in &= ~E_BFILE;
+	} else {
+		/* binary file */
+		rewind(s->fh);
+		s->fh = fchksum_open(s->fh, "r", 0);
+		unless (s->fh) return (-1);
+		s->fh = fgzip_open(s->fh, "r");
+		s->encoding_in |= E_BFILE;
+	}
 	s->size = sp->st_size;
 	s->state |= S_SOPEN;
+	assert(s->fh);
 	return (0);
 }
 
@@ -5384,7 +5453,7 @@ serialmap(sccs *s, ser_t d, char *iLst, char *xLst, int *errp)
 	/* Seed the graph thread */
 	slist[d] |= S_PAR;
 
-	for (t = start; t; t--) {
+	for (t = start; t > TREE(s); t--) {
 		if (TAG(s, t)) continue;
 		tser = t;
 
@@ -7744,14 +7813,14 @@ badcksum(sccs *s, int flags)
 	int	filesum;
 	u8	buf[4<<10];
 
-	assert(s);
-	rewind(s->fh);
-	t = sccs_nextdata(s);
-	if (t[0] == 'B') {
-		/* ignore checksums for binary files for now */
+	if (BFILE(s)) {
+		/* ignore checksums for binary files */
 		s->cksumok = 1;
 		return (0);
 	}
+	assert(s);
+	rewind(s->fh);
+	t = sccs_nextdata(s);
 	s->cksum = filesum = atoi(&t[2]);
 	s->cksumdone = 1;
 	debug((stderr, "File says sum is %d\n", filesum));
@@ -8278,7 +8347,6 @@ bin_deltaTable(sccs *s, FILE *out)
 	int	i;
 	FILE	*perfile;
 
-	assert(BITKEEPER(s));
 	perfile = fmem();
 	sccs_perfile(s, perfile);
 
@@ -8287,24 +8355,18 @@ bin_deltaTable(sccs *s, FILE *out)
 	    off_h, s->heap.len);
 
 	off_d = off_h + s->heap.len;
-	/* next page */
-	//off_d = ((off_d - 1) | 0xfff) + 1;
 	fprintf(out, " %08x/%08x", off_d, nLines(s->slist)*(u32)sizeof(d_t));
 
 	off_s = off_d + nLines(s->slist)*sizeof(d_t);
-	/* next page */
-	//off_s = ((off_s - 1) | 0xfff) + 1;
 	fprintf(out, " %08x/%08x\n",
 	    off_s, nLines(s->symlist)*(u32)sizeof(symbol));
 
 	/* write perfile data */
 	fputs(fmem_peek(perfile, 0), out);
 	fclose(perfile);
-
-	if (fseek(out, off_h, SEEK_SET)) perror("first");
+	fflush(out);		/* force new gzip block */
 	fwrite(s->heap.buf, 1, s->heap.len, out);
-
-	if (fseek(out, off_d, SEEK_SET)) perror("second");
+	fflush(out);		/* force new gzip block */
 	for (d = TREE(s); d <= TABLE(s); d++) {
 		i = FLAGS(s, d);
 		assert (i && !(i & D_GONE));
@@ -8319,14 +8381,11 @@ bin_deltaTable(sccs *s, FILE *out)
 		fwrite(&s->slist[d], sizeof(d_t), 1, out);
 		FLAGS(s, d) = i;
 	}
-
-	fseek(out, off_s, SEEK_SET);
-	fwrite(s->symlist + 1, sizeof(symbol), nLines(s->symlist), out);
-
-	s->adddelOff = off_d +
-	    ((u8*)&(s->slist[TABLE(s)].added) - (u8*)&s->slist[1]);
-	s->sumOff = off_d +
-	    ((u8*)&(s->slist[TABLE(s)].sum) - (u8*)&s->slist[1]);
+	fflush(out);		/* force new gzip block */
+	if (s->symlist) {
+		fwrite(s->symlist + 1, sizeof(symbol), nLines(s->symlist), out);
+		fflush(out);		/* force new gzip block */
+	}
 	if (BITKEEPER(s)) s->modified = 1;
 	return (0);
 }
@@ -9902,7 +9961,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		}
 		added = s->added = ADDED(s, n);
 	}
-	FLAGS(s, n) |= D_CKSUM;
+	FLAGS(s, n) |= (D_CKSUM|D_FIXUPS);
 	if (delta_table(s, sfile, 1)) {
 		error++;
 		goto out;
@@ -9985,6 +10044,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		fputdata(s, "\n", sfile);
 	}
 skip_weave:
+	if (BFILE_OUT(s)) fputs("\001Z\n", sfile);
 	if (GZIP_OUT(s)) sccs_zputs_done(s);
 	error = end(s, n, sfile, flags, added, 0, 0);
 	if (gfile && (gfile != stdin)) {
@@ -11100,7 +11160,10 @@ sccs_encoding(sccs *sc, off_t size, char *encp)
 		encoding |= comp;
 
 		encoding &= ~E_BFILE;
-		if (proj_configbool(sc->proj, "binfile")) encoding |= E_BFILE;
+		if (proj_configbool(sc->proj, "binfile")) {
+			encoding |= E_BFILE;
+			encoding &= ~E_COMP; /* binfile is always compressed */
+		}
 	}
 	return (encoding);
 }
@@ -12387,8 +12450,13 @@ bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
 	return (0);
 }
 
+/*
+ * Write a out a new sfile with diffs added to weave to create a new
+ * tip delta.
+ */
 private int
-delta_body(sccs *s, ser_t n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
+delta_write(sccs *s, ser_t n, MMAP *diffs,
+    FILE **outp, int *ap, int *dp, int *up)
 {
 	ser_t	*state;
 	u8	*slist;
@@ -12399,12 +12467,11 @@ delta_body(sccs *s, ser_t n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	int	fixdel = 0;
 	char	*addthis;
 	char	**savenext;
-	long	offset;
 	int	added, deleted, unchanged;
-	sum_t	cksumsave;
 	sum_t	sum;
 	char	*b;
 	int	no_lf;
+	FILE	*out;
 
 	if (binaryCheck(diffs)) {
 		assert(!BINARY(s));
@@ -12415,9 +12482,16 @@ delta_body(sccs *s, ser_t n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	}
 	assert(!READ_ONLY(s));
 	assert(s->state & S_ZFILE);
-	offset = ftell(out);
-	cksumsave = s->cksum;
 again:
+	/*
+	 * Do the delta table & misc.
+	 */
+	unless (*outp = sccs_startWrite(s)) return (-1);
+	out = *outp;
+	if (delta_table(s, out, 1)) return (-1);
+
+	if (BAM(s)) return (0);	/* skip weave for BAM files */
+
 	*ap = *dp = *up = 0;
 	state = 0;
 	slist = 0;
@@ -12577,18 +12651,11 @@ newcmd:
 	sccs_rdweaveDone(s);
 	if (GZIP_OUT(s)) sccs_zputs_done(s);
 	if (last) {
-		off_t	end = offset;
-
 		assert(!fixdel);	/* no infinite loops */
 		fixdel = lastdel;
-		if (fseek(out, offset, SEEK_SET)) {
-			perror("fseek");
-			return (-1);
-		}
-		/* In case gzip file gets smaller */
-		ftrunc(out, end);
+		fclose(out);
+		unlink(sccsXfile(s, 'x'));
 		mseekto(diffs, 0);
-		s->cksum = cksumsave;
 		goto again;
 	}
 	if (HASH(s) && (getHashSum(s, n, diffs) != 0)) {
@@ -12847,7 +12914,6 @@ sccs_getInit(sccs *sc, ser_t d, MMAP *f, u32 flags, int *errorp, int *linesp,
 	int	lines = 0;
 	char	type = '?';
 	char	**syms = 0;
-	ser_t	serial = 0;
 	FILE	*cludes = 0;
 
 	/* these are the only possible flags */
@@ -12905,7 +12971,6 @@ sccs_getInit(sccs *sc, ser_t d, MMAP *f, u32 flags, int *errorp, int *linesp,
 	}
 	t = s;
 	while (*s && (*s++ != ' '));	/* serial */
-	serial = atoi(t);
 	t = s;
 	while (*s && (*s++ != ' '));	/* pserial */
 	unless (PARENT(sc, d)) {
@@ -13702,33 +13767,22 @@ out:
 		added = s->added = ADDED(s, n);
 	}
 
-	/*
-	 * Do the delta table & misc.
-	 */
-	unless (sfile = sccs_startWrite(s)) OUT;
 
 	/*
 	 * If the new delta is a top-of-trunk, update the xflags
 	 * This is needed to maintain the xflags invariant:
-	 * s->state should always match sccs_xflags(tot);
+ 	 * s->state should always match sccs_xflags(tot);
 	 * where "tot" is the top-of-trunk delta.
  	 */
 	if (init && (flags&DELTA_PATCH) && (FLAGS(s, n) & D_XFLAGS)) {
 		if (n == sccs_top(s)) s->xflags = XFLAGS(s, n);
 	}
 
-	FLAGS(s, n) |= D_CKSUM;
-	if (delta_table(s, sfile, 1)) {
-		goto out;	/* not OUT - we want the warning */
+	FLAGS(s, n) |= (D_CKSUM|D_FIXUPS);
+	if (delta_write(s, n, diffs, &sfile, &added, &deleted, &unchanged)) {
+		OUT;
 	}
-
-	assert(d);
-	unless (BAM(s)) {
-		if (delta_body(s, n, diffs,
-			sfile, &added, &deleted, &unchanged)) {
-			OUT;
-		}
-	}
+	if (BFILE_OUT(s)) fputs("\001Z\n", sfile);
 	if (S_ISLNK(MODE(s, n))) {
 		u8 *t;
 		/*
@@ -13780,10 +13834,11 @@ end(sccs *s, ser_t n, FILE *out, int flags, int add, int del, int same)
 	/*
 	 * Now fix up the checksum and summary.
 	 */
-	fseek(out, s->adddelOff, SEEK_SET);
 	if (BFILE_OUT(s)) {
+		fflush(out);
 		bin_deltaAdded(s, n, out);
 	} else {
+		fseek(out, s->adddelOff, SEEK_SET);
 		sprintf(buf, "\001s %d/%d/%d", add, del, same);
 		for (i = strlen(buf); i < 43; i++) buf[i] = ' ';
 		strcpy(buf+i, "\n");
@@ -13837,12 +13892,12 @@ Breaks up citool
 			}
 #endif
 		}
-		if (fseek(out, s->sumOff, SEEK_SET)) perror("fseek");
 		if (BFILE_OUT(s)) {
 			if (bin_deltaSum(s, n, out)) {
 				perror("fwrite");
 			}
 		} else {
+			if (fseek(out, s->sumOff, SEEK_SET)) perror("fseek");
 			sprintf(buf, "%05u", SUM(s, n));
 			fputmeta(s, buf, out);
 		}
@@ -17698,6 +17753,10 @@ timeMatch(project *proj, char *gfile, char *sfile, hash *timestamps)
 		perror(sfile);
 		goto out;
 	}
+	/*
+	 * Note: with blocks, sfile is not more vulnerable to being
+	 * different with same size and time.
+	 */
 	if ((sb.st_mtime != ts->sfile_mtime) ||
 	    (sb.st_size != ts->sfile_size)) {
 		goto out;			/* sfile doesn't match */
@@ -17743,6 +17802,7 @@ updateTimestampDB(sccs *s, hash *timestamps, int different)
 		perror(s->sfile);
 		goto out;
 	}
+	/* XXX: note sfiles more vulnerable to same size and time */
 	ts.sfile_mtime = sb.st_mtime;
 	ts.sfile_size = sb.st_size;
 

@@ -593,7 +593,7 @@ doit(int dash)
 		if (range_process("changes", s, RANGE_SET, &opts.rargs)) {
 			goto next;
 		}
-		for (e = s->rstop; e; e--) {
+		for (e = s->rstop; e >= TREE(s); e--) {
 			if ((FLAGS(s, e) & D_SET) && !want(s, e)) {
 				FLAGS(s, e) &= ~D_SET;
 			}
@@ -657,7 +657,7 @@ doit(int dash)
 	if (opts.doComp || opts.verbose) opts.fcset = fmem();
 	/* capture the comments, for the csets we care about */
 	dstart = dstop = 0;
-	for (e = s->rstop; e; e--) {
+	for (e = s->rstop; e >= TREE(s); e--) {
 		if (FLAGS(s, e) & D_SET) {
 			unless (dstart) dstart = e;
 			dstop = e;
@@ -1085,7 +1085,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	 * repo the cset file is in. If the repo is the product repo,
 	 * these will be the same.
 	 */
-	for (e = sc->rstop; e; e--) {
+	for (e = sc->rstop; e >= TREE(s); e--) {
 		if (FLAGS(sc, e) & D_SET) {
 			FLAGS(sc, e) &= ~D_SET;
 			if (!dkey || want(sc, e)) addArray(&csets, &e);
