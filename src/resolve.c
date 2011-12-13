@@ -2224,7 +2224,7 @@ conflict(opts *opts, char *sfile)
 	/*
 	 * Merge changes to the flags (RCS/SCCS/EXPAND1/etc).
 	 */
-	unless (sccs_xflags(s, d.local) == sccs_xflags(s, d.remote)) {
+	unless (XFLAGS(s, d.local) == XFLAGS(s, d.remote)) {
 		rs->opaque = (void*)&d;
 		resolve_flags(rs);
 		s = rs->s;

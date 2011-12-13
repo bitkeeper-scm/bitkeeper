@@ -768,8 +768,9 @@ newFile(char *path, char *comp, int ser)
 	 * influenced by environment (BK_CONFIG, umask) so that prunes
 	 * everywhere will generate the same bits.
 	 */
-	FLAGS(s, TREE(s)) |= D_XFLAGS;
-	XFLAGS(s, TREE(s)) = X_DEFAULT;
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		XFLAGS(s, d) = X_DEFAULT;
+	}
 	d = sccs_top(s);
 	FLAGS(s, d) |= D_CSET;
 	sccs_sdelta(s, d, dk);

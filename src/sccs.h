@@ -309,7 +309,7 @@ int	checking_rmdir(char *dir);
 					/* open tips, so maintained always */
 #define	D_MODE		0x00000800	/* permissions in MODE(s, d) are valid */
 #define	D_CSET		0x00001000	/* this delta is marked in cset file */
-#define D_XFLAGS	0x00002000	/* delta has updated file flags */
+//#define D_XFLAGS	0x00002000	/* delta has updated file flags */
 	/* D_NPARENT	0x00004000 */
 #define	D_FIXUPS	0x00008000	/* fixups to tip delta at end of file */
 
@@ -506,8 +506,6 @@ typedef struct delta {
 #define	DATE_SET(s, d, v)	((s)->slist[d].date = (v))
 #define	DATE_FUDGE_SET(s, d, v)	((s)->slist[d].dateFudge = (v))
 #define	MODE_SET(s, d, v)	((s)->slist[d].mode = (v))
-#define	XFLAGS_SET(s, d, v)	((s)->slist[d].xflags = (v))
-#define	FLAGS_SET(s, d, v)	((s)->slist[d].flags = (v))
 #define	R0_SET(s, d, v)		((s)->slist[d].r[0] = (v))
 #define	R1_SET(s, d, v)		((s)->slist[d].r[1] = (v))
 #define	R2_SET(s, d, v)		((s)->slist[d].r[2] = (v))
@@ -1053,7 +1051,6 @@ ser_t 	mkOneZero(sccs *s);
 int	isCsetFile(char *);
 int	cset_inex(int flags, char *op, char *revs);
 void	sccs_fixDates(sccs *);
-int	sccs_xflags(sccs *s, ser_t d);
 char	*xflags2a(u32 flags);
 u32	a2xflag(char *str);
 void	sccs_mkroot(char *root);

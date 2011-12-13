@@ -568,6 +568,8 @@ sccs_inherit(sccs *s, ser_t d)
 	}
 #undef	CHK_DUP
 
+	unless (XFLAGS(s, d)) XFLAGS(s, d) = XFLAGS(s, PARENT(s, d));
+
 	if (HAS_USERHOST(s, p)) {
 		assert(HAS_USERHOST(s, d));
 		if (!strchr(USERHOST(s, d), '@') &&
@@ -1087,7 +1089,11 @@ sccs_setStime(sccs *s, time_t newest)
 	 */
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		if (MERGE(s, d)) break;
-		unless (TAG(s, d) || (FLAGS(s, d) & D_XFLAGS)) break;
+		unless (TAG(s, d) ||
+		    (!PARENT(s, d) ||
+		    (XFLAGS(s, d) != XFLAGS(s, PARENT(s, d))))) {
+			break;
+		}
 	}
 	unless (d) d = TREE(s);		/* 1.0 has XFLAGS, so its skipped */
 	ut.modtime = DATE(s, d) - DATE_FUDGE(s, d) - 2;
@@ -3009,7 +3015,6 @@ meta(sccs *s, ser_t d, char *buf)
 		/* reenable longkeys for old KEY_FORMAT2 trees */
 		if (CSET(s) && (s->xflags & X_LONGKEY)) XFLAGS(s, d) |= X_LONGKEY;
 		XFLAGS(s, d) &= ~X_SINGLE; /* clear old single_user bit */
-		FLAGS(s, d) |= D_XFLAGS;
 		break;
 	    case 'Z':
 		zoneArg(s, d, &buf[3]);
@@ -3500,11 +3505,15 @@ misc(sccs *s)
 			/* We strip these now */
 			continue;
 		} else if (strneq(buf, "\001f x", 4)) { /* strip it */
-			unless (sccs_xflags(s, sccs_top(s))) {
+			unless (XFLAGS(s, sccs_top(s))) {
+				ser_t	d;
+
 				/* hex or dec */
 				XFLAGS(s, TREE(s)) =
 					strtol(&buf[5], 0, 0) & ~X_SINGLE;
-				FLAGS(s, TREE(s)) |= D_XFLAGS;
+				for (d = TREE(s); d <= TABLE(s); d++) {
+					sccs_inherit(s, d);
+				}
 			}
 			continue;
 		} else if (strneq(buf, "\001f e ", 5)) {
@@ -4469,7 +4478,7 @@ sccs_init(char *name, u32 flags)
 		 * get the xflags from the delta graph
 		 * instead of the sccs flag section
 		 */
-		s->xflags = sccs_xflags(s, sccs_top(s));
+		s->xflags = XFLAGS(s, sccs_top(s));
 		unless (BITKEEPER(s)) s->xflags |= X_SCCS;
 
 		/*
@@ -7999,15 +8008,18 @@ delta_table(sccs *s, FILE *out, int willfix)
 	 * Add in default xflags if the 1.0 delta doesn't have them.
 	 */
 	if (BITKEEPER(s)) {
-		unless (XFLAGS(s, TREE(s))) {
-			FLAGS(s, TREE(s)) |= D_XFLAGS;
-			XFLAGS(s, TREE(s)) = X_DEFAULT;
-		}
+		u32	old = XFLAGS(s, TREE(s));
+
+		unless (old) XFLAGS(s, TREE(s)) = X_DEFAULT;
+
 		/* for old binaries (XXX: why bother setting above?) */
 		XFLAGS(s, TREE(s)) |= X_BITKEEPER|X_CSETMARKED;
 		if (CSET(s)) {
 			XFLAGS(s, TREE(s)) &= ~(X_SCCS|X_RCS);
 			XFLAGS(s, TREE(s)) |= X_HASH;
+		}
+		if (old != XFLAGS(s, TREE(s))) {
+			for (d = TREE(s); d <= TABLE(s); d++) sccs_inherit(s, d);
 		}
 	}
 
@@ -8256,7 +8268,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			sprintf(buf, "\001cV%u\n", version);
 			fputmeta(s, buf, out);
 		}
-		if (FLAGS(s, d) & D_XFLAGS) {
+		if (!PARENT(s, d) || (XFLAGS(s, d) != XFLAGS(s, PARENT(s, d)))) {
 			sprintf(buf, "\001cX0x%x\n", XFLAGS(s, d));
 			fputmeta(s, buf, out);
 		}
@@ -8286,7 +8298,7 @@ SCCS:
 		fputmeta(s, buf, out);
 	}
 	if (BITKEEPER(s)) {
-		bits = sccs_xflags(s, sccs_top(s));
+		bits = XFLAGS(s, sccs_top(s));
 		if (bits) {
 			sprintf(buf, "\001f x 0x%x\n", bits);
 			fputmeta(s, buf, out);
@@ -9826,6 +9838,8 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 
 		n0 = sccs_dInit(n0, 'D', s, nodefault);
 		FLAGS(s, n0) |= D_CKSUM;
+		s->xflags |= X_REQUIRED;
+		XFLAGS(s, n0) |= X_REQUIRED;
 		SUM_SET(s, n0, almostUnique());
 		first = n0 = dinsert(s, n0, fixDate && !(flags & DELTA_PATCH));
 
@@ -9936,8 +9950,8 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 	if (BITKEEPER(s)) {
 		s->version = SCCS_VERSION;
 		unless (flags & DELTA_PATCH) {
-			FLAGS(s, first) |= D_XFLAGS;
 			XFLAGS(s, first) = s->xflags;
+			XFLAGS(s, n) = s->xflags;
 		}
 		if (CSET(s)) {
 			unless (HAS_CSETFILE(s, first)) {
@@ -10216,7 +10230,8 @@ checkInvariants(sccs *s, int flags)
 			verbose((stderr,
 			    "%s|%s: no checksum\n", s->gfile, REV(s, d)));
 		}
-		if (XFLAGS(s, d) && checkXflags(s, d, xf)) {
+		if ((!PARENT(s, d) || (XFLAGS(s, d) != XFLAGS(s, PARENT(s, d)))) &&
+		    checkXflags(s, d, xf)) {
 			extern	int xflags_failed;
 
 			xflags_failed = 1;
@@ -10770,7 +10785,7 @@ symArg(sccs *s, ser_t d, char *name)
 	if ((d == 1) && streq(name, KEY_FORMAT2)) {
 		s->xflags |= X_LONGKEY;
 		for (d = TREE(s); d <= TABLE(s); d++) {
-			if (FLAGS(s, d) & D_XFLAGS) XFLAGS(s, d) |= X_LONGKEY;
+			XFLAGS(s, d) |= X_LONGKEY;
 		}
 	}
 }
@@ -11022,7 +11037,7 @@ changeXFlag(sccs *sc, ser_t n, int flags, int add, char *flag,
 	assert(flag);
 
 	changing = a2xflag(flag);
-	unless (xflags = sccs_xflags(sc, n)) xflags = sc->xflags;
+	unless (xflags = XFLAGS(sc, n)) xflags = sc->xflags;
 
 	if (add) {
 		if (xflags & changing) {
@@ -11043,7 +11058,6 @@ changeXFlag(sccs *sc, ser_t n, int flags, int add, char *flag,
 	}
 	sc->xflags = xflags;
 	assert(n);
-	FLAGS(sc, n) |= D_XFLAGS;
 	XFLAGS(sc, n) = xflags;
 	/* pseudo flag, we speak only native & windows */
 	unless (changing == X_EOLN_UNIX) {
@@ -11095,14 +11109,6 @@ changeXFlag(sccs *sc, ser_t n, int flags, int add, char *flag,
 	}
 	assert(!(XFLAGS(sc, n) & X_EOLN_UNIX));
 	return (1);
-}
-
-int
-sccs_xflags(sccs *s, ser_t d)
-{
-	while (d && !(FLAGS(s, d) & D_XFLAGS)) d = PARENT(s, d);
-	if (d) return (XFLAGS(s, d));
-	return (0); /* old sfile, xflags values unknown */
 }
 
 /*
@@ -11302,12 +11308,8 @@ insert_1_0(sccs *s, u32 flags)
 	FLAGS(s, d) |= D_INARRAY;
 
 	t = 2;
-	if (FLAGS(s, t) & D_XFLAGS) {
-		/* move 1.1 xflags to new 1.0 delta */
-		XFLAGS(s, d) = XFLAGS(s, t);
-		FLAGS(s, d) |= D_XFLAGS;
-		FLAGS(s, t) &= ~D_XFLAGS;
-	}
+	/* move 1.1 xflags to new 1.0 delta */
+	XFLAGS(s, d) = XFLAGS(s, t);
 	revArg(s, d, "1.0");
 	USERHOST_INDEX(s, d) = USERHOST_INDEX(s, t);
 	PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, t);
@@ -11512,7 +11514,6 @@ out:
 #define	ALLOC_D()	\
 	unless (d) { \
 		unless (d = newDelta(sc, p, 1)) OUT; \
-		p = PARENT(sc, d); \
 		if (BITKEEPER(sc)) updatePending(sc); \
 	}
 
@@ -13186,7 +13187,6 @@ skip:
 	if (WANT('X')) {
 		XFLAGS(sc, d) = strtol(&buf[2], 0, 0); /* hex or dec */
 		XFLAGS(sc, d) &= ~X_SINGLE;
-		FLAGS(sc, d) |= D_XFLAGS;
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -13749,12 +13749,7 @@ out:
 	}
 	s->numdeltas++;
 
-	/* Uses n->parent, has to be after dinsert() */
-	if ((flags & DELTA_MONOTONIC) && !(sccs_xflags(s, n) & X_MONOTONIC)) {
-		XFLAGS(s, n) |= sccs_xflags(s, PARENT(s, n));
-		XFLAGS(s, n) |= X_MONOTONIC;
-		FLAGS(s, n) |= D_XFLAGS;
-	}
+	if (flags & DELTA_MONOTONIC) XFLAGS(s, n) |= X_MONOTONIC;
 
 	EACH(syms) addsym(s, n, !(flags&DELTA_PATCH), syms[i]);
 
@@ -13771,10 +13766,10 @@ out:
 	/*
 	 * If the new delta is a top-of-trunk, update the xflags
 	 * This is needed to maintain the xflags invariant:
- 	 * s->state should always match sccs_xflags(tot);
+	 * s->state should always match XFLAGS(tot);
 	 * where "tot" is the top-of-trunk delta.
  	 */
-	if (init && (flags&DELTA_PATCH) && (FLAGS(s, n) & D_XFLAGS)) {
+ 	if (init && (flags&DELTA_PATCH)) {
 		if (n == sccs_top(s)) s->xflags = XFLAGS(s, n);
 	}
 
@@ -15140,7 +15135,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	case KW_X_FLAGS: /* X_FLAGS */ {
 		char	buf[20];
 
-		sprintf(buf, "0x%x", sccs_xflags(s, d));
+		sprintf(buf, "0x%x", XFLAGS(s, d));
 		fs(buf);
 		return (strVal);
 	}
@@ -15156,7 +15151,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	case KW_FLAGS: /* FLAGS */
 	case KW_XFLAGS: /* XFLAGS */ {
 		int	flags =
-		    (kwval->kwnum == KW_FLAGS) ? sccs_xflags(s, d) : s->xflags;
+		    (kwval->kwnum == KW_FLAGS) ? XFLAGS(s, d) : s->xflags;
 
 		fs(xflags2a(flags));
 		unless (flags & (X_EOLN_NATIVE|X_EOLN_WINDOWS)) {
@@ -16326,7 +16321,7 @@ do_patch(sccs *s, ser_t d, int flags, FILE *out)
 		sccs_pdelta(s, e, out);
 		fprintf(out, "\n");
 	}
-	if (FLAGS(s, d) & D_XFLAGS) {
+	if (!PARENT(s, d) || (XFLAGS(s, d) != XFLAGS(s, PARENT(s, d)))) {
 		assert((XFLAGS(s, d) & X_EOLN_UNIX) == 0);
 		fprintf(out, "X 0x%x\n", XFLAGS(s, d));
 	}
@@ -17525,7 +17520,7 @@ sccs_stripdel(sccs *s, char *who)
 		    "directory: %s\n", who, s->gfile);
 		unless (getenv("_BK_UNDO_OK")) OUT;
 	}
-	s->xflags = sccs_xflags(s, e);
+	s->xflags = XFLAGS(s, e);
 
 	remap = scompressGraph(s);	/* Pull gone stuff out */
 

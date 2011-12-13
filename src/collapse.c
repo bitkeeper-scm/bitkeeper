@@ -506,7 +506,7 @@ do_file(char *file, char *tiprev)
 		/* remember mode, path, xflags */
 		mode = MODE(s, d);
 		pathname = strdup(PATHNAME(s, d));
-		xflags = sccs_xflags(s, d);
+		xflags = XFLAGS(s, d);
 
 		if (CSET(s) || streq(s->gfile, ATTR)) {
 			unlink(gfile);
@@ -555,7 +555,7 @@ do_file(char *file, char *tiprev)
 		free(pathname);
 
 		/* make xflags match */
-		while (flagdiffs = (xflags ^ sccs_xflags(s, tipd))) {
+		while (flagdiffs = (xflags ^ XFLAGS(s, tipd))) {
 			/* pick right most bit */
 			flagdiffs &= -flagdiffs;
 

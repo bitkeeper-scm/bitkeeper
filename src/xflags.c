@@ -58,7 +58,6 @@ xflagsDefault(sccs *s, int cset, int what)
 
 	unless (xf) {
 		unless (what & XF_DRYRUN) s->state &= ~S_READ_ONLY;
-		FLAGS(s, TREE(s)) |= D_XFLAGS;
 		XFLAGS(s, TREE(s)) = X_DEFAULT;
 		ret = 1;
 	}
@@ -130,8 +129,8 @@ checkXflags(sccs *s, ser_t d, int what)
 		*t = 0; *p |= a2xflag(f); *t = ' ';
 	}
 	assert(PARENT(s, d));
-	old = sccs_xflags(s, PARENT(s, d));
-	new = sccs_xflags(s, d);
+	old = XFLAGS(s, PARENT(s, d));
+	new = XFLAGS(s, d);
 	want = old | added;
 	want &= ~deleted;
 	if (new == want) return (0);
@@ -176,7 +175,6 @@ checkXflags(sccs *s, ser_t d, int what)
 		return (1);
 	}
 	s->state &= ~S_READ_ONLY;
-	FLAGS(s, d) |= D_XFLAGS;
 	XFLAGS(s, d) = want;
 	return (1);
 }

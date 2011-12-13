@@ -1242,7 +1242,7 @@ do_patch(sccs *s, ser_t d, char *tag, char *tagparent, FILE *out)
 		}
 		assert (!MTAG(s, d));
 	}
-	if (FLAGS(s, d) & D_XFLAGS) {
+	if (!PARENT(s, d) || (XFLAGS(s, d) != XFLAGS(s, PARENT(s, d)))) {
 		assert((XFLAGS(s, d) & X_EOLN_UNIX) == 0);
 		fprintf(out, "X 0x%x\n", XFLAGS(s, d));
 	}

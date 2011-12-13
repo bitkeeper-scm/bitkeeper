@@ -12,7 +12,7 @@ f_local(resolve *rs)
 
 	sccs_close(rs->s); /* for win32 */
 	flags_delta(rs, rs->s->sfile,
-	    r, sccs_xflags(rs->s, l), sccs_Xfile(rs->s, 'r'), REMOTE);
+	    r, XFLAGS(rs->s, l), sccs_Xfile(rs->s, 'r'), REMOTE);
 	return (1);
 }
 
@@ -25,7 +25,7 @@ f_remote(resolve *rs)
 
 	sccs_close(rs->s); /* for win32 */
 	flags_delta(rs, rs->s->sfile,
-	    l, sccs_xflags(rs->s, r), sccs_Xfile(rs->s, 'r'), LOCAL);
+	    l, XFLAGS(rs->s, r), sccs_Xfile(rs->s, 'r'), LOCAL);
 	return (1);
 }
 
@@ -59,9 +59,9 @@ resolve_flags(resolve *rs)
 		fprintf(stderr, "resolve_flags: ");
 		resolve_dump(rs);
 	}
-	lf = sccs_xflags(rs->s, l);
-	rf = sccs_xflags(rs->s, r);
-	gf = sccs_xflags(rs->s, g);
+	lf = XFLAGS(rs->s, l);
+	rf = XFLAGS(rs->s, r);
+	gf = XFLAGS(rs->s, g);
 
 	newflags = (lf & rf) | ~gf & (lf ^ rf);
 
