@@ -96,9 +96,21 @@ struct	MAP {
 	u8	*end;
 	FILE	*f;
 	long	off;
+	int	byteswap;	/* byteswap u32's in this region */
 };
 
 private	char	**maps;
+
+private void
+swaparray(void *data, int len)
+{
+	u32	*p = data;
+	int	i;
+
+	assert((len % 4) == 0);
+	len /= 4;
+	for (i = 0; i < len; i++) p[i] = le32toh(p[i]);
+}
 
 #ifdef	PAGING
 
@@ -107,6 +119,7 @@ faulthandler(int sig, siginfo_t *si, void *unused)
 {
 	MAP	*map;
 	int	i;
+	int	len;
 	u8	*addr;
 
 	addr = si->si_addr;
@@ -119,7 +132,9 @@ faulthandler(int sig, siginfo_t *si, void *unused)
 		if (fseek(map->f, map->off + (addr - map->start), SEEK_SET)) {
 			perror("fseek");
 		}
-		fread(addr, 1, min(PAGESZ, map->end - addr), map->f);
+		len = min(PAGESZ, map->end - addr);
+		fread(addr, 1, len, map->f);
+		if (map->byteswap) swaparray(addr, len);
 		return;
 	}
 	fprintf(stderr, "No mapping found\n");
@@ -128,7 +143,7 @@ faulthandler(int sig, siginfo_t *si, void *unused)
 #endif
 
 MAP *
-datamap(void *start, int len, FILE *f, long off)
+datamap(void *start, int len, FILE *f, long off, int byteswap)
 {
 #ifdef	PAGING
 	u8	*sptr = start;
@@ -136,11 +151,13 @@ datamap(void *start, int len, FILE *f, long off)
 	MAP	*map;
 	struct	sigaction sa;
 
+	if (IS_LITTLE_ENDIAN()) byteswap = 0;
 
 	if (len < 4*PAGESZ) {
 		/* too small to mess with */
 		fseek(f, off, SEEK_SET);
 		fread(start, 1, len, f);
+		if (byteswap) swaparray(start, len);
 		return (0);
 	}
 
@@ -148,7 +165,9 @@ datamap(void *start, int len, FILE *f, long off)
 	//fprintf(stderr, "load %p/%x up=%p\n", start, len, sptr);
 	if (sptr != start) {
 		fseek(f, off, SEEK_SET);
-		fread(start, 1, (sptr - (u8*)start), f);
+		len = sptr - (u8*)start;
+		fread(start, 1, len, f);
+		if (byteswap) swaparray(start, len);
 	}
 
 	//fprintf(stderr, "prot %p/%lx\n", sptr, eptr-sptr);
@@ -170,12 +189,15 @@ datamap(void *start, int len, FILE *f, long off)
 	map->end = eptr;
 	map->f = f;
 	map->off = off + (sptr - (u8*)start);
+	map->byteswap = byteswap;
 	maps = addLine(maps, map);
 
 	return (map);
 #else
+	if (IS_LITTLE_ENDIAN()) byteswap = 0;
 	fseek(f, off, SEEK_SET);
 	fread(start, 1, len, f);
+	if (byteswap) swaparray(start, len);
 	return (0);
 #endif
 }

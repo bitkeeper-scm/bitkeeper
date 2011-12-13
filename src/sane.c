@@ -37,6 +37,7 @@ sane(int readonly, int resync)
 	int	errors = 0;
 	char	*a, *b;
 	char	*saved_dir;
+	u32	val;
 
 	saved_dir = strdup(proj_cwd());
 	/* commits in RESYNC may not have everything, this lets us know */
@@ -102,6 +103,10 @@ sane(int readonly, int resync)
 
 	/* See the port/system.c in this same changeset */
 	assert(sizeof(pid_t) <= sizeof(int));
+
+	/* verify byte_order.h is correct */
+	val = 0x00030201;
+	assert(IS_LITTLE_ENDIAN() == *(u8 *)&val);
 
 	//chk_ssh();
 	//chk_http();

@@ -1,6 +1,9 @@
 #include "system.h"
 
 /*
+ * GZIP wrapper.  This is closer to the application than the CRC layer,
+ * CRC wraps this.
+ *
  * file layout:
  *   "ZIP\n"
  *   BLOCK     #2        # these are in arbitrary order
@@ -16,7 +19,7 @@
  *   EOF
  *
  *   BLOCK
- *        <u32 len>	# bit 31 set if this block does not follow the previous
+ *        <u32 len>  # High bit set if this block does not follow the previous
  *        <compressed data>
  *
  *   SZBLOCK
@@ -24,6 +27,7 @@
  *      <u32 file offset>
  *
  * Notes:
+ *   - If the high bit is never set, you can just stream this data
  *   - Layout is designed to allow adding data in the middle by
  *     truncating at the SZBLOCK table and appending new data and
  *     tables to the end of the file. (not quite append-only, but

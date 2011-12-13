@@ -159,12 +159,7 @@ extern "C" {
 #endif
 #endif	/* SUPPORT_64BIT */
 
-/* provide our own version of translation functions */
-/* rename it to _name to avoid conflict with host header file */
-uint16        _htons(uint16 s);
-uint16        _ntohs(uint16 s);
-uint32        _htonl(uint32 s);
-uint32        _ntohl(uint32 s);
+#include "byte_order.h"
 
 //#define BIG_PAGE
 #ifdef	BIG_PAGE	/* max page size 4G => 32 bit index */

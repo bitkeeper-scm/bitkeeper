@@ -1,6 +1,9 @@
 #include "system.h"
 
 /*
+ * CRC wrapper.  This is the outermost layer (closest to disk),
+ * it is wrapped around GZIP.
+ *
  * All blocks are the same size where the size is 1 << %3d below (chksz+6)
  * file layout:
  *   BLOCK0

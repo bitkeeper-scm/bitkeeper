@@ -3095,10 +3095,6 @@ bin_data(char *header)
  * These are stored on disk in little endian order and big endian
  * hosts need to do byte swapping when reading and writing.
  * (see fchksum.c for examples)
- *
- * XXX: this version doesn't have the endian swapper, so big endian
- *      machines do pass regressions, but are writing an incompatible
- *      disk format.
  */
 private void
 bin_mkgraph(sccs *s)
@@ -3130,7 +3126,7 @@ bin_mkgraph(sccs *s)
 	data_resize(&s->heap, heapsz);
 	s->heap.len = heapsz;
 	s->mapping = addLine(s->mapping,
-	    datamap(s->heap.buf, s->heap.len, s->fh, off_h));
+	    datamap(s->heap.buf, s->heap.len, s->fh, off_h, 0));
 
 	deltas = deltasz / sizeof(d_t);
 	growArray(&s->slist, deltas);
@@ -3138,28 +3134,26 @@ bin_mkgraph(sccs *s)
 	TABLE_SET(s, deltas);
 
 	s->mapping = addLine(s->mapping,
-	    datamap(s->slist+1, deltasz, s->fh, off_d));
+	    datamap(s->slist+1, deltasz, s->fh, off_d, 1));
 
 	if (symsz) {
 		growArray(&s->symlist, symsz/sizeof(symbol));
 		s->mapping = addLine(s->mapping,
-		    datamap(s->symlist+1, symsz, s->fh, off_s));
+		    datamap(s->symlist+1, symsz, s->fh, off_s, 1));
 	}
 
 	d = TABLE(s);
 	if (FLAGS(s, d) & D_FIXUPS) {
-		u32	tmp[3];
+		u32	tmp[4];
 		/* fixups at end of file */
 		rc = fseek(s->fh, -4*sizeof(u32), SEEK_END);
 		assert(rc == 0);
-		rc = fread(tmp, sizeof(u32), 3, s->fh);
-		ADDED_SET(s, d, tmp[0]);
-		DELETED_SET(s, d, tmp[1]);
-		SAME_SET(s, d, tmp[2]);
-		assert(rc == 3);
-		rc = fread(tmp, sizeof(u32), 1, s->fh);
-		SUM_SET(s, d, tmp[0]);
-		assert(rc == 1);
+		rc = fread(tmp, sizeof(u32), 4, s->fh);
+		assert(rc == 4);
+		ADDED_SET(s, d, le32toh(tmp[0]));
+		DELETED_SET(s, d, le32toh(tmp[1]));
+		SAME_SET(s, d, le32toh(tmp[2]));
+		SUM_SET(s, d, le32toh(tmp[3]));
 		FLAGS(s, d) &= ~D_FIXUPS;
 
 		//fprintf(stderr, "%s: loaded fixups a/d/s=%d/%d/%d sum=%d\n", s->gfile, ADDED(s, d), DELETED(s, d), SAME(s, d), SUM(s, d));
@@ -8339,7 +8333,12 @@ SCCS:
 private	int
 bin_deltaAdded(sccs *s, ser_t d, FILE *out)
 {
-	return (fwrite(&(s->slist[d].added), sizeof(u32), 3, out) != 3);
+	u32	val[3];
+
+	val[0] = htole32(ADDED(s, d));
+	val[1] = htole32(DELETED(s, d));
+	val[2] = htole32(SAME(s, d));
+	return (fwrite(&val, sizeof(u32), 3, out) != 3);
 }
 
 /*
@@ -8348,7 +8347,9 @@ bin_deltaAdded(sccs *s, ser_t d, FILE *out)
 private	int
 bin_deltaSum(sccs *s, ser_t d, FILE *out)
 {
-	return (fwrite(&(s->slist[d].sum), sizeof(u32), 1, out) != 1);
+	u32	val = htole32(SUM(s, d));
+
+	return (fwrite(&val, sizeof(u32), 1, out) != 1);
 }
 
 private	int
@@ -8377,8 +8378,12 @@ bin_deltaTable(sccs *s, FILE *out)
 	fputs(fmem_peek(perfile, 0), out);
 	fclose(perfile);
 	fflush(out);		/* force new gzip block */
+
+	/* write heap */
 	fwrite(s->heap.buf, 1, s->heap.len, out);
 	fflush(out);		/* force new gzip block */
+
+	/* write delta table */
 	for (d = TREE(s); d <= TABLE(s); d++) {
 		i = FLAGS(s, d);
 		assert (i && !(i & D_GONE));
@@ -8390,12 +8395,37 @@ bin_deltaTable(sccs *s, FILE *out)
 			return (1);
 		}
 		FLAGS(s, d) &= 0x000FFFFF; /* only write some flags */
-		fwrite(&s->slist[d], sizeof(d_t), 1, out);
+		if (IS_LITTLE_ENDIAN()) {
+			fwrite(&s->slist[d], sizeof(d_t), 1, out);
+		} else {
+			u32	*p = (u32 *)&s->slist[d];
+			u32	val;
+			int	j;
+
+			for (j = 0; j < sizeof(d_t)/4; j++) {
+				val = htole32(p[j]);
+				fwrite(&val, 4, 1, out);
+			}
+		}
 		FLAGS(s, d) = i;
 	}
 	fflush(out);		/* force new gzip block */
+
+	/* write symbol table */
 	if (s->symlist) {
-		fwrite(s->symlist + 1, sizeof(symbol), nLines(s->symlist), out);
+		if (IS_LITTLE_ENDIAN()) {
+			fwrite(s->symlist + 1, sizeof(symbol), nLines(s->symlist), out);
+		} else {
+			u32	*p = (u32 *)&s->symlist[1];
+			u32	val;
+			int	j, n;
+
+			n = nLines(s->symlist) * sizeof(symbol)/4;
+			for (j = 0; j < n; j++) {
+				val = htole32(p[j]);
+				fwrite(&val, 4, 1, out);
+			}
+		}
 		fflush(out);		/* force new gzip block */
 	}
 	if (BITKEEPER(s)) s->modified = 1;
