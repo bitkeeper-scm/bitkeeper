@@ -173,12 +173,14 @@ bk_featureCompat(project *p)
 	local = file2Lines(0, proj_fullpath(p, "BitKeeper/log/features"));
 
 	/*
-	 * remap, doesn't change the file format
+	 * remap, doesn't change the file format,
+	 * and binary sfiles don't change the ascii format
 	 *
 	 * This is needed because the patch SFIO code would attach sfio's as
 	 * part of a patch.
 	 */
 	removeLine(local, flist[FEAT_REMAP].name, free);
+	removeLine(local, flist[FEAT_bSFILEv1].name, free);
 
 	ret = emptyLines(local);
 	freeLines(local, free);

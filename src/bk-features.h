@@ -17,6 +17,7 @@
  *   fastpatch	support fastpatch mode
  *   remap	repository is remapped
  *   sortkey	repository uses sortkey metadata
+ *   bSFILEv1	at least one file in repo uses binary sfile format
  */
 
 
@@ -37,7 +38,8 @@
 	X( 6, pSFIO, "pSFIO", 0)		\
 	X( 7, FAST, "fastpatch", 0)		\
 	X( 8, REMAP, "remap", 1)		\
-	X( 9, SORTKEY, "sortkey", 1)
+	X( 9, SORTKEY, "sortkey", 1)		\
+	X(10, bSFILEv1, "bSFILEv1", 1)
 
 #define X(a, b, c, d) FEAT_ ## b = a,
 enum {

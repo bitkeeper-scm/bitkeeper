@@ -682,6 +682,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		getMsg("bkd_missing_feature", "SAMv3", '=', stderr);
 		goto done;
 	}
+	if (bkd_hasFeature(FEAT_bSFILEv1)) bk_featureSet(0, FEAT_bSFILEv1, 1);
 
 	/*
 	 * When the source and destination of a clone are remapped

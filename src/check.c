@@ -96,6 +96,7 @@ check_main(int ac, char **av)
 	int	doBAM = 0;
 	int	forceCsetFetch = 0;
 	ticker	*tick = 0;
+	int	sawBINFILE = 0;
 	longopt	lopts[] = {
 		{ "use-older-changeset", 300 },
 		{ 0, 0 }
@@ -299,6 +300,7 @@ check_main(int ac, char **av)
 			BAM = 1;
 			if (chk_BAM(s, &bp_missing)) ferr++, errors |= 0x04;
 		}
+		if (BFILE(s)) sawBINFILE = 1;
 		if (chk_gfile(s, pathDB, checkout)) ferr++, errors |= 0x08;
 		if (no_gfile(s)) ferr++, errors |= 0x08;
 		if (readonly_gfile(s)) ferr++, errors |= 0x08;
@@ -490,6 +492,11 @@ check_main(int ac, char **av)
 	unless (errors) {
 		bk_featureSet(0, FEAT_SAMv3, proj_isEnsemble(0));
 		bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
+		if (sawBINFILE) {
+			bk_featureSet(0, FEAT_bSFILEv1, 1);
+		} else if (all) {
+			bk_featureSet(0, FEAT_bSFILEv1, 0);
+		}
 	}
 out:
 	if (!errors && bp_getFiles && !getenv("_BK_CHECK_NO_BAM_FETCH") &&
