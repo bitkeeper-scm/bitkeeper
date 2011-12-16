@@ -17,16 +17,6 @@
 #define FALSE 0
 #endif
 
-/* L command-line options. */
-typedef enum {
-	L_OPT_FNTRACE		= 0x0001,
-	L_OPT_NORUN		= 0x0002,
-	L_OPT_NOWARN		= 0x0004,
-	L_OPT_POLY		= 0x0008,
-	L_OPT_WARN_UNDEF_FNS	= 0x0010,
-	L_OPT_ALLOW_EQ_OPS	= 0x0020,
-} Lopt_f;
-
 /* For jump fix-ups. */
 typedef struct Jmp Jmp;
 struct Jmp {
@@ -130,7 +120,7 @@ typedef struct {
 	int	prev_token_off;	// offset of prev token from start of input
 	Tcl_Obj	*script;	// src of script being compiled
 	int	script_len;
-	Lopt_f	options;	// command-line options
+	Tcl_Obj	*options;	// hash of command-line options
 	FnDecl	*enclosing_func;
 	Frame	*enclosing_func_frame;
 	Ast	*mains_ast;	// root of AST when main() last seen
@@ -140,10 +130,10 @@ typedef struct {
 	int	tmpnum;		// for creating tmp variables
 	char	*toplev;	// name of toplevel proc
 	jmp_buf	jmp;		// for syntax error longjmp bail out
-	char	*fnhook;	// name of function-trace proc
 	int	expr_level;	// compile_expr() recursion depth
 	int	call_level;	// compile_expr() level of last fn call
 	Tcl_Obj	*fn_calls;	// list of all fn calls compiled
+	Tcl_Obj	*fn_decls;	// hash of all L fns
 } Linterp;
 
 /*
@@ -199,6 +189,8 @@ extern char	*ckvsprintf(const char *fmt, va_list ap, int len);
 extern int	getopt(int ac, char **av, char *opts, longopt *lopts);
 extern void	getoptReset(void);
 extern void	L_bomb(const char *format, ...);
+extern void	L_compile_attributes(Tcl_Obj *hash, Expr *expr,
+				     char *allowed[]);
 extern void	L_err(const char *s, ...);
 extern void	L_errf(void *node, const char *format, ...);
 extern int	L_isUndef(Tcl_Obj *o);
@@ -233,6 +225,9 @@ extern Tcl_Obj **L_undefObjPtrPtr();
 extern void	L_warnf(void *node, const char *format, ...);
 
 extern Linterp	*L;
+extern char	*L_attrs_attribute[];
+extern char	*L_attrs_cmdLine[];
+extern char	*L_attrs_pragma[];
 extern Tcl_ObjType L_undefType;
 extern Type	*L_int;
 extern Type	*L_float;

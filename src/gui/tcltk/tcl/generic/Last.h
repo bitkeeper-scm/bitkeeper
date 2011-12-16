@@ -25,7 +25,6 @@ typedef struct Case	Case;
 typedef struct Expr	Expr;
 typedef struct Type	Type;
 typedef struct Sym	Sym;
-typedef struct Pragma	Pragma;
 
 /*
  * Source-file offset and line # of an AST node, token, or
@@ -82,7 +81,6 @@ typedef enum {
 	L_NODE_CLSLEVEL,
 	L_NODE_VAR_DECL,
 	L_NODE_CLASS_DECL,
-	L_NODE_PRAGMA,
 } Node_k;
 
 /*
@@ -276,6 +274,7 @@ typedef enum {
 	L_INSERT_ELT  = 0x01000000, // insert a single elt into a list
 	L_INSERT_LIST = 0x02000000, // insert a list into a list
 	L_WAS_DUPD    = 0x04000000, // obj was dup'd to make an unshared copy
+	L_EXPR_RE_L   = 0x08000000, // expr is an re with "l" qualifier
 } Expr_f;
 
 struct Expr {
@@ -311,6 +310,7 @@ struct FnDecl {
 	Block	*body;
 	VarDecl	*decl;
 	FnDecl	*next;
+	Tcl_Obj	*attrs;		// hash of function attributes, if any
 };
 
 struct ClsDecl {
@@ -353,13 +353,6 @@ struct Case {
 	Case	*next;
 };
 
-struct Pragma {
-	Ast	node;
-	char	*id;
-	char	*val;
-	Pragma	*next;
-};
-
 struct Stmt {
 	Ast	node;
 	Stmt	*next;
@@ -372,7 +365,6 @@ struct Stmt {
 		Loop	*loop;
 		Switch	*swich;  // not a typo -- illegal to call it "switch"
 		VarDecl	*decl;
-		Pragma	*pragma;
 		char	*label;
 	} u;
 };
@@ -426,6 +418,7 @@ struct VarDecl {
 	Expr	*id;
 	char	*tclprefix;	// prepend to L var name to create Tcl var name
 	Expr	*initializer;
+	Expr	*attrs;		// optional _attributes(...)
 	Type	*type;
 	ClsDecl	*clsdecl;	// for class member fns, class & instance vars
 	Sym	*refsym;	// for a call-by-ref parm x, ptr to &x sym
@@ -457,8 +450,6 @@ extern Cond	*ast_mkIfUnless(Expr *expr, Stmt *if_body, Stmt *else_body,
 				YYLTYPE beg, YYLTYPE end);
 extern Loop	*ast_mkLoop(Loop_k kind, Expr *pre, Expr *cond, Expr *post,
 			    Stmt *body, YYLTYPE beg, YYLTYPE end);
-extern Pragma	*ast_mkPragma(char *id, char *val, YYLTYPE beg,
-			      YYLTYPE end);
 extern Expr	*ast_mkRegexp(char *re, YYLTYPE beg, YYLTYPE end);
 extern Stmt	*ast_mkStmt(Stmt_k kind, Stmt *next, YYLTYPE beg,
 			    YYLTYPE end);
@@ -471,6 +462,10 @@ extern Expr	*ast_mkTrinOp(Op_k op, Expr *e1, Expr *e2, Expr *e3,
 extern Expr	*ast_mkUnOp(Op_k op, Expr *e1, YYLTYPE beg, YYLTYPE end);
 extern VarDecl	*ast_mkVarDecl(Type *type, Expr *name, YYLTYPE beg,
 			       YYLTYPE end);
+extern void	hash_dump(Tcl_Obj *hash);
+extern char	*hash_get(Tcl_Obj *hash, char *key);
+extern void	hash_put(Tcl_Obj *hash, char *key, char *val);
+extern void	hash_rm(Tcl_Obj *hash, char *key);
 extern Type	*type_dup(Type *type);
 extern Type	*type_mkArray(Expr *size, Type *base_type);
 extern Type	*type_mkClass(void);

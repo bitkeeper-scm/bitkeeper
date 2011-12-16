@@ -414,6 +414,8 @@ canonical_num(char *num)
 	"destructor"	return T_DESTRUCTOR;
 	"expand"	return T_EXPAND;
 	"_argused"	return T_ARGUSED;
+	"_attribute"	return T_ATTRIBUTE;
+	"_attributes"	return T_ATTRIBUTE;
 	"_optional"	return T_OPTIONAL;
 	"_mustbetype"	return T_MUSTBETYPE;
 	"goto"		return T_GOTO;
@@ -946,7 +948,7 @@ canonical_num(char *num)
 
 }
 <re_modifier>{
-	[igt]+		{
+	[iglt]+		{
 				L_lval.s = ckstrdup(yytext);
 				yy_pop_state();
 				return T_RE_MODIFIER;

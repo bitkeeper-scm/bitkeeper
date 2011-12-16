@@ -703,6 +703,8 @@ void Fprintf1()
 	unless (<f> eq "a b c") puts("bad 3.3");
 	if (<f>) puts("bad 3.4");
 	fclose(f);
+
+	unlink("fprintf-tst");
 }
 Fprintf1();
 } -output {}

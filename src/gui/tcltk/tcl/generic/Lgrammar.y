@@ -67,7 +67,6 @@ extern int	L_lex (void);
 	TopLev	*TopLev;
 	VarDecl	*VarDecl;
 	ClsDecl	*ClsDecl;
-	Pragma	*Pragma;
 	struct {
 		Type	*t;
 		char	*s;
@@ -76,6 +75,7 @@ extern int	L_lex (void);
 
 %token T_ANDAND "&&"
 %token T_ARROW "=>"
+%token T_ATTRIBUTE "_attribute"
 %token T_BANG "!"
 %token T_BITAND "&"
 %token T_BITOR "|"
@@ -222,11 +222,11 @@ extern int	L_lex (void);
 %type <ForEach> foreach_stmt
 %type <Switch> switch_stmt
 %type <Case> switch_cases switch_case
-%type <Pragma> pragma_arg_list
-%type <Expr> expr expression_stmt argument_expr_list
+%type <Expr> expr expression_stmt argument_expr_list pragma_expr_list
 %type <Expr> id id_list string_literal cmdsubst_literal dotted_id
 %type <Expr> regexp_literal regexp_literal_mod subst_literal interpolated_expr
 %type <Expr> list list_element case_expr option_arg here_doc_backtick
+%type <Expr> opt_attribute pragma
 %type <VarDecl> parameter_list parameter_decl_list parameter_decl
 %type <VarDecl> declaration_list declaration declaration2
 %type <VarDecl> init_declarator_list declarator_list init_declarator
@@ -456,6 +456,17 @@ class_code:
 			DECL_CLASS_DESTR;
 		APPEND_OR_SET(FnDecl, next, clsdecl->destructors, $3);
 	}
+	| class_code pragma
+	{
+		/*
+		 * We don't store the things that make up class_code
+		 * in order, so there's no place in which to
+		 * interleave #pragmas.  So don't create an AST node,
+		 * just update L->options now; it gets used when other
+		 * AST nodes are created.
+		 */
+		L_compile_attributes(L->options, $2, L_attrs_pragma);
+	}
 	| /* epsilon */
 	;
 
@@ -483,8 +494,8 @@ function_decl:
 fundecl_tail:
 	  id fundecl_tail1
 	{
-		$2->decl->id = $1;
 		$$ = $2;
+		$$->decl->id = $1;
 		$$->node.loc = @1;
 	}
 	| T_PATTERN fundecl_tail1
@@ -492,30 +503,32 @@ fundecl_tail:
 		VarDecl	*new_param;
 		Expr	*dollar1 = ast_mkId("$1", @2, @2);
 
-		$2->decl->id = ast_mkId($1, @1, @1);
-		ckfree($1);
 		$$ = $2;
+		$$->decl->id = ast_mkId($1, @1, @1);
+		ckfree($1);
 		$$->node.loc = @1;
 		/* Prepend a new arg "$1" as the first formal. */
 		new_param = ast_mkVarDecl(L_string, dollar1, @1, @2);
 		new_param->flags = SCOPE_LOCAL | DECL_LOCAL_VAR;
 		new_param->next = $2->decl->type->u.func.formals;
-		$2->decl->type->u.func.formals = new_param;
+		$$->decl->type->u.func.formals = new_param;
 	}
 	;
 
 fundecl_tail1:
-	  "(" parameter_list ")" compound_stmt
+	  "(" parameter_list ")" opt_attribute compound_stmt
 	{
 		Type	*type = type_mkFunc(NULL, $2);
 		VarDecl	*decl = ast_mkVarDecl(type, NULL, @1, @3);
-		$$ = ast_mkFnDecl(decl, $4->u.block, @1, @4);
+		decl->attrs = $4;
+		$$ = ast_mkFnDecl(decl, $5->u.block, @1, @5);
 	}
-	| "(" parameter_list ")" ";"
+	| "(" parameter_list ")" opt_attribute ";"
 	{
 		Type	*type = type_mkFunc(NULL, $2);
 		VarDecl	*decl = ast_mkVarDecl(type, NULL, @1, @3);
-		$$ = ast_mkFnDecl(decl, NULL, @1, @4);
+		decl->attrs = $4;
+		$$ = ast_mkFnDecl(decl, NULL, @1, @5);
 	}
 	;
 
@@ -532,36 +545,63 @@ stmt:
 		$$->u.label = $1;
 	}
 	| unlabeled_stmt
-	| T_PRAGMA T_ID "(" pragma_arg_list ")"
+	| pragma
 	{
-		Pragma *p = ast_mkPragma($2, NULL, @2, @2);
-		APPEND(Pragma, next, p, $4);
-		$$ = ast_mkStmt(L_STMT_PRAGMA, NULL, @1, @5);
-		$$->u.pragma = p;
+		L_compile_attributes(L->options, $1, L_attrs_pragma);
+		$$ = NULL;
 	}
 	;
 
-pragma_arg_list:
-	  T_ID
+pragma_expr_list:
+	  id
+	| id "=" id
 	{
-		$$ = ast_mkPragma($1, NULL, @1, @1);
+		$$ = ast_mkBinOp(L_OP_EQUALS, $1, $3, @1, @3);
 	}
-	| T_ID "=" T_ID
+	| id "=" T_INT_LITERAL
 	{
-		$$ = ast_mkPragma($1, $3, @1, @1);
+		Expr	*lit = ast_mkConst(L_int, $3, @3, @3);
+		$$ = ast_mkBinOp(L_OP_EQUALS, $1, lit, @1, @3);
 	}
-	| pragma_arg_list "," T_ID
+	| pragma_expr_list "," id
 	{
-		Pragma *p = ast_mkPragma($3, NULL, @1, @3);
-		APPEND(Pragma, next, $1, p);
-		$$ = $1;
+		$3->next = $1;
+		$$ = $3;
+		$$->node.loc.beg = @1.beg;
 	}
-	| pragma_arg_list "," T_ID "=" T_ID
+	| pragma_expr_list "," id "=" id
 	{
-		Pragma *p = ast_mkPragma($3, $5, @1, @5);
-		APPEND(Pragma, next, $1, p);
-		$$ = $1;
+		$$ = ast_mkBinOp(L_OP_EQUALS, $3, $5, @3, @5);
+		$$->next = $1;
+		$$->node.loc.beg = @1.beg;
 	}
+	| pragma_expr_list "," id "=" T_INT_LITERAL
+	{
+		Expr	*lit = ast_mkConst(L_int, $5, @5, @5);
+		$$ = ast_mkBinOp(L_OP_EQUALS, $3, lit, @3, @5);
+		$$->next = $1;
+		$$->node.loc.beg = @1.beg;
+	}
+	;
+
+pragma:
+	  T_PRAGMA pragma_expr_list
+	{
+		REVERSE(Expr, next, $2);
+		$$ = $2;
+		$$->node.loc.beg = @1.beg;
+	}
+	;
+
+opt_attribute:
+	  T_ATTRIBUTE "(" argument_expr_list ")"
+	{
+		REVERSE(Expr, next, $3);
+		$$ = $3;
+		$$->node.loc.beg = @1.beg;
+		$$->node.loc.end = @4.end;
+	}
+	|	{ $$ = NULL; }
 	;
 
 unlabeled_stmt:
@@ -939,12 +979,9 @@ expr:
 	{
 		$$ = ast_mkUnOp(L_OP_MINUSMINUS_POST, $1, @1, @2);
 	}
-	| expr T_EQTWID regexp_literal T_RE_MODIFIER
+	| expr T_EQTWID regexp_literal_mod
 	{
-		if (strchr($4, 'i')) $3->flags |= L_EXPR_RE_I;
-		if (strchr($4, 'g')) $3->flags |= L_EXPR_RE_G;
-		$$ = ast_mkBinOp(L_OP_EQTWID, $1, $3, @1, @4);
-		ckfree($4);
+		$$ = ast_mkBinOp(L_OP_EQTWID, $1, $3, @1, @3);
 	}
 	| expr T_EQTWID regexp_literal subst_literal T_RE_MODIFIER
 	{
@@ -1572,8 +1609,10 @@ regexp_literal:
 regexp_literal_mod:
 	  regexp_literal T_RE_MODIFIER
 	{
+		/* Note: the scanner catches illegal modifiers. */
 		if (strchr($2, 'i')) $1->flags |= L_EXPR_RE_I;
 		if (strchr($2, 'g')) $1->flags |= L_EXPR_RE_G;
+		if (strchr($2, 'l')) $1->flags |= L_EXPR_RE_L;
 		if (strchr($2, 't')) $1->flags |= L_EXPR_RE_T;
 		ckfree($2);
 		$$ = $1;

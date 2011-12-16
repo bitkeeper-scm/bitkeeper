@@ -185,14 +185,15 @@ void opts_2()
 opts_2();
 } -output {good}
 
-test opts-3 {test command options 3} -body {
-#lang L -w
-void opts_3()
+test opts-2.1 {test command options 3} -body {
+#lang L
+#pragma nowarn
+void opts_2_1()
 {
 	int	not_used;  // not used warning should be suppressed
 	printf("good");
 }
-opts_3();
+opts_2_1();
 } -output {good}
 
 test opts-4 {test command options 4} -body {
@@ -214,26 +215,6 @@ void opts_5()
 }
 opts_5();
 } -output {4}
-
-test opts-6 {test command options 6} -body {
-#lang L -P
-void opts_6()
-{
-	string	s = "3";
-	printf("%d", s+1);  // would be an err w/o the -P
-}
-opts_6();
-} -output {4}
-
-test opts-6.1.1 {test -n command option} -body {
-#lang L -n
-void opts_6_1_1()
-{
-	/* -n means compile but do not run */
-	puts("should not see this");
-}
-opts_6_1_1();
-} -output {}
 
 test opts-6.1.2 {test -norun command option} -body {
 #lang L -norun
@@ -265,6 +246,12 @@ void opts_6_2()
 opts_6_2();
 } -returnCodes error -match regexp -result {.*missing string terminator.*}
 
+test opts-6.3 {test bad command option} -body {
+#lang L -bad
+void opts_6_3() {}
+} -returnCodes error -result {L Error: illegal option '-bad'
+}
+
 test opts-7 {test -nowarn command-line option} -setup {
 	set file [makeFile {
 			private void f() {
@@ -280,13 +267,11 @@ test opts-7 {test -nowarn command-line option} -setup {
 	# the command-line options are handled correctly.
 	set s1 [exec [interpreter] -nowarn $file]
 	set s2 [exec [interpreter] --nowarn $file]
-	set s3 [exec [interpreter] -w $file]
 	puts $s1
 	puts $s2
-	puts $s3
 } -cleanup {
 	removeFile $file
-} -output "good\ngood\ngood\n"
+} -output "good\ngood\n"
 
 test opts-7.1 {test -norun command-line option} -setup {
 	set file [makeFile {
@@ -299,13 +284,11 @@ test opts-7.1 {test -norun command-line option} -setup {
 	# if the command-line options are handled correctly.
 	set s1 [exec [interpreter] -norun $file]
 	set s2 [exec [interpreter] --norun $file]
-	set s3 [exec [interpreter] -n $file]
 	puts $s1
 	puts $s2
-	puts $s3
 } -cleanup {
 	removeFile $file
-} -output "\n\n\n"
+} -output "\n\n"
 
 test opts-8 {test -poly command-line option} -setup {
 	set file [makeFile {
@@ -322,13 +305,11 @@ test opts-8 {test -poly command-line option} -setup {
 	# the command-line options are handled correctly.
 	set s1 [exec [interpreter] -poly $file]
 	set s2 [exec [interpreter] --poly $file]
-	set s3 [exec [interpreter] -P $file]
 	puts $s1
 	puts $s2
-	puts $s3
 } -cleanup {
 	removeFile $file
-} -output "4\n4\n4\n"
+} -output "4\n4\n"
 
 test opts-8.1 {test -version command-line option} -setup {
 	set fname [makeFile { puts("bad"); } opts8.1.l .]
@@ -377,13 +358,11 @@ test opts-9 {test multiple command-line options} -setup {
 	# the command-line options are handled correctly.
 	set s1 [exec [interpreter] -poly -nowarn $file]
 	set s2 [exec [interpreter] --poly --nowarn $file]
-	set s3 [exec [interpreter] -P -w $file]
 	puts $s1
 	puts $s2
-	puts $s3
 } -cleanup {
 	removeFile $file
-} -output "4\n4\n4\n"
+} -output "4\n4\n"
 
 test opts-10 {test multiple command-line options with app args} -setup {
 	set file [makeFile {
@@ -420,6 +399,25 @@ test opts-10 {test multiple command-line options with app args} -setup {
 } -cleanup {
 	removeFile $file
 } -output "\narg1\narg1arg2\n\narg1\narg1arg2\n\narg1\narg1arg2\n"
+
+test opts-11 {test bad command-line option} -setup {
+	set file [makeFile {
+			void main() {}
+		} opts11.l . ]
+} -body {
+#lang L
+void opts_11()
+{
+	int	ret;
+	string	err[], out[];
+	string	tclsh = eval("interpreter");
+
+	ret = system({tclsh, "--bad", "opts11.l"}, undef, &out, &err);
+	unless (ret == 1) puts("bad 1");
+	unless (err[0] == "L Error: illegal option '--bad'") puts("bad 2");
+}
+opts_11();
+} -output {}
 
 test parse-1.2 {Test parsing an empty L file} -setup {
 	set fName [makeFile {} LFileTest]
@@ -1992,6 +1990,12 @@ void lang_3_0(void)
 }
 }
 
+test pragma-1 {test bad #pragma} -body {
+#lang L
+#pragma bad
+} -returnCodes error -match regexp -result {.*1: L Error: illegal attribute 'bad'
+}
+
 test decl-1.0 {Variable and parameter declaration syntax} -body {
 #lang L -nowarn
 void decl_1_0_fun1() { }
@@ -2699,7 +2703,7 @@ private string f()
 {
 	if (0) return ("not taken");
 }
-void return_3_10();
+void return_3_10()
 {
 	f();
 }
@@ -9555,6 +9559,18 @@ void regexp_1_8()
 regexp_1_8();
 } -output {}
 
+test regexp-2 {test globs} -body {
+#lang L
+void regexp_2()
+{
+	unless ("x" =~ /?/l) puts("bad 1.1");
+	unless ("xy" =~ /??/l) puts("bad 1.2");
+	unless ("xy" =~ /*y/l) puts("bad 1.3");
+	unless ("xy" =~ /[x-z]y/l) puts("bad 1.4");
+}
+regexp_2();
+} -output {}
+
 test reference-1.1 {L references} -body {
 #lang L
 private int ref_11_g_private;
@@ -15334,6 +15350,12 @@ void fn22_err5(_optional string arg1, ...args) {}
 .*5: L Error: _optional parameter must be last
 }
 
+test function-3 {check _attribute error} -body {
+#lang L
+void function3() _attribute (bad) {}
+} -returnCodes {error} -match regexp -result {.*1: L Error: illegal attribute 'bad'
+}
+
 test initializers-1 {check variable initializer error cases} -body {
 #lang L
 extern int g = 0;
@@ -15445,7 +15467,7 @@ void initializers_3()
 	string	s = 3.1;
 	float	f = "3.1";
 	string	ai[] = {"a", 2, "c"};
-	string	hs{int} = { 1=>"one", "2"=>"two", 3=>"three" };
+
 	struct initializers_2_s1 st = {
 		1,
 		2,  // err -- omitted initializer for "k"
@@ -15461,7 +15483,6 @@ void initializers_3()
 .*14: L Error: assignment of incompatible types
 .*15: L Error: assignment of incompatible types
 .*16: L Error: assignment of incompatible types
-.*17: L Error: hash elements must all be of same type
 .*18: L Error: assignment of incompatible types
 .*25: L Error: cannot mix hash and non-hash elements
 }
@@ -19504,23 +19525,24 @@ goto_4();
 test fntrace-1 {check function tracing, pragma syntax} -body {
 #lang L
 // These are all legal syntax.
-#pragma fntrace(on)
+#pragma fntrace=on
 unless (__LINE__ == 3) puts("bad 1");
-#pragma fntrace(on, hook=myhook)
+#pragma fntrace=on, fnhook=myhook
 unless (__LINE__ == 5) puts("bad 2");
-#pragma fntrace(on, defhook)
+#pragma fntrace=on, fnhook=def
 unless (__LINE__ == 7) puts("bad 3");
-#pragma fntrace(off)
+#pragma fntrace=off
 unless (__LINE__ == 9) puts("bad 4");
-#pragma fntrace(off, hook=myhook)
+#pragma fntrace=off, fnhook=myhook
 unless (__LINE__ == 11) puts("bad 5");
-#pragma fntrace(off, defhook)
+#pragma fntrace=off, fnhook=def
 unless (__LINE__ == 13) puts("bad 6");
+#pragma fntrace
 } -output {}
 
 test fntrace-2 {check function trace, default hooks} -body {
 #lang L -nowarn
-#pragma fntrace(on, defhook)
+#pragma fntrace=on
 string fntrace_2_3(string a1, string a2)
 {
 	fprintf(stderr, "in fntrace_2_3\n");
@@ -19545,92 +19567,152 @@ void fntrace_2()
 	fprintf(stderr, "in fntrace_2 after\n");
 }
 fntrace_2();
-} -errorOutput {enter fntrace_2
+} -match regexp -errorOutput {\d+: enter fntrace_2
 in fntrace_2 before
-enter fntrace_2_1
+\d+: enter fntrace_2_1
 in fntrace_2_1 before
-enter fntrace_2_2 'arg1'
+\d+: enter fntrace_2_2 'arg1'
 in fntrace_2_2 before
-enter fntrace_2_3 'arg1' 'arg2'
+\d+: enter fntrace_2_3 'arg1' 'arg2'
 in fntrace_2_3
-exit fntrace_2_3 'arg1' 'arg2' ret 'this is the ret value'
+\d+: exit fntrace_2_3 'arg1' 'arg2' ret 'this is the ret value'
 in fntrace_2_2 after
-exit fntrace_2_2 'arg1' ret ''
+\d+: exit fntrace_2_2 'arg1' ret ''
 in fntrace_2_1 after
-exit fntrace_2_1 ret ''
+\d+: exit fntrace_2_1 ret ''
 in fntrace_2 after
-exit fntrace_2 ret ''
+\d+: exit fntrace_2 ret ''
 }
 
-test fntrace-3 {check function trace, user hooks} -body {
+test fntrace-3.1 {check function trace, private user hook fn} -body {
 #lang L -nowarn
-#pragma fntrace(on, hook=myhook)
-private void myhook(int pre, int ac, string av[], string ret)
+#pragma fntrace=on, fnhook=fn31_myhook
+private void fn31_myhook(int pre, string av[], string ret)
 {
 	int	i;
+	int	ac = length(av);
 
-	printf("%s: %s %d args:", pre?"pre":"post", av[0], ac-1);
+	printf("myhook %s: %s %d args:", pre?"pre":"post", av[0], ac-1);
 	for (i = 1; i < ac; ++i) {
 		printf(" '%s'", av[i]);
 	}
 	unless (pre) printf(" ret: '%s'", ret);
 	printf("\n");
 }
-string fntrace_3_3(string a1, string a2)
+string fntrace_3_1_3(string a1, string a2)
 {
-	printf("in fntrace_3_3\n");
+	printf("in fntrace_3_1_3\n");
 	return ("this is the ret value");
 }
-void fntrace_3_2(string a1)
+void fntrace_3_1_2(string a1)
 {
-	printf("in fntrace_3_2 before\n");
-	fntrace_3_3(a1, "arg2");
-	printf("in fntrace_3_2 after\n");
+	printf("in fntrace_3_1_2 before\n");
+	fntrace_3_1_3(a1, "arg2");
+	printf("in fntrace_3_1_2 after\n");
+}
+void fntrace_3_1_1()
+{
+	printf("in fntrace_3_1_1 before\n");
+	fntrace_3_1_2("arg1");
+	printf("in fntrace_3_1_1 after\n");
 }
 void fntrace_3_1()
 {
 	printf("in fntrace_3_1 before\n");
-	fntrace_3_2("arg1");
+	fntrace_3_1_1();
 	printf("in fntrace_3_1 after\n");
 }
-void fntrace_3()
-{
-	printf("in fntrace_3 before\n");
-	fntrace_3_1();
-	printf("in fntrace_3 after\n");
-}
-fntrace_3();
-} -output {pre: fntrace_3 0 args:
-in fntrace_3 before
-pre: fntrace_3_1 0 args:
+fntrace_3_1();
+#pragma fnhook=def
+} -output {myhook pre: fntrace_3_1 0 args:
 in fntrace_3_1 before
-pre: fntrace_3_2 1 args: 'arg1'
-in fntrace_3_2 before
-pre: fntrace_3_3 2 args: 'arg1' 'arg2'
-in fntrace_3_3
-post: fntrace_3_3 2 args: 'arg1' 'arg2' ret: 'this is the ret value'
-in fntrace_3_2 after
-post: fntrace_3_2 1 args: 'arg1' ret: ''
+myhook pre: fntrace_3_1_1 0 args:
+in fntrace_3_1_1 before
+myhook pre: fntrace_3_1_2 1 args: 'arg1'
+in fntrace_3_1_2 before
+myhook pre: fntrace_3_1_3 2 args: 'arg1' 'arg2'
+in fntrace_3_1_3
+myhook post: fntrace_3_1_3 2 args: 'arg1' 'arg2' ret: 'this is the ret value'
+in fntrace_3_1_2 after
+myhook post: fntrace_3_1_2 1 args: 'arg1' ret: ''
+in fntrace_3_1_1 after
+myhook post: fntrace_3_1_1 0 args: ret: ''
 in fntrace_3_1 after
-post: fntrace_3_1 0 args: ret: ''
-in fntrace_3 after
-post: fntrace_3 0 args: ret: ''
+myhook post: fntrace_3_1 0 args: ret: ''
+}
+
+test fntrace-3.2 {check function trace, public user hook fn} -body {
+#lang L -nowarn
+#pragma fntrace=on, fnhook=fntr32_myhook
+void fntr32_myhook(int pre, string av[], string ret)
+{
+	int	i;
+	int	ac = length(av);
+
+	printf("myhook %s: %s %d args:", pre?"pre":"post", av[0], ac-1);
+	for (i = 1; i < ac; ++i) {
+		printf(" '%s'", av[i]);
+	}
+	unless (pre) printf(" ret: '%s'", ret);
+	printf("\n");
+}
+string fntrace_3_2_3(string a1, string a2)
+{
+	printf("in fntrace_3_2_3\n");
+	return ("this is the ret value");
+}
+void fntrace_3_2_2(string a1)
+{
+	printf("in fntrace_3_2_2 before\n");
+	fntrace_3_2_3(a1, "arg2");
+	printf("in fntrace_3_2_2 after\n");
+}
+void fntrace_3_2_1()
+{
+	printf("in fntrace_3_2_1 before\n");
+	fntrace_3_2_2("arg1");
+	printf("in fntrace_3_2_1 after\n");
+}
+void fntrace_3_2()
+{
+	printf("in fntrace_3_2 before\n");
+	fntrace_3_2_1();
+	printf("in fntrace_3_2 after\n");
+}
+fntrace_3_2();
+#pragma fnhook=def
+} -output {myhook pre: fntrace_3_2 0 args:
+in fntrace_3_2 before
+myhook pre: fntrace_3_2_1 0 args:
+in fntrace_3_2_1 before
+myhook pre: fntrace_3_2_2 1 args: 'arg1'
+in fntrace_3_2_2 before
+myhook pre: fntrace_3_2_3 2 args: 'arg1' 'arg2'
+in fntrace_3_2_3
+myhook post: fntrace_3_2_3 2 args: 'arg1' 'arg2' ret: 'this is the ret value'
+in fntrace_3_2_2 after
+myhook post: fntrace_3_2_2 1 args: 'arg1' ret: ''
+in fntrace_3_2_1 after
+myhook post: fntrace_3_2_1 0 args: ret: ''
+in fntrace_3_2 after
+myhook post: fntrace_3_2 0 args: ret: ''
 }
 
 test fntrace-4 {check pragma errors} -body {
 #lang L
-#pragma fntrace (bad)
-#pragma unknown (on)
-} -returnCodes error -match regexp -result {.*1: L Error: unknown #pragma fntrace parameter 'bad'
-.*2: L Error: unknown pragma 'unknown'
+#pragma unknown1=on
+#pragma unknown2
+} -returnCodes error -match regexp -result {.*1: L Error: illegal attribute 'unknown1'
+.*2: L Error: illegal attribute 'unknown2'
 }
 
 test fntrace-5 {check switching hooks and enabling/disabling fntrace} -body {
 #lang L
-#pragma fntrace(off)
-void myhook5(int pre, int ac, string av[], string ret)
+#pragma fntrace=off
+void myhook5(int pre, string av[], string ret)
 {
 	int	i;
+	int	ac = length(av);
 
 	fprintf(stderr, "5: %s: %s %d args:", pre?"pre":"post", av[0], ac-1);
 	for (i = 1; i < ac; ++i) {
@@ -19639,13 +19721,13 @@ void myhook5(int pre, int ac, string av[], string ret)
 	unless (pre) fprintf(stderr, " ret: '%s'", ret);
 	fprintf(stderr, "\n");
 }
-#pragma fntrace(on, defhook)
+#pragma fntrace=on, fnhook=def
 // default trace hooks in effect now
 void fntrace_5_def()
 {
 	fprintf(stderr, "in fntrace_5_def\n");
 }
-#pragma fntrace(on, hook=myhook5)
+#pragma fntrace=on, fnhook=myhook5
 // myhook in effect now
 void fntrace_5_myhook()
 {
@@ -19653,7 +19735,7 @@ void fntrace_5_myhook()
 	fntrace_5_def();
 	fprintf(stderr, "in fntrace_5_myhook after\n");
 }
-#pragma fntrace(off)
+#pragma fntrace=off
 // function tracing disabled now
 void fntrace_5_off()
 {
@@ -19661,7 +19743,7 @@ void fntrace_5_off()
 	fntrace_5_myhook();
 	fprintf(stderr, "in fntrace_5_off after\n");
 }
-#pragma fntrace(on, defhook)
+#pragma fntrace=on, fnhook=def
 // back to default hooks
 void fntrace_5()
 {
@@ -19670,19 +19752,817 @@ void fntrace_5()
 	fprintf(stderr, "in fntrace_5 after\n");
 }
 fntrace_5();
-} -errorOutput {enter fntrace_5
+} -match regexp -errorOutput {\d+: enter fntrace_5
 in fntrace_5 before
 in fntrace_5_off before
 5: pre: fntrace_5_myhook 0 args:
 in fntrace_5_myhook before
-enter fntrace_5_def
+\d+: enter fntrace_5_def
 in fntrace_5_def
-exit fntrace_5_def ret ''
+\d+: exit fntrace_5_def ret ''
 in fntrace_5_myhook after
 5: post: fntrace_5_myhook 0 args: ret: ''
 in fntrace_5_off after
 in fntrace_5 after
-exit fntrace_5 ret ''
+\d+: exit fntrace_5 ret ''
+}
+
+test fntrace-6 {check that tracing does not munge function return value} -body {
+#lang L
+#pragma fntrace=on
+private int myfunc(int a)
+{
+	return (a + 2);
+}
+void fntrace_6()
+{
+	unless (myfunc(2) == 4) puts("bad 1");
+}
+fntrace_6();
+} -output {}
+
+test fntrace-7 {test function tracing in classes} -body {
+#lang L
+#pragma fntrace=off
+class fntrace_7_cls
+{
+#pragma fntrace=on
+	private void traced() { fprintf(stderr, "traced\n"); }
+	constructor fntrace_7_cls_new()
+	{
+		fprintf(stderr, "constructor\n");
+		traced();
+		not_traced();
+		return (self);
+	}
+#pragma fntrace=off
+	private void not_traced() { fprintf(stderr, "not_traced\n"); }
+	destructor fntrace_7_cls_delete(fntrace_7_cls self)
+	{
+		fprintf(stderr, "destructor\n");
+		traced();
+		not_traced();
+	}
+#pragma fntrace=on
+}
+void fntrace_7()
+{
+	fntrace_7_cls	o = fntrace_7_cls_new();
+	fntrace_7_cls_delete(o);
+}
+fntrace_7();
+} -match regexp -errorOutput {\d+: enter fntrace_7
+\d+: enter fntrace_7_cls_new
+constructor
+\d+: enter traced
+traced
+\d+: exit traced ret ''
+not_traced
+\d+: exit fntrace_7_cls_new ret '::L::_instance_fntrace_7_cls1'
+destructor
+\d+: enter traced
+traced
+\d+: exit traced ret ''
+not_traced
+\d+: exit fntrace_7 ret ''
+}
+
+test fntrace-8 {test max depth in function tracing} -body {
+#lang L
+#pragma fntrace=on, trace_depth=3
+int fn8_d = 0;
+void fn8(int max)
+{
+	++fn8_d;
+	if (fn8_d < max) fn8(max);
+	--fn8_d;
+}
+void fntrace_8()
+{
+	fn8(2);
+	fn8(3);
+	fn8(4);
+	fn8(100);
+}
+fntrace_8();
+} -match regexp -errorOutput {\d+: enter fntrace_8
+\d+: enter fn8 '2'
+\d+: enter fn8 '2'
+\d+: exit fn8 '2' ret ''
+\d+: exit fn8 '2' ret ''
+\d+: enter fn8 '3'
+\d+: enter fn8 '3'
+\d+: exit fn8 '3' ret ''
+\d+: exit fn8 '3' ret ''
+\d+: enter fn8 '4'
+\d+: enter fn8 '4'
+\d+: exit fn8 '4' ret ''
+\d+: exit fn8 '4' ret ''
+\d+: enter fn8 '100'
+\d+: enter fn8 '100'
+\d+: exit fn8 '100' ret ''
+\d+: exit fn8 '100' ret ''
+\d+: exit fntrace_8 ret ''
+}
+
+test fntrace-9 {test entry only or exit only function tracing hooks} -body {
+#lang L
+#pragma fntrace=entry
+void fntrace_9_entry() {}
+#pragma fntrace=exit
+void fntrace_9_exit() {}
+#pragma fntrace=on
+void fntrace_9()
+{
+	fntrace_9_entry();
+	fntrace_9_exit();
+}
+fntrace_9();
+} -match regexp -errorOutput {\d+: enter fntrace_9
+\d+: enter fntrace_9_entry
+\d+: exit fntrace_9_exit ret ''
+\d+: exit fntrace_9 ret ''
+}
+
+test fntrace-10.1 {test L_TRACE environment variable, output to file} -setup {
+	set fname [makeFile {
+#pragma fntrace=on
+		void main() {}
+	} fntrace101.l]
+} -body {
+#lang L
+void fntrace_10_1()
+{
+	int	ret;
+	FILE	f;
+	string	tclsh = eval("interpreter");
+
+	unlink("fntrace10_1.out");
+	putenv("L_TRACE=fntrace10_1.out");
+	ret = system({tclsh, "fntrace101.l"}, undef, undef, undef);
+	unless (ret == 0) puts("bad ret ${ret}");
+
+	unless (f = fopen("fntrace10_1.out", "r")) puts("bad 1");
+	unless (<f> =~ /enter main/) puts("bad 2");
+	unless (<f> =~ /exit main/) puts("bad 3");
+	fclose(f);
+
+	putenv("L_TRACE=");
+	unset("::env(L_TRACE)");
+	unlink("fntrace10_1.out");
+}
+fntrace_10_1();
+} -cleanup {
+	removeFile $fname
+} -output {}
+
+test fntrace-10.2 {test L_TRACE environment variable, output to socket} -setup {
+	set fname1 [makeFile {
+#pragma fntrace=on
+		void main() {}
+	} fntrace102.l]
+	set fname2 [makeFile {
+		void cb(FILE sock, _argused string host, _argused int port)
+		{
+			unless ((<sock> =~ /enter main/) &&
+				(<sock> =~ /exit main/)) {
+				FILE f = fopen("fntrace_10_bad", "w");
+				fclose(f);
+			}
+			fclose(sock);
+			exit(0);
+		}
+		void main()
+		{
+			FILE	sock = socket(server: "cb", 0);
+			puts(fconfigure(sock, sockname:)[2]);
+			vwait("forever");
+		}
+	} fntrace102_server.l]
+} -body {
+#lang L
+void fntrace_10_2()
+{
+	int	port, ret;
+	FILE	f;
+	string	tclsh = eval("interpreter");
+
+	f = popen("'${tclsh}' fntrace102_server.l 2>fntrace102_err", "r");
+	unless (f) {
+		puts("bad server ${stdio_lasterr}");
+		return;
+	}
+	port = (int)<f>;
+	putenv("L_TRACE=localhost:${port}");
+	unlink("fntrace_10_bad");
+	ret = system({tclsh, "fntrace102.l"}, undef, undef, undef);
+	unless (ret == 0) puts("bad ret ${ret}");
+	if (exists("fntrace_10_bad")) puts("bad");
+	unlink("fntrace_10_bad");
+	unlink("fntrace102_err");
+	pclose(f);
+	putenv("L_TRACE=");
+	unset("::env(L_TRACE)");
+}
+fntrace_10_2();
+} -output {}
+
+test fntrace-10.3 {test L_TRACE_FILES and --trace-files} -setup {
+	set fname1 [makeFile {
+		void fntrace_10_3_a() {}
+	} fntrace_10_3_a.l]
+	set fname2 [makeFile {
+		void fntrace_10_3_b() {}
+	} fntrace_10_3_b.l]
+	set fname3 [makeFile {
+// #includes have to start at col 1
+#include "fntrace_10_3_a.l"
+#include "fntrace_10_3_b.l"
+		void main()
+		{
+			fntrace_10_3_a();
+			fntrace_10_3_b();
+		}
+	} fntrace_10_3_c.l]
+} -body {
+#lang L
+void fntrace_10_3()
+{
+	int	ret;
+	string	err[];
+	string	tclsh = eval("interpreter");
+
+	/* First trace only fntrace_10_3_c.l */
+
+	putenv("L_TRACE_FILES=fntrace_10_3_c.l");
+	ret = system({tclsh, "fntrace_10_3_c.l"}, undef, undef, &err);
+	unless (ret == 0) puts("bad 1.1");
+	unless (err[0] =~ /enter main/) puts("bad 1.2");
+	unless (err[1] =~ /exit main/) puts("bad 1.3");
+	if (err[2]) puts("bad 1.4");
+
+	putenv("L_TRACE_FILES=");
+	unset("::env(L_TRACE_FILES)");
+	ret = system(
+	    {tclsh, "--trace-files=fntrace_10_3_c.l", "fntrace_10_3_c.l"},
+	    undef, undef, &err);
+	unless (ret == 0) puts("bad 1.11");
+	unless (err[0] =~ /enter main/) puts("bad 1.12");
+	unless (err[1] =~ /exit main/) puts("bad 1.13");
+	if (err[2]) puts("bad 1.14");
+
+	// Env var should take precedence over cmd line.
+	putenv("L_TRACE_FILES=fntrace_10_3_c.l");
+	ret = system({tclsh, "--trace-files=*", "fntrace_10_3_c.l"},
+		     undef, undef, &err);
+	unless (ret == 0) puts("bad 1.21");
+	unless (err[0] =~ /enter main/) puts("bad 1.22");
+	unless (err[1] =~ /exit main/) puts("bad 1.23");
+	if (err[2]) puts("bad 1.24");
+
+	/* Now trace fntrace_10_3_[ab].l */
+
+	putenv("L_TRACE_FILES=fntrace_10_3_[ab].l");
+	ret = system({tclsh, "fntrace_10_3_c.l"}, undef, undef, &err);
+	unless (ret == 0) puts("bad 2.1");
+	unless (err[0] =~ /enter fntrace_10_3_a/) puts("bad 2.2");
+	unless (err[1] =~ /exit fntrace_10_3_a/) puts("bad 2.3");
+	unless (err[2] =~ /enter fntrace_10_3_b/) puts("bad 2.4");
+	unless (err[3] =~ /exit fntrace_10_3_b/) puts("bad 2.5");
+	if (err[4]) puts("bad 2.6");
+
+	putenv("L_TRACE_FILES=");
+	unset("::env(L_TRACE_FILES)");
+	ret = system(
+	    {tclsh, "--trace-files=fntrace_10_3_[ab].l","fntrace_10_3_c.l"},
+	    undef, undef, &err);
+	unless (ret == 0) puts("bad 2.21");
+	unless (err[0] =~ /enter fntrace_10_3_a/) puts("bad 2.22");
+	unless (err[1] =~ /exit fntrace_10_3_a/) puts("bad 2.23");
+	unless (err[2] =~ /enter fntrace_10_3_b/) puts("bad 2.24");
+	unless (err[3] =~ /exit fntrace_10_3_b/) puts("bad 2.25");
+	if (err[4]) puts("bad 2.26");
+
+	// Env var should take precedence over cmd line.
+	putenv("L_TRACE_FILES=fntrace_10_3_[ab].l");
+	ret = system({tclsh, "--trace-files=*","fntrace_10_3_c.l"},
+		     undef, undef, &err);
+	unless (ret == 0) puts("bad 2.31");
+	unless (err[0] =~ /enter fntrace_10_3_a/) puts("bad 2.32");
+	unless (err[1] =~ /exit fntrace_10_3_a/) puts("bad 2.33");
+	unless (err[2] =~ /enter fntrace_10_3_b/) puts("bad 2.34");
+	unless (err[3] =~ /exit fntrace_10_3_b/) puts("bad 2.35");
+	if (err[4]) puts("bad 2.36");
+
+	/* Now trace them all. */
+
+	putenv("L_TRACE_FILES=*.l");
+	ret = system({tclsh, "fntrace_10_3_c.l"}, undef, undef, &err);
+	unless (ret == 0) puts("bad 3.1");
+	unless (err[0] =~ /enter main/) puts("bad 3.2");
+	unless (err[1] =~ /enter fntrace_10_3_a/) puts("bad 3.3");
+	unless (err[2] =~ /exit fntrace_10_3_a/) puts("bad 3.4");
+	unless (err[3] =~ /enter fntrace_10_3_b/) puts("bad 3.5");
+	unless (err[4] =~ /exit fntrace_10_3_b/) puts("bad 3.6");
+	unless (err[5] =~ /exit main/) puts("bad 3.7");
+	if (err[6]) puts("bad 3.8");
+
+	putenv("L_TRACE_FILES=");
+	unset("::env(L_TRACE_FILES)");
+	ret = system({tclsh, "--trace-files=*", "fntrace_10_3_c.l"},
+		     undef, undef, &err);
+	unless (ret == 0) puts("bad 3.11");
+	unless (err[0] =~ /enter main/) puts("bad 3.12");
+	unless (err[1] =~ /enter fntrace_10_3_a/) puts("bad 3.13");
+	unless (err[2] =~ /exit fntrace_10_3_a/) puts("bad 3.14");
+	unless (err[3] =~ /enter fntrace_10_3_b/) puts("bad 3.15");
+	unless (err[4] =~ /exit fntrace_10_3_b/) puts("bad 3.16");
+	unless (err[5] =~ /exit main/) puts("bad 3.17");
+	if (err[6]) puts("bad 3.18");
+
+	// Env var should take precedence over cmd line.
+	putenv("L_TRACE_FILES=*.l");
+	ret = system(
+	    {tclsh, "--trace-files=fntrace_10_3_c.l", "fntrace_10_3_c.l"},
+	    undef, undef, &err);
+	unless (ret == 0) puts("bad 3.21");
+	unless (err[0] =~ /enter main/) puts("bad 3.22");
+	unless (err[1] =~ /enter fntrace_10_3_a/) puts("bad 3.23");
+	unless (err[2] =~ /exit fntrace_10_3_a/) puts("bad 3.24");
+	unless (err[3] =~ /enter fntrace_10_3_b/) puts("bad 3.25");
+	unless (err[4] =~ /exit fntrace_10_3_b/) puts("bad 3.26");
+	unless (err[5] =~ /exit main/) puts("bad 3.27");
+	if (err[6]) puts("bad 3.28");
+
+	/* Try -fntrace_10_3_b.l */
+
+	putenv("L_TRACE_FILES=*.l:-fntrace_10_3_b.l");
+	ret = system({tclsh, "fntrace_10_3_c.l"}, undef, undef, &err);
+	unless (ret == 0) puts("bad 4.1");
+	unless (err[0] =~ /enter main/) puts("bad 4.2");
+	unless (err[1] =~ /enter fntrace_10_3_a/) puts("bad 4.3");
+	unless (err[2] =~ /exit fntrace_10_3_a/) puts("bad 4.4");
+	unless (err[3] =~ /exit main/) puts("bad 4.5");
+	if (err[4]) puts("bad 4.6");
+
+	putenv("L_TRACE_FILES=");
+	unset("::env(L_TRACE_FILES)");
+}
+fntrace_10_3();
+} -output {}
+
+test fntrace-10.4 {test L_TRACE_FUNCS and --trace-funcs} -setup {
+	set fname [makeFile {
+			void fntrace_10_4_a() {}
+			void fntrace_10_4_b() {}
+			void fntrace_10_4()
+			{
+				fntrace_10_4_a();
+				fntrace_10_4_b();
+			}
+			fntrace_10_4();
+	} fntrace_10_4.l]
+} -body {
+#lang L
+void fntrace_10_4()
+{
+	int	ret;
+	string	err[];
+	string	tclsh = eval("interpreter");
+
+	putenv("L_TRACE_FUNCS=fntrace_10_4_a");
+	ret = system({tclsh, "fntrace_10_4.l"}, undef, undef, &err);
+	unless (ret == 0) puts("bad 1.1");
+	unless (err[0] =~ /enter fntrace_10_4_a/) puts("bad 1.2");
+	unless (err[1] =~ /exit fntrace_10_4_a/) puts("bad 1.3");
+	if (err[2]) puts("bad 1.4");
+
+	putenv("L_TRACE_FUNCS=");
+	unset("::env(L_TRACE_FUNCS)");
+	ret = system({tclsh, "--trace-funcs=fntrace_10_4_a", "fntrace_10_4.l"},
+		     undef, undef, &err);
+	unless (ret == 0) puts("bad 1.11");
+	unless (err[0] =~ /enter fntrace_10_4_a/) puts("bad 1.12");
+	unless (err[1] =~ /exit fntrace_10_4_a/) puts("bad 1.13");
+	if (err[2]) puts("bad 1.14");
+
+	// Env var should take precedence over cmd line.
+	putenv("L_TRACE_FUNCS=fntrace_10_4_a");
+	ret = system({tclsh, "--trace-funcs=*", "fntrace_10_4.l"},
+		     undef, undef, &err);
+	unless (ret == 0) puts("bad 1.21");
+	unless (err[0] =~ /enter fntrace_10_4_a/) puts("bad 1.22");
+	unless (err[1] =~ /exit fntrace_10_4_a/) puts("bad 1.23");
+	if (err[2]) puts("bad 1.24");
+
+
+	putenv("L_TRACE_FUNCS=fntrace_10_4_[ab]");
+	ret = system({tclsh, "fntrace_10_4.l"}, undef, undef, &err);
+	unless (ret == 0) puts("bad 2.1");
+	unless (err[0] =~ /enter fntrace_10_4_a/) puts("bad 2.2");
+	unless (err[1] =~ /exit fntrace_10_4_a/) puts("bad 2.3");
+	unless (err[2] =~ /enter fntrace_10_4_b/) puts("bad 2.4");
+	unless (err[3] =~ /exit fntrace_10_4_b/) puts("bad 2.5");
+	if (err[4]) puts("bad 2.6");
+
+	putenv("L_TRACE_FUNCS=");
+	unset("::env(L_TRACE_FUNCS)");
+	ret = system({tclsh, "--trace-funcs=fntrace_10_4_[ab]", "fntrace_10_4.l"},
+		     undef, undef, &err);
+	unless (ret == 0) puts("bad 2.11");
+	unless (err[0] =~ /enter fntrace_10_4_a/) puts("bad 2.12");
+	unless (err[1] =~ /exit fntrace_10_4_a/) puts("bad 2.13");
+	unless (err[2] =~ /enter fntrace_10_4_b/) puts("bad 2.14");
+	unless (err[3] =~ /exit fntrace_10_4_b/) puts("bad 2.15");
+	if (err[4]) puts("bad 2.16");
+
+	// Env var should take precedence over cmd line.
+	putenv("L_TRACE_FUNCS=fntrace_10_4_[ab]");
+	ret = system({tclsh, "--trace-funcs=*", "fntrace_10_4.l"},
+		     undef, undef, &err);
+	unless (ret == 0) puts("bad 2.21");
+	unless (err[0] =~ /enter fntrace_10_4_a/) puts("bad 2.22");
+	unless (err[1] =~ /exit fntrace_10_4_a/) puts("bad 2.23");
+	unless (err[2] =~ /enter fntrace_10_4_b/) puts("bad 2.24");
+	unless (err[3] =~ /exit fntrace_10_4_b/) puts("bad 2.25");
+	if (err[4]) puts("bad 2.26");
+
+
+	putenv("L_TRACE_FUNCS=*");
+	ret = system({tclsh, "fntrace_10_4.l"}, undef, undef, &err);
+	unless (ret == 0) puts("bad 3.1");
+	unless (err[0] =~ /enter fntrace_10_4/) puts("bad 3.2");
+	unless (err[1] =~ /enter fntrace_10_4_a/) puts("bad 3.3");
+	unless (err[2] =~ /exit fntrace_10_4_a/) puts("bad 3.4");
+	unless (err[3] =~ /enter fntrace_10_4_b/) puts("bad 3.5");
+	unless (err[4] =~ /exit fntrace_10_4_b/) puts("bad 3.6");
+	unless (err[5] =~ /exit fntrace_10_4/) puts("bad 3.7");
+	if (err[6]) puts("bad 3.8");
+
+	putenv("L_TRACE_FUNCS=");
+	unset("::env(L_TRACE_FUNCS)");
+	ret = system({tclsh, "--trace-funcs=*", "fntrace_10_4.l"},
+		     undef, undef, &err);
+	unless (ret == 0) puts("bad 3.11");
+	unless (err[0] =~ /enter fntrace_10_4/) puts("bad 3.12");
+	unless (err[1] =~ /enter fntrace_10_4_a/) puts("bad 3.13");
+	unless (err[2] =~ /exit fntrace_10_4_a/) puts("bad 3.14");
+	unless (err[3] =~ /enter fntrace_10_4_b/) puts("bad 3.15");
+	unless (err[4] =~ /exit fntrace_10_4_b/) puts("bad 3.16");
+	unless (err[5] =~ /exit fntrace_10_4/) puts("bad 3.17");
+	if (err[6]) puts("bad 3.18");
+
+	// Env var should take precedence over cmd line.
+	putenv("L_TRACE_FUNCS=*");
+	ret = system({tclsh, "--trace-funcs=fntrace_10_4_a", "fntrace_10_4.l"},
+		     undef, undef, &err);
+	unless (ret == 0) puts("bad 3.21");
+	unless (err[0] =~ /enter fntrace_10_4/) puts("bad 3.22");
+	unless (err[1] =~ /enter fntrace_10_4_a/) puts("bad 3.23");
+	unless (err[2] =~ /exit fntrace_10_4_a/) puts("bad 3.24");
+	unless (err[3] =~ /enter fntrace_10_4_b/) puts("bad 3.25");
+	unless (err[4] =~ /exit fntrace_10_4_b/) puts("bad 3.26");
+	unless (err[5] =~ /exit fntrace_10_4/) puts("bad 3.27");
+	if (err[6]) puts("bad 3.28");
+
+
+	putenv("L_TRACE_FUNCS=*:-fntrace_10_4b");
+	ret = system({tclsh, "fntrace_10_4.l"}, undef, undef, &err);
+	unless (ret == 0) puts("bad 4.1");
+	unless (err[0] =~ /enter fntrace_10_4/) puts("bad 4.2");
+	unless (err[1] =~ /enter fntrace_10_4_a/) puts("bad 4.3");
+	unless (err[2] =~ /exit fntrace_10_4_a/) puts("bad 4.4");
+	unless (err[5] =~ /exit fntrace_10_4/) puts("bad 4.5");
+	if (err[6]) puts("bad 4.6");
+
+	putenv("L_TRACE_FUNCS=");
+	unset("::env(L_TRACE_FUNCS)");
+	ret = system({tclsh, "--trace-funcs=*:-fntrace_10_4b", "fntrace_10_4.l"},
+		     undef, undef, &err);
+	unless (ret == 0) puts("bad 4.11");
+	unless (err[0] =~ /enter fntrace_10_4/) puts("bad 4.12");
+	unless (err[1] =~ /enter fntrace_10_4_a/) puts("bad 4.13");
+	unless (err[2] =~ /exit fntrace_10_4_a/) puts("bad 4.14");
+	unless (err[5] =~ /exit fntrace_10_4/) puts("bad 4.15");
+	if (err[6]) puts("bad 4.16");
+
+	// Env var should take precedence over cmd line.
+	putenv("L_TRACE_FUNCS=*:-fntrace_10_4b");
+	ret = system({tclsh, "--trace-funcs=*", "fntrace_10_4.l"},
+		     undef, undef, &err);
+	unless (ret == 0) puts("bad 4.21");
+	unless (err[0] =~ /enter fntrace_10_4/) puts("bad 4.22");
+	unless (err[1] =~ /enter fntrace_10_4_a/) puts("bad 4.23");
+	unless (err[2] =~ /exit fntrace_10_4_a/) puts("bad 4.24");
+	unless (err[5] =~ /exit fntrace_10_4/) puts("bad 4.25");
+	if (err[6]) puts("bad 4.26");
+
+	putenv("L_TRACE_FUNCS=");
+	unset("::env(L_TRACE_FUNCS)");
+}
+fntrace_10_4();
+} -output {}
+
+test fntrace-10.5 {test L_TRACE_SCRIPT and --trace-script, script} -setup {
+	set fname [makeFile {
+		void foo(_argused int a) {}
+		void main()
+		{
+			foo(123);
+		}
+	} fntrace_10_5.l]
+} -body {
+#lang L
+void fntrace_10_5()
+{
+	int	ret;
+	string	out[];
+	string	tclsh = eval("interpreter");
+
+	/* Test a trace-hook script in L_TRACE_SCRIPT. */
+	putenv("L_TRACE_ALL=on");
+	putenv("L_TRACE_SCRIPT=puts(av)");
+	ret = system({tclsh, "fntrace_10_5.l"}, undef, &out, undef);
+	unless (ret == 0) puts("bad 1.1");
+	unless (out[0] == "main") puts("bad 1.2");
+	unless (out[1] == "foo 123") puts("bad 1.3");
+	unless (out[2] == "foo 123") puts("bad 1.4");
+	unless (out[3] == "main") puts("bad 1.5");
+	if (out[4]) puts("bad 1.6");
+	putenv("L_TRACE_ALL=");
+	putenv("L_TRACE_SCRIPT=");
+	unset("::env(L_TRACE_ALL)");
+	unset("::env(L_TRACE_SCRIPT)");
+
+	/* Test a trace-hook script in --trace-script. */
+	ret = system(
+	    {tclsh, "--fntrace=on", "--trace-script=puts(av)", "fntrace_10_5.l"},
+	    undef, &out, undef);
+	unless (ret == 0) puts("bad 1.11");
+	unless (out[0] == "main") puts("bad 1.12");
+	unless (out[1] == "foo 123") puts("bad 1.13");
+	unless (out[2] == "foo 123") puts("bad 1.14");
+	unless (out[3] == "main") puts("bad 1.15");
+	if (out[4]) puts("bad 1.16");
+
+	/* Try both.  Env variable should take precedence. */
+	putenv("L_TRACE_ALL=on");
+	putenv("L_TRACE_SCRIPT=puts(av)");
+	ret = system(
+	    {tclsh, "--fntrace=on --trace-script=puts(33)", "fntrace_10_5.l"},
+	    undef, &out, undef);
+	unless (ret == 0) puts("bad 1.21");
+	unless (out[0] == "main") puts("bad 1.22");
+	unless (out[1] == "foo 123") puts("bad 1.23");
+	unless (out[2] == "foo 123") puts("bad 1.24");
+	unless (out[3] == "main") puts("bad 1.25");
+	if (out[4]) puts("bad 1.26");
+
+	putenv("L_TRACE_ALL=");
+	putenv("L_TRACE_SCRIPT=");
+	/* Needed since L's putenv does not really unset the env var. */
+	unset("::env(L_TRACE_ALL)");
+	unset("::env(L_TRACE_SCRIPT)");
+}
+fntrace_10_5();
+} -output {}
+
+test fntrace-10.6 {test L_TRACE_SCRIPT and --trace-script, file} -setup {
+	set fname1 [makeFile {
+		int foo(int a)
+		{
+			return (a+1);
+		}
+		int main()
+		{
+			foo(123);
+			return (0);
+		}
+	} fntrace_10_6.l]
+	set fname2 [makeFile {
+#pragma fnhook=myhook
+		void myhook(int pre, string av[], string ret)
+		{
+			fprintf(stderr, "my: %d %s %s\n", pre, av, ret);
+		}
+	} fntrace_10_6_hooks.l]
+} -body {
+#lang L
+void fntrace_10_6()
+{
+	int	ret;
+	string	err[];
+	string	tclsh = eval("interpreter");
+
+	/* Test a trace filename in L_TRACE_SCRIPT. */
+	putenv("L_TRACE_ALL=on");
+	putenv("L_TRACE_SCRIPT=fntrace_10_6_hooks.l");
+	ret = system({tclsh, "fntrace_10_6.l"}, undef, undef, &err);
+	unless (ret == 0) puts("bad 1.1");
+	unless (err[0] == "my: 1 main 0") puts("bad 1.2");
+	unless (err[1] == "my: 1 foo 123 0") puts("bad 1.3");
+	unless (err[2] == "my: 0 foo 123 124") puts("bad 1.4");
+	unless (err[3] == "my: 0 main 0") puts("bad 1.5");
+	if (err[4]) puts("bad 1.6");
+	putenv("L_TRACE_ALL=");
+	putenv("L_TRACE_SCRIPT=");
+	unset("::env(L_TRACE_ALL)");
+	unset("::env(L_TRACE_SCRIPT)");
+
+	/* Test a trace filename in --trace-script. */
+	ret = system(
+	    {tclsh, "--fntrace=on", "--trace-script=fntrace_10_6_hooks.l",
+		"fntrace_10_6.l"},
+	    undef, undef, &err);
+	unless (ret == 0) puts("bad 1.11");
+	unless (err[0] == "my: 1 main 0") puts("bad 1.12");
+	unless (err[1] == "my: 1 foo 123 0") puts("bad 1.13");
+	unless (err[2] == "my: 0 foo 123 124") puts("bad 1.14");
+	unless (err[3] == "my: 0 main 0") puts("bad 1.15");
+	if (err[4]) puts("bad 1.16");
+
+	/* Try both.  Env variable should take precedence. */
+	putenv("L_TRACE_ALL=on");
+	putenv("L_TRACE_SCRIPT=fntrace_10_6_hooks.l");
+	ret = system({tclsh, "--trace-script=puts(22)", "fntrace_10_6.l"},
+		     undef, undef, &err);
+	unless (ret == 0) puts("bad 1.21");
+	unless (err[0] == "my: 1 main 0") puts("bad 1.22");
+	unless (err[1] == "my: 1 foo 123 0") puts("bad 1.23");
+	unless (err[2] == "my: 0 foo 123 124") puts("bad 1.24");
+	unless (err[3] == "my: 0 main 0") puts("bad 1.25");
+	if (err[4]) puts("bad 1.26");
+
+	putenv("L_TRACE_SCRIPT=");
+	/* Needed since L's putenv does not really unset the env var. */
+	unset("::env(L_TRACE_ALL)");
+	unset("::env(L_TRACE_SCRIPT)");
+}
+fntrace_10_6();
+} -output {}
+
+test fntrace-10.7 {test L_TRACE_SCRIPT and --trace-script errors} -setup {
+	set fname [makeFile {
+		void main() {}
+	} fntrace_10_7.l]
+} -body {
+#lang L
+void fntrace_10_7()
+{
+	int	ret;
+	string	err[];
+	string	tclsh = eval("interpreter");
+
+	putenv("L_TRACE_SCRIPT=bad-does-not-exist.l");
+	ret = system({tclsh, "fntrace_10_7.l"}, undef, undef, &err);
+	unless (ret == 1) puts("bad 1.1");
+	unless (err[0] =~ /couldn.t open "bad-does-not-exist.l"/) {
+		puts("bad 1.2");
+	}
+	putenv("L_TRACE_SCRIPT=");
+	unset("::env(L_TRACE_SCRIPT)");
+
+	ret = system({tclsh, "--trace-script=bad.l", "fntrace_10_7.l"},
+		     undef, undef, &err);
+	unless (ret == 1) puts("bad 1.11");
+	unless (err[0] =~ /couldn.t open "bad.l"/) {
+		puts("bad 1.12");
+	}
+
+	putenv("L_TRACE_SCRIPT=");
+	/* Needed since L's putenv does not really unset the env var. */
+	unset("::env(L_TRACE_SCRIPT)");
+}
+fntrace_10_7();
+} -output {}
+
+test fntrace-11 {test that a hook fn does not get traced} -body {
+#lang L
+#pragma fntrace=on, fnhook=fntrace_11_hook
+void fntrace_11_hook(int pre, _argused poly av[], _argused poly ret)
+{
+	printf("%s %s\n", pre ? "entry" : "exit", av[0]);
+}
+void fntrace_11()
+{
+}
+fntrace_11();
+} -output {entry fntrace_11
+exit fntrace_11
+}
+
+test fntrace-12.1 {test fn _attributes for tracing} -body {
+#lang L
+void fntrace_12_1_f1() _attribute (fntrace=on) {}
+void fntrace_12_1_f2() {}
+void fntrace_12_1_f3() _attribute (fntrace=off) {}
+void fntrace_12_1()
+{
+	fntrace_12_1_f1();
+	fntrace_12_1_f2();
+	fntrace_12_1_f3();
+}
+fntrace_12_1();
+} -match regexp -errorOutput {\d+: enter fntrace_12_1_f1
+\d+: exit fntrace_12_1_f1 ret ''
+}
+
+test fntrace-12.2 {test more fn _attributes for tracing} -body {
+#lang L --trace-out=stdout
+#pragma fnhook=def
+void fntrace_12_2_hook(int pre, _argused poly av[], _argused poly ret)
+{
+	printf("%s %s\n", pre ? "entry" : "exit", av[0]);
+}
+void fntrace_12_2_f1() _attribute (fntrace=on, fnhook=fntrace_12_2_hook) {}
+void fntrace_12_2_f2() {}
+void fntrace_12_2_f3() _attribute (fntrace=off) {}
+void fntrace_12_2_f4() _attribute (fntrace=on) {}
+void fntrace_12_2()
+{
+	fntrace_12_2_f1();
+	fntrace_12_2_f2();
+	fntrace_12_2_f3();
+	fntrace_12_2_f4();
+}
+fntrace_12_2();
+} -match regexp -output {entry fntrace_12_2_f1
+exit fntrace_12_2_f1
+\d+: enter fntrace_12_2_f4
+\d+: exit fntrace_12_2_f4 ret ''
+}
+
+test fntrace-13.1 {test run-time function tracing control} -body {
+#lang L
+#pragma fntrace=off
+int fn13_d = 0;
+void fn13(int max)
+{
+	++fn13_d;
+	if (fn13_d < max) fn13(max);
+	--fn13_d;
+}
+void fntrace_13_1_f1() {}
+void fntrace_13_1_f2() {}
+void fntrace_13_1()
+{
+	FILE	f;
+
+	fntrace_13_1_f1();
+	Ltrace({"fntrace" => "on", "trace_depth" => 3, "trace_out" => stdout});
+	fntrace_13_1_f1();
+	fn13(100);
+	Ltrace({"fntrace" => "entry", "trace_out" => "fn13.out"});
+	fntrace_13_1_f1();
+	Ltrace({"trace_out" => stdout});
+	Ltrace({"fntrace" => "off"});
+	fntrace_13_1_f2();
+	Ltrace({"trace_funcs" => "fntrace_13_1_f2"});
+	fntrace_13_1_f2();
+	Ltrace({"fntrace" => "off"});
+
+	unless (f = fopen("fn13.out", "r")) puts("bad 1");
+	unless (<f> =~ /\d+: enter fntrace_13_1_f1/) puts("bad 2");
+	if (<f>) puts("bad 3");
+	unlink("fn13.out");
+}
+fntrace_13_1();
+} -match regexp -output {\d+: enter fntrace_13_1_f1
+\d+: exit fntrace_13_1_f1 ret ''
+\d+: enter fn13 '100'
+\d+: enter fn13 '100'
+\d+: exit fn13 '100' ret ''
+\d+: exit fn13 '100' ret ''
+\d+: enter fntrace_13_1_f2
+\d+: exit fntrace_13_1_f2 ret ''
+}
+
+test fntrace-13.2 {test run-time disabling of entry or exit traces} -body {
+#lang L
+#pragma fntrace=on
+void fntrace_13_2_f(poly arg)
+{
+	Ltrace(arg);
+}
+void fntrace_13_2() _attribute(fntrace=off)
+{
+	fntrace_13_2_f({});
+	fntrace_13_2_f({"fntrace" => "off"});
+	// This next one won't get us exit traces because Tcl won't call
+	// the trace of a function if you turn it on while inside that
+	// function.
+	fntrace_13_2_f({"fntrace" => "on"});
+	fntrace_13_2_f({"fntrace" => "entry"});
+	fntrace_13_2_f({"fntrace" => "exit"});
+	fntrace_13_2_f({"fntrace" => "off"});
+}
+fntrace_13_2();
+} -match regexp -output {\d+: enter fntrace_13_2_f ''
+\d+: exit fntrace_13_2_f '' ret ''
+\d+: enter fntrace_13_2_f 'fntrace off'
+\d+: enter fntrace_13_2_f 'fntrace entry'
+\d+: enter fntrace_13_2_f 'fntrace exit'
+\d+: exit fntrace_13_2_f 'fntrace exit' ret ''
 }
 
 ::tcltest::cleanupTests
