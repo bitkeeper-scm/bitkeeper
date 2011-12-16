@@ -4,6 +4,7 @@ utils.fake:
 UTILS_OBJS = $(patsubst %,utils/%, \
 	cleanpath.o \
 	concat_path.o \
+	crc32c.o \
 	data.o \
 	dirname.o dirs.o \
 	efopen.o \

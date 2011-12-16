@@ -76,7 +76,7 @@ private int	fileSize(fchk *fc);
 #define CHKSZ	(4 + 2)
 
 /* checksum a block */
-#define	CHKSUM(x, buf, len)	adler32(x, (const u8 *)buf, len)
+#define	CHKSUM(x, buf, len)	crc32c(x, (const u8 *)buf, len)
 
 FILE *
 fchksum_open(FILE *f, char *mode, int est_size)

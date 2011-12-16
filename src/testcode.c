@@ -417,3 +417,31 @@ fgzip_main(int ac, char **av)
 	fclose(f);
 	return (0);
 }
+
+int
+chksum_main(int ac, char **av)
+{
+	int	c;
+	u32	sum_crc = 0;
+	u32	sum_adler = 1;
+	int	do_adler32 = 0;
+	int	do_crc32c = 0;
+	char	buf[16<<10];
+
+	while ((c = getopt(ac, av, "ac", 0)) != -1) {
+		switch (c) {
+		    case 'a': do_adler32 = 1; break;
+		    case 'c': do_crc32c = 1; break;
+		    default: bk_badArg(c, av);
+		}
+	}
+	setmode(0, _O_BINARY);
+	while ((c = fread(buf, 1, sizeof(buf), stdin)) > 0) {
+		if (do_adler32) sum_adler = adler32(sum_adler, buf, c);
+		if (do_crc32c) sum_crc = crc32c(sum_crc, buf, c);
+	}
+	if (do_adler32) printf("adler32: %08x\n", sum_adler);
+	if (do_crc32c)  printf(" crc32c: %08x\n", sum_crc);
+
+	return (0);
+}

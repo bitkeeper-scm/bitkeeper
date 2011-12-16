@@ -35,7 +35,8 @@ cat_main(int ac, char **av)
 			continue;
 		}
 		if (pnames) {
-			printf("|FILE|%s|CRC|%u\n", s->gfile, crc(s->gfile));
+			printf("|FILE|%s|CRC|%lu\n", s->gfile,
+			    adler32(0, s->gfile, strlen(s->gfile)));
 			fflush(stdout);
 		}
 		if (gfile) {

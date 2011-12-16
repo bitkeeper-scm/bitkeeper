@@ -328,7 +328,8 @@ err:			sccs_free(s);
 			rev = 0;	/* Use tip below */
 		}
 		if (pnames) {
-			printf("|FILE|%s|CRC|%u\n", s->gfile, crc(s->gfile));
+			printf("|FILE|%s|CRC|%lu\n", s->gfile,
+			    adler32(0, s->gfile, strlen(s->gfile)));
 		}
 		if ((flags & (GET_DIFFS|GET_BKDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)

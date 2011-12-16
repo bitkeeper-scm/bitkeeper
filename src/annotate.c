@@ -90,7 +90,8 @@ err:			errors = 1;
 			rev = sfileRev();
 		}
 		if (pnames) {
-			printf("|FILE|%s|CRC|%u\n", s->gfile, crc(s->gfile));
+			printf("|FILE|%s|CRC|%lu\n", s->gfile,
+			    adler32(0, s->gfile, strlen(s->gfile)));
 		}
 		if (range) {
 			c = sccs_cat(s, flags, "-");

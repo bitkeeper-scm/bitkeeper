@@ -1751,12 +1751,6 @@ p2str(void *p)
 #undef N
 }
 
-u32
-crc(char *str)
-{
-	return (adler32(0, str, strlen(str)));
-}
-
 char	*
 psize(u64 size)
 {

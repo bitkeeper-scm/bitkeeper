@@ -190,6 +190,7 @@ changes
 check
 checked remote
 checksum
+chksum
 clean
 _cleanpath
 clone

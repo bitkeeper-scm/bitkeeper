@@ -82,6 +82,9 @@ void	cleanPath(char *path, char cleanPath[]);
 /* concat_path.c */
 void	concat_path(char *buf, char *first, char *second);
 
+/* crc32c.c */
+u32	crc32c(u32 crc, const void *chunk, size_t len);
+
 /* data.c */
 typedef struct {
 	char	*buf;		/* user's data */
