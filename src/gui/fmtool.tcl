@@ -483,7 +483,7 @@ proc widgets {L R O} \
 	ttk::frame .merge
 	    ttk::label .merge.l
 	    text .merge.t -width $gc(fm.mergeWidth) \
-		-height $gc(fm.mergeHeight) \
+		-height $gc(fm.mergeHeight) -highlightthickness 0 \
 		-background $gc(fm.textBG) -fg $gc(fm.textFG) \
 		-wrap none -font $gc(fm.fixedFont) \
 		-xscrollcommand { .merge.xscroll set } \
@@ -569,7 +569,7 @@ proc widgets {L R O} \
 	bindhelp .merge.menu.right \
 	    "(Control-Right)  Use the highlighted change from the right"
 	.merge.menu.redo configure -state disabled
-	foreach w {.diffs.left .diffs.right .merge.t} {
+	foreach w {.diffs.left .diffs.right} {
 		bindtags $w [list $w ReadonlyText . all]
 	}
 	computeHeight "diffs"
@@ -676,6 +676,16 @@ proc startup {{buildwidgets {}}} \
 			next
 		}
 	}
+}
+
+proc test_inputStringInMerge {string} \
+{
+	test_inputString $string .merge.t
+}
+
+proc test_getMergeText {} \
+{
+	return [.merge.t get 1.0 end]
 }
 
 proc fmtool {} \

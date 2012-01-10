@@ -99,4 +99,18 @@ bk diff $Q -w merge right >"$OUT" 2>&1
 if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 
+echo $N Test that the merge window is editable ......................$NL
+bk guitest fmtool left right merge >"$OUT" 2>&1 <<'EOF'
+	test_inputStringInMerge "This is a test"
 
+	set data [test_getMergeText]
+	if {![string match "*This is a test*" $data]} {
+		puts "Test string did not appear in merge text."
+		exit 1
+	}
+	test_buttonPress "Quit"
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo OK
