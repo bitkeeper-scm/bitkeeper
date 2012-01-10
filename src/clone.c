@@ -32,7 +32,8 @@ private	struct {
 	char	*comppath;		/* for fromTo */
 	char	*sfiotitle;		/* pass down for title */
 	char	*localurl;		/* -@ local baseline URL */
-	char	*pull_from;
+	char	*pull_from;		/* -@ remote repo */
+	char	*pull_fromlev;		/* level of remote repo */
 	char	*pull_rev;
 	char	**pull_aliases;
 	u32	in, out;		/* stats */
@@ -364,6 +365,7 @@ clone_main(int ac, char **av)
 			title = "";
 		}
 	}
+	FREE(opts->pull_fromlev);
 	free(opts);
 	return (retrc);
 }
@@ -409,7 +411,7 @@ chkAttach(char *dir)
 	unless (opts->force) {
 		p = aprintf(
 		   "bk changes -qnd':SYNCROOT:' -r1.0 '%s'", opts->from);
-		syncroot = backtick(p);
+		syncroot = backtick(p, 0);
 		free(p);
 		unless (syncroot && isKey(syncroot)) goto err;
 	}
@@ -1844,6 +1846,9 @@ detach(int quiet, int verbose)
 private retrc
 clonemod_part1(remote **r)
 {
+	char	buf[MAXLINE];
+	int	status;
+
 	/*
 	 * If we don't have a destination directory then we need to
 	 * make another bkd connection to find what is used on the
@@ -1886,6 +1891,19 @@ clonemod_part1(remote **r)
 		opts->rev = 0;
 	}
 	opts->pull_from = remote_unparse(*r);
+	sprintf(buf, "bk -@'%s' level -l", opts->pull_from);
+	unless (opts->pull_fromlev = backtick(buf, &status)) {
+		/*
+		 * the exit status below is in remote.c (1<<5)
+		 * changes should be synchronized
+		 */
+		if (WEXITSTATUS(status) == 32) {
+			fprintf(stderr,
+			    "The bkd serving %s needs to be upgraded\n",
+			    opts->pull_from);
+		}
+		return (RET_ERROR);
+	}
 	remote_free(*r);
 	free(opts->from);
 	opts->from = strdup(opts->localurl);
@@ -1908,6 +1926,8 @@ clonemod_part2(char **envVar)
 	unless (opts->no_parent) {
 		sys("bk", "parent", "-sq", opts->pull_from, SYS);
 	}
+	systemf("bk level %s", opts->pull_fromlev);
+	FREE(opts->pull_fromlev);
 	sprintf(buf, "bk changes -qakL '%s'", opts->pull_from);
 	f = popen(buf, "r");
 	assert(f);

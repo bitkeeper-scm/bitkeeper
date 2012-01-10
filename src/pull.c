@@ -263,7 +263,8 @@ err:		freeLines(envVar, free);
 			 * See how many csets we ported
 			 */
 			merged = strtol(
-				backtick("bk changes -Sr+ -nd'$if(:MERGE:){1}$else{0}'"),
+				backtick("bk changes -Sr+ "
+				    "-nd'$if(:MERGE:){1}$else{0}'", 0),
 				0, 10);
 			csets_in = file2Lines(0, "BitKeeper/etc/csets-in");
 			fprintf(tmpf, "  Ported%s %d cset%s from %s\n",

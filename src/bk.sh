@@ -1132,8 +1132,19 @@ _clonemod() {
 		exit 1
 	fi
 
+	LVL=`bk -@"$1" level -l` || {
+		ret=$?
+		# the exit status below is in remote.c (1<<5)
+		# changes should be synchronized
+		if [ $ret -eq 32 ]
+		then
+			echo "The bkd serving $1 needs to be upgraded"
+		fi
+		exit $ret
+	}
 	bk clone -q "$2" "$3" || exit 1
 	cd "$3" || exit 1
+	bk level $LVL
 	bk parent -sq "$1" || exit 1
 	bk undo -q -fa`bk repogca` || exit 1
 	# remove any local tags that the above undo missed

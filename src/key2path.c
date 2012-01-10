@@ -75,7 +75,8 @@ md5key2key(void)
 	char	*rootkey, *mpath;
 	char	buf[MD5LEN];
 
-	rootkey = backtick("bk -R prs -hr+ -nd:ROOTKEY: BitKeeper/etc/config");
+	rootkey =
+	    backtick("bk -R prs -hr+ -nd:ROOTKEY: BitKeeper/etc/config", 0);
 	(void)proj_cset2key(0, "+", rootkey);
 	free(rootkey);
 	mpath = aprintf("%s/BitKeeper/tmp/csetcache.%x",

@@ -271,6 +271,24 @@ cd "$HERE"
 bk clone $Q bk://localhost:$OLDP/nest/gcc 2> ERR && exit 1
 grep -q "good error msg" ERR || echo "failed (bug -- need good err msg)"
 
+echo $N New clone -@ with old bkd fails gracefully ..................$NL
+bk clone $Q -@project bk://localhost:$OLDP/blart >ERR 2>&1 && \
+	fail -f ERR should have failed
+grep -q "Repository doesn't exist" ERR || fail -f ERR wrong message
+bk clone $Q -@project bk://localhost:$OLDP/copy >ERR 2>&1 && \
+	fail -f ERR should have failed
+grep -q "copy needs to be upgraded" ERR || fail -f ERR wrong message
+echo OK
+
+echo $N New clonemod with old bkd fails gracefully ..................$NL
+bk clonemod $Q bk://localhost:$OLDP/blart project blart >ERR 2>&1 && \
+	fail -f ERR should have failed
+grep -q "Repository doesn't exist" ERR || fail -f ERR wrong message
+bk clonemod $Q bk://localhost:$OLDP/copy project copy >ERR 2>&1 && \
+	fail -f ERR should have failed
+grep -q "copy needs to be upgraded" ERR || fail -f ERR wrong message
+echo OK
+
 echo $N Check lease proxy compat ....................................$NL
 cd "$HERE"
 # Do some work to isolate license key

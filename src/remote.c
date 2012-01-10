@@ -207,6 +207,13 @@ remote_cmd(char **av, char *url, FILE *in, FILE *out, FILE *err,
 err:		if (err) fprintf(err, "##### %s #####\n", u);
 		if (p = strchr(line+6, '\n')) *p = 0; /* terminate line */
 		if (err) fprintf(err, "%s\n", &line[6]);
+		/*
+		 * N.B.
+		 * This is the path taken when remote commands are not
+		 * enabled.  clone -@ (clone.c) and clonemod (bk.sh)
+		 * look for this return value in response to a remote
+		 * level request.
+		 */
 		i = 1<<5;
 		goto out;
 	}
