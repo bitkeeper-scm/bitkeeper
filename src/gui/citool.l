@@ -1708,6 +1708,31 @@ showCsetContents(sfile sf)
 }
 
 void
+showCheckinContents()
+{
+	sfile	sf;
+	string	lines[];
+	string	line, file, comments;
+
+	Text_delete(self.w_diffs, 1.0, "end");
+	foreach (file => sf in self.files) {
+		if (sf.excluded) continue;
+		if (sf.type eq "cset") continue;
+		comments = getComments(sf);
+		if (comments eq "") continue;
+		Text_insert(self.w_diffs, "end", sf.name);
+		Text_insert(self.w_diffs, "end", "\n");
+		lines = split(comments, "\n");
+		foreach (line in lines) {
+			Text_insert(self.w_diffs, "end", "  ");
+			Text_insert(self.w_diffs, "end", line);
+			Text_insert(self.w_diffs, "end", "\n");
+		}
+		Text_insert(self.w_diffs, "end", "\n");
+	}
+}
+
+void
 showFile(sfile sf)
 {
 	FILE	fd;
@@ -1889,6 +1914,7 @@ doCommit()
 		} else if (isCommented(cset) && !isExcluded(cset)) {
 			topMessage(msgs{"gotCset"}, "message");
 		} else {
+			showCheckinContents();
 			topMessage(msgs{"noCset"}, "message");
 		}
 		return;

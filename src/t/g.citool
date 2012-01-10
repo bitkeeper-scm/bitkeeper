@@ -813,3 +813,26 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
+
+echo $N Test that Checkin adds delta contents to the diff window ....$NL
+cd "$HERE/project"
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+
+bk edit $Q src/file1
+echo FOO > src/file1
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile "src/file1"
+	test_inputComment "This is a comment for src/file1"
+	test_buttonPress "Checkin"
+	
+	set diffs [test_getDiffs]
+	if {![string match "*This is a comment for src/file1*" $diffs]} {
+		puts "src/file1 was not in the delta comments"
+		exit 1
+	}
+
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK
