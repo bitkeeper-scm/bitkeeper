@@ -611,6 +611,7 @@ test -f RESYNC/BitKeeper/log/port && fail
 echo OK
 
 echo $N Where are the comments about the foo in the product? ........$NL
+cd "$HERE"
 nested other
 bk detach $Q gdb ../gdb-other
 cd ../gdb-other
@@ -627,3 +628,20 @@ echo u | bk commit $Q >/dev/null || fail
 bk changes -r+ >GOT 2>&1
 grep foo GOT && fail "You fixed a bug"
 echo failed \(bug port -C loses pending\)
+
+echo $N Port between standalones cset-marks ChangeSet................$NL
+cd "$HERE"
+cd other
+bk detach $Q gdb ../gdb-other2
+cd ../gdb-other
+touch afile
+bk new $Q afile
+bk commit $Q -f
+cd ../gdb-other2
+bk port $Q ../gdb-other || fail
+bk repocheck $Q || fail
+cd ..
+bk clone $Q gdb-other2 gdb-other3
+cd gdb-other3
+bk repocheck $Q || fail -f GOT
+echo OK

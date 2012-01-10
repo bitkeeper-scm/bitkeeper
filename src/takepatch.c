@@ -993,10 +993,18 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			/* Use correct handling of keeping orig path */
 			sccs_setPath(s, d, PARENT(s, d)->pathname);
 		}
-		if (proj_isComponent(s->proj) &&
-		    streq(proj_rootkey(proj_product(s->proj)), d->csetFile)) {
-			errorMsg("tp_portself", p->pid, s->sfile);
-			/*NOTREACHED*/
+		if (proj_isComponent(s->proj)) {
+			if (streq(proj_rootkey(proj_product(s->proj)),
+				d->csetFile)) {
+				errorMsg("tp_portself", p->pid, s->sfile);
+				/*NOTREACHED*/
+			}
+		} else if (d != s->tree) {
+			/*
+			 * If porting to a standalone, we need to add
+			 * back the cset marks.
+			 */
+			d->flags |= D_CSET;
 		}
 		if (d->merge && !streq(MERGE(s, d)->pathname, d->pathname)) {
 			errorMsg("tp_portmerge",
