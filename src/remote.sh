@@ -2,7 +2,7 @@
 
 umask 0
 
-test $OSTYPE != cygwin && {
+test X$OSTYPE != Xcygwin && {
 	# The build script sets PATH, but we need to find 'make' on sun.
 	PATH=/bin:/usr/bin:/usr/bsd:/usr/local/bin:/usr/gnu/bin
 	PATH=$PATH:/usr/freeware/bin:/usr/ccs/bin
@@ -116,7 +116,7 @@ case $CMD in
 		}
 		DEST="/home/bk/images/$TAG"
 		test $CMD = trial && DEST="$DEST-trial"
-		if [ $OSTYPE = msys -o $OSTYPE = cygwin ] ; 
+		if [ X$OSTYPE = Xmsys -o X$OSTYPE = Xcygwin ] ; 
 		then	# we're on Windows
 			# We only want images done on WinXP
 			test $HOSTNAME = winxp || {
@@ -148,7 +148,7 @@ case $CMD in
 		rm -rf /build/$BKDIR
 		# XXX - I'd like to remove /build/.bk-3.0.x.regcheck.lm but I
 		# can't on windows, we have it open.
-		test $OSTYPE = cygwin || rm -f /build/.${BKDIR}.$BK_USER
+		test X$OSTYPE = Xcygwin || rm -f /build/.${BKDIR}.$BK_USER
 	}
 	rm -rf /build/.tmp-$BK_USER
 	;;
