@@ -69,10 +69,13 @@ do	bk co $Q -l $f
 		exit 1
 	}
 done
-bk prs -hnr+ -d:COMPRESSION:,:ENC: uuencode1 uuencode1z uuencode2 bam1 bam2 \
+bk prs -hnr+ -d:COMPRESSION:,:ENC: uuencode1z uuencode1 uuencode2 bam1 bam2 \
     > OUT
-cat <<EOF >WANT
-none,uuencode
+if [ X$BK_BIN_REGRESSIONS = Xyes ]
+then	echo none,uuencode > WANT
+else	echo gzip,uuencode > WANT
+fi
+cat <<EOF >>WANT
 none,uuencode
 none,uuencode
 none,BAM

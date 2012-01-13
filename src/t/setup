@@ -61,6 +61,17 @@ unsetHttpProxy() {
 
 # Make a commercial config file
 _commercial_config() {
+	# setup binary or ascii sfiles
+	# mostly ascii currently, but binary on a couple machines
+	test -z "$BK_BIN_REGRESSIONS" && {
+		case "`bk gethost`" in
+		    bits.bitmover.com) BK_BIN_REGRESSIONS=yes;;
+		    ppc-285.bitmover.com) BK_BIN_REGERSSIONS=yes;;
+		    win2008.bitmover.com) BK_BIN_REGERSSIONS=yes;;
+		    *) BK_BIN_REGERSSIONS=no;;
+		esac
+		export BK_BIN_REGRESSIONS
+	}
         # one more item for nested repos
 	test "$1" && echo clone_default: DEFAULT
 	cat <<EOF
@@ -75,7 +86,7 @@ keyword: sccs
 BAM: 1
 lockwait: 0
 partial_check: off
-binfile: yes
+binfile: $BK_BIN_REGRESSIONS
 EOF
 }
 
