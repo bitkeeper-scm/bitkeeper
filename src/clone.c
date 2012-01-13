@@ -682,7 +682,12 @@ clone(char **av, remote *r, char *local, char **envVar)
 		getMsg("bkd_missing_feature", "SAMv3", '=', stderr);
 		goto done;
 	}
-	if (bkd_hasFeature(FEAT_bSFILEv1)) bk_featureSet(0, FEAT_bSFILEv1, 1);
+	if (p = getenv("BKD_FEATURES_REQUIRED")) {
+		char	**list = splitLine(p, ",", 0);
+
+		lines2File(list, "BitKeeper/log/features");
+		freeLines(list, free);
+	}
 
 	/*
 	 * When the source and destination of a clone are remapped

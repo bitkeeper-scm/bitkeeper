@@ -51,7 +51,7 @@ echo OK
 
 echo $N Test clone with illegal features ............................$NL
 cd ..
-_BKD_TEST_REQUIRED=HORSE bk clone $Q 2>ERR nest junk && fail -f ERR
+_BKD_TEST_REQUIRED=HORSE bk clone -q 2>ERR nest junk && fail -f ERR
 
 # the bkd can get a perror(EPIPE) when the client fails to read the SFIO
 grep -v 'zputs_hfwrite' ERR > ERR2
@@ -65,4 +65,24 @@ echo $N Test new nested comp does not set sortkey ...................$NL
 cd "$HERE/nest"
 bk setup -f comp
 grep -q sortkey comp/BitKeeper/log/features && fail comp has sortkey
+echo OK
+
+echo $N Test bFILE is set after clone ...............................$NL
+cd "$HERE"/project
+rm BitKeeper/log/features # cleanup from earlier test
+bk admin -B ChangeSet || fail
+bk repocheck $Q || fail
+bk --config=partial_check:yes clone $Q . ../with-bin || fail
+cat <<EOF > WANT
+bSFILEv1
+remap
+EOF
+cmpfiles WANT ../with-bin/BitKeeper/log/features
+bk -r admin -Bnone
+bk repocheck $Q || fail
+bk --config=partial_check:yes clone $Q . ../without-bin || fail
+cat <<EOF > WANT
+remap
+EOF
+cmpfiles WANT ../without-bin/BitKeeper/log/features
 echo OK
