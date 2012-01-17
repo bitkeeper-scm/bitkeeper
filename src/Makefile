@@ -241,7 +241,7 @@ SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh \
 	  substvars.sh b64wrap.sh gzip_b64wrap.sh \
 	  unb64wrap.sh ungzip_b64wrap.sh \
-	  lscripts/hello.l
+	  $(LSCRIPTS)
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 
 export	GET
@@ -305,7 +305,7 @@ clean: FORCE
 	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" Q=$(Q) $@; \
 	done
 	$(Q)$(RM) $(OBJ) bk.o inskeys.o inskeys_main.o $(BINS) $(SCRIPTS) \
-	    $(LSCRIPTS) $(LOCALSRC) $(PSRC) $(PROGS)
+	    $(LOCALSRC) $(PSRC) $(PROGS)
 	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		tclkey.h core *.bb *.bbg *.da *.gcov \
 		bk.ico \
