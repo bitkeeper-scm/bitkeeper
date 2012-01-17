@@ -61,13 +61,6 @@ bk clone my_repo my_repo.BAM
 cd my_repo.BAM
 bk bam convert
 .DE
-.SH PERFORMANCE
-By default, BitKeeper does an fsync after each update of a history file.
-This can be a performance problem and it may be disabled for a conversion
-or initial checkin of files as follows:
-.DS
-"BK_CONFIG=nosync:on! "
-.DE
 .SH USAGE
 Once the repository is converted, usage is as it was in the past, you clone,
 pull, push, etc., as normal.

@@ -275,7 +275,7 @@ setEnv(Opts *opts)
 	char	*p;
 
 	if (p = getenv("BK_CONFIG")) opts->oconfig = strdup(p);
-	bk_setConfig("nosync", "yes");
+	bk_setConfig("sync", "no");
 	bk_setConfig("checkout", "none");
 	bk_setConfig("partial_check", "on");
 	putenv("BK_NO_TRIGGERS=1");
