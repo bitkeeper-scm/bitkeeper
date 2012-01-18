@@ -20,4 +20,6 @@ ser_t	*symdiff_addBVC(ser_t **sd, ser_t *list, delta *d);
 int	graph_bigFirst(const void *a, const void *b);
 int	graph_smallFirst(const void *a, const void *b);
 
+int	graph_checkdups(sccs *s);
+
 #endif

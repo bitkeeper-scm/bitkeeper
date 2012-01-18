@@ -7,6 +7,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "graph.h"
 #include "bam.h"
 #include "nested.h"
 #include "progress.h"
@@ -95,6 +96,7 @@ check_main(int ac, char **av)
 	int	BAM = 0;
 	int	doBAM = 0;
 	int	forceCsetFetch = 0;
+	int	noDups = 0;
 	ticker	*tick = 0;
 	longopt	lopts[] = {
 		{ "use-older-changeset", 300 },
@@ -247,6 +249,7 @@ check_main(int ac, char **av)
 		if (!title && (name = getenv("_BK_TITLE"))) title = name;
 		tick = progress_start(PROGRESS_BAR, nfiles);
 	}
+	noDups = (getenv("_BK_CHK_IE_DUPS") != 0);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
 	    name; n++, name = sfileNext()) {
 		ferr = 0;
@@ -364,6 +367,7 @@ check_main(int ac, char **av)
 			}
 		}
 
+		if (noDups) graph_checkdups(s);
 		if (e = check(s, idDB)) {
 			errors |= 0x40;
 		} else unless (ferr) {

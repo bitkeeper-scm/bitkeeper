@@ -25,6 +25,7 @@ private	void	sortKids(delta *start,
  *
  * #define	SLR_DIFF	0x10
  */
+#define	SL_DUP		0x10	/* Check for not needed */
 #define	SL_PAR		0x20	/* Left side parent lineage */
 #define	SL_INC		0x40	/* Left side include */
 #define	SL_EXCL		0x80	/* Left side exclude */
@@ -289,6 +290,108 @@ graph_symdiff(delta *left, delta *right, u8 *slist,
 		}
 	}
 	return (count);
+}
+
+private	int
+checkDups(sccs *s, delta *d, u8 *slist)
+{
+	delta	*t;
+	ser_t	stop, clean, ser;
+	int	i;
+	u32	bits;
+	int	rc = 0;
+
+	stop = clean = ser = d->serial;
+	slist[ser] |= SL_PAR;
+	for (t = d; t && (t->serial >= stop); t = NEXT(t)) {
+		ser = t->serial;
+		unless (bits = slist[ser]) continue;
+		slist[ser] = 0;
+		if (bits & SL_PAR) {
+			if ((bits & (SL_PAR|SL_DUP|SL_INC)) ==
+			    (SL_PAR|SL_DUP|SL_INC)) {
+				fprintf(stderr,
+				    "%s: dup parent/inc in %s of %s\n",
+		    		    s->gfile, d->rev, t->rev);
+				rc = 1;
+			}
+			if ((ser = t->pserial)) {
+				slist[ser] |= SL_PAR;
+				if (clean > ser) clean = ser;
+			}
+		}
+		unless ((bits & (SL_PAR|SL_INC)) && !(bits & SL_EXCL)) {
+			continue;
+		}
+		EACH(t->include) {
+			ser = t->include[i];
+			bits = slist[ser];
+			if (bits & SL_DUP) {
+				bits &= ~SL_DUP;
+				if (bits & SL_INC) {
+					fprintf(stderr,
+					    "%s: dup inc in %s of %s\n",
+			    		    s->gfile, d->rev,
+					    sfind(s, ser)->rev);
+					rc = 1;
+				}
+			} else if (t == d) {
+				bits |= SL_DUP;
+				if (stop > ser) stop = ser;
+			}
+			unless (bits & (SL_INC|SL_EXCL)) bits |= SL_INC;
+			slist[ser] = bits;
+			if (clean > ser) clean = ser;
+		}
+		EACH(t->exclude) {
+			ser = t->exclude[i];
+			bits = slist[ser];
+			if (bits & SL_DUP) {
+				bits &= ~SL_DUP;
+				if (bits & SL_EXCL) {
+					fprintf(stderr,
+					    "%s: dup exc in %s of %s\n",
+			    		    s->gfile, d->rev,
+					    sfind(s, ser)->rev);
+					rc = 1;
+				}
+			} else if (t == d) {
+				bits |= SL_DUP;
+				if (stop > ser) stop = ser;
+			}
+			unless (bits & (SL_INC|SL_EXCL)) bits |= SL_EXCL;
+			slist[ser] = bits;
+			if (clean > ser) clean = ser;
+		}
+	}
+	if (t && clean) {
+		for (ser = t->serial; ser >= clean; ser--) {
+			slist[ser] = 0;
+		}
+	}
+	return (rc);
+}
+
+/*
+ * Look for dups
+ */
+int
+graph_checkdups(sccs *s)
+{
+	delta	*d;
+	u8	*slist;
+	int	i;
+	int	rc = 0;
+
+	slist = (u8 *)calloc(s->nextserial, sizeof(u8));
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, i)) continue;
+		if (d->include || d->exclude) {
+			rc |= checkDups(s, d, slist);
+		}
+	}
+	free(slist);
+	return (rc);
 }
 
 /*
