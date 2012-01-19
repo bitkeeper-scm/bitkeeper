@@ -8197,7 +8197,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 		    !(parent && streq(SORTPATH(s, parent), SORTPATH(s, d))))) {
 			p = fmts(buf, "\001cP");
 			p = fmts(p, PATHNAME(s, d));
-			if (HAS_SORTPATH(s, d)) {
+			if (HAS_SORTPATH(s, d) &&
+			    !streq(PATHNAME(s, d), SORTPATH(s, d))) {
 				p = fmts(p, "|");
 				p = fmts(p, SORTPATH(s, d));
 			}
@@ -10714,14 +10715,13 @@ pathArg(sccs *s, ser_t d, char *arg)
 	if (!arg || !*arg) return (d);
 
 	strcpy(buf, arg);
-	if (sp = strchr(buf, '|')) {
-		*sp++ = 0;
-
+	if (sp = strchr(buf, '|')) *sp++ = 0;
+	PATHNAME_SET(s, d, buf);
+	if (sp) {
 		SORTPATH_SET(s, d, sp);
 	} else {
-		SORTPATH_SET(s, d, 0);
+		SORTPATH_INDEX(s, d) = PATHNAME_INDEX(s, d);
 	}
-	PATHNAME_SET(s, d, buf);
 	return (d);
 }
 
@@ -16313,7 +16313,8 @@ do_patch(sccs *s, ser_t d, int flags, FILE *out)
 	}
 	if (HAS_PATHNAME(s, TREE(s))) assert(HAS_PATHNAME(s, d));
 	if (HAS_PATHNAME(s, d)) {
-		if (HAS_SORTPATH(s, d)) {
+		if (HAS_SORTPATH(s, d) &&
+		    !streq(PATHNAME(s, d), SORTPATH(s, d))) {
 			fprintf(out, "P %s|%s\n",
 			    PATHNAME(s, d), SORTPATH(s, d));
 		} else {
@@ -16923,9 +16924,7 @@ sccs_sortkey(sccs *s, ser_t d, char *buf)
 	origsum = SUM(s, d);
 
 	unless (getenv("_BK_NO_SORTKEY")) {
-		if (origpath && HAS_SORTPATH(s, d)) {
-			PATHNAME_INDEX(s, d) = SORTPATH_INDEX(s, d);
-		}
+		PATHNAME_INDEX(s, d) = SORTPATH_INDEX(s, d);
 		if (FLAGS(s, d) & D_SORTSUM) SUM_SET(s, d, SORTSUM(s, d));
 	}
 	sccs_sdelta(s, d, buf);
@@ -16980,15 +16979,12 @@ sccs_key2md5(char *rootkey, char *deltakey, char *b64)
 void
 sccs_setPath(sccs *s, ser_t d, char *new)
 {
+	assert(SORTPATH_INDEX(s, d));
 	unless (streq(new, PATHNAME(s, d))) {
-		unless (HAS_SORTPATH(s, d)) {
-			SORTPATH_INDEX(s, d) = PATHNAME_INDEX(s, d);
+		PATHNAME_SET(s, d, new);
+		unless (streq(new, SORTPATH(s, d))) {
 			bk_featureSet(s->proj, FEAT_SORTKEY, 1);
 		}
-		PATHNAME_SET(s, d, new);
-	}
-	if (HAS_SORTPATH(s, d) && streq(new, SORTPATH(s, d))) {
-		SORTPATH_SET(s, d, 0);
 	}
 }
 
