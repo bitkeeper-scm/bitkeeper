@@ -234,7 +234,7 @@ admin_main(int ac, char **av)
 				if (d == TREE(sc)) break;
 				/* ugly and inefficient temporary state */
 				PATHNAME_SET(sc, d, path);
-				SORTPATH_SET(sc, d, 0);
+				SORTPATH_INDEX(sc, d) = PATHNAME_INDEX(sc, d);
 			}
 			d = rev ? sccs_findrev(sc, rev) : sccs_top(sc);
 			sccs_parseArg(sc, d, 'P', path ? path : sc->gfile, 0);

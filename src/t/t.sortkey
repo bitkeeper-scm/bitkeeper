@@ -85,6 +85,13 @@ cmpfiles WANT-del GOT-del
 cmp -s WANT-del GOT-del-key && fail
 echo OK
 
+echo $N Test that sortpath default to pathname ......................$NL
+cd "$HERE"/partition/anno
+bk mv del save
+SORTP=`bk prs -r+ -hnd:SORTKEY: save | perl -pe 's/[^|]*.([^|]*).*/$1/'`
+test "$SORTP" = save || fail sortpath "'$SORTP'" should be "'save'"
+echo OK
+
 echo $N Test that sortkeys do not store sortSum if the same .........$NL
 cd "$HERE/copy/anno"
 bk _scat SCCS/s.del > Y
