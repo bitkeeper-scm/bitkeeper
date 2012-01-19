@@ -43,6 +43,7 @@ undo_main(int ac,  char **av)
 	char	undo_list[MAXPATH] = { 0 };
 	FILE	*f;
 	nested	*n = 0;
+	project	*proj = 0;
 	int	i, match = 0, lines = 0, limitwarning = 0, ncsetrevs = 0;
 	int	status;
 	int	rmresync = 1;
@@ -291,6 +292,12 @@ prod:
 			goto err;
 		}
 	}
+	/*
+	 * clean_file - builds up a COdb in proj struct.
+	 * We need to have a local copy of the proj struct so that
+	 * chdir RESYNC won't free it.
+	 */
+	proj = proj_init(".");
 	if (clean_file(sfiles)) goto err;
 	sig_ignore();
 
@@ -316,7 +323,7 @@ prod:
 	}
 
 	idcache_update(checkfiles);
-	proj_restoreAllCO(0, 0, 0);
+	proj_restoreAllCO(proj, 0, 0);
 
 	rmtree("RESYNC");
 	if (n) {
@@ -356,6 +363,7 @@ out2:	unless (opts->fromclone || opts->verbose || opts->quiet) {
 		progress_end(PROGRESS_BAR, rc ? "FAILED" : "OK", PROGRESS_MSG);
 	}
 out:	free(opts);
+	if (proj) proj_free(proj);
 	return (rc);
 }
 

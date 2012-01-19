@@ -138,3 +138,18 @@ bk undo $Q -fsr+ 2>ERR && fail -f ERR should have failed
 grep -q 'undo: The component gdb includes pending csets that cannot be undone.' ERR || fail -f ERR
 test -d RESYNC && fail
 echo OK
+
+echo $N Test checkout of files in component after undo ..............$NL
+# This uses _BK_DEVELOPER in check to see that all files are there
+cd "$HERE"/project
+echo 'checkout: edit!' > "$BK_DOTBK/config"
+bk tag $Q BASE
+cd gcc
+bk edit $Q new
+bk delta $Q -fynull new
+bk commit $Q -ynew
+cd ..
+bk gate $Q -r
+bk portal $Q -r
+bk undo -q -sfaBASE || fail
+echo OK
