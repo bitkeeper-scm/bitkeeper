@@ -1072,7 +1072,7 @@ nested_err:		fprintf(stderr, "clone: component fetch failed, "
 	freeLines(checkfiles, free);
 
 	if (partial && bp_hasBAM() &&
-	    (proj_checkout(0) && (CO_BAM_GET|CO_BAM_EDIT))) {
+	    (proj_checkout(0) & (CO_BAM_GET|CO_BAM_EDIT))) {
 		system("bk _sfiles_bam | bk checkout -Tq -");
 	}
 	return (0);

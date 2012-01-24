@@ -1059,7 +1059,7 @@ isIgnored(char *file)
 	if (match_globs(gfile, ignore, 0) ||		 /* pathname match */
 	    match_globs(basenm(gfile), ignorebase, 0) || /* basename match */
 	    lstat(file, &sbuf) ||			 /* gone? */
- 	    !(sbuf.st_mode && S_IFREG|S_IFLNK)) {	 /* not reg file */
+	    !(sbuf.st_mode & S_IFREG|S_IFLNK)) {	 /* not reg file */
 		return (1);
 	}
 	if (getenv("BK_IGNOREDIRS")) {

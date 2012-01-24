@@ -2195,7 +2195,6 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	int hasKeyword = 0, buf_size;
 #define EXTRA 1024
 
-	a[0] = a[1] = a[2] = a[3] = 0;
 	/* pre scan the line to determine if it needs keyword expansion */
 	*expanded = 0;
 	for (t = l; *t; t++) {

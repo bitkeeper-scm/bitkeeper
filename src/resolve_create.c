@@ -193,7 +193,7 @@ more(resolve *rs, char *file)
 int
 res_vl(resolve *rs)
 {
-	sccs	*s = (sccs*)rs->opaque;
+	sccs	*s = 0;
 	char	*rev = 0;
 	char	left[MAXPATH];
 

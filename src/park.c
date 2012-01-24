@@ -675,7 +675,7 @@ copyGSPfile(char *oldpath, char *key,
 	free(newGpath);
 	free(oldSpath);
 	free(newSpath);
-	return (0);
+	return (rc);
 }
 
 /*

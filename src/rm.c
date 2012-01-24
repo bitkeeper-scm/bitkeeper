@@ -205,7 +205,6 @@ sccs_gone(int quiet, FILE *f)
 	FILE	*g;
 	char	*root;
 	kvpair	kv;
-	int	dflags = SILENT|DELTA_DONTASK;
 	MDBM	*db = mdbm_mem();
 	char	**lines = 0;
 	char	s_gone[MAXPATH], g_gone[MAXPATH], key[MAXKEY];
@@ -236,8 +235,6 @@ sccs_gone(int quiet, FILE *f)
 		while (fnext(key, g)) mdbm_store_str(db, key, "", MDBM_INSERT);
 		fclose(g);
 		s = sccs_restart(s);
-	} else {
-		dflags |= NEWFILE;
 	}
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
 		lines = addLine(lines, kv.key.dptr);

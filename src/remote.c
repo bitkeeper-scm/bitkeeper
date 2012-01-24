@@ -245,7 +245,6 @@ err:		if (err) fprintf(err, "##### %s #####\n", u);
 				did_header = 1;
 			}
 			if (wf) fwrite(buf, 1, i, wf);
-			bytes -= i;
 		} else {
 			perror("read/recv in bk -@");
 			i = 1<<5;

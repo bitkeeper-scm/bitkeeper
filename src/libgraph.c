@@ -654,10 +654,11 @@ sortKids(delta *start, int (*compar)(const void *, const void *),
 	int	i;
 
 	/* bail if nothing to sort */
-	unless ((d = start->kid) && !TAG(d) && d->siblings) return;
+	d = start->kid;
+	unless (d && !TAG(d) && d->siblings) return;
 
 	truncLines(list, 0);
-	for (d = start->kid; d; d = d->siblings) {
+	for (; d; d = d->siblings) {
 		list = addLine(list, d);
 	}
 	*karr = list;

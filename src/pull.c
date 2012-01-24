@@ -55,7 +55,7 @@ pull_main(int ac, char **av)
 	char	**envVar = 0, **urls = 0;
 	char	*tmpfile = 0;
 	FILE	*tmpf = 0;
-	int	portCsets;
+	int	portCsets = 0;
 	longopt	lopts[] = {
 		{ "batch", 310},	/* pass -s to resolve */
 		{ "safe", 320 },	/* require all comps to be here */
@@ -205,7 +205,6 @@ err:		freeLines(envVar, free);
 		tmpf = fopen(tmpfile, "w");
 		assert(tmpf);
 		fprintf(tmpf, "%s:\n", proj_comppath(0));
-		portCsets = 0;
 	}
 
 	if (opts.verbose) {
@@ -534,7 +533,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 		unlink(msg_file);
 		/* tell remote */
 		if ((t = getenv("BKD_REPOTYPE")) && streq(t, "product")) {
-			rc = pull_finish(r, 1, envVar);
+			pull_finish(r, 1, envVar);
 		}
 		return (-1);
 	}

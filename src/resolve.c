@@ -3127,7 +3127,7 @@ resolve_cleanup(opts *opts, int what)
 			rename(ROOT2RESYNC "/BitKeeper/tmp/r.ChangeSet",
 			    ROOT2RESYNC "/SCCS/r.ChangeSet");
 		}
-		unless (what && CLEAN_NOSHOUT) {
+		unless (what & CLEAN_NOSHOUT) {
 			unless (opts->progress) {
 				fprintf(stderr,
 				    "resolve: RESYNC directory "
