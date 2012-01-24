@@ -1205,11 +1205,6 @@ takepatch: porting in work that originated in this product
 	#BKARG#1#
 	in #BKARG#2#
 $
-#tp_portmerge
-takepatch: porting in changes cause a name merge conflict
-	#BKARG#1#
-	in #BKARG#2#
-$
 #tp_ahead
 takepatch: can't find parent ID
 	#BKARG#1#

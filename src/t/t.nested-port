@@ -645,3 +645,27 @@ bk clone $Q gdb-other2 gdb-other3
 cd gdb-other3
 bk repocheck $Q || fail -f GOT
 echo OK
+
+echo $N Move a component around and set correct path in port ........$NL
+# move component to play with pathname entry
+cd "$HERE"/project
+mvcomp bash newbash
+# Just take that in and resolve
+cd ../bash-sa
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -ynull
+bk port $Q ../project/newbash || fail
+# Now stir things up
+cd ../project/newbash
+bk port $Q ../../bash-sa || fail
+# All new csets will have tip local path in pathname and
+# 'ChangeSet' as sortpath
+bk changes -S -end':KEY:||:SORTKEY:' - < BitKeeper/etc/csets-in \
+    | perl -pe 's/[^|]*.([^|]*).*\|\|[^|]*.([^|]*).*/$1 $2/' > GOT
+cat <<EOF > WANT
+newbash/ChangeSet ChangeSet
+newbash/ChangeSet ChangeSet
+EOF
+cmpfiles WANT GOT
+echo OK

@@ -899,7 +899,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		s->state &= ~(S_PFILE|S_ZFILE|S_GFILE);
 		/* NOTE: we leave S_SFILE set, but no sfile there */
 
-		unless (CSET(s)) top = sccs_top(s);
+		top = sccs_top(s);
 	} else {
 		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
 			SHOUT();
@@ -979,37 +979,36 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	 * When porting in a csetfile, need to ignore path names
 	 * XXX: component moves looks will break this.
 	 */
-	if (opts->port && CSET(s)) for (d = 0, p = patchList; p; p = p->next) {
-		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
-		unless (d->pserial) continue;	/* rootkey untouched */
-		if (d->flags & D_DUPPATH) {
-			/*
-			 * a previous round may have broken duppath linkage;
-			 * fix it and use this as the answer.
-			 */
-			assert(d->pserial);
-			d->pathname = PARENT(s, d)->pathname;
-		} else {
-			/* Use correct handling of keeping orig path */
-			sccs_setPath(s, d, PARENT(s, d)->pathname);
-		}
-		if (proj_isComponent(s->proj)) {
-			if (streq(proj_rootkey(proj_product(s->proj)),
-				d->csetFile)) {
-				errorMsg("tp_portself", p->pid, s->sfile);
-				/*NOTREACHED*/
+	if (opts->port && CSET(s)) {
+		assert(top);	// no porting a new component; use attach
+		for (d = 0, p = patchList; p; p = p->next) {
+			unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
+			unless (d->pserial) continue;	/* rootkey untouched */
+			if (d->flags & D_DUPPATH) {
+				/*
+				 * a previous round may have broken duppath
+				 * linkage; fix it and then overwrite it.
+				 */
+				d->pathname = PARENT(s, d)->pathname;
 			}
-		} else if (d != s->tree) {
-			/*
-			 * If porting to a standalone, we need to add
-			 * back the cset marks.
-			 */
-			d->flags |= D_CSET;
-		}
-		if (d->merge && !streq(MERGE(s, d)->pathname, d->pathname)) {
-			errorMsg("tp_portmerge",
-			    MERGE(s, d)->pathname, d->pathname);
-			/*NOTREACHED*/
+			if (TAG(d)) continue;
+			if (proj_isComponent(s->proj)) {
+				/* Sanity assertion - can't port to self */
+				if (streq(d->csetFile,
+				    proj_rootkey(proj_product(s->proj)))) {
+					errorMsg("tp_portself",
+					    p->pid, s->sfile);
+					/*NOTREACHED*/
+				}
+			} else {
+				/*
+				 * If porting to a standalone, we need to add
+				 * back the cset marks.
+				 */
+				if (d != s->tree) d->flags |= D_CSET;
+			}
+			/* No new path info - point it all to local tip */
+			sccs_setPath(s, d, top->pathname);
 		}
 	}
 	if (CSET(s) && (echo == 3)) fputs(", ", stderr);
@@ -1097,7 +1096,7 @@ markup:
 		unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
 		d->flags |= D_SET; /* for resum() */
 	}
-	if (top && (top->dangling || !(top->flags & D_CSET))) {
+	if (!CSET(s) && top && (top->dangling || !(top->flags & D_CSET))) {
 		delta	*a, *b;
 
 		if (top->dangling && sccs_findtips(s, &a, &b)) {
