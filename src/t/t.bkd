@@ -31,7 +31,8 @@ bk ci $Q -i foo.c bar.c h.h
 BK="`bk bin`/bk"
 test $PLATFORM = WIN32 && BK="${BK}.exe"
 for i in 1 2 3
-do	dd if=$BK of=bk$i bs=1024000 count=2 >$DEV_NULL 2>&1
+do	perl -e 'sysread(STDIN, $buf, 2048000);
+	syswrite(STDOUT, $buf, 2048000);' < $BK > bk$i
 done
 bk new $Q bk?
 bk commit $Q -ycset1
@@ -117,6 +118,7 @@ P=`cat PORT`
 echo OK
 
 echo $N Make sure that commands leave the pid file alone ............$NL
+# Run this twice to trigger the auto-rotating of the log
 bk changes bk://localhost:$P > /dev/null || exit 1
 GOT=`cat "$HERE/PID"`
 test $PID = $GOT || {
@@ -136,6 +138,20 @@ grep -q changes "$HERE/LOG" || {
 	cat "$HERE/LOG"
 	exit 1
 }
+echo OK
+
+echo $N Make sure that the log was auto-rotated .....................$NL
+# rotate threshold is defined in bk.c
+cat > "$HERE/test.pl" <<EOF
+open(FILE, ">$HERE/LOG");
+seek(FILE, (100*1024*1024), 0);
+printf(FILE "AAAA\n");
+close(FILE);
+EOF
+perl "$HERE/test.pl"
+# Do something, trigger the auto-rotate
+bk changes bk://localhost:$P > /dev/null || exit 1
+test -f "$HERE/LOG.old" || fail LOG.old missing
 echo OK
 
 echo $N Make sure that we disallow looking out of repo ..............$NL

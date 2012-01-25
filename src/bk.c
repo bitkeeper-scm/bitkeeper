@@ -1234,7 +1234,6 @@ write_log(char *file, int rotate, char *format, ...)
 {
 	FILE	*f;
 	char	*root;
-	struct	stat	sb;
 	char	path[MAXPATH], nformat[MAXPATH];
 	va_list	ap;
 
@@ -1262,26 +1261,9 @@ write_log(char *file, int rotate, char *format, ...)
 	va_start(ap, format);
 	vfprintf(f, nformat, ap);
 	va_end(ap);
-	unless (rotate) {
-		fclose(f);
-		return (0);
-	}
-	/* do file rotation if needed */
-	if (fstat(fileno(f), &sb)) {
-		/* ignore errors */
-		sb.st_size = 0;
-		sb.st_mode = 0666;
-	}
 	fclose(f);
-
-	if (sb.st_mode != 0666) chmod(path, 0666);
-#define	LOG_MAXSIZE	(1<<20)
-	if (sb.st_size > LOG_MAXSIZE) {
-		char	old[MAXPATH];
-
-		sprintf(old, "%s-older", path);
-		rename(path, old);
-	}
+	unless (rotate) return (0);
+	log_rotate(path);
 	return (0);
 }
 
@@ -1576,5 +1558,20 @@ callstack_add(int remote)
 		indent_level++;
 	} else {
 		safe_putenv("_BK_CALLSTACK=%s%s", at, prog);
+	}
+}
+
+void
+log_rotate(char *path)
+{
+	struct stat	sb;
+	char		old[MAXPATH];
+
+	if (stat(path, &sb)) return;
+
+	if (sb.st_mode != 0666) chmod(path, 0666);
+	if (sb.st_size > (100*1024*1024)) {
+		sprintf(old, "%s.old", path);
+		rename(path, old);
 	}
 }

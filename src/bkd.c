@@ -372,7 +372,10 @@ log_cmd(char *peer, int ac, char **av, int badcmd)
 		fprintf(log, "%s ", av[i]);
 	}
 	fprintf(log, "\n");
-	unless (log == stderr) fclose(log);
+	unless (log == stderr) {
+		fclose(log);
+		log_rotate(Opts.logfile);
+	}
 }
 
 /*

@@ -1203,6 +1203,7 @@ char	*hashstr(char *str, int len);
 char	*hashstream(int fd);
 char	*secure_hashstr(char *str, int len, char *key);
 int	isNetworkFS(char *path);
+void	log_rotate(char *path);
 
 #define	KEY_LEASE		0
 #define	KEY_BK_AUTH_HMAC	1
