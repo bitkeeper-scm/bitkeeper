@@ -278,13 +278,6 @@ passes(opts *opts)
 		fprintf(stderr,
 		    "Verifying consistency of the RESYNC tree...\n");
 	}
-	unless (opts->from_pullpush || 
-	    (sys("bk", "-r", "check", "-cR", SYS) == 0)) {
-		syserr("failed.  Resolve not even started.\n");
-		/* XXX - better help message */
-		resolve_cleanup(opts, 0);
-	}
-
 	/*
 	 * resolve_components() will either run the resolve for the
 	 * components or check that they are resolved before allowing
@@ -292,6 +285,12 @@ passes(opts *opts)
 	 */
 	if (opts->nested && resolve_components(opts)) {
 		fprintf(stderr, "%s: Unresolved components.\n", prog);
+		resolve_cleanup(opts, 0);
+	}
+	unless (opts->from_pullpush || 
+	    (sys("bk", "-r", "check", "-acR", SYS) == 0)) {
+		syserr("failed.  Resolve not even started.\n");
+		/* XXX - better help message */
 		resolve_cleanup(opts, 0);
 	}
 
@@ -605,6 +604,7 @@ missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 				++errors;
 				break;
 			}
+			opts->comps++;
 		} else {
 			/*
 			 * Check for product RESYNC and if none, assume
@@ -2558,7 +2558,9 @@ commit(opts *opts)
 	cmds[++i] = "-S";
 	cmds[++i] = "-R";
 	/* force a commit if we are a null merge */
-	unless (opts->resolved || opts->renamed) cmds[++i] = "-F";
+	unless (opts->resolved || opts->renamed || opts->comps) {
+		cmds[++i] = "-F";
+	}
 	if (opts->quiet) cmds[++i] = "-q";
 	if (opts->comment) {
 	    	/* Only do comments if they really gave us one */
@@ -3067,9 +3069,9 @@ resolve_cleanup(opts *opts, int what)
 	 * Get the patch file name from RESYNC before deleting RESYNC.
 	 */
 	sprintf(buf, "%s/%s", ROOT2RESYNC, "BitKeeper/tmp/patch");
+	pendingFile[0] = 0;
 	unless (f = fopen(buf, "r")) {
 		fprintf(stderr, "Warning: no BitKeeper/tmp/patch\n");
-		pendingFile[0] = 0;
 	} else {
 		fnext(pendingFile, f);
 		chop(pendingFile);

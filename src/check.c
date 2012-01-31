@@ -12,6 +12,29 @@
 #include "nested.h"
 #include "progress.h"
 
+/*
+ * Stuff to remember for each rootkey in the ->mask field:
+ *  0x1 parent side of merge changes this rk
+ *  0x2 merge side of merge changes this rk
+ *  0x4 merge cset changes this rk
+ *  0x8 the delta in tip cset seen for this rk
+ *
+ *  Additionally in the 1 byte value in the ->deltas hash dkey => mask
+ *  0x10 the duplicate poly message has been mentioned for this dkey.
+ */
+
+#define	RK_PARENT	0x01
+#define	RK_MERGE	0x02
+#define	RK_INTIP	0x04
+#define	RK_TIP		0x08
+#define	DK_DUP		0x10
+#define	RK_BOTH		(RK_PARENT|RK_MERGE)
+
+typedef	struct	rkdata {
+	hash	*deltas;
+	u8	mask;
+} rkdata;
+
 private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
 private	int	check(sccs *s, MDBM *idDB);
@@ -21,7 +44,6 @@ private	int	checkAll(hash *keys);
 private	void	listFound(hash *db);
 private	void	listCsetRevs(char *key);
 private int	checkKeys(sccs *s, char *root);
-private void	warnPoly(void);
 private int	chk_gfile(sccs *s, MDBM *pathDB, int checkout);
 private int	chk_dfile(sccs *s);
 private int	chk_BAM(sccs *, char ***missing);
@@ -48,8 +70,8 @@ private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
 private	sccs	*cset;		/* the initialized cset file */
 private int	flags = SILENT|INIT_NOGCHK|INIT_NOCKSUM|INIT_CHK_STIME;
-private	int	poly;
-private	int	polyList;
+private	int	undoMarks;	/* remove poly cset marks left by undo */
+private	int	polyErr;
 private	int	stripdel;	/* strip any ahead deltas */
 private	MDBM	*goneDB;
 private	char	**parent;	/* for repair usage */
@@ -58,8 +80,6 @@ private	u32	timestamps;
 private	char	**bp_getFiles;
 private	int	bp_fullcheck;	/* do bam CRC */
 private	char	**subrepos = 0;
-
-#define	POLY	"BitKeeper/etc/SCCS/x.poly"
 
 /*
  * The following data structure holds the mappings from rootkeys to
@@ -104,7 +124,7 @@ check_main(int ac, char **av)
 	};
 
 	timestamps = 0;
-	while ((c = getopt(ac, av, "@|aBcdefgpN;RsTvw", lopts)) != -1) {
+	while ((c = getopt(ac, av, "@|aBcdefgpN;RsTuvw", lopts)) != -1) {
 		switch (c) {
 			/* XXX: leak - free parent freeLines(parent, 0) */
 		    case '@': if (bk_urlArg(&parent, optarg)) return (1);break;
@@ -118,11 +138,12 @@ check_main(int ac, char **av)
 		    case 'e': check_eoln++; break;
 		    case 'f': fix++; break;			/* doc 2.0 */
 		    case 'g': goneKey++; break;			/* doc 2.0 */
-		    case 'p': polyList++; break;		/* doc 2.0 */
+		    case 'p': polyErr++; break;		/* doc 2.0 */
 		    case 'N': nfiles = atoi(optarg); break;
 		    case 'R': resync++; break;			/* doc 2.0 */
 		    case 's': stripdel++; break;
 		    case 'T': timestamps = GET_DTIME; break;
+		    case 'u': undoMarks++; break;		/* doc 2.0 */
 		    case 'v': verbose++; break;			/* doc 2.0 */
 		    case 'w': badWritable++; break;		/* doc 2.0 */
 		    case 300:	/* --use-older-changeset */
@@ -306,7 +327,6 @@ check_main(int ac, char **av)
 		if (no_gfile(s)) ferr++, errors |= 0x08;
 		if (readonly_gfile(s)) ferr++, errors |= 0x08;
 		if (writable_gfile(s)) ferr++, errors |= 0x08;
-		if (!resync && chk_dfile(s)) ferr++, errors |= 0x10;
 		if (check_eoln && chk_eoln(s, eoln_native)) {
 			ferr++, errors |= 0x10;
 		}
@@ -368,9 +388,9 @@ check_main(int ac, char **av)
 		}
 
 		if (noDups) graph_checkdups(s);
-		if (e = check(s, idDB)) {
-			errors |= 0x40;
-		} else unless (ferr) {
+		if (e = check(s, idDB)) ferr++, errors |= 0x40;
+		if (!resync && chk_dfile(s)) ferr++, errors |= 0x10;
+		unless (ferr) {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->gfile);
 		}
 		unless (s == cset) sccs_free(s);
@@ -397,7 +417,7 @@ check_main(int ac, char **av)
 	}
 	freeLines(subrepos, free);
 	/* note: checkAll can mangle r2deltas */
-	if ((all || resync) && checkAll(keys)) errors |= 0x40;
+	if (all && checkAll(keys)) errors |= 0x40;
 	mdbm_close(pathDB);
 	hash_free(keys);
 	if (bp_missing) {
@@ -481,7 +501,6 @@ check_main(int ac, char **av)
 	EACH_HASH(r2deltas) hash_free(*(hash **)r2deltas->vptr);
 	hash_free(r2deltas);
 
-	if (poly) warnPoly();
 	if (resync) {
 		chdir(RESYNC2ROOT);
 		if (sys("bk", "sane", SYS)) errors |= 0x80;
@@ -949,13 +968,6 @@ chk_eoln(sccs *s, int eoln_native)
 	return (0);
 }
 
-private void
-warnPoly(void)
-{
-	getMsg("warn_poly", 0, 0, stderr);
-	touch(POLY, 0664);
-}
-
 /*
  * Look at the list handed in and make sure that we checked everything that
  * is in the ChangeSet file.  This will always fail if you are doing a partial
@@ -1299,12 +1311,32 @@ done:
  * Returns the largest serial that is older than all colored nodes.
  */
 private int
-color_merge(sccs *s, delta *d)
+color_merge(sccs *s, delta *trunk, delta *branch)
 {
-	assert(d->merge);	/* only works on merge */
-	d->flags |= (D_BLUE|D_RED);
-	range_walkrevs(s, MERGE(s, d), 0, PARENT(s, d), WR_BOTH, 0, 0);
+	unless (branch) {
+		/* only works if tip is a merge */
+		assert(trunk && trunk->merge);
+		trunk->flags |= (D_BLUE|D_RED);
+		branch = MERGE(s, trunk);
+		trunk = PARENT(s, trunk);
+	}
+	range_walkrevs(s, branch, 0, trunk, WR_BOTH, 0, 0);
 	return (s->rstart->serial);
+}
+
+private	u8
+flags2mask(u32 flags)
+{
+	u8	mask = 0;
+
+	switch (flags & (D_RED|D_BLUE)) {
+	    case 0:			break;
+	    case D_RED:			mask = RK_PARENT; break;
+	    case D_BLUE:		mask = RK_MERGE; break;
+	    case (D_RED|D_BLUE):	mask = RK_INTIP; break;
+	    default:			assert(1 == 0); break;
+	}
+	return (mask);
 }
 
 /*
@@ -1317,36 +1349,37 @@ buildKeys(MDBM *idDB)
 {
 	char	*s, *t;
 	int	e = 0;
-	delta	*d;
-	hash	*deltas;
+	delta	*d, *twotips;
 	char	**pathnames = 0; /* lines array of "path\0rootkey\0" */
 	int	i, len1, len2;
 	char	*rk1, *rk2;
-	u8	*smap;
+	u8	*smap, mask;
 	ser_t	oldest = 0, ser = 0;
-	struct	rkdata {
-		hash	*deltas;
-		u8	mask;
-		/*
-		 * Stuff to remember for each rootkey:
-		 *  0x1 parent side of merge changes this rk
-		 *  0x2 merge side of merge changes this rk
-		 *  0x4 merge cset changes this rk
-		 *  0x8 the delta in tip cset seen for this rk
-		 */
-	} *rkd;
+	rkdata	*rkd;
 	char	key[MAXKEY];
 
-	if ((d = sccs_top(cset))->merge) {
-		/* cset tip is a merge, do extra checks */
-		oldest = color_merge(cset, d);
+	// In RESYNC, r.ChangeSet is move out of the way, can't test for it
+	if (resync) {
+		if (sccs_findtips(cset, &d, &twotips)) {
+			unless (polyErr) {
+				polyErr = !getenv("_BK_DEVELOPER") ||
+				    !proj_configbool(0, "poly");
+			}
+		}
+	} else {
+		d = sccs_top(cset);
+		twotips = 0;
+	}
+	if (twotips || d->merge) {
+		/* cset tip is (or will be) a merge, do extra (poly) checks */
+		oldest = color_merge(cset, d, twotips);
 		assert(oldest > 0);
 	}
 	unless (r2deltas = hash_new(HASH_MEMHASH)) {
 		perror("buildkeys");
 		exit(1);
 	}
-	smap = sccs_set(cset, d, 0, 0); /* serial in tip cset */
+	smap = sccs_set(cset, d, 0, 0); /* serial in tip (or newest if 2) */
 	sccs_rdweaveInit(cset);
 	while (s = sccs_nextdata(cset)) {
 		if (*s == '\001') {
@@ -1360,16 +1393,17 @@ buildKeys(MDBM *idDB)
 				 * by both the left and the right, but
 				 * failed to include a merge delta.
 				 */
-				EACH_HASH(r2deltas) {
-					struct	rkdata *rk;
+				unless (twotips) EACH_HASH(r2deltas) {
+					rkdata	*rk;
 
 					rk = r2deltas->vptr;
-					unless ((rk->mask & 7) == 3) {
+					unless (RK_BOTH ==
+					    (rk->mask & (RK_BOTH|RK_INTIP))) {
 						continue;
 					}
 					if (mdbm_fetch_str(goneDB,
-						(char *)r2deltas->kptr)) {
-						goto next;
+					    (char *)r2deltas->kptr)) {
+						continue;
 					}
 					/* problem found */
 					fprintf(stderr,
@@ -1383,33 +1417,29 @@ buildKeys(MDBM *idDB)
 				}
 				oldest = 0;
 			}
-			if (oldest) d = sfind(cset, ser);
-next:
+			if (oldest) {
+				d = sfind(cset, ser);
+				mask = flags2mask(d->flags);
+			} else {
+				mask = 0;
+			}
 			continue;
 		}
 		t = separator(s);
 		*t++ = 0;
-		hash_insert(r2deltas, s, t-s, 0, sizeof(struct rkdata));
-		rkd = (struct rkdata *)r2deltas->vptr;
+		hash_insert(r2deltas, s, t-s, 0, sizeof(rkdata));
+		rkd = (rkdata *)r2deltas->vptr;
 		unless (rkd->deltas) rkd->deltas = hash_new(HASH_MEMHASH);
-		if (oldest) {
-			if ((d->flags & (D_RED|D_BLUE)) == (D_RED|D_BLUE)) {
-				rkd->mask |= 4;
-			} else if (d->flags & D_RED) {
-				rkd->mask |= 2;
-			} else if (d->flags & D_BLUE) {
-				rkd->mask |= 1;
-			}
-		}
+		if (oldest) rkd->mask |= mask;
 
 		/*
 		 * For each serial in the tip cset remember the pathname
 		 * where each rootkey should live on the disk.
 		 * Later we will check for conflicts.
 		 */
-		if (!(rkd->mask & 8) &&
+		if (!(rkd->mask & RK_TIP) &&
 		    smap[ser] && !mdbm_fetch_str(goneDB, t)) {
-			rkd->mask |= 8;
+			rkd->mask |= RK_TIP;
 			unless (mdbm_fetch_str(goneDB, s)) {
 				char	*path = key2path(t, 0, 0);
 
@@ -1423,20 +1453,36 @@ next:
 				free(path);
 			}
 		}
-		unless (hash_insertStr(rkd->deltas, t, 0)) {
+		/*
+		 * If dup and not mentioned this key before and poly
+		 * detection of the whole graph (polyErr > 1) enabled,
+		 * or poly detection and if one of the dups is in the merge
+		 * region (my mask and the dup's mask).
+		 */
+		if (!hash_insertStrMem(rkd->deltas, t, 0, sizeof(mask)) &&
+		    !(*(u8 *)rkd->deltas->vptr & DK_DUP) && polyErr &&
+		    ((polyErr > 1) ||
+		    ((mask | *(u8 *)rkd->deltas->vptr & RK_BOTH) == RK_BOTH))) {
 			char	*a;
 
+			// XXXPOLY - Duplicate deltakeys in cset weave.
+			// All Files, All Csets, gone'd, unpopulated or not.
+			// Including any we created fixing up a pull if
+			// not poly:error.
+
+			*(u8 *)rkd->deltas->vptr |= DK_DUP; // say it only once
 			fprintf(stderr,
 			    "Duplicate delta found in ChangeSet\n");
-			a = getRev(r2deltas->kptr, key, idDB);
-			fprintf(stderr, "\tRev: %s  Key: %s\n", a, key);
+			a = getRev(r2deltas->kptr, t, idDB);
+			fprintf(stderr, "\tRev: %s  Key: %s\n", a, t);
 			free(a);
 			a = getFile(r2deltas->kptr, idDB);
 			fprintf(stderr, "\tBoth keys in file %s\n", a);
 			free(a);
-			listCsetRevs(key);
-			if (polyList) e++;
+			listCsetRevs(t);
+			e++;
 		}
+		if (mask) *(u8 *)rkd->deltas->vptr |= mask;
 	}
 	if (sccs_rdweaveDone(cset)) {
 		fprintf(stderr, "check: failed to read cset weave\n");
@@ -1497,15 +1543,25 @@ finish:
 	freeLines(pathnames, free);
 	/* Add in ChangeSet keys */
 	sccs_sdelta(cset, sccs_ino(cset), key);
-	deltas = hash_new(HASH_MEMHASH);
-	hash_store(r2deltas, key, strlen(key) + 1, &deltas, sizeof(hash *));
+	hash_storeStrMem(r2deltas, key, 0, sizeof(rkdata));
+	rkd = (rkdata *)r2deltas->vptr;
+	rkd->deltas = hash_new(HASH_MEMHASH);
 	for (d = cset->table; d; d = NEXT(d)) {
-		unless ((d->type == 'D') && (d->flags & D_CSET)) continue;
+		unless ((d->type == 'D') && (d->flags & D_CSET)) {
+			d->flags &= ~(D_RED|D_BLUE);
+			continue;
+		}
 		sccs_sdelta(cset, d, key);
-		unless (hash_insert(deltas, key, strlen(key)+1, 0, 0)) {
+		unless (hash_insertStrMem(rkd->deltas, key, 0, sizeof(mask))) {
+			// Not really poly, but duplicate deltakeys
+			// XXX: No off switch: always error (new with poly).
 			fprintf(stderr,
 			    "check: key %s replicated in ChangeSet.\n", key);
+			e++;
 		}
+		mask = flags2mask(d->flags);
+		if (mask) *(u8 *)rkd->deltas->vptr |= mask;
+		d->flags &= ~(D_RED|D_BLUE);
 	}
 	if (e) exit(1);
 }
@@ -1582,37 +1638,27 @@ getRev(char *root, char *key, MDBM *idDB)
 }
 
 /*
- * Tag with D_SET all deltas in a cset.
- * Flag an error if delta already in cset.
+ * range_walkrevs() callback on GCA nodes. Fail on the first poly node found.
+ * If GCA is part of the merge branch, trunk or both, or
+ * if none of that, that there is no cset mark, meaning it is an interior
+ * node to multiple csets.  If any of that, it's poly.
+ * Graft does poly on 1.0 -- let that be legal.
  */
-private void
-markCset(sccs *s, delta *d)
+private	int
+polyChk(sccs *cset, delta *gca, void *token)
 {
-	static time_t	now;
+	hash	*deltas = (hash *)token;
+	u8	*mask;
+	char	key[MAXKEY];
 
-	unless (now) now = time(0);
-
-	do {
-		if (d->flags & D_SET) {
-			/* warn if in the last 1.5 months */
-			if ((now - d->date) < (45 * 24 * 60 * 60)) poly = 1;
-			if (polyList) {
-				fprintf(stderr,
-				    "check: %s@%s "
-				    "(%s@%s %.8s) in multiple csets\n",
-				    s->gfile, d->rev,
-				    d->user, d->hostname, d->sdate);
-			}
-		}
-		d->flags |= D_SET;
-		if (d->merge) {
-			delta	*e = MERGE(s, d);
-
-			assert(e);
-			unless (e->flags & D_CSET) markCset(s, e);
-		}
-		d = PARENT(s, d);
-	} while (d && !(d->flags & D_CSET));
+	assert(deltas);
+	sccs_sdelta(cset, gca, key);
+	if (((mask = hash_fetchStrMem(deltas, key)) && (*mask & RK_BOTH)) ||
+	    (!(gca->flags & D_CSET) && (gca != cset->tree))) {
+		fprintf(stderr, "%s: poly on key %s\n", prog, key);
+		return (1);
+	}
+	return (0);
 }
 
 /*
@@ -1632,19 +1678,19 @@ markCset(sccs *s, delta *d)
 private int
 check(sccs *s, MDBM *idDB)
 {
-	static	int	haspoly = -1;
+	delta	*trunk = 0, *branch = 0;
 	delta	*d, *ino, *tip = 0;
 	int	errors = 0, goodkeys;
 	int	i, writefile = 0;
 	char	*t, *term, *x;
 	hash	*deltas, *shortdeltas = 0;
 	char	**lines = 0;
+	rkdata	*rk;
 	char	buf[MAXKEY];
 
-
 	sccs_sdelta(s, sccs_ino(s), buf);
-	if (hash_fetchStr(r2deltas, buf)) {
-		deltas = *(hash **)r2deltas->vptr;
+	if (rk = hash_fetchStrMem(r2deltas, buf)) {
+		deltas = rk->deltas;
 	} else {
 		deltas = 0;	/* new pending file? */
 	}
@@ -1681,18 +1727,29 @@ check(sccs *s, MDBM *idDB)
 		unless (t) {
 			unless (d->flags & D_CSET) continue;
 			if (MONOTONIC(s) && d->dangling) continue;
+			if (undoMarks && CSET(s)) {
+				d->flags &= ~D_CSET;
+				writefile = 1;
+				continue;
+			}
 			errors++;
 			if (stripdel) continue;
+
 			fprintf(stderr,
-		    "%s: marked delta %s should be in ChangeSet but is not.\n",
+			    "%s: marked delta %s should be "
+			    "in ChangeSet but is not.\n",
 			    s->gfile, d->rev);
 			sccs_sdelta(s, d, buf);
 			fprintf(stderr, "\t%s -> %s\n", d->rev, buf);
 		} else {
-			unless (d->flags & D_CSET) {
-				/* auto fix always */
+			if (!resync && !(d->flags & D_CSET)) {
+				/* auto fix except in resync */
 				d->flags |= D_CSET;
 				writefile = 1;
+			}
+			if (*t) {
+				if (!trunk && (*t & RK_PARENT)) trunk = d;
+				if (!branch && (*t & RK_MERGE)) branch = d;
 			}
 			++goodkeys;
 			unless (tip) tip = d;
@@ -1702,10 +1759,15 @@ check(sccs *s, MDBM *idDB)
 			}
 		}
 	}
+	if (trunk && branch && (polyErr || !CSET(s))) {
+		errors += range_walkrevs(
+		    s, trunk, 0, branch, WR_GCA, polyChk, deltas);
+	}
 	if (writefile) {
 		if (getenv("_BK_DEVELOPER")) {
 			fprintf(stderr,
-			    "%s: adding in missing csetmarks\n", s->gfile);
+			    "%s: adding and/or removing missing csetmarks\n",
+			    s->gfile);
 		}
 		sccs_newchksum(s);
 		sccs_restart(s);
@@ -1863,17 +1925,6 @@ check(sccs *s, MDBM *idDB)
 		errors += checkKeys(s, buf);
 		*t = '|';
 	}
-
-	/* If we are not already marked as a repository having poly
-	 * cseted deltas, then check to see if it is the case
-	 */
-	if (haspoly == -1) haspoly = (exists(POLY) != 0);
-	if (!haspoly && CSETMARKED(s)) {
-		sccs_clearbits(s, D_SET);
-		for (d = s->table; d; d = NEXT(d)) {
-			if (d->flags & D_CSET) markCset(s, d);
-		}
-	}
 	return (errors);
 }
 
@@ -1960,6 +2011,13 @@ checkKeys(sccs *s, char *root)
 			/* don't want noisy messages in this mode */
 			if (goneKey) continue;
 
+			if (resync && CSET(s)) {
+				sccs_sdelta(s, sccs_top(s), key);
+				if (streq(key, dkey) &&
+				    exists(sccs_Xfile(s, 'd'))) {
+				    	continue; /* OK: poly fixup */
+				}
+			}
 			/* let them know if they need to delete the file */
 			if (isGone(s, 0)) {
 				fprintf(stderr,

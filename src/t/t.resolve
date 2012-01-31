@@ -559,7 +559,7 @@ test -d RESYNC && {
 	echo failed to complete resolve
 	exit 1
 }
-grep -q 'SYSIO {bk} {check} {-c} {-}' OUT || {
+grep -q 'SYSIO {bk} {check} {-Rc} {-}' OUT || {
 	echo failed to run check
 	cat OUT
 	exit 1

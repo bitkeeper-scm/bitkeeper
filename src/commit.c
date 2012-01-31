@@ -222,7 +222,8 @@ commit_main(int ac, char **av)
 			return (0);
 		}
 		/* check is skipped with -F so 'bk setup' works */
-		if (sysio(pendingFiles, 0, 0, "bk", "check", "-c", "-", SYS)) {
+		if (sysio(pendingFiles, 0, 0,
+		    "bk", "check", opts.resync ? "-Rc" : "-c", "-", SYS)) {
 			unlink(pendingFiles);
 			return (1);
 		}

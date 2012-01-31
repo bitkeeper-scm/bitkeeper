@@ -58,6 +58,7 @@ typedef struct {
 	int	renames2;	/* count of renames processed in pass 2 */
 	int	renamed;	/* count of renames manually resolved */
 	int	resolved;	/* count of files resolved in pass 3 */
+	int	comps;		/* count of comps resolved in comp_resolve */
 	int	applied;	/* count of files processed in pass 4 */
 	MDBM	*rootDB;	/* db{ROOTKEY} = pathname in RESYNC */
 	MDBM	*idDB;		/* for the local repository, not RESYNC */

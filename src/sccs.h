@@ -928,6 +928,7 @@ sccs	*sccs_getperfile(MMAP *, int *);
 char	*sccs_gethost(void);
 char	*sccs_realhost(void);
 char	*sccs_host(void);
+void	resync_lock(void);
 char	**sccs_getComments(char *prompt);
 int	sccs_badTag(char *, char *, int);
 MDBM    *sccs_keys2mdbm(FILE *f);

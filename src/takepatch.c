@@ -1684,7 +1684,7 @@ initProject(void)
 	sccs_mkroot(".");
 }
 
-private void
+void
 resync_lock(void)
 {
 	FILE	*f;

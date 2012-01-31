@@ -12288,7 +12288,7 @@ bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
 		unless (*v == '\n') goto bad;
 		*t = 0;
 		if (v = mdbm_fetch_str(sc->mdbm, key)) {
-			if (streq(v, val)) {
+			if (!CSET(sc) && streq(v, val)) {
 				fprintf(stderr,
 				    "Redundant: %s %s\n", key, val);
 				return (-1);
