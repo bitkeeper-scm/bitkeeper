@@ -36,26 +36,40 @@ if {$test_tool eq "citool"} { set test_toplevel ".citool" }
 
 set test_timeout 15000
 
+proc test_delay {{s 1000}} \
+{
+	after $s "set ::test_go 1"
+	vwait ::test_go
+}
+
 # simulate button click on a widget. Index is of the form @x,y.
 # if target is a text widget, index may also be of the form
 # "line.column" which will be converted to the x,y that is over
 # that character.
-proc test_buttonClick {button target index} \
+proc test_buttonClick {button target {index ""}} \
 {
-	set x 0
-	set y 0
 	if {[winfo class $target] eq "Text"} {
+		if {$index eq ""} {
+			return -code error "index required for a text widget"
+		}
 		$target see $index
 		set bbox [$target bbox $index]
 		set x [lindex $bbox 0]
 		set y [lindex $bbox 1]
 	} else {
-		regexp {@([0-9]+),([0-9]+)} $index -- x y
+		if {$index eq ""} {
+			set x [winfo rootx $target]
+			set y [winfo rooty $target]
+			set w [winfo width $target]
+			set h [winfo height $target]
+			incr x [expr {$w / 2}]
+			incr y [expr {$h / 2}]
+		} elseif {![regexp {@([0-9]+),([0-9]+)} $index -- x y]} {
+			return -code error "index should be in the form of @x,y"
+		}
 	}
-	event generate $target <ButtonPress-$button> \
-	    -x $x -y $y
-	event generate $target <ButtonRelease-$button> \
-	    -x $x -y $y
+	event generate $target <ButtonPress-$button>   -x $x -y $y
+	event generate $target <ButtonRelease-$button> -x $x -y $y
 }
 
 proc test_findWidget {target} \
@@ -448,6 +462,57 @@ proc test_timeoutCancel {} \
 	global timeoutId
 
 	if {[info exists timeoutId]} { after cancel $timeoutId }
+}
+
+proc test_findLineInText {window string args} \
+{
+	set line [$window search {*}$args $string insert]
+	set idx1 [$window index "$line linestart"]
+	set idx2 [$window index "$line lineend"]
+	return [list $idx1 $idx2]
+}
+
+proc test_clickLineInText {window string args} \
+{
+	set b 1
+	set i "start"
+	if {[dict exists $args -index]} { set i [dict get $args -index] }
+	if {[dict exists $args -button]} { set b [dict get $args -button] }
+
+	switch -glob -- $b {
+		"l*" {
+			set b 1
+		}
+		"r*" {
+			set b 3
+			if {[tk windowingsystem] eq "aqua"} { set b 2 }
+		}
+		"m*" {
+			set b 2
+			if {[tk windowingsystem] eq "aqua"} { set b 3 }
+		}
+	}
+
+	lassign [test_findLineInText $window $string] start end
+	if {$i eq "start"} {
+		set idx $start
+	} else {
+		set idx $end
+	}
+
+	$window see $idx
+	lassign [$window dlineinfo $idx] x y w h
+	if {$i eq "end"} { incr x $w }
+
+	$window mark set current $idx
+	event generate $window <ButtonPress-$b>   -x $x -y $y
+	event generate $window <ButtonRelease-$b> -x $x -y $y
+}
+
+proc test_moveTextCursor {window index} \
+{
+	if {$index eq "start"} { set index 1.0 }
+	$window mark set insert $index
 }
 
 # Citool has a rather annoying design in that it calls
