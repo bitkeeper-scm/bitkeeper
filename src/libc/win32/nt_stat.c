@@ -11,7 +11,7 @@ nt_stat(const char *file, struct stat *sb)
 
 	assert(sb);
 	assert(file);
-	memset(sb, 0, sizeof(sb));
+	memset(sb, 0, sizeof(*sb));
 	unless (GetFileAttributesEx(file, GetFileExInfoStandard, &info)) {
 		(void)GetLastError(); /* set errno */
 		return (-1);
