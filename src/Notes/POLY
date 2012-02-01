@@ -1,0 +1,240 @@
+= Poly =
+This is the BitMover name given to one delta appearing in more than one cset.
+This can happen when a user copies an sfile between repositories, strips
+cset marks, commits and pulls into another repo which had the file already.
+Or when a user copies a whole repo which has pending work and commits it
+in both copies and pulls into each other.  This does not happen very often.
+<<BR>>
+<<BR>>
+In BK/Nested, poly can be created through normal product line use.
+Using the 'bk port' command, a standalone component can be ported into
+different repositories.  Poly is created by committing that port into
+different product csets and pulling one product cset into a repo with
+the other.
+<<BR>>
+<<BR>>
+Depending on the work flow of the BK/Nested customer, the poly handling
+of a component could happen very often.
+
+== Poly Avoidance ==
+The BK/Nested poly problem is created by using more than one portal,
+but does not and show up until a subsequent pull.
+When poly is detected, it's too late, as the poly cset could be built
+on in significant ways.  The solution is to newroot one of the sides
+and use port to pull all the components across.  This works at the cost
+of losing the product cset history.
+<<BR>>
+<<BR>>
+To help the user avoid poly, BK/Nested supports portals.
+Having one portal per
+product ensures all ported work into and out of the product flows
+through a single channel, and avoids creating poly csets.
+
+== Poly Recovery ==
+Nothing stops a user from having more than one portal per product,
+which can lead to poly happening.  When it does, the user's choice
+is to keep one of the repos and redo the other repo such that they
+come together without poly, or to newroot one of the repos and port
+the components from the other into the newrooted one.
+<<BR>>
+<<BR>>
+For some complex workflows, avoiding poly becomes more expensive than
+the value of having non-poly repos.  In those cases, the recovery is
+to support poly happening through configuration.
+
+== Poly Hackery ==
+'''THIS IS THE HACKERY TO GET POLY TO FLOW THROUGH RESOLVE AND CHECK'''.<<BR>>
+Allowing poly is more than not flagging an error.
+The following are implemented in pull.c in pullPoly().
+ * Add missing csetmarks in a component pull because
+ the local repo already had the data, but didn't have an associated
+ cset mark.  Look for D_CSET in pullPoly().
+ * Fake up a RESYNC directory if poly and the component pull had "Nothing
+ to pull".  See 'cons up a RESYNC area' in pullPoly().
+ * Include the tip of the component in the merge cset when no new merge
+ cset will be created in the component.  For example, two people port the
+ same work, commit into a product cset, then one pulls from the other.
+ The product will have a merge cset even through the component cset
+ has no change.  Poly will be detected and the component marked pending
+ so it will be included in the merge in resolve.  Look for 'fake pending'
+ in pullPoly().
+
+== Poly Config ==
+There is a new config variable, ''poly'', that only applies to the
+component class of poly.
+ * error - the default case.  Any poly detected causes the pull to fail.
+ * allow - poly is allowed, even though r2c does not list multiple nodes
+
+== Poly Topologies ==
+Poly graphs have 2 basic topologies and 5 variants among those 2 topologies.
+ * Pull with inline component history - One of the tips is in the history of
+ the other tip.
+  * Variants of this: duplicate tip, remote is tip, and local is tip
+  * Not only detection, but altering the RESYNC repos (see Hackery above):
+   * Make a RESYNC area if none (if local is tip)
+   * Strip cset mark off the tip to make it pending, so it will get
+   included in product cset.
+ * Pull with DAG component history - The tips are on separate branches and
+ need to be merged.
+  * variants of this: poly GCA(s) is/are marked by one or both sides,
+  and/or poly GCA(s) is/are unmarked.
+
+=== Pull Case #1: Component History Inline - duplicate cset key ===
+The same standalone repo is ported into two nested repos, and one of those
+nested repos is pulled into the other:
+
+{{{
+Standalone --Port------> Nested A
+Standalone --Port------> Nested B
+Nested A --Pull--------> Nested B
+}}}
+
+The merge node in the product will contain the same rootkey deltakey
+pair.  This avoids tripping the test for files changed in local and
+remote and not in the merge.
+
+=== Pull Case #2: Component History Inline - remote key newer ===
+A standalone repo is ported into a nested repos, then work done on the
+standalone repo, and then ported into a different nested repo, and the
+second of those nested repos is pulled into the first:
+
+{{{
+Standalone --Port------> Nested A
+cset made in Standalone
+Standalone --Port------> Nested B
+Nested B --Pull--------> Nested A
+}}}
+
+In this, the component doesn't have a merge so there is no closing
+of the tips in the product.  If there were, we'd want the cset in
+Nested B to win, and it will because the port into it was done second,
+so the product cset wrapping the port will be newer.
+
+or the more convoluted:
+
+{{{
+Standalone A --Clone-----> Standalone B
+cset made in Standalone B
+Standalone B --Port------> Nested B
+Standalone A --Port------> Nested A
+Nested B --Pull--------> Nested A
+}}}
+
+In this, the product cset made by the port into B is older than
+the product cset which made the port into A, even though the data
+brought into B is newer.
+Since the component doesn't have a merge node, there is no participating
+in the product merge and the wrong cset will show up in a bk get ChangeSet.
+<<BR>>
+<<BR>>
+The merge node in the product will contain the same rootkey deltakey
+pair of the component tip.
+This avoids tripping the test for files changed in local and
+remote and not in the merge.
+Also avoids the latter case which would be a cset hash with the wrong
+deltakey in it.
+<<BR>>
+<<BR>>
+This case is handled by doing surgery on the RESYNC/ChangeSet file to
+remove the cset mark and mark it pending.
+
+=== Pull Case #3: Component History Inline - local key newer ===
+Same as the previous with the new wrinkle being that a resolve test
+tripped up because the resolve of change in local and remote was
+resolved by local, and the test assumed all updates come from the remote
+in the form of an update only pull.
+<<BR>>
+<<BR>>
+This case is handled by faking up a RESYNC area and doing the same trick
+as the previous case: removal of the top cset mark in the RESYNC/ChangeSet,
+and making a d.file and letting resolve do the copy up and bookkeeping.
+
+=== Pull Case #4: Component DAG History - poly is not cset marked ===
+If two ports are done with unique work in the standalone, then there
+will be a merge in the corresponding component, and cset marks made
+such that poly node is the GCA(s) of the merge.  That can take two
+forms: the GCA(s) have cset marks or not.  This is the case of them
+not having marks:
+
+{{{
+cset made in Standalone A  <---- no cset mark; this will be GCA node.
+Standalone A --Clone-----> Standalone B
+cset made in Standalone A
+cset made in Standalone B
+Standalone A --Port------> Nested A
+Standalone B --Port------> Nested B
+Nested B --Pull--------> Nested A
+}}}
+
+=== Pull Case #5: Component DAG History - poly is cset marked ===
+The same as above but the GCA has a cset mark.
+
+{{{
+cset made in Standalone A  <---- this will be GCA node.
+Standalone A --Port------> Nested A
+Nested A --Pull--------> Nested B
+Standalone A --Clone-----> Standalone B
+cset made in Standalone A
+cset made in Standalone B
+Standalone A --Port------> Nested A
+Standalone B --Port------> Nested B
+Nested B --Pull--------> Nested A
+}}}
+
+== Poly Detection ==
+Poly detection is easy in all topogies if given lists of csetmarked
+keys that are unique to local and remote product csets.
+The nested_init() has been enhanced to save this information for each
+component, and the bk pull api enhanced to pass the two lists to
+the component pull.
+<<BR>>
+<<BR>>
+The algorithm is to intersect the local and remote tips and only
+look at the GCA nodes.  If the GCA node has no D_CSET, then it
+is poly.  Otherwise if the D_CSET is in the local or remote or
+both lists, then it is poly.  Otherwise it is not.
+The implementation in portPoly() is to call range_walkrevs in
+GCA mode with a callback to polyChk.
+
+== Poly Next Gen ==
+Adapted from /home/lm/POLY
+ * file format / data structures
+  * bookkeeping mentioned below
+ * possible riders
+  * http://dev-wiki.bitmover.com/NewGraph
+  * bookkeeping for local/remote in s.file for resolve?
+  * mparents
+  * none?
+ * changes
+  * what's the right answer, show the poly comp cset everywhere?
+ * r2c
+ * revtool view changeset when there is more than one product cset
+ * bisect
+ * undo
+ * makepatch / takepatch changes to patch format to include new metadata
+ * feature bit or some blocker
+ * what else?
+{{{
+Product cset A -> comp cset 11,12
+Product cset B -> comp cset 10,11,12,13
+Product cset C -> comp cset 12,13
+}}}
+Without poly we would happily put marks on 12 and 13 and when they come
+together the boundary would come up short on some of them.
+<<BR>>
+<<BR>>
+The bookkeeping we need is something that says
+{{{
+	13 goes to 10
+	12 goes to 11
+}}}
+such that 13 doesn't stop 12.
+<<BR>>
+<<BR>>
+So the bookkeeping is two things:
+{{{
+a) where is my lower bound (a serial or list, merges are a list)
+b) if the same marked cset is poly then I need a list of product csets
+   that point at me.  This could be the unique part of an md5key
+}}}
+

@@ -1,0 +1,48 @@
+echo $N Show how relative order of dups impacts outcome .............$NL
+# two identical graph topologies.
+# 2 nodes on the trunk straddling 2 on the branch
+#
+# 1.1 ---  1.2 ------------------- 1.3 ----- 1.4
+#  +---------- 1.1.1.1 -- 1.1.1.2 ------------+
+#
+# 1.1.1.1 does a -x on 1.1
+# 1.1.1.2 does a -x on 1.1 (a nop -- 1.1 already not there).
+# 1.2 does a -i1.1 (a nop -- 1.1 is already there).
+# in bar, 1.3 does a -i1.1 (a nop -- 1.1 is already there).
+# They merge.  In foo, 1.1 is not in the tip because -x is newer.
+# In bar, 1.1 is in the tip because -i in 1.3 is newer than -x in 1.1.1.2
+#
+commercial project
+touch foo bar
+bk new $Q foo bar
+bk edit $Q -i1.1 foo
+bk edit $Q -i1.1 bar
+bk delta $Q -fy1.2 foo bar
+bk _get $Q -e -r1.1 -x1.1 foo
+bk _get $Q -e -r1.1 -x1.1 bar
+bk delta $Q -fy1.1.1.1 foo bar
+bk _get $Q -e -r1.1.1.1 -x1.1 foo
+bk _get $Q -e -r1.1.1.1 -x1.1 bar
+bk delta $Q -fy1.1.1.2 foo bar
+bk edit $Q foo
+bk edit $Q -i1.1 bar
+bk delta $Q -fy1.3 foo bar
+bk edit $Q -M foo bar
+bk delta $Q -fy1.4 foo bar
+ELEM=`bk set -e -r1.1 -r+ foo`
+test -z "$ELEM" || fail 1.1 is in the tip of foo
+ELEM=`bk set -e -r1.1 -r+ bar`
+test "$ELEM" = 1.1 || fail 1.1 is in not the tip of bar
+echo OK
+
+echo $N Detect dups .................................................$NL
+_BK_CHK_IE_DUPS=1 bk repocheck $Q 2> GOT || fail -f GOT
+cat <<EOF > WANT
+bar: dup parent/inc in 1.2 of 1.1
+bar: dup exc in 1.1.1.2 of 1.1
+bar: dup inc in 1.3 of 1.1
+foo: dup parent/inc in 1.2 of 1.1
+foo: dup exc in 1.1.1.2 of 1.1
+EOF
+cmpfiles WANT GOT
+echo OK

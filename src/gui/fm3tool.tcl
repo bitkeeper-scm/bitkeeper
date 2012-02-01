@@ -2362,10 +2362,7 @@ proc click {win block replace} \
 	}
 
 	set here [$win index current]
-	if {"hand" in [$win tag names $here]} {
-		puts "Already selected"
-		return
-	}
+	if {"hand" in [$win tag names $here]} { return }
 
 	set d "d$lastDiff"
 	set e "e$lastDiff"
@@ -2382,7 +2379,6 @@ proc click {win block replace} \
 			$t tag remove hand $d $e
 		}
 	}
-	set here [$win index current]
 	if {$block == 0} {
 		set click("u$undo") [$win index "$here linestart"]
 		set click("U$undo") [$win index "$here lineend + 1 chars"]
@@ -2405,8 +2401,26 @@ proc click {win block replace} \
 	set last   [$win index "[lindex $ranges end] lineend"]
 
 	set lines ""
-	foreach line [split [$win get $first $last] \n] {
-	    lappend lines [string range $line 2 end]
+	set here  [idx2line $here]
+	set start [idx2line $first]
+	set stop  [idx2line $last]
+
+	## Starting where they clicked, move backward and forward
+	## collecting the lines in this hunk that have not already
+	## been merged.
+	set first $here.0
+	for {set i [expr {$here - 1}]} {$i >= $start} {incr i -1} {
+		if {"hand" in [$win tag names $i.0]} { break }
+		set first $i.0
+		lappend lines [$win get $i.2 "$i.0 lineend"]
+	}
+
+	if {[llength $lines]} { set lines [lreverse $lines] }
+
+	for {set i $here} {$i <= $stop} {incr i} {
+		if {"hand" in [$win tag names $i.0]} { break }
+		set last [$win index "$i.0 lineend"]
+		lappend lines [$win get $i.2 "$i.0 lineend"]
 	}
 
 	## Grab the newline too.
@@ -2466,6 +2480,61 @@ proc restoreView {win args} \
 	global	views
 	scrollLineToTop $win $views($win) 0
 	syncTextWidgets $win {*}$args
+}
+
+proc test_clickLeftLine {line args} \
+{
+	test_clickLineInText .diffs.left $line {*}$args
+}
+
+proc test_clickRightLine {line args} \
+{
+	test_clickLineInText .diffs.right $line {*}$args
+}
+
+proc test_rewindMergeCursor {} \
+{
+	test_moveTextCursor .merge.t start
+}
+
+proc test_clickLineInMerge {line args} \
+{
+	test_clickLineInText .merge.t $line {*}$args
+}
+
+proc test_inputInMerge {string} \
+{
+	test_inputString $string .merge.t
+}
+
+proc test_getMergeData {} \
+{
+	return [.merge.t get 1.0 end]
+}
+
+proc test_isInMerge {string} \
+{
+	set data [test_getMergeData]
+	set idx  [.merge.t search $string 1.0]
+	if {$idx eq ""} {
+		puts "$string not found in the merge window, but it should be"
+		exit 1
+	}
+}
+
+proc test_isNotInMerge {string} \
+{
+	set data [test_getMergeData]
+	set idx  [.merge.t search $string 1.0]
+	if {$idx ne ""} {
+		puts "$string found in the merge window, but it shouldn't be"
+		exit 1
+	}
+}
+
+proc test_exitMerge {} \
+{
+	test_buttonClick 1 .merge.escape
 }
 
 proc fm3tool {} \

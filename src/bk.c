@@ -71,7 +71,7 @@ main(int volatile ac, char **av, char **env)
 	char	**sopts = 0;
 	char	**aliases = 0;
 	char	**nav = 0;
-	longopt	lopts[] = {
+	static longopt	lopts[] = {
 		/* Note: remote_bk() won't like "option:" with a space */
 		/* none of these are passed to --each commands */
 		{ "title;", 300 },	// title for progress bar
@@ -81,6 +81,8 @@ main(int volatile ac, char **av, char **env)
 		{ "sigpipe", 305 },     // allow SIGPIPE
 		{ "sfiles-opts;", 306 },// --sfiles-opts=vcg
 		{ "config;", 307 },	// override config options
+		{ "ibuf;", 310 },
+		{ "obuf;", 320 },
 
 		/* long aliases for some options */
 		{ "all-files", 'A' },
@@ -312,6 +314,18 @@ baddir:						fprintf(stderr,
 				free(key);
 				break;
 			    }
+			    case 310:   // --ibuf=line|<size>|0
+			    case 320: { // --obuf=line|<size>|0
+				    FILE *f = (c == 310) ? stdin : stdout;
+				    if (streq(optarg, "line")) {
+					    setvbuf(f, 0, _IOLBF, 0);
+				    } else if (i = atoi(optarg)) {
+					    setvbuf(f, 0, _IOFBF, i);
+				    } else {
+					    setvbuf(f, 0, _IONBF, 0);
+				    }
+				    break;
+			    }
 			    default: bk_badArg(c, av);
 			}
 		}
@@ -394,6 +408,13 @@ baddir:						fprintf(stderr,
 			hash_free(h);
 		}
 		if (remote) {
+			if (streq(prog, "pull") ||
+			    streq(prog, "push") ||
+			    streq(prog, "resolve")) {
+				fprintf(stderr, "Cannot run interactive commands "
+				    "on a remote repository\n");
+				return (1);
+			}
 			start_cwd = strdup(proj_cwd());
 			callstack_add(remote);
 			cmdlog_start(av, 0);
@@ -1217,7 +1238,6 @@ write_log(char *file, int rotate, char *format, ...)
 {
 	FILE	*f;
 	char	*root;
-	struct	stat	sb;
 	char	path[MAXPATH], nformat[MAXPATH];
 	va_list	ap;
 
@@ -1245,26 +1265,9 @@ write_log(char *file, int rotate, char *format, ...)
 	va_start(ap, format);
 	vfprintf(f, nformat, ap);
 	va_end(ap);
-	unless (rotate) {
-		fclose(f);
-		return (0);
-	}
-	/* do file rotation if needed */
-	if (fstat(fileno(f), &sb)) {
-		/* ignore errors */
-		sb.st_size = 0;
-		sb.st_mode = 0666;
-	}
 	fclose(f);
-
-	if (sb.st_mode != 0666) chmod(path, 0666);
-#define	LOG_MAXSIZE	(1<<20)
-	if (sb.st_size > LOG_MAXSIZE) {
-		char	old[MAXPATH];
-
-		sprintf(old, "%s-older", path);
-		rename(path, old);
-	}
+	unless (rotate) return (0);
+	log_rotate(path);
 	return (0);
 }
 
@@ -1602,5 +1605,20 @@ callstack_add(int remote)
 		indent_level++;
 	} else {
 		safe_putenv("_BK_CALLSTACK=%s%s", at, prog);
+	}
+}
+
+void
+log_rotate(char *path)
+{
+	struct stat	sb;
+	char		old[MAXPATH];
+
+	if (stat(path, &sb)) return;
+
+	if (sb.st_mode != 0666) chmod(path, 0666);
+	if (sb.st_size > (100*1024*1024)) {
+		sprintf(old, "%s.old", path);
+		rename(path, old);
 	}
 }

@@ -1003,6 +1003,7 @@ sccs	*sccs_getperfile(sccs *, MMAP *, int *);
 char	*sccs_gethost(void);
 char	*sccs_realhost(void);
 char	*sccs_host(void);
+void	resync_lock(void);
 char	**sccs_getComments(char *prompt);
 int	sccs_badTag(char *, char *, int);
 MDBM    *sccs_keys2mdbm(FILE *f);
@@ -1277,6 +1278,7 @@ char	*hashstr(char *str, int len);
 char	*hashstream(int fd);
 char	*secure_hashstr(char *str, int len, char *key);
 int	isNetworkFS(char *path);
+void	log_rotate(char *path);
 void	sccs_saveNum(FILE *f, int num, int sign);
 int	sccs_eachNum(char **linep, int *signp);
 

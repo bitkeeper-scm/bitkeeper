@@ -387,15 +387,24 @@ below.
 .tp
 .V BK_EVENT
 The event from the point of view of the trigger.  The full list of values
-for this variable is
+for this variable is:
+apply,
+collapse,
 commit,
 delta,
-outgoing clone,
-incoming push,
-outgoing push,
+fix,
+incoming clone,
+incoming port,
 incoming pull,
+incoming push,
+lease-proxy,
+outgoing clone,
 outgoing pull, 
-resolve and apply.
+outgoing push,
+resolve,
+tag,
+and
+undo.
 .tp
 .V BK_FILE
 Valid only in the pre-delta trigger, and contains the filename of the file

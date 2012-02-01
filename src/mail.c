@@ -50,7 +50,7 @@ bkmail(char *url, char **to, char *subject, char *file)
 	char	buf[MAXLINE];
 
 	if (streq(url, "SMTP")) {
-		int	status;
+		int	status = -1;
 		pid_t	pid;
 		char	*tmpf = 0;
 

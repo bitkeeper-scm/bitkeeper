@@ -17,6 +17,7 @@ void	graph_sortLines(sccs *s, ser_t *list);
 void	symdiff_setParent(sccs *s, ser_t d, ser_t new, ser_t **sd);
 ser_t	*symdiff_noDup(ser_t *list);
 ser_t	*symdiff_addBVC(ser_t **sd, ser_t *list, sccs *s, ser_t d);
-/* sort functions - sort by serial and put tags at the end */
+
+int	graph_checkdups(sccs *s);
 
 #endif

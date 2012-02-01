@@ -1,0 +1,543 @@
+# Poly - nested style -- component cset is in more than one product cset.
+# See the wiki page "Poly" which describes 5 cases of poly.
+
+# There are 2 choke points in the code for detection: pull and check
+# They are active in 3 cases:
+# 1. pull in the component where the product believes there's a merge
+# 2. resolve runs bk -r check -acR before doing resolve
+# 3. commit -R (the product merge cset) runs bk -r check -cR - < list
+# The 'check' tests only run if there are 2 open tips in the ChangeSet file
+
+# All the tests here port in from a 'standalone' component whose tagged
+# graph looks like:
+
+# ROOT---SHARED--TRUNK-------- MERGE
+#	       \		/
+#		-------BRANCH--+
+
+# There is a set of tests run on 3 different setups.
+# In each setup there is a local and a remote and local always starts out:
+# product	1.2---------------------1.3
+# comp		ROOT --- (SHARED) ------BRANCH
+
+# That is, SHARED doesn't have a D_CSET but is part of 1.3
+
+# XXX: This requires _BK_DEVELOPER to run because push (propagation
+# of cset marks), changes, r2c and maybe more are broken.
+
+# Before each set of tests (look for ###) is an explanation of the
+# setup for that block.
+
+set -e
+
+node() {
+	bk edit $Q foo
+	# to play around with content conflict, add -g to above and:
+	# echo $1 > foo
+	bk delta $Q -fynode-$1 foo
+	bk commit $Q --tag=$1 -f
+}
+
+sanitize() {
+	# filter out the file name from the key
+	perl -i.old -pe 's? bk/[^|]*\|([^|]*)\S+\d\b? <$1>?' $1
+	rm -f $1.old
+}
+
+cleanup() {
+	cd "$HERE/local"
+	bk portal $Q -r
+	_BK_DEVELOPER= bk undo $Q -sfaLOCAL || fail
+	bk portal $Q .
+	bk repocheck $Q
+	cd ../remote
+	bk portal $Q -r
+	_BK_DEVELOPER= bk undo $Q -sfaREMOTE || fail
+	bk portal $Q .
+	bk repocheck $Q
+}
+
+echo $N Make repos to test out nested poly ..........................$NL
+commercial standalone
+touch foo
+bk new $Q foo
+node ROOT
+cd ..
+# set up a nested with one comp
+echo 'checkout: edit' > c
+bk setup -P -fcc remote
+cd remote
+bk gate $Q -r
+# XXX: the comp repo is not attached when sfio happens, so gets checkout wrong.
+bk attach $Q ../standalone comp
+test -f comp/foo && fail fix test as attach now works
+bk --cd=comp -Ur checkout $Q
+# set up a start off the remote repo used in all the tests
+bk clone $Q . ../local
+bk portal $Q .
+bk tag $Q REMOTE
+cd ..
+# set up the standalone histories for all the tests
+cd standalone
+node SHARED
+bk clone $Q . ../branch
+node TRUNK
+cd ../branch
+node BRANCH
+cd ../standalone
+bk pull $Q ../branch
+bk tag $Q MERGE
+# create the version of local that starts out each group of tests
+cd ../local/comp
+bk portal $Q .
+bk port $Q -rBRANCH ../../standalone
+cd ..
+bk tag $Q LOCAL
+echo OK
+
+###
+# The 'comp' in remote has less than local, but has a cset mark.
+# local comp before pull: ROOT (SHARED) BRANCH - where () mean no D_CSET
+# remote comp before pull: ROOT SHARED
+# 
+echo "----- Case 3: nothing to pull but cset marks"
+echo $N pull, poly: off .............................................$NL
+# Create the remote having SHARED
+cd "$HERE"/remote/comp
+bk port $Q -rSHARED ../../standalone
+# Pull into local where SHARED is unmarked
+cd "$HERE"/local
+bk pull -q 2> GOT && fail -f GOT
+sanitize GOT
+cat <<EOF > WANT
+pull: poly on key <comp/ChangeSet> marked in remote
+EOF
+cmpfiles WANT GOT
+# failure means no RESYNC in prod or comp - no manual merges happened
+test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories after failed pull
+echo OK
+
+echo $N pull -R, poly: on ...........................................$NL
+bk --config=poly:on pull $Q -R || fail
+test -d RESYNC -a -d comp/RESYNC || fail RESYNC directories missing after pull
+echo OK
+
+echo $N Now a resolve, poly: off ....................................$NL
+bk resolve -q 2> GOT && fail -f GOT
+sanitize GOT
+cat <<EOF > WANT
+check: poly on key <comp/ChangeSet>
+{bk} {-r} {check} {-acR} failed.  Resolve not even started.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT GOT
+# failure leaves prod and comps as manual merges may have happened.
+test -d RESYNC -a ! -d comp/RESYNC || fail RESYNC directories wrong
+echo OK
+
+echo $N Repeat resolve, poly: on ....................................$NL
+bk --config=poly:on resolve $Q || fail
+test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories missing
+bk repocheck $Q || fail
+echo OK
+
+echo $N unpull and see cset marked was cleaned up ...................$NL
+bk portal $Q -r
+# XXX: unpull doesn't do the right thing with checkout
+bk --config=checkout:none unpull $Q -sf 2>GOT || fail -f GOT
+bk -U checkout $Q || true
+# msg via _BK_DEVELOPER is how we know something happened.
+echo "comp/ChangeSet: adding and/or removing missing csetmarks" > WANT
+cmpfiles WANT GOT
+bk portal $Q .
+bk repocheck $Q
+echo OK
+
+echo $N pull -R, resolve -S comp, resolve, poly: off ................$NL
+bk --config=poly:on pull $Q -R || fail
+# The component check can not see the poly and will complete
+bk --cd=comp resolve $Q -S || fail
+# The product check will fail as it did before .. 
+bk resolve -q 2> GOT && fail -f GOT
+sanitize GOT
+cat <<EOF > WANT
+check: poly on key <comp/ChangeSet>
+{bk} {-r} {check} {-acR} failed.  Resolve not even started.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT GOT
+# failure leaves prod as manual merges may have happened.
+test -d RESYNC -a ! -d comp/RESYNC || fail RESYNC directories wrong
+echo OK
+
+echo $N product resolve, poly: on ...................................$NL
+bk --config=poly:on resolve $Q || fail
+test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
+echo OK
+
+echo $N unpull again and all is okay ................................$NL
+bk portal $Q -r
+_BK_DEVELOPER= bk unpull $Q -sf || fail
+bk portal $Q .
+bk repocheck $Q
+echo OK
+
+echo $N re-pull, poly: on ...........................................$NL
+bk --config=poly:on pull $Q || fail
+test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
+echo OK
+
+echo $N bk changes -V shows tip repeating local .....................$NL
+bk changes -rREMOTE.. -Vnd':INDENT::GFILE:|:REV:\t:TAG:' > GOT
+# 2 things to note:
+# - the product 1.3 (LOCAL) cset should include component 1.3 (SHARED)
+#   This would require changes combining through the product cset weave
+#   and graph to figure out the real cset boundaries.
+# - if the component cset BRANCH wasn't replicated in the product 1.4 merge,
+#   then the newest entry for comp would be SHARED, which is wrong.
+#   This 2nd point shows the work in pull to strip the D_CSET and force
+#   a RESYNC directory even though no new work comes in.  And the work in
+#   check() to not fill the "missing" cset mark back in.
+cat <<EOF > WANT
+ChangeSet|1.4	
+  comp/ChangeSet|1.4	BRANCH
+ChangeSet|1.2.1.1	
+  comp/ChangeSet|1.3	SHARED
+ChangeSet|1.3	LOCAL
+  comp/ChangeSet|1.4	BRANCH
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk r2c on the component tip gives prod merge ................$NL
+REV=`bk --cd=comp r2c -r1.4 ChangeSet`
+test $REV = 1.4 || fail wrong rev -- wanted 1.4 and got $REV
+# comp 1.3 is included in both prod 1.3 and 1.2.1.1, and shows ...
+REV=`bk --cd=comp r2c -r1.3 ChangeSet`
+test $REV = 1.2.1.1 || fail wrong rev -- wanted 1.2.1.1 and got $REV
+echo OK
+
+echo $N make sure a pull where one side contains poly is okay .......$NL
+cd "$HERE"/remote/comp
+touch bar
+bk new $Q
+bk commit $Q -f
+cd "$HERE"/local
+bk pull $Q || fail
+echo OK
+
+echo $N cleanup and restore stable to original state ................$NL
+cleanup || fail
+echo OK
+
+###
+# The 'comp' in remote has same as local (dup), but has an extra cset mark.
+# local comp before pull: ROOT (SHARED) BRANCH - where () mean no D_CSET
+# remote comp before pull: ROOT SHARED (TRUNK) BRANCH MERGE
+#
+# The difference between this and previous set of tests:
+# + This shows the duplicate key error message ('both' or Duplicate). 
+# + This is an update only pull; last one did no pull.
+# 
+echo "----- Case 1: pull from remote has duplicate keys"
+echo $N pull, poly: off .............................................$NL
+cd "$HERE"/remote/comp
+bk port $Q -rSHARED ../../standalone
+bk port $Q -rBRANCH ../../standalone
+bk port $Q -rMERGE ../../standalone
+cd "$HERE"/local
+bk pull -q 2> GOT && fail -f GOT
+sanitize GOT
+cat <<EOF > WANT
+pull: poly on key <comp/ChangeSet> marked in both
+EOF
+cmpfiles WANT GOT
+# failure means no RESYNC in prod or comp - no manual merges happened
+test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories after failed pull
+echo OK
+
+echo $N pull -R, poly: on ...........................................$NL
+# remote and local have same comp tip in different prod csets
+bk --config=poly:on pull $Q -R || fail
+test -d RESYNC -a -d comp/RESYNC || fail RESYNC directories missing after pull
+echo OK
+
+echo $N Now a resolve, poly: off ....................................$NL
+bk resolve -q 2> GOT && fail -f GOT
+sanitize GOT
+cat <<EOF > WANT
+Duplicate delta found in ChangeSet
+	Rev: 1.3.1.1  Key: <comp/ChangeSet>
+	Both keys in file comp/SCCS/s.ChangeSet
+	Same key found in ChangeSet:1.2.1.2,1.3
+{bk} {-r} {check} {-acR} failed.  Resolve not even started.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT GOT
+# failure leaves prod and comps as manual merges may have happened.
+test -d RESYNC -a ! -d comp/RESYNC || fail RESYNC directories wrong
+echo OK
+
+echo $N Repeat resolve, poly: on ....................................$NL
+bk --config=poly:on resolve $Q || fail
+test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories missing
+bk repocheck $Q || fail
+echo OK
+
+echo $N unpull and see cset marked was cleaned up ...................$NL
+bk portal $Q -r
+# XXX: unpull doesn't do the right thing with checkout
+bk --config=checkout:none unpull $Q -sf 2>GOT || fail -f GOT
+bk -U checkout $Q || true
+# message from _BK_DEVELOPER showing something happened.
+echo "comp/ChangeSet: adding and/or removing missing csetmarks" > WANT
+cmpfiles WANT GOT
+bk portal $Q .
+bk repocheck $Q
+echo OK
+
+echo $N re-pull -R, resolve -S comp, resolve, poly: off .............$NL
+bk --config=poly:on pull $Q -R || fail
+# The component check can not see the poly and will complete
+bk --cd=comp resolve $Q -S || fail
+# The product check will fail as it did before .. 
+bk resolve -q 2> GOT && fail -f GOT
+sanitize GOT
+cat <<EOF > WANT
+Duplicate delta found in ChangeSet
+	Rev: 1.3.1.1  Key: <comp/ChangeSet>
+	Both keys in file comp/SCCS/s.ChangeSet
+	Same key found in ChangeSet:1.2.1.2,1.3
+{bk} {-r} {check} {-acR} failed.  Resolve not even started.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT GOT
+# failure leaves prod as manual merges may have happened.
+test -d RESYNC -a ! -d comp/RESYNC || fail RESYNC directories wrong
+echo OK
+
+echo $N product resolve, poly: on ...................................$NL
+bk --config=poly:on resolve $Q || fail
+test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
+echo OK
+
+echo $N unpull again and all is okay ................................$NL
+bk portal $Q -r
+_BK_DEVELOPER= bk unpull $Q -sf || fail
+bk portal $Q .
+bk repocheck $Q
+echo OK
+
+echo $N re-pull, poly: on ...........................................$NL
+bk --config=poly:on pull $Q || fail
+test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
+echo OK
+
+echo $N bk changes -V shows tip repeating local .....................$NL
+bk changes -rREMOTE.. -Vnd':INDENT::GFILE:|:REV:\t:TAG:' > GOT
+# 2 things to note:
+# - the product 1.3 (LOCAL) cset should include component 1.3 (SHARED)
+#   This would require changes combining through the product cset weave
+#   and graph to figure out the real cset boundaries.
+# - The MERGE comp cset is replicated in the product merge tip even through
+#   the component pull was update only.  This is done in pull.c by
+#   stripping off D_CSET and then guarding that stripping in check().
+cat <<EOF > WANT
+ChangeSet|1.4	
+  comp/ChangeSet|1.5	MERGE
+  comp/ChangeSet|1.4	TRUNK
+ChangeSet|1.2.1.3	
+  comp/ChangeSet|1.5	MERGE
+  comp/ChangeSet|1.4	TRUNK
+ChangeSet|1.2.1.2	
+  comp/ChangeSet|1.3.1.1	BRANCH
+ChangeSet|1.2.1.1	
+  comp/ChangeSet|1.3	SHARED
+ChangeSet|1.3	LOCAL
+  comp/ChangeSet|1.3.1.1	BRANCH
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk r2c on the component tip gives prod merge ................$NL
+REV=`bk --cd=comp r2c -r1.4 ChangeSet`
+test $REV = 1.4 || fail wrong rev -- wanted 1.4 and got $REV
+# comp 1.3 is included in both prod 1.3 and 1.2.1.1, and shows ...
+REV=`bk --cd=comp r2c -r1.3 ChangeSet`
+test $REV = 1.2.1.1 || fail wrong rev -- wanted 1.2.1.1 and got $REV
+echo OK
+
+echo $N make sure a pull where one side contains poly is okay .......$NL
+cd "$HERE"/remote/comp
+touch bar
+bk new $Q
+bk commit $Q -f
+cd "$HERE"/local
+bk pull $Q || fail
+echo OK
+
+echo $N cleanup and restore stable to original state ................$NL
+cleanup || fail
+echo OK
+
+###
+# Unlike the previous 2, the GCA is unmarked.
+# local comp before pull: ROOT (SHARED) BRANCH - where () mean no D_CSET
+# remote comp before pull: ROOT (SHARED) TRUNK
+#
+# The difference between this and previous set of tests:
+# + The poly is more detectable because the D_CSET are still 1 to 1
+# + This is an normal merge in the comp RESYNC; no fixups are needed
+# 
+echo "----- Case 4: poly in un-csetmarked node"
+echo $N pull, poly: off .............................................$NL
+cd "$HERE"/remote/comp
+bk port $Q -rTRUNK ../../standalone
+cd "$HERE"/local
+bk pull -q 2> GOT && fail -f GOT
+sanitize GOT
+cat <<EOF > WANT
+pull: poly on unmarked key <comp/ChangeSet>
+EOF
+cmpfiles WANT GOT
+# failure means no RESYNC in prod or comp - no manual merges happened
+test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories after failed pull
+echo OK
+
+echo $N pull -R, poly: on ...........................................$NL
+# remote and local have same comp tip in different prod csets
+bk --config=poly:on pull $Q -R || fail
+test -d RESYNC -a -d comp/RESYNC || fail RESYNC directories missing after pull
+echo OK
+
+echo $N Now a resolve, poly: off ....................................$NL
+bk resolve -q 2> GOT && fail -f GOT
+sanitize GOT
+cat <<EOF > WANT
+check: poly on key <comp/ChangeSet>
+{bk} {-r} {check} {-acR} failed.  Resolve not even started.
+resolve: RESYNC directory left intact.
+====================================================
+1 unresolved component:
+ comp
+resolve: Unresolved components.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT GOT
+# failure leaves prod and comps as manual merges may have happened.
+test -d RESYNC -a -d comp/RESYNC || fail RESYNC directories wrong
+echo OK
+
+echo $N Repeat resolve, poly: on ....................................$NL
+bk --config=poly:on resolve $Q || fail
+test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories missing
+bk repocheck $Q || fail
+echo OK
+
+echo $N unpull and see cset marked was cleaned up ...................$NL
+bk portal $Q -r
+# XXX: unpull doesn't do the right thing with checkout
+bk --config=checkout:none unpull $Q -sf || fail
+bk -U checkout $Q || true
+# message from _BK_DEVELOPER showing something happened.
+bk portal $Q .
+bk repocheck $Q
+echo OK
+
+echo $N re-pull -R, resolve -S comp, poly: off ......................$NL
+bk --config=poly:on pull $Q -R || fail
+# The component check can see the poly since the poly is unmarked
+bk --cd=comp resolve -q -S 2> GOT && fail
+sanitize GOT
+cat <<EOF > WANT
+check: poly on key <comp/ChangeSet>
+{bk} {-r} {check} {-acR} failed.  Resolve not even started.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT GOT
+# failure leaves prod as manual merges may have happened.
+test -d RESYNC -a -d comp/RESYNC || fail RESYNC directories wrong
+echo OK
+
+echo $N resolve -S comp, poly: on ...................................$NL
+bk --cd=comp --config=poly:on resolve $Q -S || fail
+test -d RESYNC -a ! -d comp/RESYNC || fail RESYNC directories wrong
+echo OK
+
+echo $N product resolve, poly: off ..................................$NL
+bk resolve -q 2> GOT && fail
+sanitize GOT
+cat <<EOF > WANT
+check: poly on key <comp/ChangeSet>
+{bk} {-r} {check} {-acR} failed.  Resolve not even started.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT GOT
+# failure leaves prod as manual merges may have happened.
+test -d RESYNC -a ! -d comp/RESYNC || fail RESYNC directories wrong
+echo OK
+
+echo $N product resolve, poly: on ...................................$NL
+bk --config=poly:on resolve $Q || fail
+bk repocheck $Q
+echo OK
+
+echo $N unpull again and all is okay ................................$NL
+bk portal $Q -r
+_BK_DEVELOPER= bk unpull $Q -sf || fail
+bk portal $Q .
+bk repocheck $Q
+echo OK
+
+echo $N re-pull, poly: on ...........................................$NL
+bk --config=poly:on pull $Q || fail
+test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
+echo OK
+
+echo $N bk changes -V shows tip repeating local .....................$NL
+bk changes -rREMOTE.. -Vnd':INDENT::GFILE:|:REV:\t:TAG:' > GOT
+# 2 things to note:
+# - the product 1.3 (LOCAL) cset should include component 1.3 (SHARED)
+#   This would require changes combining through the product cset weave
+#   and graph to figure out the real cset boundaries.
+# - This shows the work in pull to strip the D_CSET 
+#   And the work in check() to not fill the "missing" cset mark back in.
+cat <<EOF > WANT
+ChangeSet|1.4	
+  comp/ChangeSet|1.5	
+ChangeSet|1.2.1.1	
+  comp/ChangeSet|1.4	TRUNK
+  comp/ChangeSet|1.3	SHARED
+ChangeSet|1.3	LOCAL
+  comp/ChangeSet|1.3.1.1	BRANCH
+  comp/ChangeSet|1.3	SHARED
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk r2c on the component tip gives prod merge ................$NL
+# comp 1.3 is included in both prod 1.3 and 1.2.1.1, so which is it?
+# The newest
+REV=`bk --cd=comp r2c -r1.3 ChangeSet`
+test $REV = 1.2.1.1 || fail wrong rev -- wanted 1.2.1.1 and got $REV
+echo OK
+
+echo $N make sure a pull where one side contains poly is okay .......$NL
+cd "$HERE"/remote/comp
+touch bar
+bk new $Q
+bk commit $Q -f
+cd "$HERE"/local
+bk pull $Q || fail
+echo OK
+
+echo $N cleanup and restore stable to original state ................$NL
+cleanup || fail
+echo OK

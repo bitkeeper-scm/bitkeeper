@@ -49,6 +49,10 @@ bkd_main(int ac, char **av)
 	 * dir and exit.  Used for service.
 	 */
 	while ((c = getopt(ac, av, bkd_getopt, 0)) != -1) {
+		/*
+		 * Note that bkd_level.c depends on each arg being distinct,
+		 * not pushed together.  This is fine, don't change it.
+		 */
 		args = addLine(args, aprintf("-%c%s", c, optarg ? optarg : ""));
 		switch (c) {
 		    case 'a': Opts.portfile = strdup(optarg); break;
@@ -368,7 +372,10 @@ log_cmd(char *peer, int ac, char **av, int badcmd)
 		fprintf(log, "%s ", av[i]);
 	}
 	fprintf(log, "\n");
-	unless (log == stderr) fclose(log);
+	unless (log == stderr) {
+		fclose(log);
+		log_rotate(Opts.logfile);
+	}
 }
 
 /*

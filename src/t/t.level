@@ -199,3 +199,90 @@ cd "$HERE/other-prod/other-gcc"
 bk level 6
 bk port $Q bk://localhost:$P/prod/gcc 2>OUT || fail -f OUT should have worked
 echo OK
+
+echo $N Check clonemod with a bogus pull source repo ................$NL
+cd "$HERE"
+commercial remote
+cd ..
+bk clone $Q remote local
+cd remote
+bk level 10
+cd ..
+bk clonemod $Q "file://$HERE/remote-bogus" local working 2> ERR && {
+	fail -f ERR should have failed
+}
+grep -q "Repository doesn't exist." ERR || fail -f ERR
+test -d working && fail created destination repo
+echo OK
+
+echo $N Check clone -@ with a bogus pull source repo ................$NL
+bk clone $Q -@local "file://$HERE/remote-bogus" working 2> ERR && {
+	fail -f ERR should have failed
+}
+grep -q "Repository doesn't exist." ERR || fail -f ERR "wrong error"
+test -d working && fail created destination repo
+echo OK
+
+echo $N Check clonemod with a higher level remote works .............$NL
+bk clonemod $Q "file://$HERE/remote" local working 2> OUT || fail -f OUT
+cd working
+LEVEL=`bk level -l`
+test "$LEVEL" -eq 10 || fail wrong level $LEVEL
+echo OK
+
+echo $N Check clone -@ with a higher level remote works .............$NL
+cd "$HERE"
+bk clone $Q -@local "file://$HERE/remote" working.@ 2> OUT || fail -f OUT
+cd working.@
+LEVEL=`bk level -l`
+test "$LEVEL" -eq 10 || fail wrong level $LEVEL
+echo OK
+
+echo $N Check again with actual content .............................$NL
+cd "$HERE/remote"
+touch foo
+bk new $Q foo
+bk commit $Q -f
+cd "$HERE"
+bk clonemod $Q "file://$HERE/remote" local working2 2> OUT || fail -f OUT
+cd working2
+LEVEL=`bk level -l`
+test "$LEVEL" -eq 10 || fail wrong level $LEVEL
+echo OK
+
+echo $N Check again with lower level remote with null pull ..........$NL
+cd "$HERE/remote"
+bk undo $Q -fr+
+cd "$HERE/local"
+bk level 15
+cd "$HERE"
+bk clonemod $Q "file://$HERE/remote" local working3 2> OUT || fail -f OUT
+cd working3
+LEVEL=`bk level -l`
+test "$LEVEL" -eq 10 || fail wrong level $LEVEL
+echo OK
+
+echo $N Check again with lower level remote and content .............$NL
+cd "$HERE/remote"
+touch foo
+bk new $Q foo
+bk commit $Q -f
+cd "$HERE"
+bk clonemod $Q "file://$HERE/remote" local working4 2> OUT || fail -f OUT
+cd working4
+LEVEL=`bk level -l`
+test "$LEVEL" -eq 10 || fail wrong level $LEVEL
+echo OK
+
+echo $N Make sure that remote level setting is disallowed ...........$NL
+bk -@bk://localhost:$P/copy2 level 5 2>ERR && fail -f ERR "should have failed"
+grep -q "cannot set level remotely" ERR || fail -f ERR "wrong error message"
+echo OK
+
+echo $N Make sure remote level setting is allowed on unsafe bkds ....$NL
+bk _kill bk://localhost:$P
+cd "$HERE"
+bk bkd -dq -U -aPORT -ikill > "$HERE/BKD" 2>&1 || exit 1
+P=`cat PORT`
+bk -@bk://localhost:$P/copy2 level 5 2>ERR || fail -f ERR "should have worked"
+echo OK

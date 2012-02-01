@@ -101,6 +101,15 @@ grep -q 'port: destination is not a portal.' ERR || {
 	exit 1
 }
 bk portal $Q . || exit 1
+(cd "`bk -P pwd`"
+mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/pre-incoming <<EOF
+#!/bin/sh
+set > "$HERE/ENV"
+exit 0
+EOF
+chmod +x BitKeeper/triggers/pre-incoming
+)
 _BK_NO_PATCHSFIO=1 bk port -C $Q ../../standalone || exit 1
 cd ..
 test "`bk prs -hnd:SPN: -r+ sa2/ChangeSet`" = sa2/SCCS/s.ChangeSet || {
@@ -125,6 +134,11 @@ bk port $Q ../../standalone || exit 1
 test "`bk changes -S -r+ -nd':REV: :GFILE:'`" = "1.3 ChangeSet" || exit 1
 bk port $Q -r+ ../../standalone || exit 1
 test "`bk changes -S -r+ -nd':REV: :GFILE:'`" = "1.3 ChangeSet" || exit 1
+echo OK
+
+echo $N Make sure the pre-incoming trigger has the right event ......$NL
+grep BK_EVENT < "$HERE/ENV" > "$HERE/EVENT"
+grep -q 'incoming port' "$HERE/EVENT" || fail
 echo OK
 
 echo $N Port csets from component in portal to standalone repo ......$NL
@@ -597,6 +611,7 @@ test -f RESYNC/BitKeeper/log/port && fail
 echo OK
 
 echo $N Where are the comments about the foo in the product? ........$NL
+cd "$HERE"
 nested other
 bk detach $Q gdb ../gdb-other
 cd ../gdb-other
@@ -613,3 +628,44 @@ echo u | bk commit $Q >/dev/null || fail
 bk changes -r+ >GOT 2>&1
 grep foo GOT && fail "You fixed a bug"
 echo failed \(bug port -C loses pending\)
+
+echo $N Port between standalones cset-marks ChangeSet................$NL
+cd "$HERE"
+cd other
+bk detach $Q gdb ../gdb-other2
+cd ../gdb-other
+touch afile
+bk new $Q afile
+bk commit $Q -f
+cd ../gdb-other2
+bk port $Q ../gdb-other || fail
+bk repocheck $Q || fail
+cd ..
+bk clone $Q gdb-other2 gdb-other3
+cd gdb-other3
+bk repocheck $Q || fail -f GOT
+echo OK
+
+echo $N Move a component around and set correct path in port ........$NL
+# move component to play with pathname entry
+cd "$HERE"/project
+mvcomp bash newbash
+# Just take that in and resolve
+cd ../bash-sa
+bk edit $Q foo
+bk delta $Q -fynull foo
+bk commit $Q -ynull
+bk port $Q ../project/newbash || fail
+# Now stir things up
+cd ../project/newbash
+bk port $Q ../../bash-sa || fail
+# All new csets will have tip local path in pathname and
+# 'ChangeSet' as sortpath
+bk changes -S -end':KEY:||:SORTKEY:' - < BitKeeper/etc/csets-in \
+    | perl -pe 's/[^|]*.([^|]*).*\|\|[^|]*.([^|]*).*/$1 $2/' > GOT
+cat <<EOF > WANT
+newbash/ChangeSet ChangeSet
+newbash/ChangeSet ChangeSet
+EOF
+cmpfiles WANT GOT
+echo OK

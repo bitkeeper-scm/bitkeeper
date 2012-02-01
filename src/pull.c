@@ -6,6 +6,7 @@
 #include "logging.h"
 #include "nested.h"
 #include "progress.h"
+#include "range.h"
 
 private struct {
 	u32	automerge:1;		/* -i: turn off automerge */
@@ -29,6 +30,7 @@ private struct {
 	int	n;			/* number of components */
 	int	delay;			/* -w<delay> */
 	char	*rev;			/* -r<rev> - no revs after this */
+	char	*mergefile;		/* ensure there is a merge file */
 	u32	in, out;		/* stats */
 	char	**av_pull;		/* saved av for ensemble pull */
 	char	**av_clone;		/* saved av for ensemble clone */
@@ -41,6 +43,7 @@ private int	pull_finish(remote *r, int status, char **envVar);
 private void	resolve_comments(remote *r);
 private	int	resolve(void);
 private	int	takepatch(remote *r);
+private	int	pullPoly(int got_patch);
 
 int
 pull_main(int ac, char **av)
@@ -55,7 +58,7 @@ pull_main(int ac, char **av)
 	char	**envVar = 0, **urls = 0;
 	char	*tmpfile = 0;
 	FILE	*tmpf = 0;
-	int	portCsets;
+	int	portCsets = 0;
 	longopt	lopts[] = {
 		{ "batch", 310},	/* pass -s to resolve */
 		{ "safe", 320 },	/* require all comps to be here */
@@ -75,7 +78,7 @@ pull_main(int ac, char **av)
 	}
 	opts.automerge = 1;
 	opts.safe = -1;	/* -1 == not set on command line */
-	while ((c = getopt(ac, av, "c:CDdE:Fiqr;RsStTuvw|z|", lopts)) != -1) {
+	while ((c = getopt(ac, av, "c:CDdE:FiM;qr;RsStTuvw|z|", lopts)) != -1) {
 		unless (c == 'r' || c >= 300) {
 			opts.av_pull = bk_saveArg(opts.av_pull, av, c);
 		}
@@ -107,6 +110,7 @@ pull_main(int ac, char **av)
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
 		    case 'C': opts.portNoCommit = 1; break;
+		    case 'M': opts.mergefile = strdup(optarg); break;
 		    case 'S':
 			fprintf(stderr,
 			    "%s: -S unsupported, try port.\n", prog);
@@ -181,6 +185,7 @@ pull_main(int ac, char **av)
 		urls = parent_pullp();
 		unless (urls) {
 			freeLines(envVar, free);
+			FREE(opts.mergefile);
 			getMsg("missing_parent", 0, 0, stderr);
 			return (1);
 		}
@@ -188,6 +193,7 @@ pull_main(int ac, char **av)
 
 	unless (urls) {
 err:		freeLines(envVar, free);
+		FREE(opts.mergefile);
 		usage();
 		return (1);
 	}
@@ -205,7 +211,6 @@ err:		freeLines(envVar, free);
 		tmpf = fopen(tmpfile, "w");
 		assert(tmpf);
 		fprintf(tmpf, "%s:\n", proj_comppath(0));
-		portCsets = 0;
 	}
 
 	if (opts.verbose) {
@@ -263,7 +268,8 @@ err:		freeLines(envVar, free);
 			 * See how many csets we ported
 			 */
 			merged = strtol(
-				backtick("bk changes -Sr+ -nd'$if(:MERGE:){1}$else{0}'"),
+				backtick("bk changes -Sr+ "
+				    "-nd'$if(:MERGE:){1}$else{0}'", 0),
 				0, 10);
 			csets_in = file2Lines(0, "BitKeeper/etc/csets-in");
 			fprintf(tmpf, "  Ported%s %d cset%s from %s\n",
@@ -312,6 +318,8 @@ err:		freeLines(envVar, free);
 		}
 		unlink(tmpfile);
 	}
+	freeLines(envVar, free);
+	FREE(opts.mergefile);
 	return (rc);
 }
 
@@ -533,7 +541,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 		unlink(msg_file);
 		/* tell remote */
 		if ((t = getenv("BKD_REPOTYPE")) && streq(t, "product")) {
-			rc = pull_finish(r, 1, envVar);
+			pull_finish(r, 1, envVar);
 		}
 		return (-1);
 	}
@@ -716,7 +724,13 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	nested	*n = 0;
 	comp	*c;
 	int	i, j, rc = 0, errs = 0;
+	int	pull, clone, unpopulate;
+	int	safe;
 	int	which = 0, updateHERE = 0, flushCache = 0;
+	char	**missing = 0;
+	char	**new_aliases = 0;
+	char	*tmpfile = 0;
+	int	flags = URLLIST_GATEONLY | URLLIST_NOERRORS;
 	project	*proj;
 
 	/* allocate r->params for later */
@@ -774,109 +788,134 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		goto out;
 	}
 
+	safe = (opts.safe == 1) || ((opts.safe == -1) && !getenv("BKD_GATE"));
 
-	if ((opts.safe == 1) || ((opts.safe == -1) && !getenv("BKD_GATE"))) {
-		char	**missing = 0;
-		char	**new_aliases = 0;
-		int	flags = URLLIST_GATEONLY | URLLIST_NOERRORS;
+	if (opts.quiet) flags |= SILENT;
 
-		if (opts.quiet) flags |= SILENT;
+	missing = 0;
 
-		EACH_STRUCT(n->comps, c, j) {
-			/*
-			 * !c->alias           = I'm not going have it
-			 * c->remotePresent    = Remote has it
-			 * (opts.safe == 1 &&  = user explicitly asked for
-			 *                       --safe
-			 * || !urllist_find()) = we can't find it in a gate
-			 */
-			if (!c->alias && c->remotePresent &&
-			    ((opts.safe == 1) ||
-				!urllist_find(n, c, flags, 0))) {
-				/*
-				 * Add this component to the missing
-				 * list, we will fetch it with a cover.
-				 */
-				missing = addLine(missing, (char *)c);
-			}
+	EACH_STRUCT(n->comps, c, j) {
+		/*
+		 * !c->alias           = I'm not going have it
+		 *
+		 * does it need a merge?
+		 * c->localchanges     = local changes
+		 * c->included	       = remote changes
+		 *
+		 * safe		       = okay to delete remote repo after pull
+		 * c->remotePresent    = remote has it
+		 * !urllist_find()     = we can't find it in a gate
+		 */
+		c->data = 0;
+		if (c->alias) continue;
+		if ((c->localchanges && c->included)) {
+			missing = addLine(missing, (char *)c);
+			c->data = (void *)2;
+		} else if (safe &&
+		    c->remotePresent && !urllist_find(n, c, flags,0)) {
+			missing = addLine(missing, (char *)c);
+			c->data = (void *)1;
 		}
+	}
 
-		if (missing) {
-			char	**msg = 0;
+	if (missing) {
+		char	**msg = 0;
+		char	**safelist = 0;
+		char	**mergelist = 0;
 
-			unless (opts.quiet && opts.autoPopulate) {
+		unless (opts.quiet && opts.autoPopulate) {
+			EACH_STRUCT(missing, c, j) {
+				if (c->data == (void *)1) {
+					safelist = addLine(safelist, c->path);
+				} else if (c->data == (void *)2) {
+					mergelist = addLine(mergelist, c->path);
+				}
+			}
+			if (safelist) {
 				fprintf(stderr, "\nThe following components "
 				    "are present in the remote, were not\n"
 				    "found in any gates, and will need to "
 				    "be populated to make\n"
 				    "the pull safe:\n");
-				EACH_STRUCT(missing, c, j) {
-					fprintf(stderr, "\t%s\n", c->path);
+				EACH(safelist) {
+					fprintf(stderr, "\t%s\n", safelist[i]);
 				}
+				freeLines(safelist, 0);
 			}
-
-			unless (opts.autoPopulate) {
-				fprintf(stderr, "Please re-run the pull "
-				    "using the --auto-populate option "
-				    "in order\nto get them automatically.\n");
-				freeLines(missing, 0);
-				rc = 1;
-				goto out;
-			}
-
-			/*
-			 * Find a minimum subset of the remote's alias
-			 * file that covers all the missing
-			 * components.
-			 */
-			new_aliases =
-				alias_coverMissing(n, missing, rmt_aliases);
-			freeLines(missing, 0);
-			unless (opts.quiet) {
+			if (mergelist) {
 				fprintf(stderr,
-				    "Adding the following "
-				    "aliases/components:\n");
-			}
-
-			/*
-			 * Add them to HERE
-			 */
-			EACH(new_aliases) {
-				n->here = addLine(n->here, new_aliases[i]);
-				unless (opts.quiet) {
-					p = new_aliases[i];
-					if (isKey(p)) {
-						c = nested_findKey(n, p);
-						assert(c);
-						p = c->path;
-					}
-					msg = addLine(msg,
-					    aprintf("\t%s\n", p));
+				    "\nThe following components need to be "
+				    "merged, are not present in this\n"
+				    "repository, and will need to be "
+				    "populated to complete the pull:\n");
+				EACH(mergelist) {
+					fprintf(stderr, "\t%s\n", mergelist[i]);
 				}
+				freeLines(mergelist, 0);
 			}
-			unless (opts.quiet) {
-				sortLines(msg, 0);
-				EACH(msg) fprintf(stderr, "%s", msg[i]);
-			}
-			freeLines(msg, free);
-			freeLines(new_aliases, 0);
-			uniqLines(n->here, free);
-
-			/*
-			 * This retags comps with c->alias for the
-			 * aliases we just added so populate will
-			 * update them.
-			 */
-			if (nested_aliases(n, 0, &n->here, 0, NESTED_PENDING)){
-				/* should never fail */
-				fprintf(stderr,
-				    "%s: local aliases no longer valid.\n",
-				    prog);
-				rc = 1;
-				goto out;
-			}
-			updateHERE = 1;
 		}
+
+		unless (opts.autoPopulate) {
+			fprintf(stderr, "Please re-run the pull "
+			    "using the --auto-populate option "
+			    "in order\nto get them automatically.\n");
+			freeLines(missing, 0);
+			rc = 1;
+			goto out;
+		}
+
+		/*
+		 * Find a minimum subset of the remote's alias
+		 * file that covers all the missing
+		 * components.
+		 */
+		new_aliases =
+			alias_coverMissing(n, missing, rmt_aliases);
+		freeLines(missing, 0);
+		unless (opts.quiet) {
+			fprintf(stderr,
+			    "Adding the following "
+			    "aliases/components:\n");
+		}
+
+		/*
+		 * Add them to HERE
+		 */
+		EACH(new_aliases) {
+			n->here = addLine(n->here, new_aliases[i]);
+			unless (opts.quiet) {
+				p = new_aliases[i];
+				if (isKey(p)) {
+					c = nested_findKey(n, p);
+					assert(c);
+					p = c->path;
+				}
+				msg = addLine(msg,
+				    aprintf("\t%s\n", p));
+			}
+		}
+		unless (opts.quiet) {
+			sortLines(msg, 0);
+			EACH(msg) fprintf(stderr, "%s", msg[i]);
+		}
+		freeLines(msg, free);
+		freeLines(new_aliases, 0);
+		uniqLines(n->here, free);
+
+		/*
+		 * This retags comps with c->alias for the
+		 * aliases we just added so populate will
+		 * update them.
+		 */
+		if (nested_aliases(n, 0, &n->here, 0, NESTED_PENDING)){
+			/* should never fail */
+			fprintf(stderr,
+			    "%s: local aliases no longer valid.\n",
+			    prog);
+			rc = 1;
+			goto out;
+		}
+		updateHERE = 1;
 	}
 
 	/*
@@ -891,53 +930,48 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	opts.n = 1;		/* for product */
 	EACH_STRUCT(n->comps, c, i) {
 		if (c->product) continue;
-		if (c->included) {
-			/* this component is included in pull */
-			if (c->alias) {
-				/* and we will need those new csets */
-				if (c->present || c->localchanges) opts.n++;
-				if (!c->remotePresent && c->present) {
-					/*
-					 * XXX: I plan to fix this with pull-urllist.
-					 */
-					fprintf(stderr,
-					    "pull: %s is missing in %s\n"
-					    "and has work that needs to "
-					    "be pulled, please populate "
-					    "it in the remote side.\n",
-					    c->path, url);
-					++errs;
-				}
-			} else {
-				/* we don't want this component */
-				if (c->localchanges) {
-					/* XXX: I plan to fix this with pull-urllist */
-					fprintf(stderr,
-					    "%s: Unable to resolve conflict "
-					    "in non-present component '%s'.\n",
-					    prog, c->path);
-					++errs;
-				}
+
+		/* what happens to this comp?  Can be both pull and clone. */
+		clone = (c->alias && !c->present);
+		pull = (c->alias && c->included &&
+		    (c->present || c->localchanges));
+		unpopulate = (!c->alias && c->present);
+
+		if (pull) {
+			opts.n++;
+			unless (c->remotePresent) {
+				/*
+				 * XXX: I plan to fix this with pull-urllist.
+				 */
+				fprintf(stderr,
+				    "pull: %s is missing in %s\n"
+				    "and has work that needs to "
+				    "be pulled, please populate "
+				    "it in the remote side.\n",
+				    c->path, url);
+				++errs;
 			}
 		}
-		if (c->alias && !c->present) {
+		if (clone) {
 			if (c->localchanges) {
 				/*
-				 * We do both, populate c->lowerkey
-				 * and then pull c->deltakey. Also,
-				 * flush the cache *before* calling
+				 * Either a clone and pull or a populate
+				 * when there is no remote work means
+				 * just populate the local tip: c->lowerkey
+				 * Also flush the cache *before* calling
 				 * nested_populate since we have
-				 * probbed with deltakey before and
+				 * probed with deltakey before and
 				 * now we have to probe with lowerkey.
 				 */
 				c->useLowerKey = 1;
 				flushCache = 1;
 			} else {
+				/* mark that we have remote. Used below */
 				c->new = 1;
 			}
 			++which;
 		}
-		if (!c->alias && c->present) {	// unpopulate local
+		if (unpopulate) {	// unpopulate local
 			c->useLowerKey = 1;
 			flushCache = 1;
 		}
@@ -1022,6 +1056,18 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		EACH(opts.av_pull) {
 			vp = addLine(vp, strdup(opts.av_pull[i]));
 		}
+		if (c->localchanges) {
+			FILE	*tmpf;
+			
+			tmpfile = bktmp(0, "mergekeys");
+			tmpf = fopen(tmpfile, "w");
+			assert(tmpf);
+			EACH(c->local) fprintf(tmpf, "%s\n", c->local[i]);
+			fputc('\n', tmpf);
+			EACH(c->remote) fprintf(tmpf, "%s\n", c->remote[i]);
+			fclose(tmpf);
+			vp = addLine(vp, aprintf("-M%s", tmpfile));
+		}
 		vp = addLine(vp, aprintf("-r%s", c->deltakey));
 
 		/* calculate url to component */
@@ -1029,19 +1075,30 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		vp = addLine(vp, remote_unparse(r));
 		hash_deleteStr(r->params, "ROOTKEY");
 		vp = addLine(vp, 0);
-		if (rc = spawnvp(_P_WAIT, "bk", &vp[1])) {
+		rc = spawnvp(_P_WAIT, "bk", &vp[1]);
+		freeLines(vp, free);
+		if (c->localchanges) {
+			unlink(tmpfile);
+			FREE(tmpfile);
+		}
+		if (rc) {
 			/*
 			 * Resolve doesn't tell us whether it failed because
 			 * of conflicts or some other reason, so we need to
 			 * check for a RESYNC here.
 			 */
-			unless (isdir(ROOT2RESYNC)) {
+			if (WIFEXITED(rc)) rc = WEXITSTATUS(rc);
+			if ((rc == 71) || !isdir(ROOT2RESYNC)) {
 				/*
 				 * Pull really failed, who knows why
+				 * 71 == poly which already printed error
 				 */
-				fprintf(stderr, "Pulling %s failed %x\n", c->path, rc);
+				unless (rc == 71) {
+					fprintf(stderr,
+					    "Pulling %s failed %d\n",
+					    c->path, rc);
+				}
 				rc = 1;
-				freeLines(vp, free);
 				break;
 			}
 			/* we're still ok */
@@ -1053,7 +1110,6 @@ pull_ensemble(remote *r, char **rmt_aliases,
 				    "CONFLICTS", PROGRESS_SUM);
 			}
 			FREE(title);
-			freeLines(vp, free);
 			continue; /* avoid progress bar */
 		} else {
 			if (opts.noresolve && (proj = proj_init(c->path))) {
@@ -1066,7 +1122,6 @@ pull_ensemble(remote *r, char **rmt_aliases,
 				FREE(title);
 			}
 		}
-		freeLines(vp, free);
 		progress_nldone();
 		if (rc) break;
 	}
@@ -1137,6 +1192,17 @@ pull(char **av, remote *r, char **envVar)
 	 */
 	wait_eof(r, opts.debug);
 	disconnect(r);
+
+	/* pull component - poly detection and fixups */
+	if (opts.mergefile) {
+		if (pullPoly(got_patch)) {
+			putenv("BK_STATUS=POLY");
+			got_patch = 0;	/* post triggers */
+			rc = 71;	/* XXX: hack to talk to pull */
+			goto done;
+		}
+		got_patch = 1;
+	}
 
 	if (got_patch) {
 		/*
@@ -1337,4 +1403,138 @@ resolve(void)
 	status = resolve_main(i, cmd);
 	unless (opts.quiet) progress_nlneeded();
 	return (status);
+}
+
+/*
+ * range_walkrevs() callback on GCA nodes. Fail on the first poly node found.
+ * Poly if GCA has no csetmark or is listed in local, remote or both.
+ */
+
+#define	LOCAL	0x01
+#define	REMOTE	0x02
+#define	BOTH	(LOCAL|REMOTE)
+
+private	int
+polyChk(sccs *cset, ser_t gca, void *token)
+{
+	hash	*cmarks = (hash *)token;
+	char	*reason;
+	char	key[MAXKEY];
+
+	sccs_sdelta(cset, gca, key);
+	if (hash_fetchStrMem(cmarks, key)) {
+		assert(FLAGS(cset, gca) & D_CSET);
+		switch (*(u8 *)cmarks->vptr) {
+		    case LOCAL: reason = "local"; break;
+		    case REMOTE: reason = "remote"; break;
+		    case BOTH: reason = "both"; break;
+		    default: assert("other reason" == 0); break;
+		}
+		fprintf(stderr, "%s: poly on key %s marked in %s\n",
+		    prog, key, reason);
+		return (1);
+	}
+	unless (FLAGS(cset, gca) & D_CSET) {
+		fprintf(stderr, "%s: poly on unmarked key %s\n", prog, key);
+		return (1);
+	}
+	return (0);
+}
+
+/*
+ * Pull Poly is both detection and fixups for handling poly in a pull.
+ * If the local is ahead of the remote, but the remote adds cset marks,
+ * then we need to fake a RESYNC and make it pending, so the tip can
+ * be included in the product tip (enhancing the polyness some more).
+ * If update only pull, then don't have to fake up the RESYNC, but do
+ * have to do the pending work on the tip.   In there, also do error
+ * detection and bail.
+ */
+private	int
+pullPoly(int got_patch)
+{
+	sccs	*cset = 0;
+	ser_t	d, local = 0, remote = 0;
+	char	*prefix, *resync;
+	int	rc = 1, write = 0;
+	int	more, i;
+	u8	side;
+	char	**list;
+	hash	*cmarks;
+	char	key[MAXKEY];
+
+	resync = aprintf("%s/%s", ROOT2RESYNC, CHANGESET);
+
+	/* cons up a RESYNC area in case "Nothing to pull" */
+	unless (got_patch) {
+		resync_lock();
+		fileCopy(CHANGESET, resync);
+		touch("RESYNC/BitKeeper/tmp/patch", 0666);
+	}
+
+	unless (cset = sccs_init(resync, INIT_MUSTEXIST)) goto err;
+	assert(cset);
+
+	side = LOCAL;
+	more = 0;
+	list = file2Lines(0, opts.mergefile);
+	cmarks = hash_new(HASH_MEMHASH);
+	EACH(list) {
+		unless (*list[i]) { // if blank line, which is separator
+			side = REMOTE;
+			continue;
+		}
+		if (hash_insertStrMem(cmarks, list[i], 0, sizeof(side))) {
+			more++;
+		}
+		*(u8 *)cmarks->vptr |= side;
+	}
+	freeLines(list, free);
+
+	/*
+	 * Fix up cset marks - if poly, might be missing marks from remote.
+	 * pick off local and remote tip - above lists are unsorted
+	 */
+	for (d = TABLE(cset); (d >= TREE(cset)) && more; d--) {
+		if (TAG(cset, d)) continue;
+		sccs_sdelta(cset, d, key);
+		unless (hash_fetchStr(cmarks, key)) continue;
+		side = *(u8 *)cmarks->vptr;
+		if (!local && (side & LOCAL)) local = d;
+		if (!remote && (side & REMOTE)) remote = d;
+		unless (FLAGS(cset, d) & D_CSET) {
+			/* could assert that it only updates remote */
+			FLAGS(cset, d) |= D_CSET;
+			write = 1;
+		}
+		more--;
+	}
+	assert(local && remote);
+
+	unless (getenv("_BK_DEVELOPER") && proj_configbool(0, "poly")) {
+		if (range_walkrevs(
+		    cset, local, 0, remote, WR_GCA, polyChk, cmarks)) {
+			goto err;
+		}
+	}
+	hash_free(cmarks);
+
+	/* if no merge file: fake pending to get included in product merge */
+	prefix = resync + strlen(resync) - 11;
+	assert(*prefix == 's');
+	*prefix = 'r';
+	if (!exists(resync)) {
+		d = sccs_top(cset);
+		assert(FLAGS(cset, d) & D_CSET);
+		FLAGS(cset, d) &= ~D_CSET;
+		write = 1;
+		*prefix = 'd';
+		touch(resync, 0666);
+	}
+	if (write && sccs_newchksum(cset)) goto err;
+	rc = 0;
+err:
+	sccs_free(cset);
+	FREE(resync);
+	return (rc);
 }

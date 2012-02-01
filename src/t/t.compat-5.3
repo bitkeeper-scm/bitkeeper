@@ -1,0 +1,101 @@
+# 5.0 introduced Nested.  At first, there was nothing to be backward
+# compatible with, but now with a few rounds of nested out in the field,
+# stick in bk-5.3 as a baseline to compare against.
+
+OLDVER=5.3
+OLDBK=/build/bitkeeper-$OLDVER
+
+# use new parallel clone in tests
+_BK_FORCE_NETFS=YES
+export _BK_FORCE_NETFS
+
+echo $N Check bitkeeper 5.3 installation ............................$NL
+if [ -n "$BK_DEV_SKIPTEST" ]; then echo skipped; exit 0; fi
+# Skip this test for Windows VISTA
+OSTYPE=`uname -s`
+case $OSTYPE in
+	MINGW32_NT-6.*) echo skipped; exit 0;;
+esac
+echo license: $BKL_PRO > c
+echo licsign1: $BKL_P1 >> c
+echo licsign2: $BKL_P2 >> c
+echo licsign3: $BKL_P3 >> c
+mv c "`bk dotbk`"/config
+test -d $OLDBK || {
+    # Skip this test if we don't have at least 5gigs free
+    df -k /build 2>/dev/null |
+        perl -e '$_ = <>; $_ = <>; exit 0 if /^\S+\s+\d+\s+\d+\s+(\d+)\s+\d+%/ && $1 > 5e6; exit 1' || {
+	echo skipped
+	exit 0
+    }
+    bk upgrade $Q -f -n $BK_TCOMPAT_ARCH \
+	    http://data.bitmover.com/upgrades.$OLDVER >out 2>ERR || {
+	    grep -q "No upgrade for the arch.*found" ERR && {
+		echo skipped
+		exit 0
+	    }
+	    echo image fetch failed
+	    exit 1
+    }
+    # NOTE bk-3.2.x didn't set exit status...
+    echo y | BK_NOLINKS=1 ./bk-$OLDVER-* $OLDBK >out 2>err || fail
+    rm $OLDBK/config
+
+    # generate a crypto key for tests
+    $OLDBK/bk crypto -i 1024 $OLDBK/my.sec $OLDBK/my.pub || fail
+}
+VER=`$OLDBK/bk version -s`
+test X$VER = X$OLDVER || {
+	echo bk not installed correctly
+	exit 1
+}
+echo OK
+
+echo $N Start new and old bkds ......................................$NL
+cd "$HERE"
+OLDP=`port 54500`
+# old bkd will have "No root for triggers!" ttyprintf
+$OLDBK/bk bkd -d -aPORT -ikill 2> OLDERR || fail -f OLDERR
+OLDP=`cat PORT`
+bk bkd -d -aPORT -ikill 2> NEWERR || fail -f NEWERR
+NEWP=`cat PORT`
+trap "bk _kill bk://localhost:$OLDP; bk _kill bk://localhost:$NEWP" 0
+echo OK
+
+echo -------------- clone compat tests
+# use new parallel clone in tests
+_BK_FORCE_NETFS=YES
+export _BK_FORCE_NETFS
+
+echo $N Clone from old bkd and make sure we do checkouts ............$NL
+cd "$HERE"
+commercial project
+bk clone $Q --sccs-compat . ../sccsdirs
+cd ../sccsdirs
+mkdir src
+cd src
+echo foo > foo
+bk new $Q foo
+cd ..
+bk commit -ywhatever $Q
+cd ..
+# Important for the test: SCCS compat, partial check and checkout get|edit
+bk --config='partial_check:yes' clone $Q --checkout=get \
+    bk://localhost:$OLDP/sccsdirs file-after || fail
+cd file-after
+bk -U^G > CO
+test -s CO && fail -f CO files not checked out
+echo OK
+
+echo $N Clone again, but such that config is last in the list .......$NL
+cd "$HERE"/sccsdirs
+bk mv src/foo foo
+bk commit -ywhatever $Q
+cd ..
+# Important for the test: SCCS compat, partial check and checkout get|edit
+bk --config='partial_check:yes' clone $Q --checkout=get \
+    bk://localhost:$OLDP/sccsdirs config-last || fail
+cd config-last
+bk -U^G > CO
+test -s CO && fail -f CO files not checked out
+echo OK

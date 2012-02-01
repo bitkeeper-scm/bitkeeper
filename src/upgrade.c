@@ -86,7 +86,7 @@ upgrade_main(int ac, char **av)
 		 * Check to see if they are running a powerpc bk on an
 		 * intel mac under rosetta.
 		 */
-		if ((p = backtick("uname -p")) && streq(p, "i386")) {
+		if ((p = backtick("uname -p", 0)) && streq(p, "i386")) {
 			bk_platform = "x86-macosx";
 		}
 	}

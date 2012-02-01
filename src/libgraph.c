@@ -27,6 +27,7 @@ private	int	bigFirst(const void *a, const void *b);
  *
  * #define	SLR_DIFF	0x10
  */
+#define	SL_DUP		0x10	/* Check for not needed */
 #define	SL_PAR		0x20	/* Left side parent lineage */
 #define	SL_INC		0x40	/* Left side include */
 #define	SL_EXCL		0x80	/* Left side exclude */
@@ -292,6 +293,91 @@ graph_symdiff(sccs *s, ser_t left, ser_t right, ser_t *list, u8 *slist,
 		}
 	}
 	return (count);
+}
+
+private	int
+checkDups(sccs *s, ser_t d, u8 *slist)
+{
+	ser_t	stop, clean, e, t;
+	char	*p;
+	int	sign;
+	u32	bits;
+	int	rc = 0;
+
+	stop = clean = d;
+	slist[d] |= SL_PAR;
+	for (t = d; t >= stop; t--) {
+		unless (bits = slist[t]) continue;
+		slist[t] = 0;
+		if (bits & SL_PAR) {
+			if ((bits & (SL_PAR|SL_DUP|SL_INC)) ==
+			    (SL_PAR|SL_DUP|SL_INC)) {
+				fprintf(stderr,
+				    "%s: dup parent/inc in %s of %s\n",
+		    		    s->gfile, REV(s, d), REV(s, t));
+				rc = 1;
+			}
+			if (e = PARENT(s, t)) {
+				slist[e] |= SL_PAR;
+				if (clean > e) clean = e;
+			}
+		}
+		unless ((bits & (SL_PAR|SL_INC)) && !(bits & SL_EXCL)) {
+			continue;
+		}
+		p = CLUDES(s, t);
+		while (e = sccs_eachNum(&p, &sign)) {
+			bits = slist[e];
+			if (bits & SL_DUP) {
+				bits &= ~SL_DUP;
+				if ((sign > 0) && (bits & SL_INC)) {
+					fprintf(stderr,
+					    "%s: dup inc in %s of %s\n",
+			    		    s->gfile, REV(s, d), REV(s, e));
+					rc = 1;
+				} else if ((sign < 0) && (bits & SL_EXCL)) {
+					fprintf(stderr,
+					    "%s: dup exc in %s of %s\n",
+			    		    s->gfile, REV(s, d), REV(s, e));
+					rc = 1;
+				}
+			} else if (t == d) {
+				bits |= SL_DUP;
+				if (stop > e) stop = e;
+			}
+			unless (bits & (SL_INC|SL_EXCL)) {
+				bits |= (sign > 0) ? SL_INC : SL_EXCL;
+			}
+			slist[e] = bits;
+			if (clean > e) clean = e;
+		}
+	}
+	if (t && clean) {
+		for (/* t */; t >= clean; t--) {
+			slist[t] = 0;
+		}
+	}
+	return (rc);
+}
+
+/*
+ * Look for dups
+ */
+int
+graph_checkdups(sccs *s)
+{
+	ser_t	d;
+	u8	*slist;
+	int	rc = 0;
+
+	slist = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
+	for (d = TREE(s); d <= TABLE(s) ; d++) {
+		if (HAS_CLUDES(s, d)) {
+			rc |= checkDups(s, d, slist);
+		}
+	}
+	free(slist);
+	return (rc);
 }
 
 /*
@@ -572,11 +658,12 @@ sortKids(sccs *s, ser_t start, int (*compar)(const void *, const void *),
 	ser_t	*serp;
 
 	/* bail if nothing to sort */
-	unless ((d = KID(s, start)) && !TAG(s, d) && SIBLINGS(s, d)) return;
+	d = KID(s, start);
+	unless (d && !TAG(s, d) && SIBLINGS(s, d)) return;
 
 	sortfile = s;
 	truncLines(list, 0);
-	for (d = KID(s, start); d; d = SIBLINGS(s, d)) {
+	for (/* d */; d; d = SIBLINGS(s, d)) {
 		addArray(&list, &d);
 	}
 	*karr = list;

@@ -1,0 +1,133 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Larry McVoy
+# %K%
+
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+export _BK_PREVENT_RESOLVE_RERUN=YES
+OUT="$HERE/out"
+RC="`bk dotbk`/fm3.rc"
+
+echo $N Create some data ............................................$NL
+commercial project
+
+cat <<EOF >afile
+common lines 1
+common lines 2
+common lines 3
+common lines 4
+common lines 5
+common lines 6
+common lines 7
+common lines 8
+common lines 9
+common lines 10
+common lines 11 (5. press s)
+EOF
+bk new $Q afile
+bk commit $Q -yafile afile
+cd "$HERE"
+bk clone $Q project branch
+cd project
+bk edit $Q afile
+cat <<EOF >afile
+common lines 1
+common lines 2
+remote line 1  (1. alt-click me)
+common lines 3
+remote line 2  (3. alt-click me)
+common lines 4
+common lines 5
+common lines 6
+common lines 7
+common lines 8
+common lines 9
+common lines 10
+common lines 11 (5. press s)
+EOF
+bk delta $Q -yremote afile
+bk commit $Q -yremote
+cd "$HERE/branch"
+bk edit $Q afile
+cat > afile <<EOF
+common lines 1
+common lines 2
+local lines 3 (2. alt-click me)
+local lines 4 (4. click me - block select)
+local lines 5
+local lines 6
+local lines 7
+common lines 8
+common lines 9
+common lines 10
+common lines 11 (5. press s)
+EOF
+bk delta $Q -ylocal afile
+bk commit $Q -ylocal
+bk pull -R $Q >OUT 2>&1 || fail -f OUT
+cd RESYNC
+bk edit $Q -M1.1.1.1 afile
+echo OK
+
+echo $N Test undo on blocks and individual lines ....................$NL
+bk guitest fm3tool -f -l1.1.1.1 -r1.2 afile >"$OUT" 2>&1 <<'EOF'
+	test_clickRightLine "1. alt-click me" -button right
+	test_isInMerge "1. alt-click me"
+
+	test_clickLeftLine  "2. alt-click me" -button right
+	test_isInMerge "2. alt-click me"
+
+	test_inputString "u"
+	test_isNotInMerge "2. alt-click me"
+
+	test_clickLeftLine  "2. alt-click me" -button right
+	test_clickRightLine "3. alt-click me" -button right
+	test_clickLeftLine  "4. click me"
+	test_isInMerge "3. alt-click me"
+	test_isInMerge "4. click me"
+
+	test_inputString "u"
+	test_isNotInMerge "local lines 7"
+	test_isNotInMerge "4. click me"
+	test_isInMerge "3. alt-click me"
+
+	test_inputString "u"
+	test_isNotInMerge "3. alt-click me"
+	test_isInMerge "2. alt-click me"
+
+	test_inputString "u"
+	test_isNotInMerge "2. alt-click me"
+
+	test_invokeMenu "File->Quit"
+EOF
+err=$?
+test -s "$OUT" && fail -f "$OUT"
+test $err -ne 0 && fail
+echo OK
+
+echo $N Test some of the clicks in a conflict .......................$NL
+bk guitest fm3tool -f -l1.1.1.1 -r1.2 afile >"$OUT" 2>&1 <<'EOF'
+	test_clickRightLine "1. alt-click me" -button right
+	test_clickLeftLine  "2. alt-click me" -button right
+	test_clickRightLine "3. alt-click me" -button right
+	test_clickLeftLine  "4. click me"
+	test_invokeMenu "File->Save"
+EOF
+cat >WANT <<EOF
+===== afile 1.2 vs edited =====
+4a5
+> remote line 2  (3. alt-click me)
+EOF
+bk diffs afile > GOT
+cmpfiles WANT GOT
+echo OK

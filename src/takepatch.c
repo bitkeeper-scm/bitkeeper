@@ -917,15 +917,14 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		s->state &= ~(S_PFILE|S_ZFILE|S_GFILE);
 		/* NOTE: we leave S_SFILE set, but no sfile there */
 
-		unless (CSET(s)) {
-			/* serial and therefore delta * are not stable */
-			// XXX: need a new lightweight way to track the
-			// same item as it gets moved about now that
-			// address gets altered.
-			top = sccs_top(s);
-			sccs_sdelta(s, top, buf);
-			topkey = strdup(buf);
-		}
+		/* serial and therefore delta * are not stable */
+		// XXX: need a new lightweight way to track the
+		// same item as it gets moved about now that
+		// address gets altered.
+		top = sccs_top(s);
+		sccs_sdelta(s, top, buf);
+		topkey = strdup(buf);
+		top = 0;
 	} else {
 		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
 			SHOUT();
@@ -1012,24 +1011,33 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	 * When porting in a csetfile, need to ignore path names
 	 * XXX: component moves looks will break this.
 	 */
-	if (opts->port && CSET(s)) for (p = patchList; p; p = p->next) {
-		d = p->serial;
-		unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
-		unless (PARENT(s, d)) continue;	/* rootkey untouched */
+	if (topkey) top = sccs_findKey(s, topkey);
+	if (opts->port && CSET(s)) {
+		assert(topkey);	// no porting a new component; use attach
+		for (d = 0, p = patchList; p; p = p->next) {
+			d = p->serial;
+			unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
+			unless (PARENT(s, d)) continue;	/* rootkey untouched */
 
-		PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, PARENT(s, d));
+			/* hard code all the new paths to the local tip */
+			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, top);
 
-		if (proj_isComponent(s->proj) &&
-		    streq(proj_rootkey(proj_product(s->proj)),
-		    CSETFILE(s, d))) {
-			errorMsg("tp_portself", p->pid, s->sfile);
-			/*NOTREACHED*/
-		}
-		if (MERGE(s, d) &&
-		    !streq(PATHNAME(s, MERGE(s, d)), PATHNAME(s, d))) {
-			errorMsg("tp_portmerge",
-			    PATHNAME(s, MERGE(s, d)), PATHNAME(s, d));
-			/*NOTREACHED*/
+			if (TAG(s, d)) continue;
+			if (proj_isComponent(s->proj)) {
+				/* Sanity assertion - can't port to self */
+				if (streq(CSETFILE(s, d),
+				    proj_rootkey(proj_product(s->proj)))) {
+					errorMsg("tp_portself",
+					    p->pid, s->sfile);
+					/*NOTREACHED*/
+				}
+			} else {
+				/*
+				 * If porting to a standalone, we need to add
+				 * back the cset marks.
+				 */
+				if (d != TREE(s)) FLAGS(s, d) |= D_CSET;
+			}
 		}
 	}
 	if (CSET(s) && (echo == 3)) fputs(", ", stderr);
@@ -1120,8 +1128,8 @@ markup:
 		unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
 		FLAGS(s, d) |= D_SET; /* for resum() */
 	}
-	if (topkey) top = sccs_findKey(s, topkey);
-	if (top && (DANGLING(s, top) || !(FLAGS(s, top) & D_CSET))) {
+	if (!CSET(s) && top &&
+	    (DANGLING(s, top) || !(FLAGS(s, top) & D_CSET))) {
 		ser_t	a, b;
 
 		if (DANGLING(s, top) && sccs_findtips(s, &a, &b)) {
@@ -1710,7 +1718,7 @@ initProject(void)
 	sccs_mkroot(".");
 }
 
-private void
+void
 resync_lock(void)
 {
 	FILE	*f;

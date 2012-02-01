@@ -92,18 +92,12 @@ echo OK
 echo $N Hand-edit that joins block with previous line................$NL
 cd "$HERE/local/RESYNC"
 bk guitest fm3tool -o merge.raw -f -l1.1.1.1 -r1.2 src/file1 >"$OUT" 2>&1 <<'EOF'
-    # find beginning of unmerged section, then simulate a button
-    # click there
-    set index [.merge.t index d1]
-    set dline [.merge.t dlineinfo d1]
-    set x [lindex $dline 0]
-    set y [lindex $dline 1]
-    event generate .merge.t <ButtonPress-1> -x $x -y $y 
-    event generate .merge.t <ButtonRelease-1> -x $x -y $y 
+    test_rewindMergeCursor
+    test_clickLineInMerge "<<<<<<"
     # we should be at start of merge block; simulate backspace which
     # causes this line to be joined to the preceeding line
-    test_inputString "\010" .merge.t
-    event generate .merge.t <Escape> -x $x -y $y
+    test_inputInMerge "\010"
+    test_exitMerge
     test_invokeMenu "File->Save"
     exit 0
 EOF

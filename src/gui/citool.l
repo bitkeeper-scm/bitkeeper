@@ -1073,9 +1073,11 @@ toggleFile(string node)
 	if ((sf.type == "new") && (getComments(sf) == "")) {
 		string	comment = "New BitKeeper file ``${sf.name}''";
 
-		self.commented = 1;
-		self.comments  = comment;
-		insertTopText(comment, 1);
+		if (node == getSelectedNode()) {
+			self.commented = 1;
+			self.comments  = comment;
+			insertTopText(comment, 1);
+		}
 		writeComments(sf, comment);
 	} else {
 		self.files{file}.excluded = !sf.excluded;
@@ -1714,6 +1716,31 @@ showCsetContents(sfile sf)
 }
 
 void
+showCheckinContents()
+{
+	sfile	sf;
+	string	lines[];
+	string	line, file, comments;
+
+	Text_delete(self.w_diffs, 1.0, "end");
+	foreach (file => sf in self.files) {
+		if (sf.excluded) continue;
+		if (sf.type == "cset") continue;
+		comments = getComments(sf);
+		if (comments == "") continue;
+		Text_insert(self.w_diffs, "end", sf.name);
+		Text_insert(self.w_diffs, "end", "\n");
+		lines = split(/\n/, comments);
+		foreach (line in lines) {
+			Text_insert(self.w_diffs, "end", "  ");
+			Text_insert(self.w_diffs, "end", line);
+			Text_insert(self.w_diffs, "end", "\n");
+		}
+		Text_insert(self.w_diffs, "end", "\n");
+	}
+}
+
+void
 showFile(sfile sf)
 {
 	FILE	fd;
@@ -1895,6 +1922,7 @@ doCommit()
 		} else if (isCommented(cset) && !isExcluded(cset)) {
 			topMessage(msgs{"gotCset"}, "message");
 		} else {
+			showCheckinContents();
 			topMessage(msgs{"noCset"}, "message");
 		}
 		return;

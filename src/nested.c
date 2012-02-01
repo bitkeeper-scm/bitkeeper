@@ -414,6 +414,13 @@ err:				if (revsDB) mdbm_close(revsDB);
 			assert(!c->lowerkey);
 			c->lowerkey = strdup(v);
 		}
+		if (flags & NESTED_PULL) {
+			if (IN_LOCAL(d)) {
+				c->local = addLine(c->local, strdup(v));
+			} else if (IN_REMOTE(d)) {
+				c->remote = addLine(c->remote, strdup(v));
+			}
+		}
 		if (c->new && IN_GCA(d)) {
 			/* in GCA region, so obviously not new */
 			c->new = 0;
@@ -435,6 +442,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 		v[-1] = ' ';	/* restore possibly in mem weave */
 	}
 	sccs_rdweaveDone(cset);
+	sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
 	if (left && (flags & NESTED_PULL) && IN_LOCAL(left)) {
 		n->product->localchanges = 1;
 	}
@@ -779,6 +787,8 @@ compFree(void *x)
 	FREE(c->deltakey);
 	FREE(c->lowerkey);
 	FREE(c->path);
+	if (c->local) freeLines(c->local, free);
+	if (c->remote) freeLines(c->remote, free);
 	free(c);
 }
 

@@ -403,7 +403,7 @@ popensystem_main(int ac, char **av)
 
 
 char *
-backtick(char *cmd)
+backtick(char *cmd, int *status)
 {
 	FILE	*f;
 	char	*ret;
@@ -412,7 +412,11 @@ backtick(char *cmd)
 
 	unless (f = popen(cmd, "r")) return (0);
 	while (line = fgetline(f)) output = addLine(output, strdup(line));
-	pclose(f);
+	if (status) {
+		*status = pclose(f);
+	} else {
+		pclose(f);
+	}
 	ret = joinLines(" ", output);
 	freeLines(output, free);
 	return (ret);

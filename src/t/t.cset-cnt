@@ -212,7 +212,7 @@ bk unpull -fs $Q || exit 1
 check_cnt
 echo OK
 
-CNT=62
+CNT=66
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 bk portal $Q .
 touch c

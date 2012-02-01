@@ -130,7 +130,7 @@ OBJ =	bkver.o cmd.o \
 	bam.o bkd.o bkd_bam.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o \
 	bkd_findkey.o bkd_http.o \
-	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o bkd_nested.o \
+	bkd_id.o bkd_kill.o bkd_level.o bkd_license.o bkd_misc.o bkd_nested.o \
 	bkd_partition.o bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkusers.o \
@@ -152,7 +152,7 @@ OBJ =	bkver.o cmd.o \
 	help.o here.o here_check.o hostme.o http.o \
 	idcache.o isascii.o inskeys.o \
 	key2rev.o key2path.o kill.o kv.o kvfile.o \
-	lease.o level.o \
+	lease.o \
 	libcommit.o libdiff.o libgraph.o librange.o \
 	libsfiles.o libusers.o lines.o \
 	localtm.o lock.o locking.o \

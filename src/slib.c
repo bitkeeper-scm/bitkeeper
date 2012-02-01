@@ -2144,7 +2144,6 @@ expand(sccs *s, ser_t d, char *l, int *expanded)
 	int hasKeyword = 0, buf_size;
 #define MORE 1024
 
-	a[0] = a[1] = a[2] = a[3] = 0;
 	/* pre scan the line to determine if it needs keyword expansion */
 	*expanded = 0;
 	for (t = l; *t; t++) {
@@ -12458,7 +12457,7 @@ bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
 		unless (*v == '\n') goto bad;
 		*t = 0;
 		if (v = mdbm_fetch_str(sc->mdbm, key)) {
-			if (streq(v, val)) {
+			if (!CSET(sc) && streq(v, val)) {
 				fprintf(stderr,
 				    "Redundant: %s %s\n", key, val);
 				return (-1);

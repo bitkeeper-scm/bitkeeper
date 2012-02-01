@@ -22,6 +22,13 @@ level_main(int ac,  char **av)
 	}
 	if (justlist) usage();
 	unless (isdigit(av[optind][0])) usage();
+	if (getenv("_BK_IN_BKD")) {
+		/* cross dependency w/ bkd.c, see comment in same cset */
+		unless (strstr(getenv("_BKD_OPTS"), "-U")) {
+			fprintf(stderr, "cannot set level remotely\n");
+			exit(1);
+		}
+	}
 	return (setlevel(atoi(av[optind])));
 }
 

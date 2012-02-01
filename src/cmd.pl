@@ -274,7 +274,7 @@ _lconfig
 lease
 _lease_errtest
 legal
-level
+level remote
 _lines
 _link
 _listkey restricted
