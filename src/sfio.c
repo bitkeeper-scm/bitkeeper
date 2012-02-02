@@ -310,12 +310,16 @@ sfio_out(void)
 	char	*gfile, *sfile, *t;
 	hash	*links = 0;
 	MDBM	*idDB = 0;
+	MDBM	*goneDB = 0;
 	char	ln[32];
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
 	fputs(SFIO_VERS, stdout);
 
-	if (opts->key2path) idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	if (opts->key2path) {
+		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+		goneDB = loadDB(GONE, 0, DB_GONE);
+	}
 	if (opts->bp_tuple) opts->sent = hash_new(HASH_MEMHASH);
 	if (opts->hardlinks) links = hash_new(HASH_MEMHASH);
 	byte_count = 10;
@@ -337,7 +341,9 @@ sfio_out(void)
 			continue;
 		}
 		if (opts->key2path) {
-			unless (gfile = key2path(buf, idDB, 0)) continue;
+			unless (gfile = key2path(buf, idDB, goneDB, 0)) {
+				continue;
+			}
 			sfile = name2sccs(gfile);
 			strcpy(buf, sfile);
 			free(sfile);
@@ -411,6 +417,8 @@ reg:			if (n = out_file(buf, &sb, &byte_count, 0, 0)) {
 	}
 	save_byte_count(byte_count);
 	if (opts->hardlinks) hash_free(links);
+	mdbm_close(idDB);
+	mdbm_close(goneDB);
 #endif
 	return (0);
 }

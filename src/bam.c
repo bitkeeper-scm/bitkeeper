@@ -1925,11 +1925,9 @@ sfiles_bam_main(int ac, char **av)
 			if (changesetKey(buf)) continue;
 			while ((--p > buf) && (*p != '|'));
 			unless (strneq(p, "|B:", 3)) continue;
-			unless (p = key2path(buf, idDB, 0)) continue;
+			unless (p = key2path(buf, idDB, goneDB, 0)) continue;
 			sfile = name2sccs(p);
-			if (exists(sfile) || !mdbm_fetch_str(goneDB, buf)) {
-				puts(p);
-			}
+			if (exists(sfile)) puts(p);
 			free(p);
 			free(sfile);
 		}
@@ -2579,7 +2577,7 @@ bam_names_main(int ac, char **av)
 	char	*file, *p, *path;
 	MDBM	*m2k = 0;
 	FILE	*f = 0;			// lint
-	MDBM	*log, *idDB;
+	MDBM	*log, *idDB, *goneDB;
 	kvpair	kv;
 	char	buf[MAXPATH];
 
@@ -2625,6 +2623,7 @@ bam_names_main(int ac, char **av)
 	load_logfile(log = mdbm_mem(), f);
 	fclose(f);
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	goneDB = loadDB(GONE, 0, DB_GONE);
 	/*
 	 * lm3di - it's really slow.
 	 */
@@ -2650,7 +2649,7 @@ bam_names_main(int ac, char **av)
 			 * returns nothing.
 			 * Ideas?  For now, skip it if not found.
 			 */
-			if (path = key2path(p, idDB, &m2k)) {
+			if (path = key2path(p, idDB, goneDB, &m2k)) {
 				not = 0;
 				if (first) {
 					used++;
@@ -2670,6 +2669,7 @@ bam_names_main(int ac, char **av)
 	freeLines(notused, 0);
 	freeLines(bamfiles, free);
 	mdbm_close(idDB);
+	mdbm_close(goneDB);
 	mdbm_close(m2k);
 	mdbm_close(log);
 	return (0);

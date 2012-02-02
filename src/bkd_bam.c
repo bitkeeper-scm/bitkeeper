@@ -144,7 +144,11 @@ havekeys_deltas(void)
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	while (rootkey = fgetline(stdin)) {
 		if (key = separator(rootkey)) *key++ = 0;
-		path = key2path(rootkey, 0, 0);
+
+		// I think Wayne just wants to parse out the path part
+		// This works because all components are in the idcache,
+		// because all have a rootkey of ChangeSet and are elsewhere.
+		path = key2path(rootkey, 0, 0, 0);
 		if (streq(basenm(path), GCHANGESET)) {
 			free(path);
 			if (streq(proj_rootkey(0), rootkey)) {

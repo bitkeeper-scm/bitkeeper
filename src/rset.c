@@ -356,12 +356,12 @@ process(Opts *opts, char *root, char *start, char *end, MDBM *idDB)
 			assert(opts->tip);
 			t = mdbm_fetch_str(opts->tip, root);
 			assert(t);
-			unless (path0 = key2path(t, 0, 0)) {
+			unless (path0 = key2path(t, 0, 0, 0)) {
 				fprintf(stderr, "rset: Can't find %s\n", t);
 				return;
 			}
 		} else {
-			unless (path0 = key2path(root, 0, 0)) {
+			unless (path0 = key2path(root, 0, 0, 0)) {
 				fprintf(stderr, "rset: Can't find %s\n", root);
 				return;
 			}
@@ -384,7 +384,7 @@ process(Opts *opts, char *root, char *start, char *end, MDBM *idDB)
 			start = root;
 			strcpy(smd5, "1.0");
 		}
-		path1 = key2path(start, 0, 0);
+		path1 = key2path(start, 0, 0, 0);
 	}
 	if (end) {
 		sccs_key2md5(root, end, emd5);
@@ -392,7 +392,7 @@ process(Opts *opts, char *root, char *start, char *end, MDBM *idDB)
 		end = root;
 		strcpy(emd5, "1.0");
 	}
-	path2 = key2path(end, 0, 0);
+	path2 = key2path(end, 0, 0, 0);
 	if (opts->BAM) {
 		/* only allow if random field starts with B: */
 		p = strrchr(root, '|');

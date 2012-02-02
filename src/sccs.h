@@ -1198,7 +1198,7 @@ void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
 int	run_check(int quiet, char **flist, char *opts, int *did_partial);
 int	full_check(void);
-char	*key2path(char *key, MDBM *idDB, MDBM **m2k);
+char	*key2path(char *key, MDBM *idDB, MDBM *done, MDBM **m2k);
 int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);
 char	*hashstream(int fd);

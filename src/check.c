@@ -1436,12 +1436,19 @@ buildKeys(MDBM *idDB)
 		 * For each serial in the tip cset remember the pathname
 		 * where each rootkey should live on the disk.
 		 * Later we will check for conflicts.
+		 * LMXXX - if the file is marked gone but present isn't this
+		 * code incorrect?
+		 * Answer: it's a delta key that's missing, and yeah, if
+		 * the deltakey is really there, it is incorrect.  And the
+		 * right answer according to poly is to duplicate the key
+		 * that is there in the merge tip, and then this special case
+		 * isn't needed.  That's a better answer.
 		 */
 		if (!(rkd->mask & RK_TIP) &&
 		    smap[ser] && !mdbm_fetch_str(goneDB, t)) {
 			rkd->mask |= RK_TIP;
 			unless (mdbm_fetch_str(goneDB, s)) {
-				char	*path = key2path(t, 0, 0);
+				char	*path = key2path(t, 0, 0, 0);
 
 				/* strip /ChangeSet from components */
 				if (streq(basenm(path), "ChangeSet")) {

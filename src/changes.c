@@ -798,7 +798,7 @@ dumplog(char **list, delta *cset, char *dspec, int flags, FILE *f)
  * Cache the sccs struct to avoid re-initing the same sfile
  */
 private sccs *
-sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *graphDB)
+sccs_keyinitAndCache(project *proj, char *key, int flags, struct rstate *rs)
 {
 	datum	k, v;
 	sccs	*s;
@@ -808,12 +808,12 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 
 	k.dptr = key;
 	k.dsize = strlen(key);
-	v = mdbm_fetch(graphDB, k);
+	v = mdbm_fetch(rs->graphDB, k);
 	if (v.dptr) { /* cache hit */
 		memcpy(&s, v.dptr, sizeof (sccs *));
 		return (s);
 	}
-	s = sccs_keyinit(proj, key, flags|INIT_NOWARN, idDB);
+	s = sccs_keyinit(proj, key, flags|INIT_NOWARN, rs->idDB);
 
 	/*
 	 * When running in a nested product's RESYNC tree we we can
@@ -827,10 +827,13 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 	 */
 	if (!s && (prod = proj_product(proj)) &&
 	    (prod = proj_isResync(prod))) {
+		MDBM	*idDB, *goneDB;	// local to this block
+
 		here = strdup(proj_cwd());
 		chdir(proj_root(prod));
 		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-		if (path = key2path(proj_rootkey(proj), idDB, 0)) {
+		goneDB = loadDB(GONE, 0, DB_GONE);
+		if (path = key2path(proj_rootkey(proj), idDB, goneDB, 0)) {
 			mdbm_close(idDB);
 			proj = proj_init(path);
 			chdir(path);
@@ -841,12 +844,14 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 			proj_free(proj);
 		}
 		mdbm_close(idDB);
+		mdbm_close(goneDB);
 		chdir(here);
 		free(here);
 	}
 	v.dptr = (void *) &s;
 	v.dsize = sizeof (sccs *);
-	if (mdbm_store(graphDB, k, v, MDBM_INSERT)) { /* cache the new entry */
+	/* cache the new entry */
+	if (mdbm_store(rs->graphDB, k, v, MDBM_INSERT)) {
 		perror("sccs_keyinitAndCache");
 	}
 	if (s) {
@@ -1149,8 +1154,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			unless (opts.doComp && strstr(dkey, "/ChangeSet|")) {
 				found = 1;
 			}
-			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,
-			    rstate->idDB, rstate->graphDB);
+			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,rstate);
 			unless (s) {
 				unless (gone(rkey, rstate->goneDB)) {
 					fprintf(stderr,
@@ -1212,8 +1216,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		 */
 		EACH(complist) {
 			rkey = keys[p2int(complist[i])];
-			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,
-			    rstate->idDB, rstate->graphDB);
+			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,rstate);
 
 			dkey = rkey + strlen(rkey) + 1;
 			assert(dkey);
