@@ -3,13 +3,7 @@ _getdir 69
 access 91
 chmod 9
 close 317
-link 8
-lstat 589
-open 271
-read 4055
-rename 7
-close 317
-fstat 183
+fstat 182
 link 8
 lseek 118
 lstat 589
@@ -19,8 +13,6 @@ read 4004
 rename 7
 rmdir 2
 stat 19
-unlink 49
-stat 18
 unlink 49
 utime 2
 write 183
