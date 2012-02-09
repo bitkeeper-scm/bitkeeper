@@ -13,6 +13,7 @@ private	struct {
 	char	*rev;
 	char	*bam_url;		/* -B URL */
 	u32	in, out;
+	u32	jobs;			/* -j%d */
 	u64	bpsz;
 	char	**av;			/* ensemble commands */
 	char	**aliases;		/* ensemble aliases list */
@@ -49,7 +50,7 @@ rclone_main(int ac, char **av)
 		opts.detach = 1;
 		av[0] = "_rclone";
 	}
-	while ((c = getopt(ac, av, "B;dE:pqr;s;vw|z|", lopts)) != -1) {
+	while ((c = getopt(ac, av, "B;dE:j;pqr;s;vw|z|", lopts)) != -1) {
 		unless ((c == 'r') || (c == 's') || (c > 256)) {
 			opts.av = bk_saveArg(opts.av, av, c);
 		}
@@ -63,6 +64,7 @@ rclone_main(int ac, char **av)
 				return (1);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'j': opts.jobs = atoi(optarg); break;
 		    case 'p': break; /* ignore no parent */
 		    case 'q': opts.quiet = 1; break;
 		    case 'r': opts.rev = optarg; break;
@@ -248,10 +250,7 @@ rclone_ensemble(remote *r)
 		status = spawnvp(_P_WAIT, "bk", &vp[1]);
 		rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
 		freeLines(vp, free);
-		if (rc) {
-			fprintf(stderr, "Rclone %s failed\n", name);
-			break;
-		}
+		if (rc) break;
 		++which;
 	}
 	unless (opts.quiet || opts.verbose) {
@@ -334,6 +333,19 @@ rclone_part1(remote *r, char **envVar)
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 	if (streq(buf, "@SERVER INFO@"))  {
 		if (getServerInfo(r, 0)) return (-1);
+		if (opts.jobs) {
+			// $ bk changes -rbk-5.4 -nd:TIME_T:
+			u32	bk5_4 = 1321047729;
+
+			p = getenv("BKD_TIME_T");
+			assert(p);
+			unless (strtoul(p, 0, 10) > bk5_4) {
+				p = remote_unparse(r);
+				fprintf(stderr,
+				    "%s does not understand -j\n", p);
+				exit(1);
+			}
+		}
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
 		exit(1);
@@ -526,6 +538,7 @@ send_sfio_msg(remote *r, char **envVar)
 	unless (opts.quiet) fprintf(f, " -v");
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
 	if (opts.detach) fprintf(f, " -D");
+	if (opts.jobs) fprintf(f, " -j%d", opts.jobs);
 	EACH(opts.aliases) fprintf(f, " '-s%s'", opts.aliases[i]);
 	if (r->path) fprintf(f, " '%s'", r->path);
 	fputs("\n", f);
@@ -616,8 +629,8 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	rc = send_file(r, msgfile, extra);
 
 	if (extra > 0) {
-		f = fdopen(dup(r->wfd), "wb");
 		writen(r->wfd, "@BAM@\n", 6);
+		f = fdopen(dup(r->wfd), "wb");
 		n = send_BAM_sfio(f, bp_keys, bpsz, r->gzip, opts.quiet);
 		if ((r->type == ADDR_HTTP) && (m != n)) {
 			fprintf(stderr,
@@ -627,8 +640,8 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 			return (-1);
 		}
 		fputs("@END@\n", f);
-		send_file_extra_done(r);
 		fclose(f);
+		send_file_extra_done(r);
 	}
 	if (unlink(msgfile)) perror(msgfile);
 	if (rc == -1) {
@@ -705,7 +718,7 @@ send_sfio(remote *r, int gzip)
 	char	*sfiocmd;
 	FILE	*fout;
 	char	title[MAXPATH];
-	char	*marg = (bkd_hasFeature(FEAT_mSFIO) ? "-m" : "");
+	char	*marg = (bkd_hasFeature(FEAT_mSFIO) ? "-m2" : "");
 	char	buf[200] = { "" };
 
 	tmpf = bktmp(0, "rclone_sfiles");
@@ -726,11 +739,13 @@ send_sfio(remote *r, int gzip)
 	if (r && r->path) {
 		b = basenm(r->path);
 		sfiocmd = aprintf(
-		    "bk%s sfio -P'%s/' -o%s < '%s'", title, b, buf, tmpf);
+		    "bk%s sfio -P'%s/' -o%s %s < '%s'",
+		    title, b, buf, marg, tmpf);
 		fout = fdopen(dup(r->wfd), "wb");
 	} else {
 		fout = fopen(DEVNULL_WR, "w");
-		sfiocmd = aprintf("bk%s sfio -o%s < '%s'", title, buf, tmpf);
+		sfiocmd = aprintf("bk%s sfio -o%s %s < '%s'",
+		    title, buf, marg, tmpf);
 	}
 	assert(fout);
 	fh = popen(sfiocmd, "r");

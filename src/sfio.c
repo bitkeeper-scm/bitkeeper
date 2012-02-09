@@ -132,8 +132,9 @@ sfio_main(int ac, char **av)
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefgHIij;KLlmN;opP;qr", lopts)) != -1) {
+	while ((c = getopt(ac, av, "2a;A;b;BefgHIij;KLlmN;opP;qr", lopts)) != -1) {
 		switch (c) {
+		    case '2': break;	/* eat arg used by sfiles_clone */
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
 			break;
@@ -624,6 +625,7 @@ int
 sfio_in(int extract, int justone)
 {
 	int	len, n, i;
+	int	fail = 0, nfiles = 0;
 	u32	ulen;
 	off_t	byte_count = 0;
 	FILE	*co = 0;
@@ -650,6 +652,7 @@ sfio_in(int extract, int justone)
 		    "Version mismatch [%s]<>[%s]\n", buf, SFIO_VERS);
 		return (1);
 	}
+	if (p = getenv("_BK_SFIO_FAIL")) fail = atoi(p);
 	for (;;) {
 		n = fread(buf, 1, 4, stdin);
 		if (n == 0) {
@@ -717,6 +720,10 @@ eof:			if (co) {
 		if (fread(datalen, 1, 10, stdin) != 10) {
 			perror("fread");
 			return (1);
+		}
+		if (++nfiles == fail) {
+			perror("dieing for regressions");
+			exit(1);
 		}
 		datalen[10] = 0;
 		len = 0;

@@ -1312,7 +1312,7 @@ int	bp_sendkeys(FILE *f, char *range, u64 *bytes, int gzip);
 int	detach(int quiet, int verbose);
 int	zgets_hread(void *token, u8 **buf);
 int	zgets_hfread(void *token, u8 **buf);
-void	zputs_hfwrite(void *token, u8 *data, int len);
+int	zputs_hfwrite(void *token, u8 *data, int len);
 void	sccs_zputs_init(sccs *s, FILE *fout);
 int	fflushdata(sccs *s, FILE *out);
 sum_t	fputdata(sccs *s, u8 *buf, FILE *out);

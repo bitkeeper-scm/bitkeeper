@@ -13,8 +13,11 @@ my_perror(char *file, int line, char *msg)
 	} else {
 		fprintf(stderr, "%s:%d: ", file, line);
 	}
-
-	perror(msg);
+	if (p = strerror(errno)) {
+		fprintf(stderr, "%s: %s\n", msg, p);
+	} else {
+		fprintf(stderr, "%s: errno=%d\n", msg, errno);
+	}
 }
 
 /*

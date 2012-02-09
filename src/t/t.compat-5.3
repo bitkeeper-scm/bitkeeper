@@ -99,3 +99,10 @@ cd config-last
 bk -U^G > CO
 test -s CO && fail -f CO files not checked out
 echo OK
+
+echo $N Try parallel clone to bkd, should fail ......................$NL
+cd "$HERE"
+bk clone $Q -j5 config-last bk://localhost:$OLDP/clone-j > OUT 2>&1
+test $? = 0 && fail
+grep -q "does not understand -j" OUT || fail
+echo OK
