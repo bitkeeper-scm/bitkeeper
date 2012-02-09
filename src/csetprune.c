@@ -247,9 +247,7 @@ fixPath(sccs *s, char *path)
 	s->gfile = sccs2name(s->sfile);
 	free(s->pfile);
 	s->pfile = strdup(sccs_Xfile(s, 'p'));
-	free(s->zfile);
-	s->zfile = strdup(sccs_Xfile(s, 'z'));
-	s->state &= ~(S_PFILE|S_ZFILE|S_GFILE);
+	s->state &= ~(S_PFILE|S_GFILE);
 	/* NOTE: we leave S_SFILE set, but no sfile there */
 	mkdirf(spath);
 	free(spath);

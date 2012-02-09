@@ -1114,7 +1114,6 @@ bad_name:	getMsg("reserved_name", file, '=', stderr);
 		errno = EINVAL;
 		return (-1);
 	}
-
 #ifdef WIN32
 	/*
 	 * Check trailing dot, this only happen when we clone
@@ -1124,8 +1123,13 @@ bad_name:	getMsg("reserved_name", file, '=', stderr);
 		getMsg("win_trailing_dot", file, '=', stderr);
 	}
 #endif
-
-	if (access(file, F_OK) == 0) {
+again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
+	if (fd >= 0) {
+		setmode(fd, _O_BINARY);
+		return (fd);
+	}
+	if (errno == EINVAL) goto bad_name;
+	if (errno == EEXIST) {
 #ifndef SFIO_STANDALONE
 		char	realname[MAXPATH];
 
@@ -1133,25 +1137,15 @@ bad_name:	getMsg("reserved_name", file, '=', stderr);
 		unless (streq(file, realname)) {
 			getMsg2("case_conflict", file, realname, '=', stderr);
 			errno = EINVAL;
+		} else if (first && opts->force) {
+			unlink(file);
+			first = 0;
+			goto again;
 		} else {
-			if (opts->force) {
-				unlink(file);
-				goto again;
-			}
-			errno = EEXIST;
+			errno = EEXIST;	/* restore errno */
 		}
 #endif
-		return (-1);
-	}
-again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
-	setmode(fd, _O_BINARY);
-	if (fd != -1) return (fd);
-	if (errno == EINVAL) goto bad_name;
-	if (errno == EEXIST) {
-		perror(file);
-		return (-1);
-	}
-	if (first) {
+	} else if (first) {
 		if (mkdirf(file)) {
 			fputs("\n", stderr);
 			perror(file);

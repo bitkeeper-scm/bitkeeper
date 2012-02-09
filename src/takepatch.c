@@ -912,9 +912,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		s->gfile = sccs2name(s->sfile);
 		free(s->pfile);
 		s->pfile = strdup(sccs_Xfile(s, 'p'));
-		free(s->zfile);
-		s->zfile = strdup(sccs_Xfile(s, 'z'));
-		s->state &= ~(S_PFILE|S_ZFILE|S_GFILE);
+		s->state &= ~(S_PFILE|S_GFILE);
 		/* NOTE: we leave S_SFILE set, but no sfile there */
 
 		/* serial and therefore delta * are not stable */

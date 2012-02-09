@@ -2429,10 +2429,6 @@ sccs_whynot(char *who, sccs *s)
 		    who, s->sfile);
 		return;
 	}
-	if (HAS_ZFILE(s)) {
-		fprintf(stderr, "%s: %s is zlocked\n", who, s->gfile);
-		return;
-	}
 	if (HAS_PFILE(s)) {
 		fprintf(stderr, "%s: %s is edited\n", who, s->gfile);
 		return;
@@ -4424,13 +4420,10 @@ sccs_init(char *name, u32 flags)
 		}
 	}
 	s->pfile = strdup(sccsXfile(s, 'p'));
-	s->zfile = strdup(sccsXfile(s, 'z'));
 	if (flags & INIT_NOSTAT) {
 		if (flags & INIT_HASpFILE) s->state |= S_PFILE;
-		if (flags & INIT_HASzFILE) s->state |= S_ZFILE;
 	} else {
 		if (isreg(s->pfile)) s->state |= S_PFILE;
-		if (isreg(s->zfile)) s->state |= S_ZFILE;
 	}
 	debug((stderr, "init(%s) -> %s, %s\n", s->gfile, s->sfile, s->gfile));
 	sccs_open(s, &sbuf);
@@ -4570,11 +4563,6 @@ skip:
 		s->state |= S_PFILE;
 	} else {
 		s->state &= ~S_PFILE;
-	}
-	if (isreg(s->zfile)) {
-		s->state |= S_ZFILE;
-	} else {
-		s->state &= ~S_ZFILE;
 	}
 	if (s->mdbm) {
 		mdbm_close(s->mdbm);
@@ -4766,7 +4754,6 @@ sccs_free(sccs *s)
 	if (s->state & S_SOPEN) sccs_close(s); /* move this up for trace */
 	if (s->sfile) free(s->sfile);
 	if (s->gfile) free(s->gfile);
-	if (s->zfile) free(s->zfile);
 	if (s->pfile) free(s->pfile);
 	if (s->state & S_CHMOD) {
 		struct	stat sbuf;
@@ -5019,8 +5006,7 @@ again:	lockfd = open(t, O_CREAT|O_WRONLY|O_EXCL, 0444);
 	    (h = sccs_gethost()) ? h : "?");
 	write(lockfd, buf, strlen(buf));
 	close(lockfd);
-out:	s->state |= S_ZFILE;
-	sig_ignore();
+out:	sig_ignore();
 	return (1);
 }
 
@@ -5031,8 +5017,6 @@ void
 sccs_unlock(sccs *sccs, char type)
 {
 	unlink(sccsXfile(sccs, type));
-
-	if (type == 'z') sccs->state &= ~S_ZFILE;
 }
 
 /*
@@ -6082,7 +6066,7 @@ write_pfile(sccs *s, int flags, ser_t d,
 	write(fd, tmp, strlen(tmp));
 	close(fd);
 	free(tmp);
-	s->state |= S_PFILE|S_ZFILE;
+	s->state |= S_PFILE;
 	return (0);
 }
 
@@ -7151,7 +7135,7 @@ err:		if (i2) free(i2);
 		if (locked) {
 			sccs_unlock(s, 'p');
 			sccs_unlock(s, 'z');
-			s->state &= ~(S_PFILE|S_ZFILE);
+			s->state &= ~S_PFILE;
 		}
 		return (-1);
 	}
@@ -7344,7 +7328,6 @@ err:		if (i2) free(i2);
 skip_get:
 	if ((flags & (GET_EDIT|PRINT)) == GET_EDIT) {
 		sccs_unlock(s, 'z');
-		s->state &= ~S_ZFILE;
 	}
 	if (!(flags&SILENT)) {
 		fprintf(stderr, "%s %s", s->gfile, REV(s, d));
@@ -7995,7 +7978,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 	}
 	assert(!READ_ONLY(s));
-	assert(s->state & S_ZFILE);
 
 	/*
 	 * Add in default xflags if the 1.0 delta doesn't have them.
@@ -12511,7 +12493,6 @@ delta_write(sccs *s, ser_t n, MMAP *diffs,
 		return (-1);
 	}
 	assert(!READ_ONLY(s));
-	assert(s->state & S_ZFILE);
 again:
 	/*
 	 * Do the delta table & misc.

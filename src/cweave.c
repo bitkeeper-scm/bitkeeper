@@ -302,7 +302,7 @@ cset_write(sccs *s, int spinners, int fast)
 	sccs_renumber(s, SILENT);
 
 	unless (f = sccs_startWrite(s)) goto err;
-	s->state |= S_ZFILE|S_PFILE;
+	s->state |= S_PFILE;
 	if (fast) {
 		if (fastWeave(s, f)) goto err;
 	} else {

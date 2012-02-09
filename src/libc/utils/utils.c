@@ -5,7 +5,8 @@
 void
 my_perror(char *file, int line, char *msg)
 {
-	char		*p = 0;
+	char	*p = 0;
+	int	save = errno;
 
 	if (p = getenv("_BK_VERSION")) {
 		if (strneq(p, "bk-", 3)) p += 3;
@@ -15,6 +16,7 @@ my_perror(char *file, int line, char *msg)
 	}
 
 	perror(msg);
+	errno = save;
 }
 
 /*

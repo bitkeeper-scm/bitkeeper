@@ -55,7 +55,6 @@ int	checking_rmdir(char *dir);
 #define	INIT_HASgFILE	0x04000000	/* has g.file */
 #define	INIT_HASpFILE	0x08000000	/* has p.file */
 #define	INIT_HASxFILE	0x00100000	/* has x.file */
-#define	INIT_HASzFILE	0x00200000	/* has z.file */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
 #define	INIT_CHK_STIME	0x00010000	/* check that s.file <= gfile */
 #define	INIT_WACKGRAPH	0x00020000	/* we're wacking the graph, no errors */
@@ -156,7 +155,6 @@ int	checking_rmdir(char *dir);
 #define	S_PFILE		0x00000004	/* SCCS/p.file exists */
 #define S_EDITED	(S_SFILE|S_PFILE|S_GFILE)
 #define S_LOCKED	(S_SFILE|S_PFILE)
-#define	S_ZFILE		0x00000008	/* SCCS/z.file exists */
 #define	S_SOPEN		0x00000010	/* s->sfile is open */
 #define	S_WARNED	0x00000020	/* error message already sent */
 #define	S_CHMOD		0x00000040	/* change the file back to 0444 mode */
@@ -248,7 +246,6 @@ int	checking_rmdir(char *dir);
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
-#define	HAS_ZFILE(s)	((s)->state & S_ZFILE)
 #define	HAS_SFILE(s)	((s)->state & S_SFILE)
 #define	BEEN_WARNED(s)	((s)->state & S_WARNED)
 #define	WRITABLE(s)	((s)->mode & 0200)
@@ -687,7 +684,6 @@ struct sccs {
 	FILE	*outfh;		/* fh for writing x.file */
 	char	*sfile;		/* SCCS/s.foo.c */
 	char	*pfile;		/* SCCS/p.foo.c */
-	char	*zfile;		/* SCCS/z.foo.c */
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
 	char	**usersgroups;	/* lm, beth, staff, etc */

@@ -109,7 +109,6 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
 		if (hasfile(p, 'c', sDB)) flags |= INIT_HAScFILE;
 		if (hasfile(p, 'p', sDB)) flags |= INIT_HASpFILE;
 		if (hasfile(p, 'x', sDB)) flags |= INIT_HASxFILE;
-		if (hasfile(p, 'z', sDB)) flags |= INIT_HASzFILE;
 		if (gDB && mdbm_fetch_str(gDB, &p[2])) flags |= INIT_HASgFILE;
 		*p = 's'; /* because hasfile() stomps */
 	}
