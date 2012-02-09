@@ -12,7 +12,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://math.libtomcrypt.com
+ * Tom St Denis, tomstdenis@gmail.com, http://libtom.org
  */
 
 /* this function is less generic than mp_n_root, simpler and faster */
@@ -76,6 +76,6 @@ E2: mp_clear(&t1);
 
 #endif
 
-/* $Source: /cvs/libtom/libtommath/bn_mp_sqrt.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2006/03/31 14:18:44 $ */
+/* $Source$ */
+/* $Revision: 0.41 $ */
+/* $Date: 2007-04-18 09:58:18 +0000 $ */

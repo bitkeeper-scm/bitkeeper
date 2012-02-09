@@ -12,7 +12,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://math.libtomcrypt.com
+ * Tom St Denis, tomstdenis@gmail.com, http://libtom.org
  */
 
 /* read a string [ASCII] in a given radix */
@@ -80,6 +80,6 @@ int mp_read_radix (mp_int * a, const char *str, int radix)
 }
 #endif
 
-/* $Source: /cvs/libtom/libtommath/bn_mp_read_radix.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2006/03/31 14:18:44 $ */
+/* $Source$ */
+/* $Revision: 0.41 $ */
+/* $Date: 2007-04-18 09:58:18 +0000 $ */
