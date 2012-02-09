@@ -429,7 +429,8 @@ dumpStats(sccs *s)
 		    (100.0 * size) / s->heap.len);
 	}
 
-	printf("   table: %7s\n", psize(sizeof(d_t) * (TABLE(s) + 1)));
+	printf("  table1: %7s\n", psize(sizeof(d1_t) * (TABLE(s) + 1)));
+	printf("  table2: %7s\n", psize(sizeof(d2_t) * (TABLE(s) + 1)));
 	if (nLines(s->symlist)) {
 		printf(" symlist: %7s\n",
 		    psize(nLines(s->symlist) * sizeof(symbol)));
