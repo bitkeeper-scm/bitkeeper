@@ -452,16 +452,18 @@ sccs_insertdelta(sccs *s, ser_t d, ser_t serial)
 	oldser = d;
 	if (oldser == serial) goto done;
 
-	insertArrayN(&s->slist, serial, 0);
+	insertArrayN(&s->slist1, serial, 0);
+	insertArrayN(&s->slist2, serial, 0);
 	oldser++;
 	d = serial;
 	insertArrayN(&s->extra, serial, 0);
-	memcpy(&s->slist[serial], &s->slist[oldser], sizeof(d_t));
+	memcpy(&s->slist1[serial], &s->slist1[oldser], sizeof(d1_t));
+	memcpy(&s->slist2[serial], &s->slist2[oldser], sizeof(d2_t));
 	memcpy(&s->extra[serial], &s->extra[oldser], sizeof(dextra));
 	sccs_freedelta(s, oldser);
 
 done: 	FLAGS(s, d) |= D_INARRAY;
-	TABLE_SET(s, nLines(s->slist));
+	TABLE_SET(s, nLines(s->slist1));
 	return (d);
 }
 
@@ -476,10 +478,11 @@ sccs_newdelta(sccs *s)
 	ser_t	d = 0;
 
 	// if the top item is not in array, squawk!
-	len = nLines(s->slist);
+	len = nLines(s->slist1);
 	assert(!len || INARRAY(s, len));
 
-	addArray(&s->slist, 0);
+	addArray(&s->slist1, 0);
+	addArray(&s->slist2, 0);
 	d = len+1;
 	addArray(&s->extra, 0);
 	return (d);
@@ -497,16 +500,18 @@ freeExtra(sccs *s, ser_t d)
 void
 sccs_freedelta(sccs *s, ser_t d)
 {
-	int	len = nLines(s->slist);
+	int	len = nLines(s->slist1);
 	if (!d) return;
 
 	// top item and not in array
 	assert(!INARRAY(s, d) && (d == len));
-	bzero(&s->slist[len], sizeof(d_t));
+	bzero(&s->slist1[len], sizeof(d1_t));
+	bzero(&s->slist2[len], sizeof(d2_t));
 	freeExtra(s, d);
 	bzero(&s->extra[len], sizeof(dextra));
 	len--;
-	truncLines(s->slist, len);
+	truncLines(s->slist1, len);
+	truncLines(s->slist2, len);
 	truncLines(s->extra, len);
 }
 
@@ -519,7 +524,8 @@ sccs_freetable(sccs *s)
 {
 	dextra	*dx;
 
-	FREE(s->slist);
+	FREE(s->slist1);
+	FREE(s->slist2);
 	EACHP(s->extra, dx) {
 		free(dx->rev);	/* freeExtra(s, d) sped up */
 	}
@@ -1991,7 +1997,8 @@ sccs_startWrite(sccs *s)
 		if (s->size) {
 			est_size = s->size;
 		} else {
-			est_size = s->heap.len + (TABLE(s) + 1) * sizeof(d_t);
+			est_size = s->heap.len +
+			    (TABLE(s) + 1) * (sizeof(d1_t) + sizeof(d2_t));
 			if (HAS_GFILE(s)) est_size += size(s->gfile);
 		}
 		sfile = fopen(xfile, "w");
@@ -3123,13 +3130,17 @@ bin_mkgraph(sccs *s)
 	s->mapping = addLine(s->mapping,
 	    datamap(s->heap.buf, s->heap.len, s->fh, off_h, 0));
 
-	deltas = deltasz / sizeof(d_t);
-	growArray(&s->slist, deltas);
+	deltas = deltasz / (sizeof(d1_t) + sizeof(d2_t));
+	growArray(&s->slist1, deltas);
+	growArray(&s->slist2, deltas);
 	growArray(&s->extra, deltas);
 	TABLE_SET(s, deltas);
 
 	s->mapping = addLine(s->mapping,
-	    datamap(s->slist+1, deltasz, s->fh, off_d, 1));
+	    datamap(s->slist1+1, deltas*sizeof(d1_t), s->fh, off_d, 1));
+	s->mapping = addLine(s->mapping,
+	    datamap(s->slist2+1, deltas*sizeof(d2_t), s->fh,
+		off_d + deltas*sizeof(d1_t), 1));
 
 	if (symsz) {
 		growArray(&s->symlist, symsz/sizeof(symbol));
@@ -3278,8 +3289,9 @@ first:		if (streq(buf, "\001u")) break;
 		p++;
 	    /* 10 11 */
 		serial = atoi_p(&p);
-		unless (s->slist) {
-			growArray(&s->slist, serial);
+		unless (s->slist1) {
+			growArray(&s->slist1, serial);
+			growArray(&s->slist2, serial);
 			growArray(&s->extra, serial);
 			TABLE_SET(s, serial);
 			dates = calloc(serial + 1, sizeof(*dates));
@@ -8350,9 +8362,10 @@ bin_deltaTable(sccs *s, FILE *out)
 	    off_h, s->heap.len);
 
 	off_d = off_h + s->heap.len;
-	fprintf(out, " %08x/%08x", off_d, nLines(s->slist)*(u32)sizeof(d_t));
+	fprintf(out, " %08x/%08x", off_d,
+	    nLines(s->slist1)*(u32)(sizeof(d1_t) + sizeof(d2_t)));
 
-	off_s = off_d + nLines(s->slist)*sizeof(d_t);
+	off_s = off_d + nLines(s->slist1)*(sizeof(d1_t) + sizeof(d2_t));
 	fprintf(out, " %08x/%08x\n",
 	    off_s, nLines(s->symlist)*(u32)sizeof(symbol));
 
@@ -8378,18 +8391,33 @@ bin_deltaTable(sccs *s, FILE *out)
 		}
 		FLAGS(s, d) &= 0x000FFFFF; /* only write some flags */
 		if (IS_LITTLE_ENDIAN()) {
-			fwrite(&s->slist[d], sizeof(d_t), 1, out);
+			fwrite(&s->slist1[d], sizeof(d1_t), 1, out);
 		} else {
-			u32	*p = (u32 *)&s->slist[d];
+			u32	*p = (u32 *)&s->slist1[d];
 			u32	val;
 			int	j;
 
-			for (j = 0; j < sizeof(d_t)/4; j++) {
+			for (j = 0; j < sizeof(d1_t)/4; j++) {
 				val = htole32(p[j]);
 				fwrite(&val, 4, 1, out);
 			}
 		}
 		FLAGS(s, d) = i;
+	}
+	fflush(out);		/* force new gzip block */
+	if (IS_LITTLE_ENDIAN()) {
+		fwrite(&s->slist2[1], sizeof(d2_t), TABLE(s), out);
+	} else {
+		for (d = TREE(s); d <= TABLE(s); d++) {
+			u32	*p = (u32 *)&s->slist2[d];
+			u32	val;
+			int	j;
+
+			for (j = 0; j < sizeof(d2_t)/4; j++) {
+				val = htole32(p[j]);
+				fwrite(&val, 4, 1, out);
+			}
+		}
 	}
 	fflush(out);		/* force new gzip block */
 
@@ -9832,7 +9860,8 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 	} else {
 		// RSXXX: interface this
 		i = prefilled ? prefilled : 0;
-		insertArrayN(&s->slist, 1, 0);
+		insertArrayN(&s->slist1, 1, 0);
+		insertArrayN(&s->slist2, 1, 0);
 		first = n0 = 1;
 		insertArrayN(&s->extra, 1, 0);
 		if (i) prefilled = i+1;
@@ -11312,10 +11341,11 @@ insert_1_0(sccs *s, u32 flags)
 		if (sym->meta_ser) sym->meta_ser++;
 	}
 
-	insertArrayN(&s->slist, 1, 0);
+	insertArrayN(&s->slist1, 1, 0);
+	insertArrayN(&s->slist2, 1, 0);
 	d = 1;
 	insertArrayN(&s->extra, 1, 0);
-	TABLE_SET(s, nLines(s->slist));
+	TABLE_SET(s, nLines(s->slist1));
 	FLAGS(s, d) |= D_INARRAY;
 
 	t = 2;
@@ -11380,12 +11410,15 @@ remove_1_0(sccs *s)
 		if (sym->ser) --sym->ser;
 		if (sym->meta_ser) --sym->meta_ser;
 	}
-	removeArrayN(s->slist, 1);
+	removeArrayN(s->slist1, 1);
+	removeArrayN(s->slist2, 1);
 	freeExtra(s, 1);
 	removeArrayN(s->extra, 1);
-	memset(&s->slist[TABLE(s)], 0, sizeof(d_t));
+	memset(&s->slist1[TABLE(s)], 0, sizeof(d1_t));
+	memset(&s->slist2[TABLE(s)], 0, sizeof(d2_t));
 	TABLE_SET(s, TABLE(s) - 1);
-	truncLines(s->slist, TABLE(s));
+	truncLines(s->slist1, TABLE(s));
+	truncLines(s->slist2, TABLE(s));
 	truncLines(s->extra, TABLE(s));
 	return (1);
 }
@@ -11896,7 +11929,8 @@ scompressGraph(sccs *s)
 		remap[e] = d;
 		if (d == e) continue;	/* wait until there is a hole */
 
-		memcpy(&s->slist[d], &s->slist[e], sizeof(d_t));
+		memcpy(&s->slist1[d], &s->slist1[e], sizeof(d1_t));
+		memcpy(&s->slist2[d], &s->slist2[e], sizeof(d2_t));
 		memcpy(EXTRA(s, d), EXTRA(s, e), sizeof(dextra));
 
 		if (x = PARENT(s, d)) PARENT_SET(s, d, remap[x]);
@@ -11919,7 +11953,8 @@ scompressGraph(sccs *s)
 	fclose(f);
 	/* clear old deltas */
 	TABLE_SET(s, d);
-	truncArray(s->slist, d);
+	truncArray(s->slist1, d);
+	truncArray(s->slist2, d);
 	truncArray(s->extra, d);
 
 	/* By using reverse, no pointer adjustment needed after removeN() */
@@ -16694,7 +16729,7 @@ private int
 fk_datecmp(const void *a, const void *b)
 {
 	int	dd = p2int(a);
-	d_t	*dp = (d_t *)b;
+	d1_t	*dp = (d1_t *)b;
 
 	/* assume missing deltas have date of earlier delta */
 	while (!dp->flags) --dp; /* 1.0 always has ->flags */
@@ -16705,14 +16740,14 @@ fk_datecmp(const void *a, const void *b)
 private ser_t
 date2delta(sccs *s, u32 dd)
 {
-	d_t	*dp;
+	d1_t	*dp;
 	ser_t	d, n;
 
 	dp = bsearch(int2p(dd),
-	    s->slist + TREE(s), TABLE(s), sizeof(d_t),
+	    s->slist1 + TREE(s), TABLE(s), sizeof(d1_t),
 	    fk_datecmp);
 	unless (dp) return (0);
-	d = (dp - s->slist);
+	d = (dp - s->slist1);
 
 	/* find first match */
 	while ((n = sccs_prev(s, d)) && (dd == DATE(s, n))) d = n;

@@ -436,10 +436,16 @@ typedef	unsigned short	sum_t;
  * enough memory for all the data structures at init time.  That way we can
  * fail the init if there is no memory.
  */
+
+typedef struct {
+	ser_t	parent;			/* serial number of parent */
+	ser_t	merge;			/* serial number merged into here */
+	u32	date;			/* date - conversion from sdate/zone */
+	u32	flags;			/* per delta flags */
+} d1_t;			   /* delta walk type */
+
 typedef struct delta {
 	/* linkage */
-	ser_t	parent;		/* serial number of parent */
-	ser_t	merge;			/* serial number merged into here */
 	ser_t	ptag;			/* parent in tag graph */
 	ser_t	mtag;			/* merge parent in tag graph */
 
@@ -449,11 +455,9 @@ typedef struct delta {
 	u32	same;			/* and unchanged */
 	u32	sum;			/* checksum of gfile */
 	u32	sortSum;		/* sum from sortkey */
-	u32	date;			/* date - conversion from sdate/zone */
 	u32	dateFudge;		/* make dates go forward */
 	u32	mode;			/* 0777 style modes */
 	u32	xflags;			/* timesafe x flags */
-	u32	flags;			/* per delta flags */
 	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 
 	/* unique heap data */
@@ -469,66 +473,66 @@ typedef struct delta {
 	u32	zone;			/* 08:00 is time relative to GMT */
 	u32 	symlink;		/* sym link target */
  	u32	csetFile;		/* id for ChangeSet file */
-} d_t;
+} d2_t;
 
-#define	XFLAGS(s, d)		((s)->slist[d].xflags)
-#define	FLAGS(s, d)		((s)->slist[d].flags)
+#define	XFLAGS(s, d)		((s)->slist2[d].xflags)
+#define	FLAGS(s, d)		((s)->slist1[d].flags)
 
-#define	PARENT(s, d)		(0 + (s)->slist[d].parent)
-#define	MERGE(s, d)		(0 + (s)->slist[d].merge)
-#define	PTAG(s, d)		(0 + (s)->slist[d].ptag)
-#define	MTAG(s, d)		(0 + (s)->slist[d].mtag)
-#define	ADDED(s, d)		(0 + (s)->slist[d].added)
-#define	DELETED(s, d)		(0 + (s)->slist[d].deleted)
-#define	SAME(s, d)		(0 + (s)->slist[d].same)
-#define	SUM(s, d)		(0 + (s)->slist[d].sum)
-#define	SORTSUM(s, d)		(0 + (s)->slist[d].sortSum)
-#define	DATE(s, d)		(0 + (s)->slist[d].date)
-#define	DATE_FUDGE(s, d)	(0 + (s)->slist[d].dateFudge)
-#define	MODE(s, d)		(0 + (s)->slist[d].mode)
-#define	R0(s, d)		(0 + (s)->slist[d].r[0])
-#define	R1(s, d)		(0 + (s)->slist[d].r[1])
-#define	R2(s, d)		(0 + (s)->slist[d].r[2])
-#define	R3(s, d)		(0 + (s)->slist[d].r[3])
+#define	PARENT(s, d)		(0 + (s)->slist1[d].parent)
+#define	MERGE(s, d)		(0 + (s)->slist1[d].merge)
+#define	PTAG(s, d)		(0 + (s)->slist2[d].ptag)
+#define	MTAG(s, d)		(0 + (s)->slist2[d].mtag)
+#define	ADDED(s, d)		(0 + (s)->slist2[d].added)
+#define	DELETED(s, d)		(0 + (s)->slist2[d].deleted)
+#define	SAME(s, d)		(0 + (s)->slist2[d].same)
+#define	SUM(s, d)		(0 + (s)->slist2[d].sum)
+#define	SORTSUM(s, d)		(0 + (s)->slist2[d].sortSum)
+#define	DATE(s, d)		(0 + (s)->slist1[d].date)
+#define	DATE_FUDGE(s, d)	(0 + (s)->slist2[d].dateFudge)
+#define	MODE(s, d)		(0 + (s)->slist2[d].mode)
+#define	R0(s, d)		(0 + (s)->slist2[d].r[0])
+#define	R1(s, d)		(0 + (s)->slist2[d].r[1])
+#define	R2(s, d)		(0 + (s)->slist2[d].r[2])
+#define	R3(s, d)		(0 + (s)->slist2[d].r[3])
 
-#define	PARENT_SET(s, d, v)	((s)->slist[d].parent = (v))
-#define	MERGE_SET(s, d, v)	((s)->slist[d].merge = (v))
-#define	PTAG_SET(s, d, v)	((s)->slist[d].ptag = (v))
-#define	MTAG_SET(s, d, v)	((s)->slist[d].mtag = (v))
-#define	ADDED_SET(s, d, v)	((s)->slist[d].added = (v))
-#define	DELETED_SET(s, d, v)	((s)->slist[d].deleted = (v))
-#define	SAME_SET(s, d, v)	((s)->slist[d].same = (v))
-#define	SUM_SET(s, d, v)	((s)->slist[d].sum = (v))
-#define	SORTSUM_SET(s, d, v)	((s)->slist[d].sortSum = (v))
-#define	DATE_SET(s, d, v)	((s)->slist[d].date = (v))
-#define	DATE_FUDGE_SET(s, d, v)	((s)->slist[d].dateFudge = (v))
-#define	MODE_SET(s, d, v)	((s)->slist[d].mode = (v))
-#define	R0_SET(s, d, v)		((s)->slist[d].r[0] = (v))
-#define	R1_SET(s, d, v)		((s)->slist[d].r[1] = (v))
-#define	R2_SET(s, d, v)		((s)->slist[d].r[2] = (v))
-#define	R3_SET(s, d, v)		((s)->slist[d].r[3] = (v))
+#define	PARENT_SET(s, d, v)	((s)->slist1[d].parent = (v))
+#define	MERGE_SET(s, d, v)	((s)->slist1[d].merge = (v))
+#define	PTAG_SET(s, d, v)	((s)->slist2[d].ptag = (v))
+#define	MTAG_SET(s, d, v)	((s)->slist2[d].mtag = (v))
+#define	ADDED_SET(s, d, v)	((s)->slist2[d].added = (v))
+#define	DELETED_SET(s, d, v)	((s)->slist2[d].deleted = (v))
+#define	SAME_SET(s, d, v)	((s)->slist2[d].same = (v))
+#define	SUM_SET(s, d, v)	((s)->slist2[d].sum = (v))
+#define	SORTSUM_SET(s, d, v)	((s)->slist2[d].sortSum = (v))
+#define	DATE_SET(s, d, v)	((s)->slist1[d].date = (v))
+#define	DATE_FUDGE_SET(s, d, v)	((s)->slist2[d].dateFudge = (v))
+#define	MODE_SET(s, d, v)	((s)->slist2[d].mode = (v))
+#define	R0_SET(s, d, v)		((s)->slist2[d].r[0] = (v))
+#define	R1_SET(s, d, v)		((s)->slist2[d].r[1] = (v))
+#define	R2_SET(s, d, v)		((s)->slist2[d].r[2] = (v))
+#define	R3_SET(s, d, v)		((s)->slist2[d].r[3] = (v))
 
-#define	HAS_CLUDES(s, d)	((s)->slist[d].cludes != 0)
-#define	HAS_COMMENTS(s, d)	((s)->slist[d].comments != 0)
-#define	HAS_BAMHASH(s, d)	((s)->slist[d].bamhash != 0)
-#define	HAS_RANDOM(s, d)	((s)->slist[d].random != 0)
-#define	HAS_USERHOST(s, d)	((s)->slist[d].userhost != 0)
-#define	HAS_PATHNAME(s, d)	((s)->slist[d].pathname != 0)
-#define	HAS_SORTPATH(s, d)	((s)->slist[d].sortPath != 0)
-#define	HAS_ZONE(s, d)		((s)->slist[d].zone != 0)
-#define	HAS_SYMLINK(s, d)	((s)->slist[d].symlink != 0)
-#define	HAS_CSETFILE(s, d)	((s)->slist[d].csetFile != 0)
+#define	HAS_CLUDES(s, d)	((s)->slist2[d].cludes != 0)
+#define	HAS_COMMENTS(s, d)	((s)->slist2[d].comments != 0)
+#define	HAS_BAMHASH(s, d)	((s)->slist2[d].bamhash != 0)
+#define	HAS_RANDOM(s, d)	((s)->slist2[d].random != 0)
+#define	HAS_USERHOST(s, d)	((s)->slist2[d].userhost != 0)
+#define	HAS_PATHNAME(s, d)	((s)->slist2[d].pathname != 0)
+#define	HAS_SORTPATH(s, d)	((s)->slist2[d].sortPath != 0)
+#define	HAS_ZONE(s, d)		((s)->slist2[d].zone != 0)
+#define	HAS_SYMLINK(s, d)	((s)->slist2[d].symlink != 0)
+#define	HAS_CSETFILE(s, d)	((s)->slist2[d].csetFile != 0)
 
-#define	CLUDES_INDEX(s, d)	((s)->slist[d].cludes)
-#define	COMMENTS_INDEX(s, d)	((s)->slist[d].comments)
-#define	BAMHASH_INDEX(s, d)	((s)->slist[d].bamhash)
-#define	RANDOM_INDEX(s, d)	((s)->slist[d].random)
-#define	USERHOST_INDEX(s, d)	((s)->slist[d].userhost)
-#define	PATHNAME_INDEX(s, d)	((s)->slist[d].pathname)
-#define	SORTPATH_INDEX(s, d)	((s)->slist[d].sortPath)
-#define	ZONE_INDEX(s, d)	((s)->slist[d].zone)
-#define	SYMLINK_INDEX(s, d)	((s)->slist[d].symlink)
-#define	CSETFILE_INDEX(s, d)	((s)->slist[d].csetFile)
+#define	CLUDES_INDEX(s, d)	((s)->slist2[d].cludes)
+#define	COMMENTS_INDEX(s, d)	((s)->slist2[d].comments)
+#define	BAMHASH_INDEX(s, d)	((s)->slist2[d].bamhash)
+#define	RANDOM_INDEX(s, d)	((s)->slist2[d].random)
+#define	USERHOST_INDEX(s, d)	((s)->slist2[d].userhost)
+#define	PATHNAME_INDEX(s, d)	((s)->slist2[d].pathname)
+#define	SORTPATH_INDEX(s, d)	((s)->slist2[d].sortPath)
+#define	ZONE_INDEX(s, d)	((s)->slist2[d].zone)
+#define	SYMLINK_INDEX(s, d)	((s)->slist2[d].symlink)
+#define	CSETFILE_INDEX(s, d)	((s)->slist2[d].csetFile)
 
 #define	CLUDES_SET(s, d, val)	(CLUDES_INDEX(s, d) = sccs_addStr((s), val))
 #define	COMMENTS_SET(s, d, val)	(COMMENTS_INDEX(s, d) = sccs_addStr((s), val))
@@ -668,7 +672,8 @@ typedef	struct {
  */
 struct sccs {
 	ser_t	tip;		/* the delta table list, 1.99 .. 1.0 */
-	d_t	*slist;		/* array of delta structs */
+	d1_t	*slist1;	/* array of delta1 structs */
+	d2_t	*slist2;	/* array of delta2 structs */
 	dextra	*extra;		/* array of extra delta info */
 	symbol	*symlist;	/* array of symbols, oldest first */
 	KIDS	*kidlist;	/* optional kid/sibling data */
