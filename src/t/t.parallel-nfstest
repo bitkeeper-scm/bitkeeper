@@ -9,7 +9,7 @@ test -f /home/.NFS || exit 0
 test -d $TESTDATA/bitcluster || exit 0
 
 echo $N Make sure that /build is local ..............................$NL
-bk _isnetwork /build > /dev/null 2>&1 && {
+bk _isnetwork $Q /build && {
 	echo failed
 	bk _isnetwork /build
 	exit 1
@@ -23,7 +23,7 @@ case `bk gethost -r` in
 esac
 
 echo $N Make sure that test data is remote ..........................$NL
-bk _isnetwork $TESTDATA > /dev/null 2>&1 || {
+bk _isnetwork $Q $TESTDATA || {
 	echo failed
 	bk _isnetwork $TESTDATA
 	exit 1
@@ -35,7 +35,7 @@ test -e $TESTDATA/no_such_dir && {
 	echo 'ok, funny guy, who put this here?'
 	exit 1
 }
-bk _isnetwork $TESTDATA/no_such_dir > /dev/null 2>&1 || {
+bk _isnetwork $Q $TESTDATA/no_such_dir || {
 	echo failed
 	bk _isnetwork $TESTDATA/no_such_dir
 	exit 1

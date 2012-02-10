@@ -34,7 +34,7 @@ isNetworkFS(char *path)
 #ifdef	WIN32
 	return (0);
 #endif
-	unless (path && *path) return (0);
+	unless (path && *path) return (2);
 
 	/*
 	 * This lovely little song and dance is because used to call
@@ -85,12 +85,21 @@ isNetworkFS(char *path)
 int
 isnetwork_main(int ac, char **av)
 {
-	unless (av[1]) return (1);
-	if (isNetworkFS(av[1])) {
-		printf("%s: network\n", av[1]);
+	int	c, quiet = 0;
+	char	*p;
+
+	while ((c = getopt(ac, av, "q", 0)) != -1) {
+		switch (c) {
+		    case 'q': quiet = 1; break;
+		    default: bk_badArg(c, av);
+		}
+	}
+	unless (p = av[optind]) p = ".";
+	if (isNetworkFS(p)) {
+		unless (quiet) printf("%s: network\n", p);
 		return (0);
 	} else {
-		printf("%s: not network\n", av[1]);
+		unless (quiet) printf("%s: not network\n", p);
 		return (1);
 	}
 }
