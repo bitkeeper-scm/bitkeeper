@@ -51,6 +51,7 @@ private int	writable_gfile(sccs *s);
 private int	readonly_gfile(sccs *s);
 private int	no_gfile(sccs *s);
 private int	chk_eoln(sccs *s, int eoln_unix);
+private int	chk_monotonic(sccs *s);
 private int	chk_merges(sccs *s);
 private sccs*	fix_merges(sccs *s);
 private	int	update_idcache(MDBM *idDB, hash *keys);
@@ -68,6 +69,7 @@ private	int	names;		/* if set, we need to fix names */
 private	int	gotDupKey;	/* if set, we found dup keys */
 private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
+private int	check_monotonic;
 private	sccs	*cset;		/* the initialized cset file */
 private int	flags = SILENT|INIT_NOGCHK|INIT_NOCKSUM|INIT_CHK_STIME;
 private	int	undoMarks;	/* remove poly cset marks left by undo */
@@ -264,6 +266,9 @@ check_main(int ac, char **av)
 		eoln_native = !streq(proj_configval(0, "eoln"), "unix");
 	}
 	unless (fix) fix = proj_configbool(0, "autofix");
+	unless (streq(proj_configval(0, "monotonic"), "allow")) {
+		check_monotonic = 1;
+	}
 
 	if (verbose == 1) {
 		progress_delayStderr();
@@ -334,6 +339,9 @@ check_main(int ac, char **av)
 			if (fix) s = fix_merges(s);
 			errors |= 0x20;
 			ferr++;
+		}
+		if (check_monotonic && chk_monotonic(s)) {
+			ferr++, errors |= 0x08;
 		}
 
 		/*
@@ -932,6 +940,27 @@ vrfy_eoln(sccs *s, int want_cr)
 	}
 	mclose(m);
 	return (256);
+}
+
+private int
+chk_monotonic(sccs *s)
+{
+	/* non-user files */
+	if (CSET(s) ||
+	    streq(s->gfile, GONE) ||
+	    streq(s->gfile, "BitKeeper/etc/gone") ||
+	    streq(s->gfile, "BitKeeper/etc/config") ||
+	    ((strlen(s->gfile) >= 18) &&
+	    strneq(s->gfile, "BitKeeper/deleted/", 18))) {
+		return (0);
+	}
+	if (MONOTONIC(s)) {
+		fprintf(stderr,
+		    "Warning: %s : support for MONOTONIC files has been "
+		    "deprecated.\n", s->gfile);
+		return (1);
+	}
+	return (0);
 }
 
 private int
