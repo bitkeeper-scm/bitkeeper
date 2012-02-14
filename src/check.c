@@ -544,7 +544,13 @@ out:
 		progress_done(tick, errors ? "FAILED":"OK");
 		progress_restoreStderr();
 	}
-	if (all && !errors && !(flags & INIT_NOCKSUM)) touch_checked();
+	if (all && !(flags & INIT_NOCKSUM)) {
+		if (errors) {
+			unlink(CHECKED);
+		} else {
+			touch_checked();
+		}
+	}
 	if (all && !errors) {
 		/* clean check so we can update dfile marker */
 		enableFastPendingScan();
