@@ -342,6 +342,9 @@ err:		if (p) fclose(p);
 		sccs_sdelta(s, sccs_ino(s), path);
 		saveKey(opts, path, s->sfile);
 
+		/* if files are already resolved, remember that */
+		if (!CSET(s) && exists(sccs_Xfile(s, 'd'))) opts->resolved++;
+
 		/* If we aren't doing pass 1, just remember the key */
 		unless (opts->pass1) {
 			sccs_free(s);

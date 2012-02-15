@@ -1801,7 +1801,7 @@ check(sccs *s, MDBM *idDB)
 			}
 		}
 	}
-	if (trunk && branch && (polyErr || !CSET(s))) {
+	if (trunk && branch && polyErr) {
 		errors += range_walkrevs(
 		    s, trunk, 0, branch, WR_GCA, polyChk, deltas);
 	}
