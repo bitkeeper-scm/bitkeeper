@@ -41,6 +41,12 @@ This is needed when doing a csetprunes over time on
 same key set and wanting the resulting repository to communicate
 with a repository created by an earlier csetprune.
 .tp
+.OPTreq \-G gonefile
+This will prune out the gone file and put the contents of file passed in
+with -G as the initial content of a new gone file.
+If there are additional files and deltas missing, a delta to the new gone
+file will be automatically generated and committed.
+.tp
 .B \-S
 .tp
 .B \-\-standalone
