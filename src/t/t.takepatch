@@ -379,8 +379,8 @@ bk admin $Q -fMONOTONIC start-as-sfile
 bk edit $Q start-as-sfile
 bk delta $Q -fyfoo start-as-sfile
 # bk pull $Q 2> FIRSTERR && exit 1
-bk commit $Q -ymono
-bk undo $Q -sfr+
+BK_CONFIG=monotonic:allow bk commit $Q -ymono
+BK_CONFIG=monotonic:allow bk undo $Q -sfr+
 bk pull $Q 2> ERR && exit 1
 grep -q 'monotonic file .* has dangling' ERR || exit 1
 rm -fr PENDING RESYNC

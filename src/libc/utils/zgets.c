@@ -33,6 +33,7 @@ private	int	zgets_fileread(void *token, u8 **buf);
  *    int
  *    zgets_callback(void *token u8 **buf)
  *    {
+ *         if (error) return (-1);
  *         if (buf) {
  *             *buf = START;
  *             return (LENGTH);
@@ -133,14 +134,18 @@ zgets_init(void *start, int len)
 static int
 zfillbuf(zgetbuf *in, u8 *buf, int len)
 {
-	int	err;
+	int	err, i;
 
 	in->z.next_out = buf;
 	in->z.avail_out = len;
 	while (in->z.avail_out) {
 		unless (in->z.avail_in) {
-			in->z.avail_in =
-				in->callback(in->token, &in->z.next_in);
+			i = in->callback(in->token, &in->z.next_in);
+			if (i < 0) {
+				in->err = 1;
+				break;
+			}
+			in->z.avail_in = i;
 		}
 		unless (in->z.avail_in) break;
 		err = inflate(&in->z, Z_NO_FLUSH);
@@ -280,6 +285,7 @@ zread(zgetbuf *in, u8 *buf, int len)
 	u8	*p = buf;
 
 	for (;;) {
+		if (in->err) return (-1);
 		if (in->left) {
 			cnt = min(in->left, len);
 			memcpy(p, in->next, cnt);
@@ -329,7 +335,7 @@ zgets_done(zgetbuf *in)
 	return (err);
 }
 
-private void	zputs_filewrite(void *token, u8 *data, int len);
+private int	zputs_filewrite(void *token, u8 *data, int len);
 
 struct zputbuf	{
 	z_stream	z;
@@ -369,7 +375,11 @@ zflush(zputbuf *out)
 
 	while (out->z.avail_in) {
 		if (!out->z.avail_out) {
-			out->callback(out->token, out->outbuf, ZBUFSIZ);
+			err = out->callback(out->token, out->outbuf, ZBUFSIZ);
+			if (err && !out->err) {
+				out->err = err;
+				break;
+			}
 			out->z.avail_out = ZBUFSIZ;
 			out->z.next_out = out->outbuf;
 		}
@@ -423,7 +433,8 @@ zputs_done(zputbuf *out)
 			goto out;
 		}
 		if (len = ZBUFSIZ - out->z.avail_out) {
-			out->callback(out->token, out->outbuf, len);
+			err = out->callback(out->token, out->outbuf, len);
+			if (err && !out->err) out->err = err;
 			out->z.avail_out = ZBUFSIZ;
 			out->z.next_out = out->outbuf;
 		} else {
@@ -464,10 +475,11 @@ out:
 	return (err);
 }
 
-private void
+private int
 zputs_filewrite(void *token, u8 *data, int len)
 {
 	FILE	*f = (FILE *)token;
 
 	if (len) fwrite(data, len, 1, f);
+	return (0);
 }

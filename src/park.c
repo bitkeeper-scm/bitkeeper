@@ -595,8 +595,12 @@ key2Gpath(char *key, MDBM **idDB)
 {
 	char	*gpath;
 	int	try = 0;
+	MDBM	*goneDB;
 
-retry:	gpath = key2path(key, *idDB, 0);
+	goneDB = loadDB(GONE, 0, DB_GONE);
+retry:	gpath = key2path(key, *idDB, goneDB, 0);
+	// yes this is disgusting, sorry
+	mdbm_close(goneDB);
 	if (badSpath(PARK2ROOT, gpath)) {
 		if (try == 0) {
 			chdir(PARK2ROOT);
@@ -606,6 +610,7 @@ retry:	gpath = key2path(key, *idDB, 0);
 				perror("idcache");
 				exit(1);
 			}
+			goneDB = loadDB(GONE, 0, DB_GONE);
 			chdir(ROOT2PARK);
 			try++;
 			goto retry;

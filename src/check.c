@@ -51,6 +51,7 @@ private int	writable_gfile(sccs *s);
 private int	readonly_gfile(sccs *s);
 private int	no_gfile(sccs *s);
 private int	chk_eoln(sccs *s, int eoln_unix);
+private int	chk_monotonic(sccs *s);
 private int	chk_merges(sccs *s);
 private sccs*	fix_merges(sccs *s);
 private	int	update_idcache(MDBM *idDB, hash *keys);
@@ -68,6 +69,7 @@ private	int	names;		/* if set, we need to fix names */
 private	int	gotDupKey;	/* if set, we found dup keys */
 private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
+private int	check_monotonic;
 private	sccs	*cset;		/* the initialized cset file */
 private int	flags = SILENT|INIT_NOGCHK|INIT_NOCKSUM|INIT_CHK_STIME;
 private	int	undoMarks;	/* remove poly cset marks left by undo */
@@ -265,6 +267,9 @@ check_main(int ac, char **av)
 		eoln_native = !streq(proj_configval(0, "eoln"), "unix");
 	}
 	unless (fix) fix = proj_configbool(0, "autofix");
+	unless (streq(proj_configval(0, "monotonic"), "allow")) {
+		check_monotonic = 1;
+	}
 
 	if (verbose == 1) {
 		progress_delayStderr();
@@ -336,6 +341,9 @@ check_main(int ac, char **av)
 			if (fix) s = fix_merges(s);
 			errors |= 0x20;
 			ferr++;
+		}
+		if (check_monotonic && chk_monotonic(s)) {
+			ferr++, errors |= 0x08;
 		}
 
 		/*
@@ -543,7 +551,13 @@ out:
 		progress_done(tick, errors ? "FAILED":"OK");
 		progress_restoreStderr();
 	}
-	if (all && !errors && !(flags & INIT_NOCKSUM)) touch_checked();
+	if (all && !(flags & INIT_NOCKSUM)) {
+		if (errors) {
+			unlink(CHECKED);
+		} else {
+			touch_checked();
+		}
+	}
 	if (all && !errors) {
 		/* clean check so we can update dfile marker */
 		enableFastPendingScan();
@@ -939,6 +953,27 @@ vrfy_eoln(sccs *s, int want_cr)
 	}
 	mclose(m);
 	return (256);
+}
+
+private int
+chk_monotonic(sccs *s)
+{
+	/* non-user files */
+	if (CSET(s) ||
+	    streq(s->gfile, GONE) ||
+	    streq(s->gfile, "BitKeeper/etc/gone") ||
+	    streq(s->gfile, "BitKeeper/etc/config") ||
+	    ((strlen(s->gfile) >= 18) &&
+	    strneq(s->gfile, "BitKeeper/deleted/", 18))) {
+		return (0);
+	}
+	if (MONOTONIC(s)) {
+		fprintf(stderr,
+		    "Warning: %s : support for MONOTONIC files has been "
+		    "deprecated.\n", s->gfile);
+		return (1);
+	}
+	return (0);
 }
 
 private int
@@ -1445,12 +1480,19 @@ buildKeys(MDBM *idDB)
 		 * For each serial in the tip cset remember the pathname
 		 * where each rootkey should live on the disk.
 		 * Later we will check for conflicts.
+		 * LMXXX - if the file is marked gone but present isn't this
+		 * code incorrect?
+		 * Answer: it's a delta key that's missing, and yeah, if
+		 * the deltakey is really there, it is incorrect.  And the
+		 * right answer according to poly is to duplicate the key
+		 * that is there in the merge tip, and then this special case
+		 * isn't needed.  That's a better answer.
 		 */
 		if (!(rkd->mask & RK_TIP) &&
 		    smap[ser] && !mdbm_fetch_str(goneDB, t)) {
 			rkd->mask |= RK_TIP;
 			unless (mdbm_fetch_str(goneDB, s)) {
-				char	*path = key2path(t, 0, 0);
+				char	*path = key2path(t, 0, 0, 0);
 
 				/* strip /ChangeSet from components */
 				if (streq(basenm(path), "ChangeSet")) {

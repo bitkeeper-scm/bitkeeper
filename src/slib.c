@@ -5643,7 +5643,7 @@ fputmeta(sccs *s, u8 *buf, FILE *out)
  */
 private	zputbuf	*zput;
 
-private void
+private int
 gzip_sum(void *data, u8 *buf, int len)
 {
 	sccs	*s = ((void **)data)[0];
@@ -5658,6 +5658,7 @@ gzip_sum(void *data, u8 *buf, int len)
 	} else {
 		free(data);
 	}
+	return (0);
 }
 
 private void

@@ -514,7 +514,7 @@ grep -q "File/directory conflict: foo" ERR || {
 }
 echo OK
 
-echo $N bk check with errors should not update checked file .........$NL
+echo $N bk check with errors should delete checked file .............$NL
 cd "$HERE"
 commercial proj4
 bk edit $Q BitKeeper/etc/config
@@ -522,16 +522,15 @@ echo partial_check:yes! >> BitKeeper/etc/config
 echo hi > foo
 bk new $Q -ycomment foo || exit 1
 bk commit $Q -ycomment || exit 1
-perl -le 'print scalar(time)' > BitKeeper/log/checked
-echo 1 > WANT
-cp WANT BitKeeper/log/checked
+echo 1 > BitKeeper/log/checked
 bk admin -pbusted foo
 bk -r check -ac 2>ERR && {
 	echo check should have failed
 	cat ERR
 	exit 1
 }
-cmpfiles WANT BitKeeper/log/checked
+# checked file should be gone
+test -f BitKeeper/log/checked && fail
 echo OK
 
 echo $N Ancient check file should be needs check ....................$NL

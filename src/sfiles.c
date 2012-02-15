@@ -1644,7 +1644,6 @@ sfiles_clone_main(int ac, char **av)
 	if (exists(buf)) puts(buf);
 
 	rc = walkdir("./BitKeeper/etc", findsfiles, &si);
-	if (bk_hasFeature(FEAT_mSFIO)) mark2 = 1;
 	if (mark2) puts("||");
 	puts(CHANGESET);
 	si.skip_etc = 1;

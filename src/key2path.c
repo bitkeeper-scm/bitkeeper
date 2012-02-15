@@ -16,7 +16,8 @@ key2path_main(int ac, char **av)
 {
 	char	*path;
 	char	key[MAXKEY];
-	MDBM	*idDB, *m2k = 0;
+	MDBM	*idDB, *goneDB;
+	MDBM	*m2k = 0;
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "key2path: cannot find package root.\n");
@@ -27,10 +28,11 @@ key2path_main(int ac, char **av)
 		perror("idcache");
 		exit(1);
 	}
+	goneDB = loadDB(GONE, 0, DB_GONE);
 
 	while (fnext(key, stdin)) {
 		chomp(key);
-		unless (path = key2path(key, idDB, &m2k)) {
+		unless (path = key2path(key, idDB, goneDB, &m2k)) {
 			fprintf(stderr, "Can't find path for key %s\n",key);
 			mdbm_close(idDB);
 			return (1);
@@ -40,28 +42,56 @@ key2path_main(int ac, char **av)
 	}
 	if (m2k) mdbm_close(m2k);
 	mdbm_close(idDB);
+	mdbm_close(goneDB);
 	return (0);
 }
 
+/*
+ * We want to make sure we don't get fooled by deleted and goned files.
+ * So if it is not in the idcache, first make sure it is not in the
+ * gone file.  If it is in the gone file, init it and make sure that's
+ * the right file.
+ *
+ * If you are using this as a key parser (we really need a different
+ * api for that) then pass 0, 0 for id, gone.
+ */
 char *
-key2path(char *key, MDBM *idDB, MDBM **m2k)
+key2path(char *key, MDBM *idDB, MDBM *gone, MDBM **m2k)
 {
 	char	*path, *t;
+	int	check = 0;
+	sccs	*s = 0;
+	char	rootkey[MAXKEY];
 
-	if (path = mdbm_fetch_str(idDB, key)) return (strdup(path));
-
+	unless (isKey(key)) return (0);
 	unless (path = strchr(key, '|')) {
-		unless (isKey(key)) return (0);
 		if (m2k && !*m2k) *m2k = md5key2key();
 		unless (key = mdbm_fetch_str(*m2k, key)) return (0);
-		return (key2path(key, idDB, 0));
 	}
+	if (path = mdbm_fetch_str(idDB, key)) return (strdup(path));
+	if (t = mdbm_fetch_str(gone, key)) check = 1;
+	path = strchr(key, '|');
+	assert(path);
 	path++;
 	unless (t = strchr(path, '|')) return (0);
 	*t = 0;
 	path = strdup(path);
 	*t = '|';
+	if (check) {
+		t = name2sccs(path);
+		unless (s = sccs_init(t, INIT_MUSTEXIST|INIT_NOCKSUM)) {
+			free(t);
+			goto err;
+		}
+		free(t);
+		sccs_sdelta(s, sccs_ino(s), rootkey);
+		unless (streq(key, rootkey)) goto err;
+		sccs_free(s);
+	}
 	return (path);
+err:	free(path);
+	sccs_free(s);
+	return (0);
 }
 
 /*

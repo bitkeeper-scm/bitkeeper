@@ -132,8 +132,9 @@ sfio_main(int ac, char **av)
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefgHIij;KLlmN;opP;qr", lopts)) != -1) {
+	while ((c = getopt(ac, av, "2a;A;b;BefgHIij;KLlmN;opP;qr", lopts)) != -1) {
 		switch (c) {
+		    case '2': break;	/* eat arg used by sfiles_clone */
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
 			break;
@@ -310,12 +311,16 @@ sfio_out(void)
 	char	*gfile, *sfile, *t;
 	hash	*links = 0;
 	MDBM	*idDB = 0;
+	MDBM	*goneDB = 0;
 	char	ln[32];
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
 	fputs(SFIO_VERS, stdout);
 
-	if (opts->key2path) idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	if (opts->key2path) {
+		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+		goneDB = loadDB(GONE, 0, DB_GONE);
+	}
 	if (opts->bp_tuple) opts->sent = hash_new(HASH_MEMHASH);
 	if (opts->hardlinks) links = hash_new(HASH_MEMHASH);
 	byte_count = 10;
@@ -337,7 +342,9 @@ sfio_out(void)
 			continue;
 		}
 		if (opts->key2path) {
-			unless (gfile = key2path(buf, idDB, 0)) continue;
+			unless (gfile = key2path(buf, idDB, goneDB, 0)) {
+				continue;
+			}
 			sfile = name2sccs(gfile);
 			strcpy(buf, sfile);
 			free(sfile);
@@ -411,6 +418,8 @@ reg:			if (n = out_file(buf, &sb, &byte_count, 0, 0)) {
 	}
 	save_byte_count(byte_count);
 	if (opts->hardlinks) hash_free(links);
+	mdbm_close(idDB);
+	mdbm_close(goneDB);
 #endif
 	return (0);
 }
@@ -616,6 +625,7 @@ int
 sfio_in(int extract, int justone)
 {
 	int	len, n, i;
+	int	fail = 0, nfiles = 0;
 	u32	ulen;
 	off_t	byte_count = 0;
 	FILE	*co = 0;
@@ -642,6 +652,7 @@ sfio_in(int extract, int justone)
 		    "Version mismatch [%s]<>[%s]\n", buf, SFIO_VERS);
 		return (1);
 	}
+	if (p = getenv("_BK_SFIO_FAIL")) fail = atoi(p);
 	for (;;) {
 		n = fread(buf, 1, 4, stdin);
 		if (n == 0) {
@@ -709,6 +720,10 @@ eof:			if (co) {
 		if (fread(datalen, 1, 10, stdin) != 10) {
 			perror("fread");
 			return (1);
+		}
+		if (++nfiles == fail) {
+			perror("dieing for regressions");
+			exit(1);
 		}
 		datalen[10] = 0;
 		len = 0;

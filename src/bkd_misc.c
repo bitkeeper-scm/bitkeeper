@@ -244,7 +244,7 @@ cmd_bk(int ac, char **av)
 	}
 	if (gzip & GZ_TOREMOTE) {
 		fputs("@GZIP@\n", stdout);
-		zout = zputs_init(&zputs_hfwrite, stdout, -1);
+		zout = zputs_init(zputs_hfwrite, stdout, -1);
 	}
 
 	/*

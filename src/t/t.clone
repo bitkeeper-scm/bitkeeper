@@ -414,3 +414,18 @@ bk clone $Q -r$TIP . ../new-noedit || fail
 cd ../new-noedit
 test -f src/bar.c && fail
 echo OK
+
+echo $N Show clone -r won\'t mark a bad tree as checked ..............$NL
+cd ../project
+bk stripdel $Q -Cr+ BitKeeper/etc/config || fail
+bk repocheck $Q 2>ERR && fail -f ERR should fail
+# a check failure removes checked file
+test -f BitKeeper/log/checked && fail
+cd ..
+# clone before the problem will work
+bk clone $Q -r$TIP project nomark || fail
+# will check clean
+test -f nomark/BitKeeper/log/checked || fail
+# remote not marked
+test -f project/BitKeeper/log/checked && fail shouldnt be good
+echo OK

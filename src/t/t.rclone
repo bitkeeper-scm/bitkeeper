@@ -21,9 +21,10 @@ if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 mkdir src
 cd src
 echo foo > 'F!O#O$ B%A^R&RR(R)RR'
-echo bar > bar.c
+echo bam > bam
 echo h > h.h
-bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
+bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' h.h
+bk new $Q -b bam
 if bk _test ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR'; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
@@ -62,7 +63,7 @@ echo OK
 
 echo $N Make sure we honored partial check ..........................$NL
 bk cmdlog -av > GOT
-grep -q check GOT && {
+grep -q "check " GOT && {
 	bk _kill http://localhost:$P 
 	echo failed
 	cat GOT
@@ -163,11 +164,20 @@ echo OK
 bk _kill http://localhost:$P || exit 1
 
 echo $N Stress rclone in part2 ......................................$NL
+# Rider: use different -j parallel - for later test
 cd "$HERE"/project
-bk --config='partial_check:on' _rclone $Q -r+ . ../bork-part2 || fail
+bk --config='partial_check:on' --config='checkout:edit' \
+    _rclone $Q -r+ -j1 . ../bork-part2-1 || fail
+test -f ../bork-part2-1/src/h.h -a -f ../bork-part2-1/src/bam \
+    || fail checkout failed
+bk --config='partial_check:on' --config='checkout:edit' \
+    _rclone $Q -r+ -j2 . ../bork-part2-2 || fail
+test -f ../bork-part2-2/src/h.h -a -f ../bork-part2-2/src/bam \
+    || fail checkout failed
 echo OK
 
 echo $N Stress rclone in part3 ......................................$NL
+# Rider: use default parallel level - for later test
 # Mimic Oscar's setup more or less: nested always -r<rev> so just send -r+
 cd "$HERE"/EMPTY/REPO
 bk edit $Q BitKeeper/etc/config
@@ -177,7 +187,23 @@ echo bam > bam
 bk new $Q -b bam
 bk commit $Q -f
 bk bam server $Q "$HERE/project"
-bk --config='partial_check:on' _rclone $Q -r+ . ../bork-part3 || fail
+bk --config='partial_check:on' _rclone $Q -r+ . ../../bork-part3 || fail
+echo OK
+
+echo $N Verify level of parallel in the last two tests ..............$NL
+cd "$HERE"/bork-part2-1/BitKeeper/log
+# level 1 means no parallel
+test 0 = `grep "sfio -iq --Nway" cmd_log | wc -l` || fail
+cd "$HERE"/bork-part2-2/BitKeeper/log
+test 2 = `grep "sfio -iq --Nway --checkout = 0" cmd_log | wc -l` || fail
+test 2 = `grep "checkout -Tq --skip-bam - = 0" cmd_log | wc -l` || fail
+# The default is platform dependent
+if [ X$PLATFORM = X"WIN32" ]
+then J=0
+else J=3
+fi
+cd "$HERE"/bork-part3/BitKeeper/log
+test $J = `grep "sfio -iq --Nway --checkout = 0" cmd_log | wc -l` || fail
 echo OK
 
 echo $N Make sure rclone respect checkout preference ................$NL
@@ -189,7 +215,7 @@ bk commit $Q -ynew_preference
 if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi
 bk _rclone $Q "$HERE/project" file:$SLASH"$HERE/copy5" || { echo failed; exit 1; }
 cd "$HERE/copy5"
-if [ ! -f src/bar.c ]; then echo failed; exit 1; fi
+if [ ! -f src/bam -o ! -f src/h.h ]; then echo failed; exit 1; fi
 echo OK
 
 #BUG: 2003-03-04-002

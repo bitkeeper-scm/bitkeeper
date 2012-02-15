@@ -8,6 +8,7 @@ typedef	struct {
 	u32	product:1;
 	u32	detach:1;
 	int	gzip;
+	int	jobs;
 	char    *rev;
 	char	*bam_url;
 	char	**aliases;
@@ -23,11 +24,12 @@ rclone_common(int ac, char **av, opts *opts)
 	char	*p;
 
 	bzero(opts, sizeof(*opts));
-	while ((c = getopt(ac, av, "B;dDPr;s;Tvz|", 0)) != -1) {
+	while ((c = getopt(ac, av, "B;dDj;Pr;s;Tvz|", 0)) != -1) {
 		switch (c) {
 		    case 'B': opts->bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;
 		    case 'D': opts->detach = 1; break;
+		    case 'j': opts->jobs = atoi(optarg); break; 
 		    case 'r': opts->rev = optarg; break; 
 		    case 's':
 			opts->aliases = addLine(opts->aliases, strdup(optarg));
@@ -182,8 +184,8 @@ cmd_rclone_part2(int ac, char **av)
 		free(path);
 		return (1);
 	}
-	jobs = parallel(path);
 	free(path);
+	jobs = opts.jobs ? opts.jobs : parallel(".");
 
 	getline(0, buf, sizeof(buf));
 	if (!streq(buf, "@SFIO@")) {
@@ -219,7 +221,7 @@ cmd_rclone_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fflush(stdout);
 	fd2 = dup(2); dup2(1, 2);
-	rc = getsfio(jobs);
+	if (rc = getsfio(jobs)) goto err;
 	/* clone needs the remote HERE as RMT_HERE; rclone doesn't */
 	if (opts.product) unlink("BitKeeper/log/HERE");
 	if (opts.detach) unlink("BitKeeper/log/COMPONENT");
@@ -268,7 +270,7 @@ cmd_rclone_part2(int ac, char **av)
 	}
 
 	/* restore original stderr */
-	dup2(fd2, 2); close(fd2);
+err:	dup2(fd2, 2); close(fd2);
 	fputc(BKD_NUL, stdout);
 	if (rc) {
 		printf("%c%d\n", BKD_RC, rc);
@@ -393,6 +395,7 @@ private int
 rclone_end(opts *opts)
 {
 	int	rc = 0;
+	int	partial = 1;	/* we may not know, so assume worst case */
 	int	quiet = !opts->verbose;
 	char	**checkfiles = 0;
 
@@ -419,10 +422,15 @@ rclone_end(opts *opts)
 	} else {
 docheck:	/* undo already runs check so we only need this case */
 		if (checkfiles || full_check()) {
-			rc = run_check(0, checkfiles, quiet? "-fT" : "-fvT", 0);
+			rc = run_check(
+			    0, checkfiles, quiet? "-fT" : "-fvT", &partial);
 		}
 	}
 	freeLines(checkfiles, free);
+	if (partial && bp_hasBAM() &&
+	    (proj_checkout(0) & (CO_BAM_GET|CO_BAM_EDIT))) {
+		system("bk _sfiles_bam | bk checkout -Tq -");
+	}
 
 	/*
 	 * Save the HERE file.  chmod because sfio w/o perms doesn't
@@ -445,15 +453,16 @@ getsfio(int jobs)
 	int	status, pfd;
 	u32	in, out;
 	FILE	*f;
-	char	*cmds[10] = {"bk", "sfio", "-iq", "--mark-no-dfiles", 0};
+	char	*cmds[10] =
+		    {"bk", "sfio", "-iq", "--checkout", "--mark-no-dfiles", 0};
 	char	j[20];
 	pid_t	pid;
 
 	if (jobs) {
 		sprintf(j, "-j%d", jobs);
-		assert(cmds[4] == 0);
-		cmds[4] = j;
-		cmds[5] = 0;
+		assert(cmds[5] == 0);
+		cmds[5] = j;
+		cmds[6] = 0;
 	}
 	pid = spawnvpio(&pfd, 0, 0, cmds);
 	if (pid == -1) {

@@ -57,12 +57,10 @@ fslrm_main(int ac, char **av)
 	while (--ac >= optind) {
 		if (isdir(av[ac])) {
 			if (recurse) {
-				if (rmtree(av[ac])) {
+				if (rmtree(av[ac]) && !force) {
 					rc = 1;
-					unless (force) {
-						perror(av[ac]);
-						break;
-					}
+					perror(av[ac]);
+					break;
 				}
 			} else {
 				fprintf(stderr, "%s: is a directory\n",
@@ -70,12 +68,10 @@ fslrm_main(int ac, char **av)
 				rc = 1;
 				unless (force) break;
 			}
-		} else if (unlink(av[ac])) {
+		} else if (unlink(av[ac]) && !force) {
 			rc = 1;
-			unless (force) {
-				perror(av[ac]);
-				break;
-			}
+			perror(av[ac]);
+			break;
 		}
 	}
 	return (rc);

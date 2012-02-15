@@ -103,13 +103,15 @@ gunzipAll2fh(int rfd, FILE *wf, int *in, int *out)
 	fflush(wf);
 	fd = fileno(wf);
 	incnt = outcnt = 0;
+	if (in) *in = 0;
+	if (out) *out = 0;
 	zin = zgets_initCustom(zgets_hread, int2p(rfd));
 	while ((i = zread(zin, buf, sizeof(buf))) > 0) {
 		moved += i;
 		if (offset && (moved >= offset)) exit(1);
 		if (writen(fd, buf, i) != i) {
-			perror("write");
-			exit(1);
+			zgets_done(zin);
+			return (1);
 		}
 		outcnt += i;
 	}
@@ -135,10 +137,7 @@ zgets_hread(void *token, u8 **buf)
 	static	int	len = -1;
 
 	if (len == -1) {
-		if (readn(fd, (void *)&hlen, 2) != 2) {
-			perror("readn");
-			exit(1);
-		}
+		if (readn(fd, (void *)&hlen, 2) != 2) return (-1);
 		incnt += 2;
 		len = ntohs(hlen);
 	}
@@ -221,7 +220,7 @@ zgets_hfread(void *token, u8 **buf)
  * A callback to be used with zputs that writes blocks of data
  * proceeded by 2-byte length markers.
  */
-void
+int
 zputs_hfwrite(void *token, u8 *data, int len)
 {
 	FILE	*f = token;
@@ -231,10 +230,8 @@ zputs_hfwrite(void *token, u8 *data, int len)
 	hlen = htons(len);
 	fwrite(&hlen, 2, 1, f);
 	if (len) fwrite(data, 1, len, f);
+	if (ferror(f)) return (-1);
 	outcnt += len + 2;
-	if (ferror(f)) {
-		perror("zputs_hfwrite");
-		exit(1);
-	}
+	return (0);
 }
 

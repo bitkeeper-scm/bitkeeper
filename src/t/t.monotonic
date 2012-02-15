@@ -363,3 +363,23 @@ grep -q '(monotonic)' ERR || {
 	cat ERR
 }
 echo OK
+
+echo $N Make a MONOTONIC user file and verify that check whines .....$NL
+cd "$HERE/project"
+touch foo
+bk new $Q foo
+bk commit $Q -f
+bk admin -fMONOTONIC foo
+BK_CONFIG=monotonic:allow bk commit $Q -f
+bk -r check -ac > GOT 2>&1 && fail -f OUT should have failed
+cat > WANT <<EOF
+Warning: foo : support for MONOTONIC files has been deprecated.
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Verify MONOTONIC gone works with BK_GONE ....................$NL
+cd "$HERE/project"
+bk admin -fMONOTONIC BitKeeper/etc/gone
+BK_GONE=foo bk -r check -ac || fail
+echo OK

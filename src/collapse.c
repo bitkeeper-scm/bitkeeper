@@ -724,7 +724,7 @@ fix_genlist(char *rev)
 	char	**flist = 0;
 	char	*cmd, *p;
 	int	status;
-	MDBM	*idDB;
+	MDBM	*idDB, *goneDB;
 	hash	*h;
 	FILE	*f = 0;
 	char	buf[2*MAXKEY];
@@ -737,13 +737,14 @@ fix_genlist(char *rev)
 		perror("idcache");
 		goto out;
 	}
+	goneDB = loadDB(GONE, 0, DB_GONE);
 	flist = addLine(0, strdup(CHANGESET));
 	h = hash_new(HASH_MEMHASH);
 	while (fnext(buf, f)) {
 		unless (p = separator(buf)) continue;
 		unless (hash_insert(h, buf, p-buf, 0, 0)) continue;
 		*p = 0;
-		p = key2path(buf, idDB, 0);
+		p = key2path(buf, idDB, goneDB, 0);
 		flist = addLine(flist, name2sccs(p));
 		free(p);
 	}
@@ -754,6 +755,7 @@ fix_genlist(char *rev)
 	}
 	hash_free(h);
 	mdbm_close(idDB);
+	mdbm_close(goneDB);
 out:
 	return (flist);
 }

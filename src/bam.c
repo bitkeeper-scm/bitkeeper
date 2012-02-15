@@ -1931,11 +1931,9 @@ sfiles_bam_main(int ac, char **av)
 			if (changesetKey(buf)) continue;
 			while ((--p > buf) && (*p != '|'));
 			unless (strneq(p, "|B:", 3)) continue;
-			unless (p = key2path(buf, idDB, 0)) continue;
+			unless (p = key2path(buf, idDB, goneDB, 0)) continue;
 			sfile = name2sccs(p);
-			if (exists(sfile) || !mdbm_fetch_str(goneDB, buf)) {
-				puts(p);
-			}
+			if (exists(sfile)) puts(p);
 			free(p);
 			free(sfile);
 		}
@@ -2583,7 +2581,7 @@ bam_names_main(int ac, char **av)
 	char	*file, *p, *path;
 	MDBM	*m2k = 0;
 	FILE	*f = 0;			// lint
-	MDBM	*log, *idDB;
+	MDBM	*log, *idDB, *goneDB;
 	kvpair	kv;
 	char	buf[MAXPATH];
 
@@ -2629,6 +2627,7 @@ bam_names_main(int ac, char **av)
 	load_logfile(log = mdbm_mem(), f);
 	fclose(f);
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	goneDB = loadDB(GONE, 0, DB_GONE);
 	/*
 	 * lm3di - it's really slow.
 	 */
@@ -2654,7 +2653,7 @@ bam_names_main(int ac, char **av)
 			 * returns nothing.
 			 * Ideas?  For now, skip it if not found.
 			 */
-			if (path = key2path(p, idDB, &m2k)) {
+			if (path = key2path(p, idDB, goneDB, &m2k)) {
 				not = 0;
 				if (first) {
 					used++;
@@ -2674,14 +2673,15 @@ bam_names_main(int ac, char **av)
 	freeLines(notused, 0);
 	freeLines(bamfiles, free);
 	mdbm_close(idDB);
+	mdbm_close(goneDB);
 	mdbm_close(m2k);
 	mdbm_close(log);
 	return (0);
 }
 
 /*
- * US:   lm@lm.bitmover.com|ChangeSet|19990319224848|02682|B:c00:
- * THEM: lm@lm.bitmover.com|ChangeSet|19990319224848|02682
+ * US:   lm@lm.bitmover.com|ChangeSet|19990319224848|02682|B:c00:stuff2
+ * THEM: lm@lm.bitmover.com|ChangeSet|19990319224848|02682|stuff2
  *
  * is what our tree looks like w/ no random bits.
  */
@@ -2691,42 +2691,28 @@ bam_converted(int ispull)
 	char	**them = splitLine(getenv("BKD_ROOTKEY"), "|", 0);
 	char	**us = splitLine(proj_rootkey(0), "|", 0);
 	char	*t, *u;
-	char	*t2, *u2;
 	char	*src, *dest;
 	int	i;
-	int	rc = 1, tbam = -1, ubam = -1; /* 0 is a valid bam_size */
+	int	rc = 0;
+	u32	tbam = ~0, ubam = ~0; /* 0 is a valid bam_size */
 
-	for (i = 1; i < 5; ++i) {
-		unless (streq(them[i], us[i])) {
-			rc = 0;
-			goto out;
-		}
-	}
+	/* we don't handle old style trees */
+	if ((nLines(them) != 5) || nLines(us) != 5) goto out;
+	for (i = 1; i <= 4; ++i) unless (streq(them[i], us[i])) goto out;
 
-	/*
-	 * When we are done with this, t2 and u2 point at the random
-	 * bits or ""
-	 */
-	t = nLines(them) == 5 ? them[5] : "";
-	if (t2 = strrchr(t, ':')) {
-		*t2++ = 0;
-		tbam = strtoul(&t[2], 0, 16);
-	} else {
-		t2 = t;
+	/* extract BAM section from ranbits, they must be first */
+	t = them[5];
+	if (strneq(t, "B:", 2)) {
+		tbam = strtoul(t+2, &t, 16);
+		if (*t++ != ':') goto out;
 	}
-	u = nLines(us) == 5 ? us[5] : "";
-	if (u2 = strrchr(u, ':')) {
-		*u2++ = 0;
-		ubam = strtoul(&u[2], 0, 16);
-	} else {
-		u2 = u;
+	u = us[5];
+	if (strneq(u, "B:", 2)) {
+		ubam = strtoul(u+2, &u, 16);
+		if (*u++ != ':') goto out;
 	}
-	unless (strneq(t, "B:", 2) || strneq(u, "B:", 2)) {
-		rc = 0;
-		goto out;
-	}
-
-//fprintf(stderr, "t=%s t2=%s tbam=%u u=%s u2=%s ubam=%d\n",t,t2,tbam,u,u2,ubam);
+	unless (streq(t, u)) goto out; /* the remainder must match */
+	assert(tbam != ubam);
 	/*
 	 * If this pops it has to be BAM on one side and not (or diff)
 	 * on the other.
@@ -2738,21 +2724,19 @@ bam_converted(int ispull)
 		dest = "source";
 		src = "destination";
 	}
-	if (rc && streq(t2, u2)) {
-		fprintf(stderr, "BAM conversion mismatch, ");
-		if ((ubam >= 0) && ((tbam < 0) || (ubam < tbam))) {
-			fprintf(stderr,
-			    "%s needs to convert down to %d\n", src, ubam);
-		} else {
-			fprintf(stderr,
-			    "%s needs to convert down to %d\n", dest, tbam);
-		}
+	fprintf(stderr, "BAM conversion mismatch, ");
+	if (ubam < tbam) {
+		fprintf(stderr,
+		    "%s needs to convert down to %d\n", src, ubam);
+	} else {
+		fprintf(stderr,
+		    "%s needs to convert down to %d\n", dest, tbam);
 	}
+	rc = 1;
 out:	freeLines(them, free);
 	freeLines(us, free);
 	return (rc);
 }
-
 
 int
 bam_main(int ac, char **av)

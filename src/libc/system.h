@@ -392,7 +392,7 @@ char	*zpeek(zgetbuf *, int len);
 int	zgets_done(zgetbuf *);
 
 typedef	struct zputbuf zputbuf;
-typedef void (*zputs_func)(void *, u8 *, int);
+typedef int (*zputs_func)(void *, u8 *, int);
 
 zputbuf	*zputs_init(zputs_func callback, void *token, int level);
 int	zputs(zputbuf *, u8 *data, int len);
