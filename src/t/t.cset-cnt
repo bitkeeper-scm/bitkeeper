@@ -71,7 +71,7 @@ bk changes -R > OUT || exit 1
 check_cnt
 echo OK
 
-CNT=13
+CNT=14
 echo $N "Count the inits for a 'bk pull' ($CNT)........................."$NL
 bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore
@@ -108,7 +108,7 @@ bk pull -R $Q || exit 1
 check_cnt
 echo OK
 
-CNT=10
+CNT=11
 echo $N "Count the inits for a 'bk resolve' ($CNT)......................"$NL
 rm "$FILE"
 bk resolve $Q || exit 1
@@ -212,7 +212,7 @@ bk unpull -fs $Q || exit 1
 check_cnt
 echo OK
 
-CNT=66
+CNT=67
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 bk portal $Q .
 touch c

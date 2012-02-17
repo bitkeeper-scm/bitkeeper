@@ -99,14 +99,11 @@ bk guitest fm3tool -o merge.raw -f -l1.1.1.1 -r1.2 src/file1 >"$OUT" 2>&1 <<'EOF
     test_inputInMerge "\010"
     test_exitMerge
     test_invokeMenu "File->Save"
-    exit 0
 EOF
 err=$?
 cat > expected <<EOF
 1: this is file1
-2: this is part of the original file<<<<<<
-UNMERGED
->>>>>>
+2: this is part of the original file
 5: this is part of the original file
    this has been added in the remote project
    this has been added in the remote project

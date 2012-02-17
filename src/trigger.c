@@ -232,7 +232,7 @@ runit(char *file, char *what, char *output)
 
 	safe_putenv("BK_TRIGGER=%s", basenm(file));
 	safe_putenv("BK_TRIGGERPATH=%s", file);
-	write_log("cmd_log", 0, "Running trigger %s", file);
+	write_log("cmd_log", "Running trigger %s", file);
 	safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
 
 	status = sysio(0, output, output, file, SYS);
@@ -244,7 +244,7 @@ runit(char *file, char *what, char *output)
 	} else {
 		rc = 100;
 	}
-	write_log("cmd_log", 0, "Trigger %s returns %d", file, rc);
+	write_log("cmd_log", "Trigger %s returns %d", file, rc);
 	if (getenv("BK_SHOW_TRIGGERS")) {
 		efprintf("BK_SHOW_TRIGGERS", "Trigger %s = %d\n", file, rc);
 	} else if (getenv("BK_SHOWPROC")) {

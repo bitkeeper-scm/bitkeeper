@@ -35,6 +35,7 @@ typedef struct {
 	char	**complist;
 	hash	*prunekeys;
 	char	*addweave;
+	char	**newgone;	// new gone contents
 	char	**filelist;	// the list of files to put in this comp
 	char	*rev;
 	char	*who;
@@ -43,6 +44,7 @@ typedef struct {
 	int	version;	// currently 2, --version=1
 	u32	standalone:1;	// --standalone
 	u32	bk4:1;		// --bk4
+	u32	nocommit:1;	// --no-commit
 } Opts;
 
 private	int	csetprune(Opts *opts);
@@ -88,9 +90,11 @@ csetprune_main(int ac, char **av)
 	char	*compfile = 0;
 	char	*sfilePath = 0;
 	char	*weavefile = 0;
+	char	*gonefile = 0;
 	int	i, c, ret = 1;
 	longopt	lopts[] = {
 		{ "revfile;", 300 },	/* file to store rev key */
+		{ "no-commit", 305 },	/* --no-commit because -C taken */
 		{ "tag-csets", 310 },	/* collapse tag graph onto D graph */
 		{ "bk4", 320},		/* bk4 compat on a standalone */
 		{ "standalone", 'S'},
@@ -100,11 +104,12 @@ csetprune_main(int ac, char **av)
 
 	opts = new(Opts);
 	opts->version = 2;
-	while ((c = getopt(ac, av, "ac:C:I;k:Kqr:sStw:W:", lopts)) != -1) {
+	while ((c = getopt(ac, av, "ac:C:G:I;k:Kqr:sStw:W:", lopts)) != -1) {
 		switch (c) {
 		    case 'a': flags |= PRUNE_ALL; break;
 		    case 'c': opts->comppath = optarg; break;
 		    case 'C': compfile = optarg; break;
+		    case 'G': gonefile = optarg; break;
 		    case 'I': sfilePath = optarg; break;
 		    case 'k': opts->ranbits = optarg; break;
 		    case 'K': flags |= PRUNE_NO_NEWROOT; break;
@@ -119,6 +124,8 @@ csetprune_main(int ac, char **av)
 		    case 300: /* --revfile */
 		    	opts->revfile = optarg;
 			break;
+		    case 305: /* --no-commit */
+		    	opts->nocommit = 1;
 		    case 310: /* --tag-csets */
 			flags |= PRUNE_NEW_TAG_GRAPH;
 			break;
@@ -160,7 +167,7 @@ k_err:			fprintf(stderr,
 	/*
 	 * Backward compat -- fake '-' if no new stuff specified
 	 */
-	if ((!opts->comppath && !compfile) || ((optind < ac))) {
+	if ((!opts->comppath && !compfile && !gonefile) || ((optind < ac))) {
 		unless (opts->prunekeys = getKeys(av[optind])) goto err;
 	}
 	unless (opts->prunekeys) opts->prunekeys = hash_new(HASH_MEMHASH);
@@ -201,6 +208,15 @@ k_err:			fprintf(stderr,
 		}
 		opts->addweave = fullname(weavefile, 0);
 	}
+	if (gonefile) {
+		unless (exists(gonefile)) {
+			fprintf(stderr, "%s: missing gone file\n", prog);
+			goto err;
+		}
+		opts->newgone = file2Lines(0, gonefile);
+		/* strip all 'gone' rootkeys */
+		hash_insertStr(opts->prunekeys, "BitKeeper/etc/gone", 0);
+	}
 	if (sfilePath) {
 		unless (opts->refProj = proj_init(sfilePath)) {
 			fprintf(stderr, "%s: reference repo %s failed\n",
@@ -232,6 +248,7 @@ err:
 	if (opts->prunekeys) hash_free(opts->prunekeys);
 	if (opts->addweave) free(opts->addweave);
 	if (opts->complist) freeLines(opts->complist, free);
+	if (opts->newgone) freeLines(opts->newgone, free);
 	return (ret);
 }
 
@@ -429,12 +446,26 @@ finish:
 		cset = 0;
 	}
 	/* Find any missing keys and make a delta about them. */
-	if (opts->comppath) {
+	if (opts->comppath || opts->newgone) {
 		verbose((stderr, "Running a check...\n"));
 		status = system("bk -r check -aggg | bk gone -q -");
 statuschk:	unless (WIFEXITED(status)) goto err;
 		if (WEXITSTATUS(status) == 0x40) {
 			verbose((stderr, "Updating gone...\n"));
+			if (opts->newgone && !opts->nocommit) {
+				FILE	*f;
+
+				verbose((stderr, "Committing gone...\n"));
+				sprintf(buf,
+				    "bk commit -%sy'log new gone keys' -",
+				    (flags&SILENT) ? "q" : "");
+				f = popen(buf, "w");
+				fprintf(f, "%s|+", SGONE);
+				if (pclose(f)) {
+					fprintf(stderr, "commit failed\n");
+					goto err;
+				}
+			}
 		} else unless (WEXITSTATUS(status) == 0) {
 			goto err;
 		}
@@ -706,6 +737,7 @@ newFile(char *path, char *comp, int ser)
 	FILE	*f;
 	char	*ret = 0, *randin = 0, *line = 0, *cmt = 0;
 	char	*spath;
+	int	i;
 	sccs	*s;
 	ser_t	d;
 	char	rk[MAXKEY];
@@ -736,6 +768,12 @@ newFile(char *path, char *comp, int ser)
 		/* orig pre-partition rootkey created this cset */
 		fputs("@ID\n", f);
 		fprintf(f, "%s\n", proj_rootkey(0));
+	}
+	/*
+	 * BK_GONE can influence the GONE macro, and we want the base file
+	 */
+	if (opts->newgone && streq(path, "BitKeeper/etc/gone")) {
+		EACH(opts->newgone) fprintf(f, "%s\n", opts->newgone[i]);
 	}
 	if (fclose(f)) {
 		perror(prog);

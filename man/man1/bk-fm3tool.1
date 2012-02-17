@@ -131,6 +131,18 @@ enter a special edit mode where you can make changes.
 To exit the edit mode, press
 <\f(CWescape\fP> or click on area that divides the merge area from the areas
 above it.
+.SH COPY AND PASTE
+When the tool is in edit mode, it is possible to select text from either diff
+window and then copy them into the clipboard.  The text copied to the
+clipboard is taken from the window with the active focus.  This can include
+the merge window itself.
+.LP
+Pasting while focused in the left or right diff window will paste into the
+merge window at the insertion cursor.  If the current block is UNMERGED, it
+will be replaced with the contents of the clipboard.  Subsequent pastes
+will be inserted after the last insertion.  Pasting while focused in the
+merge window itself will paste at the insertion cursor with no special
+action.
 .SH KEYBOARD BINDINGS
 fm3tool has two major modes: \*(lqmerging mode,\*(rq for
 navigating through the diffs and conflicts and \*(lqediting
@@ -221,6 +233,10 @@ Saves the merge file.
 Will undo the effects that the last mouse click had on the current
 merge region.
 .tp
+.B "e"
+This will move the focus to the merge edit window at the bottom and
+put the tool in edit mode.
+.tp
 .B Control-q
 Exit from fm3tool.
 .SS EDITING MODE
@@ -242,6 +258,12 @@ move to previous line.
 .tp
 .B Control-d
 delete character under cursor.
+.tp
+.B Control-y
+Redo the last undone change.
+.tp
+.B Control-z
+Undo the last typed change.
 .tp
 .B UpArrow
 Move the cursor up one line.

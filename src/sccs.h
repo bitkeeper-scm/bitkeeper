@@ -1171,9 +1171,9 @@ void	cmdlog_start(char **av, int bkd_mode);
 void	cmdlog_addnote(char *key, char *val);
 int	cmdlog_end(int ret, int bkd_mode);
 void	cmdlog_lock(int flags);
-int	write_log(char *file, int rotate, char *format, ...)
+int	write_log(char *file, char *format, ...)
 #ifdef __GNUC__
-     __attribute__((format (__printf__, 3, 4)))
+     __attribute__((format (__printf__, 2, 3)))
 #endif
 	;
 off_t	get_byte_count(void);

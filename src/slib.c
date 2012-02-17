@@ -10113,7 +10113,7 @@ skip_weave:
 	}
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
 	if (sccs_finishWrite(s, &sfile)) goto out;
-	if (BITKEEPER(s)) updatePending(s);
+	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) updatePending(s);
 	comments_cleancfile(s);
 	sccs_unlock(s, 'z');
 	return (0);
@@ -13502,7 +13502,7 @@ sccs_delta(sccs *s,
 {
 	FILE	*sfile = 0;	/* the new s.file */
 	int	i, free_syms = 0, error = 0;
-	ser_t	d = 0, p, n = 0;
+	ser_t	d = 0, e, p, n = 0;
 	char	*rev, *tmpfile = 0;
 	int	added = 0, deleted = 0, unchanged = 0;
 	int	locked;
@@ -13661,8 +13661,12 @@ out:
 			    "combined with diffs\n");
 			OUT;
 		}
-		while ((d > TREE(s)) && (DANGLING(s, d) || TAG(s, d))) {
-			d = sccs_prev(s, d);
+		for (e = d, d = 0; e; --e) {
+			if (TAG(e) || DANGLING(s, e)) continue;
+			unless (d) d = e;
+			/* uncolor if poly dangling */
+			if ((p = PARENT(s, e)) && DANGLING(s, p)) FLAGS(s, p) &= ~D_DANGLING;
+			if ((p = MERGE(s, e)) && DANGLING(s, p)) FLAGS(s, p) &= ~D_DANGLING;
 		}
 		assert(d > TREE(s));
 		strcpy(pf.oldrev, REV(s, d));
@@ -13731,9 +13735,7 @@ out:
 		exclude = getserlist(s, 0, pf.xLst, &error);
 	}
 	if (pf.mRev) {
-		ser_t	e = findrev(s, pf.mRev);
-
-		unless (e) {
+		unless (e = findrev(s, pf.mRev)) {
 			fprintf(stderr,
 			    "delta: no such rev %s in %s\n", pf.mRev, s->sfile);
 		    	OUT;

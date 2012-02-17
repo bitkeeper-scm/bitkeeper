@@ -1,0 +1,79 @@
+# csetprune the gone file and put a new gone file in its place.
+# Like partition, everyone will need the same initial gone file contents
+# But that file can be passed along.
+# If they have another file that also needs to be goned, then they have
+# to make a new cset
+
+set -e
+
+sanitize() {
+	# filter out the file name from the key
+	perl -i.old -pe 's?bk/[^|]*\|([^|]*)\S+\b?<$1>?' $1
+	rm -f $1.old
+}
+
+echo $N Show the core use: bk csetprune -Ggonefile -kRAND ...........$NL
+commercial project
+touch foo bar
+bk new $Q foo bar
+bk prs -r+ -hnd:ROOTKEY: foo > newgone
+bk commit $Q -yfiles
+bk clone $Q . ../first
+cd ../first
+bk _rm SCCS/s.foo
+bk gone $Q - < ../project/newgone
+bk edit $Q BitKeeper/etc/gone
+echo bla bla bla > BitKeeper/etc/gone
+bk delta $Q -yadd-junk BitKeeper/etc/gone
+bk get $Q BitKeeper/etc/gone
+cmp -s ../project/newgone BitKeeper/etc/gone && fail should not match
+bk commit $Q -ygone
+# Now replace the gone file with a new gone file with the right contents
+bk csetprune $Q -G../project/newgone -k1234567890abcdef
+bk get $Q BitKeeper/etc/gone
+cmpfiles ../project/newgone BitKeeper/etc/gone
+echo OK
+
+# There isn't anything to pull because that cset above touched the gone
+# file and csetprune removed it.
+echo $N Do it again in a clone and see that we can pull .............$NL
+cd "$HERE"
+bk clone $Q project second
+cd second
+bk csetprune $Q -G../project/newgone -k1234567890abcdef
+bk changes -qLR ../first > OUT
+test -s OUT && fail -f OUT
+echo OK
+
+echo $N Show that csetprune absorbs new changes to gone .............$NL
+cd "$HERE"
+bk clone $Q project extra-gone
+cd extra-gone
+bk prs -r+ -hnd:ROOTKEY: bar > extra
+bk gone $Q - < extra
+bk _rm SCCS/s.bar
+bk commit $Q -ygone
+bk csetprune $Q -G../project/newgone -k1234567890abcdef 
+bk -gpr > OUT
+test -s OUT && fail -f OUT
+bk changes -qLR -nd:C: ../first > GOT
+echo log new gone keys > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Again, but with --no-commit to leave gone pending ...........$NL
+cd "$HERE"
+bk clone $Q project extra-gone-no-commit
+cd extra-gone-no-commit
+bk prs -r+ -hnd:ROOTKEY: bar > extra
+bk gone $Q - < extra
+bk _rm SCCS/s.bar
+bk commit $Q -ygone
+bk csetprune $Q --no-commit -G../project/newgone -k1234567890abcdef 
+# note: Gone file is pending with --no-commit
+bk -gpr > GOT
+echo BitKeeper/etc/gone > WANT
+cmpfiles WANT GOT
+bk changes -qLR ../first > OUT
+test -s OUT && fail -f OUT
+echo OK
