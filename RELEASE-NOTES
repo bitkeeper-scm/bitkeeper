@@ -1,7 +1,72 @@
 ============================================================================
-Release notes for BitKeeper version 5.4.1 (released XXX)
+Release notes for BitKeeper version 5.4.1 (released Feb 17, 2012)
 
-Interface changes
+GUI changes:
+
+  bk revtool
+    Add rev.showRevs to control how many revisions to show when
+    running revtool on a regular file (default 250).
+
+    Add rev.showCsetRevs to control how many ChangeSet revisions
+    when running revtool on a repository (default 50).
+
+    Both of the above deprecate the rev.showHistory.  Users of
+    of rev.showHistory will see a warning.
+
+Non-GUI changes:
+
+  All commands - logging
+    BK keeps two log files in each repository (in BitKeeper/log),
+    cmd_log and repo_log.
+
+    The cmd_log will automatically rotate (rename to cmd_log.old)
+    after it reaches 5MB (the previous threshold was 1MB).
+
+    The repo_log will rotate after 100MB (previously, this file was
+    allowed to grow without bound.
+
+    Additionally, the BK daemon can log to a file via the -l option.
+    This file will also be rotated after it reaches 100MB (previously,
+    it was unbounded).
+
+  bk lease show
+    Changes to lease output to clarify the difference between
+    license term and lease terms.
+
+  bk port
+    Interface change, see "Interface changes" below for details.
+
+  Windows only:
+    Rebased msys DLL.  Some Windows users see messages like:
+
+      0 [main] us 0 init_cheap: VirtualAlloc pointer is null, Win32 error 487
+      AllocationBase 0x0, BaseAddress 0x71110000, RegionSize 0x10000, State 0x10000
+      C:\//\sh.exe: *** Couldn't reserve space for cygwin's heap, Win32 error 0
+
+    or simply "Unexpected error" during a BK install.  This release
+    should work better.
+
+    The technical detail is that the base address for the msys DLL has
+    been changed to 0x60800000.
+
+Documentation changes:
+
+  triggers
+    Update triggers man page showing valid values for BK_EVENT.
+
+Interface changes:
+
+  bk check - MONOTONIC files
+    Check will now warn about the presence of files marked with the
+    MONOTONIC flag (that are not the gone file).  Support for these
+    files is being deprecated.  It is expected that this change will
+    have zero impact on the user community but if you are affected,
+    you can add "monotonic:allow" to your BK configuration.
+
+  bk csetprune -G<file>
+    Use csetprune -G<file> to get initial gone file with contents.
+    Before, if BitKeeper/etc/gone was in the list to prune, an empty
+    gone file would be created.
 
   bk port -C
     Bring bk port into line with other interfaces (alias, attach, etc)
@@ -11,6 +76,78 @@ Interface changes
     We do not make a habit of changing interfaces in minor releases, that
     is a no-no.  port is new enough that it is very unlikely that there
     are scripts built up around it.  Let us know if we are mistaken.
+
+Bugfixes:
+
+  bk bam check
+    - fix a gone-and-replaced BAM file from being listed twice.
+
+  bk check
+    - remove the checked flag if check fails (this flag is what is
+      used by the partial_check logic, see bk help config-etc for
+      details)
+
+  bk citool
+    - bug with toggling new files.
+    - bug in which citool was not correctly showing
+      the summary when clicking the Checkin button.
+
+  bk clone
+    - bug where bk-5.4 would not be able to clone from some older
+      version bkd's.
+    - bug where a repository could not be cloned from a Windows server
+      if it contained a file named CHANGESET anywhere.
+
+  bk clone -@BASE REPO
+    - fixed so that the cloned repository will have the correct level
+      when the levels of the -@BASE repository and the REPO repository
+      are different.
+    - fix a different bug where the clone would fail if the pull from
+      REPO into the cloned BASE was unsafe (see 'bk help pull': the
+      --safe and --unsafe option).
+
+  bk delta
+    - fix obscure issue in which a delta to a monotonic file that had
+      had stripdel applied to it could cause check failures (and thus
+      pull failures)
+
+  bk difftool
+    - fixes to how difftool calls out to revtool.
+
+  bk fm3tool
+    - (Mac only) fix so that tooltips don't cause garish flashing.
+    - fix so that alternately selecting lines (alt-click) and blocks
+      don't result in duplicated lines in the merge
+    - bind 'e' to enter edit mode in the merge window (same as
+      clicking)
+    - improved copy-n-paste handling
+
+  bk fmtool
+    - fix to allow editing in the merge pane (erroneously disabled
+      in 5.4)
+
+  bk port
+    - subtle fix to the ChangeSet metadata when porting from a product
+      to a standalone repository
+
+  bk pull
+    - fix the automatic populating of components.
+    - block a pull that would cause a component cset to be a part of more
+      than one product cset.
+
+  bk pull/push/resolve
+    - disallow bk -@repo pull/push/resolve.  Previously BK would get
+      part of the work done, fall over and leave repositories locked.
+
+  bk rclone
+    - fix problems with nested clones to remote servers.
+    - add -j support
+    - change I/O handling so that error messages are correctly passed
+      back to the user
+
+  bk revtool
+    - bug involving launching csettool from revtool where the revtool
+      was started outside of a repository.
 
 ============================================================================
 Release notes for BitKeeper version 5.4 (released 11-November-2011)

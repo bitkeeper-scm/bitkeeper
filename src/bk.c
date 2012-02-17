@@ -992,7 +992,7 @@ cmdlog_start(char **av, int bkd_cmd)
 		free(quoted);
 	}
 
-	write_log("cmd_log", 0, "%s", cmdlog_buffer);
+	write_log("cmd_log", "%s", cmdlog_buffer);
 	indent_level++;
 
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
@@ -1230,7 +1230,7 @@ cmdlog_addnote(char *key, char *val)
 }
 
 int
-write_log(char *file, int rotate, char *format, ...)
+write_log(char *file, char *format, ...)
 {
 	FILE	*f;
 	char	*root;
@@ -1262,8 +1262,8 @@ write_log(char *file, int rotate, char *format, ...)
 	vfprintf(f, nformat, ap);
 	va_end(ap);
 	fclose(f);
-	unless (rotate) return (0);
-	log_rotate(path);
+	/* only rotate logs on command boundaries */
+	if (indent_level == 0) log_rotate(path);
 	return (0);
 }
 
@@ -1322,15 +1322,14 @@ cmdlog_end(int ret, int bkd_cmd)
 	assert(len < savelen);
 	mdbm_close(notes);
 	notes = 0;
-	/* only rotate logs on command boundries */
-	write_log("cmd_log", (indent_level == 0), "%s", log);
+	write_log("cmd_log", "%s", log);
 	if (cmdlog_repolog) {
 		/*
 		 * commands in the repolog table above get written
 		 * to the repo_log in addition to the cmd_log and
 		 * the repo_log is never rotated.
 		 */
-		write_log("repo_log", 0, "%s", log);
+		write_log("repo_log", "%s", log);
 	}
 	free(log);
 	if ((!bkd_cmd || (bkd_cmd && ret )) &&
@@ -1565,12 +1564,14 @@ void
 log_rotate(char *path)
 {
 	struct stat	sb;
+	int		size = 100*1024*1024;
 	char		old[MAXPATH];
 
 	if (stat(path, &sb)) return;
 
 	if (sb.st_mode != 0666) chmod(path, 0666);
-	if (sb.st_size > (100*1024*1024)) {
+	if (streq(basenm(path), "cmd_log")) size = 5*1024*1024;
+	if (sb.st_size > size) {
 		sprintf(old, "%s.old", path);
 		rename(path, old);
 	}
