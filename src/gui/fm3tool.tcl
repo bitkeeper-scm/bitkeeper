@@ -337,6 +337,7 @@ proc createDiffWidgets {w} \
 		-font $gc($app.fixedFont) \
 		-insertwidth 0 \
 		-highlightthickness 0 \
+		-exportselection 1 \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    text .diffs.right \
@@ -349,6 +350,7 @@ proc createDiffWidgets {w} \
 		-font $gc($app.fixedFont)  \
 		-insertwidth 0 \
 		-highlightthickness 0 \
+		-exportselection 1 \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    ttk::scrollbar .diffs.xscroll -orient horizontal -command xscroll
@@ -551,7 +553,9 @@ adding a shift with the click will
 replace whatever has been done so far,
 no shift means add at the bottom.
 \"$gc($app.undo)\" will undo the last click.
-To hand edit, click the merge window.
+To hand edit, type \"e\".
+While in edit mode, you may cut and paste
+from either the left or the right window.
 
 \"$gc($app.prevDiff)\" / \"$gc($app.nextDiff)\" for the previous/next diff,
 \"$gc($app.prevConflict)\" / \"$gc($app.nextConflict)\" for the prev/next conflict,
@@ -1422,7 +1426,7 @@ proc widgets {} \
     		-font $gc(fm3.buttonFont) 
 	    if {$gc(aqua)} {$m configure -tearoff 0}
 		$m add command \
-		    -label "Edit merge window" -command { edit_merge 1 1 }
+		    -label "Edit merge window" -command { edit_merge }
 		$m add command -state disabled \
 		    -label "Undo" -command undo \
 		    -accelerator $gc($app.undo)
@@ -1456,7 +1460,8 @@ proc widgets {} \
 		-wrap none -font $gc($app.fixedFont) \
 		-xscrollcommand { .merge.xscroll set } \
 		-yscrollcommand { .merge.yscroll set } \
-		-borderwidth 0 -undo 1 -highlightthickness 0
+		-borderwidth 0 -undo 1 -highlightthickness 0 \
+		-exportselection 0
 	    ttk::scrollbar .merge.xscroll -orient horizontal \
 		-command { .merge.t xview }
 	    ttk::scrollbar .merge.yscroll -orient vertical \
@@ -1569,16 +1574,14 @@ proc widgets {} \
 	raise .diffs
 
 	if {[string is true $gc(fm3.showEscapeButton)]} {
-		label .merge.escape \
+		label .merge.escape -padx 0 -pady 2 -relief flat -borderwidth 0
+		label .merge.escape.label \
 		    -background $gc(fm3.escapeButtonBG) \
 		    -foreground $gc(fm3.escapeButtonFG) \
-		    -borderwidth 1 \
-		    -relief raised \
 		    -text "Click here or press <escape> to finish editing" \
-		    -padx 4 -pady 4
-		bind .merge.escape <1> edit_done
+		    -padx 0 -pady 2 -relief flat -borderwidth 0
+		bind .merge.escape.label <1> edit_done
 		grid .merge.escape -row 0 -column 0 -columnspan 4 -sticky ew
-		grid remove .merge.escape
 	}
 
 	grid rowconfigure    . .panes -weight 1
@@ -1617,6 +1620,7 @@ proc widgets {} \
 	if {$gc(aqua)} { set rc 2 }
 	foreach w {.diffs.left .diffs.right} {
 		dobind $w <ButtonPress-1> {buttonPress1 %W}
+		dobind $w <B1-Motion> {buttonMotion1 %W}
 		dobind $w <ButtonRelease-1> {click %W 1 0; break}
 		dobind $w <ButtonRelease-$rc> {click %W 0 0; break}
 		dobind $w <Shift-ButtonRelease-1> {click %W 1 1; break}
@@ -1625,13 +1629,15 @@ proc widgets {} \
 			dobind $w <Command-1> {click %W 0 0; break}
 			bind $w <Shift-Command-1> {click %W 0 1; break}
 		}
+		bind $w <<Paste>> {fm3tool_textPaste %W}
+		bind $w <<PasteSelection>> {fm3tool_textPaste %W}
 		bindtags $w [list $w ReadonlyText . all]
 	}
 	foreach w {.merge.menu.t .prs.left .prs.right} {
 		bindtags $w [list ReadonlyText]
 	}
 	bind .merge.t <Button-1> { edit_merge %x %y }
-	bind .merge.t <Control-Escape> {catch {grid remove .merge.escape}}
+	bind .merge.t <Control-Escape> {catch {pack forget .merge.escape.label}}
 	bindtags .merge.t [list .merge.t all]
 
 	$search(widget) tag configure search \
@@ -1725,9 +1731,14 @@ proc keyboard_bindings {} \
 	}
 	dobind .	<u>				{ undo }
 	dobind .	<period>			{ dot; break }
+	dobind .	<e>				{ edit_merge }
+	bind . <Control-y> { if {!$gc(inMergeMode)} { break } }
+	bind . <Control-z> { if {!$gc(inMergeMode)} { break } }
 	if {$gc(aqua)} {
 		bind all <Command-q> exit
 		bind all <Command-w> exit
+		bind . <Command-z> { if {!$gc(inMergeMode)} { break } }
+		bind . <Command-y> { if {!$gc(inMergeMode)} { break } }
 	}
 
 	bind all <Escape> { edit_done }
@@ -1739,14 +1750,14 @@ proc keyboard_bindings {} \
 	dobind . <$gc(fm3.toggleGCA)> [list toggleGCA 1]
 }
 
-proc edit_merge {x y} \
+proc edit_merge {{x -1} {y -1}} \
 {
-	global gc
+	global gc lastDiff
 
 	if {$gc(inMergeMode)} { return }
 	set gc(inMergeMode) 1
 
-	catch {grid .merge.escape}
+	catch {pack .merge.escape.label -expand 1 -fill both}
 
 	updateButtons "edit"
 	set msg [string trim "
@@ -1771,9 +1782,17 @@ Useful keyboard shortcuts:
 	    -text "Edit Mode" \
 	    -background $gc(fm3.buttonColor)
 
-	focus .merge.t
-	bindtags .merge.t [list .merge.t Text all]
-	.merge.t mark set insert [.merge.t index @$x,$y]
+	set w .merge.t
+	bindtags $w [list $w Text all]
+	if {$x != -1 && $y != -1} {
+		tk::TextButton1 $w $x $y
+	} else {
+		focus -force $w
+	}
+	if {[diffIsUnmerged $lastDiff]} {
+		$w tag add sel d$lastDiff e$lastDiff
+		$w mark set insert "e$lastDiff -1c"
+	}
 	edit_save
 }
 
@@ -1787,8 +1806,11 @@ proc edit_done {} \
 	set gc(inMergeMode) 0
 
 	saveView .merge.t
-	catch {grid remove .merge.escape}
+	catch {pack forget .merge.escape.label}
 	bindtags .merge.t [list .merge.t all]
+
+	.diffs.left  tag remove sel 1.0 end
+	.diffs.right tag remove sel 1.0 end
 
 	# This code handles it as long as the changes are inside a merge
 	if {[.merge.t compare d$lastDiff != "d$lastDiff linestart"]} {
@@ -2288,7 +2310,15 @@ proc undo {} \
 	status
 }
 
-proc change {lines replace orig pipe {move 1}} \
+proc diffIsUnmerged {diff} \
+{
+	global	UNMERGED
+
+	set buf [.merge.t get "d$diff" "e$diff"]
+	return [expr {$buf eq $UNMERGED}]
+}
+
+proc change {lines replace orig pipe {move 1} {newline 1}} \
 {
 	global	lastDiff diffCount UNMERGED conf_todo restore undo annotate
 	global gc app nowrite
@@ -2322,16 +2352,22 @@ proc change {lines replace orig pipe {move 1}} \
 		set a [string first "|" [lindex $lines 0]]
 		incr a 2
 	}
-	foreach line $lines {
-		set l [string range $line $a end]
-		if {$orig} {
-			.merge.t insert $e "$l\n" next
-			.merge.hi insert $e "  \n" auto
-		} else {
-			.merge.t insert $e "$l\n" handline
-			.merge.hi insert $e ">>\n" hand
+
+	if {$newline} {
+		foreach line $lines {
+			set l [string range $line $a end]
+			if {$orig} {
+				.merge.t insert $e "$l\n" next
+				.merge.hi insert $e "  \n" auto
+			} else {
+				.merge.t insert $e "$l\n" handline
+				.merge.hi insert $e ">>\n" hand
+			}
 		}
+	} else {
+		.merge.t insert $e [lindex $lines 0] handline
 	}
+
 	foreach t {.merge.hi .merge.t} {
 		$t mark gravity $e left
 		catch { $t mark gravity $nextd left }
@@ -2345,21 +2381,24 @@ proc change {lines replace orig pipe {move 1}} \
 		.merge.menu.l configure -background $gc($app.conflictBG)
 	}
 	edit_save
+	return [.merge.t index $e]
 }
 
 proc buttonPress1 {w} \
 {
-	set ::selection [$w tag ranges sel]
+	global	gc
+	if {!$gc(inMergeMode)} { return -code break }
+}
+
+proc buttonMotion1 {w} \
+{
+	global	gc
+	if {!$gc(inMergeMode)} { return -code break }
 }
 
 proc click {win block replace} \
 {
 	global	lastDiff lastHunk annotate click undo conflicts
-
-	if {[llength $::selection] || [llength [$win tag ranges sel]]} {
-		set ::selection [$win tag ranges sel]
-		return
-	}
 
 	set here [$win index current]
 	if {"hand" in [$win tag names $here]} { return }
@@ -2385,7 +2424,8 @@ proc click {win block replace} \
 		$win tag add hand "$here linestart" "$here lineend + 1 chars"
 		set buf [$win get "$here linestart + 2 chars" "$here lineend"]
 		set lines [list "$buf"]
-		change $lines $replace 0 $annotate
+		set e [change $lines $replace 0 $annotate]
+		.merge.t mark set insert $e
 		return
 	}
 
@@ -2429,7 +2469,8 @@ proc click {win block replace} \
 	$win tag add hand $first $last
 	set click("u$undo") $first
 	set click("U$undo") $last
-	change $lines $replace 0 $annotate
+	set e [change $lines $replace 0 $annotate]
+	.merge.t mark set insert $e
 	scrollToNextHunk $win
 }
 
@@ -2445,6 +2486,14 @@ proc getTextSelection {w} \
 			$w tag configure diff-junk-$tag -elide 1
 		}
 		set data [$w get -displaychars -- sel.first sel.last]
+
+		## Look to see if they selected the entire line but didn't
+		## grab the trailing newline.  If so, we'll add the newline.
+		if {[$w index sel.first] eq [$w index "sel.first linestart"]
+		    && [$w index sel.last] eq [$w index "sel.last lineend"]} {
+			append data \n
+		}
+
 		$w tag configure diff-junk -elide 0
 		foreach tag {diff gca space un} {
 			$w tag configure diff-junk-$tag -elide 0
@@ -2460,6 +2509,30 @@ proc fm3tool_textCopy {w} \
 	## Set it in the clipboard.
 	clipboard clear  -displayof $w
 	clipboard append -displayof $w $data
+}
+
+proc fm3tool_textPaste {w} \
+{
+	global	gc undo
+
+	if {$gc(inMergeMode) && ($w in ".diffs.left .diffs.right")} {
+		set lines [split [getTextSelection $w] \n]
+		incr undo
+
+		set replace 0
+		set orig 0
+		set pipe 0
+		set move 1
+		set newline 0
+		if {[lindex $lines end] eq ""} {
+			## Extra newline.
+			set lines [lreplace $lines end end]
+			set newline 1
+		}
+		change $lines $replace $orig $pipe $move $newline
+	}
+
+	return -code break
 }
 
 proc dobind {tag event body} {
@@ -2534,7 +2607,7 @@ proc test_isNotInMerge {string} \
 
 proc test_exitMerge {} \
 {
-	test_buttonClick 1 .merge.escape
+	test_buttonClick 1 .merge.escape.label
 }
 
 proc fm3tool {} \

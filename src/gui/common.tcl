@@ -990,6 +990,51 @@ proc configureTextWidgets {} \
 }
 configureTextWidgets
 
+## This is actually overriding a core Tk proc that is called whenever
+## the X11 paste selection code is called.  Where that code moves the
+## insertion cursor before pasting, we just want to paste where the
+## insert cursor already is.
+proc ::tk::TextPasteSelection {w x y} \
+{
+    if {![catch {::tk::GetSelection $w PRIMARY} sel]} {
+	    set oldSeparator [$w cget -autoseparators]
+	    if {$oldSeparator} {
+		    $w configure -autoseparators 0
+		    $w edit separator
+	    }
+	    $w insert insert $sel
+	    if {$oldSeparator} {
+		    $w edit separator
+		    $w configure -autoseparators 1
+	    }
+    }
+    if {[$w cget -state] eq "normal"} {
+	    focus $w
+    }
+}
+
+## Override another Tk core proc.  Tk seems to think that on X11 we should
+## not delete any current selection when pasting.  The more modern behavior
+## is to always replace any current selection with the clipboard contents.
+proc ::tk_textPaste {w} \
+{
+	global tcl_platform
+	if {![catch {::tk::GetSelection $w CLIPBOARD} sel]} {
+		set oldSeparator [$w cget -autoseparators]
+		if {$oldSeparator} {
+			$w configure -autoseparators 0
+			$w edit separator
+		}
+		catch { $w delete sel.first sel.last }
+		$w insert insert $sel
+		if {$oldSeparator} {
+			$w edit separator
+			$w configure -autoseparators 1
+		}
+	}
+}
+
+
 #lang L
 string[]
 highlightLine(string l, string r, int lline, int rline)
