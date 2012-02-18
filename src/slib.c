@@ -13662,14 +13662,19 @@ out:
 			OUT;
 		}
 		for (e = d, d = 0; e; --e) {
-			if (TAG(e) || DANGLING(s, e)) continue;
+			if (TAG(s, e) || DANGLING(s, e)) continue;
 			unless (d) d = e;
 			/* uncolor if poly dangling */
-			if ((p = PARENT(s, e)) && DANGLING(s, p)) FLAGS(s, p) &= ~D_DANGLING;
-			if ((p = MERGE(s, e)) && DANGLING(s, p)) FLAGS(s, p) &= ~D_DANGLING;
+			if ((p = PARENT(s, e)) && DANGLING(s, p)) {
+				FLAGS(s, p) &= ~D_DANGLING;
+			}
+			if ((p = MERGE(s, e)) && DANGLING(s, p)) {
+				FLAGS(s, p) &= ~D_DANGLING;
+			}
 		}
 		assert(d > TREE(s));
-		strcpy(pf.oldrev, REV(s, d));
+		free(pf.oldrev);
+		pf.oldrev = strdup(REV(s, d));
 	}
 
 	if (pf.mRev || pf.xLst || pf.iLst) flags |= DELTA_FORCE;
