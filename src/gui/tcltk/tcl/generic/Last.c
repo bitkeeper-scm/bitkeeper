@@ -66,6 +66,17 @@ ast_mkFnDecl(VarDecl *decl, Block *body, YYLTYPE beg, YYLTYPE end)
 	memset(fndecl, 0, sizeof(FnDecl));
 	fndecl->body = body;
 	fndecl->decl = decl;
+	/*
+	 * Propagate tracing attributes from L->options, which come
+	 * from cmd-line options or #pragmas.  Any attributes
+	 * specified in the function declaration end up overwriting
+	 * these.
+	 */
+	fndecl->attrs = Tcl_NewDictObj();
+	hash_put(fndecl->attrs, "fntrace", hash_get(L->options, "fntrace"));
+	hash_put(fndecl->attrs, "fnhook", hash_get(L->options, "fnhook"));
+	hash_put(fndecl->attrs, "trace_depth",
+		 hash_get(L->options, "trace_depth"));
 	ast_init(fndecl, L_NODE_FUNCTION_DECL, beg, end);
 	return (fndecl);
 }
@@ -268,17 +279,6 @@ ast_mkId(char *name, YYLTYPE beg, YYLTYPE end)
 	Expr *e = ast_mkExpr(L_EXPR_ID, L_OP_NONE, NULL, NULL, NULL, beg, end);
 	e->str = ckstrdup(name);
 	return (e);
-}
-
-Pragma *
-ast_mkPragma(char *id, char *val, YYLTYPE beg, YYLTYPE end)
-{
-	Pragma	*pragma = (Pragma *)ckalloc(sizeof(Pragma));
-	memset(pragma, 0, sizeof(Pragma));
-	pragma->id  = id;
-	pragma->val = val;
-	ast_init(pragma, L_NODE_PRAGMA, beg, end);
-	return (pragma);
 }
 
 private Type *

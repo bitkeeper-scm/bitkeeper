@@ -45,20 +45,49 @@ Options:
 
 =over 4
 
-=item B<-n | --norun>
+=item B<--fnhook=myhook>
+
+When function tracing is enabled, use C<myhook> as the trace hook.
+
+=item B<--fntrace=on | entry | exit | off>
+
+Enable function tracing on both function entry and exit, entry only,
+exit only, or disable tracing altogether.
+
+=item B<--norun>
 
 Compile only (do not run).  This is useful to check for compilation
 errors.
 
-=item B<-w | --nowarn>
+=item B<--nowarn>
 
 Disable compiler warnings.  This is useful when you know you have
 unused variables or other warnings that you don't want to be
 bothered with.
 
-=item B<-P | --poly>
+=item B<--poly>
 
 Treat all types as C<poly>.  This effectively disables type checking.
+
+=item B<--trace-depth=n>
+
+When function tracing is enabled, trace only to a maximum call depth of n.
+
+=item B<--trace-file=colon-separated list of glob | /regexpr/>
+
+Enable tracing of all functions in the given files, specified either
+as globs or regular expressions.  A leading + before a glob or regexp
+means to add to what is otherwise being traced and a leading - means
+to remove.
+No leading + or - means to trace exactly what is specified.
+
+=item B<--trace-funcs=colon-separated list of glob | /regexpr/>
+
+Like --trace-file but specifies functions.
+
+=item B<--trace-out=filename | host:port>
+
+Send default trace output to a file or a TCP socket.
 
 =item B<--warn-undefined-fns>
 
@@ -72,6 +101,9 @@ code is run.
 Print the L build version and immediately exit.
 
 =back
+
+Any of the command-line options also can be specified in a #pragma
+inside the program.
 
 The optional [args] is a white-space separated list of arguments that
 are passed to the script's main() function as an argument count (argc)
@@ -1820,6 +1852,15 @@ Return the maximum or minimum of two numbers.  The return type is
 float if either of the arguments is a float, otherwise the return type
 is int.
 
+=proto int milli()
+
+Return the number of milliseconds since the currently executing
+script started.
+
+=proto void milli_reset()
+
+Reset the internal state for milli() to begin counting from 0 again.
+
 =proto int mkdir(string path)
 
 Create a directory at the given path.  This creates all non-existing
@@ -2540,9 +2581,17 @@ new object to it, or else a run-time error will result.
 
 =head2 Function Tracing
 
-The entry and exit of each L function can be traced by using a pragma:
+L function tracing is controlled with #pragma statements, _attribute
+clauses in function declarations, command-line options,
+environment variables, and a run-time API.
+When a function is marked for tracing,
+by default its entry and exit are traced to stderr,
+but you can use your own custom hooks
+to do anything you want.
 
-    #pragma fntrace(on)
+A #pragma takes a comma-separated list of attribute assignments:
+
+    #pragma fntrace=on
     string myfunc(int arg)
     {
         return("return value");
@@ -2552,47 +2601,179 @@ The entry and exit of each L function can be traced by using a pragma:
         myfunc(123);
     }
 
-When the program runs, each function's entry and exit is traced to
-stderr with the parameter and return values:
+When this program runs, traces go to stderr with a millisecond
+timestamp, the function name, parameter values, and return value:
 
-    enter main
-    enter myfunc: '123'
-    exit myfunc: '123' ret 'return value'
-    exit main
+    1: enter main
+    1: enter myfunc: '123'
+    2: exit myfunc: '123' ret 'return value'
+    3: exit main
 
-To use your own tracing function, specify it in the pragma:
+The allowable tracing attributes are as follows.
 
-    #pragma fntrace(on, hook=myhook)
+=over 4
 
-Your hook-function's prototype must look like this:
+=item B<fntrace=on | entry | exit | off>
 
-    void myhook(int pre, int argc, poly argv[], poly ret)
+Enable tracing on both function entry and exit, entry only, exit only,
+or disable tracing altogether.
+
+=item B<trace_depth=n>
+
+Trace only to a maximum call depth of n.
+
+=item B<fnhook=myhook>
+
+Use myhook as the trace hook (see below).
+
+=back
+
+A #pragma stays in effect until overridden by another #pragma or by
+an _attribute clause in a function declaration which provides
+per-function tracing control:
+
+    void myfunc2(int arg) _attribute (fntrace=off)  // don't trace this one
     {
     }
 
+Tracing also can be controlled with command-line options:
+
+=over 4
+
+=item B<--fntrace = <on | entry | exit | off>>
+
+Enable tracing of all functions on both function entry and exit, entry
+only, exit only, or disable all tracing.
+This overrides any #pragma or _attribute clauses in the program.
+
+=item B<--trace-out=stdin | stderr | filename | host:port>
+
+Send default trace output to stdin, stderr, a file, or a TCP socket.
+
+=item B<--trace-files=colon-separated list of glob | /regexp/>
+
+Enable tracing of all functions in the given files, specified
+either as globs or regular expressions.
+A + before a glob or regexp enables tracing, a - disables, and no
++ or - is like having a +, except that
+the leading one is special: if omitted,
+it means trace exactly what is specified,
+overriding any #pragmas or _attribute clauses in the code,
+by first removing all traces and then processing the file list.
+
+=item B<--trace-funcs=colon-separated list of glob | /regexp/>
+
+Like trace-files but specifies functions.
+
+=item B<--fnhook=myhook>
+
+Use C<myhook> as the trace hook, overriding any #pragmas in the program.
+
+=item B<--trace-script=script.l | <L code>>
+
+Get the trace hook from a file, or use the given L code (see below).
+
+=back
+
+Some examples:
+
+    # Trace all functions
+    $ L --fntrace=on myscript.l
+
+    # Trace only foo
+    $ L --trace-funcs=foo myscript.l
+
+    # Trace foo in addition to what the source marks for tracing
+    $ L --trace-funcs=+foo myscript.l
+
+    # Trace all functions except foo
+    $ L --trace-funcs=*:-foo myscript.l
+    # This does it too
+    $ L --fntrace=on --trace-funcs=-foo myscript.l
+
+Environment variables also can control tracing and take precedence
+over the other ways above:
+
+    L_TRACE_ALL=on | entry | exit | off
+    L_TRACE_OUT=stdin | stderr | filename | host:port
+    L_TRACE_FILES=colon-separated list of glob | /regexp/
+    L_TRACE_FUNCS=colon-separated list of glob | /regexp/
+    L_TRACE_DEPTH=n
+    L_TRACE_HOOK=myhook
+    L_TRACE_SCRIPT=script.l | <L code>
+
+Things in L_TRACE_FUNCS are applied after things in L_TRACE_FILES.
+As with the command-line options, they also can begin with + or - to
+add or subtract from what is specified elsewhere.
+
+As a short-cut,
+
+    L_TRACE=stdin | stderr | filename | host:port
+
+traces all functions and sets the trace output location.
+
+More examples:
+
+    # Trace all files except foo.l
+    L_TRACE_FILE=*:-foo.l L myscript.l
+
+    # Trace main() and buggy() in addition to whatever is marked
+    # for tracing with #pragmas or _attribute clauses in the code.
+    L_TRACE_FUNCS=+main:buggy L myscript.l
+
+    # Trace *only* main() and buggy().
+    L_TRACE_FUNCS=main:buggy L myscript.l
+
+There also is a run-time API that takes a hash of named arguments
+analogous to those above:
+
+    Ltrace({ "fntrace" => "on",
+             "fnhook_out" => "myhook",
+             "trace_depth" => 3,
+             "trace_out" => "tracing.out",
+             "trace_files" => "foo.l",
+             "trace_funcs" => "+main:buggy" });
+
+To use your own tracing function, specify C<fnhook> in any of the
+above ways.
+Your hook is called on function entry and exit instead of
+the default hook.
+Its prototype must look like this:
+
+    void myhook(int pre, poly argv[], poly ret);
+
 where pre is 1 when your hook is called upon function entry and 0 when
-called upon exit, argc and argv give you the number of parameters and
-their values (argv[0] is the function name; argv[1] is the first
+called upon exit, argv contains the function's arguments
+(argv[0] is the function name; argv[1] is the first
 parameter), and ret is the return value (exit hook only; it is undef
 for entry).
 
-You turn off tracing like this:
-
-    #pragma fntrace(off)
-    void dont_want_to_trace_this(void) { ... }
-    #pragma fntrace(on)  // back on now
-
-When you say "#pragma fntrace(on)", you will get whatever hook was
-last specified, which is the default hook if none has yet been
-given (with the hook= parameter).  If you want to force the use of
-the default hook, do this:
-
-    #pragma fntrace(on, defhook)
+If you use your own hook and then want to go back to the default,
+set C<fnhook=def>.
 
 To avoid infinite recursion, during the call of a hook, further calls
-into the hook are disabled.  Also, when the currently defined hook
-function is compiled, it is not instrumented.  The L library functions
-are never instrumented.
+into the hook are disabled.  Also, functions defined as hooks, and the
+L library functions, are not traced.
+
+The trace-script attribute is a useful way to provide your own hook:
+
+    L_TRACE_SCRIPT=my-trace-hook.l  // filename must end in .l
+    L_TRACE_SCRIPT=<L code>
+
+In the latter case, the L code gets wrapped in a function like this:
+
+    void L_fn_hook(int pre, poly av[], poly ret)
+    {
+        ...code from L_TRACE_SCRIPT...
+    }
+
+and C<L_fn_hook> is used as the default trace hook.
+
+As one example of where this is useful: say you are trying to find
+whether the function C<foo> is ever called with the first argument of 123,
+and if so, to print all the arguments:
+
+    L_TRACE_FUNCS=foo L_TRACE_SCRIPT='if (av[0]==123) puts(av)' L myscript.l
 
 =head1 EXAMPLE CODE
 
