@@ -222,11 +222,10 @@ cmd_bk(int ac, char **av)
 	pid_t	pid;
 	fd_set	rfds, wfds;
 	CMD     *cmd = 0;
-	zgetbuf *zin = 0;
-	zputbuf *zout = 0;
+	FILE	*zin = 0, *fsave = 0;
+	FILE	*zout = stdout;
 	char    *line, *wnext;
 	int     wtodo = 0;
-	char    hdr[64];
 	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
 	char	wbuf[BSIZE];
 
@@ -240,11 +239,12 @@ cmd_bk(int ac, char **av)
 	if (gzip & GZ_FROMREMOTE) {
 		/* this read needs to be unbuffered below... */
 		assert(!Opts.use_stdio);
-		zin=zgets_initCustom(&zgets_hread, int2p(0));
+		fsave = fdopen(dup(0), "rb");
+		zin = fopen_zip(fsave, "rhu");
 	}
 	if (gzip & GZ_TOREMOTE) {
 		fputs("@GZIP@\n", stdout);
-		zout = zputs_init(zputs_hfwrite, stdout, -1);
+		zout = fopen_zip(stdout, "wh", -1);
 	}
 
 	/*
@@ -255,18 +255,12 @@ cmd_bk(int ac, char **av)
 		unless (av[i] &&
 		    (cmd = cmd_lookup(av[i], strlen(av[i]))) &&
 		    cmd->remote) {
-			int	j;
-			j = sprintf(buf, "ERROR-remote commands are "
+			fprintf(zout, "ERROR-remote commands are "
 			    "not enabled (cmd[%d] = %s; cmd =", i, av[i]);
 			for (i = 0; av[i]; i++) {
-				j += sprintf(&buf[j], " %s", av[i]);
+				fprintf(zout, " %s", av[i]);
 			}
-			sprintf(&buf[j], ").\n");
-err:			if (zout) {
-				zputs(zout, buf, strlen(buf));
-			} else {
-				fputs(buf, stdout);
-			}
+			fprintf(zout, ").\n");
 			goto out;
 		}
 	}
@@ -279,8 +273,8 @@ err:			if (zout) {
 	 * after review.
 	 */
 	unless (isdir(BKROOT) || (cmd && streq(cmd->name, "version"))) {
-		strcpy(buf, "ERROR-not at repository root\n");
-		goto err;
+		fprintf(zout, "ERROR-not at repository root\n");
+		goto out;
 	}
 	putenv("_BK_VIA_REMOTE=1");
 	putenv("BKD_DAEMON=");	/* allow new bkd connections */
@@ -326,18 +320,18 @@ err:			if (zout) {
 	while (zero || fd1 || fd2) {
 		if (zero && !wtodo) {
 			if (zin) {
-				line = zgets(zin);
+				line = fgetline(zin);
 			} else {
 				line = buf;
 				if (getline(0, buf, sizeof(buf)) <= 0) line = 0;
 			}
 			unless (line) {
-				strcpy(buf, "ERROR-no stdin information\n");
-				goto err;
+				fprintf(zout, "ERROR-no stdin information\n");
+				goto out;
 			}
 			unless (sscanf(line, "@STDIN=%u@", &bytes) == 1) {
-				strcpy(buf, "ERROR-bad input\n");
-				goto err;
+				fprintf(zout, "ERROR-bad input\n");
+				goto out;
 			}
 			unless (bytes) {
 				zero = 0;
@@ -347,13 +341,13 @@ err:			if (zout) {
 			}
 			assert(bytes <= sizeof(wbuf));
 			if (zin) {
-				i = zread(zin, wbuf, bytes);
+				i = fread(wbuf, 1, bytes, zin);
 			} else {
 				i = readn(0, wbuf, bytes);
 			}
 			if (i < bytes) {
-				strcpy(buf, "ERROR-input truncated\n");
-				goto err;
+				fprintf(zout, "ERROR-input truncated\n");
+				goto out;
 			}
 			wnext = wbuf;
 			wtodo = bytes;
@@ -404,16 +398,10 @@ died:			if (fd1) {
 		}
 		if (FD_ISSET(fd1, &rfds)) {
 			if ((i = read(fd1, buf, sizeof(buf))) > 0) {
-				sprintf(hdr, "@STDOUT=%u@\n", i);
-				if (zout) {
-					zputs(zout, hdr, strlen(hdr));
-					zputs(zout, buf, i);
-				} else {
-					fputs(hdr, stdout);
-					if (fwrite(buf, 1, i, stdout) != i) {
-						perror("fwrite");
-						goto died;
-					}
+				fprintf(zout, "@STDOUT=%u@\n", i);
+				if (fwrite(buf, 1, i, zout) != i) {
+					perror("fwrite");
+					goto died;
 				}
 			} else {
 				close(fd1);
@@ -422,16 +410,10 @@ died:			if (fd1) {
 		}
 		if (FD_ISSET(fd2, &rfds)) {
 			if ((i = read(fd2, buf, sizeof(buf))) > 0) {
-				sprintf(hdr, "@STDERR=%u@\n", i);
-				if (zout) {
-					zputs(zout, hdr, strlen(hdr));
-					zputs(zout, buf, i);
-				} else {
-					fputs(hdr, stdout);
-					if (fwrite(buf, 1, i, stdout) != i) {
-						perror("fwrite");
-						goto died;
-					}
+				fprintf(zout, "@STDERR=%u@\n", i);
+				if (fwrite(buf, 1, i, zout) != i) {
+					perror("fwrite");
+					goto died;
 				}
 			} else {
 				close(fd2);
@@ -448,14 +430,12 @@ died:			if (fd1) {
 	} else {
 		rc = 3;
 	}
-	sprintf(hdr, "@EXIT=%d@\n", rc);
-	if (zout) {
-		zputs(zout, hdr, strlen(hdr));
-	} else {
-		fputs(hdr, stdout);
+	fprintf(zout, "@EXIT=%d@\n", rc);
+out:	if (zin) {
+		fclose(zin);
+		fclose(fsave);
 	}
-out:	if (zin) zgets_done(zin);
-	if (zout) zputs_done(zout);
+	if (gzip & GZ_TOREMOTE) fclose(zout);
 	return (rc);
 }
 

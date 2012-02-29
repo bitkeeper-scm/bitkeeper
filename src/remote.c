@@ -116,7 +116,7 @@ remote_cmd(char **av, char *url, FILE *in, FILE *out, FILE *err,
 	char	*u = 0;
 	char	*p, *tmpf;
 	u8	*line;
-	zgetbuf	*zin = 0;
+	FILE	*zin = 0;
 	char	buf[BSIZE];	/* must match bkd_misc.c:cmd_bk()/buf */
 
 	unless (r) return (1<<2);
@@ -218,8 +218,8 @@ err:		if (err) fprintf(err, "##### %s #####\n", u);
 		goto out;
 	}
 	if (streq("@GZIP@", line)) {
-		zin = zgets_initCustom(zgets_hfread, r->rf);
-		line = zgets(zin);
+		zin = fopen_zip(r->rf, "rh");
+		line = fgetline(zin);
 		unless (line) {
 			i = 1<<6;
 			goto out;
@@ -231,7 +231,7 @@ err:		if (err) fprintf(err, "##### %s #####\n", u);
 		bytes = atoi(&line[8]);
 		assert(bytes <= sizeof(buf));
 		if (zin) {
-			i = zread(zin, buf, bytes);
+			i = fread(buf, 1, bytes, zin);
 		} else {
 			i = read_blk(r, buf, bytes);
 		}
@@ -251,7 +251,7 @@ err:		if (err) fprintf(err, "##### %s #####\n", u);
 			goto out;
 		}
 		if (zin) {
-			line = zgets(zin);
+			line = fgetline(zin);
 		} else {
 			line = fnext(buf, r->rf) ? buf : 0;
 		}
@@ -262,7 +262,7 @@ err:		if (err) fprintf(err, "##### %s #####\n", u);
 	}
 	if (strneq("ERROR-", line, 6)) goto err;
 	unless (sscanf(line, "@EXIT=%d@", &i)) i = 1<<5;
-out:	if (zin) zgets_done(zin);
+out:	if (zin) fclose(zin);
 	wait_eof(r, 0);
 	disconnect(r);
 	return (i);
@@ -271,34 +271,18 @@ out:	if (zin) zgets_done(zin);
 private void
 rgzip(FILE *fin, FILE *fout, int opts)
 {
-	int	i, fd = 0;
-	zputbuf	*zout = 0;
-	char	line[64];
+	int	i;
 	char	buf[BSIZE];
 
 	if (opts & REMOTE_GZ_SND) {
-		zout = zputs_init(zputs_hfwrite, fout, -1);
-	} else {
-		fflush(fout);
-		fd = fileno(fout);
+		fout = fopen_zip(fout, "wh", -1);
 	}
 	if (fin) {
 		while ((i = fread(buf, 1, sizeof(buf), fin)) > 0) {
-			sprintf(line, "@STDIN=%u@\n", i);
-			if (zout) {
-				zputs(zout, line, strlen(line));
-				zputs(zout, buf, i);
-			} else {
-				writen(fd, line, strlen(line));
-				writen(fd, buf, i);
-			}
+			fprintf(fout, "@STDIN=%u@\n", i);
+			fwrite(buf, 1, i, fout);
 		}
 	}
-	sprintf(line, "@STDIN=0@\n");
-	if (zout) {
-		zputs(zout, line, strlen(line));
-	} else {
-		writen(fd, line, strlen(line));
-	}
-	if (zout) zputs_done(zout);
+	fprintf(fout, "@STDIN=0@\n");
+	if (opts & REMOTE_GZ_SND) fclose(fout);
 }

@@ -53,19 +53,16 @@ gzip_main(int ac, char **av)
 	return (rc);
 }
 
-private	int	incnt, outcnt;
-
 int
 gzipAll2fh(int rfd, FILE *wf, int level, int *in, int *out, int verbose)
 {
 	int	n;
-	zputbuf	*zout;
+	FILE	*zout;
 	ticker	*tick = 0;
 	char	buf[8<<10];
 
 	setmode(rfd, _O_BINARY);
-	incnt = outcnt = 0;
-	zout = zputs_init(zputs_hfwrite, wf, level);
+	zout = fopen_zip(wf, "wh#", level, in, out);
 	if (getenv("BK_NOTTY")) verbose = 0;
 	/*
 	 * must use readn() here, needed for consistant block sizes so
@@ -74,15 +71,11 @@ gzipAll2fh(int rfd, FILE *wf, int level, int *in, int *out, int verbose)
 	// XXX verbose is never set
 	if (verbose) tick = progress_start(PROGRESS_SPIN, 0);
 	while ((n = readn(rfd, buf, sizeof(buf))) > 0) {
-		incnt += n;
-		zputs(zout, buf, n);
+		fwrite(buf, 1, n, zout);
 		if (tick) progress(tick, 0);
-
 	}
 	if (tick) progress_done(tick, 0);
-	if (zputs_done(zout)) return (-1);
-	if (in) *in = incnt;
-	if (out) *out = outcnt;
+	if (fclose(zout)) return (-1);
 	return (0);
 }
 
@@ -91,7 +84,7 @@ gunzipAll2fh(int rfd, FILE *wf, int *in, int *out)
 {
 	int	i, fd;
 	int	moved = 0, offset = 0;
-	zgetbuf	*zin;
+	FILE	*zin, *f;
 	char	buf[8<<10];
 
 	if (getenv("BK_REGRESSION")) {
@@ -100,138 +93,22 @@ gunzipAll2fh(int rfd, FILE *wf, int *in, int *out)
 		if (p) offset = atoi(p);
 	}
 	setmode(rfd, _O_BINARY);
+	f = fdopen(dup(rfd), "rb");
 	fflush(wf);
 	fd = fileno(wf);
-	incnt = outcnt = 0;
 	if (in) *in = 0;
 	if (out) *out = 0;
-	zin = zgets_initCustom(zgets_hread, int2p(rfd));
-	while ((i = zread(zin, buf, sizeof(buf))) > 0) {
+	zin = fopen_zip(f, "rhu#", in, out);
+	while ((i = fread(buf, 1, sizeof(buf), zin)) > 0) {
 		moved += i;
 		if (offset && (moved >= offset)) exit(1);
 		if (writen(fd, buf, i) != i) {
-			zgets_done(zin);
+			fclose(zin);
+			fclose(f);
 			return (1);
 		}
-		outcnt += i;
 	}
-	if (zgets_done(zin)) return (1);
-	if (in) *in = incnt;
-	if (out) *out = outcnt;
-	return (0);
+	i = fclose(zin);
+	fclose(f);
+	return (i ? 1 : 0);
 }
-
-
-/*
- * callback used by zgets to read data from a stream.
- * Handles the 2-byte length markers.
- * This code uses unbuffer read()'s and should be avoided if possible.
- */
-int
-zgets_hread(void *token, u8 **buf)
-{
-	int	fd = p2int(token);
-	int	i;
-	u16	hlen;
-	static	char *data = 0;
-	static	int	len = -1;
-
-	if (len == -1) {
-		if (readn(fd, (void *)&hlen, 2) != 2) return (-1);
-		incnt += 2;
-		len = ntohs(hlen);
-	}
-	assert(len <= BSIZE-2);
-	if (buf) {
-		unless (data) data = malloc(BSIZE);
-		*buf = data;
-		unless (len) return (0);
-		i = readn(fd, data, len + 2);
-		if (i != len+2) {
-			perror("unexpected data");
-			return (0); /* force EOF */
-		}
-		incnt += i;
-		memcpy(&hlen, data + len, 2);
-		len = ntohs(hlen);
-		return (i-2);
-	} else {
-		/* called from zgets_done */
-
-		/*
-		 * if len != 0, then we didn't see a valid trailer at the end
-		 * of the stream.
-		 */
-		i = (len != 0) ? -1 : 0;
-		if (data) {
-			free(data);
-			data = 0;
-			len = -1;
-		}
-		return (i);
-	}
-}
-
-/*
- * callback used by zgets to read data from a file. Expects 2-byte
- * length markers before each block of data.
- */
-int
-zgets_hfread(void *token, u8 **buf)
-{
-	FILE	*f = token;
-	u16	hlen;
-	int	len, i;
-	static	char *data = 0;
-
-	if (fread((char *) &hlen, 1, sizeof(hlen), f) != sizeof(hlen)) {
-		fprintf(stderr, "BAD gzip hdr\n");
-		len = 0;
-	} else {
-		len = ntohs(hlen);
-	}
-	assert(len <= BSIZE-2);	/* match zgets_hread */
-	if (buf) {
-		unless (data) data = malloc(BSIZE);
-		*buf = data;
-		i = fread(data, 1, len, f);
-		if (i != len) {
-			perror("short read");
-			return (0);	/* force eof */
-		}
-		return (i);
-	} else {
-		/* called from zgets_done */
-
-		/*
-		 * if len != 0, then we didn't see a valid trailer at the end
-		 * of the stream.
-		 */
-		i = (len != 0) ? -1 : 0;
-		if (data) {
-			free(data);
-			data = 0;
-		}
-		return (i);
-	}
-}
-
-/*
- * A callback to be used with zputs that writes blocks of data
- * proceeded by 2-byte length markers.
- */
-int
-zputs_hfwrite(void *token, u8 *data, int len)
-{
-	FILE	*f = token;
-	u16	hlen;
-
-	assert(len <= 4096);	/* legal for <= bk-4.1 */
-	hlen = htons(len);
-	fwrite(&hlen, 2, 1, f);
-	if (len) fwrite(data, 1, len, f);
-	if (ferror(f)) return (-1);
-	outcnt += len + 2;
-	return (0);
-}
-

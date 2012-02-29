@@ -10,6 +10,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	efopen.o \
 	fchksum.o \
 	fgzip.o \
+	fopen_zip.o \
 	fileops.o \
 	fileutils.o findpid.o fmem.o fullname.o fileinfo.o \
 	getnull.o getopt.o glob.o \
@@ -18,6 +19,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	milli.o \
 	mmap.o \
 	putenv.o \
+	readn.o \
 	realbasename.o relpath.o rlimit.o rmrepo.o rmtree.o \
 	samepath.o sig.o smartrename.o \
 	spawn.o spawnvpio.o spawn_filterpipeline.o \
@@ -26,8 +28,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	testcode.o trace.o tty.o ttyprintf.o \
 	utils.o \
 	webencode.o \
-	which.o \
-	zgets.o)
+	which.o)
 
 UTILS_HDRS = lines.h mmap.h style.h system.h unix.h win32.h
 

@@ -678,7 +678,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 private push_rc
 push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 {
-	zgetbuf	*zin;
+	FILE	*zin;
 	FILE	*f = 0;
 	char	*line, *p;
 	u32	bytes;
@@ -747,19 +747,19 @@ push_part2(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 			    "push failed: recieved BAM keys when not expected\n");
 			return(PUSH_ERROR);
 		}
-		zin = zgets_initCustom(zgets_hfread, r->rf);
+		zin = fopen_zip(r->rf, "rh");
 		f = fopen(bp_keys, "w");
-		while ((line = zgets(zin)) && strneq(line, "@STDIN=", 7)) {
+		while ((line = fgetline(zin)) && strneq(line, "@STDIN=", 7)) {
 			bytes = atoi(line+7);
 			unless (bytes) break;
 			while (bytes > 0) {
 				i = min(bytes, sizeof(buf));
-				i = zread(zin, buf, i);
+				i = fread(buf, 1, i, zin);
 				fwrite(buf, 1, i, f);
 				bytes -= i;
 			}
 		}
-		if (zgets_done(zin)) {
+		if (fclose(zin)) {
 			return (PUSH_ERROR);
 		}
 		getline2(r, buf, sizeof(buf));

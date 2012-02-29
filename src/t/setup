@@ -68,7 +68,7 @@ _commercial_config() {
 		    bits.bitmover.com) BK_BIN_REGRESSIONS=yes;;
 		    ppc-285.bitmover.com) BK_BIN_REGERSSIONS=yes;;
 		    win2008.bitmover.com) BK_BIN_REGERSSIONS=yes;;
-		    *) BK_BIN_REGERSSIONS=no;;
+		    *) BK_BIN_REGRESSIONS=no;;
 		esac
 		export BK_BIN_REGRESSIONS
 	}

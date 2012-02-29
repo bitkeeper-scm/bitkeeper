@@ -157,6 +157,9 @@ char	*fmem_close(FILE *f, size_t *len);
 void	fmem_tests(void);
 int	ftrunc(FILE *f, off_t offset);
 
+/* fopen_zip.c */
+FILE	*fopen_zip(FILE *f, char *mode, ...);
+
 /* fullname.c */
 char    *fullLink(char *path, char *out, int followLink);
 #define	fullname(path, out)	fullLink(path, out, 1)
@@ -222,6 +225,9 @@ void	safe_putenv(char *fmt, ...)
 #endif
      ;
 char	*safe_getenv(char *var);
+
+/* readn.c */
+int	readn(int from, void *buf, int size);
 
 /* realbasename.c */
 char*	realBasename(const char *path, char *realname);
@@ -377,26 +383,6 @@ char	*webdecode(char *data, char **buf, int *sizep);
 
 /* which.c */
 char	*which(char *prog);
-
-/* zgets.c */
-typedef	struct zgetbuf zgetbuf;
-typedef	int (*zgets_func)(void *token, u8 **buf);
-
-zgetbuf	*zgets_init(void *start, int len);
-zgetbuf	*zgets_initCustom(zgets_func callback, void *token);
-char	*zgets(zgetbuf *);
-int	zseek(zgetbuf *, int len);
-int	zread(zgetbuf *, u8 *buf, int len);
-int	zeof(zgetbuf *);
-char	*zpeek(zgetbuf *, int len);
-int	zgets_done(zgetbuf *);
-
-typedef	struct zputbuf zputbuf;
-typedef int (*zputs_func)(void *, u8 *, int);
-
-zputbuf	*zputs_init(zputs_func callback, void *token, int level);
-int	zputs(zputbuf *, u8 *data, int len);
-int	zputs_done(zputbuf *);
 
 
 #include "fslayer/fslayer.h"

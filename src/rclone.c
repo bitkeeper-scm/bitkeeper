@@ -415,7 +415,7 @@ send_part1_msg(remote *r, char **envVar)
 private int
 rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 {
-	zgetbuf	*zin;
+	FILE	*zin;
 	FILE	*f;
 	char	*line, *p;
 	int	rc = 0, n, i;
@@ -475,20 +475,20 @@ rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 			goto done;
 		}
 		unless (r->rf) r->rf = fdopen(r->rfd, "r");
-		zin = zgets_initCustom(zgets_hfread, r->rf);
+		zin = fopen_zip(r->rf, "rh");
 		f = fopen(bp_keys, "w");
-		while ((line = zgets(zin)) &&
+		while ((line = fgetline(zin)) &&
 		    strneq(line, "@STDIN=", 7)) {
 			bytes = atoi(line+7);
 			unless (bytes) break;
 			while (bytes > 0) {
 				i = min(bytes, sizeof(buf));
-				i = zread(zin, buf, i);
+				i = fread(buf, 1, i, zin);
 				fwrite(buf, 1, i, f);
 				bytes -= i;
 			}
 		}
-		if (zgets_done(zin)) {
+		if (fclose(zin)) {
 			rc = 1;
 			goto done;
 		}

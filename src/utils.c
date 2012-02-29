@@ -111,22 +111,6 @@ writen(int to, void *buf, int size)
 }
 
 int
-readn(int from, char *buf, int size)
-{
-	int	done;
-	int	n;
-
-	for (done = 0; done < size; ) {
-		n = read(from, buf + done, size - done);
-		if (n <= 0) {
-			break;
-		}
-		done += n;
-	}
-	return (done);
-}
-
-int
 fd2file(int from, char *to)
 {
 	int	fd = creat(to, 0664);

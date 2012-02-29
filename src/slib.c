@@ -1896,17 +1896,11 @@ again:		for (x = t+1; x <= TABLE(s); x++) {
 void
 sccs_rdweaveInit(sccs *s)
 {
-	zgetbuf	*zin;
-
 	s->rdweaveEOF = 0;
 	fseek(s->fh, s->data, SEEK_SET);
 	if (GZIP(s)) {
 		s->oldfh = s->fh;
-		zin = zgets_initCustom(0, s->oldfh);
-		s->fh = funopen(zin,
-		    (int (*)(void*, char*, int))zread,
-		    0, 0,
-		    (int (*)(void*))zgets_done);
+		s->fh = fopen_zip(s->oldfh, "r");
 	}
 }
 
@@ -5641,42 +5635,19 @@ fputmeta(sccs *s, u8 *buf, FILE *out)
  * Data for zputs() to writes it's data.  We currently can only write
  * one sfile at a time.
  */
-private	zputbuf	*zput;
-
-private int
-gzip_sum(void *data, u8 *buf, int len)
-{
-	sccs	*s = ((void **)data)[0];
-	FILE	*f = ((void **)data)[1];
-	u32	sum = 0;
-	int	i;
-
-	if (len) {
-		for (i = 0; i < len; sum += buf[i++]);
-		s->cksum += (sum_t)sum;
-		fwrite(buf, 1, len, f);
-	} else {
-		free(data);
-	}
-	return (0);
-}
+private	FILE	*zput;
 
 private void
 sccs_zputs_init(sccs *s, FILE *fout)
 {
-	void	**data = malloc(2 * sizeof(void *));
-
-	data[0] = s;
-	data[1] = fout;
-	zput = zputs_init(gzip_sum, data, -1);
-	assert(zput);
+	zput = fopen_zip(fout, "wc", -1, &s->cksum);
 }
 
 private void
 sccs_zputs_done(sccs *s)
 {
 	assert(zput);
-	zputs_done(zput);
+	fclose(zput);
 	zput = 0;
 }
 
@@ -5724,7 +5695,7 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 		if (*p++ == '\n') break;
 	}
 	if (GZIP_OUT(s)) {
-		zputs(zput, buf, p - buf);
+		fwrite(buf, 1, p - buf, zput);
 	} else {
 		fwrite(buf, 1, p - buf, out);
 		s->cksum += sum;

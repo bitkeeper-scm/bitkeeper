@@ -342,17 +342,16 @@ int
 bp_sendkeys(FILE *fout, char *range, u64 *bytep, int gzip)
 {
 	FILE	*f;
+	FILE	*zout;
 	int	debug, len, space, where, ret;
 	int	rc = 0;
 	char	*cmd, *p;
-	zputbuf	*zout;
-	char	hdr[64];
 	char	line[MAXLINE];
 	char	buf[BSIZE];	/* must match remote.c:doit() buf */
 
 	debug = ((p = getenv("_BK_BAM_DEBUG")) && *p);
 	*bytep = 0;
-	zout = zputs_init(zputs_hfwrite, fout, gzip);
+	zout = fopen_zip(fout, "wh", gzip);
 	if (ret = bp_fetchData()) {
 		/*
 		 * If we have a server then we want to recurse one level up
@@ -374,9 +373,8 @@ bp_sendkeys(FILE *fout, char *range, u64 *bytep, int gzip)
 			*bytep += atoi(line+1);
 			len = strlen(p);
 			if (len > space) {
-				sprintf(hdr, "@STDIN=%u@\n", where);
-				zputs(zout, hdr, strlen(hdr));
-				zputs(zout, buf, where);
+				fprintf(zout, "@STDIN=%u@\n", where);
+				fwrite(buf, 1, where, zout);
 				space = sizeof(buf);
 				where = 0;
 			}
@@ -386,13 +384,11 @@ bp_sendkeys(FILE *fout, char *range, u64 *bytep, int gzip)
 		}
 		if (pclose(f)) rc = 1;
 		if (where) {
-			sprintf(hdr, "@STDIN=%u@\n", where);
-			zputs(zout, hdr, strlen(hdr));
-			zputs(zout, buf, where);
+			fprintf(zout, "@STDIN=%u@\n", where);
+			fwrite(buf, 1, where, zout);
 		}
 	}
-	sprintf(hdr, "@STDIN=0@\n");
-	zputs(zout, hdr, strlen(hdr));
-	if (zputs_done(zout)) rc = 1;
+	fprintf(zout, "@STDIN=0@\n");
+	if (fclose(zout)) rc = 1;
 	return (rc);
 }
