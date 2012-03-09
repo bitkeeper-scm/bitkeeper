@@ -2,14 +2,14 @@
 _getdir 10
 access 30
 chmod 11
-close 119
+close 120
 fstat 60
 link 12
 lseek 35
 lstat 201
 mkdir 15
 open 119
-read 1720
+read 1719
 rmdir 1
 stat 11
 unlink 17
