@@ -4,6 +4,7 @@
 
 #include "system.h"
 #include "purify.h"
+#include "diff.h"
 
 #define	mdbm_mem()	mdbm_open(NULL, 0, 0, GOOD_PSIZE)
 #define	EACH_KV(d)	for (kv = mdbm_first(d); \
@@ -17,6 +18,7 @@
 
 void	reserveStdFds(void);
 struct tm *localtimez(time_t *timep, long *offsetp);
+char    *tzone(long offset);
 
 #ifdef	WIN32
 #define	win32_close(s)	sccs_close(s)
@@ -1316,6 +1318,23 @@ int	crypto_symEncrypt(char *key, FILE *fin, FILE *fout);
 int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
 int	inskeys(char *image, char *keys);
 void	lockfile_cleanup(void);
+
+typedef struct diffopt {
+	char	*out_define;		/* diff -D */
+	char	*pattern;		/* pattern for diff -p */
+	u32	ignore_all_ws:1;	/* ignore all whitespace */
+	u32	ignore_ws_chg:1;	/* ignore changes in white space */
+	u32	minimal:1;		/* find minimal diffs */
+	u32	strip_trailing_cr:1;	/* remove trailing \r and \n */
+	u32	ignore_trailing_cr:1;	/* ignore trailing \r and \n (bk) */
+	u32	new_is_null:1;		/* treat non-existent files as new */
+	u32	out_unified:1;		/* print unified diffs */
+	u32	out_show_c_func:1;	/* print C function (diff -p) */
+	u32	out_rcs:1;		/* output RCS diffs */
+	u32	out_print_hunks:1;	/* just print the hunks */
+} diffopt;
+
+int	diff_files(char *file1, char *file2, diffopt *opts, diffctx **dc, FILE *out);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
 int	(*is_whitespace)(int i));

@@ -89,3 +89,28 @@ localtimez(time_t *timep, long *offsetp)
 }
 
 
+/*
+ * Return time zone in [+/-]hh:mm format
+ * We need this becuase, %Z with strftime() does not return
+ * the format we want on Windows.
+ */
+char    *
+tzone(long offset)
+{
+	static  char buf[8];
+	int     hwest, mwest;
+	char    sign = '+';
+
+	/*
+	 * What I want is to have 8 hours west of GMT to be -08:00.
+	 */
+	if (offset < 0) {
+		sign = '-';
+		offset = -offset;
+	}
+	hwest = offset / 3600;
+	mwest = (offset % 3600) / 60;
+	assert(offset - hwest * 3600 - mwest * 60 == 0);
+	sprintf(buf, "%c%02d:%02d", sign, hwest, mwest);
+	return (buf);
+}

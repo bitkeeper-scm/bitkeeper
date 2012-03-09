@@ -142,7 +142,7 @@ OBJ =	bkver.o cmd.o \
 	contrib/test.o \
 	converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	dataheap.o delta.o diffs.o diffsplit.o dspec.o \
+	dataheap.o delta.o diff.o diffs.o diffsplit.o dspec.o \
 	eula.o export.o \
 	features.o \
 	find.o findcset.o fixtool.o fsl.o fslayer.o \
@@ -158,7 +158,7 @@ OBJ =	bkver.o cmd.o \
 	localtm.o lock.o locking.o \
 	logging.o mail.o mdiff.o merge.o mklock.o \
 	mailslot.o \
-	mailsplit.o mtime.o mv.o names.o nested.o newroot.o \
+	mailsplit.o mtime.o mv.o names.o ndiff.o nested.o newroot.o \
 	opark.o \
 	parent.o park.o partition.o \
 	pending.o preference.o proj.o \
@@ -230,7 +230,7 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bam.h bkd.h bk-features.h graph.h logging.h nested.h \
+HDRS	= bam.h bkd.h bk-features.h diff.h graph.h logging.h nested.h \
 	  progress.h purify.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h proj.h redblack.h inskeys.h libc/system.h
 

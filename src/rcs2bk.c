@@ -308,7 +308,7 @@ verifyFiles(RCS *rcs, rdelta *d, char *g)
 	system(cmd);
 	free(cmd);
 
-	ret = sys("diff", "--ignore-trailing-cr", tmpfile, g, SYS);
+	ret = sys("bk", "ndiff", "--ignore-trailing-cr", tmpfile, g, SYS);
 
 	unlink(tmpfile);
 	if (exists(g)) unlink(g);	// DANGER

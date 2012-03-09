@@ -294,8 +294,8 @@ more
 mtime
 mv
 mvdir
-mydiff
 names
+ndiff
 needscheck
 _nested
 newroot pro
