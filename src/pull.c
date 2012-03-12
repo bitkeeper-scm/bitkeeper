@@ -1194,7 +1194,7 @@ pull(char **av, remote *r, char **envVar)
 	disconnect(r);
 
 	/* pull component - poly detection and fixups */
-	if (opts.mergefile) {
+	if (!rc && opts.mergefile) {
 		if (pullPoly(got_patch)) {
 			putenv("BK_STATUS=POLY");
 			got_patch = 0;	/* post triggers */
