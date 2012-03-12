@@ -1694,6 +1694,7 @@ compile_push(Expr *expr)
 	int	flags, i, idx;
 	Expr	*arg, *array;
 	Type	*base_type;
+	Tmp	*tmp;
 
 	expr->type = L_void;
 	unless (expr->b && expr->b->next) {
@@ -1707,49 +1708,72 @@ compile_push(Expr *expr)
 	ASSERT(expr->b->a);
 	array = expr->b->a;
 	arg   = expr->b->next;
-	for (i = 2; arg; arg = arg->next, ++i) {
-		compile_expr(array, L_PUSH_PTR | L_LVALUE);
-		unless (isarray(array) || ispoly(array)) {
-			L_errf(expr,
-			       "first arg to push not an array reference (&)");
-			return (0);
-		}
-		unless (array->sym) {
-			L_errf(expr, "invalid l-value in push");
-			return (0);
-		}
-		idx = array->sym->idx;  // local slot # for array
-		if (isarray(array)) {
-			base_type = array->type->base_type;
-		} else {
-			base_type = L_poly;
-		}
-		compile_expr(arg, L_PUSH_VAL);
-		/*
-		 * For each arg, we allow base_type or an array of base_type.
-		 */
-		unless (L_typeck_compat(base_type, arg->type) ||
-			L_typeck_compat(array->type, arg->type)) {
-			L_errf(expr, "arg #%d to push has type incompatible "
-			       "with array", i);
-		}
-		if (isarray(arg) || islist(arg)) {
-			flags = L_INSERT_LIST;
-		} else {
-			flags = L_INSERT_ELT;
-		}
-		if (array->flags & L_EXPR_DEEP) {
-			TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
+	compile_expr(array, L_PUSH_PTR | L_LVALUE);
+	unless (isarray(array) || ispoly(array)) {
+		L_errf(expr,
+		       "first arg to push not an array reference (&)");
+		return (0);
+	}
+	unless (array->sym) {
+		L_errf(expr, "invalid l-value in push");
+		return (0);
+	}
+	idx = array->sym->idx;  // local slot # for array
+	if (isarray(array)) {
+		base_type = array->type->base_type;
+	} else {
+		base_type = L_poly;
+	}
+	if (arg->next) {
+		/* Build up a list of the args to push. */
+		tmp = tmp_get(TMP_REUSE);
+		push_lit("");
+		emit_store_scalar(tmp->idx);
+		emit_pop();
+		for (i = 2; arg; arg = arg->next, ++i) {
+			compile_expr(arg, L_PUSH_VAL);
+			/* We allow base_type or an array of base_type. */
+			if (L_typeck_compat(base_type, arg->type)) {
+				flags = L_INSERT_ELT;
+			} else if (L_typeck_compat(array->type, arg->type)) {
+				flags = L_INSERT_LIST;
+			} else {
+				L_errf(expr, "arg #%d to push has type "
+				       "incompatible with array", i);
+			}
 			push_lit("-1");  // -1 means append
-			TclEmitInstInt4(INST_L_DEEP_WRITE, idx,
-					L->frame->envPtr);
-			TclEmitInt4(flags | L_DISCARD, L->frame->envPtr);
-		} else {
-			push_lit("-1");  // -1 means append
-			TclEmitInstInt4(INST_L_LIST_INSERT, idx,
+			TclEmitInstInt4(INST_L_LIST_INSERT, tmp->idx,
 					L->frame->envPtr);
 			TclEmitInt4(flags, L->frame->envPtr);
 		}
+		emit_load_scalar(tmp->idx);
+		tmp_free(tmp);
+		flags = L_INSERT_LIST;
+	} else {
+		compile_expr(arg, L_PUSH_VAL);
+		/* We allow base_type or an array of base_type. */
+		if (L_typeck_compat(base_type, arg->type)) {
+			flags = L_INSERT_ELT;
+		} else if (L_typeck_compat(array->type, arg->type)) {
+			flags = L_INSERT_LIST;
+		} else {
+			L_errf(expr, "arg #2 to push has type "
+			       "incompatible with array");
+		}
+	}
+	if (array->flags & L_EXPR_DEEP) {
+		// deep-ptr rval
+		TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
+		// rval deep-ptr
+		push_lit("-1");  // -1 means append
+		TclEmitInstInt4(INST_L_DEEP_WRITE, idx,
+				L->frame->envPtr);
+		TclEmitInt4(flags | L_DISCARD, L->frame->envPtr);
+	} else {
+		push_lit("-1");  // -1 means append
+		TclEmitInstInt4(INST_L_LIST_INSERT, idx,
+				L->frame->envPtr);
+		TclEmitInt4(flags, L->frame->envPtr);
 	}
 	return (0);  // stack effect
 }
