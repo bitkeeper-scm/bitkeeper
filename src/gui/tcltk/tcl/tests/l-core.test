@@ -16715,7 +16715,8 @@ test builtin-11.3 {check push built-in with multiple args} -body {
 #lang L
 void builtin_11_3()
 {
-	string	a[];
+	int	i;
+	string	a[], aa[][];
 
 	push(&a, "a");
 	unless (join("",a) eq "a") puts("bad 1.1");
@@ -16728,6 +16729,14 @@ void builtin_11_3()
 	push(&a, "d", "e", "f");
 	unless (join("",a) eq "abcdef") puts("bad 3.1");
 	unless (length(a) == 6) puts("bad 3.2");
+
+	/* Check that the first arg is evaluated exactly once. */
+	undef(a);
+	i = 0;
+	push(&aa[i++], "a", "b", "c");
+	unless ((i == 1) && eq(aa[0],{"a","b","c"})) puts("bad 4.1");
+	unless (length(aa) == 1) puts("bad 4.2");
+	if (aa[1]) puts("bad 4.3");
 }
 builtin_11_3();
 } -output {}
@@ -16736,10 +16745,11 @@ test builtin-11.4 {check push built-in with list args} -body {
 #lang L
 void builtin_11_4()
 {
-	int	a[];
+	int	a[], aa[][], aaa[][][];
 	struct {
 		int	a[];
 	} st;
+	string	sa[], saa[][];
 
 	/* Check pushing to a plain variable. */
 
@@ -16790,6 +16800,65 @@ void builtin_11_4()
 	unless (eq(st.a,{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18})) {
 		puts("bad 2.7");
 	}
+
+	/*
+	 * If you push to a type[], you can push a type or a type[],
+	 * and you can mix and match in one push.  Check that these
+	 * are done correctly.
+	 */
+
+	push(&aa, {1,1});  // should push a single element {1,1}
+	unless (length(aa) == 1) puts("bad 3.0");
+	unless (eq(aa, { {1,1} })) puts("bad 3.1");
+	push(&aa, {2,2});
+	unless (eq(aa, { {1,1}, {2,2} })) puts("bad 3.2");
+	push(&aa, { {3,3} });  // should push {3,3}
+	unless (eq(aa, { {1,1}, {2,2}, {3,3} })) puts("bad 3.3");
+	push(&aa, { {4,4},{5,5} });  // should push {4,4} and {5,5}
+	unless (eq(aa, { {1,1}, {2,2}, {3,3}, {4,4}, {5,5} })) puts("bad 3.4");
+	undef(aa);
+	push(&aa, {1,1}, {{2,2}}, {{3,3},{4,4}}, {5,5});
+	unless (eq(aa, { {1,1}, {2,2}, {3,3}, {4,4}, {5,5} })) puts("bad 3.5");
+
+	push(&aaa[0], {1,1});  // should push a single element {1,1}
+	unless (length(aaa[0]) == 1) puts("bad 3.10");
+	unless (eq(aaa[0], { {1,1} })) puts("bad 3.11");
+	push(&aaa[0], {2,2});
+	unless (eq(aaa[0], { {1,1}, {2,2} })) puts("bad 3.12");
+	push(&aaa[0], { {3,3} });  // should push {3,3}
+	unless (eq(aaa[0], { {1,1}, {2,2}, {3,3} })) puts("bad 3.13");
+	push(&aaa[0], { {4,4},{5,5} });  // should push {4,4} and {5,5}
+	unless (eq(aaa[0], { {1,1}, {2,2}, {3,3}, {4,4}, {5,5} })) {
+		puts("bad 3.14");
+	}
+	undef(aaa[0]);
+	push(&aaa[0], {1,1}, {{2,2}}, {{3,3},{4,4}}, {5,5});
+	unless (eq(aaa[0], { {1,1}, {2,2}, {3,3}, {4,4}, {5,5} })) {
+		puts("bad 3.15");
+	}
+
+	/*
+	 * Check that things are appended as list elements and not via
+	 * string concat.
+	 */
+
+	undef(sa);
+	push(&sa, "a b");
+	unless (length(sa) == 1) puts("bad 4.1");
+	unless (sa[0] == "a b") puts("bad 4.2");
+	undef(sa);
+	push(&sa, {"a b"});
+	unless (length(sa) == 1) puts("bad 4.3");
+	unless (sa[0] == "a b") puts("bad 4.4");
+
+	undef(saa[0]);
+	push(&saa[0], "a b");
+	unless (length(saa[0]) == 1) puts("bad 5.1");
+	unless (saa[0][0] == "a b") puts("bad 5.2");
+	undef(saa[0]);
+	push(&saa[0], {"a b"});
+	unless (length(saa[0]) == 1) puts("bad 5.3");
+	unless (saa[0][0] == "a b") puts("bad 5.4");
 }
 builtin_11_4();
 } -output {}
