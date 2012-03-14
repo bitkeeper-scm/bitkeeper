@@ -306,7 +306,7 @@ int	checking_rmdir(char *dir);
 #define	D_SYMLEAF	0x00000400	/* if set, I'm a symbol with no kids */
 					/* Needed for tag conflicts with 2 */
 					/* open tips, so maintained always */
-#define	D_MODE		0x00000800	/* permissions in MODE(s, d) are valid */
+//#define	D_MODE		0x00000800	/* permissions in MODE(s, d) are valid */
 #define	D_CSET		0x00001000	/* this delta is marked in cset file */
 //#define D_XFLAGS	0x00002000	/* delta has updated file flags */
 	/* D_NPARENT	0x00004000 */

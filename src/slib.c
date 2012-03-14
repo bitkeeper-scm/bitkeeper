@@ -567,14 +567,13 @@ sccs_inherit(sccs *s, ser_t d)
 	CHK_DUP(PATHNAME);
 	CHK_DUP(SORTPATH);
 
-	if ((FLAGS(s, p) & D_MODE) && !(FLAGS(s, d) & D_MODE)) {
-		FLAGS(s, d) |= D_MODE;
+	unless (MODE(s, d)) {
 		MODE_SET(s, d, MODE(s, p));
 		CHK_DUP(SYMLINK);
 	}
 #undef	CHK_DUP
 
-	unless (XFLAGS(s, d)) XFLAGS(s, d) = XFLAGS(s, PARENT(s, d));
+	unless (XFLAGS(s, d)) XFLAGS(s, d) = XFLAGS(s, p);
 
 	if (HAS_USERHOST(s, p)) {
 		assert(HAS_USERHOST(s, d));
@@ -4479,7 +4478,7 @@ sccs_init(char *name, u32 flags)
 		if (HAS_GFILE(s) && (!(t=getenv("BK_NO_TYPECHECK")) || !*t)) {
 			for (d = TABLE(s); TAG(s, d); d = sccs_prev(s, d));
 			assert(d);
-			if ((FLAGS(s, d) & D_MODE) &&
+			if (MODE(s, d) &&
 			    (fileType(MODE(s, d)) != fileType(s->mode))) {
 				verbose((stderr,
 				    "%s has different file types, treating "
@@ -7837,7 +7836,7 @@ sameMode(sccs *s, ser_t a, ser_t b)
 private int
 sameFileType(sccs *s, ser_t d)
 {
-	if (FLAGS(s, d) & D_MODE) {
+	if (MODE(s, d)) {
 		return (fileType(s->mode) == fileType(MODE(s, d)));
 	} else {			/* assume no mode means regular file */
 		return (S_ISREG(s->mode));
@@ -8171,7 +8170,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
-		if (FLAGS(s, d) & D_MODE) {
+		if (MODE(s, d)) {
 		    	unless (parent && sameMode(s, parent, d)) {
 				p = fmts(buf, "\001cO");
 				p = fmts(p, mode2a(MODE(s, d)));
@@ -9610,12 +9609,11 @@ sccs_dInit(ser_t d, char type, sccs *s, int nodefault)
 		}
 #ifdef	AUTO_MODE
 		assert("no" == 0);
-		unless (FLAGS(s, d) & D_MODE) {
+		unless (MODE(s, d)) {
 			if (s->state & GFILE) {
 				MODE_SET(s, d, s->mode);
 				SYMLINK_SET(s, d, s->symlink);
 				FREE(s->symlink);
-				FLAGS(s, d) |= D_MODE;
 				assert(!(FLAGS(s, d) & D_DUPLINK));
 			} else {
 				modeArg(s, d, "0664");
@@ -9646,13 +9644,12 @@ private void
 updMode(sccs *s, ser_t d, ser_t dParent)
 {
 	if ((s->state & S_GFILE) &&
-	    !(FLAGS(s, d) & D_MODE) && needsMode(s, dParent)) {
+	    !(MODE(s, d)) && needsMode(s, dParent)) {
 		assert(MODE(s, d) == 0);
 		MODE_SET(s, d, s->mode);
 		if (s->symlink) {
 			SYMLINK_SET(s, d, s->symlink);
 		}
-		FLAGS(s, d) |= D_MODE;
 	}
 }
 
@@ -10724,7 +10721,6 @@ modeArg(sccs *s, ser_t d, char *arg)
 		SYMLINK_SET(s, d, t);
 	}
 	MODE_SET(s, d, m);
-	if (m) FLAGS(s, d) |= D_MODE;
 	return (d);
 }
 
@@ -11569,7 +11565,7 @@ out:
 		mode_t	m;
 
 		assert(n);
-		if ((FLAGS(sc, n) & D_MODE) && HAS_SYMLINK(sc, n)) {
+		if (MODE(sc, n) && HAS_SYMLINK(sc, n)) {
 			fprintf(stderr,
 				"admin: %s: chmod on symlink is illegal\n",
 				sc->gfile);
@@ -16296,7 +16292,7 @@ do_patch(sccs *s, ser_t d, int flags, FILE *out)
 		sccs_pdelta(s, e, out);
 		fprintf(out, "\n");
 	}
-	if (FLAGS(s, d) & D_MODE) {
+	if (MODE(s, d)) {
 		fprintf(out, "O %s", mode2a(MODE(s, d)));
 		if (S_ISLNK(MODE(s, d))) {
 			assert(HAS_SYMLINK(s, d));
