@@ -1481,7 +1481,7 @@ fixTags(sccs *s)
 			 */
 			assert(!TAG(s, md));
 			FLAGS(s, md) |= D_TAG;
-			FLAGS(s, md) &= ~(D_GONE|D_CKSUM|D_CSET);
+			FLAGS(s, md) &= ~(D_GONE|D_CSET);
 			ADDED_SET(s, md, 0);
 			DELETED_SET(s, md, 0);
 			SAME_SET(s, md, 0);
@@ -1535,7 +1535,7 @@ fixTags(sccs *s)
 			 */
 			assert(!TAG(s, d));
 			FLAGS(s, d) |= D_TAG;
-			FLAGS(s, d) &= ~(D_GONE|D_CKSUM|D_CSET);
+			FLAGS(s, d) &= ~(D_GONE|D_CSET);
 			ADDED_SET(s, d, 0);
 			DELETED_SET(s, d, 0);
 			SAME_SET(s, d, 0);

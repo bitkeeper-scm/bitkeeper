@@ -295,8 +295,8 @@ int	checking_rmdir(char *dir);
 /* flags that are written to disk */
 #define	D_INARRAY	0x00000001	/* part of s->slist array */
 #define	D_NONEWLINE	0x00000002	/* this delta has no trailing newline */
-#define	D_CKSUM		0x00000004	/* delta has checksum */
-#define	D_SORTSUM	0x00000008	/* generate a sortSum */
+//#define	D_CKSUM		0x00000004	/* delta has checksum */
+//#define	D_SORTSUM	0x00000008	/* generate a sortSum */
 #define	D_META		0x00000010	/* this is a metadata removed delta */
 #define	D_SYMBOLS	0x00000020	/* delta has one or more symbols */
 

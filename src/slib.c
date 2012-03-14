@@ -3153,6 +3153,7 @@ bin_mkgraph(sccs *s)
 		DELETED_SET(s, d, le32toh(tmp[1]));
 		SAME_SET(s, d, le32toh(tmp[2]));
 		SUM_SET(s, d, le32toh(tmp[3]));
+		SORTSUM_SET(s, d, SUM(s, d));
 		FLAGS(s, d) &= ~D_FIXUPS;
 
 		//fprintf(stderr, "%s: loaded fixups a/d/s=%d/%d/%d sum=%d\n", s->gfile, ADDED(s, d), DELETED(s, d), SAME(s, d), SUM(s, d));
@@ -7023,7 +7024,7 @@ get_link(sccs *s, char *printOut, int flags, ser_t d, int *ln)
 	 * c) The recorded checsum is zero.
 	 */
 	e = getSymlnkCksumDelta(s, d);
-	if ((FLAGS(s, e) & D_CKSUM) && (SUM(s, e) != 0) &&
+	if ((SUM(s, e) != 0) &&
 	    !streq(REV(s, e), "1.1") && !strneq(REV(s, e), "1.1.", 4)) {
 		for (t = SYMLINK(s, d); *t; t++) dsum += *t;
 		if (SUM(s, e) != dsum) {
@@ -8128,7 +8129,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			s->sumOff = ftell(out);
 			fputs("XXXXX", out);
 			fputmeta(s, "\n", out);
-		} else if (FLAGS(s, d) & D_CKSUM) {
+		} else if (!TAG(s, d)) {
 			/*
 			 * It turns out not to be worth to save the
 			 * few bytes you might save by not making this
@@ -8137,8 +8138,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			 * Leaving this fixed means we can diff the
 			 * s.files easily.
 			 */
-			if ((FLAGS(s, d) & D_SORTSUM) &&
-			    (SUM(s, d) != SORTSUM(s, d))) {
+			if (SUM(s, d) != SORTSUM(s, d)) {
 				sprintf(buf,
 				    "\001cK%05u|%05u\n",
 				    SUM(s, d), SORTSUM(s, d));
@@ -9523,7 +9523,6 @@ sccs_dInit(ser_t d, char type, sccs *s, int nodefault)
 	unless (d) d = sccs_newdelta(s);
 	if (type == 'R') FLAGS(s, d) |= (D_META|D_TAG);
 	assert(s);
-	if (BITKEEPER(s) && !TAG(s, d)) FLAGS(s, d) |= D_CKSUM;
 	unless (DATE(s, d) || nodefault) {
 		if (t = getenv("BK_DATE_TIME_ZONE")) {
 			dateArg(s, d, t, 1);
@@ -9847,10 +9846,10 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		if (buf[0]) pathArg(s, n0, buf); /* pathname */
 
 		n0 = sccs_dInit(n0, 'D', s, nodefault);
-		FLAGS(s, n0) |= D_CKSUM;
 		s->xflags |= X_REQUIRED;
 		XFLAGS(s, n0) |= X_REQUIRED;
 		SUM_SET(s, n0, almostUnique());
+		SORTSUM_SET(s, n0, SUM(s, n0));
 		first = n0 = dinsert(s, n0, fixDate && !(flags & DELTA_PATCH));
 
 		n = prefilled ? prefilled : sccs_newdelta(s);
@@ -9966,11 +9965,11 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		if (CSET(s)) {
 			unless (HAS_CSETFILE(s, first)) {
 				SUM_SET(s, first, almostUnique());
+				SORTSUM_SET(s, first, SUM(s, first));
 				FLAGS(s, first) |= D_ICKSUM;
 				sccs_sdelta(s, first, buf);
 				csetFileArg(s, first, buf);
 			}
-			FLAGS(s, first) |= D_CKSUM;
 		} else {
 			unless (HAS_CSETFILE(s, first)) {
 				csetFileArg(s, first, proj_rootkey(s->proj));
@@ -9985,7 +9984,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		}
 		added = s->added = ADDED(s, n);
 	}
-	FLAGS(s, n) |= (D_CKSUM|D_FIXUPS);
+	FLAGS(s, n) |= D_FIXUPS;
 	if (delta_table(s, sfile, 1)) {
 		error++;
 		goto out;
@@ -10236,10 +10235,6 @@ checkInvariants(sccs *s, int flags)
 	error |= checkOpenBranch(s, flags);
 	error |= checkTags(s, flags);
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		if (!TAG(s, d) && !(FLAGS(s, d) & D_CKSUM)) {
-			verbose((stderr,
-			    "%s|%s: no checksum\n", s->gfile, REV(s, d)));
-		}
 		if ((!PARENT(s, d) || (XFLAGS(s, d) != XFLAGS(s, PARENT(s, d)))) &&
 		    checkXflags(s, d, xf)) {
 			extern	int xflags_failed;
@@ -10355,7 +10350,7 @@ checkrevs(sccs *s, int flags)
 			e |= 2;
 		}
 		prev = d;
-		if (FLAGS(s, d) & D_SORTSUM) saw_sortkey = 1;
+		if (SORTSUM(s, d) != SUM(s, d)) saw_sortkey = 1;
 	}
 	if (CSET(s) && saw_sortkey) {
 		/*
@@ -10728,11 +10723,11 @@ private ser_t
 sumArg(sccs *s, ser_t d, char *arg)
 {
 	if (!d) d = sccs_newdelta(s);
-	FLAGS(s, d) |= D_CKSUM;
 	SUM_SET(s, d, atoi_p(&arg));
 	if (*arg++ == '|') {
 		SORTSUM_SET(s, d, atoi_p(&arg));
-		FLAGS(s, d) |= D_SORTSUM;
+	} else {
+		SORTSUM_SET(s, d, SUM(s, d));
 	}
 	return (d);
 }
@@ -11015,7 +11010,7 @@ newDelta(sccs *sc, ser_t p, int isNullDelta)
 		DELETED_SET(sc, n, 0);
 		SAME_SET(sc, n, SAME(sc, p) + ADDED(sc, p));
 		SUM_SET(sc, n, almostUnique());
-		FLAGS(sc, n) |= D_CKSUM;
+		SORTSUM_SET(sc, n, SUM(sc, n));
 	}
 	n = dinsert(sc, n, 1);
 	return (n);
@@ -11359,6 +11354,7 @@ insert_1_0(sccs *s, u32 flags)
 		}
 		SUM_SET(s, d, almostUnique());
 	}
+	SORTSUM_SET(s, d, SUM(s, d));
 	d = sccs_dInit(d, 'D', s, 0);
 	return (0);
 }
@@ -13793,7 +13789,7 @@ out:
 		if (n == sccs_top(s)) s->xflags = XFLAGS(s, n);
 	}
 
-	FLAGS(s, n) |= (D_CKSUM|D_FIXUPS);
+	FLAGS(s, n) |= D_FIXUPS;
 	if (delta_write(s, n, diffs, &sfile, &added, &deleted, &unchanged)) {
 		OUT;
 	}
@@ -13891,6 +13887,7 @@ end(sccs *s, ser_t n, FILE *out, int flags, int add, int del, int same)
 			} else {
 				SUM_SET(s, n, almostUnique());
 			}
+			SORTSUM_SET(s, n, SUM(s, n));
 #if 0
 Breaks up citool
 
@@ -15459,16 +15456,9 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_DSUM: /* DSUM */ {
-		if (FLAGS(s, d) & D_CKSUM) {
-			fd((int)SUM(s, d));
-			return (strVal);
-		}
-		if (TAG(s, d)) {
-			assert(SUM(s, d) == 0);
-			fs("0");
-			return (strVal);
-		}
-		return (nullVal);
+		if (TAG(s, d)) assert(SUM(s, d) == 0);
+		fd((int)SUM(s, d));
+		return (strVal);
 	}
 
 	case KW_FSUM: /* FSUM */ {
@@ -16278,9 +16268,9 @@ do_patch(sccs *s, ser_t d, int flags, FILE *out)
 		sccs_pdelta(s, e, out);
 		fprintf(out, "\n");
 	}
-	if (FLAGS(s, d) & D_CKSUM) {
+	if (!TAG(s, d)) {
 		fprintf(out, "K %u", SUM(s, d));
-		if ((FLAGS(s, d) & D_SORTSUM) && (SUM(s, d) != SORTSUM(s, d))) {
+		if (SUM(s, d) != SORTSUM(s, d)) {
 			fprintf(out, "|%u", SORTSUM(s, d));
 		}
 		fputc('\n', out);
@@ -16915,7 +16905,7 @@ sccs_sortkey(sccs *s, ser_t d, char *buf)
 
 	unless (getenv("_BK_NO_SORTKEY")) {
 		PATHNAME_INDEX(s, d) = SORTPATH_INDEX(s, d);
-		if (FLAGS(s, d) & D_SORTSUM) SUM_SET(s, d, SORTSUM(s, d));
+		SUM_SET(s, d, SORTSUM(s, d));
 	}
 	sccs_sdelta(s, d, buf);
 
@@ -17574,7 +17564,6 @@ sccs_rmdel(sccs *s, ser_t d, u32 flags)
 	if (stripChecks(s, d, "rmdel")) return (1);
 
 	FLAGS(s, d) |= D_TAG;	/* mark delta as Removed */
-	FLAGS(s, d) &= ~D_CKSUM;
 
 	return (sccs_stripdel(s, "rmdel"));
 }

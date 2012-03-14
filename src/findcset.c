@@ -693,6 +693,7 @@ mkCset(mkcs_t *cur, dinfo *d)
 	}
 	ADDED_SET(cur->cset, e, added);
 	SUM_SET(cur->cset, e, cur->sum);
+	SORTSUM_SET(cur->cset, e, cur->sum);
 //  fprintf(stderr, "SUM=%u\n", e->sum);
 	/* Some hacks to get sccs_prs to do some work for us */
 	cur->cset->rstart = cur->cset->rstop = e;
@@ -1227,9 +1228,7 @@ do_patch(sccs *s, ser_t d, char *tag, char *tagparent, FILE *out)
 	while (p = eachline(&t, &len)) fprintf(out, "c %.*s\n", len, p);
 	if (DATE_FUDGE(s, d)) fprintf(out, "F %d\n", (int)DATE_FUDGE(s, d));
 	assert(!HAS_CLUDES(s, d));
-	if (FLAGS(s, d) & D_CKSUM) {
-		fprintf(out, "K %u\n", SUM(s, d));
-	}
+	unless (TAG(s, d)) fprintf(out, "K %u\n", SUM(s, d));
 	assert(!MERGE(s, d));
 	if (HAS_PATHNAME(s, d)) fprintf(out, "P %s\n", PATHNAME(s, d));
 	if (HAS_RANDOM(s, d)) fprintf(out, "R %s\n", RANDOM(s, d));
