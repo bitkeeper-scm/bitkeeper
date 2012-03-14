@@ -1426,3 +1426,33 @@ bk find . -name PENDING > OUT
 GOT=`wc -l < OUT`
 test $WANT -eq $GOT || fail -f OUT there should only be $WANT PENDING dirs
 echo OK
+
+addfile(){
+    touch "$@"
+    bk new $Q "$@"
+}
+
+echo $N Check --auto-populate deep nest bug .........................$NL
+nested prod
+bk setup -C -f gcc/sub
+bk setup -C -f gcc/sub/sub
+bk commit $Q -f
+addfile gcc/foo
+addfile gcc/sub/foo
+addfile gcc/sub/sub/foo
+bk commit $Q -f
+bk clone $Q -sgdb . ../gdb-clone-1
+bk clone $Q -sALL . ../clone-1
+cd "$HERE/clone-1"
+addfile gdb/bar
+addfile gcc/bar
+addfile gcc/sub/bar
+addfile gcc/sub/sub/bar
+bk commit $Q -f
+cd "$HERE/gdb-clone-1"
+bk populate $Q gcc/sub/sub
+addfile gdb/gdb.c
+addfile gcc/sub/sub/baz
+bk commit $Q -f
+bk pull --auto-populate ../clone-1 >OUT 2>&1 || fail -f OUT
+echo OK

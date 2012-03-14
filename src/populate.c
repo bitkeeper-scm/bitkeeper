@@ -243,7 +243,8 @@ nested_populate(nested *n, popts *ops)
 		    checkfiles, ops->quiet ? 0 : "-v", 0);
 		freeLines(checkfiles, free);
 	}
-out:	return (rc);
+out:	proj_reset(0);
+	return (rc);
 }
 
 /*
