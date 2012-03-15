@@ -375,6 +375,30 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 }
 
 /*
+ * Detecting first node is a challenge given only RED and BLUE.
+ * Using D_SET to help by marking a node it is a candidate for GCA,
+ * and clearing D_SET when something in the history of a GCA colors on
+ * to this node.  When we get to the node, if D_SET, then a real GCA
+ */
+private	void
+doGca(sccs *s, delta *d, u32 *marked, u32 before, u32 change)
+{
+	const int	mask = (D_BLUE|D_RED);
+
+	if (change != mask) {	/* changing 1 bit */
+		if (before != mask) { /* it was the other bit */
+			assert(!(d->flags & D_SET));
+			(*marked)++;
+			d->flags |= D_SET;	/* gca candidate */
+		}
+	} else if (d->flags & D_SET) { /* inheriting 2 bit; & candidate */
+		assert(before == mask);
+		(*marked)--;
+		d->flags &= ~D_SET;		/* no longer candidate */
+	}
+}
+
+/*
  * Walk the set of deltas that are included 'to', but are not included
  * in 'from'.  The deltas are walked in table order (newest to oldest)
  * and 'fcn' is called on each delta if it is set.  This function is
@@ -399,9 +423,8 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
  * case.
  *
  * WR_GCA mode: the callback will be on the first deltas to be in both
- * regions.  Note: the callbacks do not happen in newest to oldest order,
- * as the call is done when a node is colored, not when it is visited.
- * as it is outside the region of interest, it may never be visited.
+ * regions.  It uses D_SET to identify first delta.
+ * Make sure D_SET is clear to start off when using WR_GCA.
  */
 int
 range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
@@ -425,20 +448,17 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 	 * When marked hits 0, no more single color nodes in graph: DONE!
 	 */
 #define	MARK(x, change)	do {					\
-	    before = (x)->flags & mask;				\
-	    (x)->flags |= change;	/* after */		\
-	    if ((x)->serial < last) last = (x)->serial;		\
-	    if (((x)->flags & mask) == mask) { /* after == 2 */ \
-		if (before && (before != mask)) { /* before == 1 */ \
-		    marked--;					\
-		    if ((flags & WR_GCA) && (change != mask)) {/* chg == 1 */ \
-			if (fcn && (ret = fcn(s, (x), token))) goto err; \
-	    	    }						\
-	    	}						\
-	    } else {	/* after == 1 */ 			\
+	before = (x)->flags & mask;				\
+	(x)->flags |= change;	/* after */			\
+	if ((x)->serial < last) last = (x)->serial;		\
+	if (((x)->flags & mask) != mask) { /* after == 1 */	\
 		unless (before) marked++; 			\
-	    }							\
-	} while (0)
+	} else if (before) {	/* after == 2; bef == [1,2] */	\
+		if (before != mask) { /* before == 1 */		\
+			marked--;				\
+		}						\
+		if (flags & WR_GCA) doGca(s, x, &marked, before, change); \
+	}} while (0)
 
 	assert (!from || !fromlist);
 	s->rstop = 0;
@@ -467,19 +487,27 @@ range_walkrevs(sccs *s, delta *from, char **fromlist, delta *to, int flags,
 		if (color != mask) marked--;
 		if (e = PARENT(s, d)) MARK(e, color);
 		if (e = MERGE(s, d)) MARK(e, color);
-		if (flags & WR_GCA) continue;
-		if ((color == D_RED) ||
+		if (flags & WR_GCA) {
+			if (d->flags & D_SET) {
+				/* if still D_SET by here, it's a GCA */
+				marked--;
+				d->flags &= ~D_SET;
+				goto doit;
+			}
+		} else if ((color == D_RED) ||
 		    ((flags & WR_BOTH) && (color != mask))) {
 			if (flags & WR_BOTH) d->flags |= color;
-			if (fcn && (ret = fcn(s, d, token))) break;
+doit:			if (fcn && (ret = fcn(s, d, token))) break;
 			unless (s->rstop) s->rstop = d;
 			s->rstart = d;
 		}
 	}
-err:
 	/* cleanup */
+	color = mask;
+	if (flags & WR_GCA) color |= D_SET;
+
 	for (; d && (d->serial >= last); d = NEXT(d)) {
-		d->flags &= ~mask;
+		d->flags &= ~color;
 	}
 	if (freelist) freeLines(fromlist, 0);
 	return (ret);
@@ -550,6 +578,7 @@ range_gcalist(sccs *s, char **list)
 		fromlist = gca;
 		gca = tmp;
 		if (gca) truncLines(gca, 0);
+		/* assumes D_SET is clear to start and leaves it cleared */
 		if (range_walkrevs(s, 0, fromlist, to,
 		    WR_GCA, walkrevs_addLine, &gca)) {
 			assert("What can fail?" == 0);

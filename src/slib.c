@@ -16409,7 +16409,7 @@ gca3(sccs *s, delta *left, delta *right, char **inc, char **exc)
 	delta	*gca;
 	u8	*gmap = 0;
 	char	**glist, **list;
-	int	count;
+	int	i, count;
 
 	*inc = *exc = 0;
 	unless (s && s->nextserial && left && right) return (0);
@@ -16422,6 +16422,12 @@ gca3(sccs *s, delta *left, delta *right, char **inc, char **exc)
 	assert(count);
 	gca = (delta *)glist[1];
 	if (count > 1) {
+		if (getenv("_BK_CHK_MULTI")) {
+			EACH(glist) {
+				fprintf(stderr,
+				   "multi %s\n", ((delta *)glist[i])->rev);
+			}
+		}
 		gmap = (u8 *)calloc(s->nextserial, sizeof(u8));
 		graph_symdiff((delta *)glist, 0, gmap, 0, -1, SD_MERGE);
 		if (compressmap(s, gca, gmap, 0, (void **)inc, (void **)exc)) {
