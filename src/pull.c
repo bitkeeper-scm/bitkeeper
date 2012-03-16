@@ -1194,7 +1194,7 @@ pull(char **av, remote *r, char **envVar)
 	disconnect(r);
 
 	/* pull component - poly detection and fixups */
-	if (opts.mergefile) {
+	if (!rc && opts.mergefile) {
 		if (pullPoly(got_patch)) {
 			putenv("BK_STATUS=POLY");
 			got_patch = 0;	/* post triggers */
@@ -1512,6 +1512,7 @@ pullPoly(int got_patch)
 	assert(local && remote);
 
 	unless (getenv("_BK_DEVELOPER") && proj_configbool(0, "poly")) {
+		/* assumes D_SET is clear to start; leaves clear */
 		if (range_walkrevs(
 		    cset, local, 0, remote, WR_GCA, polyChk, cmarks)) {
 			goto err;

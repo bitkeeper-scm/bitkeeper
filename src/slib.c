@@ -16511,7 +16511,7 @@ gca3(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 	ser_t	gca;
 	u8	*gmap = 0;
 	ser_t	*glist, *list = 0;
-	int	count;
+	int	i, count;
 
 	*inc = *exc = 0;
 	unless (s && TABLE(s) && left && right) return (0);
@@ -16524,6 +16524,12 @@ gca3(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 	assert(count);
 	gca = glist[1];
 	if (count > 1) {
+		if (getenv("_BK_CHK_MULTI")) {
+			EACH(glist) {
+				fprintf(stderr,
+				   "multi %s\n", REV(s, (ser_t)glist[i]));
+			}
+		}
 		gmap = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 		graph_symdiff(s, 0, 0, glist, gmap, 0, -1, SD_MERGE);
 		if (compressmap(s, gca, gmap, inc, exc)) {
