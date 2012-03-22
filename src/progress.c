@@ -10,9 +10,10 @@ private struct {
 } _progress;
 
 /*
- * 123/123 1234567891234567890012345678901234 |=========================| OK
+ * 123/123 1234567890123456789012345678901234 |=========================| OK
  */
-#define	TLEN	34		// title part
+#define	PREAMBLE 19		// "%d/%d"
+#define	TLEN	34		// title part including %d/%d
 #define	BARLEN	(64-TLEN)	// progress bar part
 
 /*
@@ -23,7 +24,7 @@ private struct {
  * "12/23 src/diff and patch and more/utils" =>
  * 	"12/23 .../utils"
  * "program name that goes on and on and on" =>
- * 	" [program name that goes on and o]"
+ * 	" [program name that goes on an...]"
  * "program" =>
  * 	" [program]"
  * "12/23 a-very-long-file-name-that-has-no-end" =>
@@ -35,48 +36,78 @@ private struct {
  * "12/23 a/long file with spaces in the name" =>
  * 	"12/23 .../long file with spaces..."
  */
+private	int
+ispreamble(char *title, char *space)
+{
+	/* the above pre-ambles are also valid path names */
+	/* if it looks like a pre-amble, call it a pre-amble */
+
+	if (space - title > PREAMBLE) return (0); /* a billion comps?? */
+	unless (isdigit(*title)) return (0);
+	while (isdigit(*++title));
+	if (*title++ != '/') return (0);
+	unless (isdigit(*title)) return (0);
+	while (isdigit(*++title));
+	if (title != space) return (0);
+	/* call it good; could go on, see that if A/B then A <= B */
+	return (1);
+}
+
 private char *
 progress_title(void)
 {
-	char	*space, *p;
-	int	i;
+	char	*path, *nums, *space, *p;
+	int	i, used = 0;
 
-	if (title) {
-		if (strlen(title) <= TLEN) {
-			return (strdup(title));
-		}
+	unless (title) {
+		return (aprintf(" [%.*s]", TLEN - 3, prog));
+	}
 
-		/*
-		 * We expect "1/123 src/sys"
-		 * and we want to make the src/sys part fit
-		 */
-		unless (space = strchr(title, ' ')) {
-			fputs(title, stderr);
-			assert("no space in title" == 0);
-		}
+	if (strlen(title) <= TLEN) {
+		return (strdup(title));
+	}
+
+	/*
+	 * We expect "1/123 src/sys"
+	 * and we want to make the src/sys part fit
+	 * The 1/123 part is optional.
+	 */
+	if ((space = strchr(title, ' ')) && ispreamble(title, space)) {
+		nums = title;
 		*space = 0;
-		i = strlen(title);	/* 1/123 */
-		i += 1;			/* " " */
-		assert(i + 8 <= TLEN);	/* sanity that there is room */
-		unless (p = strrchr(space+1, '/')) {
-			p = space+1;
-			i = TLEN - i - 3;
-			p = aprintf("%s %-*.*s...", title, i, i, p);
-			*space = ' ';
-			return (p);
-		}
-		p++;			 /* sys */
-		if (i + 4 + strlen(p) <= TLEN) {
-			p = aprintf("%s .../%s", title, p);
-			*space = ' ';
-			return (p);
-		}
-		i = TLEN - i - 7;	/* display first part of basename */
-		p = aprintf("%s .../%-*.*s...", title, i, i, p);
-		*space = ' ';
+		used = strlen(nums);	/* 1/123 */
+		used++;			/* " " */
+		path = space + 1;
+	} else {
+		nums = 0;
+		used = 0;
+		path = title;
+	}
+	unless (p = strrchr(path, '/')) {
+		/* long basename, just truncate and elide */
+		if (space) *space = ' ';
+		i = TLEN - 3;
+		p = aprintf("%-*.*s...", i, i, title);
 		return (p);
 	}
-	return (aprintf(" [%.*s]", TLEN - 3, prog));
+	p++;			 /* basenm */
+	if (used + 4 + strlen(p) <= TLEN) {
+		if (nums) {
+			p = aprintf("%s .../%s", nums, p);
+			*space = ' ';
+		} else {
+			p = aprintf(".../%s", p);
+		}
+		return (p);
+	}
+	i = TLEN - used - 7;
+	if (nums) {
+		p = aprintf("%s .../%-*.*s...", nums, i, i, p);
+		*space = ' ';
+	} else {
+		p = aprintf(".../%-*.*s...", i, i, p);
+	}
+	return (p);
 }
 
 private ticker *

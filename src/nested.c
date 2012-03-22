@@ -822,7 +822,7 @@ nested_each(int quiet, char **av, char **aliases)
 	int	i, j;
 	char	**nav;
 	char	*s, *t;
-	int	errors = 0, freethem = 0;
+	int	errors = 0, freethem = 0, total = 0, count = 0;
 	int	status;
 	char	buf[MAXLINE];
 
@@ -848,7 +848,9 @@ nested_each(int quiet, char **av, char **aliases)
 	}
 	assert(n->alias);
 	EACH_STRUCT(n->comps, cp, i) {
-		if (cp->alias && !cp->present) {
+		unless (cp->alias) continue;
+		total++;
+		unless (cp->present) {
 			fprintf(stderr,
 			    "%s: Not populated: %s\n", prog, cp->path);
 			errors = 1;
@@ -858,15 +860,16 @@ nested_each(int quiet, char **av, char **aliases)
 
 	EACH_STRUCT(n->comps, cp, i) {
 		unless (cp->alias && cp->present) continue;
+		count++;
 		if (errors && cp->product && !getenv("_BK_PRODUCT_ALWAYS")) {
 			break;
 		}
 		if (quiet) {
-			safe_putenv("_BK_TITLE=%s",
-			    cp->product ? PRODUCT : cp->path);
+			safe_putenv("_BK_TITLE=%d/%d %s",
+			    count, total, cp->product ? PRODUCT : cp->path);
 		} else {
-			printf("#### %s ####\n",
-			    cp->product ? PRODUCT : cp->path);
+			printf("#### %d/%d %s ####\n",
+			    count, total, cp->product ? PRODUCT : cp->path);
 			fflush(stdout);
 		}
 		if (chdir(cp->path)) {
