@@ -1912,6 +1912,7 @@ doCommit()
 		if (self.partial) {
 			topMessage(msgs{"noCsetOK"}, "message");
 		} else if (isCommented(cset) && !isExcluded(cset)) {
+			showCsetContents(self.files{"ChangeSet"});
 			topMessage(msgs{"gotCset"}, "message");
 		} else {
 			showCheckinContents();
