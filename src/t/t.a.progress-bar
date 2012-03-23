@@ -105,6 +105,21 @@ bk setup -fc../config comp1 || fail
 bk setup -fc../config comp2 || fail
 bk setup -fc../config comp3 || fail
 cd ..
+bk clone $Q product3 port-repo1
+cd port-repo1
+bk newroot
+bk portal $Q .
+cd ..
+bk clone $Q product3 port-repo2
+cd port-repo2
+bk newroot
+bk portal $Q .
+cd ..
+bk clone $Q product3 port-repo3
+cd port-repo3
+bk newroot
+bk portal $Q .
+cd ..
 # repo w/BAM data
 if [ $SKIP_BAM = NO ]; then
 	commercial bam
@@ -1699,7 +1714,17 @@ chknumbars OUT 5 || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
+echo $N port a component ............................................$NL
+cd "$HERE/port-repo1/comp1"
+bk port "$HERE/clone3/comp1" >OUT 2>&1 || fail -f OUT
+chkpasses OUT 'takepatch' 'port' 'check' || fail $msg
+chkoutput OUT || fail $msg
+chknumbars OUT 1 || fail $msg
+chkblanks OUT 0 || fail $msg
+echo OK
+
 echo $N unpopulate 1 component ......................................$NL
+cd "$HERE/clone3"
 bk comps -h | bk here set - || fail
 bk here rm -f comp3 >OUT 2>&1 || fail
 chkoutput OUT || fail $msg
@@ -2296,7 +2321,14 @@ bk pull -q ../product3 >OUT 2>&1 || fail -f OUT
 [ -s OUT ] && fail -f OUT
 echo OK
 
+echo $N port a component ............................................$NL
+cd "$HERE/port-repo2/comp1"
+bk port -q "$HERE/clone3/comp1" >OUT 2>&1 || fail -f OUT
+[ -s OUT ] && fail -f OUT
+echo OK
+
 echo $N unpopulate 1 component ......................................$NL
+cd "$HERE/clone3"
 bk comps -h | bk here set - || fail
 bk here rm -fq comp3 >OUT 2>&1 || fail
 [ -s OUT ] && fail -f OUT
@@ -2801,7 +2833,15 @@ chkoutput OUT $PRODUCT || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
 
+echo $N port a component ............................................$NL
+cd "$HERE/port-repo3/comp1"
+bk port -v "$HERE/clone3/comp1" >OUT 2>&1 || fail -f OUT
+chkoutput OUT || fail $msg
+chkblanks OUT 0 || fail $msg
+echo OK
+
 echo $N unpopulate 1 component ......................................$NL
+cd "$HERE/clone3"
 bk comps -h | bk here set - || fail
 bk here rm -vf comp3 >OUT 2>&1 || fail
 chkoutput OUT || fail $msg
