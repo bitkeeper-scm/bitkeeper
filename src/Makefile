@@ -195,7 +195,7 @@ OBJ =	bkver.o cmd.o \
 	tagmerge.o testcode.o tclsh.o takepatch.o \
 	testdates.o time.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
-	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
+	unique.o uninstall.o unlink.o unlock.o unpull.o unrm.o unwrap.o upgrade.o \
 	urlinfo.o \
 	utils.o uu.o what.o which.o \
 	xflags.o \

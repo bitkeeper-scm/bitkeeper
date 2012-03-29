@@ -246,6 +246,12 @@ err:		if (sname) free(sname);
 	unless (isUnDelete) sccs_rmEmptyDirs(osfile);
 
 out:	if (s) sccs_free(s);
+	/* honor checkout modes when running on behalf of unrm */
+	if (isUnDelete) {
+		s = sccs_init(sfile, INIT_NOCKSUM);
+		do_checkout(s);
+		sccs_free(s);
+	}
 	if (ogfile) free(ogfile);
 	if (osfile) free(osfile);
 	free(newpath);

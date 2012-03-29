@@ -387,6 +387,7 @@ uninstall
 unpark
 unpopulate
 unpull
+unrm
 unwrap
 upgrade
 users

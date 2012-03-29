@@ -1,0 +1,124 @@
+
+
+echo $N Test unrm when deleting with a baseline .....................$NL
+commercial project
+mkdir src1
+touch src1/"foo .c"
+mkdir src2
+touch src2/"foo .c"
+bk new $Q src1/"foo .c" src2/"foo .c" || exit 1
+bk commit --tag=mkfoo -ymkfoo $Q || exit 1
+bk rm src1/"foo .c" src2/"foo .c" || exit 1
+bk commit -yrmfoo $Q || exit 1
+(echo n; echo n) | bk unrm "foo .c" >OUT || exit 1
+grep -q "Match 1 of 2" OUT || exit 1
+grep -q "^src1/foo .c 1.1" OUT || exit 1
+grep -q "^src2/foo .c 1.1" OUT || exit 1
+echo OK
+
+echo $N Unrm of a basename will offer options .......................$NL
+(echo n; echo n) | bk unrm "foo .c" >OUT 2>&1 || fail -f OUT
+grep -q 'Match 2 of 2' OUT || fail -f OUT "wrong output"
+echo OK
+
+echo $N Unrm in subdir will pick out correct file ...................$NL
+# mkdir necessary because bk rm above implicitly removes src1
+mkdir src1
+cd src1
+bk unrm "foo .c" >OUT || exit 1
+grep -q 'Moving "BitKeeper\/deleted\/.*foo \.c~.*" -> "src1\/foo \.c"' OUT || \
+	fail -f OUT "wrong output"
+cd ..
+echo OK
+
+echo $N Unrm with a full pathname and a single match won\'t prompt ...$NL
+bk rm src1/"foo .c"
+bk unrm src1/"foo .c" > OUT || exit 1
+grep -q "Moving.*foo.*src1/foo .c" OUT || fail -f OUT
+bk get $Q src1/"foo .c" || exit 1
+echo OK
+
+echo $N A file updated after deleted will still restore .............$NL
+# 2004-09-02-002
+# 2007-03-01-001
+cd ..
+bk clone $Q -rmkfoo project copy || exit 1
+cd copy
+bk edit $Q src2/"foo .c"
+echo hi >> src2/"foo .c"
+bk ci $Q -yadd src2/"foo .c" || exit 1
+bk commit $Q -yadd || exit 1
+cd ../project
+bk pull $Q ../copy || exit 1
+echo y | bk unrm "foo .c" > OUT || exit 1
+bk get $Q src2/"foo .c" || exit 1
+echo OK
+
+echo $N Show that unrm can restore triggers .........................$NL
+# 2003-10-19-002
+mkdir BitKeeper/triggers
+touch BitKeeper/triggers/foo.post-incoming
+bk new $Q BitKeeper/triggers/foo.post-incoming || exit 1
+bk commit -y2 $Q || exit 1
+bk rm -f BitKeeper/triggers/foo.post-incoming || exit 1
+bk commit -y3 $Q || exit 1
+bk unrm BitKeeper/triggers/foo.post-incoming >OUT || exit 1
+test `wc -l < OUT` -eq 1 || exit 1
+grep -q "Moving" OUT || exit 1
+bk get $Q BitKeeper/triggers/foo.post-incoming || exit 1
+echo OK
+
+echo $N Show that unrm will not throw away my hard labor ............$NL
+touch work
+bk new $Q work
+bk rm work
+touch work
+bk new $Q work
+bk edit $Q work
+echo words that took me years to craft > work
+bk unrm -f work > OUT 2> ERR && fail -f ERR "should fail"
+grep -q 'sccsmv: destination SCCS/s.work exists' ERR || fail -f ERR
+grep -q 'NOT moving .*/s.work.* "work"' ERR || fail -f ERR
+grep -q "words that took me years to craft" work || fail "edits lost"
+echo OK
+
+echo $N Show that unrm can work on a file whose tip is a merge ......$NL
+cd "$HERE"
+commercial project2
+cd "$HERE"
+bk clone $Q project2 copy2
+cd project2
+touch foo
+bk new $Q foo
+bk commit $Q -f
+cd "$HERE/copy2"
+touch foo
+bk new $Q foo
+bk commit $Q -f
+(echo rr; echo y) | bk pull $Q >OUT 2>&1
+cd "$HERE/project2"
+bk edit $Q foo
+echo foo >> foo
+bk ci $Q -y'added foo to foo' foo
+bk commit $Q -f
+cd "$HERE/copy2"
+bk pull $Q
+# Move foo out of the way
+bk mv foo bar
+# the deleted foo's tip is a merge, this would
+# fail with the old unrm() in bk.sh
+bk unrm foo >OUT 2>ERR || fail -f ERR "should have worked"
+grep -q 'Moving .*/s.foo.* "foo"' OUT || fail -f OUT
+echo OK
+
+echo $N Check that unrm does the right thing with checkout:get ......$NL
+bk rm bar
+BK_CONFIG='checkout:get!' bk unrm $Q bar || fail "should have worked"
+test -f bar || fail "bar was not checked out"
+echo OK
+
+echo $N Check that unrm does the right thing with checkout:edit .....$NL
+bk rm bar
+BK_CONFIG='checkout:edit!' bk unrm $Q bar
+test -w bar || fail "bar was not checked out writable"
+echo OK
