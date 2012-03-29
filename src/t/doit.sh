@@ -419,6 +419,7 @@ setup_env()
 	_BK_DEVELOPER=YES
 	export _BK_DEVELOPER
 	unset BK_NO_TRIGGERS
+	unset BK_UPGRADE_PLATFORM
 	unset BK_NO_REMAP
 	unset BK_NOTTY
 
