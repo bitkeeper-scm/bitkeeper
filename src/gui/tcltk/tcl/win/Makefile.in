@@ -453,7 +453,7 @@ all: binaries libraries doc packages
 
 tcltest: $(TCLTEST)
 
-binaries: @LIBRARIES@ $(TCLSH)
+binaries: @LIBRARIES@ $(TCLSH) $(TCLTEST)
 
 libraries:
 

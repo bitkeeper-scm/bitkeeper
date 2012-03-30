@@ -102,9 +102,11 @@ unix_common_setup()
 	mkdir "$BK_BIN"
 	if [ X"$RUNBK_LEVEL" = X ]; then
 		ln -s "`cd .. && pwd`/bk" "$BK_BIN/bk"
+		ln -s "`cd .. && pwd`/gui/tcltk/tcl/unix/tcltest" "$BK_BIN/tcltest"
 	else
 		echo "RUNBK_LEVEL is set, using `bk bin`"
 		ln -s "`bk bin`/bk" "$BK_BIN/bk"
+		ln -s "`bk bin`/gui/tcltk/tcl/unix/tcltest" "$BK_BIN/tcltest"
 	fi
 	PATH=/bin:/usr/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
@@ -253,6 +255,10 @@ setup_env()
 		;;
 	esac
 	check_enclosing_repo
+
+	# L tests use this to find the tcl component.
+	BK_ROOT=`bk -P root`
+	export BK_ROOT
 
 	# Default to always creating BitKeeper/etc/attr, even in old trees
 	BK_ATTR=YES

@@ -409,12 +409,12 @@ test opts-11 {test bad command-line option} -setup {
 void opts_11()
 {
 	int	ret;
-	string	err[], out[];
+	string	err, out[];
 	string	tclsh = eval("interpreter");
 
 	ret = system({tclsh, "--bad", "opts11.l"}, undef, &out, &err);
 	unless (ret == 1) puts("bad 1");
-	unless (err[0] == "L Error: illegal option '--bad'") puts("bad 2");
+	unless (err =~ /L Error: illegal option '--bad'/) puts("bad 2 ${err}");
 }
 opts_11();
 } -output {}
