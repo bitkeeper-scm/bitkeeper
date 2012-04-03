@@ -1319,7 +1319,7 @@ int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
 int	inskeys(char *image, char *keys);
 void	lockfile_cleanup(void);
 
-typedef struct diffopt {
+typedef struct {
 	char	*out_define;		/* diff -D */
 	char	*pattern;		/* pattern for diff -p */
 	u32	ignore_all_ws:1;	/* ignore all whitespace */
@@ -1332,9 +1332,9 @@ typedef struct diffopt {
 	u32	out_show_c_func:1;	/* print C function (diff -p) */
 	u32	out_rcs:1;		/* output RCS diffs */
 	u32	out_print_hunks:1;	/* just print the hunks */
-} diffopt;
+} df_opt;
 
-int	diff_files(char *file1, char *file2, diffopt *opts, diffctx **dc, FILE *out);
+int	diff_files(char *file1, char *file2, df_opt *opts, df_ctx **dc, FILE *out);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
 int	(*is_whitespace)(int i));
