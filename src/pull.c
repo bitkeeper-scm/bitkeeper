@@ -1467,7 +1467,11 @@ pullPoly(int got_patch)
 
 	/* cons up a RESYNC area in case "Nothing to pull" */
 	unless (got_patch) {
-		resync_lock();
+		if (mkdir("RESYNC", 0777)) {
+			perror("make poly resync");
+			goto err;
+		}
+		sccs_mkroot("RESYNC");
 		fileCopy(CHANGESET, resync);
 		touch("RESYNC/BitKeeper/tmp/patch", 0666);
 	}
