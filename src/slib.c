@@ -8726,13 +8726,12 @@ out:
 int
 sccs_hasDiffs(sccs *s, u32 flags, int inex)
 {
-	pfile	pf;
+	pfile	pf = {0};
 	int	ret;
 	ser_t	d;
 
 	unless (HAS_GFILE(s) && HAS_PFILE(s)) return (0);
 
-	bzero(&pf, sizeof(pf));
 	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);
 	unless (d = findrev(s, pf.oldrev)) {
 		verbose((stderr,
@@ -8951,7 +8950,10 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 			ret = bp_diff(s, d, new);
 		}
 	} else {
-		ret = diff(old, new, DF_DIFF, tmpfile);
+		df_opt	dop = {0};
+
+		dop.ignore_trailing_cr = 1;
+		ret = diff_files(old, new, &dop, 0, tmpfile);
 	}
 	unless (streq(old, DEVNULL_WR)) unlink(old);
 	if (!streq(new, s->gfile) && !streq(new, DEVNULL_WR)){
@@ -9060,6 +9062,7 @@ sccs_clean(sccs *s, u32 flags)
 	char	tmpfile[MAXPATH];
 	ser_t	d;
 	int	ret;
+	df_opt	dop = {0};
 
 	/* don't go removing gfiles without s.files */
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {
@@ -9091,7 +9094,9 @@ sccs_clean(sccs *s, u32 flags)
 		fprintf(stderr,
 		    "%s writable, with changes, but not edited.\n", s->gfile);
 		unless (flags & PRINT) return (1);
-		sccs_diffs(s, 0, 0, DIFF_HEADER|SILENT, DF_DIFF, stdout);
+		dop.out_header = 1;
+		dop.flags = SILENT;
+		sccs_diffs(s, 0, 0, &dop, stdout);
 		return (1);
 	}
 
@@ -13469,7 +13474,7 @@ sccs_delta(sccs *s,
 	char	*rev, *tmpfile = 0;
 	int	added = 0, deleted = 0, unchanged = 0;
 	int	locked;
-	pfile	pf;
+	pfile	pf = {0};
 	ser_t	*include = 0;
 	ser_t	*exclude = 0;
 	ser_t	pserial;
@@ -13477,7 +13482,6 @@ sccs_delta(sccs *s,
 	assert(s);
 	debug((stderr, "delta %s %x\n", s->gfile, flags));
 	if (flags & NEWFILE) mksccsdir(s->sfile);
-	bzero(&pf, sizeof(pf));
 	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr,
 		    "delta: can't get write lock on %s\n", s->sfile);
@@ -13953,14 +13957,9 @@ mkTag(char *rev, char *revM, pfile *pf, char *path, char tag[])
  * helper function for sccs_diffs
  */
 private void
-mkDiffHdr(u32 kind, char tag[], char *buf, FILE *out)
+mkDiffHdr(char tag[], char *buf, FILE *out)
 {
 	char	*marker, *date;
-
-	unless (kind & (DF_UNIFIED|DF_CONTEXT|DF_GNUp)) {
-		fputs(buf, out);
-		return; 
-	}
 
 	/*
 	 * Fix the file names.
@@ -13998,30 +13997,25 @@ set_comments(sccs *s, ser_t d)
 }
 
 private void
-diffComments(u32 kind, FILE *out, sccs *s, char *lrev, char *rrev)
+diffComments(FILE *out, sccs *s, char *lrev, char *rrev)
 {
 	int	i;
 
 	unless (rrev) rrev = "+";
 	if (streq(rrev, "edited")) rrev = "+";	/* XXX - what about edit??? */
 	set_diff(s, set_get(s, rrev), set_get(s, lrev), set_comments);
-	if ((kind & DF_IFDEF) && h) fputs("#ifdef !!COMMENTS!!\n", out);
 	EACH(h) {
 		fputs(h[i], out);
 	}
 	if (h) {
-		if (kind & DF_IFDEF) {
-			fputs("#endif !!COMMENTS!!\n", out);
-		} else {
-			fputs("\n", out);
-		}
+		fputs("\n", out);
 		freeLines(h, free);
 		h = 0;
 	}
 }
 
 private int
-doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
+doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	FILE *out, char *lrev, char *rrev, char *ltag, char *rtag)
 {
 	FILE	*diffs = 0;
@@ -14030,8 +14024,10 @@ doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
 	char	spaces[80];
 	int	first = 1;
 	char	*error = "";
+	df_opt	dop2 = {0};
 
-	if (kind & DF_SDIFF) {
+	unless (dop) dop = &dop2;
+	if (dop->sdiff) {
 		int	i, c;
 		char	*columns = 0;
 
@@ -14046,7 +14042,8 @@ doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
 	} else {
 		strcpy(spaces, "=====");
 		unless (bktmp(diffFile, "diffs")) return (-1);
-		diff(leftf, rightf, kind, diffFile);
+		dop->ignore_trailing_cr = 1;
+		diff_files(leftf, rightf, dop, 0, diffFile);
 		diffs = fopen(diffFile, "rt");
 	}
 	if (WRITABLE(s) && !EDITED(s)) {
@@ -14054,32 +14051,27 @@ doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
 	}
 	while (fnext(buf, diffs)) {
 		if (first) {
-			if ((flags & DIFF_HEADER) && (kind & DF_IFDEF)) {
-				fprintf(out, "#ifdef !!HEADER!!\n");
-				fprintf(out, "< %s %s\n", s->gfile, lrev);
-				fprintf(out, "> %s %s\n", s->gfile, rrev);
-				fprintf(out, "#endif !!HEADER!!\n");
-			} else if (flags & DIFF_HEADER) {
+			if (dop->out_header) {
 				fprintf(out, "%s %s %s vs %s%s %s\n",
 				   spaces, s->gfile, lrev, rrev, error, spaces);
 			}
-			if (flags & DIFF_COMMENTS) {
-				diffComments(kind, out, s, lrev, rrev);
+			if (dop->out_comments) {
+				diffComments(out, s, lrev, rrev);
 			}
-			unless (flags & DIFF_HEADER) fprintf(out, "\n");
+			unless (dop->out_header) fprintf(out, "\n");
 			first = 0;
-			mkDiffHdr(kind, ltag, buf, out);
+			mkDiffHdr(ltag, buf, out);
 			unless (fnext(buf, diffs)) break;
-			mkDiffHdr(kind, rtag, buf, out);
+			mkDiffHdr(rtag, buf, out);
 		} else {
 			fputs(buf, out);
 		}
 	}
 	/* XXX - gross but useful hack to get spacers */
-	if ((flags & DIFF_COMMENTS) && !(kind & DF_IFDEF) && !first) {
+	if (dop->out_comments && !first) {
 		fprintf(out, "\n");
 	}
-	if (kind & DF_SDIFF) {
+	if (dop->sdiff) {
 		pclose(diffs);
 	} else {
 		fclose(diffs);
@@ -14094,7 +14086,7 @@ doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
  * r1 & r2 are user specified rev; can be incomplete 
  */
 private int
-mapRev(sccs *s, u32 flags, char *r1, char *r2,
+mapRev(sccs *s, char *r1, char *r2,
 			char **rev1, char **rev1M, char **rev2, pfile *pf)
 {
 	char *lrev, *lrevM = 0, *rrev;
@@ -14121,12 +14113,7 @@ mapRev(sccs *s, u32 flags, char *r1, char *r2,
 		lrev = r1;
 		rrev = 0;
 	} else {
-		unless (HAS_GFILE(s)) {
-			verbose((stderr,
-			    "diffs: %s not checked out.\n", s->gfile));
-			s->state |= S_WARNED;
-			return (-1);
-		}
+		unless (HAS_GFILE(s)) return (-1);
 		lrev = 0;
 		rrev = "?";
 	}
@@ -14199,7 +14186,7 @@ mkDiffTarget(sccs *s,
 
 private int
 normal_diff(sccs *s, char *lrev, char *lrevM,
-	char *rrev, u32 flags, u32 kind, FILE *out, pfile *pf)
+	char *rrev, df_opt *dop, FILE *out, pfile *pf)
 {
 	char	*lpath = 0, *rpath = 0;
 	int	rc = -1;
@@ -14209,10 +14196,10 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	/*
 	 * Create the lfile & rfile for diff
 	 */
-	if (mkDiffTarget(s, lrev, lrevM, flags, lfile, pf)) {
+	if (mkDiffTarget(s, lrev, lrevM, dop->flags, lfile, pf)) {
 		goto done;
 	}
-	if (mkDiffTarget(s, rrev, NULL,  flags, rfile, 0 )) {
+	if (mkDiffTarget(s, rrev, NULL,  dop->flags, rfile, 0 )) {
 		goto done;
 	}
 
@@ -14230,7 +14217,7 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	/*
 	 * Now diff the lfile & rfile
 	 */
-	rc = doDiff(s, flags, kind, lfile, rfile, out, lrev, rrev, ltag, rtag);
+	rc = doDiff(s, dop, lfile, rfile, out, lrev, rrev, ltag, rtag);
 done:	unless (streq(lfile, DEVNULL_RD)) unlink(lfile);
 	unless (streq(rfile, s->gfile) || streq(rfile, DEVNULL_RD)) unlink(rfile);
 	if (lpath) free(lpath);
@@ -14242,24 +14229,23 @@ done:	unless (streq(lfile, DEVNULL_RD)) unlink(lfile);
  * diffs - diff the gfile or the specified (or implied) rev
  */
 int
-sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, u32 kind, FILE *out)
+sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dopt, FILE *out)
 {
 	char	*lrev, *lrevM, *rrev;
-	pfile	pf;
+	pfile	pf = {0};
 	int	rc = 0;
-	
-	bzero(&pf, sizeof(pf));
+
 	GOODSCCS(s);
 
 	/*
 	 * Figure out which revision the user want.
 	 * Translate r1 => lrev, r2 => rrev.
 	 */
-	if (rc = mapRev(s, flags, r1, r2, &lrev, &lrevM, &rrev, &pf)) {
+	if (rc = mapRev(s, r1, r2, &lrev, &lrevM, &rrev, &pf)) {
 		goto done;
 	}
 
-	rc = normal_diff(s, lrev, lrevM, rrev, flags, kind, out, &pf);
+	rc = normal_diff(s, lrev, lrevM, rrev, dopt, out, &pf);
 
 done:	free_pfile(&pf);
 	return (rc);
@@ -15845,18 +15831,20 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	case KW_DIFFS: /* DIFFS */
 	case KW_DIFFS_U: /* DIFFS_U */
 	case KW_DIFFS_UP: /* DIFFS_UP */ {
-		int	kind;
 		int	open = (s->state & S_SOPEN);
+		df_opt	dop = {0};
 
 		switch (kwval->kwnum) {
 		    default:
-		    case KW_DIFFS:	kind = DF_DIFF; break;
-		    case KW_DIFFS_U:	kind = DF_UNIFIED; break;
-		    case KW_DIFFS_UP:	kind = DF_UNIFIED|DF_GNUp; break;
+		    case KW_DIFFS:	break;
+		    case KW_DIFFS_UP:	dop.out_show_c_func = 1;
+			/* fallthrough */
+		    case KW_DIFFS_U:	dop.out_unified = 1; break;
 		}
 		if (d == TREE(s)) return (nullVal);
 		unless (open) sccs_open(s, 0);
-		sccs_diffs(s, REV(s, d), REV(s, d), SILENT, kind, out);
+		dop.flags = SILENT;
+		sccs_diffs(s, REV(s, d), REV(s, d), &dop, out);
 		unless (open) sccs_close(s);
 		return (strVal);
 	}

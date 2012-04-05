@@ -48,7 +48,7 @@ private	int	marklist(char *file);
 private	ser_t	mkChangeSet(sccs *cset, char *files, FILE *diffs);
 private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
-private	void	doDiff(sccs *sc, char kind);
+private	void	doDiff(sccs *sc);
 private	void	sccs_patch(sccs *, cset_t *);
 private	int	cset_diffs(cset_t *cs, ser_t ser);
 private	void	cset_exit(int n);
@@ -387,7 +387,7 @@ doit(cset_t *cs, sccs *sc)
 	if (copts.hide_comp && CSET(sc) && proj_isComponent(sc->proj)) return;
 	cs->nfiles++;
 	if (cs->doDiffs) {
-		doDiff(sc, DF_UNIFIED);
+		doDiff(sc);
 	} else if (cs->makepatch) {
 		sccs_patch(sc, cs);
 	} else if (cs->mark) {
@@ -838,10 +838,12 @@ fail:
  * Spit out the diffs.
  */
 private void
-doDiff(sccs *sc, char kind)
+doDiff(sccs *sc)
 {
 	ser_t	d, e = 0;
+	df_opt	dop = {0};
 
+	dop.out_unified = 1;
 	if (CSET(sc)) return;		/* no changeset diffs */
 	for (d = TABLE(sc); d >= TREE(sc); d--) {
 		if (FLAGS(sc, d) & D_SET) {
@@ -861,7 +863,7 @@ doDiff(sccs *sc, char kind)
 	}
 	e = PARENT(sc, e);
 	if (e == d) return;
-	sccs_diffs(sc, REV(sc, e), REV(sc, d), 0, kind, stdout);
+	sccs_diffs(sc, REV(sc, e), REV(sc, d), &dop, stdout);
 }
 
 #if 0

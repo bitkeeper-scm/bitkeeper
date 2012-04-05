@@ -51,6 +51,8 @@ private	void	printHeader(int lno, void *extra, FILE *out);
 /* other functions */
 private int	algn_ws(void *data, int len, void *extra);
 
+private	int	external_diff(char *lfile, char *rfile, df_opt *dop, char *out);
+
 int
 ndiff_main(int ac, char **av)
 {
@@ -104,7 +106,7 @@ ndiff_main(int ac, char **av)
 		goto out;
 	}
 
-	rc = diff_files(av[optind], av[optind+1], &opts, 0, stdout);
+	rc = diff_files(av[optind], av[optind+1], &opts, 0, "-");
 out:	if (opts.out_define) FREE(opts.out_define);
 	if (opts.pattern) FREE(opts.pattern);
 	return (rc);
@@ -137,7 +139,7 @@ cleanOpts(df_opt *opts)
  *   2  error
  */
 int
-diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, FILE *out)
+diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 {
 	int	i, j, n;
 	int	firstDiff;
@@ -151,9 +153,19 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, FILE *out)
 	header	*fh;
 	df_ctx	*dc = 0;
 	filediff *o;
+	FILE	*fout = 0;
 	struct	stat sb[2];
 
+	if (getenv("_BK_USE_EXTERNAL_DIFF")) {
+		return (external_diff(file1, file2, dop, out));
+	}
+
 	unless (cleanOpts(dop)) return (2);
+
+	if (out) {
+		fout = (streq(out, "-")) ? stdout : fopen(out, "w");
+		unless (fout) return (2);
+	}
 
 	o = new(filediff);
 	o->dop = new(df_opt);
@@ -271,7 +283,10 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, FILE *out)
 		 * we've checked for same size and equal contents
 		 * above.
 		 */
-		fprintf(out, "Binary files %s and %s differ\n", file1, file2);
+		if (fout) {
+			fprintf(fout,
+			    "Binary files %s and %s differ\n", file1, file2);
+		}
 		rc = 1;
 		goto out;
 	}
@@ -306,28 +321,88 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, FILE *out)
 		diff_printUnified(dc,
 		    file1, &sb[0].st_mtime,
 		    file2, &sb[1].st_mtime,
-		    printLine, o->dop->pattern ? printHeader : 0, out);
+		    printLine, o->dop->pattern ? printHeader : 0, fout);
 	} else if (o->dop->out_rcs) {
-		diff_printRCS(dc, printLine, out);
+		diff_printRCS(dc, printLine, fout);
 	} else if (o->dop->out_define) {
-		diff_printIfDef(dc, o->dop->out_define, printLine, out);
+		diff_printIfDef(dc, o->dop->out_define, printLine, fout);
 	} else if (o->dop->out_print_hunks) {
 		hunk	*h, *hlist = diff_hunks(dc);
 
 		EACHP(hlist, h) {
-			fprintf(out,
+			fprintf(fout,
 			    "%d,%d %d,%d\n", h->li, h->ll, h->ri, h->rl);
 		}
 	} else {
-		diff_print(dc, printLine, out);
+		diff_print(dc, printLine, fout);
 	}
 	if (o->dop->out_show_c_func) o->dop->pattern = 0;
-out:	FREE(data[0]);
+out:	if (fout) fclose(fout);
+	FREE(data[0]);
 	FREE(data[1]);
 	FREE(o->dop);
 	FREE(o);
 	diff_free(dc);
 	return (rc);
+}
+
+private int
+external_diff(char *lfile, char *rfile, df_opt *dop, char *out)
+{
+	int	fd1 = -1;
+	int	status = -1, i;
+	int	ret;
+	char	*av[40];
+	char	def[MAXLINE];
+
+	unless (streq("-", out)) {
+		int	fd;
+
+		fd1 = dup(1);
+		close(1); /* this confused purify, it expect a fclose */
+		fd = open(out, O_CREAT|O_WRONLY, 0644);
+		if (fd == -1) {
+			perror(out);
+			return (2);
+		}
+		assert(fd == 1);
+		debug((stderr, "diff: out = %s\n", out));
+	}
+
+	av[i = 0] = "diff";
+	if (dop->ignore_ws_chg) av[++i] = "-b";
+	if (dop->out_show_c_func) av[++i] = "-p";
+	if (dop->ignore_all_ws) av[++i] = "-w";
+	if (dop->new_is_null) av[++i] = "-N";
+	if (dop->out_define) {
+		sprintf(def, "-D%s", dop->out_define);
+		av[++i] = def;
+	}
+	if (dop->out_rcs) av[++i] = "-n";
+	if (dop->out_unified) av[++i] = "-u";
+
+	av[++i] = "--ignore-trailing-cr";
+	av[++i] = lfile;
+	av[++i] = rfile;
+	av[++i] = 0;
+	assert(i < sizeof(av)/sizeof(char*));
+
+	/* Needed because we normally ignore it in sccs_init() but we may
+	 * be diffing no inited files.
+	 */
+	signal(SIGPIPE, SIG_IGN);
+
+	status = spawnvp(_P_WAIT, av[0], av);
+	unless (WIFEXITED(status))  {
+		fprintf(stderr,
+		    "diff(): spawnvp returned 0x%x, errno=%d, PATH=%s\n",
+		    status, errno, getenv("PATH"));
+		for (i = 0; av[i]; ++i) fprintf(stderr, "av[%d]=%s\n",i, av[i]);
+	}
+	ret = WEXITSTATUS(status);
+
+	if (fd1 != -1) { close(1); dup2(fd1, 1); close(fd1); }
+	return (ret);
 }
 
 /*

@@ -5,7 +5,7 @@
 #include "logging.h"	/* lease_check() */
 
 
-private int	nulldiff(char *name, u32 kind, u32 flags);
+private int	nulldiff(char *name, df_opt *dop);
 
 /*
  * diffs - show differences of SCCS revisions.
@@ -54,15 +54,16 @@ int
 diffs_main(int ac, char **av)
 {
 	int	rc, c;
-	int	verbose = 0, empty = 0, errors = 0, mdiff = 0, force = 0;
-	u32	flags = DIFF_HEADER|SILENT, kind = DF_DIFF;
-	pid_t	pid = 0; /* lint */
+	int	verbose = 0, empty = 0, errors = 0, force = 0;
+	u32	flags = SILENT;
+	df_opt	dop = {0};
 	char	*name;
 	char	*Rev = 0, *boundaries = 0;
 	RANGE	rargs = {0};
 
+	dop.out_header = 1;
 	while ((c = getopt(ac, av,
-		    "@|a;A;bBcC|d;efhHIl|m|nNpr;R|suvw", 0)) != -1) {
+		    "@|a;A;bBcC|d;efhHl|nNpr;R|suvw", 0)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -71,34 +72,23 @@ diffs_main(int ac, char **av)
 			flags = annotate_args(flags, optarg);
 			if (flags == -1) usage();
 			break;
-		    case 'b': kind |= DF_GNUb; break;		/* doc 2.0 */
-		    case 'B': kind |= DF_GNUB; break;		/* doc 2.0 */
-		    case 'c': kind |= DF_CONTEXT; break;	/* doc 2.0 */
+		    case 'b': dop.ignore_ws_chg = 1; break;	/* doc 2.0 */
+		    case 'B': /* unimplemented */    break;	/* doc 2.0 */
+		    case 'c': dop.out_unified = 0;   break;	/* doc 2.0 */
 		    case 'C': getMsg("diffs_C", 0, 0, stdout); exit(0);
 		    case 'e': empty = 1; break;			/* don't doc */
 		    case 'f': force = 1; break;
-		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
-		    case 'H':
-			flags |= DIFF_COMMENTS;
-			break;
-		    case 'I': kind |= DF_IFDEF; break;		/* internal */
+		    case 'h': dop.out_header = 0; break;	/* doc 2.0 */
+		    case 'H': dop.out_comments = 1; break;
 		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
-		    case 'm':					/* internal */
-			kind |= DF_IFDEF;
-			mdiff = 1;
-			if (optarg && (*optarg == 'r')) flags |= GET_LINENAME;
-			break;
-		    case 'n': kind |= DF_RCS; break;		/* doc 2.0 */
-		    case 'N': kind |= DF_GNUN; break;
-		    case 'p': kind |= DF_GNUp; break;		/* doc 2.0 */
+		    case 'n': dop.out_rcs = 1;	break;		/* doc 2.0 */
+		    case 'N': dop.new_is_null = 1; break;
+		    case 'p': dop.out_show_c_func = 1; break;	/* doc 2.0 */
 		    case 'R': unless (Rev = optarg) Rev = "-"; break;
-		    case 's':					/* doc 2.0 */
-			kind &= ~DF_DIFF;
-			kind |= DF_SDIFF;
-			break;
-		    case 'u': kind |= DF_UNIFIED; break;	/* doc 2.0 */
+		    case 's': dop.sdiff = 1; break;		/* doc 2.0 */
+		    case 'u': dop.out_unified = 1; break;	/* doc 2.0 */
 		    case 'v': verbose = 1; break;		/* doc 2.0 */
-		    case 'w': kind |= DF_GNUw; break;		/* doc 2.0 */
+		    case 'w': dop.ignore_all_ws = 1; break;	/* doc 2.0 */
 		    case 'd':
 			if (range_addArg(&rargs, optarg, 1)) usage();
 			break;
@@ -117,6 +107,8 @@ diffs_main(int ac, char **av)
 		return (1);
 	}
 
+	dop.flags = flags;
+
 	/*
 	 * If we specified both revisions then we don't need the gfile.
 	 * If we specifed one rev, then the gfile is also optional, we'll
@@ -130,29 +122,8 @@ diffs_main(int ac, char **av)
 		return (1);
 	}
 
-	if (mdiff) {
-		char	*mav[20];
-		int	i, fd;
-
-		mav[i=0] = "bk";
-		mav[++i] = "mdiff";
-		if (flags & GET_PREFIX) {
-			flags |= GET_ALIGN;
-			mav[++i] = "-A";
-		} else {
-			assert(!(flags & GET_ALIGN));
-		}
-		if (flags & GET_LINENAME) mav[++i] = "-r";
-		mav[++i] = 0;
-		if ((pid = spawnvpio(&fd, 0, 0, mav)) == -1) {
-			perror("mdiff");
-			exit(1);
-		}
-		dup2(fd, 1); close(fd);
-	}
 	name = sfileFirst("diffs", &av[optind], 0);
 	while (name) {
-		int	ex = 0;
 		sccs	*s = 0;
 		ser_t	d;
 		char	*r1 = 0, *r2 = 0;
@@ -167,7 +138,7 @@ diffs_main(int ac, char **av)
 			char	*gfile = sccs2name(name);
 
 			unless (writable(gfile) ||
-			    ((kind&DF_GNUN) && !exists(name) && exists(gfile))){
+			    ((dop.new_is_null) && !exists(name) && exists(gfile))){
 				free(gfile);
 				goto next;
 			}
@@ -175,7 +146,7 @@ diffs_main(int ac, char **av)
 		}
 		s = sccs_init(name, SILENT);
 		unless (s && HASGRAPH(s)) {
-			if (nulldiff(name, kind, flags) == 2) goto out;
+			if (nulldiff(name, &dop) == 2) goto out;
 			goto next;
 		}
 		if (boundaries) {
@@ -229,21 +200,6 @@ diffs_main(int ac, char **av)
 			if ((rargs.rstop) && (s->rstart == s->rstop)) goto next;
 			if (s->rstop) r2 = REV(s, s->rstop);
 		}
-#if	0
-		/*
-		 * The ONLY time keyword expansion should be enabled
-		 * is for 'bk diffs -r+ file' where there is an unlocked
-		 * gfile.  This is where the user wants to verify that
-		 * the gfile actually matches the TOT.  All other times
-		 * we are comparing committed versions to each other or an
-		 * editted gfile.
-		 * XXX  The case above is currently broken, so I just
-		 * disabled keywork expansion entirely.
-		 */
-		if (HAS_GFILE(s) && !WRITABLE(s) && (things <= 1)) {
-			ex = GET_EXPAND;
-		}
-#endif
 
 		/*
 		 * Optimize out the case where we we are readonly and diffing
@@ -263,14 +219,14 @@ diffs_main(int ac, char **av)
 		 * the file.
 		 */
 		if (!r1 && WRITABLE(s) && HAS_PFILE(s) && !MONOTONIC(s)) {
-			rc = sccs_hasDiffs(s, flags|ex, 1);
+			rc = sccs_hasDiffs(s, flags, 1);
 			if (BAM(s) && ((rc < 0) || (rc > 1))) {
 				errors |= 2;
 				goto next;
 			}
 			unless (rc) goto next;
 			if (BAM(s)) {
-				if (flags & DIFF_HEADER) {
+				if (dop.out_header) {
 					printf("===== %s %s vs edited =====\n",
 					    s->gfile, REV(s, sccs_top(s)));
 				}
@@ -296,7 +252,7 @@ diffs_main(int ac, char **av)
 		 *
 		 * XXX - need to catch a request for annotations w/o 2 revs.
 		 */
-		rc = sccs_diffs(s, r1, r2, ex|flags, kind, stdout);
+		rc = sccs_diffs(s, r1, r2, &dop, stdout);
 		switch (rc) {
 		    case -1:
 			fprintf(stderr,
@@ -319,25 +275,17 @@ next:		if (s) {
 		name = sfileNext();
 	}
 out:	if (sfileDone()) errors |= 4;
-	if (mdiff) {
-		u32	status;
-
-		fflush(stdout);		/* just in case */
-		close(1);
-		waitpid(pid, &status, 0);
-		errors |= WIFEXITED(status) ? WEXITSTATUS(status) : 1;
-	}
 	return (errors);
 }
 
 private int
-nulldiff(char *name, u32 kind, u32 flags)
+nulldiff(char *name, df_opt *dop)
 {
 	int	ret = 0;
 	char	*here, *file, *p;
 
 	name = sccs2name(name);
-	unless (kind & DF_GNUN) {
+	unless (dop->new_is_null) {
 		printf("New file: %s\n", name);
 		goto out;
 	}
@@ -345,7 +293,7 @@ nulldiff(char *name, u32 kind, u32 flags)
 		fprintf(stderr, "Warning: skipping binary '%s'\n", name);
 		goto out;
 	}
-	if (flags & DIFF_HEADER) {
+	if (dop->out_header) {
 		printf("===== New file: %s =====\n", name);
 		/* diff() uses write, not stdio */
 		if (fflush(stdout)) {
@@ -353,7 +301,7 @@ nulldiff(char *name, u32 kind, u32 flags)
 			goto out;
 		}
 	}
-	
+
 	/*
 	 * Wayne liked this better but I had to work around a nasty bug in
 	 * that the chdir() below changes the return from proj_cwd().
@@ -364,7 +312,7 @@ nulldiff(char *name, u32 kind, u32 flags)
 	assert(p);
 	file = aprintf("%s/%s", p+1, name);
 	chdir("..");
-	ret = diff(DEVNULL_RD, file, kind, "-");
+	ret = diff_files(DEVNULL_RD, file, dop, 0, "-");
 	chdir(here);
 	free(here);
 	free(file);

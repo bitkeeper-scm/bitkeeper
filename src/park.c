@@ -39,6 +39,7 @@ park_main(int ac, char **av)
 	sccs	*s = 0;
 	time_t	tt;
 	FILE	*f = 0, *f2 = 0;
+	df_opt	dop = {0};
 
 	while ((c = getopt(ac, av, "acflp:quy|", 0)) != -1) {
 		switch (c) {
@@ -187,7 +188,9 @@ err:		if (s) sccs_free(s);
 			fprintf(out, "%s\n", s->symlink);
 		} else if (diffable_text(s, top)) {
 			rc |= parkfile_header(s, top, "TEXT_DIFFS", out);
-			rc |= sccs_diffs(s, 0, 0, DIFF_HEADER, DF_UNIFIED, out);
+			dop.out_unified = 1;
+			dop.out_header = 1;
+			rc |= sccs_diffs(s, 0, 0, &dop, out);
 		} else if (S_ISLNK(s->mode)) {
 			rc |= parkfile_header(s, top, "SYMLINK", out);
 			fprintf(out, "%s\n", s->symlink);

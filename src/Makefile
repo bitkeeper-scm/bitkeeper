@@ -153,10 +153,10 @@ OBJ =	bkver.o cmd.o \
 	idcache.o isascii.o inskeys.o \
 	key2rev.o key2path.o kill.o kv.o kvfile.o \
 	lease.o \
-	libcommit.o libdiff.o libgraph.o librange.o \
+	libcommit.o libgraph.o librange.o \
 	libsfiles.o libusers.o lines.o \
 	localtm.o lock.o locking.o \
-	logging.o mail.o mdiff.o merge.o mklock.o \
+	logging.o mail.o merge.o mklock.o \
 	mailslot.o \
 	mailsplit.o mtime.o mv.o names.o ndiff.o nested.o newroot.o \
 	opark.o \

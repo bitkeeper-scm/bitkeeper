@@ -78,7 +78,6 @@ int	checking_rmdir(char *dir);
 #define	GET_ALIGN	0x00010000	/* nicely align prefix output */
 #define	GET_FORCE	0x00020000	/* do it even with errors */
 #define	GET_HEADER	0x00040000	/* diff: print header */
-#define	DIFF_HEADER	GET_HEADER
 #define	GET_DTIME	0x00080000	/* gfile get delta's mode time */
 #define	GET_NOHASH	0x00001000	/* force regular file, ignore S_HASH */
 #define	GET_HASHONLY	0x00002000	/* skip the file */
@@ -170,21 +169,6 @@ int	checking_rmdir(char *dir);
 #define S_IMPORT	0x00080000	/* import mode */
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
-
-/*
- * Options to sccs_diffs()
- */
-#define	DF_DIFF		0x00000001
-#define	DF_SDIFF	0x00000002
-#define	DF_CONTEXT	0x00000004
-#define	DF_UNIFIED	0x00000008
-#define	DF_RCS		0x00000010
-#define	DF_IFDEF	0x00000020
-#define	DF_GNUb		0x00000040
-#define	DF_GNUB		0x00000080
-#define	DF_GNUp		0x00000100
-#define	DF_GNUw		0x00000200
-#define	DF_GNUN		0x00000400
 
 /*
  * Date handling.
@@ -935,13 +919,32 @@ typedef struct {
 	u32	usr;	/* # user files (not under BitKeeper/) */
 } filecnt;
 
+typedef struct {
+	int	sdiff;			/* diff kind (transitional) */
+	int	flags;			/* flags (transitional) */
+	char	*out_define;		/* diff -D */
+	char	*pattern;		/* pattern for diff -p */
+	u32	ignore_all_ws:1;	/* ignore all whitespace */
+	u32	ignore_ws_chg:1;	/* ignore changes in white space */
+	u32	minimal:1;		/* find minimal diffs */
+	u32	strip_trailing_cr:1;	/* remove trailing \r and \n */
+	u32	ignore_trailing_cr:1;	/* ignore trailing \r and \n (bk) */
+	u32	new_is_null:1;		/* treat non-existent files as new */
+	u32	out_unified:1;		/* print unified diffs */
+	u32	out_show_c_func:1;	/* print C function (diff -p) */
+	u32	out_rcs:1;		/* output RCS diffs */
+	u32	out_print_hunks:1;	/* just print the hunks */
+	u32	out_header:1;		/* print bitkeeper header (doDiff())*/
+	u32	out_comments:1;		/* print comments */
+} df_opt;
+
 int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_adminFlag(sccs *sc, u32 flags);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, ser_t d, MMAP *init, MMAP *diffs,
 		   char **syms);
-int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, u32 kind, FILE *);
+int	sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dop, FILE *);
 int	sccs_encoding(sccs *s, off_t size, char *enc);
 int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
@@ -1318,22 +1321,7 @@ int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
 int	inskeys(char *image, char *keys);
 void	lockfile_cleanup(void);
 
-typedef struct {
-	char	*out_define;		/* diff -D */
-	char	*pattern;		/* pattern for diff -p */
-	u32	ignore_all_ws:1;	/* ignore all whitespace */
-	u32	ignore_ws_chg:1;	/* ignore changes in white space */
-	u32	minimal:1;		/* find minimal diffs */
-	u32	strip_trailing_cr:1;	/* remove trailing \r and \n */
-	u32	ignore_trailing_cr:1;	/* ignore trailing \r and \n (bk) */
-	u32	new_is_null:1;		/* treat non-existent files as new */
-	u32	out_unified:1;		/* print unified diffs */
-	u32	out_show_c_func:1;	/* print C function (diff -p) */
-	u32	out_rcs:1;		/* output RCS diffs */
-	u32	out_print_hunks:1;	/* just print the hunks */
-} df_opt;
-
-int	diff_files(char *file1, char *file2, df_opt *opts, df_ctx **dc, FILE *out);
+int	diff_files(char *file1, char *file2, df_opt *opts, df_ctx **dc, char *out);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
 int	(*is_whitespace)(int i));

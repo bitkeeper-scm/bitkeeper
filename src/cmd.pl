@@ -287,7 +287,6 @@ _mailslot
 mailsplit
 mail
 makepatch
-mdiff
 merge
 mklock
 more
