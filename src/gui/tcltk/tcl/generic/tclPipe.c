@@ -902,7 +902,7 @@ TclCreatePipeline(
 	if (enable_secure_bk_calls == 1) {
 	    rand_setSeed(1);
 	} else {
-	    putenv("RANDSEED=");
+	    Tcl_PutEnv("RANDSEED=");
 	}
 #endif
 
