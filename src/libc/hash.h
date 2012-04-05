@@ -79,6 +79,10 @@ int	hash_close(hash *h);
 private inline void *
 hash_fetch(hash *h, void *key, int klen)
 {
+	unless (h) {
+		errno = EINVAL;
+		return (0);
+	}
 	return (h->ops->fetch(h, key, klen));
 }
 
@@ -99,6 +103,7 @@ hash_fetch(hash *h, void *key, int klen)
 private inline void *
 hash_store(hash *h, void *key, int klen, void *val, int vlen)
 {
+	assert(h);
 	return (h->ops->store(h, key, klen, val, vlen));
 }
 
@@ -121,6 +126,7 @@ hash_store(hash *h, void *key, int klen, void *val, int vlen)
 private inline void *
 hash_insert(hash *h, void *key, int klen, void *val, int vlen)
 {
+	assert(h);
 	return (h->ops->insert(h, key, klen, val, vlen));
 }
 
@@ -137,6 +143,7 @@ hash_insert(hash *h, void *key, int klen, void *val, int vlen)
 private inline int
 hash_delete(hash *h, void *key, int klen)
 {
+	assert(h);
 	return (h->ops->delete(h, key, klen));
 }
 
@@ -157,6 +164,7 @@ hash_delete(hash *h, void *key, int klen)
 private inline void *
 hash_first(hash *h)
 {
+	unless (h) return (0);
 	return (h->ops->first(h));
 }
 
@@ -174,6 +182,7 @@ hash_first(hash *h)
 private inline void *
 hash_next(hash *h)
 {
+	unless (h) return (0);
 	return (h->ops->next(h));
 }
 
@@ -186,6 +195,7 @@ hash_next(hash *h)
 private inline void *
 hash_last(hash *h)
 {
+	unless (h) return (0);
 	return (h->ops->last(h));
 }
 
@@ -198,6 +208,7 @@ hash_last(hash *h)
 private inline void *
 hash_prev(hash *h)
 {
+	unless (h) return (0);
 	return (h->ops->prev(h));
 }
 
@@ -269,6 +280,10 @@ int	hash_keyDiff(hash *A, hash *B);
 private inline char *
 hash_fetchStrStr(hash *h, char *key)
 {
+	unless (h) {
+		errno = EINVAL;
+		return (0);
+	}
 	return (h->ops->fetch(h, key, strlen(key) + 1));
 }
 #define	hash_fetchStr	hash_fetchStrStr
@@ -279,6 +294,10 @@ hash_fetchStrPtr(hash *h, char *key)
 {
 	void	**data;
 
+	unless (h) {
+		errno = EINVAL;
+		return (0);
+	}
 	if (data = h->ops->fetch(h, key, strlen(key) + 1)) {
 		return (*data);
 	} else {
@@ -294,12 +313,20 @@ hash_fetchStrPtr(hash *h, char *key)
 private inline void *
 hash_fetchStrMem(hash *h, char *key)
 {
+	unless (h) {
+		errno = EINVAL;
+		return (0);
+	}
 	return (h->ops->fetch(h, key, strlen(key) + 1));
 }
 
 private inline i64
 hash_fetchStrI64(hash *h, char *key)
 {
+	unless (h) {
+		errno = EINVAL;
+		return (0);
+	}
 	if (h->ops->fetch(h, key, strlen(key) + 1)) {
 		return (*(i64 *)h->vptr);
 	} else {
@@ -315,6 +342,10 @@ hash_fetchStrI64(hash *h, char *key)
 private inline int
 hash_fetchStrNum(hash *h, char *key)
 {
+	unless (h) {
+		errno = EINVAL;
+		return (0);
+	}
 	if (h->ops->fetch(h, key, strlen(key) + 1)) {
 		return (strtol(h->vptr, 0, 10));
 	} else {
@@ -332,6 +363,7 @@ hash_storeStrStr(hash *h, char *key, char *val)
 {
 	int	vlen = val ? strlen(val) + 1 : 0;
 
+	assert(h);
 	return (h->ops->store(h, key, strlen(key)+1, val, vlen));
 }
 #define	hash_storeStr	hash_storeStrStr
@@ -339,18 +371,21 @@ hash_storeStrStr(hash *h, char *key, char *val)
 private inline void **
 hash_storeStrPtr(hash *h, char *key, void *val)
 {
+	assert(h);
 	return (h->ops->store(h, key, strlen(key)+1, &val, sizeof(val)));
 }
 
 private inline void *
 hash_storeStrMem(hash *h, char *key, void *val, int vlen)
 {
+	assert(h);
 	return (h->ops->store(h, key, strlen(key)+1, val, vlen));
 }
 
 private inline i64 *
 hash_storeStrI64(hash *h, char *key, i64 val)
 {
+	assert(h);
 	return (h->ops->store(h, key, strlen(key)+1, &val, sizeof(val)));
 }
 
@@ -360,6 +395,7 @@ hash_storeStrNum(hash *h, char *key, int val)
 	int	vlen;
 	char	buf[64];
 
+	assert(h);
 	vlen = sprintf(buf, "%d", val) + 1;
 	return (h->ops->store(h, key, strlen(key)+1, buf, vlen));
 }
@@ -375,6 +411,7 @@ hash_insertStrStr(hash *h, char *key, char *val)
 {
 	int	vlen = val ? strlen(val) + 1 : 0;
 
+	assert(h);
 	return (h->ops->insert(h, key, strlen(key)+1, val, vlen));
 }
 #define	hash_insertStr	hash_insertStrStr
@@ -382,12 +419,14 @@ hash_insertStrStr(hash *h, char *key, char *val)
 private inline void **
 hash_insertStrPtr(hash *h, char *key, void *val)
 {
+	assert(h);
 	return (h->ops->insert(h, key, strlen(key)+1, &val, sizeof(val)));
 }
 
 private inline void *
 hash_insertStrMem(hash *h, char *key, void *val, int vlen)
 {
+	assert(h);
 	return (h->ops->insert(h, key, strlen(key)+1, val, vlen));
 }
 
@@ -400,6 +439,7 @@ hash_insertStrI32(hash *h, char *key, i32 val)
 private inline i64 *
 hash_insertStrI64(hash *h, char *key, i64 val)
 {
+	assert(h);
 	return (h->ops->insert(h, key, strlen(key)+1, &val, sizeof(val)));
 }
 
@@ -409,6 +449,7 @@ hash_insertStrNum(hash *h, char *key, int val)
 	int	vlen;
 	char	buf[64];
 
+	assert(h);
 	vlen = sprintf(buf, "%d", val) + 1;
 	return (h->ops->insert(h, key, strlen(key)+1, buf, vlen));
 }
@@ -422,6 +463,7 @@ hash_insertStrSet(hash *h, char *key)
 private inline int
 hash_deleteStr(hash *h, char *key)
 {
+	assert(h);
 	return (h->ops->delete(h, key, strlen(key) + 1));
 }
 

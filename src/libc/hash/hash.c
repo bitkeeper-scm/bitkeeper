@@ -89,6 +89,7 @@ hash_close(hash *h)
 {
 	int	ret;
 
+	unless (h) return (0);
 	assert(h->ops->hashclose);
 	ret = h->ops->hashclose(h);
 	free(h);
@@ -106,6 +107,7 @@ hash_free(hash *h)
 {
 	int	ret;
 
+	unless (h) return (0);
 	ret = h->ops->free(h);
 	free(h);
 	return (ret);
