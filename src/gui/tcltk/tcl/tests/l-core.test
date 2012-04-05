@@ -1300,6 +1300,8 @@ void unicode_3()
 	string	h = "זו השפה שלנו";
 	string	r;
 
+	/* These test wide chars in both regexp and string. */
+
 	unless (h =~ /זו/) puts("bad 1.1");
 	if (h =~ /ך/) puts("bad 1.2");
 	unless (h =~ /זו השפה שלנו/) puts("bad 1.3");
@@ -1329,6 +1331,16 @@ void unicode_3()
 	unless (h =~ /זו (השפ)ה שלנו/) puts("bad 4.1");
 	unless (length($1) == 3) puts("bad 4.2");
 	unless ($1 eq "השפ") puts("bad 4.3");
+
+	/* Test an ascii regexp and a wide string. */
+
+	h = "זו השפה שלנו";
+	unless (h =~ / /) puts("bad 10.1");
+	h =~ s/ //;
+	unless (h == "זוהשפה שלנו") puts("bad 10.2");
+	h = "זו השפה שלנו";
+	h =~ s/ //g;
+	unless (h == "זוהשפהשלנו") puts("bad 10.3");
 }
 unicode_3();
 } -output {}
@@ -1408,11 +1420,19 @@ void unicode_5()
 	unless (a[1] eq "日本語が") puts("bad 2.3");
 	unless (a[2] eq "分かります") puts("bad 2.4");
 
+	// Split a unicode string with a unicode regexp.
 	a = split(/ש/, "זו השפה שלנו");
 	unless (length(a) == 3) puts("bad 3.1");
 	unless (a[0] eq "זו ה") puts("bad 3.2");
 	unless (a[1] eq "פה ") puts("bad 3.3");
 	unless (a[2] eq "לנו") puts("bad 3.4");
+
+	// Split a unicode string with an ascii regexp.
+	a = split(/ /, "זו השפה שלנו");
+	unless (length(a) == 3) puts("bad 4.1");
+	unless (a[0] eq "זו") puts("bad 4.2");
+	unless (a[1] eq "השפה") puts("bad 4.3");
+	unless (a[2] eq "שלנו") puts("bad 4.4");
 }
 unicode_5();
 } -output {}
