@@ -209,8 +209,8 @@ cat <<EOF >in
 EOF
 bk _hashfile_test r in >got || exit 1
 cat <<EOF >want
-key1 => this is short
-
+key1 => 'this is short
+' (14)
 EOF
 cmpfiles want got
 echo OK
@@ -229,12 +229,12 @@ cat <<EOF >in
 EOF
 bk _hashfile_test r in >got || exit 1
 cat <<EOF >want
-key1 => this is a somewhat long line and it is line 1
+key1 => 'this is a somewhat long line and it is line 1
 this is a somewhat long line and it is line 2
 this is a somewhat long line and it is line 3
 this is a somewhat long line and it is line 4
 this is a somewhat long line and it is line 5
-
+' (230)
 EOF
 cmpfiles want got
 echo OK
@@ -416,4 +416,36 @@ grep -q 'base64' got || exit 2
 # now dump the base64-encoded file and check the value
 bk _hashfile_test r got >out || exit 3
 grep -q 'key1 => has.ctrlA' out || exit 4
+echo OK
+
+echon show various empty values ...................................
+cat <<EOF > in
+@key1
+@key2
+
+@key3
+
+
+@key4 base64
+EOF
+bk _hashfile_test r in > out || fail
+cat <<EOF > WANT
+key1 => '' (0)
+key2 => 
+key3 => 
+
+key4 => '' (0)
+EOF
+cmpfiles out WANT
+bk _hashfile_test w in > out || fail
+cat <<EOF > WANT
+@key1
+@key2
+
+@key3
+
+
+@key4
+EOF
+cmpfiles out WANT
 echo OK

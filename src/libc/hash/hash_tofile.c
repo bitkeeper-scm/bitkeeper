@@ -118,7 +118,7 @@ hash_fromStream(hash *h, FILE *f)
 			if (key || gotval) {
 				/* save old key */
 				unless (h) h = hash_new(HASH_MEMHASH);
-				savekey(h, base64, key, val);
+				savekey(h, !base64 && gotval, key, val);
 				key = 0;
 				gotval = 0;
 			}
@@ -144,7 +144,8 @@ hash_fromStream(hash *h, FILE *f)
 				}
 			} else {
 				if (gotval) fputc('\n', val);
-				if (*line) {
+				/* compat: ignore null key null val */
+				if (*line || key) {
 					fputs(line, val);
 					gotval = 1;
 				}
@@ -153,7 +154,7 @@ hash_fromStream(hash *h, FILE *f)
 	}
 	if (key || gotval) {
 		unless (h) h = hash_new(HASH_MEMHASH);
-		savekey(h, base64, key, val);
+		savekey(h, !base64 && gotval, key, val);
 	}
 	fclose(val);
 	return (h);
@@ -218,7 +219,7 @@ writeField(FILE *f, char *key, u8 *data, int len)
 			data += inlen;
 			len -= inlen;
 		}
-	} else {
+	} else if (len) {
 		/* data is normal \0 terminated C string */
 		fputc('\n', f);
 		while (*data) {
@@ -233,14 +234,14 @@ writeField(FILE *f, char *key, u8 *data, int len)
 }
 
 private void
-savekey(hash *h, int base64, char *key, FILE *val)
+savekey(hash *h, int addnull, char *key, FILE *val)
 {
 	u8	*data;
 	size_t	len;
 
 	unless (key) key = strdup("");
 	data = fmem_peek(val, &len);
-	unless (base64) len++;
+	if (addnull) len++;
 	/* overwrite existing */
 	hash_store(h, key, strlen(key)+1, data, len);
 	free(key);
@@ -270,11 +271,11 @@ usage:		fprintf(stderr, "usage: %s [r|w|n] <file>\n", av[0]);
 			sortLines(keys, 0);
 			EACH(keys) {
 				val = hash_fetchStr(h, keys[i]);
-				if (val[h->vlen-1]) {
+				if (!h->vlen || val[h->vlen-1]) {
 					// val not null terminated
-					printf("%s => ", keys[i]);
+					printf("%s => '", keys[i]);
 					fwrite(val, h->vlen, 1, stdout);
-					printf("\n");
+					printf("' (%d)\n", h->vlen);
 				} else {
 					printf("%s => %s\n", keys[i], val);
 				}
