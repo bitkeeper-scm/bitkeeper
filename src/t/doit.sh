@@ -254,6 +254,10 @@ setup_env()
 	esac
 	check_enclosing_repo
 
+	# Don't whine about lock files
+	_BK_UNIQUE_SHUTUP=YES
+	export _BK_UNIQUE_SHUTUP
+
 	# Default to always creating BitKeeper/etc/attr, even in old trees
 	BK_ATTR=YES
 	export BK_ATTR

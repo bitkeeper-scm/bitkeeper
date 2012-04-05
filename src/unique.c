@@ -62,7 +62,7 @@ uniq_lock(void)
 
 	lock = aprintf("%s/.uniq_keys_%s", TMP_PATH, sccs_realuser());
 
-	if (getenv("_BK_SHUTUP")) quiet = 1;
+	if (getenv("_BK_UNIQUE_SHUTUP")) quiet = 1;
 	rc = sccs_lockfile(lock, -1, quiet);
 	free(lock);
 	return (rc);
