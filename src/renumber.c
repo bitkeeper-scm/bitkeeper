@@ -19,10 +19,7 @@
 #include "sccs.h"
 #include "progress.h"
 
-private void	remember(MDBM *db, sccs *s, ser_t d);
-private int	taken(MDBM *db, sccs *s, ser_t d);
-private int	redo(sccs *s, ser_t d, MDBM *db, int flags, ser_t release,
-		    ser_t *map);
+private void	redo(sccs *s, ser_t d, u32 *nextbranch);
 
 int
 renumber_main(int ac, char **av)
@@ -84,9 +81,7 @@ void
 sccs_renumber(sccs *s, u32 flags)
 {
 	ser_t	d;
-	ser_t	release = 0;
-	MDBM	*db = mdbm_open(NULL, 0, 0, 128);
-	ser_t	*map = calloc(TABLE(s) + 1, sizeof(ser_t));
+	u32	*nextbranch = calloc(TABLE(s) + 1, sizeof(u32));
 	ser_t	defserial = 0;
 	int	defisbranch = 1;
 	ser_t	maxrel = 0;
@@ -111,16 +106,9 @@ sccs_renumber(sccs *s, u32 flags)
 	}
 
 	for (d = TREE(s); d <= TABLE(s); d++) {
-		if (!FLAGS(s, d) || (FLAGS(s, d) & D_GONE)) {
-			/*
-			 * We don't complain about this, because we cause
-			 * these gaps when we strip.  They'll go away when
-			 * we resync.
-			 */
-			continue;
-		}
-		release = redo(s, d, db, flags, release, map);
-		if (maxrel < release) maxrel = release;
+		if (FLAGS(s, d) & D_GONE) continue;
+		redo(s, d, nextbranch);
+		if (maxrel < R0(s, d)) maxrel = R0(s, d);
 		if (!defserial || defserial != d) continue;
 		/* Restore default branch */
 		assert(!s->defbranch);
@@ -145,41 +133,7 @@ sccs_renumber(sccs *s, u32 flags)
 			s->defbranch = 0;
 		}
 	}
-	free(map);
-	mdbm_close(db);
-}
-
-private	void
-remember(MDBM *db, sccs *s, ser_t d)
-{
-	datum	key, val;
-	ser_t	R[4];
-
-	R[0] = R0(s, d);
-	R[1] = R1(s, d);
-	R[2] = R2(s, d);
-	R[3] = R3(s, d);
-	key.dptr = (void*)R;
-	key.dsize = sizeof(R);
-	val.dptr = "1";
-	val.dsize = 1;
-	mdbm_store(db, key, val, 0);
-}
-
-private	int
-taken(MDBM *db, sccs *s, ser_t d)
-{
-	datum	key, val;
-	ser_t	R[4];
-
-	R[0] = R0(s, d);
-	R[1] = R1(s, d);
-	R[2] = R2(s, d);
-	R[3] = R3(s, d);
-	key.dptr = (void*)R;
-	key.dsize = sizeof(R);
-	val = mdbm_fetch(db, key);
-	return (val.dsize == 1);
+	free(nextbranch);
 }
 
 /*
@@ -187,10 +141,6 @@ taken(MDBM *db, sccs *s, ser_t d)
  * The goal is to determine which branch was the trunk at the time
  * of the merge and make sure that branch is the parent of the merge
  * delta.
- *
- * XXX: sccs2bk() relies on this only needing ->parent and ->pserial.
- * If this routine is changed to use ->kid, ->siblings, and such here,
- * then make a copy of this in sccs2bk.c first.
  */
 int
 sccs_needSwap(sccs *s, ser_t p, ser_t m)
@@ -201,31 +151,27 @@ sccs_needSwap(sccs *s, ser_t p, ser_t m)
 	mser = PARENT(s, m);
 	while (pser != mser) {
 		if (mser < pser) {
-			p = PARENT(s, p);
-			assert(p);
+			p = pser;
 			pser = PARENT(s, p);
+			assert(pser);
 		} else {
-			m = PARENT(s, m);
-			assert(m);
+			m = mser;
 			mser = PARENT(s, m);
+			assert(mser);
 		}
 	}
-	assert(pser);	/* CA must exist */
 	return (m < p);
 }
 
-private	int
-redo(sccs *s, ser_t d, MDBM *db, int flags, ser_t release, ser_t *map)
+private	void
+redo(sccs *s, ser_t d, u32 *nextbranch)
 {
-	ser_t	p;
-	ser_t	m;
+	ser_t	p;		/* parent */
+	ser_t	t;		/* trunk */
 
 	/* XXX hack because not all files have 1.0, special case 1.1 */
 	p = PARENT(s, d);
-	unless (p || streq(REV(s, d), "1.1")) {
-		remember(db, s, d);
-		return (release);
-	}
+	unless (p || streq(REV(s, d), "1.1")) return;
 
 	if (FLAGS(s, d) & D_META) {
 		for (p = PARENT(s, d); FLAGS(s, p) & D_META; p = PARENT(s, p));
@@ -233,103 +179,46 @@ redo(sccs *s, ser_t d, MDBM *db, int flags, ser_t release, ser_t *map)
 		R1_SET(s, d, R1(s, p));
 		R2_SET(s, d, R2(s, p));
 		R3_SET(s, d, R3(s, p));
-		unless (TAG(s, d)) remember(db, s, d);
-		return (release);
+		return;
 	}
 
-	/*
-	 * If merge and it is on same lod as parent, and
-	 * If merge was on the trunk at time of merge, then swap
-	 */
-	m = MERGE(s, d);
-	if (m && (R0(s, m) == R0(s, p))) {
-		assert((p != m) && BITKEEPER(s));
-		if (sccs_needSwap(s, p, m)) {
-			fprintf(stderr, "Renumber: corrupted sfile:\n  %s\n"
-			    "Please write support@bitmover.com\n", s->sfile);
-			exit (1);
-		}
+	if (BITKEEPER(s) && (R0(s, d) != 1)) {
+		fprintf(stderr, "Renumber: lod sfile:\n  %s\n"
+		    "Please write support@bitmover.com\n", s->sfile);
+		exit (1);
 	}
+	if (R0(s, d) != R0(s, p)) return;	/* if ATT SCCS */
 
-	/*
-	 * Release root (LOD root) in the form X.1 or X.0.Y.1
-	 * Sort so X.1 is printed first.
-	 */
-	if ((!R2(s, d) && R1(s, d) == 1) || (!R1(s, d) && R3(s, d) == 1)) {
-		unless (map[R0(s, d)]) {
-			map[R0(s, d)] = ++(release);
+	/* the normal case, just look at my parent and decide what to do */
+	R0_SET(s, d, R0(s, p));
+	if (nextbranch[p]) {
+		/*
+		 * We are not the first child of this parent so we
+		 * need to start a new branch.  First go back to trunk
+		 * to find next open branch
+		 */
+		t = R2(s, p) ? nextbranch[p] : p;
+		R1_SET(s, d, R1(s, t));
+		R2_SET(s, d, nextbranch[t]);
+		R3_SET(s, d, 1);
+		unless (TAG(s, d)) nextbranch[t]++; /* next free branch # */
+	} else if (R2(s, p)) {
+		/* first child of parent on branch, just pick next rev */
+		R1_SET(s, d, R1(s, p));
+		R2_SET(s, d, R2(s, p));
+		R3_SET(s, d, R3(s, p) + 1);
+		unless (TAG(s, d)) {
+			/* on a branch: set up pointer to trunk */
+			t = PARENT(s, p); /* grand parent */
+			assert(t);
+			if (R2(s, t)) t = nextbranch[t]; /* trunk */
+			nextbranch[p] = t;
 		}
-		R0_SET(s, d, map[R0(s, d)]);
-		R1_SET(s, d, 1);
+	} else {
+		/* first child of parent on trunk, just pick next rev */
+		R1_SET(s, d, R1(s, p) + 1);
 		R2_SET(s, d, 0);
 		R3_SET(s, d, 0);
-		unless (taken(db, s, d)) {
-			unless (TAG(s, d)) remember(db, s, d);
-			return (release);
-		}
-		R1_SET(s, d, 0);
-		R2_SET(s, d, 0);
-		R3_SET(s, d, 1);
-		do {
-			R2_SET(s, d, R2(s, d)+1);
-			assert(R2(s, d) < 65535);
-		} while (taken(db, s, d));
-		unless (TAG(s, d)) remember(db, s, d);
-		return (release);
+		unless (TAG(s, d)) nextbranch[p]++; /* new nodes need to branch */
 	}
-
-	/*
-	 * Everything else we can rewrite.
-	 */
-	R0_SET(s, d, 0);
-	R1_SET(s, d, 0);
-	R2_SET(s, d, 0);
-	R3_SET(s, d, 0);
-
-	/*
-	 * My parent is a trunk node, I'm either continuing the trunk
-	 * or starting a new branch.
-	 */
-	unless (R2(s, p)) {
-		R0_SET(s, d, R0(s, p));
-		R1_SET(s, d, R1(s, p) + 1);
-		unless (taken(db, s, d)) {
-			unless (TAG(s, d)) remember(db, s, d);
-			return (release);
-		}
-		R1_SET(s, d, R1(s, p));
-		R2_SET(s, d, 0);
-		R3_SET(s, d, 1);
-		do {
-			R2_SET(s, d, R2(s, d)+1);
-			assert(R2(s, d) < 65535);
-		} while (taken(db, s, d));
-		unless (TAG(s, d)) remember(db, s, d);
-		return (release);
-	}
-	
-	/*
-	 * My parent is not a trunk node, I'm either continuing the branch or
-	 * starting a new branch.
-	 * Yes, this code is essentially the same as the above code but it is
-	 * more clear to leave it like this.
-	 */
-	R0_SET(s, d, R0(s, p));
-	R1_SET(s, d, R1(s, p));
-	R2_SET(s, d, R2(s, p));
-	R3_SET(s, d, R3(s, p) + 1);
-	if (!taken(db, s, d)) {
-		unless (TAG(s, d)) remember(db, s, d);
-		return (release);
-	}
-
-	/* Try a new branch */
-	R2_SET(s, d, R2(s, p));
-	R3_SET(s, d, 1);
-	do {
-		R2_SET(s, d, R2(s, d)+1);
-		assert(R2(s, d) < 65535);
-	} while (taken(db, s, d));
-	unless (TAG(s, d)) remember(db, s, d);
-	return (release);
 }

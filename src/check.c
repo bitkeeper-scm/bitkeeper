@@ -53,7 +53,6 @@ private int	no_gfile(sccs *s);
 private int	chk_eoln(sccs *s, int eoln_unix);
 private int	chk_monotonic(sccs *s);
 private int	chk_merges(sccs *s);
-private sccs*	fix_merges(sccs *s);
 private	int	update_idcache(MDBM *idDB, hash *keys);
 private	void	fetch_changeset(int forceCsetFetch);
 private	int	repair(hash *db);
@@ -338,7 +337,6 @@ check_main(int ac, char **av)
 			ferr++, errors |= 0x10;
 		}
 		if (chk_merges(s)) {
-			if (fix) s = fix_merges(s);
 			errors |= 0x20;
 			ferr++;
 		}
@@ -598,19 +596,6 @@ touch_checked(void)
 		fprintf(f, "%u\n", (u32)time(0));
 		fclose(f);
 	}
-}
-
-private sccs *
-fix_merges(sccs *s)
-{
-	sccs	*tmp;
-
-	sccs_renumber(s, 0);	/* XXX: need Fix_inex for this to work */
-	sccs_newchksum(s);
-	tmp = sccs_init(s->sfile, 0);
-	assert(tmp);
-	sccs_free(s);
-	return (tmp);
 }
 
 private int
@@ -1992,9 +1977,9 @@ chk_merges(sccs *s)
 		m = MERGE(s, d);
 		assert(m);
 		if (sccs_needSwap(s, p, m)) {
-			if (fix) return (1);
 			fprintf(stderr,
-			    "%s|%s: %s/%s need to be swapped, run with -f.\n",
+			    "%s|%s: %s/%s graph corrupted.\n"
+			    "Please write support@bitmover.com\n",
 			    s->gfile, REV(s, d), REV(s, p), REV(s, m));
 			return (1);
 		}

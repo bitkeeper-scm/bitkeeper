@@ -7,9 +7,7 @@ private	int	v1Left(sccs *s, ser_t d, void *token);
 private	int	v2Right(sccs *s, ser_t d, void *token);
 private	int	v2Left(sccs *s, ser_t d, void *token);
 
-private	void	sortKids(sccs *s, ser_t start,
-    int (*compar)(const void *, const void *), ser_t **karr);
-private	int	smallFirst(const void *a, const void *b);
+private	void	loadKids(sccs *s);
 private	int	bigFirst(const void *a, const void *b);
 
 #define	S_DIFF		0x01	/* final active states differ */
@@ -558,9 +556,7 @@ v2Left(sccs *s, ser_t d, void *token)
  * Walk graph from root to tip and back, through kid pointers.
  * Have it such that when we get to a merge mode, we'll have already
  * visited the merge tip.  That is accomplished by walking the newest
- * of the siblings first.  This does that by altering the kid,siblings
- * order on the walk toward the tip, and puts it back on the walk back
- * to root.
+ * of the siblings first.
  * The callbacks are each called once and only once for each non-tag delta
  * in the walk.  Example:
  * 1.1 --- 1.2  --- 1.3 -- 1.4 --------- 1.5
@@ -574,45 +570,50 @@ v2Left(sccs *s, ser_t d, void *token)
  * R 1.4 , R 1.3 , R 1.2 , R 1.1
  *
  * Tags are skipped because TREE(s) is not a tag; d->parent is not
- * a tag if d is not a tag; kid/siblings list sorted so tags are
- * at the end, and read until tag or empty.
+ * a tag if d is not a tag; kid/siblings list has no tag.
  */
 int
 graph_kidwalk(sccs *s, walkfcn toTip, walkfcn toRoot, void *token)
 {
 	ser_t	d, next;
 	int	rc = 0;
-	ser_t	*karr = 0;
 
-	growArray(&karr, 32);
-	sccs_mkKidList(s);
+	loadKids(s);
 	d = TREE(s);
 	while (d) {
 		/* walk down all kid pointers */
-		for (next = d; next && !TAG(s, next); next = KID(s, d)) {
+		for (next = d; next; next = KID(s, d)) {
 			d = next;
 			if (toTip && (rc = toTip(s, d, token))) goto out;
-			sortKids(s, d, bigFirst, &karr);
 		}
 		/* now next sibling or up parent link */
 		for (; d; d = PARENT(s, d)) {
-			/* only need d->kid to be oldest */
-			sortKids(s, d, smallFirst, &karr);
 			if (toRoot && (rc = toRoot(s, d, token))) goto out;
-			if ((next = SIBLINGS(s, d)) && !TAG(s, next)) {
+			if (next = SIBLINGS(s, d)) {
 				d = next;
 				break;
 			}
 		}
 	}
-out:	if (d) {
-		while (d = PARENT(s, d)) {
-			sortKids(s, d, smallFirst, &karr);
-		}
-	}
-	FREE(karr);
+out:
 	FREE(s->kidlist);
 	return (rc);
+}
+
+/* fill kidlist, but with no tags and sorted big to small */
+private	void
+loadKids(sccs *s)
+{
+	ser_t	d, p, k;
+
+	FREE(s->kidlist);
+	growArray(&s->kidlist, TABLE(s) + 1);
+	for (d = TREE(s); d <= TABLE(s); d++) {
+		if (TAG(s, d)) continue;
+		unless (p = PARENT(s, d)) continue;
+		if (k = s->kidlist[p].kid) s->kidlist[d].siblings = k;
+		s->kidlist[p].kid = d;
+	}
 }
 
 private	sccs	*sortfile;
@@ -625,18 +626,6 @@ graph_sortLines(sccs *s, ser_t *list)
 }
 
 private	int
-smallFirst(const void *a, const void *b)
-{
-	ser_t	l, r;
-	int	cmp;
-
-	l = *(ser_t *)a;
-	r = *(ser_t *)b;
-	if (cmp = (!TAG(sortfile, r) - !TAG(sortfile, l))) return (cmp);
-	return (l - r);
-}
-
-private	int
 bigFirst(const void *a, const void *b)
 {
 	ser_t	l, r;
@@ -646,34 +635,4 @@ bigFirst(const void *a, const void *b)
 	r = *(ser_t *)b;
 	if (cmp = (!TAG(sortfile, r) - !TAG(sortfile, l))) return (cmp);
 	return (r - l);
-}
-
-private	void
-sortKids(sccs *s, ser_t start, int (*compar)(const void *, const void *),
-	 ser_t **karr)
-{
-	ser_t	*list = *karr;
-	ser_t	d;
-	int	i;
-	ser_t	*serp;
-
-	/* bail if nothing to sort */
-	d = KID(s, start);
-	unless (d && !TAG(s, d) && SIBLINGS(s, d)) return;
-
-	sortfile = s;
-	truncLines(list, 0);
-	for (/* d */; d; d = SIBLINGS(s, d)) {
-		addArray(&list, &d);
-	}
-	*karr = list;
-	sortArray(list, compar);
-
-	serp = &s->kidlist[start].kid;
-	EACH(list) {
-		d = list[i];
-		*serp = d;
-		serp = &s->kidlist[d].siblings;
-	}
-	*serp = 0;
 }
