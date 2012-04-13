@@ -932,3 +932,52 @@ echo $N Test that using a variable to access another rev works ......$NL
 cd "$HERE"/project
 test `bk changes -r1.5 -nd'${0=1.8}:REV|$0:'` = 1.8 || fail
 echo OK
+
+echo $N Test that bk changed_files does something useful ............$NL
+cd "$HERE/clone1"
+cat > WANT <<EOF
+1 ==== changes -R file://$HERE/project ====
+5 ChangeSet
+2 ERR
+2 GOT
+2 OUT
+2 WANT
+2 XXX
+2 YYY
+4 a
+2 changes.out
+3 foo
+2 html/bar.html
+2 html/blech.html
+2 html/foo.html
+2 keylist1
+2 keylist1sorted
+2 keylist2
+2 keylist2sorted
+2 man/bar.1
+2 man/blech.1
+2 man/foo.1
+2 ref
+2 src/bar.c
+2 src/bar.h
+2 src/blech.c
+2 src/blech.h
+2 src/foo.c
+2 src/foo.h
+2 subdir/GOT
+2 subdir/WANT
+3 zzz
+EOF
+bk changed_files -R > GOT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test bk changed_files with an URL ...........................$NL
+cat > WANT <<EOF
+1 ==== changes -L $HERE/clone2 ====
+1 ChangeSet
+2 baz
+EOF
+bk changed_files -L ../clone2 > GOT
+cmpfiles GOT WANT
+echo OK

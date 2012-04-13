@@ -1775,6 +1775,26 @@ _catcomments() {
 	bk tclsh "`bk bin`/gui/lib/catcomments.l"
 }
 
+_changed_files() {
+	while getopts LR opt
+	do
+		case "$opt" in
+		    L)	OPT="-L";;
+		    R)	OPT="-R";;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	test "X$2" != X && {
+		echo "whatfiles: too many arguments"
+		exit 1
+	}
+	if [ "X$1" = X ]; then
+		bk changes $OPT -m -vnd:GFILE: | bk sort -u --count
+	else
+		bk changes $OPT -m -vnd:GFILE: "$1" | bk sort -u --count
+	fi
+}
+
 
 # ------------- main ----------------------
 __platformInit
