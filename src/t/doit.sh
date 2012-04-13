@@ -260,6 +260,10 @@ setup_env()
 	BK_ROOT=`bk -P root`
 	export BK_ROOT
 
+	# Don't whine about lock files
+	_BK_UNIQUE_SHUTUP=YES
+	export _BK_UNIQUE_SHUTUP
+
 	# Default to always creating BitKeeper/etc/attr, even in old trees
 	BK_ATTR=YES
 	export BK_ATTR

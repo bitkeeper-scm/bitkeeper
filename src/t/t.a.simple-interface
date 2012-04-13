@@ -26,6 +26,8 @@ editor
 graft
 gvim
 indexsvr
+info_shell
+info_server
 jed
 joe
 jove

@@ -1,0 +1,57 @@
+# The t.a.progress bar gives test coverage over a range of commands.
+# This test file is some manually tested corners that take too long
+# to figure out how to weave it into the larger test fixture.
+
+sanitize() {
+	perl -pe 's/.*\r//' $1
+}
+
+echo $N Test progress bar with components with long names ...........$NL
+nested project
+# ruler      123456789 123456789 123456789 123456789 123456789 123456789
+bk setup -f 'some-component-with-a-very-long-name-with-no-spaces'
+bk setup -f 'some component with a very long name with spaces'
+bk setup -f 'some-component-with-a-very-long-dirname-with-no-spaces/comp1'
+bk setup -f 'some component with a very long dirname with spaces/comp2'
+bk setup -f 'sub1/some-component-with-a-very-long-basename-with-no-spaces'
+bk setup -f 'sub2/some component with a very long basename with spaces'
+# no --headers
+bk -e -r check -vac > OUT 2>&1 || fail repocheck failed
+sanitize OUT > GOT
+cat <<EOF > WANT
+1/9 gcc                            100% |==============================| OK
+2/9 gdb                            100% |==============================| OK
+3/9 .../comp2                      100% |==============================| OK
+4/9 some component with a very ... 100% |==============================| OK
+5/9 .../comp1                      100% |==============================| OK
+6/9 some-component-with-a-very-... 100% |==============================| OK
+7/9 .../some-component-with-a-v... 100% |==============================| OK
+8/9 .../some component with a v... 100% |==============================| OK
+9/9 .                              100% |==============================| OK
+EOF
+cmpfiles WANT GOT
+# headers come out stout and check progress comes out stderr
+bk -e -r --headers check -vac > OUT 2>&1 || fail repocheck failed
+sanitize OUT > GOT
+cat <<EOF > WANT
+#### 1/9 gcc ####
+ [check]                           100% |==============================| OK
+#### 2/9 gdb ####
+ [check]                           100% |==============================| OK
+#### 3/9 some component with a very long dirname with spaces/comp2 ####
+ [check]                           100% |==============================| OK
+#### 4/9 some component with a very long name with spaces ####
+ [check]                           100% |==============================| OK
+#### 5/9 some-component-with-a-very-long-dirname-with-no-spaces/comp1 ####
+ [check]                           100% |==============================| OK
+#### 6/9 some-component-with-a-very-long-name-with-no-spaces ####
+ [check]                           100% |==============================| OK
+#### 7/9 sub1/some-component-with-a-very-long-basename-with-no-spaces ####
+ [check]                           100% |==============================| OK
+#### 8/9 sub2/some component with a very long basename with spaces ####
+ [check]                           100% |==============================| OK
+#### 9/9 . ####
+ [check]                           100% |==============================| OK
+EOF
+cmpfiles WANT GOT
+echo OK

@@ -73,6 +73,7 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	prog = basenm(av[0]);
 	if (streq(prog, "port")) {
+		title = "port";
 		opts.port = 1;
 		safe_putenv("BK_PORT_ROOTKEY=%s", proj_rootkey(0));
 	}

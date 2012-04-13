@@ -263,6 +263,8 @@ _httpfetch
 hostme
 id remote
 idcache
+info_server
+info_shell
 isascii
 _isnetwork
 inskeys

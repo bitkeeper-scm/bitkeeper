@@ -295,11 +295,11 @@ echo $N Check iterator from product root - noisy mode ...............$NL
 cd "$HERE/project"
 bk --headers -e pwd -P > GOT
 cat > WANT <<EOF
-#### gcc ####
+#### 1/3 gcc ####
 gcc
-#### gdb ####
+#### 2/3 gdb ####
 gdb
-#### . ####
+#### 3/3 . ####
 .
 EOF
 cmpfiles WANT GOT
@@ -320,11 +320,11 @@ echo $N Check iterator from component - noisy mode ..................$NL
 cd "$HERE/project/gcc"
 bk --headers -e pwd -P > GOT
 cat > WANT <<EOF
-#### gcc ####
+#### 1/3 gcc ####
 gcc
-#### gdb ####
+#### 2/3 gdb ####
 gdb
-#### . ####
+#### 3/3 . ####
 .
 EOF
 cmpfiles WANT GOT
@@ -333,11 +333,11 @@ echo OK
 echo $N Check iterator with get .....................................$NL
 bk --headers -e -Ur get > GOT 2>&1
 cat > WANT <<EOF
-#### gcc ####
+#### 1/3 gcc ####
 name 1.1: 1 lines
-#### gdb ####
+#### 2/3 gdb ####
 name 1.1: 1 lines
-#### . ####
+#### 3/3 . ####
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -692,10 +692,10 @@ echo OK
 echo $N bk -e lists committed and pending components ................$NL
 bk --headers -e > GOT
 cat <<EOF > WANT
-#### gcc4 ####
-#### gdb ####
-#### gdb/pendingdeepnest ####
-#### . ####
+#### 1/4 gcc4 ####
+#### 2/4 gdb ####
+#### 3/4 gdb/pendingdeepnest ####
+#### 4/4 . ####
 EOF
 cmpfiles WANT GOT
 echo OK

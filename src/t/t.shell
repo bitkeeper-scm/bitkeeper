@@ -85,7 +85,7 @@ tar cf TAR copy
 cd copy
 echo OK
 
-test "X`uname -s`" = XDarwin -o "X`uname -n`" = "Xhp-ia64" || {
+test "X`uname -s`" = XDarwin -o "X`uname -s`" = "XHP-UX" || {
 echo $N Make sure shell escapes to an interactive shell work ........$NL
 # XXX WIN32 note: the following construct does not work on WIN32
 # If we redirect stdin, we will lost it after we spawn the cygwin shell
@@ -93,7 +93,8 @@ echo $N Make sure shell escapes to an interactive shell work ........$NL
 ( echo '!'
   echo echo ESCAPE_FROM_NEW_YORK
   echo exit
-  echo q ) | bk resolve $Q > OUT 2>/dev/null
+  echo q ) > IN
+bk resolve $Q < IN > OUT 2>/dev/null
 grep -q ESCAPE_FROM_NEW_YORK OUT || { 
 	echo failed to escape
 	cat OUT
@@ -108,7 +109,8 @@ rm -rf copy
 tar xmf TAR
 cd copy
 ( echo '!diff $BK_LOCAL $BK_REMOTE'
-  echo q ) | bk resolve $Q > OUT 2>/dev/null
+  echo q ) > IN
+bk resolve $Q < IN > OUT 2>/dev/null
 cat > DIFFS <<EOF
 2,3c2,3
 < 2-copy
@@ -221,7 +223,8 @@ cd copy
   echo C
   echo Use local file
   echo .
-  echo q ) | bk resolve $Q -ywhatever > OUT 2>&1
+  echo q ) > IN
+bk resolve $Q -ywhatever < IN > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
 	exit 1
@@ -252,7 +255,8 @@ cd copy
   echo C
   echo Use remote file
   echo .
-  echo q ) | bk resolve $Q -ywhatever > OUT 2>&1
+  echo q ) > IN
+bk resolve $Q -ywhatever < IN > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
 	exit 1
@@ -283,7 +287,8 @@ cd copy
   echo ur
   echo use remote
   echo .
-  echo q ) | bk resolve $Q -ywhatever > OUT 2>&1
+  echo q ) > IN
+bk resolve $Q -ywhatever < IN > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
 	cat OUT
