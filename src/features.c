@@ -107,12 +107,14 @@ bk_featureSet(project *p, int feature, int on)
 	char	*ffile;
 	char	*name;
 	int	i;
+	char	ftmp[MAXPATH];
 
 	/* we better have this feature defined above */
 	assert(feature > 0 && feature <= NFEATURES);
 	assert(flist[feature].repo);
 
 	ffile = proj_fullpath(p, "BitKeeper/log/features");
+	sprintf(ftmp, "%s.new.%u", ffile, getpid());
 	local = file2Lines(0, ffile);
 
 	/* avoid needless rewrites, they mess up NFS */
@@ -125,7 +127,10 @@ bk_featureSet(project *p, int feature, int on)
 	} else {
 		unless (i) goto out; /* wasn't here anyway */
 	}
-	if (lines2File(local, ffile)) perror(ffile);
+	if (lines2File(local, ftmp) || rename(ftmp, ffile)) {
+		perror(ffile);
+		unlink(ftmp);
+	}
 out:	freeLines(local, free);
 }
 
