@@ -75,7 +75,6 @@ L_undefObjPtrPtr()
 		undef_obj->undef    = 1;
 		undef_obj->refCount = 1234;  // arbitrary; to be recognizable
 	}
-	++undef_obj->refCount;
 	ASSERT(undef_obj->undef);
 	return (&undef_obj);
 }
@@ -1472,7 +1471,10 @@ proc_mkArg(Proc *proc, VarDecl *decl)
 
 	local->flags = VAR_ARGUMENT;
 	if (decl->flags & DECL_REST_ARG) local->flags |= VAR_IS_ARGS;
-	if (decl->flags & DECL_OPTIONAL) local->defValuePtr = *L_undefObjPtrPtr();
+	if (decl->flags & DECL_OPTIONAL) {
+		local->defValuePtr = *L_undefObjPtrPtr();
+		Tcl_IncrRefCount(local->defValuePtr);
+	}
 }
 
 /*
@@ -7366,5 +7368,20 @@ Tcl_LReadCmd(
  err:
 	Tcl_SetVar(interp, "::stdio_lasterr", errmsg, TCL_GLOBAL_ONLY);
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(-1));
+	return (TCL_OK);
+}
+
+int
+Tcl_LRefCnt(
+    ClientData dummy,		/* Not used. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument objects. */
+{
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 1, objv, "object");
+		return (TCL_ERROR);
+	}
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(objv[1]->refCount));
 	return (TCL_OK);
 }
