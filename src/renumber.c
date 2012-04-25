@@ -169,9 +169,11 @@ redo(sccs *s, ser_t d, u32 *nextbranch)
 	ser_t	p;		/* parent */
 	ser_t	t;		/* trunk */
 
-	/* XXX hack because not all files have 1.0, special case 1.1 */
-	p = PARENT(s, d);
-	unless (p || streq(REV(s, d), "1.1")) return;
+	/*
+	 * We keep the root rev and build up from there, note that the
+	 * root my be 1.1 instead of 1.0.  (very old versions of bk)
+	 */
+	unless (p = PARENT(s, d)) return;
 
 	if (FLAGS(s, d) & D_META) {
 		for (p = PARENT(s, d); FLAGS(s, p) & D_META; p = PARENT(s, p));
