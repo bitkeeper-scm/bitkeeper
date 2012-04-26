@@ -60,6 +60,7 @@ fmem(void)
 	fm->f = f;
 	data_resize(&fm->d, 1); /* alloc min buffer */
 	fmemSetvbuf(fm);
+	f->_flags |= __SCLN;	/* make fgetline() return copy */
 	return (f);
 }
 

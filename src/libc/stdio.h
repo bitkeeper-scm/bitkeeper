@@ -151,6 +151,7 @@ extern FILE __sF[];
 #define	__SOFF	0x1000		/* set iff _offset is in fact correct */
 #define	__SMOD	0x2000		/* true => fgetln modified _p text */
 #define	__SALC	0x4000		/* allocate string space dynamically */
+#define	__SCLN	0x8000		/* fgetln must return copy (clean) */
 
 /*
  * The following three definitions are for ANSI C, which took them
