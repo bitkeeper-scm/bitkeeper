@@ -1091,7 +1091,6 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	ser_t	d;
 	int	error = 0;
 	int	fd0;
-	MMAP	*diffs;
 	FILE	*fdiffs;
 	char	filename[MAXPATH];
 
@@ -1101,7 +1100,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	}
 
 	bktmp(filename, "cdif");
-	unless (fdiffs = fopen(filename, "w")) {
+	unless (fdiffs = fopen(filename, "w+")) {
 		perror(filename);
 		sccs_free(cset);
 		cset_exit(1);
@@ -1109,13 +1108,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 
 	d = mkChangeSet(cset, files, fdiffs); /* write change set to diffs */
 
-	fclose(fdiffs);
-	unless (diffs = mopen(filename, "b")) {
-		perror(filename);
-		sccs_free(cset);
-		unlink(filename);
-		cset_exit(1);
-	}
+	rewind(fdiffs);
 
 	/* for compat with old versions of BK not using ensembles */
 	if (proj_isComponent(cset->proj)) {
@@ -1140,9 +1133,10 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	}
 	if ((flags & DELTA_DONTASK) && !(d = comments_get(0, 0, cset, d))) {
 		error = -1;
+		fclose(fdiffs);
 		goto out;
 	}
-	if (sccs_delta(cset, flags, d, 0, diffs, syms) == -1) {
+	if (sccs_delta(cset, flags, d, 0, fdiffs, syms) == -1) {
 		sccs_whynot("cset", cset);
 		error = -1;
 		goto out;

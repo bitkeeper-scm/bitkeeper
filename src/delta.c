@@ -136,7 +136,7 @@ delta_main(int ac, char **av)
 	char	*prog, *name;
 	char	*encp = 0;
 	char	*mode = 0;
-	MMAP	*diffs = 0;
+	FILE	*diffs = 0;
 	MMAP	*init = 0;
 	pfile	pf = {0};
 	int	dash, errors = 0, fire, dangling;
@@ -270,7 +270,7 @@ delta_main(int ac, char **av)
 			av[0]);
 		usage();
 	}
-	if (diffsFile && !(diffs = mopen(diffsFile, "b"))) {
+	if (diffsFile && !(diffs = fopen(diffsFile, "r"))) {
 		fprintf(stderr, "%s: diffs file '%s': %s.\n",
 			av[0], diffsFile, strerror(errno));
 	       return (1);
@@ -356,7 +356,7 @@ delta_main(int ac, char **av)
 		}
 
 		if (df & NEWFILE) {
-			sz = diffs ? (off_t)msize(diffs) : size(s->gfile);
+			sz = diffs ? size(diffsFile) : size(s->gfile);
 			s->encoding_in = s->encoding_out =
 			    sccs_encoding(s, sz, encp);
 		}

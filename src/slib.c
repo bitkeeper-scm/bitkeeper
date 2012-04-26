@@ -66,7 +66,7 @@ private int	compressmap(sccs *s, ser_t d, u8 *set, char **i, char **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	weaveMove(weave *w, int line, int before, ser_t patchserial);
-private int	doFast(weave *w, ser_t *patchmap, MMAP *diffs);
+private int	doFast(weave *w, ser_t *patchmap, FILE *diffs);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private	void	parseConfig(char *buf, MDBM *db);
@@ -9680,19 +9680,27 @@ fix_cntl_a(sccs *s, char *buf, FILE *out)
  * are binary.
  */
 private int
-binaryCheck(MMAP *m)
+binaryCheck(FILE *m)
 {
-	u8	*p, *end;
+	int	i, cnt, rc = 0;
+	char	buf[MAXLINE];
 
-	p = m->mmap;
-	end = m->end;
-	
-	/* GNU diff reports binary files */
-	if (p + 13 < end && strneq("Binary files ", p, 13)) return (1);
-	
-	/* no nulls */
-	while (p < end) if (*p++ == 0) return (1);
-	return (0);
+	cnt = fread(buf, 1, sizeof(buf), m);
+	if ((cnt > 13) && strneq("Binary files ", buf, 13)) {
+		rc = 1;
+		goto out;
+	}
+	while (cnt > 0) {
+		for (i = 0; i < cnt; i++) {
+			if (buf[i] == 0) {
+				rc = 1;
+				goto out;
+			}
+		}
+		cnt = fread(buf, 1, sizeof(buf), m);
+	}
+out:	rewind(m);
+	return (rc);
 }
 
 private int
@@ -9745,7 +9753,7 @@ bk_badFilename(char *name)
 /* ARGSUSED */
 private int
 checkin(sccs *s,
-	int flags, ser_t prefilled, int nodefault, MMAP *diffs, char **syms)
+	int flags, ser_t prefilled, int nodefault, FILE *diffs, char **syms)
 {
 	FILE	*sfile = 0, *gfile = 0;
 	ser_t	n0 = 0, n, first;
@@ -10013,17 +10021,18 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 			int	off = 0;
 			char	*t;
 
-			if ((t = mnext(diffs)) && isdigit(t[0])) off = 2;
-			while (t = mnext(diffs)) {
+			if ((t = fgetline(diffs)) && isdigit(t[0])) off = 2;
+			while (t = fgetline(diffs)) {
 				if ((off == 0) && (t[0] == '\\')) {
 					++t;
 				} else {
 					t = &t[off];
 				}
 				s->dsum += fputdata(s, t, sfile);
+				s->dsum += fputdata(s, "\n", sfile);
 				added++;
 			}
-			mclose(diffs);
+			fclose(diffs);
 		} else if (gfile) {
 			int	crnl_bug = (getenv("_BK_CRNL_BUG") != 0);
 
@@ -11954,7 +11963,7 @@ struct weave {
 
 int
 sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
-    MMAP *fastpatch, FILE *out)
+    FILE *fastpatch, FILE *out)
 {
 	int	i;
 	ser_t	d;
@@ -12005,7 +12014,7 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
 }
 
 private int
-doFast(weave *w, ser_t *patchmap, MMAP *diffs)
+doFast(weave *w, ser_t *patchmap, FILE *diffs)
 {
 	int	lineno, lcount = 0, serial, pmapsize;
 	int	gotK = 0;
@@ -12023,7 +12032,7 @@ doFast(weave *w, ser_t *patchmap, MMAP *diffs)
 	assert(patchmap);	/* if diffs, then there's a map */
 	pmapsize = nLines(patchmap);
 
-	while (b = mnext(diffs)) {
+	while (b = fgetline(diffs)) {
 		p = &b[1];
 		if (*b == 'F') continue;
 		if (*b == 'K') {
@@ -12035,14 +12044,13 @@ doFast(weave *w, ser_t *patchmap, MMAP *diffs)
 		}
 		if (*b == '>') {
 			if (ignore) {
-				while (*p) {
-					w->sum += *(u8 *)p;
-					if (*p++ == '\n') break;
-				}
+				while (*p) w->sum += *(u8 *)p++;
+				w->sum += '\n';
 				w->line++;
 			} else if (inpatch) {
 				fix_cntl_a(w->s, p, w->out);
 				w->sum += fputdata(w->s, p, w->out);
+				w->sum += fputdata(w->s, "\n", w->out);
 				w->line++;
 			}
 			continue;
@@ -12373,11 +12381,11 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
  * we are still operating on the old file, without the diffs applied.
  */
 private int
-getHashSum(sccs *sc, ser_t n, MMAP *diffs)
+getHashSum(sccs *sc, ser_t n, FILE *diffs)
 {
 	char	*buf;
-	char	key[MAXPATH], val[MAXPATH];
-	char	*v, *t;
+	char	*key, *val;
+	char	*v;
 	u8	*e;
 	unsigned int sum = 0;
 	int	lines = 0;
@@ -12403,45 +12411,30 @@ getHashSum(sccs *sc, ser_t n, MMAP *diffs)
 		}
 		sum = sc->dsum;
 	}
-	mseekto(diffs, 0);
-	unless (buf = mnext(diffs)) {
+	rewind(diffs);
+	unless (buf = fgetline(diffs)) {
 		/* there are no diffs, we have the checksum, it's OK */
 		return (0);
 	}
 	offset = 0;
-	if (strneq(buf, "0a0\n", 4)) {
+	if (streq(buf, "0a0")) {
 		offset = 2;
-	}
-	else unless (strneq(buf, "I0 ", 3)) {
+	} else unless (strneq(buf, "I0 ", 3)) {
 		fprintf(stderr, "Missing '0a0' or 'I0 #lines', ");
 bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
 		return (-1);
 	}
-	while (buf = mnext(diffs)) {
+	while (buf = fgetline(diffs)) {
 		unless (offset == 0 || buf[0] == '>') goto bad;
-		t = key, v = &buf[offset];
+		key = v = &buf[offset];
 		if (CSET(sc)) {
-			int	pipes = 0;
-
-			/*
-			 * Keys are like u@h|path|date|.... whatever
-			 * We want to skip over any spaces in the path part.
-			 */
-			while (v < diffs->end) {
-				if (*v == '|') pipes++;
-				if ((*v == ' ') && (pipes >= 2)) break;
-				*t++ = *v++;
-			}
+			v = separator(v);
 		} else {
-			while ((v < diffs->end) && (*v != ' ')) *t++ = *v++;
+			v = strchr(v, ' ');
 		}
-		unless (*v == ' ') goto bad;
-		*t = 0;
-		for (t = val, v++; (v < diffs->end) && (*v != '\n'); ) {
-			*t++ = *v++;
-		}
-		unless (*v == '\n') goto bad;
-		*t = 0;
+		unless (v) goto bad;
+		*v = 0;
+		val = v+1;
 		if (v = mdbm_fetch_str(sc->mdbm, key)) {
 			if (!CSET(sc) && streq(v, val)) {
 				fprintf(stderr,
@@ -12471,7 +12464,7 @@ bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
  * tip delta.
  */
 private int
-delta_write(sccs *s, ser_t n, MMAP *diffs,
+delta_write(sccs *s, ser_t n, FILE *diffs,
     FILE **outp, int *ap, int *dp, int *up)
 {
 	ser_t	*state;
@@ -12528,17 +12521,15 @@ again:
 	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
 	assert(s->state & S_SOPEN);
-	while (b = mnext(diffs)) {
+	while (b = fgetline(diffs)) {
 		int	where;
 		char	what;
 		int	howmany;
 
 newcmd:
 		if (scandiff(b, &where, &what, &howmany) != 0) {
-			int	len = linelen(b);
-
 			fprintf(stderr,
-			    "delta: can't figure out '%.*s'\n", len, b);
+			    "delta: can't figure out '%s'\n", b);
 			if (state) free(state);
 			if (slist) free(slist);
 			return (-1);
@@ -12576,8 +12567,8 @@ newcmd:
 			sum = s->dsum;
 			/* howmany != 0 only for nonewline corner fixer */
 			while (howmany--) nextline(deleted);
-			while (b = mnext(diffs)) {
-				if (strneq(b, "---\n", 4)) break;
+			while (b = fgetline(diffs)) {
+				if (streq(b, "---")) break;
 				if (strneq(b, "\\ No", 4)) continue;
 				if (isdigit(b[0])) {
 					ctrl("\001E ", n, "");
@@ -12594,7 +12585,7 @@ newcmd:
 		    case 'a':
 			last = 0;
 			ctrl("\001I ", n, "");
-			while (b = mnext(diffs)) {
+			while (b = fgetline(diffs)) {
 				if (strneq(b, "\\ No", 4)) {
 					s->dsum -= '\n';
 					no_lf = 1;
@@ -12606,8 +12597,9 @@ newcmd:
 				}
 				fix_cntl_a(s, &b[2], out);
 				s->dsum += fputdata(s, &b[2], out);
+				s->dsum += fputdata(s, "\n", out);
 				debug2((stderr,
-				    "INS %.*s", linelen(&b[2]), &b[2]));
+				    "INS %s\n", &b[2]));
 				added++;
 			}
 			break;
@@ -12618,7 +12610,7 @@ newcmd:
 			ctrl("\001I ", n, "");
 			while (howmany--) {
 				/* XXX: not break but error */
-				unless (b = mnext(diffs)) break;
+				unless (b = fgetline(diffs)) break;
 				if (what != 'i' && b[0] == '\\') {
 					fix_cntl_a(s, &b[1], out);
 					s->dsum += fputdata(s, &b[1], out);
@@ -12626,7 +12618,8 @@ newcmd:
 					fix_cntl_a(s, b, out);
 					s->dsum += fputdata(s, b, out);
 				}
-				debug2((stderr, "INS %.*s", linelen(b), b));
+				s->dsum += fputdata(s, "\n", out);
+				debug2((stderr, "INS %s\n", b));
 				added++;
 			}
 			if (what == 'N') {
@@ -12670,7 +12663,7 @@ newcmd:
 		fixdel = lastdel;
 		fclose(out);
 		unlink(sccsXfile(s, 'x'));
-		mseekto(diffs, 0);
+		rewind(diffs);
 		goto again;
 	}
 	if (HASH(s) && (getHashSum(s, n, diffs) != 0)) {
@@ -13466,7 +13459,7 @@ dot0(sccs *s, ser_t d)
  */
 int
 sccs_delta(sccs *s,
-    	u32 flags, ser_t prefilled, MMAP *init, MMAP *diffs, char **syms)
+    	u32 flags, ser_t prefilled, MMAP *init, FILE *diffs, char **syms)
 {
 	FILE	*sfile = 0;	/* the new s.file */
 	int	i, free_syms = 0, error = 0;
@@ -13490,7 +13483,7 @@ sccs_delta(sccs *s,
 out:
 		if (prefilled) sccs_freedelta(s, prefilled);
 		if (sfile) sccs_abortWrite(s, &sfile);
-		if (diffs) mclose(diffs);
+		if (diffs) fclose(diffs);
 		free_pfile(&pf);
 		if (free_syms) freeLines(syms, free); 
 		if (tmpfile  && !streq(tmpfile, DEVNULL_WR)) unlink(tmpfile);
@@ -13671,7 +13664,7 @@ out:
 		    default: OUT;
 		}
 		/* We prefer binary mode, but win32 GNU diff used text mode */ 
-		unless (tmpfile && (diffs = mopen(tmpfile, "t"))) {
+		unless (tmpfile && (diffs = fopen(tmpfile, "rt"))) {
 			fprintf(stderr,
 			    "delta: can't open diff file %s\n", tmpfile);
 			OUT;
@@ -13682,7 +13675,10 @@ out:
 		if (BAM(s)) {
 			fprintf(stdout, "Binary files differ.\n");
 		} else {
-			fwrite(diffs->mmap, diffs->size, 1, stdout);
+			char	*t;
+
+			while (t = fgetline(diffs)) puts(t);
+			rewind(diffs);
 		}
 		fputs("====\n\n", stdout);
 	}

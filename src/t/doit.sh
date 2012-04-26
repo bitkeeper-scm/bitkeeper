@@ -271,6 +271,9 @@ setup_env()
 	# clear callstack so bk can call doit and still pass
 	_BK_CALLSTACK=
 
+	# clear any current proxy
+	http_proxy=
+
 	BK_USER=bk
 	export BK_USER
 	BK_HOST=bk_regression.bk

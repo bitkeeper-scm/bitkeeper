@@ -942,7 +942,7 @@ int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_adminFlag(sccs *sc, u32 flags);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
-int	sccs_delta(sccs *s, u32 flags, ser_t d, MMAP *init, MMAP *diffs,
+int	sccs_delta(sccs *s, u32 flags, ser_t d, MMAP *init, FILE *diffs,
 		   char **syms);
 int	sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dop, FILE *);
 int	sccs_encoding(sccs *s, off_t size, char *enc);
@@ -1348,7 +1348,7 @@ int	annotate_args(int flags, char *args);
 void	platformInit(char **av);
 int	sccs_csetPatchWeave(sccs *s, FILE *f);
 int	sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
-	    MMAP *fastpatch, FILE *out);
+	    FILE *fastpatch, FILE *out);
 void	sccs_clearbits(sccs *s, u32 flags);
 MDBM	*loadkv(char *file);
 char	**getParkComment(int *err);
