@@ -1659,7 +1659,8 @@ rmdir_findprocs(void)
 		sprintf(buf1, "/proc/%s/cwd", d[i]);
 		if ((c = readlink(buf1, buf2, sizeof(buf2))) < 0) continue;
 		buf2[c] = 0;
-		unless (streq(buf2 + c - 9, "(deleted)")) continue;
+		/* next unless /.\(deleted\/)$/; */
+		unless ((c > 9) && streq(buf2 + c - 9, "(deleted)")) continue;
 
 		/* can't block on myself... */
 		if (atoi(d[i]) == getpid()) {

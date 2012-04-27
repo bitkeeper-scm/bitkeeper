@@ -326,7 +326,7 @@ do_async(int ac, char **av)
 	 * message as an error.
 	 */
 	unless (i) goto err;
-	printf("%s", buf);
+	fwrite(buf, 1, i, stdout);
 	fflush(stdout);
 	rc = 0;
 err:
@@ -342,7 +342,7 @@ tcpHandshake(int lockclient, int tcp)
 	char	buf[MSGSIZE];
 
 	sprintf(buf, "127.0.0.1:%d\n", sockport(tcp));
-	write(lockclient, buf, sizeof(buf));
+	write(lockclient, buf, strlen(buf));
 	closesocket(lockclient);
 }
 

@@ -315,8 +315,7 @@ rm(char *which, char *url, int *rc)
 			mdbm_delete_str(opts.parents, url);
 			m = aprintf("Remove pull parent %s\n", url);
 			opts.mods = addLine(opts.mods, m);
-		}
-		if (*p == 'b') {
+		} else if (*p == 'b') {
 			mdbm_store_str(opts.parents, url, "o", MDBM_REPLACE);
 			m = aprintf("Changed %s to push parent\n", url);
 			opts.mods = addLine(opts.mods, m);
@@ -328,8 +327,7 @@ rm(char *which, char *url, int *rc)
 			mdbm_delete_str(opts.parents, url);
 			m = aprintf("Remove push parent %s\n", url);
 			opts.mods = addLine(opts.mods, m);
-		}
-		if (*p == 'b') {
+		} else if (*p == 'b') {
 			mdbm_store_str(opts.parents, url, "i", MDBM_REPLACE);
 			m = aprintf("Changed %s to pull parent\n", url);
 			opts.mods = addLine(opts.mods, m);
@@ -337,12 +335,12 @@ rm(char *which, char *url, int *rc)
 		break;
 
 	    case 'b':
-	    	mdbm_delete_str(opts.parents, url);
 		switch (*p) {
 		    case 'i': m = "pull"; break;
 		    case 'o': m = "push"; break;
 		    case 'b': m = "pull/push"; break;
 		}
+	    	mdbm_delete_str(opts.parents, url);
 		m = aprintf("Remove %s parent %s\n", m, url);
 		opts.mods = addLine(opts.mods, m);
 		break;

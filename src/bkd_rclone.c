@@ -184,7 +184,6 @@ cmd_rclone_part2(int ac, char **av)
 		free(path);
 		return (1);
 	}
-	free(path);
 	jobs = opts.jobs ? opts.jobs : parallel(".");
 
 	getline(0, buf, sizeof(buf));
@@ -213,6 +212,7 @@ cmd_rclone_part2(int ac, char **av)
 	} else if (p = getenv("BK_BAM_SERVER_URL")) {
 		bp_setBAMserver(0, p, getenv("BK_BAM_SERVER_ID"));
 	}
+	free(path);
 	printf("@SFIO INFO@\n");
 
 	/* rclone doesn't need to bother with zlocks */
