@@ -505,7 +505,7 @@ addFiles(string files[])
 	string	tmp, file, lines[];
 
 	tmp = tmpfile("citool");
-	fd = popen("bk sfiles -cgvxyp {-o${tmp}} -", "r+");
+	fd = popen("bk sfiles -cgvxypA {-o${tmp}} -", "r+");
 	puts(fd, join("\n", files));
 	pclose(fd);
 
