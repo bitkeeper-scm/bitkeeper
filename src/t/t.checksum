@@ -123,3 +123,8 @@ EOF
 checkfiles WANT GOT
 echo OK
 
+echo $N Test a tag has no checksum problems .........................$NL
+bk tag $Q TOP
+test "`bk changes -ar=5 -d':DT:-:DS:'`" = T-5 || fail 4 no longer a tag
+bk checksum -r=5 ChangeSet || fail tag checksum wrong
+echo OK

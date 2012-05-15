@@ -66,7 +66,7 @@ private int	compressmap(sccs *s, ser_t d, u8 *set, char **i, char **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	weaveMove(weave *w, int line, int before, ser_t patchserial);
-private int	doFast(weave *w, ser_t *patchmap, MMAP *diffs);
+private int	doFast(weave *w, ser_t *patchmap, FILE *diffs);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private	void	parseConfig(char *buf, MDBM *db);
@@ -567,14 +567,13 @@ sccs_inherit(sccs *s, ser_t d)
 	CHK_DUP(PATHNAME);
 	CHK_DUP(SORTPATH);
 
-	if ((FLAGS(s, p) & D_MODE) && !(FLAGS(s, d) & D_MODE)) {
-		FLAGS(s, d) |= D_MODE;
+	unless (MODE(s, d)) {
 		MODE_SET(s, d, MODE(s, p));
 		CHK_DUP(SYMLINK);
 	}
 #undef	CHK_DUP
 
-	unless (XFLAGS(s, d)) XFLAGS(s, d) = XFLAGS(s, PARENT(s, d));
+	unless (XFLAGS(s, d)) XFLAGS(s, d) = XFLAGS(s, p);
 
 	if (HAS_USERHOST(s, p)) {
 		assert(HAS_USERHOST(s, d));
@@ -3154,6 +3153,7 @@ bin_mkgraph(sccs *s)
 		DELETED_SET(s, d, le32toh(tmp[1]));
 		SAME_SET(s, d, le32toh(tmp[2]));
 		SUM_SET(s, d, le32toh(tmp[3]));
+		SORTSUM_SET(s, d, SUM(s, d));
 		FLAGS(s, d) &= ~D_FIXUPS;
 
 		//fprintf(stderr, "%s: loaded fixups a/d/s=%d/%d/%d sum=%d\n", s->gfile, ADDED(s, d), DELETED(s, d), SAME(s, d), SUM(s, d));
@@ -4479,7 +4479,7 @@ sccs_init(char *name, u32 flags)
 		if (HAS_GFILE(s) && (!(t=getenv("BK_NO_TYPECHECK")) || !*t)) {
 			for (d = TABLE(s); TAG(s, d); d = sccs_prev(s, d));
 			assert(d);
-			if ((FLAGS(s, d) & D_MODE) &&
+			if (MODE(s, d) &&
 			    (fileType(MODE(s, d)) != fileType(s->mode))) {
 				verbose((stderr,
 				    "%s has different file types, treating "
@@ -7024,7 +7024,7 @@ get_link(sccs *s, char *printOut, int flags, ser_t d, int *ln)
 	 * c) The recorded checsum is zero.
 	 */
 	e = getSymlnkCksumDelta(s, d);
-	if ((FLAGS(s, e) & D_CKSUM) && (SUM(s, e) != 0) &&
+	if ((SUM(s, e) != 0) &&
 	    !streq(REV(s, e), "1.1") && !strneq(REV(s, e), "1.1.", 4)) {
 		for (t = SYMLINK(s, d); *t; t++) dsum += *t;
 		if (SUM(s, e) != dsum) {
@@ -7837,7 +7837,7 @@ sameMode(sccs *s, ser_t a, ser_t b)
 private int
 sameFileType(sccs *s, ser_t d)
 {
-	if (FLAGS(s, d) & D_MODE) {
+	if (MODE(s, d)) {
 		return (fileType(s->mode) == fileType(MODE(s, d)));
 	} else {			/* assume no mode means regular file */
 		return (S_ISREG(s->mode));
@@ -8129,7 +8129,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			s->sumOff = ftell(out);
 			fputs("XXXXX", out);
 			fputmeta(s, "\n", out);
-		} else if (FLAGS(s, d) & D_CKSUM) {
+		} else if (!TAG(s, d)) {
 			/*
 			 * It turns out not to be worth to save the
 			 * few bytes you might save by not making this
@@ -8138,8 +8138,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			 * Leaving this fixed means we can diff the
 			 * s.files easily.
 			 */
-			if ((FLAGS(s, d) & D_SORTSUM) &&
-			    (SUM(s, d) != SORTSUM(s, d))) {
+			if (SUM(s, d) != SORTSUM(s, d)) {
 				sprintf(buf,
 				    "\001cK%05u|%05u\n",
 				    SUM(s, d), SORTSUM(s, d));
@@ -8171,7 +8170,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
-		if (FLAGS(s, d) & D_MODE) {
+		if (MODE(s, d)) {
 		    	unless (parent && sameMode(s, parent, d)) {
 				p = fmts(buf, "\001cO");
 				p = fmts(p, mode2a(MODE(s, d)));
@@ -8727,13 +8726,12 @@ out:
 int
 sccs_hasDiffs(sccs *s, u32 flags, int inex)
 {
-	pfile	pf;
+	pfile	pf = {0};
 	int	ret;
 	ser_t	d;
 
 	unless (HAS_GFILE(s) && HAS_PFILE(s)) return (0);
 
-	bzero(&pf, sizeof(pf));
 	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);
 	unless (d = findrev(s, pf.oldrev)) {
 		verbose((stderr,
@@ -8952,7 +8950,10 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 			ret = bp_diff(s, d, new);
 		}
 	} else {
-		ret = diff(old, new, DF_DIFF, tmpfile);
+		df_opt	dop = {0};
+
+		dop.ignore_trailing_cr = 1;
+		ret = diff_files(old, new, &dop, 0, tmpfile);
 	}
 	unless (streq(old, DEVNULL_WR)) unlink(old);
 	if (!streq(new, s->gfile) && !streq(new, DEVNULL_WR)){
@@ -9061,6 +9062,7 @@ sccs_clean(sccs *s, u32 flags)
 	char	tmpfile[MAXPATH];
 	ser_t	d;
 	int	ret;
+	df_opt	dop = {0};
 
 	/* don't go removing gfiles without s.files */
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {
@@ -9092,7 +9094,9 @@ sccs_clean(sccs *s, u32 flags)
 		fprintf(stderr,
 		    "%s writable, with changes, but not edited.\n", s->gfile);
 		unless (flags & PRINT) return (1);
-		sccs_diffs(s, 0, 0, DIFF_HEADER|SILENT, DF_DIFF, stdout);
+		dop.out_header = 1;
+		dop.flags = SILENT;
+		sccs_diffs(s, 0, 0, &dop, stdout);
 		return (1);
 	}
 
@@ -9524,7 +9528,6 @@ sccs_dInit(ser_t d, char type, sccs *s, int nodefault)
 	unless (d) d = sccs_newdelta(s);
 	if (type == 'R') FLAGS(s, d) |= (D_META|D_TAG);
 	assert(s);
-	if (BITKEEPER(s) && !TAG(s, d)) FLAGS(s, d) |= D_CKSUM;
 	unless (DATE(s, d) || nodefault) {
 		if (t = getenv("BK_DATE_TIME_ZONE")) {
 			dateArg(s, d, t, 1);
@@ -9610,12 +9613,11 @@ sccs_dInit(ser_t d, char type, sccs *s, int nodefault)
 		}
 #ifdef	AUTO_MODE
 		assert("no" == 0);
-		unless (FLAGS(s, d) & D_MODE) {
+		unless (MODE(s, d)) {
 			if (s->state & GFILE) {
 				MODE_SET(s, d, s->mode);
 				SYMLINK_SET(s, d, s->symlink);
 				FREE(s->symlink);
-				FLAGS(s, d) |= D_MODE;
 				assert(!(FLAGS(s, d) & D_DUPLINK));
 			} else {
 				modeArg(s, d, "0664");
@@ -9646,13 +9648,12 @@ private void
 updMode(sccs *s, ser_t d, ser_t dParent)
 {
 	if ((s->state & S_GFILE) &&
-	    !(FLAGS(s, d) & D_MODE) && needsMode(s, dParent)) {
+	    !(MODE(s, d)) && needsMode(s, dParent)) {
 		assert(MODE(s, d) == 0);
 		MODE_SET(s, d, s->mode);
 		if (s->symlink) {
 			SYMLINK_SET(s, d, s->symlink);
 		}
-		FLAGS(s, d) |= D_MODE;
 	}
 }
 
@@ -9679,19 +9680,27 @@ fix_cntl_a(sccs *s, char *buf, FILE *out)
  * are binary.
  */
 private int
-binaryCheck(MMAP *m)
+binaryCheck(FILE *m)
 {
-	u8	*p, *end;
+	int	i, cnt, rc = 0;
+	char	buf[MAXLINE];
 
-	p = m->mmap;
-	end = m->end;
-	
-	/* GNU diff reports binary files */
-	if (p + 13 < end && strneq("Binary files ", p, 13)) return (1);
-	
-	/* no nulls */
-	while (p < end) if (*p++ == 0) return (1);
-	return (0);
+	cnt = fread(buf, 1, sizeof(buf), m);
+	if ((cnt > 13) && strneq("Binary files ", buf, 13)) {
+		rc = 1;
+		goto out;
+	}
+	while (cnt > 0) {
+		for (i = 0; i < cnt; i++) {
+			if (buf[i] == 0) {
+				rc = 1;
+				goto out;
+			}
+		}
+		cnt = fread(buf, 1, sizeof(buf), m);
+	}
+out:	rewind(m);
+	return (rc);
 }
 
 private int
@@ -9744,7 +9753,7 @@ bk_badFilename(char *name)
 /* ARGSUSED */
 private int
 checkin(sccs *s,
-	int flags, ser_t prefilled, int nodefault, MMAP *diffs, char **syms)
+	int flags, ser_t prefilled, int nodefault, FILE *diffs, char **syms)
 {
 	FILE	*sfile = 0, *gfile = 0;
 	ser_t	n0 = 0, n, first;
@@ -9850,10 +9859,10 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		if (buf[0]) pathArg(s, n0, buf); /* pathname */
 
 		n0 = sccs_dInit(n0, 'D', s, nodefault);
-		FLAGS(s, n0) |= D_CKSUM;
 		s->xflags |= X_REQUIRED;
 		XFLAGS(s, n0) |= X_REQUIRED;
 		SUM_SET(s, n0, almostUnique());
+		SORTSUM_SET(s, n0, SUM(s, n0));
 		first = n0 = dinsert(s, n0, fixDate && !(flags & DELTA_PATCH));
 
 		n = prefilled ? prefilled : sccs_newdelta(s);
@@ -9969,11 +9978,11 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		if (CSET(s)) {
 			unless (HAS_CSETFILE(s, first)) {
 				SUM_SET(s, first, almostUnique());
+				SORTSUM_SET(s, first, SUM(s, first));
 				FLAGS(s, first) |= D_ICKSUM;
 				sccs_sdelta(s, first, buf);
 				csetFileArg(s, first, buf);
 			}
-			FLAGS(s, first) |= D_CKSUM;
 		} else {
 			unless (HAS_CSETFILE(s, first)) {
 				csetFileArg(s, first, proj_rootkey(s->proj));
@@ -9988,7 +9997,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		}
 		added = s->added = ADDED(s, n);
 	}
-	FLAGS(s, n) |= (D_CKSUM|D_FIXUPS);
+	FLAGS(s, n) |= D_FIXUPS;
 	if (delta_table(s, sfile, 1)) {
 		error++;
 		goto out;
@@ -10012,17 +10021,18 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 			int	off = 0;
 			char	*t;
 
-			if ((t = mnext(diffs)) && isdigit(t[0])) off = 2;
-			while (t = mnext(diffs)) {
+			if ((t = fgetline(diffs)) && isdigit(t[0])) off = 2;
+			while (t = fgetline(diffs)) {
 				if ((off == 0) && (t[0] == '\\')) {
 					++t;
 				} else {
 					t = &t[off];
 				}
 				s->dsum += fputdata(s, t, sfile);
+				s->dsum += fputdata(s, "\n", sfile);
 				added++;
 			}
-			mclose(diffs);
+			fclose(diffs);
 		} else if (gfile) {
 			int	crnl_bug = (getenv("_BK_CRNL_BUG") != 0);
 
@@ -10239,10 +10249,6 @@ checkInvariants(sccs *s, int flags)
 	error |= checkOpenBranch(s, flags);
 	error |= checkTags(s, flags);
 	for (d = TABLE(s); d >= TREE(s); d--) {
-		if (!TAG(s, d) && !(FLAGS(s, d) & D_CKSUM)) {
-			verbose((stderr,
-			    "%s|%s: no checksum\n", s->gfile, REV(s, d)));
-		}
 		if ((!PARENT(s, d) || (XFLAGS(s, d) != XFLAGS(s, PARENT(s, d)))) &&
 		    checkXflags(s, d, xf)) {
 			extern	int xflags_failed;
@@ -10358,7 +10364,7 @@ checkrevs(sccs *s, int flags)
 			e |= 2;
 		}
 		prev = d;
-		if (FLAGS(s, d) & D_SORTSUM) saw_sortkey = 1;
+		if (SORTSUM(s, d) != SUM(s, d)) saw_sortkey = 1;
 	}
 	if (CSET(s) && saw_sortkey) {
 		/*
@@ -10724,7 +10730,6 @@ modeArg(sccs *s, ser_t d, char *arg)
 		SYMLINK_SET(s, d, t);
 	}
 	MODE_SET(s, d, m);
-	if (m) FLAGS(s, d) |= D_MODE;
 	return (d);
 }
 
@@ -10732,11 +10737,11 @@ private ser_t
 sumArg(sccs *s, ser_t d, char *arg)
 {
 	if (!d) d = sccs_newdelta(s);
-	FLAGS(s, d) |= D_CKSUM;
 	SUM_SET(s, d, atoi_p(&arg));
 	if (*arg++ == '|') {
 		SORTSUM_SET(s, d, atoi_p(&arg));
-		FLAGS(s, d) |= D_SORTSUM;
+	} else {
+		SORTSUM_SET(s, d, SUM(s, d));
 	}
 	return (d);
 }
@@ -11019,7 +11024,7 @@ newDelta(sccs *sc, ser_t p, int isNullDelta)
 		DELETED_SET(sc, n, 0);
 		SAME_SET(sc, n, SAME(sc, p) + ADDED(sc, p));
 		SUM_SET(sc, n, almostUnique());
-		FLAGS(sc, n) |= D_CKSUM;
+		SORTSUM_SET(sc, n, SUM(sc, n));
 	}
 	n = dinsert(sc, n, 1);
 	return (n);
@@ -11363,6 +11368,7 @@ insert_1_0(sccs *s, u32 flags)
 		}
 		SUM_SET(s, d, almostUnique());
 	}
+	SORTSUM_SET(s, d, SUM(s, d));
 	d = sccs_dInit(d, 'D', s, 0);
 	return (0);
 }
@@ -11569,7 +11575,7 @@ out:
 		mode_t	m;
 
 		assert(n);
-		if ((FLAGS(sc, n) & D_MODE) && HAS_SYMLINK(sc, n)) {
+		if (MODE(sc, n) && HAS_SYMLINK(sc, n)) {
 			fprintf(stderr,
 				"admin: %s: chmod on symlink is illegal\n",
 				sc->gfile);
@@ -11957,7 +11963,7 @@ struct weave {
 
 int
 sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
-    MMAP *fastpatch, FILE *out)
+    FILE *fastpatch, FILE *out)
 {
 	int	i;
 	ser_t	d;
@@ -12008,7 +12014,7 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
 }
 
 private int
-doFast(weave *w, ser_t *patchmap, MMAP *diffs)
+doFast(weave *w, ser_t *patchmap, FILE *diffs)
 {
 	int	lineno, lcount = 0, serial, pmapsize;
 	int	gotK = 0;
@@ -12026,7 +12032,7 @@ doFast(weave *w, ser_t *patchmap, MMAP *diffs)
 	assert(patchmap);	/* if diffs, then there's a map */
 	pmapsize = nLines(patchmap);
 
-	while (b = mnext(diffs)) {
+	while (b = fgetline(diffs)) {
 		p = &b[1];
 		if (*b == 'F') continue;
 		if (*b == 'K') {
@@ -12038,14 +12044,13 @@ doFast(weave *w, ser_t *patchmap, MMAP *diffs)
 		}
 		if (*b == '>') {
 			if (ignore) {
-				while (*p) {
-					w->sum += *(u8 *)p;
-					if (*p++ == '\n') break;
-				}
+				while (*p) w->sum += *(u8 *)p++;
+				w->sum += '\n';
 				w->line++;
 			} else if (inpatch) {
 				fix_cntl_a(w->s, p, w->out);
 				w->sum += fputdata(w->s, p, w->out);
+				w->sum += fputdata(w->s, "\n", w->out);
 				w->line++;
 			}
 			continue;
@@ -12376,11 +12381,11 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
  * we are still operating on the old file, without the diffs applied.
  */
 private int
-getHashSum(sccs *sc, ser_t n, MMAP *diffs)
+getHashSum(sccs *sc, ser_t n, FILE *diffs)
 {
 	char	*buf;
-	char	key[MAXPATH], val[MAXPATH];
-	char	*v, *t;
+	char	*key, *val;
+	char	*v;
 	u8	*e;
 	unsigned int sum = 0;
 	int	lines = 0;
@@ -12406,45 +12411,30 @@ getHashSum(sccs *sc, ser_t n, MMAP *diffs)
 		}
 		sum = sc->dsum;
 	}
-	mseekto(diffs, 0);
-	unless (buf = mnext(diffs)) {
+	rewind(diffs);
+	unless (buf = fgetline(diffs)) {
 		/* there are no diffs, we have the checksum, it's OK */
 		return (0);
 	}
 	offset = 0;
-	if (strneq(buf, "0a0\n", 4)) {
+	if (streq(buf, "0a0")) {
 		offset = 2;
-	}
-	else unless (strneq(buf, "I0 ", 3)) {
+	} else unless (strneq(buf, "I0 ", 3)) {
 		fprintf(stderr, "Missing '0a0' or 'I0 #lines', ");
 bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
 		return (-1);
 	}
-	while (buf = mnext(diffs)) {
+	while (buf = fgetline(diffs)) {
 		unless (offset == 0 || buf[0] == '>') goto bad;
-		t = key, v = &buf[offset];
+		key = v = &buf[offset];
 		if (CSET(sc)) {
-			int	pipes = 0;
-
-			/*
-			 * Keys are like u@h|path|date|.... whatever
-			 * We want to skip over any spaces in the path part.
-			 */
-			while (v < diffs->end) {
-				if (*v == '|') pipes++;
-				if ((*v == ' ') && (pipes >= 2)) break;
-				*t++ = *v++;
-			}
+			v = separator(v);
 		} else {
-			while ((v < diffs->end) && (*v != ' ')) *t++ = *v++;
+			v = strchr(v, ' ');
 		}
-		unless (*v == ' ') goto bad;
-		*t = 0;
-		for (t = val, v++; (v < diffs->end) && (*v != '\n'); ) {
-			*t++ = *v++;
-		}
-		unless (*v == '\n') goto bad;
-		*t = 0;
+		unless (v) goto bad;
+		*v = 0;
+		val = v+1;
 		if (v = mdbm_fetch_str(sc->mdbm, key)) {
 			if (!CSET(sc) && streq(v, val)) {
 				fprintf(stderr,
@@ -12474,7 +12464,7 @@ bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
  * tip delta.
  */
 private int
-delta_write(sccs *s, ser_t n, MMAP *diffs,
+delta_write(sccs *s, ser_t n, FILE *diffs,
     FILE **outp, int *ap, int *dp, int *up)
 {
 	ser_t	*state;
@@ -12531,17 +12521,15 @@ again:
 	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
 	assert(s->state & S_SOPEN);
-	while (b = mnext(diffs)) {
+	while (b = fgetline(diffs)) {
 		int	where;
 		char	what;
 		int	howmany;
 
 newcmd:
 		if (scandiff(b, &where, &what, &howmany) != 0) {
-			int	len = linelen(b);
-
 			fprintf(stderr,
-			    "delta: can't figure out '%.*s'\n", len, b);
+			    "delta: can't figure out '%s'\n", b);
 			if (state) free(state);
 			if (slist) free(slist);
 			return (-1);
@@ -12579,8 +12567,8 @@ newcmd:
 			sum = s->dsum;
 			/* howmany != 0 only for nonewline corner fixer */
 			while (howmany--) nextline(deleted);
-			while (b = mnext(diffs)) {
-				if (strneq(b, "---\n", 4)) break;
+			while (b = fgetline(diffs)) {
+				if (streq(b, "---")) break;
 				if (strneq(b, "\\ No", 4)) continue;
 				if (isdigit(b[0])) {
 					ctrl("\001E ", n, "");
@@ -12597,7 +12585,7 @@ newcmd:
 		    case 'a':
 			last = 0;
 			ctrl("\001I ", n, "");
-			while (b = mnext(diffs)) {
+			while (b = fgetline(diffs)) {
 				if (strneq(b, "\\ No", 4)) {
 					s->dsum -= '\n';
 					no_lf = 1;
@@ -12609,8 +12597,9 @@ newcmd:
 				}
 				fix_cntl_a(s, &b[2], out);
 				s->dsum += fputdata(s, &b[2], out);
+				s->dsum += fputdata(s, "\n", out);
 				debug2((stderr,
-				    "INS %.*s", linelen(&b[2]), &b[2]));
+				    "INS %s\n", &b[2]));
 				added++;
 			}
 			break;
@@ -12621,7 +12610,7 @@ newcmd:
 			ctrl("\001I ", n, "");
 			while (howmany--) {
 				/* XXX: not break but error */
-				unless (b = mnext(diffs)) break;
+				unless (b = fgetline(diffs)) break;
 				if (what != 'i' && b[0] == '\\') {
 					fix_cntl_a(s, &b[1], out);
 					s->dsum += fputdata(s, &b[1], out);
@@ -12629,7 +12618,8 @@ newcmd:
 					fix_cntl_a(s, b, out);
 					s->dsum += fputdata(s, b, out);
 				}
-				debug2((stderr, "INS %.*s", linelen(b), b));
+				s->dsum += fputdata(s, "\n", out);
+				debug2((stderr, "INS %s\n", b));
 				added++;
 			}
 			if (what == 'N') {
@@ -12673,7 +12663,7 @@ newcmd:
 		fixdel = lastdel;
 		fclose(out);
 		unlink(sccsXfile(s, 'x'));
-		mseekto(diffs, 0);
+		rewind(diffs);
 		goto again;
 	}
 	if (HASH(s) && (getHashSum(s, n, diffs) != 0)) {
@@ -13469,7 +13459,7 @@ dot0(sccs *s, ser_t d)
  */
 int
 sccs_delta(sccs *s,
-    	u32 flags, ser_t prefilled, MMAP *init, MMAP *diffs, char **syms)
+    	u32 flags, ser_t prefilled, MMAP *init, FILE *diffs, char **syms)
 {
 	FILE	*sfile = 0;	/* the new s.file */
 	int	i, free_syms = 0, error = 0;
@@ -13477,7 +13467,7 @@ sccs_delta(sccs *s,
 	char	*rev, *tmpfile = 0;
 	int	added = 0, deleted = 0, unchanged = 0;
 	int	locked;
-	pfile	pf;
+	pfile	pf = {0};
 	ser_t	*include = 0;
 	ser_t	*exclude = 0;
 	ser_t	pserial;
@@ -13485,7 +13475,6 @@ sccs_delta(sccs *s,
 	assert(s);
 	debug((stderr, "delta %s %x\n", s->gfile, flags));
 	if (flags & NEWFILE) mksccsdir(s->sfile);
-	bzero(&pf, sizeof(pf));
 	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr,
 		    "delta: can't get write lock on %s\n", s->sfile);
@@ -13494,7 +13483,7 @@ sccs_delta(sccs *s,
 out:
 		if (prefilled) sccs_freedelta(s, prefilled);
 		if (sfile) sccs_abortWrite(s, &sfile);
-		if (diffs) mclose(diffs);
+		if (diffs) fclose(diffs);
 		free_pfile(&pf);
 		if (free_syms) freeLines(syms, free); 
 		if (tmpfile  && !streq(tmpfile, DEVNULL_WR)) unlink(tmpfile);
@@ -13675,7 +13664,7 @@ out:
 		    default: OUT;
 		}
 		/* We prefer binary mode, but win32 GNU diff used text mode */ 
-		unless (tmpfile && (diffs = mopen(tmpfile, "t"))) {
+		unless (tmpfile && (diffs = fopen(tmpfile, "rt"))) {
 			fprintf(stderr,
 			    "delta: can't open diff file %s\n", tmpfile);
 			OUT;
@@ -13686,7 +13675,10 @@ out:
 		if (BAM(s)) {
 			fprintf(stdout, "Binary files differ.\n");
 		} else {
-			fwrite(diffs->mmap, diffs->size, 1, stdout);
+			char	*t;
+
+			while (t = fgetline(diffs)) puts(t);
+			rewind(diffs);
 		}
 		fputs("====\n\n", stdout);
 	}
@@ -13797,7 +13789,7 @@ out:
 		if (n == sccs_top(s)) s->xflags = XFLAGS(s, n);
 	}
 
-	FLAGS(s, n) |= (D_CKSUM|D_FIXUPS);
+	FLAGS(s, n) |= D_FIXUPS;
 	if (delta_write(s, n, diffs, &sfile, &added, &deleted, &unchanged)) {
 		OUT;
 	}
@@ -13895,6 +13887,7 @@ end(sccs *s, ser_t n, FILE *out, int flags, int add, int del, int same)
 			} else {
 				SUM_SET(s, n, almostUnique());
 			}
+			SORTSUM_SET(s, n, SUM(s, n));
 #if 0
 Breaks up citool
 
@@ -13960,14 +13953,9 @@ mkTag(char *rev, char *revM, pfile *pf, char *path, char tag[])
  * helper function for sccs_diffs
  */
 private void
-mkDiffHdr(u32 kind, char tag[], char *buf, FILE *out)
+mkDiffHdr(char tag[], char *buf, FILE *out)
 {
 	char	*marker, *date;
-
-	unless (kind & (DF_UNIFIED|DF_CONTEXT|DF_GNUp)) {
-		fputs(buf, out);
-		return; 
-	}
 
 	/*
 	 * Fix the file names.
@@ -14005,30 +13993,25 @@ set_comments(sccs *s, ser_t d)
 }
 
 private void
-diffComments(u32 kind, FILE *out, sccs *s, char *lrev, char *rrev)
+diffComments(FILE *out, sccs *s, char *lrev, char *rrev)
 {
 	int	i;
 
 	unless (rrev) rrev = "+";
 	if (streq(rrev, "edited")) rrev = "+";	/* XXX - what about edit??? */
 	set_diff(s, set_get(s, rrev), set_get(s, lrev), set_comments);
-	if ((kind & DF_IFDEF) && h) fputs("#ifdef !!COMMENTS!!\n", out);
 	EACH(h) {
 		fputs(h[i], out);
 	}
 	if (h) {
-		if (kind & DF_IFDEF) {
-			fputs("#endif !!COMMENTS!!\n", out);
-		} else {
-			fputs("\n", out);
-		}
+		fputs("\n", out);
 		freeLines(h, free);
 		h = 0;
 	}
 }
 
 private int
-doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
+doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 	FILE *out, char *lrev, char *rrev, char *ltag, char *rtag)
 {
 	FILE	*diffs = 0;
@@ -14037,8 +14020,10 @@ doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
 	char	spaces[80];
 	int	first = 1;
 	char	*error = "";
+	df_opt	dop2 = {0};
 
-	if (kind & DF_SDIFF) {
+	unless (dop) dop = &dop2;
+	if (dop->sdiff) {
 		int	i, c;
 		char	*columns = 0;
 
@@ -14053,7 +14038,8 @@ doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
 	} else {
 		strcpy(spaces, "=====");
 		unless (bktmp(diffFile, "diffs")) return (-1);
-		diff(leftf, rightf, kind, diffFile);
+		dop->ignore_trailing_cr = 1;
+		diff_files(leftf, rightf, dop, 0, diffFile);
 		diffs = fopen(diffFile, "rt");
 	}
 	if (WRITABLE(s) && !EDITED(s)) {
@@ -14061,32 +14047,27 @@ doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
 	}
 	while (fnext(buf, diffs)) {
 		if (first) {
-			if ((flags & DIFF_HEADER) && (kind & DF_IFDEF)) {
-				fprintf(out, "#ifdef !!HEADER!!\n");
-				fprintf(out, "< %s %s\n", s->gfile, lrev);
-				fprintf(out, "> %s %s\n", s->gfile, rrev);
-				fprintf(out, "#endif !!HEADER!!\n");
-			} else if (flags & DIFF_HEADER) {
+			if (dop->out_header) {
 				fprintf(out, "%s %s %s vs %s%s %s\n",
 				   spaces, s->gfile, lrev, rrev, error, spaces);
 			}
-			if (flags & DIFF_COMMENTS) {
-				diffComments(kind, out, s, lrev, rrev);
+			if (dop->out_comments) {
+				diffComments(out, s, lrev, rrev);
 			}
-			unless (flags & DIFF_HEADER) fprintf(out, "\n");
+			unless (dop->out_header) fprintf(out, "\n");
 			first = 0;
-			mkDiffHdr(kind, ltag, buf, out);
+			mkDiffHdr(ltag, buf, out);
 			unless (fnext(buf, diffs)) break;
-			mkDiffHdr(kind, rtag, buf, out);
+			mkDiffHdr(rtag, buf, out);
 		} else {
 			fputs(buf, out);
 		}
 	}
 	/* XXX - gross but useful hack to get spacers */
-	if ((flags & DIFF_COMMENTS) && !(kind & DF_IFDEF) && !first) {
+	if (dop->out_comments && !first) {
 		fprintf(out, "\n");
 	}
-	if (kind & DF_SDIFF) {
+	if (dop->sdiff) {
 		pclose(diffs);
 	} else {
 		fclose(diffs);
@@ -14101,7 +14082,7 @@ doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
  * r1 & r2 are user specified rev; can be incomplete 
  */
 private int
-mapRev(sccs *s, u32 flags, char *r1, char *r2,
+mapRev(sccs *s, char *r1, char *r2,
 			char **rev1, char **rev1M, char **rev2, pfile *pf)
 {
 	char *lrev, *lrevM = 0, *rrev;
@@ -14128,12 +14109,7 @@ mapRev(sccs *s, u32 flags, char *r1, char *r2,
 		lrev = r1;
 		rrev = 0;
 	} else {
-		unless (HAS_GFILE(s)) {
-			verbose((stderr,
-			    "diffs: %s not checked out.\n", s->gfile));
-			s->state |= S_WARNED;
-			return (-1);
-		}
+		unless (HAS_GFILE(s)) return (-1);
 		lrev = 0;
 		rrev = "?";
 	}
@@ -14206,7 +14182,7 @@ mkDiffTarget(sccs *s,
 
 private int
 normal_diff(sccs *s, char *lrev, char *lrevM,
-	char *rrev, u32 flags, u32 kind, FILE *out, pfile *pf)
+	char *rrev, df_opt *dop, FILE *out, pfile *pf)
 {
 	char	*lpath = 0, *rpath = 0;
 	int	rc = -1;
@@ -14216,10 +14192,10 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	/*
 	 * Create the lfile & rfile for diff
 	 */
-	if (mkDiffTarget(s, lrev, lrevM, flags, lfile, pf)) {
+	if (mkDiffTarget(s, lrev, lrevM, dop->flags, lfile, pf)) {
 		goto done;
 	}
-	if (mkDiffTarget(s, rrev, NULL,  flags, rfile, 0 )) {
+	if (mkDiffTarget(s, rrev, NULL,  dop->flags, rfile, 0 )) {
 		goto done;
 	}
 
@@ -14237,7 +14213,7 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	/*
 	 * Now diff the lfile & rfile
 	 */
-	rc = doDiff(s, flags, kind, lfile, rfile, out, lrev, rrev, ltag, rtag);
+	rc = doDiff(s, dop, lfile, rfile, out, lrev, rrev, ltag, rtag);
 done:	unless (streq(lfile, DEVNULL_RD)) unlink(lfile);
 	unless (streq(rfile, s->gfile) || streq(rfile, DEVNULL_RD)) unlink(rfile);
 	if (lpath) free(lpath);
@@ -14249,24 +14225,23 @@ done:	unless (streq(lfile, DEVNULL_RD)) unlink(lfile);
  * diffs - diff the gfile or the specified (or implied) rev
  */
 int
-sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, u32 kind, FILE *out)
+sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dopt, FILE *out)
 {
 	char	*lrev, *lrevM, *rrev;
-	pfile	pf;
+	pfile	pf = {0};
 	int	rc = 0;
-	
-	bzero(&pf, sizeof(pf));
+
 	GOODSCCS(s);
 
 	/*
 	 * Figure out which revision the user want.
 	 * Translate r1 => lrev, r2 => rrev.
 	 */
-	if (rc = mapRev(s, flags, r1, r2, &lrev, &lrevM, &rrev, &pf)) {
+	if (rc = mapRev(s, r1, r2, &lrev, &lrevM, &rrev, &pf)) {
 		goto done;
 	}
 
-	rc = normal_diff(s, lrev, lrevM, rrev, flags, kind, out, &pf);
+	rc = normal_diff(s, lrev, lrevM, rrev, dopt, out, &pf);
 
 done:	free_pfile(&pf);
 	return (rc);
@@ -15463,16 +15438,9 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_DSUM: /* DSUM */ {
-		if (FLAGS(s, d) & D_CKSUM) {
-			fd((int)SUM(s, d));
-			return (strVal);
-		}
-		if (TAG(s, d)) {
-			assert(SUM(s, d) == 0);
-			fs("0");
-			return (strVal);
-		}
-		return (nullVal);
+		if (TAG(s, d)) assert(SUM(s, d) == 0);
+		fd((int)SUM(s, d));
+		return (strVal);
 	}
 
 	case KW_FSUM: /* FSUM */ {
@@ -15859,18 +15827,20 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	case KW_DIFFS: /* DIFFS */
 	case KW_DIFFS_U: /* DIFFS_U */
 	case KW_DIFFS_UP: /* DIFFS_UP */ {
-		int	kind;
 		int	open = (s->state & S_SOPEN);
+		df_opt	dop = {0};
 
 		switch (kwval->kwnum) {
 		    default:
-		    case KW_DIFFS:	kind = DF_DIFF; break;
-		    case KW_DIFFS_U:	kind = DF_UNIFIED; break;
-		    case KW_DIFFS_UP:	kind = DF_UNIFIED|DF_GNUp; break;
+		    case KW_DIFFS:	break;
+		    case KW_DIFFS_UP:	dop.out_show_c_func = 1;
+			/* fallthrough */
+		    case KW_DIFFS_U:	dop.out_unified = 1; break;
 		}
 		if (d == TREE(s)) return (nullVal);
 		unless (open) sccs_open(s, 0);
-		sccs_diffs(s, REV(s, d), REV(s, d), SILENT, kind, out);
+		dop.flags = SILENT;
+		sccs_diffs(s, REV(s, d), REV(s, d), &dop, out);
 		unless (open) sccs_close(s);
 		return (strVal);
 	}
@@ -16282,9 +16252,9 @@ do_patch(sccs *s, ser_t d, int flags, FILE *out)
 		sccs_pdelta(s, e, out);
 		fprintf(out, "\n");
 	}
-	if (FLAGS(s, d) & D_CKSUM) {
+	if (!TAG(s, d)) {
 		fprintf(out, "K %u", SUM(s, d));
-		if ((FLAGS(s, d) & D_SORTSUM) && (SUM(s, d) != SORTSUM(s, d))) {
+		if (SUM(s, d) != SORTSUM(s, d)) {
 			fprintf(out, "|%u", SORTSUM(s, d));
 		}
 		fputc('\n', out);
@@ -16296,7 +16266,7 @@ do_patch(sccs *s, ser_t d, int flags, FILE *out)
 		sccs_pdelta(s, e, out);
 		fprintf(out, "\n");
 	}
-	if (FLAGS(s, d) & D_MODE) {
+	if (MODE(s, d)) {
 		fprintf(out, "O %s", mode2a(MODE(s, d)));
 		if (S_ISLNK(MODE(s, d))) {
 			assert(HAS_SYMLINK(s, d));
@@ -16525,7 +16495,7 @@ gca3(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 	ser_t	gca;
 	u8	*gmap = 0;
 	ser_t	*glist, *list = 0;
-	int	count;
+	int	i, count;
 
 	*inc = *exc = 0;
 	unless (s && TABLE(s) && left && right) return (0);
@@ -16538,6 +16508,12 @@ gca3(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 	assert(count);
 	gca = glist[1];
 	if (count > 1) {
+		if (getenv("_BK_CHK_MULTI")) {
+			EACH(glist) {
+				fprintf(stderr,
+				   "multi %s\n", REV(s, (ser_t)glist[i]));
+			}
+		}
 		gmap = (u8 *)calloc(TABLE(s) + 1, sizeof(u8));
 		graph_symdiff(s, 0, 0, glist, gmap, 0, -1, SD_MERGE);
 		if (compressmap(s, gca, gmap, inc, exc)) {
@@ -16919,7 +16895,7 @@ sccs_sortkey(sccs *s, ser_t d, char *buf)
 
 	unless (getenv("_BK_NO_SORTKEY")) {
 		PATHNAME_INDEX(s, d) = SORTPATH_INDEX(s, d);
-		if (FLAGS(s, d) & D_SORTSUM) SUM_SET(s, d, SORTSUM(s, d));
+		SUM_SET(s, d, SORTSUM(s, d));
 	}
 	sccs_sdelta(s, d, buf);
 
@@ -17578,7 +17554,6 @@ sccs_rmdel(sccs *s, ser_t d, u32 flags)
 	if (stripChecks(s, d, "rmdel")) return (1);
 
 	FLAGS(s, d) |= D_TAG;	/* mark delta as Removed */
-	FLAGS(s, d) &= ~D_CKSUM;
 
 	return (sccs_stripdel(s, "rmdel"));
 }

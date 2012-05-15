@@ -64,6 +64,7 @@ bp_delta(sccs *s, ser_t d)
 	free(p);
 	if (bp_hashgfile(s->gfile, &hash, &sum)) return (-1);
 	SUM_SET(s, d, sum);
+	SORTSUM_SET(s, d, sum);
 	BAMHASH_SET(s, d, hash);
 	free(hash);
 	s->dsum = SUM(s, d);

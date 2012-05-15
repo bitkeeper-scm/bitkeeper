@@ -340,7 +340,7 @@ doit:	if (delta_now) {
 			do_delta(rs->opts, rs->s, SCCS_MERGE);
 		} else {
 			if (show_diffs) {
-				sccs_diffs(rs->s, 0, 0, 0, DF_DIFF, stdout);
+				sccs_diffs(rs->s, 0, 0, 0, stdout);
 			}
 			do_delta(rs->opts, rs->s, 0);
 		}

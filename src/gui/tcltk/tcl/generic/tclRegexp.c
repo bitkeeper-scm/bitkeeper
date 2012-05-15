@@ -504,21 +504,14 @@ Tcl_RegExpExecObj(
 	}
 	pcre_fullinfo(regexpPtr->pcre, NULL, PCRE_INFO_OPTIONS, &pcreopts);
 
-	/* For UTF8, convert offset from a char index to a byte offset. */
-	if (pcreopts & PCRE_UTF8) {
-	    wlen = Tcl_GetCharLength(textObj);
-	    if (offset > wlen) {
-		offset = wlen;
-	    }
-	    byteOffset = Tcl_UtfAtIndex(matchstr, offset) - matchstr;
-	    if (byteOffset > length) {
-		byteOffset = length;
-	    }
-	} else {
-	    if (offset > length) {
-		offset = length;
-	    }
-	    byteOffset = offset;
+	/* To handle UTF8, convert offset from a char index to a byte offset. */
+	wlen = Tcl_GetCharLength(textObj);
+	if (offset > wlen) {
+	    offset = wlen;
+	}
+	byteOffset = Tcl_UtfAtIndex(matchstr, offset) - matchstr;
+	if (byteOffset > length) {
+	    byteOffset = length;
 	}
 
 	match = pcre_exec(regexpPtr->pcre, regexpPtr->study,
@@ -528,13 +521,11 @@ Tcl_RegExpExecObj(
 	/*
 	 * For UTF8, we need the matches array as char offsets, but pcre
 	 * returns byte offsets.  Do the conversion.
+	 * This could be sped up for lots of matches.
 	 */
-	if (pcreopts & PCRE_UTF8) {
-	    // This could be sped up for lots of matches.
-	    for (i = 0; i < 2*match; ++i) {
-		int *p = &((int *)regexpPtr->matches)[i];
-		*p = Tcl_NumUtfChars(matchstr, *p);
-	    }
+	for (i = 0; i < 2*match; ++i) {
+	    int *p = &((int *)regexpPtr->matches)[i];
+	    *p = Tcl_NumUtfChars(matchstr, *p);
 	}
 
 	/*

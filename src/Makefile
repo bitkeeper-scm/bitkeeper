@@ -150,13 +150,13 @@ OBJ =	bkver.o cmd.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o \
 	help.o here.o here_check.o hostme.o http.o \
-	idcache.o isascii.o inskeys.o \
+	idcache.o isascii.o info.o inskeys.o \
 	key2rev.o key2path.o kill.o kv.o kvfile.o \
 	lease.o \
-	libcommit.o libdiff.o libgraph.o librange.o \
+	libcommit.o libgraph.o librange.o \
 	libsfiles.o libusers.o lines.o \
 	localtm.o lock.o locking.o \
-	logging.o mail.o mdiff.o merge.o mklock.o \
+	logging.o mail.o merge.o mklock.o \
 	mailslot.o \
 	mailsplit.o mtime.o mv.o names.o ndiff.o nested.o newroot.o \
 	opark.o \
@@ -195,7 +195,7 @@ OBJ =	bkver.o cmd.o \
 	tagmerge.o testcode.o tclsh.o takepatch.o \
 	testdates.o time.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
-	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
+	unique.o uninstall.o unlink.o unlock.o unpull.o unrm.o unwrap.o upgrade.o \
 	urlinfo.o \
 	utils.o uu.o what.o which.o \
 	xflags.o \

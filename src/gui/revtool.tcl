@@ -1402,7 +1402,7 @@ proc selectNode { type {val {}}} \
 	if {$base != "ChangeSet"} {
 		set Aur $gc(rev.annotate)
 		set r [lindex [split $rev1 "-"] 0]
-		set get [open "| bk get $Aur -Pr$r \"$file\" 2>$dev_null"]
+		set get [open "| bk get $Aur -kPr$r \"$file\" 2>$dev_null"]
 		set ttype "annotated"
 		filltext $w(aptext) $get 1 "No annotation"
 		return

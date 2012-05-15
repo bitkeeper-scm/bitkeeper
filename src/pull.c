@@ -73,6 +73,7 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	prog = basenm(av[0]);
 	if (streq(prog, "port")) {
+		title = "port";
 		opts.port = 1;
 		safe_putenv("BK_PORT_ROOTKEY=%s", proj_rootkey(0));
 	}
@@ -1194,7 +1195,7 @@ pull(char **av, remote *r, char **envVar)
 	disconnect(r);
 
 	/* pull component - poly detection and fixups */
-	if (opts.mergefile) {
+	if (!rc && opts.mergefile) {
 		if (pullPoly(got_patch)) {
 			putenv("BK_STATUS=POLY");
 			got_patch = 0;	/* post triggers */
@@ -1467,7 +1468,11 @@ pullPoly(int got_patch)
 
 	/* cons up a RESYNC area in case "Nothing to pull" */
 	unless (got_patch) {
-		resync_lock();
+		if (mkdir("RESYNC", 0777)) {
+			perror("make poly resync");
+			goto err;
+		}
+		sccs_mkroot("RESYNC");
 		fileCopy(CHANGESET, resync);
 		touch("RESYNC/BitKeeper/tmp/patch", 0666);
 	}
@@ -1512,6 +1517,7 @@ pullPoly(int got_patch)
 	assert(local && remote);
 
 	unless (getenv("_BK_DEVELOPER") && proj_configbool(0, "poly")) {
+		/* assumes D_SET is clear to start; leaves clear */
 		if (range_walkrevs(
 		    cset, local, 0, remote, WR_GCA, polyChk, cmarks)) {
 			goto err;

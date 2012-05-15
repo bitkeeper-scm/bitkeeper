@@ -409,12 +409,12 @@ test opts-11 {test bad command-line option} -setup {
 void opts_11()
 {
 	int	ret;
-	string	err[], out[];
+	string	err, out[];
 	string	tclsh = eval("interpreter");
 
 	ret = system({tclsh, "--bad", "opts11.l"}, undef, &out, &err);
 	unless (ret == 1) puts("bad 1");
-	unless (err[0] == "L Error: illegal option '--bad'") puts("bad 2");
+	unless (err =~ /L Error: illegal option '--bad'/) puts("bad 2 ${err}");
 }
 opts_11();
 } -output {}
@@ -1300,6 +1300,8 @@ void unicode_3()
 	string	h = "זו השפה שלנו";
 	string	r;
 
+	/* These test wide chars in both regexp and string. */
+
 	unless (h =~ /זו/) puts("bad 1.1");
 	if (h =~ /ך/) puts("bad 1.2");
 	unless (h =~ /זו השפה שלנו/) puts("bad 1.3");
@@ -1329,6 +1331,16 @@ void unicode_3()
 	unless (h =~ /זו (השפ)ה שלנו/) puts("bad 4.1");
 	unless (length($1) == 3) puts("bad 4.2");
 	unless ($1 eq "השפ") puts("bad 4.3");
+
+	/* Test an ascii regexp and a wide string. */
+
+	h = "זו השפה שלנו";
+	unless (h =~ / /) puts("bad 10.1");
+	h =~ s/ //;
+	unless (h == "זוהשפה שלנו") puts("bad 10.2");
+	h = "זו השפה שלנו";
+	h =~ s/ //g;
+	unless (h == "זוהשפהשלנו") puts("bad 10.3");
 }
 unicode_3();
 } -output {}
@@ -1408,11 +1420,19 @@ void unicode_5()
 	unless (a[1] eq "日本語が") puts("bad 2.3");
 	unless (a[2] eq "分かります") puts("bad 2.4");
 
+	// Split a unicode string with a unicode regexp.
 	a = split(/ש/, "זו השפה שלנו");
 	unless (length(a) == 3) puts("bad 3.1");
 	unless (a[0] eq "זו ה") puts("bad 3.2");
 	unless (a[1] eq "פה ") puts("bad 3.3");
 	unless (a[2] eq "לנו") puts("bad 3.4");
+
+	// Split a unicode string with an ascii regexp.
+	a = split(/ /, "זו השפה שלנו");
+	unless (length(a) == 3) puts("bad 4.1");
+	unless (a[0] eq "זו") puts("bad 4.2");
+	unless (a[1] eq "השפה") puts("bad 4.3");
+	unless (a[2] eq "שלנו") puts("bad 4.4");
 }
 unicode_5();
 } -output {}
@@ -11195,6 +11215,139 @@ void undef_7()
 	undef;
 }
 undef_7();
+} -output {}
+
+test undef-8 {check for another bug with undef object ref count} -body {
+#lang L
+#pragma nowarn
+void undef_8()
+{
+	int	iters = 100;
+	int	a[], aft, bef, h{int}, i, j, x, y;
+	string	s;
+	FILE	f;
+
+	/*
+	 * These check for an old bug where the undef object's ref
+	 * count would continually grow until it eventually
+	 * overflowed.  Here we check that various operations which
+	 * should create and then drop a reference to undef don't grow
+	 * the ref count.
+	 */
+
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		{x,y} = {i};  // uses INST_L_LINDEX_STK bytecode
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 1 composite assign ${bef} -> ${aft}");
+
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		a[0] = 0;  // grows array w/undef
+		undef(a);
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 2 a[] write ${bef} -> ${aft}");
+
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		a[0];  // read of undefined array element
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 3 a[] read ${bef} -> ${aft}");
+
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		a[j];  // array read with undef index
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 4 a[undef] read ${bef} -> ${aft}");
+
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		pop(&a);  // elt delete on empty array
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 5 pop(&a) ${bef} -> ${aft}");
+
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		((hash){i}){0};  // hash read of non-hash
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 6 not-a-hash{idx} ${bef} -> ${aft}");
+
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		h{0};  // hash read of undef element
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 7 h{} ${bef} -> ${aft}");
+
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		s[0];  // string index of undef string
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 8 undef_string[] ${bef} -> ${aft}");
+
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		"s"[2];  // string index beyond end of string
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 9 string[beyond] ${bef} -> ${aft}");
+
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		undef;  // puts undef on run-time stack
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 10 undef ${bef} -> ${aft}");
+
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		getopt({}, "", {});  // getopt returns undef
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 11 getopt ${bef} -> ${aft}");
+
+	f = fopen("tst", "w");
+	puts(f, "testing");
+	fclose(f);
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		f = fopen("tst", "r");
+		while (<f>) ;  // returns undef on EOF
+		fclose(f);
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 12 <f> ${bef} -> ${aft}");
+	unlink("tst");
+
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		fgetline("bad channel");  // returns undef
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 13 fgetline ${bef} -> ${aft}");
+
+	/*
+	 * This one can't be tested here unless we spawn another tclsh
+	 * since it eats args from the cmd line and messes up tcltest.
+	 */
+	/*
+	bef = Lrefcnt(undef);
+	for (i = 0; i < iters; ++i) {
+		<>;
+	}
+	aft = Lrefcnt(undef);
+	if (aft > bef) puts("bad 14 <> ${bef} -> ${aft}");
+	*/
+
+}
+undef_8();
 } -output {}
 
 test toplevel-1.0 {Toplevel code in L} -body {

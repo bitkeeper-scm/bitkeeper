@@ -7,26 +7,26 @@
  * This struct is for diff -p, so we can save where
  * the function headers are.
  */
-typedef	struct header {
+typedef	struct {
 	int	lno;		/* line number */
 	char	*s;		/* string to print */
 } header;
 
-typedef	struct file_t {
-	char	*name;
-	int	binary;
-	struct stat sb;
-	int	nl;		/* does it have a newline at the end? */
-	char	*data;
-} file_t;
+/*
+ * One of these for each file we are diffing.
+ */
+typedef	struct {
+	u32	nl:1;		/* does it have a newline at the end? */
+	u32	binary:1;	/* set if binary */
+} file;
 
-typedef struct filediff {
-	file_t	files[2];		/* the two files to diff */
-	header	*fn_defs;		/* function defs for diff -p */
-	diffopt *dop;			/* options for diff */
+typedef struct {
+	file	files[2];	/* the two files to diff */
+	header	*fn_defs;	/* function defs for diff -p */
+	df_opt	*dop;		/* copy of diff opts */
 } filediff;
 
-private	int	cleanOpts(diffopt *opts);
+private	int	cleanOpts(df_opt *opts);
 
 /* comparison funcs */
 private	int	cmp_identical(void *a, int lena,
@@ -51,11 +51,13 @@ private	void	printHeader(int lno, void *extra, FILE *out);
 /* other functions */
 private int	algn_ws(void *data, int len, void *extra);
 
+private	int	external_diff(char *lfile, char *rfile, df_opt *dop, char *out);
+
 int
 ndiff_main(int ac, char **av)
 {
 	int		c;
-	diffopt		opts;
+	df_opt		opts;
 	longopt		lopts[] = {
 		{ "ignore-trailing-cr", 310 },
 		{ "show-function-line", 'F'},
@@ -65,7 +67,7 @@ ndiff_main(int ac, char **av)
 	};
 	int	rc = -1;
 
-	bzero(&opts, sizeof(diffopt));
+	bzero(&opts, sizeof(df_opt));
 	while ((c = getopt(ac, av, "bdD:F:puwnN", lopts)) != -1) {
 		switch (c) {
 		    case 'b': opts.ignore_ws_chg = 1; break;
@@ -104,14 +106,14 @@ ndiff_main(int ac, char **av)
 		goto out;
 	}
 
-	rc = diff_files(av[optind], av[optind+1], &opts, 0, stdout);
+	rc = diff_files(av[optind], av[optind+1], &opts, 0, "-");
 out:	if (opts.out_define) FREE(opts.out_define);
 	if (opts.pattern) FREE(opts.pattern);
 	return (rc);
 }
 
 private	int
-cleanOpts(diffopt *opts)
+cleanOpts(df_opt *opts)
 {
 	/*
 	 * Make sure we don't have conflicting output styles
@@ -124,7 +126,7 @@ cleanOpts(diffopt *opts)
 	if (opts->ignore_trailing_cr) opts->strip_trailing_cr = 1;
 
 	/*
-	 * show_c_func uses and patter is invalid
+	 * show_c_func uses and pattern is invalid
 	 */
 	if (opts->out_show_c_func && opts->pattern) return (0);
 	return (1);
@@ -137,32 +139,42 @@ cleanOpts(diffopt *opts)
  *   2  error
  */
 int
-diff_files(char *file1, char *file2, diffopt *dopts, diffctx **odc, FILE *out)
+diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 {
-	int		i, j, n;
-	int		firstDiff;
-	int		lno[2];
-	int		skip[2] = {0, 0};
-	int		fd;
-	diffcmp		dcmp = 0;
-	diffhash	dhash = 0;
-	header		*fh;
-	int		rc = 2;
-	diffctx		*dc = 0;
-	filediff	*o;
+	int	i, j, n;
+	int	firstDiff;
+	int	lno[2];
+	int	skip[2] = {0, 0};
+	int	rc = 2;
+	char	*files[2] = {file1, file2};
+	char	*data[2] = {0, 0};
+	df_cmp	dcmp = 0;
+	df_hash	dhash = 0;
+	header	*fh;
+	df_ctx	*dc = 0;
+	filediff *o;
+	FILE	*fout = 0;
+	struct	stat sb[2];
 
-	unless (cleanOpts(dopts)) return (2);
+	if (getenv("_BK_USE_EXTERNAL_DIFF")) {
+		return (external_diff(file1, file2, dop, out));
+	}
+
+	unless (cleanOpts(dop)) return (2);
+
+	if (out) {
+		fout = (streq(out, "-")) ? stdout : fopen(out, "w");
+		unless (fout) return (2);
+	}
 
 	o = new(filediff);
-	o->files[0].name = file1;
-	o->files[1].name = file2;
-	o->dop = new(diffopt);
-	memcpy(o->dop, dopts, sizeof(diffopt));
+	o->dop = new(df_opt);
+	*o->dop = *dop;
 
 	for (i = 0; i < 2; i++) {
-		if (stat(o->files[i].name, &o->files[i].sb)) {
+		if (stat(files[i], &sb[i])) {
 			unless (o->dop->new_is_null) {
-				perror(o->files[i].name);
+				perror(files[i]);
 				return (2);
 			}
 			skip[i] = 1;
@@ -170,8 +182,8 @@ diff_files(char *file1, char *file2, diffopt *dopts, diffctx **odc, FILE *out)
 	}
 
 	/* Maybe they gave us the same file? */
-	if (!win32() && (o->files[0].sb.st_dev == o->files[1].sb.st_dev) &&
-	    (o->files[0].sb.st_ino == o->files[1].sb.st_ino)) {
+	if (!win32() &&
+	    (sb[0].st_dev == sb[1].st_dev) && (sb[0].st_ino == sb[1].st_ino)) {
 		/* no diffs */
 		return (0);
 	}
@@ -179,21 +191,11 @@ diff_files(char *file1, char *file2, diffopt *dopts, diffctx **odc, FILE *out)
 	/* Load the two files into memory. */
 	for (i = 0; i < 2; i++) {
 		if (skip[i]) continue;
-		unless ((fd = open(o->files[i].name, O_RDONLY, 0)) >= 0) {
-			perror(o->files[i].name);
+		unless (data[i] = loadfile(files[i], 0)) {
+			perror(files[i]);
 			rc = 2;
 			goto out;
 		}
-		o->files[i].data = malloc(o->files[i].sb.st_size + 1);
-		assert(o->files[i].data);
-		n = o->files[i].sb.st_size;
-		unless (n == read(fd, o->files[i].data, n)) {
-			perror(o->files[1].name);
-			close(fd);
-			rc = 2;
-			goto out;
-		}
-		close(fd);
 	}
 
 	/*
@@ -201,8 +203,8 @@ diff_files(char *file1, char *file2, diffopt *dopts, diffctx **odc, FILE *out)
 	 * seeing if they differ and don't care about the actual
 	 * diffs, then do a quick comparison.
 	 */
-	if ((o->files[0].sb.st_size == o->files[1].sb.st_size) &&
-	    !memcmp(o->files[0].data, o->files[1].data, o->files[0].sb.st_size)) {
+	if ((sb[0].st_size == sb[1].st_size) &&
+	    !memcmp(data[0], data[1], sb[0].st_size)) {
 		/* no diffs */
 		rc = 0;
 		goto out;
@@ -236,8 +238,8 @@ diff_files(char *file1, char *file2, diffopt *dopts, diffctx **odc, FILE *out)
 	for (i = 0; i < 2; i++) {
 		char	*s, *e, *t = 0;	/* start/end/tmp */
 
-		s = e = o->files[i].data;
-		for (j = 0; j < o->files[i].sb.st_size; j++) {
+		s = e = data[i];
+		for (j = 0; j < sb[i].st_size; j++) {
 			if (*e == '\0') o->files[i].binary = 1;
 			if (*e == '\n') {
 				if (o->dop->strip_trailing_cr) {
@@ -281,8 +283,10 @@ diff_files(char *file1, char *file2, diffopt *dopts, diffctx **odc, FILE *out)
 		 * we've checked for same size and equal contents
 		 * above.
 		 */
-		fprintf(out, "Binary files %s and %s differ\n",
-		    o->files[0].name, o->files[1].name);
+		if (fout) {
+			fprintf(fout,
+			    "Binary files %s and %s differ\n", file1, file2);
+		}
 		rc = 1;
 		goto out;
 	}
@@ -291,11 +295,11 @@ diff_files(char *file1, char *file2, diffopt *dopts, diffctx **odc, FILE *out)
 	 * This is an optimization where we just compare as much as we
 	 * can to avoid hashing.
 	 */
-	n = min(o->files[0].sb.st_size, o->files[1].sb.st_size);
+	n = min(sb[0].st_size, sb[1].st_size);
 	firstDiff = 0;
 	for (i = 0; i < n; i++) {
-		if (o->files[0].data[i] != o->files[1].data[i]) break;
-		if (o->files[0].data[i] == '\n') firstDiff++;
+		if (data[0][i] != data[1][i]) break;
+		if (data[0][i] == '\n') firstDiff++;
 	}
 
 	/* Do the diff */
@@ -315,29 +319,90 @@ diff_files(char *file1, char *file2, diffopt *dopts, diffctx **odc, FILE *out)
 	/* Print the diffs. */
 	if (o->dop->out_unified) {
 		diff_printUnified(dc,
-		    o->files[0].name, &o->files[0].sb.st_mtime,
-		    o->files[1].name, &o->files[1].sb.st_mtime,
-		    printLine, o->dop->pattern ? printHeader : 0, out);
+		    file1, &sb[0].st_mtime,
+		    file2, &sb[1].st_mtime,
+		    printLine, o->dop->pattern ? printHeader : 0, fout);
 	} else if (o->dop->out_rcs) {
-		diff_printRCS(dc, printLine, out);
+		diff_printRCS(dc, printLine, fout);
 	} else if (o->dop->out_define) {
-		diff_printIfDef(dc, o->dop->out_define, printLine, out);
+		diff_printIfDef(dc, o->dop->out_define, printLine, fout);
 	} else if (o->dop->out_print_hunks) {
 		hunk	*h, *hlist = diff_hunks(dc);
 
 		EACHP(hlist, h) {
-			fprintf(out, "%d,%d %d,%d\n", h->li, h->ll, h->ri, h->rl);
+			fprintf(fout,
+			    "%d,%d %d,%d\n", h->li, h->ll, h->ri, h->rl);
 		}
 	} else {
-		diff_print(dc, printLine, out);
+		diff_print(dc, printLine, fout);
 	}
 	if (o->dop->out_show_c_func) o->dop->pattern = 0;
-out:	FREE(o->files[0].data);
-	FREE(o->files[1].data);
+out:	if (fout) fclose(fout);
+	FREE(data[0]);
+	FREE(data[1]);
 	FREE(o->dop);
 	FREE(o);
 	diff_free(dc);
 	return (rc);
+}
+
+private int
+external_diff(char *lfile, char *rfile, df_opt *dop, char *out)
+{
+	int	fd1 = -1;
+	int	status = -1, i;
+	int	ret;
+	char	*av[40];
+	char	def[MAXLINE];
+
+	unless (streq("-", out)) {
+		int	fd;
+
+		fd1 = dup(1);
+		close(1); /* this confused purify, it expect a fclose */
+		fd = open(out, O_CREAT|O_WRONLY, 0644);
+		if (fd == -1) {
+			perror(out);
+			return (2);
+		}
+		assert(fd == 1);
+		debug((stderr, "diff: out = %s\n", out));
+	}
+
+	av[i = 0] = "diff";
+	if (dop->ignore_ws_chg) av[++i] = "-b";
+	if (dop->out_show_c_func) av[++i] = "-p";
+	if (dop->ignore_all_ws) av[++i] = "-w";
+	if (dop->new_is_null) av[++i] = "-N";
+	if (dop->out_define) {
+		sprintf(def, "-D%s", dop->out_define);
+		av[++i] = def;
+	}
+	if (dop->out_rcs) av[++i] = "-n";
+	if (dop->out_unified) av[++i] = "-u";
+
+	av[++i] = "--ignore-trailing-cr";
+	av[++i] = lfile;
+	av[++i] = rfile;
+	av[++i] = 0;
+	assert(i < sizeof(av)/sizeof(char*));
+
+	/* Needed because we normally ignore it in sccs_init() but we may
+	 * be diffing no inited files.
+	 */
+	signal(SIGPIPE, SIG_IGN);
+
+	status = spawnvp(_P_WAIT, av[0], av);
+	unless (WIFEXITED(status))  {
+		fprintf(stderr,
+		    "diff(): spawnvp returned 0x%x, errno=%d, PATH=%s\n",
+		    status, errno, getenv("PATH"));
+		for (i = 0; av[i]; ++i) fprintf(stderr, "av[%d]=%s\n",i, av[i]);
+	}
+	ret = WEXITSTATUS(status);
+
+	if (fd1 != -1) { close(1); dup2(fd1, 1); close(fd1); }
+	return (ret);
 }
 
 /*

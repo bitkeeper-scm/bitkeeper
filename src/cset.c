@@ -48,7 +48,7 @@ private	int	marklist(char *file);
 private	ser_t	mkChangeSet(sccs *cset, char *files, FILE *diffs);
 private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
-private	void	doDiff(sccs *sc, char kind);
+private	void	doDiff(sccs *sc);
 private	void	sccs_patch(sccs *, cset_t *);
 private	int	cset_diffs(cset_t *cs, ser_t ser);
 private	void	cset_exit(int n);
@@ -387,7 +387,7 @@ doit(cset_t *cs, sccs *sc)
 	if (copts.hide_comp && CSET(sc) && proj_isComponent(sc->proj)) return;
 	cs->nfiles++;
 	if (cs->doDiffs) {
-		doDiff(sc, DF_UNIFIED);
+		doDiff(sc);
 	} else if (cs->makepatch) {
 		sccs_patch(sc, cs);
 	} else if (cs->mark) {
@@ -838,10 +838,12 @@ fail:
  * Spit out the diffs.
  */
 private void
-doDiff(sccs *sc, char kind)
+doDiff(sccs *sc)
 {
 	ser_t	d, e = 0;
+	df_opt	dop = {0};
 
+	dop.out_unified = 1;
 	if (CSET(sc)) return;		/* no changeset diffs */
 	for (d = TABLE(sc); d >= TREE(sc); d--) {
 		if (FLAGS(sc, d) & D_SET) {
@@ -861,7 +863,7 @@ doDiff(sccs *sc, char kind)
 	}
 	e = PARENT(sc, e);
 	if (e == d) return;
-	sccs_diffs(sc, REV(sc, e), REV(sc, d), 0, kind, stdout);
+	sccs_diffs(sc, REV(sc, e), REV(sc, d), &dop, stdout);
 }
 
 #if 0
@@ -1089,7 +1091,6 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	ser_t	d;
 	int	error = 0;
 	int	fd0;
-	MMAP	*diffs;
 	FILE	*fdiffs;
 	char	filename[MAXPATH];
 
@@ -1099,7 +1100,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	}
 
 	bktmp(filename, "cdif");
-	unless (fdiffs = fopen(filename, "w")) {
+	unless (fdiffs = fopen(filename, "w+")) {
 		perror(filename);
 		sccs_free(cset);
 		cset_exit(1);
@@ -1107,13 +1108,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 
 	d = mkChangeSet(cset, files, fdiffs); /* write change set to diffs */
 
-	fclose(fdiffs);
-	unless (diffs = mopen(filename, "b")) {
-		perror(filename);
-		sccs_free(cset);
-		unlink(filename);
-		cset_exit(1);
-	}
+	rewind(fdiffs);
 
 	/* for compat with old versions of BK not using ensembles */
 	if (proj_isComponent(cset->proj)) {
@@ -1138,9 +1133,10 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	}
 	if ((flags & DELTA_DONTASK) && !(d = comments_get(0, 0, cset, d))) {
 		error = -1;
+		fclose(fdiffs);
 		goto out;
 	}
-	if (sccs_delta(cset, flags, d, 0, diffs, syms) == -1) {
+	if (sccs_delta(cset, flags, d, 0, fdiffs, syms) == -1) {
 		sccs_whynot("cset", cset);
 		error = -1;
 		goto out;

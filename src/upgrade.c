@@ -95,6 +95,13 @@ upgrade_main(int ac, char **av)
 			notice("upgrade-install-other-platform", 0, "-e");
 			goto out;
 		}
+	} else if (p = getenv("BK_UPGRADE_PLATFORM")) {
+		/*
+		 * This is mainly useful for development machines that
+		 * are using a platform that we don't actually release
+		 * to customers.
+		 */
+		platform = p;
 	} else {
 		platform = bk_platform;
 	}

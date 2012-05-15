@@ -677,106 +677,6 @@ _vi() {
 	exec vi "$@"
 }
 
-# Undelete a file
-_unrm () {
-	FORCE=no
-	if [ "$1" = "-f" ]; then FORCE=yes; shift; fi
-
-	if [ "$1" = "" ]; then bk help -s unrm; exit 1; fi
-	if [ "$2" != "" ]
-	then	echo "You can only unrm one file at a time" 1>&2
-		return 1
-	fi
-
-	# Make sure we are inside a BK repository
-	bk root -R > /dev/null || return 1
-
-	# Assume the path name specified is relative to the current directory
-	rdir=`bk pwd -r`
-	if [ "$rdir" != "." ]; then rpath=$rdir/'.*'"$1"; else rpath=$1; fi
-
-	__cd2root
-	LIST=/tmp/LIST$$
-	TMPFILE=/tmp/BKUNRM$$
-	DELDIR=BitKeeper/deleted
-	cd $DELDIR || { echo "Cannot cd to $DELDIR" 1>&2; return 1; }
-	trap 'rm -f $LIST $TMPFILE' 0
-
-	# Find all the possible files, sort with most recent delete first.
-	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE:' | \
-		bk sort -r -n | awk -F'|' '{print $2}' | \
-		bk prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
-		grep '^.*|.*'"$rpath"'.*' >$LIST
-
-	NUM=`wc -l $LIST | sed -e's/ *//' | awk -F' ' '{print $1}'`
-	if [ "$NUM" -eq 0 ]
-	then
-		echo "------------------------" 1>&2
-		echo "No matching files found." 1>&2
-		echo "------------------------" 1>&2
-		return 2
-	fi
-	if [ "$NUM" -gt 1 ]
-	then
-		if [ "$FORCE" = "yes" ]
-		then
-			echo "------------------------------------------"
-			echo "$NUM possible files found, choosing newest"
-			echo "------------------------------------------"
-		else
-			echo "-------------------------"
-			echo "$NUM possible files found"
-			echo "-------------------------"
-		fi
-		echo ""
-	fi
-
-	while read n
-	do
-		echo $n > $TMPFILE
-		GFILE=`awk -F'|' '{print $1}' $TMPFILE`
-		RPATH=`awk -F'|' '{print $2}' $TMPFILE`
-
-		# If there is only one match, and it is a exact match,
-		# don't ask for confirmation.
-		if [ $NUM -eq 1 -a "$rpath" = "$RPATH" ]; then FORCE=yes; fi;
-
-		if [ "$FORCE" = "yes" ]
-		then
-			ans=y
-		else
-			echo "------------------------------------------------"
-			echo "File:		$DELDIR/$GFILE"
-			bk prs -hnr+ \
-			  -d'Deleted on:\t:D: :T::TZ: by :USER:@:HOST:' $GFILE
-			echo "---"
-			echo "Top delta before it was deleted:"
-			bk prs -hpr+ $GFILE
-
-			echo -n \
-			    "Undelete this file back to \"$RPATH\"? (y|n|q)> "
-			read ans < /dev/tty
-		fi
-
-		case "X$ans" in
-		    Xy|XY)
-			echo "Moving \"$DELDIR/$GFILE\" -> \"$RPATH\""
-			bk -R mv -f -u "$DELDIR/$GFILE" "$RPATH"
-			bk -R unedit "$RPATH" 	# follow checkout modes
-			break
-			;;
-		    Xq|XQ)
-			break
-			;;
-		    *)
-			echo "File skipped."
-			echo ""
-			echo ""
-		esac
-	done < $LIST 
-	rm -f $LIST $TMPFILE
-}
-
 # For sending repositories back to BitMover, this removes all comments
 # and obscures data contents.
 _obscure() {
@@ -1873,6 +1773,26 @@ _latest() {
 
 _catcomments() {
 	bk tclsh "`bk bin`/gui/lib/catcomments.l"
+}
+
+_changed_files() {
+	while getopts LR opt
+	do
+		case "$opt" in
+		    L)	OPT="-L";;
+		    R)	OPT="-R";;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	test "X$2" != X && {
+		echo "whatfiles: too many arguments"
+		exit 1
+	}
+	if [ "X$1" = X ]; then
+		bk changes $OPT -m -vnd:GFILE: | bk sort -u --count
+	else
+		bk changes $OPT -m -vnd:GFILE: "$1" | bk sort -u --count
+	fi
 }
 
 

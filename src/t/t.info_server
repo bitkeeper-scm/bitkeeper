@@ -1,0 +1,309 @@
+# Notes for other readers/writers:
+# the order of keys in a MDBM are going to be random except for the
+# first bunch that fit on the first page.  Those are first in, 
+# first out so you can test the results.  If we ever overflow the
+# first page the only way to test things is one key at a time.
+
+echo $N Create a table, make sure we get a MDBM .....................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+EOF
+test -f info/RTI/db || fail
+echo OK
+
+echo $N Create another table just to prove we can ...................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+table info/DB
+set
+@k1
+v1
+@k2
+v2
+@k3
+Sometimes I feel like a nut,
+sometimes I don't.
+@
+get .*
+unique
+unique
+unique
+EOF
+test -f info/DB/db || fail
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-table info/DB opened
+OK-3 set
+OK-3 found
+@k1
+v1
+@k2
+v2
+@k3
+Sometimes I feel like a nut,
+sometimes I don't.
+@
+OK-1
+OK-2
+OK-3
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Delete the db, replay the log, see if it is the same ........$NL
+rm -f info/DB/db
+mv info/DB/log log
+bk info_shell -f > GOT 2>&1 < log
+cat > WANT <<EOF
+OK-table info/DB opened
+OK-3 set
+OK-1
+OK-2
+OK-3
+EOF
+cmpfiles WANT GOT
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/DB
+get .*
+unique
+EOF
+cat > WANT <<EOF
+OK-table info/DB opened
+OK-3 found
+@k1
+v1
+@k2
+v2
+@k3
+Sometimes I feel like a nut,
+sometimes I don't.
+@
+OK-4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Open the table and dump it ..................................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+get .*
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-0 found
+@
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Add some data ...............................................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+set
+@key1
+val1
+@key2
+val2
+@
+get .*
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-2 set
+OK-2 found
+@key1
+val1
+@key2
+val2
+@
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Delete a regexp .............................................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+delete .*1
+insert
+@benign
+meaningless
+@
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-1 deleted
+OK-1 inserted
+EOF
+cmpfiles WANT GOT
+mv info/RTI/log info/RTI/replay
+rm -f info/RTI/db
+bk info_shell -f > GOT 2>&1 < info/RTI/replay
+cmpfiles info/RTI/log info/RTI/replay
+# clean up - side note: illegal val '' because it needs to have at least '\n'
+# but streamHash code reads it as empty string and maps it okay.
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+delete
+@benign
+@
+EOF
+echo OK
+
+echo $N Check that we now have just the one key......................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+get .*
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-1 found
+@key2
+val2
+@
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Insert of that same key should fail .........................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+insert
+@key2
+bogus dude!
+@
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+ERROR-insert of key2 failed
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Make sure it did not overwrite it anyway ....................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+get .*
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-1 found
+@key2
+val2
+@
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Set should be able to overwrite it ..........................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+set
+@key2
+Yo!
+Key2!
+Oh, nothing :)
+@
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-1 set
+EOF
+cmpfiles WANT GOT
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+get .*
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-1 found
+@key2
+Yo!
+Key2!
+Oh, nothing :)
+@
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Insert should be all or nothing .............................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+insert
+@a
+could work, but shouldn't
+@b
+could work, but shouldn't
+@key2
+can't work, should fail all
+@
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+ERROR-insert of key2 failed
+EOF
+cmpfiles WANT GOT
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+get .*
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-1 found
+@key2
+Yo!
+Key2!
+Oh, nothing :)
+@
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Unique should start at 1 and increment by 1 .................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+unique
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-1
+EOF
+cmpfiles WANT GOT
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+unique
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-2
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Unique should not show up in get output .....................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+get .*
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-1 found
+@key2
+Yo!
+Key2!
+Oh, nothing :)
+@
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check version ...............................................$NL
+bk info_shell -f > GOT 2>&1 <<EOF
+table info/RTI
+version
+EOF
+cat > WANT <<EOF
+OK-table info/RTI opened
+OK-stored version=1.0
+EOF
+cmpfiles WANT GOT
+echo OK

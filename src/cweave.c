@@ -332,7 +332,7 @@ fastWeave(sccs *s, FILE *out)
 	loc	*lp;
 	ser_t	*weavemap = 0;
 	ser_t	*patchmap = 0;
-	MMAP	*fastpatch = 0;
+	FILE	*fastpatch = 0;
 	int	rc = 1;
 
 	assert(s);
@@ -401,11 +401,15 @@ fastWeave(sccs *s, FILE *out)
 	 */
 	i = s->iloc - 1; /* set index to final element in array */
 	assert(i > 0); /* base 1 data structure */
-	fastpatch = lp[i].len ? mrange(lp[i].p, lp[i].p + lp[i].len, "b") : 0;
+	if (lp[i].len) {
+		fastpatch = fmem();
+		fwrite(lp[i].p, 1, lp[i].len, fastpatch);
+		rewind(fastpatch);
+	}
 
 	/* doit */
 	rc = sccs_fastWeave(s, weavemap, patchmap, fastpatch, out);
-err:	mclose(fastpatch);
+err:	if (fastpatch) fclose(fastpatch);
 	free(patchmap);
 	if (weavemap) free(weavemap);
 	return (rc);

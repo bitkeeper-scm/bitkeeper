@@ -82,3 +82,53 @@ if [ "$gca" != "$expect" ]; then
 	exit 1
 fi
 echo OK
+
+echo $N Test gca where one is in the history of the other ...........$NL
+# Reading from right to left, the trick is to color 1.1 as a parent
+# before coloring 1.2 as a parent.  The old code would then call 1.1
+# as a GCA.  The new code uncolors parents of 1.2, so 1.1 is not a GCA.
+#
+#     +----------------------1.1.1.1-+
+#    /                                \
+# 1.1 --- 1.2 ---- 1.3 ----------------+ 1.4--------------------+ 1.5
+#    \       \                                                 /
+#     \	      +--------1.2.1.1 -----------------------+ 1.2.1.2
+#      \                                             /
+#       +------------------------------------ 1.1.2.1
+#
+touch wp
+bk new $Q wp
+bk _get -e $Q wp
+bk delta $Q -fy1.2 wp
+bk _get -e $Q -r1.2 wp
+bk delta $Q -fy1.3 wp
+bk _get -e $Q -r1.2 wp
+bk delta $Q -fy1.2.1.1 wp
+bk _get -e $Q -r1.1 wp
+bk delta $Q -fy1.1.1.1 wp
+bk _get -e $Q -r1.1 wp
+bk delta $Q -fy1.1.2.1 wp
+bk _get -e $Q -r1.3 -M1.1.1.1 wp
+bk delta $Q -fy1.4 wp
+bk _get -e $Q -r1.2.1.1 -M1.1.2.1 wp
+bk delta $Q -fy1.2.1.2 wp
+bk _get -e $Q -r1.4 -M1.2.1.2 wp
+bk delta $Q -fy1.5 wp
+_BK_CHK_MULTI=1 bk prs -r+ -hnd:SETGCA: wp > GOT 2> ERR || fail
+test -s ERR && fail -f ERR
+echo 1.2 > WANT
+cmpfiles WANT GOT
+# Sanity check - see that _BK_CHK_MULTI=1 does list multi gca nodes
+bk _get -e $Q -r1.4 -M1.2.1.2 wp
+bk delta $Q -fy1.4.1.1 wp
+bk _get -e $Q -r1.5 -M1.4.1.1 wp
+bk delta $Q -fy1.4.1.1 wp
+_BK_CHK_MULTI=1 bk prs -r+ -hnd:SETGCA: wp > GOT 2> ERR || fail
+cat <<EOF > WANT
+multi 1.2.1.2
+multi 1.4
+EOF
+cmpfiles WANT ERR
+echo '1.2.1.2+1.3,1.4' > WANT
+cmpfiles WANT GOT
+echo OK

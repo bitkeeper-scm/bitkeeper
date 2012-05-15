@@ -56,19 +56,23 @@ int
 sort_main(int ac, char **av)
 {
 	char	**lines = allocLines(50000);
-	char	*last = 0;
 	int	n = 0;
-	int	uflag = 0, rflag = 0, nflag = 0;
-	int	i, c;
+	int	uflag = 0, rflag = 0, nflag = 0, showcount = 0;
+	int	i, c, count = 1;
 	mem_t	*mem;
 	FILE	*f;
+	longopt	lopts[] = {
+		{ "count", 300 },
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "k:nru", 0)) != -1) {
+	while ((c = getopt(ac, av, "k:nru", lopts)) != -1) {
 		switch (c) {
 		    case 'k': sortfield = atoi(optarg); break;
 		    case 'n': nflag = 1; break;
 		    case 'r': rflag = 1; break;
 		    case 'u': uflag = 1; break;
+		    case 300: showcount = 1; break; // --count
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -95,9 +99,15 @@ sort_main(int ac, char **av)
 	    (sortfield ? field_sort : sortfcn));
 	if (rflag) reverseLines(lines);
 	EACH(lines) {
-		if (uflag && last && streq(last, lines[i])) continue;
+		/* lookahead */
+		if (uflag && ((i+1) <= nLines(lines)) &&
+		    streq(lines[i], lines[i+1])) {
+			count++;
+			continue;
+		}
+		if (showcount) printf("%d ", count);
 		puts(lines[i]);
-		last = lines[i];
+		count = 1;
 	}
 	free(lines);
 	while (mem) {

@@ -263,6 +263,8 @@ _httpfetch
 hostme
 id remote
 idcache
+info_server
+info_shell
 isascii
 _isnetwork
 inskeys
@@ -287,7 +289,6 @@ _mailslot
 mailsplit
 mail
 makepatch
-mdiff
 merge
 mklock
 more
@@ -387,6 +388,7 @@ uninstall
 unpark
 unpopulate
 unpull
+unrm
 unwrap
 upgrade
 users

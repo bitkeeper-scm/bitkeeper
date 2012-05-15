@@ -15,10 +15,10 @@ test -f BitKeeper/log/deep-nests || {
 }
 bk --headers -e > GOT
 cat > WANT <<EOF
-#### gcc ####
-#### gcc/nm ####
-#### gdb ####
-#### . ####
+#### 1/4 gcc ####
+#### 2/4 gcc/nm ####
+#### 3/4 gdb ####
+#### 4/4 . ####
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -33,10 +33,10 @@ test -f BitKeeper/log/deep-nests || {
 }
 bk --headers -e > GOT
 cat > WANT <<EOF
-#### gcc ####
-#### gcc/nm ####
-#### gdb ####
-#### . ####
+#### 1/4 gcc ####
+#### 2/4 gcc/nm ####
+#### 3/4 gdb ####
+#### 4/4 . ####
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -51,10 +51,10 @@ test -f BitKeeper/log/deep-nests || {
 }
 bk --headers -e > GOT
 cat > WANT <<EOF
-#### gcc ####
-#### gcc/nm ####
-#### gdb ####
-#### . ####
+#### 1/4 gcc ####
+#### 2/4 gcc/nm ####
+#### 3/4 gdb ####
+#### 4/4 . ####
 EOF
 cmpfiles WANT GOT
 echo OK

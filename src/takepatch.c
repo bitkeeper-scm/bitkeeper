@@ -1261,7 +1261,7 @@ applyPatch(char *localPath, sccs *perfile)
 {
 	patch	*p;
 	MMAP	*iF;
-	MMAP	*dF;
+	FILE	*dF;
 	sccs	*s = 0;
 	ser_t	d = 0;
 	int	newflags;
@@ -1379,9 +1379,12 @@ apply:
 			p->initMmap = 0;
 		}
 		if (p->diffFile) {
-			dF = mopen(p->diffFile, "b");
+			dF = fopen(p->diffFile, "r");
 		} else {
-			dF = p->diffMmap;
+			dF = fmem();
+			fwrite(p->diffMmap->mmap, 1, p->diffMmap->size, dF);
+			rewind(dF);
+			mclose(p->diffMmap);
 			p->diffMmap = 0;
 		}
 		d = 0;
@@ -1432,9 +1435,12 @@ apply:
 			p->initMmap = 0;
 		}
 		if (p->diffFile) {
-			dF = mopen(p->diffFile, "b");
+			dF = fopen(p->diffFile, "r");
 		} else {
-			dF = p->diffMmap;
+			dF = fmem();
+			fwrite(p->diffMmap->mmap, 1, p->diffMmap->size, dF);
+			rewind(dF);
+			mclose(p->diffMmap);
 			p->diffMmap = 0;
 		}
 		newflags = DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
@@ -1716,7 +1722,7 @@ initProject(void)
 	sccs_mkroot(".");
 }
 
-void
+private void
 resync_lock(void)
 {
 	FILE	*f;

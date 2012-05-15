@@ -16,17 +16,15 @@ enum {LEFT, RIGHT};
 /*
  * Internal diff state.
  */
-struct diffctx {
-	diffcmp	dcmp;		/* compare function */
-	diffhash dhash;		/* hash function */
-	diffprint dprint;	/* print function */
-	diffalign dalgn;	/* align function */
+struct df_ctx {
+	df_cmp	dcmp;		/* compare function */
+	df_hash	dhash;		/* hash function */
+	df_puts	dprint;		/* print function */
+	df_align dalgn;		/* align function */
 	thing	*things[2];	/* addArray()'s of things */
 	u32	*hashes[2];	/* hashed version of things */
-
 	u32	*l, *r;		/* reduced version of hashes */
 	int	*lidx, *ridx;	/* mappings between l/r <-> hashes */
-
 	u8	*chg[2];	/* change maps */
 	int	*vf, *vr;	/* diags for meyer's diff algo */
 	hash	*h;		/* storage hash u32 <-> data */
@@ -41,25 +39,25 @@ struct diffctx {
 #endif
 };
 
-private void hashThings(diffctx *dc, int side, int from);
-private void compressHashes(diffctx *dc, int side);
-private void idiff(diffctx *dc, int x1, int x2, int y1, int y2);
-private int  dsplit1(diffctx *dc, int x1, int x2, int y1, int y2,
+private void hashThings(df_ctx *dc, int side, int from);
+private void compressHashes(df_ctx *dc, int side);
+private void idiff(df_ctx *dc, int x1, int x2, int y1, int y2);
+private int  dsplit1(df_ctx *dc, int x1, int x2, int y1, int y2,
     int *mx, int *my);
-private void shrink_gaps(diffctx *dc, int side);
-private void align_blocks(diffctx *dc, int side);
-private void ses(diffctx *dc, int firstDiff);
+private void shrink_gaps(df_ctx *dc, int side);
+private void align_blocks(df_ctx *dc, int side);
+private void ses(df_ctx *dc, int firstDiff);
 
 /*
  * Get a new diff context, this intializes the diff structure.
  * See the diff.h for meaning of the fields..
  */
-diffctx	*
-diff_new(diffcmp cfn, diffhash hfn, diffalign algn, void *extra)
+df_ctx	*
+diff_new(df_cmp cfn, df_hash hfn, df_align algn, void *extra)
 {
-	diffctx	*dc;
+	df_ctx	*dc;
 
-	dc = new(diffctx);
+	dc = new(df_ctx);
 	dc->dcmp = cfn;
 	dc->dhash = hfn;
 	dc->dalgn = algn;
@@ -69,7 +67,7 @@ diff_new(diffcmp cfn, diffhash hfn, diffalign algn, void *extra)
 }
 
 void
-diff_free(diffctx *dc)
+diff_free(df_ctx *dc)
 {
 	unless (dc) return;
 	hash_free(dc->h);
@@ -80,7 +78,7 @@ diff_free(diffctx *dc)
 }
 
 void
-diff_addItem(diffctx *dc, int side, void *data, int len)
+diff_addItem(df_ctx *dc, int side, void *data, int len)
 {
 	thing	*t;
 
@@ -94,7 +92,7 @@ diff_addItem(diffctx *dc, int side, void *data, int len)
 }
 
 hunk *
-diff_items(diffctx *dc, int firstDiff, int minimal)
+diff_items(df_ctx *dc, int firstDiff, int minimal)
 {
 	hunk	*h;
 	int	x, y;
@@ -210,7 +208,7 @@ diff_items(diffctx *dc, int firstDiff, int minimal)
  * Also keeps track of how many matches on either side it has seen.
  */
 private void
-hashThings(diffctx *dc, int side, int from)
+hashThings(df_ctx *dc, int side, int from)
 {
 	int	i, n;
 	u32	dh;
@@ -256,7 +254,7 @@ hashThings(diffctx *dc, int side, int from)
  * things[1] as adds.
  */
 private void
-compressHashes(diffctx *dc, int side)
+compressHashes(df_ctx *dc, int side)
 {
 	int	i, j;
 	u32	*u;
@@ -350,7 +348,7 @@ compressHashes(diffctx *dc, int side)
  * section 4b of Myers' paper.
  */
 private void
-idiff(diffctx *dc, int x1, int x2, int y1, int y2)
+idiff(df_ctx *dc, int x1, int x2, int y1, int y2)
 {
 	int	x, y;
 
@@ -388,7 +386,7 @@ idiff(diffctx *dc, int x1, int x2, int y1, int y2)
  * It uses linear space O(N), where N = (x2 - x1) + (y2 - y1).
  */
 private int
-dsplit1(diffctx *dc, int x1, int x2, int y1, int y2, int *mx, int *my)
+dsplit1(df_ctx *dc, int x1, int x2, int y1, int y2, int *mx, int *my)
 {
 	int	d, k;
 	int	x, y;
@@ -571,7 +569,7 @@ dsplit1(diffctx *dc, int x1, int x2, int y1, int y2, int *mx, int *my)
  * Adapted from code by wscott in another RTI.
  */
 private void
-shrink_gaps(diffctx *dc, int side)
+shrink_gaps(df_ctx *dc, int side)
 {
 	int	i;
 	int	a, b, c, d;
@@ -664,14 +662,14 @@ shrink_gaps(diffctx *dc, int side)
  * possible. Adapted from code by wscott in another RTI.
  */
 private void
-align_blocks(diffctx *dc, int side)
+align_blocks(df_ctx *dc, int side)
 {
 	int	a, b;
 	int	n;
 	u8	*chg;
 	u32	*h;
 	thing	*t;
-	diffalign	algn;
+	df_align algn;
 
 	n = nLines(dc->things[side]);
 	chg = dc->chg[side];
@@ -769,7 +767,7 @@ align_blocks(diffctx *dc, int side)
  * Script.
  */
 private void
-ses(diffctx *dc, int firstDiff)
+ses(df_ctx *dc, int firstDiff)
 {
 	int	n, m;
 	int	x, y;
@@ -795,7 +793,7 @@ ses(diffctx *dc, int firstDiff)
 }
 
 void
-diff_print(diffctx *dc, diffprint pfn, FILE *out)
+diff_print(df_ctx *dc, df_puts pfn, FILE *out)
 {
 	int	i, j;
 	int	n, m;
@@ -839,7 +837,7 @@ diff_print(diffctx *dc, diffprint pfn, FILE *out)
 }
 
 void
-diff_printRCS(diffctx *dc, diffprint pfn, FILE *out)
+diff_printRCS(df_ctx *dc, df_puts pfn, FILE *out)
 {
 	hunk	*h;
 	int	y, m;
@@ -867,7 +865,7 @@ diff_printRCS(diffctx *dc, diffprint pfn, FILE *out)
 }
 
 void
-diff_printIfDef(diffctx *dc, char *defstr, diffprint pfn, FILE *out)
+diff_printIfDef(df_ctx *dc, char *defstr, df_puts pfn, FILE *out)
 {
 	int	i;
 	int	x, y;
@@ -921,8 +919,8 @@ diff_printIfDef(diffctx *dc, char *defstr, diffprint pfn, FILE *out)
 }
 
 void
-diff_printUnified(diffctx *dc, char *nameA, time_t *timeA,
-    char *nameB, time_t *timeB, diffprint pfn, diffprinthdr phdr, FILE *out)
+diff_printUnified(df_ctx *dc, char *nameA, time_t *timeA,
+    char *nameB, time_t *timeB, df_puts pfn, df_hdr phdr, FILE *out)
 {
 	int	i, j;
 	int	nHunks;
@@ -1015,7 +1013,7 @@ diff_printUnified(diffctx *dc, char *nameA, time_t *timeA,
 }
 
 hunk	*
-diff_hunks(diffctx *dc)
+diff_hunks(df_ctx *dc)
 {
 	return (dc->hunks);
 }

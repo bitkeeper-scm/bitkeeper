@@ -1396,15 +1396,63 @@ cmpfiles WANT GOT
 bk unpull $Q -sf
 echo OK
 
+echo $N Test a pull aborting due to an edited file ..................$NL
+cd "$HERE"/project
+bk clone $Q . ../edited
+bk edit $Q gcc/foo gdb/bar
+bk delta $Q -fynull gcc/foo gdb/bar
+bk commit $Q -yedits
+cd ../edited
+# to hit abcdAQ problem, need a merge
+bk edit $Q gcc/foo
+bk delta $Q -fynull gcc/foo
+bk commit $Q -yfiles
+bk edit $Q gcc/foo
+echo wip > gcc/foo
+bk pull > IGNORE 2> GOT && fail -f GOT should have failed
+grep -q "modified locally and in the patch" GOT || fail -f GOT
+grep -q gdb GOT && fail -f GOT should have no gdb
+echo OK
+
 # Belt and suspenders:
 # This test should be last
 # Some of the above tests involve pull failing and PENDING
 # dirs being left behind is OK.  Any more than that warrants
 # investigation.
 echo $N Ensure that most of the above tests cleaned up PENDING dirs .$NL
-WANT=5
+WANT=6
 cd "$HERE"
 bk find . -name PENDING > OUT
 GOT=`wc -l < OUT`
 test $WANT -eq $GOT || fail -f OUT there should only be $WANT PENDING dirs
+echo OK
+
+addfile(){
+    touch "$@"
+    bk new $Q "$@"
+}
+
+echo $N Check --auto-populate deep nest bug .........................$NL
+nested prod
+bk setup -C -f gcc/sub
+bk setup -C -f gcc/sub/sub
+bk commit $Q -f
+addfile gcc/foo
+addfile gcc/sub/foo
+addfile gcc/sub/sub/foo
+bk commit $Q -f
+bk clone $Q -sgdb . ../gdb-clone-1
+bk clone $Q -sALL . ../clone-1
+cd "$HERE/clone-1"
+addfile gdb/bar
+addfile gcc/bar
+addfile gcc/sub/bar
+addfile gcc/sub/sub/bar
+bk commit $Q -f
+cd "$HERE/gdb-clone-1"
+bk populate $Q gcc/sub/sub
+addfile gdb/gdb.c
+addfile gcc/sub/sub/baz
+bk commit $Q -f
+bk pull --auto-populate ../clone-1 >OUT 2>&1 || fail -f OUT
 echo OK

@@ -308,7 +308,7 @@ bin/tclsh$(EXE): tcl/$S/Makefile Lversion-L.sh Lversion-C.sh
 	cd tcl/$S && \
 	$(MAKE) Q=$(Q) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS="$(LIBTOMCRYPT)" \
-	    l-tests install-binaries install-libraries
+	    install-binaries install-libraries
 	if [ -x bin/tclsh$(TCLVERSION)$(EXE) ] ; then \
 		mv bin/tclsh$(TCLVERSION)$(EXE) bin/tclsh$(EXE) ; \
 	fi
