@@ -151,6 +151,7 @@ pid_t	findpid(pid_t pid);
 
 /* fmem.c */
 FILE	*fmem(void);
+FILE	*fmem_buf(void *mem, int len);
 char	*fmem_peek(FILE *f, size_t *len);
 char	*fmem_dup(FILE *f, size_t *len);
 char	*fmem_close(FILE *f, size_t *len);

@@ -318,16 +318,14 @@ verifyFiles(RCS *rcs, rdelta *d, char *g)
 private	int
 newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 {
-	MMAP	*init;
-	char	*t, *q;
+	FILE	*init;
 	sym	*sy;
-	static	char *buf = 0;
-	static	int buflen;
+	int	i;
 #ifndef	WIN32
 	pid_t	pid;
 #endif
+	char	buf[MAXLINE];
 
-	unless (buf) buf = malloc(buflen = 64<<10);
 #ifdef	WIN32
 	unlink(s->gfile); //DANGER
 	sprintf(buf, "-r%s", d->rev);
@@ -371,34 +369,16 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 	}
 	sccs_restart(s);
 
-again:
-	sprintf(buf, "D 1.%d %s-0:00 %s \n", rev, d->sdate, d->author);
+	init = fmem();
+	fprintf(init, "D 1.%d %s-0:00 %s \n", rev, d->sdate, d->author);
 	if (d->comments) {
-		q = strchr(buf, '\n');
-		strcat(q, "c ");
-		q += 3;
-		assert(q[-1] && !q[0]);
-		for (t = d->comments; *t; ) {
-			if (((*q++ = *t++) == '\n') && *t) {
-				*q++ = 'c';
-				*q++ = ' ';
-			}
-			if (q >= &buf[buflen / 2]) {
-realloc:
-				fprintf(stderr, "Buffer overflow, realloc.\n");
-				free(buf);
-				buflen <<= 1;
-				buf = malloc(buflen);
-				goto again;
-			}
-		}
-		*q = 0;
-	} else {
-		q = &buf[strlen(buf)];
+		char	**comlist = splitLine(d->comments, "\n", 0);
+
+		EACH(comlist) fprintf(init, "c %s\n", comlist[i]);
+		freeLines(comlist, free);
 	}
 	if (d->dateFudge) {
-		sprintf(q, "F %u\n", (unsigned int)d->dateFudge);
-		q = strchr(q, '\n'); assert(q && !q[1]); q++;
+		fprintf(init, "F %u\n", (unsigned int)d->dateFudge);
 	}
 	if (d->dead) {
 		char	*p1, *p2;
@@ -408,29 +388,24 @@ realloc:
 		free(rmName);
 		p2 = proj_relpath(0, p1);
 		free(p1);
-		sprintf(q, "P %s\n", p2);
+		fprintf(init, "P %s\n", p2);
 		free(p2);
 	} else {
-		sprintf(q, "P %s\n", s->gfile);
+		fprintf(init, "P %s\n", s->gfile);
 	}
-	if (q >= &buf[buflen / 2]) goto realloc;
-	q = strchr(q, '\n'); assert(q && !q[1]); q++;
 	for (sy = rcs->symbols; sy; sy = sy->next) {
 		unless (streq(sy->rev, d->rev)) continue;
-		if (q >= &buf[buflen / 2]) goto realloc;
-		sprintf(q, "S %s\n", sy->name);
-		q = strchr(q, '\n'); assert(q && !q[1]); q++;
+		fprintf(init, "S %s\n", sy->name);
 	}
-	strcpy(q, "------------------------------------------------\n");
-	init = mrange(buf, &buf[strlen(buf)], "b");
-//fprintf(stderr, "%.*s\n", init->size, init->mmap);
+	fputs("------------------------------------------------\n", init);
+	rewind(init);
 
 	/* bk delta $Q -cRI.init $gfile */
 	if (sccs_delta(s, flags|DELTA_FORCE|DELTA_PATCH, 0, init, 0, 0)) {
 		fprintf(stderr, "Delta of %s failed\n", s->gfile);
 		return (1);
 	}
-	mclose(init);
+	fclose(init);
 
 	return (0);
 }
@@ -442,13 +417,14 @@ create(char *sfile, int flags, RCS *rcs)
 	char	*g = sccs2name(sfile);
 	char	*enc = encoding(rcs->rcsfile);
 	int	expand;
+	int	rc = 1;
 	mode_t	m = mode(rcs->rcsfile);
-	MMAP	*init;
+	FILE	*init = fmem();
 	char	*f, *t;
-	char	buf[32<<10];
 	char	*delta_csum;
 	char	*random;
 	char	*date;
+	char	buf[MAXKEY];
 
 	assert(rcs->rootkey);
 	delta_csum = index(rcs->rootkey, '|') + 1;
@@ -466,7 +442,7 @@ create(char *sfile, int flags, RCS *rcs)
 	t = index(rcs->rootkey, '|');
 	*t = 0;
 	date = index(t+1, '|') + 1;
-	sprintf(buf,
+	fprintf(init,
 "D 1.0 %.2s/%.2s/%.2s %.2s:%.2s:%.2s %s \n\
 c RCS to BitKeeper\n\
 K %.5s\n\
@@ -482,46 +458,43 @@ R %.8s\n",
 		rcs->rootkey,	/* user@host */
 		delta_csum, m, g, random);
 	*t = '|';		/* restore key */
-	t = &buf[strlen(buf)];
 	if (rcs->text) {
-		*t++ = 'T';
-		*t++ = ' ';
+		fputs("T ", init);
 		for (f = rcs->text; f && *f; f++) {
 			if (*f == '\n') {
-				*t++ = '\n';
-				*t++ = 'T';
-				*t++ = ' ';
+				fputs("\nT ", init);
 			} else {
-				*t++ = *f;
+				fputc(*f, init);
 			}
 		}
-		unless (t[-1] == '\n') *t++ = '\n';
-		*t = 0;
+		fputc('\n', init);
 	}
 	expand = streq(rcs->kk, "-kv") ||
 	    streq(rcs->kk, "-kk") || streq(rcs->kk, "-kkv");
-	sprintf(t,
+	fprintf(init,
 		"X 0x%x\n------------------------------------------------\n",
 		X_DEFAULT | (expand ? X_RCS : 0));
-	init = mrange(buf, &buf[strlen(buf)], "b");
 
 	/* bk delta $Q $enc -ciI.onezero $gfile */
 	s->encoding_in = s->encoding_out = sccs_encoding(s, 0, enc);
-	if (check_gfile(s, 0)) return (1);
+	if (check_gfile(s, 0)) goto err;
+	rewind(init);
 	if (sccs_delta(s,
 	    flags|NEWFILE|INIT_NOCKSUM|DELTA_PATCH, 0, init, 0, 0)) {
 		fprintf(stderr, "Create of %s failed\n", g);
-		return (1);
+		goto err;
 	}
 	sccs_sdelta(s, sccs_ino(s), buf);
 	if (strcmp(buf, rcs->rootkey) != 0) {
 		printf("missmatch:\n\t%s\n!=\t%s\n", buf, rcs->rootkey);
 		exit(1);
 	}
-	sccs_free(s);
+	rc = 0;
+
+err:	sccs_free(s);
 	free(g);
-	mclose(init);
-	return (0);
+	fclose(init);
+	return (rc);
 }
 
 /*

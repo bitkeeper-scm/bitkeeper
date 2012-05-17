@@ -117,13 +117,13 @@ earlier(sccs *s, ser_t a, ser_t b)
  * XXX Do we need any special processing for meta delta?
  */
 ser_t
-cset_insert(sccs *s, MMAP *iF, MMAP *dF, ser_t parent, int fast)
+cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 {
 	int	i, error, sign, added = 0;
 	int	pserial = parent ? parent : 0;
 	ser_t	d, e, p;
 	ser_t	serial = 0; /* serial number for 'd' */ 
-	char	*t, *r;
+	char	*t;
 	char	**syms = 0;
 	char	key[MAXKEY];
 	int	keep;
@@ -256,21 +256,21 @@ done:
 	 * Note: meta delta have NULL dF
 	 */
 	assert(s->iloc < s->nloc);
-	s->locs[s->iloc].p = NULL;
-	s->locs[s->iloc].len = 0;
 	s->locs[s->iloc].serial = serial;
-	if (dF && dF->where) {
-		s->locs[s->iloc].p = dF->where;
-		s->locs[s->iloc].len = dF->size;
-
+	if (s->locs[s->iloc].dF = dF) {
 		unless (fast) {
 			/*
 			 * Fix up ADDED(s, d)
+			 * If not fast, then it must be a cset, and
+			 * it can't be empty (because dF is set)
+			 * so it will have one insert block that is
+			 * a command line and the rest of the lines
+			 * are data lines.
 			 */
-			t = dF->where;
-			r = t + dF->size - 1;
-			while ( t <= r) if (*t++ == '\n') added++;
+			while ((i = getc(dF)) != EOF) if (i == '\n') added++;
+			assert(added);
 			ADDED_SET(s, d, added - 1);
+			rewind(dF);
 		}
 	}
 	s->iloc++;
@@ -332,7 +332,6 @@ fastWeave(sccs *s, FILE *out)
 	loc	*lp;
 	ser_t	*weavemap = 0;
 	ser_t	*patchmap = 0;
-	FILE	*fastpatch = 0;
 	int	rc = 1;
 
 	assert(s);
@@ -393,24 +392,12 @@ fastWeave(sccs *s, FILE *out)
 		goto err;
 	}
 
-	/*
-	 * XXX: mrange (in extractDelta) to p,len (above in cset_insert)
-	 * and now back to mrange to give to the diff reader. Wacky.
-	 * None of it is needed -- just weave in the stream and
-	 * terminate if a blank line.
-	 */
 	i = s->iloc - 1; /* set index to final element in array */
 	assert(i > 0); /* base 1 data structure */
-	if (lp[i].len) {
-		fastpatch = fmem();
-		fwrite(lp[i].p, 1, lp[i].len, fastpatch);
-		rewind(fastpatch);
-	}
 
 	/* doit */
-	rc = sccs_fastWeave(s, weavemap, patchmap, fastpatch, out);
-err:	if (fastpatch) fclose(fastpatch);
-	free(patchmap);
+	rc = sccs_fastWeave(s, weavemap, patchmap, lp[i].dF, out);
+err:	free(patchmap);
 	if (weavemap) free(weavemap);
 	return (rc);
 }

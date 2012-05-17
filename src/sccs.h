@@ -643,8 +643,7 @@ extern	char *upgrade_msg;
  * struct loc - locations
  */
 typedef struct loc {
-	char	*p;		/* first byte of the data */
-	u32	len;		/* think 4GB is big enough? */
+	FILE	*dF;		/* fmem with diffs */
 	ser_t	serial;
 } loc;
 
@@ -807,10 +806,10 @@ typedef struct patch {
 				/* NULL if the new delta is the root. */
 	char	*me;		/* unique key of this delta */
 	char	*sortkey;	/* sortable key of this delta, if different */
-	char	*initFile;	/* RESYNC/BitKeeper/init-1, only if !initMmap */
-	MMAP	*initMmap;	/* points into mmapped patch */
-	char	*diffFile;	/* RESYNC/BitKeeper/diff-1, only if !diffMmap */
-	MMAP	*diffMmap;	/* points into mmapped patch */
+	char	*initFile;	/* RESYNC/BitKeeper/init-1, only if !initMem */
+	FILE	*initMem;	/* points into fmem patch */
+	char	*diffFile;	/* RESYNC/BitKeeper/diff-1, only if !diffMem */
+	FILE	*diffMem;	/* points into mmapped patch */
 	ser_t	serial;		/* in cset path, save the corresponding ser */
 	time_t	order;		/* ordering over the whole list, oldest first */
 	u32	local:1;	/* patch is from local file */
@@ -942,7 +941,7 @@ int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_adminFlag(sccs *sc, u32 flags);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
-int	sccs_delta(sccs *s, u32 flags, ser_t d, MMAP *init, FILE *diffs,
+int	sccs_delta(sccs *s, u32 flags, ser_t d, FILE *init, FILE *diffs,
 		   char **syms);
 int	sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dop, FILE *);
 int	sccs_encoding(sccs *s, off_t size, char *enc);
@@ -975,7 +974,7 @@ void	sccs_whynot(char *who, sccs *s);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
 void	sccs_inherit(sccs *s, ser_t d);
 int	sccs_hasDiffs(sccs *s, u32 flags, int inex);
-ser_t	sccs_getInit(sccs *s, ser_t d, MMAP *f, u32 flags,
+ser_t	sccs_getInit(sccs *s, ser_t d, FILE *f, u32 flags,
 		      int *errorp, int *linesp, char ***symsp);
 ser_t	sccs_ino(sccs *);
 int	sccs_userfile(sccs *);
@@ -1005,7 +1004,7 @@ int	cset_byserials(const void *a, const void *b);
 int	sccs_newchksum(sccs *s);
 ser_t	*addSerial(ser_t *space, ser_t s);
 void	sccs_perfile(sccs *, FILE *);
-sccs	*sccs_getperfile(sccs *, MMAP *, int *);
+sccs	*sccs_getperfile(sccs *, FILE *, int *);
 char	*sccs_gethost(void);
 char	*sccs_realhost(void);
 char	*sccs_host(void);
@@ -1239,7 +1238,7 @@ int	check_rsh(char *remsh);
 void	sccs_color(sccs *s, ser_t d);
 int	out(char *buf);
 int	getlevel(void);
-ser_t	cset_insert(sccs *s, MMAP *iF, MMAP *dF, ser_t parent, int fast);
+ser_t	cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast);
 int	cset_write(sccs *s, int spinners, int fast);
 sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);

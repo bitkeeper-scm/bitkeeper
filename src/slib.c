@@ -74,7 +74,7 @@ private	void	taguncolor(sccs *s, ser_t d);
 private	void	prefix(sccs *s,
 		    ser_t d, u32 flags, int lines, char *name, FILE *out);
 private	int	sccs_meta(char *m, sccs *s, ser_t parent,
-		    MMAP *initFile, int fixDates);
+		    char *init, int fixDates);
 private	int	misc(sccs *s);
 private	void	sccs_zputs_init(sccs *s, FILE *fout);
 private	void	sccs_zputs_done(sccs *s);
@@ -2545,13 +2545,11 @@ private	int
 resyncMeta(sccs *s, ser_t d, char *buf)
 {
 	sccs	*s2;
-	MMAP	*m;
 	FILE	*f;
 	char	key[MAXKEY];
 
-	m = mrange(buf, buf + strlen(buf), "");
 	/* note: this rewrites the s.file, and does a sccs_close() */
-	if (sccs_meta("resolve", s, d, m, 1)) {
+	if (sccs_meta("resolve", s, d, buf, 1)) {
 		fprintf(stderr, "resolve: failed to make tag merge\n");
 		return (1);
 	}
@@ -3100,7 +3098,7 @@ bin_mkgraph(sccs *s)
 	int	line = 1, len;
 	char	*perfile, *header;
 	ser_t	d;
-	MMAP	*pf;
+	FILE	*pf;
 
 	header = fgetline(s->fh);
 	bin_header(header, &off_h, &heapsz, &off_d, &deltasz, &off_s, &symsz);
@@ -3109,12 +3107,12 @@ bin_mkgraph(sccs *s)
 	perfile = malloc(off_h);
 	len = off_h - strlen(header) - 1;
 	fread(perfile, 1, len, s->fh);
-	pf = mrange(perfile, perfile+len, "b");
+	pf = fmem_buf(perfile, len);
 	unless (sccs_getperfile(s, pf, &line)) {
 		fprintf(stderr, "%s: failed to load %s\n", prog, s->sfile);
 		exit(1);
 	}
-	mclose(pf);
+	fclose(pf);
 	free(perfile);
 	s->bitkeeper = 1;
 
@@ -12754,23 +12752,21 @@ err:
  * ^AE
  */
 private void
-patchweave(sccs *s, u8 *p, u32 len, u8 *buf, FILE *f)
+patchweave(sccs *s, FILE *dF, u8 *buf, FILE *f)
 {
-	u8	*stop;
+	u8	*p;
 
 	fputdata(s, "\001I ", f);
 	fputdata(s, buf, f);
 	fputdata(s, "\n", f);
-	if (p) {
-		stop = p + len;
-		assert(strneq(p, "0a0\n> ", 6));
-		p += 6; /* skip "0a0\n" */
-		while (1) {
-			fputdata(s, p, f);
-			while (*p++ != '\n') { /* null body */ }
-			if (p == stop) break;
+	if (dF) {
+		p = fgetline(dF);
+		assert(p && streq(p, "0a0"));
+		while (p = fgetline(dF)) {
 			assert(strneq("> ", p, 2));
 			p += 2; /* skip "> " */
+			fputdata(s, p, f);
+			fputdata(s, "\n", f);
 		}
 	}
 	fputdata(s, "\001E ", f);
@@ -12811,9 +12807,9 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 
 		for ( ; i ; i--) {
 			if (ser + i > lp[i].serial) break;
-			unless (lp[i].p || lp[i].serial == 1) continue;
+			unless (lp[i].dF || lp[i].serial == 1) continue;
 			sertoa(buf, lp[i].serial);
-			patchweave(s, lp[i].p, lp[i].len, buf, f);
+			patchweave(s, lp[i].dF, buf, f);
 		}
 		unless (i) break;
 
@@ -12842,9 +12838,9 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	sccs_rdweaveDone(s);
 	/* Print out remaining, forcing serial 1 block at the end */
 skip:	for ( ; i ; i--) {
-		unless (lp[i].p || lp[i].serial == 1) continue;
+		unless (lp[i].dF || lp[i].serial == 1) continue;
 		sertoa(buf, lp[i].serial);
-		patchweave(s, lp[i].p, lp[i].len, buf, f);
+		patchweave(s, lp[i].dF, buf, f);
 	}
 	if (GZIP_OUT(s)) sccs_zputs_done(s);
 	return (0);
@@ -12911,7 +12907,7 @@ sccs_hashcount(sccs *s)
  *   symsp     ptr to return list of new tags
  */
 ser_t
-sccs_getInit(sccs *sc, ser_t d, MMAP *f, u32 flags, int *errorp, int *linesp,
+sccs_getInit(sccs *sc, ser_t d, FILE *f, u32 flags, int *errorp, int *linesp,
 	     char ***symsp)
 {
 	char	*s, *t;
@@ -12933,7 +12929,7 @@ sccs_getInit(sccs *sc, ser_t d, MMAP *f, u32 flags, int *errorp, int *linesp,
 	}
 
 #define	WANT(c) ((buf[0] == c) && (buf[1] == ' '))
-	unless (buf = mkline(mnext(f))) {
+	unless (buf = fgetline(f)) {
 		fprintf(stderr, "Warning: no delta line in init file.\n");
 		error++;
 		goto out;
@@ -13003,30 +12999,30 @@ sccs_getInit(sccs *sc, ser_t d, MMAP *f, u32 flags, int *errorp, int *linesp,
 	}
 
 skip:
-	buf = mkline(mnext(f)); lines++;
+	buf = fgetline(f); lines++;
 
 	/* hash hash */
 	if (WANT('A')) {
 		d = sccs_parseArg(sc, d, 'A', &buf[2], 0);
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* Cset file ID */
 	if (WANT('B')) {
 		unless (HAS_CSETFILE(sc, d)) d = sccs_parseArg(sc, d, 'B', &buf[2], 0);
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* Cset marker */
 	if ((buf[0] == 'C') && !buf[1]) {
 		FLAGS(sc, d) |= D_CSET;
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* Dangle marker */
 	if ((buf[0] == 'D') && !buf[1]) {
 		FLAGS(sc, d) |= D_DANGLING;
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/*
@@ -13039,19 +13035,19 @@ skip:
 		else if (buf[1] == '\0') p = &buf[1];
 		else break;
 		unless (nocomments) comments = addLine(comments, strdup(p));
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	if (WANT('E')) {
 		/* ignored */
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* date fudges are optional */
 	if (WANT('F')) {
 		DATE_FUDGE_SET(sc, d, atoi(&buf[2]));
 		DATE_SET(sc, d, (DATE(sc, d) + DATE_FUDGE(sc, d)));
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* Includes are optional and are specified as keys.
@@ -13072,14 +13068,14 @@ skip:
 				sccs_saveNum(cludes, e, 1);
 			}
 		}
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* cksums are optional but shouldn't be */
 	if (WANT('K')) {
 		d = sumArg(sc, d, &buf[2]);
 		FLAGS(sc, d) |= D_ICKSUM;
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* merge deltas are optional */
@@ -13097,31 +13093,31 @@ skip:
 				MERGE_SET(sc, d, e);
 			}
 		}
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* modes are optional */
 	if (WANT('O')) {
 		unless (MODE(sc, d)) d = modeArg(sc, d, &buf[2]);
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* pathnames are optional */
 	if (WANT('P')) {
 		unless (HAS_PATHNAME(sc, d)) d = pathArg(sc, d, &buf[2]);
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* Random bits are used only for 1.0 deltas in conversion scripts */
 	if (WANT('R')) {
 		RANDOM_SET(sc, d, &buf[2]);
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* symbols are optional */
 	while (WANT('S')) {
 		syms = addLine(syms, strdup(&buf[2]));
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/*
@@ -13150,14 +13146,14 @@ skip:
 			}
 			FLAGS(sc, e) &= ~D_SYMLEAF;
 		}
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* text are optional */
 	/* Cannot be WANT('T'), buf[1] could be null */
 	while (buf[0] == 'T') {
 		/* ignored, was d->text */
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	if (WANT('V')) {
@@ -13168,7 +13164,7 @@ skip:
 
 			if (sc->version < vers) sc->version = vers;
 		}
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* Excludes are optional and are specified as keys.
@@ -13188,13 +13184,13 @@ skip:
 				sccs_saveNum(cludes, e, -1);
 			}
 		}
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	if (WANT('X')) {
 		XFLAGS(sc, d) = strtol(&buf[2], 0, 0); /* hex or dec */
 		XFLAGS(sc, d) &= ~X_SINGLE;
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* closing line is not optional. */
@@ -13375,9 +13371,10 @@ isValidUser(char *u)
  * which can handle all of those cases.
  */
 private int
-sccs_meta(char *me, sccs *s, ser_t parent, MMAP *iF, int fixDate)
+sccs_meta(char *me, sccs *s, ser_t parent, char *init, int fixDate)
 {
 	ser_t	m;
+	FILE	*iF;
 	int	i, e = 0;
 	FILE	*sfile = 0;
 	char	*buf;
@@ -13390,12 +13387,13 @@ sccs_meta(char *me, sccs *s, ser_t parent, MMAP *iF, int fixDate)
 		debug((stderr, "meta returns -1\n"));
 		return (-1);
 	}
-	unless (iF) {
+	unless (init) {
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
+	iF = fmem_buf(init, 0);
 	m = sccs_getInit(s, 0, iF, DELTA_PATCH, &e, 0, &syms);
-	mclose(iF);
+	fclose(iF);
 	R0_SET(s, m, R0(s, parent));
 	R1_SET(s, m, R1(s, parent));
 	R2_SET(s, m, R2(s, parent));
@@ -13459,7 +13457,7 @@ dot0(sccs *s, ser_t d)
  */
 int
 sccs_delta(sccs *s,
-    	u32 flags, ser_t prefilled, MMAP *init, FILE *diffs, char **syms)
+    	u32 flags, ser_t prefilled, FILE *init, FILE *diffs, char **syms)
 {
 	FILE	*sfile = 0;	/* the new s.file */
 	int	i, free_syms = 0, error = 0;
@@ -16157,14 +16155,14 @@ sccs_perfile(sccs *s, FILE *out)
 		(buf[2] == c) && (buf[3] == ' '))
 
 sccs	*
-sccs_getperfile(sccs *s_in, MMAP *in, int *lp)
+sccs_getperfile(sccs *s_in, FILE *in, int *lp)
 {
 	sccs	*s;
 	int	unused = 1;
 	char	*buf;
 
 	s = s_in ? s_in : new(sccs);
-	unless (buf = mkline(mnext(in))) goto err;
+	unless (buf = fgetline(in)) goto err;
 	unless (buf[0]) {
 		unless (s_in) free(s);
 		return (0);
@@ -16173,7 +16171,7 @@ sccs_getperfile(sccs *s_in, MMAP *in, int *lp)
 	if (FLAG('d')) {
 		unused = 0;
 		s->defbranch = strdup(&buf[4]);
-		unless (buf = mkline(mnext(in))) {
+		unless (buf = fgetline(in)) {
 err:			fprintf(stderr,
 			    "takepatch: file format error near line %d\n", *lp);
 			unless (s_in) free(s);
@@ -16184,21 +16182,21 @@ err:			fprintf(stderr,
 	if (FLAG('e')) {
 		unused = 0;
 		s->encoding_in |= atoi(&buf[4]) | E_ALWAYS;
-		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err; (*lp)++;
 	}
 	if (FLAG('x')) {
 		/* Ignored */
-		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err; (*lp)++;
 	}
 	while (strneq(buf, "T ", 2)) {
 		unused = 0;
 		s->text = addLine(s->text, strdup(&buf[2]));
-		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err; (*lp)++;
 	}
 	if (strneq(buf, "V ", 2)) {
 		unused = 0;
 		s->version = atoi(&buf[2]);
-		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err; (*lp)++;
 	}
 	unless (s->version) s->version = SCCS_VERSION;
 	if (buf[0]) goto err;		/* should be empty */
