@@ -1510,7 +1510,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 		if (si->is_clone && si->skip_etc && streq(file + 2, "BitKeeper/etc")) {
 			return (-1);
 		}
-		if (prunedirs) {
+		if (prunedirs && (p - file > si->rootlen)) {
 			concat_path(buf, si->proj_prefix,
 			    file + si->rootlen + 1);
 			if (match_globs(buf, prunedirs, 0)) return (-1);

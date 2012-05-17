@@ -841,7 +841,7 @@ bp_serverURL(char *url)
 	unless (url) url = buf;
 
 	if (p = getenv("_BK_FORCE_BAM_URL")) {
-		if (streq(url, "none")) return (0);
+		if (streq(p, "none")) return (0);
 		strcpy(url, p);
 	} else {
 		if (load_bamserver(url, 0)) return (0);

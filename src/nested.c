@@ -561,7 +561,8 @@ compCheckPresent(nested *n, comp *c, int idcache_wrong)
 			/* rootkey can be null for an interrupted clone */
 			fprintf(stderr,
 			    "Ignoring corrupted component at %s\n", c->path);
-		} else if (streq(path + prodlen, c->path) &&
+		} else if ((strlen(path) > prodlen) &&
+		    streq(path + prodlen, c->path) &&
 		    streq(rootkey, c->rootkey)) {
 			c->present = 1;
 			if (idcache_wrong) {
@@ -615,7 +616,7 @@ nestedLoadCache(nested *n, MDBM *idDB)
 		dirname(c->path); /* strip /ChangeSet */
 
 		/* mark present components */
-		compCheckPresent(n, c, !inCache);
+		unless (c->product) compCheckPresent(n, c, !inCache);
 
 		/* add to list */
 		hash_store(n->compdb, c->rootkey, strlen(c->rootkey)+1,
