@@ -1190,6 +1190,7 @@ int	sccs_tagMerge(sccs *s, ser_t d, char *tag);
 int	sccs_tagleaves(sccs *, ser_t *, ser_t *);
 u8	*sccs_set(sccs *, ser_t, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, ser_t d, u8 *map, char **inc, char **exc);
+int	sccs_setCludes(sccs *sc, ser_t d, char *iLst, char *xLst);
 int	sccs_isPending(char *gfile);
 int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
 

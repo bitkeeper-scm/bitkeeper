@@ -33,7 +33,6 @@ private int	end(sccs *, ser_t, FILE *, int, int, int, int);
 private void	date(sccs *s, ser_t d, time_t tt);
 private int	getflags(sccs *s, char *buf);
 private sum_t	fputmeta(sccs *s, u8 *buf, FILE *out);
-private ser_t*	getserlist(sccs *sc, int isSer, char *s, int *ep);
 private int	checkRev(sccs *s, char *file, ser_t d, int flags);
 private int	checkrevs(sccs *s, int flags);
 private int	stripChecks(sccs *s, ser_t d, char *who);
@@ -5242,32 +5241,38 @@ walkList(sccs *s, char *list, int *errp)
 }
 
 /*
- * Read the list of serials in s and put them in list.
- * S can either be list of serials or a list of revisions.
- * In neither case does this recurse on the list, it just parses the list.
- * This is quite different than serialmap() which uses this routine but
- * stores the results in a different data structure.
- * XXX - this poorly named, it doesn't use "struct serlist".
+ * Save ascii include/exclude lists on delta
  */
-private ser_t *
-getserlist(sccs *sc, int isSer, char *s, int *ep)
+int
+sccs_setCludes(sccs *sc, ser_t d, char *iLst, char *xLst)
 {
+	FILE	*f;
 	ser_t	t;
-	ser_t	*l = 0;
+	ser_t	*include = 0;
+	ser_t	*exclude = 0;
+	int	i, err = 0;
 
-	debug((stderr, "getserlist(%s)\n", s));
-	if (isSer) {
-		while (*s && *s != '\n') {
-			l = addSerial(l, (ser_t) atoi(s));
-			while (*s && *s != '\n' && isdigit(*s)) s++;
-			while (*s && *s != '\n' && !isdigit(*s)) s++;
-		}
-		return (l);
+	unless (iLst || xLst) return (0);
+	for (t = walkList(sc, iLst, &err);
+	     !err && t;
+	     t = walkList(sc, 0, &err)) {
+		include = addSerial(include, t);
 	}
-	for (t = walkList(sc, s, ep); !*ep && t; t = walkList(sc, 0, ep)) {
-		l = addSerial(l, t);
+	for (t = walkList(sc, xLst, &err);
+	     !err && t;
+	     t = walkList(sc, 0, &err)) {
+		exclude = addSerial(exclude, t);
 	}
-	return (l);
+	unless (err) {
+		f = fmem();
+		EACH(include) sccs_saveNum(f, include[i], 1);
+		EACH(exclude) sccs_saveNum(f, exclude[i], -1);
+		CLUDES_SET(sc, d, fmem_peek(f, 0));
+		fclose(f);
+	}
+	FREE(include);
+	FREE(exclude);
+	return (err);
 }
 
 /*
@@ -13466,8 +13471,6 @@ sccs_delta(sccs *s,
 	int	added = 0, deleted = 0, unchanged = 0;
 	int	locked;
 	pfile	pf = {0};
-	ser_t	*include = 0;
-	ser_t	*exclude = 0;
 	ser_t	pserial;
 
 	assert(s);
@@ -13694,12 +13697,7 @@ out:
 		d = pserial;
 		assert(n);
 	}
-	if (pf.iLst) {
-		include = getserlist(s, 0, pf.iLst, &error);
-	}
-	if (pf.xLst) {
-		exclude = getserlist(s, 0, pf.xLst, &error);
-	}
+	if (sccs_setCludes(s, n, pf.iLst, pf.xLst)) OUT;
 	if (pf.mRev) {
 		unless (e = findrev(s, pf.mRev)) {
 			fprintf(stderr,
@@ -13714,7 +13712,6 @@ out:
 		}
 		MERGE_SET(s, n, e);
 	}
-	if (error) OUT;
 	n = sccs_dInit(n, 'D', s, init != 0);
 	updMode(s, n, d);
 
@@ -13744,15 +13741,6 @@ out:
 	}
 	n = dinsert(s, n, !(flags & DELTA_PATCH));
 	assert(TABLE(s) == n);
-
-	if (include || exclude) {
-		FILE	*f = fmem();
-
-		EACH(include) sccs_saveNum(f, include[i], 1);
-		EACH(exclude) sccs_saveNum(f, exclude[i], -1);
-		CLUDES_SET(s, n, fmem_peek(f, 0));
-		fclose(f);
-	}
 
 	unless (init || !HAS_PATHNAME(s, n) || !HAS_PATHNAME(s, d) ||
 	    streq(PATHNAME(s, d), PATHNAME(s, n)) || getenv("_BK_MV_OK")) {
