@@ -3,6 +3,8 @@
 /*
  * CRC wrapper.  This is the outermost layer (closest to disk),
  * it is wrapped around GZIP.
+ * This layer is cheap, it adds single digit percents to the time to move
+ * the data (XXX - verify w/ lmdd)
  *
  * All blocks are the same size where the size is 1 << %3d below (chksz+6)
  * file layout:
@@ -43,6 +45,8 @@
  *    ideal for 682M files
  *  - The blocks to be checksumed start at the beginning of the file
  *    and so the first block contains "CHK\n".
+ *  - the eof marker block is there so this can be read in a stream
+ *    (i.e., we don't know the whole file size)
  *  - The last checksum is for the XORBLOCK
  *  - u32 & u16's encoded in Intel byte order
  */

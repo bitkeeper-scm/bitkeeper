@@ -79,10 +79,7 @@ cp(char *from, char *to, int force)
 		sccs_setPath(s, d, tmp);
 	}
 	sccs_clearbits(s, D_CSET);
-	free(s->sfile);
-	s->sfile = sfile;
-	free(s->gfile);
-	s->gfile = gfile;
+	sccs_writeHere(s, sfile);
 	sccs_newchksum(s);
 	sccs_free(s);
 	err = sys("bk", "edit", "-q", to, SYS);

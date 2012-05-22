@@ -22,10 +22,8 @@ char    *tzone(long offset);
 
 #ifdef	WIN32
 #define	win32_close(s)	sccs_close(s)
-#define	win32_open(s)	sccs_open(s, 0)
 #else
 #define	win32_close(s)
-#define	win32_open(s)
 #endif
 
 #ifndef	NOPROC
@@ -156,7 +154,6 @@ int	checking_rmdir(char *dir);
 #define	S_PFILE		0x00000004	/* SCCS/p.file exists */
 #define S_EDITED	(S_SFILE|S_PFILE|S_GFILE)
 #define S_LOCKED	(S_SFILE|S_PFILE)
-#define	S_SOPEN		0x00000010	/* s->sfile is open */
 #define	S_WARNED	0x00000020	/* error message already sent */
 #define	S_CHMOD		0x00000040	/* change the file back to 0444 mode */
 #define	S_BADREVS	0x00000080	/* has corrupted revisions */
@@ -667,12 +664,14 @@ struct sccs {
 	off_t	size;		/* size of mapping */
 	DATA	heap;		/* all strings in delta structs */
 	hash	*uniqheap;	/* help collapse unique strings in hash */
+	u32	pagesz;		/* size of paging blocks */
 	u32	*mg_symname;	/* symbol list use by mkgraph() */
-	char	**mapping;
 	FILE	*fh;		/* cached copy of the input file handle */
+	FILE	*pagefh;	/* fh for paging dataheap */
 	FILE	*oldfh;		/* orig fh (no ungzip layer) */
 	FILE	*outfh;		/* fh for writing x.file */
 	char	*sfile;		/* SCCS/s.foo.c */
+	char	*fullsfile;	/* full pathname to sfile */
 	char	*pfile;		/* SCCS/p.foo.c */
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
@@ -960,12 +959,13 @@ ser_t	sccs_findDelta(sccs *s, ser_t d);
 sccs	*sccs_init(char *filename, u32 flags);
 sccs	*sccs_restart(sccs *s);
 sccs	*sccs_reopen(sccs *s);
-int	sccs_open(sccs *s, struct stat *sp);
+int	sccs_open(sccs *s);
 void	sccs_free(sccs *);
 ser_t	sccs_newdelta(sccs *s);
 void	sccs_freedelta(sccs *s, ser_t d);
 ser_t	sccs_insertdelta(sccs *s, ser_t d, ser_t serial);
 void	sccs_close(sccs *);
+void	sccs_writeHere(sccs *s, char *new);
 int	sccs_csetWrite(sccs *s, char **cweave);
 sccs	*sccs_csetInit(u32 flags);
 char	**sccs_files(char **, int);
@@ -1466,9 +1466,9 @@ u32	sccs_addStr(sccs *s, char *str);
 void	sccs_appendStr(sccs *s, char *str);
 u32	sccs_addUniqStr(sccs *s, char *str);
 typedef	struct MAP MAP;
-MAP	*datamap(void *start, int len, FILE *f, long off, int byteswap);
-void	dataunmap(MAP *map);
-
+void	*datamap(sccs *s, char *name, u32 len, u32 nmemb,
+    long off, int byteswap);
+void	dataunmap(sccs *s, int keep);
 
 #define	RGCA_ALL	0x1000
 #define	RGCA_STANDALONE	0x2000

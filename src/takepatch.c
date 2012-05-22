@@ -907,15 +907,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		}
 	}
 	if (s && (s != fake)) {
-		/* arrange for this sccs* to write into RESYNC */
-		free(s->sfile);
-		s->sfile = strdup(p->resyncFile);
-		free(s->gfile);
-		s->gfile = sccs2name(s->sfile);
-		free(s->pfile);
-		s->pfile = strdup(sccs_Xfile(s, 'p'));
-		s->state &= ~(S_PFILE|S_GFILE);
-		/* NOTE: we leave S_SFILE set, but no sfile there */
+		sccs_writeHere(s, p->resyncFile);
 
 		/* serial and therefore delta * are not stable */
 		// XXX: need a new lightweight way to track the

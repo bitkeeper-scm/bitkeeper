@@ -2,10 +2,12 @@
 
 /*
  * GZIP wrapper.  This is closer to the application than the CRC layer,
- * CRC wraps this.
+ * CRC wraps this.  This layer is currently used to unwrap and present
+ * user data to the application (I suppose someone could layer something
+ * more on top but nobody does today).
  *
  * file layout:
- *   "ZIP\n"
+ *   "ZIP\n"  || "VIP\n"
  *   BLOCK     #2        # these are in arbitrary order
  *   BLOCK     #1
  *   BLOCK
@@ -19,14 +21,15 @@
  *   EOF
  *
  *   BLOCK
- *        <u32 len>  # High bit set if this block does not follow the previous
- *        <compressed data>
+ *      <u32 len>	# High bit set if not in linear order
+ *      <len bytes of compressed data>
  *
  *   SZBLOCK
- *      <u32 uncompress size>
- *      <u32 file offset>
+ *      <u32 uncompressed len>
+ *      <u32 file offset to start of compressed block>
  *
  * Notes:
+ *   - VIP is all of the indirect blocks but no compression
  *   - If the high bit is never set, you can just stream this data
  *   - Layout is designed to allow adding data in the middle by
  *     truncating at the SZBLOCK table and appending new data and
@@ -40,6 +43,7 @@
  *   - fseek() is allowed when reading the file, but only to BLOCK
  *     boundries.  While writing, a BLOCK boundry can be forced by
  *     calling fflush().
+ *   - without compression this limits us to 64*1024^4 or 70368744177664 bytes
  */
 #define	BLOCKSZ		(64<<10)
 #define	MAXZIPBLOCK	(80<<10)
@@ -142,6 +146,51 @@ load_szArray(fgzip *fz)
 	return (0);
 }
 
+/*
+ * Given a range of a fgzip file and a desired blocksize, return a
+ * list of seek boundries that split the region into blocks.
+ *
+ * Return 0 on success.
+ * If 'fin' was not from fgzip_open(), then leave 'seeks' unmodified.
+ */
+int
+fgzip_findSeek(FILE *fin, long off, int len, u32 pagesz, u32 **lens)
+{
+	fgzip	*fz;
+	szblock	*sz;
+	int	i;
+	u32	x, blen;
+
+	if (fin->_read != zipRead) return (1);
+
+	fz = fin->_cookie;
+	unless (fz->szarr) {
+		rewind(fin);
+		assert(fz->szarr);
+	}
+	EACH(fz->szarr) {
+		if (off == 0) break;
+		sz = &fz->szarr[i];
+		off -= sz->usz;
+	}
+	assert(!off);
+	x = off;
+	blen = 0;
+	EACH_START(i, fz->szarr, i) {
+		sz = &fz->szarr[i];
+		blen += sz->usz;
+		x += sz->usz;
+		if ((x < len) && (blen < pagesz)) {
+			continue;
+		}
+		addArray(lens, &blen);
+		if (x == len) break;
+		if (x > len) return (-1);
+		blen = 0;
+	}
+	return (0);
+}
+
 private int
 zipRead(void *cookie, char *buf, int len)
 {
@@ -185,6 +234,7 @@ again:
 				perror("fseek");
 				return (-1);
 			}
+			assert(fz->szarr);
 			goto again;
 		}
 		cnt &= ~0x80000000;
@@ -294,7 +344,8 @@ err:		errno = EINVAL;
 		if (offset == 0) {
 			break;
 		} else if (offset < 0) {
-			fprintf(stderr, "fgzip: fseek to invalid offset\n");
+			fprintf(stderr, "fgzip: fseek to invalid offset %ld\n",
+				fz->offset);
 			goto err;
 		}
 		offset -= sz->usz;

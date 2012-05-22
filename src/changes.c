@@ -938,7 +938,6 @@ loadcset(sccs *cset)
 		pathp = path;
 	}
 	db = mdbm_mem();
-	sccs_open(cset, 0);
 	sccs_rdweaveInit(cset);
 	while (p = sccs_nextdata(cset)) {
 		unless (isData(p)) {

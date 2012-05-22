@@ -144,6 +144,7 @@ void	_reverseArray(void *space, int size);
 void	_sortArray(void *space,
     int (*compar)(const void *, const void *), int size);
 
+void	*allocArray(int cnt, int size, void *(*allocate)(size_t len));
 
 void	lines_tests(void);
 

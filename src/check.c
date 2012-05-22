@@ -1824,7 +1824,6 @@ check(sccs *s, MDBM *idDB)
 			return (1);
 		}
 		unless (errors) return (0);
-		sccs_open(s, 0);
 		range_gone(s, tip, D_SET);
 		(void)stripdel_fixTable(s, &i);
 		if (verbose > 2) {

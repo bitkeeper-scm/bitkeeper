@@ -345,7 +345,6 @@ delta_main(int ac, char **av)
 			win32_close(s);
 			switch (delta_trigger(s)) {
 			    case 0:
-				win32_open(s);
 				break;
 			    case 2: /* trigger ran delta, we won't */
 				goto next;

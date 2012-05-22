@@ -39,15 +39,13 @@ catSfile(sccs *s)
 	s->mem_out = 1;
 	sccs_newchksum(s);
 
-	assert (s->mem_in);
+	assert(s->mem_in);
 	s->mem_in = s->mem_out = 0;
 	fclose(s->outfh);
 	s->outfh = 0;
 
 	buf = fmem_close(s->fh, &len);
 	s->fh = 0;
-	s->state &= ~S_SOPEN;
-
 	fwrite(buf, 1, len, stdout);
 	free(buf);
 	return (0);
