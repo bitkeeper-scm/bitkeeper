@@ -371,6 +371,7 @@ _testlines
 test
 testdates
 time
+tmpdir
 _touch
 _unbk
 undo

@@ -954,8 +954,11 @@ uniqRoot(sccs *s)
 	d = s->tree;
 	DATE(d);
 
-	unless (uniq_open() == 0) return;	// XXX - no error?
-	uniq_adjust(s, d);
+	/* 
+	 * Both of these are noisy if they fail now, so just exit 1.
+	 */
+	if (uniq_open()) exit(1);
+	if (uniq_adjust(s, d)) exit(1);
 	/* leave uniq db open... */
 }
 
@@ -1003,9 +1006,8 @@ uniqDelta(sccs *s)
 	 * across different repository;
 	 */
 	if (IMPORT(s)) return;
-	unless (uniq_open() == 0) return;
-
-	uniq_adjust(s, d);
+	if (uniq_open()) exit(1);
+	if (uniq_adjust(s, d)) exit(1);
 	/* leave uniq db open... */
 }
 

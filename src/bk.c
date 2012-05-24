@@ -28,7 +28,7 @@ char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 private	int	indent_level;
 
 private	void	bk_atexit(void);
-private	void	bk_cleanup(int ret);
+private	int	bk_cleanup(int ret);
 private	char	cmdlog_buffer[MAXPATH*4];
 private	int	cmdlog_flags;
 private	int	cmdlog_repolog;	/* if true log to repo_log in addition */
@@ -613,7 +613,7 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 out:
 	progress_restoreStderr();
 	cmdlog_end(ret, 0);
-	bk_cleanup(ret);
+	ret = bk_cleanup(ret);
 	/* flush stdout/stderr, needed for bk-remote on windows */
 	fflush(stdout);
 	fflush(stderr);
@@ -801,12 +801,12 @@ bk_atexit(void)
  * Called before exiting, this function freed cached memory and looks for
  * other cleanups like stale lockfiles.
  */
-private void
+private int
 bk_cleanup(int ret)
 {
 	static	int	done = 0;
 
-	if (done) return;
+	if (done) return (ret);
 	done = 1;
 
 	purify_list();
@@ -821,7 +821,9 @@ bk_cleanup(int ret)
 		buffer = 0;
 	}
 	notifier_flush();
-	uniq_close();
+	if (uniq_close()) {
+		unless (ret) ret = 1;
+	}
 	lockfile_cleanup();
 
 	/*
@@ -869,12 +871,13 @@ bk_cleanup(int ret)
 			buf[len] = 0;
 			ttyprintf("%s: warning fh %d left open %s\n",
 			    prog, i, buf);
-			//abort();
+			unless (ret) ret = 1;
 		}
 	}
 #endif
 	bktmpcleanup();
 	trace_free();
+	return (ret);
 }
 
 /*

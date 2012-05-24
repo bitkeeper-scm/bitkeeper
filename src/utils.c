@@ -358,6 +358,13 @@ usleep_main(int ac, char **av)
 	return (0);
 }
 
+int
+tmpdir_main(int ac, char **av)
+{
+	printf("%s\n", TMP_PATH);
+	return (0);
+}
+
 /*
  * Usage: bk prompt [-n NO] [-y YES] [-t TITLE] msg | -f FILE | -p program
  */
