@@ -157,17 +157,17 @@ err:			unlink(uniq);
 		if ((waitsecs != -1) && ((waited / 1000000) >= waitsecs)) {
 			/* One last try to see if it is stale */
 			if (sccs_stalelock(file, 1)) continue;
-			unless (quiet < 2) {
+			unless (quiet) {
 				fprintf(stderr,
-				    "Timed out waiting for %s\n", file);
+				    "%s: failed to get lock %s\n", prog, file);
 			}
 			goto err;
 		}
 		unless (quiet) {
 			if ((waited / 1000000) == bark) {
 				fprintf(stderr,
-				    "%d: waiting for lock %s\n",
-				    getpid(), file);
+				    "%s %d: waiting for lock %s\n",
+				    prog, getpid(), file);
 				bark += 10;
 			}
 		}

@@ -23,6 +23,67 @@ B=`bk log -r+ -nd:KEY: clone/foo`
 test "$A" = "$B" && fail 
 echo OK
 
+echo $N Same thing but with bk-keys blocked so we use backup ........$NL
+cd "`bk dotbk`"
+rm -rf bk-keys
+touch bk-keys
+cd "$HERE"
+for i in project clone
+do	
+	(cd $i
+	echo foo > foo2
+	BK_DATE_TIME_ZONE="2037-02-02 02:02:02-02" bk new $Q foo2 2>ERR
+	)
+done
+echo OK
+
+echo $N Check for error message .....................................$NL
+grep -q unique.c:319 project/ERR || fail -f project/ERR
+grep -q unique.c:319 clone/ERR || fail -f clone/ERR
+echo OK
+
+echo $N Make sure the keys are different ............................$NL
+A=`bk log -r+ -nd:KEY: project/foo2`
+B=`bk log -r+ -nd:KEY: clone/foo2`
+test "$A" = "$B" && fail 
+echo OK
+
+echo $N Save backup .................................................$NL
+BACKUP="`bk tmpdir`/.bk-keys-`bk getuser -r`"
+test -f "$BACKUP" || {
+	echo No $BACKUP
+	exit 1
+}
+cp "$BACKUP" bk-keys
+echo OK
+
+echo $N Fix bk-keys, make a delta, make sure the backup is gone .....$NL
+cd "`bk dotbk`"
+rm -rf bk-keys
+cd "$HERE"
+cd project
+echo foo > foo3
+bk new $Q foo3
+test -f "$BACKUP" && {
+	echo should have cleaned up $BACKUP
+	exit 1
+}
+echo OK
+
+echo $N Make sure backup keys were added back in ....................$NL
+KEYS="`bk dotbk`/bk-keys/`bk gethost -r`"
+test `wc -l < "$KEYS"` -eq 1 && {
+	echo failed, just has one
+	exit 1
+}
+echo OK
+
+# echo bk-keys
+# sort < "$KEYS"
+# cd "$HERE"
+# echo backup
+# sort < bk-keys
+
 # Make sure that we don't close uniq file too much - good perf on NFS
 
 echo $N Test number of uniq_close for bk new of 2 files .............$NL
