@@ -78,8 +78,7 @@ fgzip_open(FILE *fin, char *mode)
 	FILE	*f;
 	char	buf[4];
 
-	if (getenv("_BK_NO_FGZIP")) return (fin);	/* disable */
-	unless (fin) return (fin);			/* bad input */
+	assert(fin);
 
 	fz = new(fgzip);
 	fz->fin = fin;
@@ -101,7 +100,8 @@ fgzip_open(FILE *fin, char *mode)
 			free(fz);
 			/* not really compressed */
 			rewind(fin);
-			return (fin);
+			perror("not zip");
+			return (0);
 		}
 		/* enable "nowrap" mode with no checksums */
 		if (inflateInit2(&fz->z, -MAX_WBITS) != Z_OK) {
@@ -360,7 +360,6 @@ zipClose(void *cookie)
 	fgzip	*fz = cookie;
 	szblock	*sz;
 	u32	sum;
-	int	rc = 0;
 
 	if (fz->write) {
 		deflateEnd(&fz->z);
@@ -383,11 +382,7 @@ zipClose(void *cookie)
 	} else {
 		inflateEnd(&fz->z);
 	}
-	if (fclose(fz->fin)) {
-		perror("zipClose");
-		rc = -1;
-	}
 	free(fz->szarr);
 	free(fz);
-	return (rc);
+	return (0);
 }

@@ -666,10 +666,9 @@ struct sccs {
 	hash	*uniqheap;	/* help collapse unique strings in hash */
 	u32	pagesz;		/* size of paging blocks */
 	u32	*mg_symname;	/* symbol list use by mkgraph() */
-	FILE	*fh;		/* cached copy of the input file handle */
 	FILE	*pagefh;	/* fh for paging dataheap */
-	FILE	*oldfh;		/* orig fh (no ungzip layer) */
-	FILE	*outfh;		/* fh for writing x.file */
+	FILE	*fh;		/* current input file handle (may be stacked) */
+	FILE	*outfh;		/* fh for writing x.file (may be stacked) */
 	char	*sfile;		/* SCCS/s.foo.c */
 	char	*fullsfile;	/* full pathname to sfile */
 	char	*pfile;		/* SCCS/p.foo.c */
@@ -738,6 +737,8 @@ struct sccs {
 	u32	mem_out:1;	/* s->outfh is in-memory FILE* */
 	u32	file:1;		/* treat as a file in DSPECS */
 	u32	rdweaveEOF:1;	/* at EOF in rdWEAVE */
+	u32	rdweave:1;	/* currently reading weave */
+	u32	wrweave:1;	/* currently writing weave */
 };
 
 typedef struct {
@@ -1110,8 +1111,8 @@ void	parse_url(char *url, char *host, char *path);
 int	parallel(char *path);
 char	*sccs_Xfile(sccs *s, char type);
 FILE	*sccs_startWrite(sccs *s);
-int	sccs_finishWrite(sccs *s, FILE **f);
-void	sccs_abortWrite(sccs *s, FILE **f);
+int	sccs_finishWrite(sccs *s);
+void	sccs_abortWrite(sccs *s);
 int	uniq_adjust(sccs *s, ser_t d);
 char	*uniq_keysHome(void);
 int	uniq_open(void);

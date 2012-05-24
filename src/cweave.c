@@ -312,10 +312,10 @@ cset_write(sccs *s, int spinners, int fast)
 		}
 		if (sccs_csetPatchWeave(s, f)) goto err;
 	}
-	if (sccs_finishWrite(s, &f)) goto err;
+	if (sccs_finishWrite(s)) goto err;
 	return (0);
 
-err:	sccs_abortWrite(s, &f);
+err:	sccs_abortWrite(s);
 	return (-1);
 }
 

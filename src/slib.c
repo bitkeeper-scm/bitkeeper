@@ -75,11 +75,10 @@ private	void	prefix(sccs *s,
 private	int	sccs_meta(char *m, sccs *s, ser_t parent,
 		    char *init, int fixDates);
 private	int	misc(sccs *s);
-private	void	sccs_zputs_init(sccs *s, FILE *fout);
-private	void	sccs_zputs_done(sccs *s);
 private	int	bin_deltaTable(sccs *s, FILE *out);
 private	off_t	bin_data(char *header);
 private	ser_t	*scompressGraph(sccs *s);
+private	FILE	*sccs_wrweaveDone(sccs *s);
 
 /*
  * returns 1 if dir is a directory that is not empty
@@ -1924,14 +1923,13 @@ sccs_rdweaveInit(sccs *s)
 		}
 	}
 	s->rdweaveEOF = 0;
+	assert(!s->rdweave);
+	s->rdweave = 1;
 	if (fseek(s->fh, s->data, SEEK_SET)) {
 		perror(s->sfile);
 		exit(1);
 	}
-	if (GZIP(s)) {
-		s->oldfh = s->fh;
-		s->fh = fopen_zip(s->oldfh, "r");
-	}
+	if (GZIP(s)) fpush(&s->fh, fopen_zip(s->fh, "r"));
 }
 
 /*
@@ -1991,13 +1989,10 @@ sccs_rdweaveDone(sccs *s)
 {
 	int	ret = 0;
 
+	assert(s->rdweave);
+	s->rdweave = 0;
 	unless (s->rdweaveEOF) ret = 1;
-	if (GZIP(s)) {
-		assert(s->oldfh);
-		ret = fclose(s->fh);
-		s->fh = s->oldfh;
-		s->oldfh = 0;
-	}
+	if (GZIP(s)) ret = fpop(&s->fh);
 	return (ret);
 }
 
@@ -2025,9 +2020,14 @@ sccs_startWrite(sccs *s)
 			    (TABLE(s) + 1) * (sizeof(d1_t) + sizeof(d2_t));
 			if (HAS_GFILE(s)) est_size += size(s->gfile);
 		}
-		sfile = fopen(xfile, "w");
-		sfile = fchksum_open(sfile, "w", est_size);
-		sfile = fgzip_open(sfile, "w"); /* conditional? */
+		/*
+		 * These are stacked so closing the final 'sfile' will
+		 * close and free all 3 FILE*'s.
+		 */
+		if (sfile = fopen(xfile, "w")) {
+			fpush(&sfile, fchksum_open(sfile, "w", est_size));
+			fpush(&sfile, fgzip_open(sfile, "w")); /* optional? */
+		}
 	} else if (s->mem_out) {
 		unless(s->outfh) s->outfh = fmem();
 		assert(s->outfh);
@@ -2035,6 +2035,7 @@ sccs_startWrite(sccs *s)
 	} else {
 		sfile = fopen(xfile, "w");
 	}
+	s->outfh = sfile;
 	unless (sfile) perror(xfile);
 	return (sfile);
 }
@@ -2043,22 +2044,19 @@ sccs_startWrite(sccs *s)
  * Bail, but clean up first.
  */
 void
-sccs_abortWrite(sccs *s, FILE **f)
+sccs_abortWrite(sccs *s)
 {
-	unless (s) return;
-	if (*f) fclose(*f);	/* before the unlink */
+	unless (s && s->outfh) return;
+	if (s->wrweave) sccs_wrweaveDone(s);
+	fclose(s->outfh);	/* before the unlink */
 	if (s->mem_out) {
 		assert(!BFILE_OUT(s));
 		s->mem_in = 0;
-		if (s->outfh) {
-			if (*f != s->outfh) fclose(s->outfh);
-			s->outfh = 0;
-		}
 		s->mem_out = 0;
 	} else {
 		unlink(sccsXfile(s, 'x'));
 	}
-	*f = 0;
+	s->outfh = 0;
 	FREE(s->remap);
 	sccs_close(s);
 }
@@ -2068,17 +2066,19 @@ sccs_abortWrite(sccs *s, FILE **f)
  * the sfile.
  */
 int
-sccs_finishWrite(sccs *s, FILE **f)
+sccs_finishWrite(sccs *s)
 {
 	char	*xfile = sccsXfile(s, 'x');
 	int	rc;
  	FILE	*tmp;
 
+	assert(!s->wrweave);
 	unless (BFILE_OUT(s)) {
-		fseek(*f, 0L, SEEK_SET);
-		fprintf(*f, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
+		fseek(s->outfh, 0L, SEEK_SET);
+		fprintf(s->outfh,
+		    "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	}
-	rc = ferror(*f);
+	rc = ferror(s->outfh);
 	if (s->mem_out) {
 		assert(!BFILE_OUT(s));
 		assert(s->fh);
@@ -2093,10 +2093,9 @@ sccs_finishWrite(sccs *s, FILE **f)
 			s->outfh = fmem();
 			s->mem_in = 1;
 		}
-		*f = 0;
 	} else {
-		if (fclose(*f)) rc = -1;
-		*f = 0;
+		if (fclose(s->outfh)) rc = -1;
+		s->outfh = 0;
 		if (rc) {
 			perror(xfile);
 			goto out;
@@ -4588,7 +4587,7 @@ sccs_reopen(sccs *s)
 int
 sccs_open(sccs *s)
 {
-	FILE	*f, *old;
+	FILE	*f;
 
 	assert(!s->fh);
 	unless (f = fopen(s->fullsfile, "r")) return (-1);
@@ -4597,14 +4596,12 @@ sccs_open(sccs *s)
 	} else {
 		/* binary file */
 		rewind(f);
-		old = f;
-		unless (f = fchksum_open(old, "r", 0)) {
-			fclose(old);
+		if (fpush(&f, fchksum_open(f, "r", 0))) {
+			fclose(f);
 			return (-1);
 		}
-		old = f;
-		unless (f = fgzip_open(old, "r")) {
-			fclose(old);
+		if (fpush(&f, fgzip_open(f, "r"))) {
+			fclose(f);
 			return (-1);
 		}
 		s->encoding_in |= E_BFILE;
@@ -4626,6 +4623,7 @@ sccs_close(sccs *s)
 		s->pagefh = 0;
 	}
 	if (s->fh) {
+		if (s->rdweave) sccs_rdweaveDone(s);
 		assert(!s->mem_in); /* don't want to lose data */
 		fclose(s->fh);
 		s->fh = 0;
@@ -4739,8 +4737,13 @@ sccs_free(sccs *s)
 		// XXX In this case sccs_free has transactional quality
 		// and has no back channel to let caller know transaction
 		// failed.
-		if (sccs_finishWrite(s, &out)) sccs_abortWrite(s, &out);
+		if (sccs_finishWrite(s)) sccs_abortWrite(s);
 		fclose(f);
+	}
+	if (s->wrweave) {
+		fprintf(stderr, "%s: partial write of %s aborted.\n",
+		    prog, s->sfile);
+		sccs_abortWrite(s);
 	}
 	chk_gmode(s);
 
@@ -5652,24 +5655,24 @@ fputmeta(sccs *s, u8 *buf, FILE *out)
 	return (sum);
 }
 
-/*
- * Data for zputs() to writes it's data.  We currently can only write
- * one sfile at a time.
- */
-private	FILE	*zput;
-
-private void
-sccs_zputs_init(sccs *s, FILE *fout)
+private FILE *
+sccs_wrweaveInit(sccs *s)
 {
-	zput = fopen_zip(fout, "wc", -1, &s->cksum);
+	assert(!s->wrweave);
+	s->wrweave = 1;
+	if (GZIP_OUT(s)) {
+		fpush(&s->outfh, fopen_zip(s->outfh, "wc", -1, &s->cksum));
+	}
+	return (s->outfh);
 }
 
-private void
-sccs_zputs_done(sccs *s)
+private FILE *
+sccs_wrweaveDone(sccs *s)
 {
-	assert(zput);
-	fclose(zput);
-	zput = 0;
+	assert(s->wrweave);
+	if (GZIP_OUT(s)) fpop(&s->outfh);
+	s->wrweave = 0;
+	return (s->outfh);
 }
 
 /*
@@ -5715,12 +5718,8 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 		sum += *p;
 		if (*p++ == '\n') break;
 	}
-	if (GZIP_OUT(s)) {
-		fwrite(buf, 1, p - buf, zput);
-	} else {
-		fwrite(buf, 1, p - buf, out);
-		s->cksum += sum;
-	}
+	fwrite(buf, 1, p - buf, out);
+	unless (GZIP_OUT(s)) s->cksum += sum;
 	return (sum);
 }
 
@@ -8610,7 +8609,6 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 	int	tmpfile = 0;
 	char	*fbuf;
 	int	no_lf = 0;
-	int	in_weave = 0;
 	int	lf_pend = 0;
 	u32	eflags = flags; /* copy because expandeq destroys bits */
 	int	error = 0, serial;
@@ -8682,7 +8680,6 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 	slist = serialmap(s, d, pf->iLst, pf->xLst, &error);
 	assert(!error);
 	sccs_rdweaveInit(s);
-	in_weave = 1;
 	while (fbuf = sccs_nextdata(s)) {
 		if (isData(fbuf)) {
 			if (fbuf[0] == CNTLA_ESCAPE) fbuf++;
@@ -8807,7 +8804,7 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 		RET(0);
 	}
 out:
-	if (in_weave) sccs_rdweaveDone(s);
+	if (s->rdweave) sccs_rdweaveDone(s);
 	if (gfile) fclose(gfile); /* must close before we unlink */
 	if (ghash) mdbm_close(ghash);
 	if (shash) mdbm_close(shash);
@@ -9872,7 +9869,7 @@ checkin(sccs *s,
 	unless (flags & NEWFILE) {
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
-out:		if (sfile) sccs_abortWrite(s, &sfile);
+out:		sccs_abortWrite(s);
 		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freedelta(s, prefilled);
 		if (gfile && (gfile != stdin)) fclose(gfile);
@@ -10099,9 +10096,8 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		error++;
 		goto out;
 	}
+	sfile = sccs_wrweaveInit(s);
 	if (BAM(s)) goto skip_weave;
-	buf[0] = 0;
-	if (GZIP_OUT(s)) sccs_zputs_init(s, sfile);
 	if (n0) {
 		fputdata(s, "\001I 2\n", sfile);
 	} else {
@@ -10179,7 +10175,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 	}
 skip_weave:
 	if (BFILE_OUT(s)) fputs("\001Z\n", sfile);
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
+	sfile = sccs_wrweaveDone(s);
 	error = end(s, n, sfile, flags, added, 0, 0);
 	if (gfile && (gfile != stdin)) {
 		fclose(gfile);
@@ -10190,7 +10186,7 @@ skip_weave:
 		goto out;
 	}
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
-	if (sccs_finishWrite(s, &sfile)) goto out;
+	if (sccs_finishWrite(s)) goto out;
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) updatePending(s);
 	comments_cleancfile(s);
 	sccs_unlock(s, 'z');
@@ -11623,7 +11619,7 @@ sccs_admin(sccs *sc, ser_t p, u32 flags,
 			    "admin: can't get lock on %s\n", sc->sfile));
 			error = -1; sc->state |= S_WARNED;
 out:
-			if (sfile) sccs_abortWrite(sc, &sfile);
+			if (error) sccs_abortWrite(sc);
 			if (locked) sccs_unlock(sc, 'z');
 			debug((stderr, "admin returns %d\n", error));
 			return (error);
@@ -11939,7 +11935,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	    	obscure_it = 0;
 	}
 	if (rmlicense) obscure_it = 1;
-	if (sc->encoding_out & E_GZIP) sccs_zputs_init(sc, sfile);
+	sfile = sccs_wrweaveInit(sc);
 	sccs_rdweaveInit(sc);
 	while (buf = sccs_nextdata(sc)) {
 		if (obscure_it) {
@@ -11968,11 +11964,11 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 
 	/* not really needed, we already wrote it */
-	if (GZIP_OUT(sc)) sccs_zputs_done(sc);
+	sfile = sccs_wrweaveDone(sc);
 #ifdef	DEBUG
 	badcksum(sc, flags);
 #endif
-	if (sccs_finishWrite(sc, &sfile)) OUT;
+	if (sccs_finishWrite(sc)) OUT;
 	goto out;
 #undef	OUT
 }
@@ -12095,14 +12091,14 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
 		sccs_rdweaveInit(s);
 		w->buf = sccs_nextdata(s);	/* prime the data flow */
 	}
-	if (GZIP_OUT(s)) sccs_zputs_init(s, out);
+	w->out = sccs_wrweaveInit(s);
 
 	rc = doFast(w, patchmap, fastpatch);
 
 	if (HAS_SFILE(s)) {
 		if (sccs_rdweaveDone(s)) rc = 1;	/* no EOF */
 	}
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
+	w->out = sccs_wrweaveDone(s);
 	if (w->slist) free(w->slist);
 	if (w->state) free(w->state);
 	free(w);
@@ -12613,7 +12609,7 @@ again:
 	 * Do the actual delta.
 	 */
 	sccs_rdweaveInit(s);
-	if (GZIP_OUT(s)) sccs_zputs_init(s, out);
+	out = sccs_wrweaveInit(s);
 	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
 	while (b = fgetline(diffs)) {
@@ -12752,12 +12748,11 @@ newcmd:
 	if (state) free(state);
 	if (slist) free(slist);
 	sccs_rdweaveDone(s);
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
+	out = sccs_wrweaveDone(s);
 	if (last) {
 		assert(!fixdel);	/* no infinite loops */
 		fixdel = lastdel;
-		fclose(out);
-		unlink(sccsXfile(s, 'x'));
+		sccs_abortWrite(s);
 		rewind(diffs);
 		goto again;
 	}
@@ -12795,7 +12790,7 @@ sccs_csetWrite(sccs *s, char **cweave)
 	unless (out = sccs_startWrite(s)) goto err;
 	if (delta_table(s, out, 0)) goto err;
 
-	if (GZIP_OUT(s)) sccs_zputs_init(s, out);
+	out = sccs_wrweaveInit(s);
 	EACH(cweave) {
 		unless (cweave[i][0]) continue;	/* skip deleted entries */
 		ser = cweave[i];
@@ -12822,11 +12817,11 @@ sccs_csetWrite(sccs *s, char **cweave)
 	}
 	fputdata(s, "\001I 1\n", out);
 	fputdata(s, "\001E 1\n", out);
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
-	if (sccs_finishWrite(s, &out)) goto err;
+	out = sccs_wrweaveDone(s);
+	if (sccs_finishWrite(s)) goto err;
 	ret = 0;
 err:
-	sccs_abortWrite(s, &out);
+	sccs_abortWrite(s);
 	sccs_unlock(s, 'z');
 
 	return (ret);
@@ -12894,7 +12889,7 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	lp = s->locs;
 	i = s->iloc - 1; /* set index to final element in array */
 	assert(i > 0); /* base 1 data structure */
-	if (GZIP_OUT(s)) sccs_zputs_init(s, f);
+	f = sccs_wrweaveInit(s);
 	unless (HAS_SFILE(s)) goto skip;
 
 	sccs_rdweaveInit(s);
@@ -12939,7 +12934,7 @@ skip:	for ( ; i ; i--) {
 		sertoa(buf, lp[i].serial);
 		patchweave(s, lp[i].dF, buf, f);
 	}
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
+	f = sccs_wrweaveDone(s);
 	return (0);
 }
 
@@ -13508,19 +13503,19 @@ sccs_meta(char *me, sccs *s, ser_t parent, char *init, int fixDate)
 		exit(1);
 	}
 	if (delta_table(s, sfile, 0)) {
-abort:		sccs_abortWrite(s, &sfile);
+abort:		sccs_abortWrite(s);
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	sccs_rdweaveInit(s);
-	if (GZIP_OUT(s)) sccs_zputs_init(s, sfile);
+	sfile =  sccs_wrweaveInit(s);
 	while (buf = sccs_nextdata(s)) {
 		fputdata(s, buf, sfile);
 		fputdata(s, "\n", sfile);
 	}
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
+	sfile = sccs_wrweaveDone(s);
 	sccs_rdweaveDone(s);
-	if (sccs_finishWrite(s, &sfile)) goto abort;
+	if (sccs_finishWrite(s)) goto abort;
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -13574,7 +13569,7 @@ sccs_delta(sccs *s,
 		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freedelta(s, prefilled);
-		if (sfile) sccs_abortWrite(s, &sfile);
+		if (error) sccs_abortWrite(s);
 		if (diffs) fclose(diffs);
 		free_pfile(&pf);
 		if (free_syms) freeLines(syms, free); 
@@ -13879,7 +13874,7 @@ out:
 		for (t = SYMLINK(s, n); *t; t++) s->dsum += *t;
 	}
 	if (end(s, n, sfile, flags, added, deleted, unchanged)) {
-		sccs_abortWrite(s, &sfile);
+		sccs_abortWrite(s);
 		WARN;
 	}
 	unless (flags & DELTA_SAVEGFILE)  {
@@ -13888,7 +13883,7 @@ out:
 			OUT;
 		}
 	}
-	if (sccs_finishWrite(s, &sfile)) OUT;
+	if (sccs_finishWrite(s)) OUT;
 	unlink(s->pfile);
 	comments_cleancfile(s);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
@@ -17517,7 +17512,8 @@ stripDeltas(sccs *s, ser_t *remap, FILE *out)
 	int	ser;
 
 	sccs_rdweaveInit(s);
-	if (GZIP_OUT(s)) sccs_zputs_init(s, out);
+	// XXX - this is passed in and we stomp?
+	out = sccs_wrweaveInit(s);
 	while (buf = sccs_nextdata(s)) {
 		if (isData(buf)) {
 			unless (prune) {
@@ -17540,9 +17536,10 @@ stripDeltas(sccs *s, ser_t *remap, FILE *out)
 	}
 	free(state);
 	free(remap);
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
+	// XXX - out set but a passed local?
+	out = sccs_wrweaveDone(s);
 	if (sccs_rdweaveDone(s)) return (1);
-	if (sccs_finishWrite(s, &out)) return (1);
+	if (sccs_finishWrite(s)) return (1);
 	return (0);
 }
 
@@ -17614,7 +17611,7 @@ sccs_stripdel(sccs *s, char *who)
 #undef	OUT
 
 out:
-	if (sfile) sccs_abortWrite(s, &sfile);
+	if (error) sccs_abortWrite(s);
 	if (locked) sccs_unlock(s, 'z');
 	debug((stderr, "stripdel returns %d\n", error));
 	return (error);

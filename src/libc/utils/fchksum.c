@@ -88,8 +88,7 @@ fchksum_open(FILE *f, char *mode, int est_size)
 	fchk	*fc = new(fchk);
 	int	bits;
 
-	if (getenv("_BK_NO_FCHKSUM")) return (f); /* disable */
-
+	assert(f);
 	fc->f = f;
 	if (streq(mode, "w")) {
 		fc->write = 1;
@@ -321,7 +320,6 @@ chkClose(void *cookie)
 {
 	fchk	*fc = cookie;
 	u32	sum, sum2;
-	int	rc = 0;
 	int	n;
 
 	if (fc->write) {
@@ -340,13 +338,10 @@ chkClose(void *cookie)
 			exit(1);
 		}
 	}
-	if (rc = (ferror(fc->f) || fclose(fc->f))) {
-		perror("close fchksum");
-	}
 	free(fc->buf);
 	free(fc->xor);
 	free(fc);
- 	return (rc);
+ 	return (0);
 }
 
 /*

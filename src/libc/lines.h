@@ -134,6 +134,18 @@ char	*shellquote(char *in);
 /* void sortArray(TYPE *space, cmpfn); */
 #define	sortArray(s, compar)	_sortArray((s), (compar), sizeof((s)[0]))
 
+/* TYPE popArray(TYPE *space); */
+#define	popArray(space)				\
+	({ int i = nLines(space);		\
+	   typeof(*space) _ret;			\
+	   if (i) {				\
+		   _ret = space[i];		\
+		   removeArrayN(space, i);	\
+	   } else {				\
+		   memset(&_ret, 0, sizeof(_ret)); \
+	   }					\
+	   _ret; })
+
 void	*_growArray(void **space, int add, int size);
 void	*_addArray(void **space, void *x, int size);
 void	truncArray(void *space, int len);

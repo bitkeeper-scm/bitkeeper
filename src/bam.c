@@ -2451,12 +2451,12 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 	s->encoding_out &= ~(E_UUENCODE|E_GZIP);
 	s->encoding_out |= E_BAM;
 	unless (out = sccs_startWrite(s)) {
-err:		if (out) sccs_abortWrite(s, &out);
+err:		sccs_abortWrite(s);
 		sccs_unlock(s, 'z');
 		return (32);
 	}
 	if (delta_table(s, out, 0)) goto err;
-	if (sccs_finishWrite(s, &out)) goto err;
+	if (sccs_finishWrite(s)) goto err;
 	fprintf(stderr, "\rConverted %d deltas in %s\n", n, s->gfile);
 out:	sccs_unlock(s, 'z');
 	return (0);
