@@ -611,7 +611,8 @@ typedef	struct sccs sccs;
 extern	jmp_buf	exit_buf;
 extern	char *upgrade_msg;
 
-#define	exit(e)	longjmp(exit_buf, (e) + 1000)
+void	bk_exit(const char *file, int line, int ret) __attribute__((noreturn));
+#define	exit(e)	bk_exit(__FILE__, __LINE__, e)
 
 #define	READER_LOCK_DIR	"BitKeeper/readers"
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
@@ -1171,7 +1172,7 @@ char	*separator(char *);
 int	trigger(char *cmd, char *when);
 void	trigger_setQuiet(int yes);
 void	cmdlog_start(char **av, int bkd_mode);
-void	cmdlog_addnote(char *key, char *val);
+void	cmdlog_addnote(const char *key, const char *val);
 int	cmdlog_end(int ret, int bkd_mode);
 void	cmdlog_lock(int flags);
 int	write_log(char *file, char *format, ...)

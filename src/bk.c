@@ -773,6 +773,27 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 #define	LOG_BADEXIT	-100000		/* some non-valid exit */
 
 /*
+ * A wrapper for exit() in bk.  It jumps to the cleanup code at the
+ * end of main so that locks will be released, temp files will be
+ * erased and the error will be logged in cmdlog.
+ *
+ * In the error case the cmdlog will be annotated with the file:line
+ * that called exit.  Normal code should exit by returning from
+ * cmd_main(), but any exit not by that path should be included in the
+ * cmdlog.
+ */
+void
+bk_exit(const char *file, int line, int ret)
+{
+	char	buf[MAXLINE];
+
+	if (ret) {
+		sprintf(buf, "%s:%d", file, line);
+		cmdlog_addnote("exit", buf);
+	}
+	longjmp(exit_buf, (ret) + 1000);
+}
+/*
  * This function is installed as an atexit() handler.
  * In general, it shouldn't be needed but it is here as a fallback.
  *
@@ -1230,7 +1251,7 @@ out:
 private	MDBM	*notes = 0;
 
 void
-cmdlog_addnote(char *key, char *val)
+cmdlog_addnote(const char *key, const char *val)
 {
 	unless (notes) notes = mdbm_mem();
 	mdbm_store_str(notes, key, val, MDBM_REPLACE);
