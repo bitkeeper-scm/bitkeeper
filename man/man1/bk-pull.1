@@ -104,7 +104,11 @@ work in both.  Suppose the receiving repository just has A.  Pulling
 from the sending side is considered "unsafe" when only the A csets are
 sent but "safe" when the A csets and B component are sent.
 .SH OPTIONS
-.TP \-E\*<env\*>=\*<val\*>
+.TP \-\-auto\-populate
+.B \-\-auto\-populate
+automatically populate missing components as needed to perform a
+"safe" pull.
+.tp
 .B \-\-batch
 Pass 
 .Q \-\-batch

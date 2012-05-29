@@ -171,7 +171,10 @@ pull_main(int ac, char **av)
 	}
 
 	if (opts.product = bk_nested2root(opts.transaction || opts.port)) {
-		if (proj_configbool(0, "autopopulate")) opts.autoPopulate = 1;
+		if (proj_configbool(0, "autopopulate") ||	// compat
+		    proj_configbool(0, "auto-populate")) {	// in docs
+			opts.autoPopulate = 1;
+		}
 	}
 	cmdlog_lock((opts.port && opts.portNoCommit) ?
 	    CMD_WRLOCK : CMD_WRLOCK|CMD_NESTED_WRLOCK);
