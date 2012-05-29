@@ -1982,7 +1982,7 @@ chk_merges(sccs *s)
 		assert(p);
 		m = MERGE(s, d);
 		assert(m);
-		if (sccs_needSwap(s, p, m)) {
+		if (sccs_needSwap(s, p, m, 1)) {
 			if (fix) return (1);
 			fprintf(stderr,
 			    "%s|%s: %s/%s need to be swapped, run with -f.\n",

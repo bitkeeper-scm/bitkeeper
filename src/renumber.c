@@ -204,9 +204,10 @@ taken(MDBM *db, delta *d)
  * then make a copy of this in sccs2bk.c first.
  */
 int
-sccs_needSwap(sccs *s, delta *p, delta *m)
+sccs_needSwap(sccs *s, delta *p, delta *m, int warn)
 {
 	int	pser, mser;
+	char	buf[MAXKEY];
 
 	pser = p->pserial;
 	mser = m->pserial;
@@ -222,6 +223,13 @@ sccs_needSwap(sccs *s, delta *p, delta *m)
 		}
 	}
 	assert(pser);	/* CA must exist */
+	if (warn && (m->serial < p->serial)) {
+		fprintf(stderr, "%s: need to swap:\n", s->gfile);
+		sccs_sdelta(s, p, buf);
+		fprintf(stderr, "\ttrunk: %s\n", buf);
+		sccs_sdelta(s, m, buf);
+		fprintf(stderr, "\tbranch: %s\n", buf);
+	}
 	return (m->serial < p->serial);
 }
 
@@ -252,10 +260,21 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 	m = MERGE(s, d);
 	if (m && (m->r[0] == p->r[0])) {
 		assert((p != m) && BITKEEPER(s));
-		if (sccs_needSwap(s, p, m)) {
+		if (sccs_needSwap(s, p, m, 1)) {
+			char	buf[MAXKEY];
+
 			fprintf(stderr, "Renumber: corrupted sfile:\n  %s\n"
 			    "Please write support@bitmover.com\n", s->sfile);
-			exit (1);
+			fprintf(stderr, "Merge node (%s):\n",
+			    (d->flags & D_REMOTE) ? "remote" : "local");
+			sccs_sdelta(s, d, buf);
+			fprintf(stderr, "\tnode: %s\n", buf);
+			sccs_sdelta(s, p, buf);
+			fprintf(stderr, "\tparent: %s\n", buf);
+			sccs_sdelta(s, m, buf);
+			fprintf(stderr, "\tmerge: %s\n", buf);
+			if (getenv("BK_REGRESSION")) exit (1);
+			assert ("bad graph" == 0);
 		}
 	}
 

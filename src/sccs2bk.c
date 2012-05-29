@@ -625,7 +625,7 @@ fixTable(sccs *s, int verbose)
 		unless (d && d->merge) continue;
 		m = MERGE(s, d);
 		assert(m);
-		if (sccs_needSwap(s, PARENT(s, d), m)) {
+		if (sccs_needSwap(s, PARENT(s, d), m, 0)) {
 			if (verbose > 1) {
 				fprintf(stderr,
 				    "Need to swap in %s => %s & %s\n",

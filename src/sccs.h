@@ -1181,7 +1181,7 @@ void	putroot(char *where);
 int	uuencode(FILE *in, FILE *out);
 int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
-int	sccs_needSwap(sccs *s, delta *p, delta *m);
+int	sccs_needSwap(sccs *s, delta *p, delta *m, int warn);
 void	sccs_reDup(sccs *s);
 int	chk_host(void);
 int	chk_user(void);

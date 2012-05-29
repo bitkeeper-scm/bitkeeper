@@ -1559,7 +1559,7 @@ _pruneEmpty(sccs *s, delta *d, u8 *slist, ser_t **sd, char ***mkid)
 			d->merge = 0;
 		}
 		/* else if merge .. (chk case d and e) */
-		else if (sccs_needSwap(s, PARENT(s, d), m)) {
+		else if (sccs_needSwap(s, PARENT(s, d), m, 0)) {
 			d->merge = d->pserial;
 			symdiff_setParent(s, d, m, sd);
 		}
