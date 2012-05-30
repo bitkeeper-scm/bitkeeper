@@ -119,6 +119,7 @@ FILE	*fchksum_open(FILE *f, char *mode, int est_size);
 
 /* fgzip.c */
 FILE	*fgzip_open(FILE *fin, char *mode);
+int	fgzip_findSeek(FILE *fin, long off, int len, u32 pagesz, u32 **lens);
 
 /* fileops.c */
 int	fileCopy(char *from, char *to);
@@ -151,6 +152,7 @@ pid_t	findpid(pid_t pid);
 
 /* fmem.c */
 FILE	*fmem(void);
+FILE	*fmem_buf(void *mem, int len);
 char	*fmem_peek(FILE *f, size_t *len);
 char	*fmem_dup(FILE *f, size_t *len);
 char	*fmem_close(FILE *f, size_t *len);

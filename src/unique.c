@@ -53,6 +53,21 @@ keysHome(void)
 	return (keysFile);
 }
 
+/*
+ * return a backup keys file just in case we can't write the home
+ * directory.
+ */
+private char	*
+keysBackup(void)
+{
+	static	char	*keysFile = 0;
+
+	if (keysFile) return (keysFile);
+	keysFile = aprintf("%s/.bk-keys-%s", TMP_PATH, sccs_realuser());
+	return (keysFile);
+}
+
+
 private int
 uniq_lock(void)
 {
@@ -60,6 +75,7 @@ uniq_lock(void)
 	int     quiet = 0;
 	int     rc;
 
+	/* don't change this name, or we don't lock against old bk's */
 	lock = aprintf("%s/.uniq_keys_%s", TMP_PATH, sccs_realuser());
 
 	if (getenv("_BK_UNIQUE_SHUTUP")) quiet = 1;
@@ -80,12 +96,6 @@ uniq_unlock(void)
 	return (rc);
 }
 
-/*
- * When do import scripts, we slam the drift to a narrow window, it makes
- * for much better performance.
- *
- * Do NOT do this in any shipped scripts.
- */
 time_t
 uniq_drift(void)
 {
@@ -98,16 +108,17 @@ uniq_drift(void)
 	} else {
 		t = CLOCK_DRIFT;
 	}
-	return (t);
+	return (max(t, 120));
 }
 
 int
 uniq_open(void)
 {
-	char	*s, *tmp;
+	char	*s, *keys;
 	FILE	*f;
 	time_t	t, cutoff = time(0) - uniq_drift();
 	datum	k, v;
+	int	first = 1;
 	char	buf[MAXPATH*2];
 	int	pipes;
 
@@ -116,8 +127,10 @@ uniq_open(void)
 		return (0);
 	}
 	dbg = (getenv("_BK_UNIQ_DEBUG") != 0);
-	if (is_open) return (0);
-	is_open = 1;
+	if (is_open) {
+		assert(db);
+		return (0);
+	}
 #ifdef DEBUG
 	if ((s = getenv("HAS_UNIQLOCK")) && !streq(s, "NO")) {
 		fprintf(stderr,
@@ -127,11 +140,14 @@ uniq_open(void)
 	}
 #endif
 	if (uniq_lock()) return (-1);
-	unless (tmp = keysHome()) return (-1);
+	unless (keys = keysHome()) return (-1); /* very unlikely */
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	if (dbg) fprintf(stderr, "UNIQ OPEN: %s\n", tmp);
-	unless (f = fopen(tmp, "r")) return (0);
-	while (fnext(buf, f)) {
+again:
+	if (dbg) fprintf(stderr, "UNIQ OPEN: %s\n", keys);
+
+	/* one day revtool will ignore whitespace but not today. */
+	if (f = fopen(keys, "r")) {
+	    while (fnext(buf, f)) {
 		/*
 		 * expected format:
 		 * user@host|path|date timet [syncRoot]
@@ -153,7 +169,7 @@ uniq_open(void)
 		unless ((pipes == 2) &&
 		    s && isdigit(s[1]) && (chop(buf) == '\n')) {
 			fprintf(stderr, "skipped line in %s: %s\n",
-			    tmp, buf);
+			    keys, buf);
 			continue;
 		}
 		*s++ = 0;
@@ -181,22 +197,27 @@ uniq_open(void)
 		if (dbg) fprintf(stderr, "UNIQ LOAD: %s\n", buf);
 
 		/*
-		 * This shouldn't happen, but if it does, use the later one.
+		 * This can happen if an earlier process left a file in /tmp
+		 * that has dups w/ the .bk one.
 		 */
 		if (mdbm_store(db, k, v, MDBM_INSERT)) {
 			datum	v2;
 			time_t	t2;
 
-			fprintf(stderr,
-			    "Warning: duplicate key '%s' in %s\n",
-			    buf, tmp);
 		    	v2 = mdbm_fetch(db, k);
 			assert(v2.dsize == sizeof(time_t));
 			memcpy(&t2, v2.dptr, sizeof(time_t));
 			if (t > t2) mdbm_store(db, k, v, MDBM_REPLACE);
 		}
+	    }
+	    fclose(f);
 	}
-	fclose(f);
+	if (first) {
+		first = 0;
+		keys = keysBackup();
+		goto again;
+	}
+	is_open = 1;
 	return (0);
 }
 
@@ -211,7 +232,11 @@ uniq_adjust(sccs *s, ser_t d)
 	time_t	date;
 	char	key[MAXKEY];
 
-	unless (db) return (1);
+	unless (db) {
+		if (getenv("_BK_NO_UNIQ")) return (0);
+		fprintf(stderr, "%s: uniq_adjust() without db open\n", prog);
+		return (1);
+	}
 
 	while (1) {
 		sccs_shortKey(s, d, key);
@@ -274,9 +299,11 @@ uniq_adjust(sccs *s, ser_t d)
 int
 uniq_close(void)
 {
-	FILE	*f;
+	FILE	*f = 0;
 	kvpair	kv;
 	time_t	t;
+	int	rc = 0;
+	int	first = 1;
 	char	*keyf, *rand;
 	char	key[MAXKEY];
 	char	tmpf[MAXPATH];
@@ -285,14 +312,14 @@ uniq_close(void)
 	TRACE("closing uniq %d %s", dirty, prog);
 	unless (dirty) goto close;
 	unless (keyf = keysHome()) {
-		fprintf(stderr, "uniq_close:  cannot find keyHome");
+		fprintf(stderr, "uniq_close: cannot find keyHome");
 		return (-1);
 	}
+again:
 	sprintf(tmpf, "%s.%s.%u", keyf, sccs_realhost(), getpid());
 	unless (f = fopen(tmpf, "w")) {
-		fprintf(stderr, "unique_close: fopen %s failed\n", tmpf);
 		perror(tmpf);
-		return (-1);
+		goto err;
 	}
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
 		strcpy(key, kv.key.dptr);
@@ -310,15 +337,36 @@ uniq_close(void)
 		fputc('\n', f);
 		if (dbg) fprintf(stderr, "UNIQ SAVE: %s\n", key);
 	}
-	fclose(f);
-	if (rename(tmpf, keyf)) perror(tmpf);
+	if (fclose(f)) {
+		perror(tmpf);
+		goto err;
+	}
+	f = 0;
+	if (rename(tmpf, keyf)) {
+		perror(tmpf);
+		goto err;
+	}
 close:  mdbm_close(db);
 	db = 0;
 	dirty = 0;
-	uniq_unlock();
+	if (uniq_unlock()) {
+		fprintf(stderr, "%s: uniq_unlock() failed\n", prog);
+		rc = -1;
+	}
 	is_open = 0;
 #ifdef DEBUG
 	putenv("HAS_UNIQLOCK=NO");
 #endif
-	return (0);
+	unless (rc) unlink(keysBackup());
+	return (rc);
+err:
+	// we set rc so this will ultimately fail
+	rc = 1;
+	if (first) {
+		first = 0;
+		keyf = keysBackup();
+		if (f) fclose(f);
+		goto again;
+	}
+	goto close;
 }

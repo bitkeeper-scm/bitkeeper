@@ -837,3 +837,27 @@ bk guitest citool > "$OUT" 2>&1 <<'EOF'
 EOF
 test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
+
+echo $N Check for pending file revs on command line files ...........$NL
+cd "$HERE/project"
+touch pending-new
+bk new $Q pending-new
+bk edit $Q pending-new
+echo foo > pending-new
+bk guitest citool pending-new >"$OUT" 2>&1 <<'EOF'
+	test_togglePending
+	set txt [test_getFiles]
+	set rc 0
+	if {![regexp -- {pending-new@1.0\n} $txt]} {
+		puts stderr "Did not find initial delta for pending-new"
+		set rc 1
+	}
+	if {![regexp -- {pending-new@1.1\n} $txt]} {
+		puts stderr "Did not find pending delta for pending-new"
+		set rc 1
+	}
+	if {$rc != 0} {exit $rc}
+	test_buttonPress "Quit"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK

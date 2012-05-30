@@ -14,7 +14,7 @@ endif
 # The test t.bkd-svc cannot be run in parallel with any other
 # tests or it will fail
 TESTS = $(wildcard t.*)
-SERIAL_TESTS = t.bkd-svc t.installer t.proxy-win32
+SERIAL_TESTS = t.bkd-svc t.installer t.proxy-win32 t.uniq
 PARALLEL_TESTS = $(filter-out $(SERIAL_TESTS),$(TESTS))
 
 all: doit $(TESTS:t.%=output/OUT.t.%)
@@ -24,6 +24,7 @@ doit: doit.sh
 
 # if we have more than one serial test then build a series of 
 # dependancies here
+output/OUT.t.uniq: output/OUT.t.proxy-win32
 output/OUT.t.proxy-win32: output/OUT.t.installer
 output/OUT.t.installer: output/OUT.t.bkd-svc
 output/OUT.t.bkd-svc: $(patsubst t.%,output/OUT.t.%,$(PARALLEL_TESTS))

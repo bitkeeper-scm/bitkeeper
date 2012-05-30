@@ -28,7 +28,7 @@ char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 private	int	indent_level;
 
 private	void	bk_atexit(void);
-private	void	bk_cleanup(int ret);
+private	int	bk_cleanup(int ret);
 private	char	cmdlog_buffer[MAXPATH*4];
 private	int	cmdlog_flags;
 private	int	cmdlog_repolog;	/* if true log to repo_log in addition */
@@ -614,7 +614,7 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 out:
 	progress_restoreStderr();
 	cmdlog_end(ret, 0);
-	bk_cleanup(ret);
+	ret = bk_cleanup(ret);
 	/* flush stdout/stderr, needed for bk-remote on windows */
 	fflush(stdout);
 	fflush(stderr);
@@ -773,6 +773,27 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 #define	LOG_BADEXIT	-100000		/* some non-valid exit */
 
 /*
+ * A wrapper for exit() in bk.  It jumps to the cleanup code at the
+ * end of main so that locks will be released, temp files will be
+ * erased and the error will be logged in cmdlog.
+ *
+ * In the error case the cmdlog will be annotated with the file:line
+ * that called exit.  Normal code should exit by returning from
+ * cmd_main(), but any exit not by that path should be included in the
+ * cmdlog.
+ */
+void
+bk_exit(const char *file, int line, int ret)
+{
+	char	buf[MAXLINE];
+
+	if (ret) {
+		sprintf(buf, "%s:%d", file, line);
+		cmdlog_addnote("exit", buf);
+	}
+	longjmp(exit_buf, (ret) + 1000);
+}
+/*
  * This function is installed as an atexit() handler.
  * In general, it shouldn't be needed but it is here as a fallback.
  *
@@ -805,12 +826,12 @@ bk_atexit(void)
  * Called before exiting, this function freed cached memory and looks for
  * other cleanups like stale lockfiles.
  */
-private void
+private int
 bk_cleanup(int ret)
 {
 	static	int	done = 0;
 
-	if (done) return;
+	if (done) return (ret);
 	done = 1;
 
 	purify_list();
@@ -825,7 +846,9 @@ bk_cleanup(int ret)
 		buffer = 0;
 	}
 	notifier_flush();
-	uniq_close();
+	if (uniq_close()) {
+		unless (ret) ret = 1;
+	}
 	lockfile_cleanup();
 
 	/*
@@ -873,12 +896,13 @@ bk_cleanup(int ret)
 			buf[len] = 0;
 			ttyprintf("%s: warning fh %d left open %s\n",
 			    prog, i, buf);
-			//abort();
+			unless (ret) ret = 1;
 		}
 	}
 #endif
 	bktmpcleanup();
 	trace_free();
+	return (ret);
 }
 
 /*
@@ -1227,7 +1251,7 @@ out:
 private	MDBM	*notes = 0;
 
 void
-cmdlog_addnote(char *key, char *val)
+cmdlog_addnote(const char *key, const char *val)
 {
 	unless (notes) notes = mdbm_mem();
 	mdbm_store_str(notes, key, val, MDBM_REPLACE);

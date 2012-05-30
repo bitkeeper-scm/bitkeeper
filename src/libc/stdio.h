@@ -114,6 +114,9 @@ typedef	struct __sFILE {
 	fpos_t	(*_seek) (void *, fpos_t, int);
 	int	(*_write)(void *, const char *, int);
 
+	/* stacked file handles */
+	struct	__sFILE *_prevfh;
+
 	/* file extension */
 	struct	__sbuf _ext;
 
@@ -273,6 +276,12 @@ int	 vsprintf(char * __restrict, const char * __restrict, va_list);
 #endif
 
 int	rename(const char *src, const char *dst);
+
+/*
+ * Bk extension
+ */
+int	fpush(FILE **fp, FILE *new);
+int	fpop(FILE **fp);
 
 /*
  * IEEE Std 1003.1-90

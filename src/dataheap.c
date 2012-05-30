@@ -2,7 +2,16 @@
 
 private	void	dumpStats(sccs *s);
 
-//#define PAGING 1
+/*
+ * We require the 3 argument sa_sigaction handler for signals instead of
+ * the older 1 argument sa_handler.
+ * We also can't support paging on older MacOS because of paging bugs.
+ * (10.7 is known to work and 10.4 fail)
+ * This currently rules out mac, netbsd and Windows.
+ */
+#if defined(SA_SIGINFO) && !defined(__MACH__)
+#define PAGING 1
+#endif
 
 /*
  * Add a null-terminated string to the end of the data heap at s->heap
@@ -86,21 +95,6 @@ sccs_addUniqStr(sccs *s, char *str)
 	return (off);
 }
 
-#define	PAGESZ		(4<<10)
-#define	BLOCKSZ		(16<<10)
-#define	PAGEUP(a, sz)	((((unsigned long)(a) - 1) | ((sz)-1)) + 1)
-#define	PAGEDOWN(a, sz)	((unsigned long)(a) & ~((sz)-1))
-
-struct	MAP {
-	u8	*start;
-	u8	*end;
-	FILE	*f;
-	long	off;
-	int	byteswap;	/* byteswap u32's in this region */
-};
-
-private	char	**maps;
-
 private void
 swaparray(void *data, int len)
 {
@@ -112,109 +106,333 @@ swaparray(void *data, int len)
 	for (i = 0; i < len; i++) p[i] = le32toh(p[i]);
 }
 
+/* default paging size */
+#define	       BLOCKSZ		(256<<10)
+
 #ifdef	PAGING
 
+// assumed OS page size
+#define        PAGESZ		(pagesz)
+// round 'a' up to next next multiple of PAGESZ
+#define        PAGEUP(a)	((((unsigned long)(a) - 1) | (PAGESZ-1)) + 1)
+// round 'a' down to the start of the current page
+#define        PAGEDOWN(a)	((u8 *)((unsigned long)(a) & ~(PAGESZ-1)))
+
+struct	MAP {
+	sccs	*s;
+	char	*name;
+	u8	*bstart;	/* start of whole block */
+	int	blen;		/* length of whole block */
+	u8	*start;		/* first byte in range */
+	int	len;		/* length of range */
+	long	off;		/* offset in file of 'start' */
+	int	byteswap;	/* byteswap u32's in this region */
+
+	/* page pointers point to first byte in page */
+	u8	*startp;	/* page containing first byte in range */
+	u8	*endp;		/* page containing last byte in range */
+};
+private	MAP	**maps;
+private	long	pagesz;
+
+private	void *
+allocPage(size_t size)
+{
+	return (valloc(PAGEUP(size)));
+}
+
+private int
+map_block(MAP *map)
+{
+	if (mprotect(map->startp, map->endp - map->startp + PAGESZ,
+		PROT_READ|PROT_WRITE)) {
+		perror("mprotect");
+		exit(1);
+	}
+	if (fseek(map->s->pagefh, map->off, SEEK_SET)) {
+		perror("fseek");
+		return (-1);
+	}
+	if (fread(map->start, 1, map->len, map->s->pagefh) != map->len) {
+		perror("fread");
+		return (-1);
+	}
+	if (map->byteswap) swaparray(map->start, map->len);
+	return (0);
+}
+
+#ifdef WIN32
+
+mprotect becomes:
+	u32 oldprotect;
+	VirtualProtect(sptr, len, PAGE_NO_ACCESS, &oldprotect);
+
+sigaction becomes:
+	AddVectoredExecptionHandler
+#endif
+
+// MAP only
+private int
+MAPcmp(const void *va, const void *vb)
+{
+	MAP	*a = *(MAP **)va;
+	MAP	*b = *(MAP **)vb;
+
+	if (a->start < b->start) {
+		return (-1);
+	} else if (a->start > b->start) {
+		return (1);
+	} else {
+		return (0);
+	}
+}
+
+// MAP only
 private void
 faulthandler(int sig, siginfo_t *si, void *unused)
 {
 	MAP	*map;
 	int	i;
-	int	len;
-	u8	*addr;
+	u8	*addr;		/* the page where the fault occurred */
+	int	found = 0;
 
-	addr = si->si_addr;
+	addr = PAGEDOWN(si->si_addr);
 	EACH_STRUCT(maps, map, i) {
-		if ((addr < map->start) || (addr > map->end)) {
-			continue;
+		if (addr < map->startp) break;
+		if (addr > map->endp) continue;
+
+		found = 1;
+		if (map_block(map)) {
+			perror("map_block");
+			exit(1);
 		}
-		addr = (u8*)PAGEDOWN(addr, PAGESZ);
-		mprotect(addr, PAGESZ, PROT_READ|PROT_WRITE);
-		if (fseek(map->f, map->off + (addr - map->start), SEEK_SET)) {
-			perror("fseek");
+		TRACE("fault in %s-%s load %dK at %.1f%%",
+		    map->s->gfile, map->name,
+		    map->len / 1024,
+		    (100.0 * (addr - map->bstart))/map->blen);
+		if ((i > 1) &&
+		    (maps[i-1]->endp == map->startp)) {
+			/*
+			 * Two regions share a page, but we couldn't
+			 * have hit that page of overlap or the
+			 * previous block would be mapped.  Reprotect
+			 * the overlap block so the other region won't
+			 * be missed.
+			 */
+			assert(addr != map->startp);
+			TRACE("protect start %p", map->startp);
+			if (mprotect(map->startp, PAGESZ, PROT_NONE)) {
+				perror("mprotect");
+				exit(1);
+			}
 		}
-		len = min(PAGESZ, map->end - addr);
-		fread(addr, 1, len, map->f);
-		if (map->byteswap) swaparray(addr, len);
-		return;
-	}
-	fprintf(stderr, "No mapping found\n");
-	exit(EXIT_FAILURE);
-}
-#endif
-
-MAP *
-datamap(void *start, int len, FILE *f, long off, int byteswap)
-{
-#ifdef	PAGING
-	u8	*sptr = start;
-	u8	*eptr = sptr + len;
-	MAP	*map;
-	struct	sigaction sa;
-
-	if (IS_LITTLE_ENDIAN()) byteswap = 0;
-
-	if (len < 4*PAGESZ) {
-		/* too small to mess with */
-		fseek(f, off, SEEK_SET);
-		fread(start, 1, len, f);
-		if (byteswap) swaparray(start, len);
-		return (0);
-	}
-
-	sptr = (u8*)PAGEUP(start, PAGESZ);
-	//fprintf(stderr, "load %p/%x up=%p\n", start, len, sptr);
-	if (sptr != start) {
-		fseek(f, off, SEEK_SET);
-		len = sptr - (u8*)start;
-		fread(start, 1, len, f);
-		if (byteswap) swaparray(start, len);
-	}
-
-	//fprintf(stderr, "prot %p/%lx\n", sptr, eptr-sptr);
-	len = eptr-sptr;
-	if (mprotect(sptr, PAGEUP(len, PAGESZ), PROT_NONE)) {
-		perror("mprotect");
-	}
-	unless (maps) {
-		sa.sa_flags = SA_SIGINFO;
-		sigemptyset(&sa.sa_mask);
-		sa.sa_sigaction = faulthandler;
-		if (sigaction(SIGSEGV, &sa, 0) == -1) {
-			perror("sigaction");
+		if ((i < nLines(maps)) &&
+		    (maps[i+1]->startp == map->endp) &&
+		    (addr != map->endp)) {
+			/* region doesn't end on a page boundry and the next
+			 * region uses the rest of the end page and the fault
+			 * didn't occurr on that last page.
+			 *
+			 * Here we load the whole map, but leave the last page
+			 * protected.  We will unprotect that last page when
+			 * the next map gets loaded.
+			 */
+			TRACE("protect end %p", map->endp);
+			if (mprotect(map->endp, PAGESZ, PROT_NONE)) {
+				perror("mprotect");
+				exit(1);
+			}
 		}
+		removeArrayN(maps, i);
+		--i;
 	}
-
-	map = new(MAP);
-	map->start = sptr;
-	map->end = eptr;
-	map->f = f;
-	map->off = off + (sptr - (u8*)start);
-	map->byteswap = byteswap;
-	maps = addLine(maps, map);
-
-	return (map);
-#else
-	if (IS_LITTLE_ENDIAN()) byteswap = 0;
-	fseek(f, off, SEEK_SET);
-	fread(start, 1, len, f);
-	if (byteswap) swaparray(start, len);
-	return (0);
-#endif
+	unless (found) {
+		fprintf(stderr, "seg fault to addr %p\n", si->si_addr);
+		TRACE("seg fault to addr %p", si->si_addr);
+		abort();
+	}
 }
 
+/*
+ * Unprotect all the memory regions for a given sccs*
+ *
+ * if keep==1 then map in any remaining data
+ */
 void
-dataunmap(MAP *map)
+dataunmap(sccs *s, int keep)
 {
 	int	i;
 	MAP	*m;
 
+	unless (s->pagefh) return;
 	EACH_STRUCT(maps, m, i) {
-		if (map == m) {
-			removeLineN(maps, i, free);
-			return;
+		if (m->s != s) continue;
+
+		if (keep) {
+			map_block(m);
+		} else {
+			if (mprotect(m->startp,
+				m->endp - m->startp + PAGESZ,
+				PROT_READ|PROT_WRITE)) {
+				perror("mprotect");
+				exit(1);
+			}
+		}
+		free(m);
+		removeArrayN(maps, i);
+		--i;
+	}
+	unless (nLines(maps)) {
+		freeLines((char **)maps, 0);
+		maps = 0;
+	}
+}
+
+#else // no PAGING apis available
+
+private	void *
+allocPage(size_t size)
+{
+	return (malloc(size));
+}
+
+void
+dataunmap(sccs *s, int keep)
+{
+	return;
+}
+#endif
+
+/*
+ * Allocate memory and load 'nmemb' blocks of 'esize' from 'off' of
+ * s->sfile.
+ *
+ * If the data range is large then the data will be mapped into memory
+ * but only loaded on demand as needed.
+ */
+void *
+datamap(sccs *s, char *name, u32 esize, u32 nmemb, long off, int byteswap)
+{
+	u8	*start;		/* address of data from file */
+	u8	*mstart;	/* address to be returned */
+	u32	len;
+	int	paging = 1;
+	char	*p;
+#ifdef	PAGING
+	MAP	*map;
+	u32	*lens = 0;
+	u8	*rstart;
+	u32	rlen;
+	int	i;
+
+	struct	sigaction sa;
+
+	unless (pagesz) pagesz = sysconf(_SC_PAGESIZE);
+	assert(pagesz && !(pagesz & (pagesz-1))); /* non-zero power of 2 */
+#else
+	paging = 0;
+#endif
+	if (getenv("_BK_NO_PAGING")) paging = 0;
+	/* NOTE: set pagesz even if not paging: it is used in bin_sortHeap() */
+	if (p = getenv("_BK_PAGING_PAGESZ")) {
+		s->pagesz = strtoul(p, &p, 10);
+		switch(*p) {
+		    case 'k': case 'K':
+			s->pagesz *= 1024;
+			break;
+		    case 'm': case 'M':
+			s->pagesz *= 1024 * 1024;
+			break;
+		}
+	} else {
+		s->pagesz = BLOCKSZ;
+	}
+	if (IS_LITTLE_ENDIAN()) byteswap = 0;
+	len = nmemb * esize;
+	if (!paging ||
+	    (!getenv("_BK_FORCE_PAGING") && (len < 4*s->pagesz))) {
+		/* too small to mess with */
+		paging = 0;
+	}
+	if (esize == 1) {
+		mstart = paging ? allocPage(len) : malloc(len);
+		start = mstart;
+	} else {
+		mstart = allocArray(nmemb, esize, paging ? allocPage : 0);
+		start = mstart + esize;
+	}
+	unless (paging) {
+nopage:		fseek(s->fh, off, SEEK_SET);
+		fread(start, 1, len, s->fh);
+		if (byteswap) swaparray(start, len);
+		return (mstart);
+	}
+#ifdef PAGING
+
+	if (mprotect(PAGEDOWN(start),
+	    PAGEDOWN(start + len - 1) - PAGEDOWN(start) + PAGESZ,
+	    PROT_NONE)) {
+		putenv("_BK_NO_PAGING=1");
+		paging = 0;
+		goto nopage;
+	}
+
+	/*
+	 * save s->fh in s->pagefh, and eventually clear s->fh (bin_mkgraph)
+	 * so slib.c will open new filehandle for weave
+	 */
+	if (s->pagefh) {
+		assert(s->pagefh == s->fh);
+	} else {
+		s->pagefh = s->fh;
+	}
+
+	TRACE("map %s:%s %p-%p", s->gfile, name, start, start+len);
+
+	unless (maps) {
+		sa.sa_flags = SA_SIGINFO;
+		sigemptyset(&sa.sa_mask);
+		sa.sa_sigaction = faulthandler;
+		if (sigaction(SIGBUS, &sa, 0) == -1) {
+			perror("sigaction");
+		}
+		if (sigaction(SIGSEGV, &sa, 0) == -1) {
+			perror("sigaction");
 		}
 	}
-	assert(0);
+	if (fgzip_findSeek(s->pagefh, off, len, s->pagesz, &lens)) {
+		/* fgzip failed so we assume it wasn't using fgzip... */
+		rlen = len;
+		while (rlen > s->pagesz) {
+			addArray(&lens, &s->pagesz);
+			rlen -= s->pagesz;
+		}
+		addArray(&lens, &rlen);
+	}
+	rstart = start;
+	EACH(lens) {
+		rlen = lens[i];
+		assert(rlen > 0);
+		map = new(MAP);
+		map->s = s;
+		map->name = name;
+		map->bstart = start;
+		map->blen = len;
+		map->start = rstart;
+		map->len = rlen;
+		map->startp = PAGEDOWN(rstart);
+		map->endp = PAGEDOWN(rstart + rlen - 1);
+		map->off = off;
+		map->byteswap = byteswap;
+		addArray(&maps, &map);
+
+		rstart += rlen;
+		off += rlen;
+ 	}
+	free(lens);
+	sortArray(maps, MAPcmp); /* sort by start address */
+#endif
+	return (mstart);
 }
 
 int
@@ -391,7 +609,7 @@ private void
 dumpStats(sccs *s)
 {
 	int	size;
-	int	i, off;
+	int	i, off, sym;
 	char	*t;
 	ser_t	d;
 	char	*names[] = {
@@ -423,12 +641,21 @@ dumpStats(sccs *s)
 		size += htotal[i];
 	}
 	size = s->heap.len - size;
+	sym = 0;
+	EACH(s->symlist) {
+		unless (off = s->symlist[i].symname) continue;
+		if (hash_insert(seen, &off, sizeof(off), 0, 0)) {
+			sym += strlen(s->heap.buf + off) + 1;
+		}
+	}
+	printf("%10s: %7s %4.1f%%\n",
+	    "symnames", psize(sym),  (100.0 * sym) / s->heap.len);
+	size -= sym;
 	if (size) {
 		printf("%10s: %7s %4.1f%%\n",
 		    "unused", psize(size),
 		    (100.0 * size) / s->heap.len);
 	}
-
 	printf("  table1: %7s\n", psize(sizeof(d1_t) * (TABLE(s) + 1)));
 	printf("  table2: %7s\n", psize(sizeof(d2_t) * (TABLE(s) + 1)));
 	if (nLines(s->symlist)) {

@@ -461,7 +461,7 @@ rootCsetFile(sccs *sc, char *csetFile)
 	ser_t	d, p;
 
 	d = TREE(sc);
-	orig = CSETFILE(sc, d);
+	orig = strdup(CSETFILE(sc, d));
 	sccs_parseArg(sc, d, 'B', csetFile, 0);
 	new_cf = CSETFILE_INDEX(sc, d);
 	FLAGS(sc, d) |= D_RED;
@@ -478,4 +478,5 @@ rootCsetFile(sccs *sc, char *csetFile)
 	for (d = last; d >= TREE(sc); --d) {
 		FLAGS(sc, d) &= ~D_RED;
 	}
+	free(orig);
 }

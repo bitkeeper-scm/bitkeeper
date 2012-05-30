@@ -800,7 +800,7 @@ dspec_collapse(char **dspec, char **begin, char **end)
 				switch (*p) {
 				    case '\n':
 					fprintf(stderr, "error in dspec, "
-					    "no multi-line strings");
+					    "no multi-line strings\n");
 					exit(1);
 					break;
 				    case '\\':

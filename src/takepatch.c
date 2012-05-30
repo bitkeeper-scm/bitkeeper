@@ -36,25 +36,25 @@
 #define	NOTICE() fputs("------------------------------------"\
 		    "---------------------------------------\n", stderr);
 
-private	ser_t	getRecord(sccs *s, MMAP *f);
+private	ser_t	getRecord(sccs *s, FILE *f);
 private void	errorMsg(char *msg, char *arg1, char *arg2);
-private	int	extractPatch(char *name, MMAP *p);
-private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int*);
+private	int	extractPatch(char *name, FILE *p);
+private	int	extractDelta(char *name, sccs *s, int newFile, FILE *f, int*);
 private	int	applyPatch(char *local, sccs *perfile);
 private	int	applyCsetPatch(sccs *s, int *nfound, sccs *perfile);
 private	int	getLocals(sccs *s, char *name);
 private	void	insertPatch(patch *p, int strictOrder);
 private	int	reversePatch(void);
 private	void	initProject(void);
-private	MMAP	*init(char *file);
+private	FILE	*init(char *file);
 private	void	cleanup(int what);
 private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, ser_t tot);
-private	int	skipPatch(MMAP *p);
+private	int	skipPatch(FILE *p);
 private	void	getChangeSet(void);
 private	void	loadskips(void);
-private int	sfio(MMAP *m);
+private int	sfio(FILE *m);
 private	int	parseFeatures(char *next);
 
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
@@ -120,7 +120,7 @@ takepatch_main(int ac, char **av)
 {
 	FILE 	*f;
 	char	*buf;
-	MMAP	*p;
+	FILE	*p;
 	int	c;
 	int	files = 0;
 	char	*t;
@@ -189,15 +189,13 @@ takepatch_main(int ac, char **av)
 	 * Find a file and go do it.
 	 */
 	if (opts->pbars) tick = progress_start(PROGRESS_BAR, opts->N);
-	while (buf = mnext(p)) {
-		char	*b;
+	while (buf = fgetline(p)) {
 		int	rc;
 
 		++line;
 		unless (strncmp(buf, "== ", 3) == 0) {
 			if (echo > 7) {
-				fprintf(stderr, "skipping: %*s",
-				    (int)(strchr(buf, '\n') - buf), buf);
+				fprintf(stderr, "skipping: %s", buf);
 			}
 			continue;
 		}
@@ -206,30 +204,29 @@ takepatch_main(int ac, char **av)
 		 * If we see the SFIO header then consider the patch ended.
 		 * We'll fall through to sfio to unpack.
 		 */
-		if (strneq(buf, "== @SFIO@ ==\n", 13)) {
+		if (streq(buf, "== @SFIO@ ==")) {
 			if (rc = sfio(p)) error = -1;
 			break;
 		}
-		/* we need our own storage , extractPatch calls mkline */
-		b = strdup(mkline(buf));
-		if (echo>4) fprintf(stderr, "%s\n", b);
-		unless ((t = strrchr(b, ' ')) && streq(t, " ==")) {
+		if (echo>4) fprintf(stderr, "%s\n", buf);
+		unless ((t = strrchr(buf, ' ')) && streq(t, " ==")) {
 			SHOUT();
-			fprintf(stderr, "Bad patch: %s\n", b);
+			fprintf(stderr, "Bad patch: %s\n", buf);
 			cleanup(CLEAN_RESYNC);
 		}
 		*t = 0;
 		files++;
-		rc = extractPatch(&b[3], p);
+		t = name2sccs(&buf[3]);
+		rc = extractPatch(t, p);
+		free(t);
 		if (tick) progress(tick, files);
-		free(b);
 		if (rc < 0) {
 			error = rc;
 			continue;
 		}
 		remote += rc;
 	}
-	mclose(p);
+	fclose(p);
 	if (idDB) { mdbm_close(idDB); idDB = 0; }
 	if (goneDB) { mdbm_close(goneDB); goneDB = 0; }
 	if (tick) progress_done(tick, error < 0 ? "FAILED" : "OK");
@@ -353,7 +350,7 @@ loadCollapsed(void)
  * take out the hack in sccs_getInit to check sc->version != 0xff.
  */
 private	ser_t
-getRecord(sccs *s, MMAP *f)
+getRecord(sccs *s, FILE *f)
 {
 	int	e = 0;
 	ser_t	d;
@@ -383,7 +380,7 @@ shout(void)
  * sent; it might be different than the local name.
  */
 private	int
-extractPatch(char *name, MMAP *p)
+extractPatch(char *name, FILE *p)
 {
 	ser_t	tmp;
 	sccs	*s = 0;
@@ -416,17 +413,16 @@ extractPatch(char *name, MMAP *p)
 	 * Grafted file: filename as of creation time
 	 * {same as above, no perfile.}
 	 */
-	t = mkline(mnext(p));
+	t = fgetline(p);
 	line++;
-	name = name2sccs(name);
 	if (strneq("New file: ", t, 10)) {
 		newFile = 1;
 		perfile = sccs_getperfile(0, p, &line);
-		t = mkline(mnext(p));
+		t = fgetline(p);
 		line++;
 	}
 	if (strneq("Grafted file: ", t, 14)) {
-		t = mkline(mnext(p));
+		t = fgetline(p);
 		line++;
 	}
 	if (newProject && !newFile) errorMsg("tp_notfirst", 0, 0);
@@ -464,7 +460,6 @@ error:		if (perfile) sccs_free(perfile);
 		free(t);
 		if (s) sccs_free(s);
 		errfiles = addLine(errfiles, sccs2name(name));
-		free(name);
 		return (-1);
 	}
 
@@ -576,7 +571,6 @@ error:		if (perfile) sccs_free(perfile);
 		proj_reset(0);
 	}
 	free(gfile);
-	free(name);
 	free(t);
 	if (s) sccs_free(s);
 	if (rc < 0) {
@@ -669,21 +663,21 @@ skipkey(sccs *s, char *dkey)
  * Deltas end on the first blank line.
  */
 private	int
-extractDelta(char *name, sccs *s, int newFile, MMAP *f, int *np)
+extractDelta(char *name, sccs *s, int newFile, FILE *f, int *np)
 {
 	ser_t	d, parent = 0, tmp;
 	char	buf[MAXPATH];
 	char	*b;
 	char	*pid = 0;
-	long	off;
 	int	c;
 	int	skip = 0;
 	int	ignore = 0;
 	patch	*p;
+	FILE	*init = 0;
 
 	if (newFile == 1) goto delta1;
 
-	b = mkline(mnext(f)); line++;
+	b = fgetline(f); line++;
 	if (echo>4) fprintf(stderr, "%s\n", b);
 	if (strneq(b, "# Patch checksum=", 17)) return 0;
 	pid = strdup(b);
@@ -699,9 +693,21 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int *np)
 		unless (tableGCA) tableGCA = strdup(b);
 	}
 
+	/* buffer the required init block */
+delta1:	while ((b = fgetline(f)) && *b) {
+		unless (init) init = fmem();
+		fputs(b, init);
+		fputc('\n', init);
+		line++;
+		if (echo>4) fprintf(stderr, "%s\n", b);
+	}
+	if (b) line++;
+	assert(init);
+	rewind(init);
+
 	/* go get the delta table entry for this delta */
-delta1:	off = mtell(f);
-	d = getRecord(s, f);
+	d = getRecord(s, init);
+	rewind(init);
 	sccs_sdelta(s, d, buf);
 	if (opts->fast) {
 		if (skipkey(s, buf)) ignore = 1;
@@ -731,34 +737,30 @@ delta1:	off = mtell(f);
 	} else {
 		fileNum++;
 	}
-save:	mseekto(f, off);
+save:
 	if (skip) {
 		free(pid);
-		/* Eat metadata */
-		while ((b = mnext(f)) && (*b != '\n')) line++;
-		line++;
+		fclose(init);
+		init = 0;
 		/* Eat diffs */
-		while ((b = mnext(f)) && (*b != '\n')) line++;
+		while ((b = fgetline(f)) && *b) line++;
 		line++;
 	} else {
-		char	*start, *stop;
-
-		start = f->where; stop = start;
-		while ((b = mnext(f)) && (*b != '\n')) {
-			stop = f->where;
-			line++;
-			if (echo>4) fprintf(stderr, "%.*s", linelen(b), b);
+		if (ignore) {
+			/* fastpatch - ignore init block, keep diffs */
+			fclose(init);
+			init = 0;
 		}
-		line++;
-		if (echo>5) fprintf(stderr, "\n");
 		p = new(patch);
+		p->initMem = init;
+		init = 0;
+		if (echo>5) fprintf(stderr, "\n");
 		p->remote = 1;
 		p->pid = pid;
 		sccs_sdelta(s, d, buf);
 		p->me = strdup(buf);
 		sccs_sortkey(s, d, buf);
 		p->sortkey = strdup(buf);
-		p->initMmap = ignore ? 0 : mrange(start, stop, "b");
 		p->localFile = (s && (s != fake)) ? strdup(s->sfile) : 0;
 		sprintf(buf, "RESYNC/%s", name);
 		p->resyncFile = strdup(buf);
@@ -766,23 +768,21 @@ save:	mseekto(f, off);
 		if (echo>6) fprintf(stderr, "REM: %s %s %lu\n",
 		    REV(s, d), p->me, p->order);
 		c = line;
-		start = f->where; stop = start;
-		while ((b = mnext(f)) && (*b != '\n')) {
-			stop = f->where;
+		while ((b = fgetline(f)) && *b) {
+			unless (p->diffMem) p->diffMem = fmem();
+			fputs(b, p->diffMem);
+			fputc('\n', p->diffMem);
 			line++;
-			if (echo>5) fprintf(stderr, "%.*s", linelen(b), b);
+			if (echo>5) fprintf(stderr, "%s\n", b);
 		}
+		if (p->diffMem) rewind(p->diffMem);
 		if (opts->fast) {
 			/* header and diff are not connected */
 			if (FLAGS(s, d) & D_META) p->meta = 1;
-			if (start != stop) {
-				p->diffMmap = mrange(start, stop, "b");
-			}
 		} else if (FLAGS(s, d) & D_META) {
 			p->meta = 1;
 			assert(c == line);
-		} else {
-			p->diffMmap = mrange(start, stop, "b");
+			assert(!p->diffMem);
 		}
 		line++;
 		if (echo>5) fprintf(stderr, "\n");
@@ -790,7 +790,8 @@ save:	mseekto(f, off);
 		insertPatch(p, 1);
 	}
 	sccs_freedelta(s, d);
-	if ((c = mpeekc(f)) != EOF) {
+	if ((c = getc(f)) != EOF) {
+		ungetc(c, f);
 		return (c != '=');
 	}
 	return (0);
@@ -801,21 +802,22 @@ save:	mseekto(f, off);
  * Deltas end on the first blank line.
  */
 private	int
-skipPatch(MMAP *p)
+skipPatch(FILE *p)
 {
 	char	*b;
 	int	c;
 
 	do {
-		b = mnext(p); line++;
+		b = fgetline(p); line++;
 		if (strneq(b, "# Patch checksum=", 17)) return 0;
 		/* Eat metadata */
-		while ((b = mnext(p)) && (*b != '\n')) line++;
+		while ((b = fgetline(p)) && *b) line++;
 		line++;
 		/* Eat diffs */
-		while ((b = mnext(p)) && (*b != '\n')) line++;
+		while ((b = fgetline(p)) && *b) line++;
 		line++;
-		if ((c = mpeekc(p)) == EOF) return (0);
+		if ((c = getc(p)) == EOF) return (0);
+		ungetc(c, p);
 	} while (c != '=');
 	return (0);
 }
@@ -871,8 +873,8 @@ private	int
 applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 {
 	patch	*p;
-	MMAP	*iF;
-	MMAP	*dF;
+	FILE	*iF;
+	FILE	*dF;
 	ser_t	d = 0;
 	ser_t	top = 0;
 	ser_t	remote_tagtip = 0;
@@ -905,15 +907,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		}
 	}
 	if (s && (s != fake)) {
-		/* arrange for this sccs* to write into RESYNC */
-		free(s->sfile);
-		s->sfile = strdup(p->resyncFile);
-		free(s->gfile);
-		s->gfile = sccs2name(s->sfile);
-		free(s->pfile);
-		s->pfile = strdup(sccs_Xfile(s, 'p'));
-		s->state &= ~(S_PFILE|S_GFILE);
-		/* NOTE: we leave S_SFILE set, but no sfile there */
+		sccs_writeHere(s, p->resyncFile);
 
 		/* serial and therefore delta * are not stable */
 		// XXX: need a new lightweight way to track the
@@ -951,8 +945,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		 * without iF being set (as well as parent pointer p->pid).
 		 * p->pid won't be set for 1.0 delta.
 		 */
-		dF = p->diffMmap;
-		iF = p->initMmap;
+		dF = p->diffMem;
+		iF = p->initMem;
+		p->initMem = 0;
 		d = 0;	/* in this case, parent */
 		if (iF && p->pid) {
 			unless (d = sccs_findKey(s, p->pid)) {
@@ -979,6 +974,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 				remote_tagtip = d;
 			}
 		}
+		if (iF) fclose(iF); /* dF needs to stick around until write */
 		p = p->next;
 	}
 	unless (*nfound) {
@@ -1077,8 +1073,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			char	*t, *s;
 			char	key[MAXKEY];
 
-			unless (p->diffMmap) continue;
-			while (t = mnext(p->diffMmap)) {
+			unless (p->diffMem) continue;
+			rewind(p->diffMem);
+			while (t = fgetline(p->diffMem)) {
 				unless (*t == '>') continue;
 				++t;		      /* skip '>' */
 				unless (opts->fast) ++t;    /* skip space */
@@ -1098,7 +1095,6 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 				}
 				free(t);
 			}
-			mseekto(p->diffMmap, 0);
 		}
 	}
 	sprintf(csets_in, "%s/%s", ROOT2RESYNC, CSETS_IN);
@@ -1118,10 +1114,12 @@ markup:
 	 */
 	for (d = 0, p = patchList; p; p = p->next) {
 		/*
-		 * In fastpatch, diffMmap is not related to initMmap, so
-		 * just clear all of them.  And mclose works if 0 passed in.
+		 * In fastpatch, diffMem is not related to initMem, so
+		 * just clear all of them.
+		 * win32: must fclose after cset_write
 		 */
-		mclose(p->diffMmap); /* win32: must mclose after cset_write */
+		if (p->diffMem) fclose(p->diffMem);
+		p->diffMem = 0;
 		d = p->serial;
 		unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
 		FLAGS(s, d) |= D_SET; /* for resum() */
@@ -1260,7 +1258,7 @@ private	int
 applyPatch(char *localPath, sccs *perfile)
 {
 	patch	*p;
-	MMAP	*iF;
+	FILE	*iF;
 	FILE	*dF;
 	sccs	*s = 0;
 	ser_t	d = 0;
@@ -1373,19 +1371,17 @@ apply:
 			sccscopy(s, perfile);
 		}
 		if (p->initFile) {
-			iF = mopen(p->initFile, "b");
+			iF = fopen(p->initFile, "r");
 		} else {
-			iF = p->initMmap;
-			p->initMmap = 0;
+			iF = p->initMem;
+			p->initMem = 0;
 		}
 		if (p->diffFile) {
 			dF = fopen(p->diffFile, "r");
 		} else {
-			dF = fmem();
-			fwrite(p->diffMmap->mmap, 1, p->diffMmap->size, dF);
-			rewind(dF);
-			mclose(p->diffMmap);
-			p->diffMmap = 0;
+			dF = p->diffMem;
+			p->diffMem = 0;
+			unless (dF) dF = fmem();
 		}
 		d = 0;
 		newflags = NEWFILE|DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
@@ -1395,7 +1391,7 @@ apply:
 			return -1;
 		}
 		if (s->bad_dsum || s->io_error) return (-1);
-		mclose(iF);	/* dF done by delta() */
+		fclose(iF);	/* dF done by delta() */
 		sccs_free(s);
 		s = sccs_init(p->resyncFile, INIT_NOCKSUM|SILENT);
 		p = p->next;
@@ -1429,19 +1425,17 @@ apply:
 			return (-1);
 		}
 		if (p->initFile) {
-			iF = mopen(p->initFile, "b");
+			iF = fopen(p->initFile, "r");
 		} else {
-			iF = p->initMmap;
-			p->initMmap = 0;
+			iF = p->initMem;
+			p->initMem = 0;
 		}
 		if (p->diffFile) {
 			dF = fopen(p->diffFile, "r");
 		} else {
-			dF = fmem();
-			fwrite(p->diffMmap->mmap, 1, p->diffMmap->size, dF);
-			rewind(dF);
-			mclose(p->diffMmap);
-			p->diffMmap = 0;
+			dF = p->diffMem;
+			p->diffMem = 0;
+			unless (dF) dF = fmem();
 		}
 		newflags = DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
 		if (echo <= 3) newflags |= SILENT;
@@ -1450,7 +1444,7 @@ apply:
 			return (-1);
 		}
 		if (s->bad_dsum || s->io_error) return -1;
-		mclose(iF);
+		fclose(iF);
 		p = p->next;
 	}
 	sccs_free(s);
@@ -1545,7 +1539,6 @@ getLocals(sccs *s, char *name)
 			}
 			if (p) continue;
 		}
-			
 		assert(d);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++fileNum);
 		unless (t = fopen(tmpf, "w")) {
@@ -1692,7 +1685,7 @@ freePatchList(void)
 			free(p->diffFile);
 		}
 		if (p->localFile) free(p->localFile);
-		if (p->initMmap) free(p->initMmap);
+		if (p->initMem) fclose(p->initMem);
 		free(p->resyncFile);
 		if (p->pid) free(p->pid);
 		if (p->me) free(p->me);
@@ -1764,19 +1757,20 @@ resync_lock(void)
  * Next line is patch checksum, then SFIO data follows.
  */
 private int
-sfio(MMAP *m)
+sfio(FILE *m)
 {
 	char	*t;
 	FILE	*f = 0;
 	sccs	*s = 0, *sr = 0;
 	ser_t	d;
-	size_t	left, n;
+	size_t	n;
 	char	*flist;
 	int	rc = -1, rlen;
 	char	buf[MAXLINE];
 	char	key[MAXKEY];
 
-	unless ((t = mnext(m)) && strneq(t-1, "\n\n# Patch checksum=", 19)) {
+	unless ((t = fgetline(m)) && !*t &&
+	    (t = fgetline(m)) && strneq(t, "# Patch checksum=", 17)) {
 		return (-1);
 	}
 
@@ -1792,15 +1786,9 @@ sfio(MMAP *m)
 		perror(prog);
 		goto err;
 	};
-	t = mnext(m);
-	t = strchr(t, '\n') + 1;	/* will not have \n if SFIO errored */
-	assert(strneq(t, "SFIO ", 5));
-	left = m->end - t;
-	do {
-		unless (n = fwrite(t, 1, left, f)) break;
-		left -= n;
-		t += n;
-	} while (left);
+	while ((n = fread(buf, 1, sizeof(buf), m)) > 0) {
+		fwrite(buf, 1, n, f);
+	}
 	if (echo > 1) progress_nldone();
 	if (pclose(f)) {
 		fprintf(stderr, "takepatch: BAM sfio -i failed.\n");
@@ -1901,14 +1889,14 @@ err:	if (f) fclose(f);
  * This function creates patches in the PENDING directory when the
  * patches are read from stdin.
  */
-private	MMAP	*
+private	FILE	*
 init(char *inputFile)
 {
 	char	buf[BUFSIZ];		/* used ONLY for input I/O */
 	char	*root, *t;
 	int	i, len;
 	FILE	*f, *g;
-	MMAP	*m = 0;
+	FILE	*m = 0;
 	uLong	sumC = 0, sumR = 0;
 	int	sfiopatch = 0;
 	struct	{
@@ -2197,7 +2185,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			    pendingFile);
 			NOTICE();
 		}
-		unless (m = mopen(pendingFile, "b")) {
+		unless (m = fopen(pendingFile, "r")) {
 			perror(pendingFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
@@ -2209,7 +2197,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		fclose(g);
 	} else {
 		resync_lock();
-		unless (m = mopen(inputFile, "b")) {
+		unless (m = fopen(inputFile, "r")) {
 			perror(inputFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
@@ -2221,12 +2209,13 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		fclose(g);
 
 		i = 0;
-		while (t = mnext(m)) {
-			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT)) ||
-			    (opts->fast = strneq(t, PATCH_FAST, strsz(PATCH_FAST)))) {
-				len = linelen(t);
+		while (t = fgetline(m)) {
+			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT)-1) ||
+			    (opts->fast = strneq(t, PATCH_FAST, strsz(PATCH_FAST)-1))) {
+				len = strlen(t);
 				sumC = adler32(sumC, t, len);
-				t = mnext(m);
+				sumC = adler32(sumC, "\n", 1);
+				t = fgetline(m);
 				i++;
 				break;
 			}
@@ -2239,14 +2228,14 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		}
 		do {
 			if (strneq("== ", t, 3)) ++opts->N;
-			len = linelen(t);
+			len = strlen(t);
 			sumC = adler32(sumC, t, len);
-			unless (t = mnext(m)) break;
-		} while (!strneq(t-2, "\n\n# Patch checksum=", 19));
-		unless (t && strneq(t-2, "\n\n# Patch checksum=", 19)) {
+			sumC = adler32(sumC, "\n", 1);
+			unless (t = fgetline(m)) break;
+		} while (!strneq(t, "# Patch checksum=", 17));
+		unless (t && strneq(t, "# Patch checksum=", 17)) {
 			goto missing;
 		}
-		t = mkline(t);
 		sumR = strtoul(t+17, 0, 16);
 		assert(sumR != 0);
 	}
@@ -2260,8 +2249,8 @@ missing:
 	}
 	if (sumR != sumC) badXsum(sumR, sumC);
 
-	mseekto(m, 0);
-	mnext(m);		/* skip version number */
+	rewind(m);
+	fgetline(m);		/* skip version number */
 
 	return (m);
 }

@@ -152,8 +152,10 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 		move_remote(rs, t); /* fine if this doesn't move */
 
 		/* 's' is stale, but update s->sfile and s->gfile */
+		if (s->fullsfile != s->sfile) free(s->fullsfile);
 		free(s->sfile);
 		s->sfile = t;
+		s->fullsfile = fullname(t, 0);
 		free(s->gfile);
 		s->gfile = sccs2name(s->sfile);
 

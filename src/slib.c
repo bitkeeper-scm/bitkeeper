@@ -33,7 +33,6 @@ private int	end(sccs *, ser_t, FILE *, int, int, int, int);
 private void	date(sccs *s, ser_t d, time_t tt);
 private int	getflags(sccs *s, char *buf);
 private sum_t	fputmeta(sccs *s, u8 *buf, FILE *out);
-private ser_t*	getserlist(sccs *sc, int isSer, char *s, int *ep);
 private int	checkRev(sccs *s, char *file, ser_t d, int flags);
 private int	checkrevs(sccs *s, int flags);
 private int	stripChecks(sccs *s, ser_t d, char *who);
@@ -74,13 +73,12 @@ private	void	taguncolor(sccs *s, ser_t d);
 private	void	prefix(sccs *s,
 		    ser_t d, u32 flags, int lines, char *name, FILE *out);
 private	int	sccs_meta(char *m, sccs *s, ser_t parent,
-		    MMAP *initFile, int fixDates);
+		    char *init, int fixDates);
 private	int	misc(sccs *s);
-private	void	sccs_zputs_init(sccs *s, FILE *fout);
-private	void	sccs_zputs_done(sccs *s);
 private	int	bin_deltaTable(sccs *s, FILE *out);
 private	off_t	bin_data(char *header);
 private	ser_t	*scompressGraph(sccs *s);
+private	FILE	*sccs_wrweaveDone(sccs *s);
 
 /*
  * returns 1 if dir is a directory that is not empty
@@ -856,8 +854,11 @@ uniqRoot(sccs *s)
 	assert(TREE(s) == TABLE(s));
 	d = TREE(s);
 
-	unless (uniq_open() == 0) return;	// XXX - no error?
-	uniq_adjust(s, d);
+	/* 
+	 * Both of these are noisy if they fail now, so just exit 1.
+	 */
+	if (uniq_open()) exit(1);
+	if (uniq_adjust(s, d)) exit(1);
 	/* leave uniq db open... */
 }
 
@@ -902,9 +903,8 @@ uniqDelta(sccs *s)
 	 * across different repository;
 	 */
 	if (IMPORT(s)) return;
-	unless (uniq_open() == 0) return;
-
-	uniq_adjust(s, d);
+	if (uniq_open()) exit(1);
+	if (uniq_adjust(s, d)) exit(1);
 	/* leave uniq db open... */
 }
 
@@ -1895,12 +1895,41 @@ again:		for (x = t+1; x <= TABLE(s); x++) {
 void
 sccs_rdweaveInit(sccs *s)
 {
-	s->rdweaveEOF = 0;
-	fseek(s->fh, s->data, SEEK_SET);
-	if (GZIP(s)) {
-		s->oldfh = s->fh;
-		s->fh = fopen_zip(s->oldfh, "r");
+	char	*t;
+
+	unless (s->fh) {
+		if (sccs_open(s)) {
+			fprintf(stderr,
+			    "%s: couldn't open %s @ %s\n",
+			    prog, s->sfile, proj_cwd());
+			exit(1);
+		}
+		unless (s->data) {
+			// set s->data == 0 whenever a file is written
+			if (BFILE(s)) {
+				s->data = bin_data(fgetline(s->fh));
+			} else {
+				/* XXX need data-offset in header */
+				while (t = fgetline(s->fh)) {
+					if (streq(t, "\001T")) break;
+				}
+				unless (t) {
+					fprintf(stderr, "%s: missing weave in %s\n",
+					    prog, s->sfile);
+					exit(1);
+				}
+				s->data = ftell(s->fh);
+			}
+		}
 	}
+	s->rdweaveEOF = 0;
+	assert(!s->rdweave);
+	s->rdweave = 1;
+	if (fseek(s->fh, s->data, SEEK_SET)) {
+		perror(s->sfile);
+		exit(1);
+	}
+	if (GZIP(s)) fpush(&s->fh, fopen_zip(s->fh, "r"));
 }
 
 /*
@@ -1960,13 +1989,10 @@ sccs_rdweaveDone(sccs *s)
 {
 	int	ret = 0;
 
+	assert(s->rdweave);
+	s->rdweave = 0;
 	unless (s->rdweaveEOF) ret = 1;
-	if (GZIP(s)) {
-		assert(s->oldfh);
-		ret = fclose(s->fh);
-		s->fh = s->oldfh;
-		s->oldfh = 0;
-	}
+	if (GZIP(s)) ret = fpop(&s->fh);
 	return (ret);
 }
 
@@ -1994,9 +2020,14 @@ sccs_startWrite(sccs *s)
 			    (TABLE(s) + 1) * (sizeof(d1_t) + sizeof(d2_t));
 			if (HAS_GFILE(s)) est_size += size(s->gfile);
 		}
-		sfile = fopen(xfile, "w");
-		sfile = fchksum_open(sfile, "w", est_size);
-		sfile = fgzip_open(sfile, "w"); /* conditional? */
+		/*
+		 * These are stacked so closing the final 'sfile' will
+		 * close and free all 3 FILE*'s.
+		 */
+		if (sfile = fopen(xfile, "w")) {
+			fpush(&sfile, fchksum_open(sfile, "w", est_size));
+			fpush(&sfile, fgzip_open(sfile, "w")); /* optional? */
+		}
 	} else if (s->mem_out) {
 		unless(s->outfh) s->outfh = fmem();
 		assert(s->outfh);
@@ -2004,6 +2035,7 @@ sccs_startWrite(sccs *s)
 	} else {
 		sfile = fopen(xfile, "w");
 	}
+	s->outfh = sfile;
 	unless (sfile) perror(xfile);
 	return (sfile);
 }
@@ -2012,22 +2044,19 @@ sccs_startWrite(sccs *s)
  * Bail, but clean up first.
  */
 void
-sccs_abortWrite(sccs *s, FILE **f)
+sccs_abortWrite(sccs *s)
 {
-	unless (s) return;
-	if (*f) fclose(*f);	/* before the unlink */
+	unless (s && s->outfh) return;
+	if (s->wrweave) sccs_wrweaveDone(s);
+	fclose(s->outfh);	/* before the unlink */
 	if (s->mem_out) {
 		assert(!BFILE_OUT(s));
 		s->mem_in = 0;
-		if (s->outfh) {
-			if (*f != s->outfh) fclose(s->outfh);
-			s->outfh = 0;
-		}
 		s->mem_out = 0;
 	} else {
 		unlink(sccsXfile(s, 'x'));
 	}
-	*f = 0;
+	s->outfh = 0;
 	FREE(s->remap);
 	sccs_close(s);
 }
@@ -2037,21 +2066,23 @@ sccs_abortWrite(sccs *s, FILE **f)
  * the sfile.
  */
 int
-sccs_finishWrite(sccs *s, FILE **f)
+sccs_finishWrite(sccs *s)
 {
 	char	*xfile = sccsXfile(s, 'x');
 	int	rc;
  	FILE	*tmp;
 
+	assert(!s->wrweave);
 	unless (BFILE_OUT(s)) {
-		fseek(*f, 0L, SEEK_SET);
-		fprintf(*f, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
+		fseek(s->outfh, 0L, SEEK_SET);
+		fprintf(s->outfh,
+		    "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	}
-	rc = ferror(*f);
+	rc = ferror(s->outfh);
 	if (s->mem_out) {
 		assert(!BFILE_OUT(s));
+		assert(s->fh);
 		tmp = s->fh;
-		assert(s->state & S_SOPEN);
 		s->fh = s->outfh;
 		rewind(s->fh);
 		if (s->mem_in) {
@@ -2062,20 +2093,19 @@ sccs_finishWrite(sccs *s, FILE **f)
 			s->outfh = fmem();
 			s->mem_in = 1;
 		}
-		*f = 0;
 	} else {
-		if (fclose(*f)) rc = -1;
-		*f = 0;
+		if (fclose(s->outfh)) rc = -1;
+		s->outfh = 0;
 		if (rc) {
 			perror(xfile);
 			goto out;
 		}
 		sccs_close(s);
-		if (rename(xfile, s->sfile)) {
+		if (rc = rename(xfile, s->sfile)) {
 			fprintf(stderr,
 			    "can't rename(%s, %s) left in %s\n",
 			    xfile, s->sfile, xfile);
-			return (-1);
+			goto out;
 		}
 		assert(size(s->sfile) > 0);
 		/* Always set the time on the s.file behind the g.file or now */
@@ -2083,9 +2113,11 @@ sccs_finishWrite(sccs *s, FILE **f)
 		if (chmod(s->sfile, 0444)) perror(s->sfile);
 		if (CSET(s)) cset_savetip(s);
 	}
-	s->encoding_in = s->encoding_out;
+out:	s->encoding_in = s->encoding_out;
+	// idea: delta_table could save new s->data (only useful for ascii)
+	s->data = 0;		/* force rescanning for weave */
 	FREE(s->remap);
-out:	return (rc);
+	return (rc);
 }
 
 /*
@@ -2545,13 +2577,11 @@ private	int
 resyncMeta(sccs *s, ser_t d, char *buf)
 {
 	sccs	*s2;
-	MMAP	*m;
 	FILE	*f;
 	char	key[MAXKEY];
 
-	m = mrange(buf, buf + strlen(buf), "");
 	/* note: this rewrites the s.file, and does a sccs_close() */
-	if (sccs_meta("resolve", s, d, m, 1)) {
+	if (sccs_meta("resolve", s, d, buf, 1)) {
 		fprintf(stderr, "resolve: failed to make tag merge\n");
 		return (1);
 	}
@@ -3100,7 +3130,7 @@ bin_mkgraph(sccs *s)
 	int	line = 1, len;
 	char	*perfile, *header;
 	ser_t	d;
-	MMAP	*pf;
+	FILE	*pf;
 
 	header = fgetline(s->fh);
 	bin_header(header, &off_h, &heapsz, &off_d, &deltasz, &off_s, &symsz);
@@ -3109,38 +3139,33 @@ bin_mkgraph(sccs *s)
 	perfile = malloc(off_h);
 	len = off_h - strlen(header) - 1;
 	fread(perfile, 1, len, s->fh);
-	pf = mrange(perfile, perfile+len, "b");
+	pf = fmem_buf(perfile, len);
 	unless (sccs_getperfile(s, pf, &line)) {
 		fprintf(stderr, "%s: failed to load %s\n", prog, s->sfile);
 		exit(1);
 	}
-	mclose(pf);
+	fclose(pf);
 	free(perfile);
 	s->bitkeeper = 1;
 
-	data_resize(&s->heap, heapsz);
-	s->heap.len = heapsz;
-	s->mapping = addLine(s->mapping,
-	    datamap(s->heap.buf, s->heap.len, s->fh, off_h, 0));
+	s->heap.len = s->heap.size = heapsz;
+	s->heap.buf = datamap(s, "heap", 1, heapsz, off_h, 0);
+	assert(s->heap.buf);
 
 	deltas = deltasz / (sizeof(d1_t) + sizeof(d2_t));
-	growArray(&s->slist1, deltas);
-	growArray(&s->slist2, deltas);
+	s->slist1 = datamap(s, "delta1", sizeof(d1_t), deltas, off_d, 1);
+	assert(s->slist1);
+	s->slist2 = datamap(s, "delta2",
+	    sizeof(d2_t), deltas, off_d + deltas*sizeof(d1_t), 1);
+	assert(s->slist2);
+
 	growArray(&s->extra, deltas);
 	TABLE_SET(s, deltas);
 
-	s->mapping = addLine(s->mapping,
-	    datamap(s->slist1+1, deltas*sizeof(d1_t), s->fh, off_d, 1));
-	s->mapping = addLine(s->mapping,
-	    datamap(s->slist2+1, deltas*sizeof(d2_t), s->fh,
-		off_d + deltas*sizeof(d1_t), 1));
-
 	if (symsz) {
-		growArray(&s->symlist, symsz/sizeof(symbol));
-		s->mapping = addLine(s->mapping,
-		    datamap(s->symlist+1, symsz, s->fh, off_s, 1));
+		s->symlist = datamap(s, "symbol",
+		    sizeof(symbol), symsz/sizeof(symbol), off_s, 1);
 	}
-
 	d = TABLE(s);
 	if (FLAGS(s, d) & D_FIXUPS) {
 		u32	tmp[4];
@@ -3155,17 +3180,8 @@ bin_mkgraph(sccs *s)
 		SUM_SET(s, d, le32toh(tmp[3]));
 		SORTSUM_SET(s, d, SUM(s, d));
 		FLAGS(s, d) &= ~D_FIXUPS;
-
-		//fprintf(stderr, "%s: loaded fixups a/d/s=%d/%d/%d sum=%d\n", s->gfile, ADDED(s, d), DELETED(s, d), SAME(s, d), SUM(s, d));
 	}
-
-	/* XXX should move to common code. */
-	unless (CSET(s)) s->file = 1;
-	if (CSET(s) &&
-	    proj_isComponent(s->proj) &&
-	    proj_isProduct(0)) {
-	    	s->file = 1;
-    	}
+	if (s->pagefh) s->fh = 0; /* we can't use that handle anymore */
 }
 
 /*
@@ -3208,7 +3224,7 @@ mkgraph(sccs *s, int flags)
 	rewind(s->fh);
 	if (BFILE(s)) {
 		bin_mkgraph(s);
-		return;
+		goto out;
 	}
 	buf = sccs_nextdata(s);		/* checksum */
 	line++;
@@ -3414,12 +3430,6 @@ done:		if (CSET(s) && TAG(s, d) &&
 	/*
 	 * Convert the linear delta table into a graph.
 	 */
-	unless (CSET(s)) s->file = 1;
-	if (CSET(s) &&
-	    proj_isComponent(s->proj) &&
-	    proj_isProduct(0)) {
-	    	s->file = 1;
-    	}
 	for (d = TREE(s); d <= TABLE(s); d++) {
 		unless (FLAGS(s, d)) {
 			scompress_it = 1;	// fix the hole later.
@@ -3459,7 +3469,12 @@ err:		sccs_freetable(s);
 	unless (flags & INIT_WACKGRAPH) {
 		if (checkrevs(s, 0)) s->state |= S_BADREVS|S_READ_ONLY;
 	}
-
+out:	unless (CSET(s)) s->file = 1;
+	if (CSET(s) &&
+	    proj_isComponent(s->proj) &&
+	    proj_isProduct(0)) {
+	    	s->file = 1;
+    	}
 	debug((stderr, "mkgraph() done\n"));
 }
 
@@ -4341,6 +4356,11 @@ sccs_init(char *name, u32 flags)
 	if (lstat_rc && (flags & INIT_MUSTEXIST)) return (0);
 	s = new(sccs);
 	s->sfile = strdup(name);
+	if (IsFullPath(name)) {
+		s->fullsfile = s->sfile;
+	} else {
+		s->fullsfile = aprintf("%s/%s", proj_cwd(), s->sfile);
+	}
 	s->gfile = sccs2name(name);
 	s->encoding_in |= E_ALWAYS;
 
@@ -4378,6 +4398,7 @@ sccs_init(char *name, u32 flags)
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
  err:			free(s->gfile);
+			if (s->fullsfile != s->sfile) free(s->fullsfile);
 			free(s->sfile);
 			proj_free(s->proj);
 			free(s);	/* We really mean free, not sccs_free */
@@ -4432,9 +4453,7 @@ sccs_init(char *name, u32 flags)
 		if (isreg(s->pfile)) s->state |= S_PFILE;
 	}
 	debug((stderr, "init(%s) -> %s, %s\n", s->gfile, s->sfile, s->gfile));
-	sccs_open(s, &sbuf);
-
-	unless (s->fh) {
+	if (sccs_open(s)) {
 		if ((errno == ENOENT) || (errno == ENOTDIR)) {
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
@@ -4445,6 +4464,7 @@ sccs_init(char *name, u32 flags)
 				fputs("sccs_init: ", stderr);
 				perror(s->sfile);
 			}
+			if (s->fullsfile != s->sfile) free(s->fullsfile);
 			free(s->sfile);
 			free(s->gfile);
 			free(s->pfile);
@@ -4517,54 +4537,24 @@ sccs_init(char *name, u32 flags)
 }
 
 /*
- * Restart an sccs_init because we've changed the state of the file.
+ * Recompute S_GFILE|S_PFILE, s->gfile, s->mode, s->gtime
+ * for when then might have changed.
  *
- * This does not reread the delta table, if you want that, use sccs_reopen().
+ * This is not needed after writing a sfile to go back and reread the weave.
  */
 sccs*
 sccs_restart(sccs *s)
 {
 	struct	stat sbuf;
-	char	*buf;
-	char	*header;
 
 	assert(s);
 	if (check_gfile(s, 0)) return (0);
 	bzero(&sbuf, sizeof(sbuf));	/* file may not be there */
-	if (lstat(s->sfile, &sbuf) == 0) {
-		if (!S_ISREG(sbuf.st_mode)) {
-bad:			sccs_free(s);
-			return (0);
-		}
-		if (sbuf.st_size == 0) goto bad;
-		s->state |= S_SFILE;
+	if (lstat(s->sfile, &sbuf) || !S_ISREG(sbuf.st_mode) || (sbuf.st_size == 0)) {
+		sccs_free(0);
+		return (0);
 	}
-	if (s->mem_in) {
-		assert(s->state & S_SOPEN);
-		s->size = fseek(s->fh, 0, SEEK_END);
-		goto skip;
-	}
-	if ((s->state & S_SOPEN) && (s->size != sbuf.st_size)) {
-		// shouldn't happen
-		if (getenv("_BK_DEVELOPER")) assert(0);
-		sccs_close(s);
-	}
-	unless (s->state & S_SOPEN) {
-		sccs_close(s);
-		if (sccs_open(s, &sbuf)) return (s);
-skip:
-		rewind(s->fh);
-		if (BFILE(s)) {
-			header = fgetline(s->fh);
-			s->data = bin_data(header);
-		} else {
-			/* XXX need data-offset in header */
-			while(buf = sccs_nextdata(s)) {
-				if (streq(buf, "\001T")) break;
-			}
-			s->data = ftell(s->fh);
-		}
-	}
+	s->state |= S_SFILE;
 	if (isreg(s->pfile)) {
 		s->state |= S_PFILE;
 	} else {
@@ -4591,41 +4581,32 @@ sccs_reopen(sccs *s)
 }
 
 /*
- * open & mmap the file.
- * Use this after an sccs_close() to reopen,
- * use sccs_reopen() if you need to reread the graph.
- * Note: this is used under windows via win32_open().
+ * open a sfile and return a FILE* to it.
+ * Called from sccs_init() & sccs_rdweaveInit()
  */
 int
-sccs_open(sccs *s, struct stat *sp)
+sccs_open(sccs *s)
 {
-	struct	stat sbuf;
+	FILE	*f;
 
-	assert(s);
-	if (s->state & S_SOPEN) {
-		assert(s->fh);
-		return (0);
-	} else {
-		assert(s->fh == 0);
-	}
-	unless (s->fh = fopen(s->sfile, "r")) return (-1);
-	unless (sp) {
-		sp = &sbuf;
-		fstat(fileno(s->fh), sp);
-	}
-	if (fgetc(s->fh) == '\001') {
+	assert(!s->fh);
+	unless (f = fopen(s->fullsfile, "r")) return (-1);
+	if (fgetc(f) == '\001') {
 		s->encoding_in &= ~E_BFILE;
 	} else {
 		/* binary file */
-		rewind(s->fh);
-		s->fh = fchksum_open(s->fh, "r", 0);
-		unless (s->fh) return (-1);
-		s->fh = fgzip_open(s->fh, "r");
+		rewind(f);
+		if (fpush(&f, fchksum_open(f, "r", 0))) {
+			fclose(f);
+			return (-1);
+		}
+		if (fpush(&f, fgzip_open(f, "r"))) {
+			fclose(f);
+			return (-1);
+		}
 		s->encoding_in |= E_BFILE;
 	}
-	s->size = sp->st_size;
-	s->state |= S_SOPEN;
-	assert(s->fh);
+	s->fh = f;
 	return (0);
 }
 
@@ -4636,20 +4617,43 @@ sccs_open(sccs *s, struct stat *sp)
 void
 sccs_close(sccs *s)
 {
-	int	i;
-
-	if (s->state & S_SOPEN) {
-		assert(s->fh != 0);
+	if (s->pagefh) {
+		dataunmap(s, 1);
+		fclose(s->pagefh);
+		s->pagefh = 0;
+	}
+	if (s->fh) {
+		if (s->rdweave) sccs_rdweaveDone(s);
 		assert(!s->mem_in); /* don't want to lose data */
 		fclose(s->fh);
 		s->fh = 0;
-		EACH(s->mapping) dataunmap((MAP*)s->mapping[i]);
-		freeLines(s->mapping, 0);
-		s->mapping = 0;
-		s->state &= ~S_SOPEN;
-	} else {
-		assert(s->fh == 0);
 	}
+}
+
+/*
+ * For an open sfile, arrange for it to be written to a new location.
+ */
+void
+sccs_writeHere(sccs *s, char *new)
+{
+	char	*spath = name2sccs(new);
+
+	/* must have old file open before we change pathnames */
+	unless (s->fh) sccs_open(s);
+	if (s->sfile != s->fullsfile) free(s->fullsfile);
+	free(s->sfile);
+	s->sfile = spath;
+	if (IsFullPath(s->sfile)) {
+		s->fullsfile = s->sfile;
+	} else {
+		s->fullsfile = aprintf("%s/%s", proj_cwd(), s->sfile);
+	}
+	free(s->gfile);
+	s->gfile = sccs2name(s->sfile);
+	free(s->pfile);
+	s->pfile = strdup(sccs_Xfile(s, 'p'));
+	s->state &= ~(S_PFILE|S_GFILE);
+	/* NOTE: we leave S_SFILE set, but no sfile there */
 }
 
 /*
@@ -4720,7 +4724,6 @@ sccs_free(sccs *s)
 			assert(f != s->outfh);
 			fclose(s->outfh);
 			s->fh = 0;
-			s->state &= ~S_SOPEN;
 		} else {
 			f = s->outfh;
 		}
@@ -4734,8 +4737,13 @@ sccs_free(sccs *s)
 		// XXX In this case sccs_free has transactional quality
 		// and has no back channel to let caller know transaction
 		// failed.
-		if (sccs_finishWrite(s, &out)) sccs_abortWrite(s, &out);
+		if (sccs_finishWrite(s)) sccs_abortWrite(s);
 		fclose(f);
+	}
+	if (s->wrweave) {
+		fprintf(stderr, "%s: partial write of %s aborted.\n",
+		    prog, s->sfile);
+		sccs_abortWrite(s);
 	}
 	chk_gmode(s);
 
@@ -4755,9 +4763,19 @@ sccs_free(sccs *s)
 	// No free on fullpath, proj.c maintains it.
 
 	sccsXfile(s, 0);
-	sccs_freetable(s);
+	if (s->pagefh) {
+		dataunmap(s, 0); // unprotect all memory, but leave blank
+		fclose(s->pagefh);
+		s->pagefh = 0;
+	}
+	if (s->fh) {
+		assert(!s->mem_in); /* don't want to lose data */
+  		fclose(s->fh);
+		s->fh = 0;
+	}
 	free(s->symlist);
-	if (s->state & S_SOPEN) sccs_close(s); /* move this up for trace */
+	sccs_freetable(s);
+	if (s->fullsfile != s->sfile) free(s->fullsfile);
 	if (s->sfile) free(s->sfile);
 	if (s->gfile) free(s->gfile);
 	if (s->pfile) free(s->pfile);
@@ -5244,32 +5262,38 @@ walkList(sccs *s, char *list, int *errp)
 }
 
 /*
- * Read the list of serials in s and put them in list.
- * S can either be list of serials or a list of revisions.
- * In neither case does this recurse on the list, it just parses the list.
- * This is quite different than serialmap() which uses this routine but
- * stores the results in a different data structure.
- * XXX - this poorly named, it doesn't use "struct serlist".
+ * Save ascii include/exclude lists on delta
  */
-private ser_t *
-getserlist(sccs *sc, int isSer, char *s, int *ep)
+int
+sccs_setCludes(sccs *sc, ser_t d, char *iLst, char *xLst)
 {
+	FILE	*f;
 	ser_t	t;
-	ser_t	*l = 0;
+	ser_t	*include = 0;
+	ser_t	*exclude = 0;
+	int	i, err = 0;
 
-	debug((stderr, "getserlist(%s)\n", s));
-	if (isSer) {
-		while (*s && *s != '\n') {
-			l = addSerial(l, (ser_t) atoi(s));
-			while (*s && *s != '\n' && isdigit(*s)) s++;
-			while (*s && *s != '\n' && !isdigit(*s)) s++;
-		}
-		return (l);
+	unless (iLst || xLst) return (0);
+	for (t = walkList(sc, iLst, &err);
+	     !err && t;
+	     t = walkList(sc, 0, &err)) {
+		include = addSerial(include, t);
 	}
-	for (t = walkList(sc, s, ep); !*ep && t; t = walkList(sc, 0, ep)) {
-		l = addSerial(l, t);
+	for (t = walkList(sc, xLst, &err);
+	     !err && t;
+	     t = walkList(sc, 0, &err)) {
+		exclude = addSerial(exclude, t);
 	}
-	return (l);
+	unless (err) {
+		f = fmem();
+		EACH(include) sccs_saveNum(f, include[i], 1);
+		EACH(exclude) sccs_saveNum(f, exclude[i], -1);
+		CLUDES_SET(sc, d, fmem_peek(f, 0));
+		fclose(f);
+	}
+	FREE(include);
+	FREE(exclude);
+	return (err);
 }
 
 /*
@@ -5631,24 +5655,24 @@ fputmeta(sccs *s, u8 *buf, FILE *out)
 	return (sum);
 }
 
-/*
- * Data for zputs() to writes it's data.  We currently can only write
- * one sfile at a time.
- */
-private	FILE	*zput;
-
-private void
-sccs_zputs_init(sccs *s, FILE *fout)
+private FILE *
+sccs_wrweaveInit(sccs *s)
 {
-	zput = fopen_zip(fout, "wc", -1, &s->cksum);
+	assert(!s->wrweave);
+	s->wrweave = 1;
+	if (GZIP_OUT(s)) {
+		fpush(&s->outfh, fopen_zip(s->outfh, "wc", -1, &s->cksum));
+	}
+	return (s->outfh);
 }
 
-private void
-sccs_zputs_done(sccs *s)
+private FILE *
+sccs_wrweaveDone(sccs *s)
 {
-	assert(zput);
-	fclose(zput);
-	zput = 0;
+	assert(s->wrweave);
+	if (GZIP_OUT(s)) fpop(&s->outfh);
+	s->wrweave = 0;
+	return (s->outfh);
 }
 
 /*
@@ -5694,12 +5718,8 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 		sum += *p;
 		if (*p++ == '\n') break;
 	}
-	if (GZIP_OUT(s)) {
-		fwrite(buf, 1, p - buf, zput);
-	} else {
-		fwrite(buf, 1, p - buf, out);
-		s->cksum += sum;
-	}
+	fwrite(buf, 1, p - buf, out);
+	unless (GZIP_OUT(s)) s->cksum += sum;
 	return (sum);
 }
 
@@ -7113,8 +7133,8 @@ sccs_get(sccs *s, char *rev,
 		fprintf(stderr, "get: no pathname for %s\n", s->sfile);
 		return (-1);
 	}
-	unless (s->state & S_SOPEN) {
-		fprintf(stderr, "get: couldn't open %s\n", s->sfile);
+	unless (s->cksumok) {
+		fprintf(stderr, "get: bad chksum on %s\n", s->sfile);
 err:		if (i2) free(i2);
 		if (locked) {
 			sccs_unlock(s, 'p');
@@ -7122,10 +7142,6 @@ err:		if (i2) free(i2);
 			s->state &= ~S_PFILE;
 		}
 		return (-1);
-	}
-	unless (s->cksumok) {
-		fprintf(stderr, "get: bad chksum on %s\n", s->sfile);
-		goto err;
 	}
 	unless (HASGRAPH(s)) {
 		fprintf(stderr, "get: no/bad delta tree in %s\n", s->sfile);
@@ -7399,13 +7415,9 @@ sccs_cat(sccs *s, u32 flags, char *printOut)
 
 	debug((stderr, "annotate(%s, %x, %s)\n",
 	    s->sfile, flags, printOut));
-	unless (s->state & S_SOPEN) {
-		fprintf(stderr, "annotate: couldn't open %s\n", s->sfile);
-err:		return (-1);
-	}
 	unless (s->cksumok) {
 		fprintf(stderr, "annotate: bad chksum on %s\n", s->sfile);
-		goto err;
+err:		return (-1);
 	}
 	unless (HASGRAPH(s)) {
 		fprintf(stderr, "annotate: no delta tree in %s\n", s->sfile);
@@ -7549,11 +7561,6 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	ser_t	serial;
 	int	ret = -1;
 
-	unless (s->state & S_SOPEN) {
-		fprintf(stderr, "getdiffs: couldn't open %s\n", s->sfile);
-		s->state |= S_WARNED;
-		return (-1);
-	}
 	unless (s->cksumok) {
 		fprintf(stderr, "getdiffs: bad chksum on %s\n", s->sfile);
 		s->state |= S_WARNED;
@@ -8317,13 +8324,103 @@ bin_deltaSum(sccs *s, ser_t d, FILE *out)
 	return (fwrite(&val, sizeof(u32), 1, out) != 1);
 }
 
+/*
+ * reorder the data heap in memory to atempt to reduce the number of pages
+ * that are needed for common operations.
+ */
+private void
+bin_sortHeap(sccs *s)
+{
+	int	i, old;
+	ser_t	d, ds;
+	char	*olddata = s->heap.buf;
+	char	lsort[256];
+
+	/* clean old data */
+	memset(&s->heap, 0, sizeof(s->heap));
+	if (s->uniqheap) {
+		hash_free(s->uniqheap);
+		s->uniqheap = 0;
+	}
+	s->uniqheap = hash_new(HASH_MEMHASH);
+
+	/* add a reminder of when we sorted last */
+	sprintf(lsort, "lastsort %d", TABLE(s));
+	sccs_addStr(s, lsort);
+
+#define FIELD(x) \
+	if (old = s->slist2[d].x) \
+	    s->slist2[d].x = sccs_addStr(s, olddata + old)
+#define UFIELD(x) \
+	if (old = s->slist2[d].x) \
+	    s->slist2[d].x = sccs_addUniqStr(s, olddata + old)
+
+	/* put one paging block of deltas together (about 500) */
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		if (s->heap.len > s->pagesz) break; // sz from dataheap.c
+		FIELD(cludes);
+		FIELD(bamhash);
+		FIELD(random);
+		UFIELD(userhost);
+		UFIELD(pathname);
+		UFIELD(sortPath);
+		UFIELD(zone);
+		UFIELD(symlink);
+		UFIELD(csetFile);
+		FIELD(comments);
+	}
+	ds = d;
+	/* put the rest sorted by field (stuff for keysync first) */
+	for (d = ds; d >= TREE(s); d--) FIELD(random);
+	for (d = ds; d >= TREE(s); d--) UFIELD(pathname);
+	for (d = ds; d >= TREE(s); d--) UFIELD(sortPath);
+	for (d = ds; d >= TREE(s); d--) UFIELD(zone);
+	for (d = ds; d >= TREE(s); d--) UFIELD(symlink);
+	for (d = ds; d >= TREE(s); d--) UFIELD(csetFile);
+	for (d = ds; d >= TREE(s); d--) UFIELD(userhost);
+	for (d = ds; d >= TREE(s); d--) FIELD(cludes);
+	for (d = ds; d >= TREE(s); d--) FIELD(bamhash);
+
+	/* add symbols */
+	EACH(s->symlist) {
+		s->symlist[i].symname =
+		    sccs_addUniqStr(s, olddata + s->symlist[i].symname);
+	}
+
+	/* then comments at the end */
+	for (d = ds; d >= TREE(s); d--) FIELD(comments);
+
+#undef FIELD
+#undef UFIELD
+
+	/* now free the old data */
+	free(olddata);
+}
+
+
 private	int
 bin_deltaTable(sccs *s, FILE *out)
 {
 	u32	off_h, off_d, off_s;
 	ser_t	d;
-	int	i;
+	int	i, lastsorted = 0;
 	FILE	*perfile;
+
+	if (strneq(s->heap.buf+1, "lastsort ", 9)) {
+		lastsorted = atoi(s->heap.buf + 10);
+	}
+
+	/*
+	 * repack heap to optimize performance if:
+	 *  * _BK_SORTHEAP is in enviroment
+	 *  * loading from ascii sfile
+	 *  * it is more than 100 deltas after the last repack
+	 */
+	 if (getenv("_BK_SORTHEAP") ||
+	     !BFILE(s) ||
+	     ((s->heap.len > s->pagesz) && (lastsorted + 100 < TABLE(s)))) {
+		 bin_sortHeap(s);
+	 }
 
 	perfile = fmem();
 	sccs_perfile(s, perfile);
@@ -8512,7 +8609,6 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 	int	tmpfile = 0;
 	char	*fbuf;
 	int	no_lf = 0;
-	int	in_weave = 0;
 	int	lf_pend = 0;
 	u32	eflags = flags; /* copy because expandeq destroys bits */
 	int	error = 0, serial;
@@ -8581,11 +8677,9 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 		verbose((stderr, "can't open %s\n", name));
 		RET(-1);
 	}
-	assert(s->state & S_SOPEN);
 	slist = serialmap(s, d, pf->iLst, pf->xLst, &error);
 	assert(!error);
 	sccs_rdweaveInit(s);
-	in_weave = 1;
 	while (fbuf = sccs_nextdata(s)) {
 		if (isData(fbuf)) {
 			if (fbuf[0] == CNTLA_ESCAPE) fbuf++;
@@ -8710,7 +8804,7 @@ _hasDiffs(sccs *s, ser_t d, u32 flags, int inex, pfile *pf)
 		RET(0);
 	}
 out:
-	if (in_weave) sccs_rdweaveDone(s);
+	if (s->rdweave) sccs_rdweaveDone(s);
 	if (gfile) fclose(gfile); /* must close before we unlink */
 	if (ghash) mdbm_close(ghash);
 	if (shash) mdbm_close(shash);
@@ -9775,7 +9869,7 @@ checkin(sccs *s,
 	unless (flags & NEWFILE) {
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
-out:		if (sfile) sccs_abortWrite(s, &sfile);
+out:		sccs_abortWrite(s);
 		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freedelta(s, prefilled);
 		if (gfile && (gfile != stdin)) fclose(gfile);
@@ -10002,9 +10096,8 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 		error++;
 		goto out;
 	}
+	sfile = sccs_wrweaveInit(s);
 	if (BAM(s)) goto skip_weave;
-	buf[0] = 0;
-	if (GZIP_OUT(s)) sccs_zputs_init(s, sfile);
 	if (n0) {
 		fputdata(s, "\001I 2\n", sfile);
 	} else {
@@ -10082,7 +10175,7 @@ out:		if (sfile) sccs_abortWrite(s, &sfile);
 	}
 skip_weave:
 	if (BFILE_OUT(s)) fputs("\001Z\n", sfile);
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
+	sfile = sccs_wrweaveDone(s);
 	error = end(s, n, sfile, flags, added, 0, 0);
 	if (gfile && (gfile != stdin)) {
 		fclose(gfile);
@@ -10093,7 +10186,7 @@ skip_weave:
 		goto out;
 	}
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
-	if (sccs_finishWrite(s, &sfile)) goto out;
+	if (sccs_finishWrite(s)) goto out;
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) updatePending(s);
 	comments_cleancfile(s);
 	sccs_unlock(s, 'z');
@@ -11526,7 +11619,7 @@ sccs_admin(sccs *sc, ser_t p, u32 flags,
 			    "admin: can't get lock on %s\n", sc->sfile));
 			error = -1; sc->state |= S_WARNED;
 out:
-			if (sfile) sccs_abortWrite(sc, &sfile);
+			if (error) sccs_abortWrite(sc);
 			if (locked) sccs_unlock(sc, 'z');
 			debug((stderr, "admin returns %d\n", error));
 			return (error);
@@ -11829,7 +11922,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		unless (sc->io_warned) OUT;
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
-	assert(sc->state & S_SOPEN);
 	debug((stderr, "seek to %d\n", (int)sc->data));
 	obscure_it = (flags & ADMIN_OBSCURE);
 	rmlicense = (flags & ADMIN_RMLICENSE);
@@ -11843,7 +11935,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	    	obscure_it = 0;
 	}
 	if (rmlicense) obscure_it = 1;
-	if (sc->encoding_out & E_GZIP) sccs_zputs_init(sc, sfile);
+	sfile = sccs_wrweaveInit(sc);
 	sccs_rdweaveInit(sc);
 	while (buf = sccs_nextdata(sc)) {
 		if (obscure_it) {
@@ -11872,11 +11964,11 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 
 	/* not really needed, we already wrote it */
-	if (GZIP_OUT(sc)) sccs_zputs_done(sc);
+	sfile = sccs_wrweaveDone(sc);
 #ifdef	DEBUG
 	badcksum(sc, flags);
 #endif
-	if (sccs_finishWrite(sc, &sfile)) OUT;
+	if (sccs_finishWrite(sc)) OUT;
 	goto out;
 #undef	OUT
 }
@@ -11999,14 +12091,14 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
 		sccs_rdweaveInit(s);
 		w->buf = sccs_nextdata(s);	/* prime the data flow */
 	}
-	if (GZIP_OUT(s)) sccs_zputs_init(s, out);
+	w->out = sccs_wrweaveInit(s);
 
 	rc = doFast(w, patchmap, fastpatch);
 
 	if (HAS_SFILE(s)) {
 		if (sccs_rdweaveDone(s)) rc = 1;	/* no EOF */
 	}
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
+	w->out = sccs_wrweaveDone(s);
 	if (w->slist) free(w->slist);
 	if (w->state) free(w->state);
 	free(w);
@@ -12517,10 +12609,9 @@ again:
 	 * Do the actual delta.
 	 */
 	sccs_rdweaveInit(s);
-	if (GZIP_OUT(s)) sccs_zputs_init(s, out);
+	out = sccs_wrweaveInit(s);
 	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
-	assert(s->state & S_SOPEN);
 	while (b = fgetline(diffs)) {
 		int	where;
 		char	what;
@@ -12657,12 +12748,11 @@ newcmd:
 	if (state) free(state);
 	if (slist) free(slist);
 	sccs_rdweaveDone(s);
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
+	out = sccs_wrweaveDone(s);
 	if (last) {
 		assert(!fixdel);	/* no infinite loops */
 		fixdel = lastdel;
-		fclose(out);
-		unlink(sccsXfile(s, 'x'));
+		sccs_abortWrite(s);
 		rewind(diffs);
 		goto again;
 	}
@@ -12700,7 +12790,7 @@ sccs_csetWrite(sccs *s, char **cweave)
 	unless (out = sccs_startWrite(s)) goto err;
 	if (delta_table(s, out, 0)) goto err;
 
-	if (GZIP_OUT(s)) sccs_zputs_init(s, out);
+	out = sccs_wrweaveInit(s);
 	EACH(cweave) {
 		unless (cweave[i][0]) continue;	/* skip deleted entries */
 		ser = cweave[i];
@@ -12727,11 +12817,11 @@ sccs_csetWrite(sccs *s, char **cweave)
 	}
 	fputdata(s, "\001I 1\n", out);
 	fputdata(s, "\001E 1\n", out);
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
-	if (sccs_finishWrite(s, &out)) goto err;
+	out = sccs_wrweaveDone(s);
+	if (sccs_finishWrite(s)) goto err;
 	ret = 0;
 err:
-	sccs_abortWrite(s, &out);
+	sccs_abortWrite(s);
 	sccs_unlock(s, 'z');
 
 	return (ret);
@@ -12754,23 +12844,21 @@ err:
  * ^AE
  */
 private void
-patchweave(sccs *s, u8 *p, u32 len, u8 *buf, FILE *f)
+patchweave(sccs *s, FILE *dF, u8 *buf, FILE *f)
 {
-	u8	*stop;
+	u8	*p;
 
 	fputdata(s, "\001I ", f);
 	fputdata(s, buf, f);
 	fputdata(s, "\n", f);
-	if (p) {
-		stop = p + len;
-		assert(strneq(p, "0a0\n> ", 6));
-		p += 6; /* skip "0a0\n" */
-		while (1) {
-			fputdata(s, p, f);
-			while (*p++ != '\n') { /* null body */ }
-			if (p == stop) break;
+	if (dF) {
+		p = fgetline(dF);
+		assert(p && streq(p, "0a0"));
+		while (p = fgetline(dF)) {
 			assert(strneq("> ", p, 2));
 			p += 2; /* skip "> " */
+			fputdata(s, p, f);
+			fputdata(s, "\n", f);
 		}
 	}
 	fputdata(s, "\001E ", f);
@@ -12801,7 +12889,7 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	lp = s->locs;
 	i = s->iloc - 1; /* set index to final element in array */
 	assert(i > 0); /* base 1 data structure */
-	if (GZIP_OUT(s)) sccs_zputs_init(s, f);
+	f = sccs_wrweaveInit(s);
 	unless (HAS_SFILE(s)) goto skip;
 
 	sccs_rdweaveInit(s);
@@ -12811,9 +12899,9 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 
 		for ( ; i ; i--) {
 			if (ser + i > lp[i].serial) break;
-			unless (lp[i].p || lp[i].serial == 1) continue;
+			unless (lp[i].dF || lp[i].serial == 1) continue;
 			sertoa(buf, lp[i].serial);
-			patchweave(s, lp[i].p, lp[i].len, buf, f);
+			patchweave(s, lp[i].dF, buf, f);
 		}
 		unless (i) break;
 
@@ -12842,11 +12930,11 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	sccs_rdweaveDone(s);
 	/* Print out remaining, forcing serial 1 block at the end */
 skip:	for ( ; i ; i--) {
-		unless (lp[i].p || lp[i].serial == 1) continue;
+		unless (lp[i].dF || lp[i].serial == 1) continue;
 		sertoa(buf, lp[i].serial);
-		patchweave(s, lp[i].p, lp[i].len, buf, f);
+		patchweave(s, lp[i].dF, buf, f);
 	}
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
+	f = sccs_wrweaveDone(s);
 	return (0);
 }
 
@@ -12911,7 +12999,7 @@ sccs_hashcount(sccs *s)
  *   symsp     ptr to return list of new tags
  */
 ser_t
-sccs_getInit(sccs *sc, ser_t d, MMAP *f, u32 flags, int *errorp, int *linesp,
+sccs_getInit(sccs *sc, ser_t d, FILE *f, u32 flags, int *errorp, int *linesp,
 	     char ***symsp)
 {
 	char	*s, *t;
@@ -12933,7 +13021,7 @@ sccs_getInit(sccs *sc, ser_t d, MMAP *f, u32 flags, int *errorp, int *linesp,
 	}
 
 #define	WANT(c) ((buf[0] == c) && (buf[1] == ' '))
-	unless (buf = mkline(mnext(f))) {
+	unless (buf = fgetline(f)) {
 		fprintf(stderr, "Warning: no delta line in init file.\n");
 		error++;
 		goto out;
@@ -13003,30 +13091,30 @@ sccs_getInit(sccs *sc, ser_t d, MMAP *f, u32 flags, int *errorp, int *linesp,
 	}
 
 skip:
-	buf = mkline(mnext(f)); lines++;
+	buf = fgetline(f); lines++;
 
 	/* hash hash */
 	if (WANT('A')) {
 		d = sccs_parseArg(sc, d, 'A', &buf[2], 0);
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* Cset file ID */
 	if (WANT('B')) {
 		unless (HAS_CSETFILE(sc, d)) d = sccs_parseArg(sc, d, 'B', &buf[2], 0);
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* Cset marker */
 	if ((buf[0] == 'C') && !buf[1]) {
 		FLAGS(sc, d) |= D_CSET;
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* Dangle marker */
 	if ((buf[0] == 'D') && !buf[1]) {
 		FLAGS(sc, d) |= D_DANGLING;
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/*
@@ -13039,19 +13127,19 @@ skip:
 		else if (buf[1] == '\0') p = &buf[1];
 		else break;
 		unless (nocomments) comments = addLine(comments, strdup(p));
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	if (WANT('E')) {
 		/* ignored */
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* date fudges are optional */
 	if (WANT('F')) {
 		DATE_FUDGE_SET(sc, d, atoi(&buf[2]));
 		DATE_SET(sc, d, (DATE(sc, d) + DATE_FUDGE(sc, d)));
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* Includes are optional and are specified as keys.
@@ -13072,14 +13160,14 @@ skip:
 				sccs_saveNum(cludes, e, 1);
 			}
 		}
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* cksums are optional but shouldn't be */
 	if (WANT('K')) {
 		d = sumArg(sc, d, &buf[2]);
 		FLAGS(sc, d) |= D_ICKSUM;
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* merge deltas are optional */
@@ -13097,31 +13185,31 @@ skip:
 				MERGE_SET(sc, d, e);
 			}
 		}
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* modes are optional */
 	if (WANT('O')) {
 		unless (MODE(sc, d)) d = modeArg(sc, d, &buf[2]);
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* pathnames are optional */
 	if (WANT('P')) {
 		unless (HAS_PATHNAME(sc, d)) d = pathArg(sc, d, &buf[2]);
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* Random bits are used only for 1.0 deltas in conversion scripts */
 	if (WANT('R')) {
 		RANDOM_SET(sc, d, &buf[2]);
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* symbols are optional */
 	while (WANT('S')) {
 		syms = addLine(syms, strdup(&buf[2]));
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/*
@@ -13150,14 +13238,14 @@ skip:
 			}
 			FLAGS(sc, e) &= ~D_SYMLEAF;
 		}
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* text are optional */
 	/* Cannot be WANT('T'), buf[1] could be null */
 	while (buf[0] == 'T') {
 		/* ignored, was d->text */
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	if (WANT('V')) {
@@ -13168,7 +13256,7 @@ skip:
 
 			if (sc->version < vers) sc->version = vers;
 		}
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* Excludes are optional and are specified as keys.
@@ -13188,13 +13276,13 @@ skip:
 				sccs_saveNum(cludes, e, -1);
 			}
 		}
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	if (WANT('X')) {
 		XFLAGS(sc, d) = strtol(&buf[2], 0, 0); /* hex or dec */
 		XFLAGS(sc, d) &= ~X_SINGLE;
-		unless (buf = mkline(mnext(f))) goto out; lines++;
+		unless (buf = fgetline(f)) goto out; lines++;
 	}
 
 	/* closing line is not optional. */
@@ -13375,9 +13463,10 @@ isValidUser(char *u)
  * which can handle all of those cases.
  */
 private int
-sccs_meta(char *me, sccs *s, ser_t parent, MMAP *iF, int fixDate)
+sccs_meta(char *me, sccs *s, ser_t parent, char *init, int fixDate)
 {
 	ser_t	m;
+	FILE	*iF;
 	int	i, e = 0;
 	FILE	*sfile = 0;
 	char	*buf;
@@ -13390,12 +13479,13 @@ sccs_meta(char *me, sccs *s, ser_t parent, MMAP *iF, int fixDate)
 		debug((stderr, "meta returns -1\n"));
 		return (-1);
 	}
-	unless (iF) {
+	unless (init) {
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
+	iF = fmem_buf(init, 0);
 	m = sccs_getInit(s, 0, iF, DELTA_PATCH, &e, 0, &syms);
-	mclose(iF);
+	fclose(iF);
 	R0_SET(s, m, R0(s, parent));
 	R1_SET(s, m, R1(s, parent));
 	R2_SET(s, m, R2(s, parent));
@@ -13413,20 +13503,19 @@ sccs_meta(char *me, sccs *s, ser_t parent, MMAP *iF, int fixDate)
 		exit(1);
 	}
 	if (delta_table(s, sfile, 0)) {
-abort:		sccs_abortWrite(s, &sfile);
+abort:		sccs_abortWrite(s);
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	sccs_rdweaveInit(s);
-	if (GZIP_OUT(s)) sccs_zputs_init(s, sfile);
-	assert(s->state & S_SOPEN);
+	sfile =  sccs_wrweaveInit(s);
 	while (buf = sccs_nextdata(s)) {
 		fputdata(s, buf, sfile);
 		fputdata(s, "\n", sfile);
 	}
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
+	sfile = sccs_wrweaveDone(s);
 	sccs_rdweaveDone(s);
-	if (sccs_finishWrite(s, &sfile)) goto abort;
+	if (sccs_finishWrite(s)) goto abort;
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -13459,7 +13548,7 @@ dot0(sccs *s, ser_t d)
  */
 int
 sccs_delta(sccs *s,
-    	u32 flags, ser_t prefilled, MMAP *init, FILE *diffs, char **syms)
+    	u32 flags, ser_t prefilled, FILE *init, FILE *diffs, char **syms)
 {
 	FILE	*sfile = 0;	/* the new s.file */
 	int	i, free_syms = 0, error = 0;
@@ -13468,8 +13557,6 @@ sccs_delta(sccs *s,
 	int	added = 0, deleted = 0, unchanged = 0;
 	int	locked;
 	pfile	pf = {0};
-	ser_t	*include = 0;
-	ser_t	*exclude = 0;
 	ser_t	pserial;
 
 	assert(s);
@@ -13482,7 +13569,7 @@ sccs_delta(sccs *s,
 		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freedelta(s, prefilled);
-		if (sfile) sccs_abortWrite(s, &sfile);
+		if (error) sccs_abortWrite(s);
 		if (diffs) fclose(diffs);
 		free_pfile(&pf);
 		if (free_syms) freeLines(syms, free); 
@@ -13696,12 +13783,7 @@ out:
 		d = pserial;
 		assert(n);
 	}
-	if (pf.iLst) {
-		include = getserlist(s, 0, pf.iLst, &error);
-	}
-	if (pf.xLst) {
-		exclude = getserlist(s, 0, pf.xLst, &error);
-	}
+	if (sccs_setCludes(s, n, pf.iLst, pf.xLst)) OUT;
 	if (pf.mRev) {
 		unless (e = findrev(s, pf.mRev)) {
 			fprintf(stderr,
@@ -13716,7 +13798,6 @@ out:
 		}
 		MERGE_SET(s, n, e);
 	}
-	if (error) OUT;
 	n = sccs_dInit(n, 'D', s, init != 0);
 	updMode(s, n, d);
 
@@ -13746,15 +13827,6 @@ out:
 	}
 	n = dinsert(s, n, !(flags & DELTA_PATCH));
 	assert(TABLE(s) == n);
-
-	if (include || exclude) {
-		FILE	*f = fmem();
-
-		EACH(include) sccs_saveNum(f, include[i], 1);
-		EACH(exclude) sccs_saveNum(f, exclude[i], -1);
-		CLUDES_SET(s, n, fmem_peek(f, 0));
-		fclose(f);
-	}
 
 	unless (init || !HAS_PATHNAME(s, n) || !HAS_PATHNAME(s, d) ||
 	    streq(PATHNAME(s, d), PATHNAME(s, n)) || getenv("_BK_MV_OK")) {
@@ -13802,7 +13874,7 @@ out:
 		for (t = SYMLINK(s, n); *t; t++) s->dsum += *t;
 	}
 	if (end(s, n, sfile, flags, added, deleted, unchanged)) {
-		sccs_abortWrite(s, &sfile);
+		sccs_abortWrite(s);
 		WARN;
 	}
 	unless (flags & DELTA_SAVEGFILE)  {
@@ -13811,7 +13883,7 @@ out:
 			OUT;
 		}
 	}
-	if (sccs_finishWrite(s, &sfile)) OUT;
+	if (sccs_finishWrite(s)) OUT;
 	unlink(s->pfile);
 	comments_cleancfile(s);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
@@ -15827,7 +15899,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	case KW_DIFFS: /* DIFFS */
 	case KW_DIFFS_U: /* DIFFS_U */
 	case KW_DIFFS_UP: /* DIFFS_UP */ {
-		int	open = (s->state & S_SOPEN);
+		int	open = (s->fh != 0);
 		df_opt	dop = {0};
 
 		switch (kwval->kwnum) {
@@ -15838,7 +15910,6 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		    case KW_DIFFS_U:	dop.out_unified = 1; break;
 		}
 		if (d == TREE(s)) return (nullVal);
-		unless (open) sccs_open(s, 0);
 		dop.flags = SILENT;
 		sccs_diffs(s, REV(s, d), REV(s, d), &dop, out);
 		unless (open) sccs_close(s);
@@ -16157,14 +16228,14 @@ sccs_perfile(sccs *s, FILE *out)
 		(buf[2] == c) && (buf[3] == ' '))
 
 sccs	*
-sccs_getperfile(sccs *s_in, MMAP *in, int *lp)
+sccs_getperfile(sccs *s_in, FILE *in, int *lp)
 {
 	sccs	*s;
 	int	unused = 1;
 	char	*buf;
 
 	s = s_in ? s_in : new(sccs);
-	unless (buf = mkline(mnext(in))) goto err;
+	unless (buf = fgetline(in)) goto err;
 	unless (buf[0]) {
 		unless (s_in) free(s);
 		return (0);
@@ -16173,7 +16244,7 @@ sccs_getperfile(sccs *s_in, MMAP *in, int *lp)
 	if (FLAG('d')) {
 		unused = 0;
 		s->defbranch = strdup(&buf[4]);
-		unless (buf = mkline(mnext(in))) {
+		unless (buf = fgetline(in)) {
 err:			fprintf(stderr,
 			    "takepatch: file format error near line %d\n", *lp);
 			unless (s_in) free(s);
@@ -16184,21 +16255,21 @@ err:			fprintf(stderr,
 	if (FLAG('e')) {
 		unused = 0;
 		s->encoding_in |= atoi(&buf[4]) | E_ALWAYS;
-		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err; (*lp)++;
 	}
 	if (FLAG('x')) {
 		/* Ignored */
-		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err; (*lp)++;
 	}
 	while (strneq(buf, "T ", 2)) {
 		unused = 0;
 		s->text = addLine(s->text, strdup(&buf[2]));
-		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err; (*lp)++;
 	}
 	if (strneq(buf, "V ", 2)) {
 		unused = 0;
 		s->version = atoi(&buf[2]);
-		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
+		unless (buf = fgetline(in)) goto err; (*lp)++;
 	}
 	unless (s->version) s->version = SCCS_VERSION;
 	if (buf[0]) goto err;		/* should be empty */
@@ -16330,7 +16401,7 @@ prs_reverse(sccs *s, int flags, char *dspec, FILE *out)
 {
 	ser_t	d;
 	
-	for (d = TREE(s); d <= TABLE(s); d++) {
+	for (d = s->rstart; (d >= TREE(s)) && (d <= s->rstop); d++) {
 		unless (FLAGS(s, d) & D_SET) continue;
 		if (sccs_prsdelta(s, d, flags, dspec, out) && s->prs_one) {
 			return;
@@ -16343,7 +16414,7 @@ prs_forward(sccs *s, int flags, char *dspec, FILE *out)
 {
 	ser_t	d;
 
-	for (d = TABLE(s); d >= TREE(s); d--) {
+	for (d = s->rstop; (d >= TREE(s)) && (d >= s->rstart); --d) {
 		unless (FLAGS(s, d) & D_SET) continue;
 		if (sccs_prsdelta(s, d, flags, dspec, out) && s->prs_one) {
 			return;
@@ -16371,9 +16442,9 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 		}
 	}
 	if (reverse) {
-		 prs_reverse(s, flags, dspec, out);
+		prs_reverse(s, flags, dspec, out);
 	} else {
-		 prs_forward(s, flags, dspec, out);
+		prs_forward(s, flags, dspec, out);
 	}
 
 	if (KV(s) && s->mdbm) {
@@ -17441,7 +17512,8 @@ stripDeltas(sccs *s, ser_t *remap, FILE *out)
 	int	ser;
 
 	sccs_rdweaveInit(s);
-	if (GZIP_OUT(s)) sccs_zputs_init(s, out);
+	// XXX - this is passed in and we stomp?
+	out = sccs_wrweaveInit(s);
 	while (buf = sccs_nextdata(s)) {
 		if (isData(buf)) {
 			unless (prune) {
@@ -17464,9 +17536,10 @@ stripDeltas(sccs *s, ser_t *remap, FILE *out)
 	}
 	free(state);
 	free(remap);
-	if (GZIP_OUT(s)) sccs_zputs_done(s);
+	// XXX - out set but a passed local?
+	out = sccs_wrweaveDone(s);
 	if (sccs_rdweaveDone(s)) return (1);
-	if (sccs_finishWrite(s, &out)) return (1);
+	if (sccs_finishWrite(s)) return (1);
 	return (0);
 }
 
@@ -17538,7 +17611,7 @@ sccs_stripdel(sccs *s, char *who)
 #undef	OUT
 
 out:
-	if (sfile) sccs_abortWrite(s, &sfile);
+	if (error) sccs_abortWrite(s);
 	if (locked) sccs_unlock(s, 'z');
 	debug((stderr, "stripdel returns %d\n", error));
 	return (error);

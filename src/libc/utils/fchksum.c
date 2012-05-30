@@ -3,6 +3,8 @@
 /*
  * CRC wrapper.  This is the outermost layer (closest to disk),
  * it is wrapped around GZIP.
+ * This layer is cheap, it adds single digit percents to the time to move
+ * the data (XXX - verify w/ lmdd)
  *
  * All blocks are the same size where the size is 1 << %3d below (chksz+6)
  * file layout:
@@ -43,6 +45,8 @@
  *    ideal for 682M files
  *  - The blocks to be checksumed start at the beginning of the file
  *    and so the first block contains "CHK\n".
+ *  - the eof marker block is there so this can be read in a stream
+ *    (i.e., we don't know the whole file size)
  *  - The last checksum is for the XORBLOCK
  *  - u32 & u16's encoded in Intel byte order
  */
@@ -84,8 +88,7 @@ fchksum_open(FILE *f, char *mode, int est_size)
 	fchk	*fc = new(fchk);
 	int	bits;
 
-	if (getenv("_BK_NO_FCHKSUM")) return (f); /* disable */
-
+	assert(f);
 	fc->f = f;
 	if (streq(mode, "w")) {
 		fc->write = 1;
@@ -317,7 +320,6 @@ chkClose(void *cookie)
 {
 	fchk	*fc = cookie;
 	u32	sum, sum2;
-	int	rc = 0;
 	int	n;
 
 	if (fc->write) {
@@ -336,13 +338,10 @@ chkClose(void *cookie)
 			exit(1);
 		}
 	}
-	if (rc = (ferror(fc->f) || fclose(fc->f))) {
-		perror("close fchksum");
-	}
 	free(fc->buf);
 	free(fc->xor);
 	free(fc);
- 	return (rc);
+ 	return (0);
 }
 
 /*

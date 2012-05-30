@@ -732,3 +732,29 @@ out:	if (removed) {
 	}
 	return (removed);
 }
+
+/*
+ * Return an array allocated by different means.
+ * While it has no data, it will look like it does (nLines == len).
+ * The caller is expected to fill before using as an array.
+ */
+void *
+allocArray(int len, int esize, void *(*allocate)(size_t size))
+{
+	int	c;		/* log2 max num elements */
+	size_t	size;
+	void	*ret;
+
+	assert(esize >= sizeof(u32));
+	unless (allocate) allocate = malloc;
+	c = 4;
+	size = 1u << c;
+	while (len >= size) {
+		size *= 2;
+		++c;
+	}
+	size *= esize;
+	ret = allocate(size);
+	*(u32 *)ret = (c << LBITS) | len;
+	return (ret);
+}

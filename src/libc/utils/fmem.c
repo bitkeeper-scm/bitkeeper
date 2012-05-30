@@ -64,6 +64,23 @@ fmem(void)
 	return (f);
 }
 
+FILE *
+fmem_buf(void *buf, int len)
+{
+	FILE	*f = fmem();
+
+	/*
+	 * This is a hack currently but I can make it do what I want later
+	 */
+	if (len) {
+		fwrite(buf, 1, len, f);
+	} else {
+		fputs(buf, f);
+	}
+	rewind(f);
+	return (f);
+}
+
 
 /*
  * There is no truncate() function for a FILE *
@@ -78,6 +95,10 @@ ftrunc(FILE *f, off_t offset)
 
 	TRACE("ftrunc(%p, %d)", f, (int)offset);
 
+	unless (f->_flags & __SWR) {
+		errno = EBADF;
+		return (-1);
+	}
 	fflush(f);
 	if (f->_close == fmemClose) {
 		/* this is a FMEM*, trunc but don't free memory */

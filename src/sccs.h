@@ -22,10 +22,8 @@ char    *tzone(long offset);
 
 #ifdef	WIN32
 #define	win32_close(s)	sccs_close(s)
-#define	win32_open(s)	sccs_open(s, 0)
 #else
 #define	win32_close(s)
-#define	win32_open(s)
 #endif
 
 #ifndef	NOPROC
@@ -156,7 +154,6 @@ int	checking_rmdir(char *dir);
 #define	S_PFILE		0x00000004	/* SCCS/p.file exists */
 #define S_EDITED	(S_SFILE|S_PFILE|S_GFILE)
 #define S_LOCKED	(S_SFILE|S_PFILE)
-#define	S_SOPEN		0x00000010	/* s->sfile is open */
 #define	S_WARNED	0x00000020	/* error message already sent */
 #define	S_CHMOD		0x00000040	/* change the file back to 0444 mode */
 #define	S_BADREVS	0x00000080	/* has corrupted revisions */
@@ -614,7 +611,8 @@ typedef	struct sccs sccs;
 extern	jmp_buf	exit_buf;
 extern	char *upgrade_msg;
 
-#define	exit(e)	longjmp(exit_buf, (e) + 1000)
+void	bk_exit(const char *file, int line, int ret) __attribute__((noreturn));
+#define	exit(e)	bk_exit(__FILE__, __LINE__, e)
 
 #define	READER_LOCK_DIR	"BitKeeper/readers"
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
@@ -643,8 +641,7 @@ extern	char *upgrade_msg;
  * struct loc - locations
  */
 typedef struct loc {
-	char	*p;		/* first byte of the data */
-	u32	len;		/* think 4GB is big enough? */
+	FILE	*dF;		/* fmem with diffs */
 	ser_t	serial;
 } loc;
 
@@ -668,12 +665,13 @@ struct sccs {
 	off_t	size;		/* size of mapping */
 	DATA	heap;		/* all strings in delta structs */
 	hash	*uniqheap;	/* help collapse unique strings in hash */
+	u32	pagesz;		/* size of paging blocks */
 	u32	*mg_symname;	/* symbol list use by mkgraph() */
-	char	**mapping;
-	FILE	*fh;		/* cached copy of the input file handle */
-	FILE	*oldfh;		/* orig fh (no ungzip layer) */
-	FILE	*outfh;		/* fh for writing x.file */
+	FILE	*pagefh;	/* fh for paging dataheap */
+	FILE	*fh;		/* current input file handle (may be stacked) */
+	FILE	*outfh;		/* fh for writing x.file (may be stacked) */
 	char	*sfile;		/* SCCS/s.foo.c */
+	char	*fullsfile;	/* full pathname to sfile */
 	char	*pfile;		/* SCCS/p.foo.c */
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
@@ -740,6 +738,8 @@ struct sccs {
 	u32	mem_out:1;	/* s->outfh is in-memory FILE* */
 	u32	file:1;		/* treat as a file in DSPECS */
 	u32	rdweaveEOF:1;	/* at EOF in rdWEAVE */
+	u32	rdweave:1;	/* currently reading weave */
+	u32	wrweave:1;	/* currently writing weave */
 };
 
 typedef struct {
@@ -807,10 +807,10 @@ typedef struct patch {
 				/* NULL if the new delta is the root. */
 	char	*me;		/* unique key of this delta */
 	char	*sortkey;	/* sortable key of this delta, if different */
-	char	*initFile;	/* RESYNC/BitKeeper/init-1, only if !initMmap */
-	MMAP	*initMmap;	/* points into mmapped patch */
-	char	*diffFile;	/* RESYNC/BitKeeper/diff-1, only if !diffMmap */
-	MMAP	*diffMmap;	/* points into mmapped patch */
+	char	*initFile;	/* RESYNC/BitKeeper/init-1, only if !initMem */
+	FILE	*initMem;	/* points into fmem patch */
+	char	*diffFile;	/* RESYNC/BitKeeper/diff-1, only if !diffMem */
+	FILE	*diffMem;	/* points into mmapped patch */
 	ser_t	serial;		/* in cset path, save the corresponding ser */
 	time_t	order;		/* ordering over the whole list, oldest first */
 	u32	local:1;	/* patch is from local file */
@@ -942,7 +942,7 @@ int	sccs_admin(sccs *sc, ser_t d, u32 flgs,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_adminFlag(sccs *sc, u32 flags);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
-int	sccs_delta(sccs *s, u32 flags, ser_t d, MMAP *init, FILE *diffs,
+int	sccs_delta(sccs *s, u32 flags, ser_t d, FILE *init, FILE *diffs,
 		   char **syms);
 int	sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dop, FILE *);
 int	sccs_encoding(sccs *s, off_t size, char *enc);
@@ -961,12 +961,13 @@ ser_t	sccs_findDelta(sccs *s, ser_t d);
 sccs	*sccs_init(char *filename, u32 flags);
 sccs	*sccs_restart(sccs *s);
 sccs	*sccs_reopen(sccs *s);
-int	sccs_open(sccs *s, struct stat *sp);
+int	sccs_open(sccs *s);
 void	sccs_free(sccs *);
 ser_t	sccs_newdelta(sccs *s);
 void	sccs_freedelta(sccs *s, ser_t d);
 ser_t	sccs_insertdelta(sccs *s, ser_t d, ser_t serial);
 void	sccs_close(sccs *);
+void	sccs_writeHere(sccs *s, char *new);
 int	sccs_csetWrite(sccs *s, char **cweave);
 sccs	*sccs_csetInit(u32 flags);
 char	**sccs_files(char **, int);
@@ -975,7 +976,7 @@ void	sccs_whynot(char *who, sccs *s);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
 void	sccs_inherit(sccs *s, ser_t d);
 int	sccs_hasDiffs(sccs *s, u32 flags, int inex);
-ser_t	sccs_getInit(sccs *s, ser_t d, MMAP *f, u32 flags,
+ser_t	sccs_getInit(sccs *s, ser_t d, FILE *f, u32 flags,
 		      int *errorp, int *linesp, char ***symsp);
 ser_t	sccs_ino(sccs *);
 int	sccs_userfile(sccs *);
@@ -1005,7 +1006,7 @@ int	cset_byserials(const void *a, const void *b);
 int	sccs_newchksum(sccs *s);
 ser_t	*addSerial(ser_t *space, ser_t s);
 void	sccs_perfile(sccs *, FILE *);
-sccs	*sccs_getperfile(sccs *, MMAP *, int *);
+sccs	*sccs_getperfile(sccs *, FILE *, int *);
 char	*sccs_gethost(void);
 char	*sccs_realhost(void);
 char	*sccs_host(void);
@@ -1111,8 +1112,8 @@ void	parse_url(char *url, char *host, char *path);
 int	parallel(char *path);
 char	*sccs_Xfile(sccs *s, char type);
 FILE	*sccs_startWrite(sccs *s);
-int	sccs_finishWrite(sccs *s, FILE **f);
-void	sccs_abortWrite(sccs *s, FILE **f);
+int	sccs_finishWrite(sccs *s);
+void	sccs_abortWrite(sccs *s);
 int	uniq_adjust(sccs *s, ser_t d);
 char	*uniq_keysHome(void);
 int	uniq_open(void);
@@ -1171,7 +1172,7 @@ char	*separator(char *);
 int	trigger(char *cmd, char *when);
 void	trigger_setQuiet(int yes);
 void	cmdlog_start(char **av, int bkd_mode);
-void	cmdlog_addnote(char *key, char *val);
+void	cmdlog_addnote(const char *key, const char *val);
 int	cmdlog_end(int ret, int bkd_mode);
 void	cmdlog_lock(int flags);
 int	write_log(char *file, char *format, ...)
@@ -1191,6 +1192,7 @@ int	sccs_tagMerge(sccs *s, ser_t d, char *tag);
 int	sccs_tagleaves(sccs *, ser_t *, ser_t *);
 u8	*sccs_set(sccs *, ser_t, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, ser_t d, u8 *map, char **inc, char **exc);
+int	sccs_setCludes(sccs *sc, ser_t d, char *iLst, char *xLst);
 int	sccs_isPending(char *gfile);
 int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
 
@@ -1239,7 +1241,7 @@ int	check_rsh(char *remsh);
 void	sccs_color(sccs *s, ser_t d);
 int	out(char *buf);
 int	getlevel(void);
-ser_t	cset_insert(sccs *s, MMAP *iF, MMAP *dF, ser_t parent, int fast);
+ser_t	cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast);
 int	cset_write(sccs *s, int spinners, int fast);
 sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);
@@ -1466,9 +1468,9 @@ u32	sccs_addStr(sccs *s, char *str);
 void	sccs_appendStr(sccs *s, char *str);
 u32	sccs_addUniqStr(sccs *s, char *str);
 typedef	struct MAP MAP;
-MAP	*datamap(void *start, int len, FILE *f, long off, int byteswap);
-void	dataunmap(MAP *map);
-
+void	*datamap(sccs *s, char *name, u32 len, u32 nmemb,
+    long off, int byteswap);
+void	dataunmap(sccs *s, int keep);
 
 #define	RGCA_ALL	0x1000
 #define	RGCA_STANDALONE	0x2000

@@ -1912,7 +1912,7 @@ merge_common_deletes(conflct *c)
 	while (p->ld) p++;
 	--p;
 	j = 0;
-	while (p >= left && p->c == '-') {
+	while (p >= right && p->c == '-') {
 		++j;
 		--p;
 	}

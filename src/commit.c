@@ -302,7 +302,7 @@ do_commit(char **av,
 	sccs	*cset;
 	char	**syms = 0;
 	FILE 	*f;
-	char	commentFile[MAXPATH];
+	char	commentFile[MAXPATH] = "";
 	char	pendingFiles2[MAXPATH];
 	char	buf[MAXLINE];
 

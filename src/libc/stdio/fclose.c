@@ -50,7 +50,7 @@ int
 fclose(fp)
 	FILE *fp;
 {
-	int r;
+	int r, r2;
 
 	assert(fp != NULL);
 
@@ -72,5 +72,13 @@ fclose(fp)
 	fp->_file = -1;
 	fp->_flags = 0;		/* Release this FILE for reuse. */
 	fp->_r = fp->_w = 0;	/* Mess up if reaccessed. */
+	if (fp->_prevfh) {
+		/*
+		 * If opened on top of another fh then close that one
+		 * too.  Pass up errors from lower levels.
+		 */
+		if (r2 = fclose(fp->_prevfh)) r = r2;
+		fp->_prevfh = 0;
+	}
 	return (r);
 }

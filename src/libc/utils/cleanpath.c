@@ -29,7 +29,7 @@ cleanPath(char *path, char cleanPath[])
 	p = &path[strlen(path) - 1];
 
 	/* for win32 path */
-	top = (path[1] == ':') ? &path[2] : path;
+	top = (path[0] && path[1] == ':') ? &path[2] : path;
 
 	/* trim trailing slash(s) */
 	while ((p >= top) && (*p == '/')) p--;

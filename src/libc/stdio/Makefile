@@ -19,6 +19,7 @@ STDIO_OBJS = $(patsubst %,stdio/%, \
 	fparseln.o \
 	fprintf.o \
 	fpurge.o \
+	fpush.o \
 	fputc.o \
 	fputs.o \
 	fread.o \

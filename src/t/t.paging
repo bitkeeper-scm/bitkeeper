@@ -1,0 +1,191 @@
+_BK_FORCE_PAGING=1
+export _BK_FORCE_PAGING
+BK_CONFIG='binfile:1!'
+export BK_CONFIG
+
+echo $N "Test heap paging with 'bk setup' ............................"$NL
+fresh_commercial project
+bk edit $Q BitKeeper/etc/ignore
+cat <<EOF > BitKeeper/etc/ignore
+2
+3
+EOF
+bk ci -yignore1 -u $Q BitKeeper/etc/ignore
+bk commit $Q -yignore1 || fail
+echo OK
+
+echo $N "Test heap paging with 'bk clone' ............................"$NL
+bk clone $Q ../project ../copy || fail
+echo OK
+
+echo $N "Test heap paging with 'bk commit' ..........................."$NL
+echo hi > file
+bk new $Q file
+bk edit $Q BitKeeper/etc/ignore
+cat <<EOF > BitKeeper/etc/ignore
+2
+3
+4
+EOF
+bk ci -yignore2 -u $Q BitKeeper/etc/ignore
+bk commit $Q -ycommit || fail
+echo OK
+
+echo $N "Test heap paging with 'bk changes -L' ......................."$NL
+cd ../copy
+bk changes -L > OUT || fail
+echo OK
+
+echo $N "Test heap paging with 'bk changes -R' ......................."$NL
+bk changes -R > OUT || fail
+echo OK
+
+echo $N "Test heap paging with 'bk pull' ............................."$NL
+bk edit $Q BitKeeper/etc/ignore
+cat <<EOF > BitKeeper/etc/ignore
+1
+2
+3
+EOF
+bk ci -yignore3 -u $Q BitKeeper/etc/ignore
+bk commit $Q -yignore1 || fail
+BK_CONFIG=partial_check:off! bk pull $Q || fail
+echo OK
+
+echo $N "Test heap paging with 'bk unpull' ..........................."$NL
+bk unpull -f $Q || fail
+echo OK
+
+echo $N "Test heap paging with 'bk pull -R' .........................."$NL
+bk edit $Q BitKeeper/etc/ignore
+cat <<EOF > BitKeeper/etc/ignore
+1
+2
+3
+EOF
+bk ci -yignore3 -u $Q BitKeeper/etc/ignore
+bk commit $Q -yignore1 || fail
+bk pull -R $Q || fail
+echo OK
+
+echo $N "Test heap paging with 'bk resolve' .........................."$NL
+bk resolve $Q || fail
+echo OK
+
+echo $N "Test heap paging with 'bk push' ............................."$NL
+bk push $Q || fail
+echo OK
+
+echo $N "Test heap paging with 'bk clone -@base' ....................."$NL
+echo hi > file_copy
+bk new $Q file_copy
+bk commit $Q -ycopy || fail
+cd ../project || fail
+echo hi > file_project
+bk new $Q file_project
+bk commit $Q -yproject || fail
+bk tag $Q junk || fail
+cd ..
+bk clone $Q -@project "$HERE"/copy newcopy || fail
+echo OK
+
+echo "---- nested tests"
+
+echo $N "Test heap paging with 'bk clone' ............................"$NL
+cd "$HERE"
+nested nest
+bk gate $Q -r
+bk clone $Q . ../nest2 || fail
+echo OK
+
+echo $N "Test heap paging with 'bk commit' in comp ..................."$NL
+cd gcc
+echo hi > file1
+bk new $Q file1
+bk commit -S $Q -ynew || fail
+echo OK
+
+echo $N "Test heap paging with 'bk -P commit' ........................"$NL
+rm -f "$FILE"
+bk -P commit $Q -ynew || fail
+echo OK
+
+echo $N "Test heap paging with 'bk -P changes -v' ...................."$NL
+# create new component
+cd "$HERE"/nest
+touch c
+bk setup -cc -f docs || fail
+cd docs
+echo hi > doc
+bk new $Q doc
+bk commit -S $Q -ydoc || fail
+cd ..
+cd gdb
+echo ss > gdbfile
+bk new $Q gdbfile
+bk commit -S $Q -ygdb || fail
+cd ..
+bk commit $Q -ytop || fail
+
+bk changes -v > /dev/null
+echo OK
+
+echo $N "Test heap paging with 'bk changes -Rv' ......................"$NL
+cd "$HERE"/nest2
+bk changes -Rv > /dev/null || fail
+echo OK
+
+echo $N "Test heap paging with 'bk pull -u' .........................."$NL
+bk pull -u $Q || fail
+echo OK
+
+echo $N "Test heap paging with 'bk unpull -fs' ......................."$NL
+bk unpull -fs $Q || fail
+echo OK
+
+echo $N "Test heap paging with 'bk pull' w merge ....................."$NL
+bk portal $Q .
+touch c
+bk setup -f -cc www || fail
+cd www
+echo kk > 1.html
+bk new $Q 1.html
+bk commit -S -ywww $Q || fail
+cd ../gdb
+echo hi > new
+bk new $Q new || fail
+bk commit -S -ynew $Q || fail
+cd ..
+bk commit -ylocal $Q || fail
+
+bk pull $Q || fail
+echo OK
+
+echo $N "Test heap paging with 'bk push' ............................."$NL
+bk push $Q || fail
+echo OK
+
+echo $N "Test heap paging with 'bk clone -@base' ....................."$NL
+cd "$HERE"/nest2/gcc
+echo hi > file_copy
+bk new $Q file_copy
+bk commit -S $Q -ygcc_copy || fail
+cd ..
+echo hi > file_copy
+bk new $Q file_copy
+bk commit -S $Q -ycopy || fail
+bk portal $Q -r
+bk comps -h | grep -v www | bk here set -f $Q - || fail
+cd ../nest/gdb || fail
+echo hi > file_project
+bk new $Q file_project
+bk commit -S $Q -ygdb_project || fail
+cd ..
+echo hi > file_project
+bk new $Q file_project
+bk commit -S $Q -yproject || fail
+bk tag $Q junk || fail
+cd ..
+bk clone $Q -sALL -@nest2 "$HERE"/nest newnest2 || fail
+echo OK
+

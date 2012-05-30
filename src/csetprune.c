@@ -255,19 +255,8 @@ err:
 private	int
 fixPath(sccs *s, char *path)
 {
-	char	*spath = name2sccs(path);
-
-	/* arrange for this sccs* to write to here */
-	free(s->sfile);
-	s->sfile = strdup(spath);
-	free(s->gfile);
-	s->gfile = sccs2name(s->sfile);
-	free(s->pfile);
-	s->pfile = strdup(sccs_Xfile(s, 'p'));
-	s->state &= ~(S_PFILE|S_GFILE);
-	/* NOTE: we leave S_SFILE set, but no sfile there */
-	mkdirf(spath);
-	free(spath);
+	sccs_writeHere(s, path);
+	mkdirf(s->sfile);
 	return (0);
 }
 

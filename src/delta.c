@@ -137,7 +137,7 @@ delta_main(int ac, char **av)
 	char	*encp = 0;
 	char	*mode = 0;
 	FILE	*diffs = 0;
-	MMAP	*init = 0;
+	FILE	*init = 0;
 	pfile	pf = {0};
 	int	dash, errors = 0, fire, dangling;
 	off_t	sz;
@@ -275,7 +275,7 @@ delta_main(int ac, char **av)
 			av[0], diffsFile, strerror(errno));
 	       return (1);
 	}
-	if (initFile && !(init = mopen(initFile, "t"))) {
+	if (initFile && !(init = fopen(initFile, "r"))) {
 		fprintf(stderr,"%s: init file '%s': %s.\n",
 			av[0], initFile, strerror(errno));
 		return (1);
@@ -345,7 +345,6 @@ delta_main(int ac, char **av)
 			win32_close(s);
 			switch (delta_trigger(s)) {
 			    case 0:
-				win32_open(s);
 				break;
 			    case 2: /* trigger ran delta, we won't */
 				goto next;
@@ -435,7 +434,7 @@ delta_main(int ac, char **av)
 				}
 			}
 		}
-next:		if (init) mclose(init);
+next:		if (init) fclose(init);
 		/*
 		 * No, sccs_diffs() does this.
 		 * if (diffs) fclose(diffs);
