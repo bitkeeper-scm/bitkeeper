@@ -380,6 +380,8 @@ proj_relpath(project *p, char *in_path)
 			return(strdup(&path[len+1]));
 		}
 	} else {
+		/* special case, we're in / */
+		if (streq(root, "/.")) return (strdup("."));
 		return (0);
 	}
 }

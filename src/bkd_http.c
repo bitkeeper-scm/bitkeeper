@@ -1479,6 +1479,8 @@ parseurl(char *url)
 
 		if (streq(proot, cwd)) {
 			root = strdup(".");
+		} else if ((i == 1) && streq(cwd, "/")) {
+			root = strdup(proot);
 		} else {
 			unless (strneq(proot, cwd, i) && (proot[i] == '/')) {
 				unless (Opts.symlink_ok) {

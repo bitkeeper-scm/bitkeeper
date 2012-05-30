@@ -1975,7 +1975,7 @@ chk_merges(sccs *s)
 		assert(p);
 		m = MERGE(s, d);
 		assert(m);
-		if (sccs_needSwap(s, p, m)) {
+		if (sccs_needSwap(s, p, m, 1)) {
 			fprintf(stderr,
 			    "%s|%s: %s/%s graph corrupted.\n"
 			    "Please write support@bitmover.com\n",

@@ -1625,7 +1625,7 @@ _pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd)
 			MERGE_SET(s, d, 0);
 		}
 		/* else if merge .. (chk case d and e) */
-		else if (sccs_needSwap(s, PARENT(s, d), m)) {
+		else if (sccs_needSwap(s, PARENT(s, d), m, 0)) {
 			MERGE_SET(s, d, PARENT(s, d));
 			symdiff_setParent(s, d, m, sd);
 		}

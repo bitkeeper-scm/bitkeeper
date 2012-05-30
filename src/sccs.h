@@ -1262,7 +1262,7 @@ void	putroot(char *where);
 int	uuencode(FILE *in, FILE *out);
 int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
-int	sccs_needSwap(sccs *s, ser_t p, ser_t m);
+int	sccs_needSwap(sccs *s, ser_t p, ser_t m, int warn);
 int	chk_host(void);
 int	chk_user(void);
 int	chk_nlbug(sccs *s);

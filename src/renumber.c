@@ -143,9 +143,10 @@ sccs_renumber(sccs *s, u32 flags)
  * delta.
  */
 int
-sccs_needSwap(sccs *s, ser_t p, ser_t m)
+sccs_needSwap(sccs *s, ser_t p, ser_t m, int warn)
 {
 	int	pser, mser;
+	char	buf[MAXKEY];
 
 	pser = PARENT(s, p);
 	mser = PARENT(s, m);
@@ -160,6 +161,13 @@ sccs_needSwap(sccs *s, ser_t p, ser_t m)
 			assert(mser);
 		}
 	}
+	if (warn && (m < p)) {
+		fprintf(stderr, "%s: need to swap:\n", s->gfile);
+		sccs_sdelta(s, p, buf);
+		fprintf(stderr, "\ttrunk: %s\n", buf);
+		sccs_sdelta(s, m, buf);
+		fprintf(stderr, "\tbranch: %s\n", buf);
+	}
 	return (m < p);
 }
 
@@ -168,6 +176,7 @@ redo(sccs *s, ser_t d, u32 *nextbranch)
 {
 	ser_t	p;		/* parent */
 	ser_t	t;		/* trunk */
+	ser_t	m;		/* merge */
 
 	/*
 	 * We keep the root rev and build up from there, note that the
@@ -183,13 +192,35 @@ redo(sccs *s, ser_t d, u32 *nextbranch)
 		R3_SET(s, d, R3(s, p));
 		return;
 	}
-
 	if (BITKEEPER(s) && (R0(s, d) != 1)) {
 		fprintf(stderr, "Renumber: lod sfile:\n  %s\n"
 		    "Please write support@bitmover.com\n", s->sfile);
 		exit (1);
 	}
 	if (R0(s, d) != R0(s, p)) return;	/* if ATT SCCS */
+
+	/*
+	 * If merge was on the trunk at time of merge, then complain
+	 */
+	if (m = MERGE(s, d)) {
+		assert((p != m) && BITKEEPER(s));
+		if (sccs_needSwap(s, p, m, 1)) {
+			char	buf[MAXKEY];
+
+			fprintf(stderr, "Renumber: corrupted sfile:\n  %s\n"
+			    "Please write support@bitmover.com\n", s->sfile);
+			fprintf(stderr, "Merge node (%s):\n",
+			    (FLAGS(s, d) & D_REMOTE) ? "remote" : "local");
+			sccs_sdelta(s, d, buf);
+			fprintf(stderr, "\tnode: %s\n", buf);
+			sccs_sdelta(s, p, buf);
+			fprintf(stderr, "\tparent: %s\n", buf);
+			sccs_sdelta(s, m, buf);
+			fprintf(stderr, "\tmerge: %s\n", buf);
+			if (getenv("BK_REGRESSION")) exit (1);
+			assert ("bad graph" == 0);
+		}
+	}
 
 	/* the normal case, just look at my parent and decide what to do */
 	R0_SET(s, d, R0(s, p));

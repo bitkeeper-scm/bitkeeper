@@ -6,6 +6,11 @@ bk abort \- abort a failed pull or push
 .B bk abort
 .[B] \-f
 .[ARG] repository_root
+.if \n[NESTED] \{\
+.br
+.B bk abort
+.[B] \-S
+.\}
 .SH DESCRIPTION
 .LP
 The abort command can be used to clean up a failed update of a repository
@@ -31,6 +36,12 @@ to figure out what went wrong and try to fix it.
 .TP
 .B \-f
 Do not prompt for confirmation, just do it.
+.if \n[NESTED] \{\
+.TP
+.B \-S
+In a nested repository, limit the abort to this component.  Typically
+used to clean up after a port command.
+.\}
 .SH FILES
 .TP PENDING
 .B PENDING

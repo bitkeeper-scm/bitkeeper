@@ -785,4 +785,34 @@ echo OK
 
 }
 
-true
+echo $N Test a bad graph structure ..................................$NL
+cd "$HERE"/project
+touch badgraph
+bk new $Q badgraph
+bk edit $Q badgraph
+bk delta $Q -fynull badgraph
+BRANCH=`bk prs -r+ -hnd:KEY: badgraph`
+bk _get $Q -e -r1.1 badgraph
+bk delta $Q -fynull badgraph
+TRUNK=`bk prs -r1.1.1 -hnd:KEY: badgraph`
+bk _get $Q -e -r1.1.1 badgraph
+bk delta $Q -fynull badgraph
+PARENT=`bk prs -r1.1.1 -hnd:KEY: badgraph`
+bk edit $Q badgraph
+bk delta $Q -fynull badgraph
+MERGE=`bk prs -r1 -hnd:KEY: badgraph`
+bk _get $Q -e -M1 -r1.1.1 badgraph
+bk delta $Q -fynull badgraph
+TIP=`bk prs -r1.1.1 -hnd:KEY: badgraph`
+# With fix, it will run renumber, which won't fix
+# Renumber will assert normally, but not in regressions.
+bk check badgraph 2> GOT
+cat <<EOF > WANT
+badgraph: need to swap:
+	trunk: $TRUNK
+	branch: $BRANCH
+badgraph|1.1.1.3: 1.1.1.2/1.3 graph corrupted.
+Please write support@bitmover.com
+EOF
+cmpfiles WANT GOT
+echo OK
