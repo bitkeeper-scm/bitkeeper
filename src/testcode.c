@@ -392,8 +392,8 @@ fgzip_main(int ac, char **av)
 	setmode(0, _O_BINARY);
 	if (expand) {
 		f = stdin;
-		if (chksums) fpush(&f, fchksum_open(f, "r", 0));
-		if (gzip) fpush(&f, fgzip_open(f, "r"));
+		if (chksums) fpush(&f, fopen_crc(f, "r", 0));
+		if (gzip) fpush(&f, fopen_vzip(f, "r"));
 		if (fsize) {
 			c = fseek(f, 0, SEEK_END);
 			assert(c == 0);
@@ -408,8 +408,8 @@ fgzip_main(int ac, char **av)
 		}
 	} else {
 		f = stdout;
-		if (chksums) fpush(&f, fchksum_open(f, "w", est_size));
-		if (gzip) fpush(&f, fgzip_open(f, "w"));
+		if (chksums) fpush(&f, fopen_crc(f, "w", est_size));
+		if (gzip) fpush(&f, fopen_vzip(f, "w"));
 		while ((c = fread(buf, 1, sizeof(buf), stdin)) > 0) {
 			fwrite(buf, 1, c, f);
 		}

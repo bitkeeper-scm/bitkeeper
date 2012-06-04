@@ -114,13 +114,6 @@ int	 efprintf(char *env, char *fmt, ...)
 #endif
 ;
 
-/* fchksum.c */
-FILE	*fchksum_open(FILE *f, char *mode, int est_size);
-
-/* fgzip.c */
-FILE	*fgzip_open(FILE *fin, char *mode);
-int	fgzip_findSeek(FILE *fin, long off, int len, u32 pagesz, u32 **lens);
-
 /* fileops.c */
 int	fileCopy(char *from, char *to);
 int	fileLink(char *from, char *to);
@@ -158,6 +151,16 @@ char	*fmem_dup(FILE *f, size_t *len);
 char	*fmem_close(FILE *f, size_t *len);
 void	fmem_tests(void);
 int	ftrunc(FILE *f, off_t offset);
+
+/* fopen_cksum.c */
+FILE	*fopen_cksum(FILE *f, char *mode, u16 *cksump);
+
+/* fopen_crc.c */
+FILE	*fopen_crc(FILE *f, char *mode, u64 est_size);
+
+/* fopen_vzip.c */
+FILE	*fopen_vzip(FILE *fin, char *mode);
+int	vzip_findSeek(FILE *fin, long off, int len, u32 pagesz, u32 **lens);
 
 /* fopen_zip.c */
 FILE	*fopen_zip(FILE *f, char *mode, ...);

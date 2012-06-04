@@ -50,7 +50,7 @@
 #include "sccs.h"
 #include "range.h"
 
-private	int	fastWeave(sccs *s, FILE *out);
+private	int	fastWeave(sccs *s);
 
 /*
  * Initialize the structure used by cset_insert according to how
@@ -283,8 +283,6 @@ done:
 int
 cset_write(sccs *s, int spinners, int fast)
 {
-	FILE	*f = 0;
-
 	assert(s);
 	// assert(s->state & S_CSET);
 	assert(s->locs);
@@ -301,16 +299,16 @@ cset_write(sccs *s, int spinners, int fast)
 	if (CSET(s) && spinners) fprintf(stderr, "renumbering");
 	sccs_renumber(s, SILENT);
 
-	unless (f = sccs_startWrite(s)) goto err;
+	unless (sccs_startWrite(s)) goto err;
 	s->state |= S_PFILE;
 	if (fast) {
-		if (fastWeave(s, f)) goto err;
+		if (fastWeave(s)) goto err;
 	} else {
-		if (delta_table(s, f, 0)) {
+		if (delta_table(s, 0)) {
 			perror("table");
 			goto err;
 		}
-		if (sccs_csetPatchWeave(s, f)) goto err;
+		if (sccs_csetPatchWeave(s)) goto err;
 	}
 	if (sccs_finishWrite(s)) goto err;
 	return (0);
@@ -324,7 +322,7 @@ err:	sccs_abortWrite(s);
  * and connect it to the new interface way
  */
 private	int
-fastWeave(sccs *s, FILE *out)
+fastWeave(sccs *s)
 {
 	u32	i;
 	u32	base = 0, index = 0, offset = 0;
@@ -387,7 +385,7 @@ fastWeave(sccs *s, FILE *out)
 			index++;
 		}
 	}
-	if (delta_table(s, out, 0)) {
+	if (delta_table(s, 0)) {
 		perror("table");
 		goto err;
 	}
@@ -396,7 +394,7 @@ fastWeave(sccs *s, FILE *out)
 	assert(i > 0); /* base 1 data structure */
 
 	/* doit */
-	rc = sccs_fastWeave(s, weavemap, patchmap, lp[i].dF, out);
+	rc = sccs_fastWeave(s, weavemap, patchmap, lp[i].dF);
 err:	free(patchmap);
 	if (weavemap) free(weavemap);
 	return (rc);

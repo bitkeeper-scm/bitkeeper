@@ -8,8 +8,9 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	data.o \
 	dirname.o dirs.o \
 	efopen.o \
-	fchksum.o \
-	fgzip.o \
+	fopen_cksum.o \
+	fopen_crc.o \
+	fopen_vzip.o \
 	fopen_zip.o \
 	fileops.o \
 	fileutils.o findpid.o fmem.o fullname.o fileinfo.o \

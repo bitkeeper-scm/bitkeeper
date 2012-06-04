@@ -2365,7 +2365,6 @@ private	int
 uu2bp(sccs *s, int bam_size, char ***keysp)
 {
 	ser_t	d;
-	FILE	*out;
 	int	locked;
 	int	n = 0;
 	off_t	sz;
@@ -2450,12 +2449,12 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 	/* change encoding to be BAM */
 	s->encoding_out &= ~(E_UUENCODE|E_GZIP);
 	s->encoding_out |= E_BAM;
-	unless (out = sccs_startWrite(s)) {
+	unless (sccs_startWrite(s)) {
 err:		sccs_abortWrite(s);
 		sccs_unlock(s, 'z');
 		return (32);
 	}
-	if (delta_table(s, out, 0)) goto err;
+	if (delta_table(s, 0)) goto err;
 	if (sccs_finishWrite(s)) goto err;
 	fprintf(stderr, "\rConverted %d deltas in %s\n", n, s->gfile);
 out:	sccs_unlock(s, 'z');

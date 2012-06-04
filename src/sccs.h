@@ -740,6 +740,7 @@ struct sccs {
 	u32	rdweaveEOF:1;	/* at EOF in rdWEAVE */
 	u32	rdweave:1;	/* currently reading weave */
 	u32	wrweave:1;	/* currently writing weave */
+	u32	ckwrap:1;	/* running with fopen_cksum */
 };
 
 typedef struct {
@@ -1226,7 +1227,7 @@ int	spawn_cmd(int flag, char **av);
 pid_t	mkpager(void);
 int	getRealName(char *path, MDBM *db, char *realname);
 int	addsym(sccs *s, ser_t metad, int graph, char *tag);
-int	delta_table(sccs *s, FILE *out, int willfix);
+int	delta_table(sccs *s, int willfix);
 int	walksfiles(char *dir, walkfn fn, void *data);
 ser_t	getSymlnkCksumDelta(sccs *s, ser_t d);
 hash	*generateTimestampDB(project *p);
@@ -1348,9 +1349,9 @@ int	restore_backup(char *backup_sfio, int overwrite);
 char	*parent_normalize(char *);
 int	annotate_args(int flags, char *args);
 void	platformInit(char **av);
-int	sccs_csetPatchWeave(sccs *s, FILE *f);
+int	sccs_csetPatchWeave(sccs *s);
 int	sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
-	    FILE *fastpatch, FILE *out);
+	    FILE *fastpatch);
 void	sccs_clearbits(sccs *s, u32 flags);
 MDBM	*loadkv(char *file);
 char	**getParkComment(int *err);
@@ -1391,7 +1392,7 @@ u32	send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip, int quiet);
 int	bkd_BAM_part3(remote *r, char **env, int quiet, char *range);
 int	bp_sendkeys(FILE *f, char *range, u64 *bytes, int gzip);
 int	detach(int quiet, int verbose);
-sum_t	fputdata(sccs *s, u8 *buf, FILE *out);
+sum_t	str_cksum(u8 *buf);
 char	*psize(u64 bytes);
 u64	scansize(char *bytes);
 void	idcache_update(char **files);

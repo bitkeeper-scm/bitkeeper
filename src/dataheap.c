@@ -400,7 +400,7 @@ nopage:		fseek(s->fh, off, SEEK_SET);
 			perror("sigaction");
 		}
 	}
-	if (fgzip_findSeek(s->pagefh, off, len, s->pagesz, &lens)) {
+	if (vzip_findSeek(s->pagefh, off, len, s->pagesz, &lens)) {
 		/* fgzip failed so we assume it wasn't using fgzip... */
 		rlen = len;
 		while (rlen > s->pagesz) {

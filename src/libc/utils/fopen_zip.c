@@ -1,17 +1,17 @@
+/*
+ * Implement compression used in the protocol and the old weave-only compression
+ */
 #include "system.h"
 
 typedef struct {
 	u32		write:1;	 /* opened for writing */
 	u32		eof:1;		 /* saw eof while reading */
 	u32		header:1;	 /* 2-byte len for each block */
-	u32		doCksum:1;	 /* calc checksums */
 	u32		unbuffer:1;	 /* use read() */
 	u32		gotNextLen:1;	 /* bit for header state machine */
 	u16		nextlen;
 	FILE		*f;		 /* base data stream */
 	z_stream	z;
-	u16		*cksump;	 /* update checksum here */
-	u16		cksum;		 /* current chksum */
 	int		*incntp, *outcntp;
 	int		incnt, outcnt;
 	int		obuflen;
@@ -26,7 +26,7 @@ private	int	doFill(zbuf *zf);
 private	void	writeBlock(zbuf *zf);
 
 /*
- * Like fopen() but reads and writes zips files
+ * Like fopen() but reads and writes gzipped files
  *
  * mode can be one of "rw#hcu"
  *
@@ -37,7 +37,6 @@ private	void	writeBlock(zbuf *zf);
  * r				read
  * w	int level		write
  * #	int *in, int *out	return bytes read/written
- * c	u16 *cksum		count bk cksum of output
  * h				use 2 byte len 'header' between blocks
  * u				unbuffered (only with rh)
  *
@@ -69,16 +68,14 @@ fopen_zip(FILE *f, char *mode, ...)
 			zf->incntp = va_arg(ap, int*);
 			zf->outcntp = va_arg(ap, int*);
 			break;
-		    case 'c':
-			zf->doCksum = 1;
-			zf->cksump = va_arg(ap, u16 *);
-			break;
 		    case 'h':
 			zf->header = 1;
 			break;
 		    case 'u':
 			zf->unbuffer = 1;
 			break;
+		    default:
+			assert(0);
 		}
 	}
 	if (zf->unbuffer) assert(zf->header);
@@ -197,7 +194,6 @@ zClose(void *cookie)
 	}
 	if (zf->incntp) *zf->incntp += zf->incnt;
 	if (zf->outcntp) *zf->outcntp += zf->outcnt;
-	if (zf->cksump) *zf->cksump += zf->cksum;
 	free(zf->obuf);
 	free(zf);
 	return (rc);
@@ -298,16 +294,6 @@ writeBlock(zbuf *zf)
 			putc(olen >> 8, zf->f);
 			putc(olen & 0xff, zf->f);
 			zf->outcnt += 2;
-		}
-		if (zf->doCksum) {
-			u32	sum = 0;
-			int	i;
-
-			if (zf->header) {
-				sum += (olen >> 8) + (olen & 0xff);
-			}
-			for (i = 0; i < olen; sum += zf->obuf[i++]);
-			zf->cksum += (u16)sum;
 		}
 		fwrite(zf->obuf, 1, olen, zf->f);
 		zf->outcnt += olen;

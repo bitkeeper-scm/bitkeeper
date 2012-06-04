@@ -29,10 +29,9 @@ private int	delstate(ser_t ser, ser_t *state, u8 *slist);
 private int	whatstate(ser_t *state);
 private int	visitedstate(ser_t *state, u8 *slist);
 private ser_t	*changestate(ser_t *state, char type, ser_t serial);
-private int	end(sccs *, ser_t, FILE *, int, int, int, int);
+private int	end(sccs *, ser_t, int, int, int, int);
 private void	date(sccs *s, ser_t d, time_t tt);
 private int	getflags(sccs *s, char *buf);
-private sum_t	fputmeta(sccs *s, u8 *buf, FILE *out);
 private int	checkRev(sccs *s, char *file, ser_t d, int flags);
 private int	checkrevs(sccs *s, int flags);
 private int	stripChecks(sccs *s, ser_t d, char *who);
@@ -75,7 +74,7 @@ private	void	prefix(sccs *s,
 private	int	sccs_meta(char *m, sccs *s, ser_t parent,
 		    char *init, int fixDates);
 private	int	misc(sccs *s);
-private	int	bin_deltaTable(sccs *s, FILE *out);
+private	int	bin_deltaTable(sccs *s);
 private	off_t	bin_data(char *header);
 private	ser_t	*scompressGraph(sccs *s);
 private	FILE	*sccs_wrweaveDone(sccs *s);
@@ -2005,7 +2004,7 @@ sccs_startWrite(sccs *s)
 {
 	FILE	*sfile;
 	char	*xfile;
-	int	est_size;
+	u64	est_size;
 
 	unless (s->encoding_out) {
 		s->encoding_out = sccs_encoding(s, 0, 0);
@@ -2025,8 +2024,8 @@ sccs_startWrite(sccs *s)
 		 * close and free all 3 FILE*'s.
 		 */
 		if (sfile = fopen(xfile, "w")) {
-			fpush(&sfile, fchksum_open(sfile, "w", est_size));
-			fpush(&sfile, fgzip_open(sfile, "w")); /* optional? */
+			fpush(&sfile, fopen_crc(sfile, "w", est_size));
+			fpush(&sfile, fopen_vzip(sfile, "w")); /* optional? */
 		}
 	} else if (s->mem_out) {
 		unless(s->outfh) s->outfh = fmem();
@@ -2034,6 +2033,12 @@ sccs_startWrite(sccs *s)
 		sfile = s->outfh;
 	} else {
 		sfile = fopen(xfile, "w");
+	}
+	unless(BFILE_OUT(s)) {
+		s->cksum = 0;
+		assert(!s->ckwrap);
+		fpush(&sfile, fopen_cksum(sfile, "w", &s->cksum));
+		s->ckwrap = 1;
 	}
 	s->outfh = sfile;
 	unless (sfile) perror(xfile);
@@ -2049,6 +2054,7 @@ sccs_abortWrite(sccs *s)
 	unless (s && s->outfh) return;
 	if (s->wrweave) sccs_wrweaveDone(s);
 	fclose(s->outfh);	/* before the unlink */
+	s->ckwrap = 0;		/* clear flag */
 	if (s->mem_out) {
 		assert(!BFILE_OUT(s));
 		s->mem_in = 0;
@@ -2074,10 +2080,15 @@ sccs_finishWrite(sccs *s)
 
 	assert(!s->wrweave);
 	unless (BFILE_OUT(s)) {
+		if (s->ckwrap) {
+			fpop(&s->outfh);
+			s->ckwrap = 0;
+		}
 		fseek(s->outfh, 0L, SEEK_SET);
 		fprintf(s->outfh,
 		    "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	}
+	assert(!s->ckwrap);
 	rc = ferror(s->outfh);
 	if (s->mem_out) {
 		assert(!BFILE_OUT(s));
@@ -2098,9 +2109,15 @@ sccs_finishWrite(sccs *s)
 		s->outfh = 0;
 		if (rc) {
 			perror(xfile);
+			unlink(xfile);
 			goto out;
 		}
 		sccs_close(s);
+		if (proj_sync(s->proj)) {
+			int fd = open(xfile, O_RDONLY, 0);
+			if (fsync(fd)) perror(xfile);
+			close(fd);
+		}
 		if (rc = rename(xfile, s->sfile)) {
 			fprintf(stderr,
 			    "can't rename(%s, %s) left in %s\n",
@@ -4596,11 +4613,11 @@ sccs_open(sccs *s)
 	} else {
 		/* binary file */
 		rewind(f);
-		if (fpush(&f, fchksum_open(f, "r", 0))) {
+		if (fpush(&f, fopen_crc(f, "r", 0))) {
 			fclose(f);
 			return (-1);
 		}
-		if (fpush(&f, fgzip_open(f, "r"))) {
+		if (fpush(&f, fopen_vzip(f, "r"))) {
 			fclose(f);
 			return (-1);
 		}
@@ -4737,7 +4754,7 @@ sccs_free(sccs *s)
 		// XXX In this case sccs_free has transactional quality
 		// and has no back channel to let caller know transaction
 		// failed.
-		if (sccs_finishWrite(s)) sccs_abortWrite(s);
+		sccs_finishWrite(s);
 		fclose(f);
 	}
 	if (s->wrweave) {
@@ -5635,33 +5652,13 @@ printstate(ser_t *state, u8 *slist)
 	return (ret);
 }
 
-/*
- * This interface is used for writing the metadata (delta table, flags, etc).
- *
- * N.B. All checksum functions do the intermediate sum in an int variable
- * because 16-bit register arithmetic can be up to 2x slower depending on
- * the platform and compiler.
- */
-private sum_t
-fputmeta(sccs *s, u8 *buf, FILE *out)
-{
-	register u8	*t = buf;
-	register unsigned int sum = 0;
-
-	for (; *t; t++)	sum += *t;
-	s->cksum += (sum_t)sum;
-	fputs(buf, out);
-
-	return (sum);
-}
-
 private FILE *
 sccs_wrweaveInit(sccs *s)
 {
 	assert(!s->wrweave);
 	s->wrweave = 1;
 	if (GZIP_OUT(s)) {
-		fpush(&s->outfh, fopen_zip(s->outfh, "wc", -1, &s->cksum));
+		fpush(&s->outfh, fopen_zip(s->outfh, "w", -1));
 	}
 	return (s->outfh);
 }
@@ -5679,47 +5676,34 @@ sccs_wrweaveDone(sccs *s)
  * If the data isn't a control line, just dump it.
  * Otherwise, put it out there after adjusting the serial.
  */
-private sum_t
-fputbumpserial(sccs *s, u8 *buf, int inc, FILE *out)
+private void
+fputbumpserial(sccs *s, u8 *buf, int inc)
 {
-	u8	tmp[20];
 	u8	*t;
-	ser_t	ser, sum;
+	ser_t	ser;
 
-	if (isData(buf) || !inc) return (fputdata(s, buf, out));
-	/* ^AI ddd\n
-	 * ^AE ddd\n
-	 * ^AE dddN\n
+	if (isData(buf) || !inc) {
+		fputs(buf, s->outfh);
+		return;
+	}
+	/* ^AI \d+
+	 * ^AE \d+N?
 	 */
-	tmp[1] = 0;
-	tmp[0] = buf[1];
-	sum = fputdata(s, "\001", out);
-	sum += fputdata(s, tmp, out);
-	sum += fputdata(s, " ", out);
 	ser = atoi(&buf[3]);
-	sprintf(tmp, "%u", ser + inc);
-	sum += fputdata(s, tmp, out);
+	fprintf(s->outfh, "\001%c %u", buf[1], ser + inc);
 	for (t = &buf[3]; isdigit(*t); t++);
-	sum += fputdata(s, t, out);
-	return (sum);
+	fputs(t, s->outfh);
 }
 
-/*
- * Like fputmeta, but optionally compresses the data stream.
- * This is used for the data section exclusively.
- */
 sum_t
-fputdata(sccs *s, u8 *buf, FILE *out)
+str_cksum(u8 *p)
 {
 	u32	sum = 0;
-	u8	*p = buf;
 
 	while (*p) {
 		sum += *p;
 		if (*p++ == '\n') break;
 	}
-	fwrite(buf, 1, p - buf, out);
-	unless (GZIP_OUT(s)) s->cksum += sum;
 	return (sum);
 }
 
@@ -5772,12 +5756,14 @@ uuencode_sum(sccs *s, FILE *in, FILE *out)
 			}
 			length -= n;
 			uuencode1(inp, obuf, n);
-			s->dsum += fputdata(s, obuf, out);
+			s->dsum += str_cksum(obuf);
+			fputs(obuf, out);
 			inp += n;
 			added++;
 		}
 	}
-	s->dsum += fputdata(s, " \n", out);
+	s->dsum += str_cksum(" \n");
+	fputs(" \n", out);
 	return (++added);
 }
 
@@ -7937,7 +7923,7 @@ fmttt(char *p, time_t d)
  * New in Feb, '99: remove duplicates of metadata.
  */
 int
-delta_table(sccs *s, FILE *out, int willfix)
+delta_table(sccs *s, int willfix)
 {
 	ser_t	d, parent;
 	int	i;	/* used by EACH */
@@ -7948,6 +7934,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	char	*p, *t, old;
 	int	bits = 0;
 	int	version = SCCS_VERSION;
+	FILE	*out = s->outfh;		/* cache of s->outfh */
 	symbol	*sym;
 	static int chkd_striptags;
 
@@ -7989,16 +7976,17 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 	}
 
-	if (BFILE_OUT(s)) return (bin_deltaTable(s, out));
+	if (BFILE_OUT(s)) return (bin_deltaTable(s));
 
-	fprintf(out, "\001%cXXXXX\n", BITKEEPER(s) ? 'H' : 'h');
-	s->cksum = 0;
 	assert(sizeof(buf) >= 1024);	/* see comment code */
+	sprintf(buf, "\001%cXXXXX\n", BITKEEPER(s) ? 'H' : 'h');
+	fputs(buf, out);
+	s->cksum -= str_cksum(buf);
 
 	if (BITKEEPER(s)) {
 		/* add compat marker */
 		unless (bk_featureCompat(s->proj)) {
-			fputmeta(s, BKID_STR "\n", out);
+			fputs(BKID_STR "\n", out);
 		}
 	}
 	s->adddelOff = ftell(out);
@@ -8038,11 +8026,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 			strcpy(buf+i, "\n");
 			firstadded = 0;
 		}
-		if (first) {
-			fputs(buf, out);
-		} else {
-			fputmeta(s, buf, out);
-		}
+		fputs(buf, out);
+		if (first) s->cksum -= str_cksum(buf);
 		p = fmts(buf, "\001d ");
 		*p++ = TAG(s, d) ? 'R' : 'D';
 		*p++ = ' ';
@@ -8057,7 +8042,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		p = fmtd(p, PARENT(s, d));
 		*p++ = '\n';
 		*p = '\0';
-		fputmeta(s, buf, out);
+		fputs(buf, out);
 		if (HAS_CLUDES(s, d)) {
 			/* include */
 			p = 0;
@@ -8068,10 +8053,10 @@ delta_table(sccs *s, FILE *out, int willfix)
 				*p++ = ' ';
 				p = fmtd(p, i);
 				*p = 0;
-				fputmeta(s, buf, out);
+				fputs(buf, out);
 				p = buf;
 			}
-			if (p) fputmeta(s, "\n", out);
+			if (p) fputc('\n', out);
 			/* exclude */
 			p = 0;
 			t = CLUDES(s, d);
@@ -8081,18 +8066,18 @@ delta_table(sccs *s, FILE *out, int willfix)
 				*p++ = ' ';
 				p = fmtd(p, i);
 				*p = 0;
-				fputmeta(s, buf, out);
+				fputs(buf, out);
 				p = buf;
 			}
-			if (p) fputmeta(s, "\n", out);
+			if (p) fputc('\n', out);
 		}
 		t = COMMENTS(s, d);
 		while (p = eachline(&t, &i)) {
 			old = p[i];
 			p[i] = 0;
-			fputmeta(s, "\001c ", out);
-			fputmeta(s, p, out);
-			fputmeta(s, "\n", out);
+			fputs("\001c ", out);
+			fputs(p, out);
+			fputc('\n', out);
 			p[i] = old;
 		}
 		unless (BITKEEPER(s)) goto SCCS;
@@ -8102,7 +8087,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			p = fmts(p, BAMHASH(s, d));
 			*p++ = '\n';
 			*p   = '\0';
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 		if (HAS_CSETFILE(s, d) &&
 		    !(parent && streq(CSETFILE(s, d), CSETFILE(s, parent)))) {
@@ -8110,32 +8095,33 @@ delta_table(sccs *s, FILE *out, int willfix)
 			p = fmts(p, CSETFILE(s, d));
 			*p++ = '\n';
 			*p   = '\0';
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 		if (FLAGS(s, d) & D_CSET) {
 			assert(!TAG(s, d));
-			fputmeta(s, "\001cC\n", out);
+			fputs("\001cC\n", out);
 		}
-		if (DANGLING(s, d)) fputmeta(s, "\001cD\n", out);
+		if (DANGLING(s, d)) fputs("\001cD\n", out);
 		if (DATE_FUDGE(s, d)) {
 			p = fmts(buf, "\001cF");
 			p = fmttt(p, DATE_FUDGE(s, d));
 			*p++ = '\n';
 			*p   = '\0';
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 
 		if (((t = HOSTNAME(s, d)) && *t) &&
 		    (!parent || !streq(t, HOSTNAME(s, parent)))) {
 			sprintf(buf, "\001cH%s\n", t);
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 
 		if (first) {
-			fputmeta(s, "\001cK", out);
+			fputs("\001cK", out);
 			s->sumOff = ftell(out);
 			fputs("XXXXX", out);
-			fputmeta(s, "\n", out);
+			s->cksum -= str_cksum("XXXXX");
+			fputc('\n', out);
 		} else if (!TAG(s, d)) {
 			/*
 			 * It turns out not to be worth to save the
@@ -8152,14 +8138,14 @@ delta_table(sccs *s, FILE *out, int willfix)
 			} else {
 				sprintf(buf, "\001cK%05u\n", SUM(s, d));
 			}
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 		if (MERGE(s, d)) {
 			p = fmts(buf, "\001cM");
 			p = fmtd(p, MERGE(s, d));
 			*p++ = '\n';
 			*p   = '\0';
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 		/* XXX: O follows P */
 		if ((HAS_PATHNAME(s, d) &&
@@ -8175,7 +8161,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			}
 			*p++ = '\n';
 			*p   = '\0';
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 		if (MODE(s, d)) {
 		    	unless (parent && sameMode(s, parent, d)) {
@@ -8189,7 +8175,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 				}
 				*p++ = '\n';
 				*p   = '\0';
-				fputmeta(s, buf, out);
+				fputs(buf, out);
 			}
 		}
 		if (HAS_RANDOM(s, d)) {
@@ -8197,7 +8183,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			p = fmts(p, RANDOM(s, d));
 			*p++ = '\n';
 			*p   = '\0';
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 		if (FLAGS(s, d) & D_SYMBOLS) {
 			for (; sym != s->symlist; --sym) {
@@ -8207,7 +8193,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 				p = fmts(p, SYMNAME(s, sym));
 				*p++ = '\n';
 				*p   = '\0';
-				fputmeta(s, buf, out);
+				fputs(buf, out);
 			}
 		}
 		if (SYMGRAPH(s, d)) {
@@ -8228,15 +8214,15 @@ delta_table(sccs *s, FILE *out, int willfix)
 			}
 			*p++ = '\n';
 			*p = 0;
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 		if (d == TREE(s)) {
 			sprintf(buf, "\001cV%u\n", version);
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 		if (!PARENT(s, d) || (XFLAGS(s, d) != XFLAGS(s, PARENT(s, d)))) {
 			sprintf(buf, "\001cX0x%x\n", XFLAGS(s, d));
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 		if (HAS_ZONE(s, d) &&
 		    !(parent && streq(ZONE(s, parent), ZONE(s, d)))) {
@@ -8244,30 +8230,30 @@ delta_table(sccs *s, FILE *out, int willfix)
 			p = fmts(p, ZONE(s, d));
 			*p++ = '\n';
 			*p   = '\0';
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 SCCS:
 		first = 0;
-		fputmeta(s, "\001e\n", out);
+		fputs("\001e\n", out);
 	}
-	fputmeta(s, "\001u\n", out);
+	fputs("\001u\n", out);
 	EACH(s->usersgroups) {
-		fputmeta(s, s->usersgroups[i], out);
-		fputmeta(s, "\n", out);
+		fputs(s->usersgroups[i], out);
+		fputc('\n', out);
 	}
-	fputmeta(s, "\001U\n", out);
+	fputs("\001U\n", out);
 	if (BITKEEPER(s) || (s->encoding_out != E_ALWAYS|E_ASCII)) {
 		p = fmts(buf, "\001f e ");
 		p = fmtd(p, (s->encoding_out & ~E_ALWAYS));
 		*p++ = '\n';
 		*p   = '\0';
-		fputmeta(s, buf, out);
+		fputs(buf, out);
 	}
 	if (BITKEEPER(s)) {
 		bits = XFLAGS(s, sccs_top(s));
 		if (bits) {
 			sprintf(buf, "\001f x 0x%x\n", bits);
-			fputmeta(s, buf, out);
+			fputs(buf, out);
 		}
 	}
 	if (s->defbranch) {
@@ -8275,22 +8261,23 @@ SCCS:
 		p = fmts(p, s->defbranch);
 		*p++ = '\n';
 		*p   = '\0';
-		fputmeta(s, buf, out);
+		fputs(buf, out);
 	}
 	EACH(s->flags) {
 		p = fmts(buf, "\001f ");
 		p = fmts(p, s->flags[i]);
 		*p++ = '\n';
 		*p   = '\0';
-		fputmeta(s, buf, out);
+		fputs(buf, out);
 	}
-	fputmeta(s, "\001t\n", out);
+	fputs("\001t\n", out);
 	EACH(s->text) {
-		fputmeta(s, s->text[i], out);
-		fputmeta(s, "\n", out);
+		fputs(s->text[i], out);
+		fputc('\n', out);
 	}
-	fputmeta(s, "\001T\n", out);
-	if (flushFILE(out)) {
+	fputs("\001T\n", out);
+	assert(out == s->outfh);
+	if (flushFILE(s->outfh)) {
 		perror(s->sfile);
 		s->io_warned = 1;
 		return (-1);
@@ -8303,25 +8290,25 @@ SCCS:
  * write out added/deleted/same line for new delta. Already did seek
  */
 private	int
-bin_deltaAdded(sccs *s, ser_t d, FILE *out)
+bin_deltaAdded(sccs *s, ser_t d)
 {
 	u32	val[3];
 
 	val[0] = htole32(ADDED(s, d));
 	val[1] = htole32(DELETED(s, d));
 	val[2] = htole32(SAME(s, d));
-	return (fwrite(&val, sizeof(u32), 3, out) != 3);
+	return (fwrite(&val, sizeof(u32), 3, s->outfh) != 3);
 }
 
 /*
  * write out sum line for new delta. Already did seek
  */
 private	int
-bin_deltaSum(sccs *s, ser_t d, FILE *out)
+bin_deltaSum(sccs *s, ser_t d)
 {
 	u32	val = htole32(SUM(s, d));
 
-	return (fwrite(&val, sizeof(u32), 1, out) != 1);
+	return (fwrite(&val, sizeof(u32), 1, s->outfh) != 1);
 }
 
 /*
@@ -8399,11 +8386,12 @@ bin_sortHeap(sccs *s)
 
 
 private	int
-bin_deltaTable(sccs *s, FILE *out)
+bin_deltaTable(sccs *s)
 {
 	u32	off_h, off_d, off_s;
 	ser_t	d;
 	int	i, lastsorted = 0;
+	FILE	*out = s->outfh; /* cache of s->outfh */
 	FILE	*perfile;
 
 	if (strneq(s->heap.buf+1, "lastsort ", 9)) {
@@ -8492,7 +8480,8 @@ bin_deltaTable(sccs *s, FILE *out)
 	/* write symbol table */
 	if (s->symlist) {
 		if (IS_LITTLE_ENDIAN()) {
-			fwrite(s->symlist + 1, sizeof(symbol), nLines(s->symlist), out);
+			fwrite(s->symlist + 1,
+			    sizeof(symbol), nLines(s->symlist), out);
 		} else {
 			u32	*p = (u32 *)&s->symlist[1];
 			u32	val;
@@ -9762,11 +9751,9 @@ updatePending(sccs *s)
  * Escape the control-A character in data buffer
  */
 private void
-fix_cntl_a(sccs *s, char *buf, FILE *out)
+fix_cntl_a(sccs *s, char *buf)
 {
-	char	cntlA_escape[2] = { CNTLA_ESCAPE, 0 };
-
-	if (buf[0] == '\001') fputdata(s, cntlA_escape, out);
+	if (buf[0] == '\001') fputc(CNTLA_ESCAPE, s->outfh);
 }
 
 /*
@@ -9918,7 +9905,7 @@ out:		sccs_abortWrite(s);
 		goto out;
 	}
 
-	unless (sfile = sccs_startWrite(s)) goto out;
+	unless (sccs_startWrite(s)) goto out;
 	if ((flags & DELTA_PATCH) || proj_root(s->proj)) {
 		s->bitkeeper = 1;
 		s->xflags |= X_BITKEEPER;
@@ -10092,16 +10079,16 @@ out:		sccs_abortWrite(s);
 		added = s->added = ADDED(s, n);
 	}
 	FLAGS(s, n) |= D_FIXUPS;
-	if (delta_table(s, sfile, 1)) {
+	if (delta_table(s, 1)) {
 		error++;
 		goto out;
 	}
 	sfile = sccs_wrweaveInit(s);
 	if (BAM(s)) goto skip_weave;
 	if (n0) {
-		fputdata(s, "\001I 2\n", sfile);
+		fputs("\001I 2\n", sfile);
 	} else {
-		fputdata(s, "\001I 1\n", sfile);
+		fputs("\001I 1\n", sfile);
 	}
 	s->dsum = 0;
 	if (!(flags & DELTA_PATCH) && BINARY(s)) {
@@ -10121,8 +10108,9 @@ out:		sccs_abortWrite(s);
 				} else {
 					t = &t[off];
 				}
-				s->dsum += fputdata(s, t, sfile);
-				s->dsum += fputdata(s, "\n", sfile);
+				s->dsum += str_cksum(t) + '\n';
+				fputs(t, sfile);
+				fputc('\n', sfile);
 				added++;
 			}
 			fclose(diffs);
@@ -10132,7 +10120,7 @@ out:		sccs_abortWrite(s);
 			strcpy(buf, "\n");
 			while (t = fgetln(gfile, &len)) {
 				assert(!no_lf);
-				fix_cntl_a(s, t, sfile);
+				fix_cntl_a(s, t);
 				--len;
 				if (t[len] != '\n') {
 					/* must be last line in file */
@@ -10145,8 +10133,12 @@ out:		sccs_abortWrite(s);
 					}
 				}
 				t[len] = 0;
-				if (len) s->dsum += fputdata(s, t, sfile);
-				s->dsum += fputdata(s, buf, sfile);
+				if (len) {
+					s->dsum += str_cksum(t);
+					fputs(t, sfile);
+				}
+				s->dsum += str_cksum(buf);
+				fputs(buf, sfile);
 				added++;
 			}
 			/*
@@ -10154,7 +10146,7 @@ out:		sccs_abortWrite(s);
 			 */
 			if (no_lf) {
 				/* put lf in sfile, but not in dsum */
-				fputdata(s, "\n", sfile);
+				fputc('\n', sfile);
 			}
 		} else if (S_ISLNK(s->mode)) {
 			u8	*t;
@@ -10163,20 +10155,21 @@ out:		sccs_abortWrite(s);
 		}
 	}
 	if (n0) {
-		fputdata(s, "\001E 2", sfile);
-		if (no_lf) fputdata(s, "N", sfile);
-		fputdata(s, "\n", sfile);
-		fputdata(s, "\001I 1\n", sfile);
-		fputdata(s, "\001E 1\n", sfile);
+		fputs("\001E 2", sfile);
+		if (no_lf) fputc('N', sfile);
+		fputc('\n', sfile);
+		fputs("\001I 1\n", sfile);
+		fputs("\001E 1\n", sfile);
 	} else {
-		fputdata(s, "\001E 1", sfile);
-		if (no_lf) fputdata(s, "N", sfile);
-		fputdata(s, "\n", sfile);
+		fputs("\001E 1", sfile);
+		if (no_lf) fputc('N', sfile);
+		fputc('\n', sfile);
 	}
 skip_weave:
 	if (BFILE_OUT(s)) fputs("\001Z\n", sfile);
-	sfile = sccs_wrweaveDone(s);
-	error = end(s, n, sfile, flags, added, 0, 0);
+	sccs_wrweaveDone(s);
+	sfile = 0;
+	error = end(s, n, flags, added, 0, 0);
 	if (gfile && (gfile != stdin)) {
 		fclose(gfile);
 		gfile = 0;
@@ -11599,7 +11592,6 @@ int
 sccs_admin(sccs *sc, ser_t p, u32 flags,
 	admin *f, admin *z, admin *u, admin *s, char *mode, char *text)
 {
-	FILE	*sfile = 0;
 	int	error = 0, locked = 0, i;
 	int	rc;
 	int	flagsChanged = 0;
@@ -11914,11 +11906,11 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		verbose((stderr, "admin: can't get lock on %s\n", sc->sfile));
 		OUT;
 	}
-	unless (sfile = sccs_startWrite(sc)) {
+	unless (sccs_startWrite(sc)) {
 		fprintf(stderr, "admin: can't create %s: ", sccsXfile(sc, 'x'));
 		OUT;
 	}
-	if (delta_table(sc, sfile, 0)) {
+	if (delta_table(sc, 0)) {
 		unless (sc->io_warned) OUT;
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
@@ -11935,14 +11927,14 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	    	obscure_it = 0;
 	}
 	if (rmlicense) obscure_it = 1;
-	sfile = sccs_wrweaveInit(sc);
+	sccs_wrweaveInit(sc);
 	sccs_rdweaveInit(sc);
 	while (buf = sccs_nextdata(sc)) {
 		if (obscure_it) {
 			buf = obscure(rmlicense, UUENCODE(sc), buf);
 		}
 		if (flags & ADMIN_ADD1_0) {
-			fputbumpserial(sc, buf, 1, sfile);
+			fputbumpserial(sc, buf, 1);
 		} else if (flags & ADMIN_RM1_0) {
 			if (streq(buf, "\001I 1")) {
 				buf = sccs_nextdata(sc);
@@ -11950,21 +11942,21 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 				assert(!sccs_nextdata(sc));
 				break;
 			}
-			fputbumpserial(sc, buf, -1, sfile);
+			fputbumpserial(sc, buf, -1);
 		} else {
-			fputdata(sc, buf, sfile);
+			fputs(buf, sc->outfh);
 		}
-		fputdata(sc, "\n", sfile);
+		fputc('\n', sc->outfh);
 		if (obscure_it) free(buf);
 	}
 	sccs_rdweaveDone(sc);
 	if (flags & ADMIN_ADD1_0) {
-		fputdata(sc, "\001I 1\n", sfile);
-		fputdata(sc, "\001E 1\n", sfile);
+		fputs("\001I 1\n", sc->outfh);
+		fputs("\001E 1\n", sc->outfh);
 	}
 
 	/* not really needed, we already wrote it */
-	sfile = sccs_wrweaveDone(sc);
+	sccs_wrweaveDone(sc);
 #ifdef	DEBUG
 	badcksum(sc, flags);
 #endif
@@ -12047,15 +12039,13 @@ struct weave {
 	ser_t	*wmap;		// weave map - renumber serials in weave
 	ser_t	*state;		// weave state
 	u8	*slist;		// weave set
-	FILE	*out;		// print here
 	sum_t	sum;		// checksum
 	int	print;		// active serial in weave
 	int	line;		// line number in weave
 };
 
 int
-sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
-    FILE *fastpatch, FILE *out)
+sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap, FILE *fastpatch)
 {
 	int	i;
 	ser_t	d;
@@ -12066,7 +12056,6 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
 
 	w = new(weave);
 	w->s = s;
-	w->out = out;
 	w->wmap = weavemap;
 
 	/* compute an serialmap view which matches sccs_patchDiffs() */
@@ -12091,14 +12080,14 @@ sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
 		sccs_rdweaveInit(s);
 		w->buf = sccs_nextdata(s);	/* prime the data flow */
 	}
-	w->out = sccs_wrweaveInit(s);
+	sccs_wrweaveInit(s);
 
 	rc = doFast(w, patchmap, fastpatch);
 
 	if (HAS_SFILE(s)) {
 		if (sccs_rdweaveDone(s)) rc = 1;	/* no EOF */
 	}
-	w->out = sccs_wrweaveDone(s);
+	sccs_wrweaveDone(s);
 	if (w->slist) free(w->slist);
 	if (w->state) free(w->state);
 	free(w);
@@ -12118,7 +12107,7 @@ doFast(weave *w, ser_t *patchmap, FILE *diffs)
 	int	rc = 1;
 	sum_t	sum = 0;
 	ser_t	dser;
-	char	cmdline[MAXCMD];
+	FILE	*out = w->s->outfh;
 
 	unless (diffs) goto done;
 	assert(patchmap);	/* if diffs, then there's a map */
@@ -12140,9 +12129,10 @@ doFast(weave *w, ser_t *patchmap, FILE *diffs)
 				w->sum += '\n';
 				w->line++;
 			} else if (inpatch) {
-				fix_cntl_a(w->s, p, w->out);
-				w->sum += fputdata(w->s, p, w->out);
-				w->sum += fputdata(w->s, "\n", w->out);
+				fix_cntl_a(w->s, p);
+				w->sum += str_cksum(p) + '\n';
+				fputs(p, out);
+				fputc('\n', out);
 				w->line++;
 			}
 			continue;
@@ -12177,11 +12167,10 @@ doFast(weave *w, ser_t *patchmap, FILE *diffs)
 			inpatch = 0;
 		}
 		if (*b == 'N') {
-			sprintf(cmdline, "\001E %uN\n", dser);
+			fprintf(out, "\001E %uN\n", dser);
 		} else {
-			sprintf(cmdline, "\001%c %u\n", type, dser);
+			fprintf(out, "\001%c %u\n", type, dser);
 		}
-		fputdata(w->s, cmdline, w->out);
 		w->state = changestate(w->state, type, dser);
 		if (w->print = whatstate(w->state)) {
 			unless (w->slist[w->print]) w->print = 0;
@@ -12221,7 +12210,7 @@ weaveMove(weave *w, int line, int before, ser_t patchserial)
 	char	type;
 	ser_t	serial;
 	char	*buf;
-	char	cmdline[MAXCMD];
+	FILE	*out = w->s->outfh;
 
 	if (before) {
 		/* first move after the previous line, then upto this line */
@@ -12242,14 +12231,15 @@ weaveMove(weave *w, int line, int before, ser_t patchserial)
 			if (print) {
 				if (before) goto end;
 				w->line++;
-				w->sum += fputdata(s, buf, w->out);
-				w->sum += fputdata(s, "\n", w->out);
+				w->sum += str_cksum(buf) + '\n';
+				fputs(buf, out);
+				fputc('\n', out);
 				if (buf[0] == CNTLA_ESCAPE) {
 					w->sum -= CNTLA_ESCAPE;
 				}
 			} else {
-				fputdata(s, buf, w->out);
-				fputdata(s, "\n", w->out);
+				fputs(buf, out);
+				fputc('\n', out);
 			}
 			continue;
 		}
@@ -12264,8 +12254,7 @@ weaveMove(weave *w, int line, int before, ser_t patchserial)
 		if (before && print && (type == 'D')) {
 			if (patchserial < serial) goto end;
 		}
-		sprintf(cmdline, "\001%c %u%s\n", type, serial, n);
-		fputdata(s, cmdline, w->out);
+		fprintf(out, "\001%c %u%s\n", type, serial, n);
 		w->state = changestate(w->state, type, serial);
 		if (print = whatstate(w->state)) {
 			unless (w->slist[print]) print = 0;
@@ -12296,8 +12285,8 @@ after:	skipblock = 0;
 		if (isData(buf)) {
 			unless (skipblock) goto end;
 			assert(!print);
-			fputdata(s, buf, w->out);
-			fputdata(s, "\n", w->out);
+			fputs(buf, out);
+			fputc('\n', out);
 			continue;
 		}
 		type = buf[1];
@@ -12310,8 +12299,7 @@ after:	skipblock = 0;
 		}
 		assert(patchserial != serial);
 		if (serial < patchserial) goto end;
-		sprintf(cmdline, "\001%c %u%s\n", type, serial, n);
-		fputdata(s, cmdline, w->out);
+		fprintf(out, "\001%c %u%s\n", type, serial, n);
 		unless (skipblock) {
 			if (type == 'I') skipblock = serial;
 		} else if (skipblock == serial) {
@@ -12333,26 +12321,27 @@ end:	w->buf = buf;
 }
 
 private void
-doctrl(sccs *s, char *pre, int val, char *post, FILE *out)
+doctrl(sccs *s, char *pre, int val, char *post)
 {
 	char	tmp[10];
+	FILE	*out = s->outfh;
 
 	sertoa(tmp, (ser_t) val);
-	fputdata(s, pre, out);
-	fputdata(s, tmp, out);
-	fputdata(s, post, out);
-	fputdata(s, "\n", out);
+	fputs(pre, out);
+	fputs(tmp, out);
+	fputs(post, out);
+	fputc('\n', out);
 }
 
 private void
-finish(sccs *s, int *ip, int *pp, int *last, FILE *out, ser_t **state,
-    u8 *slist)
+finish(sccs *s, int *ip, int *pp, int *last, ser_t **state, u8 *slist)
 {
 	int	print = *pp, incr = *ip;
 	sum_t	sum;
 	register char	*buf;
 	ser_t	serial;
 	int	lf_pend = *last;
+	FILE	*out = s->outfh;
 
 	debug((stderr, "finish(incr=%d, sum=%d, print=%d) ",
 		incr, s->dsum, print));
@@ -12360,8 +12349,9 @@ finish(sccs *s, int *ip, int *pp, int *last, FILE *out, ser_t **state,
 	while (!feof(s->fh)) {
 		unless (buf = sccs_nextdata(s)) break;
 		debug2((stderr, "G> %s", buf));
-		sum = fputdata(s, buf, out);
-		sum += fputdata(s, "\n", out);
+		sum = str_cksum(buf) + '\n';
+		fputs(buf, out);
+		fputc('\n', out);
 		if (isData(buf)) {
 			/* CNTLA_ESCAPE is not part of the check sum */
 			if (buf[0] == CNTLA_ESCAPE) sum -= CNTLA_ESCAPE;
@@ -12403,20 +12393,20 @@ finish(sccs *s, int *ip, int *pp, int *last, FILE *out, ser_t **state,
 }
 
 #define	nextline(inc)	\
-    nxtline(s, &inc, 0, &lines, &print, &last, out, &state, slist, &savenext)
+    nxtline(s, &inc, 0, &lines, &print, &last, &state, slist, &savenext)
 #define	beforeline(inc) \
-    nxtline(s, &inc, 1, &lines, &print, &last, out, &state, slist, &savenext)
+    nxtline(s, &inc, 1, &lines, &print, &last, &state, slist, &savenext)
 
 private void
-nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
+nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last,
     ser_t **state, u8 *slist, char ***savenext)
 {
 	int	print = *pp, incr = *ip, lines = *lp;
 	int	serial;
 	char	*n;
 	int	len;
-	sum_t	sum;
 	register char	*buf;
+	FILE	*out = s->outfh;
 	char	peek[3];	/* 2 chars plus \0 */
 
 	debug((stderr, "nxtline(@%d, before=%d print=%d, sum=%d) ",
@@ -12432,8 +12422,8 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
 		unless (buf = sccs_nextdata(s)) break;
 		debug2((stderr, "[%d] ", lines));
 		debug2((stderr, "G> %s", buf));
-		sum = fputdata(s, buf, out);
-		sum += fputdata(s, "\n", out);
+		fputs(buf, out);
+		fputc('\n', out);
 		if (isData(buf)) {
 			if (print) {
 				if (*savenext) {
@@ -12442,8 +12432,8 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
 					*savenext = 0;
 				}
 				/* CNTLA_ESCAPE is not part of the check sum */
-				if (buf[0] == CNTLA_ESCAPE) sum -= CNTLA_ESCAPE;
-				s->dsum += sum;
+				if (buf[0] == CNTLA_ESCAPE) buf++;
+				s->dsum += str_cksum(buf) + '\n';
 				incr++; lines++;
 				break;
 			}
@@ -12556,8 +12546,7 @@ bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
  * tip delta.
  */
 private int
-delta_write(sccs *s, ser_t n, FILE *diffs,
-    FILE **outp, int *ap, int *dp, int *up)
+delta_write(sccs *s, ser_t n, FILE *diffs, int *ap, int *dp, int *up)
 {
 	ser_t	*state;
 	u8	*slist;
@@ -12586,9 +12575,8 @@ again:
 	/*
 	 * Do the delta table & misc.
 	 */
-	unless (*outp = sccs_startWrite(s)) return (-1);
-	out = *outp;
-	if (delta_table(s, out, 1)) return (-1);
+	unless (sccs_startWrite(s)) return (-1);
+	if (delta_table(s, 1)) return (-1);
 
 	if (BAM(s)) return (0);	/* skip weave for BAM files */
 
@@ -12627,7 +12615,7 @@ newcmd:
 		}
 		debug2((stderr, "where=%d what=%c\n", where, what));
 
-#define	ctrl(pre, val, post)	doctrl(s, pre, val, post, out)
+#define	ctrl(pre, val, post)	doctrl(s, pre, val, post)
 
 		if (what == 'c' || what == 'd' || what == 'D' || what == 'x')
 		{
@@ -12686,9 +12674,10 @@ newcmd:
 					ctrl("\001E ", n, "");
 					goto newcmd;
 				}
-				fix_cntl_a(s, &b[2], out);
-				s->dsum += fputdata(s, &b[2], out);
-				s->dsum += fputdata(s, "\n", out);
+				fix_cntl_a(s, &b[2]);
+				s->dsum += str_cksum(&b[2]) + '\n';
+				fputs(&b[2], out);
+				fputc('\n', out);
 				debug2((stderr,
 				    "INS %s\n", &b[2]));
 				added++;
@@ -12703,13 +12692,16 @@ newcmd:
 				/* XXX: not break but error */
 				unless (b = fgetline(diffs)) break;
 				if (what != 'i' && b[0] == '\\') {
-					fix_cntl_a(s, &b[1], out);
-					s->dsum += fputdata(s, &b[1], out);
+					fix_cntl_a(s, &b[1]);
+					s->dsum += str_cksum(&b[1]);
+					fputs(&b[1], out);
 				} else {
-					fix_cntl_a(s, b, out);
-					s->dsum += fputdata(s, b, out);
+					fix_cntl_a(s, b);
+					s->dsum += str_cksum(b);
+					fputs(b, out);
 				}
-				s->dsum += fputdata(s, "\n", out);
+				s->dsum += '\n';
+				fputc('\n', out);
 				debug2((stderr, "INS %s\n", b));
 				added++;
 			}
@@ -12735,20 +12727,22 @@ newcmd:
 	if (addthis) {
 		last = 0;
 		ctrl("\001I ", n, "");
-		s->dsum += fputdata(s, addthis, out);
-		s->dsum += fputdata(s, "\n", out);
+		s->dsum += str_cksum(addthis) + '\n';
+		fputs(addthis, out);
+		fputc('\n', out);
 		if (addthis[0] == CNTLA_ESCAPE) s->dsum -= CNTLA_ESCAPE;
 		ctrl("\001E ", n, "");
 		free(addthis);
 	}
-	finish(s, &unchanged, &print, &last, out, &state, slist);
+	finish(s, &unchanged, &print, &last, &state, slist);
 	*ap = added;
 	*dp = deleted;
 	*up = unchanged;
 	if (state) free(state);
 	if (slist) free(slist);
 	sccs_rdweaveDone(s);
-	out = sccs_wrweaveDone(s);
+	sccs_wrweaveDone(s);
+	out = 0;
 	if (last) {
 		assert(!fixdel);	/* no infinite loops */
 		fixdel = lastdel;
@@ -12787,8 +12781,8 @@ sccs_csetWrite(sccs *s, char **cweave)
 		repository_lockers(s->proj);
 		return (-1);
 	}
-	unless (out = sccs_startWrite(s)) goto err;
-	if (delta_table(s, out, 0)) goto err;
+	unless (sccs_startWrite(s)) goto err;
+	if (delta_table(s, 0)) goto err;
 
 	out = sccs_wrweaveInit(s);
 	EACH(cweave) {
@@ -12797,27 +12791,18 @@ sccs_csetWrite(sccs *s, char **cweave)
 		keys = strchr(ser, '\t');
 		*keys++ = 0;
 		unless (oldser && streq(ser, oldser)) {
-			if (oldser) {
-				fputdata(s, "\001E ", out);
-				fputdata(s, oldser, out);
-				fputdata(s, "\n", out);
-			}
+			if (oldser) fprintf(out, "\001E %s\n", oldser);
 			oldser = ser;
-			fputdata(s, "\001I ", out);
-			fputdata(s, ser, out);
-			fputdata(s, "\n", out);
+			fprintf(out, "\001I %s\n", ser);
 		}
-		fputdata(s, keys, out);
-		fputdata(s, "\n", out);
+		fputs(keys, out);
+		fputc('\n', out);
 	}
-	if (oldser) {
-		fputdata(s, "\001E ", out);
-		fputdata(s, oldser, out);
-		fputdata(s, "\n", out);
-	}
-	fputdata(s, "\001I 1\n", out);
-	fputdata(s, "\001E 1\n", out);
-	out = sccs_wrweaveDone(s);
+	if (oldser) fprintf(out, "\001E %s\n", oldser);
+	fputs("\001I 1\n", out);
+	fputs("\001E 1\n", out);
+	sccs_wrweaveDone(s);
+	out = 0;
 	if (sccs_finishWrite(s)) goto err;
 	ret = 0;
 err:
@@ -12844,26 +12829,23 @@ err:
  * ^AE
  */
 private void
-patchweave(sccs *s, FILE *dF, u8 *buf, FILE *f)
+patchweave(sccs *s, FILE *dF, u8 *buf)
 {
 	u8	*p;
+	FILE	*out = s->outfh;
 
-	fputdata(s, "\001I ", f);
-	fputdata(s, buf, f);
-	fputdata(s, "\n", f);
+	fprintf(out, "\001I %s\n", buf);
 	if (dF) {
 		p = fgetline(dF);
 		assert(p && streq(p, "0a0"));
 		while (p = fgetline(dF)) {
 			assert(strneq("> ", p, 2));
 			p += 2; /* skip "> " */
-			fputdata(s, p, f);
-			fputdata(s, "\n", f);
+			fputs(p, out);
+			fputc('\n', out);
 		}
 	}
-	fputdata(s, "\001E ", f);
-	fputdata(s, buf, f);
-	fputdata(s, "\n", f);
+	fprintf(out, "\001E %s\n", buf);
 }
 
 /*
@@ -12875,13 +12857,14 @@ patchweave(sccs *s, FILE *dF, u8 *buf, FILE *f)
  */
 
 int
-sccs_csetPatchWeave(sccs *s, FILE *f)
+sccs_csetPatchWeave(sccs *s)
 {
 	u8	buf[20];
 	u8	*line;
 	u32	i;
 	u32	ser;
 	loc	*lp;
+	FILE	*out = 0;
 
 	assert(s);
 	assert(s->state & S_CSET);
@@ -12889,7 +12872,7 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	lp = s->locs;
 	i = s->iloc - 1; /* set index to final element in array */
 	assert(i > 0); /* base 1 data structure */
-	f = sccs_wrweaveInit(s);
+	unless (out = sccs_wrweaveInit(s)) return (1);
 	unless (HAS_SFILE(s)) goto skip;
 
 	sccs_rdweaveInit(s);
@@ -12901,40 +12884,40 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 			if (ser + i > lp[i].serial) break;
 			unless (lp[i].dF || lp[i].serial == 1) continue;
 			sertoa(buf, lp[i].serial);
-			patchweave(s, lp[i].dF, buf, f);
+			patchweave(s, lp[i].dF, buf);
 		}
 		unless (i) break;
 
 		/* bump the serial number up by # of items we have left */
 		ser += i;
 		sertoa(buf, ser);
-		fputdata(s, "\001I ", f);
-		fputdata(s, buf, f);
-		fputdata(s, "\n", f);
+		fputs("\001I ", out);
+		fputs(buf, out);
+		fputc('\n', out);
 		while (line = sccs_nextdata(s)) {
 			if (*line == '\001') break;
-			fputdata(s, line, f);
-			fputdata(s, "\n", f);
+			fputs(line, out);
+			fputc('\n', out);
 		}
 		assert(strneq(line, "\001E ", 3));
-		fputdata(s, "\001E ", f);
-		fputdata(s, buf, f);
-		fputdata(s, "\n", f);
+		fputs("\001E ", out);
+		fputs(buf, out);
+		fputc('\n', out);
 	}
 	assert(!(i && line));
 	/* No translation of serial numbers needed for remainder of file */
 	for ( ; line; line = sccs_nextdata(s)) {
-		fputdata(s, line, f);
-		fputdata(s, "\n", f);
+		fputs(line, out);
+		fputc('\n', out);
 	}
 	sccs_rdweaveDone(s);
 	/* Print out remaining, forcing serial 1 block at the end */
 skip:	for ( ; i ; i--) {
 		unless (lp[i].dF || lp[i].serial == 1) continue;
 		sertoa(buf, lp[i].serial);
-		patchweave(s, lp[i].dF, buf, f);
+		patchweave(s, lp[i].dF, buf);
 	}
-	f = sccs_wrweaveDone(s);
+	sccs_wrweaveDone(s);
 	return (0);
 }
 
@@ -13498,22 +13481,22 @@ sccs_meta(char *me, sccs *s, ser_t parent, char *init, int fixDate)
 	/*
 	 * Do the delta table & misc.
 	 */
-	unless (sfile = sccs_startWrite(s)) {
+	unless (sccs_startWrite(s)) {
 		sccs_unlock(s, 'z');
 		exit(1);
 	}
-	if (delta_table(s, sfile, 0)) {
+	if (delta_table(s, 0)) {
 abort:		sccs_abortWrite(s);
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	sccs_rdweaveInit(s);
-	sfile =  sccs_wrweaveInit(s);
+	sfile = sccs_wrweaveInit(s);
 	while (buf = sccs_nextdata(s)) {
-		fputdata(s, buf, sfile);
-		fputdata(s, "\n", sfile);
+		fputs(buf, sfile);
+		fputc('\n', sfile);
 	}
-	sfile = sccs_wrweaveDone(s);
+	sccs_wrweaveDone(s);
 	sccs_rdweaveDone(s);
 	if (sccs_finishWrite(s)) goto abort;
 	sccs_unlock(s, 'z');
@@ -13550,7 +13533,6 @@ int
 sccs_delta(sccs *s,
     	u32 flags, ser_t prefilled, FILE *init, FILE *diffs, char **syms)
 {
-	FILE	*sfile = 0;	/* the new s.file */
 	int	i, free_syms = 0, error = 0;
 	ser_t	d = 0, e, p, n = 0;
 	char	*rev, *tmpfile = 0;
@@ -13862,10 +13844,10 @@ out:
 	}
 
 	FLAGS(s, n) |= D_FIXUPS;
-	if (delta_write(s, n, diffs, &sfile, &added, &deleted, &unchanged)) {
+	if (delta_write(s, n, diffs, &added, &deleted, &unchanged)) {
 		OUT;
 	}
-	if (BFILE_OUT(s)) fputs("\001Z\n", sfile);
+	if (BFILE_OUT(s)) fputs("\001Z\n", s->outfh);
 	if (S_ISLNK(MODE(s, n))) {
 		u8 *t;
 		/*
@@ -13873,7 +13855,7 @@ out:
 		 */
 		for (t = SYMLINK(s, n); *t; t++) s->dsum += *t;
 	}
-	if (end(s, n, sfile, flags, added, deleted, unchanged)) {
+	if (end(s, n, flags, added, deleted, unchanged)) {
 		sccs_abortWrite(s);
 		WARN;
 	}
@@ -13893,13 +13875,11 @@ out:
 #undef	OUT
 }
 
-int	do_fsync = -1;
-
 /*
  * Print the summary and go and fix up the top.
  */
 private int
-end(sccs *s, ser_t n, FILE *out, int flags, int add, int del, int same)
+end(sccs *s, ser_t n, int flags, int add, int del, int same)
 {
 	int	i;
 	char	buf[100];
@@ -13918,14 +13898,19 @@ end(sccs *s, ser_t n, FILE *out, int flags, int add, int del, int same)
 	 * Now fix up the checksum and summary.
 	 */
 	if (BFILE_OUT(s)) {
-		fflush(out);
-		bin_deltaAdded(s, n, out);
+		fflush(s->outfh);
+		bin_deltaAdded(s, n);
 	} else {
-		fseek(out, s->adddelOff, SEEK_SET);
+		if (s->ckwrap) {
+			fpop(&s->outfh);
+			s->ckwrap = 0;
+		}
+		fseek(s->outfh, s->adddelOff, SEEK_SET);
 		sprintf(buf, "\001s %d/%d/%d", add, del, same);
 		for (i = strlen(buf); i < 43; i++) buf[i] = ' ';
 		strcpy(buf+i, "\n");
-		fputmeta(s, buf, out);
+		fputs(buf, s->outfh);
+		s->cksum += str_cksum(buf);
 	}
 	if (BITKEEPER(s)) {
 		if (!BAM(s) && (add || del || same) && (FLAGS(s, n) & D_ICKSUM)) {
@@ -13977,16 +13962,18 @@ Breaks up citool
 #endif
 		}
 		if (BFILE_OUT(s)) {
-			if (bin_deltaSum(s, n, out)) {
+			if (bin_deltaSum(s, n)) {
 				perror("fwrite");
 			}
 		} else {
-			if (fseek(out, s->sumOff, SEEK_SET)) perror("fseek");
+			if (fseek(s->outfh, s->sumOff, SEEK_SET)) {
+				perror("fseek");
+			}
 			sprintf(buf, "%05u", SUM(s, n));
-			fputmeta(s, buf, out);
+			fputs(buf, s->outfh);
+			s->cksum += str_cksum(buf);
 		}
 	}
-	if (proj_sync(s->proj)) fsync(fileno(out));
 	return (0);
 }
 
@@ -14076,7 +14063,7 @@ diffComments(FILE *out, sccs *s, char *lrev, char *rrev)
 		fputs(h[i], out);
 	}
 	if (h) {
-		fputs("\n", out);
+		fputc('\n', out);
 		freeLines(h, free);
 		h = 0;
 	}
@@ -16303,7 +16290,7 @@ do_patch(sccs *s, ser_t d, int flags, FILE *out)
 	    USERHOST(s, d),
 	    ADDED(s, d), DELETED(s, d));
 	if (flags & PRS_FASTPATCH) fprintf(out, " =%u", SAME(s, d));
-	fputs("\n", out);
+	fputc('\n', out);
 
 	/*
 	 * Order from here down is alphabetical.
@@ -17504,21 +17491,21 @@ sccs_color(sccs *s, ser_t d)
  * in the graph.
  */
 private int
-stripDeltas(sccs *s, ser_t *remap, FILE *out)
+stripDeltas(sccs *s, ser_t *remap)
 {
 	ser_t	d, *state = 0;
 	int	prune = 0;
 	char	*buf;
 	int	ser;
+	FILE	*out;
 
 	sccs_rdweaveInit(s);
-	// XXX - this is passed in and we stomp?
 	out = sccs_wrweaveInit(s);
 	while (buf = sccs_nextdata(s)) {
 		if (isData(buf)) {
 			unless (prune) {
-				fputdata(s, buf, out);
-				fputdata(s, "\n", out);
+				fputs(buf, out);
+				fputc('\n', out);
 			}
 			continue;
 		}
@@ -17526,8 +17513,8 @@ stripDeltas(sccs *s, ser_t *remap, FILE *out)
 		ser = atoi(&buf[3]);
 		d = (remap && ser) ? remap[ser] : ser;
 		unless (!d || (FLAGS(s, d) & D_SET)) {
-			fputbumpserial(s, buf, d - ser, out);
-			fputdata(s, "\n", out);
+			fputbumpserial(s, buf, d - ser);
+			fputc('\n', out);
 		}
 		state = changestate(state, buf[1], ser);
 		ser = whatstate(state);
@@ -17536,8 +17523,8 @@ stripDeltas(sccs *s, ser_t *remap, FILE *out)
 	}
 	free(state);
 	free(remap);
-	// XXX - out set but a passed local?
-	out = sccs_wrweaveDone(s);
+	sccs_wrweaveDone(s);
+	out = 0;
 	if (sccs_rdweaveDone(s)) return (1);
 	if (sccs_finishWrite(s)) return (1);
 	return (0);
@@ -17553,7 +17540,6 @@ stripDeltas(sccs *s, ser_t *remap, FILE *out)
 int
 sccs_stripdel(sccs *s, char *who)
 {
-	FILE	*sfile = 0;
 	int	error = 0;
 	int	locked;
 	ser_t	e, *remap = 0;
@@ -17569,7 +17555,7 @@ sccs_stripdel(sccs *s, char *who)
 		OUT;
 	}
 	if (stripChecks(s, 0, who)) OUT;
-	unless (sfile = sccs_startWrite(s)) OUT;
+	unless (sccs_startWrite(s)) OUT;
 
 	/*
 	 * Find the new top-of-trunk.
@@ -17594,20 +17580,18 @@ sccs_stripdel(sccs *s, char *who)
 	remap = scompressGraph(s);	/* Pull gone stuff out */
 
 	/* write out upper half */
-	if (delta_table(s, sfile, 0)) {  /* 0 means as-is, so chksum works */
+	if (delta_table(s, 0)) {  /* 0 means as-is, so chksum works */
 		fprintf(stderr,
 		    "%s: can't write delta table for %s\n", who, s->sfile);
 		OUT;
 	}
 
 	/* write out the lower half */
-	if (stripDeltas(s, remap, sfile)) {
+	if (stripDeltas(s, remap)) {
 		fprintf(stderr,
 		    "%s: can't write delta body for %s\n", who, s->sfile);
 		OUT;
 	}
-	/* sfile closed by stripDeltas() */
-	sfile = 0;
 #undef	OUT
 
 out:

@@ -55,7 +55,7 @@ typedef struct {
 
 typedef struct {
 	FILE	*fin;		/* file we are reading/writing */
-	u32	write:1;
+	u32	write:1;	/* opened in write mode */
 
 	off_t	offset;		/* current offset in uncompressed stream */
 	u32	zoffset;	/* current offset in compressed stream */
@@ -71,8 +71,12 @@ private	fpos_t	zipSeek(void *cookie, fpos_t offset, int whence);
 private	int	zipClose(void *cookie);
 private	int	load_szArray(fgzip *fz);
 
+/*
+ * "virtual"-zip, gzip with a mapping table to allow seeks or to have
+ * the data stored out of order.
+ */
 FILE *
-fgzip_open(FILE *fin, char *mode)
+fopen_vzip(FILE *fin, char *mode)
 {
 	fgzip	*fz;
 	FILE	*f;
@@ -154,7 +158,7 @@ load_szArray(fgzip *fz)
  * If 'fin' was not from fgzip_open(), then leave 'seeks' unmodified.
  */
 int
-fgzip_findSeek(FILE *fin, long off, int len, u32 pagesz, u32 **lens)
+vzip_findSeek(FILE *fin, long off, int len, u32 pagesz, u32 **lens)
 {
 	fgzip	*fz;
 	szblock	*sz;

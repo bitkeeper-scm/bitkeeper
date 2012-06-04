@@ -362,7 +362,7 @@ foreach $i (8 .. length($ff)-1) {
 	$s = '';
 	while (<C>) {
 	      $s .= $_;
-	      $bad = 1 unless /^(checksum error |correctable|offset $i was 58 should)/;
+	      $bad = 1 unless /^(crc error |correctable|offset $i was 58 should)/;
 	}
 	if ($bad) {
 	   	print "bad output at $i\n";
