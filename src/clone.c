@@ -1101,7 +1101,6 @@ remoteurl_normalize(remote *r, char *url)
 	unless (rurl = remote_parse(url, 0)) goto out;
 	if (rurl->type != ADDR_FILE) goto out; /* and url is file:// */
 	concat_path(buf, rurl->path, BKROOT);
-	if (exists(buf)) goto out; /* and the path doesn't exist */
 
 	savepath = r->path;
 	r->path = 0;

@@ -676,6 +676,7 @@ bk here add -@ssh://bad2.bitkeeper.com:1/ ./gdb 2> ERR && {
 cat <<EOF > WANT
 here: searching ssh://bad2.bitkeeper.com:1/...connect failure
 here: searching $HERE/locked...repo locked
+here: searching $HERE/junk...repo gone
 here: searching bk://localhost:1/...connect failure
 here: searching http://localhost:1/...connect failure
 here: searching bk://bad1.bitkeeper.com:1/...connect failure
@@ -685,7 +686,6 @@ here: searching http://bad.bitkeeper.com:1/...connect failure
 here: searching ssh://localhost:1/...connect failure
 here: searching rsh://bad.bitkeeper.com:1/...connect failure
 here: searching bk://!junkurl:1/...invalid url
-here: searching $HERE/junk...repo gone
 here: No other sources for ./gdb known
 EOF
 cmpfiles WANT ERR
@@ -724,6 +724,7 @@ cmp -s WANT GOT || {
 echo OK
 
 echo $N Show that we can force the search to be local ...............$NL
+bk here check -@"$HERE/product"
 BK_CONFIG='urlsearch:local' bk here set PRODUCT > OUT 2>&1
 head -1 < OUT > GOT
 grep -q "searching $HERE" GOT || {
