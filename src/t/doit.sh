@@ -288,19 +288,28 @@ setup_env()
 	BK_TMP="$HERE/.tmp"
 	BK_DOTBK="$HERE/.bk"
 	export BK_DOTBK
+	mkdir -p "$BK_DOTBK" || exit 1
 	TMPDIR="$TST_DIR/.tmp $USER"
 
 	# Make the binaries not too large, sco hangs on large diffs.
 	cd ..
 	DOTBIN="`bk pwd -s`/.bin"
 	cd t
-	test -d "$DOTBIN" || mkdir "$DOTBIN"
-	perl -e 'sysread(STDIN, $buf, 100*1024*1);
-	syswrite(STDOUT, $buf, 100*1024*1);' < $BIN1 > "$DOTBIN/binary1"
-	perl -e 'sysread(STDIN, $buf, 100*1024*2);
-	syswrite(STDOUT, $buf, 100*1024*2);' < $BIN2 > "$DOTBIN/binary2"
-	perl -e 'sysread(STDIN, $buf, 100*1024*3);
-	syswrite(STDOUT, $buf, 100*1024*3);' < $BIN3 > "$DOTBIN/binary3"
+	cat > .perl$$ <<EOF
+	sysread(STDIN, \$buf, \$ARGV[0]);
+	syswrite(STDOUT, \$buf, \$ARGV[0]);
+EOF
+	cat > .mkbin$$ <<EOF
+	test -d "$DOTBIN" || {
+		mkdir "$DOTBIN"
+		perl .perl$$ 102400 < $BIN1 > "$DOTBIN/binary1"
+		perl .perl$$ 204800 < $BIN2 > "$DOTBIN/binary2"
+		perl .perl$$ 307200 < $BIN3 > "$DOTBIN/binary3"
+	}
+EOF
+	bk -Lw sh .mkbin$$
+	rm -f .mkbin$$ .perl$$
+
 	BIN1="$DOTBIN/binary1"
 	BIN2="$DOTBIN/binary2"
 	BIN3="$DOTBIN/binary3"
