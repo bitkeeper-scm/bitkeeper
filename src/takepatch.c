@@ -948,6 +948,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		}
 		/* passing in d = parent, setting d = new or existing */
 		if (d = cset_insert(s, iF, dF, d, opts->fast)) {
+			if (d == INVALID) cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 			(*nfound)++;
 			p->d = d;
 			if (d->flags & D_REMOTE) {
