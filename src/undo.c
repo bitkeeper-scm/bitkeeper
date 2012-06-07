@@ -827,7 +827,7 @@ moveAndSave(options *opts, char **sfiles)
 	char	tmp[MAXPATH];
 	int	i, rc = 0;
 
-	if (isdir("RESYNC") && !nested_mine(0, getenv("_NESTED_LOCK"), 1)){
+	if (isdir("RESYNC") && !nested_mine(0, getenv("_BK_NESTED_LOCK"), 1)){
 		fprintf(stderr, "Repository locked by RESYNC directory\n");
 		return (-2);
 	}

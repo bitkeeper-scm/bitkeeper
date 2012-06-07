@@ -688,6 +688,45 @@ fi
 # cannot happen
 exit 1
 .DE
+.SH "EXAMPLE 6"
+.DS
+#!/bin/sh
+#
+# A post-incoming trigger that will push incoming changesets
+# to a mirror repository
+
+MIRROR=REPO-mirror
+
+# Debug
+#Q=
+#OUT=/tmp/OUT
+
+# Quiet
+Q=-q
+OUT=/dev/null
+
+# Do not run in components
+test `bk repotype` = component && exit 0
+
+# Only run on successful pulls/pushes
+test "$BK_EVENT" = "incoming clone" && exit 0
+test "$BK_STATUS" != "OK" && exit 0
+
+# Foreground mirror - incoming operation will block
+# until the mirror push is complete
+#bk push $Q "$MIRROR"
+#exit 0
+
+# Background mirror
+# Start a background process to push the incoming
+# changesets to a mirror repository
+#
+(
+  # Avoid possible race, wait for any locks to be dropped
+  bk lock -U
+  bk push $Q "$MIRROR"
+) > $OUT 2>&1 &
+.DE
 .SH SEE ALSO
 .SA clone
 .SA ci

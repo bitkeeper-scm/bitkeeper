@@ -202,7 +202,7 @@ repository_locked(project *p)
 			TRACE("repository_locked(%s) = 0", root);
 			return (0);
 		}
-		if (nested_mine(p, getenv("_NESTED_LOCK"), 0)) return (0);
+		if (nested_mine(p, getenv("_BK_NESTED_LOCK"), 0)) return (0);
 		ret = repository_hasLocks(p, WRITER_LOCK_DIR);
 		sprintf(path, "%s/%s", root, WRITER_LOCK);
 		unless (ret && exists(path)) {
@@ -380,7 +380,7 @@ wrlock(project *p)
 	sprintf(path, "%s/%s", root, ROOT2RESYNC);
 	if (exists(path) &&
 	    !(getenv("_BK_IGNORE_RESYNC_LOCK") ||
-		nested_mine(p, getenv("_NESTED_LOCK"), 1))) {
+		nested_mine(p, getenv("_BK_NESTED_LOCK"), 1))) {
 		sccs_unlockfile(lock);
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		(void)rmdir(path);
@@ -554,20 +554,7 @@ repository_lockcleanup(project *p)
 /*
  * Nested locking routines
  */
-enum {
-	NL_OK,
-	NL_NOT_NESTED,
-	NL_NOT_PRODUCT,
-	NL_ALREADY_LOCKED,
-	NL_LOCK_FILE_NOT_FOUND,
-	NL_MISMATCH,
-	NL_COULD_NOT_LOCK_RESYNC,
-	NL_COULD_NOT_LOCK_NOT_MINE,
-	NL_COULD_NOT_UNLOCK,
-	NL_INVALID_LOCK_STRING,
-	NL_ABORT_FAILED,
-	NL_COULD_NOT_GET_MUTEX
-} nl_errno;
+nle_t	nl_errno;
 
 private	char	*errMsgs[] = {
 	/* NL_OK */

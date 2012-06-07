@@ -93,7 +93,8 @@ cmd_putenv(int ac, char **av)
 			sccs_resetuser();
 			putenv(&av[1][1]);	/* convert to BK_USER */
 		} else if (streq(var, "BK_NESTED_LOCK")){
-			putenv(&av[1][2]); /* convert to _NESTED_LOCK */
+			/* convert to _BK_NESTED_LOCK */
+			safe_putenv("_%s", av[1]);
 		} else {
 			putenv(av[1]);
 		}

@@ -19,7 +19,7 @@ cmd_nested(int ac, char **av)
 		out("ERROR-nested only in product\n");
 		return (1);
 	}
-	unless (nlid = getenv("_NESTED_LOCK")) {
+	unless (nlid = getenv("_BK_NESTED_LOCK")) {
 		out("ERROR-nested command expects nested lock\n");
 		return (1);
 	}

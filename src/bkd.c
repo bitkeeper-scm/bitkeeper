@@ -277,7 +277,7 @@ do_cmds(void)
 	 * We only want locks from the protocol, not from process
 	 * inheritance
 	 */
-	putenv("_NESTED_LOCK=");
+	putenv("_BK_NESTED_LOCK=");
 	putenv("BKD_NESTED_LOCK=");
 
 	while (getav(f, &ac, &av)) {

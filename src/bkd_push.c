@@ -182,7 +182,7 @@ cmd_push_part2(int ac, char **av)
 		 * XXX: should we abort on conflict too?
 		 */
 abort:		resync = aprintf("%s/%s", proj_root(0), ROOT2RESYNC);
-		nlid = getenv("_NESTED_LOCK");
+		nlid = getenv("_BK_NESTED_LOCK");
 		assert(nlid);
 		nested_abort(0, nlid);
 		if (rmtree(resync)) {

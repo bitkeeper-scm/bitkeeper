@@ -1041,7 +1041,7 @@ cmdlog_lock(int flags)
 
 	/* used by "remote nested" */
 	if (cmdlog_flags & CMD_SAMELOCK) {
-		if (nlid = getenv("_NESTED_LOCK")) {
+		if (nlid = getenv("_BK_NESTED_LOCK")) {
 			if (nested_mine(proj, nlid, 1)) {
 				cmdlog_flags |= CMD_WRLOCK;
 				TRACE("SAMELOCK: got a %s", "write lock");
@@ -1175,19 +1175,25 @@ cmdlog_lock(int flags)
 	if (do_lock &&
 	    (cmdlog_flags & (CMD_NESTED_RDLOCK | CMD_NESTED_WRLOCK)) &&
 	    proj_isEnsemble(proj)) {
-		if (nlid = getenv("_NESTED_LOCK")) {
+again:		if (nlid = getenv("_BK_NESTED_LOCK")) {
 			TRACE("checking: %s", nlid);
 			unless (nested_mine(proj, nlid,
 				(cmdlog_flags & CMD_NESTED_WRLOCK))) {
-				error_msg = nested_errmsg();
-				goto out;
+				if (nl_errno == NL_LOCK_FILE_NOT_FOUND) {
+					/* relock */
+					putenv("_BK_NESTED_LOCK=");
+					goto again;
+				} else {
+					error_msg = nested_errmsg();
+					goto out;
+				}
 			}
 		} else if (cmdlog_flags & CMD_NESTED_WRLOCK) {
 			unless (nlid = nested_wrlock(proj_product(proj))) {
 				error_msg = nested_errmsg();
 				goto out;
 			}
-			safe_putenv("_NESTED_LOCK=%s", nlid);
+			safe_putenv("_BK_NESTED_LOCK=%s", nlid);
 			free(nlid);
 			cmdlog_locks |= CMD_NESTED_WRLOCK;
 			TRACE("%s", "NESTED_WRLOCK");
@@ -1196,7 +1202,7 @@ cmdlog_lock(int flags)
 				error_msg = nested_errmsg();
 				goto out;
 			}
-			safe_putenv("_NESTED_LOCK=%s", nlid);
+			safe_putenv("_BK_NESTED_LOCK=%s", nlid);
 			free(nlid);
 			cmdlog_locks |= CMD_NESTED_RDLOCK;
 			TRACE("%s", "NESTED_RDLOCK");
@@ -1339,7 +1345,7 @@ cmdlog_end(int ret, int bkd_cmd)
 	    (cmdlog_locks & (CMD_NESTED_WRLOCK|CMD_NESTED_RDLOCK))) {
 		char	*nlid;
 
-		nlid = getenv("_NESTED_LOCK");
+		nlid = getenv("_BK_NESTED_LOCK");
 		assert(nlid);
 		TRACE("nlid = %s", nlid);
 		if (nested_unlock(0, nlid)) {
