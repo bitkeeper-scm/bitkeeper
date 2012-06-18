@@ -293,7 +293,7 @@ urlinfo_write(nested *n)
 }
 
 /*
- * Sort URLs to make "local" URLs be favored over remote or network URLs
+ * Sort URLs to make "local" URLs be favored over remote or network URLs.
  * As a secondary sort, pick recently used URLs using data->time.
  */
 private int
@@ -305,7 +305,6 @@ sortUrls(const void *a, const void *b)
 	int	i;
 	int	prefer_local = 0;
 	char	*p;
-	struct	stat	sb;
 
 	if ((p = proj_configval(0, "urlsearch")) && strieq(p, "local")) {
 		prefer_local = 1;
@@ -318,8 +317,7 @@ sortUrls(const void *a, const void *b)
 	 * order:
 	 *    source (from)	0x00001
 	 *    parent		0x00002
-	 *    file		0x00004	lclone works
-	 *    file other device 0x00008	clone other disk
+	 *    file		0x00008
 	 *    bk://localhost	0x10000
 	 *    http://localhost	0x10010
 	 *    bk://host		0x10100
@@ -358,13 +356,7 @@ sortUrls(const void *a, const void *b)
 			}
 			if (r->type & ADDR_HTTP) val[i] |= 0x00010;
 		} else {
-			if (lstat(r->path, &sb)) {
-				val[i] = 0x20000;	// not there: bad
-			} else if (sb.st_dev == local_dev) {
-				val[i] = 0x00004;
-			} else {
-				val[i] = 0x00008;
-			}
+			val[i] = 0x00008;
 		}
 		remote_free(r);
 	}
@@ -402,7 +394,7 @@ urlinfo_get(nested *n, char *url)
 
 /*
  * Called from [r]clone/pull/push after setting with info from our parent.
- * The env has the bkd information and c->remotePresent is correct
+ * The env has the bkd information and c->remotePresent is correct.
  */
 void
 urlinfo_setFromEnv(nested *n, char *url)

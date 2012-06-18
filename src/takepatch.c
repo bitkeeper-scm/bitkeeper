@@ -968,6 +968,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		}
 		/* passing in d = parent, setting d = new or existing */
 		if (d = cset_insert(s, iF, dF, d, opts->fast)) {
+			if (d == INVALID) cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 			(*nfound)++;
 			p->serial = d;
 			if ((FLAGS(s, d) & D_REMOTE) && SYMGRAPH(s, d)) {
@@ -1728,7 +1729,7 @@ resync_lock(void)
 	 * Note: bk's mkdir will pass if RESYNC already exists so we need
 	 * to test that separately.
 	 */
-	if ((isdir("RESYNC") && !nested_mine(0, getenv("_NESTED_LOCK"), 1))
+	if ((isdir("RESYNC") && !nested_mine(0, getenv("_BK_NESTED_LOCK"), 1))
 	    || mkdir("RESYNC", 0777)) {
 		fprintf(stderr, "takepatch: cannot create RESYNC dir.\n");
 		repository_lockers(0);

@@ -319,7 +319,7 @@ _superset() {
 
 	bk repotype -q
 	case $? in
-	    3)	PRODUCT=STANDALONE;;
+	    2)	PRODUCT=STANDALONE;;	# Nobody checks this
 	    1)	PRODUCT=COMPONENT;;
 	    0)	PRODUCT=PRODUCT;;
 	esac

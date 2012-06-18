@@ -217,6 +217,22 @@ int	here_check_main(int ac, char **av);
 
 /* locking.c */
 
+typedef enum {
+	NL_OK,
+	NL_NOT_NESTED,
+	NL_NOT_PRODUCT,
+	NL_ALREADY_LOCKED,
+	NL_LOCK_FILE_NOT_FOUND,
+	NL_MISMATCH,
+	NL_COULD_NOT_LOCK_RESYNC,
+	NL_COULD_NOT_LOCK_NOT_MINE,
+	NL_COULD_NOT_UNLOCK,
+	NL_INVALID_LOCK_STRING,
+	NL_ABORT_FAILED,
+	NL_COULD_NOT_GET_MUTEX
+} nle_t;			/* nl_errno */
+extern	nle_t	nl_errno;
+
 char	*nested_wrlock(project *p);
 char	*nested_rdlock(project *p);
 int	nested_mine(project *p, char *t, int write);

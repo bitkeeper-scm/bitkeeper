@@ -430,7 +430,9 @@ do_commit(char **av,
 	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	sccs_free(cset);
-	if (dflags & DELTA_CFILE) {
+	unless (*commentFile) {
+		// don't try to unlink
+	} else if (dflags & DELTA_CFILE) {
 		// Someone else created the c.file, unlink only on success
 		unless (rc) unlink(commentFile);
 	} else {

@@ -173,12 +173,12 @@ aliasCreate(char *cmd, aopts *opts, char **av)
 		usage();
 	}
 	/* lock */
-	unless (nested_mine(0, getenv("_NESTED_LOCK"), 1)) {
+	unless (nested_mine(0, getenv("_BK_NESTED_LOCK"), 1)) {
 		unless (nlid = nested_wrlock(0)) {
 			error("%s", nested_errmsg());
 			return (1);
 		}
-		safe_putenv("_NESTED_LOCK=%s", nlid);
+		safe_putenv("_BK_NESTED_LOCK=%s", nlid);
 	}
 
 	/* get the nest */
@@ -323,7 +323,7 @@ err:
 			rc = 1;
 		}
 		free(nlid);
-		putenv("_NESTED_LOCK=");
+		putenv("_BK_NESTED_LOCK=");
 	}
 	if (rc && needunedit) {
 		/* revert any local edits to the aliases file */

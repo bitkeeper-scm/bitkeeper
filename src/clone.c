@@ -722,12 +722,11 @@ clone(char **av, remote *r, char *local, char **envVar)
 		rename("BitKeeper/log/HERE", "BitKeeper/log/RMT_HERE");
 		touch("BitKeeper/log/PRODUCT", 0664);
 		proj_reset(0);
-		assert(!getenv("_NESTED_LOCK"));
 		unless (nlid = nested_wrlock(0)) {
 			error("%s", nested_errmsg());
 			return (1);
 		}
-		if (nlid) safe_putenv("_NESTED_LOCK=%s", nlid);
+		if (nlid) safe_putenv("_BK_NESTED_LOCK=%s", nlid);
 		free(nlid);
 	} else {
 		proj_reset(0);
@@ -788,16 +787,16 @@ done:	disconnect(r);
 	 * Since we didn't take the lock via cmdlog_start() but via
 	 * initProject(), we need to do the unlocking here.
 	 */
-	if (opts->product && getenv("_NESTED_LOCK")) {
+	if (opts->product && getenv("_BK_NESTED_LOCK")) {
 		char	*nlid;
 
-		nlid = getenv("_NESTED_LOCK");
+		nlid = getenv("_BK_NESTED_LOCK");
 		if (nested_unlock(0, nlid)) {
 			error("%s", nested_errmsg());
 			retrc = RET_ERROR;
 		}
 		unless (retrc) rmtree(ROOT2RESYNC);
-		putenv("_NESTED_LOCK=");
+		putenv("_BK_NESTED_LOCK=");
 	}
 	repository_unlock(0, 0);
 	return (retrc);
@@ -1107,7 +1106,6 @@ remoteurl_normalize(remote *r, char *url)
 	unless (rurl = remote_parse(url, 0)) goto out;
 	if (rurl->type != ADDR_FILE) goto out; /* and url is file:// */
 	concat_path(buf, rurl->path, BKROOT);
-	if (exists(buf)) goto out; /* and the path doesn't exist */
 
 	savepath = r->path;
 	r->path = 0;
@@ -1779,12 +1777,12 @@ attach(void)
 	}
 
 	proj_reset(0);	/* to reset proj_isComponent() */
-	unless (nested_mine(0, getenv("_NESTED_LOCK"), 1)) {
+	unless (nested_mine(0, getenv("_BK_NESTED_LOCK"), 1)) {
 		unless (nlid = nested_wrlock(0)) {
 			fprintf(stderr, "%s\n", nested_errmsg());
 			return (RET_ERROR);
 		}
-		safe_putenv("_NESTED_LOCK=%s", nlid);
+		safe_putenv("_BK_NESTED_LOCK=%s", nlid);
 	}
 	concat_path(buf, proj_root(proj_product(0)), "BitKeeper/log/HERE");
 	if (f = fopen(buf, "a")) {

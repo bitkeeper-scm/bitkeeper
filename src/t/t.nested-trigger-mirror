@@ -1,0 +1,64 @@
+echo $N Mirror from a trigger asynchronously.........................$NL
+nested product
+mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/post-incoming <<EOF
+#!/bin/sh
+
+if [ -d "$HERE/mirror" ];
+then
+	(
+	  bk lock -U
+	  bk push "$HERE/mirror"
+	) > "$HERE/OUT" 2>&1 &
+else
+	(
+	  bk lock -U
+	  bk clone . "$HERE/mirror"
+	) > "$HERE/OUT" 2>&1 &
+fi
+echo \$! > "$HERE/PID"
+EOF
+chmod +x BitKeeper/triggers/post-incoming
+cd "$HERE"
+bk clone $Q product copy
+cd copy
+touch newfile
+bk new $Q newfile
+bk commit $Q -y"add newfile"
+bk push > OUT 2>&1 || fail
+test -f "$HERE/PID" || fail no PID file
+PID=`cat "$HERE/PID"`
+c=0
+while bk _kill -0 $PID
+do	bk _usleep 500000
+	c=`expr $c + 1`
+	test $c = 100 && fail too many retries
+done
+test -f "$HERE/OUT" || fail
+grep -q "ERROR" "$HERE/OUT" && fail -f "$HERE/OUT" trigger failed
+test -d "$HERE/mirror" || fail -f "$HERE/OUT"
+cd "$HERE/mirror"
+bk repocheck -q || fail
+rm -f "$HERE/OUT" "$HERE/PID"
+# now do another cset so that the trigger pushes
+cd "$HERE/copy"
+touch again
+bk new $Q again
+bk commit $Q -y"another"
+bk push > OUT 2>&1 || fail -f OUT
+test -f "$HERE/PID" || fail
+PID=`cat "$HERE/PID"`
+c=0
+while bk _kill -0 $PID
+do	bk _usleep 500000
+	c=`expr $c + 1`
+	test $c = 100 && fail too many retries
+done
+test -f "$HERE/OUT" || fail
+grep -q "ERROR" "$HERE/OUT" && fail -f "$HERE/OUT" trigger failed
+cd "$HERE/mirror"
+bk repocheck -q || fail
+bk changes -qRL ../product > "$HERE/CHANGES"
+test -s "$HERE/CHANGES" && fail -f "$HERE/CHANGES" Changes found
+echo OK
+

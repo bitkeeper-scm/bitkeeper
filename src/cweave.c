@@ -152,6 +152,32 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 		sccs_sdelta(s, d, key);
 		if (e = sccs_findKey(s, key)) {
 			/* We already have this delta... */
+			if ((PARENT(s, e) != parent) ||
+			    (e->merge != d->merge)) {
+				fprintf(stderr, "%s: duplicate delta with "
+				    "different parents\n", s->gfile);
+				if (parent) sccs_sdelta(s, parent, key);
+				fprintf(stderr,
+				    "local parent: %s\n"
+				    "remote parent: %s (%s)\n",
+				    e->pserial ? PARENT(s, e)->rev : "none",
+				    parent ? key : "none",
+				    (parent && (parent->flags & D_REMOTE)) ?
+				    "remote" : (parent ? parent->rev : ""));
+				if (d->merge) sccs_sdelta(s, MERGE(s, d), key);
+				fprintf(stderr,
+				    "local merge: %s\n"
+				    "remote merge: %s (%s)\n",
+				    e->merge ? MERGE(s, e)->rev : "none",
+				    d->merge ? key : "none",
+				    (d->merge &&
+				    (MERGE(s, d)->flags & D_REMOTE)) ?
+				    "remote" :
+				    (d->merge ? MERGE(s, d)->rev : ""));
+				fprintf(stderr, "Please send "
+				    "the output to support@bitmover.com\n");
+				return (INVALID);
+			}
 			keep = 0;
 			if (DANGLING(s, e)) {
 				FLAGS(s, e) &= ~D_DANGLING;

@@ -1183,7 +1183,7 @@ sendServerInfo(int no_repo)
 	}
 
 	/* send local nested lock to BKD_NESTED_LOCK on client */
-	if (p = getenv("_NESTED_LOCK")) {
+	if (p = getenv("_BK_NESTED_LOCK")) {
 		out("\nNESTED_LOCK=");
 		out(p);
 	}
