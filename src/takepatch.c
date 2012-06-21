@@ -968,7 +968,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		}
 		/* passing in d = parent, setting d = new or existing */
 		if (d = cset_insert(s, iF, dF, d, opts->fast)) {
-			if (d == INVALID) cleanup(CLEAN_RESYNC|CLEAN_PENDING);
+			if (d == D_INVALID) cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 			(*nfound)++;
 			p->serial = d;
 			if ((FLAGS(s, d) & D_REMOTE) && SYMGRAPH(s, d)) {

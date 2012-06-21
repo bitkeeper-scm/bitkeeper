@@ -120,7 +120,6 @@ ser_t
 cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 {
 	int	i, error, sign, added = 0;
-	int	pserial = parent ? parent : 0;
 	ser_t	d, e, p;
 	ser_t	serial = 0; /* serial number for 'd' */ 
 	char	*t;
@@ -130,12 +129,6 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	symbol	*sym;
 	FILE	*f = 0;
 
-	/*
-	 * use pserial for parent as parent could become invalid
-	 * because of potential realloc in insertArray.
-	 * Safety so we don't use it later: mark it invalid.
-	 */
-	parent = D_INVALID;
 	unless (iF) {	
 		/* ignore in patch: like if in skipkeys */
 		assert(fast);
@@ -151,32 +144,38 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	if (fast) {
 		sccs_sdelta(s, d, key);
 		if (e = sccs_findKey(s, key)) {
-			/* We already have this delta... */
-			if ((PARENT(s, e) != parent) ||
-			    (e->merge != d->merge)) {
+			/*
+			 * d - remote patch delta
+			 * e - local delta with matching key to d
+			 */
+			ser_t	rpar = parent, rmerge = MERGE(s, d);
+			ser_t	lpar = PARENT(s, e), lmerge = MERGE(s, e);
+
+			/* We already have this delta... lineage line up? */
+			if ((lpar != rpar) || (lmerge != rmerge)) {
 				fprintf(stderr, "%s: duplicate delta with "
 				    "different parents\n", s->gfile);
-				if (parent) sccs_sdelta(s, parent, key);
+				if (rpar) sccs_sdelta(s, rpar, key);
 				fprintf(stderr,
 				    "local parent: %s\n"
 				    "remote parent: %s (%s)\n",
-				    e->pserial ? PARENT(s, e)->rev : "none",
-				    parent ? key : "none",
-				    (parent && (parent->flags & D_REMOTE)) ?
-				    "remote" : (parent ? parent->rev : ""));
-				if (d->merge) sccs_sdelta(s, MERGE(s, d), key);
+				    (lpar) ? REV(s, lpar) : "none",
+				    rpar ? key : "none",
+				    (rpar && (FLAGS(s, rpar) & D_REMOTE))
+				    ? "remote"
+				    : (rpar ? REV(s, rpar) : ""));
+				if (rmerge) sccs_sdelta(s, rmerge, key);
 				fprintf(stderr,
 				    "local merge: %s\n"
 				    "remote merge: %s (%s)\n",
-				    e->merge ? MERGE(s, e)->rev : "none",
-				    d->merge ? key : "none",
-				    (d->merge &&
-				    (MERGE(s, d)->flags & D_REMOTE)) ?
-				    "remote" :
-				    (d->merge ? MERGE(s, d)->rev : ""));
+				    lmerge ? REV(s, lmerge) : "none",
+				    rmerge ? key : "none",
+				    (rmerge && (FLAGS(s, rmerge) & D_REMOTE))
+				    ? "remote"
+				    : (rmerge ? REV(s, rmerge) : ""));
 				fprintf(stderr, "Please send "
 				    "the output to support@bitmover.com\n");
-				return (INVALID);
+				return (D_INVALID);
 			}
 			keep = 0;
 			if (DANGLING(s, e)) {
@@ -263,7 +262,7 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	}
 
 	TRACE("serial=%d", serial);
-	PARENT_SET(s, d, pserial);
+	PARENT_SET(s, d, parent);
 
 	sccs_inherit(s, d);
 	if (!fast && !TAG(s, d) && (TREE(s) != d)) SAME_SET(s, d, 1);
