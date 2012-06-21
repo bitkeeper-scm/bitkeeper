@@ -816,3 +816,15 @@ Please write support@bitmover.com
 EOF
 cmpfiles WANT GOT
 echo OK
+
+test -d "$TESTDATA/key_format2" && {
+echo $N Test KEY_FORMAT2 code .......................................$NL
+# Hit a problem with /home/bk/homepage ; test repo is a csetprune of that repo
+# export the license
+cd "$HERE/project"
+bk cat BitKeeper/etc/config > "$BK_DOTBK"/config
+# check it
+bk --cd="$TESTDATA/key_format2" repocheck $Q || fail
+echo OK
+}
+exit 0

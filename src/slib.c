@@ -10885,10 +10885,10 @@ symArg(sccs *s, ser_t d, char *name)
 	addArray(&s->mg_symname, &tmp);
 	FLAGS(s, d) |= D_SYMBOLS;	/* so stripdel won't MKGONE it */
 
-	if ((d == 1) && streq(name, KEY_FORMAT2)) {
+	if ((d == TREE(s)) && streq(name, KEY_FORMAT2)) {
 		s->xflags |= X_LONGKEY;
 		for (d = TREE(s); d <= TABLE(s); d++) {
-			XFLAGS(s, d) |= X_LONGKEY;
+			if (XFLAGS(s, d)) XFLAGS(s, d) |= X_LONGKEY;
 		}
 	}
 }
