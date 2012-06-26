@@ -10,6 +10,19 @@ export CC LD
 # The Tk version is tied to the Tcl version so you only need to change TCL
 TCLVERSION := 8.6
 
+# Machines on which we disable XFT
+NO_XFT := netbsd4.bitmover.com	\
+	netbsd4-64.bitmover.com	\
+	freebsd4.bitmover.com	\
+	sco.bitmover.com	\
+	netbsd.bitmover.com	\
+	aix5.bitmover.com	\
+	sunx86.bitmover.com	\
+	hp11.bitmover.com	\
+	macos103.bitmover.com	\
+	hp-ia64.bitmover.com	\
+	sun.bitmover.com
+
 ifeq "$(OSTYPE)" "msys"
 	S := win
 	EXE := .exe
@@ -23,7 +36,9 @@ else
 	EXE :=
 	SO  := .so
 	XSSSUPPORT := --disable-xss
-	XFTSUPPORT := --enable-xft
+	ifeq (,$(findstring $(shell bk gethost -r), $(NO_XFT)))
+		XFTSUPPORT := --enable-xft
+	endif
 	SHARED := --disable-shared
 	PCRE_OBJ:= bin/tclsh
 	ifeq "$(shell uname)" "Darwin"

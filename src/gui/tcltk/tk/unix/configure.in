@@ -558,7 +558,7 @@ if test $tk_aqua = no; then
 	dnl print a warning if xft is unusable and was specifically requested
 	if test "$found_xft" = "no" ; then
 	    if test "$enable_xft" = "yes" ; then
-		AC_MSG_WARN([Can't find xft configuration, or xft is unusable])
+		AC_MSG_ERROR([Can't find xft configuration, or xft is unusable])
 	    fi
 	    enable_xft=no
 	    XFT_CFLAGS=""
