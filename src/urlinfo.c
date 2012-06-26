@@ -293,75 +293,25 @@ urlinfo_write(nested *n)
 }
 
 /*
- * Sort URLs to make "local" URLs be favored over remote or network URLs.
+ * Sort URLs according to this order:
+ * source (from)
+ * parent
+ * already probed
+ * timestamp
  * As a secondary sort, pick recently used URLs using data->time.
  */
 private int
 sortUrls(const void *a, const void *b)
 {
 	urlinfo	*url[2];
-	remote	*r;
-	int	val[2];
-	int	i;
-	int	prefer_local = 0;
-	char	*p;
-
-	if ((p = proj_configval(0, "urlsearch")) && strieq(p, "local")) {
-		prefer_local = 1;
-	}
 
 	url[0] = *(urlinfo **)a;
 	url[1] = *(urlinfo **)b;
 
-	/*
-	 * order:
-	 *    source (from)	0x00001
-	 *    parent		0x00002
-	 *    file		0x00008
-	 *    bk://localhost	0x10000
-	 *    http://localhost	0x10010
-	 *    bk://host		0x10100
-	 *    http://host	0x10110
-	 *    ssh://localhost	0x11000
-	 *    rsh://host	0x11100
-	 *    ssh://host	0x11100	ties broken with timestamp
-	 *    badurl            0x20000
-	 *
-	 * Ties are broken by looking at the timestamp or
-	 * with a simple strcmp() of the URLs
-	 */
-	for (i = 0; i < 2; i++) {
-		val[i] = 0;
-		if (url[i]->from && !prefer_local) {
-			val[i] = 0x00001;
-			continue;
-		}
-		if (url[i]->parent && !prefer_local) {
-			val[i] = 0x00002;
-			continue;
-		}
-		r = remote_parse(url[i]->url, 0);
-		unless (r) {
-			val[i] = 0x20000;
-			continue;
-		}
-		if (r->host) {
-			val[i] |= 0x10000;
-			if (r->type & (ADDR_RSH|ADDR_SSH|ADDR_NFS)) {
-				val[i] |= 0x01000;
-			}
-			unless (isLocalHost(r->host) ||
-			    streq(r->host, sccs_realhost())){
-				val[i] |= 0x00100;
-			}
-			if (r->type & ADDR_HTTP) val[i] |= 0x00010;
-		} else {
-			val[i] = 0x00008;
-		}
-		remote_free(r);
-	}
-	if (val[0] != val[1]) {
-		return (val[0] - val[1]);
+	if ((url[0]->from + url[1]->from) == 1) {
+		return (url[1]->from - url[0]->from);
+	} else if ((url[0]->parent + url[1]->parent) == 1) {
+		return (url[1]->parent - url[0]->parent);
 	} else if (url[0]->checkedGood != url[1]->checkedGood) {
 		/* favor urls we have already probed */
 		return (url[0]->checkedGood ? -1 : 1);

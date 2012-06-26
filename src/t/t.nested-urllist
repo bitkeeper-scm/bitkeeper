@@ -508,8 +508,8 @@ cat <<EOF >WANT
 EOF
 cmpfiles GOT WANT
 # clone6 should inherit clone4's urllist.
-bk here check ./gcc | grep -q "$HERE/product" || fail 2
-bk here check ./gdb | grep -q "$HERE/product" || fail 3
+bk here check -a ./gcc | tee ERR | grep -q "$HERE/product" || fail -f ERR
+bk here check -a ./gdb | tee ERR | grep -q "$HERE/product" || fail -f ERR
 cd ..
 echo OK
 
@@ -661,35 +661,54 @@ bk://bad2.bitkeeper.com:1/
 bk://bad3.bitkeeper.com:1/
 http://bad.bitkeeper.com:1/
 EOF
+ENC=$(echo $HERE | sed 's/ /%20/')
 cat <<EOF >> "$URLINFO"
-@bk%3a//bad1.bitkeeper.com%3a1/
-3000
-@bk%3a//bad2.bitkeeper.com%3a1/
-1000
-@bk%3a//bad3.bitkeeper.com%3a1/
-2000
+@$ENC/junk
+120
+@rsh://bad.bitkeeper.com:1/
+110
+@bk://localhost:1/
+100
+@http://localhost:1/
+90
+@bk://bad1.bitkeeper.com:1/
+80
+@ssh://bad2.bitkeeper.com:1/
+70
+@$ENC/locked
+60
+@bk://bad3.bitkeeper.com:1/
+50
+@bk://bad2.bitkeeper.com:1/
+40
+@http://bad.bitkeeper.com:1/
+30
+@ssh://localhost:1/
+20
+@bk://!junkurl:1/
+10
 EOF
 cp BitKeeper/log/urllist SAVE
 bk here add -@ssh://bad2.bitkeeper.com:1/ ./gdb 2> ERR && {
    fail -f ERR should have failed
 }
+bk _kill $L
 cat <<EOF > WANT
 here: searching ssh://bad2.bitkeeper.com:1/...connect failure
-here: searching $HERE/locked...repo locked
 here: searching $HERE/junk...repo gone
+here: searching rsh://bad.bitkeeper.com:1/...connect failure
 here: searching bk://localhost:1/...connect failure
 here: searching http://localhost:1/...connect failure
 here: searching bk://bad1.bitkeeper.com:1/...connect failure
+here: searching $HERE/locked...repo locked
 here: searching bk://bad3.bitkeeper.com:1/...connect failure
 here: searching bk://bad2.bitkeeper.com:1/...connect failure
 here: searching http://bad.bitkeeper.com:1/...connect failure
 here: searching ssh://localhost:1/...connect failure
-here: searching rsh://bad.bitkeeper.com:1/...connect failure
 here: searching bk://!junkurl:1/...invalid url
 here: No other sources for ./gdb known
 EOF
 cmpfiles WANT ERR
-bk _kill $L
 bk _rm -rf "$HERE"/locked
 echo OK
 
@@ -720,18 +739,6 @@ echo "Source $URL" > WANT
 cmp -s WANT GOT || {
 	bk _kill $URL
 	cmpfiles WANT GOT
-}
-echo OK
-
-echo $N Show that we can force the search to be local ...............$NL
-bk here check -@"$HERE/product"
-BK_CONFIG='urlsearch:local' bk here set PRODUCT > OUT 2>&1
-head -1 < OUT > GOT
-grep -q "searching $HERE" GOT || {
-	bk _kill $URL
-	echo failed to search file system first
-	cat OUT
-	exit 1
 }
 echo OK
 
@@ -861,7 +868,7 @@ cd ../task2
 bk pull $Q ../project2-clone 2>ERR || fail
 bk unpopulate $Q -f gdb gcc || fail
 bk pull ../task1 > OUT 2>&1 && fail -f OUT
-perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > OUT2
+perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT | grep -v 'connect failure' > OUT2
 cat >WANT <<EOF
 Pull file://ROOT/task1
   -> file://ROOT/task2
@@ -881,7 +888,7 @@ to get them automatically.
 EOF
 cmpfiles WANT OUT2
 bk pull --auto-populate ../task1 > OUT 2>&1 || fail -f OUT
-perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT > OUT2
+perl -pe "s/.*\r//;s,$HERE,ROOT,;s/.*connect failure\n//;" < OUT > OUT2
 cat >WANT <<EOF
 Pull file://ROOT/task1
   -> file://ROOT/task2
