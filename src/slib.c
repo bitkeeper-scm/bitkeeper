@@ -16629,9 +16629,15 @@ int
 isKey(char *key)
 {
 	int	i;
+	int	len = strlen(key);
 
-	if (strchr(key, '|')) return (1);
-	if (isxdigit(key[0]) && (strlen(key) == 30)) {
+	/*
+	 * Smallest long delta key is 26 bytes.
+	 * x@y|P|19990319224848|02682
+	 * 12345678901234567890123456
+	 */
+	if ((len >= 26) && strchr(key, '|')) return (1);
+	if (isxdigit(key[0]) && (len == 30)) {
 		for (i = 1; i < 8; i++) unless (isxdigit(key[i])) return (0);
 		for (; i < 30; i++) {
 			unless (isalnum(key[i]) || (key[i] == '-') || (key[i] == '_')) {
@@ -16673,7 +16679,7 @@ sccs_findKey(sccs *s, char *key)
 	d = *(delta **)s->findkeydb->vptr;
 	for (; d && (dd == d->date); d = NEXT(d)) {
 		sccs_sdelta(s, d, dkey);
-		if (s->keydb_nopath) {
+		if (CSET(s)) {
 			if (!keycmp_nopath(key, dkey)) return (d);
 		} else {
 			if (streq(key, dkey)) return (d);
@@ -17259,11 +17265,8 @@ sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB)
 	/*
 	 * We call this with the crap people put in the gone file,
 	 * do a little sanity check.
-	 * x@y|K|19990319224848|02682|x
-	 * 1234567890123456789012345678
-	 * so 28 bytes, and MD5KEYS are longer, so we're good @ 28.
 	 */
-	unless (key && *key && (strlen(key) >= 28)) return (0);
+	unless (isKey(key)) return (0);
 
 	/*
 	 * Id cache contains both long and short keys

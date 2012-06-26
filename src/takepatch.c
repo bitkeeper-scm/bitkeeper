@@ -430,7 +430,6 @@ extractPatch(char *name, MMAP *p)
 	if (echo>4) fprintf(stderr, "%s\n", t);
 	s = sccs_keyinit(0, t, SILENT, idDB);
 	if (s && !s->cksumok) goto error;
-	if (s && opts->port && CSET(s)) s->keydb_nopath = 1;
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
@@ -908,7 +907,6 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			goto err;
 		}
 		s->bitkeeper = 1;
-		if (opts->port && CSET(s)) s->keydb_nopath = 1;
 		if (perfile) sccscopy(s, perfile);
 	}
 	assert(s);
@@ -981,6 +979,9 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	 * XXX: component moves looks will break this.
 	 */
 	if (opts->port && CSET(s)) {
+		int	portLocal = 0;
+		char	*path;
+
 		assert(top);	// no porting a new component; use attach
 		for (d = 0, p = patchList; p; p = p->next) {
 			unless ((d = p->d) && (d->flags & D_REMOTE)) continue;
@@ -992,14 +993,26 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 				 */
 				d->pathname = PARENT(s, d)->pathname;
 			}
+			/*
+			 * We don't yet support component rename.
+			 */
+			if (!streq(top->pathname,
+			    (path = PARENT(s, d)->pathname)) ||
+			    (d->merge &&
+			    !streq(top->pathname,
+			    (path = MERGE(s, d)->pathname)))) {
+				getMsg2("tp_portrename",
+				    top->pathname, path, 0, stderr);
+    				cleanup(CLEAN_RESYNC|CLEAN_PENDING);
+				/*NOTREACHED*/
+			}
+			sccs_setPath(s, d, PARENT(s, d)->pathname);
 			if (TAG(d)) continue;
 			if (proj_isComponent(s->proj)) {
 				/* Sanity assertion - can't port to self */
 				if (streq(d->csetFile,
 				    proj_rootkey(proj_product(s->proj)))) {
-					errorMsg("tp_portself",
-					    p->pid, s->sfile);
-					/*NOTREACHED*/
+					portLocal = 1;
 				}
 			} else {
 				/*
@@ -1008,8 +1021,31 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 				 */
 				if (d != s->tree) d->flags |= D_CSET;
 			}
-			/* No new path info - point it all to local tip */
-			sccs_setPath(s, d, top->pathname);
+		}
+		if (portLocal) {	/* illegal to port local */
+			reversePatch();	/* new to old */
+			SHOUT();
+			for (d = 0, p = patchList; p; p = p->next) {
+				unless ((d = p->d) &&
+				    (d->flags & D_REMOTE) && !TAG(d)) {
+					continue;
+				}
+				unless ((d->flags & D_SET) ||
+				    streq(d->csetFile,
+				    proj_rootkey(proj_product(s->proj)))) {
+					continue;
+				}
+				if (d = PARENT(s, p->d)) d->flags |= D_SET;
+				if (d = MERGE(s, p->d)) d->flags |= D_SET;
+				d = p->d;
+				if (d->flags & D_SET) continue;
+				/* only print error message for tips */
+				sccs_sdelta(s, d, buf);
+				getMsg2("tp_portself",
+				    proj_rootkey(s->proj), buf, 0, stderr);
+			}
+    			cleanup(CLEAN_RESYNC|CLEAN_PENDING);
+			/*NOTREACHED*/
 		}
 	}
 	if (CSET(s) && (echo == 3)) fputs(", ", stderr);

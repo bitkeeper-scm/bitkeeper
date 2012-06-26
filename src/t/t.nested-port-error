@@ -1,0 +1,96 @@
+echo $N Port into self should show how to fix .......................$NL
+
+# Notable things about this test:
+# Only the tip one will be pulled ($PROBLEM).
+# There are two tips - afile and bfile.  Hence the error message is
+# printed twice and two pull commands finally extracted (see cmpfiles)
+
+nested prod
+bk clone $Q . ../copy
+bk clone $Q . ../makeb
+# make a component cset that is not committed in the product
+# This is crucial to do the test on a key that is not in the product weave
+# as the default havekeys only looks at weave to save comp cset inits.
+# Now make another comp cset and commit to product.
+cd gcc
+touch afile
+bk new $Q afile
+bk commit $Q -y"add afile"
+bk detach $Q . "$HERE/gcc-standalone"
+cd "$HERE/gcc-standalone"
+bk edit $Q afile
+bk delta $Q -fyempty afile
+bk commit $Q -y"standalone cset"
+cd "$HERE/prod/gcc"
+bk port $Q "$HERE/gcc-standalone"
+bk commit $Q -S -y"non product port"
+bk edit $Q afile
+bk delta $Q -fyempty afile
+bk commit $Q -S -y"Non product merge point"
+PROBLEM=`bk changes -qSr+ -nd:KEY:`
+cd "$HERE/gcc-standalone"
+bk port $Q "$HERE/prod/gcc"
+cd "$HERE/prod/gcc"
+bk edit $Q afile
+bk delta $Q -fyempty afile
+bk commit $Q -y"product cset that will get pulled"
+cd ..
+mvcomp gcc gcc4
+bk commit $Q -y"Have the component somewhere else at time of query"
+# grab key with canonical path (parent's)
+# Now make another comp cset and commit to product.
+# Save key, but with parent's path (the canonical naming)
+# cset in standalone
+cd "$HERE/gcc-standalone"
+bk edit $Q afile
+bk delta $Q -fynull afile
+bk commit $Q -f
+cd "$HERE/makeb/gcc"
+touch bfile
+bk new $Q bfile
+bk commit $Q -ybfile
+cd "$HERE/gcc-standalone"
+bk port $Q "$HERE/makeb/gcc"
+cd "$HERE/prod"
+bk pull $Q ../makeb
+# Try to port, doesn't work
+cd "$HERE/copy/gcc"
+bk portal $Q .
+bk port -q ../../gcc-standalone 2>ERR && fail -f ERR Should have failed
+grep -q "porting work that originated in this product is unsupported." ERR || {
+	cat ERR
+	fail wrong error
+}
+grep -q "$PROBLEM" ERR || fail -f ERR "$PROBLEM" Wrong Key in Error
+echo OK
+
+echo $N Do the recovery - then fail porting into a renamed comp .....$NL
+# Take the error message and extract the hasrev command
+grep 'r2c' < ERR | sed 's/URL/..\/..\/prod/' > cmd
+test -s cmd || fail
+sh cmd > revs
+cat <<EOF > WANT
+1.2.1.1
+1.5
+EOF
+cmpfiles WANT revs
+# now do the pulls
+bk pull -q -r1.2.1.1 ../../prod || fail
+bk pull -q -r1.5 ../../prod || fail
+# Set up error condition: rename component
+cd ..
+mvcomp gcc gcc5
+bk commit $Q -ycomp-rename
+cd gcc5
+bk port $Q ../../gcc-standalone 2> ERR && fail -f ERR
+grep -q 'conflict - "gcc5/ChangeSet" and "gcc/ChangeSet"' ERR || fail -f ERR
+# Can't yet undo, so just put back
+cd ..
+mvcomp gcc5 gcc
+bk commit $Q -ycomp-rename
+cd gcc
+echo OK
+
+echo $N With no rename, port will now work ..........................$NL
+bk port $Q ../../gcc-standalone || fail
+echo OK

@@ -292,7 +292,7 @@ err:		freeLines(envVar, free);
 		fclose(tmpf);
 		if (rc || !portCsets) {
 			unlink(tmpfile);
-			return (rc);
+			goto done;
 		}
 		if (opts.portNoCommit) {
 			FILE	*f1, *f2;
@@ -319,10 +319,11 @@ err:		freeLines(envVar, free);
 			    proj_comppath(0),
 			    tmpfile);
 			rc = system(buf);
+			if (WIFEXITED(rc)) rc = WEXITSTATUS(rc);
 		}
 		unlink(tmpfile);
 	}
-	freeLines(envVar, free);
+done:	freeLines(envVar, free);
 	FREE(opts.mergefile);
 	return (rc);
 }

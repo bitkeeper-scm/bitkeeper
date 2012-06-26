@@ -1200,10 +1200,20 @@ or
 
 takepatch has not cleaned up your destination, you need to do that.
 $
+#tp_portrename
+takepatch: porting work on top of a component rename is not supported
+in this version of BitKeeper.
+	Path conflict - "#BKARG#1#" and "#BKARG#2#"
+Please write support@bitmover.com and include this message.
+$
 #tp_portself
-takepatch: porting in work that originated in this product
-	#BKARG#1#
-	in #BKARG#2#
+takepatch: porting work that originated in this product is unsupported.
+Find another repository from the same product and pull the cset from there.
+To see if a repository has it:
+	bk -@URL r2c -r'#BKARG#2#' '#BKARG#1#'
+If that returns a REV, then do a
+	bk pull -rREV URL
+Then do the port again.
 $
 #tp_ahead
 takepatch: can't find parent ID
