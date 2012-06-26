@@ -1254,6 +1254,14 @@ $
 takepatch: #BKARG# has uncommitted changes.
 Please commit pending changes with "bk commit" and reapply the patch.
 $
+#pull_in_progress
+-----------------------------------------------------------------
+It looks like there was a pull in progress. These errors could
+be caused by the components being out-of-sync with the product.
+Try running 'bk resolve' to finish the pull, or a 'bk abort' to
+cancel it.
+-----------------------------------------------------------------
+$
 #no_pull_part1
 Remote does not understand "pull_part1" command.  There are two
 possible causes:
@@ -1292,7 +1300,7 @@ looks for directories and files.  This also means that it is not possible
 to rename a path correctly if there exists a similar path with only
 upper/lower case differences.
 
-BitKeeper wants update this file:
+BitKeeper wants to update this file:
     #BKARG#
 Your file system is changing the name as follows:
     #BKARG# -> #BKARG#2#

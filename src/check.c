@@ -557,18 +557,7 @@ out:
 	}
 	if (t = getenv("_BK_RAN_CHECK")) touch(t, 0666);
 	if (errors && pull_inProgress) {
-		fprintf(stderr,
-		    "--------------------------------"
-		    "---------------------------------\n"
-		    "It looks like there was a pull in progress. "
-		    "These errors could\n"
-		    "be caused by the components being "
-		    "out-of-sync with the product.\n"
-		    "Try running 'bk resolve' to finish "
-		    "the pull, or a 'bk abort' to\n"
-		    "cancel it.\n"
-		    "--------------------------------"
-		    "---------------------------------\n");
+		getMsg("pull_in_progress", 0, 0, stderr);
 	}
 	return (errors);
 }

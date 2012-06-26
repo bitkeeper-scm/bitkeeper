@@ -2965,7 +2965,7 @@ bk edit $Q for-edit-v
 echo edit2 >for-edit-q || fail
 bk pull -v ../product0 >OUT 2>&1 && fail -f OUT
 chkoutput OUT || fail $msg
-chkblanks OUT 0 || fail -f OUT $msg
+chkblanks OUT 1 || fail -f OUT $msg
 cd ..
 bk _rm -rf clone0
 echo OK
