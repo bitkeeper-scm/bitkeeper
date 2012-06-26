@@ -160,7 +160,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 		for (t = d->symlink; *t; sum += *t++);
 		if ((e->flags & D_CKSUM) && (e->sum == sum)) return (0);
 		unless (fix) {
-			fprintf(stderr, "Bad symlink checksum %d:%d in %s|%s\n",
+			fprintf(stderr, "Bad symlink checksum %05u:%05u "
+			    "in %s|%s\n",
 			    e->sum, sum, s->gfile, d->rev);
 			return (2);
 		} else {
@@ -245,7 +246,7 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	if ((d->flags & D_CKSUM) && (d->sum == s->dsum)) return (err);
 	unless (fix) {
 		fprintf(stderr,
-		    "Bad checksum %d:%d in %s|%s\n",
+		    "Bad checksum %05u:%05u in %s|%s\n",
 		    d->sum, s->dsum, s->gfile, d->rev);
 		return (2);
 	}
@@ -523,7 +524,8 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 
 		if (d->sum != sum) {
 			if (!fix || (diags > 1)) {
-				fprintf(stderr, "%s checksum %d:%d in %s|%s\n",
+				fprintf(stderr,
+				    "%s checksum %05u:%05u in %s|%s\n",
 				    (fix ? "Corrected" : "Bad"),
 				    d->sum, sum, s->gfile, d->rev);
 			}

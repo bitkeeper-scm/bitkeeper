@@ -15344,7 +15344,10 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_DSUM: /* DSUM */ {
 		if (d->flags & D_CKSUM) {
-			fd((int)d->sum);
+			char	buf[10];
+
+			sprintf(buf, "%05u", d->sum);
+			fs(buf);
 			return (strVal);
 		}
 		if (d->type == 'R') {
