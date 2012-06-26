@@ -2,6 +2,7 @@
 #include "bkd.h"
 #include "resolve.h"
 #include "nested.h"
+#include "progress.h"
 
 typedef struct {
 	u32	leavepatch:1;
@@ -12,7 +13,7 @@ typedef struct {
 private	int	abort_patch(options *opts);
 private int	send_abort_msg(remote *r);
 private int	remoteAbort(remote *r);
-private int	abortComponents(options *opts);
+private int	abortComponents(options *opts, int *which, int *num);
 
 /*
  * Abort a pull/resync by deleting the RESYNC dir and the patch file in
@@ -94,6 +95,8 @@ abort_patch(options *opts)
 	char	buf[MAXPATH];
 	char	pendingFile[MAXPATH];
 	int	rc;
+	int	which = 0, num = 0;
+	ticker	*tick = 0;
 	FILE	*f;
 
 	/*
@@ -108,7 +111,9 @@ abort_patch(options *opts)
 		return (1);
 	}
 
-	if (opts->nested && (rc = abortComponents(opts))) return (rc);
+	if (opts->nested && (rc = abortComponents(opts, &which, &num))) {
+		return (rc);
+	}
 
 	/*
 	 * Get the patch file name from RESYNC before deleting RESYNC.
@@ -124,11 +129,19 @@ abort_patch(options *opts)
 		fprintf(stderr, "Warning: no BitKeeper/tmp/patch\n");
 	}
 
+	if (proj_isEnsemble(0) && !opts->quiet) {
+		tick = progress_start(PROGRESS_BAR, 1000);
+	}
 	unless (rc = rmtree("RESYNC")) {
 		if (!opts->leavepatch && pendingFile[0]) unlink(pendingFile);
 		rmdir(ROOT2PENDING);
 		unlink(BACKUP_LIST);
 		unlink(PASS4_TODO);
+	}
+	if (tick) {
+		if (proj_isProduct(0)) title = aprintf("%u/%u .", which, num);
+		progress_end(PROGRESS_BAR, rc ? "FAILED":"OK", PROGRESS_MSG);
+		if (proj_isProduct(0)) FREE(title);
 	}
 	return (rc);
 }
@@ -210,7 +223,7 @@ out:	wait_eof(r, 0);
 }
 
 private int
-abortComponents(options *opts)
+abortComponents(options *opts, int *which, int *num)
 {
 	nested	*n = 0;
 	sccs	*s = 0;
@@ -219,6 +232,8 @@ abortComponents(options *opts)
 	int	i;
 	int	errors = 0;
 
+	*num = 0;
+	*which = 1;
 	/* sanity check - already checked in abort_main() */
 	assert(exists(ROOT2RESYNC "/BitKeeper"));
 
@@ -243,6 +258,15 @@ abortComponents(options *opts)
 	}
 
 	EACH_STRUCT(n->comps, c, i) {
+		if (!c->present || !c->included) continue;
+		proj_cd2product();
+		if (chdir(c->path)) continue;
+		/* not part of this pull */
+		if (exists("RESYNC/BitKeeper/log/port")) continue;
+		(*num)++;
+	}
+
+	EACH_STRUCT(n->comps, c, i) {
 		TRACE("check(%s) p%d i%d\n",
 		    c->path, c->present, c->included);
 		if (c->product || !c->present || !c->included) continue;
@@ -256,6 +280,9 @@ abortComponents(options *opts)
 		/* not part of this pull */
 		if (exists("RESYNC/BitKeeper/log/port")) continue;
 		if (c->new) {
+			ticker	*tick = 0;
+			int	e;
+
 			unless (streq(proj_rootkey(0), c->rootkey)) {
 				TRACE("wrong rootkey in %s\n", c->path);
 				/*
@@ -270,20 +297,34 @@ abortComponents(options *opts)
 			 * the tip in case they added local csets?
 			 */
 			proj_cd2product();
+			unless (opts->quiet) {
+				tick = progress_start(PROGRESS_BAR, 1000);
+			}
 			TRACE("rmcomp(%s)\n", c->path);
-			if (nested_rmcomp(n, c)) {
+			if (e = nested_rmcomp(n, c)) {
 				fprintf(stderr, "failed rmcomp in %s\n", c->path);
 				error("failed to remove %s\n", c->path);
 				errors++;
+			}
+			if (tick) {
+				title = aprintf("%u/%u %s",
+				    (*which)++, *num, c->path);
+				progress_end(PROGRESS_BAR,
+				    e ? "FAILED" : "OK", PROGRESS_MSG);
+				FREE(title);
 			}
 			continue;
 		}
 		/* not new */
 		if (isdir(ROOT2RESYNC)) {
-			if (systemf("bk -?BK_NO_REPO_LOCK=YES abort -Sf%s%s",
+			if (systemf("bk -?BK_NO_REPO_LOCK=YES "
+			    "--title='%u/%u %s' abort -Sf%s%s",
+				(*which)++, *num, c->path,
 			    opts->leavepatch ? "p" : "", opts->quiet ? "q" : "")) {
 				error("abort: component %s failed\n", c->path);
 				errors++;
+				progress_end(PROGRESS_BAR,
+				    "FAILED", PROGRESS_MSG);
 				goto out;
 			}
 		} else {
@@ -291,8 +332,10 @@ abortComponents(options *opts)
 			 * XXX what makes sure the user hasn't added new
 			 * csets after the pull that failed?
 			 */
-			if (systemf("bk -?BK_NO_REPO_LOCK=YES undo "
-			    "-%sSsfa'%s'", opts->quiet ? "q" : "", c->lowerkey)) {
+			if (systemf("bk -?BK_NO_REPO_LOCK=YES "
+			    "--title='%u/%u %s' undo -%sSsfa'%s'",
+				(*which)++, *num, c->path,
+			    opts->quiet ? "q" : "", c->lowerkey)) {
 				error("abort: failed to revert %s\n", c->path);
 				errors++;
 			}

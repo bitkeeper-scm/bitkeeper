@@ -560,7 +560,7 @@ test -d RESYNC || {
 	cat OUT
 	exit 1
 }
-bk abort -fS
+bk abort -qfS
 (echo a
  echo y
 ) | bk port ../../bash-port > OUT 2>&1
