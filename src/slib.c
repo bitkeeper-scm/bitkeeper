@@ -15500,7 +15500,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		char	buf[10];
 
 		if (TAG(s, d)) assert(SUM(s, d) == 0);
-		sprintf(buf, "%05u", d->sum);
+		sprintf(buf, "%05u", SUM(s, d));
 		fs(buf);
 		return (strVal);
 	}

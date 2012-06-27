@@ -1048,16 +1048,20 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			SHOUT();
 			for (d = 0, p = patchList; p; p = p->next) {
 				unless ((d = p->serial) &&
-				    (FLAGS(s, d) & D_REMOTE) && !TAG(d)) {
+				    (FLAGS(s, d) & D_REMOTE) && !TAG(s, d)) {
 					continue;
 				}
 				unless ((FLAGS(s, d) & D_SET) ||
-				    streq(d->csetFile,
+				    streq(CSETFILE(s, d),
 				    proj_rootkey(proj_product(s->proj)))) {
 					continue;
 				}
-				if (d = PARENT(s, p->d)) FLAGS(s, d) |= D_SET;
-				if (d = MERGE(s, p->d)) FLAGS(s, d) |= D_SET;
+				if (d = PARENT(s, p->serial)) {
+					FLAGS(s, d) |= D_SET;
+				}
+				if (d = MERGE(s, p->serial)) {
+					FLAGS(s, d) |= D_SET;
+				}
 				d = p->serial;
 				if (FLAGS(s, d) & D_SET) continue;
 				/* only print error message for tips */
