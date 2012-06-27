@@ -319,7 +319,7 @@ _prunekey restricted
 pull
 push
 pwd
-r2c
+r2c	remote
 range
 rcheck
 _rclone

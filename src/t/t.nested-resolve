@@ -187,7 +187,7 @@ cmpfiles ERR WANT
 echo OK
 
 echo $N Test pull -i does not automerge .............................$NL
-bk abort -f
+bk abort -qf
 (echo ul ; echo C) | bk pull -i -T 1>ERR 2>&1 || fail -f ERR
 bk cat gcc/foo >GOT
 cat >WANT <<EOF

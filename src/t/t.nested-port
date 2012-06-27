@@ -560,7 +560,7 @@ test -d RESYNC || {
 	cat OUT
 	exit 1
 }
-bk abort -fS
+bk abort -qfS
 (echo a
  echo y
 ) | bk port ../../bash-port > OUT 2>&1
@@ -658,14 +658,17 @@ bk commit $Q -ynull
 bk port $Q ../project/newbash || fail
 # Now stir things up
 cd ../project/newbash
-bk port $Q ../../bash-sa || fail
-# All new csets will have tip local path in pathname and
-# 'ChangeSet' as sortpath
-bk changes -S -end':KEY:||:SORTKEY:' - < BitKeeper/etc/csets-in \
-    | perl -pe 's/[^|]*.([^|]*).*\|\|[^|]*.([^|]*).*/$1 $2/' > GOT
-cat <<EOF > WANT
-newbash/ChangeSet ChangeSet
-newbash/ChangeSet ChangeSet
-EOF
-cmpfiles WANT GOT
+bk port $Q ../../bash-sa 2> ERR && fail -f ERR
+# When we get name handling integrated ... remove
+grep -q 'flict - "newbash/ChangeSet" and "bash/ChangeSet"' ERR || fail -f ERR
+# and add back in:
+# # All new csets will have tip local path in pathname and
+# # 'ChangeSet' as sortpath
+# bk changes -S -end':KEY:||:SORTKEY:' - < BitKeeper/etc/csets-in \
+#     | perl -pe 's/[^|]*.([^|]*).*\|\|[^|]*.([^|]*).*/$1 $2/' > GOT
+# cat <<EOF > WANT
+# newbash/ChangeSet ChangeSet
+# bash/ChangeSet ChangeSet
+# EOF
+# cmpfiles WANT GOT
 echo OK

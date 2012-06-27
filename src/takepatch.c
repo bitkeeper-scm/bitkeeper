@@ -431,7 +431,6 @@ extractPatch(char *name, FILE *p)
 	if (echo>4) fprintf(stderr, "%s\n", t);
 	s = sccs_keyinit(0, t, SILENT, idDB);
 	if (s && !s->cksumok) goto error;
-	if (s && opts->port && CSET(s)) s->keydb_nopath = 1;
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
@@ -927,7 +926,6 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		s->heap = fake->heap;
 		FREE(fake);
 		s->bitkeeper = 1;
-		if (opts->port && CSET(s)) s->keydb_nopath = 1;
 		if (perfile) sccscopy(s, perfile);
 	}
 	assert(s);
@@ -1008,23 +1006,34 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	 */
 	if (topkey) top = sccs_findKey(s, topkey);
 	if (opts->port && CSET(s)) {
+		int	portLocal = 0;
+		char	*path;
+
 		assert(topkey);	// no porting a new component; use attach
 		for (d = 0, p = patchList; p; p = p->next) {
 			d = p->serial;
 			unless (d && (FLAGS(s, d) & D_REMOTE)) continue;
 			unless (PARENT(s, d)) continue;	/* rootkey untouched */
-
-			/* hard code all the new paths to the local tip */
-			PATHNAME_INDEX(s, d) = PATHNAME_INDEX(s, top);
-
+			/*
+			 * We don't yet support component rename.
+			 */
+			if (!streq(PATHNAME(s, top),
+			    (path = PATHNAME(s, PARENT(s, d)))) ||
+			    (MERGE(s, d) &&
+			    !streq(PATHNAME(s, top),
+			    (path = PATHNAME(s, MERGE(s, d)))))) {
+				getMsg2("tp_portrename",
+				    PATHNAME(s, top), path, 0, stderr);
+    				cleanup(CLEAN_RESYNC|CLEAN_PENDING);
+				/*NOTREACHED*/
+			}
+			sccs_setPath(s, d, PATHNAME(s, PARENT(s, d)));
 			if (TAG(s, d)) continue;
 			if (proj_isComponent(s->proj)) {
 				/* Sanity assertion - can't port to self */
 				if (streq(CSETFILE(s, d),
 				    proj_rootkey(proj_product(s->proj)))) {
-					errorMsg("tp_portself",
-					    p->pid, s->sfile);
-					/*NOTREACHED*/
+					portLocal = 1;
 				}
 			} else {
 				/*
@@ -1033,6 +1042,31 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 				 */
 				if (d != TREE(s)) FLAGS(s, d) |= D_CSET;
 			}
+		}
+		if (portLocal) {	/* illegal to port local */
+			reversePatch();	/* new to old */
+			SHOUT();
+			for (d = 0, p = patchList; p; p = p->next) {
+				unless ((d = p->serial) &&
+				    (FLAGS(s, d) & D_REMOTE) && !TAG(d)) {
+					continue;
+				}
+				unless ((FLAGS(s, d) & D_SET) ||
+				    streq(d->csetFile,
+				    proj_rootkey(proj_product(s->proj)))) {
+					continue;
+				}
+				if (d = PARENT(s, p->d)) FLAGS(s, d) |= D_SET;
+				if (d = MERGE(s, p->d)) FLAGS(s, d) |= D_SET;
+				d = p->serial;
+				if (FLAGS(s, d) & D_SET) continue;
+				/* only print error message for tips */
+				sccs_sdelta(s, d, buf);
+				getMsg2("tp_portself",
+				    proj_rootkey(s->proj), buf, 0, stderr);
+			}
+    			cleanup(CLEAN_RESYNC|CLEAN_PENDING);
+			/*NOTREACHED*/
 		}
 	}
 	if (CSET(s) && (echo == 3)) fputs(", ", stderr);

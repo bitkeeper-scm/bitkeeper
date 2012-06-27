@@ -407,7 +407,7 @@ bk _mv newfoo SCCS/s.foo
 bk admin -z foo
 cd ../checksum
 bk pull $Q -R 2> ERR && fail -f ERR 1
-grep -q "Bad checksum 504:505 in" ERR || fail -f ERR 2
+grep -q "Bad checksum 00504:00505 in" ERR || fail -f ERR 2
 echo OK
 
 sanitize() {

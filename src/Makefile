@@ -132,6 +132,7 @@ OBJ =	bkver.o cmd.o \
 	bkd_findkey.o bkd_http.o \
 	bkd_id.o bkd_kill.o bkd_level.o bkd_license.o bkd_misc.o bkd_nested.o \
 	bkd_partition.o bkd_pull.o bkd_push.o bkd_pwd.o \
+	bkd_r2c.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkusers.o \
 	cat.o cfile.o changes.o \
@@ -177,7 +178,7 @@ OBJ =	bkver.o cmd.o \
 	port/uninstall.o \
 	progress.o \
 	prs.o pull.o purify.o push.o pwd.o \
-	r2c.o randombits.o range.o rcheck.o rclone.o \
+	randombits.o range.o rcheck.o rclone.o \
 	rcs2bk.o rcsparse.o \
 	receive.o redblack.o regex.o registry.o renumber.o \
 	repo.o repos.o repogca.o resolve.o \

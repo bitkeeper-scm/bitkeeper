@@ -245,6 +245,10 @@ repository_lockers(project *p)
 	if (exists(path)) {
 		n++;
 		msg = addLine(msg, aprintf("\tRESYNC directory.\n"));
+		msg = addLine(msg,
+		    aprintf("\n\tUsually the RESYNC directory indicates a "
+			"push/pull in progress.\n"
+			"\tUse bk resolve/bk abort as appropriate.\n"));
 	}
 	sprintf(path, "%s/%s", root, WRITER_LOCK);
 	rm = sccs_stalelock(path, 1);

@@ -1,3 +1,47 @@
+echo $N Make sure abort prints component pathname for undo...........$NL
+nested abort-test
+touch afile
+bk new $Q afile
+for dir in `bk comps -h`
+do
+	cd "$dir"
+	touch afile
+	bk new $Q afile
+	cd ..
+done
+bk commit $Q -y"add files"
+bk clone $Q . ../abort-test-copy
+bk get $Q -e afile
+echo "stuff" > afile
+bk delta $Q -ychg afile
+for dir in `bk comps -h`
+do
+	cd "$dir"
+	bk get $Q -e afile
+	echo "stuff" > afile
+	bk delta $Q -ychg afile
+	cd ..
+done
+bk commit $Q -y"mod files"
+touch c
+bk setup -fcc newcomp
+rm -f c
+cd ../abort-test-copy
+bk pull -R $Q || fail
+# need at least an undo
+cd gcc
+bk resolve -S $Q
+bk abort -f >OUT 2>&1 || fail
+perl -pe "s/.*\r//" < OUT > GOT
+cat <<EOF > WANT
+1/4 gcc                            100% |==============================| OK
+2/4 gdb                            100% |==============================| OK
+3/4 newcomp                        100% |==============================| OK
+4/4 .                              100% |==============================| OK
+EOF
+cmpfiles WANT GOT
+echo OK
+
 # return a uniq string
 CNT=0
 RAND()
@@ -189,6 +233,7 @@ bk abort -qf || fail
 bk pull $Q -R || fail
 touch comp3/extra
 bk abort -qf 2> GOT && fail should have failed
+test -d RESYNC || fail failed abort removed RESYNC
 cat <<EOF > WANT
 Extra file:         comp3/extra
 here: unable to remove ./comp3
@@ -209,7 +254,6 @@ bk pull $Q 2>ERR && fail -f ERR
 grep -q "The following files are modified locally and in the patch" ERR || {
      fail -f ERR
 }
-bk abort -qf || fail
 check_state || fail $err
 echo OK
 

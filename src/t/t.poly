@@ -32,8 +32,6 @@ cat <<EOF > WANT
 check: ChangeSet 1.4 is a merge but is missing a required merge delta for this rootkey
 	<foo>
 Check failed.  Resolve not completed.
-SCCS/s.ChangeSet
-SCCS/s.newfile
 Your repository should be restored to its previous state.
 We are running a full consistency check to verify this, please wait.
 check passed.

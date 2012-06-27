@@ -12,6 +12,8 @@ r2c_main(int ac, char **av)
 	char	*p;
 	int	rc = 1;
 	int	product = 1;
+	MDBM	*idDB, *goneDB;
+	char	*sfile;
 	longopt	lopts[] = {
 		{ "standalone", 'S' },		/* treat comps as standalone */
 		{ 0, 0 }
@@ -28,10 +30,19 @@ r2c_main(int ac, char **av)
 			break;
 		}
 	}
-	unless (file = av[optind]) {
-		usage();
+	unless ((file = av[optind]) && !av[optind+1]) usage();
+	sfile = name2sccs(file);
+	if (!isreg(sfile) && isKey(file)) {
+		proj_cd2root();
+		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+		goneDB = loadDB(GONE, 0, DB_GONE);
+
+		file = key2path(file, idDB, goneDB, 0);
+		mdbm_close(idDB);
+		mdbm_close(goneDB);
+		unless (file) goto out;
 	}
-	unless (p = r2c(file, rev)) goto out;
+	unless (p = r2c(file, rev)) goto out; /* will chdir to file repo */
 	free(rev);
 	rev = p;
 	if (product && proj_isComponent(0)) {
@@ -50,6 +61,7 @@ r2c_main(int ac, char **av)
 	printf("%s\n", rev);
 	rc = 0;
 out:	if (rev) free(rev);
+	free(sfile);
 	return (rc);
 }
 

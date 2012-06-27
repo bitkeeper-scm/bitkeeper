@@ -399,7 +399,6 @@ newsum=`expr $sum + 10`
 test "$newsum" -ge 65536 && {
 	newsum=`expr $newsum - 65536`
 }
-sum=`printf "%05u" "$sum"`
 newsum=`printf "%05u" "$newsum"`
 bk edit $Q foo
 echo no more foo > foo
