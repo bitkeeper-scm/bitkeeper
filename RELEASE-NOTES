@@ -1,4 +1,63 @@
 ============================================================================
+Release notes for BitKeeper version 5.4.2 (released Jun 30, 2012)
+
+This is a minor release, mostly addressing bugs or enhancements in
+the BK/Nested functionality.
+
+Documentation changes:
+  Locking
+    The message "repository is locked by RESYNC" has had a little
+    extra explanation added to help new users.
+
+  bk abort
+    - document the -S option
+
+  bk config-etc
+    - document the auto-populate configuration option
+
+  bk pull
+    - document the --auto-populate option
+
+  bk triggers
+    - add an example showing the running of an async bk operation in
+      a post-incoming trigger that maintains a mirrored clone
+
+Bug fixes:
+
+  misc
+    - harden the way the files for features and unique keys are written
+    - more platforms use truetype fonts
+
+  bk abort
+    - when running bk abort in a nested collection, make the undo
+      subprocess show the component name instead of just "undo"
+
+  bk bkd
+    - fix bkd to work correctly in the root directory
+
+  bk clone
+    - fix internal routine to not lstat cached repository paths
+      when looking for missing components (performance win for those
+      in automounted NFS environments)
+
+  bk citool
+    - fix a bug where in some cases going to commit did not show the per
+      file comments
+    - fix to correctly list all pending revs
+
+  bk partition
+    - fix a hidden assert / core dump problem where the error messages
+      were lost
+
+  bk port
+    - make progress bar say port instead of pull
+    - improvements in duplicate key handling and detection (poly handling)
+    - improved error messages for unsupported ports
+
+  bk pull
+    - fix a bug with the auto populating of deeply nested components
+  
+============================================================================
 Release notes for BitKeeper version 5.4.1 (released Feb 17, 2012)
 
 GUI changes:
