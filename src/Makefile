@@ -463,6 +463,7 @@ installdir: utils/registry.tcl
 	cp -f $(DATA) $(IMGDIR)
 	cp -f $(CONTRIB) $(IMGDIR)/contrib
 	(cd ../doc/nested && $(MAKE) install HTML=$(IMGDIR)/html)
+	(cd ../doc/lease-proxy && $(MAKE) install HTML=$(IMGDIR)/html)
 	if [ $(SYS) = unix ]; \
 	then	(cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
 		bk get -S ../man/Makefile; \
