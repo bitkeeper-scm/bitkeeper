@@ -396,7 +396,7 @@ mkinit(sccs *s, ser_t d, char *file, char *key)
 		    host);
 		t = COMMENTS(s, d);
 		while (p = eachline(&t, &len)) fprintf(fh, "c %.*s\n", len, p);
-		if (DATE_FUDGE(s, d)) fprintf(fh, "F %u\n", DATE_FUDGE(s, d));
+		if (DATE_FUDGE(s, d)) fprintf(fh, "F %lu\n", DATE_FUDGE(s, d));
 	}
 	fprintf(fh, "------------------------------------------------\n");
 	fclose(fh);
@@ -412,7 +412,7 @@ ptable(sccs *s)
 		unless (!(FLAGS(s, d) & D_GONE) && !TAG(s, d)) {
 			continue;
 		}
-		fprintf(stderr, "%-10.10s %10s i=%2u s=%2u d=%s f=%u\n",
+		fprintf(stderr, "%-10.10s %10s i=%2u s=%2u d=%s f=%lu\n",
 		    s->gfile, REV(s, d), d, d,
 		    delta_sdate(s, d), DATE_FUDGE(s, d));
 	}
@@ -625,7 +625,7 @@ fixTable(sccs *s, int verbose)
 	}
 	if (verbose > 2) ptable(s);
 	if (verbose > 1 && e) {
-		fprintf(stderr, "%s: maxfudge=%u lastfudge=%u\n",
+		fprintf(stderr, "%s: maxfudge=%u lastfudge=%lu\n",
 		    s->gfile, maxfudge, DATE_FUDGE(s, e));
 	}
 }
