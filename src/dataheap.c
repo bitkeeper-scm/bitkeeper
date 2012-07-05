@@ -507,8 +507,8 @@ heapdump_main(int ac, char **av)
 const	char	const *delta_flagNames[] = {
 	"INARRAY",		/* 0 */
 	"NONEWLINE",		/* 1 */
-	"CKSUM",		/* 2 */
-	"SORTSUM",		/* 3 */
+	0,			/* 2 */
+	0,			/* 3 */
 	"META",			/* 4 */
 	"SYMBOLS",		/* 5 */
 	0,			/* 6 */
@@ -516,10 +516,10 @@ const	char	const *delta_flagNames[] = {
 	"TAG",			/* 8 */
 	"SYMGRAPH",		/* 9 */
 	"SYMLEAF",		/* 10 */
-	"MODE",			/* 11 */
+	0,			/* 11 */
 	"CSET",			/* 12 */
-	"XFLAGS",		/* 13 */
-	"NPARENT",		/* 14 */
+	0,			/* 13 */
+	0,			/* 14 */
 	0,			/* 15 */
 	0,			/* 16 */
 	0,			/* 17 */
@@ -584,7 +584,11 @@ delta_print(sccs *s, ser_t d)
 		if (FLAGS(s, d) & (1 << i)) {
 			if (c) printf(",");
 			c = 1;
-			printf("%s", delta_flagNames[i]);
+			if (delta_flagNames[i]) {
+				printf("%s", delta_flagNames[i]);
+			} else {
+				printf("0x%x", (1 << i));
+			}
 		}
 	}
 	printf(")\n");

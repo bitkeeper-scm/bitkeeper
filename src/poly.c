@@ -5,7 +5,7 @@
 /*
  * XXX TODO list
  * - "fix" tests so they fail again
- * - set feature bit if D_POLY is ever generated
+ * - set feature bit if poly is ever generated
  * - fix range_cset()
  * - fix sccs_csetBoundry()
  * - make everything else use those two
@@ -49,7 +49,8 @@ static	int	cpoly_dirty;
  * When given a delta in a component cset that is csetmarked it
  * returns information about the product cset(s) that include this delta.
  *
- *  Returns a lines array of pointers to cmark structs.
+ * Returns a lines array of pointers to cmark structs, or 0 if
+ * delta is not poly.
  */
 cmark *
 poly_check(sccs *cset, ser_t d)
@@ -59,17 +60,10 @@ poly_check(sccs *cset, ser_t d)
 
 	assert(FLAGS(cset, d) & D_CSET);
 
-	/* 
-	 * We could actually return data for normal csetmarks, but for
-	 * now we assume this function won't be called in that case.
-	 */
-	assert(FLAGS(cset, d) & D_POLY);
-
 	polyLoad(cset);
 
 	sccs_sdelta(cset, d, key);
 	ret = hash_fetchStrPtr(cpoly, key);
-	if (FLAGS(cset, d) & D_POLY) assert(ret);
 	return (ret);
 }
 
@@ -128,7 +122,7 @@ pullPoly(int got_patch, char *mergefile)
 			FLAGS(cset, d) |= D_LOCAL;
 			unless (local) local = d;
 		}
-		if (side & REMOTE) { 
+		if (side & REMOTE) {
 			FLAGS(cset, d) |= D_REMOTE;
 			unless (remote) remote = d;
 		}
@@ -194,7 +188,7 @@ polyLoad(sccs *cset)
 	char	*ckey;
 	cmark	cm;
 	char	buf[MAXPATH];
-	
+
 	if (cpoly) {
 		/* assume we only work on one component at a time for now */
 		assert(cset->proj == cpoly_proj);
@@ -378,7 +372,7 @@ polyMarked(sccs *s, ser_t d, void *token)
 	unless (FLAGS(s, d) & (D_LOCAL|D_REMOTE)) return (1);
 
 	/* Already marked Poly; no need to add it again */
-	if (FLAGS(s, d) & (D_POLY|D_SET)) return (0);
+	//if (FLAGS(s, d) & (D_POLY|D_SET)) return (0);
 
 	/*
 	 * Don't color POLY yet, so we can see patch nodes
@@ -475,7 +469,7 @@ addTips(sccs *cset, ser_t *gcalist, ser_t **list)
 		for (j = 0; side[j]; j++) {
 			flags = side[j];
 			d = sccs_csetBoundary(cset, gca, flags);
-			unless (FLAGS(cset, d) & (D_POLY|D_SET)) {
+			unless (FLAGS(cset, d) & D_SET) {
 				FLAGS(cset, d) |= D_SET;
 				addArray(list, &d);
 			}
@@ -509,7 +503,6 @@ updatePolyDB(sccs *cset, ser_t *list, hash *cmarks)
 			}
 		}
 		FLAGS(cset, d) &= ~D_SET;
-		FLAGS(cset, d) |= D_POLY;
 	}
 	return (0);
 }
@@ -548,7 +541,7 @@ lowerBounds(sccs *s, ser_t d, u32 flags)
 
 	unless (d = sccs_csetBoundary(s, d, 0)) return (0); /* if pending */
 	/* This lower bound detector is only for non poly stuff */
-	assert(!(FLAGS(s, d) & D_POLY));
+	//assert(!(FLAGS(s, d) & D_POLY));
 	/* Pass in what to include; invert to what to ignore */
 	if (flags) flags ^= (D_LOCAL|D_REMOTE);
 	cs.d = d;

@@ -8099,9 +8099,7 @@ delta_table(sccs *s, int willfix)
 		}
 		if (FLAGS(s, d) & D_CSET) {
 			assert(!TAG(s, d));
-			fputs("\001cC", out);
-			if (FLAGS(s, d) & D_POLY) fputc('P', out);
-			fputc('\n', out);
+			fputs("\001cC\n", out);
 		}
 		if (DANGLING(s, d)) fputs("\001cD\n", out);
 		if (DATE_FUDGE(s, d)) {
@@ -13091,9 +13089,8 @@ skip:
 	}
 
 	/* Cset marker */
-	if ((buf[0] == 'C')) {
+	if ((buf[0] == 'C') && !buf[1]) {
 		FLAGS(sc, d) |= D_CSET;
-		if (buf[1] == 'P') FLAGS(sc, d) |= D_POLY;
 		unless (buf = fgetline(f)) goto out; lines++;
 	}
 

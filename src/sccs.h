@@ -272,6 +272,7 @@ int	checking_rmdir(char *dir);
 
 /*
  * Flags (FLAGS(s, d)) that indicate some state on the delta.
+ * When changing also update delta_flagNames in dataheap.c.
  */
 /* flags that are written to disk (don't renumber) */
 #define	D_INARRAY	0x00000001	/* part of s->slist array */
@@ -289,7 +290,7 @@ int	checking_rmdir(char *dir);
 					/* open tips, so maintained always */
 //#define	D_MODE		0x00000800	/* permissions in MODE(s, d) are valid */
 #define	D_CSET		0x00001000	/* this delta is marked in cset file */
-#define	D_POLY		0x00002000	/* D_CSET is poly */
+	/* unused	0x00002000	*/
 	/* unused	0x00004000	*/
 #define	D_FIXUPS	0x00008000	/* fixups to tip delta at end of file */
 
