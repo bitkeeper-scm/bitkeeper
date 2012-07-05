@@ -1380,8 +1380,7 @@ buildKeys(MDBM *idDB)
 	if (resync) {
 		if (sccs_findtips(cset, &d, &twotips)) {
 			unless (polyErr) {
-				polyErr = !getenv("_BK_DEVELOPER") ||
-				    !proj_configbool(0, "poly");
+				polyErr = !proj_configbool(0, "poly");
 			}
 		}
 	} else {

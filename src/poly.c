@@ -168,8 +168,8 @@ pullPoly(int got_patch, char *mergefile)
 		touch(resync, 0666);
 	}
 	if (write && sccs_newchksum(cset)) goto err;
+	if (polyFlush(cset)) goto err;
 	rc = 0;
-	polyFlush(cset);
 err:
 	if (cmarks) hash_free(cmarks);
 	FREE(polylist);
@@ -218,8 +218,10 @@ polyLoad(sccs *cset)
 			data = (cmark **)cpoly->vptr;
 			free(ckey);
 
-			while ((c = fgetc(f)) != '@') { /* foreach dataline */
+			for (;;) {	/* foreach dataline */
+				if ((c = fgetc(f)) == EOF) goto done;
 				ungetc(c, f);
+				if (c == '@') break;
 				line = fgetline(f);
 				memset(&cm, 0, sizeof(cm));
 				p = separator(line);
@@ -233,7 +235,7 @@ polyLoad(sccs *cset)
 				addArray(data, &cm);
 			}
 		}
-		fclose(f);
+done:		fclose(f);
 	}
 }
 

@@ -442,7 +442,7 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 	EACH(fromlist) {
 		from = fromlist[i];
 		if (d < from) d = from;
-		MARK(from, D_BLUE);
+		MARK(from, color);
 	}
 
 	/* compute RED - BLUE */
