@@ -13,7 +13,7 @@ pwd_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "sPrRw", 0)) != -1) {
 		switch (c) {
-			case 's': shortname = 1; break;
+			case 's': (void)(shortname = 1); break;
 			case 'r':
 			case 'R': bk_rpath = REPO_RELATIVE; break;
 			case 'P': bk_rpath = PROD_RELATIVE; break;

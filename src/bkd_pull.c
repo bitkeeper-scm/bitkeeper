@@ -92,7 +92,7 @@ done:
 int
 cmd_pull_part2(int ac, char **av)
 {
-	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
+	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem;
 	int	gzip = 0, verbose = 1, triggers_failed = 0;
 	int	rtags, update_only = 0, delay = -1;
 	char	*port = 0;
@@ -115,7 +115,7 @@ cmd_pull_part2(int ac, char **av)
 			gzip = optarg ? atoi(optarg) : Z_BEST_SPEED;
 			if (gzip < 0 || gzip > 9) gzip = Z_BEST_SPEED;
 			break;
-		    case 'd': debug = 1; break;
+		    case 'd': break;  // debug, unused
 		    case 'q': verbose = 0; break;
 		    case 'r': rev = optarg; break;
 		    case 'N': break;	// On purpose

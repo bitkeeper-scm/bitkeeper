@@ -477,7 +477,7 @@ private struct {
 private void
 parse_hmac(char *p)
 {
-        int     len, extra;
+	int     len;
 
 	if (hmac.buf) {
 		free(hmac.buf);
@@ -486,7 +486,7 @@ parse_hmac(char *p)
 	}
 	len = strtoul(p, &p, 10);
 	unless (len && (*p == '|')) goto bad;
-	extra = strtoul(p+1, &p, 10);
+	strtoul(p+1, &p, 10);
 	unless (*p == '|') goto bad;
 	++p;
 	unless (hmac.buf = malloc(len)) goto bad;
