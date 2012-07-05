@@ -415,10 +415,14 @@ err:				if (revsDB) mdbm_close(revsDB);
 			c->lowerkey = strdup(v);
 		}
 		if (flags & NESTED_PULL) {
+			sccs_sdelta(cset, d, buf);
+			strcat(buf, " ");
+			strcat(buf, v);
 			if (IN_LOCAL(d)) {
-				c->local = addLine(c->local, strdup(v));
+				assert(!IN_REMOTE(d));
+				c->local = addLine(c->local, strdup(buf));
 			} else if (IN_REMOTE(d)) {
-				c->remote = addLine(c->remote, strdup(v));
+				c->remote = addLine(c->remote, strdup(buf));
 			}
 		}
 		if (c->new && IN_GCA(d)) {

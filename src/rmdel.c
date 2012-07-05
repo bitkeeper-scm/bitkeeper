@@ -47,7 +47,7 @@ err:		sccs_free(s);
 		return (1);
 	}
 
-	if (e = sccs_csetBoundary(s, d)) {
+	if (e = sccs_csetBoundary(s, d, 0)) {
 		fprintf(stderr,
 		    "rmdel: can't remove committed delta %s:%s\n",
 		    s->gfile, REV(s, e));

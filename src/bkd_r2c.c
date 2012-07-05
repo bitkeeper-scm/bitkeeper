@@ -105,7 +105,7 @@ r2c(char *file, char *rev)
 		    prog, rev, file);
 		goto out;
 	}
-	unless (e = sccs_csetBoundary(s, e)) {
+	unless (e = sccs_csetBoundary(s, e, 0)) {
 		fprintf(stderr,
 		    "%s: cannot find cset marker at or below %s in %s\n",
 		    prog, rev, file);

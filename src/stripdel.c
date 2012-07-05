@@ -285,7 +285,7 @@ checkCset(sccs *s)
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		if (FLAGS(s, d) & D_CSET) saw_cset = 1;
 		unless (FLAGS(s, d) & D_SET) continue;
-		if (saw_cset && (e = sccs_csetBoundary(s, d))) {
+		if (saw_cset && (e = sccs_csetBoundary(s, d, 0))) {
 			return (e);
 		}
 	}

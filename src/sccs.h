@@ -273,7 +273,7 @@ int	checking_rmdir(char *dir);
 /*
  * Flags (FLAGS(s, d)) that indicate some state on the delta.
  */
-/* flags that are written to disk */
+/* flags that are written to disk (don't renumber) */
 #define	D_INARRAY	0x00000001	/* part of s->slist array */
 #define	D_NONEWLINE	0x00000002	/* this delta has no trailing newline */
 //#define	D_CKSUM		0x00000004	/* delta has checksum */
@@ -289,8 +289,8 @@ int	checking_rmdir(char *dir);
 					/* open tips, so maintained always */
 //#define	D_MODE		0x00000800	/* permissions in MODE(s, d) are valid */
 #define	D_CSET		0x00001000	/* this delta is marked in cset file */
-//#define D_XFLAGS	0x00002000	/* delta has updated file flags */
-	/* D_NPARENT	0x00004000 */
+#define	D_POLY		0x00002000	/* D_CSET is poly */
+	/* unused	0x00004000	*/
 #define	D_FIXUPS	0x00008000	/* fixups to tip delta at end of file */
 
 /* flags that are in memory only and not written to disk */
@@ -996,7 +996,8 @@ void	sccs_sortkey(sccs *s, ser_t d, char *buf);
 void	sccs_key2md5(char *rootkey, char *deltakey, char *b64);
 void	sccs_setPath(sccs *s, ser_t d, char *newpath);
 void	sccs_syncRoot(sccs *s, char *key);
-ser_t	sccs_csetBoundary(sccs *s, ser_t);
+ser_t	sccs_csetBoundary(sccs *s, ser_t, u32 flags);
+int	pullPoly(int got_patch, char *mergefile);
 void	sccs_shortKey(sccs *s, ser_t, char *);
 int	sccs_resum(sccs *s, ser_t d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
