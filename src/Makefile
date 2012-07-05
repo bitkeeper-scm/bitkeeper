@@ -110,12 +110,16 @@ WARNINGS_GCC4=-Wextra -Wno-pointer-sign -Wno-sign-compare \
 # -Wold-style-definition Would be nice, but zlib falls all over here
 
 GCC_MAJOR_REV=$(shell $(CC) -dumpversion | sed 's/\..*//')
+GCC_MINOR_REV=$(shell $(CC) -dumpversion | sed 's/.*\.//')
 ifeq ($(GCC_MAJOR_REV),3)
 	WARNINGS += $(WARNINGS_GCC3)
 endif 
 ifeq ($(GCC_MAJOR_REV),4)
 	WARNINGS += $(WARNINGS_GCC3) $(WARNINGS_GCC4)
-endif 
+	ifeq ($(shell expr $(GCC_MINOR_REV) \> 5), 1)
+		WARNINGS += -Wno-unused-result
+	endif
+endif
 GCCOPTS=
 CC_DEBUG=$(GCCOPTS) $G $(WARNINGS)
 CC_FAST_DEBUG=$(GCCOPTS) $G -O2 $(WARNINGS)

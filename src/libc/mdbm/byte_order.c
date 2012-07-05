@@ -46,12 +46,15 @@ _ntohl(uint32 s)
 uint32
 _htonl(uint32 s)
 {
-	uchar	p[4];
+	union {
+		uchar	c[4];
+		uint32	i;
+	} p;
 
-	p[0] = (s >> 24) & 0xff;
-	p[1] = (s >> 16) & 0xff;
-	p[2] = (s >> 8)  & 0xff;
-	p[3] = (s)       & 0xff;
+	p.c[0] = (s >> 24) & 0xff;
+	p.c[1] = (s >> 16) & 0xff;
+	p.c[2] = (s >> 8)  & 0xff;
+	p.c[3] = (s)       & 0xff;
 
-	return	(*(uint32 *)p);
+	return	(p.i);
 }

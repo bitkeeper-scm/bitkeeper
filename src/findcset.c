@@ -57,7 +57,7 @@ findcset_main(int ac, char **av)
 	char	*name;
 	char	*tagFile = 0;
 	char	key[MAXKEY];
-	int	save, c, flags = SILENT;
+	int	c, flags = SILENT;
 	int	fileIdx;
 
 	while ((c = getopt(ac, av, "b:Bkt:T:ivu", 0)) != -1) {
@@ -123,14 +123,11 @@ findcset_main(int ac, char **av)
 			continue;
 		}
 		unless (HASGRAPH(s)) goto next;
-		save = deltaCounter;
 		sccs_sdelta(s, sccs_ino(s), key);
 		keylist = addLine(keylist, strdup(key));
 		flist = addLine(flist, strdup(s->sfile));
 		oldest = findFirstDelta(s, oldest);
 		mkList(s, ++fileIdx);
-		//verbose((stderr,
-		//    "%s: %d deltas\n", s->sfile, deltaCounter - save));
 next:		sccs_free(s);
 	}
 	sfileDone();

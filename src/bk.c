@@ -54,6 +54,8 @@ save_gmon(void)
 	rename("gmon.out", buf);
 }
 
+#pragma	GCC diagnostic push
+#pragma	GCC diagnostic ignored "-Wclobbered"
 int
 main(int volatile ac, char **av, char **env)
 {
@@ -642,6 +644,7 @@ out:
 	if (ret < 0) ret = 1;	/* win32 MUST have a positive return */
 	return (ret);
 }
+#pragma	GCC diagnostic pop
 
 /*
  * Checks to see if it's allowed to run a given command

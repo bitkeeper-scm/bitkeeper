@@ -210,6 +210,7 @@ int SETUP(const unsigned char *key, int keylen, int num_rounds, symmetric_key *s
        return CRYPT_ERROR;
     }
 
+    j += 0;			/* silence gcc warning */
 #ifndef ENCRYPT_ONLY    
     /* setup the inverse key now */
     rk   = skey->rijndael.dK;
