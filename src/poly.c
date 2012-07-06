@@ -4,13 +4,10 @@
 
 /*
  * XXX TODO list
- * - "fix" tests so they fail again
- * - set feature bit if poly is ever generated
- * - fix range_cset()
- * - fix sccs_csetBoundry()
- * - make everything else use those two
- * - D_POLY updates need to propagate on pull
- *   (pull may update poly file without component)
+ * - fix range_cset() in changes.c to use new API
+ * - fix 'bk r2c' to return list
+ * - collapse needs to drop diffs from poly files
+ * - converge.c needs to automerge poly files
  */
 
 /*

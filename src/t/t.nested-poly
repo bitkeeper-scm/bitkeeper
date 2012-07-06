@@ -139,6 +139,7 @@ echo OK
 echo $N Repeat resolve, poly: on ....................................$NL
 bk --config=poly:on resolve $Q || fail
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories missing
+grep -q POLY BitKeeper/log/features || fail
 bk repocheck $Q || fail
 echo OK
 
@@ -152,6 +153,7 @@ echo "comp/ChangeSet: adding and/or removing missing csetmarks" > WANT
 cmpfiles WANT GOT
 bk portal $Q .
 bk repocheck $Q
+grep -q POLY BitKeeper/log/features && fail
 echo OK
 
 echo $N pull -R, resolve -S comp, resolve, poly: off ................$NL
@@ -189,20 +191,24 @@ bk --config=poly:on pull $Q || fail
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
 echo OK
 
-echo $N bk changes -V shows handling of poly SHARED .................$NL
+echo $N bk changes -V shows tip repeating local .....................$NL
 bk changes -rREMOTE.. -Vnd':INDENT::GFILE:|:REV:\t:TAG:' > GOT
 # 2 things to note:
-# - the product 1.3 (LOCAL) cset includes component 1.3 (SHARED)
-# - The component cset BRANCH is replicated in the product 1.4 merge,
-#   but does not show up below.  That is because the range A..A is empty.
-#   so even though it is listed, nothing happens.
+# - the product 1.3 (LOCAL) cset should include component 1.3 (SHARED)
+#   This would require changes combining through the product cset weave
+#   and graph to figure out the real cset boundaries.
+# - if the component cset BRANCH wasn't replicated in the product 1.4 merge,
+#   then the newest entry for comp would be SHARED, which is wrong.
+#   This 2nd point shows the work in pull to strip the D_CSET and force
+#   a RESYNC directory even though no new work comes in.  And the work in
+#   check() to not fill the "missing" cset mark back in.
 cat <<EOF > WANT
 ChangeSet|1.4	
+  comp/ChangeSet|1.4	BRANCH
 ChangeSet|1.2.1.1	
   comp/ChangeSet|1.3	SHARED
 ChangeSet|1.3	LOCAL
   comp/ChangeSet|1.4	BRANCH
-  comp/ChangeSet|1.3	SHARED
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -333,14 +339,19 @@ bk --config=poly:on pull $Q || fail
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
 echo OK
 
-echo $N bk changes -V shows poly handling of SHARED .................$NL
+echo $N bk changes -V shows tip repeating local .....................$NL
 bk changes -rREMOTE.. -Vnd':INDENT::GFILE:|:REV:\t:TAG:' > GOT
 # 2 things to note:
-# - the product 1.3 (LOCAL) cset includes component 1.3 (SHARED)
-# - The MERGE comp cset is not replicated in the product merge tip even
-#   though it is bookkept in the merge by the update only comp pull.
+# - the product 1.3 (LOCAL) cset should include component 1.3 (SHARED)
+#   This would require changes combining through the product cset weave
+#   and graph to figure out the real cset boundaries.
+# - The MERGE comp cset is replicated in the product merge tip even through
+#   the component pull was update only.  This is done in pull.c by
+#   stripping off D_CSET and then guarding that stripping in check().
 cat <<EOF > WANT
 ChangeSet|1.4	
+  comp/ChangeSet|1.5	MERGE
+  comp/ChangeSet|1.4	TRUNK
 ChangeSet|1.2.1.3	
   comp/ChangeSet|1.5	MERGE
   comp/ChangeSet|1.4	TRUNK
@@ -350,7 +361,6 @@ ChangeSet|1.2.1.1
   comp/ChangeSet|1.3	SHARED
 ChangeSet|1.3	LOCAL
   comp/ChangeSet|1.3.1.1	BRANCH
-  comp/ChangeSet|1.3	SHARED
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -493,10 +503,14 @@ bk --config=poly:on pull $Q || fail
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
 echo OK
 
-echo $N bk changes -V shows the poly SSHARED ........................$NL
+echo $N bk changes -V shows tip repeating local .....................$NL
 bk changes -rREMOTE.. -Vnd':INDENT::GFILE:|:REV:\t:TAG:' > GOT
-# This used to work (D_CSET) and still does because the shared node
-# was not D_CSET marked.
+# 2 things to note:
+# - the product 1.3 (LOCAL) cset should include component 1.3 (SHARED)
+#   This would require changes combining through the product cset weave
+#   and graph to figure out the real cset boundaries.
+# - This shows the work in pull to strip the D_CSET 
+#   And the work in check() to not fill the "missing" cset mark back in.
 cat <<EOF > WANT
 ChangeSet|1.4	
   comp/ChangeSet|1.5	

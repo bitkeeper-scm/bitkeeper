@@ -120,6 +120,7 @@ check_main(int ac, char **av)
 	int	noDups = 0;
 	ticker	*tick = 0;
 	int	sawBINFILE = 0;
+	int	sawPOLY = 0;
 	longopt	lopts[] = {
 		{ "use-older-changeset", 300 },
 		{ 0, 0 }
@@ -329,6 +330,9 @@ check_main(int ac, char **av)
 			if (chk_BAM(s, &bp_missing)) ferr++, errors |= 0x04;
 		}
 		if (BFILE(s)) sawBINFILE = 1;
+		if (strneq(PATHNAME(s, sccs_top(s)), "BitKeeper/etc/poly/", 19)) {
+			sawPOLY = 1;
+		}
 		if (chk_gfile(s, pathDB, checkout)) ferr++, errors |= 0x08;
 		if (no_gfile(s)) ferr++, errors |= 0x08;
 		if (readonly_gfile(s)) ferr++, errors |= 0x08;
@@ -525,6 +529,11 @@ check_main(int ac, char **av)
 			bk_featureSet(0, FEAT_bSFILEv1, 1);
 		} else if (all) {
 			bk_featureSet(0, FEAT_bSFILEv1, 0);
+		}
+		if (sawPOLY) {
+			bk_featureSet(0, FEAT_POLY, 1);
+		} else if (all) {
+			bk_featureSet(0, FEAT_POLY, 0);
 		}
 	}
 out:
