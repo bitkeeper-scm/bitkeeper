@@ -543,3 +543,67 @@ echo OK
 echo $N cleanup and restore stable to original state ................$NL
 cleanup || fail
 echo OK
+
+echo "----- Case 3: test poly db"
+echo $N Test out poly db ............................................$NL
+cd "$HERE"
+commercial solo
+touch foo
+bk new $Q foo
+node ROOT
+cd ..
+# set up a nested with one comp
+echo 'checkout: edit' > c
+bk setup -P -fcc remmy
+cd remmy
+bk gate $Q -r
+# XXX: the comp repo is not attached when sfio happens, so gets checkout wrong.
+bk attach $Q ../solo comp
+test -f comp/foo && fail fix test as attach now works
+bk --cd=comp -Ur checkout $Q
+bk clone $Q . ../peer1
+bk --cd=../peer1 portal $Q .
+bk clone $Q . ../peer2
+bk --cd=../peer2 portal $Q .
+# set up a start off the remmy repo used in all the tests
+cd ../solo
+node DUP
+for repo in remmy peer1 peer2
+do
+	node UNIQ-$repo
+	bk --cd="$HERE/$repo/comp" port $Q -rDUP "$HERE/solo"
+	bk --cd="$HERE/$repo/comp" port $Q "$HERE/solo"
+done
+cd "$HERE/remmy"
+bk --config=poly:on pull $Q ../peer1
+bk --config=poly:on pull $Q ../peer2
+cd comp
+bk _poly > GOT
+cat <<EOF > WANT
+comp 4
+	prod 4 end 3
+	prod 6 end 3
+	prod 8 end 3
+comp 5
+	prod 5 end 4
+comp 6
+	prod 7 end 4
+comp 7
+	prod 9 end 4
+EOF
+cmpfiles WANT GOT
+cd ..
+echo OK
+
+echo $N Propagate a db file with a patch ............................$NL
+bk portal $Q -r
+bk unpull $Q -f
+bk portal $Q .
+# create a db file remotely
+bk --cd=../peer2 --config=poly:on pull $Q ../peer1
+# create a db file locally
+# XXX: for now, do -R because it is failing
+# with checking out a file read-only (polyLoad) and then not
+# being able to open it for write (polyFlush)
+bk --config=poly:on pull $Q -R ../peer2 || fail
+echo OK

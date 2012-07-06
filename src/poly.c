@@ -336,7 +336,7 @@ polyFlush(sccs *cset)
 			fputc('\n', f);
 		}
 	}
-	freeLines(keys, 0);		
+	freeLines(keys, 0);
 	fclose(f);
 
 	// edit sfile
@@ -559,4 +559,67 @@ lowerBounds(sccs *s, ser_t d, u32 flags)
 	cs.list = 0;
 	range_walkrevs(s, 0, 0, d, WR_STOP, csetStop, &cs);
 	return (cs.list);
+}
+
+/*
+ * poly test routine
+ *
+ * This is mostly a debugging function used to test the nested_init()
+ * function in regressions.
+ */
+int
+poly_main(int ac, char **av)
+{
+	int	c, i;
+	int	rc = 1;
+	ser_t	d;
+	char	**keys = 0;
+	sccs	*comp = 0, *prod = 0;
+	cmark	*data, *cm;
+	char	buf[MAXPATH];
+
+	while ((c = getopt(ac, av, "a", 0)) != -1) {
+		switch (c) {
+		    case 'a':
+		    	i = 1;
+			break;
+		    default: bk_badArg(c, av);
+		}
+	}
+	if (av[optind] && streq(av[optind], "-")) {
+		return (0);
+	}
+	unless (comp = sccs_csetInit(INIT_MUSTEXIST)) goto err;
+	unless (proj_isComponent(comp->proj)) goto err;
+	polyLoad(comp);
+	concat_path(buf, proj_root(proj_product(comp->proj)), CHANGESET);
+	unless (prod = sccs_init(buf, INIT_MUSTEXIST)) goto err;
+
+	EACH_HASH(cpoly) keys = addLine(keys, cpoly->kptr);
+	sortLines(keys, key_sort);
+
+	EACH(keys) {
+		unless (d = sccs_findKey(comp, keys[i])) goto err;
+		printf("comp %u\n", d);
+		data = (cmark *)hash_fetchStrPtr(cpoly, keys[i]);
+		EACHP(data, cm) {
+			unless (d = sccs_findKey(prod, cm->pkey)) goto err;
+			printf("\tprod %u", d);
+			unless (d = sccs_findKey(comp, cm->ekey)) goto err;
+			printf(" end %u", d);
+			if (cm->emkey) {
+				unless (d = sccs_findKey(comp, cm->ekey)) {
+					goto err;
+				}
+				printf(" %u", d);
+			}
+			putchar('\n');
+		}
+	}
+	rc = 0;
+err:
+	freeLines(keys, 0);
+	sccs_free(comp);
+	sccs_free(prod);
+	return (rc);
 }
