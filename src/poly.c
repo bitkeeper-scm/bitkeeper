@@ -37,10 +37,6 @@ private	void	addTips(sccs *cset, ser_t *gcalist, ser_t **list);
 private	ser_t	*lowerBounds(sccs *s, ser_t d, u32 flags);
 private ser_t	*findPoly(sccs *s, ser_t local, ser_t remote);
 
-#define	LOCAL	0x01
-#define	REMOTE	0x02
-#define	BOTH	(LOCAL|REMOTE)
-
 static	hash	*cpoly;		/* ckey -> array of cmarks */
 static	project	*cpoly_proj;
 static	int	cpoly_dirty;
@@ -68,6 +64,23 @@ poly_check(sccs *cset, ser_t d)
 }
 
 /*
+ * Save product info at nested_init time for use in poly_pull()
+ * Called in product weave order (new to old)
+ */
+char **
+poly_save(char **list, sccs *cset, ser_t d, char *ckey, int local)
+{
+	char	buf[MAXKEY];
+
+	buf[0] = (local) ? 'L' : 'R';
+	buf[1] = MERGE(cset, d) ? 'M' : 'S';
+	sccs_sdelta(cset, d, buf + 2);
+	strcat(buf, " ");
+	strcat(buf, ckey);
+	return (addLine(list, strdup(buf)));
+}
+
+/*
  * Pull Poly is both detection and fixups for handling poly in a pull.
  * If the local is ahead of the remote, but the remote adds cset marks,
  * then we need to fake a RESYNC and make it pending, so the tip can
@@ -77,14 +90,13 @@ poly_check(sccs *cset, ser_t d)
  * detection and bail.
  */
 int
-pullPoly(int got_patch, char *mergefile)
+poly_pull(int got_patch, char *mergefile)
 {
 	sccs	*cset = 0;
 	ser_t	*polylist = 0, d, local = 0, remote = 0;
 	char	*prefix, *resync;
 	int	rc = 1, write = 0;
 	int	i;
-	u8	side;
 	char	*ckey;
 	char	**list;
 	hash	*cmarks = 0;
@@ -93,38 +105,35 @@ pullPoly(int got_patch, char *mergefile)
 
 	/* cons up a RESYNC area in case "Nothing to pull" */
 	unless (got_patch) {
-		if (mkdir("RESYNC", 0777)) {
+		if (mkdir(ROOT2RESYNC, 0777)) {
 			perror("make poly resync");
 			goto err;
 		}
-		sccs_mkroot("RESYNC");
+		sccs_mkroot(ROOT2RESYNC);
 		fileLink(CHANGESET, resync);
-		touch("RESYNC/BitKeeper/tmp/patch", 0666);
+		touch(ROOT2RESYNC "/BitKeeper/tmp/patch", 0666);
 	}
 
 	unless (cset = sccs_init(resync, INIT_MUSTEXIST)) goto err;
 	assert(cset);
 
-	side = LOCAL;
 	list = file2Lines(0, mergefile);
 	cmarks = hash_new(HASH_MEMHASH);
 	EACH(list) {
-		unless (*list[i]) { // if blank line, which is separator
-			side = REMOTE;
-			continue;
-		}
 		ckey = separator(list[i]);
 		assert(ckey);
 		*ckey++ = 0;
 		d = sccs_findKey(cset, ckey);
 		assert(d);
-		if (side & LOCAL) {
+		switch (*list[i]) {
+		    case 'L':
 			FLAGS(cset, d) |= D_LOCAL;
 			unless (local) local = d;
-		}
-		if (side & REMOTE) {
+			break;
+		    case 'R':
 			FLAGS(cset, d) |= D_REMOTE;
 			unless (remote) remote = d;
+			break;
 		}
 
 		/*
@@ -132,7 +141,7 @@ pullPoly(int got_patch, char *mergefile)
 		 * from remote.
 		 */
 		unless (FLAGS(cset, d) & D_CSET) {
-			assert(side & REMOTE);
+			assert(FLAGS(cset, d) & D_REMOTE);
 			FLAGS(cset, d) |= D_CSET;
 			write = 1;
 		}
@@ -249,43 +258,34 @@ private int
 polyAdd(sccs *cset, ser_t d, char *pkey, int side)
 {
 	int	cmp, i;
-	cmark	**data;
+	cmark	**datap, *data;
 	cmark	cm = {0};
-	ser_t	*lower = lowerBounds(cset, d, side);
+	ser_t	*lower;
 	char	key[MAXKEY];
-
-#if 0
-	fprintf(stderr, "comp %s, prod %s\n", REV(cset, d), pkey);
-	EACH(lower) {
-		fprintf(stderr, "\t%s\n", REV(cset, lower[i]));
-	}
-#endif
 
 	polyLoad(cset);
 	sccs_sdelta(cset, d, key);
 	hash_insertStrPtr(cpoly, key, 0);
-	data = (cmark **)cpoly->vptr;
-	assert(data);
-	cm.pkey = strdup(pkey);
-	sccs_sdelta(cset, lower[1], key);
-	cm.ekey = strdup(key);
-	if (nLines(lower) > 1) {
-		sccs_sdelta(cset, lower[2], key);
-		cm.emkey = strdup(key);
-	}
-	free(lower);
-	// sort by pkey and strip dups
-	EACH(*data) {
-		cmp = keycmp(cm.pkey, (*data)[i].pkey);
+	datap = (cmark **)cpoly->vptr;
+	assert(datap);
+	data = *datap;
+	/* sort by pkey and strip dups */
+	EACH(data) {
+		unless (cmp = keycmp(pkey, data[i].pkey)) return (0);
 		if (cmp < 0) break;
-		if (cmp == 0) {
-			free(cm.pkey);
-			free(cm.ekey);
-			FREE(cm.emkey);
-			return (0);
-		}
 	}
-	insertArrayN(data, i, &cm);
+	cm.pkey = strdup(pkey);
+	if (lower = lowerBounds(cset, d, side)) {
+		sccs_sdelta(cset, lower[1], key);
+		cm.ekey = strdup(key);
+		if (nLines(lower) > 1) {
+			assert(nLines(lower) == 2);
+			sccs_sdelta(cset, lower[2], key);
+			cm.emkey = strdup(key);
+		}
+		free(lower);
+	}
+	insertArrayN(datap, i, &cm);
 	cpoly_dirty = 1;
 	return (0);
 }
@@ -295,6 +295,7 @@ polyFlush(sccs *cset)
 {
 	sccs	*s;
 	FILE	*f;
+	char	*p, *q;
 	char	**keys = 0;
 	int	i, rc;
 	cmark	*data;
@@ -302,19 +303,26 @@ polyFlush(sccs *cset)
 	char	*sfile;
 	int	gflags = GET_EDIT|GET_SKIPGET|SILENT;
 	int	dflags = DELTA_AUTO|DELTA_DONTASK|SILENT;
-	char	buf[MAXPATH];
+	char	prodpoly[MAXPATH];
+	char	resyncpoly[MAXPATH];
 
 	unless (cpoly_dirty) return (0);
 
-	concat_path(buf, proj_root(proj_product(cset->proj)),
-		    ROOT2RESYNC);
-	concat_path(buf, buf, "BitKeeper/etc/poly/");
-	sccs_md5delta(cset, sccs_ino(cset), buf + strlen(buf));
+	strcpy(prodpoly, proj_root(proj_product(cset->proj)));
+	concat_path(resyncpoly, prodpoly, ROOT2RESYNC);
 
-	mkdirf(buf);
+	p = prodpoly + strlen(prodpoly);
+	concat_path(prodpoly, prodpoly, "BitKeeper/etc/poly/");
+	q = p + strlen(p);
+	sccs_md5delta(cset, sccs_ino(cset), q);
+
+	concat_path(resyncpoly, resyncpoly, p);
+
+	// Might be run in many times if pull_ensemble were to run threads
+	mkdirf(resyncpoly);
 
 	// write gfile
-	f = fopen(buf, "w");
+	f = fopen(resyncpoly, "w");
 	assert(f);
 
 	EACH_HASH(cpoly) keys = addLine(keys, cpoly->kptr);
@@ -335,7 +343,12 @@ polyFlush(sccs *cset)
 	fclose(f);
 
 	// edit sfile
-	sfile = name2sccs(buf);
+	sfile = name2sccs(resyncpoly);
+	if (!exists(sfile)) {
+		p = name2sccs(prodpoly);
+		if (exists(p)) fileLink(p, sfile);
+		free(p);
+	}
 	s = sccs_init(sfile, SILENT);
 	assert(s);
 	free(sfile);
@@ -373,14 +386,9 @@ polyMarked(sccs *s, ser_t d, void *token)
 	unless (FLAGS(s, d) & D_CSET) return (0);
 	unless (FLAGS(s, d) & (D_LOCAL|D_REMOTE)) return (1);
 
-	/* Already marked Poly; no need to add it again */
-	//if (FLAGS(s, d) & (D_POLY|D_SET)) return (0);
+	/* Already in list to be marked Poly; no need to add it again */
+	if (FLAGS(s, d) & D_SET) return (0);
 
-	/*
-	 * Don't color POLY yet, so we can see patch nodes
-	 * that were already marked poly.  Wait until we
-	 * write into poly db to mark them.
-	 */
 	FLAGS(s, d) |= D_SET;
 	addArray(list, &d);
 	return (0);
@@ -406,14 +414,18 @@ findPoly(sccs *s, ser_t local, ser_t remote)
 
 	/*
 	 * Take that gca list and get a list of poly D_CSET under the gca
+	 * D_SET is used to keep from adding dups.
 	 */
 	range_walkrevs(s, 0, gcalist, 0, WR_STOP, polyMarked, &list);
 
 	/*
 	 * gca may be unmarked poly, so add in corresponding tips
+	 * D_SET is used to keep from adding dups.
 	 */
 	addTips(s, gcalist, &list);
+	
 	free(gcalist);
+	EACH(list) FLAGS(s, list[i]) &= ~D_SET;
 
 	return (list);
 }
@@ -484,6 +496,8 @@ updatePolyDB(sccs *cset, ser_t *list, hash *cmarks)
 {
 	int	i, j;
 	ser_t	d;
+	char	type, *rest;
+	u32	side;
 	char	**prodkeys = 0;
 	char	key[MAXKEY];
 
@@ -492,33 +506,27 @@ updatePolyDB(sccs *cset, ser_t *list, hash *cmarks)
 		sccs_sdelta(cset, d, key);
 		prodkeys = *(char ***)hash_fetchStr(cmarks, key);
 		assert(prodkeys);
-		j = 1;
-		/* one or the other or if both, local first (see pullPoly) */
-		if (FLAGS(cset, d) & D_LOCAL) {
-			if (polyAdd(cset, d, prodkeys[j++], D_LOCAL)) {
-				return (1);
-			}
+		EACH_INDEX(prodkeys, j) {
+			side = (prodkeys[j][0] == 'L') ? D_LOCAL : D_REMOTE;
+			type = prodkeys[j][1];
+			rest = &prodkeys[j][2];
+			if (type == 'M') continue;	/* skip merge nodes */
+			if (polyAdd(cset, d, rest, side)) return (1);
 		}
-		if (FLAGS(cset, d) & D_REMOTE) {
-			if (polyAdd(cset, d, prodkeys[j++], D_REMOTE)) {
-				return (1);
-			}
-		}
-		FLAGS(cset, d) &= ~D_SET;
 	}
 	return (0);
 }
 
 /*
- * Edits to Wayne's range_cset to operate under more constraints.
- * Gather up a list of lower bounds
+ * lowerBound callback data structure
  */
 typedef struct {
 	ser_t	d, *list;
 	u32	flags;
 } cstop_t;
 
-/* pretend like D_CSET from other side aren't there.
+/*
+ * pretend like D_CSET from other side aren't there.
  * That is, if doing D_LOCAL, ignore D_REMOTE
  */
 private	int
@@ -536,15 +544,18 @@ csetStop(sccs *s, ser_t d, void *token)
 	return (0);
 }
 
+/*
+ * Get list of lower bounds (0 <= nLines(list) <= 2)
+ * Caller knows that d is not in poly db.
+ * Constrained version of range_cset.
+ */
 private	ser_t *
 lowerBounds(sccs *s, ser_t d, u32 flags)
 {
 	cstop_t	cs;
 
 	unless (d = sccs_csetBoundary(s, d, 0)) return (0); /* if pending */
-	/* This lower bound detector is only for non poly stuff */
-	//assert(!(FLAGS(s, d) & D_POLY));
-	/* Pass in what to include; invert to what to ignore */
+	/* 'flags' has what to include; invert to what to ignore */
 	if (flags) flags ^= (D_LOCAL|D_REMOTE);
 	cs.d = d;
 	cs.flags = flags;

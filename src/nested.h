@@ -61,9 +61,7 @@ typedef struct {
 	char	*rootkey;		// rootkey of the repo
 	char	*deltakey;		// deltakey of repo as of rev
 	char	*lowerkey;		// in pull, local tip
-	char	**local;		// local keys
-	char	**remote;		// remote keys
-					// otherwise, gca tip
+	char	**poly;			// info needed for poly
 	char	*path;			// actual path: like GFILE, not DPN
 
 	void	*data;			// scratchpad for applications

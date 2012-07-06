@@ -414,16 +414,12 @@ err:				if (revsDB) mdbm_close(revsDB);
 			assert(!c->lowerkey);
 			c->lowerkey = strdup(v);
 		}
-		if (flags & NESTED_PULL) {
-			sccs_sdelta(cset, d, buf);
-			strcat(buf, " ");
-			strcat(buf, v);
-			if (IN_LOCAL(d)) {
-				assert(!IN_REMOTE(d));
-				c->local = addLine(c->local, strdup(buf));
-			} else if (IN_REMOTE(d)) {
-				c->remote = addLine(c->remote, strdup(buf));
-			}
+		if ((flags & NESTED_PULL) && !IN_GCA(d)) {
+			/*
+			 * Save data needed for poly_pull() when looking
+			 * for poly in a component.
+			 */
+			c->poly = poly_save(c->poly, cset, d, v, IN_LOCAL(d));
 		}
 		if (c->new && IN_GCA(d)) {
 			/* in GCA region, so obviously not new */
@@ -792,8 +788,7 @@ compFree(void *x)
 	FREE(c->deltakey);
 	FREE(c->lowerkey);
 	FREE(c->path);
-	if (c->local) freeLines(c->local, free);
-	if (c->remote) freeLines(c->remote, free);
+	if (c->poly) freeLines(c->poly, free);
 	free(c);
 }
 

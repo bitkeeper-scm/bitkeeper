@@ -1061,15 +1061,8 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			vp = addLine(vp, strdup(opts.av_pull[i]));
 		}
 		if (c->localchanges) {
-			FILE	*tmpf;
-
 			tmpfile = bktmp(0, "mergekeys");
-			tmpf = fopen(tmpfile, "w");
-			assert(tmpf);
-			EACH(c->local) fprintf(tmpf, "%s\n", c->local[i]);
-			fputc('\n', tmpf);
-			EACH(c->remote) fprintf(tmpf, "%s\n", c->remote[i]);
-			fclose(tmpf);
+			lines2File(c->poly, tmpfile);
 			vp = addLine(vp, aprintf("-M%s", tmpfile));
 		}
 		vp = addLine(vp, aprintf("-r%s", c->deltakey));
@@ -1199,7 +1192,7 @@ pull(char **av, remote *r, char **envVar)
 
 	/* pull component - poly detection and fixups */
 	if (!rc && opts.mergefile) {
-		if (pullPoly(got_patch, opts.mergefile)) {
+		if (poly_pull(got_patch, opts.mergefile)) {
 			putenv("BK_STATUS=POLY");
 			got_patch = 0;	/* post triggers */
 			rc = 71;	/* XXX: hack to talk to pull */
