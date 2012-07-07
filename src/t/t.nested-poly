@@ -213,12 +213,12 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk r2c on the component tip gives prod merge ................$NL
+echo $N bk r2c on the component tip gives right answer ..............$NL
 REV=`bk --cd=comp r2c -r1.4 ChangeSet`
-test $REV = 1.4 || fail wrong rev -- wanted 1.4 and got $REV
+test $REV = 1.3 || fail wrong rev -- wanted 1.4 and got $REV
 # comp 1.3 is included in both prod 1.3 and 1.2.1.1, and shows ...
 REV=`bk --cd=comp r2c -r1.3 ChangeSet`
-test $REV = 1.2.1.1 || fail wrong rev -- wanted 1.2.1.1 and got $REV
+test $REV = 1.2.1.1,1.3 || fail wrong rev -- wanted 1.2.1.1,1.3 and got $REV
 echo OK
 
 echo $N make sure a pull where one side contains poly is okay .......$NL
@@ -365,12 +365,12 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk r2c on the component tip gives prod merge ................$NL
+echo $N bk r2c on the component tip gives right answer ..............$NL
 REV=`bk --cd=comp r2c -r1.4 ChangeSet`
 test $REV = 1.4 || fail wrong rev -- wanted 1.4 and got $REV
 # comp 1.3 is included in both prod 1.3 and 1.2.1.1, and shows ...
 REV=`bk --cd=comp r2c -r1.3 ChangeSet`
-test $REV = 1.2.1.1 || fail wrong rev -- wanted 1.2.1.1 and got $REV
+test $REV = 1.2.1.1,1.3 || fail wrong rev -- wanted 1.2.1.1,1.3 and got $REV
 echo OK
 
 echo $N make sure a pull where one side contains poly is okay .......$NL
@@ -524,11 +524,11 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk r2c on the component tip gives prod merge ................$NL
+echo $N bk r2c on the component tip gives a list ....................$NL
 # comp 1.3 is included in both prod 1.3 and 1.2.1.1, so which is it?
 # The newest
 REV=`bk --cd=comp r2c -r1.3 ChangeSet`
-test $REV = 1.2.1.1 || fail wrong rev -- wanted 1.2.1.1 and got $REV
+test $REV = 1.2.1.1,1.3 || fail wrong rev -- wanted 1.2.1.1,1.3 and got $REV
 echo OK
 
 echo $N make sure a pull where one side contains poly is okay .......$NL
@@ -544,7 +544,7 @@ echo $N cleanup and restore stable to original state ................$NL
 cleanup || fail
 echo OK
 
-echo "----- Case 3: test poly db"
+echo "----- Test poly db"
 echo $N Test out poly db ............................................$NL
 cd "$HERE"
 commercial solo
@@ -576,9 +576,11 @@ do
 done
 cd "$HERE/remmy"
 bk --config=poly:on pull $Q ../peer1
+# bk --config=poly:on pull $Q -R ../peer2
 bk --config=poly:on pull $Q ../peer2
 cd comp
-bk _poly > GOT
+# bk _poly fails if '-R' in 2nd pull above
+bk _poly > GOT || fail
 cat <<EOF > WANT
 comp 4
 	prod 4 end 3
@@ -593,6 +595,18 @@ comp 7
 EOF
 cmpfiles WANT GOT
 cd ..
+echo OK
+
+echo $N More r2c to see that it works ...............................$NL
+bk --cd=comp r2c -r=2 ChangeSet > GOT
+echo "1.2" > WANT
+cmpfiles WANT GOT
+bk --cd=comp r2c -r=4 ChangeSet > GOT
+echo "1.2.2.1,1.2.1.1,1.3" > WANT
+cmpfiles WANT GOT
+bk --cd=comp r2c -r=5 ChangeSet > GOT
+echo "1.2.2.2,1.2.1.2,1.4" > WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Propagate a db file with a patch ............................$NL

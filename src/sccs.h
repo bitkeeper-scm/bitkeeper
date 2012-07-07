@@ -1000,6 +1000,7 @@ void	sccs_syncRoot(sccs *s, char *key);
 ser_t	sccs_csetBoundary(sccs *s, ser_t, u32 flags);
 int	poly_pull(int got_patch, char *mergefile);
 char	**poly_save(char **list, sccs *cset, ser_t d, char *ckey, int local);
+char	**poly_r2c(sccs *cset, ser_t d);
 void	sccs_shortKey(sccs *s, ser_t, char *);
 int	sccs_resum(sccs *s, ser_t d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);

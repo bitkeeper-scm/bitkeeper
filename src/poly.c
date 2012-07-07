@@ -60,6 +60,57 @@ poly_check(sccs *cset, ser_t d)
 	return (ret);
 }
 
+private	int
+inrange(sccs *s, ser_t d, void *token)
+{
+	return (d == p2uint(token));
+}
+
+/*
+ * brain dead poly hunter
+ * better if we color up D_SET from orig, and uncolor any non poly D_CSET
+ * at some point, coloring will be starved and we'll just zip up the
+ * list.  As it is, it has to be poly to consider.
+ */
+char **
+poly_r2c(sccs *cset, ser_t orig)
+{
+	cmark	*list, *cm;
+	ser_t	d, e, *lower = 0;
+	char	**ret = 0;
+
+	unless (d = sccs_csetBoundary(cset, orig, 0)) return (0);
+	unless (list = poly_check(cset, d)) return (0);
+
+	/* for the first one found, we are guarenteed to be in range */
+	EACHP(list, cm) ret = addLine(ret, strdup(cm->pkey));
+	free(list);
+
+	for (d++; d <= TABLE(cset); d++) {
+		unless (FLAGS(cset, d) & D_CSET) continue;
+		unless (list = poly_check(cset, d)) continue;
+		EACHP(list, cm) {
+			// is it in the range?
+			// a range can be lower than endpoints
+			if (cm->ekey) {
+				e = sccs_findKey(cset, cm->ekey);
+				addArray(&lower, &e);
+			}
+			if (cm->emkey) {
+				e = sccs_findKey(cset, cm->emkey);
+				addArray(&lower, &e);
+			}
+			if (range_walkrevs(
+			    cset, 0, lower, d, 0, inrange, uint2p(orig))) {
+				ret = addLine(ret, strdup(cm->pkey));
+			}
+			FREE(lower);
+		}
+		free(list);
+	}
+	return (ret);
+}
+
 /*
  * Save product info at nested_init time for use in poly_pull()
  * Called in product weave order (new to old)
