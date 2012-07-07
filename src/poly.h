@@ -4,6 +4,8 @@ typedef struct {
 	char	*emkey;		/* range enpoint merge key */
 } cmark;
 
+#define	IS_POLYPATH(p)	(strneq(p, "BitKeeper/etc/poly/", 19))
+
 cmark	*poly_check(sccs *cset, ser_t d);
 
 

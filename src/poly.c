@@ -253,10 +253,9 @@ polyLoad(sccs *cset)
 	}
 
 	concat_path(buf, proj_root(proj_product(cset->proj)),
-		    ROOT2RESYNC);
-	concat_path(buf, buf, "BitKeeper/etc/poly/");
+		    ROOT2RESYNC "/BitKeeper/etc/poly/");
 	sccs_md5delta(cset, sccs_ino(cset), buf + strlen(buf));
-	
+
 	unless (exists(buf) || !get(buf, SILENT, "-")) {
 		/* not in RESYNC, try repo */
 		str_subst(buf, ROOT2RESYNC "/", "", buf);
@@ -280,6 +279,7 @@ polyLoad(sccs *cset)
 				ungetc(c, f);
 				if (c == '@') break;
 				line = fgetline(f);
+				unless (*line) continue;  /* blank lines ok */
 				memset(&cm, 0, sizeof(cm));
 				p = separator(line);
 				assert(p); /* XXX goto err */
@@ -386,6 +386,7 @@ polyFlush(sccs *cset)
 			if (cm->emkey) fprintf(f, " %s", cm->emkey);
 			fputc('\n', f);
 		}
+		fputc('\n', f);	/* blank line between keys */
 	}
 	freeLines(keys, 0);
 	fclose(f);
@@ -414,6 +415,19 @@ polyFlush(sccs *cset)
 		/* no delta if no diffs in file */
 		unlink(s->pfile);
 		unlink(s->gfile);
+	}
+	if (dflags & NEWFILE) {
+		/*
+		 * Needed to create a new file.  We are going to force
+		 * the file to be created with a deterministic rootkey
+		 */
+		sccs_restart(s);
+		USERHOST_SET(s, sccs_ino(s), USERHOST(cset, sccs_ino(cset)));
+		DATE_SET(s, sccs_ino(s), DATE(cset, sccs_ino(cset)));
+		ZONE_SET(s, sccs_ino(s), ZONE(cset, sccs_ino(cset)));
+		SUM_SET(s, sccs_ino(s), SUM(cset, sccs_ino(cset)));
+		RANDOM_SET(s, sccs_ino(s), RANDOM(cset, sccs_ino(cset)));
+		sccs_newchksum(s);
 	}
 	sccs_free(s);
 	return (rc);

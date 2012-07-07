@@ -1,7 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "resolve.h"
-
+#include "poly.h"
 
 /* global state for converge operations */
 typedef struct {
@@ -65,6 +65,7 @@ converge_hash_files(void)
 				break;
 			}
 		}
+		if (IS_POLYPATH(gfile)) merge(g, gfile, gfile, "-sh");
 	}
 	pclose(f);
 

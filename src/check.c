@@ -11,6 +11,7 @@
 #include "bam.h"
 #include "nested.h"
 #include "progress.h"
+#include "poly.h"
 
 /*
  * Stuff to remember for each rootkey in the ->mask field:
@@ -330,9 +331,7 @@ check_main(int ac, char **av)
 			if (chk_BAM(s, &bp_missing)) ferr++, errors |= 0x04;
 		}
 		if (BFILE(s)) sawBINFILE = 1;
-		if (strneq(PATHNAME(s, sccs_top(s)), "BitKeeper/etc/poly/", 19)) {
-			sawPOLY = 1;
-		}
+		if (IS_POLYPATH(PATHNAME(s, sccs_top(s)))) sawPOLY = 1;
 		if (chk_gfile(s, pathDB, checkout)) ferr++, errors |= 0x08;
 		if (no_gfile(s)) ferr++, errors |= 0x08;
 		if (readonly_gfile(s)) ferr++, errors |= 0x08;

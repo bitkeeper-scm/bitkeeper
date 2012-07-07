@@ -4,6 +4,7 @@
 #include "range.h"
 #include "nested.h"
 #include "progress.h"
+#include "poly.h"
 
 typedef	struct cset {
 	/* bits */
@@ -1214,6 +1215,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	 * (pull-r or pending deltas)
 	 */
 	if (!CSET(s) && hastip && !MONOTONIC(s) &&
+	    !IS_POLYPATH(PATHNAME(s, sccs_ino(s))) &&
 	    ((!cs->compat && newfile) ||
 		((cs->tooMany > 0) && (n >= cs->tooMany)))) {
 		cs->sfiles = addLine(cs->sfiles, strdup(s->sfile));

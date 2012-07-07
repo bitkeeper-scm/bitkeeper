@@ -146,7 +146,7 @@ echo OK
 echo $N unpull and see cset marked was cleaned up ...................$NL
 bk portal $Q -r
 # XXX: unpull doesn't do the right thing with checkout
-bk --config=checkout:none unpull $Q -sf 2>GOT || fail -f GOT
+bk --config=checkout:none unpull -q -sf 2>GOT || fail -f GOT
 bk -U checkout $Q || true
 # msg via _BK_DEVELOPER is how we know something happened.
 echo "comp/ChangeSet: adding and/or removing missing csetmarks" > WANT
@@ -292,7 +292,7 @@ echo OK
 echo $N unpull and see cset marked was cleaned up ...................$NL
 bk portal $Q -r
 # XXX: unpull doesn't do the right thing with checkout
-bk --config=checkout:none unpull $Q -sf 2>GOT || fail -f GOT
+bk --config=checkout:none unpull -q -sf 2>GOT || fail -f GOT
 bk -U checkout $Q || true
 # message from _BK_DEVELOPER showing something happened.
 echo "comp/ChangeSet: adding and/or removing missing csetmarks" > WANT
