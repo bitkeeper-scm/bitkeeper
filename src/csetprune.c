@@ -58,7 +58,6 @@ private	int	newBKfiles(sccs *cset,
 		    char *comp, hash *prunekeys, char ***cweavep);
 private	int	rmKeys(hash *prunekeys);
 private	char	*mkRandom(char *input);
-private	int	found(sccs *s, ser_t start, ser_t stop);
 private	void	_pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd);
 private	void	pruneEmpty(sccs *s);
 private	hash	*getKeys(char *file);
@@ -1244,8 +1243,8 @@ _has(sccs *s, ser_t d, ser_t stop)
  * possibly large sparse graph (many nodes D_GONE) so having every merge
  * node iteratively check many nodes can chew up resource.
  */
-private int
-found(sccs *s, ser_t start, ser_t stop)
+int
+isReachable(sccs *s, ser_t start, ser_t stop)
 {
 	ser_t	d;
 	int	ret;
@@ -1306,7 +1305,7 @@ mkTagGraph(sccs *s)
 			m = 0;
 		}
 		/* if both, but one is contained in other: use newer as p */
-		if (p && m && found(s, p, m)) {
+		if (p && m && isReachable(s, p, m)) {
 			if (m > p) p = m;
 			m = 0;
 		}
@@ -1618,7 +1617,7 @@ _pruneEmpty(sccs *s, ser_t d, u8 *slist, ser_t **sd)
 		 * Then fix up those pesky include and exclude lists.
 		 */
 		m = MERGE(s, d);
-		if (found(s, PARENT(s, d), m)) {	/* merge collapses */
+		if (isReachable(s, PARENT(s, d), m)) {	/* merge collapses */
 			if (MERGE(s, d) > PARENT(s, d)) {
 				symdiff_setParent(s, d, m, sd);
 			}

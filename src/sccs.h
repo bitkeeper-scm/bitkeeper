@@ -999,6 +999,7 @@ void	sccs_setPath(sccs *s, ser_t d, char *newpath);
 void	sccs_syncRoot(sccs *s, char *key);
 ser_t	sccs_csetBoundary(sccs *s, ser_t, u32 flags);
 int	poly_pull(int got_patch, char *mergefile);
+void	poly_range(sccs *s, ser_t d, char *pkey);
 char	**poly_save(char **list, sccs *cset, ser_t d, char *ckey, int local);
 char	**poly_r2c(sccs *cset, ser_t d);
 void	sccs_shortKey(sccs *s, ser_t, char *);
@@ -1198,6 +1199,7 @@ u8	*sccs_set(sccs *, ser_t, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, ser_t d, u8 *map, char **inc, char **exc);
 int	sccs_setCludes(sccs *sc, ser_t d, char *iLst, char *xLst);
 int	sccs_isPending(char *gfile);
+int	isReachable(sccs *s, ser_t start, ser_t stop);
 int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
 
 int     http_connect(remote *r);

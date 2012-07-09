@@ -32,7 +32,7 @@ private	int	polyChk(sccs *cset, ser_t gca);
 private	int	updatePolyDB(sccs *cset, ser_t *list, hash *cmarks);
 private	void	addTips(sccs *cset, ser_t *gcalist, ser_t **list);
 private	ser_t	*lowerBounds(sccs *s, ser_t d, u32 flags);
-private ser_t	*findPoly(sccs *s, ser_t local, ser_t remote);
+private ser_t	*findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake);
 
 static	hash	*cpoly;		/* ckey -> array of cmarks */
 static	project	*cpoly_proj;
@@ -111,6 +111,46 @@ poly_r2c(sccs *cset, ser_t orig)
 	return (ret);
 }
 
+void
+poly_range(sccs *s, ser_t d, char *pkey)
+{
+	cmark	*clist, *cm;
+	ser_t	e;
+
+	assert(pkey && d);
+	if (clist = poly_check(s, d)) {
+		EACHP(clist, cm) {
+			if (streq(cm->pkey, pkey)) break;
+		}
+		if (cm <= &clist[nLines(clist)]) {
+			ser_t	*lower = 0;
+
+			if (cm->ekey) {
+				e = sccs_findKey(s, cm->ekey);
+				addArray(&lower, &e);
+			}
+			if (cm->emkey) {
+				e = sccs_findKey(s, cm->emkey);
+				addArray(&lower, &e);
+			}
+			range_walkrevs(s, 0, lower, d, 0,
+			    walkrevs_setFlags, uint2p(D_SET));
+			s->state |= S_SET;
+			FREE(lower);
+		} else {
+			// XXX Print or not? Currently prints.
+			// if not print, then how to know that
+			// so changes without -e can prune?
+			// 
+			// fprintf(stderr,
+			//     "Poly tip %s %s\n", pkey, dkey);
+			s->rstart = s->rstop = 0;
+		}
+	} else {
+		range_cset(s, d);	/* not poly, do normal */
+	}
+}
+
 /*
  * Save product info at nested_init time for use in poly_pull()
  * Called in product weave order (new to old)
@@ -141,8 +181,8 @@ int
 poly_pull(int got_patch, char *mergefile)
 {
 	sccs	*cset = 0;
-	ser_t	*polylist = 0, d, local = 0, remote = 0;
-	char	*prefix, *resync;
+	ser_t	*polylist = 0, d, fake = 0, local = 0, remote = 0;
+	char	*dfile, *resync;
 	int	rc = 1, write = 0;
 	int	i;
 	char	*ckey;
@@ -201,8 +241,11 @@ poly_pull(int got_patch, char *mergefile)
 	freeLines(list, free);
 	list = 0;
 	assert(local && remote);
+	if (isReachable(cset, local, remote)) {
+		fake = (local > remote) ? local : remote;
+	}
 
-	if ((polylist = findPoly(cset, local, remote)) == INVALID) {
+	if ((polylist = findPoly(cset, local, remote, fake)) == INVALID) {
 		polylist = 0;
 		goto err;
 	}
@@ -213,16 +256,12 @@ poly_pull(int got_patch, char *mergefile)
 	}
 
 	/* if no merge file: fake pending to get included in product merge */
-	prefix = resync + strlen(resync) - 11;
-	assert(*prefix == 's');
-	*prefix = 'r';
-	if (!exists(resync)) {
-		d = sccs_top(cset);
-		assert(FLAGS(cset, d) & D_CSET);
-		FLAGS(cset, d) &= ~D_CSET;
+	if (fake) {
+		assert(FLAGS(cset, fake) & D_CSET);
+		FLAGS(cset, fake) &= ~D_CSET;
 		write = 1;
-		*prefix = 'd';
-		touch(resync, 0666);
+		dfile = sccs_Xfile(cset, 'd');
+		touch(dfile, 0666);
 	}
 	if (write && sccs_newchksum(cset)) goto err;
 	if (polyFlush(cset)) goto err;
@@ -457,7 +496,7 @@ polyMarked(sccs *s, ser_t d, void *token)
 }
 
 private ser_t *
-findPoly(sccs *s, ser_t local, ser_t remote)
+findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake)
 {
 	int	i, hasPoly = 0;
 	ser_t	*gcalist, *list = 0;
@@ -485,7 +524,16 @@ findPoly(sccs *s, ser_t local, ser_t remote)
 	 * D_SET is used to keep from adding dups.
 	 */
 	addTips(s, gcalist, &list);
-	
+
+	/*
+	 * If update only, the tip will be repeated in the merge
+	 * so make sure it is tagged poly
+	 */
+	if (fake && !(FLAGS(s, fake) & D_SET)) {
+		addArray(&list, &fake);
+		FLAGS(s, fake) |= D_SET;
+	}
+
 	free(gcalist);
 	EACH(list) FLAGS(s, list[i]) &= ~D_SET;
 

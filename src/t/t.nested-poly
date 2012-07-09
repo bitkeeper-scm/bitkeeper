@@ -191,24 +191,20 @@ bk --config=poly:on pull $Q || fail
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
 echo OK
 
-echo $N bk changes -V shows tip repeating local .....................$NL
+echo $N bk changes -V shows handling of poly SHARED .................$NL
 bk changes -rREMOTE.. -Vnd':INDENT::GFILE:|:REV:\t:TAG:' > GOT
 # 2 things to note:
-# - the product 1.3 (LOCAL) cset should include component 1.3 (SHARED)
-#   This would require changes combining through the product cset weave
-#   and graph to figure out the real cset boundaries.
-# - if the component cset BRANCH wasn't replicated in the product 1.4 merge,
-#   then the newest entry for comp would be SHARED, which is wrong.
-#   This 2nd point shows the work in pull to strip the D_CSET and force
-#   a RESYNC directory even though no new work comes in.  And the work in
-#   check() to not fill the "missing" cset mark back in.
+# - the product 1.3 (LOCAL) cset includes component 1.3 (SHARED)
+# - The component cset BRANCH is replicated in the product 1.4 merge,
+#   but does not show up below.  That is because the range A..A is empty.
+#   so even though it is listed, nothing happens.
 cat <<EOF > WANT
 ChangeSet|1.4	
-  comp/ChangeSet|1.4	BRANCH
 ChangeSet|1.2.1.1	
   comp/ChangeSet|1.3	SHARED
 ChangeSet|1.3	LOCAL
   comp/ChangeSet|1.4	BRANCH
+  comp/ChangeSet|1.3	SHARED
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -339,19 +335,14 @@ bk --config=poly:on pull $Q || fail
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
 echo OK
 
-echo $N bk changes -V shows tip repeating local .....................$NL
+echo $N bk changes -V shows poly handling of SHARED .................$NL
 bk changes -rREMOTE.. -Vnd':INDENT::GFILE:|:REV:\t:TAG:' > GOT
 # 2 things to note:
-# - the product 1.3 (LOCAL) cset should include component 1.3 (SHARED)
-#   This would require changes combining through the product cset weave
-#   and graph to figure out the real cset boundaries.
-# - The MERGE comp cset is replicated in the product merge tip even through
-#   the component pull was update only.  This is done in pull.c by
-#   stripping off D_CSET and then guarding that stripping in check().
+# - the product 1.3 (LOCAL) cset includes component 1.3 (SHARED)
+# - The MERGE comp cset is not replicated in the product merge tip even
+#   though it is bookkept in the merge by the update only comp pull.
 cat <<EOF > WANT
 ChangeSet|1.4	
-  comp/ChangeSet|1.5	MERGE
-  comp/ChangeSet|1.4	TRUNK
 ChangeSet|1.2.1.3	
   comp/ChangeSet|1.5	MERGE
   comp/ChangeSet|1.4	TRUNK
@@ -361,13 +352,14 @@ ChangeSet|1.2.1.1
   comp/ChangeSet|1.3	SHARED
 ChangeSet|1.3	LOCAL
   comp/ChangeSet|1.3.1.1	BRANCH
+  comp/ChangeSet|1.3	SHARED
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N bk r2c on the component tip gives right answer ..............$NL
 REV=`bk --cd=comp r2c -r1.4 ChangeSet`
-test $REV = 1.4 || fail wrong rev -- wanted 1.4 and got $REV
+test $REV = 1.2.1.3 || fail wrong rev -- wanted 1.2.1.3 and got $REV
 # comp 1.3 is included in both prod 1.3 and 1.2.1.1, and shows ...
 REV=`bk --cd=comp r2c -r1.3 ChangeSet`
 test $REV = 1.2.1.1,1.3 || fail wrong rev -- wanted 1.2.1.1,1.3 and got $REV
@@ -503,14 +495,10 @@ bk --config=poly:on pull $Q || fail
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
 echo OK
 
-echo $N bk changes -V shows tip repeating local .....................$NL
+echo $N bk changes -V shows the poly SHARED .........................$NL
 bk changes -rREMOTE.. -Vnd':INDENT::GFILE:|:REV:\t:TAG:' > GOT
-# 2 things to note:
-# - the product 1.3 (LOCAL) cset should include component 1.3 (SHARED)
-#   This would require changes combining through the product cset weave
-#   and graph to figure out the real cset boundaries.
-# - This shows the work in pull to strip the D_CSET 
-#   And the work in check() to not fill the "missing" cset mark back in.
+# This used to work (D_CSET) and still does because the shared node
+# was not D_CSET marked.
 cat <<EOF > WANT
 ChangeSet|1.4	
   comp/ChangeSet|1.5	
