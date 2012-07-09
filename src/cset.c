@@ -432,6 +432,7 @@ markThisCset(cset_t *cs, sccs *s, ser_t d)
 		FLAGS(s, d) |= D_SET;
 		return;
 	}
+	assert(!CSET(s));
 	range_cset(s, d);
 }
 
@@ -541,7 +542,9 @@ markkey:
 		    "cset: cannot find\n\t%s in\n\t%s\n", val, sc->sfile);
 		return (cs->force ? 0 : -1);
 	}
-	markThisCset(cs, sc, d);
+	unless (cs->hide_comp && CSET(sc) && proj_isComponent(sc->proj)) {
+		markThisCset(cs, sc, d);
+	}
 	return (0);
 }
 

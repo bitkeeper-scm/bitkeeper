@@ -34,6 +34,7 @@ private	void	addTips(sccs *cset, ser_t *gcalist, ser_t **list);
 private	ser_t	*lowerBounds(sccs *s, ser_t d, u32 flags);
 private ser_t	*findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake);
 
+static	hash	*cpoly_all;	/* ckey -> array of cmarks */
 static	hash	*cpoly;		/* ckey -> array of cmarks */
 static	project	*cpoly_proj;
 static	int	cpoly_dirty;
@@ -117,10 +118,11 @@ poly_range(sccs *s, ser_t d, char *pkey)
 	cmark	*clist, *cm;
 	ser_t	e;
 
-	assert(pkey && d);
-	if (clist = poly_check(s, d)) {
+	assert(d);
+	if (CSET(s) &&
+	    proj_isComponent(s->proj) && (clist = poly_check(s, d))) {
 		EACHP(clist, cm) {
-			if (streq(cm->pkey, pkey)) break;
+			if (!pkey || streq(cm->pkey, pkey)) break;
 		}
 		if (cm <= &clist[nLines(clist)]) {
 			ser_t	*lower = 0;
@@ -287,8 +289,15 @@ polyLoad(sccs *cset)
 
 	if (cpoly) {
 		/* assume we only work on one component at a time for now */
-		assert(cset->proj == cpoly_proj);
-		return;
+		if (cset->proj == cpoly_proj) return;
+		if (cpoly_all &&
+		    hash_fetch(cpoly_all, cset->proj, sizeof(project *))) {
+			polyFlush(cset);
+			cpoly_proj = cset->proj;
+			cpoly = *(hash **)cpoly_all->vptr;
+			cpoly_dirty = 0;
+			return;
+		}
 	}
 
 	concat_path(buf, proj_root(proj_product(cset->proj)),
@@ -304,6 +313,9 @@ polyLoad(sccs *cset)
 	cpoly = hash_new(HASH_MEMHASH);
 	cpoly_proj = cset->proj;
 	cpoly_dirty = 0;
+	unless (cpoly_all) cpoly_all = hash_new(HASH_MEMHASH);
+	hash_insert(cpoly_all,
+	    cpoly_proj, sizeof(project *), &cpoly, sizeof(hash *));
 
 	if (f = fopen(buf, "r")) {
 		while (line = fgetline(f)) { /* foreach key */

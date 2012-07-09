@@ -1080,7 +1080,7 @@ cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
 	}
 	if (dkey) {
 		d = sccs_findKey(sc, dkey);
-		assert(d);
+		assert(d && pkey);
 		poly_range(sc, d, pkey);
 	}
 
