@@ -452,11 +452,11 @@ cmp_ignore_ws(void *va, int lena, void *vb, int lenb, int last, void *extra)
 		sa = isspace(a[i]);
 		sb = isspace(b[j]);
 		unless (sa || sb) break; /* real difference */
-		while (a[i] && isspace(a[i])) i++;
-		while (b[j] && isspace(b[j])) j++;
+		while ((i < lena) && isspace(a[i])) i++;
+		while ((j < lenb) && isspace(b[j])) j++;
 		unless (a[i] == b[j]) break;
 	}
-	return ((i == lena) && (j == lenb));
+	return (!((i == lena) && (j == lenb)));
 }
 
 /*
@@ -480,10 +480,10 @@ cmp_ignore_ws_chg(void *va, int lena, void *vb, int lenb, int last, void *extra)
 		sb = isspace(b[j]);
 		unless (sa || sb) break; /* real difference */
 		if ((i > 0) && isspace(a[i-1])) {
-			while (a[i] && (sa = isspace(a[i]))) i++;
+			while ((i < lena) && (sa = isspace(a[i]))) i++;
 		}
 		if ((j > 0) && isspace(b[j-1])) {
-			while (b[j] && (sb = isspace(b[j]))) j++ ;
+			while ((j < lenb) && (sb = isspace(b[j]))) j++ ;
 		}
 		if (sa && sb) {
 			i++, j++;
@@ -491,7 +491,7 @@ cmp_ignore_ws_chg(void *va, int lena, void *vb, int lenb, int last, void *extra)
 		}
 		unless (a[i] == b[j]) break;
 	}
-	return ((i == lena) && (j == lenb));
+	return (!((i == lena) && (j == lenb)));
 }
 
 /* HASH FUNCTIONS */
