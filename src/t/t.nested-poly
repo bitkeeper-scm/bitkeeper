@@ -564,10 +564,11 @@ do
 done
 cd "$HERE/remmy"
 bk --config=poly:on pull $Q ../peer1
-# bk --config=poly:on pull $Q -R ../peer2
-bk --config=poly:on pull $Q ../peer2
+# test a different path: call resolver afterwards
+bk --config=poly:on pull $Q -R ../peer2
+bk --config=poly:on resolve $Q -a
 cd comp
-# bk _poly fails if '-R' in 2nd pull above
+# bk _poly fails if '-R' in 2nd pull above with no resolve.
 bk _poly > GOT || fail
 cat <<EOF > WANT
 comp 4

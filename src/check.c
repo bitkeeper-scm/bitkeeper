@@ -33,6 +33,7 @@
 
 typedef	struct	rkdata {
 	hash	*deltas;
+	hash	*poly;
 	u8	mask;
 } rkdata;
 
@@ -1005,6 +1006,7 @@ checkAll(hash *keys)
 {
 	char	*t, *rkey;
 	hash	*warned = hash_new(HASH_MEMHASH);
+	rkdata	*rkd = 0;
 	hash	*deltas = 0;
 	int	found = 0;
 	char	buf[MAXPATH*3];
@@ -1032,10 +1034,18 @@ checkAll(hash *keys)
 				assert(t);
 				*t++ = 0;
 				unless (streq(buf, r2deltas->kptr)) {
-					deltas = hash_fetchStrPtr(r2deltas, buf);
-					assert(deltas);
+					rkd = hash_fetchStrMem(r2deltas, buf);
+					assert(rkd && rkd->deltas);
 				}
-				if (hash_deleteStr(deltas, t)) {
+				if (rkd->poly && hash_fetchStr(rkd->poly, t)) {
+					// Counter has number of dups.
+					// see buildKeys
+					unless (--(*(i32 *)rkd->poly->vptr)) {
+						hash_deleteStr(rkd->poly, t);
+					}
+					continue;
+				}
+				if (hash_deleteStr(rkd->deltas, t)) {
 					fprintf(stderr, "delta %s missing?\n",
 					    t);
 					exit(1);
@@ -1492,17 +1502,21 @@ buildKeys(MDBM *idDB)
 		 * region (my mask and the dup's mask).
 		 */
 		if (!hash_insertStrMem(rkd->deltas, t, 0, sizeof(mask)) &&
-		    !(*(u8 *)rkd->deltas->vptr & DK_DUP) && polyErr &&
-		    ((polyErr > 1) ||
-		    ((mask | *(u8 *)rkd->deltas->vptr & RK_BOTH) == RK_BOTH))) {
+		    !(*(u8 *)rkd->deltas->vptr & DK_DUP)) {
 			char	*a;
+
+			*(u8 *)rkd->deltas->vptr |= DK_DUP;
+
+			unless (polyErr && ((polyErr > 1) || (RK_BOTH ==
+		            (mask | (*(u8 *)rkd->deltas->vptr & RK_BOTH))))) {
+			    	goto nowarn;
+			}
 
 			// XXXPOLY - Duplicate deltakeys in cset weave.
 			// All Files, All Csets, gone'd, unpopulated or not.
 			// Including any we created fixing up a pull if
 			// not poly:error.
 
-			*(u8 *)rkd->deltas->vptr |= DK_DUP; // say it only once
 			fprintf(stderr,
 			    "Duplicate delta found in ChangeSet\n");
 			a = getRev(r2deltas->kptr, t, idDB);
@@ -1513,6 +1527,17 @@ buildKeys(MDBM *idDB)
 			free(a);
 			listCsetRevs(t);
 			e++;
+		}
+nowarn:
+		if (*(u8 *)rkd->deltas->vptr & DK_DUP) {
+			/*
+			 * keep a hash with int value of # of dups
+			 * If key X appears 3 times, counter == 2
+			 * Needed for checkAll()
+			 */
+			unless (rkd->poly) rkd->poly = hash_new(HASH_MEMHASH);
+			hash_insertStrI32(rkd->poly, t, 0);
+			(*(i32 *)rkd->poly->vptr)++;
 		}
 		if (mask) *(u8 *)rkd->deltas->vptr |= mask;
 	}
