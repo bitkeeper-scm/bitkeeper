@@ -304,7 +304,8 @@ polyLoad(sccs *cset)
 		    ROOT2RESYNC "/BitKeeper/etc/poly/");
 	sccs_md5delta(cset, sccs_ino(cset), buf + strlen(buf));
 
-	unless (exists(buf) || !get(buf, SILENT, "-")) {
+	unless (proj_isResync(cset->proj) &&
+	    (exists(buf) || !get(buf, SILENT, "-"))) {
 		/* not in RESYNC, try repo */
 		str_subst(buf, ROOT2RESYNC "/", "", buf);
 		unless (exists(buf)) get(buf, SILENT, "-");
@@ -717,7 +718,9 @@ poly_main(int ac, char **av)
 	unless (comp = sccs_csetInit(INIT_MUSTEXIST)) goto err;
 	unless (proj_isComponent(comp->proj)) goto err;
 	polyLoad(comp);
-	concat_path(buf, proj_root(proj_product(comp->proj)), CHANGESET);
+
+	concat_path(buf, proj_root(proj_product(comp->proj)),
+	    proj_isResync(comp->proj) ? ROOT2RESYNC "/" CHANGESET : CHANGESET);
 	unless (prod = sccs_init(buf, INIT_MUSTEXIST)) goto err;
 
 	EACH_HASH(cpoly) keys = addLine(keys, cpoly->kptr);
