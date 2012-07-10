@@ -593,7 +593,12 @@ comp 6
 comp 7
 	prod 9 end 4
 EOF
-# Now run in the comp after a resolve, same answer as above
+# Try to finish resolve without the poly config
+# This will resolve the component, and be stopped on the check -R on the
+# product resync.
+bk resolve -qa 2> ERR && fail -f ERR
+grep -q "Duplicate delta found in ChangeSet" ERR || fail -f ERR
+# Now finish out the resolve with poly and get the same WANT as above
 bk --config=poly:on resolve $Q -a
 bk _poly > GOT || fail
 cmpfiles WANT GOT
