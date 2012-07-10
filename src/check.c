@@ -33,7 +33,6 @@
 
 typedef	struct	rkdata {
 	hash	*deltas;
-	hash	*poly;
 	u8	mask;
 } rkdata;
 
@@ -1006,8 +1005,7 @@ checkAll(hash *keys)
 {
 	char	*t, *rkey;
 	hash	*warned = hash_new(HASH_MEMHASH);
-	rkdata	*rkd = 0;
-	hash	*deltas = 0;
+	hash	*weavekeys = 0;
 	int	found = 0;
 	char	buf[MAXPATH*3];
 
@@ -1020,47 +1018,33 @@ checkAll(hash *keys)
 	 */
 	if (resync) {
 		FILE	*f;
+		char	*tipkey;
+		char	*line;
+		project	*repo;
 
 		sprintf(buf, "%s/%s", RESYNC2ROOT, CHANGESET);
 		if (exists(buf)) {
+			assert(repo = proj_isResync(cset->proj));
+			unless (tipkey = proj_tipkey(repo)) {
+				tipkey = "";
+			}
 			sprintf(buf,
-			    "bk annotate -R -h '%s/ChangeSet' | bk sort",
-			    RESYNC2ROOT);
+			    "bk annotate -R'%s'.. -h ChangeSet", tipkey);
 			f = popen(buf, "r");
-			r2deltas->kptr = "";
-			while (fnext(buf, f)) {
-				chomp(buf);
-				t = separator(buf);
+			weavekeys = hash_new(HASH_MEMHASH);
+			while (line = fgetline(f)) {
+				t = separator(line);
 				assert(t);
 				*t++ = 0;
-				unless (streq(buf, r2deltas->kptr)) {
-					rkd = hash_fetchStrMem(r2deltas, buf);
-					assert(rkd && rkd->deltas);
-				}
-				if (rkd->poly && hash_fetchStr(rkd->poly, t)) {
-					// Counter has number of dups.
-					// see buildKeys
-					unless (--(*(i32 *)rkd->poly->vptr)) {
-						hash_deleteStr(rkd->poly, t);
-					}
-					continue;
-				}
-				if (hash_deleteStr(rkd->deltas, t)) {
-					fprintf(stderr, "delta %s missing?\n",
-					    t);
-					exit(1);
-				}
+				hash_insertStr(weavekeys, line, 0);
 			}
 			pclose(f);
 		}
 	}
-	EACH_HASH(r2deltas) {
-		rkey = r2deltas->kptr;
+	unless (weavekeys) weavekeys = r2deltas;
+	EACH_HASH(weavekeys) {
+		rkey = weavekeys->kptr;
 		if (hash_fetchStr(keys, rkey)) continue;
-		deltas = *(hash **)r2deltas->vptr;
-		/* no resync deltas, whatever that means */
-		unless (t = hash_first(deltas)) continue;
-
 		if (gone(rkey, goneDB)) continue;
 
 		hash_storeStr(warned, rkey, 0);
@@ -1074,6 +1058,7 @@ checkAll(hash *keys)
 		}
 	}
 	hash_free(warned);
+	if (weavekeys != r2deltas) hash_free(weavekeys);
 	return (found != 0);
 }
 
@@ -1502,21 +1487,17 @@ buildKeys(MDBM *idDB)
 		 * region (my mask and the dup's mask).
 		 */
 		if (!hash_insertStrMem(rkd->deltas, t, 0, sizeof(mask)) &&
-		    !(*(u8 *)rkd->deltas->vptr & DK_DUP)) {
+		    !(*(u8 *)rkd->deltas->vptr & DK_DUP) && polyErr &&
+		    ((polyErr > 1) ||
+		    ((mask | *(u8 *)rkd->deltas->vptr & RK_BOTH) == RK_BOTH))) {
 			char	*a;
-
-			*(u8 *)rkd->deltas->vptr |= DK_DUP;
-
-			unless (polyErr && ((polyErr > 1) || (RK_BOTH ==
-		            (mask | (*(u8 *)rkd->deltas->vptr & RK_BOTH))))) {
-			    	goto nowarn;
-			}
 
 			// XXXPOLY - Duplicate deltakeys in cset weave.
 			// All Files, All Csets, gone'd, unpopulated or not.
 			// Including any we created fixing up a pull if
 			// not poly:error.
 
+			*(u8 *)rkd->deltas->vptr |= DK_DUP; // say it only once
 			fprintf(stderr,
 			    "Duplicate delta found in ChangeSet\n");
 			a = getRev(r2deltas->kptr, t, idDB);
@@ -1527,17 +1508,6 @@ buildKeys(MDBM *idDB)
 			free(a);
 			listCsetRevs(t);
 			e++;
-		}
-nowarn:
-		if (*(u8 *)rkd->deltas->vptr & DK_DUP) {
-			/*
-			 * keep a hash with int value of # of dups
-			 * If key X appears 3 times, counter == 2
-			 * Needed for checkAll()
-			 */
-			unless (rkd->poly) rkd->poly = hash_new(HASH_MEMHASH);
-			hash_insertStrI32(rkd->poly, t, 0);
-			(*(i32 *)rkd->poly->vptr)++;
 		}
 		if (mask) *(u8 *)rkd->deltas->vptr |= mask;
 	}
