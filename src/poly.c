@@ -3,14 +3,6 @@
 #include "poly.h"
 
 /*
- * XXX TODO list
- * - fix range_cset() in changes.c to use new API
- * - fix 'bk r2c' to return list
- * - collapse needs to drop diffs from poly files
- * - converge.c needs to automerge poly files
- */
-
-/*
  *
  * files:
  *   PRODUCT/BitKeeper/etc/poly/md5_sortkey
@@ -25,19 +17,23 @@
  *
  */
 
-private	void	polyLoad(sccs *cset);
+private	hash	*polyLoad(sccs *cset);
 private int	polyAdd(sccs *cset, ser_t d, char *pkey, int side);
-private int	polyFlush(sccs *cset);
+private int	polyFlush(void);
 private	int	polyChk(sccs *cset, ser_t gca);
 private	int	updatePolyDB(sccs *cset, ser_t *list, hash *cmarks);
 private	void	addTips(sccs *cset, ser_t *gcalist, ser_t **list);
 private	ser_t	*lowerBounds(sccs *s, ser_t d, u32 flags);
 private ser_t	*findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake);
 
-static	hash	*cpoly_all;	/* ckey -> array of cmarks */
-static	hash	*cpoly;		/* ckey -> array of cmarks */
-static	project	*cpoly_proj;
-static	int	cpoly_dirty;
+typedef struct {
+	hash	*cpoly;		/* ckey -> list of pkeys */
+	int	dirty;
+	char	*rfile;		/* full pathname to file in RESYNC*/
+	char	*file;		/* full pathname to file */
+} polymap;
+
+static	hash	*cpoly_all;	/* proj -> polymap */
 
 /*
  * When given a delta in a component cset that is csetmarked it
@@ -49,15 +45,32 @@ static	int	cpoly_dirty;
 cmark *
 poly_check(sccs *cset, ser_t d)
 {
-	cmark	*ret;
-	char	key[MAXKEY];
+	cmark	*ret = 0;
+	hash	*cpoly;
+	char	*t, *p, *next;
+	int	len;
+	cmark	cm;
+	char	buf[MAXLINE];
 
-	assert(FLAGS(cset, d) & D_CSET);
+	cpoly = polyLoad(cset);
+	sccs_sdelta(cset, d, buf);
+	unless (next = hash_fetchStr(cpoly, buf)) return (0);
 
-	polyLoad(cset);
-
-	sccs_sdelta(cset, d, key);
-	ret = hash_fetchStrPtr(cpoly, key);
+	while (t = eachline(&next, &len)) {
+		if (*t == '\n') continue; /* blank lines ok */
+		memset(&cm, 0, sizeof(cm));
+		strncpy(buf, t, len); /* separator() needs \0 */
+		buf[len] = 0;
+		p = separator(buf);
+		assert(p); /* XXX goto err */
+		*p++ = 0;
+		cm.pkey = strdup(buf);
+		t = p;
+		if (p = separator(t)) *p++ = 0;
+		cm.ekey = strdup(t);
+		if (p) cm.emkey = strdup(p);
+		addArray(&ret, &cm);
+	}
 	return (ret);
 }
 
@@ -204,9 +217,10 @@ poly_pull(int got_patch, char *mergefile)
 		touch(ROOT2RESYNC "/BitKeeper/tmp/patch", 0666);
 	}
 
-	unless (cset = sccs_init(resync, INIT_MUSTEXIST)) goto err;
-	assert(cset);
-
+	unless (cset = sccs_init(resync, INIT_MUSTEXIST)) {
+		perror(resync);
+		goto err;
+	}
 	list = file2Lines(0, mergefile);
 	cmarks = hash_new(HASH_MEMHASH);
 	EACH(list) {
@@ -252,7 +266,10 @@ poly_pull(int got_patch, char *mergefile)
 		goto err;
 	}
 	if (polylist) {
-		if (updatePolyDB(cset, polylist, cmarks)) goto err;
+		if (updatePolyDB(cset, polylist, cmarks)) {
+			perror("updatePolyDB");
+			goto err;
+		}
 		free(polylist);
 		polylist = 0;
 	}
@@ -265,8 +282,11 @@ poly_pull(int got_patch, char *mergefile)
 		dfile = sccs_Xfile(cset, 'd');
 		touch(dfile, 0666);
 	}
-	if (write && sccs_newchksum(cset)) goto err;
-	if (polyFlush(cset)) goto err;
+	if (write && sccs_newchksum(cset)) {
+		perror(cset->sfile);
+		goto err;
+	}
+	if (polyFlush()) goto err;
 	rc = 0;
 err:
 	if (cmarks) hash_free(cmarks);
@@ -276,76 +296,38 @@ err:
 	return (rc);
 }
 
-private void
+private hash *
 polyLoad(sccs *cset)
 {
-	FILE	*f;
-	int	c;
-	char	*line, *p;
-	cmark	**data;
-	char	*ckey;
-	cmark	cm;
+	char	*p;
+	polymap	*pm;
 	char	buf[MAXPATH];
 
-	if (cpoly) {
-		/* assume we only work on one component at a time for now */
-		if (cset->proj == cpoly_proj) return;
-		if (cpoly_all &&
-		    hash_fetch(cpoly_all, cset->proj, sizeof(project *))) {
-			polyFlush(cset);
-			cpoly_proj = cset->proj;
-			cpoly = *(hash **)cpoly_all->vptr;
-			cpoly_dirty = 0;
-			return;
-		}
-	}
-
-	concat_path(buf, proj_root(proj_product(cset->proj)),
-		    ROOT2RESYNC "/BitKeeper/etc/poly/");
-	sccs_md5delta(cset, sccs_ino(cset), buf + strlen(buf));
-
-	unless (proj_isResync(cset->proj) &&
-	    (exists(buf) || !get(buf, SILENT, "-"))) {
-		/* not in RESYNC, try repo */
-		str_subst(buf, ROOT2RESYNC "/", "", buf);
-		unless (exists(buf)) get(buf, SILENT, "-");
-	}
-
-	cpoly = hash_new(HASH_MEMHASH);
-	cpoly_proj = cset->proj;
-	cpoly_dirty = 0;
 	unless (cpoly_all) cpoly_all = hash_new(HASH_MEMHASH);
 	hash_insert(cpoly_all,
-	    cpoly_proj, sizeof(project *), &cpoly, sizeof(hash *));
+	    &cset->proj, sizeof(project *),
+	    0, sizeof(polymap));
+	pm = (polymap *)cpoly_all->vptr;
+	unless (pm->cpoly) {
+		concat_path(buf, proj_root(proj_product(cset->proj)),
+		    ROOT2RESYNC "/BitKeeper/etc/poly/");
+		sccs_md5delta(cset, sccs_ino(cset), buf + strlen(buf));
 
-	if (f = fopen(buf, "r")) {
-		while (line = fgetline(f)) { /* foreach key */
-			assert(line[0] == '@');
-			webdecode(line+1, &ckey, 0);
-			hash_insertStrPtr(cpoly, ckey, 0);
-			data = (cmark **)cpoly->vptr;
-			free(ckey);
+		pm->rfile = strdup(buf);
+		str_subst(buf, ROOT2RESYNC "/", "", buf);
+		pm->file = strdup(buf);
 
-			for (;;) {	/* foreach dataline */
-				if ((c = fgetc(f)) == EOF) goto done;
-				ungetc(c, f);
-				if (c == '@') break;
-				line = fgetline(f);
-				unless (*line) continue;  /* blank lines ok */
-				memset(&cm, 0, sizeof(cm));
-				p = separator(line);
-				assert(p); /* XXX goto err */
-				*p++ = 0;
-				cm.pkey = strdup(line);
-				line = p;
-				if (p = separator(line)) *p++ = 0;
-				cm.ekey = strdup(line);
-				if (p) cm.emkey = strdup(p);
-				addArray(data, &cm);
-			}
+		if (proj_isResync(cset->proj) &&
+		    (exists(pm->rfile) || !get(pm->rfile, SILENT, "-"))) {
+			p = pm->rfile;
+		} else {
+			/* not in RESYNC, try repo */
+			unless (exists(pm->file)) get(pm->file, SILENT, "-");
+			p = pm->file;
 		}
-done:		fclose(f);
+		pm->cpoly = hash_fromFile(hash_new(HASH_MEMHASH), p);
 	}
+	return (pm->cpoly);
 }
 
 /*
@@ -353,136 +335,150 @@ done:		fclose(f);
  * for this component.
  * The changes are made in memory and we be written out when poly_commit()
  * is called.
+ *
+ * Returns:
+ *   1 if dup
+ *   0 if new key added
  */
 private int
 polyAdd(sccs *cset, ser_t d, char *pkey, int side)
 {
-	int	cmp, i;
-	cmark	**datap, *data;
-	cmark	cm = {0};
+	int	cmp;
 	ser_t	*lower;
+	char	*old, *next, *line = 0, *t;
+	polymap	*pm;
+	hash	*cpoly;
 	char	key[MAXKEY];
+	char	new[MAXLINE];
 
-	polyLoad(cset);
+	cpoly = polyLoad(cset);
+
 	sccs_sdelta(cset, d, key);
-	hash_insertStrPtr(cpoly, key, 0);
-	datap = (cmark **)cpoly->vptr;
-	assert(datap);
-	data = *datap;
-	/* sort by pkey and strip dups */
-	EACH(data) {
-		unless (cmp = keycmp(pkey, data[i].pkey)) return (0);
+	old = next = hash_fetchStr(cpoly, key);
+	if (old) while (line = eachline(&next, 0)) {
+		unless (t = separator(line)) continue;
+		strncpy(key, line, t-line);
+		key[t-line] = 0;
+		unless (cmp = keycmp(pkey, key)) return (1);
 		if (cmp < 0) break;
 	}
-	cm.pkey = strdup(pkey);
+
+	/* calculate the new line */
+	t = new;
+	t += sprintf(t, "%s", pkey);
 	if (lower = lowerBounds(cset, d, side)) {
 		sccs_sdelta(cset, lower[1], key);
-		cm.ekey = strdup(key);
+		t += sprintf(t, " %s", key);
 		if (nLines(lower) > 1) {
 			assert(nLines(lower) == 2);
 			sccs_sdelta(cset, lower[2], key);
-			cm.emkey = strdup(key);
+			t += sprintf(t, " %s", key);
 		}
 		free(lower);
 	}
-	insertArrayN(datap, i, &cm);
-	cpoly_dirty = 1;
+	*t++ = '\n';
+	*t = 0;
+
+	t = aprintf("%.*s%s%s",
+	    old ? (int)(line - old) : 0, old,
+	    new,
+	    line ? line : "");
+
+	sccs_sdelta(cset, d, key);
+	hash_storeStrStr(cpoly, key, t);
+	free(t);
+
+	pm = (polymap *)hash_fetch(cpoly_all, &cset->proj, sizeof(project *));
+	pm->dirty = 1;
 	return (0);
 }
 
+/*
+ * Free memory of all poly files and for the ones that changed, write
+ * them out to disk and create a new delta.
+ */
 private int
-polyFlush(sccs *cset)
+polyFlush(void)
 {
-	sccs	*s;
-	FILE	*f;
-	char	*p, *q;
-	char	**keys = 0;
-	int	i, rc;
-	cmark	*data;
-	cmark	*cm;
+	sccs	*s, *cset;
+	char	*p;
+	int	rc;
 	char	*sfile;
+	polymap	*pm;
+	project	*proj;
 	int	gflags = GET_EDIT|GET_SKIPGET|SILENT;
 	int	dflags = DELTA_AUTO|DELTA_DONTASK|SILENT;
-	char	prodpoly[MAXPATH];
-	char	resyncpoly[MAXPATH];
+	char	buf[MAXPATH];
 
-	unless (cpoly_dirty) return (0);
+	unless (cpoly_all) return (0);
 
-	strcpy(prodpoly, proj_root(proj_product(cset->proj)));
-	concat_path(resyncpoly, prodpoly, ROOT2RESYNC);
+	EACH_HASH(cpoly_all) {
+		pm = (polymap *)cpoly_all->vptr;
 
-	p = prodpoly + strlen(prodpoly);
-	concat_path(prodpoly, prodpoly, "BitKeeper/etc/poly/");
-	q = p + strlen(p);
-	sccs_md5delta(cset, sccs_ino(cset), q);
+		if (pm->dirty) {
+			sfile = name2sccs(pm->rfile);
+			mkdirf(sfile);
+			unless (exists(sfile)) {
+				p = name2sccs(pm->file);
+				if (exists(p)) fileLink(p, sfile);
+				free(p);
+			}
+			hash_toFile(pm->cpoly, pm->rfile);
 
-	concat_path(resyncpoly, resyncpoly, p);
-
-	// Might be run in many times if pull_ensemble were to run threads
-	mkdirf(resyncpoly);
-
-	// write gfile
-	f = fopen(resyncpoly, "w");
-	assert(f);
-
-	EACH_HASH(cpoly) keys = addLine(keys, cpoly->kptr);
-	sortLines(keys, key_sort);
-
-	EACH(keys) {
-		fputc('@', f);
-		webencode(f, keys[i], strlen(keys[i])+1);
-		fputc('\n', f);
-		data = (cmark *)hash_fetchStrPtr(cpoly, keys[i]);
-		EACHP(data, cm) {
-			fprintf(f, "%s %s", cm->pkey, cm->ekey);
-			if (cm->emkey) fprintf(f, " %s", cm->emkey);
-			fputc('\n', f);
+			// edit sfile
+			s = sccs_init(sfile, SILENT);
+			assert(s);
+			free(sfile);
+			if (HASGRAPH(s)) {
+				/* edit the file */
+				unless (HAS_PFILE(s)) {
+					rc = sccs_get(s, 0,0, 0, 0, gflags, "-");
+					//assert(rc == 0);
+				}
+			} else {
+				dflags |= NEWFILE;
+			}
+			rc = sccs_delta(s, dflags, 0, 0, 0, 0);
+			if (rc == -2) {
+				/* no delta if no diffs in file */
+				unlink(s->pfile);
+				unlink(s->gfile);
+			}
+			if (dflags & NEWFILE) {
+				/*
+				 * Needed to create a new file.  We
+				 * are going to force the file to be
+				 * created with a deterministic
+				 * rootkey
+				 */
+				proj = *(project **)cpoly_all->kptr;
+				concat_path(buf, proj_root(proj), CHANGESET);
+				cset = sccs_init(buf, SILENT|INIT_MUSTEXIST);
+				assert(cset);
+				sccs_restart(s);
+				USERHOST_SET(s, sccs_ino(s),
+				    USERHOST(cset, sccs_ino(cset)));
+				DATE_SET(s, sccs_ino(s),
+				    DATE(cset, sccs_ino(cset)));
+				ZONE_SET(s, sccs_ino(s),
+				    ZONE(cset, sccs_ino(cset)));
+				SUM_SET(s, sccs_ino(s),
+				    SUM(cset, sccs_ino(cset)));
+				RANDOM_SET(s, sccs_ino(s),
+				    RANDOM(cset, sccs_ino(cset)));
+				sccs_newchksum(s);
+				sccs_free(cset);
+			}
+			sccs_free(s);
 		}
-		fputc('\n', f);	/* blank line between keys */
+		free(pm->file);
+		free(pm->rfile);
+		hash_free(pm->cpoly);
 	}
-	freeLines(keys, 0);
-	fclose(f);
+	hash_free(cpoly_all);
+	cpoly_all = 0;
 
-	// edit sfile
-	sfile = name2sccs(resyncpoly);
-	if (!exists(sfile)) {
-		p = name2sccs(prodpoly);
-		if (exists(p)) fileLink(p, sfile);
-		free(p);
-	}
-	s = sccs_init(sfile, SILENT);
-	assert(s);
-	free(sfile);
-	if (HASGRAPH(s)) {
-		/* edit the file */
-		unless (HAS_PFILE(s)) {
-			rc = sccs_get(s, 0, 0, 0, 0, gflags, "-");
-			//assert(rc == 0);
-		}
-	} else {
-		dflags |= NEWFILE;
-	}
-	rc = sccs_delta(s, dflags, 0, 0, 0, 0);
-	if (rc == -2) {
-		/* no delta if no diffs in file */
-		unlink(s->pfile);
-		unlink(s->gfile);
-	}
-	if (dflags & NEWFILE) {
-		/*
-		 * Needed to create a new file.  We are going to force
-		 * the file to be created with a deterministic rootkey
-		 */
-		sccs_restart(s);
-		USERHOST_SET(s, sccs_ino(s), USERHOST(cset, sccs_ino(cset)));
-		DATE_SET(s, sccs_ino(s), DATE(cset, sccs_ino(cset)));
-		ZONE_SET(s, sccs_ino(s), ZONE(cset, sccs_ino(cset)));
-		SUM_SET(s, sccs_ino(s), SUM(cset, sccs_ino(cset)));
-		RANDOM_SET(s, sccs_ino(s), RANDOM(cset, sccs_ino(cset)));
-		sccs_newchksum(s);
-	}
-	sccs_free(s);
-	return (rc);
+	return (0);
 }
 
 /*
@@ -634,7 +630,7 @@ updatePolyDB(sccs *cset, ser_t *list, hash *cmarks)
 			type = prodkeys[j][1];
 			rest = &prodkeys[j][2];
 			if (type == 'M') continue;	/* skip merge nodes */
-			if (polyAdd(cset, d, rest, side)) return (1);
+			polyAdd(cset, d, rest, side);
 		}
 	}
 	return (0);
@@ -702,6 +698,7 @@ poly_main(int ac, char **av)
 	char	**keys = 0;
 	sccs	*comp = 0, *prod = 0;
 	cmark	*data, *cm;
+	hash	*cpoly;
 	char	buf[MAXPATH];
 
 	while ((c = getopt(ac, av, "a", 0)) != -1) {
@@ -717,7 +714,7 @@ poly_main(int ac, char **av)
 	}
 	unless (comp = sccs_csetInit(INIT_MUSTEXIST)) goto err;
 	unless (proj_isComponent(comp->proj)) goto err;
-	polyLoad(comp);
+	cpoly = polyLoad(comp);
 
 	concat_path(buf, proj_root(proj_product(comp->proj)),
 	    proj_isResync(comp->proj) ? ROOT2RESYNC "/" CHANGESET : CHANGESET);
@@ -729,7 +726,7 @@ poly_main(int ac, char **av)
 	EACH(keys) {
 		unless (d = sccs_findKey(comp, keys[i])) goto err;
 		printf("comp %u\n", d);
-		data = (cmark *)hash_fetchStrPtr(cpoly, keys[i]);
+		data = poly_check(comp, d);
 		EACHP(data, cm) {
 			unless (d = sccs_findKey(prod, cm->pkey)) goto err;
 			printf("\tprod %u", d);
@@ -746,6 +743,7 @@ poly_main(int ac, char **av)
 	}
 	rc = 0;
 err:
+	if (rc) fprintf(stderr, "%s: parse error\n", prog);
 	freeLines(keys, 0);
 	sccs_free(comp);
 	sccs_free(prod);
