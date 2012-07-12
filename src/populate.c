@@ -240,7 +240,7 @@ nested_populate(nested *n, popts *ops)
 	unless (ops->leaveHERE) nested_writeHere(n);
 	if (ops->runcheck) {
 		rc |= run_check(ops->verbose,
-		    checkfiles, ops->quiet ? 0 : "-v", 0);
+		    checkfiles, ops->quiet ? "-u" : "-uv", 0);
 		freeLines(checkfiles, free);
 	}
 out:	proj_reset(0);

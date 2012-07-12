@@ -643,10 +643,22 @@ bk --cd=../B/comp _poly > GOT.B
 cmpfiles "$HERE/WANT.B" GOT.B
 echo OK
 
-echo $N Undo to a point where no poly needs check to fix marks ......$NL
+echo $N Undo in a populate such that cset marks need to be fixed ....$NL
 cd "$HERE/B"
-bk undo -qsfa`bk repogca ../peer1` 2> ERR
+GCA=`bk repogca ../peer1`
+bk clone $Q -sPRODUCT -r$GCA . ../pop-comp
+cd ../pop-comp
+# Test undo running in a newly populated component
+bk here add -q -@"$HERE/B" comp 2> GOT || fail
+# Message created by running with _BK_DEVELOPER set; customers don't see it
+echo "comp/ChangeSet: adding and/or removing missing csetmarks" > "$HERE/WANT"
+cmpfiles "$HERE/WANT" GOT
+echo OK
+
+echo $N Undo to a point where check needs to fix cset marks .........$NL
+cd "$HERE/B"
+bk undo -qsf -a$GCA 2> GOT
 bk sfiles BitKeeper/etc | grep -q poly && fail poly file found
-echo "comp/ChangeSet: adding and/or removing missing csetmarks" > WANT
-cmpfiles WANT ERR
+# Message created by running with _BK_DEVELOPER set; customers don't see it
+cmpfiles "$HERE/WANT" GOT
 echo OK

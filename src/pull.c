@@ -110,7 +110,7 @@ pull_main(int ac, char **av)
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
 		    case 'C': opts.portNoCommit = 1; break;
-		    case 'M': opts.mergefile = strdup(optarg); break;
+		    case 'M': opts.mergefile = optarg; break;
 		    case 'S':
 			fprintf(stderr,
 			    "%s: -S unsupported, try port.\n", prog);
@@ -188,7 +188,6 @@ pull_main(int ac, char **av)
 		urls = parent_pullp();
 		unless (urls) {
 			freeLines(envVar, free);
-			FREE(opts.mergefile);
 			getMsg("missing_parent", 0, 0, stderr);
 			return (1);
 		}
@@ -196,7 +195,6 @@ pull_main(int ac, char **av)
 
 	unless (urls) {
 err:		freeLines(envVar, free);
-		FREE(opts.mergefile);
 		usage();
 		return (1);
 	}
@@ -323,7 +321,6 @@ err:		freeLines(envVar, free);
 		unlink(tmpfile);
 	}
 done:	freeLines(envVar, free);
-	FREE(opts.mergefile);
 	return (rc);
 }
 
