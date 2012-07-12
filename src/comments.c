@@ -140,6 +140,7 @@ comments_prompt(char *file)
 		printf("-------------------------------------------------\n");
 		printf("Use these comments: (e)dit, (a)bort, (u)se? ");
 		fflush(stdout);
+		uniq_close();	/* don't hold uniqdb lock */
 		unless (getline(0, buf, sizeof(buf)) > 0) return (-1);
 		switch (buf[0]) {
 		    case 'y': 
