@@ -73,7 +73,7 @@ findcset_main(int ac, char **av)
 	char	*name;
 	char	*tagFile = 0;
 	char	key[MAXKEY];
-	int	save, c, flags = SILENT|INIT_MUSTEXIST;
+	int	c, flags = SILENT|INIT_MUSTEXIST;
 	int	fileIdx;
 
 	while ((c = getopt(ac, av, "b:Bkt:T:ivu", 0)) != -1) {
@@ -139,14 +139,11 @@ findcset_main(int ac, char **av)
 			verbose((stderr, "Skipping non-user file %s.\n", name));
 			continue;
 		}
-		save = deltaCounter;
 		sccs_sdelta(s, sccs_ino(s), key);
 		keylist = addLine(keylist, strdup(key));
 		flist = addLine(flist, strdup(s->sfile));
 		oldest = findFirstDelta(s, oldest);
 		mkList(s, ++fileIdx);
-		//verbose((stderr,
-		//    "%s: %d deltas\n", s->sfile, deltaCounter - save));
 		sccs_free(s);
 	}
 	sfileDone();

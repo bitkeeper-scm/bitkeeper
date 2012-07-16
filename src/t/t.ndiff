@@ -333,3 +333,63 @@ cmp -s WANT GOT || {
 	fail
 }
 echo OK
+
+echo $N Test -b option...............................................$NL
+cat <<EOF > A
+int
+main(int ac, char **av)
+{
+	printf("this is a line\n");
+	printf("this is a line\n");
+	printf("this is a line\n");
+}
+EOF
+cat <<EOF > B
+int
+main(int ac, char **av)
+{
+	printf("this is a line\n");
+	if (foo) {
+		printf("this is a line\n");
+	}
+	printf("this is a line\n");
+}
+EOF
+cat <<EOF >WANT
+4a5
+> 	if (foo) {
+5a7
+> 	}
+EOF
+bk ndiff -b A B > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test -w option...............................................$NL
+cat <<EOF > A
+int
+main(int ac, char **av)
+{
+	printf("this is a line\n");
+}
+EOF
+cat <<EOF > B
+int
+main(int ac, char **av)
+{
+	printf("this is aline\n");
+}
+EOF
+cat <<EOF > WANT
+4c4
+< 	printf("this is a line\n");
+---
+> 	printf("this is aline\n");
+EOF
+bk ndiff -b A B > GOT
+cmpfiles WANT GOT
+bk ndiff -w A B > GOT
+rm -f WANT
+touch WANT
+cmpfiles WANT GOT
+echo OK

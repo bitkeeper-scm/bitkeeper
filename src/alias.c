@@ -347,7 +347,6 @@ aliasShow(char *cmd, aopts *opts, char **av)
 	int	nflags;
 	int	ac = 0;
 
-	cmd = av[0];
 	if (proj_cd2product()) {
 		error("%s: called in a non-product.\n", prog);
 		goto err;
