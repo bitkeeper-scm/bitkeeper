@@ -1941,13 +1941,12 @@ bk_nested2root(int standalone)
 char **
 bk_saveArg(char **nav, char **av, int c)
 {
-	char	buf[MAXLINE];
+	char	*buf;
 
 	if (c > 32 && c < 127) {
 		/* normal short option */
-		sprintf(buf, "-%c", c);
-		if (optarg) strcat(buf, optarg);
-		nav = addLine(nav, strdup(buf));
+		buf = aprintf("-%c%s", c, optarg?optarg:"");
+		nav = addLine(nav, buf);
 	} else if (c > 256) {
 		/* long option */
 		if (optarg && (optarg == av[optind-1])) {
