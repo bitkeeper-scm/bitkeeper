@@ -3,13 +3,13 @@ test_proxy() {
 	export http_proxy
 
 	BK_TRACE_REMOTE=1 bk changes -qrbk-3.2.5 -nd:MD5KEY: \
-		http://proxytest:14690/bk-3.2.x >OUT 2>ERR || {
+		http://proxytest:14690/bugfix >OUT 2>ERR || {
 		echo should not have failed
 		cat OUT
 		cat ERR
 		exit 1
 	}
-	test "`cat OUT`" = 42f14254Fy_o9xwl7u_Ej-1mle8SMQ || {
+	test "`cat OUT`" = 42f14254IYxNQ5WXknkqGmR_SESatA || {
 		echo wrong result
 		cat OUT
 		exit 1
