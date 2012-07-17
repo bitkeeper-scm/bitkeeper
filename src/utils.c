@@ -291,6 +291,7 @@ prompt(char *msg, char *buf)
 {
 	int	ret;
 
+	uniq_close();	/* don't hold uniqdb lock */
 	caught = 0;
 	sig_catch(abort_prompt);
 
@@ -311,6 +312,7 @@ confirm(char *msg)
 	char	*p, buf[100];
 	int	gotsome;
 
+	uniq_close();	/* don't hold uniqdb lock */
 	caught = 0;
 	sig_catch(abort_prompt);
 

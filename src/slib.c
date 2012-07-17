@@ -858,7 +858,7 @@ uniqRoot(sccs *s)
 	 */
 	if (uniq_open()) exit(1);
 	if (uniq_adjust(s, d)) exit(1);
-	/* leave uniq db open... */
+	if (getenv("BK_UNIQDB_NO_CACHE")) uniq_close();
 }
 
 /*
@@ -904,7 +904,7 @@ uniqDelta(sccs *s)
 	if (IMPORT(s)) return;
 	if (uniq_open()) exit(1);
 	if (uniq_adjust(s, d)) exit(1);
-	/* leave uniq db open... */
+	if (getenv("BK_UNIQDB_NO_CACHE")) uniq_close();
 }
 
 private int
