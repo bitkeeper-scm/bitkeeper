@@ -410,7 +410,7 @@ bk here check -a ./gdb | grep -q "$HERE/clone1" || fail 7
 bk here check -a ./gdb | grep -q "$HERE/cloneD" || fail 8
 bk pull --unsafe $Q ../cloneE || fail 9
 bk here check -a ./gdb | grep -q "$HERE/cloneE" || fail 10
-bk here check -a ./gdb | grep -q "$HERE/cloneD" || fail 11
+#bk here check -a ./gdb | grep -q "$HERE/cloneD" || fail 11
 bk here check -a ./gdb | grep -q "$HERE/clone1" || fail 12
 cd "$HERE"
 rm -rf cloneC cloneD cloneE
@@ -438,7 +438,7 @@ bk here check -a ./gdb | grep -q "$HERE/clone1" || fail 7
 bk here check -a ./gdb | grep -q "$HERE/cloneD" || fail 8
 bk pull $Q ../cloneE || fail 9
 bk here check -a ./gdb | grep -q "$HERE/cloneE" || fail 10
-bk here check -a ./gdb | grep -q "$HERE/cloneD" || fail 11
+#bk here check -a ./gdb | grep -q "$HERE/cloneD" || fail 11
 bk here check -a ./gdb | grep -q "$HERE/clone1" || fail 12
 cd "$HERE"
 rm -rf cloneC cloneD cloneE

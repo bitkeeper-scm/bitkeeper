@@ -5,8 +5,6 @@
 private	urlinfo	*urlinfo_fetchAlloc(nested *n, char *url);
 private	int	sortUrls(const void *a, const void *b);
 
-private	dev_t	local_dev;	/* st_dev of "." for sortUuls() */
-
 /*
  * load urllist file into memory, this also loads the urlinfo
  * if it isn't loaded already.
@@ -71,7 +69,6 @@ urlinfo_load(nested *n, remote *base)
 void
 urlinfo_buildArray(nested *n)
 {
-	struct	stat sb;
 	int	i, j;
 	char	**parents = parent_pullp();
 	char	*p;
@@ -83,7 +80,6 @@ urlinfo_buildArray(nested *n)
 	EACH_HASH(n->urlinfo) {
 		n->urls = addLine(n->urls, (char *)n->urlinfo->vptr);
 	}
-	local_dev = lstat(".", &sb) ? 0 : sb.st_dev;
 	EACH_STRUCT(n->urls, data, i) {
 		EACH_INDEX(parents, j) {
 			p = parents[j];
@@ -184,8 +180,8 @@ int
 urlinfo_write(nested *n)
 {
 	FILE	*f;
-	int	i;
-	char	*url, *rk;
+	int	i, j;
+	char	*rk;
 	urlinfo	*data;
 	comp	*c;
 	hash	*urllist;
@@ -201,7 +197,7 @@ urlinfo_write(nested *n)
 	}
 
 	unless (n->list_dirty) return (0); /* nothing to write */
-	unless (n->list_loaded) urlinfo_load(n, 0);
+	urlinfo_buildArray(n);
 
 	urllist = hash_new(HASH_MEMHASH);
 
@@ -224,9 +220,7 @@ urlinfo_write(nested *n)
 		free(lockf);
 		return (-1);
 	}
-	EACH_HASH(n->urlinfo) {
-		url = n->urlinfo->kptr;
-		data = (urlinfo *)n->urlinfo->vptr;
+	EACH_STRUCT(n->urls, data, j) {
 		EACH_HASH(data->pcomps) {
 			if (*(char *)data->pcomps->vptr != '1') continue;
 			c = *(comp **)data->pcomps->kptr;
@@ -237,7 +231,9 @@ urlinfo_write(nested *n)
 				listp = (char ***)urllist->vptr;
 			}
 			TRACE("add %s to %s\n", data->url, c ? c->path : "?");
-			*listp = addLine(*listp, data->url);
+			if (nLines(*listp) < 3) {
+				*listp = addLine(*listp, data->url);
+			}
 		}
 		/*
 		 * Don't write out URLs that are never contacted or that
@@ -246,7 +242,7 @@ urlinfo_write(nested *n)
 		if (now - data->time > 6*MONTH) continue;
 
 		putc('@', f);
-		webencode(f, url, strlen(url)+1);
+		webencode(f, data->url, strlen(data->url)+1);
 		putc('\n', f);
 		fprintf(f, "%ld\n", data->time);
 		fprintf(f, "%d\n", data->gate);
@@ -322,26 +318,6 @@ sortUrls(const void *a, const void *b)
 	}
 }
 
-void
-urlinfo_set(nested *n, char *url, int gate, char *repoID)
-{
-	urlinfo	*data = urlinfo_fetchAlloc(n, url);
-
-	data->time = time(0);
-	data->gate = gate;
-	FREE(data->repoID);
-	if (repoID) data->repoID = strdup(repoID);
-	n->list_dirty = 1;
-}
-
-urlinfo	*
-urlinfo_get(nested *n, char *url)
-{
-	if (strneq(url, "file://", 7)) url += 7;
-	unless (n->list_loaded) urlinfo_load(n, 0);
-	return ((urlinfo *)hash_fetchStr(n->urlinfo, url));
-}
-
 /*
  * Called from [r]clone/pull/push after setting with info from our parent.
  * The env has the bkd information and c->remotePresent is correct.
@@ -349,12 +325,17 @@ urlinfo_get(nested *n, char *url)
 void
 urlinfo_setFromEnv(nested *n, char *url)
 {
-	urlinfo	*data;
+	urlinfo	*data = urlinfo_fetchAlloc(n, url);
 	comp	*c;
 	int	i;
+	char	*t;
 
-	urlinfo_set(n, url,
-	    (getenv("BKD_GATE") ? 1 : 0), getenv("BKD_REPO_ID"));
+	data->time = time(0);
+	data->gate = (getenv("BKD_GATE") ? 1 : 0);
+	FREE(data->repoID);
+	if (t = getenv("BKD_REPO_ID")) data->repoID = strdup(t);
+	n->list_dirty = 1;
+
 	data = urlinfo_fetchAlloc(n, url);
 	data->from = 1;
 	hash_free(data->pcomps);
@@ -373,7 +354,6 @@ urlinfo_setFromEnv(nested *n, char *url)
 	}
 	data->checked = data->checkedGood = 1;
 }
-
 
 void
 urlinfo_free(nested *n)
@@ -404,7 +384,6 @@ urlinfo_addURL(nested *n, comp *c, char *url)
 	urlinfo	*data;
 
 	n->list_dirty = 1;
-
 	/*
 	 * We want to normalize the URL being saved.  The URLs either
 	 * come from parent_normalize() or remote_unparse().  They
@@ -571,7 +550,6 @@ out:	fclose(fout);
 	hash_free(bkdEnv);
 	return (rc);
 }
-
 
 private urlinfo *
 urlinfo_fetchAlloc(nested *n, char *url)
