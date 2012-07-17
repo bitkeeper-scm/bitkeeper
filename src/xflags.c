@@ -219,9 +219,6 @@ xflags2a(u32 flags)
 	if (flags & X_EOLN_WINDOWS) {
 		list = addLine(list, "EOLN_WINDOWS");
 	}
-	if (flags & X_LONGKEY) {
-		list = addLine(list, "LONGKEY");
-	}
 	if (flags & X_KV) {
 		list = addLine(list, "KV");
 	}
@@ -253,7 +250,6 @@ a2xflag(char *flag)
 	if (streq(flag, "EOLN_NATIVE")) return (X_EOLN_NATIVE);
 	if (streq(flag, "EOLN_UNIX")) return (X_EOLN_UNIX);
 	if (streq(flag, "EOLN_WINDOWS")) return (X_EOLN_WINDOWS);
-	if (streq(flag, "LONGKEY")) return (X_LONGKEY);
 	if (streq(flag, "NOMERGE")) return (X_NOMERGE);
 	if (streq(flag, "MONOTONIC")) return (X_MONOTONIC);
 	fprintf(stderr, "Unknown flag: %s\n", flag);

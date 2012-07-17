@@ -3054,8 +3054,6 @@ meta(sccs *s, ser_t d, char *buf)
 	    case 'X':
 		assert(d);
 		XFLAGS(s, d) = strtol(&buf[3], 0, 0); /* hex or dec */
-		/* reenable longkeys for old KEY_FORMAT2 trees */
-		if (CSET(s) && (s->xflags & X_LONGKEY)) XFLAGS(s, d) |= X_LONGKEY;
 		XFLAGS(s, d) &= ~X_SINGLE; /* clear old single_user bit */
 		break;
 	    case 'Z':
@@ -4510,6 +4508,11 @@ sccs_init(char *name, u32 flags)
 		s->xflags = XFLAGS(s, sccs_top(s));
 		unless (BITKEEPER(s)) s->xflags |= X_SCCS;
 
+		if (CSET(s) &&
+		    !(s->xflags & X_LONGKEY) && !getenv("_BK_SHORT_OK")) {
+			getMsg("no_shortkey", 0, '=', stderr);
+			exit(100);
+		}
 		/*
 		 * Don't allow them to check in a gfile of a different type.
 		 */
@@ -8221,8 +8224,7 @@ delta_table(sccs *s, int willfix)
 			fputs(buf, out);
 		}
 		if (!PARENT(s, d) || (XFLAGS(s, d) != XFLAGS(s, PARENT(s, d)))) {
-			sprintf(buf, "\001cX0x%x\n", XFLAGS(s, d));
-			fputs(buf, out);
+			fprintf(out, "\001cX0x%x\n", XFLAGS(s, d));
 		}
 		if (HAS_ZONE(s, d) &&
 		    !(parent && streq(ZONE(s, parent), ZONE(s, d)))) {
@@ -9845,7 +9847,6 @@ checkin(sccs *s,
 	char	buf[MAXLINE];
 	int	no_lf = 0;
 	int	error = 0;
-	int	short_key = 0;
 	MDBM	*db;
 	static	int fixDate = -1;
 
@@ -10016,7 +10017,7 @@ out:		sccs_abortWrite(s);
 	unless (nodefault || (flags & DELTA_PATCH)) {
 		ser_t	d = n0 ? n0 : n;
 
-		if (!HAS_RANDOM(s, d) && !short_key) {
+		if (!HAS_RANDOM(s, d)) {
 			if (t = getenv("BK_RANDOM")) {
 				strcpy(buf+2, t);
 			} else {
@@ -10884,13 +10885,6 @@ symArg(sccs *s, ser_t d, char *name)
 	tmp = sccs_addUniqStr(s, name);
 	addArray(&s->mg_symname, &tmp);
 	FLAGS(s, d) |= D_SYMBOLS;	/* so stripdel won't MKGONE it */
-
-	if ((d == TREE(s)) && streq(name, KEY_FORMAT2)) {
-		s->xflags |= X_LONGKEY;
-		for (d = TREE(s); d <= TABLE(s); d++) {
-			if (XFLAGS(s, d)) XFLAGS(s, d) |= X_LONGKEY;
-		}
-	}
 }
 
 private ser_t
@@ -11359,6 +11353,30 @@ adjust_serials(sccs *s, ser_t d, int amount)
 	if (PTAG(s, d)) PTAG_SET(s, d, (PTAG(s, d) + amount));
 	if (MTAG(s, d)) MTAG_SET(s, d, (MTAG(s, d) + amount));
 	if (MERGE(s, d)) MERGE_SET(s, d, (MERGE(s, d) + amount));
+}
+
+private char	*
+short_random(char *str, int len)
+{
+	int	hash = register_hash(&md5_desc);
+	unsigned long md5len;
+	char	*salt = "shortkey";
+	int	n;
+	char	md5[32];
+	char	b64[64];
+
+	md5len = sizeof(md5);
+	if (hmac_memory(
+	    hash, salt, strlen(salt), str, len, md5, &md5len)) {
+		return (0);
+	}
+	assert(sizeof(b64) > md5len*2+1);
+	if (md5len > 8) md5len = 8;	/* for random, just 16 char max */
+	for (n = 0; n < md5len; n++) {
+		sprintf(b64 + 2*n,
+		    "%1x%x", (md5[n] >> 4) & 0xf, md5[n] & 0xf);
+	}
+	return (strdup(b64));
 }
 
 /*
@@ -12937,11 +12955,7 @@ sccs_hashcount(sccs *s)
 	 */
 	for (n = 0, kv = mdbm_first(s->mdbm);
 	    kv.key.dsize; kv = mdbm_next(s->mdbm)) {
-		unless (CSET(s)) {
-			n++;
-			continue;
-		}
-		if (sccs_iskeylong(kv.val.dptr)) n++;
+		n++;
 	}
 	return (n);
 }
@@ -15291,7 +15305,10 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		char	*t;
 
 		sccs_sdelta(s, d, buf);
-		if (t = sccs_iskeylong(buf)) *t = 0;
+		t = strchr(buf, '|');
+		t = strchr(t + 1, '|');
+		t = strchr(t + 1, '|');
+		*t = 0;
 		fs(buf);
 		return (strVal);
 	}
@@ -16837,7 +16854,6 @@ ser_t
 sccs_findKey(sccs *s, char *key)
 {
 	ser_t	d;
-	char	*t;
 	u32	dd;
 	char	dkey[MAXKEY];
 
@@ -16852,10 +16868,6 @@ sccs_findKey(sccs *s, char *key)
 		if (CSET(s)) {
 			if (!keycmp_nopath(key, dkey)) return (d);
 		} else {
-			if (streq(key, dkey)) return (d);
-		}
-		if (!LONGKEY(s) && (t = sccs_iskeylong(dkey))) {
-			*t = 0;
 			if (streq(key, dkey)) return (d);
 		}
 	}
@@ -17356,27 +17368,6 @@ out:		if (f) fclose(f);
 }
 
 /*
- * Scan key and return:
- * Location of '|' which starts long key part
- * or the NULL pointer (0) if it was already short.
- * Does not modify the string (though the caller can do a *t=0 upeon return
- * to make a short key).
- */
-char *
-sccs_iskeylong(char *t)
-{
-	assert(t);
-	for ( ; *t && *t != '|'; t++);
-	assert(t);
-	for (t++; *t && *t != '|'; t++);
-	assert(t);
-	for (t++; *t && *t != '|'; t++);
-	unless (*t) return (0);
-	assert(*t == '|');
-	return (t);
-}
-
-/*
  * Translate a key into an sccs struct.
  * If it is in the idDB, use that, otherwise use the name in the key.
  * Return NULL if we can't find (i.e., if there is no s.file).
@@ -17399,10 +17390,6 @@ sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB)
 	 */
 	unless (isKey(key)) return (0);
 
-	/*
-	 * Id cache contains both long and short keys
-	 * so we don't need to look things up as long then short.
-	 */
 	k.dptr = key;
 	k.dsize = strlen(key) + 1;
 	v  = mdbm_fetch(idDB, k);

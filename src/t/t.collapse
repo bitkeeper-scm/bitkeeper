@@ -156,7 +156,7 @@ CREATE_DELETE=`bk gfiles BitKeeper/deleted/*/create_delete*`
 DELETED=`bk gfiles BitKeeper/deleted/*/deleted~*`
 cat <<EOF > WANT
 ChangeSet 1.4 u3
-BITKEEPER,CSETMARKED,HASH,LONGKEY,EOLN_UNIX
+BITKEEPER,CSETMARKED,HASH,EOLN_UNIX
 C collapse
 ---
 EOF

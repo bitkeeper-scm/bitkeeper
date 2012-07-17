@@ -8,6 +8,9 @@ test -f /home/.NFS || exit 0
 # And if no test data then skip it
 test -d $TESTDATA/bitcluster || exit 0
 
+_BK_SHORT_OK=1
+export _BK_SHORT_OK
+
 echo $N Make sure that /build is local ..............................$NL
 bk _isnetwork $Q /build && {
 	echo failed

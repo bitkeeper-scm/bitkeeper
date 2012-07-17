@@ -191,7 +191,7 @@ OBJ =	bkver.o cmd.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
 	resolve_renames.o resolve_tags.o restore.o review.o \
-	rm.o rmdel.o rmshortkeys.o \
+	rm.o rmdel.o \
 	root.o rset.o sane.o scat.o sccs.o sccs2bk.o \
 	sccslog.o sccs_mv.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \

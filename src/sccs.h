@@ -165,8 +165,6 @@ int	checking_rmdir(char *dir);
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
 #define S_IMPORT	0x00080000	/* import mode */
 
-#define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
-
 /*
  * Date handling.
  */
@@ -264,7 +262,6 @@ int	checking_rmdir(char *dir);
 #define	HASH(s)		((s)->xflags & X_HASH)
 #define	SCCS(s)		((s)->xflags & X_SCCS)
 #define	EOLN_NATIVE(s)	((s)->xflags & X_EOLN_NATIVE)
-#define	LONGKEY(s)	((s)->xflags & X_LONGKEY)
 #define	KV(s)		((s)->xflags & X_KV)
 #define	NOMERGE(s)	((s)->xflags & X_NOMERGE)
 #define	MONOTONIC(s)	((s)->xflags & X_MONOTONIC)
@@ -1084,7 +1081,6 @@ char	*delta_sdate(sccs *s, ser_t d);
 ser_t	sccs_kid(sccs *s, ser_t d);
 void	sccs_mkKidList(sccs *s);
 void	sccs_renumber(sccs *s, u32 flags);
-char 	*sccs_iskeylong(char *key);
 int	linelen(char *s);
 char	*licenses_accepted(void);
 int	eula_known(char *lic);
@@ -1400,7 +1396,6 @@ void	cset_savetip(sccs *s);
 void	cset_updatetip(void);
 void	clearCsets(sccs *s);
 void	sccs_rdweaveInit(sccs *s);
-char	*short_random(char *str, int len);
 char	*sccs_nextdata(sccs *s);
 int	sccs_rdweaveDone(sccs *s);
 int	hasLocalWork(char *gfile);

@@ -2,7 +2,6 @@
 #include "sccs.h"
 
 private	int	dups;		/* duplicate key count */
-private	int	mixed;		/* running in mixed long/short mode */
 private	void	rebuild(void);
 private	int	caches(char *filename, struct stat *sb, void *data);
 
@@ -41,7 +40,6 @@ rebuild(void)
 			sccs_free(cset);
 			exit(1);
 		}
-		mixed = !LONGKEY(cset);
 		sccs_free(cset);
 	}
 	idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
@@ -115,7 +113,6 @@ caches(char *file, struct stat *sb, void *data)
 	MDBM	*idDB = (MDBM *)data;
 	sccs	*sc;
 	ser_t	ino;
-	char	*t;
 	char	buf[MAXPATH*2];
 
 	file += 2;
@@ -136,11 +133,6 @@ caches(char *file, struct stat *sb, void *data)
 		assert(HAS_PATHNAME(sc, ino));
 		sccs_sdelta(sc, ino, buf);
 		save(sc, idDB, buf);
-		if (mixed && (t = sccs_iskeylong(buf))) {
-			*t = 0;
-			save(sc, idDB, buf);
-			*t = '|';
-		}
 		unless (sc->grafted) break;
 		while (ino = sccs_prev(sc, ino)) {
 			if (HAS_RANDOM(sc, ino)) break;

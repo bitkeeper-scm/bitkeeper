@@ -15,6 +15,9 @@ elif [ ! -d $TESTDATA/bitcluster ]
 then	exit 0
 fi
 
+_BK_SHORT_OK=1
+export _BK_SHORT_OK
+
 # accept the license
 commercial repo
 cd ..

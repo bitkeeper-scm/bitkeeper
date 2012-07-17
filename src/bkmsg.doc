@@ -1467,3 +1467,8 @@ $
 #test-args
 lead:#BKARG##BKARG#1##BKARG#2# #BKARG#3#BKARG#2#BKARG#:trail
 $
+#no_shortkey
+This version of Bitkeeper doesn't support repositories with short keys.
+
+Please send mail to support@bitmover.com to request assistance.
+$

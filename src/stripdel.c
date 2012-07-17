@@ -326,16 +326,8 @@ checkStripTags(sccs *s, s_opts opts)
 		PTAG_SET(s, d, 0);
 	}
 	if (opts.stripTags) {
-		symbol	*sym;
-
-		EACHP_REVERSE(s->symlist, sym) {
-			if (streq(KEY_FORMAT2, SYMNAME(s, sym))) {
-				FLAGS(s, sym->meta_ser) |= D_SYMBOLS;
-			} else {
-				removeArrayN(s->symlist, (sym - s->symlist));
-			}
-		}
-		unless (nLines(s->symlist)) FREE(s->symlist);
+		/* XXX: leaves items on the heap */
+		FREE(s->symlist);
 	}
 	return;
 }

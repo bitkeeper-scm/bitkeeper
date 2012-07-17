@@ -11,7 +11,7 @@ echo OK
 
 echo $N r2c on ChangeSet file does not work which is.................$NL
 bk r2c -r+ ChangeSet 2>ERR && fail it worked
-bk grep -q 'r2c: cannot find either of' ERR || fail -f ERR
+bk grep -q 'r2c: cannot find' ERR || fail -f ERR
 echo OK
 
 echo $N Pending delta................................................$NL
