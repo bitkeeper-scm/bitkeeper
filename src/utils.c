@@ -1714,6 +1714,10 @@ shellSplit_test_main(int ac, char **av)
  * and you may use up to N of these in one call to printf() or whatever
  * before you start stomping on yourself.
  */
+#if (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 6))
+#pragma	GCC diagnostic push
+#endif
+#pragma	GCC diagnostic ignored "-Wpointer-to-int-cast"
 char *
 p2str(void *p)
 {
@@ -1742,6 +1746,9 @@ p2str(void *p)
 	return (b);
 #undef N
 }
+#if (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 6))
+#pragma	GCC diagnostic pop
+#endif
 
 char	*
 psize(u64 size)

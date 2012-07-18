@@ -55,8 +55,10 @@ save_gmon(void)
 	rename("gmon.out", buf);
 }
 
+#if (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 6))
 #pragma	GCC diagnostic push
 #pragma	GCC diagnostic ignored "-Wclobbered"
+#endif
 int
 main(int volatile ac, char **av, char **env)
 {
@@ -645,7 +647,10 @@ out:
 	if (ret < 0) ret = 1;	/* win32 MUST have a positive return */
 	return (ret);
 }
+#if (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 6))
 #pragma	GCC diagnostic pop
+#endif
+
 
 /*
  * Checks to see if it's allowed to run a given command

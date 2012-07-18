@@ -348,8 +348,8 @@ err:		errno = EINVAL;
 		if (offset == 0) {
 			break;
 		} else if (offset < 0) {
-			fprintf(stderr, "fgzip: fseek to invalid offset %ld\n",
-				fz->offset);
+			fprintf(stderr, "fgzip: fseek to invalid offset %llu\n",
+			  (u64)fz->offset);
 			goto err;
 		}
 		offset -= sz->usz;

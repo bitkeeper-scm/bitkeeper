@@ -51,8 +51,8 @@ case "X`uname -s`" in
 		ms_env;
 		;;
 	XDarwin)
-		CC=cc
-		LD=cc
+		CC=gcc
+		LD=gcc
 		export CC LD
 		CCXTRA="-DHAVE_GMTOFF -DNOPROC -no-cpp-precomp"
 		XLIBS="-lresolv"
