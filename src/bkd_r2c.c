@@ -113,12 +113,6 @@ r2c(char *file, char *rev)
 	}
 	sccs_sdelta(s, e, buf);
 	key = strdup(buf);
-	if (t = sccs_iskeylong(buf)) {
-		*t = 0;
-		shortkey = strdup(buf);
-	} else {
-		shortkey = 0;
-	}
 	strcpy(buf, CHANGESET);
 	unless (cset = sccs_init(buf, INIT_NOCKSUM)) {
 		fprintf(stderr, "%s: cannot init ChangeSet\n", prog);
@@ -150,29 +144,7 @@ r2c(char *file, char *rev)
 			goto out;
 		}
 	}
-	unless (shortkey) {
-notfound:	if (shortkey) {
-			fprintf(stderr,
-			    "%s: cannot find either of\n\t%s\n\t%s\n",
-			    prog, key, shortkey);
-		} else {
-			fprintf(stderr,
-			    "%s: cannot find\n\t%s\n", prog, key);
-		}
-		goto out;
-	}
-	rewind(f);
-	len = strlen(shortkey);
-	while (fnext(buf, f)) {
-		/* 1.5 key key */
-		t = separator(buf); assert(t); t++;
-		if (strneq(t, shortkey, len) && t[len] == '\n') {
-			t = strchr(buf, '\t'); assert(t); *t = 0;
-			ret = aprintf("%s", buf);
-			goto out;
-		}
-	}
-	goto notfound;
+	fprintf(stderr, "%s: cannot find\n\t%s\n", prog, key);
 out:	free(name);
 	if (key) free(key);
 	if (shortkey) free(shortkey);

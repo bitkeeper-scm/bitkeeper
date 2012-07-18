@@ -7,7 +7,6 @@
 
 typedef	struct cset {
 	/* bits */
-	int	mixed;		/* if set, then both long and short keys */
 	int	makepatch;	/* if set, act like makepatch */
 	int	listeach;	/* if set, list revs 1/line */
 	int	mark;		/* act like csetmark used to act */
@@ -258,7 +257,6 @@ cset_main(int ac, char **av)
 	cset = sccs_init(csetFile, 0);
 	if (!cset) return (101);
 	if (copts.csetkey) cset->state |= S_READ_ONLY;
-	copts.mixed = !LONGKEY(cset);
 
 	if (list && !rargs.rstart && !copts.dash && !copts.remark) {
 		fprintf(stderr, "cset: must specify a revision.\n");
@@ -434,27 +432,6 @@ markThisCset(cset_t *cs, sccs *s, ser_t d)
 	range_cset(s, d);
 }
 
-/*
- * Return true if the two keys describe the same file.
- * If we are in X_LONGKEY it's easy, they match or they don't.
- * Otherwise we'll try short versions.
- */
-private int
-sameFile(cset_t *cs, char *key1, char *key2)
-{
-	char	*a, *b;
-	int	ret;
-
-	if (streq(key1, key2)) return (1);
-	unless (cs->mixed) return (0);
-	if (a = sccs_iskeylong(key1)) *a = 0;
-	if (b = sccs_iskeylong(key2)) *b = 0;
-	ret = streq(key1, key2);
-	if (a) *a = '|';
-	if (b) *b = '|';
-	return (ret);
-}
-
 private int
 doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 {
@@ -488,9 +465,8 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 	 * If we have a match, just mark the delta and return,
 	 * we'll finish later.
 	 *
-	 * With long/short keys mixed, we have to be a little careful here.
 	 */
-	if (lastkey && sameFile(cs, lastkey, key)) goto markkey;
+	if (lastkey && streq(lastkey, key)) goto markkey;
 
 	/*
 	 * This would be later - do the last file and clean up.
@@ -755,7 +731,7 @@ again:	/* doDiffs can make it two pass */
 		rk = strchr(cs->cweave[i], '\t');
 		++rk;
 		t = separator(rk); *t++ = 0;
-		if (sameFile(cs, csetid, rk)) goto next; /* skip ChangeSet */
+		if (streq(csetid, rk)) goto next; /* skip ChangeSet */
 		if (doKey(cs, rk, t, goneDB)) {
 			fprintf(stderr,
 			    "File named by key\n\t%s\n\tis missing and key is "

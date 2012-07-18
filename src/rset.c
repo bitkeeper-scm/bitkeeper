@@ -15,7 +15,6 @@ typedef struct {
 	u32	nested:1;	/* -P recurse into nested components */
 	u32	standalone:1;	/* -S standalone */
 	u32	freetip:1;	/* The tip MDBM is unique */
-	u32	mixed:1; 	/* if set, handle long and short keys */
 	char	**nav;
 	char	**aliases;	/* -s limit nested output to aliases */
 	nested	*n;		/* only if -s (and therefore, -P) */
@@ -31,7 +30,6 @@ private char	*fix_rev(sccs *s, char *rev);
 private void	rel_diffs(Opts *opts, MDBM *db1, MDBM *db2,
     MDBM	*idDB, char *rev1, char *revM, char *rev2);
 private void	rel_list(Opts *opts, MDBM *db, MDBM *idDB, char *rev);
-private char	*find_key(Opts *opts, MDBM *db, char *rootkey, MDBM **s2l);
 
 int
 rset_main(int ac, char **av)
@@ -204,8 +202,6 @@ rset_main(int ac, char **av)
 		}
 		assert(opts->tip);
 	}
-
-	opts->mixed = !LONGKEY(s);
 	sccs_free(s);
 	s = 0;
 
@@ -240,73 +236,6 @@ is_same(char *v1, char *v2)
 	if (!v2) return (0);
 	if (!v1) return (0);
 	return (streq(v1, v2));
-}
-
-
-/*
- * update the short key to long key map
- */
-private void
-upd_s2l(MDBM *s2l,  char *key)
-{
-	char	*q, tmp[MAXLINE];
-
-	q = sccs_iskeylong(key);
-	if (q) {
-		strcpy(tmp, key);
-		assert(*q == '|');
-		*q = 0; 	/* convert to short root key */
-		if (mdbm_store_str(s2l, key, tmp, MDBM_INSERT)) {
-			fprintf(stderr, "key conflict\n");
-			exit(1);
-		}
-		*q = '|';
-	}
-}
-
-private MDBM *
-mk_s2l(MDBM *db)
-{
-	MDBM	*short2long = mdbm_mem();
-	datum	k;
-
-	for (k = mdbm_firstkey(db); k.dsize != 0; k = mdbm_nextkey(db)) {
-		upd_s2l(short2long,  k.dptr);
-	}
-	return (short2long);
-}
-
-/*
- * Find entry assocaited with "rootkey"
- * This function may modify the rootkey buffer,
- * to the eqvalient long/short key version if
- * it can get a match
- */
-private char *
-find_key(Opts *opts, MDBM *db, char *rootkey, MDBM **s2l)
-{
-	char	*p, *q;
-
-	p = mdbm_fetch_str(db, rootkey); 
-	/*
-	 * Not found ? If we are in mixed key mode,
-	 * try the equivalent long/short key
-	 */
-	if (opts->mixed && !p) {
-		q = sccs_iskeylong(rootkey);
-		if (q) { /* we just tried the long key, so try the short key */
-			*q = 0;
-			p = mdbm_fetch_str(db, rootkey);
-		} else { /* we just tried the short key, so try the long key */
-			unless (*s2l) *s2l = mk_s2l(db);
-			q = mdbm_fetch_str(*s2l, rootkey);
-			if (q) {
-				strcpy(rootkey, q);
-				p = mdbm_fetch_str(db, rootkey);
-			}
-		}
-	}
-	return (p); /* return the start key */
 }
 
 /*
@@ -488,7 +417,6 @@ private void
 rel_diffs(Opts *opts, MDBM *db1, MDBM *db2,
 	MDBM *idDB, char *rev1, char *revM, char *rev2)
 {
-	MDBM	*short2long = 0;
 	char	*root_key, *start_key, *end_key, parents[100];
 	kvpair	kv;
 
@@ -515,21 +443,16 @@ rel_diffs(Opts *opts, MDBM *db1, MDBM *db2,
 		}
 	}
 	EACH_KV(db1) {
-		char root_key2[MAXKEY];
-
 		root_key = kv.key.dptr;
 		start_key = kv.val.dptr;
-		strcpy(root_key2, root_key); /* because find_key stomps */
-		end_key = find_key(opts, db2, root_key2, &short2long);
+		end_key = mdbm_fetch_str(db2, root_key);
 		process(opts, root_key, start_key, end_key, idDB);
 		/*
 		 * Delete the entry from db2, so we don't
 		 * re-process it in the next loop
-		 * Note: We want to use root_key2 (not root_key)
-		 * beacuse find_key may have updated it.
 		 */
-		if (end_key && mdbm_delete_str(db2, root_key2)) {
-			fprintf(stderr, "Cannot delete <%s>\n", root_key2);
+		if (end_key && mdbm_delete_str(db2, root_key)) {
+			fprintf(stderr, "Cannot delete <%s>\n", root_key);
 			exit(1);
 		}
 	}
@@ -542,13 +465,11 @@ rel_diffs(Opts *opts, MDBM *db1, MDBM *db2,
 	mdbm_close(db1);
 	mdbm_close(db2);
 	mdbm_close(idDB);
-	if (short2long) mdbm_close(short2long);
 }
 
 private void
 rel_list(Opts *opts, MDBM *db, MDBM *idDB, char *rev)
 {
-	MDBM	*short2long = 0;
 	char	*root_key, *end_key;
 	kvpair	kv;
 
@@ -566,7 +487,6 @@ rel_list(Opts *opts, MDBM *db, MDBM *idDB, char *rev)
 	}
 	mdbm_close(db);
 	mdbm_close(idDB);
-	if (short2long) mdbm_close(short2long);
 }
 
 /*
@@ -653,13 +573,9 @@ err:			fprintf(stderr, "%s: too many -r REVs\n", prog);
 private int
 csetIds_merge(Opts *opts, sccs *s, char *rev, char *merge)
 {
-	kvpair	kv;
-	char	*t, **list = 0;
-	int	i;
 	int	flags = SILENT|GET_HASHONLY;
 
 	unless (opts->show_gone) flags |= GET_SKIPGONE;
-
 	assert(HASH(s));
 	if (sccs_get(s, rev, merge, 0, 0, flags, 0)) {
 		sccs_whynot("get", s);
@@ -669,23 +585,5 @@ csetIds_merge(Opts *opts, sccs *s, char *rev, char *merge)
 		fprintf(stderr, "get: no mdbm found\n");
 		return (-1);
 	}
-
-	/* If we are the new key format, then we shouldn't have mixed keys */
-	if (LONGKEY(s)) return (0);
-
-	/*
-	 * If there are both long and short keys, then use the long form
-	 * and delete the short form (the long form is later).
-	 */
-	for (kv = mdbm_first(s->mdbm); kv.key.dsize; kv = mdbm_next(s->mdbm)) {
-		unless (t = sccs_iskeylong(kv.key.dptr)) continue;
-		*t = 0;
-		if (mdbm_fetch_str(s->mdbm, kv.key.dptr)) {
-			list = addLine(list, strdup(kv.key.dptr));
-		}
-		*t = '|';
-	}
-	EACH(list) mdbm_delete_str(s->mdbm, list[i]);
-	freeLines(list, free);
 	return (0);
 }

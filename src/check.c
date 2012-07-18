@@ -66,7 +66,6 @@ private	int	goneKey;	/* 1: list files, 2: list deltas, 3: both */
 private	int	badWritable;	/* if set, list bad writable file only */
 private	int	names;		/* if set, we need to fix names */
 private	int	gotDupKey;	/* if set, we found dup keys */
-private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
 private int	check_monotonic;
 private	sccs	*cset;		/* the initialized cset file */
@@ -200,7 +199,6 @@ check_main(int ac, char **av)
 		fprintf(stderr, "Can't init ChangeSet\n");
 		return (1);
 	}
-	mixed = (LONGKEY(cset) == 0);
 	if (all || (nfiles == -1)) nfiles = repo_nfiles(0, 0);
 	if (verbose > 1) {
 		fprintf(stderr, "Preparing to check %u files...\n", nfiles);
@@ -345,8 +343,7 @@ check_main(int ac, char **av)
 		}
 
 		/*
-		 * Store the full length key and only if we are in mixed mode,
-		 * also store the short key.  We want all of them to be unique.
+		 * Store the root keys. We want all of them to be unique.
 		 */
 		sccs_sdelta(s, sccs_ino(s), buf);
 		unless (hash_insertStr(keys, buf, s->gfile)) {
@@ -369,32 +366,6 @@ check_main(int ac, char **av)
 			errors |= 1;
 			ferr++;
 		}
-		if (mixed) {
-			t = sccs_iskeylong(buf);
-			assert(t);
-			*t = 0;
-			unless (hash_insertStr(keys, buf, s->gfile)) {
-				char *gfile, *sfile;
-
-				gfile = hash_fetchStr(keys, buf);
-				sfile = name2sccs(gfile);
-				if (sameFiles(sfile, s->sfile)) {
-					fprintf(stderr,
-					    "%s and %s are identical. "
-					    "Is one of these files copied?\n",
-					    s->sfile, sfile);
-				} else {
-					fprintf(stderr,
-					    "Same key %s used by\n\t%s\n\t%s\n",
-					    buf, s->gfile, gfile);
-				}
-				free(sfile);
-				gotDupKey = 1;
-				errors |= 1;
-				ferr++;
-			}
-		}
-
 		if (noDups) graph_checkdups(s);
 		if (e = check(s, idDB)) ferr++, errors |= 0x40;
 		if (!resync && chk_dfile(s)) ferr++, errors |= 0x10;
@@ -1527,8 +1498,7 @@ buildKeys(MDBM *idDB)
 		}
 	}
 	sortLines(pathnames, 0);
-	/* this test doesn't work in a shortkey repo, ie bk-bugfix */
-	unless (mixed) EACH(pathnames) {
+	EACH(pathnames) {
 		if (i == 1) continue;
 		if (paths_overlap(pathnames[i-1], pathnames[i])) {
 			len1 = strlen(pathnames[i-1]);
@@ -1707,8 +1677,8 @@ check(sccs *s, MDBM *idDB)
 	ser_t	d, ino, tip = 0;
 	int	errors = 0, goodkeys;
 	int	i, writefile = 0;
-	char	*t, *term, *x;
-	hash	*deltas, *shortdeltas = 0;
+	char	*t, *x;
+	hash	*deltas;
 	char	**lines = 0;
 	rkdata	*rk;
 	char	buf[MAXKEY];
@@ -1718,12 +1688,6 @@ check(sccs *s, MDBM *idDB)
 		deltas = rk->deltas;
 	} else {
 		deltas = 0;	/* new pending file? */
-	}
-	if (mixed && (term = sccs_iskeylong(buf))) {
-		*term = 0;
-		if (hash_fetchStr(r2deltas, buf)) {
-			shortdeltas = *(hash **)r2deltas->vptr;
-		}
 	}
 	/*
 	 * Make sure that all marked deltas are found in the ChangeSet
@@ -1742,14 +1706,7 @@ check(sccs *s, MDBM *idDB)
 		}
 
 		sccs_sdelta(s, d, buf);
-		t = 0;
 		unless (deltas && (t = hash_fetchStr(deltas, buf))) {
-			if (shortdeltas && (term = sccs_iskeylong(buf))) {
-				*term = 0;
-				t = hash_fetchStr(shortdeltas, buf);
-			}
-		}
-		unless (t) {
 			unless (FLAGS(s, d) & D_CSET) continue;
 			if (MONOTONIC(s) && DANGLING(s, d)) continue;
 			if (undoMarks && CSET(s)) {
@@ -1889,12 +1846,6 @@ check(sccs *s, MDBM *idDB)
 			    !sccs_patheq(PATHNAME(s, ino), s->gfile)) {
 				mdbm_store_str(idDB, buf, s->gfile,
 				    MDBM_REPLACE);
-				if (mixed && (t = sccs_iskeylong(buf))) {
-					*t = 0;
-					mdbm_store_str(idDB, buf, s->gfile,
-					    MDBM_REPLACE);
-					*t = '|';
-				}
 			}
 			unless (s->grafted) break;
 			while (ino = sccs_prev(s, ino)) {
@@ -1923,33 +1874,9 @@ check(sccs *s, MDBM *idDB)
 	 * Go through all the deltas that were found in the ChangeSet
 	 * hash and belong to this file.
 	 * Make sure we can find the deltas in this file.
-	 *
-	 * If we are in mixed key mode, try all three key styles:
-	 * email|path|date
-	 * email|path|date|chksum
-	 * email|path|date|chksum|randombits
 	 */
 	errors += checkKeys(s, buf);
 
-	unless (mixed) return (errors);
-
-	for (i = 0, t = buf; t = strchr(t+1, '|'); i++);
-	if (i == 4) {
-		t = strrchr(buf, '|');
-		*t = 0;
-		errors += checkKeys(s, buf);
-		*t = '|';
-		while (*--t != '|');
-		*t = 0;
-		errors += checkKeys(s, buf);
-		*t = '|';
-	}
-	if (i == 3) {
-		t = strrchr(buf, '|');
-		*t = 0;
-		errors += checkKeys(s, buf);
-		*t = '|';
-	}
 	return (errors);
 }
 
@@ -2003,13 +1930,6 @@ checkKeys(sccs *s, char *root)
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		unless (FLAGS(s, d) & D_CSET) continue;
 		sccs_sdelta(s, d, key);
-		unless (hash_insert(findkey, key, strlen(key)+1, &d, sizeof(d))) {
-			fprintf(stderr, "check: insert error for %s\n", key);
-			hash_free(findkey);
-			return (1);
-		}
-		unless (mixed) continue;
-		*strrchr(key, '|') = 0;
 		unless (hash_insert(findkey, key, strlen(key)+1, &d, sizeof(d))) {
 			fprintf(stderr, "check: insert error for %s\n", key);
 			hash_free(findkey);

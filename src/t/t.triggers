@@ -2079,7 +2079,9 @@ rm -f ../foo
 	exit 1
 }
 cd "$HERE"
-sed -n 's/.* Trigger "\([^"]*\).*/\1/p' TRIGOUT | bk _sort -u > GOT
+grep Trigger < TRIGOUT |
+    sed -n 's/.* Trigger "\([^"]*\).*/\1/p' |
+    bk _sort -u > GOT
 cat <<EOF > WANT
 post-commit
 post-incoming
@@ -2125,7 +2127,9 @@ bk clone -v http://localhost:$P/multitrig multitrig.bk || fail
 	cat "$HERE/TRIGOUT".bkd
 	exit 1
 }
-sed -n 's/.* Trigger "\([^"]*\).*/\1/p' TRIGOUT.bkd | bk _sort -u > GOT
+grep Trigger < TRIGOUT.bkd |
+    sed -n 's/.* Trigger "\([^"]*\).*/\1/p' |
+    bk _sort -u > GOT
 cat <<EOF > WANT.bkd
 post-incoming
 post-outgoing
@@ -2173,7 +2177,9 @@ rm -f ../foo
 	cat "$HERE/TRIGOUT.no-local"
 	exit 1
 }
-sed -n 's/.* Trigger "\([^"]*\).*/\1/p' TRIGOUT.no-local | bk _sort -u > GOT
+grep Trigger < TRIGOUT.no-local |
+    sed -n 's/.* Trigger "\([^"]*\).*/\1/p' |
+    bk _sort -u > GOT
 cmpfiles WANT GOT
 echo OK
 

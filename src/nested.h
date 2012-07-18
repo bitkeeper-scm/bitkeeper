@@ -203,8 +203,6 @@ void	urlinfo_rmURL(nested *n, comp *c, char *url);
 int	urlinfo_probeURL(nested *n, char *url, FILE *out);
 
 void	urlinfo_setFromEnv(nested *n, char *url);
-void	urlinfo_set(nested *n, char *url, int gate, char *repoID);
-urlinfo	*urlinfo_get(nested *n, char *url);
 int	urlinfo_write(nested *n);
 void	urlinfo_free(nested *n);
 void	urlinfo_flushCache(nested *n);

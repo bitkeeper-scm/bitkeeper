@@ -130,6 +130,7 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 	for (i = 0; rf[i].spec && !streq(rf[i].spec, "!"); i++);
 	if (rf[i].spec) bang = i;
 	while (1) {
+		uniq_close();	/* don't hold uniqdb lock */
 		fprintf(stderr, "(%s) %s>> ", name, rs->prompt);
 		if (getline(0, buf, sizeof(buf)) < 0) strcpy(buf, "q");
 		unless (buf[0]) strcpy(buf, "?");

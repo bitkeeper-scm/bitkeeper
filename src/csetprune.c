@@ -892,11 +892,6 @@ filterRootkey(Opts *opts,
 	int	gotTip = 0;
 	char	buf[MAXKEY * 2 + 2];
 
-	unless (sccs_iskeylong(rk)) {
-		fprintf(stderr, "ChangeSet file has short rootkeys\n");
-		goto err;
-	}
-
 	if (hash_fetchStr(opts->prunekeys, rk)) {
 zero:		EACH(list) (*(char **)list[i])[0] = 0;
 		return (ret);
