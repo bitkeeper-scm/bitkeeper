@@ -21,8 +21,6 @@ private	int	noremap_default = 0;
 #define	chdir	nt_chdir
 #endif
 
-#define	PROD_SELF(p)		(proj_product(p) == (p))
-
 struct project {
 	char	*root;		/* fullpath root of the project */
 	char	*rootkey;	/* Root key of ChangeSet file */
@@ -341,19 +339,17 @@ proj_cd2root(void)
 }
 
 /*
- * chdir to the root of the product, if there is one, or return an error
+ * chdir to the root of the product
+ * returns an error in non-nested repositories
  */
 int
 proj_cd2product(void)
 {
-	project	*p, *prod;
+	project	*p;
 
 	unless (p = curr_proj()) return (-1);
 	if (p->rparent) p = p->rparent;
-	prod = proj_product(p);
-	if ((p == prod) || proj_isComponent(p)) {
-		return (proj_chdir(proj_root(prod)));
-	}
+	if (p = proj_product(p)) return (proj_chdir(proj_root(p)));
 	return (-1);
 }
 
@@ -629,13 +625,11 @@ proj_md5rootkey(project *p)
 }
 
 /*
- * Return the product's project* if there is one, returns p if p is a
- * product.
+ * Return the product's project* if this repo is nested
+ * and returns 0 otherwise
+ *
  * The returned product is part of 'p' so it shouldn't be freed,
  * and it only valid while 'p' is still active.
- *
- * Normal usage for this is if (proj_product(p)) tells you that there is
- * a product above you somewhere.
  */
 project *
 proj_product(project *p)
@@ -650,9 +644,8 @@ proj_product(project *p)
 		concat_path(buf, p->root, "BitKeeper/log/PRODUCT");
 		if (exists(buf)) {
 			p->product = p;	/* we're our own product */
-		} else {
+		} else if (proj_comppath(p)) {
 			/* return proj_product of the repo above this one */
-			p->product = 0;
 			strcpy(buf, p->root);
 			if (proj = proj_init(dirname(buf))) {
 				assert(proj != p);
@@ -665,6 +658,32 @@ proj_product(project *p)
 	}
 	return (p->product);
 }
+
+/*
+ * Return the project* for any product at or above the current repository.
+ * Unlike proj_product this one still works when the current repo is
+ * standalone.
+ */
+project *
+proj_findProduct(project *p)
+{
+	project	*proj, *prod;
+	char	buf[MAXPATH];
+
+	unless (p || (p = curr_proj())) return (0);
+	if (prod = proj_product(p)) return (prod);
+
+	/* return proj_findProduct of the repo above this one */
+	strcpy(buf, p->root);
+	if (proj = proj_init(dirname(buf))) {
+		assert(proj != p);
+		prod = proj_findProduct(proj);
+		proj_free(proj);
+		return (prod);
+	}
+	return (0);
+}
+
 
 /*
  * Return the path to the component, if any.
@@ -1170,11 +1189,12 @@ proj_sync(project *p)
 int
 proj_isProduct(project *p)
 {
+	project	*prod;
+
 	unless (p || (p = curr_proj())) return (0);
 	if (p->rparent) p = p->rparent;
-	return (proj_product(p) && PROD_SELF(p));
+	return ((prod = proj_product(p)) && (prod == p));
 }
-
 
 /*
  * Returns true if p is a component repository.
@@ -1184,10 +1204,11 @@ proj_isProduct(project *p)
 int
 proj_isComponent(project *p)
 {
+	project	*prod;
+
 	unless (p || (p = curr_proj())) return (0);
 	if (p->rparent) p = p->rparent;
-	unless (proj_product(p) && p->root) return (0);
-	return (proj_comppath(p) != 0);
+	return ((prod = proj_product(p)) && (prod != p));
 }
 
 int
@@ -1290,8 +1311,11 @@ proj_hasOldSCCS(project *p)
 		if (newsccs) {
 			p->noremap = 0;
 		} else {
-			/* neither exist, find default */
-			if ((p2 = proj_product(p)) && (p != p2)) {
+			/* Neither exist, find default
+			 * Called before clone is a component so use
+			 * proj_findProduct()
+			 */
+			if ((p2 = proj_findProduct(p)) && (p != p2)) {
 				p->noremap = proj_hasOldSCCS(p2);
 			} else {
 				p->noremap = noremap_default;

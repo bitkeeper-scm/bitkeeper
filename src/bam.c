@@ -501,9 +501,7 @@ bp_dataroot(project *proj, char *buf)
 
 	unless (buf) buf = tmp;
 	unless (root = proj_isResync(proj)) root = proj;
-	unless (proj_isComponent(root) && (prod = proj_product(root))) {
-		prod = root;
-	}
+	unless (prod = proj_product(root)) prod = root;
 	concat_path(buf, proj_root(prod), BAM_ROOT "/");
 	p = buf + strlen(buf);
 	if (getenv("_BK_IN_BKD") && (t = getenv("BK_ROOTKEY"))) {
