@@ -170,3 +170,16 @@ bk bam check $Q || exit 1
 test -f BitKeeper/BAM/index.db || exit 1
 test `find BitKeeper/BAM -name '*@*' -print | wc -l` = 0 || exit 1
 echo OK
+
+echo $N Make a standalone under a nested with BAM server ............$NL
+cd "$HERE"
+# The BAM_SERVER file was looked for (and in this case, found) in the product
+nested nesting
+echo binary > bam
+bk new $Q -b bam
+bk bam server $Q .
+commercial standing
+bk bam server > GOT
+echo "This repository has no BAM server." > WANT
+cmpfiles WANT GOT
+echo OK

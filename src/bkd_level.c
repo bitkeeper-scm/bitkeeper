@@ -36,17 +36,11 @@ int
 setlevel(int level)
 {
 	char	*root, *lfile;
-	project	*prod;
 	FILE	*f;
 
-
-	unless (root = proj_root(0)) {
+	unless (root = proj_root(proj_product(0))) {
 		fprintf(stderr, "setlevel: Error: cannot find package root\n");
 		return (1);
-	}
-
-	if (proj_isComponent(0) && (prod = proj_product(0))) {
-		root = proj_root(prod);
 	}
 
 	lfile = aprintf("%s/%s", root, LEVEL);
@@ -66,17 +60,11 @@ int
 getlevel(void)
 {
 	char	*root, *lfile;
-	project	*prod;
 
-	unless (root = proj_root(0)) {
+	unless (root = proj_root(proj_product(0))) {
 		fprintf(stderr, "getlevel: Error: cannot find package root\n");
 		return (1); /* should we force a -1 here ? */
 	}
-
-	if (proj_isComponent(0) && (prod = proj_product(0))) {
-		root = proj_root(prod);
-	}
-
 	lfile = aprintf("%s/%s", root, LEVEL);
 	if (exists(lfile)) {
 		char	buf[200];

@@ -214,7 +214,7 @@ clone_main(int ac, char **av)
 			exit(RET_ERROR);
 		}
 	}
-	if (opts->attach && !opts->to && !proj_product(0)) {
+	if (opts->attach && !opts->to && !proj_findProduct(0)) {
 		fprintf(stderr, "%s: not in a product\n", av[0]);
 		exit(RET_ERROR);
 	}
@@ -384,7 +384,7 @@ chkAttach(char *dir)
 	char	key[MAXKEY];
 
 	/* note: allowing under a standalone inside a product */
-	unless ((proj = proj_init(dir)) && (prod = proj_product(proj))) {
+	unless ((proj = proj_init(dir)) && (prod = proj_findProduct(proj))) {
 		fprintf(stderr, "attach: not in a product\n");
 		goto err;
 	}
@@ -1722,7 +1722,7 @@ attach(void)
 		fprintf(stderr, "attach: not a BitKeeper repository\n");
 		return (RET_ERROR);
 	}
-	tmp = proj_relpath(proj_product(0), ".");
+	tmp = proj_relpath(proj_findProduct(0), ".");
 	getRealName(tmp, 0, relpath);
 	free(tmp);
 	if (proj_isComponent(0)) {
@@ -1752,7 +1752,7 @@ attach(void)
 	proj_reset(0);		/* because of the newroot */
 	tmp = bp_dataroot(0, 0);
 	if (!rc && (isdir(tmp))) {
-		concat_path(buf, proj_root(proj_product(0)), "BitKeeper/BAM");
+		concat_path(buf, proj_root(proj_findProduct(0)), "BitKeeper/BAM");
 		concat_path(buf, buf, basenm(tmp));
 		if (rc = rename(tmp, buf)) {
 			mkdirf(buf);
@@ -1784,7 +1784,7 @@ attach(void)
 		}
 		safe_putenv("_BK_NESTED_LOCK=%s", nlid);
 	}
-	concat_path(buf, proj_root(proj_product(0)), "BitKeeper/log/HERE");
+	concat_path(buf, proj_root(proj_findProduct(0)), "BitKeeper/log/HERE");
 	if (f = fopen(buf, "a")) {
 		fprintf(f, "%s\n", proj_rootkey(0));
 	}

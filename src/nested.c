@@ -933,7 +933,7 @@ nested_check(void)
 	char	**paths;
 
 	if (proj_isProduct(0)) return;	/* only components */
-	unless (prod = proj_product(0)) return;
+	unless (prod = proj_findProduct(0)) return;
 	path = aprintf("%s/..", proj_root(0));
 	p = proj_init(path);
 	free(path);

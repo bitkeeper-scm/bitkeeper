@@ -436,9 +436,16 @@ echo OK
 echo $N Check 'attach <dir> nested/trad/<dir>' functionality ..........$NL
 cd "$HERE"
 bk clone $Q standalone1 nested2/traditional
-bk attach --force $Q standalone1 nested2/traditional/component5.6 || fail
+bk attach --force $Q standalone1 nested2/traditional/component5.6 2> ERR && fail -f ERR
+# XXX poor error message in this case
+cat <<EOF > WANT
+Not a product
+No lockers found
+
+EOF
+cmpfiles ERR WANT
 cd nested2
-bk comps | grep -q traditional/component5.6 || exit 1
+bk comps | grep -q traditional/component5.6 && fail
 echo OK
 
 echo $N Check attach -C .............................................$NL
