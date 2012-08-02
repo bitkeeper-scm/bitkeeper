@@ -10,14 +10,14 @@ bk commit -S $Q -f
 cd ..
 bk commit $Q --tag=END -f
 # does not fail because there is no error handling in recursive sys()
-bk rset -rSTART,END | bk _sort > GOT
+bk rset -rSTART,END > GOT
 cat >WANT <<EOF
 ChangeSet|1.2..1.4
+foo,bar/ChangeSet|1.0..1.2
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
 foo,bar/BitKeeper/etc/config|1.0..1.1
 foo,bar/BitKeeper/etc/gone|1.0..1.1
 foo,bar/BitKeeper/etc/ignore|1.0..1.1
-foo,bar/ChangeSet|1.0..1.2
 foo,bar/x|1.0..1.1
 EOF
 perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
@@ -25,7 +25,7 @@ cmpfiles WANT2 GOT
 echo OK
 
 echo $N Try rset -S in product ......................................$NL
-bk rset -rSTART,END -S | bk _sort > GOT
+bk rset -rSTART,END -S > GOT
 cat >WANT <<EOF
 ChangeSet|1.2..1.4
 foo,bar/ChangeSet|1.0..1.2
@@ -36,13 +36,13 @@ echo OK
 
 echo $N Try rset -S in component ....................................$NL
 cd foo,bar
-bk rset -r1.0..1.2 -S | bk _sort > GOT
+bk rset -r1.0..1.2 -S > GOT
 cat >WANT <<EOF
+ChangeSet|1.0..1.2
 BitKeeper/etc/collapsed|1.0..1.1
 BitKeeper/etc/config|1.0..1.1
 BitKeeper/etc/gone|1.0..1.1
 BitKeeper/etc/ignore|1.0..1.1
-ChangeSet|1.0..1.2
 x|1.0..1.1
 EOF
 perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
@@ -51,8 +51,7 @@ cd ..
 echo OK
 
 echo $N Prune ChangeSet files from the answer .......................$NL
-bk rset -rSTART,END -H > OUT || fail
-bk _sort < OUT > GOT
+bk rset -rSTART,END -H > GOT || fail
 cat >WANT <<EOF
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
 foo,bar/BitKeeper/etc/config|1.0..1.1
@@ -87,13 +86,13 @@ cmpfiles WANT OUT
 echo OK
 
 echo $N Test -s^PRODUCT .............................................$NL
-bk rset -rSTART,END -s^PRODUCT | bk _sort >OUT || fail
+bk rset -rSTART,END -s^PRODUCT >OUT || fail
 cat <<EOF > WANT
+foo,bar/ChangeSet|1.0..1.2
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
 foo,bar/BitKeeper/etc/config|1.0..1.1
 foo,bar/BitKeeper/etc/gone|1.0..1.1
 foo,bar/BitKeeper/etc/ignore|1.0..1.1
-foo,bar/ChangeSet|1.0..1.2
 foo,bar/x|1.0..1.1
 EOF
 perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
@@ -101,13 +100,13 @@ cmpfiles WANT2 OUT
 echo OK
 
 echo $N Test -s./comp ...............................................$NL
-bk rset -rSTART,END -sfoo,bar | bk _sort >OUT || fail
+bk rset -rSTART,END -sfoo,bar >OUT || fail
 cat <<EOF > WANT
+foo,bar/ChangeSet|1.0..1.2
 foo,bar/BitKeeper/etc/collapsed|1.0..1.1
 foo,bar/BitKeeper/etc/config|1.0..1.1
 foo,bar/BitKeeper/etc/gone|1.0..1.1
 foo,bar/BitKeeper/etc/ignore|1.0..1.1
-foo,bar/ChangeSet|1.0..1.2
 foo,bar/x|1.0..1.1
 EOF
 perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
@@ -145,33 +144,33 @@ bk mv gone_here gone_here_mv_pending
 bk repocheck $Q		# this rebuilds the idcache
 
 bk rset -hl$KEY | 
-   grep -v BitKeeper | bk _sort | sed 's/|[^|]*$/|/' > OUT
+   grep -v BitKeeper | sed 's/|[^|]*$/|/' > OUT
 cat <<EOF > WANT
 ChangeSet|ChangeSet|
+gone_here_mv_pending|gone_here|
 foo,bar/ChangeSet|foo,bar/ChangeSet|
 foo,bar/gone_here|foo,bar/gone_here|
 foo,bar/x|foo,bar/x|
-gone_here_mv_pending|gone_here|
 EOF
 cmpfiles WANT OUT
 
 bk rset --show-gone -hl$KEY | 
-   grep -v BitKeeper | bk _sort | sed 's/|[^|]*$/|/' > OUT
+   grep -v BitKeeper | sed 's/|[^|]*$/|/' > OUT
 cat <<EOF > WANT
 ChangeSet|ChangeSet|
+gone_gone_moved|gone_gone|
+gone_here_mv_pending|gone_here|
 foo,bar/ChangeSet|foo,bar/ChangeSet|
 foo,bar/gone_gone|foo,bar/gone_gone|
 foo,bar/gone_here|foo,bar/gone_here|
 foo,bar/x|foo,bar/x|
 gcc-old/ChangeSet|gcc-old/ChangeSet|
 gdb/ChangeSet|gdb/ChangeSet|
-gone_gone_moved|gone_gone|
-gone_here_mv_pending|gone_here|
 EOF
 cmpfiles WANT OUT
 
 bk rset --show-gone -hlEND | 
-   grep -v BitKeeper | bk _sort | sed 's/|[^|]*$/|/' > OUT
+   grep -v BitKeeper | sed 's/|[^|]*$/|/' > OUT
 cat <<EOF > WANT
 ChangeSet|ChangeSet|
 foo,bar/ChangeSet|foo,bar/ChangeSet|

@@ -15,6 +15,7 @@ typedef struct {
 	u32	nested:1;	/* -P recurse into nested components */
 	u32	standalone:1;	/* -S standalone */
 	u32	freetip:1;	/* The tip MDBM is unique */
+	u32	elide:1;	/* elide files with no diffs (e.g. reverted) */
 	char	**nav;
 	char	**aliases;	/* -s limit nested output to aliases */
 	nested	*n;		/* only if -s (and therefore, -P) */
@@ -44,6 +45,7 @@ rset_main(int ac, char **av)
 	int	rc = 1;
 	Opts	*opts;
 	longopt	lopts[] = {
+		{ "elide", 305},
 		{ "hide-bk", 310 },
 		{ "prefix0;", 320 },
 		{ "prefix1;", 330 },
@@ -88,6 +90,8 @@ rset_main(int ac, char **av)
 		case 's':	opts->aliases = addLine(opts->aliases,
 					strdup(optarg));
 				break;
+		case 305:  // --elide
+				opts->elide = 1; break;
 		case 310:  // --hide-bk
 				opts->hide_bk = 1; break;
 		case 320:  // --prefix0
@@ -347,6 +351,30 @@ process(Opts *opts, char *root, char *start, char *end, MDBM *idDB)
 			}
 		}
 	}
+	if (opts->elide && !streq(basenm(path0), GCHANGESET)) {
+		sccs	*s;
+		char	*file_a, *file_b, *spath0;
+		int	diffs;
+		df_opt	dop = {0};
+
+		spath0 = name2sccs(path0);
+		s = sccs_init(spath0, INIT_MUSTEXIST|INIT_NOCKSUM);
+		assert(s);
+		/* get first rev */
+		file_a = bktmp(0, "rset");
+		file_b = bktmp(0, "rset");
+		if (sccs_get(s, start, 0, 0, 0, SILENT|PRINT, file_a)) {}
+		if (sccs_get(s, end, 0, 0, 0, SILENT|PRINT, file_b)) {}
+		dop.ignore_trailing_cr = 1;
+		diffs = diff_files(file_a, file_b, &dop, 0, 0);
+		sccs_free(s);
+		unlink(file_a);
+		unlink(file_b);
+		FREE(file_a);
+		FREE(file_b);
+		FREE(spath0);
+		unless (diffs) goto done;
+	}
 	if (opts->prefix0) printf("%s", opts->prefix0);
 	printf("%s|", path0);
 	if (opts->show_diffs) {
@@ -362,6 +390,7 @@ process(Opts *opts, char *root, char *start, char *end, MDBM *idDB)
 		printf("%s|", path2);
 	}
 	printf("%s\n", emd5);
+	fflush(stdout);
 
 done:	if (opts->nested && end && componentKey(end)) {
 		char	**av;
@@ -410,6 +439,75 @@ clear:	if (path0) free(path0);
 	if (path2) free(path2);
 }
 
+typedef struct {
+	char	*path;		/* thing to sort */
+	char	*rootkey;	/* thing to keep */
+	u32	component:1;	/* is this a component? */
+} rline;
+
+private int
+sortpath(const void *a, const void *b)
+{
+	rline	*ra = (rline *)a;
+	rline	*rb = (rline *)b;
+
+	if (ra->component == rb->component) {
+		return (strcmp(ra->path, rb->path));
+	}
+	return (ra->component - rb->component);
+}
+
+private rline *
+addRline(rline *list, Opts *opts, MDBM *idDB, char *rootkey)
+{
+	char	*key, *path;
+	rline	*item;
+
+	if (path = mdbm_fetch_str(idDB, rootkey)) {
+		path = strdup(path);
+	} else if (opts->tip && (key = mdbm_fetch_str(opts->tip, rootkey))) {
+		path = key2path(key, 0, 0, 0);
+	} else {
+		path = key2path(rootkey, 0, 0, 0);
+	}
+	item = addArray(&list, 0);
+	item->path = path;
+	item->rootkey = rootkey;
+	item->component = changesetKey(rootkey);
+	return (list);
+}
+
+private char **
+sortKeys(Opts *opts, MDBM *db1, MDBM *db2, MDBM *idDB)
+{
+	int	i;
+	char	*rootkey, *key;
+	char	**keylist = 0;
+	rline	*list = 0;
+	kvpair	kv;
+
+	assert(db1);
+	EACH_KV(db1) {
+		rootkey = kv.key.dptr;
+		if (db2 && (key = mdbm_fetch_str(db2, rootkey))) {
+			if (streq(kv.val.dptr, key)) continue;
+		}
+		list = addRline(list, opts, idDB, rootkey);
+	}
+	EACH_KV(db2) {
+		rootkey = kv.key.dptr;
+		if (mdbm_fetch_str(db1, rootkey)) continue;
+		list = addRline(list, opts, idDB, rootkey);
+	}
+	sortArray(list, sortpath);
+	EACH(list) {
+		keylist = addLine(keylist, list[i].rootkey);
+		FREE(list[i].path);
+	}
+	FREE(list);
+	return (keylist);
+}
+
 /*
  * Compute diffs of  rev1 and rev2
  */
@@ -418,7 +516,8 @@ rel_diffs(Opts *opts, MDBM *db1, MDBM *db2,
 	MDBM *idDB, char *rev1, char *revM, char *rev2)
 {
 	char	*root_key, *start_key, *end_key, parents[100];
-	kvpair	kv;
+	char	**keylist;
+	int	i;
 
 	/*
 	 * OK, here is the 2 main loops where we produce the
@@ -442,25 +541,14 @@ rel_diffs(Opts *opts, MDBM *db1, MDBM *db2,
 			    parents, rev2);
 		}
 	}
-	EACH_KV(db1) {
-		root_key = kv.key.dptr;
-		start_key = kv.val.dptr;
+	keylist = sortKeys(opts, db1, db2, idDB);
+	EACH(keylist) {
+		root_key = keylist[i];
+		start_key = mdbm_fetch_str(db1, root_key);
 		end_key = mdbm_fetch_str(db2, root_key);
 		process(opts, root_key, start_key, end_key, idDB);
-		/*
-		 * Delete the entry from db2, so we don't
-		 * re-process it in the next loop
-		 */
-		if (end_key && mdbm_delete_str(db2, root_key)) {
-			fprintf(stderr, "Cannot delete <%s>\n", root_key);
-			exit(1);
-		}
 	}
-	EACH_KV(db2) {
-		root_key = kv.key.dptr;
-		end_key = kv.val.dptr;
-		process(opts, root_key, NULL, end_key, idDB);
-	}
+	freeLines(keylist, 0);
 
 	mdbm_close(db1);
 	mdbm_close(db2);
@@ -471,7 +559,8 @@ private void
 rel_list(Opts *opts, MDBM *db, MDBM *idDB, char *rev)
 {
 	char	*root_key, *end_key;
-	kvpair	kv;
+	char	**keylist;
+	int	i;
 
 	unless (opts->hide_cset) {
 		unless (opts->show_path) {
@@ -480,11 +569,13 @@ rel_list(Opts *opts, MDBM *db, MDBM *idDB, char *rev)
 			printf("ChangeSet|ChangeSet|%s\n", rev);
 		}
 	}
-	EACH_KV(db) {
-		root_key = kv.key.dptr;
-		end_key = kv.val.dptr;
+	keylist = sortKeys(opts, db, 0, idDB);
+	EACH(keylist) {
+		root_key = keylist[i];
+		end_key = mdbm_fetch_str(db, root_key);
 		process(opts, root_key, NULL, end_key, idDB);
 	}
+	freeLines(keylist, 0);
 	mdbm_close(db);
 	mdbm_close(idDB);
 }

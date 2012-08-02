@@ -193,50 +193,49 @@ proc usage {} \
 	exit
 }
 
-proc readInput {in} \
+proc readInput {fp} \
 {
-	set files {}
-	while {[gets $in fname] >= 0} {
-		if {$fname eq ""} { continue }
-
-		# Handle rset input
-		set pattern {(.*)\|(.*)\.\.(.*)}
-		if {[regexp $pattern $fname -> fn rev1 rev2]} {
-			if {[string match {*ChangeSet} $fn]} {
-				# XXX: how do we handle ChangeSet files?
-				# normally we'd just skip them, but now
-				# they could be components...
-				continue
-			}
-			set fn [normalizePath $fn]
-			set lfile [getRev $fn $rev1 0]
-			set rfile [getRev $fn $rev2 0]
-			lappend tmps $lfile $rfile
-			if {[checkFiles $lfile $rfile]} {
-				set t "{$lfile} {$rfile} {$fn} $rev1 $rev2"
-				lappend files $t
-			}
-			continue; # done with this line
+	if {[gets $fp line] == -1} {
+		if {[catch { close $fp } err]} {
+			puts $err
+			exit 1
 		}
+		unset ::readfp
+	}
+
+	if {$line eq ""} { return }
+
+	# Handle rset input
+	set pattern {(.*)\|(.*)\.\.(.*)}
+	if {[regexp $pattern $line -> fn rev1 rev2]} {
+		if {[string match "*ChangeSet" $fn]} {
+			# XXX: how do we handle ChangeSet files?
+			# normally we'd just skip them, but now
+			# they could be components...
+			return
+		}
+		set file  [normalizePath $fn]
+		set lfile [getRev $fn $rev1 0]
+		set rfile [getRev $fn $rev2 0]
+	} else {
 		# not rset, must be just a modified file
-		set fname [normalizePath $fname]
-		set rfile $fname
+		set file  [normalizePath $line]
+		set rfile $file
 		set lfile [getRev $rfile "+" 1]
 		set rev1 "+"
-		lappend tmps $lfile
-		if {[checkFiles $lfile $rfile]} {
-			set t "{$lfile} {$rfile} {$fname} + checked_out"
-			lappend files $t
-		}
+		set rev2 "checked_out"
 	}
-	return $files
+
+	if {[checkFiles $lfile $rfile]} {
+		addFile $lfile $rfile $file $rev1 $rev2
+	}
 }
 
 proc getFiles {} \
 {
 	global argv argc dev_null lfile rfile unique
 	global gc rev1 rev2 Diffs DiffsEnd filepath
-	global	fileInfo
+	global	fileInfo files
 
 	if {$argc > 3} { usage }
 	set files [list]
@@ -263,24 +262,18 @@ proc getFiles {} \
 			set fname [string range $str $index end]
 			set rfile $fname
 			set lfile [getRev $rfile "+" 1]
-			set t "{$lfile} {$rfile} {$fname} + checked_out"
-			lappend files $t
+			addFile $lfile $rfile $fname + checked_out
 		}
 		close $fd
 	} elseif {$argc == 1} {
 		if {$argv == "-"} {
 			## bk difftool -
 			## Typically files from an sfiles or rset pipe.
-			set files [readInput stdin]
+			set ::readfp stdin
 		} elseif {[regexp -- {-r(@.*)..(@.*)} $argv - - -]} {
 			## bk diffool -r@<rev>..@<rev>
 			cd2product
-			set f [open "| bk rset $argv" r]
-			set files [readInput $f]
-			if {[catch {close $f} err]} {
-				puts $err
-				exit 1
-			}
+			set ::readfp [open "| bk rset --elide $argv" r]
 		} else {
 			## bk difftool <file>
 			set filepath [lindex $argv 0]
@@ -289,8 +282,7 @@ proc getFiles {} \
 			set rev1 "+"
 
 			if {[checkFiles $lfile $rfile]} {
-				set t "{$lfile} {$rfile} {$rfile} + checked_out"
-				lappend files $t
+				addFile $lfile $rfile $rfile + checked_out
 			}
 		}
 	} elseif {$argc == 2} { ;# bk difftool -r<rev> <file>
@@ -300,12 +292,8 @@ proc getFiles {} \
 			if {[regexp -- {-r(.*)} $b - rev2]} {
 				## bk difftool -r<rev> -r<rev>
 				cd2product
-				set f [open "|bk rset -r$rev1..$rev2 | bk sort"]
-				set files [readInput $f]
-				if {[catch {close $f} err]} {
-					puts $err
-					exit 1
-				}
+				set ::readfp \
+				    [open "|bk rset --elide -r$rev1..$rev2"]
 			} else {
 				## bk difftool -r<rev> <file>
 				set filepath [lindex $argv 1]
@@ -318,10 +306,8 @@ proc getFiles {} \
 					}
 				}
 				if {[checkFiles $lfile $rfile]} {
-					set t "{$lfile} {$rfile} {$rfile} $rev1"
-					lappend files $t
+					addFile $lfile $rfile $rfile $rev1
 				}
-				lappend tmps $lfile
 				if {[file exists $rfile] != 1} { usage }
 			}
 		} else {
@@ -339,8 +325,7 @@ proc getFiles {} \
 				}
 			}
 			if {[checkFiles $lfile $rfile]} {
-				set t "{$lfile} {$rfile} {$lfile}"
-				lappend files $t
+				addFile $lfile $rfile $lfile
 			}
 		}
 	} else {
@@ -354,24 +339,17 @@ proc getFiles {} \
 		if {![regexp -- {-r(.*)} $a junk rev2]} { usage }
 		set rfile [getRev $file $rev2 0]
 		if {[checkFiles $lfile $rfile]} {
-			set t "{$lfile} {$rfile} {$file} $rev1 $rev2"
-			lappend files $t
+			addFile $lfile $rfile $file $rev1 $rev2
 		}
 	}
-	# Now add the menubutton items if necessary
-	if {[llength $files] >= 1} {
-		.menu.files set "Files ([llength $files])"
 
-		foreach e $files {
-			set file [lindex $e 2]
-			dict set fileInfo $file $e
-		}
-		.menu.files configure -values [dict keys $fileInfo] \
-		    -height [expr {min(20,[llength $files])}]
+	if {[info exists ::readfp]} {
+		fconfigure $::readfp -blocking 0 -buffering line
+		fileevent  $::readfp readable [list readInput $::readfp]
+		vwait ::readfp
+	}
 
-		pack configure .menu.filePrev .menu.files .menu.fileNext \
-		    -side left -after .menu.revtool
-	} else {
+	if {[llength $files] == 0} {
 		# didn't find any valid arguments or there weren't any
 		# files that needed diffing...
 		if {$gc(windows)} {
@@ -383,6 +361,31 @@ proc getFiles {} \
 		}
 		exit
 	}
+}
+
+proc addFile {lfile rfile file {rev1 ""} {rev2 ""}} \
+{
+	global	files fileInfo
+
+	set info [list $lfile $rfile $file $rev1 $rev2]
+
+	lappend files $file
+	dict set fileInfo $file $info
+
+	.menu.files set "Files ([llength $files])"
+	.menu.files configure -values $files \
+	    -height [expr {min(20,[llength $files])}]
+
+	if {[llength $files] == 1} {
+		## This is the first file we've seen.  Pack the file
+		## menu and prev and next buttons into the toolbar.
+		pack configure .menu.filePrev .menu.files .menu.fileNext \
+		    -side left -after .menu.revtool
+
+		## Select the first file we get.
+		selectFile $file
+	}
+	update idletasks
 }
 
 proc checkFiles {lfile rfile} \
@@ -407,6 +410,10 @@ proc checkFiles {lfile rfile} \
 ## Called when a file is selected from the combobox.
 proc selectFile {{file ""}} {
 	global	lfile rfile lname rname selected fileInfo
+
+	if {[info exists ::readfp]} {
+		fileevent $::readfp readable ""
+	}
 
 	if {$file eq ""} { set file [.menu.files get] }
 	configureFilesCombo
@@ -449,6 +456,10 @@ proc selectFile {{file ""}} {
 		.menu.discard configure -state disabled
 	}
 	after idle [list focus -force .]
+
+	if {[info exists ::readfp]} {
+		fileevent $::readfp readable [list readInput $::readfp]
+	}
 }
 
 proc getNextFile {} \
@@ -695,7 +706,7 @@ proc main {} \
 {
 	global	fileInfo
 
-	wm title . "Diff Tool - initializing..."
+	wm title . "Diff Tool - Looking for Changes..."
 
 	bk_init
 
@@ -708,29 +719,21 @@ proc main {} \
 	# can take a long time to fire up. On my slow VirtualPC box it
 	# can take up to 15 seconds. This at least gives a minimal 
 	# clue that someting is happening...
-	.diffs.status.middle configure -text "initializing..."
+	.diffs.status.middle configure -text "Looking for Changes..."
 
 	wm deiconify .
 	update 
 
-	after idle [list focus -force .]
-	getFiles
-
-	# This must be done after getFiles, because getFiles may cause the
-	# app to exit. If that happens, the window size will be small, and
-	# that small size will be saved. We don't want that to happen. So,
-	# we only want this binding to happen if the app successfully starts
-	# up
 	bind . <Destroy> {
 		if {[string match %W "."]} {
 			saveState diff
 		}
 	}
 
-	wm title . "Diff Tool"
+	after idle [list focus -force .]
+	getFiles
 
-	## Select the first file in the file list.
-	selectFile [lindex [dict keys $fileInfo] 0]
+	wm title . "Diff Tool"
 }
 
 main

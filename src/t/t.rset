@@ -66,9 +66,9 @@ for v in ONE TWO THREE FOUR; do
       for H in "" H; do
 		opt="$a$h$H"
 		echo "# bk rset -${opt}r$v"
-		bk rset -${opt}r$v | bk _sort
+		bk rset -${opt}r$v
 		echo "# bk rset -${opt}l$v"
-		bk rset -${opt}l$v | bk _sort
+		bk rset -${opt}l$v
       done
     done
   done
@@ -77,19 +77,19 @@ done > GOT
 # :g/d\~[^|]*/s//d\~${RAND}/g - works on itself
 cat << EOF > WANT
 # bk rset -rONE
+ChangeSet|1.1..1.2
 ${RMNAME}|1.0..1.1
 BitKeeper/triggers/pre-delta|1.0..1.2
-ChangeSet|1.1..1.2
 bam|1.0..1.1
 merge|1.0..1.1
 # bk rset -lONE
+ChangeSet|ONE
 ${RMNAME}|1.1
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|1.2
-ChangeSet|ONE
 bam|1.1
 merge|1.1
 # bk rset -HrONE
@@ -107,19 +107,19 @@ BitKeeper/triggers/pre-delta|1.2
 bam|1.1
 merge|1.1
 # bk rset -hrONE
+ChangeSet|ChangeSet|1.1|ChangeSet|1.2
 ${RMNAME}|deleted|1.0|deleted|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.0|BitKeeper/triggers/pre-delta|1.2
-ChangeSet|ChangeSet|1.1|ChangeSet|1.2
 bam|bam|1.0|bam|1.1
 merge|base|1.0|base|1.1
 # bk rset -hlONE
+ChangeSet|ChangeSet|ONE
 ${RMNAME}|deleted|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
-ChangeSet|ChangeSet|ONE
 bam|bam|1.1
 merge|base|1.1
 # bk rset -hHrONE
@@ -137,12 +137,13 @@ BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.1
 merge|base|1.1
 # bk rset -arONE
+ChangeSet|1.1..1.2
 ${RMNAME}|1.0..1.1
 BitKeeper/triggers/pre-delta|1.0..1.2
-ChangeSet|1.1..1.2
 bam|1.0..1.1
 merge|1.0..1.1
 # bk rset -alONE
+ChangeSet|ONE
 ${RMNAME}|1.1
 BitKeeper/etc/attr|1.1
 BitKeeper/etc/collapsed|1.1
@@ -150,7 +151,6 @@ BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|1.2
-ChangeSet|ONE
 bam|1.1
 merge|1.1
 # bk rset -aHrONE
@@ -169,12 +169,13 @@ BitKeeper/triggers/pre-delta|1.2
 bam|1.1
 merge|1.1
 # bk rset -ahrONE
+ChangeSet|ChangeSet|1.1|ChangeSet|1.2
 ${RMNAME}|deleted|1.0|deleted|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.0|BitKeeper/triggers/pre-delta|1.2
-ChangeSet|ChangeSet|1.1|ChangeSet|1.2
 bam|bam|1.0|bam|1.1
 merge|base|1.0|base|1.1
 # bk rset -ahlONE
+ChangeSet|ChangeSet|ONE
 ${RMNAME}|deleted|1.1
 BitKeeper/etc/attr|BitKeeper/etc/attr|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
@@ -182,7 +183,6 @@ BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
-ChangeSet|ChangeSet|ONE
 bam|bam|1.1
 merge|base|1.1
 # bk rset -ahHrONE
@@ -201,17 +201,17 @@ BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
 bam|bam|1.1
 merge|base|1.1
 # bk rset -rTWO
-${RMNAME}|1.1..1.2
 ChangeSet|1.2..1.3
+${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -lTWO
+ChangeSet|TWO
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|1.2
-ChangeSet|TWO
 bam|1.1
 merge|1.3
 new.project|1.1
@@ -229,17 +229,17 @@ bam|1.1
 merge|1.3
 new.project|1.1
 # bk rset -hrTWO
-${RMNAME}|deleted|1.1|${RMNAME}|1.2
 ChangeSet|ChangeSet|1.2|ChangeSet|1.3
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -hlTWO
+ChangeSet|ChangeSet|TWO
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
-ChangeSet|ChangeSet|TWO
 bam|bam|1.1
 merge|project|1.3
 new.project|new.project|1.1
@@ -257,11 +257,12 @@ bam|bam|1.1
 merge|project|1.3
 new.project|new.project|1.1
 # bk rset -arTWO
-${RMNAME}|1.1..1.2
 ChangeSet|1.2..1.3
+${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -alTWO
+ChangeSet|TWO
 ${RMNAME}|1.2
 BitKeeper/etc/attr|1.1
 BitKeeper/etc/collapsed|1.1
@@ -269,7 +270,6 @@ BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|1.2
-ChangeSet|TWO
 bam|1.1
 merge|1.3
 new.project|1.1
@@ -289,11 +289,12 @@ bam|1.1
 merge|1.3
 new.project|1.1
 # bk rset -ahrTWO
-${RMNAME}|deleted|1.1|${RMNAME}|1.2
 ChangeSet|ChangeSet|1.2|ChangeSet|1.3
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -ahlTWO
+ChangeSet|ChangeSet|TWO
 ${RMNAME}|${RMNAME}|1.2
 BitKeeper/etc/attr|BitKeeper/etc/attr|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
@@ -301,7 +302,6 @@ BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
-ChangeSet|ChangeSet|TWO
 bam|bam|1.1
 merge|project|1.3
 new.project|new.project|1.1
@@ -325,13 +325,13 @@ ChangeSet|1.2..1.2.1.1
 merge|1.1..1.1.1.2
 new.copy|1.0..1.1
 # bk rset -lTHREE
+ChangeSet|THREE
 ${RMNAME}|1.1
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|1.2
-ChangeSet|THREE
 bam|1.1
 merge|1.1.1.2
 new.copy|1.1
@@ -353,13 +353,13 @@ ChangeSet|ChangeSet|1.2|ChangeSet|1.2.1.1
 merge|base|1.1|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 # bk rset -hlTHREE
+ChangeSet|ChangeSet|THREE
 ${RMNAME}|deleted|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
-ChangeSet|ChangeSet|THREE
 bam|bam|1.1
 merge|copy|1.1.1.2
 new.copy|new.copy|1.1
@@ -381,6 +381,7 @@ ChangeSet|1.2..1.2.1.1
 merge|1.1..1.1.1.2
 new.copy|1.0..1.1
 # bk rset -alTHREE
+ChangeSet|THREE
 ${RMNAME}|1.1
 BitKeeper/etc/attr|1.1
 BitKeeper/etc/collapsed|1.1
@@ -388,7 +389,6 @@ BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|1.2
-ChangeSet|THREE
 bam|1.1
 merge|1.1.1.2
 new.copy|1.1
@@ -411,6 +411,7 @@ ChangeSet|ChangeSet|1.2|ChangeSet|1.2.1.1
 merge|base|1.1|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 # bk rset -ahlTHREE
+ChangeSet|ChangeSet|THREE
 ${RMNAME}|deleted|1.1
 BitKeeper/etc/attr|BitKeeper/etc/attr|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
@@ -418,7 +419,6 @@ BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
-ChangeSet|ChangeSet|THREE
 bam|bam|1.1
 merge|copy|1.1.1.2
 new.copy|new.copy|1.1
@@ -440,12 +440,12 @@ new.copy|new.copy|1.1
 ChangeSet|1.3+1.2.1.1..1.4
 merge|1.1.1.2..1.5
 # bk rset -lFOUR
+ChangeSet|FOUR
 BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|1.2
-ChangeSet|FOUR
 bam|1.1
 merge|1.5
 new.copy|1.1
@@ -466,12 +466,12 @@ new.project|1.1
 ChangeSet|ChangeSet|1.3+1.2.1.1|ChangeSet|1.4
 merge|copy|1.1.1.2|merge|1.5
 # bk rset -hlFOUR
+ChangeSet|ChangeSet|FOUR
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
 BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
-ChangeSet|ChangeSet|FOUR
 bam|bam|1.1
 merge|merge|1.5
 new.copy|new.copy|1.1
@@ -492,6 +492,7 @@ new.project|new.project|1.1
 ChangeSet|1.3+1.2.1.1..1.4
 merge|1.1.1.2..1.5
 # bk rset -alFOUR
+ChangeSet|FOUR
 ${RMNAME}|1.2
 BitKeeper/etc/attr|1.1
 BitKeeper/etc/collapsed|1.1
@@ -499,7 +500,6 @@ BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|1.2
-ChangeSet|FOUR
 bam|1.1
 merge|1.5
 new.copy|1.1
@@ -522,6 +522,7 @@ new.project|1.1
 ChangeSet|ChangeSet|1.3+1.2.1.1|ChangeSet|1.4
 merge|copy|1.1.1.2|merge|1.5
 # bk rset -ahlFOUR
+ChangeSet|ChangeSet|FOUR
 ${RMNAME}|${RMNAME}|1.2
 BitKeeper/etc/attr|BitKeeper/etc/attr|1.1
 BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
@@ -529,7 +530,6 @@ BitKeeper/etc/config|BitKeeper/etc/config|1.1
 BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
 BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
 BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
-ChangeSet|ChangeSet|FOUR
 bam|bam|1.1
 merge|merge|1.5
 new.copy|new.copy|1.1
@@ -560,15 +560,15 @@ for v in ONE..TWO TWO..THREE THREE..FOUR; do
       for H in "" H; do
 		opt="$a$h$H"
 		echo "# bk rset -${opt}r$v"
-		bk rset -${opt}r$v | bk _sort
+		bk rset -${opt}r$v
       done
     done
   done
 done > GOT1
 cat << EOF > WANT
 # bk rset -rONE..TWO
-${RMNAME}|1.1..1.2
 ChangeSet|1.2..1.3
+${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -HrONE..TWO
@@ -576,8 +576,8 @@ ${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -hrONE..TWO
-${RMNAME}|deleted|1.1|${RMNAME}|1.2
 ChangeSet|ChangeSet|1.2|ChangeSet|1.3
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -hHrONE..TWO
@@ -585,8 +585,8 @@ ${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -arONE..TWO
-${RMNAME}|1.1..1.2
 ChangeSet|1.2..1.3
+${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -aHrONE..TWO
@@ -594,8 +594,8 @@ ${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 # bk rset -ahrONE..TWO
-${RMNAME}|deleted|1.1|${RMNAME}|1.2
 ChangeSet|ChangeSet|1.2|ChangeSet|1.3
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -ahHrONE..TWO
@@ -603,8 +603,8 @@ ${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|base|1.1|project|1.3
 new.project|new.project|1.0|new.project|1.1
 # bk rset -rTWO..THREE
-${RMNAME}|1.2..1.1
 ChangeSet|1.3..1.2.1.1
+${RMNAME}|1.2..1.1
 merge|1.3..1.1.1.2
 new.copy|1.0..1.1
 new.project|1.1..1.0
@@ -614,8 +614,8 @@ merge|1.3..1.1.1.2
 new.copy|1.0..1.1
 new.project|1.1..1.0
 # bk rset -hrTWO..THREE
-${RMNAME}|${RMNAME}|1.2|deleted|1.1
 ChangeSet|ChangeSet|1.3|ChangeSet|1.2.1.1
+${RMNAME}|${RMNAME}|1.2|deleted|1.1
 merge|project|1.3|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 new.project|new.project|1.1|new.project|1.0
@@ -625,8 +625,8 @@ merge|project|1.3|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 new.project|new.project|1.1|new.project|1.0
 # bk rset -arTWO..THREE
-${RMNAME}|1.2..1.1
 ChangeSet|1.3..1.2.1.1
+${RMNAME}|1.2..1.1
 merge|1.3..1.1.1.2
 new.copy|1.0..1.1
 new.project|1.1..1.0
@@ -636,8 +636,8 @@ merge|1.3..1.1.1.2
 new.copy|1.0..1.1
 new.project|1.1..1.0
 # bk rset -ahrTWO..THREE
-${RMNAME}|${RMNAME}|1.2|deleted|1.1
 ChangeSet|ChangeSet|1.3|ChangeSet|1.2.1.1
+${RMNAME}|${RMNAME}|1.2|deleted|1.1
 merge|project|1.3|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 new.project|new.project|1.1|new.project|1.0
@@ -647,8 +647,8 @@ merge|project|1.3|copy|1.1.1.2
 new.copy|new.copy|1.0|new.copy|1.1
 new.project|new.project|1.1|new.project|1.0
 # bk rset -rTHREE..FOUR
-${RMNAME}|1.1..1.2
 ChangeSet|1.2.1.1..1.4
+${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
 new.project|1.0..1.1
 # bk rset -HrTHREE..FOUR
@@ -656,8 +656,8 @@ ${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
 new.project|1.0..1.1
 # bk rset -hrTHREE..FOUR
-${RMNAME}|deleted|1.1|${RMNAME}|1.2
 ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.4
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
 new.project|new.project|1.0|new.project|1.1
 # bk rset -hHrTHREE..FOUR
@@ -665,8 +665,8 @@ ${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
 new.project|new.project|1.0|new.project|1.1
 # bk rset -arTHREE..FOUR
-${RMNAME}|1.1..1.2
 ChangeSet|1.2.1.1..1.4
+${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
 new.project|1.0..1.1
 # bk rset -aHrTHREE..FOUR
@@ -674,8 +674,8 @@ ${RMNAME}|1.1..1.2
 merge|1.1.1.2..1.5
 new.project|1.0..1.1
 # bk rset -ahrTHREE..FOUR
-${RMNAME}|deleted|1.1|${RMNAME}|1.2
 ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.4
+${RMNAME}|deleted|1.1|${RMNAME}|1.2
 merge|copy|1.1.1.2|merge|1.5
 new.project|new.project|1.0|new.project|1.1
 # bk rset -ahHrTHREE..FOUR
@@ -688,34 +688,34 @@ cmpfiles WANT2 GOT1
 echo OK
 
 echo $N Try other rev ranges ........................................$NL
-bk rset -rONE,TWO | bk _sort > OUT
+bk rset -rONE,TWO > OUT
 cat <<EOF > WANT
-${RMNAME}|1.1..1.2
 ChangeSet|1.2..1.3
+${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 EOF
 perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
 cmpfiles OUT WANT2
-bk rset -rONE..TWO | bk _sort > OUT
+bk rset -rONE..TWO > OUT
 cmpfiles OUT WANT2
-bk rset -rONE -rTWO | bk _sort > OUT
+bk rset -rONE -rTWO > OUT
 cmpfiles OUT WANT2
 echo OK
 
 echo $N Again, with -s. and -sHERE ..................................$NL
-bk rset -rONE,TWO | bk _sort > OUT
+bk rset -rONE,TWO > OUT
 cat <<EOF > WANT
-${RMNAME}|1.1..1.2
 ChangeSet|1.2..1.3
+${RMNAME}|1.1..1.2
 merge|1.1..1.3
 new.project|1.0..1.1
 EOF
 perl -pe '($file) = /^([^|]+)/;s/(1\.[1-9](\.\d+)*)/`bk prs -hd:MD5KEY: -r$1 $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
 cmpfiles OUT WANT2
-bk rset -s. -rONE..TWO | bk _sort > OUT
+bk rset -s. -rONE..TWO > OUT
 cmpfiles OUT WANT2
-bk rset -sHERE -rONE -rTWO | bk _sort > OUT
+bk rset -sHERE -rONE -rTWO > OUT
 cmpfiles OUT WANT2
 bk rset -sOTHER -rONE -rTWO 2> ERR && fail -f ERR should have failed
 grep -q 'rset: -sALIAS only allowed in product' ERR || fail -f ERR
@@ -740,7 +740,7 @@ bk -r check -aggg | bk gone $Q -
 GONE1=`bk prs -hnd:MD5KEY: -r1.1 BitKeeper/etc/gone`
 GONE3=`bk prs -hnd:MD5KEY: -r1.3 BitKeeper/etc/gone`
 bk commit $Q -S -yfoo
-bk rset -HhrPTAG,TAG | bk _sort > GOT
+bk rset -HhrPTAG,TAG > GOT
 echo "bar|bar|1.0|bar|$BAR1" > WANT
 cmpfiles WANT GOT
 cd ../goneclient
@@ -750,28 +750,97 @@ echo new > foo
 bk delta $Q -yfoo foo
 bk commit $Q -S -yfoo 2> IGNORE
 FOO2=`bk prs -hnd:MD5KEY: -r1.2 foo`
-bk rset -HhrTAG,+ | bk _sort > GOT
+bk rset -HhrTAG,+ > GOT
 cat <<EOF > WANT
 BitKeeper/etc/gone|BitKeeper/etc/gone|$GONE1|BitKeeper/etc/gone|$GONE3
 foo|foo|$FOO1|foo|$FOO2
 EOF
 cmpfiles WANT GOT
-bk rset -HhrPTAG,TAG | bk _sort > GOT
+bk rset -HhrPTAG,TAG > GOT
 echo "bar|bar|1.0|bar|$BAR1" > WANT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Repeat gone deltas with --show-gone .........................$NL
-bk rset --show-gone -HhrTAG,+ | bk _sort > GOT
+bk rset --show-gone -HhrTAG,+ > GOT
 cat <<EOF > WANT
 BitKeeper/etc/gone|BitKeeper/etc/gone|$GONE1|BitKeeper/etc/gone|$GONE3
 foo|$FOODELETE|$FOO2OLD|foo|$FOO2
 EOF
 cmpfiles WANT GOT
-bk rset --show-gone -HhrPTAG,TAG | bk _sort > GOT
+bk rset --show-gone -HhrPTAG,TAG > GOT
 cat <<EOF > WANT
 bar|bar|1.0|bar|$BAR1
 foo|foo|$FOO1|$FOODELETE|$FOO2OLD
 EOF
 cmpfiles WANT GOT
+echo OK
+
+echo $N Files without diffs elided with --elide......................$NL
+cd "$HERE"
+commercial elide-test
+touch afile bfile
+bk new $Q afile bfile
+bk commit $Q -yfiles
+bk edit $Q afile
+cat <<EOF > afile
+this is
+some file
+with some
+content
+EOF
+bk delta $Q -y. afile
+bk commit $Q -ycontent
+bk edit $Q afile
+cat <<EOF > afile
+this is
+some file
+CHANGED LINE
+content
+EOF
+bk delta $Q -y. afile
+bk edit $Q bfile
+echo "Now with some content" > bfile
+bk delta $Q -y. bfile
+bk commit $Q -y"some changes"
+bk edit $Q afile
+cat <<EOF > afile
+this is
+some file
+with some
+content
+EOF
+bk delta $Q -y"put it back" afile
+bk commit $Q -yrevert
+bk rset --elide -r@1.3 -r@+ > OUT
+grep -q afile OUT && fail -f OUT afile should not have been in rset
+echo OK
+
+echo $N Test rset --elide in nested..................................$NL
+nested elide-nested
+touch gcc/afile gcc/bfile gdb/afile gdb/bfile
+bk new $Q gcc/afile gcc/bfile gdb/afile gdb/bfile
+bk commit $Q -yfiles
+bk edit $Q gcc/afile gcc/bfile gdb/afile gdb/bfile
+echo "STUFF" > gcc/afile
+echo "STUFF" > gcc/bfile
+echo "STUFF" > gdb/afile
+echo "STUFF" > gdb/bfile
+bk delta $Q -y. gcc/afile gcc/bfile gdb/afile gdb/bfile
+bk commit $Q -y.
+REV=`bk changes -nd:REV: -r+`
+bk edit $Q gcc/afile gcc/bfile gdb/afile gdb/bfile
+echo "DIFFERENT STUFF" > gcc/afile
+echo "DIFFERENT STUFF" > gcc/bfile
+echo "DIFFERENT STUFF" > gdb/afile
+echo "DIFFERENT STUFF" > gdb/bfile
+bk delta $Q -y. gcc/afile gcc/bfile gdb/afile gdb/bfile
+bk commit $Q -y.
+bk edit $Q gcc/afile gcc/bfile gdb/afile gdb/bfile
+echo "STUFF" > gcc/afile
+echo "STUFF" > gdb/afile
+bk delta $Q -y. gcc/afile gcc/bfile gdb/afile gdb/bfile
+bk commit $Q -y.
+bk rset --elide -r@$REV -r@+ > OUT
+grep -q afile OUT && fail -f OUT afile should not be in rset output
 echo OK

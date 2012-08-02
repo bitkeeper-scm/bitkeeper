@@ -138,3 +138,61 @@ cd copy2
 bk unpopulate $Q ./src/gui || fail
 bk populate $Q ./src/gui || fail
 echo OK
+
+echo $N Test proper rset ordering with deep nests....................$NL
+cd "$HERE/project"
+bk -e touch afile zfile
+bk -e new $Q afile zfile
+bk commit $Q -yfiles
+bk rset -l+ > GOT
+cat <<EOF >WANT
+ChangeSet|+
+BitKeeper/etc/aliases|+
+BitKeeper/etc/collapsed|+
+BitKeeper/etc/config|+
+BitKeeper/etc/gone|+
+BitKeeper/etc/ignore|+
+afile|+
+zfile|+
+gcc/ChangeSet|+
+gcc/BitKeeper/etc/collapsed|+
+gcc/BitKeeper/etc/config|+
+gcc/BitKeeper/etc/gone|+
+gcc/BitKeeper/etc/ignore|+
+gcc/afile|+
+gcc/foo|+
+gcc/zfile|+
+gcc/deepnest/ChangeSet|+
+gcc/deepnest/BitKeeper/etc/collapsed|+
+gcc/deepnest/BitKeeper/etc/config|+
+gcc/deepnest/BitKeeper/etc/gone|+
+gcc/deepnest/BitKeeper/etc/ignore|+
+gcc/deepnest/afile|+
+gcc/deepnest/foo|+
+gcc/deepnest/zfile|+
+gdb/ChangeSet|+
+gdb/BitKeeper/etc/collapsed|+
+gdb/BitKeeper/etc/config|+
+gdb/BitKeeper/etc/gone|+
+gdb/BitKeeper/etc/ignore|+
+gdb/afile|+
+gdb/zfile|+
+src/gui/ChangeSet|+
+src/gui/BitKeeper/etc/collapsed|+
+src/gui/BitKeeper/etc/config|+
+src/gui/BitKeeper/etc/gone|+
+src/gui/BitKeeper/etc/ignore|+
+src/gui/afile|+
+src/gui/tcltk/file|+
+src/gui/zfile|+
+src/gui/tcltk/tk/ChangeSet|+
+src/gui/tcltk/tk/BitKeeper/etc/collapsed|+
+src/gui/tcltk/tk/BitKeeper/etc/config|+
+src/gui/tcltk/tk/BitKeeper/etc/gone|+
+src/gui/tcltk/tk/BitKeeper/etc/ignore|+
+src/gui/tcltk/tk/afile|+
+src/gui/tcltk/tk/zfile|+
+EOF
+perl -pe '($file) = /^([^|]+)/;s/\+/`bk prs -hd:MD5KEY: -r+ $file`/ge unless $file eq "ChangeSet"' < WANT > WANT2 || fail
+cmpfiles WANT2 GOT
+echo OK
