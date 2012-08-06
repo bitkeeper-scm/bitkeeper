@@ -919,6 +919,7 @@ typedef struct {
 typedef struct {
 	int	sdiff;			/* diff kind (transitional) */
 	int	flags;			/* flags (transitional) */
+	int	adds, dels, mods;	/* lines added/deleted/modified */
 	char	*out_define;		/* diff -D */
 	char	*pattern;		/* pattern for diff -p */
 	u32	ignore_all_ws:1;	/* ignore all whitespace */
@@ -933,6 +934,7 @@ typedef struct {
 	u32	out_print_hunks:1;	/* just print the hunks */
 	u32	out_header:1;		/* print bitkeeper header (doDiff())*/
 	u32	out_comments:1;		/* print comments */
+	u32	out_diffstat:1;		/* print diffstat output */
 } df_opt;
 
 int	sccs_admin(sccs *sc, ser_t d, u32 flgs,

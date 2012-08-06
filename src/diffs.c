@@ -4,8 +4,13 @@
 #include "range.h"
 #include "logging.h"	/* lease_check() */
 
+typedef	struct dstat {
+	char	*name;		   /* name of the file */
+	int	adds, dels, mods;  /* lines added/deleted/modified */
+} dstat;
 
 private int	nulldiff(char *name, df_opt *dop);
+private	void	printHistogram(dstat *diffstats);
 
 /*
  * diffs - show differences of SCCS revisions.
@@ -57,13 +62,20 @@ diffs_main(int ac, char **av)
 	int	verbose = 0, empty = 0, errors = 0, force = 0;
 	u32	flags = SILENT;
 	df_opt	dop = {0};
+	FILE	*fout = stdout;
 	char	*name;
 	char	*Rev = 0, *boundaries = 0;
+	dstat	*diffstats = 0, *ds;
+	int	diffstat_only = 0;
+	longopt	lopts[] = {
+		{ "stats-only", 340 },
+		{ 0, 0 }
+	};
 	RANGE	rargs = {0};
 
 	dop.out_header = 1;
 	while ((c = getopt(ac, av,
-		    "@|a;A;bBcC|d;efhHl|nNpr;R|suvw", 0)) != -1) {
+		    "@|a;A;bBcC|d;efhHl|nNpr;R|suvw", lopts)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -98,6 +110,9 @@ diffs_main(int ac, char **av)
 		    case '@':
 			if (range_urlArg(&rargs, optarg)) return (1);
 			break;
+		    case 340:	/* --stats-only */
+			diffstat_only = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -105,6 +120,17 @@ diffs_main(int ac, char **av)
 	if ((rargs.rstart && (boundaries || Rev)) || (boundaries && Rev)) {
 		fprintf(stderr, "%s: -R must be alone\n", av[0]);
 		return (1);
+	}
+
+	if (diffstat_only && (dop.out_unified || !dop.out_header ||
+		dop.out_comments || dop.out_rcs || dop.sdiff)) {
+		fprintf(stderr, "%s: --stats-only should be alone\n", av[0]);
+		return (1);
+	}
+
+	if ((dop.out_header && dop.out_unified) || diffstat_only) {
+		dop.out_diffstat = 1;
+		fout = fmem();
 	}
 
 	dop.flags = flags;
@@ -252,7 +278,15 @@ diffs_main(int ac, char **av)
 		 *
 		 * XXX - need to catch a request for annotations w/o 2 revs.
 		 */
-		rc = sccs_diffs(s, r1, r2, &dop, stdout);
+		dop.adds = dop.dels = dop.mods = 0;
+		rc = sccs_diffs(s, r1, r2, &dop, fout);
+		if (dop.out_diffstat && (dop.adds || dop.dels || dop.mods)) {
+			ds = addArray(&diffstats, 0);
+			ds->name = strdup(s->gfile);
+			ds->adds = dop.adds;
+			ds->dels = dop.dels;
+			ds->mods = dop.mods;
+		}
 		switch (rc) {
 		    case -1:
 			fprintf(stderr,
@@ -274,8 +308,84 @@ next:		if (s) {
 		}
 		name = sfileNext();
 	}
+	if (dop.out_diffstat) {
+		char	*data;
+		size_t	len;
+
+		if (diffstat_only || (nLines(diffstats) > 1)) {
+			printHistogram(diffstats);
+			putchar('\n');
+		}
+		data = fmem_close(fout, &len);
+		unless (diffstat_only) fwrite(data, 1, len, stdout);
+		FREE(data);
+	}
 out:	if (sfileDone()) errors |= 4;
 	return (errors);
+}
+
+private int
+ilog10(int i)
+{
+	int	n = 0;
+
+	while (i /= 10) n++;
+	return (n);
+}
+
+private void
+printHistogram(dstat *diffstats)
+{
+	int	maxlen, maxdiffs, maxbar, n, m;
+	int	adds, dels, mods, files;
+	int	i;
+	double	factor;
+	dstat	*ds;
+	char	hist[MAXLINE];
+
+#define	DIGITS(x) ((x) ? ilog10(x) + 1 : 1)
+
+	maxdiffs = maxlen = 0;
+	files = adds = dels = mods = 0;
+	EACHP(diffstats, ds) {
+		n = strlen(ds->name);
+		if (n > maxlen) maxlen = n;
+		if ((ds->adds + ds->dels + ds->mods) > maxdiffs) {
+			maxdiffs = ds->adds + ds->dels + ds->mods;
+		}
+	}
+
+	maxbar = 80 - maxlen - strlen(" | ") - DIGITS(maxdiffs) - 1;
+	if (maxdiffs < maxbar) {
+		factor = 1.0;
+	} else {
+		factor = (double)maxbar / (double)maxdiffs;
+	}
+	EACHP(diffstats, ds) {
+		n = 0;
+		m = (int)((double)ds->adds * factor);
+		for (i = 0; i < m; i++) hist[n++] = '+';
+		m = (int)((double)ds->mods * factor);
+		for (i = 0; i < m; i++) hist[n++] = '~';
+		m = (int)((double)ds->dels * factor);
+		for (i = 0; i < m; i++) hist[n++] = '-';
+		hist[n] = 0;
+		printf(" %-*.*s | %*d %s\n", maxlen, maxlen,
+		    ds->name,
+		    DIGITS(maxdiffs),
+		    ds->adds + ds->dels + ds->mods, hist);
+		files++;
+		adds += ds->adds;
+		dels += ds->dels;
+		mods += ds->mods;
+		FREE(ds->name);
+	}
+	FREE(diffstats);
+	printf(" %d files changed", files);
+	if (adds) printf(", %d insertions(+)", adds);
+	if (mods) printf(", %d modifications(~)", mods);
+	if (dels) printf(", %d deletions(-)", dels);
+	printf("\n");
 }
 
 private int

@@ -14109,10 +14109,26 @@ doDiff(sccs *s, df_opt *dop, char *leftf, char *rightf,
 		if (!diffs) return (-1);
 		diffFile[0] = 0;
 	} else {
+		df_ctx	*dc = 0;
+		hunk	*hunks, *h;
+
 		strcpy(spaces, "=====");
 		unless (bktmp(diffFile, "diffs")) return (-1);
 		dop->ignore_trailing_cr = 1;
-		diff_files(leftf, rightf, dop, 0, diffFile);
+		diff_files(leftf, rightf, dop, &dc, diffFile);
+		if (dop->out_diffstat) {
+			hunks = diff_hunks(dc);
+			dop->adds = dop->dels = dop->mods = 0;
+			EACHP(hunks, h) {
+				if (h->ll == h->rl) {
+					dop->mods += h->ll;
+				} else {
+					dop->adds += h->rl;
+					dop->dels += h->ll;
+				}
+			}
+		}
+		diff_free(dc);
 		diffs = fopen(diffFile, "rt");
 	}
 	if (WRITABLE(s) && !EDITED(s)) {

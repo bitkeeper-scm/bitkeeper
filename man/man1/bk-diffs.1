@@ -27,6 +27,11 @@ To see the changes for all files in your tree as unified diffs:
 .DS
 $ bk \-r diffs -up
 .DE
+When generating unified diffs for more than one file, then a "diffstat-like"
+header is created by default.
+Use \-h to suppress this header or \-\-stats-only to generate the header without
+the actual diffs output.
+.LP
 See the examples section for more ideas on how to use this useful command.
 .SH OPTIONS
 .TP \-A\*<bdpru\*>n
@@ -134,6 +139,9 @@ then the revision is taken from the standard input.
 .B \-s
 Display side-by-side diffs.  The total width is controlled by
 the COLUMNS environment variable, and defaults to 80.
+.tp
+.B \-\-stats\-only
+Print statistics like diffstat and suppress the normal diff output.
 .tp
 .B \-u
 Do unified diffs.

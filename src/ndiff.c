@@ -309,11 +309,7 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 		goto out;
 	}
 	rc = 1;			/* difference found */
-	if (odc) {
-		*odc = dc;
-		return (rc);
-	}
-
+	if (odc) *odc = dc;
 	unless (out) goto out;
 
 	/* Print the diffs. */
@@ -342,7 +338,7 @@ out:	if (fout) fclose(fout);
 	FREE(data[1]);
 	FREE(o->dop);
 	FREE(o);
-	diff_free(dc);
+	unless (odc) diff_free(dc);
 	return (rc);
 }
 

@@ -1015,5 +1015,6 @@ diff_printUnified(df_ctx *dc, char *nameA, time_t *timeA,
 hunk	*
 diff_hunks(df_ctx *dc)
 {
+	unless (dc) return (0);
 	return (dc->hunks);
 }
