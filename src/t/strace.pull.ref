@@ -8,11 +8,11 @@ link 11
 lseek 280
 lstat 985
 mkdir 24
-open 471
-read 5129
-rename 17
+open 495
+read 5095
+rename 18
 rmdir 2
 stat 37
-unlink 93
+unlink 95
 utime 5
 write 249

@@ -7,8 +7,8 @@ fstat 48
 lseek 27
 lstat 80
 mkdir 2
-open 71
-read 2683
+open 75
+read 2666
 stat 8
 unlink 5
 write 71
