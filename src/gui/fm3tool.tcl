@@ -1111,11 +1111,12 @@ proc smerge {} \
 
 proc readFile {} \
 {
-	global	diffCount lastDiff conf_todo conf_total dev_null 
+	global	diffCount lastDiff conf_todo conf_total dev_null elide
 	global  app gc restore dir filename undo click
 
 	set dir "forward"
 	array set restore {}
+	if {$elide(gca)} {restoreGCA}
 	foreach t {.diffs.left .diffs.right .merge.t .merge.hi} {
 		$t configure -state normal
 		$t delete 1.0 end
