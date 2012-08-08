@@ -107,7 +107,6 @@ hash_fromStream(hash *h, FILE *f)
 	int	base64 = 0;
 	FILE	*val = fmem();
 	int	gotval = 0;
-	char	*p;
 	unsigned long len;
 	char	data[256];
 
@@ -122,16 +121,10 @@ hash_fromStream(hash *h, FILE *f)
 				key = 0;
 				gotval = 0;
 			}
-			base64 =
-			    ((p = strchr(line, ' ')) && streq(p, " base64"));
-			if (p) {
-				unless (base64) {
-					fprintf(stderr,
-					    "hash_fromFile: bad line '%s'\n",
-					    line);
-				}
-				*p = 0;
-			}
+			len = strlen(line);
+			/* /^@.+ base64$/ */
+			base64 = ((len > 8) && streq(line + len - 7, " base64"));
+			if (base64) line[len-7] = 0;
 			webdecode(line+1, &key, 0);
 		} else {
 			if (*line == '@') ++line; /* skip escaped @ */
