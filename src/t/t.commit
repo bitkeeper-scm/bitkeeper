@@ -72,3 +72,42 @@ bk edit $Q ../file
 bk delta -fywhatever $Q ../file
 bk commit $Q -S -yfile-leftover || fail
 echo OK
+
+echo $N Commit should fail if cset marking fails.....................$NL
+cd "$HERE"
+commercial markcset
+mkdir F
+touch F/foo bar goo
+bk new $Q F/foo bar goo
+bk commit $Q -ybase
+bk edit $Q F/foo
+bk delta $Q -fynull F/foo
+bk _cp F/SCCS/s.foo precommit
+chmod 555 .bk/F/SCCS
+bk commit -q -y"Foo" 2> OUT
+RC=$?
+chmod 755 .bk/F/SCCS
+if [ "$PLATFORM" = WIN32 ]
+then	bk _cp precommit F/SCCS/s.foo
+	bk sfiles -P > GOT
+	echo F/SCCS/s.foo > WANT
+	cmpfiles WANT GOT
+else	test "$RC" = 0 && fail commit should have failed
+	grep -q 'Could not mark F/foo. Perhaps it is locked' OUT || fail -f OUT
+fi
+test -f "SCCS/x.foo" && fail left xfile behind
+test `bk changes -d:C: -r+` = Foo || fail cset not made
+cd "$HERE"
+bk clone -q markcset markcset_copy 2>OUT && fail
+grep -q "Missing delta (bk help chk2)" OUT || fail -f OUT wrong error
+cd markcset_copy
+test -d RESYNC || fail expected RESYNC lock in clone
+# repair can replace a new file but not port a missing delta
+bk repair 2>OUT && fail -f OUT repair fixed
+grep -q "Missing delta (bk help chk2)" OUT || fail -f OUT wrong error
+# check in the initial repo will repair itself
+cd ../markcset
+bk -r check -ac 2>OUT || fail -f OUT
+grep -q 'F/foo: adding and/or removing missing csetmarks' OUT || fail -f OUT
+bk repocheck $Q || fail
+echo OK
