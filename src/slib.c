@@ -16572,16 +16572,13 @@ gca3(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 	ser_t	ret = 0;
 	ser_t	gca;
 	u8	*gmap = 0;
-	ser_t	*glist, *list = 0;
+	ser_t	*glist = 0;
 	int	i, count;
 
 	*inc = *exc = 0;
 	unless (s && TABLE(s) && left && right) return (0);
 
-	addArray(&list, &left);
-	addArray(&list, &right);
-	glist = range_gcalist(s, list);
-	free(list);
+	range_walkrevs(s, left, 0, right, WR_GCA, walkrevs_addSer, &glist);
 	count = nLines(glist);
 	assert(count);
 	gca = glist[1];
