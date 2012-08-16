@@ -15239,7 +15239,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 
 	/* print the first rev at/below this which is in a cset */
 	case KW_CSETREV: /* CSETREV */ {
-		unless (d = sccs_csetBoundary(s, d)) return (nullVal);
+		unless (d = sccs_csetBoundary(s, d, 0)) return (nullVal);
 		fs(REV(s, d));
 		return (strVal);
 	}
@@ -17041,10 +17041,11 @@ sccs_setPath(sccs *s, ser_t d, char *new)
  * If the delta is not in a cset (i.e., it's pending) then return null.
  */
 ser_t
-sccs_csetBoundary(sccs *s, ser_t d)
+sccs_csetBoundary(sccs *s, ser_t d, u32 flags)
 {
 	ser_t	e, start, end;
 
+	flags |= (D_CSET|D_RED);
 	start = d;
 	FLAGS(s, d) |= D_RED;
 	for (; d <= TABLE(s); ++d) {
@@ -17056,7 +17057,7 @@ sccs_csetBoundary(sccs *s, ser_t d)
 		if ((e = MERGE(s, d)) && (FLAGS(s, e) & D_RED)) {
 			FLAGS(s, d) |= D_RED;
 		}
-		if ((FLAGS(s, d) & (D_CSET|D_RED)) == (D_CSET|D_RED)) break;
+		if ((FLAGS(s, d) & flags) == flags) break;
 	}
 	end = d;
 	if (d > TABLE(s)) {

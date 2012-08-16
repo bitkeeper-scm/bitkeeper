@@ -3,26 +3,30 @@
 #include "sccs.h"
 #include "bam.h"
 #include "progress.h"
+#include "tommath.h"
 
-private int	newroot(char *ranbits, int bk4, char *comment, char *who);
+private int	newroot(char *ranbits, int bk4, char *comment, char *who,
+		    int xor);
 private void	update_rootlog(sccs *s, char *key, char *comment, char *who);
+private	void	xorsyncroot(sccs *s, char *buf);
 
 int
 newroot_main(int ac, char **av)
 {
-	int	c, bk4 = 0;
+	int	c, bk4 = 0, xor = 0;
 	char	*ranbits = 0;
 	char	*comments = 0;
 	char	*who = 0;
 	u8	*p;
 
-	while ((c = getopt(ac, av, "4k:qvw:y:", 0)) != -1) {
+	while ((c = getopt(ac, av, "4k:qvw:Xy:", 0)) != -1) {
 		switch (c) {
 		    case '4': bk4 = 1; break;
 		    case 'k': ranbits = optarg; break;
 		    case 'q': /* nop */; break;
 		    case 'v': /* nop */; break;
 		    case 'w': who = optarg; break;
+		    case 'X': xor = 1; break;
 		    case 'y': comments = optarg; break;
 		    default: bk_badArg(c, av);
 		}
@@ -45,7 +49,7 @@ k_err:			fprintf(stderr,
 		}
 		if (*p) goto k_err;
 	}
-	return (newroot(ranbits, bk4, comments, who));
+	return (newroot(ranbits, bk4, comments, who, xor));
 }
 
 /*
@@ -55,7 +59,7 @@ k_err:			fprintf(stderr,
  * Prolly not.
  */
 private int
-newroot(char *ranbits, int bk4, char *comments, char *who)
+newroot(char *ranbits, int bk4, char *comments, char *who, int xor)
 {
 	sccs	*s;
 	int	rc = 0;
@@ -117,6 +121,8 @@ newroot(char *ranbits, int bk4, char *comments, char *who)
 			}
 			strcpy(p, ranbits);
 		}
+	} else if (xor) {
+		xorsyncroot(s, buf);
 	} else {
 		randomBits(buf);
 	}
@@ -150,6 +156,60 @@ newroot(char *ranbits, int bk4, char *comments, char *who)
 
 	if (tick) progress_done(tick, rc ? "FAILED" : "OK");
 	return (rc);
+}
+
+/*
+ * Take the product random bits and xor with our syncroot
+ * to give a preditable but different rootkey for an attach
+ */
+
+private char *
+getRandom(char *rootkey)
+{
+	char	*p, *rand;
+
+	assert(rootkey);
+	/* skip user@host */
+	rand = strchr(rootkey, '|');
+	assert(rand);
+	/* skip path */
+	rand = strchr(rand+1, '|');
+	assert(rand);
+	/* skip date */
+	rand = strchr(rand+1, '|');
+	assert(rand);
+	/* skip checksum */
+	rand = strchr(rand+1, '|');
+	assert(rand);
+	rand++;
+	/* skip over bam markers (note rr -- goto last) */
+	if (p = strrchr(rand, ':')) rand = p + 1;
+
+	return (rand);
+}
+
+private	void
+xorsyncroot(sccs *s, char *buf)
+{
+	char	*rand;
+	mp_int	a, b;
+	char	key[MAXKEY];
+
+	/* assumes proj_product gives product when attach isn't done */
+	rand = getRandom(proj_rootkey(proj_product(s->proj)));
+	mp_init(&a);
+	mp_read_radix(&a, rand, 16);
+
+	sccs_syncRoot(s, key);
+	rand = getRandom(key);
+	mp_init(&b);
+	mp_read_radix(&b, rand, 16);
+
+	mp_xor(&a, &b, &a);
+	mp_toradix(&a, buf, 16);
+
+	mp_clear(&a);
+	mp_clear(&b);
 }
 
 private void

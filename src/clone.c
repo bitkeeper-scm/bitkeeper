@@ -1740,9 +1740,10 @@ attach(void)
 	unlink(REPO_ID);
 	(void)proj_repoID(0);
 
-	rc = systemf("bk newroot %s %s -y'attach %s'",
+	rc = systemf("bk newroot %s %s %s -y'attach %s'",
 		     opts->quiet ? "-q":"",
 		     opts->verbose ? "-v":"",
+		     opts->force ? "" : "-X",	/* -X: repeatable rootkey */
 		     relpath);
 
 	/*

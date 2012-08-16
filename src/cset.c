@@ -4,6 +4,7 @@
 #include "range.h"
 #include "nested.h"
 #include "progress.h"
+#include "poly.h"
 
 typedef	struct cset {
 	/* bits */
@@ -432,6 +433,7 @@ markThisCset(cset_t *cs, sccs *s, ser_t d)
 		FLAGS(s, d) |= D_SET;
 		return;
 	}
+	assert(!CSET(s));
 	range_cset(s, d);
 }
 
@@ -520,7 +522,9 @@ markkey:
 		    "cset: cannot find\n\t%s in\n\t%s\n", val, sc->sfile);
 		return (cs->force ? 0 : -1);
 	}
-	markThisCset(cs, sc, d);
+	unless (cs->hide_comp && CSET(sc) && proj_isComponent(sc->proj)) {
+		markThisCset(cs, sc, d);
+	}
 	return (rc);
 }
 
@@ -1206,6 +1210,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	 * (pull-r or pending deltas)
 	 */
 	if (!CSET(s) && hastip && !MONOTONIC(s) &&
+	    !IS_POLYPATH(PATHNAME(s, sccs_ino(s))) &&
 	    ((!cs->compat && newfile) ||
 		((cs->tooMany > 0) && (n >= cs->tooMany)))) {
 		cs->sfiles = addLine(cs->sfiles, strdup(s->sfile));

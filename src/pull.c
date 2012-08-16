@@ -44,7 +44,6 @@ private int	pull_finish(remote *r, int status, char **envVar);
 private void	resolve_comments(remote *r);
 private	int	resolve(void);
 private	int	takepatch(remote *r);
-private	int	pullPoly(int got_patch);
 
 int
 pull_main(int ac, char **av)
@@ -112,7 +111,7 @@ pull_main(int ac, char **av)
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
 		    case 'C': opts.portNoCommit = 1; break;
-		    case 'M': opts.mergefile = strdup(optarg); break;
+		    case 'M': opts.mergefile = optarg; break;
 		    case 'S':
 			fprintf(stderr,
 			    "%s: -S unsupported, try port.\n", prog);
@@ -194,7 +193,6 @@ pull_main(int ac, char **av)
 		urls = parent_pullp();
 		unless (urls) {
 			freeLines(envVar, free);
-			FREE(opts.mergefile);
 			getMsg("missing_parent", 0, 0, stderr);
 			return (1);
 		}
@@ -202,7 +200,6 @@ pull_main(int ac, char **av)
 
 	unless (urls) {
 err:		freeLines(envVar, free);
-		FREE(opts.mergefile);
 		usage();
 		return (1);
 	}
@@ -329,7 +326,6 @@ err:		freeLines(envVar, free);
 		unlink(tmpfile);
 	}
 done:	freeLines(envVar, free);
-	FREE(opts.mergefile);
 	return (rc);
 }
 
@@ -1063,15 +1059,8 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			vp = addLine(vp, strdup(opts.av_pull[i]));
 		}
 		if (c->localchanges) {
-			FILE	*tmpf;
-			
 			tmpfile = bktmp(0, "mergekeys");
-			tmpf = fopen(tmpfile, "w");
-			assert(tmpf);
-			EACH(c->local) fprintf(tmpf, "%s\n", c->local[i]);
-			fputc('\n', tmpf);
-			EACH(c->remote) fprintf(tmpf, "%s\n", c->remote[i]);
-			fclose(tmpf);
+			lines2File(c->poly, tmpfile);
 			vp = addLine(vp, aprintf("-M%s", tmpfile));
 		}
 		vp = addLine(vp, aprintf("-r%s", c->deltakey));
@@ -1223,7 +1212,7 @@ pull(char **av, remote *r, char **envVar)
 
 	/* pull component - poly detection and fixups */
 	if (!rc && opts.mergefile) {
-		if (pullPoly(got_patch)) {
+		if (poly_pull(got_patch, opts.mergefile)) {
 			putenv("BK_STATUS=POLY");
 			got_patch = 0;	/* post triggers */
 			rc = 71;	/* XXX: hack to talk to pull */
@@ -1457,143 +1446,4 @@ resolve(void)
 	status = resolve_main(i, cmd);
 	unless (opts.quiet) progress_nlneeded();
 	return (status);
-}
-
-/*
- * range_walkrevs() callback on GCA nodes. Fail on the first poly node found.
- * Poly if GCA has no csetmark or is listed in local, remote or both.
- */
-
-#define	LOCAL	0x01
-#define	REMOTE	0x02
-#define	BOTH	(LOCAL|REMOTE)
-
-private	int
-polyChk(sccs *cset, ser_t gca, void *token)
-{
-	hash	*cmarks = (hash *)token;
-	char	*reason;
-	char	key[MAXKEY];
-
-	sccs_sdelta(cset, gca, key);
-	if (hash_fetchStrMem(cmarks, key)) {
-		assert(FLAGS(cset, gca) & D_CSET);
-		switch (*(u8 *)cmarks->vptr) {
-		    case LOCAL: reason = "local"; break;
-		    case REMOTE: reason = "remote"; break;
-		    case BOTH: reason = "both"; break;
-		    default: assert("other reason" == 0); break;
-		}
-		fprintf(stderr, "%s: poly on key %s marked in %s\n",
-		    prog, key, reason);
-		return (1);
-	}
-	unless (FLAGS(cset, gca) & D_CSET) {
-		fprintf(stderr, "%s: poly on unmarked key %s\n", prog, key);
-		return (1);
-	}
-	return (0);
-}
-
-/*
- * Pull Poly is both detection and fixups for handling poly in a pull.
- * If the local is ahead of the remote, but the remote adds cset marks,
- * then we need to fake a RESYNC and make it pending, so the tip can
- * be included in the product tip (enhancing the polyness some more).
- * If update only pull, then don't have to fake up the RESYNC, but do
- * have to do the pending work on the tip.   In there, also do error
- * detection and bail.
- */
-private	int
-pullPoly(int got_patch)
-{
-	sccs	*cset = 0;
-	ser_t	d, local = 0, remote = 0;
-	char	*prefix, *resync;
-	int	rc = 1, write = 0;
-	int	more, i;
-	u8	side;
-	char	**list;
-	hash	*cmarks;
-	char	key[MAXKEY];
-
-	resync = aprintf("%s/%s", ROOT2RESYNC, CHANGESET);
-
-	/* cons up a RESYNC area in case "Nothing to pull" */
-	unless (got_patch) {
-		if (mkdir("RESYNC", 0777)) {
-			perror("make poly resync");
-			goto err;
-		}
-		sccs_mkroot("RESYNC");
-		fileCopy(CHANGESET, resync);
-		touch("RESYNC/BitKeeper/tmp/patch", 0666);
-	}
-
-	unless (cset = sccs_init(resync, INIT_MUSTEXIST)) goto err;
-	assert(cset);
-
-	side = LOCAL;
-	more = 0;
-	list = file2Lines(0, opts.mergefile);
-	cmarks = hash_new(HASH_MEMHASH);
-	EACH(list) {
-		unless (*list[i]) { // if blank line, which is separator
-			side = REMOTE;
-			continue;
-		}
-		if (hash_insertStrMem(cmarks, list[i], 0, sizeof(side))) {
-			more++;
-		}
-		*(u8 *)cmarks->vptr |= side;
-	}
-	freeLines(list, free);
-
-	/*
-	 * Fix up cset marks - if poly, might be missing marks from remote.
-	 * pick off local and remote tip - above lists are unsorted
-	 */
-	for (d = TABLE(cset); (d >= TREE(cset)) && more; d--) {
-		if (TAG(cset, d)) continue;
-		sccs_sdelta(cset, d, key);
-		unless (hash_fetchStr(cmarks, key)) continue;
-		side = *(u8 *)cmarks->vptr;
-		if (!local && (side & LOCAL)) local = d;
-		if (!remote && (side & REMOTE)) remote = d;
-		unless (FLAGS(cset, d) & D_CSET) {
-			/* could assert that it only updates remote */
-			FLAGS(cset, d) |= D_CSET;
-			write = 1;
-		}
-		more--;
-	}
-	assert(local && remote);
-
-	unless (getenv("_BK_DEVELOPER") && proj_configbool(0, "poly")) {
-		/* assumes D_SET is clear to start; leaves clear */
-		if (range_walkrevs(
-		    cset, local, 0, remote, WR_GCA, polyChk, cmarks)) {
-			goto err;
-		}
-	}
-	hash_free(cmarks);
-
-	/* if no merge file: fake pending to get included in product merge */
-	prefix = resync + strlen(resync) - 11;
-	assert(*prefix == 's');
-	*prefix = 'r';
-	if (!exists(resync)) {
-		d = sccs_top(cset);
-		assert(FLAGS(cset, d) & D_CSET);
-		FLAGS(cset, d) &= ~D_CSET;
-		write = 1;
-		*prefix = 'd';
-		touch(resync, 0666);
-	}
-	if (write && sccs_newchksum(cset)) goto err;
-	rc = 0;
-err:
-	sccs_free(cset);
-	FREE(resync);
-	return (rc);
 }

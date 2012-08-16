@@ -11,6 +11,7 @@
 #include "bam.h"
 #include "nested.h"
 #include "progress.h"
+#include "poly.h"
 
 /*
  * Stuff to remember for each rootkey in the ->mask field:
@@ -119,6 +120,7 @@ check_main(int ac, char **av)
 	int	noDups = 0;
 	ticker	*tick = 0;
 	int	sawBINFILE = 0;
+	int	sawPOLY = 0;
 	longopt	lopts[] = {
 		{ "use-older-changeset", 300 },
 		{ 0, 0 }
@@ -327,6 +329,7 @@ check_main(int ac, char **av)
 			if (chk_BAM(s, &bp_missing)) ferr++, errors |= 0x04;
 		}
 		if (BFILE(s)) sawBINFILE = 1;
+		if (IS_POLYPATH(PATHNAME(s, sccs_top(s)))) sawPOLY = 1;
 		if (chk_gfile(s, pathDB, checkout)) ferr++, errors |= 0x08;
 		if (no_gfile(s)) ferr++, errors |= 0x08;
 		if (readonly_gfile(s)) ferr++, errors |= 0x08;
@@ -496,6 +499,11 @@ check_main(int ac, char **av)
 			bk_featureSet(0, FEAT_bSFILEv1, 1);
 		} else if (all) {
 			bk_featureSet(0, FEAT_bSFILEv1, 0);
+		}
+		if (sawPOLY) {
+			bk_featureSet(0, FEAT_POLY, 1);
+		} else if (all) {
+			bk_featureSet(0, FEAT_POLY, 0);
 		}
 	}
 out:
@@ -968,7 +976,7 @@ checkAll(hash *keys)
 {
 	char	*t, *rkey;
 	hash	*warned = hash_new(HASH_MEMHASH);
-	hash	*deltas = 0;
+	hash	*weavekeys = 0;
 	int	found = 0;
 	char	buf[MAXPATH*3];
 
@@ -981,39 +989,33 @@ checkAll(hash *keys)
 	 */
 	if (resync) {
 		FILE	*f;
+		char	*tipkey;
+		char	*line;
+		project	*repo;
 
 		sprintf(buf, "%s/%s", RESYNC2ROOT, CHANGESET);
 		if (exists(buf)) {
+			assert(repo = proj_isResync(cset->proj));
+			unless (tipkey = proj_tipkey(repo)) {
+				tipkey = "";
+			}
 			sprintf(buf,
-			    "bk annotate -R -h '%s/ChangeSet' | bk sort",
-			    RESYNC2ROOT);
+			    "bk annotate -R'%s'.. -h ChangeSet", tipkey);
 			f = popen(buf, "r");
-			r2deltas->kptr = "";
-			while (fnext(buf, f)) {
-				chomp(buf);
-				t = separator(buf);
+			weavekeys = hash_new(HASH_MEMHASH);
+			while (line = fgetline(f)) {
+				t = separator(line);
 				assert(t);
 				*t++ = 0;
-				unless (streq(buf, r2deltas->kptr)) {
-					deltas = hash_fetchStrPtr(r2deltas, buf);
-					assert(deltas);
-				}
-				if (hash_deleteStr(deltas, t)) {
-					fprintf(stderr, "delta %s missing?\n",
-					    t);
-					exit(1);
-				}
+				hash_insertStr(weavekeys, line, 0);
 			}
 			pclose(f);
 		}
 	}
-	EACH_HASH(r2deltas) {
-		rkey = r2deltas->kptr;
+	unless (weavekeys) weavekeys = r2deltas;
+	EACH_HASH(weavekeys) {
+		rkey = weavekeys->kptr;
 		if (hash_fetchStr(keys, rkey)) continue;
-		deltas = *(hash **)r2deltas->vptr;
-		/* no resync deltas, whatever that means */
-		unless (t = hash_first(deltas)) continue;
-
 		if (gone(rkey, goneDB)) continue;
 
 		hash_storeStr(warned, rkey, 0);
@@ -1027,6 +1029,7 @@ checkAll(hash *keys)
 		}
 	}
 	hash_free(warned);
+	if (weavekeys != r2deltas) hash_free(weavekeys);
 	return (found != 0);
 }
 
@@ -1351,8 +1354,7 @@ buildKeys(MDBM *idDB)
 	if (resync) {
 		if (sccs_findtips(cset, &d, &twotips)) {
 			unless (polyErr) {
-				polyErr = !getenv("_BK_DEVELOPER") ||
-				    !proj_configbool(0, "poly");
+				polyErr = !proj_configbool(0, "poly");
 			}
 		}
 	} else {

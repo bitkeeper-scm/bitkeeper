@@ -165,7 +165,7 @@ csetStop(sccs *s, ser_t d, void *token)
 void
 range_cset(sccs *s, ser_t d)
 {
-	unless (d = sccs_csetBoundary(s, d)) return; /* if pending */
+	unless (d = sccs_csetBoundary(s, d, 0)) return; /* if pending */
 	range_walkrevs(s, 0, 0, d, WR_STOP, csetStop, &d);
 	s->state |= S_SET;
 }
@@ -426,7 +426,7 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 	assert (!from || !fromlist);
 	s->rstop = 0;
 	unless (to) {		/* no upper bound - get all tips */
-		all = 1;
+		unless (flags & WR_STOP) all = 1;
 		to = TABLE(s);	/* could be a tag; that's okay */
 	} else {
 		FLAGS(s, to) |= D_RED;
@@ -438,10 +438,11 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 		addArray(&freelist, &from);
 		fromlist = freelist;
 	}
+	color = (flags & WR_STOP) ? D_RED : D_BLUE;
 	EACH(fromlist) {
 		from = fromlist[i];
 		if (d < from) d = from;
-		MARK(from, D_BLUE);
+		MARK(from, color);
 	}
 
 	/* compute RED - BLUE */
