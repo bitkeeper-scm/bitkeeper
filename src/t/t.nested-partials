@@ -69,9 +69,8 @@ echo OK
 
 echo $N Run a pull where one of the source URLs are invalid .........$NL
 cd ../pull-targ
-# this is still an error
-bk pull $Q ../gcc-only 2> ERR && fail
-grep -q 'pull: gdb is missing in.*gcc-only' ERR || fail
+# wow, talk about self-healing... we just fetch it from somewhere else
+bk pull -q ../gcc-only || fail
 echo OK
 
 echo $N Show how an unpopulate might fail ...........................$NL

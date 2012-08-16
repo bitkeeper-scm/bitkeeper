@@ -951,7 +951,6 @@ private	struct {
 	{"remote rclone part3", CMD_REPOLOG|CMD_NOREPO|CMD_BYTES},
 	{"remote quit", CMD_NOREPO|CMD_QUIT},
 	{"remote rdlock", CMD_RDLOCK},
-	{"remote nested", CMD_SAMELOCK},
 	{"remote wrlock", CMD_WRLOCK},
 	{"resolve", CMD_REPOLOG},
 	{"synckeys", CMD_RDLOCK},
@@ -1072,30 +1071,6 @@ cmdlog_lock(int flags)
 
 	cmdlog_flags = flags;
 
-	/* used by "remote nested" */
-	if (cmdlog_flags & CMD_SAMELOCK) {
-		if (nlid = getenv("_BK_NESTED_LOCK")) {
-			if (nested_mine(proj, nlid, 1)) {
-				cmdlog_flags |= CMD_WRLOCK;
-				TRACE("SAMELOCK: got a %s", "write lock");
-			} else if (nested_mine(proj, nlid, 0)) {
-				cmdlog_flags |= CMD_RDLOCK;
-				TRACE("SAMELOCK: got a %s", "read lock");
-			} else {
-				TRACE("SAMELOCK: not mine: %s", nlid);
-				error_msg = aprintf("%s\n", LOCK_UNKNOWN+6);
-				goto out;
-			}
-		}
-		if (cmdlog_locks &&
-		    ((cmdlog_locks & (CMD_RDLOCK|CMD_WRLOCK)) != 
-		    (cmdlog_flags & (CMD_RDLOCK|CMD_WRLOCK)))) {
-			TRACE("SAMELOCK: locks=%x != flags=%x",
-			    cmdlog_locks, cmdlog_flags);
-			error_msg = aprintf("%s\n", LOCK_UNKNOWN+6);
-			goto out;
-		}
-	}
 	/*
 	 * cmdlog_locks remember all the repository locks obtained by
 	 * this process so if another command wants the same lock type

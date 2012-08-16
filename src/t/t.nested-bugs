@@ -81,12 +81,7 @@ bk clone $Q -scomp1 repoA repoC
 
 #   4. pull REPO_B <- REPO_C
 cd repoB
-bk pull $Q ../repoC 2>ERR && fail -f ERR should fail
-sed 's/file:.*ws\/repoC/file:\/\/...\/ws\/repoC/' < ERR > ERR2
-cat <<EOF > WANT
-pull: comp2 is missing in file://.../ws/repoC
-and has work that needs to be pulled, please populate it in the remote side.
-pull: update aborted due to errs with 1 components.
-EOF
-cmpfiles ERR2 WANT
-echo 'failed (bug no sideways pull of component from urllist)'
+bk pull -q ../repoC || fail
+bk changes -qR ../repoC > OUT
+test -s OUT && fail -f OUT
+echo OK

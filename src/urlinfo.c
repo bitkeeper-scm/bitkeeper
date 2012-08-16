@@ -342,14 +342,6 @@ urlinfo_setFromEnv(nested *n, char *url)
 	data->pcomps = hash_new(HASH_MEMHASH);
 	EACH_STRUCT(n->comps, c, i) {
 		unless (c->remotePresent) continue;
-		/*
-		 * Optimization as long as urllist is only used
-		 * for populate.  If we have local work (only set in a pull),
-		 * then don't bother checking remote for populate.
-		 * NOTE: the pull-urllist rti has this commented out:
-		 */
-		if (c->localchanges) continue;
-
 		urlinfo_addURL(n, c, url);
 	}
 	data->checked = data->checkedGood = 1;

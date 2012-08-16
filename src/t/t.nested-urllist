@@ -841,7 +841,11 @@ set -e
 
 echo $N Set up pull safe tests ......................................$NL
 cd "$HERE"
-# build a urllist setup where
+# This builds a setup where task1 and task2 both have work on gdb, so
+# pulling one into the other would require a merge. Then the next test
+# pull with gdb unpopulated, which means that we'd need to first
+# populate gdb, at some revision, then pull (to create the merge
+# delta).
 bk clone $Q -s./gcc -s./gdb project2-clone task1
 bk clone $Q -s./gcc -s./gdb project2 task2
 cd task2
@@ -865,7 +869,7 @@ echo OK
 
 echo $N Pull auto-populates missing local comps......................$NL
 cd ../task2
-bk pull $Q ../project2-clone 2>ERR || fail
+bk pull $Q ../project2-clone || fail
 bk unpopulate $Q -f gdb gcc || fail
 bk pull ../task1 > OUT 2>&1 && fail -f OUT
 perl -pe "s/.*\r//;s,$HERE,ROOT," < OUT | grep -v 'connect failure' > OUT2
@@ -908,11 +912,77 @@ Adding the following aliases/components:
 	gdb
 pull: searching ROOT/task1...ok
 1/4 gcc                            100% |==============================| OK
+pull: searching ROOT/project2-clone...ok
 pull: searching ROOT/project2...ok (gate)
 Source ROOT/project2
 2/4 gdb                            100% |==============================| OK
+pull: searching ROOT/task1...ok
 3/4 gdb                              1 changeset,    1 merge  in   2 files
 4/4 .                                1 changeset,    1 merge  in   2 files
 EOF
 cmpfiles WANT OUT2
 echo OK
+
+echo $N Redo the pull, but with missing components found at gates....$NL
+cd "$HERE"
+bk clone -sALL $Q task1 gate
+bk --cd=gate gate $Q .
+cd task2
+bk unpull -qf
+bk here check $Q -@../gate
+cd gdb/
+echo FOO > some_file
+bk new $Q some_file
+bk -P commit $Q -ysome_file
+cd ..
+bk unpopulate $Q -f gdb gcc
+bk here | grep gdb && fail
+bk pull --auto-populate ../gate > OUT 2>&1 && fail -f OUT should have failed
+bk repocheck $Q || fail repo borked
+echo OK
+
+
+echo $N Demo pull with updated component from 3rd repo ..............$NL
+nested source
+bk setup -f comp || fail
+cd ..
+bk clone $Q source dest || fail
+bk clone -s. $Q source mid || fail
+cd source/comp
+echo hi > file
+bk new $Q file || fail
+bk commit $Q -yup || fail
+cd ..
+bk commit $Q -yupP || fail
+cd ../mid
+bk pull $Q || fail
+cd ../dest
+bk pull $Q ../mid || fail
+bk changes -qRL >GOT
+test -s GOT && fail -f GOT did not pull
+bk unpull -qf || fail
+echo OK
+
+echo $N Demo push with updated component from 3rd repo ..............$NL
+cd ../mid
+bk push $Q ../dest 2>ERR && fail -f ERR
+grep -q "push: comp is needed to push to .*/dest" ERR || fail -f ERR
+echo failed \(bug push should find source for comp\)
+
+echo $N Demo pull with new component from 3rd repo ..................$NL
+cd ../source
+bk setup -f newcomp || fail
+cd ../mid
+bk pull $Q || fail
+cd ../dest
+bk pull $Q ../mid || fail
+bk changes -qRL >GOT
+test -s GOT && fail -f GOT did not pull
+bk unpull -qf
+echo OK
+
+echo $N Demo push with new component from 3rd repo ..................$NL
+cd ../mid
+bk push $Q ../dest 2>ERR && fail -f ERR
+grep -q "push: newcomp is needed to push to .*/dest" ERR || fail -f ERR
+echo failed \(bug push should find source for newcomp\)

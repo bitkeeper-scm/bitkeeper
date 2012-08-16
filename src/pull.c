@@ -26,6 +26,7 @@ private struct {
 	u32	transaction:1;		/* is $_BK_TRANSACTION set? */
 	u32	local:1;		/* set if we find local work */
 	u32	autoPopulate:1;		/* automatically populate missing comps */
+	u32	unlockRemote:1;		/* nested unlock remote when done */
 	int	safe;			/* require all involved comps to be here */
 	int	n;			/* number of components */
 	int	delay;			/* -w<delay> */
@@ -146,7 +147,11 @@ pull_main(int ac, char **av)
 		usage();
 		return (1);
 	}
-	if (getenv("_BK_TRANSACTION")) opts.transaction = 1;
+	if (getenv("_BK_TRANSACTION")) {
+		opts.transaction = 1;
+		/* pull urllist comp : need to nested_unlock() when done */
+		unless (getenv("BKD_NESTED_LOCK")) opts.unlockRemote = 1;
+	}
 	if (proj_isProduct(0)) {
 		if (opts.port) {
 			fprintf(stderr,
@@ -720,7 +725,8 @@ private int
 pull_ensemble(remote *r, char **rmt_aliases,
     hash *rmt_urllist, char ***conflicts)
 {
-	char	*url, *p;
+	char	*p, *srcurl, *url;
+	char	*lock;
 	char	**urls = 0;
 	popts	popts = {0};
 	char	**vp;
@@ -728,7 +734,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	char	**revs = 0;
 	nested	*n = 0;
 	comp	*c;
-	int	i, j, rc = 0, errs = 0;
+	int	i, j, k, rc = 0, errs = 0, status = 0;
 	int	pull, clone, unpopulate;
 	int	safe;
 	int	which = 0, updateHERE = 0, flushCache = 0;
@@ -737,10 +743,9 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	char	*tmpfile = 0;
 	int	flags = URLLIST_GATEONLY | URLLIST_NOERRORS;
 	project	*proj;
+	remote	*rr;
 
-	/* allocate r->params for later */
-	unless (r->params) r->params = hash_new(HASH_MEMHASH);
-	url = remote_unparse(r);
+	srcurl = remote_unparse(r);
 	START_TRANSACTION();
 	s = sccs_init(ROOT2RESYNC "/" CHANGESET, INIT_NOCKSUM);
 	revs = file2Lines(0, ROOT2RESYNC "/" CSETS_IN);
@@ -761,7 +766,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	nested_aliases(n, n->tip, &rmt_aliases, 0, 0);
 	EACH_STRUCT(n->comps, c, i) if (c->alias) c->remotePresent = 1;
 
-	urlinfo_setFromEnv(n, url);
+	urlinfo_setFromEnv(n, srcurl);
 
 	EACH_HASH(rmt_urllist) {
 		char	*rk = (char *)rmt_urllist->kptr;
@@ -942,21 +947,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		    (c->present || c->localchanges));
 		unpopulate = (!c->alias && c->present);
 
-		if (pull) {
-			opts.n++;
-			unless (c->remotePresent) {
-				/*
-				 * XXX: I plan to fix this with pull-urllist.
-				 */
-				fprintf(stderr,
-				    "pull: %s is missing in %s\n"
-				    "and has work that needs to "
-				    "be pulled, please populate "
-				    "it in the remote side.\n",
-				    c->path, url);
-				++errs;
-			}
-		}
+		if (pull) opts.n++;
 		if (clone) {
 			if (c->localchanges) {
 				/*
@@ -1006,7 +997,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	 * suppress the "Source URL" line if components come
 	 * from the same pull URL
 	 */
-	popts.lasturl = url;
+	popts.lasturl = srcurl;
 	if (strneq(popts.lasturl, "file://", 7)) popts.lasturl += 7;
 
 	/*
@@ -1025,6 +1016,16 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	}
 	opts.n = popts.comps;
 
+	if (flushCache) {
+		EACH_STRUCT(n->comps, c, j) c->useLowerKey = 0;
+		urlinfo_flushCache(n);
+	}
+
+	/*
+	 * We are going to be switching urls, so save the remote's
+	 * nested lock id.
+	 */
+	lock = strdup(getenv("BKD_NESTED_LOCK"));
 	EACH_STRUCT(n->comps, c, j) {
 		proj_cd2product();
 		if (c->product || !c->included || !c->alias) continue;
@@ -1074,13 +1075,32 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			vp = addLine(vp, aprintf("-M%s", tmpfile));
 		}
 		vp = addLine(vp, aprintf("-r%s", c->deltakey));
-
-		/* calculate url to component */
-		hash_storeStr(r->params, "ROOTKEY", c->rootkey);
-		vp = addLine(vp, remote_unparse(r));
-		hash_deleteStr(r->params, "ROOTKEY");
-		vp = addLine(vp, 0);
-		rc = spawnvp(_P_WAIT, "bk", &vp[1]);
+		/* start the urllist loop looking for where to pull from */
+		rc = 1;		/* assume it'll fail */
+		k = 0;
+		while (url = urllist_find(n, c, opts.quiet ? SILENT : 0, &k)) {
+			if (streq(srcurl, url)) {
+				/* pulling from remote, reuses lock */
+				safe_putenv("BKD_NESTED_LOCK=%s", lock);
+			} else {
+				/* otherwise, grab new lock */
+				putenv("BKD_NESTED_LOCK=");
+			}
+			/* calculate url to component */
+			rr = remote_parse(url, 0);
+			assert(rr);
+			unless (rr->params) {
+				rr->params = hash_new(HASH_MEMHASH);
+			}
+			hash_storeStr(rr->params, "ROOTKEY", c->rootkey);
+			vp = addLine(vp, remote_unparse(rr));
+			remote_free(rr);
+			vp = addLine(vp, 0);
+			status = spawnvp(_P_WAIT, "bk", &vp[1]);
+			removeLineN(vp, nLines(vp), free); /* pop url */
+			rc = WIFEXITED(status) ? WEXITSTATUS(status) : 100;
+			if (!rc || (rc == 71) || isdir(ROOT2RESYNC)) break;
+		}
 		freeLines(vp, free);
 		if (c->localchanges) {
 			unlink(tmpfile);
@@ -1130,7 +1150,8 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		progress_nldone();
 		if (rc) break;
 	}
-
+	safe_putenv("BKD_NESTED_LOCK=%s", lock);
+	free(lock);
 out:	proj_cd2product();
 	unless (rc) {
 		 /* don't write on error */
@@ -1139,7 +1160,7 @@ out:	proj_cd2product();
 		if (updateHERE) nested_writeHere(n);
 		chdir(RESYNC2ROOT);
 	}
-	free(url);
+	free(srcurl);
 	freeLines(urls, 0);
 	sccs_free(s);
 	nested_free(n);
@@ -1185,7 +1206,9 @@ pull(char **av, remote *r, char **envVar)
 	 * trigger failure. In both cases the remote side (if nested)
 	 * has already unlocked, so no need for push_finish().
 	 */
-	if (opts.product && (rc != 2)) rc = pull_finish(r, rc, envVar);
+	if ((opts.product && (rc != 2)) || opts.unlockRemote) {
+		rc = pull_finish(r, rc, envVar);
+	}
 
 	/*
 	 * We don't need the remote side anymore, all the data has been
@@ -1264,14 +1287,19 @@ private int
 pull_finish(remote *r, int status, char **envVar)
 {
 	FILE	*f;
+	int	looped = 0;
 	char	buf[MAXPATH];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) return (1);
+again:	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) return (1);
 	bktmp(buf, "pull_finish");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
 	if (r->type == ADDR_HTTP) add_cd_command(f, r);
+	/*
+	 * We use the exit code of the remote bkd to determine the
+	 * exit code of the local pull.
+	 */
 	fprintf(f, "nested %s\n", status ? "abort" : "unlock");
 	fclose(f);
 	if (send_file(r, buf, 0)) return (1);
@@ -1282,7 +1310,28 @@ pull_finish(remote *r, int status, char **envVar)
 		if (getServerInfo(r, 0)) return (1);
 		getline2(r, buf, sizeof(buf));
 	}
-	unless (streq(buf, "@OK@")) {
+	/*
+	 * XXX: if bkd is older than this, then it can give an error
+	 * when remote nested unlocking from a component.  It will give
+	 * an error that can only come from an old bkd.  If it is non-http
+	 * connection, then it will heal itself, as cmdlog_end when passed
+	 * an error will cause nested_unlock.  So just treat the same as OK.
+	 *
+	 * Howeve, in http we need to run the unlock in the product, so we
+	 * just toss the ROOTKEY param which will avoid the "CD $ROOTKEY"
+	 * and thus keep us in the product.
+	 *
+	 * Remove code this code in bk-7.0.
+	 */
+	unless (streq(buf, "@OK@") || ((r->type != ADDR_HTTP) &&
+	    opts.unlockRemote && streq(buf, "ERROR-nested only in product"))) {
+		if (!looped && (r->type == ADDR_HTTP) && opts.unlockRemote &&
+		    streq(buf, "ERROR-nested only in product")) {
+			looped = 1;
+			disconnect(r);
+			hash_deleteStr(r->params, "ROOTKEY");
+			goto again;
+		}
 		drainErrorMsg(r, buf, sizeof(buf));
 		return (1);
 	}
