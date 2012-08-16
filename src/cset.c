@@ -896,6 +896,7 @@ doMarks(cset_t *cs, sccs *s)
 	delta	*d;
 	int	did = 0;
 	char	*t;
+	int	attip = 0;
 
 	/*
 	 * Throw away the existing marks if we are rebuilding.
@@ -912,6 +913,7 @@ doMarks(cset_t *cs, sccs *s)
 				d->flags |= D_CSET;
 				cs->ndeltas++;
 				did++;
+				if (!attip && (d == sccs_top(s))) attip = 1;
 			}
 		}
 	}
@@ -926,6 +928,9 @@ doMarks(cset_t *cs, sccs *s)
 				    "Could not clean up %s\n", t);
 			}
 			return (1);
+		} else if (attip) {
+			// remove dfile
+			unlink(sccs_Xfile(s, 'd'));
 		}
 		if ((cs->verbose > 1) && did) {
 			fprintf(stderr,
@@ -971,7 +976,7 @@ private void
 add(FILE *diffs, char *buf)
 {
 	sccs	*s;
-	char	*p, *rev = 0;	/* lint */
+	char	*rev = 0;	/* lint */
 	delta	*d;
 
 	unless (chomp(buf) && (rev = strrchr(buf, BK_FS))) {
@@ -1008,11 +1013,6 @@ add(FILE *diffs, char *buf)
 		system("bk clean -q ChangeSet");
 		cset_exit(1);
 	}
-
-	p = basenm(buf);
-	*p = 'd';
-	if (d == sccs_top(s)) unlink(buf); /* remove d.file */
-
 	sccs_sdelta(s, sccs_ino(s), buf);
 	fprintf(diffs, "> %s ", buf);
 	sccs_sdelta(s, d, buf);
