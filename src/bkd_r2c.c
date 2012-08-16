@@ -13,6 +13,7 @@ r2c_main(int ac, char **av)
 	int	rc = 1;
 	int	product = 1;
 	MDBM	*idDB, *goneDB;
+	MDBM	*md5DB = 0;
 	char	*sfile;
 	longopt	lopts[] = {
 		{ "standalone", 'S' },		/* treat comps as standalone */
@@ -37,9 +38,10 @@ r2c_main(int ac, char **av)
 		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 		goneDB = loadDB(GONE, 0, DB_GONE);
 
-		file = key2path(file, idDB, goneDB, 0);
+		file = key2path(file, idDB, goneDB, &md5DB);
 		mdbm_close(idDB);
 		mdbm_close(goneDB);
+		mdbm_close(md5DB);
 		unless (file) goto out;
 	}
 	unless (p = r2c(file, rev)) goto out; /* will chdir to file repo */

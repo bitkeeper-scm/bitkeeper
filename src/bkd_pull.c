@@ -130,7 +130,13 @@ cmd_pull_part2(int ac, char **av)
 		out("@END@\n");
 		return (1);
 	}
-	if (port = getenv("BK_PORT_ROOTKEY")) pkflags |= PK_SYNCROOT;
+	if (port = getenv("BK_PORT_ROOTKEY")) {
+		unless (!proj_isComponent(0) || nested_isGate(0)) {
+			out("ERROR-port source must be a gate\n");
+			return (1);
+		}
+		pkflags |= PK_SYNCROOT;
+	}
 	if (hasLocalWork(GONE)) {
 		out("ERROR-must commit local changes to ");
 		out(GONE);
