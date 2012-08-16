@@ -9,11 +9,11 @@
  *
  * File format:
  *   @component_delta_key
- *   product_key endkey [merge key]
- *   product_key2 endkey [merge key]
+ *   product_key[ endkey][ merge key]
+ *   product_key2[ endkey[ merge key]
  *   @component_delta_key2
- *   product_key endkey [merge key]
- *   product_key2 endkey [merge key]
+ *   product_key[ endkey][ merge key]
+ *   product_key2[ endkey][ merge key]
  *
  */
 
@@ -61,14 +61,13 @@ poly_check(sccs *cset, ser_t d)
 		memset(&cm, 0, sizeof(cm));
 		strncpy(buf, t, len); /* separator() needs \0 */
 		buf[len] = 0;
-		p = separator(buf);
-		assert(p); /* XXX goto err */
-		*p++ = 0;
+		if (p = separator(buf)) *p++ = 0;
 		cm.pkey = strdup(buf);
-		t = p;
-		if (p = separator(t)) *p++ = 0;
-		cm.ekey = strdup(t);
-		if (p) cm.emkey = strdup(p);
+		if (t = p) {
+			if (p = separator(t)) *p++ = 0;
+			cm.ekey = strdup(t);
+			if (p) cm.emkey = strdup(p);
+		}
 		addArray(&ret, &cm);
 	}
 	return (ret);
@@ -730,8 +729,12 @@ poly_main(int ac, char **av)
 		EACHP(data, cm) {
 			unless (d = sccs_findKey(prod, cm->pkey)) goto err;
 			printf("\tprod %u", d);
-			unless (d = sccs_findKey(comp, cm->ekey)) goto err;
-			printf(" end %u", d);
+			if (cm->ekey) {
+				unless (d = sccs_findKey(comp, cm->ekey)) {
+					goto err;
+				}
+				printf(" end %u", d);
+			}
 			if (cm->emkey) {
 				unless (d = sccs_findKey(comp, cm->ekey)) {
 					goto err;
