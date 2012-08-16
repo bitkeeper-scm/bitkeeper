@@ -46,6 +46,7 @@ bk edit $Q afile
 bk delta $Q -fynull afile
 bk commit $Q -f
 cd "$HERE/makeb/gcc"
+bk gate $Q .
 touch bfile
 bk new $Q bfile
 bk commit $Q -ybfile
@@ -57,7 +58,7 @@ bk pull $Q ../makeb
 cd "$HERE/copy/gcc"
 bk portal $Q .
 bk port -q ../../gcc-standalone 2>ERR && fail -f ERR Should have failed
-grep -q "porting work that originated in this product is unsupported." ERR || {
+grep -q "You are trying to port changesets that were made in another" ERR || {
 	cat ERR
 	fail wrong error
 }
@@ -66,7 +67,7 @@ echo OK
 
 echo $N Do the recovery - then fail porting into a renamed comp .....$NL
 # Take the error message and extract the hasrev command
-grep 'r2c' < ERR | sed 's/URL/..\/..\/prod/' > cmd
+grep 'r2c' < ERR | sed 's/<URL>/..\/..\/prod/' > cmd
 test -s cmd || fail
 sh cmd > revs
 cat <<EOF > WANT

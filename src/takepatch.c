@@ -1041,6 +1041,10 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 				if (d->flags & D_SET) continue;
 				/* only print error message for tips */
 				sccs_sdelta(s, d, buf);
+				/*
+				 * I'd like to use md5root but I just added
+				 * support for md5keys to key2path so not yet.
+				 */
 				getMsg2("tp_portself",
 				    proj_rootkey(s->proj), buf, 0, stderr);
 			}

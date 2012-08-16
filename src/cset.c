@@ -47,7 +47,7 @@ private	void	csetlist(cset_t *cs, sccs *cset);
 private	int	marklist(char *file);
 private	delta	*mkChangeSet(sccs *cset, char *files, FILE *diffs);
 private	void	doSet(sccs *sc);
-private	void	doMarks(cset_t *cs, sccs *sc);
+private	int	doMarks(cset_t *cs, sccs *sc);
 private	void	doDiff(sccs *sc, char kind);
 private	void	sccs_patch(sccs *, cset_t *);
 private	int	cset_diffs(cset_t *cs, ser_t ser);
@@ -364,24 +364,27 @@ intr:		sccs_free(cset);
 /*
  * Do whatever it is they want.
  */
-private void
+private int
 doit(cset_t *cs, sccs *sc)
 {
 	unless (sc) {
 		if (cs->doDiffs && cs->makepatch) printf("\n");
-		return;
+		return (0);
 	}
-	if (copts.hide_comp && CSET(sc) && proj_isComponent(sc->proj)) return;
+	if (copts.hide_comp && CSET(sc) && proj_isComponent(sc->proj)) {
+		return (0);
+	}
 	cs->nfiles++;
 	if (cs->doDiffs) {
 		doDiff(sc, DF_UNIFIED);
 	} else if (cs->makepatch) {
 		sccs_patch(sc, cs);
 	} else if (cs->mark) {
-		doMarks(cs, sc);
+		return (doMarks(cs, sc));
 	} else {
 		doSet(sc);
 	}
+	return (0);
 }
 
 private void
@@ -460,6 +463,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 	static	sccs *sc;
 	static	char *lastkey;
 	delta	*d;
+	int	rc = 0;
 
 	/*
 	 * Cleanup code, called to reset state.
@@ -474,12 +478,12 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 			lastkey = 0;
 		}
 		if (sc) {
-			doit(cs, sc);
+			rc |= doit(cs, sc);
 			unless (sc == cset) sccs_free(sc);
 			sc = 0;
 		}
-		doit(cs, 0);
-		return (0);
+		rc |= doit(cs, 0);
+		return (rc);
 	}
 
 	/*
@@ -494,7 +498,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 	 * This would be later - do the last file and clean up.
 	 */
 	if (sc) {
-		doit(cs, sc);
+		rc |= doit(cs, sc);
 		unless (sc == cset) sccs_free(sc);
 		free(lastkey);
 		sc = 0;
@@ -539,7 +543,7 @@ markkey:
 		return (cs->force ? 0 : -1);
 	}
 	markThisCset(cs, sc, d);
-	return (0);
+	return (rc);
 }
 
 /*
@@ -579,11 +583,11 @@ marklist(char *file)
 		assert(t);
 		*t++ = 0;
 		if (doKey(&cs, &buf[2], t, 0)) {
-			fclose(list);
+err:			fclose(list);
 			return (-1);
 		}
 	}
-	doKey(&cs, 0, 0, 0);
+	if (doKey(&cs, 0, 0, 0)) goto err;
 	fclose(list);
 	return (0);
 }
@@ -762,12 +766,12 @@ again:	/* doDiffs can make it two pass */
 next:		t[-1] = ' ';
 	}
 	if (cs->doDiffs && cs->makepatch) {
-		doKey(cs, 0, 0, goneDB);
+		if (doKey(cs, 0, 0, goneDB)) goto fail;
 		cs->doDiffs = 0;
 		fputs(PATCH_END, stdout);
 		goto again;
 	}
-	doKey(cs, 0, 0, goneDB);
+	if (doKey(cs, 0, 0, goneDB)) goto fail;
 	freeLines(cs->cweave, free);
 	if (cs->verbose && cs->makepatch) {
 		fprintf(stderr,
@@ -886,11 +890,13 @@ doEndpoints(cset_t *cs, sccs *sc)
 }
 #endif
 
-private void
+private int
 doMarks(cset_t *cs, sccs *s)
 {
 	delta	*d;
 	int	did = 0;
+	char	*t;
+	int	attip = 0;
 
 	/*
 	 * Throw away the existing marks if we are rebuilding.
@@ -907,11 +913,25 @@ doMarks(cset_t *cs, sccs *s)
 				d->flags |= D_CSET;
 				cs->ndeltas++;
 				did++;
+				if (!attip && (d == sccs_top(s))) attip = 1;
 			}
 		}
 	}
 	if (did) {
-		sccs_newchksum(s);
+		if (sccs_newchksum(s)) {
+			fprintf(stderr, "Could not mark %s. Perhaps it "
+			    "is locked by some other process?\n",
+			    s->gfile);
+			t = sccs_Xfile(s, 'x');
+			if (unlink(t)) {
+				fprintf(stderr,
+				    "Could not clean up %s\n", t);
+			}
+			return (1);
+		} else if (attip) {
+			// remove dfile
+			unlink(sccs_Xfile(s, 'd'));
+		}
 		if ((cs->verbose > 1) && did) {
 			fprintf(stderr,
 			    "Marked %d csets in %s\n", did, s->gfile);
@@ -920,6 +940,7 @@ doMarks(cset_t *cs, sccs *s)
 			    "Set CSETMARKED flag in %s\n", s->sfile);
 		}
 	}
+	return (0);
 }
 
 /*
@@ -955,7 +976,7 @@ private void
 add(FILE *diffs, char *buf)
 {
 	sccs	*s;
-	char	*p, *rev = 0;	/* lint */
+	char	*rev = 0;	/* lint */
 	delta	*d;
 
 	unless (chomp(buf) && (rev = strrchr(buf, BK_FS))) {
@@ -992,11 +1013,6 @@ add(FILE *diffs, char *buf)
 		system("bk clean -q ChangeSet");
 		cset_exit(1);
 	}
-
-	p = basenm(buf);
-	*p = 'd';
-	if (d == sccs_top(s)) unlink(buf); /* remove d.file */
-
 	sccs_sdelta(s, sccs_ino(s), buf);
 	fprintf(diffs, "> %s ", buf);
 	sccs_sdelta(s, d, buf);

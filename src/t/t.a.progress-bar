@@ -1716,7 +1716,11 @@ echo OK
 
 echo $N port a component ............................................$NL
 cd "$HERE/port-repo1/comp1"
+bk port -q "$HERE/clone3/comp1" 2> OUT && fail -f OUT
+grep -q 'port source must be a gate' OUT || fail -f OUT
+bk --cd="$HERE/clone3" gate $Q .
 bk port "$HERE/clone3/comp1" >OUT 2>&1 || fail -f OUT
+bk --cd="$HERE/clone3" gate $Q -r
 chkpasses OUT 'takepatch' 'port' 'check' || fail $msg
 chkoutput OUT || fail $msg
 chknumbars OUT 1 || fail $msg
@@ -2323,7 +2327,9 @@ echo OK
 
 echo $N port a component ............................................$NL
 cd "$HERE/port-repo2/comp1"
+bk --cd="$HERE/clone3" gate $Q .
 bk port -q "$HERE/clone3/comp1" >OUT 2>&1 || fail -f OUT
+bk --cd="$HERE/clone3" gate $Q -r
 [ -s OUT ] && fail -f OUT
 echo OK
 
@@ -2835,7 +2841,9 @@ echo OK
 
 echo $N port a component ............................................$NL
 cd "$HERE/port-repo3/comp1"
+bk --cd="$HERE/clone3" gate $Q . 
 bk port -v "$HERE/clone3/comp1" >OUT 2>&1 || fail -f OUT
+bk --cd="$HERE/clone3" gate $Q -r
 chkoutput OUT || fail $msg
 chkblanks OUT 0 || fail $msg
 echo OK
