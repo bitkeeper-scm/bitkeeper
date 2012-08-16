@@ -29,6 +29,10 @@ echo 'SCCS/s.foo|+' | bk commit $Q -y'foo' - || fail
 bk pull -q 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
+Duplicate delta found in ChangeSet
+	Rev: 1.2  Key: <foo>
+	Both keys in file SCCS/s.foo
+	Same key found in ChangeSet:1.2.1.1,1.3
 check: ChangeSet 1.4 is a merge but is missing a required merge delta for this rootkey
 	<foo>
 Check failed.  Resolve not completed.
@@ -92,26 +96,14 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Merge on both sides with no duplicate deltas marked .........$NL
+# We didn't block non-dup-key poly in the past, and still don't
 cd "$HERE"
 cp -rp snapshot merge
 cd merge
 bk edit $Q foo
 bk delta $Q -fynull foo
 echo 'SCCS/s.foo|+' | bk commit $Q -y'foo' - || fail
-bk pull -q 2> GOT && fail -f GOT
-sanitize GOT
-cat <<EOF > WANT
-check: poly on key <foo>
-Commit aborted, no changes applied.
-resolve: RESYNC directory left intact.
-====================================================
-EOF
-cmpfiles WANT GOT
-bk abort -f
-echo OK
-
-echo $N Again, but with allowing poly ...............................$NL
-bk --config='poly:on' pull $Q || fail
+bk pull $Q
 echo OK
 
 echo $N Check poly MONOTONIC dangling stripdel ......................$NL
@@ -133,20 +125,7 @@ bk rm newfile
 bk _rm -fr BitKeeper/deleted
 bk -r check -ag | bk gone $Q -
 bk commit $Q -ygone-copy
-bk pull -q ../project 2> GOT && fail -f GOT
-sanitize GOT
-cat <<EOF > WANT
-check: poly on key <BitKeeper/etc/gone>
-Commit aborted, no changes applied.
-resolve: RESYNC directory left intact.
-====================================================
-EOF
-cmpfiles WANT GOT
-bk abort -f
-echo OK
-
-echo $N Again, allowing poly, test stripping of danglers ............$NL
-bk --config='poly:on' pull $Q ../project || fail
+bk pull $Q ../project || fail
 bk unpull $Q -sf || fail
 bk edit $Q BitKeeper/etc/gone || fail
 # This tests delta.c:strip_danglers for unmarking

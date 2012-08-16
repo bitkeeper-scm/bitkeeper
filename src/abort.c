@@ -229,6 +229,7 @@ abortComponents(options *opts, int *which, int *num)
 	sccs	*s = 0;
 	comp	*c;
 	char	**csets_in;
+	char	**list = 0;
 	int	i;
 	int	errors = 0;
 
@@ -316,6 +317,7 @@ abortComponents(options *opts, int *which, int *num)
 			continue;
 		}
 		/* not new */
+		list = addLine(list, aprintf("%s/" CHANGESET, c->path));
 		if (isdir(ROOT2RESYNC)) {
 			if (systemf("bk -?BK_NO_REPO_LOCK=YES "
 			    "--title='%u/%u %s' abort -Sf%s%s",
@@ -341,9 +343,13 @@ abortComponents(options *opts, int *which, int *num)
 			}
 		}
 	}
+	/* Possibly fix (unpoly-ize) cset marks in product */
+	proj_cd2product();
+	run_check(0, list, opts->quiet ? "-u" : "-vu", 0);
 
 out:	if (n) nested_free(n);
 	if (s) sccs_free(s);
+	if (list) freeLines(list, free);
 	if (csets_in) freeLines(csets_in, free);
 	proj_cd2product();
 	/*

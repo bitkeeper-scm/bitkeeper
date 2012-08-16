@@ -369,11 +369,56 @@ every two days:
 check_frequency: 2
 .DE
 The following will disable the partial_check mode and force
-BitKeeper to perform full intregrity checks on every update
+BitKeeper to perform full integrity checks on every update
 (safest but at a performance cost):
 .DS
 partial_check: off
 .DE
+.SS POLY
+This controls how you can use
+.B bk port
+to copy changes in a component between products in a product line.
+.LP
+The recommended use for
+.B bk port
+is to declare one repository per product as a portal using
+.BR "bk portal" ,
+and do all porting from other products into this repository.
+This will ensure that every incoming component cset will be
+part of one and only one product cset.
+.LP
+For example, two products A and B in a product line share
+a "print" component, and a bugfix is done in the print
+component of repository RA of product A.
+Product B can get the fix by declaring a repository, say RB,
+as a portal and porting the changes from RA/print.  Since there
+is only one portal for product B, no other repository of
+B can port the bugfix.  Other repositories for product B would
+get the fix through pulling from RB.
+.LP
+For some workflows, limiting to one portal is too restrictive:
+their organization may not have a centralized distribution point.
+They have many portals and
+.B bk port
+component changes into different repositories as needed.
+This means that more than one product cset is associated with
+the same component cset.
+.LP
+When one portal repository is pulled into another,
+the pull will fail with a poly error, as \*[BK] prevents more
+than one product cset containing a component cset.
+.LP
+To get the pull to succeed, and give up the benefits of having
+a one to one relationship between product cset and component cset,
+add this to your configuration:
+.DS
+poly: on
+.DE
+.LP
+This will allow the pull to succeed and will let
+.B bk r2c
+return a list of product csets when used with a component cset that
+has been ported into the product multiple times.
 .SS SYNC
 In some environments it may be safer to have
 BitKeeper do an fsync(2) after each update of a history file.

@@ -112,7 +112,7 @@ log_main(int ac, char **av)
 		unless (HASGRAPH(s)) goto next;
 		if (cset) {
 			unless (e = sccs_findrev(s, cset)) goto next;
-			poly_range(s, e, 0);
+			poly_range(s, e, 0);	/* pick one */
 		} else if (want_parent) {
 			if (range_process(av[0], s, rflags, &rargs)) {
 				goto next;

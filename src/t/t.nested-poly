@@ -72,6 +72,9 @@ bk gate $Q -r
 bk attach $Q ../standalone comp
 test -f comp/foo && fail fix test as attach now works
 bk --cd=comp -Ur checkout $Q
+bk --cd=comp prs -r1.0 -hnd:RANDOM: ChangeSet > comp.rand
+# See that hex is in lower case
+grep -q '[A-F]' comp.rand && fail -f comp.rand upper case in id
 # set up a start off the remote repo used in all the tests
 bk clone $Q . ../local
 bk portal $Q .
@@ -122,22 +125,20 @@ bk --config=poly:on pull $Q -R || fail
 test -d RESYNC -a -d comp/RESYNC || fail RESYNC directories missing after pull
 echo OK
 
-echo $N Now a resolve, poly: off ....................................$NL
-bk resolve -q 2> GOT && fail -f GOT
-sanitize GOT
-cat <<EOF > WANT
-check: poly on key <comp/ChangeSet>
-{bk} {-r} {check} {-acR} failed.  Resolve not even started.
-resolve: RESYNC directory left intact.
-====================================================
-EOF
-cmpfiles WANT GOT
-# failure leaves prod and comps as manual merges may have happened.
-test -d RESYNC -a ! -d comp/RESYNC || fail RESYNC directories wrong
+echo $N Resolve with blocked change to poly file ....................$NL
+test -d RESYNC/BitKeeper/etc/poly || fail no poly file
+bk _rm -fr RESYNC/BitKeeper/etc/poly
+bk resolve -q 2>ERR && fail -f ERR
+grep -q 'check: poly not captured in .* for comp/ChangeSet' ERR || fail -f ERR
+bk abort -q -f 2> ERR || fail -f ERR
+bk repocheck $Q || fail
+echo 'comp/ChangeSet: adding and/or removing missing csetmarks' > WANT
+cmpfiles WANT ERR
 echo OK
 
-echo $N Repeat resolve, poly: on ....................................$NL
-bk --config=poly:on resolve $Q || fail
+echo $N Now a resolve, poly: off -- it is not blocked ...............$NL
+bk --config=poly:on pull $Q -R || fail
+bk resolve $Q || fail
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories missing
 grep -q POLY BitKeeper/log/features || fail
 bk repocheck $Q || fail
@@ -156,26 +157,11 @@ bk repocheck $Q
 grep -q POLY BitKeeper/log/features && fail
 echo OK
 
-echo $N pull -R, resolve -S comp, resolve, poly: off ................$NL
+echo $N pull -R, resolve -S comp, resolve, poly: off -- works .......$NL
 bk --config=poly:on pull $Q -R || fail
 # The component check can not see the poly and will complete
 bk --cd=comp resolve $Q -S || fail
-# The product check will fail as it did before .. 
-bk resolve -q 2> GOT && fail -f GOT
-sanitize GOT
-cat <<EOF > WANT
-check: poly on key <comp/ChangeSet>
-{bk} {-r} {check} {-acR} failed.  Resolve not even started.
-resolve: RESYNC directory left intact.
-====================================================
-EOF
-cmpfiles WANT GOT
-# failure leaves prod as manual merges may have happened.
-test -d RESYNC -a ! -d comp/RESYNC || fail RESYNC directories wrong
-echo OK
-
-echo $N product resolve, poly: on ...................................$NL
-bk --config=poly:on resolve $Q || fail
+bk resolve $Q || fail
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
 echo OK
 
@@ -256,31 +242,14 @@ cmpfiles WANT GOT
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories after failed pull
 echo OK
 
-echo $N pull -R, poly: on ...........................................$NL
+echo $N pull -R, poly: on, resolve poly off .........................$NL
 # remote and local have same comp tip in different prod csets
 bk --config=poly:on pull $Q -R || fail
 test -d RESYNC -a -d comp/RESYNC || fail RESYNC directories missing after pull
 echo OK
 
-echo $N Now a resolve, poly: off ....................................$NL
-bk resolve -q 2> GOT && fail -f GOT
-sanitize GOT
-cat <<EOF > WANT
-Duplicate delta found in ChangeSet
-	Rev: 1.3.1.1  Key: <comp/ChangeSet>
-	Both keys in file comp/SCCS/s.ChangeSet
-	Same key found in ChangeSet:1.2.1.2,1.3
-{bk} {-r} {check} {-acR} failed.  Resolve not even started.
-resolve: RESYNC directory left intact.
-====================================================
-EOF
-cmpfiles WANT GOT
-# failure leaves prod and comps as manual merges may have happened.
-test -d RESYNC -a ! -d comp/RESYNC || fail RESYNC directories wrong
-echo OK
-
-echo $N Repeat resolve, poly: on ....................................$NL
-bk --config=poly:on resolve $Q || fail
+echo $N Now a resolve, poly: off -- works because pull had is on ....$NL
+bk resolve $Q || fail
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories missing
 bk repocheck $Q || fail
 echo OK
@@ -302,24 +271,16 @@ bk --config=poly:on pull $Q -R || fail
 # The component check can not see the poly and will complete
 bk --cd=comp resolve $Q -S || fail
 # The product check will fail as it did before .. 
-bk resolve -q 2> GOT && fail -f GOT
+bk resolve $Q
+bk -r check -p 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
 Duplicate delta found in ChangeSet
 	Rev: 1.3.1.1  Key: <comp/ChangeSet>
 	Both keys in file comp/SCCS/s.ChangeSet
 	Same key found in ChangeSet:1.2.1.2,1.3
-{bk} {-r} {check} {-acR} failed.  Resolve not even started.
-resolve: RESYNC directory left intact.
-====================================================
 EOF
 cmpfiles WANT GOT
-# failure leaves prod as manual merges may have happened.
-test -d RESYNC -a ! -d comp/RESYNC || fail RESYNC directories wrong
-echo OK
-
-echo $N product resolve, poly: on ...................................$NL
-bk --config=poly:on resolve $Q || fail
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
 echo OK
 
@@ -409,26 +370,13 @@ test -d RESYNC -a -d comp/RESYNC || fail RESYNC directories missing after pull
 echo OK
 
 echo $N Now a resolve, poly: off ....................................$NL
-bk resolve -q 2> GOT && fail -f GOT
+bk resolve $Q
+bk -r check -p 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
 check: poly on key <comp/ChangeSet>
-{bk} {-r} {check} {-acR} failed.  Resolve not even started.
-resolve: RESYNC directory left intact.
-====================================================
-1 unresolved component:
- comp
-resolve: Unresolved components.
-resolve: RESYNC directory left intact.
-====================================================
 EOF
 cmpfiles WANT GOT
-# failure leaves prod and comps as manual merges may have happened.
-test -d RESYNC -a -d comp/RESYNC || fail RESYNC directories wrong
-echo OK
-
-echo $N Repeat resolve, poly: on ....................................$NL
-bk --config=poly:on resolve $Q || fail
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories missing
 bk repocheck $Q || fail
 echo OK
@@ -446,13 +394,10 @@ echo OK
 echo $N re-pull -R, resolve -S comp, poly: off ......................$NL
 bk --config=poly:on pull $Q -R || fail
 # The component check can see the poly since the poly is unmarked
-bk --cd=comp resolve -q -S 2> GOT && fail
+bk --cd=comp/RESYNC -r check -R -p 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
 check: poly on key <comp/ChangeSet>
-{bk} {-r} {check} {-acR} failed.  Resolve not even started.
-resolve: RESYNC directory left intact.
-====================================================
 EOF
 cmpfiles WANT GOT
 # failure leaves prod as manual merges may have happened.
@@ -465,21 +410,13 @@ test -d RESYNC -a ! -d comp/RESYNC || fail RESYNC directories wrong
 echo OK
 
 echo $N product resolve, poly: off ..................................$NL
-bk resolve -q 2> GOT && fail
+bk resolve $Q
+bk -r check -p 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
 check: poly on key <comp/ChangeSet>
-{bk} {-r} {check} {-acR} failed.  Resolve not even started.
-resolve: RESYNC directory left intact.
-====================================================
 EOF
 cmpfiles WANT GOT
-# failure leaves prod as manual merges may have happened.
-test -d RESYNC -a ! -d comp/RESYNC || fail RESYNC directories wrong
-echo OK
-
-echo $N product resolve, poly: on ...................................$NL
-bk --config=poly:on resolve $Q || fail
 bk repocheck $Q
 echo OK
 
@@ -619,13 +556,10 @@ comp 6
 comp 7
 	prod 9 end 4
 EOF
-# Try to finish resolve without the poly config
-# This will resolve the component, and be stopped on the check -R on the
-# product resync.
-bk resolve -qa 2> ERR && fail -f ERR
+# finish resolve
+bk resolve $Q -a
+bk -P -r check -p 2> ERR && fail -f ERR
 grep -q "Duplicate delta found in ChangeSet" ERR || fail -f ERR
-# Now finish out the resolve with poly and get the same WANT as above
-bk --config=poly:on resolve $Q -a
 bk _poly > GOT || fail
 cmpfiles WANT GOT
 cd ..

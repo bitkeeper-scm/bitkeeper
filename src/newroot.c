@@ -158,11 +158,7 @@ newroot(char *ranbits, int bk4, char *comments, char *who, int xor)
 	return (rc);
 }
 
-/*
- * Take the product random bits and xor with our syncroot
- * to give a preditable but different rootkey for an attach
- */
-
+/* return the pointer to the random bits at the end of a rootkey */
 private char *
 getRandom(char *rootkey)
 {
@@ -188,15 +184,23 @@ getRandom(char *rootkey)
 	return (rand);
 }
 
+/*
+ * Take the product random bits and xor with our syncroot
+ * to give a preditable but different rootkey for an attach
+ *
+ * Return the new random bits in 'buf'.
+ */
 private	void
 xorsyncroot(sccs *s, char *buf)
 {
 	char	*rand;
 	mp_int	a, b;
+	project	*p;
 	char	key[MAXKEY];
 
-	/* assumes proj_product gives product when attach isn't done */
-	rand = getRandom(proj_rootkey(proj_product(s->proj)));
+	/* attach isn't done - so proj_product does not yet work */
+	rand = getRandom(proj_rootkey(p = proj_findProduct(s->proj)));
+	assert(p);
 	mp_init(&a);
 	mp_read_radix(&a, rand, 16);
 
@@ -207,6 +211,9 @@ xorsyncroot(sccs *s, char *buf)
 
 	mp_xor(&a, &b, &a);
 	mp_toradix(&a, buf, 16);
+
+	/* hex will be upper case; and randbits produces lower */
+	for (rand = buf; *rand; rand++) *rand = tolower(*rand);
 
 	mp_clear(&a);
 	mp_clear(&b);

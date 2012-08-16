@@ -57,6 +57,7 @@ private int	chk_merges(sccs *s);
 private	int	update_idcache(MDBM *idDB, hash *keys);
 private	void	fetch_changeset(int forceCsetFetch);
 private	int	repair(hash *db);
+private	int	polyChk(sccs *cset, ser_t trunk, ser_t branch, hash *deltas);
 
 private	int	verbose;
 private	int	details;	/* if set, show more information */
@@ -95,6 +96,7 @@ private	char	**subrepos = 0;
  * rootkeys and all deltakeys for a given rootkey.
  */
 private	hash	*r2deltas;
+private	hash	*newpoly;
 
 int
 check_main(int ac, char **av)
@@ -482,6 +484,10 @@ check_main(int ac, char **av)
 	}
 	EACH_HASH(r2deltas) hash_free(*(hash **)r2deltas->vptr);
 	hash_free(r2deltas);
+	if (newpoly) {
+		hash_free(newpoly);
+		newpoly = 0;
+	}
 
 	if (resync) {
 		chdir(RESYNC2ROOT);
@@ -995,10 +1001,9 @@ checkAll(hash *keys)
 
 		sprintf(buf, "%s/%s", RESYNC2ROOT, CHANGESET);
 		if (exists(buf)) {
-			assert(repo = proj_isResync(cset->proj));
-			unless (tipkey = proj_tipkey(repo)) {
-				tipkey = "";
-			}
+			repo = proj_isResync(cset->proj);
+			assert(repo);
+			unless (tipkey = proj_tipkey(repo)) tipkey = "";
 			sprintf(buf,
 			    "bk annotate -R'%s'.. -h ChangeSet", tipkey);
 			f = popen(buf, "r");
@@ -1352,11 +1357,7 @@ buildKeys(MDBM *idDB)
 
 	// In RESYNC, r.ChangeSet is move out of the way, can't test for it
 	if (resync) {
-		if (sccs_findtips(cset, &d, &twotips)) {
-			unless (polyErr) {
-				polyErr = !proj_configbool(0, "poly");
-			}
-		}
+		sccs_findtips(cset, &d, &twotips);
 	} else {
 		d = sccs_top(cset);
 		twotips = 0;
@@ -1365,6 +1366,9 @@ buildKeys(MDBM *idDB)
 		/* cset tip is (or will be) a merge, do extra (poly) checks */
 		oldest = color_merge(cset, d, twotips);
 		assert(oldest > 0);
+		if (!resync && proj_isProduct(cset->proj)) {
+			newpoly = hash_new(HASH_MEMHASH);
+		}
 	}
 	unless (r2deltas = hash_new(HASH_MEMHASH)) {
 		perror("buildkeys");
@@ -1437,19 +1441,25 @@ buildKeys(MDBM *idDB)
 		 */
 		if (!(rkd->mask & RK_TIP) &&
 		    smap[ser] && !mdbm_fetch_str(goneDB, t)) {
-			rkd->mask |= RK_TIP;
-			unless (mdbm_fetch_str(goneDB, s)) {
-				char	*path = key2path(t, 0, 0, 0);
+			char	*path = key2path(t, 0, 0, 0);
+			char	*base = basenm(path);
 
+			rkd->mask |= RK_TIP;
+
+			/* remember all poly files altered in merge tip */
+			if ((mask & RK_INTIP) && (IS_POLYPATH(path))) {
+				hash_storeStr(newpoly, base, 0);
+			}
+			unless (mdbm_fetch_str(goneDB, s)) {
 				/* strip /ChangeSet from components */
-				if (streq(basenm(path), "ChangeSet")) {
-					dirname(path);
+				if (streq(base, "ChangeSet")) {
+					dirname(path);	/* alters path */
 				}
 
 				pathnames = addLine(pathnames,
 				    HIDDEN_BUILD(path, s));
-				free(path);
 			}
+			free(path);
 		}
 		/*
 		 * If dup and not mentioned this key before and poly
@@ -1458,9 +1468,10 @@ buildKeys(MDBM *idDB)
 		 * region (my mask and the dup's mask).
 		 */
 		if (!hash_insertStrMem(rkd->deltas, t, 0, sizeof(mask)) &&
-		    !(*(u8 *)rkd->deltas->vptr & DK_DUP) && polyErr &&
-		    ((polyErr > 1) ||
-		    ((mask | *(u8 *)rkd->deltas->vptr & RK_BOTH) == RK_BOTH))) {
+		    !(*(u8 *)rkd->deltas->vptr & DK_DUP) &&
+		    (polyErr || !componentKey(t)) &&
+		    ((polyErr > 1) || (RK_BOTH ==
+		    ((mask | *(u8 *)rkd->deltas->vptr) & RK_BOTH)))) {
 			char	*a;
 
 			// XXXPOLY - Duplicate deltakeys in cset weave.
@@ -1635,27 +1646,48 @@ getRev(char *root, char *key, MDBM *idDB)
 }
 
 /*
- * range_walkrevs() callback on GCA nodes. Fail on the first poly node found.
- * If GCA is part of the merge branch, trunk or both, or
- * if none of that, that there is no cset mark, meaning it is an interior
- * node to multiple csets.  If any of that, it's poly.
- * Graft does poly on 1.0 -- let that be legal.
+ * check to see if there is poly in this comp, and either an error
+ * if blocking poly or a check to see that poly was recorded in the product.
+ * Note: Cunning Plan - poly on 1.0 is silently allowed.
+ *
+ * Poly test - in gca and: D_CSET marked as being unique to trunk or branch,
+ * or D_CSET unmarked and not root node.
  */
 private	int
-polyChk(sccs *cset, ser_t gca, void *token)
+polyChk(sccs *cset, ser_t trunk, ser_t branch, hash *deltas)
 {
-	hash	*deltas = (hash *)token;
+	ser_t	*gca = 0;
 	u8	*mask;
-	char	key[MAXKEY];
+	int	i, errors = 0;
+	char	buf[MAXKEY];
 
-	assert(deltas);
-	sccs_sdelta(cset, gca, key);
-	if (((mask = hash_fetchStrMem(deltas, key)) && (*mask & RK_BOTH)) ||
-	    (!(FLAGS(cset, gca) & D_CSET) && (gca != TREE(cset)))) {
-		fprintf(stderr, "%s: poly on key %s\n", prog, key);
-		return (1);
+	unless (newpoly || polyErr) return (0);
+
+	range_walkrevs(cset, trunk, 0, branch, WR_GCA, walkrevs_addSer, &gca);
+	EACH(gca) {
+		sccs_sdelta(cset, gca[i], buf);
+		unless (((mask = hash_fetchStrMem(deltas, buf)) &&
+		    (*mask & RK_BOTH)) ||
+    		    (!(FLAGS(cset, gca[i]) & D_CSET) &&
+		    (gca[i] != TREE(cset)))) {
+			continue;
+		}
+		if (polyErr) {
+			fprintf(stderr, "%s: poly on key %s\n", prog, buf);
+			errors++;
+		} else if (newpoly) {
+			sccs_md5delta(cset, sccs_ino(cset), buf);
+			if (hash_deleteStr(newpoly, buf)) {
+				fprintf(stderr,
+				    "%s: poly not captured in %s for %s\n",
+				    prog, buf, cset->gfile);
+				errors++;
+			}
+		}
+		if (errors) break;
 	}
-	return (0);
+	free(gca);
+	return (errors);
 }
 
 /*
@@ -1743,10 +1775,8 @@ check(sccs *s, MDBM *idDB)
 			}
 		}
 	}
-	if (trunk && branch && polyErr) {
-		/* Note: assumes D_SET is cleared to start; leaves clear */
-		errors += range_walkrevs(
-		    s, trunk, 0, branch, WR_GCA, polyChk, deltas);
+	if (CSET(s) && trunk && branch) {
+		errors += polyChk(s, trunk, branch, deltas);
 	}
 	if (writefile) {
 		if (getenv("_BK_DEVELOPER")) {

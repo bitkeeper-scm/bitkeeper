@@ -5,26 +5,27 @@
 /*
  *
  * files:
- *   PRODUCT/BitKeeper/etc/poly/md5_sortkey
+ *   PRODUCT/BitKeeper/etc/poly/md5rootkey
  *
  * File format:
  *   @component_delta_key
  *   product_key[ endkey][ merge key]
  *   product_key2[ endkey[ merge key]
+ *    <blank line>
  *   @component_delta_key2
  *   product_key[ endkey][ merge key]
  *   product_key2[ endkey][ merge key]
- *
+ *    <blank line>
  */
 
 private	hash	*polyLoad(sccs *cset);
-private int	polyAdd(sccs *cset, ser_t d, char *pkey, int side);
-private int	polyFlush(void);
+private	int	polyAdd(sccs *cset, ser_t d, char *pkey, int side);
+private	int	polyFlush(void);
 private	int	polyChk(sccs *cset, ser_t gca);
 private	int	updatePolyDB(sccs *cset, ser_t *list, hash *cmarks);
 private	void	addTips(sccs *cset, ser_t *gcalist, ser_t **list);
 private	ser_t	*lowerBounds(sccs *s, ser_t d, u32 flags);
-private ser_t	*findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake);
+private	ser_t	*findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake);
 
 typedef struct {
 	hash	*cpoly;		/* ckey -> list of pkeys */
@@ -33,7 +34,7 @@ typedef struct {
 	char	*file;		/* full pathname to file */
 } polymap;
 
-static	hash	*cpoly_all;	/* proj -> polymap */
+private	hash	*cpoly_all;	/* proj -> polymap */
 
 /*
  * When given a delta in a component cset that is csetmarked it
@@ -73,6 +74,10 @@ poly_check(sccs *cset, ser_t d)
 	return (ret);
 }
 
+/*
+ * range_walkrevs() helper function used to see if ser_t token is in
+ * the range being walked.  Returning non-zero terminates walkrevs.
+ */
 private	int
 inrange(sccs *s, ser_t d, void *token)
 {
@@ -80,10 +85,11 @@ inrange(sccs *s, ser_t d, void *token)
 }
 
 /*
- * brain dead poly hunter
- * better if we color up D_SET from orig, and uncolor any non poly D_CSET
- * at some point, coloring will be starved and we'll just zip up the
- * list.  As it is, it has to be poly to consider.
+ * r2c for poly
+ * Finds first cset mark and sees if that cset is poly.
+ * If so, look to see if the orig cset is part of other poly csets.
+ *
+ * Returns a list of product cset keys if poly and null if not.
  */
 char **
 poly_r2c(sccs *cset, ser_t orig)
@@ -95,7 +101,7 @@ poly_r2c(sccs *cset, ser_t orig)
 	unless (d = sccs_csetBoundary(cset, orig, 0)) return (0);
 	unless (list = poly_check(cset, d)) return (0);
 
-	/* for the first one found, we are guarenteed to be in range */
+	/* for the first one found, we are guaranteed to be in range */
 	EACHP(list, cm) ret = addLine(ret, strdup(cm->pkey));
 	free(list);
 
@@ -103,8 +109,10 @@ poly_r2c(sccs *cset, ser_t orig)
 		unless (FLAGS(cset, d) & D_CSET) continue;
 		unless (list = poly_check(cset, d)) continue;
 		EACHP(list, cm) {
-			// is it in the range?
-			// a range can be lower than endpoints
+			/*
+			 * Walk the range to see if orig is in it
+			 * Note: 'orig' can be in range if orig < endpoints
+			 */
 			if (cm->ekey) {
 				e = sccs_findKey(cset, cm->ekey);
 				addArray(&lower, &e);
@@ -124,6 +132,15 @@ poly_r2c(sccs *cset, ser_t orig)
 	return (ret);
 }
 
+/*
+ * poly_range() is range_cset() with an additional product key context.
+ * If not pkey, then arbitrarily picks the first one as a valid range.
+ * If not poly, fall through to range_cset()
+ *
+ * Returns the range colored with D_SET, turns on s->state |= S_SET;
+ * and marks the limits of the range with s->rstart and s->rstop
+ * if the range is not empty.
+ */
 void
 poly_range(sccs *s, ser_t d, char *pkey)
 {
@@ -152,12 +169,10 @@ poly_range(sccs *s, ser_t d, char *pkey)
 			s->state |= S_SET;
 			FREE(lower);
 		} else {
-			// XXX Print or not? Currently prints.
-			// if not print, then how to know that
-			// so changes without -e can prune?
-			// 
-			// fprintf(stderr,
-			//     "Poly tip %s %s\n", pkey, dkey);
+			/*
+			 * empty range: fake in a product merge
+			 * see 'fake' in poly_pull()
+			 */
 			s->rstart = s->rstop = 0;
 		}
 	} else {
@@ -166,13 +181,22 @@ poly_range(sccs *s, ser_t d, char *pkey)
 }
 
 /*
- * Save product info at nested_init time for use in poly_pull()
+ * Save product info in nested_init() that is destined for poly_pull()
  * Called in product weave order (new to old)
+ * Format of lines:
+ * char0 char1 char2-n 
+ * [L|R] [M|S] prodkey space compkey
+ *
+ * char0: Local or Remote prod cset (ie, side)
+ * char1: Merge or Single parent prod cset
+ * Merge are used in processing will get filtered in updatePolyDB()
+ *
+ * Return a list with formatted line added.
  */
 char **
 poly_save(char **list, sccs *cset, ser_t d, char *ckey, int local)
 {
-	char	buf[MAXKEY];
+	char	buf[(2 * MAXKEY) + 4]; /* [L|R][M|S]prodey compkey\0 */
 
 	buf[0] = (local) ? 'L' : 'R';
 	buf[1] = MERGE(cset, d) ? 'M' : 'S';
@@ -183,13 +207,17 @@ poly_save(char **list, sccs *cset, ser_t d, char *ckey, int local)
 }
 
 /*
- * Pull Poly is both detection and fixups for handling poly in a pull.
+ * Both detection and fixups for handling poly in a pull.
+ * If new poly, update the comp's poly db in the product.
+ *
  * If the local is ahead of the remote, but the remote adds cset marks,
  * then we need to fake a RESYNC and make it pending, so the tip can
  * be included in the product tip (enhancing the polyness some more).
+ *
  * If update only pull, then don't have to fake up the RESYNC, but do
- * have to do the pending work on the tip.   In there, also do error
- * detection and bail.
+ * have to do the fake pending work on the tip.
+ *
+ * Returns 0 if succeeds.
  */
 int
 poly_pull(int got_patch, char *mergefile)
@@ -220,6 +248,13 @@ poly_pull(int got_patch, char *mergefile)
 		perror(resync);
 		goto err;
 	}
+
+	/*
+	 * Take local/remote info from product and color component graph
+	 * format of line from poly_save():
+	 * char0 char1 char2-n 
+	 * [L|R] [M|S] prodkey space compkey
+	 */
 	list = file2Lines(0, mergefile);
 	cmarks = hash_new(HASH_MEMHASH);
 	EACH(list) {
@@ -241,7 +276,7 @@ poly_pull(int got_patch, char *mergefile)
 
 		/*
 		 * Fix up cset marks - if poly, might be missing marks
-		 * from remote.
+		 * from remote if local already had it.
 		 */
 		unless (FLAGS(cset, d) & D_CSET) {
 			assert(FLAGS(cset, d) & D_REMOTE);
@@ -257,9 +292,11 @@ poly_pull(int got_patch, char *mergefile)
 	list = 0;
 	assert(local && remote);
 	if (isReachable(cset, local, remote)) {
+		/* Replicate tip in product merge */
 		fake = (local > remote) ? local : remote;
 	}
 
+	/* Detect, and if poly found and not allowed, fail */
 	if ((polylist = findPoly(cset, local, remote, fake)) == INVALID) {
 		polylist = 0;
 		goto err;
@@ -273,7 +310,7 @@ poly_pull(int got_patch, char *mergefile)
 		polylist = 0;
 	}
 
-	/* if no merge file: fake pending to get included in product merge */
+	/* if no comp merge: fake pending to get included in product merge */
 	if (fake) {
 		assert(FLAGS(cset, fake) & D_CSET);
 		FLAGS(cset, fake) &= ~D_CSET;
@@ -330,9 +367,9 @@ polyLoad(sccs *cset)
 }
 
 /*
- * Add an entry for a give component delta to the product poly files
+ * Add an entry for a given component delta to the product poly files
  * for this component.
- * The changes are made in memory and we be written out when poly_commit()
+ * The changes are made in memory and will be written out when poly_commit()
  * is called.
  *
  * Returns:
@@ -348,7 +385,7 @@ polyAdd(sccs *cset, ser_t d, char *pkey, int side)
 	polymap	*pm;
 	hash	*cpoly;
 	char	key[MAXKEY];
-	char	new[MAXLINE];
+	char	new[(3 * MAXKEY) + 3];	/* prodkey ekey mkey\0 */
 
 	cpoly = polyLoad(cset);
 
@@ -431,7 +468,8 @@ polyFlush(void)
 			if (HASGRAPH(s)) {
 				/* edit the file */
 				unless (HAS_PFILE(s)) {
-					rc = sccs_get(s, 0,0, 0, 0, gflags, "-");
+					rc = sccs_get(
+					    s, 0, 0, 0, 0, gflags, "-");
 					//assert(rc == 0);
 				}
 			} else {
@@ -481,11 +519,13 @@ polyFlush(void)
 }
 
 /*
- * Gather up all nodes on or under GCA nodes that are marked
- * local or remote.
+ * range_walkrevs() callback.
+ * Gather up all local or remote nodes on or under GCA nodes.
+ *
  * When we find D_CSET that aren't marked, that should mean GCA
- * from the point of view of the product.  Use those to terminate
- * walkrevs.
+ * from the point of view of the product: terminate walkrevs.
+ *
+ * Returns 0 to walk the history d; 1 to not walk the history of d
  */
 private	int
 polyMarked(sccs *s, ser_t d, void *token)
@@ -503,18 +543,32 @@ polyMarked(sccs *s, ser_t d, void *token)
 	return (0);
 }
 
+/*
+ * Detect Poly by finding list of gca nodes for local and remote
+ * then seeing if any of them are either marked as being new to
+ * local and remote (think about it: how can a node common to local
+ * and remote have originate as new in local or remote? poly!),
+ * or no D_CSET mark (think about: how can a node that both local
+ * and remote have built on not be marked? poly!)
+ *
+ * Compute the poly list by (time goes from left to right):
+ * 1. walk left from the found gca to the "real" gca (uncolored D_CSET marked)
+ * and save as poly any other D_CSET marked.
+ * 2. take the found gca list and walk right to marked tip. This handles
+ * any node in the gca that has no D_CSET mark.  See addTips()
+ * 3. Add in the fake node as it will be replicated in the prod cset weave.
+ *
+ * Returns
+ *   INVALID - if poly found and not allowed
+ *   or a list serials for new poly csets.
+ */
 private ser_t *
 findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake)
 {
 	int	i, hasPoly = 0;
-	ser_t	*gcalist, *list = 0;
+	ser_t	*gcalist = 0, *list = 0;
 
-	addArray(&list, &local);
-	addArray(&list, &remote);
-	gcalist = range_gcalist(s, list);
-	free(list);
-	list = 0;
-
+	range_walkrevs(s, local, 0, remote, WR_GCA, walkrevs_addSer, &gcalist);
 	EACH(gcalist) {
 		hasPoly |= polyChk(s, gcalist[i]);
 	}
@@ -548,6 +602,12 @@ findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake)
 	return (list);
 }
 
+/*
+ * Take a component gca cset and see if has poly signature:
+ * not marked, or marked as being unique to local or remote.
+ *
+ * Returns 0 if not poly, 1 if poly
+ */
 private	int
 polyChk(sccs *cset, ser_t gca)
 {
@@ -582,7 +642,7 @@ polyChk(sccs *cset, ser_t gca)
 }
 
 /*
- * take gca items and for any non-marked nodes, find their csetmark
+ * Take gca items and for any non-marked items, find their csetmark
  * and add to the list if not already poly.
  * Any gca node that is marked will already be handed by the routine
  * marking children of gca, but all this should work fine if order
@@ -609,6 +669,20 @@ addTips(sccs *cset, ser_t *gcalist, ser_t **list)
 	}
 }
 
+/*
+ * hash value (key is component cset key)
+ * char0 char1 char2-n 
+ * [L|R] [M|S] prodkey
+ * Local or Remote prod cset
+ * Merge or Single parent prod cset
+ *
+ * Product merge nodes are not stored in poly db because they aren't part
+ * of new poly -- they were created by previous poly, but in a catch-22,
+ * the product merge cset wasn't yet created to know its prod key, and
+ * now it is known, but not part of this transaction.
+ *
+ * Returns 0 if success
+ */
 private	int
 updatePolyDB(sccs *cset, ser_t *list, hash *cmarks)
 {
@@ -640,21 +714,25 @@ updatePolyDB(sccs *cset, ser_t *list, hash *cmarks)
  */
 typedef struct {
 	ser_t	d, *list;
-	u32	flags;
+	u32	side;
 } cstop_t;
 
 /*
- * pretend like D_CSET from other side aren't there.
+ * range_walkrevs() callback
+ * Pretend like D_CSET from other side aren't there.
  * That is, if doing D_LOCAL, ignore D_REMOTE
+ *
+ * Returns 1 if end of range found; 0 to keep going
  */
 private	int
 csetStop(sccs *s, ser_t d, void *token)
 {
 	cstop_t	*p = token;
+	u32	side;
 
-	if (!p->flags ||
-	    ((FLAGS(s, d) & (D_LOCAL|D_REMOTE)) != p->flags)) {
-		if ((p->d != d) && (FLAGS(s, d) & D_CSET)) {
+	if ((d != p->d) && (FLAGS(s, d) & D_CSET)) {
+		side = FLAGS(s, d) & (D_LOCAL|D_REMOTE);
+		if (!side || (side & p->side)) {
 			addArray(&p->list, &d);
 			return (1);
 		}
@@ -665,18 +743,18 @@ csetStop(sccs *s, ser_t d, void *token)
 /*
  * Get list of lower bounds (0 <= nLines(list) <= 2)
  * Caller knows that d is not in poly db.
- * Constrained version of range_cset.
+ * d is a tagged tip that is either D_LOCAL || D_REMOTE
+ * Basically a version of range_cset that can ignore some D_CSET marks.
+ *
+ * Return a list of lower bounds
  */
 private	ser_t *
-lowerBounds(sccs *s, ser_t d, u32 flags)
+lowerBounds(sccs *s, ser_t d, u32 side)
 {
 	cstop_t	cs;
 
-	unless (d = sccs_csetBoundary(s, d, 0)) return (0); /* if pending */
-	/* 'flags' has what to include; invert to what to ignore */
-	if (flags) flags ^= (D_LOCAL|D_REMOTE);
 	cs.d = d;
-	cs.flags = flags;
+	cs.side = side;
 	cs.list = 0;
 	range_walkrevs(s, 0, 0, d, WR_STOP, csetStop, &cs);
 	return (cs.list);

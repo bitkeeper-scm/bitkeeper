@@ -79,9 +79,9 @@ out:	if (rev) free(rev);
 private char *
 r2c(char *file, char *rev)
 {
-	int	len;
+	int	i, len;
 	char	*name, *t;
-	ser_t	e;
+	ser_t	d, e;
 	FILE	*f = 0;
 	sccs	*s = 0, *cset = 0;
 	char	*ret = 0, *key = 0, *shortkey = 0;
@@ -106,24 +106,25 @@ r2c(char *file, char *rev)
 	if (CSET(s) && proj_isComponent(s->proj)) {
 		char	**list = 0;
 
-		/* go to product */
 		if (proj_cd2product()) goto out;
 		if (list = poly_r2c(s, e)) {
-			FILE	*fh;
-			char	*cmd, *tmpfile, **revs = 0;
-			int	i;
+			char	**revs = 0;
+			ser_t	*serlist = 0;
+
+			cset = sccs_csetInit(INIT_NOCKSUM|INIT_MUSTEXIST);
+			assert(cset);
 			
-			tmpfile = bktmp(0, "r2clist");
-			cmd = aprintf(
-			    "bk changes -ed:JOIN::I: - > '%s'", tmpfile);
-			fh = popen(cmd, "w");
-			free(cmd);
-			EACH(list) fprintf(fh, "%s\n", list[i]);
-			pclose(fh);
+			EACH(list) {
+				d = sccs_findKey(cset, list[i]);
+				assert(d);
+				serlist = addSerial(serlist, d); /* sorted */
+			}
 			freeLines(list, free);
-			revs = file2Lines(0, tmpfile);
-			unlink(tmpfile);
-			free(tmpfile);
+			EACH_REVERSE(serlist) { /* new to old */
+				revs = addLine(revs,
+				    strdup(REV(cset, serlist[i])));
+			}
+			free(serlist);
 			ret = joinLines(",", revs);
 			freeLines(revs, free);
 			goto out;
