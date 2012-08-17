@@ -497,26 +497,17 @@ cmp_ignore_ws_chg(void *va, int lena, void *vb, int lenb, int last, void *extra)
 /* HASH FUNCTIONS */
 
 /*
- * Adapted from libc/mdbm/hash.c:mdbm_hash1
- */
-#define	PRIME1		37
-#define	PRIME2		1048583
-
-/*
- * Hash data.
+ * Hash data, use crc32c for speed
  */
 private	u32
 hash_identical(void *data, int len, int side, int last, void *extra)
 {
 	u32	h = 0;
-	int	i;
 	filediff *o = (filediff *)extra;
 	char	*buf = (char *)data;
 
 	if (last && !o->files[side].nl) h = 1;
-	for (i = 0; i < len; i++) h = h * PRIME1 ^ (buf[i] - ' ');
-	h %= PRIME2;
-	return (h);
+	return (crc32c(h, buf, len));
 }
 
 /*
@@ -526,9 +517,10 @@ private	u32
 hash_ignore_ws_chg(void *data, int len, int side, int last, void *extra)
 {
 	u32	h = 0;
-	int	i;
+	int	i, j = 0;
 	filediff	*o = (filediff *)extra;
 	char	*buf = (char *)data;
+	char	copy[len];
 
 	if (last && !o->files[side].nl && o->dop->strip_trailing_cr) {
 		h = 1;
@@ -536,13 +528,12 @@ hash_ignore_ws_chg(void *data, int len, int side, int last, void *extra)
 	for (i = 0; i < len; i++) {
 		if (isspace(buf[i])) {
 			while ((i < len) && isspace(buf[i+1])) i++;
-			h = h * PRIME1 ^ 0 ; /* buf[i] - ' ' == 0 */
+			copy[j++] = ' ';
 			continue;
 		}
-		h = h * PRIME1 ^ (buf[i] - ' ');
+		copy[j++] = buf[i];
 	}
-	h %= PRIME2;
-	return (h);
+	return (crc32c(h, copy, j));
 }
 
 /*
@@ -552,9 +543,10 @@ private	u32
 hash_ignore_ws(void *data, int len, int side, int last, void *extra)
 {
 	u32	h = 0;
-	int	i;
+	int	i, j = 0;
 	filediff	*o = (filediff *)extra;
 	char	*buf = (char *)data;
+	char	copy[len];
 
 	if (last && !o->files[side].nl && o->dop->strip_trailing_cr) {
 		h = 1;
@@ -564,10 +556,9 @@ hash_ignore_ws(void *data, int len, int side, int last, void *extra)
 			while ((i < len) && isspace(buf[i+1])) i++;
 			continue;
 		}
-		h = h * PRIME1 ^ (buf[i] - ' ');
+		copy[j++] = buf[i];
 	}
-	h %= PRIME2;
-	return (h);
+	return (crc32c(h, copy, j));
 }
 
 private void

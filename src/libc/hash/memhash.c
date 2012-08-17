@@ -24,7 +24,7 @@ struct node {
 
 node	*nodes;
 
-#define	mdbm_hash	mdbm_hash1
+#define	HASH(buf, len) crc32c(0, buf, len)
 
 /*
  * Find the offset of the data in the key array given the klen and
@@ -96,7 +96,7 @@ memhash_free(hash *_h)
 private inline node **
 find_nodep(memhash *h, void *kptr, int klen)
 {
-	uint32	hash = mdbm_hash(kptr, klen);
+	uint32	hash = HASH(kptr, klen);
 	node	*n, **nn;
 
 	nn = &h->arr[hash & h->mask];
@@ -294,7 +294,7 @@ memhash_split(memhash *h)
 		while (n) {
 			t = n;
 			n = n->next;
-			hash = mdbm_hash((u8 *)t->key, t->klen);
+			hash = HASH((u8 *)t->key, t->klen);
 			p = &newarr[hash & newmask];
 			t->next = *p;
 			*p = t;
