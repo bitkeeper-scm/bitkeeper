@@ -14,6 +14,21 @@
 #include "poly.h"
 
 /*
+ * Macros to get at an optional hidden string after the null
+ * Only used here (and lm wishes they weren't used anywhere).
+ *
+ * This is for performance and cleaner code, by not needing to
+ * malloc/free a set of * struct { char *visible; char *hidden;}
+ * pointers for every file being stored.
+ * It lets us track a list of paths and rootkeys
+ * as a addLine of strings.  And from each string, we can extract
+ * paths (the visible part) and rootkeys (the hidden part).
+ */
+#define	HIDDEN(p)		((p) + strlen(p) + 1)
+#define	HIDDEN_BUILD(a, b)	aprintf("%s%c%s", (a), 0, (b))
+#define	HIDDEN_DUP(p)		HIDDEN_BUILD(p, HIDDEN(p))
+
+/*
  * Stuff to remember for each rootkey in the ->mask field:
  *  0x1 parent side of merge changes this rk
  *  0x2 merge side of merge changes this rk

@@ -561,13 +561,6 @@ typedef struct {
 #define	SORTPATH(s,d)	((s)->heap.buf + SORTPATH_INDEX(s, d))
 
 /*
- * Macros to get at an optional hidden string after the null
- */
-#define	HIDDEN(p)		((p) + strlen(p) + 1)
-#define	HIDDEN_BUILD(a, b)	aprintf("%s%c%s", (a), 0, (b))
-#define	HIDDEN_DUP(p)		HIDDEN_BUILD(p, HIDDEN(p))
-
-/*
  * Rap on lod/symbols wrt deltas.
  * Both symbols can occur exactly once per delta where delta is a node in
  * the graph.  When a delta is created, it might get a symbol and/or a lod.
