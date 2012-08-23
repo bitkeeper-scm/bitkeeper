@@ -126,7 +126,12 @@ main(int ac, char **av)
 	while ((c = getopt(ac, av, options, lopts)) != -1) {
 		switch (c) {
 		    case 'l': opts.shellx = 1; break;
-		    case 's': opts.scc = 1; break;
+		    //case 's': opts.scc = 1; break;
+		    case 's':
+			fprintf(stderr,
+			    "The BKSCC dll is unsupported at this time\n");
+			exit(1);
+			break;
 		    case 'u': opts.upgrade = 1; break;
 		    default: usage();
 		}
@@ -338,9 +343,14 @@ void
 usage(void)
 {
 #ifdef WIN32
+/*
 	fprintf(stderr,
 	    "usage: %s [--%s][--%s][--%s || <directory>]\n", 
 	    prog, EXP_OPT, VS_OPT, UP_OPT);
+*/
+	fprintf(stderr,
+	    "usage: %s [--%s][--%s || <directory>]\n", 
+	    prog, EXP_OPT, UP_OPT);
 #else
 	fprintf(stderr, "usage: %s [--%s || <directory>]\n", prog, UP_OPT);
 #endif
@@ -362,10 +372,12 @@ UP_OPT
 "is found, then a new installation is written to:\n"
 "%s\n\n"
 #ifdef WIN32
+/*
 "The --"
 VS_OPT
 " option enables the bkscc dll for Visual Studio integration.\n"
 "\n"
+*/
 "The --"
 EXP_OPT
 " option enables the shell extension for Windows Explorer.\n"

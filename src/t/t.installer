@@ -272,9 +272,10 @@ fi
 echo OK
 
 echo $N Make sure the installer accepts command line options.........$NL
-./bk-academic-licensed -s -l "$HERE/DEAD2" > OUT 2>&1 || {
+#./bk-academic-licensed -s -l "$HERE/DEAD2" > OUT 2>&1 || {
+./bk-academic-licensed -l "$HERE/DEAD2" > OUT 2>&1 || {
 	echo failed $?
-	echo Installer failed to install with -s -l
+	echo Installer failed to install with -l
 	cat OUT
 	exit 1
 }
@@ -285,35 +286,35 @@ if [ $KEY1 -ne 1 ]; then
 	echo Failed to set LocalDrive: $KEY1
 	exit 1
 fi
-CTRLPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider"
-INSTPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider\\InstalledSCCProviders"
-SCCKEY1=`bk _registry get "$BMKEY" SCCServerName` || exit 1
-SCCKEY2=`bk _registry get "$BMKEY" SCCserverPath` || exit 1
-PROVKEY1=`bk _registry get "$CTRLPROV" ProviderRegkey` || exit 1
-PROVKEY2=`bk _registry get "$INSTPROV" BitKeeper` || exit 1
-SCCPATH=`bk pwd -w "$HERE/DEAD2"`\\bkscc.dll
+#CTRLPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider"
+#INSTPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider\\InstalledSCCProviders"
+#SCCKEY1=`bk _registry get "$BMKEY" SCCServerName` || exit 1
+#SCCKEY2=`bk _registry get "$BMKEY" SCCserverPath` || exit 1
+#PROVKEY1=`bk _registry get "$CTRLPROV" ProviderRegkey` || exit 1
+#PROVKEY2=`bk _registry get "$INSTPROV" BitKeeper` || exit 1
+#SCCPATH=`bk pwd -w "$HERE/DEAD2"`\\bkscc.dll
 
-test "$SCCKEY1" = "BitKeeper" || {
-	echo failed
-	echo SCCServerName was "$SCCKEY1" instead of "BitKeeper"
-	exit 1
-}
-test "$SCCKEY2" = "$SCCPATH" || {
-	echo failed
-	echo SCCServerPath was "$SCCKEY2" instead of "$SCCPATH"
-	exit 1
-}
-PK1="SOFTWARE\\bitmover\\bitkeeper"
-test "$PROVKEY1" = "$PK1" || {
-	echo failed
-	echo ProviderRegkey was "$PROVKEY1" instead of "$PK1"
-	exit 1
-}
-test "$PROVKEY2" = "$PK1" || {
-	echo failed
-	echo InstalledSCCProviders was "$PROVKEY2" instead of "$PK1"
-	exit 1
-}
+# test "$SCCKEY1" = "BitKeeper" || {
+# 	echo failed
+# 	echo SCCServerName was "$SCCKEY1" instead of "BitKeeper"
+# 	exit 1
+# }
+# test "$SCCKEY2" = "$SCCPATH" || {
+# 	echo failed
+# 	echo SCCServerPath was "$SCCKEY2" instead of "$SCCPATH"
+# 	exit 1
+# }
+#PK1="SOFTWARE\\bitmover\\bitkeeper"
+#test "$PROVKEY1" = "$PK1" || {
+#	echo failed
+#	echo ProviderRegkey was "$PROVKEY1" instead of "$PK1"
+#	exit 1
+#}
+# test "$PROVKEY2" = "$PK1" || {
+# 	echo failed
+# 	echo InstalledSCCProviders was "$PROVKEY2" instead of "$PK1"
+# 	exit 1
+# }
 echo OK
 
 echo $N Make sure -l will stomp previous setting.....................$NL
