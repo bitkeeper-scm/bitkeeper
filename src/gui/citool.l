@@ -764,6 +764,7 @@ gui()
 	ListBox_bind(self.o_files, "<<SelectItem>>", "selectFile %d");
 
 	bind("all", "<Return>", "togglePending {}");
+	bind("all", "<KP_Enter>", "event generate %W <Return>");
 
 	f = ListBox_cget(self.o_files, font:);
 	self.font_normal = f;
