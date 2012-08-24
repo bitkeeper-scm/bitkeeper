@@ -17,6 +17,10 @@
 # - a bkd running on work on the default port
 # - a bk://work/bk-3.2.x repo with the bk-3.2.5 tag
 
+rev=bk-4.6
+repo=bk-5.0
+val=4bb5f2fdYZo6fbhTxP4FF6sFAfAKqQ
+
 test "$PLATFORM" = "WIN32" || exit 0
 
 cleanup() {
@@ -44,14 +48,14 @@ bk _registry set "$KEY" ProxyServer "data.bitmover.com:3128" || exit 1
 
 # the host proxytest only exists on 'work', so if you don't use
 # the proxy it work work.
-BK_HTTP_PROXY_DEBUG=1 BK_TRACE_REMOTE=1 bk changes -qrbk-3.2.5 -nd:MD5KEY: \
-    http://proxytest:14690/bk-3.2.x >OUT 2>ERR || {
+BK_HTTP_PROXY_DEBUG=1 BK_TRACE_REMOTE=1 bk changes -qr$rev -nd:MD5KEY: \
+    http://proxytest:14690/$repo >OUT 2>ERR || {
 	echo should not have failed
 	cat OUT
 	cat ERR
 	exit 1
 }
-test "`cat OUT`" = 42f14254Fy_o9xwl7u_Ej-1mle8SMQ || {
+test "`cat OUT`" = "$val" || {
 	echo wrong result
 	cat OUT
 	exit 1
@@ -75,14 +79,14 @@ bk _registry set "$KEY" AutoConfigURL http://wpad.bitmover.com/wpad.dat
 
 # the host proxytest only exists on 'work', so if you don't use
 # the proxy it work work.
-BK_HTTP_PROXY_DEBUG=1 BK_TRACE_REMOTE=1 bk changes -qrbk-3.2.5 -nd:MD5KEY: \
-    http://proxytest:14690/bk-3.2.x >OUT 2>ERR || {
+BK_HTTP_PROXY_DEBUG=1 BK_TRACE_REMOTE=1 bk changes -qr$rev -nd:MD5KEY: \
+    http://proxytest:14690/$repo >OUT 2>ERR || {
 	echo should not have failed
 	cat OUT
 	cat ERR
 	exit 1
 }
-test "`cat OUT`" = 42f14254Fy_o9xwl7u_Ej-1mle8SMQ || {
+test "`cat OUT`" = "$val" || {
 	echo wrong result
 	cat OUT
 	exit 1
@@ -112,15 +116,15 @@ bk _registry delete "$KEY" AutoConfigURL
 
 # the host proxytest only exists on 'work', so if you don't use
 # the proxy it work work.
-BK_HTTP_PROXY_DEBUG=1 BK_TRACE_REMOTE=1 bk changes -qrbk-3.2.5 -nd:MD5KEY: \
-    http://proxytest:14690/bk-3.2.x >OUT 2>ERR || {
+BK_HTTP_PROXY_DEBUG=1 BK_TRACE_REMOTE=1 bk changes -qr$rev -nd:MD5KEY: \
+    http://proxytest:14690/$repo >OUT 2>ERR || {
 	echo should not have failed
 	cat OUT
 	cat ERR
 	cleanup
 	exit 1
 }
-test "`cat OUT`" = 42f14254Fy_o9xwl7u_Ej-1mle8SMQ || {
+test "`cat OUT`" = "$val" || {
 	echo wrong result
 	cat OUT
 	exit 1

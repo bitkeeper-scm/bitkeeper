@@ -1,4 +1,45 @@
 ============================================================================
+Release notes for BitKeeper version 5.4.3 (released Aug 24, 2012)
+
+This is a minor bugfix release.
+
+Bug fixes:
+
+  misc
+    - Fix a rare case where a bk can hold a lock while prompting the
+      user in 'bk resolve' that will prevent other instances of
+      BitKeeper on the same machine from running.
+
+    - Address a performance problem with licensing for customers with
+      1000s of active hosts and NFS home directories.
+
+  Nested
+    - Prune the list of alternative locations for unpopulated
+      components in the current repository to at most 3 locations.
+      This prevents performance problems when the list grew too
+      large.
+
+    - Fix some obscure bugs where BAM worked incorrectly when a
+      standalone repository was used inside the directory tree of a
+      nested product.
+
+  bk partition
+    - Fix a crash on windows.
+    
+  bk port
+    - When porting a component from a different nested product,
+      require that the source repository be labeled as a 'gate'.  This
+      avoids user errors.
+
+  bk commit
+    - Detect an error condition where a file system problem prevents
+      marking some files as being committed.
+
+  bk fm3tool
+    - Fix a bug where restarting a merge when the "Show GCA" checkbox
+      was unselected showed the wrong lines on the screen.
+  
+============================================================================
 Release notes for BitKeeper version 5.4.2 (released Jun 30, 2012)
 
 This is a minor release, mostly addressing bugs or enhancements in
