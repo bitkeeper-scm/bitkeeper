@@ -78,6 +78,7 @@ typedef struct {
 	u32	remotePresent:1;	// scratch for remote present bit
 	u32	pending:1;		// has pending csets not in product
 	u32	useLowerKey:1;		// tell populate to use lowerkey
+	u32	savedGate:1;		// wrote gate to urllist for this comp?
 } comp;
 
 struct nested {

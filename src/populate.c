@@ -359,8 +359,8 @@ urllist_find(nested *n, comp *cp, int flags, int *idx)
 			continue;
 		}
 
-		// continue if it's not a known gate and they only want gates
-		if (gateonly && (data->gate != 1)) continue;
+		// continue if we know it isn't a gate and they only want gates
+		if (gateonly && (data->gate == 0)) continue;
 
 		if (data->repoID) {
 			/* don't talk to myself */

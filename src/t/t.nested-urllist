@@ -64,9 +64,6 @@ gcc:
 gdb:
 	$HERE/clone1
 	$HERE/product
-.:
-	$HERE/clone1
-	$HERE/product
 EOF
 cmpfiles OUT WANT
 cd ..
@@ -256,9 +253,6 @@ gcc:
 gdb:
 	$HERE/clone1
 	$HERE/product
-.:
-	$HERE/clone1
-	$HERE/product
 EOF
 cmpfiles OUT WANT	
 cd ..
@@ -296,8 +290,69 @@ gdb:
 	$HERE/clone1
 	$HERE/clone8
 	$HERE/product
-.:
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Show that gates are kept in urllist .........................$NL
+# we only keep 3 URLs, but if the first 3 are not gates then we will
+# add a gate as #4
+bk clone $Q -sALL ../product ../extra1 || fail
+bk clone $Q -sALL ../product ../extra2 || fail
+ENC=$(echo $HERE | sed 's/ /%20/')
+# urlinfo saves 'time_t, isa_gate, repoid' in 3 lines
+# we setup these repos so only product is a gate and everything is old
+cat <<EOF > "$URLINFO"
+@$ENC/clone1
+1
+0
+@$ENC/clone8
+2
+0
+@$ENC/product
+3
+1
+@$ENC/extra1
+4
+0
+@$ENC/extra2
+5
+0
+EOF
+cp "$URLINFO" save
+bk here check -@../extra1 --sort -ac gdb > OUT || fail
+# we read clone1, clone8 & product and added extra1
+# afterwards clone8 was dropped since it was the oldest
+# (clone1 was saved since it is the parent)
+cat <<EOF > WANT
+gdb:
+	$HERE/clone1
 	$HERE/clone8
+	$HERE/extra1
+	$HERE/product
+EOF
+cmpfiles OUT WANT
+cp save "$URLINFO"
+bk here check -@../extra2 --sort -ac gdb > OUT || fail
+# we read clone1, extra1 & product and added extra2
+# we keep product since it is a gate
+cat <<EOF > WANT
+gdb:
+	$HERE/clone1
+	$HERE/extra1
+	$HERE/extra2
+	$HERE/product
+EOF
+cmpfiles OUT WANT
+cp save "$URLINFO"
+bk here check --sort -ac gdb > OUT || fail
+# we show that 4 URLs are saved to make sure we have a product
+cat <<EOF > WANT
+gdb:
+	$HERE/clone1
+	$HERE/extra1
+	$HERE/extra2
+	$HERE/product
 EOF
 cmpfiles OUT WANT
 echo OK
@@ -321,7 +376,7 @@ bk here check -a ./gdb | grep -q "$HERE/clone1" || fail 8
 # the components present in cloneA, so gdb should not be added.
 cd "$HERE/clone9"
 bk push $Q "$HERE/cloneA" || fail 10
-bk here check --sort -ac ALL > OUT
+bk here check --sort -ac ALL > OUT || fail
 cat <<EOF > WANT
 gcc:
 	$HERE/clone1
@@ -329,9 +384,6 @@ gcc:
 gdb:
 	$HERE/clone1
 	$HERE/product
-.:
-	$HERE/clone1
-	$HERE/cloneA
 EOF
 cmpfiles OUT WANT
 echo OK
@@ -471,10 +523,6 @@ bk here check -q ./gdb 2> ERR && fail -f ERR shouldnt find gdb
 echo 'gdb: no valid urls found (present)' > WANT
 cmpfiles WANT ERR
 bk pull $Q ../cloneE || fail 11
-# This next line is a regression test for a bug where the product
-# rootkey got into the urllist.
-bk here check -q ./ 2> ERR && fail -f ERR
-grep -q '\.: no valid urls found (present)' ERR || fail -f ERR 12
 bk here check -q ./gdb 2> ERR && fail -f ERR shouldnt find gdb
 cmpfiles WANT ERR
 cd "$HERE"

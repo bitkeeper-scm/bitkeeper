@@ -88,6 +88,7 @@ here_check_main(int ac, char **av)
 	EACH_STRUCT(n->comps, cp, i) {
 		unless (cp->alias) continue;
 		if (cp->present && opts->missing) continue;
+		if (cp->product) continue;
 
 		if (opts->noconnect) {
 			EACH_STRUCT(n->urls, data, j) {
