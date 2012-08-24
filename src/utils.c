@@ -606,7 +606,7 @@ send_file(remote *r, char *file, int extra)
 
 	if (r->type == ADDR_HTTP) extra += 5;	/* "quit\n" */
 	q = secure_hashstr(m->mmap, len, makestring(KEY_BK_AUTH_HMAC));
-	hdr = aprintf("putenv BK_AUTH_HMAC=%d|%d|%s\n", len, extra, q);
+	hdr = aprintf("putenv 'BK_AUTH_HMAC=%d|%d|%s'\n", len, extra, q);
 	free(q);
 	rc = send_msg(r, hdr, strlen(hdr), len+extra);
 	free(hdr);
@@ -873,11 +873,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		assert(p);	/* We must be in a repo here */
 		fprintf(f, "putenv BK_LEVEL=%d\n", getlevel());
 		proj = proj_root(p);
-		if (strchr(proj, ' ')) {
-			fprintf(f, "putenv 'BK_ROOT=%s'\n", proj);
-		} else {
-			fprintf(f, "putenv BK_ROOT=%s\n", proj);
-		}
+		fprintf(f, "putenv 'BK_ROOT=%s'\n", proj);
 		fprintf(f, "putenv BK_REPOTYPE=");	// no newline here
 		/* Match :REPOTYPE: */
 		if (proj_isProduct(p)) {
@@ -888,34 +884,17 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		} else {
 			fprintf(f, "standalone\n");
 		}
-		fprintf(f, "putenv BK_ROOTKEY=%s\n", proj_rootkey(p));
+		fprintf(f, "putenv 'BK_ROOTKEY=%s'\n", proj_rootkey(p));
 		if (repo = proj_repoID(prod)) {
-			if (strchr(repo, ' ')) {
-				fprintf(f, "putenv 'BK_REPO_ID=%s'\n", repo);
-			} else {
-				fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
-			}
+			fprintf(f, "putenv 'BK_REPO_ID=%s'\n", repo);
 			if (bp_hasBAM()) fprintf(f, "putenv BK_BAM=YES\n");
 			if (bp = bp_serverURL(buf)) {
-				if (strchr(bp, ' ')) {
-					fprintf(f,
-					    "putenv 'BK_BAM_SERVER_URL=%s'\n",
-					    bp);
-				} else {
-					fprintf(f,
-					    "putenv BK_BAM_SERVER_URL=%s\n",
-					    bp);
-				}
+				fprintf(f, "putenv 'BK_BAM_SERVER_URL=%s'\n",bp);
 			}
 			unless (bp = bp_serverID(buf, 0)) {
 				bp = repo;
 			}
-			if (strchr(bp, ' ')) {
-				fprintf(f,
-				    "putenv 'BK_BAM_SERVER_ID=%s'\n", bp);
-			} else {
-				fprintf(f, "putenv BK_BAM_SERVER_ID=%s\n", bp);
-			}
+			fprintf(f, "putenv 'BK_BAM_SERVER_ID=%s'\n", bp);
 		}
 		if ((flags & SENDENV_FORCEREMAP) ||
 		    !(proj_hasOldSCCS(0) || (flags & SENDENV_FORCENOREMAP))) {
@@ -954,7 +933,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		free(t);
 	}
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
-	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
+	fprintf(f, "putenv 'BK_SEED=%s'\n", r->seed);
 	if (p) proj_free(p);
 }
 

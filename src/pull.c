@@ -372,7 +372,7 @@ send_part1_msg(remote *r, char **envVar)
 	sendEnv(f, envVar, r, 0);
 	add_cd_command(f, r);
 	fprintf(f, "pull_part1");
-	if (opts.rev) fprintf(f, " -r%s", opts.rev);
+	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.transaction) fprintf(f, " -N");
 	fputs("\n", f);
 	fclose(f);
@@ -519,7 +519,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 	fprintf(f, "pull_part2");
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.quiet) fprintf(f, " -q");
-	if (opts.rev) fprintf(f, " -r%s", opts.rev);
+	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (opts.debug) fprintf(f, " -d");
 	if (opts.transaction) fprintf(f, " -N");

@@ -990,10 +990,13 @@ cmdlog_start(char **av, int bkd_cmd)
 	}
 
 	for (len = 1, i = 0; av[i]; i++) {
-		len += strlen(av[i]) + 1;
-		if (len >= sizeof(cmdlog_buffer)) continue;
-		if (i) strcat(cmdlog_buffer, " ");
 		quoted = shellquote(av[i]);
+		len += strlen(quoted) + 1;
+		if (len >= sizeof(cmdlog_buffer)) {
+			free(quoted);
+			break;
+		}
+		if (i) strcat(cmdlog_buffer, " ");
 		strcat(cmdlog_buffer, quoted);
 		free(quoted);
 	}
