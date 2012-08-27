@@ -86,6 +86,9 @@ proc bk_init {} {
 	if {[tk windowingsystem] eq "aqua"} {
 		event add <<Redo>> <Command-Shift-z> <Command-Shift-Z>
 	}
+
+	bind Entry  <KP_Enter> {event generate %W <Return>}
+	bind TEntry <KP_Enter> {event generate %W <Return>}
 }
 
 # Try to find the project root, limiting ourselves to 40 directories

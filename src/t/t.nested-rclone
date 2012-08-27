@@ -187,3 +187,14 @@ bk alias -k here > GOT
 (echo PRODUCT; cd gcc; bk id -S) > WANT
 cmpfiles GOT WANT
 echo OK
+
+echo $N Long line in bkd protocol: _rclone -sHERE 60comps ...........$NL
+# Note: repo has no license (so nothing to expire).
+# Works because leases fetched from previous tests.
+if [ -d "$TESTDATA/60comps" ]
+then	bk _rclone $Q -sHERE "$TESTDATA/60comps" "$HERE/60comps" 2> ERR && fail
+	grep -q 'Trigger "pre-outgoing" (exit status was 19)' ERR \
+	    || fail -f ERR
+	echo OK
+else	echo skipped
+fi
