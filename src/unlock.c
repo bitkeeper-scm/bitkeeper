@@ -126,7 +126,9 @@ repo(u32 flags)
 		}
 		if (proj_isEnsemble(0)) {
 			if (nested_forceUnlock(0, 1)) {
-				fprintf(stderr, "nested read unlock failed\n");
+				fprintf(stderr,
+				    "nested read unlock failed: %s\n",
+				    nested_errmsg());
 				nested_printLockers(0, stderr);
 				error = 1;
 			}
@@ -142,7 +144,9 @@ repo(u32 flags)
 		}
 		if (proj_isEnsemble(0)) {
 			if (nested_forceUnlock(0, 2)) {
-				fprintf(stderr,"nested write unlock failed\n");
+				fprintf(stderr,
+				    "nested write unlock failed: %s\n",
+				    nested_errmsg());
 				nested_printLockers(0, stderr);
 				error = 1;
 			}

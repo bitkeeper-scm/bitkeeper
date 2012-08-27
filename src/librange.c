@@ -165,7 +165,7 @@ csetStop(sccs *s, ser_t d, void *token)
 void
 range_cset(sccs *s, ser_t d)
 {
-	unless (d = sccs_csetBoundary(s, d)) return; /* if pending */
+	unless (d = sccs_csetBoundary(s, d, 0)) return; /* if pending */
 	range_walkrevs(s, 0, 0, d, WR_STOP, csetStop, &d);
 	s->state |= S_SET;
 }
@@ -426,7 +426,7 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 	assert (!from || !fromlist);
 	s->rstop = 0;
 	unless (to) {		/* no upper bound - get all tips */
-		all = 1;
+		unless (flags & WR_STOP) all = 1;
 		to = TABLE(s);	/* could be a tag; that's okay */
 	} else {
 		FLAGS(s, to) |= D_RED;
@@ -438,10 +438,11 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 		addArray(&freelist, &from);
 		fromlist = freelist;
 	}
+	color = (flags & WR_STOP) ? D_RED : D_BLUE;
 	EACH(fromlist) {
 		from = fromlist[i];
 		if (d < from) d = from;
-		MARK(from, D_BLUE);
+		MARK(from, color);
 	}
 
 	/* compute RED - BLUE */
@@ -516,48 +517,12 @@ walkrevs_printmd5key(sccs *s, ser_t d, void *token)
 }
 
 int
-walkrevs_addLine(sccs *s, ser_t d, void *token)
+walkrevs_addSer(sccs *s, ser_t d, void *token)
 {
 	ser_t	**line = (ser_t **)token;
 
 	addArray(line, &d);
 	return (0);
-}
-
-/*
- * return a list of gca deltas for the list of deltas passed in.
- * The gca list is made up of the tips of the common-to-all region.
- * In each round of the loop, gca will be the list of what is common
- * to all the deltas processed so far.
- */
-ser_t *
-range_gcalist(sccs *s, ser_t *list)
-{
-	ser_t	*gca = 0, *fromlist = 0, *tmp;
-	ser_t	to;
-	int	i;
-
-	EACH(list) {
-		to = list[i];
-		unless (gca) {
-			/* first round: just set tip as gca */
-			addArray(&gca, &to);
-			continue;
-		}
-		/* gca from previous round is fromlist this round */
-		tmp = fromlist;
-		fromlist = gca;
-		gca = tmp;
-		if (gca) truncLines(gca, 0);
-		/* assumes D_SET is clear to start and leaves it cleared */
-		if (range_walkrevs(s, 0, fromlist, to,
-		    WR_GCA, walkrevs_addLine, &gca)) {
-			assert("What can fail?" == 0);
-		}
-	}
-	free(fromlist);
-	graph_sortLines(s, gca);
-	return (gca);
 }
 
 /*

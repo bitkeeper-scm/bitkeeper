@@ -404,6 +404,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 		if (!c->localchanges && (flags & NESTED_PULL) && IN_LOCAL(d)) {
 			/* in local region of pull */
 			c->localchanges = 1;
+			c->new = 0;
 
 			/* c->path is local path */
 			unless (c->present) {
@@ -414,15 +415,18 @@ err:				if (revsDB) mdbm_close(revsDB);
 			assert(!c->lowerkey);
 			c->lowerkey = strdup(v);
 		}
-		if (flags & NESTED_PULL) {
-			if (IN_LOCAL(d)) {
-				c->local = addLine(c->local, strdup(v));
-			} else if (IN_REMOTE(d)) {
-				c->remote = addLine(c->remote, strdup(v));
-			}
+		if (!IN_GCA(d) &&
+		    ((flags & (NESTED_PULL|NESTED_MARKPENDING)) ==
+		    (NESTED_PULL|NESTED_MARKPENDING))) {
+			/*
+			 * Save data needed for poly_pull() when looking
+			 * for poly in a component.
+			 */
+			c->poly = poly_save(c->poly, cset, d, v, IN_LOCAL(d));
 		}
-		if (c->new && IN_GCA(d)) {
+		if (!c->gca && IN_GCA(d)) {
 			/* in GCA region, so obviously not new */
+			c->gca = 1;
 			c->new = 0;
 
 			/* If we haven't seen a REMOTE delta, then we won't. */
@@ -788,8 +792,7 @@ compFree(void *x)
 	FREE(c->deltakey);
 	FREE(c->lowerkey);
 	FREE(c->path);
-	if (c->local) freeLines(c->local, free);
-	if (c->remote) freeLines(c->remote, free);
+	if (c->poly) freeLines(c->poly, free);
 	free(c);
 }
 

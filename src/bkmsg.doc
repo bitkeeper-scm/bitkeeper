@@ -1209,13 +1209,15 @@ in this version of BitKeeper.
 Please write support@bitmover.com and include this message.
 $
 #tp_portself
-takepatch: porting work that originated in this product is unsupported.
-Find another repository from the same product and pull the cset from there.
-To see if a repository has it:
-	bk -@URL r2c -r'#BKARG#2#' '#BKARG#1#'
-If that returns a REV, then do a
-	bk pull -rREV URL
-Then do the port again.
+You are trying to port changesets that were made in another clone of
+this nested collection, which is an error.  Instead, you need to find
+a repository that contains the changeset[s] you are trying to port and
+pull them.
+To see if a repository has the needed changesets, run this command:
+	bk -@<URL> r2c -r'#BKARG#2#' '#BKARG#1#'
+Once you find a repository containing the changeset do a:
+	bk pull -r<REV> <URL>
+instead of the port.
 $
 #tp_ahead
 takepatch: can't find parent ID

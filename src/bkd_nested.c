@@ -15,8 +15,8 @@ cmd_nested(int ac, char **av)
 		out("ERROR-invalid command\n");
 		return (1);
 	}
-	unless (proj_isProduct(0)) {
-		out("ERROR-nested only in product\n");
+	unless (proj_isEnsemble(0)) {
+		out("ERROR-nested only in a nested repo\n");
 		return (1);
 	}
 	unless (nlid = getenv("_BK_NESTED_LOCK")) {

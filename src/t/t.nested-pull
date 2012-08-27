@@ -444,7 +444,7 @@ trap "bk _kill bk://$M" 0
 rm -fr local
 tar xf local.tar
 cd local
-bk pull $Q bk://$M/remote || fail
+bk pull -q bk://$M/remote || fail
 bk lock -q || fail
 bk changes -nd:GFILE: -vr+ > GOT
 cmpfiles ../WANT.changes GOT
@@ -459,7 +459,7 @@ cd "$HERE"
 rm -fr local
 tar xf local.tar
 cd local
-bk pull $Q http://$M/remote || fail
+bk pull -q http://$M/remote || fail
 bk lock -q || fail
 bk changes -nd:GFILE: -vr+ > GOT
 cmpfiles ../WANT.changes GOT
@@ -664,11 +664,7 @@ bk pull > OUT 2>&1 && {
 	exit 1
 }
 # XXX bad error message
-grep -q 'Pulling gdb failed' OUT || {
-	echo bad message
-	cat OUT
-	exit 1
-}
+grep -q 'Pulling gdb failed' OUT || fail -f OUT bad message
 echo OK
 
 echo $N Try a pull where destination did rm -rf component ...........$NL
@@ -1136,6 +1132,7 @@ pull: searching ROOT/project...ok
 pull: searching ROOT/backup...ok
 Source ROOT/backup
 1/4 gdb                            100% |==============================| OK
+pull: searching ROOT/project...ok
 2/4 gcc                              1 changeset,   no merges in   3 files
 3/4 gdb                              1 changeset,    2 merges in   3 files
 4/4 .                                1 changeset,    1 merge  in   1 file
@@ -1192,6 +1189,7 @@ pull: searching ROOT/project...ok
 pull: searching ROOT/backup...ok (gate)
 Source ROOT/backup
 1/4 gdb                            100% |==============================| OK
+pull: searching ROOT/project...ok
 2/4 gcc                              1 changeset,   no merges in   3 files
 3/4 gdb                              1 changeset,    2 merges in   3 files
 4/4 .                                2 changesets,   1 merge  in   2 files
@@ -1266,15 +1264,6 @@ bk comps -h > COMPS_BEFORE
 # the pull screws up the current repo since we pull in-place
 bk repocheck $Q 2>ERR && fail you fixed a bug
 grep -q "It looks like there was a pull in progress." ERR || fail -f ERR
-bk abort -qf
-bk repocheck $Q || fail
-bk changes -v -r+ > AFTER
-bk here > HERE_AFTER
-bk comps -h > COMPS_AFTER
-cmpfiles BEFORE AFTER
-cmpfiles HERE_BEFORE HERE_AFTER
-cmpfiles COMPS_BEFORE COMPS_AFTER
-test -d newcomp && fail
 echo OK
 
 echo $N Make sure working pull does not leave PENDING behind ........$NL

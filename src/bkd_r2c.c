@@ -13,6 +13,7 @@ r2c_main(int ac, char **av)
 	int	rc = 1;
 	int	product = 1;
 	MDBM	*idDB, *goneDB;
+	MDBM	*md5DB = 0;
 	char	*sfile;
 	longopt	lopts[] = {
 		{ "standalone", 'S' },		/* treat comps as standalone */
@@ -37,9 +38,10 @@ r2c_main(int ac, char **av)
 		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 		goneDB = loadDB(GONE, 0, DB_GONE);
 
-		file = key2path(file, idDB, goneDB, 0);
+		file = key2path(file, idDB, goneDB, &md5DB);
 		mdbm_close(idDB);
 		mdbm_close(goneDB);
+		mdbm_close(md5DB);
 		unless (file) goto out;
 	}
 	unless (p = r2c(file, rev)) goto out; /* will chdir to file repo */
@@ -77,9 +79,9 @@ out:	if (rev) free(rev);
 private char *
 r2c(char *file, char *rev)
 {
-	int	len;
+	int	i, len;
 	char	*name, *t;
-	ser_t	e;
+	ser_t	d, e;
 	FILE	*f = 0;
 	sccs	*s = 0, *cset = 0;
 	char	*ret = 0, *key = 0, *shortkey = 0;
@@ -96,16 +98,39 @@ r2c(char *file, char *rev)
 		fprintf(stderr, "%s: cannot find package root.\n", prog);
 		goto out;
 	}
-	if (CSET(s) && proj_isComponent(s->proj)) {
-		/* go to product */
-		if (proj_cd2product()) goto out;
-	}
 	unless (e = sccs_findrev(s, rev)) {
 		fprintf(stderr, "%s: cannot find rev %s in %s\n",
 		    prog, rev, file);
 		goto out;
 	}
-	unless (e = sccs_csetBoundary(s, e)) {
+	if (CSET(s) && proj_isComponent(s->proj)) {
+		char	**list = 0;
+
+		if (proj_cd2product()) goto out;
+		if (list = poly_r2c(s, e)) {
+			char	**revs = 0;
+			ser_t	*serlist = 0;
+
+			cset = sccs_csetInit(INIT_NOCKSUM|INIT_MUSTEXIST);
+			assert(cset);
+			
+			EACH(list) {
+				d = sccs_findKey(cset, list[i]);
+				assert(d);
+				serlist = addSerial(serlist, d); /* sorted */
+			}
+			freeLines(list, free);
+			EACH_REVERSE(serlist) { /* new to old */
+				revs = addLine(revs,
+				    strdup(REV(cset, serlist[i])));
+			}
+			free(serlist);
+			ret = joinLines(",", revs);
+			freeLines(revs, free);
+			goto out;
+		}
+	}
+	unless (e = sccs_csetBoundary(s, e, 0)) {
 		fprintf(stderr,
 		    "%s: cannot find cset marker at or below %s in %s\n",
 		    prog, rev, file);

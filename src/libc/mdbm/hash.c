@@ -12,6 +12,8 @@
 
 WHATSTR("%W%");
 
+#ifndef	_SYSTEM_H
+
 static uint32  crc32_table[256] = {
     0x0,	0x4c11db7,  0x9823b6e,  0xd4326d9,
     0x130476dc, 0x17c56b6b, 0x1a864db2, 0x1e475005,
@@ -90,6 +92,19 @@ mdbm_hash0(uchar *buf, int len)
 		crc = (crc << 8) ^ crc32_table[(crc >> 24) ^ *p++];
 	return (ubig) crc;
 }
+
+#else
+
+/*
+ * when compiled with bk's libc use the fast CRC code.
+ */
+ubig
+mdbm_hash0(uchar *buf, int len)
+{
+	return (crc32c(0, buf, len));
+}
+
+#endif
 
 /*
 ** This came from ejb's hsearch.

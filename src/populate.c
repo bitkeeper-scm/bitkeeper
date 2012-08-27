@@ -240,7 +240,7 @@ nested_populate(nested *n, popts *ops)
 	unless (ops->leaveHERE) nested_writeHere(n);
 	if (ops->runcheck) {
 		rc |= run_check(ops->verbose,
-		    checkfiles, ops->quiet ? 0 : "-v", 0);
+		    checkfiles, ops->quiet ? "-u" : "-uv", 0);
 		freeLines(checkfiles, free);
 	}
 out:	proj_reset(0);
@@ -359,8 +359,8 @@ urllist_find(nested *n, comp *cp, int flags, int *idx)
 			continue;
 		}
 
-		// continue if it's not a known gate and they only want gates
-		if (gateonly && (data->gate != 1)) continue;
+		// continue if we know it isn't a gate and they only want gates
+		if (gateonly && (data->gate == 0)) continue;
 
 		if (data->repoID) {
 			/* don't talk to myself */

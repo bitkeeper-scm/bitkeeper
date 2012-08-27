@@ -251,11 +251,10 @@ cmd_bk(int ac, char **av)
 	/*
 	 * We only allow remote commands if the bkd told us that was OK.
 	 */
+	for (i = 1; av[i] && (av[i][0] == '-'); i++);
+	if (av[i]) cmd = cmd_lookup(av[i], strlen(av[i]));
 	unless (Opts.unsafe) {
-		for (i = 1; av[i] && (av[i][0] == '-'); i++);
-		unless (av[i] &&
-		    (cmd = cmd_lookup(av[i], strlen(av[i]))) &&
-		    cmd->remote) {
+		unless (cmd && cmd->remote) {
 			fprintf(zout, "ERROR-remote commands are "
 			    "not enabled (cmd[%d] = %s; cmd =", i, av[i]);
 			for (i = 0; av[i]; i++) {

@@ -472,6 +472,7 @@ bk clone $Q -sCOMP . ../A
 bk clone $Q -sCOMP . ../B
 bk gate $Q .
 cd ../A
+bk here check -q || fail  # go look at rmalias again (it changed)
 bk alias rm $Q COMP ./gcc || fail
 cd ../B
 bk parent $Q -r

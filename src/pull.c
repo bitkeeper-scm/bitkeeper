@@ -26,6 +26,7 @@ private struct {
 	u32	transaction:1;		/* is $_BK_TRANSACTION set? */
 	u32	local:1;		/* set if we find local work */
 	u32	autoPopulate:1;		/* automatically populate missing comps */
+	u32	unlockRemote:1;		/* nested unlock remote when done */
 	int	safe;			/* require all involved comps to be here */
 	int	n;			/* number of components */
 	int	delay;			/* -w<delay> */
@@ -43,7 +44,6 @@ private int	pull_finish(remote *r, int status, char **envVar);
 private void	resolve_comments(remote *r);
 private	int	resolve(void);
 private	int	takepatch(remote *r);
-private	int	pullPoly(int got_patch);
 
 int
 pull_main(int ac, char **av)
@@ -111,7 +111,7 @@ pull_main(int ac, char **av)
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
 		    case 'C': opts.portNoCommit = 1; break;
-		    case 'M': opts.mergefile = strdup(optarg); break;
+		    case 'M': opts.mergefile = optarg; break;
 		    case 'S':
 			fprintf(stderr,
 			    "%s: -S unsupported, try port.\n", prog);
@@ -146,7 +146,11 @@ pull_main(int ac, char **av)
 		usage();
 		return (1);
 	}
-	if (getenv("_BK_TRANSACTION")) opts.transaction = 1;
+	if (getenv("_BK_TRANSACTION")) {
+		opts.transaction = 1;
+		/* pull urllist comp : need to nested_unlock() when done */
+		unless (getenv("BKD_NESTED_LOCK")) opts.unlockRemote = 1;
+	}
 	if (proj_isProduct(0)) {
 		if (opts.port) {
 			fprintf(stderr,
@@ -189,7 +193,6 @@ pull_main(int ac, char **av)
 		urls = parent_pullp();
 		unless (urls) {
 			freeLines(envVar, free);
-			FREE(opts.mergefile);
 			getMsg("missing_parent", 0, 0, stderr);
 			return (1);
 		}
@@ -197,7 +200,6 @@ pull_main(int ac, char **av)
 
 	unless (urls) {
 err:		freeLines(envVar, free);
-		FREE(opts.mergefile);
 		usage();
 		return (1);
 	}
@@ -324,7 +326,6 @@ err:		freeLines(envVar, free);
 		unlink(tmpfile);
 	}
 done:	freeLines(envVar, free);
-	FREE(opts.mergefile);
 	return (rc);
 }
 
@@ -372,7 +373,7 @@ send_part1_msg(remote *r, char **envVar)
 	sendEnv(f, envVar, r, 0);
 	add_cd_command(f, r);
 	fprintf(f, "pull_part1");
-	if (opts.rev) fprintf(f, " -r%s", opts.rev);
+	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.transaction) fprintf(f, " -N");
 	fputs("\n", f);
 	fclose(f);
@@ -519,7 +520,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 	fprintf(f, "pull_part2");
 	fprintf(f, " -z%d", r->gzip);
 	if (opts.quiet) fprintf(f, " -q");
-	if (opts.rev) fprintf(f, " -r%s", opts.rev);
+	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (opts.debug) fprintf(f, " -d");
 	if (opts.transaction) fprintf(f, " -N");
@@ -720,7 +721,8 @@ private int
 pull_ensemble(remote *r, char **rmt_aliases,
     hash *rmt_urllist, char ***conflicts)
 {
-	char	*url, *p;
+	char	*p, *srcurl, *url;
+	char	*lock;
 	char	**urls = 0;
 	popts	popts = {0};
 	char	**vp;
@@ -728,7 +730,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	char	**revs = 0;
 	nested	*n = 0;
 	comp	*c;
-	int	i, j, rc = 0, errs = 0;
+	int	i, j, k, rc = 0, errs = 0, status = 0;
 	int	pull, clone, unpopulate;
 	int	safe;
 	int	which = 0, updateHERE = 0, flushCache = 0;
@@ -737,10 +739,9 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	char	*tmpfile = 0;
 	int	flags = URLLIST_GATEONLY | URLLIST_NOERRORS;
 	project	*proj;
+	remote	*rr;
 
-	/* allocate r->params for later */
-	unless (r->params) r->params = hash_new(HASH_MEMHASH);
-	url = remote_unparse(r);
+	srcurl = remote_unparse(r);
 	START_TRANSACTION();
 	s = sccs_init(ROOT2RESYNC "/" CHANGESET, INIT_NOCKSUM);
 	revs = file2Lines(0, ROOT2RESYNC "/" CSETS_IN);
@@ -761,7 +762,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	nested_aliases(n, n->tip, &rmt_aliases, 0, 0);
 	EACH_STRUCT(n->comps, c, i) if (c->alias) c->remotePresent = 1;
 
-	urlinfo_setFromEnv(n, url);
+	urlinfo_setFromEnv(n, srcurl);
 
 	EACH_HASH(rmt_urllist) {
 		char	*rk = (char *)rmt_urllist->kptr;
@@ -942,21 +943,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		    (c->present || c->localchanges));
 		unpopulate = (!c->alias && c->present);
 
-		if (pull) {
-			opts.n++;
-			unless (c->remotePresent) {
-				/*
-				 * XXX: I plan to fix this with pull-urllist.
-				 */
-				fprintf(stderr,
-				    "pull: %s is missing in %s\n"
-				    "and has work that needs to "
-				    "be pulled, please populate "
-				    "it in the remote side.\n",
-				    c->path, url);
-				++errs;
-			}
-		}
+		if (pull) opts.n++;
 		if (clone) {
 			if (c->localchanges) {
 				/*
@@ -1006,7 +993,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	 * suppress the "Source URL" line if components come
 	 * from the same pull URL
 	 */
-	popts.lasturl = url;
+	popts.lasturl = srcurl;
 	if (strneq(popts.lasturl, "file://", 7)) popts.lasturl += 7;
 
 	/*
@@ -1025,6 +1012,16 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	}
 	opts.n = popts.comps;
 
+	if (flushCache) {
+		EACH_STRUCT(n->comps, c, j) c->useLowerKey = 0;
+		urlinfo_flushCache(n);
+	}
+
+	/*
+	 * We are going to be switching urls, so save the remote's
+	 * nested lock id.
+	 */
+	lock = strdup(getenv("BKD_NESTED_LOCK"));
 	EACH_STRUCT(n->comps, c, j) {
 		proj_cd2product();
 		if (c->product || !c->included || !c->alias) continue;
@@ -1062,25 +1059,37 @@ pull_ensemble(remote *r, char **rmt_aliases,
 			vp = addLine(vp, strdup(opts.av_pull[i]));
 		}
 		if (c->localchanges) {
-			FILE	*tmpf;
-			
 			tmpfile = bktmp(0, "mergekeys");
-			tmpf = fopen(tmpfile, "w");
-			assert(tmpf);
-			EACH(c->local) fprintf(tmpf, "%s\n", c->local[i]);
-			fputc('\n', tmpf);
-			EACH(c->remote) fprintf(tmpf, "%s\n", c->remote[i]);
-			fclose(tmpf);
+			lines2File(c->poly, tmpfile);
 			vp = addLine(vp, aprintf("-M%s", tmpfile));
 		}
 		vp = addLine(vp, aprintf("-r%s", c->deltakey));
-
-		/* calculate url to component */
-		hash_storeStr(r->params, "ROOTKEY", c->rootkey);
-		vp = addLine(vp, remote_unparse(r));
-		hash_deleteStr(r->params, "ROOTKEY");
-		vp = addLine(vp, 0);
-		rc = spawnvp(_P_WAIT, "bk", &vp[1]);
+		/* start the urllist loop looking for where to pull from */
+		rc = 1;		/* assume it'll fail */
+		k = 0;
+		while (url = urllist_find(n, c, opts.quiet ? SILENT : 0, &k)) {
+			if (streq(srcurl, url)) {
+				/* pulling from remote, reuses lock */
+				safe_putenv("BKD_NESTED_LOCK=%s", lock);
+			} else {
+				/* otherwise, grab new lock */
+				putenv("BKD_NESTED_LOCK=");
+			}
+			/* calculate url to component */
+			rr = remote_parse(url, 0);
+			assert(rr);
+			unless (rr->params) {
+				rr->params = hash_new(HASH_MEMHASH);
+			}
+			hash_storeStr(rr->params, "ROOTKEY", c->rootkey);
+			vp = addLine(vp, remote_unparse(rr));
+			remote_free(rr);
+			vp = addLine(vp, 0);
+			status = spawnvp(_P_WAIT, "bk", &vp[1]);
+			removeLineN(vp, nLines(vp), free); /* pop url */
+			rc = WIFEXITED(status) ? WEXITSTATUS(status) : 100;
+			if (!rc || (rc == 71) || isdir(ROOT2RESYNC)) break;
+		}
 		freeLines(vp, free);
 		if (c->localchanges) {
 			unlink(tmpfile);
@@ -1130,7 +1139,8 @@ pull_ensemble(remote *r, char **rmt_aliases,
 		progress_nldone();
 		if (rc) break;
 	}
-
+	safe_putenv("BKD_NESTED_LOCK=%s", lock);
+	free(lock);
 out:	proj_cd2product();
 	unless (rc) {
 		 /* don't write on error */
@@ -1139,7 +1149,7 @@ out:	proj_cd2product();
 		if (updateHERE) nested_writeHere(n);
 		chdir(RESYNC2ROOT);
 	}
-	free(url);
+	free(srcurl);
 	freeLines(urls, 0);
 	sccs_free(s);
 	nested_free(n);
@@ -1185,7 +1195,9 @@ pull(char **av, remote *r, char **envVar)
 	 * trigger failure. In both cases the remote side (if nested)
 	 * has already unlocked, so no need for push_finish().
 	 */
-	if (opts.product && (rc != 2)) rc = pull_finish(r, rc, envVar);
+	if ((opts.product && (rc != 2)) || opts.unlockRemote) {
+		rc = pull_finish(r, rc, envVar);
+	}
 
 	/*
 	 * We don't need the remote side anymore, all the data has been
@@ -1200,7 +1212,7 @@ pull(char **av, remote *r, char **envVar)
 
 	/* pull component - poly detection and fixups */
 	if (!rc && opts.mergefile) {
-		if (pullPoly(got_patch)) {
+		if (poly_pull(got_patch, opts.mergefile)) {
 			putenv("BK_STATUS=POLY");
 			got_patch = 0;	/* post triggers */
 			rc = 71;	/* XXX: hack to talk to pull */
@@ -1264,14 +1276,19 @@ private int
 pull_finish(remote *r, int status, char **envVar)
 {
 	FILE	*f;
+	int	looped = 0;
 	char	buf[MAXPATH];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) return (1);
+again:	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0)) return (1);
 	bktmp(buf, "pull_finish");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
 	if (r->type == ADDR_HTTP) add_cd_command(f, r);
+	/*
+	 * We use the exit code of the remote bkd to determine the
+	 * exit code of the local pull.
+	 */
 	fprintf(f, "nested %s\n", status ? "abort" : "unlock");
 	fclose(f);
 	if (send_file(r, buf, 0)) return (1);
@@ -1282,7 +1299,28 @@ pull_finish(remote *r, int status, char **envVar)
 		if (getServerInfo(r, 0)) return (1);
 		getline2(r, buf, sizeof(buf));
 	}
-	unless (streq(buf, "@OK@")) {
+	/*
+	 * XXX: if bkd is older than this, then it can give an error
+	 * when remote nested unlocking from a component.  It will give
+	 * an error that can only come from an old bkd.  If it is non-http
+	 * connection, then it will heal itself, as cmdlog_end when passed
+	 * an error will cause nested_unlock.  So just treat the same as OK.
+	 *
+	 * Howeve, in http we need to run the unlock in the product, so we
+	 * just toss the ROOTKEY param which will avoid the "CD $ROOTKEY"
+	 * and thus keep us in the product.
+	 *
+	 * Remove code this code in bk-7.0.
+	 */
+	unless (streq(buf, "@OK@") || ((r->type != ADDR_HTTP) &&
+	    opts.unlockRemote && streq(buf, "ERROR-nested only in product"))) {
+		if (!looped && (r->type == ADDR_HTTP) && opts.unlockRemote &&
+		    streq(buf, "ERROR-nested only in product")) {
+			looped = 1;
+			disconnect(r);
+			hash_deleteStr(r->params, "ROOTKEY");
+			goto again;
+		}
 		drainErrorMsg(r, buf, sizeof(buf));
 		return (1);
 	}
@@ -1408,143 +1446,4 @@ resolve(void)
 	status = resolve_main(i, cmd);
 	unless (opts.quiet) progress_nlneeded();
 	return (status);
-}
-
-/*
- * range_walkrevs() callback on GCA nodes. Fail on the first poly node found.
- * Poly if GCA has no csetmark or is listed in local, remote or both.
- */
-
-#define	LOCAL	0x01
-#define	REMOTE	0x02
-#define	BOTH	(LOCAL|REMOTE)
-
-private	int
-polyChk(sccs *cset, ser_t gca, void *token)
-{
-	hash	*cmarks = (hash *)token;
-	char	*reason;
-	char	key[MAXKEY];
-
-	sccs_sdelta(cset, gca, key);
-	if (hash_fetchStrMem(cmarks, key)) {
-		assert(FLAGS(cset, gca) & D_CSET);
-		switch (*(u8 *)cmarks->vptr) {
-		    case LOCAL: reason = "local"; break;
-		    case REMOTE: reason = "remote"; break;
-		    case BOTH: reason = "both"; break;
-		    default: assert("other reason" == 0); break;
-		}
-		fprintf(stderr, "%s: poly on key %s marked in %s\n",
-		    prog, key, reason);
-		return (1);
-	}
-	unless (FLAGS(cset, gca) & D_CSET) {
-		fprintf(stderr, "%s: poly on unmarked key %s\n", prog, key);
-		return (1);
-	}
-	return (0);
-}
-
-/*
- * Pull Poly is both detection and fixups for handling poly in a pull.
- * If the local is ahead of the remote, but the remote adds cset marks,
- * then we need to fake a RESYNC and make it pending, so the tip can
- * be included in the product tip (enhancing the polyness some more).
- * If update only pull, then don't have to fake up the RESYNC, but do
- * have to do the pending work on the tip.   In there, also do error
- * detection and bail.
- */
-private	int
-pullPoly(int got_patch)
-{
-	sccs	*cset = 0;
-	ser_t	d, local = 0, remote = 0;
-	char	*prefix, *resync;
-	int	rc = 1, write = 0;
-	int	more, i;
-	u8	side;
-	char	**list;
-	hash	*cmarks;
-	char	key[MAXKEY];
-
-	resync = aprintf("%s/%s", ROOT2RESYNC, CHANGESET);
-
-	/* cons up a RESYNC area in case "Nothing to pull" */
-	unless (got_patch) {
-		if (mkdir("RESYNC", 0777)) {
-			perror("make poly resync");
-			goto err;
-		}
-		sccs_mkroot("RESYNC");
-		fileCopy(CHANGESET, resync);
-		touch("RESYNC/BitKeeper/tmp/patch", 0666);
-	}
-
-	unless (cset = sccs_init(resync, INIT_MUSTEXIST)) goto err;
-	assert(cset);
-
-	side = LOCAL;
-	more = 0;
-	list = file2Lines(0, opts.mergefile);
-	cmarks = hash_new(HASH_MEMHASH);
-	EACH(list) {
-		unless (*list[i]) { // if blank line, which is separator
-			side = REMOTE;
-			continue;
-		}
-		if (hash_insertStrMem(cmarks, list[i], 0, sizeof(side))) {
-			more++;
-		}
-		*(u8 *)cmarks->vptr |= side;
-	}
-	freeLines(list, free);
-
-	/*
-	 * Fix up cset marks - if poly, might be missing marks from remote.
-	 * pick off local and remote tip - above lists are unsorted
-	 */
-	for (d = TABLE(cset); (d >= TREE(cset)) && more; d--) {
-		if (TAG(cset, d)) continue;
-		sccs_sdelta(cset, d, key);
-		unless (hash_fetchStr(cmarks, key)) continue;
-		side = *(u8 *)cmarks->vptr;
-		if (!local && (side & LOCAL)) local = d;
-		if (!remote && (side & REMOTE)) remote = d;
-		unless (FLAGS(cset, d) & D_CSET) {
-			/* could assert that it only updates remote */
-			FLAGS(cset, d) |= D_CSET;
-			write = 1;
-		}
-		more--;
-	}
-	assert(local && remote);
-
-	unless (getenv("_BK_DEVELOPER") && proj_configbool(0, "poly")) {
-		/* assumes D_SET is clear to start; leaves clear */
-		if (range_walkrevs(
-		    cset, local, 0, remote, WR_GCA, polyChk, cmarks)) {
-			goto err;
-		}
-	}
-	hash_free(cmarks);
-
-	/* if no merge file: fake pending to get included in product merge */
-	prefix = resync + strlen(resync) - 11;
-	assert(*prefix == 's');
-	*prefix = 'r';
-	if (!exists(resync)) {
-		d = sccs_top(cset);
-		assert(FLAGS(cset, d) & D_CSET);
-		FLAGS(cset, d) &= ~D_CSET;
-		write = 1;
-		*prefix = 'd';
-		touch(resync, 0666);
-	}
-	if (write && sccs_newchksum(cset)) goto err;
-	rc = 0;
-err:
-	sccs_free(cset);
-	FREE(resync);
-	return (rc);
 }

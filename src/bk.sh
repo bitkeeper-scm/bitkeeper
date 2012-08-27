@@ -1238,7 +1238,7 @@ __install()
 		l) DLLOPTS="-l $DLLOPTS" # enable bkshellx for local drives
 		   REGSHELLX=YES
 		   ;;
-		s) DLLOPTS="-s $DLLOPTS";; # enable bkscc dll
+#		s) DLLOPTS="-s $DLLOPTS";; # enable bkscc dll
 		d) CRANKTURN=YES;;# do not change permissions, dev install
 		f) FORCE=1;;	# force
 		S) DOSYMLINKS=YES;;

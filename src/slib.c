@@ -15255,7 +15255,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 
 	/* print the first rev at/below this which is in a cset */
 	case KW_CSETREV: /* CSETREV */ {
-		unless (d = sccs_csetBoundary(s, d)) return (nullVal);
+		unless (d = sccs_csetBoundary(s, d, 0)) return (nullVal);
 		fs(REV(s, d));
 		return (strVal);
 	}
@@ -16588,16 +16588,13 @@ gca3(sccs *s, ser_t left, ser_t right, char **inc, char **exc)
 	ser_t	ret = 0;
 	ser_t	gca;
 	u8	*gmap = 0;
-	ser_t	*glist, *list = 0;
+	ser_t	*glist = 0;
 	int	i, count;
 
 	*inc = *exc = 0;
 	unless (s && TABLE(s) && left && right) return (0);
 
-	addArray(&list, &left);
-	addArray(&list, &right);
-	glist = range_gcalist(s, list);
-	free(list);
+	range_walkrevs(s, left, 0, right, WR_GCA, walkrevs_addSer, &glist);
 	count = nLines(glist);
 	assert(count);
 	gca = glist[1];
@@ -17060,10 +17057,11 @@ sccs_setPath(sccs *s, ser_t d, char *new)
  * If the delta is not in a cset (i.e., it's pending) then return null.
  */
 ser_t
-sccs_csetBoundary(sccs *s, ser_t d)
+sccs_csetBoundary(sccs *s, ser_t d, u32 flags)
 {
 	ser_t	e, start, end;
 
+	flags |= (D_CSET|D_RED);
 	start = d;
 	FLAGS(s, d) |= D_RED;
 	for (; d <= TABLE(s); ++d) {
@@ -17075,7 +17073,7 @@ sccs_csetBoundary(sccs *s, ser_t d)
 		if ((e = MERGE(s, d)) && (FLAGS(s, e) & D_RED)) {
 			FLAGS(s, d) |= D_RED;
 		}
-		if ((FLAGS(s, d) & (D_CSET|D_RED)) == (D_CSET|D_RED)) break;
+		if ((FLAGS(s, d) & flags) == flags) break;
 	}
 	end = d;
 	if (d > TABLE(s)) {

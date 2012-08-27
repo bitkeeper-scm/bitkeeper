@@ -176,6 +176,7 @@ diffs_main(int ac, char **av)
 			goto next;
 		}
 		if (boundaries) {
+			if (CSET(s)) goto next;
 			unless (d = sccs_findrev(s, boundaries)) {
 				fprintf(stderr,
 				    "No delta %s in %s\n",

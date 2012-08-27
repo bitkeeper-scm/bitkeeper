@@ -307,7 +307,7 @@ echo $N Test pull from non-gate works, when no gate..................$NL
 # clear out urllist
 rm ../project/BitKeeper/log/urllist
 mv BitKeeper/log/urllist BitKeeper/log/urllist.old
-bk pull $Q 2>ERR && fail -f ERR
+bk pull -q 2>ERR && fail -f ERR
 cat >WANT <<EOF
 
 The following components are present in the remote, were not
@@ -491,7 +491,30 @@ Please re-run the pull using the --auto-populate option in order
 to get them automatically.
 EOF
 cmpfiles WANT ERR
-bk pull $Q --auto-populate || fail should have worked
+bk pull --auto-populate >GOT 2>&1 || fail should have worked
+perl -pe "s/.*\r//;s,$HERE,ROOT," < GOT > GOT2
+cat <<EOF >WANT2
+Pull file://ROOT/gate
+  -> file://ROOT/child-2
+.                                  100% |==============================| OK
+
+The following components need to be merged, are not present in this
+repository, and will need to be populated to complete the pull:
+	gcc
+Adding the following aliases/components:
+	ALL
+pull: searching ROOT/gate...ok (gate)
+1/5 doc                            100% |==============================| OK
+pull: searching ROOT/gate2...ok (gate)
+Source ROOT/gate2
+2/5 gcc                            100% |==============================| OK
+Source ROOT/gate
+3/5 man                            100% |==============================| OK
+pull: searching ROOT/gate...ok (gate)
+4/5 gcc                              1 changeset,    1 merge  in   2 files
+5/5 .                                1 changeset,    1 merge  in   1 file
+EOF
+cmpfiles WANT2 GOT2
 echo OK
 
 echo $N Demo the existing scenario that pull urllist will fix .......$NL
@@ -503,13 +526,26 @@ bk --cd=../gate3 gate $Q .
 # still shows the first error
 bk pull -q ../gate3 2>ERR && fail -f ERR should have failed
 cmpfiles WANT ERR
-# Lurking is the second error -- we could warn the user the first time,
-# but instead, lets just keep working on pull-urllist and this will then work
-bk pull -q --auto-populate ../gate3 2>ERR && fail -f ERR
-cat <<EOF > WANT
-pull: gcc is missing in file://$HERE/gate3
-and has work that needs to be pulled, please populate it in the remote side.
-pull: update aborted due to errs with 1 components.
+# works same as before (using pull-urllist)
+bk pull --auto-populate ../gate3 > GOT 2>&1 || fail
+perl -pe "s/.*\r//;s,$HERE,ROOT," < GOT > GOT2
+cat <<EOF > WANT2
+Pull file://ROOT/gate3
+  -> file://ROOT/child-2
+.                                  100% |==============================| OK
+
+The following components need to be merged, are not present in this
+repository, and will need to be populated to complete the pull:
+	gcc
+Adding the following aliases/components:
+	gcc
+pull: searching ROOT/gate...ok (gate)
+pull: searching ROOT/gate2...ok (gate)
+Source ROOT/gate2
+1/3 gcc                            100% |==============================| OK
+pull: searching ROOT/gate...ok (gate)
+2/3 gcc                              1 changeset,    1 merge  in   2 files
+3/3 .                                1 changeset,    1 merge  in   1 file
 EOF
-cmpfiles WANT ERR
+cmpfiles WANT2 GOT2
 echo OK

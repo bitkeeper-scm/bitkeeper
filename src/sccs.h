@@ -269,8 +269,9 @@ int	checking_rmdir(char *dir);
 
 /*
  * Flags (FLAGS(s, d)) that indicate some state on the delta.
+ * When changing also update delta_flagNames in dataheap.c.
  */
-/* flags that are written to disk */
+/* flags that are written to disk (don't renumber) */
 #define	D_INARRAY	0x00000001	/* part of s->slist array */
 #define	D_NONEWLINE	0x00000002	/* this delta has no trailing newline */
 //#define	D_CKSUM		0x00000004	/* delta has checksum */
@@ -286,8 +287,8 @@ int	checking_rmdir(char *dir);
 					/* open tips, so maintained always */
 //#define	D_MODE		0x00000800	/* permissions in MODE(s, d) are valid */
 #define	D_CSET		0x00001000	/* this delta is marked in cset file */
-//#define D_XFLAGS	0x00002000	/* delta has updated file flags */
-	/* D_NPARENT	0x00004000 */
+	/* unused	0x00002000	*/
+	/* unused	0x00004000	*/
 #define	D_FIXUPS	0x00008000	/* fixups to tip delta at end of file */
 
 /* flags that are in memory only and not written to disk */
@@ -558,13 +559,6 @@ typedef struct {
 #define	CSETFILE(s,d)	((s)->heap.buf + CSETFILE_INDEX(s, d))
 #define	PATHNAME(s,d)	((s)->heap.buf + PATHNAME_INDEX(s, d))
 #define	SORTPATH(s,d)	((s)->heap.buf + SORTPATH_INDEX(s, d))
-
-/*
- * Macros to get at an optional hidden string after the null
- */
-#define	HIDDEN(p)		((p) + strlen(p) + 1)
-#define	HIDDEN_BUILD(a, b)	aprintf("%s%c%s", (a), 0, (b))
-#define	HIDDEN_DUP(p)		HIDDEN_BUILD(p, HIDDEN(p))
 
 /*
  * Rap on lod/symbols wrt deltas.
@@ -995,7 +989,11 @@ void	sccs_sortkey(sccs *s, ser_t d, char *buf);
 void	sccs_key2md5(char *rootkey, char *deltakey, char *b64);
 void	sccs_setPath(sccs *s, ser_t d, char *newpath);
 void	sccs_syncRoot(sccs *s, char *key);
-ser_t	sccs_csetBoundary(sccs *s, ser_t);
+ser_t	sccs_csetBoundary(sccs *s, ser_t, u32 flags);
+int	poly_pull(int got_patch, char *mergefile);
+void	poly_range(sccs *s, ser_t d, char *pkey);
+char	**poly_save(char **list, sccs *cset, ser_t d, char *ckey, int local);
+char	**poly_r2c(sccs *cset, ser_t d);
 void	sccs_shortKey(sccs *s, ser_t, char *);
 int	sccs_resum(sccs *s, ser_t d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
@@ -1192,6 +1190,7 @@ u8	*sccs_set(sccs *, ser_t, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, ser_t d, u8 *map, char **inc, char **exc);
 int	sccs_setCludes(sccs *sc, ser_t d, char *iLst, char *xLst);
 int	sccs_isPending(char *gfile);
+int	isReachable(sccs *s, ser_t start, ser_t stop);
 int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
 
 int     http_connect(remote *r);
@@ -1506,8 +1505,6 @@ extern	char	*log_versions;
 #define	CMD_NOREPO		0x00000020	/* don't assume in repo */
 #define	CMD_NESTED_WRLOCK	0x00000040	/* nested write lock */
 #define	CMD_NESTED_RDLOCK	0x00000080	/* nested read lock */
-#define	CMD_SAMELOCK		0x00000100	/* grab a repolock that matches
-						 * the nested lock we have */
 #define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
 #define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
 #define	CMD_RDUNLOCK		0x00001000	/* unlock a previous READ */

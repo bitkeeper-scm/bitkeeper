@@ -1,3 +1,5 @@
+set -e
+
 echo $N Test out remote version .....................................$NL
 # std idiom to run bkd
 bk bkd -d -aPORT -ikill
@@ -18,6 +20,17 @@ grep -q "Cannot resolve host 'foo.foo.foo.foo.bitmover.com'" ERR || fail
 bk version bk://localhost:$P > remver.raw
 perl -pe 's/\d+ \S+ ago/5 secs ago/' < remver.raw > remver
 cmpfiles remver locver
+# See that short version works
+bk version -s bk://localhost:$P > remver
+bk version -s > locver
+cmpfiles remver locver
+echo OK
+
+echo $N Again with bk bkd -U started, like we do on bk://work .......$NL
+bk _kill bk://localhost:$P
+bk bkd -d -aPORT -ikill -U
+P=`cat PORT`
+trap "bk _kill bk://localhost:$P" 0
 # See that short version works
 bk version -s bk://localhost:$P > remver
 bk version -s > locver

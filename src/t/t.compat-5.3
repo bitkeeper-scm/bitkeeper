@@ -40,8 +40,10 @@ test -d $OLDBK || {
     # NOTE bk-3.2.x didn't set exit status...
     echo y | BK_NOLINKS=1 ./bk-$OLDVER-* $OLDBK >out 2>err || fail
     rm $OLDBK/config
+}
 
-    # generate a crypto key for tests
+# generate a crypto key for tests
+test -f "$OLDBK/my.pub" || {
     $OLDBK/bk crypto -i 1024 $OLDBK/my.sec $OLDBK/my.pub || fail
 }
 VER=`$OLDBK/bk version -s`
@@ -160,4 +162,38 @@ cd "$HERE"
 bk clone $Q -j5 config-last bk://localhost:$OLDP/clone-j > OUT 2>&1
 test $? = 0 && fail
 grep -q "does not understand -j" OUT || fail
+echo OK
+
+echo $N Try a pull urllist to see if the hacks work .................$NL
+# old bkds fail bkd_nested call, so hackery in place to work anyway
+cd "$HERE"
+nested nest
+bk clone $Q . ../nest-dest
+touch gcc/foo
+bk new $Q gcc/foo
+bk commit $Q -f
+bk clone $Q -s. . ../nest-src
+cd ../nest-src
+rm BitKeeper/log/urllist
+cd ../nest-dest
+perl -pe 's|.*/nest$|bk://localhost:'$OLDP'/nest|' BitKeeper/log/urllist > x
+cp x BitKeeper/log/urllist
+bk pull ../nest-src >X 2>&1 || fail -f GOT
+grep searching X > GOT
+# The non -q shows takepatch reading the file, and then failing with
+# this same nested only in product.  That means to upgraded the bkd.
+cat <<EOF > WANT
+pull: searching bk://localhost:$OLDP/nest...ok (gate)
+EOF
+cmpfiles WANT GOT
+# again, http style
+bk unpull $Q -sf
+perl -pe 's|^bk://|http://|' BitKeeper/log/urllist > x
+cp x BitKeeper/log/urllist
+bk pull ../nest-src >X 2>&1 || fail -f GOT
+grep searching X > GOT
+cat <<EOF > WANT
+pull: searching http://localhost:$OLDP/nest...ok (gate)
+EOF
+cmpfiles WANT GOT
 echo OK

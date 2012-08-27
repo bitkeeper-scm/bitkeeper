@@ -69,7 +69,8 @@ private int	changes_part2(remote *r, char **av, char *key_list, int ret);
 private int	_doit_remote(char **av, char *url);
 private int	doit_remote(char **nav, char *url);
 private int	doit_local(char ***nav, char **urls);
-private	int	cset(hash *state, sccs *cset, char *dkey, FILE *f, char *dspec);
+private	int	cset(hash *state, sccs *cset, char *dkey, char *pkey, FILE *f,
+		    char *dspec);
 private	MDBM	*loadcset(sccs *cset);
 private	void	fileFilt(sccs *s, MDBM *csetDB);
 private	int	prepSearch(char *str);
@@ -674,7 +675,7 @@ doit(int dash)
 	if (opts.begin && dstart) {
 		sccs_prsdelta(s, dstart, flags, opts.begin, stdout);
 	}
-	cset(state, s, 0, stdout, opts.dspec);
+	cset(state, s, 0, 0, stdout, opts.dspec);
 	if (opts.end && dstop) {
 		sccs_prsdelta(s, dstop, flags, opts.end, stdout);
 	}
@@ -999,7 +1000,7 @@ loadcset(sccs *cset)
  * returns true if any output printed (may all be filtered)
  */
 private int
-cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
+cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
 {
 	int	flags = PRS_FORCE; /* skip checks in sccs_prsdelta(), no D_SET*/
 	int	iflags = INIT_NOCKSUM;
@@ -1018,6 +1019,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	size_t	len;
 	ser_t	ser;
 	struct	rstate	*rstate;
+	char	key[MAXKEY];
 
 	assert(dspec);
 	if (opts.newline) flags |= PRS_LF; /* for sccs_prsdelta() */
@@ -1078,8 +1080,8 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	}
 	if (dkey) {
 		d = sccs_findKey(sc, dkey);
-		assert(d);
-		range_cset(sc, d);
+		assert(d && pkey);
+		poly_range(sc, d, pkey);
 	}
 
 	/*
@@ -1211,6 +1213,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		 * Foreach component delta found mark them with D_SET
 		 * and recursively call cset() with the new cset
 		 */
+		if (complist) sccs_sdelta(sc, e, key);
 		EACH(complist) {
 			rkey = keys[p2int(complist[i])];
 			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,rstate);
@@ -1219,7 +1222,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			assert(dkey);
 
 			/* call cset() recursively */
-			if (cset(state, s, dkey, f, dspec) && fsave) {
+			if (cset(state, s, dkey, key, f, dspec) && fsave) {
 				/*
 				 * we generated output so flush the saved data
 				 */

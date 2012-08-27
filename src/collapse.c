@@ -3,6 +3,7 @@
 #include "regex.h"
 #include "range.h"
 #include "nested.h"
+#include "poly.h"
 
 #define	COLLAPSE_BACKUP_SFIO "BitKeeper/tmp/collapse_backup_sfio"
 #define	COLLAPSE_BACKUP_PATCH "BitKeeper/tmp/collapse.patch"
@@ -508,7 +509,7 @@ do_file(char *file, char *tiprev)
 		pathname = strdup(PATHNAME(s, d));
 		xflags = XFLAGS(s, d);
 
-		if (CSET(s) || streq(s->gfile, ATTR)) {
+		if (CSET(s) || streq(s->gfile, ATTR) || IS_POLYPATH(s->gfile)) {
 			unlink(gfile);
 		} else {
 			gtime = s->gtime;
@@ -575,7 +576,7 @@ do_file(char *file, char *tiprev)
 		}
 
 		/* regenerate new p.file */
-		unless (CSET(s) || streq(s->gfile, ATTR)) {
+		unless (CSET(s) || streq(s->gfile, ATTR) || IS_POLYPATH(s->gfile)) {
 			rename(savefile, gfile);
 			free(savefile);
 			savefile = 0;

@@ -167,6 +167,7 @@ OBJ =	bkver.o cmd.o \
 	opark.o \
 	parent.o park.o partition.o \
 	pending.o preference.o proj.o \
+	poly.o \
 	populate.o \
 	port/bkd_server.o \
 	port/check_rsh.o \
@@ -237,7 +238,7 @@ SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
 HDRS	= bam.h bkd.h bk-features.h diff.h graph.h logging.h nested.h \
 	  progress.h purify.h range.h rcs.h resolve.h sccs.h \
-	  cmd.h proj.h redblack.h inskeys.h libc/system.h
+	  cmd.h poly.h proj.h redblack.h inskeys.h libc/system.h
 
 # list of non-C sources in bk
 SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
