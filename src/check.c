@@ -1084,29 +1084,41 @@ listFound(hash *db)
 	}
 }
 
+private	char *
+fix_parent(char *url)
+{
+	if (proj_isComponent(0)) {
+		return (aprintf("-@'%s?ROOTKEY=%s'", url, proj_rootkey(0)));
+	} else {
+		return (aprintf("-@'%s'", url));
+	}
+}
+
 private FILE *
 sfiocmd(int in_repair, int index)
 {
-	int	i, len;
-	char	*buf;
+	int	i;
 	FILE	*f;
+	char	**vp = 0;
+	char	*buf;
 
-	unless(parent) parent = addLine(parent, strdup("")); /* force default */
-	len = 100;	/* prefix/postfix */
-	EACH(parent) len += strlen(parent[i]) + 5;
-	buf = malloc(len);
-	strcpy(buf, "bk -q -Bstdin");
-	len = strlen(buf);
+	unless (parent) {
+		parent = parent_allp();
+		unless (parent) {
+			fprintf(stderr, "repair: no parents found.\n");
+			exit(1);
+		}
+	}
+	vp = addLine(vp, strdup("bk -q -Bstdin"));
 	if (index) {
-		len += sprintf(&buf[len], " -@'%s'", parent[index]);
+		vp = addLine(vp, fix_parent(parent[index]));
 	} else {
-		EACH(parent) len += sprintf(&buf[len], " -@'%s'", parent[i]);
+		EACH(parent) vp = addLine(vp, fix_parent(parent[i]));
 	}
-	if (verbose) {
-		strcpy(&buf[len], " sfio -Kqo - | bk sfio -i");
-	} else {
-		strcpy(&buf[len], " sfio -Kqo - | bk sfio -iq");
-	}
+	vp = addLine(vp,
+	    aprintf("sfio -Kqo - | bk sfio -i%s", verbose ? "" : "q"));
+	buf = joinLines(" ", vp);
+	freeLines(vp, free);
 
 	/*
 	 * Set things up so that the incoming data is splatted into
@@ -1252,9 +1264,15 @@ fetch_changeset(int forceCsetFetch)
 	sccs	*s;
 	delta	*d;
 	int	i;
-	char	*cmd, *tip = 0, *found_it = 0;
+	char	*p, *cmd, *tip = 0, *found_it = 0;
 
-	unless (parent) parent = addLine(parent, strdup("")); /* parents */
+	unless (parent) {
+		parent = parent_allp();
+		unless (parent) {
+			fprintf(stderr, "repair: no parents found.\n");
+			exit(1);
+		}
+	}
 	fprintf(stderr, "Missing ChangeSet file, attempting restoration...\n");
 	unless (exists("BitKeeper/log/ROOTKEY")) {
 		fprintf(stderr, "Don't have original cset rootkey, sorry,\n");
@@ -1274,8 +1292,9 @@ fetch_changeset(int forceCsetFetch)
 	fclose(f);
 
 	EACH(parent) {
-		cmd =
-		    aprintf("bk -@'%s' findkey '%s' ChangeSet", parent[i], tip);
+		p = fix_parent(parent[i]);
+		cmd = aprintf("bk %s findkey '%s' ChangeSet", p, tip);
+		FREE(p);
 		found_it = backtick(cmd, 0);
 		free(cmd);
 		if (found_it && strneq(found_it, "ChangeSet|", 10)) break;

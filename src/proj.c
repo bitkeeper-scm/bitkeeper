@@ -1551,9 +1551,9 @@ proj_tipkey(project *p)
 
 	/*
 	 * History of TIP file:
-	 * 1 line - deltakey
-	 * 2 lines - deltakey, md5key, rev
-	 * 5 lines - deltakey, md5key, rev, mtime, size
+	 * 1 line - md5key (4.x)
+	 * 3 lines - md5key, deltakey, rev (bk-5.0-beta3)
+	 * 5 lines - md5key, deltakey, rev, mtime, size (bk-5.4.1)
 	 */
 	if ((nLines(lines) < 5) ||
 	    lstat(buf, &sb) ||
@@ -1568,13 +1568,16 @@ proj_tipkey(project *p)
 		//fprintf(stderr, "Regenerting TIP file\n");
 #endif
 		// should only happen when talking to older bks
-		unless (s = sccs_init(buf, SILENT|INIT_NOCKSUM)) goto out;
-		cset_savetip(s);
-		sccs_free(s);
-		concat_path(buf, p->root, "BitKeeper/log/TIP");
-		freeLines(lines, free);
-		lines = file2Lines(0, buf);
-		if (nLines(lines) < 5) goto out;
+		if (s = sccs_init(buf, SILENT|INIT_NOCKSUM|INIT_MUSTEXIST)) {
+			cset_savetip(s);
+			sccs_free(s);
+			concat_path(buf, p->root, "BitKeeper/log/TIP");
+			freeLines(lines, free);
+			lines = file2Lines(0, buf);
+		} else {
+			/* Missing ChangeSet file, just keep the old data */
+		}
+		if (nLines(lines) < 3) goto out; // too old
 	}
 	p->tipmd5key = lines[1];
 	lines[1] = 0;
