@@ -8,6 +8,7 @@ private	void	compFree(void *x);
 private	int	compRemove(char *path, struct stat *statbuf, void *data);
 private	int	empty(char *path, struct stat *statbuf, void *data);
 private void	compCheckPresent(nested *n, comp *c, int idcache_wrong);
+private	void	compMarkPending(nested *n, comp *c);
 private	int	nestedLoadCache(nested *n, MDBM *idDB);
 private	void	nestedSaveCache(nested *n);
 
@@ -501,33 +502,14 @@ pending:
 			}
 			if (c->product) continue;
 			/* check pending */
-			concat_path(buf, c->path, "SCCS/d.ChangeSet");
-			if (exists(buf)) {
-				sccs	*s;
-				delta	*d;
-
-				concat_path(buf, c->path, CHANGESET);
-				s = sccs_init(buf,
-				    SILENT|INIT_NOCKSUM|INIT_MUSTEXIST);
-				assert(s);
-				d = sccs_top(s);
-				unless (d->flags & D_CSET) {
-					c->pending = 1;
-					if (c->deltakey) free(c->deltakey);
-					sccs_sdelta(s, d, buf);
-					c->deltakey = strdup(buf);
-				}
-				sccs_free(s);
-			}
+			compMarkPending(n, c);
 		}
 	} else if (flags & NESTED_MARKPENDING) {
 		n->pending = 1;
 		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
 			unless (c->present) continue;
-			concat_path(buf, c->path, CHANGESET);
-			unless (sccs_isPending(buf)) continue;
-			c->pending = 1;
+			compMarkPending(n, c);
 		}
 	}
 	mdbm_close(idDB);
@@ -544,6 +526,22 @@ prod:
 	chdir(cwd);
 	free(cwd);
 	return (n);
+}
+
+private void
+compMarkPending(nested *n, comp *c)
+{
+	project	*proj;
+	char	buf[MAXPATH];
+
+	concat_path(buf, c->path, "SCCS/d.ChangeSet");
+	if (exists(buf)) {
+		proj = proj_init(c->path);
+		c->pending = 1;
+		if (c->deltakey) free(c->deltakey);
+		c->deltakey = strdup(proj_tipkey(proj));
+		proj_free(proj);
+	}
 }
 
 private void

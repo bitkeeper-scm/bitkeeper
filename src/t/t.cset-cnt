@@ -150,7 +150,7 @@ bk clone $Q . ../nest2 || exit 1
 check_cnt
 echo OK
 
-CNT=4
+CNT=3
 echo $N "Count the inits for a 'bk commit' in comp ($CNT) ..............."$NL
 cd gcc
 echo hi > file1
@@ -160,11 +160,25 @@ bk commit -S $Q -ynew || exit 1
 check_cnt
 echo OK
 
-CNT=8
+CNT=6
 echo $N "Count the inits for a 'bk -P commit' ($CNT) ...................."$NL
 rm -f "$FILE"
 bk -P commit $Q -ynew || exit 1
 check_cnt
+echo OK
+
+CNT=1
+echo $N "Count the inits for a 'bk -P commit' with fake pending ($CNT) .."$NL
+cp ../BitKeeper/log/TIP oldtip
+bk _test -f SCCS/d.ChangeSet && fail
+bk _touch SCCS/d.ChangeSet
+rm -f "$FILE"
+bk -P commit $Q -ynew || fail
+check_cnt
+bk _test -f SCCS/d.file && fail
+# no cset got made
+cmpfiles ../BitKeeper/log/TIP oldtip
+rm -f oldtip
 echo OK
 
 CNT=4
@@ -212,7 +226,7 @@ bk unpull -fs $Q || exit 1
 check_cnt
 echo OK
 
-CNT=65
+CNT=63
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 bk portal $Q .
 touch c

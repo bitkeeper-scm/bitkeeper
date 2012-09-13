@@ -90,8 +90,12 @@ nested_populate(nested *n, popts *ops)
 					ops->lasturl = url;
 				}
 			}
-			r = remote_parse(url, 0);
-			assert(r);
+			unless (r = remote_parse(url, 0)) {
+				fprintf(stderr,
+				    "%s: cannot parse url '%s', skipping\n",
+				    prog, url);
+				continue;
+			}
 			unless (r->params) r->params = hash_new(HASH_MEMHASH);
 			hash_storeStr(r->params, "ROOTKEY", cp->rootkey);
 
