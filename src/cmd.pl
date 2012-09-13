@@ -289,6 +289,7 @@ _mailslot
 mailsplit
 mail
 makepatch
+mdbmdump
 merge
 mklock
 more
