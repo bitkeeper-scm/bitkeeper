@@ -535,14 +535,14 @@ mkdir gdb
 echo hi > gdb/foo
 bk new $Q gdb/foo || fail
 bk commit -S -ybadfile $Q 2>ERR && fail -f ERR should have failed
-grep -q "check: gdb/foo conflicts with component at gdb" ERR || fail
+grep -q "there was a conflict with existing:" ERR || fail -f ERR
 
 cd gcc
 mkdir nm
 echo hi > nm/foo
 bk new $Q nm/foo || exit 1
-bk commit -S -ybadfile $Q  2>ERR && fail -f ERR should have failed
-grep -q "check: nm/foo conflicts with component at nm" ERR || exit 1
+bk commit -q -S -ybadfile 2>ERR && fail -f ERR should have failed
+grep -q "there was a conflict with existing:" ERR || fail -f ERR
 echo OK
 
 echo $N Make sure we can not remove the all alias ...................$NL

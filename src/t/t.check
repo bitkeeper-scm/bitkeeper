@@ -461,19 +461,22 @@ cat c > BitKeeper/etc/config
 test Xyes = X"`bk config partial_check`" || exit 2
 echo hi > foo
 bk new $Q -ycomment foo || exit 1
-bk commit $Q -ycomment || exit 1
+bk commit $Q -ycomment || fail
 mkdir foo
 echo problem > foo/bar
 bk new $Q -ycomment2 foo/bar || exit 1
-bk commit $Q -ycomment2 2> ERR && {
+bk commit -q -ycomment2 2> ERR && {
 	echo commit should have failed
 	exit 1
 }
-grep -q "File/directory conflict: foo" ERR || {
-	echo wrong error message
-	cat ERR
-	exit 1
-}
+cat <<EOF > WANT
+While trying to commit
+  ./foo/bar|1.1
+there was a conflict with existing:
+  ./foo|1.1
+The commit is aborted.
+EOF
+cmpfiles WANT ERR
 echo OK
 
 echo $N bk check with errors should delete checked file .............$NL
@@ -644,24 +647,25 @@ echo $N Try to create a cset with a path conflict ...................$NL
 cd ../project
 bk mv d2/a foo2 || fail
 bk mv d2/b d2/a || fail
-# it would be nice if this failed...
-echo 'd2/SCCS/s.a|+' | bk commit $Q -ybad - || fail
-
-# but this does
-bk check 2>ERR && fail -f ERR should fail
-grep -v '|d2/.|' ERR > ERR2
+echo 'd2/SCCS/s.a|+' | bk commit -q -ybad - 2> ERR && fail -f ERR
 cat <<EOF > WANT
-check: two files are committed at the same pathname. (d2/a)
-rootkeys:
+While trying to commit
+  ./d2/a|1.6
+there was a conflict with existing:
+  ./foo2|1.5
+  with pending rename from ./d2/a
+Must include other renames in commit.
+The commit is aborted.
 EOF
-cmpfiles ERR2 WANT
+cmpfiles WANT ERR
+bk commit $Q -ygood
 echo OK
 
 echo $N Setup what looks like a path conflict but is a gone delta ...$NL
 bk edit $Q BitKeeper/etc/gone
 bk log -r+ -nd:KEY: d2/a >> BitKeeper/etc/gone
 bk stripdel $Q -Cr+ d2/a
-bk stripdel $Q -r+ foo2
+bk stripdel $Q -Cr+ foo2
 bk names d2/a foo2
 bk check || fail
 bk unedit BitKeeper/etc/gone
@@ -698,8 +702,20 @@ echo hi > foobar
 bk new $Q foobar || fail		# create a new foobar
 bk commit $Q -ynew || fail
 cd ../copy
-bk pull $Q 2>ERR && fail -f ERR should fail
-grep -q "check: two files are committed at the same pathname" ERR || fail
+bk pull -q 2>ERR && fail -f ERR should fail
+cat <<EOF > WANT
+A path-conflict was found in existing csets
+  ./something_else|1.6
+  with pending rename from ./foobar
+there was a conflict with existing:
+  ./foobar|1.1
+Must include other renames in commit.
+The commit is aborted.
+Commit aborted, no changes applied.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles ERR WANT
 echo OK
 
 echo $N See that an unmarked delta gets marked ......................$NL

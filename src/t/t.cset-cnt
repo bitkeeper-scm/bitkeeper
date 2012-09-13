@@ -20,7 +20,7 @@ check_cnt() {
 	}
 }
 
-CNT=5
+CNT=6
 echo $N "Count the inits for a 'bk setup' ($CNT)........................."$NL
 fresh_commercial project
 check_cnt
@@ -150,7 +150,7 @@ bk clone $Q . ../nest2 || exit 1
 check_cnt
 echo OK
 
-CNT=3
+CNT=4
 echo $N "Count the inits for a 'bk commit' in comp ($CNT) ..............."$NL
 cd gcc
 echo hi > file1
@@ -160,8 +160,8 @@ bk commit -S $Q -ynew || exit 1
 check_cnt
 echo OK
 
-CNT=10
-echo $N "Count the inits for a 'bk -P commit' ($CNT) ..................."$NL
+CNT=8
+echo $N "Count the inits for a 'bk -P commit' ($CNT) ...................."$NL
 rm -f "$FILE"
 bk -P commit $Q -ynew || exit 1
 check_cnt
@@ -212,7 +212,7 @@ bk unpull -fs $Q || exit 1
 check_cnt
 echo OK
 
-CNT=67
+CNT=65
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 bk portal $Q .
 touch c
@@ -233,7 +233,7 @@ bk pull $Q || exit 1
 check_cnt
 echo OK
 
-CNT=34
+CNT=33
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
 bk push $Q || exit 1

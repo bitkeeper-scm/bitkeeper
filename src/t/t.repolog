@@ -25,6 +25,9 @@ grep -q "$pwd" "$WHERE" || {
 echo OK
 
 echo $N Check that we do not record it twice ........................$NL
+# depending on if this test was run with others, cache is there or not.
+# so start from a known spot.
+rm -f "$WHERE"
 bk -r check -ac
 test `wc -l < "$WHERE"` -eq 1 || {
 	echo whoops

@@ -35,6 +35,14 @@ typedef	struct	rkdata {
 	u8	mask;
 } rkdata;
 
+/* information from non-gone deltas in tip cset (for path_conflict checks) */
+typedef	struct	tipdata {
+	char	*path;		/* path to committed delta */
+	char	*rkey;		/* file rootkey */
+	char	*dkey;		/* deltakey of tip committed delta */
+	u8	intip:1;	/* is included in tip cset? */
+} tipdata;
+
 private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
 private	int	check(sccs *s, MDBM *idDB);
@@ -57,6 +65,9 @@ private sccs*	fix_merges(sccs *s);
 private	int	update_idcache(MDBM *idDB, hash *keys);
 private	void	fetch_changeset(int forceCsetFetch);
 private	int	repair(hash *db);
+private	int	pathConflictError(
+		    MDBM *goneDB, MDBM *idDB, tipdata *td1, tipdata *td2);
+private	int	tipdata_sort(const void *a, const void *b);
 
 private	int	verbose;
 private	int	details;	/* if set, show more information */
@@ -73,6 +84,7 @@ private int	check_monotonic;
 private	sccs	*cset;		/* the initialized cset file */
 private int	flags = SILENT|INIT_NOGCHK|INIT_NOCKSUM|INIT_CHK_STIME;
 private	int	undoMarks;	/* remove poly cset marks left by undo */
+private	int	doMarks;	/* make commit marks as part of check? */
 private	int	polyErr;
 private	int	stripdel;	/* strip any ahead deltas */
 private	MDBM	*goneDB;
@@ -126,7 +138,7 @@ check_main(int ac, char **av)
 	};
 
 	timestamps = 0;
-	while ((c = getopt(ac, av, "@|aBcdefgpN;RsTuvw", lopts)) != -1) {
+	while ((c = getopt(ac, av, "@|aBcdefgpMN;RsTuvw", lopts)) != -1) {
 		switch (c) {
 			/* XXX: leak - free parent freeLines(parent, 0) */
 		    case '@': if (bk_urlArg(&parent, optarg)) return (1);break;
@@ -141,6 +153,7 @@ check_main(int ac, char **av)
 		    case 'f': fix++; break;			/* doc 2.0 */
 		    case 'g': goneKey++; break;			/* doc 2.0 */
 		    case 'p': polyErr++; break;		/* doc 2.0 */
+		    case 'M': doMarks++; break;
 		    case 'N': nfiles = atoi(optarg); break;
 		    case 'R': resync++; break;			/* doc 2.0 */
 		    case 's': stripdel++; break;
@@ -244,7 +257,7 @@ check_main(int ac, char **av)
 			if (c->product) continue;
 			if (!cp || strneq(c->path, cp, cplen)) {
 				subrepos = addLine(subrepos,
-				    PATH_BUILD(c->path+cplen, c->rootkey));
+						   strdup(c->path+cplen));
 			}
 		}
 		if (cp) free(cp);
@@ -316,12 +329,18 @@ check_main(int ac, char **av)
 		 * distinct.
 		 */
 		unless ((flags & INIT_NOCKSUM) || BAM(s)) {
+			delta	*one = 0, *two = 0;
 			/*
 			 * Don't verify checksum's for BAM files.
 			 * They might be big and not present.  Instead
 			 * we have a separate command for that.
 			 */
-			if (sccs_resum(s, 0, 0, 0)) ferr++, errors |= 0x04;
+			if (resync && sccs_findtips(s, &one, &two)) {
+				if (sccs_resum(s, two, 1, 0)) {
+					ferr++, errors |= 0x04;
+				}
+			}
+			if (sccs_resum(s, one, 1, 0)) ferr++, errors |= 0x04;
 			if (s->has_nonl && chk_nlbug(s)) ferr++, errors |= 0x04;
 		}
 		if (BAM(s)) {
@@ -449,6 +468,10 @@ check_main(int ac, char **av)
 		 */
 		n = nested_init(0, 0, 0, NESTED_PENDING|NESTED_FIXIDCACHE);
 		assert(n);
+		if (aliasdb_chkAliases(n, 0, &n->here, 0)) {
+			fprintf(stderr, "check: current aliases not valid.\n");
+			return (1);
+		}
 		EACH(n->here) {
 			unless (comps = aliasdb_expandOne(n, 0, n->here[i])) {
 				fprintf(stderr,
@@ -1393,21 +1416,25 @@ buildKeys(MDBM *idDB)
 	char	*s, *t;
 	int	e = 0;
 	delta	*d, *twotips;
-	char	**pathnames = 0; /* lines array of "path\0rootkey\0" */
-	int	i, len1, len2;
-	char	*rk1, *rk2;
-	u8	*smap, mask = 0;
+	char	**pathnames = 0; /* lines array of tipdata*'s */
+	tipdata	*td1, *td2;
+	int	i;
+	u8	mask = 0;
 	ser_t	oldest = 0, ser = 0;
 	rkdata	*rkd;
+	int	dupdelta;
+	char	*rkey, *dkey;
 	char	key[MAXKEY];
 
 	// In RESYNC, r.ChangeSet is move out of the way, can't test for it
 	if (resync) {
-		if (sccs_findtips(cset, &d, &twotips)) {
-			unless (polyErr) {
-				polyErr = !getenv("_BK_DEVELOPER") ||
-				    !proj_configbool(0, "poly");
-			}
+		if (sccs_findtips(cset, &d, &twotips) && doMarks) {
+			fprintf(stderr, "Commit must result in single tip\n");
+			e++;
+		}
+		if (!polyErr && (twotips || (doMarks && MERGE(cset, d)))) {
+			polyErr = !getenv("_BK_DEVELOPER") ||
+			    !proj_configbool(0, "poly");
 		}
 	} else {
 		d = sccs_top(cset);
@@ -1422,7 +1449,6 @@ buildKeys(MDBM *idDB)
 		perror("buildkeys");
 		exit(1);
 	}
-	smap = sccs_set(cset, d, 0, 0); /* serial in tip (or newest if 2) */
 	sccs_rdweaveInit(cset);
 	while (s = sccs_nextdata(cset)) {
 		if (*s == '\001') {
@@ -1471,9 +1497,13 @@ buildKeys(MDBM *idDB)
 		t = separator(s);
 		*t++ = 0;
 		hash_insert(r2deltas, s, t-s, 0, sizeof(rkdata));
+		rkey = r2deltas->kptr;
 		rkd = (rkdata *)r2deltas->vptr;
 		unless (rkd->deltas) rkd->deltas = hash_new(HASH_MEMHASH);
 		if (oldest) rkd->mask |= mask;
+
+		dupdelta = !hash_insertStrMem(rkd->deltas, t, 0, sizeof(mask));
+		dkey = rkd->deltas->kptr; /* delta key */
 
 		/*
 		 * For each serial in the tip cset remember the pathname
@@ -1487,21 +1517,19 @@ buildKeys(MDBM *idDB)
 		 * that is there in the merge tip, and then this special case
 		 * isn't needed.  That's a better answer.
 		 */
-		if (!(rkd->mask & RK_TIP) &&
-		    smap[ser] && !mdbm_fetch_str(goneDB, t)) {
+		if (!twotips &&
+		    !(rkd->mask & RK_TIP) && !mdbm_fetch_str(goneDB, dkey)) {
 			rkd->mask |= RK_TIP;
-			unless (mdbm_fetch_str(goneDB, s)) {
-				char	*path = key2path(t, 0, 0, 0);
-
-				/* strip /ChangeSet from components */
-				if (streq(basenm(path), "ChangeSet")) {
-					dirname(path);
-				}
-
-				pathnames = addLine(pathnames,
-				    PATH_BUILD(path, s));
-				free(path);
+			td1 = new(tipdata);
+			td1->path = key2path(dkey, 0, 0, 0);
+			/* strip /ChangeSet from components */
+			if (streq(basenm(td1->path), "ChangeSet")) {
+				dirname(td1->path);
 			}
+			td1->rkey = rkey;
+			td1->dkey = dkey;
+			if (ser == cset->table->serial) td1->intip = 1;
+			pathnames = addLine(pathnames, td1);
 		}
 		/*
 		 * If dup and not mentioned this key before and poly
@@ -1509,10 +1537,11 @@ buildKeys(MDBM *idDB)
 		 * or poly detection and if one of the dups is in the merge
 		 * region (my mask and the dup's mask).
 		 */
-		if (!hash_insertStrMem(rkd->deltas, t, 0, sizeof(mask)) &&
+		if (dupdelta &&
 		    !(*(u8 *)rkd->deltas->vptr & DK_DUP) && polyErr &&
 		    ((polyErr > 1) ||
-		    ((mask | *(u8 *)rkd->deltas->vptr & RK_BOTH) == RK_BOTH))) {
+		    (((mask | *(u8 *)rkd->deltas->vptr) & RK_BOTH) == RK_BOTH)
+		    )) {
 			char	*a;
 
 			// XXXPOLY - Duplicate deltakeys in cset weave.
@@ -1523,13 +1552,13 @@ buildKeys(MDBM *idDB)
 			*(u8 *)rkd->deltas->vptr |= DK_DUP; // say it only once
 			fprintf(stderr,
 			    "Duplicate delta found in ChangeSet\n");
-			a = getRev(r2deltas->kptr, t, idDB);
-			fprintf(stderr, "\tRev: %s  Key: %s\n", a, t);
+			a = getRev(r2deltas->kptr, dkey, idDB);
+			fprintf(stderr, "\tRev: %s  Key: %s\n", a, dkey);
 			free(a);
 			a = getFile(r2deltas->kptr, idDB);
 			fprintf(stderr, "\tBoth keys in file %s\n", a);
 			free(a);
-			listCsetRevs(t);
+			listCsetRevs(dkey);
 			e++;
 		}
 		if (mask) *(u8 *)rkd->deltas->vptr |= mask;
@@ -1538,7 +1567,6 @@ buildKeys(MDBM *idDB)
 		fprintf(stderr, "check: failed to read cset weave\n");
 		exit(1);
 	}
-	free(smap);
 
 	if (goneKey) goto finish; /* skip name collision */
 
@@ -1548,49 +1576,28 @@ buildKeys(MDBM *idDB)
 		 * At product they are all present already.
 		 */
 		EACH(subrepos) {
-			pathnames = addLine(pathnames, PATH_DUP(subrepos[i]));
+			td1 = new(tipdata);
+			td1->path = strdup(subrepos[i]);
+			pathnames = addLine(pathnames, td1);
 		}
 	}
-	sortLines(pathnames, 0);
+	sortLines(pathnames, tipdata_sort);
 	/* this test doesn't work in a shortkey repo, ie bk-bugfix */
 	unless (mixed) EACH(pathnames) {
 		if (i == 1) continue;
-		if (paths_overlap(pathnames[i-1], pathnames[i])) {
-			len1 = strlen(pathnames[i-1]);
-			len2 = strlen(pathnames[i]);
-			if (len1 == len2) {
-				rk1 = PATH_SORTPATH(pathnames[i-1]);
-				rk2 = PATH_SORTPATH(pathnames[i]);
-				fprintf(stderr,
-				    "check: two files are committed "
-				    "at the same pathname. (%s)\n",
-				    pathnames[i]);
-				fprintf(stderr, "rootkeys:\n"
-				    "\t%s\n"
-				    "\t%s\n", rk1, rk2);
-				exit(1);
-			} else if (pathnames[i][len1] == '/') {
-				/* subrepos can overlap each other*/
-				rk1 = PATH_SORTPATH(pathnames[i-1]);
-				rk2 = PATH_SORTPATH(pathnames[i]);
-				unless (changesetKey(rk1) &&
-				    changesetKey(rk2)) {
-					fprintf(stderr,
-					    "check: two files are committed at "
-					    "overlapping pathnames.\n"
-					    "\t%s\t%s\n"
-					    "\t%s\t%s\n",
-					    pathnames[i-1], rk1,
-					    pathnames[i], rk2);
-					exit(1);
-				}
-			} else {
-				assert(0);
-			}
+		td1 = (tipdata *)pathnames[i-1];
+		td2 = (tipdata *)pathnames[i];
+		if (paths_overlap(td1->path, td2->path)) {
+			if (pathConflictError(goneDB, idDB, td1, td2)) exit(1);
 		}
 	}
 finish:
-	freeLines(pathnames, free);
+	EACH(pathnames) {
+		td1 = (tipdata *)pathnames[i];
+		free(td1->path);
+		free(td1);
+	}
+	freeLines(pathnames, 0);
 	/* Add in ChangeSet keys */
 	sccs_sdelta(cset, sccs_ino(cset), key);
 	hash_storeStrMem(r2deltas, key, 0, sizeof(rkdata));
@@ -1614,6 +1621,138 @@ finish:
 		d->flags &= ~(D_RED|D_BLUE);
 	}
 	if (e) exit(1);
+}
+
+private	int
+tipdata_sort(const void *a, const void *b)
+{
+	tipdata	*aa = *(tipdata**)a;
+	tipdata	*bb = *(tipdata**)b;
+	int	rc;
+	char	*rk1, *rk2;
+
+	if (rc = strcmp(aa->path, bb->path)) return (rc);
+	/* same path? sort by rootkeys */
+	unless (rk1 = aa->rkey) rk1 = "";
+	unless (rk2 = bb->rkey) rk2 = "";
+	return (strcmp(rk1, rk2));
+}
+
+/*
+ * sccs_keyinit + sccs_keyinit in repo if in RESYNC
+ */
+private	sccs *
+keyinit(char *rkey, MDBM *idDB, MDBM **prod_idDB)
+{
+	sccs	*s;
+	project	*prod;
+	u32	flags = INIT_NOSTAT|INIT_NOCKSUM|SILENT;
+
+	if (s = sccs_keyinit( 0, rkey, flags, idDB)) {
+		return (s);
+	}
+	unless (resync) return (0);
+	unless (prod = proj_isResync(0)) return (0);
+	unless (*prod_idDB) {
+		char	*idcache = aprintf("%s/%s", RESYNC2ROOT, IDCACHE);
+
+		*prod_idDB = loadDB(idcache, 0, DB_IDCACHE);
+		free(idcache);
+	}
+	if (s = sccs_keyinit(prod, rkey, flags, *prod_idDB)) {
+		return (s);
+	}
+	return (0);
+}
+
+private int
+pathConflictError(MDBM *goneDB, MDBM *idDB, tipdata *td1, tipdata *td2)
+{
+	sccs	*s1 = INVALID, *s2 = INVALID;
+	MDBM	*prod_idDB = 0;
+	delta	*d;
+	char	*t;
+	int	saw_pending_rename = 0;
+	int	conf = 0;
+
+	/* make sure the file being committed is first */
+	if (!td1->intip && td2->intip) {
+		tipdata	*tmp = td1;
+
+		td1 = td2;
+		td2 = tmp;
+	}
+	/* subrepos can overlap each other*/
+	if ((!td1->dkey || componentKey(td1->dkey)) &&
+	    (!td2->dkey || componentKey(td2->dkey)) &&
+	    !streq(td1->path, td2->path)) {
+		goto done;
+	}
+	/* See if file not there and okay to be not there */
+	if (td1->rkey && mdbm_fetch_str(goneDB, td1->rkey)) {
+		unless (s1 = keyinit(td1->rkey, idDB, &prod_idDB)) {
+			goto done;
+		}
+	}
+	if (td2->rkey && mdbm_fetch_str(goneDB, td2->rkey)) {
+		unless (s2 = keyinit(td2->rkey, idDB, &prod_idDB)) {
+			goto done;
+		}
+	}
+	conf = 1;
+	if (td1->intip && doMarks) {
+		fprintf(stderr, "While trying to commit\n");
+	} else {
+		fprintf(stderr,
+		    "A path-conflict was found in existing csets\n");
+	}
+again:
+	if (!td1->dkey || componentKey(td1->dkey)) {
+		fprintf(stderr, "  component at ./%s\n", td1->path);
+		// XXX ignore possible pending component renames
+	} else if (s1 && ((s1 != INVALID) ||
+	    (s1 = keyinit(td1->rkey, idDB, &prod_idDB)))) {
+		/*
+		 * INIT_NOSTAT allows me to skip slib.c:check_gfile() which
+		 * complains in the file/dir conflict case.
+		 */
+		d = sccs_findKey(s1, td1->dkey);
+		assert(d);
+		t = proj_relpath(s1->proj, s1->gfile);
+		fprintf(stderr, "  ./%s|%s\n", t, d->rev);
+		unless (streq(t, td1->path)) {
+			fprintf(stderr, "  with pending rename from ./%s\n",
+				td1->path);
+			saw_pending_rename = 1;
+		}
+		free(t);
+	} else {
+		/* can't find sfile */
+		fprintf(stderr, "  missing sfile");
+		fprintf(stderr, "\n");
+		fprintf(stderr, "    rkey: %s\n", td1->rkey);
+		fprintf(stderr, "    dkey: %s\n", td1->dkey);
+	}
+	if (td1 != td2) {
+		if (td2->intip) {
+			fprintf(stderr, "conflicts with:\n");
+		} else {
+			fprintf(stderr,
+			    "there was a conflict with existing:\n");
+		}
+		td1 = td2;
+		if (s1 && (s1 != INVALID)) sccs_free(s1);
+		s1 = s2;
+		s2 = 0;
+		goto again;
+	}
+	if (saw_pending_rename) {
+		fprintf(stderr, "Must include other renames in commit.\n");
+	}
+done:	if (s1 && (s1 != INVALID)) sccs_free(s1);
+	if (s2 && (s2 != INVALID)) sccs_free(s2);
+	if (prod_idDB) mdbm_close(prod_idDB);
+	return (conf);
 }
 
 /*
@@ -1753,6 +1892,12 @@ check(sccs *s, MDBM *idDB)
 	/*
 	 * Make sure that all marked deltas are found in the ChangeSet
 	 */
+	if (doMarks && (t = sfileRev())) {
+		d = sccs_findrev(s, t);
+		d->flags |= D_CSET;
+		writefile = 2;
+		if (d == sccs_top(s)) unlink(sccs_Xfile(s, 'd'));
+	}
 	goodkeys = 0;
 	for (d = s->table; d; d = NEXT(d)) {
 		if (verbose > 3) {
@@ -1815,12 +1960,17 @@ check(sccs *s, MDBM *idDB)
 		    s, trunk, 0, branch, WR_GCA, polyChk, deltas);
 	}
 	if (writefile) {
-		if (getenv("_BK_DEVELOPER")) {
+		if ((writefile == 1) && getenv("_BK_DEVELOPER")) {
 			fprintf(stderr,
 			    "%s: adding and/or removing missing csetmarks\n",
 			    s->gfile);
 		}
-		sccs_newchksum(s);
+		if (sccs_newchksum(s)) {
+			fprintf(stderr, "Could not mark %s. Perhaps it "
+				"is locked by some other process?\n",
+				s->gfile);
+			errors++;
+		}
 		sccs_restart(s);
 	}
 	if (errors && !goodkeys) {

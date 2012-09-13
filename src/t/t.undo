@@ -227,6 +227,7 @@ bk new $Q foo || exit 1
 cd ..
 cp -r project copy
 cd project
+rm BitKeeper/log/repo_id
 bk commit $Q -ytrunk
 cd ../copy
 bk parent $Q ../project || exit 1

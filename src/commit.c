@@ -13,6 +13,8 @@ typedef struct {
 	u32	standalone:1;
 } c_opts;
 
+#define	CSET_BACKUP	"BitKeeper/tmp/commit.cset.backup"
+
 private int	do_commit(char **av, c_opts opts, char *sym,
 					char *pendingFiles, int dflags);
 
@@ -51,8 +53,7 @@ commit_main(int ac, char **av)
 		    case 'l':					/* doc */
 			strcpy(pendingFiles, optarg); break;
 		    case 'F':	force = 1; break;		/* undoc */
-		    case 'R':	BitKeeper = "../BitKeeper/";	/* doc 2.0 */
-				opts.resync = 1;
+		    case 'R':	opts.resync = 1;		/* doc 2.0 */
 				break;
 		    case 's':
 			unless (optarg) {
@@ -213,22 +214,11 @@ commit_main(int ac, char **av)
 			}
 		}
 	}
-	unless (force) {
-		if (size(pendingFiles) == 0) {
-			unless (opts.quiet) {
-				fprintf(stderr, "Nothing to commit\n");
-			}
-			unlink(pendingFiles);
-			return (0);
-		}
-		/* check is skipped with -F so 'bk setup' works */
-		if (sysio(pendingFiles, 0, 0,
-		    "bk", "check", opts.resync ? "-Rc" : "-c", "-", SYS)) {
-			unlink(pendingFiles);
-			return (1);
-		}
+	if (!force && (size(pendingFiles) == 0)) {
+		unless (opts.quiet) fprintf(stderr, "Nothing to commit\n");
+		unlink(pendingFiles);
+		return (0);
 	}
-
 	/*
 	 * Auto pickup a c.ChangeSet unless they already gave us comments.
 	 * Prompt though, that's what we do in delta.
@@ -301,7 +291,9 @@ do_commit(char **av,
 	int	rc, i;
 	sccs	*cset;
 	char	**syms = 0;
-	FILE 	*f;
+	FILE 	*f, *f2;
+	char	*t;
+	char	**list = 0;
 	char	commentFile[MAXPATH] = "";
 	char	pendingFiles2[MAXPATH];
 	char	buf[MAXLINE];
@@ -313,9 +305,6 @@ do_commit(char **av,
 	}
 	(void)sccs_defRootlog(cset);	/* if no rootlog, make one */
 	if (!opts.resync && attr_update()) {
-		FILE	*f, *f2;
-		char	*t;
-
 		bktmp(pendingFiles2, "pending2");
 		f = fopen(pendingFiles, "r");
 		f2 = fopen(pendingFiles2, "w");
@@ -392,9 +381,17 @@ do_commit(char **av,
 		}
 	}
 
+	fileLink(CHANGESET, CSET_BACKUP);
 	rc = csetCreate(cset, dflags, pendingFiles, syms);
 
-	if (opts.resync) {
+	// run check
+	unless (rc) {
+		if (sysio(pendingFiles, 0, 0,
+		    "bk", "check", opts.resync ? "-cMR" : "-cM", "-", SYS)) {
+			rc = 1;
+		}
+	}
+	if (!rc && opts.resync) {
 		char	key[MAXPATH];
 		FILE	*f;
 
@@ -410,7 +407,6 @@ do_commit(char **av,
 			fclose(f);
 		}
 	}
-
 	if (!rc && proj_isComponent(0)) {
 		hash	*urllist;
 		char	*file = proj_fullpath(proj_product(0), NESTED_URLLIST);
@@ -430,6 +426,16 @@ do_commit(char **av,
 	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	sccs_free(cset);
+	freeLines(list, free);
+	if (rc && exists(CSET_BACKUP)) {
+		fprintf(stderr, "The commit is aborted.\n");
+		if (fileMove(CSET_BACKUP, CHANGESET)) {
+			fprintf(stderr,
+			    "Restoring Backup (%s) failed\n", CSET_BACKUP);
+			exit (1);
+		}
+	}
+	unlink(CSET_BACKUP);
 	unless (*commentFile) {
 		// don't try to unlink
 	} else if (dflags & DELTA_CFILE) {

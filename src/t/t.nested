@@ -592,6 +592,28 @@ test wrong = `cat BitKeeper/log/COMPONENT` && {
 }
 echo OK
 
+echo $N See if repocheck notices a bad HERE file ....................$NL
+cd ..
+cp BitKeeper/log/HERE SAVE
+KEY='lm@lm.bitmover.com|ChangeSet|19990319224848|02682|B:1000:6a5ce40345b2dee1'
+echo $KEY >> BitKeeper/log/HERE
+bk repocheck $Q 2>ERR && fail -f ERR should fail
+cat <<EOF > WANT
+check: not a component rootkey: $KEY
+check: current aliases not valid.
+EOF
+checkfiles WANT ERR
+cat < /dev/null > BitKeeper/log/HERE
+bk repocheck $Q 2>ERR && fail -f ERR should fail
+cat <<EOF > WANT
+check: comp 'gcc4' is present and not included in current aliases.
+check: comp 'gdb' is present and not included in current aliases.
+check: missing components!
+EOF
+checkfiles WANT ERR
+mv SAVE BitKeeper/log/HERE
+echo OK
+
 echo $N Make some csets and look at changes output ..................$NL
 # First commit the rename
 cd "$HERE/project"
