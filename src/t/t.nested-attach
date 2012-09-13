@@ -506,3 +506,95 @@ test "`bk log -d:REV: -r+ ChangeSet`" = "1.1" || {
 	exit 1
 }
 echo OK
+
+echo $N Show attach in place of a file in the product ...............$NL
+cd "$HERE"
+commercial stand2
+cd ../nested2
+bk edit $Q BitKeeper/etc/config
+echo 'partial_check: on!' >> BitKeeper/etc/config
+bk ci $Q -ypartial BitKeeper/etc/config || fail
+bk commit $Q -ypartial || fail
+bk repocheck -q || fail
+bk rm bam || fail
+bk attach -q "$HERE"/stand2 bam 2>ERR && fail should have failed
+cat <<EOF > WANT
+While trying to commit
+  component at ./bam
+there was a conflict with existing:
+  ./BitKeeper/deleted/RAND|1.1
+  with pending rename from ./bam
+Must include other renames in commit.
+The commit is aborted.
+EOF
+sed 's/deleted\/.*|/deleted\/RAND|/' < ERR > ERR2
+cmpfiles ERR2 WANT
+test -f bam && fail bam should be gone
+echo OK
+
+echo $N Show attach in place of dir in the product ..................$NL
+mkdir foo
+echo hi > foo/bar
+bk new $Q foo/bar
+bk commit $Q -yfoo || fail
+bk rmdir foo
+bk attach -q "$HERE"/stand2 foo 2>ERR  && fail should have failed
+cat <<EOF > WANT
+While trying to commit
+  component at ./foo
+there was a conflict with existing:
+  ./BitKeeper/deleted/RAND|1.1
+  with pending rename from ./foo/bar
+Must include other renames in commit.
+The commit is aborted.
+EOF
+sed 's/deleted\/.*|/deleted\/RAND|/' < ERR > ERR2
+cmpfiles ERR2 WANT
+test -d foo && fail foo should be gone
+echo OK
+
+echo $N Show attach in place of a file in the component .............$NL
+cd gcc
+echo hi > foo
+mkdir bar
+echo hi > bar/foo
+bk new $Q foo bar/foo || fail
+bk commit $Q -ysetup || fail
+bk rm foo || fail
+
+# it would be nice if this failed
+bk attach -q "$HERE"/stand2 foo || fail
+
+bk repocheck $Q 2> ERR && fail -f should fail
+cat <<EOF > WANT
+A path-conflict was found in existing csets
+  ./BitKeeper/deleted/RAND|1.1
+  with pending rename from ./foo
+there was a conflict with existing:
+  component at ./foo
+Must include other renames in commit.
+EOF
+sed 's/deleted\/.*|/deleted\/RAND|/' < ERR > ERR2
+cmpfiles ERR2 WANT
+echo OK
+
+echo $N Show attach in place of a dir in the component ..............$NL
+bk gate -r $Q || fail
+bk portal -r $Q || fail
+bk undo $Q -r+ -f || fail
+bk portal $Q . || fail
+bk rmdir bar
+# it would be nice if this failed
+bk attach -q "$HERE"/stand2 bar || fail
+bk repocheck $Q 2> ERR && fail -f should fail
+cat <<EOF > WANT
+A path-conflict was found in existing csets
+  ./BitKeeper/deleted/RAND|1.1
+  with pending rename from ./bar/foo
+there was a conflict with existing:
+  component at ./bar
+Must include other renames in commit.
+EOF
+sed 's/deleted\/.*|/deleted\/RAND|/' < ERR > ERR2
+cmpfiles ERR2 WANT
+echo OK

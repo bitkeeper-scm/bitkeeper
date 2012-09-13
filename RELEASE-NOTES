@@ -28,6 +28,8 @@ Bug fixes:
       standalone repository was used inside the directory tree of a
       nested product.
 
+    - fix bk repair to work in a nested component.
+
   bk partition
     - Fix a crash on windows.
     
