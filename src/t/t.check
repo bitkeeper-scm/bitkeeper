@@ -508,9 +508,9 @@ bk commit -q -ycomment2 2> ERR && {
 	exit 1
 }
 cat <<EOF > WANT
-While trying to commit
+A path-conflict was found while trying to commit
   ./foo/bar|1.1
-there was a conflict with existing:
+conflicts with existing:
   ./foo|1.1
 The commit is aborted.
 EOF
@@ -687,9 +687,9 @@ bk mv d2/a foo2 || fail
 bk mv d2/b d2/a || fail
 echo 'd2/SCCS/s.a|+' | bk commit -q -ybad - 2> ERR && fail -f ERR
 cat <<EOF > WANT
-While trying to commit
+A path-conflict was found while trying to commit
   ./d2/a|1.6
-there was a conflict with existing:
+conflicts with existing:
   ./foo2|1.5
   with pending rename from ./d2/a
 Must include other renames in commit.
@@ -742,10 +742,10 @@ bk commit $Q -ynew || fail
 cd ../copy
 bk pull -q 2>ERR && fail -f ERR should fail
 cat <<EOF > WANT
-A path-conflict was found in existing csets
+A path-conflict was found while committing a merge
   ./something_else|1.6
   with pending rename from ./foobar
-there was a conflict with existing:
+conflicts with existing:
   ./foobar|1.1
 Must include other renames in commit.
 The commit is aborted.

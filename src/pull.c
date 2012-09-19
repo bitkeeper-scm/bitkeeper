@@ -730,6 +730,7 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	char	**revs = 0;
 	nested	*n = 0;
 	comp	*c;
+	FILE	*f;
 	int	i, j, k, rc = 0, errs = 0, status = 0;
 	int	pull, clone, unpopulate;
 	int	safe;
@@ -760,7 +761,12 @@ pull_ensemble(remote *r, char **rmt_aliases,
 	 * tip of aliases to find which components should be local.
 	 */
 	nested_aliases(n, n->tip, &rmt_aliases, 0, 0);
-	EACH_STRUCT(n->comps, c, i) if (c->alias) c->remotePresent = 1;
+	f = fopen(ROOT2RESYNC "/" COMPLIST, "w");
+	EACH_STRUCT(n->comps, c, i) {
+		if (c->alias) c->remotePresent = 1;
+		unless (c->product) fprintf(f, "%s\n", c->path);
+	}
+	fclose(f);
 
 	urlinfo_setFromEnv(n, srcurl);
 

@@ -201,14 +201,20 @@ resolve_main(int ac, char **av)
 		localDB = mdbm_mem();
 		resyncDB = mdbm_mem();
 	}
+	opts.complist = nested_complist(0, 0);
 	putenv("_BK_MV_OK=1");
 
-	if (c = setjmp(cleanup_jmp)) return (c >= 1000 ? c-1000 : 1);
+	if (c = setjmp(cleanup_jmp)) {
+		c = (c >= 1000 ? c-1000 : 1);
+		goto err;
+	}
 
 	c = passes(&opts);
-	if (localDB) mdbm_close(localDB);
-	if (resyncDB) mdbm_close(resyncDB);
 	resolve_post(&opts, c);
+
+err:	if (localDB) mdbm_close(localDB);
+	if (resyncDB) mdbm_close(resyncDB);
+	freeLines(opts.complist, free);
 	freeLines(opts.nav, free);
 	return (c);
 }
@@ -690,7 +696,7 @@ nameOK(opts *opts, sccs *s)
 	char	path[MAXPATH], realname[MAXPATH];
 	char	buf[MAXPATH];
 	sccs	*local = 0;
-	int	ret;
+	int	ret, i;
 	project	*proj;
 
 	if (CSET(s)) return (1); /* ChangeSet won't have conflicts */
@@ -705,6 +711,23 @@ nameOK(opts *opts, sccs *s)
 	} else {
 		strcpy(realname, path);
 	}
+
+	if (opts->complist) {
+		// 3 == "../" at start
+		char	*gfile = sccs2name(realname+3);
+
+		if (i = comp_overlap(opts->complist, gfile)) {
+			if (opts->debug) {
+				fprintf(stderr,
+				    "nameOK(%s) => comp conflict with %s\n",
+				    s->gfile, opts->complist[i]);
+			}
+			free(gfile);
+			return (0);
+		}
+		free(gfile);
+	}
+
 	proj = proj_init(RESYNC2ROOT);
 	if (streq(path, realname) &&
 	    (local = sccs_init(path, INIT_NOCKSUM|INIT_MUSTEXIST)) &&
@@ -840,7 +863,7 @@ pass2_renames(opts *opts)
 {
 	sccs	*s = 0;
 	int	n = 0;
-	int	i;
+	int	i, conf;
 	resolve	*rs;
 	char	*t;
 	char	**names;
@@ -889,7 +912,9 @@ pass2_renames(opts *opts)
 		 * code and fall through if they said EAGAIN or just skip
 		 * this one.
 		 */
-		if (rs->d && (slotTaken(opts, rs->dname) == DIR_CONFLICT)) {
+		if (rs->d) conf = slotTaken(rs, rs->dname, 0);
+		if (rs->d && ((conf == DIR_CONFLICT) ||
+			(conf == COMP_CONFLICT))) {
 			/* If we are just looking for space, skip this one */
 			unless (opts->resolveNames) goto out;
 			if (opts->noconflicts) {
@@ -898,7 +923,7 @@ pass2_renames(opts *opts)
 				    PATHNAME(rs->s, rs->d));
 				goto out;
 			}
-			if (resolve_create(rs, DIR_CONFLICT) != EAGAIN) {
+			if (resolve_create(rs, conf) != EAGAIN) {
 				goto out;
 			}
 		}
@@ -1012,7 +1037,8 @@ create(resolve *rs)
 			"a regular file without an SCCS file",
 			"another SCCS file in the patch",
 			"another file already in RESYNC",
-			"an SCCS file that is marked gone"
+			"an SCCS file that is marked gone",
+			"another component",
 		};
 
 	if (opts->debug) {
@@ -1024,7 +1050,7 @@ create(resolve *rs)
 	/* 
 	 * See if this name is taken in the repository.
 	 */
-again:	if (how = slotTaken(opts, rs->dname)) {
+again:	if (how = slotTaken(rs, rs->dname, 0)) {
 		if (!opts->noconflicts &&
 		    (how == GFILE_CONFLICT) && (ret = gc_sameFiles(rs))) {
 			if (ret == EAGAIN) goto again;
@@ -1160,7 +1186,7 @@ again:
 	 */
 	if (rs->d) {
 		to = rs->dname;
-		if (how = slotTaken(opts, to)) to = 0;
+		if (how = slotTaken(rs, to, 0)) to = 0;
 	}
 	if (to) {
 		char	*mfile;
@@ -1683,10 +1709,12 @@ deleteDirs(char **list)
  * Return 3 if the pathname in question is in use in the RESYNC dir.
  */
 int
-slotTaken(opts *opts, char *slot)
+slotTaken(resolve *rs, char *slot, char **why)
 {
-	assert(slot);
+	opts	*opts = rs->opts;
+	int	i;
 
+	assert(slot);
 	if (opts->debug) fprintf(stderr, "slotTaken(%s) = ", slot);
 
 	if (exists(slot)) {
@@ -1731,6 +1759,17 @@ slotTaken(opts *opts, char *slot)
 	} else {
 		char	*gfile = sccs2name(slot);
 
+		if (i = comp_overlap(opts->complist, gfile)) {
+			if (opts->debug) {
+				fprintf(stderr,
+				    "%s is a new component\n",
+				    opts->complist[i]);
+			}
+			if (why) *why = opts->complist[i];
+			free(gfile);
+			chdir(ROOT2RESYNC);
+			return (COMP_CONFLICT);
+		}
 		if (exists(gfile)) {
 			int	conf;
 
@@ -1765,6 +1804,17 @@ slotTaken(opts *opts, char *slot)
 	}
 	chdir(ROOT2RESYNC);
 	if (opts->debug) fprintf(stderr, "0\n");
+	return (0);
+}
+
+int
+comp_overlap(char **complist, char *path)
+{
+	int	i;
+
+	EACH(complist) {
+		if (paths_overlap(complist[i], path)) return (i);
+	}
 	return (0);
 }
 
