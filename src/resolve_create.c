@@ -1101,7 +1101,7 @@ resolve_create(resolve *rs, int type)
 		return (resolve_loop("create/dir conflict", rs, dc_funcs));
 	    case COMP_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "COMP\n");
-		rs->prompt = rs->d->pathname;
+		rs->prompt = PATHNAME(rs->s, rs->d);
 		rs->res_dirfile = 1;
 		return (resolve_loop("create/comp conflict", rs, dc_funcs));
 	    case SFILE_CONFLICT:
