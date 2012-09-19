@@ -1297,15 +1297,7 @@ move_remote(resolve *rs, char *sfile)
 	} else unless (streq(rs->dname, sfile)) {
 		rename_delta(rs, sfile, rs->d, 0, 0);
 	}
-	/* lifted from takepatch.c */
-	free(rs->s->sfile);
-	rs->s->sfile = strdup(sfile);
-	free(rs->s->gfile);
-	rs->s->gfile = sccs2name(rs->s->sfile);
-	free(rs->s->pfile);
-	rs->s->pfile = strdup(sccs_Xfile(rs->s, 'p'));
-	free(rs->s->zfile);
-	rs->s->zfile = strdup(sccs_Xfile(rs->s, 'z'));
+	sccs_writeHere(rs->s, sfile);
 
 	/* idcache -- so post-commit check can find if a path conflict */
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);

@@ -14,21 +14,6 @@
 #include "poly.h"
 
 /*
- * Macros to get at an optional hidden string after the null
- * Only used here (and lm wishes they weren't used anywhere).
- *
- * This is for performance and cleaner code, by not needing to
- * malloc/free a set of * struct { char *visible; char *hidden;}
- * pointers for every file being stored.
- * It lets us track a list of paths and rootkeys
- * as a addLine of strings.  And from each string, we can extract
- * paths (the visible part) and rootkeys (the hidden part).
- */
-#define	HIDDEN(p)		((p) + strlen(p) + 1)
-#define	HIDDEN_BUILD(a, b)	aprintf("%s%c%s", (a), 0, (b))
-#define	HIDDEN_DUP(p)		HIDDEN_BUILD(p, HIDDEN(p))
-
-/*
  * Stuff to remember for each rootkey in the ->mask field:
  *  0x1 parent side of merge changes this rk
  *  0x2 merge side of merge changes this rk
@@ -346,7 +331,7 @@ check_main(int ac, char **av)
 		 * distinct.
 		 */
 		unless ((flags & INIT_NOCKSUM) || BAM(s)) {
-			delta	*one = 0, *two = 0;
+			ser_t	one = 0, two = 0;
 			/*
 			 * Don't verify checksum's for BAM files.
 			 * They might be big and not present.  Instead
@@ -1416,7 +1401,10 @@ buildKeys(MDBM *idDB)
 
 	// In RESYNC, r.ChangeSet is move out of the way, can't test for it
 	if (resync) {
-		sccs_findtips(cset, &d, &twotips);
+		if (sccs_findtips(cset, &d, &twotips) && doMarks) {
+			fprintf(stderr, "Commit must result in single tip\n");
+			e++;
+		}
 	} else {
 		d = sccs_top(cset);
 		twotips = 0;
@@ -1503,24 +1491,24 @@ buildKeys(MDBM *idDB)
 		 */
 		if (!twotips &&
 		    !(rkd->mask & RK_TIP) && !mdbm_fetch_str(goneDB, dkey)) {
-			char	*path = key2path(t, 0, 0, 0);
+			char	*path = key2path(dkey, 0, 0, 0);
 			char	*base = basenm(path);
 
 			rkd->mask |= RK_TIP;
 
 			/* remember all poly files altered in merge tip */
-			if ((mask & RK_INTIP) && (IS_POLYPATH(path))) {
+			if (newpoly &&
+			    (mask & RK_INTIP) && (IS_POLYPATH(path))) {
+				/* base of a poly db file is md5 rootkey */
 				hash_storeStr(newpoly, base, 0);
 			}
-			td1 = new(tipdata);
-			td1->path = key2path(dkey, 0, 0, 0);
 			/* strip /ChangeSet from components */
-			if (streq(basenm(td1->path), "ChangeSet")) {
-				dirname(td1->path);
-			}
+			if (streq(base, "ChangeSet")) dirname(path);
+			td1 = new(tipdata);
+			td1->path = path;
 			td1->rkey = rkey;
 			td1->dkey = dkey;
-			if (ser == cset->table->serial) td1->intip = 1;
+			if (ser == TABLE(cset)) td1->intip = 1;
 			pathnames = addLine(pathnames, td1);
 		}
 		/*
@@ -1533,7 +1521,8 @@ buildKeys(MDBM *idDB)
 		    !(*(u8 *)rkd->deltas->vptr & DK_DUP) &&
 		    (polyErr || !componentKey(t)) &&
 		    ((polyErr > 1) || (RK_BOTH ==
-		    ((mask | *(u8 *)rkd->deltas->vptr) & RK_BOTH)))) {
+		    (((mask | *(u8 *)rkd->deltas->vptr) & RK_BOTH)))
+		    )) {
 			char	*a;
 
 			// XXXPOLY - Duplicate deltakeys in cset weave.
@@ -1661,7 +1650,7 @@ pathConflictError(MDBM *goneDB, MDBM *idDB, tipdata *td1, tipdata *td2)
 {
 	sccs	*s1 = INVALID, *s2 = INVALID;
 	MDBM	*prod_idDB = 0;
-	delta	*d;
+	ser_t	d;
 	char	*t;
 	int	saw_pending_rename = 0;
 	int	conf = 0;
@@ -1710,7 +1699,7 @@ again:
 		d = sccs_findKey(s1, td1->dkey);
 		assert(d);
 		t = proj_relpath(s1->proj, s1->gfile);
-		fprintf(stderr, "  ./%s|%s\n", t, d->rev);
+		fprintf(stderr, "  ./%s|%s\n", t, REV(s1, d));
 		unless (streq(t, td1->path)) {
 			fprintf(stderr, "  with pending rename from ./%s\n",
 				td1->path);
@@ -1900,7 +1889,7 @@ check(sccs *s, MDBM *idDB)
 	 */
 	if (doMarks && (t = sfileRev())) {
 		d = sccs_findrev(s, t);
-		d->flags |= D_CSET;
+		FLAGS(s, d) |= D_CSET;
 		writefile = 2;
 		if (d == sccs_top(s)) unlink(sccs_Xfile(s, 'd'));
 	}
