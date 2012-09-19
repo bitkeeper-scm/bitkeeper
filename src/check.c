@@ -40,7 +40,7 @@ typedef	struct	tipdata {
 	char	*path;		/* path to committed delta */
 	char	*rkey;		/* file rootkey */
 	char	*dkey;		/* deltakey of tip committed delta */
-	u8	intip:1;	/* is included in tip cset? */
+	u8	incommit:1;	/* is included in the new committed cset? */
 } tipdata;
 
 private	void	buildKeys(MDBM *idDB);
@@ -235,32 +235,13 @@ check_main(int ac, char **av)
 	 */
 	if (proj_isEnsemble(0)) {
 		nested	*n;
-		char	*cp; /* path to this component */
-		comp	*c;
-		int	cplen;
 
-		if (proj_isProduct(0)) {
-			cp = 0;
-			cplen = 0;
-			if (isdir(ROOT2RESYNC) &&
-			    exists(ROOT2RESYNC "/" CHANGESET)) {
-				pull_inProgress = 1;
-			}
-		} else {
-			cp = aprintf("%s/", proj_comppath(0));
-			cplen = strlen(cp);
+		if (proj_isProduct(0) && exists(ROOT2RESYNC "/" CHANGESET)) {
+			pull_inProgress = 1;
 		}
 		n = nested_init(proj_isProduct(0) ? cset : 0,
 		    0, 0, NESTED_PENDING|NESTED_FIXIDCACHE);
-		assert(n);
-		EACH_STRUCT(n->comps, c, i) {
-			if (c->product) continue;
-			if (!cp || strneq(c->path, cp, cplen)) {
-				subrepos = addLine(subrepos,
-						   strdup(c->path+cplen));
-			}
-		}
-		if (cp) free(cp);
+		subrepos = nested_complist(n, 0);
 		nested_free(n);
 	}
 	/* This can legitimately return NULL */
@@ -1528,7 +1509,9 @@ buildKeys(MDBM *idDB)
 			}
 			td1->rkey = rkey;
 			td1->dkey = dkey;
-			if (ser == cset->table->serial) td1->intip = 1;
+			if (doMarks && (ser == cset->table->serial)) {
+				td1->incommit = 1;
+			}
 			pathnames = addLine(pathnames, td1);
 		}
 		/*
@@ -1676,7 +1659,7 @@ pathConflictError(MDBM *goneDB, MDBM *idDB, tipdata *td1, tipdata *td2)
 	int	conf = 0;
 
 	/* make sure the file being committed is first */
-	if (!td1->intip && td2->intip) {
+	if (!td1->incommit && td2->incommit) {
 		tipdata	*tmp = td1;
 
 		td1 = td2;
@@ -1700,11 +1683,13 @@ pathConflictError(MDBM *goneDB, MDBM *idDB, tipdata *td1, tipdata *td2)
 		}
 	}
 	conf = 1;
-	if (td1->intip && doMarks) {
-		fprintf(stderr, "While trying to commit\n");
+	fprintf(stderr, "A path-conflict was found ");
+	if (doMarks && resync) {
+		fprintf(stderr, "while committing a merge\n");
+	} else if (td1->incommit) {
+		fprintf(stderr, "while trying to commit\n");
 	} else {
-		fprintf(stderr,
-		    "A path-conflict was found in existing csets\n");
+		fprintf(stderr, "in existing csets\n");
 	}
 again:
 	if (!td1->dkey || componentKey(td1->dkey)) {
@@ -1734,12 +1719,8 @@ again:
 		fprintf(stderr, "    dkey: %s\n", td1->dkey);
 	}
 	if (td1 != td2) {
-		if (td2->intip) {
-			fprintf(stderr, "conflicts with:\n");
-		} else {
-			fprintf(stderr,
-			    "there was a conflict with existing:\n");
-		}
+		fprintf(stderr, "conflicts with%s:\n",
+		    td2->incommit ? "" : " existing");
 		td1 = td2;
 		if (s1 && (s1 != INVALID)) sccs_free(s1);
 		s1 = s2;

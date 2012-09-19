@@ -1204,3 +1204,53 @@ nested_isGate(project *comp)
 	concat_path(buf, proj_root(prod), "BitKeeper/log/GATE");
 	return (exists(buf));
 }
+
+/*
+ * Return a lines array of components under the current repo
+ * When called as part of pull we use the list in
+ * product/RESYNC/BitKeeper/log/COMPS
+ * otherwise the nested struct is used.
+ */
+char **
+nested_complist(nested *n, project *p)
+{
+	FILE	*f;
+	comp	*c;
+	char	*t, *cp;
+	int	i, clen;
+	int	dofree;
+	char	**comps = 0;
+
+	unless (proj_isEnsemble(p)) return (0);
+
+	if (proj_isProduct(0)) {
+		cp = strdup("");
+		clen = 0;
+	} else {
+		cp = aprintf("%s/", proj_comppath(0));
+		clen = strlen(cp);
+	}
+	if (f = fopen(proj_fullpath(proj_product(p), ROOT2RESYNC "/" COMPLIST),
+		"r")) {
+
+		while (t = fgetline(f)) {
+			if (strneq(t, cp, clen)) {
+				comps = addLine(comps, strdup(t+clen));
+			}
+		}
+		fclose(f);
+	} else {
+		dofree = (n == 0);
+		unless (n) n = nested_init(0, 0, 0, NESTED_PENDING);
+		assert(n);
+		EACH_STRUCT(n->comps, c, i) {
+			if (c->product) continue;
+			if (strneq(c->path, cp, clen)) {
+				comps = addLine(comps, strdup(c->path+clen));
+			}
+		}
+		if (dofree) nested_free(n);
+	}
+	free(cp);
+	return (comps);
+}

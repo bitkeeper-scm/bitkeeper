@@ -4,7 +4,7 @@
 #include "resolve.h"
 
 private	int	prs_common(resolve *rs, sccs *s, char *a, char *b);
-private	void	getFileConflict(char *gfile, char *path);
+private	void	getFileConflict(resolve *rs, char *gfile, char *path);
 
 int
 res_abort(resolve *rs)
@@ -140,7 +140,7 @@ int
 res_mr(resolve *rs)
 {
 	char	buf[MAXPATH];
-	char	*t;
+	char	*t, *why = 0;
 
 	unless (prompt("Move file to:", buf)) return (0);
 	if ((buf[0] == '/') || strneq("../", buf, 3)) {
@@ -152,7 +152,7 @@ res_mr(resolve *rs)
 		strcpy(buf, t);
 		free(t);
 	}
-	switch (slotTaken(rs->opts, buf)) {
+	switch (slotTaken(rs, buf, &why)) {
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", buf);
 		return (0);
@@ -167,6 +167,10 @@ res_mr(resolve *rs)
 		return (0);
 	    case RESYNC_CONFLICT:
 		fprintf(stderr, "%s exists in RESYNC already\n", buf);
+		return (0);
+	    case COMP_CONFLICT:
+		fprintf(stderr,
+		    "%s conflicts with another component (%s)\n", buf, why);
 		return (0);
 	}
 	if (move_remote(rs, buf)) {
@@ -434,7 +438,7 @@ common_ml(resolve *rs, char *p, char *buf)
 		strcpy(buf, t);
 		free(t);
 	}
-	switch (slotTaken(rs->opts, buf)) {
+	switch (slotTaken(rs, buf, 0)) {
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", buf);
 		return (1);
@@ -443,7 +447,7 @@ common_ml(resolve *rs, char *p, char *buf)
 		    "%s exists locally already but is marked gone\n", buf);
 		return (1);
 	    case DIR_CONFLICT:
-		getFileConflict(buf, path);
+		getFileConflict(rs, buf, path);
 		fprintf(stderr, "file %s exists locally already\n", path);
 		return (1);
 	    case GFILE_CONFLICT:
@@ -489,7 +493,7 @@ dc_ml(resolve *rs)
 	char	path[MAXPATH];
 
 	/* Check to see that a simple rename is possible */
-	getFileConflict(rs->d->pathname, path);
+	getFileConflict(rs, rs->d->pathname, path);
 	chdir(RESYNC2ROOT);
 	t = aprintf("bk sfiles '%s'", path);
 	list = popen(t, "r");
@@ -568,10 +572,15 @@ gc_sameFiles(resolve *rs)
 }
 
 private void
-getFileConflict(char *gfile, char *path)
+getFileConflict(resolve *rs, char *gfile, char *path)
 {
 	char	*t, *s;
+	int	i;
 	
+	if (i = comp_overlap(rs->opts->complist, gfile)) {
+		strcpy(path, rs->opts->complist[i]);
+		return;
+	}
 	chdir(RESYNC2ROOT);
 	if (exists(gfile)) {
 		strcpy(path, gfile);
@@ -606,7 +615,7 @@ dc_remove(resolve *rs)
 	unless (rs->opts->force || confirm("Remove local directory?")) {
 		return (0);
 	}
-	getFileConflict(rs->d->pathname, path);
+	getFileConflict(rs, rs->d->pathname, path);
 	sprintf(buf, "%s/%s", RESYNC2ROOT, path);
 	ret = rmdir(buf);
 	if (opts->log) fprintf(stdlog, "rmdir(%s) = %d\n", buf, ret);
@@ -618,7 +627,7 @@ dc_explain(resolve *rs)
 {
 	char	path[MAXPATH];
 
-	getFileConflict(rs->d->pathname, path);
+	getFileConflict(rs, rs->d->pathname, path);
 	fprintf(stderr,
 "The path of the remote file: ``%s''\n\
 conflicts with a local directory: ``%s''\n\
@@ -652,7 +661,7 @@ dc_help(resolve *rs)
 	char	path[MAXPATH];
 	char	buf[MAXKEY];
 
-	getFileConflict(rs->d->pathname, path);
+	getFileConflict(rs, rs->d->pathname, path);
 	sccs_sdelta(rs->s, sccs_ino(rs->s), buf);
 	chdir(RESYNC2ROOT);
 	local = sccs_keyinit(0, buf, INIT_NOCKSUM, rs->opts->idDB);
@@ -774,7 +783,7 @@ sc_ml(resolve *rs)
 	} else {
 		to = strdup(buf);
 	}
-	switch (slotTaken(rs->opts, to)) {
+	switch (slotTaken(rs, to, 0)) {
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", to);
 		return (0);
@@ -939,7 +948,7 @@ rc_ml(resolve *rs)
 	} else {
 		to = strdup(buf);
 	}
-	switch (slotTaken(rs->opts, to)) {
+	switch (slotTaken(rs, to, 0)) {
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", to);
 		return (0);
@@ -1087,6 +1096,11 @@ resolve_create(resolve *rs, int type)
 		rs->prompt = rs->d->pathname;
 		rs->res_dirfile = 1;
 		return (resolve_loop("create/dir conflict", rs, dc_funcs));
+	    case COMP_CONFLICT:
+		if (rs->opts->debug) fprintf(stderr, "COMP\n");
+		rs->prompt = rs->d->pathname;
+		rs->res_dirfile = 1;
+		return (resolve_loop("create/comp conflict", rs, dc_funcs));
 	    case SFILE_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "SFILE\n");
 		rs->prompt = rs->d->pathname;

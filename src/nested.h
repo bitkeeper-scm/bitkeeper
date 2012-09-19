@@ -177,11 +177,13 @@ int	nested_rmcomp(nested *n, comp *c);
 char	**nested_here(project *p);
 char	**nested_fixHere(char **aliases);
 void	nested_writeHere(nested *n);
+char	**nested_complist(nested *n, project *p);
 
 /* alias.h */
 
 #define	ALIASES		"BitKeeper/etc/aliases"
 #define	SALIASES	"BitKeeper/etc/SCCS/s.aliases"
+#define	COMPLIST	"BitKeeper/log/COMPS"
 
 hash	*aliasdb_init(nested *n,
     project *p, char *rev, int pending, int no_diffs);

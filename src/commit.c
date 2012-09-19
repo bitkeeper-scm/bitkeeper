@@ -13,10 +13,11 @@ typedef struct {
 	u32	standalone:1;
 } c_opts;
 
-#define	CSET_BACKUP	"BitKeeper/tmp/commit.cset.backup"
 
 private int	do_commit(char **av, c_opts opts, char *sym,
 					char *pendingFiles, int dflags);
+private	void	commitSnapshot(void);
+private	void	commitRestore(int rc);
 
 int
 commit_main(int ac, char **av)
@@ -380,8 +381,7 @@ do_commit(char **av,
 			}
 		}
 	}
-
-	fileLink(CHANGESET, CSET_BACKUP);
+	commitSnapshot();
 	rc = csetCreate(cset, dflags, pendingFiles, syms);
 
 	// run check
@@ -422,20 +422,15 @@ do_commit(char **av,
 		}
 	}
 	putenv("BK_STATUS=OK");
-	if (rc) putenv("BK_STATUS=FAILED");
+	if (rc) {
+		fprintf(stderr, "The commit is aborted.\n");
+		putenv("BK_STATUS=FAILED");
+	}
 	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	sccs_free(cset);
 	freeLines(list, free);
-	if (rc && exists(CSET_BACKUP)) {
-		fprintf(stderr, "The commit is aborted.\n");
-		if (fileMove(CSET_BACKUP, CHANGESET)) {
-			fprintf(stderr,
-			    "Restoring Backup (%s) failed\n", CSET_BACKUP);
-			exit (1);
-		}
-	}
-	unlink(CSET_BACKUP);
+	commitRestore(rc);
 	unless (*commentFile) {
 		// don't try to unlink
 	} else if (dflags & DELTA_CFILE) {
@@ -455,4 +450,52 @@ done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	 */
 	unless (opts.resync) logChangeSet();
 	return (rc ? 1 : 0);
+}
+
+#define	CSET_BACKUP	"BitKeeper/tmp/commit.cset.backup"
+
+/*
+ * Save SCCS/?.ChangeSet files so we can restore them later if commit
+ * fails.
+ */
+private void
+commitSnapshot(void)
+{
+	char	*ext = "scp";	/* file exensions to backup */
+	int	i;
+	char	file[MAXPATH];
+	char	save[MAXPATH];
+
+	for (i = 0; ext[i]; i++) {
+		sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
+		if (exists(file)) {
+			sprintf(save, CSET_BACKUP ".%c", ext[i]);
+			fileLink(file, save);
+		}
+	}
+}
+
+/*
+ * If rc!=0, then commit failed and we need to store the state saved by
+ * commitSnapshot().  Otherwise delete that state.
+ */
+private void
+commitRestore(int rc)
+{
+	char	*ext = "scp";	/* file exensions to backup */
+	int	i;
+	char	file[MAXPATH];
+	char	save[MAXPATH];
+
+	for (i = 0; ext[i]; i++) {
+		sprintf(save, CSET_BACKUP ".%c", ext[i]);
+		if (exists(save)) {
+			sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
+			if (rc) {
+				fileMove(save, file);
+			} else {
+				unlink(save);
+			}
+		}
+	}
 }

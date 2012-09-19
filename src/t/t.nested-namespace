@@ -26,9 +26,9 @@ touch path
 bk new $Q path || fail
 bk commit -q -yblock 2>ERR && fail -f ERR
 cat <<EOF > WANT
-While trying to commit
+A path-conflict was found while trying to commit
   ./path|1.1
-there was a conflict with existing:
+conflicts with existing:
   component at ./path/to/comp
 The commit is aborted.
 commit: failed to commit some components
@@ -47,9 +47,9 @@ touch path/to/comp
 bk new $Q path/to/comp || fail
 bk commit -q -yblock 2>ERR && fail -f ERR
 cat <<EOF > WANT
-While trying to commit
+A path-conflict was found while trying to commit
   ./path/to/comp|1.1
-there was a conflict with existing:
+conflicts with existing:
   component at ./path/to/comp
 The commit is aborted.
 commit: failed to commit some components
@@ -66,9 +66,9 @@ touch path/to/comp/subdir/foo
 bk new $Q path/to/comp/subdir/foo || fail
 bk commit -q -yblock 2> ERR && fail
 cat <<EOF > WANT
-While trying to commit
+A path-conflict was found while trying to commit
   ./path/to/comp/subdir/foo|1.1
-there was a conflict with existing:
+conflicts with existing:
   component at ./path/to/comp
 The commit is aborted.
 commit: failed to commit some components
@@ -89,9 +89,9 @@ touch deep/foobar.c
 bk new $Q deep/foobar.c || fail
 bk commit -q -S -y"add foobar.c" 2> ERR && fail
 cat <<EOF > WANT
-While trying to commit
+A path-conflict was found while trying to commit
   ./deep/foobar.c|1.1
-there was a conflict with existing:
+conflicts with existing:
   component at ./deep
 The commit is aborted.
 EOF
@@ -116,9 +116,17 @@ touch block
 bk new $Q block
 bk commit $Q -yblock || fail
 bk pull -q 2>ERR && fail -f ERR pull should have failed
-grep -q "A path-conflict was found in existing csets" ERR || {
-	fail -f ERR wrong err message
-}
+cat <<EOF > WANT
+A path-conflict was found while committing a merge
+  ./block|1.1
+conflicts with existing:
+  component at ./block
+The commit is aborted.
+Commit aborted, no changes applied.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles ERR WANT
 bk abort -qf || fail
 echo OK
 
@@ -168,9 +176,17 @@ bk portal $Q -r || fail
 bk comps | bk here set $Q - || fail
 bk here rm -q -f ./block || fail
 bk pull $Q >OUT 2>ERR && fail -f ERR should have failed
-grep -q "A path-conflict was found in existing csets" ERR || {
-	fail -f ERR wrong error
-}
+cat <<EOF > WANT
+A path-conflict was found while committing a merge
+  component at ./block
+conflicts with existing:
+  component at ./block
+The commit is aborted.
+Commit aborted, no changes applied.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles ERR WANT
 bk abort -qf
 echo OK
 
