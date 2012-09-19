@@ -1272,6 +1272,7 @@ int
 move_remote(resolve *rs, char *sfile)
 {
 	int	ret;
+	char	*gfile;
 	ser_t	d;
 	char	rfile[MAXPATH];
 	MDBM	*idDB;
@@ -1323,11 +1324,12 @@ move_remote(resolve *rs, char *sfile)
 	} else unless (streq(rs->dname, sfile)) {
 		rename_delta(rs, sfile, rs->d, 0, 0);
 	}
-	sccs_writeHere(rs->s, sfile);
 
 	/* idcache -- so post-commit check can find if a path conflict */
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-	mdbm_store_str(idDB, rs->key, rs->s->gfile, MDBM_REPLACE);
+	gfile = sccs2name(sfile);
+	mdbm_store_str(idDB, rs->key, gfile, MDBM_REPLACE);
+	free(gfile);
 	idcache_write(0, idDB);
 	mdbm_close(idDB);
 	return (0);
