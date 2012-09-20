@@ -13,8 +13,11 @@ typedef struct {
 	u32	standalone:1;
 } c_opts;
 
+
 private int	do_commit(char **av, c_opts opts, char *sym,
 					char *pendingFiles, int dflags);
+private	void	commitSnapshot(void);
+private	void	commitRestore(int rc);
 
 int
 commit_main(int ac, char **av)
@@ -51,8 +54,7 @@ commit_main(int ac, char **av)
 		    case 'l':					/* doc */
 			strcpy(pendingFiles, optarg); break;
 		    case 'F':	force = 1; break;		/* undoc */
-		    case 'R':	BitKeeper = "../BitKeeper/";	/* doc 2.0 */
-				opts.resync = 1;
+		    case 'R':	opts.resync = 1;		/* doc 2.0 */
 				break;
 		    case 's':
 			unless (optarg) {
@@ -213,22 +215,11 @@ commit_main(int ac, char **av)
 			}
 		}
 	}
-	unless (force) {
-		if (size(pendingFiles) == 0) {
-			unless (opts.quiet) {
-				fprintf(stderr, "Nothing to commit\n");
-			}
-			unlink(pendingFiles);
-			return (0);
-		}
-		/* check is skipped with -F so 'bk setup' works */
-		if (sysio(pendingFiles, 0, 0,
-		    "bk", "check", opts.resync ? "-Rc" : "-c", "-", SYS)) {
-			unlink(pendingFiles);
-			return (1);
-		}
+	if (!force && (size(pendingFiles) == 0)) {
+		unless (opts.quiet) fprintf(stderr, "Nothing to commit\n");
+		unlink(pendingFiles);
+		return (0);
 	}
-
 	/*
 	 * Auto pickup a c.ChangeSet unless they already gave us comments.
 	 * Prompt though, that's what we do in delta.
@@ -301,7 +292,9 @@ do_commit(char **av,
 	int	rc, i;
 	sccs	*cset;
 	char	**syms = 0;
-	FILE 	*f;
+	FILE 	*f, *f2;
+	char	*t;
+	char	**list = 0;
 	char	commentFile[MAXPATH] = "";
 	char	pendingFiles2[MAXPATH];
 	char	buf[MAXLINE];
@@ -313,9 +306,6 @@ do_commit(char **av,
 	}
 	(void)sccs_defRootlog(cset);	/* if no rootlog, make one */
 	if (!opts.resync && attr_update()) {
-		FILE	*f, *f2;
-		char	*t;
-
 		bktmp(pendingFiles2, "pending2");
 		f = fopen(pendingFiles, "r");
 		f2 = fopen(pendingFiles2, "w");
@@ -391,10 +381,17 @@ do_commit(char **av,
 			}
 		}
 	}
-
+	commitSnapshot();
 	rc = csetCreate(cset, dflags, pendingFiles, syms);
 
-	if (opts.resync) {
+	// run check
+	unless (rc) {
+		if (sysio(pendingFiles, 0, 0,
+		    "bk", "check", opts.resync ? "-cMR" : "-cM", "-", SYS)) {
+			rc = 1;
+		}
+	}
+	if (!rc && opts.resync) {
 		char	key[MAXPATH];
 		FILE	*f;
 
@@ -410,7 +407,6 @@ do_commit(char **av,
 			fclose(f);
 		}
 	}
-
 	if (!rc && proj_isComponent(0)) {
 		hash	*urllist;
 		char	*file = proj_fullpath(proj_product(0), NESTED_URLLIST);
@@ -426,10 +422,15 @@ do_commit(char **av,
 		}
 	}
 	putenv("BK_STATUS=OK");
-	if (rc) putenv("BK_STATUS=FAILED");
+	if (rc) {
+		fprintf(stderr, "The commit is aborted.\n");
+		putenv("BK_STATUS=FAILED");
+	}
 	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	sccs_free(cset);
+	freeLines(list, free);
+	commitRestore(rc);
 	unless (*commentFile) {
 		// don't try to unlink
 	} else if (dflags & DELTA_CFILE) {
@@ -449,4 +450,52 @@ done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	 */
 	unless (opts.resync) logChangeSet();
 	return (rc ? 1 : 0);
+}
+
+#define	CSET_BACKUP	"BitKeeper/tmp/commit.cset.backup"
+
+/*
+ * Save SCCS/?.ChangeSet files so we can restore them later if commit
+ * fails.
+ */
+private void
+commitSnapshot(void)
+{
+	char	*ext = "scp";	/* file exensions to backup */
+	int	i;
+	char	file[MAXPATH];
+	char	save[MAXPATH];
+
+	for (i = 0; ext[i]; i++) {
+		sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
+		if (exists(file)) {
+			sprintf(save, CSET_BACKUP ".%c", ext[i]);
+			fileLink(file, save);
+		}
+	}
+}
+
+/*
+ * If rc!=0, then commit failed and we need to store the state saved by
+ * commitSnapshot().  Otherwise delete that state.
+ */
+private void
+commitRestore(int rc)
+{
+	char	*ext = "scp";	/* file exensions to backup */
+	int	i;
+	char	file[MAXPATH];
+	char	save[MAXPATH];
+
+	for (i = 0; ext[i]; i++) {
+		sprintf(save, CSET_BACKUP ".%c", ext[i]);
+		if (exists(save)) {
+			sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
+			if (rc) {
+				fileMove(save, file);
+			} else {
+				unlink(save);
+			}
+		}
+	}
 }

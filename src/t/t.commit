@@ -73,6 +73,7 @@ bk delta -fywhatever $Q ../file
 bk commit $Q -S -yfile-leftover || fail
 echo OK
 
+test "$PLATFORM" != WIN32 && {
 echo $N Commit should fail if cset marking fails.....................$NL
 cd "$HERE"
 commercial markcset
@@ -87,27 +88,38 @@ chmod 555 .bk/F/SCCS
 bk commit -q -y"Foo" 2> OUT
 RC=$?
 chmod 755 .bk/F/SCCS
-if [ "$PLATFORM" = WIN32 ]
-then	bk _cp precommit F/SCCS/s.foo
-	bk sfiles -P > GOT
-	echo F/SCCS/s.foo > WANT
-	cmpfiles WANT GOT
-else	test "$RC" = 0 && fail commit should have failed
-	grep -q 'Could not mark F/foo. Perhaps it is locked' OUT || fail -f OUT
-fi
+grep -q 'Could not mark F/foo. Perhaps it is locked' OUT || fail -f OUT
+test `bk changes -d:C: -r+` = Foo && fail cset not reverted
 test -f "SCCS/x.foo" && fail left xfile behind
-test `bk changes -d:C: -r+` = Foo || fail cset not made
-cd "$HERE"
-bk clone -q markcset markcset_copy 2>OUT && fail
-grep -q "Missing delta (bk help chk2)" OUT || fail -f OUT wrong error
-cd markcset_copy
-test -d RESYNC || fail expected RESYNC lock in clone
-# repair can replace a new file but not port a missing delta
-bk repair 2>OUT && fail -f OUT repair fixed
-grep -q "Missing delta (bk help chk2)" OUT || fail -f OUT wrong error
-# check in the initial repo will repair itself
-cd ../markcset
-bk -r check -ac 2>OUT || fail -f OUT
-grep -q 'F/foo: adding and/or removing missing csetmarks' OUT || fail -f OUT
-bk repocheck $Q || fail
+bk repocheck $Q || fail should be fine
 echo OK
+}
+
+echo $N Test gone file not gone and colliding on a cset boundary ....$NL
+cd "$HERE/project"
+bk clone $Q . ../copy
+bk _rm SCCS/s.file
+bk -r check -aggg | bk gone $Q -
+touch file
+bk new $Q file
+bk commit $Q -ynewfoo
+cd ../copy
+bk mv file bar
+bk pull -q 2> GOT && fail -f GOT expected failure
+cat <<EOF > WANT
+A path-conflict was found in existing csets
+  ./bar|1.6
+  with pending rename from ./file
+conflicts with existing:
+  ./file|1.1
+Must include other renames in commit.
+Check failed.  Resolve not completed.
+Your repository should be restored to its previous state.
+We are running a full consistency check to verify this, please wait.
+check passed.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT GOT
+echo OK
+

@@ -445,3 +445,29 @@ chksum_main(int ac, char **av)
 
 	return (0);
 }
+
+/*
+ * A handy little utility to read a mdbm file on disk and dump its
+ * contents to stdout. Useful for debugging.
+ */
+int
+mdbmdump_main(int ac, char **av)
+{
+	int	c;
+	hash	*h;
+
+	while ((c = getopt(ac, av, "", 0)) != -1) {
+		switch (c) {
+		    default: bk_badArg(c, av);
+		}
+	}
+	if (!av[optind] || av[optind+1]) usage();
+
+	unless (h = hash_open(HASH_MDBM, av[optind], O_RDONLY, 0)) {
+		perror(av[optind]);
+		return (1);
+	}
+	hash_toStream(h, stdout);
+	hash_close(h);
+	return (0);
+}

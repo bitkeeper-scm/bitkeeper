@@ -68,6 +68,7 @@ hash_toStream(hash *h, FILE *f)
 	sortLines(fieldlist, 0);
 	EACH(fieldlist) {
 		data = hash_fetchStr(h, fieldlist[i]);
+		assert(data);
 		writeField(f, fieldlist[i], data, h->vlen);
 	}
 	rc = 0;
@@ -185,7 +186,7 @@ binaryField(u8 *data, int len)
 			lastret = i;
 		}
 	}
-	if ((data[len-1] != 0) || ((i - lastret) > 256)) return (1);
+	if ((len>0) && (data[len-1] != 0) || ((i - lastret) > 256)) return (1);
 	return (0);
 }
 

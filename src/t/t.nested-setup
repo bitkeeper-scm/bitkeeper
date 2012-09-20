@@ -84,7 +84,7 @@ bk attach --force -q -N manual_component >GOT 2>&1 && {
 	exit 1
 }
 cat <<EOF > WANT
-attach: manual_component is already a component
+attach -N: source repo must be standalone
 EOF
 cmpfiles GOT WANT
 echo OK

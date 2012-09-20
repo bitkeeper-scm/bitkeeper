@@ -40,6 +40,7 @@ private	struct {
 } *opts;
 
 private	retrc	attach(void);
+private	void	attach_cleanup(char *path);
 private	retrc	clone(char **, remote *, char *, char **);
 private	retrc	clone2(remote *r);
 private int	sfio(remote *r, char *prefix);
@@ -311,7 +312,7 @@ clone_main(int ac, char **av)
 		char	*dir;
 
 		if (opts->attach_only) {
-			dir = aprintf("%s/..", r->path);
+			dir = strdup(r->path);
 		} else {
 			dir = strdup(l ? l->path : opts->to);
 		}
@@ -397,13 +398,21 @@ chkAttach(char *dir)
 	 * against is also product relative.
 	 */
 	if (opts->attach_only) {
-		/* /build/.regression lm/sandbox/project/gcc/deepnest/.. */
-		p = dirname_alloc(dir);
-		reldir = proj_relpath(prod, p);
+		p = aprintf("%s/%s", dir, BKROOT);
+		unless (isdir(p)) {
+			fprintf(stderr,
+			    "attach -N: not a BitKeeper repository\n");
+			free(p);
+			goto err;
+		}
 		free(p);
-	} else {
-		reldir = proj_relpath(prod, dir);
+		if (proj_isEnsemble(proj)) {
+			fprintf(stderr,
+			    "attach -N: source repo must be standalone\n");
+			goto err;
+		}
 	}
+	reldir = proj_relpath(prod, dir);
 
 	/*
 	 * Get the remote's syncroot, can't be used already.
@@ -1708,12 +1717,30 @@ err:
 	return (ret);
 }
 
+private void
+attach_cleanup(char *path)
+{
+	if (opts->attach_only) {
+		// too hard to clean up the non-documented -N:
+		// roll back rootlog, unlink COMPONENTS, restore parents ... or
+		fprintf(stderr,
+		    "attach: commit of only component failed. Try again\n");
+		return;
+	}
+	// blow away the clone, ...
+	if (proj_cd2product()) goto err;
+	rmtree(path);	/* Careful: unlink just cloned repo */
+
+err:	return;
+}
+
 private retrc
 attach(void)
 {
 	int	rc;
 	char	*tmp;
 	char	*nlid = 0;
+	char	*save;
 	char	buf[MAXLINE];
 	char	relpath[MAXPATH];
 	FILE	*f;
@@ -1786,6 +1813,8 @@ attach(void)
 		safe_putenv("_BK_NESTED_LOCK=%s", nlid);
 	}
 	concat_path(buf, proj_root(proj_findProduct(0)), "BitKeeper/log/HERE");
+	save = aprintf("%s.bak", buf);
+	fileCopy(buf, save);
 	if (f = fopen(buf, "a")) {
 		fprintf(f, "%s\n", proj_rootkey(0));
 	}
@@ -1804,8 +1833,15 @@ attach(void)
 		if (f = popen(buf, "w")) {
 			fprintf(f, "%s/SCCS/s.ChangeSet|+\n", relpath);
 		}
-		rc = (!f || pclose(f)) ? RET_ERROR : RET_OK;
+		if (rc = (!f || pclose(f)) ? RET_ERROR : RET_OK) {
+			strcpy(buf, save);
+			buf[strlen(save)-4] = 0;
+			fileMove(save, buf);
+			attach_cleanup(relpath);
+		}
 	}
+	unlink(save);
+	free(save);
 	if (nlid) {
 		if (nested_unlock(0, nlid)) {
 			fprintf(stderr, "%s\n", nested_errmsg());

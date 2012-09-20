@@ -536,6 +536,7 @@ echo OK
 echo $N Make sure that a rename only conflict does partial check ....$NL
 cd "$HERE"
 commercial parent
+echo 'partial_check:yes!' > "`bk dotbk`"/config
 touch start
 bk new $Q start
 bk commit $Q -ybaseline
@@ -546,24 +547,18 @@ cd ../child
 touch parent
 bk new $Q parent
 bk commit $Q -ychild
+bk repocheck $Q
 bk pull $Q -R
-BK_DEBUG_CMD=YES
-export BK_DEBUG_CMD
 (
 echo rl
 echo y
 echo q
-) | bk resolve >OUT 2>&1 || exit 1
-unset BK_DEBUG_CMD
+) | BK_SHOWPROC="$HERE/PROC" bk resolve >OUT 2>&1 || fail -f OUT
 test -d RESYNC && {
 	echo failed to complete resolve
 	exit 1
 }
-grep -q 'SYSIO {bk} {check} {-Rc} {-}' OUT || {
-	echo failed to run check
-	cat OUT
-	exit 1
-}
+grep -q 'check -c' "$HERE/PROC" || fail -f "$HERE/PROC"
 echo OK
 
 echo $N Make sure resolve does not rerun with conflicts and -s ......$NL
@@ -876,24 +871,8 @@ echo "resolved" >> 'space file'
 bk _rm -f 'SCCS/r.space file'
 cd ..
 bk get $Q -eM -g ChangeSet
-bk commit $Q -R -c
-bk _rm -f SCCS/r.ChangeSet
-# Now we have a repo with the problem, let's see if resolve can fix it
-# Fake some comments
-echo "comments" | bk cfile save 'dir2/space file'
-cd ..
-echo u > U
-bk resolve <U >OUT 2>ERR && {
-	echo failed
-	echo "Resolver should have failed"
-	cat OUT
-	cat ERR
-	exit 1
-}
-grep -q 'check: ChangeSet 1.17 is a merge but is missing a required merge delta' ERR || {
-	echo wrong error
-	exit 1
-}
+bk commit $Q -R -c 2>ERR && fail -f ERR
+grep -q 'check: ChangeSet 1.17 is a merge but is missing a required merge delta' ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Automerge a trigger after automerging gone ..................$NL

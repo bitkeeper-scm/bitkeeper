@@ -44,7 +44,6 @@ typedef	struct cset {
 } cset_t;
 
 private	void	csetlist(cset_t *cs, sccs *cset);
-private	int	marklist(char *file);
 private	ser_t	mkChangeSet(sccs *cset, char *files, FILE *diffs);
 private	void	doSet(sccs *sc);
 private	int	doMarks(cset_t *cs, sccs *sc);
@@ -526,52 +525,6 @@ markkey:
 		markThisCset(cs, sc, d);
 	}
 	return (rc);
-}
-
-/*
- * Mark the deltas listed in the diff file.  Ignore first line.
- * XXX: change from 0a0 format to I0 0 format
- */
-private int
-marklist(char *file)
-{
-	char	*t;
-	FILE	*list;
-	char	buf[MAXPATH*2];
-	cset_t	cs;
-
-	bzero(&cs, sizeof(cs));
-	cs.mark++;
-	cs.fastpatch = copts.fastpatch;	/* sccs_patch */
-
-	unless (list = fopen(file, "r")) {
-		perror(file);
-		return (-1);
-	}
-
-	/* eat the first line ... */
-	unless (fnext(buf, list)) {
-		fprintf(stderr, "cset: marking new list: empty file\n");
-		fclose(list);
-		return (-1);
-	}
-	/*
-	 * Now do the real data.
-	 * XXX: fix when replace 0a0 with I0 0.  &buf[2] => buf
-	 */
-	while (fnext(buf, list)) {
-		chop(buf);
-		t = separator(&buf[2]);
-		assert(t);
-		*t++ = 0;
-		if (doKey(&cs, &buf[2], t, 0)) {
-err:			fclose(list);
-			return (-1);
-		}
-	}
-	if (doKey(&cs, 0, 0, 0)) goto err;
-	fclose(list);
-	return (0);
 }
 
 /*
@@ -1142,11 +1095,6 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 		close(fd0);
 		fd0 = -1;
 	}
-	if (marklist(filename)) {
-		error = -1;
-		goto out;
-	}
-
 out:	unlink(filename);
 	comments_done();
 	return (error);
