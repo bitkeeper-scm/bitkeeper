@@ -460,6 +460,22 @@ repository_downgrade(project *p)
 }
 
 void
+repository_rdunlockf(project *p, char *lockf)
+{
+	char	path[MAXPATH];
+	int	pid = -1;
+	char	*root;
+
+	unless (root = proj_root(p)) return;
+	sprintf(path, "%s/%s/%s", root, READER_LOCK_DIR, lockf);
+	sscanf(lockf, "%d@", &pid);
+	if (unlink(path) == 0) {
+		write_log("cmd_log", "read unlock (%u)", pid);
+		TRACE("RDUNLOCK %u", pid);
+	}
+}
+	
+void
 repository_unlock(project *p, int all)
 {
 	TRACE("repository_unlock(%d)", all);
