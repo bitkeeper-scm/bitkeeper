@@ -1134,6 +1134,7 @@ int	repository_mine(project *p, char type);
 int	repository_lockers(project *p);
 int	repository_rdlock(project *p);
 int	repository_rdunlock(project *p, int all);
+void	repository_rdunlockf(project *p, char *file);
 void	repository_unlock(project *p, int all);
 int	repository_wrlock(project *p);
 int	repository_wrunlock(project *p, int all);
