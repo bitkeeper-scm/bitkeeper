@@ -1,19 +1,23 @@
 ============================================================================
-Release notes for BitKeeper version 5.4.3 (released Aug 24, 2012)
+Release notes for BitKeeper version 5.4.3 (released Sep 24, 2012)
 
 This is a minor bugfix release.
 
 Bug fixes:
 
-  misc
-    - Fix a rare case where a bk can hold a lock while prompting the
-      user in 'bk resolve' that will prevent other instances of
-      BitKeeper on the same machine from running.
+   - Fix a rare case where a bk can hold a lock while prompting the
+     user in 'bk resolve' that will prevent other instances of
+     BitKeeper on the same machine from running.
 
-    - Address a performance problem with licensing for customers with
-      1000s of active hosts and NFS home directories.
+   - Address a performance problem with licensing for customers with
+     1000s of active hosts and NFS home directories.
 
-  Nested
+   - bk changes <url> held a read lock on <url>.  This is a problem if
+     a user never exits bk changes.  We drop the lock after 30 seconds
+     on Unix and kill the remote changes command after 10 minutes on
+     Windows.
+
+  Nested feature
     - Prune the list of alternative locations for unpopulated
       components in the current repository to at most 3 locations.
       This prevents performance problems when the list grew too
@@ -26,16 +30,17 @@ Bug fixes:
     - fix bk repair to work in a nested component.
 
   bk partition
-    - Fix a crash on windows.
+    - Fix a problem where it might not complete on Windows.
     
   bk port
     - When porting a component from a different nested product,
-      require that the source repository be labeled as a 'gate'.  This
-      avoids user errors.
+      require that the source repository be labeled as a 'gate'.  
+      This is an attempt to make sure that the ported from repo
+      will not go away; users frequently want the rest of the
+      nested commit that was partially ported.
 
   bk commit
-    - Detect an error condition where a file system problem prevents
-      marking some files as being committed.
+    - Better error handling in the face of file system failures.
 
   bk fm3tool
     - Fix a bug where restarting a merge when the "Show GCA" checkbox
