@@ -972,7 +972,7 @@ proc configureTextWidgets {} \
 	## We don't want to figure widgets for all of our tools, only
 	## specific ones.
 	set tool [file tail [info script]]
-	if {$tool in "csettool difftool fm3tool fmtool newdifftool revtool"} {
+	if {$tool in "csettool difftool fm3tool fmtool revtool"} {
 		set top .
 	} elseif {$tool eq "citool"} {
 		set top .citool

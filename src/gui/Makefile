@@ -12,8 +12,8 @@ endif
 REPO   := $(shell basename "`bk -P root`")
 LIBDIR	= lib
 GUIS	= revtool citool oldcitool helptool difftool csettool fmtool fm3tool \
-	  msgtool renametool setuptool bugform supportform newdifftool \
-	  showproc catcomments debugtool
+	  msgtool renametool setuptool bugform supportform showproc \
+	  catcomments debugtool
 TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
 GUITEST = ../t/guitest.tcl
@@ -27,7 +27,7 @@ SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 	  fm3tool.tcl fmtool.tcl helptool.tcl msgtool.tcl progress.tcl \
 	  renametool.tcl revtool.tcl search.tcl setuptool.tcl \
 	  ../port/$(SYS)_platform.tcl supportform.tcl supportlib.tcl \
-	  newdifftool.tcl showproc.tcl debugtool.l fmlib.tcl
+	  showproc.tcl debugtool.l fmlib.tcl
 
 default: notes/BUILD
 	@cat notes/BUILD
@@ -140,11 +140,6 @@ revtool: $(COMMON) search.tcl appState.tcl revtool.tcl
 
 setuptool: $(COMMON) tkwizard.tcl setuptool.tcl
 	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/setuptool
-
-newdifftool: $(COMMON) search.tcl appState.tcl newdifflib.tcl \
-	comm.tcl bktalk.tcl actions.tcl appState.tcl \
-	 newsearchlib.tcl newdifftool.tcl
-	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/newdifftool
 
 showproc: showproc.tcl
 	@(echo "wm withdraw ."; cat $^) | $(TCLWRAP) > $(LIBDIR)/showproc
