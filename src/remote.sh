@@ -10,6 +10,8 @@ test $OSTYPE != cygwin && {
 }
 BK_NOTTY=YES
 export BK_NOTTY
+BK_NO_CCACHE=YES
+export BK_NO_CCACHE
 
 test X$LOG = X && LOG=LOG-$BK_USER
 cd /build
