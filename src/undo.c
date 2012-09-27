@@ -967,31 +967,44 @@ void
 save_log_markers(void)
 {
 	char	*mark;
-	sccs	*s = sccs_csetInit(0);
+	sccs	*s;
 
-	unless (s) return;
 	valid_marker = 0;
+	// uncomment after bk-4.x is gone
+	// unless (proj_bklbits(0) & LIC_AIRGAP) return;
 	if (mark = signed_loadFile(CMARK)) {
-		if (sccs_findKey(s, mark)) valid_marker = 1;
+		if (streq(mark, proj_tipkey(0))) {
+			valid_marker = 1;
+		} else {
+			if (s = sccs_csetInit(0)) {
+				if (sccs_findKey(s, mark)) valid_marker = 1;
+				sccs_free(s);
+			}
+		}
 		free(mark);
 	}
-	sccs_free(s);
 }
 
 void
 update_log_markers(int verbose)
 {
-	sccs	*s = sccs_csetInit(0);
+	sccs	*s;
 	char	*mark;
 
-	unless (s) return;
-
-	if (valid_marker) {
-		if (mark = signed_loadFile(CMARK)) {
-			if (sccs_findKey(s, mark)) valid_marker = 0;
-			free(mark);
+	// uncomment after bk-4.x is gone
+	// unless (proj_bklbits(0) & LIC_AIRGAP) return;
+	if (valid_marker && (mark = signed_loadFile(CMARK))) {
+		if (streq(mark, proj_tipkey(0))) {
+			valid_marker = 0;
+		} else {
+			if (s = sccs_csetInit(0)) {
+				if (sccs_findKey(s, mark)) valid_marker = 0;
+				sccs_free(s);
+			} else {
+				valid_marker = 0;
+			}
 		}
+		free(mark);
 	}
-	sccs_free(s);
 	if (valid_marker) updLogMarker();
 }
