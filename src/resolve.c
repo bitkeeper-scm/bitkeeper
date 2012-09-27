@@ -1332,6 +1332,7 @@ move_remote(resolve *rs, char *sfile)
 	free(gfile);
 	idcache_write(0, idDB);
 	mdbm_close(idDB);
+	/* Nota bene: *s is may be out of date */
 	return (0);
 }
 

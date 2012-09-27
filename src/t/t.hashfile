@@ -273,7 +273,7 @@ value
 EOF
 bk _hashfile_test w in >got || fail
 cat <<EOF > WANT
-@has%09tab
+@has	tab
 value
 EOF
 cmpfiles got WANT
@@ -283,11 +283,7 @@ echon key with unprintable character error ........................
 printf "@has\001ctrlA\n" >in
 echo value >>in
 bk _hashfile_test w in >got || fail
-cat <<EOF > WANT
-@has%01ctrlA
-value
-EOF
-cmpfiles got WANT
+cmpfiles got in
 echo OK
 
 echon key with null error .........................................

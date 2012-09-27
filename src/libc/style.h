@@ -11,6 +11,11 @@
 #define creat(p,m)	open(p,O_CREAT|O_WRONLY|O_TRUNC,m)
 #define	streq(a,b)	(!strcmp((a),(b)))
 #define	strneq(a,b,n)	(!strncmp((a),(b),(n)))
+#define	ends_with(a,b)	({				  \
+	char	*_a = (a), *_b = (b);			  \
+	int	_lena = strlen(_a);			  \
+	int	_lenb = strlen(_b);			  \
+	((_lena >= _lenb) && streq(_a + _lena - _lenb, _b));})
 #define	index(s, c)	strchr(s, c)
 #define	rindex(s, c)	strrchr(s, c)
 #define	notnull(s)	((s) ? (s) : "")

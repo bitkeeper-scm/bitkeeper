@@ -197,3 +197,21 @@ pull: searching http://localhost:$OLDP/nest...ok (gate)
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo -------------- misc tests
+echo $N Verify old bk can read new hash encoding ....................$NL
+cat <<EOF > hash
+@a|b|c
+value
+EOF
+bk _hashfile_test w hash > hash.new || fail
+$OLDBK/bk _hashfile_test w hash > hash.old || fail
+bk _hashfile_test w hash.old > hash.old.new || fail
+$OLDBK/bk _hashfile_test w hash.new > hash.new.old || fail
+
+grep -q '@a|b|c' hash.new || fail
+grep -q '@a%7cb%7cc' hash.old || fail
+
+cmpfiles hash.old hash.new.old
+cmpfiles hash.new hash.old.new
+echo OK
