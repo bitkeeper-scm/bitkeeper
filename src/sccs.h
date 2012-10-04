@@ -1434,6 +1434,7 @@ extern	char	*log_versions;
 #define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
 #define	CMD_RDUNLOCK		0x00001000	/* unlock a previous READ */
 #define	CMD_BKD_CMD		0x00002000	/* command comes from bkd.c */
+#define	CMD_NOLOG		0x00004000	/* don't log command */
 
 #define	LOGVER			0		/* dflt idx into log_versions */
 

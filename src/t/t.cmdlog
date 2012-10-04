@@ -87,3 +87,9 @@ tail -1 BitKeeper/log/repo_log | grep -q rmtc="$copy_repoid" || {
 	exit 1
 }
 echo OK
+
+echo $N Verify that cmdlog itself is not logged .....................$NL
+bk cmdlog -va > WANT
+bk cmdlog -va > GOT
+cmpfiles WANT GOT
+echo OK

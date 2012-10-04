@@ -895,6 +895,7 @@ private	struct {
 	{"bk", CMD_COMPAT_NOSI}, /* bk-remote */
 	{"check", CMD_COMPAT_NOSI},
 	{"clone", CMD_REPOLOG},		/* locking handled in clone.c */
+	{"cmdlog", CMD_NOLOG},
 	{"collapse", CMD_REPOLOG},
 	{"commit", CMD_REPOLOG},
 	{"fix", CMD_REPOLOG},
@@ -989,21 +990,21 @@ cmdlog_start(char **av, int bkd_cmd)
 		cmdlog_lock(cmdlog_flags);
 	}
 
-	for (len = 1, i = 0; av[i]; i++) {
-		quoted = shellquote(av[i]);
-		len += strlen(quoted) + 1;
-		if (len >= sizeof(cmdlog_buffer)) {
+	unless (cmdlog_flags & CMD_NOLOG) {
+		for (len = 1, i = 0; av[i]; i++) {
+			quoted = shellquote(av[i]);
+			len += strlen(quoted) + 1;
+			if (len >= sizeof(cmdlog_buffer)) {
+				free(quoted);
+				break;
+			}
+			if (i) strcat(cmdlog_buffer, " ");
+			strcat(cmdlog_buffer, quoted);
 			free(quoted);
-			break;
 		}
-		if (i) strcat(cmdlog_buffer, " ");
-		strcat(cmdlog_buffer, quoted);
-		free(quoted);
+		write_log("cmd_log", "%s", cmdlog_buffer);
+		indent_level++;
 	}
-
-	write_log("cmd_log", "%s", cmdlog_buffer);
-	indent_level++;
-
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
 
 	if (bkd_cmd) {
@@ -1337,14 +1338,16 @@ cmdlog_end(int ret, int bkd_cmd)
 	assert(len < savelen);
 	mdbm_close(notes);
 	notes = 0;
-	write_log("cmd_log", "%s", log);
-	if (cmdlog_repolog) {
-		/*
-		 * commands in the repolog table above get written
-		 * to the repo_log in addition to the cmd_log and
-		 * the repo_log is never rotated.
-		 */
-		write_log("repo_log", "%s", log);
+	unless (cmdlog_flags & CMD_NOLOG) {
+		write_log("cmd_log", "%s", log);
+		if (cmdlog_repolog) {
+			/*
+			 * commands in the repolog table above get written
+			 * to the repo_log in addition to the cmd_log and
+			 * the repo_log is never rotated.
+			 */
+			write_log("repo_log", "%s", log);
+		}
 	}
 	free(log);
 	if ((!bkd_cmd || (bkd_cmd && ret )) &&
