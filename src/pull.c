@@ -1522,7 +1522,6 @@ pullPoly(int got_patch)
 	assert(local && remote);
 
 	unless (getenv("_BK_DEVELOPER") && proj_configbool(0, "poly")) {
-		/* assumes D_SET is clear to start; leaves clear */
 		if (range_walkrevs(
 		    cset, local, 0, remote, WR_GCA, polyChk, cmarks)) {
 			goto err;

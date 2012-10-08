@@ -1936,7 +1936,6 @@ check(sccs *s, MDBM *idDB)
 		}
 	}
 	if (trunk && branch && polyErr) {
-		/* Note: assumes D_SET is cleared to start; leaves clear */
 		errors += range_walkrevs(
 		    s, trunk, 0, branch, WR_GCA, polyChk, deltas);
 	}

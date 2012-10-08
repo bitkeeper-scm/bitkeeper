@@ -996,3 +996,16 @@ test -s OUT && fail -f OUT
 bk prs -r1.2 -hnd'$if(:S:){failed S ":S:" :GFILE:}' DVFILE newbar > OUT
 test -s OUT && fail -f OUT
 echo OK
+
+echo $N checking :SETGCA: does not block prs from looping ...........$NL
+bk _get $Q -e -r1.1.1.2 newbar
+bk delta $Q -fynull newbar
+bk edit $Q -M newbar
+bk delta $Q -fynull newbar
+bk log -nd:SETGCA: newbar > GOT
+cat <<EOF > WANT
+1.1.1.2
+1.1
+EOF
+cmpfiles WANT GOT
+echo OK
