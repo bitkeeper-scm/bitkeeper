@@ -340,25 +340,26 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 
 /*
  * Detecting first node is a challenge given only RED and BLUE.
- * Using D_SET to help by marking a node it is a candidate for GCA,
- * and clearing D_SET when something in the history of a GCA colors on
- * to this node.  When we get to the node, if D_SET, then a real GCA
+ * Using a hash to help by marking a node it is a candidate for GCA,
+ * and clearing hash when something in the history of a GCA colors on
+ * to this node.  When we get to the node, if in hash, then a real GCA
  */
 private	void
-doGca(sccs *s, ser_t d, u32 *marked, u32 before, u32 change)
+doGca(sccs *s, ser_t d, hash *gca, u32 *marked, u32 before, u32 change)
 {
 	const int	mask = (D_BLUE|D_RED);
 
 	if (change != mask) {	/* changing 1 bit */
 		if (before != mask) { /* it was the other bit */
-			assert(!(FLAGS(s, d) & D_SET));
 			(*marked)++;
-			FLAGS(s, d) |= D_SET;	/* gca candidate */
+			/* gca candidate */
+			hash_insert(gca, &d, sizeof(d), 0, 0);
 		}
-	} else if (FLAGS(s, d) & D_SET) { /* inheriting 2 bit; & candidate */
+	} else if (!hash_delete(gca, &d, sizeof(d))) {
+		/* d _was_ in gca */
+		/* inheriting 2 bit; & candidate */
 		assert(before == mask);
 		(*marked)--;
-		FLAGS(s, d) &= ~D_SET;		/* no longer candidate */
 	}
 }
 
@@ -387,8 +388,7 @@ doGca(sccs *s, ser_t d, u32 *marked, u32 before, u32 change)
  * case.
  *
  * WR_GCA mode: the callback will be on the first deltas to be in both
- * regions.  It uses D_SET to identify first delta.
- * Make sure D_SET is clear to start off when using WR_GCA.
+ * regions.  It uses a hash to identify first delta.
  */
 int
 range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
@@ -399,6 +399,7 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 	u32	color, before;
 	int	marked = 0;	/* number of BLUE or RED nodes */
 	int	all = 0;	/* set if all deltas in 'to' */
+	hash	*gca = (flags & WR_GCA) ? hash_new(HASH_MEMHASH) : 0;
 	ser_t	*freelist = 0;
 	const int	mask = (D_BLUE|D_RED);
 
@@ -420,7 +421,7 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 		if (before != mask) { /* before == 1 */		\
 			marked--;				\
 		}						\
-		if (flags & WR_GCA) doGca(s, x, &marked, before, change); \
+		if (flags & WR_GCA) doGca(s, x, gca, &marked, before, change); \
 	}} while (0)
 
 	assert (!from || !fromlist);
@@ -453,10 +454,8 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 		FLAGS(s, d) &= ~color; /* clear bits */
 		if (color != mask) marked--;
 		if (flags & WR_GCA) {
-			if (FLAGS(s, d) & D_SET) {
-				/* if still D_SET by here, it's a GCA */
+			if (hash_fetch(gca, &d, sizeof(d))) {
 				marked--;
-				FLAGS(s, d) &= ~D_SET;
 				goto doit;
 			}
 		} else if ((color == D_RED) ||
@@ -475,11 +474,10 @@ doit:			if (fcn && (ret = fcn(s, d, token))) {
 	}
 	/* cleanup */
 	color = mask;
-	if (flags & WR_GCA) color |= D_SET;
-
 	for (; (d >= TREE(s)) && (d >= last); d--) {
 		FLAGS(s, d) &= ~color;
 	}
+	if (gca) hash_free(gca);
 	if (freelist) free(freelist);
 	return (ret);
 }
