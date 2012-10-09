@@ -984,7 +984,7 @@ char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, ser_t, char *);
 void	sccs_md5delta(sccs *s, ser_t d, char *b64);
 void	sccs_sortkey(sccs *s, ser_t d, char *buf);
-void	sccs_key2md5(char *rootkey, char *deltakey, char *b64);
+void	sccs_key2md5(char *deltakey, char *b64);
 void	sccs_setPath(sccs *s, ser_t d, char *newpath);
 void	sccs_syncRoot(sccs *s, char *key);
 ser_t	sccs_csetBoundary(sccs *s, ser_t, u32 flags);

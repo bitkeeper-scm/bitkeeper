@@ -215,3 +215,16 @@ grep -q '@a%7cb%7cc' hash.old || fail
 cmpfiles hash.old hash.new.old
 cmpfiles hash.new hash.old.new
 echo OK
+
+echo $N Verify new bk can read old md5keys ..........................$NL
+Kold=`$OLDBK/bk prs -hnd:MD5KEY: -r+ ChangeSet`
+Knew=`bk prs -hnd:MD5KEY: -r+ ChangeSet`
+Kcompat=`bk prs -hnd:MD5KEY_COMPAT: -r+ ChangeSet`
+
+test $Kold = $Kcompat || fail
+test $Kold \!= $Knew || fail
+
+Knew2=`bk prs -hnd:MD5KEY: -r$Kold ChangeSet`
+
+test $Knew = $Knew2 || fail
+echo OK

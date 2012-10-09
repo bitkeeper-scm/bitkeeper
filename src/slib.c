@@ -78,6 +78,7 @@ private	int	bin_deltaTable(sccs *s);
 private	off_t	bin_data(char *header);
 private	ser_t	*scompressGraph(sccs *s);
 private	FILE	*sccs_wrweaveDone(sccs *s);
+private	void	sccs_md5deltaCompat(sccs *s, ser_t d, char *b64);
 
 /*
  * returns 1 if dir is a directory that is not empty
@@ -15268,6 +15269,14 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		return (strVal);
 	}
 
+	case KW_MD5KEY_COMPAT: /* MD5KEY_COMPAT */ {
+		char	b64[MD5LEN];
+
+		sccs_md5deltaCompat(s, d, b64);
+		fs(b64);
+		return (strVal);
+	}
+
 	case KW_KEY: /* KEY */ {
 		char	key[MAXKEY];
 
@@ -16803,6 +16812,10 @@ sccs_findMD5(sccs *s, char *md5)
 	     d && (d <= TABLE(s)) && (dd == DATE(s, d)); ++d) {
 		sccs_md5delta(s, d, dkey);
 		if (streq(md5, dkey)) return (d);
+
+		/* compat with pre-6.0 versions of bk */
+		sccs_md5deltaCompat(s, d, dkey);
+		if (streq(md5, dkey)) return (d);
 	}
 	return (0);
 }
@@ -16985,6 +16998,18 @@ sccs_sortkey(sccs *s, ser_t d, char *buf)
 void
 sccs_md5delta(sccs *s, ser_t d, char *b64)
 {
+	char	key[MAXKEY];
+
+	sccs_sdelta(s, d, key);
+	sccs_key2md5(key, b64);
+}
+
+/*
+ * Generate the md5key using by versions of bk before 6.0
+ */
+private void
+sccs_md5deltaCompat(sccs *s, ser_t d, char *b64)
+{
 	char	*hash;
 	char	key[MAXKEY+16];
 
@@ -16996,24 +17021,29 @@ sccs_md5delta(sccs *s, ser_t d, char *b64)
 }
 
 /*
- * Given a long rootkey/deltakey pair return the md5key for that delta.
+ * Given a long deltakey return the md5key for that delta.
  */
 void
-sccs_key2md5(char *rootkey, char *deltakey, char *b64)
+sccs_key2md5(char *deltakey, char *b64)
 {
-	char	*hash, *p, *random;
-	int	i;
+	char	*hash, *p;
 	char	key[MAXKEY+64];
 
-	/* like this to work with shortkeys */
-	random = rootkey;
-	for (i = 0; i < 4; i++) {
-		unless (random = strchr(random, '|')) break;
-		random++;
-	}
-
 	strcpy(key, deltakey);
-	if (random) strcat(key, random);
+	if (p = strstr(deltakey, "/ChangeSet|")) {
+		/*
+		 * For component ChangeSet files we remove the
+		 * pathname component before computing the md5key
+		 */
+		strcpy(strchr(key, '|')+1, p+1);
+	}
+	if (strcnt(deltakey, '|') == 4) {
+		/*
+		 * If randbits, duplicate them so md5rootkeys match
+		 * original meaning.
+		 */
+		strcat(key, strrchr(deltakey, '|')+1);
+	}
 	hash = hashstr(key, strlen(key));
 
 	p = strchr(deltakey, '|');
