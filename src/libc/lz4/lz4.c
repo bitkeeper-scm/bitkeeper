@@ -61,7 +61,7 @@
 // CPU Feature Detection
 //**************************************
 // 32 or 64 bits ?
-#if (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64) || defined(__ppc64__) || defined(_WIN64) || defined(__LP64__) || defined(_LP64) )   // Detects 64 bits mode
+#if (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64) || defined(__ppc64__) || defined(_WIN64) || defined(__LP64__) || defined(_LP64) || defined(__ia64__) )   // Detects 64 bits mode
 #  define LZ4_ARCH64 1
 #else
 #  define LZ4_ARCH64 0
@@ -69,7 +69,7 @@
 
 // Little Endian or Big Endian ?
 // Note : overwrite the below #define if you know your architecture endianess
-#if (defined(__BIG_ENDIAN__) || defined(__BIG_ENDIAN) || defined(_BIG_ENDIAN) || defined(_ARCH_PPC) || defined(__PPC__) || defined(__PPC) || defined(PPC) || defined(__powerpc__) || defined(__powerpc) || defined(powerpc) || ((defined(__BYTE_ORDER__)&&(__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__))) )
+#if (defined(__BIG_ENDIAN__) || defined(__BIG_ENDIAN) || defined(_BIG_ENDIAN) || defined(_ARCH_PPC) || defined(__PPC__) || defined(__PPC) || defined(PPC) || defined(__powerpc__) || defined(__powerpc) || defined(powerpc) || defined(__hpux__) || defined(__sparc__) || ((defined(__BYTE_ORDER__)&&(__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__))) )
 #  define LZ4_BIG_ENDIAN 1
 #else
 // Little Endian assumed. PDP Endian and other very rare endian format are unsupported.
@@ -145,25 +145,22 @@
 #  define S32		__int32
 #  define U64		unsigned __int64
 #else
-#  include <stdint.h>
-#  define BYTE	uint8_t
-#  define U16		uint16_t
-#  define U32		uint32_t
-#  define S32		int32_t
-#  define U64		uint64_t
+typedef unsigned char		BYTE;
+typedef unsigned short		U16;
+typedef unsigned int		U32;
+typedef unsigned long long	U64;
+typedef signed int		S32;
 #endif
 
-#ifndef LZ4_FORCE_UNALIGNED_ACCESS
-#  pragma pack(push, 1)
+#ifdef LZ4_FORCE_UNALIGNED_ACCESS
+#  define PACKED
+#else
+#  define PACKED __attribute__((__packed__))
 #endif
 
-typedef struct _U16_S { U16 v; } U16_S;
-typedef struct _U32_S { U32 v; } U32_S;
-typedef struct _U64_S { U64 v; } U64_S;
-
-#ifndef LZ4_FORCE_UNALIGNED_ACCESS
-#  pragma pack(pop)
-#endif
+typedef struct _U16_S { U16 v; } PACKED U16_S;
+typedef struct _U32_S { U32 v; } PACKED U32_S;
+typedef struct _U64_S { U64 v; } PACKED U64_S;
 
 #define A64(x) (((U64_S *)(x))->v)
 #define A32(x) (((U32_S *)(x))->v)
