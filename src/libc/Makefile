@@ -6,6 +6,7 @@ all: libc.a mtst$(EXE)
 
 include fslayer/Makefile
 include hash/Makefile
+include lz4/Makefile
 include mdbm/Makefile
 include regex/Makefile
 include string/Makefile
@@ -19,11 +20,11 @@ endif
 include zlib/Makefile
 
 OBJS = $(FSLAYER_OBJS) $(HASH_OBJS) $(MDBM_OBJS) $(REGEX_OBJS) \
-	$(STRING_OBJS) $(STDIO_OBJS) \
+	$(STRING_OBJS) $(STDIO_OBJS) $(LZ4_OBJS) \
 	$(TCP_OBJS) $(UTILS_OBJS) $(WIN32_OBJS) $(ZLIB_OBJS)
 SRCS = $(OBJS:%.o=%.c)
 HDRS = $(FSLAYER_HDRS) $(HASH_HDRS) $(MDBM_HDRS) $(REGEX_HDRS) \
-	$(STRING_HDRS) $(STDIO_HDRS) \
+	$(STRING_HDRS) $(STDIO_HDRS) $(LZ4_HDRS) \
 	$(TCP_HDRS) $(UTILS_HDRS) $(WIN32_HDRS) $(ZLIB_HDRS)
 
 CC = gcc
