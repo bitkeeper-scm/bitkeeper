@@ -2025,8 +2025,11 @@ sccs_startWrite(sccs *s)
 		 * close and free all 3 FILE*'s.
 		 */
 		if (sfile = fopen(xfile, "w")) {
-			fpush(&sfile, fopen_crc(sfile, "w", est_size));
-			fpush(&sfile, fopen_vzip(sfile, "w")); /* optional? */
+			if (fpush(&sfile, fopen_crc(sfile, "w", est_size)) ||
+			    fpush(&sfile, fopen_vzip(sfile, "w"))) {
+				fclose(sfile);
+				sfile = 0;
+			}
 		}
 	} else if (s->mem_out) {
 		unless(s->outfh) s->outfh = fmem();
@@ -2038,7 +2041,10 @@ sccs_startWrite(sccs *s)
 	unless(BFILE_OUT(s)) {
 		s->cksum = 0;
 		assert(!s->ckwrap);
-		fpush(&sfile, fopen_cksum(sfile, "w", &s->cksum));
+		if (fpush(&sfile, fopen_cksum(sfile, "w", &s->cksum))) {
+			fclose(sfile);
+			sfile = 0;
+		}
 		s->ckwrap = 1;
 	}
 	s->outfh = sfile;
