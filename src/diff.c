@@ -920,11 +920,11 @@ diff_printIfDef(df_ctx *dc, char *defstr, df_puts pfn, FILE *out)
 
 void
 diff_printUnified(df_ctx *dc, char *nameA, time_t *timeA,
-    char *nameB, time_t *timeB, df_puts pfn, df_hdr phdr, FILE *out)
+    char *nameB, time_t *timeB, int context,
+    df_puts pfn, df_hdr phdr, FILE *out)
 {
 	int	i, j;
 	int	nHunks;
-	int	context = 3;
 	int	n, m;
 	int	sx, ex, sy, ey;
 	int	x, y;
@@ -972,7 +972,7 @@ diff_printUnified(df_ctx *dc, char *nameA, time_t *timeA,
 		fprintf(out, " @@");
 		if (phdr) {
 			fputc(' ', out);
-			phdr(sx, dc->extra, out);
+			phdr(h[i].li, dc->extra, out);
 		}
 		fprintf(out, "\n");
 
