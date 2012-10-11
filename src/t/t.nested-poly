@@ -197,10 +197,19 @@ echo OK
 
 echo $N bk r2c on the component tip gives right answer ..............$NL
 REV=`bk --cd=comp r2c -r1.4 ChangeSet`
-test $REV = 1.3 || fail wrong rev -- wanted 1.4 and got $REV
+test $REV = 1.3 || fail wrong rev -- wanted 1.3 and got $REV
 # comp 1.3 is included in both prod 1.3 and 1.2.1.1, and shows ...
 REV=`bk --cd=comp r2c -r1.3 ChangeSet`
 test $REV = 1.2.1.1,1.3 || fail wrong rev -- wanted 1.2.1.1,1.3 and got $REV
+echo OK
+
+echo $N Make sure r2c with ranges gives the right answer.............$NL
+REV=`bk --cd=comp r2c -r1.1..1.3 ChangeSet`
+test $REV = 1.2.1.1,1.3,1.2 || {
+	fail wrong rev -- wanted 1.2.1.1,1.3,1.2 and got $REV
+}
+REV=`bk --cd=comp r2c -r1.2,1.4 ChangeSet`
+test $REV = 1.3,1.2 || fail wrong rev -- wanted 1.3,1.2 and got $REV
 echo OK
 
 echo $N make sure a pull where one side contains poly is okay .......$NL
@@ -324,6 +333,17 @@ test $REV = 1.2.1.3 || fail wrong rev -- wanted 1.2.1.3 and got $REV
 # comp 1.3 is included in both prod 1.3 and 1.2.1.1, and shows ...
 REV=`bk --cd=comp r2c -r1.3 ChangeSet`
 test $REV = 1.2.1.1,1.3 || fail wrong rev -- wanted 1.2.1.1,1.3 and got $REV
+echo OK
+
+echo $N bk r2c with ranges gives the right answer....................$NL
+REV=`bk --cd=comp r2c -r1.1..1.5 ChangeSet`
+test $REV = 1.2.1.3,1.2.1.2,1.2.1.1,1.3,1.2 || {
+	fail wrong rev -- wanted 1.2.1.3,1.2.1.2,1.2.1.1,1.3,1.2 and got $REV
+}
+REV=`bk --cd=comp r2c -r1.3.1.1,1.5 ChangeSet`
+test $REV = 1.2.1.3,1.2.1.2,1.3 || {
+	fail wrong rev -- wanted 1.2.1.3,1.2.1.2,1.3 and got $REV
+}
 echo OK
 
 echo $N make sure a pull where one side contains poly is okay .......$NL
@@ -621,4 +641,16 @@ bk undo -qsf -a$GCA 2> GOT
 bk sfiles BitKeeper/etc | grep -q poly && fail poly file found
 # Message created by running with _BK_DEVELOPER set; customers don't see it
 cmpfiles "$HERE/WANT" GOT
+echo OK
+
+echo "----- nested r2c"
+echo $N Check r2c in non-poly but looks like poly case ..............$NL
+cd "$HERE/local"
+bk portal $Q -r
+bk undo $Q -sfaLOCAL
+bk portal $Q .
+cd comp
+bk port $Q "$HERE/standalone"
+R2C=`bk r2c -r1.3 ChangeSet`
+test "$R2C" = 1.3 || fail got "'$R2C'"
 echo OK

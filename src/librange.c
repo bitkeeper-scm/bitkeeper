@@ -389,6 +389,13 @@ doGca(sccs *s, ser_t d, hash *gca, u32 *marked, u32 before, u32 change)
  *
  * WR_GCA mode: the callback will be on the first deltas to be in both
  * regions.  It uses a hash to identify first delta.
+ *
+ * WR_STOP is used when the stopping points aren't known in advance
+ * but recognized during the walk.  This is good for finding D_CSET
+ * marked ranges.  Normally, if the callback returns non-zero, then
+ * walkrevs immediately exits with that return code.  With WR_STOP,
+ * that is true if the return is < 0; a ret > 0 tells walkrevs to
+ * treat this node as a GCA node, and walkrevs keeps going.
  */
 int
 range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
@@ -462,7 +469,10 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 		    ((flags & WR_BOTH) && (color != mask))) {
 			if (flags & WR_BOTH) FLAGS(s, d) |= color;
 doit:			if (fcn && (ret = fcn(s, d, token))) {
-				unless (flags & WR_STOP) break;
+				unless ((flags & WR_STOP) && (ret > 0)) {
+					break;
+				}
+				ret = 0;
 				color = mask;
 			} else {
 				unless (s->rstop) s->rstop = d;
