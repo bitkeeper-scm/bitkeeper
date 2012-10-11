@@ -9,11 +9,11 @@ test_proxy() {
 		cat ERR
 		exit 1
 	}
-	test "`cat OUT`" = 42f14254IYxNQ5WXknkqGmR_SESatA || {
-		echo wrong result
-		cat OUT
-		exit 1
-	}
+	# the md5key cset in bk-stable changes this answer
+	# so we accept both
+	GOT=`cat OUT`
+	test "$GOT" = 42f14254IYxNQ5WXknkqGmR_SESatA -o \
+	     "$GOT" = 42f14254DlrMo6smkgf-qL6nG6TcJg || fail -f OUT
 	grep -q "trying PROXY data.bitmover.com:3128" ERR || {
 		echo did not use proxy
 		cat ERR
