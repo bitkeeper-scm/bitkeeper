@@ -3241,7 +3241,7 @@ mkgraph(sccs *s, int flags)
 	ser_t	serial;
 	char	(*dates)[20] = 0;
 	char	type;
-	FILE	*fcludes = fmem();
+	FILE	*fcludes;
 
 	rewind(s->fh);
 	if (BFILE(s)) {
@@ -3251,6 +3251,7 @@ mkgraph(sccs *s, int flags)
 	buf = sccs_nextdata(s);		/* checksum */
 	line++;
 	debug((stderr, "mkgraph(%s)\n", s->sfile));
+	fcludes = fmem();
 	unless (buf = sccs_nextdata(s)) goto bad;
 	/* skip version mark if it exists */
 	line++;
