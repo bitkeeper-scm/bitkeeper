@@ -742,7 +742,7 @@ nested_findMD5(nested *n, char *md5rootkey)
 
 	assert(n);
 	EACH_STRUCT(n->comps, c, i) {
-		sccs_key2md5(c->rootkey, c->rootkey, buf);
+		sccs_key2md5(c->rootkey, buf);
 		if (streq(buf, md5rootkey)) return (c);
 	}
 	return (0);

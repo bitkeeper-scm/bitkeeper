@@ -153,14 +153,6 @@ proc getConfig {prog} \
 	set _d(help.exact) 0		;# helpsearch, allows partial matches
 	set _d(help.scrollbars) RR	;# sides for each scrollbar
 
-	set _d(newdifftool.minThumbHeight) 30 ;# min height of custom scrollbar thumb
-	set _d(newdifftool.topMargin) 2
-	set _d(newdifftool.bottomMargin) 1
-	set _d(newdifftool.newColor) $BKGREEN1
-	set _d(newdifftool.oldColor) $BKGREEN1
-	set _d(newdifftool.diffColor) $GRAY88
-	set _d(newdifftool.highlight) $_d(highlight)
-
 	set _d(rename.listHeight) 8
 
 	# N.B. 500ms is the hard-coded constant in tk used to detect
@@ -338,7 +330,6 @@ proc getConfig {prog} \
 		set _d(fm3.mergeColor) $LIGHTBLUE
 		set _d(fm3.handColor) $LIGHTYELLOW
 		set _d(fm3.sameColor) $BKTURQUOISE1
-		set _d(newdifftool.highlight) $YELLOW
 	}
 
 	## Set these colors regardless of classic or not.

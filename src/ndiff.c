@@ -56,9 +56,10 @@ private	int	external_diff(char *lfile, char *rfile, df_opt *dop, char *out);
 int
 ndiff_main(int ac, char **av)
 {
-	int		c;
-	df_opt		opts;
-	longopt		lopts[] = {
+	int	c, i;
+	char	*p;
+	df_opt	opts;
+	longopt	lopts[] = {
 		{ "ignore-trailing-cr", 310 },
 		{ "show-function-line", 'F'},
 		{ "strip-trailing-cr", 320 },
@@ -68,13 +69,22 @@ ndiff_main(int ac, char **av)
 	int	rc = -1;
 
 	bzero(&opts, sizeof(df_opt));
-	while ((c = getopt(ac, av, "bdD:F:puwnN", lopts)) != -1) {
+	while ((c = getopt(ac, av, "bdD:F:pu|wnN", lopts)) != -1) {
 		switch (c) {
 		    case 'b': opts.ignore_ws_chg = 1; break;
 		    case 'd': opts.minimal = 1; break;
 		    case 'D': opts.out_define = strdup(optarg);	break;
 		    case 'p': opts.out_show_c_func = 1; break;
-		    case 'u': opts.out_unified = 1; break;
+		    case 'u':
+			opts.out_unified = 1;
+			if (optarg && isdigit(optarg[0])) {
+				i = strtoul(optarg, &p, 10);
+				opts.context = i ? i : -1; /* -1 means zero */
+				if (*p) getoptConsumed(p - optarg + 1);
+			} else if (optarg) {
+				getoptConsumed(1);
+			}
+			break;
 		    case 'w': opts.ignore_all_ws = 1; break;
 		    case 'n': opts.out_rcs = 1; break;
 		    case 'N': opts.new_is_null = 1; break;
@@ -129,6 +139,13 @@ cleanOpts(df_opt *opts)
 	 * show_c_func uses and pattern is invalid
 	 */
 	if (opts->out_show_c_func && opts->pattern) return (0);
+
+	if (opts->context) {
+		if (opts->context < 0) opts->context = 0; /* -1 means zero */
+	} else {
+		/* default is 3 lines of context */
+		opts->context = 3;
+	}
 	return (1);
 }
 
@@ -317,6 +334,7 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 		diff_printUnified(dc,
 		    file1, &sb[0].st_mtime,
 		    file2, &sb[1].st_mtime,
+		    o->dop->context,
 		    printLine, o->dop->pattern ? printHeader : 0, fout);
 	} else if (o->dop->out_rcs) {
 		diff_printRCS(dc, printLine, fout);
@@ -578,7 +596,7 @@ printHeader(int lno, void *extra, FILE *out)
 	filediff	*o = (filediff *)extra;
 
 	EACH_REVERSE(o->fn_defs) {
-		if (o->fn_defs[i].lno < lno) {
+		if (o->fn_defs[i].lno <= lno) {
 			fprintf(out, "%.*s",
 			    (int)min(40, strlen(o->fn_defs[i].s)),
 			    o->fn_defs[i].s);

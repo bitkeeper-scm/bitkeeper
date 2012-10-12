@@ -1,4 +1,5 @@
 #include "system.h"
+#include "lz4/lz4.h"
 
 /*
  * GZIP wrapper.  This is closer to the application than the CRC layer,
@@ -7,7 +8,7 @@
  * more on top but nobody does today).
  *
  * file layout:
- *   "ZIP\n"  || "VIP\n"
+ *   "ZIP\n"  || "VZ0\n" || "LZ4\n"
  *   BLOCK     #2        # these are in arbitrary order
  *   BLOCK     #1
  *   BLOCK
@@ -35,8 +36,7 @@
  *     truncating at the SZBLOCK table and appending new data and
  *     tables to the end of the file. (not quite append-only, but
  *     close)
- *   - <compressed data> uses 'zlib nowrap' mode so it has no headers
- *     or checksums
+ *   - <compressed data>
  *   - u32's encoded in Intel byte order
  *   - blocks usually encode 64k of uncompressed data, but may be
  *     shorter.  The compressed data may be slightly longer than 64k.
@@ -47,6 +47,8 @@
  */
 #define	BLOCKSZ		(64<<10)
 #define	MAXZIPBLOCK	(80<<10)
+
+typedef	int (cmpfn)(const void *in, int ilen, void *out, int *olen);
 
 typedef struct {
 	u32	usz;		/* uncompressed size */
@@ -60,11 +62,14 @@ typedef struct {
 	off_t	offset;		/* current offset in uncompressed stream */
 	u32	zoffset;	/* current offset in compressed stream */
 
-	z_stream z;
+	cmpfn	*compress;	/* compression function */
+	cmpfn	*uncompress;	/* uncompression function */
+
 	szblock	*szarr;
 	szblock *szp;		/* next block when reading */
 } fgzip;
 
+private	int	select_cmpfn(fgzip *fz, char *buf);
 private	int	zipRead(void *cookie, char *buf, int len);
 private	int	zipWrite(void *cookie, const char *buf, int len);
 private	fpos_t	zipSeek(void *cookie, fpos_t offset, int whence);
@@ -80,7 +85,8 @@ fopen_vzip(FILE *fin, char *mode)
 {
 	fgzip	*fz;
 	FILE	*f;
-	char	buf[4];
+	char	*t;
+	char	fmt[5];
 
 	assert(fin);
 
@@ -88,36 +94,151 @@ fopen_vzip(FILE *fin, char *mode)
 	fz->fin = fin;
 	if (streq(mode, "w")) {
 		fz->write = 1;
-		fputs("ZIP\n", fin);
-		/* "nowrap" mode without header or checksums */
-		if (deflateInit2(&fz->z, Z_BEST_SPEED, Z_DEFLATED,
-			-MAX_WBITS, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
-			perror("init");
-			return (0);
+		if (t = getenv("_BK_VZIP_FMT")) {
+			assert(strlen(t) == 3);
+			sprintf(fmt, "%s\n", t);
+		} else {
+			strcpy(fmt, "LZ4\n");
 		}
-		f = funopen(fz, 0, zipWrite, zipSeek, zipClose);
+		fputs(fmt, fin);
 	} else {
 		assert(streq(mode, "r"));
 		rewind(fz->fin);
-		unless ((fread(buf, 1, 4, fin) == 4) &&
-		    strneq(buf, "ZIP\n", 4)) {
-			free(fz);
-			/* not really compressed */
-			rewind(fin);
-			perror("not zip");
-			return (0);
+		unless (fread(fmt, 1, 4, fin) == 4) {
+			assert("unknown file format" == 0);
 		}
-		/* enable "nowrap" mode with no checksums */
-		if (inflateInit2(&fz->z, -MAX_WBITS) != Z_OK) {
-			perror("init");
-			return (0);
-		}
-		f = funopen(fz, zipRead, 0, zipSeek, zipClose);
+		fmt[4] = 0;
 	}
+	if (select_cmpfn(fz, fmt)) {
+		fprintf(stderr, "unknown file format '%.3s'\n", fmt);
+		assert(0);
+	}
+	f = funopen(fz,
+	    fz->write ? 0 : zipRead,
+	    fz->write ? zipWrite : 0,
+	    zipSeek, zipClose);
 	fz->zoffset = 4;
 	/* I want to see large block accesses */
 	setvbuf(f, 0, _IOFBF, BLOCKSZ);
 	return (f);
+}
+
+/*
+ * Use zlib to compress a block of data.
+ * uses 'zlib nowrap' mode so it has no headers or checksums
+ *
+ * Copy data from in->out and sets olen to the final block size.
+ */
+private int
+zlib_compress(const void *in, int ilen, void *out, int *olen)
+{
+	z_stream z = {0};
+	int	bz;
+
+	/* "nowrap" mode without header or checksums */
+	if (deflateInit2(&z, Z_BEST_SPEED, Z_DEFLATED,
+		-MAX_WBITS, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
+		perror("init");
+		return (-1);
+	}
+	z.next_out = out;
+	z.avail_out = bz = *olen;
+	z.next_in = (char *)in;
+	z.avail_in = ilen;
+	if (deflate(&z, Z_FINISH) != Z_STREAM_END) {
+		perror("deflate");
+		deflateEnd(&z);
+		return (-1);
+	}
+	*olen = bz - z.avail_out;
+	deflateEnd(&z);
+	return (0);
+}
+
+/*
+ * Use zlib to uncompress a block of data.
+ *
+ * Copy data from in->out and sets olen to the final block size.
+ */
+private int
+zlib_uncompress(const void *in, int ilen, void *out, int *olen)
+{
+	z_stream z = {0};
+	int	bz;
+
+	/* enable "nowrap" mode with no checksums */
+	if (inflateInit2(&z, -MAX_WBITS) != Z_OK) {
+		perror("init");
+		return (0);
+	}
+	z.next_out = out;
+	z.avail_out = bz = *olen;
+	z.next_in = (char *)in;
+	z.next_in[ilen] = 0; /* zlib reads this dummy byte */
+	z.avail_in = ilen+1; /* extra "dummy" byte of gzip */
+	if (inflate(&z, Z_FINISH) != Z_STREAM_END) {
+		perror("inflate");
+		inflateEnd(&z);
+		return (-1);
+	}
+	*olen = bz - z.avail_out;
+	inflateEnd(&z);
+	return (0);
+}
+
+/*
+ * copy block with no compression
+ *
+ * Copy data from in->out and sets olen to the final block size.
+ */
+private int
+none_compress(const void *in, int ilen, void *out, int *olen)
+{
+	assert(ilen <= *olen);
+	memcpy(out, in, ilen);
+	*olen = ilen;
+	return (0);
+}
+
+/*
+ * Use LZ4 to compress a block of data.
+ *
+ * Copy data from in->out and sets olen to the final block size.
+ */
+private int
+lz4_compress(const void *in, int ilen, void *out, int *olen)
+{
+	*olen = LZ4_compress_limitedOutput(in, out, ilen, *olen);
+	return (*olen == 0);
+}
+
+/*
+ * Use LZ4 to uncompress a block of data.
+ *
+ * Copy data from in->out and sets olen to the final block size.
+ */
+private int
+lz4_uncompress(const void *in, int ilen, void *out, int *olen)
+{
+	*olen = LZ4_uncompress_unknownOutputSize(in, out, ilen, *olen);
+	return (*olen < 0);
+}
+
+private int
+select_cmpfn(fgzip *fz, char *buf)
+{
+	if (streq(buf, "ZIP\n")) {
+		fz->compress = zlib_compress;
+		fz->uncompress = zlib_uncompress;
+	} else if (streq(buf, "VZ0\n")) {
+		fz->compress = fz->uncompress = none_compress;
+	} else if (streq(buf, "LZ4\n")) {
+		fz->compress = lz4_compress;
+		fz->uncompress = lz4_uncompress;
+	} else {
+		return (-1);
+	}
+	return (0);
 }
 
 private int
@@ -199,7 +320,6 @@ private int
 zipRead(void *cookie, char *buf, int len)
 {
 	fgzip	*fz = cookie;
-	int	rc;
 	u32	cnt;
 	char	data[MAXZIPBLOCK];
 
@@ -254,24 +374,7 @@ again:
 		perror("fread");
 		return (-1);
 	}
-	data[cnt] = 0;		/* zlib reads this dummy byte*/
-
-	/* uncompress to stdio buffer */
-	fz->z.next_out = buf;
-	fz->z.avail_out = len;
-	fz->z.next_in = data;
-	fz->z.avail_in = cnt+1;	/* extra "dummy" byte for gzip */
-	rc = inflate(&fz->z, Z_FINISH);
-	if (rc != Z_STREAM_END) {
-		fprintf(stderr, "inflate failed, rc=%d\n", rc);
-		return (-1);
-	}
-	len -= fz->z.avail_out;
-
-	if (inflateReset(&fz->z) != Z_OK) {
-		perror("inflateReset");
-		return (-1);
-	}
+	if (fz->uncompress(data, cnt, buf, &len)) return (-1);
 	fz->offset += len;
 	fz->zoffset += sizeof(u32) + cnt;
 	return (len);		/* we usually return less than requested */
@@ -290,21 +393,8 @@ zipWrite(void *cookie, const char *buf, int len)
 	sz.off = fz->zoffset;
 	addArray(&fz->szarr, &sz);
 
-	fz->z.next_out = data;
-	fz->z.avail_out = sizeof(data);
-	fz->z.next_in = (char *)buf;
-	fz->z.avail_in = len;
-	if (deflate(&fz->z, Z_FINISH) != Z_STREAM_END) {
-		perror("deflate");
-		return (-1);
-	}
-	csz = sizeof(data) - fz->z.avail_out;
-
-	if (deflateReset(&fz->z) != Z_OK) {
-		perror("deflateRest");
-		return (-1);
-	}
-
+	csz = sizeof(data);
+	if (fz->compress(buf, len, data, &csz)) return (-1);
 	tmp = htole32(csz);
 	fwrite(&tmp, sizeof(u32), 1, fz->fin);
 	if (fwrite(data, 1, csz, fz->fin) != csz) {
@@ -366,8 +456,6 @@ zipClose(void *cookie)
 	u32	sum;
 
 	if (fz->write) {
-		deflateEnd(&fz->z);
-
 		/* write eof marker */
 		sum = 0;
 		fwrite(&sum, sizeof(u32), 1, fz->fin);
@@ -383,8 +471,6 @@ zipClose(void *cookie)
 		/* write number of blocks */
 		sum = htole32(nLines(fz->szarr));
 		fwrite(&sum, sizeof(u32), 1, fz->fin);
-	} else {
-		inflateEnd(&fz->z);
 	}
 	free(fz->szarr);
 	free(fz);

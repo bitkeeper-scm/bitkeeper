@@ -1,20 +1,23 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "poly.h"
 
-private char * r2c(char *file, char *rev);
+private	char	**r2c(char *file, RANGE *rarg);
 
 int
 r2c_main(int ac, char **av)
 {
 	int	c;
-	char	*rev = 0, *file = 0;
+	char	*file = 0;
 	char	*p;
 	int	rc = 1;
 	int	product = 1;
 	MDBM	*idDB, *goneDB;
 	MDBM	*md5DB = 0;
+	RANGE	rargs = {0};
 	char	*sfile;
+	char	**revs = 0;
 	longopt	lopts[] = {
 		{ "standalone", 'S' },		/* treat comps as standalone */
 		{ 0, 0 }
@@ -25,7 +28,9 @@ r2c_main(int ac, char **av)
 		    case 'P':	break;			// do not doc
 		    case 'R':				// do not doc
 		    case 'S': product = 0; break;
-		    case 'r': rev = strdup(optarg); break;
+		    case 'r':
+			if (range_addArg(&rargs, optarg, 0)) usage();
+			break;
 		    default:
 			usage();
 			break;
@@ -44,27 +49,97 @@ r2c_main(int ac, char **av)
 		mdbm_close(md5DB);
 		unless (file) goto out;
 	}
-	unless (p = r2c(file, rev)) goto out; /* will chdir to file repo */
-	free(rev);
-	rev = p;
+	unless (revs = r2c(file, &rargs)) goto out; /* will cd to file repo */
 	if (product && proj_isComponent(0)) {
 		p = proj_relpath(proj_product(0), proj_root(0));
 		file = aprintf("%s/ChangeSet", p);
 		free(p);
 		proj_cd2product();
-		unless (p = r2c(file, rev)) {
-			free(file);
+		bzero(&rargs, sizeof(rargs));
+		p = joinLines(",", revs);
+		freeLines(revs, free);
+		range_addArg(&rargs, p, 0);
+		unless (revs = r2c(file, &rargs)) {
+			FREE(p);
+			FREE(file);
 			goto out;
 		}
-		free(file);
-		free(rev);
-		rev = p;
+		FREE(p);
+		FREE(file);
 	}
-	printf("%s\n", rev);
+	printf("%s\n", joinLines(",", revs));
 	rc = 0;
-out:	if (rev) free(rev);
+out:	if (revs) freeLines(revs, free);
 	free(sfile);
 	return (rc);
+}
+
+/*
+ * walkrevs callback.
+ * return > 0 if this node is not in range, but is a range termination.
+ *   This will keep on looking for other nodes if any more to search.
+ *   This does not cause walkrevs to return non-zero.
+ * return < 0 if this node is in range, and is in the D_SET set.
+ *   This will terminate walkrevs immediately, even if more in range.
+ *   This will cause walkrevs to return this value.
+ * return 0 to keep on looking.
+ */
+private	int
+inCset(sccs *s, ser_t d, void *token)
+{
+	/* see if range termination */
+	if ((p2uint(token) != d) && (FLAGS(s, d) & D_CSET)) return (1);
+
+	/* fast exit in walkrevs if found a tagged node in the range */
+	if (FLAGS(s, d) & D_SET) return (-1);
+	return (0);
+}
+
+/*
+ * Similar to sccs_csetBoundary(), except that the input is a list
+ * done by coloring D_SET.  The output is a list of the first nodes
+ * found, which could include poly, but not all the poly (as some
+ * of the poly may have a D_CSET marked node in their range).
+ */
+private	ser_t *
+csetBoundarySet(sccs *s)
+{
+	int	i;
+	ser_t	d, e;
+	ser_t	*serlist = 0;
+
+	for (d = s->rstart; d <= TABLE(s); ++d) {
+		if (TAG(s, d)) continue;
+
+		unless ((FLAGS(s, d) & D_SET) ||
+		    ((e = PARENT(s, d)) && (FLAGS(s, e) & D_RED)) ||
+		    ((e = MERGE(s, d)) && (FLAGS(s, e) & D_RED))) {
+			continue;
+		}
+		unless (FLAGS(s, d) & D_CSET) {
+			FLAGS(s, d) |= D_RED;
+			continue;
+		}
+		addArray(&serlist, &d);
+	}
+	/* cleanup */
+	for (d = s->rstart; d <= TABLE(s); ++d) {
+		if (FLAGS(s, d) & D_RED) FLAGS(s, d) &= ~D_RED;
+	}
+	/*
+	 * Note: walkrevs needs RED and BLUE, so don't merge below into above
+	 *
+	 * We can get false entries in serlist (see "r2c in non-poly"
+	 * in regressions).  Expand each region and remove any that don't
+	 * have any D_SET in there.
+	 */
+	EACH_REVERSE(serlist) {
+		d = serlist[i];
+		unless (range_walkrevs(s, 0,0,d, WR_STOP, inCset, uint2p(d))) {
+			removeArrayN(serlist, i);
+		}
+	}
+	return (serlist);
 }
 
 /*
@@ -76,18 +151,17 @@ out:	if (rev) free(rev);
  *
  * Errors are printed on err (if not null).
  */
-private char *
-r2c(char *file, char *rev)
+private char **
+r2c(char *file, RANGE *rarg)
 {
-	int	i, len;
-	char	*name, *t;
-	ser_t	d, e;
-	FILE	*f = 0;
+	char	*name, *t, *v;
+	ser_t	d;
 	sccs	*s = 0, *cset = 0;
-	char	*ret = 0, *key = 0, *shortkey = 0;
-	char	tmpfile[MAXPATH] = {0};
+	char	**ret = 0, **polykeys = 0;
+	ser_t	*serlist = 0;
+	hash	*keys = 0;
+	int	i;
 	char	buf[MAXKEY*2];
-	RANGE	rargs = {0};
 
 	name = name2sccs(file);
 	unless (s = sccs_init(name, INIT_NOCKSUM|INIT_MUSTEXIST)) {
@@ -98,85 +172,87 @@ r2c(char *file, char *rev)
 		fprintf(stderr, "%s: cannot find package root.\n", prog);
 		goto out;
 	}
-	unless (e = sccs_findrev(s, rev)) {
-		fprintf(stderr, "%s: cannot find rev %s in %s\n",
-		    prog, rev, file);
+	if (range_process("r2c", s, RANGE_SET, rarg)) {
+		fprintf(stderr, "%s: cannot process range for %s\n",
+		    prog, file);
 		goto out;
 	}
+	/* Get list of closest D_CSET marked (missing some poly) */
+	unless (serlist = csetBoundarySet(s)) {
+		fprintf(stderr,
+		    "%s: cannot find cset marker for the given revisions\n",
+		    prog);
+		goto out;
+	}
+
+	/* Prune out poly from list, save poly product keys */
 	if (CSET(s) && proj_isComponent(s->proj)) {
-		char	**list = 0;
-
+		/* for the csetInit() below -- get the product */
 		if (proj_cd2product()) goto out;
-		if (list = poly_r2c(s, e)) {
-			char	**revs = 0;
-			ser_t	*serlist = 0;
-
-			cset = sccs_csetInit(INIT_NOCKSUM|INIT_MUSTEXIST);
-			assert(cset);
-			
-			EACH(list) {
-				d = sccs_findKey(cset, list[i]);
-				assert(d);
-				serlist = addSerial(serlist, d); /* sorted */
+		EACH_REVERSE(serlist) {
+			unless (poly_r2c(s, serlist[i], &polykeys)) {
+				removeArrayN(serlist, i);
 			}
-			freeLines(list, free);
-			EACH_REVERSE(serlist) { /* new to old */
-				revs = addLine(revs,
-				    strdup(REV(cset, serlist[i])));
-			}
-			free(serlist);
-			ret = joinLines(",", revs);
-			freeLines(revs, free);
-			goto out;
 		}
 	}
-	unless (e = sccs_csetBoundary(s, e, 0)) {
-		fprintf(stderr,
-		    "%s: cannot find cset marker at or below %s in %s\n",
-		    prog, rev, file);
-		goto out;
+	/* Look for non poly nodes in prod weave; need a key hash */
+	keys = hash_new(HASH_MEMHASH);
+	EACH(serlist) {
+		sccs_sdelta(s, serlist[i], buf);
+		hash_insertStrSet(keys, buf);
 	}
-	sccs_sdelta(s, e, buf);
-	key = strdup(buf);
+	FREE(serlist);
+
 	strcpy(buf, CHANGESET);
 	unless (cset = sccs_init(buf, INIT_NOCKSUM)) {
 		fprintf(stderr, "%s: cannot init ChangeSet\n", prog);
 		goto out;
 	}
-	unless (bktmp(tmpfile, "r2c")) {
-		fprintf(stderr, "%s: could not create %s\n", prog, tmpfile);
-		goto out;
+
+	assert(serlist == 0);
+	/* Stick the poly prod csets in the answer */
+	EACH(polykeys) {
+		d = sccs_findKey(cset, polykeys[i]);
+		assert(d);
+		serlist = addSerial(serlist, d);
 	}
-	if (range_process("r2c", cset, RANGE_SET, &rargs)) goto out;
-	if (sccs_cat(cset, PRINT|GET_NOHASH|GET_REVNUMS, tmpfile)) {
-		unless (BEEN_WARNED(s)) {
-			fprintf(stderr, "%s: annotate of ChangeSet failed.\n",
-			    prog);
+	unless (hash_count(keys)) goto done;	/* just polykeys or nothing */
+
+	/* Stick the non-poly prod csets in the answer */
+	d = 0;
+	sccs_rdweaveInit(cset);
+	while (t = sccs_nextdata(cset)) {
+		unless (isData(t)) {
+			if (t[1] == 'I') d = atoi(&t[3]);
+			continue;
 		}
-		goto out;
-	}
-	unless (f = fopen(tmpfile, "r")) {
-		perror(tmpfile);
-		goto out;
-	}
-	len = strlen(key);
-	while (fnext(buf, f)) {
-		/* 1.5\tkey key */
-		t = separator(buf); assert(t); t++;
-		if (strneq(t, key, len) && t[len] == '\n') {
-			t = strchr(buf, '\t'); assert(t); *t = 0;
-			ret = aprintf("%s", buf);
-			goto out;
+		v = separator(t);
+		assert(v);
+		v++; // skip space
+		unless (hash_deleteStr(keys, v)) {
+			serlist = addSerial(serlist, d);
+			unless (hash_count(keys)) break;
 		}
 	}
-	fprintf(stderr, "%s: cannot find\n\t%s\n", prog, key);
-out:	free(name);
-	if (key) free(key);
-	if (shortkey) free(shortkey);
+	sccs_rdweaveDone(cset);
+done:
+	/* addSerial sorts, but leaves dups; so filter dups here */
+	d = 0;
+	EACH_REVERSE(serlist) {
+		if (d == serlist[i]) continue;
+		d = serlist[i];
+		ret = addLine(ret, strdup(REV(cset, d)));
+	}
+	unless (ret) {
+		fprintf(stderr,
+		    "%s: cannot find any of the specified revisions\n", prog);
+	}
+out:	FREE(name);
+	FREE(serlist);
+	if (keys) hash_free(keys);
+	freeLines(polykeys, free);
 	sccs_free(s);
 	sccs_free(cset);
-	if (f) fclose(f);
-	if (tmpfile[0]) unlink(tmpfile);
 	return (ret);
 }
 

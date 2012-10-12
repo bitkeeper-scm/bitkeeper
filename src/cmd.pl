@@ -445,7 +445,6 @@ helptool gui
 installtool gui
 msgtool gui
 oldcitool gui
-newdifftool gui
 renametool gui
 revtool gui
 setuptool gui

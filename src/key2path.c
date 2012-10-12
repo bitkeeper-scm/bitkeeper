@@ -120,7 +120,7 @@ md5key2key(void)
 	m2k = mdbm_mem();
 	for (kv = mdbm_first(cache); kv.key.dsize != 0; kv = mdbm_next(cache)) {
 		unless (isKey(kv.key.dptr)) continue;
-		sccs_key2md5(kv.key.dptr, kv.key.dptr, buf);
+		sccs_key2md5(kv.key.dptr, buf);
 		mdbm_store_str(m2k, buf, kv.key.dptr, MDBM_INSERT);
 	}
 	mdbm_close(cache);

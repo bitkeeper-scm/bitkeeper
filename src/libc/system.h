@@ -192,6 +192,7 @@ typedef struct {
 #define	GETOPT_ERR	256
 int	getopt(int ac, char **av, char *opts, longopt *lopts);
 void	getoptReset(void);
+void	getoptConsumed(int n);
 
 
 /* glob.c */

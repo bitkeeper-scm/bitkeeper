@@ -237,6 +237,8 @@ hash_count(hash *h)
 
 char	*hash_toStr(hash *h);
 int	hash_fromStr(hash *h, char *str);
+void	hash_keyencode(FILE *out, u8 *ptr);
+char	*hash_keydecode(char *key);
 int	hash_toStream(hash *h, FILE *f);
 hash	*hash_fromStream(hash *h, FILE *f);
 int	hash_toFile(hash *h, char *path);

@@ -119,14 +119,13 @@ hash_fromStream(hash *h, FILE *f)
 				/* save old key */
 				unless (h) h = hash_new(HASH_MEMHASH);
 				savekey(h, !base64 && gotval, key, val);
-				key = 0;
+				FREE(key);
 				gotval = 0;
 			}
 			len = strlen(line);
-			/* /^@.+ base64$/ */
-			base64 = ((len > 8) && streq(line + len - 7, " base64"));
+			base64 = (len > 8) && ends_with(line, " base64");
 			if (base64) line[len-7] = 0;
-			webdecode(line+1, &key, 0);
+			key = hash_keydecode(line+1);
 		} else {
 			if (*line == '@') ++line; /* skip escaped @ */
 			if (base64) {
@@ -149,6 +148,7 @@ hash_fromStream(hash *h, FILE *f)
 	if (key || gotval) {
 		unless (h) h = hash_new(HASH_MEMHASH);
 		savekey(h, !base64 && gotval, key, val);
+		FREE(key);
 	}
 	fclose(val);
 	return (h);
@@ -158,7 +158,7 @@ hash_fromStream(hash *h, FILE *f)
 private int
 goodkey(u8 *key, int len)
 {
-	if ((len == 0) || (key[len-1] != 0)) {
+	if ((len <= 0) || (key[len-1] != 0)) {
 		fprintf(stderr, "not C string\n");
 		return (0);
 	}
@@ -190,6 +190,50 @@ binaryField(u8 *data, int len)
 	return (0);
 }
 
+/*
+ * A simplified form of webencode() that only encodes the minimal number
+ * of characters needed to be correctly recreated with webdecode() and
+ * not have a space character so we can search for " base64" at the end of
+ * a key.
+ * The main point to to make files with long bk keys as hash keys easy
+ * to read.
+ */
+void
+hash_keyencode(FILE *out, u8 *ptr)
+{
+	while (*ptr) {
+		switch(*ptr) {
+		    case ' ':
+			/*
+			 * It would be nice to only encode a space if
+			 * the key happens to end in " base64", but
+			 * the reading code in legacy clients isn't
+			 * careful in parsing so we have to encode all
+			 * spaces.
+			 */
+			putc('+', out);
+			break;
+		    case '%': case '+': case '&': case '=':
+		    case '\n':
+			fprintf(out, "%%%02x", *ptr);
+			break;
+		    default:
+			putc(*ptr, out);
+			break;
+		}
+		++ptr;
+	}
+}
+
+char *
+hash_keydecode(char *key)
+{
+	char	*out = 0;
+
+	webdecode(key, &out, 0);
+	return (out);
+}
+
 private void
 writeField(FILE *f, char *key, u8 *data, int len)
 {
@@ -198,7 +242,7 @@ writeField(FILE *f, char *key, u8 *data, int len)
 	char	out[128];
 
 	fputc('@', f);
-	webencode(f, key, strlen(key)+1);
+	hash_keyencode(f, key);
 	if (binaryField(data, len)) {
 		fputs(" base64\n", f);
 		while (len) {
@@ -233,12 +277,11 @@ savekey(hash *h, int addnull, char *key, FILE *val)
 	u8	*data;
 	size_t	len;
 
-	unless (key) key = strdup("");
+	unless (key) key = "";
 	data = fmem_peek(val, &len);
 	if (addnull) len++;
 	/* overwrite existing */
 	hash_store(h, key, strlen(key)+1, data, len);
-	free(key);
 	ftrunc(val, 0);
 }
 

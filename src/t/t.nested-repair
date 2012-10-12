@@ -85,13 +85,20 @@ bk repocheck $Q || fail
 echo OK
 
 echo $N Make sure we can restore ChangeSet from standalone ..........$NL
+bk _heapdump ChangeSet > 1
 bk _rm SCCS/s.ChangeSet
 bk repocheck > OUT 2>&1 && fail -f OUT
 grep -q "missing ChangeSet file!" OUT || fail -f OUT
-bk repair -@"$HERE/gcc" > OUT 2>&1 && {
-	echo fixed, change test
-	exit 1
-}
-# grep -q "Missing ChangeSet file," OUT || fail -f OUT
-# bk repocheck $Q || fail
+bk repair -@"$HERE/gcc" > OUT 2>&1 || fail -f OUT
+bk _heapdump ChangeSet > 2
+bk diff -u 1 2 > 3 && fail working, update test
+grep '^-[^-]' 3 | sed s'/RANDOM.*/RANDOM:/' > 4
+
+# the repair fails to fix the pathname and the rootkey
+cat <<EOF > WANT
+-PATHNAME: gcc/ChangeSet
+-PATHNAME: gcc/ChangeSet
+-RANDOM:
+EOF
+cmpfiles 4 WANT
 echo "failed (bug )"

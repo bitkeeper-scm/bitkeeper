@@ -433,6 +433,7 @@ finish:
 		sccs_free(cset);
 		cset = 0;
 	}
+	updLogMarker();	/* before making a cset, fix log marker */
 	/* Find any missing keys and make a delta about them. */
 	if (opts->comppath || opts->newgone) {
 		verbose((stderr, "Running a check...\n"));
@@ -466,7 +467,6 @@ statuschk:	unless (WIFEXITED(status)) goto err;
 		verbose((stderr, "Running a check -ac...\n"));
 		if (system("bk -r check -ac")) goto err;
 	}
-	unlink(CMARK);
 	system("bk parent -qr");	/* parent no longer valid */
 	verbose((stderr, "All operations completed.\n"));
 	ret = 0;

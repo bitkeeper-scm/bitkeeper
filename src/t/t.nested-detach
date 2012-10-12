@@ -126,6 +126,18 @@ cmpfiles GOT WANT
 cd ..
 echo OK
 
+echo $N Compare keys between repos ..................................$NL
+cd "$HERE"/nested1/component1
+bk prs -hnd:KEY: ChangeSet | sed 's/component1\///' > "$HERE"/longkey.comp
+bk prs -hnd:MD5KEY: ChangeSet > "$HERE"/md5key.comp
+cd "$HERE"/detached1
+bk prs -hnd:KEY: ChangeSet > "$HERE"/longkey.det
+bk prs -hnd:MD5KEY: ChangeSet > "$HERE"/md5key.det
+cd "$HERE"
+cmpfiles longkey.det longkey.comp
+cmpfiles md5key.det md5key.comp
+echo OK
+
 echo $N Basic detach functionality staying inside product ...........$NL
 cd nested1
 bk detach $Q component1 inside-prod || fail

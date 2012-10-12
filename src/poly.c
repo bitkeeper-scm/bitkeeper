@@ -89,20 +89,20 @@ inrange(sccs *s, ser_t d, void *token)
  * Finds first cset mark and sees if that cset is poly.
  * If so, look to see if the orig cset is part of other poly csets.
  *
- * Returns a list of product cset keys if poly and null if not.
+ * Returns 0 if poly, 1 if not.
+ * Returns an appended list of product cset keys.
  */
-char **
-poly_r2c(sccs *cset, ser_t orig)
+int
+poly_r2c(sccs *cset, ser_t orig, char ***pcsets)
 {
 	cmark	*list, *cm;
 	ser_t	d, e, *lower = 0;
-	char	**ret = 0;
 
-	unless (d = sccs_csetBoundary(cset, orig, 0)) return (0);
-	unless (list = poly_check(cset, d)) return (0);
+	unless (d = sccs_csetBoundary(cset, orig, 0)) return (1);
+	unless (list = poly_check(cset, d)) return (1);
 
 	/* for the first one found, we are guaranteed to be in range */
-	EACHP(list, cm) ret = addLine(ret, strdup(cm->pkey));
+	EACHP(list, cm) *pcsets = addLine(*pcsets, strdup(cm->pkey));
 	free(list);
 
 	for (d++; d <= TABLE(cset); d++) {
@@ -123,13 +123,13 @@ poly_r2c(sccs *cset, ser_t orig)
 			}
 			if (range_walkrevs(
 			    cset, 0, lower, d, 0, inrange, uint2p(orig))) {
-				ret = addLine(ret, strdup(cm->pkey));
+				*pcsets = addLine(*pcsets, strdup(cm->pkey));
 			}
 			FREE(lower);
 		}
 		free(list);
 	}
-	return (ret);
+	return (0);
 }
 
 /*
