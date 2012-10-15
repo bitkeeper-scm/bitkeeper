@@ -1,0 +1,43 @@
+echo $N Setup a working repo.........................................$NL
+nested proj
+for x in afile gcc/afile gdb/afile
+do	echo base content > $x
+done
+bk new $Q afile gcc/afile gdb/afile
+bk commit $Q --tag=OLD -yafile
+echo OK
+
+echo $N bk -Uc diffs -up should produce a good patch.................$NL
+cd "$HERE/proj"
+mvcomp gcc llvm
+bk commit $Q -ymvcomp
+bk edit $Q afile llvm/afile gdb/afile
+echo stuff1 > afile
+echo stuff2 > llvm/afile
+echo stuff3 > gdb/afile
+# See that it works while not being at the product root
+cd llvm
+bk -Uc diffs -up > PATCH
+bk -Uc unedit
+bk -P patch --quiet -p1 -g1 < PATCH || fail -f OUT
+cd ..
+echo "stuff1" > WANT
+cmpfiles WANT afile
+echo "stuff2" > WANT
+cmpfiles WANT llvm/afile
+echo "stuff3" > WANT
+cmpfiles WANT gdb/afile
+echo OK
+
+echo $N bk diffs -up -r@OLD llvm/afile should list gcc in old path ..$NL
+bk diffs -up -r@OLD llvm/afile > PATCH
+grep -q llvm PATCH || fail patch should list llvm in new
+grep -q gcc PATCH && fail fix test as patch now has gcc
+echo 'failed (bug )'
+
+echo $N bk diffs -up -R@OLD llvm/afile should list gcc in both ......$NL
+bk diffs -up -R@OLD llvm/afile > PATCH
+grep -q llvm PATCH || fail fix test as patch no longer has llvm
+grep -q gcc PATCH && fail fix test as patch now has gcc
+# The desire is for historical path?
+echo 'failed (bug )'

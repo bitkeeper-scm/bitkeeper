@@ -4351,7 +4351,6 @@ sccs_init(char *name, u32 flags)
 	ser_t	d;
 	int	fixstime = 0;
 	static	int _YEAR4;
-	static	int fixpath = -1;
 	static	char *glob = 0;
 	static	int show = -1;
 
@@ -4395,16 +4394,6 @@ sccs_init(char *name, u32 flags)
 		*t = '/';
 	} else {
 		s->proj = proj_init(".");
-	}
-
-	/*
-	 * This weirdness is for dspecs that need the component prefix.
-	 * This is not historically correct but works for recent locations
-	 * of the component.
-	 */
-	if (fixpath == -1) fixpath = (getenv("_BK_FIX_NESTED_PATH") != 0);
-	if (fixpath && proj_isComponent(s->proj)) {
-		s->comppath = proj_comppath(s->proj);
 	}
 
 	if (isCsetFile(s->sfile)) {
@@ -14215,12 +14204,33 @@ getHistoricPath(sccs *s, char *rev)
 
 	d = sccs_findrev(s, rev);
 	if (d && HAS_PATHNAME(s, d)) {
-		return (sccs_prsbuf(s, d, PRS_FORCE, ":DPN:"));
+		/*
+		 * bk changes sets s->comppath which will cause :DPN:
+		 * to give us the right path. We only need to fix the
+		 * path (in a wrong way, see comment below) if
+		 * s->comppath is not set.
+		 */
+		ret = p = sccs_prsbuf(s, d, PRS_FORCE, ":DPN:");
+		if (!s->comppath && proj_isComponent(s->proj)) {
+			/*
+			 * XXX BUG: proj_comppath() is wrong if there was a
+			 * component rename, so fix before we ship component
+			 * renames.
+			 */
+			ret = aprintf("%s/%s", proj_comppath(s->proj), p);
+			FREE(p);
+		}
+		return (ret);
 	} else {
+		/*
+		 * XXX: This block is !d (invalid rev) or
+		 * !HAS_PATHNAME (ATT SCCS), so seems like nested code
+		 * is run only if rev is invalid.
+		 */
 		ret = p = proj_relpath(s->proj, s->gfile);
-		if (s->comppath) {
-			ret = aprintf("%s/%s", s->comppath, p);
-			free(p);
+		if (proj_isComponent(s->proj)) {
+			ret = aprintf("%s/%s", proj_comppath(s->proj), p);
+			FREE(p);
 		}
 		return (ret);
 	}
