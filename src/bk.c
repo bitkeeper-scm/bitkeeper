@@ -1125,9 +1125,10 @@ cmdlog_lock(int flags)
 		if (i) {
 			unless ((cmdlog_flags & CMD_BKD_CMD) ||
 			    !proj_root(proj)) {
-				repository_lockers(proj);
 				if (proj_isEnsemble(proj)) {
 					nested_printLockers(proj, stderr);
+				} else {
+					repository_lockers(proj);
 				}
 			}
 			switch (i) {
@@ -1159,9 +1160,10 @@ cmdlog_lock(int flags)
 		if (i = repository_rdlock(proj)) {
 			unless ((cmdlog_flags & CMD_BKD_CMD) ||
 			    !proj_root(proj)) {
-				repository_lockers(proj);
 				if (proj_isEnsemble(proj)) {
 					nested_printLockers(proj, stderr);
+				} else {
+					repository_lockers(proj);
 				}
 			}
 			switch (i) {
