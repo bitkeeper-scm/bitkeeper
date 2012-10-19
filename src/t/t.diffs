@@ -40,7 +40,7 @@ if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 
 echo $N Checking diff -r1.8 against edited file .....................$NL
-bk diffs -r1.8 Mydiffs > D || exit 1
+bk diffs -r1.8 Mydiffs > D || fail -f D
 bk undos > W <<EOF
 ===== Mydiffs 1.8 vs edited =====
 9a10,12
@@ -48,8 +48,7 @@ bk undos > W <<EOF
 > 1.10
 > foo
 EOF
-cmp -s D W
-if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+cmpfiles D W
 echo OK
 
 echo $N Checking diff filename\|1.8..1.9 with edited gfile ...........$NL
@@ -70,15 +69,14 @@ echo OK
 
 echo $N Checking diff -r1.8 w/ no file ..............................$NL
 bk unedit Mydiffs
-bk diffs -r1.8 Mydiffs > D || exit 1
+bk diffs -r1.8 Mydiffs > D || fail
 bk undos > W <<EOF
 ===== Mydiffs 1.8 vs 1.10 =====
 9a10,11
 > 1.9
 > 1.10
 EOF
-cmp -s D W
-if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+cmpfiles D W
 echo OK
 
 echo $N Checking diff -R1.8 w/ no file ..............................$NL
@@ -499,12 +497,43 @@ cat <<EOF > WANT
 diffs: must be run in a repository
 EOF
 cmpfiles ERR WANT
-cd "$HERE"/project/sub/dir
+echo OK
+
+echo $N Check a modified file that was not checked out...............$NL
+cd "$HERE/project"
+echo hello > foo
+bk new $Q foo
+bk edit $Q foo
+echo bye > foo
+bk ci -u -yy $Q foo
+chmod +w foo
+echo goodbye > foo
+bk diffs foo > GOT
+cat <<EOF > WANT
+===== foo 1.2 vs ? (writable without lock!)  =====
+1c1
+< bye
+---
+> goodbye
+EOF
+cmpfiles WANT GOT
+bk diffs -r+ foo > GOT
+cmpfiles WANT GOT
+bk diffs -r1.1 foo > GOT
+cat <<EOF > WANT
+===== foo 1.1 vs ? (writable without lock!)  =====
+1c1
+< hello
+---
+> goodbye
+EOF
+cmpfiles WANT GOT
 echo OK
 
 if [ X$PLATFORM != XWIN32 ]
 then
 echo $N Replacing an edited file with a symlink should work .........$NL
+cd "$HERE"/project/sub/dir
 rm file
 ln -s /nonexistant file
 bk diffs file > DIFFS || exit 1

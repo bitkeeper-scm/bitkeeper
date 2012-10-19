@@ -13973,7 +13973,7 @@ mapRev(sccs *s, u32 flags, char *r1, char *r2,
 		rrev = "edited";
 	} else if (r1) {
 		lrev = r1;
-		rrev = 0;
+		rrev = WRITABLE(s) ? "?" : 0;
 	} else {
 		unless (HAS_GFILE(s)) {
 			verbose((stderr,
