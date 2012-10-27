@@ -5,14 +5,17 @@
 #include <stdarg.h>
 #include <sys/types.h>
 
+#define	likely(e)	__builtin_expected((e), 1)
+#define	unlikely(e)	__builtin_expected((e), 0)
+
 #include <assert.h>
 #ifdef	PURIFY
 #undef	assert
-#define	assert(expr) if (!(expr)) { \
-			purifyList(__FILE__, __LINE__); \
-			(__assert_fail (__STRING(expr), \
-                           __FILE__, __LINE__, __ASSERT_FUNCTION), 0); \
-		}
+#define	assert(expr) if (unlikely(!(expr))) {				\
+			purifyList(__FILE__, __LINE__);			\
+			(__assert_fail (__STRING(expr),			\
+			    __FILE__, __LINE__, __ASSERT_FUNCTION), 0); \
+	}
 #endif
 #include <ctype.h>
 #include <errno.h>

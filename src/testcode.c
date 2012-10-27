@@ -121,6 +121,43 @@ tmp_tests(void)
 	free(template);
 }
 
+/* this is just to see if it compiles */
+private void
+compile_tests(void)
+{
+	char	**av;
+	char	*file = "a file";
+	char	c = '8';
+	int	n;
+	struct point {int x; int y;} p = {.y = 10, .x = 20};
+	int	array[10] = { [5] = 1, [8] = c , [2 ... 4] = 8};
+
+	// http://gcc.gnu.org/onlinedocs/gcc-4.1.2/gcc/Compound-Literals.html
+	av = (char *[]) {"bk", "log", "-nd", file, 0};
+	unless (streq(av[1], "log")) {
+		fprintf(stderr, "compound literal failed\n");
+	}
+	unless (streq(av[3], file)) {
+		fprintf(stderr, "compound literal failed\n");
+	}
+	// http://gcc.gnu.org/onlinedocs/gcc-4.1.2/gcc/Case-Ranges.html
+	switch (c) {
+	    case '0'...'9':
+		break;
+	    default:
+		fprintf(stderr, "case range failed\n");
+		break;
+	}
+	unless (array[5] == 1) fprintf(stderr, "initializer failed\n");
+	unless (array[3] == 8) fprintf(stderr, "initializer failed\n");
+	unless (p.y == 10) fprintf(stderr, "struct init failed");
+
+	n = rand();
+	if (__builtin_expect(n < 0, 0)) {
+		n++;
+	}
+}
+
 /* run specialized code tests */
 int
 unittests_main(int ac, char **av)
@@ -141,6 +178,7 @@ unittests_main(int ac, char **av)
 #endif
 	signal_tests();
 	tmp_tests();
+	compile_tests();
 	return (0);
 }
 
