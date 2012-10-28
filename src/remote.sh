@@ -40,7 +40,7 @@ case $CMD in
 	sleep 5		# give the other guys time to get rcp'ed and started
 
 	echo y | \
-	    BK_NOTTY=YES BK_NO_REMAP=1 bk clone -sdefault -z0 $URL $BKDIR || {
+	    BK_NOTTY=YES bk clone -sdefault -z0 $URL $BKDIR || {
 	        DIR=upgrade-$BK_USER
 		rm -rf $DIR
 		mkdir $DIR
@@ -63,7 +63,7 @@ case $CMD in
 		export _BUILD_PORT
 		URL=`echo $URL | sed 's/^bk:\/\/work\//bk:\/\/work:14691\//'`
 		rm -rf $DIR $BKDIR
-	    	echo y | BK_NOTTY=YES BK_NO_REMAP=1 \
+	    	echo y | BK_NOTTY=YES \
 		    bk clone -sdefault -z0 $URL $BKDIR || {
 			echo reclone failed
 			exit 1

@@ -493,6 +493,7 @@ commitRestore(int rc)
 			sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
 			if (rc) {
 				fileMove(save, file);
+				unlink("BitKeeper/log/TIP");
 			} else {
 				unlink(save);
 			}

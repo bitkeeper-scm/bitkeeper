@@ -62,13 +62,14 @@ unsetHttpProxy() {
 # Make a commercial config file
 _commercial_config() {
 	# setup binary or ascii sfiles
-	# mostly ascii currently, but binary on a couple machines
+	# default to binary, but use ascii on a couple machines
 	test -z "$BK_BIN_REGRESSIONS" && {
 		case "`bk gethost`" in
-		    bits.bitmover.com) BK_BIN_REGRESSIONS=yes;;
-		    ppc-285.bitmover.com) BK_BIN_REGERSSIONS=yes;;
-		    win2008.bitmover.com) BK_BIN_REGERSSIONS=yes;;
-		    *) BK_BIN_REGRESSIONS=no;;
+		    debian50.bitmover.com) BK_BIN_REGRESSIONS=no;;
+		    debian60-64.bitmover.com) BK_BIN_REGRESSIONS=no;;
+		    aix.bitmover.com) BK_BIN_REGERSSIONS=no;;
+		    win2008.bitmover.com) BK_BIN_REGERSSIONS=no;;
+		    *) BK_BIN_REGRESSIONS=yes;;
 		esac
 		export BK_BIN_REGRESSIONS
 	}

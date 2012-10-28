@@ -1,7 +1,7 @@
 echo $N Verify that clone fails with unknown feature ................$NL
 commercial project
 
-if [ X$BK_BIN_REGRESSIONS = Xyes ]
+if [ X`bk config binfile` = Xyes ]
 then	DEFAULT=SAMv3,bSFILEv1
 else	DEFAULT=SAMv3
 fi

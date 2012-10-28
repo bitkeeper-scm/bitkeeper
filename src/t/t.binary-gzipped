@@ -99,7 +99,7 @@ do	bk co $Q -l $f
 done
 bk prs -hnr+ -d:COMPRESSION:,:ENC: uuencode1z uuencode1 uuencode2 bam1 bam2 \
     > OUT
-if [ X$BK_BIN_REGRESSIONS = Xyes ]
+if [ X`bk config binfile` = Xyes ]
 then	echo none,uuencode > WANT
 else	echo gzip,uuencode > WANT
 fi

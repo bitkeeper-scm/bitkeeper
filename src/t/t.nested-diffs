@@ -19,6 +19,7 @@ echo stuff3 > gdb/afile
 cd llvm
 bk -Uc diffs -up > PATCH
 bk -Uc unedit
+bk -U edit -qS
 bk -P patch --quiet -p1 -g1 < PATCH || fail -f OUT
 cd ..
 echo "stuff1" > WANT
