@@ -60,7 +60,7 @@ filtertest2_main(int ac, char **av)
 	return (0);
 }
 
-void
+private void
 getMsg_tests(void)
 {
 	char	**args, *p;
@@ -79,7 +79,7 @@ getMsg_tests(void)
 	freeLines(args, 0);
 }
 
-void
+private void
 signal_tests(void)
 {
 	char	*av[] = { "bk", "-Lw", "_usleep", "2000000", 0 };
@@ -101,7 +101,7 @@ signal_tests(void)
 	}
 }
 
-void
+private void
 tmp_tests(void)
 {
 	char	*template = malloc(500);
@@ -346,7 +346,6 @@ testfmem(FILE *f)
 	while (p) {
 		if (++n == 30) n = 0;
 		f1 = fmem();
-		memset(&d, 0, sizeof(DATA));
 		for (i = 0; i < n; i++) {
 			unless (p = fgetline(f)) break;
 			chomp(p);
@@ -376,7 +375,6 @@ testfmemopt(FILE *f)
 	p = "";
 	while (p) {
 		if (++n == 30) n = 0;
-		memset(&d, 0, sizeof(DATA));
 		for (i = 0; i < n; i++) {
 			unless (p = fgetline(f)) break;
 			chomp(p);

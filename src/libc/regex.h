@@ -10,5 +10,6 @@ extern char *re_comp(char *);
 extern int re_exec(char *);
 extern void re_modw(char *);
 extern int re_subs(char *, char *);
+extern void re_fail(char *, char);
 
 #endif /* REGEX_H */

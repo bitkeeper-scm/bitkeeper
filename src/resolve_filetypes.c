@@ -5,7 +5,7 @@
  */
 #include "resolve.h"
 
-int
+private int
 ft_help(resolve *rs)
 {
 	int	i;
@@ -50,7 +50,7 @@ Remote: %s@%s\n\t%s\n\
 	return (0);
 }
 
-int
+private int
 ft_explain(resolve *rs)
 {
 	fprintf(stderr, 
@@ -64,7 +64,7 @@ Your choices are to either choose the local or remote type.\n\
 }
 
 /* make the remote take the local file type */
-int
+private int
 ft_local(resolve *rs)
 {
 	ser_t	l = sccs_findrev(rs->s, rs->revs->local);
@@ -76,7 +76,7 @@ ft_local(resolve *rs)
 }
 
 /* make the local take the remote file type */
-int
+private int
 ft_remote(resolve *rs)
 {
 	ser_t	l = sccs_findrev(rs->s, rs->revs->local);

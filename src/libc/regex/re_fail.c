@@ -1,9 +1,5 @@
-#ifdef vms
-#include stdio
-#else
-#include <stdio.h>
-#include <stdlib.h>
-#endif
+#include "system.h"
+#include "regex.h"
 
 /* 
  * re_fail:

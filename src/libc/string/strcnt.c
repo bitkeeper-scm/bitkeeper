@@ -1,5 +1,4 @@
-#include <string.h>
-#include <stddef.h>
+#include "local_string.h"
 
 int
 strcnt(char *p, char ch)

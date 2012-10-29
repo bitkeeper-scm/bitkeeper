@@ -3,7 +3,7 @@
  */
 #include "resolve.h"
 
-int
+private int
 r_help(resolve *rs)
 {
 	int	i;
@@ -82,7 +82,7 @@ Remote: %s %s\n\
 	return (0);
 }
 
-int
+private int
 r_explain(resolve *rs)
 {
 	fprintf(stderr,
@@ -96,7 +96,7 @@ the remote repository moved it to \"%s\"\n\n",
 }
 
 /* Run helptool in background */
-int
+private int
 r_helptool(resolve *rs)
 {
 	char	*av[10];
@@ -108,7 +108,7 @@ r_helptool(resolve *rs)
 	return (0);
 }
 
-int
+private int
 r_l(resolve *rs)
 {
 	int	i;
@@ -143,7 +143,7 @@ r_l(resolve *rs)
 	return (1);
 }
 
-int
+private int
 r_r(resolve *rs)
 {
 	int	i;

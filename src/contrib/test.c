@@ -11,6 +11,7 @@
  */
 
 #include "system.h"
+#include "../cmd.h"
 
 static void error(const char *, ...);
 

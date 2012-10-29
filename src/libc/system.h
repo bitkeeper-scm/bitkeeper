@@ -1,6 +1,8 @@
 #ifndef _SYSTEM_H
 #define _SYSTEM_H
 
+#define	_GNU_SOURCE
+
 #include <stddef.h>
 #include <stdarg.h>
 #include <sys/types.h>
@@ -27,10 +29,10 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#include "string/local_string.h"
 #ifdef WIN32
 #include "win32.h"
 #else
-#include "string.h"
 #include "unix.h"
 #endif
 
@@ -232,7 +234,8 @@ int	test_mkdirp(char *dir);
 int	mkdirf(char *file);
 
 /* milli.c */
-char *	milli(void);
+char	*milli(void);
+char	*milli_gap(void);
 
 /* putenv.c */
 #define	getenv(s)	safe_getenv(s)
@@ -333,6 +336,7 @@ FILE *	popenvp(char *av[], char *type);
 int	safe_pclose(FILE *f);
 int	safe_fclose(FILE *f);
 char	*backtick(char *cmd, int *status);
+char	*shell(void);
 
 /* tcp/tcp.c */
 int	tcp_server(char *addr, int port, int quiet);

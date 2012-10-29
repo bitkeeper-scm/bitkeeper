@@ -26,8 +26,12 @@ fullRemapPath(char *buf, project *proj, char *rel)
 		/* we're sometimes called with path/SCCS */
 		if (p[1] == '.') {
 			/* save the prefix char, it'll become suffix */
+			/* s.foo => foo,s */
 			suffix = *p;
-			sprintf(p, "%s,%c", p+2, suffix);
+			while ((p[0] = p[2])) p++;
+			*p++ =',';
+			*p++ = suffix;
+			*p = 0;
 		}
 	} else {
 		strcpy(newrel, rel);

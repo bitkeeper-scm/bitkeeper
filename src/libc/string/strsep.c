@@ -1,16 +1,12 @@
+#include "string/str.cfg"
+#ifdef BK_STR_STRSEP
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
  * %sccs.include.redist.c%
  */
-
-#include <string.h>
-#include <stdio.h>
-
-#if defined(LIBC_SCCS) && !defined(lint)
-static char sccsid[] = "%W% (Berkeley) %G%";
-#endif /* LIBC_SCCS and not lint */
+#include "local_string.h"
 
 /*
  * Get next token from string *stringp, where tokens are possibly-empty
@@ -51,3 +47,4 @@ strsep(stringp, delim)
 	}
 	/* NOTREACHED */
 }
+#endif

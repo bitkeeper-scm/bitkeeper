@@ -382,7 +382,7 @@ linelen(char *s)
 /*
  * Convert a serial to an ascii string.
  */
-void
+private void
 sertoa(register char *buf, ser_t val)
 {
 	char	reverse[6];
@@ -3953,7 +3953,7 @@ loadGlobalConfig(MDBM *db)
  * I.e local field have priority over global field.
  * If local field exists, it masks out the global counter part.
  */
-MDBM *
+private MDBM *
 loadBinConfig(MDBM *db)
 {
 	char 	*config;
@@ -3971,7 +3971,7 @@ loadBinConfig(MDBM *db)
  * I.e local field have priority over global field.
  * If local field exists, it masks out the global counter part.
  */
-MDBM *
+private MDBM *
 loadDotBkConfig(MDBM *db)
 {
 	char 	*config;
@@ -4933,7 +4933,7 @@ sccs2name(char *sfile)
 /*
  * Make the sccs dir if we need one.
  */
-void
+private void
 mksccsdir(char *sfile)
 {
 	char	*s = rindex(sfile, '/');
@@ -8906,7 +8906,7 @@ diff_gmode(sccs *s, pfile *pf)
  * case 1:	diffs
  * case 2:	diff ran into problems
  */
-int
+private int
 diffMDBM(sccs *s, char *old, char *new, char *tmpfile)
 {
 	FILE	*f = fopen(tmpfile, "w");
@@ -14343,6 +14343,8 @@ done:	free_pfile(&pf);
  * generated during the build by kwextract.pl and gperf (see the
  * Makefile).
  */
+extern	struct kwval *kw2val_lookup(register const char *str,
+    register unsigned int len);
 #include "kw2val_lookup.c"
 
 #define	notKeyword -1

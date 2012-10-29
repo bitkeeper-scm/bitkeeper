@@ -1,4 +1,6 @@
-#include <string.h>
+#include "string/str.cfg"
+#ifdef BK_STR_MEMMEM
+#include "local_string.h"
 
 /* Local extention to standard C library, so sue me. */
 
@@ -19,3 +21,4 @@ memmem(char *data, int datalen, char *sub, int sublen)
 	}
 	return (0);
 }
+#endif

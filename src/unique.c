@@ -248,7 +248,8 @@ uniq_adjust(sccs *s, ser_t d)
 				/* strip pathname */
 				p2 = strchr(key, '|');
 				assert(p2);
-				strcpy(p2+1, p1+1);
+				++p1; ++p2;
+				while ((*p2++ = *p1++));
 			}
 
 			/* Add rand from syncRoot to cset delta keys */

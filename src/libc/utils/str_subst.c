@@ -24,9 +24,7 @@ str_subst(char *str, char *search, char *replace, char *output)
 	while (p = strstr(s, search)) {
 		/* copy leading text */
 		n = p - s;
-		strncpy(t, s, n);
-		s += n;
-		t += n;
+		while (n--) *t++ = *s++;
 
 		/* make subst */
 		strcpy(t, replace);
@@ -34,7 +32,7 @@ str_subst(char *str, char *search, char *replace, char *output)
 		s += slen;
 	}
 	/* copy remaining text */
-	strcpy(t, s);
+	while ((*t++ = *s++));
 	if (output == buf) {
 		assert((t - output) + strlen(s) < sizeof(buf));
 		output = strdup(output);

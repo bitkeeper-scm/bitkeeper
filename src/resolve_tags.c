@@ -14,7 +14,7 @@ typedef struct	tags {
 } tags;
 private	int	n;		/* number of tags still to resolve */
 
-int
+private int
 t_help(resolve *rs)
 {
 	tags	*t = (tags *)rs->opaque;
@@ -38,7 +38,7 @@ t_help(resolve *rs)
 	return (0);
 }
 
-int
+private int
 t_explain(resolve *rs)
 {
 	fprintf(stderr, 
@@ -52,7 +52,7 @@ to the merge changeset.\n\
 	return (0);
 }
 
-int
+private int
 t_local(resolve *rs)
 {
 	tags	*t = (tags *)rs->opaque;
@@ -74,7 +74,7 @@ t_local(resolve *rs)
 	return (1);
 }
 
-int
+private int
 t_remote(resolve *rs)
 {
 	tags	*t = (tags *)rs->opaque;
@@ -113,14 +113,14 @@ t_revtool(resolve *rs)
 	return (0);
 }
 
-int
+private int
 t_tags(resolve *rs)
 {
 	sys("bk", "tags", SYS);
 	return (0);
 }
 
-int
+private int
 t_merge(resolve *rs)
 {
 	FILE	*f;
