@@ -70,6 +70,15 @@
     ((size_t) ( (char *)&((st *)(0))->m - (char *)0 ))
 #endif
 
+#ifdef	__GNUC__
+// from: http://gcc.gnu.org/onlinedocs/gcc-4.7.2/cpp/Common-Predefined-Macros.html#Common-Predefined-Macros
+
+// 4.3.2 => 40320
+#define GCC_VERSION (__GNUC__ * 10000 \
+			+ __GNUC_MINOR__ * 100 \
+			+ __GNUC_PATCHLEVEL__)
+#endif
+
 #define BIG_PIPE 4096	/* 16K pipe buffer for win32, ingored on unix */
 #define	GOOD_PSIZE	(16<<10)
 #define	INVALID		(void *)~0u /* invalid pointer */

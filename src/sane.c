@@ -12,6 +12,11 @@
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 
+#if (defined(__GNUC__) && \
+    ((__GNUC_MINOR__ > 99) || (__GNUC_PATCHLEVEL__ > 99)))
+#error	"Bad system.h assumption that MINOR and PATCHLEVEL are 2 digits"
+#endif
+
 int
 sane_main(int ac, char **av)
 {
@@ -100,6 +105,7 @@ sane(int readonly, int resync)
 		errors++;
 	}
 	assert(sizeof(u32) == 4);
+	assert(sizeof(u64) == 8);
 
 	/* See the port/system.c in this same changeset */
 	assert(sizeof(pid_t) <= sizeof(int));
