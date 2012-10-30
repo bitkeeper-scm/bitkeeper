@@ -312,7 +312,7 @@ process(Opts *opts, char *root, char *start, char *end, MDBM *idDB)
 	}
 	if (opts->show_diffs) {
 		if (start) {
-			sccs_key2md5(root, start, smd5);
+			sccs_key2md5(start, smd5);
 		} else {
 			start = root;
 			strcpy(smd5, "1.0");
@@ -320,7 +320,7 @@ process(Opts *opts, char *root, char *start, char *end, MDBM *idDB)
 		path1 = key2path(start, 0, 0, 0);
 	}
 	if (end) {
-		sccs_key2md5(root, end, emd5);
+		sccs_key2md5(end, emd5);
 	} else {
 		end = root;
 		strcpy(emd5, "1.0");

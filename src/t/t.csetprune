@@ -18,6 +18,15 @@
 
 echo $N Setting up cset split testing respositories .................$NL
 TZ=UTC+0 commercial simple
+bk edit $Q BitKeeper/etc/config
+cat <<EOF >> BitKeeper/etc/config
+license:$BKL_REMOTE!
+licsign1:$BKL_R1!
+licsign2:$BKL_R2!
+licsign3:$BKL_R3!
+EOF
+bk lease flush
+bk delta $Q -y'non-airgap: what most customers have' BitKeeper/etc/config
 touch a b c d
 bk new $Q a b c d
 TZ=EST bk commit $Q --tag=BASETAG -y1.2 || exit 1
@@ -46,6 +55,10 @@ bk csetprune $Q -r+ -w'demo' < ../KEYS
 if [ $? -ne 0 ]; then echo Failed; exit 1; fi
 tip=`bk prs -h -r+ -d':I:\n' ChangeSet`
 if [ "$tip" != 1.3 ]; then echo Failed; exit 1; fi
+LCONFIG=`bk _lconfig -p`
+test "$LCONFIG" = "Number of config logs pending: 0" || {
+	fail not 0: "$LCONFIG"
+}
 echo OK
 
 echo $N Check that the rootlog was preserved ........................$NL
@@ -141,21 +154,22 @@ echo $N Test blocking files with ChangeSet in the name ..............$NL
 cd "$HERE"
 commercial badname
 mkdir src
-touch src/ChangeSet src/foo
-_BK_BADNAME=1 bk new $Q src/ChangeSet src/foo
-_BK_BADNAME=1 bk commit $Q -ybadname
+touch src/ChangeSet newfile
+_BK_BADNAME=1 bk new $Q src/ChangeSet newfile
+_BK_BADNAME=1 bk commit $Q -ybadname || fail
 # rootkey test
-echo src/foo | bk csetprune -q 2> ERR
+echo newfile | bk csetprune -q 2> ERR
 grep -q "a rootkey has a reserved BitKeeper name" ERR || fail -f ERR
 # The workaround - get rid of the file
 echo src/ChangeSet | bk csetprune $Q
 # test a file renamed to ChangeSet
+mkdir src
 touch src/bar
 bk new $Q src/bar
 bk commit $Q -ygoodname
 _BK_BADNAME=1 bk mv src/bar src/ChangeSet
 _BK_BADNAME=1 bk commit $Q -ybadname
-echo src/foo | bk csetprune -q 2> ERR
+echo newfile | bk csetprune -q 2> ERR
 grep -q "a deltakey has a reserved BitKeeper name" ERR || fail -f ERR
 # The workaround -- get rid of it
 echo src/bar | bk csetprune $Q

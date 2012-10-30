@@ -36,6 +36,7 @@ int	optopt;		/* option that is in error, if we return an error */
 int	optind;		/* next arg in argv we process */
 char	*optarg;	/* argument to an option */
 static int n;		/* current position == av[optind][n] */
+static int lastn;	/* saved copy of last n */
 
 private	int	doLong(int ac, char **av, longopt *lopts);
 private	void	printUsage(char *prog, char *opts, longopt *lopts);
@@ -45,6 +46,15 @@ getoptReset(void)
 {
 	optopt = optind = 0;
 	optarg = 0;
+}
+
+void
+getoptConsumed(int n1)
+{
+	optind--;
+	unless (optind) optind = 1;
+	n = lastn + n1;
+	// TRACE("optind = %d, n = %d, n1 = %d", optind, n, n1);
 }
 
 /*
@@ -62,10 +72,10 @@ getopt(int ac, char **av, char *opts, longopt *lopts)
 	optopt = 0;	/* clear error return */
 	if (!optind) {
 		optind = 1;
+		lastn = n;
 		n = 1;
 	}
-	debug((stderr, "GETOPT ind=%d n=%d av[%d]='%s'\n",
-	    optind, n, optind, av[optind]));
+	// TRACE("GETOPT ind=%d n=%d av[%d]='%s'", optind, n, optind, av[optind]);
 
 	if ((optind >= ac) || (av[optind][0] != '-') || !av[optind][1]) {
 		return (EOF);
@@ -73,6 +83,7 @@ getopt(int ac, char **av, char *opts, longopt *lopts)
 	/* Stop processing options at a -- and return arguments after */
 	if (streq(av[optind], "--")) {
 		optind++;
+		lastn = n;
 		n = 1;
 		return (EOF);
 	}
@@ -87,7 +98,8 @@ getopt(int ac, char **av, char *opts, longopt *lopts)
 	}
 	if (!*t) {
 		optopt = av[optind][n];
-		debug((stderr, "\tran out of option letters\n"));
+		// TRACE("%s", "ran out of option letters");
+		lastn = n;
 		if (av[optind][n+1]) {
 			n++;
 		} else {
@@ -101,13 +113,14 @@ getopt(int ac, char **av, char *opts, longopt *lopts)
 	 * If it isn't one that takes an option, just advance and return.
 	 */
 	if (t[1] != ':' && t[1] != '|' && t[1] != ';') {
+		lastn = n;
 		if (!av[optind][n+1]) {
 			optind++;
 			n = 1;
 		} else {
 			n++;
 		}
-		debug((stderr, "\tLegit singleton %c\n", *t));
+		// TRACE("Legit singleton %c", *t);
 		return (*t);
 	}
 
@@ -115,16 +128,18 @@ getopt(int ac, char **av, char *opts, longopt *lopts)
 	if (av[optind][n+1]) {
 		optarg = &av[optind][n+1];
 		optind++;
+		lastn = n;
 		n = 1;
-		debug((stderr, "\t%c with %s\n", *t, optarg));
+		// TRACE("%c with %s", *t, optarg);
 		return (*t);
 	}
 
 	/* If it was not there, and it is optional, OK */
 	if (t[1] == '|') {
 		optind++;
+		lastn = n;
 		n = 1;
-		debug((stderr, "\t%c without arg\n", *t));
+		// TRACE("%c without arg", *t);
 		return (*t);
 	}
 
@@ -132,20 +147,21 @@ getopt(int ac, char **av, char *opts, longopt *lopts)
 	if (t[1] == ';') {
 		optind++;
 		optopt = *t;
-		debug((stderr, "\twanted another word\n"));
+		// TRACE("%s", "wanted another word");
 		return (GETOPT_ERR);
 	}
 
 	/* Nope, there had better be another word. */
 	if ((optind + 1 == ac) || (av[optind+1][0] == '-')) {
 		optopt = av[optind][n];
-		debug((stderr, "\twanted another word\n"));
+		// TRACE("%s", "wanted another word");
 		return (GETOPT_ERR);
 	}
 	optarg = av[optind+1];
 	optind += 2;
+	lastn = n;
 	n = 1;
-	debug((stderr, "\t%c with arg %s\n", *t, optarg));
+	// TRACE("%c with arg %s", *t, optarg);
 	return (*t);
 }
 

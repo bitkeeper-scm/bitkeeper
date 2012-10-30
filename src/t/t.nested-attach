@@ -506,3 +506,254 @@ test "`bk log -d:REV: -r+ ChangeSet`" = "1.1" || {
 	exit 1
 }
 echo OK
+
+echo $N Show attach in place of a file in the product ...............$NL
+cd "$HERE"
+commercial stand2
+cd ../nested2
+bk edit $Q BitKeeper/etc/config
+echo 'partial_check: on!' >> BitKeeper/etc/config
+bk ci $Q -ypartial BitKeeper/etc/config || fail
+bk commit $Q -ypartial || fail
+bk repocheck -q || fail
+bk rm bam || fail
+bk attach -q "$HERE"/stand2 bam 2>ERR && fail should have failed
+cat <<EOF > WANT
+A path-conflict was found while trying to commit
+  component at ./bam
+conflicts with existing:
+  ./BitKeeper/deleted/RAND|1.1
+  with pending rename from ./bam
+Must include other renames in commit.
+The commit is aborted.
+EOF
+sed 's/deleted\/.*|/deleted\/RAND|/' < ERR > ERR2
+cmpfiles ERR2 WANT
+test -f bam && fail bam should be gone
+echo OK
+
+echo $N Show attach in place of dir in the product ..................$NL
+mkdir foo
+echo hi > foo/bar
+bk new $Q foo/bar
+bk commit $Q -yfoo || fail
+bk rmdir foo
+bk attach -q "$HERE"/stand2 foo 2>ERR  && fail should have failed
+cat <<EOF > WANT
+A path-conflict was found while trying to commit
+  component at ./foo
+conflicts with existing:
+  ./BitKeeper/deleted/RAND|1.1
+  with pending rename from ./foo/bar
+Must include other renames in commit.
+The commit is aborted.
+EOF
+sed 's/deleted\/.*|/deleted\/RAND|/' < ERR > ERR2
+cmpfiles ERR2 WANT
+test -d foo && fail foo should be gone
+echo OK
+
+echo $N Show attach in place of a file in the component .............$NL
+cd gcc
+echo hi > foo
+mkdir bar
+echo hi > bar/foo
+bk new $Q foo bar/foo || fail
+bk commit $Q -ysetup || fail
+bk rm foo || fail
+
+# it would be nice if this failed
+bk attach -q "$HERE"/stand2 foo || fail
+
+bk repocheck $Q 2> ERR && fail -f should fail
+cat <<EOF > WANT
+A path-conflict was found in existing csets
+  component at ./foo
+conflicts with existing:
+  ./BitKeeper/deleted/RAND|1.1
+  with pending rename from ./foo
+Must include other renames in commit.
+EOF
+sed 's/deleted\/.*|/deleted\/RAND|/' < ERR > ERR2
+cmpfiles ERR2 WANT
+echo OK
+
+echo $N Show attach in place of a dir in the component ..............$NL
+bk gate -r $Q || fail
+bk portal -r $Q || fail
+bk undo $Q -r+ -f || fail
+bk portal $Q . || fail
+bk rmdir bar
+# it would be nice if this failed
+bk attach -q "$HERE"/stand2 bar || fail
+bk repocheck $Q 2> ERR && fail -f should fail
+cat <<EOF > WANT
+A path-conflict was found in existing csets
+  component at ./bar
+conflicts with existing:
+  ./BitKeeper/deleted/RAND|1.1
+  with pending rename from ./bar/foo
+Must include other renames in commit.
+EOF
+sed 's/deleted\/.*|/deleted\/RAND|/' < ERR > ERR2
+cmpfiles ERR2 WANT
+echo OK
+
+echo $N Collide an rmdir with a new comp and resolve ................$NL
+cd "$HERE"
+rm -rf project copy master
+# REPO B:  make a directory/file under a gcc
+nested project
+cd gcc
+mkdir -p pre/src/deep
+touch pre/src/foo
+bk new $Q pre/src/foo
+bk commit $Q -ygcc/pre/src/foo
+# Make repo A start from this point
+bk --cd="$HERE" clone $Q project copy
+# In B, make a new file under same component
+touch pre/src/deep/bar
+bk new $Q pre/src/deep/bar
+bk commit $Q -ygcc/pre/src/deep/bar
+# In repo A, rmdir pre/src and replace with component (This is Jackie's repo)
+cd "$HERE/copy/gcc"
+bk rmdir pre/src
+bk commit $Q -yrmdir
+bk portal $Q .
+bk setup -f pre/src
+bk setup -f pre/src/deep
+bk portal $Q -r
+# bk clone $Q . ../master
+# bk unpopulate pre/src
+cd ..
+cat <<EOF | bk pull -q -T 2> ERR || fail -f ERR
+
+mr
+bar
+q
+EOF
+printf "resolve: RESYNC directory left intact.
+====================================================
+resolve: 1 unresolved conflicts, starting manual resolve process for:
+	gcc/| 1 unresolved name conflict[s] |
+(create/comp conflict) pre/src/deep/bar>> ---------------------------------------------------------------------------
+Remote file:
+	\`\`pre/src/deep/bar''
+wants to be in same place as local directory
+	\`\`pre/src''
+---------------------------------------------------------------------------
+Commands are:
+
+  ?    - print this help
+  a    - abort the patch, DISCARDING all merges
+  ml   - move the local directory to someplace else
+  mr   - move the remote file to someplace else
+  q    - immediately exit resolve
+  rl   - remove the local directory
+  rr   - remove the remote file
+  vr   - view the remote file
+  x    - explain the choices
+
+(create/comp conflict) pre/src/deep/bar>> Move file to: " > WANT
+cmpfiles WANT ERR
+echo OK
+
+echo $N Collide an rmdir with a new comp and move to same name ......$NL
+bk unpull $Q -sf
+cat <<EOF | bk pull -q -T 2> ERR && fail -f ERR
+mr
+pre/src/deep/bar
+q
+EOF
+cat <<EOF > WANT
+resolve: RESYNC directory left intact.
+====================================================
+resolve: 1 unresolved conflicts, starting manual resolve process for:
+	gcc/| 1 unresolved name conflict[s] |
+(create/comp conflict) pre/src/deep/bar>> Move file to: pre/src/deep/SCCS/s.bar conflicts with another component (pre/src)
+(create/comp conflict) pre/src/deep/bar>> 1 unresolved component:
+ gcc
+pull: Unresolved components.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT ERR
+echo OK
+
+echo $N Collide an rmdir with a new comp and move to same dir .......$NL
+bk abort $Q -f
+cat <<EOF | bk pull -q -T 2> ERR && fail -f ERR
+mr
+pre/src/zoo
+q
+EOF
+cat <<EOF > WANT
+resolve: RESYNC directory left intact.
+====================================================
+resolve: 1 unresolved conflicts, starting manual resolve process for:
+	gcc/| 1 unresolved name conflict[s] |
+(create/comp conflict) pre/src/deep/bar>> Move file to: pre/src/SCCS/s.zoo conflicts with another component (pre/src)
+(create/comp conflict) pre/src/deep/bar>> 1 unresolved component:
+ gcc
+pull: Unresolved components.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT ERR
+echo OK
+
+echo $N Collide a file that is a portion of a component path ........$NL
+bk abort $Q -f
+cat <<EOF | bk pull -q -T 2> ERR && fail -f ERR
+mr
+pre
+q
+EOF
+cat <<EOF > WANT
+resolve: RESYNC directory left intact.
+====================================================
+resolve: 1 unresolved conflicts, starting manual resolve process for:
+	gcc/| 1 unresolved name conflict[s] |
+(create/comp conflict) pre/src/deep/bar>> Move file to: SCCS/s.pre conflicts with another component (pre/src)
+(create/comp conflict) pre/src/deep/bar>> 1 unresolved component:
+ gcc
+pull: Unresolved components.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT ERR
+echo OK
+
+echo $N Reverse the pull where pull populates .......................$NL
+bk gate $Q .
+cd "$HERE"/project
+cat <<EOF > IN
+q
+EOF
+
+# this does fail, but the error message is pretty poor
+cat IN | bk pull -q -T ../copy 2>ERR && fail -f ERR should fail
+cat <<EOF > WANT
+pull: ./gcc/pre/src not empty
+pull: ./gcc/pre/src/deep not empty
+pull: problem populating components.
+ERROR-Could not lock product, repository not mine
+EOF
+cmpfiles WANT ERR
+echo OK
+
+echo $N Now pull without populating new component ...................$NL
+bk gate -r $Q
+bk portal -r $Q
+bk here set $Q ./gcc ./gdb
+
+cat IN | bk pull -q -T ../copy 2>ERR && fail -f ERR should fail
+cat <<EOF > WANT
+A path-conflict was found while committing a merge
+  component at ./pre/src/deep
+conflicts with existing:
+  ./pre/src/deep/bar|1.1
+EOF
+head -4 ERR > ERR2
+cmpfiles WANT ERR2
+echo OK

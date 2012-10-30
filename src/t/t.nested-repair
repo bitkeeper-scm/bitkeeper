@@ -1,0 +1,104 @@
+echo $N Create a nested collection and clone it .....................$NL
+nested project
+# add some files
+echo foo > foo
+bk new $Q foo
+cd gcc
+for i in foo
+do
+	touch file$i
+	echo "stuff $i" > file$i
+	bk new $Q -y"add" file$i || exit 1
+done
+bk commit -S $Q -y"Add $i to file$i" || exit 1
+cd ../gdb
+for i in foo
+do
+	touch file$i
+	echo "stuff $i" > file$i
+	bk new $Q -y"add" file$i || exit 1
+	bk commit -S $Q -y"add file $i" || exit 1
+done
+bk -P commit $Q -y"add files" || exit 1
+bk clone $Q  "$HERE"/project "$HERE"/copy || exit 1
+echo OK
+
+echo $N Make sure we can restore an identical ChangeSet file ........$NL
+cd "$HERE"/copy
+bk _rm SCCS/s.ChangeSet
+bk repocheck > OUT 2>&1 && fail -f OUT
+grep -q "missing ChangeSet file!" OUT || fail -f OUT
+bk repair > OUT 2>&1 || fail -f OUT
+grep -q "Missing ChangeSet file," OUT || fail -f OUT
+bk repocheck $Q || fail
+echo OK
+
+echo $N Same thing in a component ...................................$NL
+cd "$HERE"/copy/gcc
+bk _rm SCCS/s.ChangeSet
+bk repocheck > OUT 2>&1 && fail -f OUT
+grep -q "missing ChangeSet file!" OUT || fail -f OUT
+bk repair > OUT 2>&1 || fail -f OUT
+grep -q "Missing ChangeSet file," OUT || fail -f OUT
+bk repocheck $Q || fail
+echo OK
+
+echo $N Make sure we can restore an identical file ..................$NL
+cd "$HERE"/copy
+bk _rm SCCS/s.foo
+bk repocheck > OUT 2>&1 && fail
+grep -q "Missing file .bk help chk3" OUT || fail -f OUT
+bk repair > OUT 2>&1 || fail -f OUT
+grep -q "Repository is repaired." OUT || fail -f OUT
+bk repocheck $Q || fail
+echo OK
+
+echo $N Same thing in a component ...................................$NL
+cd "$HERE"/copy/gcc
+bk _rm SCCS/s.filefoo
+bk repocheck > OUT 2>&1 && fail
+grep -q "Missing file .bk help chk3" OUT || fail -f OUT
+bk repair > OUT 2>&1 || fail -f OUT
+grep -q "Repository is repaired." OUT || fail -f OUT
+bk repocheck $Q || fail
+echo OK
+
+echo $N Detach the component ........................................$NL
+cd "$HERE"/copy/gcc
+bk detach -q . "$HERE/gcc" || fail
+cd "$HERE/gcc"
+bk edit $Q filefoo
+echo foo >> filefoo
+bk delta -ywhatever $Q filefoo
+# XXX - if I don't commit the repair below fails
+bk commit $Q -ywhatever
+echo OK
+
+echo $N Repair a file from a standalone .............................$NL
+cd "$HERE"/copy/gcc
+bk _rm SCCS/s.filefoo
+bk repocheck > OUT 2>&1 && fail
+grep -q "Missing file .bk help chk3" OUT || fail -f OUT
+bk repair -@"$HERE/gcc" > OUT 2>&1 || fail -f OUT
+grep -q "Repository is repaired." OUT || fail -f OUT
+bk repocheck $Q || fail
+echo OK
+
+echo $N Make sure we can restore ChangeSet from standalone ..........$NL
+bk _heapdump ChangeSet > 1
+bk _rm SCCS/s.ChangeSet
+bk repocheck > OUT 2>&1 && fail -f OUT
+grep -q "missing ChangeSet file!" OUT || fail -f OUT
+bk repair -@"$HERE/gcc" > OUT 2>&1 || fail -f OUT
+bk _heapdump ChangeSet > 2
+bk diff -u 1 2 > 3 && fail working, update test
+grep '^-[^-]' 3 | sed s'/RANDOM.*/RANDOM:/' > 4
+
+# the repair fails to fix the pathname and the rootkey
+cat <<EOF > WANT
+-PATHNAME: gcc/ChangeSet
+-PATHNAME: gcc/ChangeSet
+-RANDOM:
+EOF
+cmpfiles 4 WANT
+echo "failed (bug )"

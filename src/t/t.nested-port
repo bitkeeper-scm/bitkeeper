@@ -180,6 +180,7 @@ rm -rf standalone
 tar xf standalone.tar
 cd project2
 bk portal $Q -r || exit 1
+bk gate $Q -r || exit 1
 cd ../standalone
 bk pull $Q ../project2/sa2 2> ERR 1>&2 && {
 	echo should have failed
@@ -192,6 +193,9 @@ grep -q 'component-only pulls are not allowed.' ERR || {
 	exit 1
 }
 test "`bk changes -r+ -nd:REV:`" = 1.3 || exit 1
+bk port -q ../project2/sa2 2> ERR && fail -f ERR
+grep -q 'port source must be a gate' ERR || fail -f ERR
+bk --cd=../project2 gate $Q .
 bk port $Q ../project2/sa2 || exit 1
 # We should get two csets from the component, and see a null cset
 # that sets the ChangeSet path.

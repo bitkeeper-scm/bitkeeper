@@ -289,6 +289,7 @@ _mailslot
 mailsplit
 mail
 makepatch
+mdbmdump
 merge
 mklock
 more
@@ -308,6 +309,7 @@ park
 path
 pending
 platform
+_poly
 _popensystem
 populate
 port => pull
@@ -443,7 +445,6 @@ helptool gui
 installtool gui
 msgtool gui
 oldcitool gui
-newdifftool gui
 renametool gui
 revtool gui
 setuptool gui

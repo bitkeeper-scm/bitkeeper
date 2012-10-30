@@ -394,6 +394,7 @@ setupWorkArea(Opts *opts, char *repo)
 		perror("chdir");
 		goto err;
 	}
+	sys("bk", "lease", "renew", "-qw", SYS);
 	if (opts->referenceurl) {
 		assert(streq(opts->rootkey, proj_rootkey(0)));
 	} else {

@@ -4,7 +4,7 @@
 #include "resolve.h"
 
 private	int	prs_common(resolve *rs, sccs *s, char *a, char *b);
-private	void	getFileConflict(char *gfile, char *path);
+private	void	getFileConflict(resolve *rs, char *gfile, char *path);
 
 int
 res_abort(resolve *rs)
@@ -82,7 +82,7 @@ do_diff(resolve *rs, char *left, char *right, int wait)
 	return (0);
 }
 
-int
+private int
 do_sdiff(resolve *rs, char *left, char *right, int wait)
 {
 	char	tmp[MAXPATH];
@@ -100,7 +100,7 @@ do_sdiff(resolve *rs, char *left, char *right, int wait)
 	return (0);
 }
 
-int
+private int
 do_difftool(resolve *rs, char *left, char *right, int wait)
 {
 	char	*av[10];
@@ -140,7 +140,7 @@ int
 res_mr(resolve *rs)
 {
 	char	buf[MAXPATH];
-	char	*t;
+	char	*t, *why = 0;
 
 	unless (prompt("Move file to:", buf)) return (0);
 	if ((buf[0] == '/') || strneq("../", buf, 3)) {
@@ -152,7 +152,7 @@ res_mr(resolve *rs)
 		strcpy(buf, t);
 		free(t);
 	}
-	switch (slotTaken(rs->opts, buf)) {
+	switch (slotTaken(rs, buf, &why)) {
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", buf);
 		return (0);
@@ -167,6 +167,10 @@ res_mr(resolve *rs)
 		return (0);
 	    case RESYNC_CONFLICT:
 		fprintf(stderr, "%s exists in RESYNC already\n", buf);
+		return (0);
+	    case COMP_CONFLICT:
+		fprintf(stderr,
+		    "%s conflicts with another component (%s)\n", buf, why);
 		return (0);
 	}
 	if (move_remote(rs, buf)) {
@@ -247,7 +251,7 @@ res_vr(resolve *rs)
 	return (0);
 }
 
-int
+private int
 revtool(char *name)
 {
 	char	*av[10];
@@ -260,7 +264,7 @@ revtool(char *name)
 	return (0);
 }
 
-int
+private int
 res_pl(resolve *rs)
 {
 	if (rs->res_screate) {
@@ -275,7 +279,7 @@ res_pl(resolve *rs)
 	return (0);
 }
 
-int
+private int
 res_pr(resolve *rs)
 {
 	revtool(rs->s->gfile);
@@ -367,7 +371,7 @@ res_quit(resolve *rs)
 	return (-1);
 }
 
-int
+private int
 gc_explain(resolve *rs)
 {
 	fprintf(stderr,
@@ -398,7 +402,7 @@ back by hand, if that is what you want.\n\n",
 	return (0);
 }
 
-int
+private int
 gc_help(resolve *rs)
 {
 	int	i;
@@ -435,7 +439,7 @@ common_ml(resolve *rs, char *p, char *buf)
 		strcpy(buf, t);
 		free(t);
 	}
-	switch (slotTaken(rs->opts, buf)) {
+	switch (slotTaken(rs, buf, 0)) {
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", buf);
 		return (1);
@@ -444,7 +448,7 @@ common_ml(resolve *rs, char *p, char *buf)
 		    "%s exists locally already but is marked gone\n", buf);
 		return (1);
 	    case DIR_CONFLICT:
-		getFileConflict(buf, path);
+		getFileConflict(rs, buf, path);
 		fprintf(stderr, "file %s exists locally already\n", path);
 		return (1);
 	    case GFILE_CONFLICT:
@@ -459,7 +463,7 @@ common_ml(resolve *rs, char *p, char *buf)
 	return (0);
 }
 
-int
+private int
 gc_ml(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -480,7 +484,7 @@ gc_ml(resolve *rs)
 	return (EAGAIN);
 }
 
-int
+private int
 dc_ml(resolve *rs)
 {
 	int	count = 0;
@@ -490,7 +494,7 @@ dc_ml(resolve *rs)
 	char	path[MAXPATH];
 
 	/* Check to see that a simple rename is possible */
-	getFileConflict(PATHNAME(rs->s, rs->d), path);
+	getFileConflict(rs, PATHNAME(rs->s, rs->d), path);
 	chdir(RESYNC2ROOT);
 	t = aprintf("bk sfiles '%s'", path);
 	list = popen(t, "r");
@@ -520,7 +524,7 @@ dc_ml(resolve *rs)
 	return (EAGAIN);
 }
 
-int
+private int
 gc_remove(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -570,10 +574,15 @@ gc_sameFiles(resolve *rs)
 }
 
 private void
-getFileConflict(char *gfile, char *path)
+getFileConflict(resolve *rs, char *gfile, char *path)
 {
 	char	*t, *s;
+	int	i;
 	
+	if (i = comp_overlap(rs->opts->complist, gfile)) {
+		strcpy(path, rs->opts->complist[i]);
+		return;
+	}
 	chdir(RESYNC2ROOT);
 	if (exists(gfile)) {
 		strcpy(path, gfile);
@@ -597,7 +606,7 @@ getFileConflict(char *gfile, char *path)
 	return;
 }
 
-int
+private int
 dc_remove(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -608,19 +617,19 @@ dc_remove(resolve *rs)
 	unless (rs->opts->force || confirm("Remove local directory?")) {
 		return (0);
 	}
-	getFileConflict(PATHNAME(rs->s, rs->d), path);
+	getFileConflict(rs, PATHNAME(rs->s, rs->d), path);
 	sprintf(buf, "%s/%s", RESYNC2ROOT, path);
 	ret = rmdir(buf);
 	if (opts->log) fprintf(stdlog, "rmdir(%s) = %d\n", buf, ret);
 	return (EAGAIN);
 }
 
-int
+private int
 dc_explain(resolve *rs)
 {
 	char	path[MAXPATH];
 
-	getFileConflict(PATHNAME(rs->s, rs->d), path);
+	getFileConflict(rs, PATHNAME(rs->s, rs->d), path);
 	fprintf(stderr,
 "The path of the remote file: ``%s''\n\
 conflicts with a local directory: ``%s''\n\
@@ -647,7 +656,7 @@ back by hand, if that is what you want.\n\n",
 	return (0);
 }
 
-int
+private int
 dc_help(resolve *rs)
 {
 	int	i;
@@ -655,7 +664,7 @@ dc_help(resolve *rs)
 	char	path[MAXPATH];
 	char	buf[MAXKEY];
 
-	getFileConflict(PATHNAME(rs->s, rs->d), path);
+	getFileConflict(rs, PATHNAME(rs->s, rs->d), path);
 	sccs_sdelta(rs->s, sccs_ino(rs->s), buf);
 	chdir(RESYNC2ROOT);
 	local = sccs_keyinit(0, buf, INIT_NOCKSUM, rs->opts->idDB);
@@ -680,7 +689,7 @@ Remote file:\n\t``%s''\n", PATHNAME(rs->s, rs->d));
 	return (0);
 }
 
-int
+private int
 sc_explain(resolve *rs)
 {
 	fprintf(stderr,
@@ -702,7 +711,7 @@ and you to continue with the rest of the patch.\n\n", PATHNAME(rs->s, rs->d));
 	return (0);
 }
 
-int
+private int
 sc_help(resolve *rs)
 {
 	int	i;
@@ -755,7 +764,7 @@ done:
 	return (rc);
 }
 
-int
+private int
 sc_ml(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -777,7 +786,7 @@ sc_ml(resolve *rs)
 	} else {
 		to = strdup(buf);
 	}
-	switch (slotTaken(rs->opts, to)) {
+	switch (slotTaken(rs, to, 0)) {
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", to);
 		return (0);
@@ -824,7 +833,7 @@ sc_ml(resolve *rs)
 	return (EAGAIN);
 }
 
-int
+private int
 sc_rml(resolve *rs)
 {
 	char	repo[MAXPATH];
@@ -874,7 +883,7 @@ sc_rml(resolve *rs)
 	return (EAGAIN);
 }
 
-int
+private int
 sc_rmr(resolve *rs)
 {
 	char	*resync;
@@ -889,7 +898,7 @@ sc_rmr(resolve *rs)
 	return (1);	/* XXX - EAGAIN? */
 }
 
-int
+private int
 rc_explain(resolve *rs)
 {
 	fprintf(stderr,
@@ -905,7 +914,7 @@ Both of these choices leave the right file where it is.\n", rs->dname);
 	return (0);
 }
 
-int
+private int
 rc_help(resolve *rs)
 {
 	int	i;
@@ -924,7 +933,7 @@ Two files want to be: ``%s''\n\
 	return (0);
 }
 
-int
+private int
 rc_ml(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -942,7 +951,7 @@ rc_ml(resolve *rs)
 	} else {
 		to = strdup(buf);
 	}
-	switch (slotTaken(rs->opts, to)) {
+	switch (slotTaken(rs, to, 0)) {
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", to);
 		return (0);
@@ -973,7 +982,7 @@ rc_ml(resolve *rs)
 	return (1);
 }
 
-int
+private int
 rc_rml(resolve *rs)
 {
 	char	*resync;
@@ -1090,6 +1099,11 @@ resolve_create(resolve *rs, int type)
 		rs->prompt = PATHNAME(rs->s, rs->d);
 		rs->res_dirfile = 1;
 		return (resolve_loop("create/dir conflict", rs, dc_funcs));
+	    case COMP_CONFLICT:
+		if (rs->opts->debug) fprintf(stderr, "COMP\n");
+		rs->prompt = PATHNAME(rs->s, rs->d);
+		rs->res_dirfile = 1;
+		return (resolve_loop("create/comp conflict", rs, dc_funcs));
 	    case SFILE_CONFLICT:
 		if (rs->opts->debug) fprintf(stderr, "SFILE\n");
 		rs->prompt = PATHNAME(rs->s, rs->d);

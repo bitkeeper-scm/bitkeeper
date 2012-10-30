@@ -85,7 +85,7 @@ WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k \
 #
 # -Wredundant-decls	  Declaring same function twice
 # -Wmissing-declarations  Functions without a prototype
-WARNINGS_GCC3=-Wchar-subscripts -Wredundant-decls
+WARNINGS_GCC3=-Wchar-subscripts -Wredundant-decls -Wmissing-declarations
 
 # Warnings enabled with GCC newer than 4.0
 #
@@ -156,7 +156,7 @@ OBJ =	bkver.o cmd.o \
 	gnupatch.o graft.o grep.o \
 	help.o here.o here_check.o hostme.o http.o \
 	idcache.o isascii.o info.o inskeys.o \
-	key2rev.o key2path.o kill.o kv.o kvfile.o \
+	key2rev.o key2path.o kill.o kv.o \
 	lease.o \
 	libcommit.o libgraph.o librange.o \
 	libsfiles.o libusers.o lines.o \
@@ -167,6 +167,7 @@ OBJ =	bkver.o cmd.o \
 	opark.o \
 	parent.o park.o partition.o \
 	pending.o preference.o proj.o \
+	poly.o \
 	populate.o \
 	port/bkd_server.o \
 	port/check_rsh.o \
@@ -237,7 +238,7 @@ SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
 HDRS	= bam.h bkd.h bk-features.h diff.h graph.h logging.h nested.h \
 	  progress.h purify.h range.h rcs.h resolve.h sccs.h \
-	  cmd.h proj.h redblack.h inskeys.h libc/system.h
+	  cmd.h poly.h proj.h redblack.h inskeys.h libc/system.h
 
 # list of non-C sources in bk
 SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \

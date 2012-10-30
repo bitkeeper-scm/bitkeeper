@@ -925,6 +925,7 @@ private	struct {
 	{"bk", CMD_COMPAT_NOSI}, /* bk-remote */
 	{"check", CMD_COMPAT_NOSI},
 	{"clone", CMD_REPOLOG},		/* locking handled in clone.c */
+	{"cmdlog", CMD_NOLOG},
 	{"collapse", CMD_REPOLOG},
 	{"commit", CMD_REPOLOG},
 	{"fix", CMD_REPOLOG},
@@ -937,7 +938,7 @@ private	struct {
 	     CMD_REPOLOG|CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|
 	     CMD_IGNORE_RESYNC},
 	{"remote changes part1", CMD_REPOLOG|CMD_RDLOCK},
-	{"remote changes part2", CMD_REPOLOG|CMD_RDUNLOCK},
+	{"remote changes part2", CMD_REPOLOG},	// unlocked internally
 	{"remote clone", CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
 	{"remote pull part1",
 	     CMD_REPOLOG|CMD_BYTES|CMD_RDLOCK|CMD_NESTED_RDLOCK},
@@ -951,7 +952,6 @@ private	struct {
 	{"remote rclone part3", CMD_REPOLOG|CMD_NOREPO|CMD_BYTES},
 	{"remote quit", CMD_NOREPO|CMD_QUIT},
 	{"remote rdlock", CMD_RDLOCK},
-	{"remote nested", CMD_SAMELOCK},
 	{"remote wrlock", CMD_WRLOCK},
 	{"resolve", CMD_REPOLOG},
 	{"synckeys", CMD_RDLOCK},
@@ -1019,18 +1019,21 @@ cmdlog_start(char **av, int bkd_cmd)
 		cmdlog_lock(cmdlog_flags);
 	}
 
-	for (len = 1, i = 0; av[i]; i++) {
-		len += strlen(av[i]) + 1;
-		if (len >= sizeof(cmdlog_buffer)) continue;
-		if (i) strcat(cmdlog_buffer, " ");
-		quoted = shellquote(av[i]);
-		strcat(cmdlog_buffer, quoted);
-		free(quoted);
+	unless (cmdlog_flags & CMD_NOLOG) {
+		for (len = 1, i = 0; av[i]; i++) {
+			quoted = shellquote(av[i]);
+			len += strlen(quoted) + 1;
+			if (len >= sizeof(cmdlog_buffer)) {
+				free(quoted);
+				break;
+			}
+			if (i) strcat(cmdlog_buffer, " ");
+			strcat(cmdlog_buffer, quoted);
+			free(quoted);
+		}
+		write_log("cmd_log", "%s", cmdlog_buffer);
+		indent_level++;
 	}
-
-	write_log("cmd_log", "%s", cmdlog_buffer);
-	indent_level++;
-
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
 
 	if (bkd_cmd) {
@@ -1072,30 +1075,6 @@ cmdlog_lock(int flags)
 
 	cmdlog_flags = flags;
 
-	/* used by "remote nested" */
-	if (cmdlog_flags & CMD_SAMELOCK) {
-		if (nlid = getenv("_BK_NESTED_LOCK")) {
-			if (nested_mine(proj, nlid, 1)) {
-				cmdlog_flags |= CMD_WRLOCK;
-				TRACE("SAMELOCK: got a %s", "write lock");
-			} else if (nested_mine(proj, nlid, 0)) {
-				cmdlog_flags |= CMD_RDLOCK;
-				TRACE("SAMELOCK: got a %s", "read lock");
-			} else {
-				TRACE("SAMELOCK: not mine: %s", nlid);
-				error_msg = aprintf("%s\n", LOCK_UNKNOWN+6);
-				goto out;
-			}
-		}
-		if (cmdlog_locks &&
-		    ((cmdlog_locks & (CMD_RDLOCK|CMD_WRLOCK)) != 
-		    (cmdlog_flags & (CMD_RDLOCK|CMD_WRLOCK)))) {
-			TRACE("SAMELOCK: locks=%x != flags=%x",
-			    cmdlog_locks, cmdlog_flags);
-			error_msg = aprintf("%s\n", LOCK_UNKNOWN+6);
-			goto out;
-		}
-	}
 	/*
 	 * cmdlog_locks remember all the repository locks obtained by
 	 * this process so if another command wants the same lock type
@@ -1146,9 +1125,10 @@ cmdlog_lock(int flags)
 		if (i) {
 			unless ((cmdlog_flags & CMD_BKD_CMD) ||
 			    !proj_root(proj)) {
-				repository_lockers(proj);
 				if (proj_isEnsemble(proj)) {
 					nested_printLockers(proj, stderr);
+				} else {
+					repository_lockers(proj);
 				}
 			}
 			switch (i) {
@@ -1180,9 +1160,10 @@ cmdlog_lock(int flags)
 		if (i = repository_rdlock(proj)) {
 			unless ((cmdlog_flags & CMD_BKD_CMD) ||
 			    !proj_root(proj)) {
-				repository_lockers(proj);
 				if (proj_isEnsemble(proj)) {
 					nested_printLockers(proj, stderr);
+				} else {
+					repository_lockers(proj);
 				}
 			}
 			switch (i) {
@@ -1364,14 +1345,16 @@ cmdlog_end(int ret, int bkd_cmd)
 	assert(len < savelen);
 	mdbm_close(notes);
 	notes = 0;
-	write_log("cmd_log", "%s", log);
-	if (cmdlog_repolog) {
-		/*
-		 * commands in the repolog table above get written
-		 * to the repo_log in addition to the cmd_log and
-		 * the repo_log is never rotated.
-		 */
-		write_log("repo_log", "%s", log);
+	unless (cmdlog_flags & CMD_NOLOG) {
+		write_log("cmd_log", "%s", log);
+		if (cmdlog_repolog) {
+			/*
+			 * commands in the repolog table above get written
+			 * to the repo_log in addition to the cmd_log and
+			 * the repo_log is never rotated.
+			 */
+			write_log("repo_log", "%s", log);
+		}
 	}
 	free(log);
 	if ((!bkd_cmd || (bkd_cmd && ret )) &&

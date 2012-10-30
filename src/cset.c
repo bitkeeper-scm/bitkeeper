@@ -4,6 +4,7 @@
 #include "range.h"
 #include "nested.h"
 #include "progress.h"
+#include "poly.h"
 
 typedef	struct cset {
 	/* bits */
@@ -43,10 +44,8 @@ typedef	struct cset {
 } cset_t;
 
 private	void	csetlist(cset_t *cs, sccs *cset);
-private	int	marklist(char *file);
-private	ser_t	mkChangeSet(sccs *cset, char *files, FILE *diffs);
 private	void	doSet(sccs *sc);
-private	void	doMarks(cset_t *cs, sccs *sc);
+private	int	doMarks(cset_t *cs, sccs *sc);
 private	void	doDiff(sccs *sc);
 private	void	sccs_patch(sccs *, cset_t *);
 private	int	cset_diffs(cset_t *cs, ser_t ser);
@@ -287,13 +286,13 @@ err:
 private void
 cset_exit(int n)
 {
+	assert(n);		/* must be failure */
 	if (copts.pid) {
 		printf(PATCH_ABORT);
 		fclose(stdout);
 		waitpid(copts.pid, 0, 0);
 	}
-	fflush(stdout);
-	_exit(n);
+	exit(n);
 }
 
 private pid_t
@@ -375,24 +374,27 @@ intr:		sccs_free(cset);
 /*
  * Do whatever it is they want.
  */
-private void
+private int
 doit(cset_t *cs, sccs *sc)
 {
 	unless (sc) {
 		if (cs->doDiffs && cs->makepatch) printf("\n");
-		return;
+		return (0);
 	}
-	if (copts.hide_comp && CSET(sc) && proj_isComponent(sc->proj)) return;
+	if (copts.hide_comp && CSET(sc) && proj_isComponent(sc->proj)) {
+		return (0);
+	}
 	cs->nfiles++;
 	if (cs->doDiffs) {
 		doDiff(sc);
 	} else if (cs->makepatch) {
 		sccs_patch(sc, cs);
 	} else if (cs->mark) {
-		doMarks(cs, sc);
+		return (doMarks(cs, sc));
 	} else {
 		doSet(sc);
 	}
+	return (0);
 }
 
 private void
@@ -429,6 +431,7 @@ markThisCset(cset_t *cs, sccs *s, ser_t d)
 		FLAGS(s, d) |= D_SET;
 		return;
 	}
+	assert(!CSET(s));
 	range_cset(s, d);
 }
 
@@ -439,6 +442,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 	static	sccs *sc;
 	static	char *lastkey;
 	ser_t	d;
+	int	rc = 0;
 
 	/*
 	 * Cleanup code, called to reset state.
@@ -453,12 +457,12 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 			lastkey = 0;
 		}
 		if (sc) {
-			doit(cs, sc);
+			rc |= doit(cs, sc);
 			unless (sc == cset) sccs_free(sc);
 			sc = 0;
 		}
-		doit(cs, 0);
-		return (0);
+		rc |= doit(cs, 0);
+		return (rc);
 	}
 
 	/*
@@ -472,7 +476,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 	 * This would be later - do the last file and clean up.
 	 */
 	if (sc) {
-		doit(cs, sc);
+		rc |= doit(cs, sc);
 		unless (sc == cset) sccs_free(sc);
 		free(lastkey);
 		sc = 0;
@@ -516,54 +520,10 @@ markkey:
 		    "cset: cannot find\n\t%s in\n\t%s\n", val, sc->sfile);
 		return (cs->force ? 0 : -1);
 	}
-	markThisCset(cs, sc, d);
-	return (0);
-}
-
-/*
- * Mark the deltas listed in the diff file.  Ignore first line.
- * XXX: change from 0a0 format to I0 0 format
- */
-private int
-marklist(char *file)
-{
-	char	*t;
-	FILE	*list;
-	char	buf[MAXPATH*2];
-	cset_t	cs;
-
-	bzero(&cs, sizeof(cs));
-	cs.mark++;
-	cs.fastpatch = copts.fastpatch;	/* sccs_patch */
-
-	unless (list = fopen(file, "r")) {
-		perror(file);
-		return (-1);
+	unless (cs->hide_comp && CSET(sc) && proj_isComponent(sc->proj)) {
+		markThisCset(cs, sc, d);
 	}
-
-	/* eat the first line ... */
-	unless (fnext(buf, list)) {
-		fprintf(stderr, "cset: marking new list: empty file\n");
-		fclose(list);
-		return (-1);
-	}
-	/*
-	 * Now do the real data.
-	 * XXX: fix when replace 0a0 with I0 0.  &buf[2] => buf
-	 */
-	while (fnext(buf, list)) {
-		chop(buf);
-		t = separator(&buf[2]);
-		assert(t);
-		*t++ = 0;
-		if (doKey(&cs, &buf[2], t, 0)) {
-			fclose(list);
-			return (-1);
-		}
-	}
-	doKey(&cs, 0, 0, 0);
-	fclose(list);
-	return (0);
+	return (rc);
 }
 
 /*
@@ -742,12 +702,12 @@ again:	/* doDiffs can make it two pass */
 next:		t[-1] = ' ';
 	}
 	if (cs->doDiffs && cs->makepatch) {
-		doKey(cs, 0, 0, goneDB);
+		if (doKey(cs, 0, 0, goneDB)) goto fail;
 		cs->doDiffs = 0;
 		fputs(PATCH_END, stdout);
 		goto again;
 	}
-	doKey(cs, 0, 0, goneDB);
+	if (doKey(cs, 0, 0, goneDB)) goto fail;
 	freeLines(cs->cweave, free);
 	if (cs->verbose && cs->makepatch) {
 		fprintf(stderr,
@@ -868,11 +828,13 @@ doEndpoints(cset_t *cs, sccs *sc)
 }
 #endif
 
-private void
+private int
 doMarks(cset_t *cs, sccs *s)
 {
 	ser_t	d;
 	int	did = 0;
+	char	*t;
+	int	attip = 0;
 
 	/*
 	 * Throw away the existing marks if we are rebuilding.
@@ -889,11 +851,25 @@ doMarks(cset_t *cs, sccs *s)
 				FLAGS(s, d) |= D_CSET;
 				cs->ndeltas++;
 				did++;
+				if (!attip && (d == sccs_top(s))) attip = 1;
 			}
 		}
 	}
 	if (did) {
-		sccs_newchksum(s);
+		if (sccs_newchksum(s)) {
+			fprintf(stderr, "Could not mark %s. Perhaps it "
+			    "is locked by some other process?\n",
+			    s->gfile);
+			t = sccs_Xfile(s, 'x');
+			if (unlink(t)) {
+				fprintf(stderr,
+				    "Could not clean up %s\n", t);
+			}
+			return (1);
+		} else if (attip) {
+			// remove dfile
+			unlink(sccs_Xfile(s, 'd'));
+		}
 		if ((cs->verbose > 1) && did) {
 			fprintf(stderr,
 			    "Marked %d csets in %s\n", did, s->gfile);
@@ -902,6 +878,7 @@ doMarks(cset_t *cs, sccs *s)
 			    "Set CSETMARKED flag in %s\n", s->sfile);
 		}
 	}
+	return (0);
 }
 
 /*
@@ -927,209 +904,6 @@ doSet(sccs *sc)
 			}
 		}
 	}
-}
-
-/*
- * Add a delta to the ChangeSet.
- *
- * XXX - this could check to make sure we are not adding 1.3 to a cset LOD
- * which already has 1.5 from the same file.
- */
-private void
-add(FILE *diffs, char *buf)
-{
-	sccs	*s;
-	char	*p, *rev = 0;	/* lint */
-	ser_t	d;
-
-	unless (chomp(buf) && (rev = strrchr(buf, BK_FS))) {
-		fprintf(stderr, "cset: bad file:rev format: %s\n", buf);
-		system("bk clean ChangeSet");
-		cset_exit(1);
-	}
-	*rev++ = 0;
-
-	/*
-	 * XXX Optimization note: We should probably check for ChangeSet
-	 * file first before we waste cpu to call sccs_init()
-	 * This should be a win if we have complex graph and large 
-	 * ChangeSet file. Since we ae going to sccs_free() and
-	 * return anyway..
-	 */
-	unless (s = sccs_init(buf, 0)) {
-		fprintf(stderr, "cset: can't init %s\n", buf);
-		system("bk clean -q ChangeSet");
-		cset_exit(1);
-	}
-
-	/*
-	 * This is really testing two things:
-	 * a) If I'm a ChangeSet file and not in an ensemble
-	 * b) If I'm a ChangeSet file and not a component
-	 */
-	if (CSET(s) && !proj_isComponent(s->proj)) {
-		sccs_free(s);
-		return;
-	}
-	unless (d = sccs_findrev(s, rev)) {
-		fprintf(stderr, "cset: can't find %s in %s\n", rev, buf);
-		system("bk clean -q ChangeSet");
-		cset_exit(1);
-	}
-
-	p = basenm(buf);
-	*p = 'd';
-	if (d == sccs_top(s)) unlink(buf); /* remove d.file */
-
-	sccs_sdelta(s, sccs_ino(s), buf);
-	fprintf(diffs, "> %s ", buf);
-	sccs_sdelta(s, d, buf);
-	fprintf(diffs, "%s\n", buf);
-	sccs_free(s);
-
-}
-
-/*
- * Read file:rev from stdin and apply those to the changeset db.
- * Edit the ChangeSet file and add the new stuff to that file and
- * leave the file sorted.
- * Close the cset sccs* when done.
- */
-private ser_t
-mkChangeSet(sccs *cset, char *files, FILE *diffs)
-{
-	ser_t	d;
-	FILE	*f = fopen(files, "rt");
-	char	buf[MAXPATH];
-
-	/*
-	 * Edit the ChangeSet file - we need it edited to modify it as well
-	 * as load in the current state.
-	 * If the edit flag is off, then make sure the file is already edited.
-	 */
-	unless ((cset->state & (S_SFILE|S_PFILE)) == (S_SFILE|S_PFILE)) {
-		int flags = GET_EDIT|GET_SKIPGET|SILENT;
-		if (sccs_get(cset, 0, 0, 0, 0, flags, "-")) {
-			unless (BEEN_WARNED(cset)) {
-				fprintf(stderr,
-				    "cset: get -eg of ChangeSet failed\n");
-				cset_exit(1);
-			}
-		}
-	}
-	d = sccs_dInit(0, 'D', cset, 0);
-
-	fprintf(diffs, "0a0\n"); /* fake diff header */
-
-	/*
-	 * Read each file:rev from files and add that to the cset.
-	 * add() will ignore the ChangeSet entry itself.
-	 */
-	assert(f && files);
-	while (fgets(buf, sizeof(buf), f)) {
-		add(diffs, buf);
-	}
-	fclose(f);
-
-#ifdef CRAZY_WOW
-	Actually, this isn't so crazy wow.  I don't know what problem this
-	caused but I believe the idea was that we wanted time increasing
-	across all deltas in all files.  Sometimes the ChangeSet timestamp
-	is behind the deltas in that changeset which is clearly wrong.
-
-	Proposed fix is to record the highest fudged timestamp in global
-	file in the repo and make sure the cset file is always >= that one.
-	Should be done in the proj struct and written out when we free it
-	if it changed.
-
-	/*
-	 * Adjust the date of the new rev, scripts can make this be in the
-	 * same second.  It's OK that we adjust it here, we are going to use
-	 * this delta * as part of the checkin on this changeset.
-	 */
-	if (DATE(cset, d) <= DATE(cset, table)) {
-		DATE_FUDGE(cset, d) =
-		    (DATE(cset, table) - DATE(csets, d)) + 1;
-		DATE_SET(cset, d, (DATE(cset, d) + DATE_FUDGE(cset, d)));
-	}
-	/* Add ChangeSet entry */
-	sccs_sdelta(cset, sccs_ino(cset), buf);
-	fprintf(diffs, "> %s", buf);
-	sccs_sdelta(cset, d, buf);
-	fprintf(diffs, " %s\n", buf);
-#endif
-	return (d);
-}
-
-int
-csetCreate(sccs *cset, int flags, char *files, char **syms)
-{
-	ser_t	d;
-	int	error = 0;
-	int	fd0;
-	FILE	*fdiffs;
-	char	filename[MAXPATH];
-
-	if ((TABLE(cset) + 1 > 200) && getenv("BK_REGRESSION")) {
-		fprintf(stderr, "Too many changesets for regressions.\n");
-		exit(1);
-	}
-
-	bktmp(filename, "cdif");
-	unless (fdiffs = fopen(filename, "w+")) {
-		perror(filename);
-		sccs_free(cset);
-		cset_exit(1);
-	}
-
-	d = mkChangeSet(cset, files, fdiffs); /* write change set to diffs */
-
-	rewind(fdiffs);
-
-	/* for compat with old versions of BK not using ensembles */
-	if (proj_isComponent(cset->proj)) {
-		touch("SCCS/d.ChangeSet", 0644);
-	} else {
-		FLAGS(cset, d) |= D_CSET;
-	}
-
-
-	/*
-	 * Make /dev/tty where we get input.
-	 * XXX This really belongs in port/getinput.c
-	 *     We shouldn't do this if we are not getting comments
-	 *     interactively.
-	 */
-	fd0 = dup(0);
-	close(0);
-	if (open(DEV_TTY, 0, 0) < 0) {
-		dup2(fd0, 0);
-		close(fd0);
-		fd0 = -1;
-	}
-	if ((flags & DELTA_DONTASK) && !(d = comments_get(0, 0, cset, d))) {
-		error = -1;
-		fclose(fdiffs);
-		goto out;
-	}
-	if (sccs_delta(cset, flags, d, 0, fdiffs, syms) == -1) {
-		sccs_whynot("cset", cset);
-		error = -1;
-		goto out;
-	}
-	if (fd0 >= 0) {
-		dup2(fd0, 0);
-		close(fd0);
-		fd0 = -1;
-	}
-	if (marklist(filename)) {
-		error = -1;
-		goto out;
-	}
-
-out:	unlink(filename);
-	comments_done();
-	return (error);
 }
 
 /*
@@ -1190,6 +964,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	 * (pull-r or pending deltas)
 	 */
 	if (!CSET(s) && hastip && !MONOTONIC(s) &&
+	    !IS_POLYPATH(PATHNAME(s, sccs_ino(s))) &&
 	    ((!cs->compat && newfile) ||
 		((cs->tooMany > 0) && (n >= cs->tooMany)))) {
 		cs->sfiles = addLine(cs->sfiles, strdup(s->sfile));

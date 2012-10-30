@@ -165,7 +165,7 @@ csetStop(sccs *s, ser_t d, void *token)
 void
 range_cset(sccs *s, ser_t d)
 {
-	unless (d = sccs_csetBoundary(s, d)) return; /* if pending */
+	unless (d = sccs_csetBoundary(s, d, 0)) return; /* if pending */
 	range_walkrevs(s, 0, 0, d, WR_STOP, csetStop, &d);
 	s->state |= S_SET;
 }
@@ -340,25 +340,26 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 
 /*
  * Detecting first node is a challenge given only RED and BLUE.
- * Using D_SET to help by marking a node it is a candidate for GCA,
- * and clearing D_SET when something in the history of a GCA colors on
- * to this node.  When we get to the node, if D_SET, then a real GCA
+ * Using a hash to help by marking a node it is a candidate for GCA,
+ * and clearing hash when something in the history of a GCA colors on
+ * to this node.  When we get to the node, if in hash, then a real GCA
  */
 private	void
-doGca(sccs *s, ser_t d, u32 *marked, u32 before, u32 change)
+doGca(sccs *s, ser_t d, hash *gca, u32 *marked, u32 before, u32 change)
 {
 	const int	mask = (D_BLUE|D_RED);
 
 	if (change != mask) {	/* changing 1 bit */
 		if (before != mask) { /* it was the other bit */
-			assert(!(FLAGS(s, d) & D_SET));
 			(*marked)++;
-			FLAGS(s, d) |= D_SET;	/* gca candidate */
+			/* gca candidate */
+			hash_insert(gca, &d, sizeof(d), 0, 0);
 		}
-	} else if (FLAGS(s, d) & D_SET) { /* inheriting 2 bit; & candidate */
+	} else if (!hash_delete(gca, &d, sizeof(d))) {
+		/* d _was_ in gca */
+		/* inheriting 2 bit; & candidate */
 		assert(before == mask);
 		(*marked)--;
-		FLAGS(s, d) &= ~D_SET;		/* no longer candidate */
 	}
 }
 
@@ -387,8 +388,14 @@ doGca(sccs *s, ser_t d, u32 *marked, u32 before, u32 change)
  * case.
  *
  * WR_GCA mode: the callback will be on the first deltas to be in both
- * regions.  It uses D_SET to identify first delta.
- * Make sure D_SET is clear to start off when using WR_GCA.
+ * regions.  It uses a hash to identify first delta.
+ *
+ * WR_STOP is used when the stopping points aren't known in advance
+ * but recognized during the walk.  This is good for finding D_CSET
+ * marked ranges.  Normally, if the callback returns non-zero, then
+ * walkrevs immediately exits with that return code.  With WR_STOP,
+ * that is true if the return is < 0; a ret > 0 tells walkrevs to
+ * treat this node as a GCA node, and walkrevs keeps going.
  */
 int
 range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
@@ -399,6 +406,7 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 	u32	color, before;
 	int	marked = 0;	/* number of BLUE or RED nodes */
 	int	all = 0;	/* set if all deltas in 'to' */
+	hash	*gca = (flags & WR_GCA) ? hash_new(HASH_MEMHASH) : 0;
 	ser_t	*freelist = 0;
 	const int	mask = (D_BLUE|D_RED);
 
@@ -420,13 +428,13 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 		if (before != mask) { /* before == 1 */		\
 			marked--;				\
 		}						\
-		if (flags & WR_GCA) doGca(s, x, &marked, before, change); \
+		if (flags & WR_GCA) doGca(s, x, gca, &marked, before, change); \
 	}} while (0)
 
 	assert (!from || !fromlist);
 	s->rstop = 0;
 	unless (to) {		/* no upper bound - get all tips */
-		all = 1;
+		unless (flags & WR_STOP) all = 1;
 		to = TABLE(s);	/* could be a tag; that's okay */
 	} else {
 		FLAGS(s, to) |= D_RED;
@@ -438,10 +446,11 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 		addArray(&freelist, &from);
 		fromlist = freelist;
 	}
+	color = (flags & WR_STOP) ? D_RED : D_BLUE;
 	EACH(fromlist) {
 		from = fromlist[i];
 		if (d < from) d = from;
-		MARK(from, D_BLUE);
+		MARK(from, color);
 	}
 
 	/* compute RED - BLUE */
@@ -452,17 +461,18 @@ range_walkrevs(sccs *s, ser_t from, ser_t *fromlist, ser_t to, int flags,
 		FLAGS(s, d) &= ~color; /* clear bits */
 		if (color != mask) marked--;
 		if (flags & WR_GCA) {
-			if (FLAGS(s, d) & D_SET) {
-				/* if still D_SET by here, it's a GCA */
+			if (hash_fetch(gca, &d, sizeof(d))) {
 				marked--;
-				FLAGS(s, d) &= ~D_SET;
 				goto doit;
 			}
 		} else if ((color == D_RED) ||
 		    ((flags & WR_BOTH) && (color != mask))) {
 			if (flags & WR_BOTH) FLAGS(s, d) |= color;
 doit:			if (fcn && (ret = fcn(s, d, token))) {
-				unless (flags & WR_STOP) break;
+				unless ((flags & WR_STOP) && (ret > 0)) {
+					break;
+				}
+				ret = 0;
 				color = mask;
 			} else {
 				unless (s->rstop) s->rstop = d;
@@ -474,11 +484,10 @@ doit:			if (fcn && (ret = fcn(s, d, token))) {
 	}
 	/* cleanup */
 	color = mask;
-	if (flags & WR_GCA) color |= D_SET;
-
 	for (; (d >= TREE(s)) && (d >= last); d--) {
 		FLAGS(s, d) &= ~color;
 	}
+	if (gca) hash_free(gca);
 	if (freelist) free(freelist);
 	return (ret);
 }
@@ -516,48 +525,12 @@ walkrevs_printmd5key(sccs *s, ser_t d, void *token)
 }
 
 int
-walkrevs_addLine(sccs *s, ser_t d, void *token)
+walkrevs_addSer(sccs *s, ser_t d, void *token)
 {
 	ser_t	**line = (ser_t **)token;
 
 	addArray(line, &d);
 	return (0);
-}
-
-/*
- * return a list of gca deltas for the list of deltas passed in.
- * The gca list is made up of the tips of the common-to-all region.
- * In each round of the loop, gca will be the list of what is common
- * to all the deltas processed so far.
- */
-ser_t *
-range_gcalist(sccs *s, ser_t *list)
-{
-	ser_t	*gca = 0, *fromlist = 0, *tmp;
-	ser_t	to;
-	int	i;
-
-	EACH(list) {
-		to = list[i];
-		unless (gca) {
-			/* first round: just set tip as gca */
-			addArray(&gca, &to);
-			continue;
-		}
-		/* gca from previous round is fromlist this round */
-		tmp = fromlist;
-		fromlist = gca;
-		gca = tmp;
-		if (gca) truncLines(gca, 0);
-		/* assumes D_SET is clear to start and leaves it cleared */
-		if (range_walkrevs(s, 0, fromlist, to,
-		    WR_GCA, walkrevs_addLine, &gca)) {
-			assert("What can fail?" == 0);
-		}
-	}
-	free(fromlist);
-	graph_sortLines(s, gca);
-	return (gca);
 }
 
 /*

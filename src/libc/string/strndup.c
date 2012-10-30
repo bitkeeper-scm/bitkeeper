@@ -1,10 +1,10 @@
+#include "string/str.cfg"
+#ifdef BK_STR_STRNDUP
 /*
  * Copyright (c) 2004
  * 	Bitmover, Inc
  */
-
-#include <string.h>
-#include <stdlib.h>
+#include "local_string.h"
 
 char	*
 strndup(const char *s, size_t len)
@@ -18,3 +18,4 @@ strndup(const char *s, size_t len)
 	return (p);
 }
 
+#endif

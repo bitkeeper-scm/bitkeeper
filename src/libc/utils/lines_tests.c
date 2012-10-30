@@ -58,7 +58,7 @@ uniqLines_test(void)
 	}
 }
 
-void
+private void
 databuf_tests(void)
 {
 	FILE	*data = fmem();

@@ -61,9 +61,7 @@ typedef struct {
 	char	*rootkey;		// rootkey of the repo
 	char	*deltakey;		// deltakey of repo as of rev
 	char	*lowerkey;		// in pull, local tip
-	char	**local;		// local keys
-	char	**remote;		// remote keys
-					// otherwise, gca tip
+	char	**poly;			// info needed for poly
 	char	*path;			// actual path: like GFILE, not DPN
 
 	void	*data;			// scratchpad for applications
@@ -78,6 +76,8 @@ typedef struct {
 	u32	remotePresent:1;	// scratch for remote present bit
 	u32	pending:1;		// has pending csets not in product
 	u32	useLowerKey:1;		// tell populate to use lowerkey
+	u32	savedGate:1;		// wrote gate to urllist for this comp?
+	u32	gca:1;			// seen something in gca
 } comp;
 
 struct nested {
@@ -176,11 +176,13 @@ int	nested_rmcomp(nested *n, comp *c);
 char	**nested_here(project *p);
 char	**nested_fixHere(char **aliases);
 void	nested_writeHere(nested *n);
+char	**nested_complist(nested *n, project *p);
 
 /* alias.h */
 
 #define	ALIASES		"BitKeeper/etc/aliases"
 #define	SALIASES	"BitKeeper/etc/SCCS/s.aliases"
+#define	COMPLIST	"BitKeeper/log/COMPS"
 
 hash	*aliasdb_init(nested *n,
     project *p, char *rev, int pending, int no_diffs);

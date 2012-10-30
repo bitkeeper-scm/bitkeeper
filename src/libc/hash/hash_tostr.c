@@ -68,6 +68,8 @@ randbuf(char *buf)
 	return (len);
 }
 
+extern	int	hashstr_test_main(int ac, char **av);
+
 int
 hashstr_test_main(int ac, char **av)
 {

@@ -58,7 +58,7 @@ proc initGlobals {} \
 	set runtime(destination) ""
 	set runtime(upgradeCheckbutton) 0
 	if {$tcl_platform(platform) == "windows"} {
-		set runtime(enableSccDLL) 1
+#		set runtime(enableSccDLL) 1
 		if {$::tcl_platform(osVersion) < 5.1} {
 			set runtime(shellxCheckbutton) 0
 			set runtime(enableShellxLocal) 0
@@ -80,7 +80,7 @@ proc initGlobals {} \
 		set runtime(symlinkDir) ""
 		set id "./gnu/id"
 	} else {
-		set runtime(enableSccDLL) 0
+#		set runtime(enableSccDLL) 0
 		set runtime(enableShellxLocal) 0
 		set runtime(symlinkDir) "/usr/bin"
 		set runtime(places) {
@@ -154,7 +154,7 @@ proc install {} \
 
 	set command [list doCommand bk _install -vf]
 	if {$runtime(hasWinAdminPrivs)} {
-		if {$runtime(enableSccDLL)}	   {lappend command -s}
+#		if {$runtime(enableSccDLL)}	   {lappend command -s}
 		if {$runtime(enableShellxLocal)}   {lappend command -l}
 	}
 	if {$runtime(doSymlinks)} {lappend command -S}
@@ -622,15 +622,15 @@ proc widgets {} \
 					-onvalue 1 \
 					-offvalue 0 
 			    }
-			    ttk::checkbutton $w.bkscc \
-				-text "Enable Visual Studio integration" \
-				-variable ::runtime(enableSccDLL) \
-				-onvalue 1 \
-				-offvalue 0 
+#			    ttk::checkbutton $w.bkscc \
+#				-text "Enable Visual Studio integration" \
+#				-variable ::runtime(enableSccDLL) \
+#				-onvalue 1 \
+#				-offvalue 0 
 
 			    ttk::frame $w.spacer1 -height 8
 			    pack $w.spacer1 -side top -fill x
-			    pack $w.bkscc -side top -fill x -anchor w
+#			    pack $w.bkscc -side top -fill x -anchor w
 			    if {$runtime(shellxCheckbutton)} {
 				    pack $w.shellx-local -side top -fill x \
 					-anchor w
@@ -1289,8 +1289,7 @@ set strings(Overwrite) {
 }
 
 set strings(InstallDLLsNoAdmin) {
-	BitKeeper includes optional integration with Windows Explorer
-	and Visual Studio.
+	BitKeeper includes optional integration with Windows Explorer.
 
 	You do not have sufficient privileges on this machine to install 
 	these features. These features must be must be installed from a user 
@@ -1298,13 +1297,7 @@ set strings(InstallDLLsNoAdmin) {
 }
 
 set strings(InstallDLLs) {
-	BitKeeper includes optional integration with Windows Explorer
-	and Visual Studio.
-
-	The Explorer integration can be enabled separately for local
-	and remote hard drives.  Enabling this option on remote drives
-	can lead to performance problems if you have a slow or
-	unreliable network. 
+	BitKeeper includes optional integration with Windows Explorer.
 }
 
 set strings(Install) {

@@ -9,6 +9,10 @@ OLDBK=/build/bitkeeper-$OLDVER
 _BK_FORCE_NETFS=YES
 export _BK_FORCE_NETFS
 
+# bk-5.3 won't understand binary sfiles
+BK_CONFIG='binfile:no!'
+export BK_CONFIG
+
 echo $N Check bitkeeper 5.3 installation ............................$NL
 if [ -n "$BK_DEV_SKIPTEST" ]; then echo skipped; exit 0; fi
 # Skip this test for Windows VISTA
@@ -40,8 +44,10 @@ test -d $OLDBK || {
     # NOTE bk-3.2.x didn't set exit status...
     echo y | BK_NOLINKS=1 ./bk-$OLDVER-* $OLDBK >out 2>err || fail
     rm $OLDBK/config
+}
 
-    # generate a crypto key for tests
+# generate a crypto key for tests
+test -f "$OLDBK/my.pub" || {
     $OLDBK/bk crypto -i 1024 $OLDBK/my.sec $OLDBK/my.pub || fail
 }
 VER=`$OLDBK/bk version -s`
@@ -124,7 +130,7 @@ export _BK_FORCE_NETFS
 
 echo $N Clone from old bkd and make sure we do checkouts ............$NL
 cd "$HERE"
-commercial project
+fresh_commercial project
 bk clone $Q --sccs-compat . ../sccsdirs
 cd ../sccsdirs
 mkdir src
@@ -160,4 +166,69 @@ cd "$HERE"
 bk clone $Q -j5 config-last bk://localhost:$OLDP/clone-j > OUT 2>&1
 test $? = 0 && fail
 grep -q "does not understand -j" OUT || fail
+echo OK
+
+echo $N Try a pull urllist to see if the hacks work .................$NL
+# old bkds fail bkd_nested call, so hackery in place to work anyway
+cd "$HERE"
+fresh_nested nest
+bk clone $Q . ../nest-dest
+touch gcc/foo
+bk new $Q gcc/foo
+bk commit $Q -f
+bk clone $Q -s. . ../nest-src
+cd ../nest-src
+rm BitKeeper/log/urllist
+cd ../nest-dest
+perl -pe 's|.*/nest$|bk://localhost:'$OLDP'/nest|' BitKeeper/log/urllist > x
+cp x BitKeeper/log/urllist
+bk pull ../nest-src >X 2>&1 || fail -f GOT
+grep searching X > GOT
+# The non -q shows takepatch reading the file, and then failing with
+# this same nested only in product.  That means to upgraded the bkd.
+cat <<EOF > WANT
+pull: searching bk://localhost:$OLDP/nest...ok (gate)
+EOF
+cmpfiles WANT GOT
+# again, http style
+bk unpull $Q -sf
+perl -pe 's|^bk://|http://|' BitKeeper/log/urllist > x
+cp x BitKeeper/log/urllist
+bk pull ../nest-src >X 2>&1 || fail -f GOT
+grep searching X > GOT
+cat <<EOF > WANT
+pull: searching http://localhost:$OLDP/nest...ok (gate)
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo -------------- misc tests
+echo $N Verify old bk can read new hash encoding ....................$NL
+cat <<EOF > hash
+@a|b|c
+value
+EOF
+bk _hashfile_test w hash > hash.new || fail
+$OLDBK/bk _hashfile_test w hash > hash.old || fail
+bk _hashfile_test w hash.old > hash.old.new || fail
+$OLDBK/bk _hashfile_test w hash.new > hash.new.old || fail
+
+grep -q '@a|b|c' hash.new || fail
+grep -q '@a%7cb%7cc' hash.old || fail
+
+cmpfiles hash.old hash.new.old
+cmpfiles hash.new hash.old.new
+echo OK
+
+echo $N Verify new bk can read old md5keys ..........................$NL
+Kold=`$OLDBK/bk prs -hnd:MD5KEY: -r+ ChangeSet`
+Knew=`bk prs -hnd:MD5KEY: -r+ ChangeSet`
+Kcompat=`bk prs -hnd:MD5KEY_COMPAT: -r+ ChangeSet`
+
+test $Kold = $Kcompat || fail
+test $Kold \!= $Knew || fail
+
+Knew2=`bk prs -hnd:MD5KEY: -r$Kold ChangeSet`
+
+test $Knew = $Knew2 || fail
 echo OK

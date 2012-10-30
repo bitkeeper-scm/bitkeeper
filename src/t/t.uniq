@@ -38,8 +38,8 @@ done
 echo OK
 
 echo $N Check for error message .....................................$NL
-grep -q unique.c:321 project/ERR || fail -f project/ERR
-grep -q unique.c:321 clone/ERR || fail -f clone/ERR
+grep -q unique.c:322 project/ERR || fail -f project/ERR
+grep -q unique.c:322 clone/ERR || fail -f clone/ERR
 echo OK
 
 echo $N Make sure the keys are different ............................$NL

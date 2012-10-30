@@ -39,7 +39,8 @@
 	X( 7, FAST, "fastpatch", 0)		\
 	X( 8, REMAP, "remap", 1)		\
 	X( 9, SORTKEY, "sortkey", 1)		\
-	X(10, bSFILEv1, "bSFILEv1", 1)
+	X(10, bSFILEv1, "bSFILEv1", 1)		\
+	X(11, POLY, "POLY", 1)			\
 
 #define X(a, b, c, d) FEAT_ ## b = a,
 enum {

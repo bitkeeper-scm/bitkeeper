@@ -35,11 +35,39 @@ for mode in c z cz; do
 		cmpfiles $file.size $file.test.size
 	done
 done
+
+# might as well check our gzip
+for file in empty data; do
+	bk _gzip -z6 < $file > $file.store
+	bk _gzip -d < $file.store > $file.orig
+	cmpfiles $file $file.orig
+done
 cd ..
 rm -fr test
 echo OK
 
+test -d "$TESTDATA/binformat2" && {
+echo $N Verify /home/bk/test_data/binformat2 ........................$NL
+cd "$HERE"
+# prove we can read all files in this repository
+bk clone $Q --checkout=get "$TESTDATA/binformat2" || fail
+cd binformat2
+perl -e 'exit(pack("L", 1) eq pack("N", 1))' && {
+    # only on little-endian hosts...
+
+    # now prove we can recreate them
+    bk admin $Q -Bnone file.* || fail
+    for fmt in VZ0 ZIP LZ4
+    do  _BK_VZIP_FMT=$fmt bk admin -B file.$fmt || fail
+        f=.bk/SCCS/file.$fmt,s
+	cmp -s $f "$TESTDATA"/binformat2/$f || fail
+    done
+}
+echo OK
+}
+
 echo $N Trying to check in some binary data .........................$NL
+cd "$HERE"/proj
 cp "$BIN1" data
 chmod u+w data
 # This makes sure we aren't expanding keywords.
@@ -71,7 +99,7 @@ do	bk co $Q -l $f
 done
 bk prs -hnr+ -d:COMPRESSION:,:ENC: uuencode1z uuencode1 uuencode2 bam1 bam2 \
     > OUT
-if [ X$BK_BIN_REGRESSIONS = Xyes ]
+if [ X`bk config binfile` = Xyes ]
 then	echo none,uuencode > WANT
 else	echo gzip,uuencode > WANT
 fi

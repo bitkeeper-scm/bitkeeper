@@ -257,7 +257,16 @@ cat <<EOF > WANT
  }
 EOF
 bk ndiff -up A B | sed -e 's/^--- A.*/--- A/g' -e 's/^+++ B.*/+++ B/g' > GOT
-cmp -s WANT GOT || fail Different results
+cmpfiles WANT GOT
+cat <<EOF > WANT
+--- A
++++ B
+@@ -10 +10 @@ main(int ac, char **av)
+-	return (0);
++	return (1);
+EOF
+bk ndiff -u0p A B | sed -e 's/^--- A.*/--- A/g' -e 's/^+++ B.*/+++ B/g' > GOT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Try -p again but with a longer function......................$NL
@@ -393,3 +402,116 @@ rm -f WANT
 touch WANT
 cmpfiles WANT GOT
 echo OK
+
+echo $N Test a diff -p cornercase....................................$NL
+cat <<EOF > A
+int
+main(int ac, char **av)
+{
+	printf("this is a line\n");
+}
+
+int
+findcmd(int ac, char **av)
+{
+	int	i;
+
+	if (ac == 0) return (-1);
+	for (i = 0; cmds[i].name; ++i) {
+		if (strcasecmp(av[0], cmds[i].name) == 0) {
+			if (streq(av[0], "pull")) av[0] = "remote pull";
+		}
+	}
+}
+EOF
+cat <<EOF > B
+int
+main(int ac, char **av)
+{
+	printf("this is a line\n");
+}
+
+int
+findcmd(int ac, char **av)
+{
+	int	i;
+	av0 = av[0];
+
+	if (ac == 0) return (-1);
+	for (i = 0; cmds[i].name; ++i) {
+		if (strcasecmp(av[0], cmds[i].name) == 0) {
+			if (streq(av[0], "pull")) av[0] = "remote pull";
+		}
+	}
+}
+EOF
+bk ndiff -up A B | sed -e 's/^--- A.*/--- A/g' -e 's/^+++ B.*/+++ B/g' > GOT
+cat <<EOF > WANT
+--- A
++++ B
+@@ -8,6 +8,7 @@ findcmd(int ac, char **av)
+ findcmd(int ac, char **av)
+ {
+ 	int	i;
++	av0 = av[0];
+ 
+ 	if (ac == 0) return (-1);
+ 	for (i = 0; cmds[i].name; ++i) {
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test diff -p with function in context........................$NL
+cat <<EOF > A
+int
+main(int ac, char **av)
+{
+	printf("this is a line\n");
+}
+
+int
+findcmd(int ac, char **av)
+{
+
+	if (ac == 0) return (-1);
+	for (i = 0; cmds[i].name; ++i) {
+		if (strcasecmp(av[0], cmds[i].name) == 0) {
+			if (streq(av[0], "pull")) av[0] = "remote pull";
+		}
+	}
+}
+EOF
+cat <<EOF > B
+int
+main(int ac, char **av)
+{
+	printf("this is a line\n");
+}
+
+int
+findcmd(int ac, char **av)
+{
+	av0 = av[0];
+
+	if (ac == 0) return (-1);
+	for (i = 0; cmds[i].name; ++i) {
+		if (strcasecmp(av[0], cmds[i].name) == 0) {
+			if (streq(av[0], "pull")) av[0] = "remote pull";
+		}
+	}
+}
+EOF
+bk ndiff -up A B | grep -v ^--- | grep -v ^+++ > GOT
+cat <<EOF > WANT
+@@ -7,6 +7,7 @@ findcmd(int ac, char **av)
+ int
+ findcmd(int ac, char **av)
+ {
++	av0 = av[0];
+ 
+ 	if (ac == 0) return (-1);
+ 	for (i = 0; cmds[i].name; ++i) {
+EOF
+cmpfiles WANT GOT
+echo OK
+

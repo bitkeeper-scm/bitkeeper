@@ -66,6 +66,7 @@ key2path(char *key, MDBM *idDB, MDBM *gone, MDBM **m2k)
 	unless (isKey(key)) return (0);
 	unless (path = strchr(key, '|')) {
 		if (m2k && !*m2k) *m2k = md5key2key();
+		unless (m2k && *m2k) return (0);
 		unless (key = mdbm_fetch_str(*m2k, key)) return (0);
 	}
 	if (path = mdbm_fetch_str(idDB, key)) return (strdup(path));
@@ -119,7 +120,7 @@ md5key2key(void)
 	m2k = mdbm_mem();
 	for (kv = mdbm_first(cache); kv.key.dsize != 0; kv = mdbm_next(cache)) {
 		unless (isKey(kv.key.dptr)) continue;
-		sccs_key2md5(kv.key.dptr, kv.key.dptr, buf);
+		sccs_key2md5(kv.key.dptr, buf);
 		mdbm_store_str(m2k, buf, kv.key.dptr, MDBM_INSERT);
 	}
 	mdbm_close(cache);

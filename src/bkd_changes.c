@@ -8,6 +8,7 @@ cmd_chg_part1(int ac, char **av)
 	char 	buf[MAXLINE];
 	char	*new_av[100];
 	FILE 	*f;
+	pid_t	pid;
 
 	if (ac == 2 && streq(av[1], "-K")) {
 		/* used by: bk changes -R */
@@ -29,6 +30,27 @@ cmd_chg_part1(int ac, char **av)
 	}
 
 	out("@OK@\n");
+
+	/*
+	 * Arrange to have the read lock tossed in 30 seconds if our client
+	 * is too slow.
+	 * On windows, we just die because if we drop the read lock we'll
+	 * still have the file open which will prevent write operations.
+	 */
+	if (win32()) {
+		signal(SIGALRM, exit);
+		alarm(10 * 60);
+	} else {
+		new_av[0] = "bk";
+		new_av[1] = "unlock";
+		new_av[2] = "-r";
+		new_av[3] = "--after=30";
+		sprintf(buf, "--match=%u@%s.lock", getpid(), sccs_realhost());
+		new_av[4] = buf;
+		new_av[5] = 0;
+		pid = spawnvp(_P_NOWAIT, "bk", new_av);
+	}
+
 	new_av[0] =  "bk";
 	new_av[1] =  "changes";
 	for (j = 2, i = 1; av[i]; j++, i++) new_av[j] = av[i];
@@ -44,6 +66,10 @@ cmd_chg_part1(int ac, char **av)
 	pclose(f);
 	unless (newline) out("\n");
 	out("@END@\n");
+
+	/* don't leave helper processes around */
+	unless (win32()) kill(pid, SIGKILL);
+
 	return (0);
 }
 
@@ -123,6 +149,9 @@ cmd_chg_part2(int ac, char **av)
 		out("ERROR-bk changes failed\n");
 		return (1);
 	}
+
+	/* drop the readlock here, we're done */
+	repository_rdunlock(0, 0);
 
 	/* Send "bk changes" output back to client side */
 	out("@CHANGES INFO@\n");

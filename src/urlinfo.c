@@ -95,10 +95,11 @@ urlinfo_buildArray(nested *n)
 	if (getenv("_BK_DEBUG_URLS")) {
 		fprintf(stderr, "URLs sorted:\n");
 		EACH_STRUCT(n->urls, data, i) {
-			fprintf(stderr, "%s %s%s\n",
+			fprintf(stderr, "%s %s%s%s\n",
 			    data->url,
 			    data->from ? "FROM " : "",
-			    data->parent ? "PARENT" : "");
+			    data->parent ? "PARENT" : "",
+			    data->gate ? "GATE " : "");
 		}
 	}
 }
@@ -127,13 +128,10 @@ urlinfo_urlArgs(nested *n, char **urls)
 
 		/* XXX: how can a probe (ie, checked set) have happened? */
 		unless (data->checked) {
-			/* Assume command line might be gates */
-			data->gate = 1;
 			/* mark all components */
 			EACH_STRUCT(n->comps, c, j) {
 				urlinfo_addURL(n, c, urls[i]);
 			}
-			n->list_dirty = 1;
 		}
 		/* remove from n->urls */
 		EACH_INDEX(n->urls, j) {
@@ -152,8 +150,6 @@ urlinfo_urlArgs(nested *n, char **urls)
 
 		/* XXX: how can a probe (ie, checked set) have happened? */
 		unless (data->checked) {
-			/* assume parents might be gates */
-			data->gate = 1;
 			/* mark all components */
 			EACH_STRUCT(n->comps, c, j) {
 				urlinfo_addURL(n, c, urls[i]);
@@ -220,6 +216,7 @@ urlinfo_write(nested *n)
 		free(lockf);
 		return (-1);
 	}
+	EACH_STRUCT(n->comps, c, i) c->savedGate = 0;
 	EACH_STRUCT(n->urls, data, j) {
 		EACH_HASH(data->pcomps) {
 			if (*(char *)data->pcomps->vptr != '1') continue;
@@ -231,8 +228,10 @@ urlinfo_write(nested *n)
 				listp = (char ***)urllist->vptr;
 			}
 			TRACE("add %s to %s\n", data->url, c ? c->path : "?");
-			if (nLines(*listp) < 3) {
+			if ((nLines(*listp) < 3) ||
+			    (!c->savedGate && (data->gate == 1))) {
 				*listp = addLine(*listp, data->url);
+				if (data->gate == 1) c->savedGate = 1;
 			}
 		}
 		/*
@@ -268,7 +267,7 @@ urlinfo_write(nested *n)
 	EACH_HASH(urllist) {
 		putc('@', f);
 		rk = (char *)urllist->kptr;
-		fputs(rk, f);  // webencode(f, rk, strlen(rk)+1);
+		fputs(rk, f);  // hash_keyencode(f, rk);
 		putc('\n', f);
 
 		list = *(char ***)urllist->vptr;
@@ -342,14 +341,6 @@ urlinfo_setFromEnv(nested *n, char *url)
 	data->pcomps = hash_new(HASH_MEMHASH);
 	EACH_STRUCT(n->comps, c, i) {
 		unless (c->remotePresent) continue;
-		/*
-		 * Optimization as long as urllist is only used
-		 * for populate.  If we have local work (only set in a pull),
-		 * then don't bother checking remote for populate.
-		 * NOTE: the pull-urllist rti has this commented out:
-		 */
-		if (c->localchanges) continue;
-
 		urlinfo_addURL(n, c, url);
 	}
 	data->checked = data->checkedGood = 1;
@@ -383,7 +374,7 @@ urlinfo_addURL(nested *n, comp *c, char *url)
 {
 	urlinfo	*data;
 
-	n->list_dirty = 1;
+	if (c->product) return;
 	/*
 	 * We want to normalize the URL being saved.  The URLs either
 	 * come from parent_normalize() or remote_unparse().  They
@@ -394,10 +385,13 @@ urlinfo_addURL(nested *n, comp *c, char *url)
 	data = urlinfo_fetchAlloc(n, url);
 
 	unless (data->checkedGood) { /* we already have the official list */
-		hash_store(data->pcomps, &c, sizeof(comp *), "1", 2);
+		unless (hash_fetch(data->pcomps, &c, sizeof(comp *)) &&
+			(*(char *)data->pcomps->vptr == '1')) {
+			n->list_dirty = 1;
+			hash_store(data->pcomps, &c, sizeof(comp *), "1", 2);
+		}
 	}
 }
-
 
 /*
  * Mark that a give URL no longer is valid for a given rootkey.

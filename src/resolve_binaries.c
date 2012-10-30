@@ -3,7 +3,7 @@
  */
 #include "resolve.h"
 
-int
+private int
 b_help(resolve *rs)
 {
 	int	i;
@@ -32,14 +32,14 @@ Remote: %s\n\
 	return (0);
 }
 
-int
+private int
 b_explain(resolve *rs)
 {
 	system("bk help merge-binaries");
 	return (0);
 }
 
-int
+private int
 b_commit(resolve *rs)
 {
 	if (rs->opts->debug) fprintf(stderr, "commit(%s)\n", rs->s->gfile);
@@ -59,7 +59,7 @@ b_commit(resolve *rs)
 	return (1);
 }
 
-int
+private int
 b_ascii(resolve *rs)
 {
 	extern	rfuncs	c_funcs[];
@@ -68,7 +68,7 @@ b_ascii(resolve *rs)
 }
 
 /* An alias for !cp $BK_LOCAL $BK_MERGE */
-int
+private int
 b_ul(resolve *rs)
 {
 	names	*n = rs->tnames;
@@ -80,7 +80,7 @@ b_ul(resolve *rs)
 }
 
 /* An alias for !cp $BK_REMOTE $BK_MERGE */
-int
+private int
 b_ur(resolve *rs)
 {
 	names	*n = rs->tnames;

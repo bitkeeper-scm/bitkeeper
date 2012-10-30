@@ -645,10 +645,6 @@ exec(char *lp, char *buf)
  *
  */
 
-#ifndef re_fail
-extern void re_fail(char *, CHAR);
-#endif
-
 /*
  * character classification table for word boundary operators BOW
  * and EOW. the reason for not using ctype macros is that we can

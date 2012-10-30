@@ -30,6 +30,29 @@ test "X$G" = X && G=-g
 test "X$CC" = X && CC=gcc
 test "X$LD" = X && LD=$CC
 
+# ccache stuff
+CCLINKS=/build/cclinks
+CCACHEBIN=`which ccache 2>/dev/null`
+if [ $? = 0 -a "X$BK_NO_CCACHE" = X ]
+then
+	test -d $CCLINKS || {
+		mkdir -p $CCLINKS
+		ln -s "$CCACHEBIN" $CCLINKS/cc
+		ln -s "$CCACHEBIN" $CCLINKS/gcc
+	}
+	CCACHE_DIR=/build/.ccache
+	# Seems like a good idea but if cache and
+	# source are on different filesystems, setting
+	# CCACHE_HARDLINK seems to have the same
+	# effect as disabling the cache altogether
+	#CCACHE_HARDLINK=1
+	CCACHE_UMASK=002
+	export CCACHE_DIR CCACHE_HARDLINK CCACHE_UMASK
+else
+	CCACHE_DISABLE=1
+	export CCACHE_DISABLE
+fi
+
 KEYFILE=/home/bk/internal/.wish-key
 case "X`uname -s`" in
     *_NT*|*_98*)
@@ -38,7 +61,7 @@ case "X`uname -s`" in
     *)	AR=/usr/ccs/bin
 	GREP=/usr/xpg4/bin:/usr/xpg2/bin
 	GNU=/opt/gnu/bin:/usr/local/bin:/usr/gnu/bin:/usr/freeware/bin
-	PATH=${GREP}:/bin:/usr/bin:/usr/bsd:${GNU}:${AR}:/usr/bin/X11
+	PATH=${GREP}:${CCLINKS}:/bin:/usr/bin:/usr/bsd:${GNU}:${AR}:/usr/bin/X11
 	export PATH
 	if [ X$1 = X"-u" ]; then shift; fi; # -u option is ignored on Unix  
 	;;
@@ -85,12 +108,16 @@ case "X`uname -s`" in
 		}
 		;;
 	XNetBSD)
+		CC=gcc
+		LD=gcc
+		PATH="/usr/local/bin:${PATH}"
 		CCXTRA="-DHAVE_GMTOFF -DNOPROC -DRLIMIT_DEFAULT_SUCKS"
 		;;
 	XOpenBSD)
 		CCXTRA="-DHAVE_GMTOFF -DNOPROC"
 		;;
 	XSCO_SV)
+		PATH="/usr/local/bin:${PATH}"
 		XLIBS="-lsocket"
 		export XLIBS
 		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"

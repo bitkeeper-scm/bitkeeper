@@ -36,8 +36,9 @@ gzip_main(int ac, char **av)
 {
 	int c, rc, gzip_level = -2;
 
-	while ((c = getopt(ac, av, "z:u", 0)) != -1) {
+	while ((c = getopt(ac, av, "duz:", 0)) != -1) {
 		switch (c) {
+		    case 'd':
 		    case 'u':	gzip_level = -1; break;
 		    case 'z':	gzip_level = atoi(optarg); break;
 		    default: bk_badArg(c, av);

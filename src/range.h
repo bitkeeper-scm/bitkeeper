@@ -54,8 +54,6 @@ int	walkrevs_setFlags(sccs *s, ser_t d, void *token);
 int	walkrevs_clrFlags(sccs *s, ser_t d, void *token);
 int	walkrevs_printkey(sccs *s, ser_t d, void *token);
 int	walkrevs_printmd5key(sccs *s, ser_t d, void *token);
-int	walkrevs_addLine(sccs *s, ser_t d, void *token);
-
-ser_t	*range_gcalist(sccs *s, ser_t *list);
+int	walkrevs_addSer(sccs *s, ser_t d, void *token);
 
 #endif

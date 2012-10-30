@@ -326,6 +326,7 @@ do_cmds(void)
 			out("ERROR-Try help\n");
 		}
 	}
+	getav(0, 0, 0);	/* free internal mem */
 	fclose(f);
 	repository_unlock(0, 0);
 	drain();
@@ -417,8 +418,10 @@ private	int
 findcmd(int ac, char **av)
 {
 	int	i;
+	char	*av0;
 
 	if (ac == 0) return (-1);
+	av0 = av[0];
 	for (i = 0; cmds[i].name; ++i) {
 		if (strcasecmp(av[0], cmds[i].name) == 0) {
 			if (streq(av[0], "pull")) av[0] = "remote pull";
@@ -461,6 +464,10 @@ findcmd(int ac, char **av)
 			if (streq(av[0], "nested")) av[0] = "remote nested";
 			if (streq(av[0], "wrlock")) av[0]= "remote wrlock";
 			if (streq(av[0], "wrunlock")) av[0]= "remote wrunlock";
+			if (av0 != av[0]) {
+				free(av0);
+				av[0] = strdup(av[0]);
+			}
 			prog = av[0];
 			return (i);
 		}
@@ -530,78 +537,92 @@ nextbyte(void *unused, char *buf, int size)
 private	int
 getav(FILE *f, int *acp, char ***avp)
 {
-#define	MAX_AV	50
 #define	QUOTE(c)	(((c) == '\'') || ((c) == '"'))
-	static	char	*buf;
-	static	char	*av[MAX_AV];
+	static	char	**av;
+	char	*buf, *s;
 	remote	r;
-	int	i, inspace = 1, inQuote = 0;
+	int	i, inspace, inQuote;
 	int	ac;
 
 	bzero(&r, sizeof (remote));
 	r.wfd = 1;
-
 nextline:
-	/* read a line into a malloc'ed buffer */
-	unless ((buf = fgetline(f)) && *buf) return (0);
+	if (av) {
+		freeLines(av, free);
+		av = 0;
+	}
+	unless (f && (buf = fgetline(f)) && *buf) return (0);
 
 	/*
 	 * XXX TODO need to handle escaped quote character in args
 	 *     This can be done easily with shellSplit()
+	 *     Unfortunately older bk's don't always quote everything.
+	 *     Current bk's should work with shellSplit().
 	 */
-	for (ac = i = 0; buf[i]; i++) {
-		if (ac >= MAX_AV - 1) {
-			out("ERROR-too many arguments\n");
-			return (0);
-		}
+	inspace = 1;
+	inQuote = 0;
+	for (i = 0; buf[i]; i++) {
 		if (inQuote) {
 			if (QUOTE(buf[i])) {
 				buf[i] = 0;
+				if (s) {
+					av = addLine(av, strdup(s));
+					s = 0;
+				}
 				inQuote = 0;
 			}
 			continue;
 		}
 		if (QUOTE(buf[i])) {
 			assert(!QUOTE(buf[i+1])); /* no null args */
-			av[ac++] = &buf[i+1];
+			s = buf + i + 1;
 			inQuote = 1;
 			continue;
 		}
 		if (isspace(buf[i])) {
 			buf[i] = 0;
+			if (s) {
+				av = addLine(av, strdup(s));
+				s = 0;
+			}
 			inspace = 1;
 		} else if (inspace) {
-			av[ac++] = &buf[i];
+			s = buf + i;
 			inspace = 0;
 		}
 	}
+	if (s) {
+		av = addLine(av, strdup(s));
+		s = 0;
+	}
+
 	/* end of line */
-	av[ac] = 0;
+	av = addLine(av, 0);
+	ac = nLines(av);
 
 	/*
 	 * Process http post command used in http based
 	 * push/pull/clone Strip the http header so we can access the
 	 * real push/pull/clone command
 	 */
-	if ((ac >= 1) && streq("POST", av[0])) {
+	if ((ac >= 1) && streq("POST", av[1])) {
 		skip_http_hdr(&r);
 		content_len = r.contentlen;
 		http_hdr();
 		putenv("_BKD_HTTP=1");
-		inspace = 1;
 		goto nextline;
 	}
 
 	/*
 	 * Process HMAC header
 	 */
-	if ((ac == 2) && streq("putenv", av[0]) &&
-	    strneq("BK_AUTH_HMAC=", av[1], 13)) {
-		parse_hmac(av[1] + 13);
+	if ((ac == 2) && streq("putenv", av[1]) &&
+	    strneq("BK_AUTH_HMAC=", av[2], 13)) {
+		parse_hmac(av[2] + 13);
 	}
 
 	*acp = ac;
-	*avp = av;
+	*avp = av + 1;
 	return (1);
 }
 

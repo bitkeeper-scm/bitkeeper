@@ -3,7 +3,7 @@
  */
 #include "resolve.h"
 
-int
+private int
 c_help(resolve *rs)
 {
 	int	i;
@@ -30,7 +30,7 @@ Remote: %s\n\
 	return (0);
 }
 
-int
+private int
 c_explain(resolve *rs)
 {
 	system("bk help merging");
@@ -44,7 +44,7 @@ res_clear(resolve *rs)
 	return (0);
 }
 
-int
+private int
 c_dgl(resolve *rs)
 {
 	names	*n = rs->tnames;
@@ -53,7 +53,7 @@ c_dgl(resolve *rs)
 	return (0);
 }
 
-int
+private int
 c_dgr(resolve *rs)
 {
 	names	*n = rs->tnames;
@@ -62,7 +62,7 @@ c_dgr(resolve *rs)
 	return (0);
 }
 
-int
+private int
 c_dlm(resolve *rs)
 {
 	names	*n = rs->tnames;
@@ -73,7 +73,7 @@ c_dlm(resolve *rs)
 	return (0);
 }
 
-int
+private int
 c_drm(resolve *rs)
 {
 	names	*n = rs->tnames;
@@ -84,7 +84,7 @@ c_drm(resolve *rs)
 	return (0);
 }
 
-int
+private int
 c_em(resolve *rs)
 {
 	char	*cmd;
@@ -176,7 +176,7 @@ c_merge(resolve *rs)
 	return (0);
 }
 
-int
+private int
 c_smerge(resolve *rs)
 {
 	int	ret;
@@ -219,7 +219,7 @@ c_revtool(resolve *rs)
 	return (0);
 }
 
-int
+private int
 c_fm3tool(resolve *rs)
 {
 	char	*av[10];
@@ -242,7 +242,7 @@ c_fm3tool(resolve *rs)
 }
 
 /* Run fmtool in background */
-int
+private int
 c_fmtool(resolve *rs)
 {
 	char	*av[10];
@@ -260,7 +260,7 @@ c_fmtool(resolve *rs)
 	return (0);
 }
 
-int
+private int
 c_vm(resolve *rs)
 {
 	unless (exists(rs->s->gfile)) {
@@ -349,13 +349,13 @@ doit:	if (delta_now) {
 	return (1);
 }
 
-int
+private int
 c_commit(resolve *rs)
 {
 	return (commit(rs, rs->opts->textOnly, 0));
 }
 
-int
+private int
 c_ccommit(resolve *rs)
 {
 	return (commit(rs, 1, 1));
@@ -397,7 +397,7 @@ c_shell(resolve *rs)
 }
 
 /* An alias for !cp $BK_LOCAL $BK_MERGE */
-int
+private int
 c_ul(resolve *rs)
 {
 	names	*n = rs->tnames;
@@ -409,7 +409,7 @@ c_ul(resolve *rs)
 }
 
 /* An alias for !cp $BK_REMOTE $BK_MERGE */
-int
+private int
 c_ur(resolve *rs)
 {
 	names	*n = rs->tnames;

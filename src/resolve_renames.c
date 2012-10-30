@@ -3,7 +3,7 @@
  */
 #include "resolve.h"
 
-int
+private int
 r_help(resolve *rs)
 {
 	int	i;
@@ -19,7 +19,7 @@ r_help(resolve *rs)
 		r = "did not move.";
 	} else {
 		l = r = 0;
-		if (i = slotTaken(rs->opts, rs->snames->remote)) {
+		if (i = slotTaken(rs, rs->snames->remote, 0)) {
 			switch (i) {
 			    case SFILE_CONFLICT:
 				r = "wants to move, has sfile conflict.";
@@ -36,7 +36,7 @@ r_help(resolve *rs)
 				break;
 			}
 		}
-		if (i = slotTaken(rs->opts, rs->snames->local)) {
+		if (i = slotTaken(rs, rs->snames->local, 0)) {
 			switch (i) {
 			    /*
 			     * The two SFILE below can't happen since
@@ -82,7 +82,7 @@ Remote: %s %s\n\
 	return (0);
 }
 
-int
+private int
 r_explain(resolve *rs)
 {
 	fprintf(stderr,
@@ -96,7 +96,7 @@ the remote repository moved it to \"%s\"\n\n",
 }
 
 /* Run helptool in background */
-int
+private int
 r_helptool(resolve *rs)
 {
 	char	*av[10];
@@ -108,13 +108,13 @@ r_helptool(resolve *rs)
 	return (0);
 }
 
-int
+private int
 r_l(resolve *rs)
 {
 	int	i;
 	char	*l;
 
-	if (i = slotTaken(rs->opts, rs->snames->local)) {
+	if (i = slotTaken(rs, rs->snames->local, 0)) {
 		fprintf(stderr, "Local name is in use by ");
 		switch (i) {
 		    case SFILE_CONFLICT:
@@ -143,13 +143,13 @@ r_l(resolve *rs)
 	return (1);
 }
 
-int
+private int
 r_r(resolve *rs)
 {
 	int	i;
 	char	*l;
 
-	if (i = slotTaken(rs->opts, rs->snames->remote)) {
+	if (i = slotTaken(rs, rs->snames->remote, 0)) {
 		fprintf(stderr, "Remote name is in use by ");
 		switch (i) {
 		    case SFILE_CONFLICT:

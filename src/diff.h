@@ -93,7 +93,8 @@ hunk	*diff_items(df_ctx *dc, int firstDiff, int minimal);
 void	diff_print(df_ctx *dc, df_puts pfn, FILE *out);
 void	diff_printRCS(df_ctx *dc, df_puts pfn, FILE *out);
 void	diff_printUnified(df_ctx *dc, char *nameA, time_t *timeA,
-    char *nameB, time_t *timeB, df_puts pfn, df_hdr phdr, FILE *out);
+    char *nameB, time_t *timeB, int context,
+    df_puts pfn, df_hdr phdr, FILE *out);
 void	diff_printIfDef(df_ctx *dc, char *defstr, df_puts pfn, FILE *out);
 
 /*

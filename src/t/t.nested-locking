@@ -229,6 +229,9 @@ echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
 bk undo $Q -fr+ 2>ERR && fail -f ERR should fail
 grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+test `grep "Entire repository is locked" ERR | wc -l` = 1 || {
+	fail -f ERR double error, what does it mean\?
+}
 echo OK
 
 echo $N Make sure original clone finished............................$NL

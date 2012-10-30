@@ -1,18 +1,23 @@
 #ifndef _SYSTEM_H
 #define _SYSTEM_H
 
+#define	_GNU_SOURCE
+
 #include <stddef.h>
 #include <stdarg.h>
 #include <sys/types.h>
 
+#define	likely(e)	__builtin_expected((e), 1)
+#define	unlikely(e)	__builtin_expected((e), 0)
+
 #include <assert.h>
 #ifdef	PURIFY
 #undef	assert
-#define	assert(expr) if (!(expr)) { \
-			purifyList(__FILE__, __LINE__); \
-			(__assert_fail (__STRING(expr), \
-                           __FILE__, __LINE__, __ASSERT_FUNCTION), 0); \
-		}
+#define	assert(expr) if (unlikely(!(expr))) {				\
+			purifyList(__FILE__, __LINE__);			\
+			(__assert_fail (__STRING(expr),			\
+			    __FILE__, __LINE__, __ASSERT_FUNCTION), 0); \
+	}
 #endif
 #include <ctype.h>
 #include <errno.h>
@@ -24,10 +29,10 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#include "string/local_string.h"
 #ifdef WIN32
 #include "win32.h"
 #else
-#include "string.h"
 #include "unix.h"
 #endif
 
@@ -65,6 +70,15 @@
 /* <stddef.h> should define this already */
 #define offsetof(st, m) \
     ((size_t) ( (char *)&((st *)(0))->m - (char *)0 ))
+#endif
+
+#ifdef	__GNUC__
+// from: http://gcc.gnu.org/onlinedocs/gcc-4.7.2/cpp/Common-Predefined-Macros.html#Common-Predefined-Macros
+
+// 4.3.2 => 40320
+#define GCC_VERSION (__GNUC__ * 10000 \
+			+ __GNUC_MINOR__ * 100 \
+			+ __GNUC_PATCHLEVEL__)
 #endif
 
 #define BIG_PIPE 4096	/* 16K pipe buffer for win32, ingored on unix */
@@ -192,6 +206,7 @@ typedef struct {
 #define	GETOPT_ERR	256
 int	getopt(int ac, char **av, char *opts, longopt *lopts);
 void	getoptReset(void);
+void	getoptConsumed(int n);
 
 
 /* glob.c */
@@ -219,7 +234,8 @@ int	test_mkdirp(char *dir);
 int	mkdirf(char *file);
 
 /* milli.c */
-char *	milli(void);
+char	*milli(void);
+char	*milli_gap(void);
 
 /* putenv.c */
 #define	getenv(s)	safe_getenv(s)
@@ -320,6 +336,7 @@ FILE *	popenvp(char *av[], char *type);
 int	safe_pclose(FILE *f);
 int	safe_fclose(FILE *f);
 char	*backtick(char *cmd, int *status);
+char	*shell(void);
 
 /* tcp/tcp.c */
 int	tcp_server(char *addr, int port, int quiet);

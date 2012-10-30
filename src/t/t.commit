@@ -72,3 +72,54 @@ bk edit $Q ../file
 bk delta -fywhatever $Q ../file
 bk commit $Q -S -yfile-leftover || fail
 echo OK
+
+test "$PLATFORM" != WIN32 && {
+echo $N Commit should fail if cset marking fails.....................$NL
+cd "$HERE"
+commercial markcset
+mkdir F
+touch F/foo bar goo
+bk new $Q F/foo bar goo
+bk commit $Q -ybase
+bk edit $Q F/foo
+bk delta $Q -fynull F/foo
+bk _cp F/SCCS/s.foo precommit
+chmod 555 .bk/F/SCCS
+bk commit -q -y"Foo" 2> OUT
+RC=$?
+chmod 755 .bk/F/SCCS
+grep -q 'Could not mark F/foo. Perhaps it is locked' OUT || fail -f OUT
+test `bk changes -d:C: -r+` = Foo && fail cset not reverted
+test -f "SCCS/x.foo" && fail left xfile behind
+bk repocheck $Q || fail should be fine
+echo OK
+}
+
+echo $N Test gone file not gone and colliding on a cset boundary ....$NL
+cd "$HERE/project"
+bk clone $Q . ../copy
+bk _rm SCCS/s.file
+bk -r check -aggg | bk gone $Q -
+touch file
+bk new $Q file
+bk commit $Q -ynewfoo
+cd ../copy
+bk mv file bar
+bk pull -q 2> GOT && fail -f GOT expected failure
+cat <<EOF > WANT
+A path-conflict was found in existing csets
+  ./bar|1.6
+  with pending rename from ./file
+conflicts with existing:
+  ./file|1.1
+Must include other renames in commit.
+Check failed.  Resolve not completed.
+Your repository should be restored to its previous state.
+We are running a full consistency check to verify this, please wait.
+check passed.
+resolve: RESYNC directory left intact.
+====================================================
+EOF
+cmpfiles WANT GOT
+echo OK
+

@@ -1,7 +1,7 @@
-#include "system.h"
+#include "../sccs.h"
 
 #ifndef WIN32
-void
+private void
 reject(void)
 {
 	fprintf(stderr, "_startmenu: not supported on this platform.\n");
@@ -30,7 +30,7 @@ startmenu_get(u32 user, char *path)
 }
 
 int
-startmenu_set(u32 user, char *linkpath, char *target, char *args)
+startmenu_set(u32 user, char *linkpath, char *target, char *icon, char *args)
 {
 	reject();
 	return (0);

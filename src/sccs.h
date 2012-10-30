@@ -269,8 +269,9 @@ int	checking_rmdir(char *dir);
 
 /*
  * Flags (FLAGS(s, d)) that indicate some state on the delta.
+ * When changing also update delta_flagNames in dataheap.c.
  */
-/* flags that are written to disk */
+/* flags that are written to disk (don't renumber) */
 #define	D_INARRAY	0x00000001	/* part of s->slist array */
 #define	D_NONEWLINE	0x00000002	/* this delta has no trailing newline */
 //#define	D_CKSUM		0x00000004	/* delta has checksum */
@@ -286,8 +287,8 @@ int	checking_rmdir(char *dir);
 					/* open tips, so maintained always */
 //#define	D_MODE		0x00000800	/* permissions in MODE(s, d) are valid */
 #define	D_CSET		0x00001000	/* this delta is marked in cset file */
-//#define D_XFLAGS	0x00002000	/* delta has updated file flags */
-	/* D_NPARENT	0x00004000 */
+	/* unused	0x00002000	*/
+	/* unused	0x00004000	*/
 #define	D_FIXUPS	0x00008000	/* fixups to tip delta at end of file */
 
 /* flags that are in memory only and not written to disk */
@@ -560,13 +561,6 @@ typedef struct {
 #define	SORTPATH(s,d)	((s)->heap.buf + SORTPATH_INDEX(s, d))
 
 /*
- * Macros to get at an optional hidden string after the null
- */
-#define	HIDDEN(p)		((p) + strlen(p) + 1)
-#define	HIDDEN_BUILD(a, b)	aprintf("%s%c%s", (a), 0, (b))
-#define	HIDDEN_DUP(p)		HIDDEN_BUILD(p, HIDDEN(p))
-
-/*
  * Rap on lod/symbols wrt deltas.
  * Both symbols can occur exactly once per delta where delta is a node in
  * the graph.  When a delta is created, it might get a symbol and/or a lod.
@@ -709,7 +703,7 @@ struct sccs {
 	u32	iloc;		/* index to element in *loc */ 
 	u32	nloc;		/* # of element in *loc */ 
 	u32	initFlags;	/* how we were opened */
-	char	*comppath;	/* used to get correct historic paths in comps*/
+	char	*comppath;	/* used by changes for historic paths for comps*/
 	u32	cksumok:1;	/* check sum was ok */
 	u32	cksumdone:1;	/* check sum was checked */
 	u32	grafted:1;	/* file has grafts */
@@ -921,6 +915,8 @@ typedef struct {
 	int	flags;			/* flags (transitional) */
 	char	*out_define;		/* diff -D */
 	char	*pattern;		/* pattern for diff -p */
+	int	context;		/* context for unified output
+					 * (-1 means 0) see delta comments */
 	u32	ignore_all_ws:1;	/* ignore all whitespace */
 	u32	ignore_ws_chg:1;	/* ignore changes in white space */
 	u32	minimal:1;		/* find minimal diffs */
@@ -990,10 +986,14 @@ char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, ser_t, char *);
 void	sccs_md5delta(sccs *s, ser_t d, char *b64);
 void	sccs_sortkey(sccs *s, ser_t d, char *buf);
-void	sccs_key2md5(char *rootkey, char *deltakey, char *b64);
+void	sccs_key2md5(char *deltakey, char *b64);
 void	sccs_setPath(sccs *s, ser_t d, char *newpath);
 void	sccs_syncRoot(sccs *s, char *key);
-ser_t	sccs_csetBoundary(sccs *s, ser_t);
+ser_t	sccs_csetBoundary(sccs *s, ser_t, u32 flags);
+int	poly_pull(int got_patch, char *mergefile);
+void	poly_range(sccs *s, ser_t d, char *pkey);
+char	**poly_save(char **list, sccs *cset, ser_t d, char *ckey, int local);
+int	poly_r2c(sccs *cset, ser_t d, char ***pcsets);
 void	sccs_shortKey(sccs *s, ser_t, char *);
 int	sccs_resum(sccs *s, ser_t d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
@@ -1134,6 +1134,7 @@ int	repository_mine(project *p, char type);
 int	repository_lockers(project *p);
 int	repository_rdlock(project *p);
 int	repository_rdunlock(project *p, int all);
+void	repository_rdunlockf(project *p, char *file);
 void	repository_unlock(project *p, int all);
 int	repository_wrlock(project *p);
 int	repository_wrunlock(project *p, int all);
@@ -1149,7 +1150,6 @@ char	**comments_return(char *prompt);
 ser_t	comments_get(char *gfile, char *rev, sccs *s, ser_t d);
 void	comments_writefile(char *file);
 int	comments_checkStr(u8 *s, int len);
-char	*shell(void);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
 void	error(const char *fmt, ...);
@@ -1162,7 +1162,6 @@ void	sccs_rmEmptyDirs(char *path);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
 char 	**get_http_proxy(char *host);
 int	confirm(char *msg);
-int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int	cset_setup(int flags);
 char	*separator(char *);
 int	trigger(char *cmd, char *when);
@@ -1190,6 +1189,7 @@ u8	*sccs_set(sccs *, ser_t, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, ser_t d, u8 *map, char **inc, char **exc);
 int	sccs_setCludes(sccs *sc, ser_t d, char *iLst, char *xLst);
 int	sccs_isPending(char *gfile);
+int	isReachable(sccs *s, ser_t start, ser_t stop);
 int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
 
 int     http_connect(remote *r);
@@ -1398,6 +1398,8 @@ void	clearCsets(sccs *s);
 void	sccs_rdweaveInit(sccs *s);
 char	*sccs_nextdata(sccs *s);
 int	sccs_rdweaveDone(sccs *s);
+FILE	*sccs_wrweaveInit(sccs *s);
+FILE	*sccs_wrweaveDone(sccs *s);
 int	hasLocalWork(char *gfile);
 char	*goneFile(void);
 char	*sgoneFile(void);
@@ -1409,7 +1411,7 @@ int	startmenu_list(u32, char *);
 int	startmenu_rm(u32, char *);
 int	startmenu_get(u32, char *path);
 int	startmenu_set(u32, char *, char *, char *, char *);
-char	*bkmenupath(int, int);
+char	*bkmenupath(u32, int);
 void	repos_update(sccs *cset);
 char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);
@@ -1504,12 +1506,11 @@ extern	char	*log_versions;
 #define	CMD_NOREPO		0x00000020	/* don't assume in repo */
 #define	CMD_NESTED_WRLOCK	0x00000040	/* nested write lock */
 #define	CMD_NESTED_RDLOCK	0x00000080	/* nested read lock */
-#define	CMD_SAMELOCK		0x00000100	/* grab a repolock that matches
-						 * the nested lock we have */
 #define	CMD_COMPAT_NOSI		0x00000200	/* compat, no server info */
 #define	CMD_IGNORE_RESYNC	0x00000400	/* ignore resync lock */
 #define	CMD_RDUNLOCK		0x00001000	/* unlock a previous READ */
 #define	CMD_BKD_CMD		0x00002000	/* command comes from bkd.c */
+#define	CMD_NOLOG		0x00004000	/* don't log command */
 
 #define	LOGVER			0		/* dflt idx into log_versions */
 

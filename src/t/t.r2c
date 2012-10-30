@@ -1,7 +1,7 @@
 echo $N Simple test..................................................$NL
 commercial non-nested
 touch afile
-bk new $Q afile
+bk new $Q -yC afile
 bk commit -y. $Q afile
 rev=`bk log -nd:REV: -r+ afile`
 crev=`bk changes -nd:REV: -r+`
@@ -24,7 +24,7 @@ echo OK
 
 echo $N Non-existent rev.............................................$NL
 bk r2c -r1.55 afile 2>ERR && fail
-grep -q "cannot find rev 1.55 in afile" ERR || fail -f ERR
+grep -q "no such delta" ERR || fail -f ERR
 echo OK
 
 echo $N Non-existent file............................................$NL
@@ -39,10 +39,14 @@ bk delta $Q -y. afile
 rev=`bk log -nd:REV: -r+ afile`
 bk edit $Q afile
 echo "b" > afile
-bk delta $Q -y. afile
+bk delta $Q -yC afile
 bk commit $Q -y.
 crev=`bk changes -nd:REV: -r+`
 test `bk r2c -r$rev afile` = $crev || fail
+test `bk r2c -r1.2..1.4 afile` = $crev || fail
+test `bk r2c -r1.2,1.3 afile` = $crev || fail
+crev=`bk changes -d':REV:,:REV|PARENT:' -r+`
+test `bk r2c -r1.0..+ afile` = $crev || fail
 echo OK
 
 echo $N Test -P is ignored in non-nested.............................$NL
@@ -55,7 +59,7 @@ echo $N r2c -P works in product files................................$NL
 cd "$HERE"
 nested product
 touch afile
-bk new $Q afile
+bk new $Q -yC afile
 bk commit -y. $Q afile
 rev=`bk log -nd:REV: -r+ afile`
 crev=`bk changes -nd:REV: -r+`
@@ -66,7 +70,7 @@ echo OK
 echo $N Simple component case........................................$NL
 cd gcc
 touch afile
-bk new $Q afile
+bk new $Q -yC afile
 bk commit -S -y. $Q afile
 bk -P commit -y. $Q
 rev=`bk log -nd:REV: -r+ afile`
@@ -84,6 +88,7 @@ do
 	bk delta $Q -y. afile
 	bk commit -S $Q -y.
 	test $i = 3 && {
+		bk comments -SyC -C+
 		rev=`bk log -nd:REV: -r+ afile`
 	}
 done

@@ -86,6 +86,9 @@ proc bk_init {} {
 	if {[tk windowingsystem] eq "aqua"} {
 		event add <<Redo>> <Command-Shift-z> <Command-Shift-Z>
 	}
+
+	bind Entry  <KP_Enter> {event generate %W <Return>}
+	bind TEntry <KP_Enter> {event generate %W <Return>}
 }
 
 # Try to find the project root, limiting ourselves to 40 directories
@@ -969,7 +972,7 @@ proc configureTextWidgets {} \
 	## We don't want to figure widgets for all of our tools, only
 	## specific ones.
 	set tool [file tail [info script]]
-	if {$tool in "csettool difftool fm3tool fmtool newdifftool revtool"} {
+	if {$tool in "csettool difftool fm3tool fmtool revtool"} {
 		set top .
 	} elseif {$tool eq "citool"} {
 		set top .citool

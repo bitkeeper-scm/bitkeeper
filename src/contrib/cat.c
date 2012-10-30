@@ -31,6 +31,7 @@
  */
 
 #include "system.h"
+#include "../cmd.h"
 
 int bflag, eflag, nflag, sflag, tflag, vflag;
 int rval;

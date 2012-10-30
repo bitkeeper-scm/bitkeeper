@@ -5,7 +5,7 @@
  */
 #include "resolve.h"
 
-int
+private int
 m_help(resolve *rs)
 {
 	int	i;
@@ -44,7 +44,7 @@ Remote: %s@%s\n\t%s\n\
 	return (0);
 }
 
-int
+private int
 m_explain(resolve *rs)
 {
 	fprintf(stderr, 
@@ -60,7 +60,7 @@ finish the resolve, and then do a \"bk chmod <mode> file\".\n\
 }
 
 /* add the local modes to the remote file */
-int
+private int
 m_local(resolve *rs)
 {
 	ser_t	l = sccs_findrev(rs->s, rs->revs->local);
@@ -73,7 +73,7 @@ m_local(resolve *rs)
 }
 
 /* add the remote modes to the local file */
-int
+private int
 m_remote(resolve *rs)
 {
 	ser_t	l = sccs_findrev(rs->s, rs->revs->local);

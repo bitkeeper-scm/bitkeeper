@@ -17,6 +17,7 @@
 #define	DIR_CONFLICT		3
 #define	RESYNC_CONFLICT		4
 #define	GONE_SFILE_CONFLICT	5
+#define	COMP_CONFLICT		6
 #define	LOCAL			1
 #define	REMOTE			2
 #define	BACKUP_LIST		"BitKeeper/tmp/resolve_backup_list"
@@ -71,6 +72,7 @@ typedef struct {
 	char	**dirlist;	/* list of directories to delete */
 	char	**nav;		/* argv for component resolves */
 	char	**aliases;	/* aliases for nested resolve*/
+	char	**complist;	/* sorted list of union of components */
 } opts;
 
 /*
@@ -175,7 +177,7 @@ int	c_shell(resolve *rs);
 int	c_helptool(resolve *rs);
 int	c_quit(resolve *rs);
 void	saveKey(opts *opts, char *key, char *file);
-int	slotTaken(opts *opts, char *slot);
+int	slotTaken(resolve *rs, char *slot, char **why);
 void	do_delta(opts *opts, sccs *s, char *comment);
 void	export_revs(resolve *rs);
 void	resolve_tags(opts *opts);
@@ -184,3 +186,4 @@ int	do_diff(resolve *rs, char *left, char *right, int wait);
 int	resolve_binary(resolve *rs);
 void	restore_checkouts(opts *opts);
 int	gc_sameFiles(resolve *rs);
+int	comp_overlap(char **complist, char *path);

@@ -14,17 +14,23 @@
 #define	REPO	(RLOCK|STALE|WLOCK)
 
 private	int	doit(sccs *s, char which);
-private int	repo(u32 flags);
+private int	repo(u32 flags, char *match);
 private void	dont(sccs *s, char c);
 
 int
 unlock_main(int ac, char **av)
 {
 	char	*name;
-	int	c, force = 0, flags = 0;
+	char	*match = 0;
+	int	c, force = 0, flags = 0, after = 0;
 	sccs	*s = 0;
+	longopt	lopts[] = {
+		{ "after:", 300 },
+		{ "match:", 301 },
+		{ 0, 0 }
+	};
 
-	while ((c = getopt(ac, av, "fprswxz", 0)) != -1) {
+	while ((c = getopt(ac, av, "fprswxz", lopts)) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break;		/* doc 2.0 */
 		    case 'p': flags |= PLOCK; break;	/* doc 2.0 */
@@ -33,11 +39,12 @@ unlock_main(int ac, char **av)
 		    case 'w': flags |= WLOCK; break;	/* doc 2.0 */
 		    case 'x': flags |= XLOCK; break;	/* doc 2.0 */
 		    case 'z': flags |= ZLOCK; break;	/* doc 2.0 */
+		    case 300: after = atoi(optarg); break;
+		    case 301: match = optarg; break;
 			break;
 		    default: bk_badArg(c, av);
 		}
 	}
-
 	unless (flags) flags = PLOCK;
 	
 	if ((flags & REPO) && (flags & ~REPO)) {
@@ -46,6 +53,7 @@ unlock_main(int ac, char **av)
 		usage();
 	}
 
+	if (after) sleep(after);
 	if (flags & REPO) {
 		if (av[optind]) {
                         chdir(av[optind]);
@@ -54,7 +62,7 @@ unlock_main(int ac, char **av)
 			fprintf(stderr, "unlock: Not in a repository.\n");
 			return (0);
 		};
-		return (repo(flags));
+		return (repo(flags, match));
 	}
 
 	/*
@@ -113,11 +121,14 @@ doit(sccs *s, char which)
 }
 
 private int
-repo(u32 flags)
+repo(u32 flags, char *match)
 {
 	int	error = 0;
 
-	if (flags & RLOCK) {
+	if (match) {
+		assert(flags & RLOCK);
+		repository_rdunlockf(0, match);
+	} else if (flags & RLOCK) {
 		repository_rdunlock(0, 1);
 		if (repository_hasLocks(0, READER_LOCK_DIR)) {
 			fprintf(stderr, "read unlock failed.\n");
@@ -126,7 +137,9 @@ repo(u32 flags)
 		}
 		if (proj_isEnsemble(0)) {
 			if (nested_forceUnlock(0, 1)) {
-				fprintf(stderr, "nested read unlock failed\n");
+				fprintf(stderr,
+				    "nested read unlock failed: %s\n",
+				    nested_errmsg());
 				nested_printLockers(0, stderr);
 				error = 1;
 			}
@@ -142,7 +155,9 @@ repo(u32 flags)
 		}
 		if (proj_isEnsemble(0)) {
 			if (nested_forceUnlock(0, 2)) {
-				fprintf(stderr,"nested write unlock failed\n");
+				fprintf(stderr,
+				    "nested write unlock failed: %s\n",
+				    nested_errmsg());
 				nested_printLockers(0, stderr);
 				error = 1;
 			}

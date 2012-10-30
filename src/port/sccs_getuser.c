@@ -48,7 +48,7 @@ sccs_getuser(void)
 	/* if the world is as it was last time, cache hit */
 	if ((id == uid) && s) return (s);
 	uid = id;
-	s = 0;
+	FREE(s);
 #else
 	if (s) return (s);
 #endif
@@ -64,10 +64,15 @@ sccs_getuser(void)
 	if (s && streq(s, "root")) {
 		char	*tmp = sccs_realuser();
 
-		if (tmp && !streq(tmp, UNKNOWN_USER)) return (s = tmp);
+		if (tmp && !streq(tmp, UNKNOWN_USER)) return (s = strdup(tmp));
 	}
-	unless (s && s[0]) return (s = sccs_realuser());
-	return (s = cleanup(s));
+	unless (s && s[0]) {
+		s = sccs_realuser();
+	} else {
+		s = cleanup(s);
+	}
+	if (s) s = strdup(s);
+	return (s);
 }
 
 /*
@@ -85,7 +90,7 @@ sccs_realuser(void)
 	/* if the world is as it was last time, cache hit */
 	if ((id == uid) && r) return (r);
 	uid = id;
-	r = 0;
+	FREE(r);
 
 	if (id) {
 		if (p = getpwuid(id)) r = p->pw_name;
@@ -112,7 +117,8 @@ sccs_realuser(void)
 #endif
 	/* XXX - it might be nice to return basename of $HOME or something */
 	unless (r && r[0]) r = UNKNOWN_USER;
-	return (r = cleanup(r));
+	if (r = cleanup(r)) r = strdup(r);
+	return (r);
 }
 
 char *

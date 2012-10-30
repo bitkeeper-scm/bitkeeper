@@ -180,8 +180,11 @@ cat <<EOF >in
 @ 
 value
 EOF
-bk _hashfile_test r in >got 2>err || exit 1
-grep -q "bad line '@ '" err || exit 2
+bk _hashfile_test r in >got || fail
+cat <<EOF > want
+  => value
+EOF
+cmpfiles got want
 echo OK
 
 echon bad key with space 1 ........................................
@@ -189,8 +192,11 @@ cat <<EOF >in
 @ base6
 value
 EOF
-bk _hashfile_test r in >got 2>err || exit 1
-grep -q "bad line '@ base6'" err || exit 2
+bk _hashfile_test r in >got || fail
+cat <<EOF > want
+ base6 => value
+EOF
+cmpfiles want got
 echo OK
 
 echon bad key with space 2 ........................................
@@ -198,8 +204,11 @@ cat <<EOF >in
 @ base64 is the best
 value
 EOF
-bk _hashfile_test r in >got 2>err || exit 1
-grep -q "bad line '@ base64 is the best'" err || exit 2
+bk _hashfile_test r in >got || fail
+cat <<EOF > want
+ base64 is the best => value
+EOF
+cmpfiles want got
 echo OK
 
 echon single-line base64 value ....................................
@@ -264,7 +273,7 @@ value
 EOF
 bk _hashfile_test w in >got || fail
 cat <<EOF > WANT
-@has%09tab
+@has	tab
 value
 EOF
 cmpfiles got WANT
@@ -274,11 +283,7 @@ echon key with unprintable character error ........................
 printf "@has\001ctrlA\n" >in
 echo value >>in
 bk _hashfile_test w in >got || fail
-cat <<EOF > WANT
-@has%01ctrlA
-value
-EOF
-cmpfiles got WANT
+cmpfiles got in
 echo OK
 
 echon key with null error .........................................
