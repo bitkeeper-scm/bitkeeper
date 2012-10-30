@@ -77,7 +77,6 @@ private	int	misc(sccs *s);
 private	int	bin_deltaTable(sccs *s);
 private	off_t	bin_data(char *header);
 private	ser_t	*scompressGraph(sccs *s);
-private	FILE	*sccs_wrweaveDone(sccs *s);
 private	void	sccs_md5deltaCompat(sccs *s, ser_t d, char *b64);
 
 /*
@@ -5652,7 +5651,7 @@ printstate(ser_t *state, u8 *slist)
 	return (ret);
 }
 
-private FILE *
+FILE *
 sccs_wrweaveInit(sccs *s)
 {
 	assert(!s->wrweave);
@@ -5663,7 +5662,7 @@ sccs_wrweaveInit(sccs *s)
 	return (s->outfh);
 }
 
-private FILE *
+FILE *
 sccs_wrweaveDone(sccs *s)
 {
 	assert(s->wrweave);
@@ -12471,92 +12470,6 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last,
 }
 
 /*
- * Get the hash checksum.
- * A side effect of get_reg() is to set dsum.
- * We're getting what looks like the new delta but it is really
- * the basis for the new delta -
- * we are still operating on the old file, without the diffs applied.
- */
-private int
-getHashSum(sccs *sc, ser_t n, FILE *diffs)
-{
-	char	*buf;
-	char	*key, *val;
-	char	*v;
-	u8	*e;
-	unsigned int sum = 0;
-	int	lines = 0;
-	int	flags = SILENT|GET_HASHONLY|GET_SUM|GET_SHUTUP;
-	ser_t	d;
-	int	offset;
-
-	assert(HASH(sc));
-	assert(!BAM(sc));
-	assert(diffs);
-	/*
-	 * If we have a hash already and it is a simple delta, then just
-	 * use that.  Otherwise, regen from scratch.
-	 */
-	if (sc->mdbm && !HAS_CLUDES(sc, n) && (d = getCksumDelta(sc, n))) {
-	    	sum = SUM(sc, d);
-	} else {
-		if (sc->mdbm) mdbm_close(sc->mdbm), sc->mdbm = 0;
-		sccs_restart(sc);
-		if (get_reg(sc, 0, flags, n, &lines, 0, 0)) {
-			sccs_whynot("delta", sc);
-			return (-1);
-		}
-		sum = sc->dsum;
-	}
-	rewind(diffs);
-	unless (buf = fgetline(diffs)) {
-		/* there are no diffs, we have the checksum, it's OK */
-		return (0);
-	}
-	offset = 0;
-	if (streq(buf, "0a0")) {
-		offset = 2;
-	} else unless (strneq(buf, "I0 ", 3)) {
-		fprintf(stderr, "Missing '0a0' or 'I0 #lines', ");
-bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
-		return (-1);
-	}
-	while (buf = fgetline(diffs)) {
-		unless (offset == 0 || buf[0] == '>') goto bad;
-		key = v = &buf[offset];
-		if (CSET(sc)) {
-			v = separator(v);
-		} else {
-			v = strchr(v, ' ');
-		}
-		unless (v) goto bad;
-		*v = 0;
-		val = v+1;
-		if (v = mdbm_fetch_str(sc->mdbm, key)) {
-			if (!CSET(sc) && streq(v, val)) {
-				fprintf(stderr,
-				    "Redundant: %s %s\n", key, val);
-				return (-1);
-			} else {
-				/*
-				 * Subtract off the old value and add in new
-				 */
-				for (e = v; *e; sum -= *e++);
-				for (e = val; *e; sum += *e++);
-				mdbm_store_str(sc->mdbm, key, val,MDBM_REPLACE);
-			}
-		} else {
-			/* completely new, add in the whole line */
-			for (e = key; *e; sum += *e++); sum += ' ';
-			for (e = val; *e; sum += *e++); sum += '\n';
-			mdbm_store_str(sc->mdbm, key, val, MDBM_INSERT);
-		}
-	}
-	sc->dsum = sum;
-	return (0);
-}
-
-/*
  * Write a out a new sfile with diffs added to weave to create a new
  * tip delta.
  */
@@ -12765,16 +12678,6 @@ newcmd:
 		rewind(diffs);
 		goto again;
 	}
-	if (HASH(s) && (getHashSum(s, n, diffs) != 0)) {
-		return (-1);
-	}
-
-	/*
-	 * For ChangeSet file, force SAME(s, d) to one
-	 * because we do not maintain this field in the cweave code
-	 */
-	if (CSET(s)) *up = 1;
-
 	return (0);
 }
 
@@ -12782,7 +12685,6 @@ newcmd:
  * Dump a cset weave file out: format is from cset_mkList() ...
  * <serial> tab <rootkey> space <deltakey>
  */
-
 int
 sccs_csetWrite(sccs *s, char **cweave)
 {
@@ -12821,7 +12723,7 @@ sccs_csetWrite(sccs *s, char **cweave)
 	if (sccs_finishWrite(s)) goto err;
 	ret = 0;
 err:
-	sccs_abortWrite(s);
+	if (ret) sccs_abortWrite(s);
 	sccs_unlock(s, 'z');
 
 	return (ret);
