@@ -46,44 +46,44 @@ If no annotations are specified then the selected lines are shown
 without annotations.
 .SH OPTIONS
 .TP \-A\*<bdnpru\*>
-.OPTreq \-A bdnpru
+.OPTreq \-A dnpru
 Align annotations in a human readable form.
 The set of annotations will be followed by a vertical bar and a space
 before the data from each line of the file starts.
 Each annotation is aligned in a column.
 The option argument[s] turn on one
 or more annotations as a prefix to each line.
-The possible annotations are:
+The order of annotations is fixed (no matter what order you 
+specify them) and is the same as the order listed below:
 .RS
-.TP
-.B b
-Prefix each line with the basename of the file.
+.tp
+.B p
+Prefix each line with the pathname of the file relative to the current working
+directory.
+The name is always the current name of the file even if it has been renamed.
 .tp
 .B d
 Prefix each line with the date of last modification.
 .tp
-.B n
-Prefix each line with its line number.
-.tp
-.B p
-Prefix each line with pathname of the file relative to the root
-of the repository.
+.B u
+Prefix each line with the name of the user who last modified it.
 .tp
 .B r
 Prefix each line with the revision of last modification.
 .tp
-.B u
-Prefix each line the name of the user who last modified it.
+.B n
+Prefix each line with its line number.
 .RE
 .tp
-.OPTreq \-a bdnpru
+.OPTreq \-a dnpru
 Similar to
 .Q \-A 
 but without the alignment (each annotation is followed by a tab).
+The order of fields is fixed and is:
+pathname, date, user, revision, line number.
 .tp
-.OPTreq \-c date
-annotate the latest version before
-.ARG date .
+.OPTreq \-c dates
+annotate only the lines added by the specified range of dates.
 See
 .B bk range
 for information on specifying dates.
@@ -91,13 +91,15 @@ for information on specifying dates.
 .B \-k
 do not expand RCS or SCCS keywords.
 This option is implied by
+.QR \-c 
+and
 .QR \-R .
 .tp
 .OPTreq \-r rev
-annotate this version of the file.
+annotate all lines in this version of the file.
 .tp
 .OPTopt \-R rev
-annotate the lines added by the specified revision (or range of revisions).
+annotate only the lines added by the specified revision (or range of revisions).
 If
 .ARG rev
 is not specified, that implies all revisions (i.e.,
@@ -110,16 +112,48 @@ shows only those lines
 by the specified revision[s], but in the 
 .Q \-r
 case, the entire contents of the specified version is annotated.
+.SH EXAMPLES
+Annotate the latest revision of a file:
+.DS
+$ bk annotate foo.c
+.DE
+Annotate the lines added in the latest revision of that file
+.DS
+$ bk annotate -R+ foo.c
+.DE
+Annotate all lines in all versions of that file
+.DS
+$ bk annotate -R foo.c
+.DE
+Annotate all lines added to all files in the current directory 
+between June 1 of 2010 and July 31 of 2010:
+.DS
+$ bk annotate -c2010/06..2010/07
+.DE
+To annotate all lines added between two tagged releases:
+.DS
+bk -U annotate -Rbk-4.6..bk-5.0
+.DE
 .SH NOTES
-The
-.Q \-R
-form is a replacement for the removed command \*(lqsccscat\*(rq.
+In previous versions of BitKeeper, the
+.Q \-c
+option was used to select a single revision and annotate all lines in that 
+revision.
+You can now get the same effect as the old:
+.DS
+bk annotate -c2000 foo.c
+.DE
+with the more complicated (this assumes bash is your shell):
+.DS
+bk annotate -r$(bk prs -1 -hnd:REV: -c..2000 foo.c) foo.c
+.DE
 .SH SEE ALSO
 .LP
 .SA co
 .SA grep
 .SA range
 .SA revtool
+.\" help://blame
 .\" help://sccscat
 .\" help://bk-sccscat
 .\" help://sccscat.1

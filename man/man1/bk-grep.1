@@ -34,13 +34,13 @@ The
 .QR \-r ,
 .QR \-R ,
 and 
-.Q \-d
+.Q \-c
 options are used to control where in a file's history to search.
 .LP
 The printed lines may be annotated with file names,
 dates, revision numbers, line numbers, and/or user names.
 .SH OPTIONS
-.TP \-A\*<bdpru\*>n
+.TP \-A\*<dnpru\*>n
 .OPTreq \-A num
 Print 
 .I num
@@ -49,51 +49,43 @@ Places a line containing \*(lq\-\|\-\*(rq between contiguous groups of matches.
 (Like GNU
 .BR grep .)
 .tp
-.OPTreq \-A bdpru
+.OPTreq \-A bdnpru
 Annotate the output with information from the revision history.
 Each annotation is aligned in a column.
 The option argument[s] turn on one
 or more annotations as a prefix to each line.
-The possible annotations are:
+The order of fields is fixed (no matter what order you 
+specify them) and is the same as the order listed below:
 .RS
-.TP
-.B b
-Prefix each line with the basename of the file.
-If a single revision was selected, the name used is the name as of that
-revision, otherwise the name used is the current name.
+.tp
+.B p
+Prefix each line with the pathname of the file relative to the current working
+directory.
+The name is always the current name of the file even if it has been renamed.
 .tp
 .B d
 Prefix each line with the date of last modification.
 .tp
-.B p
-Prefix each line with the pathname of the file relative to the root
-of the repository.
-If a single revision was selected, the name used is the name as of that
-revision, otherwise the name used is the current name.
+.B u
+Prefix each line with the name of the user who last modified it.
 .tp
 .B r
 Prefix each line with the revision of last modification.
 .tp
-.B u
-Prefix each line the name of the user who last modified it.
+.B n
+Prefix each line with its line number.
 .LP
-There is some redundancy between the b/p options and the traditional GNU
-options for listing file names.  The \*(BK options are slightly different
-in the following ways: the file names listed are either the basename or
-the pathname relative to the root regardless of where the command is run 
-in the repository; and when using the 
-.Q \-A
-option
-.B bk grep
-will attempt to align the filenames in the output but it will
-not with the normal GNU style output.
+This option is incompatible with the -A/-B/-C context options, use -a if
+you need more lines of context.
 .RE
-.TP \-A\*<bdpru\*>n
-.OPTreq \-a bdpru
+.tp 
+.OPTreq \-a dnpru
 Similar to
 .Q \-A
 but each annotation is followed by a colon rather than a set of spaces
 aligning the output.
+The order of fields is fixed (no matter what order you 
+specify them) and is: pathname, date, user, revision, line number.
 .tp
 .OPTreq \-B num
 Print
@@ -112,32 +104,24 @@ If no value is given defaults to 2.
 (Like GNU
 .BR grep .)
 .tp
-.B \-c
-Suppress normal output; instead print a count of matching lines for 
-each input file.  With
-.Q \-v
-option (see below), count non-matching lines.
-(Like GNU
-.BR grep .)
-.tp
-.OPTreq \-d dates
+.OPTreq \-c dates
 Select the versions to search as all deltas created in the specified 
-range of dates.
+range of dates.  (Different than GNU
+.BR grep .)
 .tp
 .B \-h
 Do not print filenames with matches when multiple files are searched.
+Normally, if more than one file is searched the results are prefixed
+with the filename.
 (Like GNU
 .BR grep .)
 .tp
 .B \-H
 Print the file name even if there is only one file being searched.
+Normally, if only one file is searched, then the file name is skipped
+unless it was explicitly selected.
 (Like GNU
 .BR grep .)
-Note: if either of 
-.B b
-or
-.B f
-annotations options are used then this option is overridden.
 .tp
 .B \-i
 Ignore case distinctions in both the
@@ -211,31 +195,61 @@ if no matches were found
 2
 if an error occurred
 .SH EXAMPLES
-To see if 
-.ARG pattern
-occurs anywhere in any version of any file of your tree:
+Look for a pattern in the working copy of a file:
 .DS
-$ bk -r grep -R pattern
+$ bk grep pattern foo.c
 .DE
-To see if it occurs anywhere
-in the most recent version of of any file of your tree:
+Look for a pattern in the most recent checked in version of a file:
 .DS
-$ bk -r grep -r+ pattern
+$ bk grep -r+ pattern foo.c
+.DE
+Look for a pattern in all checked in versions of a file (this searches
+every line ever present in the file, even if some lines have been deleted):
+.DS
+$ bk grep -R pattern foo.c
+.DE
+Look for a pattern in all files in the current working directory:
+.DS
+$ bk grep pattern
+.DE
+Look for a pattern
+in any version of any file in your tree (including deleted files; if
+this doesn't find it then pattern was never present in your history):
+.DS
+$ bk -A grep -R pattern
+.DE
+To see if it occurs in the most recent version of of any file of your tree:
+.DS
+$ bk -A grep -r+ pattern
 .DE
 To see if it occurs anywhere in any of your checked out files (this may
-be substantially faster than searching all files):
+be substantially faster than searching all files because it skips files
+not checked out):
 .DS
 $ bk -Gr grep pattern
 .DE
-To see if it occurs anywhere in any of your files, including checked out
-and modified files:
-.DS
-$ bk -r grep pattern
-.DE
 To see if it was added by the most recent delta
-made in of any file of your tree:
+made in of any active (undeleted) file of your tree:
 .DS
-$ bk -r grep -R+ pattern
+$ bk -U grep -R+ pattern
+.DE
+See if a pattern was added in the last year (skips deleted files):
+.DS
+$ bk -U grep -c-1y pattern
+.DE
+See if a pattern was added between June 1 of 2010 and July 31 of 2010:
+.DS
+$ bk -U grep -c2010/06..2010/07
+.DE
+See if a pattern was added between two tagged releases:
+.DS
+$ bk -U grep -Rbk-4.6..bk-5.0
+.DE
+See if you left some debugging in the modified files
+(we tend to add fprintf(stderr, "DEBUG stuff\n")
+statements but left justify them so we can find them):
+.DS
+$ bk -cU grep '^fprintf'
 .DE
 .SH BUGS
 The ways of specifying which versions to search are non-obvious.  You
@@ -243,11 +257,6 @@ need to read the examples carefully.  We made the default be the most
 useful/common one.
 .LP
 Binary files are never searched, they are silently ignored.
-.LP
-There really ought to be a way to
-.B grep
-changes made by a changeset
-or range of changesets.
 .SH "SEE ALSO"
 .SA annotate
 .SA bk
