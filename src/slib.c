@@ -6612,9 +6612,9 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 		namedb = mdbm_mem();
 	}
 	if (flags & GET_MODNAME) {
-		name = basenm(d ? PATHNAME(s, d) : s->gfile);
+		name = basenm(s->gfile);
 	} else if (flags & GET_RELPATH) {
-		name = d ? PATHNAME(s, d) : s->gfile;
+		name = s->gfile;
 	}
 
 	/*

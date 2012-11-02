@@ -3,6 +3,9 @@ been set.  The original DSUMMARY (which is part of the default prs output)
 uses user@host/realhost
 Now it does user@host
 
+bk annotate -c<date> is now bk annotate -c<date_range>; the old usage is no
+longer supported (but see the docs for how to work around it).
+
 ============================================================================
 Release notes for BitKeeper version 5.4.3 (released Sep 24, 2012)
 

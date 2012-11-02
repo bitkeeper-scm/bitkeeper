@@ -730,7 +730,7 @@ fix_genlist(char *rev)
 	FILE	*f = 0;
 	char	buf[2*MAXKEY];
 
-	cmd = aprintf("bk annotate -R'%s'..+ ChangeSet", rev);
+	cmd = aprintf("bk annotate -R'%s'..+ -h ChangeSet", rev);
 	f = popen(cmd, "r");
 	free(cmd);
 	unless (f) goto out;

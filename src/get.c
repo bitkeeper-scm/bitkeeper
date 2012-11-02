@@ -462,6 +462,7 @@ get_rollback(sccs *s, char *rev, char **iLst, char **xLst, char *me)
 int
 annotate_args(int flags, char *args)
 {
+	if (streq(args, "none")) return (flags);
 	while (*args) {
 		switch (*args) {
 		    //case '5': flags |= GET_MD5REV; break;

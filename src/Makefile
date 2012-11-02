@@ -343,7 +343,7 @@ tags: $(patsubst %,%/tags.local, $(SUBDIRS)) tags.local
 	@echo ctags completed
 
 tags.local: $(SRCS) $(HDRS)
-	ctags -f $@ --file-tags=yes --c-types=d+f+s+t $^
+	@ctags -f $@ --file-tags=yes --c-types=d+f+s+t $^
 
 %/tags.local: FORCE
 	$(Q)$(MAKE) -C $(dir $@) tags.local

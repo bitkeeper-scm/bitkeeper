@@ -30,6 +30,17 @@ BK_DATE_TIME_ZONE="04/08/23 14:14:14-8:00" BK_USER=jane BK_HOST=shoes.com \
 bk commit $Q -ysecond || exit 1
 echo OK
 
+echo $N Check bk annotate ...........................................$NL
+bk annotate file > GOT
+cat <<EOF > WANT
+joe/$USER	1.1	line1
+joe/$USER	1.1	line2
+joe/$USER	1.1	line3
+jane/$USER	1.2	line4
+EOF
+cmpfiles WANT GOT
+echo OK
+
 echo $N Check bk annotate -ab .......................................$NL
 bk annotate -ab file > GOT
 cat <<EOF > WANT
@@ -55,10 +66,10 @@ echo OK
 echo $N Check bk annotate -ap .......................................$NL
 bk annotate -ap file > GOT
 cat <<EOF > WANT
-subdir/file	line1
-subdir/file	line2
-subdir/file	line3
-subdir/file	line4
+file	line1
+file	line2
+file	line3
+file	line4
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -169,9 +180,10 @@ bk annotate -R+ -c2004 file > GOT 2>&1 && {
 }
 echo OK
 
-echo $N Check that bk annotate -c does not accept ranges ............$NL
-bk annotate -c2004..2004 file > GOT 2>&1 && {
-	echo should have failed
+# XXX - doesn't actually test ranges, we do that elsewhere
+echo $N Check that bk annotate -c accepts ranges ....................$NL
+bk annotate -c2004..2004 file > GOT 2>&1 || {
+	echo should not have failed
 	exit 1
 }
 echo OK
@@ -205,6 +217,22 @@ cat <<EOF > WANT
 2	BitKeeper/etc/gone
 2	BitKeeper/etc/ignore
 4	subdir/file
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk annotate -an -R after we delete all the lines ......$NL
+cd subdir
+bk edit $Q file
+echo foo > file
+bk delta -ywhatever $Q file
+bk annotate -R file > GOT
+cat <<EOF > WANT
+joe/$USER	1.1	line1
+joe/$USER	1.1	line2
+joe/$USER	1.1	line3
+jane/$USER	1.2	line4
+bk/$USER	1.3	foo
 EOF
 cmpfiles WANT GOT
 echo OK
