@@ -539,7 +539,9 @@ mkChangeSet(sccs *cset, char *files, FILE *weave)
 		pf.oldrev = strdup("+");
 	}
 	if (sccs_get(cset, pf.oldrev, pf.mRev, 0, 0, flags, "-")) {
-		fprintf(stderr, "cset: get -eg of ChangeSet failed\n");
+		unless (BEEN_WARNED(cset)) {
+			fprintf(stderr, "cset: get -eg of ChangeSet failed\n");
+		}
 		free_pfile(&pf);
 		return (0);
 	}
@@ -576,6 +578,7 @@ mkChangeSet(sccs *cset, char *files, FILE *weave)
 	SORTSUM_SET(cset, d, SUM(cset, d));
 
 	SAME_SET(cset, d, 1);
+	MODE_SET(cset, d, 0100664);
 	XFLAGS(cset, d) = XFLAGS(cset, p);
 
 	/*
