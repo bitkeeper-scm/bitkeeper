@@ -2459,7 +2459,7 @@ out:	sccs_unlock(s, 'z');
 	return (0);
 }
 
-int
+private int
 bam_server_main(int ac, char **av)
 {
 	int	c, list = 0, quiet = 0, rm = 0;

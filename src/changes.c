@@ -575,7 +575,7 @@ doit(int dash)
 			}
 		}
 		specf = bk_searchFile(spec);
-		TRACE("Reading dspec from %s", specf ? specf : "(not found)");
+		T_DEBUG("Reading dspec from %s", specf ? specf : "(not found)");
 		unless (specf && (opts.dspec = loadfile(specf, 0))) {
 			fprintf(stderr,
 			    "changes: cant find %s/%s\n", bin, spec);

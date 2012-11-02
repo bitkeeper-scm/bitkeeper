@@ -248,7 +248,8 @@ uniq_adjust(sccs *s, ser_t d)
 				/* strip pathname */
 				p2 = strchr(key, '|');
 				assert(p2);
-				strcpy(p2+1, p1+1);
+				++p1; ++p2;
+				while ((*p2++ = *p1++));
 			}
 
 			/* Add rand from syncRoot to cset delta keys */
@@ -309,7 +310,7 @@ uniq_close(void)
 	char	tmpf[MAXPATH];
 
 	unless (is_open) return (0);
-	TRACE("closing uniq %d %s", dirty, prog);
+	T_SHIP("closing uniq %d %s", dirty, prog);
 	unless (dirty) goto close;
 	unless (keyf = keysHome()) {
 		fprintf(stderr, "uniq_close: cannot find keyHome");

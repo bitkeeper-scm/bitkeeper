@@ -60,7 +60,7 @@ filtertest2_main(int ac, char **av)
 	return (0);
 }
 
-void
+private void
 getMsg_tests(void)
 {
 	char	**args, *p;
@@ -79,7 +79,7 @@ getMsg_tests(void)
 	freeLines(args, 0);
 }
 
-void
+private void
 signal_tests(void)
 {
 	char	*av[] = { "bk", "-Lw", "_usleep", "2000000", 0 };
@@ -101,7 +101,7 @@ signal_tests(void)
 	}
 }
 
-void
+private void
 tmp_tests(void)
 {
 	char	*template = malloc(500);
@@ -121,13 +121,67 @@ tmp_tests(void)
 	free(template);
 }
 
+/* this is just to see if it compiles */
+private void
+compile_tests(void)
+{
+	char	**av;
+	char	*file = "a file";
+	char	c = '8';
+	int	n;
+	struct point {int x; int y;} p = {.y = 10, .x = 20};
+	int	array[10] = { [5] = 1, [8] = c , [2 ... 4] = 8};
+
+	// http://gcc.gnu.org/onlinedocs/gcc-4.1.2/gcc/Compound-Literals.html
+	av = (char *[]) {"bk", "log", "-nd", file, 0};
+	unless (streq(av[1], "log")) {
+		fprintf(stderr, "compound literal failed\n");
+	}
+	unless (streq(av[3], file)) {
+		fprintf(stderr, "compound literal failed\n");
+	}
+	// http://gcc.gnu.org/onlinedocs/gcc-4.1.2/gcc/Case-Ranges.html
+	switch (c) {
+	    case '0'...'9':
+		break;
+	    default:
+		fprintf(stderr, "case range failed\n");
+		break;
+	}
+	unless (array[5] == 1) fprintf(stderr, "initializer failed\n");
+	unless (array[3] == 8) fprintf(stderr, "initializer failed\n");
+	unless (p.y == 10) fprintf(stderr, "struct init failed");
+
+	n = rand();
+	if (__builtin_expect(n < 0, 0)) {
+		n++;
+	}
+}
+
 /* run specialized code tests */
 int
 unittests_main(int ac, char **av)
 {
 	char	*t;
 
-	if (av[1]) return (1);
+	if (av[1] && streq(av[1], "trace")) {
+		TRACE("STARTING");
+		TRACE("BEFORE sleep(1)");
+		sleep(1);
+		T_PERF("AFTER sleep(1)");
+		sleep(2);
+		T_PERF("AFTER sleep(2)");
+		sleep(3);
+		TRACE("AFTER sleep(3)");
+		TRACE("FAST ONE");
+		TRACE("ANOTHER FAST ONE");
+		sleep(1);
+		TRACE("AFTER sleep(1)");
+		TRACE("DONE");
+		return (1);
+	}
+	/* Test for file handle leaks */
+	TRACE("X");
 
 	libc_tests();
 	getMsg_tests();
@@ -141,6 +195,7 @@ unittests_main(int ac, char **av)
 #endif
 	signal_tests();
 	tmp_tests();
+	compile_tests();
 	return (0);
 }
 
@@ -308,7 +363,6 @@ testfmem(FILE *f)
 	while (p) {
 		if (++n == 30) n = 0;
 		f1 = fmem();
-		memset(&d, 0, sizeof(DATA));
 		for (i = 0; i < n; i++) {
 			unless (p = fgetline(f)) break;
 			chomp(p);
@@ -338,7 +392,6 @@ testfmemopt(FILE *f)
 	p = "";
 	while (p) {
 		if (++n == 30) n = 0;
-		memset(&d, 0, sizeof(DATA));
 		for (i = 0; i < n; i++) {
 			unless (p = fgetline(f)) break;
 			chomp(p);

@@ -268,7 +268,7 @@ abortComponents(options *opts, int *which, int *num)
 	}
 
 	EACH_STRUCT(n->comps, c, i) {
-		TRACE("check(%s) p%d i%d\n",
+		T_NESTED("check(%s) p%d i%d\n",
 		    c->path, c->present, c->included);
 		if (c->product || !c->present || !c->included) continue;
 
@@ -285,7 +285,7 @@ abortComponents(options *opts, int *which, int *num)
 			int	e;
 
 			unless (streq(proj_rootkey(0), c->rootkey)) {
-				TRACE("wrong rootkey in %s\n", c->path);
+				T_NESTED("wrong rootkey in %s\n", c->path);
 				/*
 				 * This is not the component you're
 				 * looking for.  You can go about your
@@ -301,7 +301,7 @@ abortComponents(options *opts, int *which, int *num)
 			unless (opts->quiet) {
 				tick = progress_start(PROGRESS_BAR, 1000);
 			}
-			TRACE("rmcomp(%s)\n", c->path);
+			T_NESTED("rmcomp(%s)\n", c->path);
 			if (e = nested_rmcomp(n, c)) {
 				fprintf(stderr, "failed rmcomp in %s\n", c->path);
 				error("failed to remove %s\n", c->path);

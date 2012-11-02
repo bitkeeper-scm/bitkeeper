@@ -1,3 +1,7 @@
+#include "string/str.cfg"
+#ifdef BK_STR_STRCASESTR
+#include "local_string.h"
+
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -37,3 +41,4 @@ strcasestr(s, find)
 	}
 	return ((char *)s);
 }
+#endif

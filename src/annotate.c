@@ -17,6 +17,7 @@ annotate_main(int ac, char **av)
 	ser_t	d;
 	int	flags = BASE_FLAGS, errors = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
+	int	def_anno = GET_REVNUMS|GET_USER;
 	int	c;
 	char	*t, *name, *Rev = 0, *rev = 0, *cdate = 0;
 	int	range = 0;
@@ -24,6 +25,7 @@ annotate_main(int ac, char **av)
 
 	name = strrchr(av[0], '/');
 
+	// LMXXX - does anyone use this?
 	if (t = getenv("BK_ANNOTATE")) {
 		if ((flags = annotate_args(flags, t)) == -1) {
 			fprintf(stderr,
@@ -37,14 +39,29 @@ annotate_main(int ac, char **av)
 			flags |= GET_ALIGN;
 			/*FALLTHROUGH*/
 		    case 'a':
+			def_anno = 0;
 			flags = annotate_args(flags, optarg);
 			if (flags == -1) usage();
 			break;
 		    case 'B': break;		   /* skip binary, default */	
-		    case 'c': cdate = optarg; break;		/* doc 2.0 */
-		    case 'h': flags |= GET_NOHASH; break;
+		    case 'c': 
+		    	range = 1;
+			if (range_addArg(&rargs, optarg, 1)) usage();
+			flags &= ~GET_EXPAND;
+			break;
+		    case 'h':
+			def_anno = 0;		// so changeset works
+		    	flags |= GET_NOHASH;
+			break;
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
-		    case 'r': Rev = optarg; break;		/* doc 2.0 */
+		    case 'r':
+			if (strstr(optarg, "..")) {
+				fprintf(stderr,
+				    "annotate: use -R for ranges.\n");
+				exit(1);
+			}
+		    	Rev = optarg;
+			break;		/* doc 2.0 */
 		    case 'R':
 			range = 1;
 			if (optarg && range_addArg(&rargs, optarg, 0)) {
@@ -60,11 +77,8 @@ annotate_main(int ac, char **av)
 	if (cdate && strstr(cdate, "..")) usage();
 	if (range && (Rev || cdate)) usage();
 
-	/* original annotate only, not -R sccscat replacement */
-	if (!range && (flags == BASE_FLAGS)) {
-		flags |= GET_REVNUMS|GET_USER;
-	}
-	name = sfileFirst(ME, &av[optind], 0);
+	flags |= def_anno;
+	name = sfileFirst(ME, &av[optind], SF_NOCSET);
 	for (; name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {
@@ -74,7 +88,7 @@ err:			errors = 1;
 		}
 		if (BINARY(s)) goto err;
 		if (range) {
-			if (range_process(ME, s, RANGE_SET, &rargs)) goto err;
+			if (range_process(ME, s, SILENT|RANGE_SET, &rargs)) goto err;
 		} else if (cdate) {
 			d = sccs_findDate(s, cdate, ROUNDUP);
 			unless (d) {

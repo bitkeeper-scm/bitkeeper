@@ -285,6 +285,8 @@ savekey(hash *h, int addnull, char *key, FILE *val)
 	ftrunc(val, 0);
 }
 
+extern	int	hashfile_test_main(int ac, char **av);
+
 int
 hashfile_test_main(int ac, char **av)
 {

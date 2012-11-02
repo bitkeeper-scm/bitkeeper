@@ -38,6 +38,35 @@ EOF
 cmp -s WANT GOT || { echo failed; diff -u WANT GOT; exit 1; }
 echo OK
 
+echo $N Verify commit metadata ......................................$NL
+bk _heapdump ChangeSet | egrep '^([PS]|a/|serial|mode|flags|xflags)' > GOT
+cat <<EOF > WANT
+serial: 3 (1.2)
+PARENT: 2 (1.1)
+a/d/s: 1/0/1
+mode: 100664
+xflags: 1061 (BITKEEPER,CSETMARKED,HASH)
+flags: 1001 (CSET)
+PATHNAME: ChangeSet
+SORTPATH: ChangeSet
+serial: 2 (1.1)
+PARENT: 1 (1.0)
+a/d/s: 5/0/1
+mode: 100664
+xflags: 1061 (BITKEEPER,CSETMARKED,HASH)
+flags: 1001 (CSET)
+PATHNAME: ChangeSet
+SORTPATH: ChangeSet
+serial: 1 (1.0)
+a/d/s: 0/0/0
+xflags: 1061 (BITKEEPER,CSETMARKED,HASH)
+flags: 1 ()
+PATHNAME: ChangeSet
+SORTPATH: ChangeSet
+EOF
+cmpfiles GOT WANT
+echo OK
+
 echo $N Test commit with revs on stdin ..............................$NL
 for i in 2 3 4 5
 do	bk edit $Q file

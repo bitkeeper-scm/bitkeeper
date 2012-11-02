@@ -17,12 +17,12 @@ extern	unsigned int turnTransOff;
 		unless (getenv("_BK_TRANSACTION")) {			\
 			putenv("_BK_TRANSACTION=1");			\
 			turnTransOff = 1;				\
-			TRACE("Starting %s", "transaction");		\
+			T_NESTED("Starting %s", "transaction");		\
 		} else if (turnTransOff) {				\
-			TRACE("Starting transaction nest %u", turnTransOff); \
+			T_NESTED("Starting transaction nest %u", turnTransOff);\
 			turnTransOff++;					\
 		} else {						\
-			TRACE("Skipping Starting %s", "transaction");	\
+			T_NESTED("Skipping Starting %s", "transaction");\
 		}							\
 	} while(0)
 
@@ -31,12 +31,12 @@ extern	unsigned int turnTransOff;
 		if (turnTransOff == 1)	{				\
 			putenv("_BK_TRANSACTION=");			\
 			turnTransOff = 0;				\
-			TRACE("Stopping %s", "transaction");		\
+			T_NESTED("Stopping %s", "transaction");		\
 		} else if (turnTransOff) {				\
 			turnTransOff--;					\
-			TRACE("Stopping transaction nest %u", turnTransOff); \
+			T_NESTED("Stopping transaction nest %u", turnTransOff);\
 		} else {						\
-			TRACE("Skipping Stopping %s", "transaction");	\
+			T_NESTED("Skipping Stopping %s", "transaction");\
 		}							\
 	} while(0)
 

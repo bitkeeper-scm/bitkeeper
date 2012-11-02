@@ -1,6 +1,7 @@
-/* Copyright (c) 2000 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+
+private int annocat(char *file, int flags, int pipe);
 
 int
 cat_main(int ac, char **av)
@@ -10,14 +11,28 @@ cat_main(int ac, char **av)
 	int	skip_bin = 0, rc = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	c, gfile;
+	int	aflags = 0;
+	int	pipe = 0;
 
-	while ((c = getopt(ac, av, "B", 0)) != -1) {
+	while ((c = getopt(ac, av, "A:a:B", 0)) != -1) {
 		switch (c) {
+		    case 'A':
+		    	pipe = 1;
+			/* fall through */
+		    case 'a':
+			aflags = annotate_args(aflags, optarg);
+			if (aflags == -1) usage();
+			if (aflags) {
+				if (c == 'A') aflags |= GET_ALIGN;
+			} else {
+				pipe = 0;	// -Anone
+			}
+			break;
 		    case 'B': skip_bin = 1; break;
 		    default: bk_badArg(c, av);
 		}
 	}
-	for (name = sfileFirst("cat", &av[optind], 0);
+	for (name = sfileFirst("cat", &av[optind], SF_NOCSET);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, INIT_NOCKSUM)) {
 			rc |= 1;
@@ -40,13 +55,55 @@ cat_main(int ac, char **av)
 			fflush(stdout);
 		}
 		if (gfile) {
-			rc |= cat(s->gfile) ? 1 : 0;
+			if (aflags) {
+				rc |= annocat(s->gfile, aflags, pipe) ? 1 : 0;
+			} else {
+				rc |= cat(s->gfile) ? 1 : 0;
+			}
 			sccs_free(s);
 			continue;
 		}
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, "-")) rc |= 1;
+		if (sccs_get(s, 0, 0, 0, 0, aflags|SILENT|PRINT, "-")) rc |= 1;
 		sccs_free(s);
 	}
 	if (sfileDone()) rc = 1;
 	return (rc);
+}
+
+private int
+annocat(char *file, int aflags, int pipe)
+{
+	FILE	*f;
+	char	*p;
+	char	*name = 0;
+	int	lineno = 0;
+	time_t	tt;
+	char	fake[MAXPATH + 100];
+
+	unless (f = fopen(file, "r")) return (-1);
+	if (aflags & GET_MODNAME) {
+		name = basenm(file);
+	} else if (aflags & GET_RELPATH) {
+		name = file;
+	}
+	fake[0] = 0;
+	if (aflags & GET_PREFIXDATE) {
+		tt = time(0);
+		strftime(fake, sizeof(fake), "%Y/%m/%d\t", localtimez(&tt, 0));
+	}
+	if (aflags & GET_USER) strcat(fake, "?\t");
+	if (aflags & GET_REVNUMS) strcat(fake, "?\t");
+	if (aflags & GET_SERIAL) strcat(fake, "?\t");
+	while (p = fgetline(f)) {
+		if (name) {
+			fputs(name, stdout);
+			fputc('\t', stdout);
+		}
+		if (fake[0]) fputs(fake, stdout);
+		if (aflags & GET_LINENUM) printf("%d\t", ++lineno);
+		if (pipe) fputs("| ", stdout);
+		puts(p);
+	}
+	fclose(f);
+	return (0);
 }

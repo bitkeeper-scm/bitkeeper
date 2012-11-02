@@ -82,7 +82,7 @@ do_diff(resolve *rs, char *left, char *right, int wait)
 	return (0);
 }
 
-int
+private int
 do_sdiff(resolve *rs, char *left, char *right, int wait)
 {
 	char	tmp[MAXPATH];
@@ -100,7 +100,7 @@ do_sdiff(resolve *rs, char *left, char *right, int wait)
 	return (0);
 }
 
-int
+private int
 do_difftool(resolve *rs, char *left, char *right, int wait)
 {
 	char	*av[10];
@@ -251,7 +251,7 @@ res_vr(resolve *rs)
 	return (0);
 }
 
-int
+private int
 revtool(char *name)
 {
 	char	*av[10];
@@ -264,7 +264,7 @@ revtool(char *name)
 	return (0);
 }
 
-int
+private int
 res_pl(resolve *rs)
 {
 	if (rs->res_screate) {
@@ -279,7 +279,7 @@ res_pl(resolve *rs)
 	return (0);
 }
 
-int
+private int
 res_pr(resolve *rs)
 {
 	revtool(rs->s->gfile);
@@ -371,7 +371,7 @@ res_quit(resolve *rs)
 	return (-1);
 }
 
-int
+private int
 gc_explain(resolve *rs)
 {
 	fprintf(stderr,
@@ -402,7 +402,7 @@ back by hand, if that is what you want.\n\n",
 	return (0);
 }
 
-int
+private int
 gc_help(resolve *rs)
 {
 	int	i;
@@ -463,7 +463,7 @@ common_ml(resolve *rs, char *p, char *buf)
 	return (0);
 }
 
-int
+private int
 gc_ml(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -484,7 +484,7 @@ gc_ml(resolve *rs)
 	return (EAGAIN);
 }
 
-int
+private int
 dc_ml(resolve *rs)
 {
 	int	count = 0;
@@ -524,7 +524,7 @@ dc_ml(resolve *rs)
 	return (EAGAIN);
 }
 
-int
+private int
 gc_remove(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -606,7 +606,7 @@ getFileConflict(resolve *rs, char *gfile, char *path)
 	return;
 }
 
-int
+private int
 dc_remove(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -624,7 +624,7 @@ dc_remove(resolve *rs)
 	return (EAGAIN);
 }
 
-int
+private int
 dc_explain(resolve *rs)
 {
 	char	path[MAXPATH];
@@ -656,7 +656,7 @@ back by hand, if that is what you want.\n\n",
 	return (0);
 }
 
-int
+private int
 dc_help(resolve *rs)
 {
 	int	i;
@@ -689,7 +689,7 @@ Remote file:\n\t``%s''\n", PATHNAME(rs->s, rs->d));
 	return (0);
 }
 
-int
+private int
 sc_explain(resolve *rs)
 {
 	fprintf(stderr,
@@ -711,7 +711,7 @@ and you to continue with the rest of the patch.\n\n", PATHNAME(rs->s, rs->d));
 	return (0);
 }
 
-int
+private int
 sc_help(resolve *rs)
 {
 	int	i;
@@ -764,7 +764,7 @@ done:
 	return (rc);
 }
 
-int
+private int
 sc_ml(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -833,7 +833,7 @@ sc_ml(resolve *rs)
 	return (EAGAIN);
 }
 
-int
+private int
 sc_rml(resolve *rs)
 {
 	char	repo[MAXPATH];
@@ -883,7 +883,7 @@ sc_rml(resolve *rs)
 	return (EAGAIN);
 }
 
-int
+private int
 sc_rmr(resolve *rs)
 {
 	char	*resync;
@@ -898,7 +898,7 @@ sc_rmr(resolve *rs)
 	return (1);	/* XXX - EAGAIN? */
 }
 
-int
+private int
 rc_explain(resolve *rs)
 {
 	fprintf(stderr,
@@ -914,7 +914,7 @@ Both of these choices leave the right file where it is.\n", rs->dname);
 	return (0);
 }
 
-int
+private int
 rc_help(resolve *rs)
 {
 	int	i;
@@ -933,7 +933,7 @@ Two files want to be: ``%s''\n\
 	return (0);
 }
 
-int
+private int
 rc_ml(resolve *rs)
 {
 	char	buf[MAXPATH];
@@ -982,7 +982,7 @@ rc_ml(resolve *rs)
 	return (1);
 }
 
-int
+private int
 rc_rml(resolve *rs)
 {
 	char	*resync;

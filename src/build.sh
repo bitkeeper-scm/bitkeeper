@@ -108,12 +108,16 @@ case "X`uname -s`" in
 		}
 		;;
 	XNetBSD)
+		CC=gcc
+		LD=gcc
+		PATH="/usr/local/bin:${PATH}"
 		CCXTRA="-DHAVE_GMTOFF -DNOPROC -DRLIMIT_DEFAULT_SUCKS"
 		;;
 	XOpenBSD)
 		CCXTRA="-DHAVE_GMTOFF -DNOPROC"
 		;;
 	XSCO_SV)
+		PATH="/usr/local/bin:${PATH}"
 		XLIBS="-lsocket"
 		export XLIBS
 		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"

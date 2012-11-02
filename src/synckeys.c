@@ -389,6 +389,9 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	char	*k;
 	char	key[MAXKEY + 512] = ""; /* rev + tag + key */
 	char	synckey[MAXKEY];
+
+#define	ERR(r)	rc = r; goto out
+	T_CMD("prunekey");
 	/*
 	 * Reopen stdin with a stdio stream.  We will be reading a LOT of
 	 * data and it will all be processed with this process so it is
@@ -402,15 +405,15 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 			fprintf(stderr,
 			    "prunekey: expected @CMD@, got nothing.\n");
 		}
-		return (-1);
+		ERR(-1);
 	}
 	if (streq(key, "@NO MATCH@")) {
 		getline2(r, key, sizeof(key)); /* eat @END@ */
-		return (-2);
+		ERR(-2);
 	}
 	if (strneq(key, "@FAIL@-", 7)) {
 		unless (quiet) fprintf(stderr, "%s\n", &key[7]);
-		return (-1);
+		ERR(-1);
 	}
 	if (streq(key, "@EMPTY TREE@")) goto empty;
 	unless (streq(key, "@LOD MATCH@")) {
@@ -418,7 +421,7 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 			fprintf(stderr,
 			    "prunekey: protocol error: %s key\n", key);
 		}
-		return (-1);
+		ERR(-1);
 	}
 	if (flags & PK_SYNCROOT) sccs_syncRoot(s, synckey);
 
@@ -426,7 +429,7 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	for ( ;; ) {
 		unless (getline2(r, key, sizeof(key)) > 0) {
 			perror("prunekey: expected key | @");
-			exit(2);
+			ERR(-3);
 		}
 		if (key[0] == '@') break;
 		k = get_key(key, flags);
@@ -508,6 +511,7 @@ empty:	for (d = TABLE(s); d >= TREE(s); d--) {
 	safe_putenv("BK_REMOTECSETS=%d", rcsets);
 	rc = local; 
 
+out:	T_CMD("prunekey = %d", rc);
 	return (rc);
 }
 

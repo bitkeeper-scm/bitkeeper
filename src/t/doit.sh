@@ -442,7 +442,6 @@ EOF
 	export _BK_DEVELOPER
 	unset BK_NO_TRIGGERS
 	unset BK_UPGRADE_PLATFORM
-	unset BK_NO_REMAP
 	unset BK_NOTTY
 
 	# clear OLDPATH in case bk ran doit

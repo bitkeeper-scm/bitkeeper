@@ -27,6 +27,10 @@
 
 #include "system.h"
 
+#if defined(__x86_64) && (GCC_VERSION > 40300)
+#define	X86_CRC
+#endif
+
 #ifndef __BYTE_ORDER
 #error "help!"
 #endif
@@ -1102,8 +1106,14 @@ static const u32 g_crc_slicing[8][256] = {
  * good code to use as a reference:
  * http://svn.apache.org/repos/asf/hadoop/common/trunk/hadoop-common-project/hadoop-common/src/main/native/src/org/apache/hadoop/util/bulk_crc32.c
  */
+#ifdef X86_CRC
+private u32
+software_crc32c
+#else
 u32
-crc32c(u32 crc, const void *chunk, size_t len)
+crc32c
+#endif
+(u32 crc, const void *chunk, size_t len)
 {
 	u32 next;
 	size_t nqwords;
@@ -1174,3 +1184,103 @@ crc32c(u32 crc, const void *chunk, size_t len)
 #endif
 	return (~crc);
 }
+
+#ifdef	X86_CRC
+
+//
+// Definitions of the SSE4.2 crc32 operations. Using these instead of
+// the GCC __builtin_* intrinsics allows this code to compile without
+// -msse4.2, since we do dynamic CPU detection at runtime.
+//
+
+private inline u64 _mm_crc32_u64(u64 crc, u64 value) {
+  asm("crc32q %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
+  return crc;
+}
+
+private inline u32 _mm_crc32_u32(u32 crc, u32 value) {
+  asm("crc32l %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
+  return crc;
+}
+
+private inline u32 _mm_crc32_u16(u32 crc, u16 value) {
+  asm("crc32w %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
+  return crc;
+}
+
+private inline u32 _mm_crc32_u8(u32 crc, u8 value) {
+  asm("crc32b %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
+  return crc;
+}
+
+// 64-bit Hardware-accelerated CRC-32C (using CRC32 instruction)
+private u32
+hardware_crc32c(u32 crc, const void* data, size_t len)
+{
+	const char* p_buf = (const char*) data;
+	u64	crc64bit = ~crc;
+	u32	crc32bit;
+	size_t	i;
+
+	// Process the bulk 8-bytes at a time
+	// alignment doesn't seem to help
+	for (i = 0; i < len / sizeof(u64); i++) {
+		crc64bit = _mm_crc32_u64(crc64bit, *(u64*) p_buf);
+		p_buf += sizeof(u64);
+	}
+	// Process the remainer
+	// Using u16 & u32 forms via a duffs device just causes
+	// branch mispredictions
+	crc32bit = (u32)crc64bit;
+	len &= sizeof(u64) - 1;
+	while (len > 0) {
+		crc32bit = _mm_crc32_u8(crc32bit, *p_buf++);
+		len--;
+	}
+	return (~crc32bit);
+}
+
+private u32
+cpuid(u32 functionInput)
+{
+	u32 eax;
+	u32 ebx;
+	u32 ecx;
+	u32 edx;
+#ifdef __PIC__
+	// PIC: Need to save and restore ebx See:
+	// http://sam.zoy.org/blog/2007-04-13-shlib-with-non-pic-code-have-inline-assembly-and-pic-mix-well
+	asm("pushl %%ebx\n\t" /* save %ebx */
+            "cpuid\n\t"
+            "movl %%ebx, %[ebx]\n\t" /* save what cpuid just put in %ebx */
+            "popl %%ebx"
+	    : "=a"(eax), [ebx] "=r"(ebx), "=c"(ecx), "=d"(edx)
+	    : "a" (functionInput)
+            : "cc");
+#else
+	asm("cpuid"
+	    : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx)
+	    : "a" (functionInput));
+#endif
+	return (ecx);
+}
+
+u32
+crc32c(u32 crc, const void *data, size_t len)
+{
+	static	const int SSE42_BIT = 20;
+	static	int dohw = -1;
+	u32 ecx;
+
+	if (dohw == -1) {
+		ecx = cpuid(1);
+		dohw = (ecx & (1 << SSE42_BIT)) != 0;
+	}
+	if (dohw) {
+		return (hardware_crc32c(crc, data, len));
+	} else {
+		return (software_crc32c(crc, data, len));
+	}
+}
+
+#endif

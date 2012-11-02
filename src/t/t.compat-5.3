@@ -9,6 +9,10 @@ OLDBK=/build/bitkeeper-$OLDVER
 _BK_FORCE_NETFS=YES
 export _BK_FORCE_NETFS
 
+# bk-5.3 won't understand binary sfiles
+BK_CONFIG='binfile:no!'
+export BK_CONFIG
+
 echo $N Check bitkeeper 5.3 installation ............................$NL
 if [ -n "$BK_DEV_SKIPTEST" ]; then echo skipped; exit 0; fi
 # Skip this test for Windows VISTA
@@ -126,7 +130,7 @@ export _BK_FORCE_NETFS
 
 echo $N Clone from old bkd and make sure we do checkouts ............$NL
 cd "$HERE"
-commercial project
+fresh_commercial project
 bk clone $Q --sccs-compat . ../sccsdirs
 cd ../sccsdirs
 mkdir src
@@ -167,7 +171,7 @@ echo OK
 echo $N Try a pull urllist to see if the hacks work .................$NL
 # old bkds fail bkd_nested call, so hackery in place to work anyway
 cd "$HERE"
-nested nest
+fresh_nested nest
 bk clone $Q . ../nest-dest
 touch gcc/foo
 bk new $Q gcc/foo

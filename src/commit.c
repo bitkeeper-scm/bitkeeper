@@ -19,6 +19,8 @@ private int	do_commit(char **av, c_opts opts, char *sym,
 private	void	commitSnapshot(void);
 private	void	commitRestore(int rc);
 
+private	int	csetCreate(sccs *cset, int flags, char *files, char **syms);
+
 int
 commit_main(int ac, char **av)
 {
@@ -146,6 +148,7 @@ commit_main(int ac, char **av)
 		}
 		sym = 0;
 	}
+	T_PERF("start");
 
 	/*
 	 * Check for licensing problems before we get buried in a bunch
@@ -282,6 +285,7 @@ commit_main(int ac, char **av)
 		unlink(commentFile);
 	}
 	unlink("ChangeSet");
+	T_PERF("before do_commit");
 	return (do_commit(av, opts, sym, pendingFiles, dflags));
 }
 
@@ -440,16 +444,265 @@ done:	if (unlink(pendingFiles)) perror(pendingFiles);
 		// we created it, always unlink
 		unlink(commentFile);
 	}
-	if ((dflags & DELTA_CFILE) && !rc) unlink(commentFile);
-	if (rc) return (rc); /* if commit failed do not send log */
 	/*
-	 * If we are doing a commit in RESYNC
-	 * do not log the cset. Let the resolver
-	 * do it after it moves the stuff in RESYNC to
-	 * the real tree. 
+	 * If we are doing a commit in RESYNC or the commit failed, do
+	 * not log the cset. Let the resolver do it after it moves the
+	 * stuff in RESYNC to the real tree.
 	 */
-	unless (opts.resync) logChangeSet();
-	return (rc ? 1 : 0);
+	unless (opts.resync || rc) logChangeSet();
+	T_PERF("done");
+	return (rc);
+}
+
+
+/*
+ * Read in sfile and extend the cset weave
+ */
+private int
+getfilekey(char *sfile, char *rev, sccs *cset, ser_t cset_d, FILE *weave)
+{
+	sccs	*s;
+	u8	*v, *p;
+	ser_t	d;
+	u32	sum = 0;
+	u8	buf[MAXLINE];
+
+	unless (s = sccs_init(sfile, 0)) {
+		fprintf(stderr, "cset: can't init %s\n", sfile);
+		return (1);
+	}
+
+	/*
+	 * Only component cset files get added to the weave
+	 */
+	if (CSET(s) && !proj_isComponent(s->proj)) {
+		sccs_free(s);
+		return (0);
+	}
+	unless (d = sccs_findrev(s, rev)) {
+		fprintf(stderr, "cset: can't find %s in %s\n", rev, buf);
+		return (1);
+	}
+	assert(!(FLAGS(s, d) & D_CSET));
+
+	/*
+	 * XXX For non-merge deltas we don't need cset->mdbm so we can
+	 * avoid reading the old weave.  Instead we can just find the latest
+	 * marked delta key and use that.
+	 */
+	sccs_sdelta(s, sccs_ino(s), buf);
+	fputs(buf, weave);
+	if (v = mdbm_fetch_str(cset->mdbm, buf)) {
+		/* subtract off old value */
+		for (p = v; *p; sum -= *p++);
+	} else {
+		/* new file (need sum of rootkey) */
+		for (p = buf; *p; sum += *p++);
+		sum += ' ' + '\n';
+	}
+	sccs_sdelta(s, d, buf);
+	fprintf(weave, " %s\n", buf);
+	for (p = buf; *p; p++) sum += *p; /* sum of new deltakey */
+	sccs_free(s);
+
+	/* update delta checksum */
+	SUM_SET(cset, cset_d, (u16)(SUM(cset, cset_d) + sum));
+	SORTSUM_SET(cset, cset_d, SUM(cset, cset_d));
+	ADDED_SET(cset, cset_d, ADDED(cset, cset_d) + 1);
+	return (0);
+}
+
+/*
+ * Read file|rev from stdin and apply those to the changeset db.
+ * Edit the ChangeSet file and add the new stuff to that file and
+ * leave the file sorted.
+ * Close the cset sccs* when done.
+ */
+private ser_t
+mkChangeSet(sccs *cset, char *files, FILE *weave)
+{
+	ser_t	d, p;
+	char	*line, *rev;
+	int	flags = GET_HASHONLY|GET_SUM|GET_SHUTUP|SILENT;
+	FILE	*f;
+	pfile	pf;
+
+	/*
+	 * Edit the ChangeSet file - we need it edited to modify it as well
+	 */
+	if (LOCKED(cset)) {
+		if (sccs_read_pfile("commit", cset, &pf)) return (0);
+	} else {
+		flags |= GET_EDIT;
+		memset(&pf, 0, sizeof(pf));
+		pf.oldrev = strdup("+");
+	}
+	if (sccs_get(cset, pf.oldrev, pf.mRev, 0, 0, flags, "-")) {
+		unless (BEEN_WARNED(cset)) {
+			fprintf(stderr, "cset: get -eg of ChangeSet failed\n");
+		}
+		free_pfile(&pf);
+		return (0);
+	}
+	d = sccs_dInit(0, 'D', cset, 0);
+	p = sccs_findrev(cset, pf.oldrev);
+	assert(p);
+	PARENT_SET(cset, d, p);
+	R0_SET(cset, d, R0(cset, p));	/* so renumber() is happy */
+
+	if (sccs_setCludes(cset, d, pf.iLst, pf.xLst)) {
+		fprintf(stderr, "%s: bad iLst in pfile\n", prog);
+		free_pfile(&pf);
+		return (0);
+	}
+	if (pf.mRev) {
+		p = sccs_findrev(cset, pf.mRev);
+		MERGE_SET(cset, d, p);
+	}
+	free_pfile(&pf);
+
+	if (uniq_open()) assert(0);
+	if (TABLE(cset) && (DATE(cset, d) <= DATE(cset, TABLE(cset)))) {
+		time_t	tdiff;
+
+		tdiff = DATE(cset, TABLE(cset)) - DATE(cset, d) + 1;
+		DATE_SET(cset, d, DATE(cset, d) + tdiff);
+		DATE_FUDGE_SET(cset, d, DATE_FUDGE(cset, d) + tdiff);
+	}
+	uniq_adjust(cset, d);
+	uniq_close();
+
+	/* set initial key, in getfilekey() we update diff from merge */
+	SUM_SET(cset, d, cset->dsum);
+	SORTSUM_SET(cset, d, SUM(cset, d));
+
+	SAME_SET(cset, d, 1);
+	MODE_SET(cset, d, 0100664);
+	XFLAGS(cset, d) = XFLAGS(cset, p);
+
+	/*
+	 * Read each file|rev from files and add that to the cset.
+	 * getfilekey() will ignore the ChangeSet entry itself.
+	 */
+	assert(files);
+	f = fopen(files, "rt");
+	assert(f);
+	while (line = fgetline(f)) {
+		rev = strrchr(line, '|');
+		*rev++ = 0;
+		getfilekey(line, rev, cset, d, weave);
+	}
+	fclose(f);
+
+#ifdef CRAZY_WOW
+	Actually, this isn't so crazy wow.  I don't know what problem this
+	caused but I believe the idea was that we wanted time increasing
+	across all deltas in all files.  Sometimes the ChangeSet timestamp
+	is behind the deltas in that changeset which is clearly wrong.
+
+	Proposed fix is to record the highest fudged timestamp in global
+	file in the repo and make sure the cset file is always >= that one.
+	Should be done in the proj struct and written out when we free it
+	if it changed.
+
+	/*
+	 * Adjust the date of the new rev, scripts can make this be in the
+	 * same second.  It's OK that we adjust it here, we are going to use
+	 * this delta * as part of the checkin on this changeset.
+	 */
+	if (DATE(cset, d) <= DATE(cset, table)) {
+		DATE_FUDGE(cset, d) =
+		    (DATE(cset, table) - DATE(csets, d)) + 1;
+		DATE_SET(cset, d, (DATE(cset, d) + DATE_FUDGE(cset, d)));
+	}
+#endif
+	return (d);
+}
+
+private int
+csetCreate(sccs *cset, int flags, char *files, char **syms)
+{
+	ser_t	d;
+	int	i, error = 0;
+	int	fd0;
+	char	*line;
+	FILE	*weave;
+	FILE	*out;
+
+	T_PERF("csetCreate");
+
+	if ((TABLE(cset) + 1 > 200) && getenv("BK_REGRESSION")) {
+		fprintf(stderr, "Too many changesets for regressions.\n");
+		exit(1);
+	}
+
+	weave = fmem();
+
+	/* write change set to diffs */
+	unless (d = mkChangeSet(cset, files, weave)) return (-1);
+
+	/* for compat with old versions of BK not using ensembles */
+	if (proj_isComponent(cset->proj)) {
+		touch("SCCS/d.ChangeSet", 0644);
+	} else {
+		FLAGS(cset, d) |= D_CSET;
+	}
+
+	/*
+	 * Make /dev/tty where we get input.
+	 * XXX This really belongs in port/getinput.c
+	 *     We shouldn't do this if we are not getting comments
+	 *     interactively.
+	 */
+	fd0 = dup(0);
+	close(0);
+	if (open(DEV_TTY, 0, 0) < 0) {
+		dup2(fd0, 0);
+		close(fd0);
+		fd0 = -1;
+	}
+	if ((flags & (DELTA_DONTASK|DELTA_CFILE)) &&
+	    !(d = comments_get(0, 0, cset, d))) {
+		error = -1;
+		goto out;
+	}
+	if (fd0 >= 0) {
+		dup2(fd0, 0);
+		close(fd0);
+		fd0 = -1;
+	}
+	sccs_insertdelta(cset, d, d);
+	sccs_renumber(cset, 0);
+	sccs_startWrite(cset);
+	EACH (syms) addsym(cset, d, 1, syms[i]);
+	if (delta_table(cset, 0)) {
+		perror("table");
+		error = -1;
+		goto out;
+	}
+	out = sccs_wrweaveInit(cset);
+	fprintf(out, "\001I %d\n", d);
+	fputs(fmem_peek(weave, 0), out);
+	fprintf(out, "\001E %d\n", d);
+	sccs_rdweaveInit(cset);
+	while (line = sccs_nextdata(cset)) {
+		fputs(line, out);
+		fputc('\n', out);
+	}
+	sccs_rdweaveDone(cset);
+	sccs_wrweaveDone(cset);
+	if (sccs_finishWrite(cset)) {
+		error = -1;
+		goto out;
+	}
+	T_PERF("wrote weave");
+	unlink(cset->gfile);
+	unlink(cset->pfile);
+	cset->state &= ~(S_GFILE|S_PFILE);
+
+out:	fclose(weave);
+	comments_done();
+	return (error);
 }
 
 #define	CSET_BACKUP	"BitKeeper/tmp/commit.cset.backup"
@@ -493,6 +746,7 @@ commitRestore(int rc)
 			sprintf(file, "SCCS/%c.ChangeSet", ext[i]);
 			if (rc) {
 				fileMove(save, file);
+				unlink("BitKeeper/log/TIP");
 			} else {
 				unlink(save);
 			}

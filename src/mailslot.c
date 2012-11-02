@@ -1,4 +1,5 @@
 #include <system.h>
+#include "cmd.h"
 
 #ifndef	WIN32
 int

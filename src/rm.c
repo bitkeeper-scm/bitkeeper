@@ -131,6 +131,7 @@ sccs_rm(char *name, int force)
 	int	error = 0;
 	sccs	*s;
 
+	T_SCCS("file=%s", name);
 	sfile = name2sccs(name);
 	s = sccs_init(sfile, 0);
 	unless (s && HASGRAPH(s) && BITKEEPER(s)) {
@@ -210,6 +211,7 @@ sccs_gone(int quiet, FILE *f)
 	char	s_gone[MAXPATH], g_gone[MAXPATH], key[MAXKEY];
 
 
+	T_SCCS(0);
 	/* eat the keys first because check will complain if we edit the file */
 	i = 0;
 	while (fnext(key, f)) {

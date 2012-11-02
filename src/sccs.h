@@ -703,7 +703,7 @@ struct sccs {
 	u32	iloc;		/* index to element in *loc */ 
 	u32	nloc;		/* # of element in *loc */ 
 	u32	initFlags;	/* how we were opened */
-	char	*comppath;	/* used to get correct historic paths in comps*/
+	char	*comppath;	/* used by changes for historic paths for comps*/
 	u32	cksumok:1;	/* check sum was ok */
 	u32	cksumdone:1;	/* check sum was checked */
 	u32	grafted:1;	/* file has grafts */
@@ -1152,7 +1152,6 @@ char	**comments_return(char *prompt);
 ser_t	comments_get(char *gfile, char *rev, sccs *s, ser_t d);
 void	comments_writefile(char *file);
 int	comments_checkStr(u8 *s, int len);
-char	*shell(void);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
 void	error(const char *fmt, ...);
@@ -1165,7 +1164,6 @@ void	sccs_rmEmptyDirs(char *path);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
 char 	**get_http_proxy(char *host);
 int	confirm(char *msg);
-int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int	cset_setup(int flags);
 char	*separator(char *);
 int	trigger(char *cmd, char *when);
@@ -1174,6 +1172,8 @@ void	cmdlog_start(char **av, int bkd_mode);
 void	cmdlog_addnote(const char *key, const char *val);
 int	cmdlog_end(int ret, int bkd_mode);
 void	cmdlog_lock(int flags);
+void	callstack_push(int remote);
+void	callstack_pop(void);
 int	write_log(char *file, char *format, ...)
 #ifdef __GNUC__
      __attribute__((format (__printf__, 2, 3)))
@@ -1402,6 +1402,8 @@ void	clearCsets(sccs *s);
 void	sccs_rdweaveInit(sccs *s);
 char	*sccs_nextdata(sccs *s);
 int	sccs_rdweaveDone(sccs *s);
+FILE	*sccs_wrweaveInit(sccs *s);
+FILE	*sccs_wrweaveDone(sccs *s);
 int	hasLocalWork(char *gfile);
 char	*goneFile(void);
 char	*sgoneFile(void);
@@ -1413,7 +1415,7 @@ int	startmenu_list(u32, char *);
 int	startmenu_rm(u32, char *);
 int	startmenu_get(u32, char *path);
 int	startmenu_set(u32, char *, char *, char *, char *);
-char	*bkmenupath(int, int);
+char	*bkmenupath(u32, int);
 void	repos_update(sccs *cset);
 char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);

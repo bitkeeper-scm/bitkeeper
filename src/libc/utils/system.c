@@ -356,6 +356,8 @@ shell(void)
 	return (0);	/* Windows warns otherwise */
 }
 
+extern int	popensystem_main(int ac, char **av);
+
 int
 popensystem_main(int ac, char **av)
 {

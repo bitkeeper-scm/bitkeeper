@@ -87,6 +87,7 @@ sccs_renumber(sccs *s, u32 flags)
 	ser_t	maxrel = 0;
 	char	def[20];	/* X.Y.Z each 5 digit plus term = 18 */
 
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	if (BITKEEPER(s)) {
 		assert(!s->defbranch);
 	} else {

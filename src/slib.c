@@ -77,7 +77,6 @@ private	int	misc(sccs *s);
 private	int	bin_deltaTable(sccs *s);
 private	off_t	bin_data(char *header);
 private	ser_t	*scompressGraph(sccs *s);
-private	FILE	*sccs_wrweaveDone(sccs *s);
 private	void	sccs_md5deltaCompat(sccs *s, ser_t d, char *b64);
 
 /*
@@ -382,7 +381,7 @@ linelen(char *s)
 /*
  * Convert a serial to an ascii string.
  */
-void
+private void
 sertoa(register char *buf, ser_t val)
 {
 	char	reverse[6];
@@ -1297,6 +1296,7 @@ sccs_mkroot(char *path)
 	project	*proj;
 	char	buf[MAXPATH];
 
+	T_SCCS("path=%s", path);
 	sprintf(buf, "%s/BitKeeper", path);
 	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
@@ -2007,6 +2007,7 @@ sccs_startWrite(sccs *s)
 	char	*xfile;
 	u64	est_size;
 
+	T_SCCS("file=%s", s->gfile);
 	unless (s->encoding_out) {
 		s->encoding_out = sccs_encoding(s, 0, 0);
 	}
@@ -2086,6 +2087,7 @@ sccs_finishWrite(sccs *s)
  	FILE	*tmp;
 
 	assert(!s->wrweave);
+	T_SCCS("file=%s", s->gfile);
 	unless (BFILE_OUT(s)) {
 		if (s->ckwrap) {
 			fpop(&s->outfh);
@@ -3241,7 +3243,7 @@ mkgraph(sccs *s, int flags)
 	ser_t	serial;
 	char	(*dates)[20] = 0;
 	char	type;
-	FILE	*fcludes = fmem();
+	FILE	*fcludes;
 
 	rewind(s->fh);
 	if (BFILE(s)) {
@@ -3251,6 +3253,7 @@ mkgraph(sccs *s, int flags)
 	buf = sccs_nextdata(s);		/* checksum */
 	line++;
 	debug((stderr, "mkgraph(%s)\n", s->sfile));
+	fcludes = fmem();
 	unless (buf = sccs_nextdata(s)) goto bad;
 	/* skip version mark if it exists */
 	line++;
@@ -3952,7 +3955,7 @@ loadGlobalConfig(MDBM *db)
  * I.e local field have priority over global field.
  * If local field exists, it masks out the global counter part.
  */
-MDBM *
+private MDBM *
 loadBinConfig(MDBM *db)
 {
 	char 	*config;
@@ -3970,7 +3973,7 @@ loadBinConfig(MDBM *db)
  * I.e local field have priority over global field.
  * If local field exists, it masks out the global counter part.
  */
-MDBM *
+private MDBM *
 loadDotBkConfig(MDBM *db)
 {
 	char 	*config;
@@ -4350,10 +4353,10 @@ sccs_init(char *name, u32 flags)
 	ser_t	d;
 	int	fixstime = 0;
 	static	int _YEAR4;
-	static	int fixpath = -1;
 	static	char *glob = 0;
 	static	int show = -1;
 
+	T_INIT("name=%s flags=%x", name, flags);
 	if (show == -1) {
 		glob = getenv("BK_SHOWINIT");
 		show = glob != 0;
@@ -4394,16 +4397,6 @@ sccs_init(char *name, u32 flags)
 		*t = '/';
 	} else {
 		s->proj = proj_init(".");
-	}
-
-	/*
-	 * This weirdness is for dspecs that need the component prefix.
-	 * This is not historically correct but works for recent locations
-	 * of the component.
-	 */
-	if (fixpath == -1) fixpath = (getenv("_BK_FIX_NESTED_PATH") != 0);
-	if (fixpath && proj_isComponent(s->proj)) {
-		s->comppath = proj_comppath(s->proj);
 	}
 
 	if (isCsetFile(s->sfile)) {
@@ -4943,7 +4936,7 @@ sccs2name(char *sfile)
 /*
  * Make the sccs dir if we need one.
  */
-void
+private void
 mksccsdir(char *sfile)
 {
 	char	*s = rindex(sfile, '/');
@@ -5662,7 +5655,7 @@ printstate(ser_t *state, u8 *slist)
 	return (ret);
 }
 
-private FILE *
+FILE *
 sccs_wrweaveInit(sccs *s)
 {
 	assert(!s->wrweave);
@@ -5673,7 +5666,7 @@ sccs_wrweaveInit(sccs *s)
 	return (s->outfh);
 }
 
-private FILE *
+FILE *
 sccs_wrweaveDone(sccs *s)
 {
 	assert(s->wrweave);
@@ -6623,9 +6616,9 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 		namedb = mdbm_mem();
 	}
 	if (flags & GET_MODNAME) {
-		name = basenm(d ? PATHNAME(s, d) : s->gfile);
+		name = basenm(s->gfile);
 	} else if (flags & GET_RELPATH) {
-		name = d ? PATHNAME(s, d) : s->gfile;
+		name = s->gfile;
 	}
 
 	/*
@@ -7122,9 +7115,9 @@ sccs_get(sccs *s, char *rev,
 	int	lines = -1, locked = 0, error;
 	char	*i2 = 0;
 
-	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
+	T_SCCS("(%s, %s, %s, %s, %s, %x, %s)",
 	    s->sfile, notnull(rev), notnull(mRev),
-	    notnull(iLst), notnull(xLst), flags, printOut));
+	    notnull(iLst), notnull(xLst), flags, printOut);
 	if (BITKEEPER(s) && !HAS_PATHNAME(s, TREE(s))) {
 		fprintf(stderr, "get: no pathname for %s\n", s->sfile);
 		return (-1);
@@ -7409,6 +7402,7 @@ sccs_cat(sccs *s, u32 flags, char *printOut)
 {
 	int	lines = 0, error;
 
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	debug((stderr, "annotate(%s, %x, %s)\n",
 	    s->sfile, flags, printOut));
 	unless (s->cksumok) {
@@ -8916,7 +8910,7 @@ diff_gmode(sccs *s, pfile *pf)
  * case 1:	diffs
  * case 2:	diff ran into problems
  */
-int
+private int
 diffMDBM(sccs *s, char *old, char *new, char *tmpfile)
 {
 	FILE	*f = fopen(tmpfile, "w");
@@ -9156,6 +9150,7 @@ sccs_clean(sccs *s, u32 flags)
 	int	ret;
 	df_opt	dop = {0};
 
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	/* don't go removing gfiles without s.files */
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {
 		verbose((stderr, "%s not under SCCS control\n", s->gfile));
@@ -9340,6 +9335,7 @@ sccs_unedit(sccs *s, u32 flags)
 	int	getFlags = 0;
 	int	currState = 0;
 
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	/* don't go removing gfiles without s.files */
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {
 		verbose((stderr, "%s not under SCCS control\n", s->gfile));
@@ -9488,6 +9484,7 @@ sccs_info(sccs *s, u32 flags)
 		return (0);
 	}
 	GOODSCCS(s);
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	if (!HAS_PFILE(s)) {
 		sccs_infoMsg(s, 'u', flags);
 		return (0);
@@ -11628,6 +11625,7 @@ sccs_admin(sccs *sc, ser_t p, u32 flags,
 	assert(!z); /* XXX used to be LOD item */
 
 	GOODSCCS(sc);
+	T_SCCS("file=%s flags=%x", sc->gfile, flags);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
 		char	z = (flags & ADMIN_FORCE) ? 'Z' : 'z';
 
@@ -12481,92 +12479,6 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last,
 }
 
 /*
- * Get the hash checksum.
- * A side effect of get_reg() is to set dsum.
- * We're getting what looks like the new delta but it is really
- * the basis for the new delta -
- * we are still operating on the old file, without the diffs applied.
- */
-private int
-getHashSum(sccs *sc, ser_t n, FILE *diffs)
-{
-	char	*buf;
-	char	*key, *val;
-	char	*v;
-	u8	*e;
-	unsigned int sum = 0;
-	int	lines = 0;
-	int	flags = SILENT|GET_HASHONLY|GET_SUM|GET_SHUTUP;
-	ser_t	d;
-	int	offset;
-
-	assert(HASH(sc));
-	assert(!BAM(sc));
-	assert(diffs);
-	/*
-	 * If we have a hash already and it is a simple delta, then just
-	 * use that.  Otherwise, regen from scratch.
-	 */
-	if (sc->mdbm && !HAS_CLUDES(sc, n) && (d = getCksumDelta(sc, n))) {
-	    	sum = SUM(sc, d);
-	} else {
-		if (sc->mdbm) mdbm_close(sc->mdbm), sc->mdbm = 0;
-		sccs_restart(sc);
-		if (get_reg(sc, 0, flags, n, &lines, 0, 0)) {
-			sccs_whynot("delta", sc);
-			return (-1);
-		}
-		sum = sc->dsum;
-	}
-	rewind(diffs);
-	unless (buf = fgetline(diffs)) {
-		/* there are no diffs, we have the checksum, it's OK */
-		return (0);
-	}
-	offset = 0;
-	if (streq(buf, "0a0")) {
-		offset = 2;
-	} else unless (strneq(buf, "I0 ", 3)) {
-		fprintf(stderr, "Missing '0a0' or 'I0 #lines', ");
-bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
-		return (-1);
-	}
-	while (buf = fgetline(diffs)) {
-		unless (offset == 0 || buf[0] == '>') goto bad;
-		key = v = &buf[offset];
-		if (CSET(sc)) {
-			v = separator(v);
-		} else {
-			v = strchr(v, ' ');
-		}
-		unless (v) goto bad;
-		*v = 0;
-		val = v+1;
-		if (v = mdbm_fetch_str(sc->mdbm, key)) {
-			if (!CSET(sc) && streq(v, val)) {
-				fprintf(stderr,
-				    "Redundant: %s %s\n", key, val);
-				return (-1);
-			} else {
-				/*
-				 * Subtract off the old value and add in new
-				 */
-				for (e = v; *e; sum -= *e++);
-				for (e = val; *e; sum += *e++);
-				mdbm_store_str(sc->mdbm, key, val,MDBM_REPLACE);
-			}
-		} else {
-			/* completely new, add in the whole line */
-			for (e = key; *e; sum += *e++); sum += ' ';
-			for (e = val; *e; sum += *e++); sum += '\n';
-			mdbm_store_str(sc->mdbm, key, val, MDBM_INSERT);
-		}
-	}
-	sc->dsum = sum;
-	return (0);
-}
-
-/*
  * Write a out a new sfile with diffs added to weave to create a new
  * tip delta.
  */
@@ -12775,16 +12687,6 @@ newcmd:
 		rewind(diffs);
 		goto again;
 	}
-	if (HASH(s) && (getHashSum(s, n, diffs) != 0)) {
-		return (-1);
-	}
-
-	/*
-	 * For ChangeSet file, force SAME(s, d) to one
-	 * because we do not maintain this field in the cweave code
-	 */
-	if (CSET(s)) *up = 1;
-
 	return (0);
 }
 
@@ -12792,7 +12694,6 @@ newcmd:
  * Dump a cset weave file out: format is from cset_mkList() ...
  * <serial> tab <rootkey> space <deltakey>
  */
-
 int
 sccs_csetWrite(sccs *s, char **cweave)
 {
@@ -12801,6 +12702,7 @@ sccs_csetWrite(sccs *s, char **cweave)
 	FILE	*out = 0;
 	char	*ser, *oldser = 0;
 
+	T_SCCS("file=%s", s->gfile);
 	unless (sccs_lock(s, 'z')) {
 		fprintf(stderr, "can't zlock %s\n", s->gfile);
 		repository_lockers(s->proj);
@@ -12831,7 +12733,7 @@ sccs_csetWrite(sccs *s, char **cweave)
 	if (sccs_finishWrite(s)) goto err;
 	ret = 0;
 err:
-	sccs_abortWrite(s);
+	if (ret) sccs_abortWrite(s);
 	sccs_unlock(s, 'z');
 
 	return (ret);
@@ -12894,6 +12796,7 @@ sccs_csetPatchWeave(sccs *s)
 	assert(s);
 	assert(s->state & S_CSET);
 	assert(s->locs);
+	T_SCCS("file=%s", s->gfile);
 	lp = s->locs;
 	i = s->iloc - 1; /* set index to final element in array */
 	assert(i > 0); /* base 1 data structure */
@@ -13224,7 +13127,7 @@ skip:
 	 * s <key> - set MTAG(sc, d)
 	 */
 	while (WANT('s')) {
-		TRACE("buf = %s", buf);
+		T_DEBUG("buf = %s", buf);
 		if (streq(&buf[2], "g")) {
 			if (d) FLAGS(sc, d) |= D_SYMGRAPH;
 		} else if (streq(&buf[2], "l")) {
@@ -13233,7 +13136,7 @@ skip:
 			ser_t	e = sccs_findKey(sc, &buf[2]);
 
 			assert(e);
-			TRACE("e->serial = %d", e);
+			T_DEBUG("e->serial = %d", e);
 			assert(SYMGRAPH(sc, e));
 			if (PTAG(sc, d)) {
 				MTAG_SET(sc, d, e);
@@ -13563,7 +13466,7 @@ sccs_delta(sccs *s,
 	ser_t	pserial;
 
 	assert(s);
-	debug((stderr, "delta %s %x\n", s->gfile, flags));
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	if (flags & NEWFILE) mksccsdir(s->sfile);
 	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr,
@@ -14230,12 +14133,33 @@ getHistoricPath(sccs *s, char *rev)
 
 	d = sccs_findrev(s, rev);
 	if (d && HAS_PATHNAME(s, d)) {
-		return (sccs_prsbuf(s, d, PRS_FORCE, ":DPN:"));
+		/*
+		 * bk changes sets s->comppath which will cause :DPN:
+		 * to give us the right path. We only need to fix the
+		 * path (in a wrong way, see comment below) if
+		 * s->comppath is not set.
+		 */
+		ret = p = sccs_prsbuf(s, d, PRS_FORCE, ":DPN:");
+		if (!s->comppath && proj_isComponent(s->proj)) {
+			/*
+			 * XXX BUG: proj_comppath() is wrong if there was a
+			 * component rename, so fix before we ship component
+			 * renames.
+			 */
+			ret = aprintf("%s/%s", proj_comppath(s->proj), p);
+			FREE(p);
+		}
+		return (ret);
 	} else {
+		/*
+		 * XXX: This block is !d (invalid rev) or
+		 * !HAS_PATHNAME (ATT SCCS), so seems like nested code
+		 * is run only if rev is invalid.
+		 */
 		ret = p = proj_relpath(s->proj, s->gfile);
-		if (s->comppath) {
-			ret = aprintf("%s/%s", s->comppath, p);
-			free(p);
+		if (proj_isComponent(s->proj)) {
+			ret = aprintf("%s/%s", proj_comppath(s->proj), p);
+			FREE(p);
 		}
 		return (ret);
 	}
@@ -14328,6 +14252,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dopt, FILE *out)
 	int	rc = 0;
 
 	GOODSCCS(s);
+	T_SCCS("file=%s", s->gfile);
 
 	/*
 	 * Figure out which revision the user want.
@@ -14348,6 +14273,8 @@ done:	free_pfile(&pf);
  * generated during the build by kwextract.pl and gperf (see the
  * Makefile).
  */
+extern	struct kwval *kw2val_lookup(register const char *str,
+    register unsigned int len);
 #include "kw2val_lookup.c"
 
 #define	notKeyword -1
@@ -16465,6 +16392,7 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 {
 	ser_t	d;
 
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	if (!dspec) dspec = ":DEFAULT:";
 	s->prs_odd = 0;
 	s->prs_join = 0;
@@ -17593,6 +17521,7 @@ sccs_stripdel(sccs *s, char *who)
 	do { error = -1; s->state |= S_WARNED; goto out; } while (0)
 
 	assert(s && HASGRAPH(s));
+	T_SCCS("file=%s", s->gfile);
 	if (HAS_PFILE(s) && sccs_clean(s, SILENT)) return (-1);
 	debug((stderr, "stripdel %s %s\n", s->gfile, who));
 	unless (locked = sccs_lock(s, 'z')) {
@@ -17652,6 +17581,7 @@ out:
 int
 sccs_rmdel(sccs *s, ser_t d, u32 flags)
 {
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	FLAGS(s, d) |= D_SET;
 	if (stripChecks(s, d, "rmdel")) return (1);
 
