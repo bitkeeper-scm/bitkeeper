@@ -141,6 +141,7 @@ sccs_resum(sccs *s, ser_t d, int diags, int fix)
 	char	before[43];	/* 4000G/4000G/4000G will fit */
 	char	after[43];
 
+	T_SCCS("file=%s", s->gfile);
 	unless (d) d = sccs_top(s);
 
 	if (TAG(s, d)) {
@@ -415,6 +416,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	kvpair	kv;
 	ticker	*tick = 0;
 
+	T_SCCS("file=%s", s->gfile);
 	mdbm_set_alignment(root2map,
 	    (sizeof(void *) == 8) ? _MDBM_ALGN64 : _MDBM_ALGN32);
 

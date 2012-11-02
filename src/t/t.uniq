@@ -104,12 +104,12 @@ BK_NO_TRIGGERS=1 BK_TRACE="$HERE/new-no-trig.log" BK_TRACE_FUNCS="uniq_close" \
 bk commit $Q -f
 bk clone $Q . ../local
 # Two files, no triggers, one real close of uniq
-sed "s/[^']*//" < ../new-no-trig.log > GOT
-echo "'closing uniq 1 new'" > WANT
+sed "s/.*] //" < ../new-no-trig.log > GOT
+echo "closing uniq 1 new" > WANT
 cmpfiles WANT GOT
 # Two files, with triggers, two real close of uniq
-sed "s/[^']*//" < ../new-trig.log > GOT
-echo "'closing uniq 1 new'" >> WANT
+sed "s/.*] //" < ../new-trig.log > GOT
+echo "closing uniq 1 new" >> WANT
 cmpfiles WANT GOT
 echo OK
 
@@ -120,12 +120,12 @@ BK_TRACE="$HERE/ci-trig.log" BK_TRACE_FUNCS="uniq_close" \
 BK_NO_TRIGGERS=1 BK_TRACE="$HERE/ci-no-trig.log" BK_TRACE_FUNCS="uniq_close" \
     bk delta $Q -fynull f2 f3
 # Two files, no triggers, one real close of uniq
-sed "s/[^']*//" < ../ci-no-trig.log > GOT
-echo "'closing uniq 1 delta'" > WANT
+sed "s/.*] //" < ../ci-no-trig.log > GOT
+echo "closing uniq 1 delta" > WANT
 cmpfiles WANT GOT
 # Two files, with triggers, two real close of uniq
-sed "s/[^']*//" < ../ci-trig.log > GOT
-echo "'closing uniq 1 delta'" >> WANT
+sed "s/.*] //" < ../ci-trig.log > GOT
+echo "closing uniq 1 delta" >> WANT
 cmpfiles WANT GOT
 echo OK
 
@@ -144,15 +144,15 @@ bk unpull $Q -sf
 BK_NO_TRIGGERS=1 BK_TRACE="$HERE/pull-no-trig.log" BK_TRACE_FUNCS="uniq_close" \
     bk pull $Q
 # The two deltas are because each rename/perm change calls bk delta
-sed "s/[^']*//" < ../pull-no-trig.log > GOT
+sed "s/.*] //" < ../pull-no-trig.log > GOT
 cat <<EOF > WANT
-'closing uniq 1 delta'
-'closing uniq 1 delta'
-'closing uniq 1 pull'
-'closing uniq 1 commit'
+closing uniq 1 delta
+closing uniq 1 delta
+closing uniq 1 pull
+closing uniq 1 commit
 EOF
 cmpfiles WANT GOT
 # Pull does not run pre-delta triggers in the automated part of resolver
-sed "s/[^']*//" < ../pull-trig.log > GOT
+sed "s/.*] //" < ../pull-trig.log > GOT
 cmpfiles WANT GOT
 echo OK

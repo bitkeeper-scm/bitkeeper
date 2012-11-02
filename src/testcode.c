@@ -164,7 +164,24 @@ unittests_main(int ac, char **av)
 {
 	char	*t;
 
-	if (av[1]) return (1);
+	if (av[1] && streq(av[1], "trace")) {
+		TRACE("STARTING");
+		TRACE("BEFORE sleep(1)");
+		sleep(1);
+		T_PERF("AFTER sleep(1)");
+		sleep(2);
+		T_PERF("AFTER sleep(2)");
+		sleep(3);
+		TRACE("AFTER sleep(3)");
+		TRACE("FAST ONE");
+		TRACE("ANOTHER FAST ONE");
+		sleep(1);
+		TRACE("AFTER sleep(1)");
+		TRACE("DONE");
+		return (1);
+	}
+	/* Test for file handle leaks */
+	TRACE("X");
 
 	libc_tests();
 	getMsg_tests();

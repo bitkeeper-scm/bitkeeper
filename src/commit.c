@@ -148,8 +148,7 @@ commit_main(int ac, char **av)
 		}
 		sym = 0;
 	}
-
-	TRACE("%s", "start");
+	T_PERF("start");
 
 	/*
 	 * Check for licensing problems before we get buried in a bunch
@@ -286,7 +285,7 @@ commit_main(int ac, char **av)
 		unlink(commentFile);
 	}
 	unlink("ChangeSet");
-	TRACE("%s", "before do_commit");
+	T_PERF("before do_commit");
 	return (do_commit(av, opts, sym, pendingFiles, dflags));
 }
 
@@ -451,7 +450,7 @@ done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	 * stuff in RESYNC to the real tree.
 	 */
 	unless (opts.resync || rc) logChangeSet();
-	TRACE("%s", "done");
+	T_PERF("done");
 	return (rc);
 }
 
@@ -630,7 +629,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	FILE	*weave;
 	FILE	*out;
 
-	TRACE("%s", "csetCreate");
+	T_PERF("csetCreate");
 
 	if ((TABLE(cset) + 1 > 200) && getenv("BK_REGRESSION")) {
 		fprintf(stderr, "Too many changesets for regressions.\n");
@@ -696,7 +695,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 		error = -1;
 		goto out;
 	}
-	TRACE("%s", "wrote weave");
+	T_PERF("wrote weave");
 	unlink(cset->gfile);
 	unlink(cset->pfile);
 	cset->state &= ~(S_GFILE|S_PFILE);

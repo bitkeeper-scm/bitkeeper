@@ -49,7 +49,7 @@ sccs_mv(char	*name,
 	struct	utimbuf	ut;
 	char	buf[1024];
 
-//ttyprintf("sccs_mv(%s, %s, %d, %d, %d)\n", name, dest, isDir, isDelete,force);
+	T_SCCS("(%s, %s, %d, %d, %d)", name, dest, isDir, isDelete,force);
 	sname = name2sccs(name);
 	unless (s = sccs_init(sname, INIT_NOCKSUM)) {
 err:		if (sname) free(sname);

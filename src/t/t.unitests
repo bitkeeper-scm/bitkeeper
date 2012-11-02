@@ -1,7 +1,8 @@
 
 echo $N Run C-based unit tests ......................................$NL
 commercial project
-bk -R _unittests || exit 1
+# BK_DTRACE defined to a file to test for fh leaks
+BK_DTRACE="$HERE/LOG" bk -R _unittests || exit 1
 echo OK
 
 echo $N Test getopt parsing .........................................$NL

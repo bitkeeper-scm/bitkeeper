@@ -206,7 +206,7 @@ faulthandler(int sig, siginfo_t *si, void *unused)
 			perror("map_block");
 			exit(1);
 		}
-		TRACE("fault in %s-%s load %dK at %.1f%%",
+		T_O1("fault in %s-%s load %dK at %.1f%%",
 		    map->s->gfile, map->name,
 		    map->len / 1024,
 		    (100.0 * (addr - map->bstart))/map->blen);
@@ -220,7 +220,7 @@ faulthandler(int sig, siginfo_t *si, void *unused)
 			 * be missed.
 			 */
 			assert(addr != map->startp);
-			TRACE("protect start %p", map->startp);
+			T_O1("protect start %p", map->startp);
 			if (mprotect(map->startp, PAGESZ, PROT_NONE)) {
 				perror("mprotect");
 				exit(1);
@@ -237,7 +237,7 @@ faulthandler(int sig, siginfo_t *si, void *unused)
 			 * protected.  We will unprotect that last page when
 			 * the next map gets loaded.
 			 */
-			TRACE("protect end %p", map->endp);
+			T_O1("protect end %p", map->endp);
 			if (mprotect(map->endp, PAGESZ, PROT_NONE)) {
 				perror("mprotect");
 				exit(1);
@@ -248,7 +248,7 @@ faulthandler(int sig, siginfo_t *si, void *unused)
 	}
 	unless (found) {
 		fprintf(stderr, "seg fault to addr %p\n", si->si_addr);
-		TRACE("seg fault to addr %p", si->si_addr);
+		T_O1("seg fault to addr %p", si->si_addr);
 		abort();
 	}
 }
@@ -387,7 +387,7 @@ nopage:		fseek(s->fh, off, SEEK_SET);
 		s->pagefh = s->fh;
 	}
 
-	TRACE("map %s:%s %p-%p", s->gfile, name, start, start+len);
+	T_O1("map %s:%s %p-%p", s->gfile, name, start, start+len);
 
 	unless (maps) {
 		sa.sa_flags = SA_SIGINFO;

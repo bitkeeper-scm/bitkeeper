@@ -556,16 +556,16 @@ missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 			unless (opts->quiet) printf("### %s ###\n", c->path);
 			status = spawnvp(_P_WAIT, "bk", opts->nav+1);
 			if (WIFEXITED(status)) {
-				TRACE("%s", "Resolve failed");
+				T_DEBUG("Resolve failed");
 				errors += !!WEXITSTATUS(status);
 				if (WEXITSTATUS(status) == 2) break;
 			} else if (WIFSIGNALED(status) &&
 			    (WTERMSIG(status) == SIGPIPE)) {
-				TRACE("%s", "Resolve aborted");
+				T_DEBUG("Resolve aborted");
 				++errors;
 				break;
 			} else {
-				TRACE("%s", "fail");
+				T_DEBUG("fail");
 				++errors;
 			}
 			proj_cd2product();
@@ -605,7 +605,7 @@ missing:		fprintf(stderr, "%s: component %s is missing!\n", prog,
 			 * matches what we have in the product's
 			 * RESYNC directory
 			 */
-			TRACE("sameFiles(%s, %s)", compCset, compCset2);
+			T_NESTED("sameFiles(%s, %s)", compCset, compCset2);
 			unless (sameFiles(compCset, compCset2)) {
 				fprintf(stderr, "%s: component ChangeSet "
 				    "mismatch for %s\n",

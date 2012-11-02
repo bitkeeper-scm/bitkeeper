@@ -153,7 +153,11 @@ bkd_main(int ac, char **av)
 		exit(1);
 		/* NOTREACHED */
 	} else {
-		return (do_cmds());
+		callstack_push(0);
+		i = do_cmds();
+		callstack_pop();
+		T_CMD("bk bkd = %d", i);
+		return (i);
 	}
 }
 

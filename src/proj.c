@@ -366,7 +366,7 @@ proj_relpath(project *p, char *in_path)
 
 	assert(root);
 	fullname(in_path, path);
-	TRACE("in=%s, path=%s", in_path, path);
+	T_PROJ("in=%s, path=%s", in_path, path);
 	len = strlen(root);
 	if (pathneq(root, path, len)) {
 		if (!path[len]) {

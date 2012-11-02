@@ -146,12 +146,12 @@ zRead(void *cookie, char *buf, int len)
 			zf->eof = 1;
 			break;
 		} else if (err != Z_OK) {
-			TRACE("err=%d", err);
+			T_FS("err=%d", err);
 			return (-1);
 		}
 	}
 	cnt = len - zf->z.avail_out;
-	TRACE("cnt=%d", cnt);
+	T_FS("cnt=%d", cnt);
 	zf->outcnt += cnt;
 	return (cnt);
 }
@@ -257,7 +257,7 @@ doFill(zbuf *zf)
 			}
 			olen = ntohs(olen);
 		}
-		TRACE("olen=%d", olen);
+		T_FS("olen=%d", olen);
 		assert(olen <= zf->obuflen-2);
 		if (olen) {
 			if (zf->unbuffer) {

@@ -120,11 +120,16 @@ ifeq ($(GCC_MAJOR_REV),4)
 		WARNINGS += -Wno-unused-result
 	endif
 endif
+
+ifeq "$(shell bk changes -r+ -d:TAG:)" ""
+	TRACE = -DUSE_TRACE
+endif
+
 GCCOPTS=
-CC_DEBUG=$(GCCOPTS) $G $(WARNINGS)
-CC_FAST_DEBUG=$(GCCOPTS) $G -O2 $(WARNINGS)
+CC_DEBUG=$(GCCOPTS) $G $(WARNINGS) $(TRACE)
+CC_FAST_DEBUG=$(GCCOPTS) $G -O2 $(WARNINGS) $(TRACE)
 CC_FAST	=$(CC_FAST_DEBUG)
-CC_WALL=$(GCCOPTS) $G -DLINT $(WARNINGS)
+CC_WALL=$(GCCOPTS) $G -DLINT $(WARNINGS) $(TRACE)
 BINS	= $(BK) inskeys$(EXE)
 
 # List of all objects in bk other than bk.o. Keep it sorted.

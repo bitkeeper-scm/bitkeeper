@@ -40,7 +40,7 @@ urlinfo_load(nested *n, remote *base)
 		EACH(urls) {
 			url = urls[i];
 
-			TRACE("%s: %s", c ? c->path : "?", url);
+			T_NESTED("%s: %s", c ? c->path : "?", url);
 
 			/* strip old timestamps */
 			if (t = strchr(url, '|')) *t = 0;
@@ -227,7 +227,7 @@ urlinfo_write(nested *n)
 				0, sizeof(char **))) {
 				listp = (char ***)urllist->vptr;
 			}
-			TRACE("add %s to %s\n", data->url, c ? c->path : "?");
+			T_NESTED("add %s to %s\n", data->url, c ? c->path : "?");
 			if ((nLines(*listp) < 3) ||
 			    (!c->savedGate && (data->gate == 1))) {
 				*listp = addLine(*listp, data->url);

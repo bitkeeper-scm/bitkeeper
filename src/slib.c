@@ -1296,6 +1296,7 @@ sccs_mkroot(char *path)
 	project	*proj;
 	char	buf[MAXPATH];
 
+	T_SCCS("path=%s", path);
 	sprintf(buf, "%s/BitKeeper", path);
 	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
@@ -2006,6 +2007,7 @@ sccs_startWrite(sccs *s)
 	char	*xfile;
 	u64	est_size;
 
+	T_SCCS("file=%s", s->gfile);
 	unless (s->encoding_out) {
 		s->encoding_out = sccs_encoding(s, 0, 0);
 	}
@@ -2085,6 +2087,7 @@ sccs_finishWrite(sccs *s)
  	FILE	*tmp;
 
 	assert(!s->wrweave);
+	T_SCCS("file=%s", s->gfile);
 	unless (BFILE_OUT(s)) {
 		if (s->ckwrap) {
 			fpop(&s->outfh);
@@ -4353,6 +4356,7 @@ sccs_init(char *name, u32 flags)
 	static	char *glob = 0;
 	static	int show = -1;
 
+	T_INIT("name=%s flags=%x", name, flags);
 	if (show == -1) {
 		glob = getenv("BK_SHOWINIT");
 		show = glob != 0;
@@ -7111,9 +7115,9 @@ sccs_get(sccs *s, char *rev,
 	int	lines = -1, locked = 0, error;
 	char	*i2 = 0;
 
-	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
+	T_SCCS("(%s, %s, %s, %s, %s, %x, %s)",
 	    s->sfile, notnull(rev), notnull(mRev),
-	    notnull(iLst), notnull(xLst), flags, printOut));
+	    notnull(iLst), notnull(xLst), flags, printOut);
 	if (BITKEEPER(s) && !HAS_PATHNAME(s, TREE(s))) {
 		fprintf(stderr, "get: no pathname for %s\n", s->sfile);
 		return (-1);
@@ -7398,6 +7402,7 @@ sccs_cat(sccs *s, u32 flags, char *printOut)
 {
 	int	lines = 0, error;
 
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	debug((stderr, "annotate(%s, %x, %s)\n",
 	    s->sfile, flags, printOut));
 	unless (s->cksumok) {
@@ -9145,6 +9150,7 @@ sccs_clean(sccs *s, u32 flags)
 	int	ret;
 	df_opt	dop = {0};
 
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	/* don't go removing gfiles without s.files */
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {
 		verbose((stderr, "%s not under SCCS control\n", s->gfile));
@@ -9329,6 +9335,7 @@ sccs_unedit(sccs *s, u32 flags)
 	int	getFlags = 0;
 	int	currState = 0;
 
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	/* don't go removing gfiles without s.files */
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {
 		verbose((stderr, "%s not under SCCS control\n", s->gfile));
@@ -9477,6 +9484,7 @@ sccs_info(sccs *s, u32 flags)
 		return (0);
 	}
 	GOODSCCS(s);
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	if (!HAS_PFILE(s)) {
 		sccs_infoMsg(s, 'u', flags);
 		return (0);
@@ -11617,6 +11625,7 @@ sccs_admin(sccs *sc, ser_t p, u32 flags,
 	assert(!z); /* XXX used to be LOD item */
 
 	GOODSCCS(sc);
+	T_SCCS("file=%s flags=%x", sc->gfile, flags);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
 		char	z = (flags & ADMIN_FORCE) ? 'Z' : 'z';
 
@@ -12693,6 +12702,7 @@ sccs_csetWrite(sccs *s, char **cweave)
 	FILE	*out = 0;
 	char	*ser, *oldser = 0;
 
+	T_SCCS("file=%s", s->gfile);
 	unless (sccs_lock(s, 'z')) {
 		fprintf(stderr, "can't zlock %s\n", s->gfile);
 		repository_lockers(s->proj);
@@ -12786,6 +12796,7 @@ sccs_csetPatchWeave(sccs *s)
 	assert(s);
 	assert(s->state & S_CSET);
 	assert(s->locs);
+	T_SCCS("file=%s", s->gfile);
 	lp = s->locs;
 	i = s->iloc - 1; /* set index to final element in array */
 	assert(i > 0); /* base 1 data structure */
@@ -13116,7 +13127,7 @@ skip:
 	 * s <key> - set MTAG(sc, d)
 	 */
 	while (WANT('s')) {
-		TRACE("buf = %s", buf);
+		T_DEBUG("buf = %s", buf);
 		if (streq(&buf[2], "g")) {
 			if (d) FLAGS(sc, d) |= D_SYMGRAPH;
 		} else if (streq(&buf[2], "l")) {
@@ -13125,7 +13136,7 @@ skip:
 			ser_t	e = sccs_findKey(sc, &buf[2]);
 
 			assert(e);
-			TRACE("e->serial = %d", e);
+			T_DEBUG("e->serial = %d", e);
 			assert(SYMGRAPH(sc, e));
 			if (PTAG(sc, d)) {
 				MTAG_SET(sc, d, e);
@@ -13455,7 +13466,7 @@ sccs_delta(sccs *s,
 	ser_t	pserial;
 
 	assert(s);
-	debug((stderr, "delta %s %x\n", s->gfile, flags));
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	if (flags & NEWFILE) mksccsdir(s->sfile);
 	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr,
@@ -14225,6 +14236,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dopt, FILE *out)
 	int	rc = 0;
 
 	GOODSCCS(s);
+	T_SCCS("file=%s", s->gfile);
 
 	/*
 	 * Figure out which revision the user want.
@@ -16364,6 +16376,7 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 {
 	ser_t	d;
 
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	if (!dspec) dspec = ":DEFAULT:";
 	s->prs_odd = 0;
 	s->prs_join = 0;
@@ -17492,6 +17505,7 @@ sccs_stripdel(sccs *s, char *who)
 	do { error = -1; s->state |= S_WARNED; goto out; } while (0)
 
 	assert(s && HASGRAPH(s));
+	T_SCCS("file=%s", s->gfile);
 	if (HAS_PFILE(s) && sccs_clean(s, SILENT)) return (-1);
 	debug((stderr, "stripdel %s %s\n", s->gfile, who));
 	unless (locked = sccs_lock(s, 'z')) {
@@ -17551,6 +17565,7 @@ out:
 int
 sccs_rmdel(sccs *s, ser_t d, u32 flags)
 {
+	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	FLAGS(s, d) |= D_SET;
 	if (stripChecks(s, d, "rmdel")) return (1);
 

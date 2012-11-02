@@ -25,7 +25,6 @@ unsigned int turnTransOff;	/* for transactions, see nested.h */
 private	char	*buffer = 0;	/* copy of stdin */
 char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
-private	int	indent_level;
 
 private	void	bk_atexit(void);
 private	int	bk_cleanup(int ret);
@@ -36,12 +35,10 @@ private	int	cmdlog_locks;
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private	void	showproc_start(char **av);
 private	void	showproc_end(char *cmdlog_buffer, int ret);
-private	void	callstack_add(int remote);
 private int	launch_L(char *script, char **av);
 
 #define	MAXARGS	1024
 #define	MAXPROCDEPTH	30	/* fallsafe, don't recurse deeper than this */
-#define	INDENT_SPACES	4
 
 private void
 save_gmon(void)
@@ -55,7 +52,7 @@ save_gmon(void)
 	rename("gmon.out", buf);
 }
 
-#if (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 6))
+#if GCC_VERSION >= 40600
 #pragma	GCC diagnostic push
 #pragma	GCC diagnostic ignored "-Wclobbered"
 #endif
@@ -93,6 +90,12 @@ main(int volatile ac, char **av, char **env)
 		{ "user-files", 'U' },
 		{ "each-repo", 'e' },
 		{ "subset|", 's' },
+		{ "trace;", 330 },
+		{ "files;", 331 },
+		{ "funcs;", 332 },
+		{ "progs;", 333 },
+		{ "pids", 334 },
+		{ "diffable", 335 },
 		{ 0, 0 },
 	};
 
@@ -105,7 +108,6 @@ main(int volatile ac, char **av, char **env)
 	 */
 	if (getenv("_BK_IGNORE_SIGS")) sig_ignore();
 
-	trace_init(av[0]);
 	ltc_mp = ltm_desc;
 	for (i = 3; i < 20; i++) close(i);
 	reserveStdFds();
@@ -320,18 +322,66 @@ baddir:						fprintf(stderr,
 			    }
 			    case 310:   // --ibuf=line|<size>|0
 			    case 320: { // --obuf=line|<size>|0
-				    FILE *f = (c == 310) ? stdin : stdout;
-				    if (streq(optarg, "line")) {
-					    setvbuf(f, 0, _IOLBF, 0);
-				    } else if (i = atoi(optarg)) {
-					    setvbuf(f, 0, _IOFBF, i);
-				    } else {
-					    setvbuf(f, 0, _IONBF, 0);
-				    }
-				    break;
+				FILE *f = (c == 310) ? stdin : stdout;
+				if (streq(optarg, "line")) {
+					setvbuf(f, 0, _IOLBF, 0);
+				} else if (i = atoi(optarg)) {
+					setvbuf(f, 0, _IOFBF, i);
+				} else {
+					setvbuf(f, 0, _IONBF, 0);
+				}
+				break;
 			    }
+			    // BK_TRACE=1 BK_TRACE_BITS=cmd,nested
+			    case 330: /* --trace */
+				unless (getenv("BK_TRACE")) {
+				    putenv("BK_TRACE=1");
+				}
+				safe_putenv("BK_TRACE_BITS=%s", optarg);
+				break;
+			    case 331: /* --files */
+				unless (getenv("BK_TRACE")) {
+				    putenv("BK_TRACE=1");
+				}
+				safe_putenv("BK_TRACE_FILES=%s", optarg);
+				break;
+			    case 332: /* --funcs */
+				unless (getenv("BK_TRACE")) {
+				    putenv("BK_TRACE=1");
+				}
+				safe_putenv("BK_TRACE_FUNCS=%s", optarg);
+				break;
+			    case 333: /* --progs */
+				unless (getenv("BK_TRACE")) {
+				    putenv("BK_TRACE=1");
+				}
+				safe_putenv("BK_TRACE_PROGS=%s", optarg);
+				break;
+			    case 334: /* --pids */
+				unless (getenv("BK_TRACE")) {
+				    putenv("BK_TRACE=1");
+				}
+				safe_putenv("BK_TRACE_PIDS=1");
+				break;
+			    case 335: /* --diffable */
+				unless (getenv("BK_DTRACE")) {
+				    putenv("BK_DTRACE=1");
+				}
+				break;
+
 			    default: bk_badArg(c, av);
 			}
+		}
+		trace_init(av[0]);
+		if (unlikely(bk_trace)) {
+			char	**lines = 0;
+			char	*buf;
+
+			for (i = 0; av[i]; ++i) lines = addLine(lines, av[i]);
+			buf = joinLines(" ", lines);
+			T_CMD("%s", buf);
+			free(buf);
+			freeLines(lines, 0);
 		}
 		/* if -r, then -U is only passed to sfiles */
 		if (dashr && dashU) dashU = 0;
@@ -420,8 +470,8 @@ baddir:						fprintf(stderr,
 				return (1);
 			}
 			start_cwd = strdup(proj_cwd());
-			callstack_add(remote);
 			cmdlog_start(av, 0);
+			callstack_push(remote);
 			ret = remote_bk(!headers, ac, av);
 			goto out;
 		}
@@ -482,8 +532,10 @@ baddir:						fprintf(stderr,
 			for (i = optind; av[i]; i++) {
 				nav = addLine(nav, strdup(av[i]));
 			}
+			callstack_push(0);
 			ret = nested_each(!headers, nav, aliases);
 			freeLines(aliases, free);
+			callstack_pop();
 			goto out;
 		}
 		if (locking) {
@@ -544,8 +596,10 @@ bad_locking:				fprintf(stderr,
 				sopts = addLine(sopts, strdup("-h"));
 				sopts = addLine(sopts,
 				    aprintf("--relpath=%s", start_cwd));
+				callstack_push(0);
 				ret = nested_each(!headers, sopts, aliases);
 				freeLines(aliases, free);
+				callstack_pop();
 				goto out;
 			} else if (from_iterator) {
 				ret = 0;
@@ -572,10 +626,13 @@ bad_locking:				fprintf(stderr,
 			}
 			sopts = unshiftLine(sopts, strdup("bk"));
 			sopts = addLine(sopts, 0);
+			callstack_push(0);
 			if (sfiles(sopts+1)) {
+				callstack_pop();
 				ret = 1;
 				goto out;
 			}
+			callstack_pop();
 			if (streq(prog, "check")) {
 				putenv("_BK_CREATE_MISSING_DIRS=");
 			}
@@ -587,11 +644,6 @@ bad_locking:				fprintf(stderr,
 	}
 
 run:	trace_init(prog);	/* again 'cause we changed prog */
-
-	/*
-	 * Update callstack and don't recurse too deep.
-	 */
-	callstack_add(0);
 
 	/*
 	 * XXX - we could check to see if we are licensed for SAM and make
@@ -606,6 +658,11 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 	nt_loadWinSock();
 #endif
 	cmdlog_start(av, 0);
+	/*
+	 * Update callstack and don't recurse too deep.
+	 */
+	callstack_push(0);
+
 	if (buf_stdin) {
 		buffer = bktmp(0, "stdin");
 		fd2file(0, buffer);
@@ -647,7 +704,7 @@ out:
 	if (ret < 0) ret = 1;	/* win32 MUST have a positive return */
 	return (ret);
 }
-#if (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 6))
+#if GCC_VERSION >= 40600
 #pragma	GCC diagnostic pop
 #endif
 
@@ -974,14 +1031,20 @@ cmdlog_start(char **av, int bkd_cmd)
 		unless (strieq(cmdtab[i].name, av[0])) continue;
 
 		cmdlog_flags = cmdtab[i].flags;
+		if (bkd_cmd) {
+			prog = av[0];
+			T_CMD("%s", prog);
+			callstack_push(1);
+		}
+
 		/*
 		 * set the cmd_repolog flag when it's defined in the
-		 * table above, an actual user command (indent_level
-		 * == 0) or when it's a remote command (indent_level
-		 * will be > 0 because it is spawned by a bkd)
+		 * table above, an actual user command (indent() == 0)
+		 * or when it's a remote command (indent() > 0)
+		 * because it is spawned by a bkd)
 		 */
 		if ((cmdlog_flags & CMD_REPOLOG) &&
-		    ((indent_level == 0) || strneq(av[0], "remote ", 7))) {
+		    (indent() == 0) || strneq(av[0], "remote ", 7)) {
 			cmdlog_repolog = 1;
 		}
 		break;
@@ -1032,7 +1095,6 @@ cmdlog_start(char **av, int bkd_cmd)
 			free(quoted);
 		}
 		write_log("cmd_log", "%s", cmdlog_buffer);
-		indent_level++;
 	}
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
 
@@ -1096,7 +1158,7 @@ cmdlog_lock(int flags)
 		char	*p = getenv("BK_NO_REPO_LOCK");
 
 		if (p && streq(p, "YES")) {
-			TRACE("%s", "Skipping locking due to BK_NO_REPO_LOCK");
+			T_LOCK("Skipping locking due to BK_NO_REPO_LOCK");
 			putenv("BK_NO_REPO_LOCK=");
 			do_lock = 0;
 		}
@@ -1117,7 +1179,7 @@ cmdlog_lock(int flags)
 		if (cmdlog_flags & CMD_IGNORE_RESYNC) {
 			putenv("_BK_IGNORE_RESYNC_LOCK=1");
 		}
-		TRACE("WRLOCK in %s", proj_cwd());
+		T_LOCK("WRLOCK in %s", proj_cwd());
 		i = repository_wrlock(proj);
 		if (cmdlog_flags & CMD_IGNORE_RESYNC) {
 			putenv("_BK_IGNORE_RESYNC_LOCK=");
@@ -1156,7 +1218,7 @@ cmdlog_lock(int flags)
 		cmdlog_locks |= CMD_WRLOCK;
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
-		TRACE("RDLOCK in %s", proj_cwd());
+		T_LOCK("RDLOCK in %s", proj_cwd());
 		if (i = repository_rdlock(proj)) {
 			unless ((cmdlog_flags & CMD_BKD_CMD) ||
 			    !proj_root(proj)) {
@@ -1190,7 +1252,7 @@ cmdlog_lock(int flags)
 	    (cmdlog_flags & (CMD_NESTED_RDLOCK | CMD_NESTED_WRLOCK)) &&
 	    proj_isEnsemble(proj)) {
 again:		if (nlid = getenv("_BK_NESTED_LOCK")) {
-			TRACE("checking: %s", nlid);
+			T_NUM(TR_LOCK|TR_NESTED, "checking: %s", nlid);
 			unless (nested_mine(proj, nlid,
 				(cmdlog_flags & CMD_NESTED_WRLOCK))) {
 				if (nl_errno == NL_LOCK_FILE_NOT_FOUND) {
@@ -1210,7 +1272,7 @@ again:		if (nlid = getenv("_BK_NESTED_LOCK")) {
 			safe_putenv("_BK_NESTED_LOCK=%s", nlid);
 			free(nlid);
 			cmdlog_locks |= CMD_NESTED_WRLOCK;
-			TRACE("%s", "NESTED_WRLOCK");
+			T_NUM(TR_LOCK|TR_NESTED, "%s", "NESTED_WRLOCK");
 		} else if (cmdlog_flags & CMD_NESTED_RDLOCK) {
 			unless (nlid = nested_rdlock(proj_product(proj))) {
 				error_msg = nested_errmsg();
@@ -1219,7 +1281,7 @@ again:		if (nlid = getenv("_BK_NESTED_LOCK")) {
 			safe_putenv("_BK_NESTED_LOCK=%s", nlid);
 			free(nlid);
 			cmdlog_locks |= CMD_NESTED_RDLOCK;
-			TRACE("%s", "NESTED_RDLOCK");
+			T_NUM(TR_LOCK|TR_NESTED, "NESTED_RDLOCK");
 		} else {
 			/* fail? */
 		}
@@ -1277,16 +1339,16 @@ write_log(char *file, char *format, ...)
 		}
 	}
 	setvbuf(f, NULL, _IONBF, 0);
-	sprintf(nformat, "%c%s %lu %s:%*s%s\n",
+	sprintf(nformat, "%c%s %lu %s: %*s%s\n",
 	    log_versions[LOGVER],
 	    sccs_user(), time(0), bk_vers,
-	    indent_level * INDENT_SPACES, " ", format);
+	    indent(), "", format);
 	va_start(ap, format);
 	vfprintf(f, nformat, ap);
 	va_end(ap);
 	fclose(f);
 	/* only rotate logs on command boundaries */
-	if (indent_level == 0) log_rotate(path);
+	if (indent() == 0) log_rotate(path);
 	return (0);
 }
 
@@ -1314,16 +1376,6 @@ cmdlog_end(int ret, int bkd_cmd)
 	/* If we have no project root then bail out */
 	unless (proj_root(0)) goto out;
 
-	/*
-	 * if we got here as a result of an exit() call
-	 * before indent_level was incremented then
-	 * we cannot decrement here.
-	 * (ie. this happens when you try a nested pull
-	 * without the SAM license bit)
-	 */
-	unless (ret != 0 && indent_level == 0)
-		indent_level--;
-
 	len = strlen(cmdlog_buffer) + 20;
 	EACH_KV (notes) len += kv.key.dsize + kv.val.dsize;
 	log = malloc(len);
@@ -1335,10 +1387,10 @@ cmdlog_end(int ret, int bkd_cmd)
 	savelen = len;
 	len = strlen(log);
 	EACH_KV (notes) {
-	    	log[len++] = ' ';
+		log[len++] = ' ';
 		strcpy(&log[len], kv.key.dptr);
 		len += kv.key.dsize - 1;
-	    	log[len++] = '=';
+		log[len++] = '=';
 		strcpy(&log[len], kv.val.dptr);
 		len += kv.val.dsize - 1;
 	}
@@ -1363,7 +1415,7 @@ cmdlog_end(int ret, int bkd_cmd)
 
 		nlid = getenv("_BK_NESTED_LOCK");
 		assert(nlid);
-		TRACE("nlid = %s", nlid);
+		T_NUM(TR_LOCK|TR_NESTED, "nlid = %s", nlid);
 		if (nested_unlock(0, nlid)) {
 			error("%s", nested_errmsg());
 			// XXX we need to fail command here
@@ -1372,13 +1424,12 @@ cmdlog_end(int ret, int bkd_cmd)
 	}
 
 	if (!bkd_cmd && (cmdlog_locks & (CMD_WRLOCK|CMD_RDLOCK))) {
-		TRACE("UNLOCK %s", proj_cwd());
+		T_LOCK("UNLOCK %s", proj_cwd());
 		repository_unlock(0, 0);
 	}
 out:
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
-	assert(indent_level >= 0);
 	return (rc);
 }
 
@@ -1559,8 +1610,6 @@ launch_wish(char *script, char **av)
 	}
 }
 
-static	char	*prefix;
-
 private void
 showproc_start(char **av)
 {
@@ -1568,24 +1617,19 @@ showproc_start(char **av)
 	char	*p;
 	FILE	*f;
 
-	if (prefix) free(prefix);
-	prefix = getenv("_BK_SP_PREFIX");
-	unless (prefix) prefix = "";
-	prefix = strdup(prefix);
-
 	// Make it so that SHOWTERSE works like SHOWPROC so you can use just 1
 	if ((p = getenv("BK_SHOWTERSE")) && !getenv("BK_SHOWPROC")) {
 		safe_putenv("BK_SHOWPROC=%s", p);
 	}
+
 	unless (f = efopen("BK_SHOWPROC")) return;
 	unless (getenv("BK_SHOWTERSE")) {
-		fprintf(f, "BK  (%5u %5s)%s", getpid(), milli(), prefix);
+		fprintf(f, "BK  (%5u %5s)%*s", getpid(), milli(), indent(), "");
 	}
 	for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
 	fprintf(f, " [%s]", proj_cwd());
 	fprintf(f, "\n");
 	fclose(f);
-	safe_putenv("_BK_SP_PREFIX=%s  ", prefix);
 }
 
 private void
@@ -1594,9 +1638,14 @@ showproc_end(char *cmdlog_buffer, int ret)
 	FILE	*f;
 	kvpair	kv;
 
+	/* We don't seem to have a matching lock event */
+	unless (strneq(cmdlog_buffer, "\"remote nested\" unlock", 22)) {
+		callstack_pop();
+	}
+	T_CMD("%s = %d", cmdlog_buffer, ret);
 	unless (f = efopen("BK_SHOWPROC")) return;
 	unless (getenv("BK_SHOWTERSE")) {
-		fprintf(f, "END (%5u %5s)%s", getpid(), milli(), prefix);
+		fprintf(f, "END (%5u %7s)%*s", getpid(), milli(), indent(), "");
 	}
 	fprintf(f, " %s = %d", cmdlog_buffer, ret);
 	if (notes) {
@@ -1609,23 +1658,42 @@ showproc_end(char *cmdlog_buffer, int ret)
 	fclose(f);
 }
 
-private void
-callstack_add(int remote)
+void
+callstack_push(int remote)
 {
 	char *csp;
 	char *at = (remote) ? "@" : "";
 
 	if ((csp = getenv("_BK_CALLSTACK"))) {
-		if ((indent_level = strcnt(csp, ':')) >= MAXPROCDEPTH) {
+		if (strcnt(csp, ':') >= MAXPROCDEPTH) {
 			fprintf(stderr, "BK callstack: %s\n", csp);
 			fprintf(stderr, "BK callstack too deep, aborting.\n");
 			exit(1);
 		}
 		safe_putenv("_BK_CALLSTACK=%s:%s%s", csp, at, prog);
-		indent_level++;
 	} else {
 		safe_putenv("_BK_CALLSTACK=%s%s", at, prog);
 	}
+}
+
+void
+callstack_pop(void)
+{
+	char	*p, *t;
+
+	unless (p = getenv("_BK_CALLSTACK")) {
+		if (getenv("_BK_DEVELOPER")) {
+			fprintf(stderr,
+			    "%s: pop of empty call stack\n", cmdlog_buffer);
+		}
+		return;
+	}
+	if (t = strrchr(p, ':')) {
+		*t = 0;
+	} else {
+		p = "";
+	}
+	safe_putenv("_BK_CALLSTACK=%s", p);
 }
 
 void

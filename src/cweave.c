@@ -195,7 +195,7 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 	}
 	FLAGS(s, d) |= D_REMOTE;
 
-	TRACE("%s/%d", delta_sdate(s, d), SUM(s, d));
+	T_DEBUG("%s/%d", delta_sdate(s, d), SUM(s, d));
 	/*
 	 * Insert new delta 'd' into TABLE(s) in time sorted order
 	 */
@@ -261,7 +261,7 @@ cset_insert(sccs *s, FILE *iF, FILE *dF, ser_t parent, int fast)
 		}
 	}
 
-	TRACE("serial=%d", serial);
+	T_DEBUG("serial=%d", serial);
 	PARENT_SET(s, d, parent);
 
 	sccs_inherit(s, d);

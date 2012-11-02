@@ -27,7 +27,7 @@ lockers(char *path)
 	int	i;
 
 	EACH(lines) {
-		TRACE("DIR=%s/%s", path, lines[i]);
+		T_LOCK("DIR=%s/%s", path, lines[i]);
 		unless (isdigit(lines[i][0])) {
 			removeLineN(lines, i, free);
 			--i;	/* do this line again */
@@ -48,15 +48,15 @@ cleandir(char *dir)
 
 	EACH(lines) {
 		sprintf(path, "%s/%s", dir, lines[i]);
-		TRACE("unlink(%s)", path);
+		T_LOCK("unlink(%s)", path);
 		unlink(path);
 	}
 	freeLines(lines, free);
 	sprintf(path, "%s/lock", dir);
 	unlink(path);
-	TRACE("unlink(%s)", path);
+	T_LOCK("unlink(%s)", path);
 	rmdir(dir);
-	TRACE("rmdir(%s)", dir);
+	T_LOCK("rmdir(%s)", dir);
 }
 
 /*
@@ -109,7 +109,7 @@ repository_hasLocks(project *p, char *dir)
 		sprintf(path, "%s/%s", root, dir);
 		(void)rmdir(path);
 	}
-	TRACE("repository_hasLocks(%s/%s) = %d", root, dir, n);
+	T_LOCK("repository_hasLocks(%s/%s) = %d", root, dir, n);
 	return (n);
 }
 
@@ -137,7 +137,7 @@ global_wrlock(void)
 	char	*p;
 
 	unless (p = getenv("BK_WRITE_LOCK")) p = "/etc/BitKeeper/locks/wrlock";
-	TRACE("global_lock=%s", p);
+	T_LOCK("global_lock=%s", p);
 	return (p);
 }
 
@@ -147,7 +147,7 @@ global_rdlock(void)
 	char	*p;
 
 	unless (p = getenv("BK_READ_LOCK")) p = "/etc/BitKeeper/locks/rdlock";
-	TRACE("global_lock=%s", p);
+	T_LOCK("global_lock=%s", p);
 	return (p);
 }
 
@@ -156,7 +156,7 @@ global_rdlocked(void)
 {
 	int	ret = exists(global_rdlock());
 
-	TRACE("global_rdlocked=%s", ret ? "YES" : "NO");
+	T_LOCK("global_rdlocked=%s", ret ? "YES" : "NO");
 	return (ret);
 }
 
@@ -165,7 +165,7 @@ global_wrlocked(void)
 {
 	int	ret = exists(global_wrlock());
 
-	TRACE("global_wrlocked=%s", ret ? "YES" : "NO");
+	T_LOCK("global_wrlocked=%s", ret ? "YES" : "NO");
 	return (ret);
 }
 
@@ -174,7 +174,7 @@ global_locked(void)
 {
 	int	ret = exists(global_wrlock()) || exists(global_rdlock());
 
-	TRACE("global_locked=%s", ret ? "YES" : "NO");
+	T_LOCK("global_locked=%s", ret ? "YES" : "NO");
 	return (ret);
 }
 
@@ -191,7 +191,7 @@ repository_locked(project *p)
 	char	path[MAXPATH];
 
 	unless (root = proj_root(p)) return (0);
-	TRACE("repository_locked(%s)", root);
+	T_LOCK("repository_locked(%s)", root);
 	if (global_locked()) {
 		ret = 1;
 		goto out;
@@ -199,7 +199,7 @@ repository_locked(project *p)
 	ret = repository_hasLocks(p, READER_LOCK_DIR);
 	unless (ret) {
 		if ((s = getenv("BK_IGNORE_WRLOCK")) && streq(s, "YES")) {
-			TRACE("repository_locked(%s) = 0", root);
+			T_LOCK("repository_locked(%s) = 0", root);
 			return (0);
 		}
 		if (nested_mine(p, getenv("_BK_NESTED_LOCK"), 0)) return (0);
@@ -210,7 +210,7 @@ repository_locked(project *p)
 			ret = exists(path);
 		}
 	}
-out:	TRACE("repository_locked(%s) = %d", root, ret);
+out:	T_LOCK("repository_locked(%s) = %d", root, ret);
 	return (ret);
 }
 
@@ -226,7 +226,7 @@ repository_lockers(project *p)
 	int	i, rm;
 
 	unless (root = proj_root(p)) return (0);
-	TRACE("repository_lockers(%s)", root);
+	T_LOCK("repository_lockers(%s)", root);
 
 	msg = addLine(0, aprintf("%s\nEntire repository is locked by:\n",
 		root));
@@ -307,7 +307,7 @@ rdlock(project *p)
 	char	*root;
 
 	unless (root = proj_root(p)) return (LOCKERR_NOREPO);
-	TRACE("repository_rdlock(%s)", root);
+	T_LOCK("repository_rdlock(%s)", root);
 
 	/*
 	 * We go ahead and create the lock and then see if there is a
@@ -323,7 +323,7 @@ rdlock(project *p)
 	rdlockfile(root, path);
 	close(creat(path, 0666));
 	unless (exists(path)) {
-		TRACE("RDLOCK by %u failed, no perms?", getpid());
+		T_LOCK("RDLOCK by %u failed, no perms?", getpid());
 		return (LOCKERR_PERM);
 	}
 	sprintf(path, "%s/%s", root, WRITER_LOCK);
@@ -332,11 +332,11 @@ rdlock(project *p)
 		unlink(path);
 		sprintf(path, "%s/%s", root, READER_LOCK_DIR);
 		(void)rmdir(path);
-		TRACE("RDLOCK by %u failed, write locked", getpid());
+		T_LOCK("RDLOCK by %u failed, write locked", getpid());
 		return (LOCKERR_LOST_RACE);
 	}
 	write_log("cmd_log", "obtain read lock (%u)", getpid());
-	TRACE("RDLOCK %u", getpid());
+	T_LOCK("RDLOCK %u", getpid());
 	return (0);
 }
 
@@ -366,7 +366,7 @@ wrlock(project *p)
 	char	*root;
 
 	unless (root = proj_root(p)) return (LOCKERR_NOREPO);
-	TRACE("repository_wrlock(%s)", root);
+	T_LOCK("repository_wrlock(%s)", root);
 
 	sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 	unless (exists(path)) mkdir(path, 0777);
@@ -377,7 +377,7 @@ wrlock(project *p)
 	sprintf(lock, "%s/%s", root, WRITER_LOCK);
 	if (global_locked() || sccs_lockfile(lock, 0, 0)) {
 		(void)rmdir(path);
-		TRACE("WRLOCK by %u failed, lockfile failed", getpid());
+		T_LOCK("WRLOCK by %u failed, lockfile failed", getpid());
 		return (LOCKERR_LOST_RACE);
 	}
 
@@ -388,7 +388,7 @@ wrlock(project *p)
 		sccs_unlockfile(lock);
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		(void)rmdir(path);
-		TRACE("WRLOCK by %d failed, RESYNC won", getpid());
+		T_LOCK("WRLOCK by %d failed, RESYNC won", getpid());
 		return (LOCKERR_LOST_RACE);
 	}
 
@@ -399,7 +399,7 @@ wrlock(project *p)
 	    	sccs_unlockfile(lock);
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		(void)rmdir(path);
-		TRACE("WRLOCK by %u failed, readers won", getpid());
+		T_LOCK("WRLOCK by %u failed, readers won", getpid());
 		return (LOCKERR_LOST_RACE);
 	}
 	write_log("cmd_log", "obtain write lock (%u)", getpid());
@@ -407,7 +407,7 @@ wrlock(project *p)
 	 * like the contents of the lock file.  Then we ignore iff that matches.
 	 */
 	putenv("BK_IGNORE_WRLOCK=YES");
-	TRACE("WRLOCK %u", getpid());
+	T_LOCK("WRLOCK %u", getpid());
 	return (0);
 }
 
@@ -438,7 +438,7 @@ repository_downgrade(project *p)
 	char	*root;
 
 	unless (root = proj_root(p)) return (0);
-	TRACE("repository_downgrade(%s)", root);
+	T_LOCK("repository_downgrade(%s)", root);
 
 	sprintf(path, "%s/%s", root, WRITER_LOCK);
 	unless (sccs_mylock(path)) {
@@ -471,14 +471,14 @@ repository_rdunlockf(project *p, char *lockf)
 	sscanf(lockf, "%d@", &pid);
 	if (unlink(path) == 0) {
 		write_log("cmd_log", "read unlock (%u)", pid);
-		TRACE("RDUNLOCK %u", pid);
+		T_LOCK("RDUNLOCK %u", pid);
 	}
 }
 	
 void
 repository_unlock(project *p, int all)
 {
-	TRACE("repository_unlock(%d)", all);
+	T_LOCK("repository_unlock(%d)", all);
 	repository_rdunlock(p, all);
 	repository_wrunlock(p, all);
 }
@@ -490,7 +490,7 @@ repository_rdunlock(project *p, int all)
 	char	*root;
 
 	unless (root = proj_root(p)) return (0);
-	TRACE("repository_rdunlock(%s)", root);
+	T_LOCK("repository_rdunlock(%s)", root);
 	if (all) {
 		sprintf(path, "%s/%s", root, READER_LOCK_DIR);
 		cleandir(path);
@@ -501,7 +501,7 @@ repository_rdunlock(project *p, int all)
 	rdlockfile(root, path);
 	if (unlink(path) == 0) {
 		write_log("cmd_log", "read unlock (%u)", getpid());
-		TRACE("RDUNLOCK %u", getpid());
+		T_LOCK("RDUNLOCK %u", getpid());
 	}
 	return (0);
 }
@@ -514,7 +514,7 @@ repository_wrunlock(project *p, int all)
 	int	error = 0;
 
 	unless (root = proj_root(p)) return (0);
-	TRACE("repository_wrunlock(%s)", root);
+	T_LOCK("repository_wrunlock(%s)", root);
 	if (all) {
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		cleandir(path);
@@ -525,11 +525,11 @@ repository_wrunlock(project *p, int all)
 	sprintf(path, "%s/%s", root, WRITER_LOCK);
 	if (sccs_mylock(path) && (sccs_unlockfile(path) == 0)) {
 		write_log("cmd_log", "write unlock (%u)", getpid());
-		TRACE("WRUNLOCK %u", getpid());
+		T_LOCK("WRUNLOCK %u", getpid());
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		rmdir(path);
 	} else {
-		TRACE("WRUNLOCK %u FAILED", getpid());
+		T_LOCK("WRUNLOCK %u FAILED", getpid());
 		error = -1;
 	}
 	return (error);
@@ -736,7 +736,7 @@ nested_isStale(char *file)
 	int	stale = 1;
 
 	if (stat(file, &sb)) {
-		TRACE("stat(%s) failed", file);
+		T_LOCK("stat(%s) failed", file);
 		return (stale);
 	}
 	unless (nlid = loadfile(file, 0)) {
@@ -750,14 +750,14 @@ nested_isStale(char *file)
 	chomp(nlid);
 	/* garbage == stale lock */
 	unless (nl = explodeNLID(nlid)) {
-		TRACE("%s", "garbage");
+		T_LOCK("garbage");
 		goto out;
 	}
 	if (nl->http == 'n') {
 		if (streq(nl->rhost, sccs_realhost())) {
 			/* find the process */
 			unless (findpid(nl->pid)) {
-				TRACE("%s", "pid not found");
+				T_LOCK("pid not found");
 				goto out;
 			}
 		}
@@ -766,17 +766,17 @@ nested_isStale(char *file)
 		now = time(0);
 		/* created too long ago? */
 		if ((now - nl->created) > nested_getTimeout(1)) {
-			TRACE("%s", "too old");
+			T_LOCK("too old");
 			goto out;
 		}
 		/* not used for a while? */
 		if ((now - sb.st_atime) > nested_getTimeout(0)) {
-			TRACE("%s", "unused");
+			T_LOCK("unused");
 			goto out;
 		}
 	}
 	/* if we got here, we must be holding a valid lock */
-	TRACE("%s", "not stale");
+	T_LOCK("not stale");
 	stale = 0;
 
 out:	if (nlid) free(nlid);
@@ -939,7 +939,7 @@ nested_wrlock(project *p)
 	proj_reset(p);		/* Since we might have created a RESYNC */
 out:	if (unlock) repository_wrunlock(p, 0);
 	(void)nlock_release(p);
-	TRACE("nested_wrlock: %s", t);
+	T_LOCK("nested_wrlock: %s", t);
 	return (t);
 }
 
@@ -1003,13 +1003,13 @@ nested_rdlock(project *p)
 	 */
 
 	proj_reset(p);
-	TRACE("nested_rdlock: %s", lockfile);
+	T_LOCK("nested_rdlock: %s", lockfile);
 out:	if (lockfile)	free(lockfile);
 	if (release) {
-		if (nlock_release(p)) TRACE("%s", "nlock_release failed");
+		if (nlock_release(p)) T_LOCK("nlock_release failed");
 	}
 	if (unlock) repository_rdunlock(p, 0);
-	TRACE("nested_rdlock: %s", t);
+	T_LOCK("nested_rdlock: %s", t);
 	return (t);
 }
 
@@ -1027,7 +1027,7 @@ lockResync(project *p)
 	}
 	if (touch(file, 0666)) goto out;
 	rc = 0;
-	TRACE("RESYNC: %s", file);
+	T_LOCK("RESYNC: %s", file);
 out:	free(file);
 	return (rc);
 }
@@ -1084,9 +1084,9 @@ rderr:						error(READER_LOCK_DIR
 						error("Could not unlink '%s', "
 						    "permission problem?\n",
 						    fn);
-						TRACE("%s", "permission problem");
+						T_LOCK("permission problem");
 					}
-					TRACE("removed stale lock: %s", fn);
+					T_LOCK("removed stale lock: %s", fn);
 				}
 				free(fn);
 				continue;
@@ -1173,7 +1173,7 @@ nested_mine(project *p, char *nested_lock, int write)
 	} else {
 		nl_errno = NL_INVALID_LOCK_STRING;
 	}
-	TRACE("nested_mine = %d", rc);
+	T_LOCK("nested_mine = %d", rc);
 out:	return (rc);
 }
 
@@ -1241,16 +1241,16 @@ nested_unlock(project *p, char *nlid)
 		free(tfile);
 		goto out;
 	}
-	TRACE("nested_unlocked: %s '%s'", tfile, nlid);
+	T_LOCK("nested_unlocked: %s '%s'", tfile, nlid);
 	free(tfile);
 	if (lockers = nested_lockers(p, 0, 1)) {
 		freeLines(lockers, freeNlock);
 	} else {
 		/* no lockers, remove RESYNC */
 		unlockResync(p);
-		TRACE("%s", "nested_unlock: unlockResync()");
+		T_LOCK("nested_unlock: unlockResync()");
 	}
-	if (nlock_release(p)) TRACE("%s", "nlock_release failed");
+	if (nlock_release(p)) T_LOCK("nlock_release failed");
 	rc = 0;
 
 out:	if (unlock) {
@@ -1309,14 +1309,14 @@ nested_forceUnlock(project *p, int kind)
 		if (exists(tpath) && unlink(tpath)) errors++;
 	}
 	unlockResync(p);
-	if (nlock_release(p)) TRACE("%s", "nlock_release failed");
+	if (nlock_release(p)) T_LOCK("nlock_release failed");
 	return (errors);
 }
 
 int
 nested_abort(project *p, char *nlid)
 {
-	TRACE("nlid: %s", nlid);
+	T_LOCK("nlid: %s", nlid);
 	unless (nlid) return (1);
 
 	if (nlid[0] == 'w') {

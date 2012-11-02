@@ -85,7 +85,7 @@ log_main(int ac, char **av)
 		char	*spec = log ? "dspec-log" : "dspec-prs";
 
 		specf = bk_searchFile(spec);
-		TRACE("Reading dspec from %s", specf ? specf : "(not found)");
+		T_DEBUG("Reading dspec from %s", specf ? specf : "(not found)");
 		unless (specf && (dspec = loadfile(specf, 0))) {
 			fprintf(stderr,
 			    "%s: cant find %s/%s\n", av[0], bin, spec);
