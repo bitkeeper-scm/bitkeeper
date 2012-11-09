@@ -219,6 +219,7 @@ _exists
 export
 f2csets
 _fgzip
+features
 _filtertest1
 _filtertest2
 _find

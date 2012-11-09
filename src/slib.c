@@ -4398,6 +4398,7 @@ sccs_init(char *name, u32 flags)
 	} else {
 		s->proj = proj_init(".");
 	}
+	proj_featureChk(s->proj);
 
 	if (isCsetFile(s->sfile)) {
 		s->xflags |= X_HASH;
@@ -4493,7 +4494,6 @@ sccs_init(char *name, u32 flags)
 	} else {
 		s->cksumok = 1;
 	}
-	bk_featureRepoChk(s->proj); /* check before we parse sfile */
 	mkgraph(s, flags);
 
 	/* test lease after we have PATHNAME(s, TABLE(s)) */
@@ -4725,7 +4725,6 @@ chk_gmode(sccs *s)
 void
 sccs_free(sccs *s)
 {
- 	int	unblock;
 	char	*relpath = 0, *fullpath;
 
 	unless (s) return;
@@ -4821,10 +4820,8 @@ sccs_free(sccs *s)
 	if (s->rrevs) freenames(s->rrevs, 1);
 	if (s->fastsum) free(s->fastsum);
 	if (s->remap) free(s->remap);
-	unblock = s->unblock;
 	bzero(s, sizeof(*s));
 	free(s);
-	if (unblock) sig_default();
 }
 
 /*
@@ -14090,7 +14087,7 @@ mapRev(sccs *s, char *r1, char *r2,
 		rrev = "edited";
 	} else if (r1) {
 		lrev = r1;
-		rrev = 0;
+		rrev = WRITABLE(s) ? "?" : 0;
 	} else {
 		unless (HAS_GFILE(s)) return (-1);
 		lrev = 0;

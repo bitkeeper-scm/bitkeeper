@@ -717,7 +717,6 @@ struct sccs {
 	u32	prs_join:1;	/* for joining together items in dspecs */
 	u32	prs_all:1;	/* including tag deltas in prs output */
 	u32	prs_indentC:1;	/* extra space for components in :INDENT: ? */
-	u32	unblock:1;	/* sccs_free: only if set */
 	u32	hasgone:1;	/* this graph has D_GONE deltas */
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
 	u32	cachemiss:1;	/* BAM file not found locally */

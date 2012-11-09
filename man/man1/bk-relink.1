@@ -55,8 +55,8 @@ of a repository, rather than 100% hard-linked repositories.
 It is possible to break all the links by recomputing the per file
 checksums:
 .DS
-bk -r check -ac	
-bk -r admin -z
+bk repocheck
+bk -A admin -z
 .DE
 .SH NOTE
 This command works only on filesystems which support hard links,
