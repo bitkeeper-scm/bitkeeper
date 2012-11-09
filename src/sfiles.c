@@ -868,13 +868,38 @@ load_ignore(project *p)
 private void
 ignore_file(char *file)
 {
-	char	*pat;
+	char	*dir, *pat, *sfile;
 	int	len, isbase, isprune;
 	FILE	*ignoref;
 	char	buf[MAXLINE];
 
-	unless (exists(file)) get(file, SILENT, "-");
-	ignoref = fopen(file, "r");
+	/* Try and get it if the directory is writable */
+	unless (exists(file)) {
+		dir = dirname_alloc(file);
+		unless (exists(dir)) {
+			free(dir);
+			return;
+		}
+		if (writable(dir)) get(file, SILENT, "-");
+		free(dir);
+	}
+	if (exists(file)) {
+		ignoref = fopen(file, "r");
+	} else {
+		sfile = name2sccs(file);
+		unless (exists(sfile)) {
+			free(sfile);
+			return;
+		}
+		free(sfile);
+
+		/*
+		 * Note that for "sccs sfiles" instead "bk sfiles" this didn't
+		 * work.  Don't know why and don't really care.
+		 */
+		sprintf(buf, "bk cat '%s'", file);
+		ignoref = popen(buf, "r");
+	}
 	unless (ignoref) return;
 	while (fnext(buf, ignoref)) {
 		chomp(buf);
@@ -906,7 +931,11 @@ ignore_file(char *file)
 			ignore = addLine(ignore, pat);
 		}
 	}
-	fclose(ignoref);
+	if (exists(file)) {
+		fclose(ignoref);
+	} else {
+		pclose(ignoref);
+	}
 }
 
 /*

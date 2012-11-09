@@ -423,6 +423,23 @@ cmp -s GOT WANT
 if [ $? -ne 0 ]; then echo failed; diff GOT WANT; exit 1; fi
 echo OK
 
+echo $N Test that read-only BitKeeper/etc ignores correctly .........$NL
+bk delta -ywhatever $Q BitKeeper/etc/ignore
+bk clean BitKeeper/etc
+if [ $PLATFORM != "WIN32" ]
+then
+chmod 550 BitKeeper/etc
+bk -r clean
+bk sfiles -jx | sort > GOT
+cmpfiles GOT WANT
+chmod 775 BitKeeper/etc
+echo OK
+else
+echo skipped
+fi
+bk co $Q BitKeeper/etc
+bk edit $Q BitKeeper/etc/ignore
+
 echo $N Test disabling ignore lists with -au ........................$NL
 sort <<EOF > WANT
 BitKeeper/etc/SCCS/s.attr
@@ -556,16 +573,18 @@ bk _mv s.bad SCCS/s.bad
 bk admin -z  SCCS/s.bad
 bk _rm -f SCCS/s.impostor SCCS/d.impostor
 bk sort -k1 > "$HERE/WANT" <<EOF
-j------ SCCS/OLD-s.foo
 j------ SCCS/JUNK
+j------ SCCS/OLD-s.foo
 j------ SCCS/c.gone
 j------ SCCS/c.gone@1.1
 j------ SCCS/c.gone@1.2
-x------ GOT
-su--G-- BitKeeper/etc/SCCS/s.gone
-slc-G-- BitKeeper/etc/SCCS/s.ignore
+sl-pG-- BitKeeper/etc/SCCS/s.ignore
 su---n- SCCS/s.bad
+su--G-- BitKeeper/etc/SCCS/s.attr
+su--G-- BitKeeper/etc/SCCS/s.collapsed
 su--G-- BitKeeper/etc/SCCS/s.config
+su--G-- BitKeeper/etc/SCCS/s.gone
+x------ GOT
 EOF
 bk sfiles -cGjlnvxyp | bk sort -k1 > "$HERE/GOT" || { echo failed 1; exit 1; }
 cmp -s "$HERE/WANT" "$HERE/GOT" || {
@@ -585,8 +604,10 @@ j------ SCCS/c.gone@1.1
 j------ SCCS/c.gone@1.2
 x------ GOT
 su--G-- BitKeeper/etc/SCCS/s.gone
-slc-G-- BitKeeper/etc/SCCS/s.ignore
+sl-pG-- BitKeeper/etc/SCCS/s.ignore
 su--G-- BitKeeper/etc/SCCS/s.config
+su--G-- BitKeeper/etc/SCCS/s.attr
+su--G-- BitKeeper/etc/SCCS/s.collapsed
 su---n- SCCS/s.bad
 D------ BitKeeper
 D------ BitKeeper/deleted
