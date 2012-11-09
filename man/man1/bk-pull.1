@@ -30,8 +30,8 @@ will refuse bring in changes to files which are modified in the
 local repository.
 Should this occur, one way around it is to do
 .DS
-bk -cr diffs -up > DIFFS
-bk -r unedit
+bk -Ac diffs -up > DIFFS
+bk -A unedit
 bk pull
 bk patch -p1 -g1 < DIFFS
 .DE

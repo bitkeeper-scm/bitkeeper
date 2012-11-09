@@ -215,27 +215,27 @@ To see if
 .ARG pattern
 occurs anywhere in any version of any file of your tree:
 .DS
-$ bk -r grep -R pattern
+$ bk -A grep -R pattern
 .DE
 To see if it occurs anywhere
-in the most recent version of of any file of your tree:
+in the most recent version of of any user file of your tree:
 .DS
-$ bk -r grep -r+ pattern
+$ bk -U grep -r+ pattern
 .DE
 To see if it occurs anywhere in any of your checked out files (this may
 be substantially faster than searching all files):
 .DS
-$ bk -Gr grep pattern
+$ bk -UG grep pattern
 .DE
 To see if it occurs anywhere in any of your files, including checked out
 and modified files:
 .DS
-$ bk -r grep pattern
+$ bk -A grep pattern
 .DE
 To see if it was added by the most recent delta
 made in of any file of your tree:
 .DS
-$ bk -r grep -R+ pattern
+$ bk -A grep -R+ pattern
 .DE
 .SH BUGS
 The ways of specifying which versions to search are non-obvious.  You
