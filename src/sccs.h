@@ -476,6 +476,8 @@ typedef struct delta {
 	u32	localcomment:1;		/* comments are stored locally */
 	char	type;			/* Delta or removed delta */
 } delta;
+
+#define	FLAGS(s, d)	((d)->flags)
 #define	COMMENTS(d)	((d)->cmnts != 0)
 #define	TAG(d)		((d)->type != 'D')
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
@@ -488,6 +490,7 @@ typedef struct delta {
 #define	MERGE(s, d)	sfind((s), (d)->merge)
 #define	KID(d)		((d)->kid)
 #define	SIBLINGS(d)	((d)->siblings)
+#define	REV(s, d)	((d)->rev)
 
 /*
  * Macros to get at an optional hidden original path.

@@ -68,6 +68,7 @@ private	int	repair(hash *db);
 private	int	pathConflictError(
 		    MDBM *goneDB, MDBM *idDB, tipdata *td1, tipdata *td2);
 private	int	tipdata_sort(const void *a, const void *b);
+private	void	undoDoMarks(void);
 
 private	int	verbose;
 private	int	details;	/* if set, show more information */
@@ -84,7 +85,7 @@ private int	check_monotonic;
 private	sccs	*cset;		/* the initialized cset file */
 private int	flags = SILENT|INIT_NOGCHK|INIT_NOCKSUM|INIT_CHK_STIME;
 private	int	undoMarks;	/* remove poly cset marks left by undo */
-private	int	doMarks;	/* make commit marks as part of check? */
+private	char	**doMarks;	/* make commit marks as part of check? */
 private	int	polyErr;
 private	int	stripdel;	/* strip any ahead deltas */
 private	MDBM	*goneDB;
@@ -153,7 +154,7 @@ check_main(int ac, char **av)
 		    case 'f': fix++; break;			/* doc 2.0 */
 		    case 'g': goneKey++; break;			/* doc 2.0 */
 		    case 'p': polyErr++; break;		/* doc 2.0 */
-		    case 'M': doMarks++; break;
+		    case 'M': doMarks = allocLines(4); break;
 		    case 'N': nfiles = atoi(optarg); break;
 		    case 'R': resync++; break;			/* doc 2.0 */
 		    case 's': stripdel++; break;
@@ -527,6 +528,11 @@ check_main(int ac, char **av)
 		bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 	}
 out:
+	if (doMarks) {
+		if (errors) undoDoMarks();
+		freeLines(doMarks, free);
+		doMarks = 0;
+	}
 	if (!errors && bp_getFiles && !getenv("_BK_CHECK_NO_BAM_FETCH") &&
 	    (checkout & (CO_BAM_EDIT|CO_BAM_GET))) {
 		if (tick) {
@@ -634,7 +640,7 @@ chk_dfile(sccs *s)
 				getMsg("missing_dfile", s->gfile, '=', stderr);
 				rc = 1;
 			}
-			touch(dfile, 0666);
+			updatePending(s);
 		}
 	}
 	*p = 's';
@@ -1878,6 +1884,8 @@ check(sccs *s, MDBM *idDB)
 		d->flags |= D_CSET;
 		writefile = 2;
 		if (d == sccs_top(s)) unlink(sccs_Xfile(s, 'd'));
+		doMarks = addLine(doMarks,
+		    aprintf("%s|%s", s->sfile, REV(s, d)));
 	}
 	goodkeys = 0;
 	for (d = s->table; d; d = NEXT(d)) {
@@ -2389,4 +2397,26 @@ needscheck_main(int ac, char **av)
 	}
 	if (verbose) printf("no check needed.\n");
 	return (1);
+}
+
+private void
+undoDoMarks(void)
+{
+	sccs	*s;
+	delta	*d;
+	int	i;
+	char	*sfile, *rev;
+
+	EACH(doMarks) {
+		sfile = doMarks[i];
+		rev = strchr(sfile, '|');
+		*rev++ = 0;
+
+		unless (s = sccs_init(sfile, INIT_MUSTEXIST)) continue;
+		d = sccs_findrev(s, rev);
+		FLAGS(s, d) &= ~D_CSET;
+		sccs_newchksum(s);
+		updatePending(s);
+		sccs_free(s);
+	}
 }
