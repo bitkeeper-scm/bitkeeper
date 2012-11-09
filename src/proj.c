@@ -46,6 +46,7 @@ struct project {
 	char	*tipkey;	/* key/md5key/rev of tip cset rev */
 	char	*tipmd5key;
 	char	*tiprev;
+	int	featuresOK;	/* check BitKeeper/log/features? */
 
 	/* checkout state */
 	u32	co;		/* cache of proj_checkout() return */
@@ -1606,4 +1607,15 @@ proj_tipmd5key(project *p)
 
 	unless (p->tipmd5key) proj_tipkey(p);
 	return (p->tipmd5key);
+}
+
+void
+proj_featureChk(project *p)
+{
+	unless (p || (p = curr_proj())) return;
+
+	unless (p->featuresOK) {
+		p->featuresOK = 1;
+		bk_featureRepoChk(p);
+	}
 }

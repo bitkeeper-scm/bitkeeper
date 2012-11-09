@@ -4266,6 +4266,7 @@ sccs_init(char *name, u32 flags)
 	} else {
 		s->proj = proj_init(".");
 	}
+	proj_featureChk(s->proj);
 
 	/*
 	 * This weirdness is for dspecs that need the component prefix.
@@ -4377,7 +4378,6 @@ sccs_init(char *name, u32 flags)
 	} else {
 		s->cksumok = 1;
 	}
-	bk_featureRepoChk(s->proj); /* check before we parse sfile */
 	mkgraph(s, flags);
 
 	/* test lease after we have s->table->pathname */

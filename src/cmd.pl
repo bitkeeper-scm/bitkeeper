@@ -214,6 +214,7 @@ _eula
 _exists
 export
 f2csets
+features
 _filtertest1
 _filtertest2
 _find

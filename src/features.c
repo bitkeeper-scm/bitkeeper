@@ -14,6 +14,48 @@ FEATURES
 #define	NFEATURES	((sizeof(flist)/sizeof(flist[0])) - 1)
 
 /*
+ * bk feature [feature]
+ * with no args, list all used by this repo;
+ * with --all, list all features known by this bk;
+ * with an arg act like echo if we have that feature, else exit 1.
+ */
+int
+features_main(int ac, char **av)
+{
+	int	i;
+	char	**here;
+
+	unless (av[1]) {
+		bk_nested2root(1);
+		here = file2Lines(0, "BitKeeper/log/features");
+		unless (here) return (1);
+		EACH(here) {
+			if (i > 1) printf(",");
+			printf("%s", here[i]);
+		}
+		printf("\n");
+		freeLines(here, free);
+		return (0);
+	}
+
+	if (streq(av[1], "--all")) {
+		for (i = 1; i <= NFEATURES; i++) {
+			if (i > 1) printf(",");
+			printf("%s", flist[i].name);
+		}
+		printf("\n");
+		return (0);
+	}
+
+	if (av[2]) usage();
+
+	for (i = 1; i <= NFEATURES; i++) {
+		if (streq(av[1], flist[i].name)) return (0);
+	}
+	return (1);
+}
+
+/*
  * Generate a comma separated list of "feature" strings to sent over the wire
  * to the remote bk.  The same list is use for bk->bkd connections and
  * the bkd->bk response.
@@ -200,10 +242,6 @@ bk_featureRepoChk(project *p)
 	int	i, j;
 	char	**missing = 0;
 	char	**local = 0;
-	static	int done = 0;
-
-	if (done) return;
-	done++;
 
 	local = file2Lines(local, proj_fullpath(p, "BitKeeper/log/features"));
 	EACH(local) {

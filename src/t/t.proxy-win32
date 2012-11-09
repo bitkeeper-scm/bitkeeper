@@ -19,7 +19,7 @@
 
 rev=bk-4.6
 repo=bk-5.0
-val=4bb5f2fdYZo6fbhTxP4FF6sFAfAKqQ
+val=4bb5f2fdo8gygVILi-QNt65reicE1g
 
 test "$PLATFORM" = "WIN32" || exit 0
 
