@@ -2126,6 +2126,12 @@ sccs_finishWrite(sccs *s)
 			int fd = open(xfile, O_RDONLY, 0);
 			if (fsync(fd)) perror(xfile);
 			close(fd);
+		} else {
+			/*
+			 * ext4 detects the rename dance and does a flush for us.
+			 * Fool it into not doing that.
+			 */
+			(void)unlink(s->sfile);
 		}
 		if (rc = rename(xfile, s->sfile)) {
 			fprintf(stderr,
