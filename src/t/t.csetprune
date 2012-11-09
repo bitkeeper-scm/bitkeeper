@@ -40,6 +40,10 @@ bk csetprune < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
 tip=`bk prs -h -r+ -d':I:\n' ChangeSet`
 if [ "$tip" != 1.2 ]; then echo Failed; exit 1; fi
+LCONFIG=`bk _lconfig -p`
+test "$LCONFIG" = "Number of config logs pending: 0" || {
+	fail not 0: "$LCONFIG"
+}
 echo OK
 
 echo $N Check that the rootlog was preserved ........................$NL
