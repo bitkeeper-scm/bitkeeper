@@ -4602,7 +4602,6 @@ void
 sccs_free(sccs *s)
 {
 	symbol	*sym, *t;
-	int	unblock;
 	char	*relpath = 0, *fullpath;
 
 	unless (s) return;
@@ -4690,10 +4689,8 @@ sccs_free(sccs *s)
 	if (s->proj) proj_free(s->proj);
 	if (s->rrevs) freenames(s->rrevs, 1);
 	if (s->fastsum) free(s->fastsum);
-	unblock = s->unblock;
 	bzero(s, sizeof(*s));
 	free(s);
-	if (unblock) sig_default();
 }
 
 /*

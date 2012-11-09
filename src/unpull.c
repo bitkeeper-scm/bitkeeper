@@ -133,6 +133,7 @@ err:			sccs_free(s);
 	}
 	sccs_free(s);
 
+	sig_ignore();
 	av[i=0] = "bk";
 	av[++i] = "undo";
 	av[++i] = "--force-unpopulate";

@@ -300,7 +300,6 @@ prod:
 	 */
 	proj = proj_init(".");
 	if (clean_file(sfiles)) goto err;
-	sig_ignore();
 
 	/*
 	 * Move file to RESYNC and save a copy in a sfio backup file
@@ -346,7 +345,6 @@ prod:
 	}
 	rc = run_check(opts->verbose, checkfiles, p, 0);
 	freeLines(checkfiles, free);
-	sig_default();
 
 	unlink(undo_list);
 	freeLines(comp_list, 0);
