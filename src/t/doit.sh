@@ -304,20 +304,16 @@ setup_env()
 	cd ..
 	DOTBIN="`bk pwd -s`/.bin"
 	cd t
-	cat > .perl$$ <<EOF
-	sysread(STDIN, \$buf, \$ARGV[0]);
-	syswrite(STDOUT, \$buf, \$ARGV[0]);
-EOF
-	cat > .mkbin$$ <<EOF
 	test -d "$DOTBIN" || {
 		mkdir "$DOTBIN"
-		perl .perl$$ 102400 < $BIN1 > "$DOTBIN/binary1"
-		perl .perl$$ 204800 < $BIN2 > "$DOTBIN/binary2"
-		perl .perl$$ 307200 < $BIN3 > "$DOTBIN/binary3"
-	}
+		cat > "$DOTBIN/mkbin$$" <<EOF
+perl -e '\$s=102400;sysread(STDIN, \$buf, \$s);syswrite(STDOUT, \$buf, \$s)' < $BIN1 > "$DOTBIN/binary1"
+perl -e '\$s=204800;sysread(STDIN, \$buf, \$s);syswrite(STDOUT, \$buf, \$s)' < $BIN2 > "$DOTBIN/binary2"
+perl -e '\$s=307200;sysread(STDIN, \$buf, \$s);syswrite(STDOUT, \$buf, \$s)' < $BIN3 > "$DOTBIN/binary3"
 EOF
-	bk -Lw sh .mkbin$$
-	rm -f .mkbin$$ .perl$$
+		bk -Lw sh "$DOTBIN/mkbin$$"
+		rm -f "$DOTBIN/mkbin$$"
+	}
 
 	BIN1="$DOTBIN/binary1"
 	BIN2="$DOTBIN/binary2"

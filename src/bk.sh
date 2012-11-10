@@ -37,6 +37,21 @@ __cd2product() {
 	cd "$root"
 }
 
+__feature_test() {
+	file=BitKeeper/etc/SCCS/s.config
+
+	# find root of target dir (and return if not in a repo)
+	dir=.
+	test -n "$1" && dir=`dirname "$1"`
+	dir=`bk root "$dir" 2>/dev/null` || return
+	
+	# Skip if no config, lm thought this happened but it doesn't
+	bk --cd="$dir" _test -f $file 2>/dev/null || return
+
+	# access s.config (and trigger featureChk failure)
+	bk --cd="$dir" prs -hd' ' -r+ $file >/dev/null || exit 1
+}
+
 # faster way to get repository status
 _repocheck() {
 	V=-v
@@ -67,6 +82,7 @@ _repocheck() {
 			exit 1
 		}
 		cd "$1" || exit 1
+		_feature_test
 	}
 	# check output goes to stderr, so put this to stderr too
 	test "X$V" != X && echo === Checking `bk $P pwd` === 1>&2
@@ -620,6 +636,7 @@ _extras() {		# /* doc 2.0 */
 	}
 	if [ "X$1" != X -a -d "$1" ]
 	then	cd "$1"
+		_feature_test
 		shift
 		bk sfiles -x $A "$@"
 	else	bk -R sfiles -x $A "$@"
@@ -627,11 +644,13 @@ _extras() {		# /* doc 2.0 */
 }
 
 _reedit() {
+	__feature_test "$1"
 	bk unedit -q "$@" 2> /dev/null
 	exec bk editor "$@"
 }
 
 _editor() {
+	__feature_test "$1"
 	if [ "X$EDITOR" = X ]
 	then	echo "You need to set your EDITOR env variable" 1>&2
 		exit 1
@@ -642,39 +661,39 @@ _editor() {
 }
 
 _jove() {
-	bk get -qe "$@" 2> /dev/null
-	PATH="$BK_OLDPATH"
-	exec jove "$@"
+	EDITOR=jove
+	export EDITOR
+	_editor "$@"
 }
 
 _joe() {
-	bk get -qe "$@" 2> /dev/null
-	PATH="$BK_OLDPATH"
-	exec joe "$@"
+	EDITOR=joe
+	export EDITOR
+	_editor "$@"
 }
 
 _jed() {
-	bk get -qe "$@" 2> /dev/null
-	PATH="$BK_OLDPATH"
-	exec jed "$@"
+	EDITOR=jed
+	export EDITOR
+	_editor "$@"
 }
 
 _vim() {
-	bk get -qe "$@" 2> /dev/null
-	PATH="$BK_OLDPATH":`bk bin`/gnu/bin
-	exec vim "$@"
+	EDITOR=vim
+	export EDITOR
+	_editor "$@"
 }
 
 _gvim() {
-	bk get -qe "$@" 2> /dev/null
-	PATH="$BK_OLDPATH"
-	exec gvim "$@"
+	EDITOR=gvim
+	export EDITOR
+	_editor "$@"
 }
 
 _vi() {
-	bk get -qe "$@" 2> /dev/null
-	PATH="$BK_OLDPATH":`bk bin`/gnu/bin
-	exec vi "$@"
+	EDITOR=vi
+	export EDITOR
+	_editor "$@"
 }
 
 # For sending repositories back to BitMover, this removes all comments
@@ -694,6 +713,7 @@ _obscure() {
 }
 
 __bkfiles() {
+	__feature_test "$1"
 	bk sfiles "$1" |
 	    bk prs -hr1.0 -nd:DPN: - | grep BitKeeper/ > ${TMP}/bk$$
 	test -s ${TMP}/bk$$ && {
@@ -1799,6 +1819,7 @@ _changed_files() {
 # ------------- main ----------------------
 __platformInit
 __init
+__feature_test
 
 # On Windows convert the original Windows PATH variable to
 # something that will map the same in the shell.

@@ -271,7 +271,6 @@ cset_main(int ac, char **av)
 		    /* include tags in a patch */
 		    if (copts.makepatch) range_markMeta(cset);
 		}
-		sig_default();
 		csetlist(&copts, cset);
 		rc = 0;
 err:

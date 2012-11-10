@@ -309,6 +309,7 @@ do_commit(char **av,
 		goto done;
 	}
 	(void)sccs_defRootlog(cset);	/* if no rootlog, make one */
+	commitSnapshot();
 	if (!opts.resync && attr_update()) {
 		bktmp(pendingFiles2, "pending2");
 		f = fopen(pendingFiles, "r");
@@ -385,7 +386,6 @@ do_commit(char **av,
 			}
 		}
 	}
-	commitSnapshot();
 	rc = csetCreate(cset, dflags, pendingFiles, syms);
 
 	// run check
@@ -726,6 +726,7 @@ commitSnapshot(void)
 			fileLink(file, save);
 		}
 	}
+	if (exists(SATTR)) fileLink(SATTR, CSET_BACKUP "attr.s");
 }
 
 /*
@@ -750,6 +751,14 @@ commitRestore(int rc)
 			} else {
 				unlink(save);
 			}
+		}
+	}
+	strcpy(save, CSET_BACKUP "attr.s");
+	if (exists(save)) {
+		if (rc) {
+			fileMove(save, SATTR);
+		} else {
+			unlink(save);
 		}
 	}
 }

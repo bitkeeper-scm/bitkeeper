@@ -345,7 +345,7 @@ repository_rdlock(project *p)
 {
 	int	i, ret;
 
-	bk_featureRepoChk(0);
+	proj_featureChk(p);
 	if (global_wrlocked()) return (LOCKERR_LOST_RACE);
 	for (i = 0; i < 10; ++i) {
 		unless (ret = rdlock(p)) return (0);
@@ -416,7 +416,7 @@ repository_wrlock(project *p)
 {
 	int	i, ret;
 
-	bk_featureRepoChk(0);
+	proj_featureChk(p);
 	if (global_locked()) return (LOCKERR_LOST_RACE);
 	for (i = 0; i < 10; ++i) {
 		unless (ret = wrlock(p)) {
