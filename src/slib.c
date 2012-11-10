@@ -7692,6 +7692,7 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 	int	ret = -1;
 	FILE	*out = 0;
 	sum_t	sum = 0;
+	ser_t	oldest = TABLE(s);
 
 	unless (s->cksumok) {
 		fprintf(stderr, "getdiffs: bad chksum on %s\n", s->sfile);
@@ -7707,13 +7708,14 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 	openOutput(s, E_ASCII, printOut, &out);
 	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
 
-	unless (CSET(s)) {
-		/*
-		 * transitive close by marking all 1s in the
-		 * history of non patch nodes
-		 */
-		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (pmap[d]) continue;
+	/*
+	 * transitive close by marking all 1s in the
+	 * history of non patch nodes
+	 */
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (pmap[d]) continue;
+		oldest = d;
+		unless (CSET(s)) {
 			if (PARENT(s, d) && !pmap[PARENT(s, d)]) {
 				pmap[PARENT(s, d)] = D_INVALID;
 			}
@@ -7731,6 +7733,7 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 			type = buf[1];
 			n = &buf[3];
 			d = atoi_p(&n);
+			if (CSET(s) && (d < oldest)) break;
 			if (pmap[d] && (pmap[d] != D_INVALID)) {
 				patchcmd = type;
 				if (*n == 'N') {
@@ -7760,7 +7763,8 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 		if (print) fprintf(out, ">%.*s\n", (int)(sump-buf), buf);
 	}
 	fprintf(out, "K%u %u\n", sum, lineno);
-	ret = sccs_rdweaveDone(s);
+	sccs_rdweaveDone(s);
+	ret = 0;
 	if (flushFILE(out)) {
 		s->io_error = 1;
 		ret = -1; /* i/o error: no disk space ? */
