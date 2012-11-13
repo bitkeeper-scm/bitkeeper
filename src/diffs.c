@@ -53,17 +53,17 @@ private int	nulldiff(char *name, df_opt *dop);
 int
 diffs_main(int ac, char **av)
 {
-	int	rc, c;
+	int	rc, c, i;
 	int	verbose = 0, empty = 0, errors = 0, force = 0;
 	u32	flags = SILENT;
 	df_opt	dop = {0};
-	char	*name;
+	char	*name, *p;
 	char	*Rev = 0, *boundaries = 0;
 	RANGE	rargs = {0};
 
 	dop.out_header = 1;
 	while ((c = getopt(ac, av,
-		    "@|a;A;bBcC|d;efhHl|nNpr;R|suvw", 0)) != -1) {
+		    "@|a;A;bBcC|d;efhHl|nNpr;R|su|vw", 0)) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -86,7 +86,16 @@ diffs_main(int ac, char **av)
 		    case 'p': dop.out_show_c_func = 1; break;	/* doc 2.0 */
 		    case 'R': unless (Rev = optarg) Rev = "-"; break;
 		    case 's': dop.sdiff = 1; break;		/* doc 2.0 */
-		    case 'u': dop.out_unified = 1; break;	/* doc 2.0 */
+		    case 'u':
+			dop.out_unified = 1;
+			if (optarg && isdigit(optarg[0])) {
+				i = strtoul(optarg, &p, 10);
+				dop.context = i ? i : -1; /* -1 means zero */
+				if (*p) getoptConsumed(p - optarg + 1);
+			} else if (optarg) {
+				getoptConsumed(1);
+			}
+			break;
 		    case 'v': verbose = 1; break;		/* doc 2.0 */
 		    case 'w': dop.ignore_all_ws = 1; break;	/* doc 2.0 */
 		    case 'd':
