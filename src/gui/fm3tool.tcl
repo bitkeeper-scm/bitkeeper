@@ -2169,16 +2169,17 @@ proc prs {revs text} \
 	set old ""
 	set new ""
 	foreach rev $revs {
-		if {[regexp {^[ +\-]+([0-9]+\.[0-9.]+)} $rev junk short]} {
-			set c [string index $rev 1]
-			if {$c == "+"} {
-				set new "$new$short,"
-			}
-			if {$c == "-"} {
-				set old "$old$short,"
-			}
+		if {![regexp {^ ([+-])([0-9]+\.[0-9.]+)} $rev -> sign rev]} {
+			continue
+		}
+		if {$sign eq "-"} {
+			lappend old $rev
+		} else {
+			lappend new $rev
 		}
 	}
+	set old [join [lsort -dict -unique $old] ,]
+	set new [join [lsort -dict -unique $new] ,]
 	doprs $text $old old
 	doprs $text $new new
 }
@@ -2187,21 +2188,17 @@ proc doprs {text revs tag} \
 {
 	global	DSPEC filename
 
-	set len [string length $revs]
-	if {$len > 0} {
-		incr len -2
-		set prs [string range $revs 0 $len]
-		set F [open [list |bk prs -b -hr$prs {$DSPEC} $filename] "r"]
-		if {$tag == "old"} {
-			set lead "- "
-		} else {
-			set lead "+ "
-		}
-		while {[gets $F buf] >= 0} {
-			$text insert end "$lead$buf\n" $tag
-		}
-		catch { close $F }
+	if {$revs eq ""} { return }
+	set F [open [list |bk prs -b -hr$revs {$DSPEC} $filename] "r"]
+	if {$tag == "old"} {
+		set lead "- "
+	} else {
+		set lead "+ "
 	}
+	while {[gets $F buf] >= 0} {
+		$text insert end "$lead$buf\n" $tag
+	}
+	catch { close $F }
 }
 
 proc edit_save {} \

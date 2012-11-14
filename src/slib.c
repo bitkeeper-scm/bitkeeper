@@ -2126,6 +2126,12 @@ sccs_finishWrite(sccs *s)
 			int fd = open(xfile, O_RDONLY, 0);
 			if (fsync(fd)) perror(xfile);
 			close(fd);
+		} else {
+			/*
+			 * ext4 detects the rename dance and does a flush for us.
+			 * Fool it into not doing that.
+			 */
+			(void)unlink(s->sfile);
 		}
 		if (rc = rename(xfile, s->sfile)) {
 			fprintf(stderr,
@@ -4398,6 +4404,7 @@ sccs_init(char *name, u32 flags)
 	} else {
 		s->proj = proj_init(".");
 	}
+	proj_featureChk(s->proj);
 
 	if (isCsetFile(s->sfile)) {
 		s->xflags |= X_HASH;
@@ -4493,7 +4500,6 @@ sccs_init(char *name, u32 flags)
 	} else {
 		s->cksumok = 1;
 	}
-	bk_featureRepoChk(s->proj); /* check before we parse sfile */
 	mkgraph(s, flags);
 
 	/* test lease after we have PATHNAME(s, TABLE(s)) */
@@ -4725,7 +4731,6 @@ chk_gmode(sccs *s)
 void
 sccs_free(sccs *s)
 {
- 	int	unblock;
 	char	*relpath = 0, *fullpath;
 
 	unless (s) return;
@@ -4821,10 +4826,8 @@ sccs_free(sccs *s)
 	if (s->rrevs) freenames(s->rrevs, 1);
 	if (s->fastsum) free(s->fastsum);
 	if (s->remap) free(s->remap);
-	unblock = s->unblock;
 	bzero(s, sizeof(*s));
 	free(s);
-	if (unblock) sig_default();
 }
 
 /*
@@ -7689,6 +7692,7 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 	int	ret = -1;
 	FILE	*out = 0;
 	sum_t	sum = 0;
+	ser_t	oldest = TABLE(s);
 
 	unless (s->cksumok) {
 		fprintf(stderr, "getdiffs: bad chksum on %s\n", s->sfile);
@@ -7704,13 +7708,14 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 	openOutput(s, E_ASCII, printOut, &out);
 	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
 
-	unless (CSET(s)) {
-		/*
-		 * transitive close by marking all 1s in the
-		 * history of non patch nodes
-		 */
-		for (d = TABLE(s); d >= TREE(s); d--) {
-			unless (pmap[d]) continue;
+	/*
+	 * transitive close by marking all 1s in the
+	 * history of non patch nodes
+	 */
+	for (d = TABLE(s); d >= TREE(s); d--) {
+		unless (pmap[d]) continue;
+		oldest = d;
+		unless (CSET(s)) {
 			if (PARENT(s, d) && !pmap[PARENT(s, d)]) {
 				pmap[PARENT(s, d)] = D_INVALID;
 			}
@@ -7728,6 +7733,7 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 			type = buf[1];
 			n = &buf[3];
 			d = atoi_p(&n);
+			if (CSET(s) && (d < oldest)) break;
 			if (pmap[d] && (pmap[d] != D_INVALID)) {
 				patchcmd = type;
 				if (*n == 'N') {
@@ -7757,7 +7763,8 @@ sccs_patchDiffs(sccs *s, ser_t *pmap, char *printOut)
 		if (print) fprintf(out, ">%.*s\n", (int)(sump-buf), buf);
 	}
 	fprintf(out, "K%u %u\n", sum, lineno);
-	ret = sccs_rdweaveDone(s);
+	sccs_rdweaveDone(s);
+	ret = 0;
 	if (flushFILE(out)) {
 		s->io_error = 1;
 		ret = -1; /* i/o error: no disk space ? */
@@ -14106,7 +14113,7 @@ mapRev(sccs *s, char *r1, char *r2,
 		rrev = "edited";
 	} else if (r1) {
 		lrev = r1;
-		rrev = 0;
+		rrev = WRITABLE(s) ? "?" : 0;
 	} else {
 		unless (HAS_GFILE(s)) return (-1);
 		lrev = 0;

@@ -25,7 +25,7 @@ $ bk diffs
 .DE
 To see the changes for all files in your tree as unified diffs:
 .DS
-$ bk \-r diffs -up
+$ bk \-U diffs -up
 .DE
 When generating unified diffs for more than one file, then a "diffstat-like"
 header is created by default.
@@ -177,13 +177,17 @@ bk changes -i\*<file\*> -vvr\*<alpha1\*>
 .DE
 To create a patch which captures all content changes as well as all new files:
 .DS
-bk -xcr diffs -Nu
+bk -Axc diffs -Nu
 .DE
 You can use bk diffs to diff your entire tree, including edits against an
 existing changeset revision or tag in your repository.  
 .DS
-$ bk -r diffs -u
-$ bk -r diffs -u -r@\*<rev\*>
+$ bk -A diffs -u
+$ bk -A diffs -u -r@\*<rev\*>
+.DE
+To see the diffs in the local tree from the new baseline cset in the parent:
+.DS
+$ bk -U diffs -up -@
 .DE
 .SH BUGS
 This command does not currently handle displaying differences for binary files.

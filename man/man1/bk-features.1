@@ -1,0 +1,25 @@
+.so ../bk-macros
+.TH "bk features" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk features \- display features used or known
+.SH SYNOPSIS
+.B bk features
+.[B] \--all
+.[ARG] feature
+.SH DESCRIPTION
+This command either lists the optional features used by the current 
+repository,
+or, with 
+.BR \--all ,
+lists all optional features known by this version of \*[BK],
+or, with a single specified feature, uses exit status to indicate if the
+feature is known to this version of \*[BK].
+.SH EXIT STATUS
+When run with no arguments, returns 1 if not run in a repository.
+.br
+When run with a single feature, the exit status is 0 if the feature is
+known to this version of \*[BK] and 1 if the feature is not known.
+.br
+All other exits are 0.
+.SH CATEGORY
+.B Utility

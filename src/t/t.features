@@ -1,5 +1,7 @@
 echo $N Verify that clone fails with unknown feature ................$NL
 commercial project
+echo foo > foo
+bk delta -l -ywhatever $Q foo
 
 if [ X`bk config binfile` = Xyes ]
 then	DEFAULT=SAMv3,bSFILEv1
@@ -10,6 +12,11 @@ echo wizbang >> BitKeeper/log/features
 cd ..
 bk clone -q project copy 2>ERR && exit 1
 bk getmsg -= repo_feature wizbang > WANT
+cmpfiles ERR WANT
+echo OK
+
+echo $N Verify that a bk editor fails with unknown feature ..........$NL
+EDITOR=cat bk editor project/foo 2>ERR && fail -f ERR
 cmpfiles ERR WANT
 echo OK
 

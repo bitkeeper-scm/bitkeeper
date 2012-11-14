@@ -717,7 +717,6 @@ struct sccs {
 	u32	prs_join:1;	/* for joining together items in dspecs */
 	u32	prs_all:1;	/* including tag deltas in prs output */
 	u32	prs_indentC:1;	/* extra space for components in :INDENT: ? */
-	u32	unblock:1;	/* sccs_free: only if set */
 	u32	hasgone:1;	/* this graph has D_GONE deltas */
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
 	u32	cachemiss:1;	/* BAM file not found locally */
@@ -939,7 +938,9 @@ int	sccs_adminFlag(sccs *sc, u32 flags);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, ser_t d, FILE *init, FILE *diffs,
 		   char **syms);
-int	sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dop, FILE *);
+int	sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dop, FILE *)
+	__attribute__((nonnull (1, 4)))
+;
 int	sccs_encoding(sccs *s, off_t size, char *enc);
 int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);

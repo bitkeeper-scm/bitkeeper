@@ -70,6 +70,7 @@ char*		proj_cset2key(project *p, char *csetrev, char *rootkey);
 char*		proj_tipkey(project *p);
 char*		proj_tipmd5key(project *p);
 char*		proj_tiprev(project *p);
+void		proj_featureChk(project *p);
 
 #define		chdir	proj_chdir
 

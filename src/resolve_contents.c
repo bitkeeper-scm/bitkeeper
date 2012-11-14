@@ -316,6 +316,8 @@ Alternatively, you use 'f' to try the graphical filemerge.\n\n");
 private int
 commit(resolve *rs, int delta_now, int show_diffs)
 {
+	df_opt	dop = {.out_header = 1, .out_unified = 1};
+
 	if (rs->opts->debug) fprintf(stderr, "commit(%s)\n", rs->s->gfile);
 
 	unless (exists(rs->s->gfile) && writable(rs->s->gfile)) {
@@ -340,7 +342,7 @@ doit:	if (delta_now) {
 			do_delta(rs->opts, rs->s, SCCS_MERGE);
 		} else {
 			if (show_diffs) {
-				sccs_diffs(rs->s, 0, 0, 0, stdout);
+				sccs_diffs(rs->s, 0, 0, &dop, stdout);
 			}
 			do_delta(rs->opts, rs->s, 0);
 		}

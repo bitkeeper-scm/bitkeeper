@@ -13,6 +13,6 @@ read 252
 rename 13
 rmdir 3
 stat 14
-unlink 39
+unlink 43
 utime 4
 write 85
