@@ -1426,3 +1426,20 @@ EOF
 printf "(content conflict) dir1-proj/ff>> " > WANT
 cmpfiles WANT OUT
 echo OK
+
+echo $N Test CC option to resolve....................................$NL
+bk abort -qf
+bk pull $Q -R
+BK_NO_GUI_PROMPT= DISPLAY=:1 bk resolve $Q <<EOF 2>OUT
+s
+q
+EOF
+# force some diffs
+echo stuff >> RESYNC/dir1-proj/ff
+BK_NO_GUI_PROMPT= DISPLAY=:1 bk resolve $Q <<EOF >OUT 2>&1
+CC
+stuff
+q
+EOF
+grep -q "^+stuff" OUT || fail -f OUT diffs not shown
+echo OK

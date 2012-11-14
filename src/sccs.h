@@ -936,7 +936,9 @@ int	sccs_adminFlag(sccs *sc, u32 flags);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, ser_t d, FILE *init, FILE *diffs,
 		   char **syms);
-int	sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dop, FILE *);
+int	sccs_diffs(sccs *s, char *r1, char *r2, df_opt *dop, FILE *)
+	__attribute__((nonnull (1, 4)))
+;
 int	sccs_encoding(sccs *s, off_t size, char *enc);
 int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
