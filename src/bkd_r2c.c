@@ -154,13 +154,14 @@ csetBoundarySet(sccs *s)
 private char **
 r2c(char *file, RANGE *rarg)
 {
-	char	*name, *t, *v;
+	char	*name;
 	ser_t	d;
 	sccs	*s = 0, *cset = 0;
 	char	**ret = 0, **polykeys = 0;
 	ser_t	*serlist = 0;
 	hash	*keys = 0;
 	int	i;
+	char	*rkey, *dkey;
 	char	buf[MAXKEY*2];
 
 	name = name2sccs(file);
@@ -221,15 +222,8 @@ r2c(char *file, RANGE *rarg)
 	/* Stick the non-poly prod csets in the answer */
 	d = 0;
 	sccs_rdweaveInit(cset);
-	while (t = sccs_nextdata(cset)) {
-		unless (isData(t)) {
-			if (t[1] == 'I') d = atoi(&t[3]);
-			continue;
-		}
-		v = separator(t);
-		assert(v);
-		v++; // skip space
-		unless (hash_deleteStr(keys, v)) {
+	while (d = cset_rdweavePair(cset, &rkey, &dkey)) {
+		unless (hash_deleteStr(keys, dkey)) {
 			serlist = addSerial(serlist, d);
 			unless (hash_count(keys)) break;
 		}

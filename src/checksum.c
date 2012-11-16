@@ -402,7 +402,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 {
 	MDBM	*root2map = mdbm_mem();
 	ser_t	ins_ser = 0;
-	char	*p, *q;
+	char	*rkey, *dkey;
 	u8	*e;
 	u16	sum;
 	int	cnt, i, added, orderIndex;
@@ -431,16 +431,12 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 
 	/* build up weave data structure */
 	sccs_rdweaveInit(s);
-	while (p = sccs_nextdata(s)) {
-		if (p[0] == '\001') {
-			if (p[1] == 'I') ins_ser = atoi(p + 3);
-		} else {
-			q = separator(p);
-			sum = 0;
-			for (e = p; *e; e++) sum += *e;
-			sum += '\n';
-			add_ins(root2map, p, q-p, ins_ser, sum);
-		}
+	while (ins_ser = cset_rdweavePair(s, &rkey, &dkey)) {
+		sum = 0;
+		for (e = rkey; *e; e++) sum += *e;
+		for (e = dkey; *e; e++) sum += *e;
+		sum += ' ' + '\n';
+		add_ins(root2map, rkey, strlen(rkey), ins_ser, sum);
 	}
 	if (sccs_rdweaveDone(s)) {
 		fprintf(stderr, "checksum: failed to read cset weave\n");
