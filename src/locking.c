@@ -363,7 +363,7 @@ wrlock(project *p)
 {
 	char	path[MAXPATH];
 	char	lock[MAXPATH];
-	char	*root;
+	char	*root, *nl;
 
 	unless (root = proj_root(p)) return (LOCKERR_NOREPO);
 	TRACE("repository_wrlock(%s)", root);
@@ -382,16 +382,19 @@ wrlock(project *p)
 	}
 
 	sprintf(path, "%s/%s", root, ROOT2RESYNC);
-	if (exists(path) &&
+	nl = aprintf("%s/.bk_nl", path);
+	if (exists(path) && !exists(nl) &&
 	    !(getenv("_BK_IGNORE_RESYNC_LOCK") ||
 		nested_mine(p, getenv("_BK_NESTED_LOCK"), 1))) {
 		sccs_unlockfile(lock);
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		(void)rmdir(path);
+		FREE(nl);
 		TRACE("WRLOCK by %d failed, RESYNC won", getpid());
 		return (LOCKERR_LOST_RACE);
 	}
 
+	FREE(nl);
 	/*
 	 * Make sure no readers sneaked in
 	 */
