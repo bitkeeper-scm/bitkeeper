@@ -235,6 +235,9 @@ takepatch_main(int ac, char **av)
 		/* XXX: Save?  Purge? */
 		cleanup(CLEAN_RESYNC);
 	}
+#ifdef	SIGXFSZ
+	if (getenv("_BK_SUICIDE")) kill(getpid(), SIGXFSZ);
+#endif
 	if (echo || opts->pbars) {
 		files = 0;
 		if (f = popen("bk sfiles RESYNC", "r")) {
@@ -856,7 +859,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	MMAP	*iF;
 	MMAP	*dF;
 	delta	*d = 0;
-	delta	*top = 0;
+	delta	*top;
 	delta	*remote_tagtip = 0;
 	int	n = 0;
 	int	c;
@@ -885,7 +888,26 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			return (-1);
 		}
 	}
-	if (s) {
+	if (s && getenv("_BK_COPY_SFILE")) {
+		if (fileCopy(s->sfile, p->resyncFile)) {
+			fprintf(stderr, "Copy of %s to %s failed",
+			    s->sfile, p->resyncFile);
+			perror("takepatch-copy");
+			goto err;
+		}
+		sccs_free(s);
+		unless (s = sccs_init(p->resyncFile,
+		    INIT_MUSTEXIST|SILENT)) {
+			SHOUT();
+			fprintf(stderr,
+			    "takepatch: can't init %s\n", p->resyncFile);
+			goto err;
+		}
+		if (CSET(s)) {
+			cmdlog_addnote(
+			    "_BK_COPY_SFILE", getenv("_BK_COPY_SFILE"));
+		}
+	} else if (s) {
 		/* arrange for this sccs* to write into RESYNC */
 		free(s->sfile);
 		s->sfile = strdup(p->resyncFile);
@@ -897,8 +919,6 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		s->zfile = strdup(sccs_Xfile(s, 'z'));
 		s->state &= ~(S_PFILE|S_ZFILE|S_GFILE);
 		/* NOTE: we leave S_SFILE set, but no sfile there */
-
-		top = sccs_top(s);
 	} else {
 		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
 			SHOUT();
@@ -909,6 +929,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		s->bitkeeper = 1;
 		if (perfile) sccscopy(s, perfile);
 	}
+	top = sccs_top(s);
 	assert(s);
 	cweave_init(s, psize);
 	*nfound = 0;
