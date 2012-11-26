@@ -802,3 +802,15 @@ Merge node (local):
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N Test multi tip commit .......................................$NL
+cd "$HERE/project.noremap"
+bk repocheck -q || fail
+bk _get -e -r1.6 $Q ChangeSet
+bk delta -f $Q -ywhatever ChangeSet
+bk edit $Q foobar
+echo foo >> foobar
+bk delta $Q -ywhatever foobar
+bk commit $Q -ywhatever > ERR 2>&1 && fail
+grep -q "unmerged leaf" ERR || fail
+echo OK
