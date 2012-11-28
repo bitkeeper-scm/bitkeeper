@@ -186,7 +186,7 @@ cd project
 touch LS
 ls | grep -v SCCS > LS
 bk new $Q LS
-BK_USER=jane bk commit $Q -yproject
+BK_USER=jane bk commit $Q -y'project with spaces'
 cd "$HERE/clone"
 echo hi mom > mommy
 bk new $Q mommy
@@ -195,21 +195,23 @@ bk changes -L -qnd':I: :P: :C:' > GOT
 echo 1.5 joe clone > WANT
 checkfiles WANT GOT
 bk changes -R -qnd':I: :P: :C:' > GOT
-echo 1.5 jane project > WANT
+echo 1.5 jane project with spaces > WANT
 checkfiles WANT GOT
 # cut out the newline
 bk changes -L -qd':I: :P: :C:' > GOT
 echon 1.5 joe clone > WANT
 checkfiles WANT GOT
 bk changes -R -qd':I: :P: :C:' > GOT
-echo 1.5 jane project > WANT
+echo 1.5 jane project with spaces > WANT
+checkfiles WANT GOT
+bk changes -R '-/project with spaces/' -qd':I: :P: :C:' > GOT
 checkfiles WANT GOT
 echo OK
 
 echo $N Check changes -LR ...........................................$NL
 bk changes -LR -qnd':I: :P: :C:' > GOT || fail
 echo 1.5 joe clone > WANT
-echo 1.5 jane project >> WANT
+echo 1.5 jane project with spaces >> WANT
 checkfiles WANT GOT
 echo OK
 
@@ -227,6 +229,8 @@ echo $N Check remote search combined with dspec .....................$NL
 cd "$HERE/clone"
 bk changes -/Second/ -qnd':I: :P: :C:' ../project > GOT 2>/dev/null
 echo 1.3 second Second checkin > WANT
+checkfiles WANT GOT
+bk changes -'/Second checkin/' -qnd':I: :P: :C:' ../project > GOT 2>/dev/null
 checkfiles WANT GOT
 echo OK
 
@@ -635,7 +639,7 @@ ChangeSet@1.4.1.1, DATE, joe@bk_regression.bk
   mommy@1.1, bk@bk_regression.bk +1 -0
   mommy@1.0, bk@bk_regression.bk +0 -0
 ChangeSet@1.5, DATE, jane@bk_regression.bk
-  project
+  project with spaces
   LS@1.1, bk@bk_regression.bk +6 -0
   LS@1.0, bk@bk_regression.bk +0 -0
 ChangeSet@1.4, DATE, third@bk_regression.bk

@@ -1567,10 +1567,9 @@ _doit_remote(char **nav, char *url)
 		return (1);
 	}
 
-	/* Quote the dspec for the other side */
+	/* Quote args for the other side */
 	EACH(nav) {
-		unless (strneq("-d", nav[i], 2)) continue;
-		tmp = aprintf("'-d%s'", &nav[i][2]);
+		tmp = shellquote(nav[i]);
 		free(nav[i]);
 		nav[i] = tmp;
 	}
