@@ -38,6 +38,7 @@ converge_hash_files(void)
 		     { "BitKeeper/etc/collapsed", "-s" },
 		     { "BitKeeper/etc/gone", "-s" },
 		     { "BitKeeper/etc/ignore", "-s" },
+		     { IGNOREPOLY, "-s" },
 		     { "BitKeeper/etc/skipkeys", "-s"},
 		     { 0, 0 }
 	};

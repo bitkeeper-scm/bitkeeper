@@ -365,6 +365,7 @@ typedef	enum {
 #define	COLLAPSED	"BitKeeper/etc/collapsed"
 #define	CSETS_IN	"BitKeeper/etc/csets-in"
 #define	CSETS_OUT	"BitKeeper/etc/csets-out"
+#define	IGNOREPOLY	"BitKeeper/etc/ignore-poly"
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	CCHANGESET	"SCCS/c.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
