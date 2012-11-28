@@ -93,3 +93,36 @@ bk cmdlog -va > WANT
 bk cmdlog -va > GOT
 cmpfiles WANT GOT
 echo OK
+
+echo $N Verify that cmdlog -v in a nested repo works ................$NL
+cd "$HERE"
+nested prod
+bk repocheck >/dev/null 2>&1
+bk clone $Q . ../prod-clone # this creates component repo_log files
+LOGCNT=`bk cmdlog -v | wc -l`
+ACTCNT=`cat BitKeeper/log/repo_log */BitKeeper/log/repo_log | wc -l`
+test $LOGCNT -eq $ACTCNT || \
+	fail cmdlog output line count does not match actual logfile line count
+echo OK
+
+echo $N Verify that cmdlog -av in a nested repo works ...............$NL
+LOGCNT=`bk cmdlog -av | wc -l`
+ACTCNT=`cat BitKeeper/log/cmd_log */BitKeeper/log/cmd_log | wc -l`
+test $LOGCNT -eq $ACTCNT || \
+	fail cmdlog output line count does not match actual logfile line count
+echo OK
+
+echo $N Verify that cmdlog -Sv in a nested repo works ...............$NL
+cd gcc
+LOGCNT=`bk cmdlog -Sv | wc -l`
+ACTCNT=`wc -l < BitKeeper/log/repo_log`
+test $LOGCNT -eq $ACTCNT || \
+	fail cmdlog output line count does not match actual logfile line count
+echo OK
+
+echo $N Verify that cmdlog -Sav in a nested repo works ..............$NL
+LOGCNT=`bk cmdlog -Sav | wc -l`
+ACTCNT=`wc -l < BitKeeper/log/cmd_log`
+test $LOGCNT -eq $ACTCNT || \
+	fail cmdlog output line count does not match actual logfile line count
+echo OK

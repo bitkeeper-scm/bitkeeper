@@ -4,6 +4,7 @@
 bk cmdlog \- show the log of commands executed in this repository
 .SH SYNOPSIS
 .B bk cmdlog
+.[B] \-S
 .[B] \-a
 .[B] \-v
 .[OPTreq] \-c cutoff
@@ -36,6 +37,16 @@ prefixed with userid, timestamp and BK version.  Combined with
 the
 .B \-a
 option, everything is listed, including commands run by BK itself.
+.if \n[NESTED] \{
+Additionally, in a nested collection, each output line will list the
+component name in brackets, ie. [component]
+.tp
+.B \-S
+.tp
+.B \-\-standalone
+When used in a nested collection, only process the log for the
+current component.
+.\}
 .tp
 .B pattern
 Limit the output to lines matching (regexp) pattern.
