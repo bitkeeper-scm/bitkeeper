@@ -1122,7 +1122,7 @@ cmdlog_lock(int flags)
 			    !proj_root(proj)) {
 				repository_lockers(proj);
 				if (proj_isEnsemble(proj)) {
-					nested_printLockers(proj, stderr);
+					nested_printLockers(proj, 1,0, stderr);
 				}
 			}
 			switch (i) {
@@ -1156,7 +1156,7 @@ cmdlog_lock(int flags)
 			    !proj_root(proj)) {
 				repository_lockers(proj);
 				if (proj_isEnsemble(proj)) {
-					nested_printLockers(proj, stderr);
+					nested_printLockers(proj, 1,0, stderr);
 				}
 			}
 			switch (i) {

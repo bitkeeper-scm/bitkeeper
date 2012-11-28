@@ -70,9 +70,9 @@ do	bk _usleep 10000
 	test $c = 100 && fail too many retries
 done
 test -f BitKeeper/writer/nested_lock || fail did not leave locked
-bk lock -l 2>&1 | grep -q "$PID" || fail cleared stale write lock
+bk lock -lv 2>&1 | grep -q "$PID" || fail cleared stale write lock
 bk unlock -w
-bk lock -l 2>&1 | grep -q "$PID" && fail abort did not clear stale write lock
+bk lock -lv 2>&1 | grep -q "$PID" && fail abort did not clear stale write lock
 _BK_LEAVE_LOCKED=
 export _BK_LEAVE_LOCKED
 echo OK

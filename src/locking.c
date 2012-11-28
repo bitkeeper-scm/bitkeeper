@@ -813,7 +813,7 @@ prettyNlock(nlock *l)
 		return (aprintf("Invalid nested lock: %s", l->nlid));
 	}
 	spid = aprintf("%d", nl->pid);
-	ret = aprintf("\t%s locked by %s@%s (bk %s/%s) %s ago %s",
+	ret = aprintf("%s locked by %s@%s (bk %s/%s) %s ago %s",
 	    (nl->kind == 'r') ? "Read" : "Write",
 	    nl->user, nl->host, nl->prog,
 	    (nl->http == 'h') ? "http" : spid,
@@ -1359,17 +1359,16 @@ nested_errmsg(void)
 }
 
 void
-nested_printLockers(project *p, FILE *out)
+nested_printLockers(project *p, int listStale, int removeStale, FILE *out)
 {
 	char	**lockers = 0, **plockers = 0;
 	int	i;
 
-	lockers = nested_lockers(p, 1, 0);
+	lockers = nested_lockers(p, listStale, removeStale);
 	EACH(lockers) {
 		plockers = addLine(plockers, prettyNlock((nlock *)lockers[i]));
 	}
 	freeLines(lockers, freeNlock);
-	repository_lockers(p);
 	EACH (plockers) {
 		fprintf(out, "%s\n", plockers[i]);
 	}
