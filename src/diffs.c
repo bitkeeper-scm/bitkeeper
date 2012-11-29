@@ -68,7 +68,8 @@ diffs_main(int ac, char **av)
 	dstat	*diffstats = 0, *ds;
 	int	diffstat_only = 0;
 	longopt	lopts[] = {
-		{ "stats-only", 340 },
+		{ "stats", 330 },	 /* show diffstat output */
+		{ "stats-only", 340 },	 /* show only diffstat output */
 		{ 0, 0 }
 	};
 	RANGE	rargs = {0};
@@ -121,6 +122,10 @@ diffs_main(int ac, char **av)
 			break;
 		    case 340:	/* --stats-only */
 			diffstat_only = 1;
+			/* fallthrough */
+		    case 330:	/* --stats */
+			dop.out_diffstat = 1;
+			fout = fmem();
 			break;
 		    default: bk_badArg(c, av);
 		}
@@ -135,11 +140,6 @@ diffs_main(int ac, char **av)
 		dop.out_comments || dop.out_rcs || dop.sdiff)) {
 		fprintf(stderr, "%s: --stats-only should be alone\n", av[0]);
 		return (1);
-	}
-
-	if ((dop.out_header && dop.out_unified) || diffstat_only) {
-		dop.out_diffstat = 1;
-		fout = fmem();
 	}
 
 	dop.flags = flags;
