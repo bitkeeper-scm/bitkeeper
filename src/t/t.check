@@ -833,6 +833,79 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Test multi tip commit .......................................$NL
+cd "$HERE/project.noremap"
+bk repocheck -q || fail
+bk _get -e -r1.6 $Q ChangeSet
+bk delta -f $Q -ywhatever ChangeSet
+bk edit $Q foobar
+echo foo >> foobar
+bk delta $Q -ywhatever foobar
+bk commit $Q -ywhatever > ERR 2>&1 && fail
+grep -q "unmerged leaf" ERR || fail
+echo OK
+
+echo $N Show a check in the RESYNC with local repo having dups ......$NL
+cd "$HERE"
+commercial good
+bk clone $Q . ../has-dups
+touch foo
+bk new $Q foo
+bk commit $Q -ynewfile
+cd ../has-dups
+touch bar
+bk new $Q bar
+KEY=`bk prs -r+ -hnd:KEY: bar`
+bk _cp SCCS/s.bar bu
+bk commit $Q -ynewfile bar
+bk _cp bu SCCS/s.bar
+bk sfiles -P bar > remark
+# verify that we get an error on commit
+bk commit -q -ynewfile-again 2> GOT && fail -f GOT
+cp GOT ~/p
+cat <<EOF > WANT
+Duplicate delta found in ChangeSet
+	Rev: 1.1  Key: $KEY
+	Both keys in file SCCS/s.bar
+	Same key found in ChangeSet:1.3,1.2
+Please write support@bitmover.com with the above
+error about duplicate deltas
+The commit is aborted.
+EOF
+cmpfiles WANT GOT
+# Do again overriding check
+CRC=`bk crypto -h "$KEY" "rick approves"`
+echo "$KEY $CRC" > BitKeeper/etc/ignore-poly
+bk commit $Q -ynewfile-again || fail
+# Show that a -pp check fails even if key in ignore-poly
+bk -r check -pp 2> GOT && fail -f GOT
+grep -q "Duplicate delta found in ChangeSet" GOT || fail -f GOT
+rm BitKeeper/etc/ignore-poly
+# Show that normal check sqawks but doesn't fail
+bk -r check 2> GOT || fail -f GOT
+grep -q "Duplicate delta found in ChangeSet" GOT || fail -f GOT
+# Show that we can quiet the message, and still not fail
+echo "$KEY $CRC" > BitKeeper/etc/ignore-poly
+bk -r check || fail
+# Now, on with the checkAll test ...
+bk pull $Q -R
+# What used to happen next ...
+# bk --cd=RESYNC -r check -aR 2> GOT && fail -f GOT
+# echo "delta $KEY missing?" > WANT
+# cmpfiles WANT GOT
+rm BitKeeper/etc/ignore-poly
+bk --cd=RESYNC -r check -aR 2> GOT || fail
+cat <<EOF > WANT
+Warning: Duplicate delta found in ChangeSet
+	Rev: 1.1  Key: $KEY
+	Both keys in file $HERE/has-dups/SCCS/s.bar
+	Same key found in ChangeSet:1.1.1.2,1.1.1.1
+Please write support@bitmover.com with the above
+warning about duplicate deltas
+EOF
+cmpfiles WANT GOT
+echo OK
+
 test -d "$TESTDATA/key_format2" && {
 echo $N Test KEY_FORMAT2 code .......................................$NL
 # Hit a problem with /home/bk/homepage ; test repo is a csetprune of that repo

@@ -24,10 +24,11 @@ lock_main(int ac, char **av)
 	int	nsock, c, uslp = 1000;
 	int	what = 0, silent = 0, keepOpen = 0, tcp = 0;
 	int	lockclient = -1;
+	int	printStale = 0;
 	char	*file = 0, *nlid = 0, *pidfile = 0;
 	HANDLE	h = 0;
 
-	while ((c = getopt(ac, av, "f;klP;qRrstwWLU", 0)) != -1) {
+	while ((c = getopt(ac, av, "f;klP;qRrstwWLUv", 0)) != -1) {
 		switch (c) {
 		    case 'P': pidfile = strdup(optarg);
 		    case 'q': /* fall thru */			/* doc 2.0 */
@@ -38,6 +39,7 @@ lock_main(int ac, char **av)
 			if (file) usage();
 			file = optarg;
 			break;
+		    case 'v': printStale = 1; break;
 		    /* One of .. or fall through to error */
 		    case 'l':					/* doc 2.0 */
 		    case 'r':					/* doc 2.0 */
@@ -241,7 +243,12 @@ lock_main(int ac, char **av)
 	    case 'l':	/* list lockers / exit status */
 		unless (silent) {
 			if (proj_isEnsemble(0)) {
-				nested_printLockers(0, stderr);
+				/*
+				 * If we are printing stale locks, don't
+				 * remove them.
+				 */
+				nested_printLockers(0,
+				    printStale, !printStale, stderr);
 			} else {
 				repository_lockers(0);
 			}

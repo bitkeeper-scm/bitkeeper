@@ -363,7 +363,7 @@ wrlock(project *p)
 {
 	char	path[MAXPATH];
 	char	lock[MAXPATH];
-	char	*root;
+	char	*root, *nl;
 
 	unless (root = proj_root(p)) return (LOCKERR_NOREPO);
 	T_LOCK("repository_wrlock(%s)", root);
@@ -382,16 +382,19 @@ wrlock(project *p)
 	}
 
 	sprintf(path, "%s/%s", root, ROOT2RESYNC);
-	if (exists(path) &&
+	nl = aprintf("%s/.bk_nl", path);
+	if (exists(path) && !exists(nl) &&
 	    !(getenv("_BK_IGNORE_RESYNC_LOCK") ||
 		nested_mine(p, getenv("_BK_NESTED_LOCK"), 1))) {
 		sccs_unlockfile(lock);
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		(void)rmdir(path);
+		FREE(nl);
 		T_LOCK("WRLOCK by %d failed, RESYNC won", getpid());
 		return (LOCKERR_LOST_RACE);
 	}
 
+	FREE(nl);
 	/*
 	 * Make sure no readers sneaked in
 	 */
@@ -810,7 +813,7 @@ prettyNlock(nlock *l)
 		return (aprintf("Invalid nested lock: %s", l->nlid));
 	}
 	spid = aprintf("%d", nl->pid);
-	ret = aprintf("\t%s locked by %s@%s (bk %s/%s) %s ago %s",
+	ret = aprintf("%s locked by %s@%s (bk %s/%s) %s ago %s",
 	    (nl->kind == 'r') ? "Read" : "Write",
 	    nl->user, nl->host, nl->prog,
 	    (nl->http == 'h') ? "http" : spid,
@@ -1356,17 +1359,16 @@ nested_errmsg(void)
 }
 
 void
-nested_printLockers(project *p, FILE *out)
+nested_printLockers(project *p, int listStale, int removeStale, FILE *out)
 {
 	char	**lockers = 0, **plockers = 0;
 	int	i;
 
-	lockers = nested_lockers(p, 1, 0);
+	lockers = nested_lockers(p, listStale, removeStale);
 	EACH(lockers) {
 		plockers = addLine(plockers, prettyNlock((nlock *)lockers[i]));
 	}
 	freeLines(lockers, freeNlock);
-	repository_lockers(p);
 	EACH (plockers) {
 		fprintf(out, "%s\n", plockers[i]);
 	}

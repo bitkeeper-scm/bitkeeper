@@ -1351,12 +1351,12 @@ proj_hasDeltaTriggers(project *p)
 		if (proj_isResync(p)) return (p->preDelta = 0);
 
 		strcpy(here, proj_cwd());
-		if (chdir(p->root)) {
+		if (proj_chdir(p->root)) {
 			perror("to trigger check");
 			exit (1);
 		}
 		p->preDelta = hasTriggers("delta", "pre");
-		if (chdir(here)) {
+		if (proj_chdir(here)) {
 			perror("from trigger check");
 			exit (1);
 		}

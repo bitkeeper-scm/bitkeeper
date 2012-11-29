@@ -45,6 +45,8 @@ typedef	struct	tipdata {
 } tipdata;
 
 private	void	buildKeys(MDBM *idDB);
+private	int	processDups(char *rkey, char *dkey, u8 prev, u8 cur,
+		    MDBM *idDB);
 private	char	*csetFind(char *key);
 private	int	check(sccs *s, MDBM *idDB);
 private	char	*getRev(char *root, char *key, MDBM *idDB);
@@ -1340,10 +1342,8 @@ private int
 color_merge(sccs *s, ser_t trunk, ser_t branch)
 {
 	unless (branch) {
-		/* only works if tip is a merge */
-		assert(trunk && MERGE(s, trunk));
 		FLAGS(s, trunk) |= (D_BLUE|D_RED);
-		branch = MERGE(s, trunk);
+		unless (branch = MERGE(s, trunk)) return (trunk);
 		trunk = PARENT(s, trunk);
 	}
 	range_walkrevs(s, branch, 0, trunk, WR_BOTH, 0, 0);
@@ -1397,13 +1397,12 @@ buildKeys(MDBM *idDB)
 		twotips = 0;
 	}
 	if (twotips || MERGE(cset, d)) {
-		/* cset tip is (or will be) a merge, do extra (poly) checks */
-		oldest = color_merge(cset, d, twotips);
-		assert(oldest > 0);
 		if (!resync && proj_isProduct(cset->proj)) {
 			newpoly = hash_new(HASH_MEMHASH);
 		}
 	}
+	oldest = color_merge(cset, d, twotips);
+
 	unless (r2deltas = hash_new(HASH_MEMHASH)) {
 		perror("buildkeys");
 		exit(1);
@@ -1501,35 +1500,16 @@ buildKeys(MDBM *idDB)
 			pathnames = addLine(pathnames, td1);
 		}
 		/*
-		 * If dup and not mentioned this key before and poly
-		 * detection of the whole graph (polyErr > 1) enabled,
-		 * or poly detection and if one of the dups is in the merge
-		 * region (my mask and the dup's mask).
+		 * If dup, there are a number of cases to consider.
+		 * This may output an message and return if this case
+		 * should be considered an error.
 		 */
-		if (dupdelta &&
-		    !(*(u8 *)rkd->deltas->vptr & DK_DUP) &&
-		    (polyErr || !componentKey(t)) &&
-		    ((polyErr > 1) || (RK_BOTH ==
-		    (((mask | *(u8 *)rkd->deltas->vptr) & RK_BOTH)))
-		    )) {
-			char	*a;
-
-			// XXXPOLY - Duplicate deltakeys in cset weave.
-			// All Files, All Csets, gone'd, unpopulated or not.
-			// Including any we created fixing up a pull if
-			// not poly:error.
-
-			*(u8 *)rkd->deltas->vptr |= DK_DUP; // say it only once
-			fprintf(stderr,
-			    "Duplicate delta found in ChangeSet\n");
-			a = getRev(r2deltas->kptr, dkey, idDB);
-			fprintf(stderr, "\tRev: %s  Key: %s\n", a, dkey);
-			free(a);
-			a = getFile(r2deltas->kptr, idDB);
-			fprintf(stderr, "\tBoth keys in file %s\n", a);
-			free(a);
-			listCsetRevs(dkey);
-			e++;
+		if (dupdelta) {
+			u8	prevmask = *(u8 *)rkd->deltas->vptr;
+			
+			if (processDups(rkey, dkey, prevmask, mask, idDB)) {
+				e++;
+			}
 		}
 		if (mask) *(u8 *)rkd->deltas->vptr |= mask;
 	}
@@ -1590,6 +1570,100 @@ finish:
 		FLAGS(cset, d) &= ~(D_RED|D_BLUE);
 	}
 	if (e) exit(1);
+}
+
+/*
+ * BitKeeper/etc/ignore-poly is a list of deltakeys to ignore warning
+ * about poly in files.
+ */
+private	int
+ignorepoly(char *dkey)
+{
+	FILE	*ignore;
+	int	again = 1, found = 0;
+	int	rc;
+	char	*crc, *t;
+	char	*line;
+
+	ignore = popen("bk -R cat " IGNOREPOLY, "r");
+
+again:	unless (ignore) return (0);
+	while (line = fgetline(ignore)) {
+		unless (crc = separator(line)) continue;
+		*crc++ = 0;
+		unless (streq(line, dkey)) continue;
+		t = secure_hashstr(line, strlen(line), "rick approves");
+		if (streq(t, crc)) found = 1;
+		free(t);
+	}
+	if ((rc = pclose(ignore)) && !found && again && resync) {
+		again = 0;
+		ignore = popen("bk -R cat " RESYNC2ROOT "/" IGNOREPOLY, "r");
+		goto again;
+	}
+	return (found);
+}
+
+/*
+ * Policy for Components: unless enabled for regressions, always block.
+ *    Even if allowed, block commit poly when not in resync.
+ * Commit Policy - Always fail any poly being created by commit
+ *    (except for testing, and component poly in resync)
+ * Policy for files 
+ *  - Fail if pull creates new poly, but allow if dkey in ignore-poly file
+ *    Note: this breaks r2c working correctly.
+ *  - Always print warnings for poly unless in ignore-poly file
+ *
+ * bk -r check -pp : show all poly in customer's repos
+ */
+private	int
+processDups(char *rkey, char *dkey, u8 prev, u8 cur, MDBM *idDB)
+{
+	int	ignore = 0;
+	int	component = changesetKey(rkey);
+	int	ret = 0;
+
+	/* Poly create in components can be okay (regressions only for now) */
+	if (component && resync && !polyErr) return (0);
+
+	if (ignorepoly(dkey)) ignore = 1;
+
+	/* Commit poly: always fail (except in regressions) */
+	if (doMarks && (prev & RK_INTIP)) {
+		unless (ignore && getenv("BK_REGRESSION")) ret = 1;
+	}
+
+	/* Pull poly: fail unless enabled (comps) or ignored (files) */
+	if ((component && polyErr) || (!component && !ignore)) {
+		if (((cur & RK_PARENT) && (prev & RK_MERGE)) ||
+		    ((cur & RK_MERGE) && (prev & RK_PARENT))) {
+			ret = 1;
+		}
+	}
+
+	/* bk -r check -pp -- no override */
+	if (polyErr > 1) ret = 1;
+
+	/* For files, always complain unless key in ignore-poly */
+	if (ret || (!component && !ignore)) {
+		char	*a;
+
+		unless (ret) fputs("Warning: ", stderr);
+		fprintf(stderr,
+		    "Duplicate delta found in ChangeSet\n");
+		a = getRev(rkey, dkey, idDB);
+		fprintf(stderr, "\tRev: %s  Key: %s\n", a, dkey);
+		free(a);
+		a = getFile(rkey, idDB);
+		fprintf(stderr, "\tBoth keys in file %s\n", a);
+		free(a);
+		listCsetRevs(dkey);
+		fprintf(stderr,
+		    "Please write support@bitmover.com with the above\n"
+		    "%s about duplicate deltas\n",
+		    ret ? "error" : "warning");
+	}
+	return (ret);
 }
 
 private	int
@@ -1763,9 +1837,13 @@ out:	pclose(keys);
 private char	*
 getFile(char *root, MDBM *idDB)
 {
-	sccs	*s = sccs_keyinit(0, root, flags, idDB);
+	sccs	*s = sccs_keyinit(0, root, flags|INIT_MUSTEXIST, idDB);
+	project	*proj;
 	char	*t;
 
+	if (!s && (proj = proj_isResync(0))) {
+		s = sccs_keyinit(proj, root, flags|INIT_MUSTEXIST, idDB);
+	}
 	unless (s && s->cksumok) {
 		t = strdup("|can not init|");
 	} else {
@@ -1778,10 +1856,14 @@ getFile(char *root, MDBM *idDB)
 private char	*
 getRev(char *root, char *key, MDBM *idDB)
 {
-	sccs	*s = sccs_keyinit(0, root, flags, idDB);
+	sccs	*s = sccs_keyinit(0, root, flags|INIT_MUSTEXIST, idDB);
+	project	*proj;
 	ser_t	d;
 	char	*t;
 
+	if (!s && (proj = proj_isResync(0))) {
+		s = sccs_keyinit(proj, root, flags|INIT_MUSTEXIST, idDB);
+	}
 	unless (s && s->cksumok) {
 		t = strdup("|can not init|");
 	} else unless (d = sccs_findKey(s, key)) {
@@ -1802,37 +1884,44 @@ getRev(char *root, char *key, MDBM *idDB)
  * or D_CSET unmarked and not root node.
  */
 private	int
-polyChk(sccs *cset, ser_t trunk, ser_t branch, hash *deltas)
+polyChk(sccs *s, ser_t trunk, ser_t branch, hash *deltas)
 {
 	ser_t	*gca = 0;
 	u8	*mask;
 	int	i, errors = 0;
+	int	isFile = !CSET(s);
 	char	buf[MAXKEY];
 
-	unless (newpoly || polyErr) return (0);
+	unless (newpoly || polyErr || isFile) return (0);
 
-	range_walkrevs(cset, trunk, 0, branch, WR_GCA, walkrevs_addSer, &gca);
+	range_walkrevs(s, trunk, 0, branch, WR_GCA, walkrevs_addSer, &gca);
 	EACH(gca) {
-		sccs_sdelta(cset, gca[i], buf);
+		sccs_sdelta(s, gca[i], buf);
 		unless (((mask = hash_fetchStrMem(deltas, buf)) &&
 		    (*mask & RK_BOTH)) ||
-    		    (!(FLAGS(cset, gca[i]) & D_CSET) &&
-		    (gca[i] != TREE(cset)))) {
+    		    (!(FLAGS(s, gca[i]) & D_CSET) &&
+		    (gca[i] != TREE(s)))) {
 			continue;
 		}
-		if (polyErr) {
+		if (isFile && ignorepoly(buf)) continue;
+		if (isFile || polyErr) {
 			fprintf(stderr, "%s: poly on key %s\n", prog, buf);
 			errors++;
-		} else if (newpoly) {
-			sccs_md5delta(cset, sccs_ino(cset), buf);
+		} else if (!isFile && newpoly) {
+			sccs_md5delta(s, sccs_ino(s), buf);
 			if (hash_deleteStr(newpoly, buf)) {
 				fprintf(stderr,
 				    "%s: poly not captured in %s for %s\n",
-				    prog, buf, cset->gfile);
+				    prog, buf, s->gfile);
 				errors++;
 			}
 		}
 		if (errors) break;
+	}
+	if (errors) {
+		fprintf(stderr,
+		    "Please write support@bitmover.com with the above\n"
+		    "information about poly on key\n");
 	}
 	free(gca);
 	return (errors);
@@ -1931,7 +2020,7 @@ check(sccs *s, MDBM *idDB)
 			}
 		}
 	}
-	if (CSET(s) && trunk && branch) {
+	if (trunk && branch) {
 		errors += polyChk(s, trunk, branch, deltas);
 	}
 	if (writefile) {

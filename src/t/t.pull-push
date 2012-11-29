@@ -312,7 +312,7 @@ sed 's/delta two/delta two-remote/' 'F!O#O$ B%A^R&RR(R)RR'  > x
 mv x 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -y 'F!O#O$ B%A^R&RR(R)RR'
 bk commit $Q -ytest
-bk push "$HERE/copy" > push.out 2>&1
+_BK_COPY_SFILE=YES bk push "$HERE/copy" > push.out 2>&1
 grep -q "has uncommitted changes" push.out
 if [ $? -ne 0 ]; then echo failed; cat push.out; exit 1; fi
 echo OK
