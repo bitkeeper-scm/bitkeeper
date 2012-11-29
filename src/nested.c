@@ -341,15 +341,13 @@ err:				if (revsDB) mdbm_close(revsDB);
 
 	sccs_rdweaveInit(cset);
 	d = 0;
-	while (t = sccs_nextdata(cset)) {
+	/* t = root, v = deltakey */
+	while (d = cset_rdweavePair(cset, &t, &v)) {
 		unless (isData(t)) {
 			if (t[1] == 'I') d = atoi(&t[3]);
 			continue;
 		}
-		v = separator(t);		/* delta key */
 		unless (componentKey(v)) continue;
-
-		*v++ = 0;			/* t = root, v = deltakey */
 		unless (c = nested_findKey(n, t)) {
 			c = new(comp);
 			c->n = n;

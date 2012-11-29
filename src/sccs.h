@@ -353,6 +353,7 @@ typedef	enum {
 #define	COLLAPSED	"BitKeeper/etc/collapsed"
 #define	CSETS_IN	"BitKeeper/etc/csets-in"
 #define	CSETS_OUT	"BitKeeper/etc/csets-out"
+#define	IGNOREPOLY	"BitKeeper/etc/ignore-poly"
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	CCHANGESET	"SCCS/c.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
@@ -680,6 +681,7 @@ struct sccs {
 	ser_t	remote;	/* sccs_resolveFiles() sets this */
 	ser_t	local;		/* sccs_resolveFiles() sets this */
 	ser_t	*remap;		/* scompress remap old ser to new ser */
+	ser_t	w_d;		/* current d for cset_rdweavePair() */
 	sum_t	 cksum;		/* SCCS chksum */
 	sum_t	 dsum;		/* SCCS delta chksum */
 	u32	added;		/* lines added by this delta (u32!) */
@@ -1402,6 +1404,7 @@ void	cset_updatetip(void);
 void	clearCsets(sccs *s);
 void	sccs_rdweaveInit(sccs *s);
 char	*sccs_nextdata(sccs *s);
+ser_t	cset_rdweavePair(sccs *s, char **rkey, char **dkey);
 int	sccs_rdweaveDone(sccs *s);
 FILE	*sccs_wrweaveInit(sccs *s);
 FILE	*sccs_wrweaveDone(sccs *s);

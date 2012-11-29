@@ -171,7 +171,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull  "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -228,10 +228,7 @@ echo OK
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
 bk undo $Q -fr+ 2>ERR && fail -f ERR should fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
-test `grep "Entire repository is locked" ERR | wc -l` = 1 || {
-	fail -f ERR double error, what does it mean\?
-}
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Make sure original clone finished............................$NL
@@ -277,7 +274,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -332,7 +329,7 @@ echo OK
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
 bk undo $Q -fr+ >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Make sure original push completed............................$NL
@@ -374,7 +371,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -429,7 +426,7 @@ echo OK
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
 bk undo $Q -fr+ >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Make sure original push completed............................$NL
@@ -476,7 +473,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -531,7 +528,7 @@ echo OK
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
 bk undo $Q -fr+ >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Make sure original push completed............................$NL
@@ -575,7 +572,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -630,7 +627,7 @@ echo OK
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
 bk undo $Q -fr+ >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Make sure original push completed............................$NL
@@ -671,7 +668,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -726,7 +723,7 @@ echo OK
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
 bk undo $Q -fr+ >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Make sure original pull completed............................$NL
@@ -769,7 +766,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -824,7 +821,7 @@ echo OK
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
 bk undo $Q -fr+ >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Make sure original pull completed............................$NL
@@ -867,7 +864,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -914,7 +911,7 @@ echo OK
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
 bk undo $Q -fr+ >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Make sure original pull completed............................$NL
@@ -957,7 +954,7 @@ echo OK
 echo $N Pulling should fail..........................................$NL
 cd "$HERE/clone"
 bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail should have failed
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Attach in clone.
@@ -1004,7 +1001,7 @@ echo OK
 echo $N Undo should fail.............................................$NL
 cd "$HERE/clone"
 bk undo $Q >ERR -fr+ 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 echo $N Make sure original pull completed............................$NL

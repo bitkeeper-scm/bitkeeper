@@ -915,10 +915,11 @@ loadcset(sccs *cset)
 {
 	char	**keylist = 0;
 	char	*keypath, *pipe;
-	char	*p, *t;
+	char	*t;
+	char	*rkey, *dkey;
 	MDBM	*db;
-	int	print = 0;
 	ser_t	d = 0;
+	int	last;
 	char	*pathp;
 	char	path[MAXPATH];
 
@@ -940,23 +941,18 @@ loadcset(sccs *cset)
 	}
 	db = mdbm_mem();
 	sccs_rdweaveInit(cset);
-	while (p = sccs_nextdata(cset)) {
-		unless (isData(p)) {
-			if (p[1] == 'I') {
-				d = atoi(p+3);
-				print = (FLAGS(cset, d) & D_SET);
-			} else if (p[1] == 'E') {
-				if (keylist) {
-					saveKey(db, d, keylist);
-					keylist = 0;
-				}
+	last = 0;
+	while (d = cset_rdweavePair(cset, &rkey, &dkey)) {
+		unless (FLAGS(cset, d) & D_SET) continue;
+		if (d != last) {
+			if (keylist) {
+				saveKey(db, last, keylist);
+				keylist = 0;
 			}
-			continue;
+			last = d;
 		}
-		unless (print) continue;
 		if (opts.filt || opts.noMeta) {
-			t = separator(p);
-			keypath = strchr(t, '|');
+			keypath = strchr(dkey, '|');
 			assert(keypath);
 			keypath++;
 			pipe = strchr(keypath, '|');
@@ -966,7 +962,7 @@ loadcset(sccs *cset)
 			    strneq(&pipe[-10], "/ChangeSet", 10)) {
 				if (opts.BAM) {
 					/* skip unless rootkey =~ /^B:/ */
-					while (*t != '|') --t;
+					t = strrchr(rkey, '|');
 					unless (strneq(t, "|B:", 3)) continue;
 				}
 				strncpy(pathp, keypath, pipe - keypath);
@@ -984,8 +980,9 @@ loadcset(sccs *cset)
 				}
 			}
 		}
-		keylist = addLine(keylist, strdup(p));
+		keylist = addLine(keylist, aprintf("%s %s", rkey, dkey));
 	}
+	if (keylist) saveKey(db, last, keylist);
 	sccs_rdweaveDone(cset);
 	sccs_close(cset);
 	if (opts.filt) fileFilt(cset, db);
@@ -1574,10 +1571,9 @@ _doit_remote(char **nav, char *url)
 		return (1);
 	}
 
-	/* Quote the dspec for the other side */
+	/* Quote args for the other side */
 	EACH(nav) {
-		unless (strneq("-d", nav[i], 2)) continue;
-		tmp = aprintf("'-d%s'", &nav[i][2]);
+		tmp = shellquote(nav[i]);
 		free(nav[i]);
 		nav[i] = tmp;
 	}

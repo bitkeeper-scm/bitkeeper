@@ -288,6 +288,8 @@ Duplicate delta found in ChangeSet
 	Rev: 1.3.1.1  Key: <comp/ChangeSet>
 	Both keys in file comp/SCCS/s.ChangeSet
 	Same key found in ChangeSet:1.2.1.2,1.3
+Please write support@bitmover.com with the above
+error about duplicate deltas
 EOF
 cmpfiles WANT GOT
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories present
@@ -395,6 +397,8 @@ bk -r check -p 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
 check: poly on key <comp/ChangeSet>
+Please write support@bitmover.com with the above
+information about poly on key
 EOF
 cmpfiles WANT GOT
 test -d RESYNC -o -d comp/RESYNC && fail RESYNC directories missing
@@ -418,6 +422,8 @@ bk --cd=comp/RESYNC -r check -R -p 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
 check: poly on key <comp/ChangeSet>
+Please write support@bitmover.com with the above
+information about poly on key
 EOF
 cmpfiles WANT GOT
 # failure leaves prod as manual merges may have happened.
@@ -435,6 +441,8 @@ bk -r check -p 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
 check: poly on key <comp/ChangeSet>
+Please write support@bitmover.com with the above
+information about poly on key
 EOF
 cmpfiles WANT GOT
 bk repocheck $Q

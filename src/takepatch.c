@@ -234,6 +234,9 @@ takepatch_main(int ac, char **av)
 		/* XXX: Save?  Purge? */
 		cleanup(CLEAN_RESYNC);
 	}
+#ifdef	SIGXFSZ
+	if (getenv("_BK_SUICIDE")) kill(getpid(), SIGXFSZ);
+#endif
 	if (echo || opts->pbars) {
 		files = 0;
 		if (f = popen("bk sfiles RESYNC", "r")) {
@@ -875,7 +878,7 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 	FILE	*iF;
 	FILE	*dF;
 	ser_t	d = 0;
-	ser_t	top = 0;
+	ser_t	top;
 	ser_t	remote_tagtip = 0;
 	int	n = 0;
 	int	c;
@@ -905,17 +908,27 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 			return (-1);
 		}
 	}
-	if (s && (s != fake)) {
+	if (s && (s != fake) && getenv("_BK_COPY_SFILE")) {
+		if (fileCopy(s->sfile, p->resyncFile)) {
+			fprintf(stderr, "Copy of %s to %s failed",
+			    s->sfile, p->resyncFile);
+			perror("takepatch-copy");
+			goto err;
+		}
+		sccs_free(s);
+		unless (s = sccs_init(p->resyncFile,
+		    INIT_MUSTEXIST|SILENT)) {
+			SHOUT();
+			fprintf(stderr,
+			    "takepatch: can't init %s\n", p->resyncFile);
+			goto err;
+		}
+		if (CSET(s)) {
+			cmdlog_addnote(
+			    "_BK_COPY_SFILE", getenv("_BK_COPY_SFILE"));
+		}
+	} else if (s && (s != fake)) {
 		sccs_writeHere(s, p->resyncFile);
-
-		/* serial and therefore delta * are not stable */
-		// XXX: need a new lightweight way to track the
-		// same item as it gets moved about now that
-		// address gets altered.
-		top = sccs_top(s);
-		sccs_sdelta(s, top, buf);
-		topkey = strdup(buf);
-		top = 0;
 	} else {
 		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
 			SHOUT();
@@ -927,6 +940,12 @@ applyCsetPatch(sccs *s, int *nfound, sccs *perfile)
 		FREE(fake);
 		s->bitkeeper = 1;
 		if (perfile) sccscopy(s, perfile);
+	}
+	/* serial is not stable */
+	if (top = sccs_top(s)) {
+		sccs_sdelta(s, top, buf);
+		topkey = strdup(buf);
+		top = 0;
 	}
 	assert(s);
 	cweave_init(s, psize);

@@ -396,26 +396,30 @@ sertoa(register char *buf, ser_t val)
 
 #define	atoi	myatoi
 private int
-atoi(register char *s)
+atoi(u8 *s)
 {
-	register int val = 0;
+	u8	c;
+	int	val = 0;
 
 	if (!s) return (0);
-	while (*s && isdigit(*s)) {
-		val = val * 10 + *s++ - '0';
-	}
+
+	// stop at first non-digit including null
+	while ((c = (*s++ - '0')) < 10) val = val * 10 + c;
 	return (val);
 }
 
 int
 atoi_p(char **sp)
 {
-	register int val = 0;
-	register char *s = *sp;
+	u8	c;
+	int	val = 0;
+	u8	*s = *sp;
 
 	if (!s) return (0);
-	while (*s && isdigit(*s)) {
-		val = val * 10 + *s++ - '0';
+	// stop at first non-digit including null
+	while ((c = (*s - '0')) < 10) {
+		val = val * 10 + c;
+		++s;
 	}
 	*sp = s;
 	return (val);
@@ -1978,6 +1982,49 @@ sccs_nextdata(sccs *s)
 	buf[i] = 0;
 	if (s->remap && !isData(buf)) _remap(s->remap, buf);
 	return (buf);
+}
+
+/*
+ * An alternative to sccs_nextdata() to use for the ChangeSet weave.
+ * When used with the binary weave cset this routine faster because
+ * we don't need to construct a fake weave.
+ * This does the parsing on the ascii weave a returns rootkey/deltakey pairs
+ * for each serial.  Then returns a serial==0 at EOF.
+ *
+ * The buffers returned for rkey/dkey are valid until the next call to
+ * this function.
+ */
+ser_t
+cset_rdweavePair(sccs *s, char **rkey, char **dkey)
+{
+	char	*buf;
+
+	assert(CSET(s) && s->rdweave);
+again:	unless (buf = fgetline(s->fh)) {
+eof:		s->rdweaveEOF = 1;
+		return (0);
+	}
+	if (buf[0] == '\001') {
+		if (buf[1] == 'I') {
+			s->w_d = atoi(buf+3);
+			goto again;
+		} else if (buf[1] == 'E') {
+			s->w_d = 0;
+			goto again;
+		} else if (buf[1] == 'Z') {
+			goto eof;
+		} else if (buf[1] == '\001') {
+			buf += 1;
+		} else {
+			assert(0);
+		}
+	}
+	assert(s->w_d);
+	*rkey = buf;
+	buf = separator(buf);
+	*buf++ = 0;
+	*dkey = buf;
+	return (s->w_d);
 }
 
 /*

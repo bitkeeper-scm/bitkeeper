@@ -1,4 +1,3 @@
-
 sanitize() {
 	# filter out the file name from the key
 	perl -i.old -pe 's?bk/[^|]*\|([^|]*)\S+\b?<$1>?; s/PENDING.*//' $1
@@ -19,6 +18,7 @@ cd ../snapshot
 rm BitKeeper/log/repo_id
 bk id -r > newid
 bk parent $Q ../project
+FOOKEY=`bk prs -r+ -hnd:KEY: foo`
 echo OK
 
 echo $N Duplicate delta, missing merge delta in file ................$NL
@@ -30,9 +30,11 @@ bk pull -q 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
 Duplicate delta found in ChangeSet
-	Rev: |can not init|  Key: <foo>
-	Both keys in file |can not init|
+	Rev: 1.2  Key: <foo>
+	Both keys in file $HERE/duplicate/SCCS/s.foo
 	Same key found in ChangeSet:1.2.1.1,1.3
+Please write support@bitmover.com with the above
+error about duplicate deltas
 check: ChangeSet 1.4 is a merge but is missing a required merge delta for this rootkey
 	<foo>
 The commit is aborted.
@@ -86,6 +88,8 @@ Duplicate delta found in ChangeSet
 	Rev: 1.2  Key: <foo>
 	Both keys in file SCCS/s.foo
 	Same key found in ChangeSet:1.2.1.1,1.3
+Please write support@bitmover.com with the above
+error about duplicate deltas
 The commit is aborted.
 Commit aborted, no changes applied.
 resolve: RESYNC directory left intact.
@@ -102,7 +106,9 @@ cd merge
 bk edit $Q foo
 bk delta $Q -fynull foo
 echo 'SCCS/s.foo|+' | bk commit $Q -y'foo' - || fail
-bk pull $Q
+CRC=`bk crypto -h "$FOOKEY" 'rick approves'`
+echo "$FOOKEY $CRC" > BitKeeper/etc/ignore-poly
+bk pull $Q || fail
 echo OK
 
 echo $N Check poly MONOTONIC dangling stripdel ......................$NL
@@ -110,6 +116,7 @@ cd "$HERE"/project
 bk rm foo
 bk _rm -fr BitKeeper/deleted
 bk -r check -ag | bk gone $Q -
+GONEKEY=`bk prs -r+ -hnd:KEY: BitKeeper/etc/gone`
 cp -rp . ../copy
 cd ../copy
 rm BitKeeper/log/repo_id
@@ -124,6 +131,8 @@ bk rm newfile
 bk _rm -fr BitKeeper/deleted
 bk -r check -ag | bk gone $Q -
 bk commit $Q -ygone-copy
+CRC=`bk crypto -h "$GONEKEY" 'rick approves'`
+echo "$GONEKEY $CRC" >> BitKeeper/etc/ignore-poly
 bk pull $Q ../project || fail
 bk unpull $Q -sf || fail
 bk edit $Q BitKeeper/etc/gone || fail

@@ -31,6 +31,7 @@ commit_main(int ac, char **av)
 	char	*sym = 0;
 	int	dflags = 0;
 	char	**nav = 0;
+	int	do_stdin;
 	int	nested;		/* commiting all components? */
 	c_opts	opts  = {0, 0};
 	char	*sfopts;
@@ -156,12 +157,11 @@ commit_main(int ac, char **av)
 	 * this isn't any slower.
 	 */
 	lease_check(0, O_WRONLY, 0);
-
+	do_stdin = (av[optind] && streq("-", av[optind]));
 	if (nested) {
 		int	rc;
 
-		if (pendingFiles[0] ||
-		    (av[optind] && streq("-", av[optind]))) {
+		if (pendingFiles[0] || do_stdin) {
 			fprintf(stderr,
 			    "%s: Must use -S with -l or \"-\"\n", prog);
 			return (1);
@@ -183,15 +183,12 @@ commit_main(int ac, char **av)
 
 	cmdlog_lock(CMD_WRLOCK|CMD_NESTED_WRLOCK);
 
-	if (pendingFiles[0]) {
-		if (av[optind] && streq("-", av[optind])) {
-			fprintf(stderr,
-			    "commit: can't use -l when using \"-\"\n");
-			return (1);
-		}
+	if (pendingFiles[0] && do_stdin) {
+		fprintf(stderr, "commit: can't use -l when using \"-\"\n");
+		return (1);
 	} else {
-		if (av[optind] && streq("-", av[optind])) {
-			FILE	*f;
+		if (pendingFiles[0] || do_stdin) {
+			FILE	*f, *fin;
 
 			unless (dflags & (DELTA_DONTASK|DELTA_CFILE)) {
 				fprintf(stderr,
@@ -199,14 +196,23 @@ commit_main(int ac, char **av)
 				    "options when using \"-\"\n");
 				return (1);
 			}
+			if (pendingFiles[0]) {
+				unless (fin = fopen(pendingFiles, "r")) {
+					perror(pendingFiles);
+					return (1);
+				}
+			} else {
+				fin = stdin;
+			}
 			bktmp(pendingFiles, "list");
 			setmode(0, _O_TEXT);
 			f = fopen(pendingFiles, "w");
 			assert(f);
-			while (fgets(buf, sizeof(buf), stdin)) {
+			while (fgets(buf, sizeof(buf), fin)) {
 				fputs(buf, f);
 			}
 			fclose(f);
+			if (fin != stdin) fclose(fin);
 		} else {
 			bktmp(pendingFiles, "pending");
 			sfopts = opts.resync ? "-rpC" : "-pC";
@@ -390,6 +396,14 @@ do_commit(char **av,
 
 	// run check
 	unless (rc) {
+		/*
+		 * Note: by having no |+, the check.c:check() if (doMark...)
+		 * code will skip trying to mark the ChangeSet file.
+		 * Every other file will have a |<rev> and so will get marked.
+		 */
+		f = fopen(pendingFiles, "a");
+		fprintf(f, CHANGESET "\n");
+		fclose(f);
 		if (sysio(pendingFiles, 0, 0,
 		    "bk", "check", opts.resync ? "-cMR" : "-cM", "-", SYS)) {
 			rc = 1;
