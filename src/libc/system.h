@@ -42,6 +42,7 @@
 #include "hash.h"
 #include "mdbm/mdbm.h"
 #include "zlib/zlib.h"
+#include "regex.h"
 
 #define	FREE(x)	do { if (x) { free(x); (x) = 0; } } while (0)
 #ifndef	isascii
@@ -212,6 +213,7 @@ void	getoptConsumed(int n);
 /* glob.c */
 
 typedef struct {
+	regex	*re;		/* handle to compiled regex */
 	char    *pattern;	/* what we want to find */
 	u8      ignorecase:1;	/* duh */
 	u8	want_glob:1;	/* do a glob based search */
@@ -227,6 +229,7 @@ int	search_either(char *s, search search);
 int	search_glob(char *s, search search);
 int	search_regex(char *s, search search);
 search	search_parse(char *str);
+void	search_free(search search);
 
 /* mkdir.c */
 int	mkdirp(char *dir);

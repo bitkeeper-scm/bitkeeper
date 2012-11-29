@@ -14,7 +14,7 @@
 #include "sccs.h"
 #include "regex.h"	/* has to be second, conflicts w/ system .h's */
 
-private	void	doit(FILE *f);
+private	void	doit(FILE *f, regex *re);
 private char	*getfile(char *buf);
 private void	done(char *file);
 
@@ -46,6 +46,7 @@ grep_main(int ac, char **av)
 	FILE	*f;
 	char	*rev = 0, *range = 0, **cmd;
 	int	aflags = 0, args = 0;
+	regex	*re = 0;
 	char	aopts[20];
 
 	opts.firstmatch = 1;
@@ -130,7 +131,7 @@ grep_main(int ac, char **av)
 		}
 		pat = s;
 	}
-	if (re_comp(pat)) exit(2);
+	unless (re = re_comp(pat)) exit(2);
 	if (rev && range) {
 		fprintf(stderr, "grep: can't mix -r with -R\n");
 		exit(2);
@@ -192,7 +193,8 @@ grep_main(int ac, char **av)
 	cmd[nLines(cmd)] = 0;
 	putenv("BK_PRINT_EACH_NAME=YES");
 	f = popenvp(&cmd[1], "r");
-	doit(f);
+	doit(f, re);
+	re_free(re);
 	if (pclose(f)) exit(2);
 	exit(opts.found ? 0 : 1);
 }
@@ -252,7 +254,7 @@ realloc:
 }
 
 private void
-doit(FILE *f)
+doit(FILE *f, regex *re)
 {
 	char	*p, *file = strdup("?");
 	int	match, i, j, k, n;
@@ -293,9 +295,9 @@ doit(FILE *f)
 		if (opts.nocase) {
 			for (i = 0; p[i]; i++) lower[i] = tolower(p[i]);
 			lower[i] = 0;
-			match = re_exec(lower);
+			match = re_exec(re, lower);
 		} else {
-			match = re_exec(p);
+			match = re_exec(re, p);
 		}
 		if (opts.invert) match = !match;
 		unless (match || print) continue;

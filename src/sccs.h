@@ -915,7 +915,7 @@ typedef struct {
 	int	sdiff;			/* diff kind (transitional) */
 	int	flags;			/* flags (transitional) */
 	char	*out_define;		/* diff -D */
-	char	*pattern;		/* pattern for diff -p */
+	regex	*pattern;		/* compiled pattern for diff -p */
 	int	context;		/* context for unified output
 					 * (-1 means 0) see delta comments */
 	u32	ignore_all_ws:1;	/* ignore all whitespace */

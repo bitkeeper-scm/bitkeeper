@@ -644,6 +644,7 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 	char	*cfile = sccs_Xfile(s, 'c');
 	char	*p;
 	FILE	*f;
+	regex	*re;
 	char	skippat[] =
 	    "^Rename: .* ->|"
 	    "^Merge rename: .* ->|"
@@ -656,9 +657,9 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 	    "^auto-union\n$";
 
 	/* generate the list of delta comments we skip */
-	if (p = re_comp(skippat)) {
+	unless (re = re_comp(skippat)) {
 		fprintf(stderr, "%s: regex failed %s\npat = %s\n",
-		    me, p, skippat);
+		    me, re_lasterr(), skippat);
 		return (1);
 	}
 	EACH (rmdeltas) {
@@ -672,7 +673,7 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 		 * pattern, then ignore these comments.
 		 */
 		cmts = COMMENTS(s, d);
-		if ((strcnt(cmts, '\n') == 1) && re_exec(cmts)) continue;
+		if ((strcnt(cmts, '\n') == 1) && re_exec(re, cmts)) continue;
 
 		p = strdup(cmts);
 		chomp(p);
@@ -682,6 +683,7 @@ fix_setupcomments(sccs *s, ser_t *rmdeltas)
 		chomp(p);
 		comments = addLine(comments, p);
 	}
+	re_free(re);
 
 	if (comments) {
 		f = fopen(cfile, "w");
