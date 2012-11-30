@@ -204,8 +204,8 @@ search_parse(char *str)
 	if (s.want_glob) return (s);
 	s.want_re = 1;
 	if (s.ignorecase) for (p = str; *p = tolower(*p); p++);
-	if (re_comp(str)) {
-		fprintf(stderr, "search: bad regex \"%s\"\n", str);
+	unless (s.re = re_comp(str)) {
+		fprintf(stderr, "search: bad regex \"%s\"\n", re_lasterr());
 		free(str);
 		s.pattern = 0;
 		return (s);
@@ -242,11 +242,18 @@ search_regex(char *str, search s)
 
 		str = strdup(str);
 		for (p = str; *p = tolower(*p); p++);
-		ret = re_exec(str);
+		ret = re_exec(s.re, str);
 		free(str);
 		return (ret);
 	}
-	return (re_exec(str));
+	return (re_exec(s.re, str));
+}
+
+void
+search_free(search search)
+{
+	re_free(search.re);
+	search.re = 0;
 }
 
 char	**

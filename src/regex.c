@@ -10,17 +10,19 @@
 int
 regex_main(int ac, char **av)
 {
+	regex	*re = 0;
 	char	*regex = av[1];
 	int	i, matched = 0;
 
 	unless (av[1] && av[2]) usage();
-	if (re_comp(regex)) return (1);
+	unless (re = re_comp(regex)) return (1);
 	for (i = 2; av[i]; i++) {
-		if (re_exec(av[i])) {
+		if (re_exec(re, av[i])) {
 			printf("%s matches.\n", av[i]);
 			matched = 1;
 		}
 	}
 	unless (matched) printf("No match.\n");
+	re_free(re);
 	return (matched ? 0 : 1);
 }

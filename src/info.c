@@ -235,6 +235,7 @@ op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
 {
 	int	n = 0;
 	hash	*h2 = hash_new(HASH_MEMHASH);
+	regex	*re = 0;
 
 	if ((cmd == INFO_COUNT) && !regexp) {
 		EACH_HASH(db) {
@@ -248,7 +249,7 @@ op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
 	 */
 	if (regexp) {
 		assert(!h);
-		if (re_comp(regexp)) {
+		unless (re = re_comp(regexp)) {
 			fprintf(out, "ERROR-bad regexp %s\n", regexp);
 			goto err;
 		}
@@ -262,18 +263,20 @@ op(FILE *out, FILE *log, int cmd, hash *db, hash *h, char *regexp)
 			    "ERROR-bad command %d with regexp %s\n",
 			    cmd, regexp);
 			hash_free(h2);
+			re_free(re);
 			return;
 		}
 		unless (cmd == INFO_COUNT) h = hash_new(HASH_MEMHASH);
 		EACH_HASH(db) {
 			if (*(char *)db->kptr == ' ') continue;
-			unless (re_exec(db->kptr)) continue;
+			unless (re_exec(re, db->kptr)) continue;
 			if (cmd == INFO_COUNT) {
 				n++;
 			} else {
 				hash_store(h, db->kptr, db->klen, "", 1);
 			}
 		}
+		re_free(re);
 	}
 
 	if (cmd == INFO_COUNT) {

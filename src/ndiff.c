@@ -57,7 +57,7 @@ int
 ndiff_main(int ac, char **av)
 {
 	int	c, i;
-	char	*p;
+	char	*p, *pattern = 0;
 	df_opt	opts;
 	longopt	lopts[] = {
 		{ "ignore-trailing-cr", 310 },
@@ -88,7 +88,7 @@ ndiff_main(int ac, char **av)
 		    case 'w': opts.ignore_all_ws = 1; break;
 		    case 'n': opts.out_rcs = 1; break;
 		    case 'N': opts.new_is_null = 1; break;
-		    case 'F': opts.pattern = strdup(optarg); break;
+		    case 'F': pattern = strdup(optarg); break;
 		    case 310:	/* --ignore-trailing-cr */
 			opts.ignore_trailing_cr = 1;
 			break;
@@ -111,14 +111,21 @@ ndiff_main(int ac, char **av)
 		fprintf(stderr, "diff: conflicting output style options\n");
 		goto out;
 	}
-	if (opts.out_show_c_func && opts.pattern) {
+	if (opts.out_show_c_func && pattern) {
 		fprintf(stderr, "diff: only one of -p or -F allowed\n");
+		goto out;
+	}
+
+	if (pattern && !(opts.pattern = re_comp(pattern))) {
+		fprintf(stderr, "diff: bad regexp '%s': %s\n", pattern,
+		    re_lasterr());
 		goto out;
 	}
 
 	rc = diff_files(av[optind], av[optind+1], &opts, 0, "-");
 out:	if (opts.out_define) FREE(opts.out_define);
-	if (opts.pattern) FREE(opts.pattern);
+	if (opts.pattern) re_free(opts.pattern);
+	if (pattern) FREE(pattern);
 	return (rc);
 }
 
@@ -136,9 +143,12 @@ cleanOpts(df_opt *opts)
 	if (opts->ignore_trailing_cr) opts->strip_trailing_cr = 1;
 
 	/*
-	 * show_c_func uses and pattern is invalid
+	 * provide a default pattern if they didn't give us one.
 	 */
-	if (opts->out_show_c_func && opts->pattern) return (0);
+	if (opts->out_show_c_func && !opts->pattern) {
+		opts->pattern = re_comp("^[A-Za-z_][A-Za-z0-9_]*[ \t]*(");
+		assert(opts->pattern);
+	}
 
 	if (opts->context) {
 		if (opts->context < 0) opts->context = 0; /* -1 means zero */
@@ -170,6 +180,7 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 	header	*fh;
 	df_ctx	*dc = 0;
 	filediff *o;
+	regex	*re = 0;
 	FILE	*fout = 0;
 	struct	stat sb[2];
 
@@ -243,12 +254,7 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 
 	dc = diff_new(dcmp, dhash, algn_ws, o);
 
-	if (o->dop->pattern) {
-		re_comp(o->dop->pattern);
-	} else if (o->dop->out_show_c_func) {
-		o->dop->pattern = "^[A-Za-z_][A-Za-z0-9_]*[ \t]*(";
-		re_comp(o->dop->pattern);
-	}
+	re = o->dop->pattern;
 
 	lno[0] = lno[1] = 0;
 
@@ -266,8 +272,8 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 				}
 				diff_addItem(dc, i, s, e - s + 1);
 				lno[i]++;
-				if (o->dop->pattern && (i == 0)) {
-					if (re_exec(s)) {
+				if (re && (i == 0)) {
+					if (re_exec(re, s)) {
 						fh = addArray(&o->fn_defs,0);
 						fh->lno = lno[0];
 						fh->s = strndup(s, e - s + 1);

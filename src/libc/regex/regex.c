@@ -234,13 +234,21 @@ struct nfa {
 	CHAR	*buf;			/* automaton..	     */
 	int	size;			/* doubled on each overflow */
 	nfa	*next;			/* expr|expr2|expr3 */
-} *expr;
+};
+
+struct regex {
+	nfa	*expr;
+	CHAR	*bol;
+	CHAR	*bopat[MAXTAG];		/* beg of matched subpatterns */
+	CHAR	*eopat[MAXTAG];		/* end of matched subpatterns */
+};
 
 private int  sta = NOP;               	/* status of lastpat */
 private int  tagstk[MAXTAG];             /* subpat tag stack..*/
 private CHAR bittab[BITBLK];		/* bit table for CCL */
 					/* pre-set bits...   */
 private CHAR bitarr[] = {1,2,4,8,16,32,64,128};
+private	char *errmsg;			/* last re_comp() error */
 
 #ifdef DEBUG
 private	void nfadump(CHAR *);
@@ -253,25 +261,32 @@ chset(CHAR c)
 	bittab[(CHAR) ((c) & BLKIND) >> 3] |= bitarr[(c) & BITIND];
 }
 
-#define badpat(x)	(ex->buf[0] = END, x)
+#define badpat(x)	(ex->buf[0] = END, errmsg = x, x)
 #define store(x)	{ if (mp >= e) return badpat("Overflow"); *mp++ = x; }
 
 private char *_comp(char *pat, nfa *expr);
- 
+
 char *
+re_lasterr(void)
+{
+	return (errmsg);
+}
+
+regex *
 re_comp(char *pat)
 {
 	char	*p, *t;
 	nfa	*e;
+	regex	*ret;
 
-	unless (pat && *pat) return ("Bad regex pattern");
-	for (e = expr; e; ) {
-		e = expr->next;
-		free(expr->buf);
-		free(expr);
-		expr = e;
+	errmsg = 0;
+	unless (ret = new(regex)) return (0);
+	ret->expr = 0;
+	unless (pat && *pat) {
+		errmsg = "Bad regex pattern";
+		free(ret);
+		return (0);
 	}
-	assert(!expr);
 	while (pat) {
 		for (t = pat; *t && (*t != '|'); t++);
 		if (*t && (t > pat) && (t[-1] != '\\')) {
@@ -281,8 +296,8 @@ re_comp(char *pat)
 		}
 		e = new(nfa);
 		e->size = strlen(pat) * 2;
-		e->next = expr;
-		expr = e;
+		e->next = ret->expr;
+		ret->expr = e;
 		for ( ;; ) {
 			if (e->buf) free(e->buf);
 			e->buf = malloc(e->size);
@@ -293,7 +308,9 @@ re_comp(char *pat)
 				continue;
 			}
 			if (t) *t = '|';
-			return (p);
+			errmsg = p;
+			free(ret);
+			return (0);
 		}
 		if (t) {
 			*t++ = '|';
@@ -302,7 +319,21 @@ re_comp(char *pat)
 			pat = 0;
 		}
 	}
-	return (0);
+	return (ret);
+}
+
+void
+re_free(regex *m)
+{
+	nfa	*e1, *e2;
+
+	unless (m) return;
+	for (e1 = m->expr; e1; ) {
+		e2 = e1->next;
+		free(e1);
+		e1 = e2;
+	}
+	free(m);
 }
 
 private char *     
@@ -520,19 +551,16 @@ _comp(char *pat, nfa *ex)
 }
 
 
-private CHAR *bol;
-private CHAR *bopat[MAXTAG];
-private CHAR *eopat[MAXTAG];
-private char *pmatch(CHAR *lp, CHAR *ap);
-private int exec(char *lp, char *buf);
+private char *pmatch(regex *m, CHAR *lp, CHAR *ap);
+private int exec(regex *m, char *lp, char *buf);
 
 int
-re_exec(char *lp)
+re_exec(regex *m, char *lp)
 {
 	nfa	*e;
 
-	for (e = expr; e; e = e->next) {
-		if (exec(lp, e->buf)) return (1);
+	for (e = m->expr; e; e = e->next) {
+		if (exec(m, lp, e->buf)) return (1);
 	}
 	return (0);
 }
@@ -559,29 +587,29 @@ re_exec(char *lp)
  *
  */
 private int
-exec(char *lp, char *buf)
+exec(regex *m, char *lp, char *buf)
 {
 	CHAR	c;
 	char	*ep = 0;
 	CHAR	*ap = buf;
 
-	bol = lp;
+	m->bol = lp;
 
-	bopat[0] = 0;
-	bopat[1] = 0;
-	bopat[2] = 0;
-	bopat[3] = 0;
-	bopat[4] = 0;
-	bopat[5] = 0;
-	bopat[6] = 0;
-	bopat[7] = 0;
-	bopat[8] = 0;
-	bopat[9] = 0;
+	m->bopat[0] = 0;
+	m->bopat[1] = 0;
+	m->bopat[2] = 0;
+	m->bopat[3] = 0;
+	m->bopat[4] = 0;
+	m->bopat[5] = 0;
+	m->bopat[6] = 0;
+	m->bopat[7] = 0;
+	m->bopat[8] = 0;
+	m->bopat[9] = 0;
 
 	switch(*ap) {
 
 	case BOL:			/* anchored: match from BOL only */
-		ep = pmatch(lp,ap);
+		ep = pmatch(m,lp,ap);
 		break;
 	case CHR:			/* ordinary char: locate it fast */
 		c = *(ap+1);
@@ -592,13 +620,13 @@ exec(char *lp, char *buf)
 	default:			/* regular matching all the way. */
 #ifdef OLD
 		while (*lp) {
-			if ((ep = pmatch(lp,ap)))
+			if ((ep = pmatch(m,lp,ap)))
 				break;
 			lp++;
 		}
 #else	/* match null string */
 		do {
-			if ((ep = pmatch(lp,ap)))
+			if ((ep = pmatch(m,lp,ap)))
 				break;
 			lp++;
 		} while (*lp);
@@ -610,8 +638,8 @@ exec(char *lp, char *buf)
 	if (!ep)
 		return 0;
 
-	bopat[0] = lp;
-	eopat[0] = ep;
+	m->bopat[0] = lp;
+	m->eopat[0] = ep;
 	return 1;
 }
 
@@ -683,7 +711,7 @@ private CHAR chrtyp[MAXCHR] = {
 #define CCLSKIP 18	/* [CLO] CCL 16bytes END ... */
 
 private char *
-pmatch(CHAR *lp, CHAR *ap)
+pmatch(regex *m, CHAR *lp, CHAR *ap)
 {
 	register int op, c, n;
 	register CHAR *e;		/* extra pointer for CLO */
@@ -709,7 +737,7 @@ pmatch(CHAR *lp, CHAR *ap)
 			ap += BITBLK;
 			break;
 		case BOL:
-			if (lp != bol)
+			if (lp != m->bol)
 				return 0;
 			break;
 		case EOL:
@@ -717,23 +745,23 @@ pmatch(CHAR *lp, CHAR *ap)
 				return 0;
 			break;
 		case BOT:
-			bopat[*ap++] = lp;
+			m->bopat[*ap++] = lp;
 			break;
 		case EOT:
-			eopat[*ap++] = lp;
+			m->eopat[*ap++] = lp;
 			break;
  		case BOW:
-			if ((lp!=bol && iswordc(lp[-1])) || !iswordc(*lp))
+			if ((lp!=m->bol && iswordc(lp[-1])) || !iswordc(*lp))
 				return 0;
 			break;
 		case EOW:
-			if (lp==bol || !iswordc(lp[-1]) || iswordc(*lp))
+			if (lp==m->bol || !iswordc(lp[-1]) || iswordc(*lp))
 				return 0;
 			break;
 		case REF:
 			n = *ap++;
-			bp = bopat[n];
-			ep = eopat[n];
+			bp = m->bopat[n];
+			ep = m->eopat[n];
 			while (bp < ep)
 				if (*bp++ != *lp++)
 					return 0;
@@ -766,7 +794,7 @@ pmatch(CHAR *lp, CHAR *ap)
 			ap += n;
 
 			while (lp >= are) {
-				if ((e = pmatch(lp, ap)))
+				if ((e = pmatch(m, lp, ap)))
 					return e;
 				--lp;
 			}
@@ -821,14 +849,14 @@ re_modw(char *s)
  *		tagged subpattern does not exist, null is substituted.
  */
 int
-re_subs(char *src, char *dst)
+re_subs(regex *m, char *src, char *dst)
 {
 	register char c;
 	register int  pin;
 	register char *bp;
 	register char *ep;
 
-	if (!*src || !bopat[0])
+	if (!*src || !m->bopat[0])
 		return 0;
 
 	while (c = *src++) {
@@ -850,7 +878,7 @@ re_subs(char *src, char *dst)
 			continue;
 		}
 
-		if ((bp = bopat[pin]) && (ep = eopat[pin])) {
+		if ((bp = m->bopat[pin]) && (ep = m->eopat[pin])) {
 			while (*bp && bp < ep)
 				*dst++ = *bp++;
 			if (bp < ep)
@@ -866,7 +894,7 @@ re_subs(char *src, char *dst)
 /*
  * symbolic - produce a symbolic dump of the nfa
  */
-symbolic(char *s) 
+symbolic(char *s)
 {
 	printf("pattern: %s\n", s);
 	printf("nfacode:\n");
