@@ -186,6 +186,7 @@ lock_main(int ac, char **av)
 		}
 		exit (0);
 	    case 'w':	/* write lock the repository */
+		putenv("_BK_LOCK_INTERACTIVE=1");
 		if (repository_wrlock(0)) {
 			fprintf(stderr, "write lock failed.\n");
 			repository_lockers(0);
@@ -210,6 +211,7 @@ lock_main(int ac, char **av)
 		exit(0);
 
 	    case 'W':	/* nested_wrlock() the repository */
+		putenv("_BK_LOCK_INTERACTIVE=1");
 		unless (nlid = nested_wrlock(0)) {
 			fprintf(stderr, "nested write lock failed.\n%s\n",
 			    nested_errmsg());

@@ -423,7 +423,7 @@ repository_wrlock(project *p)
 	if (global_locked()) return (LOCKERR_LOST_RACE);
 	for (i = 0; i < 10; ++i) {
 		unless (ret = wrlock(p)) {
-			sig_ignore();
+			unless (getenv("_BK_LOCK_INTERACTIVE")) sig_ignore();
 			return (0);
 		}
 		usleep(10000);
