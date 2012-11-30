@@ -8377,6 +8377,7 @@ bin_sortHeap(sccs *s)
 {
 	int	i, old;
 	ser_t	d, ds;
+	int	oldlen = s->heap.len;
 	char	*olddata = s->heap.buf;
 	char	lsort[256];
 
@@ -8439,6 +8440,8 @@ bin_sortHeap(sccs *s)
 
 	/* now free the old data */
 	free(olddata);
+
+	T_PERF("pack %d -> %d", oldlen, s->heap.len);
 }
 
 

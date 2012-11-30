@@ -23,6 +23,7 @@ u32
 sccs_addStr(sccs *s, char *str)
 {
 	int	off;
+	char	*old;
 
 	assert(s);
 	unless (s->heap.buf) data_append(&s->heap, "", 1);
@@ -32,7 +33,11 @@ sccs_addStr(sccs *s, char *str)
 	/* can't add a string from the heap to it again (may realloc) */
 	assert((str < s->heap.buf) || (str >= s->heap.buf + s->heap.size));
 
+	old = s->heap.buf;
 	data_append(&s->heap, str, strlen(str)+1);
+	if (CSET(s) && (s->heap.buf != old)) {
+		T_PERF("%s: did realloc() of heap", s->gfile);
+	}
 	return (off);
 }
 
@@ -65,6 +70,9 @@ sccs_addUniqStr(sccs *s, char *str)
 	unless (h = s->uniqheap) {
 		h = s->uniqheap = hash_new(HASH_MEMHASH);
 
+		if (CSET(s)) {
+			T_PERF("%s: loading existing uniqheap data", s->gfile);
+		}
 #define	addField(x) if (x##_INDEX(s, d)) \
     hash_insertStrI32(h, s->heap.buf + x##_INDEX(s, d), x##_INDEX(s, d))
 
@@ -82,6 +90,7 @@ sccs_addUniqStr(sccs *s, char *str)
 			unless (sym->symname) continue;
 			hash_insertStrI32(h, SYMNAME(s, sym), sym->symname);
 		}
+		if (CSET(s)) T_PERF("done uniqheap data");
 	}
 
 	if (hash_insertStrI32(h, str, 0)) {
@@ -220,7 +229,7 @@ faulthandler(int sig, siginfo_t *si, void *unused)
 			 * be missed.
 			 */
 			assert(addr != map->startp);
-			T_O1("protect start %p", map->startp);
+			T_DEBUG("protect start %p", map->startp);
 			if (mprotect(map->startp, PAGESZ, PROT_NONE)) {
 				perror("mprotect");
 				exit(1);
@@ -237,7 +246,7 @@ faulthandler(int sig, siginfo_t *si, void *unused)
 			 * protected.  We will unprotect that last page when
 			 * the next map gets loaded.
 			 */
-			T_O1("protect end %p", map->endp);
+			T_DEBUG("protect end %p", map->endp);
 			if (mprotect(map->endp, PAGESZ, PROT_NONE)) {
 				perror("mprotect");
 				exit(1);
@@ -248,7 +257,7 @@ faulthandler(int sig, siginfo_t *si, void *unused)
 	}
 	unless (found) {
 		fprintf(stderr, "seg fault to addr %p\n", si->si_addr);
-		T_O1("seg fault to addr %p", si->si_addr);
+		TRACE("seg fault to addr %p", si->si_addr);
 		abort();
 	}
 }
@@ -355,7 +364,9 @@ datamap(sccs *s, char *name, u32 esize, u32 nmemb, long off, int byteswap)
 		paging = 0;
 	}
 	if (esize == 1) {
-		mstart = paging ? allocPage(len) : malloc(len);
+		int	size = 1024;
+		while (size < len) size *= 2;
+		mstart = paging ? allocPage(size) : malloc(size);
 		start = mstart;
 	} else {
 		mstart = allocArray(nmemb, esize, paging ? allocPage : 0);
@@ -387,7 +398,7 @@ nopage:		fseek(s->fh, off, SEEK_SET);
 		s->pagefh = s->fh;
 	}
 
-	T_O1("map %s:%s %p-%p", s->gfile, name, start, start+len);
+	T_DEBUG("map %s:%s %p-%p", s->gfile, name, start, start+len);
 
 	unless (maps) {
 		sa.sa_flags = SA_SIGINFO;

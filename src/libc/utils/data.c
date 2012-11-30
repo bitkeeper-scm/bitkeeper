@@ -3,10 +3,10 @@
 void
 data_resize(DATA *d, int newlen)
 {
-	int	size = d->size;
+	int	size;
 
-	if (size < newlen) {
-		unless (size) size = 64;
+	if (d->size < newlen) {
+		size = 64;
 		while (size < newlen) size *= 2;
 
 		/* buf is uninitialized */
