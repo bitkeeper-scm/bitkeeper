@@ -41,26 +41,10 @@
  *	(write lock, no compression)
  */
 #include "system.h"
-#ifdef SFIO_STANDALONE
-#include "utils/sfio.h"
-#define	scansize(x)	0
-#else
 #include "sccs.h"
 #include "bam.h"
 #include "progress.h"
-#endif
-
-#define	SFIO_BSIZ	(16<<10)
-#define	SFIO_NOMODE	"SFIO v 1.4"	/* must be 10 bytes exactly */
-#define	SFIO_MODE	"SFIO vm1.4"	/* must be 10 bytes exactly */
-#define	SFIO_VERS	(opts->doModes ? SFIO_MODE : SFIO_NOMODE)
-/* error returns, don't use 1, that's generic */
-#define	SFIO_LSTAT	2
-#define	SFIO_READLINK	3
-#define	SFIO_OPEN	4
-#define	SFIO_SIZE	5
-#define	SFIO_LOOKUP	6
-#define	SFIO_MORE	7	/* another sfio follows */
+#include "sfio.h"
 
 private	void	optsFree(void);
 private	int	sfio_out(void);
@@ -107,9 +91,7 @@ private	struct {
 	u64	done;		/* file bytes we've moved so far */
 	u32	nfiles;		/* -N%d - number of files we'll move */
 	int	prevlen;	/* length of previously printed line */
-#ifndef SFIO_STANDALONE
 	ticker	*tick;		/* progress bar */
-#endif
 } *opts;
 
 #define M_IN	1
@@ -223,7 +205,6 @@ sfio_main(int ac, char **av)
 	}
 #endif
 
-#ifndef	SFIO_STANDALONE
 	prog = opts->bp_tuple ? "BAM xfer" : "file xfer";
 	if (opts->quiet) {
 	} else if (opts->todo) {
@@ -231,8 +212,6 @@ sfio_main(int ac, char **av)
 	} else if (opts->nfiles) {
 		opts->tick = progress_start(PROGRESS_BAR, opts->nfiles);
 	}
-#endif
-
 	if (opts->mode == M_OUT) {
 		rc = sfio_out();
 	} else if (opts->mode == M_IN) {
@@ -250,17 +229,13 @@ sfio_main(int ac, char **av)
 		goto usage;
 	}
 
-#ifndef	SFIO_STANDALONE
 	if (opts->tick) progress_done(opts->tick, rc ? "FAILED" : "OK");
 	if (opts->mark_no_dfiles) touch(NO_DFILE, 0666);
-#endif
 	optsFree();
 	return (rc);
 
 usage:
-#ifndef SFIO_STANDALONE
-	prog = 0;
-#endif
+	prog = "sfio";
 	optsFree();
 	usage();
 }
@@ -303,7 +278,6 @@ nextfile(char *buf)
 int
 sfio_out(void)
 {
-#ifndef	SFIO_STANDALONE
 	char	buf[MAXPATH];
 	struct	stat sb;
 	off_t	byte_count = 0;
@@ -315,7 +289,7 @@ sfio_out(void)
 	char	ln[32];
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
-	fputs(SFIO_VERS, stdout);
+	fputs(SFIO_VERS(opts->doModes), stdout);
 
 	if (opts->key2path) {
 		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
@@ -331,7 +305,7 @@ sfio_out(void)
 			 * Insert a sfio separator and skip this file.
 			 */
 			send_eof(SFIO_MORE);
-			fputs(SFIO_VERS, stdout);
+			fputs(SFIO_VERS(opts->doModes), stdout);
 			continue;
 		}
 		if (opts->bp_tuple && strchr(buf, '|')) {
@@ -420,11 +394,8 @@ reg:			if (n = out_file(buf, &sb, &byte_count, 0, 0)) {
 	if (opts->hardlinks) hash_free(links);
 	mdbm_close(idDB);
 	mdbm_close(goneDB);
-#endif
 	return (0);
 }
-
-#ifndef	SFIO_STANDALONE
 
 private int
 out_symlink(char *file, struct stat *sp, off_t *byte_count)
@@ -601,7 +572,6 @@ err:		send_eof(SFIO_LOOKUP);
 	free(tmpf);
 	/* they should have sent EOF */
 }
-#endif	/* SFIO_STANDALONE */
 
 /*
  * Send an eof by sending a 0 or less than 0 for the pathlen of the "next"
@@ -649,7 +619,8 @@ sfio_in(int extract, int justone)
 		opts->doModes = 1;
 	} else {
 		fprintf(stderr,
-		    "Version mismatch [%s]<>[%s]\n", buf, SFIO_VERS);
+		    "Version mismatch [%s]<>[%s]\n",
+		    buf, SFIO_VERS(opts->doModes));
 		return (1);
 	}
 	if (p = getenv("_BK_SFIO_FAIL")) fail = atoi(p);
@@ -739,7 +710,6 @@ eof:			if (co) {
 			sscanf(datalen, "%010u", &ulen);
 			if (in_file(buf, ulen, extract)) return (1);
 		}
-#ifndef	SFIO_STANDALONE
 		if (extract && opts->checkout) {
 			if ((!strneq("BitKeeper/", buf, 10) ||
 				strneq("BitKeeper/triggers/", buf,  19)) &&
@@ -793,7 +763,6 @@ dump:				if (opts->seen_config && !co) {
 				}
 			}
 		}
-#endif
 		if (opts->echo) printf("%s\n", buf);
 	}
 	assert(0);
@@ -802,7 +771,6 @@ dump:				if (opts->seen_config && !co) {
 private int
 in_bptuple(char *keys, char *datalen, int extract)
 {
-#ifndef	SFIO_STANDALONE
 	int	todo, i, j;
 	char	*p, *t;
 	u32	sum = 0, sum2 = 0;
@@ -872,10 +840,6 @@ in_bptuple(char *keys, char *datalen, int extract)
 	mdbm_store_str(proj_BAMindex(0, 1), keys, p, MDBM_REPLACE);
 	bp_logUpdate(0, keys, p);
 	return (0);
-#else
-	fprintf(stderr, "Unsupported.\n");
-	return (1);
-#endif
 }
 
 private int
@@ -1093,11 +1057,6 @@ print_status(char *file, u32 sz)
 
 	if (opts->quiet) return;
 
-#ifdef	SFIO_STANDALONE
-	/* just do a simple print in standalone mode */
-	fputs(file, stderr);
-	fputc('\n', stderr);
-#else
 	if (opts->todo) {
 // ttyprintf("todo=%llu done=%llu max=%llu\n", opts->todo, opts->done, opts->tick->max);
 		progress(opts->tick, opts->done);
@@ -1115,7 +1074,6 @@ print_status(char *file, u32 sz)
 		sprintf(line, "%s%s", opts->prefix, file);
 	}
 	fprintf(stderr, "%s\n", line);
-#endif
 }
 
 int
@@ -1145,7 +1103,6 @@ again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 	}
 	if (errno == EINVAL) goto bad_name;
 	if (errno == EEXIST) {
-#ifndef SFIO_STANDALONE
 		char	realname[MAXPATH];
 
 		getRealName(file, NULL, realname);
@@ -1159,7 +1116,6 @@ again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 		} else {
 			errno = EEXIST;	/* restore errno */
 		}
-#endif
 	} else if (first) {
 		if (mkdirf(file)) {
 			fputs("\n", stderr);
@@ -1212,7 +1168,8 @@ header:
 		opts->doModes = 1;
 	} else {
 		fprintf(stderr,
-		    "Version mismatch [%s]<>[%s]\n", buf, SFIO_VERS);
+		    "Version mismatch [%s]<>[%s]\n",
+		    buf, SFIO_VERS(opts->doModes));
 		goto out;
 	}
 	for (i = 0; i < n; i++) {
@@ -1318,13 +1275,11 @@ header:
 			fwrite(data, 1, i, f[cur]);
 			len -= i;
 		}
-#ifndef SFIO_STANDALONE
 		if (opts->todo) {
 			progress(opts->tick, opts->done);
 		} else if (opts->nfiles) {
 			progress(opts->tick, ++nticks);
 		}
-#endif
 		fflush(f[cur]);
 		len = 0;
 		/* select next subprocess to use */
@@ -1333,9 +1288,7 @@ header:
 		}
 		if (opts->echo) printf("%s\n", buf);
 	}
-#ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
-#endif
 out:
 	for (i = 0; i < n; i++) {
 		if (cur = pclose(f[i])) {

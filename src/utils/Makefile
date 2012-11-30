@@ -10,7 +10,7 @@ ifeq "$(OSTYPE)" "msys"
 	EXE=.exe
 	EXT=-setup.exe
 	H=../win32.h
-	CFLAGS=-O
+	CFLAGS=-Os
 	LD=$(CC)
 	LIBS = -lws2_32
 	RESOURCES=resources.o
@@ -21,7 +21,7 @@ else
 	EXE=
 	EXT=.bin
 	H=../unix.h
-	CFLAGS=-O
+	CFLAGS=-Os
 	LD=$(CC)
 	RESOURCES=
 	SO=dll
@@ -31,7 +31,6 @@ else
 		STRIPOPTS=-x
 	endif
 endif
-SFIO_OBJS=sfio.o sfio_utils.o
 SYSTEM_OBJS=../libc/libc.a
 SFIO=sfio$(EXE)
 CPPFLAGS=-I../libc
@@ -63,14 +62,11 @@ sfioball.zz: installtool $(BINDIR) $(BINDIR)/gui/bin/bkgui$(EXE) zz$(EXE)
 resources.o: resources.rc ../win32/data/box_software.ico
 	windres -o $@ resources.rc
 
-sfio.o: ../sfio.c sfio.h
-	$(CC) -c $(CFLAGS) $(CPPFLAGS) -DSFIO_STANDALONE ../sfio.c
+sfio_unpack.o: sfio_unpack.c
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) -I.. sfio_unpack.c
 
-sfio_utils.o: sfio_utils.c
-	$(CC) -c $(CFLAGS) $(CPPFLAGS) -DSFIO_STANDALONE sfio_utils.c -o $@
-
-sfio$(EXE): $(SFIO_OBJS)
-	$(LD) $(LFLAGS) $(SFIO_OBJS) $(SYSTEM_OBJS) $(LIBS) -o $@
+sfio$(EXE): sfio_unpack.o
+	$(LD) -s $(LFLAGS) $< $(SYSTEM_OBJS) $(LIBS) -o $@
 
 installtool: ../port/$(SYS)_platform.tcl installtool.tcl \
 	../gui/tkwizard.tcl ../gui/bktheme.tcl ../gui/common.tcl \
