@@ -856,19 +856,6 @@ _chmod() {		# /* doc 2.0 */
 	exit 0
 }
 
-_man() {
-	B=`bk bin`/man
-	test -f ../man/bk-man/man1/bkd.1 && {
-		HERE=`pwd`
-		cd ../man/bk-man
-		B=`pwd`
-		cd $HERE
-	}
-	test "X$BK_MANPAGER" != X && export PAGER="$BK_MANPAGER"
-	export MANPATH=$B:$MANPATH
-	exec man "$@"
-}
-
 # Make links in /usr/bin (or wherever they say).
 _links() {		# /* doc 3.0 */
 	if [ "X$OSTYPE" = "Xmsys" ]

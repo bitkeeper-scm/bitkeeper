@@ -1,5 +1,6 @@
 .\" Copyright (c) 1998-2006 BitMover, Inc.
 .\" Do all this stuff only once
+.so ../bkver-macro
 .if !d bk-macros \{\
 .ds bk-macros 1
 .so man.tmac
@@ -214,5 +215,5 @@
 .	LI \\$1 \\$2
 ..
 .
-.if '\*[BKVER]'' .ds BKVER \\s-24.1.1\\s0
+.if '\*[BKVER]'' .ds BKVER \\s-25.4.3\\s0
 .\}

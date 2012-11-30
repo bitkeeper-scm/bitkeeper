@@ -1,5 +1,4 @@
-VER=`bk version -s | sed s/bk-//`
-VER=5.2
+VER=`../bkver.pl`
 
 g: 
 	g groff -I.. -rC1 -rD1 -d BKVER=$(VER) *.1

@@ -22,6 +22,10 @@ sub main
 	if ($BKVER =~ /^(\d\d\d\d)(\d\d)(\d\d)/) {
 		$BKVER="${1}-${2}-${3}";	# YYYY-MM-DD
 	}
+	open(FD, ">../bkver-macro");
+	print FD ".ds BKVER \\\\s-2$BKVER\\\\s0\n";
+	close(FD);
+
 	die "Spaces not allowed in BKVER='$BKVER'\n" if $BKVER =~ /\s/;
 	foreach $page (@ARGV) {
 		&man2help;

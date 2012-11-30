@@ -257,6 +257,7 @@ _hashfile_test
 havekeys remote
 _heapdump
 help
+man => help
 helpsearch
 helptopics
 here

@@ -1,9 +1,10 @@
 FILES=man1/*.1
+VER=`./bkver.pl`
 
-PS: 
+PS:
 	@make get
 	cat $(FILES) | grep -v bk-macros > ALL
-	groff -man bk-macros ALL > PS
+	groff -man bk-macros -d BKVER=$(VER) ALL > PS
 
 PS2:
 	@make PS
@@ -47,6 +48,7 @@ clean:
 	$(if $(Q),@echo Cleaning man,)
 	$(Q)$(RM) PS PS2 PS4 ALL
 	$(Q)rm -rf bk-man
+	$(Q)rm -f bkver-macro
 	$(Q)$(MAKE) -C man2help clean
 	$(Q)$(MAKE) -C man2html clean
 
