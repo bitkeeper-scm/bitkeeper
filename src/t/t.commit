@@ -44,7 +44,6 @@ cat <<EOF > WANT
 serial: 3 (1.2)
 PARENT: 2 (1.1)
 a/d/s: 1/0/1
-mode: 100664
 xflags: 1061 (BITKEEPER,CSETMARKED,HASH)
 flags: 1001 (CSET)
 PATHNAME: ChangeSet
@@ -52,7 +51,6 @@ SORTPATH: ChangeSet
 serial: 2 (1.1)
 PARENT: 1 (1.0)
 a/d/s: 5/0/1
-mode: 100664
 xflags: 1061 (BITKEEPER,CSETMARKED,HASH)
 flags: 1001 (CSET)
 PATHNAME: ChangeSet

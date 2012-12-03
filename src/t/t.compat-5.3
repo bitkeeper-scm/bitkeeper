@@ -232,3 +232,86 @@ Knew2=`bk prs -hnd:MD5KEY: -r$Kold ChangeSet`
 
 test $Knew = $Knew2 || fail
 echo OK
+
+echo -------------- ascii cset files match
+echo $N New and old version should generate the same cset file ......$NL
+cd "$HERE"
+touch empty
+DAT="98/09/22 16:23:31+00:00"
+
+_BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT BK_RANDOM=1234567890abcdef \
+    $OLDBK/bk setup -fcempty newrepo
+$OLDBK/bk clone $Q newrepo newcopy
+cd newrepo
+echo f > foo
+BK_DATE_TIME_ZONE=$DAT BK_RANDOM=1234567890abcdef $OLDBK/bk new $Q foo
+_BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT $OLDBK/bk commit $Q -yfoo
+cd ../newcopy
+echo b > bar
+BK_DATE_TIME_ZONE=$DAT BK_RANDOM=1234567890abcdef $OLDBK/bk new $Q bar
+_BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT $OLDBK/bk commit $Q -ybar
+_BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT $OLDBK/bk pull $Q
+cd ..
+mv newrepo oldrepo
+mv newcopy oldcopy
+# again with the current stuff
+_BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT BK_RANDOM=1234567890abcdef \
+    bk setup -fcempty newrepo
+bk clone $Q newrepo newcopy
+cd newrepo
+echo f > foo
+BK_DATE_TIME_ZONE=$DAT BK_RANDOM=1234567890abcdef bk new $Q foo
+_BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT bk commit $Q -yfoo
+cd ../newcopy
+echo b > bar
+BK_DATE_TIME_ZONE=$DAT BK_RANDOM=1234567890abcdef bk new $Q bar
+_BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT bk commit $Q -ybar
+_BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT bk pull $Q
+cd ..
+# compare cset files
+bk _scat oldcopy/ChangeSet > old
+bk _scat newcopy/ChangeSet > new
+cmpfiles old new
+echo OK
+
+echo $N Document the weave signature ................................$NL
+# Dump a weave signature
+dump() {
+	perl -e '
+		while (<>) { last if /^\001T/ }  # Skip to weave
+		while (<>) {
+			if (s/\001//) {
+				if ($x) {
+					print "$x\n";
+					$x = 0;
+				} elsif (/^E/) {
+					print "== 0 ==\n";
+				}
+				print;
+			} else {
+				$x++;
+			}
+		}
+	' $1
+}
+# For compat sake, 2 empty slots.
+dump new > GOT
+cat <<EOF > WANT
+I 5
+== 0 ==
+E 5
+I 4
+1
+E 4
+I 3
+1
+E 3
+I 2
+4
+E 2
+I 1
+== 0 ==
+E 1
+EOF
+cmpfiles WANT GOT
+echo OK

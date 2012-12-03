@@ -317,60 +317,6 @@ spawn_checksum_child(void)
 }
 
 /*
- * Create the initial empty cset.
- */
-int
-cset_setup(int flags)
-{
-	sccs	*cset;
-	ser_t	d;
-	int	fd;
-	char	*user, *host;
-	char	buf[MAXPATH];
-
-	cset = sccs_init(csetFile, 0);
-	assert(cset && cset->proj);
-	d = sccs_newdelta(cset);
-
-	if ((flags & DELTA_DONTASK) &&
-	    !(d = comments_get(0, 0, cset, d))) {
-		goto intr;
-	}
-
-	host = sccs_gethost();
-	unless (isValidHost(host)) {
-		fprintf(stderr, "invalid host: \"%s\"\n", host);
-		sccs_freedelta(cset, d);
-		goto intr;
-	}
-
-	user = sccs_getuser();
-	unless (isValidUser(user)) {
-		fprintf(stderr, "invalid user: \"%s\"\n", user);
-		sccs_freedelta(cset, d);
-		goto intr;
-	}
-	sprintf(buf, "%s@%s", user, host);
-	sccs_parseArg(cset, d, 'U', buf, 0);
-	cset->state |= S_CSET;
-	cset->xflags |= X_LONGKEY;
-	if (sccs_delta(cset, flags|DELTA_EMPTY|NEWFILE, d, 0, 0, 0) == -1) {
-		sccs_whynot("cset", cset);
-intr:		sccs_free(cset);
-		sfileDone();
-		comments_done();
-		return (1);
-	}
-	fd = creat(IDCACHE, GROUP_MODE);
-	write(fd, "#$sum$ 0\n", 9);
-	close(fd);
-	sccs_free(cset);
-	comments_done();
-	sfileDone();
-	return (0);
-}
-
-/*
  * Do whatever it is they want.
  */
 private int
