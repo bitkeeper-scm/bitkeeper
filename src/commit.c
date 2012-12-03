@@ -536,10 +536,11 @@ private ser_t
 mkChangeSet(sccs *cset, char *files, FILE *weave)
 {
 	ser_t	d, p;
-	char	*line, *rev;
+	char	*line, *rev, *t;
 	int	flags = GET_HASHONLY|GET_SUM|GET_SHUTUP|SILENT;
 	FILE	*f;
 	pfile	pf;
+	char	buf[MAXLINE];
 
 	/*
 	 * Edit the ChangeSet file - we need it edited to modify it as well
@@ -551,7 +552,8 @@ mkChangeSet(sccs *cset, char *files, FILE *weave)
 		memset(&pf, 0, sizeof(pf));
 		pf.oldrev = strdup("+");
 	}
-	if (sccs_get(cset, pf.oldrev, pf.mRev, 0, 0, flags, "-")) {
+	if (HASGRAPH(cset) &&
+	    sccs_get(cset, pf.oldrev, pf.mRev, 0, 0, flags, "-")) {
 		unless (BEEN_WARNED(cset)) {
 			fprintf(stderr, "cset: get -eg of ChangeSet failed\n");
 		}
@@ -559,10 +561,51 @@ mkChangeSet(sccs *cset, char *files, FILE *weave)
 		return (0);
 	}
 	d = sccs_dInit(0, 'D', cset, 0);
-	p = sccs_findrev(cset, pf.oldrev);
-	assert(p);
-	PARENT_SET(cset, d, p);
-	R0_SET(cset, d, R0(cset, p));	/* so renumber() is happy */
+	if (d == TREE(cset)) {
+		if (t = getenv("BK_RANDOM")) {
+			strcpy(buf, t);
+		} else {
+			randomBits(buf);
+		}
+		RANDOM_SET(cset, d, buf);
+
+		/* a rootkey can't have a realuser or realhost */
+		sccs_parseArg(cset, d, 'U', sccs_getuser(), 0);
+		sccs_parseArg(cset, d, 'H', sccs_gethost(), 0);
+
+		/* nor a pathname for a component */
+		sccs_parseArg(cset, d, 'P', "ChangeSet", 0);
+
+		t = fullname(cset->gfile, 0);
+		sprintf(buf, "BitKeeper file %s\n", t);
+		free(t);
+		COMMENTS_SET(cset, d, buf);
+
+		cset->bitkeeper = 1;
+		XFLAGS(cset, d) |= X_REQUIRED|X_LONGKEY;
+		R0_SET(cset, d, 1);
+
+		SUM_SET(cset, d, almostUnique());
+	} else {
+		p = sccs_findrev(cset, pf.oldrev);
+		assert(p);
+		PARENT_SET(cset, d, p);
+		R0_SET(cset, d, R0(cset, p));	/* so renumber() is happy */
+		XFLAGS(cset, d) = XFLAGS(cset, p);
+
+		/* set initial key, getfilekey() updates diff from merge */
+		SUM_SET(cset, d, cset->dsum);
+
+		/*
+		 * bk normally doesn't set the MODE() for the
+		 * ChangeSet file so the following line usually just
+		 * sets MODE=0.  But on some repos like bk source we
+		 * do have a mode and this propagates the existing
+		 * value.
+		 */
+		MODE_SET(cset, d, MODE(cset, p));
+	}
+	SORTSUM_SET(cset, d, SUM(cset, d));
 
 	if (sccs_setCludes(cset, d, pf.iLst, pf.xLst)) {
 		fprintf(stderr, "%s: bad iLst in pfile\n", prog);
@@ -586,27 +629,28 @@ mkChangeSet(sccs *cset, char *files, FILE *weave)
 	uniq_adjust(cset, d);
 	uniq_close();
 
-	/* set initial key, in getfilekey() we update diff from merge */
-	SUM_SET(cset, d, cset->dsum);
-	SORTSUM_SET(cset, d, SUM(cset, d));
-
-	SAME_SET(cset, d, 1);
-	MODE_SET(cset, d, 0100664);
-	XFLAGS(cset, d) = XFLAGS(cset, p);
-
-	/*
-	 * Read each file|rev from files and add that to the cset.
-	 * getfilekey() will ignore the ChangeSet entry itself.
-	 */
-	assert(files);
-	f = fopen(files, "rt");
-	assert(f);
-	while (line = fgetline(f)) {
-		rev = strrchr(line, '|');
-		*rev++ = 0;
-		getfilekey(line, rev, cset, d, weave);
+	if (files) {
+		/*
+		 * Read each file|rev from files and add that to the cset.
+		 * getfilekey() will ignore the ChangeSet entry itself.
+		 */
+		f = fopen(files, "rt");
+		assert(f);
+		while (line = fgetline(f)) {
+			rev = strrchr(line, '|');
+			*rev++ = 0;
+			getfilekey(line, rev, cset, d, weave);
+		}
+		fclose(f);
 	}
-	fclose(f);
+
+	if (d == TREE(cset)) {
+		// set the CSETFILE backpointer for the 1.0 delta
+		sccs_sdelta(cset, d, buf);
+		sccs_parseArg(cset, d, 'B', buf, 0);
+	} else {
+		SAME_SET(cset, d, 1);
+	}
 
 #ifdef CRAZY_WOW
 	Actually, this isn't so crazy wow.  I don't know what problem this
@@ -653,13 +697,16 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	weave = fmem();
 
 	/* write change set to diffs */
-	unless (d = mkChangeSet(cset, files, weave)) return (-1);
+	unless (d = mkChangeSet(cset, files, weave)) {
+		fclose(weave);
+		return (-1);
+	}
 
 	/* for compat with old versions of BK not using ensembles */
 	if (proj_isComponent(cset->proj)) {
-		touch("SCCS/d.ChangeSet", 0644);
+		updatePending(cset);
 	} else {
-		FLAGS(cset, d) |= D_CSET;
+		if (d > TREE(cset)) FLAGS(cset, d) |= D_CSET;
 	}
 
 	/*
@@ -695,15 +742,21 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 		goto out;
 	}
 	out = sccs_wrweaveInit(cset);
+	/*
+	 * to prune all empty: if (ftell(weave))
+	 * to prune empty but leave 1.0, add "|| (d == TREE(cset))"
+	 */
 	fprintf(out, "\001I %d\n", d);
 	fputs(fmem_peek(weave, 0), out);
 	fprintf(out, "\001E %d\n", d);
-	sccs_rdweaveInit(cset);
-	while (line = sccs_nextdata(cset)) {
-		fputs(line, out);
-		fputc('\n', out);
+	unless (flags & DELTA_EMPTY) {
+		sccs_rdweaveInit(cset);
+		while (line = sccs_nextdata(cset)) {
+			fputs(line, out);
+			fputc('\n', out);
+		}
+		sccs_rdweaveDone(cset);
 	}
-	sccs_rdweaveDone(cset);
 	sccs_wrweaveDone(cset);
 	if (sccs_finishWrite(cset)) {
 		error = -1;
@@ -717,6 +770,21 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 out:	fclose(weave);
 	comments_done();
 	return (error);
+}
+
+int
+cset_setup(int flags)
+{
+	sccs	*cset;
+	int	rc;
+
+	flags |= DELTA_EMPTY;
+	cset = sccs_csetInit(SILENT);
+	assert(cset->state & S_CSET);
+	cset->xflags |= X_LONGKEY;
+	rc = csetCreate(cset, flags, 0, 0);
+	sccs_free(cset);
+	return (rc);
 }
 
 #define	CSET_BACKUP	"BitKeeper/tmp/commit.cset.backup"

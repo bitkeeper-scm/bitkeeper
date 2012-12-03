@@ -29,8 +29,7 @@ BK_HOST=localhost bk setup -a -f -cc project 2>ERR && {
 	echo "failed"
 	exit 1
 }
-echo 'invalid host: "localhost"' > WANT
-checkfiles WANT ERR
+grep -q 'bad host name' ERR || fail
 echo OK
 
 echo $N Check defaults from setup -p ................................$NL
