@@ -170,15 +170,6 @@ bk changes -rsecond >> WANT
 checkfiles WANT GOT
 echo OK
 
-echo $N Check that -/regex/t works ..................................$NL
-bk changes -/s.*/t -nd:SYMBOL: > GOT
-echo second > WANT
-cmpfiles WANT GOT
-bk changes -/t*/gt -nd:SYMBOL: > GOT
-echo third > WANT
-cmpfiles WANT GOT
-echo OK
-
 echo $N Check remote/local listings .................................$NL
 cd "$HERE"
 bk clone $Q project clone
@@ -984,4 +975,43 @@ cat > WANT <<EOF
 EOF
 bk changed_files -L ../clone2 > GOT
 cmpfiles GOT WANT
+echo OK
+
+echo $N Check that -/regex/t works ..................................$NL
+bk changes -/s.*/t -nd:SYMBOL: > GOT
+echo second > WANT
+cmpfiles WANT GOT
+bk changes -/t*i/gt -nd:SYMBOL: > GOT
+echo third > WANT
+cmpfiles WANT GOT
+# This tests a tag with a /, which can be specified in the regexp only
+# with a \ escape.
+bk edit $Q f
+BK_USER=fourth bk delta $Q -fy'Fourth checkin' f
+BK_USER=fourth bk commit $Q --tag='f/ourth' -y'Fourth checkin' || exit 1
+bk changes -/f\/ourth/t -nd:SYMBOL: > GOT
+echo f/ourth > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test a comment with slashes..................................$NL
+touch afile
+bk new $Q afile
+cat <<EOF | bk cfile save ChangeSet
+This is a comment
+with / in it
+EOF
+bk commit -c $Q
+REV=`bk changes -nd:REV: -r+`
+bk changes -'/with ' 2>ERR && fail should have failed
+cat <<EOF > WANT
+unterminated search pattern: /with 
+EOF
+cmpfiles WANT ERR
+# now with a \/
+bk changes -'/with \/' 2>ERR && fail should have failed
+cat <<EOF > WANT
+unterminated search pattern: /with \/
+EOF
+cmpfiles WANT ERR
 echo OK

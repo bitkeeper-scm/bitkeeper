@@ -180,8 +180,8 @@ search_parse(char *str)
 	search  s;
 
 	bzero(&s, sizeof (s));
-	p = strchr(str, '/');
-	unless (p) {
+	p = strrchr(str, '/');
+	if (!p || ((p > str) && p[-1] == '\\')) {
 		fprintf(stderr, "unterminated search pattern: /%s\n", str);
 		exit(1);
 	}

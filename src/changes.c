@@ -421,11 +421,7 @@ prepSearch(char *str)
 {
 	char	*p;
 
-	/*
-	 * XXX: note this does not support \/ in search pattern
-	 * and neither does search_parse which starts with strchr(.., '/')
-	 */
-	if ((p = strchr(str, '/')) && (p = strchr(p, 't'))) {
+	if ((p = strrchr(str, '/')) && (p = strchr(p, 't'))) {
 		opts.tsearch = 1;
 		opts.tagOnly = 1;
 		/* eat it */
