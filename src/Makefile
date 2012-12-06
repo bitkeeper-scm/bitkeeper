@@ -178,7 +178,7 @@ OBJ =	bkver.o cmd.o \
 	port/check_rsh.o \
 	port/gethomedir.o \
 	port/gethost.o port/getinput.o \
-	port/getrealname.o port/globalroot.o port/gui.o \
+	port/getrealname.o port/getrusage.o port/globalroot.o port/gui.o \
 	port/hostColonPath.o port/http_proxy.o \
 	port/mail.o port/mnext.o port/networkfs.o \
 	port/notifier.o port/ns_sock_host2ip.o port/platforminit.o \

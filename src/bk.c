@@ -1359,6 +1359,7 @@ cmdlog_end(int ret, int bkd_cmd)
 	char	*log;
 	int	len, savelen;
 	kvpair	kv;
+	u64	rss;
 
 	notifier_flush();
 	unless (cmdlog_buffer[0]) goto out;
@@ -1370,6 +1371,9 @@ cmdlog_end(int ret, int bkd_cmd)
 		sprintf(buf, "%u", (u32)get_byte_count());
 		cmdlog_addnote("xfered", buf);
 	}
+	/* if a process uses more than a meg, log it */
+	rss = maxrss();
+	if (rss > 1024*1024) cmdlog_addnote("mem", psize(rss));
 
 	showproc_end(cmdlog_buffer, ret);
 

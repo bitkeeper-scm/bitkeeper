@@ -1481,6 +1481,8 @@ void	dataunmap(sccs *s, int keep);
 #define	RGCA_STANDALONE	0x2000
 int	repogca(char **urls, char *dspec, u32 flags, FILE *out);
 
+u64	maxrss(void);
+
 extern	char	*editor;
 extern	char	*bin;
 extern	char	*BitKeeper;
