@@ -7,9 +7,10 @@ private	void	dumpStats(sccs *s);
  * the older 1 argument sa_handler.
  * We also can't support paging on older MacOS because of paging bugs.
  * (10.7 is known to work and 10.4 fail)
- * This currently rules out mac, netbsd and Windows.
+ * This currently rules out old versions of macos, netbsd and Windows.
  */
-#if defined(SA_SIGINFO) && !defined(__MACH__)
+#if defined(SA_SIGINFO) &&						\
+	(!defined(__MACH__) || (__MAC_OS_X_VERSION_MIN_REQUIRED >= 1070))
 #define PAGING 1
 #endif
 

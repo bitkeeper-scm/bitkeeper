@@ -125,6 +125,12 @@ ifeq "$(shell bk changes -r+ -d:TAG:)" ""
 	TRACE = -DUSE_TRACE
 endif
 
+ifeq ($(shell uname -s), Darwin)
+	XLIBS += -lresolv
+	WARNINGS += -Wno-unused-value
+	G	+= -DNOPROC
+endif
+
 GCCOPTS=
 CC_DEBUG=$(GCCOPTS) $G $(WARNINGS) $(TRACE)
 CC_FAST_DEBUG=$(GCCOPTS) $G -O2 $(WARNINGS) $(TRACE)
