@@ -87,21 +87,4 @@ do
 	dotest "Simple interface test (no repo)" $i || break
 done < "$HERE/.INTERFACES"
 test -s XXX && exit 1
-commercial .project
-while read i
-do
-	dotest "Simple interface test (repo)" $i || break
-done < "$HERE/.INTERFACES"
-test -s XXX && exit 1
-cd "$HERE"
-nested .product
-while read i
-do
-	dotest "Simple interface test (product)" $i || break
-done < "$HERE/.INTERFACES"
-cd gcc
-while read i
-do
-	dotest "Simple interface test (component)" $i || break
-done < "$HERE/.INTERFACES"
 exit 0
