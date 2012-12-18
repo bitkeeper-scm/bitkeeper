@@ -711,6 +711,7 @@ struct sccs {
 	u32	nloc;		/* # of element in *loc */ 
 	u32	initFlags;	/* how we were opened */
 	char	*comppath;	/* used by changes for historic paths for comps*/
+	hash	*saveStr;	/* saved strings from sccs_saveStr() */
 	u32	cksumok:1;	/* check sum was ok */
 	u32	cksumdone:1;	/* check sum was checked */
 	u32	grafted:1;	/* file has grafts */
@@ -1116,6 +1117,7 @@ char	*findBin(void);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
 int	parallel(char *path);
+char	*sccs_saveStr(sccs *s, char *str);
 char	*sccs_Xfile(sccs *s, char type);
 FILE	*sccs_startWrite(sccs *s);
 int	sccs_finishWrite(sccs *s);

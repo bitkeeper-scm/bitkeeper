@@ -4834,7 +4834,9 @@ sccs_free(sccs *s)
 	if (relpath) free(relpath);
 	// No free on fullpath, proj.c maintains it.
 
-	sccsXfile(s, 0);
+	hash_free(s->saveStr);
+	s->saveStr = 0;
+
 	if (s->pagefh) {
 		dataunmap(s, 0); // unprotect all memory, but leave blank
 		fclose(s->pagefh);
@@ -5113,41 +5115,32 @@ sccs_unlock(sccs *sccs, char type)
 	unlink(sccsXfile(sccs, type));
 }
 
+char *
+sccs_saveStr(sccs *s, char *str)
+{
+
+	unless (s->saveStr) s->saveStr = hash_new(HASH_MEMHASH);
+	hash_insertStr(s->saveStr, str, 0);
+	return (s->saveStr->kptr);
+}
+
+
 /*
  * Take SCCS/s.foo.c, type and return a temp copy of SCCS/<type>.foo.c
  */
 private char *
-sccsXfile(sccs *sccs, char type)
+sccsXfile(sccs *s, char type)
 {
-	static	char	*s = 0;
-	static	int	len = 0;
 	char	*t;
+	char	buf[MAXPATH];
 
-	if (type == 0) {	/* clean up so purify doesn't barf */
-		if (len) free(s);
-		len = 0;
-		s = 0;
-		return (0);
+	strcpy(buf, s->sfile);
+	if (t = strrchr(buf, '/')) {
+		t[1] = type;
+	} else {
+		buf[0] = type;
 	}
-	if (!len) {
-		len = strlen(sccs->sfile) + 50;
-		s = malloc(len + 50);
-		assert(s);
-	} else if (len < (int) strlen(sccs->sfile) + 3) {
-		free(s);
-		len = strlen(sccs->sfile) + 50;
-		s = malloc(len);
-		assert(s);
-	}
-	if (!index(sccs->sfile, '/')) {
-		strcpy(s, sccs->sfile);
-		s[0] = type;
-		return (s);
-	}
-	strcpy(s, sccs->sfile);
-	t = rindex(s, '/') + 1;
-	*t = type;
-	return (s);
+	return (sccs_saveStr(s, buf));
 }
 
 char	*
