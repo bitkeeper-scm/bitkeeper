@@ -1,0 +1,68 @@
+.so ../bk-macros
+.TH "bk dbexplode" 1 2003/01/21 "\*(BC" "\*(UM"
+.SH NAME
+bk dbexplode \- Explode database record into fields
+.SH SYNOPSIS
+.Bc bk dbexplode [
+.OPTreq \-d directory
+.Bc ] [
+.OPTreq \-r rev
+.B ]
+.OPT \-q
+.B "file[s] | -"
+.FILE
+.SH DESCRIPTION
+.LP
+\*(BK provides database functionality via database records, also known 
+as DB files.
+Each file implements one row of a database table.
+.LP
+The
+.B dbexplode
+command explodes a record into its field components.  Each field is placed
+in a file whose name is the field name and whose contents are the field 
+contents.
+By default, each field is placed in a directory whose name is
+based on the record name followed by "_db.bk_skip", i.e., 
+.ARG filename_db.bk_skip/fieldname .
+If the records being exploded are being specified on stdin, or if more than
+one record is specified,
+only the default directory is supported.
+.LP
+Files being exploded may or may not be under revision control.
+Exploding a record into fields does not remove the record.
+.DS
+bk dbexplode 2001-03-01-001
+.DE
+yields
+.DS
+2001-03-01-001_db.bk_skip/field1
+2001-03-01-001_db.bk_skip/field2
+2001-03-01-001_db.bk_skip/field3
+...
+2001-03-01-001_db.bk_skip/fieldN
+.DE
+.LP
+See
+.B bk help dbrecord
+for a description of the database file format and operations.
+.SH OPTIONS
+.TP 1i
+.OPTreq \-d dir
+Explode the record into the specified directory.
+May only be used with a single file argument.
+.tp
+.B \-q
+be quiet.
+.tp
+.OPTreq \-r rev
+If the specified file is under \*(BK control, explode revision
+.ARG rev
+rather than the most recent revision.
+.SH "SEE ALSO"
+.SA dbrecord 1
+.SA dbimplode 1
+.SA dbnew 1
+.SA db 1
+.SH CATEGORY
+.B Database

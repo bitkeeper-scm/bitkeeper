@@ -6306,11 +6306,16 @@ deltaChk(sccs *cset, char *rk, char *dk)
 }
 
 private int
-getKey(sccs *s, MDBM *DB, char *data, int flags)
+getKey(sccs *s, MDBM *DB, char *data, int flags, hashpl *dbstate)
 {
 	char	*k, *v;
 	int	rc;
 
+	if (flags & DB_DB) {
+		hash_parseLine(data, DB->memdb, dbstate);
+		return (1);
+	}
+	unless (data) return (1);
 	k = data;
 	unless (v = separator(data)) {
 		fprintf(stderr, "get hash: no separator in '%s'\n", data);
@@ -6576,6 +6581,7 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 	char	*buf, *name = 0, *gfile = 0;
 	MDBM	*DB = 0;
 	int	hash = 0;
+	int	hashFlags = 0;
 	int	sccs_expanded, rcs_expanded;
 	int	lf_pend = 0;
 	char	*eol = "\n";
@@ -6584,6 +6590,7 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 	char	lnamebuf[MD5LEN+32]; /* md5sum + '.' + linenumber */
 	MDBM	*namedb = 0;
 	u32	*lnum = 0;
+	hashpl	dbstate = {0};
 	u32	fastflags = (NEWCKSUM|GET_SUM|GET_SHUTUP|SILENT|PRINT);
 
 	assert(!BAM(s));
@@ -6628,19 +6635,30 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 		if (flags & (GET_NOHASH|GET_SKIPGONE)) flags &= ~NEWCKSUM;
 	}
 
-	if (HASH(s) && !(flags & GET_NOHASH)) {
+	if ((HASH(s) || DB(s)) && !(flags & GET_NOHASH)) {
 		hash = 1;
+		if (DB(s)) hashFlags = DB_DB;
 		unless ((encoding & E_DATAENC) == E_ASCII) {
-			fprintf(stderr, "get: has files must be ascii.\n");
+			fprintf(stderr, "get: hash files must be ascii.\n");
 			s->state |= S_WARNED;
 			goto out;
 		}
-		unless (DB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
-			fprintf(stderr, "get: bad MDBM.\n");
-			s->state |= S_WARNED;
-			goto out;
+		/* GET_HASHONLY|GET_NOREGET means merge w/existing s->mdbm */
+		if (s->mdbm && ((flags & (GET_HASHONLY|GET_NOREGET)) ==
+				(GET_HASHONLY|GET_NOREGET))) {
+			DB = s->mdbm;
+		} else {
+			unless (DB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
+				fprintf(stderr, "get: bad MDBM.\n");
+				s->state |= S_WARNED;
+				goto out;
+			}
 		}
 		assert(proj_root(s->proj));
+	}
+	if ((flags & GET_HASHONLY) && !(HASH(s) || DB(s))) {
+		fprintf(stderr, "get: %s not a hash or db file.\n", s->gfile);
+		goto out;
 	}
 
 	/*
@@ -6706,7 +6724,7 @@ get_reg(sccs *s, char *printOut, int flags, ser_t d,
 		if ((gfile == (char *) 0) || (gfile == (char *)-1)) {
 out:			if (slist) free(slist);
 			if (state) free(state);
-			if (DB) mdbm_close(DB);
+			if (DB && (s->mdbm != DB)) mdbm_close(DB);
 			/*
 			 * 0 == OK
 			 * 1 == error
@@ -6757,7 +6775,8 @@ out:			if (slist) free(slist);
 				}
 				continue;
 			}
-			if (hash && getKey(s, DB, buf, flags) != 1) {
+			if (hash &&
+			    getKey(s, DB, buf, hashFlags|flags, &dbstate) != 1) {
 				continue;
 			}
 			lines++;
@@ -6905,6 +6924,8 @@ write:
 			print = visitedstate(state, slist);
 		}
 	}
+	if (hash) getKey(s, DB, 0, hashFlags|flags, &dbstate);
+
 	if (BITKEEPER(s) &&
 	    d && (flags & NEWCKSUM) && !(flags&GET_SHUTUP) && lines) {
 		ser_t	z = getCksumDelta(s, d);
@@ -6951,7 +6972,7 @@ write:
 
 	if (error) {
 		unless (flags & PRINT) unlink(s->gfile);
-		if (DB) mdbm_close(DB);
+		if (DB && (s->mdbm != DB)) mdbm_close(DB);
 		return (1);
 	}
 #ifdef X_SHELL
@@ -6980,7 +7001,8 @@ write:
 	if (namedb) mdbm_close(namedb);
 	if (lnum) free(lnum);
 	if (DB) {
-		if (s->mdbm) mdbm_close(s->mdbm);
+		if (s->mdbm != DB) mdbm_close(s->mdbm);
+		s->mdbm_ser = d;
 		s->mdbm = DB;
 	}
 	return 0;
@@ -10114,6 +10136,7 @@ out:		sccs_abortWrite(s);
 	EACH(syms) addsym(s, n, !(flags & DELTA_PATCH), syms[i]);
 	if (BITKEEPER(s)) {
 		s->version = SCCS_VERSION;
+		if (flags & DELTA_DB) s->xflags |= X_DB;
 		unless (flags & DELTA_PATCH) {
 			XFLAGS(s, first) = s->xflags;
 			XFLAGS(s, n) = s->xflags;
@@ -14325,6 +14348,29 @@ done:	free_pfile(&pf);
 	return (rc);
 }
 
+private datum
+key2val(sccs *s, ser_t d, const char *key, int len)
+{
+	datum	k;
+	datum	v = {0,0};
+	char	rev[MAXREV];
+
+	unless (DB(s)) return (v);
+	unless (s->mdbm && (s->mdbm_ser == d)) {
+		sprintf(rev, "=%d", d);
+		db_load(0, s, rev, 0);
+	}
+	unless (s->mdbm) return (v);
+
+	/* Add a null-terminating byte to the key before the lookup. */
+	k.dptr  = strndup(key, len);
+	k.dsize = len + 1;
+	v = mdbm_fetch(s->mdbm, k);
+	free(k.dptr);
+	if (v.dsize > 0) --v.dsize;
+	return (v);
+}
+
 /*
  * Include the kw2val() hash lookup function.  This is dynamically
  * generated during the build by kwextract.pl and gperf (see the
@@ -14409,6 +14455,18 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		len = p - 1 - kw;
 		d = e;
 	}
+
+	if (kw[0] == '%') {
+		int	nochomp = (kw[1] == '%');
+		datum	v = key2val(s, d, &kw[1+nochomp], len-1-nochomp);
+
+		if (!nochomp && v.dptr && (v.dptr[v.dsize-1] == '\n')) {
+			--v.dsize;
+		}
+		fsd(v);
+		return (strVal);
+	}
+
 	kwval = kw2val_lookup(kw, len);
 	unless (kwval) return notKeyword;
 
@@ -16124,6 +16182,27 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 		if (s->prs_indentC && proj_isComponent(s->proj)) fs("  ");
 		unless (CSET(s)) fs("  ");
 		return (strVal);
+	case KW_FIELDS: /* FIELDS */ {
+		int	i;
+		kvpair	kv;
+		char	**lines = 0;
+
+		/*
+		 * The list of field keys in a DB file.
+		 * First fetch a dummy key to ensure s->mdbm is up to date.
+		 */
+		key2val(s, d, "", 0);
+		EACH_KV(s->mdbm) lines = addLine(lines, kv.key.dptr);
+		sortLines(lines, 0);
+		EACH(lines) {
+			fs(lines[i]);
+			fs("\n");
+		}
+		unless (lines) return (nullVal);
+		freeLines(lines, 0);
+		return (strVal);
+	}
+
 	case KW_RM_NAME: /* RM_NAME */ {
 		char	key[MAXKEY];
 
@@ -16468,11 +16547,6 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 		prs_reverse(s, flags, dspec, out);
 	} else {
 		prs_forward(s, flags, dspec, out);
-	}
-
-	if (KV(s) && s->mdbm) {
-		mdbm_close(s->mdbm);
-		s->mdbm = 0;
 	}
 	return (0);
 }

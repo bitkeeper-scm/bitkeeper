@@ -1,0 +1,45 @@
+.so ../bk-macros
+.TH "bk dbnew" 1 2003/01/21 "\*(BC" "\*(UM"
+.SH NAME
+bk dbnew \- add a db record to a repository
+.SH SYNOPSIS
+.B bk dbnew [-q]
+.ARG dbfile
+.br
+.B bk dbnew [-q] -
+.SH DESCRIPTION
+.LP
+The 
+.B dbnew
+command is used to place manually created DB files
+under \*(BK control
+(the normal way to create DB records is with the bk db command).
+The first form checks in a single file, the second form checks in
+the files listed on stdin.
+The bk dbnew command supports most of the options to bk delta.
+.LP
+After the files are checked in, don't be surprised to see that
+the files are no longer in your directory. The process of checking
+in files removes the files from the directory and places them in
+the SCCS directories.  Once in the SCCS directory, the file can be
+retrieved with the 
+.B bk get
+or 
+.B bk edit
+commands.  Most versions of the
+Unix make command know about SCCS and will automatically check out
+files as they are needed.
+.SH OPTIONS
+.TP
+.tp
+.B \-q
+be quiet.
+.SH SEE ALSO
+.SA dbrecord 1
+.SA db 1
+.SA delta 1
+.SA edit 1
+.SA get 1
+.SA sfiles 1
+.SH CATEGORY
+.B Database

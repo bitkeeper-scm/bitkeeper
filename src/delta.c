@@ -139,7 +139,7 @@ delta_main(int ac, char **av)
 	FILE	*diffs = 0;
 	FILE	*init = 0;
 	pfile	pf = {0};
-	int	dash, errors = 0, fire, dangling;
+	int	dash, dbsort = 1, errors = 0, fire, dangling;
 	off_t	sz;
 
 	prog = strrchr(av[0], '/');
@@ -150,10 +150,14 @@ delta_main(int ac, char **av)
 		dflags |= NEWFILE;
 		sflags |= SF_NODIREXPAND;
 		sflags &= ~SF_WRITE_OK;
+	} else if (streq(prog, "dbnew")) {
+		dflags |= NEWFILE | DELTA_DB;
+		sflags |= SF_NODIREXPAND;
+		sflags &= ~SF_WRITE_OK;
 	}
 
 	while ((c =
-	    getopt(ac, av, "abcCdD:E|fGI;ilm|M;npPqRsTuy|Y|Z|", 0)) != -1) {
+	    getopt(ac, av, "abcCdD:E|fGI;ilm|M;npPqRsSTuy|Y|Z|", 0)) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -222,6 +226,7 @@ delta_main(int ac, char **av)
 			bk_setConfig("compression", optarg ? optarg : "gzip");
 			break;
 		    case 'E': encp = optarg; break; 		/* doc 2.0 */
+		    case 'S': dbsort = 0; break;		/* undoc */
 
 		    default: bk_badArg(c, av);
 		}
@@ -302,6 +307,17 @@ delta_main(int ac, char **av)
 				df &= ~NEWFILE;
 			} else {
 				df |= NEWFILE;
+			}
+		}
+		/* DB files must be sorted unless specified otherwise. */
+		if (DB(s)) df |= DELTA_DB;
+		if ((df & DELTA_DB) && dbsort) {
+			if (db_sort(s->gfile, s->gfile)) {
+				fprintf(stderr,
+				    "Error loading DB file %s, skipped\n",
+				    s->gfile);
+				errors |= 4;
+				goto next;
 			}
 		}
 		/*

@@ -109,6 +109,7 @@ int	checking_rmdir(char *dir);
 #define	DELTA_CFILE	0x00100000	/* read cfile and do not prompt */
 #define	DELTA_MONOTONIC	0x00200000	/* preserve MONOTONIC flag */
 #define	DELTA_TAKEPATCH	0x00400000	/* call sccs_getInit() from takepatch */
+#define	DELTA_DB	0x00800000	/* treat as DB file */
 
 #define	ADMIN_FORMAT	0x10000000	/* check file format (admin) */
 /* AVAILABLE		0x20000000	*/
@@ -191,7 +192,7 @@ int	checking_rmdir(char *dir);
 /* old  X_LOGS_ONLY	0x00000400	   this is a logging repository */
 #define	X_EOLN_NATIVE	0x00000800	/* use eoln native to this OS */
 #define	X_LONGKEY	0x00001000	/* all keys are long format */
-#define	X_KV		0x00002000	/* key value file */
+#define	X_DB		0x00002000	/* key value file */
 #define	X_NOMERGE	0x00004000	/* treat as binary even if ascii */
 					/* flags which can be changed */
 #define	X_MONOTONIC	0x00008000	/* file rolls forward only */
@@ -199,7 +200,7 @@ int	checking_rmdir(char *dir);
 /* Note: X_EOLN_UNIX is fake, it does not go on disk */
 #define	X_EOLN_UNIX	0x00020000	/* produce \n style endings */
 #define	X_MAYCHANGE	(X_RCS | X_YEAR4 | X_SHELL | X_EXPAND1 | \
-			X_SCCS | X_EOLN_NATIVE | X_KV | X_NOMERGE | \
+			X_SCCS | X_EOLN_NATIVE | X_NOMERGE | \
 			X_MONOTONIC | X_EOLN_WINDOWS | X_EOLN_UNIX)
 /* default set of flags when we create a file */
 #define	X_DEFAULT	(X_BITKEEPER|X_CSETMARKED|X_EOLN_NATIVE)
@@ -262,7 +263,7 @@ int	checking_rmdir(char *dir);
 #define	HASH(s)		((s)->xflags & X_HASH)
 #define	SCCS(s)		((s)->xflags & X_SCCS)
 #define	EOLN_NATIVE(s)	((s)->xflags & X_EOLN_NATIVE)
-#define	KV(s)		((s)->xflags & X_KV)
+#define	DB(s)		((s)->xflags & X_DB)
 #define	NOMERGE(s)	((s)->xflags & X_NOMERGE)
 #define	MONOTONIC(s)	((s)->xflags & X_MONOTONIC)
 #define	EOLN_WINDOWS(s)	((s)->xflags & X_EOLN_WINDOWS)
@@ -326,11 +327,14 @@ typedef	enum {
 } retrc;
 
 /*
- * Hash behaviour.  Bitmask.
+ * Hash behaviour.  Bitmask, although some of these are
+ * mutually exclusive.
  */
-#define	DB_NODUPS       0x01		/* keys must be unique */
-#define	DB_KEYSONLY	0x08		/* boolean hashes */
-#define	DB_KEYFORMAT	0x20		/* key/value are u@h|path|date|cksum */
+#define	DB_NODUPS       0x0001		/* keys must be unique */
+#define	DB_KEYSONLY	0x0008		/* boolean hashes */
+#define	DB_KEYFORMAT	0x0020		/* key/value are u@h|path|date|cksum */
+#define	DB_DB		0x0080		/* db file format */
+#define	DB_FIRST	0x0100		/* parsing first line in file */
 
 /* shortcuts for common formats */
 #define	DB_IDCACHE	(0x80|DB_KEYFORMAT|DB_NODUPS)
@@ -692,6 +696,7 @@ struct sccs {
 	time_t	gtime;		/* gfile modidification time */
 	time_t	stime;		/* sfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
+	ser_t	mdbm_ser;	/* Which rev of mdbm was saved */
 	MDBM	*goneDB;	/* GoneDB used in the get_reg() setup */
 	MDBM	*idDB;		/* id cache used in the get_reg() setup */
 	u32	*fastsum;	/* Cache a lines array of the weave sums */
@@ -1355,7 +1360,9 @@ int	sccs_csetPatchWeave(sccs *s);
 int	sccs_fastWeave(sccs *s, ser_t *weavemap, ser_t *patchmap,
 	    FILE *fastpatch);
 void	sccs_clearbits(sccs *s, u32 flags);
-MDBM	*loadkv(char *file);
+MDBM	*db_load(char *gfile, sccs *s, char *rev, MDBM *m);
+int	db_sort(char *gfile_in, char *gfile_out);
+int	db_store(char *gfile, MDBM *m);
 char	**getParkComment(int *err);
 int	launch_wish(char *script, char **av);
 void	converge_hash_files(void);

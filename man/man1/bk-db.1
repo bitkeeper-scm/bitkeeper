@@ -1,0 +1,101 @@
+.so ../bk-macros
+.TH "bk db" 1 2004/09/14 "\*(BC" "\*(UM"
+.SH NAME
+bk db \- \*(BK database overview
+.SH DESCRIPTION
+.LP
+A BitKeeper database is a repository that contains revision-controlled
+database records.
+A record holds one or more key/value pairs and
+represents one row of a database table.
+The key is the name of the field within the row and the value is the
+contents of that field.
+The bk db command inserts, updates, queries, and deletes records
+using a command syntax reminiscent of SQL.
+.LP
+A unique feature of BitKeeper databases is that records are
+revision controlled.
+All past versions of records are available
+and any revision of any field may be queried.
+When a field is updated, a new revision of the record containing it is created.
+.LP
+The values stored in a database can be text or binary data of any length.
+Unlike a traditional database, BitKeeper does not have a database
+schema and values are untyped.
+Database records therefore can contain any mix of key/value pairs and
+not all records have to contain the same keys although typically they do.
+.LP
+Each database record is stored in a type of revision-controlled
+file called a DB file.
+A DB file is a text file that contains the keys and their values.
+Its internal structure normally is invisible to the user,
+but sometimes it is useful to create or modify them by hand.
+For the most part they are treated like any
+other revision-controlled file and many of the regular bk
+commands work on them; see bk dbrecord.
+.LP
+BitKeeper implements the traditional notion of a database "table"
+by storing logically related records together inside the same
+subdirectory.
+A table therefore is simply a subdirectory.
+The user can create any number of tables.
+All bk db commands must be given either a table name or
+a specific list of DB files on which to operate.
+.SH CREATING DATABASES
+.LP
+A database is just a BitKeeper repository that happens to contain DB files.
+It is created with the bk setup command like any other repository.
+A database may contain any mix of DB files and non-DB files.
+.SH INSERTING RECORDS
+.LP
+Records are inserted into a database in one of two ways.
+The usual way is to use the bk db command, which allows the
+key/value pairs to be specified on the command line; see bk dbinsert.
+A second way is to build a DB file by hand and use the bk dbnew
+command to add the file to the repository.
+This way is useful when a program is collecting the data to add.
+.LP
+When inserting a new record, BitKeeper automatically
+assigns a unique record id of the form YYYY-MM-DD-nnn based on the
+current date, where "nnn" is a three-digit serial number within the
+current day (additional digits are used if more than 1000
+records are inserted in one day).
+The record id is assigned to a key named ID in the record,
+and the new DB file is
+given the id as its name when placed in the specified table.
+.SH UPDATING RECORDS
+.LP
+The bk db command allows one or more key values to be changed
+for a specific record or all records that match a query.
+When an update is made, a new revision of the record
+is created.
+.SH QUERYING RECORDS
+.LP
+All records in a database table can be queried with the bk db command using
+a syntax similar to the SQL "select" command.
+Specific fields of the matching records can be printed, and the
+results sorted in various ways.
+.LP
+Queries can be written over database fields or DB file metadata
+(e.g., to query the file's creator or creation date).
+Meta-data keywords are distinguised from database field names by
+leading underscores or surrounding colons:
+.DS
+USERKEY
+:METADATA:
+_METADATA
+.DE
+.LP
+Note the difference from the bk prs command where user keys
+look like :%USERKEY: and meta-data keywords are unadorned.
+.SH "SEE ALSO"
+.SA dbdelete 1
+.SA dbinsert 1
+.SA dbselect 1
+.SA dbupdate 1
+.SA dbexplode 1
+.SA dbimplode 1
+.SA dbrecord 1
+.SA dbnew 1
+.SH CATEGORY
+.B Database

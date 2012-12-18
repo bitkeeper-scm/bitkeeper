@@ -7,7 +7,6 @@
 
 private	int binaryField(u8 *data, int len);
 private	int goodkey(u8 *key, int len);
-private	void savekey(hash *h, int base64, char *key, FILE *val);
 private	void writeField(FILE *f, char *key, u8 *data, int len);
 
 /* These are from tomcrypt... */
@@ -104,54 +103,80 @@ hash *
 hash_fromStream(hash *h, FILE *f)
 {
 	char	*line;
-	char	*key = 0;
-	int	base64 = 0;
-	FILE	*val = fmem();
-	int	gotval = 0;
-	unsigned long len;
-	char	data[256];
+	hashpl	state = {0};
 
 	assert(f);
 	while (line = fgetline(f)) {
-		if ((line[0] == '@') && (line[1] != '@')) {
-			unless (line[1]) break; /* @ == end of record */
-			if (key || gotval) {
-				/* save old key */
-				unless (h) h = hash_new(HASH_MEMHASH);
-				savekey(h, !base64 && gotval, key, val);
-				FREE(key);
-				gotval = 0;
-			}
-			len = strlen(line);
-			base64 = (len > 8) && ends_with(line, " base64");
-			if (base64) line[len-7] = 0;
-			key = hash_keydecode(line+1);
+		unless (h) h = hash_new(HASH_MEMHASH);
+		if (hash_parseLine(line, h, &state) == 1) break;
+	}
+	if (h) hash_parseLine(0, h, &state);
+	return (h);
+}
+
+/*
+ * Read a line of data from a DB file and write it to the hash
+ * Data gets buffered up locally to so a key is only written after
+ * all of the data is seen.
+ *
+ * Special forms:
+ *   hash_parseLine(0, db, data)    At EOF so finish the last key
+ *   hash_parseLine(0, 0, data)	    Just free 'data'
+ *
+ * Return:
+ *	1   "@\n" record separator seen
+ *     -1   error
+ *	0   good line
+ */
+int
+hash_parseLine(char *line, hash *h, hashpl *s)
+{
+	unless (s->val) s->val = fmem();
+	if (!line || ((line[0] == '@') && (line[1] != '@'))) {
+		char	*key = s->key;
+		u8	*data;
+		size_t	len;
+
+		data = fmem_peek(s->val, &len);
+		if (key || len) {
+			unless (key) key = "";
+			if (!s->base64 && len && (data[len-1] == '\n')) --len;
+			data[len++] = 0;	/* always add trailing null */
+			/* overwrite existing */
+			if (h) hash_store(h, key, strlen(key)+1, data, len);
+			ftrunc(s->val, 0);
+			FREE(s->key);
+		}
+		unless (line) {    /* at EOF */
+			fclose(s->val);
+			s->val = 0;
+			s->base64 = 0;
+			return (0);
+		}
+		unless (line[1]) return (1); /* @ == end of record */
+		len = strlen(line);
+		s->base64 = (len > 8) && ends_with(line, " base64");
+		if (s->base64) line[len-7] = 0;
+		s->key = hash_keydecode(line+1);
+		if (s->base64) line[len-7] = ' ';
+	} else {
+		if (*line == '@') ++line; /* skip escaped @ */
+		if (s->base64) {
+			long	len;
+			char	data[256];
+
+			len = sizeof(data);
+			base64_decode(line, strlen(line), data, &len);
+			if (len) fwrite(data, 1, len, s->val);
 		} else {
-			if (*line == '@') ++line; /* skip escaped @ */
-			if (base64) {
-				len = sizeof(data);
-				base64_decode(line, strlen(line), data, &len);
-				if (len) {
-					fwrite(data, 1, len, val);
-					gotval = 1;
-				}
-			} else {
-				if (gotval) fputc('\n', val);
-				/* compat: ignore null key null val */
-				if (*line || key) {
-					fputs(line, val);
-					gotval = 1;
-				}
+			/* compat: ignore null key null val */
+			if (*line || s->key) {
+				fputs(line, s->val);
+				fputc('\n', s->val);
 			}
 		}
 	}
-	if (key || gotval) {
-		unless (h) h = hash_new(HASH_MEMHASH);
-		savekey(h, !base64 && gotval, key, val);
-		FREE(key);
-	}
-	fclose(val);
-	return (h);
+	return (0);
 }
 
 
@@ -170,7 +195,6 @@ goodkey(u8 *key, int len)
  * Currently check for:
  *    Contains non-printable characters
  *    Has a line longer that 256 characters
- *    Is not null terminated
  */
 private int
 binaryField(u8 *data, int len)
@@ -178,7 +202,7 @@ binaryField(u8 *data, int len)
 	int	i;
 	int	lastret = 0;
 
-	for (i = 0; i < (len-1); i++) {
+	for (i = 0; i < len; i++) {
 		int	c = data[i];
 		unless (isprint(c) || isspace(c)) return (1);
 		if (c == '\n') {
@@ -186,7 +210,7 @@ binaryField(u8 *data, int len)
 			lastret = i;
 		}
 	}
-	if ((len>0) && (data[len-1] != 0) || ((i - lastret) > 256)) return (1);
+	if ((i - lastret) > 256) return (1);
 	return (0);
 }
 
@@ -242,6 +266,8 @@ writeField(FILE *f, char *key, u8 *data, int len)
 	char	out[128];
 
 	fputc('@', f);
+	/* strip trailing null, all fields should have one */
+	if ((len > 0) && (data[len-1] == 0)) --len;
 	hash_keyencode(f, key);
 	if (binaryField(data, len)) {
 		fputs(" base64\n", f);
@@ -271,53 +297,53 @@ writeField(FILE *f, char *key, u8 *data, int len)
 	fputc('\n', f);
 }
 
-private void
-savekey(hash *h, int addnull, char *key, FILE *val)
-{
-	u8	*data;
-	size_t	len;
-
-	unless (key) key = "";
-	data = fmem_peek(val, &len);
-	if (addnull) len++;
-	/* overwrite existing */
-	hash_store(h, key, strlen(key)+1, data, len);
-	ftrunc(val, 0);
-}
-
 extern	int	hashfile_test_main(int ac, char **av);
 
 int
 hashfile_test_main(int ac, char **av)
 {
-	int	i;
+	int	i, c;
 	hash	*h = 0;
 	char	**keys = 0;
+	char	*file;
 	char	*key, *val;
+	int	mode = 0;
+	int	hex = 0;
 	FILE	*f;
 
-	unless (ac == 3) {
-usage:		fprintf(stderr, "usage: %s [r|w|n] <file>\n", av[0]);
+	while ((c = getopt(ac, av, "nrwX", 0)) != -1) {
+		switch (c) {
+		    case 'n': mode = c; break;
+		    case 'r': mode = c; break;
+		    case 'w': mode = c; break;
+		    case 'X': hex = 1; break;
+		    default: goto usage;
+		}
+	}
+	file = av[optind];
+	unless (file && mode) {
+usage:		fprintf(stderr, "usage: bk _hashfile_test [-nrwX] file\n");
 		return (1);
 	}
-	switch (av[1][0]) {
+	switch (mode) {
 	    case 'r':
 		// read all hashes from av[2], dump to stdout
-		unless (f = fopen(av[2], "r")) return (0);
+		unless (f = fopen(file, "r")) return (1);
 		while (!feof(f)) {
 			unless (h = hash_fromStream(0, f)) goto next;
 			EACH_HASH(h) keys = addLine(keys, h->kptr);
 			sortLines(keys, 0);
 			EACH(keys) {
+				printf("%s =>", keys[i]);
 				val = hash_fetchStr(h, keys[i]);
-				if (!h->vlen || val[h->vlen-1]) {
-					// val not null terminated
-					printf("%s => '", keys[i]);
-					fwrite(val, h->vlen, 1, stdout);
-					printf("' (%d)\n", h->vlen);
+				if (hex) {
+					for (c = 0; c < h->vlen; c++) {
+						printf(" %02x", val[c]);
+					}
 				} else {
-					printf("%s => %s\n", keys[i], val);
+					printf(" %s", val);
 				}
+				printf("\n");
 			}
 			freeLines(keys, 0); keys = 0;
 			hash_free(h); h = 0;
@@ -327,7 +353,7 @@ next:			unless (feof(f)) printf("---\n");
 		break;
 	    case 'w':
 		// read hash from av[2], write back out to stdout
-		h = hash_fromFile(0, av[2]);
+		h = hash_fromFile(0, file);
 		hash_toStream(h, stdout);
 		break;
 	    case 'n':
@@ -335,7 +361,7 @@ next:			unless (feof(f)) printf("---\n");
 		key = "nonterm";
 		h = hash_new(HASH_MEMHASH);
 		hash_insert(h, key, 7, "value", 6);
-		hash_toFile(h, av[2]);
+		hash_toFile(h, file);
 		break;
 	    default: goto usage;
 	}

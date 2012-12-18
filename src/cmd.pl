@@ -207,6 +207,8 @@ create
 crypto
 cset
 csetprune pro
+dbexplode
+dbimplode
 _debugargs remote
 deledit
 delget
@@ -412,6 +414,7 @@ attach => clone
 detach => clone
 _cat => _catfile
 ci => delta
+dbnew => delta
 enter => delta
 new => delta
 _get => get

@@ -219,8 +219,8 @@ xflags2a(u32 flags)
 	if (flags & X_EOLN_WINDOWS) {
 		list = addLine(list, "EOLN_WINDOWS");
 	}
-	if (flags & X_KV) {
-		list = addLine(list, "KV");
+	if (flags & X_DB) {
+		list = addLine(list, "DB");
 	}
 	if (flags & X_NOMERGE) {
 		list = addLine(list, "NOMERGE");
@@ -252,6 +252,7 @@ a2xflag(char *flag)
 	if (streq(flag, "EOLN_WINDOWS")) return (X_EOLN_WINDOWS);
 	if (streq(flag, "NOMERGE")) return (X_NOMERGE);
 	if (streq(flag, "MONOTONIC")) return (X_MONOTONIC);
+	if (streq(flag, "DB")) return (X_DB);
 	fprintf(stderr, "Unknown flag: %s\n", flag);
 	return (0);
 }

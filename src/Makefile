@@ -158,7 +158,7 @@ OBJ =	bkver.o cmd.o \
 	contrib/test.o \
 	converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	dataheap.o delta.o diff.o diffs.o diffsplit.o dspec.o \
+	dataheap.o dbfile.o delta.o diff.o diffs.o diffsplit.o dspec.o \
 	eula.o export.o \
 	features.o \
 	find.o findcset.o fixtool.o fsl.o fslayer.o \

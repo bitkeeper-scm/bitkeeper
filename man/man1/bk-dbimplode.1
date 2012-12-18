@@ -1,0 +1,53 @@
+.so ../bk-macros
+.TH "bk dbimplode" 1 2003/01/21 "\*(BC" "\*(UM"
+.SH NAME
+bk dbimplode \- create database file
+.SH SYNOPSIS
+.Bc bk dbimplode [
+.OPTreq \-d dir
+]
+.OPT \-q
+.B "file[s] | -"
+.SH DESCRIPTION
+.LP
+\*(BK provides database functionality via database records, also known 
+as DB files.
+Each file implements one row of a database table.
+.LP
+The
+.B dbimplode
+command implodes a set of fields into a db file.
+Each field is a file whose name is the field name and whose contents
+are the field contents.
+By default, the record is imploded from a directory whose name is
+based on the record name followed by "_db.bk_skip", i.e.,
+.ARG filename_db.bk_skip/fieldname .
+If the files being exploded are being specified on stdin, or if more than
+one record is specified,
+then only the default directory is supported.
+.LP
+Imploding a set of fields into a file removes the fields and subdirectory
+containing those fields upon successful implosion.
+.LP
+Use
+.B dbimplode
+in conjunction with bk dbexplode, which explodes a record into fields.
+.LP
+See
+.B bk help dbrecord
+for a description of the database file format and operations.
+.SH OPTIONS
+.TP 1i
+.OPTreq \-d dir
+Explode the record into the specified directory.
+May only be used with a single file argument.
+.tp
+.B \-q
+be quiet.
+.SH "SEE ALSO"
+.SA dbexplode 1
+.SA dbrecord 1
+.SA dbnew 1
+.SA db 1
+.SH CATEGORY
+.B Database

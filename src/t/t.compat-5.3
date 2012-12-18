@@ -208,9 +208,9 @@ cat <<EOF > hash
 @a|b|c
 value
 EOF
-bk _hashfile_test w hash > hash.new || fail
+bk _hashfile_test -w hash > hash.new || fail
 $OLDBK/bk _hashfile_test w hash > hash.old || fail
-bk _hashfile_test w hash.old > hash.old.new || fail
+bk _hashfile_test -w hash.old > hash.old.new || fail
 $OLDBK/bk _hashfile_test w hash.new > hash.new.old || fail
 
 grep -q '@a|b|c' hash.new || fail

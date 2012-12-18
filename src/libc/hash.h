@@ -246,6 +246,15 @@ hash	*hash_fromFile(hash *h, char *path);
 int	hash_keyDiff3(hash *A, hash *B, hash *C);
 int	hash_keyDiff(hash *A, hash *B);
 
+/* internal state for hash_parseLine */
+typedef	struct {
+	char	*key;
+	FILE	*val;
+	u8	base64;		// whether val must be base64 decoded
+} hashpl;
+
+int	hash_parseLine(char *line, hash *h, hashpl *data);
+
 
 /* ------------ convenience wrappers ---------------------------------- */
 

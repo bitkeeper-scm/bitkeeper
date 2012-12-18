@@ -8,13 +8,19 @@ typedef struct {
 	MDBM	*db;
 } whash;
 
+/*
+ * h = hash_new(HASH_MDBM, mdbm)
+ * Create a new 'hash' wrapper around a mdbm.
+ * if mdbm==0, then create a new mdbm
+ */
 hash *
 wrapmdbm_new(va_list ap)
 {
 	whash	*ret;
 
 	ret = new(whash);
-	ret->db = mdbm_open(0, 0, 0, GOOD_PSIZE);
+	ret->db = va_arg(ap, MDBM *);
+	unless (ret->db) ret->db = mdbm_open(0, 0, 0, GOOD_PSIZE);
 	return ((hash *)ret);
 }
 
