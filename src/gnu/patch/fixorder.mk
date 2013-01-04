@@ -8,10 +8,13 @@
 # bk get -Sq
 
 configure: aclocal.m4 config.hin
-	bk get -q $@
+	-bk clean $@
+	-bk get -q $@
 
 config.hin: configure.in
-	bk get -q $@
+	-bk clean $@
+	-bk get -q $@
 
 aclocal.m4: configure.in
-	bk get -q $@
+	-bk clean $@
+	-bk get -q $@

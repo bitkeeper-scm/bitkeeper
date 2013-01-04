@@ -5,10 +5,13 @@
 # bk get -Sq
 
 configure: config.hin
-	bk get -q $@
+	-bk clean $@
+	-bk get -q $@
 
 config.hin: stamp-h.in
-	bk get -q $@
+	-bk clean $@
+	-bk get -q $@
 
 stamp-h.in: configure.in
-	bk get -q $@
+	-bk clean $@
+	-bk get -q $@
