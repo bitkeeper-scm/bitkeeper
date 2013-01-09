@@ -7,6 +7,64 @@ bk annotate -c<date> is now bk annotate -c<date_range>; the old usage is no
 longer supported (but see the docs for how to work around it).
 
 ============================================================================
+Release notes for BitKeeper version 5.4.4 (released Dec 7, 2012)
+
+This is a bugfix release - the main fix is the failed commit problem
+that was introduced in 5.4.3.  Users of 5.4.3 are encouraged to
+upgrade.
+
+Bug fixes:
+
+  - Fix a bug in 'bk diffs' where it wouldn't always show changes in files
+    where the user incorrectly ran 'chmod +w' without using 'bk edit'.
+
+  - Update some manpages to show modern bk idioms (bk -A/-U etc).
+
+  - A failed commit can leave a repository in an inconsistent state.
+
+  - Fix 'argument list too long' failure in fm3 merge tool.
+
+  - Prevent ^C from interrupting a nested pull and leaving a
+    repository in an inconsistent state.
+
+  - Fix a case when running bk with a read-only BitKeeper/etc would
+    produce errors and incorrect output.
+  
+  - Fix a bug that made "bk changes -R -/search with spaces/" fail.
+    
+  - Change the code that looks for optional features to run earlier;
+    this makes for a nicer usage message.
+  
+  - Fix a bug where a pending delta was allowed to be committed again.
+
+  - In a read only repository, the ignore file was not checked out and
+    not honored.  It is honored as of this release, checked out or not.
+
+  - Work harder to clean up stale locks.
+
+Compatibility
+
+  - create and document a "bk features" command.  It lists or checks
+    for optional features, either in the BK binary or in the repository.
+
+Nested features
+
+  - Make cmdlog nested aware.  With this release, cmdlog will examine
+    all of the log files in a nested collection.
+
+      bk cmdlog -av  -> will now output all commands across the
+      	 	     	collection (with the component name added
+			to the output)
+      bk cmdlog -Sav -> will limit the output to the current component
+      	 	     	(and the output will be identical to the
+			 previous cmdlog -av output)
+
+    This change is intended to assist us in handling support issues.
+    However, if you have scripts relying on cmdlog we would like to
+    know about them as there are more changes under consideration for
+    future releases.
+
+============================================================================
 Release notes for BitKeeper version 5.4.3 (released Sep 24, 2012)
 
 This is a minor bugfix release.
