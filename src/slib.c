@@ -2007,6 +2007,7 @@ eof:		s->rdweaveEOF = 1;
 	if (buf[0] == '\001') {
 		if (buf[1] == 'I') {
 			s->w_d = atoi(buf+3);
+			if (s->remap) s->w_d = s->remap[s->w_d];
 			goto again;
 		} else if (buf[1] == 'E') {
 			s->w_d = 0;
