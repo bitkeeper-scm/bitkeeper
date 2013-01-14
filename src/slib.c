@@ -17150,9 +17150,10 @@ sccs_csetBoundary(sccs *s, ser_t d, u32 flags)
 {
 	ser_t	e, start, end;
 
-	if (FLAGS(s, d) & D_CSET) return (d);	/* optimize */
+	flags |= D_CSET;
+	if ((FLAGS(s, d) & flags) == flags) return (d);	/* optimize */
 
-	flags |= (D_CSET|D_RED);
+	flags |= D_RED;
 	start = d;
 	FLAGS(s, d) |= D_RED;
 	for (; d <= TABLE(s); ++d) {

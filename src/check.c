@@ -28,7 +28,8 @@
 #define	RK_MERGE	0x02
 #define	RK_INTIP	0x04
 #define	RK_TIP		0x08
-#define	DK_DUP		0x10
+#define	RK_GCA		0x10
+#define	DK_DUP		0x20
 #define	RK_BOTH		(RK_PARENT|RK_MERGE)
 
 typedef	struct	rkdata {
@@ -1356,7 +1357,7 @@ flags2mask(u32 flags)
 	u8	mask = 0;
 
 	switch (flags & (D_RED|D_BLUE)) {
-	    case 0:			break;
+	    case 0:			mask = RK_GCA; break;
 	    case D_RED:			mask = RK_PARENT; break;
 	    case D_BLUE:		mask = RK_MERGE; break;
 	    case (D_RED|D_BLUE):	mask = RK_INTIP; break;
@@ -1448,7 +1449,7 @@ buildKeys(MDBM *idDB)
 				d = ser;
 				mask = flags2mask(FLAGS(cset, d));
 			} else {
-				mask = 0;
+				mask = flags2mask(0);
 			}
 			continue;
 		}
@@ -1898,7 +1899,7 @@ polyChk(sccs *s, ser_t trunk, ser_t branch, hash *deltas)
 	EACH(gca) {
 		sccs_sdelta(s, gca[i], buf);
 		unless (((mask = hash_fetchStrMem(deltas, buf)) &&
-		    (*mask & RK_BOTH)) ||
+		    ((*mask & (RK_PARENT|RK_MERGE)) && !(*mask & RK_GCA))) ||
     		    (!(FLAGS(s, gca[i]) & D_CSET) &&
 		    (gca[i] != TREE(s)))) {
 			continue;

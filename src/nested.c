@@ -217,6 +217,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	kvpair	kv;
 	MDBM	*idDB = 0, *revsDB = 0;
 	project	*proj;
+	hash	*poly = 0;
 	char	*cwd;
 	char	buf[MAXKEY];
 
@@ -414,14 +415,50 @@ err:				if (revsDB) mdbm_close(revsDB);
 			assert(!c->lowerkey);
 			c->lowerkey = strdup(v);
 		}
-		if (!IN_GCA(d) &&
-		    ((flags & (NESTED_PULL|NESTED_MARKPENDING)) ==
-		    (NESTED_PULL|NESTED_MARKPENDING))) {
-			/*
-			 * Save data needed for poly_pull() when looking
-			 * for poly in a component.
-			 */
-			c->poly = poly_save(c->poly, cset, d, v, IN_LOCAL(d));
+		/*
+		 * Poly keys can be in local, remote and or GCA region.
+		 * For GCA, we only want first if also non-gca.
+		 * Values stored in poly hash (keys are comp rkeys):
+		 * 0 - A non gca node seen, but no gca node seen (yet)
+		 * d - A gca node seen; no non-gca; and non-gca nodes left
+		 * -1 - gca and non-gca nodes seen; do nothing.
+		 */
+		if ((flags & (NESTED_PULL|NESTED_MARKPENDING)) ==
+		    (NESTED_PULL|NESTED_MARKPENDING)) {
+			ser_t	*prune;
+
+			unless (poly) poly = hash_new(HASH_MEMHASH);
+			prune = hash_fetchStrMem(poly, v);
+
+			unless (IN_GCA(d)) {
+				/*
+				 * Save data needed for poly_pull() when
+				 * looking for poly in a component.
+				 */
+				c->poly = poly_save(c->poly, cset, d, v,
+				    IN_LOCAL(d) ? D_LOCAL : D_REMOTE);
+
+				unless (prune) {
+					hash_storeStrMem(
+					    poly, v, 0, sizeof(ser_t));
+				} else if (*prune && (*prune != (ser_t)-1)) {
+					c->poly = poly_save(
+					    c->poly, cset, *prune, v, 0);
+					*prune = (ser_t)-1;
+				}
+			} else {
+				unless (prune) {
+					/* only save if more non-gca */
+					if (d >= cset->rstart) {
+						hash_storeStrMem(poly,
+						    v, &d, sizeof(ser_t));
+					}
+				} else if (*prune == 0) {
+					c->poly = poly_save(
+					    c->poly, cset, d, v, 0);
+					*prune = (ser_t)-1;
+				}
+			}
 		}
 		if (!c->gca && IN_GCA(d)) {
 			/* in GCA region, so obviously not new */
@@ -444,6 +481,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 		}
 		v[-1] = ' ';	/* restore possibly in mem weave */
 	}
+	if (poly) hash_free(poly);
 	sccs_rdweaveDone(cset);
 	sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
 	if (left && (flags & NESTED_PULL) && IN_LOCAL(left)) {

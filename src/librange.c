@@ -660,6 +660,7 @@ range_unrange(sccs *s, ser_t *left, ser_t *right, int all)
 
 	assert(left && right);
 	*left = *right = 0;
+	s->rstart = s->rstop = 0;
 	for (d = TABLE(s); d >= TREE(s); d--) {
 		if (TAG(s, d)) continue;
 		color = (FLAGS(s, d) & (D_SET|D_RED|D_BLUE));
@@ -672,8 +673,12 @@ range_unrange(sccs *s, ser_t *left, ser_t *right, int all)
 		FLAGS(s, d) &= ~color;	/* turn all off */
 		if (color & D_SET) {
 			FLAGS(s, d) |= D_RED;
+			goto limits;
 		} else if (color & D_BLUE) {
 			FLAGS(s, d) |= D_BLUE;
+		} else {
+limits:			unless (s->rstop) s->rstop = d;
+			s->rstart = d;
 		}
 
 		/* grab first tip in D_SET and non D_SET regions */

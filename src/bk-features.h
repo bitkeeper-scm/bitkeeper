@@ -18,6 +18,7 @@
  *   remap	repository is remapped
  *   sortkey	repository uses sortkey metadata
  *   bSFILEv1	at least one file in repo uses binary sfile format
+ *   POLY	at least one comp cset was ported in twice (polyDB exists)
  */
 
 

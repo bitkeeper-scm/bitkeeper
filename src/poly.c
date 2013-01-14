@@ -1,6 +1,7 @@
 #include "sccs.h"
 #include "range.h"
 #include "poly.h"
+#include "resolve.h"
 
 /*
  *
@@ -18,20 +19,23 @@
  *    <blank line>
  */
 
-private	hash	*polyLoad(sccs *cset);
-private	int	polyAdd(sccs *cset, ser_t d, char *pkey, int side);
+private	hash	*polyLoad(sccs *cset, int side);
+private	int	polyAdd(sccs *cset, ser_t d, char *ckey, char *pkey, int side);
 private	int	polyFlush(void);
 private	int	polyChk(sccs *cset, ser_t gca);
+private	int	polyMerge(sccs *cset);
 private	int	updatePolyDB(sccs *cset, ser_t *list, hash *cmarks);
 private	void	addTips(sccs *cset, ser_t *gcalist, ser_t **list);
 private	ser_t	*lowerBounds(sccs *s, ser_t d, u32 flags);
 private	ser_t	*findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake);
 
 typedef struct {
-	hash	*cpoly;		/* ckey -> list of pkeys */
+	hash	*cpoly;		/* ckey -> list of pkeys (local db) */
+	hash	*cpolyRemote;	/* ckey -> list of pkeys (remote db) */
 	int	dirty;
 	char	*rfile;		/* full pathname to file in RESYNC*/
 	char	*file;		/* full pathname to file */
+	u32	merge:1;	/* merge the polydb file when we write */
 } polymap;
 
 private	hash	*cpoly_all;	/* proj -> polymap */
@@ -53,7 +57,7 @@ poly_check(sccs *cset, ser_t d)
 	cmark	cm;
 	char	buf[MAXLINE];
 
-	cpoly = polyLoad(cset);
+	cpoly = polyLoad(cset, 0);
 	sccs_sdelta(cset, d, buf);
 	unless (next = hash_fetchStr(cpoly, buf)) return (0);
 
@@ -185,22 +189,20 @@ poly_range(sccs *s, ser_t d, char *pkey)
  * Called in product weave order (new to old)
  * Format of lines:
  * char0 char1 char2-n 
- * [L|R] [M|S] prodkey space compkey
+ * [L|R] prodkey space compkey
  *
  * char0: Local or Remote prod cset (ie, side)
- * char1: Merge or Single parent prod cset
  * Merge are used in processing will get filtered in updatePolyDB()
  *
  * Return a list with formatted line added.
  */
 char **
-poly_save(char **list, sccs *cset, ser_t d, char *ckey, int local)
+poly_save(char **list, sccs *cset, ser_t d, char *ckey, int side)
 {
-	char	buf[(2 * MAXKEY) + 4]; /* [L|R][M|S]prodey compkey\0 */
+	char	buf[(2 * MAXKEY) + 3]; /* [L|R]prodey compkey\0 */
 
-	buf[0] = (local) ? 'L' : 'R';
-	buf[1] = MERGE(cset, d) ? 'M' : 'S';
-	sccs_sdelta(cset, d, buf + 2);
+	buf[0] = (!side) ? 'G' : ((side & D_LOCAL) ? 'L' : 'R');
+	sccs_sdelta(cset, d, buf + 1);
 	strcat(buf, " ");
 	strcat(buf, ckey);
 	return (addLine(list, strdup(buf)));
@@ -224,6 +226,7 @@ poly_pull(int got_patch, char *mergefile)
 {
 	sccs	*cset = 0;
 	ser_t	*polylist = 0, d, fake = 0, local = 0, remote = 0;
+	ser_t	*gca = 0;
 	char	*dfile, *resync;
 	int	rc = 1, write = 0;
 	int	i;
@@ -253,7 +256,7 @@ poly_pull(int got_patch, char *mergefile)
 	 * Take local/remote info from product and color component graph
 	 * format of line from poly_save():
 	 * char0 char1 char2-n 
-	 * [L|R] [M|S] prodkey space compkey
+	 * [L|R|G] prodkey space compkey
 	 */
 	list = file2Lines(0, mergefile);
 	cmarks = hash_new(HASH_MEMHASH);
@@ -272,6 +275,9 @@ poly_pull(int got_patch, char *mergefile)
 			FLAGS(cset, d) |= D_REMOTE;
 			unless (remote) remote = d;
 			break;
+		    case 'G':
+		    	addArray(&gca, &d);
+			continue;
 		}
 
 		/*
@@ -288,6 +294,9 @@ poly_pull(int got_patch, char *mergefile)
 		*(char ***)cmarks->vptr =
 		    addLine(*(char ***)cmarks->vptr, strdup(list[i]));
 	}
+	/* if in GCA, then let D_CSET node be seen as termination */
+	EACH(gca) FLAGS(cset, gca[i]) &= ~(D_LOCAL|D_REMOTE);
+	FREE(gca);
 	freeLines(list, free);
 	list = 0;
 	assert(local && remote);
@@ -303,12 +312,12 @@ poly_pull(int got_patch, char *mergefile)
 	}
 	if (polylist) {
 		if (updatePolyDB(cset, polylist, cmarks)) {
-			perror("updatePolyDB");
 			goto err;
 		}
 		free(polylist);
 		polylist = 0;
 	}
+	polyMerge(cset);
 
 	/* if no comp merge: fake pending to get included in product merge */
 	if (fake) {
@@ -332,8 +341,42 @@ err:
 	return (rc);
 }
 
+private	int
+polyRemote(polymap *pm, char *rfile)
+{
+	sccs	*s = 0;
+	names	*revs = 0;
+	char	*sfile = 0, *remote = 0;
+	char	*p;
+	int	ret = 1;
+	
+	sfile = name2sccs(rfile);
+	p = strrchr(sfile, '/');
+	assert(p && (p[1] == 's'));
+	p[1] = 'r';
+	if (revs = res_getnames(sfile, 'r')) {
+		remote = revs->remote;
+		pm->merge = 1;
+	}
+	p[1] = 's';
+	unless (s = sccs_init(sfile, SILENT|INIT_MUSTEXIST)) {
+		ret = 0;
+		goto err;
+	}
+	if (sccs_get(s, remote, 0, 0, 0, SILENT, "-")) {
+		goto err;
+	}
+	ret = 0;
+
+err:
+	freenames(revs, 1);
+	free(sfile);
+	sccs_free(s);
+	return (ret);
+}
+
 private hash *
-polyLoad(sccs *cset)
+polyLoad(sccs *cset, int side)
 {
 	char	*p;
 	polymap	*pm;
@@ -353,17 +396,76 @@ polyLoad(sccs *cset)
 		str_subst(buf, ROOT2RESYNC "/", "", buf);
 		pm->file = strdup(buf);
 
-		if (proj_isResync(cset->proj) &&
-		    (exists(pm->rfile) || !get(pm->rfile, SILENT, "-"))) {
-			p = pm->rfile;
-		} else {
-			/* not in RESYNC, try repo */
-			unless (exists(pm->file)) get(pm->file, SILENT, "-");
-			p = pm->file;
-		}
+		p = pm->file;
+		unless (exists(p)) get(p, SILENT, "-");
 		pm->cpoly = hash_fromFile(hash_new(HASH_MEMHASH), p);
+
+		if (proj_isResync(cset->proj)) {
+			p = pm->rfile;
+			(void)polyRemote(pm, p);	/* XXX ignore errors? */
+			pm->cpolyRemote =
+			    hash_fromFile(hash_new(HASH_MEMHASH), p);
+		}
 	}
-	return (pm->cpoly);
+	assert (!side || (side == D_LOCAL) || (side == D_REMOTE));
+	assert ((side != D_REMOTE) || pm->cpolyRemote);
+
+	return ((side == D_REMOTE) ? pm->cpolyRemote : pm->cpoly);
+}
+
+/*
+ * Simple merge -- walk the remote db and add it to the local db
+ * Note that this doesn't alter dirty, though it should be flushed.
+ */
+private int
+polyMerge(sccs *cset)
+{
+	int	i, j, cmp;
+	hash	*lpoly, *rpoly;
+	char	*line, *lend, *rend;
+	char	**local, **remote, **merge = 0;
+
+	lpoly = polyLoad(cset, D_LOCAL);
+	rpoly = polyLoad(cset, D_REMOTE);
+
+	EACH_HASH(rpoly) {
+		if (hash_insertStrStr(lpoly, rpoly->kptr, rpoly->vptr)) {
+			continue;	/* was nothing, so just take it */
+		}
+		remote = splitLine(rpoly->vptr, "\n", 0);
+		local = splitLine(lpoly->vptr, "\n", 0);
+		j = 1;
+		EACH(remote) {
+			if (rend = separator(remote[i])) *rend = 0;
+			EACH_START(j, local, j) {
+				if (lend = separator(local[j])) *lend = 0;
+				cmp = keycmp(remote[i], local[j]);
+				if (lend) *lend = ' ';
+				if (cmp <= 0) {
+					unless (cmp) j++;
+					break;
+				}
+				merge = addLine(merge, local[j]);
+			}
+			if (rend) *rend = ' ';
+			merge = addLine(merge, remote[i]);
+		}
+		EACH_START(j, local, j) {
+			assert (*local[j]);
+			merge = addLine(merge, local[j]);
+		}
+
+		line = joinLines("\n", merge);
+		/* XXX: (whitebox) there's room to put the last sep back */
+		strcat(line, "\n");
+		hash_storeStrStr(lpoly, rpoly->kptr, line);
+		free(line);
+		freeLines(local, free);
+		freeLines(remote, free);
+		truncArray(merge, 0);
+	}
+	freeLines(merge, 0);
+	return (0);
 }
 
 /*
@@ -377,27 +479,18 @@ polyLoad(sccs *cset)
  *   0 if new key added
  */
 private int
-polyAdd(sccs *cset, ser_t d, char *pkey, int side)
+polyAdd(sccs *cset, ser_t d, char *ckey, char *pkey, int side)
 {
-	int	cmp;
 	ser_t	*lower;
-	char	*old, *next, *line = 0, *t;
+	char	*t;
 	polymap	*pm;
 	hash	*cpoly;
 	char	key[MAXKEY];
 	char	new[(3 * MAXKEY) + 3];	/* prodkey ekey mkey\0 */
 
-	cpoly = polyLoad(cset);
+	cpoly = polyLoad(cset, side);
 
-	sccs_sdelta(cset, d, key);
-	old = next = hash_fetchStr(cpoly, key);
-	if (old) while (line = eachline(&next, 0)) {
-		unless (t = separator(line)) continue;
-		strncpy(key, line, t-line);
-		key[t-line] = 0;
-		unless (cmp = keycmp(pkey, key)) return (1);
-		if (cmp < 0) break;
-	}
+	if (hash_fetchStr(cpoly, ckey)) return (1);
 
 	/* calculate the new line */
 	t = new;
@@ -415,14 +508,7 @@ polyAdd(sccs *cset, ser_t d, char *pkey, int side)
 	*t++ = '\n';
 	*t = 0;
 
-	t = aprintf("%.*s%s%s",
-	    old ? (int)(line - old) : 0, old,
-	    new,
-	    line ? line : "");
-
-	sccs_sdelta(cset, d, key);
-	hash_storeStrStr(cpoly, key, t);
-	free(t);
+	hash_storeStrStr(cpoly, ckey, new);
 
 	pm = (polymap *)hash_fetch(cpoly_all, &cset->proj, sizeof(project *));
 	pm->dirty = 1;
@@ -439,6 +525,7 @@ polyFlush(void)
 	sccs	*s, *cset;
 	char	*p;
 	int	rc;
+	int	ret = 0;
 	char	*sfile;
 	polymap	*pm;
 	project	*proj;
@@ -451,7 +538,7 @@ polyFlush(void)
 	EACH_HASH(cpoly_all) {
 		pm = (polymap *)cpoly_all->vptr;
 
-		if (pm->dirty) {
+		if (pm->merge || pm->dirty) {
 			sfile = name2sccs(pm->rfile);
 			mkdirf(sfile);
 			unless (exists(sfile)) {
@@ -459,18 +546,29 @@ polyFlush(void)
 				if (exists(p)) fileLink(p, sfile);
 				free(p);
 			}
+			unlink(pm->rfile);
 			hash_toFile(pm->cpoly, pm->rfile);
-
 			// edit sfile
 			s = sccs_init(sfile, SILENT);
 			assert(s);
 			free(sfile);
-			if (HASGRAPH(s)) {
+			if (pm->merge) {
+				/* don't know trunk and branch, so fork */
+				rc = sys("bk", "get", "-qgeM", s->gfile, SYS);
+				unless (rc) {
+					unlink(sccs_Xfile(s, 'r'));
+					s->state |= S_PFILE;
+				}
+				//assert(rc == 0);
+			} else if (HASGRAPH(s)) {
 				/* edit the file */
 				unless (HAS_PFILE(s)) {
 					rc = sccs_get(
 					    s, 0, 0, 0, 0, gflags, "-");
 					//assert(rc == 0);
+				} else {
+					// XXX: Why would there be a pfile?
+					assert(1);
 				}
 			} else {
 				dflags |= NEWFILE;
@@ -511,11 +609,12 @@ polyFlush(void)
 		free(pm->file);
 		free(pm->rfile);
 		hash_free(pm->cpoly);
+		if (pm->cpolyRemote) hash_free(pm->cpolyRemote);
 	}
 	hash_free(cpoly_all);
 	cpoly_all = 0;
 
-	return (0);
+	return (ret);
 }
 
 /*
@@ -565,28 +664,35 @@ polyMarked(sccs *s, ser_t d, void *token)
 private ser_t *
 findPoly(sccs *s, ser_t local, ser_t remote, ser_t fake)
 {
-	int	i, hasPoly = 0;
+	int	i;
 	ser_t	*gcalist = 0, *list = 0;
 
 	range_walkrevs(s, local, 0, remote, WR_GCA, walkrevs_addSer, &gcalist);
-	EACH(gcalist) {
-		hasPoly |= polyChk(s, gcalist[i]);
+	EACH_REVERSE(gcalist) {
+		unless (polyChk(s, gcalist[i])) {
+			removeArrayN(gcalist, i);
+		}
 	}
-	unless (hasPoly) return (0);
-	unless (proj_configbool(0, "poly")) return (INVALID);
 
-	/*
-	 * Take that gca list and get a list of poly D_CSET under the gca
-	 * D_SET is used to keep from adding dups.
-	 */
-	range_walkrevs(s, 0, gcalist, 0, WR_STOP, polyMarked, &list);
+	if (nLines(gcalist)) {
+		/* if new poly and not allowed - error */
+		unless (proj_configbool(0, "poly")) {
+			free(gcalist);
+			return (INVALID);
+		}
 
-	/*
-	 * gca may be unmarked poly, so add in corresponding tips
-	 * D_SET is used to keep from adding dups.
-	 */
-	addTips(s, gcalist, &list);
+		/*
+		 * Take that gca list and get a list of poly D_CSET
+		 * under the gca D_SET is used to keep from adding dups. 
+		 */
+		range_walkrevs(s, 0, gcalist, 0, WR_STOP, polyMarked, &list);
 
+		/*
+		 * gca may be unmarked poly, so add in corresponding
+		 * tips D_SET is used to keep from adding dups. 
+		 */
+		addTips(s, gcalist, &list);
+	}
 	/*
 	 * If update only, the tip will be repeated in the merge
 	 * so make sure it is tagged poly
@@ -671,8 +777,8 @@ addTips(sccs *cset, ser_t *gcalist, ser_t **list)
 
 /*
  * hash value (key is component cset key)
- * char0 char1 char2-n 
- * [L|R] [M|S] prodkey
+ * char0 char1-n 
+ * [L|R] prodkey
  * Local or Remote prod cset
  * Merge or Single parent prod cset
  *
@@ -688,7 +794,7 @@ updatePolyDB(sccs *cset, ser_t *list, hash *cmarks)
 {
 	int	i, j;
 	ser_t	d;
-	char	type, *rest;
+	char	*rest, sidechar;
 	u32	side;
 	char	**prodkeys = 0;
 	char	key[MAXKEY];
@@ -699,11 +805,11 @@ updatePolyDB(sccs *cset, ser_t *list, hash *cmarks)
 		prodkeys = *(char ***)hash_fetchStr(cmarks, key);
 		assert(prodkeys);
 		EACH_INDEX(prodkeys, j) {
-			side = (prodkeys[j][0] == 'L') ? D_LOCAL : D_REMOTE;
-			type = prodkeys[j][1];
-			rest = &prodkeys[j][2];
-			if (type == 'M') continue;	/* skip merge nodes */
-			polyAdd(cset, d, rest, side);
+			sidechar = prodkeys[j][0];
+			assert(sidechar != 'G');
+			side = (sidechar == 'L') ? D_LOCAL : D_REMOTE;
+			rest = &prodkeys[j][1];
+			(void) polyAdd(cset, d, key, rest, side);
 		}
 	}
 	return (0);
@@ -791,7 +897,7 @@ poly_main(int ac, char **av)
 	}
 	unless (comp = sccs_csetInit(INIT_MUSTEXIST)) goto err;
 	unless (proj_isComponent(comp->proj)) goto err;
-	cpoly = polyLoad(comp);
+	cpoly = polyLoad(comp, 0);
 
 	concat_path(buf, proj_root(proj_product(comp->proj)),
 	    proj_isResync(comp->proj) ? ROOT2RESYNC "/" CHANGESET : CHANGESET);

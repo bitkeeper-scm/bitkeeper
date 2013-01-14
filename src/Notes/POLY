@@ -1,11 +1,13 @@
 Poly is the BitMover name given to one delta appearing in more than one cset.
 
-In the past, it happened when a user copied an sfile between repositories,
+== File Poly ==
+In the past, poly happened when a user copied an sfile between repositories,
 stripped cset marks, committed and pulled into another repo which had the
 file already.  Or when a user copied a whole repo which has pending work
 and committed it in both copies and pulled into each other.  This did not
 and does not happen very often. 
 
+== Component Poly ==
 In BK/Nested, poly can be created through normal product line use.
 Using the 'bk port' command, a standalone component can be ported into
 different repositories.  Poly is created by committing that port into
@@ -16,6 +18,12 @@ Depending on the workflow of the BK/Nested customer, the creating poly
 in a component could happen very often.
 
 == Poly Avoidance ==
+Note in both of the above cases, there are steps taken which lead to
+poly, but the poly doesn't happen until a pull.  This means we can't
+detect poly until the pull, but the poly in some sense has already
+happened because the one delta appearing in more than one cset given
+the collection of repositories in the same project.
+
 The BK/Nested poly problem is created by using more than one portal,
 but does not and show up until a subsequent pull.
 When poly is detected, it's too late, as the poly cset could be built
@@ -52,15 +60,41 @@ is local and remote work.
 Undo works automatically, since the rollback includes rolling back
 the poly db file (slick design. Go Wayne!)
 
+Collapse throws edits to poly db away.
+XXX: I need to think about collapse -d which keeps deltas.
+
 There are two parts to the poly code: the pull code which
 bookkeeps the creation of poly, and the range code which
 needs to make use of poly in bk changes and bk r2c.
 
+== Poly Fake Nodes ==
+Before getting into the implementation details, good to pause and
+understand fake entries in the db.
+
+If the state of the component on the local tip is in the history of
+the state of the component in the remote tip, or the other way around,
+then there is no merge to do in the component.  However, check will
+want a merge entry in the product.
+
+What we do is copy the component tip in the product merge entry,
+that has no range.  It is poly because in a different product cset,
+the same component cset has a real range.
+
+The challenge is that the merge cset hasn't been made so the product
+key for that cset isn't known, and worse, includes in its checksum
+the checksum of the poly db.
+
+To get out of that, we invent the concept of a fake entry.  If the
+component key is in the poly db, but the product key is not, then
+we treat it as a rangeless case.
+
 == Poly Bookkeeping ==
 The pull bookkeeping starts out in when pull calls nested_init().
 Added to the 'comp' struct is a lines array and a gca bit.
-nested init fills the lines array by calling poly_save() for every
-line in the weave that is part of a LOCAL or REMOTE product cset.
+nested_init() fills the lines array by calling poly_save() for every
+line in the weave that is part of a LOCAL or REMOTE product cset,
+or part of the GCA if it is also listed as being part of LOCAL or REMOTE.
+
 The new 'gca' flag is needed because 'new' is now getting cleared when
 local is seen and 'new' was being overloaded with gca.
 See poly_save() for the what is being saved.
@@ -87,25 +121,17 @@ The following are implemented in poly.c in poly_pull().
 
 Poly is detected by computing the gca list in the component and
 seeing if any of the gca is either unmarked (no D_CSET) or is
-tagged to be unique to local or remote.
+tagged to be unique to local or remote and not gca.
+
+If those tests fail, then no poly.  Given that, we might still need
+to write to the poly db because of the fake entry being put into the
+merge.  The poly test is only used with the poly config being turned
+on.  The config entry isn't needed to write the tip to the db if
+we need to handle the fake node being created later.
 
 When poly is detected, the list of all poly nodes is created,
-endpoints computed, and poly db updated.
-
-TRICKY STUFF: Product merge nodes may be written into the poly list but
-are filtered from going into the poly db.  By definition, any comp cset
-created in a product merge cannot be the result of a port, but only
-a pull, and therefore cannot be poly.  How a mode in the product list
-shows up as poly is because there are cases where an existing component
-tip is repeated in the product merge.  The poly event which creates
-that case has not yet created a product cset, and can't therefore
-include the product key in the poly db.  What happens is that product
-key can show in the poly detection of a future pull, but since it isn't
-part of that pull, it is ignored.  These repeated cset will always have
-a null range associated with the product cset.  How that is bookkept:
-the component csetkey will be in the polydb but no matching product
-key will be found.  In this case, the range is empty.  See poly_range()
-and look for "empty".
+endpoints computed, and if configured, poly db updated.  Otherwise
+poly fails and the pull fails.
 
 == Poly Users ==
 The users of the poly db are 'bk changes' calling poly_range() and

@@ -11,14 +11,14 @@
 # All the tests here port in from a 'standalone' component whose tagged
 # graph looks like:
 
-# ROOT---SHARED--TRUNK-------- MERGE
-#	       \		/
-#		-------BRANCH--+
+# ROOT---SHARED--TRUNK---------------------MERGE
+#	       \			    /
+#		-------BRANCHBASE--BRANCH--+
 
 # There is a set of tests run on 3 different setups.
 # In each setup there is a local and a remote and local always starts out:
-# product	1.2---------------------1.3
-# comp		ROOT --- (SHARED) ------BRANCH
+# product	1.2------------------------1.3----------1.4
+# comp		ROOT --- (SHARED) ------BRANCHBASE----BRANCH
 
 # That is, SHARED doesn't have a D_CSET but is part of 1.3
 
@@ -86,6 +86,7 @@ node SHARED
 bk clone $Q . ../branch
 node TRUNK
 cd ../branch
+node BRANCHBASE
 node BRANCH
 cd ../standalone
 bk pull $Q ../branch
@@ -93,6 +94,8 @@ bk tag $Q MERGE
 # create the version of local that starts out each group of tests
 cd ../local/comp
 bk portal $Q .
+bk port $Q -rBRANCHBASE ../../standalone
+bk --cd=.. tag $Q LOCALBASE
 bk port $Q -rBRANCH ../../standalone
 cd ..
 bk tag $Q LOCAL
@@ -185,11 +188,13 @@ bk changes -rREMOTE.. -Vnd':INDENT::GFILE:|:REV:\t:TAG:' > GOT
 #   but does not show up below.  That is because the range A..A is empty.
 #   so even though it is listed, nothing happens.
 cat <<EOF > WANT
-ChangeSet|1.4	
+ChangeSet|1.5	
 ChangeSet|1.2.1.1	
   comp/ChangeSet|1.3	SHARED
-ChangeSet|1.3	LOCAL
-  comp/ChangeSet|1.4	BRANCH
+ChangeSet|1.4	LOCAL
+  comp/ChangeSet|1.5	BRANCH
+ChangeSet|1.3	LOCALBASE
+  comp/ChangeSet|1.4	BRANCHBASE
   comp/ChangeSet|1.3	SHARED
 EOF
 cmpfiles WANT GOT
@@ -285,9 +290,9 @@ bk -r check -p 2> GOT && fail -f GOT
 sanitize GOT
 cat <<EOF > WANT
 Duplicate delta found in ChangeSet
-	Rev: 1.3.1.1  Key: <comp/ChangeSet>
+	Rev: 1.3.1.2  Key: <comp/ChangeSet>
 	Both keys in file comp/SCCS/s.ChangeSet
-	Same key found in ChangeSet:1.2.1.2,1.3
+	Same key found in ChangeSet:1.2.1.2,1.4
 Please write support@bitmover.com with the above
 error about duplicate deltas
 EOF
@@ -314,16 +319,19 @@ bk changes -rREMOTE.. -Vnd':INDENT::GFILE:|:REV:\t:TAG:' > GOT
 # - The MERGE comp cset is not replicated in the product merge tip even
 #   though it is bookkept in the merge by the update only comp pull.
 cat <<EOF > WANT
-ChangeSet|1.4	
+ChangeSet|1.5	
 ChangeSet|1.2.1.3	
   comp/ChangeSet|1.5	MERGE
   comp/ChangeSet|1.4	TRUNK
 ChangeSet|1.2.1.2	
-  comp/ChangeSet|1.3.1.1	BRANCH
+  comp/ChangeSet|1.3.1.2	BRANCH
+  comp/ChangeSet|1.3.1.1	BRANCHBASE
 ChangeSet|1.2.1.1	
   comp/ChangeSet|1.3	SHARED
-ChangeSet|1.3	LOCAL
-  comp/ChangeSet|1.3.1.1	BRANCH
+ChangeSet|1.4	LOCAL
+  comp/ChangeSet|1.3.1.2	BRANCH
+ChangeSet|1.3	LOCALBASE
+  comp/ChangeSet|1.3.1.1	BRANCHBASE
   comp/ChangeSet|1.3	SHARED
 EOF
 cmpfiles WANT GOT
@@ -339,7 +347,7 @@ echo OK
 
 echo $N bk r2c with ranges gives the right answer....................$NL
 REV=`bk --cd=comp r2c -r1.1..1.5 ChangeSet`
-test $REV = 1.2.1.3,1.2.1.2,1.2.1.1,1.3,1.2 || {
+test $REV = 1.2.1.3,1.2.1.2,1.2.1.1,1.4,1.3,1.2 || {
 	fail wrong rev -- wanted 1.2.1.3,1.2.1.2,1.2.1.1,1.3,1.2 and got $REV
 }
 REV=`bk --cd=comp r2c -r1.3.1.1,1.5 ChangeSet`
@@ -465,13 +473,15 @@ bk changes -rREMOTE.. -Vnd':INDENT::GFILE:|:REV:\t:TAG:' > GOT
 # This used to work (D_CSET) and still does because the shared node
 # was not D_CSET marked.
 cat <<EOF > WANT
-ChangeSet|1.4	
+ChangeSet|1.5	
   comp/ChangeSet|1.5	
 ChangeSet|1.2.1.1	
   comp/ChangeSet|1.4	TRUNK
   comp/ChangeSet|1.3	SHARED
-ChangeSet|1.3	LOCAL
-  comp/ChangeSet|1.3.1.1	BRANCH
+ChangeSet|1.4	LOCAL
+  comp/ChangeSet|1.3.1.2	BRANCH
+ChangeSet|1.3	LOCALBASE
+  comp/ChangeSet|1.3.1.1	BRANCHBASE
   comp/ChangeSet|1.3	SHARED
 EOF
 cmpfiles WANT GOT
@@ -591,6 +601,26 @@ grep -q "Duplicate delta found in ChangeSet" ERR || fail -f ERR
 bk _poly > GOT || fail
 cmpfiles WANT GOT
 cd ..
+echo OK
+
+echo $N Pull with merge but no poly and poly not enabled in config ..$NL
+cd "$HERE"/peer2/comp
+bk delta $Q -fynull foo
+bk commit $Q -ynull
+cd "$HERE"/remmy
+bk pull $Q ../peer2
+# Even though it is not poly, it will be listed in poly db because
+# the branch also changes this same component but is in the history,
+# so becomes a fake that appears in the merge tip which can only be
+# hidden by it being in the poly db.
+bk annotate -hR+ ChangeSet > GOT
+bk prs -r+ -hnd':ROOTKEY: :KEY:' BitKeeper/etc/poly > WANT
+bk changes -Sqr+ -nd':ROOTKEY: :KEY:' ../peer2/comp >> WANT
+cmpfiles WANT GOT
+# Not in changes
+bk changes -Vr+ -nd:GFILE:-:I: > GOT
+echo ChangeSet-1.7 > WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N More r2c to see that it works ...............................$NL
