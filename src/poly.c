@@ -10,12 +10,12 @@
  *
  * File format:
  *   @component_delta_key
- *   product_key[ endkey][ merge key]
- *   product_key2[ endkey[ merge key]
+ *   product_key oldest_time [ endkey][ merge key]
+ *   product_key2 oldest_time [ endkey[ merge key]
  *    <blank line>
  *   @component_delta_key2
- *   product_key[ endkey][ merge key]
- *   product_key2[ endkey][ merge key]
+ *   product_key oldest_time [ endkey][ merge key]
+ *   product_key2 oldest_time [ endkey][ merge key]
  *    <blank line>
  */
 
@@ -55,7 +55,7 @@ poly_check(sccs *cset, ser_t d)
 	char	*t, *p, *next;
 	int	len;
 	cmark	cm;
-	char	buf[MAXLINE];
+	char	buf[(4 * MAXKEY) + 4];	/* prodkey oldtime ekey mkey\0 */
 
 	cpoly = polyLoad(cset, 0);
 	sccs_sdelta(cset, d, buf);
@@ -67,9 +67,11 @@ poly_check(sccs *cset, ser_t d)
 		strncpy(buf, t, len); /* separator() needs \0 */
 		buf[len] = 0;
 		if (p = separator(buf)) *p++ = 0;
+		assert(p);
 		cm.pkey = strdup(buf);
-		if (t = p) {
-			if (p = separator(t)) *p++ = 0;
+		cm.oldtime = strtoul(p, &t, 10);
+		if (t && (*t == ' ')) {
+			if (p = separator(++t)) *p++ = 0;
 			cm.ekey = strdup(t);
 			if (p) cm.emkey = strdup(p);
 		}
@@ -113,6 +115,10 @@ poly_r2c(sccs *cset, ser_t orig, char ***pcsets)
 		unless (FLAGS(cset, d) & D_CSET) continue;
 		unless (list = poly_check(cset, d)) continue;
 		EACHP(list, cm) {
+			if (cm->oldtime > DATE(cset, orig)) {
+				/* outside of range window */
+				continue;
+			}
 			/*
 			 * Walk the range to see if orig is in it
 			 * Note: 'orig' can be in range if orig < endpoints
@@ -481,12 +487,13 @@ polyMerge(sccs *cset)
 private int
 polyAdd(sccs *cset, ser_t d, char *ckey, char *pkey, int side)
 {
+	int	i;
 	ser_t	*lower;
 	char	*t;
 	polymap	*pm;
 	hash	*cpoly;
 	char	key[MAXKEY];
-	char	new[(3 * MAXKEY) + 3];	/* prodkey ekey mkey\0 */
+	char	new[(4 * MAXKEY) + 4];	/* prodkey oldtime ekey mkey\0 */
 
 	cpoly = polyLoad(cset, side);
 
@@ -496,11 +503,13 @@ polyAdd(sccs *cset, ser_t d, char *ckey, char *pkey, int side)
 	t = new;
 	t += sprintf(t, "%s", pkey);
 	if (lower = lowerBounds(cset, d, side)) {
-		sccs_sdelta(cset, lower[1], key);
-		t += sprintf(t, " %s", key);
-		if (nLines(lower) > 1) {
-			assert(nLines(lower) == 2);
-			sccs_sdelta(cset, lower[2], key);
+		assert(nLines(lower) <= 3);
+		EACH(lower) {
+			if (i == 1) {
+				sprintf(key, "%lu", DATE(cset, lower[i]));
+			} else {
+				sccs_sdelta(cset, lower[i], key);
+			}
 			t += sprintf(t, " %s", key);
 		}
 		free(lower);
@@ -819,7 +828,7 @@ updatePolyDB(sccs *cset, ser_t *list, hash *cmarks)
  * lowerBound callback data structure
  */
 typedef struct {
-	ser_t	d, *list;
+	ser_t	d, oldest, *list;
 	u32	side;
 } cstop_t;
 
@@ -843,6 +852,7 @@ csetStop(sccs *s, ser_t d, void *token)
 			return (1);
 		}
 	}
+	p->oldest = d;
 	return (0);
 }
 
@@ -863,6 +873,7 @@ lowerBounds(sccs *s, ser_t d, u32 side)
 	cs.side = side;
 	cs.list = 0;
 	range_walkrevs(s, 0, 0, d, WR_STOP, csetStop, &cs);
+	insertArrayN(&cs.list, 1, &cs.oldest);
 	return (cs.list);
 }
 

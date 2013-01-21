@@ -74,7 +74,7 @@ understand fake entries in the db.
 If the state of the component on the local tip is in the history of
 the state of the component in the remote tip, or the other way around,
 then there is no merge to do in the component.  However, check will
-want a merge entry in the product.
+want a merge entry for the component in the product merge.
 
 What we do is copy the component tip in the product merge entry,
 that has no range.  It is poly because in a different product cset,

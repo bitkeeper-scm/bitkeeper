@@ -1,5 +1,6 @@
 typedef struct {
 	char	*pkey;		/* product key backpointer */
+	u32	oldtime;	/* oldest time in range */
 	char	*ekey;		/* range endpoint key */
 	char	*emkey;		/* range endpoint merge key */
 } cmark;
