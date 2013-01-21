@@ -94,6 +94,7 @@ struct {
 				    // signaling that we're ready to commit
 	int	doDiscard;	    // switch to require clicking discard twice
 	int	committing;	    // true if we're in the middle of committing
+	int	selecting;	    // true if we are changing file selection
 	string	afterId;	    // store an after event ID
 	string	selected;	    // the selected file node
 	widget	w_top;		    // toplevel window widget
@@ -753,6 +754,8 @@ gui()
 	wm("title", top, "Check In Tool - ${self.root}");
 	wm("minsize", top, 500, 480);
 
+	entry("${top}.x11buffer");
+
 	grid("rowconfigure", top, 1, weight: 1);
 	grid("columnconfigure", top, 0, weight: 1);
 
@@ -792,6 +795,7 @@ gui()
 	bindtags(self.w_comments, tags);
 	bind("Comments", "<KeyRelease>", "commentChanged");
 	bind("Comments", "<<PasteSelection>>", "commentChanged");
+	bind(self.w_comments, "<<Selection>>", "copyX11Buffer %W");
 	Text_tag(self.w_comments, "configure", "message",
 	    background: gc("ci.noticeColor"));
 	Text_tag(self.w_comments, "configure", "warning",
@@ -832,6 +836,7 @@ gui()
 	    background: gc("ci.textBG"), foreground: gc("ci.textFG"),
 	    width: 81, height: gc("ci.diffHeight"), insertwidth: 0);
 	bindtags(self.w_diffs, {self.w_diffs, "ReadonlyText", top, "all"});
+	bind(self.w_diffs, "<<Selection>>", "copyX11Buffer %W");
 	ScrolledWindow_setwidget(self.w_lowerF, self.w_diffs);
 	configureDiffWidget("ci", self.w_diffs);
 
@@ -927,7 +932,9 @@ selectFile(string node)
 	unless (ListBox_exists(self.o_files, node)) return (0);
 	file = ListBox_itemcget(self.o_files, node, data:);
 
+	self.selecting = 1;
 	saveComments();
+	saveX11Buffer();
 	filename = file;
 	self.doDiscard = 0;
 	self.commitSwitch = 0;
@@ -935,7 +942,7 @@ selectFile(string node)
 	ListBox_selectionClear(self.o_files);
 	if (node =~ /pending/) {
 		togglePending(node);
-		return (1);
+		goto done;
 	}
 
 	ListBox_select(self.o_files, node);
@@ -953,6 +960,8 @@ selectFile(string node)
 	configureFile(sel); // redraw the previous file's icon
 	showFile(sf);
 	updateButtons();
+done:
+	self.selecting = 0;
 	return (1);
 }
 
@@ -993,6 +1002,38 @@ commentChanged()
 		redrawFile(sf.node);
 		configureCsetNodes();
 	}
+}
+
+void
+copyX11Buffer(widget t)
+{
+	string	sel = "";
+	widget	e = "${self.w_top}.x11buffer";
+
+	// Changing files clears the text widget which triggers the
+	// <<Selection>> event, so we want to ignore any calls while
+	// we're switching files.
+	if (self.selecting) return;
+
+	// Get the current selection from the calling text widget and
+	// store the selected text in a hidden entry we can use later
+	// to recall the X11 buffer.
+	if (length(Text_tagRanges(t, "sel"))) {
+		sel = Text_get(t, "sel.first", "sel.last");
+	}
+	Entry_delete(e, 0, "end");
+	Entry_insert(e, 0, sel);
+}
+
+void
+saveX11Buffer()
+{
+	widget	e = "${self.w_top}.x11buffer";
+
+	// Select the contents of our X11 entry to put them back into
+	// the X11 copy-paste buffer.  If we did this before switching
+	// files it would delete the actual user selection.
+	Entry_selectionRange(e, 0, "end");
 }
 
 void
@@ -2526,6 +2567,15 @@ test_toggleFile(string file)
 
 	unless (defined(node)) test_fileIsInList(file);
 	toggleFile(node);
+}
+
+void
+test_selectComment(string idx1, string idx2)
+{
+	widget	textbox = self.w_comments;
+
+	Text_tagRemove(textbox, "sel", "1.0", "end");
+	Text_tagAdd(textbox, "sel", idx1, idx2);
 }
 
 void

@@ -515,6 +515,18 @@ proc test_moveTextCursor {window index} \
 	$window mark set insert $index
 }
 
+proc test_clipboardPaste {{window ""}} \
+{
+	if {$window eq ""} { set window [focus] }
+	event generate $window <<Paste>>
+}
+
+proc test_X11Paste {{window ""}} \
+{
+	if {$window eq ""} { set window [focus] }
+	event generate $window <<PasteSelection>>
+}
+
 # Citool has a rather annoying design in that it calls
 # vwait for its main loop. By overriding that command we can catch
 # when that happens so the test script can be run
