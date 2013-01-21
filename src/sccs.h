@@ -657,7 +657,6 @@ struct sccs {
 	symbol	*symlist;	/* array of symbols, oldest first */
 	KIDS	*kidlist;	/* optional kid/sibling data */
 	char	*defbranch;	/* defbranch, if set */
-	int	numdeltas;	/* number of entries in the graph */
 	off_t	size;		/* size of mapping */
 	DATA	heap;		/* all strings in delta structs */
 	hash	*uniqheap;	/* help collapse unique strings in hash */

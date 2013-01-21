@@ -184,11 +184,14 @@ again:
 		}
 
 		if (*s == ' ') {
-			char	*end;
+			char	*q;
+
 			/* more data after timestamp */
-			if (end = strchr(s, '|')) *end = 0; /* future */
-			*s = '|';
-			strcat(buf, s);
+			++s;
+			q = buf + strlen(buf);
+			*q++ = '|';
+			while (*s && (*s != '|')) *q++ = *s++;
+			*q = 0;
 		}
 		k.dptr = buf;
 		k.dsize = strlen(buf) + 1;

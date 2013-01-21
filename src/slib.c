@@ -3387,7 +3387,6 @@ first:		if (streq(buf, "\001u")) break;
 		}
 		t = serial;
 		assert(t);
-		s->numdeltas++;
 		d = t;
 		FLAGS(s, d) |= D_INARRAY;
 		ADDED_SET(s, d, added);
@@ -4553,7 +4552,6 @@ sccs_init(char *name, u32 flags)
 	/* test lease after we have PATHNAME(s, TABLE(s)) */
 	lease_check(s->proj, O_RDONLY, s);
 
-	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (HASGRAPH(s)) {
 		/*
 		 * get the xflags from the delta graph
@@ -10126,7 +10124,6 @@ out:		sccs_abortWrite(s);
 	}
 	/* need to recover 'first' after a possible malloc */
 	n = dinsert(s, n, fixDate && !(flags & DELTA_PATCH));
-	s->numdeltas++;
 	EACH(syms) addsym(s, n, !(flags & DELTA_PATCH), syms[i]);
 	if (BITKEEPER(s)) {
 		s->version = SCCS_VERSION;
@@ -11129,7 +11126,6 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		R2_SET(sc, n, R2(sc, d));
 		R3_SET(sc, n, R3(sc, d));
 		PARENT_SET(sc, n, d);
-		sc->numdeltas++;
 		n = dinsert(sc, n, 1);
 		if (addsym(sc, n, 1, sym)) {
 			verbose((stderr,
@@ -11176,7 +11172,6 @@ newDelta(sccs *sc, ser_t p, int isNullDelta)
 	sccs_getedit(sc, &rev);
 	revArg(sc, n, rev);
 	PARENT_SET(sc, n, p);
-	sc->numdeltas++;
 	if (isNullDelta) {
 		ADDED_SET(sc, n, 0);
 		DELETED_SET(sc, n, 0);
@@ -11733,17 +11728,6 @@ out:
 		    checkdups(sc) || checkMisc(sc, flags)) {
 			OUT;
 		}
-#if 0
-		/*
-		 * Until such time as we decide to rewrite all the serial
-		 * numbers when running stripdel, we can't do this.
-		 */
-		if (TABLE(sc) + 1 != (sc->numdeltas + 1)) {
-			verbose((stderr,
-			    "admin: gaps in serials in %s (somewhat unusual)\n",
-			    sc->sfile));
-		}
-#endif
 	}
 	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
 	if ((flags & (ADMIN_OBSCURE|ADMIN_RMLICENSE))
@@ -13472,7 +13456,6 @@ sccs_meta(char *me, sccs *s, ser_t parent, char *init, int fixDate)
 	R2_SET(s, m, R2(s, parent));
 	R3_SET(s, m, R3(s, parent));
 	PARENT_SET(s, m, parent);
-	s->numdeltas++;
 	m = dinsert(s, m, fixDate);
 	EACH(syms) addsym(s, m, 0, syms[i]);
 	freeLines(syms, free);
@@ -13815,7 +13798,6 @@ out:
 		    PATHNAME(s, d), PATHNAME(s, n));
 		OUT;
 	}
-	s->numdeltas++;
 
 	if (flags & DELTA_MONOTONIC) XFLAGS(s, n) |= X_MONOTONIC;
 
@@ -15076,7 +15058,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_N: /* N */ {
-		fd(s->numdeltas);
+		fd(TABLE(s));
 		return (strVal);
 	}
 
