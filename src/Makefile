@@ -335,7 +335,7 @@ clean: FORCE
 	$(Q)$(RM) -r tmp
 
 clobber: clean FORCE
-	-@bk -r clean
+	-@bk -A clean
 
 # XXX subdirs? (see tags)
 wc: $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
@@ -399,7 +399,7 @@ win32: FORCE
 %.a: FORCE
 	$(Q)$(MAKE) -C $(dir $@) "CC=$(CC)" "CFLAGS=$(CFLAGS)" Q=$(Q) $(notdir $@)
 
-libc/mtst$(EXE): FORCE
+libc/mtst$(EXE): libc/libc.a FORCE
 	$(Q)$(MAKE) -C libc "CC=$(CC)" "CFLAGS=$(CFLAGS)" mtst$(EXE)
 
 bkres.o: win32/data/bk.rc bk.ico
@@ -465,10 +465,10 @@ import: import.sh port/$(SYS)_platform.sh
 # Quick and dirty target so we can make all the gui tools without the rest
 .PHONY: GUI
 GUI: tclwrap
-	@cd gui && $(MAKE) Q=$(Q) gui
+	@$(MAKE) -Cgui Q=$(Q) gui
 
 gui-nowrap GUI-nowrap:
-	@cd gui && $(MAKE) Q=$(Q) nowrap
+	@$(MAKE) -Cgui Q=$(Q) nowrap
 
 install: installdir
 	tmp/bitkeeper/bk _eula -a

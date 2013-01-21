@@ -153,6 +153,13 @@ tk/$S/Makefile: tk/$S/configure Makefile
 	    $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
 
 # Use the <dir>/ChangeLog file as a marker that the file has been populated
+.PHONY: populate
+populate:
+	$(if $(Q), @echo Cloning TclTk repos,)
+	$(Q) BK_CONFIG='checkout:get!' bk here add $(QUIET) TCLTK || \
+	     BK_CONFIG='checkout:get!' bk here add $(QUIET) \
+		-@bk://data.bitmover.com$$_BUILD_PORT/bk TCLTK
+
 CHANGELOGS =  \
 	tcl/ChangeLog \
 	tk/ChangeLog \
@@ -162,12 +169,7 @@ CHANGELOGS =  \
 	pcre/ChangeLog \
 	tkcon/ChangeLog
 
-$(CHANGELOGS):
-	$(if $(Q), @echo Cloning TclTk repos,)
-	$(Q) BK_CONFIG='checkout:get!' bk here add $(QUIET) TCLTK || \
-	     BK_CONFIG='checkout:get!' bk here add $(QUIET) \
-		-@bk://data.bitmover.com$$_BUILD_PORT/bk TCLTK
-	$(Q) bk get -S $(CHANGELOGS)
+$(CHANGELOGS): populate
 
 # fetch tcl subdirectory if needed
 tcl/$S/configure: tcl/ChangeLog
@@ -262,6 +264,9 @@ $(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure
 	$(MAKE) prefix= exec_prefix= DESTDIR=../$(BKAPP)/Contents/ \
 	    libdir=lib bindir=Resources install
 
+$(BKAPP)/Contents/lib:
+	mkdir $(BKAPP)/Contents/lib
+
 lib/$(BWIDGET)/pkgIndex.tcl: bwidget/ChangeLog
 	$(Q)cd bwidget; bk -Ur get -qS
 	$(if $(Q), @echo Installing BWidget,)
@@ -272,8 +277,8 @@ lib/$(BWIDGET)/pkgIndex.tcl: bwidget/ChangeLog
 	$(Q)cp bwidget/images/*.gif lib/$(BWIDGET)/images
 	$(Q)cp bwidget/images/*.xbm lib/$(BWIDGET)/images
 
-$(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl: lib/$(BWIDGET)/pkgIndex.tcl
-	test -d $(BKAPP)/Contents/lib || mkdir $(BKAPP)/Contents/lib
+$(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl: lib/$(BWIDGET)/pkgIndex.tcl \
+	$(BKAPP)/Contents/lib
 	cp -fRPH lib/$(BWIDGET) $(BKAPP)/Contents/lib
 
 lib/Tkcon/pkgIndex.tcl: tkcon/ChangeLog
@@ -283,12 +288,12 @@ lib/Tkcon/pkgIndex.tcl: tkcon/ChangeLog
 	$(Q)cp tkcon/tkcon.tcl lib/Tkcon
 	$(Q)cp tkcon/pkgIndex.tcl lib/Tkcon
 
-$(BKAPP)/Contents/lib/Tkcon/pkgIndex.tcl: lib/Tkcon/pkgIndex.tcl
-	test -d $(BKAPP)/Contents/lib || mkdir $(BKAPP)/Contents/lib
+$(BKAPP)/Contents/lib/Tkcon/pkgIndex.tcl: lib/Tkcon/pkgIndex.tcl \
+	$(BKAPP)/Contents/lib
 	cp -fRPH lib/Tkcon $(BKAPP)/Contents/lib
 
-$(BKAPP)/Contents/lib/GetOpts/pkgIndex.tcl: lib/GetOpts/pkgIndex.tcl
-	test -d $(BKAPP)/Contents/lib || mkdir $(BKAPP)/Contents/lib
+$(BKAPP)/Contents/lib/GetOpts/pkgIndex.tcl: lib/GetOpts/pkgIndex.tcl \
+	$(BKAPP)/Contents/lib
 	cp -fRPH lib/GetOpts $(BKAPP)/Contents/lib
 
 rm_doc: FORCE

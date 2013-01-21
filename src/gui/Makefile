@@ -32,7 +32,12 @@ SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 default: notes/BUILD
 	@cat notes/BUILD
 
-gui guis:  ../tclwrap lib images tcltk $(GUIS)
+.PHONY: ordered
+ordered:
+	$(Q)$(MAKE) tcltk
+	$(Q)$(MAKE) $(GUIS)
+
+gui guis:  ../tclwrap lib images ordered
 	@echo GUIs are up-to-date
 
 lib:
@@ -55,7 +60,7 @@ images: FORCE
 
 tcltk: FORCE
 	test -f tcltk/Makefile || bk co -q tcltk
-	cd tcltk && $(MAKE)
+	$(MAKE) -Ctcltk
 
 test: lib $(GUIS) $(DOIT) $(GUITEST) ../t/setup
 	@bk get -S ../t/SCCS/s.g.* 
