@@ -1,0 +1,117 @@
+BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3"
+export BK_CONFIG
+
+checkbk()
+{
+	FEAT="$1"/BitKeeper/log/features
+
+	grep -q BKFILE "$FEAT" || fail $FEAT missing BKFILE
+	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/ChangeSet`
+	test X"$ENC" = XBK || fail "$1" not BKfile $ENC
+}
+
+checkascii()
+{
+	FEAT="$1"/BitKeeper/log/features
+
+	test -f "$FEAT" || return
+	grep -q BKFILE "$FEAT" && fail $FEAT has BKFILE
+	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/ChangeSet`
+	test X"$ENC" = Xascii,gzip || fail "$1" is BKfile $ENC
+}
+
+echo $N Test that bk setup creates BK sfiles by default .............$NL
+touch c
+bk setup -a -cc -f repo.bk || fail
+checkbk repo.bk
+
+bk setup -a -cc -f --compat repo.ascii || fail
+checkascii repo.ascii
+echo OK
+
+echo $N Test that bk clone creates BK sfiles at the right time ......$NL
+for f in ascii bk; do
+	for t in "" "--compat" "--upgrade-repo"; do
+		bk clone $Q $t repo.$f clone.$f$t || fail
+	done
+done
+
+# all of these are ascii
+checkascii clone.ascii
+checkascii clone.ascii--compat
+checkascii clone.bk--compat
+
+# all of these are BK
+checkbk clone.bk
+checkbk clone.ascii--upgrade-repo
+checkbk clone.bk--upgrade-repo
+
+echo OK
+
+echo $N Attach an ascii and BK standalone to ascii and BK nested ....$NL
+bk setup -P -a -cc -f nest.bk || fail
+checkbk nest.bk
+
+bk setup -P -a -cc -f --compat nest.ascii || fail
+checkascii nest.ascii
+
+cd "$HERE"
+for NEST in bk ascii; do
+	bk setup -f nest.$NEST/newcomp || fail
+	for C in bk ascii; do
+		bk attach $Q "$HERE"/repo.$C nest.$NEST/comp.$NEST.$C || fail
+	done
+done
+
+checkascii nest.ascii/newcomp
+checkascii nest.ascii/comp.ascii.ascii
+checkascii nest.ascii/comp.ascii.bk
+checkbk nest.bk/newcomp
+checkbk nest.bk/comp.bk.ascii
+checkbk nest.bk/comp.bk.bk
+echo OK
+
+echo $N Undocumented form at attach is supported ....................$NL
+bk setup -a -cc -f --compat repo.ascii-2 || fail
+bk clone $Q repo.ascii-2 nest.bk/comp.ascii-2
+cd nest.bk
+bk attach $Q -N comp.ascii-2
+checkbk comp.ascii-2
+echo OK
+
+echo $N Pull sfio ...................................................$NL
+cd "$HERE"
+bk clone $Q --upgrade-repo repo.ascii repo.bin-copy
+cd repo.ascii
+echo new file > foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ../repo.bin-copy
+bk pull $Q || fail
+echo new file > bar
+bk new $Q bar
+bk commit $Q -ybar
+cd ../repo.ascii
+bk pull $Q ../repo.bin-copy || fail
+echo OK
+
+echo $N Show that check fixes files with the wrong format ...........$NL
+for h in ascii bk; do
+	cd "$HERE"/repo.$h
+	echo hi > file1
+	echo bye > file2
+	bk new $Q file1 file2
+	if [ $h = ascii ]
+	then	bk admin -B file1 file2
+		bk admin -Bnone file2
+	else
+		bk admin -Bnone file1 file2
+		bk admin -B file2
+	fi
+	bk repocheck $Q 2>ERR && fail -f ERR should fail
+	test `wc -l < ERR` -eq 1 || fail
+	grep -q "format wrong file1" ERR || fail
+	_BK_DEVELOPER= bk repocheck $Q || fail
+	bk repocheck $Q || fail should pass now
+done
+echo OK

@@ -65,6 +65,8 @@ char*		proj_comppath(project *p);
 int		proj_idxsock(project *p);
 int		proj_hasOldSCCS(project *p);
 int		proj_remapDefault(int doremap);
+int		proj_useBKfile(project *p);
+int		proj_bkfileDefault(int bfile);
 int		proj_hasDeltaTriggers(project *p);
 char*		proj_cset2key(project *p, char *csetrev, char *rootkey);
 char*		proj_tipkey(project *p);

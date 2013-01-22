@@ -13,13 +13,11 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-# this test does a binary compare of repos=
-echo 'binfile:no!' >> "`bk dotbk`"/config
-
-IDCACHE=BitKeeper/log/x.id_cache
+IDCACHE=BitKeeper/etc/SCCS/x.id_cache
 
 echo $N Create initial repository ...................................$NL
-commercial project
+# this test does a binary compare of repos
+fresh_commercial --compat project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -53,7 +51,9 @@ echo $N Create a copy of the project using send / receive ...........$NL
 cd "$HERE/project"
 bk send $Q -  > ../bkpatch
 cd ..
-bk receive -iaT copy < bkpatch
+bk receive -iaT copy2 < bkpatch || fail
+bk clone $Q --compat copy2 copy || fail
+rm copy/BitKeeper/etc/level
 if [ ! -d copy/BitKeeper ]; then echo failed to receive; exit 1; fi
 if bk _test ! -f copy/src/SCCS/s.h.h; then echo failed to receive; exit 1; fi
 cd "$HERE/project"; bk -r clean; bk -r admin -Zgzip
@@ -122,7 +122,9 @@ echo OK
 
 echo $N Create copy using send / receive and wrappers ...............$NL
 cd "$HERE/project"
-bk send $Q -wuu -  | bk receive -iaT ../uu
+bk send $Q -wuu -  | bk receive -iaT ../uu2
+bk clone $Q --compat ../uu2 ../uu || fail
+rm ../uu/BitKeeper/etc/level
 if [ ! -d ../uu/BitKeeper ]; then echo failed to receive; exit 1; fi
 cd "$HERE/project"; bk -r clean; bk -r admin -Zgzip
 cd "$HERE/uu"; bk -r clean; bk -r admin -Zgzip
@@ -139,7 +141,9 @@ echo OK
 
 echo $N Create copy using send / receive 1 cset at a time ...........$NL
 cd "$HERE/project"
-bk send $Q -r..1.1 -  | bk receive -iaT ../csets
+bk send $Q -r..1.1 -  | bk receive -iaT ../csets2
+bk clone $Q --compat ../csets2 ../csets || fail
+rm ../csets/BitKeeper/etc/level
 if [ ! -d ../csets/BitKeeper ]; then echo failed to receive; exit 1; fi
 for i in 2 3 4 5 6 7
 do	bk send $Q -r1.$i -  | bk receive -aT ../csets

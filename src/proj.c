@@ -12,6 +12,7 @@
  */
 
 private	int	noremap_default = 0;
+private	int	bkfile_default = 1;
 
 /*
  * Don't treat chdir() special here.
@@ -41,6 +42,7 @@ struct project {
 	int	sync;		/* sync/fsync data? */
 	int	idxsock;	/* sock to index server for this repo */
 	int	noremap;	/* true == old style SCCS dirs */
+	int	bkfile;		/* true == binary sfiles */
 	char	*tipkey;	/* key/md5key/rev of tip cset rev */
 	char	*tipmd5key;
 	char	*tiprev;
@@ -776,6 +778,7 @@ proj_reset(project *p)
 		p->co = 0;
 		p->sync = -1;
 		p->noremap = -1;
+		p->bkfile = -1;
 		p->preDelta = -1;
 		if (p->BAM_idx) {
 			mdbm_close(p->BAM_idx);
@@ -1331,6 +1334,41 @@ proj_remapDefault(int doremap)
 	int	ret = !noremap_default;
 
 	noremap_default = !doremap;
+	return (ret);
+}
+
+/*
+ * Does this repository use binary sfiles?
+ * almost a direct mirror of the remap logic above
+ */
+int
+proj_useBKfile(project *p)
+{
+	char	buf[MAXPATH];
+
+	unless (p || (p = curr_proj())) return (bkfile_default);
+
+	if (p->bkfile == -1) {
+		if (p->rparent) {
+			p->bkfile = proj_useBKfile(p->rparent);
+		} else {
+			concat_path(buf, p->root, CHANGESET);
+			if (exists(buf)) {
+				p->bkfile = bk_featureTest(p, FEAT_BKFILE);
+			} else {
+				p->bkfile = bkfile_default;
+			}
+		}
+	}
+	return (p->bkfile);
+}
+
+int
+proj_bkfileDefault(int bkfile)
+{
+	int	ret = bkfile_default;
+
+	bkfile_default = bkfile;
 	return (ret);
 }
 

@@ -2010,3 +2010,41 @@ parallel(char *path)
 		return (PARALLEL_LOCAL);
 	}
 }
+
+/*
+ * Given a number encoded as a bitfield and a list of names for each
+ * bit position return a malloc'ed strict with comma separated names
+ * for each bit set.
+ *
+ * ex:
+ *    str = formatBits(37,
+ *	 32, "foo", 16, "bar", 8, "baz", 4, "bing", 2, "bang", 1, "bap", 0);
+ *   returns "foo,bing,bap"
+ */
+char *
+formatBits(u32 bits, ...)
+{
+	u32	mask;
+	char	*name;
+	char	**out = 0;
+	char	*extra = 0;
+	char	*ret;
+	va_list	ap;
+
+	va_start(ap, bits);
+	while (mask = va_arg(ap, u32)) {
+		unless (bits) break;
+		name = va_arg(ap, char *);
+		if (bits & mask) {
+			out = addLine(out, name);
+			bits &= ~mask;
+		}
+	}
+	va_end(ap);
+
+	if (bits) out = addLine(out, (extra = aprintf("0x%x", bits)));
+	ret = joinLines(",", out);
+	freeLines(out, 0);
+	if (extra) free(extra);
+	return (ret);
+}

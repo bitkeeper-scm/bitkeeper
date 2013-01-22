@@ -69,8 +69,8 @@ bk commit $S -yperm1
 cd "$HERE/copy"
 bk pull $Q "$HERE/project"
 cd "$HERE/copy/src"
-bk _cp "$HERE/project/src/SCCS/s.foo.c" A
-bk _cp "$HERE/copy/src/SCCS/s.foo.c" B
+bk _scat "$HERE/project/src/foo.c" > A
+bk _scat "$HERE/copy/src/foo.c" > B
 diff A B
 if [ $? -ne 0 ]; then echo failed to propagate permissions; exit 1; fi
 rm -f A B
@@ -104,11 +104,11 @@ cd "$HERE/project/src"
 bk admin $Q -fEXPAND1 -fRCS -fYEAR4 bar.c
 bk commit $Q -yabc
 # save a copy of SCCS/s.bar.c for the rollback test
-bk _cp SCCS/s.bar.c "$HERE/ref"
+bk _scat bar.c > "$HERE/ref"
 cd "$HERE/copy/src"
 bk pull $Q "$HERE/project"
-bk _cp "$HERE/project/src/SCCS/s.bar.c" A
-bk _cp "$HERE/copy/src/SCCS/s.bar.c" B
+bk _scat "$HERE/project/src/SCCS/s.bar.c" > A
+bk _scat "$HERE/copy/src/SCCS/s.bar.c" > B
 diff A B
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 rm -f A B
@@ -117,8 +117,8 @@ bk admin $Q -FRCS -FYEAR4 bar.c
 bk commit $Q -yabc
 cd "$HERE/copy/src"
 bk pull $Q "$HERE/project"
-bk _cp "$HERE/project/src/SCCS/s.bar.c" A
-bk _cp "$HERE/copy/src/SCCS/s.bar.c" B
+bk _scat "$HERE/project/src/SCCS/s.bar.c" > A
+bk _scat "$HERE/copy/src/SCCS/s.bar.c" > B
 diff A B
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 rm -f A B
@@ -127,7 +127,7 @@ echo OK
 echo $N Check rollback of flags .....................................$NL
 bk clone $Q -r1.5 "$HERE/copy" "$HERE/copy2"
 cd "$HERE/copy2/src"
-bk _cp "$HERE/copy2/src/SCCS/s.bar.c" A
+bk _scat "$HERE/copy2/src/bar.c" > A
 diff A "$HERE/ref"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 rm A
@@ -139,8 +139,8 @@ bk admin $Q -fRCS -m-rwxr--r-- bar.c
 bk commit $Q -yabc
 cd "$HERE/copy/src"
 bk pull $Q "$HERE/project"
-bk _cp "$HERE/project/src/SCCS/s.bar.c" A
-bk _cp "$HERE/copy/src/SCCS/s.bar.c" B
+bk _scat "$HERE/project/src/SCCS/s.bar.c" > A
+bk _scat "$HERE/copy/src/SCCS/s.bar.c" > B
 diff A B
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 rm -f A B

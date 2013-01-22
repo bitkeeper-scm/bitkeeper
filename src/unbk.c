@@ -17,9 +17,6 @@ unbk_main(int ac, char **av)
 		    "usage: bk _unbk --I-know-this-destroys-my-bk-repo\n");
 		return (1);
 	}
-	bk_setConfig("compression", "none");
-	bk_setConfig("binfile", "no");
-
 	for (name = sfileFirst("_unbk", &av[2], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
@@ -30,6 +27,8 @@ unbk_main(int ac, char **av)
 			continue;
 		}
 		s->bitkeeper = 0;
+		s->encoding_out = sccs_encoding(s, 0, 0);
+		s->encoding_out &= ~(E_BK|E_COMP);
 		sccs_adminFlag(s, NEWCKSUM|ADMIN_RM1_0);
 		sccs_free(s);
 	}

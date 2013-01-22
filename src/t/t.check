@@ -335,7 +335,7 @@ bk check -c ff 2> /dev/null && {
 bk _rm SCCS/s.ff
 echo OK
 
-test X`bk config binfile` = Xyes && {
+test X"$_BKFILE_REGRESSIONS" = Xyes && {
 echo $N Make sure check detects checksum problems \(binfile\)..........$NL
 cd "$HERE/project"
 echo "foobar" > ff

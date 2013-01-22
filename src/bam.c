@@ -2170,9 +2170,10 @@ bam_convert_main(int ac, char **av)
 	char	*p;
 	char	**keys = 0;
 	char	**gone;
+	char	*line;
 	int	c, i, j, n, sz, old_size;
 	int	matched = 0, errors = 0, bam_size = 0;
-	FILE	*in, *out, *sfiles;
+	FILE	*out, *sfiles;
 	MDBM	*idDB = 0;
 	char	buf[MAXKEY * 2];
 
@@ -2276,29 +2277,22 @@ bam_convert_main(int ac, char **av)
 		ERROR((stderr, "no files needing conversion found.\n"));
 		goto out;
 	}
-	system("bk admin -Znone -Bnone ChangeSet");
-	unless (in = fopen("SCCS/s.ChangeSet", "r")) {
-		perror("SCCS/s.ChangeSet");
-		exit(1);
-	}
-	unless (out = fopen("SCCS/x.ChangeSet", "w")) {
-		perror("SCCS/x.ChangeSet");
-		exit(1);
-	}
 	ERROR((stderr, "redoing ChangeSet entries ...\n"));
-	while (fnext(buf, in)) {
-		fputs(buf, out);
-		if (streq("\001T\n", buf)) break;
-	}
+	s = sccs_csetInit(INIT_MUSTEXIST);
+	sccs_startWrite(s);
+	delta_table(s, 0);
+	sccs_rdweaveInit(s);
+	out = sccs_wrweaveInit(s);
 	n = nLines(keys) / 2;
-	while (fnext(buf, in)) {
-		if (buf[0] == '\001') {
-			fputs(buf, out);
+	while (line = sccs_nextdata(s)) {
+		unless (isData(line)) {
+			fputs(line, out);
+			fputc('\n', out);
 			continue;
 		}
 		j = 0;
 		EACH(keys) {
-			if (streq(keys[i], buf)) {
+			if (streq(keys[i], line)) {
 				fputs(keys[i+1], out);
 				j = i;
 				matched++;
@@ -2312,12 +2306,15 @@ bam_convert_main(int ac, char **av)
 			removeLineN(keys, j, free);
 			removeLineN(keys, j, free);
 		} else {
-			fputs(buf, out);
+			fputs(line, out);
 		}
+		fputc('\n', out);
 	}
+	sccs_wrweaveDone(s);
+	sccs_rdweaveDone(s);
+	sccs_finishWrite(s);
+	sccs_free(s);
 	fprintf(stderr, "\n");
-	fclose(in);
-	fclose(out);
 	if (nLines(keys)) {
 		ERROR((stderr, "some keys not found (shortkeys?)\n"));
 		EACH(keys) {
@@ -2327,9 +2324,6 @@ bam_convert_main(int ac, char **av)
 		mkdir("RESYNC", 0775);
 		exit(1);
 	}
-	rename("SCCS/s.ChangeSet", "BitKeeper/tmp/s.ChangeSet");
-	rename("SCCS/x.ChangeSet", "SCCS/s.ChangeSet");
-	system("bk admin -z ChangeSet");
 	ERROR((stderr, "fixing changeset checksums ...\n"));
 	system("bk checksum -f ChangeSet");
 	ERROR((stderr, "changing repo id ...\n"));
@@ -2394,7 +2388,7 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 		unlink(s->gfile);
 		if (sz < bam_size) goto out;
 	}
-	if (!BFILE(s) && GZIP(s)) {
+	if (!BKFILE(s) && GZIP(s)) {
 		/* uncompress file for performance */
 		s = sccs_restart(s);
 		s->encoding_out = sccs_encoding(s, 0, 0);
@@ -2425,19 +2419,19 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 			unlink(s->gfile);
 			unless (FLAGS(s, d) & D_CSET) continue;
 			sccs_sdelta(s, d, key);
-			keys = addLine(keys, aprintf("%s %s\n", oldroot, key));
-			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
+			keys = addLine(keys, aprintf("%s %s", oldroot, key));
+			keys = addLine(keys, aprintf("%s %s", newroot, key));
 			continue;
 		}
 
 		if (FLAGS(s, d) & D_CSET) {
 			sccs_sdelta(s, d, key);
-			keys = addLine(keys, aprintf("%s %s\n", oldroot, key));
+			keys = addLine(keys, aprintf("%s %s", oldroot, key));
 		}
 		if (bp_delta(s, d)) return (16);
 		if (FLAGS(s, d) & D_CSET) {
 			sccs_sdelta(s, d, key);
-			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
+			keys = addLine(keys, aprintf("%s %s", newroot, key));
 		}
 		unlink(s->gfile);
 		fprintf(stderr, ".");
@@ -2445,6 +2439,7 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 	}
 	*keysp = keys;
 	/* change encoding to be BAM */
+	s->encoding_out = sccs_encoding(s, 0, 0);
 	s->encoding_out &= ~(E_UUENCODE|E_GZIP);
 	s->encoding_out |= E_BAM;
 	unless (sccs_startWrite(s)) {

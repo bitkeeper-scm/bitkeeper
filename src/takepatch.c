@@ -1775,6 +1775,7 @@ initProject(void)
 		exit(1);
 	}
 	sccs_mkroot(".");
+	bk_featureSet(0, FEAT_BKFILE, proj_useBKfile(0));
 }
 
 private void
@@ -1828,6 +1829,7 @@ sfio(FILE *m)
 	size_t	n;
 	char	*flist;
 	int	rc = -1, rlen;
+	int	bkfile = proj_useBKfile(0);
 	char	buf[MAXLINE];
 	char	key[MAXKEY];
 
@@ -1873,6 +1875,9 @@ sfio(FILE *m)
 			SILENT|INIT_NOCKSUM|INIT_MUSTEXIST)) {
 			fprintf(stderr, "takepatch: can't open %s\n", buf);
 			goto err;
+		}
+		if ((!bkfile && BKFILE(sr)) || (bkfile && !BKFILE(sr))) {
+			sccs_newchksum(sr);
 		}
 		sccs_sdelta(sr, sccs_ino(sr), key); /* rootkey */
 

@@ -16,12 +16,12 @@ scat_main(int ac, char **av)
 		return (1);
 	}
 	sfile = name2sccs(av[1]);
-	bk_setConfig("compression", "none");
-	bk_setConfig("binfile", "no");
 	unless (s = sccs_init(sfile, SILENT|INIT_NOCKSUM|INIT_MUSTEXIST)) {
 		fprintf(stderr, "%s: can't open sfile %s\n", prog, sfile);
 		return (1);
 	}
+	s->encoding_out = sccs_encoding(s, 0, 0);
+	s->encoding_out &= ~(E_BK|E_COMP);
 	catSfile(s);
 	sccs_free(s);
 	return (0);

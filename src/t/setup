@@ -61,18 +61,6 @@ unsetHttpProxy() {
 
 # Make a commercial config file
 _commercial_config() {
-	# setup binary or ascii sfiles
-	# default to binary, but use ascii on a couple machines
-	test -z "$BK_BIN_REGRESSIONS" && {
-		case "`bk gethost`" in
-		    debian50.bitmover.com) BK_BIN_REGRESSIONS=no;;
-		    debian60-64.bitmover.com) BK_BIN_REGRESSIONS=no;;
-		    aix.bitmover.com) BK_BIN_REGERSSIONS=no;;
-		    win2008.bitmover.com) BK_BIN_REGERSSIONS=no;;
-		    *) BK_BIN_REGRESSIONS=yes;;
-		esac
-		export BK_BIN_REGRESSIONS
-	}
         # one more item for nested repos
 	test "$1" && echo clone_default: DEFAULT
 	cat <<EOF
@@ -87,7 +75,6 @@ keyword: sccs
 BAM: 1
 lockwait: 0
 partial_check: off
-binfile: $BK_BIN_REGRESSIONS
 EOF
 }
 
@@ -102,10 +89,10 @@ _make_repo() {
 
 	test -d "$REPO" && rm -rf "$REPO"		# should not happen
 	test "$TYPE" = nested && DASH_P="-P"		# Make it a product
-	bk setup -a -f -c"$CF" $DASH_P "$REPO" || {
-		echo "Setup failed!"
-		exit 1
-	}
+	COMPAT=
+	test "$_BKFILE_REGRESSIONS" = "no" && COMPAT=--compat
+
+	bk setup $COMPAT -a -f -c"$CF" $DASH_P "$REPO" || fail
 	test "$TYPE" = nested && { (
 		cd "$REPO" || {
 			echo failed to create $REPO
@@ -204,7 +191,13 @@ commercial() {
 
 fresh_commercial() {
 	_commercial_config > .config
-	bk setup -a -f -c.config "$1" || { echo "Setup failed!"; exit 1; }
+	COMPAT=
+	test "X$1" = X--compat && {
+	     COMPAT=--compat
+	     shift
+	}
+	test "$_BKFILE_REGRESSIONS" = "no" && COMPAT=--compat
+	bk setup $COMPAT -a -f -c.config "$1" || fail
 	cd "$1"
 }
 
@@ -227,7 +220,13 @@ nested() {
 
 fresh_nested() {
 	_commercial_config 1 > .config
-	bk setup -P -a -f -c.config "$1" || { echo "Setup failed!"; exit 1; }
+	COMPAT=
+	test "X$1" = X--compat && {
+	     COMPAT=--compat
+	     shift
+	}
+	test "$_BKFILE_REGRESSIONS" = "no" && COMPAT=--compat
+	bk setup $COMPAT -P -a -f -c.config "$1" || fail
 	cd "$1"
 	bk setup -C -a -f gcc
 	bk setup -C -a -f gdb

@@ -1,9 +1,11 @@
 _BK_FORCE_PAGING=1
 export _BK_FORCE_PAGING
-BK_CONFIG='binfile:1!'
-export BK_CONFIG
 
 echo $N "Test heap paging with 'bk setup' ............................"$NL
+test X"$_BKFILE_REGRESSIONS" = Xyes || {
+     echo skipped
+     exit 0
+}
 fresh_commercial project
 bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore

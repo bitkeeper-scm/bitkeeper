@@ -283,6 +283,13 @@ csetprune(Opts *opts)
 			    "%s: linking cset file failed\n", prog);
 			goto err;
 		}
+		strcpy(buf, "BitKeeper/log/features");
+		p = proj_fullpath(opts->refProj, "BitKeeper/log/features");
+		if (exists(p) && fileCopy(p, buf)) {
+			fprintf(stderr,
+			    "%s: copying features file failed\n", prog);
+			goto err;
+		}
 	} else {
 		verbose((stderr, "Processing ChangeSet file...\n"));
 	}

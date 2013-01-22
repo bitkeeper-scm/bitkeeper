@@ -87,8 +87,9 @@ admin_main(int ac, char **av)
 		    case 'E':	fprintf(stderr, "No longer supported.\n");
 		    		exit(1);
 		    case 'B': /* binfile */
-			bk_setConfig("binfile",
-			    optarg && streq(optarg, "none") ? "no" : "yes");
+			bk_featureSet(0, FEAT_BKFILE,
+			    (optarg && streq(optarg, "none")) ? 0 : 1);
+			proj_reset(0);
 			flags |= NEWCKSUM;
 			touchGfile++;
 			break;

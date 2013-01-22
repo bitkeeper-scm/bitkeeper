@@ -1910,7 +1910,7 @@ sccs_rdweaveInit(sccs *s)
 		}
 		unless (s->data) {
 			// set s->data == 0 whenever a file is written
-			if (BFILE(s)) {
+			if (BKFILE(s)) {
 				s->data = bin_data(fgetline(s->fh));
 			} else {
 				/* XXX need data-offset in header */
@@ -2060,7 +2060,7 @@ sccs_startWrite(sccs *s)
 		s->encoding_out = sccs_encoding(s, 0, 0);
 	}
 	xfile = sccsXfile(s, 'x');
-	if (BFILE_OUT(s)) {
+	if (BKFILE_OUT(s)) {
 		assert(!s->mem_out); /* for now */
 		if (s->size) {
 			est_size = s->size;
@@ -2087,7 +2087,7 @@ sccs_startWrite(sccs *s)
 	} else {
 		sfile = fopen(xfile, "w");
 	}
-	unless(BFILE_OUT(s)) {
+	unless(BKFILE_OUT(s)) {
 		s->cksum = 0;
 		assert(!s->ckwrap);
 		if (fpush(&sfile, fopen_cksum(sfile, "w", &s->cksum))) {
@@ -2112,7 +2112,7 @@ sccs_abortWrite(sccs *s)
 	fclose(s->outfh);	/* before the unlink */
 	s->ckwrap = 0;		/* clear flag */
 	if (s->mem_out) {
-		assert(!BFILE_OUT(s));
+		assert(!BKFILE_OUT(s));
 		s->mem_in = 0;
 		s->mem_out = 0;
 	} else {
@@ -2136,7 +2136,7 @@ sccs_finishWrite(sccs *s)
 
 	assert(!s->wrweave);
 	T_SCCS("file=%s", s->gfile);
-	unless (BFILE_OUT(s)) {
+	unless (BKFILE_OUT(s)) {
 		if (s->ckwrap) {
 			fpop(&s->outfh);
 			s->ckwrap = 0;
@@ -2148,7 +2148,7 @@ sccs_finishWrite(sccs *s)
 	assert(!s->ckwrap);
 	rc = ferror(s->outfh);
 	if (s->mem_out) {
-		assert(!BFILE_OUT(s));
+		assert(!BKFILE_OUT(s));
 		assert(s->fh);
 		tmp = s->fh;
 		s->fh = s->outfh;
@@ -3300,7 +3300,7 @@ mkgraph(sccs *s, int flags)
 	FILE	*fcludes;
 
 	rewind(s->fh);
-	if (BFILE(s)) {
+	if (BKFILE(s)) {
 		bin_mkgraph(s);
 		goto out;
 	}
@@ -4664,7 +4664,7 @@ sccs_open(sccs *s)
 	assert(!s->fh);
 	unless (f = fopen(s->fullsfile, "r")) return (-1);
 	if (fgetc(f) == '\001') {
-		s->encoding_in &= ~E_BFILE;
+		s->encoding_in &= ~E_BK;
 	} else {
 		/* binary file */
 		rewind(f);
@@ -4676,7 +4676,7 @@ sccs_open(sccs *s)
 			fclose(f);
 			return (-1);
 		}
-		s->encoding_in |= E_BFILE;
+		s->encoding_in |= E_BK;
 	}
 	s->fh = f;
 	return (0);
@@ -7847,7 +7847,7 @@ badcksum(sccs *s, int flags)
 	int	filesum;
 	u8	buf[4<<10];
 
-	if (BFILE(s)) {
+	if (BKFILE(s)) {
 		/* ignore checksums for binary files */
 		s->cksumok = 1;
 		return (0);
@@ -8048,7 +8048,7 @@ delta_table(sccs *s, int willfix)
 		}
 	}
 
-	if (BFILE_OUT(s)) return (bin_deltaTable(s));
+	if (BKFILE_OUT(s)) return (bin_deltaTable(s));
 
 	assert(sizeof(buf) >= 1024);	/* see comment code */
 	sprintf(buf, "\001%cXXXXX\n", BITKEEPER(s) ? 'H' : 'h');
@@ -8479,7 +8479,7 @@ bin_deltaTable(sccs *s)
 	 *  * it is more than 100 deltas after the last repack
 	 */
 	 if (getenv("_BK_SORTHEAP") ||
-	     !BFILE(s) ||
+	     !BKFILE(s) ||
 	     ((s->heap.len > s->pagesz) && (lastsorted + 100 < TABLE(s)))) {
 		 bin_sortHeap(s);
 	 }
@@ -10242,7 +10242,7 @@ out:		sccs_abortWrite(s);
 		fputc('\n', sfile);
 	}
 skip_weave:
-	if (BFILE_OUT(s)) fputs("\001Z\n", sfile);
+	if (BKFILE_OUT(s)) fputs("\001Z\n", sfile);
 	sccs_wrweaveDone(s);
 	sfile = 0;
 	error = end(s, n, flags, added, 0, 0);
@@ -11292,7 +11292,6 @@ sccs_encoding(sccs *sc, off_t size, char *encp)
 	int	bam;
 	int	encoding = sc ? sc->encoding_in : E_ALWAYS;
 	char	*compp;
-	int	comp;
 
 	if (encp) {
 		if (streq(encp, "text")) enc = E_ASCII;
@@ -11318,27 +11317,19 @@ sccs_encoding(sccs *sc, off_t size, char *encp)
 	}
 
 	if (sc && sc->proj) {
-		compp = proj_configval(sc->proj, "compression");
+		encoding &= ~(E_BK|E_COMP);
+		if (proj_useBKfile(sc->proj)) encoding |= E_BK;
 
-		if (!*compp || streq(compp, "gzip")) {
-			comp = E_GZIP;
-		} else if (streq(compp, "none")) {
-			comp = 0;
-		} else {
-			fprintf(stderr, "%s: unknown compression format %s\n",
-			    prog, compp);
-			return (-1);
-		}
+		unless (encoding & (E_BK|E_BAM)) {
+			compp = proj_configval(sc->proj, "compression");
 
-		/* No gzip for BAM currently */
-		if (encoding & E_BAM) comp = 0;
-		encoding &= ~E_COMP;
-		encoding |= comp;
-
-		encoding &= ~E_BFILE;
-		if (proj_configbool(sc->proj, "binfile")) {
-			encoding |= E_BFILE;
-			encoding &= ~E_COMP; /* binfile is always compressed */
+			if (!*compp || streq(compp, "gzip")) {
+				encoding |= E_GZIP;
+			} else if (!streq(compp, "none")) {
+				fprintf(stderr, "%s: unknown compression format %s\n",
+				    prog, compp);
+				return (-1);
+			}
 		}
 	}
 	return (encoding);
@@ -13827,7 +13818,7 @@ out:
 	if (delta_write(s, n, diffs, &added, &deleted, &unchanged)) {
 		OUT;
 	}
-	if (BFILE_OUT(s)) fputs("\001Z\n", s->outfh);
+	if (BKFILE_OUT(s)) fputs("\001Z\n", s->outfh);
 	if (S_ISLNK(MODE(s, n))) {
 		u8 *t;
 		/*
@@ -13877,7 +13868,7 @@ end(sccs *s, ser_t n, int flags, int add, int del, int same)
 	/*
 	 * Now fix up the checksum and summary.
 	 */
-	if (BFILE_OUT(s)) {
+	if (BKFILE_OUT(s)) {
 		fflush(s->outfh);
 		bin_deltaAdded(s, n);
 	} else {
@@ -13941,7 +13932,7 @@ Breaks up citool
 			}
 #endif
 		}
-		if (BFILE_OUT(s)) {
+		if (BKFILE_OUT(s)) {
 			if (bin_deltaSum(s, n)) {
 				perror("fwrite");
 			}
@@ -13953,6 +13944,7 @@ Breaks up citool
 			fputs(buf, s->outfh);
 			s->cksum += str_cksum(buf);
 		}
+		FLAGS(s, n) &= ~D_FIXUPS; /* that shouldn't stay set in memory */
 	}
 	return (0);
 }
@@ -15228,6 +15220,28 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 			fs("BAM"); return (strVal);
 		}
 		return nullVal;
+	}
+	case KW_ENCODING: /* ENCODING */ {
+		u32	enc = s->encoding_in & ~E_ALWAYS;
+		char	*r = formatBits(enc,
+		    E_UUENCODE, "uuencode",
+		    E_BAM, "BAM",
+		    E_GZIP, "gzip",
+		    E_BK, "BK",
+		    // E_BWEAVE, "bweave",
+		    0, 0);
+
+		if (!enc || (enc == E_GZIP)) {
+			fs("ascii");
+			if (r) {
+				fc(',');
+				fs(r);
+			}
+		} else {
+			fs(r);
+		}
+		free(r);
+		return (strVal);
 	}
 
 	case KW_COMPRESSION: /* COMPRESSION */ {

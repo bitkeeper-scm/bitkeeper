@@ -160,19 +160,25 @@ case $CMD in
 	;;
 
     status)
+	TEST=`sed -n 's/^ERROR: Test \(.*\) failed with.*/\1/p' < $LOG | head -1`
+	test -n "$TEST" && {
+		echo regressions failed starting with $TEST
+		exit 1
+	}
+
 	# grep -q is not portable so we use this
-	grep "Not your lucky day, " $LOG >/dev/null && {
-		echo regressions failed.
-		exit 1
-	}
-	grep '!!!! Failed! !!!!' $LOG >/dev/null && {
-		echo failed to build.
-		exit 1
-	}
 	grep "All requested tests passed, must be my lucky day" \
 	    $LOG >/dev/null && {
 		echo succeeded. \(GUI tests not run\)
 		exit 0
+	}
+
+	grep '!!!! Failed! !!!!' $LOG >/dev/null && {
+		if grep "^====" $LOG >/dev/null
+		then	echo regressions failed.
+		else	echo failed to build.
+		fi
+		exit 1
 	}
 	echo is not done yet.
 	;;

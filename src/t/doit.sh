@@ -299,6 +299,18 @@ setup_env()
 	export BK_DOTBK
 	mkdir -p "$BK_DOTBK" || exit 1
 	TMPDIR="$TST_DIR/.tmp $USER"
+	# setup BK or ascii sfiles
+	# default to BK, but use ascii on a couple machines
+	test -z "$_BKFILE_REGRESSIONS" && {
+		case "`bk gethost`" in
+		    debian50.bitmover.com) _BKFILE_REGRESSIONS=no;;
+		    debian60-64.bitmover.com) _BKFILE_REGRESSIONS=no;;
+		    aix.bitmover.com) _BKFILE_REGRESSIONS=no;;
+		    win2008.bitmover.com) _BKFILE_REGRESSIONS=no;;
+		    *) _BKFILE_REGRESSIONS=yes;;
+		esac
+		export _BKFILE_REGRESSIONS
+	}
 
 	# Make the binaries not too large, sco hangs on large diffs.
 	cd ..

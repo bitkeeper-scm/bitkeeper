@@ -9,10 +9,6 @@ OLDBK=/build/bitkeeper-$OLDVER
 _BK_FORCE_NETFS=YES
 export _BK_FORCE_NETFS
 
-# bk-5.3 won't understand binary sfiles
-BK_CONFIG='binfile:no!'
-export BK_CONFIG
-
 echo $N Check bitkeeper 5.3 installation ............................$NL
 if [ -n "$BK_DEV_SKIPTEST" ]; then echo skipped; exit 0; fi
 # Skip this test for Windows VISTA
@@ -130,7 +126,7 @@ export _BK_FORCE_NETFS
 
 echo $N Clone from old bkd and make sure we do checkouts ............$NL
 cd "$HERE"
-fresh_commercial project
+fresh_commercial --compat project
 bk clone $Q --sccs-compat . ../sccsdirs
 cd ../sccsdirs
 mkdir src
@@ -171,7 +167,7 @@ echo OK
 echo $N Try a pull urllist to see if the hacks work .................$NL
 # old bkds fail bkd_nested call, so hackery in place to work anyway
 cd "$HERE"
-fresh_nested nest
+fresh_nested --compat nest
 bk clone $Q . ../nest-dest
 touch gcc/foo
 bk new $Q gcc/foo
@@ -182,7 +178,7 @@ rm BitKeeper/log/urllist
 cd ../nest-dest
 perl -pe 's|.*/nest$|bk://localhost:'$OLDP'/nest|' BitKeeper/log/urllist > x
 cp x BitKeeper/log/urllist
-bk pull ../nest-src >X 2>&1 || fail -f GOT
+bk pull ../nest-src >X 2>&1 || fail -f X
 grep searching X > GOT
 # The non -q shows takepatch reading the file, and then failing with
 # this same nested only in product.  That means to upgraded the bkd.
@@ -256,7 +252,7 @@ mv newrepo oldrepo
 mv newcopy oldcopy
 # again with the current stuff
 _BK_NO_ATTR=1 BK_DATE_TIME_ZONE=$DAT BK_RANDOM=1234567890abcdef \
-    bk setup -fcempty newrepo
+    bk setup --compat -fcempty newrepo
 bk clone $Q newrepo newcopy
 cd newrepo
 echo f > foo

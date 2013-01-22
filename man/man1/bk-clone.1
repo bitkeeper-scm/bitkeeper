@@ -92,6 +92,12 @@ added to
 If no other config overrides that, then this mode will "stick"
 for subsequent updates.
 .tp
+.B \-\-compat
+By default, new clones will use the same storage format as the
+repository being cloned.
+This options forces the new clone to use the older, backwards compatible
+format (at the cost of lower performance).
+.tp
 .OPTequal \-E env val
 Export an environment variable to the 
 .B bkd
@@ -117,11 +123,6 @@ files.
 Clone nomally uses hard links whenever it can.  This option will
 prevent this and is useful to create an archive of a repository that
 copies every file.
-.tp
-.B \-\-no\-sccsdirs
-By default, clone honors the SCCS dir mode of the source repository.
-This forces the new clone to be hide the SCCS dirs containing the 
-revision history.
 .tp
 .B \-q
 Run quietly.
@@ -149,10 +150,12 @@ can be use to make the destination of the clone have the same
 components populated as the source.
 .\}
 .tp
-.B \-\-sccsdirs
-By default, clone honors the SCCS dir mode of the source repository.
-This forces the new clone to make visible the SCCS dirs containing the
-revision history.
+.B \-\-upgrade-repo
+By default, new clones will use the same storage format as the
+repository being cloned.
+This option forces the new clone to upgrade to the latest storage
+format.
+In bk-6.0, the storage format was changed to support higher performance.
 .SH "SEE ALSO"
 .SA alias
 .SA BAM

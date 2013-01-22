@@ -6,8 +6,6 @@
 
 OLDVER=4.2
 OLDBK=/build/bitkeeper-$OLDVER
-BK_CONFIG='binfile:no!'
-export BK_CONFIG
 
 # use new parallel clone in tests
 _BK_FORCE_NETFS=YES
@@ -112,7 +110,7 @@ echo OK
 
 echo -------------- gone file automerge tests
 echo $N Test auto-merge on gone files works with new del format .....$NL
-fresh_commercial project
+fresh_commercial --compat project
 bk clone $Q --sccs-compat . ../copy
 bk edit $Q BitKeeper/etc/gone
 echo "a@b.c|d|20001010101010|63920|1fea66be52324149" >> BitKeeper/etc/gone
@@ -310,7 +308,7 @@ echo OK
 
 echo $N Nested detached repo running behind old bkd .................$NL
 cd "$HERE"
-fresh_nested nest
+fresh_nested --compat nest
 bk detach $Q --sccs-compat gcc ../newgcc || fail
 cd ../newgcc
 bk clone $Q . bk://localhost:$OLDP/oldgcc 2> ERR && fail -f ERR
@@ -436,7 +434,7 @@ BK_DATE_TIME_ZONE="98/09/22 16:23:31+00:00"
 _BK_NO_UNIQ=1
 export BK_DATE_TIME_ZONE _BK_NO_UNIQ BK_RANDOM
 # do not use cache, as we want predictable repo
-fresh_commercial base
+fresh_commercial --compat base
 # two files, one 'del' will get move to a subdir, then pruned.
 echo line > keep
 touch del
@@ -508,6 +506,6 @@ echo $N Show a pull of bad data is caught in takepatch ..............$NL
 cd ..
 bk clone $Q -r1.2 diamond-old diamond-test || fail
 cd diamond-test
-bk pull -q bk://localhost:$OLDP/diamond-old 2> ERR && fail
+bk pull -q bk://localhost:$OLDP/diamond-old 2> ERR && fail -f ERR
 grep -q "patch not in old to new order" ERR || fail -f ERR
 echo OK

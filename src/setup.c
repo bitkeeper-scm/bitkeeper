@@ -29,7 +29,8 @@ setup_main(int ac, char **av)
 	int	noCommit = 0;
 	int	sccs_compat = 0;
 	longopt	lopts[] = {
-		{ "sccs-compat", 300 },
+		{ "sccs-compat", 300 }, /* old compat option */
+		{ "compat", 300 },	/* create compatible repo */
 		{ 0, 0 }
 	};
 
@@ -82,11 +83,12 @@ setup_main(int ac, char **av)
 	if (sccs_compat) {
 		if (!product && proj_product(proj)) {
 			fprintf(stderr,
-			    "%s: can't use --sccs-compat inside a product.\n",
+			    "%s: can't use --compat inside a product.\n",
 			    prog);
 			exit(1);
 		}
 		proj_remapDefault(0);
+		proj_bkfileDefault(0);
 	}
 	if (exists(package_path) && !allowNonEmptyDir) {
 		printf("bk: %s exists already, setup fails.\n", package_path);
@@ -122,6 +124,7 @@ setup_main(int ac, char **av)
 				    "See 'bk help portal'.\n");
 				return (1);
 			}
+			proj_bkfileDefault(proj_useBKfile(in_prod));
 		}
 	}
 	strcpy(here, proj_cwd());
@@ -241,6 +244,8 @@ err:			unlink("BitKeeper/etc/config");
 		}
 	}
 
+	bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
+	bk_featureSet(0, FEAT_BKFILE, proj_useBKfile(0));
 	if (cset_setup(SILENT)) goto err;
 	unless (eula_accept(accept ? EULA_ACCEPT : EULA_PROMPT, 0)) exit(1);
 	s = sccs_init(s_config, SILENT);
@@ -264,7 +269,6 @@ err:			unlink("BitKeeper/etc/config");
         }
 	enableFastPendingScan();
 	logChangeSet();
-	bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 	if (in_prod) {		/* we are a new component, attach ourself */
 		unlink("BitKeeper/log/COMPONENT");
 		status = sys("bk", "attach",

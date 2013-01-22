@@ -5,9 +5,10 @@
 static struct {
 	char	*name;		/* name of feature */
 	int	repo;		/* true if allowed per-repo */
+	int	old;		/* true if feature has been superceded */
 } flist[] = {
-	{0, 0},			/* element 0 unused */
-#define X(a, b, c, d)	{ c, d },
+	{0, 0, 0},			/* element 0 unused */
+#define X(a, b, c, d, e)	{ c, d, e },
 FEATURES
 #undef X
 };
@@ -22,12 +23,12 @@ FEATURES
 int
 features_main(int ac, char **av)
 {
-	int	i;
+	int	i, comma;
 	char	**here;
 
 	unless (av[1]) {
 		bk_nested2root(1);
-		here = file2Lines(0, "BitKeeper/log/features");
+		here = bk_features(0);
 		unless (here) return (1);
 		EACH(here) {
 			if (i > 1) printf(",");
@@ -39,8 +40,21 @@ features_main(int ac, char **av)
 	}
 
 	if (streq(av[1], "--all")) {
+		comma = 0;
 		for (i = 1; i <= NFEATURES; i++) {
-			if (i > 1) printf(",");
+			if (flist[i].old) continue;
+			if (comma++) printf(",");
+			printf("%s", flist[i].name);
+		}
+		printf("\n");
+		return (0);
+	}
+
+	if (streq(av[1], "--old")) {
+		comma = 0;
+		for (i = 1; i <= NFEATURES; i++) {
+			unless (flist[i].old) continue;
+			if (comma++) printf(",");
 			printf("%s", flist[i].name);
 		}
 		printf("\n");
@@ -53,6 +67,17 @@ features_main(int ac, char **av)
 		if (streq(av[1], flist[i].name)) return (0);
 	}
 	return (1);
+}
+
+char **
+bk_features(project *p)
+{
+	char	**here = file2Lines(0,
+		    proj_fullpath(p, "BitKeeper/log/features"));
+
+	uniqLines(here, free);
+
+	return (here);
 }
 
 /*
@@ -70,7 +95,7 @@ bk_featureList(project *p, int all)
 	char	**list;
 
 	if (all) {
-#define	X(a, b, c, d) c ","
+#define	X(a, b, c, d, e) c ","
 	        ret = strdup(FEATURES);
 #undef	X
 		if (getenv("_BK_NO_PATCHSFIO")) {
@@ -82,8 +107,7 @@ bk_featureList(project *p, int all)
 		chop(ret);	/* remove trailing , */
 	} else {
 		/* just return features required for current repo */
-		list = file2Lines(0,
-		    proj_fullpath(p, "BitKeeper/log/features"));
+		list = bk_features(p);
 
 		/*
 		 * Don't send REMAP in FEATURES_REQUIRED, it doesn't matter
@@ -113,7 +137,11 @@ has_feature(char *bk, int f)
 		strcpy(buf, p);
 		val = buf;
 		while (p = strsep(&val, ",")) {
-			if (streq(p, flist[f].name)) return (1);
+			if (streq(p, flist[f].name) ||
+			    ((f == FEAT_BKFILE) &&
+			    streq(p, "bSFILEv1"))) {
+				return (1);
+			}
 		}
 	}
 	return (0);
@@ -194,9 +222,11 @@ bk_featureTest(project *p, int feature)
 	assert(flist[feature].repo);
 
 	name = flist[feature].name;
-	local = file2Lines(0, proj_fullpath(p, "BitKeeper/log/features"));
+	local = bk_features(p);
 	EACH(local) {
-		if (streq(name, local[i])) {
+		if (streq(name, local[i]) ||
+		    ((feature == FEAT_BKFILE) &&
+		    streq("bSFILEv1", local[i]))) {
 			ret = 1;
 			break;
 		}
@@ -217,7 +247,7 @@ bk_featureCompat(project *p)
 	char	**local;
 	int	ret;
 
-	local = file2Lines(0, proj_fullpath(p, "BitKeeper/log/features"));
+	local = bk_features(p);
 
 	/*
 	 * remap, doesn't change the file format,
@@ -227,7 +257,7 @@ bk_featureCompat(project *p)
 	 * part of a patch.
 	 */
 	removeLine(local, flist[FEAT_REMAP].name, free);
-	removeLine(local, flist[FEAT_bSFILEv1].name, free);
+	removeLine(local, flist[FEAT_BKFILE].name, free);
 
 	ret = emptyLines(local);
 	freeLines(local, free);
@@ -245,7 +275,7 @@ bk_featureRepoChk(project *p)
 	char	**missing = 0;
 	char	**local = 0;
 
-	local = file2Lines(local, proj_fullpath(p, "BitKeeper/log/features"));
+	local = bk_features(p);
 	EACH(local) {
 		for (j = 1; j <= NFEATURES; j++) {
 			if (streq(local[i], flist[j].name)) break;
@@ -302,7 +332,7 @@ bk_featureChk(int bkd, int no_repo)
 	}
 
 	/* check BitKeeper/log/features against BK[D]_FEATURES */
-	features = file2Lines(0, proj_fullpath(0, "BitKeeper/log/features"));
+	features = bk_features(0);
 	/* remap doesn't matter over protocol */
 	removeLine(features, flist[FEAT_REMAP].name, free);
 	pruneLines(features, rmt_features, 0, free);

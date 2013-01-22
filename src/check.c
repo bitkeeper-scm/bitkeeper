@@ -137,7 +137,7 @@ check_main(int ac, char **av)
 	int	forceCsetFetch = 0;
 	int	noDups = 0;
 	ticker	*tick = 0;
-	int	sawBINFILE = 0;
+	int	bkfile = 0;
 	int	sawPOLY = 0;
 	longopt	lopts[] = {
 		{ "use-older-changeset", 300 },
@@ -214,6 +214,7 @@ check_main(int ac, char **av)
 	if (sane(0, resync)) return (1);
 
 	checkout = proj_checkout(0);
+	bkfile = proj_useBKfile(0);
 
 	/* revtool: the code below is restored from a previous version */
 	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
@@ -334,7 +335,24 @@ check_main(int ac, char **av)
 			BAM = 1;
 			if (chk_BAM(s, &bp_missing)) ferr++, errors |= 0x04;
 		}
-		if (BFILE(s)) sawBINFILE = 1;
+		if (((BKFILE(s) && !bkfile) || (!BKFILE(s) && bkfile))
+		    && !getenv("_BK_MIXED_FORMAT")) {
+			if (getenv("_BK_DEVELOPER")) {
+				fprintf(stderr,
+				    "sfile format wrong %s, %d %d\n",
+				    s->gfile, bkfile, BKFILE(s));
+				ferr++, errors |= 0x08;
+			} else if (sccs_newchksum(s)) {
+				fprintf(stderr,
+				    "Could not rewrite %s to fix file "
+				    "format.  Perhaps it is locked by "
+				    "some other process?\n",
+				    s->gfile);
+				ferr++, errors |= 0x08;
+			} else {
+				sccs_restart(s);
+			}
+		}
 		if (IS_POLYPATH(PATHNAME(s, sccs_top(s)))) sawPOLY = 1;
 		if (chk_gfile(s, pathDB, checkout)) ferr++, errors |= 0x08;
 		if (no_gfile(s)) ferr++, errors |= 0x08;
@@ -509,11 +527,6 @@ check_main(int ac, char **av)
 	unless (errors) {
 		bk_featureSet(0, FEAT_SAMv3, proj_isEnsemble(0));
 		bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
-		if (sawBINFILE) {
-			bk_featureSet(0, FEAT_bSFILEv1, 1);
-		} else if (all) {
-			bk_featureSet(0, FEAT_bSFILEv1, 0);
-		}
 		if (sawPOLY) {
 			bk_featureSet(0, FEAT_POLY, 1);
 		} else if (all) {

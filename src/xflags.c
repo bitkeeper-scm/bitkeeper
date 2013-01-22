@@ -183,53 +183,26 @@ char *
 xflags2a(u32 flags)
 {
 	static	char	*ret;
-	char	**list = 0;
 
 	if (ret) free(ret);
-
-	if (flags & X_BITKEEPER) {
-		list = addLine(list, "BITKEEPER");
-	}
-	if (flags & X_RCS) {
-		list = addLine(list, "RCS");
-	}
-	if (flags & X_YEAR4) {
-		list = addLine(list, "YEAR4");
-	}
+	// we ignore X_LONGKEY
+	ret = formatBits(flags & ~X_LONGKEY,
+	    X_BITKEEPER, "BITKEEPER",
+	    X_RCS, "RCS",
+	    X_YEAR4, "YEAR4",
 #ifdef X_SHELL
-	if (flags & X_SHELL) {
-		list = addLine(list, "SHELL");
-	}
+	    X_SHELL, "SHELL",
 #endif
-	if (flags & X_EXPAND1) {
-		list = addLine(list, "EXPAND1");
-	}
-	if (flags & X_CSETMARKED) {
-		list = addLine(list, "CSETMARKED");
-	}
-	if (flags & X_HASH) {
-		list = addLine(list, "HASH");
-	}
-	if (flags & X_SCCS) {
-		list = addLine(list, "SCCS");
-	}
-	if (flags & X_EOLN_NATIVE) {
-		list = addLine(list, "EOLN_NATIVE");
-	}
-	if (flags & X_EOLN_WINDOWS) {
-		list = addLine(list, "EOLN_WINDOWS");
-	}
-	if (flags & X_DB) {
-		list = addLine(list, "DB");
-	}
-	if (flags & X_NOMERGE) {
-		list = addLine(list, "NOMERGE");
-	}
-	if (flags & X_MONOTONIC) {
-		list = addLine(list, "MONOTONIC");
-	}
-	ret = joinLines(",", list);
-	freeLines(list, 0);
+	    X_EXPAND1, "EXPAND1",
+	    X_CSETMARKED, "CSETMARKED",
+	    X_HASH, "HASH",
+	    X_SCCS, "SCCS",
+	    X_EOLN_NATIVE, "EOLN_NATIVE",
+	    X_EOLN_WINDOWS, "EOLN_WINDOWS",
+	    X_DB, "DB",
+	    X_NOMERGE, "NOMERGE",
+	    X_MONOTONIC, "MONOTONIC",
+	    0, 0);
 	return (ret);
 }
 

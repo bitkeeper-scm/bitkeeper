@@ -224,7 +224,7 @@ int	checking_rmdir(char *dir);
 #define	E_UUENCODE	1		/* uuenecode it (traditional) */
 #define	E_BAM		2		/* store data in BAM pool */
 #define	E_GZIP		4		/* gzip the data */
-#define	E_BFILE		8		/* use binary sfile format */
+#define	E_BK		8		/* new binary sfile format */
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
@@ -239,8 +239,8 @@ int	checking_rmdir(char *dir);
 #define	UUENCODE(s)	(((s)->encoding_in & E_DATAENC) == E_UUENCODE)
 #define	GZIP(s)		(((s)->encoding_in & E_COMP) == E_GZIP)
 #define	GZIP_OUT(s)	(((s)->encoding_out & E_COMP) == E_GZIP)
-#define	BFILE(s)	(((s)->encoding_in & E_BFILE) != 0)
-#define	BFILE_OUT(s)	(((s)->encoding_out & E_BFILE) != 0)
+#define	BKFILE(s)	(((s)->encoding_in & E_BK) != 0)
+#define	BKFILE_OUT(s)	(((s)->encoding_out & E_BK) != 0)
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
@@ -1490,6 +1490,7 @@ void	dataunmap(sccs *s, int keep);
 int	repogca(char **urls, char *dspec, u32 flags, FILE *out);
 
 u64	maxrss(void);
+char	*formatBits(u32 bits, ...);
 
 extern	char	*editor;
 extern	char	*bin;

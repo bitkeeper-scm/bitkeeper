@@ -23,6 +23,7 @@ private	struct {
 	u32	identical:1;		/* --identical */
 	int	delay;			/* wait for (ssh) to drain */
 	int	remap;			/* force remapping? */
+	int	bkfile;			/* force binary sfiles? */
 	int	parallel;		/* -j%d: for NFS */
 	int	comps;			/* remember how many for progress */
 	char	*rev;			/* remove everything after this */
@@ -52,6 +53,7 @@ private	retrc	clone_finish(remote *r, retrc status, char **envVar);
 private	int	chkAttach(char *dir);
 private	retrc	clonemod_part1(remote **r);
 private	int	clonemod_part2(char **envVar);
+private void	fixSfile(void);
 
 private	char	*bam_url;
 private	char	*bam_repoid;
@@ -67,11 +69,19 @@ clone_main(int ac, char **av)
 	remote 	*r = 0, *l = 0;
 	char	*check_out = 0;		/* --checkout=none|get|edit */
 	longopt	lopts[] = {
+		{ "compat", 310},
+		{ "upgrade-repo", 311},
+
+		/* remap */
 		{ "sccsdirs", 300 },		/* 4.x compat, w/ SCCS/ */
 		{ "sccs-compat", 300 },		/* old non-remapped repo */
 		{ "no-sccsdirs", 301 },		/* force .bk */
 		{ "no-sccs-compat", 301 },	/* move sfiles to .bk */
 		{ "hide-sccs-dirs", 301 },	/* move sfiles to .bk */
+
+		{ "bk-sfile", 320 },		/* undoc, testing interface */
+		{ "no-bk-sfile", 321},		/* undoc, testing interface */
+
 		{ "sfiotitle;", 302 },		/* title for sfio */
 		{ "no-hardlinks", 303 },	/* never hardlink repo */
 		{ "force", 304 },		/* force attach dups */
@@ -86,6 +96,7 @@ clone_main(int ac, char **av)
 
 	opts = calloc(1, sizeof(*opts));
 	opts->remap = -1;
+	opts->bkfile = -1;
 	if (streq(prog, "attach")) opts->attach = 1;
 	if (streq(prog, "detach")) opts->detach = 1;
 	unless (win32()) opts->link = 1;	    /* try lclone by default */
@@ -163,6 +174,24 @@ clone_main(int ac, char **av)
 		    case 306: /* --checkout=none|get|edit */
 			check_out = optarg;
 			break;
+		    case 310: /* --compat */
+			opts->no_lclone = 1;
+			opts->remap = 0;
+			opts->bkfile = 0;
+			break;
+		    case 311: /* --upgrade-repo */
+			opts->no_lclone = 1;
+			opts->remap = 1;
+			opts->bkfile = 1;
+			break;
+		    case 320: /* --bk-sfile */
+			opts->no_lclone = 1;
+			opts->bkfile = 1;
+			break;
+		    case 321: /* --no-bk-sfile */
+			opts->no_lclone = 1;
+			opts->bkfile = 0;
+			break;
 		    default: bk_badArg(c, av);
 	    	}
 	}
@@ -180,9 +209,11 @@ clone_main(int ac, char **av)
 		fprintf(stderr, "clone: -C valid only in attach command\n");
 		exit(RET_ERROR);
 	}
-	if (opts->attach && (opts->remap != -1)) {
+	if (opts->attach &&
+	    ((opts->remap != -1) || (opts->bkfile != -1))) {
 		fprintf(stderr,
-		    "%s: SCCS-mode can't be overriden in a component\n", prog);
+		    "%s: Repository format can't be overriden "
+		    "in a component\n", prog);
 		exit(RET_ERROR);
 	}
 	if (opts->identical && opts->aliases) usage();
@@ -693,6 +724,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		getMsg("bkd_missing_feature", "SAMv3", '=', stderr);
 		goto done;
 	}
+	unlink("BitKeeper/log/features");
 	if (p = getenv("BKD_FEATURES_REQUIRED")) {
 		char	**list = splitLine(p, ",", 0);
 
@@ -770,6 +802,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 			goto done;
 		}
 	}
+	fixSfile();
 	retrc = clone2(r);
 
 	if (opts->product) retrc = clone_finish(r, retrc, envVar);
@@ -1218,6 +1251,18 @@ initProject(char *root, remote *r)
 		}
 	}
 	return (0);
+}
+
+private void
+fixSfile(void)
+{
+	if ((opts->bkfile != -1) && (opts->bkfile != proj_useBKfile(0))) {
+		T_PERF("switch binary %d vs %d",
+		    opts->bkfile, proj_useBKfile(0));
+		systemf("bk -r admin -B%s", opts->bkfile ? "" : "none");
+		bk_featureSet(0, FEAT_BKFILE, opts->bkfile);
+		proj_reset(0);
+	}
 }
 
 private int
@@ -1743,13 +1788,14 @@ attach(void)
 	char	*save;
 	char	buf[MAXLINE];
 	char	relpath[MAXPATH];
+	project	*prod;
 	FILE	*f;
 
 	unless (isdir(BKROOT)) {
 		fprintf(stderr, "attach: not a BitKeeper repository\n");
 		return (RET_ERROR);
 	}
-	tmp = proj_relpath(proj_findProduct(0), ".");
+	tmp = proj_relpath(prod = proj_findProduct(0), ".");
 	getRealName(tmp, 0, relpath);
 	free(tmp);
 	if (proj_isComponent(0)) {
@@ -1758,6 +1804,8 @@ attach(void)
 	}
 	/* remove any existing parent */
 	system("bk parent -qr");
+	opts->bkfile = proj_useBKfile(prod); /* set desired format */
+	fixSfile();
 
 	/* fix up path and repoid */
 	tmp = relpath + strlen(relpath);

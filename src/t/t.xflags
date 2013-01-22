@@ -163,15 +163,12 @@ echo OK
 echo $N Rip out all the flags, put them back, check it ..............$NL
 bk _scat SCCS/s.xflags | perl -ne 'print unless /^.cX/ || /^.f x /' | bk undos > s.bad
 bk _mv s.bad SCCS/s.bad
-bk admin -z 
+bk admin -z || fail
 bk xflags bad
-bk _cp SCCS/s.xflags A
-bk _cp SCCS/s.bad B
-cmp -s A B || {
-	echo failed to restore flags properly
-	sdiff -w80 A B
-	exit 1
-}
+rm -f A B
+bk _scat SCCS/s.xflags > A
+bk _scat SCCS/s.bad > B
+cmpfiles A B
 echo OK
 
 echo $N Clear eoln flags, make sure EOLN_UNIX is set ................$NL

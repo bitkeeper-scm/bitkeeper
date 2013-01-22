@@ -12,12 +12,16 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-commercial proj
-bk edit $Q BitKeeper/etc/config
-cp BitKeeper/etc/config c
+_BK_MIXED_FORMAT=1
+export _BK_MIXED_FORMAT
+
+# force ascii repository
+_commercial_config | grep -v BAM > c
 echo compression:none >> c
-grep -v BAM c > BitKeeper/etc/config
-cp BitKeeper/etc/config c
+bk setup -a -cc -f --compat proj || fail
+cd proj
+cp ../c .
+bk edit $Q BitKeeper/etc/config
 
 echo $N Run some raw data through the hopper ........................$NL
 mkdir test
@@ -99,11 +103,8 @@ do	bk co $Q -l $f
 done
 bk prs -hnr+ -d:COMPRESSION:,:ENC: uuencode1z uuencode1 uuencode2 bam1 bam2 \
     > OUT
-if [ X`bk config binfile` = Xyes ]
-then	echo none,uuencode > WANT
-else	echo gzip,uuencode > WANT
-fi
-cat <<EOF >>WANT
+cat <<EOF >WANT
+gzip,uuencode
 none,uuencode
 none,uuencode
 none,BAM
@@ -156,12 +157,9 @@ checkfiles "$BIN1" uuencode1
 echo OK
 
 echo $N Check in gzipped data with delta -Z .........................$NL
-BK_CONFIG='binfile:no!' bk delta $Q -Euuencode -i -Z data || exit 1
+bk delta $Q -Euuencode -i -Z data || fail
 ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: data`
-if [ X$ENC != X"gzip,uuencode" ]
-then	echo Wrong encoding. $ENC
-	exit 1
-fi
+test "X$ENC" != Xgzip,uuencode && fail Wrong encoding. $ENC
 echo OK
 
 echo $N Make sure -Z is allowed without -i ..........................$NL
