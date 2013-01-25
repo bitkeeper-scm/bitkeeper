@@ -9,6 +9,11 @@ bk cmdlog \- show the log of commands executed in this repository
 .[B] \-v
 .[OPTreq] \-c cutoff
 [pattern]
+.br
+.B bk cmdlog
+.[B] \-r
+.[OPTreq] \-c cutoff
+[pattern]
 .SH DESCRIPTION
 List the history of repository level commands run in repository of
 current directory.
@@ -30,6 +35,9 @@ commands.
 .OPTreq \-c cutoff
 List commands which happened during the date range specified by
 .ARG cutoff .
+.tp
+.B \-r
+List command start and stops with relative times.  Implies \-a.
 .tp
 .B \-v
 Each line of output is
@@ -69,6 +77,20 @@ Using the
 .B \-av
 options, both the start and finish of commands is listed (as well
 as other events such as trigger launches).
+.PP
+The relative times displayed by the
+.B \-r
+option are only printed if the bk version logged those times.  Earlier
+versions of \*(BK did not log this data so it will not appear in the
+output.
+.PP
+When using the
+.B \-r
+option, the relative time is in seconds and relative to
+the first user level command (for example, the start of a
+.B bk pull
+would be 0 seconds, all the subordinate logs will be relative to that.
+The final entry will represent the run time of the pull command).
 .SH "SEE ALSO"
 .SA range
 .SH CATEGORY

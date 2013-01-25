@@ -1531,6 +1531,6 @@ extern	char	*log_versions;
 #define	CMD_BKD_CMD		0x00002000	/* command comes from bkd.c */
 #define	CMD_NOLOG		0x00004000	/* don't log command */
 
-#define	LOGVER			0		/* dflt idx into log_versions */
+#define	LOGVER			1		/* dflt idx into log_versions */
 
 #endif	/* _SCCS_H_ */

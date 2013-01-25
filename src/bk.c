@@ -24,7 +24,6 @@ unsigned int turnTransOff;	/* for transactions, see nested.h */
 
 private	char	*buffer = 0;	/* copy of stdin */
 char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
-#define	LOGVER	0
 
 private	void	bk_atexit(void);
 private	int	bk_cleanup(int ret);
@@ -1317,6 +1316,7 @@ cmdlog_addnote(const char *key, const char *val)
 int
 write_log(char *file, char *format, ...)
 {
+	struct timeval tv;
 	FILE	*f;
 	char	*root;
 	char	path[MAXPATH], nformat[MAXPATH];
@@ -1339,9 +1339,10 @@ write_log(char *file, char *format, ...)
 		}
 	}
 	setvbuf(f, NULL, _IONBF, 0);
-	sprintf(nformat, "%c%s %lu %s: %*s%s\n",
+	gettimeofday(&tv, 0);
+	sprintf(nformat, "%c%s %lu.%06lu %s %s: %*s%s\n",
 	    log_versions[LOGVER],
-	    sccs_user(), time(0), bk_vers,
+	    sccs_user(), tv.tv_sec, tv.tv_usec, milli(), bk_vers,
 	    indent(), "", format);
 	va_start(ap, format);
 	vfprintf(f, nformat, ap);
@@ -1371,9 +1372,9 @@ cmdlog_end(int ret, int bkd_cmd)
 		sprintf(buf, "%u", (u32)get_byte_count());
 		cmdlog_addnote("xfered", buf);
 	}
-	/* if a process uses more than a meg, log it */
+	/* if a process uses more than 10 meg, log it */
 	rss = maxrss();
-	if (rss > 1024*1024) cmdlog_addnote("mem", psize(rss));
+	if (rss > 10<<20) cmdlog_addnote("mem", psize(rss));
 
 	showproc_end(cmdlog_buffer, ret);
 

@@ -1,12 +1,13 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "nested.h"
 
 typedef struct {
 	u32	all:1;	      /* -a: show cmd_log instead of repo_log */
 	u32	verbose:1;    /* -v: print raw logfile */
 	u32	standalone:1; /* -S: standalone */
-
+	u32	relative:1;   /* -r: relative */
 	time_t	cutoff;       /* -c: cutoff date */
 	char	*pattern;
 	search	search;
@@ -17,11 +18,11 @@ typedef struct {
 	char	*prefix;	/* component owning log */
 	FILE	*fp;		/* open to comp's cmd_log file */
 	char	*buf;		/* next line from logfile */
-	time_t	ts;		/* timestamp on this line */
+	struct timeval tv;	/* timestamp on this line */
 } logmux;
 
 private void	parsePrint(Opts *opts, char *prefix, char *buf);
-private time_t	parseTimestamp(char *buf);
+private void	parseTimestamp(logmux *lmp);
 private int	logmux_oldest(char **lmlist);
 private void	logmux_free(void *lmp);
 
@@ -30,6 +31,8 @@ cmdlog_main(int ac, char **av)
 {
 	Opts	*opts;
 	FILE	*f;
+	nested	*n;
+	comp	*cp;
 	int	c, i, nested;
 	char	*t, *log;
 	logmux	*lmp;
@@ -41,11 +44,14 @@ cmdlog_main(int ac, char **av)
 	};
 
 	opts = new(Opts);
-	while ((c = getopt(ac, av, "Sac;v", lopts)) != -1) {
+	while ((c = getopt(ac, av, "Sac;rv", lopts)) != -1) {
 		switch (c) {
 		    case 'S': opts->standalone = 1; break;
 		    case 'a': opts->all = 1; break;
 		    case 'c': opts->cutoff = range_cutoff(optarg + 1); break;
+		    case 'r':
+			opts->relative = opts->verbose = opts->all = 1;
+			break;
 		    case 'v': opts->verbose = 1; break;
 		    default: bk_badArg(c, av);
 		}
@@ -74,11 +80,14 @@ cmdlog_main(int ac, char **av)
 		return (0);
 	}
 
-	f = popen("bk comps -ch", "r");
-	while (t = fgetline(f)) {
+	n = nested_init(0, 0, 0, NESTED_PENDING);
+	assert(n);
+	EACH_STRUCT(n->comps, cp, i) {
+		unless (cp->present) continue;
 		lmp = new(logmux);
-		lmp->prefix = strdup(t);
-		if (strlen(t) > opts->complen) opts->complen = strlen(t);
+		lmp->prefix = strdup(cp->path);
+		c = strlen(cp->path);
+		if (c > opts->complen) opts->complen = c;
 		sprintf(buf, "%s/BitKeeper/log/%s", lmp->prefix, log);
 		unless (exists(buf)) {
 			lmp->fp = 0;
@@ -94,10 +103,10 @@ cmdlog_main(int ac, char **av)
 			logmux_free(lmp);
 			continue;
 		}
-		lmp->ts = parseTimestamp(lmp->buf);
+		parseTimestamp(lmp);
 		lmlist = addLine(lmlist, lmp);
 	}
-	pclose(f);
+	nested_free(n);
 
 	while (i = logmux_oldest(lmlist)) {
 		lmp = (logmux *)lmlist[i];
@@ -106,39 +115,50 @@ cmdlog_main(int ac, char **av)
 			removeLineN(lmlist, i, logmux_free);
 			continue;
 		}
-		lmp->ts = parseTimestamp(lmp->buf);
+		parseTimestamp(lmp);
 	}
 	free(opts);
 	return (0);
 }
 
 private void
-parsePrint(Opts *opts, char *prefix, char *buf) {
+parsePrint(Opts *opts, char *prefix, char *buf)
+{
 	time_t	t;
+	u32	usec = 0;
 	char	*p, *p1, *equals;
 	char	*version;
 	char	*user;
-	int	yelled = 0, ind;
+	int	yelled = 0, ind, logver = 0;
+	double	rmsec = 0.0;
 
 	user = buf;
 	for (p = log_versions; *p; ++p) {
 		if (*p == buf[0]) {
-			if ((p-log_versions) > LOGVER) {
+			logver = p - log_versions;
+			if (logver > LOGVER) {
 				if (yelled) return;
 				printf("cannot display this "
 				    "log entry; please upgrade\n");
 				yelled = 1;
 				return;
 			}
-			user = buf+1;
+			user++;
 			break;
 		}
 	}
 
 	for (p = user; (*p != ' ') && (*p != '@'); p++);
 	*p++ = 0;
-	t = strtoul(p, &version, 0);
+	t = strtoul(p, &version, 10);
 	while (isspace(*version)) ++version;
+	if (logver > 0) {
+		p = version + 1; // skip decimal point
+		usec = strtoul(p, &version, 10);
+		p = version;
+		rmsec = strtod(p, &version);
+		while (isspace(*version)) ++version;
+	}
 	if (*version == ':') {
 		p = version;
 		*p = 0;
@@ -197,8 +217,25 @@ parsePrint(Opts *opts, char *prefix, char *buf) {
 
 	/* output requested annotations */
 	if (opts->verbose) {
-		printf("%-8s %.19s %14s ",
-		    user, ctime(&t), version ? version : "");
+		switch (logver) {
+		    case 0:
+			printf("%-8s %.19s %14s ",
+			    user, ctime(&t), version ? version : "");
+			break;
+		    case 1:
+			if (opts->relative) {
+				printf("%.3fs ", rmsec);
+			} else {
+				printf("%-8s %.19s.%03u %14s ",
+				    user, ctime(&t), usec / 1000,
+				    version ? version : "");
+			}
+			break;
+		    default:
+			// Should never happen
+			printf("Unknown log version ");
+			break;
+		}
 		if (prefix) printf("[%-*s] ", opts->complen, prefix);
 	}
 	if (equals) *equals = 0;
@@ -226,21 +263,32 @@ parsePrint(Opts *opts, char *prefix, char *buf) {
 	printf("\n");
 }
 
-private time_t
-parseTimestamp(char *buf)
+private void
+parseTimestamp(logmux *lmp)
 {
-	char	*p;
+	char	*p, *p1;
+	int	logver = 0;
 
-	for (p = buf; *p != ' '; p++);
+	for (p = log_versions; *p; ++p) {
+		if (*p == lmp->buf[0]) {
+			logver = p - log_versions;
+			break;
+		}
+	}
+	for (p = lmp->buf; *p != ' '; p++);
 	p++;
-	return (strtoul(p, 0, 0));
+	lmp->tv.tv_sec = strtoul(p, &p1, 10);
+	if (logver > 0) {
+		lmp->tv.tv_usec = strtoul(++p1, 0, 10);
+	} else {
+		lmp->tv.tv_usec = 0;
+	}
 }
 
 /*
  * Pick the nested cmd_log line to print from an array of the next line
  * from each component.
- * Lines are sorted by time, and then by comp pathname if the time is
- * identical.
+ * Lines are sorted by time.
  */
 private int
 logmux_oldest(char **lmlist)
@@ -250,13 +298,14 @@ logmux_oldest(char **lmlist)
 
 	EACH_STRUCT(lmlist, lmp, i) {
 		if (!oldest ||
-		    ((lmp->ts == oldest->ts)
+		    ((timercmp(&lmp->tv, &oldest->tv, ==)
 			? (strcmp(lmp->prefix, oldest->prefix) < 0)
-			: (lmp->ts < oldest->ts))) {
+			: timercmp(&lmp->tv, &oldest->tv, <)))) {
 			oldest = lmp;
 			ret = i;
 		}
 	}
+
 	return (ret);
 }
 

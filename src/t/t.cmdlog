@@ -94,6 +94,11 @@ bk cmdlog -va > GOT
 cmpfiles WANT GOT
 echo OK
 
+echo $N Verify that the -r option adds relative timestamps ..........$NL
+bk cmdlog -r | tail -1 | grep -q '^[0-9]' >OUT 2>&1 || \
+	fail -f OUT wrong output
+echo OK
+
 echo $N Verify that cmdlog -v in a nested repo works ................$NL
 cd "$HERE"
 nested prod
