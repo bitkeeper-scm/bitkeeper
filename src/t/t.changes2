@@ -244,13 +244,13 @@ echo OK
 
 echo $N Check for -x pruning csets which only changes subset ........$NL
 # always prints 1.0
-LIST=`bk changes -xf -d":I: "`
-test "1.4 1.2 1.1 1.0 " = "$LIST" || fail
+LIST=`bk changes --filter -xf -d":I: "`
+test "1.4 1.2 1.1 " = "$LIST" || fail
 echo OK
 
 echo $N Check for -x and -i restricting to desired patterns .........$NL
 # included and excluded removes empty csets, like the 1.0 cset
-LIST=`bk changes -i'*' -xf -d":I: "`
+LIST=`bk changes --filter -i'*' -xf -d":I: "`
 test "1.4 1.2 1.1 " = "$LIST" || fail
 echo OK
 

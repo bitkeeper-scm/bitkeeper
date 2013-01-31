@@ -1,0 +1,303 @@
+echo $N bk changes -v -i comp with component not present.............$NL
+nested proj
+bk setup -fC foo
+bk setup -fC bar
+bk setup -fC baz
+bk commit $Q -y"add comps: foo bar baz"
+touch gcc/afile gdb/afile
+bk new $Q gcc/afile gdb/afile
+bk commit $Q -yboth
+bk edit $Q gcc/afile
+echo stuff > gcc/afile
+bk delta $Q -ygcc gcc/afile
+bk commit $Q -ygcc
+bk edit $Q gdb/afile
+echo stuff > gdb/afile
+bk delta $Q -ygdb gdb/afile
+bk commit $Q -ygdb
+cd "$HERE"
+bk clone -sPRODUCT $Q proj copy
+cd copy
+echo OK
+
+echo $N Sanity check.................................................$NL
+bk changes -nd':INDENT::REV: :DPN: :C:' 2>ERR |
+	sed 's,BitKeeper file.*,new,g' > GOT
+cat <<EOF > ALL
+1.6 ChangeSet gdb
+1.5 ChangeSet gcc
+1.4 ChangeSet both
+1.3 ChangeSet add comps: foo bar baz
+1.2 ChangeSet attach gcc, gdb
+1.1 ChangeSet Initial repository create
+1.0 ChangeSet new
+EOF
+cmpfiles ALL GOT
+bk changes -vnd':INDENT::REV: :DPN: :C:' 2>ERR |
+	sed 's,BitKeeper file.*,new,g' > GOT
+cat <<EOF > ALLPV
+1.6 ChangeSet gdb
+1.5 ChangeSet gcc
+1.4 ChangeSet both
+1.3 ChangeSet add comps: foo bar baz
+1.2 ChangeSet attach gcc, gdb
+  1.2 BitKeeper/etc/aliases Create alias "DEFAULT" containing:	ALL
+1.1 ChangeSet Initial repository create
+  1.1 BitKeeper/etc/aliases new
+  1.0 BitKeeper/etc/aliases 
+  1.1 BitKeeper/etc/collapsed new
+  1.0 BitKeeper/etc/collapsed 
+  1.1 BitKeeper/etc/config new
+  1.0 BitKeeper/etc/config 
+  1.1 BitKeeper/etc/gone new
+  1.0 BitKeeper/etc/gone 
+  1.1 BitKeeper/etc/ignore new
+  1.0 BitKeeper/etc/ignore 
+1.0 ChangeSet new
+EOF
+cmpfiles ALLPV GOT
+bk here set $Q ALL
+bk changes -nd':INDENT::REV: :DPN: :C:' |
+	sed 's,BitKeeper file.*,new,g' > GOT
+cmpfiles ALL GOT
+bk changes -vnd':INDENT::REV: :DPN: :C:' |
+	sed 's,BitKeeper file.*,new,g' > GOT
+cat <<EOF > ALLAV
+1.6 ChangeSet gdb
+  1.3 gdb/ChangeSet gdb
+    1.2 gdb/afile gdb
+1.5 ChangeSet gcc
+  1.3 gcc/ChangeSet gcc
+    1.2 gcc/afile gcc
+1.4 ChangeSet both
+  1.2 gcc/ChangeSet both
+    1.1 gcc/afile new
+    1.0 gcc/afile 
+  1.2 gdb/ChangeSet both
+    1.1 gdb/afile new
+    1.0 gdb/afile 
+1.3 ChangeSet add comps: foo bar baz
+  1.1 bar/ChangeSet Initial repository create
+    1.1 bar/BitKeeper/etc/collapsed new
+    1.0 bar/BitKeeper/etc/collapsed 
+    1.1 bar/BitKeeper/etc/config new
+    1.0 bar/BitKeeper/etc/config 
+    1.1 bar/BitKeeper/etc/gone new
+    1.0 bar/BitKeeper/etc/gone 
+    1.1 bar/BitKeeper/etc/ignore new
+    1.0 bar/BitKeeper/etc/ignore 
+  1.0 ChangeSet new
+  1.1 baz/ChangeSet Initial repository create
+    1.1 baz/BitKeeper/etc/collapsed new
+    1.0 baz/BitKeeper/etc/collapsed 
+    1.1 baz/BitKeeper/etc/config new
+    1.0 baz/BitKeeper/etc/config 
+    1.1 baz/BitKeeper/etc/gone new
+    1.0 baz/BitKeeper/etc/gone 
+    1.1 baz/BitKeeper/etc/ignore new
+    1.0 baz/BitKeeper/etc/ignore 
+  1.0 ChangeSet new
+  1.1 foo/ChangeSet Initial repository create
+    1.1 foo/BitKeeper/etc/collapsed new
+    1.0 foo/BitKeeper/etc/collapsed 
+    1.1 foo/BitKeeper/etc/config new
+    1.0 foo/BitKeeper/etc/config 
+    1.1 foo/BitKeeper/etc/gone new
+    1.0 foo/BitKeeper/etc/gone 
+    1.1 foo/BitKeeper/etc/ignore new
+    1.0 foo/BitKeeper/etc/ignore 
+  1.0 ChangeSet new
+1.2 ChangeSet attach gcc, gdb
+  1.2 BitKeeper/etc/aliases Create alias "DEFAULT" containing:	ALL
+  1.1 gcc/ChangeSet Initial repository create
+    1.1 gcc/BitKeeper/etc/collapsed new
+    1.0 gcc/BitKeeper/etc/collapsed 
+    1.1 gcc/BitKeeper/etc/config new
+    1.0 gcc/BitKeeper/etc/config 
+    1.1 gcc/BitKeeper/etc/gone new
+    1.0 gcc/BitKeeper/etc/gone 
+    1.1 gcc/BitKeeper/etc/ignore new
+    1.0 gcc/BitKeeper/etc/ignore 
+  1.0 ChangeSet new
+  1.1 gdb/ChangeSet Initial repository create
+    1.1 gdb/BitKeeper/etc/collapsed new
+    1.0 gdb/BitKeeper/etc/collapsed 
+    1.1 gdb/BitKeeper/etc/config new
+    1.0 gdb/BitKeeper/etc/config 
+    1.1 gdb/BitKeeper/etc/gone new
+    1.0 gdb/BitKeeper/etc/gone 
+    1.1 gdb/BitKeeper/etc/ignore new
+    1.0 gdb/BitKeeper/etc/ignore 
+  1.0 ChangeSet new
+1.1 ChangeSet Initial repository create
+  1.1 BitKeeper/etc/aliases new
+  1.0 BitKeeper/etc/aliases 
+  1.1 BitKeeper/etc/collapsed new
+  1.0 BitKeeper/etc/collapsed 
+  1.1 BitKeeper/etc/config new
+  1.0 BitKeeper/etc/config 
+  1.1 BitKeeper/etc/gone new
+  1.0 BitKeeper/etc/gone 
+  1.1 BitKeeper/etc/ignore new
+  1.0 BitKeeper/etc/ignore 
+1.0 ChangeSet new
+EOF
+cmpfiles ALLAV GOT
+echo OK
+
+# All of these tests should leave just the product
+
+echo $N Searching for a file does not print nonpresent components....$NL
+bk changes --filter -vnd':INDENT::REV: :DPN: :C:' -iafile  > GOT
+test -s GOT && fail -f GOT output should have been empty
+echo OK
+
+echo $N Adding a component makes the file search work................$NL
+bk here add $Q gcc
+bk changes --filter -vnd':INDENT::REV: :DPN: :C:' -igcc/afile  |
+	sed 's,BitKeeper file.*,new,g' > GOT
+cat <<EOF > WANT
+1.5 ChangeSet gcc
+  1.3 gcc/ChangeSet gcc
+    1.2 gcc/afile gcc
+1.4 ChangeSet both
+  1.2 gcc/ChangeSet both
+    1.1 gcc/afile new
+    1.0 gcc/afile 
+EOF
+cmpfiles WANT GOT
+bk here set $Q PRODUCT
+echo OK
+
+echo $N bk changes -icomp/ChangeSet selects component................$NL
+# gcc is not present
+bk changes --filter -nd':INDENT::REV: :DPN: :C:' -igcc/ChangeSet > GOT
+cat <<EOF > WANT
+1.5 ChangeSet gcc
+1.4 ChangeSet both
+1.2 ChangeSet attach gcc, gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Again with populated component...............................$NL
+bk here add $Q gcc
+bk changes --filter -vnd':INDENT::REV: :DPN: :C:' -igcc/ChangeSet |
+	sed 's,BitKeeper file.*,new,g' > GOT
+cat <<EOF > WANT
+1.5 ChangeSet gcc
+  1.3 gcc/ChangeSet gcc
+1.4 ChangeSet both
+  1.2 gcc/ChangeSet both
+1.2 ChangeSet attach gcc, gdb
+  1.1 gcc/ChangeSet Initial repository create
+  1.0 ChangeSet new
+EOF
+cmpfiles WANT GOT
+bk here set $Q PRODUCT
+echo OK
+
+echo $N Again with all populated.....................................$NL
+bk here set $Q ALL
+bk changes --filter -nd':INDENT::REV: :DPN: :C:' -igcc/ChangeSet |
+	sed 's,BitKeeper file.*,new,g' > GOT
+cat <<EOF > WANT
+1.5 ChangeSet gcc
+1.4 ChangeSet both
+1.2 ChangeSet attach gcc, gdb
+EOF
+cmpfiles WANT GOT
+bk changes --filter -vnd':INDENT::REV: :DPN: :C:' -igcc/ChangeSet |
+	sed 's,BitKeeper file.*,new,g' > GOT
+cat <<EOF > WANT
+1.5 ChangeSet gcc
+  1.3 gcc/ChangeSet gcc
+1.4 ChangeSet both
+  1.2 gcc/ChangeSet both
+1.2 ChangeSet attach gcc, gdb
+  1.1 gcc/ChangeSet Initial repository create
+  1.0 ChangeSet new
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk changes -xcomp/ChangeSet excludes.........................$NL
+bk here set $Q PRODUCT
+bk changes --filter -nd':INDENT::REV: :DPN: :C:' -xgcc/ChangeSet |
+	sed 's,BitKeeper file.*,,g' > GOT
+cat <<EOF > WANT
+1.6 ChangeSet gdb
+1.4 ChangeSet both
+1.3 ChangeSet add comps: foo bar baz
+1.2 ChangeSet attach gcc, gdb
+1.1 ChangeSet Initial repository create
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Again with component present.................................$NL
+bk here add $Q gcc
+bk changes --filter -vnd':INDENT::REV: :DPN: :C:' -xgcc/ChangeSet |
+	sed 's,BitKeeper file.*,,g' > GOT
+cat <<EOF > WANT
+1.6 ChangeSet gdb
+1.4 ChangeSet both
+1.3 ChangeSet add comps: foo bar baz
+1.2 ChangeSet attach gcc, gdb
+  1.2 BitKeeper/etc/aliases Create alias "DEFAULT" containing:	ALL
+1.1 ChangeSet Initial repository create
+  1.1 BitKeeper/etc/aliases 
+  1.0 BitKeeper/etc/aliases 
+  1.1 BitKeeper/etc/collapsed 
+  1.0 BitKeeper/etc/collapsed 
+  1.1 BitKeeper/etc/config 
+  1.0 BitKeeper/etc/config 
+  1.1 BitKeeper/etc/gone 
+  1.0 BitKeeper/etc/gone 
+  1.1 BitKeeper/etc/ignore 
+  1.0 BitKeeper/etc/ignore 
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test bk changes with -x/-i...................................$NL
+bk here set $Q ALL
+touch A B
+bk new $Q A B
+bk commit $Q -y"A B"
+bk edit $Q A
+echo A > A
+bk delta -f $Q -yA A
+bk commit $Q -yA
+bk changes -vnd':INDENT::REV: :DPN: :C:' -iA -xB |
+	sed 's,BitKeeper file.*,,g' > GOT
+cat <<EOF > WANT
+1.8 ChangeSet A
+  1.2 A A
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test remote urls with -i/-x..................................$NL
+bk push $Q ../proj
+bk here set $Q PRODUCT
+bk changes -qvnd':INDENT::REV: :DPN: :C:' -iA -xB ../proj |
+	sed 's,BitKeeper file.*,,g' > GOT
+cat <<EOF > WANT
+1.8 ChangeSet A
+  1.2 A A
+EOF
+cmpfiles WANT GOT
+bk here set $Q ALL
+echo OK
+
+echo $N Test intercomponent -x/-i....................................$NL
+bk changes -vnd':INDENT::REV: :DPN: :C:' -igcc/afile -xgdb/afile 2>ERR |
+	sed 's,BitKeeper file.*,,g' > GOT
+cat <<EOF > WANT
+1.5 ChangeSet gcc
+  1.3 gcc/ChangeSet gcc
+    1.2 gcc/afile gcc
+EOF
+cmp -s WANT GOT && fail You fixed a bug \(maybe\)
+echo failed \(bug \)
