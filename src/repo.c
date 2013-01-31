@@ -102,13 +102,19 @@ repo_nfilesUpdate(filecnt *nf)
 {
 	char	*n = proj_fullpath(0, "BitKeeper/log/NFILES");
 	hash	*h;
+	FILE	*f;
+	char	ntmp[MAXPATH];
 
 	h = hash_fromFile(hash_new(HASH_MEMHASH), n);
 	if ((nf->tot != hash_fetchStrNum(h, TOTFILES)) ||
 	    (nf->usr != hash_fetchStrNum(h, USRFILES))) {
 		hash_storeStrNum(h, TOTFILES, nf->tot);
 		hash_storeStrNum(h, USRFILES, nf->usr);
-		hash_toFile(h, n);
+		sprintf(ntmp, "%s.new.%u", n, (u32)getpid());
+		f = fopen(ntmp, "w");
+		hash_toStream(h, f);
+		fclose(f);
+		if (rename(ntmp, n)) perror(n);
 	}
 	hash_free(h);
 }
