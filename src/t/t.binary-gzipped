@@ -12,6 +12,8 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+set -e
+
 _BK_MIXED_FORMAT=1
 export _BK_MIXED_FORMAT
 
@@ -37,6 +39,15 @@ for mode in c z cz; do
 		cmpfiles $file $file.orig.$mode
 		bk _fgzip -Sd -$mode < $file.store.$mode > $file.test.size
 		cmpfiles $file.size $file.test.size
+		test $mode = cz && {
+			bk _fgzip -a -cz $file.store.$mode < data
+			# Verify XOR is correct by reading the whole file
+			bk _fgzip -d -c < $file.store.$mode > zipped || fail
+			bk _fgzip -d -cz < $file.store.$mode > GOT
+			cat $file data > WANT
+			cmpfiles WANT GOT
+		}
+		true
 	done
 done
 
@@ -53,9 +64,17 @@ echo OK
 test -d "$TESTDATA/binformat2" && {
 echo $N Verify /home/bk/test_data/binformat2 ........................$NL
 cd "$HERE"
-# prove we can read all files in this repository
+# prove we can read all files in this repository (old crc format)
 bk clone $Q --checkout=get "$TESTDATA/binformat2" || fail
-cd binformat2
+echo OK
+}
+
+test -d "$TESTDATA/binformat3" && {
+echo $N Verify /home/bk/test_data/binformat3 ........................$NL
+cd "$HERE"
+# prove we can read all files in this repository
+bk clone $Q --checkout=get "$TESTDATA/binformat3" || fail
+cd binformat3
 perl -e 'exit(pack("L", 1) eq pack("N", 1))' && {
     # only on little-endian hosts...
 
@@ -64,7 +83,7 @@ perl -e 'exit(pack("L", 1) eq pack("N", 1))' && {
     for fmt in VZ0 ZIP LZ4
     do  _BK_VZIP_FMT=$fmt bk admin -B file.$fmt || fail
         f=.bk/SCCS/file.$fmt,s
-	cmp -s $f "$TESTDATA"/binformat2/$f || fail
+	cmp -s $f "$TESTDATA"/binformat3/$f || fail
     done
 }
 echo OK
@@ -147,6 +166,7 @@ for f in uuencode1 bam1
 do	bk co $Q -l $f || exit 1
 	bk clean $f || exit 1
 	test -f $f && { echo Clean failed ; exit 1; }
+	true
 done
 echo OK
 

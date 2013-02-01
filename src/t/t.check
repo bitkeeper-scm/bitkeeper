@@ -362,7 +362,7 @@ foreach $i (8 .. length($ff)-1) {
 	$s = '';
 	while (<C>) {
 	      $s .= $_;
-	      $bad = 1 unless /^(crc error |correctable|offset $i was 58 should)/;
+	      $bad = 1 unless /^(checksum error found|crc error |correctable|offset $i was 58 should)/;
 	}
 	if ($bad) {
 	   	print "bad output at $i\n";
@@ -488,7 +488,7 @@ bk new $Q foo
 bk commit $Q -yfoo
 bk _cp SCCS/s.foo SCCS/s.foo2
 bk -r check -afc 2> "$HERE/out"
-grep -q "Is one of these files copied?" "$HERE/out" || { echo failed; exit 1; }
+grep -q "Is one of these files copied?" "$HERE/out" || fail -f "$HERE/out"
 echo OK
 
 echo $N bk check with partial_check should notice path conflicts ....$NL
