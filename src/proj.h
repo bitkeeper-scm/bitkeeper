@@ -65,15 +65,19 @@ char*		proj_comppath(project *p);
 int		proj_idxsock(project *p);
 int		proj_hasOldSCCS(project *p);
 int		proj_remapDefault(int doremap);
-int		proj_useBKfile(project *p);
-int		proj_bkfileDefault(int bfile);
 int		proj_hasDeltaTriggers(project *p);
 char*		proj_cset2key(project *p, char *csetrev, char *rootkey);
 char*		proj_tipkey(project *p);
 char*		proj_tipmd5key(project *p);
 char*		proj_tiprev(project *p);
-void		proj_featureChk(project *p);
 
 #define		chdir	proj_chdir
+
+/* the features.c subset of project* */
+typedef	struct {
+	u32	bits;	/* bitfield of current features in repo */
+} p_feat;
+
+p_feat*		proj_features(project *p);
 
 #endif

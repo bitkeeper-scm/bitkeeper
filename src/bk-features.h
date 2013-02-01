@@ -49,18 +49,21 @@
 	X(11, POLY, "POLY", 1, 0)		\
 	X(12, BKFILE, "BKFILE", 1, 0)		\
 
-#define X(a, b, c, d, e) FEAT_ ## b = a,
 enum {
+#define X(a, b, c, d, e) FEAT_ ## b = (1 << a),
 	FEATURES
-};
 #undef X
+};
 
-char	**bk_features(project *p);
 int	bk_hasFeature(int f);
 int	bkd_hasFeature(int f);
-char	*bk_featureList(project *p, int all);
-void	bk_featureRepoChk(project *p);
-int	bk_featureChk(int in_bkd, int no_repo);
-void	bk_featureSet(project *p, int feature, int on);
-int	bk_featureTest(project *p, int feature);
-int	bk_featureCompat(project *p);
+
+u32	features_bits(project *p);
+int	features_test(project *p, int feature);
+void	features_set(project *p, int feature, int on);
+void	features_setAll(project *p, u32 bits);
+
+char	*features_list(project *p, int all);
+int	features_bkdCheck(int in_bkd, int no_repo);
+u32	features_toBits(char *features, char *bad);
+char	*features_fromBits(u32 bits);

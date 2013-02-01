@@ -3349,14 +3349,6 @@ moveupComponent(void)
 	Fprintf(t, "%s\n", cpath);
 	free(t);
 
-	to = aprintf("%s/BitKeeper/log/features", cpath);
-	from = aprintf("%s/%s/BitKeeper/log/features", RESYNC2ROOT, cpath);
-	if (exists(from) && fileLink(from, to)) {
-		fprintf(stderr, "Could not copy '%s' to '%s'\n", from, to);
-		rc = 1;
-	}
-	free(from); free(to);
-
 	to = aprintf("%s/%s", cpath, CHANGESET);
 	t = strrchr(to, '/');
 	*(++t) = 'd';

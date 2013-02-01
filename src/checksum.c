@@ -124,7 +124,7 @@ checksum_main(int ac, char **av)
 					    s->sfile);
 				}
 			}
-			unless (bk4) bk_featureSet(s->proj, FEAT_SORTKEY, 1);
+			unless (bk4) features_set(s->proj, FEAT_SORTKEY, 1);
 		}
 		if (bad && !ret) ret = 1;
 		sccs_free(s);

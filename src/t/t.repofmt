@@ -8,6 +8,14 @@ checkbk()
 	grep -q BKFILE "$FEAT" || fail $FEAT missing BKFILE
 	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/ChangeSet`
 	test X"$ENC" = XBK || fail "$1" not BKfile $ENC
+
+	# call recursively for all components
+	bk repotype -q "$1" && {
+		for c in `bk --cd="$1" comps -h`
+		do    checkbk "$1"/"$c"
+		done
+	}
+	true
 }
 
 checkascii()
@@ -18,6 +26,14 @@ checkascii()
 	grep -q BKFILE "$FEAT" && fail $FEAT has BKFILE
 	ENC=`bk prs -hnd:ENCODING: -r+ "$1"/ChangeSet`
 	test X"$ENC" = Xascii,gzip || fail "$1" is BKfile $ENC
+
+	# call recursively for all components
+	bk repotype -q "$1" && {
+		for c in `bk --cd="$1" comps -h`
+		do    checkascii "$1"/"$c"
+		done
+	}
+	true
 }
 
 echo $N Test that bk setup creates BK sfiles by default .............$NL
@@ -63,20 +79,28 @@ for NEST in bk ascii; do
 	done
 done
 
-checkascii nest.ascii/newcomp
-checkascii nest.ascii/comp.ascii.ascii
-checkascii nest.ascii/comp.ascii.bk
-checkbk nest.bk/newcomp
-checkbk nest.bk/comp.bk.ascii
-checkbk nest.bk/comp.bk.bk
+checkascii nest.ascii
+checkbk nest.bk
 echo OK
 
-echo $N Undocumented form at attach is supported ....................$NL
+echo $N Setup a mixed/broken nested repository ......................$NL
+bk clone $Q nest.ascii nest.ascii.mixed || fail
+cd nest.ascii.mixed/newcomp
+bk -r admin -B || fail
+cd ..
+bk repocheck $Q 2>ERR && fail should fail
+cd ..
+bk clone $Q --compat nest.ascii.mixed nest.ascii.fixed || fail
+checkascii nest.ascii.fixed
+echo OK
+
+
+echo $N Undocumented form of attach is supported ....................$NL
 bk setup -a -cc -f --compat repo.ascii-2 || fail
-bk clone $Q repo.ascii-2 nest.bk/comp.ascii-2
+bk clone $Q repo.ascii-2 nest.bk/comp.ascii-2 || fail
 cd nest.bk
-bk attach $Q -N comp.ascii-2
-checkbk comp.ascii-2
+bk attach $Q -N comp.ascii-2 || fail
+checkbk .
 echo OK
 
 echo $N Pull sfio ...................................................$NL
@@ -108,7 +132,7 @@ for h in ascii bk; do
 		bk admin -Bnone file1 file2
 		bk admin -B file2
 	fi
-	bk repocheck $Q 2>ERR && fail -f ERR should fail
+	bk repocheck -q 2>ERR && fail -f ERR should fail
 	test `wc -l < ERR` -eq 1 || fail
 	grep -q "format wrong file1" ERR || fail
 	_BK_DEVELOPER= bk repocheck $Q || fail

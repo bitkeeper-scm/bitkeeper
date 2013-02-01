@@ -88,7 +88,6 @@ setup_main(int ac, char **av)
 			exit(1);
 		}
 		proj_remapDefault(0);
-		proj_bkfileDefault(0);
 	}
 	if (exists(package_path) && !allowNonEmptyDir) {
 		printf("bk: %s exists already, setup fails.\n", package_path);
@@ -124,7 +123,6 @@ setup_main(int ac, char **av)
 				    "See 'bk help portal'.\n");
 				return (1);
 			}
-			proj_bkfileDefault(proj_useBKfile(in_prod));
 		}
 	}
 	strcpy(here, proj_cwd());
@@ -136,6 +134,13 @@ setup_main(int ac, char **av)
 	if (chdir(package_path) != 0) {
 		perror(package_path);
 		exit(1);
+	}
+	if (in_prod) {
+		/* add local features file until the product file takes over */
+		features_set(0, FEAT_BKFILE,
+		    features_test(in_prod, FEAT_BKFILE));
+	} else {
+		features_set(0, FEAT_BKFILE, !sccs_compat);
 	}
 
 	if (exists(s_config)) {
@@ -244,8 +249,7 @@ err:			unlink("BitKeeper/etc/config");
 		}
 	}
 
-	bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
-	bk_featureSet(0, FEAT_BKFILE, proj_useBKfile(0));
+	features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 	if (cset_setup(SILENT)) goto err;
 	unless (eula_accept(accept ? EULA_ACCEPT : EULA_PROMPT, 0)) exit(1);
 	s = sccs_init(s_config, SILENT);

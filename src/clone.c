@@ -53,7 +53,6 @@ private	retrc	clone_finish(remote *r, retrc status, char **envVar);
 private	int	chkAttach(char *dir);
 private	retrc	clonemod_part1(remote **r);
 private	int	clonemod_part2(char **envVar);
-private void	fixSfile(void);
 
 private	char	*bam_url;
 private	char	*bam_repoid;
@@ -351,6 +350,7 @@ clone_main(int ac, char **av)
 		if (chkAttach(dir)) return (RET_ERROR);
 	}
 	if (opts->attach_only) {
+		putenv("_BK_DEVELOPER="); /* need autofix */
 		assert(r->path);
 		if (chdir(r->path)) {
 			fprintf(stderr, "attach: not a BitKeeper repository\n");
@@ -372,6 +372,20 @@ clone_main(int ac, char **av)
 	 */
 	if (check_out && !proj_isComponent(0)) {
 		Fprintf("BitKeeper/log/config", "checkout:%s!\n", check_out);
+	}
+	if (proj_isComponent(0)) {
+		/*
+		 * For compat we keep the component features file
+		 * as a copy of the product.
+		 */
+		char	*pfile = proj_fullpath(proj_product(0),
+		    "BitKeeper/log/features");
+
+		if (exists(pfile)) {
+			fileCopy(pfile, "BitKeeper/log/features");
+		} else {
+			unlink("BitKeeper/log/features");
+		}
 	}
 	free(opts->from);
 	if (opts->to) free(opts->to);
@@ -550,6 +564,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	char	*p, buf[MAXPATH];
 	char	*lic;
 	int	rc, do_part2;
+	u32	rmt_features;
 	int	after_create = 0;
 	retrc	retrc = RET_ERROR;
 	char	*trans;
@@ -724,13 +739,6 @@ clone(char **av, remote *r, char *local, char **envVar)
 		getMsg("bkd_missing_feature", "SAMv3", '=', stderr);
 		goto done;
 	}
-	unlink("BitKeeper/log/features");
-	if (p = getenv("BKD_FEATURES_REQUIRED")) {
-		char	**list = splitLine(p, ",", 0);
-
-		lines2File(list, "BitKeeper/log/features");
-		freeLines(list, free);
-	}
 
 	/*
 	 * When the source and destination of a clone are remapped
@@ -749,7 +757,6 @@ clone(char **av, remote *r, char *local, char **envVar)
 			rename("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
 		}
 	}
-	bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 	if (opts->detach) {
 		if (unlink("BitKeeper/log/COMPONENT")) {
 			fprintf(stderr, "detach: failed to unlink COMPONENT\n");
@@ -769,9 +776,36 @@ clone(char **av, remote *r, char *local, char **envVar)
 		}
 		if (nlid) safe_putenv("_BK_NESTED_LOCK=%s", nlid);
 		free(nlid);
-	} else {
-		proj_reset(0);
 	}
+	proj_reset(0);
+	rmt_features = 0;
+	if (p = getenv("BKD_FEATURES_REQUIRED")) {
+		rmt_features = features_toBits(p, 0);
+	}
+	if (proj_isComponent(0)) {
+		/* components use product's features, but a component
+		 * may add some features.
+		 */
+		if (rmt_features & FEAT_SORTKEY) {
+			features_set(0, FEAT_SORTKEY, 1);
+		}
+	} else {
+		TRACE("%x %d %d",
+		    rmt_features, !proj_hasOldSCCS(0), opts->bkfile);
+		features_setAll(0, rmt_features);
+		features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
+		if (opts->bkfile != -1) {
+			features_set(0, FEAT_BKFILE, opts->bkfile);
+		}
+	}
+	if ((features_test(0, FEAT_BKFILE) != 0)
+	    != ((rmt_features & (FEAT_BKFILE|FEAT_bSFILEv1)) != 0)) {
+		p = features_fromBits(features_bits(0));
+		T_PERF("switch binary to %s", p);
+		free(p);
+		systemf("bk -r admin -Zsame");
+	}
+
 	if (opts->link) lclone(getenv("BKD_ROOT"));
 	nested_check();
 
@@ -802,7 +836,6 @@ clone(char **av, remote *r, char *local, char **envVar)
 			goto done;
 		}
 	}
-	fixSfile();
 	retrc = clone2(r);
 
 	if (opts->product) retrc = clone_finish(r, retrc, envVar);
@@ -1251,18 +1284,6 @@ initProject(char *root, remote *r)
 		}
 	}
 	return (0);
-}
-
-private void
-fixSfile(void)
-{
-	if ((opts->bkfile != -1) && (opts->bkfile != proj_useBKfile(0))) {
-		T_PERF("switch binary %d vs %d",
-		    opts->bkfile, proj_useBKfile(0));
-		systemf("bk -r admin -B%s", opts->bkfile ? "" : "none");
-		bk_featureSet(0, FEAT_BKFILE, opts->bkfile);
-		proj_reset(0);
-	}
 }
 
 private int
@@ -1804,8 +1825,6 @@ attach(void)
 	}
 	/* remove any existing parent */
 	system("bk parent -qr");
-	opts->bkfile = proj_useBKfile(prod); /* set desired format */
-	fixSfile();
 
 	/* fix up path and repoid */
 	tmp = relpath + strlen(relpath);

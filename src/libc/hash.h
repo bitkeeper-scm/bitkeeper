@@ -271,7 +271,7 @@ int	hash_parseLine(char *line, hash *h, hashpl *data);
  *   Ptr  void* pointer
  *   Mem  start/len  like memcpy
  *   I32  i32
- *   I64  i64
+ *   U32  u32
  *   Num  int stored as a decimal string
  *   Set  no data, hash is a set of keys-only
  *
@@ -331,15 +331,15 @@ hash_fetchStrMem(hash *h, char *key)
 	return (h->ops->fetch(h, key, strlen(key) + 1));
 }
 
-private inline i64
-hash_fetchStrI64(hash *h, char *key)
+private inline u32
+hash_fetchStrU32(hash *h, char *key)
 {
 	unless (h) {
 		errno = EINVAL;
 		return (0);
 	}
 	if (h->ops->fetch(h, key, strlen(key) + 1)) {
-		return (*(i64 *)h->vptr);
+		return (*(u32 *)h->vptr);
 	} else {
 		/*
 		 * Return 0 when the key isn't found.  The user can
@@ -393,8 +393,8 @@ hash_storeStrMem(hash *h, char *key, void *val, int vlen)
 	return (h->ops->store(h, key, strlen(key)+1, val, vlen));
 }
 
-private inline i64 *
-hash_storeStrI64(hash *h, char *key, i64 val)
+private inline u32 *
+hash_storeStrU32(hash *h, char *key, u32 val)
 {
 	assert(h);
 	return (h->ops->store(h, key, strlen(key)+1, &val, sizeof(val)));
@@ -447,8 +447,8 @@ hash_insertStrI32(hash *h, char *key, i32 val)
 	return (h->ops->insert(h, key, strlen(key)+1, &val, sizeof(val)));
 }
 
-private inline i64 *
-hash_insertStrI64(hash *h, char *key, i64 val)
+private inline u32 *
+hash_insertStrU32(hash *h, char *key, u32 val)
 {
 	assert(h);
 	return (h->ops->insert(h, key, strlen(key)+1, &val, sizeof(val)));

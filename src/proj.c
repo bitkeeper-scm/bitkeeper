@@ -12,7 +12,6 @@
  */
 
 private	int	noremap_default = 0;
-private	int	bkfile_default = 1;
 
 /*
  * Don't treat chdir() special here.
@@ -42,17 +41,18 @@ struct project {
 	int	sync;		/* sync/fsync data? */
 	int	idxsock;	/* sock to index server for this repo */
 	int	noremap;	/* true == old style SCCS dirs */
-	int	bkfile;		/* true == binary sfiles */
 	char	*tipkey;	/* key/md5key/rev of tip cset rev */
 	char	*tipmd5key;
 	char	*tiprev;
-	int	featuresOK;	/* check BitKeeper/log/features? */
 
 	/* checkout state */
 	u32	co;		/* cache of proj_checkout() return */
 	MDBM	*coDB;		/* $coDB{rootkey} = e|g|n */
 	char	**bp_getFiles;	/* files we need to fetch and get */
 	char	**bp_editFiles;	/* files we need to fetch and edit */
+
+	/* external structs */
+	p_feat	features;	/* features.c support */
 
 	/* internal state */
 	int	refcnt;
@@ -778,8 +778,8 @@ proj_reset(project *p)
 		p->co = 0;
 		p->sync = -1;
 		p->noremap = -1;
-		p->bkfile = -1;
 		p->preDelta = -1;
+		p->features.bits = 0;
 		if (p->BAM_idx) {
 			mdbm_close(p->BAM_idx);
 			p->BAM_idx = 0;
@@ -1338,41 +1338,6 @@ proj_remapDefault(int doremap)
 }
 
 /*
- * Does this repository use binary sfiles?
- * almost a direct mirror of the remap logic above
- */
-int
-proj_useBKfile(project *p)
-{
-	char	buf[MAXPATH];
-
-	unless (p || (p = curr_proj())) return (bkfile_default);
-
-	if (p->bkfile == -1) {
-		if (p->rparent) {
-			p->bkfile = proj_useBKfile(p->rparent);
-		} else {
-			concat_path(buf, p->root, CHANGESET);
-			if (exists(buf)) {
-				p->bkfile = bk_featureTest(p, FEAT_BKFILE);
-			} else {
-				p->bkfile = bkfile_default;
-			}
-		}
-	}
-	return (p->bkfile);
-}
-
-int
-proj_bkfileDefault(int bkfile)
-{
-	int	ret = bkfile_default;
-
-	bkfile_default = bkfile;
-	return (ret);
-}
-
-/*
  * Are there any pre-delta triggers associated with this project?
  * This is a cached response to that question, since delta can be
  * run on many files.
@@ -1630,13 +1595,10 @@ proj_tipmd5key(project *p)
 	return (p->tipmd5key);
 }
 
-void
-proj_featureChk(project *p)
+p_feat *
+proj_features(project *p)
 {
-	unless (p || (p = curr_proj())) return;
+	unless (p || (p = curr_proj())) return (0);
 
-	unless (p->featuresOK) {
-		p->featuresOK = 1;
-		bk_featureRepoChk(p);
-	}
+	return (&p->features);
 }

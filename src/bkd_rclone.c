@@ -257,13 +257,14 @@ cmd_rclone_part2(int ac, char **av)
 			rename("BitKeeper/etc/SCCS/x.id_cache", IDCACHE);
 		}
 	}
-	if (p = getenv("BK_FEATURES_REQUIRED")) {
+	if (!proj_isComponent(0) && (p = getenv("BK_FEATURES_REQUIRED"))) {
 		char	**list = splitLine(p, ",", 0);
 
 		lines2File(list, "BitKeeper/log/features");
 		freeLines(list, free);
+		proj_reset(0);
 	}
-	bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
+	features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
 
 	unless (rc || getenv("BK_BAM")) {
 		rc = rclone_end(&opts);

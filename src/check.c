@@ -214,7 +214,7 @@ check_main(int ac, char **av)
 	if (sane(0, resync)) return (1);
 
 	checkout = proj_checkout(0);
-	bkfile = proj_useBKfile(0);
+	bkfile = features_test(0, FEAT_BKFILE);
 
 	/* revtool: the code below is restored from a previous version */
 	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
@@ -525,12 +525,14 @@ check_main(int ac, char **av)
 
 	/* fix up repository features */
 	unless (errors) {
-		bk_featureSet(0, FEAT_SAMv3, proj_isEnsemble(0));
-		bk_featureSet(0, FEAT_REMAP, !proj_hasOldSCCS(0));
-		if (sawPOLY) {
-			bk_featureSet(0, FEAT_POLY, 1);
-		} else if (all) {
-			bk_featureSet(0, FEAT_POLY, 0);
+		features_set(0, FEAT_SAMv3, proj_isEnsemble(0));
+		features_set(0, FEAT_REMAP, !proj_hasOldSCCS(0));
+		if (proj_isProduct(0)) {
+			if (sawPOLY) {
+				features_set(0, FEAT_POLY, 1);
+			} else if (all) {
+				features_set(0, FEAT_POLY, 0);
+			}
 		}
 	}
 out:

@@ -28,7 +28,7 @@ do
     bk setup -fc"$HERE/empty" comp$i
 done
 bk commit $Q -y'adding components'
-bk -e -r check -ac || {
+_BK_DEVELOPER= bk -e -r check -ac || {
 	echo failed
 	exit 1
 }

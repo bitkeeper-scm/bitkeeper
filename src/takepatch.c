@@ -1775,7 +1775,6 @@ initProject(void)
 		exit(1);
 	}
 	sccs_mkroot(".");
-	bk_featureSet(0, FEAT_BKFILE, proj_useBKfile(0));
 }
 
 private void
@@ -1829,7 +1828,7 @@ sfio(FILE *m)
 	size_t	n;
 	char	*flist;
 	int	rc = -1, rlen;
-	int	bkfile = proj_useBKfile(0);
+	int	bkfile = features_test(0, FEAT_BKFILE);
 	char	buf[MAXLINE];
 	char	key[MAXKEY];
 

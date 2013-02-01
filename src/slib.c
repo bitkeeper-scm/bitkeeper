@@ -4451,7 +4451,7 @@ sccs_init(char *name, u32 flags)
 	} else {
 		s->proj = proj_init(".");
 	}
-	proj_featureChk(s->proj);
+	(void)features_bits(s->proj);
 
 	if (isCsetFile(s->sfile)) {
 		s->xflags |= X_HASH;
@@ -8056,8 +8056,12 @@ delta_table(sccs *s, int willfix)
 	s->cksum -= str_cksum(buf);
 
 	if (BITKEEPER(s)) {
-		/* add compat marker */
-		unless (bk_featureCompat(s->proj)) {
+		/* add compat marker if any features are enabled.
+		 * We don't bother with BKFILE, REMAP or SAMv3 since they
+		 * don't change the ascii format.  (BKFILE is so _scat works)
+		 */
+		if (features_bits(s->proj) &
+		    ~(FEAT_BKFILE|FEAT_REMAP|FEAT_SAMv3|1)) {
 			fputs(BKID_STR "\n", out);
 		}
 	}
@@ -10535,7 +10539,7 @@ checkrevs(sccs *s, int flags)
 		 * looking for alternative pathnames for files because
 		 * those will already be convered by the cset file.
 		 */
-		bk_featureSet(s->proj, FEAT_SORTKEY, 1);
+		features_set(s->proj, FEAT_SORTKEY, 1);
 	}
 	return (e);
 }
@@ -11318,7 +11322,7 @@ sccs_encoding(sccs *sc, off_t size, char *encp)
 
 	if (sc && sc->proj) {
 		encoding &= ~(E_BK|E_COMP);
-		if (proj_useBKfile(sc->proj)) encoding |= E_BK;
+		if (features_test(sc->proj, FEAT_BKFILE)) encoding |= E_BK;
 
 		unless (encoding & (E_BK|E_BAM)) {
 			compp = proj_configval(sc->proj, "compression");
@@ -17130,7 +17134,7 @@ sccs_setPath(sccs *s, ser_t d, char *new)
 	unless (streq(new, PATHNAME(s, d))) {
 		PATHNAME_SET(s, d, new);
 		unless (streq(new, SORTPATH(s, d))) {
-			bk_featureSet(s->proj, FEAT_SORTKEY, 1);
+			features_set(s->proj, FEAT_SORTKEY, 1);
 		}
 	}
 }

@@ -304,7 +304,7 @@ csetprune(Opts *opts)
 		fprintf(stderr, "csetinit failed\n");
 		goto err;
 	}
-	unless (opts->bk4) bk_featureSet(cset->proj, FEAT_SORTKEY, 1);
+	unless (opts->bk4) features_set(cset->proj, FEAT_SORTKEY, 1);
 	unless (!opts->rev || (d = sccs_findrev(cset, opts->rev))) {
 		fprintf(stderr,
 		    "%s: Revision must be present in repository\n  %s\n",
