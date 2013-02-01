@@ -54,13 +54,13 @@ checksum_main(int ac, char **av)
 		unless (HASGRAPH(s)) {
 			fprintf(stderr, "%s: can't read SCCS info in \"%s\".\n",
 			    av[0], s->sfile);
-			continue;
+			goto next;
 		}
 		unless (BITKEEPER(s)) {
 			fprintf(stderr,
 			    "%s: \"%s\" is not a BitKeeper file, ignored\n",
 			    av[0], s->sfile);
-			continue;
+			goto next;
 		}
 		doit = bad = 0;
 		/* should this be changed to use the range code? */
@@ -69,7 +69,7 @@ checksum_main(int ac, char **av)
 				fprintf(stderr,
 				    "%s: unable to find rev %s in %s\n",
 				    av[0], rev, s->gfile);
-				continue;
+				goto next;
 			}
 			c = sccs_resum(s, d, diags, fix);
 			if (c & 1) doit++;
@@ -127,7 +127,7 @@ checksum_main(int ac, char **av)
 			unless (bk4) bk_featureSet(s->proj, FEAT_SORTKEY, 1);
 		}
 		if (bad && !ret) ret = 1;
-		sccs_free(s);
+next:		sccs_free(s);
 	}
 	if (sfileDone() && !ret) ret = 1;
 	fix ? repository_wrunlock(0, 0) : repository_rdunlock(0, 0);
