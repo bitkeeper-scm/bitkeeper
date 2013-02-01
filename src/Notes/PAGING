@@ -82,3 +82,50 @@ it is shared with block 3.
 
 The code for handling these boundary conditions is in
 the faulthandler in dataheap.c 
+
+--
+
+I/O Layers
+
+Paging works through a set of I/O layers:
+user accesses memory -> paging -> fvzip -> CRC -> file system.
+
+CRC - see src/libc/utils/fopen_crc.c
+This chops a file up into blocks.
+Each block has overhead of 6 (4 for CRC; 2 for len) and payload of N - 6.
+An XOR block is added to the end and is pure overhead.
+The XOR includes the CRC field, but not the len; CRC is of XOR block.
+Block size is computed to minimize overhead (above some minimum block size).
+
+ZIP - see src/libc/utils/fopen_vzip.c
+The structure is a set of compressed blocks.
+Since blocks vary in size, a seek wouldn't know where to go;
+a table is added at the end which is a set of block start addresses
+and how much data the uncompressed block produces.
+While the table is sequential, the data blocks pointed do not need
+to be sequential.  This lets us support insert (as long as it is
+at a block boundary) and mean only re-writing the end of the file.
+There is a bit at the start of each compressed block to signal
+that out of order block reads can happen, and the seek table needs
+to be loaded.
+
+--
+
+Appending to a gzip file
+
+To append to a gzip file, the seek table at the end needs to be read,
+then overwritten with new gzip blocks, then the new seek table written
+out.
+
+In the crc layer, this looks like a straight overwrite of the last part
+of the file.  To get the xor block correct, the xor for the initial
+part of the file needs to be computed to combine with the new data
+being used.
+
+XOR = unchanged start ^ changed end => unchanged start = XOR ^ changed end
+
+In words, compute the xor of the existing xor block with the blocks to
+be replaced.  That gives us the xor for the unchanged part without reading
+the unchanged part.
+
+Then xor in the new blocks and write that out as the new xor block.
