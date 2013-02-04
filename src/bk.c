@@ -95,6 +95,7 @@ main(int volatile ac, char **av, char **env)
 		{ "progs;", 333 },
 		{ "pids", 334 },
 		{ "diffable", 335 },
+		{ "trace-file;", 340 },
 		{ 0, 0 },
 	};
 
@@ -367,7 +368,16 @@ baddir:						fprintf(stderr,
 				    putenv("BK_DTRACE=1");
 				}
 				break;
-
+			    case 340: /* --trace-file */
+				unless ((p = getenv("BK_TRACE")) &&
+				    !streq(p, "1")) {
+					p = strchr(optarg, ':')
+						? strdup(optarg)
+						: fullname(optarg, 0);
+					safe_putenv("BK_TRACE=%s", p);
+					free(p);
+				}
+				break;
 			    default: bk_badArg(c, av);
 			}
 		}
