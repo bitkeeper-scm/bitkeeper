@@ -1,0 +1,19 @@
+echo $N Setup .......................................................$NL
+commercial project
+mkdir dir
+echo foo > dir/foo
+bk new -q dir/foo
+mkdir dir/dir2
+echo foo > dir/dir2/foo
+bk new -q dir/dir2/foo
+bk ignore 'dir -prune'
+bk commit $Q -ywhatever
+cd ..
+bk clone $Q --sccs-compat project repo
+cd repo
+echo OK
+
+echo $N sfiles should not find any files in dir/ ....................$NL
+bk sfiles > OUT
+grep -q dir/SCCS OUT && fail -f OUT
+echo OK
