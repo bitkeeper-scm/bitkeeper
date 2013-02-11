@@ -1,0 +1,59 @@
+echo $N Reproduce abcdr marked delta is missing problem .............$NL
+nested prod
+cd "$HERE"
+bk clone $Q prod prod-clone
+cd prod-clone
+rm -rf gdb
+cd gcc
+touch foo
+bk new $Q foo
+bk commit -S -d $Q -y'stuff'
+cd ..
+bk commit -S -d $Q -y'stuff' 2>OUT && fail -f OUT
+bk populate $Q gdb
+# the check in the commit should have cleaned up the
+# cset mark in the gcc component
+bk repocheck >OUT 2>&1 || fail -f OUT
+echo OK
+
+# White box test to test other return/cleanup paths
+echo $N Mess up HERE file, and try commit ...........................$NL
+rm -rf gdb
+echo "BOGUS" > BitKeeper/log/HERE-new
+cat BitKeeper/log/HERE >> BitKeeper/log/HERE-new
+mv BitKeeper/log/HERE BitKeeper/log/HERE-sav
+mv BitKeeper/log/HERE-new BitKeeper/log/HERE
+cd gcc
+bk edit $Q foo
+echo foo >> foo
+bk ci $Q -y'added foo' foo
+bk commit -S -d $Q -y'added foo'
+cd ..
+bk commit -S -d $Q -y'added foo' 2>OUT && fail -f OUT
+# the check in the commit should have cleaned up the
+# cset mark in the gcc component but we still need
+# to fix HERE file or else populate will not work
+mv BitKeeper/log/HERE-sav BitKeeper/log/HERE
+bk populate $Q gdb 2>OUT || fail -f OUT
+bk repocheck >OUT 2>&1 || fail -f OUT
+echo OK
+
+echo $N Manually populate component and try commit ..................$NL
+cd "$HERE"
+bk clone $Q -sPRODUCT prod prod-clone2
+cd prod-clone2
+bk populate $Q gcc
+# Manually populate
+cp -r ../prod/gdb .
+cd gcc
+touch bar
+bk new $Q bar
+bk commit -S -d $Q -y'added bar'
+cd ..
+bk commit -S -d $Q -y'added bar' 2>OUT && fail -f OUT
+# Manually unpopulate
+rm -rf gdb
+# the check in the commit should have cleaned up the
+# cset mark in the gcc component
+bk repocheck >OUT 2>&1 || fail -f OUT
+echo OK
