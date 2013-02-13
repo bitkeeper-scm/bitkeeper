@@ -297,16 +297,23 @@ add(char *which, char *url, int *rc)
 private void
 rm(char *which, char *url, int *rc)
 {
-	char	*m = 0, *p;
+	char	*m = 0, *p, *turl;
 
 	unless (url = normalize(url, 0)) {
 		*rc = 1;
 		return;
 	}
+	turl = url;
 	unless (p = mdbm_fetch_str(opts.parents, url)) {
-		*rc = 1;
-		fprintf(stderr, "parent: Can't remove '%s'.\n", url);
-		goto done;
+		/* try again */
+		if (strneq(url, "file://", 7) &&
+		    (p = mdbm_fetch_str(opts.parents, url + 7))) {
+			url += 7;
+		} else {
+			*rc = 1;
+			fprintf(stderr, "parent: Can't remove '%s'.\n", url);
+			goto done;
+		}
 	}
 // ttyprintf("RM which=%s p=%s %s\n", which, p, url);
 	switch (*which) {
@@ -345,7 +352,7 @@ rm(char *which, char *url, int *rc)
 		opts.mods = addLine(opts.mods, m);
 		break;
 	}
-done:	free(url);
+done:	free(turl);
 }
 
 private int

@@ -80,16 +80,18 @@ admin_main(int ac, char **av)
 				break;
 		/* compression */
 		    case 'Z':					/* doc 2.0 */
-			bk_setConfig("compression", optarg ? optarg : "gzip");
+			unless (optarg && streq(optarg, "same")) {
+				bk_setConfig("compression",
+				    optarg ? optarg : "gzip");
+			}
 			flags |= NEWCKSUM;
 			touchGfile++;
 			break;
 		    case 'E':	fprintf(stderr, "No longer supported.\n");
 		    		exit(1);
 		    case 'B': /* binfile */
-			bk_featureSet(0, FEAT_BKFILE,
+			features_set(0, FEAT_BKFILE,
 			    (optarg && streq(optarg, "none")) ? 0 : 1);
-			proj_reset(0);
 			flags |= NEWCKSUM;
 			touchGfile++;
 			break;

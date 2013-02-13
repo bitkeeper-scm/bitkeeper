@@ -70,7 +70,6 @@ fclose(fp)
 		FREELB(fp);
 	FUNLOCKFILE(fp);
 	fp->_file = -1;
-	fp->_flags = 0;		/* Release this FILE for reuse. */
 	fp->_r = fp->_w = 0;	/* Mess up if reaccessed. */
 	if (fp->_prevfh) {
 		/*
@@ -80,5 +79,6 @@ fclose(fp)
 		if (r2 = fclose(fp->_prevfh)) r = r2;
 		fp->_prevfh = 0;
 	}
+	fp->_flags = 0;		/* Release this FILE for reuse. */
 	return (r);
 }

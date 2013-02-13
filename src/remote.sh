@@ -87,7 +87,8 @@ case $CMD in
 		bk -U get -qS || true
 	}
 	make build || failed
-	./build image install || failed
+	./build image || failed
+	./build install || failed
 	test $CMD = trial && {
 		# Note: install non-trial bits in case we
 		# don't crank for 2 weeks!  Then build the trial image:

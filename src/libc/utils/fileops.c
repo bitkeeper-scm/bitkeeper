@@ -10,34 +10,25 @@ int
 fileCopy(char *from, char *to)
 {
 	char	buf[8192];
-	int	n, from_fd, to_fd;
+	int	n, from_fd = -1, to_fd = -1;
+	int	ret = -1;
 	struct	stat sb;
 	char	tofile[MAXPATH];
 
 	strcpy(tofile, to);	/* 'to' might be read only */
 	mkdirf(tofile);
 	unlink(tofile);
-	if ((from_fd = open(from, 0, 0)) == -1) {
-		perror(from);
-		return (-1);
-	}
-	if (fstat(from_fd, &sb) == -1) {
-		perror(from);
-		return (-1);
-	}
-	if ((to_fd = creat(tofile, sb.st_mode & 0777)) == -1) {
-		perror(tofile);
-		return (-1);
-	}
+	if ((from_fd = open(from, 0, 0)) == -1) goto err;
+	if (fstat(from_fd, &sb) == -1) goto err;
+	if ((to_fd = creat(tofile, sb.st_mode & 0777)) == -1) goto err;
 	while ((n = read(from_fd, buf, sizeof(buf))) > 0) {
-		if (write(to_fd, buf, n) != n) {
-			perror(to);
-			return (-1);
-		}
+		if (write(to_fd, buf, n) != n) goto err;
 	}
-	close(from_fd);
-	close(to_fd);
-	return (0);
+	ret = 0;
+err:	if (from_fd > 0) close(from_fd);
+	if (to_fd > 0) close(to_fd);
+	if (ret) perror(to);
+	return (ret);
 }
 
 

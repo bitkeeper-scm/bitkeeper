@@ -57,6 +57,7 @@ typedef struct {
 
 typedef struct {
 	FILE	*fin;		/* file we are reading/writing */
+	u32	read:1;		/* opened in read mode */
 	u32	write:1;	/* opened in write mode */
 
 	off_t	offset;		/* current offset in uncompressed stream */
@@ -86,11 +87,13 @@ fopen_vzip(FILE *fin, char *mode)
 	fgzip	*fz;
 	FILE	*f;
 	char	*t;
+	szblock	*sz;
 	char	fmt[5];
 
 	assert(fin);
 
 	fz = new(fgzip);
+	T_FS("FILE %p, mode %s, cookie %p", fin, mode, fz);
 	fz->fin = fin;
 	if (streq(mode, "w")) {
 		fz->write = 1;
@@ -102,7 +105,12 @@ fopen_vzip(FILE *fin, char *mode)
 		}
 		fputs(fmt, fin);
 	} else {
-		assert(streq(mode, "r"));
+		if (streq(mode, "a")) {
+			fz->write = 1;
+		} else {
+			assert(streq(mode, "r"));
+			fz->read = 1;
+		}
 		rewind(fz->fin);
 		unless (fread(fmt, 1, 4, fin) == 4) {
 			assert("unknown file format" == 0);
@@ -114,12 +122,25 @@ fopen_vzip(FILE *fin, char *mode)
 		assert(0);
 	}
 	f = funopen(fz,
-	    fz->write ? 0 : zipRead,
+	    fz->read ? zipRead : 0,
 	    fz->write ? zipWrite : 0,
 	    zipSeek, zipClose);
 	fz->zoffset = 4;
 	/* I want to see large block accesses */
 	setvbuf(f, 0, _IOFBF, BLOCKSZ);
+
+	if (streq(mode, "a")) {
+		// read data at end of file
+		load_szArray(fz);
+		// rewind to start of data
+		fseek(fz->fin,
+		    -(sizeof(szblock) * nLines(fz->szarr) + (2 * sizeof(u32))),
+		    SEEK_END);
+		// update offset to account for existing data
+		fz->offset = 0;
+		EACHP(fz->szarr, sz) fz->offset += sz->usz;
+		fz->zoffset = ftell(fz->fin);
+	}
 	return (f);
 }
 
@@ -227,6 +248,7 @@ lz4_uncompress(const void *in, int ilen, void *out, int *olen)
 private int
 select_cmpfn(fgzip *fz, char *buf)
 {
+	T_FS("cookie %p, buf %s", fz, buf);
 	if (streq(buf, "ZIP\n")) {
 		fz->compress = zlib_compress;
 		fz->uncompress = zlib_uncompress;
@@ -248,24 +270,37 @@ load_szArray(fgzip *fz)
 	int	blocks;
 	szblock	*sz;
 
+	T_FS("cookie %p", fz);
 	/* need to load offset table */
 	fseek(fz->fin, -sizeof(u32), SEEK_END);
 	fread(&tmp, sizeof(u32), 1, fz->fin);
 	blocks = le32toh(tmp);
 
 	if (fseek(fz->fin,
-	    -((blocks * sizeof(szblock)) + sizeof(u32)), SEEK_END)) {
+	    -((blocks * sizeof(szblock)) + 2 * sizeof(u32)), SEEK_END)) {
 		fprintf(stderr, "bad szblock\n");
 		return (-1);
 	}
+	fread(&tmp, sizeof(u32), 1, fz->fin);
+	assert(!tmp);	/* EOF marker of data in file */
 	fread(growArray(&fz->szarr, blocks),
 	    sizeof(szblock), blocks, fz->fin);
-	if (0x01020304 != le32toh(0x01020304)) {
+	unless (IS_LITTLE_ENDIAN()) {
 		/* byteswap array */
 		EACHP(fz->szarr, sz) {
 			sz->usz = le32toh(sz->usz);
 			sz->off = le32toh(sz->off);
 		}
+	}
+	/* re-read 'blocks' */
+	fread(&tmp, sizeof(u32), 1, fz->fin);
+	/* verify at EOF (needed if talking to crc layer) */
+	if (fgetc(fz->fin) != EOF) {
+		fprintf(stderr,
+		    "vzip file ends at offset %ld, junk follows\n",
+		    ftell(fz->fin) - 1);
+		abort();
+		exit(1);
 	}
 	fz->zoffset = 0;	/* force a seek on next read */
 	return (0);
@@ -289,6 +324,7 @@ vzip_findSeek(FILE *fin, long off, int len, u32 pagesz, u32 **lens)
 	if (fin->_read != zipRead) return (1);
 
 	fz = fin->_cookie;
+	T_FS("cookie %p, off %ld, len %d, pagesz %d", fz, off, len, pagesz);
 	unless (fz->szarr) {
 		rewind(fin);
 		assert(fz->szarr);
@@ -323,6 +359,7 @@ zipRead(void *cookie, char *buf, int len)
 	u32	cnt;
 	char	data[MAXZIPBLOCK];
 
+	T_FS("cookie %p, len %d", fz, len);
 again:
 	if (fz->szarr) {
 		if (!fz->szp || (fz->szp > fz->szarr + nLines(fz->szarr))) {
@@ -365,6 +402,7 @@ again:
 	}
 	unless (cnt) {
 		/* eof */
+		T_FS("return eof cookie %p, len %d", fz, len);
 		return (0);
 	}
 	assert(cnt < sizeof(data)-1);
@@ -377,6 +415,7 @@ again:
 	if (fz->uncompress(data, cnt, buf, &len)) return (-1);
 	fz->offset += len;
 	fz->zoffset += sizeof(u32) + cnt;
+	T_FS("return cookie %p, len %d", fz, len);
 	return (len);		/* we usually return less than requested */
 }
 
@@ -389,6 +428,7 @@ zipWrite(void *cookie, const char *buf, int len)
 	u32	tmp;
 	char	data[MAXZIPBLOCK];
 
+	T_FS("cookie %p", fz);
 	sz.usz = len;
 	sz.off = fz->zoffset;
 	addArray(&fz->szarr, &sz);
@@ -412,27 +452,32 @@ zipSeek(void *cookie, fpos_t offset, int whence)
 	fgzip	*fz = cookie;
 	szblock	*sz;
 
+	T_FS("cookie %p %ld %d", fz, offset, whence);
 	if (whence == SEEK_CUR) {
 		assert(offset == 0);
 		return (fz->offset);
 	}
-	assert(!fz->write);
+	assert(fz->read);
 	/* avoid loading table when we don't need to */
 	if ((whence == SEEK_SET) && (offset == fz->offset)) return (offset);
 
-	unless (fz->szarr) load_szArray(fz);
 	if (whence == SEEK_END) {
+		unless (fz->szarr) load_szArray(fz);
 		EACHP(fz->szarr, sz) offset += sz->usz;
 	} else {
 		assert(whence == SEEK_SET);
 	}
 	if (offset < 0) {
+		fseek(fz->fin, offset, SEEK_SET);
+		fz->szp = 0;
+		FREE(fz->szarr);
 err:		errno = EINVAL;
 		return (-1);
 	}
 	fz->offset = offset;
 
 	/* find offset of desired block */
+	unless (fz->szarr) load_szArray(fz);
 	sz = 0;
 	EACHP(fz->szarr, sz) {
 		if (offset == 0) {
@@ -455,6 +500,7 @@ zipClose(void *cookie)
 	szblock	*sz;
 	u32	sum;
 
+	T_FS("cookie %p", fz);
 	if (fz->write) {
 		/* write eof marker */
 		sum = 0;

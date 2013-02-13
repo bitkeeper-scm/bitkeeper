@@ -6,6 +6,7 @@ HERE=`pwd`
 
 ms_env()
 {
+	unset JOBS
 	test "$MSYSBUILDENV" || {
 		echo running in wrong environment, respawning...
 		bk get -S ./update_buildenv
@@ -25,6 +26,15 @@ ms_env()
 	CC="gcc -pipe -DWINVER=0x0500 -D_WIN32_WINNT=0x0500"
 	LD="gcc -Wl,--stack,33554432"
 }
+
+JOBS=-j4
+while getopts j: opt
+do
+	case "$opt" in
+		j) JOBS=-j$OPTARG;;
+	esac
+done
+shift `expr $OPTIND - 1`
 
 test "X$G" = X && G=-g
 test "X$CC" = X && CC=gcc
@@ -181,4 +191,5 @@ test "X$MAKE" = X && {
 test "x$BK_VERBOSE_BUILD" != "x" && { V="V=1"; }
 # If the current build process needs to use current bk, use "$HERE/bk"
 export PATH HERE
-make -e $V "MAKE=$MAKE" "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"
+make $JOBS -e $V "MAKE=$MAKE" "CC=$CC $CCXTRA" "G=$G" "LD=$LD" \
+	"XLIBS=$XLIBS" "$@"

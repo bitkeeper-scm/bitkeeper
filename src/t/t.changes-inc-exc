@@ -1,0 +1,350 @@
+echo $N Set up for include/exclude tests ............................$NL
+commercial project
+for i in man src html
+do	mkdir $i
+done
+for i in foo bar blech
+do	echo $i > man/${i}.1
+	echo $i > src/${i}.c
+	echo $i > src/${i}.h
+	echo $i > html/${i}.html
+done
+bk extras | bk new $Q -
+bk commit $Q -ywhatever
+echo OK
+
+echo $N Exclude src subdirectory ....................................$NL
+bk changes --filter -vr+ -x'src/*' -nd:GFILE: > GOT
+bk changes -vr+ -nd:GFILE: | grep -v src/ > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Exclude man and html subdirectories .........................$NL
+bk changes --filter -vr+ -x'man/*' -x'html/*' -nd:GFILE: > GOT
+bk changes -vr+ -nd:GFILE: | grep -v man/ | grep -v html/ > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Exclude all .c and .h files .................................$NL
+bk changes --filter -vr+ -x'*.[ch]' -nd:GFILE: > GOT
+bk changes -vr+ -nd:GFILE: | egrep -v '.*\.[ch]$' > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Include html pages only .....................................$NL
+bk changes --filter -vr+ -i'*.html' -nd:GFILE: | grep -v ChangeSet > GOT
+bk changes -vr+ -nd:GFILE: | egrep '.*\.html$' > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Exclude all .c and .h files and include man pages ...........$NL
+bk changes --filter -vr+ -x'*.[ch]' -i'*.1' -nd:GFILE: | grep -v ChangeSet > GOT
+bk changes -vr+ -nd:GFILE: | egrep -v '.*\.[ch]$' | egrep '.*\.1$' > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Include all .c and .h files .................................$NL
+bk changes --filter -vr+ -i'*.[ch]' -nd:GFILE: | grep -v ChangeSet > GOT
+bk changes -vr+ -nd:GFILE: | egrep '.*\.[ch]$' > WANT
+checkfiles GOT WANT
+echo OK
+
+echo $N Include all .c and .h files but exclude src/foo.c ...........$NL
+bk changes --filter -vr+ -i'*.[ch]' -xsrc/foo.c -nd:GFILE: | grep -v ChangeSet > GOT
+bk changes -vr+ -nd:GFILE: | egrep '.*\.[ch]$' | grep -v src/foo.c > WANT
+checkfiles GOT WANT
+echo OK
+
+# Add some csets like we would use them
+echo $N Adding some extra csets......................................$NL
+touch src/code.c
+touch man/code.1
+mkdir t
+touch t/t.code
+bk new $Q src/code.c man/code.1 t/t.code
+bk commit $Q -y"code, doc, test"
+bk edit $Q src/code.c
+echo foo > src/code.c
+bk ci $Q -y"just code"
+bk commit $Q -y"just code"
+bk edit $Q src/code.c
+bk edit $Q t/t.code
+echo stuff > src/code.c
+echo stuff > t/t.code
+bk ci $Q -y"code and test" src/code.c t/t.code
+bk commit $Q -y"code and test"
+bk edit $Q src/code.c
+bk edit $Q man/code.1
+echo more stuff > src/code.c
+echo more stuff > man/code.1
+bk ci $Q -y"code and doc" src/code.c man/code.1
+bk commit $Q -y"code and doc"
+echo OK
+
+echo $N Get changes to just code with no tests.......................$NL
+bk changes -nd':INDENT::REV: :C:' -i'src/*' -x't/*' | \
+	sed 's,BitKeeper file.*,,g' > GOT
+cat <<EOF > WANT
+1.5 code and doc
+1.2 whatever
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Again with -v................................................$NL
+bk changes -vnd':INDENT::REV: :DPN:' -i'src/*' -x't/*' | \
+	sed 's,BitKeeper file.*,,g' > GOT
+cat <<EOF > WANT
+1.5 ChangeSet
+  1.2 man/code.1
+  1.3 src/code.c
+1.2 ChangeSet
+  1.1 html/bar.html
+  1.0 html/bar.html
+  1.1 html/blech.html
+  1.0 html/blech.html
+  1.1 html/foo.html
+  1.0 html/foo.html
+  1.1 man/bar.1
+  1.0 man/bar.1
+  1.1 man/blech.1
+  1.0 man/blech.1
+  1.1 man/foo.1
+  1.0 man/foo.1
+  1.1 src/bar.c
+  1.0 src/bar.c
+  1.1 src/bar.h
+  1.0 src/bar.h
+  1.1 src/blech.c
+  1.0 src/blech.c
+  1.1 src/blech.h
+  1.0 src/blech.h
+  1.1 src/foo.c
+  1.0 src/foo.c
+  1.1 src/foo.h
+  1.0 src/foo.h
+EOF
+cmpfiles WANT GOT
+echo OK
+
+cset() {
+	for i in $*
+	do	bk edit $Q $i
+		bk delta $Q -f -y$i $i
+	done
+	bk commit $Q -y"$*"
+}
+
+echo $N Create a demo repo...........................................$NL
+commercial proj
+touch A B C D
+bk new $Q A B C D
+bk commit $Q -y"A B C D"
+cset       D
+cset     C
+cset     C D
+cset   B
+cset   B   D
+cset   B C
+cset   B C D
+cset A
+cset A     D
+cset A   C
+cset A   C D
+cset A B
+cset A B   D
+cset A B C
+cset A B C D
+echo OK
+
+echo $N bk changes...................................................$NL
+bk changes -nd':INDENT::REV: :C:' | sed 's,BitKeeper file.*,,g' > GOT
+cat <<EOF > ALL
+1.17 A B C D
+1.16 A B C
+1.15 A B D
+1.14 A B
+1.13 A C D
+1.12 A C
+1.11 A D
+1.10 A
+1.9 B C D
+1.8 B C
+1.7 B D
+1.6 B
+1.5 C D
+1.4 C
+1.3 D
+1.2 A B C D
+1.1 Initial repository create
+1.0 
+EOF
+cmpfiles ALL GOT
+echo OK
+
+echo $N bk changes -v................................................$NL
+bk changes -vnd':INDENT::REV: :DPN:' | sed 's,BitKeeper file.*,,g' > GOT
+cat <<EOF > ALLV
+1.17 ChangeSet
+  1.9 A
+  1.9 B
+  1.9 C
+  1.9 D
+1.16 ChangeSet
+  1.8 A
+  1.8 B
+  1.8 C
+1.15 ChangeSet
+  1.7 A
+  1.7 B
+  1.8 D
+1.14 ChangeSet
+  1.6 A
+  1.6 B
+1.13 ChangeSet
+  1.5 A
+  1.7 C
+  1.7 D
+1.12 ChangeSet
+  1.4 A
+  1.6 C
+1.11 ChangeSet
+  1.3 A
+  1.6 D
+1.10 ChangeSet
+  1.2 A
+1.9 ChangeSet
+  1.5 B
+  1.5 C
+  1.5 D
+1.8 ChangeSet
+  1.4 B
+  1.4 C
+1.7 ChangeSet
+  1.3 B
+  1.4 D
+1.6 ChangeSet
+  1.2 B
+1.5 ChangeSet
+  1.3 C
+  1.3 D
+1.4 ChangeSet
+  1.2 C
+1.3 ChangeSet
+  1.2 D
+1.2 ChangeSet
+  1.1 A
+  1.0 A
+  1.1 B
+  1.0 B
+  1.1 C
+  1.0 C
+  1.1 D
+  1.0 D
+1.1 ChangeSet
+  1.1 BitKeeper/etc/collapsed
+  1.0 BitKeeper/etc/collapsed
+  1.1 BitKeeper/etc/config
+  1.0 BitKeeper/etc/config
+  1.1 BitKeeper/etc/gone
+  1.0 BitKeeper/etc/gone
+  1.1 BitKeeper/etc/ignore
+  1.0 BitKeeper/etc/ignore
+1.0 ChangeSet
+EOF
+cmpfiles ALLV GOT
+echo OK
+
+echo $N bk changes -iZ should be empty...............................$NL
+bk changes -iZ -nd':INDENT::REV: :C:' | sed 's,BitKeeper file.*,,g' > GOT
+rm -f WANT && touch WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk changes -v -iZ should be empty............................$NL
+bk changes -iZ -vnd':INDENT::REV: :DPN:' | sed 's,BitKeeper file.*,,g' > GOT
+rm -f WANT && touch WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk changes -xZ should show all...............................$NL
+bk changes -xZ -nd':INDENT::REV: :C:' | sed 's,BitKeeper file.*,,g' > GOT
+grep -v ^1.0 ALL > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk changes -v -xZ should show all............................$NL
+bk changes -xZ -vnd':INDENT::REV: :DPN:' | sed 's,BitKeeper file.*,,g' > GOT
+grep -v ^1.0 ALLV > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk changes -iA...............................................$NL
+bk changes -iA -nd':INDENT::REV: :C:' | sed 's,BitKeeper file.*,,g' > GOT
+cat ALL | grep A > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk changes -v -iA............................................$NL
+bk changes -iA -vnd':INDENT::REV: :DPN:' | sed 's,BitKeeper file.*,,g' > GOT
+cat <<EOF > WANT
+1.17 ChangeSet
+  1.9 A
+  1.9 B
+  1.9 C
+  1.9 D
+1.16 ChangeSet
+  1.8 A
+  1.8 B
+  1.8 C
+1.15 ChangeSet
+  1.7 A
+  1.7 B
+  1.8 D
+1.14 ChangeSet
+  1.6 A
+  1.6 B
+1.13 ChangeSet
+  1.5 A
+  1.7 C
+  1.7 D
+1.12 ChangeSet
+  1.4 A
+  1.6 C
+1.11 ChangeSet
+  1.3 A
+  1.6 D
+1.10 ChangeSet
+  1.2 A
+1.2 ChangeSet
+  1.1 A
+  1.0 A
+  1.1 B
+  1.0 B
+  1.1 C
+  1.0 C
+  1.1 D
+  1.0 D
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk changes -xA...............................................$NL
+bk changes -xA -nd':INDENT::REV: :C:' | sed 's,BitKeeper file.*,,g' > GOT
+grep -v A ALL | grep -v ^1.0 > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk changes -iA -xA...........................................$NL
+bk changes -xA -nd':INDENT::REV: :C:' | sed 's,BitKeeper file.*,,g' > GOT
+grep -v A ALL | grep -v ^1.0 > WANT
+cmpfiles WANT GOT
+echo OK
+
+
+echo $N bk changes -iA -xB...........................................$NL
+bk changes -iA -xB -nd':INDENT::REV: :C:' | sed 's,BitKeeper file.*,,g' > GOT
+cat ALL | grep -v B | grep A > WANT
+cmpfiles WANT GOT
+echo OK
+

@@ -3,7 +3,6 @@
 #include "nested.h"
 
 private struct {
-	u32	one:1;		/* -1: stop after printing one entry */
 	u32	all:1;		/* list all, including tags etc */
 	u32	doSearch:1;	/* search the comments list */
 	u32	showdups:1;	/* do not filter duplicates when multi-parent */
@@ -21,28 +20,33 @@ private struct {
 	u32	verbose:1;	/* list the file checkin comments */
 	u32	prodOnly:1;	/* limit output to just product repo */
 	u32	doComp:1;	/* decend to components from product */
+	u32	printComp:1;	/* whether to force-print the component csets */
 	u32	diffs:1;	/* show diffs with verbose mode */
 	u32	tsearch:1;	/* pattern applies to tags instead of cmts */
 	u32	BAM:1;		/* only include BAM files */
-	u32	filt:1;		/* output limited by filenames */
+	u32	filt:1;		/* output filtered by filenames */
+	u32	sel:1;		/* output limited by filenames */
 	u32	chgurl:1;	/* running 'bk changes URL', ignore local */
 	u32	noMeta:1;	/* auto or --no-meta */
 	u32	standalone:1;	/* --standalone: treat comps as standalone */
 	u32	sameComp:1;	/* --same-component */
+	u32	sparseOk:1;	/* --sparse-ok */
+	u32	filter:1;	/* --filter */
 
+	u32	num;		/* -%u: stop after printing n entries */
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
 	char	*begin;		/* $begin{....} */
 	char	*end;		/* $end{....} */
 	char	**users;	/* lines list of users to include */
 	char	**notusers;	/* lines list of users to exclude */
-	char	**inc;		/* list of globs for files to include */
-	char	**exc;		/* list of globs for files to exclude */
+	char	**incS;		/* list of globs for files to include */
+	char	**excS;		/* list of globs for files to exclude */
+	char	**incF;		/* list of globs for files to filter in */
+	char	**excF;		/* list of globs for files to filter out */
 	char	*dspecfile;	/* name the file where the dspec is */
 
 	RANGE	rargs;
-	FILE	*fmem;		/* in-mem output buffering */
-	FILE	*fcset;		/* save cset for ordering */
 } opts;
 
 typedef struct slog {
@@ -55,9 +59,16 @@ typedef struct slog {
 struct rstate {
 	MDBM	*idDB;
 	MDBM	*goneDB;
-	MDBM	*csetDB;
+	hash	*csetDB;	/* serial => struct cstate */
 	MDBM	*graphDB;
 };
+
+typedef	struct {
+	char	**keylist;	/* list of keys from the weave (filtered) */
+	u32	hasFiles:1;	/* does it have files? */
+	u32	hasIncFiles:1;	/* does this cset have included files */
+	u32	hasExcFiles:1;	/* does it have excluded files? */
+} cstate;
 
 private int	doit(int dash);
 private int	want(sccs *s, ser_t e);
@@ -71,9 +82,11 @@ private int	doit_remote(char **nav, char *url);
 private int	doit_local(char ***nav, char **urls);
 private	int	cset(hash *state, sccs *cset, char *dkey, char *pkey, FILE *f,
 		    char *dspec);
-private	MDBM	*loadcset(sccs *cset);
-private	void	fileFilt(sccs *s, MDBM *csetDB);
+private	hash	*loadcset(sccs *cset);
 private	int	prepSearch(char *str);
+private	int	skipPath(char *path, int *incp, int *excp);
+private	int	printCset(int hasInc, int hasExc);
+private	void	checkPresent(sccs *s, char **inc, char **exc);
 
 private	hash	*seen; /* list of keys seen already */
 private	sccs	*s_cset;
@@ -91,9 +104,13 @@ changes_main(int ac, char **av)
 	pid_t	pid = 0; /* pager */
 	longopt	lopts[] = {
 		{ "no-meta", 300 },		/* don't show meta files */
+						/* seems more like --no attr */
 		{ "html", 301 },		/* old -h */
-		{ "same-component", 302 },
+		{ "same-component", 302 },	/* undocumented?  LMXXX */
 		{ "dspecf;", 303 },		/* let user pass in dspec */
+		{ "filter", 310 },		/* -i/-x filter not select */
+						/* undocumented on purpose */
+		{ "sparse-ok", 320 },		/* don't error on non-present */
 		{ "standalone", 'S' },		/* treat comps as standalone */
 		{ 0, 0 }
 	};
@@ -108,7 +125,7 @@ changes_main(int ac, char **av)
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
 	while ((c =
-	    getopt(ac, av, "1aBc;Dd;efi;kLmnPqRr;StTu;U;Vv/;x;",
+	    getopt(ac, av, "0123456789aBc;Dd;efi;kLmnPqRr;StTu;U;Vv/;x;",
 		lopts)) != -1) {
 		unless (c == 'L' || c == 'R' || c == 'D' || c == 302) {
 			nav = bk_saveArg(nav, av, c);
@@ -118,7 +135,10 @@ changes_main(int ac, char **av)
 		     * Note: do not add option 'K', it is reserved
 		     * for internal use by bkd_changes.c, part1
 		     */
-		    case '1': opts.one = 1; break;
+		    case '0': case '1': case '2': case '3': case '4':
+		    case '5': case '6': case '7': case '8': case '9':
+			opts.num = opts.num * 10 + (c - '0');
+			break;
 		    case 'a': opts.all = 1; opts.noempty = 0; break;
 		    case 'B': opts.BAM = 1; break;
 		    case 'c':
@@ -133,7 +153,7 @@ changes_main(int ac, char **av)
 		    case 'f': opts.forwards = 1; break;
 		    case 301: opts.html = 1; opts.urls = 0; break;
 		    case 'i':
-			opts.inc = addLine(opts.inc, strdup(optarg));
+			opts.incS = addLine(opts.incS, strdup(optarg));
 			break;
 		    /* case 'K': reserved */
 		    case 'k':
@@ -152,16 +172,16 @@ changes_main(int ac, char **av)
 		    case 'U':
 			opts.notusers = addLine(opts.notusers, strdup(optarg));
 			break;
-		    case 'V': opts.doComp = 1; break;
+		    case 'V': opts.doComp = opts.printComp = 1; break;
 		    case 'v':
-		    	if (opts.verbose) opts.diffs = 1;
-			opts.verbose =1 ;
+			if (opts.verbose) opts.diffs = 1;
+			opts.verbose = 1;
 			break;
 		    case 'r':
 			if (range_addArg(&opts.rargs, optarg, 0)) usage();
 			break;
 		    case 'x':
-			opts.exc = addLine(opts.exc, strdup(optarg));
+			opts.excS = addLine(opts.excS, strdup(optarg));
 			break;
 		    case '/': searchStr = optarg; break;
 		    case 'L': opts.local = 1; break;
@@ -179,6 +199,12 @@ changes_main(int ac, char **av)
 		    case 303: /* --dspecf */
 			opts.dspecfile = optarg;
 			break;
+		    case 310:	/* --filter */
+			opts.filter = 1;
+			break;
+		    case 320:	/* --sparse-ok */
+			opts.sparseOk = 1;
+			break;
 		    default: bk_badArg(c, av);
 		}
 	}
@@ -195,14 +221,22 @@ changes_main(int ac, char **av)
 			return (1);
 		}
 	}
-	opts.filt = opts.BAM || opts.inc || opts.exc;
+
+	if (opts.filter) {
+		opts.incF = opts.incS;
+		opts.excF = opts.excS;
+		opts.incS = opts.excS = 0;
+	}
+
+	opts.filt = opts.BAM || opts.incF || opts.excF;
+	opts.sel = opts.incS || opts.excS;
 
 	/* ERROR check options */
 	/* XXX: could have rev range limit output -- whose name space? */
 	if ((opts.local || opts.remote) && opts.rargs.rstart) usage();
 	if (proj_isEnsemble(0)) {
 		if (opts.verbose && !opts.prodOnly) opts.doComp = 1;
-		if (opts.filt && !opts.doComp && !opts.BAM) {
+		if ((opts.filt || opts.sel) && !opts.doComp && !opts.BAM) {
 			opts.doComp = opts.prodOnly = 1;
 		}
 	}
@@ -222,6 +256,7 @@ changes_main(int ac, char **av)
 		    "changes: either '-' or URL list, but not both\n");
 		return (1);
 	}
+
 	if (searchStr && prepSearch(searchStr)) usage();
 
 	/* terminate list of args with -L and -R removed */
@@ -416,6 +451,63 @@ out:	if (s_cset) sccs_free(s_cset);
 	return (rc);
 }
 
+/*
+ * Make sure the glob patterns don't match missing components
+ */
+private	void
+checkPresent(sccs *s, char **inc, char **exc)
+{
+	int	i, j, k;
+	int	errors = 0;
+	char	**list[2] = {inc, exc};
+	int	missing = 0;
+	nested	*n;
+	comp	*c;
+
+	unless (proj_isProduct(s->proj)) return;
+	unless (n = nested_init(s, 0, 0, NESTED_PENDING)) {
+		fprintf(stderr, "nested_init() failed\n");
+		exit(1);
+	}
+	/* check for globs that don't have dir */
+	EACH_STRUCT(n->comps, c, k) {
+		if (c->present) continue;
+		for (i = 0; i < 2; i++) {
+			EACH_INDEX(list[i], j) {
+				if (!streq("ChangeSet", basenm(list[i][j]))
+				    && paths_overlap(c->path, list[i][j])) {
+					fprintf(stderr,
+					    "%s is not present and "
+					    "-%c%s could match files in it.\n",
+					    c->path,
+					    i ? 'x' : 'i', list[i][j]);
+					errors = 1;
+				}
+			}
+		}
+		missing++;
+	}
+	nested_free(n);
+	if (missing) {
+		for (i = 0; i < 2; i++) {
+			EACH_INDEX(list[i], j) {
+				unless (strchr(list[i][j], '/')) {
+					fprintf(stderr,
+					    "There are missing components "
+					    "where -%c%s could match files.\n",
+					    i ? 'x' : 'i', list[i][j]);
+					errors = 1;
+				}
+			}
+		}
+	}
+	if (errors) {
+		fprintf(stderr, "Use --sparse-ok if you want to ignore "
+		    "non-present components.\n");
+		exit(1);
+	}
+}
+
 private	int
 prepSearch(char *str)
 {
@@ -552,7 +644,6 @@ doit(int dash)
 	int	rc = 1;
 	hash	*state;
 	struct	rstate *rstate;
-	char	**keys;
 	kvpair	kv;
 	int	flags;
 
@@ -584,6 +675,15 @@ doit(int dash)
 	unless (s && HASGRAPH(s)) {
 		system("bk help -s changes");
 		exit(1);
+	}
+	if ((opts.filt || opts.sel) && !opts.sparseOk &&
+	    proj_isProduct(s->proj)) {
+		/* checkPresent() exits on failure */
+		if (opts.filter) {
+			checkPresent(s, opts.incF, opts.excF);
+		} else {
+			checkPresent(s, opts.incS, opts.excS);
+		}
 	}
 	if (opts.rargs.rstart) {
 		unless (opts.rargs.rstop) opts.noempty = 0;
@@ -643,15 +743,6 @@ doit(int dash)
 	pid = mkpager();
 
 	state = hash_new(HASH_MEMHASH);
-	/*
-	 * If we are doing filtering in a nested environment then we
-	 * need to create a fmem FILE* to be used to buffer output
-	 * before we know if it will be printed.
-	 */
-	if (opts.doComp && opts.filt) {
-		opts.fmem = fmem();
-	}
-	if (opts.doComp || opts.verbose) opts.fcset = fmem();
 	/* capture the comments, for the csets we care about */
 	dstart = dstop = 0;
 	for (e = s->rstop; e >= TREE(s); e--) {
@@ -675,8 +766,6 @@ doit(int dash)
 	if (opts.end && dstop) {
 		sccs_prsdelta(s, dstop, flags, opts.end, stdout);
 	}
-	if (opts.fcset) fclose(opts.fcset);
-	if (opts.fmem) fclose(opts.fmem);
 	EACH_HASH(state) {
 		rstate = state->vptr;
 		EACH_KV(rstate->graphDB) {
@@ -686,11 +775,12 @@ doit(int dash)
 		mdbm_close(rstate->graphDB);
 		mdbm_close(rstate->idDB);
 		mdbm_close(rstate->goneDB);
-		EACH_KV(rstate->csetDB) {
-			memcpy(&keys, kv.val.dptr, sizeof (char **));
-			freeLines(keys, free);
+		EACH_HASH(rstate->csetDB) {
+			cstate	*cs = rstate->csetDB->vptr;
+
+			if (cs->keylist) freeLines(cs->keylist, free);
 		}
-		mdbm_close(rstate->csetDB);
+		hash_free(rstate->csetDB);
 	}
 	hash_free(state);
 	if (pid > 0) {
@@ -700,26 +790,6 @@ doit(int dash)
 	rc = 0;
 next:
 	return (rc);
-}
-
-private	void
-fileFilt(sccs *s, MDBM *csetDB)
-{
-	ser_t	d;
-	datum	k, v;
-	ser_t	ser;
-
-	/* Unset any csets that don't contain files from -i and -x */
-	for (d = TABLE(s); d >= TREE(s); d--) {
-		unless (FLAGS(s, d) & D_SET) continue;
-		/* if cset changed nothing, keep it if not filtering by inc */
-		if (!(opts.inc || opts.BAM) && !ADDED(s, d)) continue;
-		ser = d;
-		k.dptr = (char *)&ser;
-		k.dsize = sizeof(ser);
-		v = mdbm_fetch(csetDB, k);
-		unless (v.dptr) FLAGS(s, d) &= ~D_SET;
-	}
 }
 
 private int
@@ -889,38 +959,27 @@ collectDelta(sccs *s, ser_t d, char **list)
 	return (list);
 }
 
-private void
-saveKey(MDBM *db, ser_t ser, char **keylist)
-{
-	datum	k, v;
-
-	k.dptr = (char *) &ser;
-	k.dsize = sizeof (ser);
-	v.dptr = (char *) &keylist;
-	v.dsize = sizeof (keylist);
-	if (mdbm_store(db, k, v, MDBM_INSERT)) perror("savekey");
-}
-
 /*
  * Load a db of rev key_list pair
  * key is rev
  * val is a list of entries in "root_key delta_key" format.
  */
-private MDBM *
+private hash *
 loadcset(sccs *cset)
 {
 	char	**keylist = 0;
 	char	*keypath, *pipe;
 	char	*t;
 	char	*rkey, *dkey;
-	MDBM	*db;
+	hash	*db;
+	int	files = 0, inc = 0, exc = 0;
 	ser_t	d = 0;
-	int	last;
+	ser_t	last;
 	char	*pathp;
 	char	path[MAXPATH];
 
 	/* respect it if they set it on the command line */
-	unless (opts.noMeta) opts.noMeta = !opts.all && !opts.inc;
+	unless (opts.noMeta) opts.noMeta = !opts.all && !opts.incF;
 
 	/* but it has no meaning unless we are -v */
 	unless (opts.verbose) opts.noMeta = 0;
@@ -935,27 +994,47 @@ loadcset(sccs *cset)
 	} else {
 		pathp = path;
 	}
-	db = mdbm_mem();
+	db = hash_new(HASH_MEMHASH);
 	sccs_rdweaveInit(cset);
 	last = 0;
 	while (d = cset_rdweavePair(cset, &rkey, &dkey)) {
+		if (d < cset->rstart) break;
 		unless (FLAGS(cset, d) & D_SET) continue;
 		if (d != last) {
 			if (keylist) {
-				saveKey(db, last, keylist);
+				cstate	cs = { keylist, files, inc, exc };
+
+				unless (hash_insert(db, &last, sizeof(last),
+					&cs, sizeof(cs))) {
+					perror("db");
+				}
+				files = 0;
+				inc = exc = 0;
 				keylist = 0;
+			} else if (opts.filt) {
+				/*
+				 * We are filtering, so unmark any
+				 * csets where none of the files
+				 * were selected.
+				 *
+				 * If cset changed nothing,
+				 * keep it if not filtering by
+				 * inc
+				 */
+				if ((opts.incF || opts.BAM) ||
+				    ADDED(cset, last)) {
+					FLAGS(cset, last) &= ~D_SET;
+				}
 			}
 			last = d;
 		}
-		if (opts.filt || opts.noMeta) {
+		if (opts.filt || opts.sel || opts.noMeta) {
 			keypath = strchr(dkey, '|');
 			assert(keypath);
 			keypath++;
 			pipe = strchr(keypath, '|');
 			assert(pipe);
-			/* if -V , traverse all components... */
-			unless (opts.doComp && (pipe - keypath >= 10) &&
-			    strneq(&pipe[-10], "/ChangeSet", 10)) {
+			unless (componentKey(dkey)) {
 				if (opts.BAM) {
 					/* skip unless rootkey =~ /^B:/ */
 					t = strrchr(rkey, '|');
@@ -963,26 +1042,84 @@ loadcset(sccs *cset)
 				}
 				strncpy(pathp, keypath, pipe - keypath);
 				pathp[pipe-keypath] = 0;
-				if (opts.inc &&
-				    !match_globs(path, opts.inc, 0)) {
-					continue;
-				}
-				if (opts.exc &&
-				    match_globs(path, opts.exc, 0)) {
-					continue;
-				}
+				if (skipPath(path, &inc, &exc)) continue;
 				if (opts.noMeta && sccs_metafile(pathp)) {
 					continue;
 				}
+				files = 1;
 			}
 		}
 		keylist = addLine(keylist, aprintf("%s %s", rkey, dkey));
 	}
-	if (keylist) saveKey(db, last, keylist);
+	if (keylist) {
+		cstate	cs = { keylist, files, inc, exc };
+
+		unless (hash_insert(db, &last, sizeof(last),
+			&cs, sizeof(cs))) {
+			perror("db");
+		}
+	}
 	sccs_rdweaveDone(cset);
 	sccs_close(cset);
-	if (opts.filt) fileFilt(cset, db);
 	return (db);
+}
+
+/*
+ * Return true if a given pathname should be skipped?
+ *
+ * Also optionally set *incp && *excp if the path matches in
+ * the include or exclude lists.
+ *
+ * The input can be a pathname or a deltakey.
+ */
+private int
+skipPath(char *key, int *incp, int *excp)
+{
+	int	inc = 0, exc = 0;
+	char	*path;
+
+	path = isKey(key) ? key2path(key, 0, 0, 0) : key;
+	if (opts.incF && match_globs(path, opts.incF, 0)) {
+		inc = 1;
+	}
+	if (opts.incS && match_globs(path, opts.incS, 0)) {
+		if (incp) *incp = 1;
+	}
+	if (opts.excF && match_globs(path, opts.excF, 0)) {
+		exc = 1;
+	}
+	if (opts.excS && match_globs(path, opts.excS, 0)) {
+		if (excp) *excp = 1;
+	}
+	if (key != path) free(path);
+	return ((opts.incF && !inc) || exc);  // skip this path?
+}
+
+private int
+printCset(int hasInc, int hasExc)
+{
+	/*
+	 * See 'bk help changes' for an English explanation
+	 * of this logic.
+	 *
+	 * Karnaugh map of solution:
+	 *	A = opts.incS;		B = opts.excS;
+	 *	C = has Included;	D = has Excluded;
+	 *
+	 * C can't happen if !A so those values are don't care, same for D & B
+	 *
+	 *	        AB
+	 *	    00 01 11 10
+	 *	 00  1  1  0  0
+	 *  CD	 01  x  0  0  x
+	 *	 11  x  x  0  x
+	 *	 10  x  x  1  1
+	 *
+	 * http://courseware.ee.calpoly.edu/~rsandige/KarnaughExplorer.html
+	 *
+	 * Solution: F(ABCD) = C !D + !A !D
+	 */
+	return ((hasInc && !hasExc) || (!opts.incS && !hasExc));
 }
 
 /*
@@ -993,21 +1130,25 @@ loadcset(sccs *cset)
  * returns true if any output printed (may all be filtered)
  */
 private int
-cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
+cset(hash *state, sccs *sc, char *compKey, char *pkey, FILE *f, char *dspec)
 {
 	int	flags = PRS_FORCE; /* skip checks in sccs_prsdelta(), no D_SET*/
 	int	iflags = INIT_NOCKSUM;
-	int	i, j, found;
-	char	**keys;
+	int	n, cret, foundComps;
+	int	hasComps, hasIncComps, hasExcComps;
+	int	printProduct, printComponent;
+	char	*dkey;
+	int	i, j;
+	cstate	*cs = 0;
+	char	**keys = 0;
 	ser_t	*csets = 0;
 	char	**list;
 	sccs	*s;
 	ser_t	d, e;
 	char	*rkey;
-	datum	k, v;
 	char	**complist;
 	int	rc = 0;
-	FILE	*fsave = 0;
+	FILE	*fcset = 0, *fsave = 0;
 	char	*buf;
 	size_t	len;
 	ser_t	ser;
@@ -1035,7 +1176,7 @@ cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
 		rstate->goneDB = loadDB(GONE, 0, DB_GONE);
 		chdir(buf);
 		rstate->graphDB = mdbm_mem();
-		if (dkey) {
+		if (compKey) {
 			/*
 			 * Cache the component graph as though the
 			 * product graph selected all (non optimal,
@@ -1061,18 +1202,18 @@ cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
 		 * we'd need to walk the weave by default because of noMeta
 		 * and empty merge node removal are on by default.
 		 */
-		if (opts.doComp || opts.verbose || opts.filt) {
+		if (opts.doComp || opts.verbose || opts.filt || opts.sel) {
 			rstate->csetDB = loadcset(sc);
 			assert(rstate->csetDB);
 		}
-		if (dkey) {
+		if (compKey) {
 			for (e = TABLE(sc); e >= TREE(sc); e--) {
 				FLAGS(sc, e) &= ~D_SET;
 			}
 		}
 	}
-	if (dkey) {
-		d = sccs_findKey(sc, dkey);
+	if (compKey) {
+		d = sccs_findKey(sc, compKey);
 		assert(d && pkey);
 		poly_range(sc, d, pkey);
 	}
@@ -1087,7 +1228,7 @@ cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
 	for (e = sc->rstop; e >= TREE(s); e--) {
 		if (FLAGS(sc, e) & D_SET) {
 			FLAGS(sc, e) &= ~D_SET;
-			if (!dkey || want(sc, e)) addArray(&csets, &e);
+			if (!compKey || want(sc, e)) addArray(&csets, &e);
 		}
 		if (e == sc->rstart) break;
 	}
@@ -1097,42 +1238,38 @@ cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
 	 * Walk the ordered cset list and dump the file deltas contain in
 	 * each cset. The file deltas are also sorted on the fly in dumplog().
 	 */
+	n = 0;
 	EACH_INDEX(csets, j) {
 		e = csets[j];
 
 		if (ferror(f)) break;	/* abort when stdout is closed */
-		if (opts.doComp || opts.verbose) {
-			ftrunc(opts.fcset, 0);
-			if (opts.keys) {
-				sccs_pdelta(sc, e, opts.fcset);
-				fputc('\n', opts.fcset);
-			} else {
-				sccs_prsdelta(sc, e, flags, dspec, opts.fcset);
-			}
-			if (opts.one) return (rc);
+		if (opts.num && (n >= opts.num)) goto out;
+		fcset = fmem();
+		if (opts.keys) {
+			sccs_pdelta(sc, e, fcset);
+			fputc('\n', fcset);
 		} else {
-			if (opts.keys) {
-				sccs_pdelta(sc, e, f);
-				fputc('\n', f);
-			} else {
-				sccs_prsdelta(sc, e, flags, dspec, f);
-			}
-			if (opts.one) return (rc);
+			sccs_prsdelta(sc, e, flags, dspec, fcset);
+		}
+		unless (opts.doComp || opts.verbose || opts.filt || opts.sel) {
+			buf = fmem_peek(fcset, &len);
+			fwrite(buf, 1, len, f);
+			fclose(fcset);
+			unless (compKey) n++;
 			continue;
 		}
 
 		/* get key list */
 		ser = e;
-		k.dptr = (char *)&ser;
-		k.dsize = sizeof(ser);
-		v = mdbm_fetch(rstate->csetDB, k);
-		keys = 0;
-		if (v.dptr) memcpy(&keys, v.dptr, v.dsize);
-		mdbm_delete(rstate->csetDB, k);
+		if (cs = hash_fetch(rstate->csetDB, &ser, sizeof(ser))) {
+			keys = cs->keylist;
+		} else {
+			keys = 0;
+		}
 
 		list = 0;
-		found = 0;
 		complist = 0;
+		hasComps = hasIncComps = hasExcComps = 0;
 		EACH_INDEX(keys, i) {
 			rkey = keys[i];
 			dkey = separator(rkey);
@@ -1143,8 +1280,11 @@ cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
 			 * changes foo even if foo is gone.
 			 * XXX: Any good reason to change that behavior?
 			 */
-			unless (opts.doComp && strstr(dkey, "/ChangeSet|")) {
-				found = 1;
+			if (componentKey(dkey)) {
+				unless (skipPath(dkey,
+					&hasIncComps, &hasExcComps)) {
+					hasComps = 1;
+				}
 			}
 			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,rstate);
 			unless (s) {
@@ -1180,25 +1320,45 @@ cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
 			 */
 			if (opts.verbose) list = collectDelta(s, d, list);
 		}
-		/*
-		 * if we have sub-components then we must be in the
-		 * product and if fmem is set then we must be
-		 * filtering in doComp verbose mode.  If so we don't know
-		 * if this product cset should be printed or not, so we
-		 * write it to the fmem file until we know
-		 */
-		if (!found && complist && opts.fmem) {
-			fsave = f;
-			ftrunc(opts.fmem, 0);
-			f = opts.fmem;
-		}
-		if (!opts.filt ||
-		    (keys && (!opts.prodOnly || proj_isProduct(sc->proj)))) {
+		printProduct = (!compKey &&
+		    ((hasComps &&
+			printCset(hasIncComps, hasExcComps)) ||
+			(cs && cs->hasFiles &&
+			    printCset(cs->hasIncFiles, cs->hasExcFiles))));
+		printComponent = (compKey &&
+		    ((opts.verbose && !skipPath(compKey, 0, 0)) ||
+			((opts.printComp || opts.verbose)  &&
+			    (cs && cs->hasFiles &&
+				printCset(cs->hasIncFiles, cs->hasExcFiles)))));
+		if ((!opts.filt && !opts.sel) ||
+		    (compKey && opts.printComp) ||
+		    printProduct || printComponent) {
 			/* write cset data saved above */
-			buf = fmem_peek(opts.fcset, &len);
+			buf = fmem_peek(fcset, &len);
 			fwrite(buf, 1, len, f);
+			unless (compKey) n++;
+			fclose(fcset);
+			fcset = 0;
+		} else {
+			/*
+			 * BAM doesn't print the ChangeSet
+			 * information, just the files.
+			 *
+			 * And if we are processing a component
+			 * and decided above to NOT print the
+			 * ChangeSet, then toss it.
+			 */
+			fsave = f;
+			if (opts.BAM || compKey) {
+				f = fmem();
+			} else {
+				f = fcset;
+			}
 		}
-		if (found) rc = 1; /* Remember we printed output */
+		if (cs && cs->hasFiles &&
+		    printCset(cs->hasIncFiles, cs->hasExcFiles)) {
+			rc = 1; /* Remember we printed output */
+		}
 		/* sort file deltas, print it, then free it */
 		dumplog(list, sc, e, dspec, flags, f);
 
@@ -1207,6 +1367,7 @@ cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
 		 * and recursively call cset() with the new cset
 		 */
 		if (complist) sccs_sdelta(sc, e, key);
+		foundComps = 0;
 		EACH(complist) {
 			rkey = keys[p2int(complist[i])];
 			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,rstate);
@@ -1215,10 +1376,15 @@ cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
 			assert(dkey);
 
 			/* call cset() recursively */
-			if (cset(state, s, dkey, key, f, dspec) && fsave) {
+			if (opts.excF && match_globs(key2path(dkey, 0, 0, 0),
+				opts.excF, 0)) continue;
+			cret = cset(state, s, dkey, key, f, dspec);
+			foundComps |= cret;
+			if (cret && fsave) {
 				/*
 				 * we generated output so flush the saved data
 				 */
+				n++;
 				buf = fmem_peek(f, &len);
 				f = fsave;
 				fsave = 0;
@@ -1226,13 +1392,20 @@ cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
 			}
 		}
 		freeLines(complist, 0);
-		/* reduce mem foot print, could be huge */
-		freeLines(keys, free);
+		/* reduce mem footprint, could be huge */
+		if (cs) {
+			if (cs->keylist) freeLines(cs->keylist, free);
+			hash_delete(rstate->csetDB, &ser, sizeof(ser));
+		}
 		if (fsave) {
-			/* No output generated, restore normal output */
+			if (compKey && rc) {
+				buf = fmem_peek(f, &len);
+				fwrite(buf, 1, len, fsave);
+			}
 			f = fsave;
 			fsave = 0;
 		}
+		if (fcset) fclose(fcset);
 	}
 
 	/*
@@ -1240,8 +1413,7 @@ cset(hash *state, sccs *sc, char *dkey, char *pkey, FILE *f, char *dspec)
 	 * The above loop may break out prematurely if pager exit
 	 * We need to account for it.
 	 */
-	free(csets);
-
+out:	free(csets);
 	return (rc);
 }
 

@@ -67,8 +67,8 @@ a repository, and that repository is the local repository while the
 named repository is the remote repository.  All the other selection
 options are applied to the list of local or remote only changesets.
 .LP
-The changesets to be listed may be specified as a revision, a range of
-revisions, or a list of revisions on stdin.
+The changesets to be listed may be limited to a revision, a range of
+revisions, the last (or first) N changesets, or a list of revisions on stdin.
 The default is all revisions.
 Specifying revisions is incompatible with the 
 .Q \-R/\-L
@@ -77,6 +77,9 @@ options.
 .de Tp
 .TP \fB\-\-dspecf\=\fP\*<file\*>
 ..
+.Tp
+.OPTreq \- n
+A numeric argument that limits the number of changesets printed.
 .Tp
 .OPTreq \-/ str \fB/\fP[\fBig\fP]
 List only those changesets whose comments contain the string
@@ -135,28 +138,13 @@ Show empty merge changesets.  By default, these are not shown.
 .B \-f
 print the changes in forward (oldest to newest) order.  The default is
 backwards in time, i.e., most recent to least recent order.
-.if \n[NESTED_NOT_YET] \{\
-.Tp
-.B \-F
-.tp
-.OPTopt \-\-filter= alias
-When processing a nested subset (see
-.B \-s
-below),
-include only the changesets in the product that contain the changesets in the
-alias.
-When not combined with 
-.B \-s
-list the product changesets that touch
-.ARG alias .
-.\}
 .Tp
 .B \-\-html
 Produce html as output.  May not be combined with
 .QR \-d .
 .Tp
 .OPTreq \-i pat
-Include information only from files matching
+Include information only from changesets involving files matching
 .ARG pat
 pattern (see below).
 .Tp
@@ -198,6 +186,16 @@ Use with
 .QR \-a
 to see tags and empty merges,
 i.e., everything which would be brought over with a bk pull.
+.Tp
+.B \-\-sparse\-ok
+When using include/exclude patterns (\c
+.B \-i\c
+/\c
+.B \-x\c
+) and the patterns could match in a component that is not
+populated, BitKeeper will refuse to perform the search and
+print an error. This option allows searching in sparse products
+(with some components not populated) without erroring.
 .if \n[NESTED_NOT_YET] \{\
 .Tp
 .OPTreq \-s alias
@@ -264,28 +262,26 @@ Same as
 except that each file's change history is followed by unified diffs
 for that change (using the :DIFFS_UP: keyword).
 .Tp
+.Tp
 .OPTreq \-x pat
-Exclude information from files matching
+Exclude information from changesets involving files matching
 .ARG pat
 pattern (see below).
 .SH
 INCLUDE/EXCLUDE PROCESSING
 .LP
-Include and/or exclude patterns may be used to control which
-files are included in verbose reporting (\c
-.QR \-v /\c
-.QR \-vv ;
-see above).
+Include and/or exclude patterns are used to control which
+changesets are selected for printing.
 There may be multiple include and/or exclude patterns.
-The patterns are a file glob the same as used by 
+The patterns are a file glob as used by 
 .B bk ignore.
 Patterns are matched against the partial pathname from the root
 of the repository.
 If the partial pathname matches any of the exclude patterns then
-the file is skipped.
+the changeset is skipped.
 If there are one or more include patterns but the partial
 pathname does not match any of the include patterns then the
-file is skipped.
+changeset is skipped.
 Exclude processing takes precedence over include processing.
 .LP
 When reporting information there can be ambiguity as to which name is used 
@@ -298,14 +294,14 @@ at the time of the changeset was in
 .BR src/foo.c .
 If you told the system to report
 .B src/*
-then the file will
-be in the set.
+then the file will be in the set.
+.LP
 .if \n[NESTED] \{\
 .SH PRODUCT USAGE
 This command has been extended to handle nested
 collections of repositories.
 .LP
-The default behaviour is identical to that of a traditional
+The default behavior is identical to that of a traditional
 standalone repository, the changesets of the product are listed.
 The various options behave as expected, the command treats the
 entire collection as one large repository so a 
@@ -426,6 +422,17 @@ ChangeSet@1.605, 2000-02-20 01:32:19-08:00, lm@bitmover.com
   Fix a diagnostic in pull.
   An aborted attempt at key compression.
 .DE
+.if \n[NESTED] \{\
+.SH BUGS
+Consider this query in a nested collection:
+.DS
+bk changes -i'source_component/*' -x'test_component/*'
+.DE
+The expectation is that you would only get changesets that touched 
+the source component if they did not touch the test component.
+As of now, the include will win whether the test component was
+or was not changed.
+.\}
 .SH "SEE ALSO"
 .SA commit
 .SA glob

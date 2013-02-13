@@ -6,6 +6,15 @@ Now it does user@host
 bk annotate -c<date> is now bk annotate -c<date_range>; the old usage is no
 longer supported (but see the docs for how to work around it).
 
+bk changes
+   Fixed bugs with include/exclude patterns that matched component's
+   ChangetSet files.
+
+   The -i/-x options now act as selectors, printing only changesets
+   that match a given pattern, but printing all information
+   about the changeset (use --filter for the old behavior; --filter
+   is undocumented because we find it unlikely anyone wanted the old
+   behavior).
 ============================================================================
 Release notes for BitKeeper version 5.4.4 (released Dec 7, 2012)
 

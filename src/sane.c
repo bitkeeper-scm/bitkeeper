@@ -99,7 +99,7 @@ sane(int readonly, int resync)
 				errors++;
 			}
 		}
-		proj_featureChk(0);
+		(void)features_bits(0);
 	} else {
 		fprintf(stderr, "sane: not in a BitKeeper repository\n");
 		errors++;

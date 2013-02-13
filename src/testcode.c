@@ -413,14 +413,21 @@ fgzip_main(int ac, char **av)
 	int	est_size = 0;
 	FILE	*f;
 	int	c;
+	int	append = 0;
+	int	appendoff = 0;	/* offset to append data */
 	int	expand = 0;
 	int	chksums = 0;
 	int	gzip = 0;
 	int	fsize = 0;
+	char	*mode;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "cdSs;z", 0)) != -1) {
+	while ((c = getopt(ac, av, "a|cdSs;z", 0)) != -1) {
 		switch (c) {
+		    case 'a':
+			append = 1;
+			if (optarg) appendoff = atoi(optarg);
+			break;
 		    case 'c':
 			chksums = 1;
 			break;
@@ -440,11 +447,15 @@ fgzip_main(int ac, char **av)
 			bk_badArg(c, av);
 		}
 	}
-	if (av[optind]) usage();
 
 	setmode(0, _O_BINARY);
 	if (expand) {
-		f = stdin;
+		if (append) usage();
+		f = av[optind] ? fopen(av[optind], "r") : stdin;
+		unless (f) {
+			perror(av[optind]);
+			exit(1);
+		}
 		if (chksums) fpush(&f, fopen_crc(f, "r", 0));
 		if (gzip) fpush(&f, fopen_vzip(f, "r"));
 		if (fsize) {
@@ -454,15 +465,43 @@ fgzip_main(int ac, char **av)
 			assert(ferror(f) == 0);
 			assert(fgetc(f) == EOF);
 			assert(ferror(f) == 0);
-		} else {
-			while ((c = fread(buf, 1, sizeof(buf), f)) > 0) {
-				fwrite(buf, 1, c, stdout);
-			}
+			fclose(f);
+			return (0);
+		}
+		while ((c = fread(buf, 1, sizeof(buf), f)) > 0) {
+			fwrite(buf, 1, c, stdout);
 		}
 	} else {
-		f = stdout;
-		if (chksums) fpush(&f, fopen_crc(f, "w", est_size));
-		if (gzip) fpush(&f, fopen_vzip(f, "w"));
+		if (fsize) usage();
+		mode = "w";
+		if (append) mode = "r+";
+		f = av[optind] ? fopen(av[optind], mode) : stdout;
+		unless (f) {
+			perror(av[optind]);
+			exit(1);
+		}
+		if (chksums) fpush(&f, fopen_crc(f, mode, est_size));
+		if (gzip) fpush(&f, fopen_vzip(f, append ? "a" : "w"));
+		if (appendoff || (append && !gzip)) {
+			if (appendoff > 0) {
+				fseek(f, appendoff, SEEK_SET);
+			} else {
+				fseek(f, appendoff, SEEK_END);
+			}
+		}
+		if (!gzip && chksums) {
+			off_t	savepos = ftell(f);
+
+			/*
+			 * run the protocol ourself, to compute the xor
+			 * of the remaining by removing the xor of what
+			 * will be removed.
+			 */
+			while ((c = fread(buf, 1, sizeof(buf), f)) > 0) {
+				/* bit bucket */
+			}
+			fseek(f, savepos, SEEK_SET);
+		}
 		while ((c = fread(buf, 1, sizeof(buf), stdin)) > 0) {
 			fwrite(buf, 1, c, f);
 		}

@@ -1,5 +1,6 @@
 #include "sccs.h"
 #include "logging.h"
+#include "nested.h"
 
 /* map feature enum, data about feature */
 static struct {
@@ -14,6 +15,13 @@ FEATURES
 };
 #define	NFEATURES	((sizeof(flist)/sizeof(flist[0])) - 1)
 
+// mask of feature bits allowed in features file
+const u32	repomask = 1
+#define X(a, b, c, d,e)	| (d * (1 << a))
+FEATURES
+#undef X
+    ;
+
 /*
  * bk feature [feature]
  * with no args, list all used by this repo;
@@ -24,19 +32,17 @@ int
 features_main(int ac, char **av)
 {
 	int	i, comma;
-	char	**here;
+	char	*here;
 
 	unless (av[1]) {
 		bk_nested2root(1);
-		here = bk_features(0);
-		unless (here) return (1);
-		EACH(here) {
-			if (i > 1) printf(",");
-			printf("%s", here[i]);
+		if (here = features_fromBits(features_bits(0))) {
+			printf("%s\n", here);
+			free(here);
+			return (0);
+		} else {
+			return (1);
 		}
-		printf("\n");
-		freeLines(here, free);
-		return (0);
 	}
 
 	if (streq(av[1], "--all")) {
@@ -69,16 +75,6 @@ features_main(int ac, char **av)
 	return (1);
 }
 
-char **
-bk_features(project *p)
-{
-	char	**here = file2Lines(0,
-		    proj_fullpath(p, "BitKeeper/log/features"));
-
-	uniqLines(here, free);
-
-	return (here);
-}
 
 /*
  * Generate a comma separated list of "feature" strings to sent over the wire
@@ -89,10 +85,10 @@ bk_features(project *p)
  * otherwise only the codes required by this repository are sent.
  */
 char *
-bk_featureList(project *p, int all)
+features_list(project *p, int all)
 {
 	char	*ret;
-	char	**list;
+	u32	bits;
 
 	if (all) {
 #define	X(a, b, c, d, e) c ","
@@ -107,43 +103,40 @@ bk_featureList(project *p, int all)
 		chop(ret);	/* remove trailing , */
 	} else {
 		/* just return features required for current repo */
-		list = bk_features(p);
+		bits = features_bits(p);
 
 		/*
 		 * Don't send REMAP in FEATURES_REQUIRED, it doesn't matter
 		 * over the protocol.
 		 */
-		removeLine(list, flist[FEAT_REMAP].name, free);
+		TRACE("bits=%x", bits);
+		bits &= ~FEAT_REMAP;
 
-		ret = joinLines(",", list);
-		freeLines(list, free);
-		unless (ret) ret = strdup("");
+		ret = features_fromBits(bits);
+		TRACE("bits=%x(%s)", bits, ret);
 	}
 	return (ret);
 }
 
-
 private int
 has_feature(char *bk, int f)
 {
-	char	*p, *val;
+	char	*p;
+	u32	bits = 0;
 	char	var[20];
-	char	buf[MAXLINE];
 
-	assert(f > 0 && f <= NFEATURES);
+	assert((f > 0) && (f <= (1 << NFEATURES)));
+	assert(!(f & (f - 1))); // is pow2
 
 	sprintf(var, "%s_FEATURES", bk);
 	if (p = getenv(var)) {
-		strcpy(buf, p);
-		val = buf;
-		while (p = strsep(&val, ",")) {
-			if (streq(p, flist[f].name) ||
-			    ((f == FEAT_BKFILE) &&
-			    streq(p, "bSFILEv1"))) {
-				return (1);
-			}
-		}
+		/* unknown features don't matter */
+		p = strdup(p);
+		bits = features_toBits(p, p);
+		free(p);
 	}
+	if (bits & f) return (1);
+	if ((f == FEAT_BKFILE) && (bits & FEAT_bSFILEv1)) return (1);
 	return (0);
 }
 
@@ -170,129 +163,94 @@ bkd_hasFeature(int f)
 /*
  * Enable or disable a feature in the current repository
  */
-void
-bk_featureSet(project *p, int feature, int on)
+private void
+features_setMask(project *p, u32 bits, u32 mask)
 {
-	char	**local;
-	char	*ffile;
-	char	*name;
+	project	*p2, *freep = 0;
+	u32	obits, nbits;
 	int	i;
+	char	*ffile, *t, *q;
+	nested	*n;
+	comp	*c;
+	p_feat	*pf;
 	char	ftmp[MAXPATH];
 
-	/* we better have this feature defined above */
-	assert(feature > 0 && feature <= NFEATURES);
-	assert(flist[feature].repo);
+	unless (p || (freep = p = proj_init("."))) return;
+	if (p2 = proj_product(p)) p = p2;
+	if (p2 = proj_isResync(p)) p = p2;
+
+	obits = features_bits(p);
+	nbits = (obits & ~mask) | bits;
+	TRACE("%x + %x/%x => %x", obits, bits, mask, nbits);
+
+	if (obits == nbits) {
+		/* already set correctly */
+		if (freep) proj_free(freep);
+		return;
+	}
+
+	// only items allowed in features file should be set
+	assert(!(nbits & ~repomask));
 
 	ffile = proj_fullpath(p, "BitKeeper/log/features");
-	sprintf(ftmp, "%s.new.%u", ffile, getpid());
-	local = file2Lines(0, ffile);
-
-	/* avoid needless rewrites, they mess up NFS */
-	name = flist[feature].name;
-	i = removeLine(local, name, free);
-	if (on) {
-		if (i) goto out; /* already had it */
-		local = addLine(local, strdup(name));
-		sortLines(local, 0);
-	} else {
-		unless (i) goto out; /* wasn't here anyway */
-	}
-	if (lines2File(local, ftmp) || rename(ftmp, ffile)) {
-		perror(ffile);
-		unlink(ftmp);
-	}
-out:	freeLines(local, free);
-}
-
-/*
- * Return true of the given feature is enabled in the repository.
- *
- * XXX not currently used and can be deleted when the features cset
- *     is collapsed
- */
-int
-bk_featureTest(project *p, int feature)
-{
-	char	**local;
-	char	*name;
-	int	i, ret = 0;
-
-	/* we better have this feature defined above */
-	assert(feature > 0 && feature <= NFEATURES);
-	assert(flist[feature].repo);
-
-	name = flist[feature].name;
-	local = bk_features(p);
-	EACH(local) {
-		if (streq(name, local[i]) ||
-		    ((feature == FEAT_BKFILE) &&
-		    streq("bSFILEv1", local[i]))) {
-			ret = 1;
-			break;
+	assert(ffile);
+	if (nbits) {
+		sprintf(ftmp, "%s.new.%u", ffile, getpid());
+		t = features_fromBits(nbits);
+		for (q = t; *q; q++) if (*q == ',') *q = '\n';
+		Fprintf(ftmp, "%s\n", t);
+		free(t);
+		if (rename(ftmp, ffile)) {
+			perror(ffile);
+			unlink(ftmp);
 		}
+	} else {
+		// bk-5.x doesn't like an empty file
+		unlink(ffile);
 	}
-	freeLines(local, free);
-	return (ret);
-}
-
-/*
- * return true of this repo is compatible with bk-4.x
- *
- * This is used to determine if the sfile should have a new version rev
- * added to it so old bk's won't be able to parse it.
- */
-int
-bk_featureCompat(project *p)
-{
-	char	**local;
-	int	ret;
-
-	local = bk_features(p);
+	pf = proj_features(p);
+	pf->bits = nbits;
 
 	/*
-	 * remap, doesn't change the file format,
-	 * and binary sfiles don't change the ascii format
-	 *
-	 * This is needed because the patch SFIO code would attach sfio's as
-	 * part of a patch.
+	 * For compatibility reasons we keep a copy of the product
+	 * features file in every component.  Only bk-5.x would read
+	 * the features file in a component.
 	 */
-	removeLine(local, flist[FEAT_REMAP].name, free);
-	removeLine(local, flist[FEAT_BKFILE].name, free);
+	if (proj_isProduct(p)) {
+		t = ftmp + sprintf(ftmp, "%s/", proj_root(p));
+		n = nested_init(0, 0, 0, NESTED_PENDING);
+		EACH_STRUCT(n->comps, c, i) {
+			if (c->product || !c->present) continue;
 
-	ret = emptyLines(local);
-	freeLines(local, free);
-	return (ret);
-}
-
-/*
- * Verify that all the feature codes for the current repository are
- * understood by this bk.
- */
-void
-bk_featureRepoChk(project *p)
-{
-	int	i, j;
-	char	**missing = 0;
-	char	**local = 0;
-
-	local = bk_features(p);
-	EACH(local) {
-		for (j = 1; j <= NFEATURES; j++) {
-			if (streq(local[i], flist[j].name)) break;
+			sprintf(t, "%s/BitKeeper/log/features", c->path);
+			if (nbits) {
+				fileCopy(ffile, ftmp);
+			} else {
+				unlink(ftmp);
+			}
 		}
-		if (j > NFEATURES) missing = addLine(missing, local[i]);
+		nested_free(n);
 	}
-	if (missing) {
-		getMsg("repo_feature", joinLines(",", missing), '=', stderr);
-		exit(101);
-	}
-	freeLines(local, free);
-
-	/* enforce nested restrictions */
-	if (proj_isEnsemble(p) && bk_notLicensed(p, LIC_SAM, 0)) {
-		exit(100);
-	}
+	if (freep) proj_free(freep);
 }
+
+void
+features_set(project *p, int feature, int on)
+{
+	u32	set = (on != 0) * feature;
+	u32	mask = feature;
+
+	/* if we are changing BKFILE then clear bSFILEv1 */
+	if (feature == FEAT_BKFILE) mask |= FEAT_bSFILEv1;
+	features_setMask(p, set, mask);
+}
+
+void
+features_setAll(project *p, u32 bits)
+{
+	features_setMask(p, bits, ~0);
+}
+
 
 /*
  * This function compares the local repository feature list with the
@@ -307,44 +265,36 @@ bk_featureRepoChk(project *p)
  * function returns non-zero.
  */
 int
-bk_featureChk(int bkd, int no_repo)
+features_bkdCheck(int bkd, int no_repo)
 {
-	int	i, j;
 	char	*t;
-	char	**rmt_features = 0, **rmt_fneeded = 0, **features = 0;
-	char	**missing;
-	char	buf[256];
+	u32	rmt_features = 0, features = 0;
+	char	buf[MAXLINE];
 
 	if (no_repo) goto fneeded;
 
 	sprintf(buf, "%s_FEATURES", bkd ? "BK" : "BKD");
-	if (t = getenv(buf)) {
-		rmt_features = splitLine(t, ",", 0);
-		if (strstr(t, flist[FEAT_SAMv3].name)) {
-			/*
-			 * Make existing nested bk's appear to understand
-			 * remap.
-			 */
-			rmt_features = addLine(rmt_features,
-			    strdup(flist[FEAT_REMAP].name));
-		}
-		uniqLines(rmt_features, free);
-	}
+
+	/* unknown features don't matter */
+	if (t = getenv(buf)) rmt_features = features_toBits(t, 0);
+
+	/* Make existing nested bk's appear to understand remap. */
+	if (rmt_features & FEAT_SAMv3) rmt_features |= FEAT_REMAP;
 
 	/* check BitKeeper/log/features against BK[D]_FEATURES */
-	features = bk_features(0);
+	features = features_bits(0);
 	/* remap doesn't matter over protocol */
-	removeLine(features, flist[FEAT_REMAP].name, free);
-	pruneLines(features, rmt_features, 0, free);
-	freeLines(rmt_features, free);
+	features &= ~FEAT_REMAP;
+	features &= ~rmt_features;
 
 	/*
 	 * We don't fail in the case where the remote bkd didn't
 	 * return BK[D]_FEATURES, this happens with the lease server for
 	 * example. Or bkweb.
 	 */
-	if (!emptyLines(features) && rmt_features) {
-		t = joinLines(",", features);
+	if (features && rmt_features) {
+		t = features_fromBits(features);
+		assert(t);
 		if (bkd) {
 			out("ERROR-bk_missing_feature ");
 			out(t);
@@ -355,37 +305,143 @@ bk_featureChk(int bkd, int no_repo)
 		free(t);
 		return (-1);
 	}
-	freeLines(features, free);
 
 fneeded:
 	/* check BK[D]_FEATURES_REQUIRED against known feature lists */
 	sprintf(buf, "%s_FEATURES_REQUIRED", bkd ? "BK" : "BKD");
-	if (t = getenv(buf)) {
-		rmt_fneeded = splitLine(t, ",", 0);
-		sortLines(rmt_fneeded, 0);
-	}
-	missing = 0;
-	EACH(rmt_fneeded) {
-		for (j = 1; j <= NFEATURES; j++) {
-			if (streq(rmt_fneeded[i], flist[j].name)) break;
-		}
-		if (j > NFEATURES) {
-			missing = addLine(missing, strdup(rmt_fneeded[i]));
-		}
-	}
-	freeLines(rmt_fneeded, free);
-	if (missing) {
-		t = joinLines(",", missing);
-		freeLines(missing, free);
+	if ((t = getenv(buf)) && features_toBits(t, buf) && *buf) {
 		if (bkd) {
 			out("ERROR-bkd_missing_feature ");
-			out(t);
+			out(buf);
 			out("\n");
 		} else {
-			getMsg("bk_missing_feature", t, '=', stderr);
+			getMsg("bk_missing_feature", buf, '=', stderr);
 		}
-		free(t);
 		return (-1);
 	}
 	return (0);
+}
+
+u32
+features_bits(project *p)
+{
+	project	*p2, *freep = 0;
+	p_feat	*pf;
+	char	*here;
+	u32	ret;
+
+	unless (p || (freep = p = proj_init("."))) return (0);
+
+	if (p2 = proj_product(p)) p = p2;
+	if (p2 = proj_isResync(p)) p = p2;
+
+	pf = proj_features(p);
+	if (ret = pf->bits) {
+		if (freep) proj_free(freep);
+		return (ret);
+	}
+	if (here = loadfile(proj_fullpath(p, "BitKeeper/log/features"), 0)) {
+		pf->bits = features_toBits(here, here);
+		if (*here) {
+			getMsg("repo_feature", here, '=', stderr);
+			exit(101);
+		}
+		free(here);
+		here = features_fromBits(pf->bits);
+		TRACE("loaded %s=%s", proj_root(p), here);
+		free(here);
+	} else {
+		pf->bits = 1;  /* none */
+	}
+
+	/* enforce nested restrictions */
+	if (proj_isEnsemble(p) && bk_notLicensed(p, LIC_SAM, 0)) {
+		exit(100);
+	}
+	ret = pf->bits;
+	if (freep) proj_free(freep);
+	return (ret);
+}
+
+/*
+ * return true/false if the given feature is enabled for the current
+ * repository.
+ */
+int
+features_test(project *p, int feature)
+{
+	/* we better have this feature defined above */
+	assert(feature > 0 && feature <= (1 << NFEATURES));
+	assert(!(feature & (feature - 1))); // is pow2
+	assert(feature & repomask);
+
+	if (feature == FEAT_BKFILE) feature |= FEAT_bSFILEv1; /* test either */
+	return (features_bits(p) & feature);
+}
+
+
+/*
+ * Convert a list of features into a bitfield
+ * bit 0 is always set
+ *
+ * If 'bad' is set then any features that not understood
+ * are put in a comma separated list and written to bad.
+ */
+u32
+features_toBits(char *features, char *bad)
+{
+	int	i, j;
+	char	**list;
+	char	**missing = 0;
+	char	*t;
+	u32	ret = 1;
+	static	hash	*namemap;
+
+	unless (namemap) {
+		namemap = hash_new(HASH_MEMHASH);
+		for (i = 1; i <= NFEATURES; i++) {
+			hash_insertStrU32(namemap, flist[i].name, i);
+		}
+	}
+	list = splitLine(features, " ,\r\n", 0);
+	EACH(list) {
+		if (j = hash_fetchStrU32(namemap, list[i])) {
+			ret |= (1 << j);
+		} else if (bad) {
+			missing = addLine(missing, list[i]);
+		}
+	}
+	if (bad) *bad = 0;
+	if (missing) {
+		assert(bad);	/* we must catch failures */
+		sortLines(missing, 0);
+		t = joinLines(",", missing);
+		strcpy(bad, t);
+		free(t);
+		freeLines(missing, 0);
+	}
+	freeLines(list, free);
+	return (ret);
+}
+
+char *
+features_fromBits(u32 bits)
+{
+	int	i;
+	char	**list = 0;
+	char	*ret;
+
+	bits &= ~1;
+
+	for (i = 1; bits && (i <= NFEATURES); i++) {
+		if (bits & (1 << i)) {
+			bits &= ~(1 << i);
+			list = addLine(list, flist[i].name);
+		}
+	}
+	assert(!bits);
+	sortLines(list, 0);
+	unless (ret = joinLines(",", list)) ret = strdup("");
+	freeLines(list, 0);
+	return (ret);
 }

@@ -259,7 +259,7 @@ cmd_pull_part2(int ac, char **av)
 	fputs("@PATCH@\n", stdout);
 
 	n = 2;
-	if (bk_hasFeature(FEAT_pSFIO)) {
+	if (bk_hasFeature(FEAT_BKFILE)) {
 		if (rem) {
 			/* A pull that will create a merge */
 

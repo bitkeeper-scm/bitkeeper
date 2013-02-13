@@ -905,7 +905,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	if (t = getenv("_BK_TESTFEAT")) {
 		t = strdup(t);
 	} else {
-		t = bk_featureList(0, 1); /* all supported features */
+		t = features_list(0, 1); /* all supported features */
 	}
 	fprintf(f, "putenv BK_FEATURES=%s\n", t);
 	free(t);
@@ -913,7 +913,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		if (t = getenv("_BK_TEST_REQUIRED")) {
 			t = strdup(t);
 		} else {
-			t = bk_featureList(0, 0); /* only required features */
+			t = features_list(0, 0); /* only required features */
 		}
 		fprintf(f, "putenv BK_FEATURES_REQUIRED=%s\n", t);
 		free(t);
@@ -1003,7 +1003,7 @@ getServerInfo(remote *r, hash *bkdEnv)
 	r->seed = newseed;
 	if (ret) {
 		fprintf(stderr, "%s: premature disconnect\n", prog);
-	} else if (bk_featureChk(0, r->noLocalRepo)) {
+	} else if (features_bkdCheck(0, r->noLocalRepo)) {
 		/* cleanup stale nested lock */
 		if ((bkdEnv && hash_fetchStr(bkdEnv, "BKD_NESTED_LOCK")) ||
 		    getenv("BKD_NESTED_LOCK")) {
@@ -1047,7 +1047,7 @@ sendServerInfo(int no_repo)
 	unless (no_repo || isdir(BKROOT)) no_repo = 1;
 
 	out("@SERVER INFO@\n");
-	if (bk_featureChk(1, no_repo)) return (1);
+	if (features_bkdCheck(1, no_repo)) return (1);
 	unless (no_repo) {
 		if (p = lease_bkl(0, &errs)) {
 			free(p);
@@ -1143,7 +1143,7 @@ sendServerInfo(int no_repo)
 	if (p = getenv("_BKD_TESTFEAT")) {
 		p = strdup(p);
 	} else {
-		p = bk_featureList(0, 1); /* all supported features */
+		p = features_list(0, 1); /* all supported features */
 	}
 	out("\nFEATURES=");
 	out(p);
@@ -1151,7 +1151,7 @@ sendServerInfo(int no_repo)
 	if (p = getenv("_BKD_TEST_REQUIRED")) {
 		p = strdup(p);
 	} else {
-		p = bk_featureList(0, 0); /* only required features */
+		p = features_list(0, 0); /* only required features */
 	}
 	out("\nFEATURES_REQUIRED=");
 	out(p);

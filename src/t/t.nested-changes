@@ -431,7 +431,7 @@ cmpfiles WANT OUT
 echo OK
 
 echo $N Run project level changes -v -icomp_file.....................$NL
-bk -P changes  -v -igcc/local1 -nd':INDENT::REV: :DPN: :C:' |
+bk -P changes  --filter -v -igcc/local1 -nd':INDENT::REV: :DPN: :C:' |
     sed 's/BitKeeper file.*/new/' > OUT || exit 1
 cat <<EOF > WANT
 1.4 ChangeSet local
@@ -439,7 +439,7 @@ cat <<EOF > WANT
     1.1 gcc/local1 add
     1.0 gcc/local1 
 EOF
-cmpfiles OUT WANT
+cmpfiles WANT OUT
 echo OK
 
 echo $N Run component level changes .................................$NL
@@ -582,7 +582,7 @@ echo OK
 
 echo $N Test filtering of csets .....................................$NL
 cd project
-bk changes -v -i'*gone' \
+bk changes -v --filter -i'*gone' \
   -nd':GFILE:@:REV:$if(:CHANGESET:){ :C:}'  > GOT || exit 1
 cat <<EOF > WANT
 ChangeSet@1.2 attach gcc, gdb
@@ -596,7 +596,7 @@ ChangeSet@1.1 Initial repository create
 BitKeeper/etc/gone@1.1
 BitKeeper/etc/gone@1.0
 EOF
-cmpfiles GOT WANT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Test filtering of csets in non-nested .......................$NL
@@ -620,17 +620,19 @@ bk delta $Q -fynull gcc/file1
 (cd gcc; bk commit -S $Q -yin-gcc)
 bk commit $Q -y"prod_file and gcc"
 bk tag $Q TAG
-bk changes -v -i'prod_file' \
-    -nd'$if(:CHANGESET:){:GFILE:@:REV:}' > WANT || exit 1
-bk changes -i'prod_file' -nd':GFILE:@:REV:' > GOT || exit 1
+bk changes -v --filter -i'prod_file' \
+    -nd'$if(:CHANGESET:){:GFILE:@:REV:}' > GOT || exit 1
+cat <<EOF > WANT
+ChangeSet@1.6
+ChangeSet@1.3
+EOF
+cmpfiles WANT GOT
+bk changes --filter -i'prod_file' -nd':GFILE:@:REV:' > GOT || exit 1
+cat <<EOF > WANT
+ChangeSet@1.6
+ChangeSet@1.3
+EOF
 cmpfiles GOT WANT
-bk changes -i'prod_file' -nd':GFILE:@:REV:' > GOT || exit 1
-cmpfiles GOT WANT
-echo OK
-
-echo $N Test filtering of csets in verbose and not verbose ..........$NL
-bk changes -v -i'prod_file' \
-    -nd'$if(:CHANGESET:){:GFILE:@:REV:}' > WANT || exit 1
 bk changes -i'prod_file' -nd':GFILE:@:REV:' > GOT || exit 1
 cmpfiles GOT WANT
 echo OK
@@ -651,13 +653,13 @@ echo OK
 
 echo $N Test filtering of files in components .......................$NL
 # output nothing because these aren't in the product repo
-bk changes -igcc/file1 -nd':GFILE:@:REV:' > GOT || exit 1
+bk changes --filter -igcc/file1 -nd':GFILE:@:REV:' > GOT || exit 1
 cat <<'EOF' > WANT
 ChangeSet@1.6
 ChangeSet@1.4
 EOF
 cmpfiles WANT GOT
-bk changes -V -igcc/file1 -nd':GFILE:@:REV:' > GOT || exit 1
+bk changes -V --filter -igcc/file1 -nd':GFILE:@:REV:' > GOT || exit 1
 cat <<'EOF' > WANT
 ChangeSet@1.6
 gcc/ChangeSet@1.3
@@ -665,7 +667,7 @@ ChangeSet@1.4
 gcc/ChangeSet@1.2
 EOF
 cmpfiles WANT GOT
-bk changes -vigcc/file1 -nd':GFILE:@:REV:' > GOT || exit 1
+bk changes --filter -vigcc/file1 -nd':GFILE:@:REV:' > GOT || exit 1
 cat <<'EOF' > WANT
 ChangeSet@1.6
 gcc/ChangeSet@1.3
@@ -758,13 +760,10 @@ bk commit -S $Q -ynull
 cd ..
 bk commit $Q -ynullincopy
 bk pull $Q
-bk changes -er+ -xfoo -ndX > GOT
-# File should have something in it.
-test -s GOT && {
-	echo fix test
-	exit 1
-}
-echo "failed (bug )"
+bk changes --filter -er+ -xfoo -nd:I: > GOT
+bk changes -r+ -nd:I: > WANT
+cmpfiles WANT GOT
+echo OK
 
 echo $N 'Test $begin and $end ........................................'$NL
 cd "$HERE/project"

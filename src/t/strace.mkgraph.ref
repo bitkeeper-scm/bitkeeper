@@ -1,10 +1,10 @@
 # baseline data for t.strace-cnt
 chmod 2
 close 6
-fstat 6
+fstat 7
 lseek 3
 lstat 15
 open 8
-read 76
+read 75
 stat 2
 write 92

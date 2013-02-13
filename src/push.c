@@ -1021,7 +1021,7 @@ genpatch(FILE *wf, char *rev_list, int gzip, int isLocal)
 	opts.inBytes = opts.outBytes = 0;
 	n = 2;
 	if (opts.verbose) makepatch[n++] = "-v";
-	if (bkd_hasFeature(FEAT_pSFIO)) {
+	if (bkd_hasFeature(FEAT_BKFILE)) {
 		if (isLocal) {
 			makepatch[n++] = "-M3";
 		} else {
