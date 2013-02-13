@@ -154,7 +154,7 @@ poly_r2c(sccs *cset, ser_t orig, char ***pcsets)
 void
 poly_range(sccs *s, ser_t d, char *pkey)
 {
-	cmark	*clist, *cm;
+	cmark	*clist, *cm = 0;
 	ser_t	e;
 
 	assert(d);

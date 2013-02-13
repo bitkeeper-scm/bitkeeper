@@ -167,7 +167,8 @@ seekBlock(fcrc *fc)
 	int	n;		/* num of blocks into file */
 	off_t	new_pos = 0;	/* start of next block to be read */
 
-	T_FS("cookie %p, block %ld, data %ld", fc, fc->boff, fc->offset);
+	T_FS("cookie %p, block %lld, data %lld",
+	    fc, (long long)fc->boff, (long long)fc->offset);
 	if (fc->boff == fc->offset) return;	/* no seek needed */
 
 	// User's idea of offset, not file's idea
@@ -175,7 +176,7 @@ seekBlock(fcrc *fc)
 	if (n) new_pos = (n * fc->datasz) - HDRSZ;
 	if (new_pos != fc->boff) {
 		fc->boff = new_pos;
-		T_FS("new %ld", fc->boff);
+		T_FS("new %lld", (long long)fc->boff);
 
 		// Seek to the file's idea of that block start
 		fseek(fc->f, (n * (fc->datasz + PER_BLK)), SEEK_SET);
@@ -196,7 +197,7 @@ readBlock(fcrc *fc, char *buf)
 	int	i;
 	int	xblock = 0, xor = 0, bsize = fc->datasz;
 
-	T_FS("cookie %p, block %ld", fc, fc->boff);
+	T_FS("cookie %p, block %lld", fc, (long long)fc->boff);
 	// Are we at or past xor block?
 	if ((fc->filesz >= 0) && (fc->boff > fc->filesz)) {
 		// if read xor block already -> EOF
@@ -253,7 +254,7 @@ readBlock(fcrc *fc, char *buf)
 		if (len < bsize) {
 			if (fc->filesz < 0) {
 				fc->filesz = fc->boff - bsize + len;
-				T_FS("filesz = %ld", fc->filesz);
+				T_FS("filesz = %lld", (long long)fc->filesz);
 			}
 			unless (len) readBlock(fc, buf); // process xor block
 		}
@@ -462,7 +463,7 @@ fileSize(fcrc *fc)
 	fc->boff = n ? n * fc->datasz - HDRSZ : 0;
 	fc->rbuf_off = fc->boff;
 	fc->rlen = readBlock(fc, fc->rbuf);
-	T_FS("= %ld", fc->filesz);
+	T_FS("= %lld", (long long)fc->filesz);
 	assert(fc->filesz >= 0);
 }
 
@@ -471,7 +472,8 @@ crcSeek(void *cookie, fpos_t offset, int whence)
 {
 	fcrc	*fc = cookie;
 
-	T_FS("cookie %p, offset %ld, whence %d", cookie, offset, whence);
+	T_FS("cookie %p, offset %lld, whence %d",
+	    cookie, (long long)offset, whence);
 	if (whence == SEEK_CUR) {
 		assert(offset == 0);
 		return (fc->offset);
@@ -515,7 +517,7 @@ done:
 	}
 	fc->offset = offset;
 	//fprintf(stderr, "%p: crcSeek ret=%ld\n", fc->fme, fc->offset);
-	T_FS("= %ld", fc->offset);
+	T_FS("= %lld", (long long)fc->offset);
 	return (fc->offset);
 }
 

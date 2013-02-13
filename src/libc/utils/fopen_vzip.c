@@ -452,7 +452,7 @@ zipSeek(void *cookie, fpos_t offset, int whence)
 	fgzip	*fz = cookie;
 	szblock	*sz;
 
-	T_FS("cookie %p %ld %d", fz, offset, whence);
+	T_FS("cookie %p %lld %d", fz, (long long)offset, whence);
 	if (whence == SEEK_CUR) {
 		assert(offset == 0);
 		return (fz->offset);

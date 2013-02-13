@@ -516,7 +516,7 @@ heapdump_main(int ac, char **av)
 	return (0);
 }
 
-const	char	const *delta_flagNames[] = {
+const char *delta_flagNames[] = {
 	"INARRAY",		/* 0 */
 	"NONEWLINE",		/* 1 */
 	0,			/* 2 */

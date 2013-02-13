@@ -32,7 +32,7 @@ int der_decode_sequence_ex(const unsigned char *in, unsigned long  inlen,
                            ltc_asn1_list *list,     unsigned long  outlen, int ordered)
 {
    int           err, type;
-   unsigned long size, x, y, z, i, blksize;
+   unsigned long size, x, y, z, i, blksize = 0;
    void          *data;
 
    LTC_ARGCHK(in   != NULL);

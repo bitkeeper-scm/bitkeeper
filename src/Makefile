@@ -127,8 +127,11 @@ endif
 
 ifeq ($(shell uname -s), Darwin)
 	XLIBS += -lresolv
-	WARNINGS += -Wno-unused-value
 	G	+= -DNOPROC
+endif
+
+ifeq (clang, $(findstring clang, $(shell $(CC) --version)))
+	WARNINGS += -Wno-unused-value -Wno-empty-body
 endif
 
 GCCOPTS=
