@@ -70,19 +70,6 @@ usage:	fprintf(stderr, "usage: bk sfio [-qm] -i < <archive.sfio>\n");
 	return (1);
 }
 
-private char *
-nextfile(char *buf)
-{
-	static	int eof = 0;
-	static	int i = 1;
-
-	unless (eof) {
-		if (fgets(buf, MAXPATH, stdin)) return (buf);
-		eof = 1;
-	}
-	return (0);
-}
-
 /*
  * sfio -i - produce a tree from an sfio on stdin
  * sfio -p - produce a listing of the files in the sfio and verify checksums
