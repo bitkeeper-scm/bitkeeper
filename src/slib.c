@@ -384,7 +384,7 @@ linelen(char *s)
 private void
 sertoa(register char *buf, ser_t val)
 {
-	char	reverse[6];
+	char	reverse[16];
 	int	i, j;
 
 	for (i = 0; val; i++, val /= 10) {
@@ -15438,8 +15438,9 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_UTC: /* UTC */ {
-		char	*utcTime;
-		if (utcTime = sccs_utctime(s, d)) {
+		char	utcTime[32];
+
+		if (sccs_utctime(s, d, utcTime)) {
 			fs(utcTime);
 			return (strVal);
 		}
@@ -15447,10 +15448,10 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_UTC_FUDGE: /* UTC-FUDGE */ {
-		char	*utcTime;
+		char	utcTime[32];
 
 		DATE_SET(s, d, (DATE(s, d) - DATE_FUDGE(s, d)));
-		if (utcTime = sccs_utctime(s, d)) {
+		if (sccs_utctime(s, d, utcTime)) {
 			fs(utcTime);
 			DATE_SET(s, d, (DATE(s, d) + DATE_FUDGE(s, d)));
 			return (strVal);
@@ -16886,20 +16887,26 @@ sccs_findSortKey(sccs *s, char *sortkey)
  * Do not change times without time zones to localtime.
  */
 char *
-sccs_utctime(sccs *s, ser_t d)
+sccs_utctime(sccs *s, ser_t d, char *buf)
 {
 	struct	tm *tp;
-	static	char sdate[30];
+	char	*t = buf;
 
 	tp = utc2tm(DATE(s, d));
-	sprintf(sdate, "%d%02d%02d%02d%02d%02d",
-	    tp->tm_year + 1900,
-	    tp->tm_mon + 1,
-	    tp->tm_mday,
-	    tp->tm_hour,
-	    tp->tm_min,
-	    tp->tm_sec);
-	return (sdate);
+
+	sertoa(t, tp->tm_year + 1900);
+	t += 4;
+
+	// inline sprintf("%02d%02d%02d%02d", ...)
+#define	X(n) *t++ = '0' + ((n) / 10); *t++ = '0' + ((n) % 10)
+	X(tp->tm_mon+1);
+	X(tp->tm_mday);
+	X(tp->tm_hour);
+	X(tp->tm_min);
+	X(tp->tm_sec);
+#undef X
+	*t++ = 0;
+	return (buf);
 }
 
 /*
@@ -16920,11 +16927,13 @@ delta_sdate(sccs *s, ser_t d)
 void
 sccs_pdelta(sccs *s, ser_t d, FILE *out)
 {
+	char	utctime[32];
+
 	assert(d);
 	fprintf(out, "%s|%s|%s|%05u",
 	    USERHOST(s, d),
 	    PATHNAME(s, d),
-	    sccs_utctime(s, d),
+	    sccs_utctime(s, d, utctime),
 	    SUM(s, d));
 	if (HAS_RANDOM(s, d)) fprintf(out, "|%s", RANDOM(s, d));
 }
@@ -16933,20 +16942,28 @@ sccs_pdelta(sccs *s, ser_t d, FILE *out)
 int
 sccs_sdelta(sccs *s, ser_t d, char *buf)
 {
-	char	*tail;
-	int	len;
+	char	*tail = buf;
 
 	assert(d);
-	len = sprintf(buf, "%s|%s|%s|%05u",
-	    USERHOST(s, d),
-	    PATHNAME(s, d),
-	    sccs_utctime(s, d),
-	    SUM(s, d));
-	assert(len);
-	unless (HAS_RANDOM(s, d)) return (len);
-	for (tail = buf; *tail; tail++);
-	len += sprintf(tail, "|%s", RANDOM(s, d));
-	return (len);
+#define	CAT(s)	({ char *p = s; int len = strlen(p);	\
+		memcpy(tail, p, len);			\
+		tail += len; })
+
+	CAT(USERHOST(s, d));
+	*tail++ = '|';
+	CAT(PATHNAME(s, d));
+	*tail++ = '|';
+	sccs_utctime(s, d, tail);
+	tail += strlen(tail);
+	*tail++ = '|';
+	tail += sprintf(tail, "%05u", SUM(s, d));
+	if (HAS_RANDOM(s, d)) {
+		*tail++ = '|';
+		CAT(RANDOM(s, d));
+	}
+#undef	CAT
+	*tail = 0;
+	return (tail - buf);
 }
 
 void
@@ -17113,11 +17130,12 @@ sccs_metafile(char *file)
 void
 sccs_shortKey(sccs *s, ser_t d, char *buf)
 {
+	char	utctime[32];
 	assert(d);
 	sprintf(buf, "%s|%s|%s",
 	    USERHOST(s, d),
 	    PATHNAME(s, d),
-	    sccs_utctime(s, d));
+	    sccs_utctime(s, d, utctime));
 }
 
 /*

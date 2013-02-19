@@ -1083,7 +1083,7 @@ int	sccs_unlockfile(char *file);
 int	sccs_mylock(char *lockf);
 int	sccs_readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp);
 
-char	*sccs_utctime(sccs *s, ser_t d);
+char	*sccs_utctime(sccs *s, ser_t d, char *buf);
 int	delta_strftime(char *out, int sz, char *fmt, sccs *s, ser_t d);
 char	*delta_sdate(sccs *s, ser_t d);
 ser_t	sccs_kid(sccs *s, ser_t d);
