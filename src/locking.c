@@ -179,14 +179,12 @@ global_locked(void)
 }
 
 /*
- * See if the repository is locked.  If there are no readlocks, we
- * respect BK_IGNORE_WRLOCK.
+ * See if the repository is locked.
  */
 int
 repository_locked(project *p)
 {
 	int	ret = 0;
-	char	*s;
 	char	*root;
 	char	path[MAXPATH];
 
@@ -198,10 +196,6 @@ repository_locked(project *p)
 	}
 	ret = repository_hasLocks(p, READER_LOCK_DIR);
 	unless (ret) {
-		if ((s = getenv("BK_IGNORE_WRLOCK")) && streq(s, "YES")) {
-			T_LOCK("repository_locked(%s) = 0", root);
-			return (0);
-		}
 		if (nested_mine(p, getenv("_BK_NESTED_LOCK"), 0)) return (0);
 		ret = repository_hasLocks(p, WRITER_LOCK_DIR);
 		sprintf(path, "%s/%s", root, WRITER_LOCK);
@@ -406,10 +400,6 @@ wrlock(project *p)
 		return (LOCKERR_LOST_RACE);
 	}
 	write_log("cmd_log", "obtain write lock (%u)", getpid());
-	/* XXX - this should really be some sort cookie which we pass through,
-	 * like the contents of the lock file.  Then we ignore iff that matches.
-	 */
-	putenv("BK_IGNORE_WRLOCK=YES");
 	T_LOCK("WRLOCK %u", getpid());
 	return (0);
 }
@@ -524,7 +514,6 @@ repository_wrunlock(project *p, int all)
 		return (0);
 	}
 
-	putenv("BK_IGNORE_WRLOCK=NO");
 	sprintf(path, "%s/%s", root, WRITER_LOCK);
 	if (sccs_mylock(path) && (sccs_unlockfile(path) == 0)) {
 		write_log("cmd_log", "write unlock (%u)", getpid());

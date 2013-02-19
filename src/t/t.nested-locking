@@ -203,7 +203,7 @@ echo $N Commit in product should fail................................$NL
 cd "$HERE/clone"
 echo new >pnew
 bk new $Q pnew >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gcc component.  This should fail.
@@ -305,7 +305,7 @@ echo $N Commit in product should fail................................$NL
 cd "$HERE/clone"
 echo new >pnew
 bk new $Q pnew >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gcc component.  This should fail.
@@ -313,7 +313,7 @@ echo $N delta in locked component should fail........................$NL
 cd "$HERE/clone/gcc"
 echo new >new10
 bk new $Q new10 >ERR 2>&1 && fail should have failed
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gdb component.
@@ -402,7 +402,7 @@ echo $N Commit in product should fail................................$NL
 cd "$HERE/clone"
 echo new >pnew
 bk new $Q pnew >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 
 echo OK
 # Commit in the gcc component.  This should fail.
@@ -410,7 +410,7 @@ echo $N delta in a locked component should fail......................$NL
 cd "$HERE/clone/gcc"
 echo new >new10
 bk new $Q new10 >ERR 2>&1 && fail -f ERR
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gdb component.
@@ -504,7 +504,7 @@ echo $N Commit in product should fail................................$NL
 cd "$HERE/clone"
 echo new >pnew
 bk new $Q pnew >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gcc component.  This should fail.
@@ -512,7 +512,7 @@ echo $N delta in locked component should fail........................$NL
 cd "$HERE/clone/gcc"
 echo new >new10
 bk new $Q new10 >ERR 2>&1 && fail -f ERR should have failed
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gdb component.
@@ -603,7 +603,7 @@ echo $N Commit in product should fail................................$NL
 cd "$HERE/clone"
 echo new >pnew
 bk new $Q pnew >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gcc component.  This should fail.
@@ -611,7 +611,7 @@ echo $N delta in locked component should fail........................$NL
 cd "$HERE/clone/gcc"
 echo new >new10
 bk new $Q new10 >ERR 2>&1 && fail -f ERR should have failed
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gdb component.
@@ -699,7 +699,7 @@ echo $N Commit in product should fail................................$NL
 cd "$HERE/clone"
 echo new >pnew
 bk new $Q pnew >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gcc component.  This should fail.
@@ -707,7 +707,7 @@ echo $N delta in locked component should fail........................$NL
 cd "$HERE/clone/gcc"
 echo new >new10
 bk new $Q new10 >ERR 2>&1 && fail should have failed
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gdb component.
@@ -797,7 +797,7 @@ echo $N Commit in product should fail................................$NL
 cd "$HERE/clone"
 echo new >pnew
 bk new $Q pnew >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gcc component.  This should fail.
@@ -805,7 +805,7 @@ echo $N delta in locked component should fail........................$NL
 cd "$HERE/clone/gcc"
 echo new >new10
 bk new $Q new10 >ERR 2>&1 && fail should have failed
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gdb component.
@@ -895,7 +895,7 @@ echo $N Commit in product should fail................................$NL
 cd "$HERE/clone"
 echo new >pnew
 bk new $Q pnew >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gdb component.
@@ -985,7 +985,7 @@ echo $N Commit in product should fail................................$NL
 cd "$HERE/clone"
 echo new >pnew
 bk new $Q pnew >ERR 2>&1 && fail
-grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+grep -q "Unable to lock repository for update" ERR || fail -f ERR wrong error
 echo OK
 
 # Commit in the gdb component.

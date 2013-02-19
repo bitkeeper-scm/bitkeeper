@@ -43,10 +43,7 @@ checksum_main(int ac, char **av)
 
 	if (do_sccs) return (chksum_sccs(&av[optind], off));
 
-	if (fix ? repository_wrlock(0) : repository_rdlock(0)) {
-		repository_lockers(0);
-		return (1);
-	}
+	cmdlog_lock(fix ? CMD_WRLOCK : CMD_RDLOCK);
 	for (name = sfileFirst("checksum", &av[optind], 0);
 	    name; name = sfileNext()) {
 		s = sccs_init(name, 0);
@@ -130,7 +127,6 @@ checksum_main(int ac, char **av)
 next:		sccs_free(s);
 	}
 	if (sfileDone() && !ret) ret = 1;
-	fix ? repository_wrunlock(0, 0) : repository_rdunlock(0, 0);
 	return (ret);
 }
 

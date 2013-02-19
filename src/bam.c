@@ -1083,7 +1083,7 @@ bam_pull_main(int ac, char **av)
 			return (0);/* no server to pull from */
 		}
 	}
-
+	cmdlog_lock(CMD_WRLOCK);
 	if (dash) {
 		while (fnext(buf, stdin)) {
 			list = addLine(list, strdup(buf));
@@ -1169,6 +1169,7 @@ bam_push_main(int ac, char **av)
 		ERROR((stderr, "unable to push to %s\n", av[optind]));
 		return (1);
 	}
+	cmdlog_lock(CMD_RDLOCK);
 	return (bp_updateServer(all ? 0 : "..", 0, quiet));
 }
 
@@ -1253,6 +1254,8 @@ bam_clean_main(int ac, char **av)
 	proj = proj_init(proj_root(0)); /* save this repo */
 	chdir(root);
 	free(root);
+
+	cmdlog_lock(CMD_WRLOCK);
 
 	/* get list of data files */
 	dfiles = hash_new(HASH_MEMHASH);
@@ -1528,6 +1531,7 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 		    default: bk_badArg(i, av);
 		}
 	}
+	cmdlog_lock(CMD_RDLOCK);
 	if (bp_index_check(!verbose)) return (1);
 
 	bp_indexfile(0, buf);
@@ -1772,6 +1776,7 @@ bam_reattach_main(int ac, char **av)
 		}
 		return (0);
 	}
+	cmdlog_lock(CMD_WRLOCK);
 	db = proj_BAMindex(0, 0);	/* ok if db is null */
 	missing = mdbm_mem();
 
@@ -2180,7 +2185,7 @@ bam_convert_main(int ac, char **av)
 #undef	ERROR
 #define	ERROR(x)	{ fprintf(stderr, "BAM convert: "); fprintf x ; }
 
-	// XXX - locking?  Nested?
+	// XXX - Nested?
 	if (proj_cd2root()) {
 		ERROR((stderr, "not in a repository.\n"));
 		exit(1);
@@ -2191,6 +2196,7 @@ bam_convert_main(int ac, char **av)
 		}
 	}
 
+	cmdlog_lock(CMD_WRLOCK);
 	/*
 	 * Check the specified size (if any) against the root key.
 	 * It may shrink, not grow, because we aren't going implement
@@ -2325,7 +2331,7 @@ bam_convert_main(int ac, char **av)
 		exit(1);
 	}
 	ERROR((stderr, "fixing changeset checksums ...\n"));
-	system("bk checksum -f ChangeSet");
+	system("bk -?BK_NO_REPO_LOCK=YES checksum -f ChangeSet");
 	ERROR((stderr, "changing repo id ...\n"));
 	/* The proj_reset() is to close BAM_DB so newroot can rename dir */
 	proj_reset(0);
@@ -2357,7 +2363,6 @@ private	int
 uu2bp(sccs *s, int bam_size, char ***keysp)
 {
 	ser_t	d;
-	int	locked;
 	int	n = 0;
 	off_t	sz;
 	char	*t;
@@ -2395,11 +2400,6 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 		s->encoding_out &= ~E_GZIP;
 		if (sccs_adminFlag(s, ADMIN_FORCE|NEWCKSUM)) perror(s->gfile);
 		s = sccs_restart(s);
-	}
-	unless (locked = sccs_lock(s, 'z')) {
-		fprintf(stderr,
-		    "bam convert: can't get lock on %s\n", s->gfile);
-		return (4);
 	}
 	fprintf(stderr, "Converting %s ", s->gfile);
 	for (n = 0, d = TABLE(s); d >= TREE(s); d--) {
@@ -2444,14 +2444,12 @@ uu2bp(sccs *s, int bam_size, char ***keysp)
 	s->encoding_out |= E_BAM;
 	unless (sccs_startWrite(s)) {
 err:		sccs_abortWrite(s);
-		sccs_unlock(s, 'z');
 		return (32);
 	}
 	if (delta_table(s, 0)) goto err;
 	if (sccs_finishWrite(s)) goto err;
 	fprintf(stderr, "\rConverted %d deltas in %s\n", n, s->gfile);
-out:	sccs_unlock(s, 'z');
-	return (0);
+out:	return (0);
 }
 
 private int

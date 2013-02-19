@@ -34,24 +34,6 @@ if bk _test ! -f SCCS/s.A; then echo failed to create history; exit 1; fi
 bk commit $S -y"This is a \"Change Set\""
 echo OK
 
-echo $N Make sure zero sized z.locks are respected ..................$NL
-bk edit $Q A
-bk _touch SCCS/z.A
-bk delta $Q -y'should fail' A > /dev/null 2>&1
-if bk _test ! -f SCCS/z.A; then echo failed, removed zlock; exit 1; fi
-if [ ! -w A ]; then echo failed, removed A; exit 1; fi
-echo OK
-
-echo $N Make sure stale zlocks are discarded ........................$NL
-bk mklock > z.A
-bk _mv z.A SCCS/z.A 
-bk 2>/dev/null	# reuse bad pid on win2k, otherwise lock is not stale
-#bk delta $Q -y'should work' A > /dev/null 2>&1
-bk delta $Q -y'should work' A 
-if bk _test -f SCCS/z.A; then echo failed to remove zlock; exit 1; fi
-if [ -f A ]; then echo failed to remove A; exit 1; fi
-echo OK
-
 # XXX - what is this testing?
 echo $N Check edit with existing stale read lock ....................$NL
 L=`bk lock -rt`

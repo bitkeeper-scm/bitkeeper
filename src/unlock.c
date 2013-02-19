@@ -6,7 +6,6 @@
 #undef	PLOCK
 #define	PLOCK	0x0002
 #define	XLOCK	0x0004
-#define	ZLOCK	0x0008
 #define	RLOCK	0x0010
 #define	STALE	0x0020
 #define	WLOCK	0x0040
@@ -38,7 +37,6 @@ unlock_main(int ac, char **av)
 		    case 's': flags |= STALE; break;	/* doc 2.0 */
 		    case 'w': flags |= WLOCK; break;	/* doc 2.0 */
 		    case 'x': flags |= XLOCK; break;	/* doc 2.0 */
-		    case 'z': flags |= ZLOCK; break;	/* doc 2.0 */
 		    case 300: after = atoi(optarg); break;
 		    case 301: match = optarg; break;
 			break;
@@ -89,7 +87,6 @@ unlock_main(int ac, char **av)
 				}
 			}
 			if (flags & XLOCK) c |= doit(s, 'x'); else dont(s, 'x');
-			if (flags & ZLOCK) c |= doit(s, 'z'); else dont(s, 'z');
 			sccs_free(s);
 		}
 		name = sfileNext();

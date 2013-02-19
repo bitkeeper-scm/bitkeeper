@@ -1076,8 +1076,6 @@ int	sccs_reCache(int quiet);
 int	sccs_findtips(sccs *s, ser_t *a, ser_t *b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
-int	sccs_lock(sccs *, char);	/* respects repo locks */
-void	sccs_unlock(sccs *, char);
 
 int	sccs_lockfile(char *lockfile, int wait, int quiet);
 int	sccs_stalelock(char *lockfile, int discard);

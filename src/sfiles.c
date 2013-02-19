@@ -358,12 +358,7 @@ chk_sfile(char *name, STATE state)
 				state[CSTATE] = 'c';
 			}
 		} else {
-			s[1] = 'z';
-			if (exists(name)) {
-				state[LSTATE] = 'l';
-			} else {
-				state[LSTATE] = 'u';
-			}
+			state[LSTATE] = 'u';
 		}
 		s[1] = 's';
 		if (DOIT && sc) {
@@ -1368,12 +1363,7 @@ sccsdir(winfo *wi)
 			 * is writable it may have diffs and we are not
 			 * listing them.
 			 */
-			file[0] = 'z';
-			if (mdbm_fetch_str(sDB, file)) {
-				state[LSTATE] = 'l';
-			} else {
-				state[LSTATE] = 'u';
-			}
+			state[LSTATE] = 'u';
 			file[0] = 's';
 			concat_path(buf, dir, "SCCS");
 			concat_path(buf, buf, file);
@@ -1422,7 +1412,7 @@ sccsdir(winfo *wi)
 			if (kv.key.dptr[1] == '.') {
 				switch(kv.key.dptr[0]) {
 				    case 's': continue;
-				    case 'd': case 'p': case 'x': case 'z':
+				    case 'd': case 'p': case 'x':
 					strcpy(buf1, kv.key.dptr);
 					buf1[0] = 's';
 					if (mdbm_fetch_str(sDB, buf1)) {

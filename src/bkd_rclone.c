@@ -215,9 +215,6 @@ cmd_rclone_part2(int ac, char **av)
 	free(path);
 	printf("@SFIO INFO@\n");
 
-	/* rclone doesn't need to bother with zlocks */
-	putenv("_BK_NO_ZLOCK=1");
-
 	/* Arrange to have stderr go to stdout */
 	fflush(stdout);
 	fd2 = dup(2); dup2(1, 2);

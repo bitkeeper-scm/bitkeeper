@@ -181,7 +181,7 @@ undo_main(int ac,  char **av)
 	}
 
 	bktmp(undo_list, "undo_list");
-	cmd = aprintf("bk stripdel -%sc - 2> '%s'",
+	cmd = aprintf("bk -?BK_NO_REPO_LOCK=YES stripdel -%sc - 2> '%s'",
 	    (proj_isComponent(0) && !getenv("_BK_TRANSACTION")) ? "" : "C",
 	    undo_list);
 	f = popen(cmd, "w");
@@ -645,12 +645,9 @@ doit(options *opts, char **filesNrevs, char **sfiles, char ***checkfiles)
 	 * make sense at cset boundries.
 	 * Also, run all sfiles through renumber.
 	 */
-	putenv("BK_IGNORE_WRLOCK=YES");
 	if (renumber_rename(opts, sfiles)) {
-		putenv("BK_IGNORE_WRLOCK=NO");
 		return (-1);
 	}
-	putenv("BK_IGNORE_WRLOCK=NO");
 	/* mv from RESYNC to user tree */
 	if (move_file(checkfiles)) return (-1);
 	return (0);

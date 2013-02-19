@@ -317,7 +317,7 @@ err:		freeLines(envVar, free);
 			 * Commit
 			 */
 			sprintf(buf, "bk -P sfiles -pC '%s' |"
-			    "bk -P -?_BK_NO_ZLOCK=1 commit -S -qfY'%s' -",
+			    "bk -P commit -S -qfY'%s' -",
 			    proj_comppath(0),
 			    tmpfile);
 			rc = system(buf);
