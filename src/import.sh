@@ -170,7 +170,6 @@ import() {
 	fi
 	bk sane || Done 1	# verifiy hostname from -H is OK
 	LOCKURL=`bk lock -wt`
-	export BK_IGNORE_WRLOCK=YES
 	trap 'Done 100' 1 2 3 15
 
 	getIncExc
@@ -575,7 +574,7 @@ import_patch() {
 			# list under a gfile on the "create" list. Check for
 			# this case and make a delta.
 			bk sfiles -gc - < "${TMP}creates$$" | \
-					bk ci $VERBOSE -G "$COMMENTOPT" -
+					BK_NO_REPO_LOCK=YES bk ci $VERBOSE -G "$COMMENTOPT" -
 
 			# "bk rm" and "bk new" was done in renametool
 			# XXX BUG: renametool should exit non-zero if
@@ -596,12 +595,12 @@ import_patch() {
 		if [ -s "${TMP}creates$$" ]
 		then
 			msg Creating `wc -l < "${TMP}creates$$"` files
-			bk new $Q -G "$COMMENTOPT" - < "${TMP}creates$$"
+			BK_NO_REPO_LOCK=YES bk new $Q -G "$COMMENTOPT" - < "${TMP}creates$$"
 		fi
 			
 	fi
 
-	bk ci $VERBOSE -G "$COMMENTOPT" - <  "${TMP}patching$$"
+	BK_NO_REPO_LOCK=YES bk ci $VERBOSE -G "$COMMENTOPT" - <  "${TMP}patching$$"
 
 	if [ $COMMIT = NO ]
 	then	Done 0
@@ -638,7 +637,7 @@ import_text () {
 
 	mycd "$TO"
 	if [ X$QUIET = X ]; then msg Checking in plain text files...; fi
-	bk ci -i $VERBOSE - < "${TMP}import$$" || Done 1
+	BK_NO_REPO_LOCK=YES bk ci -i $VERBOSE - < "${TMP}import$$" || Done 1
 }
 
 mvup() {
@@ -778,7 +777,7 @@ import_finish () {
 	mycd "$1"
 	if [ X$QUIET = X ]; then echo ""; fi
 	if [ X$QUIET = X ]; then echo Final error checks...; fi
-	bk sfiles | bk admin -hhhq - > "${TMP}admin$$"
+	bk sfiles | BK_NO_REPO_LOCK=YES bk admin -hhhq - > "${TMP}admin$$"
 	if [ -s "${TMP}admin$$" ]
 	then	echo Import failed because
 		cat "${TMP}admin$$"

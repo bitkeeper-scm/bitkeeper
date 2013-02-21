@@ -95,6 +95,7 @@ main(int volatile ac, char **av, char **env)
 		{ "progs;", 333 },
 		{ "pids", 334 },
 		{ "diffable", 335 },
+		{ "trace-file;", 340 },
 		{ 0, 0 },
 	};
 
@@ -367,7 +368,16 @@ baddir:						fprintf(stderr,
 				    putenv("BK_DTRACE=1");
 				}
 				break;
-
+			    case 340: /* --trace-file */
+				unless ((p = getenv("BK_TRACE")) &&
+				    !streq(p, "1")) {
+					p = strchr(optarg, ':')
+						? strdup(optarg)
+						: fullname(optarg, 0);
+					safe_putenv("BK_TRACE=%s", p);
+					free(p);
+				}
+				break;
 			    default: bk_badArg(c, av);
 			}
 		}
@@ -977,9 +987,15 @@ private	struct {
 	int	flags;
 } cmdtab[] = {
 	{"abort", CMD_REPOLOG|CMD_COMPAT_NOSI},
+	{"admin", CMD_WRLOCK},
 	{"attach", CMD_REPOLOG},
+	/* bam handled in bam.c */
 	{"bk", CMD_COMPAT_NOSI}, /* bk-remote */
 	{"check", CMD_COMPAT_NOSI},
+	/* checksum is handled in checksum.c */
+	/* collapse has CMD_NESTED_WRLOCK|CMD_WRLOCK) in collapse.c */
+	/* commit has CMD_NESTED_WRLOCK|CMD_WRLOCK in commit.c */
+	/* delta has CMD_WRLOCK in delta.c */
 	{"clone", CMD_REPOLOG},		/* locking handled in clone.c */
 	{"cmdlog", CMD_NOLOG},
 	{"collapse", CMD_REPOLOG},
@@ -988,8 +1004,8 @@ private	struct {
 	{"get", CMD_COMPAT_NOSI},
 	{"kill", CMD_NOREPO|CMD_COMPAT_NOSI},
 	{"license", CMD_NOREPO},
-	{"pull", CMD_REPOLOG|CMD_BYTES},
-	{"push", CMD_REPOLOG|CMD_BYTES},
+	{"pull", CMD_REPOLOG|CMD_BYTES}, /* real locks in pull.c */
+	{"push", CMD_REPOLOG|CMD_BYTES}, /* real locks in push.c */
 	{"remote abort",
 	     CMD_REPOLOG|CMD_COMPAT_NOSI|CMD_WRLOCK|CMD_NESTED_WRLOCK|
 	     CMD_IGNORE_RESYNC},
@@ -1010,9 +1026,10 @@ private	struct {
 	{"remote rdlock", CMD_RDLOCK},
 	{"remote wrlock", CMD_WRLOCK},
 	{"resolve", CMD_REPOLOG},
+	{"stripdel", CMD_WRLOCK},
 	{"synckeys", CMD_RDLOCK},
 	{"tagmerge", CMD_WRLOCK|CMD_NESTED_WRLOCK},
-	{"undo", CMD_REPOLOG},
+	{"undo", CMD_REPOLOG},  /* actual WRLOCK in undo.c */
 	{"unpull", CMD_REPOLOG},
 	{ 0, 0 },
 };

@@ -190,10 +190,11 @@ regen(sccs *s, int verbose, char *key)
 	close(creat(gfile, 0664));
 	/* Teamware uses same uuencode flag, so read it */
 	if (mkinit(s, TREE(s), tmp, key) || UUENCODE(sget)) {
-		sys("bk", "delta",
+		sys("bk", "-?BK_NO_REPO_LOCK=YES", "delta",
 		    "-fq", "-Ebinary", "-RiISCCS/.init", gfile, SYS);
 	} else {
-		sys("bk", "delta", "-fq", "-RiISCCS/.init", gfile, SYS);
+		sys("bk", "-?BK_NO_REPO_LOCK=YES", "delta",
+		    "-fq", "-RiISCCS/.init", gfile, SYS);
 	}
 	for (i = 0; i < n; ++i) {
 		d = table[i];
@@ -251,7 +252,8 @@ regen(sccs *s, int verbose, char *key)
 			exit (1);
 		}
 		free(a1);
-		sys("bk", "delta", "-fq", "-RISCCS/.init", gfile, SYS);
+		sys("bk", "-?BK_NO_REPO_LOCK=YES", "delta",
+		    "-fq", "-RISCCS/.init", gfile, SYS);
 	}
 
         s2 = sccs_init(s->sfile, 0);

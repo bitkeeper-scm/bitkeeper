@@ -716,9 +716,6 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 	after_create = 1;
 
-	/* clone doesn't need to bother with zlocks */
-	putenv("_BK_NO_ZLOCK=1");
-
 	if (opts->parallel == 0) opts->parallel = parallel(".");
 	retrc = RET_ERROR;
 
@@ -803,7 +800,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		p = features_fromBits(features_bits(0));
 		T_PERF("switch binary to %s", p);
 		free(p);
-		systemf("bk -r admin -Zsame");
+		systemf("bk -?BK_NO_REPO_LOCK=YES -r admin -Zsame");
 	}
 
 	if (opts->link) lclone(getenv("BKD_ROOT"));
@@ -1386,7 +1383,7 @@ sccs_rmUncommitted(int quiet, char ***stripped)
 		perror("popen of bk sfiles -pAC");
 		exit(1);
 	}
-	sprintf(buf, "bk stripdel -d %s -", (quiet ? "-q" : ""));
+	sprintf(buf, "bk -?BK_NO_REPO_LOCK=YES stripdel -d %s -", (quiet ? "-q" : ""));
 	unless (out = popen(buf, "w")) {
 		perror("popen(bk stripdel -, w)");
 		exit(1);

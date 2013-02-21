@@ -81,32 +81,16 @@ if bk _test -f SCCS/x.X; then echo failed - left x; exit 1; fi
 if bk _test ! -f SCCS/b.X -o ! -f SCCS/z.X -o ! -f SCCS/p.X
 then echo failed - deleted other lock files; ls SCCS/?.X; exit 1; fi
 echo OK
-echo $N unlock -z should work .......................................$NL
-touch x.X z.X b.X
-bk _mv x.X SCCS/x.X
-bk _mv z.X SCCS/z.X
-bk _mv b.X SCCS/b.X
-bk unlock -z X 2>/dev/null
-if [ ! -f X ]; then echo failed; exit 1; fi
-if bk _test -f SCCS/z.X; then echo failed - left z; exit 1; fi
-if bk _test ! -f SCCS/b.X -o ! -f SCCS/x.X -o ! -f SCCS/p.X
-then echo failed - deleted other lock files; exit 1; fi
-echo OK
-echo $N unlock -zx should work ......................................$NL
-bk _touch SCCS/x.X SCCS/z.X
-bk unlock -xz X 2>/dev/null
-if [ ! -f X ]; then echo failed; exit 1; fi
-if bk _test -f SCCS/z.X -o -f SCCS/x.X
-then echo failed - left lock files; exit 1; fi
-echo OK
-echo $N unlock -fpzx should work ....................................$NL
-bk _touch SCCS/x.X SCCS/z.X
-bk unlock -fpxz X 2>/dev/null
+
+echo $N unlock -fpx should work .....................................$NL
+bk _touch SCCS/x.X
+bk unlock -fpx X 2>/dev/null
 if [ ! -f X ]; then echo failed; exit 1; fi
 if bk _test ! -f SCCS/s.X; then echo failed; exit 1; fi
-if bk _test -f SCCS/z.X -o -f SCCS/x.X -o -f SCCS/p.X
+if bk _test -f SCCS/x.X -o -f SCCS/p.X
 then echo failed - left lock files; exit 1; fi
 echo OK
+
 bk _rm -f CMP1 CMP2 X Y SCCS/s.X SCCS/s.Y
 # Test internal compare for RCS, SCCS, EXPAND1, nonewline, binary, longline
 # and hash data.  Uses clean to test diffs (in some cases uses sfiles -c

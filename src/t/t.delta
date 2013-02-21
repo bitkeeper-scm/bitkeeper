@@ -466,7 +466,7 @@ grep -q "bad host name" new.out || {
 }
 echo OK
 
-echo $N Check compresssion: gzip preference .........................$NL
+echo $N Check compression: gzip preference ..........................$NL
 cd "$HERE"
 bk clone $Q --compat project project.ascii || fail
 cd "$HERE/project.ascii/BitKeeper/etc"
@@ -480,7 +480,7 @@ bk compression init2 | grep -q "gzip"
 if  [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
-echo $N Check compresssion: none preference .........................$NL
+echo $N Check compression: none preference ..........................$NL
 cd "$HERE/project.ascii/BitKeeper/etc"
 bk edit $Q config
 sed -e's/^compression: gzip/compression: none/' < config > config.tmp

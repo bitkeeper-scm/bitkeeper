@@ -1076,8 +1076,6 @@ int	sccs_reCache(int quiet);
 int	sccs_findtips(sccs *s, ser_t *a, ser_t *b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
-int	sccs_lock(sccs *, char);	/* respects repo locks */
-void	sccs_unlock(sccs *, char);
 
 int	sccs_lockfile(char *lockfile, int wait, int quiet);
 int	sccs_stalelock(char *lockfile, int discard);
@@ -1085,7 +1083,7 @@ int	sccs_unlockfile(char *file);
 int	sccs_mylock(char *lockf);
 int	sccs_readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp);
 
-char	*sccs_utctime(sccs *s, ser_t d);
+char	*sccs_utctime(sccs *s, ser_t d, char *buf);
 int	delta_strftime(char *out, int sz, char *fmt, sccs *s, ser_t d);
 char	*delta_sdate(sccs *s, ser_t d);
 ser_t	sccs_kid(sccs *s, ser_t d);

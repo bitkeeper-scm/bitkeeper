@@ -384,7 +384,7 @@ linelen(char *s)
 private void
 sertoa(register char *buf, ser_t val)
 {
-	char	reverse[6];
+	char	reverse[16];
 	int	i, j;
 
 	for (i = 0; val; i++, val /= 10) {
@@ -2087,7 +2087,7 @@ sccs_startWrite(sccs *s)
 	} else {
 		sfile = fopen(xfile, "w");
 	}
-	unless(BKFILE_OUT(s)) {
+	if (sfile && !BKFILE_OUT(s)) {
 		s->cksum = 0;
 		assert(!s->ckwrap);
 		if (fpush(&sfile, fopen_cksum(sfile, "w", &s->cksum))) {
@@ -4917,7 +4917,6 @@ sccs_csetInit(u32 flags)
  *	'r'	this is an SCCS pathname (whatever/SCCS/r.whatever)
  *	's'	this is an SCCS pathname (whatever/SCCS/s.whatever)
  *	'x'	this is an SCCS pathname (whatever/SCCS/x.whatever)
- *	'z'	this is an SCCS pathname (whatever/SCCS/z.whatever)
  *	0	none of the above
  */
 int
@@ -4940,7 +4939,6 @@ sccs_filetype(char *name)
 	    case 'r':	/* content resolve files */
 	    case 's':	/* sccs file */
 	    case 'x':	/* temp file, about to be s.file */
-	    case 'z':	/* lock file */
 	    	break;
 	    default:  return (0);
 	}
@@ -5042,76 +5040,6 @@ name2sccs(char *name)
 		strcpy(s, name);
 	}
 	return (newname);
-}
-
-private int
-stale(char *file)
-{
-	char	buf[300];
-	char	*t, *h = sccs_gethost();
-	int	n, fd = open(file, 0, 0);
-
-	if (fd == -1) return (0);
-	if ((n = read(fd, buf, sizeof(buf))) <= 0) {
-		close(fd);
-		return (0);
-	}
-	buf[n-1] = 0;				/* null the newline */
-	close(fd);
-	unless (t = strchr(buf, ' ')) return (0);
-	*t++ = 0;
-	unless (streq(t, h)) return (0);	/* different hosts */
-	for (n = 0; n < 100; n++) {		/* about a second */
-		if (kill(atoi(buf), 0) == -1) {
-			unlink(file);
-			return (1);
-		}
-		usleep(10000);
-	}
-	return (0);
-}
-
-/*
- * create SCCS/<type>.foo.c
- */
-int
-sccs_lock(sccs *s, char type)
-{
-	char	*t;
-	int	lockfd;
-	char	*h;
-	char	buf[MAXLINE];
-
-	if (READ_ONLY(s)) return (0);
-	if (getenv("_BK_NO_ZLOCK")) goto out;
-
-	/* get -e does Z lock so we can skip past the repository locks */
-	if (type == 'z') {
-		if (repository_locked(s->proj)) return (0);
-	} else {
-		assert(type == 'Z');
-	}
-	t = sccsXfile(s, 'z');
-again:	lockfd = open(t, O_CREAT|O_WRONLY|O_EXCL, 0444);
-	if (lockfd == -1) {
-		if (stale(t)) goto again;
-		return (0);
-	}
-	sprintf(buf, "%u %s\n", getpid(),
-	    (h = sccs_gethost()) ? h : "?");
-	write(lockfd, buf, strlen(buf));
-	close(lockfd);
-out:	sig_ignore();
-	return (1);
-}
-
-/*
- * Take SCCS/s.foo.c and unlink SCCS/<type>.foo.c
- */
-void
-sccs_unlock(sccs *sccs, char type)
-{
-	unlink(sccsXfile(sccs, type));
 }
 
 char *
@@ -6046,15 +5974,13 @@ write_pfile(sccs *s, int flags, ser_t d,
 			return (-1);
 		}
 	}
-	unless (sccs_lock(s, 'Z')) {
-		fprintf(stderr, "get: can't zlock %s\n", s->gfile);
-		repository_lockers(s->proj);
+	if (READ_ONLY(s)) {
+		fprintf(stderr, "get: read-only %s\n", s->gfile);
 		return (-1);
 	}
 	fd = open(s->pfile, O_CREAT|O_WRONLY|O_EXCL, GROUP_MODE);
 	if (fd == -1) {
 		fprintf(stderr, "get: can't plock %s\n", s->gfile);
-		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	tmp2 = time2date(time(0));
@@ -7190,8 +7116,7 @@ sccs_get(sccs *s, char *rev,
 		fprintf(stderr, "get: bad chksum on %s\n", s->sfile);
 err:		if (i2) free(i2);
 		if (locked) {
-			sccs_unlock(s, 'p');
-			sccs_unlock(s, 'z');
+			unlink(s->pfile);
 			s->state &= ~S_PFILE;
 		}
 		return (-1);
@@ -7379,9 +7304,6 @@ err:		if (i2) free(i2);
 	debug((stderr, "GET done\n"));
 
 skip_get:
-	if ((flags & (GET_EDIT|PRINT)) == GET_EDIT) {
-		sccs_unlock(s, 'z');
-	}
 	if (!(flags&SILENT)) {
 		fprintf(stderr, "%s %s", s->gfile, REV(s, d));
 		if (i2) {
@@ -9937,7 +9859,6 @@ checkin(sccs *s,
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
 out:		sccs_abortWrite(s);
-		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freedelta(s, prefilled);
 		if (gfile && (gfile != stdin)) fclose(gfile);
 		s->state |= S_WARNED;
@@ -10262,7 +10183,6 @@ skip_weave:
 	if (sccs_finishWrite(s)) goto out;
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) updatePending(s);
 	comments_cleancfile(s);
-	sccs_unlock(s, 'z');
 	return (0);
 }
 
@@ -11678,7 +11598,7 @@ int
 sccs_admin(sccs *sc, ser_t p, u32 flags,
 	admin *f, admin *z, admin *u, admin *s, char *mode, char *text)
 {
-	int	error = 0, locked = 0, i;
+	int	error = 0, i;
 	int	rc;
 	int	flagsChanged = 0;
 	char	*buf;
@@ -11691,15 +11611,10 @@ sccs_admin(sccs *sc, ser_t p, u32 flags,
 	GOODSCCS(sc);
 	T_SCCS("file=%s flags=%x", sc->gfile, flags);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
-		char	z = (flags & ADMIN_FORCE) ? 'Z' : 'z';
-
-		unless (locked = sccs_lock(sc, z)) {
-			verbose((stderr,
-			    "admin: can't get lock on %s\n", sc->sfile));
+		if (READ_ONLY(sc)) {
 			error = -1; sc->state |= S_WARNED;
 out:
 			if (error) sccs_abortWrite(sc);
-			if (locked) sccs_unlock(sc, 'z');
 			debug((stderr, "admin returns %d\n", error));
 			return (error);
 		}
@@ -11978,8 +11893,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	/*
 	 * Do the delta table & misc.
 	 */
-	unless (locked || (locked = sccs_lock(sc, 'z'))) {
-		verbose((stderr, "admin: can't get lock on %s\n", sc->sfile));
+	if (READ_ONLY(sc)) {
+		verbose((stderr, "admin: read-only %s\n", sc->sfile));
 		OUT;
 	}
 	unless (sccs_startWrite(sc)) {
@@ -12756,9 +12671,8 @@ sccs_csetWrite(sccs *s, char **cweave)
 	char	*ser, *oldser = 0;
 
 	T_SCCS("file=%s", s->gfile);
-	unless (sccs_lock(s, 'z')) {
-		fprintf(stderr, "can't zlock %s\n", s->gfile);
-		repository_lockers(s->proj);
+	if (READ_ONLY(s)) {
+		fprintf(stderr, "%s: read-only %s\n", prog, s->gfile);
 		return (-1);
 	}
 	unless (sccs_startWrite(s)) goto err;
@@ -12787,7 +12701,6 @@ sccs_csetWrite(sccs *s, char **cweave)
 	ret = 0;
 err:
 	if (ret) sccs_abortWrite(s);
-	sccs_unlock(s, 'z');
 
 	return (ret);
 }
@@ -13432,17 +13345,13 @@ sccs_meta(char *me, sccs *s, ser_t parent, char *init, int fixDate)
 	char	*buf;
 	char	**syms;
 
-	unless (sccs_lock(s, 'z')) {
+	if (READ_ONLY(s)) {
 		fprintf(stderr,
-		    "meta: can't get lock on %s\n", s->sfile);
+		    "meta: read-only %s\n", s->sfile);
 		s->state |= S_WARNED;
-		debug((stderr, "meta returns -1\n"));
 		return (-1);
 	}
-	unless (init) {
-		sccs_unlock(s, 'z');
-		return (-1);
-	}
+	unless (init) return (-1);
 	iF = fmem_buf(init, 0);
 	m = sccs_getInit(s, 0, iF, DELTA_PATCH, &e, 0, &syms);
 	fclose(iF);
@@ -13457,13 +13366,9 @@ sccs_meta(char *me, sccs *s, ser_t parent, char *init, int fixDate)
 	/*
 	 * Do the delta table & misc.
 	 */
-	unless (sccs_startWrite(s)) {
-		sccs_unlock(s, 'z');
-		exit(1);
-	}
+	unless (sccs_startWrite(s)) exit(1);
 	if (delta_table(s, 0)) {
 abort:		sccs_abortWrite(s);
-		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	sccs_rdweaveInit(s);
@@ -13475,7 +13380,6 @@ abort:		sccs_abortWrite(s);
 	sccs_wrweaveDone(s);
 	sccs_rdweaveDone(s);
 	if (sccs_finishWrite(s)) goto abort;
-	sccs_unlock(s, 'z');
 	return (0);
 }
 
@@ -13513,17 +13417,15 @@ sccs_delta(sccs *s,
 	ser_t	d = 0, e, p, n = 0;
 	char	*rev, *tmpfile = 0;
 	int	added = 0, deleted = 0, unchanged = 0;
-	int	locked;
 	pfile	pf = {0};
 	ser_t	pserial;
 
 	assert(s);
 	T_SCCS("file=%s flags=%x", s->gfile, flags);
 	if (flags & NEWFILE) mksccsdir(s->sfile);
-	unless (locked = sccs_lock(s, 'z')) {
+	if (READ_ONLY(s)) {
 		fprintf(stderr,
-		    "delta: can't get write lock on %s\n", s->sfile);
-		repository_lockers(s->proj);
+		    "delta: read-only %s\n", s->sfile);
 		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freedelta(s, prefilled);
@@ -13532,7 +13434,6 @@ out:
 		free_pfile(&pf);
 		if (free_syms) freeLines(syms, free); 
 		if (tmpfile  && !streq(tmpfile, DEVNULL_WR)) unlink(tmpfile);
-		if (locked) sccs_unlock(s, 'z');
 		debug((stderr, "delta returns %d\n", error));
 		return (error);
 	}
@@ -15537,8 +15438,9 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_UTC: /* UTC */ {
-		char	*utcTime;
-		if (utcTime = sccs_utctime(s, d)) {
+		char	utcTime[32];
+
+		if (sccs_utctime(s, d, utcTime)) {
 			fs(utcTime);
 			return (strVal);
 		}
@@ -15546,10 +15448,10 @@ kw2val(FILE *out, char *kw, int len, sccs *s, ser_t d)
 	}
 
 	case KW_UTC_FUDGE: /* UTC-FUDGE */ {
-		char	*utcTime;
+		char	utcTime[32];
 
 		DATE_SET(s, d, (DATE(s, d) - DATE_FUDGE(s, d)));
-		if (utcTime = sccs_utctime(s, d)) {
+		if (sccs_utctime(s, d, utcTime)) {
 			fs(utcTime);
 			DATE_SET(s, d, (DATE(s, d) + DATE_FUDGE(s, d)));
 			return (strVal);
@@ -16985,20 +16887,26 @@ sccs_findSortKey(sccs *s, char *sortkey)
  * Do not change times without time zones to localtime.
  */
 char *
-sccs_utctime(sccs *s, ser_t d)
+sccs_utctime(sccs *s, ser_t d, char *buf)
 {
 	struct	tm *tp;
-	static	char sdate[30];
+	char	*t = buf;
 
 	tp = utc2tm(DATE(s, d));
-	sprintf(sdate, "%d%02d%02d%02d%02d%02d",
-	    tp->tm_year + 1900,
-	    tp->tm_mon + 1,
-	    tp->tm_mday,
-	    tp->tm_hour,
-	    tp->tm_min,
-	    tp->tm_sec);
-	return (sdate);
+
+	sertoa(t, tp->tm_year + 1900);
+	t += 4;
+
+	// inline sprintf("%02d%02d%02d%02d", ...)
+#define	X(n) *t++ = '0' + ((n) / 10); *t++ = '0' + ((n) % 10)
+	X(tp->tm_mon+1);
+	X(tp->tm_mday);
+	X(tp->tm_hour);
+	X(tp->tm_min);
+	X(tp->tm_sec);
+#undef X
+	*t++ = 0;
+	return (buf);
 }
 
 /*
@@ -17019,11 +16927,13 @@ delta_sdate(sccs *s, ser_t d)
 void
 sccs_pdelta(sccs *s, ser_t d, FILE *out)
 {
+	char	utctime[32];
+
 	assert(d);
 	fprintf(out, "%s|%s|%s|%05u",
 	    USERHOST(s, d),
 	    PATHNAME(s, d),
-	    sccs_utctime(s, d),
+	    sccs_utctime(s, d, utctime),
 	    SUM(s, d));
 	if (HAS_RANDOM(s, d)) fprintf(out, "|%s", RANDOM(s, d));
 }
@@ -17032,20 +16942,28 @@ sccs_pdelta(sccs *s, ser_t d, FILE *out)
 int
 sccs_sdelta(sccs *s, ser_t d, char *buf)
 {
-	char	*tail;
-	int	len;
+	char	*tail = buf;
 
 	assert(d);
-	len = sprintf(buf, "%s|%s|%s|%05u",
-	    USERHOST(s, d),
-	    PATHNAME(s, d),
-	    sccs_utctime(s, d),
-	    SUM(s, d));
-	assert(len);
-	unless (HAS_RANDOM(s, d)) return (len);
-	for (tail = buf; *tail; tail++);
-	len += sprintf(tail, "|%s", RANDOM(s, d));
-	return (len);
+#define	CAT(s)	({ char *p = s; int len = strlen(p);	\
+		memcpy(tail, p, len);			\
+		tail += len; })
+
+	CAT(USERHOST(s, d));
+	*tail++ = '|';
+	CAT(PATHNAME(s, d));
+	*tail++ = '|';
+	sccs_utctime(s, d, tail);
+	tail += strlen(tail);
+	*tail++ = '|';
+	tail += sprintf(tail, "%05u", SUM(s, d));
+	if (HAS_RANDOM(s, d)) {
+		*tail++ = '|';
+		CAT(RANDOM(s, d));
+	}
+#undef	CAT
+	*tail = 0;
+	return (tail - buf);
 }
 
 void
@@ -17212,11 +17130,12 @@ sccs_metafile(char *file)
 void
 sccs_shortKey(sccs *s, ser_t d, char *buf)
 {
+	char	utctime[32];
 	assert(d);
 	sprintf(buf, "%s|%s|%s",
 	    USERHOST(s, d),
 	    PATHNAME(s, d),
-	    sccs_utctime(s, d));
+	    sccs_utctime(s, d, utctime));
 }
 
 /*
@@ -17640,7 +17559,6 @@ int
 sccs_stripdel(sccs *s, char *who)
 {
 	int	error = 0;
-	int	locked;
 	ser_t	e, *remap = 0;
 
 #define	OUT	\
@@ -17650,8 +17568,8 @@ sccs_stripdel(sccs *s, char *who)
 	T_SCCS("file=%s", s->gfile);
 	if (HAS_PFILE(s) && sccs_clean(s, SILENT)) return (-1);
 	debug((stderr, "stripdel %s %s\n", s->gfile, who));
-	unless (locked = sccs_lock(s, 'z')) {
-		fprintf(stderr, "%s: can't get lock on %s\n", who, s->sfile);
+	if (READ_ONLY(s)) {
+		fprintf(stderr, "%s: read-only %s\n", who, s->sfile);
 		OUT;
 	}
 	if (stripChecks(s, 0, who)) OUT;
@@ -17696,7 +17614,6 @@ sccs_stripdel(sccs *s, char *who)
 
 out:
 	if (error) sccs_abortWrite(s);
-	if (locked) sccs_unlock(s, 'z');
 	debug((stderr, "stripdel returns %d\n", error));
 	return (error);
 }

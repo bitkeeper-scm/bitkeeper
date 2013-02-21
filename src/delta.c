@@ -82,7 +82,7 @@ strip_danglers(char *name, u32 flags)
 		if (DANGLING(s, d)) revs = addLine(revs, strdup(REV(s, d)));
 	}
 	sccs_free(s);
-	p = aprintf("bk stripdel -%sdC -", (flags&SILENT) ? "q" : "");
+	p = aprintf("bk -?BK_NO_REPO_LOCK=YES stripdel -%sdC -", (flags&SILENT) ? "q" : "");
 	f = popen(p, "w");
 	EACH(revs) {
 		fprintf(f, "%s|%s\n", name, revs[i]);
@@ -287,6 +287,8 @@ delta_main(int ac, char **av)
 	}
 	if (fire = (getenv("_IN_DELTA") == 0)) putenv("_IN_DELTA=YES");
 
+	if (fire && proj_root(0)) cmdlog_lock(CMD_WRLOCK);
+	
 	while (name) {
 		ser_t	d = 0;
 		char	*nrev;

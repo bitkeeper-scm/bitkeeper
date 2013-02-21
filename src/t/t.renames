@@ -1414,7 +1414,7 @@ bk commit $S -y'A A->Z'
 cd ..
 cd "$HERE/copy"
 bk pull -R $Q "$HERE/project"
-BK_IGNORE_WRLOCK=YES bk get -e $Q "A A"
+bk get -e $Q "A A"
 echo modified >> "A A"
 bk resolve -q >../ERR 2>&1  
 if [ $? != 1 ]

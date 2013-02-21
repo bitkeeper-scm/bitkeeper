@@ -560,7 +560,7 @@ do_file(char *file, char *tiprev)
 			/* pick right most bit */
 			flagdiffs &= -flagdiffs;
 
-			cmd = aprintf("bk admin -%c%s '%s'",
+			cmd = aprintf("bk -?BK_NO_REPO_LOCK=YES admin -%c%s '%s'",
 			    (flagdiffs & xflags) ? 'f' : 'F',
 			    xflags2a(flagdiffs), gfile);
 			sccs_close(s);	/* winblows */
@@ -812,5 +812,5 @@ update_collapsed_file(char *newcsets)
 	f = fopen(COLLAPSED, "w");
 	EACH(csets) fprintf(f, "%s\n", csets[i]);
 	fclose(f);
-	return (sys("bk", "delta", "-aqy", COLLAPSED, SYS));
+	return (sys("bk", "-?BK_NO_REPO_LOCK=YES", "delta", "-aqy", COLLAPSED, SYS));
 }
