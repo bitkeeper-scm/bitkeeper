@@ -217,6 +217,7 @@ hashThings(df_ctx *dc, int side, int from)
 	unless (from > 0) from = 1;
 	assert(!dc->hashes[side]);
 	n = nLines(dc->things[side]);
+	assert(from <= n);
 	growArray(&dc->hashes[side], n);
 	for (i = 1; i < from; i++) dc->hashes[side][i] = 0;
 	for (i = from; i <= n; i++) {

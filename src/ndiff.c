@@ -172,7 +172,7 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 	int	firstDiff;
 	int	lno[2];
 	int	skip[2] = {0, 0};
-	int	rc = 2;
+	int	rc = 2, hasctrlr = 0;
 	char	*files[2] = {file1, file2};
 	char	*data[2] = {0, 0};
 	df_cmp	dcmp = 0;
@@ -268,6 +268,7 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 				if (o->dop->strip_trailing_cr) {
 					t = e;
 					while ((e > s) && (*(e-1)=='\r')) e--;
+					if (e != t) hasctrlr = 1;
 					*e = '\n';
 				}
 				diff_addItem(dc, i, s, e - s + 1);
@@ -289,7 +290,9 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 		o->files[i].nl = 1;
 		if (j && (*(e-1) != '\n')) {
 			if (o->dop->ignore_trailing_cr && (*(e-1) == '\r')) {
+				t = e;
 				while ((e > s) && (*(e-1) == '\r')) e--;
+				if (e != t) hasctrlr = 1;
 				*e = '\n';
 			} else {
 				e--;
@@ -320,11 +323,13 @@ diff_files(char *file1, char *file2, df_opt *dop, df_ctx **odc, char *out)
 	 */
 	n = min(sb[0].st_size, sb[1].st_size);
 	firstDiff = 0;
-	for (i = 0; i < n; i++) {
-		if (data[0][i] != data[1][i]) break;
-		if (data[0][i] == '\n') firstDiff++;
+	unless (hasctrlr) {
+		for (i = 0; i < n; i++) {
+			if (data[0][i] != data[1][i]) break;
+			if (data[0][i] == '\n') firstDiff++;
+		}
 	}
-
+	assert((firstDiff <= lno[0]) && (firstDiff <= lno[1]));
 	/* Do the diff */
 	diff_items(dc, firstDiff, o->dop->minimal);
 	unless (nLines(diff_hunks(dc))) {

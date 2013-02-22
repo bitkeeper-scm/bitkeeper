@@ -164,6 +164,13 @@ cmp -s WANT GOT || {
 	dumpdiffs
 	fail
 }
+printf "a\r\nb\r\n" > A
+printf "a\r\nb\r\nc\r\n" > B
+bk diff --ignore-trailing-cr A B > WANT
+bk ndiff --ignore-trailing-cr A B > GOT
+cmpfiles WANT GOT
+bk ndiff --strip-trailing-cr A B > GOT
+cmpfiles WANT GOT
 echo OK
 
 echo $N Test binary detection........................................$NL
