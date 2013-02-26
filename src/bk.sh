@@ -1761,13 +1761,20 @@ _conflicts() {
 	cd RESYNC > /dev/null
 
 	bk gfiles "$@" | grep -v '^ChangeSet$' | bk prs -hnr+ \
-	-d'$if(:RREV:){:GPN:|:LPN:|:RPN:|:GFILE:|:LREV:|:RREV:|:GREV:}' - | \
+    -d'$if(:RREV:){:GPN:|:LPN:|:RPN:|:GFILE:|:LREV:|:RREV:|:GREV:|:ENC:}' - |
 	bk sort | {
-		while IFS='|' read GPN LPN RPN GFILE LOCAL REMOTE GCA
+		while IFS='|' read GPN LPN RPN GFILE LOCAL REMOTE GCA ENC
 		do	if [ "$GFILE" != "$LPN" ]
 			then	PATHS="$GPN (renamed) LOCAL=$LPN REMOTE=$RPN"
 				RC=1
 			else	PATHS="$GFILE"
+			fi
+			
+			# handle binaries up front
+			if [ "$ENC" != ascii ]
+			then	echo "$PREFIX$PATHS (binary)"
+				RC=1
+				continue
 			fi
 			if [ $VERBOSE -eq 0 ]; then
 				if [ "$PATHS" = "$GFILE" ] &&
