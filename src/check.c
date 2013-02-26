@@ -401,7 +401,10 @@ check_main(int ac, char **av)
 		}
 		unless (s == cset) sccs_free(s);
 	}
-	if (e = sfileDone()) return (e);
+	if (e = sfileDone()) {
+		errors++;
+		goto out;
+	}
 	if (BAM) {
 		unless (exists(BAM_MARKER)) {
 			if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
@@ -449,7 +452,8 @@ check_main(int ac, char **av)
 		assert(n);
 		if (aliasdb_chkAliases(n, 0, &n->here, 0)) {
 			fprintf(stderr, "check: current aliases not valid.\n");
-			return (1);
+			errors++;
+			goto out;
 		}
 		EACH(n->here) {
 			unless (comps = aliasdb_expandOne(n, 0, n->here[i])) {
@@ -483,7 +487,8 @@ check_main(int ac, char **av)
 		nested_free(n);
 		if (err) {
 			fprintf(stderr,"check: missing components!\n");
-			return (1);
+			errors++;
+			goto out;
 		}
 	}
 	repos_update(cset);

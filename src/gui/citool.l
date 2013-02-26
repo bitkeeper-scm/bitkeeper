@@ -662,6 +662,29 @@ findFiles()
 }
 
 void
+getCommentedFiles(string comps[], int &files{string})
+{
+	FILE	fd;
+	string	cmd, comp, line, file;
+	string	opts = "-vgcypA";
+
+	foreach (comp in comps) {
+		chdir(comp);
+		cmd = "bk sfiles ${opts} --relpath='${self.root}'";
+		unless (self.resolve) {
+			// Look for extra files when we're not in the resolver.
+			cmd .= " -x";
+		}
+		fd = popen(cmd, "r");
+		while (defined(line = fgetline(fd))) {
+			file = join(" ", split(/ /, line)[1..END]);
+			if (line[6] == "y") files{file} = 1;
+		}
+		fclose(fd);
+	}
+}
+
+void
 addButton(string buttonName, string text, string command)
 {
 	string	path = "${self.w_buttons}.${buttonName}";
@@ -1679,6 +1702,7 @@ showCsetContents(sfile sf)
 	string	file, comp, comments;
 	string	comps[], lines[];
 	widget	textBox = self.w_diffs;
+	int	cfiles{string};
 
 	if (sf.inProduct && self.cnt_commented == 0) {
 		// Product ChangeSet file and no comments at all.
@@ -1704,14 +1728,18 @@ showCsetContents(sfile sf)
 		Text_tagAdd(self.w_comments, "sel", 1.0, "end");
 	}
 
-	bottomMessage(msgs{"changeset"}, "notice");
-	Text_insert(textBox, "end", "\n");
-
 	if (sf.inProduct) {
 		comps = keys(self.components);
 	} else {
 		comps = {sf.component};
 	}
+
+	bottomMessage("Loading change summary...", "");
+	update();
+	getCommentedFiles(comps, &cfiles);
+
+	bottomMessage(msgs{"changeset"}, "notice");
+	Text_insert(textBox, "end", "\n");
 
 	foreach (comp in comps) {
 		string	line;
@@ -1741,6 +1769,9 @@ showCsetContents(sfile sf)
 			s = self.files{file};
 			if (s.excluded) continue;
 			if (s.type == "cset") continue;
+			if (!defined(cfiles{file}) && (s.type != "pending")) {
+				continue;
+			}
 			comments = getComments(s);
 			if (comments == "") continue;
 			Text_insert(textBox, "end", sp1);
@@ -2204,9 +2235,14 @@ void
 deleteAllComments()
 {
 	sfile	sf;
-	string	file;
+	string	file, comps[];
+	int	cfiles{string};
+
+	comps = keys(self.components);
+	getCommentedFiles(comps, &cfiles);
 
 	foreach (file => sf in self.files) {
+		if (!defined(cfiles{file}) && (sf.type != "cset")) continue;
 		deleteCommentFile(sf.file);
 	}
 }
